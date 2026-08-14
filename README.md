@@ -1,5 +1,49 @@
 # Boss Rally — decompilation project
 
+## Quick start
+
+Requires only clang and the macOS SDK. No dependencies, no package manager, no
+game data:
+
+```
+git clone git@github.com:jeff-strutb/brally.git
+cd brally
+./build.sh
+./build/brally
+```
+
+That boots the ported core and prints what it built:
+
+```
+after ctor:
+phase  nPages=0 iPage=0 f0C=0 f68=1
+
+running builder 0x1004D640 ...
+  page 0  cCtl=7 cSel=3 origin=(195.0,130.0) flags=1
+
+controls built: 7   setText=3 place=7
+stubs: none reached -- everything the run touched is ported
+```
+
+`./build/brally -w` does the same and opens a Metal window drawing the controls
+at the coordinates the builder computed. `./tools/regress.sh` runs every suite.
+
+Verified from a clean clone on macOS 26 / Apple Silicon.
+
+### What that output is, and what it is not
+
+It is the game's own menu code running: the real phase constructor
+(`0x10048710`) and a real screen builder (`0x1004D640`), both decompiled. Every
+coordinate is computed by ported game logic -- the host invents no geometry.
+
+It is **not the game**. There is no input, no game loop, and no scene
+rendering. One menu screen is constructed and its controls are placed. Treat it
+as proof the core executes, not as something to play.
+
+Without extracted game data, five test suites skip and the window has no
+background texture; everything else runs. See "Asset policy" below.
+
+
 Target: **`BRD3D.dll`** (`sha256 29af141e…`), the DirectDraw build, for the shared
 game core. It contains the entire game and exports one symbol, `RallyMain`.
 `BRGlide.dll` is the same game against 3dfx Glide.
@@ -39,17 +83,39 @@ builds function-for-function.
 
 ## Status
 
-**~966 of ~1,708 shared-core functions decompiled to portable C99.**
-50 modules, 50 test suites, all green under one `./build.sh`. 40,554 lines.
+**The ported core now links into one binary and boots.** `build/brally`
+constructs the phase object and runs a real menu builder; see "Quick start".
+
+**~1,050 of ~1,708 shared-core functions decompiled to portable C99.**
+65 modules, 65 test suites, all green under one `./build.sh`. ~54,700 lines.
 
 | | |
 |---|---|
 | `.text` | 581,632 bytes @ `0x10001000`, image base `0x10000000` |
 | Shared core (the target) | ~1,708 fns / 339,648 bytes |
-| **Decompiled + tested** | **~966** |
-| Modules | 50 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`) |
-| Undefined symbols at full link | **304** (see `tools/linkqueue.py`) |
+| **Decompiled + tested** | **~1,050** |
+| Modules | 65 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`, `slice4_50..53`, `slice5_60..63`, `slice6_70..73`) |
+| Unported functions, stubbed so the host links | **152** (`port/host/br_stubs.c`) |
+| Data symbols with provisional storage | **63** (same file -- each is a TODO) |
 | Addresses with >1 name | **53** (heuristic count) |
+
+### The stub report is the work queue
+
+`build/brally` links against a stub for every unported function. Each stub
+records its own hit count and the program prints them at exit, so the question
+"which of the remaining functions actually matter?" is answered by running the
+program rather than by guessing. The first boot named exactly one blocker
+(`BrUiCtlCtor`, `0x100476C0`); porting it took the report to
+"stubs: none reached".
+
+Run with `BR_STUB_ABORT=1` to die at the first stub instead of continuing on a
+zero return.
+
+Two caveats that matter. Stubs return an integer 0, so a caller expecting a
+**float** gets whatever was in `xmm0`, not `0.0` -- such a gap shows up as a hit
+rather than being silently trusted. And the 63 provisional data symbols are
+zeroed blocks; anything whose behaviour depends on a non-zero initial value will
+differ from the original until its owning module is ported.
 
 ### Read this before trusting any number above
 
