@@ -135,24 +135,43 @@ void BrOptFn10056A10(BrPhase_ *);
 void BrOptFn100575F0(BrPhase_ *);
 void BrOptFn10057C10(BrPhase_ *);
 
-typedef struct { const char *pszName; void (*pfn)(BrPhase_ *); } BrBuilder;
+/* `iModel` is which module's page/control model the builder WRITES through.
+ * The host reads through slice6_73.h's, and slice6_72.h's is held
+ * field-for-field identical to it by test_pagemodel. slice6_71's is NOT: its
+ * BrUiScreen begins at +0x10 with no pVtbl/pfn04/pfn08, so reading a page it
+ * built through the host's view lands three fields off.
+ *
+ * The symptom is not a stable wrong number, which is what makes it dangerous:
+ * BrExt_10049F40 reported 9, 10, 12, 7 and 10 across five runs of the SAME
+ * binary, because the offset the host reads was never written and holds
+ * whatever the heap had. setText and place stayed at 3 and 4 throughout --
+ * they are counted by this file's vtable slots and never touch the struct.
+ *
+ * So the ctl column is SUPPRESSED where the models differ. Printing a number
+ * we cannot justify is worse than printing none: two earlier status reports
+ * quoted those garbage counts as if they confirmed the decompilation. */
+typedef struct {
+    const char *pszName;
+    void      (*pfn)(BrPhase_ *);
+    int         iModel;     /* 71 / 72 / 73 */
+} BrBuilder;
 static const BrBuilder g_aBuilders[] = {
-    { "BrExt_10049F40", BrExt_10049F40 },
-    { "BrExt_1004D640", BrExt_1004D640 },
-    { "BrExt_1004DFC0", BrExt_1004DFC0 },
-    { "BrExt_1004E830", BrExt_1004E830 },
-    { "BrExt_1004F2B0", BrExt_1004F2B0 },
-    { "BrExt_1004F700", BrExt_1004F700 },
-    { "BrExt_10050060", BrExt_10050060 },
-    { "BrExt_10052030", BrExt_10052030 },
-    { "BrExt_10054B50", BrExt_10054B50 },
-    { "BrExt_10059760", BrExt_10059760 },
-    { "BrExt_1005A6E0", BrExt_1005A6E0 },
-    { "BrOptFn10051D30", BrOptFn10051D30 },
-    { "BrOptFn100558A0", BrOptFn100558A0 },
-    { "BrOptFn10056A10", BrOptFn10056A10 },
-    { "BrOptFn100575F0", BrOptFn100575F0 },
-    { "BrOptFn10057C10", BrOptFn10057C10 }
+    { "BrExt_10049F40", BrExt_10049F40, 71 },
+    { "BrExt_1004D640", BrExt_1004D640, 73 },
+    { "BrExt_1004DFC0", BrExt_1004DFC0, 73 },
+    { "BrExt_1004E830", BrExt_1004E830, 72 },
+    { "BrExt_1004F2B0", BrExt_1004F2B0, 73 },
+    { "BrExt_1004F700", BrExt_1004F700, 71 },
+    { "BrExt_10050060", BrExt_10050060, 73 },
+    { "BrExt_10052030", BrExt_10052030, 72 },
+    { "BrExt_10054B50", BrExt_10054B50, 73 },
+    { "BrExt_10059760", BrExt_10059760, 72 },
+    { "BrExt_1005A6E0", BrExt_1005A6E0, 72 },
+    { "BrOptFn10051D30", BrOptFn10051D30, 71 },
+    { "BrOptFn100558A0", BrOptFn100558A0, 73 },
+    { "BrOptFn10056A10", BrOptFn10056A10, 72 },
+    { "BrOptFn100575F0", BrOptFn100575F0, 71 },
+    { "BrOptFn10057C10", BrOptFn10057C10, 72 }
 };
 #define BR_NBUILDERS ((int)(sizeof(g_aBuilders)/sizeof(g_aBuilders[0])))
 
@@ -291,9 +310,15 @@ int main(int argc, char **argv)
                 g_aBuilders[b].pfn(p);
                 for (i = 0; i < (int)p->nPages && i < BR_PHASE_PAGES; i++)
                     if (p->aPages[i]) n += p->aPages[i]->cCtl;
-                printf("  %-22s pages=%-2u ctl=%-3d setText=%-3d place=%-3d\n",
-                       g_aBuilders[b].pszName, (unsigned)p->nPages, n,
-                       g_nSetText, g_nPlace);
+                if (g_aBuilders[b].iModel == 71)
+                    printf("  %-22s pages=%-2u ctl=%-3s setText=%-3d place=%-3d"
+                           "  [ctl unreadable: model %d]\n",
+                           g_aBuilders[b].pszName, (unsigned)p->nPages, "--",
+                           g_nSetText, g_nPlace, g_aBuilders[b].iModel);
+                else
+                    printf("  %-22s pages=%-2u ctl=%-3d setText=%-3d place=%-3d\n",
+                           g_aBuilders[b].pszName, (unsigned)p->nPages, n,
+                           g_nSetText, g_nPlace);
                 fflush(stdout);
                 _exit(0);
             } else {
