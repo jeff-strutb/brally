@@ -1,5 +1,6 @@
 /* test_n64tex.c -- verify the CI4/LUT4 decoder against retail cargfx data. */
 #include "br_n64tex.h"
+#include "br_testdata.h"
 #include <stdio.h>
 
 static int g_fail;
@@ -8,6 +9,7 @@ static void check(int c, const char *w)
 
 int main(void)
 {
+    BR_REQUIRE_TESTDATA("testdata/skytexdesert.ci4", "n64tex");
     BrTex t;
     unsigned i, opaque = 0, distinct = 0;
     unsigned seen[256] = {0};

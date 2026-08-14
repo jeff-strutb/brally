@@ -5,6 +5,7 @@
  * what it actually draws is the whole point of dropping byte-matching.
  */
 #include "br_img.h"
+#include "br_testdata.h"
 #include "br_gfx.h"
 
 #include <stdio.h>
@@ -36,6 +37,7 @@ static int write_ppm(const char *pszPath, const uint8_t *pRgba,
 
 int main(int argc, char **argv)
 {
+    BR_REQUIRE_TESTDATA("testdata/splash.img", "gfx");
     const char *pszImg = (argc > 1) ? argv[1] : "testdata/splash.img";
     const char *pszOut = (argc > 2) ? argv[2] : "build/gfx_out.ppm";
     BrImage img;

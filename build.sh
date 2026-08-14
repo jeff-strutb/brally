@@ -23,45 +23,45 @@ clang $CFLAGS -c port/src/br_obj.c            -o build/br_obj.o
 clang $CFLAGS -c port/src/br_bits.c           -o build/br_bits.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
-clang $CFLAGS -c port/tests/test_pod.c -o build/test_pod.o
-clang $CFLAGS -c port/tests/test_gfx.c -o build/test_gfx.o
-clang $CFLAGS -c port/tests/test_rca.c -o build/test_rca.o
-clang $CFLAGS -c port/tests/test_n64tex.c -o build/test_n64tex.o
-clang $CFLAGS -c port/tests/test_f3d.c -o build/test_f3d.o
-clang $CFLAGS -c port/tests/test_vec.c -o build/test_vec.o
-clang $CFLAGS -c port/tests/test_mat.c -o build/test_mat.o
-clang $CFLAGS -c port/tests/test_span.c -o build/test_span.o
-clang $CFLAGS -c port/tests/test_seg.c -o build/test_seg.o
-clang $CFLAGS -c port/tests/test_pool.c -o build/test_pool.o
-clang $CFLAGS -c port/tests/test_vecd.c -o build/test_vecd.o
-clang $CFLAGS -c port/tests/test_slots.c -o build/test_slots.o
-clang $CFLAGS -c port/tests/test_state.c -o build/test_state.o
-clang $CFLAGS -c port/tests/test_obj.c -o build/test_obj.o
-clang $CFLAGS -c port/tests/test_bits.c -o build/test_bits.o
+clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
+clang $CFLAGS -Iport/tests -c port/tests/test_gfx.c -o build/test_gfx.o
+clang $CFLAGS -Iport/tests -c port/tests/test_rca.c -o build/test_rca.o
+clang $CFLAGS -Iport/tests -c port/tests/test_n64tex.c -o build/test_n64tex.o
+clang $CFLAGS -Iport/tests -c port/tests/test_f3d.c -o build/test_f3d.o
+clang $CFLAGS -Iport/tests -c port/tests/test_vec.c -o build/test_vec.o
+clang $CFLAGS -Iport/tests -c port/tests/test_mat.c -o build/test_mat.o
+clang $CFLAGS -Iport/tests -c port/tests/test_span.c -o build/test_span.o
+clang $CFLAGS -Iport/tests -c port/tests/test_seg.c -o build/test_seg.o
+clang $CFLAGS -Iport/tests -c port/tests/test_pool.c -o build/test_pool.o
+clang $CFLAGS -Iport/tests -c port/tests/test_vecd.c -o build/test_vecd.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slots.c -o build/test_slots.o
+clang $CFLAGS -Iport/tests -c port/tests/test_state.c -o build/test_state.o
+clang $CFLAGS -Iport/tests -c port/tests/test_obj.c -o build/test_obj.o
+clang $CFLAGS -Iport/tests -c port/tests/test_bits.c -o build/test_bits.o
 clang $CFLAGS -c port/tools/brview.c   -o build/brview.o
 
 
 # --- slice 1 pass modules ---
 clang $CFLAGS -c port/src/slice1_01.c -o build/slice1_01.o
-clang $CFLAGS -c port/tests/test_slice1_01.c -o build/test_slice1_01.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_01.c -o build/test_slice1_01.o
 clang $CFLAGS -c port/src/slice1_02.c -o build/slice1_02.o
-clang $CFLAGS -c port/tests/test_slice1_02.c -o build/test_slice1_02.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_02.c -o build/test_slice1_02.o
 clang $CFLAGS -c port/src/slice1_03.c -o build/slice1_03.o
-clang $CFLAGS -c port/tests/test_slice1_03.c -o build/test_slice1_03.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_03.c -o build/test_slice1_03.o
 clang $CFLAGS -c port/src/slice1_04.c -o build/slice1_04.o
-clang $CFLAGS -c port/tests/test_slice1_04.c -o build/test_slice1_04.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_04.c -o build/test_slice1_04.o
 clang $CFLAGS -c port/src/slice1_05.c -o build/slice1_05.o
-clang $CFLAGS -c port/tests/test_slice1_05.c -o build/test_slice1_05.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_05.c -o build/test_slice1_05.o
 clang $CFLAGS -c port/src/slice1_06.c -o build/slice1_06.o
-clang $CFLAGS -c port/tests/test_slice1_06.c -o build/test_slice1_06.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_06.c -o build/test_slice1_06.o
 clang $CFLAGS -c port/src/slice1_07.c -o build/slice1_07.o
-clang $CFLAGS -c port/tests/test_slice1_07.c -o build/test_slice1_07.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_07.c -o build/test_slice1_07.o
 clang $CFLAGS -c port/src/slice1_08.c -o build/slice1_08.o
-clang $CFLAGS -c port/tests/test_slice1_08.c -o build/test_slice1_08.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_08.c -o build/test_slice1_08.o
 clang $CFLAGS -c port/src/slice1_09.c -o build/slice1_09.o
-clang $CFLAGS -c port/tests/test_slice1_09.c -o build/test_slice1_09.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_09.c -o build/test_slice1_09.o
 clang $CFLAGS -c port/src/slice1_10.c -o build/slice1_10.o
-clang $CFLAGS -c port/tests/test_slice1_10.c -o build/test_slice1_10.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice1_10.c -o build/test_slice1_10.o
 
 clang build/slice1_01.o build/test_slice1_01.o -lm -o build/test_slice1_01
 clang build/slice1_02.o build/test_slice1_02.o -lm -o build/test_slice1_02
@@ -77,37 +77,37 @@ clang build/slice1_10.o build/test_slice1_10.o -lm -o build/test_slice1_10
 
 # --- slice 2 pass modules ---
 clang $CFLAGS -c port/src/slice2_11.c -o build/slice2_11.o
-clang $CFLAGS -c port/tests/test_slice2_11.c -o build/test_slice2_11.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_11.c -o build/test_slice2_11.o
 clang $CFLAGS -c port/src/slice2_12.c -o build/slice2_12.o
-clang $CFLAGS -c port/tests/test_slice2_12.c -o build/test_slice2_12.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_12.c -o build/test_slice2_12.o
 clang $CFLAGS -c port/src/slice2_13.c -o build/slice2_13.o
-clang $CFLAGS -c port/tests/test_slice2_13.c -o build/test_slice2_13.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_13.c -o build/test_slice2_13.o
 clang $CFLAGS -c port/src/slice2_14.c -o build/slice2_14.o
-clang $CFLAGS -c port/tests/test_slice2_14.c -o build/test_slice2_14.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_14.c -o build/test_slice2_14.o
 clang $CFLAGS -c port/src/slice2_15.c -o build/slice2_15.o
-clang $CFLAGS -c port/tests/test_slice2_15.c -o build/test_slice2_15.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_15.c -o build/test_slice2_15.o
 clang $CFLAGS -c port/src/slice2_16.c -o build/slice2_16.o
-clang $CFLAGS -c port/tests/test_slice2_16.c -o build/test_slice2_16.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_16.c -o build/test_slice2_16.o
 clang $CFLAGS -c port/src/slice2_17.c -o build/slice2_17.o
-clang $CFLAGS -c port/tests/test_slice2_17.c -o build/test_slice2_17.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_17.c -o build/test_slice2_17.o
 clang $CFLAGS -c port/src/slice2_18.c -o build/slice2_18.o
-clang $CFLAGS -c port/tests/test_slice2_18.c -o build/test_slice2_18.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_18.c -o build/test_slice2_18.o
 clang $CFLAGS -c port/src/slice2_19.c -o build/slice2_19.o
-clang $CFLAGS -c port/tests/test_slice2_19.c -o build/test_slice2_19.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_19.c -o build/test_slice2_19.o
 clang $CFLAGS -c port/src/slice2_20.c -o build/slice2_20.o
-clang $CFLAGS -c port/tests/test_slice2_20.c -o build/test_slice2_20.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_20.c -o build/test_slice2_20.o
 clang $CFLAGS -c port/src/slice2_21.c -o build/slice2_21.o
-clang $CFLAGS -c port/tests/test_slice2_21.c -o build/test_slice2_21.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_21.c -o build/test_slice2_21.o
 clang $CFLAGS -c port/src/slice2_22.c -o build/slice2_22.o
-clang $CFLAGS -c port/tests/test_slice2_22.c -o build/test_slice2_22.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_22.c -o build/test_slice2_22.o
 clang $CFLAGS -c port/src/slice2_23.c -o build/slice2_23.o
-clang $CFLAGS -c port/tests/test_slice2_23.c -o build/test_slice2_23.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_23.c -o build/test_slice2_23.o
 clang $CFLAGS -c port/src/slice2_24.c -o build/slice2_24.o
-clang $CFLAGS -c port/tests/test_slice2_24.c -o build/test_slice2_24.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_24.c -o build/test_slice2_24.o
 clang $CFLAGS -c port/src/slice2_25.c -o build/slice2_25.o
-clang $CFLAGS -c port/tests/test_slice2_25.c -o build/test_slice2_25.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_25.c -o build/test_slice2_25.o
 clang $CFLAGS -c port/src/slice2_26.c -o build/slice2_26.o
-clang $CFLAGS -c port/tests/test_slice2_26.c -o build/test_slice2_26.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice2_26.c -o build/test_slice2_26.o
 
 clang build/slice2_11.o build/test_slice2_11.o -lm -o build/test_slice2_11
 clang build/slice2_12.o build/test_slice2_12.o -lm -o build/test_slice2_12
@@ -129,23 +129,23 @@ clang build/slice2_26.o build/test_slice2_26.o -lm -o build/test_slice2_26
 
 # --- slice 3 pass modules ---
 clang $CFLAGS -c port/src/slice3_31.c -o build/slice3_31.o
-clang $CFLAGS -c port/tests/test_slice3_31.c -o build/test_slice3_31.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_31.c -o build/test_slice3_31.o
 clang $CFLAGS -c port/src/slice3_32.c -o build/slice3_32.o
-clang $CFLAGS -c port/tests/test_slice3_32.c -o build/test_slice3_32.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_32.c -o build/test_slice3_32.o
 clang $CFLAGS -c port/src/slice3_33.c -o build/slice3_33.o
-clang $CFLAGS -c port/tests/test_slice3_33.c -o build/test_slice3_33.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_33.c -o build/test_slice3_33.o
 clang $CFLAGS -c port/src/slice3_39.c -o build/slice3_39.o
-clang $CFLAGS -c port/tests/test_slice3_39.c -o build/test_slice3_39.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_39.c -o build/test_slice3_39.o
 clang $CFLAGS -c port/src/slice3_40.c -o build/slice3_40.o
-clang $CFLAGS -c port/tests/test_slice3_40.c -o build/test_slice3_40.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_40.c -o build/test_slice3_40.o
 clang $CFLAGS -c port/src/slice3_41.c -o build/slice3_41.o
-clang $CFLAGS -c port/tests/test_slice3_41.c -o build/test_slice3_41.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_41.c -o build/test_slice3_41.o
 clang $CFLAGS -c port/src/slice3_42.c -o build/slice3_42.o
-clang $CFLAGS -c port/tests/test_slice3_42.c -o build/test_slice3_42.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_42.c -o build/test_slice3_42.o
 clang $CFLAGS -c port/src/slice3_44.c -o build/slice3_44.o
-clang $CFLAGS -c port/tests/test_slice3_44.c -o build/test_slice3_44.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_44.c -o build/test_slice3_44.o
 clang $CFLAGS -c port/src/slice3_45.c -o build/slice3_45.o
-clang $CFLAGS -c port/tests/test_slice3_45.c -o build/test_slice3_45.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice3_45.c -o build/test_slice3_45.o
 
 clang build/slice3_31.o build/test_slice3_31.o -lm -o build/test_slice3_31
 clang build/slice3_32.o build/test_slice3_32.o -lm -o build/test_slice3_32
@@ -160,13 +160,13 @@ clang build/slice3_45.o build/test_slice3_45.o -lm -o build/test_slice3_45
 
 # --- slice 4: link-gap closure + CRT shim ---
 clang $CFLAGS -c port/src/slice4_50.c -o build/slice4_50.o
-clang $CFLAGS -c port/tests/test_slice4_50.c -o build/test_slice4_50.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice4_50.c -o build/test_slice4_50.o
 clang $CFLAGS -c port/src/slice4_51.c -o build/slice4_51.o
-clang $CFLAGS -c port/tests/test_slice4_51.c -o build/test_slice4_51.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice4_51.c -o build/test_slice4_51.o
 clang $CFLAGS -c port/src/slice4_52.c -o build/slice4_52.o
-clang $CFLAGS -c port/tests/test_slice4_52.c -o build/test_slice4_52.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice4_52.c -o build/test_slice4_52.o
 clang $CFLAGS -c port/src/slice4_53.c -o build/slice4_53.o
-clang $CFLAGS -c port/tests/test_slice4_53.c -o build/test_slice4_53.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice4_53.c -o build/test_slice4_53.o
 clang $CFLAGS -c port/src/br_crt.c -o build/br_crt.o
 
 clang build/slice4_50.o build/test_slice4_50.o -lm -o build/test_slice4_50
@@ -180,21 +180,37 @@ clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_po
 
 # --- slice 5: link-gap round 2 ---
 clang $CFLAGS -c port/src/slice5_60.c -o build/slice5_60.o
-clang $CFLAGS -c port/tests/test_slice5_60.c -o build/test_slice5_60.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice5_60.c -o build/test_slice5_60.o
 clang $CFLAGS -c port/src/slice5_61.c -o build/slice5_61.o
-clang $CFLAGS -c port/tests/test_slice5_61.c -o build/test_slice5_61.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice5_61.c -o build/test_slice5_61.o
 clang $CFLAGS -c port/src/slice5_62.c -o build/slice5_62.o
-clang $CFLAGS -c port/tests/test_slice5_62.c -o build/test_slice5_62.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice5_62.c -o build/test_slice5_62.o
 clang $CFLAGS -c port/src/slice5_63.c -o build/slice5_63.o
-clang $CFLAGS -c port/tests/test_slice5_63.c -o build/test_slice5_63.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice5_63.c -o build/test_slice5_63.o
 
 clang build/slice5_60.o build/test_slice5_60.o -lm -o build/test_slice5_60
 clang build/slice5_61.o build/test_slice5_61.o -lm -o build/test_slice5_61
 clang build/slice5_62.o build/test_slice5_62.o -lm -o build/test_slice5_62
 clang build/slice5_63.o build/test_slice5_63.o -lm -o build/test_slice5_63
 
+clang $CFLAGS -c port/src/slice6_70.c -o build/slice6_70.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_70.c -o build/test_slice6_70.o
+clang $CFLAGS -c port/src/slice6_71.c -o build/slice6_71.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_71.c -o build/test_slice6_71.o
+
+clang $CFLAGS -c port/src/slice6_72.c -o build/slice6_72.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_72.c -o build/test_slice6_72.o
+
+clang $CFLAGS -c port/src/slice6_73.c -o build/slice6_73.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_73.c -o build/test_slice6_73.o
+
+clang build/slice6_70.o build/test_slice6_70.o -lm -o build/test_slice6_70
+clang build/slice6_71.o build/test_slice6_71.o -lm -o build/test_slice6_71
+clang build/slice6_72.o build/test_slice6_72.o -lm -o build/test_slice6_72
+clang build/slice6_73.o build/test_slice6_73.o -lm -o build/test_slice6_73
+
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
-clang $CFLAGS -c port/tests/test_audio.c -o build/test_audio.o
+clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
 clang build/br_pod.o build/test_pod.o -o build/test_pod

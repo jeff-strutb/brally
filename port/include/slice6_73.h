@@ -3,7 +3,7 @@
  * WHAT THIS PACKET IS
  * -------------------
  * Twenty-three addresses that some already-ported module calls through an
- * `extern` it declared itself.  Thirteen are implemented here; ten are not,
+ * `extern` it declared itself.  Fourteen are implemented here; nine are not,
  * and the reasons are listed below so nobody re-derives them.
  *
  * The centre of gravity is the SIX MENU-SCREEN BUILDERS.  slice5_60.h,
@@ -14,7 +14,7 @@
  * signature its callers use.  That is what this file does.
  *
  * ==========================================================================
- * IN THIS FILE (13 of the 23)
+ * IN THIS FILE (14 of the 23)
  * ==========================================================================
  *   0x10048710  BrOptObjCtor        the phase constructor itself
  *   0x100558A0  BrOptFn100558A0  }
@@ -127,6 +127,13 @@
  *   fifth arguments.  Every one.
  * - The 0x6594 block the phase constructor allocates twice is slice1_06.h's
  *   BrNameList (vtable + 100 slots of 0x104): 4 + 100*0x104 == 0x6594.
+ * - 0x1006F720's three callees ALREADY have names and are reused, not
+ *   re-coined: 0x10002DE0 is slice1_01.h's BrGrid64Sample, 0x10002EF0 is its
+ *   BrU16CursorNext, and 0x10074250 is slice1_09.h's BrVec3Normalise.  The
+ *   dword 0x10002DE0 returns is the cell's CSR row -- first triangle index in
+ *   the low half, count in the high half -- which is exactly the
+ *   {pos, remaining} cursor 0x10002EF0 consumes.  slice1_08.h recorded this
+ *   pair as the blocker for 0x1006F720; it is not one.
  */
 #ifndef SLICE6_73_H
 #define SLICE6_73_H
@@ -142,6 +149,9 @@
                           * BrSub1003E510 (0x1003E510); pulls slice1_05.h
                           * for BrMat4 / BrMat4Translate                   */
 #include "slice2_11.h"   /* BrCollPlane, g_pBrCollGrid, g_pBrCollGridCount */
+#include "slice1_01.h"   /* BrGrid64Sample (0x10002DE0),
+                          * BrU16Cursor/BrU16CursorNext (0x10002EF0)       */
+#include "slice1_09.h"   /* BrVec3Normalise (0x10074250)                   */
 
 /* ==========================================================================
  * 1. The control (0x1E214 bytes; ctor 0x100476C0)
@@ -286,6 +296,20 @@ extern const char *BrStrGet(int id);
  * an explicit bound; an unspecified bound is compatible with that. */
 extern char g_aBr39B720[];
 
+/* 0x10AA28D8 -- slice2_25.h's name for it, reused rather than duplicated in
+ * the context below: slice5_61.c writes the same address from the sibling of
+ * BrExt_10041A00, and two storages for one global would be a live bug. */
+extern int32_t g_brAA28D8;
+
+/* The vtable slot 0x10050060 calls on the phase's +0xC0 name list: a
+ * __thiscall taking one pattern string ("RallySeason*.BRF").  slice1_06.h
+ * models BrNameList but not its vtable, which the original hardcodes at
+ * 0x1008F788 and which BrNameListInit takes as a parameter. */
+typedef struct BrNameListVtbl_ {
+    void *f00;
+    void (*f04)(BrNameList *pThis, const char *pszPattern);
+} BrNameListVtbl_;
+
 /* ==========================================================================
  * 4. The module's globals
  *
@@ -381,6 +405,11 @@ typedef struct BrUi73Ctx {
      * a parameter in slice1_06.h's BrNameListInit rather than a literal. */
     const void *pNameListVtbl;      /* 0x1008F788 */
 
+    /* the phase's own vtable, which the original stores as the literal
+     * 0x1008F700.  br_phase.h types it; its nine slots live in other packets,
+     * so it is wired rather than hardcoded. */
+    const BrPhaseVtbl_ *pPhaseVtbl; /* 0x1008F700 */
+
     /* 0x1003E1D0 -- the paired scratch buffers slice1_06.h models.  NULL
      * means "not wired"; the original always has one. */
     BrPairBuf *pPairBuf;            /* 0x1003E1D0 operand */
@@ -390,6 +419,13 @@ typedef struct BrUi73Ctx {
      * coining two more global names. */
     void (*pfn10071560)(void);
     void (*pfn10071630)(void);
+
+    /* `*(int32_t *)((char *)pArg->pSub + 0x70) = 0`, the first thing both
+     * 0x10041A00 and 0x100424D0 do.  slice2_25.h models the object as
+     * BrGameObj/BrGameSub and slice5_61.c reaches it that way, but
+     * slice2_25.h cannot be included here (CONFLICT 1), so the store is
+     * routed through a hook rather than dropped or guessed. */
+    void (*pfnClearSub70)(void *pArg);
 
     /* --- plain globals ------------------------------------------------ */
     int32_t   n0AA010;      /* 0x100AA010  = slice3_33.h BrUiBuildCtx::n0AA010 */
@@ -412,7 +448,6 @@ typedef struct BrUi73Ctx {
     int32_t   nAA28C4;      /* 0x10AA28C4 */
     int32_t   nAA28C8;      /* 0x10AA28C8 */
     int32_t   nAA28D0;      /* 0x10AA28D0 */
-    int32_t   nAA28D8;      /* 0x10AA28D8  = slice2_25.h g_brAA28D8         */
     int32_t   nAA28EC;      /* 0x10AA28EC */
     int32_t   nAA26E8;      /* 0x10AA26E8 */
     int32_t   nA9D068;      /* 0x10A9D068 */
@@ -591,27 +626,29 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c);
 
 /* The four resident cells.  slice2_11.h already owns the plane storage
  * (0x11750338) and the per-cell count (0x117554A0); these three are the rest
- * of the cache and no header models them yet. */
+ * of the cache.
+ *
+ * CONFLICT 6: slice3_42.h ALSO models this whole block, as
+ * `BrFxRecord g_BrFx1750338[600]` (600 == 4 * 150, the same 32-byte records)
+ * plus `g_BrX17554A0/A4`, `g_BrX17554C8/CC`, `g_BrX17554D0/D4`,
+ * `g_BrX17554D8/DC` and `g_BrX17554E0/E4` as bare int32 pairs.  The two views
+ * are consistent -- the pairs are exactly the u16 key array and the u32
+ * timestamp array this file names -- but ONE OF THE TWO MUST OWN THE STORAGE.
+ * They must not both be linked into one image as they stand. */
 #define BR73_COLL_CELLS 4
 
-extern uint32_t g_aBrCollGridStamp[BR73_COLL_CELLS];  /* 0x117554C8 */
-extern int16_t  g_aBrCollGridKey[BR73_COLL_CELLS];    /* 0x117554D8 */
+extern uint32_t g_aBrCollGridStamp[BR73_COLL_CELLS];  /* 0x117554C8..0x117554D7 */
+extern int16_t  g_aBrCollGridKey[BR73_COLL_CELLS];    /* 0x117554D8..0x117554DF */
 extern uint32_t g_brCollGridClock;                    /* 0x117554E0 */
 
-/* XSLICE 0x10002DE0 -- open a triangle cursor over the cell containing
- * (x, y).  The original keeps the whole 32-bit result as a 4-byte cursor and
- * treats zero as "empty". */
-extern uint32_t BrCollTriFirst(float x, float y);
+/* The two table bases 0x10002DE0 and 0x10002EF0 took as globals in the
+ * original and slice1_01.c takes as parameters.  Declared here because
+ * 0x1006F720 is the caller that has to supply them and no header names them
+ * yet; slice1_01.h records the addresses in prose only. */
+extern const uint16_t *g_pBrGrid64;     /* 0x106C7C6C -- BrGrid64Sample's grid */
+extern const uint16_t *g_pBrTriTable;   /* 0x106C7C68 -- BrU16CursorNext's table */
 
-/* XSLICE 0x10002EF0 -- step the cursor; returns the next triangle index, or
- * 0 to stop.  Only the low 16 bits are tested. */
-extern uint16_t BrCollTriNext(uint32_t *pCursor);
-
-/* XSLICE 0x10074250 -- normalise the plane normal in place (the first three
- * floats of the record). */
-extern void BrCollPlaneNormalise(BrCollPlane *pPlane);
-
-/* The three geometry tables 0x1006F720 reads.
+/* The three per-triangle tables 0x1006F720 reads.
  *   0x106C7C54  three u16 vertex indices per triangle, 8-byte stride
  *   0x106C7C5C  the vertex array (12-byte BrVec3)
  *   0x106C7CDC  one surface byte per triangle, masked with 7 */

@@ -1,5 +1,6 @@
 /* test_f3d.c -- validate the F3D walker against retail geometry. */
 #include "br_f3d.h"
+#include "br_testdata.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +47,7 @@ static void run(const char *pszPath)
 
 int main(void)
 {
+    BR_REQUIRE_TESTDATA("testdata/bb.rca", "f3d");
     run("testdata/ce.rca");
     run("testdata/bb.rca");
     printf(g_fail ? "\nFAILED\n" : "\nALL PASSED\n");

@@ -439,7 +439,7 @@ void BrExt_1004F700(BrPhase_ *pSelf)
     pCtl->pfn04   = pH->p1003EAE0;
     pCtl->f1E1F4  = 1;
     pSub->pVtbl->f14(pSub, 0x40001, g_brS71.p0AB538, 4, 0, -1);
-    pX->f383C     = (void *)pH->p10042170;
+    pX->f383C     = pH->p10042170;
 
     /* GOTCHA: the loop tests the COMPUTED ADDRESS, not the entry. `lea
      * eax,[eax+ebp+4] / test eax,eax` is only ever false if base + k + 4
@@ -630,7 +630,7 @@ void BrOptFn100575F0(BrPhase_ *pThis)
     pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 174.0f, 0x200001, 2, 5, 1, -1);
     pCtl->pfn08  = pH->p10042B00;
     pCtl->pfn04  = pH->p1003F210;
-    pX->f10      = (void *)pH->p1003F280;
+    pX->f10      = pH->p1003F280;
     pCtl->f1E20C = 3;
     pCtl->pVtbl->f34(pCtl, g_brS71.p39B720, 1, 1, g_brS71.p0AB448);
 
