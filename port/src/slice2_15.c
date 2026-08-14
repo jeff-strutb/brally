@@ -1,0 +1,1032 @@
+/* slice2_15.c -- agent-15 packet, 0x10016A60-0x1001CCA0. See slice2_15.h.
+ *
+ * ---------------------------------------------------------------------------
+ * FLOAT CONSTANTS
+ * ---------------------------------------------------------------------------
+ * Every constant below was read out of BRD3D.dll's .rdata at the address in
+ * the comment, not inferred from context. Two of them are QWORDS (doubles);
+ * the original uses `fcomp qword` / `fmul qword` on those, so they are declared
+ * double here.
+ *
+ * ---------------------------------------------------------------------------
+ * DEVIATIONS (all of them, collected)
+ * ---------------------------------------------------------------------------
+ *  - x87 intermediates: the original computes in 80-bit extended precision.
+ *    This port uses `double`. Results differ in the last bits of long chains
+ *    (notably the four sin/cos in BrHudDrawDial). Where the original round-
+ *    trips a value through a 32-bit memory slot the port stores to `float` so
+ *    that rounding step is preserved.
+ *  - display-list addresses: command words are 32 bits, host pointers may be
+ *    64. BrGfxAddr() takes the low 32 bits and is marked at each use.
+ *  - sprintf -> snprintf, with the original's buffer sizes.
+ *  - __ftol (0x1007C8A0) is reproduced by BrFtol(); out-of-range doubles are
+ *    undefined behaviour in C, so it returns 0x80000000 there, which is what
+ *    the x87 indefinite-integer store produces.
+ */
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "slice2_15.h"
+
+/* ---- 0x1008F300 .. 0x1008F3C0 ------------------------------------------ */
+static const float  kF300 = 0.0f;                    /* 0x1008F300 */
+static const float  kF304 = 1000.0f;                 /* 0x1008F304 */
+static const float  kF308 = 0.0001428571413271129f;  /* 0x1008F308  1/7000 */
+static const float  kF30C = 0.5f;                    /* 0x1008F30C */
+static const float  kF314 = 5.0f;                    /* 0x1008F314 */
+static const float  kF31C = 7.0f;                    /* 0x1008F31C */
+static const float  kF320 = 0.0001250000059371814f;  /* 0x1008F320  1/8000 */
+static const float  kF324 = 0.05000000074505806f;    /* 0x1008F324 */
+static const float  kF328 = -0.05000000074505806f;   /* 0x1008F328 */
+static const float  kF32C = -0.30000001192092896f;   /* 0x1008F32C */
+static const float  kF330 = 0.30000001192092896f;    /* 0x1008F330 */
+static const float  kF334 = 100.0f;                  /* 0x1008F334 */
+static const float  kF338 = 0.4464285671710968f;     /* 0x1008F338  1/2.24 */
+static const float  kF33C = 25.0f;                   /* 0x1008F33C */
+static const double kF340 = 0.0;                     /* 0x1008F340 (qword) */
+static const float  kF348 = 0.6213712096214294f;     /* 0x1008F348 */
+static const float  kF34C = 0.9900000095367432f;     /* 0x1008F34C */
+static const float  kF350 = 3.051804378628731e-05f;  /* 0x1008F350  1/32768 */
+static const float  kF354 = 1.0f;                    /* 0x1008F354 */
+static const float  kF358 = 6.2831854820251465f;     /* 0x1008F358  2*pi  */
+static const float  kF35C = 0.0f;                    /* 0x1008F35C */
+static const float  kF360 = -6.2831854820251465f;    /* 0x1008F360 -2*pi  */
+static const float  kF364 = 0.5f;                    /* 0x1008F364 */
+static const float  kF368 = -0.5f;                   /* 0x1008F368 */
+static const float  kF36C = -343.0f;                 /* 0x1008F36C */
+static const double kF370 = 2048.0;                  /* 0x1008F370 (qword) */
+static const float  kF378 = 0.2777777910232544f;     /* 0x1008F378  1/3.6 */
+static const float  kF37C = 3.5999999046325684f;     /* 0x1008F37C  3.6   */
+static const float  kF384 = 0.25f;                   /* 0x1008F384 */
+static const double kF388 = 16383.5;                 /* 0x1008F388 (qword) */
+static const float  kF3BC = 255.0f;                  /* 0x1008F3BC */
+static const float  kF3C0 = 0.003921568859368563f;   /* 0x1008F3C0  1/255 */
+
+/* ---- state blocks ------------------------------------------------------ */
+static BrGfxOut     g_out;
+static BrScreenInfo g_screen;
+static BrHudEnv     g_hud;
+static BrSceneEnv   g_scene;
+static BrWeather    g_weather;
+static BrRdpRegs    g_regs;
+
+BrGfxOut     *BrGfxGetOut(void)   { return &g_out; }
+BrScreenInfo *BrScreenGet(void)   { return &g_screen; }
+BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
+BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
+BrWeather    *BrWeatherGet(void)  { return &g_weather; }
+BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
+
+/* ---- helpers ----------------------------------------------------------- */
+
+/* 0x1007C8A0 __ftol: x87 truncation toward zero, then the LOW DWORD of the
+ * 64-bit result (before any clamp). DEVIATION: see the file header. */
+static int32_t BrFtol(double v)
+{
+    if (v > -9.2233720368547758e18 && v < 9.2233720368547758e18) {
+        int64_t t = (int64_t)v;
+        return (int32_t)(uint32_t)(uint64_t)t;
+    }
+    return (int32_t)0x80000000u;
+}
+
+/* DEVIATION: 32-bit command word from a possibly-64-bit host pointer. */
+static uint32_t BrGfxAddr(const void *p)
+{
+    return (uint32_t)(uintptr_t)p;
+}
+
+/* The original's allocation idiom: read the cursor, bump it by 8, write. */
+static BrGfxCmd *BrGfxAlloc(void)
+{
+    BrGfxCmd *p = g_out.pCur;
+    g_out.pCur = p + 1;
+    return p;
+}
+
+static void BrGfxEmit(uint32_t w0, uint32_t w1)
+{
+    BrGfxCmd *p = BrGfxAlloc();
+    p->w0 = w0;
+    p->w1 = w1;
+}
+
+/* `11 * i` scaled by 8 == a 0x58-byte stride. */
+static BrHudView *BrHudViewAt(BrHudView *aViews, int32_t i)
+{
+    return &aViews[i];
+}
+
+static const BrHudSprite *BrHudSpriteAt(int32_t i)
+{
+    return (const BrHudSprite *)(g_hud.pSprites
+                                 + (size_t)(uint32_t)i * BR_HUDSPRITE_STRIDE);
+}
+
+/* =====================================================================
+ * 0x10016A60
+ * ===================================================================== */
+void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
+{
+    BrGfxCmd *p;
+
+    /* 10016A60: w1 is written before w0; the order does not matter. */
+    p = BrGfxAlloc();
+    p->w1 = 1u;
+    p->w0 = 0xDC000000u | (dlAddr & 0x00FFFFFFu);
+
+    /* 10016AC5: tile size. uls = ult = 0x002 (0.5 in 10.2); lrs/lrt are the
+     * extents less half a texel. */
+    p = BrGfxAlloc();
+    p->w0 = 0xF2002002u;
+    p->w1 = (((uint32_t)((w * 4) - 2) & 0xFFFu) << 12)
+          |  ((uint32_t)((h * 4) - 2) & 0xFFFu);
+
+    /* 10016B02: the rect. The original multiplies each coordinate by 4, masks,
+     * then shifts right by 2 again -- a no-op, so these fields are integers. */
+    p = BrGfxAlloc();
+    p->w0 = 0xE3000000u
+          | (((uint32_t)(x + w) & 0xFFFu) << 12)
+          | ((uint32_t)(y + h) & 0xFFFu);
+    p->w1 = (((uint32_t)x & 0xFFFu) << 12) | ((uint32_t)y & 0xFFFu);
+}
+
+/* =====================================================================
+ * 0x10016B40
+ * ===================================================================== */
+void BrHudDrawDial(BrHudView *aViews)
+{
+    const BrHudSprite *pSpr;
+    BrHudView *pView;
+    BrRace *pRace;
+    BrHudQuad *pQuad;
+    BrGfxCmd *p;
+    int32_t x, y, iSeq, iView;
+    float tip, base;
+    float t;
+
+    if (g_hud.f0BD3F4 == 0)              /* 10016B4D */
+        return;
+    if (g_hud.f22AF1C != 0)              /* 10016B56 */
+        return;
+
+    iView = g_screen.iView;
+    pView = BrHudViewAt(aViews, iView);
+    pRace = g_hud.pRace;
+
+    /* 10016B68-10016BA0: the two globals are converted to float and handed to
+     * 0x1003407D, whose result is discarded -- it is called for effect. */
+    BrSub_1003407D((float)g_hud.f6C0684, (float)g_hud.f6C299C);
+
+    pSpr = BrHudSpriteAt(pView->iSprite);
+
+    x = g_screen.cx - pSpr->e4 - 0x10;               /* 10016BB1 */
+    y = pView->y + pView->h - pSpr->e5 - 4;          /* 10016BC6 */
+
+    /* 10016BE9: NaN takes the zero path (C0 is set for unordered). */
+    if (pRace->f0E68 >= kF300)
+        iSeq = pRace->f0E70 + 1;
+    else
+        iSeq = 0;
+
+    if (g_screen.cViews == 1) {                      /* 10016C0D */
+        int32_t v, iFrame;
+
+        p = BrGfxAlloc();
+        BrSub_1002F900(p, 0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB,
+                          0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB);
+        BrGfxEmit(0xB900031Du, 0x0C184240u);
+        BrGfxEmit(0xB900031Du, 0x0C193078u);
+        BrGfxEmit(0xB6000000u, 0x00000001u);
+        BrGfxEmit(0xDE000000u, 0x3F800000u);   /* +1.0f as a payload */
+        BrGfxEmit(0xDF000000u, 0xBF800000u);   /* -1.0f as a payload */
+
+        if (pSpr->mode == 1 || pSpr->mode == 2) {
+            double a;
+
+            /* 10016D14: with f6909B4 set the jitter is pinned to 0x40. */
+            if (g_hud.f6909B4 != 0)
+                v = 0x40;
+            else
+                v = BrRandom() & 0x7F;
+
+            a = ((double)v + (double)pRace->f0E24 - (double)kF304)
+                * (double)kF308;
+            a = a * (double)(pSpr->ea + 1);
+            iFrame = BrFtol(a - (double)kF30C);
+
+            if (iFrame < 0)         iFrame = 0;
+            else if (iFrame > 0xF)  iFrame = 0xF;
+        } else {
+            /* 10016CF6: the non-dial path always uses byte offset +0x14,
+             * which is aDial[0] -- the same slot iFrame == 15 selects. */
+            iFrame = 0xF;
+        }
+
+        /* GOTCHA: aDial and dlOverlay come from RECORD 0, not record iView. */
+        BrGfxDrawTexRect(aViews[0].aDial[15 - iFrame], x, y,
+                         pSpr->e4, pSpr->e5);
+
+        /* 10016DB4: one cached sequence id per view. */
+        if (iSeq != g_hud.aLastSeq[iView]) {
+            p = BrGfxAlloc();
+            p->w0 = 0xDD000000u | (aViews[0].dlOverlay & 0x00FFFFFFu);
+            /* DEVIATION: 32-bit truncation of a host pointer. */
+            p->w1 = BrGfxAddr((const uint8_t *)pSpr + BR_HUDSPRITE_DATAOFF)
+                  + (uint32_t)pSpr->fFC * (uint32_t)iSeq;
+            g_hud.aLastSeq[iView] = iSeq;
+        }
+
+        BrGfxDrawTexRect(aViews[0].dlOverlay,
+                         x + pSpr->e6, y + pSpr->e7,
+                         pSpr->e8, pSpr->e9);
+    }
+
+    /* ---- 10016E3C: reached for every cViews ---- */
+    {
+        int32_t v;
+        if (g_hud.f6909B4 != 0)
+            v = 0x40;
+        else
+            v = BrRandom() & 0x7F;
+        /* Stored through a 32-bit slot, so the float32 rounding is real. */
+        t = (float)((double)v + (double)pRace->f0E24);
+    }
+
+    if (pSpr->mode != 0)                             /* 10016E7C */
+        return;
+
+    pQuad = &g_hud.aQuads[iView + 2 * g_hud.f6C65EC];
+
+    if (g_screen.cViews == 2) {                      /* 10016E98 */
+        base = kF314;          /* 5.0f  */
+        tip  = 15.0f;          /* the immediate 0x41700000 */
+        x += (pSpr->ea * 3) / 4;
+        y += (pSpr->eb * 3) / 4;
+    } else {
+        base = kF31C;          /* 7.0f  */
+        tip  = 20.0f;          /* the immediate 0x41A00000 */
+        x += pSpr->ea;
+        y += pSpr->eb;
+    }
+
+    {
+        double A  = (double)pSpr->fF0;
+        double fx = (double)x;
+        double fy = (double)(g_screen.cy - y);
+
+        /* 10016F22: NaN takes the "no interpolation" path. */
+        if (t > kF300) {
+            A = (double)pSpr->fF0
+              - ((double)pSpr->fF0 - (double)pSpr->fEC)
+                * (double)t * (double)kF320;
+        }
+
+        /* The tip pair uses the 15/20 radius; the base pair uses 5/7. The
+         * original loses the tip radius (its stack slot is reused) and reaches
+         * for the deep x87 copy of the base radius instead -- these two really
+         * are different numbers. */
+        pQuad->v[0].x = (float)(int16_t)BrFtol(cos(A - kF324) * tip  + fx);
+        pQuad->v[0].y = (float)(int16_t)BrFtol(sin(A - kF324) * tip  + fy);
+        pQuad->v[0].z = 0.0f;
+        pQuad->v[1].x = (float)(int16_t)BrFtol(cos(A - kF328) * tip  + fx);
+        pQuad->v[1].y = (float)(int16_t)BrFtol(sin(A - kF328) * tip  + fy);
+        pQuad->v[1].z = 0.0f;
+        pQuad->v[2].x = (float)(int16_t)BrFtol(cos(A - kF32C) * base + fx);
+        pQuad->v[2].y = (float)(int16_t)BrFtol(sin(A - kF32C) * base + fy);
+        pQuad->v[2].z = 0.0f;
+        pQuad->v[3].x = (float)(int16_t)BrFtol(cos(A - kF330) * base + fx);
+        pQuad->v[3].y = (float)(int16_t)BrFtol(sin(A - kF330) * base + fy);
+        pQuad->v[3].z = 0.0f;
+    }
+
+    {
+        int i;
+        for (i = 0; i < 4; ++i) {
+            pQuad->v[i].f14 = 0.0f;
+            pQuad->v[i].f18 = kF3BC;   /* 255.0f */
+            pQuad->v[i].f1C = 0.0f;
+        }
+    }
+
+    /* 100170A9: three slots are taken in this order -- the third goes to
+     * 0x1002F900, so the interleaving matters. */
+    p = BrGfxAlloc();
+    p->w0 = 0xE7000000u;
+    p->w1 = 0u;
+    p = BrGfxAlloc();
+    p->w0 = 0xBA001402u;
+    p->w1 = 0u;
+    p = BrGfxAlloc();
+    BrSub_1002F900(p, 0, 0, 0, 0x3EC, 0, 0, 0, 0x3EC,
+                      0, 0, 0, 0x3EC, 0, 0, 0, 0x3EC);
+
+    BrGfxEmit(0xB900031Du, 0x00552048u);
+    BrGfxEmit(0xB6000000u, 0x00033000u);
+    BrGfxEmit(0xB7000000u, 0x00000004u);
+    /* G_VTX: F3DEX packs n in bits[15:10], so 0x107F is n = 4. */
+    BrGfxEmit(0x0400107Fu, BrGfxAddr(pQuad));
+    BrGfxEmit(0xB1000102u, 0x00000203u);   /* G_TRI2 */
+    BrGfxEmit(0xB7000000u, 0x00000001u);
+    BrGfxEmit(0xE7000000u, 0x00000000u);
+}
+
+/* =====================================================================
+ * 0x10017690
+ * ===================================================================== */
+void BrHudDrawViewCentreText(const BrHudView *aViews)
+{
+    const BrHudView *pView;
+    int32_t big, small_, x, yy;
+
+    if (BrSub_1002B2A0() != 0)
+        return;
+
+    if (g_screen.cViews == 1) { big = 0x1E; small_ = 0x14; }
+    else                      { big = 0x14; small_ = 0x0F; }
+
+    pView = &aViews[g_screen.iView];
+
+    x  = pView->x + pView->w / 2;       /* cdq/sub/sar 1: truncates toward 0 */
+    yy = pView->y + pView->h / 3 + 0x18;/* magic 0x55555556: signed /3       */
+
+    BrSub_10019270();
+
+    if (g_hud.pszCentre == NULL)
+        return;
+
+    BrSub_100192F0(small_);
+
+    /* (big*3)/16, signed, truncating -- 5 for 0x1E, 3 for 0x14. */
+    BrTextDraw(g_hud.pszCentre, x, yy + (big * 3) / 16);
+}
+
+/* =====================================================================
+ * 0x10017790
+ * ===================================================================== */
+void BrHudDrawViewMessage(const BrHudView *aViews)
+{
+    const BrHudView *pView;
+    int32_t big, small_, x, yy;
+
+    if (g_hud.f6909B4 != 0)
+        return;
+    if (BrSub_1002B2A0() != 0)
+        return;
+
+    if (g_screen.cViews == 1) { big = 0x1E; small_ = 0x14; }
+    else                      { big = 0x14; small_ = 0x0F; }
+
+    pView = &aViews[g_screen.iView];
+
+    x  = pView->x + pView->w / 2;
+    yy = pView->y + pView->h / 3;
+
+    BrSub_10019270();
+
+    if (g_hud.pRace->psz0FFC != NULL) {
+        /* GOTCHA: this branch sizes the text with `big`, the other with
+         * `small_`; they are not the same number. */
+        BrSub_100192F0(big);
+        BrTextDraw(g_hud.pRace->psz0FFC, x, yy + big / 4);
+        return;
+    }
+    if (g_hud.pRace->psz1004 == NULL)
+        return;
+
+    BrSub_100192F0(small_);
+    BrTextDraw(g_hud.pRace->psz1004, x, yy + (big * 3) / 16);
+}
+
+/* =====================================================================
+ * 0x10017CD0
+ * ===================================================================== */
+float BrHudGapSeconds(const BrCar *aCars, int iCar)
+{
+    int32_t best = 0xFF;              /* 10017CE8 */
+    double  f    = (double)kF300;     /* 10017CD9 */
+    double  v;
+    int     i;
+
+    for (i = 0; i < g_hud.cCars; ++i) {
+        if (best > aCars[i].f0FF8) {
+            best = aCars[i].f0FF8;
+            f = (double)aCars[i].f0FF4 - (double)aCars[iCar].f0FF4;
+        }
+    }
+
+    /* 10017D26: `fcom 0 / test ah,0x40` -- C3 covers equal AND unordered, so a
+     * NaN returns here too. Written as !(f != 0) so NaN takes this branch. */
+    if (!(f != 0.0))
+        return (float)f;
+
+    v = (double)aCars[iCar].f1030 * (double)kF338;
+
+    /* 10017D52: again C3, so a NaN v yields the 1000.0f sentinel. */
+    if (!(v != 0.0))
+        return kF304;
+
+    /* Asymmetric: v is raised to 25.0f but never lowered. */
+    if (v < (double)kF33C)
+        v = (double)kF33C;
+
+    return (float)(f / v);
+}
+
+/* =====================================================================
+ * 0x10017C80
+ * ===================================================================== */
+const char *BrHudFormatGapString(const BrCar *aCars, int iCar)
+{
+    float f = BrHudGapSeconds(aCars, iCar);
+
+    /* 10017C9E: C0|C3 -- f <= 0 or unordered -> the empty string. */
+    if (f > kF300) {
+        g_hud.szGap[0] = '+';
+        BrSub_100020D0(&g_hud.szGap[1], f);
+    } else {
+        g_hud.szGap[0] = '\0';
+    }
+    return g_hud.szGap;
+}
+
+/* =====================================================================
+ * 0x10017FE0
+ * ===================================================================== */
+void BrHudDrawSplitLine(const char *pszPrefix, int rank, float fSeconds,
+                        int x, int y)
+{
+    char szBuf[0x20];                 /* the original's stack buffer */
+    int32_t total, hundredths, minutes, seconds;
+
+    total      = BrFtol((double)fSeconds * (double)kF334);
+    hundredths = total - (total / 100) * 100;   /* signed, truncating */
+    total     /= 100;
+    minutes    = total / 60;
+    seconds    = total - minutes * 60;
+
+    /* DEVIATION: sprintf -> snprintf, same buffer size as the original. */
+    snprintf(szBuf, sizeof szBuf, "%s%d. %d:%02d.%02d",
+             pszPrefix, rank, minutes, seconds, hundredths);
+
+    BrTextDraw(szBuf, x, y);
+}
+
+/* =====================================================================
+ * 0x10017F30
+ * ===================================================================== */
+void BrHudDrawSplitList(const BrHudView *aViews)
+{
+    const BrHudView *pView;
+    int32_t x, y, bias, i;
+
+    if (g_hud.f0BD3F0 == 0)
+        return;
+
+    x = g_screen.cx - 0x10;
+
+    /* 10017F4B: dec/neg/sbb/and 0xFFFFFFE2/add 0x1E collapses to this. */
+    bias = (g_screen.cViews == 1) ? 0x1E : 0;
+
+    pView = &aViews[g_screen.iView];
+    y = bias + (pView->y + 0x14) + 0x25;
+
+    BrSub_10019260();
+    BrSub_10019290();
+    BrSub_100192F0(0x0F);
+
+    /* The count is re-read from the race block on every iteration. */
+    for (i = 0; i < g_hud.pRace->cSplits; ++i) {
+        BrHudDrawSplitLine(g_hud.pszSplitPrefix, i + 1,
+                           g_hud.pRace->aSplits[i], x, y);
+        y += 0x0F;
+    }
+}
+
+/* =====================================================================
+ * 0x10017D90
+ * ===================================================================== */
+void BrHudDraw(BrHudView *aViews, int a2)
+{
+    const BrHudView *pView;
+    const BrHudSprite *pSpr;
+    float speed;
+    int32_t x, y;
+
+    pView = &aViews[g_screen.iView];
+    speed = g_hud.pRace->f1030;
+
+    BrSub_1003289F(0, pView->y, g_screen.cx, pView->h);
+
+    /* 10017DCF: negative (and NaN) speeds are pinned to zero. */
+    if (!(speed >= (float)kF340))
+        speed = 0.0f;
+
+    BrHudDrawDial(aViews);
+    BrSub_10017290(aViews);
+    BrHudDrawSplitList(aViews);
+    BrSub_100173F0(aViews, a2);
+    BrHudDrawViewMessage(aViews);
+    BrSub_10019260();
+    BrSub_10019290();
+
+    /* f0ADF60 selects miles: the number is scaled by 0.6213712 and the unit
+     * string id changes from 0xEC to 0xEB. */
+    {
+        double shown = (g_hud.f0ADF60 != 0)
+                     ? (double)speed * (double)kF348
+                     : (double)speed;
+        /* DEVIATION: sprintf -> snprintf. "%%yw" is a text-markup escape that
+         * BrTextDraw consumes, not a printf directive. */
+        snprintf(g_hud.szText, sizeof g_hud.szText, "%%yw%.0f", shown);
+    }
+
+    pView = &aViews[g_screen.iView];
+    x = g_screen.cx - 0x10;
+    y = pView->h + pView->y - 4;
+
+    if (g_hud.f22AF1C != 0)
+        return;
+    if (g_hud.f0BD3F4 == 0)
+        return;
+
+    pSpr = BrHudSpriteAt(pView->iSprite);
+    x -= 0x1E;
+    y -= pSpr->e5;
+
+    BrSub_100192F0(0x14);
+    y -= 3;
+    if (g_hud.f0ADF60 == 0)
+        x -= 3;
+    BrTextDraw(g_hud.szText, x, y);
+
+    BrSub_100192F0(0x0F);
+    BrSub_10019280();
+    BrTextDraw((const char *)BrHandleLookup(g_hud.apStrings,
+                                            (g_hud.f0ADF60 != 0) ? 0xEBu : 0xECu),
+               x, y);
+}
+
+/* =====================================================================
+ * 0x10018070
+ * ===================================================================== */
+int BrSceneUsePlainClear(void)
+{
+    if (g_scene.f6C661C != 0) return 1;
+    if (g_scene.f6C6620 != 0) return 1;
+    if (g_scene.f6C6624 != 0) return 1;
+    if (g_scene.f6C7C98 == 0) return 1;   /* note the inverted sense */
+    if (g_scene.f0B4050 == 2) return 1;
+    return 0;
+}
+
+/* =====================================================================
+ * 0x100180B0
+ * ===================================================================== */
+void BrSceneSetupFrame(const BrHudView *aViews)
+{
+    const BrHudView *pView;
+    BrGfxCmd *p;
+    BrMat4 *pDst;
+    uint32_t bitsB7, bitsB6;
+
+    BrGfxEmit(0xBC000404u, 0x00000001u);
+    BrGfxEmit(0xBC000C04u, 0x00000001u);
+    BrGfxEmit(0xBC001404u, 0x0000FFFFu);
+    BrGfxEmit(0xBC001C04u, 0x0000FFFFu);
+
+    if (g_scene.f6C6608 != 0)
+        return;
+
+    if (BrSceneUsePlainClear()) {
+        int32_t c0, c1, c2;
+
+        pView = &aViews[g_screen.iView];
+
+        /* 1001814B: `test al,1` -- the flat fill brightens on ODD lightning
+         * counts only, and only while the counter is still positive. */
+        if (g_scene.f0A79CC > 0 && (g_scene.f0A79CC & 1) != 0) {
+            c0 = (((int32_t)g_scene.c6C0200 + 0x55) * 3) / 4;
+            c1 = ((int32_t)g_scene.c6C1614 * 3 + 0xF8) / 4;
+            c2 = (((int32_t)g_scene.c6C0260 + 0x50) * 3) / 4;
+        } else {
+            c0 = g_scene.c6C0200;
+            c1 = g_scene.c6C1614;
+            c2 = g_scene.c6C0260;
+        }
+        BrSub_10031688(pView->x, pView->y, pView->w, pView->h, c2, c1, c0);
+        return;
+    }
+
+    BrSub_10031140(&g_scene.mtx, g_scene.pCam->f30, g_scene.pCam->f34,
+                   (float)((double)g_scene.pCam->f38 * (double)kF34C));
+
+    pDst = BrSub_10069490();
+    BrMat4Copy(&g_scene.mtx, pDst);      /* source first -- see br_mat.h */
+
+    BrGfxEmit(0x01030040u, (uint32_t)g_scene.f6C32D0);
+    BrGfxEmit(0x01040040u, BrGfxAddr(pDst));   /* DEVIATION: 32-bit address */
+    BrGfxEmit(0xE7000000u, 0u);
+    BrGfxEmit(0xBA001402u, 0u);
+
+    /* Both branches emit the SAME 0x1002F900 block; only the trailing
+     * 0xFB env-colour command is conditional. */
+    p = BrGfxAlloc();
+    BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+                      0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
+
+    if (g_scene.f6C6618 != 0) {
+        p = BrGfxAlloc();
+        p->w0 = 0xFB000000u;
+        p->w1 = ((uint32_t)g_scene.c6C0260 << 24)
+              | ((uint32_t)g_scene.c6C1614 << 16)
+              | ((uint32_t)g_scene.c6C0200 << 8)
+              |  (uint32_t)g_scene.c690BE8;
+    }
+
+    BrGfxEmit(0xB900031Du, 0x0F0A4200u);
+    BrGfxEmit(0xBA000C02u, (uint32_t)g_scene.f6C0258);
+    BrGfxEmit(0xB6000000u, 0x000F0205u);
+
+    if (g_scene.f6C6618 != 0)
+        BrGfxEmit(0xB7000000u, 0x00010000u);
+
+    /* neg/sbb turns "the two globals differ" into a mask. */
+    bitsB7 = (g_scene.f6C3364 != g_scene.f6C1174) ? 0x1000u : 0x2000u;
+    BrGfxEmit(0xB7000000u, bitsB7);
+    bitsB6 = (g_scene.f6C3364 != g_scene.f6C1174) ? 0x2000u : 0x1000u;
+    BrGfxEmit(0xB6000000u, bitsB6);
+
+    BrGfxEmit(0xBA001001u, 0u);
+    BrGfxEmit(0xBB000001u, 0xFFFFFFFFu);
+    BrGfxEmit(0xB6000000u, 0x000C0000u);
+    BrGfxEmit(0xE8000000u, 0u);
+    BrGfxEmit(0xF5100000u, 0x07000000u);
+    BrGfxEmit(0xF50001F0u, 0x06000000u);
+    BrGfxEmit(0xF5000100u, 0x05000000u);
+    BrGfxEmit(0x06000000u, (uint32_t)g_scene.f6C7C98);
+    BrGfxEmit(0xE7000000u, 0u);
+    BrGfxEmit(0xBA001402u, 0u);
+    BrGfxEmit(0xB7000000u, 0x00020205u);
+    BrGfxEmit(0xBD000000u, 0u);
+}
+
+/* =====================================================================
+ * 0x10019490
+ * ===================================================================== */
+void BrWeatherRandomiseParticles(void)
+{
+    int layer, i;
+
+    g_weather.cParticles = 0x200;
+
+    for (layer = 0; layer < BR_PARTICLE_LAYERS; ++layer) {
+        for (i = 0; i < BR_PARTICLES_PER_LAYER; ++i) {
+            /* Three rand()s per record, stored as int16. The records beyond
+             * BR_PARTICLES_PER_LAYER (up to BR_PARTICLE_STRIDE) are left
+             * alone: the original's outer step of 0xC3C is ten records wider
+             * than the 512 it fills. */
+            g_weather.aParticles[layer][i][0] = (int16_t)BrRandom();
+            g_weather.aParticles[layer][i][1] = (int16_t)BrRandom();
+            g_weather.aParticles[layer][i][2] = (int16_t)BrRandom();
+        }
+    }
+}
+
+/* =====================================================================
+ * 0x100194E0
+ * ===================================================================== */
+void BrWeatherStepWind(void)
+{
+    double r, a;
+
+    /* rand()&0xFFFF scaled to [-1, +1), times dt. */
+    r = (double)(BrRandom() & 0xFFFF) * (double)kF350 - (double)kF354;
+    g_weather.windAngle = (float)((double)g_weather.windAngle
+                                  + r * (double)g_weather.dt);
+
+    if (g_weather.windAngle >= kF358)
+        g_weather.windAngle = (float)((double)g_weather.windAngle
+                                      - (double)kF358);
+    else if (g_weather.windAngle < kF35C)
+        g_weather.windAngle = (float)((double)g_weather.windAngle
+                                      - (double)kF360);   /* -(-2pi) = +2pi */
+
+    r = (double)(BrRandom() & 0xFFFF) * (double)kF350 - (double)kF354;
+    g_weather.windGain = (float)((double)g_weather.windGain
+                                 + r * (double)g_weather.dt);
+
+    /* Clamped to [0.5, 1.0]; a NaN takes the "> 1.0 is false" path and then
+     * the "< 0.5 is false" path, so it survives -- as in the original. */
+    if (g_weather.windGain > kF354)
+        g_weather.windGain = 1.0f;
+    else if (g_weather.windGain < kF364)
+        g_weather.windGain = 0.5f;
+
+    a = (double)g_weather.windAngle;
+    g_weather.windX = (float)(cos(a) * (double)g_weather.windGain
+                                     * (double)g_weather.dt);
+    g_weather.windY = (float)(sin(a) * (double)g_weather.windGain
+                                     * (double)g_weather.dt);
+    g_weather.windZ = 0.0f;
+}
+
+/* =====================================================================
+ * 0x10019620
+ * ===================================================================== */
+void BrWeatherStepLightning(void)
+{
+    if (g_weather.lightning < 0) {
+        /* 1001966D: 0x80 in 0x10000 per call. */
+        if ((BrRandom() & 0xFFFF) >= 0x80)
+            return;
+        g_weather.thunderDist = 0.0f;
+        g_weather.lightning   = 3;
+        g_weather.flashX = (float)(BrRandom() & 0x7FF);
+        g_weather.flashZ = g_weather.f6C7C80;   /* latched before flashY */
+        g_weather.flashY = (float)(BrRandom() & 0x7FF);
+        return;
+    }
+
+    /* fsubr against -343 * dt, i.e. the distance the thunder has travelled. */
+    g_weather.thunderDist = (float)((double)g_weather.thunderDist
+                                    - (double)g_weather.dt * (double)kF36C);
+
+    if (g_weather.lightning > 0) {
+        g_weather.lightning -= 1;
+        return;
+    }
+
+    /* 1001964E: C0|C3 -- <= 2048 (or unordered) keeps the strike alive. */
+    if ((double)g_weather.thunderDist > kF370)
+        g_weather.lightning = -1;
+}
+
+/* =====================================================================
+ * 0x100196D0
+ * ===================================================================== */
+void BrWeatherStepParticles(void)
+{
+    int32_t iView;
+
+    BrWeatherStepWind();
+
+    if (g_weather.storm != 0)
+        BrWeatherStepLightning();
+
+    /* 0x200 split between the views.
+     * DEVIATION: the original divides BEFORE testing cViews, so cViews == 0
+     * faults on the idiv. Guarded here. */
+    g_weather.cParticles = (g_screen.cViews != 0)
+                         ? (int32_t)(0x200 / g_screen.cViews)
+                         : 0;
+    if (g_screen.cViews <= 0)
+        return;
+
+    for (iView = 0; iView < g_screen.cViews; ++iView) {
+        const BrCamBlock *pBlk = g_weather.pfnGetBlock(iView);
+        BrVec3 pos;
+        BrVec3 d;
+        float dx, dy, dz;
+        /* DEVIATION: the original walks a raw cursor, so cViews > 2 would run
+         * off the end of the two-layer particle field. Clamped. */
+        int32_t layer = (iView < BR_PARTICLE_LAYERS)
+                      ? iView : (BR_PARTICLE_LAYERS - 1);
+
+        /* out = block->v30 + block->v00 * 3.0f */
+        BrVec3MulAdd(&pos, &pBlk->v30, &pBlk->v00, 3.0f);
+
+        if (g_weather.fInit == 0) {
+            BrWeatherRandomiseParticles();
+            g_weather.aPrev[0] = pos;
+            g_weather.aPrev[1] = pos;
+            g_weather.fInit = 1;
+        }
+
+        /* Both off -> the whole loop is abandoned, not just this view. */
+        if (g_weather.rain == 0 && g_weather.storm == 0)
+            return;
+
+        dx = pos.x - g_weather.aPrev[iView].x;
+        dy = pos.y - g_weather.aPrev[iView].y;
+        dz = pos.z - g_weather.aPrev[iView].z;
+
+        g_weather.speed = (float)(sqrt((double)dx * dx
+                                     + (double)dy * dy
+                                     + (double)dz * dz)
+                                  / (double)g_weather.dt);
+
+        if (g_weather.speed > kF378) {
+            double k = sqrt((double)g_weather.speed * (double)kF37C)
+                     * (double)kF378 / (double)g_weather.speed;
+            g_weather.k = (float)k;
+            g_weather.speed = (float)(k * (double)g_weather.speed);
+            dx = (float)((double)dx * (double)g_weather.k);
+            dy = (float)((double)dy * (double)g_weather.k);
+            dz = (float)((double)dz * (double)g_weather.k);
+        } else {
+            g_weather.k = 1.0f;
+        }
+
+        if (g_weather.rain != 0) {
+            /* Rain falls straight: dz picks up -0.5 * dt and nothing else. */
+            dz = (float)((double)dz - (double)g_weather.dt * (double)kF368);
+        } else {
+            /* Snow drifts on the wind. */
+            double a  = (double)g_weather.windAngle;
+            double cw = cos(a) * (double)g_weather.windGain
+                                * (double)g_weather.dt;
+            double sw = sin(a) * (double)g_weather.windGain
+                                * (double)g_weather.dt;
+            double dt2 = (double)g_weather.dt + (double)g_weather.dt;
+
+            d.x = dx;
+            d.y = dy;
+            d.z = dz;
+
+            g_weather.aDrift[iView].x = (float)cw;
+            g_weather.aDrift[iView].y = (float)sw;
+            g_weather.aDrift[iView].z = (float)dt2;
+
+            dx = (float)((double)dx + (double)g_weather.aDrift[iView].x);
+            dy = (float)((double)dy + (double)g_weather.aDrift[iView].y);
+            dz = (float)((double)dz + dt2);
+
+            BrVec3ScaleBy(&d, (float)((double)g_weather.k * (double)kF364));
+            BrVec3AddTo(&g_weather.aDrift[iView], &d);
+        }
+
+        {
+            float j0, j1;
+            int32_t D0, D1, D2, R1, R2;
+            int32_t i, cx, cy;
+
+            if (g_weather.rain != 0) {
+                double r;
+                r = (double)(BrRandom() & 0xFFFF) * (double)kF350
+                    - (double)kF354;
+                j0 = (float)(r * (double)g_weather.dt * (double)kF384);
+                r = (double)(BrRandom() & 0xFFFF) * (double)kF350
+                    - (double)kF354;
+                j1 = (float)(r * (double)g_weather.dt * (double)kF384);
+            } else {
+                j0 = 0.0f;
+                j1 = 0.0f;
+            }
+
+            g_weather.aPrev[iView] = pos;
+
+            cx = BrRandom() & 0xF;
+            cy = BrRandom() & 0xF;
+
+            D0 = BrFtol((double)dx * kF388);
+            D1 = BrFtol((double)dy * kF388);
+            D2 = BrFtol((double)dz * kF388);
+            R1 = BrFtol((double)j0 * kF388);
+            R2 = BrFtol((double)j1 * kF388);
+
+            for (i = 0; i < g_weather.cParticles; ++i) {
+                int16_t *pRec = g_weather.aParticles[layer][i];
+
+                /* Every cx'th particle gets the jitter folded in and the
+                 * jitter's SIGN flipped, then a fresh countdown. */
+                if (cx != 0) {
+                    pRec[0] = (int16_t)((uint16_t)pRec[0] + (uint16_t)D0);
+                    --cx;
+                } else {
+                    pRec[0] = (int16_t)((uint16_t)pRec[0]
+                                        + (uint16_t)(R1 + D0));
+                    R1 = -R1;
+                    cx = BrRandom() & 0xF;
+                }
+
+                if (cy != 0) {
+                    pRec[1] = (int16_t)((uint16_t)pRec[1] + (uint16_t)D1);
+                    --cy;
+                } else {
+                    pRec[1] = (int16_t)((uint16_t)pRec[1]
+                                        + (uint16_t)(R2 + D1));
+                    R2 = -R2;
+                    cy = BrRandom() & 0xF;
+                }
+
+                pRec[2] = (int16_t)((uint16_t)pRec[2] + (uint16_t)D2);
+            }
+        }
+    }
+}
+
+/* =====================================================================
+ * 0x1001A4B0
+ * ===================================================================== */
+void BrForward1001A4B0(int i)
+{
+    BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,
+                   g_weather.apTable[i]);
+}
+
+/* =====================================================================
+ * 0x1001BB80 .. 0x1001BC50
+ * ===================================================================== */
+void BrRdpCacheScreenWidth(void)  { g_regs.f4C5164 = g_screen.cx; }
+void BrRdpCacheScreenHeight(void) { g_regs.f4C01A0 = g_screen.cy; }
+void BrRdpCacheHalfWidthA(void)   { g_regs.f4BBF08 = (float)(g_screen.cx / 2); }
+void BrRdpCacheHalfWidthB(void)   { g_regs.f4C0BB0 = (float)(g_screen.cx / 2); }
+void BrRdpCacheHalfHeight(void)   { g_regs.f4C0BB8 = (float)(g_screen.cy / 2); }
+
+/* =====================================================================
+ * Command handlers
+ * ===================================================================== */
+
+const BrGfxCmd *BrCmdDispatchIndirect(const BrGfxCmd *pCmd)
+{
+    g_regs.pfn18AA0B8(pCmd->w0 & 0x00FFFFFFu, pCmd->w1);
+    return pCmd + 1;
+}
+
+/* Sign-extend the low `bits` of v, arithmetically. */
+static int32_t BrSext(uint32_t v, int bits)
+{
+    uint32_t m = 1u << (bits - 1);
+    return (int32_t)((v & (m + m - 1u)) ^ m) - (int32_t)m;
+}
+
+const BrGfxCmd *BrCmdRectFixed(const BrGfxCmd *pCmd)
+{
+    /* 10.2 fixed point: sign-extend 12 bits, arithmetic >>2, mask to 10. */
+    int32_t y1 = (BrSext(pCmd->w1, 12)       >> 2) & 0x3FF;
+    int32_t x1 = (BrSext(pCmd->w1 >> 12, 12) >> 2) & 0x3FF;
+    int32_t y2 = (BrSext(pCmd->w0, 12)       >> 2) & 0x3FF;
+    int32_t x2 = (BrSext(pCmd->w0 >> 12, 12) >> 2) & 0x3FF;
+
+    BrSub_1001BE90(x1, g_screen.cy - y2 - 1, x2 + 1, g_screen.cy - y1);
+    return pCmd + 1;
+}
+
+const BrGfxCmd *BrCmdRectInt(const BrGfxCmd *pCmd)
+{
+    /* Same fields, but plain signed integers -- no >>2 and no mask. */
+    int32_t y1 = BrSext(pCmd->w1, 12);
+    int32_t x1 = BrSext(pCmd->w1 >> 12, 12);
+    int32_t y2 = BrSext(pCmd->w0, 12);
+    int32_t x2 = BrSext(pCmd->w0 >> 12, 12);
+
+    BrSub_1001BE90(x1, g_screen.cy - y2 - 1, x2 + 1, g_screen.cy - y1);
+    return pCmd + 1;
+}
+
+const BrGfxCmd *BrCmdLatchPair(const BrGfxCmd *pCmd)
+{
+    g_regs.f4C5158 = pCmd->w0;
+    g_regs.f4C515C = pCmd->w1;
+    BrSub_1001C820(pCmd->w0, pCmd->w1);
+    return pCmd + 1;
+}
+
+/* The two colour handlers share this shape: four bytes of w1, high first,
+ * each through a float32 store/reload and then scaled by 1/255. */
+static void BrCmdUnpackColor(uint32_t w1, float *pa, float *pb,
+                             float *pc, float *pd)
+{
+    *pa = (float)((double)(float)(int32_t)( w1 >> 24)          * (double)kF3C0);
+    *pb = (float)((double)(float)(int32_t)((w1 >> 16) & 0xFFu) * (double)kF3C0);
+    *pc = (float)((double)(float)(int32_t)((w1 >>  8) & 0xFFu) * (double)kF3C0);
+    *pd = (float)((double)(float)(int32_t)( w1        & 0xFFu) * (double)kF3C0);
+}
+
+const BrGfxCmd *BrCmdSetColorA(const BrGfxCmd *pCmd)
+{
+    BrCmdUnpackColor(pCmd->w1, &g_regs.f4BBF04, &g_regs.f4C0BAC,
+                     &g_regs.f4BBEB8, &g_regs.f4BBE2C);
+    return pCmd + 1;
+}
+
+const BrGfxCmd *BrCmdSetColorB(const BrGfxCmd *pCmd)
+{
+    BrCmdUnpackColor(pCmd->w1, &g_regs.f4C5154, &g_regs.f4C5160,
+                     &g_regs.f4C1690, &g_regs.f4C0BA8);
+    return pCmd + 1;
+}
+
+const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
+{
+    uint32_t w1 = pCmd->w1;
+    uint8_t a, b;
+
+    /* xor/and 7/xor: splice the low three bits of one shift into another. */
+    a = (uint8_t)(w1 >> 8);
+    b = (uint8_t)(w1 >> 13);
+    g_regs.c4BBF00 = (uint8_t)(a ^ ((uint8_t)((b ^ a) & 7u)));
+
+    a = (uint8_t)(w1 >> 3);
+    b = (uint8_t)(w1 >> 8);
+    g_regs.c4BC194 = (uint8_t)(a ^ ((uint8_t)((b ^ a) & 7u)));
+
+    /* The shift is 8-bit, so w1 bits 6 and 7 fall off before the or. */
+    g_regs.c4C5150 = (uint8_t)((uint8_t)((uint8_t)(w1 & 0xFEu) << 2)
+                               | (uint8_t)((w1 >> 3) & 7u));
+
+    g_regs.c4C15CC = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
+    return pCmd + 1;
+}

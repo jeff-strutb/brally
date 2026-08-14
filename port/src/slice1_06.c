@@ -1,0 +1,576 @@
+/* slice1_06.c -- BRD3D.dll 0x10037030-0x1005D440, agent 06. See slice1_06.h.
+ *
+ * Constants quoted below were read straight out of orig/BRD3D.dll rather than
+ * guessed: 0x1008F62C is 0.0f, the table at 0x100AC660 is nine 8-byte
+ * records, 0x1007DFE0 is calloc(n,1) (it tail-calls 0x1007D370 with a second
+ * argument of 1), and 0x1008F788 is a vtable whose first slot is 0x1005CBF0.
+ */
+
+#include "slice1_06.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+/* Layout facts the original's arithmetic depends on. */
+typedef char br06_assert_pendlist[
+    (offsetof(BrPendList, count) == BR_PENDLIST_MAX * sizeof(void *)) ? 1 : -1];
+typedef char br06_assert_devrec[
+    (sizeof(BrDevRec) == BR_DEVREC_STRIDE) ? 1 : -1];
+typedef char br06_assert_namelist[
+    (BR_NAMELIST_COUNT * BR_NAMELIST_STRIDE == 0x1964 * 4) ? 1 : -1];
+
+/* ==========================================================================
+ * 0x10037030
+ * ========================================================================== */
+
+void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
+{
+    if (pList->count < BR_PENDLIST_MAX) {
+        pList->apItems[pList->count] = pItem;
+        /* The original re-loads the context pointer from 0x106C7C3C here
+         * before incrementing -- irrelevant unless the callee moved it, and
+         * there is no callee. */
+        pList->count++;
+        return;
+    }
+
+    /* Over capacity: drop the item, bump the global at 0x106C7C40, and STILL
+     * increment the counter. */
+    if (pcDropped != NULL) {          /* DEVIATION: the original's counter is
+                                       * a fixed global and is never NULL. */
+        (*pcDropped)++;
+    }
+    pList->count++;
+}
+
+/* ==========================================================================
+ * 0x10037070
+ * ========================================================================== */
+
+int BrDevRecMatch(const BrDevRec *aRecs, const uint8_t *abIndex,
+                  uint32_t value)
+{
+    int32_t i;
+
+    for (i = 0; i < BR_DEVREC_SLOTS; i++) {
+        const BrDevRec *pRec = &aRecs[abIndex[i]];
+
+        if (pRec->f04 == 0u) {
+            continue;
+        }
+        if ((pRec->f20 & BR_DEVREC_TYPE_MASK) != BR_DEVREC_TYPE_MATCH) {
+            continue;
+        }
+        if (pRec->f04 == value) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* ==========================================================================
+ * 0x10037930
+ * ========================================================================== */
+
+int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
+                   uint32_t *pA, uint32_t *pB)
+{
+    uint32_t want = key + pTable->bias;
+    int32_t  i    = pTable->count - 1;
+
+    /* `dec eax / test eax,eax / jl` -- count == 0 leaves i == -1 and the
+     * whole loop is skipped. */
+    while (i >= 0) {
+        if (pTable->aEnts[i].key == want) {
+            *pA = pTable->aEnts[i].a;
+            *pB = pTable->aEnts[i].b;
+            return 1;
+        }
+        i--;
+    }
+    return 0;
+}
+
+/* ==========================================================================
+ * 0x1003B940
+ * ========================================================================== */
+
+/* The threshold is the float at 0x1008F62C, which is 0.0f. The original
+ * compares with `fcomp` and then tests C0 alone, so "not less than" is the
+ * accepting condition and an unordered compare (NaN) sets C0 and rejects. */
+#define BR06_TRI_EPS 0.0f
+
+int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
+                       const BrVec3 *pC, const BrVec3 *pRef)
+{
+    BrVec3 edge, toPt, n;
+
+    /* Edge A->B, paired with pPt - pB. */
+    BrVec3Sub(&edge, pB, pA);
+    BrVec3Sub(&toPt, pPt, pB);
+    BrVec3Cross(&n, &edge, &toPt);
+    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
+        return 0;
+    }
+
+    /* Edge B->C, paired with the same pPt - pB the original kept live. */
+    BrVec3Sub(&edge, pC, pB);
+    BrVec3Cross(&n, &edge, &toPt);
+    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
+        return 0;
+    }
+
+    /* Edge C->A, paired with pPt - pA. */
+    BrVec3Sub(&edge, pA, pC);
+    BrVec3Sub(&toPt, pPt, pA);
+    BrVec3Cross(&n, &edge, &toPt);
+    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
+        return 0;
+    }
+
+    return 1;
+}
+
+/* ==========================================================================
+ * 0x1003D180
+ * ========================================================================== */
+
+int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
+{
+    BrComGetFn pfn = pObj->pVtbl->pfnGet;
+    uint32_t   cb  = 0;
+    void      *pv  = NULL;
+    int32_t    hr;
+
+    hr = pfn(pObj, pParam, NULL, &cb);
+    if (hr == BR_COM_E_BUFFERTOOSMALL) {
+        /* DEVIATION: GlobalAlloc(GMEM_MOVEABLE|GMEM_ZEROINIT, cb) followed by
+         * GlobalLock -> calloc; GlobalUnlock(GlobalHandle(p)) +
+         * GlobalFree(GlobalHandle(p)) -> free. The original's caller
+         * therefore receives a locked global handle's base pointer, not a CRT
+         * allocation; anything that later passes it back to GlobalFree has to
+         * be adjusted alongside this.
+         *
+         * Corner case, not reproduced: GlobalAlloc(GMEM_MOVEABLE, 0) yields a
+         * handle to a discarded object and the following GlobalLock returns
+         * NULL, so the original turns a zero-size result into
+         * E_OUTOFMEMORY. calloc has no such rule; the substitution below
+         * succeeds instead. No caller in this range asks for zero. */
+        pv = calloc(cb ? cb : 1u, 1u);
+        if (pv == NULL) {
+            hr = BR_COM_E_OUTOFMEMORY;
+        } else {
+            hr = pfn(pObj, pParam, pv, &cb);
+            if (hr >= 0) {
+                *ppvOut = pv;
+                return 0;   /* the original discards hr here */
+            }
+        }
+    }
+
+    if (pv != NULL) {
+        free(pv);
+    }
+    return hr;
+}
+
+/* ==========================================================================
+ * 0x1003E1D0
+ * ========================================================================== */
+
+int BrPairBufReset(BrPairBuf *pBuf)
+{
+    if (pBuf->pA == NULL) {
+        pBuf->pA = pBuf->aStaticA;
+    }
+    memset(pBuf->pA, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
+
+    if (pBuf->pB == NULL) {
+        pBuf->pB = pBuf->aStaticB;
+    }
+    memset(pBuf->pB, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
+
+    return 1;
+}
+
+/* ==========================================================================
+ * 0x1003E260
+ * ========================================================================== */
+
+/* Read from 0x100AC660. Record 8's fFatal is 0xFFFFFFFF, not 1 -- the
+ * original only tests it against zero, so any non-zero value is "fatal". */
+const BrErrEnt g_aBrErrTable[BR_ERR_COUNT] = {
+    { 1,          162u },
+    { 1,          163u },
+    { 0,          164u },
+    { 0,          165u },
+    { 1,          166u },
+    { 0,          167u },
+    { 1,          168u },
+    { 1,          169u },
+    { (int32_t)0xFFFFFFFF, 256u }
+};
+
+void BrErrShow(const BrErrHost *pHost, int32_t idx)
+{
+    const char *pszText;
+    const char *pszCaption;
+
+    /* The original only rejects idx > 8. DEVIATION: the lower bound is added
+     * here, because a negative index reads outside g_aBrErrTable. */
+    if (idx > (BR_ERR_COUNT - 1) || idx < 0) {
+        return;
+    }
+
+    pszText    = pHost->pfnLookup(pHost->pUser, g_aBrErrTable[idx].idText);
+    pszCaption = pHost->pfnLookup(pHost->pUser, BR_ERR_CAPTION_ID);
+
+    /* The `inc edi` in the original. DEVIATION: guarded, because the lookup
+     * returns NULL for an out-of-range handle and the original would hand
+     * MessageBoxA the pointer value 1. */
+    if (pszText != NULL) {
+        pszText++;
+    }
+
+    pHost->pfnMessage(pHost->pUser, pszText, pszCaption, 0u);
+
+    if (g_aBrErrTable[idx].fFatal != 0) {
+        pHost->pfnExit(pHost->pUser, 1);
+    }
+}
+
+/* ==========================================================================
+ * 0x1003E310
+ * ========================================================================== */
+
+void BrOptSave(BrOptScratch *pDst, const BrOptState *pSrc)
+{
+    pDst->a[0]  = pSrc->aCfg[0];   /* 0x100AC648 -> 0x10B4E710 */
+    pDst->a[1]  = pSrc->aSel[0];   /* 0x10AA2A00 -> 0x10B4E714 */
+    pDst->a[2]  = pSrc->aSel[2];   /* 0x10AA2A08 -> 0x10B4E718 */
+    pDst->a[3]  = pSrc->aCfg[1];   /* 0x100AC64C -> 0x10B4E71C */
+    pDst->a[4]  = pSrc->aCfg[2];   /* 0x100AC650 -> 0x10B4E720 */
+    pDst->a[5]  = pSrc->aCfg[3];   /* 0x100AC654 -> 0x10B4E724 */
+    pDst->a[6]  = pSrc->aSel[3];   /* 0x10AA2A0C -> 0x10B4E728 */
+    pDst->a[7]  = pSrc->aCfg[4];   /* 0x100AC658 -> 0x10B4E72C */
+    pDst->a[8]  = pSrc->aSel[4];   /* 0x10AA2A10 -> 0x10B4E730 */
+    pDst->a[9]  = pSrc->aSel[5];   /* 0x10AA2A14 -> 0x10B4E734 */
+    pDst->a[10] = pSrc->aCfg[5];   /* 0x100AC65C -> 0x10B4E738 */
+    pDst->a[11] = pSrc->aSel[6];   /* 0x10AA2A18 -> 0x10B4E73C */
+}
+
+/* ==========================================================================
+ * 0x1003F2B0
+ * ========================================================================== */
+
+/* DEVIATION: `shl eax,cl` masks the count to 5 bits on x86; `1u << n` with
+ * n >= 32 is undefined in C. The mask is applied explicitly so the C matches
+ * the hardware. */
+#define BR06_BIT(n) (1u << ((unsigned)(n) & 31u))
+
+int32_t BrOptAvailA(const BrOptCaps *pCaps, uint32_t n)
+{
+    if (n == 12u) {
+        return 0;
+    }
+    if (pCaps->fForceAvailA != 0) {
+        return 1;
+    }
+
+    if (pCaps->mode == 0) {
+        if (pCaps->fAlt != 0) {
+            /* zero-extended word load from 0x10AA27E2, the HIGH half */
+            return (int32_t)(BR06_BIT(n) & ((pCaps->maskPair >> 16) & 0xFFFFu));
+        }
+        return (int32_t)(BR06_BIT(n) & pCaps->maskA);
+    }
+
+    if (pCaps->fLowAlwaysB != 0 && (n == 14u || n == 13u)) {
+        return 1;
+    }
+    return (int32_t)(BR06_BIT(n) & pCaps->maskAMode);
+}
+
+/* ==========================================================================
+ * 0x1003F320
+ * ========================================================================== */
+
+int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
+{
+    int32_t idx = (int32_t)n;
+
+    /* Both `jle`/`jg` in the original are signed. */
+    if (pCaps->fRebaseB != 0 && idx > 15) {
+        idx -= 16;
+    }
+    if (pCaps->fAlt != 0 && idx > 15 && (pCaps->maskPair & 0x8000u) != 0u) {
+        idx -= 16;
+    }
+
+    if (pCaps->mode == 0) {
+        if (idx == 15) {
+            idx = 11;
+        }
+        if (pCaps->fLowAlways != 0 && idx <= 15) {
+            return 1;
+        }
+        if (pCaps->fAlt != 0) {
+            /* `and esi,0xFFFF` -- the LOW half of the same dword */
+            return (int32_t)(BR06_BIT(idx) & (pCaps->maskPair & 0xFFFFu));
+        }
+        return (int32_t)(BR06_BIT(idx) & pCaps->maskB);
+    }
+
+    if (pCaps->mode == 6) {
+        if (idx == 15) {
+            idx = 7;            /* 7 here, 11 everywhere else */
+        }
+        if (pCaps->fLowAlways != 0 && idx <= 15) {
+            return 1;
+        }
+        return (int32_t)(BR06_BIT(idx) & pCaps->maskBMode6);
+    }
+
+    if (pCaps->mode == 2 && idx == pCaps->nAlwaysB) {
+        return 1;
+    }
+
+    if (idx == 15) {
+        idx = 11;
+    }
+    if (pCaps->fLowAlways != 0 && idx <= 15) {
+        return 1;
+    }
+    /* `movsx ecx, word ptr [0x100AB3E4]` -- SIGN-extended, unlike the
+     * zero-extended masks above. */
+    return (int32_t)(BR06_BIT(idx) & (uint32_t)(int32_t)pCaps->maskBDefault);
+}
+
+/* ==========================================================================
+ * 0x1005CB90
+ * ========================================================================== */
+
+BrNameList *BrNameListInit(BrNameList *pThis, const void *pVtbl,
+                           const char *pszFill)
+{
+    int i;
+
+    pThis->pVtbl = pVtbl;
+    memset(pThis->asz, 0, sizeof(pThis->asz));
+
+    /* The original re-reads the source string (and re-runs strlen on it) on
+     * every one of the 100 iterations. */
+    for (i = 0; i < BR_NAMELIST_COUNT; i++) {
+        size_t cb = strlen(pszFill) + 1u;
+
+        /* DEVIATION: the original copies strlen+1 bytes with no bound. A
+         * source longer than 0x103 characters overruns into the next slot.
+         * Truncated here. */
+        if (cb > BR_NAMELIST_STRIDE) {
+            cb = BR_NAMELIST_STRIDE;
+        }
+        memcpy(pThis->asz[i], pszFill, cb);
+        pThis->asz[i][BR_NAMELIST_STRIDE - 1] = '\0';
+    }
+
+    return pThis;
+}
+
+/* ==========================================================================
+ * 0x1005D440 (partial)
+ * ==========================================================================
+ * What is NOT here: after the 145 paths the original fills two more fixed
+ * buffers with the save-file paths below, sets 0xB4 dwords at 0x10A9D778 to
+ * -1 and 0x64 dwords at 0x10A9E1D0 to 0, zeroes the first dword of each
+ * 12-byte record in 0x10A9D780..0x10A9DA50, then constructs two objects
+ * (0xC8 and 0x400 bytes, via 0x10048710 and 0x10008B70) whose types are
+ * defined outside this range, reporting error index 1 through 0x1003E260 if
+ * the second fails. That tail is left out: none of those types are
+ * recoverable from this packet.
+ */
+
+const char *const g_pszBrRallySeasonDat = "c:\\RallySeason.dat";
+const char *const g_pszBrRallyGhostDat  = "c:\\RallyGhost.dat";
+
+const char *const g_apszBrUiAssets[BR_UIASSET_COUNT] = {
+    /*   0  ptr @ 0x10A9E3D0 */ "images\\work1a.bmp",
+    /*   1  ptr @ 0x10A9E444 */ "images\\cursor.bmp",
+    /*   2  ptr @ 0x10A9E4B8 */ "images\\type_gry.bmp",
+    /*   3  ptr @ 0x10A9E52C */ "images\\type_wit.bmp",
+    /*   4  ptr @ 0x10A9E5A0 */ "images\\type_mid.bmp",
+    /*   5  ptr @ 0x10A9E614 */ "images\\bignums.bmp",
+    /*   6  ptr @ 0x10A9E688 */ "images\\champ.bmp",
+    /*   7  ptr @ 0x10A9E6FC */ "images\\mp.bmp",
+    /*   8  ptr @ 0x10A9E770 */ "images\\ta.bmp",
+    /*   9  ptr @ 0x10A9E7E4 */ "images\\op.bmp",
+    /*  10  ptr @ 0x10A9E858 */ "images\\qr.bmp",
+    /*  11  ptr @ 0x10A9E8CC */ "images\\carmt.bmp",
+    /*  12  ptr @ 0x10A9E940 */ "images\\mshft.bmp",
+    /*  13  ptr @ 0x10A9E9B4 */ "images\\softshok.bmp",
+    /*  14  ptr @ 0x10A9EA28 */ "images\\medshok.bmp",
+    /*  15  ptr @ 0x10A9EA9C */ "images\\hardshok.bmp",
+    /*  16  ptr @ 0x10A9EB10 */ "images\\desrttrk.bmp",
+    /*  17  ptr @ 0x10A9EB84 */ "images\\coasttrk.bmp",
+    /*  18  ptr @ 0x10A9EBF8 */ "images\\trakc.bmp",
+    /*  19  ptr @ 0x10A9EC6C */ "images\\fog.bmp",
+    /*  20  ptr @ 0x10A9ECE0 */ "images\\nite.bmp",
+    /*  21  ptr @ 0x10A9ED54 */ "images\\rain.bmp",
+    /*  22  ptr @ 0x10A9EDC8 */ "images\\snow.bmp",
+    /*  23  ptr @ 0x10A9EE3C */ "images\\sunweth.bmp",
+    /*  24  ptr @ 0x10A9EEB0 */ "images\\drytire.bmp",
+    /*  25  ptr @ 0x10A9EF24 */ "images\\medtire.bmp",
+    /*  26  ptr @ 0x10A9EF98 */ "images\\wettire.bmp",
+    /*  27  ptr @ 0x10A9F00C */ "images\\trakd.bmp",
+    /*  28  ptr @ 0x10A9F080 */ "images\\trake.bmp",
+    /*  29  ptr @ 0x10A9F0F4 */ "images\\ashft.bmp",
+    /*  30  ptr @ 0x10A9F168 */ "images\\carTR.bmp",
+    /*  31  ptr @ 0x10A9F1DC */ "images\\carCE.bmp",
+    /*  32  ptr @ 0x10A9F250 */ "images\\carCU.bmp",
+    /*  33  ptr @ 0x10A9F2C4 */ "images\\carES.bmp",
+    /*  34  ptr @ 0x10A9F338 */ "images\\carFH.bmp",
+    /*  35  ptr @ 0x10A9F3AC */ "images\\carIP.bmp",
+    /*  36  ptr @ 0x10A9F420 */ "images\\carLD.bmp",
+    /*  37  ptr @ 0x10A9F494 */ "images\\carM3.bmp",
+    /*  38  ptr @ 0x10A9F508 */ "images\\carMN.bmp",
+    /*  39  ptr @ 0x10A9F57C */ "images\\carNS.bmp",
+    /*  40  ptr @ 0x10A9F5F0 */ "images\\carPJ.bmp",
+    /*  41  ptr @ 0x10A9F664 */ "images\\carPS.bmp",
+    /*  42  ptr @ 0x10A9F6D8 */ "images\\carRS.bmp",
+    /*  43  ptr @ 0x10A9F74C */ "images\\carSP.bmp",
+    /*  44  ptr @ 0x10A9F7C0 */ "images\\carBB.bmp",
+    /*  45  ptr @ 0x10A9F834 */ "images\\arrowdd.bmp",
+    /*  46  ptr @ 0x10A9F8A8 */ "images\\arrowdu.bmp",
+    /*  47  ptr @ 0x10A9F91C */ "images\\arrowud.bmp",
+    /*  48  ptr @ 0x10A9F990 */ "images\\arrowuu.bmp",
+    /*  49  ptr @ 0x10A9FA04 */ "images\\joystk.bmp",
+    /*  50  ptr @ 0x10A9FA78 */ "images\\keybd.bmp",
+    /*  51  ptr @ 0x10A9FAEC */ "images\\steerinp.bmp",
+    /*  52  ptr @ 0x10A9FB60 */ "images\\type_yel.bmp",
+    /*  53  ptr @ 0x10A9FBD4 */ "images\\steerarr.bmp",
+    /*  54  ptr @ 0x10A9FC48 */ "images\\steeradj.bmp",
+    /*  55  ptr @ 0x10A9FCBC */ "images\\spkr.bmp",
+    /*  56  ptr @ 0x10A9FD30 */ "images\\monitr.bmp",
+    /*  57  ptr @ 0x10A9FDA4 */ "images\\namebar.bmp",
+    /*  58  ptr @ 0x10A9FE18 */ "images\\slidebox.bmp",
+    /*  59  ptr @ 0x10A9FE8C */ "images\\boxtile2.bmp",
+    /*  60  ptr @ 0x10A9FF00 */ "images\\rboxend.bmp",
+    /*  61  ptr @ 0x10A9FF74 */ "images\\lboxend.bmp",
+    /*  62  ptr @ 0x10A9FFE8 */ "images\\trakc_.bmp",
+    /*  63  ptr @ 0x10AA005C */ "images\\trakd_.bmp",
+    /*  64  ptr @ 0x10AA00D0 */ "images\\trake_.bmp",
+    /*  65  ptr @ 0x10AA0144 */ "images\\desrttr_.bmp",
+    /*  66  ptr @ 0x10AA01B8 */ "images\\coasttr_.bmp",
+    /*  67  ptr @ 0x10AA022C */ "images\\mpmodem.bmp",
+    /*  68  ptr @ 0x10AA02A0 */ "images\\mptcpip.bmp",
+    /*  69  ptr @ 0x10AA0314 */ "images\\mpipx.bmp",
+    /*  70  ptr @ 0x10AA0388 */ "images\\mpserial.bmp",
+    /*  71  ptr @ 0x10AA03FC */ "images\\seasn2a.bmp",
+    /*  72  ptr @ 0x10AA0470 */ "images\\seasn2b.bmp",
+    /*  73  ptr @ 0x10AA04E4 */ "images\\seasn3a.bmp",
+    /*  74  ptr @ 0x10AA0558 */ "images\\seasn3b.bmp",
+    /*  75  ptr @ 0x10AA05CC */ "images\\seasn4a.bmp",
+    /*  76  ptr @ 0x10AA0640 */ "images\\seasn4b.bmp",
+    /*  77  ptr @ 0x10AA06B4 */ "images\\seasn5a.bmp",
+    /*  78  ptr @ 0x10AA0728 */ "images\\bgdim.bmp",
+    /*  79  ptr @ 0x10AA079C */ "images\\congrat.bmp",
+    /*  80  ptr @ 0x10AA0810 */ "images\\noadv1.bmp",
+    /*  81  ptr @ 0x10AA0884 */ "images\\noadv2.bmp",
+    /*  82  ptr @ 0x10AA08F8 */ "images\\but-main.bmp",
+    /*  83  ptr @ 0x10AA096C */ "images\\but-maind.bmp",
+    /*  84  ptr @ 0x10AA09E0 */ "images\\but-op.bmp",
+    /*  85  ptr @ 0x10AA0A54 */ "images\\but-opd.bmp",
+    /*  86  ptr @ 0x10AA0AC8 */ "images\\cars1a.bmp",
+    /*  87  ptr @ 0x10AA0B3C */ "images\\cars2a.bmp",
+    /*  88  ptr @ 0x10AA0BB0 */ "images\\cars2b.bmp",
+    /*  89  ptr @ 0x10AA0C24 */ "images\\cars3a.bmp",
+    /*  90  ptr @ 0x10AA0C98 */ "images\\cars3b.bmp",
+    /*  91  ptr @ 0x10AA0D0C */ "images\\cars4a.bmp",
+    /*  92  ptr @ 0x10AA0D80 */ "images\\cars4b.bmp",
+    /*  93  ptr @ 0x10AA0DF4 */ "images\\cars5a.bmp",
+    /*  94  ptr @ 0x10AA0E68 */ "images\\cars5b.bmp",
+    /*  95  ptr @ 0x10AA0EDC */ "images\\chatbar2.bmp",
+    /*  96  ptr @ 0x10AA0F50 */ "images\\mousinpt.bmp",
+    /*  97  ptr @ 0x10AA0FC4 */ "images\\ffstick.bmp",
+    /*  98  ptr @ 0x10AA1038 */ "images\\carwnoshad2.bmp",
+    /*  99  ptr @ 0x10AA10AC */ "images\\carwshad2.bmp",
+    /* 100  ptr @ 0x10AA1120 */ "images\\specoff.bmp",
+    /* 101  ptr @ 0x10AA1194 */ "images\\specon.bmp",
+    /* 102  ptr @ 0x10AA1208 */ "images\\noffstik.bmp",
+    /* 103  ptr @ 0x10AA127C */ "images\\listbox.bmp",
+    /* 104  ptr @ 0x10AA12F0 */ "images\\engsound.bmp",
+    /* 105  ptr @ 0x10AA1364 */ "images\\music.bmp",
+    /* 106  ptr @ 0x10AA13D8 */ "images\\soundtik.bmp",
+    /* 107  ptr @ 0x10AA144C */ "images\\soundptr.bmp",
+    /* 108  ptr @ 0x10AA14C0 */ "images\\trrwd.bmp",
+    /* 109  ptr @ 0x10AA1534 */ "images\\pjrwd.bmp",
+    /* 110  ptr @ 0x10AA15A8 */ "images\\mnrwd.bmp",
+    /* 111  ptr @ 0x10AA161C */ "images\\mirrwd.bmp",
+    /* 112  ptr @ 0x10AA1690 */ "images\\bbrwd.bmp",
+    /* 113  ptr @ 0x10AA1704 */ "images\\curwd.bmp",
+    /* 114  ptr @ 0x10AA1778 */ "images\\fbrwd.bmp",
+    /* 115  ptr @ 0x10AA17EC */ "images\\mtrwd.bmp",
+    /* 116  ptr @ 0x10AA1860 */ "images\\sndlevl2.bmp",
+    /* 117  ptr @ 0x10AA18D4 */ "images\\sndlevl3.bmp",
+    /* 118  ptr @ 0x10AA1948 */ "images\\trakraceb.bmp",
+    /* 119  ptr @ 0x10AA19BC */ "images\\trakracel.bmp",
+    /* 120  ptr @ 0x10AA1A30 */ "images\\but-sav.bmp",
+    /* 121  ptr @ 0x10AA1AA4 */ "images\\but-savd.bmp",
+    /* 122  ptr @ 0x10AA1B18 */ "images\\z-carMT.bmp",
+    /* 123  ptr @ 0x10AA1B8C */ "images\\z-carTR.bmp",
+    /* 124  ptr @ 0x10AA1C00 */ "images\\z-carCE.bmp",
+    /* 125  ptr @ 0x10AA1C74 */ "images\\z-carCU.bmp",
+    /* 126  ptr @ 0x10AA1CE8 */ "images\\z-carES.bmp",
+    /* 127  ptr @ 0x10AA1D5C */ "images\\z-carFH.bmp",
+    /* 128  ptr @ 0x10AA1DD0 */ "images\\z-carIP.bmp",
+    /* 129  ptr @ 0x10AA1E44 */ "images\\z-carLD.bmp",
+    /* 130  ptr @ 0x10AA1EB8 */ "images\\z-carM3.bmp",
+    /* 131  ptr @ 0x10AA1F2C */ "images\\z-carMN.bmp",
+    /* 132  ptr @ 0x10AA1FA0 */ "images\\z-carNS.bmp",
+    /* 133  ptr @ 0x10AA2014 */ "images\\z-carPJ.bmp",
+    /* 134  ptr @ 0x10AA2088 */ "images\\z-carPS.bmp",
+    /* 135  ptr @ 0x10AA20FC */ "images\\z-carRS.bmp",
+    /* 136  ptr @ 0x10AA2170 */ "images\\z-carSP.bmp",
+    /* 137  ptr @ 0x10AA21E4 */ "images\\z-carBB.bmp",
+    /* 138  ptr @ 0x10AA2258 */ "images\\lightr.bmp",
+    /* 139  ptr @ 0x10AA22CC */ "images\\lightg.bmp",
+    /* 140  ptr @ 0x10AA2340 */ "images\\tire2on.bmp",
+    /* 141  ptr @ 0x10AA23B4 */ "images\\tire2off.bmp",
+    /* 142  ptr @ 0x10AA2428 */ "images\\listbox2.bmp",
+    /* 143  ptr @ 0x10AA249C */ "images\\trakQ.bmp",
+    /* 144  ptr @ 0x10AA2510 */ "images\\trakQ_.bmp",
+};
+
+int BrUiAssetPathsInit(char *apszOut[BR_UIASSET_COUNT])
+{
+    int i;
+
+    for (i = 0; i < BR_UIASSET_COUNT; i++) {
+        apszOut[i] = NULL;
+    }
+
+    for (i = 0; i < BR_UIASSET_COUNT; i++) {
+        char *p = (char *)calloc(BR_UIASSET_PATH_MAX, 1u);
+
+        /* DEVIATION: the original stores the allocation and copies into it
+         * without checking for NULL. */
+        if (p == NULL) {
+            BrUiAssetPathsFree(apszOut);
+            return -1;
+        }
+        /* Every path is far shorter than 0x104; strcpy is what the original
+         * inlines, and the length is a compile-time property of the table. */
+        strcpy(p, g_apszBrUiAssets[i]);
+        apszOut[i] = p;
+    }
+    return 0;
+}
+
+void BrUiAssetPathsFree(char *apszOut[BR_UIASSET_COUNT])
+{
+    int i;
+
+    for (i = 0; i < BR_UIASSET_COUNT; i++) {
+        free(apszOut[i]);
+        apszOut[i] = NULL;
+    }
+}

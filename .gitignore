@@ -1,0 +1,34 @@
+# Build output
+build/
+*.o
+*.dSYM/
+/test_*
+!port/tests/test_*.c
+
+# Python tooling environment
+.venv/
+__pycache__/
+*.pyc
+
+# ---------------------------------------------------------------------------
+# GAME DATA AND ORIGINAL BINARIES ARE DELIBERATELY NOT TRACKED.
+#
+# This repository holds only our own source: the portable C port, the analysis
+# tooling, and generated metadata. Everything below is copyrighted Boss Rally
+# material that each developer must supply from their own retail copy.
+# ---------------------------------------------------------------------------
+orig/            # BRD3D.dll, BRGlide.dll, Boot.exe, BossRally.exe
+testdata/        # BossRally.pod, *.rca, *.img, *.ci4/.lut4 from the disc
+extracted/       # assets extracted from the N64 ROM (art, XM music)
+asm/             # disassembly generated from BRD3D.dll
+work/**/*.asm    # per-agent disassembly packets
+*.z64
+*.BIN
+*.bin
+*.cue
+*.dll
+*.exe
+*.pod
+*.rca
+*.img
+*.xm

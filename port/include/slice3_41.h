@@ -1,0 +1,382 @@
+/* slice3_41.h -- Boss Rally (BRD3D.dll) slice 3, agent 41.
+ *
+ * Packet range 0x100661B0 - 0x100695A0 (33 functions in the listing).  Only
+ * the parts that could be resolved with confidence are ported; the rest are
+ * listed under "NOT PORTED" at the bottom of this file.
+ *
+ * What is in here:
+ *
+ *   1. The 0x80-byte "driver" record at 0x10ACD498 and the race-position
+ *      (rank) sort that ranks them              (0x10066620, 0x10066510 part)
+ *   2. The variable-block save / restore pair used by the replay and
+ *      state-snapshot code                          (0x10067880, 0x10067900)
+ *   3. Positional-audio maths: the Doppler ratio and the stereo pan / volume
+ *      solver                                       (0x10067AE0, 0x10067BC0)
+ *   4. The "nearest sound source this frame" tracker and its two resets
+ *              (0x10067DA0, 0x10067DC0, 0x10067E50, 0x10068210)
+ *   5. Two more per-frame slot banks (16- and 32-byte slots) built exactly
+ *      like br_pool.h's 64-byte one, plus the counter reset that clears all
+ *      three                     (0x100694E0, 0x10069530, 0x10069580)
+ *
+ * Field names that could not be justified are positional (fNN = the byte
+ * offset in the ORIGINAL layout).  This port does NOT reproduce the original
+ * byte layout -- pointers are wider here -- so every struct is indexed by
+ * member, never by byte.
+ */
+#ifndef SLICE3_41_H
+#define SLICE3_41_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+#include "br_vec.h"
+#include "br_mat.h"
+#include "br_pool.h"
+
+/* ---------------------------------------------------------------------
+ * Cross-slice symbols.  Declared, never defined here.
+ * ------------------------------------------------------------------- */
+
+/* XSLICE 0x10035BBA -- same declaration as slice2_18.h. */
+extern void BrFatal(const char *pszMsg);
+
+/* 0x106C2CFC -- seconds elapsed this frame.  slice2_19.h already declares
+ * this address under this name, so the name is reused verbatim (a duplicate
+ * extern of identical type is legal even if both headers are included).
+ * Confirmed as a time delta independently here: 0x10068EF0 does
+ * car->f1034 += car->f1030 * g_BrAnimDt, and the contract fixes car+0x1030
+ * as speed. */
+extern float g_BrAnimDt;
+
+/* 0x100B380C -- a mode selector.  WARNING: this one address already carries
+ * THREE names in port/include (BrG_0B380C in slice2_18.h, g_br0B380C in
+ * slice2_25.h, g_Br0B380C in slice2_19.h).  slice2_19.h's spelling is used
+ * here; the coordinator has to collapse the other two. */
+extern int32_t g_Br0B380C;
+
+/* =====================================================================
+ * 1.  Driver records and the race-position sort
+ *
+ * 0x10ACD498 is an array of 0x80-byte records, one per driver slot.  The
+ * stride is pinned by 0x100662A0, whose constructor computes its own index
+ * with  (this - 0x10ACD498) >> 7  and stores it at +0x64.  Do not confuse
+ * this array with the 0x2B68-byte entity/car records the contract mentions:
+ * +0x60 of a driver record POINTS AT one of those.
+ *
+ * Offsets established by 0x100662A0 / 0x10068EF0 / 0x10066510:
+ *
+ *   +0x00 BrVec3   copied from 0x10AF9B38..0x10AF9B40
+ *   +0x0C BrVec3   copy of +0x00
+ *   +0x18 BrVec3   scratch (destination of a BrVec3Sub in 0x10068EF0)
+ *   +0x28 int32    from 0x10AF988C
+ *   +0x2C int32    from 0x10ACD490
+ *   +0x30 int32 x3 zeroed by the constructor
+ *   +0x3C int32    from a table selected by 0x100B380C
+ *   +0x40 int32    from 0x10AF9B44
+ *   +0x44 int32    from 0x10AF9B44, read as an integer counter (fild) later
+ *   +0x48 int32    from 0x10AF96C0
+ *   +0x4C int32    from 0x10AF96C0
+ *   +0x50 float    the sort key ("progress")
+ *   +0x54 int32    the rank, used only when +0x60 is NULL
+ *   +0x5C 3 bytes  from the 3-byte-stride table at 0x100B37D0
+ *   +0x60 ptr      the car record, or NULL
+ *   +0x64 int32    this record's own index
+ *   +0x68 int32    flags; bit0 and bit1 are both tested
+ *   +0x74 int32
+ *   +0x78 int32
+ *   +0x7C int32
+ * ===================================================================== */
+
+/* The two car fields the rank sort touches.  In the original these live at
+ * +0xFF4 / +0xFF8 of the 0x2B68-byte entity record; when the coordinator
+ * lands a full car type, BrDriver::pCar should be re-pointed at it. */
+typedef struct BrDriverCar {
+    float   fFF4;       /* +0xFF4  sort key                              */
+    int32_t fFF8;       /* +0xFF8  rank output                           */
+} BrDriverCar;
+
+#define BR_DRIVER_SKIP  2u      /* +0x68 bit 1: slot takes no rank        */
+
+typedef struct BrDriver {
+    BrVec3       f00;
+    BrVec3       f0C;
+    BrVec3       f18;
+    int32_t      f24;
+    int32_t      f28;
+    int32_t      f2C;
+    int32_t      f30;
+    int32_t      f34;
+    int32_t      f38;
+    int32_t      f3C;
+    int32_t      f40;
+    int32_t      f44;
+    int32_t      f48;
+    int32_t      f4C;
+    float        f50;       /* sort key                                   */
+    int32_t      f54;       /* rank, written only when pCar == NULL       */
+    int32_t      f58;
+    uint8_t      f5C, f5D, f5E, f5F;
+    BrDriverCar *pCar;      /* +0x60                                      */
+    int32_t      f64;       /* own slot index                             */
+    uint32_t     f68;       /* flags                                      */
+    int32_t      f6C;
+    int32_t      f70;
+    int32_t      f74;
+    int32_t      f78;
+    int32_t      f7C;
+} BrDriver;
+
+/* 0x10066620  qsort comparator over 8-byte {float key; int32_t idx;} pairs.
+ *
+ * Returns +1 when a > b, -1 when a < b, 0 otherwise -- but the original does
+ * the comparison TWICE and reads different status bits each time, so an
+ * unordered (NaN) pair takes the "-1" exit rather than "0".  Reproduced. */
+int BrRankCmpKey(const void *pA, const void *pB);
+
+/* The g_22AF18 == 0 half of 0x10066510: sort the non-skipped driver slots by
+ * ascending key and hand out ranks.
+ *
+ * Slot j of the sorted order gets rank  n - j - 1, so the LOWEST key gets the
+ * HIGHEST rank number.  Written to pCar->fFF8 when the slot has a car and to
+ * the slot's own f54 when it does not.
+ *
+ * GOTCHA: the rank counts down from `n`, the number of SLOTS, not from the
+ * number of slots that actually took part.  Skipping k slots therefore leaves
+ * ranks 0..k-1 unused and the leader ranked k, not 0.
+ *
+ * GOTCHA: the original's pair buffer is a 0xA0-byte stack array, i.e. exactly
+ * 20 pairs, with no bound check.  See the DEVIATION in the .c file. */
+#define BR_RANK_MAX  20
+void BrRankAssign(BrDriver *pSlots, int32_t n);
+
+/* =====================================================================
+ * 2.  Variable-block save / restore  (0x10067880, 0x10067900)
+ *
+ * A table of {pointer, byte count} pairs terminated by a NULL pointer.  Save
+ * concatenates every block into one buffer; load scatters a buffer back.
+ * ===================================================================== */
+
+typedef struct BrVarBlock {
+    void    *pData;     /* +0x00 -- NULL terminates the table              */
+    uint32_t cb;        /* +0x04                                           */
+} BrVarBlock;
+
+/* 0x10067880  pack pTable into pDst; BrFatal if it needs more than cbAvail.
+ * The check is `used > cbAvail` on SIGNED ints and happens only AFTER every
+ * block has already been written, so the overflow it reports has already
+ * happened. */
+void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail);
+
+/* 0x10067900  the inverse.  GOTCHA: no size argument and no check at all --
+ * it reads exactly as many bytes from pSrc as the table describes. */
+void BrVarLoad(const BrVarBlock *pTable, const void *pSrc);
+
+/* =====================================================================
+ * 3.  Positional audio maths
+ * ===================================================================== */
+
+/* 0x10067AE0  Doppler frequency ratio.
+ *
+ *      u  = normalise(srcPos - lisPos)          (skipped when |u| == 0)
+ *      vs = (srcPos - srcPrev) / g_BrAnimDt     source velocity
+ *      vl = (lisPos - lisPrev) / g_BrAnimDt     listener velocity
+ *      return (1 + (vl.u)/c) / (1 + (vs.u)/c)   c = 343 m/s
+ *
+ * The 343 shows up in the image as the pair of constants 0x1008F9EC /
+ * 0x1008F9F0 = -/+0.0029154520f = -/+1/343, which is what identifies the
+ * function.  Argument order is source-first, listener-second, and within each
+ * pair current-first, previous-second.
+ *
+ * GOTCHA: divides by g_BrAnimDt with no guard, and there is no guard on the
+ * denominator either -- a source closing faster than c drives it through zero
+ * and the ratio comes back negative.  The two 1/343 constants are also only
+ * float-accurate, so the pole sits a hair off 343.  Preserved.
+ *
+ * The |u| == 0 case IS guarded: the normalise is skipped, u stays the zero
+ * vector, both dot products vanish and the function returns exactly 1. */
+float BrSndDoppler(const BrVec3 *pSrcPos, const BrVec3 *pSrcPrev,
+                   const BrVec3 *pLisPos, const BrVec3 *pLisPrev);
+
+/* 0x10067BC0  stereo pan gains + distance volume for one source.
+ *
+ * The listener is an object whose first 64 bytes are a BrMat4 (rows 0..2 are
+ * the basis, row 3 is the position -- that is how 0x10069370 and 0x10068EF0
+ * use it).  The pan axis is row 1.
+ *
+ *      d    = srcPos - lis->m[3]
+ *      proj = dot(lis->m[1], d)   clamped to [-10, +10]
+ *      if (fNarrow) proj *= 0.4            -> the pan range narrows to +-4
+ *      p    = (proj + 10) * 0.05           -> [0, 1]
+ *      q    = 1 - p
+ *      if p and q are both within [0.49, 0.51] both snap to exactly 0.5
+ *      the LARGER of p/q becomes  x + 0.6*(1-x); the smaller becomes x*1.6
+ *      *pGainA = the p-derived value, *pGainB = the q-derived value
+ *      *pVol   = (int32_t)(1024 / max(|d|, 32))
+ *
+ * Dead-centre therefore yields 0.8 / 0.8, and the two curves meet there, so
+ * the law is continuous.  Which output is physically left and which is right
+ * could not be established, hence the positional A/B names.
+ *
+ * GOTCHA: the minimum-distance clamp compares against a DOUBLE 32.0 at
+ * 0x1008FA08 but substitutes the FLOAT 32.0 at 0x1008FA10. */
+void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
+              float *pGainA, float *pGainB, int32_t *pVol, int32_t fNarrow);
+
+/* =====================================================================
+ * 4.  Nearest-source tracker  (the 0x10AF9B58..0x10AF9BA3 block)
+ *
+ * Candidates are offered during the frame; the one with the smallest
+ * listener distance wins.  0x10067ED0 (NOT ported, see below) is the commit
+ * step that reads the winner, drives BrSndPan / BrSndDoppler with it and
+ * fills in the "Prev" and "committed" halves of this block.
+ * ===================================================================== */
+
+typedef struct BrSndNearest {
+    BrVec3          pos;        /* 0x10AF9B58  winning source position      */
+    BrVec3          posPrev;    /* 0x10AF9B64  ... as of the last commit    */
+    const BrMat4   *pObj;       /* 0x10AF9B70  winning listener             */
+    const BrMat4   *pObjPrev;   /* 0x10AF9B74  ... as of the last commit    */
+    BrVec3          objPosPrev; /* 0x10AF9B78  pObj->m[3] at the last commit*/
+    int32_t         f84;        /* 0x10AF9B84  candidate set index          */
+    int32_t         f88;        /* 0x10AF9B88  committed set index          */
+    int32_t         f8C;        /* 0x10AF9B8C  candidate id                 */
+    int32_t         f90;        /* 0x10AF9B90  committed id                 */
+    float           metric;     /* 0x10AF9B94  best distance so far         */
+    float           f98;        /* 0x10AF9B98  base frequency (Hz)          */
+    int32_t         f9C;        /* 0x10AF9B9C  volume scale, >>8 after use  */
+    int32_t         fA0;        /* 0x10AF9BA0                               */
+} BrSndNearest;
+
+extern BrSndNearest g_BrSndNearest;
+
+/* 0x10AA3470 -- an index into the 25-entry, 24-byte-stride table at
+ * 0x100B3AA8 (geometry pinned by the clear loop in 0x100682A0).  -1 means
+ * "none".  Set by 0x10067D40, cleared by BrSndNearestReset. */
+extern int32_t g_BrSndAA3470;
+
+/* The sentinel the distance metric starts at: 0x50000000 == 2^33. */
+#define BR_SND_NEAREST_FAR  8589934592.0f
+
+/* 0x10067DA0  per-frame reset: metric back to the sentinel, f84 and f8C to
+ * -1.  GOTCHA: it deliberately leaves f88 and f90 (the committed halves)
+ * alone -- that is how 0x10067ED0 detects a source that stopped being
+ * offered. */
+void BrSndNearestInvalidate(void);
+
+/* 0x10067DC0  full reset, plus g_BrSndAA3470 = -1.
+ * GOTCHA: f98 (the base frequency) is NOT cleared by either reset. */
+void BrSndNearestReset(void);
+
+/* 0x10067E50  offer a candidate; keep it only if it is strictly nearer than
+ * the current best.  Note the argument order -- the ids come first and the
+ * geometry last, and f8C/f84/f9C/f98 land in a scrambled order in the block.
+ * The "Prev" and "committed" fields are NOT touched here. */
+void BrSndNearestOffer(int32_t f8C, int32_t f84, int32_t f9C, float f98,
+                       const BrVec3 *pPos, const BrMat4 *pListener);
+
+/* 0x10068210  offer with the fixed parameters this build uses: set index 15,
+ * volume scale 0x180, base frequency 11000 Hz -- but ONLY when g_Br0B380C is
+ * 4 or 10.  Otherwise it does nothing at all: the id stays -1 and the two
+ * "default" values 0x80 / -1 the function starts with are never used. */
+void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
+                              const BrMat4 *pListener);
+
+/* =====================================================================
+ * 5.  Per-frame slot banks
+ *
+ * Built exactly like br_pool.h's 64-byte pool: a bank per frame holding
+ * `nUsable` real slots plus one shared overflow slot, handed out round-robin
+ * until the frame's quota runs out, after which every further request
+ * returns that one overflow slot.  Never fails, never returns NULL, and the
+ * counter keeps incrementing past the limit.
+ *
+ * The original uses two literal base addresses per pool, but they differ by
+ * exactly nUsable*cbSlot, which is what proves the overflow slot is simply
+ * index `nUsable` of the same bank:
+ *
+ *   0x100694E0  16-byte slots, 20 usable, base 0x10B02190, ovf 0x10B022D0
+ *               counter 0x10B01C48
+ *   0x10069530  32-byte slots, 20 usable, base 0x10B01C50, ovf 0x10B01ED0
+ *               counter 0x10B01C44
+ *
+ * The gap between the 32-byte pool's base and the 16-byte pool's base is
+ * 0x540 == 2 * 21 * 32, so the frame index only ever takes the values 0 and
+ * 1 -- the banks are double-buffered.
+ *
+ * All three pools (these two and br_pool.h's) share the single frame counter
+ * at 0x106C65EC.  This port gives each bank its own copy; the coordinator
+ * must keep them in step. */
+typedef struct BrFrameBank {
+    uint8_t *pBase;     /* first usable slot of frame 0                    */
+    int32_t  cbSlot;    /* 16 or 32                                        */
+    int32_t  nUsable;   /* 20                                              */
+    int32_t  nBank;     /* nUsable + 1                                     */
+    int32_t  frame;     /* mirrors 0x106C65EC                              */
+    int32_t  count;     /* slots taken this frame, INCLUDING overflows     */
+} BrFrameBank;
+
+extern BrFrameBank g_BrPool16;      /* 0x100694E0's state */
+extern BrFrameBank g_BrPool32;      /* 0x10069530's state */
+
+void *BrFrameBankAlloc(BrFrameBank *pBank);
+
+/* 0x100694E0 / 0x10069530 -- the zero-argument forms the original exports. */
+void *BrPool16Alloc(void);
+void *BrPool32Alloc(void);
+
+/* The 64-byte pool's counter (0x10B01C40) belongs to br_pool.h, whose
+ * BrPoolAlloc takes an explicit BrPool * and so has no global instance for
+ * BrGfx69580 -- which takes no arguments -- to reach.  The coordinator points
+ * this at whichever BrPool it makes canonical; NULL means "not wired". */
+extern BrPool *g_pBrPool64;
+
+/* 0x10069580.  Name fixed by slice2_18.h, which already declares it. */
+void BrGfx69580(void);
+
+/* =====================================================================
+ * NOT PORTED -- and why
+ *
+ *   0x100661B0  four-way glue over 0x10074F70 with unresolved field offsets
+ *               into the +0x29C4 sub-object.
+ *   0x100662A0  driver-record constructor.  Reads eleven globals whose types
+ *               are not established and calls the 0x10008B80 stub; the field
+ *               offsets it writes are documented above instead.
+ *   0x10066510  only the g_22AF18 == 0 half is ported, as BrRankAssign.  The
+ *               other half rewrites car+0x1A08 from a netplay accessor
+ *               (0x10005E40) over the 0x2B68-stride array and needs a car
+ *               type this packet does not pin down.
+ *   0x10066650  2103 bytes of driver AI over ~15 opaque globals.
+ *   0x10066E90  2534 bytes, likewise.
+ *   0x10067940  \
+ *   0x10067960   |  four-line wrappers whose entire content is the address of
+ *   0x10067980   |  a global BrVarBlock table (0x100B39B0, 0x100B3A68) and a
+ *   0x100679A0  /   buffer.  Constants worth keeping: the first pair saves
+ *               <obj>+0x7080 with a 0x15F88-byte budget, the second saves the
+ *               64 bytes at 0x10AF9848.  No table contents are in .rdata, so
+ *               there is nothing to port.
+ *   0x100679C0  race-start reset; five globals plus a 0x2B68-stride walk.
+ *   0x10067D40  selects an entry of the 0x100B3AA8 table (25 entries, stride
+ *               24, from 0x100682A0's clear loop) and forwards three of its
+ *               fields to 0x100752D0.  Pure global glue.
+ *   0x10067D80  \  one-line callers of 0x10067D40 with the constants 0xD and
+ *   0x10067D90  /  0xE.
+ *   0x10067DC0  ported.
+ *   0x10067ED0  the commit step for the nearest-source block.  It is coherent
+ *               -- it drives BrSndPan/BrSndDoppler and packs the results into
+ *               a 64-bit pitch accumulator at 0x118AC770 and a pair of packed
+ *               16-bit volumes at 0x118AC77C (the `sar 1; and 0x7FFF7FFF` is
+ *               a packed halve) -- but the meaning of the 0x118AC7xx block
+ *               and of three of the globals that gate it could not be
+ *               established, so it is left out rather than guessed.
+ *   0x10068260  glue over 0x10073080/0x100730A0/0x10075300.
+ *   0x100682A0  MakeEnemyCarColorPanels__1; texture/panel setup, all globals.
+ *   0x100683D0  a loop calling 0x10072B80(0x18, i, 0).
+ *   0x10068EF0  1073 bytes of driver update over the un-typed car record.
+ *   0x10069330  glue over three unported calls.
+ *   0x10069370  glue over eight unported calls.
+ *   0x10069490  BrPoolAlloc -- already in br_pool.h.
+ *   0x100695A0  two-line glue: 0x100765E0(b, a) then a->f10 = b->m[3].
+ *               Neither argument's type is pinned down by this packet.
+ * ===================================================================== */
+
+#endif /* SLICE3_41_H */
