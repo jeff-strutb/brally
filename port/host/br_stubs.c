@@ -19,11 +19,17 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* Capacity, and the "of N linked" figure the exit report prints -- keep this
- * equal to the number of stub definitions below, or the report understates how
- * much is still missing. Packet 74 removed 16 (0x10073E70, 0x10074DC0, the six
- * 0x10008B80 names, six adapters, and the two DirectPlay mutex hooks). */
-#define BR_STUB_MAX 135
+/* Capacity, AND the "of N linked" figure the exit report prints.
+ *
+ * Keep it equal to the number of stub definitions below. Too small silently
+ * drops hits past the limit; too large only overstates how much is still
+ * missing, so a stale value is safe but misleading.
+ *
+ * This is hand-maintained and goes stale every time a packet lands -- it has
+ * already drifted twice while packets were being merged in parallel. It should
+ * be derived from the table rather than typed; until it is, re-check it with
+ *     grep -cE '^long [A-Za-z0-9_]+\(void\); long' port/host/br_stubs.c */
+#define BR_STUB_MAX 131
 static const char *g_hit[BR_STUB_MAX];
 static unsigned    g_cnt[BR_STUB_MAX];
 static int         g_nHit;
@@ -91,7 +97,6 @@ long BrExt_10053CF0(void); long BrExt_10053CF0(void) { return br_stub("BrExt_100
 long BrExt_10058750(void); long BrExt_10058750(void) { return br_stub("BrExt_10058750"); }
 long BrExt_10059BB0(void); long BrExt_10059BB0(void) { return br_stub("BrExt_10059BB0"); }
 long BrExt_1006A4A0(void); long BrExt_1006A4A0(void) { return br_stub("BrExt_1006A4A0"); }
-long BrExt_10074030(void); long BrExt_10074030(void) { return br_stub("BrExt_10074030"); }
 long BrExt_10079550(void); long BrExt_10079550(void) { return br_stub("BrExt_10079550"); }
 long BrFn1003D210(void); long BrFn1003D210(void) { return br_stub("BrFn1003D210"); }
 long BrGbiCall1001D420(void); long BrGbiCall1001D420(void) { return br_stub("BrGbiCall1001D420"); }
@@ -132,7 +137,6 @@ long BrSub10002870(void); long BrSub10002870(void) { return br_stub("BrSub100028
 long BrSub10005D30(void); long BrSub10005D30(void) { return br_stub("BrSub10005D30"); }
 long BrSub10005FE0(void); long BrSub10005FE0(void) { return br_stub("BrSub10005FE0"); }
 long BrSub1000BAF0(void); long BrSub1000BAF0(void) { return br_stub("BrSub1000BAF0"); }
-long BrSub1003289F(void); long BrSub1003289F(void) { return br_stub("BrSub1003289F"); }
 long BrSub1003445A(void); long BrSub1003445A(void) { return br_stub("BrSub1003445A"); }
 long BrSub10035BD1(void); long BrSub10035BD1(void) { return br_stub("BrSub10035BD1"); }
 long BrSub100360F0(void); long BrSub100360F0(void) { return br_stub("BrSub100360F0"); }
@@ -179,7 +183,6 @@ long BrX1002C2C0(void); long BrX1002C2C0(void) { return br_stub("BrX1002C2C0"); 
 long BrX1002C500(void); long BrX1002C500(void) { return br_stub("BrX1002C500"); }
 long BrX10034C66(void); long BrX10034C66(void) { return br_stub("BrX10034C66"); }
 long BrX1003563A(void); long BrX1003563A(void) { return br_stub("BrX1003563A"); }
-long BrX10035BBA(void); long BrX10035BBA(void) { return br_stub("BrX10035BBA"); }
 long BrX100397C0(void); long BrX100397C0(void) { return br_stub("BrX100397C0"); }
 long BrX10042AF0(void); long BrX10042AF0(void) { return br_stub("BrX10042AF0"); }
 long BrX10060E90(void); long BrX10060E90(void) { return br_stub("BrX10060E90"); }
@@ -190,7 +193,6 @@ long BrX10069530(void); long BrX10069530(void) { return br_stub("BrX10069530"); 
 long BrX10072580(void); long BrX10072580(void) { return br_stub("BrX10072580"); }
 long BrX100751D0(void); long BrX100751D0(void) { return br_stub("BrX100751D0"); }
 long BrX10075F10(void); long BrX10075F10(void) { return br_stub("BrX10075F10"); }
-long BrX10076AE0(void); long BrX10076AE0(void) { return br_stub("BrX10076AE0"); }
 long BrXAtExit(void); long BrXAtExit(void) { return br_stub("BrXAtExit"); }
 
 
