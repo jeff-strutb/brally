@@ -676,6 +676,45 @@ real -- it already shipped two backends behind one core.
 
 ---
 
+## Soundtrack
+
+The retail PC game selects a music backend from `PlayMusic=` in `BossRally.ini`:
+`0` off, `1` Redbook CD audio via WINMM MCI, `2` the EAR driver (`earpds.dll`).
+**`2` is what is compiled into `.data`**, so a default install used EAR, not the
+CD. `0x100027C0` is a two-way dispatcher on that value, NOT an enable check --
+anything other than 1 takes the second backend and runs normally.
+
+The two backends differ at end of track, and this is load-bearing:
+**CD re-plays the same track; EAR advances with wraparound.** The port models
+this as `BR_AUDIO_REPEAT_TRACK` / `BR_AUDIO_ADVANCE` rather than two code paths.
+
+Other recovered behaviour: the front end plays track 2 once at init; races pick
+randomly via `rand()*(nTracks-5)/32768+3`, which on the retail disc yields only
+tracks 3-10; `Next` clamps where `NextWrap` wraps; volume is a 0-255 value from a
+ten-entry table at `0x100ADF68` and callers gate on non-zero *before* playing, so
+0 means "no music", not "silent music". `BrCdVolumeScale` masks to 8 bits first,
+so 256 is silence.
+
+The port plays neither Redbook nor XM. It plays FLAC produced locally:
+
+    python tools/extract_cdaudio.py reference/brally/BossRally.cue        build/audio/cd
+    python tools/extract_xm.py "reference/tgrally/Top Gear Rally (USA).z64" build/audio/n64
+
+Both are idempotent; a re-run extracts nothing. The N64 modules are not raw in
+the ROM -- they sit in a chunked-zlib container (big-endian `u32` total, `u32`
+unpacked size, then length-prefixed zlib streams of <=16000 bytes, **2-byte**
+aligned). `tools/xm_render.c` renders them, since ffmpeg here has no libopenmpt.
+
+**Fidelity caveat on the XM path:** the renderer is from-scratch and validated
+structurally (every effect used by all six modules is implemented; anything
+outside that set makes extraction FAIL rather than write wrong audio) and
+arithmetically (for the four modules without tempo changes, rendered length
+matches tracker arithmetic exactly). It has NOT been A/B'd against FastTracker II
+or a real N64 capture, so fine detail -- vibrato depth scaling, envelope edge
+cases -- may differ. Sample playback uses linear interpolation; the N64 mixer
+resampled, and point-sampling would bake aliasing permanently into a lossless
+file.
+
 ## Asset policy: extracted at build time, never distributed
 
 This repository contains **only our own source**. That goes beyond "do not commit
