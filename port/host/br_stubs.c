@@ -29,7 +29,18 @@
  * already drifted twice while packets were being merged in parallel. It should
  * be derived from the table rather than typed; until it is, re-check it with
  *     grep -cE '^long [A-Za-z0-9_]+\(void\); long' port/host/br_stubs.c */
-#define BR_STUB_MAX 131
+/* Capacity of the hit table, NOT a claim about how many stubs are linked.
+ *
+ * This was previously sized to the exact stub count and drifted three times in
+ * one session (152 -> 135 -> 131) as packets deleted stub lines. A number that
+ * has to be retyped every time the file changes will be wrong, and it was also
+ * being PRINTED as "of N linked", so the drift became a false statistic in the
+ * report rather than a silent one.
+ *
+ * Now it is a generous bound with an overflow guard, and the report states only
+ * what it actually counted. The true linked count is `grep -c "return br_stub("`
+ * on this file -- derived, not typed. */
+#define BR_STUB_MAX 512
 static const char *g_hit[BR_STUB_MAX];
 static unsigned    g_cnt[BR_STUB_MAX];
 static int         g_nHit;
@@ -41,6 +52,9 @@ static long br_stub(const char *name)
     for (i = 0; i < g_nHit; i++)
         if (g_hit[i] == name) { g_cnt[i]++; return 0; }
     if (g_nHit < BR_STUB_MAX) { g_hit[g_nHit] = name; g_cnt[g_nHit++] = 1; }
+    else { static int warned; if (!warned) { warned = 1;
+        fprintf(stderr, "br_stubs: hit table full at %d -- report truncated\n",
+                BR_STUB_MAX); } }
     if (!g_abort) { static int once; if (!once) { once = 1;
         g_abort = getenv("BR_STUB_ABORT") ? atoi(getenv("BR_STUB_ABORT")) : 0; } }
     if (g_abort) { fprintf(stderr, "\nSTUB HIT (fatal): %s\n", name); abort(); }
@@ -52,7 +66,7 @@ void BrStubReport(void)
 {
     int i, j;
     if (!g_nHit) { printf("stubs: none reached -- everything the run touched is ported\n"); return; }
-    printf("\nstubs reached: %d distinct (of %d linked)\n", g_nHit, BR_STUB_MAX);
+    printf("\nstubs reached: %d distinct\n", g_nHit);
     for (i = 0; i < g_nHit; i++) {
         int best = i;
         for (j = i + 1; j < g_nHit; j++) if (g_cnt[j] > g_cnt[best]) best = j;
