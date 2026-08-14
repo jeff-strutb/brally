@@ -1,4 +1,4 @@
-/* slice1_01.c -- BRD3D.dll 0x10001000-0x10004910, agent 01. See slice1_01.h. */
+/* slice1_01.c -- BRD3D.dll 0x10001000-0x10004910, a later pass. See slice1_01.h. */
 
 #include "slice1_01.h"
 

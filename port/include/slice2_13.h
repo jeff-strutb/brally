@@ -1,4 +1,4 @@
-/* slice2_13.h -- decompiled from BRD3D.dll, agent-13 packet
+/* slice2_13.h -- decompiled from BRD3D.dll, pass-13 packet
  * (0x10008B90 - 0x100109A0, 23 functions).
  *
  * Four unrelated clusters ended up in this packet:
@@ -22,8 +22,8 @@
  *
  *   4. The SECOND vertex-clipping pool (0x102E54C0) and its driver. This is
  *      NOT the pool slice1_03 describes (that one is at 0x104C01A8 with a
- *      different node layout); it is the pool agent 14 exposes as
- *      g_pBrLerpFree, and the node type is agent 14's BrLerpNode.
+ *      different node layout); it is the pool a later pass exposes as
+ *      g_pBrLerpFree, and the node type is another module's BrLerpNode.
  *        0x1000F460  BrPolyPoolInit
  *        0x1000F5C0  BrGfxSetBankPointers
  *        0x1000F620  BrGfxClearCounters
@@ -350,9 +350,9 @@ uint32_t BrDPlayGetCurrentPlayers(void);
  * ===================================================================== */
 
 /* The pool is 64 nodes of 0x28 bytes at 0x102E54C0..0x102E5EC0, with the
- * free-list head at 0x102E5ECC. The node type is agent 14's BrLerpNode and
- * the head is agent 14's g_pBrLerpFree; both are reused rather than
- * redeclared. The payload is agent 14's BrScrPt.
+ * free-list head at 0x102E5ECC. The node type is another module's BrLerpNode and
+ * the head is another module's g_pBrLerpFree; both are reused rather than
+ * redeclared. The payload is another module's BrScrPt.
  *
  * The pool BOUNDS are behaviour, not just allocation: both 0x100109A0 and
  * 0x100106A0 return a node to the free list ONLY if its address lies inside
@@ -396,7 +396,7 @@ typedef float (*BrPolyDistFn)(const BrScrPt *pPt);
  * see the report; they are declared extern here.
  *
  * Together the four are a screen-space scissor rectangle 0 <= f0C <= 1024 and
- * 0 <= f10 <= 1024, which is what identifies f0C/f10 as the 2D key agent 14
+ * 0 <= f10 <= 1024, which is what identifies f0C/f10 as the 2D key a later pass
  * describes. */
 float BrPolyDistMaxX(const BrScrPt *pPt);   /* 0x10010970  1024 - f0C */
 float BrPolyDistMaxY(const BrScrPt *pPt);   /* 0x10010990  1024 - f10 */

@@ -1,4 +1,4 @@
-/* slice3_32.h -- BRD3D.dll 0x10047930-0x1004A260, agent 32.
+/* slice3_32.h -- BRD3D.dll 0x10047930-0x1004A260, a later pass.
  *
  * WHAT THIS RANGE IS
  * ------------------
@@ -28,7 +28,7 @@
  *               a parallel 20-entry flag array at +0x6C, ...), so the fuller
  *               model is given a SUFFIXED name per the contract's collision
  *               rule.  BrPhaseFull and slice2_26.h's BrPhase are the same
- *               original class; the coordinator should merge them, keeping
+ *               original class; integration should merge them, keeping
  *               these offsets.
  *
  * THE VTABLE OVERLAP (a real, verified oddity)
@@ -125,7 +125,7 @@ void      BrScrStSlot(void *pObj, int k, void *p);
  *
  * INTEGRATION NOTE: slice2_23.c stores the object's vtable at RAW offset
  * 0x00 (it never touches +0x04/+0x08/+0x0C, so it gets away with it). The
- * coordinator has to unify the two; the slot scheme is the one that
+ * integration has to unify the two; the slot scheme is the one that
  * generalises, and BR_SCR_UI_PFN* below record the original offsets so the
  * mapping stays visible.
  * -------------------------------------------------------------------------- */
@@ -483,7 +483,7 @@ typedef struct BrScrGlobals {
 
     /* 0x10048180 compares BrUiObj+0x08 against two literal code addresses.
      * The port cannot compare against a 32-bit image address, so the two are
-     * carried as function pointers the coordinator fills in. */
+     * carried as function pointers integration fills in. */
     void       *pfn10043760;  /* 0x10043760 */
     void       *pfn10042CF0;  /* 0x10042CF0 */
 
@@ -528,7 +528,7 @@ extern void BrSub1005F5A0(int32_t x, int32_t y, int32_t id,
 
 /* NAME COLLISIONS ALREADY IN THE TREE: 0x1003E310, 0x1006A4A0 and 0x10072AF0
  * are declared as BrSub* by slice2_25.h and as BrExt_* by slice3_31.h. The
- * older slice2_25.h spelling is used here; the coordinator has to pick one. */
+ * older slice2_25.h spelling is used here; integration has to pick one. */
 /* XSLICE 0x1003E310 */ extern void BrSub1003E310(void);   /* slice2_25 name */
 /* XSLICE 0x1006A4A0 */ extern void BrSub1006A4A0(void *pThis, void *pArg);
 /* XSLICE 0x10060260 */ extern void BrSub10060260(void *pThis);  /* thiscall */

@@ -14,7 +14,7 @@
 
 /* ==========================================================================
  * Stand-ins for the cross-slice leaves. TEST ONLY -- the real bodies live at
- * the addresses named in slice2_21.h and are wired up by the coordinator.
+ * the addresses named in slice2_21.h and are wired up by integration.
  * ========================================================================== */
 float BrSqrtF(float x) { return sqrtf(x); }
 float BrSinF(float x)  { return sinf(x); }

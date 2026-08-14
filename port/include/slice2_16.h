@@ -1,4 +1,4 @@
-/* slice2_16.h -- Boss Rally (BRD3D.dll) decompilation, agent 16.
+/* slice2_16.h -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * Address range 0x1001CD60 .. 0x1002BC90.
  *

@@ -1,4 +1,4 @@
-/* slice4_51.h -- Boss Rally (BRD3D.dll) decompilation, agent 51.
+/* slice4_51.h -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * This packet is a "close the link" packet: every entry point here is one an
  * already-ported module calls by name.  The names and signatures below are
@@ -11,7 +11,7 @@
  * ---------------------------------------------------------------------
  * PACKET / NAME MISMATCH -- read this before trusting work/slice4/agent51.asm
  * ---------------------------------------------------------------------
- * The listing handed to this agent is mis-paired with the `WANTED AS` names:
+ * The listing handed to this pass is mis-paired with the `WANTED AS` names:
  * the address column of work/undefined_resolved.txt is shifted by one row
  * against the name column inside each alphabetically-sorted name family.
  * Concretely:
@@ -82,7 +82,7 @@ struct BrDPlay4Obj;
  * the HRESULT in eax, and slice2_13's caller tests it (`< 0`).  slice2_25
  * merely ignores the result, which is source-compatible at the call site but
  * NOT at the declaration, so slice4_51.h and slice2_25.h must not be
- * included into the same translation unit until the coordinator picks one. */
+ * included into the same translation unit until integration picks one. */
 int32_t BrSub1003D0B0(struct BrDPlay4Obj *pObj, void **ppvOut);
 
 /* =====================================================================

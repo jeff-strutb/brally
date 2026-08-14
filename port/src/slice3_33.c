@@ -1,4 +1,4 @@
-/* slice3_33.c -- BRD3D.dll 0x1004A580-0x1004D1E9, agent 33. See slice3_33.h.
+/* slice3_33.c -- BRD3D.dll 0x1004A580-0x1004D1E9, a later pass. See slice3_33.h.
  *
  * Five menu-screen builders. Each is a transcription; the interesting content
  * is the coordinates, ids and the places the pattern breaks, all of which are

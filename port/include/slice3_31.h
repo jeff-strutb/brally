@@ -1,4 +1,4 @@
-/* slice3_31.h -- BRD3D.dll, agent 31's packet.
+/* slice3_31.h -- BRD3D.dll, another module's packet.
  *
  * WHAT THIS PACKET IS
  * ===================
@@ -139,7 +139,7 @@ typedef struct BrObjAA2E80 {
  * The globals this range owns that slice2_26's BrPhaseCtx does not carry
  * ==========================================================================
  *
- * GOTCHA FOR THE COORDINATOR -- two addresses are typed differently here
+ * INTEGRATION GOTCHA -- two addresses are typed differently here
  * than in slice2_26.h, because this range uses them differently:
  *
  *   0x10AA2950  slice2_26 has `int32_t nAA2950` (it only ever clears it).
@@ -234,7 +234,7 @@ typedef struct BrPhaseCtx31 {
 void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt);
 
 /* ==========================================================================
- * Cross-slice callees. The coordinator wires these; stand-ins live in
+ * Cross-slice callees. The integration wires these; stand-ins live in
  * port/tests/test_slice3_31.c and NOWHERE else. Callees already declared by
  * slice2_25.h / slice2_26.h are NOT redeclared -- they are used as declared.
  * ========================================================================== */

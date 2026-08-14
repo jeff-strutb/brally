@@ -4,7 +4,7 @@
  * in BRD3D.dll is MSVC's own CRT (established from `_cexit`'s body). Porting it
  * would be re-implementing Microsoft's 1997 C library for no benefit.
  *
- * Instead this module supplies host-CRT equivalents under the names the agent
+ * Instead this module supplies host-CRT equivalents under the names the pass
  * modules already declare, so the tree links. Each entry records the original
  * address and any behaviour that differs from the naive host equivalent.
  */

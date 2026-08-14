@@ -1,4 +1,4 @@
-/* slice5_61.c -- decompiled from BRD3D.dll, agent-61 packet (slice 5).
+/* slice5_61.c -- decompiled from BRD3D.dll, pass-61 packet (slice 5).
  *
  * See slice5_61.h for the full inventory, including the six addresses in this
  * packet that turned out to be ALREADY IMPLEMENTED under a different name and
@@ -21,7 +21,7 @@
  * Storage this file owns
  * ========================================================================== */
 
-/* 0x1003D0B0, see the note in the header. NULL until the coordinator wires
+/* 0x1003D0B0, see the note in the header. NULL until integration wires
  * it; BrSub1003CE80 then behaves as if the call failed without writing. */
 int32_t (*g_brPfn1003D0B0)(void *pObj, void **ppvOut) = NULL;
 

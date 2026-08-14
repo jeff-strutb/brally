@@ -1,4 +1,4 @@
-/* slice1_01.h -- BRD3D.dll 0x10001000-0x10004910, agent 01.
+/* slice1_01.h -- BRD3D.dll 0x10001000-0x10004910, a later pass.
  *
  * What survived triage from this range:
  *

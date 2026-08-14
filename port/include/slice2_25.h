@@ -1,4 +1,4 @@
-/* slice2_25.h -- agent 25's packet, 0x10042880-0x100446D0 (46 functions).
+/* slice2_25.h -- another module's packet, 0x10042880-0x100446D0 (46 functions).
  *
  * WHAT THIS MODULE IS
  * ===================
@@ -246,7 +246,7 @@ typedef struct BrRec2A8 {
 /* ==========================================================================
  * Globals owned by this packet
  *
- * Every one is listed with its original address so the coordinator can
+ * Every one is listed with its original address so integration can
  * de-duplicate against other slices mechanically. Several of these are
  * certainly shared (0x10AA2904, 0x10277B40, 0x10A9D008, 0x10AA33D0/D4,
  * 0x1039B720 ...) -- see the report.
@@ -366,7 +366,7 @@ extern unsigned char g_aBrB4DF30[BR_OPT_B4DF30_COUNT][BR_OPT_B4DF30_STRIDE];
 extern unsigned char g_aBrB4FBE8[];
 
 /* ==========================================================================
- * Lookup tables (read-only data in the DLL; the coordinator supplies them)
+ * Lookup tables (read-only data in the DLL; integration supplies them)
  *
  * Sizes are declared incomplete on purpose. The bounds below are derived
  * from the highest index the code can produce and from the next table's

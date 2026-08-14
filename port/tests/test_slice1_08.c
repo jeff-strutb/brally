@@ -1,4 +1,4 @@
-/* test_slice1_08.c -- behaviour tests for the agent-08 slice.
+/* test_slice1_08.c -- behaviour tests for the pass-08 slice.
  *
  * The DirectSound side is exercised against a mock buffer whose vtable has
  * the same shape as the real one, so what is being checked is the call

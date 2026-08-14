@@ -1,4 +1,4 @@
-/* slice2_16.c -- Boss Rally (BRD3D.dll), agent 16, 0x1001CD60..0x1002BC90.
+/* slice2_16.c -- Boss Rally (BRD3D.dll), a later pass, 0x1001CD60..0x1002BC90.
  * See slice2_16.h for the per-function notes and gotchas. */
 
 #include "slice2_16.h"

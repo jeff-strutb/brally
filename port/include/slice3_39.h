@@ -1,4 +1,4 @@
-/* slice3_39.h -- Boss Rally (BRD3D.dll) slice 3, agent 39.
+/* slice3_39.h -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * Packet range 0x1005AE70 - 0x100607B0 (43 functions).  Only the parts that
  * could be resolved with confidence are ported; see the report / the
@@ -332,7 +332,7 @@ extern uint8_t g_BrDikState[BR_DIK_COUNT];   /* 0x10AA3288 */
 extern int32_t g_BrDikPrev [BR_DIK_COUNT];   /* 0x10AA2E88 */
 extern int32_t g_BrDikEdge [BR_DIK_COUNT];   /* 0x10AA2A80 */
 
-/* The 4-entry analogue.  NOTE for the coordinator: slice2_25.h already
+/* The 4-entry analogue.  NOTE for integration: slice2_25.h already
  * declares `g_brAA33D0` as a scalar at 0x10AA33D0 and slice2_24.h models
  * 0x10AA33C0 as `gAA33C0[4]`; those are the same storage as g_BrBtnEdge[0]
  * and g_BrBtnRaw. */
@@ -437,7 +437,7 @@ extern void *BrOperatorNew(uint32_t cb);
 extern int32_t BrDikGetDeviceState(uint8_t *pState);
 
 /* =====================================================================
- * NOT PORTED from this packet -- see the agent report for why.
+ * NOT PORTED from this packet -- see the pass report for why.
  *
  *   0x1005AE70 0x1005B250 0x1005B2B0 0x1005B390 0x1005B460 0x1005B570
  *   0x1005B730 0x1005B7A0 0x1005B910 0x1005BB80 0x1005BC10 0x1005C000

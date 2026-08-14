@@ -1,4 +1,4 @@
-/* slice5_62.h -- agent 62, slice 5 ("close the broken links").
+/* slice5_62.h -- a later pass, slice 5 ("close the broken links").
  *
  * Not an address range: fifteen individually-requested functions that an
  * already-ported module calls but nobody implemented.  Nine are here; six are
@@ -31,7 +31,7 @@
  * These functions reach through fixed addresses for everything.  Rather than
  * scatter loose globals whose names could collide with another slice's, each
  * group gets one struct and one getter, and every field carries the original
- * address it stands for so the coordinator can alias it onto whatever slice
+ * address it stands for so integration can alias it onto whatever slice
  * ends up owning the storage.  Where another header already models the same
  * address, the field comment says so.
  *

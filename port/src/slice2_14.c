@@ -339,7 +339,7 @@ int BrLruAcquire(BrLru *pLru)
  *   array), calls out to 0x1007E2A0 (qsort), 0x10060780, 0x1003A950,
  *   0x10002E90/0x10002F40 and 0x1003AEE0/0x1003AC90. Rendering it would mean
  *   inventing a state object for the whole subsystem, and several of the
- *   flag globals are shared with other agents' packets. Left out on purpose.
+ *   flag globals are shared with other passes' packets. Left out on purpose.
  *   Its two leaf helpers, 0x10010D90 and 0x10010BF0, ARE done above.
  *
  * 0x10013A40, 0x10013D90, 0x100140E0, 0x10014450 (~840 bytes each) -- F3D

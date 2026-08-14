@@ -9,7 +9,7 @@
 void *BrOperatorNew(uint32_t cb)
 {
     /* malloc, not calloc: the original does not zero. A previous round had one
-     * agent identify this as calloc, which would have silently handed callers
+     * pass identify this as calloc, which would have silently handed callers
      * zeroed memory the original never provides. */
     if (cb == 0)
         cb = 1;                     /* _nh_malloc clamps 0 -> 1 */

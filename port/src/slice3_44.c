@@ -1,7 +1,7 @@
 /* slice3_44.c -- decompiled from BRD3D.dll, packet 0x10071B80-0x10075F10.
  *
  * See slice3_44.h for the API, the layout notes and the gotchas, and the
- * agent report for the list of addresses that were deliberately skipped.
+ * pass report for the list of addresses that were deliberately skipped.
  *
  * Float constants used here, read out of orig/BRD3D.dll .rdata with
  * tools/pe.py rather than assumed:
@@ -26,7 +26,7 @@
 
 /* XSLICE 0x10008B80 */
 /* A bare `ret` in this build (see CONTRACT).  Name and prototype copied from
- * slice2_18.h so the coordinator can wire it mechanically. */
+ * slice2_18.h so integration can wire it mechanically. */
 extern void BrStub8B80_1p(const void *p0);
 
 /* XSLICE 0x10075330 */

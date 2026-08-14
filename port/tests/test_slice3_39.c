@@ -1,4 +1,4 @@
-/* test_slice3_39.c -- behaviour tests for slice 3, agent 39.
+/* test_slice3_39.c -- behaviour tests for slice 3, a later pass.
  *
  * These assert properties the disassembly forces, not numbers copied out of
  * this port: the space/glyph split in the measurers, the fact that `height`

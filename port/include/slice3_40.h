@@ -1,8 +1,8 @@
-/* slice3_40.h -- Boss Rally (BRD3D.dll) slice 3, agent 40.
+/* slice3_40.h -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * Packet range 0x100609E0 - 0x10065D50 (25 functions).  Five unrelated
  * clusters live in the range; only the ones that could be resolved with
- * confidence are ported here (see the agent report for the skip list):
+ * confidence are ported here (see the pass report for the skip list):
  *
  *   1. network car-state apply / predict   0x100609E0 0x10060A10 0x10060CC0
  *   2. two 10-step option sliders          0x10060D50 0x10060D70
@@ -155,7 +155,7 @@ extern int32_t BrPathWalkIndex;    /* 0x10ACD490 */
  * Cross-slice dependencies
  * ===================================================================== */
 
-/* XSLICE 0x100607B0 -- skipped by agent 39 (its packet ends at this
+/* XSLICE 0x100607B0 -- skipped by a later pass (its packet ends at this
  * address).  Fills a BrCarState from a car record; the exact contents are
  * not established here, hence the address-shaped name. */
 extern void BrSub100607B0(BrCarState *pDst, BrCar *pCar);

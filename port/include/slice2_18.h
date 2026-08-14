@@ -1,6 +1,6 @@
 /* slice2_18.h -- N64-GBI frame/fog/viewport layer, decompiled from BRD3D.dll.
  *
- * Agent 18's packet: 0x10031866-0x10033838, sixteen functions. Fourteen are
+ * Another module's packet: 0x10031866-0x10033838, sixteen functions. Fourteen are
  * ported here; two (0x100331FF, 0x100334D7) are skipped -- see slice2_18.c for
  * the reason, which is that the packet's disassembly for both begins part-way
  * into the function body.
@@ -38,7 +38,7 @@
  * already used by slice1_07.h/slice1_08.h) rather than folded into a context
  * struct, so that the ported functions keep the original signatures.  Several
  * of these addresses have 10-35 users across the DLL, so other slices will
- * name the same objects; the coordinator should expect to merge, not to find
+ * name the same objects; integration should expect to merge, not to find
  * them disjoint.
  *
  * ARGUMENT ORDER

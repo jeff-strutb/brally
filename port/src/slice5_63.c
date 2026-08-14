@@ -1,4 +1,4 @@
-/* slice5_63.c -- decompiled from BRD3D.dll, agent-63 packet (slice 5).
+/* slice5_63.c -- decompiled from BRD3D.dll, pass-63 packet (slice 5).
  *
  * See slice5_63.h for what is here, what is not, and the gotchas.
  *

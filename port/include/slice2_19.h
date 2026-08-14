@@ -1,4 +1,4 @@
-/* slice2_19.h -- Boss Rally (BRD3D.dll) decompilation, agent 19.
+/* slice2_19.h -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * Packet range 0x10033CB1 .. 0x10036C00 (work/slice2/agent19.asm).
  *
@@ -196,7 +196,7 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
  * far   = a3
  * scale = 1.0f
  *
- * IMPORTANT FOR THE COORDINATOR -- br_mat.h's BrMat4Perspective (0x10030930)
+ * IMPORTANT FOR INTEGRATION -- br_mat.h's BrMat4Perspective (0x10030930)
  * is declared with SIX parameters and its own comment says the order is
  * unverified. This packet contains two call sites that settle it: this one
  * and 0x10033F7E, which passes the literals (45.0f, 1.3333334f, 10.0f,

@@ -1,4 +1,4 @@
-/* test_slice2_25.c -- behaviour tests for agent 25's packet.
+/* test_slice2_25.c -- behaviour tests for another module's packet.
  *
  * Everything asserted here is a property the ORIGINAL has, taken from the
  * disassembly, not a number chosen to match the port:

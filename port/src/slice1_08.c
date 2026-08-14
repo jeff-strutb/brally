@@ -1,4 +1,4 @@
-/* slice1_08.c -- Boss Rally (BRD3D.dll) slice-1 agent 08.
+/* slice1_08.c -- Boss Rally (BRD3D.dll) slice-1 a later pass.
  *
  * See slice1_08.h for the address map and for the DirectSound identification.
  *

@@ -3,8 +3,8 @@
  * Four unrelated things live in this address range:
  *
  *   1. 0x100695D0  quaternion+position -> 4x4 matrix.  Its one caller
- *      (0x10060A10, agent 40's packet) hands it a BrCarState, which PROVES
- *      agent 02's "f00..f0C is almost certainly a quaternion" guess and pins
+ *      (0x10060A10, another module's packet) hands it a BrCarState, which PROVES
+ *      another module's "f00..f0C is almost certainly a quaternion" guess and pins
  *      the component order: f00 is the SCALAR.
  *
  *   2. 0x10069A60-0x10069DE0  the control-binding object at 0x10B4DF30
@@ -17,7 +17,7 @@
  *      global.
  *
  *   4. 0x1006AEB0-0x1006B510  rigid-body force/torque accumulation and the
- *      "velocity at a point" queries, operating on agent 44's BrRbBody.
+ *      "velocity at a point" queries, operating on another module's BrRbBody.
  *
  * NOTHING here re-defines a type that already exists: BrVec3/BrMat4 come from
  * br_vec.h/br_mat.h, BrMat3 + BrMat3MulVec3 + BrRbBody from slice3_44.h,
@@ -41,14 +41,14 @@
 
 /* XSLICE 0x100607B0 */
 /* Car record -> BrCarState.  Destination first (the original pushes the
- * state pointer last, i.e. it ends up at [esp] as arg1).  Falls inside agent
+ * state pointer last, i.e. it ends up at [esp] as arg1).  Falls inside pass
  * 39's declared range 0x1005AE70-0x100607B0 but is not exported there yet. */
 extern void BrCarRecordToState(BrCarState *pDst, void *pCar);
 
 /* XSLICE 0x10060A10 */
 /* BrCarState -> car record; the inverse of the above, and the function that
  * calls BrMat4FromCarState below to fill the car's matrix at +0x220.
- * Lives in agent 40's packet. */
+ * Lives in another module's packet. */
 extern void BrCarRecordFromState(void *pCar, const BrCarState *pSrc);
 
 /* =====================================================================
@@ -338,15 +338,15 @@ typedef struct BrRbForce {
     BrVec3            r;       /* 0x14  its application point               */
 } BrRbForce;                   /* 0x20 */
 
-/* THE SAME OBJECT AS BrRbBody (slice3_44.h), with the fields agent 44 left
- * inside `pad78` and inside the six leading dwords named.  Agent 44 could not
+/* THE SAME OBJECT AS BrRbBody (slice3_44.h), with the fields a later pass left
+ * inside `pad78` and inside the six leading dwords named.  A later pass could not
  * see them because 0x10074870 only clears those dwords; here they are used,
  * and four of them are POINTERS to sibling bodies.  That is why this is a
- * separate declaration rather than an edit to slice3_44.h -- the coordinator
+ * separate declaration rather than an edit to slice3_44.h -- integration
  * should fold the two together and keep this layout.
  *
  * Every field below sits at the offset in its comment IN THE ORIGINAL, and
- * the ones agent 44 also names agree exactly: mode 0x1C, mass 0x2C,
+ * the ones a later pass also names agree exactly: mode 0x1C, mass 0x2C,
  * inertia 0x30, invInertia 0x54, accel 0xFC, angAccel 0x108, f19C, f1B4,
  * f1C0..f1D8, total 0x1DC.
  *

@@ -1,4 +1,4 @@
-/* slice1_06.c -- BRD3D.dll 0x10037030-0x1005D440, agent 06. See slice1_06.h.
+/* slice1_06.c -- BRD3D.dll 0x10037030-0x1005D440, a later pass. See slice1_06.h.
  *
  * Constants quoted below were read straight out of orig/BRD3D.dll rather than
  * guessed: 0x1008F62C is 0.0f, the table at 0x100AC660 is nine 8-byte

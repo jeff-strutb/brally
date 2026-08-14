@@ -55,7 +55,7 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB);
 
 /* 0x1003B170  returns |v|.
  *
- * Was MISSING from this header until agent 11 found it -- it sits inside the
+ * Was MISSING from this header until a cross-check found it -- it sits inside the
  * 0x1003AC30-0x1003B130 cluster this file otherwise covers, so "the vector
  * library is complete" was wrong.
  *

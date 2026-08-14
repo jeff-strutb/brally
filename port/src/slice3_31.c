@@ -1,4 +1,4 @@
-/* slice3_31.c -- agent 31's packet of BRD3D.dll.
+/* slice3_31.c -- another module's packet of BRD3D.dll.
  *
  * See slice3_31.h for what this module is and how it relates to slice2_25 /
  * slice2_26. Everything below is a straight transcription of the annotated

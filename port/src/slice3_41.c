@@ -1,4 +1,4 @@
-/* slice3_41.c -- Boss Rally (BRD3D.dll) slice 3, agent 41.
+/* slice3_41.c -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * See slice3_41.h for the packet inventory, the offsets that were recovered,
  * and the list of functions that were deliberately left out.
@@ -375,7 +375,7 @@ void BrGfx69580(void)
 {
     /* DEVIATION: the original writes 0x10B01C40 directly.  That counter is
      * br_pool.h's BrPool::count, and br_pool.h exposes no global instance,
-     * so it is reached through a coordinator-supplied pointer.  A NULL hook
+     * so it is reached through a integration-supplied pointer.  A NULL hook
      * simply skips it. */
     if (g_pBrPool64 != NULL)
         g_pBrPool64->count = 0;

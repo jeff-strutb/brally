@@ -38,7 +38,7 @@ static int g_cFail;
 /* STAND-INS begin -- other slices' code, reproduced from their headers   */
 /* ===================================================================== */
 
-/* --- slice1_02: the three quantisers agent 02 owns ------------------- */
+/* --- slice1_02: the three quantisers a later pass owns ------------------- */
 
 int32_t BrFixPackU24Q13(float v)
 {
@@ -231,7 +231,7 @@ static void TestClamps(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* 2. Quantisers -- exact inverses of agent 02's dequantisers            */
+/* 2. Quantisers -- exact inverses of another module's dequantisers            */
 /* --------------------------------------------------------------------- */
 
 static void TestQuantRoundTrip(void)

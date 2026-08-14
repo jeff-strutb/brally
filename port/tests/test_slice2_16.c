@@ -1,4 +1,4 @@
-/* test_slice2_16.c -- behaviour tests for agent 16's slice of BRD3D.dll.
+/* test_slice2_16.c -- behaviour tests for another module's slice of BRD3D.dll.
  *
  * Every assertion below is either a property of the disassembly (a clamp, a
  * ring wrap, a sign extension, an argument order) or a round trip. Nothing

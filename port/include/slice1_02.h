@@ -25,10 +25,10 @@
  * External dependencies owned by other slices
  * ===================================================================== */
 
-/* 0x10073C90 -- MSB-first bit reader, thiscall, owned by agent 09's slice.
+/* 0x10073C90 -- MSB-first bit reader, thiscall, owned by another module's slice.
  *
  * Layout recovered from the original for reference only; the type stays
- * opaque here so agent 09's definition is the single source of truth:
+ * opaque here so another module's definition is the single source of truth:
  *      +0x00  bit position inside the current byte (0..7)
  *      +0x04  index of the current byte
  *      +0x10  pointer to the byte buffer
@@ -36,13 +36,13 @@
  * Semantics: consumes nBits from the top of the current byte downwards and
  * returns them right-aligned. nBits == 0 returns 0 and consumes nothing.
  *
- * INTEGRATION: rename this declaration to whatever agent 09 exports. */
+ * INTEGRATION: rename this declaration to whatever a later pass exports. */
 typedef struct BrBitReader BrBitReader;
 uint32_t BrBitReaderRead(BrBitReader *pReader, unsigned nBits);
 
-/* 0x10003530 -- owned by agent 01's slice. Takes the formatted message that
+/* 0x10003530 -- owned by another module's slice. Takes the formatted message that
  * 0x10005FE0 builds; its exact effect (chat line? HUD banner?) is not
- * established here. INTEGRATION: rename to agent 01's export. */
+ * established here. INTEGRATION: rename to another module's export. */
 void BrNetAnnounce(const char *pszText);
 
 /* DEVIATION: the original calls KERNEL32 WaitForSingleObject(h, INFINITE) and

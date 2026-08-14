@@ -1,4 +1,4 @@
-/* slice3_40.c -- Boss Rally (BRD3D.dll) slice 3, agent 40.
+/* slice3_40.c -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * See slice3_40.h for the packet contents, the offset maps and every
  * GOTCHA.  This file carries only the code and the line-level notes.

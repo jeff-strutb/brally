@@ -1,4 +1,4 @@
-/* test_slice2_15.c -- behaviour tests for the agent-15 packet.
+/* test_slice2_15.c -- behaviour tests for the pass-15 packet.
  *
  * These assert properties the ORIGINAL has (round-trips, clamps, sentinels,
  * bit-splice identities, state-machine transitions), not the shape of this

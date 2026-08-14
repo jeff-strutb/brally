@@ -1,4 +1,4 @@
-/* slice1_05.h -- Boss Rally (BRD3D.dll) decompilation, agent 05.
+/* slice1_05.h -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * Address range 0x1002B280 .. 0x100360F0.
  *

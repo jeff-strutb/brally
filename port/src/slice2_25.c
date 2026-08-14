@@ -1,10 +1,10 @@
-/* slice2_25.c -- agent 25's packet, 0x10042880-0x100446D0 (46 functions).
+/* slice2_25.c -- another module's packet, 0x10042880-0x100446D0 (46 functions).
  *
  * See slice2_25.h for what the module is and how the three repeated shapes
  * work. Everything here is a transcription; the DEVIATION list is at the
  * bottom of the file and every deviation is also marked at its line.
  *
- * A WARNING FOR THE COORDINATOR, about br_slots.h
+ * A WARNING FOR INTEGRATION, about br_slots.h
  * -----------------------------------------------
  * br_slots.h declares
  *

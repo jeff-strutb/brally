@@ -1,4 +1,4 @@
-/* slice4_52.h -- BRD3D.dll, agent 52 (slice 4 "close the link" packet).
+/* slice4_52.h -- BRD3D.dll, a later pass (slice 4 "close the link" packet).
  *
  * Every function here is one that an already-ported module declares `extern`
  * but nobody implements.  Names and signatures are taken verbatim from the
@@ -189,7 +189,7 @@ void BrSub1005F530(void);
  * slice2_22.h ports the body as BrDPlaySendTag3(pLink, fGate).  This is the
  * global-gate wrapper slice2_25.h calls.
  *
- * DEVIATION / COORDINATOR ACTION: slice2_25.h types the object at 0x10A9D008
+ * DEVIATION / INTEGRATION ACTION: slice2_25.h types the object at 0x10A9D008
  * `BrOptUi { int32_t f00, f04, f08; }` and slice2_22.h types the same storage
  * `BrDPlayLink { void *pIface; void *f04; uint32_t f08; uint32_t f0C; }`.
  * They coincide on a 32-bit host and DO NOT on a 64-bit one.  The wrapper
@@ -400,6 +400,6 @@ void BrOptFn10051990(struct BrOptObj *pThis);
  * unportable, and each has a concrete blocker recorded in the report (a callee
  * whose HRESULT the existing declaration throws away, a session-descriptor
  * layout no header models past +0x2C, or a signature that cannot hold a
- * pointer).  They are deliberately left for the coordinator to stub. */
+ * pointer).  They are deliberately left for integration to stub. */
 
 #endif /* SLICE4_52_H */

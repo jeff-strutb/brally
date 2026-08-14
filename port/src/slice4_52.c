@@ -1,4 +1,4 @@
-/* slice4_52.c -- BRD3D.dll, agent 52.  See slice4_52.h, especially the note
+/* slice4_52.c -- BRD3D.dll, a later pass.  See slice4_52.h, especially the note
  * about the packet listing being mis-paired: everything below was decompiled
  * from asm/ at the address named on the `WANTED AS` line, not from the body
  * printed under it in work/slice4/agent52.asm.
@@ -329,7 +329,7 @@ void BrLogPrint(const void *p)
  *
  * The screen and control prologues below are byte-identical to the ones
  * slice3_33.c calls BrUiScreenNew / BrUiCtlNew.  They are repeated rather than
- * shared because those are file-static there; the coordinator should hoist one
+ * shared because those are file-static there; integration should hoist one
  * copy when it merges.  Both carry the same two DEVIATIONs slice3_33.c
  * records: the array writes are bounded, and an allocation failure returns
  * instead of dereferencing NULL after the (fatal) error report.

@@ -1,4 +1,4 @@
-/* slice3_39.c -- Boss Rally (BRD3D.dll) slice 3, agent 39.
+/* slice3_39.c -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * Packet 0x1005AE70 - 0x100607B0.  See slice3_39.h for the layout notes and
  * the list of functions that were deliberately left out.

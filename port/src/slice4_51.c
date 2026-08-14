@@ -1,4 +1,4 @@
-/* slice4_51.c -- Boss Rally (BRD3D.dll) decompilation, agent 51.
+/* slice4_51.c -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * See slice4_51.h for what is here, what is not, and why -- in particular
  * for the packet/name mismatch that makes work/slice4/agent51.asm disagree
@@ -206,7 +206,7 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
 
     /* DEVIATION: the original has no such check; the state it reads lives at
      * fixed addresses that always exist.  Here it is a pointer the
-     * coordinator has to wire, so a null one is a link-time mistake rather
+     * integration has to wire, so a null one is a link-time mistake rather
      * than a rendering condition, and crashing on it helps nobody. */
     if (pGbi == NULL)
         return;
@@ -307,7 +307,7 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
  *
  *     (a) The listing supplied in work/slice4/agent51.asm for this name is
  *         sub_100558A0, which is a DIFFERENT function and already has its
- *         own name (BrOptFn100558A0, slice2_25.h, and handed to agent 50 --
+ *         own name (BrOptFn100558A0, slice2_25.h, and handed to a later pass --
  *         itself under a third address).  Implementing 0x100558A0's body
  *         under the name BrOptFn10056FF0 would wire the wrong screen into
  *         the options menu and would be undetectable at link time.

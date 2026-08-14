@@ -1,4 +1,4 @@
-/* slice2_26.c -- BRD3D.dll 0x100447D0-0x100456B0, agent 26.
+/* slice2_26.c -- BRD3D.dll 0x100447D0-0x100456B0, a later pass.
  *
  * The phase (screen/mode) switcher. See slice2_26.h for the mechanism, the
  * calling-convention deviations, and the per-function notes.

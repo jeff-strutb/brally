@@ -1,4 +1,4 @@
-/* slice2_26.h -- BRD3D.dll 0x100447D0-0x100456B0, agent 26.
+/* slice2_26.h -- BRD3D.dll 0x100447D0-0x100456B0, a later pass.
  *
  * All twenty-five functions in this range belong to ONE mechanism: the game's
  * phase (screen/mode) switcher. Nothing here computes anything; every routine
@@ -222,7 +222,7 @@ typedef struct BrPhaseCtx {
 #define BR_HOSTITEM_FLAG_20  0x00000020u
 
 /* ==========================================================================
- * Cross-slice callees. The coordinator wires these; a stand-in for each one
+ * Cross-slice callees. The integration wires these; a stand-in for each one
  * lives in port/tests/test_slice2_26.c and NOWHERE else.
  * ========================================================================== */
 

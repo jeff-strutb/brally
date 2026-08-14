@@ -1,4 +1,4 @@
-/* slice5_60.h -- Boss Rally (BRD3D.dll) decompilation, agent 60, slice 5.
+/* slice5_60.h -- Boss Rally (BRD3D.dll) decompilation, a later pass, slice 5.
  *
  * A "close the link" packet: fifteen individually-requested addresses that an
  * already-ported module calls through an `extern` it declared itself.  Every
@@ -39,7 +39,7 @@
  *   0x1004D640  BrExt_1004D640    }
  *
  * ======================================================================
- * THE FIVE SCREEN BUILDERS -- a structural blocker the coordinator must fix
+ * THE FIVE SCREEN BUILDERS -- a structural blocker integration must fix
  * ======================================================================
  * All five have the shape slice3_33.h already decompiled five times over:
  *
@@ -62,7 +62,7 @@
  * {pVtbl, pfn04, pfn08, f0C, f68}; the builders need +0x10 (uint16 screen
  * count), +0x14 (screen-pointer array) and +0x6C (a parallel int array),
  * which is exactly slice3_33.h's BrUiPhase and is a DIFFERENT layout.
- * slice3_33.h says so itself ("CONFLICT THE COORDINATOR MUST RESOLVE") and
+ * slice3_33.h says so itself ("CONFLICT TO RESOLVE AT INTEGRATION") and
  * declares its own five as `void BrExt_1004A580(BrUiBuildCtx *, BrUiPhase *)`,
  * i.e. it did not close these links either.  slice3_32.c, slice4_51.c and
  * slice5_61.h all declined the same family independently.
@@ -104,7 +104,7 @@
  * ======================================================================
  * These have no standalone owner today, so storage is defined in slice5_60.c.
  * Where some other header models the same address inside a struct, it is
- * named here so the coordinator can alias rather than duplicate:
+ * named here so integration can alias rather than duplicate:
  *
  *   0x100AB3DC  g_Br0AB3DC   = slice3_32.h  BrScrCtx.w0AB3DC
  *   0x10AA286C  g_BrAA286C   = slice3_32.h  BrScrCtx.wAA286C

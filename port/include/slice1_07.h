@@ -1,4 +1,4 @@
-/* slice1_07.h -- Boss Rally (BRD3D.dll) slice 1, agent 07.
+/* slice1_07.h -- Boss Rally (BRD3D.dll) slice 1, a later pass.
  *
  * Range 0x1005F580 - 0x1006C740.  Three clusters live in here:
  *

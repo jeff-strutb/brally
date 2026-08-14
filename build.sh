@@ -41,7 +41,7 @@ clang $CFLAGS -c port/tests/test_bits.c -o build/test_bits.o
 clang $CFLAGS -c port/tools/brview.c   -o build/brview.o
 
 
-# --- slice 1 agent modules ---
+# --- slice 1 pass modules ---
 clang $CFLAGS -c port/src/slice1_01.c -o build/slice1_01.o
 clang $CFLAGS -c port/tests/test_slice1_01.c -o build/test_slice1_01.o
 clang $CFLAGS -c port/src/slice1_02.c -o build/slice1_02.o
@@ -75,7 +75,7 @@ clang build/slice1_09.o build/test_slice1_09.o -lm -o build/test_slice1_09
 clang build/slice1_10.o build/test_slice1_10.o -lm -o build/test_slice1_10
 
 
-# --- slice 2 agent modules ---
+# --- slice 2 pass modules ---
 clang $CFLAGS -c port/src/slice2_11.c -o build/slice2_11.o
 clang $CFLAGS -c port/tests/test_slice2_11.c -o build/test_slice2_11.o
 clang $CFLAGS -c port/src/slice2_12.c -o build/slice2_12.o
@@ -127,7 +127,7 @@ clang build/slice2_25.o build/test_slice2_25.o -lm -o build/test_slice2_25
 clang build/slice2_26.o build/test_slice2_26.o -lm -o build/test_slice2_26
 
 
-# --- slice 3 agent modules ---
+# --- slice 3 pass modules ---
 clang $CFLAGS -c port/src/slice3_31.c -o build/slice3_31.o
 clang $CFLAGS -c port/tests/test_slice3_31.c -o build/test_slice3_31.o
 clang $CFLAGS -c port/src/slice3_32.c -o build/slice3_32.o

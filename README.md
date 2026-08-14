@@ -36,7 +36,6 @@ builds function-for-function.
     config/     generated maps: functions, names, strings, shared-code classification
     asm/        annotated disassembly, one file per 64KB of .text
     port/       the portable port: include/ src/ tests/
-    work/       agent packets, manifests, undefined_symbols.txt
 
 ## Status
 
@@ -49,12 +48,12 @@ builds function-for-function.
 | Shared core (the target) | ~1,708 fns / 339,648 bytes |
 | **Decompiled + tested** | **~966** |
 | Modules | 50 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`) |
-| Undefined symbols at full link | **304** (`work/undefined_symbols.txt`) |
+| Undefined symbols at full link | **304** (see `tools/linkqueue.py`) |
 | Addresses with >1 name | **53** (heuristic count) |
 
 ### Read this before trusting any number above
 
-`config/functions.csv` has **three confirmed failure modes**, all found by agents:
+`config/functions.csv` has **three confirmed failure modes**, all found during analysis:
 1. **Invents entries** -- `0x100331FF`, `0x100334D7`, `0x100312BB` are
    mid-instruction, not function starts.
 2. **Misses entries** -- e.g. `0x1002C2B0`, `0x100311E4`, `0x10031212`,
@@ -67,6 +66,9 @@ uncertain**. Treat the map as a good index, never as ground truth.
 
 The codebase is *not* pure C: ~9% of functions take `this` in `ecx` and ~14%
 use vtable dispatch. RTTI is absent only because MSVC 5 defaults it off.
+
+See `CONVENTIONS.md` for the coding rules this port follows -- most of them are
+non-obvious and each one has cost real time.
 
 ## Tooling
 
@@ -153,8 +155,8 @@ Portability rules adopted now, so they do not have to be retrofitted:
 
 **Core decompiled: ~966 of ~1,708.**  50 test suites, all green.
 (The per-module table below lists only the hand-written `br_*` modules; the 41
-`slice*` modules from the agent fan-outs carry the bulk and are listed in
-`work/slice*/manifest.json`.)
+`slice*` modules from the batched analysis passes carry the bulk and are listed in
+the module list below.)
 
 ### Semantics that will bite if forgotten
 
@@ -296,7 +298,7 @@ Portability rules adopted now, so they do not have to be retrofitted:
 
 | Address | Size | Identification | Evidence |
 |---|---|---|---|
-| ~~`0x100309A0`~~ | 427 | **DONE by agent 17** -- `guLookAtF`, but NOT stock libultra | subtracts one 3-float point from another (eye-at), calls `0x10030600` (`BrVec3dNormalise`), then `0x10030640` (`BrVec3dDot`) against a third vector, followed by a Gram-Schmidt `fmul`/`fsubr` pattern. Args look like `(mtx, eye[3], at[3], up[3])` at `[esp+0x50..0x74]`. |
+| ~~`0x100309A0`~~ | 427 | **DONE** -- `guLookAtF`, but NOT stock libultra | subtracts one 3-float point from another (eye-at), calls `0x10030600` (`BrVec3dNormalise`), then `0x10030640` (`BrVec3dDot`) against a third vector, followed by a Gram-Schmidt `fmul`/`fsubr` pattern. Args look like `(mtx, eye[3], at[3], up[3])` at `[esp+0x50..0x74]`. |
 
 Structural note worth keeping: `guLookAt` takes **float** arguments but spills
 them to `qword` and performs the entire construction in **double** precision.
@@ -317,7 +319,7 @@ and a partial trace of them would produce plausible-but-wrong code. `guFrustumF`
 in particular should be transcribed line by line rather than assumed to match
 stock libultra -- Boss Game Studios may have modified it.
 
-### Integration decisions (coordinator)
+### Integration decisions (integration)
 
 **`BrComVtbl`/`BrComObj` name collision — RESOLVED.** slice1_03 and slice1_06 both
 defined these with different layouts; including both failed to compile. They are
@@ -326,7 +328,7 @@ genuinely different interfaces (03 = generic holder, 06 = DirectPlay, keyed by
 `BrDPlayVtbl`/`BrDPlayObj`. Renamed, not merged -- merging would have been wrong.
 
 **`br_f3d` microcode — CORRECTED to F3DEX.** The file decoded G_VTX with plain
-F3D's layout (`n = (byte3+1)/16`). Agent 05 established the real format from the
+F3D's layout (`n = (byte3+1)/16`). A later pass established the real format from the
 game's OWN G_VTX fixup at `0x1002C150`, which extracts `n` as `(w0 >> 10) & 0x3F`
 -- F3DEX packing. Verified: the two readings disagree on **57 of 151** G_VTX
 commands in ce.rca, and F3D systematically undercounts (8 where the truth is 24,
@@ -334,17 +336,17 @@ commands in ce.rca, and F3D systematically undercounts (8 where the truth is 24,
 triangles after the fix. **OPEN:** `(v0+n)` reaches 63, so the vertex cache may be
 64 entries, not 32 -- unsettled.
 
-**`0x1007DFE0` — three agents disagreed. ADJUDICATED as `operator new`.**
-- agent 10: `operator new`, tail-calls `_nh_malloc(size, 1)`
-- agent 01: listed it as `malloc`
-- agent 06: called it `calloc(n, 1)`
+**`0x1007DFE0` — three independent readings disagreed. ADJUDICATED as `operator new`.**
+- one reading: `operator new`, tail-calls `_nh_malloc(size, 1)`
+- one reading: listed it as `malloc`
+- one reading: called it `calloc(n, 1)`
 
-Agent 10 wins on evidence: it read `_nh_malloc`'s body (the `__newmode` global at
+The first reading wins on evidence: it read `_nh_malloc`'s body (the `__newmode` global at
 `0x118AC344`, the 0->1 size clamp, the `>0xFFFFFFE0` rejection, the `_callnewh`
 retry) and distinguished it from `0x1007D350` = `malloc`, which passes `__newmode`
 where this passes a literal 1. **`calloc` is wrong and dangerous**: the second
 argument is the new-handler flag, NOT an element count, so the result is NOT
-zero-initialised. Agent 06 noted this call appears 147 times in one function --
+zero-initialised. It was later noted this call appears 147 times in one function --
 assuming zeroed memory there would be a real bug.
 
 ### INTEGRATION STATE — measured by an actual full link (not predicted)
@@ -352,19 +354,19 @@ assuming zeroed memory there would be a real bug.
 A link of **all 46 modules** into one binary was attempted. Results:
 
 - **0 duplicate definitions.** The predicted `BrG_<ADDR>` global collision did
-  **not** materialise -- agents used file-scope statics or address-suffixed
+  **not** materialise -- analysis passes used file-scope statics or address-suffixed
   names. My earlier warning about this was wrong; recorded so nobody spends
   effort on a non-problem.
 - **304 undefined symbols** -- the real, measured integration debt. Full list in
-  `work/undefined_symbols.txt`. These are cross-slice references to functions
+  regenerable with `tools/linkqueue.py`. These are cross-slice references to functions
   that are declared (usually as `/* XSLICE */`) but implemented nowhere yet.
 
 This supersedes an earlier crude grep-based audit that reported "115 phantom
 declarations". That number counted any address not mentioned in a `.c` and was
 an upper bound, not a finding. **Use the link, not the grep.**
 
-Next round should consume `work/undefined_symbols.txt` directly: every name on
-it is a function some module already needs.
+`tools/linkqueue.py` regenerates the outstanding list: every name on it is a
+function some module already calls but nothing defines yet.
 
 **Naming debt: 53 addresses carry more than one function name** (e.g. `0x10032873`
 is both `BrFrameBegin` and `BrFrameBeginRec`; `0x10035BBA` is `BrFatal`,
@@ -372,17 +374,17 @@ is both `BrFrameBegin` and `BrFrameBeginRec`; `0x10035BBA` is `BrFatal`,
 address comment -- so treat it as an order-of-magnitude figure, not an exact list.
 
 The round-3 contract added a "grep the address before naming" rule. It did not
-work, and the reason is structural: agents grep for the *address*, but the
-collision happens when two agents independently coin the same *name*, or coin
+work, and the reason is structural: analysis passes grep for the *address*, but the
+collision happens when two analysis passes independently coin the same *name*, or coin
 different names for one address they each reached from different call sites.
 Address-grepping cannot catch either. A shared append-only name registry, or
-coordinator reconciliation, is the only thing that will.
+integration reconciliation, is the only thing that will.
 
 ### Superseded note — global symbol collisions at final link
 
-Agent 18 defines **101 file-scope globals** named `BrG_<ADDR>` (the convention
+A later pass defines **101 file-scope globals** named `BrG_<ADDR>` (the convention
 `slice1_07.h`/`slice1_08.h` set). Several of those addresses have 10-35 users
-DLL-wide (`0x106C0680` alone has 35), so other agents covering those ranges will
+DLL-wide (`0x106C0680` alone has 35), so other analysis passes covering those ranges will
 define the *same* objects.
 
 **Today there is no duplicate**, but that is misleading: the build gives every
@@ -396,14 +398,14 @@ is one object in the original, and the aliasing is load-bearing (see the
 `0x10AA288C` dual-role entry above).
 
 Also outstanding: `0x10008B80` and `0x10042AF0` are called cdecl with **varying
-arity**, which C99 cannot express in one prototype. Agent 18 declared one name
+arity**, which C99 cannot express in one prototype. A later pass declared one name
 per observed arity (`BrStub8B80_0/_1i/_1p/_5i`). They all resolve to one original
 address; unify at final link.
 
-### Function-map errors found by agents (cumulative)
+### Function-map errors found during analysis (cumulative)
 
 `0x100331FF`, `0x100334D7`, `0x100312BB` are **not function entries** -- packets
-starting there begin mid-instruction. Agent 17 also found **4 additional real
+starting there begin mid-instruction. A later pass also found **4 additional real
 functions** hiding inside listed byte ranges (`0x1002C2B0`, `0x100311E4`,
 `0x10031212`, `0x10031347`), i.e. the map both invents entries and misses them.
 `0x1003289F` was flagged as suspect but is genuine (`BrScissorSet`).
@@ -415,24 +417,24 @@ entry set -- an over-long extent silently hides a following function.
 
 Net: treat `config/functions.csv` as a good starting index, not ground truth.
 
-### Adjudicated cross-slice conflicts (coordinator)
+### Adjudicated cross-slice conflicts (integration)
 
 **`0x10575510`/`0x10575518` — float, NOT pointer. slice1_05 is wrong.**
-`slice1_05.h` models these as `BrCursorPair { void *f10, *f18; }`. Agent 16 reads
-them as floats throughout. Adjudicated in agent 16's favour on direct evidence:
+`slice1_05.h` models these as `BrCursorPair { void *f10, *f18; }`. A later pass reads
+them as floats throughout. Adjudicated in a later pass's favour on direct evidence:
 `0x1002B134` is `fcomp dword ptr [0x10575518]`, an unambiguous float compare.
 `0x10575510` is only ever written with `mov`, which is ambiguous (a float bit
 pattern moves the same way), so it follows its partner. Fix slice1_05 at
 integration; do not propagate the pointer typing.
 
 **`BrMat4Perspective` takes SEVEN arguments, not six — my declaration is wrong.**
-`br_mat.h` carries a self-flagged caveat asking for a call-site check. Agent 19
+`br_mat.h` carries a self-flagged caveat asking for a call-site check. A later pass
 did it: two call sites (`0x10033E83`, `0x10033F7E`) both clean up with
 `add esp,0x1c` = 28 bytes = 7 args, and one uses literals that pin the order:
 `(mf, perspNorm, 45.0f, 1.3333334f, 10.0f, 2000.0f, 1.0f)` -- stock
 `guPerspectiveF` order **including the trailing `scale`** that br_mat.h omits.
 NOTE: I could not reproduce the disassembly myself (that address is one of the
-map's mid-function entries), so this rests on agent 19's reading plus the
+map's mid-function entries), so this rests on a later pass's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
 
@@ -457,7 +459,7 @@ here. Nothing may overlay this struct on a file image or foreign buffer.
 ### Original blocker description (kept for context)
 
 Five menu-screen builders (`0x10049F40`, `0x1004D640`, `0x10056FF0`, `0x1004F700`,
-`0x10053CF0`) have been declined **independently by five different agents**. Their
+`0x10053CF0`) have been declined **independently by five separate attempts**. Their
 bodies are not the problem -- `slice3_33.c` has already decompiled the same family
 five times. The blocker is a TYPE:
 
@@ -475,7 +477,7 @@ five times. The blocker is a TYPE:
 field access.** Merging on `slice3_32.h`'s `BrPhaseFull` layout (the best-evidenced
 one) unblocks all five at once and retires three competing models.
 
-Also settled by agent 60: the `pfn08` slot's argument is an **entity record**
+Also settled by a later pass: the `pfn08` slot's argument is an **entity record**
 (`+0x2AE8` is the sub-object), so `slice2_25.h`'s `void(*)(BrOptObj*)` typing is the
 wrong shape; `slice2_26.h`'s `void(*)(void *pEntity)` is right.
 

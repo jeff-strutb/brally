@@ -13,7 +13,7 @@
  *
  * The first three are each a partial view. Because none of them contains the
  * fields the others need, FIVE menu-screen builders (0x10049F40, 0x1004D640,
- * 0x10056FF0, 0x1004F700, 0x10053CF0) were declined by five different agents in
+ * 0x10056FF0, 0x1004F700, 0x10053CF0) were declined by five different passes in
  * a row -- not because their bodies are hard, but because no declarable type
  * could hold what they touch. Casting between the partial views links cleanly
  * and is silently wrong at every field access.
@@ -28,7 +28,7 @@
  * The comments below give the ORIGINAL offsets, which hold on a 32-bit host.
  * On LP64 every pointer widens and the tail shifts, so `offsetof(BrPhase_,
  * f68)` is NOT 0x68 there. That is the "only agree on a 32-bit host" hazard the
- * agents kept reporting across several objects, and it is real: nothing may
+ * passes kept reporting across several objects, and it is real: nothing may
  * overlay this struct on a file image or a foreign buffer.
  *
  * What IS asserted below, and holds on both: field ORDER, and that the whole

@@ -1,4 +1,4 @@
-/* slice2_17.c -- Boss Rally (BRD3D.dll) decompilation, agent 17.
+/* slice2_17.c -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * See slice2_17.h for the per-function notes. General remarks:
  *

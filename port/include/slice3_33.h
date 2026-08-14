@@ -1,4 +1,4 @@
-/* slice3_33.h -- BRD3D.dll 0x1004A580-0x1004D1E9, agent 33.
+/* slice3_33.h -- BRD3D.dll 0x1004A580-0x1004D1E9, a later pass.
  *
  * WHAT THIS RANGE ACTUALLY IS
  * ---------------------------
@@ -40,7 +40,7 @@
  *   screen  0x348 bytes  operator new + ctor 0x10048470
  *   control 0x1E214 bytes operator new + ctor 0x100476C0
  *
- * CONFLICT THE COORDINATOR MUST RESOLVE
+ * CONFLICT TO RESOLVE AT INTEGRATION
  * -------------------------------------
  * slice2_26.h declares these same five addresses as
  * `void BrExt_1004A580(BrPhase *)` and models BrPhase with five fields

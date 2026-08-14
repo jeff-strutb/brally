@@ -1,4 +1,4 @@
-/* test_slice2_13.c -- behaviour tests for the agent-13 packet.
+/* test_slice2_13.c -- behaviour tests for the pass-13 packet.
  *
  * Everything below the STAND-INS banner is a test-only substitute for a
  * function that lives in another packet. None of it is decompiled code.
@@ -98,7 +98,7 @@ void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
     ++g_cAppMsgDispatch;
 }
 
-/* Agent 14's free list and lerp (0x102E5ECC / 0x10010B00). */
+/* Another module's free list and lerp (0x102E5ECC / 0x10010B00). */
 BrLerpNode *g_pBrLerpFree = NULL;
 
 BrLerpNode *BrLerpNodeAlloc(const BrLerpNode *pFrom, const BrLerpNode *pTo,
@@ -118,7 +118,7 @@ BrLerpNode *BrLerpNodeAlloc(const BrLerpNode *pFrom, const BrLerpNode *pTo,
     return p;
 }
 
-/* Agent 14's 0x10010D10. Made an identity projection so the tests can drive
+/* Another module's 0x10010D10. Made an identity projection so the tests can drive
  * the clip coordinates directly through f00 / f04. */
 void BrScrPtProject(BrScrPt *pPt)
 {
@@ -126,7 +126,7 @@ void BrScrPtProject(BrScrPt *pPt)
     pPt->f10 = pPt->f04;
 }
 
-/* Agent 14's 0x10010BF0, recorded rather than performed. */
+/* Another module's 0x10010BF0, recorded rather than performed. */
 #define KEEP_MAX 64
 static int   g_cKeep;
 static int   g_aKeepIdx[KEEP_MAX];

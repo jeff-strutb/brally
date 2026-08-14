@@ -1,4 +1,4 @@
-/* slice2_24.h -- decompiled from BRD3D.dll, agent-24 packet
+/* slice2_24.h -- decompiled from BRD3D.dll, pass-24 packet
  * (address range 0x10040450 - 0x10042740).
  *
  * The packet is one module: the front-end menu.  Every function in it is a

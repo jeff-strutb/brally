@@ -1,4 +1,4 @@
-/* slice2_13.c -- decompiled from BRD3D.dll, agent-13 packet
+/* slice2_13.c -- decompiled from BRD3D.dll, pass-13 packet
  * (0x10008B90 - 0x100109A0). See slice2_13.h for the identification notes
  * and every GOTCHA; this file carries the DEVIATION notes.
  */

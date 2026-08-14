@@ -1,4 +1,4 @@
-/* slice2_23.h -- BRD3D.dll 0x1003DC10-0x10040330, agent 23.
+/* slice2_23.h -- BRD3D.dll 0x1003DC10-0x10040330, a later pass.
  *
  * This range is one module: the front-end / options menu. Apart from the
  * DirectPlay error-name table at the start, every routine here is a menu-item

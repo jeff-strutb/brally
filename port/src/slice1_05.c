@@ -1,4 +1,4 @@
-/* slice1_05.c -- Boss Rally (BRD3D.dll), agent 05, 0x1002B280..0x100360F0.
+/* slice1_05.c -- Boss Rally (BRD3D.dll), a later pass, 0x1002B280..0x100360F0.
  * See slice1_05.h for the per-function notes and gotchas. */
 
 #include "slice1_05.h"

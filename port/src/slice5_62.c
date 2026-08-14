@@ -1,4 +1,4 @@
-/* slice5_62.c -- agent 62, slice 5.  See port/include/slice5_62.h for what
+/* slice5_62.c -- a later pass, slice 5.  See port/include/slice5_62.h for what
  * this module is, which caller declares each name, and every GOTCHA.
  *
  * Each function below is annotated with the original address it came from.

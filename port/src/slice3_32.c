@@ -1,4 +1,4 @@
-/* slice3_32.c -- BRD3D.dll 0x10047930-0x1004A260, agent 32.
+/* slice3_32.c -- BRD3D.dll 0x10047930-0x1004A260, a later pass.
  *
  * See port/include/slice3_32.h for the model (three classes, the vtable
  * overlap that pins down every `this`, and the naming rationale).

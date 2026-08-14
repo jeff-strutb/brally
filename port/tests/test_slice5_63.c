@@ -1,4 +1,4 @@
-/* test_slice5_63.c -- behaviour tests for agent-63's packet (slice 5).
+/* test_slice5_63.c -- behaviour tests for pass-63's packet (slice 5).
  *
  * Everything under "Stand-ins" is TEST-ONLY. The packet is almost entirely
  * glue: it forwards to bodies other slices own and it moves globals around.

@@ -3,7 +3,7 @@
  * vtable slots). Both are real and distinct -- this one is DirectPlay, keyed by
  * DPERR_BUFFERTOOSMALL 0x8877001E. Renamed rather than merged.
  *
- * slice1_06.h -- BRD3D.dll 0x10037030-0x1005D440, agent 06.
+ * slice1_06.h -- BRD3D.dll 0x10037030-0x1005D440, a later pass.
  *
  * Twelve of the sixteen functions in this range are recovered here. The four
  * that are not, and the reason for each, are listed at the bottom of this

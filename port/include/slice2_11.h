@@ -11,7 +11,7 @@
  *
  * The Win32-only parts of the packet (MCI cdaudio wrappers, mutex/thread
  * helpers, the SEH-framed packet senders) are deliberately NOT ported; see
- * the agent report for the list and the reasons.
+ * the pass report for the list and the reasons.
  *
  * ---------------------------------------------------------------------
  * x87 MODELLING NOTE (applies to this whole file)

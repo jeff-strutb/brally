@@ -1,4 +1,4 @@
-/* test_slice4_51.c -- behaviour tests for agent 51's three functions.
+/* test_slice4_51.c -- behaviour tests for another module's three functions.
  *
  * Everything asserted here is either an identity the original's arithmetic
  * guarantees (a rectangle stays a rectangle; halving the divisor halves

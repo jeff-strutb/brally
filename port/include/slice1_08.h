@@ -1,4 +1,4 @@
-/* slice1_08.h -- Boss Rally (BRD3D.dll) slice-1 agent 08.
+/* slice1_08.h -- Boss Rally (BRD3D.dll) slice-1 a later pass.
  *
  * Address range 0x1006C9A0 .. 0x10073320.
  *

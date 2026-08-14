@@ -1,6 +1,6 @@
 /* slice1_10.h -- force-feedback teardown, decompiled from BRD3D.dll.
  *
- * Agent 10's packet covered 14 functions in 0x10079550-0x10086A10. Thirteen
+ * Another module's packet covered 14 functions in 0x10079550-0x10086A10. Thirteen
  * of them turned out to be statically linked MSVC CRT (see slice1_10.c for
  * the address-by-address identification and the evidence for each). Exactly
  * one is game code:

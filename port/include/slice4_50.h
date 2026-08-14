@@ -1,4 +1,4 @@
-/* slice4_50.h -- agent 50, slice 4 ("close the broken links").
+/* slice4_50.h -- a later pass, slice 4 ("close the broken links").
  *
  * WHAT THIS MODULE IS
  * ===================
@@ -115,7 +115,7 @@ int BrSprintf(char *pszDest, const char *pszFmt, ...);
  * BrSndPlayGroup(group, packed, loop=0), which is BrSndPlayEx(group, slot=1,
  * packed, loop). The two callers throw the result away and spell the second
  * argument as a plain int (they pass 0x200020). This is a forwarder; the
- * coordinator should eventually retire this name in favour of
+ * integration should eventually retire this name in favour of
  * BrSndPlaySimple. */
 void BrSub10072AF0(int a, int b);
 
@@ -126,7 +126,7 @@ void BrSub10072AF0(int a, int b);
 /* 0x106C0964. slice1_05.h models this address only as BrHooks::pfnC inside a
  * gathered struct, so there is no real global for BrHookIsCurrent to read.
  * Defined here as a plain data pointer (the value stored is a code address);
- * the coordinator should alias it with BrHooks::pfnC. */
+ * integration should alias it with BrHooks::pfnC. */
 extern void *g_brHook6C0964;
 
 /* 0x10034C51 -- declared by slice2_19.h. Returns 1 when 0x106C0964 equals
@@ -200,7 +200,7 @@ extern BrOptObj *g_brPAA2968;
  * CONFLICT (reported): slice2_25.h declares this same address as
  * `int32_t g_brAA2958` and slice2_25.c defines it that way, because there it
  * is only tested against zero and zeroed. 0x10043BF0 stores a heap POINTER in
- * it. The coordinator must fold the two into this pointer-typed one; an
+ * it. The integration must fold the two into this pointer-typed one; an
  * int32_t truncates the pointer on a 64-bit host. */
 extern BrOptObj *g_brPAA2958;
 

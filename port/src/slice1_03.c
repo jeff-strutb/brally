@@ -1,4 +1,4 @@
-/* slice1_03.c -- decompiled from BRD3D.dll, agent-03 packet.
+/* slice1_03.c -- decompiled from BRD3D.dll, pass-03 packet.
  * See slice1_03.h for the map of what is in here and why.
  */
 #include "slice1_03.h"

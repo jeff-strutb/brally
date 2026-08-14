@@ -23,7 +23,7 @@ static int g_fails = 0;
     } while (0)
 
 /* ==========================================================================
- * Cross-slice stand-ins.  NOT part of the port -- the coordinator drops
+ * Cross-slice stand-ins.  NOT part of the port -- integration drops
  * these when the real 0x10074030 / 0x1003E070 / 0x1005FFD0 / 0x1003D210 /
  * 0x10069BC0 / 0x10069C30 land.
  * ========================================================================== */

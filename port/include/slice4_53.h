@@ -19,7 +19,7 @@
  * 3. Three forwarders (0x10044B90, 0x10044A30, and the 0x1003C230 timer)
  *    need state that the owning slice models as a passed-in context or as a
  *    Win32 call.  They read it from the hooks at the foot of this file, which
- *    the coordinator must wire.  They are inert, not wrong, until it is.
+ *    integration must wire.  They are inert, not wrong, until it is.
  */
 #ifndef SLICE4_53_H
 #define SLICE4_53_H
@@ -59,7 +59,7 @@ float BrSqrtF(float x);
 
 /* The original's table is 0x11829370, indexed by id directly, so entry 0 is
  * never reachable.  It is a .data pointer array the loader fills; there is
- * nothing to decompile in it, so it is exported here for the coordinator to
+ * nothing to decompile in it, so it is exported here for integration to
  * populate. */
 #define BR_STRING_ID_MIN   1
 #define BR_STRING_ID_LIMIT 0x12F        /* first id that is OUT of range */
@@ -191,7 +191,7 @@ void BrSub1003551B(void *pCar);
  * the same object (0x10A9D008) and only agree on a 32-bit host -- BrOptUi
  * uses int32_t where BrDPlayLink uses void*.  The cast here is exact on the
  * original's ABI and wrong on LP64.  Reconciling the two structs is a
- * coordinator job, not a per-packet one. */
+ * integration job, not a per-packet one. */
 void BrSub1003DA40(BrOptUi *pUi, int a);
 
 /* 0x10041B50 -> slice2_24's BrMenuAutoSaveName. */
@@ -232,7 +232,7 @@ int BrTimerStart1003C230(void);
 void BrSub1003C230(void);
 
 /* ======================================================================
- * 8. Coordinator wiring
+ * 8. Integration wiring
  * ====================================================================== */
 
 /* slice2_26 deliberately gathers its globals into BrPhaseCtx and passes it

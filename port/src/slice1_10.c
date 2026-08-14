@@ -1,4 +1,4 @@
-/* slice1_10.c -- agent 10's packet, 0x10079550-0x10086A10.
+/* slice1_10.c -- another module's packet, 0x10079550-0x10086A10.
  *
  * ONE function of the fourteen is game code (0x10079550). The other thirteen
  * are statically linked MSVC CRT and are deliberately NOT ported. They are

@@ -1,4 +1,4 @@
-/* test_slice5_61.c -- behavioural tests for the agent-61 packet.
+/* test_slice5_61.c -- behavioural tests for the pass-61 packet.
  *
  * Everything below asserts a PROPERTY of the original (a clamp, a wrap, an
  * asymmetry, a fixed-point scale) rather than a value this port happened to

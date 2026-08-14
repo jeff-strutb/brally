@@ -7,7 +7,7 @@
  * would change them.
  *
  * This file also supplies the three external symbols the module declares but
- * does not own (the bit reader from agent 09, the announce hook from agent 01,
+ * does not own (the bit reader from a later pass, the announce hook from a later pass,
  * and the mutex hooks that replace the KERNEL32 calls).
  */
 

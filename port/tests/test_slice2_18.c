@@ -1,4 +1,4 @@
-/* test_slice2_18.c -- behaviour tests for the agent-18 packet.
+/* test_slice2_18.c -- behaviour tests for the pass-18 packet.
  *
  * These assert invariants that come out of the ORIGINAL's arithmetic (fixed
  * point scale factors, clamp asymmetries, ring wraparound, guFog identities),

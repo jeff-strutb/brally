@@ -16,7 +16,7 @@
 #define BrFloor(d) floor(d)
 
 /* 0x1007C8A0 is __ftol: chop toward zero, keep the LOW dword of the 64-bit
- * result. Same transcription agent 02 used in slice1_02.c, repeated here
+ * result. Same transcription a later pass used in slice1_02.c, repeated here
  * because that copy is static to its translation unit.
  *
  * DEVIATION: a plain (int32_t) cast is undefined outside int32 range while
@@ -476,7 +476,7 @@ void BrCarStateUnpack(BrCarState *pDst, const BrCarPacked *pSrc)
 
 /* 0x10005470.  BR_ENTITY_STRIDE (0x2B68) comes from slice1_09.h.
  *
- * NOTE: the base here is 0x10ACEDB0, which is NOT the 0x10ACDEA8 that agent
+ * NOTE: the base here is 0x10ACEDB0, which is NOT the 0x10ACDEA8 that pass
  * 09's entity helpers use -- the two differ by 0xF08, not by a whole number of
  * records. Either this walks a different array or it starts 0xF08 into the
  * record; the stride and the "first dword non-zero" test are all this code
@@ -536,7 +536,7 @@ int32_t BrNetSlotGetF030(BrNetState *pNet, int32_t slot,
     v      = pSlot->f030;
     packed = (uint32_t)pSlot->f034;
     /* DEVIATION: the original reads three separate bytes at +0x34..+0x36.
-     * Agent 02 models that region as one int32, so the bytes come out of it
+     * A later pass models that region as one int32, so the bytes come out of it
      * in x86 (little-endian) order. */
     *pb34 = (uint8_t)(packed & 0xFFu);
     *pb35 = (uint8_t)((packed >> 8) & 0xFFu);

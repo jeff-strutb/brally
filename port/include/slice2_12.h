@@ -1,8 +1,8 @@
 /* slice2_12.h -- decompiled from BRD3D.dll, addresses 0x100053F0-0x10008AA0.
  *
  * This packet is the ENCODE half of the network car-state codec whose DECODE
- * half agent 02 already published in slice1_02.h, plus the parts of the
- * 16-slot player table that agent 02 did not cover, plus a POD archive WRITER
+ * half a later pass already published in slice1_02.h, plus the parts of the
+ * 16-slot player table that a later pass did not cover, plus a POD archive WRITER
  * (the read side is br_pod.h).
  *
  * Nothing here re-defines a type: BrCarState, BrNetSlot, BrNetState, the
@@ -10,8 +10,8 @@
  * slice1_02.h; BrBitStream comes from slice1_09.h.
  *
  * WHY THE PAIRING MATTERS. Every quantiser below turned out to be the exact
- * inverse of one of agent 02's dequantisers -- including the two with
- * NEGATIVE scales, which agent 02 flagged as suspicious. 0x100065E0 multiplies
+ * inverse of one of another module's dequantisers -- including the two with
+ * NEGATIVE scales, which a later pass flagged as suspicious. 0x100065E0 multiplies
  * by +32768 and subtracts from 0.5 (so the sign flips) while its partner
  * 0x10007280 multiplies by -1/32768; the flip cancels. That mutual
  * confirmation is the main evidence that both readings are right, so do not
@@ -34,8 +34,8 @@
 /* The write twin of 0x10073C90 (BrBitStreamReadBits): emit the low nBits of
  * `value`, MSB-first, without aligning first. __thiscall in the original, the
  * object first here as everywhere else in slice1_09.h.
- * INTEGRATION: agent 09 owns 0x10073B60-0x10073F50; this one falls in that
- * range but is not declared there yet. Rename to agent 09's export if it
+ * INTEGRATION: a later pass owns 0x10073B60-0x10073F50; this one falls in that
+ * range but is not declared there yet. Rename to another module's export if it
  * lands under another name. */
 extern void BrBitStreamWriteBits(BrBitStream *pBs, int32_t value, int32_t nBits);
 
@@ -69,7 +69,7 @@ extern void BrPodWriterMakeName(void *pStream, const char *pszSrc, char *pszDst)
  * which also catches NaN, while the HIGH bound is applied with "> hi", which
  * does not. A NaN therefore comes out as the LOW bound, never the high one.
  *
- * Their ranges line up exactly with the field ranges agent 02 recorded for
+ * Their ranges line up exactly with the field ranges a later pass recorded for
  * f00..f0C, f10/f14 and f18 in BrCarState, which is what identifies them. */
 
 /* 0x100058D0  clamp to [-1, 1]      -- the four orientation components. */
@@ -83,10 +83,10 @@ void BrCarClampPosZ(float *pv);
  * 2. Quantisers -- float -> packed integer
  * ===================================================================== */
 
-/* Same shape as agent 02's three: `clamp(floor(0.5 + scale*v))`, written by
+/* Same shape as another module's three: `clamp(floor(0.5 + scale*v))`, written by
  * the original as `0.5 - v*(-scale)`. Rounding is floor-of-(x+0.5), so halves
  * go UP, not away from zero. Every clamp here is on the INTEGER, after
- * __ftol, so the same latent sign-flip agent 02 documented applies once the
+ * __ftol, so the same latent sign-flip a later pass documented applies once the
  * scaled value leaves int32 range.
  *
  * The inverse of each is named in its comment. */
@@ -97,7 +97,7 @@ int32_t BrFixPackS6Q7Neg(float v);
 int32_t BrFixPackS16Q15Neg(float v);
 /* 0x10006620  clamp(floor(0.5 + v*256/361), 0, 255)   inverse of 0x100072A0.
  * The scale really is float(256/361) = 0.7091412544250488, the reciprocal of
- * agent 02's 1.41015625, so degrees round-trip through a byte. */
+ * another module's 1.41015625, so degrees round-trip through a byte. */
 int32_t BrFixPackU8Angle(float v);
 /* 0x10006660  clamp(floor(0.5 + (v-400)/120.63491821), 0, 63)  inv. 0x100072C0.
  * GOTCHA: the clamp is to 6 bits (0..63) even though the dequantiser masks a
@@ -199,7 +199,7 @@ uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords);
  * and index 0 still holds one element. Returns -1 when empty.
  *
  * 0x10005D40 works on the array at 0x10220D90 with the index at 0x10220DD4
- * (BrNetState::f10220DD4, whose array agent 02 did not model);
+ * (BrNetState::f10220DD4, whose array a later pass did not model);
  * 0x10005D90 works on pNet->a10221288 with pNet->f10221318 -- the stack
  * BrNetDropMatching pushes onto. Both take the matching mutex first. */
 int32_t BrNetStackPop(void *hMutex, int32_t *paStack, int32_t *piTop);
@@ -212,7 +212,7 @@ int32_t BrNetGetA102212D0(BrNetState *pNet, int32_t i);
  * at +0x030 is returned, and the three bytes at +0x034, +0x035 and +0x036 are
  * stored through the three out pointers.
  *
- * DEVIATION: agent 02 models +0x034 as one int32 (BrNetSlot::f034), so the
+ * DEVIATION: a later pass models +0x034 as one int32 (BrNetSlot::f034), so the
  * three bytes are extracted from it as bits 0..7, 8..15 and 16..23 -- i.e.
  * the x86 memory order. On a big-endian host that is not the same layout.
  * These are the two fields BrNetReset deliberately does not clear. */
@@ -246,7 +246,7 @@ void BrNetClearF10220DD0(BrNetState *pNet);
  * one.
  *
  * The original read the clock from 0x10003460 (BrTicks30FromMs) and wrote the
- * global at 0x1022AF14, which agent 02 did not model; both are parameters. */
+ * global at 0x1022AF14, which a later pass did not model; both are parameters. */
 void BrNetCheckDeadline(BrNetState *pNet, uint32_t nowTicks, int32_t *pfFlag);
 
 /* =====================================================================

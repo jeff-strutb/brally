@@ -1,4 +1,4 @@
-/* slice5_60.c -- Boss Rally (BRD3D.dll) decompilation, agent 60, slice 5.
+/* slice5_60.c -- Boss Rally (BRD3D.dll) decompilation, a later pass, slice 5.
  *
  * See port/include/slice5_60.h for what is here, what is not, why, and the
  * signature/name conflicts this packet turned up.  Addresses in comments are
@@ -798,7 +798,7 @@ void BrSub10071130(int a, int b)
  *     modelled.  Its failure path formats "Could not select service provider
  *     because of error 0x%08X" and its success sentinel is the DirectPlay
  *     HRESULT 0x88770118, which is compared against for EQUALITY -- so that
- *     one error is silently swallowed.  Recommend the coordinator stub it.
+ *     one error is silently swallowed.  Recommend integration stub it.
  *
  * 0x10004E50  BrNetSendDelta (slice2_11.h:180)
  *     Not portable, and not recoverable either.  It takes both the global

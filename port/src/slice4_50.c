@@ -1,4 +1,4 @@
-/* slice4_50.c -- agent 50, slice 4. See slice4_50.h for the packet's
+/* slice4_50.c -- a later pass, slice 4. See slice4_50.h for the packet's
  * mispaired-listing problem, the three forwarders, and the two skips.
  *
  * Every function here was read out of the asm/ dumps at the address its WANTED

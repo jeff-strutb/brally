@@ -1,4 +1,4 @@
-/* slice5_61.h -- decompiled from BRD3D.dll, agent-61 packet (slice 5).
+/* slice5_61.h -- decompiled from BRD3D.dll, pass-61 packet (slice 5).
  *
  * This packet is a "close the link" packet: every entry is an address some
  * already-ported module calls through an `extern` it declared itself. The
@@ -55,7 +55,7 @@
 /* ==========================================================================
  * Globals this packet needs that NO existing header exposes free-standing
  *
- * COORDINATOR: each of these already appears inside some other slice's state
+ * INTEGRATION: each of these already appears inside some other slice's state
  * struct. They are declared here as plain externs because that is how the
  * original addresses them; de-duplicate against the listed field.
  * ========================================================================== */
@@ -114,7 +114,7 @@ extern const void *(*g_brPfnDerefW1)(uint32_t w1);
  *   slice2_25.h  void    BrSub1003D0B0(BrDPlay *, BrDPSessionDesc **)
  *
  * 0x1003CE80 TESTS the returned HRESULT (`test esi,esi / jge`), so the
- * int32_t form is the load-bearing one. The coordinator should point this at
+ * int32_t form is the load-bearing one. The integration should point this at
  * slice4_51.c's BrSub1003D0B0. Until it does, BrSub1003CE80 treats a NULL
  * pointer here as "the call failed and wrote nothing".
  */
@@ -266,7 +266,7 @@ int32_t BrExt_10042410(void *pArg);
  * declares `void BrGfx42AF0_1(void *)`, and slice4_50.h deliberately routes
  * around that with a function POINTER (`g_brPfn42AF0_1`). The majority (and
  * only) declaration is followed here. The value it would have returned is a
- * constant 1, so the coordinator can point g_brPfn42AF0_1 at any `return 1`.
+ * constant 1, so integration can point g_brPfn42AF0_1 at any `return 1`.
  *
  * The argument is never read; 0x10042AF0 is also called with THREE arguments
  * (slice2_18.h's BrGfx42AF0_3), which is consistent -- it reads none of them.

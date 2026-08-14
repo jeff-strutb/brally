@@ -1,9 +1,9 @@
-/* slice5_63.h -- decompiled from BRD3D.dll, agent-63 packet (slice 5).
+/* slice5_63.h -- decompiled from BRD3D.dll, pass-63 packet (slice 5).
  *
  * This packet is a "close the link" packet: every function below is already
  * declared `extern` by the module that calls it. The declarations here are
  * therefore DUPLICATES of the callers' declarations, repeated verbatim so the
- * coordinator can see them in one place. Where a caller's declaration and the
+ * integration can see them in one place. Where a caller's declaration and the
  * original disagree (the original returns a value that the caller declares
  * away, e.g. 0x1003C1E0 and 0x1007AC00), the CALLER's form wins and the
  * dropped value is noted.
@@ -164,7 +164,7 @@ void BrSub10074090(BrVec4 *pDst, const BrVec4 *pA, const BrVec4 *pB);
  *
  * COLLISION: slice2_25.h declares `g_brB4E728` (0x10B4E728) as a standalone
  * int32_t. That address is element 6 of this array. They are the same memory
- * in the original; the coordinator has to pick one. */
+ * in the original; integration has to pick one. */
 #define BR63_SCRATCH_COUNT 12
 extern int32_t g_aBrB4E710[BR63_SCRATCH_COUNT];
 

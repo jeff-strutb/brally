@@ -1,4 +1,4 @@
-/* slice2_15.c -- agent-15 packet, 0x10016A60-0x1001CCA0. See slice2_15.h.
+/* slice2_15.c -- pass-15 packet, 0x10016A60-0x1001CCA0. See slice2_15.h.
  *
  * ---------------------------------------------------------------------------
  * FLOAT CONSTANTS

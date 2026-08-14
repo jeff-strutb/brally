@@ -28,7 +28,7 @@
  *   0x1003AE50 is exported as BrVec3NormaliseGuard, not BrVec3Normalise:
  *     slice1_09 already DEFINES BrVec3Normalise for the other, unguarded
  *     normaliser at 0x10074180, while slice2_18.h externs the name for THIS
- *     address. Those two cannot both be `BrVec3Normalise`; the coordinator
+ *     address. Those two cannot both be `BrVec3Normalise`; integration
  *     must repoint slice2_18's extern at BrVec3NormaliseGuard.
  *   0x1003B470 is exported as BrMtxMul, not BrMat4Mul: slice1_05 already
  *     defines BrMat4Mul for 0x100306C0, which is a different routine and

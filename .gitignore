@@ -35,8 +35,8 @@ extracted/
 # disassembly generated from BRD3D.dll
 asm/
 
-# per-agent disassembly packets
-work/**/*.asm
+# generated disassembly packets
+work/
 
 *.z64
 *.BIN

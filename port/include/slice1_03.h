@@ -1,4 +1,4 @@
-/* slice1_03.h -- decompiled from BRD3D.dll, agent-03 packet
+/* slice1_03.h -- decompiled from BRD3D.dll, pass-03 packet
  * (address range 0x100088D0 - 0x1001DC70).
  *
  * Three unrelated clusters ended up in this packet:

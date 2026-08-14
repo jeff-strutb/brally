@@ -1,4 +1,4 @@
-/* slice3_41.h -- Boss Rally (BRD3D.dll) slice 3, agent 41.
+/* slice3_41.h -- Boss Rally (BRD3D.dll) slice 3, a later pass.
  *
  * Packet range 0x100661B0 - 0x100695A0 (33 functions in the listing).  Only
  * the parts that could be resolved with confidence are ported; the rest are
@@ -51,7 +51,7 @@ extern float g_BrAnimDt;
 /* 0x100B380C -- a mode selector.  WARNING: this one address already carries
  * THREE names in port/include (BrG_0B380C in slice2_18.h, g_br0B380C in
  * slice2_25.h, g_Br0B380C in slice2_19.h).  slice2_19.h's spelling is used
- * here; the coordinator has to collapse the other two. */
+ * here; integration has to collapse the other two. */
 extern int32_t g_Br0B380C;
 
 /* =====================================================================
@@ -88,7 +88,7 @@ extern int32_t g_Br0B380C;
  * ===================================================================== */
 
 /* The two car fields the rank sort touches.  In the original these live at
- * +0xFF4 / +0xFF8 of the 0x2B68-byte entity record; when the coordinator
+ * +0xFF4 / +0xFF8 of the 0x2B68-byte entity record; when integration
  * lands a full car type, BrDriver::pCar should be re-pointed at it. */
 typedef struct BrDriverCar {
     float   fFF4;       /* +0xFF4  sort key                              */
@@ -304,7 +304,7 @@ void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
  * 1 -- the banks are double-buffered.
  *
  * All three pools (these two and br_pool.h's) share the single frame counter
- * at 0x106C65EC.  This port gives each bank its own copy; the coordinator
+ * at 0x106C65EC.  This port gives each bank its own copy; integration
  * must keep them in step. */
 typedef struct BrFrameBank {
     uint8_t *pBase;     /* first usable slot of frame 0                    */
@@ -326,7 +326,7 @@ void *BrPool32Alloc(void);
 
 /* The 64-byte pool's counter (0x10B01C40) belongs to br_pool.h, whose
  * BrPoolAlloc takes an explicit BrPool * and so has no global instance for
- * BrGfx69580 -- which takes no arguments -- to reach.  The coordinator points
+ * BrGfx69580 -- which takes no arguments -- to reach.  The integration points
  * this at whichever BrPool it makes canonical; NULL means "not wired". */
 extern BrPool *g_pBrPool64;
 
