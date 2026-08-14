@@ -601,23 +601,3 @@ real -- it already shipped two backends behind one core.
   found and fixed (thiscall `ret imm16` endings); others likely remain.
 - The `d3d_only` / `shared` classification in `config/shared.csv` is a heuristic
   fingerprint match, not proof.
-
----
-
-## Getting the game data (not in this repository)
-
-This repo contains **only our own source**. The original binaries and all game
-assets are copyrighted and are deliberately untracked. To build and run the
-tests you need a retail copy of Boss Rally (PC, 1999) and must populate:
-
-    orig/       BRD3D.dll, BRGlide.dll   (from the disc; BRD3D.dll is the
-                decompilation target -- sha256 29af141ebd44bbcc79a9e58ca9cba629
-                36792d6750c2e8b9df1a3805ae684b99)
-    testdata/   BossRally.pod, splash.img, loading.img, ce.rca, bb.rca,
-                cargfx/skytexdesert.ci4 + .lut4
-
-Without `testdata/` the tree still compiles; the suites that read retail files
-will fail at runtime, which is the intended signal rather than a silent pass.
-
-The N64 asset extraction (menu art, XM music) lives outside this repo for the
-same reason -- it is derived from a copyrighted ROM.
