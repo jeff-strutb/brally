@@ -58,9 +58,26 @@ int main(void)
     CHECK(c->f50 == 0, "+0x50 cleared by the constructor");
     CHECK(c->f5C == 0, "+0x5C cleared by the constructor");
 
+    /* +0x2A40 is the LOW half of the same -1 dword as +0x2A42, and it is the
+     * one 0x10047FB0 overwrites with a code word. It must start at -1 for the
+     * same reason: 0 is a valid code. */
+    CHECK(c->f2A40 == (uint16_t)0xFFFFu, "+0x2A40 is -1, not zero");
+
+    /* +0x1C is 1, not 0. 0x10047FB0 ORs into it, so a zero here would be
+     * invisible until a flag test came out wrong. */
+    CHECK(c->f1C == 1, "+0x1C is 1");
+
+    /* The item at +0x2B5C is slice3_39.h's BrTextBox and its element ctor
+     * (0x1005B050) sets f08 = 1. Everything else it writes is a zero. */
+    CHECK(c->f2B5C.f08 == 1, "the item's +0x08 is 1");
+    CHECK(c->f2B5C.sz[0] == 0, "the item's text buffer is cleared");
+    CHECK(c->f2B5C.pVtbl == NULL,
+          "the item vtable is left NULL -- a host installs g_pBrTextBoxVtbl");
+
     /* Pin the gap count. If someone adds the item table to BrUiCtl_ without
-     * initialising it to -1 here, this fires. */
-    CHECK(g_brUiCtlUnmodelledWrites == 9,
+     * initialising it to -1 here, this fires. It dropped from 9 to 8 when
+     * BrUiCtl_ gained f1C. */
+    CHECK(g_brUiCtlUnmodelledWrites == 8,
           "unmodelled-write count unchanged (update ctor when it drops)");
 
     /* NULL in is NULL out -- a port DEVIATION; the original faults. */

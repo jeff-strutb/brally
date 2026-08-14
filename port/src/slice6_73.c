@@ -342,16 +342,16 @@ void BrOptFn100558A0(BrPhase_ *pSelf)
     pCtl->f1E20C = 3;
     pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 1, pS->p0AB448);
     if (pCtl->f2B5C.pVtbl != NULL) {
-        pCtl->f2B5C.pVtbl->f04(&pCtl->f2B5C);
+        pCtl->f2B5C.pVtbl->pfn04(&pCtl->f2B5C);
     }
-    pCtl->f50 = 0x9B;  pCtl->f2F80 = 0x9B;
-    pCtl->f58 = 0x15B; pCtl->f2F88 = 0x15B;
-    pCtl->f54 = 0x189; pCtl->f2F84 = 0x189;
-    pCtl->f5C = 0x199; pCtl->f2F8C = 0x199;
+    pCtl->f50 = 0x9B;  pCtl->f2B5C.left  = 0x9B;
+    pCtl->f58 = 0x15B; pCtl->f2B5C.right = 0x15B;
+    pCtl->f54 = 0x189; pCtl->f2B5C.f428  = 0x189;
+    pCtl->f5C = 0x199; pCtl->f2B5C.f430  = 0x199;
     /* the width is computed in 16 bits from the mirrors, then 0x10 is taken
      * off in 32 bits and the result truncated back to 16 */
-    pCtl->f2F78 = (uint16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2F88
-                                                 - (uint16_t)pCtl->f2F80) - 0x10);
+    pCtl->f2B5C.f41C = (int16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2B5C.right
+                                       - (uint16_t)pCtl->f2B5C.left) - 0x10);
     pPage->cCtl++; pPage->cSel++;
 
     BR73_CTL(130.0f, 412.0f, 0x100009, 1, -1);
@@ -369,14 +369,14 @@ void BrOptFn100558A0(BrPhase_ *pSelf)
     pCtl->f1E20C = 3;
     pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 1, pS->p0AB448);
     if (pCtl->f2B5C.pVtbl != NULL) {
-        pCtl->f2B5C.pVtbl->f04(&pCtl->f2B5C);
+        pCtl->f2B5C.pVtbl->pfn04(&pCtl->f2B5C);
     }
-    pCtl->f50 = 0x9B;  pCtl->f2F80 = 0x9B;
-    pCtl->f58 = 0x15B; pCtl->f2F88 = 0x15B;
-    pCtl->f54 = 0x1AF; pCtl->f2F84 = 0x1AF;
-    pCtl->f5C = 0x1BF; pCtl->f2F8C = 0x1BF;
-    pCtl->f2F78 = (uint16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2F88
-                                                 - (uint16_t)pCtl->f2F80) - 0x10);
+    pCtl->f50 = 0x9B;  pCtl->f2B5C.left  = 0x9B;
+    pCtl->f58 = 0x15B; pCtl->f2B5C.right = 0x15B;
+    pCtl->f54 = 0x1AF; pCtl->f2B5C.f428  = 0x1AF;
+    pCtl->f5C = 0x1BF; pCtl->f2B5C.f430  = 0x1BF;
+    pCtl->f2B5C.f41C = (int16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2B5C.right
+                                       - (uint16_t)pCtl->f2B5C.left) - 0x10);
     pPage->cCtl++; pPage->cSel++;
 
     BR73_CTL(80.0f, 46.0f, 9, 0, 7);

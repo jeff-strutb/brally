@@ -239,9 +239,29 @@ void BrEntSetRecord(BrEnt *pE, int32_t idx);
 void BrEntReset(BrEnt *pE);
 
 /* The table BrEntSetRecord indexes. 0x100C12A0; slice2_15.h calls the same
- * address the "sprite descriptor table" and gives the same 89992 stride. */
+ * address the "sprite descriptor table" and gives the same 89992 stride.
+ *
+ * ALIAS RESOLVED. slice2_20.c calls this same address `g_ab0C12A0` and uses it
+ * as the destination buffer for a car .rca load (`pvDest == g_ab0C12A0` is how
+ * it recognises a PREVIEW load). One original object, two host names -- the
+ * link-clean bug CONVENTIONS.md describes. It is resolved by making
+ * slice2_20's name the storage and keeping `g_aBrC12A0` as a spelling of it,
+ * so the two views share bytes instead of drifting.
+ *
+ * SIZE, now pinned rather than "sized by integration": BrEntSetRecord indexes
+ * with a stride of 89992 (0x15F88) and the next referenced global in
+ * config/globals.csv is 0x10220B20 == 0x100C12A0 + 16 * 0x15F88 exactly. So
+ * the table is 16 records -- the same 16 as the race-entrant array. A
+ * seventeenth record would run past 0x10220B20, which is separately
+ * referenced, so 16 is an upper bound as well as a lower one.
+ *
+ * Almost all of it is past the end of .data's raw bytes (0x100C1420), i.e.
+ * .bss: zero-initialised in the original too. */
+#define BR45_CARGFX_STRIDE  89992u
+#define BR45_CARGFX_COUNT   16u
 /* XSLICE 0x100C12A0 */
-extern unsigned char g_aBrC12A0[];
+extern unsigned char g_ab0C12A0[];
+#define g_aBrC12A0 g_ab0C12A0
 
 /* 0x100765E0 -- matrix in, BrVec4 out. Almost certainly matrix-to-quaternion
  * (its result is used exactly where BrEntSetHeading writes a quaternion), but

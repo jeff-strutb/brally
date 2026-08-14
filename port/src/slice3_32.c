@@ -14,6 +14,29 @@
  */
 #include <string.h>
 
+/* --- DUPLICATE SYMBOL, not duplicate work (host link only) ---------------
+ * 0x10048470 is declared by slice3_32.h over `BrUiPage` and by slice6_73.h
+ * over `BrUiPage_`, under ONE name. The two structs are not the same shape --
+ * slice3_32's has the pfn0C and +0x16 fields, and until br_uivt.c existed
+ * slice6_73's did not -- so binding one model's caller to the other model's
+ * body wrote every field from +0x00C onward at the wrong offset and ran eight
+ * bytes past the end of what BR73_ALLOC asks for.
+ *
+ * br_uivt.c owns the BrUiPage_ body. Under BR_HOST_LINK this module's
+ * BrUiPage layout body is renamed so both exist and each caller reaches the
+ * one built for its own struct. This file's internal calls are renamed with
+ * it, so the module stays self-consistent; its own test binary links this .o
+ * alone, without BR_HOST_LINK, and is unaffected.
+ *
+ * This is a stopgap, exactly like the one at the top of slice6_73.c. The real
+ * fix is to merge BrUiPage and BrUiPage_ the way br_phase.h merged the three
+ * views of the phase object; the two are already field-for-field identical,
+ * so the merge is mechanical and only the naming differs.
+ * ------------------------------------------------------------------------ */
+#ifdef BR_HOST_LINK
+#define BrUiPageCtor_10048470 BrUiPageCtor_10048470_scr32
+#endif
+
 #include "slice3_32.h"
 
 /* ==========================================================================

@@ -88,9 +88,17 @@ extern float g_br4BC198;
 /* 0x10AA26F4 / 0x10AA26F5 -- ALIASES slice3_31.h BrPhaseCtx31::bAA26F4 and
  * ::bAA26F5. 0x1003E510 reads the DWORD at 0x10AA26F4 and then uses only its
  * low two bytes; they are declared as two bytes here so the decode does not
- * depend on host endianness (see the DEVIATION in slice5_61.c). */
-extern uint8_t g_brAA26F4;
-extern uint8_t g_brAA26F5;
+ * depend on host endianness (see the DEVIATION in slice5_61.c).
+ *
+ * ALIAS RESOLVED. slice5_63.c already owns this dword as `g_aBrAA26F4[4]`
+ * and reads the same two bytes out of it ([0] and [1]). Two host objects for
+ * one original dword links cleanly and drifts apart on the first write, so
+ * the two names are now two spellings of ONE array rather than two objects.
+ * Both are used as plain values, so macros are enough and no call site
+ * changes. */
+extern uint8_t g_aBrAA26F4[4];        /* 0x10AA26F4, the whole dword */
+#define g_brAA26F4 (g_aBrAA26F4[0])
+#define g_brAA26F5 (g_aBrAA26F4[1])
 
 /* 0x100B3820 -- two bytes per entry, indexed by (g_brAA26F5 + 12*g_brAA26F4).
  * Byte 0 of the pair goes to 0x100B380C, byte 1 to 0x1022B350. The DLL image

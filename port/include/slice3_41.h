@@ -45,8 +45,14 @@ extern void BrFatal(const char *pszMsg);
  * extern of identical type is legal even if both headers are included).
  * Confirmed as a time delta independently here: 0x10068EF0 does
  * car->f1034 += car->f1030 * g_BrAnimDt, and the contract fixes car+0x1030
- * as speed. */
-extern float g_BrAnimDt;
+ * as speed.
+ *
+ * ALIAS RESOLVED (third name for this address): slice2_20.c calls it
+ * g_f6C2CFC. The storage is now defined once, in port/src/br_data.c, and both
+ * this header and slice2_19.h spell it as g_BrAnimDt. .bss in the original,
+ * so 0 at boot is the original's own value. */
+extern float g_f6C2CFC;
+#define g_BrAnimDt g_f6C2CFC
 
 /* 0x100B380C -- a mode selector.  WARNING: this one address already carries
  * THREE names in port/include (BrG_0B380C in slice2_18.h, g_br0B380C in

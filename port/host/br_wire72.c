@@ -28,6 +28,15 @@
  * the other stops compiling rather than silently disagreeing at the ABI. */
 struct BrUiCtl_;
 struct BrUiCtl_ *BrUiCtlCtor(struct BrUiCtl_ *pThis);
+
+/* 0x10048470 from br_uivt.h, declared the same way and for the same reason.
+ *
+ * Unlike the control, the PAGE needs no cast at all: `BrUiPage_` is one tag
+ * completed by both slice6_72.h and slice6_73.h, and the two definitions are
+ * now field-for-field identical, so this declaration and br_uivt.h's describe
+ * the same layout. If they ever diverge again the compiler will not catch it,
+ * which is precisely why they were made to agree. */
+BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis);
 #include <string.h>
 
 /* 0x100476C0, over slice6_72's view of the control. */
@@ -45,9 +54,7 @@ void BrHostWire72(void)
     memset(&g_env72,   0, sizeof(g_env72));
 
     g_env72.pHooks     = &g_hooks72;
-    g_env72.pfnCtlCtor = Ctl72Ctor;
-    /* pfnPageCtor is left NULL: 0x10048470 is not ported yet, and a NULL here
-     * faults loudly at the call rather than handing the builder an
-     * uninitialised page it would fill in and silently mis-place. */
+    g_env72.pfnCtlCtor  = Ctl72Ctor;
+    g_env72.pfnPageCtor = BrUiPageCtor_10048470;
     g_pBr72Env = &g_env72;
 }

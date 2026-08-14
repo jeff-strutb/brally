@@ -45,8 +45,9 @@ int32_t        g_br0AB3F4;
 unsigned char *g_brPAA29D0;
 char           g_aBrA9D018[256];
 char           g_aBrA9D078[256];
-uint8_t        g_brAA26F4;
-uint8_t        g_brAA26F5;
+/* One dword, not two bytes -- g_brAA26F4/F5 are spellings of [0] and [1].
+ * See the ALIAS RESOLVED note in slice5_61.h. */
+uint8_t        g_aBrAA26F4[4];
 
 /* 0x100B3820, first four pairs as they appear in the DLL image. */
 const uint8_t g_aBr0B3820[8] = { 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00 };

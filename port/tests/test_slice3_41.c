@@ -37,7 +37,7 @@ static int g_fails;
  * Cross-slice stand-ins.  TEST-ONLY -- the real ones live elsewhere.
  * ===================================================================== */
 
-float   g_BrAnimDt  = 1.0f;     /* 0x106C2CFC, owned by slice2_19        */
+float   g_f6C2CFC   = 1.0f;     /* 0x106C2CFC, spelled g_BrAnimDt here   */
 int32_t g_Br0B380C  = 0;        /* 0x100B380C, owned by slice2_19        */
 
 static int  g_nFatal;

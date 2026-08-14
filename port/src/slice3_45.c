@@ -119,7 +119,11 @@ static void BrDbgPrint(const char *pMsg)
 /* Globals this translation unit owns                                      */
 /* ====================================================================== */
 
-unsigned char g_aBrC12A0[1];   /* 0x100C12A0; sized by integration */
+/* 0x100C12A0. Owned here, but under slice2_20's name for it -- see the ALIAS
+ * note in slice3_45.h. 16 records of 89992 bytes, which is exactly the gap to
+ * the next referenced global (0x10220B20). .bss in the original, so the zero
+ * initialisation is the original's own. */
+unsigned char g_ab0C12A0[BR45_CARGFX_STRIDE * BR45_CARGFX_COUNT] = { 0 };
 
 BrInputState g_brInput;
 

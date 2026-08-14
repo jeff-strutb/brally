@@ -34,6 +34,7 @@
 #include "br_gfx.h"
 #include "br_img.h"
 #include "br_uictl.h"
+#include "br_uivt.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,15 +62,22 @@ static const BrPhaseVtbl_ g_phaseVtbl;
 
 static void ClearSub70(void *pArg) { (void)pArg; }
 
-/* --- instrumented control vtable ----------------------------------------
+/* --- the control vtable -------------------------------------------------
  * BrUiCtlCtor stores an all-NULL vtable by default, so the first virtual call
  * jumps to 0. That default is right for the port -- an unported method must
  * never silently succeed -- but it ends the run before anything is observable.
  *
- * These slots record what the builders ask for and return. They are NOT ports
- * of 0x1008F6B8's real methods: f34 sets the control's text and f38 places it,
- * and neither behaviour is reproduced here. What they do give is the exact
- * sequence of build calls, which is what the harness is for.
+ * These two slots used to be FAKES: one counted calls and threw the text
+ * away, the other invented the rectangle as x/y plus the +0x7F/+0x21 extents
+ * every builder happens to use. Both now delegate to the real ports
+ * (br_uivt.c: 0x10047EB0 and 0x10047FB0), and only the counting is still this
+ * file's. So the geometry DrawPhase renders is now computed by decompiled
+ * game logic, including the style rectangle's left/right edges, which the
+ * fake could not see at all.
+ *
+ * The text box's own vtable (0x1008F728) is wired below to slice3_39.c's
+ * measuring methods, which is what makes width and height real numbers rather
+ * than zeroes.
  * ------------------------------------------------------------------------ */
 static int g_nSetText, g_nPlace;
 static const char *g_lastText;
@@ -77,28 +85,31 @@ static const char *g_lastText;
 static void HostCtlSetText(BrUiCtl_ *pThis, const void *pText,
                            int32_t a2, int32_t a3, const void *pStyle)
 {
-    (void)pThis; (void)a2; (void)a3; (void)pStyle;
     g_nSetText++;
     if (pText) g_lastText = (const char *)pText;
+    /* br_uictl.c deliberately does not run the item's element constructor
+     * (0x1005B050), so the text box arrives with a NULL vtable and
+     * 0x10047EB0's measure dispatch would be skipped. Planting the pointer
+     * the element ctor would have planted is the harness's job, not the
+     * constructor's -- see the note in br_uictl.c. */
+    if (pThis && !pThis->f2B5C.pVtbl) pThis->f2B5C.pVtbl = g_pBrTextBoxVtbl;
+    BrUiCtlSetText_10047EB0(pThis, pText, a2, a3, pStyle);
 }
 
-/* The builder passes the rectangle here. Recording it into f50/f54/f58/f5C is
- * what makes the geometry visible to DrawPhase -- the +0x7F/+0x21 extents are
- * the ones every builder in the corpus uses. */
 static void HostCtlPlace(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
                          int32_t flags, int32_t a4, int32_t a5,
                          int32_t a6, int32_t a7)
 {
-    (void)pOwner; (void)flags; (void)a4; (void)a5; (void)a6; (void)a7;
     g_nPlace++;
-    if (!pThis) return;
-    pThis->f50 = (int32_t)x;
-    pThis->f54 = (int32_t)y;
-    pThis->f58 = pThis->f50 + 0x7F;
-    pThis->f5C = pThis->f54 + 0x21;
+    BrUiCtlPlace_10047FB0(pThis, pOwner, x, y, flags, a4, a5, a6, a7);
 }
 
 static BrUiCtlVtbl_ g_hostCtlVtbl;
+
+/* 0x1008F728 -- the text widget's vtable. Only the three slots 0x10047EB0
+ * dispatches are filled; slice3_39.c ports all three. The rest stay NULL so
+ * an unported method still faults. */
+static BrTextBoxVtbl g_hostTextBoxVtbl;
 
 /* --- every ported screen builder ----------------------------------------
  * Declared here rather than by including all six slice headers, which cannot
@@ -234,6 +245,13 @@ int main(int argc, char **argv)
     g_hostCtlVtbl.f38 = HostCtlPlace;
     g_pBrUiCtlVtbl    = &g_hostCtlVtbl;
 
+    /* Without this the constructed controls have a NULL text-box vtable and
+     * 0x10047EB0 skips the measure, leaving width/height 0. */
+    g_hostTextBoxVtbl.pfn04 = BrTextBoxMeasureA;
+    g_hostTextBoxVtbl.pfn08 = BrTextBoxMeasureB;
+    g_hostTextBoxVtbl.pfn28 = BrTextBoxCentreX;
+    g_pBrTextBoxVtbl        = &g_hostTextBoxVtbl;
+
     WireContext();
     BrHostWire71();
     BrHostWire72();
@@ -299,8 +317,19 @@ int main(int argc, char **argv)
                built, BR_NBUILDERS, crashed);
         /* TYPE-MODEL WARNING -- read the ctl column with care.
          *
-         * setText and place are counted by THIS file's vtable slots, so they
-         * are measured directly and are trustworthy for every builder.
+         * setText and place are COUNTED by this file's vtable slots, so the
+         * two counts are measured directly and are trustworthy for every
+         * builder.
+         *
+         * Their EFFECTS are not. The slots delegate to br_uivt.c, which is
+         * typed over slice6_73.h's BrUiCtl_, and slice6_71's BrUiCtlX and
+         * slice6_72's BrUi72Ctl put the same original fields at different
+         * host offsets (BrUi72Ctl has a pfn18 the others lack, and nests the
+         * item block). So for those builders the writes land in the wrong
+         * members -- in bounds, since every model allocates at least the
+         * original's 0x1E214, but meaningless. The rectangles DrawPhase
+         * renders are only real for packet-73 controls. Merging the three
+         * control models is what fixes this; br_ui.h is that work.
          *
          * ctl is read out of the page struct through slice6_73.h's
          * BrUiPage_, and that is only correct for builders whose module uses
@@ -322,6 +351,27 @@ int main(int argc, char **argv)
                "      TYPE-MODEL WARNING in port/host/brally.c.\n");
         printf("(a crash means an unported callee is still NULL -- that is the\n"
                " next thing to port, not a defect in the builder)\n");
+        return 0;
+    }
+
+    /* `-b <n>` runs ONE builder in this process, no fork. -all's isolation is
+     * what makes the survey trustworthy and is also what makes a crash
+     * undebuggable: the child dies, the parent prints "signal 11" and moves
+     * on, and there is no process left to attach to. This runs the same
+     * builder in the foreground so a debugger sees the fault. */
+    if (argc > 2 && strcmp(argv[1], "-b") == 0) {
+        int b = atoi(argv[2]);
+        if (b < 0 || b >= BR_NBUILDERS) {
+            printf("builder index must be 0..%d\n", BR_NBUILDERS - 1);
+            return 1;
+        }
+        printf("\nrunning builder %s in-process ...\n", g_aBuilders[b].pszName);
+        fflush(stdout);
+        g_aBuilders[b].pfn(ph);
+        nCtl = DumpPhase(ph);
+        printf("\ncontrols built: %d   setText=%d place=%d\n",
+               nCtl, g_nSetText, g_nPlace);
+        BrStubReport();
         return 0;
     }
 

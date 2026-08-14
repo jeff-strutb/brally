@@ -156,7 +156,14 @@ extern BrVec3 g_BrCamCorner3;    /* 0x106C3340  centre + R - U           */
 extern float  g_BrCamDist;       /* 0x106C0210  = a3 of BrCamFrustumBuild */
 extern float  g_BrCamFovIn;      /* 0x106C53C0  = a2 of BrCamFrustumBuild */
 
-extern int32_t g_BrCamMode;      /* 0x100AA8B4  == 2 halves the U extent  */
+/* 0x100AA8B4 -- ALIAS RESOLVED. slice2_11.h calls the same address
+ * g_brMode0AA8B4 ("== 1 selects -11.0f over -19.8f"); this packet calls it
+ * g_BrCamMode ("== 2 halves the U extent"). One original dword, two host
+ * objects -- link-clean and wrong on the first write. The storage now lives
+ * once, in port/src/br_data.c, where the image's initial value (1) is also
+ * recorded; g_BrCamMode stays as a spelling of it so no call site changes. */
+extern int g_brMode0AA8B4;
+#define g_BrCamMode g_brMode0AA8B4
 
 extern BrMat4   g_BrViewMat;     /* 0x106C58C0  guLookAtF output          */
 extern BrMat4   g_BrProjMat;     /* 0x106C0218  guPerspective output      */
@@ -297,10 +304,26 @@ typedef struct BrCarGfx {
 } BrCarGfx;
 
 extern int32_t g_BrCarCount;    /* 0x100B36FC */
-extern int32_t g_Br0AC300;      /* 0x100AC300  non-zero suppresses part 2 */
-extern int32_t g_Br6C661C;      /* 0x106C661C */
-extern int32_t g_Br6C6624;      /* 0x106C6624 */
+/* 0x100AC300 / 0x106C661C / 0x106C6624 -- ALIASES RESOLVED. slice2_20.c
+ * calls these g_i0AC300, g_i6C661C and g_i6C6624. Storage in
+ * port/src/br_data.c, which is also where the recovered initial value of
+ * 0x100AC300 lives: it is 1, not 0. That matters here -- "non-zero suppresses
+ * part 2" means the shipped build suppresses it and this port did not. */
+extern int g_i0AC300;
+extern int g_i6C661C;
+extern int g_i6C6624;
+#define g_Br0AC300 g_i0AC300
+#define g_Br6C661C g_i6C661C
+#define g_Br6C6624 g_i6C6624
 extern void  (*g_BrGfxSubmit)(uint32_t dl);   /* 0x118AA0C0 */
+/* 0x118AA0C4 -- ALIAS FOUND, NOT RESOLVED. slice2_20.c declares the same
+ * address as `void (*g_pfn18AA0C4)(void *pv)`. The two disagree about the
+ * ARGUMENT: this packet passes a 32-bit display-list address (BrLd32), that
+ * one passes a host pointer. Both are .bss NULL at boot, so nothing has
+ * drifted yet -- but whichever module installs the hook, the other will not
+ * see it. Merging needs the argument adjudicated (the original takes one
+ * 32-bit DL address, which is the shape here), not a cast, so it is left
+ * declared twice and flagged rather than silently unified. */
 extern void  (*g_BrGfxSubmitB)(uint32_t p);   /* 0x118AA0C4 */
 
 /* 0x100350EE  Stamp an RGBA5551 colour into the first two halfwords of
@@ -389,7 +412,10 @@ typedef struct BrAnimSet {
     BrAnimList  *pList;    /* +0x04 */
 } BrAnimSet;
 
-extern float g_BrAnimDt;   /* 0x106C2CFC  seconds advanced per call */
+/* 0x106C2CFC -- ALIAS RESOLVED. slice2_20.c calls this g_f6C2CFC. Storage in
+ * port/src/br_data.c; .bss in the original, so it really does start at 0. */
+extern float g_f6C2CFC;
+#define g_BrAnimDt g_f6C2CFC   /* 0x106C2CFC  seconds advanced per call */
 
 /* 0x10035585  For every track in the set: flags = (flags | orBits) & ~andArg.
  *

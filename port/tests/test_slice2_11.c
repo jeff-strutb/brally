@@ -112,7 +112,8 @@ int  BrCdTrackGet(void)        { return s_cdGet; }
 void BrCdTrackPlay(int track)  { s_cdPlayed = track; ++s_cdPlayCount; }
 
 /* --- network ------------------------------------------------------- */
-float      g_brNet220D68;
+/* g_brNet220D68 is NOT a separate object -- it is g_brNetLastFull.f78.
+ * See the ALIAS RESOLVED note in slice2_11.h. */
 BrCarState g_brNetLastFull;
 int        g_brNetTickCount;
 int        g_brNetSendCount;
@@ -322,9 +323,16 @@ static void test_netsend(void)
     CHECK(((float *)(void *)&g_brNetLastFull)[0] == 42.0f);
     CHECK(g_brNetTickCount == 0);   /* untouched by the fast path */
 
+    /* The reference's stamp IS g_brNet220D68 -- one object, two spellings.
+     * Snapshotting the state therefore arms the crossing test, which is why
+     * the fast path fires exactly once rather than on every call. */
+    CHECK(g_brNet220D68 == 4188888.0f);
+    CHECK(&g_brNet220D68 == &g_brNetLastFull.f78);
+
     /* Once the reference has also crossed, the fast path stops firing. */
-    g_brNet220D68 = 4188888.0f;
     pAll[30] = 0.0f;
+    CHECK(BrNetCarStateSend(&st) == 1);   /* accumulates, does not send */
+    CHECK(s_fullCount == 1);
 
     /* Two ticks accumulate and send nothing; the third sends. */
     memset(g_abrNetPeak, 0, sizeof(g_abrNetPeak));

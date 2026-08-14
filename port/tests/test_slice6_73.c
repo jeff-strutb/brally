@@ -100,8 +100,10 @@ int32_t        g_br0AB3F4;
 unsigned char *g_brPAA29D0;
 char           g_aBrA9D018[256];
 char           g_aBrA9D078[256];
-uint8_t        g_brAA26F4;
-uint8_t        g_brAA26F5;
+/* One dword, not two bytes -- slice5_61.h now spells g_brAA26F4/F5 as
+ * g_aBrAA26F4[0] and [1], the alias slice5_63.c owns. Same fix as
+ * test_slice5_61.c. */
+uint8_t        g_aBrAA26F4[4];
 const uint8_t  g_aBr0B3820[8] = { 0x02, 0x00, 0x04, 0x00, 0, 0, 0, 0 };
 float          g_br4BC198;
 const void *(*g_brPfnDerefW1)(uint32_t w1);
@@ -216,7 +218,10 @@ static const BrUiCtlSubVtbl_ s_subVtbl = { {0,0,0,0}, TestSubF10, TestSubF14 };
 
 static int s_cItemF04;
 static void TestItemF04(BrUiItem_ *pThis) { (void)pThis; ++s_cItemF04; }
-static const BrUiItemVtbl_ s_itemVtbl = { 0, TestItemF04 };
+/* 0x1008F728 -- slice3_39.h's BrTextBoxVtbl.  Only +0x04 is reached here. */
+static const BrUiItemVtbl_ s_itemVtbl = {
+    0, TestItemF04, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
 /* 0x100476C0 */
 BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
@@ -719,14 +724,15 @@ static void TestBuilder_100558A0(void)
      * +0x2F80 mirrors carry the same four numbers as +0x50 */
     pS0 = pPage->apCtl[10];
     pS1 = pPage->apCtl[13];
-    CHECK(pS0->f50 == pS0->f2F80 && pS0->f54 == pS0->f2F84);
-    CHECK(pS0->f58 == pS0->f2F88 && pS0->f5C == pS0->f2F8C);
-    CHECK(pS1->f50 == pS1->f2F80 && pS1->f5C == pS1->f2F8C);
+    CHECK(pS0->f50 == pS0->f2B5C.left && pS0->f54 == pS0->f2B5C.f428);
+    CHECK(pS0->f58 == pS0->f2B5C.right && pS0->f5C == pS0->f2B5C.f430);
+    CHECK(pS1->f50 == pS1->f2B5C.left && pS1->f5C == pS1->f2B5C.f430);
     CHECK(pS0->f50 == pS1->f50 && pS0->f58 == pS1->f58);
     CHECK(pS0->f54 != pS1->f54);
-    /* width == (f2F88 - f2F80) - 0x10, computed in 16 bits */
-    CHECK(pS0->f2F78 == (uint16_t)(pS0->f2F88 - pS0->f2F80 - 0x10));
-    CHECK(pS1->f2F78 == pS0->f2F78);
+    /* width == (right - left) - 0x10, computed in 16 bits */
+    CHECK(pS0->f2B5C.f41C
+          == (int16_t)(uint16_t)(pS0->f2B5C.right - pS0->f2B5C.left - 0x10));
+    CHECK(pS1->f2B5C.f41C == pS0->f2B5C.f41C);
     /* each spinner poked its own item sub-object once */
     CHECK(s_cItemF04 == 2);
 
