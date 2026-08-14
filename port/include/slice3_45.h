@@ -474,7 +474,7 @@ typedef struct BrMouseState {
  * fourteen separate globals; they are gathered here so the pair can be tested
  * without a DirectInput device.
  *
- * COORDINATOR: pBindings aliases slice2_25.h's `void *g_brB4E1D4`, which
+ * INTEGRATION: pBindings aliases slice2_25.h's `void *g_brB4E1D4`, which
  * 0x10043400 points at &g_aBrB4DF30[g_brB4E1D0]. That record is 0xA8 bytes ==
  * exactly 28 BrInputBinding. The two must end up as one object.
  *

@@ -17,7 +17,7 @@
  *               0x10AA2E80 as `BrPointI *g_pBrAA2E80` -- an incompatible
  *               type. Redeclaring it would clash; declaring a second name for
  *               it would duplicate the storage, which is worse. NOTE for the
- *               coordinator: the function fills 0x10AA33C0..CC from the four
+ *               integration: the function fills 0x10AA33C0..CC from the four
  *               mouse buttons, calls BrMenuSub1005FFF0 (0x1005FFF0), and then
  *               scans a DIFFERENT four dwords, 0x10AA33D0..DC, returning the
  *               index of the first non-zero or -1. The set and the scan are
@@ -119,7 +119,7 @@ static void BrDbgPrint(const char *pMsg)
 /* Globals this translation unit owns                                      */
 /* ====================================================================== */
 
-unsigned char g_aBrC12A0[1];   /* 0x100C12A0; sized by the coordinator */
+unsigned char g_aBrC12A0[1];   /* 0x100C12A0; sized by integration */
 
 BrInputState g_brInput;
 

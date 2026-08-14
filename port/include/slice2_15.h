@@ -1,4 +1,4 @@
-/* slice2_15.h -- decompiled from BRD3D.dll, worker-15 packet
+/* slice2_15.h -- decompiled from BRD3D.dll, pass-15 packet
  * (address range 0x10016A60 - 0x1001CCA0).
  *
  * The packet is four loosely related clusters:

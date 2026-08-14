@@ -190,7 +190,7 @@ typedef struct BrEarPlatform {
 } BrEarPlatform;
 
 /* Resolution order, which is also the order the original stores them in.
- * The global each slot came from is listed for the coordinator's benefit. */
+ * The global each slot came from is listed for integration's benefit. */
 enum {
     BR_EAR_AAA_VALIDATE = 0,        /* 0x105754B0  _EAR_DLL_AAA_Validate@4 */
     BR_EAR_ASSIGN_HWND,             /* 0x1057548C */

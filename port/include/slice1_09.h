@@ -33,7 +33,7 @@
  *   +0x0C  write byte position
  *   +0x10  buffer base
  *
- * NOTE FOR THE COORDINATOR: br_obj.h's "small object accessors" are members
+ * INTEGRATION NOTE: br_obj.h's "small object accessors" are members
  * of THIS class, not of three different structs:
  *   0x10073B40 BrObjInitInline   -> ctor for the inline-buffer flavour
  *                                   (pBuf = this + 0x14)

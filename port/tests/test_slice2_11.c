@@ -12,7 +12,7 @@
  * links on its own.  None of it is part of the port: the vector routines
  * are br_vec.c (0x1003AC30-0x1003B060), BrTriContainsPoint is slice1_06
  * (0x1003B940), and the rest are cross-slice callees declared XSLICE in
- * slice2_11.h.  The coordinator links the real ones.
+ * slice2_11.h.  The integration links the real ones.
  */
 #include <assert.h>
 #include <math.h>
