@@ -1,8 +1,35 @@
 # Boss Rally — decompilation project
 
-Target: **`BRD3D.dll`** (`sha256 29af141e…`), the DirectDraw build. It contains the
-entire game and exports one symbol, `RallyMain`. `BRGlide.dll` is the same game with
-a Glide renderer and is used here as a cross-reference.
+Target: **`BRD3D.dll`** (`sha256 29af141e…`), the DirectDraw build, for the shared
+game core. It contains the entire game and exports one symbol, `RallyMain`.
+`BRGlide.dll` is the same game against 3dfx Glide.
+
+### Which binary is the reference (decided, and it is not one answer)
+
+**Shared core -> either. Renderer -> BRGlide.**
+
+The ~1,708 functions shared between the two builds are byte-for-byte the same
+logic; that is how they were identified. All core decompilation to date is
+therefore unaffected by this choice, and BRD3D remains fine for it.
+
+For the **renderer**, BRGlide is the better reference, for two reasons:
+
+1. **Glide was the mature target.** This is a 1997/1999 title; 3dfx Voodoo was
+   the dominant 3D gaming platform of that window and Glide the well-trodden
+   API. DirectDraw/D3D in the DX5/6 era was the weaker, later path, and the
+   DDraw build has the shape of a port rather than the lead platform.
+2. **BRGlide is a cleaner binary to analyse.** It imports `MSVCRT.dll`, i.e. it
+   links the CRT *dynamically*, whereas BRD3D statically links ~100 KB of MSVC
+   CRT that has to be identified and fenced off. Roughly a fifth of BRD3D's
+   `.text` is library code we must never port. BRGlide simply does not carry it.
+
+Practical consequence: when implementing the Metal backend against the ~73
+divergent functions, read the **Glide** side. The game emits N64 F3DEX display
+lists either way -- the producer is shared, only the consumer differs -- and the
+Glide consumer is the better model of what the game intends to draw.
+
+`config/functions_glide.csv` already exists; `tools/crossdiff.py` pairs the two
+builds function-for-function.
 
     orig/       pristine binaries + sha256 (the match target)
     tools/      analysis tooling (Python + capstone, in .venv)
@@ -408,6 +435,31 @@ NOTE: I could not reproduce the disassembly myself (that address is one of the
 map's mid-function entries), so this rests on agent 19's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
+
+### TOP INTEGRATION BLOCKER — one merged phase layout unblocks five functions
+
+Five menu-screen builders (`0x10049F40`, `0x1004D640`, `0x10056FF0`, `0x1004F700`,
+`0x10053CF0`) have been declined **independently by five different agents**. Their
+bodies are not the problem -- `slice3_33.c` has already decompiled the same family
+five times. The blocker is a TYPE:
+
+- `slice2_26.h` `BrPhase` and `slice2_25.h` `BrOptObj` model the 0xC8-byte object as
+  `{pVtbl, pfn04, pfn08, f0C, f68}`.
+- The builders need `+0x10` (uint16 screen count), `+0x14` (screen array) and
+  `+0x6C` (parallel int array) -- which is `slice3_33.h`'s `BrUiPhase`, an
+  incompatible layout for the same memory.
+- `slice3_32.h` adds a third view, `BrPhaseFull`, with the full 0xC8 map recovered
+  from the destructor and vtable: `+0x10` page count, `+0x12` index,
+  `+0x14` `BrUiPage*[20]`, `+0x64` current page, `+0x68`, `+0x6C` `int32[20]`,
+  `+0xBC` selection, `+0xC0`/`+0xC4` two refcounted objects.
+
+**Casting `BrPhase*` -> `BrUiPhase*` links cleanly and is silently wrong at every
+field access.** Merging on `slice3_32.h`'s `BrPhaseFull` layout (the best-evidenced
+one) unblocks all five at once and retires three competing models.
+
+Also settled by agent 60: the `pfn08` slot's argument is an **entity record**
+(`+0x2AE8` is the sub-object), so `slice2_25.h`'s `void(*)(BrOptObj*)` typing is the
+wrong shape; `slice2_26.h`'s `void(*)(void *pEntity)` is right.
 
 ### Analysis tooling
 

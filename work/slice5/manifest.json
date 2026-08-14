@@ -1,0 +1,782 @@
+[
+ {
+  "agent": 60,
+  "count": 15,
+  "bytes": 14192,
+  "wanted": [
+   {
+    "addr": "0x1003C020",
+    "name": "BrSub1003C020",
+    "size": 294,
+    "users": "slice2_25|slice4_50|slice4_53"
+   },
+   {
+    "addr": "0x100243D0",
+    "name": "BrGbiCall100243D0",
+    "size": 8,
+    "users": "slice2_16"
+   },
+   {
+    "addr": "0x10020FA0",
+    "name": "BrGbiCall10020FA0",
+    "size": 1392,
+    "users": "slice2_16"
+   },
+   {
+    "addr": "0x10004E50",
+    "name": "BrNetSendDelta",
+    "size": 368,
+    "users": "slice2_11"
+   },
+   {
+    "addr": "0x100603A0",
+    "name": "BrSub100603A0",
+    "size": 939,
+    "users": "slice4_52"
+   },
+   {
+    "addr": "0x10071130",
+    "name": "BrSub10071130",
+    "size": 624,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x100341B3",
+    "name": "BrSub100341B3",
+    "size": 39,
+    "users": "slice2_19"
+   },
+   {
+    "addr": "0x1002BF80",
+    "name": "BrSub1002BF80",
+    "size": 458,
+    "users": "slice2_19"
+   },
+   {
+    "addr": "0x1003C020",
+    "name": "BrExt_1003C020",
+    "size": 294,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10056FF0",
+    "name": "BrOptFn10056FF0",
+    "size": 1532,
+    "users": ""
+   },
+   {
+    "addr": "0x10044970",
+    "name": "BrOptFn10044970",
+    "size": 178,
+    "users": ""
+   },
+   {
+    "addr": "0x10049F40",
+    "name": "BrExt_10049F40",
+    "size": 800,
+    "users": ""
+   },
+   {
+    "addr": "0x1004F700",
+    "name": "BrExt_1004F700",
+    "size": 2387,
+    "users": ""
+   },
+   {
+    "addr": "0x10053CF0",
+    "name": "BrExt_10053CF0",
+    "size": 3669,
+    "users": ""
+   },
+   {
+    "addr": "0x1004D640",
+    "name": "BrExt_1004D640",
+    "size": 1210,
+    "users": ""
+   }
+  ]
+ },
+ {
+  "agent": 61,
+  "count": 19,
+  "bytes": 16248,
+  "wanted": [
+   {
+    "addr": "0x1003CE80",
+    "name": "BrSub1003CE80",
+    "size": 311,
+    "users": "slice2_13|slice2_25|slice4_50"
+   },
+   {
+    "addr": "0x10024260",
+    "name": "BrGbiCall10024260",
+    "size": 138,
+    "users": "slice2_16"
+   },
+   {
+    "addr": "0x10042AF0",
+    "name": "BrGfx42AF0_1",
+    "size": 6,
+    "users": "slice2_18"
+   },
+   {
+    "addr": "0x10060E90",
+    "name": "BrTimeNow",
+    "size": 5,
+    "users": "slice2_18"
+   },
+   {
+    "addr": "0x10035CE0",
+    "name": "BrEnt35CE0",
+    "size": 690,
+    "users": "slice2_18"
+   },
+   {
+    "addr": "0x10019290",
+    "name": "BrSub_10019290",
+    "size": 8,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10031140",
+    "name": "BrSub_10031140",
+    "size": 71,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x1001BE90",
+    "name": "BrSub_1001BE90",
+    "size": 1934,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10042410",
+    "name": "BrExt_10042410",
+    "size": 179,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x10043330",
+    "name": "BrExt_10043330",
+    "size": 201,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x1003E510",
+    "name": "BrSub1003E510",
+    "size": 368,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x100440D0",
+    "name": "BrExt_100440D0",
+    "size": 201,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x1003DB00",
+    "name": "BrExt_1003DB00",
+    "size": 67,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x1003C150",
+    "name": "BrExt_1003C150",
+    "size": 135,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10051D30",
+    "name": "BrOptFn10051D30",
+    "size": 760,
+    "users": ""
+   },
+   {
+    "addr": "0x10057C10",
+    "name": "BrOptFn10057C10",
+    "size": 2701,
+    "users": ""
+   },
+   {
+    "addr": "0x10052030",
+    "name": "BrExt_10052030",
+    "size": 3862,
+    "users": ""
+   },
+   {
+    "addr": "0x1005A6E0",
+    "name": "BrExt_1005A6E0",
+    "size": 1932,
+    "users": ""
+   },
+   {
+    "addr": "0x1004E830",
+    "name": "BrExt_1004E830",
+    "size": 2679,
+    "users": ""
+   }
+  ]
+ },
+ {
+  "agent": 62,
+  "count": 15,
+  "bytes": 14120,
+  "wanted": [
+   {
+    "addr": "0x100419D0",
+    "name": "BrExt_100419D0",
+    "size": 42,
+    "users": "slice2_26|slice3_31|slice4_50"
+   },
+   {
+    "addr": "0x1005FCF0",
+    "name": "BrSub1005FCF0",
+    "size": 183,
+    "users": "slice2_25|slice3_32"
+   },
+   {
+    "addr": "0x1001E7C0",
+    "name": "BrGbiGeoModeChanged",
+    "size": 441,
+    "users": "slice2_16"
+   },
+   {
+    "addr": "0x100020D0",
+    "name": "BrSub_100020D0",
+    "size": 105,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x1003289F",
+    "name": "BrSub_1003289F",
+    "size": 419,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10069490",
+    "name": "BrSub_10069490",
+    "size": 77,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x1001C820",
+    "name": "BrSub_1001C820",
+    "size": 488,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10004FC0",
+    "name": "BrNetKeepAliveTick",
+    "size": 194,
+    "users": "slice2_11"
+   },
+   {
+    "addr": "0x100765E0",
+    "name": "BrSub100765E0",
+    "size": 112,
+    "users": "slice3_45"
+   },
+   {
+    "addr": "0x10062C50",
+    "name": "BrSub10062C50",
+    "size": 1909,
+    "users": "slice3_45"
+   },
+   {
+    "addr": "0x100443E0",
+    "name": "BrExt_100443E0",
+    "size": 222,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x1003CDA0",
+    "name": "BrExt_1003CDA0",
+    "size": 212,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10056A10",
+    "name": "BrOptFn10056A10",
+    "size": 1498,
+    "users": ""
+   },
+   {
+    "addr": "0x10058750",
+    "name": "BrOptFn10058750",
+    "size": 4109,
+    "users": ""
+   },
+   {
+    "addr": "0x10058750",
+    "name": "BrExt_10058750",
+    "size": 4109,
+    "users": ""
+   }
+  ]
+ },
+ {
+  "agent": 63,
+  "count": 27,
+  "bytes": 14308,
+  "wanted": [
+   {
+    "addr": "0x10075330",
+    "name": "BrGbiCall10075330",
+    "size": 1,
+    "users": "slice2_16|slice3_44"
+   },
+   {
+    "addr": "0x1003E310",
+    "name": "BrSub1003E310",
+    "size": 137,
+    "users": "slice2_25|slice3_32"
+   },
+   {
+    "addr": "0x1003E510",
+    "name": "BrExt_1003E510",
+    "size": 368,
+    "users": "slice2_26|slice3_31"
+   },
+   {
+    "addr": "0x1003D210",
+    "name": "BrFn1003D210",
+    "size": 389,
+    "users": "slice2_23"
+   },
+   {
+    "addr": "0x10017290",
+    "name": "BrSub_10017290",
+    "size": 238,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10019260",
+    "name": "BrSub_10019260",
+    "size": 8,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10019270",
+    "name": "BrSub_10019270",
+    "size": 8,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10019280",
+    "name": "BrSub_10019280",
+    "size": 8,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x100192F0",
+    "name": "BrSub_100192F0",
+    "size": 10,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x10031688",
+    "name": "BrSub_10031688",
+    "size": 478,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x100027C0",
+    "name": "BrCdTrackPlay",
+    "size": 37,
+    "users": "slice2_11"
+   },
+   {
+    "addr": "0x10004C60",
+    "name": "BrNetSendFull",
+    "size": 360,
+    "users": "slice2_11"
+   },
+   {
+    "addr": "0x10074090",
+    "name": "BrSub10074090",
+    "size": 288,
+    "users": "slice3_45"
+   },
+   {
+    "addr": "0x1003C1E0",
+    "name": "BrSub1003C1E0",
+    "size": 71,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x1003D210",
+    "name": "BrSub1003D210",
+    "size": 389,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x1003F320",
+    "name": "BrSub1003F320",
+    "size": 285,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x1005FBC0",
+    "name": "BrExt_1005FBC0",
+    "size": 289,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x1003D130",
+    "name": "BrSub1003D130",
+    "size": 71,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x1003C5C0",
+    "name": "BrSub1003C5C0",
+    "size": 383,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x10043E70",
+    "name": "BrExt_10043E70",
+    "size": 216,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10038F30",
+    "name": "BrExt_10038F30",
+    "size": 195,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x1007AC00",
+    "name": "BrExt_1007AC00",
+    "size": 22,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x1004CAC0",
+    "name": "BrOptFn1004CAC0",
+    "size": 1834,
+    "users": ""
+   },
+   {
+    "addr": "0x10049C20",
+    "name": "BrExt_10049C20",
+    "size": 794,
+    "users": ""
+   },
+   {
+    "addr": "0x1004F2B0",
+    "name": "BrExt_1004F2B0",
+    "size": 1091,
+    "users": ""
+   },
+   {
+    "addr": "0x10052F50",
+    "name": "BrExt_10052F50",
+    "size": 3475,
+    "users": ""
+   },
+   {
+    "addr": "0x10059BB0",
+    "name": "BrExt_10059BB0",
+    "size": 2863,
+    "users": ""
+   }
+  ]
+ },
+ {
+  "agent": 64,
+  "count": 20,
+  "bytes": 15405,
+  "wanted": [
+   {
+    "addr": "0x10002910",
+    "name": "BrCdTrackGet",
+    "size": 19,
+    "users": "slice2_11|slice3_32"
+   },
+   {
+    "addr": "0x10048710",
+    "name": "BrOptObjCtor",
+    "size": 310,
+    "users": "slice2_25|slice4_50"
+   },
+   {
+    "addr": "0x10029470",
+    "name": "BrGbiCall10029470",
+    "size": 2452,
+    "users": "slice2_16"
+   },
+   {
+    "addr": "0x1003F2B0",
+    "name": "BrSub1003F2B0",
+    "size": 112,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x10058700",
+    "name": "BrSub10058700",
+    "size": 72,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x10060D90",
+    "name": "BrSub10060D90",
+    "size": 46,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x1002B920",
+    "name": "BrFtolArg",
+    "size": 9,
+    "users": "slice2_21"
+   },
+   {
+    "addr": "0x1003E310",
+    "name": "BrExt_1003E310",
+    "size": 137,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x10041AC0",
+    "name": "BrExt_10041AC0",
+    "size": 144,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x100424D0",
+    "name": "BrExt_100424D0",
+    "size": 144,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x1003D030",
+    "name": "BrSub1003D030",
+    "size": 55,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x1003C740",
+    "name": "BrSub1003C740",
+    "size": 615,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x1003BF60",
+    "name": "BrExt_1003BF60",
+    "size": 111,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10041BD0",
+    "name": "BrExt_10041BD0",
+    "size": 534,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x100575F0",
+    "name": "BrOptFn100575F0",
+    "size": 1558,
+    "users": ""
+   },
+   {
+    "addr": "0x1004A260",
+    "name": "BrExt_1004A260",
+    "size": 800,
+    "users": ""
+   },
+   {
+    "addr": "0x100509F0",
+    "name": "BrExt_100509F0",
+    "size": 3990,
+    "users": ""
+   },
+   {
+    "addr": "0x10059760",
+    "name": "BrExt_10059760",
+    "size": 1091,
+    "users": ""
+   },
+   {
+    "addr": "0x1004D1F0",
+    "name": "BrExt_1004D1F0",
+    "size": 1092,
+    "users": ""
+   },
+   {
+    "addr": "0x1004DFC0",
+    "name": "BrExt_1004DFC0",
+    "size": 2114,
+    "users": ""
+   }
+  ]
+ },
+ {
+  "agent": 65,
+  "count": 27,
+  "bytes": 14256,
+  "wanted": [
+   {
+    "addr": "0x1003BF60",
+    "name": "BrSub1003BF60",
+    "size": 111,
+    "users": "slice2_25|slice4_50"
+   },
+   {
+    "addr": "0x1003DFC0",
+    "name": "BrExt_1003DFC0",
+    "size": 66,
+    "users": "slice2_26|slice3_31"
+   },
+   {
+    "addr": "0x1003E680",
+    "name": "BrExt_1003E680",
+    "size": 287,
+    "users": "slice2_26|slice3_31"
+   },
+   {
+    "addr": "0x10035FC0",
+    "name": "BrEnt35FC0",
+    "size": 21,
+    "users": "slice2_18"
+   },
+   {
+    "addr": "0x1005B0C0",
+    "name": "BrTextBoxDtor",
+    "size": 7,
+    "users": "slice3_39"
+   },
+   {
+    "addr": "0x100771B0",
+    "name": "BrDikGetDeviceState",
+    "size": 78,
+    "users": "slice3_39"
+   },
+   {
+    "addr": "0x1002B2A0",
+    "name": "BrSub_1002B2A0",
+    "size": 37,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x1003407D",
+    "name": "BrSub_1003407D",
+    "size": 310,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x100173F0",
+    "name": "BrSub_100173F0",
+    "size": 665,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x100290A0",
+    "name": "BrSub_100290A0",
+    "size": 53,
+    "users": "slice2_15"
+   },
+   {
+    "addr": "0x1006F720",
+    "name": "BrCollGridCellAcquire",
+    "size": 551,
+    "users": "slice2_11"
+   },
+   {
+    "addr": "0x1006F4A0",
+    "name": "BrSub1006F4A0",
+    "size": 152,
+    "users": "slice3_40"
+   },
+   {
+    "addr": "0x1003CDA0",
+    "name": "BrSub1003CDA0",
+    "size": 212,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x1003E680",
+    "name": "BrSub1003E680",
+    "size": 287,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x10044540",
+    "name": "BrSub10044540",
+    "size": 184,
+    "users": "slice2_25"
+   },
+   {
+    "addr": "0x10079550",
+    "name": "BrExt_10079550",
+    "size": 120,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x10041A00",
+    "name": "BrExt_10041A00",
+    "size": 179,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x10043260",
+    "name": "BrExt_10043260",
+    "size": 201,
+    "users": "slice3_31"
+   },
+   {
+    "addr": "0x10071550",
+    "name": "BrSub10071550",
+    "size": 16,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x10005B10",
+    "name": "BrSub10005B10",
+    "size": 205,
+    "users": "slice4_50"
+   },
+   {
+    "addr": "0x10043BF0",
+    "name": "BrExt_10043BF0",
+    "size": 59,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10043CD0",
+    "name": "BrExt_10043CD0",
+    "size": 201,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x10044280",
+    "name": "BrExt_10044280",
+    "size": 340,
+    "users": "slice2_26"
+   },
+   {
+    "addr": "0x100558A0",
+    "name": "BrOptFn100558A0",
+    "size": 2877,
+    "users": ""
+   },
+   {
+    "addr": "0x10050060",
+    "name": "BrExt_10050060",
+    "size": 2433,
+    "users": ""
+   },
+   {
+    "addr": "0x10054B50",
+    "name": "BrExt_10054B50",
+    "size": 3394,
+    "users": ""
+   },
+   {
+    "addr": "0x1004DB00",
+    "name": "BrExt_1004DB00",
+    "size": 1210,
+    "users": ""
+   }
+  ]
+ }
+]

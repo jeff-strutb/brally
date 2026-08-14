@@ -174,6 +174,25 @@ clang build/slice4_51.o build/test_slice4_51.o -lm -o build/test_slice4_51
 clang build/slice4_52.o build/test_slice4_52.o -lm -o build/test_slice4_52
 clang build/slice4_53.o build/test_slice4_53.o -lm -o build/test_slice4_53
 
+# layout assertions -- plain C99; failures break the BUILD
+clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_pod.o -o build/test_layout
+
+
+# --- slice 5: link-gap round 2 ---
+clang $CFLAGS -c port/src/slice5_60.c -o build/slice5_60.o
+clang $CFLAGS -c port/tests/test_slice5_60.c -o build/test_slice5_60.o
+clang $CFLAGS -c port/src/slice5_61.c -o build/slice5_61.o
+clang $CFLAGS -c port/tests/test_slice5_61.c -o build/test_slice5_61.o
+clang $CFLAGS -c port/src/slice5_62.c -o build/slice5_62.o
+clang $CFLAGS -c port/tests/test_slice5_62.c -o build/test_slice5_62.o
+clang $CFLAGS -c port/src/slice5_63.c -o build/slice5_63.o
+clang $CFLAGS -c port/tests/test_slice5_63.c -o build/test_slice5_63.o
+
+clang build/slice5_60.o build/test_slice5_60.o -lm -o build/test_slice5_60
+clang build/slice5_61.o build/test_slice5_61.o -lm -o build/test_slice5_61
+clang build/slice5_62.o build/test_slice5_62.o -lm -o build/test_slice5_62
+clang build/slice5_63.o build/test_slice5_63.o -lm -o build/test_slice5_63
+
 clang build/br_pod.o build/test_pod.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview
