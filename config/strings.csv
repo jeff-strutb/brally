@@ -1,0 +1,406 @@
+va,refs,text
+0x100B8538,6,sfx/
+0x100B5418,5,RCfg
+0x100AD308,5,--:--
+0x100AD328,5,RallySeason
+0x1008F21C,5,33s?
+0x100AABB0,4,%s%s
+0x100AD320,4,.brf
+0x100AD33C,4,TimeAttack
+0x100B7CB8,4,tracks/
+0x100A79D0,4,UNKNOWN
+0x100AD310,3,AutoSave.brf
+0x100AD334,3,.grf
+0x10094574,3,NetworkPlay=
+0x10094564,3,chosenTrack=
+0x10094558,3,chosenCar=
+0x10094548,3,chosenWeather=
+0x1009453C,3,gameMode=
+0x1009452C,3,ReadJoystick=
+0x1009451C,3,HandlingType=
+0x1009450C,3,SuspensionType=
+0x10094500,3,TireType=
+0x100944EC,3,TransmissionType=
+0x100B80F8,3,cars/
+0x100A6320,3,Boss Rally Error
+0x100A819C,3,earpds.dll
+0x100A648C,3,unknown
+0x100B433C,2,ESCAPE
+0x10094308,2, left the race.
+0x100942EC,2, returned to race lobby.
+0x100B3D00,2,MakeEnemyCarColorPanels: penm->aptex[cptex+3]
+0x100943B4,2,Boss Rally
+0x100943EC,2,szPlayerName=
+0x100943E0,2,cPlayers=
+0x100943D8,2,bcar=
+0x100943D0,2,btire=
+0x100943C0,2,bsuspension=
+0x1009462C,2,LoadPod: %i >= m_cNumPods
+0x10094690,2,Error opening %s: %s
+0x100946AC,2,File read failure
+0x100A6300,2,This game requires DirectX 6.
+0x100AD348,2,RallySeason*.BRF
+0x100AA6E4,2,DINPUT.DLL
+0x100AA6B0,2,DirectInputCreateA
+0x100B5D94,2,RSea
+0x100B5D9C,2,RGho
+0x100B7CA8,2,BRString.dll
+0x100AD35C,2,TimeAttack*.GRF
+0x100BDA80,2,sqrt
+0x100BDA90,2,asin
+0x100914E4,1,KERNEL32
+0x100914F8,1,e+000
+0x100B3644,1,Paint\%s
+0x100B3650,1,Paint\damage%d.bmp
+0x100AC628,1,231`EDCFaf
+0x100940C4,1,cdaudio
+0x10094140,1,CHK_FReadOpen():pfil
+0x10094128,1,CHK_FReadOpen():szName
+0x100940F8,1,c:\RallyError.txt
+0x10094318,1, booted you from the game.
+0x100942DC,1,%s finished %s
+0x100A7E0C,1,AppendTexture: atdb
+0x100B3DE8,1,MakeEnemyCarColorPanels: penm->aptex
+0x100B3DC0,1,MakeEnemyCarColorPanels: penm->aptex[i]
+0x100B3D90,1,MakeEnemyCarColorPanels: penm->aptex[cptex+0]
+0x100B3D60,1,MakeEnemyCarColorPanels: penm->aptex[cptex+1]
+0x10094338,1,%%15%s left the game.
+0x100B3D30,1,MakeEnemyCarColorPanels: penm->aptex[cptex+2]
+0x10091D88,1,<program name unknown>
+0x10091D3C,1,Microsoft Visual C++ Runtime Library
+0x100B3EDC,1,%%ry
+0x100B3FFC,1,"VAR SAVE OVERFLOW (%d avail, %d used)"
+0x100943A8,1,BossRally
+0x10094584,1,BossRally.ini
+0x100944E0,1,TrackDir=
+0x100944D8,1,CarDir=
+0x100944D0,1,SFXDir=
+0x100944C0,1,Interpolate=
+0x100944B0,1,SpeedSensitive=
+0x1009449C,1,D3DDrawCarShadow=
+0x1009448C,1,RunBenchmark=
+0x10094480,1,PlayMusic=
+0x10094474,1,PlaySFX=
+0x10094460,1,D3DAlphaCompare=
+0x10094444,1,D3DAlwaysSquareTextures=
+0x10094430,1,D3DClearZBuffer=
+0x10094420,1,D3DWaitCanFlip=
+0x1009440C,1,D3DWaitFlipDone=
+0x100943FC,1,D3DInvSrcAlpha=
+0x100A7E20,1,TIDFromTextureAppend: amid
+0x10094594,1,CleanupName: Name is greater than 64 bytes. Memory Corrupted!
+0x100945D4,1,GetNumForName: %s not found!
+0x100945F4,1,GetPodLength: %i >= m_cNumPods
+0x10094614,1,ReadPod: %i >= cNumPods
+0x10094648,1,%s is not a valid POD file
+0x10094668,1,Add: Name is too long to be a pod name.
+0x1008FA68,1,SOFTWARE\SouthPeak Interactive\Boss Rally
+0x1008FA98,1,Directory
+0x100A8190,1,earias.dll
+0x100A8178,1,_EAR_DLL_AAA_Validate@4
+0x100A8160,1,_EAR_DLL_AssignHwnd@4
+0x100A8140,1,_EAR_DLL_ChangeChannelControl@8
+0x100A8128,1,_EAR_DLL_ClearChannel@8
+0x100A8110,1,_EAR_DLL_EarInactive@0
+0x100A80F4,1,_EAR_DLL_GetEventStatus@8
+0x100A80DC,1,_EAR_DLL_GetLastError@0
+0x100A80C4,1,_EAR_DLL_GetVersion@0
+0x100A80A8,1,_EAR_DLL_InitializeEar@4
+0x100A8094,1,_EAR_DLL_MixEvent@4
+0x100A807C,1,_EAR_DLL_MoveEvent@4
+0x100A8064,1,_EAR_DLL_RegisterBank@8
+0x100A8048,1,_EAR_DLL_RegisterChannel@16
+0x100A8028,1,_EAR_DLL_RegisterEnvironment@4
+0x100A800C,1,_EAR_DLL_RegisterMatrix@4
+0x100A7FF0,1,_EAR_DLL_RegisterPreset@8
+0x100A7FDC,1,_EAR_DLL_ResetEar@0
+0x100A7FBC,1,_EAR_DLL_SetAttenuationLevel@8
+0x100A7F9C,1,_EAR_DLL_SetUserDistanceUnit@8
+0x100A7F80,1,_EAR_DLL_ShowLastError@0
+0x100A7F68,1,_EAR_DLL_ShutDownBank@4
+0x100A7F4C,1,_EAR_DLL_ShutDownChannel@4
+0x100A7F34,1,_EAR_DLL_ShutDownEar@0
+0x100A7F14,1,_EAR_DLL_ShutDownEnvironment@4
+0x100A7EF8,1,_EAR_DLL_ShutDownEvent@8
+0x100A7EDC,1,_EAR_DLL_ShutDownMatrix@4
+0x100A7EC0,1,_EAR_DLL_ShutDownPreset@4
+0x100A7EA8,1,_EAR_DLL_StartEvent@4
+0x100A7E90,1,_EAR_DLL_StartTimer@0
+0x100A7E74,1,_EAR_DLL_ShutDownTimer@0
+0x100A7E5C,1,_EAR_DLL_UpdateEar@0
+0x100923A4,1,user32.dll
+0x10092398,1,MessageBoxA
+0x10092388,1,GetActiveWindow
+0x10092374,1,GetLastActivePopup
+0x100A7E3C,1,EAR Interactive Around-Sound
+0x100923C8,1,1#SNAN
+0x100923C0,1,1#IND
+0x100923B8,1,1#INF
+0x100923B0,1,1#QNAN
+0x100A63C0,1,APPMSG_HOSTSTARTED: received
+0x100A6390,1, finished %s
+0x100AA584,1,RallyOutro.dat
+0x100AA570,1,RallyCredits.dat
+0x100AA560,1,RallyIntro1.dat
+0x100AA550,1,RallyIntro2.dat
+0x100B5D78,1,misc\modelLights.blob
+0x100B89F8,1,Fancy Car
+0x100AA5C4,1,loading.img
+0x100AA67C,1,DDRAW.DLL
+0x100AA668,1,DirectDrawCreate
+0x100A65E8,1,BAD VTX DL
+0x100B5DD0,1,c:\RallyConfig.dat
+0x100AAB20,1,ERROR: unhandled texture size: %d
+0x100B6CA0,1,.wav
+0x100B6C98,1,h.wav
+0x100AAB44,1,HUGE GLIST ERROR
+0x100A7394,1,%6.2f FPS
+0x100AAB58,1,LoadCar()
+0x100A73B0,1,%s%d:%02d.%02d
+0x100A73C8,1,%%y1%s%d/%d
+0x100AAB80,1,.rca
+0x100AAB78,1,RCar
+0x100AAB64,1,not a car file: %s
+0x100AAB88,1,File %s missing
+0x100A747C,1,%%11%d.
+0x100A7474,1,%%y1%d.
+0x100A746C,1,%%ry%d.
+0x100A7458,1,%%11%s %dms %c%c
+0x100AAB98,1,%u %x %d %d
+0x100A7438,1,%%x%02x%02x%02x%s %s %dms %c%c
+0x100AABA8,1,.hnd
+0x100A741C,1,%%x%02x%02x%02x%s %dms %c%c
+0x100A7414,1,%%11%s
+0x100A73FC,1,%%x%02x%02x%02x%s %s
+0x100A73E8,1,%%x%02x%02x%02x%s
+0x100A73E0,1,%%55%d.
+0x100A73D8,1,%%55%s
+0x100A7484,1,%%yw%.0f
+0x100A7490,1,%s%d. %d:%02d.%02d
+0x100BD43C,1,fps = %0.2f
+0x100A79B8,1,%02x%02x%02x
+0x100AAC38,1,BossRally.pod
+0x100BD5A8,1,BossRally.cfg
+0x100BD5B8,1,splash.img
+0x100BD5C4,1,Unable to initialize Direct3D accelerated video card.
+0x100BD5FC,1,%s (Primary)
+0x100BD61C,1,%4d x %4d x %2d (%4d Hz)
+0x100BD60C,1,%4d x %4d x %2d
+0x100AD36C,1,%s%c
+0x100AAD38,1,Could not create DirectPlay object because of error 0x%08X
+0x100AADA4,1,Could not select service provider because of error 0x%08X
+0x100AADE0,1,Could not host session because of error 0x%08X
+0x100AAE10,1,Could not join session because of error 0x%08X
+0x100AD374,1,seasondesc.dat
+0x100ADEDC,1,images\work1a.bmp
+0x100ADEC8,1,images\cursor.bmp
+0x100ADEB4,1,images\type_gry.bmp
+0x100ADEA0,1,images\type_wit.bmp
+0x100ADE8C,1,images\type_mid.bmp
+0x100ADE78,1,images\bignums.bmp
+0x100ADE64,1,images\champ.bmp
+0x100ADE54,1,images\mp.bmp
+0x100ADE44,1,images\ta.bmp
+0x100ADE34,1,images\op.bmp
+0x100ADE24,1,images\qr.bmp
+0x100ADE10,1,images\carmt.bmp
+0x100ADDFC,1,images\mshft.bmp
+0x100ADDE8,1,images\softshok.bmp
+0x100ADDD4,1,images\medshok.bmp
+0x100ADDC0,1,images\hardshok.bmp
+0x100ADDAC,1,images\desrttrk.bmp
+0x100ADD98,1,images\coasttrk.bmp
+0x100ADD84,1,images\trakc.bmp
+0x100ADD74,1,images\fog.bmp
+0x100ADD64,1,images\nite.bmp
+0x100ADD54,1,images\rain.bmp
+0x100ADD44,1,images\snow.bmp
+0x100ADD30,1,images\sunweth.bmp
+0x100ADD1C,1,images\drytire.bmp
+0x100ADD08,1,images\medtire.bmp
+0x100ADCF4,1,images\wettire.bmp
+0x100ADCE0,1,images\trakd.bmp
+0x100ADCCC,1,images\trake.bmp
+0x100ADCB8,1,images\ashft.bmp
+0x100ADCA4,1,images\carTR.bmp
+0x100ADC90,1,images\carCE.bmp
+0x100ADC7C,1,images\carCU.bmp
+0x100ADC68,1,images\carES.bmp
+0x100ADC54,1,images\carFH.bmp
+0x100ADC40,1,images\carIP.bmp
+0x100AB320,1,DPERR_PENDING
+0x100AB30C,1,DPERR_UNSUPPORTED
+0x100AB2F8,1,DPERR_NOINTERFACE
+0x100ADC2C,1,images\carLD.bmp
+0x100AB2E8,1,DPERR_GENERIC
+0x100AB2D4,1,DPERR_OUTOFMEMORY
+0x100AB2C0,1,DPERR_INVALIDPARAMS
+0x100ADC18,1,images\carM3.bmp
+0x100AB2A4,1,DPERR_ALREADYINITIALIZED
+0x100AB290,1,DPERR_ACCESSDENIED
+0x100AB27C,1,DPERR_ACTIVEPLAYERS
+0x100AB264,1,DPERR_BUFFERTOOSMALL
+0x100ADC04,1,images\carMN.bmp
+0x100AB250,1,DPERR_CANTADDPLAYER
+0x100AB238,1,DPERR_CANTCREATEGROUP
+0x100AB220,1,DPERR_CANTCREATEPLAYER
+0x100AB208,1,DPERR_CANTCREATESESSION
+0x100ADBF0,1,images\carNS.bmp
+0x100AB1EC,1,DPERR_CAPSNOTAVAILABLEYET
+0x100AB1DC,1,DPERR_EXCEPTION
+0x100ADBDC,1,images\carPJ.bmp
+0x100AB1C8,1,DPERR_INVALIDFLAGS
+0x100AB1B4,1,DPERR_INVALIDOBJECT
+0x100AB1A0,1,DPERR_INVALIDPLAYER
+0x100AB18C,1,DPERR_INVALIDGROUP
+0x100ADBC8,1,images\carPS.bmp
+0x100AB17C,1,DPERR_NOCAPS
+0x100AB168,1,DPERR_NOCONNECTION
+0x100AB154,1,DPERR_NOMESSAGES
+0x100AB13C,1,DPERR_NONAMESERVERFOUND
+0x100ADBB4,1,images\carRS.bmp
+0x100AB12C,1,DPERR_NOPLAYERS
+0x100AB118,1,DPERR_NOSESSIONS
+0x100AB104,1,DPERR_SENDTOOBIG
+0x100ADBA0,1,images\carSP.bmp
+0x100AB0F4,1,DPERR_TIMEOUT
+0x100AB0E0,1,DPERR_UNAVAILABLE
+0x100AB0D4,1,DPERR_BUSY
+0x100ADB8C,1,images\carBB.bmp
+0x100AB0C0,1,DPERR_USERCANCEL
+0x100AB0A4,1,DPERR_CANNOTCREATESERVER
+0x100AB090,1,DPERR_PLAYERLOST
+0x100AB07C,1,DPERR_SESSIONLOST
+0x100ADB78,1,images\arrowdd.bmp
+0x100AB068,1,DPERR_UNINITIALIZED
+0x100AB054,1,DPERR_NONEWPLAYERS
+0x100AB03C,1,DPERR_INVALIDPASSWORD
+0x100AB028,1,DPERR_CONNECTING
+0x100ADB64,1,images\arrowdu.bmp
+0x100AB010,1,DPERR_BUFFERTOOLARGE
+0x100AAFF8,1,DPERR_CANTCREATEPROCESS
+0x100AAFE4,1,DPERR_APPNOTSTARTED
+0x100ADB50,1,images\arrowud.bmp
+0x100AAFCC,1,DPERR_INVALIDINTERFACE
+0x100AAFB4,1,DPERR_NOSERVICEPROVIDER
+0x100AAF98,1,DPERR_UNKNOWNAPPLICATION
+0x100ADB3C,1,images\arrowuu.bmp
+0x100AAF84,1,DPERR_NOTLOBBIED
+0x100AAF68,1,DPERR_SERVICEPROVIDERLOADED
+0x100AAF50,1,DPERR_ALREADYREGISTERED
+0x100AAF3C,1,DPERR_NOTREGISTERED
+0x100ADB28,1,images\joystk.bmp
+0x100AAF20,1,DPERR_AUTHENTICATIONFAILED
+0x100AAF0C,1,DPERR_CANTLOADSSPI
+0x100AAEF4,1,DPERR_ENCRYPTIONFAILED
+0x100AAEE0,1,DPERR_SIGNFAILED
+0x100ADB14,1,images\keybd.bmp
+0x100AAEC0,1,DPERR_CANTLOADSECURITYPACKAGE
+0x100AAEA0,1,DPERR_ENCRYPTIONNOTSUPPORTED
+0x100AAE8C,1,DPERR_CANTLOADCAPI
+0x100AAE78,1,DPERR_NOTLOGGEDIN
+0x100ADB00,1,images\steerinp.bmp
+0x100AAE70,1,0x%08X
+0x100AAE68,1,DP_OK
+0x100AAE54,1,DPERR_LOGONDENIED
+0x100ADAEC,1,images\type_yel.bmp
+0x100ADAD8,1,images\steerarr.bmp
+0x100ADAC4,1,images\steeradj.bmp
+0x100ADAB4,1,images\spkr.bmp
+0x100ADAA0,1,images\monitr.bmp
+0x100ADA8C,1,images\namebar.bmp
+0x100ADA78,1,images\slidebox.bmp
+0x100AD2F8,1,%C:\
+0x100ADA64,1,images\boxtile2.bmp
+0x100ADA50,1,images\rboxend.bmp
+0x100ADA3C,1,images\lboxend.bmp
+0x100ADA28,1,images\trakc_.bmp
+0x100ADA14,1,images\trakd_.bmp
+0x100ADA00,1,images\trake_.bmp
+0x100AD9EC,1,images\desrttr_.bmp
+0x100AD9D8,1,images\coasttr_.bmp
+0x100AD9C4,1,images\mpmodem.bmp
+0x100AD9B0,1,images\mptcpip.bmp
+0x100AD99C,1,images\mpipx.bmp
+0x100AD988,1,images\mpserial.bmp
+0x100AD974,1,images\seasn2a.bmp
+0x100AD960,1,images\seasn2b.bmp
+0x100AD94C,1,images\seasn3a.bmp
+0x100AD938,1,images\seasn3b.bmp
+0x100AD924,1,images\seasn4a.bmp
+0x100AD910,1,images\seasn4b.bmp
+0x100AD8FC,1,images\seasn5a.bmp
+0x100AD8E8,1,images\bgdim.bmp
+0x100AD8D4,1,images\congrat.bmp
+0x100AD8C0,1,images\noadv1.bmp
+0x100AD8AC,1,images\noadv2.bmp
+0x100AD898,1,images\but-main.bmp
+0x100AD880,1,images\but-maind.bmp
+0x100AD86C,1,images\but-op.bmp
+0x100AD858,1,images\but-opd.bmp
+0x100AD844,1,images\cars1a.bmp
+0x100AD830,1,images\cars2a.bmp
+0x100AD81C,1,images\cars2b.bmp
+0x100AD808,1,images\cars3a.bmp
+0x100AD7F4,1,images\cars3b.bmp
+0x100AD7E0,1,images\cars4a.bmp
+0x100AD7CC,1,images\cars4b.bmp
+0x100AD7B8,1,images\cars5a.bmp
+0x100AD7A4,1,images\cars5b.bmp
+0x100AD790,1,images\chatbar2.bmp
+0x100AD77C,1,images\mousinpt.bmp
+0x100AD768,1,images\ffstick.bmp
+0x100AD750,1,images\carwnoshad2.bmp
+0x100AD738,1,images\carwshad2.bmp
+0x100AD724,1,images\specoff.bmp
+0x100AD710,1,images\specon.bmp
+0x100AD6FC,1,images\noffstik.bmp
+0x100AD6E8,1,images\listbox.bmp
+0x100AD6D4,1,images\engsound.bmp
+0x100AD6C0,1,images\music.bmp
+0x100AD6AC,1,images\soundtik.bmp
+0x100AD698,1,images\soundptr.bmp
+0x100AD684,1,images\trrwd.bmp
+0x100AD670,1,images\pjrwd.bmp
+0x100AD65C,1,images\mnrwd.bmp
+0x100AD648,1,images\mirrwd.bmp
+0x100AD634,1,images\bbrwd.bmp
+0x100AD620,1,images\curwd.bmp
+0x100AD60C,1,images\fbrwd.bmp
+0x100AD5F8,1,images\mtrwd.bmp
+0x100AD5E4,1,images\sndlevl2.bmp
+0x100AD5D0,1,images\sndlevl3.bmp
+0x100AD5B8,1,images\trakraceb.bmp
+0x100AD5A0,1,images\trakracel.bmp
+0x100AD58C,1,images\but-sav.bmp
+0x100AD578,1,images\but-savd.bmp
+0x100AD564,1,images\z-carMT.bmp
+0x100AD550,1,images\z-carTR.bmp
+0x100AD53C,1,images\z-carCE.bmp
+0x100AD528,1,images\z-carCU.bmp
+0x100AD514,1,images\z-carES.bmp
+0x100AD500,1,images\z-carFH.bmp
+0x100AD4EC,1,images\z-carIP.bmp
+0x100AD4D8,1,images\z-carLD.bmp
+0x100AD4C4,1,images\z-carM3.bmp
+0x100AD4B0,1,images\z-carMN.bmp
+0x100AD49C,1,images\z-carNS.bmp
+0x100AD488,1,images\z-carPJ.bmp
+0x100AD474,1,images\z-carPS.bmp
+0x100AD460,1,images\z-carRS.bmp
+0x100AD44C,1,images\z-carSP.bmp
+0x100AD438,1,images\z-carBB.bmp
+0x100AD424,1,images\lightr.bmp
+0x100AD410,1,images\lightg.bmp
+0x100AD3FC,1,images\tire2on.bmp
+0x100AD3E8,1,images\tire2off.bmp
+0x100AD3D4,1,images\listbox2.bmp
+0x100AD3C0,1,images\trakQ.bmp
+0x100AD3AC,1,images\trakQ_.bmp
+0x100AD398,1,c:\RallySeason.dat
+0x100AD384,1,c:\RallyGhost.dat
+0x100ADF44,1,images\loading.bmp
+0x100ADF18,1,DDraw_DoInit: loading.bmp failed to load!
+0x100ADEF0,1,DDraw_DoInit: Bitmap %d failed to load!
+0x100914B0,1,kernel32.dll
+0x100914A8,1,IsTNT

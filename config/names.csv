@@ -1,0 +1,16 @@
+va,name,source
+0x10002FE0,CHK_FReadOpen,string
+0x100085F0,CleanupName,string
+0x10008750,GetNumForName,string
+0x10008780,GetPodLength,string
+0x100087B0,ReadPod,string
+0x10008810,LoadPod__0,string
+0x10008850,LoadPod__1,string
+0x10008A00,Add,string
+0x1000BAF0,APPMSG_HOSTSTARTED,string
+0x10024B60,AppendTexture,string
+0x10028350,TIDFromTextureAppend,string
+0x1005F690,DDraw_DoInit,string
+0x10065D50,MakeEnemyCarColorPanels__0,string
+0x100682A0,MakeEnemyCarColorPanels__1,string
+0x10079820,RallyMain,export
