@@ -157,6 +157,23 @@ clang build/slice3_42.o build/test_slice3_42.o -lm -o build/test_slice3_42
 clang build/slice3_44.o build/test_slice3_44.o -lm -o build/test_slice3_44
 clang build/slice3_45.o build/test_slice3_45.o -lm -o build/test_slice3_45
 
+
+# --- slice 4: link-gap closure + CRT shim ---
+clang $CFLAGS -c port/src/slice4_50.c -o build/slice4_50.o
+clang $CFLAGS -c port/tests/test_slice4_50.c -o build/test_slice4_50.o
+clang $CFLAGS -c port/src/slice4_51.c -o build/slice4_51.o
+clang $CFLAGS -c port/tests/test_slice4_51.c -o build/test_slice4_51.o
+clang $CFLAGS -c port/src/slice4_52.c -o build/slice4_52.o
+clang $CFLAGS -c port/tests/test_slice4_52.c -o build/test_slice4_52.o
+clang $CFLAGS -c port/src/slice4_53.c -o build/slice4_53.o
+clang $CFLAGS -c port/tests/test_slice4_53.c -o build/test_slice4_53.o
+clang $CFLAGS -c port/src/br_crt.c -o build/br_crt.o
+
+clang build/slice4_50.o build/test_slice4_50.o -lm -o build/test_slice4_50
+clang build/slice4_51.o build/test_slice4_51.o -lm -o build/test_slice4_51
+clang build/slice4_52.o build/test_slice4_52.o -lm -o build/test_slice4_52
+clang build/slice4_53.o build/test_slice4_53.o -lm -o build/test_slice4_53
+
 clang build/br_pod.o build/test_pod.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview

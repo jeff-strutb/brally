@@ -25,9 +25,11 @@ int32_t BrFtolTrunc(float f)
 {
     double d = (double)f;
 
-    /* __ftol keeps the low dword of a 64-bit fistp; out of range that is the
-     * indefinite value 0x80000000, NOT a saturation to INT32_MAX/MIN. */
+    /* __ftol keeps the LOW dword of a 64-bit fistp. Out of range the x87
+     * stores the 64-bit indefinite 0x8000000000000000, whose low dword is 0 --
+     * so the return is 0, not 0x80000000 and not a saturation. Verified
+     * against 0x1007C8BF. NaN takes this path too. */
     if (!(d >= -2147483648.0 && d <= 2147483647.0))
-        return (int32_t)0x80000000;
+        return 0;
     return (int32_t)d;
 }
