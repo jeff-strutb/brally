@@ -793,7 +793,7 @@ static void Test4F700(void)
     CHECK(g_cSubRows == BR71_LIST_ROWS);
     CHECK(g_pLastRow == (const void *)((const char *)phase2908.fC0 +
                         (BR71_LIST_ROWS - 1) * BR71_LIST_STRIDE + 4));
-    CHECK(((BrUiCtlX *)(void *)pScr->apCtl[2])->f383C == (void *)H_10042170);
+    CHECK(((BrUiCtlX *)(void *)pScr->apCtl[2])->f383C == H_10042170);
     CHECK(pScr->apCtl[2]->pfn04 == H_1003EAE0);
     CHECK(pScr->apCtl[2]->f1E1F4 == 1);
     CHECK(g_aSubCfg[0] == 0x40001);
@@ -885,7 +885,7 @@ static void Test575F0(void)
      * ever writes */
     CHECK(pX->base.pfn08 == H_10042B00);
     CHECK(pX->base.pfn04 == H_1003F210);
-    CHECK(pX->f10        == (void *)H_1003F280);
+    CHECK(pX->f10        == H_1003F280);
     CHECK(strcmp(pX->item.szText, "Sunday Cup") == 0);
     CHECK(g_cItemF04 == 1);
     CHECK(pX->base.f50 == 0xC5 && pX->item.f2F80 == 0xC5);

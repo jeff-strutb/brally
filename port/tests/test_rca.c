@@ -1,5 +1,6 @@
 /* test_rca.c -- verify the .rca loader against retail car files. */
 #include "br_rca.h"
+#include "br_testdata.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -20,6 +21,7 @@ static int load_show(const char *pszPath, BrRca *pRca)
 
 int main(void)
 {
+    BR_REQUIRE_TESTDATA("testdata/bb.rca", "rca");
     BrRca ce, bb;
     int i, descending = 1, differs = 0;
 

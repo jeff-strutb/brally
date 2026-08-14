@@ -23,6 +23,29 @@
  * against them; do not add a fifth model.
  *
  * ---------------------------------------------------------------------------
+ * ADJUDICATED: the array holds 20 entries, not 22.
+ *
+ * slice3_33.h models the same memory as `apScreen[22]` at +0x14 followed by
+ * `aF6C[22]` at +0x6C. That is internally consistent, so it cannot be dismissed
+ * on shape alone -- but it makes +0x64 and +0x68 into screen POINTERS, and
+ * slice2_26 independently establishes +0x68 as an int32 the phase-activate
+ * routines set to 1 on the just-built path. A pointer slot is not written with
+ * a literal 1 by three separate activate routines.
+ *
+ * So: 20 entries, +0x64 is the current-page pointer, +0x68 is that flag. An
+ * over-read of two entries is the more likely error, and it is the reading that
+ * two independent sources (the destructor at 0x10048870 and slice2_26's
+ * activate paths) agree on.
+ *
+ * REMAINING WORK, and this header does NOT fix it: the screen/control objects
+ * themselves (`BrUiScreen`, `BrUiCtl` in slice3_33.h) are still a separate
+ * conflict. Their `f34`/`f38` slots take a phase pointer typed to slice3_33's
+ * model, and several build hooks are absent from `BrUiBuildHooks`. Four screen
+ * builders (0x1004D1F0, 0x1004DB00, 0x10053CF0, 0x10058750) remain blocked on
+ * ONE merged build-context, not on this header.
+ * ---------------------------------------------------------------------------
+ *
+ * ---------------------------------------------------------------------------
  * BYTE OFFSETS ARE 32-BIT-ONLY. READ THIS BEFORE ASSERTING ANYTHING.
  *
  * The comments below give the ORIGINAL offsets, which hold on a 32-bit host.

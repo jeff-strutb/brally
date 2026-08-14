@@ -117,13 +117,13 @@ typedef struct BrUiCtlItemX {
 typedef struct BrUiCtlX {
     BrUiCtl      base;                   /* every field slice3_33.h models */
 
-    void        *f10;                    /* +0x0010  a __cdecl hook slot   */
+    BrUiCtlFn    f10;                    /* +0x0010  a __cdecl hook slot   */
     void        *p1E210;                 /* +0x1E210 -> 0x10A9DA50         */
     int32_t      f296C;                  /* +0x296C                        */
     int32_t      aStepMs[BR71_STEP_COUNT];  /* +0x2978, stride 4           */
     uint16_t     aStepId[BR71_STEP_COUNT];  /* +0x2A40, stride 2           */
     BrUiCtlItemX item;                   /* +0x2B5C                        */
-    void        *f383C;                  /* +0x383C, i.e. sub-object +0x04 */
+    BrUiCtlFn    f383C;                  /* +0x383C, i.e. sub-object +0x04 */
 } BrUiCtlX;
 
 /* What the port allocates for one control. Never the 0x1E214 literal: on a

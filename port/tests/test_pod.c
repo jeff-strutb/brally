@@ -4,6 +4,7 @@
  * parses real shipped game data correctly.
  */
 #include "br_pod.h"
+#include "br_testdata.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@ static void check(int cond, const char *pszWhat)
 
 int main(int argc, char **argv)
 {
+    BR_REQUIRE_TESTDATA("testdata/BossRally.pod", "pod");
     const char *pszPath = (argc > 1) ? argv[1] : "testdata/BossRally.pod";
     BrPod pod;
     uint32_t i, cb = 0;

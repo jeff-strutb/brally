@@ -408,6 +408,25 @@ typedef struct BrUi72Hooks {
 } BrUi72Hooks;
 
 /* ==========================================================================
+ * 7a. The display-list command 0x1003407D writes
+ * ==========================================================================
+ *
+ * slice2_15.h models the same 8-byte allocation unit as
+ * `BrGfxCmd { uint32_t w0, w1; }`.  This packet needs one more thing from it:
+ * 0x1003407D stores a POINTER into the second dword, which does not fit on
+ * LP64.
+ *
+ * DEVIATION: the port carries that pointer in a parallel field and leaves w1
+ * zero for the one command that needs it.  Everything else about the unit is
+ * slice2_15.h's; integration should extend BrGfxCmd rather than keep two.
+ */
+typedef struct Br72GfxCmd {
+    uint32_t w0;
+    uint32_t w1;    /* the original's second dword when it is a scalar */
+    void    *p1;    /* ... and when it is a pointer -- see the DEVIATION */
+} Br72GfxCmd;
+
+/* ==========================================================================
  * 8. The one context
  * ========================================================================== */
 
@@ -442,7 +461,7 @@ typedef struct Br72Env {
     void (*pfn10005960)(void);    /* 0x10005960                              */
     void (*pfn1001C620)(BrGfxSurf *pThis);          /* 0x1001C620 thiscall   */
     void (*pfn1001C640)(void);                      /* 0x1001C640            */
-    void (*pfn100307A0)(const float *pM, int32_t a);/* 0x100307A0, cdecl(2)  */
+    void (*pfn100307A0)(const float *pM, void *pDst);/* 0x100307A0, cdecl(2) */
     void *(*pfn10069490)(void);                     /* 0x10069490            */
 
     /* KERNEL32.  DEVIATION: the original calls CreateMutexA(NULL,FALSE,NULL),
@@ -456,6 +475,9 @@ typedef struct Br72Env {
     /* DirectPlay.  0x1003D0B0 in the original; it allocates and fills the
      * session descriptor and returns an HRESULT. */
     int32_t (*pfn1003D0B0)(void *pDPlay, BrDPSessionUser **ppDesc);
+    /* IDirectPlay4::SetSessionDesc, the object's vtable +0x7C. */
+    int32_t (*pfnDPSetSessionDesc)(void *pDPlay, BrDPSessionUser *pDesc,
+                                   uint32_t flags);
 
     /* --- foreign objects ------------------------------------------------- */
     BrPhase_    *pAA2908;      /* 0x10AA2908 -- the GLOBAL phase            */
@@ -478,11 +500,15 @@ typedef struct Br72Env {
     int32_t  n22AF18;     /* 0x1022AF18                                     */
     int32_t  nAA2884;     /* 0x10AA2884                                     */
     int32_t  nA9D000;     /* 0x10A9D000                                     */
-    int32_t  n575514;     /* 0x10575514 -- FLOAT bits, see BrSub_1002B2A0   */
+    float    f575514;     /* 0x10575514 -- a float, see BrSub_1002B2A0      */
     int32_t  n575530;     /* 0x10575530                                     */
     int32_t  n4C1694;     /* 0x104C1694 -- compared to 0x504340             */
-    int32_t  n4C5154, n4C5158, n4C515C, n4C5160;  /* 0x104C5154..0x104C5160 */
-    int32_t  n4C1690, n4C0BA8;                    /* float bits             */
+    /* 0x104C5158 / 0x104C515C are compared as raw bit patterns against two
+     * magic numbers; the other four are genuine floats. */
+    uint32_t n4C5158, n4C515C;
+    float    f4C5154, f4C5160, f4C1690, f4C0BA8;
+    int32_t  n0B380C;     /* 0x100B380C -- DPSESSIONDESC2 dwUser1           */
+    int32_t  n22B350;     /* 0x1022B350 -- DPSESSIONDESC2 dwUser2           */
     uint8_t  b4BBF00, b4BC194, b4C5150, b4C15CC;  /* the byte colour path   */
     int32_t  n4C5164, n4C516C, n4C5170, n4C01A0;  /* the clamp limits       */
     int32_t  n4C5188, n4C518C;                    /* index buffer + count   */
@@ -529,7 +555,7 @@ typedef struct Br72Env {
     int32_t  n4C16A0;                   /* 0x104C16A0 */
 
     /* --- the display list 0x1003407D emits into --------------------------- */
-    uint32_t *pDlCursor;   /* 0x106C0680 -- advances 8 bytes per command    */
+    Br72GfxCmd *pDlCursor; /* 0x106C0680 -- advances 8 bytes per command    */
     void     *p6C32D0;     /* 0x106C32D0                                    */
     float     aMtx6C29A8[16];  /* 0x106C29A8 -- the matrix built in place   */
 
@@ -606,11 +632,9 @@ void BrSub_1003407D(float a, float b);
 
 /* 0x1001BE90.  Fills the clamped rectangle (x1,y1)-(x2,y2) with the current
  * colour, y flipped about 0x100A81C4.
- * GOTCHA: the y1 clamp writes the argument slot but NOT the register, so the
- * register copy stays unclamped -- and the register is what the Direct3D arm
- * uses.  Reproduced.
  * GOTCHA: the two arms are chosen by an exact-equality test against the magic
- * 0x504340 in 0x104C1694. */
+ * 0x504340 in 0x104C1694, and the eleven cached render states are only
+ * re-published on the Direct3D arm. */
 void BrSub_1001BE90(int32_t x1, int32_t y1, int32_t x2, int32_t y2);
 
 /* 0x10005B10.  Creates 26 unnamed mutexes and clears two flags.

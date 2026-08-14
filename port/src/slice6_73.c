@@ -19,6 +19,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stddef.h>
 
 #include "slice6_73.h"
 
@@ -29,6 +30,11 @@ BrUi73Ctx g_br73;
 uint32_t g_aBrCollGridStamp[BR73_COLL_CELLS];   /* 0x117554C8 */
 int16_t  g_aBrCollGridKey[BR73_COLL_CELLS];     /* 0x117554D8 */
 uint32_t g_brCollGridClock;                     /* 0x117554E0 */
+
+/* The two table bases the original passes 0x10002DE0 / 0x10002EF0 as globals
+ * and slice1_01.c takes as parameters. */
+const uint16_t *g_pBrGrid64;                    /* 0x106C7C6C */
+const uint16_t *g_pBrTriTable;                  /* 0x106C7C68 */
 
 /* The eight row offsets, as magnitudes.  See the banner. */
 #define BR73_ROW_19    19.0f    /* 0x1008F680 */
@@ -176,12 +182,10 @@ BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
     pThis->pCur    = NULL;              /* +0x64 */
     pThis->f68     = 1;
     pThis->fBC     = 0;
-    pThis->pVtbl   = (const BrPhaseVtbl_ *)0;   /* 0x1008F700; see below */
-
-    /* DEVIATION: the original stores the literal 0x1008F700.  The vtable
-     * itself is not ported (its nine slots live in other packets), so the
-     * field is left NULL here and the caller installs it.  Everything else
-     * about the object is exact. */
+    /* DEVIATION: the original stores the literal 0x1008F700.  Its nine slots
+     * live in other packets, so the pointer comes from the context instead of
+     * being hardcoded.  The store happens at the same point in the sequence. */
+    pThis->pVtbl   = g_br73.pPhaseVtbl;
 
     for (k = 0; k < 2; ++k) {
         pList = (BrNameList *)BrOperatorNew(BR73_ALLOC(BrNameList, 0x6594u));
@@ -615,7 +619,6 @@ void BrExt_10050060(BrPhase_ *pSelf)
     BrUiPage_  *pPage;
     BrUiCtl_   *pCtl;
     BrNameList *pList;
-    uint16_t    i;
     int         k;
 
     /* The prologue runs BEFORE the argument is even loaded: it flips
@@ -625,12 +628,8 @@ void BrExt_10050060(BrPhase_ *pSelf)
     if (g_br73.pAA2908 != NULL) {
         pList = (BrNameList *)g_br73.pAA2908->fC0;
         if (pList != NULL && pList->pVtbl != NULL) {
-            ((const BrUiItemVtbl_ *)pList->pVtbl)->f04((BrUiItem_ *)pList);
-            /* DEVIATION: the original passes "RallySeason*.BRF"
-             * (0x100AD348) as the one argument.  BrNameList's vtable is not
-             * modelled anywhere in the port, so the call is made through the
-             * only one-argument slot there is and the pattern is recorded
-             * rather than passed.  See the report. */
+            const BrNameListVtbl_ *pv = (const BrNameListVtbl_ *)pList->pVtbl;
+            pv->f04(pList, pS->p0AD348);    /* "RallySeason*.BRF" */
         }
     }
     pPhase = pSelf;
@@ -738,7 +737,6 @@ void BrExt_10050060(BrPhase_ *pSelf)
     if (pPage == NULL) {
         return;
     }
-    (void)i;
 
     BR73_CTL(0.0f, 232.0f, 0x100009, 1, -1);
     pCtl->pfn0C = pH->p10047360;
@@ -924,7 +922,10 @@ void BrExt_10054B50(BrPhase_ *pSelf)
  * the sibling array. */
 static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
 {
-    return pBase + (size_t)((int64_t)n * (int64_t)BR61_REC29D0_STRIDE);
+    /* g_br0AB3F4 is signed and IS set to -1 by the name-reset paths; the
+     * original does not guard against it.  Same arithmetic slice5_61.c uses
+     * on the sibling array. */
+    return pBase + (ptrdiff_t)n * (ptrdiff_t)BR61_REC29D0_STRIDE;
 }
 
 int32_t BrExt_10041A00(void *pArg)
@@ -933,10 +934,12 @@ int32_t BrExt_10041A00(void *pArg)
     int32_t        fWasZero;
     int32_t        fFlag;
 
-    /* [pArg + 0x2AE8] -> +0x70 = 0.  DEVIATION: the game object is not
-     * modelled by this packet, so the store is made through the hook the
-     * caller installs rather than by overlaying a struct on pArg. */
-    (void)pArg;
+    /* pArg->pSub (+0x2AE8) then that object's +0x70 = 0.  Routed through the
+     * hook because slice2_25.h, which models the object, cannot be included
+     * here; the effect is preserved, not dropped. */
+    if (g_br73.pfnClearSub70 != NULL) {
+        g_br73.pfnClearSub70(pArg);
+    }
 
     if (g_br73.pAA29CC == NULL) {
         return 1;
@@ -950,7 +953,7 @@ int32_t BrExt_10041A00(void *pArg)
 
     /* re-read from memory, which is why 0x10AA28D8 is always 0 or 1 */
     memcpy(&fFlag, pRec + BR61_REC29D0_OFF_FLAG, sizeof(fFlag));
-    g_br73.nAA28D8 = fFlag;
+    g_brAA28D8 = fFlag;
 
     if (fFlag != 0) {
         char *pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
@@ -965,11 +968,13 @@ int32_t BrExt_100424D0(void *pArg)
     unsigned char *pRec;
     char          *pszName;
 
-    (void)pArg;                             /* see BrExt_10041A00 */
+    if (g_br73.pfnClearSub70 != NULL) {     /* see BrExt_10041A00 */
+        g_br73.pfnClearSub70(pArg);
+    }
 
     g_br73.nAA28EC = 0;
 
-    if (g_br73.nAA28D8 == 0) {
+    if (g_brAA28D8 == 0) {
         return 1;
     }
     /* the original tests the ADDRESS 0x10A9D078 against zero here; it is a
@@ -1124,7 +1129,7 @@ short BrCollGridCellAcquire(float x, float y)
     int          iVictim = 0;
     uint32_t     best    = 0x40000000u;
     BrCollPlane *pCell;
-    uint32_t     cursor;
+    uint32_t     packed;
     uint16_t     n = 0;
     uint16_t     tri;
 
@@ -1166,12 +1171,21 @@ short BrCollGridCellAcquire(float x, float y)
     /* 75 * best << 6 == 4800 * best == BR_COLL_CELL_PLANES records. */
     pCell = g_pBrCollGrid + (size_t)iVictim * BR_COLL_CELL_PLANES;
 
-    cursor = BrCollTriFirst(x, y);
-    if (cursor != 0) {
-        while ((tri = BrCollTriNext(&cursor)) != 0) {
+    /* 0x10002DE0 returns the cell's CSR row: the first triangle index in the
+     * low 16 bits and the count in the high 16.  The original keeps the whole
+     * dword as a 4-byte cursor and hands its address to 0x10002EF0, which is
+     * exactly slice1_01.h's BrU16Cursor {pos, remaining}. */
+    packed = BrGrid64Sample(g_pBrGrid64, x, y);
+    if (packed != 0) {
+        BrU16Cursor cur;
+
+        cur.pos       = (uint16_t)(packed & 0xFFFFu);
+        cur.remaining = (uint16_t)(packed >> 16);
+
+        while ((tri = BrU16CursorNext(g_pBrTriTable, &cur)) != 0) {
             BrCollPlane *p = &pCell[n];
             uint32_t     u = (uint32_t)tri;
-            BrVec3       a, b;
+            BrVec3       a, b, nrm;
 
             /* three u16 vertex indices on an 8-byte stride */
             p->pV0 = &g_pBrCollVerts[g_pBrCollTriIdx[4u * u + 0u]];
@@ -1189,11 +1203,18 @@ short BrCollGridCellAcquire(float x, float y)
 
             /* the plain cross product (V1-V0) x (V2-V0); traced through every
              * fxch, no operand order is guessed */
-            p->nx = a.y * b.z - a.z * b.y;
-            p->ny = a.z * b.x - a.x * b.z;
-            p->nz = a.x * b.y - a.y * b.x;
+            nrm.x = a.y * b.z - a.z * b.y;
+            nrm.y = a.z * b.x - a.x * b.z;
+            nrm.z = a.x * b.y - a.y * b.x;
 
-            BrCollPlaneNormalise(p);
+            /* 0x10074250 == slice1_09.h's BrVec3Normalise, which the original
+             * calls on the record itself.  DEVIATION (LP64): BrCollPlane's
+             * first three floats are not a BrVec3 in the port, so the vector
+             * round-trips through a local.  Note BrVec3Normalise has NO
+             * zero-length guard, by design -- a degenerate triangle stores
+             * NaNs here exactly as it does in the original. */
+            BrVec3Normalise(&nrm);
+            p->nx = nrm.x; p->ny = nrm.y; p->nz = nrm.z;
 
             /* d = -((nx*V0.x + V0.y*ny) + V0.z*nz).  The association is the
              * original's: the x and y terms are summed first. */
@@ -1202,7 +1223,7 @@ short BrCollGridCellAcquire(float x, float y)
 
             ++n;
             /* DEVIATION (memory safety): the original has no bound here and
-             * will run past the cell's 150 records if the cursor yields more.
+             * will run past the cell's 150 records if the row is longer.
              * The port stops at the cell size. */
             if (n >= BR_COLL_CELL_PLANES) {
                 break;

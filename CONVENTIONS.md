@@ -87,3 +87,19 @@ present in the original, and aliasing behaviour where the original permits it.
   (`0x100331FF`, `0x100334D7`, `0x100312BB` are mid-instruction), misses real ones,
   and 37 of 2,581 extents end mid-flow. If a listing starts mid-instruction, skip
   it and say so.
+
+## Aliased storage: a link-clean bug
+
+Two modules may model the same ORIGINAL address under two different host
+symbol names. That links fine -- zero duplicate symbols -- and is still wrong,
+because the original had ONE object and the port now has two, drifting apart
+after the first write.
+
+Known live instance: 0x117554A0 / 0x117554C8 / 0x117554D8 / 0x117554E0 /
+0x11750338 are modelled by slice3_42.h as `BrFxRecord g_BrFx1750338[600]` plus
+bare int32 pairs, and by slice6_73 as a 4-cell plane cache. The two views are
+arithmetically consistent (600 == 4*150), so neither is wrong about the shape --
+but exactly ONE must own the storage and the other must alias into it.
+
+Do not treat "the link is clean" as evidence that shared state is shared. Grep
+the address, not the symbol.
