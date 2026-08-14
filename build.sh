@@ -25,6 +25,9 @@ clang $CFLAGS -c port/src/br_uictl.c           -o build/br_uictl.o
 clang $CFLAGS -c port/src/br_uivt.c            -o build/br_uivt.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
+clang $CFLAGS -Iport/tests -c port/tests/pageprobe72.c -o build/pageprobe72.o
+clang $CFLAGS -Iport/tests -c port/tests/pageprobe73.c -o build/pageprobe73.o
+clang $CFLAGS -Iport/tests -c port/tests/test_pagemodel.c -o build/test_pagemodel.o
 clang $CFLAGS -Iport/tests -c port/tests/test_uictl.c -o build/test_uictl.o
 clang $CFLAGS -Iport/tests -c port/tests/test_uivt.c -o build/test_uivt.o
 clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
@@ -228,6 +231,7 @@ clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
+clang build/pageprobe72.o build/pageprobe73.o build/test_pagemodel.o -o build/test_pagemodel
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
 clang build/br_pod.o build/test_pod.o -o build/test_pod
@@ -263,6 +267,7 @@ clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_73.c -o build/host/slice6_73.o
 
 clang $CFLAGS -c port/host/br_wire71.c -o build/br_wire71.o
 clang $CFLAGS -c port/host/br_wire72.c -o build/br_wire72.o
+clang $CFLAGS -c port/host/br_wire75.c -o build/br_wire75.o
 clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
 # real definitions for the cross-module data objects (was br_stubs' 1 MiB blocks)
 clang $CFLAGS -c port/src/br_data.c -o build/br_data.o
@@ -278,7 +283,7 @@ for o in build/*.o; do
   esac
   HOSTOBJS="$HOSTOBJS $o"
 done
-clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o $HOSTOBJS \
+clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o build/br_wire75.o $HOSTOBJS \
       build/host/slice3_32.o build/host/slice6_71.o build/host/slice6_73.o \
       build/br_gfx_metal.o -lm $FW -o build/brally
 echo "built: brally (host)"

@@ -22,9 +22,15 @@ void *BrOperatorNew(uint32_t cb);
 void  BrOperatorDelete(void *p);
 
 /* 0x1007C8A0 -- MSVC `__ftol`: truncates toward zero, and stores the LOW DWORD
- * of a 64-bit fistp. Out-of-range input yields the x87 "indefinite" value
- * 0x80000000 rather than saturating -- several modules depend on that, notably
- * the ones whose divide-by-zero paths feed it infinities. */
+ * of a 64-bit fistp. Out of range the x87 stores the 64-bit indefinite
+ * 0x8000000000000000, and __ftol keeps its LOW dword -- so the return is 0.
+ * NOT 0x80000000, and not a saturation. NaN takes the same path.
+ *
+ * This comment previously claimed 0x80000000. That was wrong, and it survived
+ * here after br_crt.c was corrected from the disassembly at 0x1007C8BF
+ * (`mov eax,[ebp-0xc]` reads the low half). Several modules' divide-by-zero
+ * paths feed this infinities, so the difference is reachable, not academic.
+ * CONVENTIONS.md and br_crt.c agree on 0; this header was the outlier. */
 int32_t BrFtolTrunc(float f);
 
 #endif /* BR_CRT_H */

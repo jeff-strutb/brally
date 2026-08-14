@@ -346,9 +346,10 @@ int main(int argc, char **argv)
          * control type models that need merging, the way br_phase.h merged the
          * phase models. */
         printf("\nNOTE: the ctl column is read through slice6_73.h's page model\n"
-               "      and is only valid for builders that use it. setText/place\n"
-               "      are measured directly and are valid for all. See the\n"
-               "      TYPE-MODEL WARNING in port/host/brally.c.\n");
+               "      and is only valid for builders that use it. The setText/\n"
+               "      place COUNTS are measured directly and are valid for all,\n"
+               "      but what those calls WRITE is only valid for packet 73 --\n"
+               "      see the TYPE-MODEL WARNING in port/host/brally.c.\n");
         printf("(a crash means an unported callee is still NULL -- that is the\n"
                " next thing to port, not a defect in the builder)\n");
         return 0;

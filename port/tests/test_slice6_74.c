@@ -285,11 +285,20 @@ static void TestWriteBitsHighBitsIgnored(void)
 
 static void TestWriteBitsZeroIsNoOp(void)
 {
-    /* The original's first branch: nBits == 0 touches nothing at all -- not
-     * the buffer, not either cursor.  Set up a non-trivial cursor first so a
-     * "reset" would be visible. */
+    /* The original's first branch -- `test ebp,ebp / je` before it touches
+     * anything -- means nBits == 0 changes nothing: not the buffer, not either
+     * cursor.
+     *
+     * This is NOT a redundant guard, and the test has to be set up so that it
+     * shows.  Without the early-out the loop still runs once, and that
+     * iteration takes zero bits but writes `*pByte & keep` back, where `keep`
+     * covers only the bits already written -- so it SCRUBS the free low bits
+     * of the current byte.  On a freshly zeroed buffer that is invisible,
+     * which is why the free bits are poisoned first here.  Mutation-checked:
+     * without the poison, deleting the guard passes. */
     StreamReset();
     BrBitStreamWriteBits(&s_bs, 0x3, 3);
+    s_buf[0] |= 0x1F;                       /* junk in the not-yet-written bits */
     {
         unsigned char before = s_buf[0];
         int wb = s_bs.writeBit, by = s_bs.writeByte;

@@ -104,6 +104,33 @@ but exactly ONE must own the storage and the other must alias into it.
 Do not treat "the link is clean" as evidence that shared state is shared. Grep
 the address, not the symbol.
 
+**Eight more instances found by auditing the provisional data block, seven of
+them resolved.** All were found by grepping ADDRESSES across `port/` and then
+looking for a *definition* under each name -- not by looking for duplicate
+symbols, of which there were none.
+
+| Address | The two (or three) names | Resolution |
+|---|---|---|
+| `0x10220D68` | `g_brNet220D68` vs `g_brNetLastFull.f78` | **Was a live bug.** `BrCarState` is 0xA0 and `0x10220D68 - 0x10220CF0 == 0x78` == `f78` == `BR_NET_STAMP`. Modelled apart, `g_brNetLastFull = *pState` never updated the "reference" the crossing test reads, so `BrNetCarStateSend` sent a full packet on *every* call. Now a macro in `slice2_11.h` |
+| `0x100C12A0` | `g_ab0C12A0` (slice2_20) vs `g_aBrC12A0` (slice3_45, sized `[1]`) | One object, owned by slice3_45.c. **Size now pinned**: stride 89992 x 16 lands exactly on `0x10220B20`, the next referenced global |
+| `0x100AC300` | `g_i0AC300` vs `g_Br0AC300` (slice2_19) | Storage in `br_data.c`; and the image says **1**, not 0. "Non-zero suppresses part 2" -- the shipped build suppresses it and the port did not |
+| `0x100AA8B4` | `g_brMode0AA8B4` vs `g_BrCamMode` (slice2_19) | Storage in `br_data.c`, initial value **1** |
+| `0x106C2CFC` | `g_f6C2CFC` vs `g_BrAnimDt` (slice2_19 **and** slice3_41 -- three names) | Storage in `br_data.c` |
+| `0x106C661C` / `0x106C6624` | `g_i6C661C` vs `g_Br6C661C` | Storage in `br_data.c` |
+| `0x10AA26F4` | `g_brAA26F4`+`g_brAA26F5` (two bytes) vs `g_aBrAA26F4[4]` (one dword) | One array, owned by slice5_63.c; the byte names are macros over `[0]`/`[1]` |
+| `0x118AA0C4` | `g_pfn18AA0C4(void *)` vs `g_BrGfxSubmitB(uint32_t)` | **NOT resolved.** The two disagree about the ARGUMENT (host pointer vs 32-bit DL address). Needs an adjudication, not a cast |
+
+Also still open, and the reason it is: `0x11750338` / `0x117554A0` cannot be
+made one object on this host. `BrFxRecord` is 32 bytes but `BrCollPlane` holds
+three `BrVec3 *` and widens under LP64, so the 600-record array cannot carry
+both views. The fix is to make `BrCollPlane` store vertex INDICES; until then
+`g_pBrCollGrid` stays NULL, which every consumer already guards.
+
+A pattern worth generalising from these: the aliases cluster where one packet
+names a global positionally (`g_i0AC300`) and another names it semantically
+(`g_BrCamMode`). Neither pass can find the other by grepping its own name, and
+both are right about the address.
+
 ## Two models of one object, shifted
 
 `BrUiScreen` (slice3_33.h) and `BrUiPage_` (slice6_73.h) describe the SAME

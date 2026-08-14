@@ -278,13 +278,16 @@ static void TestTextRoom(void)
     for (i = 0; i < BR73_ITEM_TEXT_ROOM + 63u; ++i) pszLong[i] = 'x';
     pszLong[BR73_ITEM_TEXT_ROOM + 63u] = '\0';
 
-    c->f2B5C.f420 = 0x5A5A5A5A;
+    /* f434 is the last field of the item block and 0x10047EB0 never writes
+     * it, so it is the honest witness for an over-run. */
+    c->f2B5C.f434 = 0x5A5A5A5A;
     BrUiCtlPlace_10047FB0(c, (BrPhase_ *)0, 0.0f, 0.0f, 0, 2, 5, 0, 0);
     BrUiCtlSetText_10047EB0(c, pszLong, 0, 1, s_style);
 
     CHECK(strlen(c->f2B5C.sz) == (size_t)BR73_ITEM_TEXT_ROOM - 1u,
           "an over-long string is truncated to the buffer");
-    CHECK(c->f2B5C.f420 == 0, "the copy did not run into the next field");
+    CHECK(c->f2B5C.f434 == 0x5A5A5A5A,
+          "the copy did not run past the end of the item block");
 
     free(pszLong);
     free(c);
