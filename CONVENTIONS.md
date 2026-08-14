@@ -103,3 +103,24 @@ but exactly ONE must own the storage and the other must alias into it.
 
 Do not treat "the link is clean" as evidence that shared state is shared. Grep
 the address, not the symbol.
+
+## Two models of one object, shifted
+
+`BrUiScreen` (slice3_33.h) and `BrUiPage_` (slice6_73.h) describe the SAME
+original object and do not start at the same place: `BrUiScreen` begins at
++0x10 and has no `pVtbl`/`pfn04`/`pfn08`; `BrUiPage_` begins at +0x00 and does.
+
+So a pointer written through one and read through the other is off by three
+fields, and every read lands in the wrong member. It compiles, it links, it
+runs, and it silently produces wrong numbers -- the host harness reported
+`cCtl=7` for two builders whose disassembly says 4 and 3, because both landed
+on the same wrong offset.
+
+This is worse than the aliased-storage hazard above, because there the two
+views at least agreed about shape. Here they disagree about where the object
+STARTS.
+
+Rule: before reading a field out of a UI object, check which model the module
+that WROTE it uses. If it is not the same model you are reading through, the
+value is meaningless -- and the fix is to merge the models, never to trust
+whichever number looks more plausible.

@@ -37,8 +37,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 void BrStubReport(void);
+
+/* Per-slice context wiring. Each lives in its own translation unit because the
+ * slice headers carry conflicting models of the page and control types and
+ * cannot be included together -- see br_wire72.c. */
+void BrHostWire71(void);
+void BrHostWire72(void);
 
 /* --- the wiring the original keeps in .data ----------------------------- */
 
@@ -91,6 +99,52 @@ static void HostCtlPlace(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
 }
 
 static BrUiCtlVtbl_ g_hostCtlVtbl;
+
+/* --- every ported screen builder ----------------------------------------
+ * Declared here rather than by including all six slice headers, which cannot
+ * coexist in one translation unit: they carry conflicting partial models of
+ * the phase object (that conflict is what br_phase.h exists to resolve). The
+ * name, arity and return type below match each module's own declaration; only
+ * the pointee differs, by being the merged one.
+ * ------------------------------------------------------------------------ */
+void BrExt_10049F40(BrPhase_ *);
+void BrExt_1004D640(BrPhase_ *);
+void BrExt_1004DFC0(BrPhase_ *);
+void BrExt_1004E830(BrPhase_ *);
+void BrExt_1004F2B0(BrPhase_ *);
+void BrExt_1004F700(BrPhase_ *);
+void BrExt_10050060(BrPhase_ *);
+void BrExt_10052030(BrPhase_ *);
+void BrExt_10054B50(BrPhase_ *);
+void BrExt_10059760(BrPhase_ *);
+void BrExt_1005A6E0(BrPhase_ *);
+void BrOptFn10051D30(BrPhase_ *);
+void BrOptFn100558A0(BrPhase_ *);
+void BrOptFn10056A10(BrPhase_ *);
+void BrOptFn100575F0(BrPhase_ *);
+void BrOptFn10057C10(BrPhase_ *);
+
+typedef struct { const char *pszName; void (*pfn)(BrPhase_ *); } BrBuilder;
+static const BrBuilder g_aBuilders[] = {
+    { "BrExt_10049F40", BrExt_10049F40 },
+    { "BrExt_1004D640", BrExt_1004D640 },
+    { "BrExt_1004DFC0", BrExt_1004DFC0 },
+    { "BrExt_1004E830", BrExt_1004E830 },
+    { "BrExt_1004F2B0", BrExt_1004F2B0 },
+    { "BrExt_1004F700", BrExt_1004F700 },
+    { "BrExt_10050060", BrExt_10050060 },
+    { "BrExt_10052030", BrExt_10052030 },
+    { "BrExt_10054B50", BrExt_10054B50 },
+    { "BrExt_10059760", BrExt_10059760 },
+    { "BrExt_1005A6E0", BrExt_1005A6E0 },
+    { "BrOptFn10051D30", BrOptFn10051D30 },
+    { "BrOptFn100558A0", BrOptFn100558A0 },
+    { "BrOptFn10056A10", BrOptFn10056A10 },
+    { "BrOptFn100575F0", BrOptFn100575F0 },
+    { "BrOptFn10057C10", BrOptFn10057C10 }
+};
+#define BR_NBUILDERS ((int)(sizeof(g_aBuilders)/sizeof(g_aBuilders[0])))
+
 
 static char g_scratchA[64], g_scratchB[64];
 static int32_t g_blkA[0x53], g_blkB[0x53], g_blkC[0x46];
@@ -181,6 +235,8 @@ int main(int argc, char **argv)
     g_pBrUiCtlVtbl    = &g_hostCtlVtbl;
 
     WireContext();
+    BrHostWire71();
+    BrHostWire72();
 
     ph = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
     if (!ph) { printf("alloc failed\n"); return 1; }
@@ -189,6 +245,85 @@ int main(int argc, char **argv)
     if (!BrOptObjCtor(ph)) { printf("BrOptObjCtor returned NULL\n"); return 1; }
     printf("\nafter ctor:\n");
     DumpPhase(ph);
+
+    if (argc > 1 && strcmp(argv[1], "-all") == 0) {
+        /* Each builder runs in a FORKED CHILD.
+         *
+         * Without this, the first builder that dereferences an unwired hook
+         * takes the whole process with it, and the run reports one failure no
+         * matter how many there are. That is the difference between "it
+         * crashes" and "13 of 16 work, these 3 fail and here is where" -- and
+         * the second is the entire point of the harness.
+         *
+         * A crash here is EXPECTED, not exceptional: unported functions are
+         * NULL on purpose so they fault loudly rather than silently doing
+         * nothing. Isolation lets that stay true without costing coverage. */
+        int b, built = 0, crashed = 0;
+        printf("\nrunning all %d ported screen builders (each in its own child)\n",
+               BR_NBUILDERS);
+        fflush(stdout);
+        for (b = 0; b < BR_NBUILDERS; b++) {
+            pid_t pid = fork();
+            if (pid < 0) { printf("  fork failed\n"); continue; }
+            if (pid == 0) {
+                BrPhase_ *p = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
+                int n = 0, i;
+                if (!p || !BrOptObjCtor(p)) _exit(2);
+                g_nSetText = g_nPlace = 0;
+                g_aBuilders[b].pfn(p);
+                for (i = 0; i < (int)p->nPages && i < BR_PHASE_PAGES; i++)
+                    if (p->aPages[i]) n += p->aPages[i]->cCtl;
+                printf("  %-22s pages=%-2u ctl=%-3d setText=%-3d place=%-3d\n",
+                       g_aBuilders[b].pszName, (unsigned)p->nPages, n,
+                       g_nSetText, g_nPlace);
+                fflush(stdout);
+                _exit(0);
+            } else {
+                int st = 0;
+                waitpid(pid, &st, 0);
+                if (WIFSIGNALED(st)) {
+                    printf("  %-22s CRASHED (signal %d)\n",
+                           g_aBuilders[b].pszName, WTERMSIG(st));
+                    crashed++;
+                } else if (WEXITSTATUS(st) != 0) {
+                    printf("  %-22s failed to construct (exit %d)\n",
+                           g_aBuilders[b].pszName, WEXITSTATUS(st));
+                    crashed++;
+                } else {
+                    built++;
+                }
+                fflush(stdout);
+            }
+        }
+        printf("\n%d/%d builders ran clean, %d crashed\n",
+               built, BR_NBUILDERS, crashed);
+        /* TYPE-MODEL WARNING -- read the ctl column with care.
+         *
+         * setText and place are counted by THIS file's vtable slots, so they
+         * are measured directly and are trustworthy for every builder.
+         *
+         * ctl is read out of the page struct through slice6_73.h's
+         * BrUiPage_, and that is only correct for builders whose module uses
+         * the same model. slice3_33.h's BrUiScreen -- which slice6_71's
+         * builders allocate and write -- begins at +0x10 and has NO pVtbl,
+         * pfn04 or pfn08. The two views are shifted relative to each other, so
+         * reading one through the other lands in the wrong field entirely.
+         *
+         * That is why 0x10049F40 and 0x10051D30 both report ctl=7 when their
+         * disassembly says 4 and 3: same wrong offset, same garbage. Their
+         * place counts (4 and 3) DO match, because those bypass the struct.
+         *
+         * Do not "fix" this by trusting the larger number. It is the page and
+         * control type models that need merging, the way br_phase.h merged the
+         * phase models. */
+        printf("\nNOTE: the ctl column is read through slice6_73.h's page model\n"
+               "      and is only valid for builders that use it. setText/place\n"
+               "      are measured directly and are valid for all. See the\n"
+               "      TYPE-MODEL WARNING in port/host/brally.c.\n");
+        printf("(a crash means an unported callee is still NULL -- that is the\n"
+               " next thing to port, not a defect in the builder)\n");
+        return 0;
+    }
 
     /* A real screen builder, 0x1004D640 (7 controls per packet 73). */
     printf("\nrunning builder 0x1004D640 ...\n");
