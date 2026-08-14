@@ -18,6 +18,28 @@
 
 #include "slice6_71.h"
 
+/* --- DUPLICATE OWNERSHIP (host link only) -------------------------------
+ * slice6_71 and slice6_70 each independently ported 0x1003BF60. Both bodies
+ * are faithful; the duplication is a coordination artefact of parallel
+ * passes, not a disagreement about behaviour.
+ *
+ * slice6_70 is the OWNER. Under BR_HOST_LINK this module's copies are renamed
+ * so the full-program link has exactly one definition of each. The renaming
+ * covers this file's internal calls too, so the module stays self-consistent
+ * and its own test binary -- which links this .o alone -- is unaffected.
+ *
+ * This is a stopgap. The duplicate bodies should be deleted and the callers
+ * pointed at slice6_70's, once someone has diffed the two transcriptions
+ * line-by-line and confirmed they agree. Until that diff is done, deleting the
+ * wrong one would silently discard the better transcription.
+ * ------------------------------------------------------------------------ */
+#ifdef BR_HOST_LINK
+#define BrSub1003BF60 BrSub1003BF60_dup_71
+#define BrExt_1003BF60 BrExt_1003BF60_dup_71
+#endif
+
+
+
 BrS71Globals    g_brS71;
 const BrS71Env *g_brS71Env;
 

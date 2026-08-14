@@ -21,8 +21,10 @@ clang $CFLAGS -c port/src/br_slots.c          -o build/br_slots.o
 clang $CFLAGS -c port/src/br_state.c          -o build/br_state.o
 clang $CFLAGS -c port/src/br_obj.c            -o build/br_obj.o
 clang $CFLAGS -c port/src/br_bits.c           -o build/br_bits.o
+clang $CFLAGS -c port/src/br_uictl.c           -o build/br_uictl.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
+clang $CFLAGS -Iport/tests -c port/tests/test_uictl.c -o build/test_uictl.o
 clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
 clang $CFLAGS -Iport/tests -c port/tests/test_gfx.c -o build/test_gfx.o
 clang $CFLAGS -Iport/tests -c port/tests/test_rca.c -o build/test_rca.o
@@ -213,6 +215,7 @@ clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
+clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_pod.o build/test_pod.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview
@@ -230,3 +233,31 @@ clang build/br_state.o build/test_state.o -o build/test_state
 clang build/br_obj.o build/test_obj.o -o build/test_obj
 clang build/br_bits.o build/test_bits.o -o build/test_bits
 echo "built: slice1+2+3 modules + test_pod test_gfx test_rca test_n64tex test_f3d test_vec test_mat test_span test_seg test_pool test_vecd test_slots test_state test_obj test_bits brview"
+
+# --- the host: links the whole ported core into one runnable binary ---------
+# Unported functions are satisfied by port/host/br_stubs.c, so this links today
+# and reports at exit which stubs the run actually reached. That report is the
+# work queue: it is measured from a real boot rather than guessed.
+# slice6_71 and slice6_73 each duplicate a function slice6_70 also defines.
+# Their TESTS link each module alone and need the real names, so the plain
+# objects above keep them. The host links all three at once, so it needs the
+# renamed copies -- built here, into a subdirectory the host glob skips.
+mkdir -p build/host
+clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_71.c -o build/host/slice6_71.o
+clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_73.c -o build/host/slice6_73.o
+
+clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
+clang $CFLAGS -c port/host/brally.c   -o build/brally.o
+
+HOSTOBJS=""
+for o in build/*.o; do
+  case "$o" in
+    *test_*|*brview*|*br_gfx_metal*|*brally.o|*br_stubs.o) continue;;
+    */slice6_71.o|*/slice6_73.o) continue;;   # host uses build/host/ copies
+  esac
+  HOSTOBJS="$HOSTOBJS $o"
+done
+clang build/brally.o build/br_stubs.o $HOSTOBJS \
+      build/host/slice6_71.o build/host/slice6_73.o \
+      build/br_gfx_metal.o -lm $FW -o build/brally
+echo "built: brally (host)"
