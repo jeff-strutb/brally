@@ -653,3 +653,47 @@ real -- it already shipped two backends behind one core.
   found and fixed (thiscall `ret imm16` endings); others likely remain.
 - The `d3d_only` / `shared` classification in `config/shared.csv` is a heuristic
   fingerprint match, not proof.
+
+---
+
+## Asset policy: extracted at build time, never distributed
+
+This repository contains **only our own source**. That goes beyond "do not commit
+the disc image": no asset derived from the originals is ever a tracked file *or* a
+distributed build artifact.
+
+The build **extracts what it needs from originals the builder supplies**:
+
+    reference/brally/BossRally.BIN + .cue   retail PC disc image  (you provide)
+    reference/tgrally/*.z64                 Top Gear Rally ROM    (you provide)
+
+A fresh clone plus your own legally-obtained copies is sufficient to produce
+everything. Extraction tooling lives in `tools/`, is reusable and idempotent, and
+is not a set of one-off scripts whose output someone ships.
+
+This covers the soundtrack in particular. The retail PC game streams Redbook CD
+audio and the N64 build plays XM modules; the port uses neither, playing locally
+produced lossless files instead. Those are generated on your machine from your own
+disc and ROM, and are gitignored.
+
+IP hygiene and preservation both: we distribute our code, the originals stay with
+whoever owns a copy.
+
+## Getting the game data (not in this repository)
+
+To build and run the tests you need a retail copy of Boss Rally (PC, 1999) and must
+populate:
+
+    orig/       BRD3D.dll, BRGlide.dll   (BRD3D.dll is the core decompilation
+                target -- sha256 29af141ebd44bbcc79a9e58ca9cba62936792d6750c2e8b9
+                df1a3805ae684b99. BRGlide.dll is the RENDERER reference; see the
+                note at the top of this file.)
+    testdata/   BossRally.pod, splash.img, loading.img, ce.rca, bb.rca,
+                cargfx/skytexdesert.ci4 + .lut4
+
+Without `testdata/` the tree still compiles; the suites that read retail files fail
+at runtime, which is the intended signal rather than a silent pass.
+
+NOTE TO FUTURE MAINTAINERS: this section was once added directly to the git
+checkout and then silently destroyed by a `cp` of the working copy over it. Edit
+the working copy, never the checkout.
