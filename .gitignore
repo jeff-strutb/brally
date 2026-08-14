@@ -2,8 +2,6 @@
 build/
 *.o
 *.dSYM/
-/test_*
-!port/tests/test_*.c
 
 # Python tooling environment
 .venv/
@@ -16,12 +14,30 @@ __pycache__/
 # This repository holds only our own source: the portable C port, the analysis
 # tooling, and generated metadata. Everything below is copyrighted Boss Rally
 # material that each developer must supply from their own retail copy.
+#
+# NOTE: git does NOT support trailing comments on a pattern line. Keep every
+# comment on its own line -- an earlier version of this file put them inline
+# and the patterns silently did not match.
 # ---------------------------------------------------------------------------
-orig/            # BRD3D.dll, BRGlide.dll, Boot.exe, BossRally.exe
-testdata/        # BossRally.pod, *.rca, *.img, *.ci4/.lut4 from the disc
-extracted/       # assets extracted from the N64 ROM (art, XM music)
-asm/             # disassembly generated from BRD3D.dll
-work/**/*.asm    # per-agent disassembly packets
+
+# pristine originals: retail CD image and N64 ROM
+reference/
+
+# BRD3D.dll, BRGlide.dll, Boot.exe, BossRally.exe
+orig/
+
+# BossRally.pod, *.rca, *.img, *.ci4/.lut4 taken from the disc
+testdata/
+
+# assets extracted from the N64 ROM (art, XM music)
+extracted/
+
+# disassembly generated from BRD3D.dll
+asm/
+
+# per-agent disassembly packets
+work/**/*.asm
+
 *.z64
 *.BIN
 *.bin
