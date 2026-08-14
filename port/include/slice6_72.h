@@ -206,14 +206,29 @@ struct BrUi72Ctl {
  * is also the ctor's `rep stosd` count. */
 #define BR72_PAGE_CTL_MAX  200
 
+/* The four leading pointer fields and the +0x016 hole are NOT decoration.
+ * This packet never touches them, which is why an earlier revision started
+ * the struct at +0x010 -- but `struct BrUiPage_` also completes br_phase.h's
+ * forward declaration, and slice6_73.h completes the SAME tag with the same
+ * name. Two definitions of one tag that disagree about where cCtl lives is
+ * the aliased-storage bug CONVENTIONS.md warns about, wearing a compiler's
+ * blessing: each translation unit compiles cleanly and the host reads pages
+ * built by this packet through slice6_73.h's view. The two are now
+ * field-for-field identical, so that read is valid. */
 struct BrUiPage_ {
+    const void  *pVtbl;                     /* +0x000 -- = 0x1008F6F8 */
+    BrUi72CtlFn  pfn04;                     /* +0x004 */
+    BrUi72CtlFn  pfn08;                     /* +0x008 */
+    BrUi72CtlFn  pfn0C;                     /* +0x00C */
     int32_t     f10;                        /* +0x010 -- zeroed at build */
     uint16_t    cCtl;                       /* +0x014 */
+    uint16_t    f16;                        /* +0x016 -- the ctor leaves it */
     BrUi72Ctl  *apCtl[BR72_PAGE_CTL_MAX];   /* +0x018 .. +0x338 */
     float       fX;                         /* +0x338 -- 190.0 or 195.0 */
     float       fY;                         /* +0x33C -- 130.0 everywhere here */
     BrPhase_   *pOwner;                     /* +0x340 */
     uint16_t    cSel;                       /* +0x344 -- selectable count */
+    uint16_t    f346;                       /* +0x346 -- selection cursor */
 };
 
 /* ==========================================================================

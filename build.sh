@@ -22,9 +22,11 @@ clang $CFLAGS -c port/src/br_state.c          -o build/br_state.o
 clang $CFLAGS -c port/src/br_obj.c            -o build/br_obj.o
 clang $CFLAGS -c port/src/br_bits.c           -o build/br_bits.o
 clang $CFLAGS -c port/src/br_uictl.c           -o build/br_uictl.o
+clang $CFLAGS -c port/src/br_uivt.c            -o build/br_uivt.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
 clang $CFLAGS -Iport/tests -c port/tests/test_uictl.c -o build/test_uictl.o
+clang $CFLAGS -Iport/tests -c port/tests/test_uivt.c -o build/test_uivt.o
 clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
 clang $CFLAGS -Iport/tests -c port/tests/test_gfx.c -o build/test_gfx.o
 clang $CFLAGS -Iport/tests -c port/tests/test_rca.c -o build/test_rca.o
@@ -179,6 +181,13 @@ clang build/slice4_53.o build/test_slice4_53.o -lm -o build/test_slice4_53
 # layout assertions -- plain C99; failures break the BUILD
 clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_pod.o -o build/test_layout
 
+# br_ui.h -- the canonical page/control types. Header-only, like test_layout:
+# most of its claims are compile-time assertions, so a bad element count breaks
+# the BUILD rather than the run. Deliberately NOT linked against slice6_72.o or
+# slice6_73.o: those two still define `struct BrUiPage_` themselves, which is
+# the conflict br_ui.h exists to end and which migration removes.
+clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_br_ui.c -o build/test_br_ui
+
 
 # --- slice 5: link-gap round 2 ---
 clang $CFLAGS -c port/src/slice5_60.c -o build/slice5_60.o
@@ -206,16 +215,21 @@ clang $CFLAGS -Iport/tests -c port/tests/test_slice6_72.c -o build/test_slice6_7
 clang $CFLAGS -c port/src/slice6_73.c -o build/slice6_73.o
 clang $CFLAGS -Iport/tests -c port/tests/test_slice6_73.c -o build/test_slice6_73.o
 
+clang $CFLAGS -c port/src/slice6_74.c -o build/slice6_74.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_74.c -o build/test_slice6_74.o
+
 clang build/slice6_70.o build/test_slice6_70.o -lm -o build/test_slice6_70
 clang build/slice6_71.o build/test_slice6_71.o -lm -o build/test_slice6_71
 clang build/slice6_72.o build/test_slice6_72.o -lm -o build/test_slice6_72
 clang build/slice6_73.o build/test_slice6_73.o -lm -o build/test_slice6_73
+clang build/slice6_74.o build/test_slice6_74.o -lm -o build/test_slice6_74
 
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
+clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
 clang build/br_pod.o build/test_pod.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview
@@ -243,21 +257,28 @@ echo "built: slice1+2+3 modules + test_pod test_gfx test_rca test_n64tex test_f3
 # objects above keep them. The host links all three at once, so it needs the
 # renamed copies -- built here, into a subdirectory the host glob skips.
 mkdir -p build/host
+clang $CFLAGS -DBR_HOST_LINK -c port/src/slice3_32.c -o build/host/slice3_32.o
 clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_71.c -o build/host/slice6_71.o
 clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_73.c -o build/host/slice6_73.o
 
+clang $CFLAGS -c port/host/br_wire71.c -o build/br_wire71.o
+clang $CFLAGS -c port/host/br_wire72.c -o build/br_wire72.o
 clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
+# real definitions for the cross-module data objects (was br_stubs' 1 MiB blocks)
+clang $CFLAGS -c port/src/br_data.c -o build/br_data.o
+clang $CFLAGS -Iport/tests -c port/tests/test_data.c -o build/test_data.o
+clang build/br_data.o build/test_data.o -lm -o build/test_data
 clang $CFLAGS -c port/host/brally.c   -o build/brally.o
 
 HOSTOBJS=""
 for o in build/*.o; do
   case "$o" in
-    *test_*|*brview*|*br_gfx_metal*|*brally.o|*br_stubs.o) continue;;
-    */slice6_71.o|*/slice6_73.o) continue;;   # host uses build/host/ copies
+    *test_*|*brview*|*br_gfx_metal*|*brally.o|*br_stubs.o|*br_wire7*.o) continue;;
+    */slice3_32.o|*/slice6_71.o|*/slice6_73.o) continue;;   # host uses build/host/ copies
   esac
   HOSTOBJS="$HOSTOBJS $o"
 done
-clang build/brally.o build/br_stubs.o $HOSTOBJS \
-      build/host/slice6_71.o build/host/slice6_73.o \
+clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o $HOSTOBJS \
+      build/host/slice3_32.o build/host/slice6_71.o build/host/slice6_73.o \
       build/br_gfx_metal.o -lm $FW -o build/brally
 echo "built: brally (host)"

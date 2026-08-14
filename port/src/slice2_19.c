@@ -42,7 +42,9 @@ BrVec3 g_BrCamCorner2;
 BrVec3 g_BrCamCorner3;
 float  g_BrCamDist;
 float  g_BrCamFovIn;
-int32_t g_BrCamMode;
+/* 0x100AA8B4, 0x100AC300, 0x106C661C, 0x106C6624 and 0x106C2CFC are defined
+ * ONCE, in port/src/br_data.c -- see the ALIAS RESOLVED notes in slice2_19.h.
+ * Three of them carry non-zero initialisers this module never had. */
 
 BrMat4    g_BrViewMat;
 BrMat4    g_BrProjMat;
@@ -60,13 +62,9 @@ int32_t     g_Br6C666C;
 const void *g_BrDlTableA;
 
 int32_t g_BrCarCount;
-int32_t g_Br0AC300;
-int32_t g_Br6C661C;
-int32_t g_Br6C6624;
 void  (*g_BrGfxSubmit)(uint32_t dl);
 void  (*g_BrGfxSubmitB)(uint32_t p);
 
-float g_BrAnimDt;
 
 const unsigned char *g_BrPadModeBytes;
 int32_t              g_Br6909B4;

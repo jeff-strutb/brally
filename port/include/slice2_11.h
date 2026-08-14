@@ -171,8 +171,23 @@ extern const uint16_t *g_pBrU16QueueTable;
 /* XSLICE 0x100027C0 */ extern void BrCdTrackPlay(int track);
 
 /* Network send throttle state. */
-/* XSLICE 0x10220D68 */ extern float      g_brNet220D68;
 /* XSLICE 0x10220CF0 */ extern BrCarState g_brNetLastFull;
+
+/* 0x10220D68 -- ALIAS RESOLVED, and it was a live bug.
+ *
+ * This packet used to declare a free-standing `float g_brNet220D68`. It is
+ * not free-standing: 0x10220D68 - 0x10220CF0 == 0x78, and BrCarState::f78 is
+ * float #30 -- BR_NET_STAMP, the very field the fast path compares. So the
+ * original is comparing the incoming state's stamp against the LAST FULL
+ * SNAPSHOT's stamp, which is what the "while the reference has not" wording
+ * below always meant.
+ *
+ * Modelled as a separate object, `g_brNetLastFull = *pState` no longer
+ * updated it, so the crossing test stayed true and BrNetCarStateSend sent a
+ * full packet on every call for the rest of the race. Two objects, one
+ * address, cleanly linked, wrong at runtime -- exactly the failure mode
+ * CONVENTIONS.md warns about. Kept as a macro so call sites read the same. */
+#define g_brNet220D68 (g_brNetLastFull.f78)
 /* XSLICE 0x1022AF40 */ extern int        g_brNetTickCount;
 /* XSLICE 0x10094298 */ extern int        g_brNetSendCount;
 /* XSLICE 0x10220E60 */ extern float      g_abrNetPeak[7];   /* 0x10220E60..+0x18 */

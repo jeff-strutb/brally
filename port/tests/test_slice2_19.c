@@ -18,6 +18,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Storage for the five globals this packet shares with other packets. The
+ * game build gets them from port/src/br_data.c (which also supplies their
+ * recovered initial values); they are defined here for the standalone test
+ * link only, and spelled with br_data's names because slice2_19.h now maps
+ * this packet's names onto them. */
+int   g_brMode0AA8B4;
+int   g_i0AC300;
+int   g_i6C661C;
+int   g_i6C6624;
+float g_f6C2CFC;
+
 static int g_fail = 0;
 
 #define CHECK(cond) \

@@ -67,7 +67,10 @@
  * honest stand-in: non-NULL, so the store is faithful, and NULL in every slot,
  * so an unported virtual call crashes loudly instead of running wrong code. */
 static const BrUiCtlVtbl_ g_vtblZeroed;
-const BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;
+
+/* g_brUiCtlVtbl_1008F6B8 itself is DEFINED IN br_uivt.c, which owns the two
+ * slots that are ported (+0x34 and +0x38). It used to be an all-zero object
+ * here, which made it indistinguishable from g_vtblZeroed. */
 
 /* The vtable the constructor actually stores.
  *
@@ -108,14 +111,34 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
     pThis->pfn10 = NULL;
     pThis->pfn14 = NULL;
 
-    /* +0x2A42 falls inside the 25-dword -1 fill that starts at +0x2A40
-     * (0x2A40 + 25*4 == 0x2AA4, so +0x2A42 is the high half of the first
-     * element). It is the one `<- -1` slot the struct currently names. */
+    /* +0x2A40 and +0x2A42 are the two halves of the FIRST dword of the
+     * 25-dword -1 fill that starts at +0x2A40 (0x2A40 + 25*4 == 0x2AA4).
+     * Both must be 0xFFFF, and specifically not 0: 0x10047FB0 later stores a
+     * code word into +0x2A40, and -1 is what "no code yet" looks like. */
+    pThis->f2A40 = (uint16_t)0xFFFFu;
     pThis->f2A42 = (uint16_t)0xFFFFu;
 
-    /* Scalars the original sets non-zero. +0x1C, +0x2C, +0x2AEC and +0x2B54
-     * have no modelled field yet; see BR_UICTL_UNMODELLED below. */
+    /* Scalars the original sets non-zero. +0x2C, +0x2AEC and +0x2B54 have no
+     * modelled field yet; see BR_UICTL_UNMODELLED below. */
+    pThis->f1C    = 1;
     pThis->f1E1E8 = BR_UICTL_F44;
+
+    /* +0x2B5C is three 0x438-byte BrTextBox elements built by the MSVC vector
+     * constructor iterator with element ctor 0x1005B050 == slice3_39.h's
+     * BrTextBoxInit. Only ELEMENT 0 is modelled (BrUiCtl_::f2B5C), and of
+     * BrTextBoxInit's writes only two are not zeroes:
+     *
+     *   f08 = 1          -- made here
+     *   pVtbl = 0x1008F728 -- NOT made here, deliberately
+     *
+     * The vtable is left NULL for exactly the reason g_pBrUiCtlVtbl defaults
+     * to an all-NULL vtable: 0x1008F728's slots are BrTextBoxMeasureA/B and
+     * BrTextBoxCentreX, which live in slice3_39.c, and this module is kept
+     * free of link dependencies so test_uictl can link br_uictl.o alone. A
+     * host that wants the real methods installs slice3_39.h's
+     * g_pBrTextBoxVtbl and re-runs BrTextBoxInit, or sets f2B5C.pVtbl
+     * itself. Every caller in the tree already NULL-checks it. */
+    pThis->f2B5C.f08 = 1;
 
     return pThis;                       /* original returns `this` in eax */
 }
@@ -130,15 +153,19 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
  * than not adding it, because it will read 0 and look deliberate.
  *
  *   offset    value        note
- *   +0x001C   1
  *   +0x002C   0xFF         a BYTE, not a dword
  *   +0x2AEC   1
  *   +0x2B54   1
  *   +0x012A   -1 x2500     the item table -- the dangerous one: 0 is a valid
  *                          index and -1 means empty
- *   +0x2A40   -1 x25       (only the +0x2A42 half is modelled)
+ *   +0x2A40   -1 x25       (the +0x2A40 and +0x2A42 halves of element 0 are
+ *                          modelled; the other 24 dwords are not)
  *   +0x2AF0   -1 x25
- *   +0x2B5C   3 elements of 0x438, element ctor 0x1005B050
+ *   +0x2B5C   3 elements of 0x438 -- element 0 is modelled and its ctor's
+ *             non-zero writes are made above except the 0x1008F728 vtable
+ *             store; elements 1 and 2 have no modelled home at all
  *   +0x3838   sub-object ctor 0x1005B7F0
+ *
+ * +0x001C left this list when BrUiCtl_ gained f1C, which 0x10047FB0 ORs into.
  * ========================================================================== */
-const int g_brUiCtlUnmodelledWrites = 9;
+const int g_brUiCtlUnmodelledWrites = 8;

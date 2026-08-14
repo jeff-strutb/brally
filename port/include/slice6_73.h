@@ -152,6 +152,8 @@
 #include "slice1_01.h"   /* BrGrid64Sample (0x10002DE0),
                           * BrU16Cursor/BrU16CursorNext (0x10002EF0)       */
 #include "slice1_09.h"   /* BrVec3Normalise (0x10074250)                   */
+#include "slice3_39.h"   /* BrTextBox / BrTextBoxVtbl -- the 0x438 element
+                          * at control +0x2B5C is that object, see below   */
 
 /* ==========================================================================
  * 1. The control (0x1E214 bytes; ctor 0x100476C0)
@@ -161,8 +163,8 @@ typedef struct BrUiCtl_        BrUiCtl_;
 typedef struct BrUiCtlVtbl_    BrUiCtlVtbl_;
 typedef struct BrUiCtlSub_     BrUiCtlSub_;
 typedef struct BrUiCtlSubVtbl_ BrUiCtlSubVtbl_;
-typedef struct BrUiItem_       BrUiItem_;
-typedef struct BrUiItemVtbl_   BrUiItemVtbl_;
+/* BrUiItem_ / BrUiItemVtbl_ are aliases of slice3_39.h's BrTextBox pair; the
+ * typedefs are down with the identification, in section 1. */
 
 /* The +0x04 / +0x08 / +0x0C / +0x10 / +0x14 slots hold plain __cdecl
  * pointers.  This packet only ever STORES them, so one positional argument
@@ -205,15 +207,43 @@ struct BrUiCtlSub_ {
     BrUiCtlFn_             pfn14;   /* control +0x384C */
 };
 
-/* The item sub-object at control +0x2B5C; only its vtable +0x04 is called. */
-struct BrUiItemVtbl_ {
-    void *f00;
-    void (*f04)(BrUiItem_ *pThis);
-};
-struct BrUiItem_ {
-    const BrUiItemVtbl_ *pVtbl;     /* control +0x2B5C */
-};
+/* The item sub-object at control +0x2B5C.
+ *
+ * IT IS slice3_39.h's BrTextBox, and this header no longer models it
+ * separately.  The identification is not a guess:
+ *
+ *   - the control constructor builds +0x2B5C as THREE elements of 0x438 with
+ *     element constructor 0x1005B050, and 0x1005B050 is slice3_39.h's
+ *     BrTextBoxInit (it plants vtable 0x1008F728, zeroes 0x100 dwords from
+ *     element +0x09, and sets element +0x08 to 1);
+ *   - 0x1008F728's +0x04 / +0x08 / +0x28 slots are BrTextBoxMeasureA,
+ *     BrTextBoxMeasureB and BrTextBoxCentreX, which is exactly what
+ *     0x10047EB0 dispatches;
+ *   - every offset this packet touches inside the block lands on a named
+ *     BrTextBox field:
+ *       +0x2B60 f04   +0x2B64 f08   +0x2B65 sz    +0x2F66 width
+ *       +0x2F68 height +0x2F6C x    +0x2F70 y     +0x2F74 f418
+ *       +0x2F78 f41C  +0x2F7C f420  +0x2F80 left  +0x2F84 f428
+ *       +0x2F88 right +0x2F8C f430
+ *
+ * The old names survive as aliases so existing declarations keep compiling;
+ * the VTABLE SLOT is spelled `pfn04`, not `f04`, because that is what
+ * slice3_39.h calls it.  There is now ONE model of this object, not two. */
+typedef BrTextBox     BrUiItem_;
+typedef BrTextBoxVtbl BrUiItemVtbl_;
 
+/* The text room the element constructor's `rep stosd` establishes: 0x100
+ * dwords from element +0x09.  slice3_39.h's BR_TEXTBOX_MAX is the same
+ * number, reused rather than restated. */
+#define BR73_ITEM_TEXT_ROOM  BR_TEXTBOX_MAX
+
+/* NO +0x2F78 / +0x2F80 / +0x2F84 / +0x2F88 / +0x2F8C FIELDS.  They used to be
+ * here, and they were a live instance of CONVENTIONS.md's "aliased storage"
+ * bug: the original has ONE object at +0x2B5C and those five offsets are
+ * fields of it (f41C / left / f428 / right / f430).  Two host fields for one
+ * original address drift apart after the first write -- 0x10047EB0 writes the
+ * item's `left`/`right` and the builders then wrote the control's copies.
+ * Use pCtl->f2B5C.left and friends. */
 struct BrUiCtl_ {
     const BrUiCtlVtbl_ *pVtbl;  /* +0x00000 */
     BrUiCtlFn_  pfn04;          /* +0x00004 */
@@ -221,20 +251,25 @@ struct BrUiCtl_ {
     BrUiCtlFn_  pfn0C;          /* +0x0000C */
     BrUiCtlFn_  pfn10;          /* +0x00010 */
     BrUiCtlFn_  pfn14;          /* +0x00014 */
+    int32_t     f1C;            /* +0x0001C   ctor sets 1; f38 ORs into it  */
+    int32_t     f24;            /* +0x00024   f38 ORs into it               */
+    int32_t     f28;            /* +0x00028   f38 ORs into it               */
+    float       f3C;            /* +0x0003C } f38 stores x/y here; f34 both */
+    float       f40;            /* +0x00040 } copies them into the item and */
+                                /*            truncates f40 into f54        */
+    uint16_t    f48;            /* +0x00048   f34: the item's width         */
+    uint16_t    f4A;            /* +0x0004A   f34: the item's height        */
     int32_t     f50;            /* +0x00050 } the four make a rectangle:   */
     int32_t     f54;            /* +0x00054 } f50/f54 are truncated x/y,   */
     int32_t     f58;            /* +0x00058 } f58 = f50+0x7F,              */
     int32_t     f5C;            /* +0x0005C } f5C = f54+0x21               */
     int32_t     f2968;          /* +0x02968 -- cleared alongside the rect  */
-    uint16_t    f2A42;          /* +0x02A42 */
+    uint16_t    f2A40;          /* +0x02A40 -- low half of the -1 fill     */
+    uint16_t    f2A42;          /* +0x02A42 -- high half of the same dword */
     uint16_t    f2AB4;          /* +0x02AB4 */
     uint16_t    f2AB6;          /* +0x02AB6 -- receives cCtl + 1           */
-    BrUiItem_   f2B5C;          /* +0x02B5C */
-    uint16_t    f2F78;          /* +0x02F78 */
-    int32_t     f2F80;          /* +0x02F80 } mirrors of f50/f54/f58/f5C,  */
-    int32_t     f2F84;          /* +0x02F84 } written in the SAME order    */
-    int32_t     f2F88;          /* +0x02F88 } and with the same values     */
-    int32_t     f2F8C;          /* +0x02F8C }                              */
+    BrPhase_   *f2AE8;          /* +0x02AE8 -- the owning PHASE, from f38  */
+    BrTextBox   f2B5C;          /* +0x02B5C -- slice3_39.h's text widget   */
     BrUiCtlSub_ f3838;          /* +0x03838 */
     int32_t     f1E1C8;         /* +0x1E1C8 */
     int32_t     f1E1D0;         /* +0x1E1D0 -- always f1E1C8 + 0x10        */
@@ -263,14 +298,21 @@ struct BrUiPage_ {
     const void *pVtbl;                      /* +0x000  = 0x1008F6F8       */
     BrUiCtlFn_  pfn04;                      /* +0x004  0x10054B50 only    */
     BrUiCtlFn_  pfn08;                      /* +0x008  0x10054B50 only    */
+    BrUiCtlFn_  pfn0C;                      /* +0x00C  zeroed by the ctor */
     int32_t     f10;                        /* +0x010  zeroed at build    */
     uint16_t    cCtl;                       /* +0x014                     */
+    uint16_t    f16;                        /* +0x016  see the GOTCHA     */
     BrUiCtl_   *apCtl[BR73_PAGE_CTL_MAX];   /* +0x018                     */
     float       fX;                         /* +0x338  195.0 in all six   */
     float       fY;                         /* +0x33C  130.0 in all six   */
     BrPhase_   *pOwner;                     /* +0x340                     */
     uint16_t    cSel;                       /* +0x344  selectable count   */
+    uint16_t    f346;                       /* +0x346  selection cursor   */
 };
+
+/* GOTCHA (0x10048470): the two bytes at +0x016 are the ONLY part of the
+ * object the constructor does not write, and `operator new` does not zero, so
+ * they are indeterminate after construction.  slice3_32.h found the same. */
 
 /* The port must never allocate less than the original did. */
 #define BR73_ALLOC(type, cbOrig) \
