@@ -182,10 +182,12 @@ def encode_track(bin_path, start, count, dst, level):
     """
     tmp = dst + ".part"
     nbytes = count * SECTOR_BYTES
+    # -f flac is explicit because the temporary name ends in .part, and ffmpeg
+    # otherwise picks the muxer from the extension and fails.
     proc = subprocess.Popen(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
          "-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "-i", "pipe:0",
-         "-c:a", "flac", "-compression_level", str(level), tmp],
+         "-c:a", "flac", "-compression_level", str(level), "-f", "flac", tmp],
         stdin=subprocess.PIPE)
     digest = hashlib.sha256()
     try:

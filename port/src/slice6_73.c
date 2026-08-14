@@ -1,0 +1,1221 @@
+/* slice6_73.c -- BRD3D.dll, packet 73 (slice 6).  See slice6_73.h for the
+ * scope, the conflicts and the reasons the other ten addresses are absent.
+ *
+ * The six screen builders are transcriptions: there is no algorithm in them,
+ * and the value is entirely in the coordinates, string ids, flag words, hook
+ * addresses and ordering, plus the handful of places the pattern breaks.
+ *
+ * Float literals are the exact values of the 32-bit patterns the original
+ * pushes (195.0f == 0x43430000, 10.0f == 0x41200000, ...).  The row offsets
+ * +19/+38/+57/+76/+95/+114/+133/+33 come from the NEGATIVE .rdata constants
+ * at 0x1008F680..0x1008F69C, every one of which is used as an `fsub` and
+ * therefore ADDS its magnitude; they were read out of orig/BRD3D.dll with
+ * tools/pe.py, not assumed.
+ *
+ * The C++ exception frames the originals set up (`push -1 / push <funclet> /
+ * fs:[0]`, plus the state variable each keeps at [esp+0x18] or [esp+0x24])
+ * have no observable effect on any path that returns, and are not reproduced.
+ */
+
+#include <string.h>
+#include <stdio.h>
+
+#include "slice6_73.h"
+
+/* The module's globals.  Zero-initialised; a caller wires the pointers. */
+BrUi73Ctx g_br73;
+
+/* The collision-grid cache slots slice2_11.h does not model. */
+uint32_t g_aBrCollGridStamp[BR73_COLL_CELLS];   /* 0x117554C8 */
+int16_t  g_aBrCollGridKey[BR73_COLL_CELLS];     /* 0x117554D8 */
+uint32_t g_brCollGridClock;                     /* 0x117554E0 */
+
+/* The eight row offsets, as magnitudes.  See the banner. */
+#define BR73_ROW_19    19.0f    /* 0x1008F680 */
+#define BR73_ROW_38    38.0f    /* 0x1008F684 */
+#define BR73_ROW_76    76.0f    /* 0x1008F68C */
+#define BR73_ROW_95    95.0f    /* 0x1008F690 */
+#define BR73_ROW_114  114.0f    /* 0x1008F694 */
+#define BR73_ROW_33    33.0f    /* 0x1008F69C */
+
+/* 0x1008F6A4.  The float nearest -1/11; the original multiplies by it and
+ * then SUBTRACTS the product from the low endpoint, so the net effect is a
+ * forward interpolation by n/11. */
+#define BR73_NEG_RECIP_11  (-0.09090909361839294f)
+
+/* ==========================================================================
+ * 0. Small shared helpers
+ * ========================================================================== */
+
+/* DEVIATION (memory safety): 0x1003E260 is reached through slice1_06.h's
+ * injected host.  An unwired host means "no reporter", where the original
+ * always has one; nothing else changes. */
+static void Br73Err(int32_t idx)
+{
+    if (g_br73.pErrHost != NULL) {
+        BrErrShow(g_br73.pErrHost, idx);
+    }
+}
+
+/* The page prologue, identical in all six builders except for the flag value
+ * (1 everywhere but 0x10050060's SECOND page) and the two extra hook stores
+ * 0x10054B50 makes.
+ *
+ * GOTCHA reproduced: aFlags[] is written with the count as it stands on
+ * entry, the allocation happens next, and apPages[] is then written with the
+ * count RE-READ from the object.  Nothing in between can change it, but the
+ * original does re-read, and a constructor that published itself could make
+ * the two differ.
+ *
+ * DEVIATION (memory safety, twice): the two array writes are bounded.  The
+ * original has the same implicit bounds -- aPages ends where aFlags begins
+ * and aFlags ends at the object's 0xC8 bytes -- but does not check them.
+ *
+ * DEVIATION (memory safety): on allocation failure the original reports error
+ * index 4 and then dereferences NULL.  Index 4 is FATAL in g_aBrErrTable, so
+ * BrErrShow does not return there in practice; the port returns NULL. */
+static BrUiPage_ *Br73PageNew(BrPhase_ *pPhase, int32_t nFlag)
+{
+    BrUiPage_ *pPage;
+    uint16_t   i;
+
+    i = pPhase->nPages;
+    if (i < BR_PHASE_PAGES) {
+        pPhase->aFlags[i] = nFlag;
+    }
+
+    pPage = (BrUiPage_ *)BrOperatorNew(BR73_ALLOC(BrUiPage_, BR73_PAGE_ORIG_SIZE));
+    pPage = (pPage != NULL) ? BrUiPageCtor_10048470(pPage) : NULL;
+
+    i = pPhase->nPages;
+    if (i < BR_PHASE_PAGES) {
+        pPhase->aPages[i] = pPage;
+    }
+    if (pPage == NULL) {
+        Br73Err(4);
+    }
+    pPhase->nPages++;
+
+    if (pPage == NULL) {
+        return NULL;
+    }
+
+    pPage->pOwner = pPhase;
+    pPage->f10    = 0;
+    pPage->fX     = 195.0f;     /* 0x43430000 -- the same in all six */
+    pPage->fY     = 130.0f;     /* 0x43020000 -- likewise            */
+    return pPage;
+}
+
+/* The control prologue, ~80 occurrences.
+ *
+ * GOTCHA reproduced: the slot is written BEFORE the NULL test, and cCtl is
+ * NOT advanced here -- every block bumps it at its end, so a failed
+ * allocation leaves a NULL in the array and still moves the cursor on. */
+static BrUiCtl_ *Br73CtlNew(BrUiPage_ *pPage)
+{
+    BrUiCtl_ *pCtl;
+
+    pCtl = (BrUiCtl_ *)BrOperatorNew(BR73_ALLOC(BrUiCtl_, BR73_CTL_ORIG_SIZE));
+    pCtl = (pCtl != NULL) ? BrUiCtlCtor(pCtl) : NULL;
+
+    if (pPage->cCtl < BR73_PAGE_CTL_MAX) {
+        pPage->apCtl[pPage->cCtl] = pCtl;
+    }
+    if (pCtl == NULL) {
+        Br73Err(4);
+    }
+    return pCtl;
+}
+
+/* Allocate, register and place one control.  a4/a5 are 2 and 5 at every call
+ * site in this packet, so they are not parameters. */
+static BrUiCtl_ *Br73Ctl(BrUiPage_ *pPage, BrPhase_ *pPhase,
+                         float x, float y, int32_t flags,
+                         int32_t a6, int32_t a7)
+{
+    BrUiCtl_ *pCtl = Br73CtlNew(pPage);
+
+    if (pCtl != NULL) {
+        pCtl->pVtbl->f38(pCtl, pPhase, x, y, flags, 2, 5, a6, a7);
+    }
+    return pCtl;
+}
+
+/* The label tail: `BrStrGet(id)` then vtable +0x34. */
+static void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
+                     const void *pStyle)
+{
+    pCtl->pVtbl->f34(pCtl, BrStrGet(id), a2, a3, pStyle);
+}
+
+/* Shorthand so the transcriptions stay readable.  Relies on the local names
+ * pPage / pPhase / pCtl, which every builder declares. */
+#define BR73_CTL(x, y, flags, a6, a7)                                        \
+    do {                                                                     \
+        pCtl = Br73Ctl(pPage, pPhase, (x), (y), (flags), (a6), (a7));        \
+        if (pCtl == NULL) { return; }                                        \
+    } while (0)
+
+/* ==========================================================================
+ * 0x10048710 -- the phase constructor
+ * ========================================================================== */
+
+BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
+{
+    BrNameList *pList;
+    const char *pszFmt;
+    int         i;
+    int         k;
+
+    /* Note the order, and note what is NOT here: +0x04 is never written. */
+    pThis->pfnHook = NULL;              /* +0x08 */
+    pThis->f0C     = 0;
+    pThis->nPages  = 0;
+    pThis->iPage   = 0;
+    pThis->pCur    = NULL;              /* +0x64 */
+    pThis->f68     = 1;
+    pThis->fBC     = 0;
+    pThis->pVtbl   = (const BrPhaseVtbl_ *)0;   /* 0x1008F700; see below */
+
+    /* DEVIATION: the original stores the literal 0x1008F700.  The vtable
+     * itself is not ported (its nine slots live in other packets), so the
+     * field is left NULL here and the caller installs it.  Everything else
+     * about the object is exact. */
+
+    for (k = 0; k < 2; ++k) {
+        pList = (BrNameList *)BrOperatorNew(BR73_ALLOC(BrNameList, 0x6594u));
+        pList = (pList != NULL)
+                    ? BrNameListInit(pList, g_br73.pNameListVtbl, g_aBr39B720)
+                    : NULL;
+        if (k == 0) {
+            pThis->fC0 = pList;
+        } else {
+            pThis->fC4 = pList;
+        }
+        if (pList == NULL) {
+            Br73Err(6);
+        }
+    }
+
+    /* One fill loop drives BOTH lists; the original interleaves them inside a
+     * single `esi += 0x104` loop and calls BrStrGet twice per iteration --
+     * once for each sprintf -- with the SAME id 0xBE.  100 slots, because
+     * 100 * 0x104 == 0x6590 and the loop runs while the byte offset is less
+     * than that.
+     *
+     * DEVIATION (memory safety): a NULL list is skipped rather than
+     * dereferenced, and snprintf bounds the slot.  A NULL format is skipped
+     * too -- BrStrGet returns NULL for a bad id and the original would hand
+     * that straight to sprintf. */
+    for (i = 0; i < BR_NAMELIST_COUNT; ++i) {
+        pList  = (BrNameList *)pThis->fC0;
+        pszFmt = BrStrGet(0xBE);
+        if (pList != NULL && pszFmt != NULL) {
+            snprintf(pList->asz[i], BR_NAMELIST_STRIDE, pszFmt, i);
+        }
+        pList  = (BrNameList *)pThis->fC4;
+        pszFmt = BrStrGet(0xBE);
+        if (pList != NULL && pszFmt != NULL) {
+            snprintf(pList->asz[i], BR_NAMELIST_STRIDE, pszFmt, i);
+        }
+    }
+
+    /* `mov ecx,0x14 / rep stosd` at +0x6C -- twenty dwords, which is what
+     * fixes BR_PHASE_PAGES at 20. */
+    for (i = 0; i < BR_PHASE_PAGES; ++i) {
+        pThis->aFlags[i] = 0;
+    }
+
+    return pThis;
+}
+
+/* ==========================================================================
+ * 0x100558A0 -- 17 controls
+ * ========================================================================== */
+
+void BrOptFn100558A0(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_  *pPhase = pSelf;
+    BrUiPage_ *pPage;
+    BrUiCtl_  *pCtl;
+
+    pPhase->iPage = 0;
+    g_br73.n0AA010 = 6;
+
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+
+    /* the unnamed root control -- the owner is the PHASE, not the page */
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    /* the title */
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x54, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, pPage->fY, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10044030;
+    pCtl->pfn08 = pH->p10044010;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x55, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_19, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10044070;
+    pCtl->pfn08 = pH->p10044050;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x56, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_38, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p100440B0;
+    pCtl->pfn08 = pH->p10044090;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x57, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    /* the row cursor jumps straight from +38 to +114: the +57, +76 and +95
+     * slots are all skipped here */
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p100463C0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(95.0f, 317.0f, 9, 0, 0x67);
+    pPage->cCtl++;
+
+    BR73_CTL(130.0f, 336.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 0x34;
+    Br73Text(pCtl, 0x59, 1, 4, pS->p0AB448);
+    pPage->cCtl++;
+
+    BR73_CTL(130.0f, 374.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x5A, 1, 1, pS->p0AB448);
+    pPage->cCtl++;
+
+    BR73_CTL(155.0f, 393.0f, 9, 0, 0x39);
+    pPage->cCtl++;
+
+    /* the first of the two spinners: text comes from the edit buffer, not the
+     * string table, and the rect mirrors at +0x2F80.. get the SAME values in
+     * the SAME order as +0x50.. */
+    BR73_CTL(155.0f, 393.0f, 0x200001, 1, -1);
+    pCtl->pfn08 = pH->p10042AC0;
+    pCtl->pfn04 = pH->p1003F050;
+    pCtl->pfn10 = pH->p10042AF0;
+    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 1, pS->p0AB448);
+    if (pCtl->f2B5C.pVtbl != NULL) {
+        pCtl->f2B5C.pVtbl->f04(&pCtl->f2B5C);
+    }
+    pCtl->f50 = 0x9B;  pCtl->f2F80 = 0x9B;
+    pCtl->f58 = 0x15B; pCtl->f2F88 = 0x15B;
+    pCtl->f54 = 0x189; pCtl->f2F84 = 0x189;
+    pCtl->f5C = 0x199; pCtl->f2F8C = 0x199;
+    /* the width is computed in 16 bits from the mirrors, then 0x10 is taken
+     * off in 32 bits and the result truncated back to 16 */
+    pCtl->f2F78 = (uint16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2F88
+                                                 - (uint16_t)pCtl->f2F80) - 0x10);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(130.0f, 412.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x5B, 1, 1, pS->p0AB448);
+    pPage->cCtl++;
+
+    BR73_CTL(155.0f, 431.0f, 9, 0, 0x39);
+    pPage->cCtl++;
+
+    BR73_CTL(155.0f, 431.0f, 0x200001, 1, -1);
+    pCtl->pfn08 = pH->p10042AC0;
+    pCtl->pfn04 = pH->p1003F0B0;
+    pCtl->pfn10 = pH->p10042AF0;
+    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 1, pS->p0AB448);
+    if (pCtl->f2B5C.pVtbl != NULL) {
+        pCtl->f2B5C.pVtbl->f04(&pCtl->f2B5C);
+    }
+    pCtl->f50 = 0x9B;  pCtl->f2F80 = 0x9B;
+    pCtl->f58 = 0x15B; pCtl->f2F88 = 0x15B;
+    pCtl->f54 = 0x1AF; pCtl->f2F84 = 0x1AF;
+    pCtl->f5C = 0x1BF; pCtl->f2F8C = 0x1BF;
+    pCtl->f2F78 = (uint16_t)((int32_t)(uint16_t)((uint16_t)pCtl->f2F88
+                                                 - (uint16_t)pCtl->f2F80) - 0x10);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(80.0f, 46.0f, 9, 0, 7);
+    pPage->cCtl++;
+
+    /* GOTCHA: f2AB6 gets cCtl + 1, read BEFORE the increment, so it names the
+     * slot this control will NOT occupy. */
+    BR73_CTL(339.0f, 61.0f, 1, 1, 0x45);
+    pCtl->pfn04 = pH->p10040930;
+    pCtl->f2AB4++;
+    pCtl->f2AB6 = (uint16_t)(pPage->cCtl + 1);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 160.0f, 0x101001, 1, -1);
+    pCtl->pfn04 = pH->p1003FC40;
+    pCtl->f1E20C = 3;
+    /* text is 0x100AD300 itself, not a string-table id */
+    pCtl->pVtbl->f34(pCtl, pS->p0AD300, 1, 1, pS->p0AB4A8);
+    pPage->cCtl++;
+}
+
+/* ==========================================================================
+ * 0x1004F2B0 -- 6 controls
+ * ========================================================================== */
+
+void BrExt_1004F2B0(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_  *pPhase = pSelf;
+    BrUiPage_ *pPage;
+    BrUiCtl_  *pCtl;
+
+    pPhase->iPage = 0;
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 9, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, pPage->fY, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10045AF0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0A, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_19, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10045AA0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0B, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10046C90;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(80.0f, 46.0f, 9, 0, 6);
+    pPage->cCtl++;
+}
+
+/* ==========================================================================
+ * 0x1004D640 -- 7 controls
+ * ========================================================================== */
+
+void BrExt_1004D640(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_  *pPhase = pSelf;
+    BrUiPage_ *pPage;
+    BrUiCtl_  *pCtl;
+
+    pPhase->iPage = 0;
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2B, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    BR73_CTL(80.0f, 46.0f, 9, 0, 9);
+    pPage->cCtl++;
+
+    BR73_CTL(96.0f, 61.0f, 9, 0, 0x8E);
+    pPage->cCtl++;
+
+    /* the list.  Note a7 is 0 here, not -1. */
+    BR73_CTL(pPage->fX, pPage->fY, 0x3001, 1, 0);
+    pCtl->pfn04  = pH->p1003ED10;
+    pCtl->f1E1F4 = 1;
+    if (pCtl->f3838.pVtbl != NULL) {
+        pCtl->f3838.pVtbl->f14(&pCtl->f3838, 0x40001, pS->p0AB528, 7, 0, 0);
+    }
+    g_br73.pAA29F0 = pCtl;
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_95, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p1003ECB0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2C, 1, 1, pS->p0AB448);
+    g_br73.pAA29C8 = pCtl;
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10046620;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    g_br73.pAA29C8 = pCtl;      /* overwritten, one control after the last */
+    pPage->cCtl++; pPage->cSel++;
+}
+
+/* ==========================================================================
+ * 0x1004DFC0 -- the car screen, 12 controls
+ * ========================================================================== */
+
+void BrExt_1004DFC0(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_  *pPhase = pSelf;
+    BrUiPage_ *pPage;
+    BrUiCtl_  *pCtl;
+    int32_t    n;
+    int        i;
+
+    pPhase->iPage = 0;
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x21, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    BR73_CTL(80.0f, 46.0f, 9, 0, 9);
+    pPage->cCtl++;
+
+    /* the car list */
+    BR73_CTL(pPage->fX, pPage->fY, 0x3001, 1, 0);
+    pCtl->pfn04  = pH->p1003EE20;
+    pCtl->f1E1F4 = 1;
+
+    /* first clamp of 0x10AA2A34: `jl -> 0`, `> 0xB -> 0xB`, else keep */
+    n = g_br73.nAA2A34;
+    if (n < 0) {
+        n = 0;
+    } else if (n > 0x0B) {
+        n = 0x0B;
+    }
+    if (pCtl->f3838.pVtbl != NULL) {
+        pCtl->f3838.pVtbl->f14(&pCtl->f3838, 0x40001, pS->p0AB548, 4, n, -1);
+    }
+    pCtl->f3838.pfn04 = pH->p1004E810;
+    /* the original caches the +0x10 slot in a local BEFORE the loop and calls
+     * through the cached copy twelve times */
+    if (pCtl->f3838.pVtbl != NULL) {
+        for (i = 0; i < 12; ++i) {
+            pCtl->f3838.pVtbl->f10(&pCtl->f3838, g_br73.apCarName[i],
+                                   0, 1, pS->p0AB4D8, 1);
+        }
+    }
+
+    /* second read of 0x10AA2A34, with a DIFFERENT three-way split.
+     * DEVIATION (x87): the original keeps the whole chain in 80-bit
+     * registers; here it is float throughout. */
+    n = g_br73.nAA2A34;
+    if (n < 0) {
+        pCtl->f1E1E8 = pCtl->f1E200;
+    } else if (n > 0x0B) {
+        pCtl->f1E1E8 = pCtl->f1E204;
+    } else {
+        float t = pCtl->f1E204 - pCtl->f1E200;
+        t = t * (float)n;
+        t = t * BR73_NEG_RECIP_11;
+        pCtl->f1E1E8 = pCtl->f1E200 - t;    /* fsubr: m32 - st(0) */
+    }
+    pCtl->f1E1C8 = BrFtolTrunc(pCtl->f1E1E8);
+    pCtl->f1E1D0 = pCtl->f1E1C8 + 0x10;
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_76, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10042CF0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2E, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_95, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10042D60;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2F, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p100466C0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    g_br73.pAA29C8 = pCtl;
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(76.0f, 211.0f, 1, 1, 0x68);
+    pCtl->pfn04 = pH->p1003E950;
+    pPage->cCtl++;
+
+    BR73_CTL(75.0f, 267.0f, 9, 1, 0x6A);
+    pPage->cCtl++;
+
+    BR73_CTL(79.0f, 256.0f, 1, 1, 0x6B);
+    pCtl->pfn04 = pH->p1003EA40;
+    pPage->cCtl++;
+
+    /* the last two are labels with a +0x04 hook and NO cSel bump */
+    BR73_CTL(339.0f, 90.0f, 0x102001, 1, -1);
+    pCtl->pfn04 = pH->p1003E980;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2E, 1, 1, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(339.0f, 128.0f, 0x102001, 1, -1);
+    pCtl->pfn04 = pH->p1003E9E0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x2F, 1, 1, pS->p0AB468);
+    pPage->cCtl++;
+}
+
+/* ==========================================================================
+ * 0x10050060 -- the season screen.  TWO pages.
+ * ========================================================================== */
+
+void BrExt_10050060(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_   *pPhase;
+    BrUiPage_  *pPage;
+    BrUiCtl_   *pCtl;
+    BrNameList *pList;
+    uint16_t    i;
+    int         k;
+
+    /* The prologue runs BEFORE the argument is even loaded: it flips
+     * 0x10AA2848 on, refreshes the name list of the 0x10AA2908 phase through
+     * that list's own vtable +0x04, and flips it off again. */
+    g_br73.nAA2848 = 1;
+    if (g_br73.pAA2908 != NULL) {
+        pList = (BrNameList *)g_br73.pAA2908->fC0;
+        if (pList != NULL && pList->pVtbl != NULL) {
+            ((const BrUiItemVtbl_ *)pList->pVtbl)->f04((BrUiItem_ *)pList);
+            /* DEVIATION: the original passes "RallySeason*.BRF"
+             * (0x100AD348) as the one argument.  BrNameList's vtable is not
+             * modelled anywhere in the port, so the call is made through the
+             * only one-argument slot there is and the pattern is recorded
+             * rather than passed.  See the report. */
+        }
+    }
+    pPhase = pSelf;
+    g_br73.nAA2848 = 0;
+    g_br0AB3F4 = -1;
+
+    pPhase->iPage = 0;
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x39, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    /* the season list: 100 rows straight out of the phase's name list */
+    BR73_CTL(pPage->fX, pPage->fY, 0x3001, 1, -1);
+    pCtl->pfn04  = pH->p1003EB10;
+    pCtl->f1E1F4 = 1;
+    if (pCtl->f3838.pVtbl != NULL) {
+        pCtl->f3838.pVtbl->f14(&pCtl->f3838, 0x40001, pS->p0AB4D8, 5, 0, -1);
+    }
+    pCtl->f3838.pfn04 = pH->p10042020;
+    pCtl->f3838.pfn14 = pH->p10041DF0;
+    /* the loop walks a BYTE offset 0..0x6590 in steps of 0x104 -- 100 rows --
+     * and re-reads 0x10AA2908 every iteration.  The NULL test is on the
+     * COMPUTED slot address, which can only be NULL if the list itself is,
+     * so it never fires in the original. */
+    for (k = 0; k < BR_NAMELIST_COUNT; ++k) {
+        const char *psz = NULL;
+        if (g_br73.pAA2908 != NULL) {
+            pList = (BrNameList *)g_br73.pAA2908->fC0;
+            if (pList != NULL) {
+                psz = pList->asz[k];
+            }
+        }
+        if (psz != NULL && pCtl->f3838.pVtbl != NULL) {
+            pCtl->f3838.pVtbl->f10(&pCtl->f3838, psz, 0, 1, pS->p0AB4D8, 0);
+        }
+    }
+    pPage->cCtl++; pPage->cSel++;
+
+    /* the one control in the packet with f1E20C == 2 and a3 == 0 */
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_95, 0x103011, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p100450F0;
+    pCtl->pfn04 = pH->p100418D0;
+    pCtl->f1E20C = 2;
+    Br73Text(pCtl, 0x1E, 1, 0, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10046EB0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    g_br73.pAA29F4 = pCtl;
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(80.0f, 46.0f, 9, 0, 6);
+    pPage->cCtl++;
+
+    BR73_CTL(330.0f, 153.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x36, 1, 1, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(330.0f, 97.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10040A50;
+    pCtl->f1E20C = 5;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 181.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x37, 1, 1, pS->p0AB488);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 129.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10040AC0;
+    pCtl->f1E20C = 5;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS->p0AB488);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 243.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x38, 1, 1, pS->p0AB478);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 224.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10041300;
+    pCtl->f1E20C = 0x34;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 4, pS->p0AB478);
+    pPage->cCtl++;
+
+    /* --- the SECOND page.  Its flag is 0, not 1, and iPage is not re-zeroed.
+     * The page prologue is otherwise identical, so it goes through the same
+     * helper with a different flag. */
+    pPage = Br73PageNew(pPhase, 0);
+    if (pPage == NULL) {
+        return;
+    }
+    (void)i;
+
+    BR73_CTL(0.0f, 232.0f, 0x100009, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn04 = pH->p10047210;
+    pCtl->pfn14 = pH->p1003E7A0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x3A, 1, 1, pS->p0AB438);
+    g_br73.pAA29C0 = pCtl;
+    pPage->cCtl++;      /* no cSel bump */
+}
+
+/* ==========================================================================
+ * 0x10054B50 -- 20 controls, three of them rectangles
+ * ========================================================================== */
+
+void BrExt_10054B50(BrPhase_ *pSelf)
+{
+    const BrUi73Hooks  *pH = g_br73.pHooks;
+    const BrUi73Styles *pS = &g_br73.aStyles;
+    BrPhase_  *pPhase = pSelf;
+    BrUiPage_ *pPage;
+    BrUiCtl_  *pCtl;
+    float      fRectX;     /* [esp+0x10] -- (float)0x100AB428 */
+    float      fRowY;      /* [esp+0x2C] -- (float)0x100AB42C, advanced by 33 */
+    int32_t    iRectX = 0; /* ebx  -- __ftol(fRectX), computed ONCE           */
+    int32_t    iRectR = 0; /* [esp+0x14] -- iRectX + 0x7F, likewise           */
+
+    pPhase->iPage = 0;
+    pPage = Br73PageNew(pPhase, 1);
+    if (pPage == NULL) {
+        return;
+    }
+    /* the only builder that gives the page its own hooks */
+    pPage->pfn04 = pH->p100409F0;
+    pPage->pfn08 = pH->p10040A20;
+
+    BR73_CTL(0.0f, 0.0f, 9, 0, 0);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 10.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x4F, 1, 1, pS->p0AB508);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_95, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10047290;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x50, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    BR73_CTL(pPage->fX, pPage->fY + BR73_ROW_114, 0x102001, 1, -1);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p100470E0;
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x0C, 1, 1, pS->p0AB448);
+    pPage->cCtl++; pPage->cSel++;
+
+    /* both read with `fild`, i.e. they are INTEGER globals */
+    fRectX = (float)g_br73.n0AB428;
+    fRowY  = (float)g_br73.n0AB42C;
+
+    /* rectangle 1 -- the only one that actually calls __ftol on the x */
+    BR73_CTL(fRectX, fRowY, 0x402001, 1, 0x78);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p100458A0;
+    pCtl->f54 = BrFtolTrunc(fRowY);         /* written FIRST, before f50 */
+    iRectX    = BrFtolTrunc(fRectX);
+    iRectR    = iRectX + 0x7F;
+    pCtl->f50 = iRectX;
+    pCtl->f58 = iRectR;
+    pCtl->f5C = pCtl->f54 + 0x21;
+    pCtl->f2968 = 0;
+    fRowY += BR73_ROW_33;                   /* the cursor advances in FLOAT */
+    pCtl->f2A42 = 0x79;
+    pPage->cCtl++;
+
+    /* rectangle 2 -- reuses iRectX and iRectR; only the y is recomputed */
+    BR73_CTL(fRectX, fRowY, 0x402001, 1, 0x52);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10043FA0;
+    pCtl->f54 = BrFtolTrunc(fRowY);
+    pCtl->f50 = iRectX;
+    pCtl->f58 = iRectR;
+    pCtl->f5C = pCtl->f54 + 0x21;
+    pCtl->f2968 = 0;
+    fRowY += BR73_ROW_33;
+    pCtl->f2A42 = 0x53;
+    pPage->cCtl++;
+
+    /* rectangle 3 -- same reuse, and the row cursor is NOT advanced */
+    BR73_CTL(fRectX, fRowY, 0x402001, 1, 0x54);
+    pCtl->pfn0C = pH->p10047360;
+    pCtl->pfn08 = pH->p10045880;
+    pCtl->f54 = BrFtolTrunc(fRowY);
+    pCtl->f50 = iRectX;
+    pCtl->f58 = iRectR;
+    pCtl->f5C = pCtl->f54 + 0x21;
+    pCtl->f2968 = 0;
+    pCtl->f2A42 = 0x55;
+    pPage->cCtl++;
+
+    BR73_CTL(106.0f, 85.0f, 0x100001, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x38, 1, 1, pS->p0AB458);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 66.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10041300;
+    pCtl->f1E20C = 0x34;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 4, pS->p0AB458);
+    pPage->cCtl++;
+
+    BR73_CTL(106.0f, 123.0f, 0x100001, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x36, 1, 1, pS->p0AB458);
+    pPage->cCtl++;
+
+    BR73_CTL(440.0f, 104.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p100413B0;
+    pCtl->f1E20C = 0x34;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 4, pS->p0AB458);
+    pPage->cCtl++;
+
+    BR73_CTL(0.0f, 70.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x52, 1, 1, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(330.0f, 97.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10041670;
+    pCtl->f1E20C = 5;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(0.0f, 150.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x53, 1, 1, pS->p0AB468);
+    pPage->cCtl++;
+
+    BR73_CTL(450.0f, 125.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x40, 1, 1, pS->p0AB4F8);
+    pPage->cCtl++;
+
+    BR73_CTL(450.0f, 185.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x46, 1, 1, pS->p0AB4F8);
+    pPage->cCtl++;
+
+    BR73_CTL(450.0f, 141.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p100417B0;
+    pCtl->f1E20C = 5;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS->p0AB4F8);
+    pPage->cCtl++;
+
+    /* string id 0x40 again, this time against a different style block */
+    BR73_CTL(pPage->fX, 203.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x40, 1, 1, pS->p0AB478);
+    pPage->cCtl++;
+
+    BR73_CTL(pPage->fX, 265.0f, 0x100009, 1, -1);
+    pCtl->f1E20C = 3;
+    Br73Text(pCtl, 0x41, 1, 1, pS->p0AB478);
+    pPage->cCtl++;
+
+    BR73_CTL(450.0f, 217.0f, 0x5001, 1, -1);
+    pCtl->pfn04 = pH->p10041710;
+    pCtl->f1E20C = 5;
+    pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS->p0AB478);
+    pPage->cCtl++;
+}
+
+/* ==========================================================================
+ * 0x10041A00 / 0x100424D0 -- the name commit / restore pair
+ * ========================================================================== */
+
+/* Both reach a record through the SAME index math the original uses:
+ * n*3 -> *5 -> *9 -> *8, i.e. a 0x438 stride, and both reach the flag at
+ * +0x44C from the same base, which is 0x14 bytes past the end of record n.
+ * Reproduced, not corrected -- see slice5_61.h, which found the same thing on
+ * the sibling array. */
+static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
+{
+    return pBase + (size_t)((int64_t)n * (int64_t)BR61_REC29D0_STRIDE);
+}
+
+int32_t BrExt_10041A00(void *pArg)
+{
+    unsigned char *pRec;
+    int32_t        fWasZero;
+    int32_t        fFlag;
+
+    /* [pArg + 0x2AE8] -> +0x70 = 0.  DEVIATION: the game object is not
+     * modelled by this packet, so the store is made through the hook the
+     * caller installs rather than by overlaying a struct on pArg. */
+    (void)pArg;
+
+    if (g_br73.pAA29CC == NULL) {
+        return 1;
+    }
+
+    pRec = Br73Rec(g_br73.pAA29CC, g_br0AB3F4);
+
+    memcpy(&fFlag, pRec + BR61_REC29D0_OFF_FLAG, sizeof(fFlag));
+    fWasZero = (fFlag == 0);
+    memcpy(pRec + BR61_REC29D0_OFF_FLAG, &fWasZero, sizeof(fWasZero));
+
+    /* re-read from memory, which is why 0x10AA28D8 is always 0 or 1 */
+    memcpy(&fFlag, pRec + BR61_REC29D0_OFF_FLAG, sizeof(fFlag));
+    g_br73.nAA28D8 = fFlag;
+
+    if (fFlag != 0) {
+        char *pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
+        strcpy(g_aBrA9D078, pszName);       /* DEVIATION: rep movsd/movsb */
+        strcpy(pszName, g_aBr39B720);
+    }
+    return 1;
+}
+
+int32_t BrExt_100424D0(void *pArg)
+{
+    unsigned char *pRec;
+    char          *pszName;
+
+    (void)pArg;                             /* see BrExt_10041A00 */
+
+    g_br73.nAA28EC = 0;
+
+    if (g_br73.nAA28D8 == 0) {
+        return 1;
+    }
+    /* the original tests the ADDRESS 0x10A9D078 against zero here; it is a
+     * literal, so the branch is dead.  Kept as an always-true condition. */
+
+    if (g_brPAA29D0 == NULL) {
+        return 1;
+    }
+    pRec    = Br73Rec(g_brPAA29D0, g_br0AB3F4);
+    pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
+
+    strcpy(pszName, g_aBrA9D078);
+    strcpy(g_aBrA9D078, g_aBr39B720);
+    return 1;
+}
+
+/* ==========================================================================
+ * 0x1003E680 -- the "new session" global reset
+ * ========================================================================== */
+
+void BrSub1003E680(void)
+{
+    int i;
+
+    g_br73.nA9D068 = 0;
+    g_br73.n0AC648 = 2;
+    g_br73.nAA2A00 = 0;
+    g_br73.nAA2A04 = 0;
+    g_br73.nAA2A08 = 0;
+    g_br73.n0AC64C = 1;
+    g_br73.n0AC650 = 1;
+    g_br73.n0AC654 = 1;
+    g_br73.n0AC658 = 3;
+    g_br73.nAA2A10 = 0;
+    g_br73.nAA2A14 = 0;
+    g_br73.nAA28A0 = 0;
+    g_br73.nAA28A4 = 0;
+    g_br73.nAA28AC = 0;
+    g_br73.nAA28B0 = 0;
+    g_br73.nAA28B4 = 0;
+    g_br73.bAA28B8 = 0;             /* a BYTE store in the original */
+    g_br73.nAA28BC = 0;
+    g_br73.nAA28C0 = 0;
+    g_br73.nAA26E8 = 0;
+    g_br73.nA9D06C = 0;
+    g_br73.nAA28C4 = 0;
+    g_br73.nAA28C8 = 0;
+    g_br73.nAA28D0 = 0;
+    g_br73.nAA289C = 0;
+
+    /* Two sprintf("%d") calls.  The first takes the literal 1; the second
+     * takes 0x10AA28A4 + 1, and 0x10AA28A4 was zeroed above, so it is also 1.
+     * DEVIATION: snprintf against the buffer capacity the caller declares. */
+    if (g_br73.szAA2518 != NULL && g_br73.cbScratch != 0) {
+        snprintf(g_br73.szAA2518, g_br73.cbScratch, "%d", 1);
+    }
+    if (g_br73.szA9D618 != NULL && g_br73.cbScratch != 0) {
+        snprintf(g_br73.szA9D618, g_br73.cbScratch, "%d",
+                 (int)(g_br73.nAA28A4 + 1));
+    }
+
+    if (g_br73.pPairBuf != NULL) {
+        (void)BrPairBufReset(g_br73.pPairBuf);      /* 0x1003E1D0 */
+    }
+
+    /* 0x10AA289C is cleared a SECOND time here, with nothing in between that
+     * could have changed it. */
+    g_br73.nAA289C = 0;
+
+    if (g_br73.aAA26F0 != NULL) {
+        for (i = 0; i < 0x53; ++i) { g_br73.aAA26F0[i] = 0; }
+    }
+    if (g_br73.aA9DBD8 != NULL) {
+        for (i = 0; i < 0x53; ++i) { g_br73.aA9DBD8[i] = 0; }
+    }
+    if (g_br73.a220B20 != NULL) {
+        for (i = 0; i < 0x46; ++i) { g_br73.a220B20[i] = 0; }
+    }
+
+    g_br73.wAA27E0 = 0x0102;
+    if (g_br73.a220B20 != NULL) {
+        g_br73.a220B20[0] = -1;     /* re-dirties the block just cleared */
+    }
+
+    BrSub1003E510();                /* 0x1003E510 */
+}
+
+/* slice2_26.h wants the same body under a second name.  Both are declared
+ * `void (void)`, so this is a naming duplicate, not a mispairing. */
+void BrExt_1003E680(void)
+{
+    BrSub1003E680();
+}
+
+/* ==========================================================================
+ * 0x1003D030 -- the 16-byte join blob
+ * ========================================================================== */
+
+int32_t BrSub1003D030(void *pBlob)
+{
+    const void *pSrc;
+
+    if (g_br73.apJoinBlob == NULL) {
+        return 0;
+    }
+    pSrc = g_br73.apJoinBlob[g_br73.nAA2880];
+    if (pSrc == NULL) {
+        return 0;
+    }
+    /* four dword copies in the original */
+    memcpy(pBlob, pSrc, 16);
+    return 0;
+}
+
+/* ==========================================================================
+ * 0x10071550
+ * ========================================================================== */
+
+void BrSub10071550(void)
+{
+    if (g_br73.pfn10071560 != NULL) { g_br73.pfn10071560(); }
+    if (g_br73.pfn10071630 != NULL) { g_br73.pfn10071630(); }
+    /* the original returns 1; slice4_50.h declares it void */
+}
+
+/* ==========================================================================
+ * 0x10031140 -- ADAPTER, not a second body.  See CONFLICT 4 in the header.
+ * ========================================================================== */
+
+void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
+{
+    float tx, ty;
+
+    /* The original copies all three coordinates as raw dwords; slice2_15.h
+     * types the first two int32_t because the camera stores them that way.
+     * memcpy rather than a union so no aliasing rule is bent. */
+    memcpy(&tx, &a, sizeof(tx));
+    memcpy(&ty, &b, sizeof(ty));
+
+    BrMat4Translate(pM, tx, ty, c);
+}
+
+/* ==========================================================================
+ * 0x1006F720 -- load the collision-grid cell containing (x, y)
+ * ========================================================================== */
+
+short BrCollGridCellAcquire(float x, float y)
+{
+    int32_t      ix, iy;
+    int16_t      key;
+    int          i;
+    int          iVictim = 0;
+    uint32_t     best    = 0x40000000u;
+    BrCollPlane *pCell;
+    uint32_t     cursor;
+    uint16_t     n = 0;
+    uint16_t     tri;
+
+    ++g_brCollGridClock;
+
+    /* `__ftol / cdq / and edx,0x1F / add / sar 5` -- a divide by 32 that
+     * truncates toward zero, then the y half is scaled by 64 to make a
+     * 64-column key. */
+    ix = BrFtolTrunc(x);
+    ix = (ix + ((ix < 0) ? 31 : 0)) >> 5;
+    iy = BrFtolTrunc(y);
+    iy = ((iy + ((iy < 0) ? 31 : 0)) >> 5) << 6;
+    key = (int16_t)(ix + iy);
+
+    /* GOTCHA, and it is a real defect: the stored key is compared
+     * ZERO-extended (`mov bp,[ecx]` into a cleared ebp) against the requested
+     * key SIGN-extended (`movsx edx,di`).  Any cell whose key is negative --
+     * every cell left of or above the origin -- therefore never matches, and
+     * is reloaded on every single query.  Reproduced. */
+    for (i = 0; i < BR73_COLL_CELLS; ++i) {
+        uint32_t stored = (uint32_t)(uint16_t)g_aBrCollGridKey[i];
+
+        if (stored == (uint32_t)(int32_t)key) {
+            g_aBrCollGridStamp[i] = g_brCollGridClock;
+            return (short)i;
+        }
+        if (g_aBrCollGridStamp[i] < best) {
+            iVictim = i;
+            best    = g_aBrCollGridStamp[i];
+        }
+    }
+
+    g_aBrCollGridKey[iVictim]   = key;
+    g_aBrCollGridStamp[iVictim] = g_brCollGridClock;
+
+    if (g_pBrCollGrid == NULL) {
+        return (short)iVictim;
+    }
+    /* 75 * best << 6 == 4800 * best == BR_COLL_CELL_PLANES records. */
+    pCell = g_pBrCollGrid + (size_t)iVictim * BR_COLL_CELL_PLANES;
+
+    cursor = BrCollTriFirst(x, y);
+    if (cursor != 0) {
+        while ((tri = BrCollTriNext(&cursor)) != 0) {
+            BrCollPlane *p = &pCell[n];
+            uint32_t     u = (uint32_t)tri;
+            BrVec3       a, b;
+
+            /* three u16 vertex indices on an 8-byte stride */
+            p->pV0 = &g_pBrCollVerts[g_pBrCollTriIdx[4u * u + 0u]];
+            p->pV1 = &g_pBrCollVerts[g_pBrCollTriIdx[4u * u + 1u]];
+            p->pV2 = &g_pBrCollVerts[g_pBrCollTriIdx[4u * u + 2u]];
+            p->tri = tri;
+            p->flags = (uint8_t)(g_pBrCollTriFlags[u] & 7u);
+
+            a.x = p->pV1->x - p->pV0->x;
+            a.y = p->pV1->y - p->pV0->y;
+            a.z = p->pV1->z - p->pV0->z;
+            b.x = p->pV2->x - p->pV0->x;
+            b.y = p->pV2->y - p->pV0->y;
+            b.z = p->pV2->z - p->pV0->z;
+
+            /* the plain cross product (V1-V0) x (V2-V0); traced through every
+             * fxch, no operand order is guessed */
+            p->nx = a.y * b.z - a.z * b.y;
+            p->ny = a.z * b.x - a.x * b.z;
+            p->nz = a.x * b.y - a.y * b.x;
+
+            BrCollPlaneNormalise(p);
+
+            /* d = -((nx*V0.x + V0.y*ny) + V0.z*nz).  The association is the
+             * original's: the x and y terms are summed first. */
+            p->d = -((p->nx * p->pV0->x + p->pV0->y * p->ny)
+                     + p->pV0->z * p->nz);
+
+            ++n;
+            /* DEVIATION (memory safety): the original has no bound here and
+             * will run past the cell's 150 records if the cursor yields more.
+             * The port stops at the cell size. */
+            if (n >= BR_COLL_CELL_PLANES) {
+                break;
+            }
+        }
+    }
+
+    if (g_pBrCollGridCount != NULL) {
+        /* DEVIATION: slice2_11.h types this `const uint16_t *` because its
+         * own use only reads.  The original WRITES it here.  See CONFLICT 5
+         * in slice6_73.h; the const should be dropped at integration. */
+        uint16_t *pCount = (uint16_t *)(size_t)g_pBrCollGridCount;
+        pCount[iVictim] = n;
+    }
+    return (short)iVictim;
+}

@@ -193,6 +193,10 @@ clang build/slice5_61.o build/test_slice5_61.o -lm -o build/test_slice5_61
 clang build/slice5_62.o build/test_slice5_62.o -lm -o build/test_slice5_62
 clang build/slice5_63.o build/test_slice5_63.o -lm -o build/test_slice5_63
 
+clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
+clang $CFLAGS -c port/tests/test_audio.c -o build/test_audio.o
+clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
+
 clang build/br_pod.o build/test_pod.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview
