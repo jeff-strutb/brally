@@ -436,7 +436,25 @@ map's mid-function entries), so this rests on agent 19's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
 
-### TOP INTEGRATION BLOCKER — one merged phase layout unblocks five functions
+### RESOLVED — canonical phase layout is now `port/include/br_phase.h`
+
+`BrPhase_` there is the merged superset (promoted from slice3_32's `BrPhaseFull`,
+which had already reconciled the destructor at `0x10048870` and the vtable at
+`0x1008F700`). Verified to coexist with all four earlier partial models, so
+nothing already compiled breaks. **New code uses br_phase.h; do not add a fifth
+model.**
+
+This makes the LP64 hazard concrete rather than theoretical:
+
+    original (32-bit)   sizeof 0xC8 = 200   nPages@16  pCur@100  f68@104
+    this host (LP64)    sizeof      = 304   nPages@28  pCur@192  f68@200
+
+So byte offsets do NOT survive on a 64-bit host. `br_phase.h` therefore asserts
+only what is portable -- field ORDER -- and supplies `BR_PHASE_ALLOC_SIZE` so
+callers stop allocating the `0xC8` literal, which under-allocates by 104 bytes
+here. Nothing may overlay this struct on a file image or foreign buffer.
+
+### Original blocker description (kept for context)
 
 Five menu-screen builders (`0x10049F40`, `0x1004D640`, `0x10056FF0`, `0x1004F700`,
 `0x10053CF0`) have been declined **independently by five different agents**. Their
