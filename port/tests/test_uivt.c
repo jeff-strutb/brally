@@ -77,7 +77,7 @@ static BrUiCtl_ *NewCtl(void)
     if (!c) return NULL;
     memset(c, 0xA5, sizeof(*c));
     BrUiCtlCtor(c);
-    c->f2B5C.pVtbl = &s_boxVtbl;
+    c->aText[0].pVtbl = &s_boxVtbl;
     return c;
 }
 
@@ -106,11 +106,11 @@ static void TestPageCtor(void)
     CHECK(pg->cCtl == 0, "+0x14 cleared");
     CHECK(pg->pOwner == NULL, "+0x340 cleared");
     CHECK(pg->cSel == 0, "+0x344 cleared");
-    CHECK(pg->f346 == 0, "+0x346 cleared");
+    CHECK(pg->iSel == 0, "+0x346 cleared");
 
-    /* The fill's extent, which is what fixes BR73_PAGE_CTL_MAX at 200. */
+    /* The fill's extent, which is what fixes BR_UI_PAGE_CTL_MAX at 200. */
     CHECK(pg->apCtl[0] == NULL, "fill covers the first slot");
-    CHECK(pg->apCtl[BR73_PAGE_CTL_MAX - 1] == NULL,
+    CHECK(pg->apCtl[BR_UI_PAGE_CTL_MAX - 1] == NULL,
           "fill covers the LAST slot (0x18 + 200*4 == 0x338)");
     CHECK(pg->fX == 0.0f && pg->fY == 0.0f,
           "the two floats past the array are cleared too");
@@ -131,28 +131,28 @@ static void TestPlace(void)
     if (!c) { printf("alloc failed\n"); return; }
 
     /* The constructor's -1 fill reaches +0x2A40; f38 is what replaces it. */
-    CHECK(c->f2A40 == (uint16_t)0xFFFFu, "+0x2A40 starts at -1, not 0");
-    CHECK(c->f1C == 1, "+0x1C starts at 1 -- f38 ORs into it");
+    CHECK(c->aStepId[0] == (uint16_t)0xFFFFu, "+0x2A40 starts at -1, not 0");
+    CHECK(c->flags1C == 1, "+0x1C starts at 1 -- f38 ORs into it");
 
     BrUiCtlPlace_10047FB0(c, (BrPhase_ *)0, 195.0f, 130.0f,
                           0x102001, 2, 5, 7, 0x45);
 
-    CHECK(c->f3C == 195.0f && c->f40 == 130.0f, "+0x3C/+0x40 take x and y");
-    CHECK(c->f1C == (1 | 0x102001), "+0x1C is OR-ed, not assigned");
-    CHECK(c->f24 == 2 && c->f28 == 5, "+0x24/+0x28 OR in a4 and a5");
+    CHECK(c->x == 195.0f && c->y == 130.0f, "+0x3C/+0x40 take x and y");
+    CHECK(c->flags1C == (1 | 0x102001), "+0x1C is OR-ed, not assigned");
+    CHECK(c->flags24 == 2 && c->flags28 == 5, "+0x24/+0x28 OR in a4 and a5");
     CHECK(c->f2968 == 7, "+0x2968 is assigned");
-    CHECK(c->f2A40 == 0x45 && c->f1E20C == 0x45,
+    CHECK(c->aStepId[0] == 0x45 && c->w1E20C == 0x45,
           "one code word, TWO destinations");
 
     /* Second call: three fields accumulate, the rest are overwritten. */
     BrUiCtlPlace_10047FB0(c, (BrPhase_ *)0, 10.0f, 20.0f,
                           0x200000, 8, 0, 9, 0x39);
-    CHECK(c->f1C == (1 | 0x102001 | 0x200000), "+0x1C accumulates");
-    CHECK(c->f24 == (2 | 8), "+0x24 accumulates");
-    CHECK(c->f28 == 5, "+0x28 accumulates (OR with 0 is a no-op)");
+    CHECK(c->flags1C == (1 | 0x102001 | 0x200000), "+0x1C accumulates");
+    CHECK(c->flags24 == (2 | 8), "+0x24 accumulates");
+    CHECK(c->flags28 == 5, "+0x28 accumulates (OR with 0 is a no-op)");
     CHECK(c->f2968 == 9, "+0x2968 does NOT accumulate");
-    CHECK(c->f2A40 == 0x39, "+0x2A40 does NOT accumulate");
-    CHECK(c->f3C == 10.0f && c->f40 == 20.0f, "the floats are assigned");
+    CHECK(c->aStepId[0] == 0x39, "+0x2A40 does NOT accumulate");
+    CHECK(c->x == 10.0f && c->y == 20.0f, "the floats are assigned");
 
     BrUiCtlPlace_10047FB0(NULL, NULL, 0, 0, 0, 0, 0, 0, 0);   /* must not fault */
     free(c);
@@ -173,27 +173,27 @@ static void TestSetText(void)
     /* a2 == 2: bit 0 CLEAR, so no +0x28 call. a3 == 1: not 3, so +0x04. */
     BrUiCtlSetText_10047EB0(c, "MAIN MENU", 2, 1, s_style);
 
-    CHECK(strcmp(c->f2B5C.sz, "MAIN MENU") == 0, "text copied with its NUL");
-    CHECK(c->f2B5C.f08 == 1, "the kind byte is stored");
-    CHECK(c->f2B5C.f04 == 2u, "flags OR-ed into the item");
+    CHECK(strcmp(c->aText[0].sz, "MAIN MENU") == 0, "text copied with its NUL");
+    CHECK(c->aText[0].f08 == 1, "the kind byte is stored");
+    CHECK(c->aText[0].f04 == 2u, "flags OR-ed into the item");
     CHECK(s_c04 == 1 && s_c08 == 0, "kind != 3 dispatches vtable +0x04");
     CHECK(s_c28 == 0, "bit 0 clear -> no +0x28 call");
 
     /* The rectangle: x edges from the STYLE, y from +0x40 truncated. A port
      * that used the placement x would give 195 here. */
-    CHECK(c->f50 == 148, "+0x50 comes from pStyle[0], NOT from x");
-    CHECK(c->f58 == 358, "+0x58 comes from pStyle[2], NOT from x + 0x7F");
-    CHECK(c->f54 == 130, "+0x54 is __ftol(+0x40) -- truncated toward zero");
-    CHECK(c->f2B5C.left == 148 && c->f2B5C.right == 358,
+    CHECK(c->rcLeft == 148, "+0x50 comes from pStyle[0], NOT from x");
+    CHECK(c->rcRight == 358, "+0x58 comes from pStyle[2], NOT from x + 0x7F");
+    CHECK(c->rcTop == 130, "+0x54 is __ftol(+0x40) -- truncated toward zero");
+    CHECK(c->aText[0].left == 148 && c->aText[0].right == 358,
           "the item gets the same two edges");
-    CHECK(c->f2B5C.x == 195.0f && c->f2B5C.y == 130.75f,
+    CHECK(c->aText[0].x == 195.0f && c->aText[0].y == 130.75f,
           "the item gets the control's +0x3C / +0x40 verbatim");
 
     /* +0x5C and +0x48/+0x4A are decided by the measuring hook, which ran
      * AFTER the zeroing. MeasureA sets height 16 and width 3*len. */
-    CHECK(c->f5C == 130 + 16, "+0x5C is +0x54 plus the MEASURED height");
-    CHECK(c->f4A == 16, "+0x4A is the measured height");
-    CHECK(c->f48 == (uint16_t)(3 * 9), "+0x48 is the measured width");
+    CHECK(c->rcBottom == 130 + 16, "+0x5C is +0x54 plus the MEASURED height");
+    CHECK(c->w4A == 16, "+0x4A is the measured height");
+    CHECK(c->w48 == (uint16_t)(3 * 9), "+0x48 is the measured width");
 
     free(c);
 }
@@ -209,14 +209,14 @@ static void TestSetTextDispatch(void)
     /* Seed the item flags with bit 0 ALREADY set, then pass a2 with bit 0
      * CLEAR. The original tests the argument, so +0x28 must NOT run even
      * though the field ends up with bit 0 set. */
-    c->f2B5C.f04 = 1u;
+    c->aText[0].f04 = 1u;
     BrUiCtlSetText_10047EB0(c, "12345", 4, 3, s_style);
 
     CHECK(s_c08 == 1 && s_c04 == 0, "kind == 3 dispatches vtable +0x08");
-    CHECK(c->f2B5C.f04 == (1u | 4u), "flags are OR-ed, not assigned");
+    CHECK(c->aText[0].f04 == (1u | 4u), "flags are OR-ed, not assigned");
     CHECK(s_c28 == 0,
           "the +0x28 call follows the ARGUMENT's bit 0, not the field's");
-    CHECK(c->f4A == 45 && c->f48 == (uint16_t)(40 * 5),
+    CHECK(c->w4A == 45 && c->w48 == (uint16_t)(40 * 5),
           "the font-B measurement is the one that landed");
 
     /* Now the other way: argument bit 0 set. */
@@ -240,21 +240,21 @@ static void TestSetTextResets(void)
      * Measure with the tall font, then the short one, and check the short
      * result is what survives. */
     BrUiCtlSetText_10047EB0(c, "12345", 0, 3, s_style);
-    CHECK(c->f4A == 45, "tall font first");
+    CHECK(c->w4A == 45, "tall font first");
     BrUiCtlSetText_10047EB0(c, "ab", 0, 1, s_style);
-    CHECK(c->f4A == 16, "width/height are RESET before each measure");
-    CHECK(c->f48 == (uint16_t)(3 * 2), "and the width is the new string's");
+    CHECK(c->w4A == 16, "width/height are RESET before each measure");
+    CHECK(c->w48 == (uint16_t)(3 * 2), "and the width is the new string's");
 
     /* No text-box vtable: the measure is skipped, the box keeps zeroes, and
      * the control's rectangle still gets the style edges and the truncated y.
      * This is the port's NULL-vtable deviation, pinned so it cannot quietly
      * become something else. */
-    c->f2B5C.pVtbl = NULL;
+    c->aText[0].pVtbl = NULL;
     BrUiCtlPlace_10047FB0(c, (BrPhase_ *)0, 0.0f, 42.9f, 0, 2, 5, 0, 0);
     BrUiCtlSetText_10047EB0(c, "zz", 1, 1, s_style);
-    CHECK(c->f54 == 42, "y still truncates with no box vtable");
-    CHECK(c->f5C == 42, "and +0x5C is +0x54 plus a height of zero");
-    CHECK(c->f2B5C.width == 0 && c->f2B5C.height == 0,
+    CHECK(c->rcTop == 42, "y still truncates with no box vtable");
+    CHECK(c->rcBottom == 42, "and +0x5C is +0x54 plus a height of zero");
+    CHECK(c->aText[0].width == 0 && c->aText[0].height == 0,
           "an unmeasured box reads as zero, not as the previous measurement");
 
     BrUiCtlSetText_10047EB0(NULL, "x", 0, 0, s_style);   /* must not fault */
@@ -273,20 +273,20 @@ static void TestTextRoom(void)
      * run past the item block into the control's own fields. The port
      * truncates. The assertion is that the buffer stays terminated and the
      * field immediately after it is untouched. */
-    pszLong = (char *)malloc(BR73_ITEM_TEXT_ROOM + 64u);
+    pszLong = (char *)malloc(BR_TEXTBOX_MAX + 64u);
     if (!pszLong) { free(c); printf("alloc failed\n"); return; }
-    for (i = 0; i < BR73_ITEM_TEXT_ROOM + 63u; ++i) pszLong[i] = 'x';
-    pszLong[BR73_ITEM_TEXT_ROOM + 63u] = '\0';
+    for (i = 0; i < BR_TEXTBOX_MAX + 63u; ++i) pszLong[i] = 'x';
+    pszLong[BR_TEXTBOX_MAX + 63u] = '\0';
 
     /* f434 is the last field of the item block and 0x10047EB0 never writes
      * it, so it is the honest witness for an over-run. */
-    c->f2B5C.f434 = 0x5A5A5A5A;
+    c->aText[0].f434 = 0x5A5A5A5A;
     BrUiCtlPlace_10047FB0(c, (BrPhase_ *)0, 0.0f, 0.0f, 0, 2, 5, 0, 0);
     BrUiCtlSetText_10047EB0(c, pszLong, 0, 1, s_style);
 
-    CHECK(strlen(c->f2B5C.sz) == (size_t)BR73_ITEM_TEXT_ROOM - 1u,
+    CHECK(strlen(c->aText[0].sz) == (size_t)BR_TEXTBOX_MAX - 1u,
           "an over-long string is truncated to the buffer");
-    CHECK(c->f2B5C.f434 == 0x5A5A5A5A,
+    CHECK(c->aText[0].f434 == 0x5A5A5A5A,
           "the copy did not run past the end of the item block");
 
     free(pszLong);

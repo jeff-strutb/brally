@@ -92,16 +92,32 @@
  *    the part slice3_33.h could not manage (it had to add a context
  *    parameter); the module's globals are file-scope here instead.
  *
- * 3. The 0x348 page and the 0x1E214 control already have models:
- *      0x348    slice3_33.h BrUiScreen   slice3_32.h BrUiPage
- *      0x1E214  slice3_33.h BrUiCtl      slice3_32.h/slice2_23.h BrUiObj
- *    Neither can be reused verbatim: br_phase.h's `aPages` is typed
- *    `BrUiPage_ *`, and the page's owner pointer and the control vtable's
- *    +0x38 owner argument must both be `BrPhase_ *`, which is precisely what
- *    those headers cannot say.  `struct BrUiPage_` below COMPLETES
- *    br_phase.h's own forward declaration rather than coining a new name;
- *    `BrUiCtl_` carries br_phase.h's trailing-underscore marker for the same
- *    reason.  Field-for-field they agree with slice3_33.h.
+ * 3. RESOLVED.  The 0x348 page and the 0x1E214 control had six models
+ *    between them (slice2_23.h, slice3_32.h, slice3_33.h, slice6_71.h,
+ *    slice6_72.h and the ones that used to be in this file).  br_ui.h is the
+ *    adjudicated merge and OWNS `struct BrUiPage_` -- the tag br_phase.h
+ *    forward-declares and this header used to complete.  Both definitions are
+ *    gone from here and br_ui.h is included instead, which is what makes this
+ *    header and slice6_72.h able to share a translation unit at last.
+ *
+ *    What moved, for anyone chasing an old field name:
+ *      f50/f54/f58/f5C -> rcLeft/rcTop/rcRight/rcBottom
+ *      f1C/f24/f28     -> flags1C/flags24/flags28
+ *      f3C/f40         -> x/y          f48/f4A -> w48/w4A
+ *      f2A40/f2A42     -> aStepId[0]/aStepId[1]         (ADJ-3, ADJ-4)
+ *      f2AB4/f2AB6     -> cChild/aChild[0]              (ADJ-5)
+ *      f2AE8           -> pOwner
+ *      f2B5C           -> aText[0]                      (ADJ-1, ADJ-2)
+ *      f3838           -> list  (slice3_39.h BrTextList) (ADJ-6)
+ *      f1E1F4/f1E1E8   -> list.f1A99C[8]/[5]
+ *      f1E200/f1E204   -> list.f1A99C[11]/[12]
+ *      f1E1C8/f1E1D0   -> list.f1A990/f1A998  -- br_ui.h ADJ-6 records these
+ *                         two as the ONE thing the canonical control cannot
+ *                         express, because they land in a region slice3_39.h
+ *                         did not model.  They are named in slice3_39.h now,
+ *                         in their rightful owner, rather than being added
+ *                         back to the control as a private extension.
+ *      f1E20C          -> w1E20C
  *
  * 4. 0x10031140 -- ALREADY slice1_05.c's BrMat4Translate (slice5_61.h says so
  *    too).  `BrSub_10031140` here is a three-line ADAPTER, not a second body.
@@ -141,7 +157,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "br_phase.h"    /* BrPhase_, BrUiPage_ (completed below)          */
+#include "br_phase.h"    /* BrPhase_, BrUiPage_ (COMPLETED by br_ui.h)     */
+#include "br_ui.h"       /* struct BrUiPage_, BrUiCtl_, BrUiCtlVtbl_,
+                          * BrUiCtlHookFn_, BrUiPageHookFn_ -- canonical   */
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0), BrFtolTrunc        */
 #include "slice1_06.h"   /* BrErrHost/BrErrShow (0x1003E260),
                           * BrNameList/BrNameListInit (0x1005CB90)         */
@@ -156,165 +174,45 @@
                           * at control +0x2B5C is that object, see below   */
 
 /* ==========================================================================
- * 1. The control (0x1E214 bytes; ctor 0x100476C0)
+ * 1. The page and the control -- BOTH OWNED BY br_ui.h
+ *
+ * This header used to define `struct BrUiPage_`, `BrUiCtl_`, `BrUiCtlVtbl_`
+ * and a three-field `BrUiCtlSub_` stub for the object at control +0x3838.
+ * All four are gone; br_ui.h supplies the first three and slice3_39.h's
+ * BrTextList is the fourth in full (br_ui.h ADJ-6 -- it is 0x1A9D4 bytes, not
+ * three fields, and 0x3838 + 0x1A9D4 lands exactly on +0x1E20C).
+ *
+ * The identification of the item block at +0x2B5C as slice3_39.h's BrTextBox,
+ * which this header made and which br_ui.h's ADJ-1/ADJ-2 confirm from the
+ * constructor and from vtable slot +0x34, survives unchanged: br_ui.h spells
+ * it `BrTextBox aText[3]` and the old `f2B5C` is `aText[0]`.
+ *
+ * The NO-ALIASING note this header carried is kept, because it is the reason
+ * the merge is safe: there is ONE object at +0x2B5C and +0x2F78 / +0x2F80 /
+ * +0x2F84 / +0x2F88 / +0x2F8C are ITS fields (f41C / left / f428 / right /
+ * f430), not the control's.  Two host fields for one original address drift
+ * apart after the first write.  Use pCtl->aText[0].left and friends.
  * ========================================================================== */
-
-typedef struct BrUiCtl_        BrUiCtl_;
-typedef struct BrUiCtlVtbl_    BrUiCtlVtbl_;
-typedef struct BrUiCtlSub_     BrUiCtlSub_;
-typedef struct BrUiCtlSubVtbl_ BrUiCtlSubVtbl_;
-/* BrUiItem_ / BrUiItemVtbl_ are aliases of slice3_39.h's BrTextBox pair; the
- * typedefs are down with the identification, in section 1. */
-
-/* The +0x04 / +0x08 / +0x0C / +0x10 / +0x14 slots hold plain __cdecl
- * pointers.  This packet only ever STORES them, so one positional argument
- * is all that is established -- same call as slice3_33.h's BrUiCtlFn. */
-typedef void (*BrUiCtlFn_)(void *pArg);
-
-struct BrUiCtlVtbl_ {
-    void *aReserved[13];        /* +0x00..+0x30 -- untouched here */
-
-    /* +0x34 __thiscall.  Set the control's text.  When the text comes from
-     * the string table the call site is `BrStrGet(id)`; three sites pass
-     * 0x1039B720 or 0x100AD300 directly instead. */
-    void (*f34)(BrUiCtl_ *pThis, const void *pText,
-                int32_t a2, int32_t a3, const void *pStyle);
-
-    /* +0x38 __thiscall.  Place the control.  a4 == 2 and a5 == 5 at every
-     * call site in this packet; a6/a7 vary.  NOTE the owner is the PHASE,
-     * never the page. */
-    void (*f38)(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
-                int32_t flags, int32_t a4, int32_t a5,
-                int32_t a6, int32_t a7);
-};
-
-struct BrUiCtlSubVtbl_ {
-    void *aReserved[4];         /* +0x00..+0x0C */
-    /* +0x10 __thiscall -- append one row of text. */
-    void (*f10)(BrUiCtlSub_ *pThis, const void *pText, int32_t a2,
-                int32_t a3, const void *pStyle, int32_t a5);
-    /* +0x14 __thiscall -- configure the list. */
-    void (*f14)(BrUiCtlSub_ *pThis, int32_t a1, const void *pStyle,
-                int32_t a3, int32_t a4, int32_t a5);
-};
-
-/* The sub-object that begins at control +0x3838: the original both reads its
- * vtable with `mov eax,[edi+0x3838]` and takes its address with
- * `lea ecx,[edi+0x3838]`. */
-struct BrUiCtlSub_ {
-    const BrUiCtlSubVtbl_ *pVtbl;   /* control +0x3838 */
-    BrUiCtlFn_             pfn04;   /* control +0x383C */
-    BrUiCtlFn_             pfn14;   /* control +0x384C */
-};
-
-/* The item sub-object at control +0x2B5C.
- *
- * IT IS slice3_39.h's BrTextBox, and this header no longer models it
- * separately.  The identification is not a guess:
- *
- *   - the control constructor builds +0x2B5C as THREE elements of 0x438 with
- *     element constructor 0x1005B050, and 0x1005B050 is slice3_39.h's
- *     BrTextBoxInit (it plants vtable 0x1008F728, zeroes 0x100 dwords from
- *     element +0x09, and sets element +0x08 to 1);
- *   - 0x1008F728's +0x04 / +0x08 / +0x28 slots are BrTextBoxMeasureA,
- *     BrTextBoxMeasureB and BrTextBoxCentreX, which is exactly what
- *     0x10047EB0 dispatches;
- *   - every offset this packet touches inside the block lands on a named
- *     BrTextBox field:
- *       +0x2B60 f04   +0x2B64 f08   +0x2B65 sz    +0x2F66 width
- *       +0x2F68 height +0x2F6C x    +0x2F70 y     +0x2F74 f418
- *       +0x2F78 f41C  +0x2F7C f420  +0x2F80 left  +0x2F84 f428
- *       +0x2F88 right +0x2F8C f430
- *
- * The old names survive as aliases so existing declarations keep compiling;
- * the VTABLE SLOT is spelled `pfn04`, not `f04`, because that is what
- * slice3_39.h calls it.  There is now ONE model of this object, not two. */
-typedef BrTextBox     BrUiItem_;
-typedef BrTextBoxVtbl BrUiItemVtbl_;
 
 /* The text room the element constructor's `rep stosd` establishes: 0x100
  * dwords from element +0x09.  slice3_39.h's BR_TEXTBOX_MAX is the same
  * number, reused rather than restated. */
 #define BR73_ITEM_TEXT_ROOM  BR_TEXTBOX_MAX
 
-/* NO +0x2F78 / +0x2F80 / +0x2F84 / +0x2F88 / +0x2F8C FIELDS.  They used to be
- * here, and they were a live instance of CONVENTIONS.md's "aliased storage"
- * bug: the original has ONE object at +0x2B5C and those five offsets are
- * fields of it (f41C / left / f428 / right / f430).  Two host fields for one
- * original address drift apart after the first write -- 0x10047EB0 writes the
- * item's `left`/`right` and the builders then wrote the control's copies.
- * Use pCtl->f2B5C.left and friends. */
-struct BrUiCtl_ {
-    const BrUiCtlVtbl_ *pVtbl;  /* +0x00000 */
-    BrUiCtlFn_  pfn04;          /* +0x00004 */
-    BrUiCtlFn_  pfn08;          /* +0x00008 */
-    BrUiCtlFn_  pfn0C;          /* +0x0000C */
-    BrUiCtlFn_  pfn10;          /* +0x00010 */
-    BrUiCtlFn_  pfn14;          /* +0x00014 */
-    int32_t     f1C;            /* +0x0001C   ctor sets 1; f38 ORs into it  */
-    int32_t     f24;            /* +0x00024   f38 ORs into it               */
-    int32_t     f28;            /* +0x00028   f38 ORs into it               */
-    float       f3C;            /* +0x0003C } f38 stores x/y here; f34 both */
-    float       f40;            /* +0x00040 } copies them into the item and */
-                                /*            truncates f40 into f54        */
-    uint16_t    f48;            /* +0x00048   f34: the item's width         */
-    uint16_t    f4A;            /* +0x0004A   f34: the item's height        */
-    int32_t     f50;            /* +0x00050 } the four make a rectangle:   */
-    int32_t     f54;            /* +0x00054 } f50/f54 are truncated x/y,   */
-    int32_t     f58;            /* +0x00058 } f58 = f50+0x7F,              */
-    int32_t     f5C;            /* +0x0005C } f5C = f54+0x21               */
-    int32_t     f2968;          /* +0x02968 -- cleared alongside the rect  */
-    uint16_t    f2A40;          /* +0x02A40 -- low half of the -1 fill     */
-    uint16_t    f2A42;          /* +0x02A42 -- high half of the same dword */
-    uint16_t    f2AB4;          /* +0x02AB4 */
-    uint16_t    f2AB6;          /* +0x02AB6 -- receives cCtl + 1           */
-    BrPhase_   *f2AE8;          /* +0x02AE8 -- the owning PHASE, from f38  */
-    BrTextBox   f2B5C;          /* +0x02B5C -- slice3_39.h's text widget   */
-    BrUiCtlSub_ f3838;          /* +0x03838 */
-    int32_t     f1E1C8;         /* +0x1E1C8 */
-    int32_t     f1E1D0;         /* +0x1E1D0 -- always f1E1C8 + 0x10        */
-    float       f1E1E8;         /* +0x1E1E8 */
-    int32_t     f1E1F4;         /* +0x1E1F4 */
-    float       f1E200;         /* +0x1E200 } the interpolation endpoints  */
-    float       f1E204;         /* +0x1E204 }                              */
-    uint16_t    f1E20C;         /* +0x1E20C -- 3 mostly, 2 / 5 / 0x34 too  */
-};
+/* This packet's own names for br_ui.h's numbers.  Defined in terms of them,
+ * so the two cannot drift into a second opinion. */
+#define BR73_CTL_ORIG_SIZE   BR_UI_CTL_ORIG_SIZE
+#define BR73_PAGE_ORIG_SIZE  BR_UI_PAGE_ORIG_SIZE
+#define BR73_PAGE_CTL_MAX    BR_UI_PAGE_CTL_MAX
 
-#define BR73_CTL_ORIG_SIZE   0x1E214u
+/* GOTCHA (0x10048470), kept: the two bytes at page +0x016 are the ONLY part
+ * of the object the constructor does not write, and `operator new` does not
+ * zero, so they are indeterminate after construction.  br_ui.h names them
+ * `w16` and says the same.  slice3_32.h found it independently. */
 
-/* ==========================================================================
- * 2. The page (0x348 bytes; ctor 0x10048470)
- *
- * This DEFINES br_phase.h's forward-declared `struct BrUiPage_`.  It is the
- * same class as slice3_33.h's BrUiScreen and slice3_32.h's BrUiPage; the one
- * difference is that the owner is typed BrPhase_ *, which is the whole point.
- * ========================================================================== */
-
-/* (0x338 - 0x18) / 4 -- the pointer array runs up to the first float. */
-#define BR73_PAGE_CTL_MAX    200
-#define BR73_PAGE_ORIG_SIZE  0x348u
-
-struct BrUiPage_ {
-    const void *pVtbl;                      /* +0x000  = 0x1008F6F8       */
-    BrUiCtlFn_  pfn04;                      /* +0x004  0x10054B50 only    */
-    BrUiCtlFn_  pfn08;                      /* +0x008  0x10054B50 only    */
-    BrUiCtlFn_  pfn0C;                      /* +0x00C  zeroed by the ctor */
-    int32_t     f10;                        /* +0x010  zeroed at build    */
-    uint16_t    cCtl;                       /* +0x014                     */
-    uint16_t    f16;                        /* +0x016  see the GOTCHA     */
-    BrUiCtl_   *apCtl[BR73_PAGE_CTL_MAX];   /* +0x018                     */
-    float       fX;                         /* +0x338  195.0 in all six   */
-    float       fY;                         /* +0x33C  130.0 in all six   */
-    BrPhase_   *pOwner;                     /* +0x340                     */
-    uint16_t    cSel;                       /* +0x344  selectable count   */
-    uint16_t    f346;                       /* +0x346  selection cursor   */
-};
-
-/* GOTCHA (0x10048470): the two bytes at +0x016 are the ONLY part of the
- * object the constructor does not write, and `operator new` does not zero, so
- * they are indeterminate after construction.  slice3_32.h found the same. */
-
-/* The port must never allocate less than the original did. */
+/* The port must never allocate less than the original did.  br_ui.h's
+ * BR_UI_PAGE_ALLOC_SIZE / BR_UI_CTL_ALLOC_SIZE are this macro applied to the
+ * two objects; it stays because this packet also allocates a BrNameList. */
 #define BR73_ALLOC(type, cbOrig) \
     ((uint32_t)(sizeof(type) > (size_t)(cbOrig) ? sizeof(type) : (size_t)(cbOrig)))
 
@@ -366,57 +264,61 @@ typedef struct BrNameListVtbl_ {
 /* The 48 addresses this packet stores into a control's / page's function
  * slots.  They are never called here, only installed. */
 typedef struct BrUi73Hooks {
-    BrUiCtlFn_ p1003E7A0;
-    BrUiCtlFn_ p1003E950;
-    BrUiCtlFn_ p1003E980;
-    BrUiCtlFn_ p1003E9E0;
-    BrUiCtlFn_ p1003EA40;
-    BrUiCtlFn_ p1003EB10;
-    BrUiCtlFn_ p1003ECB0;
-    BrUiCtlFn_ p1003ED10;
-    BrUiCtlFn_ p1003EE20;
-    BrUiCtlFn_ p1003F050;
-    BrUiCtlFn_ p1003F0B0;
-    BrUiCtlFn_ p1003FC40;
-    BrUiCtlFn_ p10040930;
-    BrUiCtlFn_ p100409F0;
-    BrUiCtlFn_ p10040A20;
-    BrUiCtlFn_ p10040A50;
-    BrUiCtlFn_ p10040AC0;
-    BrUiCtlFn_ p10041300;
-    BrUiCtlFn_ p100413B0;
-    BrUiCtlFn_ p10041670;
-    BrUiCtlFn_ p10041710;
-    BrUiCtlFn_ p100417B0;
-    BrUiCtlFn_ p10041DF0;
-    BrUiCtlFn_ p10042020;
-    BrUiCtlFn_ p10042AC0;
-    BrUiCtlFn_ p10042AF0;
-    BrUiCtlFn_ p10042CF0;
-    BrUiCtlFn_ p10042D60;
-    BrUiCtlFn_ p10043FA0;
-    BrUiCtlFn_ p10044010;
-    BrUiCtlFn_ p10044030;
-    BrUiCtlFn_ p10044050;
-    BrUiCtlFn_ p10044070;
-    BrUiCtlFn_ p10044090;
-    BrUiCtlFn_ p100440B0;
-    BrUiCtlFn_ p100450F0;
-    BrUiCtlFn_ p10045880;
-    BrUiCtlFn_ p100458A0;
-    BrUiCtlFn_ p10045AA0;
-    BrUiCtlFn_ p10045AF0;
-    BrUiCtlFn_ p100418D0;
-    BrUiCtlFn_ p10046620;
-    BrUiCtlFn_ p100466C0;
-    BrUiCtlFn_ p100463C0;
-    BrUiCtlFn_ p10046C90;
-    BrUiCtlFn_ p10046EB0;
-    BrUiCtlFn_ p100470E0;
-    BrUiCtlFn_ p10047210;
-    BrUiCtlFn_ p10047290;
-    BrUiCtlFn_ p10047360;
-    BrUiCtlFn_ p1004E810;
+    BrUiCtlHookFn_ p1003E7A0;
+    BrUiCtlHookFn_ p1003E950;
+    BrUiCtlHookFn_ p1003E980;
+    BrUiCtlHookFn_ p1003E9E0;
+    BrUiCtlHookFn_ p1003EA40;
+    BrUiCtlHookFn_ p1003EB10;
+    BrUiCtlHookFn_ p1003ECB0;
+    BrUiCtlHookFn_ p1003ED10;
+    BrUiCtlHookFn_ p1003EE20;
+    BrUiCtlHookFn_ p1003F050;
+    BrUiCtlHookFn_ p1003F0B0;
+    BrUiCtlHookFn_ p1003FC40;
+    BrUiCtlHookFn_ p10040930;
+    /* the two that land in PAGE slots (+0x04 / +0x08), which br_ui.h's ADJ-9
+     * shows take no arguments at all -- not the control's hook type. */
+    BrUiPageHookFn_ p100409F0;
+    BrUiPageHookFn_ p10040A20;
+    BrUiCtlHookFn_ p10040A50;
+    BrUiCtlHookFn_ p10040AC0;
+    BrUiCtlHookFn_ p10041300;
+    BrUiCtlHookFn_ p100413B0;
+    BrUiCtlHookFn_ p10041670;
+    BrUiCtlHookFn_ p10041710;
+    BrUiCtlHookFn_ p100417B0;
+    BrTextListCbFn p10041DF0;
+    BrTextListCbFn p10042020;
+    BrUiCtlHookFn_ p10042AC0;
+    BrUiCtlHookFn_ p10042AF0;
+    BrUiCtlHookFn_ p10042CF0;
+    BrUiCtlHookFn_ p10042D60;
+    BrUiCtlHookFn_ p10043FA0;
+    BrUiCtlHookFn_ p10044010;
+    BrUiCtlHookFn_ p10044030;
+    BrUiCtlHookFn_ p10044050;
+    BrUiCtlHookFn_ p10044070;
+    BrUiCtlHookFn_ p10044090;
+    BrUiCtlHookFn_ p100440B0;
+    BrUiCtlHookFn_ p100450F0;
+    BrUiCtlHookFn_ p10045880;
+    BrUiCtlHookFn_ p100458A0;
+    BrUiCtlHookFn_ p10045AA0;
+    BrUiCtlHookFn_ p10045AF0;
+    BrUiCtlHookFn_ p100418D0;
+    BrUiCtlHookFn_ p10046620;
+    BrUiCtlHookFn_ p100466C0;
+    BrUiCtlHookFn_ p100463C0;
+    BrUiCtlHookFn_ p10046C90;
+    BrUiCtlHookFn_ p10046EB0;
+    BrUiCtlHookFn_ p100470E0;
+    BrUiCtlHookFn_ p10047210;
+    BrUiCtlHookFn_ p10047290;
+    BrUiCtlHookFn_ p10047360;
+    /* the three that land in the embedded LIST (+0x383C / +0x384C), not in a
+     * control slot -- slice3_39.h owns their type. */
+    BrTextListCbFn p1004E810;
 } BrUi73Hooks;
 
 /* The .rdata style / text blocks; the original pushes their ADDRESSES. */

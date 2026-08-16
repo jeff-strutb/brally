@@ -24,7 +24,7 @@
  * `rep stosd` at 0x100484A2 with nothing in between that touches eax, so this
  * one really does write 0 -- unlike four of the nine fills in the CONTROL
  * constructor next door, which write 0xFFFFFFFF. The count 0xC8 == 200 and
- * the base +0x18 are what pin BR73_PAGE_CTL_MAX at 200: 0x18 + 200*4 ==
+ * the base +0x18 are what pin BR_UI_PAGE_CTL_MAX at 200: 0x18 + 200*4 ==
  * 0x338, exactly where the first float begins.
  *
  * GOTCHA, reproduced: the two bytes at +0x016 are the ONLY part of the 0x348
@@ -111,13 +111,13 @@ BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis)
     pThis->pfn0C = NULL;
 
     /* `mov ecx,0xC8 / rep stosd` from +0x18, with eax == 0. */
-    for (i = 0; i < BR73_PAGE_CTL_MAX; ++i) {
+    for (i = 0; i < BR_UI_PAGE_CTL_MAX; ++i) {
         pThis->apCtl[i] = NULL;
     }
 
     pThis->pOwner = NULL;
     pThis->cSel   = 0;
-    pThis->f346   = 0;
+    pThis->iSel   = 0;
 
     return pThis;                   /* original returns edx in eax */
 }
@@ -134,19 +134,19 @@ void BrUiCtlPlace_10047FB0(BrUiCtl_ *pThis, BrPhase_ *pOwner,
         return;                     /* DEVIATION: the original faults. */
     }
 
-    pThis->f2AE8 = pOwner;
-    pThis->f1C  |= flags;
-    pThis->f24  |= a4;
-    pThis->f28  |= a5;
+    pThis->pOwner = pOwner;
+    pThis->flags1C |= flags;
+    pThis->flags24 |= a4;
+    pThis->flags28 |= a5;
     pThis->f2968 = a6;
 
     /* The original stores the two floats as raw dwords, +0x40 first. */
-    pThis->f40 = y;
-    pThis->f3C = x;
+    pThis->y = y;
+    pThis->x = x;
 
     /* One word, two destinations. */
-    pThis->f2A40  = (uint16_t)a7;
-    pThis->f1E20C = (uint16_t)a7;
+    pThis->aStepId[0] = (uint16_t)a7;
+    pThis->w1E20C     = (uint16_t)a7;
 }
 
 /* ==========================================================================
@@ -166,7 +166,7 @@ void BrUiCtlSetText_10047EB0(BrUiCtl_ *pThis, const void *pText,
         return;                     /* DEVIATION: the original faults. */
     }
 
-    pBox  = &pThis->f2B5C;
+    pBox  = &pThis->aText[0];
     pV    = pBox->pVtbl;            /* loaded before the stores, as in the
                                      * original (`mov ebx,[ebp+0x2B5C]`) */
     pRc   = (const int32_t *)pStyle;
@@ -183,8 +183,8 @@ void BrUiCtlSetText_10047EB0(BrUiCtl_ *pThis, const void *pText,
      * control's own fields. */
     if (pText != NULL) {
         size_t cb = strlen((const char *)pText) + 1u;
-        if (cb > (size_t)BR73_ITEM_TEXT_ROOM) {
-            cb = (size_t)BR73_ITEM_TEXT_ROOM;
+        if (cb > (size_t)BR_TEXTBOX_MAX) {
+            cb = (size_t)BR_TEXTBOX_MAX;
             memcpy(pBox->sz, pText, cb - 1u);
             pBox->sz[cb - 1u] = '\0';
         } else {
@@ -206,8 +206,8 @@ void BrUiCtlSetText_10047EB0(BrUiCtl_ *pThis, const void *pText,
 
     /* Raw dword copies of the control's +0x3C / +0x40, which 0x10047FB0 put
      * there. Same type on both sides, so this is the same bit pattern. */
-    pBox->x = pThis->f3C;
-    pBox->y = pThis->f40;
+    pBox->x = pThis->x;
+    pBox->y = pThis->y;
 
     pBox->f418 = 0;
     pBox->f420 = 0;
@@ -234,27 +234,31 @@ void BrUiCtlSetText_10047EB0(BrUiCtl_ *pThis, const void *pText,
     }
 
     /* Everything below RE-READS state the dispatch may have changed. */
-    nY = BrFtolTrunc(pThis->f40);
-    pThis->f54 = nY;
-    pThis->f50 = pRc[0];
-    pThis->f58 = pRc[2];
+    nY = BrFtolTrunc(pThis->y);
+    pThis->rcTop = nY;
+    pThis->rcLeft = pRc[0];
+    pThis->rcRight = pRc[2];
     /* `movsx edx,cx` -- height is SIGN-extended before the add. */
-    pThis->f5C = nY + (int32_t)pBox->height;
-    pThis->f48 = (uint16_t)pBox->width;
-    pThis->f4A = (uint16_t)pBox->height;
+    pThis->rcBottom = nY + (int32_t)pBox->height;
+    pThis->w48 = (int16_t)pBox->width;
+    pThis->w4A = (int16_t)pBox->height;
 }
 
 /* ==========================================================================
  * 0x1008F6B8 -- the control vtable
  *
  * Sixteen slots in the original (0x1008F6B8 .. 0x1008F6F7, bounded above by
- * the page vtable at 0x1008F6F8). BrUiCtlVtbl_ models fifteen of them: the
- * thirteen reserved, +0x34 and +0x38. Slot +0x3C (0x10048060) has no field,
- * which is safe only because nothing indexes past +0x38 through this type.
+ * the page vtable at 0x1008F6F8). br_ui.h's BrUiCtlVtbl_ models all sixteen,
+ * so +0x3C (0x10048060) has a field now; it used to be missing, which was
+ * safe only because nothing indexed past +0x38 through this type.
  * ========================================================================== */
 
 const BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8 = {
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },  /* +0x00 .. +0x30 unported */
-    BrUiCtlSetText_10047EB0,                    /* +0x34 */
-    BrUiCtlPlace_10047FB0                       /* +0x38 */
+    NULL,                                       /* +0x00  0x100478A0 */
+    NULL, NULL, NULL, NULL,                     /* +0x04 .. +0x10    */
+    NULL, NULL, NULL, NULL,                     /* +0x14 .. +0x20    */
+    NULL, NULL, NULL, NULL,                     /* +0x24 .. +0x30    */
+    BrUiCtlSetText_10047EB0,                    /* +0x34  0x10047EB0 */
+    BrUiCtlPlace_10047FB0,                      /* +0x38  0x10047FB0 */
+    NULL                                        /* +0x3C  0x10048060 */
 };

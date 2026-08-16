@@ -17,6 +17,12 @@
  * a rewrite of one of the two models, and the second transcription is the
  * smaller, reviewable change.
  *
+ * UPDATE: those two structs are no longer slice6_73's. Both packets have been
+ * migrated onto br_ui.h, which is now the single owner of `struct BrUiPage_`
+ * and `BrUiCtl_`; this file is typed over br_ui.h's model, reached through
+ * br_uictl.h. The duplication below is unchanged -- it is against
+ * slice3_32.c's byte-image bodies, not against slice6_73.
+ *
  * DUPLICATE OWNERSHIP, stated the way slice6_73.c states its own:
  *
  *   0x10048470  slice3_32.c BrUiPageCtor_10048470(BrUiPage *)   byte-image
@@ -51,15 +57,25 @@ BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis);
 
 /* 0x1008F6F8 -- the page vtable the constructor stores.
  *
- * 24 slots: 0x1008F6F8 .. 0x1008F757, bounded above by 0x1008F758, which
- * slice3_39.h already identifies as BrTextListVtbl. None of the slots is
- * ported, so all 24 are NULL and a virtual call through them faults rather
- * than silently doing nothing -- the same policy as g_pBrUiCtlVtbl. */
-#define BR_UIPAGE_VTBL_SLOTS  24
-typedef struct BrUiPageVtbl_ {
-    void *aSlot[BR_UIPAGE_VTBL_SLOTS];
-} BrUiPageVtbl_;
-
+ * THIS HEADER USED TO DEFINE `BrUiPageVtbl_` ITSELF, as 24 `void *` slots
+ * "bounded above by 0x1008F758, which slice3_39.h identifies as
+ * BrTextListVtbl". That bound was wrong, and the image says so plainly:
+ *
+ *     1008F6F8  100484C0     <- slot 0
+ *     1008F6FC  10048530     <- slot 1
+ *     1008F700  10048850     <- the PHASE's vtable starts here
+ *     ...
+ *     1008F724  00000000     <- and ends
+ *     1008F728  1005B0A0     <- BrTextBoxVtbl (slice3_39.h)
+ *     1008F758  1005B8D0     <- BrTextListVtbl
+ *
+ * so a 24-slot page vtable swallows the phase's nine slots AND the text
+ * box's twelve. br_ui.h read the same bytes and says TWO slots, which is what
+ * this header now uses -- see the comment on br_ui.h's BrUiPageVtbl_, which
+ * also explains why the .rdata adjacency implies no class hierarchy.
+ *
+ * Nothing is lost by shrinking it: every slot was NULL and nothing indexes
+ * one. The type is br_ui.h's; only the storage lives here. */
 extern const BrUiPageVtbl_ g_brUiPageVtbl_1008F6F8;
 
 /* The pointer BrUiPageCtor_10048470 stores. Defaults to

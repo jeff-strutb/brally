@@ -604,13 +604,13 @@ static BrUiPage_ *Br72ScreenNew(BrPhase_ *pPhase, float fX, float fY)
     return pScr;
 }
 
-static BrUi72Ctl *Br72CtlNew(BrUiPage_ *pScr)
+static BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
 {
-    Br72Env   *pE = g_pBr72Env;
-    BrUi72Ctl *pCtl;
+    Br72Env  *pE = g_pBr72Env;
+    BrUiCtl_ *pCtl;
 
-    pCtl = (BrUi72Ctl *)BrOperatorNew(BR72_ALLOC(BrUi72Ctl,
-                                                 BR72_CTL_ORIG_SIZE));
+    pCtl = (BrUiCtl_ *)BrOperatorNew(BR72_ALLOC(BrUiCtl_,
+                                                BR72_CTL_ORIG_SIZE));
     pCtl = (pCtl != NULL) ? pE->pfnCtlCtor(pCtl) : NULL;
 
     /* Stored BEFORE the null test, exactly as the original does. */
@@ -643,7 +643,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
+    BrUiCtl_          *pCtl;
 
     /* 0x10056A2A..0x10056AB6 -- fX = 190.0f, fY = 130.0f (0x43020000). */
     pScr = Br72ScreenNew(pPhase, 190.0f, 130.0f);
@@ -660,7 +660,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
     /* 0x10056B14 -- the title, at (fX, 10.0f == 0x41200000). */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x5D), 1, 1, pE->p0AB508);
     pScr->cCtl++;
 
@@ -668,7 +668,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
      * GOTCHA: f1E20C is 0x34 and f34's third argument is 4. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, pScr->fY, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x5E), 1, 4, pE->p0AB448);
     pScr->cCtl++;
 
@@ -685,7 +685,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
     pCtl->pfn08  = pH->p10042AC0;
     pCtl->pfn04  = pH->p1003EF90;
     pCtl->pfn10  = pH->p1003F020;       /* +0x10 -- only this builder */
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     /* The text is the ADDRESS 0x1039B720, not a string-table id. */
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 1, pE->p0AB448);
 
@@ -695,28 +695,35 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
      * rep movs is not. */
     {
         size_t cb = strlen(pE->szA9CDF0) + 1u;
-        if (cb > sizeof(pCtl->item.szText)) {
-            cb = sizeof(pCtl->item.szText);
+        if (cb > sizeof(pCtl->aText[0].sz)) {
+            cb = sizeof(pCtl->aText[0].sz);
         }
-        memcpy(pCtl->item.szText, pE->szA9CDF0, cb);
-        pCtl->item.szText[sizeof(pCtl->item.szText) - 1u] = '\0';
+        memcpy(pCtl->aText[0].sz, pE->szA9CDF0, cb);
+        pCtl->aText[0].sz[sizeof(pCtl->aText[0].sz) - 1u] = '\0';
     }
-    if (pCtl->item.pVtbl != NULL) {
-        pCtl->item.pVtbl->f04(&pCtl->item);
+    if (pCtl->aText[0].pVtbl != NULL) {
+        pCtl->aText[0].pVtbl->pfn04(&pCtl->aText[0]);
     }
-    pCtl->f50        = 0x9B;
-    pCtl->item.f2F80 = 0x9B;
-    pCtl->f58        = 0x15B;
-    pCtl->item.f2F88 = 0x15B;
-    pCtl->f54        = 0xAC;
-    pCtl->item.f2F84 = 0xAC;
-    pCtl->f5C        = 0xBC;
-    pCtl->item.f2F8C = 0xBC;
+    /* Two DIFFERENT original addresses on each line -- the control's own
+     * rectangle at +0x50..+0x5C and the text box's at +0x2F80..+0x2F8C. Under
+     * br_ui.h the second is aText[0].left / f428 / right / f430 (ADJ-2), so
+     * the box's fields are reached through the box and not mirrored as
+     * control fields, which is the aliasing bug slice6_73.h already fixed. */
+    pCtl->rcLeft         = 0x9B;
+    pCtl->aText[0].left  = 0x9B;
+    pCtl->rcRight        = 0x15B;
+    pCtl->aText[0].right = 0x15B;
+    pCtl->rcTop          = 0xAC;
+    pCtl->aText[0].f428  = 0xAC;
+    pCtl->rcBottom       = 0xBC;
+    pCtl->aText[0].f430  = 0xBC;
     /* GOTCHA: the width is computed 16-BIT WIDE from two dwords -- the
      * original's `mov ax,[..2F88] / sub ax,[..2F80] / sub eax,0x10`, whose
-     * upper half is then dropped by the word store. */
-    pCtl->item.w2F78 = (uint16_t)((uint16_t)pCtl->item.f2F88
-                                  - (uint16_t)pCtl->item.f2F80 - 0x10u);
+     * upper half is then dropped by the word store.  +0x2F78 is item +0x41C,
+     * which slice3_39.h types int16_t; the value is the same 16 bits. */
+    pCtl->aText[0].f41C = (int16_t)(uint16_t)((uint16_t)pCtl->aText[0].right
+                                              - (uint16_t)pCtl->aText[0].left
+                                              - 0x10u);
     pScr->cCtl++;
     pScr->cSel++;
 
@@ -728,7 +735,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
                      0x102011, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10043F50;
-    pCtl->f1E20C = 2;
+    pCtl->w1E20C = 2;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1E), 1, 0, pE->p0AB448);
     pE->pAA29E8 = pCtl;                 /* 0x10AA29E8 */
     pScr->cCtl++;
@@ -740,7 +747,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10044B40;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x0C), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -763,7 +770,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
+    BrUiCtl_          *pCtl;
 
     /* 0x10057C29..0x10057CB5 -- fX = 195.0f, fY = 130.0f. */
     pScr = Br72ScreenNew(pPhase, 195.0f, 130.0f);
@@ -779,7 +786,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     /* 0x10057D14 -- the title */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x64), 1, 1, pE->p0AB508);
     pScr->cCtl++;
 
@@ -790,7 +797,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
                          0x102001, 2, 5, 1, -1);
         pCtl->pfn0C  = pH->p100474B0;   /* the one row that is not 0x10047360 */
         pCtl->pfn08  = pH->p10042EE0;
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x1B), 1, 1, pE->p0AB448);
         pScr->cCtl++;
         pScr->cSel++;
@@ -801,7 +808,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
                          0x102001, 2, 5, 1, -1);
         pCtl->pfn0C  = pH->p10047360;
         pCtl->pfn08  = pH->p10043180;
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x1C), 1, 1, pE->p0AB448);
         pScr->cCtl++;
         pScr->cSel++;
@@ -812,7 +819,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
                          0x102001, 2, 5, 1, -1);
         pCtl->pfn0C  = pH->p10047360;
         pCtl->pfn08  = pH->p100430B0;
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x1D), 1, 1, pE->p0AB448);
         pScr->cCtl++;
         pScr->cSel++;
@@ -823,7 +830,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
                          0x102001, 2, 5, 1, -1);
         pCtl->pfn0C  = pH->p10047360;
         pCtl->pfn08  = pH->p10044600;
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x65), 1, 1, pE->p0AB448);
         pScr->cCtl++;
         pScr->cSel++;
@@ -838,7 +845,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p100446D0;
     pCtl->pfn18  = pH->p100437D0;       /* +0x18 -- only this control */
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(pE->nAA2884 != 0 ? 0x66 : 0x1E),
                      1, 1, pE->p0AB448);
     pScr->cCtl++;
@@ -849,7 +856,7 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, pScr->fY - (-114.0f),
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(pE->nA9D000 != 0 ? 0x67 : 0x0C),
                      1, 1, pE->p0AB448);
     pE->pAA29B8 = pCtl;                 /* 0x10AA29B8 */
@@ -861,15 +868,15 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 73.0f, 212.0f, 1, 2, 5, 1, 0x16);
     pCtl->pfn04 = pH->p100407E0;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x100582B4 -- (fX, 275.0f).  Text by ADDRESS. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 275.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FE80;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4B8);
     pScr->cCtl++;
 
@@ -877,15 +884,15 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 325.0f, 72.0f, 1, 2, 5, 1, 0x11);
     pCtl->pfn04 = pH->p10040730;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x1005846C -- (fX, 152.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 152.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FA00;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4A8);
     pScr->cCtl++;
 
@@ -894,14 +901,14 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 106.0f, 68.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p100408D0;
-    pCtl->f1E20C = 5;
+    pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, pE->p0AD274, 1, 3, pE->p0AB458);
     pScr->cCtl++;
 
     /* 0x1005859B -- (106.0f, 115.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 106.0f, 115.0f, 0x100001, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1D), 1, 1, pE->p0AB458);
     pScr->cCtl++;
 
@@ -926,7 +933,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
+    BrUiCtl_          *pCtl;
     float              fA;          /* [esp+0x10] -- rect x                  */
     float              fB;          /* [esp+0x2C] -- rect y cursor           */
     int32_t            iA     = 0;  /* ebx, live across the three rects      */
@@ -946,7 +953,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
     /* 0x10052137 -- the title */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x44), 1, 1, pE->p0AB508);
     pScr->cCtl++;
 
@@ -956,7 +963,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10047340;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x45), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -970,7 +977,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10045050;
-    pCtl->f1E20C = 2;
+    pCtl->w1E20C = 2;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1E), 1, 0, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -981,7 +988,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10047060;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x0C), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -996,15 +1003,15 @@ void BrExt_10052030(BrPhase_ *pPhase)
     pCtl->pfn0C = pH->p10047360;
     pCtl->pfn08 = pH->p100457E0;
     iB          = BrFtolTrunc(fB);
-    pCtl->f54   = iB;
+    pCtl->rcTop   = iB;
     iA          = BrFtolTrunc(fA);
     fB          = fB - (-33.0f);        /* 0x1008F69C, advanced in FLOAT ... */
     iRight      = iA + 0x7F;
-    pCtl->f50   = iA;
-    pCtl->f58   = iRight;
-    pCtl->f5C   = iB + 0x21;            /* ... while the rect uses +0x21 int */
+    pCtl->rcLeft   = iA;
+    pCtl->rcRight   = iRight;
+    pCtl->rcBottom   = iB + 0x21;            /* ... while the rect uses +0x21 int */
     pCtl->f2968 = 0;
-    pCtl->f2A42 = 0x79;
+    pCtl->aStepId[1] = 0x79;
     pScr->cCtl++;
 
     /* 0x100524E1 -- rect 2.
@@ -1016,12 +1023,12 @@ void BrExt_10052030(BrPhase_ *pPhase)
     pCtl->pfn08 = pH->p10043FA0;
     iB          = BrFtolTrunc(fB);
     fB          = fB - (-33.0f);
-    pCtl->f54   = iB;
-    pCtl->f50   = iA;
-    pCtl->f58   = iRight;
-    pCtl->f5C   = iB + 0x21;
+    pCtl->rcTop   = iB;
+    pCtl->rcLeft   = iA;
+    pCtl->rcRight   = iRight;
+    pCtl->rcBottom   = iB + 0x21;
     pCtl->f2968 = 0;
-    pCtl->f2A42 = 0x53;
+    pCtl->aStepId[1] = 0x53;
     pScr->cCtl++;
 
     /* 0x100525A5 -- rect 3.
@@ -1033,27 +1040,27 @@ void BrExt_10052030(BrPhase_ *pPhase)
     pCtl->pfn0C = pH->p10047360;
     pCtl->pfn08 = pH->p100457C0;
     iB          = BrFtolTrunc(fB);
-    pCtl->f54   = iB;
-    pCtl->f50   = iA;
-    pCtl->f58   = iRight;
-    pCtl->f5C   = iB + 0x21;
+    pCtl->rcTop   = iB;
+    pCtl->rcLeft   = iA;
+    pCtl->rcRight   = iRight;
+    pCtl->rcBottom   = iB + 0x21;
     pCtl->f2968 = 0;
-    pCtl->f2A42 = 0x55;
+    pCtl->aStepId[1] = 0x55;
     pScr->cCtl++;
 
     /* 0x10052657 -- (73.0f, 212.0f), flags 1, f2AB4/f2AB6 pair. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 73.0f, 212.0f, 1, 2, 5, 1, 0x16);
     pCtl->pfn04 = pH->p100407E0;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x100526E3 -- (fX, 275.0f).  Text by ADDRESS. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 275.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FE80;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4B8);
     pScr->cCtl++;
 
@@ -1061,29 +1068,29 @@ void BrExt_10052030(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 325.0f, 72.0f, 1, 2, 5, 1, 0x11);
     pCtl->pfn04 = pH->p10040730;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x10052805 -- (fX, 152.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 152.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FA00;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4A8);
     pScr->cCtl++;
 
     /* 0x1005289B -- (450.0f, 125.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 450.0f, 125.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x40), 1, 1, pE->p0AB4F8);
     pScr->cCtl++;
 
     /* 0x10052932 -- (450.0f, 185.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 450.0f, 185.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x46), 1, 1, pE->p0AB4F8);
     pScr->cCtl++;
 
@@ -1092,21 +1099,21 @@ void BrExt_10052030(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 450.0f, 141.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p100415A0;
-    pCtl->f1E20C = 5;
+    pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 3, pE->p0AB4F8);
     pScr->cCtl++;
 
     /* 0x10052A61 -- (fX, 203.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 203.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x40), 1, 1, pE->p0AB478);
     pScr->cCtl++;
 
     /* 0x10052AFA -- (fX, 265.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 265.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x41), 1, 1, pE->p0AB478);
     pScr->cCtl++;
 
@@ -1114,14 +1121,14 @@ void BrExt_10052030(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 450.0f, 217.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p100414B0;
-    pCtl->f1E20C = 5;
+    pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 3, pE->p0AB478);
     pScr->cCtl++;
 
     /* 0x10052C2B -- (106.0f, 85.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 106.0f, 85.0f, 0x100001, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x38), 1, 1, pE->p0AB458);
     pScr->cCtl++;
 
@@ -1129,14 +1136,14 @@ void BrExt_10052030(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 66.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10041300;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 4, pE->p0AB458);
     pScr->cCtl++;
 
     /* 0x10052D5A -- (106.0f, 123.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 106.0f, 123.0f, 0x100001, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x36), 1, 1, pE->p0AB458);
     pScr->cCtl++;
 
@@ -1144,7 +1151,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 104.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p100413B0;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 4, pE->p0AB458);
     pScr->cCtl++;
 
@@ -1156,7 +1163,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, pScr->fY - 19.0f,
                      0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10040B30;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE->p39B720, 1, 4, pE->p0AB448);
     pScr->cCtl++;
 }
@@ -1169,7 +1176,7 @@ void BrExt_10059760(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
+    BrUiCtl_          *pCtl;
 
     pScr = Br72ScreenNew(pPhase, 195.0f, 130.0f);
     if (pScr == NULL) {
@@ -1184,7 +1191,7 @@ void BrExt_10059760(BrPhase_ *pPhase)
     /* 0x10059863 -- the title */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x6A), 1, 1, pE->p0AB508);
     pScr->cCtl++;
 
@@ -1193,7 +1200,7 @@ void BrExt_10059760(BrPhase_ *pPhase)
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, pScr->fY, 0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10046260;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x6B), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1204,7 +1211,7 @@ void BrExt_10059760(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10044D00;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x6C), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1217,7 +1224,7 @@ void BrExt_10059760(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10044C70;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x0C), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1237,8 +1244,8 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
-    BrUi72Sub         *pSub;
+    BrUiCtl_          *pCtl;
+    BrTextList        *pSub;
     BrGrfList         *pList;
     int32_t            iOff;
     uint16_t           iPageSlot;
@@ -1270,7 +1277,7 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
     /* 0x1005A807 -- the title */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0xC2), 1, 1, pE->p0AB508);
     pScr->cCtl++;
 
@@ -1278,12 +1285,12 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
      * that drives the sub-object at +0x3838. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, pScr->fY, 0x3001, 2, 5, 1, -1);
-    pSub = &pCtl->f3838;                /* kept live past pCtl -- see below */
+    pSub = &pCtl->list;                /* kept live past pCtl -- see below */
     pCtl->pfn04  = pH->p1003EC30;
-    pCtl->f1E1F4 = 1;
+    pCtl->list.f1A99C[8].i = 1;      /* control +0x1E1F4 (ADJ-6) */
     pSub->pVtbl->f14(pSub, 0x40001, pE->p0AB4D8, 5, 0, -1);
-    pSub->f383C = pH->p10042740;        /* control +0x383C */
-    pSub->f384C = pH->p10042560;        /* control +0x384C */
+    pSub->f04 = pH->p10042740;        /* control +0x383C */
+    pSub->f14 = pH->p10042560;        /* control +0x384C */
 
     /* 0x1005A95E -- feed the 100 enumerated names into the list.
      *
@@ -1314,7 +1321,7 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10044F00;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1E), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1324,14 +1331,14 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 208.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10041040;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 4, pE->p0AB478);
     pScr->cCtl++;
 
     /* 0x1005AAF1 */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 224.0f, 0x100001, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x6F), 1, 1, pE->p0AB478);
     pScr->cCtl++;
 
@@ -1339,14 +1346,14 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 240.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10041180;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 4, pE->p0AB478);
     pScr->cCtl++;
 
     /* 0x1005AC20 */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 256.0f, 0x100001, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x3F), 1, 1, pE->p0AB478);
     pScr->cCtl++;
 
@@ -1382,7 +1389,7 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn04  = pH->p10047250;
     pCtl->pfn14  = pH->p1003E7A0;       /* +0x14 -- only this control */
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x70), 1, 1, pE->p0AB438);
     pE->pAA29C4 = pCtl;                 /* 0x10AA29C4 */
     pScr->cCtl++;
@@ -1396,7 +1403,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
     BrUiPage_         *pScr;
-    BrUi72Ctl         *pCtl;
+    BrUiCtl_          *pCtl;
     int32_t            nFfb;
 
     pScr = Br72ScreenNew(pPhase, 195.0f, 130.0f);
@@ -1415,7 +1422,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
      * else in the family calls anything like it. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x22), 1, 1, pE->p0AB508);
     pScr->cCtl++;
     pE->pfn100795D0();
@@ -1434,10 +1441,10 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     pCtl->pfn08 = pH->p10043590;
     nFfb = pE->n18ABDBC;                /* re-read at 0x1004EA64 */
     if (nFfb != 0) {
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x30), 1, 1, pE->p0AB448);
     } else {
-        pCtl->f1E20C = 2;
+        pCtl->w1E20C = 2;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x30), 1, 0, pE->p0AB448);
     }
     pScr->cCtl++;
@@ -1449,7 +1456,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p100435F0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x31), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1460,7 +1467,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p100436B0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x32), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1471,7 +1478,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10043650;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x33), 1, 1, pE->p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -1486,7 +1493,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10046710;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x0C), 1, 1, pE->p0AB448);
     pE->pAA29C8 = pCtl;                 /* 0x10AA29C8 */
     pScr->cCtl++;
@@ -1501,8 +1508,8 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 336.0f, 48.0f, 1, 2, 5, 1, 0x61);
     pCtl->pfn04 = pH->p10040950;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x1004EE90 -- (fX, 166.0f).  Text by ADDRESS.
@@ -1511,7 +1518,7 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 166.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FCB0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4C8);
     pScr->cCtl++;
 
@@ -1519,15 +1526,15 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 67.0f, 199.0f, 1, 2, 5, 1, 0x8C);
     pCtl->pfn04 = pH->p10040990;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x1004EFB5 -- (fX, 279.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 279.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FD30;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB4B8);
     pScr->cCtl++;
 
@@ -1535,15 +1542,15 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 440.0f, 114.0f, 1, 2, 5, 1, 0x65);
     pCtl->pfn04 = pH->p100409D0;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x1004F0D7 -- (fX, 196.0f) */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 196.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FE10;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB488);
     pScr->cCtl++;
 
@@ -1551,15 +1558,15 @@ void BrExt_1004E830(BrPhase_ *pPhase)
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, 484.0f, 214.0f, 1, 2, 5, 1, 0x63);
     pCtl->pfn04 = pH->p100409B0;
-    pCtl->f2AB4++;
-    pCtl->f2AB6 = (uint16_t)(pScr->cCtl + 1);
+    pCtl->cChild++;
+    pCtl->aChild[0] = (uint16_t)(pScr->cCtl + 1);
     pScr->cCtl++;
 
     /* 0x1004F1F9 -- (fX, 273.0f).  The last control. */
     BR_NEW_CTL();
     pCtl->pVtbl->f38(pCtl, pPhase, pScr->fX, 273.0f, 0x101001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p1003FDA0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, pE->p0AD300, 1, 1, pE->p0AB478);
     pScr->cCtl++;
 }

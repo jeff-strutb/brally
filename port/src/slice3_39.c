@@ -542,7 +542,7 @@ BrTextList *BrTextListInit(BrTextList *pList)
     pList->f1A938  = -1;
 
     for (i = 0; i < 14; ++i) {
-        pList->f1A99C[i] = 0;
+        pList->f1A99C[i].u = 0;
     }
 
     pList->f04 = 0;

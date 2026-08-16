@@ -25,24 +25,31 @@
  *                 and its own declaration of BrDikGetDeviceState, which this
  *                 module DEFINES.
  *
- * COMPLETED here (not redefined -- br_phase.h leaves it incomplete on
- * purpose, and its aPages[] field demands it):
- *   struct BrUiPage_   the 0x348 "screen".  Field names deliberately match
- *                      slice3_33.h's BrUiScreen (f10 / cCtl / apCtl / fX /
- *                      fY / pOwner / cSel) so a merge is mechanical.
+ * MIGRATED AWAY (this header no longer models either object):
+ *   br_ui.h       struct BrUiPage_  the 0x348 "screen", and BrUiCtl_ /
+ *                 BrUiCtlVtbl_ the 0x1E214 control.  This header used to
+ *                 COMPLETE br_phase.h's forward declaration of BrUiPage_
+ *                 itself, and to carry a private control called BrUi72Ctl
+ *                 with the item block nested and the +0x3838 sub-object
+ *                 spelled BrUi72Sub.  br_ui.h is the merge of all six of
+ *                 those models and is the rightful owner of the tag, so the
+ *                 definitions are gone and it is included instead.
  *
- * ADDED here, and why it could not be avoided:
- *   BrUi72Ctl / BrUi72CtlVtbl / BrUi72Sub / BrUi72SubVtbl
- *                      the 0x1E214 control.  slice3_33.h's BrUiCtl is the
- *                      same object but is a strict SUBSET: this packet also
- *                      writes control +0x10 and +0x14, the embedded
- *                      sub-object's +0x04 and +0x14, and the whole item
- *                      block at +0x2B5C / +0x2B65 / +0x2F78 / +0x2F80 ..
- *                      +0x2F8C.  slice3_32.h's byte-addressed BrUiObj names
- *                      most of those offsets but cannot be mixed with a
- *                      struct model.  BrUi72Ctl is the union of the two
- *                      views; integration should fold slice3_33.h's BrUiCtl
- *                      INTO it rather than the other way round.
+ *                 The mapping the bodies now use:
+ *                   f50/f54/f58/f5C -> rcLeft/rcTop/rcRight/rcBottom
+ *                   f2A42           -> aStepId[1]        (ADJ-4)
+ *                   f2AB4/f2AB6     -> cChild/aChild[0]  (ADJ-5)
+ *                   item            -> aText[0]          (ADJ-1, ADJ-2)
+ *                   f3838           -> list              (ADJ-6)
+ *                   f383C/f384C     -> list.f04/list.f14
+ *                   f1E1F4          -> list.f1A99C[8]
+ *                   f1E20C          -> w1E20C
+ *
+ *                 Consequence, which is the whole point: this header and
+ *                 slice6_73.h now agree about the page BY CONSTRUCTION
+ *                 rather than by hand, so port/tests/test_pagemodel.c --
+ *                 which existed only to catch them drifting apart -- is
+ *                 deleted, exactly as its own comment instructed.
  *
  * As in slice2_26.h / slice3_33.h, every struct below uses natural C layout
  * and carries the original's 32-bit byte offsets as comments.  Nothing here
@@ -85,6 +92,8 @@
 #include <stdint.h>
 
 #include "br_phase.h"    /* BrPhase_, BrUiPage_, BR_PHASE_PAGES            */
+#include "br_ui.h"       /* BrUiPage_ (COMPLETED there), BrUiCtl_,
+                          * BrUiCtlVtbl_, BrUiCtlHookFn_                   */
 #include "slice1_06.h"   /* BrErrHost / BrErrShow -- 0x1003E260            */
 #include "slice3_39.h"   /* BrTextBox / BrOperatorNew / BrDikGetDeviceState */
 
@@ -97,139 +106,36 @@
 #define BR72_ALLOC(type, cbOrig) \
     ((uint32_t)(sizeof(type) > (size_t)(cbOrig) ? sizeof(type) : (size_t)(cbOrig)))
 
-#define BR72_PAGE_ORIG_SIZE  0x348u
-#define BR72_CTL_ORIG_SIZE   0x1E214u
+/* The original literals and the element count, kept under this packet's own
+ * names so its .c and its test keep reading -- but they are now br_ui.h's
+ * numbers, not a second opinion about them.  If br_ui.h ever changes one, the
+ * change lands here too instead of the two silently disagreeing. */
+#define BR72_PAGE_ORIG_SIZE  BR_UI_PAGE_ORIG_SIZE
+#define BR72_CTL_ORIG_SIZE   BR_UI_CTL_ORIG_SIZE
+#define BR72_PAGE_CTL_MAX    BR_UI_PAGE_CTL_MAX
 
 /* ==========================================================================
- * 1. The 0x1E214 control
+ * 1. The page and the control -- BOTH OWNED BY br_ui.h
+ *
+ * There is nothing to define here any more.  `struct BrUiPage_`, `BrUiCtl_`,
+ * `BrUiCtlVtbl_`, the item block at +0x2B5C and the sub-object at +0x3838 all
+ * come from br_ui.h (and, for the last two, from slice3_39.h's BrTextBox and
+ * BrTextList, which br_ui.h embeds rather than re-modelling).
+ *
+ * WHAT THIS PACKET USED TO SAY THAT br_ui.h DOES NOT, so nobody re-derives it:
+ *
+ *   BrUi72Item.w2F78  was a uint16 at item +0x41C.  br_ui.h routes it to
+ *                     BrTextBox::f41C, which slice3_39.h derived from the
+ *                     box's OWN constructor as an int16 width limit.  Same
+ *                     address, same 16 bits; the .c casts.
+ *   BrUi72Sub         modelled the +0x3838 object as a three-field stub.  It
+ *                     is slice3_39.h's whole 0x1A9D4-byte BrTextList (ADJ-6);
+ *                     +0x383C and +0x384C are that object's f04 and f14.
+ *
+ * NOTHING this packet writes lacks a home in the merged model.  The two
+ * control offsets br_ui.h cannot express (+0x1E1C8 and +0x1E1D0) belong to
+ * slice6_73's builders, not to this one.
  * ========================================================================== */
-
-typedef struct BrUi72Ctl      BrUi72Ctl;
-typedef struct BrUi72CtlVtbl  BrUi72CtlVtbl;
-typedef struct BrUi72Sub      BrUi72Sub;
-typedef struct BrUi72SubVtbl  BrUi72SubVtbl;
-typedef struct BrUi72Item     BrUi72Item;
-typedef struct BrUi72ItemVtbl BrUi72ItemVtbl;
-
-/* +0x04/+0x08/+0x0C/+0x10/+0x14/+0x18 hold plain __cdecl pointers.  This
- * packet only ever STORES them, so the parameter list is not established --
- * one positional argument, exactly as slice3_33.h's BrUiCtlFn. */
-typedef void (*BrUi72CtlFn)(void *pArg);
-
-struct BrUi72CtlVtbl {
-    void *aReserved[13];                    /* +0x00 .. +0x30, untouched */
-
-    /* +0x34 __thiscall.  Sets the control's text.  Where the text comes from
-     * the string table the call site is BrStrGet(id) and only ONE of the four
-     * pushes is cleaned by the caller -- that is how the shape was pinned. */
-    void (*f34)(BrUi72Ctl *pThis, const void *pText,
-                int32_t a2, int32_t a3, const void *pStyle);
-
-    /* +0x38 __thiscall.  Places the control.  a4 is 2 and a5 is 5 at EVERY
-     * one of the ~100 call sites in this packet; a6/a7 vary. */
-    void (*f38)(BrUi72Ctl *pThis, BrPhase_ *pOwner, float x, float y,
-                int32_t flags, int32_t a4, int32_t a5,
-                int32_t a6, int32_t a7);
-};
-
-/* The vtable of the item that begins at control +0x2B5C.  Only +0x04 is
- * reached from this packet; the rest are left void * on purpose. */
-struct BrUi72ItemVtbl {
-    void *f00;
-    void (*f04)(BrUi72Item *pThis);         /* +0x04 "text changed"      */
-};
-
-/* The item block at control +0x2B5C.  slice3_32.h names these offsets
- * BR_SCR_UI_ITEM*; the two spellings describe one object. */
-#define BR72_ITEM_TEXT_ROOM  0x401u         /* +0x2B65 .. +0x2F65 */
-
-struct BrUi72Item {
-    const BrUi72ItemVtbl *pVtbl;            /* +0x2B5C (item +0x000) */
-    int32_t  f2B60;                         /* +0x2B60 (item +0x004) */
-    uint8_t  b2B64;                         /* +0x2B64 (item +0x008) */
-    char     szText[BR72_ITEM_TEXT_ROOM];   /* +0x2B65 (item +0x009) */
-    uint16_t w2F78;                         /* +0x2F78 (item +0x41C) */
-    int32_t  f2F80;                         /* +0x2F80 (item +0x424) */
-    int32_t  f2F84;                         /* +0x2F84 (item +0x428) */
-    int32_t  f2F88;                         /* +0x2F88 (item +0x42C) */
-    int32_t  f2F8C;                         /* +0x2F8C (item +0x430) */
-};
-
-struct BrUi72SubVtbl {
-    void *aReserved[4];                     /* +0x00 .. +0x0C */
-    /* +0x10 __thiscall -- append one row of text. */
-    void (*f10)(BrUi72Sub *pThis, const void *pText, int32_t a2,
-                int32_t a3, const void *pStyle, int32_t a5);
-    /* +0x14 __thiscall -- configure the list. */
-    void (*f14)(BrUi72Sub *pThis, int32_t a1, const void *pStyle,
-                int32_t a3, int32_t a4, int32_t a5);
-};
-
-/* The sub-object embedded at control +0x3838.  The original reads its vtable
- * with `mov eax,[edi+0x3838]` and takes its address with
- * `lea ecx,[edi+0x3838]`, so an object begins there.  0x1005A6E0 also stores
- * two code addresses at its +0x04 and +0x14 (control +0x383C / +0x384C);
- * slice3_33.h's BrUiCtlSub models only the vtable slot. */
-struct BrUi72Sub {
-    const BrUi72SubVtbl *pVtbl;             /* +0x3838 (sub +0x00) */
-    BrUi72CtlFn          f383C;             /* +0x383C (sub +0x04) */
-    BrUi72CtlFn          f384C;             /* +0x384C (sub +0x14) */
-};
-
-struct BrUi72Ctl {
-    const BrUi72CtlVtbl *pVtbl;  /* +0x0000 */
-    BrUi72CtlFn  pfn04;          /* +0x0004 */
-    BrUi72CtlFn  pfn08;          /* +0x0008 */
-    BrUi72CtlFn  pfn0C;          /* +0x000C */
-    BrUi72CtlFn  pfn10;          /* +0x0010 -- 0x10056A10 only              */
-    BrUi72CtlFn  pfn14;          /* +0x0014 -- 0x1005A6E0 only              */
-    BrUi72CtlFn  pfn18;          /* +0x0018 -- 0x10057C10 only              */
-    int32_t      f50;            /* +0x0050 } the four make a rectangle:    */
-    int32_t      f54;            /* +0x0054 } f50/f54 = truncated x/y,      */
-    int32_t      f58;            /* +0x0058 } f58 = f50+0x7F,               */
-    int32_t      f5C;            /* +0x005C } f5C = f54+0x21                */
-    int32_t      f2968;          /* +0x2968 -- cleared alongside the rect   */
-    uint16_t     f2A42;          /* +0x2A42 */
-    uint16_t     f2AB4;          /* +0x2AB4 -- incremented, never read here */
-    uint16_t     f2AB6;          /* +0x2AB6 -- receives cCtl + 1            */
-    BrUi72Item   item;           /* +0x2B5C */
-    BrUi72Sub    f3838;          /* +0x3838 */
-    int32_t      f1E1F4;         /* +0x1E1F4 */
-    uint16_t     f1E20C;         /* +0x1E20C -- 2, 3, 5 or 0x34             */
-};
-
-/* ==========================================================================
- * 2. The 0x348 page -- completes br_phase.h's forward declaration
- * ========================================================================== */
-
-/* (0x338 - 0x18) / 4 -- the pointer array runs up to the first float, and it
- * is also the ctor's `rep stosd` count. */
-#define BR72_PAGE_CTL_MAX  200
-
-/* The four leading pointer fields and the +0x016 hole are NOT decoration.
- * This packet never touches them, which is why an earlier revision started
- * the struct at +0x010 -- but `struct BrUiPage_` also completes br_phase.h's
- * forward declaration, and slice6_73.h completes the SAME tag with the same
- * name. Two definitions of one tag that disagree about where cCtl lives is
- * the aliased-storage bug CONVENTIONS.md warns about, wearing a compiler's
- * blessing: each translation unit compiles cleanly and the host reads pages
- * built by this packet through slice6_73.h's view. The two are now
- * field-for-field identical, so that read is valid. */
-struct BrUiPage_ {
-    const void  *pVtbl;                     /* +0x000 -- = 0x1008F6F8 */
-    BrUi72CtlFn  pfn04;                     /* +0x004 */
-    BrUi72CtlFn  pfn08;                     /* +0x008 */
-    BrUi72CtlFn  pfn0C;                     /* +0x00C */
-    int32_t     f10;                        /* +0x010 -- zeroed at build */
-    uint16_t    cCtl;                       /* +0x014 */
-    uint16_t    f16;                        /* +0x016 -- the ctor leaves it */
-    BrUi72Ctl  *apCtl[BR72_PAGE_CTL_MAX];   /* +0x018 .. +0x338 */
-    float       fX;                         /* +0x338 -- 190.0 or 195.0 */
-    float       fY;                         /* +0x33C -- 130.0 everywhere here */
-    BrPhase_   *pOwner;                     /* +0x340 */
-    uint16_t    cSel;                       /* +0x344 -- selectable count */
-    uint16_t    f346;                       /* +0x346 -- selection cursor */
-};
 
 /* ==========================================================================
  * 3. The .GRF name list 0x1005A6E0 enumerates
@@ -365,61 +271,63 @@ typedef struct BrDPSessionUser {
  * slice3_33.h's BrUiBuildHooks are marked, so integration can merge the two
  * lists without inventing a second name for any of them. */
 typedef struct BrUi72Hooks {
-    BrUi72CtlFn p1003E7A0;
-    BrUi72CtlFn p1003EC30;
-    BrUi72CtlFn p1003EF90;
-    BrUi72CtlFn p1003F020;
-    BrUi72CtlFn p1003F5E0;
-    BrUi72CtlFn p1003F680;
-    BrUi72CtlFn p1003FA00;   /* also in slice3_33.h */
-    BrUi72CtlFn p1003FCB0;
-    BrUi72CtlFn p1003FD30;
-    BrUi72CtlFn p1003FDA0;
-    BrUi72CtlFn p1003FE10;
-    BrUi72CtlFn p1003FE80;   /* also in slice3_33.h */
-    BrUi72CtlFn p10040730;   /* also in slice3_33.h */
-    BrUi72CtlFn p100407E0;   /* also in slice3_33.h */
-    BrUi72CtlFn p100408D0;   /* also in slice3_33.h */
-    BrUi72CtlFn p10040950;
-    BrUi72CtlFn p10040990;
-    BrUi72CtlFn p100409B0;
-    BrUi72CtlFn p100409D0;
-    BrUi72CtlFn p10040B30;
-    BrUi72CtlFn p10041040;
-    BrUi72CtlFn p10041180;
-    BrUi72CtlFn p10041300;
-    BrUi72CtlFn p100413B0;
-    BrUi72CtlFn p100414B0;
-    BrUi72CtlFn p100415A0;
-    BrUi72CtlFn p10042560;
-    BrUi72CtlFn p10042740;
-    BrUi72CtlFn p10042AC0;
-    BrUi72CtlFn p10042EE0;   /* also in slice3_33.h */
-    BrUi72CtlFn p100430B0;   /* also in slice3_33.h */
-    BrUi72CtlFn p10043180;   /* also in slice3_33.h */
-    BrUi72CtlFn p10043590;
-    BrUi72CtlFn p100435F0;
-    BrUi72CtlFn p10043650;
-    BrUi72CtlFn p100436B0;
-    BrUi72CtlFn p100437D0;
-    BrUi72CtlFn p10043F50;
-    BrUi72CtlFn p10043FA0;   /* also in slice3_33.h */
-    BrUi72CtlFn p10044600;
-    BrUi72CtlFn p100446D0;
-    BrUi72CtlFn p10044B40;
-    BrUi72CtlFn p10044C70;
-    BrUi72CtlFn p10044D00;
-    BrUi72CtlFn p10044F00;
-    BrUi72CtlFn p10045050;
-    BrUi72CtlFn p10046260;
-    BrUi72CtlFn p10046710;
-    BrUi72CtlFn p10047060;
-    BrUi72CtlFn p10047250;
-    BrUi72CtlFn p10047340;
-    BrUi72CtlFn p10047360;   /* also in slice3_33.h */
-    BrUi72CtlFn p100474B0;   /* also in slice3_33.h */
-    BrUi72CtlFn p100457C0;
-    BrUi72CtlFn p100457E0;
+    BrUiCtlHookFn_ p1003E7A0;
+    BrUiCtlHookFn_ p1003EC30;
+    BrUiCtlHookFn_ p1003EF90;
+    BrUiCtlHookFn_ p1003F020;
+    BrUiCtlHookFn_ p1003F5E0;
+    BrUiCtlHookFn_ p1003F680;
+    BrUiCtlHookFn_ p1003FA00;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p1003FCB0;
+    BrUiCtlHookFn_ p1003FD30;
+    BrUiCtlHookFn_ p1003FDA0;
+    BrUiCtlHookFn_ p1003FE10;
+    BrUiCtlHookFn_ p1003FE80;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p10040730;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p100407E0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p100408D0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p10040950;
+    BrUiCtlHookFn_ p10040990;
+    BrUiCtlHookFn_ p100409B0;
+    BrUiCtlHookFn_ p100409D0;
+    BrUiCtlHookFn_ p10040B30;
+    BrUiCtlHookFn_ p10041040;
+    BrUiCtlHookFn_ p10041180;
+    BrUiCtlHookFn_ p10041300;
+    BrUiCtlHookFn_ p100413B0;
+    BrUiCtlHookFn_ p100414B0;
+    BrUiCtlHookFn_ p100415A0;
+    BrTextListCbFn p10042560;
+    /* the two that land in the LIST (+0x383C / +0x384C), not in a control
+     * slot -- slice3_39.h owns their type. */
+    BrTextListCbFn p10042740;
+    BrUiCtlHookFn_ p10042AC0;
+    BrUiCtlHookFn_ p10042EE0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p100430B0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p10043180;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p10043590;
+    BrUiCtlHookFn_ p100435F0;
+    BrUiCtlHookFn_ p10043650;
+    BrUiCtlHookFn_ p100436B0;
+    BrUiCtlHookFn_ p100437D0;
+    BrUiCtlHookFn_ p10043F50;
+    BrUiCtlHookFn_ p10043FA0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p10044600;
+    BrUiCtlHookFn_ p100446D0;
+    BrUiCtlHookFn_ p10044B40;
+    BrUiCtlHookFn_ p10044C70;
+    BrUiCtlHookFn_ p10044D00;
+    BrUiCtlHookFn_ p10044F00;
+    BrUiCtlHookFn_ p10045050;
+    BrUiCtlHookFn_ p10046260;
+    BrUiCtlHookFn_ p10046710;
+    BrUiCtlHookFn_ p10047060;
+    BrUiCtlHookFn_ p10047250;
+    BrUiCtlHookFn_ p10047340;
+    BrUiCtlHookFn_ p10047360;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p100474B0;   /* also in slice3_33.h */
+    BrUiCtlHookFn_ p100457C0;
+    BrUiCtlHookFn_ p100457E0;
 } BrUi72Hooks;
 
 /* ==========================================================================
@@ -463,12 +371,15 @@ typedef struct Br72Env {
     const BrErrHost   *pErrHost;        /* 0x1003E260, see slice1_06.h       */
     const BrUi72Hooks *pHooks;
 
-    /* The two thiscall constructors.  slice3_33.h already declares them as
-     * BrUiScreenCtor (0x10048470) and BrUiCtlCtor (0x100476C0) over its own
-     * struct types; reached through pointers here so this header creates no
-     * conflicting declaration for either address. */
+    /* The two thiscall constructors, 0x10048470 and 0x100476C0.  Both are now
+     * typed over br_ui.h's objects, so br_uivt.h's BrUiPageCtor_10048470 and
+     * br_uictl.h's BrUiCtlCtor go straight into these slots -- no adapter and
+     * no cast.  They stay POINTERS because slice3_33.h still declares the same
+     * two addresses over its own BrUiScreen / BrUiCtl, and a module compiled
+     * against that header must not pick up a conflicting prototype from this
+     * one. */
     BrUiPage_ *(*pfnPageCtor)(BrUiPage_ *pThis);    /* 0x10048470 */
-    BrUi72Ctl *(*pfnCtlCtor)(BrUi72Ctl *pThis);     /* 0x100476C0 */
+    BrUiCtl_  *(*pfnCtlCtor)(BrUiCtl_ *pThis);       /* 0x100476C0 */
 
     void (*pfn100795D0)(void);    /* 0x100795D0 -- force-feedback re-probe   */
     void (*pfn1003E2C0)(void);    /* 0x1003E2C0                              */
@@ -554,10 +465,10 @@ typedef struct Br72Env {
     int32_t  cAC520;
 
     /* --- pointer globals the builders publish ------------------------------ */
-    BrUi72Ctl *pAA29B8;   /* 0x10AA29B8 */
-    BrUi72Ctl *pAA29C4;   /* 0x10AA29C4 */
-    BrUi72Ctl *pAA29C8;   /* 0x10AA29C8 */
-    BrUi72Ctl *pAA29E8;   /* 0x10AA29E8 */
+    BrUiCtl_  *pAA29B8;   /* 0x10AA29B8 */
+    BrUiCtl_  *pAA29C4;   /* 0x10AA29C4 */
+    BrUiCtl_  *pAA29C8;   /* 0x10AA29C8 */
+    BrUiCtl_  *pAA29E8;   /* 0x10AA29E8 */
     void      *pfn0A79EC; /* 0x100A79EC -- a code slot, one of two values   */
     void      *pfn1001C690;  /* the two candidates 0x1001BE90 chooses from  */
     void      *pfn1001BC90;

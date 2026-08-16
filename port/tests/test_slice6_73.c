@@ -186,8 +186,13 @@ static void TestF38(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
     ++s_c38;
 }
 
+/* br_ui.h's BrUiCtlVtbl_ names all sixteen slots; only +0x34 and +0x38 are
+ * reached from this packet. */
 static const BrUiCtlVtbl_ s_ctlVtbl = {
-    { 0,0,0,0,0,0,0,0,0,0,0,0,0 }, TestF34, TestF38
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    TestF34,        /* +0x34 */
+    TestF38,        /* +0x38 */
+    0               /* +0x3C */
 };
 
 /* the +0x3838 sub-object */
@@ -195,7 +200,7 @@ static int         s_c10, s_c14;
 static const void *s_apF10Text[64];
 static int32_t     s_aF14[8][5];
 
-static void TestSubF10(BrUiCtlSub_ *pThis, const void *pText, int32_t a2,
+static void TestSubF10(BrTextList *pThis, const void *pText, int32_t a2,
                        int32_t a3, const void *pStyle, int32_t a5)
 {
     (void)pThis; (void)a2; (void)a3; (void)pStyle; (void)a5;
@@ -203,7 +208,7 @@ static void TestSubF10(BrUiCtlSub_ *pThis, const void *pText, int32_t a2,
     ++s_c10;
 }
 
-static void TestSubF14(BrUiCtlSub_ *pThis, int32_t a1, const void *pStyle,
+static void TestSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
                        int32_t a3, int32_t a4, int32_t a5)
 {
     (void)pThis; (void)pStyle;
@@ -214,12 +219,19 @@ static void TestSubF14(BrUiCtlSub_ *pThis, int32_t a1, const void *pStyle,
     ++s_c14;
 }
 
-static const BrUiCtlSubVtbl_ s_subVtbl = { {0,0,0,0}, TestSubF10, TestSubF14 };
+/* The object at control +0x3838 is slice3_39.h's whole BrTextList (br_ui.h
+ * ADJ-6), so this is two slots of ITS vtable. */
+static const BrTextListVtbl s_subVtbl = {
+    0, 0, 0, 0,
+    TestSubF10,     /* +0x10 */
+    TestSubF14,     /* +0x14 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
 static int s_cItemF04;
-static void TestItemF04(BrUiItem_ *pThis) { (void)pThis; ++s_cItemF04; }
+static void TestItemF04(BrTextBox *pThis) { (void)pThis; ++s_cItemF04; }
 /* 0x1008F728 -- slice3_39.h's BrTextBoxVtbl.  Only +0x04 is reached here. */
-static const BrUiItemVtbl_ s_itemVtbl = {
+static const BrTextBoxVtbl s_itemVtbl = {
     0, TestItemF04, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
@@ -228,15 +240,15 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
 {
     memset(pThis, 0, sizeof(*pThis));
     pThis->pVtbl        = &s_ctlVtbl;
-    pThis->f3838.pVtbl  = &s_subVtbl;
-    pThis->f2B5C.pVtbl  = &s_itemVtbl;
-    pThis->f1E200       = 0.0f;
-    pThis->f1E204       = 11.0f;
+    pThis->list.pVtbl   = &s_subVtbl;
+    pThis->aText[0].pVtbl = &s_itemVtbl;
+    pThis->list.f1A99C[11].f = 0.0f;   /* +0x1E200 */
+    pThis->list.f1A99C[12].f = 11.0f;  /* +0x1E204 */
     return pThis;
 }
 
 /* 0x10048470 */
-static const int s_pageVtbl;
+static const BrUiPageVtbl_ s_pageVtbl;
 BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis)
 {
     memset(pThis, 0, sizeof(*pThis));
@@ -345,11 +357,14 @@ static void ResetRecorders(void)
 
 static void Setup(void)
 {
-    BrUiCtlFn_ *pf = (BrUiCtlFn_ *)&s_hooks;
-    size_t      n  = sizeof(s_hooks) / sizeof(BrUiCtlFn_);
+    /* Every slot in BrUi73Hooks is a function pointer -- most control hooks,
+     * two page hooks and three list hooks, all the same width -- so the block
+     * can still be filled positionally. */
+    BrUiCtlHookFn_ *pf = (BrUiCtlHookFn_ *)(void *)&s_hooks;
+    size_t      n  = sizeof(s_hooks) / sizeof(BrUiCtlHookFn_);
     size_t      i;
 
-    for (i = 0; i < n; ++i) { pf[i] = HookBody; }
+    for (i = 0; i < n; ++i) { pf[i] = (BrUiCtlHookFn_)(void *)HookBody; }
 
     memset(&g_br73, 0, sizeof(g_br73));
     g_br73.pErrHost      = &s_errHost;
@@ -565,8 +580,8 @@ static void TestBuilder_1004DFC0(void)
 
     pList = pPage->apCtl[3];
     /* n == 0 lands exactly on the low endpoint */
-    CHECK(pList->f1E1E8 == pList->f1E200);
-    CHECK(pList->f1E1D0 == pList->f1E1C8 + 0x10);
+    CHECK(pList->list.f1A99C[5].f == pList->list.f1A99C[11].f);
+    CHECK(pList->list.f1A998 == pList->list.f1A990 + 0x10);
     free(pPhase);
 
     /* --- the interpolation is n/11 of the way, despite the -1/11 constant -- */
@@ -575,7 +590,7 @@ static void TestBuilder_1004DFC0(void)
     ResetRecorders();
     BrExt_1004DFC0(pPhase);
     pList = pPhase->aPages[0]->apCtl[3];
-    CHECK(fabs((double)(pList->f1E1E8 - pList->f1E204)) < 1e-3);
+    CHECK(fabs((double)(pList->list.f1A99C[5].f - pList->list.f1A99C[12].f)) < 1e-3);
     CHECK(s_aF14[0][3] == 11);
     free(pPhase);
 
@@ -586,7 +601,7 @@ static void TestBuilder_1004DFC0(void)
     BrExt_1004DFC0(pPhase);
     pList = pPhase->aPages[0]->apCtl[3];
     CHECK(s_aF14[0][3] == 0);                       /* clamped up for f14   */
-    CHECK(pList->f1E1E8 == pList->f1E200);          /* low endpoint         */
+    CHECK(pList->list.f1A99C[5].f == pList->list.f1A99C[11].f);          /* low endpoint         */
     free(pPhase);
 
     pPhase = NewPhase();
@@ -595,7 +610,7 @@ static void TestBuilder_1004DFC0(void)
     BrExt_1004DFC0(pPhase);
     pList = pPhase->aPages[0]->apCtl[3];
     CHECK(s_aF14[0][3] == 0x0B);                    /* clamped down for f14 */
-    CHECK(pList->f1E1E8 == pList->f1E204);          /* high endpoint        */
+    CHECK(pList->list.f1A99C[5].f == pList->list.f1A99C[12].f);          /* high endpoint        */
     free(pPhase);
 
     g_br73.nAA2A34 = 0;
@@ -644,7 +659,7 @@ static void TestBuilder_10050060(void)
     }
 
     /* the one control in the packet with f1E20C == 2 and a3 == 0 */
-    CHECK(pP0->apCtl[3]->f1E20C == 2);
+    CHECK(pP0->apCtl[3]->w1E20C == 2);
     CHECK(g_br73.pAA29F4 == pP0->apCtl[4]);
     CHECK(g_br73.pAA29C0 == pP1->apCtl[0]);
 
@@ -675,19 +690,19 @@ static void TestBuilder_10054B50(void)
 
     for (i = 0; i < 3; ++i) {
         /* the rectangle is always 0x7F wide and 0x21 tall */
-        CHECK(pR[i]->f58 - pR[i]->f50 == 0x7F);
-        CHECK(pR[i]->f5C - pR[i]->f54 == 0x21);
+        CHECK(pR[i]->rcRight - pR[i]->rcLeft == 0x7F);
+        CHECK(pR[i]->rcBottom - pR[i]->rcTop == 0x21);
         CHECK(pR[i]->f2968 == 0);
         /* f54 is the truncation of the very float handed to f38 */
-        CHECK(pR[i]->f54 == (int32_t)s_a38[4 + i].y);
+        CHECK(pR[i]->rcTop == (int32_t)s_a38[4 + i].y);
         CHECK(s_a38[4 + i].flags == 0x402001);
     }
 
     /* the DEFECT: only the first rectangle computes its left edge; the other
      * two reuse the register it left behind, so all three share f50/f58 even
      * though nothing re-derives them */
-    CHECK(pR[0]->f50 == pR[1]->f50 && pR[1]->f50 == pR[2]->f50);
-    CHECK(pR[0]->f58 == pR[1]->f58 && pR[1]->f58 == pR[2]->f58);
+    CHECK(pR[0]->rcLeft == pR[1]->rcLeft && pR[1]->rcLeft == pR[2]->rcLeft);
+    CHECK(pR[0]->rcRight == pR[1]->rcRight && pR[1]->rcRight == pR[2]->rcRight);
 
     /* the row cursor advances by 33 twice and then stops: rect 3 is one step
      * below rect 2, not two */
@@ -695,7 +710,7 @@ static void TestBuilder_10054B50(void)
     CHECK(s_a38[6].y - s_a38[5].y == 33.0f);
 
     /* the three f2A42 codes are distinct */
-    CHECK(pR[0]->f2A42 == 0x79 && pR[1]->f2A42 == 0x53 && pR[2]->f2A42 == 0x55);
+    CHECK(pR[0]->aStepId[1] == 0x79 && pR[1]->aStepId[1] == 0x53 && pR[2]->aStepId[1] == 0x55);
 
     free(pPhase);
 }
@@ -724,21 +739,21 @@ static void TestBuilder_100558A0(void)
      * +0x2F80 mirrors carry the same four numbers as +0x50 */
     pS0 = pPage->apCtl[10];
     pS1 = pPage->apCtl[13];
-    CHECK(pS0->f50 == pS0->f2B5C.left && pS0->f54 == pS0->f2B5C.f428);
-    CHECK(pS0->f58 == pS0->f2B5C.right && pS0->f5C == pS0->f2B5C.f430);
-    CHECK(pS1->f50 == pS1->f2B5C.left && pS1->f5C == pS1->f2B5C.f430);
-    CHECK(pS0->f50 == pS1->f50 && pS0->f58 == pS1->f58);
-    CHECK(pS0->f54 != pS1->f54);
+    CHECK(pS0->rcLeft == pS0->aText[0].left && pS0->rcTop == pS0->aText[0].f428);
+    CHECK(pS0->rcRight == pS0->aText[0].right && pS0->rcBottom == pS0->aText[0].f430);
+    CHECK(pS1->rcLeft == pS1->aText[0].left && pS1->rcBottom == pS1->aText[0].f430);
+    CHECK(pS0->rcLeft == pS1->rcLeft && pS0->rcRight == pS1->rcRight);
+    CHECK(pS0->rcTop != pS1->rcTop);
     /* width == (right - left) - 0x10, computed in 16 bits */
-    CHECK(pS0->f2B5C.f41C
-          == (int16_t)(uint16_t)(pS0->f2B5C.right - pS0->f2B5C.left - 0x10));
-    CHECK(pS1->f2B5C.f41C == pS0->f2B5C.f41C);
+    CHECK(pS0->aText[0].f41C
+          == (int16_t)(uint16_t)(pS0->aText[0].right - pS0->aText[0].left - 0x10));
+    CHECK(pS1->aText[0].f41C == pS0->aText[0].f41C);
     /* each spinner poked its own item sub-object once */
     CHECK(s_cItemF04 == 2);
 
     /* the "next slot" counter names the slot this control does NOT occupy */
-    CHECK(pPage->apCtl[15]->f2AB6 == 16);
-    CHECK(pPage->apCtl[15]->f2AB4 == 1);
+    CHECK(pPage->apCtl[15]->aChild[0] == 16);
+    CHECK(pPage->apCtl[15]->cChild == 1);
 
     /* two controls take their text straight from the edit buffer, and one
      * from the 0x100AD300 blob -- none of the three through BrStrGet */

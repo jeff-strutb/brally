@@ -25,9 +25,6 @@ clang $CFLAGS -c port/src/br_uictl.c           -o build/br_uictl.o
 clang $CFLAGS -c port/src/br_uivt.c            -o build/br_uivt.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
-clang $CFLAGS -Iport/tests -c port/tests/pageprobe72.c -o build/pageprobe72.o
-clang $CFLAGS -Iport/tests -c port/tests/pageprobe73.c -o build/pageprobe73.o
-clang $CFLAGS -Iport/tests -c port/tests/test_pagemodel.c -o build/test_pagemodel.o
 clang $CFLAGS -Iport/tests -c port/tests/test_uictl.c -o build/test_uictl.o
 clang $CFLAGS -Iport/tests -c port/tests/test_uivt.c -o build/test_uivt.o
 clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
@@ -186,9 +183,14 @@ clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_po
 
 # br_ui.h -- the canonical page/control types. Header-only, like test_layout:
 # most of its claims are compile-time assertions, so a bad element count breaks
-# the BUILD rather than the run. Deliberately NOT linked against slice6_72.o or
-# slice6_73.o: those two still define `struct BrUiPage_` themselves, which is
-# the conflict br_ui.h exists to end and which migration removes.
+# the BUILD rather than the run.
+#
+# test_pagemodel and its two probes used to be built here. They existed only to
+# prove that slice6_72.h's and slice6_73.h's rival `struct BrUiPage_`
+# definitions had not drifted apart -- a hand-maintained invariant no compiler
+# could check. Both packets are on br_ui.h now, so there is one definition and
+# nothing left to drift; the test's own comment said to delete it at exactly
+# this point and not before.
 clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_br_ui.c -o build/test_br_ui
 
 
@@ -221,17 +223,20 @@ clang $CFLAGS -Iport/tests -c port/tests/test_slice6_73.c -o build/test_slice6_7
 clang $CFLAGS -c port/src/slice6_74.c -o build/slice6_74.o
 clang $CFLAGS -Iport/tests -c port/tests/test_slice6_74.c -o build/test_slice6_74.o
 
+clang $CFLAGS -c port/src/slice6_76.c -o build/slice6_76.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_76.c -o build/test_slice6_76.o
+
 clang build/slice6_70.o build/test_slice6_70.o -lm -o build/test_slice6_70
 clang build/slice6_71.o build/test_slice6_71.o -lm -o build/test_slice6_71
 clang build/slice6_72.o build/test_slice6_72.o -lm -o build/test_slice6_72
 clang build/slice6_73.o build/test_slice6_73.o -lm -o build/test_slice6_73
 clang build/slice6_74.o build/test_slice6_74.o -lm -o build/test_slice6_74
+clang build/slice6_76.o build/test_slice6_76.o -lm -o build/test_slice6_76
 
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
-clang build/pageprobe72.o build/pageprobe73.o build/test_pagemodel.o -o build/test_pagemodel
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
 clang build/br_pod.o build/test_pod.o -o build/test_pod

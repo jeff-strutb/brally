@@ -94,6 +94,8 @@ const BrUiCtlVtbl_ *g_pBrUiCtlVtbl = &g_vtblZeroed;
 
 BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
 {
+    int i;
+
     if (!pThis)
         return NULL;                    /* DEVIATION: the original faults. */
 
@@ -110,22 +112,52 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
     pThis->pfn0C = NULL;
     pThis->pfn10 = NULL;
     pThis->pfn14 = NULL;
+    pThis->pfn18 = NULL;    /* the sixth slot, which the old model omitted */
 
-    /* +0x2A40 and +0x2A42 are the two halves of the FIRST dword of the
-     * 25-dword -1 fill that starts at +0x2A40 (0x2A40 + 25*4 == 0x2AA4).
-     * Both must be 0xFFFF, and specifically not 0: 0x10047FB0 later stores a
-     * code word into +0x2A40, and -1 is what "no code yet" looks like. */
-    pThis->f2A40 = (uint16_t)0xFFFFu;
-    pThis->f2A42 = (uint16_t)0xFFFFu;
+    /* The 25-dword -1 fill at +0x2A40 is br_ui.h's aStepId[50] -- 50 uint16
+     * over the same 100 bytes (ADJ-3), and what two headers used to call the
+     * scalars f2A40 and f2A42 are elements 0 and 1 (ADJ-4). Every one of the
+     * fifty must be 0xFFFF, and specifically not 0: 0x10047FB0 later stores a
+     * code word into element 0, and -1 is what "no code yet" looks like. The
+     * whole array is modelled now, so the whole array is filled -- the old
+     * model could only reach the first dword's two halves. */
+    for (i = 0; i < BR_UI_CTL_STEPS; ++i) {
+        pThis->aStepId[i] = (uint16_t)0xFFFFu;
+    }
 
-    /* Scalars the original sets non-zero. +0x2C, +0x2AEC and +0x2B54 have no
-     * modelled field yet; see BR_UICTL_UNMODELLED below. */
-    pThis->f1C    = 1;
-    pThis->f1E1E8 = BR_UICTL_F44;
+    /* The other three -1 fills the old sparse model had nowhere to put.
+     * +0x12A is the dangerous one: 0 is a valid index there and -1 means
+     * empty, so a calloc'd control is NOT an initialised control. */
+    for (i = 0; i < BR_UI_CTL_A012A; ++i) {
+        pThis->a012A[i] = -1;
+    }
+    for (i = 0; i < BR_UI_CTL_A2AF0; ++i) {
+        pThis->a2AF0[i] = -1;
+    }
+
+    /* Scalars the original sets non-zero. All of them have a modelled field
+     * now; the ledger at the bottom is down to the two sub-object
+     * constructors. */
+    pThis->flags1C = 1;
+
+    /* 1004770A  mov dword ptr [esi + 0x44], 0x3f7d70a4
+     *
+     * BUG FIXED IN PASSING, and it is exactly the hazard this migration is
+     * about: this line used to read `pThis->f1E1E8 = BR_UICTL_F44;` -- the
+     * banner above it, the comment on it and test_uictl.c all said "+0x44",
+     * but slice6_73.h's sparse control had no field at +0x44, so the constant
+     * went into +0x1E1E8 instead. That is 0x1E1A4 bytes away, and it is a
+     * slot 0x1004DFC0 uses as the car-list interpolation output. br_ui.h
+     * names +0x44, so the store lands where the disassembly puts it. */
+    pThis->f44 = BR_UICTL_F44;
+
+    pThis->b2C   = 0xFFu;    /* +0x002C, a BYTE  */
+    pThis->f2AEC = 1;        /* +0x2AEC          */
+    pThis->f2B54 = 1;        /* +0x2B54          */
 
     /* +0x2B5C is three 0x438-byte BrTextBox elements built by the MSVC vector
      * constructor iterator with element ctor 0x1005B050 == slice3_39.h's
-     * BrTextBoxInit. Only ELEMENT 0 is modelled (BrUiCtl_::f2B5C), and of
+     * BrTextBoxInit. br_ui.h models all THREE (BrUiCtl_::aText, ADJ-1); of
      * BrTextBoxInit's writes only two are not zeroes:
      *
      *   f08 = 1          -- made here
@@ -137,8 +169,14 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
      * free of link dependencies so test_uictl can link br_uictl.o alone. A
      * host that wants the real methods installs slice3_39.h's
      * g_pBrTextBoxVtbl and re-runs BrTextBoxInit, or sets f2B5C.pVtbl
-     * itself. Every caller in the tree already NULL-checks it. */
-    pThis->f2B5C.f08 = 1;
+     * itself. Every caller in the tree already NULL-checks it.
+     *
+     * Elements 1 and 2 have a home now too, but BrTextBoxInit's only non-zero
+     * write is that same f08, and the memset above already covers the rest --
+     * so they are set here for the same reason element 0 is. */
+    pThis->aText[0].f08 = 1;
+    pThis->aText[1].f08 = 1;
+    pThis->aText[2].f08 = 1;
 
     return pThis;                       /* original returns `this` in eax */
 }
@@ -152,20 +190,28 @@ BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
  * here in the same change; adding the field without the initialiser is worse
  * than not adding it, because it will read 0 and look deliberate.
  *
- *   offset    value        note
- *   +0x002C   0xFF         a BYTE, not a dword
- *   +0x2AEC   1
- *   +0x2B54   1
- *   +0x012A   -1 x2500     the item table -- the dangerous one: 0 is a valid
- *                          index and -1 means empty
- *   +0x2A40   -1 x25       (the +0x2A40 and +0x2A42 halves of element 0 are
- *                          modelled; the other 24 dwords are not)
- *   +0x2AF0   -1 x25
- *   +0x2B5C   3 elements of 0x438 -- element 0 is modelled and its ctor's
- *             non-zero writes are made above except the 0x1008F728 vtable
- *             store; elements 1 and 2 have no modelled home at all
- *   +0x3838   sub-object ctor 0x1005B7F0
+ * Every scalar and every block fill now has one. What remains is the ONE
+ * write this file still cannot make faithfully:
  *
- * +0x001C left this list when BrUiCtl_ gained f1C, which 0x10047FB0 ORs into.
+ *   offset    value        note
+ *   +0x2B5C   3 elements   the vector-constructor iterator's unwind path. The
+ *                          three elements are constructed (f08 = 1, the rest
+ *                          zero by the memset) but 0x1008F728 is deliberately
+ *                          NOT planted -- see the note above.
+ *   +0x3838   ctor call    0x1005B7F0 == slice3_39.h's BrTextListInit. The
+ *                          field EXISTS now (br_ui.h ADJ-6 embeds the whole
+ *                          0x1A9D4-byte BrTextList), so this is a link
+ *                          question, not a modelling one: slice3_39.o pulls
+ *                          in BrTextBoxDtor and BrDikGetDeviceState, both of
+ *                          which live in slice6_72.c, and this module is kept
+ *                          free of link dependencies so test_uictl can link
+ *                          br_uictl.o alone. The memset covers every zero the
+ *                          list constructor writes; what is missed is
+ *                          f1A932/34/36/38 == -1 and f08 == 1 on the hundred
+ *                          items. Nothing in the tree reads either yet.
+ *
+ * +0x001C left this list when BrUiCtl_ gained f1C. +0x002C, +0x2AEC, +0x2B54,
+ * the +0x012A / +0x2A40 / +0x2AF0 fills and the +0x3838 sub-object all left
+ * it when the model became br_ui.h's, which names every one of them.
  * ========================================================================== */
-const int g_brUiCtlUnmodelledWrites = 8;
+const int g_brUiCtlUnmodelledWrites = 1;
