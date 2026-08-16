@@ -665,3 +665,38 @@ as the wheel-probe "defect", and this is its second appearance.
 
 When preserving a bug, record the instruction addresses that establish it, so
 the next reader can check the claim instead of inheriting it.
+
+## Glide is the reference — and most of the tree still cites D3D addresses
+
+`tools/dumpasm.py` defaults to `BRGlide.dll` and every current brief names it.
+But an audit of what the port actually cites:
+
+    addresses cited in port/     4363
+      present in the D3D column  1198
+      present in the Glide column 232
+
+Most modules predate the correction and are anchored to D3D addresses. For the
+1,809 SHARED functions that is harmless -- either binary yields the same
+answer -- and it is why the port is not wrong wholesale.
+
+It has two real costs:
+
+1. **Grep fails.** An address recorded as D3D is invisible to someone searching
+   the Glide address for the same function, and vice versa. That has caused a
+   pass to re-port an existing function at least four times, including four
+   clipper planes. `tools/whereis.py` exists for this; USE IT before concluding
+   anything is unported.
+
+2. **Divergent functions may be the wrong version.** 26 implemented addresses
+   are not classified `shared` (excluding CRT). Two are known and handled --
+   the proportional width routine and the lighting vertex transform both really
+   differ, and the port carries GLIDE's in each case (the lighting one matters:
+   D3D clamps to 1.0 and divides by 255, Glide keeps 0..255 because a Glide
+   iterated colour is 0..255). The remaining 24 are unaudited, and cannot be
+   audited properly until the classifier distinguishes true divergence from the
+   CRT-linkage artifact.
+
+**OPEN AUDIT, do not lose this:** once `config/shared.csv` is trustworthy,
+re-run the check and re-derive from BRGlide anything that genuinely differs.
+The command is a grep of implemented addresses against the `d3d_only` set,
+excluding everything above 0x1007CC40.
