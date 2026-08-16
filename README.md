@@ -83,55 +83,85 @@ builds function-for-function.
 
 ## Status
 
-**The ported core now links into one binary and boots.** `build/brally`
-constructs the phase object and runs a real menu builder; see "Quick start".
+**~34% of the game is decompiled.** That figure has a stated denominator so it
+can be checked, which the three earlier figures in this file's history did not:
 
-**~1,660 distinct `Br*` functions defined.** 94 modules, 92 test suites, all
-green under one `./build.sh`. ~67,500 lines.
+| | bytes |
+|---|---|
+| Shared game code (`BRGlide.dll`) | 424,373 |
+| Unknown / untriaged | 39,973 |
+| D3D-only | 13,343 |
+| **Game code to port** | **477,689** |
+| **Ported** | **163,299 — 34%** |
 
-The menus **render in the game's own artwork and navigate**; tracks parse; the
-3D display-list interpreter runs retail geometry. See "Quick start".
+Excluded, deliberately: the statically linked C runtime (61,513 bytes — the
+host supplies it) and the D3D renderer boundary (19,797 bytes — replaced by
+Metal, not ported).
 
-Treat 1,660 as a count of what is DEFINED, not a completion percentage: it
-includes adapters and thin forwarders. The denominator is now firmer than it
-was -- both function maps were rebuilt by flow analysis and `config/shared.csv`
-classes **1,739** functions as present in both renderer builds -- but "how much
-of the game works" is still not a number this count answers. The menus are
-close to complete; the game itself is early.
+### What the executables are
+
+The disc ships four PE images and only one of them is the game. This was not
+established until the maps below were built, and until then every coverage
+figure in this file used the wrong denominator.
+
+| image | `.text` | functions | what it is |
+|---|---|---|---|
+| `Boot.exe` | 96,768 | 1,453 | CD autorun shell — runs SETUP/DXSETUP/SetVideo. **Installer** |
+| `BossRally.exe` | 23,552 | 215 | plays `brally.avi`, launches `brally.exe`. **Intro player** |
+| `BRally.exe` | 3,584 | 39 | reads `BossRally.ini`, `LoadLibrary`s the renderer DLL, calls `RallyMain`. **Launcher** |
+| `BRGlide.dll` | 481,280 | ~2,700 | **the game** |
+
+Maps: `config/functions_boot.csv`, `functions_bossrally.csv`,
+`functions_brally.csv`, `functions_glide.csv`.
+
+### The entry point is not ported
+
+`RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point —
+Glide `0x1001CC00`, 324 bytes. Its five-state machine is now transcribed
+(`port/src/br_boot.c`, `0 → 4 → 3 → 1 → 2`). **Every one of its eleven callees
+is still absent**, including `0x10019730` (205 B, the main loop), `0x10019670`
+(187 B, window creation — which names the wndproc at `0x100194C0`, where all
+input arrives), and `0x1001D8A0` (924 B, the argument parse everything
+downstream depends on).
+
+An earlier revision of this section said nine of eleven were absent and two
+were ported. Both "ported" entries were **prose mentions of the address inside
+a comment**, found by a `grep -rl` that cannot tell a mention from a
+definition. `tools/isported.py` answers this properly and reports all eleven
+absent.
+
+`port/host/brally.c` has been standing in for that startup — choosing a
+builder, constructing a phase, inventing the wiring — while the original's
+actual initialisation sat unread. Every "nothing builds the root menu" and
+"transitions land on an empty phase" note elsewhere in this file traces back to
+this single gap. Porting `RallyMain` and its chain is the correct root of the
+call graph and the next work.
+
+### How to read the other numbers in this file
+
+They measure different things and only one of them is coverage.
 
 | | |
 |---|---|
-| `.text` | 581,632 bytes @ `0x10001000`, image base `0x10000000` |
-| Shared core (the target) | ~1,708 fns / 339,648 bytes |
-| **Distinct `Br*` functions defined** | **~1,660** |
-| Modules | 81 (`br_*`, `slice1..7_*`) |
-| Unported functions, stubbed so the host links | **66** (`port/host/br_stubs.c`) |
-| Data symbols with provisional storage | **0** (was 64; all now real definitions in `port/src/br_data.c`) |
-| Addresses with >1 name | **53** (heuristic count) |
+| Modules | 112 (`br_*`, `slice1..8_*`) |
+| Test suites | 105, 0 failures |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
-| Functions shared across both renderer builds | **1,809** (`config/shared.csv`) |
+| Unported functions stubbed so the host links | **50** (`port/host/br_stubs.c`) |
+| UI hook slots filled | 99 of 108 |
+| Functions classed present in both renderer builds | 1,955 (`config/shared.csv`) |
 
+**None of these is a completion measure.** "16 of 16 builders run clean" means
+nothing crashed — several of those builders lead to placeholders. "105 suites
+pass" means this project's own tests agree with this project's own code; two
+tests have been found that could not fail under any implementation, one of
+which hid a bug that dropped 96% of track geometry. Treat the 30% above as the
+only coverage number here, and treat it as a ceiling on code *transcribed*, not
+a floor on code *correct*: 42 call sites reach a placeholder or stub, and 43
+hole annotations across 6 modules mark paths that are deliberately inert.
 
-### What "running" currently means
-
-`./build/brally -all` constructs a phase and runs each of the 16 ported screen
-builders in its own forked child, so one crash cannot hide the rest. **11 of 16
-run clean.** The other five die on a NULL vtable slot, which is deliberate: an
-unported method is left NULL so it faults loudly rather than silently doing
-nothing.
-
-Read the `ctl` column carefully. It is read out of the page struct, and is
-therefore only valid for builders whose module writes through the same model
-the host reads. Where it is not, the harness prints `--` rather than a number
-it cannot justify -- because that number is not merely wrong, it is
-NONDETERMINISTIC: one builder reported 9, 10, 12, 7 and 10 controls across five
-runs of the same binary, reading an offset nobody had written. `setText` and
-`place` are counted outside the struct and are valid for every builder.
-
-This is what `port/include/br_ui.h` exists to end. It is the canonical merged
-page and control model, with eleven conflicts adjudicated in-header against the
-disassembly. Migrating the modules onto it is in progress.
-
+An audit of the ~705 claimed-ported functions against the original's
+disassembly — behavioural equivalence, not existence — has not been done. Until
+it has, the working fraction is unknown and is lower than 30%.
 
 ## What actually works today
 
@@ -165,17 +195,29 @@ tuned to look right.
 
 ### What does NOT work
 
-There is still no game. Nothing drives a car: the race step is not wired end to
-end, no opponent updates run, and no sound plays.
+**There is no game.** The list below is not a set of loose ends; it is most of
+the runtime.
 
-And the physics **diverges on a real track**. On flat ground it is exact; on a
-slope the pitch rate grows from 0.017 to 11.96 rad/s in six steps. That is not
-a mystery -- it is measured per component, and the only unported code that can
-supply a pitch response is a 5,196-byte block of collision callees that runs
-four times per frame. Everything else in the force chain is ported.
+- **The entry point is not ported.** `RallyMain` and nine of its eleven callees
+  are absent — see above. There is no real startup, no real main loop, and the
+  host fabricates both.
+- **Cars fall through the world.** The collision *broad phase* is ported and the
+  *response* (`0x10067710` + `0x10065C80`) is not, so contacts are detected and
+  never resolved. A headless race shows z descending monotonically for the whole
+  run, with the response entered as a counted no-op 14,400 times.
+- **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
+  ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
+  draws a race.
+- **No car can drive itself.** Drive torque at `car+0x1CC` is written by the
+  control chain at `0x1006F170`, unported. Lap progress in the race harness
+  comes from the original's own phantom-entrant path, not from driving.
+- **Menu transitions dead-end.** Screens build and navigate, but destinations
+  are placeholders: `g_pBrUiBuildCtx86` is assigned only in tests.
 
-The front end is close to complete. The game is early, and the gap between
-those two facts is most of the remaining work.
+The front end *renders* well and that is the most misleading thing in this
+repository. Screens draw in the game's own art with the game's own font, which
+reads as "nearly done" and is not: the layer underneath it has no boot, no
+loop, and no destinations.
 
 ### The stub report is the work queue
 
@@ -242,6 +284,30 @@ Run anything with `.venv/bin/python tools/<x>.py`.
 
 Decided 2026-08-13. The target is **readable, platform-agnostic C that recompiles
 into a working game** -- not a byte-identical rebuild of BRD3D.dll.
+
+### Accuracy first; playability is the consequence, not the target
+
+Restated 2026-08-16, after this project spent a long stretch doing the opposite.
+
+The model is MAME, not ZSNES. Correctness of the decompilation is the point;
+being able to play the result is what falls out of getting it right. It is not
+a milestone to be pursued directly, and it is not evidence of anything on its
+own.
+
+What that rules out, concretely, because each of these was done here:
+
+- Standing in for an unported function so that something visible happens. A
+  placeholder is debt with a counter on it, never a foundation to build on.
+- Reporting "it builds", "N suites pass" or "16 of 16 builders run" as
+  progress. Those measure that nothing crashed and that our own tests agree
+  with our own code.
+- Chasing a visible symptom — a menu that will not navigate, a race that will
+  not draw — by wiring around the gap instead of decompiling the function the
+  gap is made of. The entry point went unread for weeks while the host
+  hand-wrote a substitute for it.
+
+The metric that counts is per-function behavioural equivalence against the
+original's disassembly. Everything else is diagnostics.
 
 This removes every toolchain blocker: no MSVC 5.0, no Wine, no Windows VM.
 We build with clang natively and verify by **running against real shipped game
