@@ -314,29 +314,32 @@ BrCharMapEntry g_BrCharMap[BR_CHARMAP_COUNT] = {
     { 0x7E, 0x7E },
 };
 
-/* 0x100AB438 -- the 19-entry UI style-rectangle pool, read out of the image.
- * See the derivation of the base and the extent in slice3_39.h -- and the
- * note there that the LOWER bound is the one claim not pinned by anything. */
+/* 0x100AB418 -- the 21-entry UI style-rectangle pool, read out of the image.
+ * See the derivation of the base and the extent in slice3_39.h.  The first
+ * two entries were added when 0x10047A60 turned up as their reader; the
+ * remaining nineteen are unchanged and only their indices moved. */
 const BrTextStyle g_aBrUiStyle[BR_UI_STYLE_COUNT] = {
-    {   0,   0, 639, 479 },   /*  0  0x100AB438  the screen */
-    { 148, 110, 358, 260 },   /*  1  0x100AB448 */
-    {  87,  61, 186, 132 },   /*  2  0x100AB458 */
-    { 330,  70, 447,  86 },   /*  3  0x100AB468 */
-    { 478,   0, 578,   0 },   /*  4  0x100AB478 */
-    { 440,   0, 540,   0 },   /*  5  0x100AB488 */
-    {  88,   0, 185,   0 },   /*  6  0x100AB498 */
-    { 330,   0, 447,   0 },   /*  7  0x100AB4A8 */
-    {  67,   0, 167,   0 },   /*  8  0x100AB4B8 */
-    { 230,   0, 547,   0 },   /*  9  0x100AB4C8 */
-    { 188, 130, 300, 225 },   /* 10  0x100AB4D8 */
-    { 188, 130, 300, 197 },   /* 11  0x100AB4E8 */
-    { 440, 128, 540, 204 },   /* 12  0x100AB4F8 */
-    { 100,  10, 410,  29 },   /* 13  0x100AB508 */
-    {  70, 213, 165, 285 },   /* 14  0x100AB518 */
-    { 128,  76, 384, 209 },   /* 15  0x100AB528 */
-    { 188, 130, 300, 206 },   /* 16  0x100AB538 */
-    { 162, 130, 318, 206 },   /* 17  0x100AB548 */
-    {  80,  29, 430,  48 },   /* 18  0x100AB558 */
+    {   0,   0, 200, 200 },   /*  0  0x100AB418  0x10047A60 hot rect 1 */
+    {   0, 380, 200, 480 },   /*  1  0x100AB428  0x10047A60 hot rect 2 */
+    {   0,   0, 639, 479 },   /*  2  0x100AB438  the screen */
+    { 148, 110, 358, 260 },   /*  3  0x100AB448 */
+    {  87,  61, 186, 132 },   /*  4  0x100AB458 */
+    { 330,  70, 447,  86 },   /*  5  0x100AB468 */
+    { 478,   0, 578,   0 },   /*  6  0x100AB478 */
+    { 440,   0, 540,   0 },   /*  7  0x100AB488 */
+    {  88,   0, 185,   0 },   /*  8  0x100AB498 */
+    { 330,   0, 447,   0 },   /*  9  0x100AB4A8 */
+    {  67,   0, 167,   0 },   /* 10  0x100AB4B8 */
+    { 230,   0, 547,   0 },   /* 11  0x100AB4C8 */
+    { 188, 130, 300, 225 },   /* 12  0x100AB4D8 */
+    { 188, 130, 300, 197 },   /* 13  0x100AB4E8 */
+    { 440, 128, 540, 204 },   /* 14  0x100AB4F8 */
+    { 100,  10, 410,  29 },   /* 15  0x100AB508 */
+    {  70, 213, 165, 285 },   /* 16  0x100AB518 */
+    { 128,  76, 384, 209 },   /* 17  0x100AB528 */
+    { 188, 130, 300, 206 },   /* 18  0x100AB538 */
+    { 162, 130, 318, 206 },   /* 19  0x100AB548 */
+    {  80,  29, 430,  48 },   /* 20  0x100AB558 */
 };
 
 /* Records 46 and 48 of the sprite table at 0x100AB568, both 16x16 in the

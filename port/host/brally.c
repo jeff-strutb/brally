@@ -36,6 +36,10 @@
 #include "br_font.h"
 #include "br_uictl.h"
 #include "br_uivt.h"
+/* br_uinav.h pulls slice3_32.h in under the rename slice3_32.c itself uses,
+ * so it must come AFTER slice6_73.h and never the other way round -- the
+ * header says so at the include. */
+#include "br_uinav.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -255,6 +259,145 @@ static const BrBuilder g_aBuilders[] = {
 #define BR_NBUILDERS ((int)(sizeof(g_aBuilders)/sizeof(g_aBuilders[0])))
 
 
+/* ==========================================================================
+ * NAVIGATION WIRING
+ *
+ * Everything below is HOST wiring, not decompiled code. The dividing line
+ * matters and is drawn explicitly:
+ *
+ *   PORTED (port/src/br_uinav.c, from BRGlide.dll):
+ *     0x10048530 the page frame        0x100484F0 the selection clamp
+ *     0x10048180 the control frame     0x10047A60 current/activate marking
+ *     0x100480A0 the step tick         0x10048010 the enter dispatch
+ *     0x10048060 the "other owns it"   0x10047A10 the code hand-off
+ *     0x10048AA0 release all pages
+ *     0x10045AF0 the FORWARD hook      0x10046C90 the BACK hook
+ *
+ *   SUPPLIED BY THIS FILE, and each one is a function the port has NOT
+ *   transcribed, standing in so the frame can complete rather than fault:
+ *     control vtable +0x00  0x100478A0  the scalar deleting destructor
+ *     control vtable +0x18  0x10047980  draw at an explicit rect
+ *     control vtable +0x1C  0x10047930  draw at the control's own position
+ *     page    vtable +0x00  0x100484C0  the page's deleting destructor
+ *     phase   vtable +0x00  0x10048850  the phase's deleting destructor
+ *     text box vtable +0x10 0x1005B0xx  the item's draw
+ *   Every one is counted, and the counts are printed, so "the frame ran" can
+ *   never quietly mean "the frame ran through six no-ops nobody noticed".
+ * ========================================================================== */
+
+static BrScrGlobals  g_scr;       /* the ONE globals object; shared with     */
+                                  /* slice3_32.c's byte-image bodies         */
+static BrActiveFlags g_active;    /* the nine globals 0x1003E080 reads       */
+static BrUiNav       g_nav;
+static BrObjAA2E80   g_objAA2E80;
+
+/* 0x10AA2A78 -> the cursor. Parked off-screen: every hot rect and every
+ * control rectangle the builders produce has left >= 0, so a negative x can
+ * be inside none of them. That is what makes the scripted runs below pure
+ * KEYBOARD evidence -- if the pointer could land on a control, "the selection
+ * moved" would be ambiguous between the two paths through 0x10047A60. */
+static int32_t g_cursor[2] = { -1, -1 };
+
+/* --- the six stand-ins, each counted ------------------------------------- */
+static int g_nStandIn[6];
+enum { SI_CTLDEL, SI_CTLDRAWRECT, SI_CTLDRAW, SI_PAGEDEL, SI_PHASEDEL,
+       SI_TEXTDRAW };
+static const char *const g_aStandInName[6] = {
+    "0x100478A0 control dtor", "0x10047980 draw(rect)", "0x10047930 draw",
+    "0x100484C0 page dtor",    "0x10048850 phase dtor", "0x1005B0xx item draw"
+};
+
+static void *StandInCtlDel(BrUiCtl_ *p, int32_t f)
+{ (void)f; g_nStandIn[SI_CTLDEL]++; return p; }
+static void StandInCtlDrawRect(BrUiCtl_ *p, void *pRect)
+{ (void)p; (void)pRect; g_nStandIn[SI_CTLDRAWRECT]++; }
+static void StandInCtlDraw(BrUiCtl_ *p)
+{ (void)p; g_nStandIn[SI_CTLDRAW]++; }
+static void *StandInPageDel(BrUiPage_ *p, int32_t f)
+{ (void)f; g_nStandIn[SI_PAGEDEL]++; return p; }
+static void *StandInPhaseDel(BrPhase_ *p, int32_t f)
+{ (void)f; g_nStandIn[SI_PHASEDEL]++; return p; }
+static void StandInTextDraw(BrTextBox *p)
+{ (void)p; g_nStandIn[SI_TEXTDRAW]++; }
+
+/* The phase vtable is `static const` above so the object is never left with a
+ * NULL table; navigation needs two of its slots, so the navigable path uses
+ * this writable one instead. */
+static BrPhaseVtbl_  g_navPhaseVtbl;
+static BrUiPageVtbl_ g_navPageVtbl;
+
+static void NavPhaseRelease(BrPhase_ *p)
+{
+    BrUiNavPhaseRelease_10048AA0(&g_nav, p);
+}
+
+/* The hook table the builders read. Two entries are the ported hooks; every
+ * other stays NULL, which is what the all-NULL g_hooks above already gave
+ * them -- an unwired hook must stay a visible hole, not a silent no-op. */
+static BrUi73Hooks g_navHooks;
+
+static void WireNav(void)
+{
+    memset(&g_scr, 0, sizeof g_scr);
+    memset(&g_active, 0, sizeof g_active);
+    memset(&g_objAA2E80, 0, sizeof g_objAA2E80);
+    memset(&g_nav, 0, sizeof g_nav);
+
+    /* 0x100AB3DC == 1 in the shipped .data: the selection moves ONE row per
+     * frame in which a direction is held. The port must not "improve" this to
+     * an instant jump -- the step is data, and the frame is the clock. */
+    g_scr.w0AB3DC = 0;              /* no movement until a key sets it */
+    g_scr.pAA2E80 = &g_objAA2E80;
+
+    g_nav.pG       = &g_scr;
+    g_nav.pCursor  = g_cursor;
+    g_nav.pActive  = &g_active;
+    g_nav.apHot[0] = BR_UI_STYLE(0x100AB448);
+    g_nav.apHot[1] = BR_UI_STYLE(0x100AB418);
+    g_nav.apHot[2] = BR_UI_STYLE(0x100AB428);
+    g_pBrUiNav     = &g_nav;
+
+    /* The frame chain, straight into the control vtable this file already
+     * owns. BrUiNavInstallCtlVtbl touches only the six slots it ports. */
+    BrUiNavInstallCtlVtbl(&g_hostCtlVtbl);
+    g_hostCtlVtbl.f00 = (void *)StandInCtlDel;
+    g_hostCtlVtbl.f18 = StandInCtlDrawRect;
+    g_hostCtlVtbl.f1C = StandInCtlDraw;
+    /* f34 / f38 are re-planted by the caller after this returns: they are the
+     * counting wrappers, and BrUiNavInstallCtlVtbl must not be allowed to
+     * look as though it had installed them. */
+
+    BrUiNavInstallPageVtbl(&g_navPageVtbl);
+    g_navPageVtbl.f00 = StandInPageDel;
+    g_pBrUiPageVtbl   = &g_navPageVtbl;
+
+    g_navPhaseVtbl     = g_phaseVtbl;
+    g_navPhaseVtbl.f00 = StandInPhaseDel;
+    g_navPhaseVtbl.f1C = NavPhaseRelease;
+
+    g_hostTextBoxVtbl.pfn10 = StandInTextDraw;
+
+    g_navHooks = g_hooks;                       /* all NULL */
+    g_navHooks.p10045AF0 = BrUiNavHook_10045AF0;
+    g_navHooks.p10046C90 = BrUiNavHook_10046C90;
+    g_br73.pHooks     = &g_navHooks;
+    g_br73.pPhaseVtbl = &g_navPhaseVtbl;
+
+    /* 0x10AA2908, the root phase 0x10046C90 goes BACK to.
+     *
+     * The original builds it during start-up, in a range this port has not
+     * reached; the harness constructs one with the REAL constructor and gives
+     * it no pages, which is enough for "back" to have a destination and for
+     * the destination to be observable. Its emptiness is the honest state of
+     * the port, not a simplification: nothing has been ported that would fill
+     * it. */
+    {
+        BrPhase_ *pRoot = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
+        if (pRoot != NULL)
+            g_nav.pAA2908 = BrOptObjCtor(pRoot);
+    }
+}
+
 static char g_scratchA[64], g_scratchB[64];
 static int32_t g_blkA[0x53], g_blkB[0x53], g_blkC[0x46];
 static unsigned char g_recAA29CC[0x438 * 16];
@@ -354,16 +497,165 @@ static void DumpRects(const BrPhase_ *ph)
     }
 }
 
+/* ==========================================================================
+ * The frame driver and the scripted-input mode
+ * ========================================================================== */
+
+/* One frame of one phase.
+ *
+ * This mirrors the page loop inside 0x100489A0 (phase vtable +0x0C) and is
+ * NOT that function: 0x100489A0 also polls DirectInput, drives 0x10AA2900
+ * through 0x10060260 and bails through 0x1003E310, none of which is ported or
+ * portable. What is reproduced is exactly the part navigation depends on --
+ * pCur is written BEFORE the NULL test, iPage tracks the loop, and a page runs
+ * only when its parallel aFlags entry is non-zero -- and the page's own frame
+ * is reached through the vtable, so the work is the ported 0x10048530's.
+ *
+ * BrOptObjCtor leaves aFlags[0] = 1 and the rest 0, so page 0 runs. */
+static int NavFrame(BrPhase_ *ph)
+{
+    int32_t i;
+    int     ok = 1;
+
+    ph->iPage = 0;
+    for (i = 0; i < (int32_t)ph->nPages && i < BR_PHASE_PAGES; ++i) {
+        BrUiPage_ *pPg = ph->aPages[i];
+        ph->pCur = pPg;                     /* written BEFORE the NULL test */
+        if (pPg == NULL)
+            return 0;
+        ph->iPage = (uint16_t)(uint32_t)i;
+        if (ph->aFlags[i] != 0) {
+            BrUiPage_ *pCur = ph->pCur;     /* the original re-reads +0x64 */
+            if (pCur->pVtbl->f04(pCur) == 0)
+                ok = 0;
+        }
+    }
+    return ok;
+}
+
+/* The page a phase is currently showing, or NULL. */
+static const BrUiPage_ *NavPage(const BrPhase_ *ph)
+{
+    if (ph == NULL || ph->nPages == 0)
+        return NULL;
+    return ph->aPages[0];
+}
+
+/* Which control carries the CURRENT bit (+0x20), by index. -1 if none.
+ *
+ * Read out of the control flags rather than computed, because the whole point
+ * is to observe what the ported code did. 0 is a real index and -1 really
+ * means "none" -- they are not the same value and are not conflated. */
+static int NavCurrentCtl(const BrUiPage_ *pg)
+{
+    int j;
+    if (pg == NULL)
+        return -1;
+    for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
+        const BrUiCtl_ *c = pg->apCtl[j];
+        if (c != NULL && ((uint32_t)c->flags1C & 0x20u) != 0)
+            return j;
+    }
+    return -1;
+}
+
+static void NavDumpState(const char *pszWhen, const BrPhase_ *ph)
+{
+    const BrUiPage_ *pg = NavPage(ph);
+    int iCur = NavCurrentCtl(pg);
+    const char *pszCap = (pg != NULL && iCur >= 0) ? CapFor(pg->apCtl[iCur])
+                                                   : NULL;
+    printf("  %-14s phase=%p sel=%-3d iSel=%-3d cSel=%-3d current=%-3d %s\n",
+           pszWhen, (const void *)ph,
+           BrUiNavSelection(&g_nav),
+           (pg != NULL) ? (int)pg->iSel : -1,
+           (pg != NULL) ? (int)pg->cSel : -1,
+           iCur, pszCap ? pszCap : "(none)");
+}
+
+/* `-keys <builder> "<script>"` -- drive the ported navigation with no window,
+ * no compositor and no human, and dump the state after every key.
+ *
+ *   d   down       0x100603A0's "down" edge, then one frame
+ *   u   up         0x100603A0's "up" edge, then one frame
+ *   j   activate   one frame with 0x10AA2AF0 set, which is what makes
+ *                  0x10047A60 raise the ACTIVATE bit on the current control
+ *                  and 0x10048180 call its +0x08 hook
+ *   .   idle       one frame with nothing held
+ *
+ * Every one of those is ONE frame, because the original moves the selection
+ * one step per frame in which a direction is held (0x100AB3DC is the step and
+ * the frame is the clock). A script of "ddd" therefore means three frames and
+ * three rows, not one jump of three. */
+static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
+{
+    const char *p;
+    BrPhase_ *phCur = ph;
+    int i;
+
+    printf("scripted input: \"%s\"\n", pszKeys);
+    NavDumpState("start", phCur);
+
+    for (p = pszKeys; *p; ++p) {
+        BrPhase_ *phBefore = phCur;
+
+        switch (*p) {
+        case 'd': BrUiNavMove(&g_nav, +1); break;
+        case 'u': BrUiNavMove(&g_nav, -1); break;
+        case 'j': BrUiNavSetActivate(&g_nav, 1); break;
+        case '.': break;
+        default:
+            printf("  unknown key '%c' (use d u j .)\n", *p);
+            return 1;
+        }
+
+        (void)NavFrame(phCur);
+
+        BrUiNavSetStep(&g_nav, 0);
+        BrUiNavSetActivate(&g_nav, 0);
+
+        /* A hook may have republished the current phase. That IS the
+         * transition, and it is the hook's doing, not this loop's. */
+        if (g_nav.pAA2904 != NULL)
+            phCur = g_nav.pAA2904;
+
+        {
+            char szWhen[16];
+            szWhen[0] = '\''; szWhen[1] = *p; szWhen[2] = '\''; szWhen[3] = 0;
+            NavDumpState(szWhen, phCur);
+            if (phCur != phBefore) {
+                printf("  ** PHASE CHANGED %p -> %p (a ported +0x08 hook did "
+                       "this, not the driver)\n",
+                       (const void *)phBefore, (const void *)phCur);
+                printf("     the screen now showing:\n");
+                DumpRects(phCur);
+            }
+        }
+    }
+
+    printf("\nstand-ins reached (each is a function this port has NOT "
+           "transcribed):\n");
+    for (i = 0; i < 6; i++)
+        printf("    %-26s %d\n", g_aStandInName[i], g_nStandIn[i]);
+    return 0;
+}
+
 /* Solid-colour fill, built from a 1x1 RGBA texture scaled to the rectangle.
  * The Metal backend only exposes a textured quad, and a 1x1 white texture is
  * the standard way to get a flat fill out of one without adding a second
  * pipeline. */
 static BrTexture g_texWhite;
+static BrTexture g_texDim;
 static int       g_haveWhite;
 
-static void FillRect(BrGfx *gfx, float x, float y, float w, float h)
+/* `fLit` is the control's CURRENT bit (+0x1C & 0x20), which 0x10047A60 set.
+ * The highlight is therefore drawn from decompiled state, not from a copy of
+ * the selection this file keeps for itself -- if the ported code and the
+ * window ever disagreed, the window would be the one telling the truth. */
+static void FillRect(BrGfx *gfx, float x, float y, float w, float h, int fLit)
 {
-    if (g_haveWhite) BrGfxDrawTexture(gfx, g_texWhite, x, y, w, h);
+    if (!g_haveWhite) return;
+    BrGfxDrawTexture(gfx, fLit ? g_texWhite : g_texDim, x, y, w, h);
 }
 
 /* Captions, rasterised once with br_font and cached as textures.
@@ -470,7 +762,7 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
             w = (float)(c->rcRight  - c->rcLeft);
             h = (float)(c->rcBottom - c->rcTop);
             if (w <= 0.0f || h <= 0.0f) continue;
-            FillRect(gfx, x, y, w, h);
+            FillRect(gfx, x, y, w, h, ((uint32_t)c->flags1C & 0x20u) != 0);
         }
     }
     for (i = 0; i < g_cCap; i++)
@@ -507,6 +799,12 @@ int main(int argc, char **argv)
     g_pBrTextListVtbl       = &g_hostTextListVtbl;
 
     WireContext();
+    /* The navigation wiring replaces two of WireContext's choices (the hook
+     * table and the phase vtable), so it runs after it, and the two counting
+     * slots are re-planted after it because it owns the rest of the table. */
+    WireNav();
+    g_hostCtlVtbl.f34 = HostCtlSetText;
+    g_hostCtlVtbl.f38 = HostCtlPlace;
     /* 77 first: br_wire72.c seeds its copy of 0x118ABDBC, and the probe that
      * writes that global needs the root this installs. */
     BrHostWire77();
@@ -654,8 +952,10 @@ int main(int argc, char **argv)
         (void)LoadFont();
         {
             static const uint8_t white[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+            static const uint8_t dim[4]   = { 0x40, 0x40, 0x50, 0xFF };
             g_texWhite  = BrGfxCreateTexture(g, 1, 1, white);
-            g_haveWhite = (g_texWhite != 0);
+            g_texDim    = BrGfxCreateTexture(g, 1, 1, dim);
+            g_haveWhite = (g_texWhite != 0 && g_texDim != 0);
         }
         g_aBuilders[b].pfn(ph);
         BuildCaptions(g, ph);
@@ -690,6 +990,27 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    /* `-keys <n> "<script>"` -- the navigation evidence. Headless, so it runs
+     * in CI, and it prints the selection state before and after every key. */
+    if (argc > 3 && strcmp(argv[1], "-keys") == 0) {
+        int b = atoi(argv[2]);
+        int rc;
+        if (b < 0 || b >= BR_NBUILDERS) {
+            printf("builder index must be 0..%d\n", BR_NBUILDERS - 1);
+            return 1;
+        }
+        printf("\nbuilding %s, then driving it with scripted keys\n",
+               g_aBuilders[b].pszName);
+        g_aBuilders[b].pfn(ph);
+        g_nav.pAA2904 = ph;
+        nCtl = DumpPhase(ph);
+        DumpRects(ph);
+        printf("\ncontrols built: %d\n\n", nCtl);
+        rc = NavRunScript(ph, argv[3]);
+        BrStubReport();
+        return rc;
+    }
+
     if (argc > 2 && strcmp(argv[1], "-b") == 0) {
         int b = atoi(argv[2]);
         if (b < 0 || b >= BR_NBUILDERS) {
@@ -718,12 +1039,14 @@ int main(int argc, char **argv)
 
     if (windowed) {
         static const uint8_t white[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+        static const uint8_t dim[4]   = { 0x40, 0x40, 0x50, 0xFF };
         gfx = BrGfxCreate(640, 480);
         if (!gfx) { printf("gfx init failed: %s\n", BrGfxLastError()); }
         else if (BrGfxOpenWindow(gfx, "Boss Rally") != 0) { gfx = NULL; }
         if (gfx) {
             g_texWhite  = BrGfxCreateTexture(gfx, 1, 1, white);
-            g_haveWhite = (g_texWhite != 0);
+            g_texDim    = BrGfxCreateTexture(gfx, 1, 1, dim);
+            g_haveWhite = (g_texWhite != 0 && g_texDim != 0);
             {
                 const char *pszFont = LoadFont();
                 if (pszFont)
@@ -738,12 +1061,58 @@ int main(int argc, char **argv)
             tex = BrGfxCreateTexture(gfx, img.width, img.height, img.pixels);
             BrImgFree(&img); haveTex = 1;
         }
-        while (gfx && BrGfxPumpEvents(gfx)) {
-            BrGfxBeginFrame(gfx, 0.06f, 0.06f, 0.09f, 1.0f);
-            DrawPhase(gfx, ph, tex, haveTex);
-            BrGfxEndFrame(gfx);
-            BrGfxPresent(gfx);
-            if (++frames >= 180) break;
+        /* The interactive loop. Every key is turned into one of the four
+         * verbs by the backend and into one of the two seam writes here; the
+         * frame itself is the ported 0x10048530 reached through NavFrame.
+         * Nothing between the key and the selection is this file's logic. */
+        {
+            BrPhase_ *phCur = ph;
+            g_nav.pAA2904 = ph;
+            while (gfx && BrGfxPumpEvents(gfx)) {
+                BrKey k;
+                BrPhase_ *phBefore = phCur;
+                int fire = 0, dir = 0;
+
+                while ((k = BrGfxPollKey(gfx)) != BR_KEY_NONE) {
+                    switch (k) {
+                    case BR_KEY_UP:       dir  = -1; break;
+                    case BR_KEY_DOWN:     dir  = +1; break;
+                    case BR_KEY_ACTIVATE: fire =  1; break;
+                    /* ESCAPE is BACK. There is no ported "escape" path -- the
+                     * original's back is a control's +0x08 hook, not a global
+                     * key -- so this activates the LAST selectable control,
+                     * which is where every one of the sixteen screens puts
+                     * its Back row. Stated rather than dressed up: this one
+                     * mapping is the harness's, not the game's. */
+                    case BR_KEY_BACK:
+                        if (NavPage(phCur) != NULL)
+                            g_scr.wAA286C =
+                                (uint16_t)(NavPage(phCur)->cSel - 1);
+                        fire = 1;
+                        break;
+                    default: break;
+                    }
+                }
+
+                if (dir != 0) BrUiNavMove(&g_nav, dir);
+                BrUiNavSetActivate(&g_nav, fire);
+                (void)NavFrame(phCur);
+                BrUiNavSetStep(&g_nav, 0);
+                BrUiNavSetActivate(&g_nav, 0);
+                if (g_nav.pAA2904 != NULL) phCur = g_nav.pAA2904;
+
+                if (phCur != phBefore) {
+                    g_cCap = 0;              /* the old screen's textures */
+                    BuildCaptions(gfx, phCur);
+                    NavDumpState("transition", phCur);
+                }
+
+                BrGfxBeginFrame(gfx, 0.06f, 0.06f, 0.09f, 1.0f);
+                DrawPhase(gfx, phCur, tex, haveTex);
+                BrGfxEndFrame(gfx);
+                BrGfxPresent(gfx);
+                if (++frames >= 100000) break;
+            }
         }
         if (gfx) BrGfxDestroy(gfx);
     }

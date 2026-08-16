@@ -45,6 +45,32 @@ int  BrGfxPumpEvents(BrGfx *pGfx);
 /* Blit the render target to the window. */
 void BrGfxPresent(BrGfx *pGfx);
 
+/* --- keyboard -----------------------------------------------------------
+ * The seam is deliberately TINY, and deliberately not the game's.
+ *
+ * Boss Rally reads its keyboard through DirectInput (0x1005FFB0 and friends),
+ * which is neither portable nor separable from Win32; none of it is dragged
+ * in here. What the menu actually needs from an input device is four verbs,
+ * and a backend's whole job is to turn its native events into them. The core
+ * never sees a key code, a scan code or an event structure.
+ *
+ * BR_KEY_NONE is returned when the queue is empty, so a caller can drain with
+ *
+ *     while ((k = BrGfxPollKey(gfx)) != BR_KEY_NONE) ...
+ *
+ * A backend with no keyboard (the offscreen path) returns BR_KEY_NONE always,
+ * which is why nothing has to special-case headless. */
+typedef enum BrKey {
+    BR_KEY_NONE = 0,
+    BR_KEY_UP,
+    BR_KEY_DOWN,
+    BR_KEY_ACTIVATE,   /* Enter or Space */
+    BR_KEY_BACK        /* Escape         */
+} BrKey;
+
+/* Dequeue one key, or BR_KEY_NONE. Only meaningful after BrGfxPumpEvents. */
+BrKey BrGfxPollKey(BrGfx *pGfx);
+
 /* Last backend error, or NULL. */
 const char *BrGfxLastError(void);
 

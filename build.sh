@@ -24,10 +24,12 @@ clang $CFLAGS -c port/src/br_obj.c            -o build/br_obj.o
 clang $CFLAGS -c port/src/br_bits.c           -o build/br_bits.o
 clang $CFLAGS -c port/src/br_uictl.c           -o build/br_uictl.o
 clang $CFLAGS -c port/src/br_uivt.c            -o build/br_uivt.o
+clang $CFLAGS -c port/src/br_uinav.c           -o build/br_uinav.o
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
 clang $CFLAGS -Iport/tests -c port/tests/test_uictl.c -o build/test_uictl.o
 clang $CFLAGS -Iport/tests -c port/tests/test_uivt.c -o build/test_uivt.o
+clang $CFLAGS -Iport/tests -c port/tests/test_uinav.c -o build/test_uinav.o
 clang $CFLAGS -Iport/tests -c port/tests/test_pod.c -o build/test_pod.o
 clang $CFLAGS -Iport/tests -c port/tests/test_gfx.c -o build/test_gfx.o
 clang $CFLAGS -Iport/tests -c port/tests/test_rca.c -o build/test_rca.o
@@ -181,10 +183,9 @@ clang build/slice4_53.o build/test_slice4_53.o -lm -o build/test_slice4_53
 
 # layout assertions -- plain C99; failures break the BUILD
 #
-# NOTE: this used to link build/br_pod.o, which broke the build: br_pod.c's
-# BrPodCleanupName calls slice6_78.c's BrPodWriterMakeName (0x10008B90), and
-# br_pod.o now has an outbound edge (BrPodCleanupName -> BrPodWriterMakeName),
-# so linking it alone no longer resolves; br_path.o supplies the callee.
+# br_pod.o now has an outbound edge (BrPodCleanupName -> BrPodWriterMakeName,
+# 0x10008B90), so linking it alone no longer resolves; br_path.o is that
+# callee's home and must come along.
 clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_pod.o build/br_path.o -o build/test_layout
 
 # br_ui.h -- the canonical page/control types. Header-only, like test_layout:
@@ -275,6 +276,12 @@ clang build/br_font.o build/slice1_05.o build/br_seg.o \
 
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
+# test_uinav links br_uinav.o with the two modules whose objects it walks
+# (br_uictl.o builds the control, br_uivt.o the page) plus slice3_39.o for
+# the style pool and the embedded list, and br_state.o for 0x1003E080.
+clang build/br_uinav.o build/br_uictl.o build/br_uivt.o build/br_crt.o \
+      build/slice3_39.o build/br_state.o build/slice1_07.o build/test_uinav.o \
+      -lm -o build/test_uinav
 # br_pod now reuses slice6_78's 0x10008B90 rather than reimplementing it.
 clang build/br_pod.o build/test_pod.o build/br_path.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx

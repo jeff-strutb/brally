@@ -732,19 +732,33 @@ static void test_style_pool(void)
      * table ends exactly where the sprite table at 0x100AB568 begins, which is
      * what pins the extent. */
     CHECK(BR_UI_STYLE(BR_UI_STYLE_BASE) == &g_aBrUiStyle[0]);
-    CHECK(BR_UI_STYLE(0x100AB538) == &g_aBrUiStyle[16]);
+    CHECK(BR_UI_STYLE(0x100AB538) == &g_aBrUiStyle[18]);
     CHECK(BR_UI_STYLE_BASE + BR_UI_STYLE_COUNT * 16u == 0x100AB568u);
 
-    /* Entry 16 is the rectangle 0x1004F700 passes and entry 10 the one
-     * 0x1005A6E0 passes; both are the same 188..300 column. */
+    /* Entry 18 is the rectangle 0x1004F700 passes and entry 12 the one
+     * 0x1005A6E0 passes; both are the same 188..300 column. (Both were two
+     * lower before 0x10047A60 pinned the pool's base at 0x100AB418; the
+     * ADDRESS-indexed form is the one that did not have to change.) */
     CHECK(BR_UI_STYLE(0x100AB538)->left  == 188);
     CHECK(BR_UI_STYLE(0x100AB538)->right == 300);
     CHECK(BR_UI_STYLE(0x100AB4D8)->left  == 188);
     CHECK(BR_UI_STYLE(0x100AB4D8)->right == 300);
 
-    /* Entry 0 is the screen, which is what makes 0x100AB438 a plausible
-     * first entry even though the lower bound is not pinned. */
-    CHECK(g_aBrUiStyle[0].right == 639 && g_aBrUiStyle[0].bottom == 479);
+    /* 0x100AB438 is the screen. It used to be entry 0 and the base; it is now
+     * entry 2, because 0x10047A60 reads the two below it as rectangles. */
+    CHECK(BR_UI_STYLE(0x100AB438)->right  == 639);
+    CHECK(BR_UI_STYLE(0x100AB438)->bottom == 479);
+
+    /* The two entries the new reader pinned, in the order it tests them:
+     * 0x100AB448, then 0x100AB418, then 0x100AB428. */
+    CHECK(BR_UI_STYLE(0x100AB418)->left == 0
+       && BR_UI_STYLE(0x100AB418)->top == 0
+       && BR_UI_STYLE(0x100AB418)->right == 200
+       && BR_UI_STYLE(0x100AB418)->bottom == 200);
+    CHECK(BR_UI_STYLE(0x100AB428)->left == 0
+       && BR_UI_STYLE(0x100AB428)->top == 380
+       && BR_UI_STYLE(0x100AB428)->right == 200
+       && BR_UI_STYLE(0x100AB428)->bottom == 480);
 }
 
 static void test_scalar_deleting_dtor(void)
