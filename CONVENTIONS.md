@@ -189,3 +189,40 @@ What that does and does not invalidate, measured rather than assumed
 
 Before trusting any renderer-adjacent port, check the address against
 `config/shared.csv`. If it is not `shared`, re-derive it from `BRGlide.dll`.
+
+### Measured divergence in the text path
+
+The commit that introduced this section claimed "the glyph strips and offset
+tables are byte-identical in both binaries". **The strips part was wrong**, and
+wrong in an instructive way: the check matched a 1 KB prefix, and a glyph
+strip's leading rows are blank, so it matched blank space anywhere in the file.
+Both "large" strips even reported the same Glide address, which should have been
+the tell.
+
+Re-checked using each strip's DENSEST row instead of its prefix, down to a
+16-byte signature: **zero matches**. The D3D glyph pixels are not in BRGlide at
+all.
+
+What IS shared is the metrics. Each of the four offset tables matches exactly
+once, on non-blank content:
+
+| table | D3D | Glide |
+|---|---|---|
+| large digits  | `0x100A6070` | `0x100A5978` |
+| large letters | `0x100A60E0` | `0x100A59E8` |
+| small digits  | `0x100A6150` | `0x100A5A58` |
+| small letters | `0x100A61C0` | `0x100A5AC8` |
+
+And the code genuinely differs:
+
+| | D3D | Glide |
+|---|---|---|
+| text emitter | `0x10018590`, 2992 B | `0x10015B10`, 1019 B |
+| width routine | `0x100193C0`, 207 B | `0x10016980`, 198 B |
+
+A third the size is not a variant of the same function. The width routines are
+close enough to be the same logic; the emitters are not.
+
+**Lesson for any future cross-build check: match on the densest part of an
+object, not its start, and count the matches. One match on dense content is
+evidence; one match on a blank prefix is nothing.**
