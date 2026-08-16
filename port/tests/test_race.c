@@ -27,8 +27,11 @@
 
 static int g_fails;
 
+static int g_checks;   /* see the note at the bottom of main() */
+
 #define CHECK(cond)                                                        \
     do {                                                                   \
+        g_checks++;                                                        \
         if (!(cond)) {                                                     \
             printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #cond);         \
             g_fails++;                                                     \
@@ -37,6 +40,7 @@ static int g_fails;
 
 #define CHECK_EQ(a, b)                                                     \
     do {                                                                   \
+        g_checks++;                                                        \
         long _a = (long)(a), _b = (long)(b);                               \
         if (_a != _b) {                                                    \
             printf("FAIL %s:%d  %s (%ld) != %s (%ld)\n",                   \
@@ -547,6 +551,8 @@ int main(void)
         printf("test_race: %d FAILED\n", g_fails);
         return 1;
     }
-    printf("test_race: ok\n");
+    /* A count, not a bare "ok" -- tools/regress.sh cannot tell an "ok" that
+     * ran nothing from one that ran everything, and says so. */
+    printf("test_race: %d checks, %d failures\n", g_checks, g_fails);
     return 0;
 }
