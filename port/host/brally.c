@@ -992,7 +992,10 @@ static void MakeChromeTextures(BrGfx *gfx)
         printf("chrome: %d of %d sprites cropped from the disc art\n",
                g_cSpr, BR_SPR_MAX);
     else
-        printf("chrome: no art in testdata/images -- drawing placeholders\n");
+        printf("chrome: NO ART FOUND in testdata/images -- every sprite will\n"
+               "        draw as a plain rectangle. This is a MISSING ASSET, not\n"
+               "        a rendering fault. Run tools/extract_assets.sh with the\n"
+               "        retail disc reachable (see README, 'Asset policy').\n");
 }
 
 /* Captions, rasterised with the GAME'S OWN MENU FONT and cached as textures.
