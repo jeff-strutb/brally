@@ -93,14 +93,14 @@ void BrHostWire71(void)
      * 0x1005B910 was ported, because until then nothing in the port looked
      * inside one; 0x1004F700 passes p0AB538 straight into it and it reads four
      * int32s out. The banner above still holds for the HOOK slots. */
-    g_brS71.p0AB438 = NULL;
-    g_brS71.p0AB448 = NULL;
-    g_brS71.p0AB468 = NULL;
-    g_brS71.p0AB478 = NULL;
-    g_brS71.p0AB488 = NULL;
-    g_brS71.p0AB4D8 = NULL;
-    g_brS71.p0AB508 = NULL;
-    g_brS71.p0AB538 = NULL;
+    g_brS71.p0AB438 = BR_UI_STYLE(0x100AB438);
+    g_brS71.p0AB448 = BR_UI_STYLE(0x100AB448);
+    g_brS71.p0AB468 = BR_UI_STYLE(0x100AB468);
+    g_brS71.p0AB478 = BR_UI_STYLE(0x100AB478);
+    g_brS71.p0AB488 = BR_UI_STYLE(0x100AB488);
+    g_brS71.p0AB4D8 = BR_UI_STYLE(0x100AB4D8);
+    g_brS71.p0AB508 = BR_UI_STYLE(0x100AB508);
+    g_brS71.p0AB538 = BR_UI_STYLE(0x100AB538);
 
     g_brS71.pAA2908 = g_pPhaseAA2908;
     g_brS71.pHooks  = &g_hooks71;

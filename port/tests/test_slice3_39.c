@@ -379,6 +379,374 @@ static void test_list(void)
     free(pList);
 }
 
+/* ------------------------------------------------------------------ */
+/* 0x1005B910 / 0x1005BC10 -- the two public vtable methods             */
+/* ------------------------------------------------------------------ */
+
+static int g_measA, g_measB;
+static void MeasA(BrTextBox *p) { (void)p; ++g_measA; }
+static void MeasB(BrTextBox *p) { (void)p; ++g_measB; }
+static BrTextBoxVtbl g_itemVtbl;
+
+static int g_f0CCalls;
+static void ListF0C(void) { ++g_f0CCalls; }
+
+static int g_f2CCalls;
+static int32_t g_f2CArg;
+static void ListF2C(BrTextList *p, int32_t a1)
+{ (void)p; g_f2CArg = a1; ++g_f2CCalls; }
+static BrTextListVtbl g_listVtbl;
+
+/* A fresh, fully-constructed list.  The item vtable has to be in place BEFORE
+ * construction, because BrTextListInit is what copies it into the hundred
+ * items -- which is exactly the ordering the host harness has to respect too. */
+static BrTextList *NewList(void)
+{
+    BrTextList *pList = (BrTextList *)malloc(sizeof *pList);
+    if (pList == NULL) { return NULL; }
+
+    /* 0xCD, not 0: the original's allocator does not zero, and both methods
+     * have paths that read fields no constructor writes. */
+    memset(pList, 0xCD, sizeof *pList);
+
+    g_itemVtbl.pfn04 = MeasA;
+    g_itemVtbl.pfn08 = MeasB;
+    g_pBrTextBoxVtbl = &g_itemVtbl;
+
+    g_listVtbl.f10 = BrTextListAddRow;
+    g_listVtbl.f14 = BrTextListConfig;
+    g_listVtbl.f2C = ListF2C;
+    g_pBrTextListVtbl = &g_listVtbl;
+
+    BrTextListInit(pList);
+    return pList;
+}
+
+static void FreeList(BrTextList *pList)
+{
+    int i;
+    for (i = 0; i < BR_TEXTLIST_ITEMS; ++i) { free(pList->aBlobs[i].p); }
+    free(pList);
+}
+
+/* The rectangle both crashing builders pass, entry 16 of the pool. */
+static const BrTextStyle g_rc = { 188, 130, 300, 206 };
+
+static void test_config_copies_and_literals(void)
+{
+    BrTextList *pList = NewList();
+    if (pList == NULL) { CHECK(0); return; }
+
+    CHECK(pList->f1A932 == -1 && pList->f1A934 == -1 && pList->f1A938 == -1);
+
+    CHECK(BrTextListConfig(pList, 0x40001, &g_rc, 4, 0, -1) == 1);
+
+    /* The rectangle lands twice: verbatim as four dwords, and as two floats. */
+    CHECK(pList->f1A93C == g_rc.left  && pList->f1A940 == g_rc.top);
+    CHECK(pList->f1A944 == g_rc.right && pList->f1A948 == g_rc.bottom);
+    CHECK(pList->f1C.f == (float)g_rc.left);
+    CHECK(pList->f20.f == (float)g_rc.top);
+
+    CHECK(pList->f18 == 0x40001u);
+
+    /* The three -1 sentinels become '0', '.' and ':' -- and f1A936, which
+     * LOOKS like a fourth sentinel, is an argument instead. */
+    CHECK(pList->f1A932 == 0x30);
+    CHECK(pList->f1A934 == 0x2E);
+    CHECK(pList->f1A938 == 0x3A);
+    CHECK(pList->f1A936 == -1);
+
+    CHECK(pList->f1A930 == 4);
+    CHECK(pList->f1A92E == 0);
+
+    /* Three int32 arguments into three int16 fields: the high half is
+     * DISCARDED, not saturated. */
+    CHECK(BrTextListConfig(pList, 0, &g_rc, 0x10005, 0x20007, 0x30009) == 1);
+    CHECK(pList->f1A930 == 5);
+    CHECK(pList->f1A92E == 7);
+    CHECK(pList->f1A936 == 9);
+
+    FreeList(pList);
+}
+
+static void test_config_scrollbar_arms(void)
+{
+    BrTextList *pList = NewList();
+    int32_t dx, dy;
+
+    if (pList == NULL) { CHECK(0); return; }
+    dx = g_BrSprRect48[2] - g_BrSprRect48[0];
+    dy = g_BrSprRect48[3] - g_BrSprRect48[1];
+
+    /* --- neither arm.  The vertical and horizontal blocks stay untouched,
+     * and the run is still not a no-op: the tail always executes. */
+    pList->f1A99C[7].u = 0;
+    pList->f1A99C[8].u = 0;
+    pList->f1A94C = 0x5A5A;
+    pList->f1A96C = 0xA5A5;
+    pList->f1A99C[4].f = 40.0f;
+    pList->f1A99C[5].f = 70.0f;
+    CHECK(BrTextListConfig(pList, 0, &g_rc, 4, 0, -1) == 1);
+    CHECK(pList->f1A94C == 0x5A5A);
+    CHECK(pList->f1A96C == 0xA5A5);
+    CHECK(pList->f1A98C == 40 && pList->f1A990 == 70);
+
+    /* --- the VERTICAL arm, which is the one both menu builders take. */
+    BrTextListInit(pList);
+    pList->f1A99C[8].i = 1;
+    CHECK(BrTextListConfig(pList, 0x40001, &g_rc, 4, 0, -1) == 1);
+
+    /* The horizontal block is not written on this arm. */
+    CHECK(pList->f1A96C != g_rc.left || g_rc.left == 0);
+
+    /* The identity that pins the sign of the constant at 0x1008F6B0: the
+     * handle starts AT the low end of its travel, not two pixels above it. */
+    CHECK(pList->f1A99C[5].f == pList->f1A99C[11].f);
+    /* ... and the travel length really is high minus low. */
+    CHECK(pList->f1A99C[13].f ==
+          pList->f1A99C[12].f - pList->f1A99C[11].f);
+    /* The bar sits just outside the rectangle's right edge, both boxes. */
+    CHECK(pList->f1A94C == g_rc.right + 3);
+    CHECK(pList->f1A95C == g_rc.right + 3);
+    CHECK(pList->f1A968 == g_rc.bottom);
+    CHECK(pList->f1A99C[4].f == (float)(g_rc.right + 3));
+
+    /* --- the HORIZONTAL arm.  Same two identities on its own pair of
+     * limits, which is what says the two arms are the same construction. */
+    BrTextListInit(pList);
+    pList->f1A99C[7].i = 1;
+    CHECK(BrTextListConfig(pList, 0x40001, &g_rc, 4, 0, -1) == 1);
+    CHECK(pList->f1A99C[4].f == pList->f1A99C[9].f);
+    CHECK(pList->f1A99C[13].f ==
+          pList->f1A99C[10].f - pList->f1A99C[4].f);
+    CHECK(pList->f1A96C == g_rc.left);
+    CHECK(pList->f1A984 == g_rc.right);
+    CHECK(pList->f1A970 == g_rc.bottom + 3);
+
+    /* --- [7] wins when both are set. */
+    BrTextListInit(pList);
+    pList->f1A99C[7].i = 1;
+    pList->f1A99C[8].i = 1;
+    pList->f1A94C = 0x5A5A;
+    CHECK(BrTextListConfig(pList, 0, &g_rc, 4, 0, -1) == 1);
+    CHECK(pList->f1A94C == 0x5A5A);
+
+    /* --- the tail's three fields, on whichever arm ran. */
+    CHECK(pList->f1A98C == BrFtolTrunc(pList->f1A99C[4].f));
+    CHECK(pList->f1A990 == BrFtolTrunc(pList->f1A99C[5].f));
+    CHECK(pList->f1A994 == dx + pList->f1A98C);
+    CHECK(pList->f1A998 == dy + pList->f1A990);
+
+    FreeList(pList);
+}
+
+static void test_config_clamps_arrow_size(void)
+{
+    BrTextList *pList = NewList();
+    int32_t save[4];
+
+    if (pList == NULL) { CHECK(0); return; }
+    memcpy(save, g_BrSprRect48, sizeof save);
+
+    /* An inside-out arrow rectangle clamps to zero rather than being read as
+     * an absolute size -- `test/jge/xor`, not a negation. */
+    g_BrSprRect48[0] = 40; g_BrSprRect48[2] = 10;
+    g_BrSprRect48[1] = 40; g_BrSprRect48[3] = 10;
+
+    pList->f1A99C[7].i = 1;
+    CHECK(BrTextListConfig(pList, 0, &g_rc, 4, 0, -1) == 1);
+    /* dx == 0, so the travel's low edge is the rectangle's own left edge. */
+    CHECK(pList->f1A974 == g_rc.left);
+    CHECK(pList->f1A994 == pList->f1A98C);
+    CHECK(pList->f1A998 == pList->f1A990);
+
+    memcpy(g_BrSprRect48, save, sizeof save);
+    FreeList(pList);
+}
+
+static void test_addrow(void)
+{
+    BrTextList *pList = NewList();
+    int i;
+    int pitchOk = 1;
+
+    if (pList == NULL) { CHECK(0); return; }
+    BrTextListConfig(pList, 0x40001, &g_rc, 4, 0, -1);
+
+    /* NULL text is the one early-out that changes nothing at all. */
+    g_measA = g_measB = 0;
+    CHECK(BrTextListAddRow(pList, NULL, 0, 1, &g_rc, 1) == 0);
+    CHECK(pList->count == 0);
+    CHECK(g_measA == 0 && g_measB == 0);
+
+    /* a5 != 0 -- the whole string. */
+    CHECK(BrTextListAddRow(pList, "Season One", 0, 1, &g_rc, 1) == 1);
+    CHECK(pList->count == 1);
+    CHECK(strcmp(pList->aItems[0].sz, "Season One") == 0);
+
+    /* a5 == 0 -- ten characters and no more.  The append that follows is of
+     * the CRT's empty probe buffer, so it adds nothing. */
+    CHECK(BrTextListAddRow(pList, "ABCDEFGHIJKLMNOP", 0, 1, &g_rc, 0) == 1);
+    CHECK(strcmp(pList->aItems[1].sz, "ABCDEFGHIJ") == 0);
+
+    /* A short source is still NUL-terminated on that path. */
+    CHECK(BrTextListAddRow(pList, "abc", 0, 1, &g_rc, 0) == 1);
+    CHECK(strcmp(pList->aItems[2].sz, "abc") == 0);
+
+    /* Geometry: the style's two horizontal edges, the derived width limit,
+     * and y as a function of the row index. */
+    CHECK(pList->aItems[0].left  == g_rc.left);
+    CHECK(pList->aItems[0].right == g_rc.right);
+    CHECK(pList->aItems[0].f41C  ==
+          (int16_t)(g_rc.right - g_rc.left - 0x10));
+    CHECK(pList->aItems[0].x == (float)g_rc.left);
+    CHECK(pList->aItems[0].y == (float)pList->aItems[0].f428);
+    CHECK(pList->aItems[0].f430 == pList->aItems[0].f428 + 0x12);
+    CHECK(pList->aItems[0].f428 == BrFtolTrunc(pList->f20.f));
+
+    /* The row PITCH is the invariant, not any one row's absolute y. */
+    for (i = 1; i < (int)pList->count; ++i) {
+        if (pList->aItems[i].f428 - pList->aItems[i - 1].f428 != 19) {
+            pitchOk = 0;
+        }
+    }
+    CHECK(pitchOk);
+
+    /* Measure dispatch: a3 == 3 picks font B, anything else font A. */
+    g_measA = g_measB = 0;
+    CHECK(BrTextListAddRow(pList, "9", 0, 3, &g_rc, 1) == 1);
+    CHECK(g_measB == 1 && g_measA == 0);
+    CHECK(pList->aItems[3].f08 == 3);
+    CHECK(BrTextListAddRow(pList, "x", 0, 1, &g_rc, 1) == 1);
+    CHECK(g_measA == 1);
+
+    /* f04 is OR-ed into, not assigned. */
+    pList->aItems[5].f04 = 0x100;
+    CHECK(BrTextListAddRow(pList, "y", 0x011, 1, &g_rc, 1) == 1);
+    CHECK(pList->aItems[5].f04 == 0x111u);
+
+    FreeList(pList);
+}
+
+static void test_addrow_full_list_calls_2c(void)
+{
+    BrTextList *pList = NewList();
+
+    if (pList == NULL) { CHECK(0); return; }
+    BrTextListConfig(pList, 0x40001, &g_rc, 4, 0, -1);
+
+    pList->count = BR_TEXTLIST_ITEMS;
+    g_f2CCalls = 0; g_f2CArg = -1;
+    CHECK(BrTextListAddRow(pList, "over", 0, 1, &g_rc, 1) == 1);
+    CHECK(g_f2CCalls == 1);
+    CHECK(g_f2CArg == 0);
+    /* The list does NOT grow: slot 99 is rewritten and the count comes back
+     * to 100.  A hundred and first row is a hundredth row. */
+    CHECK(pList->count == BR_TEXTLIST_ITEMS);
+    CHECK(strcmp(pList->aItems[BR_TEXTLIST_ITEMS - 1].sz, "over") == 0);
+
+    FreeList(pList);
+}
+
+static void test_addrow_scroll_block(void)
+{
+    BrTextList *pList = NewList();
+    float lo, hi;
+
+    if (pList == NULL) { CHECK(0); return; }
+
+    /* The block is reached only with bit 23 of the flag word.  Every ported
+     * caller passes 0x40001, so this is the arm the builders never take.
+     *
+     * The row it compares is aItems[f1A930 + f1A92E] -- the first row BELOW
+     * the visible window, NOT the row just appended.  Configuring with a
+     * visible-row count of 0 makes the two coincide, which is the only reason
+     * the assertions below can name a row at all. */
+    pList->f1A99C[8].i = 1;
+    BrTextListConfig(pList, 0x800000, &g_rc, 0, 0, -1);
+    pList->f0C = ListF0C;
+    lo = pList->f1A99C[11].f;
+    hi = pList->f1A99C[12].f;
+
+    /* Row 0 is "Alpha", the buffer is empty: no match, so the offset moves,
+     * the callback fires, and the handle stays inside its limits. */
+    g_aBr39B720[0] = '\0';
+    g_f0CCalls = 0;
+    CHECK(BrTextListAddRow(pList, "Alpha", 0, 1, &g_rc, 1) == 1);
+    CHECK(g_f0CCalls == 1);
+    /* Bumped to 1, then clamped back down to count - 1 == 0. */
+    CHECK(pList->f1A92E == 0);
+    CHECK(pList->f1A99C[5].f >= lo && pList->f1A99C[5].f <= hi);
+    CHECK(pList->f1A998 == pList->f1A990 + 0x10);
+
+    /* Now point the selection at row 1 and give the buffer that row's text in
+     * the OTHER case.  The compare is case-insensitive -- the whole reason it
+     * is _stricmp and not strcmp -- so this matches, and a match abandons the
+     * scroll update and returns 0.  The row is still appended: the early-out
+     * is at the END of the function, not the start. */
+    pList->f1A930 = 1;
+    strcpy(g_aBr39B720, "bravo");
+    g_f0CCalls = 0;
+    CHECK(BrTextListAddRow(pList, "BRAVO", 0, 1, &g_rc, 1) == 0);
+    CHECK(pList->count == 2);
+    CHECK(strcmp(pList->aItems[1].sz, "BRAVO") == 0);
+    CHECK(g_f0CCalls == 0);
+
+    /* One byte different and it is not a match any more, so the same call
+     * shape returns 1.  This is the pair that says the 0 above came from the
+     * compare and not from something incidental. */
+    strcpy(g_aBr39B720, "bravo!");
+    pList->f1A930 = 1;
+    pList->f1A92E = 0;
+    g_f0CCalls = 0;
+    CHECK(BrTextListAddRow(pList, "Charlie", 0, 1, &g_rc, 1) == 1);
+    CHECK(g_f0CCalls == 1);
+
+    /* The clamp is a clamp: drive the handle far past the top and it lands
+     * exactly on the limit rather than overshooting. */
+    pList->f1A930 = 1;
+    pList->f1A92E = 0;
+    pList->f1A99C[5].f  = hi;
+    pList->f1A99C[13].f = 100000.0f;
+    CHECK(BrTextListAddRow(pList, "Delta", 0, 1, &g_rc, 1) == 1);
+    CHECK(pList->f1A99C[5].f == hi);
+
+    /* ... and the same on the low side, which is also the side an unordered
+     * compare takes: `test ah,1` is C0 alone, so a NaN would clamp here. */
+    pList->f1A930 = 1;
+    pList->f1A92E = 0;
+    pList->f1A99C[5].f  = lo;
+    pList->f1A99C[13].f = -100000.0f;
+    CHECK(BrTextListAddRow(pList, "Echo", 0, 1, &g_rc, 1) == 1);
+    CHECK(pList->f1A99C[5].f == lo);
+
+    g_aBr39B720[0] = '\0';
+    FreeList(pList);
+}
+
+static void test_style_pool(void)
+{
+    /* The pool's own arithmetic, not its contents: BR_UI_STYLE is address
+     * indexed, so what is worth asserting is that the address the disassembly
+     * shows and the entry the table holds are the same object -- and that the
+     * table ends exactly where the sprite table at 0x100AB568 begins, which is
+     * what pins the extent. */
+    CHECK(BR_UI_STYLE(BR_UI_STYLE_BASE) == &g_aBrUiStyle[0]);
+    CHECK(BR_UI_STYLE(0x100AB538) == &g_aBrUiStyle[16]);
+    CHECK(BR_UI_STYLE_BASE + BR_UI_STYLE_COUNT * 16u == 0x100AB568u);
+
+    /* Entry 16 is the rectangle 0x1004F700 passes and entry 10 the one
+     * 0x1005A6E0 passes; both are the same 188..300 column. */
+    CHECK(BR_UI_STYLE(0x100AB538)->left  == 188);
+    CHECK(BR_UI_STYLE(0x100AB538)->right == 300);
+    CHECK(BR_UI_STYLE(0x100AB4D8)->left  == 188);
+    CHECK(BR_UI_STYLE(0x100AB4D8)->right == 300);
+
+    /* Entry 0 is the screen, which is what makes 0x100AB438 a plausible
+     * first entry even though the lower bound is not pinned. */
+    CHECK(g_aBrUiStyle[0].right == 639 && g_aBrUiStyle[0].bottom == 479);
+}
+
 static void test_scalar_deleting_dtor(void)
 {
     BrTextBox *pBox = (BrTextBox *)malloc(sizeof *pBox);
@@ -616,6 +984,13 @@ int main(void)
     test_centre_x();
     test_charmap();
     test_list();
+    test_config_copies_and_literals();
+    test_config_scrollbar_arms();
+    test_config_clamps_arrow_size();
+    test_addrow();
+    test_addrow_full_list_calls_2c();
+    test_addrow_scroll_block();
+    test_style_pool();
     test_scalar_deleting_dtor();
     test_key_edges();
     test_poll_gate();

@@ -258,18 +258,18 @@ static void WireContext(void)
      * slice3_39.c's list methods were ported, because 0x1005B910 is the first
      * ported function that READS one, four int32s deep. See the pool in
      * slice3_39.h; the values are the image's, not invented. */
-    g_br73.aStyles.p0AB438 = NULL;
-    g_br73.aStyles.p0AB448 = NULL;
-    g_br73.aStyles.p0AB458 = NULL;
-    g_br73.aStyles.p0AB468 = NULL;
-    g_br73.aStyles.p0AB478 = NULL;
-    g_br73.aStyles.p0AB488 = NULL;
-    g_br73.aStyles.p0AB4A8 = NULL;
-    g_br73.aStyles.p0AB4D8 = NULL;
-    g_br73.aStyles.p0AB4F8 = NULL;
-    g_br73.aStyles.p0AB508 = NULL;
-    g_br73.aStyles.p0AB528 = NULL;
-    g_br73.aStyles.p0AB548 = NULL;
+    g_br73.aStyles.p0AB438 = BR_UI_STYLE(0x100AB438);
+    g_br73.aStyles.p0AB448 = BR_UI_STYLE(0x100AB448);
+    g_br73.aStyles.p0AB458 = BR_UI_STYLE(0x100AB458);
+    g_br73.aStyles.p0AB468 = BR_UI_STYLE(0x100AB468);
+    g_br73.aStyles.p0AB478 = BR_UI_STYLE(0x100AB478);
+    g_br73.aStyles.p0AB488 = BR_UI_STYLE(0x100AB488);
+    g_br73.aStyles.p0AB4A8 = BR_UI_STYLE(0x100AB4A8);
+    g_br73.aStyles.p0AB4D8 = BR_UI_STYLE(0x100AB4D8);
+    g_br73.aStyles.p0AB4F8 = BR_UI_STYLE(0x100AB4F8);
+    g_br73.aStyles.p0AB508 = BR_UI_STYLE(0x100AB508);
+    g_br73.aStyles.p0AB528 = BR_UI_STYLE(0x100AB528);
+    g_br73.aStyles.p0AB548 = BR_UI_STYLE(0x100AB548);
 }
 
 /* --- reporting ---------------------------------------------------------- */
