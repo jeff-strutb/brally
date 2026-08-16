@@ -488,23 +488,34 @@ extern int32_t g_BrSprRect48[4];   /* 0x100AB9EC */
  * The UPPER bound is pinned: 0x100AB438 + 19*16 == 0x100AB568, exactly where
  * the sprite table above starts.
  *
- * The LOWER bound is NOT pinned, and this is the weakest claim in the block.
- * 0x100AB438 is only the lowest address that any module in this tree passes as
- * a style; the 16-byte grid plainly continues below it (0x100AB428 reads
- * {0,380,200,480}, 0x100AB418 {0,0,200,200}), and slice6_73.h names
- * 0x100AB428 and 0x100AB42C as two separate `fild`-ed scalars, which is what a
- * rectangle's first two members look like to a caller that only needs those
- * two.  So the pool very likely starts lower and the port has simply not
- * found the first entry.  Nothing here depends on it: the macro below is
- * address-based, so extending the array downward later moves the base and
- * leaves every call site correct.
+ * The LOWER bound WAS the weakest claim in the block, and it has now been
+ * pinned by a consumer.  The old note read: "0x100AB438 is only the lowest
+ * address that any module in this tree passes as a style; the 16-byte grid
+ * plainly continues below it (0x100AB428 reads {0,380,200,480}, 0x100AB418
+ * {0,0,200,200}) ... so the pool very likely starts lower and the port has
+ * simply not found the first entry."
+ *
+ * 0x10047A60 (br_uinav.c, control vtable +0x20) is that entry's first reader.
+ * It hit-tests the cursor against THREE rectangles -- 0x100AB448, 0x100AB418
+ * and 0x100AB428 -- four int32 deep and in the same left/top/right/bottom
+ * order as every entry above the old base.  Two of the three are below it, so
+ * the base moves down two entries and the count goes 19 -> 21.  The upper
+ * bound is unchanged and still lands exactly on 0x100AB568:
+ * 0x100AB418 + 21*16 == 0x100AB568.
+ *
+ * The grid keeps going: 0x100AB408 reads {32,370,610,467}, which is another
+ * plausible rectangle.  It is NOT added, because nothing reads it -- the same
+ * standard that has just been met two entries higher.
+ *
+ * Nothing had to change at any call site, because BR_UI_STYLE is address-
+ * based; only the two index assertions in test_slice3_39.c moved.
  *
  * This module defines the storage because this module is the only one that
  * READS through the pointer; the others only pass it along.  A wiring layer
  * points its context fields at BR_UI_STYLE(0x...) rather than at NULL. */
-#define BR_UI_STYLE_BASE  0x100AB438u
-#define BR_UI_STYLE_COUNT 19
-extern const BrTextStyle g_aBrUiStyle[BR_UI_STYLE_COUNT];   /* 0x100AB438 */
+#define BR_UI_STYLE_BASE  0x100AB418u
+#define BR_UI_STYLE_COUNT 21
+extern const BrTextStyle g_aBrUiStyle[BR_UI_STYLE_COUNT];   /* 0x100AB418 */
 
 /* Index the pool by the ORIGINAL address, so a wiring site reads the way the
  * disassembly does: BR_UI_STYLE(0x100AB538) is entry 16. */

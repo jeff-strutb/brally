@@ -293,6 +293,52 @@ int BrGfxOpenWindow(BrGfx *g, const char *pszTitle)
     return 0;
 }
 
+/* The key queue.
+ *
+ * A RING, not a single latched key: a fast typist (or a scripted test that
+ * feeds several keys between frames) must not lose any, and the menu's
+ * selection moves one step per key, so dropping one silently gives the wrong
+ * final index -- which is exactly the sort of thing that looks like a bug in
+ * the ported navigation code and is not. Overflow drops the NEWEST key rather
+ * than overwriting the oldest, so an overrun cannot reorder what did arrive.
+ *
+ * Backend-local and only touched on the thread that pumps events, which is
+ * the thread that polls. */
+#define BR_KEYQ 32
+static BrKey g_aKeyQ[BR_KEYQ];
+static int   g_iKeyHead, g_iKeyTail;
+
+static void BrKeyPush(BrKey k)
+{
+    int next = (g_iKeyTail + 1) % BR_KEYQ;
+    if (next == g_iKeyHead)
+        return;                         /* full: drop the newest */
+    g_aKeyQ[g_iKeyTail] = k;
+    g_iKeyTail = next;
+}
+
+BrKey BrGfxPollKey(BrGfx *g)
+{
+    BrKey k;
+    (void)g;
+    if (g_iKeyHead == g_iKeyTail)
+        return BR_KEY_NONE;
+    k = g_aKeyQ[g_iKeyHead];
+    g_iKeyHead = (g_iKeyHead + 1) % BR_KEYQ;
+    return k;
+}
+
+/* macOS virtual key codes. Listed rather than #defined from a header because
+ * AppKit does not ship portable names for them. */
+#define BR_VK_RETURN   36
+#define BR_VK_ESCAPE   53
+#define BR_VK_SPACE    49
+#define BR_VK_KPENTER  76
+#define BR_VK_LEFT    123
+#define BR_VK_RIGHT   124
+#define BR_VK_DOWN    125
+#define BR_VK_UP      126
+
 int BrGfxPumpEvents(BrGfx *g)
 {
     @autoreleasepool {
@@ -301,8 +347,22 @@ int BrGfxPumpEvents(BrGfx *g)
                                         untilDate:nil
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES]) != nil) {
-            if ([ev type] == NSEventTypeKeyDown && [ev keyCode] == 53)
-                g_quit = YES;                       /* Esc */
+            if ([ev type] == NSEventTypeKeyDown && ![ev isARepeat]) {
+                switch ([ev keyCode]) {
+                case BR_VK_UP:     BrKeyPush(BR_KEY_UP);       break;
+                case BR_VK_LEFT:   BrKeyPush(BR_KEY_UP);       break;
+                case BR_VK_DOWN:   BrKeyPush(BR_KEY_DOWN);     break;
+                case BR_VK_RIGHT:  BrKeyPush(BR_KEY_DOWN);     break;
+                case BR_VK_RETURN: BrKeyPush(BR_KEY_ACTIVATE); break;
+                case BR_VK_KPENTER:BrKeyPush(BR_KEY_ACTIVATE); break;
+                case BR_VK_SPACE:  BrKeyPush(BR_KEY_ACTIVATE); break;
+                /* Escape is BACK, not quit. The window's close button and
+                 * Cmd-Q still quit; a menu that exits the process when the
+                 * user asks to go back is not a menu. */
+                case BR_VK_ESCAPE: BrKeyPush(BR_KEY_BACK);     break;
+                default: break;
+                }
+            }
             [NSApp sendEvent:ev];
         }
     }

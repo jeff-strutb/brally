@@ -111,22 +111,33 @@ present in the original, and aliasing behaviour where the original permits it.
   `0x100B8C90` ("detail") is read by the D3D build and **not** by Glide. It is
   the same nine bytes in the width routines, which is why `0x100193C0` is 207
   bytes and `0x10016980` is 198.
-- `config/functions_glide.csv` splits the Glide emitter in two — `0x10015B10`
-  (1019 bytes) and `0x10015F0B` (2287) — and `0x10015F0B` is **mid-flow**, a
-  jump target inside the function. The real extent is `0x10015B10`..`0x100166FA`
-  (3050 bytes), then two jump tables and their two `0x4A` index tables ending
-  at `0x100167FA`. The Glide emitter is very slightly **bigger** than the D3D
-  one, not a third of its size. Treat a suspiciously small Glide extent as a
-  split, not a measurement.
-- `tools/dumpasm.py` **ignores** a size argument: it always uses the CSV
-  extent. To disassemble past a bad extent, drive `Ctx` directly.
+- The Glide emitter is `0x10015B10`..`0x100166FA`, **3050 bytes**, then two jump
+  tables and their two `0x4A` index tables ending at `0x100167FA` — so it is
+  very slightly **bigger** than the D3D one, not a third of its size.
+  `config/functions_glide.csv` used to split it at `0x10015F0B`, a jump target
+  **mid-flow**; it no longer does (see the rebuild note below). Treat a
+  suspiciously small Glide extent as a split, not a measurement.
+- `tools/dumpasm.py` **honours** an explicit size argument and prints a NOTE
+  when it disagrees with the map. (It used to discard it silently, which is how
+  asking for a wrong 1019 bytes and receiving exactly 1019 read as
+  confirmation.)
 - `0x10019140` is **not a function** despite `config/functions.csv` listing it
   as 254 bytes: it is `0x10018590`'s two jump tables plus their two 0x4A-byte
   index tables, sitting in `.text` after the function ends.
-- `config/functions.csv` is a good index, **not ground truth**: it invents entries
-  (`0x100331FF`, `0x100334D7`, `0x100312BB` are mid-instruction), misses real ones,
-  and 37 of 2,581 extents end mid-flow. If a listing starts mid-instruction, skip
-  it and say so.
+- `config/functions.csv` (the **D3D** map) is a good index, **not ground truth**.
+  It is still the output of `tools/funcmap.py`, whose extents run "from one
+  start to the next". Measured against flow analysis (`tools/funcmap2.py`,
+  `config/functions_d3d_flow.csv`), 2,451 of its 2,632 entries are exactly
+  right and **181 are not**: 49 are not functions at all (jump tables such as
+  `0x10019140`, `0x1000C074`, `0x100292BC`; and mid-flow labels such as
+  `0x100331FF`, `0x100334D7`, `0x100312BB`), 15 are truncated, 95 are over-long
+  by a whole following function, and 22 run on into trailing tables or padding.
+  If a listing starts mid-instruction, skip it and say so.
+- `config/functions_glide.csv` **has been rebuilt** by `tools/funcmap2.py` from
+  call/pointer evidence plus flow, and every byte of `.text` is now accounted
+  for as code, switch table, padding or data. Prefer it. The same tool's D3D
+  output is `config/functions_d3d_flow.csv`; `config/functions.csv` has **not**
+  been replaced, so the two D3D maps disagree — see above for by how much.
 
 ## Aliased storage: a link-clean bug
 
@@ -204,16 +215,39 @@ now corrected, but work done before this point was read off the D3D build.
 What that does and does not invalidate, measured rather than assumed
 (`tools/crossdiff.py`, `config/shared.csv`):
 
-- **1,712 functions are shared** between the two builds; those are the real
+- **~1,700 functions are shared** between the two builds; those are the real
   decompilation target and reading either binary gives the same answer.
 - Of the addresses this port references, **~80% are confirmed shared**.
 - The rest split two ways, and the distinction matters: ~29 are the statically
   linked CRT, which is genuinely absent from the Glide build because Glide
   imports it from MSVCRT -- not a problem. The remainder are either truly
-  D3D-specific or simply missing from `config/functions_glide.csv`, which has
-  2,110 entries against the D3D map's 2,581. **A function absent from the Glide
-  map is classified `d3d_only` even when it exists in the binary**, so that
-  bucket is an upper bound on divergence, not a measurement of it.
+  D3D-specific or simply missing from the Glide map. **A function absent from
+  the Glide map is classified `d3d_only` even when it exists in the binary**,
+  so that bucket is an upper bound on divergence, not a measurement of it.
+
+**The exact match count is a property of BOTH maps, not of the binaries.** A
+`crossdiff` pair only matches when the two maps agree about the function's
+extent, so the number moves when either side is re-derived:
+
+| D3D map | Glide map | matched |
+|---|---|---|
+| `functions.csv` | old glide map | 1,712 |
+| `functions.csv` | **rebuilt** | 1,648 |
+| **rebuilt** | old glide map | 1,656 |
+| **rebuilt** | **rebuilt** | **1,739** |
+
+The old pair's 1,712 is not evidence of correctness: both maps came from the
+same tool, so the same extent bug applied to both binaries produces the same
+wrong extent on both sides and the hashes still match. The mixed rows are lower
+precisely because one side has been fixed. `config/shared.csv` as shipped is the
+second row -- keyed to `config/functions.csv`, which has not been replaced -- so
+its `d3d_only` bucket is currently **wider than the truth by roughly 90
+functions**. Re-running `crossdiff` with `BR_MAP_D3D=config/functions_d3d_flow.csv`
+gives the fourth row.
+
+Glide's smaller function count is not, as was once assumed, a sign of a
+deficient map: 2,140 against D3D's 2,818 on 82.7% of the `.text`, and the gap
+is the statically linked CRT that Glide does not carry.
 
 Before trusting any renderer-adjacent port, check the address against
 `config/shared.csv`. If it is not `shared`, re-derive it from `BRGlide.dll`.
@@ -305,3 +339,51 @@ one-column-wider tile, the +1 per space the width routine does not add, and the
 clamp-at-zero-only that is not a scissor. The bottom-up storage claim is now
 *stronger* than when it was made: two independently laid-out blobs with
 independently pinned extents agree that row 0 is the bottom.
+
+
+## The function maps, and how the sweep-derived one lied
+
+`config/functions.csv` (D3D) and `config/functions_glide.csv` are now derived by
+**recursive descent with flow-determined extents** (`tools/funcmap2.py`). The
+previous sweep-derived D3D map is kept as `config/functions_d3d_sweep.csv` so
+the two can be compared.
+
+The old generator seeded entry points by **scanning `.text` linearly for `0xE8`
+bytes**. x86 is not self-synchronising, so most `0xE8` bytes are operand bytes,
+not call opcodes. That produced phantom functions, and one of them cost a
+published false conclusion:
+
+    0x100239FD   c1 e8 08     shr eax, 8
+
+The `0xE8` there is the shift's ModRM byte. Read as a call, it invented an entry
+at `0x10015F0B` — which is mid-flow inside the Glide text emitter — and split
+that one 3050-byte function into "1019 + 2287". Asking the disassembler for 1019
+bytes returned exactly 1019, which read as confirmation.
+
+Two further faults: relocated dwords inside `.text` were promoted to entries
+(most are SEH handler immediates and `lea`/`mov` displacements, not pointers),
+and every extent was set to "bytes until the next start" — making an extent a
+claim about the *next* function rather than about this one.
+
+**Scale of the damage, measured:** the README said 37 of 2,581 D3D extents ended
+mid-flow. The real defect set is **181 of 2,632**, and truncation is the
+*smallest* mode: 49 entries are not functions at all, 15 truncate, 22 run into
+tables or padding, and **95 are over-long by a whole following function**. The
+dominant failure was swallowing, not truncating — which is worse, because a
+swallowed function looks like a large one rather than a broken one.
+
+**Why the old `shared.csv` was not evidence of anything.** A cross-build hash
+match requires *both* maps to agree about the extent. The same bug applied to
+both binaries produces the same wrong extent on both sides, so it matched
+anyway:
+
+| D3D map | Glide map | matched |
+|---|---|---|
+| sweep | sweep | 1712 |
+| sweep | flow  | 1648 |
+| flow  | sweep | 1656 |
+| flow  | flow  | **1739** |
+
+Both-rebuilt is now shipped. `.text` is 100% accounted for in both binaries as
+code, switch table, padding or data, with no undecodable bytes inside any
+function.

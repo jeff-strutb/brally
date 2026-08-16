@@ -211,11 +211,14 @@
  *
  * 0x10018590 (D3D, 2992 bytes) and 0x10015B10 (Glide) were read command by
  * command.  A note on the size, because it has already misled once:
- * `config/functions_glide.csv` splits the Glide emitter into 0x10015B10 (1019
- * bytes) and 0x10015F0B (2287), and 0x10015F0B is mid-flow -- it is the `add
- * ecx,8` a `je` at 0x10015ED6 jumps to.  The real function runs 0x10015B10 ..
- * 0x100166FA, i.e. 3050 bytes, followed by two jump tables and their two 0x4A
- * index tables ending exactly at 0x100167FA.  That is the same shape as D3D's
+ * `config/functions_glide.csv` used to split the Glide emitter into 0x10015B10
+ * (1019 bytes) and 0x10015F0B (2287), and 0x10015F0B is mid-flow -- it is the
+ * `add ecx,8` a `je` at 0x10015ED6 jumps to.  The map has since been rebuilt by
+ * `tools/funcmap2.py` and now agrees with the reading below; nothing calls
+ * 0x10015F0B, and the "call" that put it there was the 0xE8 inside a `shr
+ * eax,8` at 0x100239FE.  The real function runs 0x10015B10 .. 0x100166FA, i.e.
+ * 3050 bytes, followed by two jump tables and their two 0x4A index tables
+ * ending exactly at 0x100167FA.  That is the same shape as D3D's
  * (see the note on 0x10019140 in CONVENTIONS.md), and it means the Glide
  * emitter is very slightly BIGGER than the D3D one, not a third of its size.
  *

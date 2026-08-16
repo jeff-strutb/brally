@@ -46,8 +46,18 @@ def norm_funcs(dll, fcsv):
 
 
 def main():
-    pa, A = norm_funcs('orig/BRD3D.dll', 'config/functions.csv')
-    pb, B = norm_funcs('orig/BRGlide.dll', 'config/functions_glide.csv')
+    # Both sides are overridable so the two maps can be varied independently.
+    # That matters because a hash match requires BOTH maps to agree about the
+    # function's extent: swapping one side for a rebuilt map and watching the
+    # match count move measures the OTHER side's extent errors.
+    # config/functions.csv is now the FLOW-derived map. The original
+    # sweep-derived one is kept as config/functions_d3d_sweep.csv for
+    # comparison; it has 181 defective entries in 2,632.
+    map_a = os.environ.get('BR_MAP_D3D', 'config/functions.csv')
+    map_b = os.environ.get('BR_MAP_GLIDE', 'config/functions_glide.csv')
+    out = os.environ.get('BR_SHARED_OUT', 'config/shared.csv')
+    pa, A = norm_funcs('orig/BRD3D.dll', map_a)
+    pb, B = norm_funcs('orig/BRGlide.dll', map_b)
     byhash_b = collections.defaultdict(list)
     for va, (h, s) in B.items():
         byhash_b[h].append(va)
@@ -60,7 +70,7 @@ def main():
             only_a.append((va, s))
 
     os.makedirs('config', exist_ok=True)
-    with open('config/shared.csv', 'w', newline='') as fh:
+    with open(out, 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['d3d_va', 'glide_va', 'size', 'class'])
         for va in sorted(A):
