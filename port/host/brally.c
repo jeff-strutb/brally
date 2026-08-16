@@ -23,7 +23,29 @@
  * zero return, which is how you find the one that actually breaks the boot.
  *
  *   ./build/brally            headless: boot, dump, report stubs
- *   ./build/brally -w         also open a window and draw the menu
+ *   ./build/brally -all       every screen builder, each in its own child
+ *   ./build/brally -b N       one builder in-process, for a debugger
+ *   ./build/brally -w         open a window and NAVIGATE the menu
+ *   ./build/brally -shot N f.ppm [keys]
+ *                             render one screen offscreen, optionally after
+ *                             a key script, and write a PPM
+ *   ./build/brally -keys N "<script>"
+ *                             headless scripted navigation: d down, u up,
+ *                             j activate, . idle. Dumps the selection state
+ *                             after every key and reports any phase change.
+ *
+ * THE MENU IS NAVIGABLE. `-keys` exists because "the selection moves" is not
+ * something a terminal session or a CI job can check by looking, and an
+ * unverified claim about interactive behaviour is worth nothing. It needs no
+ * window server, no compositor and no human, and it prints the state before
+ * and after every key so the claim can be read off the output.
+ *
+ *   ./build/brally -keys 4 ".ddj"
+ *     '.'  sel=0 iSel=0 cSel=3 current=2 Load Season
+ *     'd'  sel=1 iSel=1 cSel=3 current=3 New Season
+ *     'd'  sel=2 iSel=2 cSel=3 current=4 Back
+ *     'j'  ** PHASE CHANGED -- 0x10046C90 tore the screen down
+ *
  *
  * CAVEAT, stated because it can bite: stubs return integer 0. A caller
  * expecting a float gets whatever was in xmm0, not 0.0. Any such gap shows up
@@ -958,6 +980,28 @@ int main(int argc, char **argv)
             g_haveWhite = (g_texWhite != 0 && g_texDim != 0);
         }
         g_aBuilders[b].pfn(ph);
+        g_nav.pAA2904 = ph;
+        /* An OPTIONAL fourth argument is a key script, run before the
+         * capture: `-shot 4 out.ppm dd` screenshots the third row selected.
+         * Without it a single idle frame still runs, because the highlight is
+         * the CURRENT bit and no control carries it until a frame has been
+         * through 0x10047A60 -- a screenshot taken before that would show the
+         * layout with nothing selected and look like a regression. */
+        {
+            const char *pszKeys = (argc > 4) ? argv[4] : ".";
+            const char *pk;
+            BrPhase_ *phShot = ph;
+            for (pk = pszKeys; *pk; ++pk) {
+                if (*pk == 'd') BrUiNavMove(&g_nav, +1);
+                else if (*pk == 'u') BrUiNavMove(&g_nav, -1);
+                else if (*pk == 'j') BrUiNavSetActivate(&g_nav, 1);
+                (void)NavFrame(phShot);
+                BrUiNavSetStep(&g_nav, 0);
+                BrUiNavSetActivate(&g_nav, 0);
+                if (g_nav.pAA2904 != NULL) phShot = g_nav.pAA2904;
+            }
+            ph = phShot;
+        }
         BuildCaptions(g, ph);
         BrGfxBeginFrame(g, 0.06f, 0.06f, 0.09f, 1.0f);
         DrawPhase(g, ph, 0, 0);

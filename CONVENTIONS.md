@@ -124,6 +124,30 @@ present in the original, and aliasing behaviour where the original permits it.
 - `0x10019140` is **not a function** despite `config/functions.csv` listing it
   as 254 bytes: it is `0x10018590`'s two jump tables plus their two 0x4A-byte
   index tables, sitting in `.text` after the function ends.
+- **Menu navigation runs on the control flag bits at +0x1C, and the "step"
+  global is a decoy.** `0x100AB3DC` is added to the selection cursor
+  `0x10AA286C` only by the two `+0x10` arms, in `0x10047A60` and `0x10048530`
+  — and `0x10` is the DISABLED bit, so a row carrying it cannot be selected in
+  the first place. An ordinary menu row (place flags `0x102001`) has neither
+  `0x1000` nor `0x10`; it moves because the input handler `0x100603A0`
+  **increments or decrements the cursor directly** (`10059613` / `10059628` in
+  BRGlide, the only two writers outside the clamp). Wiring the step and nothing
+  else leaves every ordinary row inert, which reads as the port being dead
+  rather than the seam being wrong.
+  The bits: `0x02` activate, `0x08` inert, `0x10` disabled, `0x20` current,
+  `0x800` skip, `0x1000` page-frame ordinal arm, `0x2000` record the index in
+  the phase's `+0xBC`. slice6_71's `0x1004F700` computes
+  `flags = fAutoSave ? 0x102001 : 0x102011` — the clearest single statement of
+  what `0x10` means anywhere in the corpus.
+- **Map extents are wrong in BOTH directions.** `config/functions.csv` gives
+  `0x10047A60` 161 bytes; it is 587, and the Glide map has it right. That is
+  the mirror image of the font emitter, where the Glide map was the short one.
+  Check the extent against the other build before trusting either.
+- The UI style pool `g_aBrUiStyle` starts at **0x100AB418**, not 0x100AB438.
+  `0x10047A60` reads `0x100AB418` and `0x100AB428` as hit-test rectangles four
+  int32 deep, which pins the lower bound slice3_39.h had flagged as its
+  weakest claim. `0x100AB408` is very likely another entry; nothing reads it,
+  so it is not in the table.
 - `config/functions.csv` (the **D3D** map) is a good index, **not ground truth**.
   It is still the output of `tools/funcmap.py`, whose extents run "from one
   start to the next". Measured against flow analysis (`tools/funcmap2.py`,
