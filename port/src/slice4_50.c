@@ -57,7 +57,13 @@ void     *g_brH221324 = NULL;
 int32_t   g_br22AAA8  = 0;
 void     *g_brPACEDB0 = NULL;
 int32_t   g_br0B36FC  = 0;
-int32_t   g_br094294  = 0;
+/* 0x10094294.  CORRECTED by packet 76, which needed this global for its port
+ * of 0x10005D30 (six bytes: load it and return it).  The initialiser was 0;
+ * the DLL image holds 0xFFFFFFFF at 0x10094294, i.e. -1.  That matters: -1 is
+ * the "empty" sentinel and 0 is a VALID slot index, and slice5_62.c feeds this
+ * value straight to BrNetSlotGetF02C as an index.  Zero here meant "slot 0"
+ * from the first frame instead of "no slot". */
+int32_t   g_br094294  = -1;
 uint8_t   g_brAD0854[3] = { 0, 0, 0 };
 int32_t   g_br277B48  = 0;
 char     *g_brPB4E2E8 = NULL;

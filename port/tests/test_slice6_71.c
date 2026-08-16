@@ -96,14 +96,14 @@ void *BrOperatorNew(uint32_t cb)
  * Every f38 / f34 call is recorded so the tests can read back the exact
  * coordinates, flags and ids. */
 typedef struct PlaceRec {
-    BrUiCtl   *pCtl;
-    BrUiPhase *pOwner;
+    BrUiCtl_  *pCtl;
+    BrPhase_  *pOwner;
     float      x, y;
     int32_t    flags, a4, a5, a6, a7;
 } PlaceRec;
 
 typedef struct TextRec {
-    BrUiCtl    *pCtl;
+    BrUiCtl_   *pCtl;
     const void *pText;
     int32_t     a2, a3;
     const void *pStyle;
@@ -115,7 +115,7 @@ static int      g_cPlace;
 static TextRec  g_aText[REC_MAX];
 static int      g_cText;
 
-static void StubF38(BrUiCtl *pThis, BrUiPhase *pOwner, float x, float y,
+static void StubF38(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
                     int32_t flags, int32_t a4, int32_t a5,
                     int32_t a6, int32_t a7)
 {
@@ -128,7 +128,7 @@ static void StubF38(BrUiCtl *pThis, BrUiPhase *pOwner, float x, float y,
     ++g_cPlace;
 }
 
-static void StubF34(BrUiCtl *pThis, const void *pText, int32_t a2, int32_t a3,
+static void StubF34(BrUiCtl_ *pThis, const void *pText, int32_t a2, int32_t a3,
                     const void *pStyle)
 {
     Trace("f34");
@@ -140,14 +140,14 @@ static void StubF34(BrUiCtl *pThis, const void *pText, int32_t a2, int32_t a3,
     ++g_cText;
 }
 
-static BrUiCtlVtbl g_ctlVtbl;
+static BrUiCtlVtbl_ g_ctlVtbl;
 
-/* --- the sub-object at control +0x3838 ------------------------------------ */
+/* --- the BrTextList embedded at control +0x3838 --------------------------- */
 static int         g_cSubRows;
 static const void *g_pLastRow;
 static int32_t     g_aSubCfg[5];
 
-static void StubSubF10(BrUiCtlSub *pThis, const void *pText, int32_t a2,
+static void StubSubF10(BrTextList *pThis, const void *pText, int32_t a2,
                        int32_t a3, const void *pStyle, int32_t a5)
 {
     (void)pThis; (void)a2; (void)a3; (void)pStyle; (void)a5;
@@ -155,7 +155,7 @@ static void StubSubF10(BrUiCtlSub *pThis, const void *pText, int32_t a2,
     ++g_cSubRows;
 }
 
-static void StubSubF14(BrUiCtlSub *pThis, int32_t a1, const void *pStyle,
+static void StubSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
                        int32_t a3, int32_t a4, int32_t a5)
 {
     (void)pThis;
@@ -167,28 +167,42 @@ static void StubSubF14(BrUiCtlSub *pThis, int32_t a1, const void *pStyle,
     g_aSubCfg[4] = a5;
 }
 
-static BrUiCtlSubVtbl g_subVtbl;
+static BrTextListVtbl g_subVtbl;
 
-/* --- the item object at control +0x2B5C ----------------------------------- */
+/* --- the FIRST of the three text boxes at control +0x2B5C ----------------- */
 static int g_cItemF04;
-static void StubItemF04(void *pThis) { (void)pThis; ++g_cItemF04; }
-static BrScrItemVtbl g_itemVtbl;
+static void StubItemF04(BrTextBox *pThis) { (void)pThis; ++g_cItemF04; }
+static BrTextBoxVtbl g_itemVtbl;
 
-/* --- the page/control constructors ---------------------------------------- */
-BrUiScreen *BrUiScreenCtor(BrUiScreen *pThis)
+/* --- the page/control constructors ----------------------------------------
+ * The real 0x10048470 / 0x100476C0 both zero more than they leave alone, and
+ * the packet reads back only zeroed fields, so a blanket memset is faithful
+ * enough for this module's purposes. The two vtables the packet dispatches
+ * through -- the control's own and the ones the constructor's sub-object
+ * constructors plant at +0x2B5C and +0x3838 -- are planted here, because that
+ * is what 0x1005B050 and 0x1005B7F0 do inside 0x100476C0. */
+BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis)
 {
-    memset(pThis, 0, BR_ALLOC_SIZE(BrUiScreen, BR_UI_SCREEN_ORIG_SIZE));
-    Trace("screen.ctor");
+    memset(pThis, 0, (size_t)BR_UI_PAGE_ALLOC_SIZE);
+    Trace("page.ctor");
     return pThis;
 }
 
-BrUiCtl *BrUiCtlCtor(BrUiCtl *pThis)
+BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis)
 {
-    BrUiCtlX *pX = (BrUiCtlX *)(void *)pThis;
-    memset(pX, 0, BR71_CTLX_ALLOC);
-    pX->base.pVtbl        = &g_ctlVtbl;
-    pX->base.f3838.pVtbl  = &g_subVtbl;
-    pX->item.pVtbl        = &g_itemVtbl;
+    int i;
+    memset(pThis, 0, (size_t)BR_UI_CTL_ALLOC_SIZE);
+    pThis->pVtbl      = &g_ctlVtbl;
+    pThis->list.pVtbl = &g_subVtbl;
+    for (i = 0; i < BR_UI_CTL_TEXTS; ++i) {
+        pThis->aText[i].pVtbl = &g_itemVtbl;
+    }
+    /* The real constructor leaves aStepId at -1 and aStepMs at 0; the tests
+     * below use the tail of both arrays to show 0x10051D30 writes 24 entries
+     * of a FIFTY-entry array, so the poison has to be the original's. */
+    for (i = 0; i < BR_UI_CTL_STEPS; ++i) {
+        pThis->aStepId[i] = 0xFFFFu;
+    }
     Trace("ctl.ctor");
     return pThis;
 }
@@ -296,24 +310,27 @@ static const BrS71Env g_env = {
 
 /* Distinct, non-null hook bodies so the tests can assert WHICH address goes
  * into WHICH slot -- that mapping is most of what these builders encode. */
-static void H_1003EAE0(void *p) { (void)p; }
-static void H_1003F210(void *p) { (void)p; }
-static void H_1003F280(void *p) { (void)p; }
-static void H_10040A50(void *p) { (void)p; }
-static void H_10040AC0(void *p) { (void)p; }
-static void H_10041300(void *p) { (void)p; }
-static void H_10041890(void *p) { (void)p; }
-static void H_100443E0(void *p) { (void)p; }
-static void H_100444C0(void *p) { (void)p; }
-static void H_10042170(void *p) { (void)p; }
-static void H_10042B00(void *p) { (void)p; }
-static void H_10045090(void *p) { (void)p; }
-static void H_100450C0(void *p) { (void)p; }
-static void H_10046E10(void *p) { (void)p; }
-static void H_10046F60(void *p) { (void)p; }
-static void H_10046FC0(void *p) { (void)p; }
-static void H_100471B0(void *p) { (void)p; }
-static void H_10047360(void *p) { (void)p; }
+static int32_t H_1003EAE0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_1003F210(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_1003F280(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10040A50(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10040AC0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10041300(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10041890(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_100443E0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_100444C0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10042B00(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10045090(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_100450C0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10046E10(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10046F60(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10046FC0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_100471B0(BrUiCtl_ *p) { (void)p; return 0; }
+static int32_t H_10047360(BrUiCtl_ *p) { (void)p; return 0; }
+
+/* This one alone lands in the embedded list's +0x04 slot, not in a control
+ * hook slot, so it carries slice3_39.h's BrTextListCbFn shape. */
+static void H_10042170(void) { }
 
 static BrS71Hooks g_hooks;
 static BrOptCaps  g_caps;
@@ -373,7 +390,7 @@ static void ResetAll(void)
     g_ctlVtbl.f38 = StubF38;
     g_subVtbl.f10 = StubSubF10;
     g_subVtbl.f14 = StubSubF14;
-    g_itemVtbl.f04 = StubItemF04;
+    g_itemVtbl.pfn04 = StubItemF04;
     g_listVtbl.f04 = ListF04;
     g_phaseVtbl.f18 = PhaseF18;
 
@@ -435,9 +452,9 @@ static void ResetSelf(void)
     g_self.iPage = 0x1234;      /* must be cleared */
 }
 
-static BrUiScreen *Page0(void)
+static BrUiPage_ *Page0(void)
 {
-    return (BrUiScreen *)(void *)g_self.aPages[0];
+    return g_self.aPages[0];
 }
 
 /* ==========================================================================
@@ -605,18 +622,18 @@ static void Test38F30(void)
  * ========================================================================== */
 static void CheckPagePrologue(float fY)
 {
-    BrUiScreen *pScr = Page0();
+    BrUiPage_ *pScr = Page0();
     CHECK(g_self.nPages == 1);
     CHECK(g_self.iPage == 0);
     CHECK(g_self.aFlags[0] == 1);
     CHECK(pScr != NULL);
-    CHECK(pScr->pOwner == (BrUiPhase *)(void *)&g_self);
+    CHECK(pScr->pOwner == &g_self);
     CHECK(pScr->f10 == 0);
     CHECK(pScr->fX == 195.0f);
     CHECK(pScr->fY == fY);
     /* the root control is placed against the PHASE, not the page */
     CHECK(g_cPlace > 0);
-    CHECK(g_aPlace[0].pOwner == (BrUiPhase *)(void *)&g_self);
+    CHECK(g_aPlace[0].pOwner == &g_self);
     CHECK(g_aPlace[0].x == 0.0f && g_aPlace[0].y == 0.0f);
     CHECK(g_aPlace[0].flags == 9);
     CHECK(g_aPlace[0].a4 == 2 && g_aPlace[0].a5 == 5);
@@ -631,7 +648,7 @@ static void CheckPlaceConstants(void)
     for (i = 0; i < g_cPlace && i < REC_MAX; ++i) {
         CHECK(g_aPlace[i].a4 == 2);
         CHECK(g_aPlace[i].a5 == 5);
-        CHECK(g_aPlace[i].pOwner == (BrUiPhase *)(void *)&g_self);
+        CHECK(g_aPlace[i].pOwner == &g_self);
     }
 }
 
@@ -640,7 +657,7 @@ static void CheckPlaceConstants(void)
  * ========================================================================== */
 static void Test49F40(void)
 {
-    BrUiScreen *pScr;
+    BrUiPage_ *pScr;
 
     ResetAll();
     ResetSelf();
@@ -667,7 +684,7 @@ static void Test49F40(void)
 
     /* the third control -- and only it -- is published to 0x10AA29B0 */
     CHECK(g_brS71.pAA29B0 != NULL);
-    CHECK(&g_brS71.pAA29B0->base == pScr->apCtl[2]);
+    CHECK(g_brS71.pAA29B0 == pScr->apCtl[2]);
     CHECK(pScr->apCtl[2]->pfn0C == H_10047360);
     CHECK(pScr->apCtl[2]->pfn08 == H_10046F60);
     CHECK(pScr->apCtl[3]->pfn08 == H_10046FC0);
@@ -705,9 +722,9 @@ static void Test49F40(void)
  * ========================================================================== */
 static void Test51D30(void)
 {
-    BrUiScreen *pScr;
-    BrUiCtlX   *pX;
-    int         k;
+    BrUiPage_ *pScr;
+    BrUiCtl_  *pX;
+    int        k;
 
     ResetAll();
     ResetSelf();
@@ -729,26 +746,39 @@ static void Test51D30(void)
     CHECK(g_aPlace[2].flags == 0x22001);
     CHECK(g_aPlace[2].a6 == 0 && g_aPlace[2].a7 == 0x50);
 
-    pX = (BrUiCtlX *)(void *)pScr->apCtl[2];
-    CHECK(pX->base.pfn08 == H_100471B0);
+    pX = pScr->apCtl[2];
+    CHECK(pX->pfn08 == H_100471B0);
     CHECK(pX->p1E210 == &g_a9da50);
-    CHECK(pX->base.f2968 == 1);
+    CHECK(pX->f2968 == 1);
     CHECK(pX->f296C == 1);
-    CHECK(pX->base.f1E20C == 0x50);
+    CHECK(pX->w1E20C == 0x50);
 
-    /* the step table: one array of 24, split 15/9 at the code, uniform in
-     * the duration. The boundary is the point of the assertion. */
-    for (k = 0; k < BR71_STEP_COUNT; ++k) {
-        CHECK(pX->aStepMs[k] == 0x3C);
-        CHECK(pX->aStepId[k] == (uint16_t)((k < 15) ? 0x50 : 0x51));
+    /* The step table: the builder walks entries 0..23, split 15/9 at the
+     * code and uniform in the duration. The boundary is the point of the
+     * assertion.
+     *
+     * The ARRAY is fifty long (br_ui.h ADJ-3), which is a separate claim
+     * this module used to get wrong: it declared 24, the high-water mark of
+     * this very loop. Entries 24..49 must still hold what the constructor
+     * left, and asserting that is what makes the two claims independent --
+     * with a 24-entry array the loop would have written the whole thing and
+     * there would be nothing left to check. */
+    for (k = 0; k < BR_UI_CTL_STEPS; ++k) {
+        if (k < 24) {
+            CHECK(pX->aStepMs[k] == 0x3C);
+            CHECK(pX->aStepId[k] == (uint16_t)((k < 15) ? 0x50 : 0x51));
+        } else {
+            CHECK(pX->aStepMs[k] == 0);
+            CHECK(pX->aStepId[k] == 0xFFFFu);
+        }
     }
 
-    /* the rectangle is +0x80/+0x80 off the SCREEN's origin -- not the
+    /* the rectangle is +0x80/+0x80 off the PAGE's origin -- not the
      * +0x7F/+0x21 pair the other builders write. */
-    CHECK(pX->base.f50 == 195);
-    CHECK(pX->base.f54 == 130);
-    CHECK(pX->base.f58 == 195 + 0x80);
-    CHECK(pX->base.f5C == 130 + 0x80);
+    CHECK(pX->rcLeft   == 195);
+    CHECK(pX->rcTop    == 130);
+    CHECK(pX->rcRight  == 195 + 0x80);
+    CHECK(pX->rcBottom == 130 + 0x80);
 }
 
 /* ==========================================================================
@@ -756,8 +786,8 @@ static void Test51D30(void)
  * ========================================================================== */
 static void Test4F700(void)
 {
-    BrUiScreen *pScr;
-    BrPhase_    phase2908;
+    BrUiPage_ *pScr;
+    BrPhase_   phase2908;
 
     /* --- AutoSave.brf present ------------------------------------------ */
     ResetAll();
@@ -793,9 +823,11 @@ static void Test4F700(void)
     CHECK(g_cSubRows == BR71_LIST_ROWS);
     CHECK(g_pLastRow == (const void *)((const char *)phase2908.fC0 +
                         (BR71_LIST_ROWS - 1) * BR71_LIST_STRIDE + 4));
-    CHECK(((BrUiCtlX *)(void *)pScr->apCtl[2])->f383C == H_10042170);
+    /* control +0x383C and +0x1E1F4 are the embedded list's f04 and
+     * f1A99C[8] -- 0x3838 + 4 and 0x3838 + 0x1A99C + 8*4 (br_ui.h ADJ-6). */
+    CHECK(pScr->apCtl[2]->list.f04 == H_10042170);
     CHECK(pScr->apCtl[2]->pfn04 == H_1003EAE0);
-    CHECK(pScr->apCtl[2]->f1E1F4 == 1);
+    CHECK(pScr->apCtl[2]->list.f1A99C[8].i == 1);
     CHECK(g_aSubCfg[0] == 0x40001);
     CHECK(g_aSubCfg[2] == 4 && g_aSubCfg[3] == 0 && g_aSubCfg[4] == -1);
     CHECK(TraceFind("sub.f14") < TraceFind("fopen"));
@@ -831,7 +863,7 @@ static void Test4F700(void)
 
     BrExt_1004F700(&g_self);
 
-    /* the branchless select: 0x102011 / f1E20C 2 / a3 0 */
+    /* the branchless select: 0x102011 / w1E20C 2 / a3 0 */
     CHECK(g_aPlace[4].flags == 0x102011);
     CHECK(g_aText[2].a3 == 0);
     CHECK(TraceCount("fclose") == 0);
@@ -852,8 +884,8 @@ static void RunName(const char *pszName)
 
 static void Test575F0(void)
 {
-    BrUiScreen *pScr;
-    BrUiCtlX   *pX;
+    BrUiPage_ *pScr;
+    BrUiCtl_  *pX;
 
     RunName("Sunday Cup");
 
@@ -863,39 +895,49 @@ static void Test575F0(void)
 
     /* the slot table is reset before the page is built */
     CHECK(TraceFind("100586A0") == 0);
-    CHECK(TraceFind("100586A0") < TraceFind("screen.ctor"));
+    CHECK(TraceFind("100586A0") < TraceFind("page.ctor"));
 
     CHECK(pScr->cCtl == 8);
     CHECK(pScr->cSel == 4);
 
-    /* the second row asks for a3 == 4, not 1, and f1E20C 0x34 */
+    /* the second row asks for a3 == 4, not 1, and w1E20C 0x34 */
     CHECK(g_aText[1].a3 == 4);
     CHECK(g_aStrAsked[1] == 0x63);
-    CHECK(pScr->apCtl[2]->f1E20C == 0x34);
+    CHECK(pScr->apCtl[2]->w1E20C == 0x34);
 
     /* the fixed pair, no text */
     CHECK(g_aPlace[3].x == 156.0f && g_aPlace[3].y == 172.0f);
     CHECK(g_aPlace[3].a7 == 0x39);
 
     /* the name field */
-    pX = (BrUiCtlX *)(void *)pScr->apCtl[4];
+    pX = pScr->apCtl[4];
     CHECK(g_aPlace[4].y == 174.0f);
     CHECK(g_aPlace[4].flags == 0x200001);
     /* three hook slots, one of which (+0x10) no other builder in the family
      * ever writes */
-    CHECK(pX->base.pfn08 == H_10042B00);
-    CHECK(pX->base.pfn04 == H_1003F210);
-    CHECK(pX->f10        == H_1003F280);
-    CHECK(strcmp(pX->item.szText, "Sunday Cup") == 0);
+    CHECK(pX->pfn08 == H_10042B00);
+    CHECK(pX->pfn04 == H_1003F210);
+    CHECK(pX->pfn10 == H_1003F280);
+    /* the block at +0x2B5C is aText[0], and the five +0x2F7x/+0x2F8x fields
+     * are that box's own f41C / left / f428 / right / f430 (br_ui.h ADJ-2).
+     * The two the vtable's own +0x34 slot also writes -- left and right --
+     * are the reason this must be ONE object and not a control-side copy. */
+    CHECK(strcmp(pX->aText[0].sz, "Sunday Cup") == 0);
     CHECK(g_cItemF04 == 1);
-    CHECK(pX->base.f50 == 0xC5 && pX->item.f2F80 == 0xC5);
-    CHECK(pX->base.f54 == 0xAC && pX->item.f2F84 == 0xAC);
-    CHECK(pX->base.f58 == 0x135 && pX->item.f2F88 == 0x135);
-    CHECK(pX->base.f5C == 0xBC && pX->item.f2F8C == 0xBC);
-    CHECK(pX->item.w2F78 == (uint16_t)(0x135 - 0xC5 - 0x10));
+    CHECK(pX->rcLeft   == 0xC5   && pX->aText[0].left  == 0xC5);
+    CHECK(pX->rcTop    == 0xAC   && pX->aText[0].f428  == 0xAC);
+    CHECK(pX->rcRight  == 0x135  && pX->aText[0].right == 0x135);
+    CHECK(pX->rcBottom == 0xBC   && pX->aText[0].f430  == 0xBC);
+    CHECK(pX->aText[0].f41C == (int16_t)(0x135 - 0xC5 - 0x10));
+
+    /* ... and only aText[0]. The other two boxes the constructor builds at
+     * +0x2B5C are untouched, which is what makes ADJ-1's three-element array
+     * observable from this side rather than only from the constructor. */
+    CHECK(pX->aText[1].sz[0] == '\0');
+    CHECK(pX->aText[2].sz[0] == '\0');
 
     /* the sixth control -- and only it -- is published to 0x10AA29BC */
-    CHECK(&g_brS71.pAA29BC->base == pScr->apCtl[5]);
+    CHECK(g_brS71.pAA29BC == pScr->apCtl[5]);
 
     /* the last row is the fixed pair at (80, 46) with a7 == 7 */
     CHECK(g_aPlace[7].x == 80.0f && g_aPlace[7].y == 46.0f);
@@ -906,16 +948,16 @@ static void Test575F0(void)
      * (`cmp ecx,1 / ja`), not a `!= 0`, and it is the only interesting
      * boundary in this function. */
     RunName("ab");
-    pX = (BrUiCtlX *)(void *)Page0()->apCtl[4];
-    CHECK(strcmp(pX->item.szText, "ab") == 0);
+    pX = Page0()->apCtl[4];
+    CHECK(strcmp(pX->aText[0].sz, "ab") == 0);
 
     RunName("a");
-    pX = (BrUiCtlX *)(void *)Page0()->apCtl[4];
-    CHECK(strcmp(pX->item.szText, "str193") == 0);   /* BrStrGet(0xC1) */
+    pX = Page0()->apCtl[4];
+    CHECK(strcmp(pX->aText[0].sz, "str193") == 0);   /* BrStrGet(0xC1) */
 
     RunName("");
-    pX = (BrUiCtlX *)(void *)Page0()->apCtl[4];
-    CHECK(strcmp(pX->item.szText, "str193") == 0);
+    pX = Page0()->apCtl[4];
+    CHECK(strcmp(pX->aText[0].sz, "str193") == 0);
 }
 
 /* ========================================================================== */

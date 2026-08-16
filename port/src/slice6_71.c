@@ -82,9 +82,9 @@ void BrSub1003BF60(void)
         if (g_brS71.pAA29D8_b2B64 != NULL) {
             *g_brS71.pAA29D8_b2B64 = 0;
             /* `and dword [eax+0x1C], 0xFFFFFFEF` -- slice2_26.h names this
-             * bit BR_ENTITY_FLAG_1C_10; that header cannot share a
-             * translation unit with slice3_33.h, so the value is spelled
-             * out here rather than a second name coined for it. */
+             * bit BR_ENTITY_FLAG_1C_10; that header carries its own partial
+             * model of the phase and cannot be included here, so the value is
+             * spelled out rather than a second name coined for it. */
             *g_brS71.pAA29D8_f1C &= ~(int32_t)0x10;
         }
     }
@@ -168,14 +168,13 @@ void BrExt_10038F30(int32_t a)
  * The two allocation steps, byte-identical in all four builders
  * ========================================================================== */
 
-/* slice3_33.h's BrUiScreen/BrUiCtlVtbl name the phase `BrUiPhase`, which is a
- * PARTIAL VIEW of the very object br_phase.h models as BrPhase_. The two are
- * reconciled here, once, and only as a pointer value: nothing in this file
- * ever reads a field through the BrUiPhase view. */
-#define BR71_AS_UIPHASE(p)  ((BrUiPhase *)(void *)(p))
-#define BR71_AS_PAGE(p)     ((BrUiPage_ *)(void *)(p))
-
-/* The screen prologue: 0x10049F5E..0x10049FE4 and its three twins.
+/* The page prologue: 0x10049F5E..0x10049FE4 and its three twins.
+ *
+ * The page is br_ui.h's BrUiPage_ and the constructor is 0x10048470 under the
+ * name the full model uses. slice3_33.h's BrUiScreen / BrUiScreenCtor pair is
+ * gone from this module: that model begins at +0x10, so a page built through
+ * it and read through a model that begins at +0x00 is three fields out at
+ * every access -- which is exactly what the host harness measured.
  *
  * DEVIATION (memory safety, two places): the array writes are bounded. The
  * original has the same implicit bounds -- aPages ends where aFlags begins --
@@ -185,10 +184,10 @@ void BrExt_10038F30(int32_t a)
  * index 4 and then dereferences NULL. Index 4 is FATAL in g_aBrErrTable
  * (slice1_06.c), so BrErrShow does not return there in practice; the port
  * returns NULL instead of faulting. */
-static BrUiScreen *Br71ScreenNew(BrPhase_ *pPhase, float fY)
+static BrUiPage_ *Br71PageNew(BrPhase_ *pPhase, float fY)
 {
-    BrUiScreen *pScr;
-    uint16_t    i;
+    BrUiPage_ *pScr;
+    uint16_t   i;
 
     i = pPhase->nPages;
     pPhase->iPage = 0;
@@ -196,14 +195,13 @@ static BrUiScreen *Br71ScreenNew(BrPhase_ *pPhase, float fY)
         pPhase->aFlags[i] = 1;
     }
 
-    pScr = (BrUiScreen *)BrOperatorNew(
-               BR_ALLOC_SIZE(BrUiScreen, BR_UI_SCREEN_ORIG_SIZE));
-    pScr = (pScr != NULL) ? BrUiScreenCtor(pScr) : NULL;
+    pScr = (BrUiPage_ *)BrOperatorNew(BR_UI_PAGE_ALLOC_SIZE);
+    pScr = (pScr != NULL) ? BrUiPageCtor_10048470(pScr) : NULL;
 
     /* The original re-reads the counter here rather than reusing `i`. */
     i = pPhase->nPages;
     if (i < BR_PHASE_PAGES) {
-        pPhase->aPages[i] = BR71_AS_PAGE(pScr);
+        pPhase->aPages[i] = pScr;
     }
     if (pScr == NULL) {
         BrErrShow(g_brS71.pErrHost, 4);
@@ -214,7 +212,7 @@ static BrUiScreen *Br71ScreenNew(BrPhase_ *pPhase, float fY)
         return NULL;                  /* DEVIATION: see above */
     }
 
-    pScr->pOwner = BR71_AS_UIPHASE(pPhase);
+    pScr->pOwner = pPhase;
     pScr->f10    = 0;
     pScr->fX     = 195.0f;            /* 0x43430000 -- the same in all four */
     pScr->fY     = fY;
@@ -223,39 +221,35 @@ static BrUiScreen *Br71ScreenNew(BrPhase_ *pPhase, float fY)
 
 /* The control prologue. Same two DEVIATIONs. The store into apCtl happens
  * BEFORE the null test, exactly as the original does. */
-static BrUiCtlX *Br71CtlNew(BrUiScreen *pScr)
+static BrUiCtl_ *Br71CtlNew(BrUiPage_ *pScr)
 {
-    BrUiCtlX *pX;
-    BrUiCtl  *pCtl;
+    BrUiCtl_ *pCtl;
 
-    pX   = (BrUiCtlX *)BrOperatorNew(BR71_CTLX_ALLOC);
-    pCtl = (pX != NULL) ? BrUiCtlCtor(&pX->base) : NULL;
-    if (pCtl == NULL) {
-        pX = NULL;
-    }
+    pCtl = (BrUiCtl_ *)BrOperatorNew(BR_UI_CTL_ALLOC_SIZE);
+    pCtl = (pCtl != NULL) ? BrUiCtlCtor(pCtl) : NULL;
 
-    if (pScr->cCtl < BR_UI_SCREEN_CTL_MAX) {
+    if (pScr->cCtl < BR_UI_PAGE_CTL_MAX) {
         pScr->apCtl[pScr->cCtl] = pCtl;
     }
-    if (pX == NULL) {
+    if (pCtl == NULL) {
         BrErrShow(g_brS71.pErrHost, 4);
     }
-    return pX;
+    return pCtl;
 }
 
-/* Relies on the local names pScr / pX, which every builder here declares. */
+/* Relies on the local names pScr / pCtl, which every builder here declares. */
 #define BR71_NEW_CTL()                                  \
     do {                                                \
-        pX = Br71CtlNew(pScr);                          \
-        if (pX == NULL) { return; }                     \
+        pCtl = Br71CtlNew(pScr);                        \
+        if (pCtl == NULL) { return; }                   \
     } while (0)
 
 /* The unnamed first control of every screen. Note the owner argument is the
- * PHASE, not the screen, at every f38 site in the packet. The original pushes
+ * PHASE, not the page, at every f38 site in the packet. The original pushes
  * the zero register for x and y, i.e. four zero bytes == 0.0f. */
-static void Br71PlaceRoot(BrUiCtl *pCtl, BrPhase_ *pPhase)
+static void Br71PlaceRoot(BrUiCtl_ *pCtl, BrPhase_ *pPhase)
 {
-    pCtl->pVtbl->f38(pCtl, BR71_AS_UIPHASE(pPhase), 0.0f, 0.0f, 9, 2, 5, 0, 0);
+    pCtl->pVtbl->f38(pCtl, pPhase, 0.0f, 0.0f, 9, 2, 5, 0, 0);
 }
 
 /* ==========================================================================
@@ -265,49 +259,44 @@ static void Br71PlaceRoot(BrUiCtl *pCtl, BrPhase_ *pPhase)
 void BrExt_10049F40(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
-    BrUiScreen       *pScr;
-    BrUiCtlX         *pX;
-    BrUiCtl          *pCtl;
-    BrUiPhase        *pOwner = BR71_AS_UIPHASE(pSelf);
+    BrUiPage_        *pScr;
+    BrUiCtl_         *pCtl;
 
-    pScr = Br71ScreenNew(pSelf, 130.0f);        /* 0x43020000 */
+    pScr = Br71PageNew(pSelf, 130.0f);          /* 0x43020000 */
     if (pScr == NULL) {
         return;
     }
 
     /* 0x1004A02D */
     BR71_NEW_CTL();
-    Br71PlaceRoot(&pX->base, pSelf);
+    Br71PlaceRoot(pCtl, pSelf);
     pScr->cCtl++;
 
     /* 0x1004A094 -- the title */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x10), 1, 1, g_brS71.p0AB438);
     pScr->cCtl++;
 
     /* 0x1004A12C */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY, 0x102001, 2, 5, 1, -1);
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY, 0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10046F60;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x11), 1, 1, g_brS71.p0AB448);
-    g_brS71.pAA29B0 = pX;
+    g_brS71.pAA29B0 = pCtl;
     pScr->cCtl++;
     pScr->cSel++;
 
     /* 0x1004A1E1 -- fY - (-19) */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-19.0f),
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY - (-19.0f),
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10046FC0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x12), 1, 1, g_brS71.p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -320,64 +309,65 @@ void BrExt_10049F40(BrPhase_ *pSelf)
 void BrOptFn10051D30(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
-    BrUiScreen       *pScr;
-    BrUiCtlX         *pX;
-    BrUiCtl          *pCtl;
-    BrUiPhase        *pOwner = BR71_AS_UIPHASE(pThis);
+    BrUiPage_        *pScr;
+    BrUiCtl_         *pCtl;
     int               k;
 
-    pScr = Br71ScreenNew(pThis, 130.0f);
+    pScr = Br71PageNew(pThis, 130.0f);
     if (pScr == NULL) {
         return;
     }
 
     /* 0x10051E1D */
     BR71_NEW_CTL();
-    Br71PlaceRoot(&pX->base, pThis);
+    Br71PlaceRoot(pCtl, pThis);
     pScr->cCtl++;
 
     /* 0x10051E84 -- the title */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x43), 1, 1, g_brS71.p0AB438);
     pScr->cCtl++;
 
     /* 0x10051F1C -- the one control that breaks the pattern: no f34 at all,
-     * a step table, and an integer rectangle computed from the screen's own
+     * a step table, and an integer rectangle computed from the page's own
      * float origin. Both `fsub` constants here are POSITIVE (8.0 at
      * 0x1008F660, 12.0 at 0x1008F6A8), so these two genuinely subtract. */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX - 8.0f, pScr->fY - 12.0f,
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX - 8.0f, pScr->fY - 12.0f,
                      0x22001, 2, 5, 0, 0x50);
-    pX->p1E210    = g_brS71.pA9DA50;
-    pCtl->f2968   = 1;
-    pX->f296C     = 1;
+    pCtl->p1E210 = g_brS71.pA9DA50;
+    pCtl->f2968  = 1;
+    pCtl->f296C  = 1;
 
     /* Two loops in the original -- 15 iterations then 9 -- but +0x29B4 is
-     * exactly +0x2978 + 15*4 and +0x2A5E exactly +0x2A40 + 15*2, so this is
-     * ONE array of 24 whose tail carries a different code. */
+     * exactly +0x2978 + 15*4 and +0x2A5E exactly +0x2A40 + 15*2, so the two
+     * loops walk ONE pair of parallel arrays whose tail carries a different
+     * code. The ARRAYS hold 50 entries each (br_ui.h ADJ-3, from the
+     * constructor's `mov ecx,0x32 / lea edi,[esi+0x2978] / rep stosd`); the
+     * 24 this module used to declare was the high-water mark of this loop,
+     * which is a floor, not a bound. Entries 24..49 stay at the
+     * constructor's 0 / -1 -- and now really do exist to stay there. */
     for (k = 0; k < 15; ++k) {
-        pX->aStepMs[k] = 0x3C;
-        pX->aStepId[k] = 0x50;
+        pCtl->aStepMs[k] = 0x3C;
+        pCtl->aStepId[k] = 0x50;
     }
-    for (k = 15; k < BR71_STEP_COUNT; ++k) {
-        pX->aStepMs[k] = 0x3C;
-        pX->aStepId[k] = 0x51;
+    for (k = 15; k < 24; ++k) {
+        pCtl->aStepMs[k] = 0x3C;
+        pCtl->aStepId[k] = 0x51;
     }
 
     pCtl->pfn08  = pH->p100471B0;
-    pCtl->f1E20C = 0x50;
+    pCtl->w1E20C = 0x50;
 
-    /* The four are read back from the SCREEN's floats, not from the values
+    /* The four are read back from the PAGE's floats, not from the values
      * just handed to f38, and the two offsets are +0x80 -- not the +0x7F /
      * +0x21 pair the other builders use. __ftol truncates toward zero. */
-    pCtl->f54 = BrFtolTrunc(pScr->fY);
-    pCtl->f50 = BrFtolTrunc(pScr->fX);
-    pCtl->f58 = BrFtolTrunc(pScr->fX) + 0x80;
-    pCtl->f5C = BrFtolTrunc(pScr->fY) + 0x80;
+    pCtl->rcTop    = BrFtolTrunc(pScr->fY);
+    pCtl->rcLeft   = BrFtolTrunc(pScr->fX);
+    pCtl->rcRight  = BrFtolTrunc(pScr->fX) + 0x80;
+    pCtl->rcBottom = BrFtolTrunc(pScr->fY) + 0x80;
 
     pScr->cCtl++;
     pScr->cSel++;
@@ -391,12 +381,10 @@ void BrExt_1004F700(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;
     const BrS71Env   *pEnv = g_brS71Env;
-    BrS71FileList    *pList;
-    BrUiScreen       *pScr;
-    BrUiCtlX         *pX;
-    BrUiCtl          *pCtl;
-    BrUiCtlSub       *pSub;
-    BrUiPhase        *pOwner = BR71_AS_UIPHASE(pSelf);
+    BrS71FileList    *pFiles;
+    BrUiPage_        *pScr;
+    BrUiCtl_         *pCtl;
+    BrTextList       *pList;
     void             *pFile;
     int32_t           fAutoSave;
     int32_t           flags;
@@ -407,33 +395,32 @@ void BrExt_1004F700(BrPhase_ *pSelf)
     /* 0x1004F72C: rescan the season files with 0x10AA2848 raised. */
     g_brS71.n0AB3F4 = -1;
     g_brS71.nAA2848 = 1;
-    pList = (BrS71FileList *)g_brS71.pAA2908->fC0;
-    pList->pVtbl->f04(pList, g_brS71.pszRallySeasonBrf);
+    pFiles = (BrS71FileList *)g_brS71.pAA2908->fC0;
+    pFiles->pVtbl->f04(pFiles, g_brS71.pszRallySeasonBrf);
     g_brS71.nAA2848 = 0;
 
-    /* The screen prologue runs AFTER the rescan, and re-reads nPages, so it
+    /* The page prologue runs AFTER the rescan, and re-reads nPages, so it
      * cannot be hoisted above it. */
     {
-        BrUiScreen *pTmp;
-        uint16_t    i = pSelf->nPages;
+        BrUiPage_ *pTmp;
+        uint16_t   i = pSelf->nPages;
         if (i < BR_PHASE_PAGES) {
             pSelf->aFlags[i] = 1;
         }
-        pTmp = (BrUiScreen *)BrOperatorNew(
-                   BR_ALLOC_SIZE(BrUiScreen, BR_UI_SCREEN_ORIG_SIZE));
-        pTmp = (pTmp != NULL) ? BrUiScreenCtor(pTmp) : NULL;
+        pTmp = (BrUiPage_ *)BrOperatorNew(BR_UI_PAGE_ALLOC_SIZE);
+        pTmp = (pTmp != NULL) ? BrUiPageCtor_10048470(pTmp) : NULL;
         i = pSelf->nPages;
         if (i < BR_PHASE_PAGES) {
-            pSelf->aPages[i] = BR71_AS_PAGE(pTmp);
+            pSelf->aPages[i] = pTmp;
         }
         if (pTmp == NULL) {
             BrErrShow(g_brS71.pErrHost, 4);
         }
         pSelf->nPages++;
         if (pTmp == NULL) {
-            return;                   /* DEVIATION, as in Br71ScreenNew */
+            return;                   /* DEVIATION, as in Br71PageNew */
         }
-        pTmp->pOwner = pOwner;
+        pTmp->pOwner = pSelf;
         pTmp->f10    = 0;
         pTmp->fX     = 195.0f;
         pTmp->fY     = 130.0f;
@@ -442,26 +429,29 @@ void BrExt_1004F700(BrPhase_ *pSelf)
 
     /* 0x1004F818 */
     BR71_NEW_CTL();
-    Br71PlaceRoot(&pX->base, pSelf);
+    Br71PlaceRoot(pCtl, pSelf);
     pScr->cCtl++;
 
     /* 0x1004F880 -- the title */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x34), 1, 1, g_brS71.p0AB508);
     pScr->cCtl++;
 
-    /* 0x1004F919 -- the season list */
+    /* 0x1004F919 -- the season list.
+     *
+     * The object at control +0x3838 is the whole embedded BrTextList
+     * (br_ui.h ADJ-6), not the one-vtable-slot stand-in this module used to
+     * carry: +0x383C is list.f04 and +0x1E1F4 is list.f1A99C[8]
+     * (0x3838 + 0x1A99C + 8*4 == 0x1E1F4). */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY, 0x3001, 2, 5, 1, -1);
-    pSub          = &pCtl->f3838;
-    pCtl->pfn04   = pH->p1003EAE0;
-    pCtl->f1E1F4  = 1;
-    pSub->pVtbl->f14(pSub, 0x40001, g_brS71.p0AB538, 4, 0, -1);
-    pX->f383C     = pH->p10042170;
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY, 0x3001, 2, 5, 1, -1);
+    pList                  = &pCtl->list;
+    pCtl->pfn04            = pH->p1003EAE0;
+    pCtl->list.f1A99C[8].i = 1;
+    pList->pVtbl->f14(pList, 0x40001, g_brS71.p0AB538, 4, 0, -1);
+    pCtl->list.f04         = pH->p10042170;
 
     /* GOTCHA: the loop tests the COMPUTED ADDRESS, not the entry. `lea
      * eax,[eax+ebp+4] / test eax,eax` is only ever false if base + k + 4
@@ -471,7 +461,7 @@ void BrExt_1004F700(BrPhase_ *pSelf)
     for (k = 0; k < BR71_LIST_BYTES; k += BR71_LIST_STRIDE) {
         char *pRow = (char *)g_brS71.pAA2908->fC0 + k + 4;
         if (pRow != NULL) {
-            pSub->pVtbl->f10(pSub, pRow, 0, 1, g_brS71.p0AB4D8, 1);
+            pList->pVtbl->f10(pList, pRow, 0, 1, g_brS71.p0AB4D8, 1);
         }
     }
     pScr->cCtl++;
@@ -479,13 +469,12 @@ void BrExt_1004F700(BrPhase_ *pSelf)
 
     /* 0x1004FA0C -- fY - (-76) */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-76.0f),
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY - (-76.0f),
                      0x103011, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10045090;
     pCtl->pfn04  = pH->p10041890;
-    pCtl->f1E20C = 2;
+    pCtl->w1E20C = 2;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1E), 1, 0, g_brS71.p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
@@ -507,16 +496,15 @@ void BrExt_1004F700(BrPhase_ *pSelf)
      * fstp -- only the flags copy survives. */
     flags = (fAutoSave != 0) ? 0x102001 : 0x102011;
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-95.0f),
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY - (-95.0f),
                      flags, 2, 5, 1, -1);
     pCtl->pfn0C = pH->p10047360;
     pCtl->pfn08 = pH->p100450C0;
     if (fAutoSave != 0) {
-        pCtl->f1E20C = 3;
+        pCtl->w1E20C = 3;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x35), 1, 1, g_brS71.p0AB448);
     } else {
-        pCtl->f1E20C = 2;
+        pCtl->w1E20C = 2;
         pCtl->pVtbl->f34(pCtl, BrStrGet(0x35), 1, 0, g_brS71.p0AB448);
     }
     pScr->cCtl++;
@@ -524,71 +512,63 @@ void BrExt_1004F700(BrPhase_ *pSelf)
 
     /* 0x1004FBD9 -- fY - (-114) */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-114.0f),
+    pCtl->pVtbl->f38(pCtl, pSelf, pScr->fX, pScr->fY - (-114.0f),
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p10046E10;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0xC), 1, 1, g_brS71.p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
 
-    /* 0x1004FC91 -- no text, no f1E20C */
+    /* 0x1004FC91 -- no text, no w1E20C */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 80.0f, 46.0f, 9, 2, 5, 0, 6);
+    pCtl->pVtbl->f38(pCtl, pSelf, 80.0f, 46.0f, 9, 2, 5, 0, 6);
     pScr->cCtl++;
 
     /* 0x1004FCFF */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 330.0f, 153.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pSelf, 330.0f, 153.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x36), 1, 1, g_brS71.p0AB468);
     pScr->cCtl++;
 
     /* 0x1004FD96 -- text comes from 0x1039B720 directly, NOT through
      * BrStrGet, and no cSel++ follows. */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 330.0f, 97.0f, 0x5001, 2, 5, 1, -1);
+    pCtl->pVtbl->f38(pCtl, pSelf, 330.0f, 97.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10040A50;
-    pCtl->f1E20C = 5;
+    pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, g_brS71.p39B720, 1, 3, g_brS71.p0AB468);
     pScr->cCtl++;
 
     /* 0x1004FE2E */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 440.0f, 181.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pSelf, 440.0f, 181.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x37), 1, 1, g_brS71.p0AB488);
     pScr->cCtl++;
 
     /* 0x1004FEC5 */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 440.0f, 129.0f, 0x5001, 2, 5, 1, -1);
+    pCtl->pVtbl->f38(pCtl, pSelf, 440.0f, 129.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10040AC0;
-    pCtl->f1E20C = 5;
+    pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, g_brS71.p39B720, 1, 3, g_brS71.p0AB488);
     pScr->cCtl++;
 
     /* 0x1004FFF4 */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 440.0f, 243.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pSelf, 440.0f, 243.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x38), 1, 1, g_brS71.p0AB478);
     pScr->cCtl++;
 
-    /* 0x1004FFF4 (the last one) -- f1E20C is 0x34 here, not 5. */
+    /* 0x1004FFF4 (the last one) -- w1E20C is 0x34 here, not 5. */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 440.0f, 224.0f, 0x5001, 2, 5, 1, -1);
+    pCtl->pVtbl->f38(pCtl, pSelf, 440.0f, 224.0f, 0x5001, 2, 5, 1, -1);
     pCtl->pfn04  = pH->p10041300;
-    pCtl->f1E20C = 0x34;
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, g_brS71.p39B720, 1, 4, g_brS71.p0AB478);
     pScr->cCtl++;
 }
@@ -601,60 +581,63 @@ void BrOptFn100575F0(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;
     const BrS71Env   *pEnv = g_brS71Env;
-    BrUiScreen       *pScr;
-    BrUiCtlX         *pX;
-    BrUiCtl          *pCtl;
-    BrUiPhase        *pOwner = BR71_AS_UIPHASE(pThis);
+    BrUiPage_        *pScr;
+    BrUiCtl_         *pCtl;
+    BrTextBox        *pItem;
     const char       *pszSrc;
 
     pThis->iPage = 0;
     pEnv->pfn100586A0();          /* the same slot-table reset 0x1003BF60 runs */
 
-    /* Br71ScreenNew re-does the iPage store; harmless and keeps one helper. */
-    pScr = Br71ScreenNew(pThis, 130.0f);
+    /* Br71PageNew re-does the iPage store; harmless and keeps one helper. */
+    pScr = Br71PageNew(pThis, 130.0f);
     if (pScr == NULL) {
         return;
     }
 
     /* 0x100576E3 */
     BR71_NEW_CTL();
-    Br71PlaceRoot(&pX->base, pThis);
+    Br71PlaceRoot(pCtl, pThis);
     pScr->cCtl++;
 
     /* 0x1005774A -- the title */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 3;
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, 10.0f, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x62), 1, 1, g_brS71.p0AB508);
     pScr->cCtl++;
 
-    /* 0x100577E2 -- a3 is 4 here, and f1E20C is 0x34 */
+    /* 0x100577E2 -- a3 is 4 here, and w1E20C is 0x34 */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY, 0x100009, 2, 5, 1, -1);
-    pCtl->f1E20C = 0x34;
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, pScr->fY, 0x100009, 2, 5, 1, -1);
+    pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x63), 1, 4, g_brS71.p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
 
-    /* 0x10057883 -- fixed coordinates, no text, no f1E20C, no cSel++ */
+    /* 0x10057883 -- fixed coordinates, no text, no w1E20C, no cSel++ */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 156.0f, 172.0f, 9, 2, 5, 0, 0x39);
+    pCtl->pVtbl->f38(pCtl, pThis, 156.0f, 172.0f, 9, 2, 5, 0, 0x39);
     pScr->cCtl++;
 
     /* 0x100578F4 -- the name field. This is the control that breaks the
-     * pattern: three hook slots, a literal text pointer, and then the item
-     * object at +0x2B5C is loaded from 0x10A9D018 and told to re-measure. */
+     * pattern: three hook slots, a literal text pointer, and then the text
+     * box at +0x2B5C is loaded from 0x10A9D018 and told to re-measure.
+     *
+     * That block is aText[0], the FIRST of three 0x438-byte BrTextBox
+     * elements the constructor builds there (br_ui.h ADJ-1), and every
+     * +0x2F7x / +0x2F8x offset this builder writes is one of its own fields
+     * (ADJ-2): +0x2F78 f41C, +0x2F80 left, +0x2F84 f428, +0x2F88 right,
+     * +0x2F8C f430. */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, 174.0f, 0x200001, 2, 5, 1, -1);
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, 174.0f, 0x200001, 2, 5, 1, -1);
     pCtl->pfn08  = pH->p10042B00;
     pCtl->pfn04  = pH->p1003F210;
-    pX->f10      = pH->p1003F280;
-    pCtl->f1E20C = 3;
+    pCtl->pfn10  = pH->p1003F280;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, g_brS71.p39B720, 1, 1, g_brS71.p0AB448);
+
+    pItem = &pCtl->aText[0];
 
     /* GOTCHA: the test is `strlen(0x10A9D018) > 1`, not `!= 0`. A one-
      * character session name is treated as absent and replaced by string
@@ -666,62 +649,66 @@ void BrOptFn100575F0(BrPhase_ *pThis)
         pszSrc = BrStrGet(0xC1);
     }
     /* DEVIATION (memory safety): bounded. The original copies strlen+1 bytes
-     * into a fixed field with no check at all. */
+     * into a fixed field with no check at all.
+     *
+     * The bound is slice3_39.h's BR_TEXTBOX_MAX (0x400), which is what the
+     * element constructor's `rep stosd` of 0x100 dwords from element +0x09
+     * establishes. This module used to say 0x401, measured from +0x2B65 up to
+     * the int16 at +0x2F66; the extra byte at element +0x409 is padding the
+     * constructor does not clear and nothing writes. */
     {
         size_t cb = strlen(pszSrc) + 1u;
-        if (cb > (size_t)BR71_ITEM_TEXT) {
-            cb = (size_t)BR71_ITEM_TEXT;
+        if (cb > (size_t)BR_TEXTBOX_MAX) {
+            cb = (size_t)BR_TEXTBOX_MAX;
         }
-        memcpy(pX->item.szText, pszSrc, cb);
-        pX->item.szText[BR71_ITEM_TEXT - 1] = '\0';
+        memcpy(pItem->sz, pszSrc, cb);
+        pItem->sz[BR_TEXTBOX_MAX - 1] = '\0';
     }
-    pX->item.pVtbl->f04(&pX->item);
+    pItem->pVtbl->pfn04(pItem);
 
-    pCtl->f50        = 0xC5;
-    pX->item.f2F80   = 0xC5;
-    pCtl->f58        = 0x135;
-    pX->item.f2F88   = 0x135;
-    pCtl->f54        = 0xAC;
-    pX->item.f2F84   = 0xAC;
-    pCtl->f5C        = 0xBC;
-    pX->item.f2F8C   = 0xBC;
+    pCtl->rcLeft    = 0xC5;
+    pItem->left     = 0xC5;
+    pCtl->rcRight   = 0x135;
+    pItem->right    = 0x135;
+    pCtl->rcTop     = 0xAC;
+    pItem->f428     = 0xAC;
+    pCtl->rcBottom  = 0xBC;
+    pItem->f430     = 0xBC;
 
     /* `mov ax,[+0x2F88] / sub ax,[+0x2F80] / sub eax,0x10 / mov [+0x2F78],ax`
      * -- the subtraction is 16-bit, the -0x10 is 32-bit, and only the low
      * word is stored. 0x135 - 0xC5 - 0x10 == 0x60. */
-    pX->item.w2F78 = (uint16_t)((uint16_t)((uint16_t)pX->item.f2F88 -
-                                           (uint16_t)pX->item.f2F80) - 0x10u);
+    pItem->f41C = (int16_t)(uint16_t)((uint16_t)((uint16_t)pItem->right -
+                                                 (uint16_t)pItem->left)
+                                      - 0x10u);
     pScr->cCtl++;
     pScr->cSel++;
 
     /* 0x10057A54 -- fY - (-95) */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-95.0f),
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, pScr->fY - (-95.0f),
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p100443E0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0x1E), 1, 1, g_brS71.p0AB448);
-    g_brS71.pAA29BC = pX;
+    g_brS71.pAA29BC = pCtl;
     pScr->cCtl++;
     pScr->cSel++;
 
     /* 0x10057B16 -- fY - (-114) */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, pScr->fX, pScr->fY - (-114.0f),
+    pCtl->pVtbl->f38(pCtl, pThis, pScr->fX, pScr->fY - (-114.0f),
                      0x102001, 2, 5, 1, -1);
     pCtl->pfn0C  = pH->p10047360;
     pCtl->pfn08  = pH->p100444C0;
-    pCtl->f1E20C = 3;
+    pCtl->w1E20C = 3;
     pCtl->pVtbl->f34(pCtl, BrStrGet(0xC), 1, 1, g_brS71.p0AB448);
     pScr->cCtl++;
     pScr->cSel++;
 
     /* 0x10057BCE -- no text, no cSel++ */
     BR71_NEW_CTL();
-    pCtl = &pX->base;
-    pCtl->pVtbl->f38(pCtl, pOwner, 80.0f, 46.0f, 9, 2, 5, 0, 7);
+    pCtl->pVtbl->f38(pCtl, pThis, 80.0f, 46.0f, 9, 2, 5, 0, 7);
     pScr->cCtl++;
 }

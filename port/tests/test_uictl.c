@@ -38,46 +38,82 @@ int main(void)
     CHECK(c->pVtbl == g_pBrUiCtlVtbl, "stores the current control vtable");
     CHECK(c->pVtbl != NULL, "vtable pointer is never left NULL");
 
-    /* The five function-pointer slots the builders overwrite start NULL. */
+    /* The SIX function-pointer slots the builders overwrite start NULL. The
+     * old model stopped at +0x14; br_ui.h names +0x18 too (ADJ-8), and the
+     * original zeroes all six. */
     CHECK(c->pfn04 == NULL, "+0x04 cleared");
     CHECK(c->pfn08 == NULL, "+0x08 cleared");
     CHECK(c->pfn0C == NULL, "+0x0C cleared");
     CHECK(c->pfn10 == NULL, "+0x10 cleared");
     CHECK(c->pfn14 == NULL, "+0x14 cleared");
+    CHECK(c->pfn18 == NULL, "+0x18 cleared");
 
-    /* THE load-bearing one: +0x2A42 lies inside the 25-dword -1 fill at
-     * +0x2A40, so it must be 0xFFFF and specifically NOT 0. */
-    CHECK(c->f2A42 == (uint16_t)0xFFFFu, "+0x2A42 is -1, not zero");
-    CHECK(c->f2A42 != 0, "the -1 fill is not a zero fill");
+    /* THE load-bearing one: the 25-dword -1 fill at +0x2A40 is br_ui.h's
+     * aStepId[50] (ADJ-3, ADJ-4), so every element must be 0xFFFF and
+     * specifically NOT 0. What two headers used to call the scalars f2A40 and
+     * f2A42 are elements 0 and 1; the BOUNDARY is what is worth asserting,
+     * because the old model could only reach the first dword and an
+     * under-filled array is invisible from element 0. */
+    CHECK(c->aStepId[1] == (uint16_t)0xFFFFu, "+0x2A42 is -1, not zero");
+    CHECK(c->aStepId[1] != 0, "the -1 fill is not a zero fill");
+    CHECK(c->aStepId[BR_UI_CTL_STEPS - 1] == (uint16_t)0xFFFFu,
+          "the LAST step id is -1 too -- the fill covers all fifty");
 
-    /* 0x3F7D70A4 is exactly 0.99f in binary32, so this compares exactly. */
-    CHECK(c->f1E1E8 == 0.99f, "+0x44 constant is 0.99f exactly");
+    /* The same boundary on the other two -1 fills. +0x012A is the dangerous
+     * one: 0 is a valid index there and -1 means empty. */
+    CHECK(c->a012A[0] == -1 && c->a012A[BR_UI_CTL_A012A - 1] == -1,
+          "+0x012A is filled with -1 end to end, not zeroed");
+    CHECK(c->a2AF0[0] == -1 && c->a2AF0[BR_UI_CTL_A2AF0 - 1] == -1,
+          "+0x2AF0 is filled with -1 end to end");
+
+    /* 0x3F7D70A4 is exactly 0.99f in binary32, so this compares exactly.
+     * `1004770A  mov dword ptr [esi + 0x44], 0x3f7d70a4` -- this used to read
+     * `c->f1E1E8`, because the sparse model had no field at +0x44 and the
+     * constant went 0x1E1A4 bytes too far. br_ui.h names +0x44. */
+    CHECK(c->f44 == 0.99f, "+0x44 constant is 0.99f exactly");
+
+    /* ... and the slot it used to land in must now be untouched by the
+     * constructor. This is the assertion that would have caught the bug. */
+    CHECK(c->list.f1A99C[5].u == 0,
+          "+0x1E1E8 is left zero -- 0.99f does NOT land there");
 
     /* Rect is left alone by the constructor -- the builders set it. Poisoned
      * memory would leave 0xA5A5A5A5 here, so this checks the memset ran. */
-    CHECK(c->f50 == 0, "+0x50 cleared by the constructor");
-    CHECK(c->f5C == 0, "+0x5C cleared by the constructor");
+    CHECK(c->rcLeft == 0, "+0x50 cleared by the constructor");
+    CHECK(c->rcBottom == 0, "+0x5C cleared by the constructor");
 
-    /* +0x2A40 is the LOW half of the same -1 dword as +0x2A42, and it is the
-     * one 0x10047FB0 overwrites with a code word. It must start at -1 for the
-     * same reason: 0 is a valid code. */
-    CHECK(c->f2A40 == (uint16_t)0xFFFFu, "+0x2A40 is -1, not zero");
+    /* aStepId[0] is the element 0x10047FB0 overwrites with a code word. It
+     * must start at -1 for the same reason: 0 is a valid code. */
+    CHECK(c->aStepId[0] == (uint16_t)0xFFFFu, "+0x2A40 is -1, not zero");
 
     /* +0x1C is 1, not 0. 0x10047FB0 ORs into it, so a zero here would be
      * invisible until a flag test came out wrong. */
-    CHECK(c->f1C == 1, "+0x1C is 1");
+    CHECK(c->flags1C == 1, "+0x1C is 1");
 
-    /* The item at +0x2B5C is slice3_39.h's BrTextBox and its element ctor
-     * (0x1005B050) sets f08 = 1. Everything else it writes is a zero. */
-    CHECK(c->f2B5C.f08 == 1, "the item's +0x08 is 1");
-    CHECK(c->f2B5C.sz[0] == 0, "the item's text buffer is cleared");
-    CHECK(c->f2B5C.pVtbl == NULL,
+    /* The three scalars that had no modelled home before the merge. */
+    CHECK(c->b2C == 0xFFu, "+0x2C is 0xFF -- a BYTE, not a dword");
+    CHECK(c->f2AEC == 1, "+0x2AEC is 1");
+    CHECK(c->f2B54 == 1, "+0x2B54 is 1");
+
+    /* The block at +0x2B5C is slice3_39.h's BrTextBox and there are THREE of
+     * them (ADJ-1), each built by the vector-constructor iterator with element
+     * ctor 0x1005B050, which sets f08 = 1. Element 2 is checked as well as
+     * element 0, because a model with one item and a model with three are
+     * indistinguishable from element 0 alone. */
+    CHECK(c->aText[0].f08 == 1, "the item's +0x08 is 1");
+    CHECK(c->aText[BR_UI_CTL_TEXTS - 1].f08 == 1,
+          "and so is the LAST of the three -- all three are constructed");
+    CHECK(c->aText[0].sz[0] == 0, "the item's text buffer is cleared");
+    CHECK(c->aText[0].pVtbl == NULL,
           "the item vtable is left NULL -- a host installs g_pBrTextBoxVtbl");
 
-    /* Pin the gap count. If someone adds the item table to BrUiCtl_ without
-     * initialising it to -1 here, this fires. It dropped from 9 to 8 when
-     * BrUiCtl_ gained f1C. */
-    CHECK(g_brUiCtlUnmodelledWrites == 8,
+    /* Pin the gap count. If someone adds a field to BrUiCtl_ without
+     * initialising it here, this fires. It dropped from 9 to 8 when BrUiCtl_
+     * gained f1C, and from 8 to 1 when both packets moved onto br_ui.h --
+     * which names every scalar and every block fill. The one that is left is
+     * the +0x3838 sub-object constructor, and it is a LINK question, not a
+     * modelling one; see the ledger in br_uictl.c. */
+    CHECK(g_brUiCtlUnmodelledWrites == 1,
           "unmodelled-write count unchanged (update ctor when it drops)");
 
     /* NULL in is NULL out -- a port DEVIATION; the original faults. */

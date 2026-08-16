@@ -243,24 +243,71 @@ uint8_t BrCharMapLookup(int32_t code);
 
 struct BrTextList;
 
-/* 0x1008F758.  16+ slots; none are typed because none are called from the
- * ported code.  Present so the container can carry the pointer. */
+/* 0x1008F758.  Sixteen slots.
+ *
+ * +0x10 and +0x14 ARE called -- by the menu builders in slice6_72.c and
+ * slice6_73.c, through the BrTextList embedded at control +0x3838 (br_ui.h
+ * ADJ-6).  Both packets derived the same two signatures independently, so
+ * they are typed here rather than being re-declared as a private vtable view
+ * in each caller.  The other fourteen stay `void *`: nothing calls them, and
+ * a guessed signature is worse than none. */
 typedef struct BrTextListVtbl {
-    void (*pfn[16])(struct BrTextList *pThis);
+    void *f00, *f04, *f08, *f0C;                          /* +0x00 .. +0x0C */
+
+    /* +0x10 __thiscall -- append one row of text. */
+    void (*f10)(struct BrTextList *pThis, const void *pText, int32_t a2,
+                int32_t a3, const void *pStyle, int32_t a5);
+
+    /* +0x14 __thiscall -- configure the list. */
+    void (*f14)(struct BrTextList *pThis, int32_t a1, const void *pStyle,
+                int32_t a3, int32_t a4, int32_t a5);
+
+    void *f18, *f1C, *f20, *f24, *f28, *f2C;              /* +0x18 .. +0x2C */
+    void *f30, *f34, *f38, *f3C;                          /* +0x30 .. +0x3C */
 } BrTextListVtbl;
+
+/* One raw dword of the list's tail.  The original writes those slots as
+ * plain dwords in some paths and as x87 floats in others -- 0x1004DFC0 does
+ * `mov ecx,[ebx+0x1E200] / mov [ebx+0x1E1E8],ecx` on two arms and
+ * `fld/fsubr/fstp` on the third, over the SAME three addresses.  A union of
+ * the three readings is what a raw dword actually is here; naming it one of
+ * them would make two of the three arms a pun. */
+typedef union BrTextWord {
+    uint32_t u;
+    int32_t  i;
+    float    f;
+} BrTextWord;
 
 typedef struct BrTextBlob {
     uint32_t size;   /* +0x00  (list +0x1A60C + i*8) */
     void    *p;      /* +0x04  (list +0x1A610 + i*8) */
 } BrTextBlob;
 
+/* The three header words the original stores CODE ADDRESSES into.
+ *
+ * f04, f0C and f14 were `uint32_t`, and that is a LP64 truncation waiting to
+ * happen rather than a claim about the object: the callers store function
+ * addresses there.  The one that forced the change is
+ *
+ *     1004F96F  mov dword ptr [ebp+0x383c], 0x10042170
+ *
+ * i.e. control +0x383C, which br_ui.h's ADJ-6 maps to list +0x04 -- a code
+ * address, not a number.  slice6_73.h independently types control +0x383C and
+ * +0x384C (list +0x04 and +0x14) as function pointers for the same reason.
+ * Nothing in the port CALLS them, so the type stays deliberately shapeless:
+ * a caller that learns a slot's real signature casts at the call site.
+ *
+ * `= 0` still works on every one of them (a null pointer constant), which is
+ * all slice3_39.c's constructor does with them. */
+typedef void (*BrTextListCbFn)(void);
+
 typedef struct BrTextList {
     const BrTextListVtbl *pVtbl;   /* +0x00000 */
-    uint32_t   f04;                /* +0x00004 */
+    BrTextListCbFn f04;            /* +0x00004  a callback -- see above */
     uint32_t   f08;                /* +0x00008 */
-    uint32_t   f0C;                /* +0x0000C  a callback in the original */
+    BrTextListCbFn f0C;            /* +0x0000C  a callback in the original */
     uint32_t   f10;                /* +0x00010 */
-    uint32_t   f14;                /* +0x00014  a callback in the original */
+    BrTextListCbFn f14;            /* +0x00014  a callback in the original */
     uint32_t   f18;                /* +0x00018  flag word */
     uint32_t   f1C;                /* +0x0001C */
     uint32_t   f20;                /* +0x00020 */
@@ -273,7 +320,31 @@ typedef struct BrTextList {
     int16_t    f1A934;             /* +0x1A934  init -1, later '.' (0x2E) */
     int16_t    f1A936;             /* +0x1A936  init -1 */
     int16_t    f1A938;             /* +0x1A938  init -1, later ':' (0x3A) */
-    uint32_t   f1A99C[14];         /* +0x1A99C..+0x1A9D0, zeroed together */
+
+    /* +0x1A93A .. +0x1A99C -- NEITHER constructor touches one byte of this.
+     * 0x1005B7F0 jumps straight from the word at +0x1A938 to the dword at
+     * +0x1A99C, so the whole span is indeterminate after construction
+     * (`operator new` does not zero).  It was unmodelled until 0x1004DFC0
+     * turned up writing two addresses inside it:
+     *
+     *     1004E314  mov dword ptr [ebx + 0x1e1c8], eax   ; __ftol of +0x1E1E8
+     *     1004E31D  mov dword ptr [ebx + 0x1e1d0], eax   ; ... + 0x10
+     *
+     * and control +0x1E1C8 / +0x1E1D0 are list +0x1A990 / +0x1A998 under
+     * br_ui.h's ADJ-6, which named them as the one thing the canonical
+     * control could NOT express.  They are dwords; nothing reads them yet.
+     * The two runs either side are spelled as byte padding rather than as
+     * invented fields -- the pad SIZES are exact because the region holds no
+     * pointer, so they are the same on a 32- and a 64-bit host. */
+    uint8_t    pad1A93A[0x1A990u - 0x1A93Au];  /* +0x1A93A */
+    int32_t    f1A990;                         /* +0x1A990  (ctl +0x1E1C8) */
+    uint8_t    pad1A994[0x1A998u - 0x1A994u];  /* +0x1A994 */
+    int32_t    f1A998;                         /* +0x1A998  (ctl +0x1E1D0) */
+
+    /* +0x1A99C..+0x1A9D0, zeroed together.  Raw dwords -- see BrTextWord.
+     * [5], [8], [11] and [12] are control +0x1E1E8, +0x1E1F4, +0x1E200 and
+     * +0x1E204 (br_ui.h ADJ-6). */
+    BrTextWord f1A99C[14];         /* +0x1A99C..+0x1A9D0 */
 } BrTextList;
 
 extern const BrTextListVtbl *g_pBrTextListVtbl;   /* stands in for 0x1008F758 */

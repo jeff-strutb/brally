@@ -97,14 +97,14 @@ static BrUi72Hooks  g_hooks;
 #define REC_MAX 400
 
 typedef struct Rec38 {
-    const BrUi72Ctl *pCtl;
+    const BrUiCtl_  *pCtl;
     const void      *pOwner;
     float            x, y;
     int32_t          flags, a4, a5, a6, a7;
 } Rec38;
 
 typedef struct Rec34 {
-    const BrUi72Ctl *pCtl;
+    const BrUiCtl_  *pCtl;
     const void      *pText;
     int32_t          a2, a3;
     const void      *pStyle;
@@ -116,7 +116,7 @@ static int   g_cSubF10, g_cSubF14;
 static int   g_cItemF04;
 static int   g_cGrfEnum;
 
-static void FakeF38(BrUi72Ctl *pThis, BrPhase_ *pOwner, float x, float y,
+static void FakeF38(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
                     int32_t flags, int32_t a4, int32_t a5,
                     int32_t a6, int32_t a7)
 {
@@ -128,7 +128,7 @@ static void FakeF38(BrUi72Ctl *pThis, BrPhase_ *pOwner, float x, float y,
     ++g_c38;
 }
 
-static void FakeF34(BrUi72Ctl *pThis, const void *pText,
+static void FakeF34(BrUiCtl_ *pThis, const void *pText,
                     int32_t a2, int32_t a3, const void *pStyle)
 {
     if (g_c34 < REC_MAX) {
@@ -139,22 +139,44 @@ static void FakeF34(BrUi72Ctl *pThis, const void *pText,
     ++g_c34;
 }
 
-static const BrUi72CtlVtbl g_ctlVtbl = { { 0 }, FakeF34, FakeF38 };
+/* br_ui.h's BrUiCtlVtbl_ names all sixteen slots, so the two this packet
+ * drives are set by name rather than by position behind a reserved array. */
+static const BrUiCtlVtbl_ g_ctlVtbl = {
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL,
+    FakeF34,        /* +0x34 */
+    FakeF38,        /* +0x38 */
+    NULL            /* +0x3C */
+};
 
-static void FakeSubF10(BrUi72Sub *pThis, const void *pText, int32_t a2,
+/* The object at control +0x3838 is slice3_39.h's BrTextList in full (br_ui.h
+ * ADJ-6), so these stand in for two slots of ITS vtable, not for a private
+ * three-field stub's. */
+static void FakeSubF10(BrTextList *pThis, const void *pText, int32_t a2,
                        int32_t a3, const void *pStyle, int32_t a5)
 { (void)pThis; (void)pText; (void)a2; (void)a3; (void)pStyle; (void)a5;
   ++g_cSubF10; }
 
-static void FakeSubF14(BrUi72Sub *pThis, int32_t a1, const void *pStyle,
+static void FakeSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
                        int32_t a3, int32_t a4, int32_t a5)
 { (void)pThis; (void)a1; (void)pStyle; (void)a3; (void)a4; (void)a5;
   ++g_cSubF14; }
 
-static const BrUi72SubVtbl g_subVtbl = { { 0 }, FakeSubF10, FakeSubF14 };
+static const BrTextListVtbl g_subVtbl = {
+    NULL, NULL, NULL, NULL,
+    FakeSubF10,     /* +0x10 */
+    FakeSubF14,     /* +0x14 */
+    NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL
+};
 
-static void FakeItemF04(BrUi72Item *pThis) { (void)pThis; ++g_cItemF04; }
-static const BrUi72ItemVtbl g_itemVtbl = { NULL, FakeItemF04 };
+/* The item block is slice3_39.h's BrTextBox (ADJ-1/ADJ-2); its "text changed"
+ * slot is that object's pfn04. */
+static void FakeItemF04(BrTextBox *pThis) { (void)pThis; ++g_cItemF04; }
+static const BrTextBoxVtbl g_itemVtbl = {
+    NULL, FakeItemF04, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL, NULL
+};
 
 /* The two constructors.  The real ones zero the object and install vtables;
  * these do the same so the tests see a deterministic starting state. */
@@ -163,12 +185,12 @@ static BrUiPage_ *FakePageCtor(BrUiPage_ *p)
     memset(p, 0, sizeof(*p));
     return p;
 }
-static BrUi72Ctl *FakeCtlCtor(BrUi72Ctl *p)
+static BrUiCtl_ *FakeCtlCtor(BrUiCtl_ *p)
 {
     memset(p, 0, sizeof(*p));
     p->pVtbl        = &g_ctlVtbl;
-    p->item.pVtbl   = &g_itemVtbl;
-    p->f3838.pVtbl  = &g_subVtbl;
+    p->aText[0].pVtbl = &g_itemVtbl;
+    p->list.pVtbl     = &g_subVtbl;
     return p;
 }
 
@@ -331,13 +353,13 @@ static void EnvReset(void)
     /* Give every hook slot a distinct non-NULL value so a mixed-up
      * assignment is visible. */
     {
-        BrUi72CtlFn *p = (BrUi72CtlFn *)(void *)&g_hooks;
-        size_t n = sizeof(g_hooks) / sizeof(BrUi72CtlFn);
+        BrUiCtlHookFn_ *p = (BrUiCtlHookFn_ *)(void *)&g_hooks;
+        size_t n = sizeof(g_hooks) / sizeof(BrUiCtlHookFn_);
         size_t k;
         for (k = 0; k < n; ++k) {
             /* A function pointer synthesised from an integer is not
              * portable to call, and nothing here calls them. */
-            p[k] = (BrUi72CtlFn)(void *)((char *)&g_hooks + k);
+            p[k] = (BrUiCtlHookFn_)(void *)((char *)&g_hooks + k);
         }
     }
 
@@ -1041,20 +1063,20 @@ static void Test56A10(void)
 
     /* GOTCHA: control 3 uses f1E20C 0x34 and f34's third argument 4. */
     CHECK(g_a34[1].a3 == 4);
-    CHECK(pScr->apCtl[2]->f1E20C == 0x34);
+    CHECK(pScr->apCtl[2]->w1E20C == 0x34);
 
     /* The item block: text copied from 0x10A9CDF0, the item hook fired, and
      * the rectangle and its item mirror agree. */
     {
-        const BrUi72Ctl *p = pScr->apCtl[4];
-        CHECK(strcmp(p->item.szText, "Team Name") == 0);
+        const BrUiCtl_ *p = pScr->apCtl[4];
+        CHECK(strcmp(p->aText[0].sz, "Team Name") == 0);
         CHECK(g_cItemF04 == 1);
-        CHECK(p->f50 == 0x9B && p->item.f2F80 == 0x9B);
-        CHECK(p->f54 == 0xAC && p->item.f2F84 == 0xAC);
-        CHECK(p->f58 == 0x15B && p->item.f2F88 == 0x15B);
-        CHECK(p->f5C == 0xBC && p->item.f2F8C == 0xBC);
+        CHECK(p->rcLeft == 0x9B && p->aText[0].left == 0x9B);
+        CHECK(p->rcTop == 0xAC && p->aText[0].f428 == 0xAC);
+        CHECK(p->rcRight == 0x15B && p->aText[0].right == 0x15B);
+        CHECK(p->rcBottom == 0xBC && p->aText[0].f430 == 0xBC);
         /* GOTCHA: the width is 16-bit wide: 0x15B - 0x9B - 0x10. */
-        CHECK(p->item.w2F78 == (uint16_t)(0x15B - 0x9B - 0x10));
+        CHECK(p->aText[0].f41C == (uint16_t)(0x15B - 0x9B - 0x10));
         CHECK(p->pfn10 == g_hooks.p1003F020);   /* +0x10, only here */
     }
 
@@ -1062,7 +1084,7 @@ static void Test56A10(void)
      * out with a3 = 0. */
     CHECK(g_a38[5].flags == 0x102011);
     CHECK(g_a34[3].a3 == 0);
-    CHECK(pScr->apCtl[5]->f1E20C == 2);
+    CHECK(pScr->apCtl[5]->w1E20C == 2);
     CHECK(g_env.pAA29E8 == pScr->apCtl[5]);
 
     /* The two row offsets are additions: fY + 95 then fY + 114. */
@@ -1141,7 +1163,7 @@ static void Test52030(void)
 {
     BrPhase_ ph;
     BrUiPage_ *pScr;
-    const BrUi72Ctl *r1, *r2, *r3;
+    const BrUiCtl_ *r1, *r2, *r3;
 
     EnvReset();
     memset(&ph, 0, sizeof(ph));
@@ -1162,7 +1184,7 @@ static void Test52030(void)
     CHECK(g_a38[4].y == 130.0f + 114.0f);
 
     /* GOTCHA: control 4 alone uses f1E20C 2 and f34 a3 = 0. */
-    CHECK(pScr->apCtl[3]->f1E20C == 2);
+    CHECK(pScr->apCtl[3]->w1E20C == 2);
     CHECK(g_a34[2].a3 == 0);
 
     /* The three rects.  fA/fB come from the two INT globals. */
@@ -1170,29 +1192,29 @@ static void Test52030(void)
     r2 = pScr->apCtl[6];
     r3 = pScr->apCtl[7];
     CHECK(g_a38[5].x == 100.0f && g_a38[5].y == 200.0f);
-    CHECK(r1->f50 == 100 && r1->f54 == 200);
-    CHECK(r1->f58 == 100 + 0x7F);
-    CHECK(r1->f5C == 200 + 0x21);
+    CHECK(r1->rcLeft == 100 && r1->rcTop == 200);
+    CHECK(r1->rcRight == 100 + 0x7F);
+    CHECK(r1->rcBottom == 200 + 0x21);
     /* GOTCHA: rect 2 reuses rect 1's truncated x and right edge. */
-    CHECK(r2->f50 == r1->f50 && r2->f58 == r1->f58);
+    CHECK(r2->rcLeft == r1->rcLeft && r2->rcRight == r1->rcRight);
     /* ... and its y cursor advanced by 33. */
     CHECK(g_a38[6].y == 233.0f);
-    CHECK(r2->f54 == 233);
+    CHECK(r2->rcTop == 233);
     /* Rect 3 steps once more and then, uniquely, does NOT advance the cursor
      * afterwards -- unobservable, since nothing after it reads fB. */
     CHECK(g_a38[7].y == 266.0f);
-    CHECK(r3->f54 == 266);
-    CHECK(r3->f50 == r2->f50 && r3->f58 == r2->f58);
-    CHECK(r3->f5C == 266 + 0x21);
+    CHECK(r3->rcTop == 266);
+    CHECK(r3->rcLeft == r2->rcLeft && r3->rcRight == r2->rcRight);
+    CHECK(r3->rcBottom == 266 + 0x21);
     /* f2A42 is always a7 + 1 on the rects. */
-    CHECK(r1->f2A42 == (uint16_t)(g_a38[5].a7 + 1));
-    CHECK(r2->f2A42 == (uint16_t)(g_a38[6].a7 + 1));
-    CHECK(r3->f2A42 == (uint16_t)(g_a38[7].a7 + 1));
+    CHECK(r1->aStepId[1] == (uint16_t)(g_a38[5].a7 + 1));
+    CHECK(r2->aStepId[1] == (uint16_t)(g_a38[6].a7 + 1));
+    CHECK(r3->aStepId[1] == (uint16_t)(g_a38[7].a7 + 1));
     CHECK(r1->f2968 == 0 && r2->f2968 == 0 && r3->f2968 == 0);
 
     /* GOTCHA: the last control's row constant is POSITIVE, so it moves UP. */
     CHECK(g_a38[g_c38 - 1].y == 130.0f - 19.0f);
-    CHECK(pScr->apCtl[22]->f1E20C == 0x34);
+    CHECK(pScr->apCtl[22]->w1E20C == 0x34);
 
     /* The seven label sites that take a text POINTER, not a string id. */
     {
@@ -1238,7 +1260,7 @@ static void Test59760(void)
     /* GOTCHA: the last control breaks the pattern four ways at once. */
     CHECK(g_a38[5].x == 80.0f && g_a38[5].y == 46.0f);
     CHECK(g_a38[5].flags == 9 && g_a38[5].a6 == 0 && g_a38[5].a7 == 8);
-    CHECK(pScr->apCtl[5]->f1E20C == 0);
+    CHECK(pScr->apCtl[5]->w1E20C == 0);
     CHECK(pScr->apCtl[5]->pfn08 == NULL);
     /* Four labels, none for the root or the last control. */
     CHECK(g_c34 == 4);
@@ -1294,9 +1316,9 @@ static void Test5A6E0(void)
      * guard tests an ADDRESS, so the empty ones go in too. */
     CHECK(g_cSubF14 == 1);
     CHECK(g_cSubF10 == BR72_GRF_COUNT);
-    CHECK(pS0->apCtl[2]->f1E1F4 == 1);
-    CHECK(pS0->apCtl[2]->f3838.f383C == g_hooks.p10042740);
-    CHECK(pS0->apCtl[2]->f3838.f384C == g_hooks.p10042560);
+    CHECK(pS0->apCtl[2]->list.f1A99C[8].i == 1);
+    CHECK(pS0->apCtl[2]->list.f04 == g_hooks.p10042740);
+    CHECK(pS0->apCtl[2]->list.f14 == g_hooks.p10042560);
 
     /* The one row offset is -95; the readout column uses absolute y. */
     CHECK(g_a38[3].y == 130.0f + 95.0f);
@@ -1336,7 +1358,7 @@ static void Test4E830(void)
     CHECK(g_c795D0 == 1);
 
     CHECK(g_a38[2].flags == 0x102001);
-    CHECK(pScr->apCtl[2]->f1E20C == 3);
+    CHECK(pScr->apCtl[2]->w1E20C == 3);
     CHECK(g_a34[1].a3 == 1);
     CHECK(StrIdOf(g_a34[1].pText) == 0x30);
 
@@ -1359,7 +1381,7 @@ static void Test4E830(void)
     CHECK(pScr->cCtl == 16);          /* the control count does not change */
     CHECK(pScr->cSel == 5);
     CHECK(g_a38[2].flags == 0x102011);
-    CHECK(pScr->apCtl[2]->f1E20C == 2);
+    CHECK(pScr->apCtl[2]->w1E20C == 2);
     CHECK(g_a34[1].a3 == 0);
     CHECK(StrIdOf(g_a34[1].pText) == 0x30);
     PhaseFree(&ph);
@@ -1372,7 +1394,7 @@ static void Test4E830(void)
  *
  * Both sites are covered: the page and the first control. */
 static BrUiPage_ *NullPageCtor(BrUiPage_ *p) { free(p); return NULL; }
-static BrUi72Ctl *NullCtlCtor(BrUi72Ctl *p)  { free(p); return NULL; }
+static BrUiCtl_ *NullCtlCtor(BrUiCtl_ *p)  { free(p); return NULL; }
 
 static void TestAllocFailure(void)
 {
@@ -1414,7 +1436,7 @@ static void TestAllocFailure(void)
     memset(&ph, 0, sizeof(ph));
     BrExt_10059760(&ph);
     CHECK(g_cbNewLast >= BR72_CTL_ORIG_SIZE);
-    CHECK(g_cbNewLast >= sizeof(BrUi72Ctl));
+    CHECK(g_cbNewLast >= sizeof(BrUiCtl_));
     CHECK(BR72_ALLOC(BrUiPage_, BR72_PAGE_ORIG_SIZE) >= sizeof(BrUiPage_));
     CHECK(BR72_ALLOC(BrUiPage_, BR72_PAGE_ORIG_SIZE) >= BR72_PAGE_ORIG_SIZE);
     /* The error reporter is silent on the happy path. */

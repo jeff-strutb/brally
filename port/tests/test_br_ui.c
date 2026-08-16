@@ -194,10 +194,10 @@ int main(void)
     memset(&ctl, 0, sizeof(ctl));
     ctl.aText[0].f04 = 0x11111111u;
     ctl.aText[2].f04 = 0x33333333u;
-    ctl.list.f04     = 0x44444444u;
+    ctl.list.f08     = 0x44444444u;   /* control +0x3840 */
     check(ctl.aText[0].f04 == 0x11111111u &&
           ctl.aText[2].f04 == 0x33333333u &&
-          ctl.list.f04     == 0x44444444u,
+          ctl.list.f08     == 0x44444444u,
           "aText[0], aText[2] and list are distinct storage");
 
     /* --- 5. the page's owner is the phase, the control's owner is too ----

@@ -43,9 +43,11 @@
 
 void BrStubReport(void);
 
-/* Per-slice context wiring. Each lives in its own translation unit because the
- * slice headers carry conflicting models of the page and control types and
- * cannot be included together -- see br_wire72.c. */
+/* Per-slice context wiring. Each lives in its own translation unit -- once
+ * because the slice headers carried conflicting models of the page and control
+ * types and could not be included together, now simply because each packet
+ * still has its own module globals. See br_wire72.c, which no longer has to
+ * hand-declare the two constructors to dodge that clash. */
 void BrHostWire71(void);
 void BrHostWire72(void);
 
@@ -92,7 +94,7 @@ static void HostCtlSetText(BrUiCtl_ *pThis, const void *pText,
      * 0x10047EB0's measure dispatch would be skipped. Planting the pointer
      * the element ctor would have planted is the harness's job, not the
      * constructor's -- see the note in br_uictl.c. */
-    if (pThis && !pThis->f2B5C.pVtbl) pThis->f2B5C.pVtbl = g_pBrTextBoxVtbl;
+    if (pThis && !pThis->aText[0].pVtbl) pThis->aText[0].pVtbl = g_pBrTextBoxVtbl;
     BrUiCtlSetText_10047EB0(pThis, pText, a2, a3, pStyle);
 }
 
@@ -136,41 +138,54 @@ void BrOptFn100575F0(BrPhase_ *);
 void BrOptFn10057C10(BrPhase_ *);
 
 /* `iModel` is which module's page/control model the builder WRITES through.
- * The host reads through slice6_73.h's, and slice6_72.h's is held
- * field-for-field identical to it by test_pagemodel. slice6_71's is NOT: its
- * BrUiScreen begins at +0x10 with no pVtbl/pfn04/pfn08, so reading a page it
- * built through the host's view lands three fields off.
+ * As of the slice6_72 / slice6_73 migration there is only ONE model: both
+ * packets are typed over br_ui.h's `struct BrUiPage_` and `BrUiCtl_`, which
+ * is the tag br_phase.h forward-declares and which those two headers used to
+ * complete DIFFERENTLY. The column is kept because it records which builders
+ * were once reading a foreign layout, and because the suppression logic below
+ * is the thing that stopped unjustifiable numbers being quoted as evidence.
  *
- * The symptom is not a stable wrong number, which is what makes it dangerous:
+ * slice6_71's WAS NOT, and that is the bug this column exists to survive.
+ * That module used to build pages through slice3_33.h's BrUiScreen, which
+ * begins at +0x10 and has no pVtbl / pfn04 / pfn08, so reading one of its
+ * pages through a model that begins at +0x00 landed three fields off. The
+ * symptom was not a stable wrong number, which is what made it dangerous:
  * BrExt_10049F40 reported 9, 10, 12, 7 and 10 across five runs of the SAME
- * binary, because the offset the host reads was never written and holds
+ * binary, because the offset the host read was never written and held
  * whatever the heap had. setText and place stayed at 3 and 4 throughout --
  * they are counted by this file's vtable slots and never touch the struct.
  *
- * So the ctl column is SUPPRESSED where the models differ. Printing a number
- * we cannot justify is worse than printing none: two earlier status reports
- * quoted those garbage counts as if they confirmed the decompilation. */
+ * slice6_71 now builds through br_ui.h's canonical BrUiPage_, whose fields
+ * are the same fields in the same order as slice6_73.h's, so its four
+ * builders read correctly here and are marked 73. Their counts are now
+ * stable across runs and equal to the number of `inc word ptr [esi+0x14]`
+ * in each disassembly: 4, 13, 3 and 8.
+ *
+ * The column is still SUPPRESSED for any builder whose model differs.
+ * Printing a number we cannot justify is worse than printing none: two
+ * earlier status reports quoted those garbage counts as if they confirmed
+ * the decompilation. */
 typedef struct {
     const char *pszName;
     void      (*pfn)(BrPhase_ *);
     int         iModel;     /* 71 / 72 / 73 */
 } BrBuilder;
 static const BrBuilder g_aBuilders[] = {
-    { "BrExt_10049F40", BrExt_10049F40, 71 },
+    { "BrExt_10049F40", BrExt_10049F40, 73 },
     { "BrExt_1004D640", BrExt_1004D640, 73 },
     { "BrExt_1004DFC0", BrExt_1004DFC0, 73 },
     { "BrExt_1004E830", BrExt_1004E830, 72 },
     { "BrExt_1004F2B0", BrExt_1004F2B0, 73 },
-    { "BrExt_1004F700", BrExt_1004F700, 71 },
+    { "BrExt_1004F700", BrExt_1004F700, 73 },
     { "BrExt_10050060", BrExt_10050060, 73 },
     { "BrExt_10052030", BrExt_10052030, 72 },
     { "BrExt_10054B50", BrExt_10054B50, 73 },
     { "BrExt_10059760", BrExt_10059760, 72 },
     { "BrExt_1005A6E0", BrExt_1005A6E0, 72 },
-    { "BrOptFn10051D30", BrOptFn10051D30, 71 },
+    { "BrOptFn10051D30", BrOptFn10051D30, 73 },
     { "BrOptFn100558A0", BrOptFn100558A0, 73 },
     { "BrOptFn10056A10", BrOptFn10056A10, 72 },
-    { "BrOptFn100575F0", BrOptFn100575F0, 71 },
+    { "BrOptFn100575F0", BrOptFn100575F0, 73 },
     { "BrOptFn10057C10", BrOptFn10057C10, 72 }
 };
 #define BR_NBUILDERS ((int)(sizeof(g_aBuilders)/sizeof(g_aBuilders[0])))
@@ -224,9 +239,9 @@ static int DumpPhase(const BrPhase_ *ph)
     return total;
 }
 
-/* Draw each control's rectangle. The rect comes from the builder (f50/f54 are
- * the truncated x/y, f58 = f50+0x7F, f5C = f54+0x21) -- this file invents no
- * geometry. */
+/* Draw each control's rectangle. The rect comes from the builder (rcLeft/rcTop
+ * are the truncated x/y, rcRight = rcLeft+0x7F, rcBottom = rcTop+0x21) -- this
+ * file invents no geometry. */
 static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex)
 {
     int i, j;
@@ -237,10 +252,10 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
             const BrUiCtl_ *c = pg->apCtl[j];
             float x, y, w, h;
             if (!c) continue;
-            x = (float)c->f50;
-            y = (float)c->f54;
-            w = (float)(c->f58 - c->f50);
-            h = (float)(c->f5C - c->f54);
+            x = (float)c->rcLeft;
+            y = (float)c->rcTop;
+            w = (float)(c->rcRight  - c->rcLeft);
+            h = (float)(c->rcBottom - c->rcTop);
             if (w <= 0.0f || h <= 0.0f) continue;
             if (haveTex) BrGfxDrawTexture(gfx, tex, x, y, w, h);
         }
@@ -346,15 +361,16 @@ int main(int argc, char **argv)
          * two counts are measured directly and are trustworthy for every
          * builder.
          *
-         * Their EFFECTS are not. The slots delegate to br_uivt.c, which is
-         * typed over slice6_73.h's BrUiCtl_, and slice6_71's BrUiCtlX and
-         * slice6_72's BrUi72Ctl put the same original fields at different
-         * host offsets (BrUi72Ctl has a pfn18 the others lack, and nests the
-         * item block). So for those builders the writes land in the wrong
-         * members -- in bounds, since every model allocates at least the
-         * original's 0x1E214, but meaningless. The rectangles DrawPhase
-         * renders are only real for packet-73 controls. Merging the three
-         * control models is what fixes this; br_ui.h is that work.
+         * Their EFFECTS used to be suspect: the slots delegate to br_uivt.c,
+         * which was typed over slice6_73.h's BrUiCtl_, while slice6_71's
+         * BrUiCtlX and slice6_72's BrUi72Ctl put the same original fields at
+         * different host offsets (BrUi72Ctl had a pfn18 the others lacked and
+         * nested the item block). The writes landed in the wrong members --
+         * in bounds, since every model allocated at least the original's
+         * 0x1E214, but meaningless. Merging the control models is what fixed
+         * it, and br_ui.h is that merge: br_uivt.c and every packet are typed
+         * over the one BrUiCtl_ now, so the rectangles DrawPhase renders are
+         * real for every builder.
          *
          * ctl is read out of the page struct through slice6_73.h's
          * BrUiPage_, and that is only correct for builders whose module uses

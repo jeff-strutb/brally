@@ -22,34 +22,55 @@
  *   br_phase.h    BrPhase_        the 0xC8 phase/screen object. CANONICAL.
  *                                 Used for every `this` in the four builders
  *                                 and for 0x10038F30's 0x10AA2904 slot.
- *   slice3_33.h   BrUiScreen      the 0x348 page (+0x10/+0x14/+0x18/+0x338/
- *                                 +0x33C/+0x340/+0x344)
- *                 BrUiCtl         the 0x1E214 control, and BrUiCtlVtbl's
- *                                 f34 (set text) / f38 (place)
- *                 BrUiCtlSub      the sub-object at control +0x3838, and its
- *                                 f10 (append row) / f14 (configure)
- *                 BrOperatorNew, BrUiScreenCtor, BrUiCtlCtor, BrStrGet
+ *   br_ui.h       BrUiPage_       the 0x348 page. CANONICAL.
+ *                 BrUiCtl_        the 0x1E214 control. CANONICAL, and the
+ *                                 whole of it -- including the step arrays,
+ *                                 the three text boxes at +0x2B5C and the
+ *                                 embedded BrTextList at +0x3838.
+ *                 BrUiCtlVtbl_    f34 (set text) / f38 (place)
+ *                 BrUiCtlHookFn_  the +0x04..+0x18 hook slots
+ *   slice3_39.h   BrTextBox / BrTextList, reached THROUGH br_ui.h -- the
+ *                 control's aText[] and list members are those objects.
  *   slice1_06.h   BrErrHost / BrErrShow          (0x1003E260)
  *                 BrOptCaps / BrOptAvailA        (0x1003F2B0's real body)
- *   slice3_32.h   BrScrItemVtbl   the vtable of the item object embedded at
- *                                 control +0x2B5C (slice2_23.h calls the same
- *                                 thing BrUiWidgetVtbl). Only slot +0x04 is
- *                                 called here.
- *   br_crt.h      BrFtolTrunc                    (0x1007C8A0)
+ *   br_crt.h      BrOperatorNew (0x1007DFE0), BrFtolTrunc (0x1007C8A0)
  *
- * BrUiCtlX below is NOT a fifth control model. It is a STRICT EXTENSION:
- * `BrUiCtl base` is its first member, so the two share an initial sequence
- * and the object handed to BrUiCtlCtor is the very same object. Three of the
- * four builders here reach fields slice3_33.h's five builders never touched
- * (+0x10, +0x1E210, +0x296C, the step arrays at +0x2978/+0x2A40, the item
- * block at +0x2B5C, +0x383C); those fields -- and only those -- are added.
+ * MIGRATED OFF slice3_33.h (2026 pass). This header used to model the page as
+ * slice3_33.h's `BrUiScreen` -- which begins at +0x10 and has no pVtbl /
+ * pfn04 / pfn08 -- and the control as `BrUiCtlX`, a private extension of
+ * slice3_33.h's `BrUiCtl`. Both are gone. The measured cost of keeping them
+ * was that port/host/brally.c, which reads pages through a model that begins
+ * at +0x00, read cCtl three fields off the end of what this module wrote and
+ * reported 9, 10, 12, 7 and 10 controls across five runs of one binary for a
+ * builder whose disassembly says 4. See CONVENTIONS.md, "Two models of one
+ * object, shifted".
+ *
+ * Every field BrUiCtlX added is named by br_ui.h and is used by that name now:
+ *
+ *     BrUiCtlX::f10        -> BrUiCtl_::pfn10          (+0x0010)
+ *     BrUiCtlX::p1E210     -> BrUiCtl_::p1E210         (+0x1E210)
+ *     BrUiCtlX::f296C      -> BrUiCtl_::f296C          (+0x296C)
+ *     BrUiCtlX::aStepMs[]  -> BrUiCtl_::aStepMs[]      (+0x2978, FIFTY, ADJ-3)
+ *     BrUiCtlX::aStepId[]  -> BrUiCtl_::aStepId[]      (+0x2A40, FIFTY)
+ *     BrUiCtlX::item       -> BrUiCtl_::aText[0]       (+0x2B5C, ADJ-1/ADJ-2)
+ *     BrUiCtlX::f383C      -> BrUiCtl_::list.f04       (+0x383C, ADJ-6)
+ *
+ * and every field the OLD base carried moved with it: f50/f54/f58/f5C are
+ * rcLeft/rcTop/rcRight/rcBottom, f1E20C is w1E20C, f1E1F4 is list.f1A99C[8],
+ * and the sub-object at +0x3838 is the BrTextList itself rather than a
+ * one-field stand-in.
+ *
+ * BR71_STEP_COUNT is deleted rather than corrected: it said 24, which was the
+ * highest index 0x10051D30 happens to write, and the constructor's
+ * `mov ecx,0x32 / lea edi,[esi+0x2978] / rep stosd` says 50. Use
+ * BR_UI_CTL_STEPS.
  *
  * SIGNATURE CONFLICTS (reported, deliberately not "resolved") -- see the
  * PARAMETER TYPE block further down.
  *
  * BYTE OFFSETS ARE 32-BIT-ONLY. Every offset in a comment is the original's;
  * on LP64 the structs are larger and every allocation goes through
- * BR_ALLOC_SIZE / BR71_CTLX_ALLOC, never through a size literal.
+ * BR_UI_PAGE_ALLOC_SIZE / BR_UI_CTL_ALLOC_SIZE, never through a size literal.
  */
 #ifndef SLICE6_71_H
 #define SLICE6_71_H
@@ -58,9 +79,10 @@
 #include <stdint.h>
 
 #include "br_phase.h"    /* BrPhase_ -- canonical 0xC8 phase object          */
-#include "br_crt.h"      /* BrFtolTrunc -- 0x1007C8A0                        */
-#include "slice3_33.h"   /* BrUiScreen / BrUiCtl / BrUiCtlSub / the ctors    */
-#include "slice3_32.h"   /* BrScrItemVtbl only -- the control's item vtable  */
+#include "br_crt.h"      /* BrOperatorNew, BrFtolTrunc -- 0x1007C8A0         */
+#include "br_ui.h"       /* BrUiPage_ / BrUiCtl_ -- CANONICAL. Pulls
+                          * slice3_39.h for BrTextBox / BrTextList.          */
+#include "slice1_06.h"   /* BrErrHost / BrErrShow, BrOptCaps / BrOptAvailA   */
 
 /* ==========================================================================
  * PARAMETER TYPES -- the conflict this file inherits
@@ -87,83 +109,59 @@
  * ========================================================================== */
 
 /* ==========================================================================
- * 1. BrUiCtlX -- BrUiCtl plus the fields these four builders reach
- * ========================================================================== */
-
-/* The step table at control +0x2978 (int32 durations) / +0x2A40 (uint16
- * codes). 0x10051D30 fills entries 0..14 then 15..23 with different codes,
- * and +0x29B4 == +0x2978 + 15*4 and +0x2A5E == +0x2A40 + 15*2 exactly, which
- * is what shows the two loops are one array of 24 and not two arrays. */
-#define BR71_STEP_COUNT 24
-
-/* The item text buffer at control +0x2B65 runs up to the int16 at +0x2F66
- * (slice3_32.h's BR_SCR_UI_ITEMW40A), so it is 0x401 bytes. */
-#define BR71_ITEM_TEXT 0x401
-
-/* The item object embedded at control +0x2B5C. Only its vtable, its text and
- * the five fields at +0x2F78..+0x2F8C are used here; the offsets in the
- * comments are relative to the CONTROL, matching the original's operands. */
-typedef struct BrUiCtlItemX {
-    const BrScrItemVtbl *pVtbl;              /* ctl +0x2B5C, item +0x000 */
-    char                 szText[BR71_ITEM_TEXT]; /* ctl +0x2B65, item +0x009 */
-    uint16_t             w2F78;              /* ctl +0x2F78, item +0x41C */
-    int32_t              f2F80;              /* ctl +0x2F80, item +0x424 */
-    int32_t              f2F84;              /* ctl +0x2F84, item +0x428 */
-    int32_t              f2F88;              /* ctl +0x2F88, item +0x42C */
-    int32_t              f2F8C;              /* ctl +0x2F8C, item +0x430 */
-} BrUiCtlItemX;
-
-/* STRICT EXTENSION of slice3_33.h's BrUiCtl -- see the header comment. */
-typedef struct BrUiCtlX {
-    BrUiCtl      base;                   /* every field slice3_33.h models */
-
-    BrUiCtlFn    f10;                    /* +0x0010  a __cdecl hook slot   */
-    void        *p1E210;                 /* +0x1E210 -> 0x10A9DA50         */
-    int32_t      f296C;                  /* +0x296C                        */
-    int32_t      aStepMs[BR71_STEP_COUNT];  /* +0x2978, stride 4           */
-    uint16_t     aStepId[BR71_STEP_COUNT];  /* +0x2A40, stride 2           */
-    BrUiCtlItemX item;                   /* +0x2B5C                        */
-    BrUiCtlFn    f383C;                  /* +0x383C, i.e. sub-object +0x04 */
-} BrUiCtlX;
-
-/* What the port allocates for one control. Never the 0x1E214 literal: on a
- * 64-bit host BrUiCtlX is larger, and the original's size would truncate the
- * object. (Same DEVIATION slice3_33.h's BR_ALLOC_SIZE documents.) */
-#define BR71_CTLX_ALLOC  BR_ALLOC_SIZE(BrUiCtlX, BR_UI_CTL_ORIG_SIZE)
-
-/* ==========================================================================
+ * 1. The list slots 0x1004F700 calls
+ *
+ * br_ui.h's ADJ-6 established that control +0x3838 is slice3_39.h's
+ * BrTextList in full, so the sub-object this module used to model as a lone
+ * vtable slot (slice3_33.h's BrUiCtlSub) is that object and its `f10` /
+ * `f14` are BrTextListVtbl's. slice3_39.h types both slots, so nothing is
+ * re-declared here; the two call sites are
+ *
+ *     1004F94F  push 0x100ab538 / push 0x40001 / ... ff 50 14   -- five args
+ *     1004F99F  push 1 / push 0x100ab4d8 / ... ff 50 10         -- five args
+ *
+ * ==========================================================================
  * 2. The hook slots these builders INSTALL but never call
  *
  * Same treatment as slice3_33.h's BrUiBuildHooks, and for the same reason:
  * several of these addresses already carry a name with an incompatible shape
  * elsewhere in port/include, so reaching them through a table creates no new
  * name and contradicts no existing declaration.
+ *
+ * The slots take br_ui.h's BrUiCtlHookFn_ (`int32_t (*)(BrUiCtl_ *)`, ADJ-8)
+ * rather than slice3_33.h's shapeless `void (*)(void *)`: 0x10048530 pushes
+ * the control and USES the result of +0x14, and the same push/call/add-4
+ * shape appears on +0x04.
  * ========================================================================== */
 typedef struct BrS71Hooks {
     /* stored into control +0x04 */
-    BrUiCtlFn p1003EAE0;
-    BrUiCtlFn p1003F210;
-    BrUiCtlFn p1003F720;      /* unused by these four; kept for symmetry */
-    BrUiCtlFn p10040A50;
-    BrUiCtlFn p10040AC0;
-    BrUiCtlFn p10041300;
-    BrUiCtlFn p10041890;
+    BrUiCtlHookFn_ p1003EAE0;
+    BrUiCtlHookFn_ p1003F210;
+    BrUiCtlHookFn_ p1003F720;   /* unused by these four; kept for symmetry */
+    BrUiCtlHookFn_ p10040A50;
+    BrUiCtlHookFn_ p10040AC0;
+    BrUiCtlHookFn_ p10041300;
+    BrUiCtlHookFn_ p10041890;
     /* stored into control +0x08 */
-    BrUiCtlFn p100443E0;
-    BrUiCtlFn p100444C0;
-    BrUiCtlFn p10042B00;
-    BrUiCtlFn p10045090;
-    BrUiCtlFn p100450C0;
-    BrUiCtlFn p10046E10;
-    BrUiCtlFn p10046F60;
-    BrUiCtlFn p10046FC0;
-    BrUiCtlFn p100471B0;
+    BrUiCtlHookFn_ p100443E0;
+    BrUiCtlHookFn_ p100444C0;
+    BrUiCtlHookFn_ p10042B00;
+    BrUiCtlHookFn_ p10045090;
+    BrUiCtlHookFn_ p100450C0;
+    BrUiCtlHookFn_ p10046E10;
+    BrUiCtlHookFn_ p10046F60;
+    BrUiCtlHookFn_ p10046FC0;
+    BrUiCtlHookFn_ p100471B0;
     /* stored into control +0x0C */
-    BrUiCtlFn p10047360;
+    BrUiCtlHookFn_ p10047360;
     /* stored into control +0x10 */
-    BrUiCtlFn p1003F280;
-    /* stored into control +0x383C */
-    BrUiCtlFn p10042170;
+    BrUiCtlHookFn_ p1003F280;
+    /* stored into control +0x383C, i.e. the embedded list's +0x04. That slot
+     * is slice3_39.h's BrTextList::f04 and its type is BrTextListCbFn --
+     * a DIFFERENT shape from the control hooks above, and deliberately so:
+     * nothing in the port calls it, and 0x1004F96F stores a code address
+     * there, not a number. */
+    BrTextListCbFn p10042170;
 } BrS71Hooks;
 
 /* ==========================================================================
@@ -251,8 +249,8 @@ typedef struct BrS71Globals {
                             *  file-list object 0x1004F700 rescans          */
     int32_t   n0AB3F4;     /* 0x100AB3F4 <- -1 */
     int32_t   nAA2848;     /* 0x10AA2848 <- 1 around the rescan, then 0     */
-    BrUiCtlX *pAA29B0;     /* 0x10AA29B0 <- 0x10049F40's third control      */
-    BrUiCtlX *pAA29BC;     /* 0x10AA29BC <- 0x100575F0's sixth control      */
+    BrUiCtl_ *pAA29B0;     /* 0x10AA29B0 <- 0x10049F40's third control      */
+    BrUiCtl_ *pAA29BC;     /* 0x10AA29BC <- 0x100575F0's sixth control      */
     void     *pA9DA50;     /* 0x10A9DA50 -- stored into control +0x1E210    */
     char     *pA9D018;     /* 0x10A9D018 -- BR71_A9D018_SIZE bytes          */
 
@@ -286,6 +284,31 @@ typedef struct BrS71Globals {
  * context argument, so this is the seam integration wires up. */
 extern BrS71Globals    g_brS71;
 extern const BrS71Env *g_brS71Env;
+
+/* ==========================================================================
+ * 4b. Cross-slice callees
+ *
+ * These three used to arrive through slice3_33.h, whose page/control models
+ * this module no longer uses. They are re-declared here over the CANONICAL
+ * types rather than reached by a cast: the name, arity and return type are
+ * unchanged, only the pointee is, and it is the merged one. This is the same
+ * move slice6_73.h and port/host/br_wire72.c already make for the same two
+ * constructors -- see br_ui.h's opening note.
+ * ========================================================================== */
+
+/* XSLICE 0x10048470 -- __thiscall page constructor; returns `this`.
+ * slice3_33.h calls it BrUiScreenCtor over a model that begins at +0x10 and
+ * therefore cannot write the vtable, +0x04/+0x08/+0x0C or +0x346. This is the
+ * name slice3_32.h, slice6_73.h and br_uivt.h all use for the full object. */
+extern BrUiPage_ *BrUiPageCtor_10048470(BrUiPage_ *pThis);
+
+/* XSLICE 0x100476C0 -- __thiscall control constructor; returns `this`. */
+extern BrUiCtl_ *BrUiCtlCtor(BrUiCtl_ *pThis);
+
+/* XSLICE 0x10074030 -- string-table lookup by id; NULL for a bad id.
+ * BrStrGet is the name slice2_23.h, slice2_25.h, slice3_33.h and slice6_73.h
+ * all use, with this exact signature. */
+extern const char *BrStrGet(int id);
 
 /* The walk 0x1004F700 makes over the file-list object at phase +0xC0.
  * 0x6590 == 100 * 0x104 - 4, so `for (k = 0; k < 0x6590; k += 0x104)` runs
