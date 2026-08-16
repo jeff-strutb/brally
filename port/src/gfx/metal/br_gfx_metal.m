@@ -25,6 +25,12 @@
  * arrays grow. */
 #define BR_GFX3D_MAX_TEXMAP 256
 
+/* 0xDC's payload is 24 bits and ZERO IS A VALID TEXTURE NAME -- it is the
+ * first entry of the array the loader appends to (br_tex3d.h).  So "no
+ * texture bound" cannot be spelled 0; it is spelled with a value the 24-bit
+ * field cannot hold. */
+#define BR_GFX3D_TEX_NONE 0xFFFFFFFFu
+
 /* One batched vertex.  x,y are screen pixels exactly as br_dl.c's transform
  * left them (quarter-pixel snapped, top-left origin); z,w are clip-space so
  * the rasteriser interpolates s,t perspective-correctly. */
@@ -38,11 +44,19 @@ typedef struct BrGfx3dVtx {
 typedef struct BrGfx3dDraw {
     uint32_t first, count;
     uint8_t  combine, blend, z, fZWrite, fDecal;
+    /* A RECTANGLE carries its own 0..1 corners; a TRIANGLE carries the raw
+     * N64 Vtx coordinates and needs the per-texture scale applied.  The two
+     * cannot share a draw, and this is what keeps them apart. */
+    uint8_t  fUnitUv;
     uint32_t tex;
     float    konst[4];
 } BrGfx3dDraw;
 
-typedef struct BrGfx3dTexMap { uint32_t handle; BrTexture tex; } BrGfx3dTexMap;
+typedef struct BrGfx3dTexMap {
+    uint32_t  handle;
+    BrTexture tex;
+    float     scale[2];     /* 0x118ED1A4 / 0x118ED1A8, normalised */
+} BrGfx3dTexMap;
 
 static char g_szError[512];
 
@@ -93,6 +107,7 @@ struct BrGfx {
     int                        stDecal;
     int                        stXluLatch;       /* g_5D17D4               */
     int                        stAlphaConst;     /* grAlphaCombine variant  */
+    int                        stUnitUv;         /* rect vs triangle UVs    */
     float                      stKonst[4];       /* grConstantColorValue   */
     uint32_t                   stTex;
 
@@ -486,7 +501,8 @@ static NSString *const k3dShaderSource = @
 "struct V3Out { float4 pos [[position]]; float4 rgba; float2 st; };\n"
 "vertex V3Out v3_main(uint vid [[vertex_id]],\n"
 "                     const device V3In *v [[buffer(0)]],\n"
-"                     constant float2 &target [[buffer(1)]]) {\n"
+"                     constant float2 &target [[buffer(1)]],\n"
+"                     constant float2 &texScale [[buffer(2)]]) {\n"
 "    V3Out o;\n"
 "    float w = v[vid].w;\n"
 "    // screen pixels, top-left origin, straight out of br_dl.c's transform\n"
@@ -494,7 +510,10 @@ static NSString *const k3dShaderSource = @
 "                        1.0 - v[vid].y / target.y * 2.0);\n"
 "    o.pos  = float4(ndc * w, v[vid].z, w);\n"
 "    o.rgba = float4(v[vid].r, v[vid].g, v[vid].b, v[vid].a);\n"
-"    o.st   = float2(v[vid].s, v[vid].t);\n"
+"    // s,t are the RAW N64 Vtx coordinates (S10.5 texels); texScale is the\n"
+"    // per-texture value 0x100284E0 installs. The rasteriser does the\n"
+"    // perspective divide itself -- see br3d_put.\n"
+"    o.st   = float2(v[vid].s, v[vid].t) * texScale;\n"
 "    return o;\n"
 "}\n"
 "fragment float4 f3_main(V3Out in [[stage_in]],\n"
@@ -657,7 +676,7 @@ int BrGfx3dInit(BrGfx *g)
     g->stDecal     = 0;
     g->stXluLatch  = 0;
     g->stAlphaConst = 0;
-    g->stTex       = 0;
+    g->stTex       = BR_GFX3D_TEX_NONE;
     g->stKonst[0]  = g->stKonst[1] = g->stKonst[2] = g->stKonst[3] = 1.0f;
     g->fDepthTest  = 1;
 
@@ -712,6 +731,7 @@ static void br3d_snapshot(BrGfx *g, BrGfx3dDraw *d)
     d->z       = (uint8_t)(g->fDepthTest ? g->stZ : BR_GFX3D_Z_ALWAYS);
     d->fZWrite = (uint8_t)(g->fDepthTest ? g->stZWrite : 0);
     d->fDecal  = (uint8_t)g->stDecal;
+    d->fUnitUv = (uint8_t)g->stUnitUv;
     d->tex     = g->stTex;
     d->konst[0] = g->stKonst[0];
     d->konst[1] = g->stKonst[1];
@@ -801,8 +821,18 @@ static void br3d_put(BrGfx *g, const BrDlVtx *v)
      * triangle routines 0x10021C70 / 0x100221D0 have not been read, so where
      * it comes from is unknown.  Forced opaque.  DEVIATION. */
     o->a = 1.0f;
-    o->s = v->tmu0[0];
-    o->t = v->tmu0[1];
+    /* THE RAW COORDINATES, not tmu0.
+     *
+     * br_dl.c keeps the pre-divide s and t beside the Glide-shaped tmu0,
+     * which holds s/w and t/w because grDrawTriangle wants them that way --
+     * Glide interpolates s/w and 1/w itself.  A GPU does the same divide in
+     * hardware from `pos.w`, so handing it s/w as a varying divides twice
+     * and every texture comes out smeared by a factor of w.  The clipper
+     * interpolates s and t (they are two of its nine attributes) and
+     * br_dl_finish_vtx recomputes tmu0 from them, so the raw pair is
+     * maintained on the clipped path as well. */
+    o->s = v->s;
+    o->t = v->t;
 }
 
 static void br3d_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
@@ -1007,6 +1037,7 @@ static void br3d_rect(void *pUser, int fTextured, int tile,
     g->stCombine = fTextured ? BR_DL_CC_SHADE : BR_DL_CC_TEX;
     g->stZ       = BR_GFX3D_Z_ALWAYS;
     g->stZWrite  = 0;
+    g->stUnitUv  = 1;
     br3d_want(g);
     {
         const float xs[6] = { (float)ulx, (float)lrx, (float)ulx,
@@ -1024,6 +1055,7 @@ static void br3d_rect(void *pUser, int fTextured, int tile,
         }
     }
     br3d_flush(g);
+    g->stUnitUv  = 0;
     g->stCombine = save;
     g->stZ = saveZ;
     g->stZWrite = saveW;
@@ -1047,17 +1079,25 @@ void BrGfx3dAttach(BrGfx *g, BrDl *pDl)
     pDl->sink.pfnRect       = br3d_rect;
 }
 
-void BrGfx3dMapTexture(BrGfx *g, uint32_t handle, BrTexture tex)
+void BrGfx3dMapTexture(BrGfx *g, uint32_t handle, BrTexture tex,
+                       float scaleS, float scaleT)
 {
     uint32_t i;
-    if (g == NULL || handle == 0)
+    if (g == NULL || handle == BR_GFX3D_TEX_NONE)
         return;
     for (i = 0; i < g->cTexMap; i++)
-        if (g->aTexMap[i].handle == handle) { g->aTexMap[i].tex = tex; return; }
+        if (g->aTexMap[i].handle == handle) {
+            g->aTexMap[i].tex = tex;
+            g->aTexMap[i].scale[0] = scaleS;
+            g->aTexMap[i].scale[1] = scaleT;
+            return;
+        }
     if (g->cTexMap >= BR_GFX3D_MAX_TEXMAP)
         return;
     g->aTexMap[g->cTexMap].handle = handle;
     g->aTexMap[g->cTexMap].tex    = tex;
+    g->aTexMap[g->cTexMap].scale[0] = scaleS;
+    g->aTexMap[g->cTexMap].scale[1] = scaleT;
     g->cTexMap++;
 }
 
@@ -1135,12 +1175,20 @@ void BrGfx3dEndFrame(BrGfx *g)
     for (i = 0; vb != nil && i < g->cDraw3d; i++) {
         const BrGfx3dDraw *d = &g->aDraw3d[i];
         id<MTLTexture> t = g->whiteTex;
+        /* Identity unless a MAPPED handle is in play on a TRIANGLE batch.
+         * An unmapped handle samples the 1x1 white texel, where the scale
+         * cannot matter; a rectangle already has 0..1 corners. */
+        float texScale[2] = { 1.0f, 1.0f };
         uint32_t k;
 
         for (k = 0; k < g->cTexMap; k++)
             if (g->aTexMap[k].handle == d->tex &&
                 g->aTexMap[k].tex != 0 && g->aTexMap[k].tex < g->cTextures) {
                 t = g->textures[g->aTexMap[k].tex];
+                if (!d->fUnitUv) {
+                    texScale[0] = g->aTexMap[k].scale[0];
+                    texScale[1] = g->aTexMap[k].scale[1];
+                }
                 break;
             }
 
@@ -1152,6 +1200,7 @@ void BrGfx3dEndFrame(BrGfx *g)
                     clamp:0.0f];
         [enc setVertexBuffer:vb offset:0 atIndex:0];
         [enc setVertexBytes:target length:sizeof(target) atIndex:1];
+        [enc setVertexBytes:texScale length:sizeof(texScale) atIndex:2];
         [enc setFragmentBytes:d->konst length:sizeof(d->konst) atIndex:0];
         [enc setFragmentTexture:t atIndex:0];
         [enc setFragmentSamplerState:g->sampler3d atIndex:0];
