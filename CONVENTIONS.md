@@ -789,3 +789,95 @@ the ACTIVATE bit is set; +0x04 is the per-frame caption setter. A brief calling
 a pfn04 caption setter an "action hook" sends an agent hunting a screen
 transition that never existed. That was also done here. hookaudit.py prints
 which slot each entry feeds, so the brief cannot get it wrong silently.
+
+## ACCURACY FIRST. PLAYABILITY IS A CONSEQUENCE, NOT A TARGET
+
+The model is MAME, not ZSNES. Correctness of the decompilation is the point;
+being able to play the result is what falls out of getting it right.
+
+This project spent a long stretch doing the opposite and the symptoms were
+consistent, so they are worth naming as smells:
+
+  - Standing in for an unported function so something visible happens. Four
+    phase-enter placeholders are why "the menu will not navigate" was
+    investigated for weeks as a bug in the menu, when the menu was fine and
+    its destinations were fabrications.
+  - Quoting "it builds", "N suites pass" or "16 of 16 builders run" as
+    progress. Those mean nothing crashed, and that our own tests agree with our
+    own code.
+  - Chasing a visible symptom by wiring around a gap instead of decompiling the
+    function the gap is made of. THE ENTRY POINT WENT UNREAD FOR WEEKS while
+    the host hand-wrote a substitute for it, and every "nothing builds the root
+    menu" note was that one absence seen from a different angle.
+
+A FRONTIER IS NOT A PLACEHOLDER. A declared, counted, do-nothing callee at the
+edge of the port is honest: it does nothing, says so, and a run reports what it
+hit. A stand-in that returns a plausible value is a lie with a counter on it.
+The test: does anything downstream behave as though the function worked? If
+yes, it is a placeholder, and it will be mistaken for progress.
+
+## A TEST THAT CANNOT FAIL IS WORSE THAN NO TEST -- SO MUTATE IT
+
+Three found in this tree in three days:
+
+  - a suite asserting RATIOS instead of counts passed while 96% of track
+    geometry was being dropped.
+  - a fixture left the deciding row zeroed, so it passed under both the right
+    and the wrong reading of the argument.
+  - the boot state machine's suite could not tell whether the continue flag was
+    read BEFORE or AFTER the frame ran, because nothing could change the flag
+    mid-call.
+
+Writing the mutation is the only way to know. For every assertion that matters:
+reinstate the bug it guards, confirm it FAILS, restore. Report the table.
+
+BOUND ANY TEST THAT DRIVES A LOOP WHOSE TERMINATION IS THE PROPERTY UNDER TEST.
+Inverting the main loop's suspend gate did not produce a failure, it produced a
+HANG -- because the mutation reproduces the real defect faithfully and the real
+defect IS a hang. A suite that hangs reports nothing and blocks the run.
+
+And the bound must leave by a path the mutation cannot block. Two attempts
+failed first: returning "queue empty" routed straight into the non-terminating
+frame path, and setting the quit flag did nothing because the flag is only read
+if the frame RUNS. Only injecting WM_QUIT worked -- the one exit that depends
+on neither of the two things under test.
+
+## VALIDATE A DETECTOR AGAINST A KNOWN ANSWER BEFORE YOU TRUST IT
+
+Every scan written in this project has been wrong on first use, always in the
+same direction -- under-reporting what the tree already has:
+
+  - "which hook slots are installed" looked in two modules of the five that
+    install hooks. Reported 48 of 108; the truth was 99.
+  - "is this address ported" knew one of the three naming conventions here, so
+    weeks-old ports read as missing. Two agents were briefed to re-port
+    functions that already existed.
+  - `grep -rl 0xADDR port/` counts a MENTION in a comment as a port. It is what
+    produced "nine of eleven boot callees absent" when the answer is eleven.
+  - tools/isported.py itself was wrong FOUR TIMES on one address before it was
+    right: a `[^*]*` that cannot cross a line; a `.*?` that ran from a mention
+    through a banner's end and attached the address to the next function; a
+    greedy prefix that captured a different address from later on the same
+    line; and counting this project's own frontier stubs as ports.
+
+All four were caught by checking against an address whose answer was already
+known. That step costs one command and is the only reason the tool is usable.
+
+FAILING TOWARD "MISSING" IS THE DANGEROUS DIRECTION. A false "already ported"
+is caught the moment someone looks for the function. A false "missing" ends as
+a duplicate that links, runs, and quietly fights the original for the same
+storage -- slice7_81.c owns thirteen globals, and a second leave routine would
+have cleared the wrong word.
+
+## STATE THE DENOMINATOR BEFORE STATING A PERCENTAGE
+
+Three different coverage figures were reported here -- 65%, 36%, 26% -- each
+computed before deciding what was being divided. 65% counted comment mentions.
+36% used only the DLL's shared code. 26% included a 97 KB CD-autorun installer
+that is not the game at all. The disc ships four PE images and only BRGlide.dll
+is the game; that was not established until the executables were mapped.
+
+A percentage without its divisor is not a measurement. And "ported" is a
+ceiling on code TRANSCRIBED, never a floor on code CORRECT: this tree has 42
+call sites reaching a placeholder or stub and 43 hole annotations, and no audit
+of behavioural equivalence against the original has been done.
