@@ -88,11 +88,21 @@ static void ClearSub70(void *pArg) { (void)pArg; }
 static int g_nSetText, g_nPlace;
 static const char *g_lastText;
 
+/* Every caption the builder set, in order. This is what makes the harness show
+ * a MENU rather than a control count: the text comes from BrStrGet, i.e. from
+ * the real string table, and the builder chose both the id and the order. */
+#define BR_MAXCAP 64
+static const char *g_aCap[BR_MAXCAP];
+static int         g_nCap;
+
 static void HostCtlSetText(BrUiCtl_ *pThis, const void *pText,
                            int32_t a2, int32_t a3, const void *pStyle)
 {
     g_nSetText++;
-    if (pText) g_lastText = (const char *)pText;
+    if (pText) {
+        g_lastText = (const char *)pText;
+        if (g_nCap < BR_MAXCAP) g_aCap[g_nCap++] = g_lastText;
+    }
     /* br_uictl.c deliberately does not run the item's element constructor
      * (0x1005B050), so the text box arrives with a NULL vtable and
      * 0x10047EB0's measure dispatch would be skipped. Planting the pointer
@@ -380,7 +390,7 @@ int main(int argc, char **argv)
                 BrPhase_ *p = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
                 int n = 0, i;
                 if (!p || !BrOptObjCtor(p)) _exit(2);
-                g_nSetText = g_nPlace = 0;
+                g_nSetText = g_nPlace = g_nCap = 0;
                 g_aBuilders[b].pfn(p);
                 for (i = 0; i < (int)p->nPages && i < BR_PHASE_PAGES; i++)
                     if (p->aPages[i]) n += p->aPages[i]->cCtl;
@@ -393,6 +403,11 @@ int main(int argc, char **argv)
                     printf("  %-22s pages=%-2u ctl=%-3d setText=%-3d place=%-3d\n",
                            g_aBuilders[b].pszName, (unsigned)p->nPages, n,
                            g_nSetText, g_nPlace);
+                {
+                    int k;
+                    for (k = 0; k < g_nCap; k++)
+                        printf("        %-22s \"%s\"\n", "", g_aCap[k]);
+                }
                 fflush(stdout);
                 _exit(0);
             } else {
