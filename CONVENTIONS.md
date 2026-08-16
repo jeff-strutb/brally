@@ -485,3 +485,37 @@ anyway:
 Both-rebuilt is now shipped. `.text` is 100% accounted for in both binaries as
 code, switch table, padding or data, with no undecodable bytes inside any
 function.
+
+## Grep BOTH builds' addresses before deciding something is unported
+
+Four of the seven clipper planes, the attribute interpolator and the whole
+64-node vertex pool were already ported in `port/src/slice1_03.c`. A pass sent
+to port the clipper grepped the **Glide** addresses, found nothing, and wrote a
+working duplicate — then discovered the existing code and threw its own away.
+
+The reason the grep missed: `slice1_03.c` records the **D3D** addresses
+(`0x1001D810` and friends), because that is what the reference binary was when
+it was written. The Glide addresses (`0x1001F0D0` &c.) appear nowhere in the
+tree. Same functions, different numbers, and no textual overlap at all.
+
+`config/shared.csv` pairs them — that is what it is for. Before concluding an
+address is unported, look it up there and grep the paired address too.
+
+This is the same failure the project has now hit roughly thirty times in
+another guise ("~27 functions already existed under another name"), with a new
+twist: here the other name was the same name, under a different **build's**
+address.
+
+## A path that has never executed is not tested
+
+The clipper had zero coverage for the whole life of this port, and every suite
+was green, because both retail test models fit entirely inside the test
+frustum. `clip=0` on every run read as "no clipping needed", not as "this code
+has never run".
+
+The fix was not a new assertion, it was a new **camera**. Driving the same
+display lists with the model panned right takes `clip` from 0 to 306; a close-up
+that crosses NEAR takes it to 512.
+
+When a subsystem reports zero work done, check whether it is idle or unreachable
+before believing the green.
