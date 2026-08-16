@@ -38,8 +38,14 @@
  * report rather than a silent one.
  *
  * Now it is a generous bound with an overflow guard, and the report states only
- * what it actually counted. The true linked count is `grep -c "return br_stub("`
- * on this file -- derived, not typed. */
+ * what it actually counted. The true linked count is `grep -cE '^long .*return br_stub'`
+ * on this file -- derived, not typed.
+ *
+ * NOTE the anchor. The obvious unanchored grep counts the COMMENTS TOO --
+ * including this one and the recipe above it -- and reported 66 stubs where
+ * there were 50. A recipe that matches its own prose is a small thing that
+ * still produced a wrong number in three separate reports. Anchor on `^long`,
+ * which only a definition line can satisfy. */
 #define BR_STUB_MAX 512
 static const char *g_hit[BR_STUB_MAX];
 static unsigned    g_cnt[BR_STUB_MAX];
@@ -79,7 +85,6 @@ void BrStubReport(void)
 
 long BrAppMsg107(void); long BrAppMsg107(void) { return br_stub("BrAppMsg107"); }
 long BrEnt35CE0(void); long BrEnt35CE0(void) { return br_stub("BrEnt35CE0"); }
-long BrExt_1003D0B0(void); long BrExt_1003D0B0(void) { return br_stub("BrExt_1003D0B0"); }
 long BrExt_10041AC0(void); long BrExt_10041AC0(void) { return br_stub("BrExt_10041AC0"); }
 long BrExt_10041BD0(void); long BrExt_10041BD0(void) { return br_stub("BrExt_10041BD0"); }
 long BrExt_10045A00(void); long BrExt_10045A00(void) { return br_stub("BrExt_10045A00"); }
@@ -100,16 +105,8 @@ long BrModelVtxResolve(void); long BrModelVtxResolve(void) { return br_stub("BrM
 long BrNetSend4760(void); long BrNetSend4760(void) { return br_stub("BrNetSend4760"); }
 long BrNetSendDelta(void); long BrNetSendDelta(void) { return br_stub("BrNetSendDelta"); }
 long BrNetSendFull(void); long BrNetSendFull(void) { return br_stub("BrNetSendFull"); }
-long BrOptFn1004CAC0(void); long BrOptFn1004CAC0(void) { return br_stub("BrOptFn1004CAC0"); }
 long BrOptFn10056FF0(void); long BrOptFn10056FF0(void) { return br_stub("BrOptFn10056FF0"); }
 long BrOptFn10058750(void); long BrOptFn10058750(void) { return br_stub("BrOptFn10058750"); }
-long BrPhaseEnterPlaceholder_1004A580(void); long BrPhaseEnterPlaceholder_1004A580(void) { return br_stub("BrPhaseEnterPlaceholder_1004A580"); }
-long BrPhaseEnterPlaceholder_1004B430(void); long BrPhaseEnterPlaceholder_1004B430(void) { return br_stub("BrPhaseEnterPlaceholder_1004B430"); }
-long BrPhaseEnterPlaceholder_1004BDC0(void); long BrPhaseEnterPlaceholder_1004BDC0(void) { return br_stub("BrPhaseEnterPlaceholder_1004BDC0"); }
-long BrPhaseEnterPlaceholder_1004C4A0(void); long BrPhaseEnterPlaceholder_1004C4A0(void) { return br_stub("BrPhaseEnterPlaceholder_1004C4A0"); }
-long BrPhaseVtbl_1008F700(void); long BrPhaseVtbl_1008F700(void) { return br_stub("BrPhaseVtbl_1008F700"); }
-long BrSub100027F0(void); long BrSub100027F0(void) { return br_stub("BrSub100027F0"); }
-long BrSub10002870(void); long BrSub10002870(void) { return br_stub("BrSub10002870"); }
 long BrSub1000BAF0(void); long BrSub1000BAF0(void) { return br_stub("BrSub1000BAF0"); }
 long BrSub10035BD1(void); long BrSub10035BD1(void) { return br_stub("BrSub10035BD1"); }
 long BrSub100360F0(void); long BrSub100360F0(void) { return br_stub("BrSub100360F0"); }
@@ -121,26 +118,20 @@ long BrSub1003CC70(void); long BrSub1003CC70(void) { return br_stub("BrSub1003CC
 long BrSub1003D210(void); long BrSub1003D210(void) { return br_stub("BrSub1003D210"); }
 long BrSub1003D480(void); long BrSub1003D480(void) { return br_stub("BrSub1003D480"); }
 long BrSub1003E1D0(void); long BrSub1003E1D0(void) { return br_stub("BrSub1003E1D0"); }
-long BrSub100484E0(void); long BrSub100484E0(void) { return br_stub("BrSub100484E0"); }
 long BrSub1005F5A0(void); long BrSub1005F5A0(void) { return br_stub("BrSub1005F5A0"); }
 long BrSub10061010(void); long BrSub10061010(void) { return br_stub("BrSub10061010"); }
 long BrSub10062C50(void); long BrSub10062C50(void) { return br_stub("BrSub10062C50"); }
 long BrSub10070610(void); long BrSub10070610(void) { return br_stub("BrSub10070610"); }
 long BrSub10070E60(void); long BrSub10070E60(void) { return br_stub("BrSub10070E60"); }
-long BrSub10071480(void); long BrSub10071480(void) { return br_stub("BrSub10071480"); }
-long BrSub10072270(void); long BrSub10072270(void) { return br_stub("BrSub10072270"); }
 long BrSub100773F0(void); long BrSub100773F0(void) { return br_stub("BrSub100773F0"); }
 long BrSub1007A840(void); long BrSub1007A840(void) { return br_stub("BrSub1007A840"); }
 long BrSub1007A940(void); long BrSub1007A940(void) { return br_stub("BrSub1007A940"); }
 long BrSub_100290A0(void); long BrSub_100290A0(void) { return br_stub("BrSub_100290A0"); }
-long BrUiPageVtbl_1008F6F8(void); long BrUiPageVtbl_1008F6F8(void) { return br_stub("BrUiPageVtbl_1008F6F8"); }
-long BrX1002C2C0(void); long BrX1002C2C0(void) { return br_stub("BrX1002C2C0"); }
 long BrX1002C500(void); long BrX1002C500(void) { return br_stub("BrX1002C500"); }
 long BrX1003563A(void); long BrX1003563A(void) { return br_stub("BrX1003563A"); }
 long BrX100397C0(void); long BrX100397C0(void) { return br_stub("BrX100397C0"); }
 long BrX100664C0(void); long BrX100664C0(void) { return br_stub("BrX100664C0"); }
 long BrX10068260(void); long BrX10068260(void) { return br_stub("BrX10068260"); }
-long BrX100751D0(void); long BrX100751D0(void) { return br_stub("BrX100751D0"); }
 long BrX10075F10(void); long BrX10075F10(void) { return br_stub("BrX10075F10"); }
 
 
