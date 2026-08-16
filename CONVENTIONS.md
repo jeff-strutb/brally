@@ -703,3 +703,34 @@ Overriding a PC reading with an N64 one needs a STRONG, STATED reason -- for
 example the PC bytes being genuinely ambiguous while the N64's are not, and
 even then the PC bytes must be consistent with what you adopt. Record the
 reason at the site.
+
+### A concrete lead from the N64 cross-read, and why the "4 vs 1" was a non-issue
+
+The sibling analysis reported the N64 contact solve running ONCE per car per
+frame, against this port's four-per-frame, and correctly warned that this is
+not revision evidence. It is not, and the reason is worth recording because it
+is a general trap when comparing two builds:
+
+**The two counts iterate different axes.** `BrCarPhysAdvance`'s loop is
+`t -= BR_CP_SUBSTEP` until the frame's time is consumed -- it subdivides TIME.
+The N64's single call iterates candidate CONTACT FEATURES internally, with all
+four of its case strings inside one loop. Neither number is the other's
+denominator, so comparing them says nothing at all.
+
+If anything it favours the PC build, consistent with the precedence rule: time
+substepping is a finer integration than one solve per frame, which is what you
+would expect the later title to have gained.
+
+**The adoptable part was a SHAPE claim, and it points somewhere specific.** The
+N64's nose guard is the PARENT of both the resting solve and the case solve --
+it calls them, it does not sit beside them. So a corresponding PC guard would
+be one level ABOVE the callees carved out of the position pass, not among them.
+
+One level above 0x10067C30 is 0x1005A7A0 (ported in full), and one above that
+is **0x1006F170 (Glide) / 0x10075F10 (D3D), 1,295 bytes, UNPORTED** -- named in
+br_racestep.c as part of the car's control chain and never transcribed. That is
+the first place to look for a pitch clamp, and it is a cheap check.
+
+The second shape claim is a carving test rather than a lead: the N64's resting
+solve is straight-line with no loops. A PC candidate for the same role that
+contains a loop has probably swallowed a neighbour.
