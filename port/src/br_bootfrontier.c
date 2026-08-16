@@ -1,0 +1,144 @@
+/* br_bootfrontier.c -- see br_bootfrontier.h.
+ *
+ * Every entry here does NOTHING and RECORDS that it was asked to. None of
+ * them fabricates a result.
+ */
+#include "br_bootfrontier.h"
+
+#include <stdio.h>
+
+enum {
+    F_10032530, F_1006C290, F_10058AF0,
+    F_1002E324,
+    F_10063970, F_1006C990, F_100628B0,
+    F_1006C460, F_10056260, F_1006E280, F_SETMODETAIL,
+    F_COUNT
+};
+
+static const char *const s_apszName[F_COUNT] = {
+    "0x10032530 state0 init",
+    "0x1006C290 sfx bank select",
+    "0x10058AF0 state0 init",
+    "0x1002E324 ONE GAME FRAME",
+    "0x10063970 state3 (5 args)",
+    "0x1006C990 load image",
+    "0x100628B0 state3 init",
+    "0x1006C460 renderer create",
+    "0x10056260 state4",
+    "0x1006E280 state4 -> 0x10AC6748",
+    "0x1001CE9D state4 config tail"
+};
+
+static int32_t s_aHits[F_COUNT];
+static void (*s_pfnFrameHook)(void);
+
+void BrBootFrontierSetFrameHook(void (*pfn)(void)) { s_pfnFrameHook = pfn; }
+
+int         BrBootFrontierCount(void)      { return F_COUNT; }
+const char *BrBootFrontierName(int i)
+{
+    return (i >= 0 && i < F_COUNT) ? s_apszName[i] : "";
+}
+int32_t     BrBootFrontierHits(int i)
+{
+    return (i >= 0 && i < F_COUNT) ? s_aHits[i] : 0;
+}
+
+void BrBootFrontierReset(void)
+{
+    int i;
+    s_pfnFrameHook = NULL;
+    for (i = 0; i < F_COUNT; i++)
+        s_aHits[i] = 0;
+}
+
+void BrBootFrontierReport(void)
+{
+    int i, n = 0;
+    for (i = 0; i < F_COUNT; i++)
+        if (s_aHits[i] != 0) n++;
+    if (n == 0) {
+        printf("boot frontier: nothing reached\n");
+        return;
+    }
+    printf("boot frontier -- reached but NOT transcribed:\n");
+    for (i = 0; i < F_COUNT; i++)
+        if (s_aHits[i] != 0)
+            printf("    %-34s %6d\n", s_apszName[i], (int)s_aHits[i]);
+}
+
+/* ---- the entries -------------------------------------------------- */
+
+void BrBootFrontier_10032530(void) { ++s_aHits[F_10032530]; }
+void BrBootFrontier_10058AF0(void) { ++s_aHits[F_10058AF0]; }
+void BrBootFrontier_100628B0(void) { ++s_aHits[F_100628B0]; }
+void BrBootFrontier_1006C460(void) { ++s_aHits[F_1006C460]; }
+void BrBootFrontier_10056260(void) { ++s_aHits[F_10056260]; }
+void BrBootFrontier_SetModeTail(void) { ++s_aHits[F_SETMODETAIL]; }
+
+void BrBootFrontier_1006C290(int32_t set)
+{
+    (void)set;
+    ++s_aHits[F_1006C290];
+}
+
+void BrBootFrontier_1002E324(void)
+{
+    ++s_aHits[F_1002E324];
+    if (s_pfnFrameHook != NULL)
+        s_pfnFrameHook();
+}
+
+void BrBootFrontier_10063970(int32_t a1, int32_t a2, int32_t a3,
+                             int32_t a4, int32_t a5)
+{
+    (void)a1; (void)a2; (void)a3; (void)a4; (void)a5;
+    ++s_aHits[F_10063970];
+}
+
+void BrBootFrontier_1006C990(const char *pszImg, int32_t flags)
+{
+    (void)pszImg; (void)flags;
+    ++s_aHits[F_1006C990];
+}
+
+/* Returns 0. NOT a fabricated handle: 0x1001CE98 stores this into 0x10AC6748,
+ * and every consumer of that global treats zero as "absent". Returning
+ * anything else would be inventing a device that does not exist. */
+int32_t BrBootFrontier_1006E280(void)
+{
+    ++s_aHits[F_1006E280];
+    return 0;
+}
+
+/* ---- globals owned elsewhere --------------------------------------- *
+ * Each reports its LOAD-TIME value. The .data image is zero for all six,
+ * verified rather than assumed -- these addresses sit in the zero-filled
+ * region and no initialiser writes them.
+ *
+ * They are accessors rather than storage on purpose. Defining them here would
+ * create a second definition competing with the real owner when that module
+ * lands, which is precisely the failure slice7_81.c's thirteen globals exist
+ * to warn about. When the owner arrives, re-point these six functions and
+ * nothing else changes.
+ * ------------------------------------------------------------------- */
+int32_t BrBootGlobal_AC5C5C(void) { return 0; }
+int32_t BrBootGlobal_ABAA0(void)  { return 0; }
+int32_t BrBootGlobal_B71A48(void) { return 0; }
+int32_t BrBootGlobal_B71A4C(void) { return 0; }
+int32_t BrBootGlobal_B71A50(void) { return 0; }
+int32_t BrBootGlobal_B71A54(void) { return 0; }
+
+/* State 4 spreads the mode over six globals. The three width slots and the
+ * three height slots are listed in br_boot.c; two of them (0x100A7514 /
+ * 0x100A7518) are what CreateWindowExA reads, so this is the mode in the
+ * operative sense and not merely a record of it. Storage lands here until the
+ * owning module exists. */
+static int32_t s_cxMode, s_cyMode, s_AC6748;
+
+void BrBootSetModeGlobals(int32_t cx, int32_t cy) { s_cxMode = cx; s_cyMode = cy; }
+void BrBootSetAC6748(int32_t v)                   { s_AC6748 = v; }
+
+int32_t BrBootModeW(void)   { return s_cxMode; }
+int32_t BrBootModeH(void)   { return s_cyMode; }
+int32_t BrBootAC6748(void)  { return s_AC6748; }
