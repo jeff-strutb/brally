@@ -33,15 +33,25 @@
  *                             headless scripted navigation: d down, u up,
  *                             j activate, . idle. Dumps the selection state
  *                             after every key and reports any phase change.
- *   ./build/brally -race <track.trk> <steps> [-drop <m>]
+ *   ./build/brally -race <track.trk> <steps>
+ *                  [-drop <m>] [-cars <n>] [-phantom <n>] [-lead <m>]
  *                             THE RACE, which is not a phase: load a track,
  *                             build the collision grid from its own triangles,
- *                             spawn sixteen cars, install the step in the slot
- *                             at 0x106E79F4 and run N fixed 1/30 s frames,
- *                             dumping car 0's position, velocity, |angVel|,
- *                             lap/gate and all four ground probes per step.
+ *                             spawn the field, install THE PORTED 0x10019A70
+ *                             (br_racestep.c) in the slot at 0x106E79F4 and
+ *                             run N fixed 1/30 s frames.  Dumps car 0's
+ *                             position, velocity, |angVel|, lap/gate and all
+ *                             four ground probes, the lap/gate ladder for the
+ *                             whole field, every start-light transition, and
+ *                             both hole tables at the end.
  *                             `-drop` is how far above the surface each grid
- *                             box starts (default 0.5 m).
+ *                             box starts (default 0.5 m); `-cars` and
+ *                             `-phantom` size the two halves of the field
+ *                             (default 16 + 4, against the original's twenty
+ *                             driver slots); `-lead` is how far past the path
+ *                             root a phantom slot is seeded and `-spread`
+ *                             how far apart consecutive ones are (default:
+ *                             one lap divided between them).
  *
  * THE MENU IS NAVIGABLE. `-keys` exists because "the selection moves" is not
  * something a terminal session or a CI job can check by looking, and an
@@ -992,10 +1002,7 @@ static void MakeChromeTextures(BrGfx *gfx)
         printf("chrome: %d of %d sprites cropped from the disc art\n",
                g_cSpr, BR_SPR_MAX);
     else
-        printf("chrome: NO ART FOUND in testdata/images -- every sprite will\n"
-               "        draw as a plain rectangle. This is a MISSING ASSET, not\n"
-               "        a rendering fault. Run tools/extract_assets.sh with the\n"
-               "        retail disc reachable (see README, 'Asset policy').\n");
+        printf("chrome: no art in testdata/images -- drawing placeholders\n");
 }
 
 /* Captions, rasterised with the GAME'S OWN MENU FONT and cached as textures.
@@ -1312,14 +1319,21 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
  *     br_race.c       0x1005FF00, the lap/gate machine.
  *     br_ai.c         the path ring, for where the grid actually starts.
  *
- *   THIS FILE'S, and it is only the glue:
- *     - the body installed in the step slot.  The original's is 0x10019A70,
- *       which also runs the menu frame and the renderer; this one runs the
- *       field and nothing else, and BrGameStepId reports it as "not one of
- *       the original three" rather than claiming to be the race step.
+ *     br_racestep.c   0x10019A70 ITSELF -- the start-light script, the
+ *                     freeze, the field loops, the all-finished condition --
+ *                     plus 0x10061F60, 0x100623E0, 0x10061430 and 0x1005ECF0.
+ *                     BrGameStepId now reports the slot as "0x10019A70 race"
+ *                     because the body in it is a port of that function and
+ *                     not, as before, a stand-in for it.
+ *
+ *   THIS FILE'S, and it is now only two things:
+ *     - HostCarDrive, standing in for car+0xF08's four unported functions and
+ *       running the one that is ported (0x1005A7A0).  Counted by the module,
+ *       not by this file.
  *     - mirroring each car's integrated position into the BrDriverCar the
- *       gate machine reads.  In the original both are fields of one 0x2B68
- *       record and no copy exists.
+ *       gate machine reads, at the point inside the controller where the
+ *       original's physics writes car+0x30.  In the original both are fields
+ *       of one 0x2B68 record and no copy exists.
  *
  * THE FIELD.  Sixteen cars in one contiguous array with a parallel array of
  * driver records, and the starting order REVERSED -- slot 0 gets the LAST
@@ -1332,50 +1346,89 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
 #include "br_collgrid.h"
 #include "br_gamestep.h"
 #include "br_race.h"
+#include "br_racestep.h"
 #include "br_ai.h"
 #include "br_track.h"
 #include <math.h>
 
-#define BR_RACE_FIELD  16
+#define BR_RACE_FIELD    16
+/* 0x10019BD3 sets g_100B2F00 (the DRIVER count) to 0x14 against a car count
+ * of 3, so more slots than cars is the original's own shape, not a harness
+ * invention.  The slots past the car count are the PHANTOM entrants whose
+ * arm br_racestep.c ports. */
+#define BR_RACE_PHANTOM   4
+#define BR_RACE_SLOTS    (BR_RACE_FIELD + BR_RACE_PHANTOM)
 
-typedef struct HostRaceCar {
-    BrCarPhys   phys;
-    BrDriverCar car;      /* the fields br_race.c mirrors through pDrv->pCar */
-} HostRaceCar;
-
-static HostRaceCar  g_aRaceCar[BR_RACE_FIELD];
-static BrDriver     g_aRaceDrv[BR_RACE_FIELD];
+/* Two parallel arrays where the original has one 0x2B68 record.  They were
+ * one struct here too until the ported step needed them: 0x1001B18B walks
+ * the CAR array on its own stride and br_racestep.c takes a
+ * `BrDriverCar *` base, so the two halves cannot be interleaved. */
+static BrCarPhys    g_aRacePhys[BR_RACE_FIELD];
+static BrDriverCar  g_aRaceCarRec[BR_RACE_FIELD];
+static BrDriver     g_aRaceDrv[BR_RACE_SLOTS];
 static BrRaceGate   g_aRaceGate[BR_AI_GATE_MAX];
-static BrRaceRules  g_raceRules;
 static float        g_raceLapLen;
 static int          g_nRaceStep;
 static int          g_cRaceCars;
+static int          g_cRacePhantom = BR_RACE_PHANTOM;
+/* How far past the path root a phantom slot is seeded.  It has to clear
+ * gate 0, which on race.trk sits 24 m along the path from the root; see
+ * BrRaceSeedPhantom's banner for what a short lead does. */
+static float        g_raceLead = 60.0f;
+/* How far apart consecutive phantom slots are seeded, `-spread <m>`; 0 means
+ * one lap divided by the number of them, i.e. evenly round the ring.  This is
+ * a DISPLAY choice and nothing else: seeded a grid's width apart, the slots
+ * cross every gate on the same frame and the ladder shows one column
+ * repeated, which proves less than four slots at four different gates does.
+ * Nothing in the ported code cares. */
+static float        g_raceSpread;
 /* How far above the surface each grid box starts.  `-drop <m>` on the command
  * line.  The suspension's whole travel is 0.4 and the probe's window is +-2,
  * so anything in (0, 0.4] starts a car already ON its springs and anything
  * larger drops it. */
 static float        g_raceDrop = 0.5f;
 
-/* The body installed in 0x106E79F4.  Deliberately NOT registered as
- * BR_GAMESTEP_RACE: it is a stand-in for 0x10019A70, not a port of it. */
-static void HostRaceStep(void)
+/* ---- car+0xF08, the controller ------------------------------------------
+ *
+ * THE ONE SEAM LEFT IN THE RACE, and it is a five-deep chain of which
+ * exactly one function is ported:
+ *
+ *   0x1005D050 / 0x1005E690   the two thunks 0x1001A5CF and 0x1001A60C
+ *                             install per slot
+ *   0x1005C8B0 / 0x1005D770   the human and AI controllers
+ *   0x1006F170                the per-car drive pass, 1295 B
+ *   0x1005A7A0                THE PHYSICS -- ported, br_carphys.c
+ *
+ * So the host stands in for the four unported ones and runs the fifth.
+ * br_racestep.c counts every dispatch as BR_RS_HOLE_CONTROL whether or not
+ * a body is installed, so the count is the number of times the original
+ * would have entered the chain, not the number of times this file did
+ * something.
+ *
+ * Two bodies rather than one, because 0x10061F82 tests the pointer against
+ * 0x1005E690 to decide whether to clear the AI's control word: collapsing
+ * them would make every slot look like an AI slot. */
+static void HostCarDrive(BrDriverCar *pCar)
 {
-    int i;
+    long i = (long)(pCar - g_aRaceCarRec);
+    const BrRbState *pS;
 
-    for (i = 0; i < g_cRaceCars; ++i) {
-        HostRaceCar *pC = &g_aRaceCar[i];
+    if (i < 0 || i >= (long)g_cRaceCars)
+        return;
+    BrCarPhysStep(&g_aRacePhys[i]);
+    /* In the original car+0x30 IS the body matrix's row 3 and no copy
+     * exists.  Here the physics owns the state, so the two fields the gate
+     * machine reads are mirrored at the point the physics wrote them --
+     * posPrev is NOT touched, because 0x10061F60 latched it before this
+     * ran and that ordering is the whole motion segment. */
+    pS = BrCarPhysBodyState(&g_aRacePhys[i].body);
+    pCar->pos   = pS->pos;
+    pCar->f1030 = BrVec3Length(&pS->vel);
+}
 
-        BrCarPhysStep(&pC->phys);
-
-        /* 0x1005FF00 reads car+0x30 and car+0xF80 and writes them back; in
-         * the original those ARE the integrated position and last frame's.
-         * Here the physics owns the state, so the two are mirrored. */
-        pC->car.posPrev = pC->car.pos;
-        pC->car.pos     = BrCarPhysBodyState(&pC->phys.body)->pos;
-
-        (void)BrRaceGateStep(&g_raceRules, &g_aRaceDrv[i]);
-    }
-    ++g_nRaceStep;
+static void HostCarDriveAi(BrDriverCar *pCar)    /* stands for 0x1005E690 */
+{
+    HostCarDrive(pCar);
 }
 
 /* header +0x98, BR_AI_GATE_MAX records of BR_AI_GATE_STRIDE, count at +0x160.
@@ -1440,10 +1493,10 @@ static void RaceDumpHeader(void)
            "+-------+---------------------------------------------------\n");
 }
 
-static void RaceDumpCar(int step, const HostRaceCar *pC, const BrDriver *pD)
+static void RaceDumpCar(int step, const BrCarPhys *pC, const BrDriver *pD)
 {
     const BrRbState *pS =
-        BrCarPhysBodyState((BrRbBodyFull *)(void *)&pC->phys.body);
+        BrCarPhysBodyState((BrRbBodyFull *)(void *)&pC->body);
     BrVec3 p = pS->pos;
     float  world;
 
@@ -1462,9 +1515,22 @@ static void RaceDumpCar(int step, const HostRaceCar *pC, const BrDriver *pD)
                          + pS->angVel.y * pS->angVel.y
                          + pS->angVel.z * pS->angVel.z)),
            (int)pD->f40, (int)pD->f4C,
-           (double)-pC->phys.wheel[0].f1D8, (double)-pC->phys.wheel[1].f1D8,
-           (double)-pC->phys.wheel[2].f1D8, (double)-pC->phys.wheel[3].f1D8,
+           (double)-pC->wheel[0].f1D8, (double)-pC->wheel[1].f1D8,
+           (double)-pC->wheel[2].f1D8, (double)-pC->wheel[3].f1D8,
            (double)world);
+}
+
+/* The gate/lap ladder for the WHOLE field, which is the evidence the physics
+ * dump above cannot give: a car that is not being driven cannot reach a
+ * gate, and a phantom entrant walks the ring by construction. */
+static void RaceDumpLadder(int step)
+{
+    int i;
+    printf("%6d |", step);
+    for (i = 0; i < g_brRaceNDriver; ++i)
+        printf(" %d/%-2d%s", (int)g_aRaceDrv[i].f40, (int)g_aRaceDrv[i].f4C,
+               ((g_aRaceDrv[i].f68 & BR_DRIVER_SKIP) != 0) ? "*" : " ");
+    printf("\n");
 }
 
 /* The surface height under (x, y).  BrGroundProbeZ is a SEGMENT test with a
@@ -1496,10 +1562,25 @@ static int RunRace(int argc, char **argv)
     int       i, cells = 0, planes = 0;
     int32_t   nGates;
 
+    g_cRaceCars    = BR_RACE_FIELD;
+    g_cRacePhantom = BR_RACE_PHANTOM;
     for (i = 4; i < argc; ++i) {
         if (strcmp(argv[i], "-drop") == 0 && i + 1 < argc)
             g_raceDrop = (float)atof(argv[++i]);
+        else if (strcmp(argv[i], "-lead") == 0 && i + 1 < argc)
+            g_raceLead = (float)atof(argv[++i]);
+        else if (strcmp(argv[i], "-spread") == 0 && i + 1 < argc)
+            g_raceSpread = (float)atof(argv[++i]);
+        else if (strcmp(argv[i], "-cars") == 0 && i + 1 < argc)
+            g_cRaceCars = atoi(argv[++i]);
+        else if (strcmp(argv[i], "-phantom") == 0 && i + 1 < argc)
+            g_cRacePhantom = atoi(argv[++i]);
     }
+    if (g_cRaceCars < 0)               g_cRaceCars = 0;
+    if (g_cRaceCars > BR_RACE_FIELD)   g_cRaceCars = BR_RACE_FIELD;
+    if (g_cRacePhantom < 0)            g_cRacePhantom = 0;
+    if (g_cRacePhantom > BR_RACE_SLOTS - g_cRaceCars)
+        g_cRacePhantom = BR_RACE_SLOTS - g_cRaceCars;
 
     if (nSteps < 1)   nSteps = 1;
     if (nSteps > 100000) nSteps = 100000;
@@ -1523,14 +1604,18 @@ static int RunRace(int argc, char **argv)
     }
 
     nGates = RaceLoadGates(&trk);
-    memset(&g_raceRules, 0, sizeof g_raceRules);
-    g_raceRules.aGates      = g_aRaceGate;
-    g_raceRules.nGates      = nGates;
-    g_raceRules.nLaps       = 3;
-    g_raceRules.mode        = 6;      /* BrPhaseActivate_100447D0's value */
-    g_raceRules.nFinished   = 0;
-    g_raceLapLen            = BrAiLapLength(&trk);
-    g_raceRules.pfLapLength = &g_raceLapLen;
+    /* The six fields br_race.h gathers, filled where 0x10019A70's one-time
+     * arm fills them: 0x100BCBE8 (laps), 0x100A9360 (mode), 0x118EE588
+     * (the finishing counter) and the gate ring at 0x106EED70/0x106EEE38. */
+    memset(&g_brRaceRules, 0, sizeof g_brRaceRules);
+    g_brRaceRules.aGates      = g_aRaceGate;
+    g_brRaceRules.nGates      = nGates;
+    g_brRaceRules.nLaps       = 3;
+    g_brRaceRules.mode        = 6;    /* BrPhaseActivate_100447D0's value */
+    g_brRaceRules.nFinished   = 0;
+    g_raceLapLen              = BrAiLapLength(&trk);
+    g_brRaceRules.pfLapLength = &g_raceLapLen;
+    g_pBrRaceTrack            = &trk;
     printf("gate ring: %d gates (header +0x160), lap length %.1f "
            "(path root pts[0].arc)\n", (int)nGates, (double)g_raceLapLen);
 
@@ -1561,9 +1646,9 @@ static int RunRace(int argc, char **argv)
     }
 
     /* --- the field ---------------------------------------------------- */
-    g_cRaceCars = BR_RACE_FIELD;
-    memset(g_aRaceCar, 0, sizeof g_aRaceCar);
-    memset(g_aRaceDrv, 0, sizeof g_aRaceDrv);
+    memset(g_aRacePhys,   0, sizeof g_aRacePhys);
+    memset(g_aRaceCarRec, 0, sizeof g_aRaceCarRec);
+    memset(g_aRaceDrv,    0, sizeof g_aRaceDrv);
 
     for (i = 0; i < g_cRaceCars; ++i) {
         /* REVERSED, which is the driver constructor's own ordering: slot 0
@@ -1583,27 +1668,77 @@ static int RunRace(int argc, char **argv)
             p.z = origin.z;
         p.z += g_raceDrop;
 
-        BrCarPhysInit(&g_aRaceCar[i].phys, NULL);
+        BrCarPhysInit(&g_aRacePhys[i], NULL);
         /* Everything past the front row is AI in the original (0x10019A70
          * installs 0x1005E690 for every slot past the human count). */
-        g_aRaceCar[i].phys.fAi = (i == 0) ? 0 : 1;
-        BrCarPhysPlace(&g_aRaceCar[i].phys, &p, yaw);
+        g_aRacePhys[i].fAi = (i == 0) ? 0 : 1;
+        BrCarPhysPlace(&g_aRacePhys[i], &p, yaw);
 
-        g_aRaceDrv[i].pCar = &g_aRaceCar[i].car;
+        g_aRaceDrv[i].pCar = &g_aRaceCarRec[i];
         g_aRaceDrv[i].f64  = i;
-        g_aRaceCar[i].car.pos     = p;
-        g_aRaceCar[i].car.posPrev = p;
+        g_aRaceCarRec[i].pos        = p;
+        g_aRaceCarRec[i].posPrev    = p;
+        g_aRaceCarRec[i].pfnControl = (i == 0) ? HostCarDrive : HostCarDriveAi;
     }
 
+    /* Counted from here, so the seeds below land in the grid hole with the
+     * eight 0x1005F310 calls the one-time arm would make. */
+    /* 0x100B2F00 / 0x100B2F04 / 0x100B3858, and the AI controller's address
+     * the identity test at 0x10061F82 wants.  Set BEFORE the phantom slots,
+     * because seeding one runs the ported arm and the arm reads these. */
+    g_pBrRaceDriver      = g_aRaceDrv;
+    g_pBrRaceCar         = g_aRaceCarRec;
+    g_brRaceNDriver      = g_cRaceCars + g_cRacePhantom;
+    g_brRaceNCar         = g_cRaceCars;
+    g_brRaceNEntrant     = g_cRaceCars;
+    g_pfnBrRaceAiControl = HostCarDriveAi;
+    g_brRaceStepDt       = BR_PHYS_DT;
+    g_brRaceSubstate     = 0;      /* the one-time arm has not run yet */
+    g_brRaceTick         = 1;      /* a fixed-timestep host ticks every frame */
+
+    /* The phantom slots.  0x1005F310 -> 0x1005EB90 would derive each one's
+     * lap, gate and progress from its distance along the track;
+     * BrRaceSeedPhantom does the part that needs no geometry (the slot at
+     * the LEAD, gate 0) and the walk below does the rest by running the
+     * REAL arm forward -- so a slot that starts a third of a lap round the
+     * ring gets there through 0x10061F60 and 0x1005FF00 rather than through
+     * a gate index this file made up.  Inventing one is exactly the
+     * inconsistency BrRaceSeedPhantom's banner describes, and it shows up
+     * as a gate counter that walks backwards for ever. */
+    if (!(g_raceSpread > 0.0f) && g_cRacePhantom > 0)
+        g_raceSpread = g_raceLapLen / (float)g_cRacePhantom;
+    for (i = g_cRaceCars; i < g_cRaceCars + g_cRacePhantom; ++i) {
+        g_aRaceDrv[i].pCar = NULL;
+        g_aRaceDrv[i].f64  = i;
+        if (BrRaceSeedPhantom(&g_aRaceDrv[i], g_raceLead) != 0) {
+            printf("  (slot %d: no path to seed a phantom on)\n", i);
+            continue;
+        }
+        {
+            float d = g_raceSpread * (float)(i - g_cRaceCars);
+            int   n = (int)(d / BR_RS_PHANTOM_STEP);
+            while (n-- > 0)
+                BrRaceDriverStep(&g_aRaceDrv[i]);
+        }
+    }
+    /* The walk above is placement, not racing: its lap times and finishing
+     * order are not the race's. */
+    g_brRaceRules.nFinished = 0;
+
+    BrRaceStepHoleReset();
+
     (void)BrCollGridLoaded(&cells, &planes);
-    printf("field: %d cars, stride sizeof(HostRaceCar)=%zu "
-           "(original 0x2B68; see the banner)\n",
-           g_cRaceCars, sizeof(HostRaceCar));
+    printf("field: %d cars + %d phantom slots = %d drivers "
+           "(0x100B2F00 is 0x14 in the original)\n"
+           "       car record %zu B, physics %zu B (one 0x2B68 blob there)\n",
+           g_cRaceCars, g_cRacePhantom, g_brRaceNDriver,
+           sizeof(BrDriverCar), sizeof(BrCarPhys));
     printf("collision cache after placement: %d of 4 cells hold %d planes\n",
            cells, planes);
 
     /* --- install the step --------------------------------------------- */
-    BrGameStepSet(HostRaceStep);
+    /* THE PORTED 0x10019A70, and BrGameStepId is now entitled to say so. */
+    BrRaceStepInstall();
     printf("game step 0x106E79F4 <- %s\n", BrGameStepName(BrGameStepId()));
     if (BrGameStepPump(0) != -1) {
         printf("  (unexpected: a non-2 engine state claimed to run)\n");
@@ -1616,14 +1751,40 @@ static int RunRace(int argc, char **argv)
            "the world point instead of on the wheel's body-local mount\n"
            "offset.  When the two disagree, that gap IS the grid-key defect\n"
            "br_phys.h documents, measured rather than described.\n");
+    if (g_cRacePhantom > 0)
+        printf("\nThe LADDER line under each one is lap/gate for every slot in\n"
+               "driver order -- %d cars then %d phantom entrants -- with `*` for\n"
+               "the +0x68 bit 0x1005FF00 sets at the flag.  A car cannot reach a\n"
+               "gate because nothing writes its drive torque (br_carphys.h); a\n"
+               "phantom is walked round the ring by 0x1005ECF0, which is what\n"
+               "0x10061F60's carless arm does in the original.\n",
+               g_cRaceCars, g_cRacePhantom);
     RaceDumpHeader();
 
     g_nRaceStep = 0;
-    for (i = 0; i < nSteps; ++i) {
-        int rc = BrGameStepPump(BR_GAMESTATE_STEP);
-        if (rc != 1) { printf("step slot did not run (rc=%d)\n", rc); break; }
-        if (i < 8 || (i % ((nSteps / 12) + 1)) == 0 || i == nSteps - 1)
-            RaceDumpCar(i + 1, &g_aRaceCar[0], &g_aRaceDrv[0]);
+    {
+        int nEvery = (nSteps / 12) + 1;
+        int iLights = -1;
+
+        for (i = 0; i < nSteps; ++i) {
+            int rc = BrGameStepPump(BR_GAMESTATE_STEP);
+            if (rc != 1) { printf("step slot did not run (rc=%d)\n", rc); break; }
+            ++g_nRaceStep;
+            if (g_brRaceLights != iLights) {
+                printf("      *** step %d: start lights 0x105BC8F8 %d -> %d "
+                       "(script entry %d, %.2f s)%s\n",
+                       i + 1, iLights, (int)g_brRaceLights,
+                       (int)g_brRaceScript, (double)g_brRaceLightT,
+                       (g_brRaceLights == BR_RS_LIGHTS_GO) ? "  GREEN" : "");
+                iLights = g_brRaceLights;
+                RaceDumpHeader();
+            }
+            if (i < 8 || (i % nEvery) == 0 || i == nSteps - 1) {
+                RaceDumpCar(i + 1, &g_aRacePhys[0], &g_aRaceDrv[0]);
+                if (g_cRacePhantom > 0)
+                    RaceDumpLadder(i + 1);
+            }
+        }
     }
 
     (void)BrCollGridLoaded(&cells, &planes);
@@ -1633,16 +1794,34 @@ static int RunRace(int argc, char **argv)
     for (i = 0; i < BR_CP_HOLE_COUNT; ++i)
         printf("    %-44s %u\n", BrCarPhysHoleName(i),
                (unsigned)g_aBrCarPhysHole[i]);
+    printf("0x10019A70 NOT ported, entered as counted no-ops:\n");
+    for (i = 0; i < BR_RS_HOLE_COUNT; ++i)
+        printf("    %-44s %u\n", BrRaceStepHoleName(i),
+               (unsigned)g_aBrRaceStepHole[i]);
 
-    printf("\nfinal state of the whole field (slot: grid box, position):\n");
-    for (i = 0; i < g_cRaceCars; ++i) {
-        const BrRbState *pS = BrCarPhysBodyState(&g_aRaceCar[i].phys.body);
-        printf("  slot %2d box %2d  (%8.2f %8.2f %7.2f)  lap %d gate %d%s\n",
-               i, g_cRaceCars - 1 - i,
-               (double)pS->pos.x, (double)pS->pos.y, (double)pS->pos.z,
-               (int)g_aRaceDrv[i].f40, (int)g_aRaceDrv[i].f4C,
-               (i == 0) ? "   <- human slot" : "");
+    printf("\nfinal state of the whole field:\n");
+    for (i = 0; i < g_brRaceNDriver; ++i) {
+        const BrDriver *pD = &g_aRaceDrv[i];
+        const char     *pszFin =
+            ((pD->f68 & BR_DRIVER_SKIP) != 0) ? "  FINISHED" : "";
+
+        if (pD->pCar != NULL) {
+            const BrRbState *pS = BrCarPhysBodyState(&g_aRacePhys[i].body);
+            printf("  slot %2d box %2d  car     (%8.2f %8.2f %7.2f)  "
+                   "lap %d gate %-3d rank %d%s%s\n",
+                   i, g_cRaceCars - 1 - i,
+                   (double)pS->pos.x, (double)pS->pos.y, (double)pS->pos.z,
+                   (int)pD->f40, (int)pD->f4C, (int)pD->pCar->fFF8,
+                   (i == 0) ? "   <- human slot" : "", pszFin);
+        } else {
+            printf("  slot %2d         phantom (%8.2f %8.2f %7.2f)  "
+                   "lap %d gate %-3d rank %d  progress %.1f%s\n",
+                   i, (double)pD->f00.x, (double)pD->f00.y, (double)pD->f00.z,
+                   (int)pD->f40, (int)pD->f4C, (int)pD->f54,
+                   (double)pD->f50, pszFin);
+        }
     }
+    printf("finishing counter 0x118EE588: %d\n", (int)g_brRaceRules.nFinished);
 
     BrCollGridRelease();
     BrTrackClose(&trk);
@@ -1655,9 +1834,6 @@ int main(int argc, char **argv)
     BrGfx *gfx = NULL;
     BrTexture tex; BrImage img; int haveTex = 0;
     int windowed = (argc > 1 && strcmp(argv[1], "-w") == 0);
-    /* `-w [n]` picks which of the sixteen ported builders to show. Default 1
-     * is 0x1004D640, which is what this mode showed when it took no argument. */
-    int wBuilder = (windowed && argc > 2) ? atoi(argv[2]) : 1;
     int nCtl, frames = 0;
 
     printf("Boss Rally -- host boot\n");
@@ -1977,15 +2153,9 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    /* A real screen builder. In windowed mode the user chooses which. */
-    if (windowed) {
-        if (wBuilder < 0 || wBuilder >= BR_NBUILDERS) wBuilder = 1;
-        printf("\nrunning builder %s ...\n", g_aBuilders[wBuilder].pszName);
-        g_aBuilders[wBuilder].pfn(ph);
-    } else {
-        printf("\nrunning builder 0x1004D640 ...\n");
-        BrExt_1004D640(ph);
-    }
+    /* A real screen builder, 0x1004D640 (7 controls per packet 73). */
+    printf("\nrunning builder 0x1004D640 ...\n");
+    BrExt_1004D640(ph);
     nCtl = DumpPhase(ph);
     DumpRects(ph);
     printf("\ncontrols built: %d   setText=%d place=%d\n",
@@ -2010,11 +2180,17 @@ int main(int argc, char **argv)
          * Nothing between the key and the selection is this file's logic. */
         {
             BrPhase_ *phCur = ph;
+            /* HARNESS-ONLY builder paging, restored -- see BrKey in br_gfx.h.
+             * `[` and `]` re-run a different one of the sixteen builders onto
+             * the live phase, so any screen can be reached without navigating
+             * to it. This is the harness's, not the game's: the retail title
+             * has no such key and no way to jump between screens. */
+            int iBuilder = -1;
             g_nav.pAA2904 = ph;
             while (gfx && BrGfxPumpEvents(gfx)) {
                 BrKey k;
                 BrPhase_ *phBefore = phCur;
-                int fire = 0, dir = 0, page = 0;
+                int fire = 0, dir = 0;
 
                 while ((k = BrGfxPollKey(gfx)) != BR_KEY_NONE) {
                     switch (k) {
@@ -2033,33 +2209,26 @@ int main(int argc, char **argv)
                                 (uint16_t)(NavPage(phCur)->cSel - 1);
                         fire = 1;
                         break;
-                    /* HARNESS-ONLY. The game has no screen-paging key; a
-                     * screen is reached by activating a control, and most of
-                     * those hooks are unported. This walks the sixteen ported
-                     * builders directly so all of them can be SEEN, which is
-                     * not the same thing as their being reachable. */
-                    case BR_KEY_PREV_SCREEN: page = -1; break;
-                    case BR_KEY_NEXT_SCREEN: page = +1; break;
+                    /* Paging rebuilds the phase in place, so it must not
+                     * also feed a verb into the frame below -- the rebuilt
+                     * page would receive a stale up/down against a control
+                     * list that no longer exists. */
+                    case BR_KEY_PREV_SCREEN:
+                    case BR_KEY_NEXT_SCREEN:
+                        iBuilder += (k == BR_KEY_NEXT_SCREEN) ? 1 : -1;
+                        if (iBuilder < 0)             iBuilder = BR_NBUILDERS - 1;
+                        if (iBuilder >= BR_NBUILDERS) iBuilder = 0;
+                        printf("[harness] builder %d/%d: %s\n",
+                               iBuilder, BR_NBUILDERS - 1,
+                               g_aBuilders[iBuilder].pszName);
+                        fflush(stdout);
+                        g_aBuilders[iBuilder].pfn(phCur);
+                        g_cCap = 0;
+                        BuildCaptions(gfx, phCur);
+                        dir = 0; fire = 0;
+                        break;
                     default: break;
                     }
-                }
-
-                if (page) {
-                    BrPhase_ *phNew;
-                    wBuilder = (wBuilder + page + BR_NBUILDERS) % BR_NBUILDERS;
-                    phNew = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
-                    if (phNew && BrOptObjCtor(phNew)) {
-                        g_nSetText = g_nPlace = g_nCap = 0;
-                        g_aBuilders[wBuilder].pfn(phNew);
-                        phCur = phNew;
-                        g_scr.wAA286C = 0;
-                        BuildCaptions(gfx, phCur);
-                        printf("  [%2d/%d] %-22s  %d captions\n",
-                               wBuilder, BR_NBUILDERS,
-                               g_aBuilders[wBuilder].pszName, g_nCap);
-                        fflush(stdout);
-                    }
-                    continue;       /* draw the new screen next iteration */
                 }
 
                 g_pendDir  = dir;

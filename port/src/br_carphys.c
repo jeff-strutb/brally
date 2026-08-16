@@ -43,7 +43,7 @@ BrCarPhysHooks g_brCarPhysHooks;
 uint32_t       g_aBrCarPhysHole[BR_CP_HOLE_COUNT];
 
 static const char *const g_aBrCarPhysHoleName[BR_CP_HOLE_COUNT] = {
-    "0x10066AD0+0x10067710 OBB vs track (+8 callees)",
+    "0x10067710 OBB response (+0x10065C80)",
     "0x10068F80 car vs car  (1444 B)"
 };
 
@@ -1018,20 +1018,22 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
     float           m22;
     BrCollRespFrame frame;
 
+    /* 0x10067C4E..0x10067C88: the candidate list's head and its bump cursor
+     * are cleared once per frame, before the gather. */
+    BrCollRespListReset();
+
     /* 0x10067CAB..0x10067CD6: the BROAD PHASE, once per frame.  Three 0.1f
      * immediates go into the scale slots, 0x1006DDD0 builds the box matrix
      * out of them and the body matrix, and 0x10066AD0(body, matBox) gathers
-     * the nearby triangles into the list at 0x11778198.  The gather and
-     * everything downstream of it is BR_CP_HOLE_BOX; the matrix build is
-     * done anyway, because it is also what the in-loop rebuild overlaps with
-     * and leaving it out would hide the aliasing br_collresp.h documents. */
+     * the nearby triangles into the list at 0x11778198.  PORTED -- see
+     * br_collresp.h.  With the box coming out of the .rca the scale is
+     * finite and this really runs; before the car-data loader landed every
+     * transformed vertex was a NaN and the gather rejected everything. */
     memset(&frame, 0, sizeof frame);
     BrCollRespBuildBoxMatrix(&frame, &pBody->m, BR_CR_BROAD_SCALE,
                              BR_CR_BROAD_SCALE, BR_CR_BROAD_SCALE);
-    ++g_aBrCarPhysHole[BR_CP_HOLE_BOX];
-    if (g_brCarPhysHooks.pfnCollide != NULL) {
-        g_brCarPhysHooks.pfnCollide(pCar);
-    }
+    (void)BrCollRespBroadPhase(pBody, BrCollRespFrameMat(&frame));
+
     if (BrCollRespBoxDegenerate(pCar->f1DC, pCar->f1E0, pCar->f1E4)) {
         ++g_cBrCollRespDegenerate;
     }
@@ -1074,6 +1076,14 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
                                  BR_CR_ONE / pCar->f1DC,
                                  BR_CR_ONE / pCar->f1E0,
                                  BR_CR_ONE / pCar->f1E4);
+
+        /* 0x10067D9B: 0x10067710(body, matBox).  STILL A HOLE -- it and its
+         * impulse solver 0x10065C80 are the RESPONSE, the consumer of the
+         * list the broad phase above has just filled. */
+        ++g_aBrCarPhysHole[BR_CP_HOLE_BOX];
+        if (g_brCarPhysHooks.pfnCollide != NULL) {
+            g_brCarPhysHooks.pfnCollide(pCar);
+        }
 
         /* 0x10067DBA: t -= 1/120, stored back, then compared.
          * `fcomp` + `test ah,0x41` + `je <loop>` continues while BOTH C0 and
@@ -1313,17 +1323,14 @@ void BrCarPhysInit(BrCarPhys *pCar, const float aMount[4][2])
     pCar->body.mass   = BR_CP_BODY_MASS;
     BrCpInitInertia(&pCar->body);
 
-    /* car+0x340..0x34C, Glide 0x1005BD40 / 0x1005BD42 / 0x1005BD48 /
-     * 0x1005BD4E: the collision box.  ebx is 0 and edi is 0x40000000 at those
-     * four stores, so the constructor's box is (0, 0, 2.0) with a zero Z
-     * offset -- degenerate, and deliberately so: 0x10059A80 replaces all four
-     * from the car-data record.  Written out rather than left to the memset
-     * because the 2.0f is a real immediate and because a reader has to be
-     * able to see that this IS the constructor's answer. */
-    pCar->f1DC = 0.0f;
-    pCar->f1E0 = 0.0f;
-    pCar->f1E4 = 2.0f;
-    pCar->f1E8 = 0.0f;
+    /* car+0x340..0x34C, the collision box.  The constructor 0x1005BCC0 does
+     * NOT write it -- no store anywhere in it carries a displacement of
+     * 0x340 -- so it starts as the memset above leaves it, all zero, and
+     * 0x1006FD90 is what fills it.  See br_cardata.h for why this header and
+     * br_collresp.h used to say otherwise.
+     *
+     * The zeros are left implicit rather than written out, because writing
+     * them would once again claim they are a constructor's answer. */
 
     /* car+0x31C / +0x320 */
     pCar->body.f1B8 = (BR_CP_SPRING_BASE
@@ -1407,6 +1414,44 @@ void BrCarPhysInit(BrCarPhys *pCar, const float aMount[4][2])
 
     pCar->save = *pState;
     pCar->next = *pState;
+
+    /* 0x1005E7B7: the entrant's start-of-race pass calls 0x1006FD90 on the
+     * freshly constructed car.  car+0x29C4 was set by 0x1006FCB0 just before
+     * the constructor ran; here it falls back to the default record when
+     * nothing set it.  See br_carphys.h's DEVIATION. */
+    if (g_pBrCarPhysCarData == NULL) {
+        g_pBrCarPhysCarData = BrCarDataDefault();
+    }
+    BrCarPhysApplyCarData(pCar, g_pBrCarPhysCarData);
+}
+
+/* ==================================================================== */
+/* 0x1006FD90 -- the car-data apply                                      */
+/* ==================================================================== */
+
+const BrCarData *g_pBrCarPhysCarData;   /* car+0x29C4 */
+
+void BrCarPhysApplyCarData(BrCarPhys *pCar, const BrCarData *pData)
+{
+    if (pData == NULL) {
+        /* 0x1006FD90 dereferences car+0x29C4 unconditionally; the original
+         * cannot reach here with it NULL because 0x1006FCB0 always sets it.
+         * This port can, and a crash would be a worse answer than a measured
+         * hole -- BrCollRespBoxDegenerate is what reports it. */
+        return;
+    }
+
+    /* 0x1006FEB9..0x1006FEE3: four dwords, +0xC8..+0xD4 -> car+0x340..0x34C
+     * == body+0x1DC..+0x1E8.  Plain 32-bit moves, no conversion. */
+    pCar->f1DC = pData->boxX;
+    pCar->f1E0 = pData->boxY;
+    pCar->f1E4 = pData->boxZ;
+    pCar->f1E8 = pData->boxOffZ;
+
+    /* 0x1006FEF1: `mov [ebx+0x29c4], ebp` with ebp == 0 -- the record is
+     * consumed once.  Modelled on the caller's pointer rather than on a
+     * member, because BrCarPhys has no +0x29C4. */
+    g_pBrCarPhysCarData = NULL;
 }
 
 void BrCarPhysPlace(BrCarPhys *pCar, const BrVec3 *pPos, float yaw)

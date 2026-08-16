@@ -17,13 +17,12 @@
  * with the loop's remaining time at 0x10067CFE):
  *
  *   0x10067C9A  a 0x4C-byte frame is carved into a 12-byte SCALE vector at
- *               R-0x4C and a 0x40-byte MATRIX at R-0x40.  They OVERLAP: the
- *               matrix runs R-0x40..R-0x01 and the scale's notional
- *               BrMat4 tail (+0x30..+0x38, which 0x1006DDD0 reads as the
- *               translation) lands on R-0x1C..R-0x14, i.e. on the matrix's
- *               own m[2][1..3].  That is not a misreading of the frame; the
- *               two `lea`s are 0xC apart and 0x1006DDD0 writes 0x40 bytes.
- *               See BrCollRespFrame.
+ *               R-0x4C and a 0x40-byte MATRIX at R-0x40.  The two `lea`s
+ *               really are 0xC apart and the matrix really does run
+ *               R-0x40..R-0x01, so the scale's notional BrMat4 tail would
+ *               land on the matrix -- but NOTHING READS IT.  See the
+ *               correction below; this header used to build a whole theory
+ *               on that overlap and it was wrong.
  *   0x10067CC3  BrMat4BuildScaledTransposed(&body->m, matBox, scale) with
  *               scale == (0.1, 0.1, 0.1) -- three 0x3DCCCCCD immediates --
  *               then 0x10066AD0(body, matBox): the BROAD PHASE, once per
@@ -101,27 +100,44 @@
  * the record were not zeroed.  Stated rather than hidden.
  *
  * ======================================================================
- * WHAT IS STILL MISSING, and the measurement that pins it
+ * TWO CORRECTIONS THIS HEADER OWES, both of them the same mistake
  * ======================================================================
- * 0x10066AD0 (the broad phase) and 0x10067710 (the response) are an
- * OBB-versus-triangle system.  The box is the car's, and its three half
- * extents come from body+0x1DC / +0x1E0 / +0x1E4 with body+0x1E8 as a Z
- * offset -- BrCarPhys's f1DC / f1E0 / f1E4 / f1E8.
+ * 1. THE BOX IS NOT THE CONSTRUCTOR'S (0, 0, 2, 0).  This header used to say
+ *    that Glide 0x1005BCC0 writes f1DC/f1E0/f1E4/f1E8 at 0x1005BD40 / 42 /
+ *    48 / 4E and that 0x10059A80 later replaces them from a car-data
+ *    record's +0x10..+0x1C, filled by 0x10063B80 out of 0x10B73668.
+ *    EVERY PART OF THAT IS THE SAME CONFUSION: car+0x1DC (the live
+ *    BrRbState, body+0x78) mistaken for body+0x1DC (== car+0x340).  The
+ *    four stores at 0x1005BD40 are the car's initial pos/vel/quat, and
+ *    0x10059A80 is slice8_83.h's BrCarRecordFromState.  The real writer is
+ *    0x1006FD90, out of the .rca image at +0xC8..+0xD4; br_cardata.h has
+ *    the whole chain and the evidence.
  *
- * The car constructor (Glide 0x1005BCC0, the twin of the D3D 0x10062C50 that
- * br_carphys.h already quotes -- 0x1005BCCB writes car+0xE84 = 1, exactly the
- * D3D 0x10062C5B br_carphys.h names) sets them at 0x1005BD40 / 0x1005BD42 /
- * 0x1005BD48 / 0x1005BD4E to
+ * 2. 0x1006DDD0 TAKES ITS TRANSLATION FROM ARG1, NOT ARG3, and the "frame
+ *    overlap" this header built on the opposite reading does not exist.
+ *    The read is `fld [ecx+0x30]` at 0x1006DE37 with ecx loaded at
+ *    0x1006DE2C from `[esp+0x24]`.  ESP IS R-0x20 THERE -- four pushes and
+ *    a `sub esp,0x10` down from entry -- so `[esp+0x24]` is R+4, arg1, the
+ *    BODY MATRIX.  The earlier `mov ebp,[esp+0x24]` at 0x1006DDD9 has the
+ *    same displacement but esp is R-0x18, one push higher, so THAT one is
+ *    R+0xC, arg3, the scale.  One displacement, two arguments, two pushes
+ *    in between -- the exact trap br_phys.h's GRID-KEY ADJUDICATION spells
+ *    out, walked into again from the other side.
  *
- *      f1DC = 0.0f    f1E0 = 0.0f    f1E4 = 2.0f    f1E8 = 0.0f
+ *    It matters because it is the difference between a working collision
+ *    system and none: with the translation taken from the scale, the box
+ *    matrix has no translation at all and the transform is about the WORLD
+ *    ORIGIN.  A car at (927, 361) would then see every track triangle
+ *    ninety box-widths away and the OBB system could never fire on any
+ *    track -- which the shipped game plainly does not exhibit.
  *
- * and the real values arrive later, from 0x10059A80, which copies a car-data
- * record's +0x10 / +0x14 / +0x18 / +0x1C into them.  That record is filled by
- * 0x10063B80 out of 0x10B73668 + 24 * (...) -- an address inside .data's
- * VIRTUAL range but far past its 0x41E00 bytes of raw image, i.e. it is
- * filled from the CARS/ files at run time.  This port does not load them.
+ *    slice3_44.c's BrMat4BuildScaledTransposed still reads pS->m[3][*] and
+ *    is not this module's file to edit, so the correction is FILED and
+ *    BrCollRespBuildBoxMatrix does the build itself.  Whoever owns
+ *    slice3_44.c should fix it there and delete the copy here; note that
+ *    test_slice3_44.c asserts the wrong behaviour today.
  *
- * ONE THING THE NEXT PASS MUST NOT INHERIT.  0x10065C80, the impulse solver
+ * ONE MORE THING THE NEXT PASS MUST NOT INHERIT.  0x10065C80, the solver
  * at the end of that chain, calls 0x1006DD80.  That is 0x10074B20 in the D3D
  * build, which slice3_44.h declares as `BrVec3SubRepeated` and documents as a
  * PRESERVED BUG -- "the outer loop resets the cursor, so the same three
@@ -135,13 +151,14 @@
  * this module's to edit, so the correction is filed rather than made, and
  * whoever ports 0x10065C80 must not reach for BrVec3SubRepeated as it stands.
  *
- * With f1DC == f1E0 == 0 the reciprocals at 0x10067CEF are infinite, so the
- * box matrix is degenerate and every transformed triangle vertex classifies
- * as "outside" -- 0x10066260's `fcom 0.5` + `test ah,0x41` sends a NaN down
- * the same arm as a value below -0.5, so all three vertices agree and the
- * broad phase rejects.  The OBB system is therefore INERT, not explosive,
- * until somebody loads the car data.  That is the state this module ships in
- * and it is measured, not assumed: BrCollRespBoxDegenerate() reports it.
+ * WHY THE BOX MATTERED SO MUCH.  With f1DC == f1E0 == 0 the reciprocals at
+ * 0x10067CEF are infinite, so the box matrix is all infinities and NaNs and
+ * every transformed vertex classifies as "outside" -- 0x10066260's
+ * `fcom 0.5` + `test ah,0x41` sends a NaN down the same arm as a value below
+ * -0.5, so all three vertices agree and the broad phase rejects.  The OBB
+ * system was INERT, not explosive, and that is why porting it was pointless
+ * until the car data landed.  It is measured, not assumed:
+ * BrCollRespBoxDegenerate() and g_cBrCollRespGathered report both halves.
  */
 #ifndef BR_COLLRESP_H
 #define BR_COLLRESP_H

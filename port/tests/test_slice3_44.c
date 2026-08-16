@@ -266,8 +266,13 @@ static void test_build_scaled_transposed(void)
             a.m[i][j] = (float)(i * 3 + j + 1);
     /* the three "scale" floats live in row 0 of pS */
     s.m[0][0] = 2.0f; s.m[0][1] = 0.5f; s.m[0][2] = -1.0f;
-    /* the translation lives in row 3 of pS */
-    s.m[3][0] = 4.0f; s.m[3][1] = -6.0f; s.m[3][2] = 8.0f;
+    /* Row 3 of BOTH is populated, with DIFFERENT values, and that is the
+     * whole point of this test: the translation source is arg1, and a test
+     * that leaves pA's row 3 zeroed passes under either reading.  It did.
+     * These two lines are the falsifier -- swap pA for pS in the code under
+     * test and the CLOSE() checks below fail. */
+    a.m[3][0] = 4.0f;  a.m[3][1] = -6.0f; a.m[3][2] = 8.0f;   /* the real one */
+    s.m[3][0] = -1.5f; s.m[3][1] = 11.0f; s.m[3][2] = -3.25f; /* the decoy */
 
     BrMat4BuildScaledTransposed(&a, &out, &s);
 
@@ -278,8 +283,11 @@ static void test_build_scaled_transposed(void)
     }
     CHECK(out.m[3][3] == 1.0f);
 
-    /* the translation row is -pS.row3 pushed through the matrix just built */
-    t.x = -s.m[3][0]; t.y = -s.m[3][1]; t.z = -s.m[3][2];
+    /* The translation row is -pA.row3 -- ARG1 -- pushed through the matrix
+     * just built.  This asserted -s.row3 until the ESP trace at
+     * slice3_44.c:232 was done properly; `a` and `s` are given different
+     * row-3 values by the setup above precisely so this distinguishes them. */
+    t.x = -a.m[3][0]; t.y = -a.m[3][1]; t.z = -a.m[3][2];
     BrMat4MulVec3Transposed(&expect, &out, &t);
     CLOSE(out.m[3][0], expect.x);
     CLOSE(out.m[3][1], expect.y);

@@ -146,13 +146,19 @@
  *     assumed: its third gate rejects a corner whose normal-velocity
  *     magnitude EXCEEDS 0.1, so it fires on a car that has come to rest
  *     balanced on one or two wheels and never on one that is still moving.
- *   - 0x10066AD0 + 0x10067710 remain, as BR_CP_HOLE_BOX.  They are an OBB
- *     versus triangle system and the box comes from f1DC/f1E0/f1E4/f1E8,
- *     which the constructor leaves at (0, 0, 2, 0) and 0x10059A80 fills from
- *     a car-data record this port does not load.  With two extents at zero
- *     0x10067C30's reciprocals are infinite, so the OBB chain would be inert
- *     even if it were transcribed; BrCollRespBoxDegenerate() measures that
- *     rather than leaving it as a claim.
+ *   - 0x10066AD0 IS PORTED, with its six callees, as BrCollRespBroadPhase.
+ *     It was pointless before, and that is the useful part of the story:
+ *     the box comes from f1DC/f1E0/f1E4/f1E8, which nothing in this port
+ *     filled, and with two extents at zero 0x10067C30's reciprocals are
+ *     infinite, so the whole OBB chain classified every triangle out.  The
+ *     box is now loaded from the .rca by 0x1006FD90 (br_cardata.h) and the
+ *     gather runs: g_cBrCollRespGathered counts what it finds.
+ *   - 0x10067710 remains, as BR_CP_HOLE_BOX, together with its impulse
+ *     solver 0x10065C80.  It is the RESPONSE -- the consumer of the list
+ *     the broad phase fills -- and it is the half that writes `next` back,
+ *     so nothing the car does can change until it lands.  NOTE that the
+ *     hole is now counted ONCE PER SUBSTEP (0x10067D9B) rather than once
+ *     per frame, because it no longer stands for the once-per-frame gather.
  *   - 0x10068F80 remains, as BR_CP_HOLE_CARCAR.  It is CAR VERSUS CAR only:
  *     it walks the entrant array at 0x10AF0858 and tests pairs of car+0x1DC
  *     positions against 5.0f (0x10077BDC).  Nothing in it can touch the
@@ -224,6 +230,7 @@
 
 #include "br_vec.h"
 #include "br_mat.h"
+#include "br_cardata.h"   /* BrCarData -- the .rca record 0x1006FD90 reads   */
 #include "br_phys.h"      /* BrGroundHit, BrWheelSuspensionSetZ, BR_PHYS_DT  */
 #include "slice3_42.h"    /* BrRbBodyFull, BrRbForce, BrRbAccumAll, ...      */
 #include "slice3_44.h"    /* BrRbState and the four integrator primitives    */
@@ -460,17 +467,25 @@ typedef struct BrCarPhys {
     BrRbState    save;              /* car+0x278 == body+0x114              */
     BrRbState    next;              /* car+0x2BC == body+0x158              */
 
-    /* car+0x340..0x34C == body+0x1DC..+0x1E8.  THE CAR'S COLLISION BOX: two
-     * half-extents' worth of full extent in X and Y, a full extent in Z, and
-     * a Z offset.  0x10067C30 reciprocates the first three for the OBB
-     * transform and 0x10066D70 halves them for its corner.
+    /* car+0x340..0x34C == body+0x1DC..+0x1E8.  THE CAR'S COLLISION BOX: the
+     * three FULL extents and a Z offset.  0x10067C30 reciprocates the first
+     * three for the OBB transform (so the box becomes the unit cube
+     * 0x10066260 classifies against +-0.5) and 0x10066D70 halves them for its
+     * corner.
      *
-     * The car constructor, Glide 0x1005BCC0 (the twin of the D3D 0x10062C50
-     * this header already quotes -- 0x1005BCCB is the `car+0xE84 = 1` that
-     * 0x10062C5B is), writes them at 0x1005BD40 / 0x1005BD42 / 0x1005BD48 /
-     * 0x1005BD4E as 0, 0, 2.0f, 0.  The REAL values arrive from 0x10059A80,
-     * which copies a car-data record's +0x10..+0x1C over them, and that
-     * record comes off the disc.  br_collresp.h has the whole trail. */
+     * WHERE THEY COME FROM, corrected.  This header used to say the
+     * constructor (Glide 0x1005BCC0) writes them at 0x1005BD40 / 42 / 48 / 4E
+     * as (0, 0, 2.0f, 0) and that 0x10059A80 then replaces them from a
+     * car-data record's +0x10..+0x1C.  BOTH ARE THE SAME MISREADING: those
+     * two functions address car+0x1DC, which is the live BrRbState
+     * (body+0x78), not body+0x1DC == car+0x340.  The four stores at
+     * 0x1005BD40.. are the initial pos/vel/quat this module already writes as
+     * BrCarPhysInit's identity state at (0, 0, 2.0).
+     *
+     * The ONLY writer of car+0x340..+0x34C in either image is 0x1006FD90, at
+     * 0x1006FEBF / C5 / D1 / DD, out of the car-data object at car+0x29C4
+     * offsets +0xC8..+0xD4.  br_cardata.h has the whole chain from the disc;
+     * BrCarPhysApplyCarData below is that copy. */
     float        f1DC, f1E0, f1E4;  /* car+0x340..0x348                      */
     float        f1E8;              /* car+0x34C                             */
 
@@ -529,10 +544,11 @@ typedef struct BrCarPhys {
  * ====================================================================== */
 
 typedef struct BrCarPhysHooks {
-    /* 0x10066AD0 + 0x10067710 and their eight transitive callees -- the
-     * OBB-versus-triangle broad phase and impulse response.  One hook per
-     * substep.  See br_collresp.h for why this is still a hole and what
-     * exactly is missing. */
+    /* 0x10067710 and its impulse solver 0x10065C80 -- the OBB RESPONSE.
+     * One hook per substep.  Its broad phase, 0x10066AD0 and the six
+     * callees under it, IS PORTED now (br_collresp.h) and fills the
+     * candidate list this would consume; what is missing is the half that
+     * writes `next` back. */
     void (*pfnCollide)(BrCarPhys *pCar);
     /* 0x10068F80, 1444 B -- CAR VERSUS CAR.  It walks the entrant array at
      * 0x10AF0858 on a 0x80 stride for g_100B2F00 entrants and tests each
@@ -565,12 +581,65 @@ const char *BrCarPhysHoleName(int i);
  * test_carphys asserts it. */
 BrRbState *BrCarPhysBodyState(BrRbBodyFull *pBody);
 
+/* ======================================================================
+ * 0x1006FD90, 368 B -- THE CAR-DATA APPLY, and the end of the box hole
+ * ======================================================================
+ * __thiscall on the car.  It resets six matrices, copies the physics block
+ * out of the car-data object at car+0x29C4, and clears that pointer
+ * (0x1006FEF1).  Its last four stores are the reason this port has a
+ * collision box at all:
+ *
+ *      car+0x340 = data+0xC8      car+0x348 = data+0xD0
+ *      car+0x344 = data+0xCC      car+0x34C = data+0xD4
+ *
+ * WHAT IS AND IS NOT PORTED, named rather than implied.  Only those four
+ * land here.  The other eleven destinations (car+0xE28..+0xE64) are gear
+ * ratios and three sign-extended bytes; none of them is a member of
+ * BrCarPhys, none is read by anything this module ports, and inventing
+ * members for them would be modelling a record nothing consumes.  They are
+ * decoded and available on BrCarData, so whoever lands the control pass at
+ * 0x1006F2xx does not have to re-derive the offsets.  The six matrix resets
+ * are 0x1006E5A0 on car+0x40..+0x100 and car+0x273C..+0x2890 -- the camera
+ * frames, not this module's object.
+ *
+ * pData == NULL is a no-op, which is the state a run has when the CARS/
+ * directory is absent.  It leaves the box unwritten and
+ * BrCollRespBoxDegenerate reports that; a silent zero would make "no
+ * collisions" unfalsifiable. */
+void BrCarPhysApplyCarData(BrCarPhys *pCar, const BrCarData *pData);
+
+/* car+0x29C4, the car-data object pointer.  0x1006FCB0 writes it before the
+ * constructor runs and 0x1006FD90 clears it after consuming it.
+ *
+ * DEVIATION, and it is the same shape as the one this header already records
+ * for g_pBrCarPhysGrip: the original has an entrant-selection path
+ * (0x1002EBD1 -> 0x10030DE0) that this port does not run, so the pointer
+ * would stay NULL and every car would have no box.  BrCarPhysInit therefore
+ * falls back to BrCarDataDefault() -- car 0, "ce", read off the disc's own
+ * CARS/ce.rca -- when this is NULL.  That makes the path defined; it does not
+ * invent a number, and a run with no CARS/ still reports the box as
+ * degenerate rather than pretending. */
+extern const BrCarData *g_pBrCarPhysCarData;
+
 /* Build the rigid body the way the car constructor (D3D 0x10062C50 /
  * 0x10063000) does: masses, dimensions, inertia, both force lists, the four
  * wheel bodies and their mount points, and the identity state at
- * (0, 0, 2.0).  `aMount` is the four (x, y) mount offsets; pass NULL for the
- * symmetric default the constructor builds out of the car data object's
- * +0x80EC..+0x80FC. */
+ * (0, 0, 2.0) -- and then apply the car data, as 0x1005E7B0 does by calling
+ * 0x1006FD90 on the freshly constructed car.
+ *
+ * `aMount` is the four (x, y) mount offsets; pass NULL for the symmetric
+ * default.
+ *
+ * THE MOUNTS ARE NOT TAKEN FROM THE CAR DATA, and that is deliberate.  The
+ * constructor reads them at object+0x80EC..+0x80FC, which is INSIDE the
+ * big-endian N64 half of the .rca -- the half 0x10030770's 1641-byte swap
+ * pass rewrites and which this port does not transcribe.  BrCarData decodes
+ * them with an explicit byte swap so they are available and checkable, but
+ * applying them would (a) assert a swap that has not been transcribed and
+ * (b) make the wheel mounts front/rear ASYMMETRIC (ce.rca: front x 1.135,
+ * rear x -1.338), which moves the flat-ground settle.  The corner geometry
+ * the force lists encode -- (+-1.5, +-1) -- stays the default until the swap
+ * pass lands. */
 void BrCarPhysInit(BrCarPhys *pCar, const float aMount[4][2]);
 
 /* Place the car: position, and a yaw in radians about Z.  The original does

@@ -24,17 +24,6 @@
 set -e
 mkdir -p build build/host
 
-# Extract the game data BEFORE building, if the builder's disc is reachable.
-#
-# This used to be a separate step nobody was told to run, so a fresh checkout
-# built cleanly, ran, and drew PLACEHOLDER RECTANGLES -- which looks like a
-# broken renderer rather than a missing asset. The extraction is idempotent and
-# silent when the files are already there, and a missing disc is still not an
-# error: the build succeeds and the harness says what it is falling back to.
-if [ -x tools/extract_assets.sh ]; then
-    tools/extract_assets.sh 2>&1 | sed 's/^/  /' || true
-fi
-
 CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -g -D_DARWIN_C_SOURCE -Iport/include -Iport/src/gfx -Iport/tests"
 MFLAGS="-fobjc-arc -Wall -g -Iport/include -Iport/src/gfx"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
@@ -80,8 +69,19 @@ for t in port/tests/test_*.c; do
     fi
 done
 
+# brview's objects come from build.d/brview.deps, NOT a line here.
+# This line was hand-maintained and broke twice: a pass added a BrDlColourScale
+# call to the Metal backend (needs br_dl.o), and br_dl.o in turn needs the
+# clipper planes in slice1_03.o. Neither pass could have known -- brview is not
+# their file. That is precisely the lock build.d/ exists to remove, so brview
+# now uses it too and a pass that adds a dependency edits one line of its own.
 clang $CFLAGS -c port/tools/brview.c -o build/brview.o
-clang build/brview.o build/br_img.o build/br_gfx_metal.o -lm $FW -o build/brview
+bvobjs="build/brview.o"
+for d in $(cat build.d/brview.deps); do
+    case " $bvobjs " in *" build/$d.o "*) continue;; esac
+    [ -f "build/$d.o" ] && bvobjs="$bvobjs build/$d.o"
+done
+clang $bvobjs build/br_gfx_metal.o -lm $FW -o build/brview
 
 # --- the host: links the whole ported core into one runnable binary ---------
 # Unported functions are satisfied by port/host/br_stubs.c, so this links today

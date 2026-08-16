@@ -17,6 +17,27 @@
  * would look. Anything below `gears` is exposed as raw indexed floats until
  * the physics code that consumes it is decompiled; guessing names for them
  * would be inventing knowledge we do not have.
+ *
+ * THAT PHYSICS CODE IS NOW DECOMPILED -- see br_cardata.h, which reads the
+ * same block through 0x1006FD90's own offsets. Two of the guesses above are
+ * confirmed and one is refined:
+ *
+ *   +0x98  is a SEVEN-dword array, not six: 0x1006FE37/0x1006FE54 copies
+ *          `mov ecx,7` + `rep movsd` from there into car+0xE28. Entry 0 is
+ *          0.0f in every shipped car and entries 1..6 are the six ratios
+ *          this header found at +0x9C, so `gears[]` here is that array's
+ *          tail.
+ *   +0x94  the "unknown" dword is not one value: 0x1006FEAC and 0x1006FEEA
+ *          read its bytes at +0x96 and +0x97 SEPARATELY, sign-extended,
+ *          into two int fields of the car.
+ *   +0xC8  four floats -- the CAR'S COLLISION BOX, straight into
+ *          body+0x1DC..+0x1E8. ce.rca (3.5, 2.0, 0.8, 0.7).
+ *
+ * This module is left as it is: it is the byte-level survey the layout came
+ * out of and its tests assert that survey. br_cardata.c is the loader the
+ * physics uses, and it decodes from the same offsets rather than through
+ * BrRca, because the two want different things -- raw indexed words here,
+ * named fields there.
  */
 #ifndef BR_RCA_H
 #define BR_RCA_H

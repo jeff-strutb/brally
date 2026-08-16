@@ -57,6 +57,32 @@ for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
   fi
 done
 
+# CARS/*.RCA are the car definitions, and one field in them is load-bearing for
+# the physics: the four floats at +0xC8 are the car's collision box, which
+# 0x1006FD90 copies into body+0x1DC..+0x1E8. Without them two of the three box
+# extents are zero, 0x10067C30's reciprocals are infinite and the whole
+# OBB-versus-triangle system classifies every triangle out -- i.e. no
+# car-versus-track collision at all. See port/include/br_cardata.h.
+#
+# All sixteen are pulled: they are small (46-87 KB each, 1.2 MB in total) and
+# port/tests/test_collresp.c checks that every one of them yields a usable box,
+# which is what makes "the loader works" mean more than "car 0 parses".
+mkdir -p testdata/cars
+ncar=0; nbadcar=0
+for f in CE ES NS RS SP PS M3 IP LD HM MT CU BB PJ TR MN; do
+  out="testdata/cars/$(echo "$f" | tr 'A-Z' 'a-z').rca"
+  if [ -f "$out" ]; then
+    ncar=$((ncar+1))
+  elif python3 tools/extract_iso.py --extract-path "$BIN" "CARS/$f.RCA" "$out" \
+         >/dev/null 2>&1 && [ -s "$out" ]; then
+    ncar=$((ncar+1))
+  else
+    rm -f "$out"; nbadcar=$((nbadcar+1))
+  fi
+done
+echo "assets: $ncar car definitions in testdata/cars ($nbadcar missing)"
+[ "$nbadcar" -gt 0 ] && echo "        (a missing .rca makes the box tests SKIP, not pass)"
+
 # The SFX directory LISTING. port/tests/test_br_sfx.c checks that every file
 # name the sound bank can build is a real file and that the bank accounts for
 # all 73 of them -- which needs the names and nothing else, so this stays a
@@ -115,54 +141,3 @@ if [ ! -d testdata/images ]; then
 else
   echo "assets: testdata/images already present"
 fi
-
-# --- car models, liveries and sky textures --------------------------------
-# 341 files. The .rca models are what br_dlscene.c and the 3D path consume;
-# Paint/ holds the car liveries the texture pass substitutes at runtime; and
-# cargfx/ holds the sky textures br_n64tex.c already decodes.
-extract_group() {                       # $1 = ISO dir, $2 = out dir, $3 = label
-  [ -d "$2" ] && { echo "assets: $2 already present"; return 0; }
-  mkdir -p "$2"
-  n=0
-  python3 tools/extract_iso.py --list "$BIN" 2>/dev/null \
-    | sed -n "s|^\($1/[A-Za-z0-9_.-]*\).*|\1|p" \
-    | while read -r f; do
-        out="$2/$(basename "$f" | tr 'A-Z' 'a-z')"
-        python3 tools/extract_iso.py --extract-path "$BIN" "$f" "$out" >/dev/null 2>&1
-      done
-  n=$(ls "$2" 2>/dev/null | wc -l | tr -d ' ')
-  echo "assets: extracted $n $3"
-}
-extract_group cars    testdata/cars    "car models (.rca)"
-extract_group Paint   testdata/paint   "car liveries"
-extract_group cargfx  testdata/cargfx  "sky textures"
-
-# --- music ----------------------------------------------------------------
-# TWO sources, and they are different music. The PC disc carries Red Book CD
-# audio; the N64 cartridge carries the XM modules the console version played.
-# The port's audio policy replaces CD playback with local lossless files, so
-# both are converted to FLAC rather than kept as raw tracks.
-#
-# Both are OPTIONAL and neither is an error: a builder with only the PC disc
-# gets the CD tracks, and one with only the cartridge gets the XM set.
-CUE="${BIN%.BIN}.cue"
-if [ ! -d testdata/music_cd ] && [ -f "$CUE" ]; then
-    python3 tools/extract_cdaudio.py -q "$CUE" testdata/music_cd 2>/dev/null \
-      && echo "assets: extracted $(ls testdata/music_cd 2>/dev/null | wc -l | tr -d ' ') CD tracks" \
-      || echo "assets: CD audio extraction skipped (see tools/extract_cdaudio.py)"
-elif [ -d testdata/music_cd ]; then
-    echo "assets: testdata/music_cd already present"
-fi
-
-ROM=""
-for c in reference/tgrally/*.z64 ../../strutb/brally/reference/tgrally/*.z64; do
-    [ -f "$c" ] && ROM="$c" && break
-done
-if [ ! -d testdata/music_xm ] && [ -n "$ROM" ]; then
-    python3 tools/extract_xm.py -q "$ROM" testdata/music_xm 2>/dev/null \
-      && echo "assets: extracted $(ls testdata/music_xm 2>/dev/null | wc -l | tr -d ' ') XM tracks" \
-      || echo "assets: XM extraction skipped (see tools/extract_xm.py)"
-elif [ -d testdata/music_xm ]; then
-    echo "assets: testdata/music_xm already present"
-fi
-

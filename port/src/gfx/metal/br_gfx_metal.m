@@ -413,8 +413,6 @@ BrKey BrGfxPollKey(BrGfx *g)
 /* macOS virtual key codes. Listed rather than #defined from a header because
  * AppKit does not ship portable names for them. */
 #define BR_VK_RETURN   36
-#define BR_VK_LBRACKET 33
-#define BR_VK_RBRACKET 30
 #define BR_VK_ESCAPE   53
 #define BR_VK_SPACE    49
 #define BR_VK_KPENTER  76
@@ -422,6 +420,8 @@ BrKey BrGfxPollKey(BrGfx *g)
 #define BR_VK_RIGHT   124
 #define BR_VK_DOWN    125
 #define BR_VK_UP      126
+#define BR_VK_LBRACKET 33
+#define BR_VK_RBRACKET 30
 
 int BrGfxPumpEvents(BrGfx *g)
 {
@@ -444,7 +444,7 @@ int BrGfxPumpEvents(BrGfx *g)
                  * Cmd-Q still quit; a menu that exits the process when the
                  * user asks to go back is not a menu. */
                 case BR_VK_ESCAPE: BrKeyPush(BR_KEY_BACK);     break;
-                /* Harness-only screen paging; see the enum. */
+                /* harness-only builder paging -- see BrKey in br_gfx.h */
                 case BR_VK_LBRACKET: BrKeyPush(BR_KEY_PREV_SCREEN); break;
                 case BR_VK_RBRACKET: BrKeyPush(BR_KEY_NEXT_SCREEN); break;
                 default: break;
@@ -733,8 +733,25 @@ static void br3d_snapshot(BrGfx *g, BrGfx3dDraw *d)
 {
     d->combine = (uint8_t)g->stCombine;
     d->blend   = (uint8_t)g->stBlend;
-    d->z       = (uint8_t)(g->fDepthTest ? g->stZ : BR_GFX3D_Z_ALWAYS);
-    d->fZWrite = (uint8_t)(g->fDepthTest ? g->stZWrite : 0);
+    /* THE GEOMETRY MODE'S G_ZBUFFER BIT.  br_dl.h records what 0x1001FD70
+     * does with each bit it tests, and 0x0001 "lands on a Glide call that
+     * names the bit: ... 0x0001 -> depth-buffer function".  Clearing it is
+     * how the original draws a piece of geometry that must not test or write
+     * depth -- BrSceneSetupFrame (slice2_15.c) clears exactly this bit, with
+     * 0xB6 0x000F0205, for the duration of the SKY and sets it again with
+     * 0xB7 0x00020205 afterwards.  BrDlSink has no geometry-mode hook, so
+     * the bit is read off the retained interpreter here, which is the same
+     * thing br3d_tri already does for the primitive colour and what
+     * br_gfx3d.h says pDl is retained for.  Batching picks the change up for
+     * free: br3d_want snapshots before every triangle and flushes on any
+     * difference. */
+    {
+        int fZ = (g->p3dDl == NULL) ||
+                 (g->p3dDl->geoMode & BR_DL_GEO_ZBUFFER) != 0;
+        d->z       = (uint8_t)((g->fDepthTest && fZ)
+                               ? g->stZ : BR_GFX3D_Z_ALWAYS);
+        d->fZWrite = (uint8_t)((g->fDepthTest && fZ) ? g->stZWrite : 0);
+    }
     d->fDecal  = (uint8_t)g->stDecal;
     d->fUnitUv = (uint8_t)g->stUnitUv;
     d->tex     = g->stTex;
@@ -794,15 +811,33 @@ static void br3d_want(BrGfx *g)
  * the sink -- br_dl.h's BrDlSink, implemented
  * ------------------------------------------------------------------ */
 
-/* The colour slots carry the Vtx's trailing three bytes scaled by 1/128 and
- * are therefore in [-1,1]: br_dl.c's file header says the LIGHTING PASS HAS
- * NOT BEEN FOUND, so nothing has overwritten them.  Folding to [0,1] is the
- * same thing br_ras_tri does, and it is done here for the same reason and in
- * the same way -- so that the two rasterisers can be compared without the
- * comparison being dominated by a colour convention neither of them owns. */
-static float br3d_fold(float v)
+/* The colour slots mean ONE OF TWO THINGS and the interpreter is the only
+ * thing that knows which, so it is asked: BrDlColourScale returns 1/255 once
+ * a LIGHTING transform has run and 1 otherwise, and br_dl.h's fVtxLit says
+ * which case is live.  This is exactly what br_ras_tri does (br_dl.c PART 3),
+ * and it is done here the same way so the two rasterisers can be compared
+ * without the comparison being dominated by a colour convention neither of
+ * them owns.
+ *
+ * ERRATUM, and it mattered the moment a TRACK was rendered: this used to
+ * fold unconditionally, on the strength of a comment saying the lighting
+ * pass had not been found.  It has -- br_dl.h documents it, and br_dl.c
+ * implements it.  A lit vertex arrives with r/g/b in 0..255, and folding
+ * that gives v*0.5+0.5 >= 1 for every value above 1, i.e. WHITE for
+ * everything: the vertex colour silently stopped existing and the combiner
+ * drew bare texture.  Nothing in the car models showed it, because they are
+ * drawn unlit through a combiner row that ignores the iterated colour. */
+static float br3d_colour(const BrDl *pDl, float v)
 {
-    v = v * 0.5f + 0.5f;
+    /* BrDlColourScale(pDl) is exactly `fVtxLit ? 1/BR_DL_COLOUR_MAX : 1`,
+     * and the constant is in the header this file already includes.  It is
+     * spelled out rather than called because build.sh links br_gfx_metal.o
+     * into brview WITHOUT br_dl.o, and a call would make the 3D path's one
+     * unused-by-brview line drag the whole interpreter in. */
+    if (pDl != NULL && pDl->fVtxLit)
+        v = v * (1.0f / BR_DL_COLOUR_MAX);
+    else
+        v = v * 0.5f + 0.5f;            /* [-1,1] normal byte -> [0,1] */
     if (v < 0.0f) v = 0.0f;
     if (v > 1.0f) v = 1.0f;
     return v;
@@ -819,9 +854,9 @@ static void br3d_put(BrGfx *g, const BrDlVtx *v)
      * depth range and also the range grDepthBufferFunction is comparing in. */
     o->z = (v->cz + v->cw) * 0.5f;
     o->w = v->cw;
-    o->r = br3d_fold(v->r);
-    o->g = br3d_fold(v->g);
-    o->b = br3d_fold(v->b);
+    o->r = br3d_colour(g->p3dDl, v->r);
+    o->g = br3d_colour(g->p3dDl, v->g);
+    o->b = br3d_colour(g->p3dDl, v->b);
     /* GrVertex.a at +0x1C is never written by the transform (0x10021A20); the
      * triangle routines 0x10021C70 / 0x100221D0 have not been read, so where
      * it comes from is unknown.  Forced opaque.  DEVIATION. */

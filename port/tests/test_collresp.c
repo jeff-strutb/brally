@@ -157,15 +157,30 @@ static void TestFrame(void)
     }
     CHECK(pOut->m[3][3] == 1.0f);
 
-    /* THE OVERLAP, asserted rather than described.  0x1006DDD0 builds its
-     * translation from pS->m[3][0..2] -- pS+0x30..+0x38 -- and with this
-     * frame those three words ARE pOut->m[2][1], m[2][2] and m[2][3], which
-     * it has already written to 0, 8 and 0.  So the translation row is
-     * -(0, 8, 0) run through pOut's own transpose, i.e. (0, -32, 0), and NOT
-     * -(1, 2, 3) as a reader who assumed two disjoint objects would predict. */
-    CHECK_NEAR(pOut->m[3][0],   0.0f, 1e-6);
-    CHECK_NEAR(pOut->m[3][1], -32.0f, 1e-6);
-    CHECK_NEAR(pOut->m[3][2],   0.0f, 1e-6);
+    /* THE TRANSLATION, and it is the CORRECTION br_collresp.h files.  This
+     * used to assert (0, -32, 0) -- the "frame overlap" reading, in which
+     * 0x1006DDD0 takes its translation from the SCALE argument and the box
+     * matrix therefore has no translation at all.  0x1006DE2C's `[esp+0x24]`
+     * is read with esp at R-0x20, i.e. arg1, so the translation comes from
+     * the BODY MATRIX: -(1, 2, 3) run through pOut's transpose, which for
+     * this diagonal pOut is (-1*2, -2*4, -3*8) == (-2, -8, -24).
+     *
+     * The two readings are not equally plausible and this test says which:
+     * only the second one makes a world point at the car's own position map
+     * to the box's centre, which is what the +-0.5 classify then means. */
+    CHECK_NEAR(pOut->m[3][0],  -2.0f, 1e-6);
+    CHECK_NEAR(pOut->m[3][1],  -8.0f, 1e-6);
+    CHECK_NEAR(pOut->m[3][2], -24.0f, 1e-6);
+
+    /* The car's own position lands at the box origin. */
+    {
+        BrVec3 at, out;
+        at.x = 1.0f; at.y = 2.0f; at.z = 3.0f;
+        BrMat4TransformPoint(&out, pOut, &at);
+        CHECK_NEAR(out.x, 0.0f, 1e-5);
+        CHECK_NEAR(out.y, 0.0f, 1e-5);
+        CHECK_NEAR(out.z, 0.0f, 1e-5);
+    }
 
     /* ...and the scale slots are untouched by the build. */
     CHECK(f.a[0] == 2.0f && f.a[1] == 4.0f && f.a[2] == 8.0f);
@@ -174,27 +189,217 @@ static void TestFrame(void)
 }
 
 /* ================================================================== */
-/* The degenerate-box measurement                                      */
+/* The box, and where it comes from                                    */
 /* ================================================================== */
 
-static void TestDegenerate(void)
+/* This used to assert (0, 0, 2, 0) as "the constructor's own numbers, from
+ * Glide 0x1005BD40 / 42 / 48 / 4E".  Those four stores are car+0x1DC -- the
+ * initial BrRbState -- and not body+0x1DC == car+0x340; br_cardata.h has the
+ * adjudication.  The box is written by 0x1006FD90 out of the .rca, and the
+ * test is now what it should always have been: the loaded value, checked
+ * against the file, with the no-file path measured rather than assumed. */
+static void TestBoxFromCarData(void)
 {
-    BrCarPhys car;
+    BrCarPhys        car;
+    const BrCarData *pD = BrCarDataDefault();
 
     BuildSlope(0.0f, 0.0, 0);
     BrCarPhysInit(&car, NULL);
 
-    /* The constructor's own numbers, from Glide 0x1005BD40 / 42 / 48 / 4E. */
-    CHECK(car.f1DC == 0.0f);
-    CHECK(car.f1E0 == 0.0f);
-    CHECK(car.f1E4 == 2.0f);
-    CHECK(car.f1E8 == 0.0f);
+    if (pD == NULL) {
+        /* Asset policy: no CARS/ is a SKIP with a reason, and it must look
+         * different from a pass.  The box is then unwritten, which is
+         * exactly what BrCollRespBoxDegenerate exists to report. */
+        printf("  SKIP: no CARS/ directory found -- box left unwritten\n");
+        CHECK(BrCollRespBoxDegenerate(car.f1DC, car.f1E0, car.f1E4) != 0);
+        return;
+    }
 
-    /* ...and they make 0x10067C30's reciprocals infinite, which is exactly
-     * why the OBB half of the collision system cannot run in this port. */
-    CHECK(BrCollRespBoxDegenerate(car.f1DC, car.f1E0, car.f1E4) != 0);
-    /* A car whose data HAS been loaded is not degenerate. */
-    CHECK(BrCollRespBoxDegenerate(3.5f, 2.0f, 1.5f) == 0);
+    /* Car 0 is "ce" (0x100B7D00[0]), whose +0x94 name is "TYPE-CE". */
+    CHECK(strcmp(pD->szName, "TYPE-CE") == 0);
+
+    /* +0xC8..+0xD4, straight out of the file's little-endian half. */
+    CHECK(car.f1DC == pD->boxX);
+    CHECK(car.f1E0 == pD->boxY);
+    CHECK(car.f1E4 == pD->boxZ);
+    CHECK(car.f1E8 == pD->boxOffZ);
+
+    CHECK_NEAR(car.f1DC, 3.5f, 1e-6);
+    CHECK_NEAR(car.f1E0, 2.0f, 1e-6);
+    CHECK_NEAR(car.f1E4, 0.8f, 1e-6);
+    CHECK_NEAR(car.f1E8, 0.7f, 1e-6);
+
+    /* ...so 0x10067C30's three reciprocals are finite and the OBB chain can
+     * run at all.  That is the whole point of the loader. */
+    CHECK(BrCollRespBoxDegenerate(car.f1DC, car.f1E0, car.f1E4) == 0);
+
+    /* And the measurement still detects a box that is NOT real: two zero
+     * extents give infinite reciprocals, which is the state every earlier
+     * run of this suite was in. */
+    CHECK(BrCollRespBoxDegenerate(0.0f, 0.0f, 2.0f) != 0);
+
+    printf("  box from %s/%s.rca (\"%s\"): "
+           "(%.4f, %.4f, %.4f) offset %.4f\n",
+           BrCarDataDir(), BrCarDataName(0), pD->szName,
+           (double)car.f1DC, (double)car.f1E0, (double)car.f1E4,
+           (double)car.f1E8);
+}
+
+/* Every shipped car's box, read straight off the disc.  Not an assertion
+ * about particular numbers -- that would encode this disc -- but about the
+ * SHAPE: sixteen files, sixteen finite non-degenerate boxes. */
+static void TestAllCarBoxes(void)
+{
+    BrCarData d;
+    int       i, n = 0;
+
+    if (BrCarDataDir() == NULL) {
+        printf("  SKIP: no CARS/ directory found\n");
+        return;
+    }
+    for (i = 0; i < BR_CARDATA_CARS; ++i) {
+        if (BrCarDataLoadIndex(&d, NULL, i) != 0) {
+            printf("  SKIP: cars/%s.rca missing\n", BrCarDataName(i));
+            continue;
+        }
+        ++n;
+        CHECK(BrCollRespBoxDegenerate(d.boxX, d.boxY, d.boxZ) == 0);
+        printf("  %-3s %-12s box (%.2f, %.2f, %.2f) offset %.2f\n",
+               BrCarDataName(i), d.szName, (double)d.boxX, (double)d.boxY,
+               (double)d.boxZ, (double)d.boxOffZ);
+    }
+    CHECK(n == BR_CARDATA_CARS);
+}
+
+/* ================================================================== */
+/* The broad phase's three primitives                                  */
+/* ================================================================== */
+
+static void TestBroadPrimitives(void)
+{
+    float  aV[9];
+    BrVec3 a, b, n, p;
+
+    /* --- 0x10066260, the 26-plane classify -------------------------- */
+
+    /* A vertex at the origin is inside all six slabs: stage 1's early
+     * accept, which is the only path that returns 1. */
+    aV[0] = 0.0f; aV[1] = 0.0f; aV[2] = 0.0f;
+    aV[3] = 9.0f; aV[4] = 9.0f; aV[5] = 9.0f;
+    aV[6] = 9.0f; aV[7] = 0.0f; aV[8] = 0.0f;
+    CHECK(BrCollRespBoxClassify(aV) == 1);
+
+    /* All three vertices above +0.5 in x: one face plane separates. */
+    aV[0] = 2.0f; aV[1] = 0.0f; aV[2] = 0.0f;
+    aV[3] = 3.0f; aV[4] = 1.0f; aV[5] = 0.0f;
+    aV[6] = 4.0f; aV[7] = 0.0f; aV[8] = 1.0f;
+    CHECK(BrCollRespBoxClassify(aV) == 0);
+
+    /* THE NaN ARM.  `fcom 0.5` on a NaN sets C0|C2|C3, so `test ah,0x41`
+     * sends it to the -0.5 test, where `test ah,1` is set too -- it
+     * classifies as BELOW, not inside.  All three the same, so the whole
+     * triangle rejects.  A tidy `if (v > 0.5)` would classify NaN as
+     * inside and the box would start reporting phantom collisions. */
+    {
+        float nan_ = (float)(0.0 / 0.0);
+        int   i;
+        for (i = 0; i < 9; ++i) aV[i] = nan_;
+        CHECK(BrCollRespBoxClassify(aV) == 0);
+    }
+
+    /* A triangle that misses on a corner plane but on no face or edge
+     * plane: the three vertices straddle in every axis but all of them
+     * satisfy x+y+z > 1.5. */
+    aV[0] = 0.9f; aV[1] = 0.9f; aV[2] = 0.0f;
+    aV[3] = 0.0f; aV[4] = 0.9f; aV[5] = 0.9f;
+    aV[6] = 0.9f; aV[7] = 0.0f; aV[8] = 0.9f;
+    CHECK(BrCollRespBoxClassify(aV) == 0);
+
+    /* --- 0x10066800, segment versus cube ---------------------------- */
+    a.x = -3.0f; a.y = 0.0f;  a.z = 0.0f;
+    b.x =  3.0f; b.y = 0.0f;  b.z = 0.0f;
+    CHECK(BrCollRespSegBox(&a, &b) != 0);       /* straight through      */
+    a.y = 2.0f;  b.y = 2.0f;
+    CHECK(BrCollRespSegBox(&a, &b) == 0);       /* outside the y slab    */
+    /* A segment that passes all three slabs but misses the cube on the
+     * cross-product test: the line x + y == -1.4, which clears the corner
+     * (-0.5, -0.5) where x + y == -1.  Its slab test passes in every axis,
+     * so only 0x100668AF's |C| <= |S/2| can reject it. */
+    a.x = -2.0f; a.y =  0.6f; a.z = 0.0f;
+    b.x =  0.6f; b.y = -2.0f; b.z = 0.0f;
+    CHECK(BrCollRespSegBox(&a, &b) == 0);
+    /* ...and shifting it to x + y == -0.6 makes it clip the corner. */
+    a.y = 1.4f; b.x = 1.4f;
+    CHECK(BrCollRespSegBox(&a, &b) != 0);
+
+    /* --- 0x10066610, point in triangle ------------------------------ */
+    aV[0] = -1.0f; aV[1] = -1.0f; aV[2] = 0.0f;
+    aV[3] =  1.0f; aV[4] = -1.0f; aV[5] = 0.0f;
+    aV[6] =  0.0f; aV[7] =  1.0f; aV[8] = 0.0f;
+    n.x = 0.0f; n.y = 0.0f; n.z = 1.0f;
+    p.x = 0.0f; p.y = 0.0f; p.z = 0.0f;
+    CHECK(BrCollRespPointInTri(aV, &n, &p) != 0);
+    p.x = 5.0f;
+    CHECK(BrCollRespPointInTri(aV, &n, &p) == 0);
+    /* The winding survives a flipped normal, which is what the sign test
+     * at 0x10066688 is for. */
+    n.z = -1.0f;
+    p.x = 0.0f;
+    CHECK(BrCollRespPointInTri(aV, &n, &p) != 0);
+}
+
+/* The gather itself, against this file's own grid.  BuildSlope lays two
+ * large triangles at z == 0 in cell 0; a car sitting on them must find
+ * them, and a car a hundred metres up must not. */
+static void TestBroadPhase(void)
+{
+    BrCarPhys       car;
+    BrVec3          p;
+    BrCollRespFrame frame;
+    int             nNear, nFar;
+
+    BuildSlope(0.0f, 0.0, 0);
+    BrCarPhysInit(&car, NULL);
+    BrCollRespCountersReset();
+
+    if (BrCollRespBoxDegenerate(car.f1DC, car.f1E0, car.f1E4)) {
+        printf("  SKIP: no car data, so the box is unusable\n");
+        return;
+    }
+
+    p.x = 10.0f; p.y = 10.0f; p.z = 0.2f;
+    BrCarPhysPlace(&car, &p, 0.0f);
+    memset(&frame, 0, sizeof frame);
+    BrCollRespListReset();
+    BrCollRespBuildBoxMatrix(&frame, &car.body.m, BR_CR_BROAD_SCALE,
+                             BR_CR_BROAD_SCALE, BR_CR_BROAD_SCALE);
+    nNear = BrCollRespBroadPhase(&car.body, BrCollRespFrameMat(&frame));
+    CHECK(nNear > 0);
+    CHECK(g_pBrCollRespList != NULL);
+
+    p.z = 100.0f;
+    BrCarPhysPlace(&car, &p, 0.0f);
+    BrCollRespListReset();
+    BrCollRespBuildBoxMatrix(&frame, &car.body.m, BR_CR_BROAD_SCALE,
+                             BR_CR_BROAD_SCALE, BR_CR_BROAD_SCALE);
+    nFar = BrCollRespBroadPhase(&car.body, BrCollRespFrameMat(&frame));
+    CHECK(nFar == 0);
+    CHECK(g_pBrCollRespList == NULL);
+
+    printf("  broad phase: %d record(s) at z=0.2, %d at z=100\n",
+           nNear, nFar);
+
+    /* The in-loop box, 1/extent rather than 0.1, is TEN TIMES SMALLER --
+     * that is the whole difference between 0x10067CC3 and 0x10067D7F -- so
+     * it must gather no more than the broad one. */
+    p.z = 0.2f;
+    BrCarPhysPlace(&car, &p, 0.0f);
+    BrCollRespListReset();
+    BrCollRespBuildBoxMatrix(&frame, &car.body.m,
+                             BR_CR_ONE / car.f1DC, BR_CR_ONE / car.f1E0,
+                             BR_CR_ONE / car.f1E4);
+    CHECK(BrCollRespBroadPhase(&car.body, BrCollRespFrameMat(&frame))
+          <= nNear);
 }
 
 /* ================================================================== */
@@ -225,14 +430,20 @@ static void TestTipKickGates(void)
 
     BuildSlope(0.0f, 0.0, 0);
     BrCarPhysInit(&car, NULL);
-    p.x = 0.0f; p.y = 0.0f; p.z = 0.5f;
+    /* The corner 0x10066D70 builds is
+     *      (+-f1DC*0.5, +-f1E0*0.5, f1E8 - f1E4*0.5)
+     * and with the loaded box (3.5, 2.0, 0.8, 0.7) its Z is +0.3, i.e. the
+     * box's underside sits 0.3 ABOVE the body origin.  (With the box left
+     * unwritten it is 0, and every distance below collapses to the body's own
+     * height -- which is why these three heights are derived from the box
+     * rather than written as literals.)  Put the body where the corner lands
+     * 0.5 from a plane at z == 0: inside the 0.6 window (0x10077B78).  A car
+     * at rest has |vn| == 0, inside the 0.1 window (0x10077AF4), and two
+     * wheels in contact is inside 1..2. */
+    p.x = 0.0f; p.y = 0.0f;
+    p.z = 0.5f - (car.f1E8 - car.f1E4 * BR_CR_HALF);
     BrCarPhysPlace(&car, &p, 0.0f);
 
-    /* The corner 0x10066D70 builds with the constructor's box is
-     * (0, 0, f1E8 - f1E4*0.5) == (0, 0, -1).  With the body at z = 0.5 that
-     * lands 0.5 BELOW a plane at z = 0, so |distance| is 0.5 -- inside the
-     * 0.6 window (0x10077B78) -- and a car at rest has |vn| = 0, inside the
-     * 0.1 window (0x10077AF4).  Two wheels in contact is inside 1..2. */
     ArmAllWheels(&car, 2);
     car.save = *BrCarPhysBodyState(&car.body);
     r = BrCollRespTipKick(&car.body, car.aHit, &car.bodyPlaneN, &car.save,
@@ -258,9 +469,9 @@ static void TestTipKickGates(void)
     CHECK(BrCollRespTipKick(&car.body, car.aHit, &car.bodyPlaneN, &car.save,
                             car.f1DC, car.f1E0, car.f1E4, car.f1E8) == 0);
 
-    /* Corner too far from the plane: raise the body so the corner sits 2 m
-     * below it, well outside the 0.6 window. */
-    p.z = 3.0f;
+    /* Corner too far from the plane: raise the body so the corner sits 3 m
+     * above it, well outside the 0.6 window. */
+    p.z = 3.0f - (car.f1E8 - car.f1E4 * BR_CR_HALF);
     BrCarPhysPlace(&car, &p, 0.0f);
     ArmAllWheels(&car, 1);
     car.save = *BrCarPhysBodyState(&car.body);
@@ -272,7 +483,7 @@ static void TestTipKickGates(void)
      * `test ah,0x41` + `je <ret 0>` leaves on the strictly-greater side, so
      * the kick is for a car that has come to REST on one or two wheels.  A
      * tidy `if (fabs(vn) > 0.1) apply` fires here instead of there. */
-    p.z = 0.5f;
+    p.z = 0.5f - (car.f1E8 - car.f1E4 * BR_CR_HALF);
     BrCarPhysPlace(&car, &p, 0.0f);
     ArmAllWheels(&car, 2);
     car.save = *BrCarPhysBodyState(&car.body);
@@ -328,15 +539,38 @@ static void TestFlatSettleExact(void)
     printf("  flat settle: angVel = (%.6f, %.6f, %.6f)\n",
            (double)pS->angVel.x, (double)pS->angVel.y, (double)pS->angVel.z);
 
+    /* THE BROAD PHASE, RUNNING.  0x10066AD0 gathered this many triangle
+     * records over the 401 frames; the list it built is what 0x10067710
+     * would consume.  Printed rather than asserted at a number, because the
+     * number is a property of this test's grid; what IS asserted is that it
+     * ran on every frame and found something, which is the difference
+     * between "the collision code is linked" and "the collision code runs". */
+    printf("  broad phase: %u frames, %u triangle records gathered"
+           " (%u refused for pool space)\n",
+           (unsigned)g_cBrCollRespBroad, (unsigned)g_cBrCollRespGathered,
+           (unsigned)g_cBrCollRespOverflow);
+    CHECK(g_cBrCollRespBroad == 401u);
+    if (BrCarDataDefault() != NULL) {
+        CHECK(g_cBrCollRespGathered > 0u);
+    }
+    CHECK(g_cBrCollRespOverflow == 0u);
+
     /* SIX DECIMALS.  If this moves, the force balance changed. */
     CHECK_NEAR(pS->pos.z, 0.190132, 5e-7);
 
     /* On flat ground all four wheels stay in contact, so 0x10066D70's
      * 1..2 gate never opens and it must never have fired. */
     CHECK(g_cBrCollRespTipKick == 0u);
-    /* ...and the box was degenerate on every one of the 401 frames, which is
-     * what makes "no collisions were reported" mean something. */
-    CHECK(g_cBrCollRespDegenerate == 401u);
+    /* ...and the box was REAL on every one of the 401 frames.  This counter
+     * used to be asserted at 401 (degenerate on all of them); that it is now
+     * 0 is the single observable difference the car-data loader makes, so it
+     * is asserted from the other side rather than deleted.  With no CARS/ it
+     * goes back to 401, which is the honest reading of that run. */
+    if (BrCarDataDefault() != NULL) {
+        CHECK(g_cBrCollRespDegenerate == 0u);
+    } else {
+        CHECK(g_cBrCollRespDegenerate == 401u);
+    }
 }
 
 /* The measurement br_carphys.h's pitch finding came out of, reproduced here
@@ -391,7 +625,10 @@ static void TestSlopeDivergence(void)
 int main(void)
 {
     TestFrame();
-    TestDegenerate();
+    TestBoxFromCarData();
+    TestAllCarBoxes();
+    TestBroadPrimitives();
+    TestBroadPhase();
     TestTipKickGates();
     TestFlatSettleExact();
     TestSlopeDivergence();

@@ -229,9 +229,30 @@ void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
     }
     pOut->m[3][3] = 1.0f;
 
-    t.x = -pS->m[3][0];
-    t.y = -pS->m[3][1];
-    t.z = -pS->m[3][2];
+    /* ARG1, NOT ARG3 -- and the two are one byte apart in the listing.
+     *
+     * Glide 0x1006DDD0 loads the translation at 0x1006DE2C with
+     * `mov ecx,[esp+0x24]`.  An earlier load at 0x1006DDD9 uses the SAME
+     * displacement, `mov ebp,[esp+0x24]`, and that one IS pS.  They differ
+     * because `push esi` / `push edi` sit between them:
+     *
+     *     entry            esp = R      (arg1 R+4, arg2 R+8, arg3 R+0xC)
+     *     sub esp,0x10     esp = R-0x10
+     *     push ebx         esp = R-0x14   [esp+0x18] = R+4  = pA
+     *     push ebp         esp = R-0x18   [esp+0x24] = R+0xC = pS   <-- arg3
+     *     push esi/edi     esp = R-0x20   [esp+0x24] = R+4  = pA    <-- arg1
+     *
+     * This file read pS here, and br_collresp.h then explained the resulting
+     * garbage as a deliberate "frame overlap" -- a misreading dressed as a
+     * preserved bug, which CONVENTIONS.md calls the durable kind, and the
+     * test below asserted it.  The falsifier is semantic, not just textual:
+     * pS is the scale VECTOR, whose m[3][*] is off the end of the three
+     * floats that exist, so under the old reading the box matrix had no
+     * translation at all and the OBB sat at the world origin.  A car at
+     * (927, 361) could not have collided with anything on any track. */
+    t.x = -pA->m[3][0];
+    t.y = -pA->m[3][1];
+    t.z = -pA->m[3][2];
 
     /* DEVIATION: the original passes &pOut->m[3][0] straight to 0x10074770 as
      * the output vector.  Routing it through a local avoids casting a float[4]

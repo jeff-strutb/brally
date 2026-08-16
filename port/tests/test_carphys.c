@@ -552,10 +552,13 @@ static void TestSettle(void)
     CHECK_NEAR(zSettled, zEq, 0.02);
 
     /* Every hole was entered, so the report cannot claim more physics ran
-     * than actually did. */
-    /* four substeps per frame, 401 frames */
+     * than actually did.  BOTH are four substeps per frame now: BR_CP_HOLE_BOX
+     * used to be counted ONCE per frame because it stood for the broad phase
+     * (0x10066AD0, once at 0x10067CD1) as well as the response.  The broad
+     * phase is ported, so the hole is 0x10067710 alone -- and that one is
+     * inside the substep loop, at 0x10067D9B. */
     CHECK(g_aBrCarPhysHole[BR_CP_HOLE_CARCAR] == 4u * 401u);
-    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_BOX]    == 401u);
+    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_BOX]    == 4u * 401u);
 }
 
 /* With no ground at all the car must fall freely, and at the acceleration the

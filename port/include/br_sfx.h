@@ -60,12 +60,7 @@
  *   group 25  "sfx/<cc>r.wav"     per-car engine, rev layer
  *   groups 1..23   one shared sample each, named by BrSfxGroupName()
  *
- * `<cc>` is a two-letter car code out of the table at 0x100B7CFC, whose slot 0
- * is NULL -- so it holds 16 CODES in 17 slots. An earlier note here read that
- * as 17 codes and raised "the disc has 17 .rca but only 16 sound codes; which
- * car is silent?" as an open question. There is no such question: the disc
- * carries exactly 16 .rca files, counted disc-wide, and every one has a code.
- * The NULL slot 0 is the off-by-one, not a silent car.
+ * `<cc>` is a two-letter car code out of the 17-entry table at 0x100B7CFC
  * whose slot 0 is NULL, so 0x1006BFF0 stores `car + 1` and 0 means "no car".
  * 16 codes x 3 suffixes = 48 files; the 25 distinct generic names bring the
  * total to exactly the 73 .wav files in SFX/ on the disc.
