@@ -54,6 +54,9 @@
  * the slot is more use than a jump to 0.
  */
 #include "slice3_45.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "slice4_52.h"   /* g_apBrStrTable, BR_STR_TABLE_COUNT (0x11829370) */
 
 #include <stdio.h>
@@ -143,18 +146,80 @@ static BrDiObj g_root;
  * not have.
  * ========================================================================== */
 
-#define BR_HOST_STR_ROOM  16
+/* Room for a real caption, not just "<str NNN>". The longest recovered string
+ * is well under this; the load is bounded anyway. */
+#define BR_HOST_STR_ROOM  128
 static char g_aStrText[BR_STR_TABLE_COUNT][BR_HOST_STR_ROOM];
+
+/* Where the build puts the recovered table. Extracted from the retail disc at
+ * build time by tools/extract_iso.py + tools/extract_strings.py; never
+ * committed, per the project's asset policy. */
+#define BR_HOST_STR_FILE  "testdata/strings.txt"
+
+/* Load the REAL captions if the build extracted them.
+ *
+ * The strings live in BRString.dll, a resource-only satellite whose loader is
+ * unported -- so BrStrGet returned NULL for every id and every menu control in
+ * this project has been laid out with no text at all. The geometry was real;
+ * the content was never there.
+ *
+ * Format is `id<TAB>text`, one per line, as written by tools/extract_strings.c.
+ * Returns the number loaded, 0 if the file is absent.
+ *
+ * Ids are NOT reassigned or compacted here. RT_STRING packs sixteen strings per
+ * block and writes empty slots as a bare zero length, so the extractor has
+ * already had to count the empties to get the ids right; renumbering on load
+ * would undo that and put the wrong caption on every control. */
+static int LoadStringTable(void)
+{
+    FILE *fh = fopen(BR_HOST_STR_FILE, "r");
+    char line[512];
+    int n = 0;
+
+    if (!fh)
+        return 0;
+    while (fgets(line, sizeof line, fh)) {
+        char *pTab;
+        long id;
+        if (line[0] == '#' || line[0] == '\n')
+            continue;
+        pTab = strchr(line, '\t');
+        if (!pTab)
+            continue;
+        *pTab++ = '\0';
+        id = strtol(line, NULL, 10);
+        if (id < BR_HANDLE_MIN || id > BR_HANDLE_MAX)
+            continue;                       /* out of the table's range */
+        pTab[strcspn(pTab, "\r\n")] = '\0';
+        snprintf(g_aStrText[id], sizeof g_aStrText[id], "%s", pTab);
+        g_apBrStrTable[id] = g_aStrText[id];
+        ++n;
+    }
+    fclose(fh);
+    return n;
+}
 
 static void WireStringTable(void)
 {
-    int id;
+    int id, nReal;
 
+    /* Placeholders first, so any id the real table does not define still has a
+     * non-NULL, non-empty, traceable value rather than reverting to the NULL
+     * that crashed 0x100575F0. Deliberately not plausible UI text: fictional
+     * captions on screen are worse than obviously-fake ones. */
     for (id = BR_HANDLE_MIN; id <= BR_HANDLE_MAX; ++id) {
         snprintf(g_aStrText[id], sizeof g_aStrText[id], "<str %d>", id);
         g_apBrStrTable[id] = g_aStrText[id];
     }
     g_apBrStrTable[0] = NULL;       /* reserved "none"; see above */
+
+    nReal = LoadStringTable();
+    if (nReal)
+        printf("strings: %d real captions loaded from %s\n",
+               nReal, BR_HOST_STR_FILE);
+    else
+        printf("strings: %s absent -- using <str NNN> placeholders\n",
+               BR_HOST_STR_FILE);
 }
 
 void BrHostWire77(void);
