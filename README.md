@@ -52,7 +52,7 @@ game core. It contains the entire game and exports one symbol, `RallyMain`.
 
 **Shared core -> either. Renderer -> BRGlide.**
 
-The ~1,708 functions shared between the two builds are byte-for-byte the same
+The 1,739 functions shared between the two builds are byte-for-byte the same
 logic; that is how they were identified. All core decompilation to date is
 therefore unaffected by this choice, and BRD3D remains fine for it.
 
@@ -86,25 +86,30 @@ builds function-for-function.
 **The ported core now links into one binary and boots.** `build/brally`
 constructs the phase object and runs a real menu builder; see "Quick start".
 
-**~1,376 distinct `Br*` functions defined, against a shared core estimated at
-~1,708.** 68 modules, 70 test suites, all green under one `./build.sh`.
-~57,000 lines.
+**~1,519 distinct `Br*` functions defined.** 81 modules, 82 test suites, all
+green under one `./build.sh`. ~67,500 lines.
 
-Treat 1,376 as a count of what is DEFINED, not a completion percentage: it
-includes adapters and thin forwarders, and the ~1,708 denominator is itself
-uncertain because `config/functions.csv` merges and splits real functions (see
-below).
+The menus **render in the game's own artwork and navigate**; tracks parse; the
+3D display-list interpreter runs retail geometry. See "Quick start".
+
+Treat 1,519 as a count of what is DEFINED, not a completion percentage: it
+includes adapters and thin forwarders. The denominator is now firmer than it
+was -- both function maps were rebuilt by flow analysis and `config/shared.csv`
+classes **1,739** functions as present in both renderer builds -- but "how much
+of the game works" is still not a number this count answers. The menus are
+close to complete; the game itself is early.
 
 | | |
 |---|---|
 | `.text` | 581,632 bytes @ `0x10001000`, image base `0x10000000` |
 | Shared core (the target) | ~1,708 fns / 339,648 bytes |
-| **Distinct `Br*` functions defined** | **~1,376** |
-| Modules | 68 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`, `slice4_50..53`, `slice5_60..63`, `slice6_70..75`) |
-| Unported functions, stubbed so the host links | **132** (`port/host/br_stubs.c`) |
+| **Distinct `Br*` functions defined** | **~1,519** |
+| Modules | 81 (`br_*`, `slice1..7_*`) |
+| Unported functions, stubbed so the host links | **82** (`port/host/br_stubs.c`) |
 | Data symbols with provisional storage | **0** (was 64; all now real definitions in `port/src/br_data.c`) |
 | Addresses with >1 name | **53** (heuristic count) |
-| Screen builders running | **11 of 16** (`./build/brally -all`) |
+| Screen builders running | **16 of 16** (`./build/brally -all`) |
+| Functions shared across both renderer builds | **1,739** (`config/shared.csv`) |
 
 
 ### What "running" currently means
@@ -126,6 +131,40 @@ runs of the same binary, reading an offset nobody had written. `setText` and
 This is what `port/include/br_ui.h` exists to end. It is the canonical merged
 page and control model, with eleven conflicts adjudicated in-header against the
 disassembly. Migrating the modules onto it is in progress.
+
+
+## What actually works today
+
+**Menus.** All sixteen ported screen builders run, in the game's own artwork,
+with captions recovered from `BRString.dll` and laid out by the game's own
+place routine. Selection moves, controls activate, screens transition.
+`./build/brally -keys 4 "dd"` drives it headlessly; `-shot <n> <file.ppm>`
+writes a frame offscreen with no window server, which is how every rendering
+claim here is checked.
+
+**Assets.** Extracted at build time from the builder's own disc, never
+committed: 172 menu sprites, the string table, tracks, and the CD audio. A
+missing disc degrades — the build still succeeds, suites that need data SKIP
+with a reason, and the menu draws every sprite at the right size in the right
+place as an outlined placeholder.
+
+**Tracks.** `.TRK` files parse: 7,877 vertices and 9,226 faces for `desert`,
+with every face index checked against the vertex array and the section extents
+checked against the offsets the header stores.
+
+**3D.** The display-list interpreter runs retail geometry — 1,820 triangles out
+of `bb.rca`, 1,079 out of `ce.rca`, cross-checked against an independent opcode
+census — and rasterises them in software.
+
+### What does NOT work
+
+There is no game. No physics, no AI, no race loop, no sound playback, no save
+games. Nothing is rendered through the GPU yet beyond menus. The clipper has
+never once executed. Nothing yet explains how a model's texture reaches the
+bind opcode, so 3D is untextured.
+
+The front end is nearly finished. The game is early, and the gap between those
+two facts is most of the remaining work.
 
 ### The stub report is the work queue
 
