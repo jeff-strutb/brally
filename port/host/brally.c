@@ -93,7 +93,23 @@ static const char *g_lastText;
  * the real string table, and the builder chose both the id and the order. */
 #define BR_MAXCAP 64
 static const char *g_aCap[BR_MAXCAP];
+static const void *g_aCapOwner[BR_MAXCAP];   /* the control it was set on */
 static int         g_nCap;
+
+/* The caption a control was actually given, or NULL.
+ *
+ * An earlier version of this dump GUESSED the mapping -- it walked captions in
+ * order and advanced whenever a rectangle was non-empty. That produced
+ * confident, wrong output: controls with w=0 were shown owning the caption of
+ * the next real one. The association is recorded at setText time instead, so
+ * it is observed rather than inferred. */
+static const char *CapFor(const void *pCtl)
+{
+    int i;
+    for (i = 0; i < g_nCap; i++)
+        if (g_aCapOwner[i] == pCtl) return g_aCap[i];
+    return NULL;
+}
 
 static void HostCtlSetText(BrUiCtl_ *pThis, const void *pText,
                            int32_t a2, int32_t a3, const void *pStyle)
@@ -101,7 +117,10 @@ static void HostCtlSetText(BrUiCtl_ *pThis, const void *pText,
     g_nSetText++;
     if (pText) {
         g_lastText = (const char *)pText;
-        if (g_nCap < BR_MAXCAP) g_aCap[g_nCap++] = g_lastText;
+        if (g_nCap < BR_MAXCAP) {
+            g_aCapOwner[g_nCap] = pThis;
+            g_aCap[g_nCap++]    = g_lastText;
+        }
     }
     /* br_uictl.c deliberately does not run the item's element constructor
      * (0x1005B050), so the text box arrives with a NULL vtable and
@@ -304,9 +323,59 @@ static int DumpPhase(const BrPhase_ *ph)
 /* Draw each control's rectangle. The rect comes from the builder (rcLeft/rcTop
  * are the truncated x/y, rcRight = rcLeft+0x7F, rcBottom = rcTop+0x21) -- this
  * file invents no geometry. */
+/* Print every control's rectangle and caption.
+ *
+ * This is the layout the ported builders actually computed -- the coordinates
+ * come from 0x10047FB0 (place) and the widths from the text box's measure
+ * methods, both decompiled. Nothing here is invented, which is what makes the
+ * dump usable as evidence: the numbers can be checked against the original. */
+static void DumpRects(const BrPhase_ *ph)
+{
+    int i, j;
+    for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
+        const BrUiPage_ *pg = ph->aPages[i];
+        if (!pg) continue;
+        printf("  page %d  origin=(%.1f,%.1f)  cCtl=%u cSel=%u\n",
+               i, (double)pg->fX, (double)pg->fY,
+               (unsigned)pg->cCtl, (unsigned)pg->cSel);
+        for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
+            const BrUiCtl_ *c = pg->apCtl[j];
+            if (!c) continue;
+            {
+                const char *pszCap = CapFor(c);
+                printf("    [%2d] x=%-5d y=%-5d w=%-4d h=%-3d  %s\n",
+                       j, (int)c->rcLeft, (int)c->rcTop,
+                       (int)(c->rcRight - c->rcLeft),
+                       (int)(c->rcBottom - c->rcTop),
+                       pszCap ? pszCap : "(no caption)");
+            }
+        }
+    }
+}
+
+/* Solid-colour fill, built from a 1x1 RGBA texture scaled to the rectangle.
+ * The Metal backend only exposes a textured quad, and a 1x1 white texture is
+ * the standard way to get a flat fill out of one without adding a second
+ * pipeline. */
+static BrTexture g_texWhite;
+static int       g_haveWhite;
+
+static void FillRect(BrGfx *gfx, float x, float y, float w, float h)
+{
+    if (g_haveWhite) BrGfxDrawTexture(gfx, g_texWhite, x, y, w, h);
+}
+
+/* Draw the menu the builder produced.
+ *
+ * HONEST ABOUT WHAT THIS IS: these are the real rectangles at the real
+ * coordinates, but the GLYPHS ARE NOT DRAWN -- the game renders text through a
+ * path that is not ported yet, so a caption appears here as the box that was
+ * sized to hold it, not as letters. The layout is authentic; the typography is
+ * absent. Do not read a screenshot of this as "the menu renders". */
 static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex)
 {
     int i, j;
+    (void)tex; (void)haveTex;
     for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
         const BrUiPage_ *pg = ph->aPages[i];
         if (!pg) continue;
@@ -319,7 +388,7 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
             w = (float)(c->rcRight  - c->rcLeft);
             h = (float)(c->rcBottom - c->rcTop);
             if (w <= 0.0f || h <= 0.0f) continue;
-            if (haveTex) BrGfxDrawTexture(gfx, tex, x, y, w, h);
+            FillRect(gfx, x, y, w, h);
         }
     }
 }
@@ -485,6 +554,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         g_aBuilders[b].pfn(ph);
         nCtl = DumpPhase(ph);
+        DumpRects(ph);
         printf("\ncontrols built: %d   setText=%d place=%d\n",
                nCtl, g_nSetText, g_nPlace);
         BrStubReport();
@@ -495,14 +565,20 @@ int main(int argc, char **argv)
     printf("\nrunning builder 0x1004D640 ...\n");
     BrExt_1004D640(ph);
     nCtl = DumpPhase(ph);
+    DumpRects(ph);
     printf("\ncontrols built: %d   setText=%d place=%d\n",
            nCtl, g_nSetText, g_nPlace);
     if (g_lastText) printf("last text passed: \"%s\"\n", g_lastText);
 
     if (windowed) {
+        static const uint8_t white[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
         gfx = BrGfxCreate(640, 480);
         if (!gfx) { printf("gfx init failed: %s\n", BrGfxLastError()); }
         else if (BrGfxOpenWindow(gfx, "Boss Rally") != 0) { gfx = NULL; }
+        if (gfx) {
+            g_texWhite  = BrGfxCreateTexture(gfx, 1, 1, white);
+            g_haveWhite = (g_texWhite != 0);
+        }
         if (gfx && BrImgLoad(&img, "testdata/splash.img") == 0) {
             tex = BrGfxCreateTexture(gfx, img.width, img.height, img.pixels);
             BrImgFree(&img); haveTex = 1;
