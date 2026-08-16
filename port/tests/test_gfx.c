@@ -57,8 +57,8 @@ static int write_ppm(const char *pszPath, const uint8_t *pRgba,
 /* Part 2: retail geometry, software vs Metal                         */
 /* ------------------------------------------------------------------ */
 
-#define GEO_W 256
-#define GEO_H 256
+#define GEO_W 640
+#define GEO_H 640
 
 static const char *g_aCombineName[BR_DL_CC__COUNT] = {
     "DEFAULT(tex*shade)", "SHADE[=texel]", "TEX[=shade]", "TEX_SHADE_C1",
