@@ -13,6 +13,8 @@
  */
 #include "br_pod.h"
 
+#include "br_path.h"
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,17 +34,41 @@ static uint32_t rd_u32le(const unsigned char *p)
  * Uppercases into a fixed 64-byte field and NUL-pads the remainder. */
 void BrPodCleanupName(const char *pszSrc, char *pszDst)
 {
+    char   szBase[BR_POD_NAME_LEN * 4];
     size_t i;
 
     memset(pszDst, 0, BR_POD_NAME_LEN);
     if (pszSrc == NULL)
         return;
 
+    /* THE BASENAME STEP. This was missing.
+     *
+     * 0x100085F0 calls 0x10008B90 FIRST -- `call 0x10008b90` at 0x10008600,
+     * before it measures anything -- so what it uppercases and length-checks is
+     * the BASENAME, not the caller's string. Omitting that made this function
+     * agree with the original only for inputs that contain no backslash, which
+     * is every name in the retail archive and none of the interesting cases.
+     * Caught by a pass that was reading 0x10008B90 for other reasons.
+     *
+     * The splitter is slice6_78's BrPodWriterMakeName (that same 0x10008B90),
+     * reused rather than reimplemented -- one original address, one body. Its
+     * first parameter is the original's dead `this`; the body never reads it.
+     *
+     * That routine carries a quirk of the original which now applies here too:
+     * it never examines the LAST character, so a trailing backslash is not a
+     * separator and "dir\\" cleans to "dir\\", not "". strrchr would differ. */
+    if (strlen(pszSrc) >= sizeof szBase) {
+        /* DEVIATION: the splitter writes an unbounded copy. Refuse rather than
+         * overrun; the original would corrupt the destination here. */
+        return;
+    }
+    BrPodWriterMakeName(NULL, pszSrc, szBase);
+
     /* DEVIATION: bounded up front. The original ran the copy first and only
-     * then compared the length against 64, so the check could not prevent the
+     * then compared the length against 64, so its check could not prevent the
      * corruption it reported. */
-    for (i = 0; i < BR_POD_NAME_LEN && pszSrc[i] != '\0'; i++)
-        pszDst[i] = (char)toupper((unsigned char)pszSrc[i]);
+    for (i = 0; i < BR_POD_NAME_LEN && szBase[i] != '\0'; i++)
+        pszDst[i] = (char)toupper((unsigned char)szBase[i]);
 }
 
 int BrPodOpen(BrPod *pPod, const char *pszPath)
