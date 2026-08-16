@@ -30,7 +30,20 @@
 int32_t g_brAA33D4, g_brAA33D0;
 
 int32_t g_br0AC648, g_br0AC64C, g_br0AC650, g_br0AC654, g_br0AC658, g_br0AC65C;
-int32_t g_br0BD3E0;
+/* 0x100BD3E0 (D3D) / 0x100BCBE8 (Glide) -- THE LAP TOTAL, and it is 1 in the
+ * image, not 0.
+ *
+ * This was a bare definition, so it started at zero. The race loop compares the
+ * driver's lap against it and, on a match, replaces the reported best time with
+ * a sentinel -- "on the final lap, report the sentinel instead". At zero that
+ * branch is taken on the FIRST frame of every race, before a lap exists.
+ *
+ * Read out of BOTH binaries at the paired addresses; both say 1. Note the two
+ * builds' addresses differ and neither name mentions the other, which is why a
+ * grep for one finds nothing about the other -- br_race.h models the Glide
+ * address as BrRaceRules::nLaps while this models the D3D one. Same object.
+ * This definition owns the storage. */
+int32_t g_br0BD3E0 = 1;
 int32_t g_brAA2A00, g_brAA2A08, g_brAA2A0C, g_brAA2A18;
 int32_t g_brAA2A1C, g_brAA2A20, g_brAA2A24, g_brAA2A28;
 int32_t g_brB4E708, g_brB4E70C;
