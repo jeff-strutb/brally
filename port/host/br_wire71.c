@@ -27,6 +27,7 @@
 #include "slice6_77.h"   /* BrSub100586A0 -- 0x100586A0 */
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static BrS71Hooks g_hooks71;      /* all slots NULL, deliberately */
 static BrS71Env   g_env71;
@@ -67,6 +68,28 @@ static void FileListScan(BrS71FileList *pThis, const char *pszPattern)
 }
 static const BrS71FileListVtbl g_fileListVtbl = { 0, FileListScan };
 
+/* --- the AutoSave.brf existence probe ------------------------------------
+ * 0x1004F700 asks "does AutoSave.brf open?" and uses the answer as a flag --
+ * the handle is closed immediately. Unlike the directory scans above, this is
+ * a plain fopen with no filesystem layout to invent, so the host wires the
+ * REAL call: if the file is next to the binary the game sees it, and if it is
+ * not, "no autosave" is the honest answer rather than a fabricated one.
+ *
+ * Both strings are read out of the image, not guessed: 0x100AD310 is
+ * "AutoSave.brf" and 0x100AD1F0 is "r".
+ *
+ * The flag drives a BRANCHLESS select in the original
+ * (`neg / sbb / and 0xFFFFFFF0 / add 0x102011`), so the two outcomes are
+ * 0x102001 present / 0x102011 absent -- a control style id, not a boolean. */
+static void *HostFopen(const char *pszPath, const char *pszMode)
+{
+    return (void *)fopen(pszPath, pszMode ? pszMode : "r");
+}
+static void HostFclose(void *pFile)
+{
+    if (pFile) fclose((FILE *)pFile);
+}
+
 void BrHostWire71(void)
 {
     memset(&g_hooks71, 0, sizeof(g_hooks71));
@@ -105,5 +128,10 @@ void BrHostWire71(void)
     g_brS71.pAA2908 = g_pPhaseAA2908;
     g_brS71.pHooks  = &g_hooks71;
     g_brS71.pA9D018 = g_a9d018;
+    g_env71.pfnFopen  = HostFopen;
+    g_env71.pfnFclose = HostFclose;
+    g_brS71.pszAutoSaveBrf = "AutoSave.brf";   /* 0x100AD310, from the image */
+    g_brS71.pszFopenMode   = "r";              /* 0x100AD1F0, from the image */
+
     g_brS71Env      = &g_env71;
 }
