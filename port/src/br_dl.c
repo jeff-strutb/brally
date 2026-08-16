@@ -17,12 +17,19 @@
  * pool are slice1_03.c's, under their D3D addresses -- grepping the Glide
  * ones finds nothing.  See the section header for the mapping.
  *
+ * LIGHTING has since been read; it is PART 4 below, and the note that used to
+ * stand here -- "a lighting pass exists and has not been found" -- is
+ * withdrawn.  It was not found because it is not a pass: it is a second
+ * G_VTX HANDLER, installed over the first.
+ *
  * NOT transcribed, and flagged as DEVIATION where it shows:
- *   - LIGHTING.  The transform copies the Vtx's last three bytes straight
- *     into r/g/b and nothing in it consults g_5CCFD0 (numlights) or the light
- *     array at 0x105CCC78, which both G_MOVEWORD and G_MOVEMEM plainly
- *     maintain.  So a lighting pass exists and has not been found.  Vertices
- *     therefore come out of this file carrying the raw bytes.
+ *   - TEXTURE_GEN's s/t generation.  0x10022600 and 0x10022BF0 are the two
+ *     lit transforms the geometry mode selects when G_TEXTURE_GEN is set;
+ *     they do the same lighting as 0x10021C70 (they call the same
+ *     0x10022AC0) and additionally derive s/t from the normal.  The lighting
+ *     is here; the s/t derivation is not, and pDl->cVtxTexGen counts the
+ *     vertices that would have had it so the gap is visible rather than
+ *     silent.  Nothing in this port sets G_TEXTURE_GEN today.
  *   - The 0xFA (prim colour) handler is 138 bytes in Glide and 183 in D3D
  *     and was not read; only the payload is recorded here.
  */
@@ -41,6 +48,10 @@
  * this file does not drag in a dozen unrelated models.  Do NOT re-implement
  * it here: one original address must have one host definition. */
 extern void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut);
+
+#include "br_vec.h"      /* BrVec3 -- see br_dl_normalise below */
+
+#include <math.h>
 
 /* ==================================================================== */
 /* helpers                                                              */
@@ -210,6 +221,12 @@ static const uint8_t *br_dl_mtx(BrDl *pDl, const uint8_t *p)
             pDl->iModel++;
         }
         pDl->aModel[pDl->iModel] = src;
+        /* 0x1002116E, reached from BOTH modelview arms (0x100210F7 and
+         * 0x10021107 both jump to the same rep movsd + store).  An earlier
+         * revision of this file cleared the flag only on the multiply arm,
+         * which left the derived light direction stale after a G_MTX LOAD --
+         * silently, because nothing read the flag at all then. */
+        pDl->fLightCached = 0;
     } else {                             /* modelview, multiply */
         pCur = pDl->iModel ? &pDl->aModel[pDl->iModel] : NULL;
         BrMat4Identity(&tmp);
@@ -219,8 +236,11 @@ static const uint8_t *br_dl_mtx(BrDl *pDl, const uint8_t *p)
             pDl->iModel++;
         }
         pDl->aModel[pDl->iModel] = tmp;
-        pDl->fCombinedStale = 0;
+        pDl->fLightCached = 0;
     }
+    /* Note what does NOT clear it: the two PROJECTION arms jump straight to
+     * 0x10021174, past the store.  The light direction is transformed by the
+     * modelview alone, so that is correct and not an oversight. */
 
     /* 0x1002118A: combined = model * projection, with a NULL model when the
      * stack index is 0.  BrMat4Mul returns without writing on a NULL input,
@@ -250,22 +270,345 @@ static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
          * COMBINED matrix.  Not the stack -- 0x105D1760 itself. */
     } else if (idx >= 0x86u && idx <= 0x94u) {
         /* the light array: base + ((idx - 0x86) / 2) * 16, (w0 & 0xFFFF)
-         * bytes.  0x1002386E. */
+         * bytes.  0x1002386E, a `rep movsd` + `rep movsb` pair. */
         unsigned slot = (idx - 0x86u) >> 1;
         unsigned cb   = w0 & 0xFFFFu;
         if (slot < BR_DL_LIGHTS) {
+            const uint8_t *pSrc;
             if (cb > 16u) cb = 16u;
-            /* The payload pointer cannot be followed on this host for the
-             * same 32-bit reason as G_MTX; the slot is marked live so a
-             * caller can see the command was honoured. */
-            memset(pDl->aLight[slot], 0, sizeof(pDl->aLight[slot]));
-            pDl->fCombinedStale = 0;
+            /* The payload IS followed now -- through the region table, the
+             * same way G_VTX and G_DL follow theirs.  It used to be zeroed
+             * with a note that a 32-bit address could not be dereferenced on
+             * this host, which is true of a CAST and not of a lookup; the
+             * consequence was that every light was black. */
+            pSrc = BrDlResolve(pDl, w1, cb);
+            if (pSrc != NULL)
+                memcpy(pDl->aLight[slot], pSrc, cb);
+            else
+                memset(pDl->aLight[slot], 0, cb);
+            /* 0x10023898 -- and note it is unconditional in the original,
+             * outside the `slot` test, because there is no slot test. */
+            pDl->fLightCached = 0;
         }
     }
     return p + 8;
 }
 
-/* ---- 0x04 G_VTX  (0x10021A20, Glide-only; D3D 0x10021BD0) ----------- */
+/* ==================================================================== */
+/* PART 4 -- LIGHTING                                                   */
+/* ==================================================================== */
+/* WHERE IT IS, AND WHY IT WAS NOT FOUND BY LOOKING FOR A PASS
+ * ----------------------------------------------------------------------
+ * There is no lighting pass.  There is a second G_VTX HANDLER, and the
+ * geometry mode installs it over the first:
+ *
+ *   0x1001FD40 (0xB6 clear) and 0x100211E0 (0xB7 set) both end in
+ *   `call 0x1001FD70`, and 0x1001FD70 does nothing but push renderer state
+ *   and then WRITE THE DISPATCH TABLE:
+ *
+ *       0x100A9A68 == 0x100A9A58 + 4 * 4   -- slot 0x04, G_VTX
+ *       0x100A9D1C == 0x100A9A58 + 0xB1*4  -- slot 0xB1, G_TRI2
+ *       0x100A9D54 == 0x100A9A58 + 0xBF*4  -- slot 0xBF, G_TRI1
+ *
+ *   Those three addresses were the whole mystery.  0x100A9A68 had been read
+ *   as a free-standing "triangle routine pointer" (br_dl.h says so, in the
+ *   BR_DL_CC_DECAL note); it is a table slot, and the routines it holds are
+ *   vertex transforms.  The static image of the table has 0x10021A20 in it,
+ *   which is why the unlit transform is the one everybody found.
+ *
+ *   The selection, transcribed from 0x1001FE0D:
+ *
+ *     ZBUFFER     LIGHTING  TEXGEN  TEXGEN_LIN    slot 0x04
+ *     -------     --------  ------  ----------    ---------
+ *        1           0         0        -         0x10021A20   unlit
+ *        1           1         0        -         0x10021C70   lit
+ *        1           1         0        -         0x100221D0   lit, DECAL
+ *        1           -         1        0         0x10022600   lit + texgen
+ *        1           -         1        1         0x10022BF0   lit + texgen
+ *        0           0         -        -         0x10023110   unlit
+ *        0           1         -        -         0x10023360   lit
+ *
+ *   and SHADING_SMOOTH picks the triangle pair (0x1001ECF0/0x1001FA30 vs
+ *   0x1001FEF0/0x10020CF0 with a z-buffer, 0x10020900/0x10020D70 vs
+ *   0x100203F0/0x10020D30 without).  0x1001E8FB additionally swaps 0x10021C70
+ *   and 0x100221D0 when the DECAL combiner row is selected -- and ONLY those
+ *   two, so it can never install a lit routine over an unlit one.
+ *
+ *   0x10021C70, 0x100221D0 and 0x10023360 are the same 1019/1059/1019 bytes
+ *   with different x87 scheduling: identical constant use (three 0x10077418,
+ *   three 0x10077420, the same nine 0x105CE2xx slots), so ONE transcription
+ *   covers all three.  0x10022600 and 0x10022BF0 call the lighting out of
+ *   line at 0x10022AC0 instead of inlining it, and add texgen.
+ *
+ * THE ARITHMETIC IS ALSO ALREADY HALF-PORTED, UNDER D3D ADDRESSES.
+ *   BRD3D 0x10022350 is slice2_16.c's BrGbiLightVertex and is byte-for-byte
+ *   the same 301-byte routine as Glide 0x10022AC0, down to the "lights off"
+ *   fallback reading three NON-CONTIGUOUS globals.  Its BrGbiLightState maps
+ *   one-for-one onto the three float triples below.  The two differ in
+ *   exactly one thing: D3D clamps at 1.0f (0x1008F3C4) and divides by 255 in
+ *   its setup, Glide clamps at 255.0f (0x10077418) and does not divide,
+ *   because a Glide iterated colour is 0..255.  Glide is the reference, so
+ *   this file carries 0..255 and BrDlColourScale() says so out loud.
+ *
+ * WHAT THE INPUT ACTUALLY IS.  Measured, not assumed: over every vertex the
+ * two retail models reach -- 864 in bb.rca, 931 in ce.rca -- the magnitude of
+ * the Vtx's trailing three signed bytes is 127.0 +/- 0.6, every single one.
+ * They are unit normals.  The colours this port has been rendering are
+ * normals painted as colour; the file does NOT hold lit colours. */
+
+/* --- 0x100344D0, and a deliberate second copy -------------------------
+ * The normalise 0x10021DB8 calls is BRD3D 0x1003AE50 -- config/shared.csv
+ * pairs the two as ONE shared 141-byte function -- and slice2_21.c ALREADY
+ * PORTS IT, as BrVec3NormaliseGuard (not BrVec3Normalise: slice1_09 owns that
+ * name for the unguarded 0x10074180).  CONVENTIONS.md says to reuse, and the
+ * first attempt here did: `extern void BrVec3NormaliseGuard(BrVec3 *)`.
+ *
+ * It does not link.  slice2_21.c needs BrSqrtF, whose only definition is in
+ * slice4_53.c, which needs roughly the whole game; adding it to
+ * build.d/test_br_dl.deps turns a five-object test into an unlinkable one.
+ * So this is a SECOND HOST COPY of one original function, on purpose, and the
+ * mitigation is that it is stated here rather than discovered later.  It is
+ * arithmetically identical, including the two things that are easy to get
+ * wrong and that br_dl_light_setup depends on:
+ *
+ *   - the sum order is y*y + z*z + x*x (the original spills y and z and
+ *     squares them from the stack first);
+ *   - a length of EXACTLY zero yields (0, 0, 1), not a zero vector and not
+ *     the input.  0x1003450D compares against 0x100775F4 == 0.0f and tests
+ *     C3, which an unordered compare also sets, so a NaN length takes the
+ *     same arm.  `!(len != 0.0f)` for that reason.
+ *
+ * br_dl.c already carries one other such copy for the same kind of reason:
+ * br_dl_outcode is 0x10022120, which slice2_16.c ports as BrGbiClipCodes.
+ * Those are the only two, and both are pure leaf arithmetic with no state. */
+static void br_dl_normalise(BrVec3 *pV)
+{
+    float len = (float)sqrt((double)(pV->y * pV->y + pV->z * pV->z +
+                                     pV->x * pV->x));
+    if (!(len != 0.0f)) {
+        pV->x = 0.0f;
+        pV->y = 0.0f;
+        pV->z = 1.0f;
+        return;
+    }
+    len = 1.0f / len;                     /* fdivr 0x100775F0 == 1.0f */
+    pV->x = len * pV->x;
+    pV->y = len * pV->y;
+    pV->z = len * pV->z;
+}
+
+/* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
+ * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
+ * (modelview only), G_MOVEMEM light and G_MOVEWORD LIGHTCOL all clear. */
+static void br_dl_light_setup(BrDl *pDl)
+{
+    const uint8_t *pL = pDl->aLight[BR_DL_LIGHT_DIFFUSE];   /* 0x105CCC78 */
+    const uint8_t *pA = pDl->aLight[BR_DL_LIGHT_AMBIENT];   /* 0x105CCC88 */
+    const float *m;
+    BrVec3 d;
+    float dx, dy, dz;
+
+    if (pDl->fLightCached)                /* 0x10021C7E */
+        return;
+    pDl->cLightSetup++;
+
+    /* 0x10021C8B jumps straight to the `= 1` store, so the flag is latched
+     * even though nothing was computed.  Preserved: it means a list that
+     * sets numlights AFTER a G_MTX still rebuilds, because G_MOVEWORD
+     * clears the flag again. */
+    if (pDl->nLights == 0) {
+        pDl->fLightCached = 1;
+        return;
+    }
+
+    /* 0x10021C91: the MODELVIEW, not the combined matrix -- the direction is
+     * being pulled back into the space the normals live in. */
+    if (pDl->iModel != 0) {
+        m = (const float *)pDl->aModel[pDl->iModel].m;
+    } else {
+        /* 0x10021CA5 leaves esi == 0 and 0x10021D22 then dereferences it.
+         * The original faults.  BrDlInit sets iModel to 1 so it cannot
+         * happen through this port's front door; identity here, counted.
+         * DEVIATION. */
+        static const BrMat4 s_ident = { { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
+                                          { 0, 0, 1, 0 }, { 0, 0, 0, 1 } } };
+        m = (const float *)s_ident.m;
+        pDl->cLightNoMtx++;
+    }
+
+    /* The colour: three UNSIGNED bytes, `fild`ed and NOT scaled.  0..255 is
+     * the Glide iterated-colour range, so no division is wanted or present. */
+    pDl->lightScale[0] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 0];
+    pDl->lightScale[1] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 1];
+    pDl->lightScale[2] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 2];
+
+    /* The direction: three SIGNED bytes (`movsx`, 0x10021CAE/CC5/CE6). */
+    dx = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 0];
+    dy = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 1];
+    dz = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 2];
+
+    /* Row i of the modelview dotted with the direction, i.e. M applied as a
+     * COLUMN-vector matrix -- which for a rotation is M's inverse under this
+     * file's row-vector convention, so the light lands in model space.  The
+     * grouping is the original's: (row[1]*dy + row[0]*dx) + row[2]*dz, then
+     * `fdiv [0x10077420]` with 0x10077420 == 128.0f -- written as the divide
+     * it is, not as a multiply by BR_DL_BYTE_SCALE, so the instruction and
+     * the line still read the same way. */
+    d.x = ((m[1] * dy + m[0] * dx) + m[2] * dz) / 128.0f;
+    d.y = ((m[5] * dy + m[4] * dx) + m[6] * dz) / 128.0f;
+    d.z = ((m[9] * dy + m[8] * dx) + m[10] * dz) / 128.0f;
+
+    /* 0x10021DB8.  The /128 above is arithmetically redundant in front of a
+     * normalise and is kept because the original does it -- it changes which
+     * inputs underflow to a zero-length vector, and a zero-length vector
+     * becomes (0, 0, 1) rather than staying zero. */
+    br_dl_normalise(&d);
+    pDl->lightDir[0] = d.x;
+    pDl->lightDir[1] = d.y;
+    pDl->lightDir[2] = d.z;
+
+    /* 0x10021DBD: the ambient, three unsigned bytes of SLOT 1 at a fixed
+     * address.  `numlights` never selects which slot -- see br_dl.h. */
+    pDl->lightAmb[0] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 0];
+    pDl->lightAmb[1] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 1];
+    pDl->lightAmb[2] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 2];
+
+    pDl->fLightCached = 1;                /* 0x10021E05 */
+}
+
+/* --- 0x10022AC0 (== BRD3D 0x10022350 == slice2_16's BrGbiLightVertex) --
+ * One vertex.  `pN` is the normal (source floats +0x14/+0x18/+0x1C), `pOut`
+ * the three colour floats the caller writes to the vertex's +0x5C/+0x60/+0x64
+ * -- the clip node's +0x1C/+0x20/+0x24, which is why the clipper carries the
+ * LIT colour and not the normal across a cut edge. */
+static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
+{
+    float t;
+    int i;
+
+    /* 0x10022AC6 / 0x10022BCC.  Note this arm does NOT use the ambient. */
+    if (pDl->nLights == 0) {
+        pOut[0] = pDl->lightOff[0];
+        pOut[1] = pDl->lightOff[1];
+        pOut[2] = pDl->lightOff[2];
+        pDl->cVtxLitOff++;
+        return;
+    }
+
+    /* n . L, grouped as the original groups it. */
+    t = (pN[1] * pDl->lightDir[1] + pN[2] * pDl->lightDir[2])
+        + pN[0] * pDl->lightDir[0];
+
+    /* 0x10022B01: `fcomp 0.0 / test ah,1`, i.e. C0 -- strictly less than,
+     * and an unordered compare sets C0 as well, so a NaN dot takes the
+     * ambient-only arm.  Negated form for exactly that reason
+     * (CONVENTIONS.md, comparison polarity). */
+    if (!(t >= 0.0f)) {
+        pOut[0] = pDl->lightAmb[0];
+        pOut[1] = pDl->lightAmb[1];
+        pOut[2] = pDl->lightAmb[2];
+        pDl->cVtxLitAmbient++;
+        return;
+    }
+
+    for (i = 0; i < 3; ++i) {
+        float v = t * pDl->lightScale[i] + pDl->lightAmb[i];
+        /* 0x10022B2A: `fcomp 255.0 / test ah,0x41`, i.e. C0|C3, and the
+         * literal 255.0f is taken only when the test is ZERO -- an ORDERED
+         * GREATER-THAN.  Unordered sets both bits, so a NaN is NOT clamped.
+         * Written in the POSITIVE form here, which is the rare case where
+         * that is the faithful one: C's `v > 255.0f` is also false for NaN.
+         * `!(v <= 255.0f)` would clamp NaN and be wrong. */
+        pOut[i] = (v > BR_DL_COLOUR_MAX) ? BR_DL_COLOUR_MAX : v;
+    }
+}
+
+/* --- 0x1001FD70's table write, as a query -----------------------------
+ * See the section header for the transcription. */
+uint32_t BrDlVtxRoutine(const BrDl *pDl)
+{
+    uint32_t geo = pDl->geoMode;
+    uint32_t vtx;
+
+    if (geo & BR_DL_GEO_ZBUFFER) {                       /* 0x1001FE0D */
+        if (geo & BR_DL_GEO_LIGHTING)                    /* 0x1001FE15 */
+            vtx = pDl->fDecal ? 0x100221D0u : 0x10021C70u;
+        else
+            vtx = 0x10021A20u;
+        if (geo & BR_DL_GEO_TEXTURE_GEN) {               /* 0x1001FE48 */
+            vtx = 0x10022BF0u;
+            if (!(geo & BR_DL_GEO_TEXTURE_GEN_LIN))
+                vtx = 0x10022600u;
+        }
+    } else {                                             /* 0x1001FE99 */
+        vtx = (geo & BR_DL_GEO_LIGHTING) ? 0x10023360u : 0x10023110u;
+    }
+    return vtx;
+}
+
+int BrDlIsLit(const BrDl *pDl)
+{
+    uint32_t v = BrDlVtxRoutine(pDl);
+    return (v != 0x10021A20u && v != 0x10023110u);
+}
+
+float BrDlColourScale(const BrDl *pDl)
+{
+    return pDl->fVtxLit ? (1.0f / BR_DL_COLOUR_MAX) : 1.0f;
+}
+
+/* --- 0x10022120 (== BRD3D 0x10022DC0 == slice2_16's BrGbiClipCodes, and
+ * `shared` in config/shared.csv) -----------------------------------------
+ * 0x10021A20 inlines these seven tests; 0x10021C70 calls them.  Factored out
+ * here so both transforms use the one copy.  slice2_16 already models the
+ * same function, on a bare float array with a different layout; the tests and
+ * their order agree exactly and this note exists so a later pass reads them
+ * as one function under two builds' addresses, not as two opinions.
+ *
+ * Every test is `fcomp 0.0 / test ah,1`, i.e. C0 -- STRICTLY LESS THAN, and
+ * NaN takes the true side because an unordered compare also sets C0.  Written
+ * as `!(v >= 0)` for exactly that reason. */
+static int32_t br_dl_outcode(const BrDlVtx *pV)
+{
+    int32_t oc = 0;
+    if (!(pV->cw >= 0.0f))              oc |= BR_DL_CLIP_W;
+    if (!(pV->cz + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_NEAR;
+    if (!(pV->cw - pV->cz >= 0.0f))     oc |= BR_DL_CLIP_FAR;
+    if (!(pV->cx + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_LEFT;
+    if (!(pV->cw - pV->cx >= 0.0f))     oc |= BR_DL_CLIP_RIGHT;
+    if (!(pV->cy + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_BOTTOM;
+    if (!(pV->cw - pV->cy >= 0.0f))     oc |= BR_DL_CLIP_TOP;
+    return oc;
+}
+
+/* --- 0x10022070, and the identical tail 0x10021BAD..0x10021C48 ---------
+ * Perspective divide, viewport, quarter-pixel snap, colour store.  The lit
+ * transforms call it with the colour in three registers; the unlit one
+ * inlines it and uses n0/n1/n2. */
+static void br_dl_project(BrDl *pDl, BrDlVtx *pV, float r, float g, float b)
+{
+    float invW, sx, sy;
+
+    invW = 1.0f / pV->cw;                 /* fld 1.0 (0x10077404) / fdiv cw */
+    pV->oow = invW;
+    sx = pDl->vpScaleX * invW * pV->cx + pDl->vpTransX;
+    sy = pDl->vpScaleY * pV->oow * pV->cy + pDl->vpTransY;
+    pV->r = r;
+    pV->g = g;
+    pV->b = b;
+    /* 0x100220C6: snap to quarter-pixels -- multiply by 4.0 (0x10077408),
+     * round through fistp/fild, multiply by 0.25 (0x1007740C).  fistp is
+     * round-to-nearest under the default control word, NOT truncation. */
+    sx = (float)((int32_t)(sx * 4.0f + (sx >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    sy = (float)((int32_t)(sy * 4.0f + (sy >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    pV->x = sx;
+    pV->y = sy;
+}
+
+/* ---- 0x04 G_VTX ----------------------------------------------------
+ * Both transforms, selected exactly as 0x1001FD70 selects them.  The unlit
+ * body is 0x10021A20 (Glide-only; D3D 0x10021BD0); the lit body is
+ * 0x10021C70 and its three equivalents. */
 static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
 {
     uint32_t w0 = br_dl_w(p);
@@ -273,9 +616,20 @@ static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
     int v0 = (int)((w0 >> 16) & 0xFFu);   /* byte 2 of w0 -- see br_dl.h    */
     const uint8_t *pSrc = BrDlResolve(pDl, br_dl_w(p + 4),
                                       (size_t)(n > 0 ? n : 1) * 0x20u);
+    int fLit = BrDlIsLit(pDl);
+    int fTexGen = (pDl->geoMode & BR_DL_GEO_TEXTURE_GEN) != 0 &&
+                  (pDl->geoMode & BR_DL_GEO_ZBUFFER) != 0;
     int i;
 
     pDl->cVtxLoads++;
+    pDl->fVtxLit = fLit;
+
+    /* 0x10021C70 does its light setup ONCE, before the count test and before
+     * the source pointer is even loaded -- so a G_VTX with n == 0 still
+     * rebuilds the derived state.  Preserved. */
+    if (fLit)
+        br_dl_light_setup(pDl);
+
     /* `jle` on the count: n == 0 is a no-op, and the ONLY bound in the
      * original is that the destination index is a byte.  Nothing stops a
      * malformed list writing past the 32-entry array; the port clamps.
@@ -285,8 +639,6 @@ static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
 
     for (i = 0; i < n; ++i) {
         BrDlVtx *pV;
-        float sx, sy, invW;
-        int32_t oc = 0;
         int k = v0 + i;
 
         if (k < 0 || k >= BR_DL_VTX_COUNT)
@@ -294,7 +646,9 @@ static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
         pV = &pDl->aVtx[k];
 
         /* Source stride is 0x20: the eight floats BrVtxExpand (0x10018EF0
-         * Glide == 0x1002BE30 D3D, SHARED) writes -- x,y,z,s,t,n0,n1,n2. */
+         * Glide == 0x1002BE30 D3D, SHARED) writes -- x,y,z,s,t,n0,n1,n2.
+         * The last three are the trailing bytes scaled by 1/128
+         * (0x100773A0), i.e. a unit normal for lit geometry. */
         {
             float x = br_dl_f32(br_dl_w(pSrc + 0x00));
             float y = br_dl_f32(br_dl_w(pSrc + 0x04));
@@ -311,43 +665,35 @@ static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
 
             pV->s  = br_dl_f32(br_dl_w(pSrc + 0x0C));
             pV->t  = br_dl_f32(br_dl_w(pSrc + 0x10));
-            pV->n0 = br_dl_f32(br_dl_w(pSrc + 0x14));
-            pV->n1 = br_dl_f32(br_dl_w(pSrc + 0x18));
-            pV->n2 = br_dl_f32(br_dl_w(pSrc + 0x1C));
+
+            if (fLit) {
+                /* 0x10021F09.  The normal is read from the SOURCE and the
+                 * result written over the vertex's +0x5C/+0x60/+0x64 -- the
+                 * normal does not survive into the vertex record at all on
+                 * this path, which is the whole reason the clipper's nine
+                 * interpolated floats end up carrying a colour. */
+                float aN[3], aC[3];
+                aN[0] = br_dl_f32(br_dl_w(pSrc + 0x14));
+                aN[1] = br_dl_f32(br_dl_w(pSrc + 0x18));
+                aN[2] = br_dl_f32(br_dl_w(pSrc + 0x1C));
+                br_dl_light_vertex(pDl, aN, aC);
+                pV->n0 = aC[0];
+                pV->n1 = aC[1];
+                pV->n2 = aC[2];
+                pDl->cVtxLit++;
+                if (fTexGen)
+                    pDl->cVtxTexGen++;   /* s/t not derived -- see header */
+            } else {
+                pV->n0 = br_dl_f32(br_dl_w(pSrc + 0x14));
+                pV->n1 = br_dl_f32(br_dl_w(pSrc + 0x18));
+                pV->n2 = br_dl_f32(br_dl_w(pSrc + 0x1C));
+            }
         }
 
-        /* The outcodes, in the original's order and with its comparison.
-         * Every test is `fcomp 0.0 / test ah,1`, i.e. C0 -- STRICTLY LESS
-         * THAN, and NaN takes the true side because an unordered compare
-         * also sets C0.  Written as `!(v >= 0)` for exactly that reason
-         * (CONVENTIONS.md, comparison polarity). */
-        if (!(pV->cw >= 0.0f))              oc |= BR_DL_CLIP_W;
-        if (!(pV->cz + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_NEAR;
-        if (!(pV->cw - pV->cz >= 0.0f))     oc |= BR_DL_CLIP_FAR;
-        if (!(pV->cx + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_LEFT;
-        if (!(pV->cw - pV->cx >= 0.0f))     oc |= BR_DL_CLIP_RIGHT;
-        if (!(pV->cy + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_BOTTOM;
-        if (!(pV->cw - pV->cy >= 0.0f))     oc |= BR_DL_CLIP_TOP;
-        pV->outcode = oc;
+        pV->outcode = br_dl_outcode(pV);
 
-        if (oc == 0) {
-            invW = 1.0f / pV->cw;
-            pV->oow = invW;
-            sx = pDl->vpScaleX * invW * pV->cx + pDl->vpTransX;
-            sy = pDl->vpScaleY * invW * pV->cy + pDl->vpTransY;
-            /* 0x10021BF9: snap to quarter-pixels -- multiply by 4.0
-             * (0x10077408), round through fistp/fild, multiply by 0.25
-             * (0x1007740C).  fistp is round-to-nearest under the default
-             * control word, NOT truncation. */
-            sx = (float)((int32_t)(sx * 4.0f + (sx >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
-            sy = (float)((int32_t)(sy * 4.0f + (sy >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
-            pV->x = sx;
-            pV->y = sy;
-            /* r/g/b take the Vtx's trailing bytes verbatim -- see the file
-             * header on the missing lighting pass. */
-            pV->r = pV->n0;
-            pV->g = pV->n1;
-            pV->b = pV->n2;
+        if (pV->outcode == 0) {
+            br_dl_project(pDl, pV, pV->n0, pV->n1, pV->n2);
             pDl->cVtxTransformed++;
         }
 
@@ -438,7 +784,7 @@ static const uint8_t *br_dl_moveword(BrDl *pDl, const uint8_t *p)
             pDl->aLight[slot][at + 0] = (uint8_t)(w1 >> 24);
             pDl->aLight[slot][at + 1] = (uint8_t)(w1 >> 16);
             pDl->aLight[slot][at + 2] = (uint8_t)(w1 >> 8);
-            pDl->fCombinedStale = 0;
+            pDl->fLightCached = 0;      /* 0x10023A33 / 0x10023A6C */
         }
     }
     return p + 8;
@@ -930,9 +1276,11 @@ static const uint8_t *br_dl_combine(BrDl *pDl, const uint8_t *p)
     pDl->combineW1 = w1;
     pDl->combine   = BrDlClassifyCombine(w0, w1);
     /* 0x1001E8C0 sets 0x105CDA04 only on the DECAL row, and the tail at
-     * 0x1001E8FB uses it to swap the triangle routine at 0x100A9A68 between
-     * 0x10021C70 and 0x100221D0.  So this one row selects a whole different
-     * rasterisation path -- it is not just a blend. */
+     * 0x1001E8FB uses it to swap dispatch-table slot 0x04 (0x100A9A68)
+     * between the two LIT VERTEX TRANSFORMS 0x10021C70 and 0x100221D0 -- and
+     * only ever between those two, so it can never install a lit transform
+     * over an unlit one.  BrDlVtxRoutine reads pDl->fDecal for exactly this.
+     * PART 4 has the rest. */
     pDl->fDecal = (pDl->combine == BR_DL_CC_DECAL) ? 1 : 0;
     if (pDl->sink.pfnCombine)
         pDl->sink.pfnCombine(pDl->sink.pUser, pDl->combine, w0, w1);
@@ -1111,6 +1459,8 @@ static void br_ras_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
     BrDlRaster *pR = (BrDlRaster *)pUser;
     float minx, maxx, miny, maxy, area;
     int32_t x0, x1, y0, y1, px, py;
+    int   fLit  = (pR->pDl != NULL) && pR->pDl->fVtxLit;
+    float scale = (pR->pDl != NULL) ? BrDlColourScale(pR->pDl) : 1.0f;
 
     minx = a->x; if (b->x < minx) minx = b->x; if (c->x < minx) minx = c->x;
     maxx = a->x; if (b->x > maxx) maxx = b->x; if (c->x > maxx) maxx = c->x;
@@ -1142,10 +1492,20 @@ static void br_ras_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
             r  = l0 * a->r + l1 * b->r + l2 * c->r;
             g  = l0 * a->g + l1 * b->g + l2 * c->g;
             bl = l0 * a->b + l1 * b->b + l2 * c->b;
-            /* The colour slots hold whatever the Vtx's trailing bytes were,
-             * scaled by 1/128 and therefore in [-1, 1].  Fold to [0, 1] so
-             * the output is a picture rather than a clamp artefact. */
-            r = r * 0.5f + 0.5f; g = g * 0.5f + 0.5f; bl = bl * 0.5f + 0.5f;
+            if (fLit) {
+                /* A lighting transform ran: the slots are Glide iterated
+                 * colours, 0..255. */
+                r *= scale; g *= scale; bl *= scale;
+            } else {
+                /* Nothing lit these, so the slots hold the Vtx's trailing
+                 * bytes scaled by 1/128 and are in [-1, 1] -- a NORMAL, for
+                 * every model this port has (br_dl.h records the
+                 * measurement).  Fold to [0, 1] so the output is a picture
+                 * rather than a clamp artefact.  This is a property of the
+                 * reference rasteriser, not of the original: the original
+                 * would hand these to Glide as 0..255 and get black. */
+                r = r * 0.5f + 0.5f; g = g * 0.5f + 0.5f; bl = bl * 0.5f + 0.5f;
+            }
             if (r < 0) r = 0; if (r > 1) r = 1;
             if (g < 0) g = 0; if (g > 1) g = 1;
             if (bl < 0) bl = 0; if (bl > 1) bl = 1;
@@ -1163,6 +1523,7 @@ static void br_ras_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
 void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas)
 {
     memset(&pDl->sink, 0, sizeof(pDl->sink));
+    pRas->pDl        = pDl;
     pDl->sink.pUser  = pRas;
     pDl->sink.pfnTri = br_ras_tri;
 }
