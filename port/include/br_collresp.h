@@ -224,17 +224,156 @@ int BrCollRespTipKick(BrRbBodyFull *pBody, const BrGroundHit aHit[4],
                       const BrVec3 *pBodyPlaneN, BrRbState *pSave,
                       float f1DC, float f1E0, float f1E4, float f1E8);
 
-/* Non-zero when the car's collision box is the constructor's degenerate one,
- * i.e. when 0x10067C30's reciprocals are not finite and the OBB chain cannot
- * run.  A measurement, so that "no collisions were reported" can be told
- * apart from "the collision code never ran". */
+/* Non-zero when the car's collision box is not usable, i.e. when
+ * 0x10067C30's reciprocals are not finite and the OBB chain cannot run.  A
+ * measurement, so that "no collisions were reported" can be told apart from
+ * "the collision code never ran".
+ *
+ * The box comes from the .rca; br_cardata.h has the chain, and it also has
+ * the adjudication of the (0, 0, 2, 0) claim this header used to make. */
 int BrCollRespBoxDegenerate(float f1DC, float f1E0, float f1E4);
 
-/* How many substeps found a degenerate box, and how many kicks were applied.
- * Counted for the same reason br_carphys.h counts its holes: a silent no-op
- * makes "the car moved" unfalsifiable. */
+/* ======================================================================
+ * THE BROAD PHASE, 0x10066AD0 and its six callees -- NOW PORTED
+ * ======================================================================
+ * Everything below was a hole until the car data landed, because with two
+ * extents at zero the box matrix is all infinities and every triangle
+ * classifies out.  With a real box it is live, and it is the half of the OBB
+ * system that can be demonstrated on its own: it produces a COUNT.
+ *
+ *   0x10066AD0   669 B   gather                  BrCollRespBroadPhase
+ *   0x10066AA0    35 B   the two-stage test      (static)
+ *   0x10066230    38 B   push onto the list      (static)
+ *   0x10066260   644 B   the 26-plane classify   BrCollRespBoxClassify
+ *   0x100664F0   278 B   its corner-plane arm    (static)
+ *   0x10066950   322 B   the exact test          (static)
+ *   0x10066800   332 B   segment versus cube     BrCollRespSegBox
+ *   0x10066610   492 B   point in triangle       BrCollRespPointInTri
+ *
+ * WHAT IT IS.  The box matrix 0x10067C30 builds maps the world onto the
+ * car's box scaled to the UNIT CUBE [-0.5, 0.5]^3 -- the halves at
+ * 0x10077B48 / 0x10077B50, both DOUBLES.  Each candidate triangle's three
+ * vertices are transformed into that space and tested against the cube:
+ *
+ *   0x10066260 is a 26-plane outcode reject: the 6 faces (+-0.5 per axis),
+ *   the 12 edge planes (x+-y, x+-z, y+-z against +-1, 0x10077B58 /
+ *   0x10077B60) and the 8 corner planes (+-x+-y+-z against +-1.5,
+ *   0x10077AB0 / 0x10077B68).  It returns 1 (a vertex is inside all six
+ *   slabs -- definite hit), 0 (all three vertices share an outside side of
+ *   one plane -- definite miss) or -1 (inconclusive).
+ *
+ *   0x10066950 resolves the -1: three segment-versus-cube tests on the
+ *   triangle's edges (0x10066800), and if all three miss, the triangle's
+ *   own plane is intersected with the cube diagonal that its normal points
+ *   along and the intersection point is tested against the triangle by a
+ *   2D crossing count (0x10066610).  That last case is the one a cheaper
+ *   test gets wrong: a big triangle that slices the box without any vertex
+ *   or edge inside it.
+ *
+ * ON THE NaN ARMS, because they are load-bearing here.  Every one of these
+ * compares is a negated x87 test and NaN takes the side the tidy form does
+ * not.  In 0x10066260 a NaN coordinate classifies as BELOW -0.5 (the
+ * `fcom 0.5` sets C0|C2|C3, so `test ah,0x41` sends it to the second test,
+ * where `test ah,1` is also set) -- so all three vertices agree and the
+ * triangle is REJECTED.  That is exactly why an infinite box matrix makes
+ * this system inert rather than explosive, and it is why the counter below
+ * is the thing to look at rather than "did anything crash".
+ *
+ * THE LIST.  0x10066230 pushes onto a singly linked list whose head is
+ * 0x11778198 and whose nodes come from a bump allocator at 0x11778844,
+ * reset to 0x117781B0 by 0x10067C54.  The pool runs to 0x117787F0, the next
+ * named global, so it is 0x640 bytes == 200 eight-byte nodes; a cell holds
+ * at most BR_COLL_CELL_PLANES (150) records, so one frame cannot overflow
+ * it and the original's missing bounds check costs nothing.  The size is
+ * enforced here anyway, and an overflow is COUNTED rather than silently
+ * dropped.
+ *
+ * WHAT IS STILL MISSING is 0x10067710 (1301 B) and its impulse solver
+ * 0x10065C80, i.e. the RESPONSE.  It is the consumer of this list.
+ * br_carphys.h's BR_CP_HOLE_BOX now names that alone. */
+
+typedef struct BrCollRespNode {
+    const BrCollPlane     *pPlane;   /* node+0, the record 0x10066230 stores */
+    struct BrCollRespNode *pNext;    /* node+4                               */
+} BrCollRespNode;
+
+/* (0x117787F0 - 0x117781B0) / 8 */
+#define BR_CR_LIST_MAX  200
+
+/* 0x11778198 -- the head 0x10067710 would walk. */
+extern BrCollRespNode *g_pBrCollRespList;
+
+/* 0x10067C4E..0x10067C8E: the head and the bump cursor, cleared once per
+ * frame before the broad phase runs. */
+void BrCollRespListReset(void);
+
+/* 0x10066AD0.  Gathers the cell under (pBody->m.m[3][0], m[3][1]) into the
+ * list and returns how many records it added.  pMatBox is the box matrix
+ * BrCollRespBuildBoxMatrix produced. */
+int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox);
+
+/* 0x10066260, exposed because its three-valued answer is the single easiest
+ * thing here to collapse into a bool.  aV is three transformed vertices,
+ * nine floats.  Returns 1 / 0 / -1 as the banner describes. */
+int BrCollRespBoxClassify(const float aV[9]);
+
+/* 0x10066800 -- does the segment pA..pB meet the unit cube? */
+int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB);
+
+/* 0x10066610 -- the 2D crossing count of pP against the triangle aV,
+ * projected away from pN's dominant axis.  Non-zero means inside. */
+int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
+                         const BrVec3 *pP);
+
+/* How many substeps found a degenerate box, how many kicks were applied,
+ * how many times the broad phase ran, and how many triangle records it has
+ * gathered in total.  Counted for the same reason br_carphys.h counts its
+ * holes: a silent no-op makes "the car moved" unfalsifiable -- and the last
+ * two are how a run shows the collision system RUNNING rather than merely
+ * linking. */
 extern uint32_t g_cBrCollRespTipKick;
 extern uint32_t g_cBrCollRespDegenerate;
+extern uint32_t g_cBrCollRespBroad;
+extern uint32_t g_cBrCollRespGathered;
+extern uint32_t g_cBrCollRespOverflow;
 void BrCollRespCountersReset(void);
 
 #endif /* BR_COLLRESP_H */
+
+/* ==========================================================================
+ * LEAD FROM THE N64 BUILD -- naming and structure only, NOT ground truth.
+ *
+ * A sibling analysis of Top Gear Rally (N64, 1997) reports a ~17 KB, 30-function
+ * collision / resting-contact module at vram 0x8025C000-0x80260000 with its
+ * DEBUG STRINGS INTACT:
+ *
+ *     "Triangle Edge to CubeFace"          0x8025DFCC
+ *     "Cube Edge to Triangle Face"         0x8025DFCC
+ *     "Resistive collision %10.3f"         0x8025DFCC
+ *     "Stand Dist " / "Stand Vel " / "Stand Point "   0x8025D368
+ *     "Standing on it's F'in Nose damnit"  0x8025E55C
+ *
+ * WHY THIS IS WORTH HAVING. Two of those bear directly on this file:
+ *
+ *   - The edge/face pair independently corroborates the carving arrived at
+ *     here from the PC bytes alone: a BOX tested against track triangles,
+ *     resolved by explicit edge-versus-face cases rather than one generic
+ *     contact routine. Two analyses of two builds reaching the same shape is
+ *     worth more than either alone.
+ *
+ *   - "Standing on it's F'in Nose damnit" is a guard against EXACTLY the
+ *     failure this port exhibits: the car pitching up onto its nose. If the PC
+ *     block carries a corresponding clamp and it is among the unported bytes,
+ *     that explains the divergence as a MISSING GUARD rather than a wrong
+ *     force -- a different fix, and a much cheaper one.
+ *
+ * WEIGH IT CORRECTLY. This is the 1997 N64 title, not the 1999 PC game. Same
+ * studio and demonstrably the same lineage (shared display-list format, shared
+ * "Track header size mismatch" string), but the physics may have been revised
+ * between them. Nobody has decompiled the N64 module or diffed the two.
+ *
+ * So: use it to NAME things and to check whether a carving looks wrong. Do not
+ * use it to decide what the PC code does -- that must still come out of
+ * BRGlide.dll. A structure hint from a sibling title is evidence about where to
+ * look, not about what is there.
+ * ========================================================================== */
