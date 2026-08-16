@@ -55,7 +55,6 @@
 #include "slice6_73.h"
 #include "br_gfx.h"
 #include "br_img.h"
-#include "br_font.h"
 #include "br_uictl.h"
 #include "br_uispr.h"
 #include "br_bmp.h"
@@ -64,6 +63,12 @@
  * so it must come AFTER slice6_73.h and never the other way round -- the
  * header says so at the include. */
 #include "br_uinav.h"
+/* The menu's own sprite font, and the +0x0C hook that picks its sheet.
+ * br_sprfont.h includes slice3_39.h and br_ui.h, both of which are already
+ * in scope through the headers above; it comes last for the same reason
+ * br_uinav.h does. */
+#include "br_sprfont.h"
+#include "br_crt.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -435,6 +440,14 @@ static void WireNav(void)
     g_navHooks = g_hooks;                       /* all NULL */
     g_navHooks.p10045AF0 = BrUiNavHook_10045AF0;
     g_navHooks.p10046C90 = BrUiNavHook_10046C90;
+    /* The control +0x0C hook every selectable menu row is given. Until this
+     * was wired the hook was NULL, and a NULL +0x0C is not a harmless gap:
+     * 0x10048180's not-current tail tests it and skips the whole recolour
+     * when it is unset, so EVERY label -- selected or not -- kept the kind
+     * byte its builder passed and the menu had no selection feedback at all.
+     * br_sprfont.c's transcription is the struct-model twin of slice3_31.c's
+     * byte-image BrSub10047360; see the banner there for why both exist. */
+    g_navHooks.p10047360 = BrSprFontKindHook_10047360;
     g_br73.pHooks     = &g_navHooks;
     g_br73.pPhaseVtbl = &g_navPhaseVtbl;
 
@@ -634,6 +647,34 @@ static int NavCurrentCtl(const BrUiPage_ *pg)
     return -1;
 }
 
+/* THE FRAME CLOCK, and why a scripted frame has to take real time.
+ *
+ * 0x100480A0 (control vtable +0x04, the step timer) is what raises +0x1C bit
+ * 0x100, and its gate is SIXTY MILLISECONDS OF WALL CLOCK:
+ *
+ *     f2974 += now - f2970;   if (f2974 > 0x3C) { f2974 = 0; flags |= 0x100; }
+ *
+ * Bit 0x100 is the only thing that lets 0x10047360 step a selected row's
+ * colour, so without it a menu has no selection feedback at all -- every label
+ * sits on the kind byte its builder passed.
+ *
+ * A scripted frame here takes microseconds, so back-to-back frames can never
+ * cross that gate and the pulse never runs. The driver therefore gives each
+ * scripted frame a real duration. The number is the GAME'S -- 0x3C, plus one
+ * so the strict `>` can be satisfied -- and not one chosen to look right.
+ *
+ * What this deliberately does NOT model is the game's video frame rate: a
+ * real 60 Hz frame is 16 ms and the pulse fires every fourth one. Here one
+ * scripted key is one MENU STEP, so it advances the pulse exactly once, which
+ * is what makes a screenshot pair reproducible instead of dependent on how
+ * fast the machine decoded 138 BMPs. */
+#define BR_STEP_MS  (0x3C + 1)
+
+static void NavFrameWait(void)
+{
+    usleep((useconds_t)BR_STEP_MS * 1000u);
+}
+
 static void NavDumpState(const char *pszWhen, const BrPhase_ *ph)
 {
     const BrUiPage_ *pg = NavPage(ph);
@@ -684,6 +725,7 @@ static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
             return 1;
         }
 
+        NavFrameWait();
         (void)NavFrame(phCur);
 
         BrUiNavSetStep(&g_nav, 0);
@@ -858,9 +900,9 @@ static void MakeChromeTextures(BrGfx *gfx)
                 iCached = pS->iImage;
             }
             /* The table entry's bit 0 selects the colour-keyed blit; the key
-             * the original uses is pure magenta. Applied here rather than in
-             * the decoder because it is the TABLE that decides, not the file. */
-            if (pS->fBlit & 1) BrBmpApplyKey(&sheet, 0xFF00FF);
+             * itself is BR_UI_COLOUR_KEY. Applied here rather than in the
+             * decoder because it is the TABLE that decides, not the file. */
+            if (pS->fBlit & 1) BrBmpApplyKey(&sheet, BR_UI_COLOUR_KEY);
             if (CropSprite(gfx, &sheet, pS->rect, &g_aSprTex[i])) g_cSpr++;
         }
         BrBmpFree(&sheet);
@@ -872,28 +914,37 @@ static void MakeChromeTextures(BrGfx *gfx)
         printf("chrome: no art in testdata/images -- drawing placeholders\n");
 }
 
-/* Captions, rasterised once with br_font and cached as textures.
+/* Captions, rasterised with the GAME'S OWN MENU FONT and cached as textures.
  *
- * br_font.c reads the glyph pixels out of orig/BRGlide.dll -- that is where
- * the game keeps them, in .data, and there is no font file to load instead. If
- * the DLL is not there the captions simply do not appear and the chrome is
- * drawn exactly as it would be otherwise.
+ * ==========================================================================
+ * WHICH FONT, AND WHY IT IS NOT br_font.c's
+ * ==========================================================================
+ *
+ * This used to draw captions with br_font.c, which recovers the DISPLAY-LIST
+ * font out of the DLL's .data. That font is the one the software RSP draws
+ * in-game; the menus never touch it. A menu caption is one SPRITE PER
+ * CHARACTER, blitted out of images\type_gry|wit|mid|yel.bmp, and the sheet is
+ * chosen by the text box's kind byte. port/src/br_sprfont.c is that path,
+ * ported from 0x1005B2B0 / 0x1005B730 / 0x1005F800; this file supplies the
+ * blit those functions call out to, because the original's endpoint
+ * (0x10058380 -> 0x10001320) is a 16-bit software blit against a surface this
+ * port does not have.
+ *
+ * So the typeface, the per-character advances, the pen start and the colour
+ * are now all the game's. What is still this file's is only the target: the
+ * glyphs land in an RGBA buffer that becomes one texture per caption, instead
+ * of in a 640x480 16-bit surface.
  *
  * ==========================================================================
  * WHERE A CAPTION GOES, DERIVED RATHER THAN CHOSEN
  * ==========================================================================
- *
- * This used to be two constants picked by eye -- a 24-pixel cell and a pen
- * line at 44 -- with the buffer then shifted by (44 - 24) to make them line
- * up. Both are gone. The relationship is short and it is entirely in ported
- * code; it just has to be read out of three routines instead of one.
  *
  *   0x10047FB0  (place)   stores the builder's x and y in the control's
  *                         +0x3C / +0x40.
  *
  *   0x10047EB0  (setText) copies those into the text box's +0x410 / +0x414,
  *                         zeroes width and height, dispatches the box's
- *                         MEASURE method, and then reads height back:
+ *                         MEASURE method, and reads height back:
  *                             rcTop    = __ftol(ctl->y)
  *                             rcBottom = rcTop + box->height
  *                         so the control's vertical extent IS the measured
@@ -901,125 +952,206 @@ static void MakeChromeTextures(BrGfx *gfx)
  *
  *   0x1005B2B0  (the text box's own draw, vtable +0x10) walks the string and
  *                         hands EVERY glyph the same y -- the box's +0x414,
- *                         unchanged -- as the destination top-left of a blit
- *                         (0x1005B730 -> 0x10058380). There is no baseline
- *                         offset anywhere on that path: no ascent, no
- *                         descent, no per-glyph bearing.
+ *                         unchanged -- as the destination top-left. There is
+ *                         no baseline offset anywhere on that path: no
+ *                         ascent, no descent, no per-glyph bearing.
  *
- * So the caption's cell TOP is box->y and its cell HEIGHT is box->height,
- * exactly. `scale` is therefore the measure method's number and not a
- * constant, and the pen line is whatever puts the cell top on buffer row 0.
- * BrTextEmitString computes `top = y - (30*scale)/40`, so that pen line is
- * (30*scale)/40 -- the same expression, which makes top come out 0 with no
- * rounding slack at any scale. The buffer can then be drawn at box->y with no
- * correction term at all.
+ * So the caption's cell TOP is box->y, exactly, and the pen's start is what
+ * BrSprFontPenStart_1005B2B0 returns -- the box's +0x410, which
+ * BrTextBoxCentreX has centred in the style rectangle. The buffer is placed at
+ * (__ftol(penStart), __ftol(box->y)) using the SAME truncation the glyph
+ * drawer applies, so glyph i lands on buffer column (x_i - penStart) with no
+ * rounding slack anywhere.
  *
- * HORIZONTAL comes from the same place and was also being ignored: the
- * caption used to be drawn at rcLeft, which is the STYLE rectangle's left
- * edge. 0x10047EB0 calls the box's +0x28 (BrTextBoxCentreX) when a2 bit 0 is
- * set, and that stores left + 0.5*(right - left - width) in the box's x. Every
- * menu builder passes a2 = 1, so the game centres its captions in the style
- * rectangle and the port had already computed where. Read box->x.
+ * The old code's two correction terms -- a pen line of (30*scale)/40 and a
+ * `scale` taken from the measured height -- are both gone. They existed only
+ * to line up the display-list font's baseline, and the sprite font has none.
  *
- * STILL APPROXIMATE, and this is the part that cannot be fixed here: the menu
- * font is NOT the font br_font.c draws. 0x1005B730 blits each glyph out of
- * images\type_gry|wit|mid|yel.bmp using a rectangle table built at load time;
- * br_font.c recovers the DISPLAY-LIST font from .data, which is a different
- * typeface at a different width. The cell top and height above are exact; the
- * centred x is the game's number computed from the game's font's width, so a
- * caption is centred as the game centred it but drawn in a face whose width
- * differs, and the two ends of the line are therefore not equally inset. */
+ * ==========================================================================
+ * COLOUR, AND WHY THERE IS NO LONGER A HIGHLIGHT MARKER
+ * ==========================================================================
+ *
+ * The game draws no background behind a selected label. It changes which
+ * SHEET the label's glyphs come out of, one byte at control +0x2B64:
+ *
+ *   0x10048180's not-current tail pins every unselected label to kind 1
+ *   (type_wit, white) and its +0x1E20C to 3;
+ *
+ *   the current control instead gets its +0x0C hook called, which for every
+ *   menu row is 0x10047360 (ported in br_sprfont.c) -- and that steps
+ *   +0x1E20C once per 60 ms tick and maps it onto kind 0/1/2/4, i.e. onto
+ *   type_gry / type_wit / type_mid / type_yel.
+ *
+ * A caption texture is therefore keyed on (control, kind): the same string
+ * needs a different texture when the row's colour changes, and it is built
+ * on demand the first time that pair is seen. */
 #define BR_CAP_W     512
-#define BR_CAP_H      64
-#define BR_CAP_MAX    64
+#define BR_CAP_H      32
+#define BR_CAP_MAX   192
 
-/* The pen line that lands BrTextEmitString's glyph cell on buffer row 0.
- * Deliberately the same expression the emitter subtracts. */
-#define BR_CAP_PEN(scale)  ((30 * (scale)) / 40)
+/* --- the sheets the sprite font blits out of ----------------------------- */
 
-static BrFont g_font;
-static int    g_haveFont;
+/* Only six sprite ids can ever reach the blit: 2, 3, 4 and 0x34 are the four
+ * type_*.bmp sheets, 5 is bignums.bmp, and 0 is the work1a.bmp the kind
+ * fall-through selects (see BrSprFontSheet_1005B730's GOTCHA). They are
+ * cached decoded and keyed, because a caption is re-rasterised whenever its
+ * row changes colour and decoding a 128x144 BMP per frame would be silly. */
+static BrBmp g_aFontSheet[BR_UI_SPR_COUNT];
+static char  g_aFontSheetTried[BR_UI_SPR_COUNT];
 
-/* BRGlide.dll is the reference build (CONVENTIONS.md), so the host asks for it
- * first and falls back to the D3D build.  br_font works out which one it got
- * from the image itself; the two render the same caption. */
-static const char *LoadFont(void)
+static const BrBmp *FontSheet(int32_t iSprite)
 {
-    if (BrFontLoad(&g_font, "orig/BRGlide.dll") == 0) {
-        g_haveFont = 1;
-        return "orig/BRGlide.dll";
+    const BrUiSprite *pS;
+    const char *pszName;
+    char szPath[256];
+
+    if (iSprite < 0 || iSprite >= BR_UI_SPR_COUNT) return NULL;
+    if (g_aFontSheetTried[iSprite]) {
+        return g_aFontSheet[iSprite].pRgba ? &g_aFontSheet[iSprite] : NULL;
     }
-    if (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0) {
-        g_haveFont = 1;
-        return "orig/BRD3D.dll";
-    }
-    g_haveFont = 0;
-    return NULL;
+    g_aFontSheetTried[iSprite] = 1;
+
+    pS = BrUiSpriteAt(iSprite);
+    if (!pS || pS->iImage < 0 || pS->iImage >= BR_UI_SPR_COUNT) return NULL;
+    pszName = g_aBrUiSpriteName[pS->iImage];
+    if (!pszName || !*pszName) return NULL;
+    snprintf(szPath, sizeof szPath, "testdata/images/%s", pszName);
+    if (BrBmpLoad(&g_aFontSheet[iSprite], szPath) != 0) return NULL;
+    /* The key is the table's decision, and it is applied here for the same
+     * reason MakeChromeTextures applies it: br_bmp.c decodes, it does not
+     * decide. */
+    if (pS->fBlit & 1) BrBmpApplyKey(&g_aFontSheet[iSprite], BR_UI_COLOUR_KEY);
+    return &g_aFontSheet[iSprite];
 }
 
-static struct { BrTexture tex; const void *pOwner; float x, y; }
+/* --- the blit 0x10058380 stands in for ----------------------------------- */
+
+typedef struct CapRaster {
+    uint8_t *pBuf;          /* BR_CAP_W x BR_CAP_H RGBA                     */
+    int32_t  ox, oy;        /* the buffer's top-left in surface coordinates */
+} CapRaster;
+
+/* One glyph. The arguments are 0x10058380's, in its order; everything about
+ * WHICH pixels move is the game's, and the only thing this adds is the
+ * translation into the caption buffer and the clip to its edges.
+ *
+ * The 640x480 clip is the game's own -- BrUiSprClip is br_uispr.c's port of
+ * 0x10001320's first eighteen instructions, and 640x480 is the surface it
+ * reads out of 0x10AC5D84. A glyph that the game would have clipped is
+ * clipped here by the same arithmetic, before the buffer is considered. */
+static void CapBlit(void *pCtx, int32_t x, int32_t y, int32_t iSprite,
+                    const int32_t *pRect, int32_t fBlit)
+{
+    CapRaster    *pR = (CapRaster *)pCtx;
+    const BrBmp  *pSheet = FontSheet(iSprite);
+    int32_t       w, h, j, i;
+
+    if (!pSheet || !pSheet->pRgba) return;
+    if (!BrUiSprClip(x, y, pRect, 640, 480, &w, &h)) return;
+
+    for (j = 0; j < h; j++) {
+        int32_t sy = pRect[1] + j;
+        int32_t dy = y + j - pR->oy;
+        if (dy < 0 || dy >= BR_CAP_H) continue;
+        if (sy < 0 || sy >= (int32_t)pSheet->h) continue;
+        for (i = 0; i < w; i++) {
+            int32_t sx = pRect[0] + i;
+            int32_t dx = x + i - pR->ox;
+            const uint8_t *pS;
+            uint8_t *pD;
+            if (dx < 0 || dx >= BR_CAP_W) continue;
+            if (sx < 0 || sx >= (int32_t)pSheet->w) continue;
+            pS = pSheet->pRgba + ((size_t)sy * pSheet->w + sx) * 4u;
+            /* fBlit bit 0 is the keyed copy; BrBmpApplyKey has already turned
+             * the key into alpha 0, so the test is on alpha. Without the bit
+             * the original copies every texel, key included. */
+            if ((fBlit & 1) && pS[3] == 0) continue;
+            pD = pR->pBuf + ((size_t)dy * BR_CAP_W + dx) * 4u;
+            pD[0] = pS[0]; pD[1] = pS[1]; pD[2] = pS[2]; pD[3] = 0xFF;
+        }
+    }
+}
+
+/* --- the cache ----------------------------------------------------------- */
+
+static struct { BrTexture tex; const void *pOwner; uint8_t kind; float x, y; }
               g_aCapTex[BR_CAP_MAX];
 static int    g_cCap;
 
-/* The caption texture built for this control, or 0. Keyed on the control the
- * way CapFor is, so DrawPhase can draw a control's chrome and its label in
- * the same step and in the page's own order -- which is what 0x10048530 does,
- * one control at a time. */
-static BrTexture CapTexFor(const void *pCtl, float *pX, float *pY)
+/* Rasterise one control's caption at the kind its text box is CURRENTLY
+ * carrying, and cache the texture against that pair.
+ *
+ * Whether a control has a caption at all is not this file's judgement: it is
+ * BrUiCtlChrome's, i.e. 0x10048010's label arm. A control the page frame
+ * skips (the 0x1000-without-0x10 ordinal controls) and a control that draws
+ * sprite chrome instead both report something other than BR_UI_CHROME_TEXT
+ * and get no caption here, which is exactly which controls reach
+ * 0x1005B2B0 in the original. */
+static BrTexture CapBuild(BrGfx *gfx, const BrUiCtl_ *pCtl, float *pX, float *pY)
 {
-    int i;
-    for (i = 0; i < g_cCap; i++)
-        if (g_aCapTex[i].pOwner == pCtl) {
+    static uint8_t buf[BR_CAP_W * BR_CAP_H * 4];
+    BrTextBox  *pBox;
+    BrUiChrome  ch;
+    CapRaster   ras;
+    BrTexture   t;
+    const char *psz;
+    uint8_t     kind;
+    int         i;
+
+    psz = CapFor(pCtl);
+    if (!psz || !*psz) return 0;
+    if (!BrUiCtlChrome(pCtl, 640, 480, &ch) || ch.kind != BR_UI_CHROME_TEXT)
+        return 0;
+
+    /* The box is written by 0x10047EB0 and by the frame's recolour; the cast
+     * is because 0x1005B2B0 re-dispatches the centring method, which stores
+     * into the box. Idempotent here -- nothing has changed the measured width
+     * since setText ran -- but reproduced rather than skipped. */
+    pBox = (BrTextBox *)&pCtl->aText[0];
+    kind = pBox->f08;
+
+    for (i = 0; i < g_cCap; i++) {
+        if (g_aCapTex[i].pOwner == pCtl && g_aCapTex[i].kind == kind) {
             *pX = g_aCapTex[i].x; *pY = g_aCapTex[i].y;
             return g_aCapTex[i].tex;
         }
-    return 0;
+    }
+    if (g_cCap >= BR_CAP_MAX) return 0;
+
+    ras.ox = BrFtolTrunc(BrSprFontPenStart_1005B2B0(pBox));
+    ras.oy = BrFtolTrunc(pBox->y);
+    ras.pBuf = buf;
+    memset(buf, 0, sizeof buf);
+
+    (void)BrSprFontDraw_1005B2B0(pBox, CapBlit, &ras);
+
+    t = BrGfxCreateTexture(gfx, BR_CAP_W, BR_CAP_H, buf);
+    if (!t) return 0;
+    g_aCapTex[g_cCap].tex    = t;
+    g_aCapTex[g_cCap].pOwner = pCtl;
+    g_aCapTex[g_cCap].kind   = kind;
+    g_aCapTex[g_cCap].x      = (float)ras.ox;
+    g_aCapTex[g_cCap].y      = (float)ras.oy;
+    *pX = (float)ras.ox; *pY = (float)ras.oy;
+    g_cCap++;
+    return t;
 }
 
+/* Prime every caption on a phase. Kept as a named step because both the
+ * screenshot path and the windowed loop want the first frame to be complete;
+ * CapBuild is idempotent, so DrawPhase calling it again costs a lookup. */
 static void BuildCaptions(BrGfx *gfx, const BrPhase_ *ph)
 {
-    static uint8_t buf[BR_CAP_W * BR_CAP_H * 4];
     int i, j;
 
-    if (!g_haveFont) return;
     for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
         const BrUiPage_ *pg = ph->aPages[i];
         if (!pg) continue;
         for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
-            const BrUiCtl_  *c = pg->apCtl[j];
-            const BrTextBox *pBox;
-            const char *psz;
-            BrTexture   t;
-            int32_t     scale;
-
-            if (!c || g_cCap >= BR_CAP_MAX) continue;
-            psz = CapFor(c);
-            if (!psz || !*psz) continue;
-
-            /* Everything below is the text box's, written by 0x10047EB0 and
-             * its measure dispatch. Nothing here is chosen by this file. */
-            pBox  = &c->aText[0];
-            scale = (int32_t)pBox->height;
-            /* A box whose measure never ran has height 0 and nothing to
-             * place; a taller-than-the-buffer one would be silently cropped,
-             * so it is skipped instead. */
-            if (scale <= 0 || scale > BR_CAP_H) continue;
-
-            memset(buf, 0, sizeof buf);
-            if (BrFontDrawString(&g_font, psz, scale, 0, BR_CAP_PEN(scale),
-                                 buf, BR_CAP_W, BR_CAP_H) == (size_t)-1)
-                continue;
-            t = BrGfxCreateTexture(gfx, BR_CAP_W, BR_CAP_H, buf);
-            if (!t) continue;
-            g_aCapTex[g_cCap].tex    = t;
-            g_aCapTex[g_cCap].pOwner = c;
-            /* The pen line above puts the glyph cell's top on buffer row 0,
-             * so the buffer goes at the box's own origin with no correction:
-             * x is BrTextBoxCentreX's result, y is what 0x1005B2B0 hands
-             * every glyph. */
-            g_aCapTex[g_cCap].x      = pBox->x;
-            g_aCapTex[g_cCap].y      = pBox->y;
-            g_cCap++;
+            const BrUiCtl_ *c = pg->apCtl[j];
+            float x = 0.0f, y = 0.0f;
+            if (!c) continue;
+            (void)CapBuild(gfx, c, &x, &y);
         }
     }
 }
@@ -1033,17 +1165,21 @@ static void BuildCaptions(BrGfx *gfx, const BrPhase_ *ph)
  *
  *   the game's -- which controls draw chrome at all (br_uispr's transcription
  *   of 0x10048010's three arms), which sprite each one is showing, that
- *   sprite's size and position, and every caption's cell top, cell height and
- *   centred x;
+ *   sprite's size and position, every caption's cell top and centred pen
+ *   start, the typeface, the per-character advances, and WHICH OF THE FOUR
+ *   FONT SHEETS each caption comes out of -- which is how the game shows a
+ *   selection;
  *
- *   NOT the game's -- the pixels. The sprites are BMPs on the disc, so each
- *   one is a placeholder quad, and the captions are drawn in the display-list
- *   font br_font.c recovers rather than the bitmap menu font the game blits
- *   out of images\type_*.bmp. Colour is likewise the font's default gradient,
- *   not the one the game's own state selects.
+ *   NOT the game's -- the target. The original blits 16-bit pixels into a
+ *   640x480 surface; here each sprite is a texture and each caption is a
+ *   texture, because the Metal backend draws textured quads. Where a sheet is
+ *   missing from testdata/images the chrome degrades to an outlined
+ *   placeholder quad and the caption to nothing.
  *
- * This is no longer "flat quads over every control": a LABEL now draws no
- * background, because the game draws none for it. */
+ * There is NO harness-drawn selection marker any more, and there should not
+ * be one: the game draws no background behind a selected label, it recolours
+ * the label. That recolour is now real -- see the caption section above and
+ * br_sprfont.c's transcription of 0x10047360. */
 static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex)
 {
     int i, j;
@@ -1064,41 +1200,13 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
                 ch.kind == BR_UI_CHROME_SPRITE)
                 DrawChrome(gfx, &ch);
 
-            cap = CapTexFor(c, &cx, &cy);
+            /* Built here rather than looked up, because the row's colour can
+             * have changed since the last frame and the texture is keyed on
+             * it. Already-seen (control, kind) pairs cost a lookup. */
+            cap = CapBuild(gfx, c, &cx, &cy);
             if (cap)
                 BrGfxDrawTexture(gfx, cap, cx, cy,
                                  (float)BR_CAP_W, (float)BR_CAP_H);
-
-        }
-    }
-
-    /* HARNESS MARKER -- NOT GAME CHROME. Its own pass, after the loop above,
-     * so that no later control's sprite can paint over it; the loop above is
-     * the game's own draw order and this is not part of it.
-     *
-     * The white bar this file used to fill a selected row with was pure
-     * invention: the game draws no background for a label at all. What it
-     * does instead is change the caption's FONT SHEET -- 0x10048180's
-     * not-current tail forces aText[0].f08 to 1 (images\type_wit.bmp) and its
-     * current arm leaves whatever the screen's own +0x0C hook set, 0x10047360
-     * choosing between type_gry / type_wit / type_mid / type_yel. Those hooks
-     * are not ported and are not this pass's to port, so there is nothing
-     * honest to draw for "selected" on a label yet.
-     *
-     * Dropping the highlight entirely would make navigation look broken, so
-     * the CURRENT bit -- +0x1C & 0x20, which the ported 0x10047A60 sets --
-     * gets a bullet beside the caption. It is the game's state and the
-     * harness's rendering of it, and this comment is the only thing keeping
-     * those two apart. */
-    for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
-        const BrUiPage_ *pg = ph->aPages[i];
-        if (!pg) continue;
-        for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
-            const BrUiCtl_ *c = pg->apCtl[j];
-            float cx = 0.0f, cy = 0.0f;
-            if (!c || ((uint32_t)c->flags1C & 0x20u) == 0) continue;
-            if (!CapTexFor(c, &cx, &cy)) continue;
-            FillRect(gfx, g_texEdge, cx - 11.0f, cy + 5.0f, 5.0f, 5.0f);
         }
     }
 }
@@ -1119,6 +1227,30 @@ int main(int argc, char **argv)
     g_hostCtlVtbl.f34 = HostCtlSetText;
     g_hostCtlVtbl.f38 = HostCtlPlace;
     g_pBrUiCtlVtbl    = &g_hostCtlVtbl;
+
+    /* 0x1005F800. The original runs it once during start-up and every glyph
+     * rectangle in the game comes out of it; nothing draws a caption before
+     * it has. */
+    BrSprFontRectInit_1005F800();
+
+    /* START THE FRAME CLOCK, and it has to be here rather than wherever it
+     * first gets asked for.
+     *
+     * 0x10075020 latches its epoch on its FIRST call -- slice4_50.c seeds
+     * g_br18AB130 from the counter when g_br0BBAD4 is still 1, and every
+     * later call returns the time SINCE THAT MOMENT. The original's start-up
+     * calls it long before any menu is built, so by the time 0x100480A0 ticks
+     * a freshly placed control (whose +0x2970 is 0, from the constructor's
+     * memset) the delta is the whole of start-up and the 60 ms gate is
+     * crossed on the very first frame. That is what puts bit 0x100 on every
+     * control before the first paint, and bit 0x100 is what lets 0x10047360
+     * colour the selected row.
+     *
+     * Latch it here and the ordering matches. Leave it to be latched by the
+     * first tick instead and that tick's delta is zero BY CONSTRUCTION, so
+     * the first frame can never raise the bit -- which is exactly the shape
+     * of bug that reads as "the recolour is not ported". */
+    (void)BrSub10075020();
 
     /* Without this the constructed controls have a NULL text-box vtable and
      * 0x10047EB0 skips the measure, leaving width/height 0. */
@@ -1282,7 +1414,6 @@ int main(int argc, char **argv)
         }
         g = BrGfxCreate(W, H);
         if (!g) { printf("gfx init failed: %s\n", BrGfxLastError()); return 1; }
-        (void)LoadFont();
         MakeChromeTextures(g);
         g_aBuilders[b].pfn(ph);
         g_nav.pAA2904 = ph;
@@ -1300,6 +1431,7 @@ int main(int argc, char **argv)
                 if (*pk == 'd') BrUiNavMove(&g_nav, +1);
                 else if (*pk == 'u') BrUiNavMove(&g_nav, -1);
                 else if (*pk == 'j') BrUiNavSetActivate(&g_nav, 1);
+                NavFrameWait();
                 (void)NavFrame(phShot);
                 BrUiNavSetStep(&g_nav, 0);
                 BrUiNavSetActivate(&g_nav, 0);
@@ -1392,14 +1524,6 @@ int main(int argc, char **argv)
         else if (BrGfxOpenWindow(gfx, "Boss Rally") != 0) { gfx = NULL; }
         if (gfx) {
             MakeChromeTextures(gfx);
-            {
-                const char *pszFont = LoadFont();
-                if (pszFont)
-                    printf("font: glyphs recovered from %s\n", pszFont);
-                else
-                    printf("font: neither orig/BRGlide.dll nor "
-                           "orig/BRD3D.dll is readable -- boxes only\n");
-            }
             BuildCaptions(gfx, ph);
         }
         if (gfx && BrImgLoad(&img, "testdata/splash.img") == 0) {

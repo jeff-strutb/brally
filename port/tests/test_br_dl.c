@@ -286,6 +286,181 @@ static void test_synthetic(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* 5b. the clipper                                                    */
+/* ------------------------------------------------------------------ */
+/* Asserts the two things a clipper can be right or wrong about, and no
+ * volume: (a) every vertex it produces is inside every half-space, and
+ * (b) the AREA it produces is the analytic area of the clipped polygon.
+ * Area is order-independent, so it survives a different-but-equivalent
+ * vertex sequence -- which matters, because Sutherland-Hodgman's output
+ * order is a property of the plane order and this port keeps 0x1001EE70's.
+ *
+ * There is also a conservation law worth having: the 64-node pool at
+ * 0x105CCFF0 is a free list, every plane routine and the output loop return
+ * to it, and if any path leaks the list shortens.  Counting it is the only
+ * cheap way to see that. */
+
+/* slice1_03.c owns the pool and its free list -- br_dl.c only supplies the
+ * storage.  BrClipPoolCount is that module's own not-in-the-original
+ * accessor; declared by prototype rather than by including slice1_03.h, the
+ * way br_dl.c declares BrMat4Mul. */
+extern int BrClipPoolCount(void);
+static int free_count(const BrDl *pDl) { (void)pDl; return BrClipPoolCount(); }
+
+/* A validating sink: checks the defining half-space inequalities on every
+ * vertex handed to pfnTri, accumulates signed clip-space area, then forwards
+ * to whatever sink was installed underneath. */
+typedef struct Watch {
+    void (*pfnInner)(void *, const BrDlVtx *, const BrDlVtx *, const BrDlVtx *);
+    void   *pInner;
+    double  area;          /* sum of |clip-space triangle area|             */
+    int     fInside;       /* every vertex satisfied every plane            */
+    uint32_t cTri;
+} Watch;
+
+static int vtx_inside(const BrDlVtx *v)
+{
+    const float e = 1e-4f;
+    return v->cw           >= -e && v->cz + v->cw >= -e &&
+           v->cw - v->cz   >= -e && v->cw + v->cx >= -e &&
+           v->cw - v->cx   >= -e && v->cy + v->cw >= -e &&
+           v->cw - v->cy   >= -e;
+}
+
+static void watch_tri(void *u, const BrDlVtx *a, const BrDlVtx *b,
+                      const BrDlVtx *c)
+{
+    Watch *w = (Watch *)u;
+    double ar;
+    if (!vtx_inside(a) || !vtx_inside(b) || !vtx_inside(c))
+        w->fInside = 0;
+    ar = ((double)b->cx - a->cx) * ((double)c->cy - a->cy) -
+         ((double)b->cy - a->cy) * ((double)c->cx - a->cx);
+    w->area += (ar < 0 ? -ar : ar) * 0.5;
+    w->cTri++;
+    if (w->pfnInner)
+        w->pfnInner(w->pInner, a, b, c);
+}
+
+static void watch_install(BrDl *pDl, Watch *w)
+{
+    w->pfnInner = pDl->sink.pfnTri;
+    w->pInner   = pDl->sink.pUser;
+    w->area = 0.0; w->fInside = 1; w->cTri = 0;
+    pDl->sink.pfnTri = watch_tri;
+    pDl->sink.pUser  = w;
+}
+
+static void test_clip(void)
+{
+    static uint8_t dl[128];
+    static uint8_t verts[3 * 0x20];
+    static uint8_t mtx[64];
+    BrDl st;
+    Watch w;
+    int i;
+
+    printf("clipper (0x1001EE70 and its seven planes)\n");
+
+    memset(mtx, 0, sizeof(mtx));
+    wf(mtx + 0 * 4, 1.0f); wf(mtx + 5 * 4, 1.0f);
+    wf(mtx + 10 * 4, 1.0f); wf(mtx + 15 * 4, 1.0f);
+
+    memset(dl, 0, sizeof(dl));
+    put(dl + 0x00, 0x01020000u | 0x20000u, 0x50000000u);
+    put(dl + 0x08, 0x04000000u | (3u << 10), 0x60000000u);
+    put(dl + 0x10, 0xBF000000u, 0x00000102u);
+    put(dl + 0x18, 0xB8000000u, 0u);
+
+    /* An identity matrix makes clip space == model space with w == 1, so the
+     * geometry below IS the clip-space geometry and the analytic answer can
+     * be written down.  A = (-2, 0) is outside LEFT (cw + cx = -1); B and C
+     * are inside every plane.  LEFT cuts the two edges at cx == -1. */
+    memset(verts, 0, sizeof(verts));
+    wf(verts + 0x00 + 0x00, -2.0f); wf(verts + 0x00 + 0x04,  0.0f);
+    wf(verts + 0x20 + 0x00,  0.0f); wf(verts + 0x20 + 0x04, -0.5f);
+    wf(verts + 0x40 + 0x00,  0.0f); wf(verts + 0x40 + 0x04,  0.5f);
+    for (i = 0; i < 3; ++i) {
+        wf(verts + i * 0x20 + 0x14, 1.0f);
+        wf(verts + i * 0x20 + 0x18, 1.0f);
+        wf(verts + i * 0x20 + 0x1C, 1.0f);
+    }
+
+    BrDlInit(&st, 64, 64);
+    check(free_count(&st) == BR_DL_CLIP_POOL,
+          "0x10023B10 threads all 64 pool nodes onto the free list");
+    BrDlAddRegion(&st, 0x50000000u, mtx, sizeof(mtx));
+    BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+    watch_install(&st, &w);
+    BrDlRun(&st, dl, sizeof(dl));
+
+    check(st.cTriIn == 1 && st.cTriClipped == 1 && st.cTriDrawn == 0 &&
+          st.cTriRejected == 0,
+          "a straddling triangle enters the clipper, not the drop path");
+    /* Cutting one corner off a triangle gives a quad, and a quad fans to
+     * two triangles.  Both numbers are properties of the geometry, not of
+     * the implementation. */
+    check(st.cClipVtxMax == 4, "one crossed plane turns 3 vertices into 4");
+    check(st.cTriClipOut == 2 && w.cTri == 2,
+          "the quad reaches the sink as two triangles");
+    check(w.fInside, "every emitted vertex satisfies all seven half-spaces");
+    /* The whole triangle is 1.0; the part with cx >= -1 is a trapezoid of
+     * parallel sides 0.5 and 1.0 and width 1, i.e. 0.75. */
+    check(fabs(w.area - 0.75) < 1e-5,
+          "the clipped area is the analytic 0.75, not the original 1.0");
+    check(st.cClipStarved == 0 && st.cClipOverflow == 0,
+          "no pool starvation and no polygon wider than the frame");
+    check(free_count(&st) == BR_DL_CLIP_POOL,
+          "every borrowed clip vertex was returned to the pool");
+
+    /* Straddle from the other side: the same triangle mirrored in x must
+     * cross RIGHT instead of LEFT and give the same area.  This is the test
+     * that catches an inverted plane -- a sign error makes one of the two
+     * pass and the other reject the triangle outright. */
+    wf(verts + 0x00 + 0x00,  2.0f);
+    BrDlInit(&st, 64, 64);
+    BrDlAddRegion(&st, 0x50000000u, mtx, sizeof(mtx));
+    BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+    watch_install(&st, &w);
+    BrDlRun(&st, dl, sizeof(dl));
+    check(st.cTriClipped == 1 && st.cTriClipOut == 2 && w.fInside &&
+          fabs(w.area - 0.75) < 1e-5,
+          "mirrored in x it crosses RIGHT and gives the same 0.75");
+
+    /* Behind the eye.  Pushing one vertex to w < 0 must engage the W plane
+     * (0x1001F0D0, the seventh and last call) and NEAR, and must not produce
+     * a vertex with a non-positive w -- which is the failure that shows up as
+     * a triangle smeared across the screen. */
+    {
+        static uint8_t m2[64];
+        memset(m2, 0, sizeof(m2));
+        wf(m2 + 0 * 4, 1.0f); wf(m2 + 5 * 4, 1.0f);
+        wf(m2 + 10 * 4, 1.0f);
+        wf(m2 + 11 * 4, 1.0f);      /* w = z + 0.5 */
+        wf(m2 + 15 * 4, 0.5f);
+
+        memset(verts, 0, sizeof(verts));
+        wf(verts + 0x00 + 0x00, 0.0f); wf(verts + 0x00 + 0x08, -1.0f);
+        wf(verts + 0x20 + 0x00, 0.2f); wf(verts + 0x20 + 0x08,  0.2f);
+        wf(verts + 0x40 + 0x00, -0.2f); wf(verts + 0x40 + 0x08, 0.2f);
+        for (i = 0; i < 3; ++i) {
+            wf(verts + i * 0x20 + 0x14, 1.0f);
+            wf(verts + i * 0x20 + 0x18, 1.0f);
+            wf(verts + i * 0x20 + 0x1C, 1.0f);
+        }
+        BrDlInit(&st, 64, 64);
+        BrDlAddRegion(&st, 0x50000000u, m2, sizeof(m2));
+        BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+        watch_install(&st, &w);
+        BrDlRun(&st, dl, sizeof(dl));
+        check(st.cTriClipped == 1 && w.cTri > 0 && w.fInside,
+              "a vertex behind the eye is clipped, not projected");
+        check(free_count(&st) == BR_DL_CLIP_POOL,
+              "and the pool is still whole afterwards");
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* 6. retail geometry                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -361,6 +536,8 @@ static void run_rca(const char *pszPath)
     float maxAbs = 1.0f;
     size_t i;
     int fEndOk = 1;
+    int iCam;
+    uint32_t cClipBase = 0;
 
     printf("%s\n", pszPath);
     if (!f) { check(0, "open"); return; }
@@ -416,82 +593,136 @@ static void run_rca(const char *pszPath)
         if (c > maxAbs) maxAbs = c;
     }
 
-    BrDlInit(&st, 128, 128);
-    BrDlAddRegion(&st, ARENA_BASE, ctx.pArena, ctx.cArena * sizeof(float));
-    BrDlAddRegion(&st, RCA_N64_BASE, ctx.pFile + RCA_FILE_BASE,
-                  ctx.cbFile - RCA_FILE_BASE);
-
-    /* TEST SCAFFOLDING, not the original: these runs carry no G_MTX, so the
-     * combined matrix would stay identity and every vertex would land outside
-     * a unit frustum. Scale the model into view and give w a mild slope so
-     * the 1/w divide is actually exercised. */
-    memset(&st.combined, 0, sizeof(st.combined));
-    st.combined.m[0][0] = 1.0f / maxAbs;
-    st.combined.m[1][1] = 1.0f / maxAbs;
-    st.combined.m[2][2] = 1.0f / maxAbs;
-    st.combined.m[2][3] = 0.25f / maxAbs;
-    st.combined.m[3][3] = 2.0f;
-    BrDlSetViewport(&st, 48.0f, 64.0f, -48.0f, 64.0f);
-
+    /* Three cameras over the same geometry.  The first is the one this test
+     * has always used, and it is exactly the reason the clip path had never
+     * executed: both retail models fit entirely inside it, so `clip` was 0 on
+     * every run and the branch was dead.  The other two MOVE THE CAMERA so the
+     * model genuinely straddles a plane -- which is the only way to exercise
+     * a clipper, and the whole point of running them.
+     *
+     * All three are TEST SCAFFOLDING, not the original: these runs carry no
+     * G_MTX, so the combined matrix would otherwise stay identity and every
+     * vertex would land outside a unit frustum. */
     rgba = (uint8_t *)calloc(128u * 128u * 4u, 1);
-    ras.pRgba = rgba; ras.cx = 128; ras.cy = 128; ras.cCovered = 0;
-    BrDlAttachRaster(&st, &ras);
 
-    for (i = 0; i < nRuns; ++i)
-        BrDlRun(&st, ctx.pFile + aStart[i], ctx.cbFile - aStart[i]);
+    for (iCam = 0; iCam < 3; ++iCam) {
+        static const char *const aszCam[3] = {
+            "centred  (model wholly inside -- the historical case)",
+            "panned   (translated right until it crosses RIGHT/LEFT)",
+            "close-up (w scaled down until it crosses NEAR and W)"
+        };
+        Watch w;
 
-    printf("    runs=%-4u cmds=%-6u vtxload=%-4u verts=%-5u tri=%-5u "
-           "drawn=%-5u rej=%-5u clip=%-4u px=%u\n",
-           (unsigned)nRuns, st.cCommands, st.cVtxLoads, st.cVtxTransformed,
-           st.cTriIn, st.cTriDrawn, st.cTriRejected, st.cTriClipped,
-           ras.cCovered);
+        BrDlInit(&st, 128, 128);
+        BrDlAddRegion(&st, ARENA_BASE, ctx.pArena, ctx.cArena * sizeof(float));
+        BrDlAddRegion(&st, RCA_N64_BASE, ctx.pFile + RCA_FILE_BASE,
+                      ctx.cbFile - RCA_FILE_BASE);
 
-    /* A thumbnail, printed rather than asserted. Coverage counts cannot tell
-     * a model from a smear; a silhouette can, and it costs twelve lines. */
-    {
-        int ty, tx;
-        for (ty = 0; ty < 16; ++ty) {
-            char row[41];
-            for (tx = 0; tx < 40; ++tx) {
-                int sy = ty * 8, sx = tx * 3, k, l, lit = 0;
-                for (k = 0; k < 8 && !lit; ++k)
-                    for (l = 0; l < 3 && !lit; ++l) {
-                        int px = sx + l, py = sy + k;
-                        if (px < 128 && py < 128 &&
-                            rgba[((size_t)py * 128u + (size_t)px) * 4u + 3])
-                            lit = 1;
-                    }
-                row[tx] = (char)(lit ? '#' : '.');
+        memset(&st.combined, 0, sizeof(st.combined));
+        st.combined.m[0][0] = 1.0f / maxAbs;
+        st.combined.m[1][1] = 1.0f / maxAbs;
+        st.combined.m[2][2] = 1.0f / maxAbs;
+        st.combined.m[2][3] = 0.25f / maxAbs;
+        st.combined.m[3][3] = 2.0f;
+        if (iCam == 1) {
+            /* Row 3 is the translation row (row-vector convention), so this
+             * slides clip-space x by +1.6 against a half-width of w == 2. */
+            st.combined.m[3][0] = 1.6f;
+        } else if (iCam == 2) {
+            /* Shrink the constant part of w so the model's own z drives it
+             * through zero: cw = 0.35 + z/maxAbs. */
+            st.combined.m[2][3] = 1.0f / maxAbs;
+            st.combined.m[3][3] = 0.35f;
+        }
+        BrDlSetViewport(&st, 48.0f, 64.0f, -48.0f, 64.0f);
+
+        memset(rgba, 0, 128u * 128u * 4u);
+        ras.pRgba = rgba; ras.cx = 128; ras.cy = 128; ras.cCovered = 0;
+        BrDlAttachRaster(&st, &ras);
+        watch_install(&st, &w);
+
+        for (i = 0; i < nRuns; ++i)
+            BrDlRun(&st, ctx.pFile + aStart[i], ctx.cbFile - aStart[i]);
+
+        printf("  camera %d: %s\n", iCam, aszCam[iCam]);
+        printf("    runs=%-4u cmds=%-6u vtxload=%-4u verts=%-5u tri=%-5u "
+               "drawn=%-5u rej=%-5u clip=%-5u clipout=%-5u killed=%-5u "
+               "wmax=%u px=%u\n",
+               (unsigned)nRuns, st.cCommands, st.cVtxLoads, st.cVtxTransformed,
+               st.cTriIn, st.cTriDrawn, st.cTriRejected, st.cTriClipped,
+               st.cTriClipOut, st.cTriClipKilled, st.cClipVtxMax,
+               ras.cCovered);
+
+        /* A thumbnail, printed rather than asserted. Coverage counts cannot
+         * tell a model from a smear; a silhouette can, and it costs twelve
+         * lines.  With a moved camera it is also the only cheap check that
+         * the clipper produced a COHERENT shape and not confetti. */
+        {
+            int ty, tx;
+            for (ty = 0; ty < 16; ++ty) {
+                char row[41];
+                for (tx = 0; tx < 40; ++tx) {
+                    int sy = ty * 8, sx = tx * 3, k, l, lit = 0;
+                    for (k = 0; k < 8 && !lit; ++k)
+                        for (l = 0; l < 3 && !lit; ++l) {
+                            int px = sx + l, py = sy + k;
+                            if (px < 128 && py < 128 &&
+                                rgba[((size_t)py * 128u + (size_t)px) * 4u + 3])
+                                lit = 1;
+                        }
+                    row[tx] = (char)(lit ? '#' : '.');
+                }
+                row[40] = '\0';
+                printf("    %s\n", row);
             }
-            row[40] = '\0';
-            printf("    %s\n", row);
         }
-    }
 
-    /* Every triangle must have been accounted for exactly once. */
-    check(st.cTriIn == st.cTriDrawn + st.cTriRejected + st.cTriClipped,
-          "every triangle is drawn, rejected or clipped -- none lost");
-    check(st.cTriIn > 0 && st.cTriDrawn > 0, "retail geometry reaches the sink");
-    /* An index outside the 32-entry array would mean the TRI byte positions
-     * or the patch pass's halving is wrong. cTriIn counts before the bounds
-     * test, cTriDrawn+... after, so equality above already proves it -- but
-     * assert the vertex side too: every G_VTX must have supplied at least as
-     * many vertices as the triangles that follow can reference. */
-    check(st.cVtxTransformed >= st.cVtxLoads * 3,
-          "vertex counts plausible");
-    /* The defining property of the outcodes, checked on the surviving set. */
-    {
-        int fOk = 1;
-        for (i = 0; i < BR_DL_VTX_COUNT; ++i) {
-            const BrDlVtx *v = &st.aVtx[i];
-            if (v->outcode != 0) continue;
-            if (!(v->cw > 0.0f) ||
-                fabsf(v->cx) > v->cw + 1e-3f ||
-                fabsf(v->cy) > v->cw + 1e-3f) fOk = 0;
+        /* Every triangle must have been accounted for exactly once.  This is
+         * why cTriClipped keeps its old meaning -- "entered the clipper" --
+         * and the clipper's own output is counted separately. */
+        check(st.cTriIn == st.cTriDrawn + st.cTriRejected + st.cTriClipped,
+              "every triangle is drawn, rejected or clipped -- none lost");
+        check(st.cTriIn > 0 && ras.cCovered > 0,
+              "retail geometry reaches the sink");
+        /* The invariant that matters whether or not anything was clipped. */
+        check(w.fInside,
+              "every vertex handed to the sink is inside all seven planes");
+        check(free_count(&st) == BR_DL_CLIP_POOL,
+              "the 64-node clip pool is intact after the whole model");
+        check(st.cClipStarved == 0, "the pool never ran dry");
+
+        if (iCam == 0) {
+            check(st.cTriClipped == 0 && st.cTriDrawn == st.cTriIn,
+                  "centred: nothing is clipped -- this is the dead case");
+            cClipBase = st.cTriClipped;
+            /* An index outside the 32-entry array would mean the TRI byte
+             * positions or the patch pass's halving is wrong.  Only sound on
+             * the centred camera: the other two deliberately push vertices
+             * out, so cVtxTransformed legitimately drops. */
+            check(st.cVtxTransformed >= st.cVtxLoads * 3,
+                  "vertex counts plausible");
+            check(ras.cCovered > 500, "the model rasterises to a solid image");
+        } else {
+            check(st.cTriClipped > cClipBase && st.cTriClipOut > 0,
+                  "moved camera: the clip path RAN and produced geometry");
+            check(ras.cCovered > 500,
+                  "and the result is still a solid model, not a smear");
         }
-        check(fOk, "outcode 0 implies the vertex is inside the frustum");
+
+        /* The defining property of the outcodes, checked on the surviving
+         * set -- it holds under every camera. */
+        {
+            int fOk = 1;
+            for (i = 0; i < BR_DL_VTX_COUNT; ++i) {
+                const BrDlVtx *v = &st.aVtx[i];
+                if (v->outcode != 0) continue;
+                if (!(v->cw > 0.0f) ||
+                    fabsf(v->cx) > v->cw + 1e-3f ||
+                    fabsf(v->cy) > v->cw + 1e-3f) fOk = 0;
+            }
+            check(fOk, "outcode 0 implies the vertex is inside the frustum");
+        }
     }
-    check(ras.cCovered > 500, "the model rasterises to a solid image");
 
     free(rgba); free(aStart); free(marked);
     free(ctx.pArena); free(ctx.pFile);
@@ -504,6 +735,7 @@ int main(void)
     test_advance();
     test_combine();
     test_synthetic();
+    test_clip();
 
     /* Not BR_REQUIRE_TESTDATA at the top: the five suites above need no
      * assets and must still run and still report on a fresh clone. */

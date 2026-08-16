@@ -45,7 +45,21 @@
  * plane functions test  f18,  f18+f04,  f18-f04  and  f08+f18  against 0,
  * which is the signature of homogeneous frustum clipping with f18 = w and
  * f04 / f08 = x / y -- but nothing in this packet proves that, and which of
- * f04 / f08 is horizontal is pure guesswork, so no such names are used. */
+ * f04 / f08 is horizontal is pure guesswork, so no such names are used.
+ *
+ * THE FIELD MEANINGS ARE NOW ESTABLISHED, from the caller.  BRGlide.dll's
+ * 0x1001EE70 -- the triangle submitter that drives all seven planes, which
+ * has no counterpart in the D3D map and so was invisible from this packet --
+ * builds its list out of `&BrDlVtx.f40` and reads the result back at fixed
+ * offsets (port/src/br_dl.c, PART 2).  That pins every field:
+ *
+ *     f04 = clip x     f08 = clip y     f0C = clip z
+ *     f10 = s          f14 = t          f18 = clip w
+ *     f1C, f20, f24 = the N64 Vtx's three trailing bytes (colour or normal)
+ *
+ * So f04 IS horizontal, the guess above was right, and the seven planes are
+ * NEAR, LEFT, RIGHT, TOP, FAR, BOTTOM, W -- in the order 0x1001EE70 calls
+ * them, which is not the order of the outcode bits. */
 typedef struct BrClipVert {
     struct BrClipVert *pNext;    /* +0x00 -- never written by the lerp */
     float f04, f08, f0C, f10;    /* +0x04 .. +0x10 */
@@ -75,6 +89,13 @@ void BrClipPoolInit(BrClipVert *aNodes, int cNodes);
 /* NOT in the original: number of nodes currently on the free list. */
 int  BrClipPoolCount(void);
 
+/* NOT in the original as a function -- 0x1001EE70 open-codes exactly this,
+ * twice (once in its give-up path and once as it emits each surviving
+ * vertex), and the pool-bounds test is the same one BrClipPlane uses on the
+ * way out.  Exposed so the driver does not need its own copy of the bounds,
+ * which would be a second model of one object. */
+void BrClipPoolFree(BrClipVert *pNode);
+
 /* 0x1001D940  pop a node off the free list and fill it with
  *
  *     out.fN = (pB->fN - pA->fN) * t + pA->fN      for the nine floats
@@ -100,6 +121,17 @@ void BrClipPlaneW(BrClipList *pList);          /* 0x1001D810  d = f18        */
 void BrClipPlaneWPlusF04(BrClipList *pList);   /* 0x1001D9F0  d = f18 + f04  */
 void BrClipPlaneWMinusF04(BrClipList *pList);  /* 0x1001DB30  d = f18 - f04  */
 void BrClipPlaneWPlusF08(BrClipList *pList);   /* 0x1001DC70  d = f08 + f18  */
+
+/* The other three, added exactly as slice1_04.h prescribed: three distance
+ * functions plus three wrappers, so that the 64-node pool and its free list
+ * stay ONE object.  Glide addresses in brackets, because the reference build
+ * is BRGlide (CONVENTIONS.md) and the D3D map is what named the first four. */
+void BrClipPlaneWMinusF08(BrClipList *pList);  /* 0x1001DDB0 [0x1001F670]
+                                                * d = f18 - f08             */
+void BrClipPlaneWPlusF0C(BrClipList *pList);   /* 0x1001DEF0 [0x1001F7B0]
+                                                * d = f0C + f18             */
+void BrClipPlaneWMinusF0C(BrClipList *pList);  /* 0x1001E030 [0x1001F8F0]
+                                                * d = f18 - f0C             */
 
 /* =====================================================================
  * 2. Text / HUD

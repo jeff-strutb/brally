@@ -45,6 +45,16 @@ int BrClipPoolCount(void)
     return n;
 }
 
+void BrClipPoolFree(BrClipVert *pNode)
+{
+    if (pNode == NULL || g_aClipPool == NULL)
+        return;
+    if (pNode < g_aClipPool || pNode >= g_aClipPool + g_cClipPool)
+        return;                    /* not ours -- silently dropped */
+    pNode->pNext = g_pClipFree;
+    g_pClipFree = pNode;
+}
+
 /* 0x1001D940 */
 BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
                            float t)
@@ -210,10 +220,21 @@ static float BrClipDistWMinusF04(const BrClipVert *pV)  { return pV->f18 - pV->f
  * lead with f18. Same value, but noted because it is the one asymmetry. */
 static float BrClipDistWPlusF08(const BrClipVert *pV)   { return pV->f08 + pV->f18; }
 
+/* The three slice1_04.h left out, read off BRGlide's copies (0x1001F670,
+ * 0x1001F7B0, 0x1001F8F0) rather than BRD3D's: same 311-byte body, same two
+ * x87 loads, and the operand order below is theirs -- 0x1001F7B0 leads with
+ * f0C exactly as 0x1001DC70 leads with f08. */
+static float BrClipDistWMinusF08(const BrClipVert *pV) { return pV->f18 - pV->f08; }
+static float BrClipDistWPlusF0C(const BrClipVert *pV)  { return pV->f0C + pV->f18; }
+static float BrClipDistWMinusF0C(const BrClipVert *pV) { return pV->f18 - pV->f0C; }
+
 void BrClipPlaneW(BrClipList *pList)          { BrClipPlane(pList, BrClipDistW); }
 void BrClipPlaneWPlusF04(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF04); }
 void BrClipPlaneWMinusF04(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF04); }
 void BrClipPlaneWPlusF08(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF08); }
+void BrClipPlaneWMinusF08(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF08); }
+void BrClipPlaneWPlusF0C(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF0C); }
+void BrClipPlaneWMinusF0C(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF0C); }
 
 /* =====================================================================
  * 2. Text / HUD
