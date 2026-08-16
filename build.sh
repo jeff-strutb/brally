@@ -40,10 +40,25 @@ for t in port/tests/test_*.c; do
     mod=${tname#test_}
     clang $CFLAGS -c "$t" -o "build/$tname.o"
 
+    # A test is matched to its module by name. Most are test_<mod> for <mod>.c,
+    # but several modules carry the br_ prefix while their test does not
+    # (test_race -> br_race.c, test_pod -> br_pod.c). Try both rather than
+    # emitting a bare link error: a pass that adds test_foo.c for br_foo.c
+    # should not have to know this rule, and the failure it produced was an
+    # undefined-symbol dump with no hint of the cause.
     objs="build/$tname.o"
-    [ -f "build/$mod.o" ] && objs="$objs build/$mod.o"
+    if [ -f "build/$mod.o" ]; then
+        objs="$objs build/$mod.o"
+    elif [ -f "build/br_$mod.o" ]; then
+        objs="$objs build/br_$mod.o"
+    fi
     if [ -f "build.d/$tname.deps" ]; then
         for d in $(cat "build.d/$tname.deps"); do
+            # Skip anything already on the line. Several .deps files name the
+            # module the fallback above just added (test_audio.deps lists
+            # br_audio, which IS test_audio's module), and listing an object
+            # twice is a duplicate-symbol error, not a no-op.
+            case " $objs " in *" build/$d.o "*) continue;; esac
             [ -f "build/$d.o" ] && objs="$objs build/$d.o"
         done
     fi

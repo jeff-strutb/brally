@@ -180,13 +180,33 @@ extern uint8_t BrSndMasterVolume;
 /* The three "is sound usable" gates. Every entry point tests all three and
  * returns 1 (the SUCCESS code for those entry points -- see below) when any
  * is zero, i.e. a silent no-op. */
-extern int32_t   BrSndG0B5DE8;    /* 0x100B5DE8 -- purpose not established */
+/* 0x100B5DE8 (Glide 0x100B55F0) -- ESTABLISHED: this is `PlaySFX=` out of
+ * BossRally.ini. 0x100083CD does `g = atoi(value)` after matching the key,
+ * so it is a plain enable/disable and zero silences the whole subsystem. */
+extern int32_t   BrSndG0B5DE8;
 extern BrDSound *BrSndPDS;        /* 0x118290F8 -- the IDirectSound */
-extern void     *BrSndG18290FC;   /* 0x118290FC -- purpose not established */
+/* 0x118290FC (Glide 0x1184C45C) -- ESTABLISHED: the init guard. 0x10073560
+ * (Glide 0x1006C4D0) does `if (++g != 1) return 1` before creating the
+ * device, so it is a one-shot counter and non-zero means "initialised". */
+extern void     *BrSndG18290FC;
 
-/* 0x100B5DF0 -- the voice table, indexed  slot + group*18. */
+/* 0x100B5DF0 -- the voice table, indexed  slot + group*18.
+ *
+ * CORRECTED: this said 24 groups, and it is 26. The table runs
+ * 0x100B5DF0..0x100B6540 (Glide 0x100B55F8..0x100B5D48), which is 1872 bytes
+ * == 26 * 18 * 4, and 0x100B6540 is where the parallel bank table starts --
+ * so both ends are pinned, in both builds, by tables that abut exactly.
+ * Groups 24 and 25 are the two extra per-car engine layers ("<cc>h.wav" and
+ * "<cc>r.wav"); 0x10073080 writes their bank entries and 0x10072E60 plays
+ * group 25 by name. At 24 the bounds check in BrSndPlayEx rejected every
+ * index from group 24 upward, so both engine layers were silently dropped.
+ * See br_sfx.h, which owns the table's contents.
+ *
+ * A row is really `{ void *aSlot[16]; double baseRate; }` -- 16 dwords then
+ * an 8-byte rate, which is where the 18-dword stride comes from and why only
+ * slots 0..14 are ever used. */
 #define BR_SND_SLOTS_PER_GROUP 18
-#define BR_SND_GROUPS          24
+#define BR_SND_GROUPS          26
 extern BrSndVoice *BrSndVoices[BR_SND_GROUPS * BR_SND_SLOTS_PER_GROUP];
 
 /* 0x100B6540 / 0x100B6C00 / 0x100B6C48 -- three parallel 15-entry tables of

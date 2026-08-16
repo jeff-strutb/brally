@@ -78,15 +78,10 @@ void BrStubReport(void)
 }
 
 long BrAppMsg107(void); long BrAppMsg107(void) { return br_stub("BrAppMsg107"); }
-long BrCarRecordFromState(void); long BrCarRecordFromState(void) { return br_stub("BrCarRecordFromState"); }
-long BrCarRecordToState(void); long BrCarRecordToState(void) { return br_stub("BrCarRecordToState"); }
 long BrEnt35CE0(void); long BrEnt35CE0(void) { return br_stub("BrEnt35CE0"); }
 long BrExt_1003D0B0(void); long BrExt_1003D0B0(void) { return br_stub("BrExt_1003D0B0"); }
-long BrExt_1003DFC0(void); long BrExt_1003DFC0(void) { return br_stub("BrExt_1003DFC0"); }
 long BrExt_10041AC0(void); long BrExt_10041AC0(void) { return br_stub("BrExt_10041AC0"); }
 long BrExt_10041BD0(void); long BrExt_10041BD0(void) { return br_stub("BrExt_10041BD0"); }
-long BrExt_10043260(void); long BrExt_10043260(void) { return br_stub("BrExt_10043260"); }
-long BrExt_10043330(void); long BrExt_10043330(void) { return br_stub("BrExt_10043330"); }
 long BrExt_10045A00(void); long BrExt_10045A00(void) { return br_stub("BrExt_10045A00"); }
 long BrExt_10047660(void); long BrExt_10047660(void) { return br_stub("BrExt_10047660"); }
 long BrExt_10049C20(void); long BrExt_10049C20(void) { return br_stub("BrExt_10049C20"); }
@@ -102,12 +97,9 @@ long BrFn1003D210(void); long BrFn1003D210(void) { return br_stub("BrFn1003D210"
 long BrGbiCall1001D420(void); long BrGbiCall1001D420(void) { return br_stub("BrGbiCall1001D420"); }
 long BrGbiCall10029470(void); long BrGbiCall10029470(void) { return br_stub("BrGbiCall10029470"); }
 long BrModelVtxResolve(void); long BrModelVtxResolve(void) { return br_stub("BrModelVtxResolve"); }
-long BrNetAnnounce(void); long BrNetAnnounce(void) { return br_stub("BrNetAnnounce"); }
 long BrNetSend4760(void); long BrNetSend4760(void) { return br_stub("BrNetSend4760"); }
 long BrNetSendDelta(void); long BrNetSendDelta(void) { return br_stub("BrNetSendDelta"); }
 long BrNetSendFull(void); long BrNetSendFull(void) { return br_stub("BrNetSendFull"); }
-long BrNetSlotPredictOrig(void); long BrNetSlotPredictOrig(void) { return br_stub("BrNetSlotPredictOrig"); }
-long BrOptFn10044970(void); long BrOptFn10044970(void) { return br_stub("BrOptFn10044970"); }
 long BrOptFn1004CAC0(void); long BrOptFn1004CAC0(void) { return br_stub("BrOptFn1004CAC0"); }
 long BrOptFn10056FF0(void); long BrOptFn10056FF0(void) { return br_stub("BrOptFn10056FF0"); }
 long BrOptFn10058750(void); long BrOptFn10058750(void) { return br_stub("BrOptFn10058750"); }
@@ -118,7 +110,6 @@ long BrPhaseEnterPlaceholder_1004C4A0(void); long BrPhaseEnterPlaceholder_1004C4
 long BrPhaseVtbl_1008F700(void); long BrPhaseVtbl_1008F700(void) { return br_stub("BrPhaseVtbl_1008F700"); }
 long BrSub100027F0(void); long BrSub100027F0(void) { return br_stub("BrSub100027F0"); }
 long BrSub10002870(void); long BrSub10002870(void) { return br_stub("BrSub10002870"); }
-long BrSub10005FE0(void); long BrSub10005FE0(void) { return br_stub("BrSub10005FE0"); }
 long BrSub1000BAF0(void); long BrSub1000BAF0(void) { return br_stub("BrSub1000BAF0"); }
 long BrSub10035BD1(void); long BrSub10035BD1(void) { return br_stub("BrSub10035BD1"); }
 long BrSub100360F0(void); long BrSub100360F0(void) { return br_stub("BrSub100360F0"); }
@@ -132,7 +123,6 @@ long BrSub1003D480(void); long BrSub1003D480(void) { return br_stub("BrSub1003D4
 long BrSub1003E1D0(void); long BrSub1003E1D0(void) { return br_stub("BrSub1003E1D0"); }
 long BrSub100484E0(void); long BrSub100484E0(void) { return br_stub("BrSub100484E0"); }
 long BrSub1005F5A0(void); long BrSub1005F5A0(void) { return br_stub("BrSub1005F5A0"); }
-long BrSub100607B0(void); long BrSub100607B0(void) { return br_stub("BrSub100607B0"); }
 long BrSub10061010(void); long BrSub10061010(void) { return br_stub("BrSub10061010"); }
 long BrSub10062C50(void); long BrSub10062C50(void) { return br_stub("BrSub10062C50"); }
 long BrSub10070610(void); long BrSub10070610(void) { return br_stub("BrSub10070610"); }
@@ -143,13 +133,9 @@ long BrSub100773F0(void); long BrSub100773F0(void) { return br_stub("BrSub100773
 long BrSub1007A840(void); long BrSub1007A840(void) { return br_stub("BrSub1007A840"); }
 long BrSub1007A940(void); long BrSub1007A940(void) { return br_stub("BrSub1007A940"); }
 long BrSub_100290A0(void); long BrSub_100290A0(void) { return br_stub("BrSub_100290A0"); }
-long BrSwapRec24Array(void); long BrSwapRec24Array(void) { return br_stub("BrSwapRec24Array"); }
 long BrUiPageVtbl_1008F6F8(void); long BrUiPageVtbl_1008F6F8(void) { return br_stub("BrUiPageVtbl_1008F6F8"); }
-long BrX10005DE0(void); long BrX10005DE0(void) { return br_stub("BrX10005DE0"); }
-long BrX10005E70(void); long BrX10005E70(void) { return br_stub("BrX10005E70"); }
 long BrX1002C2C0(void); long BrX1002C2C0(void) { return br_stub("BrX1002C2C0"); }
 long BrX1002C500(void); long BrX1002C500(void) { return br_stub("BrX1002C500"); }
-long BrX10034C66(void); long BrX10034C66(void) { return br_stub("BrX10034C66"); }
 long BrX1003563A(void); long BrX1003563A(void) { return br_stub("BrX1003563A"); }
 long BrX100397C0(void); long BrX100397C0(void) { return br_stub("BrX100397C0"); }
 long BrX100664C0(void); long BrX100664C0(void) { return br_stub("BrX100664C0"); }
