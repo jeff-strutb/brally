@@ -20,6 +20,7 @@
  */
 #include "br_boot.h"
 #include "br_bootfrontier.h"
+#include "br_gamestep.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,6 +29,10 @@ static int g_fails;
 
 #define CHECK(c) do { if (!(c)) { \
     printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c); g_fails++; } } while (0)
+
+static int32_t g_cFrameCalls;
+static void quit_from_inside_the_frame(void) { g_cFrameCalls++; g_brAppContinue = 0; }
+static void count_the_frame(void)            { g_cFrameCalls++; }
 
 static int32_t hits(const char *pszNeedle)
 {
@@ -42,6 +47,8 @@ static int32_t hits(const char *pszNeedle)
 static void test_transitions(void)
 {
     BrAppResetForTest();
+    g_cFrameCalls = 0;
+    BrGameStepSet(count_the_frame);
 
     /* 0x1001CD70: cold init -> 4, returns 1 */
     CHECK(g_brAppState == BR_APP_COLD_INIT);
@@ -86,24 +93,26 @@ static void test_transitions(void)
     CHECK(BrAppFrame() == 1);
     CHECK(g_brAppFrame == 1);
     CHECK(g_brAppState == BR_APP_RUN);      /* terminal -- no transition */
-    CHECK(hits("ONE GAME FRAME") == 1);
+    CHECK(g_cFrameCalls == 1);
 
     CHECK(BrAppFrame() == 1);
     CHECK(g_brAppFrame == 2);
-    CHECK(hits("ONE GAME FRAME") == 2);
+    CHECK(g_cFrameCalls == 2);
 }
 
 /* ---- 0x100A98F8 is the quit signal, and state 2 returns it --------- */
 static void test_quit(void)
 {
     BrAppResetForTest();
+    g_cFrameCalls = 0;
+    BrGameStepSet(count_the_frame);
     g_brAppState = BR_APP_RUN;
 
     CHECK(BrAppFrame() == 1);          /* continue flag starts set */
     g_brAppContinue = 0;
     CHECK(BrAppFrame() == 0);          /* 0 is what stops the main loop */
     /* the frame still RAN -- the flag is read after the call, at 0x1001CDBB */
-    CHECK(hits("ONE GAME FRAME") == 2);
+    CHECK(g_cFrameCalls == 2);
     CHECK(g_brAppFrame == 2);
 }
 
@@ -142,19 +151,19 @@ static void test_out_of_range_state(void)
  * 0x1001CDB0 is `call 0x1002E324` then `mov eax,[0x100A98F8]`, so a frame
  * that asks to quit is obeyed on the same tick. Without this, a mutant that
  * hoisted the read above the call passed every other check in this file. */
-static void quit_from_inside_the_frame(void) { g_brAppContinue = 0; }
 
 static void test_flag_read_after_frame(void)
 {
     BrAppResetForTest();
     g_brAppState = BR_APP_RUN;
     CHECK(g_brAppContinue == 1);
-    BrBootFrontierSetFrameHook(quit_from_inside_the_frame);
+    g_cFrameCalls = 0;
+    BrGameStepSet(quit_from_inside_the_frame);
 
     /* The frame clears the flag; because the read follows the call, this tick
      * must already report "quit". Hoist the read and this returns 1. */
     CHECK(BrAppFrame() == 0);
-    CHECK(hits("ONE GAME FRAME") == 1);
+    CHECK(g_cFrameCalls == 1);
     CHECK(g_brAppFrame == 1);
 }
 

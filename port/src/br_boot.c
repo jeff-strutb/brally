@@ -8,6 +8,7 @@
  */
 #include "br_boot.h"
 #include "br_bootfrontier.h"
+#include "br_gamestep.h"   /* 0x1002E324 was ALREADY ported -- see below */
 
 #include <stddef.h>
 
@@ -87,7 +88,19 @@ int32_t BrAppStateEnterRun(void)
 int32_t BrAppStateRun(void)
 {
     ++g_brAppFrame;
-    BrBootFrontier_1002E324();
+    /* 0x1002E324 IS BrGameStepInvoke, and it was ported before this module
+     * existed. My first draft of br_boot.c gave it a frontier entry -- i.e.
+     * declared the game's frame dispatcher missing while a correct
+     * transcription of it sat in br_gamestep.c. That is the same failure this
+     * project has now made repeatedly: writing the brief before checking
+     * whether the tree already had the function.
+     *
+     * Worth knowing what it is, because it is the seam everything hangs off:
+     * eleven bytes, `call dword ptr [0x106E79F4]`. The frame does not decide
+     * anything -- it calls whichever step is INSTALLED in that slot. Menu and
+     * race are two different installs, so moving between them is a write to
+     * 0x106E79F4 and nothing more. */
+    (void)BrGameStepInvoke();
     return g_brAppContinue;
 }
 
