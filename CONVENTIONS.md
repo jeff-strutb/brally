@@ -83,6 +83,18 @@ present in the original, and aliasing behaviour where the original permits it.
   **not** stock libultra. `BrAtan2` takes **x first** and is a bisection accurate
   to ~0.01 rad — do not substitute `atan2f`.
 - Command byte `0xE1` is FILL RECTANGLE with **integer** corners here.
+- **The font is not a file.** The glyph pixels are compiled into `BRD3D.dll`'s
+  `.data`, as **IA8** (high nibble intensity, low nibble alpha), one byte per
+  texel, in four strips: `0x100946C8` and `0x1009B4C8` (pitch **704**, **40**
+  rows) and `0x100A22D0` and `0x100A4170` (pitch **392**, **20** rows). Every
+  strip butts exactly against the next object in the image, so the extents are
+  arithmetic, not guesswork. `0x10073820` registers them one glyph at a time
+  through the backend texture constructor at `0x118AA0AC` with fmt **3** (IA)
+  and siz **1** (8b); `0x10018590` draws them; `port/src/br_font.c` reads them.
+  Do not go looking on the disc for a font asset — there is not one.
+- `0x10019140` is **not a function** despite `config/functions.csv` listing it
+  as 254 bytes: it is `0x10018590`'s two jump tables plus their two 0x4A-byte
+  index tables, sitting in `.text` after the function ends.
 - `config/functions.csv` is a good index, **not ground truth**: it invents entries
   (`0x100331FF`, `0x100334D7`, `0x100312BB` are mid-instruction), misses real ones,
   and 37 of 2,581 extents end mid-flow. If a listing starts mid-instruction, skip
@@ -151,3 +163,29 @@ Rule: before reading a field out of a UI object, check which model the module
 that WROTE it uses. If it is not the same model you are reading through, the
 value is meaningless -- and the fix is to merge the models, never to trust
 whichever number looks more plausible.
+
+## Which binary is the reference: BRGlide, not BRD3D
+
+`BRD3D.dll` is the Direct3D build. `BRGlide.dll` is the Glide build, and Glide
+is the intended reference -- it was the mature target when this game shipped.
+
+This was got wrong for a long stretch: `tools/dumpasm.py` defaulted to
+`BRD3D.dll`, and agent briefs described that file as "the Glide build". Both are
+now corrected, but work done before this point was read off the D3D build.
+
+What that does and does not invalidate, measured rather than assumed
+(`tools/crossdiff.py`, `config/shared.csv`):
+
+- **1,712 functions are shared** between the two builds; those are the real
+  decompilation target and reading either binary gives the same answer.
+- Of the addresses this port references, **~80% are confirmed shared**.
+- The rest split two ways, and the distinction matters: ~29 are the statically
+  linked CRT, which is genuinely absent from the Glide build because Glide
+  imports it from MSVCRT -- not a problem. The remainder are either truly
+  D3D-specific or simply missing from `config/functions_glide.csv`, which has
+  2,110 entries against the D3D map's 2,581. **A function absent from the Glide
+  map is classified `d3d_only` even when it exists in the binary**, so that
+  bucket is an upper bound on divergence, not a measurement of it.
+
+Before trusting any renderer-adjacent port, check the address against
+`config/shared.csv`. If it is not `shared`, re-derive it from `BRGlide.dll`.

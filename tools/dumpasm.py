@@ -12,7 +12,26 @@ import pe as pelib
 import names as namelib
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 
-DLL = 'orig/BRD3D.dll'
+# DEFAULT REFERENCE: the GLIDE build.
+#
+# BRD3D.dll is the Direct3D build; BRGlide.dll is Glide. This tool defaulted to
+# BRD3D for most of the project's life, and the agent briefs compounded it by
+# describing BRD3D as "the Glide build" -- a plain factual error, repeated many
+# times. Glide was the mature target for this game, and is the intended
+# reference.
+#
+# Override with BR_REF=orig/BRD3D.dll when you specifically need the D3D build
+# (e.g. to compare the two, or to read the statically linked CRT, which Glide
+# imports from MSVCRT instead).
+import os
+DLL = os.environ.get('BR_REF', 'orig/BRGlide.dll')
+
+# The function map must match the binary. Pairing BRGlide.dll with the D3D map
+# silently disassembles the wrong bytes at the right-looking address, which is
+# worse than failing.
+MAP = os.environ.get('BR_MAP',
+                     'config/functions_glide.csv' if 'Glide' in DLL
+                     else 'config/functions.csv')
 
 
 class Ctx:
@@ -21,7 +40,7 @@ class Ctx:
         self.text, self.text_va = self.p.text()
         self.strings = namelib.collect_strings(self.p)
         self.funcs = [(int(r['va'], 16), int(r['size']))
-                      for r in csv.DictReader(open('config/functions.csv'))]
+                      for r in csv.DictReader(open(MAP))]
         self.funcs.sort()
         self.starts = [f[0] for f in self.funcs]
         self.names = {}
