@@ -1,0 +1,302 @@
+/* br_dl.h -- the display-list machine.  BRGlide.dll 0x10023C90 and its
+ * 256-entry handler table at 0x100A9A58.
+ *
+ * WHAT THIS IS, AND WHY IT IS NOT A NEW INVENTION
+ * ----------------------------------------------------------------------
+ * Boss Rally's PC builds do not have a "3D path" in the usual sense.  Both
+ * BRD3D.dll and BRGlide.dll carry a *software RSP/RDP*: the game emits N64
+ * F3D display lists exactly as the console version did, and a table-driven
+ * interpreter walks them and turns them into backend calls.  This is the same
+ * pattern br_font.c already documents for text -- the text emitter's output
+ * is fed to THIS interpreter, not to a separate one.  There is one table and
+ * one loop in the whole binary.
+ *
+ * The interpreter (0x10023C90 Glide / 0x10024A90 D3D, 29 bytes, byte-identical
+ * in both builds) is:
+ *
+ *     while (p) p = table[((const uint8_t *)p)[3]](p);
+ *
+ * Note `[3]`: the opcode is byte 3 of the command *in memory*, because the
+ * whole list has already been byte-swapped into host order by the loader
+ * (BrDlPatch below, 0x10019040).  w0/w1 are therefore plain host u32s, which
+ * is exactly what slice1_05.h's BrGfxWords says.
+ *
+ * MEASURED FACTS THE DESIGN RESTS ON
+ * ----------------------------------------------------------------------
+ *   - 28 of the 256 opcodes have a handler; the other 228 all point at the
+ *     same 8-byte "return p+8" stub (0x10021240 Glide / 0x100243D0 D3D).
+ *   - The two builds handle EXACTLY the same 28 opcodes.  18 of the 28
+ *     handlers are byte-identical shared code; 8 diverge (0x04, 0x06, 0xB1,
+ *     0xBF, 0xDC, 0xE2, 0xED, 0xF8) -- geometry, texture binding, scissor,
+ *     fog colour.  So the command set is a property of the GAME, not of the
+ *     backend, and it is closed.
+ *   - Handlers return the NEXT command pointer.  Most return p+8; 0xE4
+ *     returns p+0x18 (three double-words); 0xDC returns p + 8*w1 (it can
+ *     stand in for a run of commands); 0xB8 returns the popped return
+ *     address or NULL; 0x06 returns w1 (the callee).
+ *   - The combiner is NOT open-ended.  0x1001E7A0 is a chain of exact
+ *     equality tests on the (w0,w1) pair: TEN recognised configurations plus
+ *     a default.  Render mode (0x10021270) is the same shape: nine exact
+ *     values plus a bit-tested fallback.  Both are enumerable, which is what
+ *     makes a fixed set of Metal pipeline states the right answer.
+ *
+ * NOT MODELLED HERE, and deliberately: TMEM.  The interpreter SKIPS 0xF5
+ * (SETTILE), 0xF3 (LOADBLOCK), 0xF0 (LOADTLUT), 0xFD (SETTIMG) and 0xBB
+ * (G_TEXTURE) at draw time -- they fall to the default stub.  Texture binding
+ * happens through 0xDC/0xDD, which the loader plants, and through the
+ * load-time fixup of 0xFD in BrDlPatch.
+ */
+#ifndef BR_DL_H
+#define BR_DL_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+#include "br_mat.h"      /* BrMat4 -- row-major, row-vector, as the original */
+#include "br_seg.h"      /* BrSegMap, BrSegFixup                             */
+
+/* ---------------------------------------------------------------------
+ * Vertex
+ * ---------------------------------------------------------------------
+ * The transformed-vertex array is 0x105CE318, stride 0x68 = 104 bytes, 32
+ * entries.  The first 0x3C bytes are a Glide `GrVertex` with two TMUs -- the
+ * triangle handlers hand `&v[i]` straight to grDrawTriangle, so this prefix
+ * is not a guess, it is the ABI.  The rest is the walker's own scratch.
+ *
+ * Offsets are quoted from 0x10021A20 (the transform) and 0x1001ECF0 (TRI1).
+ */
+typedef struct BrDlVtx {
+    float   x, y, z;        /* 0x00 0x04 0x08  screen x/y, z unused here   */
+    float   r, g, b;        /* 0x0C 0x10 0x14  colour (see the note below) */
+    float   ooz;            /* 0x18                                        */
+    float   a;              /* 0x1C                                        */
+    float   oow;            /* 0x20  1/w -- written by the transform       */
+    float   tmu0[3];        /* 0x24 0x28 0x2C  sow, tow, oow               */
+    float   tmu1[3];        /* 0x30 0x34 0x38  sow, tow, oow               */
+    int32_t outcode;        /* 0x3C  six frustum bits plus w               */
+    float   f40;            /* 0x40  never read in the code examined       */
+    float   cx, cy, cz;     /* 0x44 0x48 0x4C  clip space                  */
+    float   s, t;           /* 0x50 0x54  texture coords, pre-divide       */
+    float   cw;             /* 0x58  clip space w                          */
+    float   n0, n1, n2;     /* 0x5C 0x60 0x64  the Vtx's last three bytes  */
+} BrDlVtx;
+
+/* The colour slots: 0x10021A20 copies source floats +0x14/+0x18/+0x1C -- the
+ * N64 Vtx's last three bytes, scaled by 1/128 by BrVtxExpand -- straight into
+ * r/g/b.  For an unlit model those bytes ARE the vertex colour; for a lit one
+ * they are the normal and lighting must overwrite r/g/b.  Nothing in the
+ * transform does that, so the lighting pass lives elsewhere and has NOT been
+ * located.  See the header note in br_dl.c. */
+
+#define BR_DL_VTX_COUNT   32      /* 0x105CE318 .. one G_VTX can fill it   */
+#define BR_DL_MTX_STACK   11      /* 0x105CCD10, stride 0x40, index wraps  */
+#define BR_DL_DL_STACK    10      /* 0x105CE2E8; 0x10021020 exit(1)s at 10 */
+#define BR_DL_LIGHTS       8      /* 0x105CCC78, 16 bytes each             */
+
+/* Clip outcode bits, in the order 0x10021A20 tests them. */
+#define BR_DL_CLIP_W      0x01    /*  w     <= 0 */
+#define BR_DL_CLIP_NEAR   0x02    /*  z + w <= 0 */
+#define BR_DL_CLIP_FAR    0x04    /*  w - z <= 0 */
+#define BR_DL_CLIP_LEFT   0x08    /*  x + w <= 0 */
+#define BR_DL_CLIP_RIGHT  0x10    /*  w - x <= 0 */
+#define BR_DL_CLIP_BOTTOM 0x20    /*  y + w <= 0 */
+#define BR_DL_CLIP_TOP    0x40    /*  w - y <= 0 */
+
+/* ---------------------------------------------------------------------
+ * The combiner, enumerated
+ * ---------------------------------------------------------------------
+ * 0x1001E7A0 compares the SETCOMBINE payload against ten exact (w0,w1) pairs
+ * and calls grColorCombine with a constant argument tuple for each.  The
+ * Glide argument tuples are recorded in br_dl.c beside each pattern; what
+ * matters to a portable backend is that the set is closed and tiny.
+ *
+ * BR_DL_CC_DECAL is special: matching it flips the triangle-drawing function
+ * pointer at 0x100A9A68 between 0x10021C70 and 0x100221D0, so it selects a
+ * different rasterisation path, not merely a different blend. */
+typedef enum BrDlCombine {
+    BR_DL_CC_DEFAULT = 0,   /* anything unrecognised                        */
+    BR_DL_CC_SHADE,         /* FCFFFFFF FFFCF87C                            */
+    BR_DL_CC_TEX,           /* FCFFFFFF FFFE793C                            */
+    BR_DL_CC_TEX_SHADE_C1,  /* FC567EAC FFFFF3F9  + constant colour 0x000000FF */
+    BR_DL_CC_TEX_SHADE_A,   /* FCFF97FF FF2DFEFF                            */
+    BR_DL_CC_TEX_SHADE_B,   /* FCFFFFFF FFFDF2F9                            */
+    BR_DL_CC_TEX_SHADE_CW,  /* FCFFFFFF FFFF73B9  + constant colour -1      */
+    BR_DL_CC_ENVMAP,        /* FC127E08 F3FFF2F8  (conditional)             */
+    BR_DL_CC_DECAL,         /* FC317E02 5FFEF3FA / 51FEF3FA                 */
+    BR_DL_CC_TEX_SHADE_C0,  /* FC127FFF FFFFF838  + constant colour 0       */
+    BR_DL_CC__COUNT
+} BrDlCombine;
+
+/* ---------------------------------------------------------------------
+ * The backend seam
+ * ---------------------------------------------------------------------
+ * Everything the interpreter wants from a renderer.  Deliberately tiny and
+ * free of platform types, in the spirit of br_gfx.h.  A NULL entry is simply
+ * not called, so a consumer can take only what it needs. */
+typedef struct BrDlSink {
+    void *pUser;
+    /* One triangle, three GrVertex-shaped vertices, already in screen space
+     * with 1/w carried in `oow` and s/w, t/w in tmu0. */
+    void (*pfnTri)(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
+                   const BrDlVtx *c);
+    /* Combiner changed. `id` is the enumerated configuration; the raw words
+     * are passed too so a backend can refuse to guess about DEFAULT. */
+    void (*pfnCombine)(void *pUser, BrDlCombine id, uint32_t w0, uint32_t w1);
+    /* SETOTHERMODE_L shift 3, i.e. the render mode word. */
+    void (*pfnRenderMode)(void *pUser, uint32_t mode);
+    /* 0xDC: bind the texture named by the low 24 bits of w0. */
+    void (*pfnBindTexture)(void *pUser, uint32_t handle);
+    /* 0xDD: re-aim that texture at `addr` (Glide's one-texture scheme). */
+    void (*pfnRetarget)(void *pUser, uint32_t handle, uint32_t addr);
+    /* A screen rectangle. `fTextured` distinguishes 0xE3/0xE4 from 0xE1/0xF6.
+     * Corners are integer pixels; 10.2 payloads have already been divided. */
+    void (*pfnRect)(void *pUser, int fTextured, int tile,
+                    int32_t ulx, int32_t uly, int32_t lrx, int32_t lry);
+} BrDlSink;
+
+/* ---------------------------------------------------------------------
+ * Addressing, and why it needs a table
+ * ---------------------------------------------------------------------
+ * The original's patch pass rewrites the address words of G_VTX, G_SETTIMG
+ * and friends into HOST POINTERS, and the handlers dereference them
+ * directly.  That cannot be done here: a display-list word is 32 bits and a
+ * host pointer is 64, and CONVENTIONS.md is explicit that byte offsets in
+ * this corpus are 32-bit-only.
+ *
+ * So the port keeps the 32-bit address in the command -- which is what the
+ * data on disc holds anyway -- and resolves it at USE time through a small
+ * table of registered regions.  The arithmetic is BrSegFixup's, moved from
+ * load time to draw time; the observable result is identical and no pointer
+ * is ever truncated. */
+#define BR_DL_REGIONS 4
+
+typedef struct BrDlRegion {
+    uint32_t       base;      /* first 32-bit address the region answers to */
+    const uint8_t *pHost;
+    size_t         cb;
+} BrDlRegion;
+
+/* ---------------------------------------------------------------------
+ * State
+ * --------------------------------------------------------------------- */
+typedef struct BrDl {
+    BrDlSink  sink;
+
+    BrDlRegion aRegion[BR_DL_REGIONS];
+    int        cRegions;
+
+    BrMat4    proj;                          /* 0x105CCD00                 */
+    BrMat4    aModel[BR_DL_MTX_STACK];       /* 0x105CCD10, stride 0x40    */
+    int32_t   iModel;                        /* 0x100A9A50, 0 == none      */
+    BrMat4    combined;                      /* 0x105D1760                 */
+    int32_t   fCombinedStale;                /* 0x105D17D0                 */
+
+    /* viewport: screen = trans + scale * (clip/w) */
+    float     vpScaleX, vpTransX;            /* 0x105CCD48, 0x105CD9F8     */
+    float     vpScaleY, vpTransY;            /* 0x105CCFDC, 0x105CD9FC     */
+
+    uint32_t  geoMode, geoModePrev;          /* 0x105D17C8, 0x105D17CC     */
+    uint32_t  renderMode;                    /* 0x105CE2D4                 */
+    uint32_t  combineW0, combineW1;          /* 0x105D17AC, 0x105D17B0     */
+    BrDlCombine combine;
+    int32_t   fDecal;                        /* 0x105CDA04                 */
+
+    float     env[4];                        /* 0x105CCD44/5CD9F4/5CCCF8/5CCC74 */
+    float     prim[4];
+    uint32_t  fillColour;                    /* raw w1 of 0xF7             */
+    uint32_t  fogColour;                     /* raw w1 of 0xF8             */
+    float     f0A9A54;                       /* 0xDE payload (0x100A9A54)  */
+    float     f5D17C4;                       /* 0xDF payload (0x105D17C4)  */
+
+    int32_t   uls, ult, lrs, lrt;            /* 0xF2, 10.2 sign-folded     */
+    int32_t   tileW, tileH;                  /* derived, (lr-ul+4)>>2      */
+
+    int32_t   scisULX, scisULY, scisLRX, scisLRY;
+
+    uint8_t   aLight[BR_DL_LIGHTS][16];      /* 0x105CCC78                 */
+    int32_t   nLights;                       /* 0x105CCFD0                 */
+
+    const uint8_t *aStack[BR_DL_DL_STACK];   /* 0x105CE2E8                 */
+    int32_t   sp;                            /* 0x105CCFE8                 */
+
+    BrDlVtx   aVtx[BR_DL_VTX_COUNT];         /* 0x105CE318                 */
+
+    uint32_t  hTexture;                      /* last 0xDC handle           */
+
+    /* counters -- not in the original; the port's only way to assert. */
+    uint32_t  cCommands, cUnhandled, cTriIn, cTriDrawn, cTriRejected;
+    uint32_t  cTriClipped, cVtxLoads, cVtxTransformed, cRects;
+    uint32_t  cDlCalls, cStackOverflow;
+} BrDl;
+
+/* Screen size the fill/scissor handlers flip Y against (0x100A7518 is the
+ * height, 0x100A7514 the width, both set from grSstWinOpen). */
+void BrDlInit(BrDl *pDl, int32_t cxScreen, int32_t cyScreen);
+
+/* Viewport as the transform uses it, in pixels. */
+void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
+                     float scaleY, float transY);
+
+/* Register a block of host memory under a 32-bit address range. Returns 0 on
+ * success, non-zero when the table is full. */
+int BrDlAddRegion(BrDl *pDl, uint32_t base, const void *pHost, size_t cb);
+
+/* Resolve a 32-bit display-list address, or NULL. `cbNeed` bytes must fit. */
+const uint8_t *BrDlResolve(const BrDl *pDl, uint32_t addr, size_t cbNeed);
+
+/* Which of the ten recognised combiner configurations is this pair?
+ * 0x1001E7A0's compare chain, and the single most portable fact in the
+ * renderer: the set is closed. */
+BrDlCombine BrDlClassifyCombine(uint32_t w0, uint32_t w1);
+
+/* 0x10023C90 -- run a list of host-order commands to G_ENDDL.
+ * Returns the number of commands executed.  `cbMax` bounds the walk; the
+ * original has no such bound and will run off the end of a malformed list.
+ * DEVIATION, and the reason is that a test must not be able to crash. */
+size_t BrDlRun(BrDl *pDl, const uint8_t *pList, size_t cbMax);
+
+/* 0x10019040 -- the load-time pass.  Byte-swaps each command into host order
+ * and rewrites the three address-bearing opcodes:
+ *
+ *   0x04 G_VTX     segment-fix w1              (0x10019210 -> 0x100189E0)
+ *   0xBF G_TRI1    halve the three indices     (0x10019250)
+ *   0xB1 G_TRI2    halve all six indices       (0x10019270)
+ *   0xFD G_SETTIMG segment-fix w1              (0x100189E0)
+ *   0xB8 G_ENDDL   stop
+ *
+ * Everything else is skipped eight bytes at a time.  Note what is NOT here:
+ * the walk does not follow 0x06 G_DL, so a list is patched exactly once, by
+ * whoever owns it.
+ *
+ * The Glide build additionally routes each G_VTX through the vertex cache
+ * (0x10018E10 == slice1_05.c's BrVtxCacheResolve), replacing w1 with a
+ * pointer to the expanded 8-float records.  Pass a non-NULL `pfnResolve` to
+ * get that; pass NULL for the D3D shape, which leaves w1 as a raw pointer to
+ * the 16-byte N64 Vtx array.
+ *
+ * Returns the number of commands touched. */
+size_t BrDlPatch(const BrSegMap *pMap, uint8_t *pList, size_t cbMax,
+                 void (*pfnResolve)(void *pUser, uint32_t *pw1, int nVerts),
+                 void *pUser);
+
+/* Which of the 28 opcodes is this?  Non-zero if the original's table has a
+ * handler for it, zero if it falls to the skip stub.  Exposed because it is
+ * the one fact a caller most often wants to assert. */
+int BrDlIsHandled(unsigned op);
+
+/* ---------------------------------------------------------------------
+ * Reference rasteriser -- NOT in the original.
+ * ---------------------------------------------------------------------
+ * The consumer side, exactly as br_font.c part 3 is the consumer side of the
+ * text emitter.  Flat/Gouraud, no texture, no z-buffer: enough to prove the
+ * geometry is real, not enough to be a renderer. */
+typedef struct BrDlRaster {
+    uint8_t *pRgba;
+    int32_t  cx, cy;
+    uint32_t cCovered;      /* pixels written */
+} BrDlRaster;
+
+/* Install BrDlRaster as pDl's sink. */
+void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas);
+
+#endif /* BR_DL_H */

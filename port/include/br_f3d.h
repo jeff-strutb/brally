@@ -35,6 +35,11 @@
 #ifndef BR_F3D_H
 #define BR_F3D_H
 
+/* The hardware vertex buffer G_VTX loads into. The Glide build's array is at
+ * 0x105CE318 with a 104-byte stride; 64 is F3DEX's architectural maximum and is
+ * used as the bound because the walker does not model the array itself. */
+#define BR_F3D_VTX_SLOTS 64
+
 #include <stddef.h>
 #include <stdint.h>
 

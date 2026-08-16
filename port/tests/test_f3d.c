@@ -37,6 +37,27 @@ static void run(const char *pszPath)
      * (they are stored pre-doubled) and within the vertex cache. Random data
      * fails this immediately -- ~63/64 of random triples have an odd byte. */
     check(st.cBadIndices * 20 < st.cTriangles, "triangle indices valid");
+
+    /* ABSOLUTE counts, not ratios.
+     *
+     * The assertions above are the ones that let a real bug ship: G_VTX was
+     * decoded with the wrong bit field and the walker abandoned each list at
+     * the first load of nine or more vertices, so bb.rca reported 76 triangles
+     * out of 1820 and ce.rca 471 out of 1079. Every check here still passed --
+     * a 4% sample has geometry, and its bad-index ratio is fine.
+     *
+     * These numbers come from two independent sources that agree: an opcode
+     * census over the file (TRI2*2 + TRI1) and port/src/br_dl.c's interpreter,
+     * which walks the same lists through the ported handler table. A ratio
+     * cannot catch silent truncation; a count can. */
+    if (pszPath && strstr(pszPath, "bb.rca")) {
+        check(st.cTriangles == 1820, "bb.rca has exactly 1820 triangles");
+        check(st.cBadIndices == 0,   "bb.rca has no bad indices");
+    }
+    if (pszPath && strstr(pszPath, "ce.rca")) {
+        check(st.cTriangles == 1079, "ce.rca has exactly 1079 triangles");
+        check(st.cBadIndices == 0,   "ce.rca has no bad indices");
+    }
     /* A clean walk should terminate at G_ENDDL, not run into foreign data. */
     check(st.cUnknownOps * 10 < st.cCommands, "walks terminate cleanly");
     /* Each G_VTX load must supply enough vertices for the triangles that

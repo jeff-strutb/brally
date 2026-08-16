@@ -66,8 +66,38 @@ present in the original, and aliasing behaviour where the original permits it.
 
 ## Facts not to re-derive
 
-- Microcode is **F3DEX**: `G_VTX` has `n` in bits[15:10], `v0+n` in bits[7:1].
-  Plain F3D's `16n-1` low-byte layout is wrong for this game.
+- Microcode is **F3DEX**: `G_VTX` has `n` in bits[15:10]. **The rest of this
+  entry was wrong and is corrected below** — `v0+n` is NOT in bits[7:1], and
+  the `16n-1` layout is NOT absent.
+  - Measured in `testdata/bb.rca` and `testdata/ce.rca`: every `G_VTX` is
+    `0x04<<24 | (n<<10) | (16n - 1)` with bits[23:16] zero. `0x040079DF`
+    is n=30 and 479 = 16*30-1; `0x040081FF` is n=32 and 511; `0x0400207F`
+    is n=8 and 127. So the low ten bits ARE the F3D byte-length field.
+  - The consumer agrees: the `G_VTX` handler `0x10021A20` (Glide) takes `n`
+    from bits[15:10] and the destination index from **byte 2 of w0**
+    (`mov cl, byte ptr [ebp-2]`), i.e. bits[23:16]. Nothing reads bits[7:1].
+  - Cost of the old claim: `br_f3d.c`'s `end = (w0>>1)&0x7F; if (end > 64)`
+    aborts the walk at every `G_VTX` with n >= 9, so `test_f3d` reports 76
+    triangles for `bb.rca` where there are **1820**, and 471 for `ce.rca`
+    where there are **1079**. Its assertions pass because they test ratios.
+- **The PC builds run a software RSP/RDP, not a native 3D path.** One
+  interpreter, `0x10023C90` (Glide) / `0x10024A90` (D3D) — the same 29 bytes
+  in both — walks host-order F3D commands through a 256-entry table at
+  `0x100A9A58` (Glide) / `0x100A79F0` (D3D). **Both builds handle exactly the
+  same 28 opcodes**; 18 of the 28 handlers are byte-identical shared code and
+  8 diverge (`0x04 0x06 0xB1 0xBF 0xDC 0xE2 0xED 0xF8`). The other 228 slots
+  point at one 8-byte "return p+8" stub. The text path in `br_font.c` feeds
+  this same interpreter — there is no second one. See `port/include/br_dl.h`.
+  - The opcode is byte **3** of the command in memory, because the loader
+    (`0x10019040`) byte-swaps the whole list into host order first.
+  - Handlers return the NEXT command. `0xE4` is 24 bytes, `0xDC` is `8*w1`,
+    `0x06` returns w1, `0xB8` returns the popped address or NULL.
+  - `0xF5 0xF3 0xF0 0xFD 0xBB 0xBA` have **no handler** and are skipped at
+    draw time. Texture setup happens at load time instead.
+  - The combiner is a **closed set**: `0x1001E7A0` is a chain of exact
+    equality tests on the `(w0,w1)` pair — ten patterns plus a default.
+    Render mode (`0x10021270`) is the same shape, nine values plus a
+    bit-tested fallback. Neither is open-ended.
 - `0x1007DFE0` is `operator new` (`_nh_malloc(size,1)`) and does **not** zero.
   `0x1007D350` is `malloc`; `0x1007DE40` is `operator delete`.
 - `0x1007C8A0` is `__ftol`: truncates toward zero, returns the **low dword** of a
@@ -79,6 +109,19 @@ present in the original, and aliasing behaviour where the original permits it.
 - Entity/car records are stride `0x2B68`; the parallel array is `0x15C`.
   `car+0x1030` is speed in mph; `car+0x10AC` is a struct-of-arrays.
 - `.rca`: N64 struct at file `0x8000`, N64 address `0x803C8000`.
+- **The bulk game data is NOT in the POD.** The disc's `BossRally.pod` holds one
+  entry and is a leftover. Tracks, cars, textures, art and sound are plain files
+  in plain directories on the CD (`TRACKS/`, `CARS/`, `CARGFX/`, `IMAGES/`,
+  `PAINT/`, `SFX/`), played from the CD; `DATA1.CAB` is 125 KB of setup stub and
+  installs nothing of the game. `tools/extract_iso.py --list` walks the real
+  ISO 9660 tree: 2111 files, 116 MB.
+- `.trk`: a raw **big-endian** N64 memory image with a `0x230`-byte header on the
+  front. File offset 0 is N64 `0x80025C00`, so the payload at file `0x230` is
+  N64 `0x80025E30` — which every shipped file also stores at header `+0x84`.
+  Loader `0x100311C0`; header swap+relocate `0x10031B80`; payload passes
+  `0x100314D0`. Do not infer the header layout — `0x10031B80` states it, one
+  unrolled reversal per field, and it skips `0x80..0x83` because that field is
+  an RGBA quad.
 - `guLookAtF` (`0x100309A0`) and `guPerspectiveF` (`0x10030930`, **7 args**) are
   **not** stock libultra. `BrAtan2` takes **x first** and is a bisection accurate
   to ~0.01 rad — do not substitute `atan2f`.
