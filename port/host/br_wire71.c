@@ -23,6 +23,7 @@
  * The two failures look identical in a debugger and mean opposite things.
  */
 #include "slice6_71.h"
+#include "slice8_84.h"
 #include "br_phase.h"
 #include "slice6_77.h"   /* BrSub100586A0 -- 0x100586A0 */
 #include <string.h>
@@ -127,6 +128,10 @@ void BrHostWire71(void)
 
     g_brS71.pAA2908 = g_pPhaseAA2908;
     g_brS71.pHooks  = &g_hooks71;
+    /* Fill the slots slice8_84 ported. Without this the table is all-NULL and
+     * every control on slice6_71's screens activates into nothing -- which is
+     * what "the menu does not navigate" actually was. */
+    BrUiHook84Install71(&g_hooks71);
     g_brS71.pA9D018 = g_a9d018;
     g_env71.pfnFopen  = HostFopen;
     g_env71.pfnFclose = HostFclose;

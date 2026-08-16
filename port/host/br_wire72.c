@@ -25,6 +25,7 @@
  * replacement.
  */
 #include "slice6_72.h"
+#include "slice8_84.h"
 #include "br_uictl.h"    /* BrUiCtlCtor           -- 0x100476C0 */
 #include "br_uivt.h"     /* BrUiPageCtor_10048470 -- 0x10048470 */
 #include "br_phase.h"
@@ -97,6 +98,7 @@ void BrHostWire72(void)
 
     g_env72.pAA2908     = g_pPhaseAA2908;
     g_env72.pHooks      = &g_hooks72;
+    BrUiHook84Install72(&g_hooks72);   /* slice8_84's 16 slots */
     g_env72.pfnCtlCtor  = BrUiCtlCtor;
     g_env72.pfnPageCtor = BrUiPageCtor_10048470;
 
