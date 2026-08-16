@@ -12,15 +12,12 @@
  *   0xDC 0xDD 0xDE 0xDF 0xE1 0xE2 0xE3 0xE4 0xED 0xF2 0xF6 0xF7 0xF8
  *   0xFA 0xFB 0xFC.
  *
+ * CLIPPING has since been read.  PART 2 below is the DRIVER 0x1001EE70 only;
+ * the seven per-plane routines, the interpolator 0x1001F200 and the 64-node
+ * pool are slice1_03.c's, under their D3D addresses -- grepping the Glide
+ * ones finds nothing.  See the section header for the mapping.
+ *
  * NOT transcribed, and flagged as DEVIATION where it shows:
- *   - CLIPPING.  0x1001ECF0 hands a partly-visible triangle to 0x1001EE70,
- *     which drives six 311-byte per-plane routines (0x1001F0D0, 0x1001F2B0,
- *     0x1001F3F0, 0x1001F530, 0x1001F670, 0x1001F7B0, 0x1001F8F0 -- all
- *     SHARED, so all real port targets) and a common interpolator
- *     (0x1001F200).  None of those seven has been read.  What is below is a
- *     straightforward homogeneous Sutherland-Hodgman that produces the right
- *     SHAPE but is not claimed to match the original's vertex order, its
- *     tie-breaking, or its behaviour on degenerate input.
  *   - LIGHTING.  The transform copies the Vtx's last three bytes straight
  *     into r/g/b and nothing in it consults g_5CCFD0 (numlights) or the light
  *     array at 0x105CCC78, which both G_MOVEWORD and G_MOVEMEM plainly
@@ -31,6 +28,10 @@
  */
 
 #include "br_dl.h"
+
+/* The clip planes, the interpolator and the node pool are slice1_03's --
+ * see PART 2 on why this file must not own a second copy of them. */
+#include "slice1_03.h"
 
 #include <string.h>
 
@@ -82,6 +83,9 @@ static float br_dl_f32(uint32_t v)
     return f;
 }
 
+/* 0x10023B10's free-list threading; defined with the rest of the clipper. */
+static void br_dl_clip_reset(BrDl *pDl);
+
 /* ==================================================================== */
 /* addressing -- see the header on why this is a table and not a cast    */
 /* ==================================================================== */
@@ -125,11 +129,16 @@ void BrDlInit(BrDl *pDl, int32_t cxScreen, int32_t cyScreen)
 
     memset(pDl, 0, sizeof(*pDl));
 
-    /* 0x10023B10 seeds the vertex array to zero and iModel to 1.  The `1`
-     * matters: a list that never issues G_MTX still has a live modelview
-     * slot, and `iModel == 0` is the sentinel meaning "none", which
+    /* 0x10023B10 is the whole of this: it threads the clip-vertex pool into a
+     * free list (see br_dl_clip_reset), zeroes the display-list stack pointer
+     * 0x105CCFE8, sets iModel (0x100A9A50) to 1 and clears 0x105D17D4.  It
+     * does NOT touch the vertex array -- an earlier note here said it did.
+     *
+     * The `1` matters: a list that never issues G_MTX still has a live
+     * modelview slot, and `iModel == 0` is the sentinel meaning "none", which
      * 0x10021080 turns into a NULL matrix pointer. */
     pDl->iModel = 1;
+    br_dl_clip_reset(pDl);
     for (i = 0; i < BR_DL_MTX_STACK; ++i)
         BrMat4Identity(&pDl->aModel[i]);
     BrMat4Identity(&pDl->proj);
@@ -446,6 +455,224 @@ static const uint8_t *br_dl_popmtx(BrDl *pDl, const uint8_t *p)
     return p + 8;
 }
 
+/* ==================================================================== */
+/* PART 2 -- the clipper                                                */
+/* ==================================================================== */
+/* 0x1001EE70 (607 B) is the triangle submitter that drives seven per-plane
+ * routines and a shared interpolator.  Only the DRIVER is here.  The plane
+ * routines, the interpolator and the 64-node pool are slice1_03's -- see
+ * below on why that matters -- so this section is the part that had no host
+ * definition, and nothing else.
+ *
+ * WHERE THE REST OF IT ALREADY LIVED
+ * ----------------------------------------------------------------------
+ * BRGlide 0x1001F0D0 / 0x1001F2B0 / 0x1001F3F0 / 0x1001F530 are BRD3D
+ * 0x1001D810 / 0x1001D9F0 / 0x1001DB30 / 0x1001DC70, which slice1_03.c ports
+ * as BrClipPlaneW / WPlusF04 / WMinusF04 / WPlusF08, with 0x1001F200 ==
+ * 0x1001D940 == BrClipLerpVert and the pool as BrClipPoolInit.  Grepping the
+ * GLIDE addresses finds none of that; grepping the D3D ones finds all of it.
+ * slice1_04.h even wrote down the three-line integration for the remaining
+ * three planes and the reason -- forking the pool would be "a correctness
+ * hazard, not just duplication".  Those three are now in slice1_03.c.
+ *
+ * THE LIST.  0x1001EE70's prologue takes three BrDlVtx*, adds 0x40 to each,
+ * and links them a->b->c->a, keeping `{ head, count }` in two stack slots at
+ * ebp-8 / ebp-4 which it passes to every plane routine by address -- exactly
+ * slice1_03's BrClipList.  So a clip NODE is `&vtx->f40`, and that is what
+ * pins slice1_03's positional field names: f04/f08/f0C = clip x/y/z,
+ * f10/f14 = s/t, f18 = clip w, f1C/f20/f24 = the Vtx's trailing bytes.
+ *
+ * THE POOL.  0x10023B10 threads 0x105CCFF0..0x105CD9C8 downward in steps of
+ * 0x28 -- 64 nodes -- and leaves the LOWEST as the head of the free list at
+ * 0x105CDA00.  Every free site tests `0x105CCFF0 <= p < 0x105CD9F0` first, so
+ * only pool nodes are recycled and the three vertex-resident seeds are
+ * silently dropped.  The storage is here because this file is what makes the
+ * pool exist at all in the port; the LIST is slice1_03's, one object.
+ *
+ * THE PLANES, and the order, which is observable.  The seven bodies are
+ * identical apart from the two-instruction distance expression:
+ *
+ *   0x1001F7B0  fld cz ; fadd cw   ->  cz + cw   NEAR    called 1st
+ *   0x1001F2B0  fld cw ; fadd cx   ->  cw + cx   LEFT    called 2nd
+ *   0x1001F3F0  fld cw ; fsub cx   ->  cw - cx   RIGHT   called 3rd
+ *   0x1001F670  fld cw ; fsub cy   ->  cw - cy   TOP     called 4th
+ *   0x1001F8F0  fld cw ; fsub cz   ->  cw - cz   FAR     called 5th
+ *   0x1001F530  fld cy ; fadd cw   ->  cy + cw   BOTTOM  called 6th
+ *   0x1001F0D0  fld cw            ->  cw        W       called 7th
+ *
+ * Same seven half-spaces as br_dl_vtx's outcode bits, in a DIFFERENT order --
+ * and Sutherland-Hodgman's output vertex order depends on it, so the order is
+ * preserved rather than tidied.
+ *
+ * THE POLARITY.  Each routine does `fcomp [0x10077410]`, and 0x10077410 reads
+ * 0x00000000, so the threshold is plain zero; then `fnstsw ax / test ah,1`,
+ * i.e. C0, and the jump on C0 goes to the "outside" arm.  C0 is set for
+ * unordered as well as less-than, so a NaN distance is OUTSIDE.  slice1_03
+ * keeps that by writing the INSIDE test as `d >= 0.0f`. */
+
+/* The pool storage.  Static, not per-BrDl, because the original's is one
+ * global block and slice1_03's free list is one global list: a per-instance
+ * copy would be the aliased-storage bug CONVENTIONS.md describes.  A second
+ * live BrDl shares it, which is what the original does too. */
+static BrClipVert s_aClipPool[BR_DL_CLIP_POOL];   /* 0x105CCFF0 */
+static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
+
+/* 0x10023B10's free-list threading, delegated. */
+static void br_dl_clip_reset(BrDl *pDl)
+{
+    (void)pDl;
+    BrClipPoolInit(s_aClipPool, BR_DL_CLIP_POOL);
+}
+
+/* The seven planes in 0x1001EE70's CALL order. */
+typedef void (*BrDlClipPlaneFn)(BrClipList *);
+static const BrDlClipPlaneFn s_apClipPlane[7] = {
+    BrClipPlaneWPlusF0C,    /* 0x1001F7B0  NEAR   */
+    BrClipPlaneWPlusF04,    /* 0x1001F2B0  LEFT   */
+    BrClipPlaneWMinusF04,   /* 0x1001F3F0  RIGHT  */
+    BrClipPlaneWMinusF08,   /* 0x1001F670  TOP    */
+    BrClipPlaneWMinusF0C,   /* 0x1001F8F0  FAR    */
+    BrClipPlaneWPlusF08,    /* 0x1001F530  BOTTOM */
+    BrClipPlaneW            /* 0x1001F0D0  W      */
+};
+
+/* --- 0x1001EE70's output stage ---------------------------------------
+ * Identical arithmetic to the tail of br_dl_vtx plus the s/t scaling of
+ * br_dl_finish_vtx, written out here because the original writes it out here
+ * too (0x1001EF82..0x1001F065) rather than calling either. */
+static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
+{
+    float invW, sx, sy;
+
+    /* DEVIATION: the original leaves the frame's ooz (+0x18) and a (+0x1C)
+     * untouched, so they carry stack garbage into grDrawTriangle.  Zeroed
+     * here; nothing downstream of this port reads them. */
+    memset(pOut, 0, sizeof(*pOut));
+
+    invW = 1.0f / pN->f18;                      /* fld 1.0 / fdiv cw */
+    pOut->oow = invW;
+
+    sx = pDl->vpScaleX * invW * pN->f04 + pDl->vpTransX;
+    sy = pDl->vpScaleY * invW * pN->f08 + pDl->vpTransY;
+    sx = (float)((int32_t)(sx * 4.0f + (sx >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    sy = (float)((int32_t)(sy * 4.0f + (sy >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    pOut->x = sx;
+    pOut->y = sy;
+
+    pOut->r = pN->f1C;
+    pOut->g = pN->f20;
+    pOut->b = pN->f24;
+
+    pOut->cx = pN->f04; pOut->cy = pN->f08; pOut->cz = pN->f0C;
+    pOut->cw = pN->f18;
+    pOut->s  = pN->f10; pOut->t  = pN->f14;
+    pOut->n0 = pN->f1C; pOut->n1 = pN->f20; pOut->n2 = pN->f24;
+    pOut->outcode = 0;
+
+    /* 0x1001F038 / 0x1001F050: the same two texel-scale globals
+     * (0x118ED1A4 / 0x118ED1A8) br_dl_finish_vtx holds at 1.0. */
+    pOut->tmu0[2] = invW;          pOut->tmu1[2] = invW;
+    pOut->tmu0[0] = pN->f10 * invW; pOut->tmu1[0] = pOut->tmu0[0];
+    pOut->tmu0[1] = pN->f14 * invW; pOut->tmu1[1] = pOut->tmu0[1];
+}
+
+/* --- 0x1001EE70 ------------------------------------------------------- */
+static void br_dl_clip_tri(BrDl *pDl, const BrDlVtx *a, const BrDlVtx *b,
+                           const BrDlVtx *c)
+{
+    const BrDlVtx *aIn[3];
+    BrClipList list;
+    BrDlVtx out[BR_DL_CLIP_MAX];
+    int i, n;
+
+    aIn[0] = a; aIn[1] = b; aIn[2] = c;
+    for (i = 0; i < 3; ++i) {
+        BrClipVert *pS = &s_aClipSeed[i];
+        pS->f04 = aIn[i]->cx; pS->f08 = aIn[i]->cy; pS->f0C = aIn[i]->cz;
+        pS->f10 = aIn[i]->s;  pS->f14 = aIn[i]->t;
+        pS->f18 = aIn[i]->cw;
+        pS->f1C = aIn[i]->n0; pS->f20 = aIn[i]->n1; pS->f24 = aIn[i]->n2;
+    }
+    /* a -> b -> c -> a, with the head on a.  The original writes c->next
+     * twice: NULL first, then back to a.  The NULL is dead.  The seeds are
+     * NOT pool nodes, so BrClipPoolFree will refuse them -- which is the
+     * original's range test doing its job, not an omission. */
+    s_aClipSeed[0].pNext = &s_aClipSeed[1];
+    s_aClipSeed[1].pNext = &s_aClipSeed[2];
+    s_aClipSeed[2].pNext = &s_aClipSeed[0];
+    list.pHead  = &s_aClipSeed[0];
+    list.cVerts = 3;
+
+    /* Each call is followed by `cmp ecx,3 / jl` -- the chain stops the moment
+     * the polygon cannot be a polygon any more. */
+    for (i = 0; i < 7; ++i) {
+        s_apClipPlane[i](&list);
+        if (list.cVerts < 3)
+            break;
+    }
+
+    /* Pool starvation: slice1_03's BrClipLerpVert returns NULL where the
+     * original faults, and BrClipPlane then quietly leaves the polygon a
+     * vertex short.  There is no return value to see that through, so it is
+     * inferred here -- an empty free list at the end of the chain, before
+     * anything is given back.  A triangle can borrow at most seven nodes, so
+     * on a 64-node pool this cannot fire unless something has leaked. */
+    if (BrClipPoolCount() == 0)
+        pDl->cClipStarved++;
+
+    if (list.cVerts < 3) {
+        /* 0x1001EF30: walk exactly cVerts nodes from the head returning the
+         * pool ones, then give up. */
+        BrClipVert *p = list.pHead;
+        int k = list.cVerts;
+        while (k-- > 0 && p != NULL) {
+            BrClipVert *pN = p->pNext;
+            BrClipPoolFree(p);
+            p = pN;
+        }
+        pDl->cTriClipKilled++;
+        return;
+    }
+
+    n = list.cVerts;
+    if ((uint32_t)n > pDl->cClipVtxMax)
+        pDl->cClipVtxMax = (uint32_t)n;
+    if (n > BR_DL_CLIP_MAX) {
+        /* DEVIATION: the original writes past its 0x224-byte frame.  See the
+         * BR_DL_CLIP_MAX note in br_dl.h. */
+        pDl->cClipOverflow++;
+        n = BR_DL_CLIP_MAX;
+    }
+
+    /* 0x1001EF82: emit and free in one pass, walking the list from the head. */
+    {
+        BrClipVert *p = list.pHead;
+        for (i = 0; i < n && p != NULL; ++i) {
+            BrClipVert *pN = p->pNext;
+            br_dl_clip_emit(pDl, p, &out[i]);
+            BrClipPoolFree(p);
+            p = pN;
+        }
+        while (i < list.cVerts && p != NULL) {   /* the clamped tail, if any */
+            BrClipVert *pN = p->pNext;
+            BrClipPoolFree(p);
+            p = pN;
+            ++i;
+        }
+    }
+
+    /* 0x1001F095: exactly three vertices go to grDrawTriangle (0x100729EA),
+     * anything else to grDrawPolygonVertexList (0x100729FC), which takes the
+     * count and the base of the contiguous 0x3C-stride array.  BrDlSink has
+     * only pfnTri, so the polygon becomes a fan -- which is what a Glide
+     * convex-polygon call decomposes to anyway.  DEVIATION in form only. */
+    if (pDl->sink.pfnTri) {
+        for (i = 1; i + 1 < n; ++i)
+            pDl->sink.pfnTri(pDl->sink.pUser, &out[0], &out[i], &out[i + 1]);
+    }
+    pDl->cTriClipOut += (uint32_t)(n - 2);
+}
+
 /* ---- triangles  (0xBF 0x1001ECF0, 0xB1 0x1001FA30 -- both Glide-only) */
 
 /* 0x1001ED83: s and t are scaled by two globals (0x118ED1A4 / 0x118ED1A8 --
@@ -485,8 +712,12 @@ static void br_dl_tri(BrDl *pDl, int i0, int i1, int i2)
     }
     or3 = a->outcode | b->outcode | c->outcode;
     if (or3 != 0) {
-        /* DEVIATION -- see the file header.  The original calls 0x1001EE70. */
+        /* 0x1001ED45: not trivially rejectable and not wholly inside, so the
+         * triangle goes to the clipper -- and note the ARGUMENT ORDER, which
+         * is the same (i0, i1, i2) the untouched path uses (0x1001ED53 pushes
+         * &v[i2], &v[i1], &v[i0]; cdecl reverses that back to i0 first). */
         pDl->cTriClipped++;
+        br_dl_clip_tri(pDl, a, b, c);
         return;
     }
 

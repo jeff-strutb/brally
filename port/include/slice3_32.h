@@ -377,13 +377,24 @@ typedef struct BrScrRectEnt {
 } BrScrRectEnt;
 
 /* *(void**)0x10AA2E80. Only these four ints are read in this range; +0x00 and
- * +0x04 are fild-ed (signed 32-bit), +0x2C/+0x30 are only compared to 0. */
+ * +0x04 are fild-ed (signed 32-bit), +0x2C/+0x30 are only compared to 0.
+ *
+ * +0x34 and +0x38 are NOT read in this range and are here so that this model
+ * and slice3_31.h's model of the SAME original object are the same object.
+ * They were two shapes of different lengths -- slice3_31.h stops at +0x38
+ * because 0x10047360 tests four consecutive dwords, this one stopped at +0x30
+ * because 0x10047A60 tests only two -- and a host that allocates one and
+ * passes it to a consumer typed over the other must not be handing over a
+ * short object. br_sprfont.c is that consumer: its struct-model transcription
+ * of 0x10047360 reads all four. */
 typedef struct BrObjAA2E80 {
     int32_t f00;
     int32_t f04;
     int32_t aPad[9];   /* +0x08 .. +0x28 */
     int32_t f2C;
     int32_t f30;
+    int32_t f34;
+    int32_t f38;
 } BrObjAA2E80;
 
 /* ==========================================================================

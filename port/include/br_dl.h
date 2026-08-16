@@ -45,6 +45,127 @@
  * (G_TEXTURE) at draw time -- they fall to the default stub.  Texture binding
  * happens through 0xDC/0xDD, which the loader plants, and through the
  * load-time fixup of 0xFD in BrDlPatch.
+ *
+ * HOW A TEXTURE REACHES THE BIND OPCODE
+ * ----------------------------------------------------------------------
+ * A shipped .rca contains NO 0xDC at all -- measured, testdata/bb.rca has 84
+ * 0xFD, 24 0xF3, 15 0xF0, 6 0xF5, 6 0xF2 and zero 0xDC -- yet this
+ * interpreter has no handler for any of those and textures plainly appear.
+ * The resolution is that the 0xDC is WRITTEN INTO THE LIST AT LOAD TIME, over
+ * the top of the run it replaces.  A typical run in bb.rca, at file 0x97E8:
+ *
+ *      FD SETTIMG   E6 LOADSYNC   F3 LOADBLOCK   F5 SETTILE   F2 SETTILESIZE
+ *
+ * and the chain that rewrites it, all addresses BRGlide:
+ *
+ *   0x10028820  the scan.  Walks a just-loaded display list to G_ENDDL with a
+ *               nine-state machine.  Reached through the renderer vtable slot
+ *               0x118ED1DC, which 0x10029B50 fills; its callers are 0x10030770
+ *               (the .rca fixup), 0x100314D0 and 0x100316D0 (the .trk load)
+ *               and 0x100302A0 -- i.e. LOAD time, once per list.
+ *   0x10029420  G_SETTIMG.  Records `siz` and the image ADDRESS (already
+ *               segment-fixed by BrDlPatch's 0xFD arm, so it is a real host
+ *               address into the loaded .rca), and -- only from state 0 --
+ *               records this command as the START of the run.
+ *   0x10029480  G_LOADTLUT.  Publishes the palette address in 0x106B7A98 and
+ *               copies ((lrs-uls)+1)*((lrt-ult)+1)*2 bytes to [0x100A9E58].
+ *   0x10029510  G_LOADBLOCK.  Publishes the texel address in 0x105D17F0 and
+ *               stages 2*((lrs-uls)+1) bytes at 0x105D17F8.
+ *   0x100295B0  G_SETTILE / 0x100296B0 G_SETTILESIZE fill the eight 0x40-byte
+ *               tile records at 0x10697840 (fmt +0, siz +4, ... maskS +0x20,
+ *               maskT +0x24, uls +0x30 .. lrt +0x3C).
+ *   0x10028B50  THE SEAM.  Called when the run ends (at G_VTX / G_TRI).  It
+ *               calls the registrar, and on success does exactly this:
+ *
+ *                   pRunStart->w0 = 0xDC000000 | (id & 0x00FFFFFF);
+ *                   pRunStart->w1 = (pRunEnd - pRunStart) / 8;
+ *
+ *               So the FIRST command of the run becomes 0xDC and its w1 is the
+ *               run length in commands -- which is precisely why the 0xDC
+ *               handler (0x1001E2E0) returns `p + 8*w1`: it steps over the
+ *               commands it replaced.  Nothing else needs a handler.
+ *   0x10028BB0  the registrar.  Builds a 0x2B0-byte descriptor on the stack
+ *               (tmu +0, evenOdd +4, w +8, h +0xC, GrTextureFormat +0x10,
+ *               lods +0x18/+0x1C, aspect +0x20, clampS/T +0x24/+0x28,
+ *               texel source +0x48, palette source +0x4C, a verbatim copy of
+ *               all eight tile records at +0x60..+0x25F, mode +0x264, source
+ *               w/h +0x2A0/+0x2A4), looks for an identical one, and appends a
+ *               new record when there is none.  Width and height come from
+ *               `1 << maskS` / `1 << maskT`, doubled when the tile mirrors,
+ *               or from `(lr-ul+4)>>2` -- the same formula br_dl_settilesize
+ *               uses.
+ *   0x10027A70  the dedup (== BRD3D 0x10028630 == slice1_04's BrTblFind).
+ *               Keys on the texel source address, the palette source address
+ *               and eight render-state bytes; returns an existing index or -1.
+ *   0x10027A10  AppendTexture -- the growable array itself: count 0x10697A58,
+ *               capacity 0x10697A5C, base 0x106B7AA0, stride 0x2B4 (0x2B8 in
+ *               D3D), grown 0x100 records at a time.  THE 24-BIT VALUE IN THE
+ *               0xDC COMMAND IS AN INDEX INTO THIS ARRAY.
+ *   0x10027710  make the Glide texture: 0x10027B60 converts the texels,
+ *               0x10028200 allocates a TMEM slot and fills a 0xD8-byte record
+ *               at 0x10661844 (whose +0xC0..+0xD3 IS a GrTexInfo), 0x100283C0
+ *               calls grTexDownloadMipMap.
+ *   0x100284E0  what 0xDC actually invokes.  0x1001E2E0 calls the pointer at
+ *               0x118ED1CC, which 0x10029B50 sets to 0x100284E0; that reads
+ *               record[id] and issues grTexSource / grTexClampMode /
+ *               grTexFilterMode / grTexLodBiasValue / grTexMipMapMode, and
+ *               sets the two texel-scale globals 0x118ED1A4 / 0x118ED1A8 that
+ *               br_dl_finish_vtx holds at 1.0.  0xDD (0x1001E300) calls
+ *               0x118ED1D0 == 0x100285E0, which re-downloads the same slot at
+ *               a new address -- the one-texture scheme br_font.c uses.
+ *
+ * WHERE THE PIXELS COME FROM, AND IN WHAT FORMAT
+ * ----------------------------------------------------------------------
+ * Three separate sources, and only the first goes through the path above:
+ *
+ *  1. THE .rca ITSELF.  G_SETTIMG's address, after the segment fixup, points
+ *     into the loaded model image; slice2_20's BrTexCopyRecords (0x10031AC0
+ *     Glide) has already placed the texel blobs and TLUTs there.  The staging
+ *     copies at 0x105D17F8 / [0x100A9E58] are side copies -- the expander
+ *     reads the ORIGINAL bytes through the descriptor's +0x48 / +0x4C.
+ *  2. cargfx/skytex{desert,mountain,coast,mine,amazon}[n].{ci4,lut4}, a ten
+ *     entry table of literal filenames at 0x100B5330 referenced only from the
+ *     track records that the .trk loader 0x100311C0 reads.  Raw CI4 + a
+ *     16-entry RGBA5551 palette; port/src/br_n64tex.c already decodes them.
+ *  3. images\*.bmp and Paint\*.bmp -- 24-bit Windows BMPs, the 2D sprite
+ *     sheets and the car liveries.  These do NOT enter this path; the paint
+ *     ones are SUBSTITUTED for an .rca texture inside 0x10023D70, which is why
+ *     0x10027710 takes its pixel pointer as an argument.
+ *
+ * The format is not inferred from byte statistics -- three earlier attempts in
+ * this project failed that way.  It is read off two functions:
+ *
+ *   0x10027220 (== BRD3D 0x10027B90 == slice1_04's BrTexFormatCode) maps the
+ *   tile's (siz, fmt) onto a Glide GrTextureFormat_t.  CI4, CI8 and RGBA16 --
+ *   everything the models actually use -- fall to the catch-all 11 ==
+ *   GR_TEXFMT_ARGB_1555.  Only IA4/I8/IA8 pick anything else.
+ *
+ *   0x100271F0, forty-four bytes, is the per-texel conversion, and it is
+ *   exactly:
+ *
+ *       v = bswap16(v);                    /  the N64 halfword is BIG-endian
+ *       return (v >> 1) | ((v & 1) << 15); /  rotate right one bit
+ *
+ *   which turns N64 RGBA5551 (rrrrrgggggbbbbba) into Glide ARGB1555
+ *   (arrrrrgggggbbbbb).  The CI4 arm of the 8480-byte expander 0x100250D0
+ *   (from 0x10025467) reads a byte, splits the nibbles high-first, indexes the
+ *   16-bit palette, and puts each result through 0x100271F0 -- so a CI4
+ *   texture leaves the loader as 16 bits per texel, ARGB1555, little-endian,
+ *   PALETTE ALREADY APPLIED.  br_n64tex.h's independent claim that the .lut4
+ *   files are big-endian RGBA5551 is the same fact from the other end.
+ *
+ *   For a Metal backend that means one texture format for essentially all 3D
+ *   geometry -- BGR5A1 / A1BGR5 depending on channel order, or expanded to
+ *   RGBA8 on upload -- and no palette state at draw time.
+ *
+ * STILL UNKNOWN: the meaning of the mode flag 0x106B7AAC (it selects the
+ * richer format for the three intensity cases and is part of the dedup key);
+ * the other twenty-odd arms of 0x100250D0, including the N64 TMEM row
+ * interleave, which is visible in its 4-forward/8-back cursor arithmetic but
+ * has not been transcribed; and 0x1002F790, which an earlier note nominated
+ * for this investigation and which is NOT part of it -- in BRGlide it is a
+ * mutex-driven worker calling 0x1006Cxxx, and the 350-byte D3D function at
+ * the same address is a phase state machine.
  */
 #ifndef BR_DL_H
 #define BR_DL_H
@@ -74,12 +195,41 @@ typedef struct BrDlVtx {
     float   tmu0[3];        /* 0x24 0x28 0x2C  sow, tow, oow               */
     float   tmu1[3];        /* 0x30 0x34 0x38  sow, tow, oow               */
     int32_t outcode;        /* 0x3C  six frustum bits plus w               */
-    float   f40;            /* 0x40  never read in the code examined       */
+    float   f40;            /* 0x40  the clip list's `next` -- see below   */
     float   cx, cy, cz;     /* 0x44 0x48 0x4C  clip space                  */
     float   s, t;           /* 0x50 0x54  texture coords, pre-divide       */
     float   cw;             /* 0x58  clip space w                          */
     float   n0, n1, n2;     /* 0x5C 0x60 0x64  the Vtx's last three bytes  */
 } BrDlVtx;
+
+/* 0x40 was recorded as "never read".  It is read, by the clipper: 0x1001EE70
+ * builds a circular singly-linked list whose NODES are `&vtx->f40`, so f40 is
+ * the next-pointer and the nine floats from f40+4 to f40+0x24 -- cx cy cz s t
+ * cw n0 n1 n2, in that order -- are exactly the nine attributes the shared
+ * interpolator 0x1001F200 lerps.  The clip node is therefore a 0x28-byte
+ * record overlaid on the vertex at +0x40.
+ *
+ * The port cannot overlay it: `next` is a host pointer and f40 is 32 bits
+ * (CONVENTIONS.md, byte offsets are 32-bit-only).  So the three input
+ * vertices are COPIED into three seed nodes.  Nothing observable changes --
+ * the seven plane routines read only these nine floats and the link.
+ *
+ * The node type, the interpolator and the plane routines are NOT declared
+ * here: they are slice1_03's `BrClipVert` / `BrClipLerpVert` / `BrClipPlane*`
+ * (0x1001D810 and family in the D3D map, 0x1001F0D0 and family in Glide's),
+ * and the 64-node pool at 0x105CCFF0 must stay ONE object -- see
+ * CONVENTIONS.md, "Aliased storage: a link-clean bug".  br_dl.c owns only the
+ * driver 0x1001EE70, which has no D3D counterpart and so was invisible from
+ * that packet.  BR_DL_CLIP_POOL is the pool SIZE, stated here because
+ * br_dl.c provides the storage. */
+#define BR_DL_CLIP_POOL   64
+
+/* 0x1001EE70's frame is 0x224 bytes and holds the output GrVertex array at
+ * ebp-0x224 with stride 0x3C, so NINE vertices fit exactly (0x21C) before the
+ * two locals at ebp-8/ebp-4.  Sutherland-Hodgman across seven planes can
+ * produce ten, so the original has a latent one-vertex stack overflow; the
+ * port clamps and counts instead.  DEVIATION, recorded at the site. */
+#define BR_DL_CLIP_MAX     9
 
 /* The colour slots: 0x10021A20 copies source floats +0x14/+0x18/+0x1C -- the
  * N64 Vtx's last three bytes, scaled by 1/128 by BrVtxExpand -- straight into
@@ -112,7 +262,25 @@ typedef struct BrDlVtx {
  *
  * BR_DL_CC_DECAL is special: matching it flips the triangle-drawing function
  * pointer at 0x100A9A68 between 0x10021C70 and 0x100221D0, so it selects a
- * different rasterisation path, not merely a different blend. */
+ * different rasterisation path, not merely a different blend.
+ *
+ * ERRATUM -- TWO OF THESE NAMES ARE THE WRONG WAY ROUND.  The argument
+ * tuples this comment says are "recorded in br_dl.c" are not; they have since
+ * been read off 0x1001E7A0 and written down in port/src/gfx/br_gfx3d.h, and
+ * they say:
+ *
+ *   BR_DL_CC_SHADE (FCFFFFFF FFFCF87C) is grColorCombine(SCALE_OTHER, ONE,
+ *      LOCAL_CONSTANT, OTHER_TEXTURE) -- i.e. `1.0 * TEXTURE`, and its N64
+ *      words decode to (a-b)*c+d == TEXEL0.  It is the TEXTURE row.
+ *   BR_DL_CC_TEX (FCFFFFFF FFFE793C) is grColorCombine(FUNCTION_LOCAL, ZERO,
+ *      LOCAL_ITERATED, ...) -- i.e. the vertex colour, and its N64 words
+ *      decode to SHADE.  It is the SHADE row.
+ *
+ * The names are LEFT AS THEY ARE so that no existing caller silently changes
+ * meaning; consult br_gfx3d.h before using either.  Corroboration that the
+ * decode and not the naming is right: BR_DL_CC_TEX_SHADE_CW's site calls
+ * grConstantColorValue(-1) (white) and the same row's N64 d-input is the
+ * literal `1`. */
 typedef enum BrDlCombine {
     BR_DL_CC_DEFAULT = 0,   /* anything unrecognised                        */
     BR_DL_CC_SHADE,         /* FCFFFFFF FFFCF87C                            */
@@ -227,6 +395,15 @@ typedef struct BrDl {
     uint32_t  cCommands, cUnhandled, cTriIn, cTriDrawn, cTriRejected;
     uint32_t  cTriClipped, cVtxLoads, cVtxTransformed, cRects;
     uint32_t  cDlCalls, cStackOverflow;
+    /* clipper counters.  cTriClipped stays what it was -- triangles that
+     * ENTERED the clipper -- so the existing accounting identity
+     * cTriIn == cTriDrawn + cTriRejected + cTriClipped still holds; the
+     * sub-triangles the clipper emits are counted separately. */
+    uint32_t  cTriClipOut;      /* triangles the clipper handed to the sink */
+    uint32_t  cTriClipKilled;   /* entered the clipper, came out with < 3   */
+    uint32_t  cClipVtxMax;      /* widest polygon produced                  */
+    uint32_t  cClipStarved;     /* pool empty: port drops, original faults  */
+    uint32_t  cClipOverflow;    /* polygon wider than BR_DL_CLIP_MAX        */
 } BrDl;
 
 /* Screen size the fill/scissor handlers flip Y against (0x100A7518 is the

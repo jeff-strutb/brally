@@ -136,7 +136,25 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect);
  * 11 is the catch-all, reached by every unhandled combination including
  * a >= 2. In the original the `c == 1` tests are the branchless
  * `dec/neg/sbb/and/add` idiom, which is where the odd constant pairs
- * (0xF7,11) and (0xF8,12) come from. */
+ * (0xF7,11) and (0xF8,12) come from.
+ *
+ * THE MEANINGS ARE NOW ESTABLISHED, from the Glide build's call site
+ * (0x10027220 == this function; called from 0x10028BB0 at 0x10028D33):
+ *
+ *      a = the RDP tile's `siz`   (0 = 4b, 1 = 8b, 2 = 16b, 3 = 32b)
+ *      b = the RDP tile's `fmt`   (0 RGBA, 2 CI, 3 I, 4 IA)
+ *      c = a global mode flag (0x106B7AAC Glide), which also becomes the
+ *          descriptor's +0x264 and is part of the texture-dedup key
+ *      return value = a Glide 2.x GrTextureFormat_t:
+ *          2 = GR_TEXFMT_ALPHA_8            4 = GR_TEXFMT_ALPHA_INTENSITY_44
+ *         11 = GR_TEXFMT_ARGB_1555         12 = GR_TEXFMT_ARGB_4444
+ *
+ * So the table reads: IA4 -> ARGB1555 or ALPHA_8; I8 -> ARGB4444 or AI44;
+ * IA8 -> ALPHA_8; and EVERYTHING ELSE -- notably CI4, CI8 and RGBA16, which
+ * is what the .rca models actually use -- lands on the catch-all
+ * ARGB_1555. That is the single most useful fact in this header for a
+ * backend: the game's textures arrive as 16-bit 1-5-5-5 with alpha in the
+ * TOP bit. See br_dl.h, "How a texture reaches the bind opcode". */
 int BrTexFormatCode(int a, int b, int c);
 
 /* ==========================================================================
