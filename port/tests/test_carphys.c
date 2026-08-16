@@ -554,7 +554,8 @@ static void TestSettle(void)
     /* Every hole was entered, so the report cannot claim more physics ran
      * than actually did. */
     /* four substeps per frame, 401 frames */
-    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_COLLIDE] == 4u * 401u);
+    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_CARCAR] == 4u * 401u);
+    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_BOX]    == 401u);
 }
 
 /* With no ground at all the car must fall freely, and at the acceleration the

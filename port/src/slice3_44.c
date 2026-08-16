@@ -178,17 +178,32 @@ void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
 }
 
 /* 0x10074B20 */
-void BrVec3SubRepeated(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
+void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 {
     int i;
 
-    /* PRESERVED BUG: the outer loop resets the cursor, so the same three
-     * subtractions run three times.  See the header. */
-    for (i = 0; i < 3; ++i) {
-        pOut->x = pA->x - pB->x;
-        pOut->y = pA->y - pB->y;
-        pOut->z = pA->z - pB->z;
-    }
+    /* NINE elements: a 3x3 matrix subtract.
+     *
+     * This was previously modelled as three subtractions performed three
+     * times, and recorded as a PRESERVED BUG of the original -- "only the
+     * inner loop advances any pointer, and the outer one resets it".
+     *
+     * The outer loop does NOT reset it. The reset `mov eax, edi` sits at
+     * 0x1006DD98 and the outer loop's target is 0x1006DD9A -- one instruction
+     * LATER. So the cursor advances continuously across all three passes and
+     * the function covers nine floats, exactly once each.
+     *
+     * 0x10065C80 settles it independently: it passes a 3x3 identity scaled by
+     * 1/mass, which is meaningless to a routine that only touches three
+     * elements.
+     *
+     * Worth naming the shape of the old error, because it is the kind that
+     * survives review: a misreading dressed as a faithfully preserved bug.
+     * It looks like diligence, it explains an oddity, and nobody re-derives
+     * it. A claim that the original is wrong should be held to a HIGHER
+     * standard than a claim that it is right, not a lower one. */
+    for (i = 0; i < 9; ++i)
+        pOut[i] = pA[i] - pB[i];
 }
 
 /* 0x10075340 */

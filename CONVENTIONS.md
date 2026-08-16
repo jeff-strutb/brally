@@ -140,6 +140,31 @@ present in the original, and aliasing behaviour where the original permits it.
   rate (body `+0x1BC`) is the immediate `-3000`. Force-list node layout is
   `{next, kind, f[3], r[3]}`, 0x20 bytes, built by `0x100746E0` whose LAST
   argument becomes `kind`.
+- **`0x10074B20` / Glide `0x1006DD80` is a 3x3 matrix subtract, not a repeated
+  vec3 one**, and `slice3_44.h` currently says the opposite *as a documented
+  preserved bug*, which is the shape that survives review. `mov eax, edi` is at
+  `0x10074B38`, one instruction **before** the outer loop's jump target
+  `0x10074B3A`, so the cursor is never reset and the nested 3x3 loops walk nine
+  consecutive floats. The two `sub` instructions inside the outer loop
+  recompute the same two base offsets every time, which is what makes it look
+  like a reset. Confirmed by its real caller: the collision impulse solver
+  `0x10065C80` hands it a 3x3 identity with `1/mass` on the diagonal and a 3x3
+  built from three chained `BrMat3Mul`s. Generalising: **a loop's reset
+  instruction only resets if it is inside the loop** — check the jump target,
+  not the reading order.
+- **`0x10008D60` is one byte, `c3`** — a bare `ret`. Every "this only drives a
+  printf, so the function is a test" argument in this tree rests on it, and
+  `0x10066D70` shows why that inference is unsafe: the return value really does
+  only reach the stub, and the function still writes `save.angVel` and calls
+  `BrRbQuatDerivative`. **A dead return value says nothing about side effects.**
+- The car's collision box (`car+0x340..0x34C` == `body+0x1DC..+0x1E8`) is
+  **loaded from the disc, not built by the constructor**. Glide `0x1005BCC0`
+  sets it to `(0, 0, 2.0, 0)` at `0x1005BD40/42/48/4E` and `0x10059A80` copies
+  a car-data record's `+0x10..+0x1C` over it; `0x10063B80` fills that record
+  from `0x10B73668 + 24*(...)`, an address inside `.data`'s **virtual** range
+  but far past its `0x41E00` raw bytes. Two of the three extents being zero is
+  what makes `0x10067C30`'s reciprocals infinite and the whole OBB collision
+  chain inert in this port. See `port/include/br_collresp.h`.
 - `0x1007DFE0` is `operator new` (`_nh_malloc(size,1)`) and does **not** zero.
   `0x1007D350` is `malloc`; `0x1007DE40` is `operator delete`.
 - `0x1007C8A0` is `__ftol`: truncates toward zero, returns the **low dword** of a
@@ -613,3 +638,30 @@ normals painted as colour.
 
 That took one loop over data already in hand, and it settled a question that
 had been open across three passes.
+
+## A misreading dressed as a preserved bug is the durable kind
+
+`0x10074B20` was documented as "three subtractions performed three times --
+PRESERVED BUG: the outer loop resets the cursor", with a test case labelled
+"the visible face of the preserved bug" asserting exactly that. Both were
+wrong. It is a 3x3 matrix subtract: nine floats, each once.
+
+The reset `mov eax, edi` sits at `0x1006DD98`; the outer loop's target is
+`0x1006DD9A`, **one instruction later**, so the reset never runs as part of the
+loop. And `0x10065C80` passes a 3x3 identity scaled by `1/mass`, which is
+meaningless to a routine that touches three elements.
+
+The failure shape is worth naming, because it beats review:
+
+  1. a wrong reading explains an oddity, so it feels like insight;
+  2. calling it a PRESERVED BUG makes it look like diligence rather than a
+     claim, so nobody re-derives it;
+  3. a test is written to pin it, and passes -- which converts the misreading
+     into a regression guard defending itself.
+
+**A claim that the original is WRONG must be held to a higher standard than a
+claim that it is right, not a lower one.** The shipped game worked. Same rule
+as the wheel-probe "defect", and this is its second appearance.
+
+When preserving a bug, record the instruction addresses that establish it, so
+the next reader can check the claim instead of inheriting it.
