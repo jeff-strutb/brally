@@ -94,8 +94,8 @@ BrPhase *BrPhaseCtor(BrPhase *pThis)
 {
     ++g_c.nCtor;
     pThis->pVtbl = g_pPhaseVtbl;
-    pThis->pfn04 = NULL;
-    pThis->pfn08 = NULL;
+    pThis->pfnEnter = NULL;
+    pThis->pfnHook = NULL;
     pThis->f0C   = 0;
     pThis->f68   = 0;
     return pThis;
@@ -198,11 +198,16 @@ void BrExt_10046DC0(void *pEntity) { ++g_c.n10046DC0; g_pLastEntity = pEntity; }
 /* fixtures                                                               */
 /* ====================================================================== */
 
-static void PhaseF00(BrPhase *pThis, int32_t a)
+/* Slot +0x00 is the scalar deleting destructor and RETURNS `this`
+ * (0x10048850 ends `mov eax,esi / ret 4`). Every caller in this range
+ * discards it -- returning pThis here keeps the stub faithful to the shape
+ * rather than to what the callers happen to look at. */
+static void *PhaseF00(BrPhase *pThis, int32_t a)
 {
     ++g_c.nF00;
     g_pNotified = pThis;
     g_notifyArg = a;
+    return pThis;
 }
 
 static void SubF18(BrEntSub *pThis, int32_t a)
@@ -305,8 +310,8 @@ static BrPhase *MakePhase(void)
 {
     BrPhase *p = (BrPhase *)malloc(sizeof(BrPhase));
     p->pVtbl = &g_phaseVtbl;
-    p->pfn04 = NULL;
-    p->pfn08 = NULL;
+    p->pfnEnter = NULL;
+    p->pfnHook = NULL;
     p->f0C   = 0;
     p->f68   = 0;
     return p;
@@ -328,7 +333,7 @@ static void TestActivateIsIdempotent(void)
     CHECK(g_ctx.pAA2904 == pFirst);
     CHECK(g_c.nCtor == 1);
     CHECK(g_c.aEnter[E_10059760] == 1);
-    CHECK(pFirst->pfn04 == BrExt_10059760);
+    CHECK(pFirst->pfnEnter == BrExt_10059760);
     CHECK(pFirst->f0C == 1);
     CHECK(pFirst->f68 == 1);
     CHECK(g_c.n100419D0 == 1);
@@ -450,19 +455,19 @@ static void TestSlotToHookWiring(void)
 {
     Setup();
     CHECK(BrPhaseActivate_10045110(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2914 != NULL && g_ctx.pAA2914->pfn04 == BrPhaseEnterPlaceholder_1004A580);
+    CHECK(g_ctx.pAA2914 != NULL && g_ctx.pAA2914->pfnEnter == BrPhaseEnterPlaceholder_1004A580);
     CHECK(BrPhaseActivate_100451E0(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2918 != NULL && g_ctx.pAA2918->pfn04 == BrPhaseEnterPlaceholder_1004BDC0);
+    CHECK(g_ctx.pAA2918 != NULL && g_ctx.pAA2918->pfnEnter == BrPhaseEnterPlaceholder_1004BDC0);
     CHECK(BrPhaseActivate_100452C0(&g_ctx) == 1);
-    CHECK(g_ctx.pAA297C != NULL && g_ctx.pAA297C->pfn04 == BrPhaseEnterPlaceholder_1004C4A0);
+    CHECK(g_ctx.pAA297C != NULL && g_ctx.pAA297C->pfnEnter == BrPhaseEnterPlaceholder_1004C4A0);
     CHECK(BrPhaseActivate_10045390(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2980 != NULL && g_ctx.pAA2980->pfn04 == BrExt_1004D1F0);
+    CHECK(g_ctx.pAA2980 != NULL && g_ctx.pAA2980->pfnEnter == BrExt_1004D1F0);
     CHECK(BrPhaseActivate_100455E0(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2984 != NULL && g_ctx.pAA2984->pfn04 == BrExt_1004DFC0);
+    CHECK(g_ctx.pAA2984 != NULL && g_ctx.pAA2984->pfnEnter == BrExt_1004DFC0);
     CHECK(BrPhaseActivate_100456B0(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2988 != NULL && g_ctx.pAA2988->pfn04 == BrExt_1004E830);
+    CHECK(g_ctx.pAA2988 != NULL && g_ctx.pAA2988->pfnEnter == BrExt_1004E830);
     CHECK(BrPhaseActivate_10044D00(&g_ctx) == 1);
-    CHECK(g_ctx.pAA2964 != NULL && g_ctx.pAA2964->pfn04 == BrExt_10059BB0);
+    CHECK(g_ctx.pAA2964 != NULL && g_ctx.pAA2964->pfnEnter == BrExt_10059BB0);
     /* each one is a distinct object */
     CHECK(g_c.nCtor == 7);
     CHECK(g_c.nEnterTotal == 7);
@@ -728,7 +733,7 @@ static void TestHooks(void)
     CHECK(BrPhaseHook_10045050(&g_ctx, &g_ent) == 1);
     CHECK(g_seenAC304 == 0);            /* cleared across the activation */
     CHECK(g_ctx.n0AC304 == 1);          /* and set again afterwards */
-    CHECK(pB4->pfn08 == BrExt_10046CD0);
+    CHECK(pB4->pfnHook == BrExt_10046CD0);
     CHECK(g_ctx.n0AA010 == 0);
     CHECK(g_ctx.pAA2914 != NULL);       /* it went through 0x10045110 */
     CHECK(g_c.aEnter[E_1004A580] == 1);
@@ -742,21 +747,21 @@ static void TestHooks(void)
     CHECK(g_c.n10045C90 == 1);
     CHECK(g_p10045C90Arg == &g_ent);
     CHECK(g_c.n10041BD0 == 0);
-    CHECK(pB0->pfn08 == BrExt_10046DC0);
+    CHECK(pB0->pfnHook == BrExt_10046DC0);
     CHECK(g_ctx.n0AA010 == 0);
 
     Setup();
     g_ctx.pAA29B0 = pB0;
-    pB0->pfn08 = NULL;
+    pB0->pfnHook = NULL;
     CHECK(BrPhaseHook_100450C0(&g_ctx, &g_ent) == 1);
     CHECK(g_c.n10041BD0 == 1);          /* the only difference */
     CHECK(g_c.n10045C90 == 1);
-    CHECK(pB0->pfn08 == BrExt_10046DC0);
+    CHECK(pB0->pfnHook == BrExt_10046DC0);
 
     /* the dispatcher forwards its own argument and returns 0, not 1 */
     Setup();
     pF4 = MakePhase();
-    pF4->pfn08 = BrExt_10046DC0;
+    pF4->pfnHook = BrExt_10046DC0;
     g_ctx.pAA29F4 = pF4;
     g_ctx.n0AA010 = 9;
     CHECK(BrPhaseDispatch_100450F0(&g_ctx, &g_ent) == 0);
@@ -797,7 +802,7 @@ static void TestBootWithHost(void)
     CHECK(g_c.n100440D0 == 1 && g_c.n100443E0 == 1);
     CHECK(g_c.n10044280 == 0);               /* the nAA2884 == 0 arm */
     CHECK(g_ctx.pAA2954 != NULL);
-    CHECK(g_ctx.pAA2954->pfn04 == BrExt_10058750);
+    CHECK(g_ctx.pAA2954->pfnEnter == BrExt_10058750);
     CHECK(g_ctx.pAA2904 == g_ctx.pAA2954);
     CHECK(g_ctx.n0AA010 == 6);
     CHECK(g_c.n1003C150 == 1);

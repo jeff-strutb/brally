@@ -79,21 +79,34 @@
 void *BrPodLoadInto(BrPod *pPod, int iEntry, void *pvBuffer);
 
 /* ==========================================================================
- * The phase vtable, one slot further than slice2_26.h needed
+ * The phase vtable -- RESOLVED, and `BrPhaseVtblExt` is GONE
  * ==========================================================================
  *
- * slice2_26.h's BrPhaseVtbl models only slot +0x00 because that is all its
- * range calls. 0x10046FD0 and 0x10047290 also call slot +0x1C -- a
- * no-argument __thiscall teardown. Rather than produce a second, competing
- * definition of BrPhaseVtbl (the contract forbids exactly that), the extra
- * slot is reached through this overlay, whose first member IS a BrPhaseVtbl,
- * so the layouts cannot drift apart.
+ * There used to be a `BrPhaseVtblExt` overlay here: slice2_26.h's BrPhaseVtbl
+ * modelled only slot +0x00, because that is all its own range calls, while
+ * 0x10046FD0 and 0x10047290 in THIS range also call slot +0x1C. Rather than
+ * coin a second competing definition of BrPhaseVtbl -- which the contract
+ * forbids -- the extra slot was reached through
+ *
+ *     struct BrPhaseVtblExt { BrPhaseVtbl base; void *aReserved[6];
+ *                             void (*f1C)(BrPhase *); };
+ *
+ * and slice3_31.c cast `p->pVtbl` to it. That was sound arithmetic while
+ * `base` was one pointer wide: 4 + 6*4 == 0x1C, so f1C landed on slot +0x1C.
+ *
+ * It STOPS being sound the moment BrPhaseVtbl is the real nine-slot table,
+ * and that is now the case -- slice2_26.h aliases it to br_phase.h's
+ * BrPhaseVtbl_. `base` is then nine pointers, aReserved another six, and
+ * `f1C` lands 0x1C bytes PAST THE END of the actual vtable at 0x1008F700 --
+ * which is .rdata belonging to BrTextBox. A wild read followed by an indirect
+ * call through whatever it found.
+ *
+ * The overlay is deleted rather than re-padded, because there is nothing left
+ * for it to do: slot +0x1C (0x10048AA0) is an ordinary member of
+ * BrPhaseVtbl_, and slice3_31.c reaches it as `p->pVtbl->f1C(p)` with no cast
+ * at all. This is the good outcome of the merge -- the reason the overlay
+ * existed was that no single type held both slots, and now one does.
  */
-typedef struct BrPhaseVtblExt {
-    BrPhaseVtbl base;               /* +0x00 -- slot f00                   */
-    void       *aReserved[6];       /* +0x04..+0x18 -- never touched here  */
-    void      (*f1C)(BrPhase *pThis);   /* +0x1C __thiscall(this)          */
-} BrPhaseVtblExt;
 
 /* ==========================================================================
  * Foreign objects this range reaches that slice2_25/26 do not model

@@ -201,7 +201,7 @@ int main(void)
      * 0x100193C0 relies on, and it holds only because every glyph's advance
      * comes from the same cumulative offset table. */
     {
-        int32_t advA, advC, both;
+        int32_t advA, advC;
         cw   = emit(&f, "AB", BR_FONT_LARGE_CELL, 0, 60, 0);
         collect(g_dl, cw, aR, 64);
         advA = aR[1].ulx;                      /* pen after 'A' */
@@ -240,9 +240,13 @@ int main(void)
     cw = emit(&f, "%", BR_FONT_LARGE_CELL, 10, 60, 0);
     check(collect(g_dl, cw, aR, 64) == 1,
           "a trailing \"%\" is drawn as a glyph");
+    /* A colour code whose SECOND letter is off the end degenerates: the '%'
+     * is drawn, the cursor steps by one, and the letter is then drawn as an
+     * ordinary glyph on the next pass -- so "%r" draws TWO glyphs.  The same
+     * fall-through is recorded for 0x100193C0 in slice6_76.h. */
     cw = emit(&f, "%r", BR_FONT_LARGE_CELL, 10, 60, 0);
-    check(collect(g_dl, cw, aR, 64) == 1,
-          "\"%r\" with nothing after it is drawn as a glyph");
+    check(collect(g_dl, cw, aR, 64) == 2,
+          "\"%r\" at the end of a string draws both characters");
 
     /* A two-letter colour code emits both halves of the gradient and draws
      * nothing.  The preamble already sets one of each, hence the +1. */
@@ -279,20 +283,30 @@ int main(void)
               "crossing the threshold downwards makes the glyph wider");
     }
 
-    /* Hi-res doubles x, y and the scale before anything else. */
+    /* Hi-res doubles x, y and the scale before anything else -- including
+     * before the large/small threshold test.  So drawing at scale s in hi-res
+     * is the same geometry as drawing at 2s without it; taken at the origin,
+     * where the y offset (30*scale)/40 doubles too, the two rectangles are
+     * identical.  That is a stronger statement than "twice as wide", and it
+     * is the one that fails if the doubling is applied in the wrong order. */
     {
-        int32_t w0, w1;
+        cw = emit(&f, "A", 20, 0, 0, 1);
+        n  = collect(g_dl, cw, aR, 64);
+        cw = emit(&f, "A", 40, 0, 0, 0);
+        n2 = collect(g_dl, cw, aR2, 64);
+        check(n == 1 && n2 == 1 &&
+              aR[0].ulx == aR2[0].ulx && aR[0].uly == aR2[0].uly &&
+              aR[0].lrx == aR2[0].lrx && aR[0].lry == aR2[0].lry,
+              "hi-res at scale 20 is identical to plain at scale 40");
+    }
+    {
         cw = emit(&f, "A", 20, 10, 100, 0);
         collect(g_dl, cw, aR, 64);
-        w0 = aR[0].lrx - aR[0].ulx;
         cw = emit(&f, "A", 20, 10, 100, 1);
         collect(g_dl, cw, aR2, 64);
-        w1 = aR2[0].lrx - aR2[0].ulx;
         check(aR2[0].ulx == 2 * aR[0].ulx, "hi-res doubles the left edge");
-        /* Not merely twice as wide: doubling 20 to 40 also crosses the
-         * large-font threshold, so the divisor changes from 20 to 40. */
-        check(w1 == w0, "hi-res crosses the font threshold, so the glyph "
-                        "doubles in size and halves in scale -- net unchanged");
+        check(aR2[0].lry - aR2[0].uly == 2 * (aR[0].lry - aR[0].uly),
+              "hi-res doubles the drawn cell height");
     }
 
     /* A negative pen position takes the clamp arm, which clamps at zero and

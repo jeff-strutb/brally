@@ -67,49 +67,84 @@
 #include <stdint.h>
 
 #include "br_slots.h"   /* 0x100586A0 == BrSlotsReset */
+#include "br_phase.h"   /* BrPhase_, BrPhaseVtbl_ -- CANONICAL, see below */
 
 /* ==========================================================================
  * The phase object (0xC8 bytes, allocated at 0x1004488E and eleven twins)
+ *
+ * THIS HEADER NO LONGER DEFINES IT. br_phase.h does, and the names below are
+ * aliases onto that one model.
+ *
+ * What used to be here was a FIVE-field partial view {pVtbl, pfn04, pfn08,
+ * f0C, f68} -- the five fields this range touches -- with the rest of the 0xC8
+ * bytes left unmodelled on the stated grounds that "the rest belongs to the
+ * constructor at 0x10048710". That was true and it was safe only for exactly
+ * as long as 0x10048710 was NOT wired to these call sites.
+ *
+ * It is wired now, and the partial view could not survive it. The fifth
+ * member, f68, sat immediately after f0C in the port's layout, whereas in the
+ * object the constructor writes there are three fields in between (nPages,
+ * iPage, aPages[20]). The constructor would have written a full BrPhase_ into
+ * an allocation this header's callers then read as a BrPhase, and every field
+ * from +0x0C on would have landed somewhere else -- link-clean, run-clean, and
+ * silently wrong, which is the failure mode CONVENTIONS.md's "Two models of
+ * one object, shifted" section describes one level up.
+ *
+ * Nothing this header observed was wrong. All five fields exist in BrPhase_
+ * under the mapping br_phase.h records (pfn04 = pfnEnter, pfn08 = pfnHook);
+ * the model simply had no way to express the other eight fields, and a
+ * partial view is only safe while nobody writes the whole object.
+ *
+ * TWO TYPE CHANGES fall out of the merge, both widenings, both adjudicated in
+ * br_phase.h's banner from the disassembly:
+ *
+ *   - BrPhaseVtbl has NINE slots, not one. The extra slots were always there
+ *     at 0x1008F700; this range only ever called +0x00.
+ *   - Slot +0x00 returns `void *`, not void. 0x10048850 is the MSVC scalar
+ *     deleting destructor and ends `mov eax,esi / ret 4`. Callers in this
+ *     range discard the result, which is why void survived; discarding a
+ *     returned value is legal C and no call site changes.
  * ========================================================================== */
 
-typedef struct BrPhase     BrPhase;
-typedef struct BrPhaseVtbl BrPhaseVtbl;
+typedef BrPhase_     BrPhase;
+typedef BrPhaseVtbl_ BrPhaseVtbl;
 
 /* +0x04. Called as pfn04(self). */
-typedef void (*BrPhaseEnterFn)(BrPhase *pSelf);
+typedef BrPhaseEnterFn_ BrPhaseEnterFn;
 /* +0x08. Called as pfn08(x) where x is the caller's own argument -- an
  * entity record, not the phase. See 0x100450F0. */
-typedef void (*BrPhaseHookFn)(void *pEntity);
+typedef BrPhaseHookFn_  BrPhaseHookFn;
 
-struct BrPhaseVtbl {
-    /* +0x00 -- the only slot this range uses. __thiscall(this, int). */
-    void (*f00)(BrPhase *pThis, int32_t a);
-};
+/* FIELD RENAMES, done at the use sites rather than with macros. This header's
+ * `pfn04`/`pfn08` are br_phase.h's `pfnEnter`/`pfnHook`; slice2_26.c and
+ * slice3_31.c now spell them that way. They are NOT `#define pfn04 pfnEnter`,
+ * deliberately: slice2_25.h's BrOptObj -- a THIRD partial view of this same
+ * 0xC8 object -- has its own `pfn04` member, and slice4_50.c writes it. A
+ * member-renaming macro is textual and would silently rewrite that unrelated
+ * store the moment the two headers met in one TU. f0C and f68 keep their
+ * names; br_phase.h spells them the same.
+ *
+ * (slice2_25.h's BrOptObj is the remaining un-merged view of this object. It
+ * is padded to 0xC8 and nothing writes the whole object through it today, so
+ * it is not yet a live hazard -- but it is the same hazard, and slice6_73.h's
+ * conflict note #1 already names it.) */
 
-/* Only five fields are ever touched in this range; the rest of the 0xC8
- * bytes belong to the constructor at 0x10048710 and are not modelled.
- * The offsets below are the original's (32-bit) offsets, kept as
- * documentation -- the struct is NOT laid out to match on a 64-bit host. */
-struct BrPhase {
-    const BrPhaseVtbl *pVtbl;   /* +0x00 */
-    BrPhaseEnterFn     pfn04;   /* +0x04 */
-    BrPhaseHookFn      pfn08;   /* +0x08 */
-    int32_t            f0C;     /* +0x0C -- set to 1 on the just-built path */
-    int32_t            f68;     /* +0x68 -- set to 1 on the just-built path */
-};
-
-/* The literal the original passes to operator new. Kept exact: the port
- * allocates this many bytes, which is >= sizeof(BrPhase) everywhere. */
-/* br_phase.h defines the same constant with the same value. Guarded rather
- * than deleted so this header still stands alone for modules that do not
- * include br_phase.h yet. If the two ever disagree, that is a real conflict
- * and the #ifndef would HIDE it -- so it is asserted below, not assumed. */
+/* The literal the original passes to operator new. br_phase.h owns it now and
+ * defines the same value; the guard stays so this header still compiles first
+ * in a TU. If the two ever disagree the #ifndef would HIDE it, so it is
+ * asserted rather than assumed. */
 #ifndef BR_PHASE_ORIG_SIZE
 #define BR_PHASE_ORIG_SIZE 0xC8
 #endif
 typedef char BrPhaseOrigSizeAgrees[(BR_PHASE_ORIG_SIZE == 0xC8) ? 1 : -1];
 
-typedef char BrPhaseSizeCheck[(sizeof(BrPhase) <= BR_PHASE_ORIG_SIZE) ? 1 : -1];
+/* WAS: `sizeof(BrPhase) <= BR_PHASE_ORIG_SIZE`, and that assertion encoded the
+ * bug. It held only because the struct was a five-field stub; the real object
+ * is LARGER than 0xC8 on LP64 because every pointer widened. The invariant
+ * that actually matters is the opposite one -- the port must never allocate
+ * less than the original did -- and BR_PHASE_ALLOC_SIZE is what call sites
+ * use. See br_phase.h. */
+typedef char BrPhaseSizeCheck[(sizeof(BrPhase) >= BR_PHASE_ORIG_SIZE) ? 1 : -1];
 
 /* ==========================================================================
  * The entity record (stride 0x2B68 -- the same record slice1_09.h describes)

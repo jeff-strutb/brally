@@ -250,6 +250,15 @@ clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
+# br_font recovers the glyph pixels out of orig/BRD3D.dll and ports 0x10018590.
+# Its emitter builds the combine command with slice1_05.c's REAL 0x1002F900
+# rather than a fake -- faking it would test the fake -- and that in turn wants
+# br_seg.o's BrSegFixup.  The test skips itself when the DLL is not present.
+clang $CFLAGS -c port/src/br_font.c -o build/br_font.o
+clang $CFLAGS -Iport/tests -c port/tests/test_br_font.c -o build/test_br_font.o
+clang build/br_font.o build/slice1_05.o build/br_seg.o build/test_br_font.o \
+      -lm -o build/test_br_font
+
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
 clang build/br_pod.o build/test_pod.o -o build/test_pod

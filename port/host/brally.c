@@ -33,6 +33,7 @@
 #include "slice6_73.h"
 #include "br_gfx.h"
 #include "br_img.h"
+#include "br_font.h"
 #include "br_uictl.h"
 #include "br_uivt.h"
 #include <stdio.h>
@@ -365,13 +366,70 @@ static void FillRect(BrGfx *gfx, float x, float y, float w, float h)
     if (g_haveWhite) BrGfxDrawTexture(gfx, g_texWhite, x, y, w, h);
 }
 
+/* Captions, rasterised once with br_font and cached as textures.
+ *
+ * br_font.c reads the glyph pixels out of orig/BRD3D.dll -- that is where the
+ * game keeps them, in .data, and there is no font file to load instead. If the
+ * DLL is not there the captions simply do not appear and the rectangles are
+ * drawn exactly as they were before.
+ *
+ * Each caption goes into its own padded RGBA buffer at its NATURAL size and is
+ * drawn at the control's top-left, not stretched to the control rectangle: the
+ * layout is the builder's and the typography is the font's, and neither is
+ * allowed to distort the other. */
+#define BR_CAP_W     512
+#define BR_CAP_H      64
+#define BR_CAP_SCALE  24        /* rendered cell height                     */
+#define BR_CAP_BASE   44        /* pen line; the cell top lands at 44-18=26 */
+#define BR_CAP_MAX    64
+
+static BrFont g_font;
+static int    g_haveFont;
+
+static struct { BrTexture tex; float x, y; } g_aCapTex[BR_CAP_MAX];
+static int    g_cCap;
+
+static void BuildCaptions(BrGfx *gfx, const BrPhase_ *ph)
+{
+    static uint8_t buf[BR_CAP_W * BR_CAP_H * 4];
+    int i, j;
+
+    if (!g_haveFont) return;
+    for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
+        const BrUiPage_ *pg = ph->aPages[i];
+        if (!pg) continue;
+        for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
+            const BrUiCtl_ *c = pg->apCtl[j];
+            const char *psz;
+            BrTexture   t;
+
+            if (!c || g_cCap >= BR_CAP_MAX) continue;
+            psz = CapFor(c);
+            if (!psz || !*psz) continue;
+            memset(buf, 0, sizeof buf);
+            if (BrFontDrawString(&g_font, psz, BR_CAP_SCALE, 0, BR_CAP_BASE,
+                                 buf, BR_CAP_W, BR_CAP_H) == (size_t)-1)
+                continue;
+            t = BrGfxCreateTexture(gfx, BR_CAP_W, BR_CAP_H, buf);
+            if (!t) continue;
+            g_aCapTex[g_cCap].tex = t;
+            g_aCapTex[g_cCap].x   = (float)c->rcLeft;
+            g_aCapTex[g_cCap].y   = (float)c->rcTop;
+            g_cCap++;
+        }
+    }
+}
+
 /* Draw the menu the builder produced.
  *
- * HONEST ABOUT WHAT THIS IS: these are the real rectangles at the real
- * coordinates, but the GLYPHS ARE NOT DRAWN -- the game renders text through a
- * path that is not ported yet, so a caption appears here as the box that was
- * sized to hold it, not as letters. The layout is authentic; the typography is
- * absent. Do not read a screenshot of this as "the menu renders". */
+ * HONEST ABOUT WHAT THIS IS: the rectangles are the real ones at the real
+ * coordinates, and the captions are the real glyphs out of the real font --
+ * but ALIGNMENT and text colour are not wired. The game resolves alignment in
+ * 0x10019300 against the width routine and sets the gradient from its own
+ * state; here every caption is left-aligned at the control origin in the
+ * font's default yellow-over-red. Read a screenshot of this as "the layout and
+ * the typography are both real and nothing has yet joined them up", not as
+ * "the menu renders". */
 static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex)
 {
     int i, j;
@@ -391,6 +449,9 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
             FillRect(gfx, x, y, w, h);
         }
     }
+    for (i = 0; i < g_cCap; i++)
+        BrGfxDrawTexture(gfx, g_aCapTex[i].tex, g_aCapTex[i].x, g_aCapTex[i].y,
+                         (float)BR_CAP_W, (float)BR_CAP_H);
 }
 
 int main(int argc, char **argv)
@@ -578,6 +639,11 @@ int main(int argc, char **argv)
         if (gfx) {
             g_texWhite  = BrGfxCreateTexture(gfx, 1, 1, white);
             g_haveWhite = (g_texWhite != 0);
+            g_haveFont  = (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0);
+            printf(g_haveFont
+                       ? "font: glyphs recovered from orig/BRD3D.dll\n"
+                       : "font: orig/BRD3D.dll not readable -- boxes only\n");
+            BuildCaptions(gfx, ph);
         }
         if (gfx && BrImgLoad(&img, "testdata/splash.img") == 0) {
             tex = BrGfxCreateTexture(gfx, img.width, img.height, img.pixels);
