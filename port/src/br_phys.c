@@ -44,6 +44,9 @@
 /* associative, so this is not cosmetic.                                  */
 /* ==================================================================== */
 
+/* 0 == the original's body-local grid key.  See br_phys.h. */
+int g_brPhysWheelGridWorldKey = 0;
+
 static float BrPhysDot(const BrVec3 *pA, const BrVec3 *pB)
 {
     return (pA->y * pB->y + pA->z * pB->z) + pA->x * pB->x;
@@ -212,8 +215,15 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
     pWheel->f19C = 0.0f;
 
     /* GOTCHA -- the grid cell comes from the BODY-LOCAL mount offset, not
-     * from `world`.  See the long note in br_phys.h.  Reproduced. */
-    cell = BrCollGridCellAcquire(pWheel->f78.x, pWheel->f78.y);
+     * from `world`.  See the long note in br_phys.h.  Reproduced, and the
+     * switch below defaults to 0, which is the original.  The alternative
+     * arm is a MEASUREMENT INSTRUMENT, not a fix; br_phys.h says why it had
+     * to exist and what it costs to forget that. */
+    if (g_brPhysWheelGridWorldKey) {
+        cell = BrCollGridCellAcquire(world.x, world.y);
+    } else {
+        cell = BrCollGridCellAcquire(pWheel->f78.x, pWheel->f78.y);
+    }
 
     best = BrPhysProbeCell(cell, &world, &dir, BR_PHYS_PROBE_MISS, &pBest);
 
@@ -235,7 +245,16 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
 /* 0x1006F4A0 (D3D) / 0x10068450 (Glide)                                 */
 /* ==================================================================== */
 
-void BrWheelSuspensionSetZ(BrRbBodyFull *pBody)
+/* The original's 0x1006F0C0 records the winning triangle's surface byte at
+ * wheel+0x1A0, and 0x10067F30 (the drag pass, br_carphys.c) reads all four of
+ * them.  br_phys.h's DEVIATION moved those six fields to a typed out-parameter
+ * because they cannot be written through BrRbBodyFull on LP64 -- which left
+ * BrWheelSuspensionSetZ passing NULL and the surface bytes unreachable.
+ *
+ * This is that function with the out-parameter threaded through; the NULL
+ * spelling below is the same body, and there is still exactly ONE
+ * transcription of 0x1006F4A0. */
+void BrWheelSuspensionSetZHit(BrRbBodyFull *pBody, BrGroundHit aHit[4])
 {
     int i;
 
@@ -245,7 +264,8 @@ void BrWheelSuspensionSetZ(BrRbBodyFull *pBody)
 
         /* `fchs` on the return value -- the probe measures downwards and the
          * wheel offset is negative-down. */
-        v = -BrWheelGroundProbe(pBody, pWheel, NULL);
+        v = -BrWheelGroundProbe(pBody, pWheel,
+                                (aHit != NULL) ? &aHit[i] : NULL);
 
         pWheel->f1D8 = v;
 
@@ -259,6 +279,11 @@ void BrWheelSuspensionSetZ(BrRbBodyFull *pBody)
          * store the NaN instead. */
         pWheel->f78.z = !(w >= BR_PHYS_SUSP_MIN) ? BR_PHYS_SUSP_MIN : w;
     }
+}
+
+void BrWheelSuspensionSetZ(BrRbBodyFull *pBody)
+{
+    BrWheelSuspensionSetZHit(pBody, NULL);
 }
 
 /* ==========================================================================

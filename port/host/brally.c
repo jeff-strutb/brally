@@ -33,6 +33,17 @@
  *                             headless scripted navigation: d down, u up,
  *                             j activate, . idle. Dumps the selection state
  *                             after every key and reports any phase change.
+ *   ./build/brally -race <track.trk> <steps> [-drop <m>] [-worldkey]
+ *                             THE RACE, which is not a phase: load a track,
+ *                             build the collision grid from its own triangles,
+ *                             spawn sixteen cars, install the step in the slot
+ *                             at 0x106E79F4 and run N fixed 1/30 s frames,
+ *                             dumping car 0's position, velocity, |angVel|,
+ *                             lap/gate and all four ground probes per step.
+ *                             `-drop` is how far above the surface each grid
+ *                             box starts (default 0.5 m).  `-worldkey` is a
+ *                             COUNTERFACTUAL and is announced as one -- see
+ *                             br_phys.h.
  *
  * THE MENU IS NAVIGABLE. `-keys` exists because "the selection moves" is not
  * something a terminal session or a CI job can check by looking, and an
@@ -1281,6 +1292,368 @@ static void DrawPhase(BrGfx *gfx, const BrPhase_ *ph, BrTexture tex, int haveTex
     }
 }
 
+/* ==========================================================================
+ * `-race <track.trk> <steps> [x y]` -- THE HEADLESS RACE
+ *
+ * WHAT THIS RUNS, AND WHERE THE SEAM IS
+ *
+ *   PORTED, and every one of these is decompiled game logic:
+ *     br_gamestep.c   0x1002E317 / 0x1002E324, the game-step slot at
+ *                     0x106E79F4 and the pump arm that calls it.
+ *     br_track.c      0x100311C0, the .TRK loader.
+ *     br_collgrid.c   the five header fields 0x1006F720's cell builder reads.
+ *     slice6_73.c     0x1006F720 itself -- the cell is built from the track's
+ *                     REAL triangles, normals computed by the ported code.
+ *     br_phys.c       0x10068070 / 0x100682C0 / 0x10068450, the probes.
+ *     br_carphys.c    0x1005A7A0 and its force generators.
+ *     br_race.c       0x1005FF00, the lap/gate machine.
+ *     br_ai.c         the path ring, for where the grid actually starts.
+ *
+ *   THIS FILE'S, and it is only the glue:
+ *     - the body installed in the step slot.  The original's is 0x10019A70,
+ *       which also runs the menu frame and the renderer; this one runs the
+ *       field and nothing else, and BrGameStepId reports it as "not one of
+ *       the original three" rather than claiming to be the race step.
+ *     - mirroring each car's integrated position into the BrDriverCar the
+ *       gate machine reads.  In the original both are fields of one 0x2B68
+ *       record and no copy exists.
+ *
+ * THE FIELD.  Sixteen cars in one contiguous array with a parallel array of
+ * driver records, and the starting order REVERSED -- slot 0 gets the LAST
+ * grid box.  The original's stride is 0x2B68 and cannot be reproduced on
+ * LP64 (five pointers inside the rigid body widen), so the array is of a host
+ * struct; CONVENTIONS.md's rule is `sizeof`, never the literal.
+ * ========================================================================== */
+
+#include "br_carphys.h"
+#include "br_collgrid.h"
+#include "br_gamestep.h"
+#include "br_race.h"
+#include "br_ai.h"
+#include "br_track.h"
+#include <math.h>
+
+#define BR_RACE_FIELD  16
+
+typedef struct HostRaceCar {
+    BrCarPhys   phys;
+    BrDriverCar car;      /* the fields br_race.c mirrors through pDrv->pCar */
+} HostRaceCar;
+
+static HostRaceCar  g_aRaceCar[BR_RACE_FIELD];
+static BrDriver     g_aRaceDrv[BR_RACE_FIELD];
+static BrRaceGate   g_aRaceGate[BR_AI_GATE_MAX];
+static BrRaceRules  g_raceRules;
+static float        g_raceLapLen;
+static int          g_nRaceStep;
+static int          g_cRaceCars;
+/* How far above the surface each grid box starts.  `-drop <m>` on the command
+ * line.  The suspension's whole travel is 0.4 and the probe's window is +-2,
+ * so anything in (0, 0.4] starts a car already ON its springs and anything
+ * larger drops it. */
+static float        g_raceDrop = 0.5f;
+
+/* The body installed in 0x106E79F4.  Deliberately NOT registered as
+ * BR_GAMESTEP_RACE: it is a stand-in for 0x10019A70, not a port of it. */
+static void HostRaceStep(void)
+{
+    int i;
+
+    for (i = 0; i < g_cRaceCars; ++i) {
+        HostRaceCar *pC = &g_aRaceCar[i];
+
+        BrCarPhysStep(&pC->phys);
+
+        /* 0x1005FF00 reads car+0x30 and car+0xF80 and writes them back; in
+         * the original those ARE the integrated position and last frame's.
+         * Here the physics owns the state, so the two are mirrored. */
+        pC->car.posPrev = pC->car.pos;
+        pC->car.pos     = BrCarPhysBodyState(&pC->phys.body)->pos;
+
+        (void)BrRaceGateStep(&g_raceRules, &g_aRaceDrv[i]);
+    }
+    ++g_nRaceStep;
+}
+
+/* header +0x98, BR_AI_GATE_MAX records of BR_AI_GATE_STRIDE, count at +0x160.
+ * The swapper reverses every dword in [0x84, 0x164), so both are host order
+ * in abHdr and are read as raw dwords and reinterpreted -- never overlaid. */
+static int32_t RaceLoadGates(const BrTrack *pTrack)
+{
+    int32_t n = (int32_t)BrTrackHdrU32(pTrack, BR_TRK_H_CGATES);
+    int32_t i;
+
+    if (n < 0) n = 0;
+    if (n > (int32_t)BR_AI_GATE_MAX) n = (int32_t)BR_AI_GATE_MAX;
+
+    for (i = 0; i < n; ++i) {
+        unsigned off = BR_TRK_H_GATES + (unsigned)i * BR_AI_GATE_STRIDE;
+        uint32_t a[5];
+        int      k;
+        for (k = 0; k < 5; ++k)
+            a[k] = BrTrackHdrU32(pTrack, off + (unsigned)k * 4u);
+        memcpy(&g_aRaceGate[i].postA.x, &a[0], 4);
+        memcpy(&g_aRaceGate[i].postA.y, &a[1], 4);
+        memcpy(&g_aRaceGate[i].postB.x, &a[2], 4);
+        memcpy(&g_aRaceGate[i].postB.y, &a[3], 4);
+        memcpy(&g_aRaceGate[i].tAward,  &a[4], 4);
+    }
+    return n;
+}
+
+/* The start line: the first two points of the AI path ring, which is track
+ * header +0x70 (br_ai.h pins that).  pts[0].centre is on the racing line and
+ * pts[1] gives the direction, so the grid is laid out along the real track
+ * rather than along an axis this file picked. */
+static int RaceStartFrame(const BrTrack *pTrack, BrVec3 *pOrigin,
+                          float *pYaw, BrVec3 *pFwd, BrVec3 *pRight)
+{
+    BrAiNode  node;
+    BrAiPoint p0, p1;
+    float     dx, dy, len;
+
+    if (BrAiRoot(pTrack, &node) != 0) return 1;
+    if (BrAiPoint_(&node, 0u, &p0) != 0) return 1;
+    if (BrAiPoint_(&node, 1u, &p1) != 0) return 1;
+
+    dx = p1.centre.x - p0.centre.x;
+    dy = p1.centre.y - p0.centre.y;
+    len = (float)sqrt((double)(dx * dx + dy * dy));
+    if (!(len > 1e-4f)) { dx = 1.0f; dy = 0.0f; len = 1.0f; }
+    dx /= len; dy /= len;
+
+    *pOrigin = p0.centre;
+    *pYaw    = (float)atan2((double)dy, (double)dx);
+    pFwd->x = dx;  pFwd->y = dy;  pFwd->z = 0.0f;
+    pRight->x = dy; pRight->y = -dx; pRight->z = 0.0f;
+    return 0;
+}
+
+static void RaceDumpHeader(void)
+{
+    printf("\n step |        position          |         velocity         "
+           "|  |w|  | lap gate  wheel-probe (m below wheel)   world-probe\n");
+    printf("------+--------------------------+--------------------------"
+           "+-------+---------------------------------------------------\n");
+}
+
+static void RaceDumpCar(int step, const HostRaceCar *pC, const BrDriver *pD)
+{
+    const BrRbState *pS =
+        BrCarPhysBodyState((BrRbBodyFull *)(void *)&pC->phys.body);
+    BrVec3 p = pS->pos;
+    float  world;
+
+    /* BrGroundProbeZ is the WORLD-KEYED sibling of the wheel probe: same
+     * search, but its grid cell comes from the point it was asked about.
+     * Printing both is what makes the wheel probe's grid-key defect visible
+     * instead of merely reproduced -- see the note in the run banner. */
+    world = BrGroundProbeZ(&p);
+
+    printf("%5d | %8.3f %8.3f %7.3f | %8.3f %8.3f %7.3f | %5.2f | %3d %4d  "
+           "%7.2f %7.2f %7.2f %7.2f   %8.2f\n",
+           step,
+           (double)p.x, (double)p.y, (double)p.z,
+           (double)pS->vel.x, (double)pS->vel.y, (double)pS->vel.z,
+           sqrt((double)(pS->angVel.x * pS->angVel.x
+                         + pS->angVel.y * pS->angVel.y
+                         + pS->angVel.z * pS->angVel.z)),
+           (int)pD->f40, (int)pD->f4C,
+           (double)-pC->phys.wheel[0].f1D8, (double)-pC->phys.wheel[1].f1D8,
+           (double)-pC->phys.wheel[2].f1D8, (double)-pC->phys.wheel[3].f1D8,
+           (double)world);
+}
+
+/* The surface height under (x, y).  BrGroundProbeZ is a SEGMENT test with a
+ * +-2 window, not a ray cast, so one call only answers when the probe point is
+ * already within two metres of the ground.  Walking the window down from the
+ * top of the track's bounding box is the honest way to find the surface with
+ * the ported probe and nothing else. */
+static int RaceGroundAt(float x, float y, float zTop, float zBot, float *pZ)
+{
+    BrVec3 p;
+    float  z;
+
+    p.x = x; p.y = y;
+    for (z = zTop; z > zBot - 2.0f; z -= 2.0f) {
+        float d;
+        p.z = z;
+        d = BrGroundProbeZ(&p);
+        if (d != BR_PHYS_PROBE_MISS) { *pZ = z - d; return 0; }
+    }
+    return 1;
+}
+
+static int RunRace(int argc, char **argv)
+{
+    BrTrack   trk;
+    BrVec3    origin, fwd, right, lo, hi;
+    float     yaw = 0.0f, zGround;
+    int       nSteps = (argc > 3) ? atoi(argv[3]) : 60;
+    int       i, cells = 0, planes = 0;
+    int32_t   nGates;
+
+    /* The one counterfactual this mode can be asked for; see br_phys.h.
+     * It is opt-in, it is announced in the banner, and it is announced again
+     * in the dump header, because a number produced with it set is NOT a
+     * number about the shipped game. */
+    for (i = 4; i < argc; ++i) {
+        if (strcmp(argv[i], "-worldkey") == 0) g_brPhysWheelGridWorldKey = 1;
+        else if (strcmp(argv[i], "-drop") == 0 && i + 1 < argc)
+            g_raceDrop = (float)atof(argv[++i]);
+    }
+
+    if (nSteps < 1)   nSteps = 1;
+    if (nSteps > 100000) nSteps = 100000;
+
+    printf("\n=== headless race ===\n");
+
+    if (BrTrackOpen(&trk, argv[2]) != 0) {
+        printf("SKIP: cannot open %s (asset policy: nothing is committed, a "
+               "missing track SKIPs)\n", argv[2]);
+        return 0;
+    }
+    printf("track %s: %u vertices, %u faces, %u grid items\n",
+           argv[2], (unsigned)BrTrackVertexCount(&trk),
+           (unsigned)BrTrackFaceCount(&trk),
+           (unsigned)BrTrackGridItemCount(&trk));
+
+    if (BrCollGridBind(&trk) != 0) {
+        printf("SKIP: the track carries no usable collision tables\n");
+        BrTrackClose(&trk);
+        return 0;
+    }
+
+    nGates = RaceLoadGates(&trk);
+    memset(&g_raceRules, 0, sizeof g_raceRules);
+    g_raceRules.aGates      = g_aRaceGate;
+    g_raceRules.nGates      = nGates;
+    g_raceRules.nLaps       = 3;
+    g_raceRules.mode        = 6;      /* BrPhaseActivate_100447D0's value */
+    g_raceRules.nFinished   = 0;
+    g_raceLapLen            = BrAiLapLength(&trk);
+    g_raceRules.pfLapLength = &g_raceLapLen;
+    printf("gate ring: %d gates (header +0x160), lap length %.1f "
+           "(path root pts[0].arc)\n", (int)nGates, (double)g_raceLapLen);
+
+    if (RaceStartFrame(&trk, &origin, &yaw, &fwd, &right) != 0) {
+        printf("SKIP: the track has no AI path, so there is no start line\n");
+        BrCollGridRelease();
+        BrTrackClose(&trk);
+        return 0;
+    }
+    printf("start line at (%.1f, %.1f, %.2f), heading %.1f deg\n",
+           (double)origin.x, (double)origin.y, (double)origin.z,
+           (double)yaw * 57.29578);
+
+    /* Put the grid ON the surface the ported probe finds, not on the path
+     * point's own Z -- the racing line runs above the mesh by a metre or so
+     * on this track, and the probe's window is only +-2. */
+    if (BrTrackBounds(&trk, &lo, &hi) != 0) { lo.z = -100.0f; hi.z = 200.0f; }
+    if (RaceGroundAt(origin.x, origin.y, hi.z + 2.0f, lo.z, &zGround) == 0) {
+        printf("surface under the start line: z = %.3f "
+               "(path point was %.3f, %.3f above it)\n",
+               (double)zGround, (double)origin.z,
+               (double)(origin.z - zGround));
+        origin.z = zGround;
+    } else {
+        printf("no surface found under the start line; using the path Z\n");
+    }
+    if (g_brPhysWheelGridWorldKey) {
+        printf("*** COUNTERFACTUAL: the wheel probe's grid key has been "
+               "moved to the WORLD point.\n"
+               "*** This is NOT the shipped behaviour.  See br_phys.h.\n");
+    }
+
+    /* --- the field ---------------------------------------------------- */
+    g_cRaceCars = BR_RACE_FIELD;
+    memset(g_aRaceCar, 0, sizeof g_aRaceCar);
+    memset(g_aRaceDrv, 0, sizeof g_aRaceDrv);
+
+    for (i = 0; i < g_cRaceCars; ++i) {
+        /* REVERSED, which is the driver constructor's own ordering: slot 0
+         * gets the last box on the grid. */
+        int    box = g_cRaceCars - 1 - i;
+        int    row = box / 2;
+        float  lat = (box & 1) ? 3.0f : -3.0f;
+        BrVec3 p;
+
+        p.x = origin.x - fwd.x * (float)row * 7.0f + right.x * lat;
+        p.y = origin.y - fwd.y * (float)row * 7.0f + right.y * lat;
+        /* Each box gets the surface height under IT, so a sloping grid is a
+         * sloping grid rather than sixteen cars dropped from one plane.
+         * Half a metre of clearance: the suspension's whole travel is 0.4 and
+         * the probe's window is +-2, so this is inside both. */
+        if (RaceGroundAt(p.x, p.y, hi.z + 2.0f, lo.z, &p.z) != 0)
+            p.z = origin.z;
+        p.z += g_raceDrop;
+
+        BrCarPhysInit(&g_aRaceCar[i].phys, NULL);
+        /* Everything past the front row is AI in the original (0x10019A70
+         * installs 0x1005E690 for every slot past the human count). */
+        g_aRaceCar[i].phys.fAi = (i == 0) ? 0 : 1;
+        BrCarPhysPlace(&g_aRaceCar[i].phys, &p, yaw);
+
+        g_aRaceDrv[i].pCar = &g_aRaceCar[i].car;
+        g_aRaceDrv[i].f64  = i;
+        g_aRaceCar[i].car.pos     = p;
+        g_aRaceCar[i].car.posPrev = p;
+    }
+
+    (void)BrCollGridLoaded(&cells, &planes);
+    printf("field: %d cars, stride sizeof(HostRaceCar)=%zu "
+           "(original 0x2B68; see the banner)\n",
+           g_cRaceCars, sizeof(HostRaceCar));
+    printf("collision cache after placement: %d of 4 cells hold %d planes\n",
+           cells, planes);
+
+    /* --- install the step --------------------------------------------- */
+    BrGameStepSet(HostRaceStep);
+    printf("game step 0x106E79F4 <- %s\n", BrGameStepName(BrGameStepId()));
+    if (BrGameStepPump(0) != -1) {
+        printf("  (unexpected: a non-2 engine state claimed to run)\n");
+    }
+
+    printf("\nCAR 0, one line per fixed 1/30 s step.\n"
+           "'wheel-probe' is -f1D8 per wheel: the distance 0x10068070 found\n"
+           "below that wheel, or 100.00 for a miss.  'world-probe' is\n"
+           "0x100682C0 at the car's own position -- the SAME search, keyed on\n"
+           "the world point instead of on the wheel's body-local mount\n"
+           "offset.  When the two disagree, that gap IS the grid-key defect\n"
+           "br_phys.h documents, measured rather than described.\n");
+    RaceDumpHeader();
+
+    g_nRaceStep = 0;
+    for (i = 0; i < nSteps; ++i) {
+        int rc = BrGameStepPump(BR_GAMESTATE_STEP);
+        if (rc != 1) { printf("step slot did not run (rc=%d)\n", rc); break; }
+        if (i < 8 || (i % ((nSteps / 12) + 1)) == 0 || i == nSteps - 1)
+            RaceDumpCar(i + 1, &g_aRaceCar[0], &g_aRaceDrv[0]);
+    }
+
+    (void)BrCollGridLoaded(&cells, &planes);
+    printf("\ncollision cache at the end: %d of 4 cells hold %d planes\n",
+           cells, planes);
+    printf("physics NOT ported, entered as counted no-ops:\n");
+    for (i = 0; i < BR_CP_HOLE_COUNT; ++i)
+        printf("    %-44s %u\n", BrCarPhysHoleName(i),
+               (unsigned)g_aBrCarPhysHole[i]);
+
+    printf("\nfinal state of the whole field (slot: grid box, position):\n");
+    for (i = 0; i < g_cRaceCars; ++i) {
+        const BrRbState *pS = BrCarPhysBodyState(&g_aRaceCar[i].phys.body);
+        printf("  slot %2d box %2d  (%8.2f %8.2f %7.2f)  lap %d gate %d%s\n",
+               i, g_cRaceCars - 1 - i,
+               (double)pS->pos.x, (double)pS->pos.y, (double)pS->pos.z,
+               (int)g_aRaceDrv[i].f40, (int)g_aRaceDrv[i].f4C,
+               (i == 0) ? "   <- human slot" : "");
+    }
+
+    BrCollGridRelease();
+    BrTrackClose(&trk);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     BrPhase_ *ph;
@@ -1290,6 +1663,13 @@ int main(int argc, char **argv)
     int nCtl, frames = 0;
 
     printf("Boss Rally -- host boot\n");
+
+    /* `-race` runs BEFORE any menu wiring: it needs none of it, and the
+     * whole point of the mode is that the race step is not a phase. */
+    if (argc > 2 && strcmp(argv[1], "-race") == 0) {
+        return RunRace(argc, argv);
+    }
+
     printf("phase object: sizeof=%zu, original 0x%X, allocating %zu\n",
            sizeof(BrPhase_), (unsigned)BR_PHASE_ORIG_SIZE,
            (size_t)BR_PHASE_ALLOC_SIZE);
