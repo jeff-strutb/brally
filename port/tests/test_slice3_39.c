@@ -62,6 +62,21 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
     return g_pollResult;
 }
 
+/* 0x1007C8A0.  br_crt.c owns the real one; this file does not link it.  The
+ * body is the same rule -- truncate toward zero, and yield 0 rather than
+ * INT_MIN when the value does not fit (CONVENTIONS, "Facts not to re-derive").
+ * The list methods only ever feed it small in-range coordinates. */
+int32_t BrFtolTrunc(float f)
+{
+    if (!(f > -2147483648.0f && f < 2147483648.0f)) {
+        return 0;
+    }
+    return (int32_t)f;
+}
+
+/* 0x1039B720.  slice2_25.c owns the definition; this file does not link it. */
+char g_aBr39B720[0x104];
+
 /* ------------------------------------------------------------------ */
 
 static void SetText(BrTextBox *pBox, const char *pSrc, size_t n)

@@ -50,6 +50,10 @@ void BrStubReport(void);
  * hand-declare the two constructors to dodge that clash. */
 void BrHostWire71(void);
 void BrHostWire72(void);
+/* Not a slice context: the IDirectInput root the force-feedback probe
+ * (0x100795D0, slice6_77.c) dereferences via BrFfbInit. A COM object, so the
+ * host owns it. See br_wire77.c. */
+void BrHostWire77(void);
 
 /* --- the wiring the original keeps in .data ----------------------------- */
 
@@ -103,6 +107,21 @@ static void HostCtlPlace(BrUiCtl_ *pThis, BrPhase_ *pOwner, float x, float y,
                          int32_t a6, int32_t a7)
 {
     g_nPlace++;
+    /* Same gap as the text box's above, one object out: BrUiCtlCtor does not
+     * run the embedded list's constructor either (br_uictl.c spells out why --
+     * 0x1005B7F0 lives in slice3_39.o, which would drag slice6_72.c in and
+     * stop test_uictl linking br_uictl.o on its own). The control's memset
+     * covers every ZERO 0x1005B7F0 writes, so what is actually missing is the
+     * three non-zero things: the list's own vtable, the -1 sentinels, and the
+     * hundred item vtables that BrTextListAddRow dispatches its measure
+     * through. Running the real constructor here supplies all three.
+     *
+     * Placement is where it goes because placement is what every builder does
+     * to a control first, before it touches +0x3838. Guarded on the vtable so
+     * a re-placement cannot wipe a list that already has rows in it. */
+    if (pThis && pThis->list.pVtbl == NULL) {
+        BrTextListInit(&pThis->list);
+    }
     BrUiCtlPlace_10047FB0(pThis, pOwner, x, y, flags, a4, a5, a6, a7);
 }
 
@@ -112,6 +131,21 @@ static BrUiCtlVtbl_ g_hostCtlVtbl;
  * dispatches are filled; slice3_39.c ports all three. The rest stay NULL so
  * an unported method still faults. */
 static BrTextBoxVtbl g_hostTextBoxVtbl;
+
+/* 0x1008F758 -- the text LIST's vtable, the one every embedded control at
+ * +0x3838 gets (br_ui.h ADJ-6). Two slots are now real:
+ *
+ *   +0x10  0x1005BC10  BrTextListAddRow
+ *   +0x14  0x1005B910  BrTextListConfig
+ *
+ * These are the two the menu builders call, and a NULL vtable here is what
+ * 0x1004F700 and 0x1005A6E0 were dying on -- EXC_BAD_ACCESS at 0x28, which is
+ * slot 5 at LP64 pointer stride, i.e. f14.
+ *
+ * The other fourteen stay NULL on purpose, +0x2C included: BrTextListAddRow
+ * calls it when the list is already 100 rows deep, and a fault there is a
+ * truthful "this is not ported" rather than a silently dropped row. */
+static BrTextListVtbl g_hostTextListVtbl;
 
 /* --- every ported screen builder ----------------------------------------
  * Declared here rather than by including all six slice headers, which cannot
@@ -218,6 +252,24 @@ static void WireContext(void)
     /* The one-space string the original uses as placeholder TEXT. */
     g_br73.aStyles.p0AD300 = " ";
     g_br73.aStyles.p0AD348 = "RallySeason*.BRF";
+
+    /* The style rectangles. These used to stay NULL on the grounds that the
+     * builders only pass them along -- which was true right up until
+     * slice3_39.c's list methods were ported, because 0x1005B910 is the first
+     * ported function that READS one, four int32s deep. See the pool in
+     * slice3_39.h; the values are the image's, not invented. */
+    g_br73.aStyles.p0AB438 = NULL;
+    g_br73.aStyles.p0AB448 = NULL;
+    g_br73.aStyles.p0AB458 = NULL;
+    g_br73.aStyles.p0AB468 = NULL;
+    g_br73.aStyles.p0AB478 = NULL;
+    g_br73.aStyles.p0AB488 = NULL;
+    g_br73.aStyles.p0AB4A8 = NULL;
+    g_br73.aStyles.p0AB4D8 = NULL;
+    g_br73.aStyles.p0AB4F8 = NULL;
+    g_br73.aStyles.p0AB508 = NULL;
+    g_br73.aStyles.p0AB528 = NULL;
+    g_br73.aStyles.p0AB548 = NULL;
 }
 
 /* --- reporting ---------------------------------------------------------- */
@@ -286,7 +338,14 @@ int main(int argc, char **argv)
     g_hostTextBoxVtbl.pfn28 = BrTextBoxCentreX;
     g_pBrTextBoxVtbl        = &g_hostTextBoxVtbl;
 
+    g_hostTextListVtbl.f10  = BrTextListAddRow;
+    g_hostTextListVtbl.f14  = BrTextListConfig;
+    g_pBrTextListVtbl       = &g_hostTextListVtbl;
+
     WireContext();
+    /* 77 first: br_wire72.c seeds its copy of 0x118ABDBC, and the probe that
+     * writes that global needs the root this installs. */
+    BrHostWire77();
     BrHostWire71();
     BrHostWire72();
 

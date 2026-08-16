@@ -42,6 +42,20 @@ typedef struct BrSlotTable {
     int    count;               /* NOT at 0x10AA288C -- see erratum above */
 } BrSlotTable;
 
+/* 0x100586A0, the LOOP HALF ONLY: mark all eight slots free.
+ *
+ * This exists because 0x100586A0 has two halves that live in different places
+ * on a 64-bit host. The loop walks the eight records at 0x10AA2538; the single
+ * `mov [0x10AA288C], 0` before it touches a dword 756 bytes past the end of
+ * that array, which the erratum above explains is NOT part of the same object.
+ *
+ * BrSlotsReset (the instance form, used by callers that own a BrSlotTable) and
+ * slice6_77.c's BrSub100586A0 (the argumentless original form, over
+ * slice2_25's g_aBrAA2538 / g_brAA288C) both call THIS. One address, one body:
+ * writing the loop out twice would be the "second body for one original
+ * address" hazard CONVENTIONS.md warns about -- it links clean and drifts. */
+void BrSlotsResetArray(BrSlot *aSlots);
+
 /* 0x100586A0  mark every slot free and reset the counter. */
 void BrSlotsReset(BrSlotTable *pTable);
 

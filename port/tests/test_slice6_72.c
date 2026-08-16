@@ -152,21 +152,22 @@ static const BrUiCtlVtbl_ g_ctlVtbl = {
 /* The object at control +0x3838 is slice3_39.h's BrTextList in full (br_ui.h
  * ADJ-6), so these stand in for two slots of ITS vtable, not for a private
  * three-field stub's. */
-static void FakeSubF10(BrTextList *pThis, const void *pText, int32_t a2,
-                       int32_t a3, const void *pStyle, int32_t a5)
+static int32_t FakeSubF10(BrTextList *pThis, const void *pText, int32_t a2,
+                          int32_t a3, const void *pStyle, int32_t a5)
 { (void)pThis; (void)pText; (void)a2; (void)a3; (void)pStyle; (void)a5;
-  ++g_cSubF10; }
+  ++g_cSubF10; return 1; }
 
-static void FakeSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
-                       int32_t a3, int32_t a4, int32_t a5)
+static int32_t FakeSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
+                          int32_t a3, int32_t a4, int32_t a5)
 { (void)pThis; (void)a1; (void)pStyle; (void)a3; (void)a4; (void)a5;
-  ++g_cSubF14; }
+  ++g_cSubF14; return 1; }
 
 static const BrTextListVtbl g_subVtbl = {
     NULL, NULL, NULL, NULL,
     FakeSubF10,     /* +0x10 */
     FakeSubF14,     /* +0x14 */
-    NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL,
+    NULL,           /* +0x2C -- typed, so it no longer takes a bare NULL slot */
     NULL, NULL, NULL, NULL
 };
 

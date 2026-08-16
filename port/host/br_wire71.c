@@ -24,6 +24,7 @@
  */
 #include "slice6_71.h"
 #include "br_phase.h"
+#include "slice6_77.h"   /* BrSub100586A0 -- 0x100586A0 */
 #include <string.h>
 #include <stdlib.h>
 
@@ -81,6 +82,25 @@ void BrHostWire71(void)
     memset(g_fileList, 0, sizeof(g_fileList));
     *(const BrS71FileListVtbl **)g_fileList = &g_fileListVtbl;
     if (g_pPhaseAA2908) g_pPhaseAA2908->fC0 = g_fileList;
+
+    /* The one env slot that is NOT left NULL, because it is not a hook the
+     * builders merely store -- BrOptFn100575F0 CALLS it as its first
+     * statement, and 0x100586A0 is now ported (slice6_77.c) rather than
+     * missing. The banner above still holds for every other slot. */
+    g_env71.pfn100586A0 = BrSub100586A0;
+
+    /* The style rectangles at 0x100AB438.. -- see slice3_39.h. Left NULL until
+     * 0x1005B910 was ported, because until then nothing in the port looked
+     * inside one; 0x1004F700 passes p0AB538 straight into it and it reads four
+     * int32s out. The banner above still holds for the HOOK slots. */
+    g_brS71.p0AB438 = NULL;
+    g_brS71.p0AB448 = NULL;
+    g_brS71.p0AB468 = NULL;
+    g_brS71.p0AB478 = NULL;
+    g_brS71.p0AB488 = NULL;
+    g_brS71.p0AB4D8 = NULL;
+    g_brS71.p0AB508 = NULL;
+    g_brS71.p0AB538 = NULL;
 
     g_brS71.pAA2908 = g_pPhaseAA2908;
     g_brS71.pHooks  = &g_hooks71;

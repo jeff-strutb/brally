@@ -14,6 +14,8 @@
  *   3. The WM_CHAR -> character map                          (0x1005B540)
  *   4. The container that owns 100 of those widgets plus 100 opaque blobs
  *           (0x1005B7F0, 0x1005B8D0, 0x1005B8F0, 0x1005C200)
+ *      ... and its two public vtable methods, the ones the menu builders call
+ *      through control +0x3838       (0x1005B910 +0x14, 0x1005BC10 +0x10)
  *   5. DirectInput keyboard / button edge detection
  *      (0x1005FF60, 0x1005FFB0, 0x1005FFD0, 0x1005FFF0)
  *   6. Small utilities             (0x10060210, 0x100602B0, 0x10060780)
@@ -243,26 +245,60 @@ uint8_t BrCharMapLookup(int32_t code);
 
 struct BrTextList;
 
-/* 0x1008F758.  Sixteen slots.
+/* The "style" every caller passes as an opaque `const void *` is a RECTANGLE:
+ * 0x1005B910 reads four consecutive int32s out of it (`fild [eax]`,
+ * `[eax+4]`, `[eax+8]`, `[eax+0xC]`) and 0x1005BC10 reads [0] and [2] into the
+ * item's `left` and `right`.  The pointers the builders pass all come out of
+ * one 18-entry, 16-byte-stride table -- see g_aBrUiStyle below.
  *
- * +0x10 and +0x14 ARE called -- by the menu builders in slice6_72.c and
- * slice6_73.c, through the BrTextList embedded at control +0x3838 (br_ui.h
- * ADJ-6).  Both packets derived the same two signatures independently, so
- * they are typed here rather than being re-declared as a private vtable view
- * in each caller.  The other fourteen stay `void *`: nothing calls them, and
- * a guessed signature is worse than none. */
+ * The four members are named for what the two consumers do with them: [0] and
+ * [2] become BrTextBox::left and ::right, [1] is a top edge that the scroll
+ * geometry adds a sprite height to, and [3] a bottom edge it subtracts one
+ * from.  Nothing here depends on the names. */
+typedef struct BrTextStyle {
+    int32_t left;    /* +0x00 */
+    int32_t top;     /* +0x04 */
+    int32_t right;   /* +0x08 */
+    int32_t bottom;  /* +0x0C */
+} BrTextStyle;
+
+/* 0x1008F758.  Sixteen slots.  Six are known:
+ *
+ *   +0x00  0x1005B8D0  scalar deleting destructor  (BrTextListDeleteDtor)
+ *   +0x04  0x1005C270  NOT PORTED -- draws one sprite; __stdcall, 3 args
+ *   +0x08  0x1005C2C0  NOT PORTED -- draws the whole list; __thiscall, 1 arg
+ *   +0x0C  0x10042AF0  `mov eax,1 / ret` (slice5_61's BrGfx42AF0_1)
+ *   +0x10  0x1005BC10  append one row       (BrTextListAddRow)
+ *   +0x14  0x1005B910  configure the list   (BrTextListConfig)
+ *
+ * SIGNATURE CONFLICT, resolved in favour of the disassembly: this header used
+ * to type f10 and f14 as returning `void`.  Both end `mov eax,1 / ret 0x14`,
+ * and f10 has two more `return 0` exits besides.  They return int32_t.  Every
+ * call site in the tree discards the result, so nothing else had to change --
+ * but a `void`-returning function pointer assigned an int32-returning function
+ * is a constraint violation, so the slot type is the one that had to move.
+ *
+ * The remaining slots stay `void *`: nothing calls them and a guessed
+ * signature is worse than none.  +0x2C is the exception -- it is not guessed,
+ * it is OBSERVED, at 0x1005BC38 (`push 0 / mov ecx,ebp / call [eax+0x2C]`), so
+ * it is typed. */
 typedef struct BrTextListVtbl {
     void *f00, *f04, *f08, *f0C;                          /* +0x00 .. +0x0C */
 
-    /* +0x10 __thiscall -- append one row of text. */
-    void (*f10)(struct BrTextList *pThis, const void *pText, int32_t a2,
-                int32_t a3, const void *pStyle, int32_t a5);
+    /* +0x10 __thiscall -- append one row of text.  0x1005BC10. */
+    int32_t (*f10)(struct BrTextList *pThis, const void *pText, int32_t a2,
+                   int32_t a3, const void *pStyle, int32_t a5);
 
-    /* +0x14 __thiscall -- configure the list. */
-    void (*f14)(struct BrTextList *pThis, int32_t a1, const void *pStyle,
-                int32_t a3, int32_t a4, int32_t a5);
+    /* +0x14 __thiscall -- configure the list.  0x1005B910. */
+    int32_t (*f14)(struct BrTextList *pThis, int32_t a1, const void *pStyle,
+                   int32_t a3, int32_t a4, int32_t a5);
 
-    void *f18, *f1C, *f20, *f24, *f28, *f2C;              /* +0x18 .. +0x2C */
+    void *f18, *f1C, *f20, *f24, *f28;                    /* +0x18 .. +0x28 */
+
+    /* +0x2C __thiscall, one argument -- "make room", called by
+     * BrTextListAddRow when the item array is already full. */
+    void (*f2C)(struct BrTextList *pThis, int32_t a1);
+
     void *f30, *f34, *f38, *f3C;                          /* +0x30 .. +0x3C */
 } BrTextListVtbl;
 
@@ -309,8 +345,14 @@ typedef struct BrTextList {
     uint32_t   f10;                /* +0x00010 */
     BrTextListCbFn f14;            /* +0x00014  a callback in the original */
     uint32_t   f18;                /* +0x00018  flag word */
-    uint32_t   f1C;                /* +0x0001C */
-    uint32_t   f20;                /* +0x00020 */
+
+    /* +0x1C and +0x20 were `uint32_t`, and both are FLOATS in the original:
+     * 0x1005B910 writes them with `fild [eax] / fstp [esi+0x1C]` and
+     * `fild [eax+4] / fstp [esi+0x20]`, and 0x1005BC10 reads +0x20 back with
+     * `fld [ebp+0x20] / call __ftol`.  BrTextWord (below) is the type that
+     * already exists in this header for exactly this situation. */
+    BrTextWord f1C;                /* +0x0001C  (float) pStyle->left  */
+    BrTextWord f20;                /* +0x00020  (float) pStyle->top   */
     BrTextBox  aItems[BR_TEXTLIST_ITEMS];   /* +0x0002C */
     BrTextBlob aBlobs[BR_TEXTLIST_ITEMS];   /* +0x1A60C */
     int16_t    count;              /* +0x1A92C */
@@ -321,24 +363,57 @@ typedef struct BrTextList {
     int16_t    f1A936;             /* +0x1A936  init -1 */
     int16_t    f1A938;             /* +0x1A938  init -1, later ':' (0x3A) */
 
-    /* +0x1A93A .. +0x1A99C -- NEITHER constructor touches one byte of this.
+    /* +0x1A93A .. +0x1A99C.  NEITHER constructor touches one byte of this --
      * 0x1005B7F0 jumps straight from the word at +0x1A938 to the dword at
      * +0x1A99C, so the whole span is indeterminate after construction
-     * (`operator new` does not zero).  It was unmodelled until 0x1004DFC0
-     * turned up writing two addresses inside it:
+     * (`operator new` does not zero).  It used to be spelled as byte padding
+     * with f1A990 / f1A998 poking out of it, because only those two had known
+     * writers (0x1004DFC0's `mov [ebx+0x1E1C8]` / `[ebx+0x1E1D0]`, which are
+     * list +0x1A990 / +0x1A998 under br_ui.h's ADJ-6).
      *
-     *     1004E314  mov dword ptr [ebx + 0x1e1c8], eax   ; __ftol of +0x1E1E8
-     *     1004E31D  mov dword ptr [ebx + 0x1e1d0], eax   ; ... + 0x10
+     * 0x1005B910 settles the rest: it writes EVERY dword from +0x1A93C to
+     * +0x1A998 inclusive -- twenty-four of them, on a clean 4-byte grid, with
+     * a 2-byte hole at +0x1A93A left by the int16 run above.  So the region is
+     * not padding at all, and the two named fields keep their names and their
+     * offsets while the other twenty-two stop being anonymous.
      *
-     * and control +0x1E1C8 / +0x1E1D0 are list +0x1A990 / +0x1A998 under
-     * br_ui.h's ADJ-6, which named them as the one thing the canonical
-     * control could NOT express.  They are dwords; nothing reads them yet.
-     * The two runs either side are spelled as byte padding rather than as
-     * invented fields -- the pad SIZES are exact because the region holds no
-     * pointer, so they are the same on a 32- and a 64-bit host. */
-    uint8_t    pad1A93A[0x1A990u - 0x1A93Au];  /* +0x1A93A */
+     * Three groups, and which one is live depends on which of f1A99C[7] /
+     * f1A99C[8] is set when 0x1005B910 runs:
+     *
+     *   +0x1A93C..+0x1A948  the style rectangle, copied verbatim.  Always.
+     *   +0x1A94C..+0x1A968  the VERTICAL scrollbar boxes  (f1A99C[8] arm)
+     *   +0x1A96C..+0x1A988  the HORIZONTAL scrollbar boxes (f1A99C[7] arm)
+     *   +0x1A98C..+0x1A998  the truncated-to-int handle position.  Always.
+     *
+     * The pad SIZE is exact on any host because the region holds no pointer. */
+    uint16_t   pad1A93A;           /* +0x1A93A  never read, never written    */
+
+    int32_t    f1A93C;             /* +0x1A93C  = pStyle->left               */
+    int32_t    f1A940;             /* +0x1A940  = pStyle->top                */
+    int32_t    f1A944;             /* +0x1A944  = pStyle->right              */
+    int32_t    f1A948;             /* +0x1A948  = pStyle->bottom             */
+
+    int32_t    f1A94C;             /* +0x1A94C */
+    int32_t    f1A950;             /* +0x1A950 */
+    int32_t    f1A954;             /* +0x1A954 */
+    int32_t    f1A958;             /* +0x1A958 */
+    int32_t    f1A95C;             /* +0x1A95C */
+    int32_t    f1A960;             /* +0x1A960 */
+    int32_t    f1A964;             /* +0x1A964 */
+    int32_t    f1A968;             /* +0x1A968 */
+
+    int32_t    f1A96C;             /* +0x1A96C */
+    int32_t    f1A970;             /* +0x1A970 */
+    int32_t    f1A974;             /* +0x1A974 */
+    int32_t    f1A978;             /* +0x1A978 */
+    int32_t    f1A97C;             /* +0x1A97C */
+    int32_t    f1A980;             /* +0x1A980 */
+    int32_t    f1A984;             /* +0x1A984 */
+    int32_t    f1A988;             /* +0x1A988 */
+
+    int32_t    f1A98C;                         /* +0x1A98C */
     int32_t    f1A990;                         /* +0x1A990  (ctl +0x1E1C8) */
-    uint8_t    pad1A994[0x1A998u - 0x1A994u];  /* +0x1A994 */
+    int32_t    f1A994;                         /* +0x1A994 */
     int32_t    f1A998;                         /* +0x1A998  (ctl +0x1E1D0) */
 
     /* +0x1A99C..+0x1A9D0, zeroed together.  Raw dwords -- see BrTextWord.
@@ -375,6 +450,114 @@ BrTextList *BrTextListDeleteDtor(BrTextList *pList, uint32_t flags);
  * the larger size into the original, smaller allocation. */
 int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
                           uint32_t size, int32_t index);
+
+/* ---------------------------------------------------------------------
+ * The two data tables 0x1005B910 needs.
+ *
+ * 0x100AB568 is a 24-byte-stride sprite table: `uint16 id` at +0x00, an
+ * `int32 rect[4]` at +0x04 and one more int32 at +0x14.  The base and the
+ * stride are pinned by the table itself -- record i's id word reads back i for
+ * every record checked -- and by 0x1005C270, which indexes it as
+ * `id  @ 0x100AB568 + 24*i`, `rect @ 0x100AB56C + 24*i`, `dw @ 0x100AB57C + 24*i`.
+ *
+ * 0x1005B910 does not index it.  It hard-codes six dwords out of two records:
+ *
+ *     0x100AB9C4 / 0x100AB9C8  ==  0x100AB56C + 46*24 + 8 and + 0xC
+ *     0x100AB9EC .. 0x100AB9F8 ==  0x100AB56C + 48*24 + 0 .. + 0xC
+ *
+ * i.e. records 46 and 48, both of which are 16x16 in the image.  Those are the
+ * scrollbar's two arrow sprites, and the code uses record 48's width and
+ * height as the arrow size and record 46's right/bottom as an inset.
+ *
+ * Only the two rects are modelled, because only the two rects are read.
+ *
+ * ALIASING NOTE (see CONVENTIONS, "Aliased storage"): a later pass that models
+ * the whole 0x100AB568 table must ALIAS these two rects into it, not define a
+ * second copy.  Grep 0x100AB9BC and 0x100AB9EC before writing that pass. */
+extern int32_t g_BrSprRect46[4];   /* 0x100AB9BC */
+extern int32_t g_BrSprRect48[4];   /* 0x100AB9EC */
+
+/* 0x100AB438 -- the UI style-rectangle pool, 19 entries of 16 bytes.
+ *
+ * Four modules (slice3_33, slice6_71, slice6_72, slice6_73) carry a context
+ * field per entry -- p0AB438, p0AB448, p0AB4D8, p0AB538 and so on -- typed
+ * `const void *` because none of them ever looked inside one.  Every such
+ * address in the tree is `0x100AB438 + 16*i`, and the values behind them are
+ * four plausible rectangles apiece: entry 0 is {0,0,639,479}, the screen.
+ *
+ * The UPPER bound is pinned: 0x100AB438 + 19*16 == 0x100AB568, exactly where
+ * the sprite table above starts.
+ *
+ * The LOWER bound is NOT pinned, and this is the weakest claim in the block.
+ * 0x100AB438 is only the lowest address that any module in this tree passes as
+ * a style; the 16-byte grid plainly continues below it (0x100AB428 reads
+ * {0,380,200,480}, 0x100AB418 {0,0,200,200}), and slice6_73.h names
+ * 0x100AB428 and 0x100AB42C as two separate `fild`-ed scalars, which is what a
+ * rectangle's first two members look like to a caller that only needs those
+ * two.  So the pool very likely starts lower and the port has simply not
+ * found the first entry.  Nothing here depends on it: the macro below is
+ * address-based, so extending the array downward later moves the base and
+ * leaves every call site correct.
+ *
+ * This module defines the storage because this module is the only one that
+ * READS through the pointer; the others only pass it along.  A wiring layer
+ * points its context fields at BR_UI_STYLE(0x...) rather than at NULL. */
+#define BR_UI_STYLE_BASE  0x100AB438u
+#define BR_UI_STYLE_COUNT 19
+extern const BrTextStyle g_aBrUiStyle[BR_UI_STYLE_COUNT];   /* 0x100AB438 */
+
+/* Index the pool by the ORIGINAL address, so a wiring site reads the way the
+ * disassembly does: BR_UI_STYLE(0x100AB538) is entry 16. */
+#define BR_UI_STYLE(addr) \
+    (&g_aBrUiStyle[((unsigned)(addr) - BR_UI_STYLE_BASE) / 16u])
+
+/* 0x1005B910 (thiscall, __stdcall, 5 stack args).  Configure the list:
+ * copy the style rectangle in, set the flag word, the visible row count, the
+ * scroll offset and f1A936, plant the three literals '0' / '.' / ':' that
+ * f1A932 / f1A934 / f1A938 were initialised to -1 with, and then lay out ONE
+ * scrollbar -- horizontal if f1A99C[7] is set, vertical if f1A99C[8] is,
+ * neither if both are clear.  Always returns 1.
+ *
+ * `a2`, `a3` and `a4` are int32 in the caller and are stored as the LOW WORD
+ * of int16 fields; `a1` is a full dword.
+ *
+ * GOTCHA (a real bug, reproduced): when f1A99C[7] and f1A99C[8] are BOTH zero
+ * the function skips straight to its tail, which reads f1A99C[4] and
+ * f1A99C[5] and truncates them to int.  Neither constructor writes those two,
+ * so on that path it converts whatever `operator new` left behind.  The port
+ * does the same rather than short-circuiting, because the tail also writes
+ * three fields that a caller can observe. */
+int32_t BrTextListConfig(BrTextList *pList, int32_t a1, const void *pStyle,
+                         int32_t a2, int32_t a3, int32_t a4);
+
+/* 0x1005BC10 (thiscall, __stdcall, 5 stack args).  Append one row.
+ *
+ * Returns 0 and does nothing when pText is NULL.  Otherwise it fills
+ * aItems[count] -- text, flags, style-derived left/right, a y position of
+ * `(int)f20 + 19*count`, and a measure through the item's OWN vtable (slot
+ * +0x08 when a3 == 3, slot +0x04 otherwise, i.e. font B or font A) -- then
+ * increments count and returns 1.
+ *
+ * `a5` selects how the text is stored:
+ *     a5 != 0   strcpy(item.sz, pText)
+ *     a5 == 0   strncpy(item.sz, pText, 10) then strcat(item.sz, <see below>)
+ *
+ * GOTCHA: `count` is only ever compared against 100 with an UNSIGNED compare,
+ * and when it is at 100 the function calls vtable slot +0x2C and then forces
+ * count to 99 -- so the hundredth row is overwritten again and again rather
+ * than the list growing.  +0x2C is NOT ported, so that path faults.
+ *
+ * GOTCHA: the a5 == 0 path's strncpy(…, 10) does not NUL-terminate a source of
+ * ten or more characters, and the strcat that follows then scans past it.  In
+ * practice the constructor has zeroed the whole 0x400-byte buffer, so byte 10
+ * is a NUL and the append lands there.  Preserved, not fixed.
+ *
+ * The block guarded by `f18 & 0x800000` -- a case-insensitive compare against
+ * the shared edit buffer at 0x1039B720, a scroll-offset bump and a callback
+ * through f0C -- is reproduced too, but no ported caller reaches it: every
+ * one of them passes 0x40001 to BrTextListConfig. */
+int32_t BrTextListAddRow(BrTextList *pList, const void *pText, int32_t a2,
+                         int32_t a3, const void *pStyle, int32_t a5);
 
 /* =====================================================================
  * 5. Input edge detection
@@ -507,14 +690,51 @@ extern void *BrOperatorNew(uint32_t cb);
 /* XSLICE 0x100771B0 */
 extern int32_t BrDikGetDeviceState(uint8_t *pState);
 
+/* XSLICE 0x1007C8A0 -- __ftol.  Declared here, matching br_crt.h exactly,
+ * rather than including br_crt.h: this header is pulled in by br_ui.h and the
+ * fewer transitive includes it drags along the better. */
+extern int32_t BrFtolTrunc(float f);
+
+/* XSLICE 0x1039B720 -- the shared edit buffer.  slice2_25.h defines the
+ * storage as `char g_aBr39B720[BR_OPT_TEXT_MAX]`; slice6_73.h already
+ * re-declares it incomplete for the same reason, so this is the third
+ * DECLARATION of one definition, not a fourth object. */
+extern char g_aBr39B720[];
+
+/* 0x10AA2A70, and it is not the game's.
+ *
+ * 0x1005BC10's a5 == 0 path ends with `strcat(item.sz, (char *)0x10AA2A70)`.
+ * The only other references to that address in the whole image are three CRT
+ * call sites at 0x100847E9, 0x100882D9 and 0x1008844E, each pushing it as the
+ * one-byte SOURCE string of an LCMapStringA / MultiByteToWideChar probe -- so
+ * it is MSVC's mbcs scratch byte, in .bss (past 0x100C1420, hence genuinely
+ * zero at process start), and nothing writes it through that immediate.
+ *
+ * Appending it therefore appends an empty string.  The port models it as its
+ * own zeroed byte buffer rather than pretending to share the CRT's, and says
+ * so here because "the game strcats a CRT buffer" is a finding, not a typo:
+ * if the CRT ever did leave a byte there, the original would splice it onto
+ * every truncated row and the port would not. */
+#define BR_AA2A70_SIZE 8u    /* 0x10AA2A78 is separately referenced */
+extern char g_BrAA2A70[BR_AA2A70_SIZE];   /* 0x10AA2A70 */
+
 /* =====================================================================
  * NOT PORTED from this packet -- see the pass report for why.
  *
  *   0x1005AE70 0x1005B250 0x1005B2B0 0x1005B390 0x1005B460 0x1005B570
- *   0x1005B730 0x1005B7A0 0x1005B910 0x1005BB80 0x1005BC10 0x1005C000
+ *   0x1005B730 0x1005B7A0 0x1005BB80 0x1005C000
  *   0x1005C270 0x1005C2C0 0x1005C510 0x1005C590 0x1005CB40 0x1005CBF0
  *   0x1005CC20 0x1005CCD0 0x1005CE30 0x10060060 0x10060260 0x100603A0
  *   0x10060750 0x100607B0
+ *
+ * 0x1005C270 and 0x1005C2C0 are vtable slots +0x04 and +0x08 and were looked
+ * at in this pass.  They are the list's DRAW path and they were left out on
+ * purpose:  0x1005C270 is a five-line wrapper whose only real content is a
+ * call to the unported 0x1005F5A0, and 0x1005C2C0 (581 bytes) reaches
+ * 0x100586D0 plus five more vtable slots.  Porting either would mostly add
+ * cross-slice externs that resolve to NULL stubs, which is the same crash one
+ * frame later and a lot more code to be wrong in.  No builder calls them --
+ * the menu build path only reaches +0x10 and +0x14.
  * ===================================================================== */
 
 #endif /* SLICE3_39_H */
