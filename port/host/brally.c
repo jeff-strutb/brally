@@ -1652,6 +1652,9 @@ int main(int argc, char **argv)
     BrGfx *gfx = NULL;
     BrTexture tex; BrImage img; int haveTex = 0;
     int windowed = (argc > 1 && strcmp(argv[1], "-w") == 0);
+    /* `-w [n]` picks which of the sixteen ported builders to show. Default 1
+     * is 0x1004D640, which is what this mode showed when it took no argument. */
+    int wBuilder = (windowed && argc > 2) ? atoi(argv[2]) : 1;
     int nCtl, frames = 0;
 
     printf("Boss Rally -- host boot\n");
@@ -1971,9 +1974,15 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    /* A real screen builder, 0x1004D640 (7 controls per packet 73). */
-    printf("\nrunning builder 0x1004D640 ...\n");
-    BrExt_1004D640(ph);
+    /* A real screen builder. In windowed mode the user chooses which. */
+    if (windowed) {
+        if (wBuilder < 0 || wBuilder >= BR_NBUILDERS) wBuilder = 1;
+        printf("\nrunning builder %s ...\n", g_aBuilders[wBuilder].pszName);
+        g_aBuilders[wBuilder].pfn(ph);
+    } else {
+        printf("\nrunning builder 0x1004D640 ...\n");
+        BrExt_1004D640(ph);
+    }
     nCtl = DumpPhase(ph);
     DumpRects(ph);
     printf("\ncontrols built: %d   setText=%d place=%d\n",
@@ -2002,7 +2011,7 @@ int main(int argc, char **argv)
             while (gfx && BrGfxPumpEvents(gfx)) {
                 BrKey k;
                 BrPhase_ *phBefore = phCur;
-                int fire = 0, dir = 0;
+                int fire = 0, dir = 0, page = 0;
 
                 while ((k = BrGfxPollKey(gfx)) != BR_KEY_NONE) {
                     switch (k) {
@@ -2021,8 +2030,33 @@ int main(int argc, char **argv)
                                 (uint16_t)(NavPage(phCur)->cSel - 1);
                         fire = 1;
                         break;
+                    /* HARNESS-ONLY. The game has no screen-paging key; a
+                     * screen is reached by activating a control, and most of
+                     * those hooks are unported. This walks the sixteen ported
+                     * builders directly so all of them can be SEEN, which is
+                     * not the same thing as their being reachable. */
+                    case BR_KEY_PREV_SCREEN: page = -1; break;
+                    case BR_KEY_NEXT_SCREEN: page = +1; break;
                     default: break;
                     }
+                }
+
+                if (page) {
+                    BrPhase_ *phNew;
+                    wBuilder = (wBuilder + page + BR_NBUILDERS) % BR_NBUILDERS;
+                    phNew = (BrPhase_ *)calloc(1, BR_PHASE_ALLOC_SIZE);
+                    if (phNew && BrOptObjCtor(phNew)) {
+                        g_nSetText = g_nPlace = g_nCap = 0;
+                        g_aBuilders[wBuilder].pfn(phNew);
+                        phCur = phNew;
+                        g_scr.wAA286C = 0;
+                        BuildCaptions(gfx, phCur);
+                        printf("  [%2d/%d] %-22s  %d captions\n",
+                               wBuilder, BR_NBUILDERS,
+                               g_aBuilders[wBuilder].pszName, g_nCap);
+                        fflush(stdout);
+                    }
+                    continue;       /* draw the new screen next iteration */
                 }
 
                 g_pendDir  = dir;

@@ -65,7 +65,15 @@ typedef enum BrKey {
     BR_KEY_UP,
     BR_KEY_DOWN,
     BR_KEY_ACTIVATE,   /* Enter or Space */
-    BR_KEY_BACK        /* Escape         */
+    BR_KEY_BACK,       /* Escape         */
+
+    /* HARNESS-ONLY, not the game's. The original has no "show me a different
+     * screen" key -- screens are reached by activating a control, and most of
+     * those hooks are unported. These let a viewer page through the sixteen
+     * ported builders directly, which is a debugging affordance and is
+     * labelled as one wherever it is used. */
+    BR_KEY_PREV_SCREEN,   /* [ */
+    BR_KEY_NEXT_SCREEN    /* ] */
 } BrKey;
 
 /* Dequeue one key, or BR_KEY_NONE. Only meaningful after BrGfxPumpEvents. */
