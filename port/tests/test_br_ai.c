@@ -23,8 +23,11 @@
 
 static int g_fail;
 
+static int g_checks;   /* every CHECK, so the runner can see work happened */
+
 #define CHECK(cond, ...)                                                       \
     do {                                                                       \
+        g_checks++;                                                            \
         if (!(cond)) {                                                         \
             printf("FAIL %s:%d: ", __FILE__, __LINE__);                        \
             printf(__VA_ARGS__);                                               \
@@ -507,6 +510,11 @@ int main(void)
         printf("test_br_ai: %d failure(s)\n", g_fail);
         return 1;
     }
-    printf("test_br_ai: OK\n");
+    /* Report a COUNT, not just "OK". tools/regress.sh treats a bare OK as
+     * unparseable on purpose: a suite that prints OK without running anything
+     * is indistinguishable from one that passed, and this suite SKIPs its
+     * track-backed half when the disc assets are absent. The count makes the
+     * difference visible. */
+    printf("test_br_ai: %d checks, 0 failures\n", g_checks);
     return 0;
 }
