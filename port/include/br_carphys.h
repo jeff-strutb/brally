@@ -19,9 +19,10 @@
  *               renormalise) with the arguments (dst, src, dt).
  *   0x100645A0  whereis reports "paired 0x1006B5F0 (d3d) matched by prefix".
  *               That address IS in the physics neighbourhood (delta 0x7050),
- *               but br_sfx.c also names 0x1006B5F0 -- a different function in
- *               a different build.  Neither is ported; the function is left
- *               out (see THE HOLES below) rather than guessed at.
+ *               but br_sfx.c also names 0x1006B5F0 -- a DIFFERENT function in
+ *               a different build (BrSfxHzFromRatio).  The pairing is the
+ *               tool reading a Glide address as a D3D one; 0x100645A0 is
+ *               ported here as BrCarPhysDrive and 0x1006B5F0 stays br_sfx's.
  *
  * ======================================================================
  * WHAT 0x1005A7A0 IS
@@ -52,12 +53,15 @@
  *                   zero the force vector of each wheel's FIRST node.
  *    2. 0x1005A8A0  0x100684F0: the suspension spring, into pass A's nodes.
  *    3. 0x1005A8A5  if (car->fE84 == 0) four calls to 0x100651A0, the per-
- *                   wheel tyre force.  NOT PORTED -- see THE HOLES.
+ *                   wheel tyre force -- PORTED, BrCarPhysTyre.  The gate byte
+ *                   is &fE80 for wheels 0/1 and &fE78 for 2/3, which an
+ *                   earlier reading of these four call sites had wrong.
  *    4. 0x1005A943  car->fE84 = 0; zero body->accel and body->angAccel.
  *    5. 0x1005A96E  0x10064210 == BrRbAccumAll: forces -> accelerations.
  *    6. 0x1005A983  0x1006D600 == BrRbIntegrateVelocity on the LIVE state.
- *    7. 0x1005A9AD  0x100645A0(body, dt, &fE7C, &fE74, &fE80, &fE78).
- *                   NOT PORTED -- see THE HOLES.
+ *    7. 0x1005A9AD  0x100645A0(body, dt, &fE7C, &fE74, &fE80, &fE78) --
+ *                   PORTED, BrCarPhysDrive.  It is the axle velocity
+ *                   constraint, not an engine; see its banner below.
  *    8. 0x1005A9B6  0x1006D530 == BrRbQuatDerivative on the live state, then
  *                   swap to pass B's list, drop the wheels' lists to NULL,
  *                   0x10067F30 (drag) and 0x10068600 (dampers), zero the
@@ -114,30 +118,44 @@
  * away and then makes a byte-level diff impossible.
  *
  * ======================================================================
- * THE HOLES, NAMED PLAINLY
+ * THE HOLE, NAMED PLAINLY -- AND WHAT CLOSING TWO OF THEM DID NOT FIX
  * ======================================================================
- * Three callees are too large to transcribe from a partial trace and are
- * NOT ported.  Each is a function pointer here, NULL by default, and each
- * call is COUNTED so a run can report how much of the step it really ran --
- * the same discipline port/host/brally.c uses for its stand-ins.  A silent
- * no-op would make "the car moved" unfalsifiable.
+ * ONE callee is still missing.  It is a function pointer here, NULL by
+ * default, and every call is COUNTED so a run can report how much of the
+ * step it really ran.  A silent no-op would make "the car moved"
+ * unfalsifiable.
  *
- *   0x100651A0  1355 B  the per-wheel TYRE force: grip, slip and the drive
- *                       torque.  Writes the wheels' own force nodes.  Without
- *                       it the car has no traction and no drive.
- *   0x100645A0  3070 B  the engine / drivetrain solve.  Reads and writes the
- *                       four scalars at car+0xE74..0xE80.
- *   inside 0x10067C30, five collision callees:
+ *   inside 0x10067C30, five collision callees, 5196 B in all:
  *      0x10066AD0   669 B    0x10066D70  1782 B    0x10067710  1301 B
  *      0x10068F80  1444 B    (plus 0x1006DDD0, which IS ported as
  *                            BrMat4BuildScaledTransposed but whose two
  *                            outputs feed only the four above)
+ *   They run FOUR TIMES PER FRAME, once per position substep.
  *
- * What IS ported is everything that makes the car fall, settle on its
- * suspension and stay there: gravity, the spring, the shock absorber, the
- * aerodynamic drag, both force solves, both velocity integrations, the
- * sign-change damper, the four-substep position integration and the ground
- * probe that reads the track's real collision triangles.
+ * 0x100651A0 and 0x100645A0 were the other two and are now ported.  Neither
+ * was what the previous pass hoped, and this is the single most useful thing
+ * in this header:
+ *
+ *   - 0x100651A0 has NO lateral force and NO load transfer in it.  It makes
+ *     one force, along the wheel's own rolling direction, whose magnitude is
+ *     f1CC/f1C8 -- and f1CC is written by the control pass at 0x1006F2xx,
+ *     which is not ported, so in this port it is 0 and the tyre pass adds
+ *     EXACTLY ZERO force.  Landing it changed no observable number.
+ *   - 0x100645A0 does constrain the body, hard, by overwriting velocity --
+ *     but only the world-Z component of angVel (yaw) and the world X and Y
+ *     of vel.  It cannot touch PITCH or ROLL.
+ *
+ * Measured on a 1-in-100 slope (3 cm across the 3 m wheelbase), the whole of
+ * the divergence is in angVel.y: 0.017 rad/s at step 9, 2.6 at step 12, 7.2
+ * at step 13, 11.96 at step 15, while angVel.x and angVel.z stay under
+ * 0.01 rad/s -- the latter because 0x100645A0 is now pinning them.  So the
+ * remaining pitch instability is the collision hole's, and the 5196 bytes
+ * above are the only place left for it to live.
+ *
+ * What IS ported: gravity, the spring, the shock absorber, the aerodynamic
+ * drag, the tyre pass, the drivetrain's axle constraint, both force solves,
+ * both velocity integrations, the sign-change damper, the four-substep
+ * position integration and the ground probe.
  *
  * ======================================================================
  * PORTABILITY DEVIATIONS, all of them representation-only
@@ -208,6 +226,126 @@
 
 /* 0x10077AC8.  m[2][2] below this means the car is on its roof. */
 #define BR_CP_UPRIGHT_MIN  0.5f
+
+/* ---- 0x100651A0, the tyre pass.  Every one read out of BRGlide.dll. ---- */
+
+/* 0x10077AE0, a DOUBLE (`fcomp qword ptr`).  The contact plane's n.z must be
+ * at or above this or the wheel makes no force at all -- about 45.6 degrees
+ * of slope.  The compare is float-against-double, so the boundary is the
+ * double's. */
+#define BR_CP_TYRE_MINNZ    (0.7)
+
+/* 0x10077AD0.  The wheel's own mass enters the load as `bodyMass - wheelMass
+ * * -4`, i.e. all four wheels are folded into one chassis mass. */
+#define BR_CP_TYRE_WHEEL_K  (-4.0f)
+
+/* 0x10077AE8 and 0x10077AEC.  The vertical load a wheel is assumed to carry:
+ * ((mTotal * 2.943) * n.z) * 3.5.  2.943 == 0.3 * 9.81 and 2.943 * 3.5 ==
+ * 10.3005, which is the same 10.5-ish per-wheel figure the wheel gravity
+ * node carries (-103.005 == 10.5 * 9.81).  Kept as the original's two
+ * separate multiplies because the rounding differs from one 10.3005. */
+#define BR_CP_TYRE_LOAD_G    2.943000316619873f
+#define BR_CP_TYRE_LOAD_K    3.5f
+
+/* 0x10077AF0.  Half the raw drive force is reported back through pA, as
+ * `*pA - q * -0.5`. */
+#define BR_CP_TYRE_REPORT  (-0.5f)
+
+/* 0x10077AF4.  WHEELSPIN.  When the demanded force exceeds the load the
+ * delivered force does not saturate at the load -- it COLLAPSES to a tenth
+ * of it.  That discontinuity is the original's and is the whole traction
+ * model. */
+#define BR_CP_TYRE_SPIN     0.10000000149011612f
+
+/* 0x10077AF8.  How much of the slip (r*w + v.e) is bled out of the wheel's
+ * spin each step. */
+#define BR_CP_TYRE_RELAX    0.4000000059604645f
+
+/* 0x10077AFC.  The wheel's spin is clamped to +-300 through the same
+ * three-way sign classifier the damper uses -- so a NaN spin becomes
+ * 0 * 300, not 300. */
+#define BR_CP_TYRE_SPIN_MAX 300.0f
+
+/* 0x10077B00.  Radians per second -> degrees per second.  Note it is the
+ * FLOAT 57.2957763671875, not the double 57.29577951308232. */
+#define BR_CP_RAD_TO_DEG    57.2957763671875f
+
+/* 0x10077B08 / 0x10077B10 / 0x10077B18 / 0x10077B20, all DOUBLES, and
+ * 0x10077B28, a FLOAT.  The wheel's rolled-up angle in degrees: rejected
+ * outright (reset to 0) if it leaves +-36000 or stops being finite, then
+ * folded into (0, 360] from above and [0, ...) from below. */
+#define BR_CP_ANGLE_LIMIT   36000.0
+#define BR_CP_ANGLE_TURN    360.0
+#define BR_CP_ANGLE_TURN_N  (-360.0f)
+#define BR_CP_ANGLE_ZERO    (0.0)
+
+/* ---- 0x100645A0, the drivetrain.  All read out of BRGlide.dll. ---- */
+
+/* 0x10077A84 and 0x10077A88 and 0x10077A8C.  The brake term, per axle:
+ *      b = sign(f1C4) * |f1D0| * -2 / f1C8 / (mass * 0.25) * dt * dt
+ * -- yes, dt TWICE; the two `fmul [esp+0xa4]` pairs at 0x100646FA..0x1006471C
+ * are unambiguous -- and then |b| > 1 collapses it to sign(b) * 1.5. */
+#define BR_CP_DRV_BRAKE_K   (-2.0f)
+#define BR_CP_DRV_MASS_K     0.25f
+#define BR_CP_DRV_BRAKE_MAX  1.5f
+
+/* 0x10077A88 again -- the SAME constant, reached from a different place, as
+ * the lateral/longitudinal ratio above which pair A is declared to be
+ * sliding.  Named twice on purpose: folding them would assert a relationship
+ * the original does not have. */
+#define BR_CP_DRV_SLIDE_RATIO 0.25f
+
+/* 0x10077A90 (and the identical immediate 0x45FA0000 at 0x10064918) and
+ * 0x10077AA8 / 0x10077AC4.  The lateral-force threshold an axle must exceed
+ * before its velocity is corrected at all: 8000 normally, 5600 once the
+ * axle's own gate byte is set -- i.e. once it corrected LAST frame. */
+#define BR_CP_DRV_HOLD_OFF   8000.0f
+#define BR_CP_DRV_HOLD_ON    5600.0f
+
+/* 0x10077A98, a DOUBLE.  "Is this axle braking at all". */
+#define BR_CP_DRV_BRAKE_EPS  (0.0001)
+
+/* 0x10077AA0 / 0x10077AA4.  A braking axle adds to the force demand, which
+ * REDUCES the grip factor below.  Both are negative and the code SUBTRACTS
+ * them.  Which one applies depends on whether the OTHER pair is braking. */
+#define BR_CP_DRV_BRAKE_ADD1 (-10000.0f)
+#define BR_CP_DRV_BRAKE_ADD2 (-100000.0f)
+
+/* 0x10077AAC and 0x10077AB0 (a DOUBLE).  The grip factor is
+ *      t3 / clamp(demand, t3, t2)  *  t1  *  20
+ * and gets a further 1.5 when the steered pair is pointing straight. */
+#define BR_CP_DRV_GRIP_SCALE 20.0f
+#define BR_CP_DRV_STRAIGHT   (1.5)
+
+/* 0x10077AB8 and 0x10077ABC.  Below 27 m/s the factor has a floor that rises
+ * to 0.1 at a standstill -- so a stationary car still gets corrected. */
+#define BR_CP_DRV_SLOW_SPEED 27.0f
+#define BR_CP_DRV_SLOW_K     0.003703703870996833f
+
+/* 0x10077AC0.  The dead band of the sign-change test on pair A's X. */
+#define BR_CP_DRV_ZERO_EPS   9.999999747378752e-06f
+
+/* 0x10077AC8.  Half -- the two axles' X velocities are averaged -- and the
+ * same constant again as the clamp on the roll term below. */
+#define BR_CP_DRV_HALF       0.5f
+
+/* 0x10077AD4 / 0x10077AD8.  The chassis's own f1D4 (the visual roll) chases
+ * -8 * the retained side force, at 4/15 of a unit per step. */
+#define BR_CP_DRV_ROLL_STEP  0.2666666805744171f
+#define BR_CP_DRV_ROLL_STEPN (-0.2666666805744171f)
+
+/* 0x100B4C30 / 0x100B4D50 (72 floats, [24*compound + 8*weather + surface]),
+ * 0x100B4E70 / 0x100B4ED0 and 0x100B5178 (24 floats, [8*weather + surface]).
+ * The last is not selectable -- it is addressed as a fixed .rdata table. */
+#define BR_CP_DRV_T23_FLOATS (BR_CP_GRIP_WEATHERS * BR_CP_GRIP_SURFACES)
+
+/* 0x100B4F30 / 0x100B5050: 3 tyre-compound rows of 3 weather rows of 8
+ * surfaces.  Indexed [24*compound + 8*weather + surface]. */
+#define BR_CP_GRIP_COMPOUNDS 3
+#define BR_CP_GRIP_WEATHERS  3
+#define BR_CP_GRIP_SURFACES  8
+#define BR_CP_GRIP_FLOATS   (BR_CP_GRIP_COMPOUNDS * BR_CP_GRIP_WEATHERS \
+                             * BR_CP_GRIP_SURFACES)
 
 /* 0x10067C30's two reset counters: 0x23 for the AI arm, 0x78 for the human
  * arm, and the "has it moved a metre" test is against 1.0f (0x10077A7C). */
@@ -290,10 +428,27 @@ typedef struct BrCarPhys {
 
     int32_t      fE84;              /* car+0xE84, 1 suppresses the tyre pass
                                      * on the first frame only               */
-    float        fE74, fE78;        /* car+0xE74/0xE78, the REAR pair        */
-    float        fE7C;              /* car+0xE7C, the FRONT pair's first     */
-    uint8_t      bE80;              /* car+0xE80, written as a BYTE at
-                                     * 0x1005A8DB and as a dword elsewhere   */
+    float        fE74;              /* car+0xE74, the REAR pair's force sum  */
+    uint8_t      bE78;              /* car+0xE78.  NOT a float: 0x1005A7A0
+                                     * passes its ADDRESS to both the rear
+                                     * tyre calls and to the drivetrain, and
+                                     * every access on both sides is a BYTE
+                                     * (`mov al,[ecx]` / `mov byte [edi],1`).
+                                     * It is the rear pair's grip-table gate. */
+    float        fE7C;              /* car+0xE7C, the FRONT pair's force sum */
+    uint8_t      bE80;              /* car+0xE80, the FRONT pair's gate --
+                                     * same byte treatment as bE78, and
+                                     * 0x1005A8DB clears it immediately
+                                     * before the two front calls, so the
+                                     * front wheels can never see it set     */
+
+    /* car+0x361 == body+0x1FD.  0x100651A0 and 0x100645A0 both index the
+     * grip tables with it and both reach it off the BODY pointer, i.e. out
+     * of the end of BrRbBodyFull and into the car record.  It cannot be a
+     * byte offset here (LP64), so it is a member. */
+    uint8_t      b1FD;
+    /* car+0x36D == body+0x209.  Written only by the drivetrain. */
+    uint8_t      b209;
 
     int32_t      suspIndex;         /* car+0xE94, the spring-rate index      */
     int32_t      fAi;               /* car+0xF08 == 0x1005E690 in the
@@ -312,11 +467,6 @@ typedef struct BrCarPhys {
  * ====================================================================== */
 
 typedef struct BrCarPhysHooks {
-    /* 0x100651A0(body, wheel, pA, pB, dt) */
-    void (*pfnTyre)(BrCarPhys *pCar, BrRbBodyFull *pWheel,
-                    float *pA, float *pB, float dt);
-    /* 0x100645A0(body, dt, &fE7C, &fE74, &fE80, &fE78) */
-    void (*pfnDrive)(BrCarPhys *pCar, float dt);
     /* the five collision callees inside 0x10067C30, as one hook per substep */
     void (*pfnCollide)(BrCarPhys *pCar);
 } BrCarPhysHooks;
@@ -325,9 +475,12 @@ extern BrCarPhysHooks g_brCarPhysHooks;
 
 /* How many times each hole was entered since the last reset.  Indexed by
  * BR_CP_HOLE_*.  A run that reports zeroes here ran none of the missing
- * physics; a run that reports non-zeroes ran a NO-OP in its place. */
-enum { BR_CP_HOLE_TYRE, BR_CP_HOLE_DRIVE, BR_CP_HOLE_COLLIDE,
-       BR_CP_HOLE_COUNT };
+ * physics; a run that reports non-zeroes ran a NO-OP in its place.
+ *
+ * 0x100651A0 and 0x100645A0 used to be entries here.  They are PORTED now
+ * (see below) and their slots are gone rather than left reporting zero,
+ * which would read as "never entered". */
+enum { BR_CP_HOLE_COLLIDE, BR_CP_HOLE_COUNT };
 extern uint32_t g_aBrCarPhysHole[BR_CP_HOLE_COUNT];
 void  BrCarPhysHoleReset(void);
 const char *BrCarPhysHoleName(int i);
@@ -401,6 +554,126 @@ float BrCarPhysSign(float v);
 /* 0x1005AA52..0x1005AB7F -- the sign-change damper, over the two velocity
  * fields of the state.  pLive is written; pNext is read. */
 void BrCarPhysSignDamp(BrRbState *pLive, const BrRbState *pNext);
+
+/* ======================================================================
+ * 0x100651A0, 1355 B -- THE PER-WHEEL TYRE PASS
+ * ======================================================================
+ * br_carphys.h used to call this "grip, slip and the drive torque" and
+ * guessed that lateral force and load transfer lived here.  THE GUESS WAS
+ * WRONG and the bytes say so plainly: there is no slip angle in it, no
+ * lateral force, and no load transfer.  What it computes is ONE force,
+ * along the wheel's own rolling direction:
+ *
+ *   1. bail out entirely if the wheel has no contact record (f19C == 0) or
+ *      the contact plane's n.z is below 0.7.  Not even the wheel's spin is
+ *      updated on that path.
+ *   2. a  = row 1 of the chassis matrix     -- the car's local +Y in world
+ *      c  = a x n                           -- forward, in the ground plane
+ *      d  = n x c                           -- lateral, in the ground plane
+ *      e  = cos(wheel->f1C0) * c + sin(wheel->f1C0) * d
+ *      so e is the wheel's heading, steered by f1C0, laid on the ground.
+ *   3. if ALL FOUR wheels have a contact count:
+ *          q    = wheel->f1CC / wheel->f1C8         (drive torque / radius)
+ *          load = ((mass - wheelMass*-4) * 2.943 * n.z) * 3.5
+ *          *pA += -q * -0.5
+ *          if (*pB) q *= grip[weather][compound][surface]
+ *          if (|q| > |load|)  q = |load/q| * q * 0.1     <-- WHEELSPIN
+ *          wheel->pForces->f += M * (-q * e)         (body frame)
+ *          w = f1C4 + dt*(f1CC - q*f1C8);  w -= 0.4*(f1C8*w + dot(vel, e))
+ *      else the wheel just free-spins: w = f1C4 + dt*f1CC, and NO force at
+ *      all is written.  One wheel off the ground disables all four tyres.
+ *   4. clamp w to +-300, integrate the wheel's display angle f1D4 in
+ *      DEGREES, reject it if it stops being finite or leaves +-36000, and
+ *      fold it into [0, 360].
+ *
+ * CONSEQUENCE WORTH STATING: q is a pure function of f1CC, which nothing in
+ * this module writes.  With f1CC == 0 -- which is what BrRbInitInertia
+ * leaves and what the port has until 0x100645A0 and the control pass
+ * 0x1006F2xx run -- the force is exactly zero and this whole pass is
+ * observable only in f1C4 and f1D4, neither of which anything else reads.
+ *
+ * DEVIATIONS, both forced by earlier ones:
+ *  - the original takes (body, wheel, pA, pB, dt) and reads the contact
+ *    plane out of wheel+0x1A4..+0x1AC.  br_phys.h moved those six fields to
+ *    BrGroundHit, so this takes the car and a wheel INDEX and reads
+ *    pCar->aHit[i].  Same object, reachable.
+ *  - the compound byte at body+0x1FD is car+0x361, past the end of
+ *    BrRbBodyFull; it is pCar->b1FD here.
+ *  - pB is `const uint8_t *` because every access to it on both sides is a
+ *    byte.  The step passes &bE80 for wheels 0/1 and &bE78 for 2/3. */
+void BrCarPhysTyre(BrCarPhys *pCar, int iWheel, float *pA,
+                   const uint8_t *pB, float dt);
+
+/* 0x11773690, the live grip table, and the two candidates 0x100B4F30 /
+ * 0x100B5050 it is aimed at.  Layout [24*compound + 8*weather + surface].
+ *
+ * DEVIATION: the original leaves the pointer NULL until 0x10069530 runs, so
+ * a tyre pass with its gate byte set before car selection would dereference
+ * NULL.  Nothing in this port calls the selector, so the pointer is
+ * initialised to the table 0x10069530 picks for car index 0 rather than
+ * left NULL.  That makes the path defined; it does not invent a number. */
+extern const float g_aBrCarPhysGripA[BR_CP_GRIP_FLOATS];   /* 0x100B4F30 */
+extern const float g_aBrCarPhysGripB[BR_CP_GRIP_FLOATS];   /* 0x100B5050 */
+extern const float *g_pBrCarPhysGrip;                      /* 0x11773690 */
+
+extern const float g_aBrCarPhysDrvT1A[BR_CP_GRIP_FLOATS];  /* 0x100B4C30 */
+extern const float g_aBrCarPhysDrvT1B[BR_CP_GRIP_FLOATS];  /* 0x100B4D50 */
+extern const float *g_pBrCarPhysDrvT1;                     /* 0x11778808 */
+extern const float g_aBrCarPhysDrvT2A[BR_CP_DRV_T23_FLOATS]; /* 0x100B4E70 */
+extern const float g_aBrCarPhysDrvT2B[BR_CP_DRV_T23_FLOATS]; /* 0x100B4ED0 */
+extern const float *g_pBrCarPhysDrvT2;                     /* 0x11778820 */
+extern const float g_aBrCarPhysDrvT3[BR_CP_DRV_T23_FLOATS];  /* 0x100B5178 */
+
+/* ======================================================================
+ * 0x100645A0, 3070 B -- THE DRIVETRAIN, and it is not an engine model
+ * ======================================================================
+ * It reads the four scalars at car+0xE74..0xE80 and it writes them, which is
+ * what br_carphys.h said before anyone read it.  What it ALSO does, and what
+ * matters far more, is WRITE THE CHASSIS'S OWN LINEAR AND ANGULAR VELOCITY:
+ *
+ *   for each axle -- pair A at child[0]/child[1], pair B at child[2]/child[3],
+ *   and only when at least one wheel of EACH pair has a contact count:
+ *      v      = BrMat4MulVec3(m, BrRbVelAtPoint(body, (child->f78.x, 0, 0)))
+ *      lat    = the part of v across the axle -- v.y for pair A, and for
+ *               pair B v minus its projection on (cos f1C0, sin f1C0, 0),
+ *               so pair B is the STEERED one
+ *      demand = |lat| * mass / dt + |*pA|   (+ a brake penalty)
+ *      if (demand > hold)  v -= slip(demand) * lat
+ *   and then, if either axle ran:
+ *      yaw      = (vA.y - vB.y) / (child0->f78.x - child2->f78.x)
+ *      velWorld = ((vA.x + vB.x) * 0.5,  vA.y - yaw * child0->f78.x,  as-is)
+ *      angVelWorld.z = yaw
+ *   written back through m and m-transpose.
+ *
+ * So the drivetrain is a KINEMATIC CONSTRAINT on the rigid body: it solves
+ * the two axle velocities for a single yaw rate and lateral velocity and
+ * overwrites the integrator's answer with them.  That is the damping the
+ * ported subset was missing, and it is the reason the ported subset diverges
+ * rotationally without it -- nothing else in 0x1005A7A0 can resist yaw.
+ *
+ * It finishes by chasing the chassis's own f1D4 (the visual roll) toward
+ * -8 * the side force it retained, at a fixed 4/15 per step.
+ *
+ * WHAT IT DOES NOT DO: there is no engine, no gearbox and no throttle in it.
+ * The drive torque f1CC and the brake torque f1D0 are written by the control
+ * pass at 0x1006F2B2..0x1006F55x, which is NOT ported -- so in this port
+ * both are 0 and the brake term below is identically zero.  The lateral
+ * constraint runs regardless, because it is driven by the axle velocities.
+ *
+ * DEVIATIONS: the same two as the tyre pass (the surface bytes live in
+ * BrGroundHit, the compound byte at body+0x1FD is pCar->b1FD) plus
+ * body+0x209, which is pCar->b209. */
+void BrCarPhysDrive(BrCarPhys *pCar, float dt);
+
+/* 0x104B15E8, the weather / condition index.  The tables are indexed with
+ * `n - 1` clamped into [0, 2] BY A 16-BIT SIGNED COMPARE, so 0 and anything
+ * above 3 and anything negative all land on row 0.  .bss, so it starts 0. */
+extern int32_t g_brCarPhysWeather;
+
+/* 0x10069530, 106 B.  Point the three car tables at one of two sets, chosen
+ * through a 15-entry byte map and a 5-way jump table: car 0..4, 6..10, 12
+ * take set A; 5, 11, 13, 14 take set B; anything above 14 takes set B. */
+void BrCarPhysSelectCar(int32_t iCar);
 
 /* 0x10067C30, 762 B.  Four substeps of BrRbIntegrateState from `save` into
  * `next`, rebuilding the body matrix each time, then the roll-over /
