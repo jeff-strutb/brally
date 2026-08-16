@@ -115,3 +115,54 @@ if [ ! -d testdata/images ]; then
 else
   echo "assets: testdata/images already present"
 fi
+
+# --- car models, liveries and sky textures --------------------------------
+# 341 files. The .rca models are what br_dlscene.c and the 3D path consume;
+# Paint/ holds the car liveries the texture pass substitutes at runtime; and
+# cargfx/ holds the sky textures br_n64tex.c already decodes.
+extract_group() {                       # $1 = ISO dir, $2 = out dir, $3 = label
+  [ -d "$2" ] && { echo "assets: $2 already present"; return 0; }
+  mkdir -p "$2"
+  n=0
+  python3 tools/extract_iso.py --list "$BIN" 2>/dev/null \
+    | sed -n "s|^\($1/[A-Za-z0-9_.-]*\).*|\1|p" \
+    | while read -r f; do
+        out="$2/$(basename "$f" | tr 'A-Z' 'a-z')"
+        python3 tools/extract_iso.py --extract-path "$BIN" "$f" "$out" >/dev/null 2>&1
+      done
+  n=$(ls "$2" 2>/dev/null | wc -l | tr -d ' ')
+  echo "assets: extracted $n $3"
+}
+extract_group cars    testdata/cars    "car models (.rca)"
+extract_group Paint   testdata/paint   "car liveries"
+extract_group cargfx  testdata/cargfx  "sky textures"
+
+# --- music ----------------------------------------------------------------
+# TWO sources, and they are different music. The PC disc carries Red Book CD
+# audio; the N64 cartridge carries the XM modules the console version played.
+# The port's audio policy replaces CD playback with local lossless files, so
+# both are converted to FLAC rather than kept as raw tracks.
+#
+# Both are OPTIONAL and neither is an error: a builder with only the PC disc
+# gets the CD tracks, and one with only the cartridge gets the XM set.
+CUE="${BIN%.BIN}.cue"
+if [ ! -d testdata/music_cd ] && [ -f "$CUE" ]; then
+    python3 tools/extract_cdaudio.py -q "$CUE" testdata/music_cd 2>/dev/null \
+      && echo "assets: extracted $(ls testdata/music_cd 2>/dev/null | wc -l | tr -d ' ') CD tracks" \
+      || echo "assets: CD audio extraction skipped (see tools/extract_cdaudio.py)"
+elif [ -d testdata/music_cd ]; then
+    echo "assets: testdata/music_cd already present"
+fi
+
+ROM=""
+for c in reference/tgrally/*.z64 ../../strutb/brally/reference/tgrally/*.z64; do
+    [ -f "$c" ] && ROM="$c" && break
+done
+if [ ! -d testdata/music_xm ] && [ -n "$ROM" ]; then
+    python3 tools/extract_xm.py -q "$ROM" testdata/music_xm 2>/dev/null \
+      && echo "assets: extracted $(ls testdata/music_xm 2>/dev/null | wc -l | tr -d ' ') XM tracks" \
+      || echo "assets: XM extraction skipped (see tools/extract_xm.py)"
+elif [ -d testdata/music_xm ]; then
+    echo "assets: testdata/music_xm already present"
+fi
+

@@ -10,7 +10,7 @@
  *     TRACKS/   *.TRK  6 championship tracks + GAMEWIN + BONUS  0.9 - 2.3 MB
  *               *.HNT  ASCII texture-heap hint list
  *               *.HND  ASCII, one number
- *     CARS/     *.RCA  17 cars                    (br_rca.c already reads these)
+ *     CARS/     *.RCA  16 cars                    (br_rca.c already reads these)
  *     CARGFX/   skytex*.ci4 + .lut                (br_n64tex.c)
  *     IMAGES/   *.bmp  menu art          PAINT/   *.bmp  car liveries
  *     SFX/      *.wav
