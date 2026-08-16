@@ -24,6 +24,17 @@
 set -e
 mkdir -p build build/host
 
+# Extract the game data BEFORE building, if the builder's disc is reachable.
+#
+# This used to be a separate step nobody was told to run, so a fresh checkout
+# built cleanly, ran, and drew PLACEHOLDER RECTANGLES -- which looks like a
+# broken renderer rather than a missing asset. The extraction is idempotent and
+# silent when the files are already there, and a missing disc is still not an
+# error: the build succeeds and the harness says what it is falling back to.
+if [ -x tools/extract_assets.sh ]; then
+    tools/extract_assets.sh 2>&1 | sed 's/^/  /' || true
+fi
+
 CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -g -D_DARWIN_C_SOURCE -Iport/include -Iport/src/gfx -Iport/tests"
 MFLAGS="-fobjc-arc -Wall -g -Iport/include -Iport/src/gfx"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
