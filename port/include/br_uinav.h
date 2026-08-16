@@ -46,10 +46,20 @@
  *               br_uinav.c  BrUiNavCtlOther_10048060               struct
  *   0x10047A10  slice3_32.c BrUiStepCode_10047A10                  byte-image
  *               br_uinav.c  BrUiNavCtlStepCode_10047A10            struct
+ *   0x100489A0  slice3_32.c BrPhaseRun_100489A0(BrPhaseFull *)     byte-image
+ *               br_uinav.c  BrUiNavPhaseRun_100489A0(BrPhase_ *)   struct
+ *   0x10048AA0  slice3_32.c BrPhaseReleasePages_10048AA0           byte-image
+ *               br_uinav.c  BrUiNavPhaseRelease_10048AA0           struct
  *
  * The EIGHTH, 0x10047A60 (control vtable +0x20), was not ported anywhere and
  * is a first transcription. It is the one that actually decides which control
  * is current: see the flag notes below.
+ *
+ * 0x100489A0 -- the PHASE's frame, vtable +0x0C -- was the last piece of the
+ * chain the host was reproducing by hand rather than calling. It is the top of
+ * it: the whole tree below runs because 0x100489A0 walks the phase's pages and
+ * calls each one's +0x04. See its declaration further down for the one thing
+ * inside it that is host-injected and why.
  *
  * The names are deliberately NOT the same as slice3_32.c's. CONVENTIONS.md's
  * aliased-storage rule is about STORAGE, and no storage is duplicated here --
@@ -186,8 +196,46 @@
  * by 0x10047A60, which slice3_32.c does not port) or because their type is
  * model-dependent.
  * ========================================================================== */
-typedef struct BrUiNav {
+typedef struct BrUiNav BrUiNav;
+
+/* ---------------------------------------------------------------------------
+ * THE ONE HOST-INJECTED CALL INSIDE THE PHASE FRAME.
+ *
+ * 0x100489A0 polls DirectInput at a fixed point in its body -- between the
+ * phase's +0x04 method and the page walk -- through 0x10060260, whose entire
+ * body is `0x100603A0(g_pAA2E80, g_p680584)`: acquire the mouse device, fold
+ * its deltas into the menu cursor, then read the keyboard's DIK_UP / DIK_DOWN
+ * bytes and inc/dec the selection cursor 0x10AA286C. That is a DirectInput
+ * device read, so the host has to supply it.
+ *
+ * The seam is here rather than in the host's frame loop precisely because the
+ * ORIGINAL's is here: input reaches the menu from inside the frame, after the
+ * phase has been checked and before any page runs, and a host that moves the
+ * cursor before calling the frame is only approximately in the right place.
+ *
+ * NOTE, and it is why the real 0x10060260 is not simply called: 0x10AA2E80 is
+ * modelled THREE ways in this tree -- slice3_39.h `BrPointI *g_pBrAA2E80`
+ * {x,y}, slice5_60.h `BrMouseState` (the full 0x54 the input handler reads and
+ * writes), and slice3_32.h `BrObjAA2E80` (the +0x2C / +0x30 button flags
+ * 0x10047A60 and 0x10048180 consult). They are the same object, and the
+ * correspondence is exact rather than approximate: BrObjAA2E80's f00 / f04 are
+ * BrMouseState's x / y (which is also all BrPointI models), and its
+ * f2C / f30 / f34 / f38 are BrMouseState's aDown[0..3] -- the four mouse
+ * buttons, which is exactly what "a button is held" means at 0x10047A60.
+ * Nothing has merged them, so g_pBrAA2E80 is NULL and 0x100603A0 would fault
+ * on `pMs->pDev`. Merging the three is what makes this seam shrink to the
+ * device read alone; until then it covers the whole call.
+ *
+ * A NULL hook means "no input this frame", which is a state the original has
+ * (every frame in which nothing is pressed) and not a port-only shortcut.
+ * ------------------------------------------------------------------------- */
+typedef void (*BrUiNavPollFn)(BrUiNav *pNav);
+
+struct BrUiNav {
     BrScrGlobals *pG;                /* the shared globals; never NULL       */
+
+    /* 0x10060260's call site inside 0x100489A0. See the banner above. */
+    BrUiNavPollFn pfnPoll;
 
     /* 0x10AA2A78 -- a pointer to two int32, the cursor's x and y. */
     const int32_t *pCursor;
@@ -235,7 +283,7 @@ typedef struct BrUiNav {
     int32_t n0AA010;    /* 0x100AA010 -- the phase id 0x10045AF0's family sets */
     int32_t nACED34;    /* 0x10ACED34 */
     int32_t nAA291C;    /* 0x10AA291C -- 0x10046C90 clears it */
-} BrUiNav;
+};
 
 /* The context the vtable adapters below reach, because a vtable slot has no
  * room for one. Set it once, the way g_pBrUiCtlVtbl and g_br73 are set. */
@@ -339,6 +387,49 @@ int32_t BrUiNavCtlStepCode_10047A10(BrUiCtl_ *pCtl);
 int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl);
 int32_t BrUiNavHook_10046C90(BrUiCtl_ *pCtl);
 
+/* ===========================================================================
+ * 0x100489A0 -- PHASE vtable +0x0C, __thiscall. ONE FRAME OF ONE PHASE, and
+ * the top of the whole chain listed at the top of this header.
+ *
+ * Derived from BRGlide 0x10041DD0 (config/shared.csv: `shared`, 249 bytes in
+ * both maps, and the two listings agree instruction for instruction apart
+ * from the globals):
+ *
+ *     0x10AA2900 <-> 0x10AC5C58   the object 0x10060260 is called on
+ *     0x10AA2904 <-> 0x10AC5C5C   the CURRENT phase
+ *     0x10AA2908 <-> 0x10AC5C60   the root/shell phase
+ *     0x10AA2868 <-> 0x10AC5BC0   "the current phase IS the root"
+ *
+ * The body, in order:
+ *
+ *   1. +0x68 clear -> teardown and return 0. That flag is how a screen asks
+ *      to be dropped; the constructor sets it to 1.
+ *   2. the phase's OWN vtable +0x04 (0x100488B0).
+ *   3. the DirectInput poll, with 0x10AA2904 temporarily pointing at the root
+ *      phase 0x10AA2908 and restored straight afterwards -- see BrUiNavPollFn.
+ *   4. 0x1005FFB0, the keyboard state read and its edge pass. Ported
+ *      (slice3_39.c BrDikPollAndEdge) and called for real: the device read at
+ *      the bottom of it is where the host injection actually belongs.
+ *   5. 0x10AA2868 := (current phase == root phase).
+ *   6. THE PAGE LOOP: for each of the phase's +0x10 pages, store it into
+ *      +0x64, then run its vtable +0x04 when the parallel +0x6C flag is set.
+ *   7. the phase's vtable +0x08 (0x100488C0, the tick), then +0x68 again.
+ *
+ * GOTCHA: +0x64 (pCur) is written with the page pointer BEFORE the NULL test,
+ * so a NULL entry leaves pCur pointing at NULL and the function returns 0
+ * having already published it.
+ * GOTCHA: step 7 re-tests +0x68 and runs the SAME two-call teardown as step 1
+ * when a hook cleared it during the page walk. Both exits return 0.
+ * GOTCHA: the second teardown calls +0x18 through the vtable pointer loaded
+ * BEFORE step 7, not through a fresh read of +0x00.
+ *
+ * The teardown is `0x1003E310` (write the options block) then `0x1006A4A0`
+ * (write the config file), then +0x12 := 0 and vtable +0x18 with a NULL
+ * argument. Both are reached through BrScrGlobals, so no storage is
+ * duplicated. Returns 1 only when the whole frame ran and +0x68 survived.
+ * ========================================================================== */
+int BrUiNavPhaseRun_100489A0(BrUiNav *pNav, BrPhase_ *pThis);
+
 /* 0x10048AA0 -- phase vtable +0x1C. Releases all 200 control slots of every
  * page, releases the page, and resets the selection cursor to 0.
  *
@@ -360,6 +451,19 @@ void BrUiNavPhaseRelease_10048AA0(BrUiNav *pNav, BrPhase_ *pPhase);
  * ========================================================================== */
 void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl);
 void BrUiNavInstallPageVtbl(BrUiPageVtbl_ *pVtbl);
+
+/* The PHASE vtable at 0x1008F700. Two of its nine slots are ported here:
+ *
+ *     +0x0C  0x100489A0  the frame           BrUiNavPhaseRun_100489A0
+ *     +0x1C  0x10048AA0  release every page  BrUiNavPhaseRelease_10048AA0
+ *
+ * +0x00 (0x10048850), +0x04 (0x100488B0), +0x08 (0x100488C0), +0x10, +0x14,
+ * +0x18 (0x10048B20) and +0x20 are left exactly as the caller had them. The
+ * frame DISPATCHES through +0x04, +0x08 and -- on its two failure exits --
+ * +0x18, so a host that installs this table and leaves those NULL will fault
+ * in the frame rather than skip them. That is deliberate: it is the same
+ * "an unported method must still fault" rule the other two installers follow. */
+void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl);
 
 /* ===========================================================================
  * The input seam.

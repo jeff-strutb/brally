@@ -870,6 +870,24 @@ int BrPhaseTick_100488C0(BrScrGlobals *pG, BrPhaseFull *pThis)
     return 1;
 }
 
+/* --- DUPLICATE OWNERSHIP: 0x100489A0 -------------------------------------
+ * This body is the byte-image transcription, over BrPhaseFull / BrUiPage.
+ * port/src/br_uinav.c carries a SECOND transcription of the same address,
+ * BrUiNavPhaseRun_100489A0(BrUiNav *, BrPhase_ *), over br_ui.h's struct
+ * model -- for the reason br_uinav.h's DUPLICATE OWNERSHIP banner gives for
+ * the seven addresses it already twinned: a byte-offset body cannot be aimed
+ * at a struct whose fields have moved under LP64, and the packets the host
+ * boots (slice6_71/72/73) build struct objects. That twin is what the host
+ * harness now installs at phase vtable +0x0C.
+ *
+ * No storage is forked. Both bodies reach 0x10AA2904 / 0x10AA2908 /
+ * 0x10AA2868 / 0x10B4DF30 / 0x10B4FBE8 through ONE object each -- this one
+ * through BrScrGlobals, the twin through BrScrGlobals plus the two BrUiNav
+ * phase-slot members whose "a host populates exactly one view" rule br_uinav.h
+ * states on pAA29C0. A future merge of BrPhaseFull and BrPhase_ deletes one of
+ * the two bodies; until then, a behavioural change to either belongs in both.
+ * ------------------------------------------------------------------------ */
+
 /* The two-call teardown 0x100489A0 runs on both of its failure exits. */
 static void BrScrPhaseBail(BrScrGlobals *pG, BrPhaseFull *pThis,
                            const BrPhaseFullVtbl *pV)

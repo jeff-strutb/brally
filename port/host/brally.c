@@ -295,23 +295,34 @@ static const BrBuilder g_aBuilders[] = {
  * matters and is drawn explicitly:
  *
  *   PORTED (port/src/br_uinav.c, from BRGlide.dll):
- *     0x10048530 the page frame        0x100484F0 the selection clamp
- *     0x10048180 the control frame     0x10047A60 current/activate marking
- *     0x100480A0 the step tick         0x10048010 the enter dispatch
- *     0x10048060 the "other owns it"   0x10047A10 the code hand-off
- *     0x10048AA0 release all pages
+ *     0x100489A0 THE PHASE FRAME       0x10048530 the page frame
+ *     0x100484F0 the selection clamp   0x10048180 the control frame
+ *     0x10047A60 current/activate      0x100480A0 the step tick
+ *     0x10048010 the enter dispatch    0x10048060 the "other owns it"
+ *     0x10047A10 the code hand-off     0x10048AA0 release all pages
  *     0x10045AF0 the FORWARD hook      0x10046C90 the BACK hook
+ *   ...plus 0x1005FFB0 (slice3_39.c), the keyboard state read and edge pass,
+ *   which 0x100489A0 calls for real.
  *
  *   SUPPLIED BY THIS FILE, and each one is a function the port has NOT
- *   transcribed, standing in so the frame can complete rather than fault:
+ *   transcribed (or, for the two marked, cannot yet REACH), standing in so
+ *   the frame can complete rather than fault:
  *     control vtable +0x00  0x100478A0  the scalar deleting destructor
  *     control vtable +0x18  0x10047980  draw at an explicit rect
  *     control vtable +0x1C  0x10047930  draw at the control's own position
  *     page    vtable +0x00  0x100484C0  the page's deleting destructor
  *     phase   vtable +0x00  0x10048850  the phase's deleting destructor
+ *     phase   vtable +0x04  0x100488B0  calls the unported 0x1005AFA0
+ *     phase   vtable +0x08  0x100488C0  PORTED, unreachable: it reads the
+ *                                       root phase's page 0, and the root
+ *                                       phase here has no pages
+ *     phase   vtable +0x18  0x10048B20  the global shutdown
  *     text box vtable +0x10 0x1005B0xx  the item's draw
+ *   ...and ONE that is not a stand-in for an unported function at all: the
+ *   DirectInput poll 0x100489A0 makes at 0x10060260. That one is real input,
+ *   injected at the original's own call site -- see HostPoll.
  *   Every one is counted, and the counts are printed, so "the frame ran" can
- *   never quietly mean "the frame ran through six no-ops nobody noticed".
+ *   never quietly mean "the frame ran through nine no-ops nobody noticed".
  * ========================================================================== */
 
 static BrScrGlobals  g_scr;       /* the ONE globals object; shared with     */
@@ -327,13 +338,33 @@ static BrObjAA2E80   g_objAA2E80;
  * moved" would be ambiguous between the two paths through 0x10047A60. */
 static int32_t g_cursor[2] = { -1, -1 };
 
-/* --- the six stand-ins, each counted ------------------------------------- */
-static int g_nStandIn[6];
+/* --- the stand-ins, each counted -----------------------------------------
+ * The last three joined the list when the phase's OWN frame (0x100489A0)
+ * replaced this file's reproduction of its page loop: that function dispatches
+ * through three phase-vtable slots this port has not transcribed, and the
+ * honest thing is to count them rather than to keep a frame that never reached
+ * them. What each one is, and why it is not simply ported here:
+ *
+ *   +0x04 0x100488B0  two instructions -- `this->vtbl+0x20(this)` then return
+ *                     1. Its callee 0x1005AFA0 is unported, so a twin of
+ *                     0x100488B0 would only move this stand-in one slot down.
+ *   +0x08 0x100488C0  the phase TICK, and it is ported (slice3_32.c's
+ *                     BrPhaseTick_100488C0). It is unreachable here for a
+ *                     reason worth stating: it reads
+ *                     `0x10AA2908->aPages[0]->aItems[199]`, and the root phase
+ *                     this harness stands in for start-up with has no pages at
+ *                     all. It is blocked on the start-up path, not on itself.
+ *   +0x18 0x10048B20  the global shutdown. Reached only from 0x100489A0's two
+ *                     failure exits, i.e. only when a screen clears +0x68.
+ * ------------------------------------------------------------------------ */
+#define SI_COUNT 9
+static int g_nStandIn[SI_COUNT];
 enum { SI_CTLDEL, SI_CTLDRAWRECT, SI_CTLDRAW, SI_PAGEDEL, SI_PHASEDEL,
-       SI_TEXTDRAW };
-static const char *const g_aStandInName[6] = {
+       SI_TEXTDRAW, SI_PHASEF04, SI_PHASEF08, SI_PHASEF18 };
+static const char *const g_aStandInName[SI_COUNT] = {
     "0x100478A0 control dtor", "0x10047980 draw(rect)", "0x10047930 draw",
-    "0x100484C0 page dtor",    "0x10048850 phase dtor", "0x1005B0xx item draw"
+    "0x100484C0 page dtor",    "0x10048850 phase dtor", "0x1005B0xx item draw",
+    "0x100488B0 phase +0x04",  "0x100488C0 phase tick", "0x10048B20 shutdown"
 };
 
 static void *StandInCtlDel(BrUiCtl_ *p, int32_t f)
@@ -348,17 +379,41 @@ static void *StandInPhaseDel(BrPhase_ *p, int32_t f)
 { (void)f; g_nStandIn[SI_PHASEDEL]++; return p; }
 static void StandInTextDraw(BrTextBox *p)
 { (void)p; g_nStandIn[SI_TEXTDRAW]++; }
+static int32_t StandInPhaseF04(BrPhase_ *p)
+{ (void)p; g_nStandIn[SI_PHASEF04]++; return 1; }
+static int32_t StandInPhaseF08(BrPhase_ *p)
+{ (void)p; g_nStandIn[SI_PHASEF08]++; return 1; }
+static void StandInPhaseF18(BrPhase_ *p, void *pArg)
+{ (void)p; (void)pArg; g_nStandIn[SI_PHASEF18]++; }
+
+/* --- the input seam, which is NOT a stand-in for an unported function -----
+ *
+ * 0x100489A0 polls DirectInput from inside its own body, and br_uinav.c calls
+ * out to this at exactly that point. So a scripted key is applied where the
+ * original applies a held key: after the phase has been checked, before any
+ * page runs. It writes the two words 0x100603A0 writes and nothing else --
+ * BrUiNavMove is the cursor inc/dec plus the step, BrUiNavSetActivate is
+ * 0x10AA2AF0.
+ *
+ * The counter is printed alongside the stand-ins so "the game's frame ran"
+ * cannot quietly mean "the frame ran without ever asking for input". */
+static int g_nPoll;
+static int g_pendDir;      /* -1 / 0 / +1, one frame's worth */
+static int g_pendFire;
+
+static void HostPoll(BrUiNav *pNav)
+{
+    g_nPoll++;
+    if (g_pendDir != 0)
+        BrUiNavMove(pNav, g_pendDir);
+    BrUiNavSetActivate(pNav, g_pendFire);
+}
 
 /* The phase vtable is `static const` above so the object is never left with a
  * NULL table; navigation needs two of its slots, so the navigable path uses
  * this writable one instead. */
 static BrPhaseVtbl_  g_navPhaseVtbl;
 static BrUiPageVtbl_ g_navPageVtbl;
-
-static void NavPhaseRelease(BrPhase_ *p)
-{
-    BrUiNavPhaseRelease_10048AA0(&g_nav, p);
-}
 
 /* The hook table the builders read. Two entries are the ported hooks; every
  * other stays NULL, which is what the all-NULL g_hooks above already gave
@@ -410,6 +465,8 @@ static void WireNav(void)
     }
 
     g_nav.pG       = &g_scr;
+    /* 0x10060260's call site inside 0x100489A0. See HostPoll. */
+    g_nav.pfnPoll  = HostPoll;
     g_nav.pCursor  = g_cursor;
     g_nav.pActive  = &g_active;
     g_nav.apHot[0] = BR_UI_STYLE(0x100AB448);
@@ -431,9 +488,15 @@ static void WireNav(void)
     g_navPageVtbl.f00 = StandInPageDel;
     g_pBrUiPageVtbl   = &g_navPageVtbl;
 
+    /* 0x1008F700. br_uinav.c fills the two slots it ports -- +0x0C, the
+     * FRAME, and +0x1C, release-all-pages. The four below are this file's,
+     * and three of them are dispatched through by the frame itself. */
     g_navPhaseVtbl     = g_phaseVtbl;
+    BrUiNavInstallPhaseVtbl(&g_navPhaseVtbl);
     g_navPhaseVtbl.f00 = StandInPhaseDel;
-    g_navPhaseVtbl.f1C = NavPhaseRelease;
+    g_navPhaseVtbl.f04 = StandInPhaseF04;
+    g_navPhaseVtbl.f08 = StandInPhaseF08;
+    g_navPhaseVtbl.f18 = StandInPhaseF18;
 
     g_hostTextBoxVtbl.pfn10 = StandInTextDraw;
 
@@ -589,36 +652,35 @@ static void DumpRects(const BrPhase_ *ph)
  * The frame driver and the scripted-input mode
  * ========================================================================== */
 
-/* One frame of one phase.
+/* ONE FRAME OF ONE PHASE -- and it is the GAME'S frame, not this file's.
  *
- * This mirrors the page loop inside 0x100489A0 (phase vtable +0x0C) and is
- * NOT that function: 0x100489A0 also polls DirectInput, drives 0x10AA2900
- * through 0x10060260 and bails through 0x1003E310, none of which is ported or
- * portable. What is reproduced is exactly the part navigation depends on --
- * pCur is written BEFORE the NULL test, iPage tracks the loop, and a page runs
- * only when its parallel aFlags entry is non-zero -- and the page's own frame
- * is reached through the vtable, so the work is the ported 0x10048530's.
+ * WHAT THIS USED TO BE, since the change is the point of the function.
  *
- * BrOptObjCtor leaves aFlags[0] = 1 and the rest 0, so page 0 runs. */
+ * This was a hand-written reproduction of the PAGE LOOP inside 0x100489A0,
+ * and its own comment said so. It walked the phase's pages, wrote pCur before
+ * the NULL test and called each page's vtable +0x04, and it left out
+ * everything else 0x100489A0 does -- the +0x68 check that lets a screen ask
+ * to be dropped, the phase's own +0x04 and +0x08 methods, the DirectInput
+ * poll, the current-phase swap around it, 0x10AA2868, and the two failure
+ * exits. A driver that reproduces a function is a lookalike: it agrees with
+ * the original exactly where someone remembered to make it agree.
+ *
+ * 0x100489A0 is ported. It was ported twice, in fact -- slice3_32.c has it
+ * over that module's byte-image objects and br_uinav.c now has the struct-model
+ * twin -- and the only thing keeping it out of this harness was that neither
+ * copy had ever been installed in the phase vtable slot it belongs to.
+ *
+ * So this is now one indirect call through phase vtable +0x0C, which is how
+ * the original's own main loop reaches it. Everything above -- the +0x68 test,
+ * the page loop, the bail -- is decompiled game logic; see
+ * BrUiNavPhaseRun_100489A0. What this FILE still supplies is named in the
+ * stand-in table above and in HostPoll, and both are counted and printed.
+ *
+ * BrOptObjCtor leaves +0x68 = 1, and the builder leaves aFlags[0] = 1 with
+ * the rest 0, so page 0 runs and the frame reports success. */
 static int NavFrame(BrPhase_ *ph)
 {
-    int32_t i;
-    int     ok = 1;
-
-    ph->iPage = 0;
-    for (i = 0; i < (int32_t)ph->nPages && i < BR_PHASE_PAGES; ++i) {
-        BrUiPage_ *pPg = ph->aPages[i];
-        ph->pCur = pPg;                     /* written BEFORE the NULL test */
-        if (pPg == NULL)
-            return 0;
-        ph->iPage = (uint16_t)(uint32_t)i;
-        if (ph->aFlags[i] != 0) {
-            BrUiPage_ *pCur = ph->pCur;     /* the original re-reads +0x64 */
-            if (pCur->pVtbl->f04(pCur) == 0)
-                ok = 0;
-        }
-    }
-    return ok;
+    return (int)ph->pVtbl->f0C(ph);
 }
 
 /* The page a phase is currently showing, or NULL. */
@@ -715,10 +777,14 @@ static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
     for (p = pszKeys; *p; ++p) {
         BrPhase_ *phBefore = phCur;
 
+        /* The key only ARMS the seam. It is applied by HostPoll, which
+         * 0x100489A0 calls from inside the frame at the point the original
+         * polls DirectInput -- so the key reaches the menu by the game's own
+         * route rather than by this loop reaching past it. */
         switch (*p) {
-        case 'd': BrUiNavMove(&g_nav, +1); break;
-        case 'u': BrUiNavMove(&g_nav, -1); break;
-        case 'j': BrUiNavSetActivate(&g_nav, 1); break;
+        case 'd': g_pendDir  = +1; break;
+        case 'u': g_pendDir  = -1; break;
+        case 'j': g_pendFire =  1; break;
         case '.': break;
         default:
             printf("  unknown key '%c' (use d u j .)\n", *p);
@@ -728,6 +794,8 @@ static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
         NavFrameWait();
         (void)NavFrame(phCur);
 
+        g_pendDir = 0;
+        g_pendFire = 0;
         BrUiNavSetStep(&g_nav, 0);
         BrUiNavSetActivate(&g_nav, 0);
 
@@ -752,8 +820,10 @@ static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
 
     printf("\nstand-ins reached (each is a function this port has NOT "
            "transcribed):\n");
-    for (i = 0; i < 6; i++)
+    for (i = 0; i < SI_COUNT; i++)
         printf("    %-26s %d\n", g_aStandInName[i], g_nStandIn[i]);
+    printf("    %-26s %d   (0x10060260's site, host-injected)\n",
+           "input poll", g_nPoll);
     return 0;
 }
 
@@ -1428,11 +1498,15 @@ int main(int argc, char **argv)
             const char *pk;
             BrPhase_ *phShot = ph;
             for (pk = pszKeys; *pk; ++pk) {
-                if (*pk == 'd') BrUiNavMove(&g_nav, +1);
-                else if (*pk == 'u') BrUiNavMove(&g_nav, -1);
-                else if (*pk == 'j') BrUiNavSetActivate(&g_nav, 1);
+                /* Armed here, applied by HostPoll from inside the frame --
+                 * see NavRunScript. */
+                if (*pk == 'd') g_pendDir = +1;
+                else if (*pk == 'u') g_pendDir = -1;
+                else if (*pk == 'j') g_pendFire = 1;
                 NavFrameWait();
                 (void)NavFrame(phShot);
+                g_pendDir = 0;
+                g_pendFire = 0;
                 BrUiNavSetStep(&g_nav, 0);
                 BrUiNavSetActivate(&g_nav, 0);
                 if (g_nav.pAA2904 != NULL) phShot = g_nav.pAA2904;
@@ -1563,9 +1637,11 @@ int main(int argc, char **argv)
                     }
                 }
 
-                if (dir != 0) BrUiNavMove(&g_nav, dir);
-                BrUiNavSetActivate(&g_nav, fire);
+                g_pendDir  = dir;
+                g_pendFire = fire;
                 (void)NavFrame(phCur);
+                g_pendDir  = 0;
+                g_pendFire = 0;
                 BrUiNavSetStep(&g_nav, 0);
                 BrUiNavSetActivate(&g_nav, 0);
                 if (g_nav.pAA2904 != NULL) phCur = g_nav.pAA2904;

@@ -739,7 +739,13 @@ int BrPhaseTick_100488C0(BrScrGlobals *pG, BrPhaseFull *pThis);
  * flag is set. Returns 1 only when +0x68 is still set at the end; 0
  * otherwise, and on the 0 paths it re-runs the same two-call teardown.
  * GOTCHA: pCur (+0x64) is written with the page pointer BEFORE the NULL test,
- * so a NULL entry leaves pCur NULL. */
+ * so a NULL entry leaves pCur NULL.
+ *
+ * DUPLICATE OWNERSHIP: br_uinav.h declares BrUiNavPhaseRun_100489A0 over
+ * br_ui.h's BrPhase_ / BrUiPage_ -- the same address, transcribed a second
+ * time because this body's byte-image objects cannot be aimed at the struct
+ * objects the host actually builds. See the banner beside this function in
+ * slice3_32.c. No storage is duplicated; both reach the same BrScrGlobals. */
 int BrPhaseRun_100489A0(BrScrGlobals *pG, BrPhaseFull *pThis);
 
 /* 0x10048AA0  __thiscall, phase vtable +0x1C. Releases all 200 item slots of

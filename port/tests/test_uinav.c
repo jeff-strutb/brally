@@ -409,6 +409,147 @@ static void TestActiveOverride(void)
 }
 
 /* ==========================================================================
+ * 0x100489A0 -- the PHASE's frame, the top of the chain.
+ *
+ * What is asserted here is the part a hand-written reproduction of the page
+ * loop gets wrong by omission, because the page loop is the easy half:
+ *
+ *  - +0x68 is a VETO. Clear it and the frame does no work at all: no phase
+ *    method, no poll, no page. It runs the teardown instead, and the teardown
+ *    is two specific calls in a fixed order plus a zeroed +0x12.
+ *  - the SAME teardown runs on the second exit, when +0x68 was still set at
+ *    entry and something cleared it during the page walk. Both exits return 0
+ *    and they are distinguishable only by whether the page ran.
+ *  - pCur is published BEFORE the NULL test, so a NULL page slot leaves the
+ *    phase pointing at NULL. A tidied port that tests first leaves the
+ *    PREVIOUS page there, which is a different and much harder bug.
+ *  - the poll happens with the current phase swapped to the root and restored
+ *    straight after, so a callee sees the root and the caller does not.
+ * ========================================================================== */
+
+/* Counted by the two teardown stand-ins at the bottom of this file. */
+static int       s_n3E310, s_n6A4A0;
+
+static int       s_nPhF04, s_nPhF08, s_nPhF18, s_nPoll;
+static BrPhase_ *s_pollSaw;
+static BrPhase_  s_root;
+static int       s_pageTailClearsF68;
+
+static int32_t FixPhF04(BrPhase_ *p) { (void)p; s_nPhF04++; return 1; }
+static int32_t FixPhF08(BrPhase_ *p) { (void)p; s_nPhF08++; return 1; }
+static void    FixPhF18(BrPhase_ *p, void *pArg)
+{ (void)p; (void)pArg; s_nPhF18++; }
+
+static void FixPoll(BrUiNav *pNav) { s_nPoll++; s_pollSaw = pNav->pAA2904; }
+
+/* The page's +0x08 tail hook, which 0x10048530 runs only when the whole page
+ * walked. Clearing +0x68 from it is how a real screen asks to be dropped. */
+static void FixPageTail(void)
+{
+    if (s_pageTailClearsF68) s_phase.f68 = 0;
+}
+
+static void FixPhaseBuild(void)
+{
+    FixBuild();
+    s_nPhF04 = s_nPhF08 = s_nPhF18 = s_nPoll = 0;
+    s_n3E310 = s_n6A4A0 = 0;
+    s_pollSaw = NULL;
+    s_pageTailClearsF68 = 0;
+
+    BrUiNavInstallPhaseVtbl(&s_phaseVtbl);
+    s_phaseVtbl.f04 = FixPhF04;
+    s_phaseVtbl.f08 = FixPhF08;
+    s_phaseVtbl.f18 = FixPhF18;
+
+    memset(&s_root, 0, sizeof s_root);
+    s_nav.pfnPoll = FixPoll;
+    s_nav.pAA2904 = &s_phase;
+    s_nav.pAA2908 = &s_root;
+
+    s_phase.f68  = 1;
+    s_phase.iPage = 0x5A5A;      /* a value the frame must overwrite */
+}
+
+static void TestPhaseFrame(void)
+{
+    /* --- the success path, reached through the vtable slot the original
+     * reaches it through --------------------------------------------------- */
+    FixPhaseBuild();
+    CHECK(s_phaseVtbl.f0C != NULL,
+          "BrUiNavInstallPhaseVtbl fills +0x0C");
+    CHECK(s_phase.pVtbl->f0C(&s_phase) == 1,
+          "a phase with +0x68 set and one flagged page reports success");
+    CHECK(s_nPhF04 == 1 && s_nPhF08 == 1,
+          "+0x04 and +0x08 each dispatched exactly once");
+    CHECK(s_nPoll == 1, "the frame polled for input exactly once");
+    CHECK(s_pollSaw == &s_root,
+          "the poll sees the ROOT phase as current (the swap)");
+    CHECK(s_nav.pAA2904 == &s_phase, "...and the swap is restored");
+    CHECK(s_phase.pCur == s_page && s_phase.iPage == 0,
+          "the page loop published page 0");
+    CHECK(FixCurrent() == 1, "the page actually ran: control 1 is current");
+    CHECK(s_nPhF18 == 0 && s_n3E310 == 0 && s_n6A4A0 == 0,
+          "no teardown on the success path");
+    CHECK(s_scr.nAA2868 == 0,
+          "0x10AA2868 is 0 while the current phase is not the root");
+    FixFree();
+
+    /* 0x10AA2868 is the one thing the frame writes about the phase SLOTS. */
+    FixPhaseBuild();
+    s_nav.pAA2908 = &s_phase;
+    (void)s_phase.pVtbl->f0C(&s_phase);
+    CHECK(s_scr.nAA2868 == 1,
+          "0x10AA2868 is 1 when the current phase IS the root");
+    FixFree();
+
+    /* --- the +0x68 veto, which is the whole first half of the function --- */
+    FixPhaseBuild();
+    s_phase.f68 = 0;
+    CHECK(s_phase.pVtbl->f0C(&s_phase) == 0, "+0x68 clear fails the frame");
+    CHECK(s_n3E310 == 1 && s_n6A4A0 == 1 && s_nPhF18 == 1,
+          "...and runs the two-call teardown, then vtable +0x18");
+    CHECK(s_phase.iPage == 0, "the teardown zeroes +0x12");
+    CHECK(s_nPhF04 == 0 && s_nPoll == 0,
+          "nothing else runs: no +0x04, no poll");
+    CHECK(FixCurrent() == -1000,
+          "no control became current -- the page never ran");
+    FixFree();
+
+    /* --- the SECOND exit: +0x68 cleared during the page walk -------------- */
+    FixPhaseBuild();
+    s_page->pfn08 = FixPageTail;
+    s_pageTailClearsF68 = 1;
+    CHECK(s_phase.pVtbl->f0C(&s_phase) == 0,
+          "a page that clears +0x68 fails the frame");
+    CHECK(FixCurrent() == 1, "...but the page HAD already run");
+    CHECK(s_nPhF08 == 1, "the tick still ran before the second +0x68 test");
+    CHECK(s_n3E310 == 1 && s_n6A4A0 == 1 && s_nPhF18 == 1,
+          "the same teardown runs on the second exit");
+    FixFree();
+
+    /* --- pCur is published BEFORE the NULL test --------------------------- */
+    FixPhaseBuild();
+    s_phase.pCur      = s_page;
+    s_phase.aPages[0] = NULL;
+    CHECK(s_phase.pVtbl->f0C(&s_phase) == 0, "a NULL page slot fails the frame");
+    CHECK(s_phase.pCur == NULL,
+          "pCur was written with the NULL page before the test");
+    CHECK(s_nPhF08 == 0 && s_nPhF18 == 0,
+          "the NULL exit is a bare return: no tick, no teardown");
+    s_phase.aPages[0] = s_page;
+    FixFree();
+
+    /* --- a page whose parallel flag is clear is published but not run ----- */
+    FixPhaseBuild();
+    s_phase.aFlags[0] = 0;
+    CHECK(s_phase.pVtbl->f0C(&s_phase) == 1, "a flag-clear page still succeeds");
+    CHECK(s_phase.pCur == s_page, "...is still published in pCur");
+    CHECK(FixCurrent() == -1000, "...and did not run");
+    FixFree();
+}
+
+/* ==========================================================================
  * Stand-ins for the cross-module callees. HERE and nowhere else.
  * ========================================================================== */
 
@@ -420,6 +561,14 @@ void    BrSub10072AF0(int a, int b) { (void)a; (void)b; }
 void    BrTextBoxDtor(BrTextBox *pBox) { (void)pBox; }
 int32_t BrDikGetDeviceState(uint8_t *pState) { (void)pState; return 0; }
 char    g_aBr39B720[0x104];
+
+/* The two-call teardown 0x100489A0 runs on its failure exits: write the
+ * options block, then write the config file. Both live in other packets, and
+ * the phase-frame test below drives the exit that reaches them, so these
+ * COUNT rather than merely satisfy the link. */
+void BrSub1003E310(void)                    { ++s_n3E310; }
+void BrSub1006A4A0(void *pThis, void *pArg) { (void)pThis; (void)pArg;
+                                              ++s_n6A4A0; }
 
 /* 0x10048710 and 0x1004F700 are only reached by BrUiNavHook_10045AF0, which
  * this suite does not exercise -- the host does, and that is where the
@@ -435,6 +584,7 @@ int main(void)
     TestActivate();
     TestHookZeroStopsPage();
     TestActiveOverride();
+    TestPhaseFrame();
 
     printf("uinav: %d checks, %d failures\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
