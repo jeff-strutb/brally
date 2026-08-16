@@ -4,16 +4,18 @@
  * Every check is a geometric property that can be worked out on paper from
  * the plane equation, plus the four acceptance windows read out of the
  * binary, plus the two clamps.  Where the original does something surprising
- * -- accepting ground ABOVE the probe point, ignoring steep faces, keying the
- * grid on a body-local offset -- the surprise is what is asserted, so a
- * future pass that "fixes" it fails here instead of silently changing the
- * handling model.
+ * -- accepting ground ABOVE the probe point, ignoring steep faces -- the
+ * surprise is what is asserted, so a future pass that "fixes" it fails here
+ * instead of silently changing the handling model.
  *
  * The collision grid is supplied by this file.  slice6_73.c owns the real
  * BrCollGridCellAcquire, but linking it drags the whole menu/phase tree in,
  * and its cell SELECTION is already covered by test_slice6_73.  The stand-in
  * here always returns cell 0 and RECORDS ITS ARGUMENTS, which is what lets
- * the grid-key gotcha be pinned rather than merely reproduced.
+ * the grid key be pinned to the WORLD point rather than merely assumed.
+ * This file used to assert the opposite -- that the key is the wheel's
+ * body-local mount offset -- on the strength of a stack-offset misreading;
+ * br_phys.h carries the adjudication and the frame walk that settles it.
  */
 
 #include <math.h>
@@ -330,26 +332,71 @@ static void test_wheel_probe(void)
     CHECK(fabs((double)t
                - ((double)kMountY[0] * sin(0.5) + 0.75)) > 0.1); /* nor vertical */
 
-    /* THE GRID-KEY DEFECT, pinned.  The cell is looked up from the wheel's
-     * BODY-LOCAL mount offset, never from its world position.  With the car
-     * translated far from the origin the two differ by the whole translation
-     * and the lookup still asks for the local pair.  If a future pass decides
-     * this reading is wrong, this is the assertion to argue with. */
+    /* THE GRID KEY IS THE WORLD POINT, and this is the assertion that pins it.
+     * Two passes read 0x10068070 as keying the grid on the wheel's BODY-LOCAL
+     * mount offset -- see the adjudication in br_phys.h -- and this test used
+     * to assert exactly that.  It was wrong: the reload the claim rested on
+     * happens while esp is still 0xC below the frame the spill used, so the
+     * two identical displacements name different slots.
+     *
+     * The car is translated 900 x, -400 y so that the local and world keys
+     * cannot be confused for one another, and BOTH are checked: the key must
+     * equal the transformed mount point and must NOT equal the raw mount. */
     rig_init(&r, 0.75f);
     r.body.m.m[3][0] = 900.0f;
     r.body.m.m[3][1] = -400.0f;
     s_nAcquire = 0;
     (void)BrWheelGroundProbe(&r.body, &r.wheel[1], NULL);
     CHECK(s_nAcquire == 1);
-    CHECK_NEAR(s_lastKeyX, kMountX[1], 1e-6);
-    CHECK_NEAR(s_lastKeyY, kMountY[1], 1e-6);
-    CHECK(fabs((double)s_lastKeyX - 900.0) > 1.0);
+    /* 1e-4, not 1e-6: these are floats at magnitude 900, where one ulp is
+     * already 6e-5.  A tighter bound would be testing float precision, not
+     * the grid key. */
+    CHECK_NEAR(s_lastKeyX, 900.0 + (double)kMountX[1], 1e-4);
+    CHECK_NEAR(s_lastKeyY, -400.0 + (double)kMountY[1], 1e-4);
+    CHECK(fabs((double)s_lastKeyX - (double)kMountX[1]) > 1.0);
+    CHECK(fabs((double)s_lastKeyY - (double)kMountY[1]) > 1.0);
 
-    /* The straight-down probe, by contrast, keys on the world point. */
+    /* And the key is the mount point ROTATED as well as translated, not the
+     * body's own origin: under a roll the mount's world y and z move but the
+     * key is still the transformed x/y, so a yaw is what separates "the body
+     * origin" from "the transformed mount".  Yaw 90 degrees sends local
+     * (x, y) to world (-y, x) under the row-vector convention. */
+    rig_init(&r, 0.75f);
+    r.body.m.m[0][0] =  0.0f; r.body.m.m[0][1] = 1.0f;
+    r.body.m.m[1][0] = -1.0f; r.body.m.m[1][1] = 0.0f;
+    r.body.m.m[3][0] = 50.0f;
+    r.body.m.m[3][1] = 20.0f;
+    s_nAcquire = 0;
+    (void)BrWheelGroundProbe(&r.body, &r.wheel[1], NULL);
+    CHECK(s_nAcquire == 1);
+    CHECK_NEAR(s_lastKeyX, 50.0 - (double)kMountY[1], 1e-5);
+    CHECK_NEAR(s_lastKeyY, 20.0 + (double)kMountX[1], 1e-5);
+    /* not the body origin, and not the untransformed mount */
+    CHECK(fabs((double)s_lastKeyX - 50.0) > 1.0);
+
+    /* The straight-down probe keys on the world point too -- the two probes
+     * agree, which is the whole reason the old reading looked anomalous. */
     s_nAcquire = 0;
     (void)probe(123.0f, -45.0f, 1.0f);
     CHECK_NEAR(s_lastKeyX, 123.0, 1e-6);
     CHECK_NEAR(s_lastKeyY, -45.0, 1e-6);
+
+    /* g_brPhysWheelGridWorldKey is vestigial: setting it changes nothing.
+     * If a future pass revives it as a switch, this fails. */
+    {
+        float keyX, keyY;
+        rig_init(&r, 0.75f);
+        r.body.m.m[3][0] = 900.0f;
+        r.body.m.m[3][1] = -400.0f;
+        g_brPhysWheelGridWorldKey = 0;
+        (void)BrWheelGroundProbe(&r.body, &r.wheel[2], NULL);
+        keyX = s_lastKeyX; keyY = s_lastKeyY;
+        g_brPhysWheelGridWorldKey = 1;
+        (void)BrWheelGroundProbe(&r.body, &r.wheel[2], NULL);
+        CHECK(s_lastKeyX == keyX);
+        CHECK(s_lastKeyY == keyY);
+        g_brPhysWheelGridWorldKey = 0;
+    }
 }
 
 static void test_suspension(void)

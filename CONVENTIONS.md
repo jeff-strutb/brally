@@ -98,27 +98,38 @@ present in the original, and aliasing behaviour where the original permits it.
     equality tests on the `(w0,w1)` pair — ten patterns plus a default.
     Render mode (`0x10021270`) is the same shape, nine values plus a
     bit-tested fallback. Neither is open-ended.
-- **The wheel ground probe can never find ground, on any track, at any
-  position** — and that is what the binary says, not a port defect.
-  `0x10068070` (D3D `0x1006F0C0`) keys the collision grid on the wheel's
-  BODY-LOCAL mount offset, `(+-1.5, +-1.0)`. `BrCollGridCellAcquire`'s key is
-  `(trunc(x)>>5) + ((trunc(y)>>5)<<6)`, so all four wheels ask for **key 0** —
-  world cell (0,0) — every frame. Worse, `BrGrid64Sample` rejects a negative
-  coordinate outright, so the first wheel to ask (mount `y == -1.0`) loads that
-  key with **zero** triangles and the other three hit the cache and get the
-  same empty cell. Measured on `race.trk`: `f1D8 == -100` (miss) for all four
-  wheels for a whole run, while `BrGroundProbeZ` — the same search keyed on the
-  WORLD point — reports the surface correctly at the same instant.
-  So either the shipped suspension is dead and the ground contact lives
-  entirely in `0x10067C30`'s five unported collision callees (`0x10066AD0`,
-  `0x10066D70`, `0x10067710`, `0x10068F80`), or there is a writer of
-  `wheel->f78` nobody has found. `br_phys.h`'s
-  `g_brPhysWheelGridWorldKey` exists to MEASURE the difference; it defaults to
-  the original and anything run with it set is a counterfactual.
-  The stack offsets were re-derived from the bytes rather than taken on trust:
-  `[esp+0x18]`/`[esp+0x1C]` hold `f78.x`/`f78.y`, the transform at
-  `0x1006DA20` writes to a disjoint slot, and the two are RELOADED unchanged
-  and pushed to the acquire.
+- **The wheel ground probe keys the collision grid on the WORLD point**, like
+  its straight-down sibling, and there is no defect there. This entry used to
+  say the opposite in bold — that `0x10068070` (D3D `0x1006F0C0`) keys on the
+  wheel's BODY-LOCAL mount offset and can therefore never find ground on any
+  track — and it is kept, corrected, because two independent passes reached
+  that conclusion and the mechanism is a general trap.
+  - The claim rested on `[esp+0x18]`/`[esp+0x1C]` appearing twice: once as the
+    spill of `f78.x`/`f78.y` at `0x10068091`, once as the reload pushed to the
+    acquire at `0x100680DC`. **Same displacement, different ESP.** The reload
+    sits between `call 0x1006D9D0` and its `add esp,0xc`, so esp is still 0xC
+    lower there and the two displacements name `R-0x30`/`R-0x2C` — the OUTPUT
+    of the transform at `0x1006DA20` — not `R-0x24`/`R-0x20`, the mount.
+  - Four independent confirmations: all three callees end in a bare `ret`
+    (cdecl, so the caller's `add esp,0xc` is real and must be counted); the
+    mount slots are REUSED for the hit point at `0x10068206`, so "the same
+    slots are reloaded" could not have held anyway; every other read in the
+    function agrees with one consistent labelling; and `0x1006F0C0` is
+    byte-identical, so the D3D build cannot arbitrate — it has the same code.
+  - `g_brPhysWheelGridWorldKey` was the switch that let the "defect" be
+    measured. It is now vestigial and changes nothing.
+  - **The refutation was available the whole time and was explained away.**
+    The claim predicted total failure of wheel ground contact on every track;
+    the shipped game plainly works. That was noticed, and answered with "then
+    the contact must live in `0x10067C30`'s unported callees" rather than
+    treated as evidence against. A reading that requires the shipped game to
+    be broken needs *more* evidence than one that does not, and this one had
+    less — one displacement match, taken at face value.
+  - Generalising: **a stack displacement means nothing without the ESP it is
+    relative to.** Before claiming two `[esp+N]` with the same `N` are the same
+    slot, walk every push/pop/`sub esp`/`add esp` between them, and check
+    whether the callees in between are cdecl or stdcall — that decides where
+    the argument cleanup happens, and therefore where esp is.
 - The car's rigid body is built by D3D `0x10062C50` / `0x10063000` with
   IMMEDIATES, not table data: chassis mode 1, dim (3.5, 2.0, 1.5), **mass
   1000**; wheels mode 2, mass 0; chassis gravity force `(0,0,-15450.75)` and a
