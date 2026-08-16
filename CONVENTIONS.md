@@ -191,6 +191,37 @@ present in the original, and aliasing behaviour where the original permits it.
   int32 deep, which pins the lower bound slice3_39.h had flagged as its
   weakest claim. `0x100AB408` is very likely another entry; nothing reads it,
   so it is not in the table.
+- The style pool is **not what gets drawn**, and the table immediately above it
+  is. `0x100AB568` (Glide `0x100AAD08`) is **145 entries of 24 bytes**,
+  `{ int32 image; int32 rect[4]; int32 flags }`, and `0x100AB418 + 21*16 ==
+  0x100AB568` so the two abut exactly. A control's background is
+  `spriteTable[w1E20C]` blitted at `__ftol(x), __ftol(y)` with the entry's own
+  width and height (`0x10047930` -> `0x10058380` -> `0x10001320`, a 16-bit
+  software blit, colour-keyed when the entry's `+0x14` has bit 0). Every entry's
+  rect starts at (0,0), so the "source rect" is always the whole bitmap. The
+  bitmaps are **BMP files on the disc** (`images\...`, loaded by `0x10056260`
+  into the stride-8 table at `0x10AC53E8`), so the port has the geometry and
+  not the pixels. `port/include/br_uispr.h` owns the table;
+  slice3_32.h's `BrScrRectEnt` is the same object typed and left without
+  storage, and slice3_39.c's `g_BrSprRect46` / `g_BrSprRect48` are entries 46
+  and 48 of it.
+- **The menu font is not `br_font.c`'s font.** `br_font.c` recovers the
+  DISPLAY-LIST font out of `.data`; the menus draw text by blitting one sprite
+  per character out of `images\type_gry|wit|mid|yel.bmp` — sprites **2, 3, 4
+  and 0x34** — using the metric tables at `0x100AC6E4` / `0x100ACB5C`.
+  `0x1005B2B0` walks the string, `0x1005B730` maps the text box's kind byte
+  `+0x2B64` (0/1/2/4) onto those four sheets, and `0x1005B7A0` uses sprite 5,
+  `bignums.bmp`, for the large digits. So a **caption's colour is a font sheet,
+  not a tint**, and a selected menu row is recoloured rather than given a
+  background: `0x10048180`'s not-current tail forces the kind byte to 1 and its
+  current arm leaves whatever the screen's `+0x0C` hook set.
+- **A caption has no baseline offset at all.** `0x1005B2B0` hands every glyph
+  the text box's `+0x414` unchanged as the destination top-left, and
+  `0x10047EB0` sets `rcTop = __ftol(ctl->y)` and `rcBottom = rcTop + height`
+  from the measure method. The caption's cell top IS the control's y and its
+  cell height IS the measured height. The x is the box's `+0x410`, which
+  `BrTextBoxCentreX` has already centred in the style rectangle when a2 bit 0
+  is set -- which every menu builder passes.
 - `config/functions.csv` (the **D3D** map) is a good index, **not ground truth**.
   It is still the output of `tools/funcmap.py`, whose extents run "from one
   start to the next". Measured against flow analysis (`tools/funcmap2.py`,
