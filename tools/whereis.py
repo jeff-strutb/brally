@@ -14,9 +14,22 @@ does not get run. This does.
 
 WHAT IT CHECKS, in descending order of confidence:
 
-  1. config/shared.csv -- the paired address, and HOW it was matched. A `body`
-     match is byte-identical after normalisation; a `prefix` match means the two
-     maps disagreed about the extent, not about the function.
+  1. config/shared.csv -- the paired address, its CLASS, and HOW it was
+     matched. Both of the latter matter and this tool spells them out, because
+     `shared` is five different strengths of claim:
+
+       body / prefix          byte-identical after normalisation (prefix means
+                              the two maps disagreed about the EXTENT only)
+       callsite / ptrsite /   an aligned call, an aligned relocated operand, or
+       ptrtable               a dispatch table read in lockstep, in a caller
+                              that was itself already matched
+       shape / strings        a similarity or a literal-set match
+       body-dup:N             byte-identical to N BRGlide functions. The
+                              partner is one of the N and the evidence DOES NOT
+                              SAY WHICH -- 406 C++ EH funclets are identical
+
+     and because a `renderer` row is not shared code at all: it records that a
+     BRGlide function occupies the same slot with a DIFFERENT body.
   2. Both addresses, grepped across port/ -- source, headers and tests.
   3. If neither is paired: a STRING CROSS-REFERENCE. D3D statically links the
      CRT and Glide imports it, so the same function can differ in instruction
@@ -25,6 +38,9 @@ WHAT IT CHECKS, in descending order of confidence:
      amount of hashing fixes it. What does fix it is that both builds reference
      the same string literals, so the strings a function uses identify it across
      builds when its bytes cannot.
+
+     `crossdiff.py` now runs 1 and 3 over the whole binary, so an address that
+     reaches step 3 here is one the automated pass could not settle either.
 
 Usage:  whereis.py 0x1006F310 [0x...]
 """
@@ -57,10 +73,12 @@ def pairings(addr):
         d = int(r['d3d_va'], 16)
         g = int(r['glide_va'], 16) if r['glide_va'] else None
         how = r.get('matched_by', '')
-        if d == addr:
-            out.append((g, 'glide', how, 'read as a D3D address'))
+        cls = r.get('class', '')
+        note = r.get('note', '')
+        if d == addr and g is not None:
+            out.append((g, 'glide', how, 'read as a D3D address', cls, note))
         if g == addr:
-            out.append((d, 'd3d', how, 'read as a GLIDE address'))
+            out.append((d, 'd3d', how, 'read as a GLIDE address', cls, note))
     return out
 
 
@@ -118,16 +136,34 @@ def report(addr):
         print("  AMBIGUOUS -- this number is a valid address in BOTH builds.")
         print("              Both readings are shown; pick the one whose build")
         print("              you actually have in hand.")
-    for paired, side, how, why in ps:
-        print("  paired    0x%08X (%s)   matched by %-6s   [%s]"
-              % (paired if paired else 0, side, how, why))
+    for paired, side, how, why, cls, note in ps:
+        print("  %-9s 0x%08X (%s)   matched by %-14s [%s]"
+              % (cls or 'paired', paired, side, how, why))
         if how == 'prefix':
             print("            ^ prefix match: the two maps disagreed about the")
             print("              EXTENT, not about the function.")
+        elif how.startswith('body-dup'):
+            n = how.split(':')[-1]
+            print("            ^ %s BRGlide functions are byte-identical to this" % n)
+            print("              one. The partner shown is ONE OF THEM and the")
+            print("              evidence does not say which. Do not quote this")
+            print("              address as an identification.")
+        elif cls == 'renderer':
+            print("            ^ NOT shared code. The two builds put DIFFERENT")
+            print("              bodies in this slot -- Direct3D one side, Glide")
+            print("              the other. Read it alongside; never port from it.")
+        elif how in ('callsite', 'ptrsite', 'ptrtable', 'body+callsite',
+                     'body+ptrsite', 'body+ptrtable'):
+            print("            ^ found through an aligned site in a caller that")
+            print("              was itself matched -- the method that survives")
+            print("              the CRT linkage difference. The bytes do NOT")
+            print("              match and are not supposed to.")
+        if note:
+            print("            %s" % note)
     if not ps:
-        print("  paired    (none in shared.csv)")
+        print("  paired    (no counterpart in shared.csv)")
 
-    cands = [(addr, 'this')] + [(p, 'paired/%s' % side) for p, side, _, _ in ps if p]
+    cands = [(addr, 'this')] + [(p, 'paired/%s' % side) for p, side, _, _, _, _ in ps if p]
     for a, label in cands:
         if a is None:
             continue
@@ -139,6 +175,17 @@ def report(addr):
 
     if ps:
         return
+
+    # Not paired. Say what crossdiff.py concluded before falling back.
+    for r in csv.DictReader(open(SHARED)) if os.path.exists(SHARED) else []:
+        if int(r['d3d_va'], 16) != addr:
+            continue
+        print("  class     %s   %s" % (r.get('class', ''), r.get('note', '')))
+        if r.get('class') == 'crt':
+            print("            ^ the statically linked C runtime. BRGlide imports")
+            print("              this from MSVCRT.dll, so there is no BRGlide")
+            print("              function to pair with and nothing to port.")
+        break
 
     # No pairing: try strings. This is the CRT-linkage case.
     d3d_sz = size_of('config/functions.csv', addr)

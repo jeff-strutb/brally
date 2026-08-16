@@ -25,10 +25,52 @@
 #include "br_gfx.h"
 #include "br_gfx3d.h"
 #include "br_dlscene.h"
+#include "br_trkscene.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* ------------------------------------------------------------------ */
+/* Stand-ins for slice2_17.o's other dependencies.                     */
+/*                                                                    */
+/* The track camera needs exactly ONE function from slice2_17.c --     */
+/* BrMat4LookAt, the game's guLookAtF (0x100309A0) -- and linking the  */
+/* object that holds it drags in nineteen cross-slice externs that     */
+/* belong to the car table, the scratch ring and the frame draw, none  */
+/* of which this test can reach.  build.sh's header records that a     */
+/* test supplying its own stand-ins is the intended way out; these are */
+/* the same nineteen test_slice2_17.c already defines, reduced to      */
+/* nothing because nothing here calls them.  If one is ever REACHED    */
+/* the count below is non-zero and the test says so.                   */
+/* ------------------------------------------------------------------ */
+static int g_s17Stub;
+
+void BrStub10008B80(intptr_t a0, ...) { (void)a0; ++g_s17Stub; }
+int  BrX10060E90(void) { ++g_s17Stub; return 0; }
+void BrX100751D0(void *p) { (void)p; ++g_s17Stub; }
+void BrX1002C2C0(void) { ++g_s17Stub; }
+void BrX1003563A(int a0) { (void)a0; ++g_s17Stub; }
+void BrX100397C0(void) { ++g_s17Stub; }
+void BrX1002C500(void) { ++g_s17Stub; }
+void BrX10034C66(void (*pfn)(void)) { (void)pfn; ++g_s17Stub; }
+void BrX10075F10(void *p) { (void)p; ++g_s17Stub; }
+void BrX100664C0(void *p) { (void)p; ++g_s17Stub; }
+void BrX10072580(int a0) { (void)a0; ++g_s17Stub; }
+void BrX10042AF0(void *p, int a1, int a2)
+{ (void)p; (void)a1; (void)a2; ++g_s17Stub; }
+void BrX10035BBA(const char *psz) { (void)psz; ++g_s17Stub; }
+int  BrXAtExit(void (*pfn)(void)) { (void)pfn; ++g_s17Stub; return 0; }
+static unsigned char g_s17Light[64];
+static BrMat4        g_s17Mtx[8];
+void *BrX10069530(void) { ++g_s17Stub; return g_s17Light; }
+void *BrX10069490(void) { ++g_s17Stub; return &g_s17Mtx[0]; }
+int   BrX10005DE0(void *p, unsigned char *a, unsigned char *b, unsigned char *c)
+{ (void)p; *a = *b = *c = 0; ++g_s17Stub; return 0; }
+void  BrX10076AE0(void *p, int a0) { (void)p; (void)a0; ++g_s17Stub; }
+const char *BrX10005E70(void *p) { (void)p; ++g_s17Stub; return ""; }
+void  BrX10068260(int i, uint32_t tag) { (void)i; (void)tag; ++g_s17Stub; }
 
 static int g_fail;
 
@@ -140,10 +182,27 @@ static void sheet_add(const uint8_t *pRgba, uint32_t w, uint32_t h)
     g_sheetX += w + 2;
 }
 
-static uint32_t geo_upload_textures(BrGfx *gfx, const BrDlScene *pScene,
-                                    uint32_t *pcUnsupported)
+/* Where the texel and palette addresses in a BrTex3dRec resolve to.  A
+ * function pointer because the two scene types answer the same question
+ * about two different images -- a .rca at N64 0x803C8000 and a .TRK at N64
+ * 0x80025C00 -- and the decode either side of it is identical. */
+typedef const uint8_t *(*resolve_fn)(const void *pUser, uint32_t addr,
+                                     size_t *pcb);
+
+static const uint8_t *rca_resolve(const void *pUser, uint32_t addr, size_t *pcb)
 {
-    const BrTex3d *pT = &pScene->tex;
+    return BrDlSceneResolve((const BrDlScene *)pUser, addr, pcb);
+}
+
+static const uint8_t *trk_resolve(const void *pUser, uint32_t addr, size_t *pcb)
+{
+    return BrTrkSceneResolve((const BrTrkScene *)pUser, addr, pcb);
+}
+
+static uint32_t upload_textures(BrGfx *gfx, const BrTex3d *pT,
+                                resolve_fn pfnResolve, const void *pUser,
+                                int fPerTexture, uint32_t *pcUnsupported)
+{
     uint32_t i, cMapped = 0, cBad = 0;
     static const char *aszRc[] =
         { "ok", "bad id", "format not transcribed", "source unresolved",
@@ -158,9 +217,9 @@ static uint32_t geo_upload_textures(BrGfx *gfx, const BrDlScene *pScene,
     for (i = 0; i < pT->cRec; i++) {
         const BrTex3dRec *pR = &pT->aRec[i];
         size_t cbTex = 0, cbPal = 0, cTexels;
-        const uint8_t *pTexels = BrDlSceneResolve(pScene, pR->texelSrc, &cbTex);
+        const uint8_t *pTexels = pfnResolve(pUser, pR->texelSrc, &cbTex);
         const uint8_t *pPal = (pR->palSrc != 0)
-            ? BrDlSceneResolve(pScene, pR->palSrc, &cbPal) : NULL;
+            ? pfnResolve(pUser, pR->palSrc, &cbPal) : NULL;
         uint16_t *pRaw;
         uint8_t  *pRgba;
         int rc;
@@ -171,12 +230,17 @@ static uint32_t geo_upload_textures(BrGfx *gfx, const BrDlScene *pScene,
         if (pRaw == NULL || pRgba == NULL) { free(pRaw); free(pRgba); break; }
 
         rc = BrTex3dDecode(pT, i, pTexels, cbTex, pPal, cbPal, pRaw);
-        printf("      [%2u] %3dx%-3d fmt=%d siz=%d tlut=%s line=%d "
-               "clamp=%d,%d texels=%08X pal=%08X -> %s\n",
-               i, pR->w, pR->h, pR->tile.fmt, pR->tile.siz,
-               pR->palSrc ? "yes" : "no", pR->tile.line,
-               pR->clampS, pR->clampT, pR->texelSrc, pR->palSrc,
-               aszRc[(rc >= 0 && rc <= 4) ? rc : 1]);
+        /* A track has hundreds of records, so the per-texture dump is off
+         * there -- but the ones that did NOT decode are the interesting
+         * ones, and they are the pixels that come out flat white, so they
+         * always get a line. */
+        if (fPerTexture || rc != BR_TEX3D_OK)
+            printf("      [%2u] %3dx%-3d fmt=%d siz=%d tlut=%s line=%d "
+                   "clamp=%d,%d texels=%08X pal=%08X -> %s\n",
+                   i, pR->w, pR->h, pR->tile.fmt, pR->tile.siz,
+                   pR->palSrc ? "yes" : "no", pR->tile.line,
+                   pR->clampS, pR->clampT, pR->texelSrc, pR->palSrc,
+                   aszRc[(rc >= 0 && rc <= 4) ? rc : 1]);
 
         if (rc == BR_TEX3D_OK) {
             BrTexture h;
@@ -200,26 +264,46 @@ static uint32_t geo_upload_textures(BrGfx *gfx, const BrDlScene *pScene,
     return cMapped;
 }
 
-static void thumb(const char *pszWhat, const uint8_t *pRgba)
+/* A 64x24 coverage thumbnail.  `mode` 0 = alpha (is anything there),
+ * 1 = luminance ramp (what shape is it), because a track fills the frame and
+ * a pure coverage map of a full frame is a solid block of '#'. */
+static void thumb_wh(const char *pszWhat, const uint8_t *pRgba,
+                     int w, int h, int mode)
 {
+    static const char kRamp[] = " .:-=+*#%@";
     int ty, tx;
     printf("    %s\n", pszWhat);
     for (ty = 0; ty < 24; ty++) {
         char row[65];
         for (tx = 0; tx < 64; tx++) {
-            int sy = ty * (GEO_H / 24), sx = tx * (GEO_W / 64), k, l, lit = 0;
-            for (k = 0; k < GEO_H / 24 && !lit; k++)
-                for (l = 0; l < GEO_W / 64 && !lit; l++) {
+            int sy = ty * (h / 24), sx = tx * (w / 64), k, l;
+            int lit = 0; long sum = 0, n = 0;
+            for (k = 0; k < h / 24; k++)
+                for (l = 0; l < w / 64; l++) {
                     int px = sx + l, py = sy + k;
-                    if (px < GEO_W && py < GEO_H &&
-                        pRgba[((size_t)py * GEO_W + (size_t)px) * 4 + 3] > 127)
-                        lit = 1;
+                    const uint8_t *p;
+                    if (px >= w || py >= h)
+                        continue;
+                    p = pRgba + ((size_t)py * (size_t)w + (size_t)px) * 4;
+                    if (p[3] > 127) lit = 1;
+                    sum += (long)p[0] + p[1] + p[2];
+                    n += 3;
                 }
-            row[tx] = (char)(lit ? '#' : '.');
+            if (mode == 0)
+                row[tx] = (char)(lit ? '#' : '.');
+            else {
+                int v = n ? (int)(sum / n) : 0;
+                row[tx] = kRamp[(v * 9) / 255];
+            }
         }
         row[64] = '\0';
         printf("    %s\n", row);
     }
+}
+
+static void thumb(const char *pszWhat, const uint8_t *pRgba)
+{
+    thumb_wh(pszWhat, pRgba, GEO_W, GEO_H, 0);
 }
 
 static void test_geometry(const char *pszRca)
@@ -339,7 +423,8 @@ static void test_geometry(const char *pszRca)
      * The only thing that changes here is which pixels the fragment shader
      * samples: the geometry, the state machine and the batching are the
      * same walk of the same list. */
-    cMapped = geo_upload_textures(gfx, &scene, &cUnsupported);
+    cMapped = upload_textures(gfx, &scene.tex, rca_resolve, &scene, 1,
+                              &cUnsupported);
     geo_setup(&st, &scene);
     BrGfx3dAttach(gfx, &st);
     BrGfx3dSetDepthTest(gfx, 1);
@@ -464,6 +549,205 @@ static void test_geometry(const char *pszRca)
     free(pSoft); free(pHard); free(pDepth); free(pTexd);
     BrGfxDestroy(gfx);
     BrDlSceneFree(&scene);
+}
+
+/* ------------------------------------------------------------------ */
+/* Part 2b: a TRACK                                                   */
+/*                                                                    */
+/* Everything above renders a .rca -- a car -- through a view matrix   */
+/* br_dlscene.h openly calls scaffolding, because a .rca carries no    */
+/* transform and the container index has never been found.  A .TRK is  */
+/* the other case entirely: the file says where its display lists are, */
+/* each list comes with an instance matrix, and the CAMERA that turns  */
+/* those into a frame is a real function in the binary.  br_trkscene.h */
+/* records where all three come from and, just as important, which     */
+/* parts of the pose are still the harness's choice.                   */
+/*                                                                    */
+/* 640x480 and not 640x640: the fovy expression BrCamMatrixSetup uses  */
+/* carries a (4/3)*(h/w) factor that is exactly 1 at 4:3, and 4:3 is   */
+/* what BrViewportSetFull's 640/480 at 0x100A81C0/C4 says the game     */
+/* renders at.  Rendering the game's camera at a made-up aspect ratio  */
+/* would put a number in the picture that is nobody's.                 */
+/* ------------------------------------------------------------------ */
+
+#define TRK_W 640
+#define TRK_H 480
+
+static void trk_setup(BrDl *pDl, const BrTrkScene *pScene, BrTrkPose *pPose)
+{
+    BrDlInit(pDl, TRK_W, TRK_H);
+    BrTrkSceneBind(pScene, pDl);
+    BrTrkSceneSetState(pDl);
+    /* HARNESS, and labelled as such at the definition: how far behind the
+     * start line, how high above it, how far to pitch down, and the fov in
+     * radians.  The fov FIELD is the game's (BrCamMatrixSetup's a2, pushed
+     * from pCam+0x40 at 0x10014C90); this VALUE is not.  0.9 rad is 51.6
+     * degrees vertical at 4:3. */
+    BrTrkSceneStartPose(pScene, pPose,
+                        geo_env("BR_TRK_BACK", 12.0f),
+                        geo_env("BR_TRK_UP", 4.0f),
+                        geo_env("BR_TRK_PITCH", 6.0f),
+                        geo_env("BR_TRK_FOV", 0.9f));
+    BrTrkSceneCamera(pDl, pPose, TRK_W, TRK_H);
+}
+
+static void test_track(const char *pszTrk)
+{
+    BrTrkScene scene;
+    BrTrkPose  pose;
+    BrDl st;
+    BrDlRaster ras;
+    BrGfx *gfx;
+    uint8_t *pSoft, *pHard, *pTexd;
+    uint32_t softTri, softClipOut, i, both = 0, either = 0;
+    uint32_t cMapped = 0, cUnsupported = 0;
+    double diff = 0.0;
+    const BrGfx3dStats *pStats;
+
+    printf("track: %s\n", pszTrk);
+    if (BrTrkSceneLoad(&scene, pszTrk) != 0) {
+        check(0, "BrTrkSceneLoad");
+        return;
+    }
+    printf("    instances=%u lists=%u draws=%u commands=%u verts=%u bad=%u\n",
+           BrTrackInstanceCount(&scene.track), scene.cLists, scene.cDraw,
+           scene.cCommands, scene.cVerts, scene.cListsBad);
+    printf("    collision-mesh bounds [%.0f %.0f %.0f]..[%.0f %.0f %.0f]\n",
+           scene.bbMin.x, scene.bbMin.y, scene.bbMin.z,
+           scene.bbMax.x, scene.bbMax.y, scene.bbMax.z);
+    check(scene.cLists > 1, "more than one display list found "
+                            "(the +0x50 root and the instance array)");
+    check(scene.fEndOk, "every display-list run terminates at G_ENDDL");
+    check(scene.cListsBad == 0, "every list pointer resolved inside the image");
+
+    pSoft = (uint8_t *)calloc((size_t)TRK_W * TRK_H * 4, 1);
+    pHard = (uint8_t *)calloc((size_t)TRK_W * TRK_H * 4, 1);
+    pTexd = (uint8_t *)calloc((size_t)TRK_W * TRK_H * 4, 1);
+    if (pSoft == NULL || pHard == NULL || pTexd == NULL) {
+        check(0, "alloc");
+        free(pSoft); free(pHard); free(pTexd);
+        BrTrkSceneFree(&scene);
+        return;
+    }
+
+    /* --- 1. br_dl.c's reference rasteriser ------------------------- */
+    trk_setup(&st, &scene, &pose);
+    printf("    camera: eye (%.1f %.1f %.1f) fwd (%.3f %.3f %.3f) up (0 0 1)"
+           " fov %.3f rad, near 0.8, far %.0f\n",
+           pose.eye.x, pose.eye.y, pose.eye.z,
+           pose.fwd.x, pose.fwd.y, pose.fwd.z, pose.fovRad, pose.farClip);
+    ras.pRgba = pSoft; ras.cx = TRK_W; ras.cy = TRK_H; ras.cCovered = 0;
+    BrDlAttachRaster(&st, &ras);
+    BrTrkSceneRun(&scene, &st, &pose);
+    softTri = st.cTriDrawn;
+    softClipOut = st.cTriClipOut;
+    printf("    software: in=%u drawn=%u rejected=%u clipped=%u->%u px=%u"
+           "  lit=%u (ambient-only %u)\n",
+           st.cTriIn, st.cTriDrawn, st.cTriRejected, st.cTriClipped,
+           st.cTriClipOut, ras.cCovered, st.cVtxLit, st.cVtxLitAmbient);
+    check(st.cTriIn == st.cTriDrawn + st.cTriRejected + st.cTriClipped,
+          "every triangle drawn, rejected or clipped -- none lost");
+    check(st.cVtxLit > 0,
+          "the LIGHTING geometry-mode bit selected a lighting transform");
+
+    gfx = BrGfxCreate(TRK_W, TRK_H);
+    if (gfx == NULL) {
+        printf("  [FAIL] BrGfxCreate: %s\n", BrGfxLastError());
+        g_fail = 1;
+        free(pSoft); free(pHard); free(pTexd);
+        BrTrkSceneFree(&scene);
+        return;
+    }
+    BrGfx3dInit(gfx);
+
+    /* --- 2. Metal, depth test off, to match the software path ------ */
+    trk_setup(&st, &scene, &pose);
+    BrGfx3dAttach(gfx, &st);
+    BrGfx3dSetDepthTest(gfx, 0);
+    BrGfx3dBeginFrame(gfx, 0.0f, 0.0f, 0.0f, 0.0f);
+    BrTrkSceneRun(&scene, &st, &pose);
+    BrGfx3dEndFrame(gfx);
+    check(BrGfxReadPixels(gfx, pHard) == 0, "BrGfxReadPixels (Metal track)");
+    pStats = BrGfx3dGetStats(gfx);
+    printf("    metal:    tri=%u verts=%u draws=%u statechanges=%u binds=%u\n",
+           pStats->cTri, pStats->cVerts, pStats->cDraws,
+           pStats->cStateChanges, pStats->cBinds);
+    /* The two counters are not the same quantity and a track is the first
+     * asset where the difference shows: br_dl.h defines cTriDrawn as
+     * triangles that went to the sink WHOLE, with the ones the clipper cut up
+     * counted separately in cTriClipOut.  A .rca framed to fit clips nothing,
+     * so the two happened to be equal in part 2; a track fills the frame and
+     * clips against every plane.  What must hold is that the sink saw the
+     * same total both times. */
+    check(pStats->cTri == softTri + softClipOut,
+          "Metal and software received the same triangle count "
+          "(whole + clipper output)");
+
+    /* --- 3. the honest render: z-buffer on, textures bound --------- */
+    cMapped = upload_textures(gfx, &scene.tex, trk_resolve, &scene, 0,
+                              &cUnsupported);
+    trk_setup(&st, &scene, &pose);
+    BrGfx3dAttach(gfx, &st);
+    BrGfx3dSetDepthTest(gfx, 1);
+    BrGfx3dBeginFrame(gfx, 0.0f, 0.0f, 0.0f, 0.0f);
+    BrTrkSceneRun(&scene, &st, &pose);
+    BrGfx3dEndFrame(gfx);
+    BrGfxReadPixels(gfx, pTexd);
+    printf("    textures: %u of %u decoded and mapped (%u unsupported)\n",
+           cMapped, scene.tex.cRec, cUnsupported);
+
+    /* --- 4. compare ------------------------------------------------ */
+    for (i = 0; i < (uint32_t)(TRK_W * TRK_H); i++) {
+        int s = pSoft[i * 4 + 3] > 127, h = pHard[i * 4 + 3] > 127;
+        if (s && h) {
+            int k;
+            both++;
+            for (k = 0; k < 3; k++)
+                diff += (double)abs((int)pSoft[i * 4 + k] -
+                                    (int)pHard[i * 4 + k]);
+        }
+        if (s || h) either++;
+    }
+    printf("    silhouette: union=%u intersection=%u IoU=%.4f  "
+           "mean |RGB| difference %.3f / 255\n",
+           either, both, either ? (double)both / (double)either : 0.0,
+           both ? diff / (both * 3.0) : 0.0);
+
+    thumb_wh("software (br_dl.c reference rasteriser, no z)", pSoft,
+             TRK_W, TRK_H, 0);
+    thumb_wh("Metal (z-buffer on, textured) -- luminance", pTexd,
+             TRK_W, TRK_H, 1);
+
+    check(softTri > 100, "the track produced a substantial triangle count");
+    check(either > (uint32_t)(TRK_W * TRK_H) / 20,
+          "the track covers a substantial area of the frame");
+    check(either > 0 && (double)both / (double)either > 0.95,
+          "silhouettes agree (IoU > 0.95)");
+    /* Both renders here are UNTEXTURED -- the Metal one runs before the
+     * textures are uploaded, so an unmapped handle samples a 1x1 white texel
+     * and what is left is the iterated colour alone.  That makes the whole
+     * lighting chain comparable between the two rasterisers, which is the
+     * one thing a picture cannot check by itself: 8008 lit vertices, two
+     * independent interpolators, one colour convention. */
+    check(both > 0 && diff / (both * 3.0) < 8.0,
+          "lit interior colours agree to within 8/255 on average");
+
+    {
+        char szOut[256];
+        const char *pszTag = strrchr(pszTrk, '/');
+        pszTag = pszTag ? pszTag + 1 : pszTrk;
+        snprintf(szOut, sizeof(szOut), "build/trk_%.6s_soft.ppm", pszTag);
+        write_ppm(szOut, pSoft, TRK_W, TRK_H);
+        snprintf(szOut, sizeof(szOut), "build/trk_%.6s_metal.ppm", pszTag);
+        write_ppm(szOut, pHard, TRK_W, TRK_H);
+        snprintf(szOut, sizeof(szOut), "build/trk_%.6s_metal_tex.ppm", pszTag);
+        write_ppm(szOut, pTexd, TRK_W, TRK_H);
+        printf("    -> build/trk_%.6s_{soft,metal,metal_tex}.ppm\n", pszTag);
+    }
+
+    free(pSoft); free(pHard); free(pTexd);
+    BrGfxDestroy(gfx);
+    BrTrkSceneFree(&scene);
 }
 
 /* ------------------------------------------------------------------ */
@@ -676,6 +960,18 @@ int main(int argc, char **argv)
             /* A second retail model, because one asset cannot show which
              * part of the state model the DATA actually uses. */
             test_geometry("testdata/bb.rca");
+        }
+    }
+
+    {
+        FILE *probe = fopen("testdata/tracks/race.trk", "rb");
+        if (probe == NULL) {
+            printf("  (testdata/tracks/race.trk absent -- track section"
+                   " skipped)\n");
+        } else {
+            fclose(probe);
+            test_track("testdata/tracks/race.trk");
+            test_track("testdata/tracks/desert.trk");
         }
     }
 

@@ -20,8 +20,19 @@
 /* ================================================================== */
 
 float g_BrK08F514 = 2.0f;          /* DERIVED   */
-float g_BrK08F518 = 1.0f;          /* ASSUMED   */
-float g_BrK08F51C = 1.0f;          /* ASSUMED   */
+/* MEASURED, not assumed any more.  Both constants were read straight out of
+ * the two images' .rdata: BRD3D.dll 0x1008F518 / 0x1008F51C and BRGlide.dll
+ * 0x100774E0 / 0x100774E4 (the same two floats the Glide twin 0x1002D5CF /
+ * 0x1002D5DD multiplies by) hold the byte patterns ABAAAA3F and E02E6542,
+ * i.e. 1.3333334f and 57.2957764f -- 4/3 and 180/pi.  BrCamMatrixSetup's
+ * fovy line is therefore
+ *      fovy_degrees = a2 * (4/3) * (a5/a4) * (180/pi)
+ * with a2 in RADIANS; at a 4:3 viewport the middle two factors cancel.  With
+ * the assumed 1.0f pair the field of view came out around 0.75 DEGREES, so
+ * this was not a cosmetic gap: nothing rendered through this camera could
+ * have looked right. */
+float g_BrK08F518 = 1.3333333730697632f;   /* MEASURED  4/3    */
+float g_BrK08F51C = 57.2957763671875f;     /* MEASURED  180/pi */
 float g_BrK08F520 = 2.5f;          /* ASSUMED   */
 float g_BrK08F524 = 5.0f;          /* ASSUMED   */
 float g_BrK08F52C = 4096.0f;       /* DERIVED   */

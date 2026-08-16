@@ -129,7 +129,43 @@ typedef struct BrDriverCar {
                              *         order, which 0x1005FF00 overwrites
                              *         it with at the flag                */
     float   f29B0;          /* +0x29B0 set to 0.9f at the flag            */
+
+    /* ---- EXTENDED AGAIN, by br_racestep.h's pass ------------------------
+     * Same rule as the extension above, and for the same reason: 0x10061F60
+     * and 0x100623E0 read and write these on the SAME 0x2B68 record the two
+     * blocks above model, so a rival struct would be a second view of one
+     * original object.  Every one carries its original offset.
+     *
+     * +0x29C0 is a POINTER to a control block in the original; only its
+     * first dword, its +0x20 and its +0x24 are ever touched from these two
+     * functions, so the three are members here rather than a block. */
+    int32_t f140;           /* +0x140   compared against the entrant count
+                             *          before the difficulty lookup       */
+    int32_t fE70;           /* +0xE70   zeroed either side of the
+                             *          controller call on the frozen arm  */
+    int32_t fF00;           /* +0xF00   non-zero == this car body is live; the
+                             *          phantom arm tests the car it borrows */
+    int32_t fF04;           /* +0xF04   a frame countdown 0x100623E0 bleeds */
+    int32_t fF78;           /* +0xF78   zeroed once a frame by 0x10061430,
+                             *          whose eleven bytes are that store   */
+    void  (*pfnControl)(struct BrDriverCar *);  /* +0xF08 the controller;
+                             *          0x1005D050 for a human slot,
+                             *          0x1005E690 for an AI one           */
+    BrVec3  f1024;          /* +0x1024  world velocity, (pos - posPrev)/dt */
+    float   f1030;          /* +0x1030  speed                              */
+    float   f1034;          /* +0x1034  distance run, f1030 * dt integrated*/
+    uint8_t b29AF;          /* +0x29AF  the finish / recovery state byte   */
+    uint32_t f29C0Ctl;      /* +0x29C0 -> +0x00, the control bit word      */
+    float   f29C0Steer;     /* +0x29C0 -> +0x20, the steering command      */
+    uint8_t b29C024;        /* +0x29C0 -> +0x24                            */
+    uint8_t b360;           /* +0x360   the skid-trail sample count        */
 } BrDriverCar;
+
+/* The three bits of car+0x29C0's first dword that 0x10061F60 writes.  br_ai.h
+ * names the same word's 0x10000 / 0x20000 / 0x40000 from the controller's
+ * side; these are the two spellings 0x10061F60 uses. */
+#define BR_DRIVERCAR_CTL_BRAKE  0x00040000u   /* 0x10062035, frozen arm    */
+#define BR_DRIVERCAR_CTL_FIN    0x000C0000u   /* 0x100620B9, finished arm  */
 
 #define BR_DRIVER_SKIP  2u      /* +0x68 bit 1: slot takes no rank        */
 
