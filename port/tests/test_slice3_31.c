@@ -56,26 +56,36 @@ static int g_cF00;              /* slot +0x00 invocations */
 static int g_cF1C;              /* slot +0x1C invocations */
 static int g_nLastF00Arg;
 
-static void StubPhaseF00(BrPhase *pThis, int32_t a)
+/* Slot +0x00 returns `this` -- 0x10048850 is the scalar deleting destructor
+ * and ends `mov eax,esi / ret 4`. This range discards the result. */
+static void *StubPhaseF00(BrPhase *pThis, int32_t a)
 {
-    (void)pThis;
     g_cF00++;
     g_nLastF00Arg = a;
+    return pThis;
 }
 
 static void StubPhaseF1C(BrPhase *pThis) { (void)pThis; g_cF1C++; }
 
-static const BrPhaseVtblExt g_PhaseVtbl = {
-    { StubPhaseF00 },
-    { NULL, NULL, NULL, NULL, NULL, NULL },
-    StubPhaseF1C
+/* The real nine-slot table (br_phase.h BrPhaseVtbl_). This test only drives
+ * slots +0x00 and +0x1C; the rest stay NULL so that a stray call through any
+ * of them faults here rather than reading whatever followed the old
+ * BrPhaseVtblExt overlay. */
+static const BrPhaseVtbl g_PhaseVtbl = {
+    StubPhaseF00,           /* +0x00 */
+    NULL, NULL, NULL,       /* +0x04 +0x08 +0x0C */
+    NULL,                   /* +0x10 */
+    NULL,                   /* +0x14 */
+    NULL,                   /* +0x18 */
+    StubPhaseF1C,           /* +0x1C */
+    NULL                    /* +0x20 */
 };
 
 BrPhase *BrPhaseCtor(BrPhase *pThis)
 {
-    pThis->pVtbl = &g_PhaseVtbl.base;
-    pThis->pfn04 = NULL;
-    pThis->pfn08 = NULL;
+    pThis->pVtbl = &g_PhaseVtbl;
+    pThis->pfnEnter = NULL;
+    pThis->pfnHook = NULL;
     pThis->f0C   = 0;
     pThis->f68   = 0;
     return pThis;
@@ -445,10 +455,10 @@ static void test_activate_10046260_epilogue(void)
     CHECK(g_Ext.b680738 == 0xFF);
     CHECK(g_Ext.nAD0984 == 1);
     CHECK(g_c8B80 == 1 && g_c3DFC0 == 1 && g_c3E510 == 1);
-    CHECK(g_Ext.pAA29AC->pfn08 != NULL);
+    CHECK(g_Ext.pAA29AC->pfnHook != NULL);
 
     /* The thunk really is slice2_26's 0x10044CB0. */
-    g_Ext.pAA29AC->pfn08(ObjReset());
+    g_Ext.pAA29AC->pfnHook(ObjReset());
     CHECK(g_c44CB0 == 1);
 
     /* Second call: already built, so no epilogue. */
@@ -469,14 +479,14 @@ static void test_hook_installers(void)
     g_Ext.pAA29C8 = MakePhase();
     CHECK(BrPhaseHook_10045780(NULL) == 1);
     CHECK(g_c451E0 == 1);                                /* the even family */
-    CHECK(g_Ext.pAA29C8->pfn08 == BrPhaseLeave_10046750);
+    CHECK(g_Ext.pAA29C8->pfnHook == BrPhaseLeave_10046750);
     free(g_Ext.pAA29C8);
 
     ResetAll();
     g_Base.pAA29F4 = MakePhase();
     CHECK(BrPhaseHook_100457A0(NULL) == 1);
     CHECK(g_Ext.pAA2928 != NULL);                        /* the odd family  */
-    CHECK(g_Base.pAA29F4->pfn08 == BrPhaseLeaveNamed_10046790);
+    CHECK(g_Base.pAA29F4->pfnHook == BrPhaseLeaveNamed_10046790);
     free(g_Base.pAA29F4);
 
     /* 0x10046380 is the twin of slice2_26's 0x10045050 but finishes with
@@ -487,7 +497,7 @@ static void test_hook_installers(void)
     CHECK(g_c45110 == 1);
     CHECK(g_Base.n0AC304 == 1);
     CHECK(g_Base.n0AA010 == 2);
-    CHECK(g_Base.pAA29B4->pfn08 == BrPhaseLeave_10046D20);
+    CHECK(g_Base.pAA29B4->pfnHook == BrPhaseLeave_10046D20);
     free(g_Base.pAA29B4);
 }
 

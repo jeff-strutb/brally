@@ -24,7 +24,7 @@
  *
  *  4. RETURN VALUES.  Five addresses here were pre-declared by slice2_25.h /
  *     slice2_26.h with `void` returns, and all the LEAVE routines are
- *     declared void so they can be stored in BrPhase.pfn08. Each such
+ *     declared void so they can be stored in BrPhase.pfnHook. Each such
  *     original returns a constant (0, or 1 for 0x10047360's several exits)
  *     that no caller in the packet reads.
  *
@@ -120,8 +120,8 @@ static int Br31Activate(BrPhase **ppSlot, BrPhaseEnterFn pfnEnter, int *pfBuilt)
     if (p == NULL)
         return 0;                   /* note: 0, not 1 */
 
-    p->pfn04 = pfnEnter;
-    (*ppSlot)->pfn04(*ppSlot);              /* re-read of the slot          */
+    p->pfnEnter = pfnEnter;
+    (*ppSlot)->pfnEnter(*ppSlot);              /* re-read of the slot          */
     g_pBase->pAA2904->f0C = 1;              /* re-read of the current phase */
     g_pBase->pAA2904->f68 = 1;              /* and re-read again            */
 
@@ -139,8 +139,8 @@ static int Br31ActivateSecond(BrPhase **ppSlot, BrPhaseEnterFn pfnEnter)
     if (p == NULL)
         return 0;
 
-    p->pfn04 = pfnEnter;
-    (*ppSlot)->pfn04(*ppSlot);      /* re-read */
+    p->pfnEnter = pfnEnter;
+    (*ppSlot)->pfnEnter(*ppSlot);      /* re-read */
     (*ppSlot)->f0C = 1;             /* re-read */
     return 1;
 }
@@ -195,8 +195,10 @@ static void Br31DestroyPhase(BrPhase **ppSlot)
     BrPhase *p = *ppSlot;
 
     if (p != NULL) {
-        const BrPhaseVtblExt *pv = (const BrPhaseVtblExt *)p->pVtbl;
-        pv->f1C(p);
+        /* Slot +0x1C == 0x10048AA0. This used to go through a BrPhaseVtblExt
+         * cast because slice2_26.h's BrPhaseVtbl had only slot +0x00; the
+         * merged BrPhaseVtbl_ has all nine, so the cast is gone. */
+        p->pVtbl->f1C(p);
         *ppSlot = NULL;
     }
 }
@@ -212,7 +214,7 @@ static void Br31NotifyAndClear(BrPhase **ppSlot)
 }
 
 /* DEVIATION 3: slice2_26's 0x10044CB0 wants a context as its first argument;
- * BrPhase.pfn08 can only pass one void*. */
+ * BrPhase.pfnHook can only pass one void*. */
 static void Br31Thunk_10044CB0(void *pEntity)
 {
     (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
@@ -227,7 +229,7 @@ static void Br31Thunk_10044CB0(void *pEntity)
     {                                                             \
         (void)BrPhaseActivate_100451E0(g_pBase);   /* ignores pArg */ \
         (void)pArg;                                               \
-        g_pExt->pAA29C8->pfn08 = (leave);                         \
+        g_pExt->pAA29C8->pfnHook = (leave);                         \
         return 1;                                                 \
     }
 
@@ -236,7 +238,7 @@ static void Br31Thunk_10044CB0(void *pEntity)
     {                                                             \
         (void)BrPhaseActivate_10045BC0();          /* ignores pArg */ \
         (void)pArg;                                               \
-        g_pBase->pAA29F4->pfn08 = (leave);                        \
+        g_pBase->pAA29F4->pfnHook = (leave);                        \
         return 1;                                                 \
     }
 
@@ -279,7 +281,7 @@ int BrPhaseHook_10045AA0(void *pArg)
     BrExt_1003E680();
     g_pExt->nACED34 = 0;
     BrExt_10045C90(pArg);
-    g_pBase->pAA29B0->pfn08 = BrPhaseLeave_10046D70;
+    g_pBase->pAA29B0->pfnHook = BrPhaseLeave_10046D70;
     g_pBase->n0AA010 = 0;
     BrExt_1003E510();
     return 1;
@@ -392,7 +394,7 @@ int BrPhaseActivate_10046260(void)
     BrExt_10008B80();               /* a bare `ret` in this build */
     BrExt_1003DFC0();
     BrExt_1003E510();
-    g_pExt->pAA29AC->pfn08 = Br31Thunk_10044CB0;   /* 0x10044CB0 */
+    g_pExt->pAA29AC->pfnHook = Br31Thunk_10044CB0;   /* 0x10044CB0 */
     return 1;
 }
 
@@ -403,7 +405,7 @@ int BrPhaseHook_10046380(void *pArg)
     (void)BrPhaseActivate_10045110(g_pBase);    /* ignores pArg */
     (void)pArg;
     g_pBase->n0AC304 = 1;
-    g_pBase->pAA29B4->pfn08 = BrPhaseLeave_10046D20;
+    g_pBase->pAA29B4->pfnHook = BrPhaseLeave_10046D20;
     g_pBase->n0AA010 = 2;
     return 1;
 }

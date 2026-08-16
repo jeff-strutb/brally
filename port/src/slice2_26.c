@@ -93,12 +93,12 @@ static BrActResult BrPhaseActivateSlot(BrPhaseCtx     *pCtx,
     if (p == NULL)
         return BR_ACT_FAILED;
 
-    p->pfn04 = pfnEnter;
+    p->pfnEnter = pfnEnter;
 
     /* The original re-reads the slot global here and calls through that,
      * rather than through the register holding the new object. */
     p = *ppSlot;
-    p->pfn04(p);
+    p->pfnEnter(p);
 
     /* ...and re-reads the current-phase global once per store. If the enter
      * hook re-pointed it, these two flags land on the hook's phase. */
@@ -464,7 +464,7 @@ int BrPhaseHook_10045050(BrPhaseCtx *pCtx, void *pArg)
 
     /* pAA29B4 is read after the activation, so an activation that changes it
      * is what gets hooked. */
-    pCtx->pAA29B4->pfn08 = BrExt_10046CD0;
+    pCtx->pAA29B4->pfnHook = BrExt_10046CD0;
     pCtx->n0AA010 = 0;
     return 1;
 }
@@ -473,7 +473,7 @@ int BrPhaseHook_10045090(BrPhaseCtx *pCtx, void *pArg)
 {
     BrExt_10045C90(pArg);
 
-    pCtx->pAA29B0->pfn08 = BrExt_10046DC0;
+    pCtx->pAA29B0->pfnHook = BrExt_10046DC0;
     pCtx->n0AA010 = 0;
     return 1;
 }
@@ -483,14 +483,14 @@ int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
     BrExt_10041BD0();
     BrExt_10045C90(pArg);
 
-    pCtx->pAA29B0->pfn08 = BrExt_10046DC0;
+    pCtx->pAA29B0->pfnHook = BrExt_10046DC0;
     pCtx->n0AA010 = 0;
     return 1;
 }
 
 int BrPhaseDispatch_100450F0(BrPhaseCtx *pCtx, void *pArg)
 {
-    pCtx->pAA29F4->pfn08(pArg);
+    pCtx->pAA29F4->pfnHook(pArg);
     pCtx->n0AA010 = 0;
     return 0;   /* GOTCHA: 0, unlike its three neighbours */
 }
