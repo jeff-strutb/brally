@@ -37,8 +37,6 @@ BrCarPhysHooks g_brCarPhysHooks;
 uint32_t       g_aBrCarPhysHole[BR_CP_HOLE_COUNT];
 
 static const char *const g_aBrCarPhysHoleName[BR_CP_HOLE_COUNT] = {
-    "0x100651A0 tyre force  (1355 B)",
-    "0x100645A0 drivetrain  (3070 B)",
     "0x10067C30 collision   (5 callees, 5196 B)"
 };
 
@@ -320,6 +318,656 @@ void BrCarPhysDrag(const BrRbBodyFull *pBody, const BrGroundHit aHit[4],
 }
 
 /* ==================================================================== */
+/* 0x100651A0 -- the per-wheel tyre pass                                 */
+/*                                                                       */
+/* See br_carphys.h for what this is and, more importantly, for what it   */
+/* is NOT: there is no slip angle, no lateral force and no load transfer  */
+/* anywhere in these 1355 bytes.                                         */
+/* ==================================================================== */
+
+/* Every `fabs` in 0x100651A0 is spelled as `fcom 0` + `test ah,1` + a
+ * conditional `fchs`, i.e. the sign is flipped for LESS OR UNORDERED.  So a
+ * NaN comes back NEGATED, not absolute.  fabsf() clears the sign bit and is
+ * therefore the wrong function here. */
+static float BrCpAbsX87(float v)
+{
+    if (!(v >= 0.0f)) {
+        return -v;
+    }
+    return v;
+}
+
+/* 0x100B4F30 and 0x100B5050, 288 bytes each, read out of BRGlide.dll.
+ * [24*compound + 8*weather + surface]. */
+const float g_aBrCarPhysGripA[BR_CP_GRIP_FLOATS] = {
+    /* compound 0 */
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    /* compound 1 */
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    /* compound 2 */
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f,
+    0.899999976f, 0.899999976f, 0.899999976f, 0.899999976f
+};
+
+const float g_aBrCarPhysGripB[BR_CP_GRIP_FLOATS] = {
+    /* compound 0 */
+    0.649999976f, 0.649999976f, 0.649999976f, 0.850000024f,
+    0.649999976f, 0.649999976f, 0.649999976f, 0.649999976f,
+    0.649999976f, 0.649999976f, 0.649999976f, 0.850000024f,
+    0.649999976f, 0.649999976f, 0.649999976f, 0.649999976f,
+    0.550000012f, 0.550000012f, 0.550000012f, 0.550000012f,
+    0.550000012f, 0.550000012f, 0.550000012f, 0.550000012f,
+    /* compound 1 */
+    0.600000024f, 0.600000024f, 0.600000024f, 0.899999976f,
+    0.600000024f, 0.600000024f, 0.600000024f, 0.600000024f,
+    0.600000024f, 0.600000024f, 0.600000024f, 0.899999976f,
+    0.600000024f, 0.600000024f, 0.600000024f, 0.600000024f,
+    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
+    /* compound 2 */
+    0.550000012f, 0.550000012f, 0.550000012f, 0.949999988f,
+    0.550000012f, 0.550000012f, 0.550000012f, 0.550000012f,
+    0.550000012f, 0.550000012f, 0.550000012f, 0.949999988f,
+    0.550000012f, 0.550000012f, 0.550000012f, 0.550000012f,
+    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f
+};
+
+/* See the DEVIATION in br_carphys.h: the original's 0x11773690 is .bss and
+ * starts NULL. */
+const float *g_pBrCarPhysGrip = g_aBrCarPhysGripA;
+
+int32_t g_brCarPhysWeather;          /* 0x104B15E8, .bss, starts 0 */
+
+void BrCarPhysSelectCar(int32_t iCar)
+{
+    /* 0x10069530: `cmp eax,0xE; ja setB`, then `cl = [eax+0x100695B0]` and a
+     * five-way jump through 0x1006959C whose five targets are
+     * A, A, A, B, B.  The 15 map bytes are 0 0 0 0 0 4 1 1 1 1 1 4 2 4 3. */
+    static const unsigned char kMap[15] = {
+        0, 0, 0, 0, 0, 4, 1, 1, 1, 1, 1, 4, 2, 4, 3
+    };
+    int arm;
+
+    if ((uint32_t)iCar > 14u) {
+        arm = 3;                     /* the `ja` target is set B */
+    } else {
+        arm = kMap[iCar];
+    }
+    g_pBrCarPhysGrip = (arm >= 3) ? g_aBrCarPhysGripB : g_aBrCarPhysGripA;
+}
+
+/* 0x1006543F..0x10065486 and the identical pair inside 0x100645A0.  The
+ * weather index is `n - 1` clamped into [0, 2] by SIXTEEN-BIT signed
+ * compares, so 0x10001 answers row 0 and not row 0x10000. */
+static int BrCpWeatherRow(void)
+{
+    int16_t w = (int16_t)(g_brCarPhysWeather - 1);
+
+    if (w > 2 || w < 0) {
+        return 0;
+    }
+    return (int)w;
+}
+
+void BrCarPhysTyre(BrCarPhys *pCar, int iWheel, float *pA,
+                   const uint8_t *pB, float dt)
+{
+    BrRbBodyFull      *pBody  = &pCar->body;
+    BrRbBodyFull      *pWheel = pBody->child[iWheel];
+    const BrGroundHit *pHit   = &pCar->aHit[iWheel];
+    BrRbForce         *pNode;
+    BrVec3             axis, a, c, d, e, v, fw, fb;
+    float              nx, ny, nz;
+    float              cs, sn, q, load, dot, w;
+    int                i;
+
+    /* 0x100651BA: `mov eax,[esi+0x19c]; test eax,eax; je ret`.  br_phys.h
+     * carries the original's NULL/non-NULL as 0.0f/1.0f. */
+    if (pWheel->f19C == 0.0f) {
+        return;
+    }
+
+    nx = pHit->nx;
+    ny = pHit->ny;
+    nz = pHit->nz;
+
+    /* 0x100651D0: `fcomp qword [0x10077AE0]` + `test ah,1` + `jne ret`, so
+     * the function LEAVES on less-or-unordered.  Written negated: a NaN
+     * normal leaves.  The constant is a double and the operand a float, so
+     * the compare happens in double. */
+    if (!((double)nz >= BR_CP_TYRE_MINNZ)) {
+        return;
+    }
+
+    /* 0x100651AA/B2/C0 build (0, 1, 0) on the stack and 0x1006D9D0 ==
+     * BrMat4MulVec3Transposed rotates it by the CHASSIS matrix, so `a` is
+     * row 1 of m -- the car's own +Y axis in world space. */
+    axis.x = 0.0f;
+    axis.y = 1.0f;
+    axis.z = 0.0f;
+    BrMat4MulVec3Transposed(&a, &pBody->m, &axis);
+
+    /* 0x10065201..0x1006525B: c = a x n, component order traced through the
+     * fxch chain rather than assumed. */
+    c.x = a.y * nz - a.z * ny;
+    c.y = a.z * nx - a.x * nz;
+    c.z = a.x * ny - a.y * nx;
+
+    /* 0x1006526B..0x100652C1: d = n x c, i.e. the SAME cross with the
+     * operands the other way round.  For a unit n that is `a` projected into
+     * the ground plane. */
+    d.x = c.z * ny - c.y * nz;
+    d.y = c.x * nz - c.z * nx;
+    d.z = c.y * nx - c.x * ny;
+
+    /* 0x100652C5 / 0x100652D8: 0x100023E0 is `fld [esp+4]; fcos; ret` and
+     * 0x10002560 is the same with `fsin`.  Both take wheel->f1C0. */
+    cs = (float)cos((double)pWheel->f1C0);
+    sn = (float)sin((double)pWheel->f1C0);
+
+    /* 0x100652DD..0x1006535B: e = cos*c + sin*d, each component formed as
+     * `sin*d + cos*c`. */
+    e.x = sn * d.x + cs * c.x;
+    e.y = sn * d.y + cs * c.y;
+    e.z = sn * d.z + cs * c.z;
+
+    /* 0x1006534B..0x1006538E: all four children must have a contact count.
+     * The original tests them in the order 0, 2, 1, 3. */
+    for (i = 0; i < 4; ++i) {
+        static const int kOrder[4] = { 0, 2, 1, 3 };
+        if ((int32_t)pBody->child[kOrder[i]]->f1B4 == 0) {
+            /* 0x10065588: the free-spin arm.  NO force is written -- one
+             * wheel off the ground silently disables all four tyres. */
+            w = pWheel->f1CC * dt + pWheel->f1C4;
+            goto spin;
+        }
+    }
+
+    /* 0x1006539B: 0x100643E0 == BrRbVelAtBodyPoint, the velocity of the
+     * wheel's own mount point in the BODY frame. */
+    v.x = 0.0f; v.y = 0.0f; v.z = 0.0f;
+    BrRbVelAtBodyPoint(&v, pBody, pWheel);
+
+    /* 0x100653B2: torque / radius == force. */
+    q = pWheel->f1CC / pWheel->f1C8;
+
+    /* 0x100653CF..0x10065429: the vertical load this wheel is assumed to
+     * carry.  Note the wheel's OWN mass enters as `- mass * -4`. */
+    load = ((pBody->mass - pWheel->mass * BR_CP_TYRE_WHEEL_K)
+            * BR_CP_TYRE_LOAD_G) * nz * BR_CP_TYRE_LOAD_K;
+
+    /* 0x100653E7..0x10065431: dot(v, e), associated (x + y) + z. */
+    dot = (v.x * e.x + v.y * e.y) + v.z * e.z;
+
+    /* 0x1006541B/0x10065433: `fsubr [eax]`, i.e. *pA - (q * -0.5). */
+    *pA = *pA - q * BR_CP_TYRE_REPORT;
+
+    /* 0x1006543B: ONE BYTE of pB.  The step clears bE80 immediately before
+     * the two front calls, so in practice only the rear pair can ever get
+     * here -- and only once the drivetrain has set bE78. */
+    if (*pB != 0u) {
+        int idx = BrCpWeatherRow() * BR_CP_GRIP_SURFACES
+                  + 24 * (int)pCar->b1FD
+                  + (int)pHit->surface;   /* `movzx`, not `movsx` */
+        q = g_pBrCarPhysGrip[idx] * q;
+    }
+
+    /* 0x1006548A..0x100654E4.  THE TRACTION MODEL, and it is not a
+     * saturation: once the demand passes the load the delivered force drops
+     * to a TENTH of the load.  The compare is on the x87 magnitudes, and
+     * the clamp arm needs a STRICT ordered greater-than (`test ah,0x41` +
+     * `jne` skips it for less, equal or unordered). */
+    if (BrCpAbsX87(q) > BrCpAbsX87(load)) {
+        q = BrCpAbsX87(load / q) * q * BR_CP_TYRE_SPIN;
+    }
+
+    /* 0x100654E6..0x10065525: the force is -q along e, rotated into the body
+     * frame by 0x1006D980 == BrMat4MulVec3. */
+    fw.x = e.x * -q;
+    fw.y = e.y * -q;
+    fw.z = e.z * -q;
+    BrMat4MulVec3(&fb, &pBody->m, &fw);
+
+    /* 0x1006552A..0x10065557: three separate `mov eax,[esi+0x18]` reloads in
+     * the original, one per component.  The node is the wheel's own list
+     * head, which 0x1005A7A0 zeroed at the top of the frame. */
+    pNode = pWheel->pForces;
+    pNode->f.x = fb.x + pNode->f.x;
+    pNode->f.y = fb.y + pNode->f.y;
+    pNode->f.z = fb.z + pNode->f.z;
+
+    /* 0x1006555A..0x10065584.  The wheel's spin: driven by f1CC, braked by
+     * the reaction q*r, then relaxed toward rolling by 0.4 of the slip.  The
+     * `f1CC` read here is the SAVED copy from before the grip table touched
+     * q, which is the stack slot at [esp+0x58]. */
+    w = (pWheel->f1CC - q * pWheel->f1C8) * dt + pWheel->f1C4;
+    w = w - (pWheel->f1C8 * w + dot) * BR_CP_TYRE_RELAX;
+
+spin:
+    /* 0x10065598: `fcom` then `fst`, so f1C4 takes the unclamped value and
+     * the clamp below overwrites it. */
+    pWheel->f1C4 = w;
+
+    /* 0x1006559E..0x10065614: |w| > 300 replaces it with sign(w) * 300 --
+     * through the same three-way classifier, so a NaN lands on 0 * 300. */
+    if (BrCpAbsX87(w) > BR_CP_TYRE_SPIN_MAX) {
+        pWheel->f1C4 = BrCarPhysSign(w) * BR_CP_TYRE_SPIN_MAX;
+    }
+
+    /* 0x10065616..0x10065643: the display angle, in DEGREES, and `_finite`
+     * on it as a double. */
+    pWheel->f1D4 = pWheel->f1D4
+                   - (pWheel->f1C4 * BR_CP_RAD_TO_DEG) * dt;
+
+    if (!isfinite((double)pWheel->f1D4)) {
+        pWheel->f1D4 = 0.0f;         /* 0x100656DA */
+        return;
+    }
+    /* 0x10065649 / 0x1006565C: both bounds are doubles, and both reject to
+     * the same store of 0. */
+    if (!((double)pWheel->f1D4 >= -BR_CP_ANGLE_LIMIT)) {
+        pWheel->f1D4 = 0.0f;
+        return;
+    }
+    if (!((double)pWheel->f1D4 < BR_CP_ANGLE_LIMIT)) {
+        pWheel->f1D4 = 0.0f;
+        return;
+    }
+
+    /* 0x1006566F: fold down.  The original RELOADS and RESTORES f1D4 every
+     * iteration here... */
+    while ((double)pWheel->f1D4 > BR_CP_ANGLE_TURN) {
+        pWheel->f1D4 = (float)((double)pWheel->f1D4 - BR_CP_ANGLE_TURN);
+    }
+
+    /* 0x100656A1: ...and fold up, where it does NOT -- the loop target is
+     * the FSUB, so the accumulation stays in the x87 register and is stored
+     * once at the end.  Kept as a double accumulator for that reason.  The
+     * operand here is the FLOAT -360 at 0x10077B28, not the double. */
+    if (!((double)pWheel->f1D4 >= BR_CP_ANGLE_ZERO)) {
+        double t = (double)pWheel->f1D4;
+        do {
+            t = t - (double)BR_CP_ANGLE_TURN_N;
+        } while (!(t >= BR_CP_ANGLE_ZERO));
+        pWheel->f1D4 = (float)t;
+    }
+}
+
+/* ==================================================================== */
+/* 0x100645A0 -- the drivetrain, i.e. the axle velocity constraint       */
+/*                                                                       */
+/* See br_carphys.h.  The short version: this is what stops the car       */
+/* spinning, and it does it by OVERWRITING body->vel and body->angVel,    */
+/* not by adding a force.                                                */
+/* ==================================================================== */
+
+const float g_aBrCarPhysDrvT1A[BR_CP_GRIP_FLOATS] = {
+    /* compound 0 */
+    0.0820000023f, 0.0820000023f, 0.0820000023f, 0.0799999982f, 0.0820000023f, 0.0820000023f, 0.0820000023f, 0.0820000023f,
+    0.0820000023f, 0.0820000023f, 0.0719999969f, 0.0719999969f, 0.0820000023f, 0.0820000023f, 0.0820000023f, 0.0820000023f,
+    0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f,
+    /* compound 1 */
+    0.0799999982f, 0.0799999982f, 0.0799999982f, 0.0850000009f, 0.0799999982f, 0.0799999982f, 0.0799999982f, 0.0799999982f,
+    0.0799999982f, 0.0799999982f, 0.0700000003f, 0.075000003f, 0.0799999982f, 0.0799999982f, 0.0799999982f, 0.0799999982f,
+    0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f,
+    /* compound 2 */
+    0.0780000016f, 0.0780000016f, 0.0780000016f, 0.0900000036f, 0.0780000016f, 0.0780000016f, 0.0780000016f, 0.0780000016f,
+    0.0780000016f, 0.0780000016f, 0.0680000037f, 0.075000003f, 0.0780000016f, 0.0780000016f, 0.0780000016f, 0.0780000016f,
+    0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f
+};
+const float g_aBrCarPhysDrvT1B[BR_CP_GRIP_FLOATS] = {
+    /* compound 0 */
+    0.075000003f, 0.075000003f, 0.075000003f, 0.0799999982f, 0.075000003f, 0.075000003f, 0.075000003f, 0.075000003f,
+    0.0719999969f, 0.0719999969f, 0.0719999969f, 0.0719999969f, 0.0719999969f, 0.0719999969f, 0.0719999969f, 0.0719999969f,
+    0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f,
+    /* compound 1 */
+    0.0700000003f, 0.0700000003f, 0.0700000003f, 0.0850000009f, 0.0700000003f, 0.0700000003f, 0.0700000003f, 0.0700000003f,
+    0.0700000003f, 0.0700000003f, 0.0700000003f, 0.075000003f, 0.0700000003f, 0.0700000003f, 0.0700000003f, 0.0700000003f,
+    0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f,
+    /* compound 2 */
+    0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0900000036f, 0.0649999976f, 0.0649999976f, 0.0649999976f, 0.0649999976f,
+    0.0680000037f, 0.0680000037f, 0.0680000037f, 0.075000003f, 0.0680000037f, 0.0680000037f, 0.0680000037f, 0.0680000037f,
+    0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f, 0.0599999987f
+};
+const float g_aBrCarPhysDrvT2A[BR_CP_DRV_T23_FLOATS] = {
+    90000.0f, 90000.0f, 90000.0f, 80000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f,
+    90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f,
+    120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f
+};
+const float g_aBrCarPhysDrvT2B[BR_CP_DRV_T23_FLOATS] = {
+    90000.0f, 90000.0f, 90000.0f, 80000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f,
+    90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f, 90000.0f,
+    120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f, 120000.0f
+};
+const float g_aBrCarPhysDrvT3[BR_CP_DRV_T23_FLOATS] = {
+    3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f,
+    3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f,
+    3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f, 3000.0f
+};
+
+/* 0x11778808 / 0x11778820.  Same DEVIATION as g_pBrCarPhysGrip: .bss in the
+ * original, aimed here at the set 0x10069530 gives car index 0. */
+const float *g_pBrCarPhysDrvT1 = g_aBrCarPhysDrvT1A;
+const float *g_pBrCarPhysDrvT2 = g_aBrCarPhysDrvT2A;
+
+/* 0x100649D4..0x10064A4B and the identical block at 0x10064EC6..0x10064F21,
+ * then 0x10064A4F..0x10064B38 / 0x10064F25..0x10064FE8.
+ *
+ * The surface index is the MEAN of the pair's two surface bytes, formed as
+ * `(s0 + s1 + 1) >> 1` on zero-extended bytes -- so it rounds up, and a pair
+ * straddling surfaces 3 and 4 answers 4.
+ *
+ * Returns the fraction of the axle's lateral velocity to remove. */
+static float BrCpDrvSlip(BrCarPhys *pCar, int iA, int iB, float demand)
+{
+    BrRbBodyFull *pBody = &pCar->body;
+    int   w   = BrCpWeatherRow() * BR_CP_GRIP_SURFACES;
+    int   s   = ((int)pCar->aHit[iA].surface
+                 + (int)pCar->aHit[iB].surface + 1) >> 1;
+    float t1  = g_pBrCarPhysDrvT1[w + 24 * (int)pCar->b1FD + s];
+    float t2  = g_pBrCarPhysDrvT2[w + s];
+    float t3  = g_aBrCarPhysDrvT3[w + s];
+    float p   = demand;
+    float steer, sq, speed;
+
+    /* `fcomp` + `test ah,0x41` + `jne` SKIPS the replacement for less, equal
+     * or unordered, so only a strict ordered greater caps it. */
+    if (p > t2) {
+        p = t2;
+    }
+    /* `fcom` + `test ah,1` + `je` skips, so the floor applies for less or
+     * unordered. */
+    if (!(p >= t3)) {
+        p = t3;
+    }
+    p = t3 / p;                                   /* fdivr */
+
+    p = p * t1 * BR_CP_DRV_GRIP_SCALE;
+
+    /* `fcomp 0` + `test ah,0x40` + `je` skips, so the bonus applies for
+     * EQUAL OR UNORDERED -- the same three-way idiom BrCarPhysSign uses, and
+     * a NaN steer angle takes it. */
+    steer = pBody->child[2]->f1C0;
+    if (steer == 0.0f || !(steer == steer)) {
+        p = (float)((double)p * BR_CP_DRV_STRAIGHT);
+    }
+
+    /* |p| > 1 gives exactly 1.0f -- NOT sign(p), which is what the store of
+     * the immediate 0x3F800000 at 0x10064A96 says. */
+    if (BrCpAbsX87(p) > 1.0f) {
+        p = 1.0f;
+    }
+
+    /* 0x10064AC2..0x10064B38: the speed of the WHOLE BODY, summed
+     * (vx*vx + vy*vy) + vz*vz in the original's association. */
+    sq = (pBody->vel.x * pBody->vel.x + pBody->vel.y * pBody->vel.y)
+         + pBody->vel.z * pBody->vel.z;
+    speed = (float)sqrt((double)sq);
+
+    /* `fcom` + `test ah,1` + `je` skips the floor, so it applies for less or
+     * unordered. */
+    if (!(speed >= BR_CP_DRV_SLOW_SPEED)) {
+        float cand = (BR_CP_DRV_SLOW_SPEED - speed) * BR_CP_DRV_SLOW_K;
+        if (!(p >= cand)) {
+            p = cand;
+        }
+    }
+    return p;
+}
+
+/* 0x10064603..0x100647EE, once per axle.  The axle's brake contribution, in
+ * the same units as the axle velocities below. */
+static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
+{
+    float b;
+
+    /* sign(f1C4) is the same three-way classifier again; |f1D0| is the x87
+     * abs, so a NaN brake torque comes back negated. */
+    b = BrCpAbsX87(pWheel->f1D0) * BrCarPhysSign(pWheel->f1C4)
+        * BR_CP_DRV_BRAKE_K;
+    b = b / pWheel->f1C8;
+    b = b / (pBody->mass * BR_CP_DRV_MASS_K);
+    /* Both `fmul [esp+0xa4]` pairs are on the SAME value: dt appears twice. */
+    b = b * dt * dt;
+
+    if (BrCpAbsX87(b) > 1.0f) {
+        b = BrCarPhysSign(b) * BR_CP_DRV_BRAKE_MAX;
+    }
+    return b;
+}
+
+void BrCarPhysDrive(BrCarPhys *pCar, float dt)
+{
+    BrRbBodyFull *pBody = &pCar->body;
+    BrVec3        p, tmp, vA, vB, world;
+    float         brakeA, brakeB;
+    float         sideForce = 0.0f;     /* [esp+0x58], zeroed at 0x100645B6 */
+    int           ran       = 0;        /* [esp+0x5c], likewise            */
+    float         roll, target;
+    int           i;
+
+    /* 0x100645C2..0x100645FD: a wheel with no contact RECORD has its contact
+     * COUNT cleared, which is how a wheel that has left the ground stops
+     * counting as loaded for the tests below. */
+    for (i = 0; i < 4; ++i) {
+        if (pBody->child[i]->f19C == 0.0f) {
+            pBody->child[i]->f1B4 = 0.0f;
+        }
+    }
+
+    /* 0x10064603: the brake terms, pair B first (child[2]) then pair A
+     * (child[0]) -- that is the original's order and the two divisions are
+     * interleaved, which is why they are read out here rather than folded. */
+    brakeB = BrCpDrvBrake(pBody, pBody->child[2], dt);
+    brakeA = BrCpDrvBrake(pBody, pBody->child[0], dt);
+
+    /* 0x100647F2..0x10064833: the velocity at pair A's axle centre, in world
+     * space.  The point is (child0->f78.x, 0, 0) -- Y and Z are the two
+     * dwords zeroed at 0x100647F2/0x100647FA. */
+    p.x = pBody->child[0]->f78.x;
+    p.y = 0.0f;
+    p.z = 0.0f;
+    BrRbVelAtPoint(&tmp, pBody, &p);
+    BrMat4MulVec3(&vA, &pBody->m, &tmp);
+
+    /* 0x1006488C.  Cleared every call, set only by the slide test below. */
+    pCar->b209 = 0u;
+
+    /* 0x10064893..0x100648C5: at least one wheel of EACH pair must be in
+     * contact.  Otherwise pair A's gate is cleared and the whole axle
+     * correction is skipped. */
+    if (((int32_t)pBody->child[0]->f1B4 != 0
+         || (int32_t)pBody->child[1]->f1B4 != 0)
+        && ((int32_t)pBody->child[2]->f1B4 != 0
+            || (int32_t)pBody->child[3]->f1B4 != 0)) {
+        float demand, hold, add;
+        int   braking;
+
+        /* 0x100648CA..0x10064928.  Pair A is the UNSTEERED one, so its
+         * lateral velocity is just the world Y. */
+        demand = BrCpAbsX87(vA.y) * pBody->mass / dt
+                 + BrCpAbsX87(pCar->fE7C);
+
+        /* 0x1006492A..0x100649B4.  Whether pair B is braking chooses WHICH
+         * penalty a braking pair A attracts; the flag itself is always pair
+         * A's.  Both constants are negative and are SUBTRACTED. */
+        add = ((double)BrCpAbsX87(brakeB) > BR_CP_DRV_BRAKE_EPS)
+              ? BR_CP_DRV_BRAKE_ADD1 : BR_CP_DRV_BRAKE_ADD2;
+        braking = ((double)BrCpAbsX87(brakeA) > BR_CP_DRV_BRAKE_EPS);
+        demand  = demand - (float)braking * add;
+
+        /* 0x100649B6: the hold-off is lower once the gate is already set. */
+        hold = (pCar->bE80 != 0u) ? BR_CP_DRV_HOLD_ON : BR_CP_DRV_HOLD_OFF;
+
+        ran        = 1;                 /* 0x10064920 */
+        pCar->bE80 = 0u;                /* 0x100649E1 */
+
+        /* 0x10064A9E: `test ah,1` + `je` takes the correction when C0 is
+         * CLEAR, i.e. demand >= hold.  Note the rear block below uses a
+         * strict greater instead; the asymmetry is the original's. */
+        if (demand >= hold) {
+            float f = BrCpDrvSlip(pCar, 0, 1, demand);
+            float lat = vA.y;
+
+            vA.y       = lat - f * lat;   /* 0x10064B46 */
+            pCar->bE80 = 1u;              /* 0x10064B4A */
+            sideForce  = f * vA.y;        /* 0x10064B53, on the NEW vA.y */
+        } else {
+            vA.y      = 0.0f;             /* 0x10064AB9 */
+            sideForce = 0.0f;
+        }
+
+        /* 0x10064B59..0x10064BCB: the "sliding" flag.  Above 1 m/s of X the
+         * test is on the RATIO, below it on the lateral speed alone. */
+        if (BrCpAbsX87(vA.x) > 1.0f) {
+            if (BrCpAbsX87(vA.y / vA.x) > BR_CP_DRV_SLIDE_RATIO) {
+                pCar->b209 = 0x80u;
+            }
+        } else if (BrCpAbsX87(vA.y) > 1.0f) {
+            pCar->b209 = 0x80u;
+        } else {
+            pCar->b209 = 0u;
+        }
+
+        /* 0x10064BD2..0x10064C87: the brake bites on X, and a brake that
+         * would REVERSE X zeroes it instead -- the same sign-change rule as
+         * 0x1005AA52, with a dead band of 1e-5. */
+        {
+            float was = vA.x;
+            vA.x = vA.x - brakeA;
+            if (BrCpAbsX87(vA.x) > BR_CP_DRV_ZERO_EPS) {
+                /* `test ah,0x40` + `jne` SKIPS the zeroing when the two
+                 * signs compare EQUAL OR UNORDERED. */
+                if (!(BrCarPhysSign(vA.x) == BrCarPhysSign(was))) {
+                    vA.x = 0.0f;
+                }
+            }
+        }
+    } else {
+        /* 0x100648C2.  vA keeps exactly what the transform gave it -- the
+         * original jumps straight to 0x10064C8F with the slot untouched. */
+        pCar->bE80 = 0u;
+    }
+
+    /* 0x10064C8F: pair B's axle velocity, computed unconditionally -- even
+     * on the path that just bailed out of pair A. */
+    p.x = pBody->child[2]->f78.x;
+    p.y = 0.0f;
+    p.z = 0.0f;
+    BrRbVelAtPoint(&tmp, pBody, &p);
+    BrMat4MulVec3(&vB, &pBody->m, &tmp);
+
+    /* 0x10064CC2..0x10064CFB: the same both-pairs test again, in the other
+     * order.  Failing it skips pair B's correction but NOT the write-back,
+     * which is gated on `ran` alone. */
+    if (((int32_t)pBody->child[2]->f1B4 != 0
+         || (int32_t)pBody->child[3]->f1B4 != 0)
+        && ((int32_t)pBody->child[0]->f1B4 != 0
+            || (int32_t)pBody->child[1]->f1B4 != 0)) {
+        float cs, sn, along, demand, hold;
+        BrVec3 lat, was;
+        int    braking;
+
+        ran = 1;                         /* 0x10064D0D */
+
+        /* 0x10064D01..0x10064D5D: pair B IS the steered pair, so its lateral
+         * part is what is left after projecting onto (cos, sin, 0). */
+        cs = (float)cos((double)pBody->child[2]->f1C0);
+        sn = (float)sin((double)pBody->child[2]->f1C0);
+        along = vB.x * cs + vB.y * sn;
+
+        was = vB;
+        lat.x = vB.x - along * cs;
+        lat.y = vB.y - along * sn;
+        lat.z = vB.z - 0.0f;             /* the Z term is `- 0`, stored as 0 */
+
+        /* 0x10064DE3..0x10064E27: |lat| * mass / dt + |*pA2|. */
+        {
+            float sq = (lat.x * lat.x + lat.y * lat.y) + lat.z * lat.z;
+            demand = (float)sqrt((double)sq) * pBody->mass / dt
+                     + BrCpAbsX87(pCar->fE74);
+        }
+
+        /* 0x10064E39..0x10064E71.  Only ONE penalty constant here, and the
+         * flag is pair B's own brake. */
+        braking = ((double)BrCpAbsX87(brakeB) > BR_CP_DRV_BRAKE_EPS);
+        demand  = demand - (float)braking * BR_CP_DRV_BRAKE_ADD1;
+
+        hold = (pCar->bE78 != 0u) ? BR_CP_DRV_HOLD_ON : BR_CP_DRV_HOLD_OFF;
+        pCar->bE78 = 0u;                 /* 0x10064E89 */
+
+        /* 0x10064E8E: `test ah,0x41` + `jne` SKIPS for less, equal or
+         * unordered -- a STRICT greater, unlike pair A's `>=`. */
+        if (demand > hold) {
+            float f = BrCpDrvSlip(pCar, 2, 3, demand);
+
+            vB.x = was.x - lat.x * f;
+            vB.y = was.y - lat.y * f;
+            vB.z = was.z - lat.z * f;
+            pCar->bE78 = 1u;             /* 0x10065020 */
+        }
+    }
+
+    /* 0x10065030..0x100650D0.  The whole point of the function. */
+    if (ran) {
+        float x0   = pBody->child[0]->f78.x;
+        float x2   = pBody->child[2]->f78.x;
+        float velX = (vA.x + vB.x) * BR_CP_DRV_HALF;
+        float yaw  = (vA.y - vB.y) / (x0 - x2);
+        float velY = vA.y - yaw * x0;
+
+        /* angVel: to world, replace Z with the solved yaw rate, back. */
+        BrMat4MulVec3(&world, &pBody->m, &pBody->angVel);
+        world.z = yaw;
+        BrMat4MulVec3Transposed(&pBody->angVel, &pBody->m, &world);
+
+        /* vel: to world, replace X and Y, back.  Z survives, which is what
+         * leaves gravity and the suspension in charge of the vertical. */
+        BrMat4MulVec3(&world, &pBody->m, &pBody->vel);
+        world.x = velX;
+        world.y = velY;
+        BrMat4MulVec3Transposed(&pBody->vel, &pBody->m, &world);
+    }
+
+    /* 0x100650D3..0x1006519D: the chassis's own f1D4 -- the visual roll --
+     * chases -8 * the retained side force at a fixed step.  The side force
+     * is first clamped to +-0.5 through the three-way sign classifier, then
+     * doubled, then multiplied by -4. */
+    roll = sideForce;
+    if (BrCpAbsX87(roll) > BR_CP_DRV_HALF) {
+        roll = BrCarPhysSign(roll) * BR_CP_DRV_HALF;
+    }
+    /* `fadd st,st` then `fmul [0x10077AD0]`.  That is the SAME -4.0f the tyre
+     * pass folds the wheel mass with -- one constant, two unrelated uses --
+     * so it is spelled with the same name rather than duplicated. */
+    target = (roll + roll) * BR_CP_TYRE_WHEEL_K;   /* i.e. -8 * sideForce */
+
+    /* `fsub st(1)` forms f1D4 - target; within one step, snap. */
+    if (!((double)BrCpAbsX87(pBody->f1D4 - target) >= BR_CP_DRV_ROLL_STEP)) {
+        pBody->f1D4 = target;
+    } else if (!(target > pBody->f1D4)) {
+        /* `test ah,0x41` + `jne` takes this arm for less, equal or
+         * unordered. */
+        pBody->f1D4 = pBody->f1D4 - BR_CP_DRV_ROLL_STEP;
+    } else {
+        pBody->f1D4 = pBody->f1D4 - BR_CP_DRV_ROLL_STEPN;
+    }
+}
+
+/* ==================================================================== */
 /* 0x1005AA52 .. 0x1005AB7F -- the sign-change damper                    */
 /* ==================================================================== */
 
@@ -483,26 +1131,22 @@ void BrCarPhysStep(BrCarPhys *pCar)
     /* --- step 2: 0x100684F0 --------------------------------------------- */
     BrCarPhysSpring(pBody, &pCar->b208);
 
-    /* --- step 3: 0x100651A0 x4, gated on car+0xE84 ----------------------- */
+    /* --- step 3: 0x100651A0 x4, gated on car+0xE84 -----------------------
+     * The four call sites at 0x1005A8DE / 0x1005A901 / 0x1005A91E /
+     * 0x1005A93B were re-read from the pushes rather than taken on trust,
+     * and the previous pass's note had ONE of them wrong: the gate byte is
+     * &bE80 for wheels 0 and 1 and &bE78 for wheels 2 and 3, not &bE78 for
+     * all four.  Only three of the four scalars are pre-cleared -- bE78 is
+     * not, so the rear pair sees LAST frame's drivetrain flag. */
     if (pCar->fE84 == 0) {
-        /* The scalars are paired FRONT (fE7C, bE80) and REAR (fE74, fE78),
-         * and only three of the four are pre-cleared -- fE78 is not.  That
-         * asymmetry is the original's. */
         pCar->fE7C = 0.0f;
         pCar->fE74 = 0.0f;
         pCar->bE80 = 0u;
 
-        ++g_aBrCarPhysHole[BR_CP_HOLE_TYRE];
-        if (g_brCarPhysHooks.pfnTyre != NULL) {
-            g_brCarPhysHooks.pfnTyre(pCar, pBody->child[0],
-                                     &pCar->fE7C, &pCar->fE78, BR_PHYS_DT);
-            g_brCarPhysHooks.pfnTyre(pCar, pBody->child[1],
-                                     &pCar->fE7C, &pCar->fE78, BR_PHYS_DT);
-            g_brCarPhysHooks.pfnTyre(pCar, pBody->child[2],
-                                     &pCar->fE74, &pCar->fE78, BR_PHYS_DT);
-            g_brCarPhysHooks.pfnTyre(pCar, pBody->child[3],
-                                     &pCar->fE74, &pCar->fE78, BR_PHYS_DT);
-        }
+        BrCarPhysTyre(pCar, 0, &pCar->fE7C, &pCar->bE80, BR_PHYS_DT);
+        BrCarPhysTyre(pCar, 1, &pCar->fE7C, &pCar->bE80, BR_PHYS_DT);
+        BrCarPhysTyre(pCar, 2, &pCar->fE74, &pCar->bE78, BR_PHYS_DT);
+        BrCarPhysTyre(pCar, 3, &pCar->fE74, &pCar->bE78, BR_PHYS_DT);
     }
 
     /* --- step 4: 0x1005A943 --------------------------------------------- */
@@ -520,11 +1164,8 @@ void BrCarPhysStep(BrCarPhys *pCar)
     /* --- step 6: 0x1006D600 == BrRbIntegrateVelocity -------------------- */
     BrCpIntegrateVelocity(pState, pBody, BR_PHYS_DT);
 
-    /* --- step 7: 0x100645A0 --------------------------------------------- */
-    ++g_aBrCarPhysHole[BR_CP_HOLE_DRIVE];
-    if (g_brCarPhysHooks.pfnDrive != NULL) {
-        g_brCarPhysHooks.pfnDrive(pCar, BR_PHYS_DT);
-    }
+    /* --- step 7: 0x100645A0(body, dt, &fE7C, &fE74, &fE80, &fE78) ------- */
+    BrCarPhysDrive(pCar, BR_PHYS_DT);
 
     /* --- step 8: 0x1005A9B6 --------------------------------------------- */
     BrRbQuatDerivative(pState);

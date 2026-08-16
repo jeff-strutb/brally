@@ -30,8 +30,11 @@
 
 static int g_fail = 0;
 
+static int g_checks;   /* a COUNT, not a bare OK -- see the note at main()'s tail */
+
 #define CHECK(cond)                                                         \
     do {                                                                    \
+        g_checks++;                                                         \
         if (!(cond)) {                                                      \
             printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);          \
             ++g_fail;                                                       \
@@ -40,6 +43,7 @@ static int g_fail = 0;
 
 #define CHECK_NEAR(a, b, eps)                                               \
     do {                                                                    \
+        g_checks++;                                                         \
         double da_ = (double)(a), db_ = (double)(b);                        \
         if (!(fabs(da_ - db_) <= (eps))) {                                  \
             printf("FAIL %s:%d: %s (%.9g) !~ %s (%.9g)\n", __FILE__,        \
@@ -287,6 +291,217 @@ static void TestDrag(void)
     CHECK_NEAR(node.f.x, 20.0 * (double)BR_CP_DRAG_K, 1e-3);
 }
 
+
+/* ================================================================== */
+/* 0x100651A0 -- the tyre pass                                         */
+/* ================================================================== */
+
+/* Put wheel `i` on flat ground with a contact record, so BrCarPhysTyre gets
+ * past its two early exits. */
+static void ArmWheel(BrCarPhys *pCar, int i, float nz)
+{
+    pCar->body.child[i]->f19C = 1.0f;
+    pCar->body.child[i]->f1B4 = 1.0f;
+    pCar->aHit[i].nx = 0.0f;
+    pCar->aHit[i].ny = 0.0f;
+    pCar->aHit[i].nz = nz;
+    pCar->aHit[i].surface = 0;
+}
+
+static void TestTyre(void)
+{
+    BrCarPhys car;
+    int       i;
+    float     f0, f1;
+
+    BrCarPhysInit(&car, NULL);
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+
+    /* THE FINDING THIS TEST EXISTS FOR: the force is q == f1CC / f1C8 and
+     * nothing else, so a wheel with no drive torque makes NO force.  If a
+     * future pass "restores" a lateral term this fails, which is the point. */
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK(car.aWheelF[0].f.x == 0.0f);
+    CHECK(car.aWheelF[0].f.y == 0.0f);
+    CHECK(car.aWheelF[0].f.z == 0.0f);
+    CHECK(car.fE7C == 0.0f);
+
+    /* With drive torque there IS a force, and *pA takes half the RAW q. */
+    car.body.child[0]->f1CC = 100.0f;      /* q = 100 / 0.5 = 200 */
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK_NEAR(car.fE7C, 100.0, 1e-3);     /* 0.5 * 200 */
+    CHECK(car.aWheelF[0].f.x != 0.0f || car.aWheelF[0].f.y != 0.0f);
+
+    /* WHEELSPIN.  The load is (mass + 4*wheelMass) * 2.943 * n.z * 3.5 ==
+     * 10300.5 N here.  Demand one newton under it and one newton over it:
+     * the force does not saturate, it COLLAPSES to a tenth of the load.
+     * A saturating clamp would make these two nearly equal. */
+    car.body.child[0]->f1CC = 10299.5f * 0.5f;   /* q = 10299.5 */
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    f0 = car.fE7C * 2.0f;                        /* recover q from *pA */
+    CHECK_NEAR(f0, 10299.5, 1.0);
+    {
+        double mag = sqrt((double)(car.aWheelF[0].f.x * car.aWheelF[0].f.x
+                                   + car.aWheelF[0].f.y * car.aWheelF[0].f.y
+                                   + car.aWheelF[0].f.z * car.aWheelF[0].f.z));
+        CHECK_NEAR(mag, 10299.5, 1.0);
+    }
+    car.body.child[0]->f1CC = 10301.5f * 0.5f;   /* q = 10301.5, over */
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    {
+        double mag = sqrt((double)(car.aWheelF[0].f.x * car.aWheelF[0].f.x
+                                   + car.aWheelF[0].f.y * car.aWheelF[0].f.y
+                                   + car.aWheelF[0].f.z * car.aWheelF[0].f.z));
+        CHECK_NEAR(mag, 0.1 * 10300.5, 2.0);
+    }
+
+    /* One wheel off the ground disables ALL FOUR tyres -- the free-spin arm
+     * writes no force at all.  This is a whole-car property, not a per-wheel
+     * one, and is easy to "tidy" into a per-wheel test. */
+    car.body.child[3]->f1B4 = 0.0f;
+    car.body.child[0]->f1CC = 100.0f;
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK(car.aWheelF[0].f.z == 0.0f);
+    CHECK(car.fE7C == 0.0f);
+    ArmWheel(&car, 3, 1.0f);
+
+    /* Too steep: n.z below 0.7 bails out before anything, INCLUDING the
+     * wheel's own spin update. */
+    car.body.child[1]->f1C4 = 12.0f;
+    car.aHit[1].nz = 0.69f;
+    BrCarPhysTyre(&car, 1, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK(car.body.child[1]->f1C4 == 12.0f);
+    /* THE BOUNDARY IS A DOUBLE, and that is observable: 0.7f is
+     * 0.699999988079071 as a double, so the FLOAT 0.7 still bails.  Folding
+     * the constant to a float literal would flip this. */
+    car.aHit[1].nz = 0.7f;
+    BrCarPhysTyre(&car, 1, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK(car.body.child[1]->f1C4 == 12.0f);
+    car.aHit[1].nz = 0.70000005f;
+    BrCarPhysTyre(&car, 1, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    CHECK(car.body.child[1]->f1C4 != 12.0f);
+
+    /* The spin clamp is +-300 and the angle is folded into [0, 360]. */
+    car.body.child[2]->f1CC = 1.0e9f;
+    BrCarPhysTyre(&car, 2, &car.fE74, &car.bE78, BR_PHYS_DT);
+    CHECK(fabs((double)car.body.child[2]->f1C4) <= 300.0);
+    CHECK(car.body.child[2]->f1D4 >= 0.0f);
+    CHECK(car.body.child[2]->f1D4 <= 360.0f);
+
+    /* A non-finite angle is reset to zero rather than propagated. */
+    car.body.child[2]->f1D4 = (float)strtod("inf", NULL);
+    car.body.child[2]->f1CC = 0.0f;
+    BrCarPhysTyre(&car, 2, &car.fE74, &car.bE78, BR_PHYS_DT);
+    CHECK(car.body.child[2]->f1D4 == 0.0f);
+
+    /* The grip table only applies when the gate BYTE is set, and the step
+     * clears the front pair's gate immediately before calling them -- so the
+     * gate is the whole reason the front pair never sees the table. */
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+    car.body.child[0]->f1CC = 100.0f;
+    car.bE80 = 0u;  car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    f0 = car.aWheelF[0].f.x;
+    car.aWheelF[0].f.x = car.aWheelF[0].f.y = car.aWheelF[0].f.z = 0.0f;
+    car.bE80 = 1u;  car.fE7C = 0.0f;
+    BrCarPhysTyre(&car, 0, &car.fE7C, &car.bE80, BR_PHYS_DT);
+    f1 = car.aWheelF[0].f.x;
+    /* set A is a flat 0.9 for every compound, weather and surface */
+    CHECK_NEAR(f1, 0.9 * (double)f0, 1e-3);
+    /* ...and *pA takes the RAW q either way: the table is applied after. */
+    CHECK_NEAR(car.fE7C, 100.0, 1e-3);
+}
+
+/* ================================================================== */
+/* 0x100645A0 -- the drivetrain                                        */
+/* ================================================================== */
+
+static void TestDrive(void)
+{
+    BrCarPhys  car;
+    BrRbState *pS;
+    int        i;
+    float      wy;
+
+    BrCarPhysInit(&car, NULL);
+    pS = BrCarPhysBodyState(&car.body);
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+
+    /* THE FINDING THIS TEST EXISTS FOR: the drivetrain pins YAW and leaves
+     * PITCH and ROLL alone.  Give the body all three and see which survive. */
+    pS->angVel.x = 5.0f;
+    pS->angVel.y = 7.0f;
+    pS->angVel.z = 9.0f;
+    pS->vel.x = 0.0f; pS->vel.y = 0.0f; pS->vel.z = 0.0f;
+    BrRbBuildMatrix(&car.body.m, pS);
+    BrCarPhysDrive(&car, BR_PHYS_DT);
+    CHECK(pS->angVel.x == 5.0f);
+    CHECK(pS->angVel.y == 7.0f);
+    CHECK(pS->angVel.z != 9.0f);
+
+    /* A wheel with no contact RECORD has its contact COUNT cleared, and with
+     * a whole pair down the constraint does not run at all. */
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+    car.body.child[2]->f19C = 0.0f;
+    car.body.child[3]->f19C = 0.0f;
+    pS->angVel.z = 9.0f;
+    BrCarPhysDrive(&car, BR_PHYS_DT);
+    CHECK(car.body.child[2]->f1B4 == 0.0f);
+    CHECK(pS->angVel.z == 9.0f);
+
+    /* Below the 8000 N hold-off the lateral velocity of pair A is ZEROED
+     * outright, not left alone -- the `else` arm is a hard write, and the
+     * yaw rate is then solved from the two axles.  8000 N over a 1000 kg
+     * mass at 1/30 s is 0.2667 m/s, so 0.1 m/s is comfortably under. */
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+    car.fE7C = 0.0f;  car.fE74 = 0.0f;
+    car.bE80 = 0u;    car.bE78 = 0u;
+    pS->angVel.x = 0.0f; pS->angVel.y = 0.0f; pS->angVel.z = 0.0f;
+    pS->vel.x = 0.0f; pS->vel.y = 0.1f; pS->vel.z = 0.0f;
+    BrRbBuildMatrix(&car.body.m, pS);
+    BrCarPhysDrive(&car, BR_PHYS_DT);
+    /* pair A's Y went to zero, pair B's did not, so the solved yaw is
+     * (0 - 0.1) / (1.5 - -1.5) and the body's Y follows from it. */
+    CHECK_NEAR(pS->angVel.z, -0.1 / 3.0, 1e-4);
+    CHECK_NEAR(pS->vel.y, 0.0 - (-0.1 / 3.0) * 1.5, 1e-4);
+    /* neither gate latched, because neither axle passed its hold-off */
+    CHECK(car.bE80 == 0u);
+    CHECK(car.bE78 == 0u);
+
+    /* Above the hold-off pair A latches its gate and only PART of the
+     * lateral velocity is removed -- the slip factor, not all of it. */
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+    pS->angVel.x = 0.0f; pS->angVel.y = 0.0f; pS->angVel.z = 0.0f;
+    pS->vel.x = 0.0f; pS->vel.y = 5.0f; pS->vel.z = 0.0f;
+    BrRbBuildMatrix(&car.body.m, pS);
+    car.bE80 = 0u; car.bE78 = 0u;
+    BrCarPhysDrive(&car, BR_PHYS_DT);
+    CHECK(car.bE80 == 1u);
+    /* pair A is sliding: |vy| > 1 with |vx| <= 1 sets the 0x80 flag */
+    CHECK(car.b209 == 0x80u);
+    wy = pS->vel.y;
+    CHECK(fabs((double)wy) < 5.0);          /* reduced ... */
+    CHECK(fabs((double)wy) > 0.0);          /* ... but not to nothing */
+
+    /* The chassis roll chases -8 * the retained side force at a fixed step,
+     * so it can never move more than BR_CP_DRV_ROLL_STEP in one call. */
+    {
+        float was = car.body.f1D4;
+        BrCarPhysDrive(&car, BR_PHYS_DT);
+        CHECK(fabs((double)(car.body.f1D4 - was))
+              <= (double)BR_CP_DRV_ROLL_STEP + 1e-4);
+    }
+}
+
 /* The whole point: does a car fall, settle, and stay settled? */
 static void TestSettle(void)
 {
@@ -338,11 +553,8 @@ static void TestSettle(void)
 
     /* Every hole was entered, so the report cannot claim more physics ran
      * than actually did. */
-    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_TYRE]  > 0u);
-    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_DRIVE] > 0u);
-    /* four substeps per frame */
-    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_COLLIDE]
-          == 4u * g_aBrCarPhysHole[BR_CP_HOLE_DRIVE]);
+    /* four substeps per frame, 401 frames */
+    CHECK(g_aBrCarPhysHole[BR_CP_HOLE_COLLIDE] == 4u * 401u);
 }
 
 /* With no ground at all the car must fall freely, and at the acceleration the
@@ -400,11 +612,16 @@ int main(void)
     TestSpring();
     TestDamper();
     TestDrag();
+    TestTyre();
+    TestDrive();
     TestSettle();
     TestFreeFall();
 
     if (g_fail == 0) {
-        printf("test_carphys: OK\n");
+        /* A count, not a bare OK. tools/regress.sh calls an uncounted OK
+         * UNPARSEABLE on purpose: a suite that prints OK without running
+         * anything looks exactly like one that ran everything. */
+        printf("test_carphys: %d checks, 0 failures\n", g_checks);
         return 0;
     }
     printf("test_carphys: %d failure(s)\n", g_fail);
