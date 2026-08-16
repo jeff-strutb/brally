@@ -86,18 +86,46 @@ builds function-for-function.
 **The ported core now links into one binary and boots.** `build/brally`
 constructs the phase object and runs a real menu builder; see "Quick start".
 
-**~1,050 of ~1,708 shared-core functions decompiled to portable C99.**
-65 modules, 65 test suites, all green under one `./build.sh`. ~54,700 lines.
+**~1,376 distinct `Br*` functions defined, against a shared core estimated at
+~1,708.** 68 modules, 70 test suites, all green under one `./build.sh`.
+~57,000 lines.
+
+Treat 1,376 as a count of what is DEFINED, not a completion percentage: it
+includes adapters and thin forwarders, and the ~1,708 denominator is itself
+uncertain because `config/functions.csv` merges and splits real functions (see
+below).
 
 | | |
 |---|---|
 | `.text` | 581,632 bytes @ `0x10001000`, image base `0x10000000` |
 | Shared core (the target) | ~1,708 fns / 339,648 bytes |
-| **Decompiled + tested** | **~1,050** |
-| Modules | 65 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`, `slice4_50..53`, `slice5_60..63`, `slice6_70..73`) |
-| Unported functions, stubbed so the host links | **152** (`port/host/br_stubs.c`) |
-| Data symbols with provisional storage | **63** (same file -- each is a TODO) |
+| **Distinct `Br*` functions defined** | **~1,376** |
+| Modules | 68 (`br_*`, `slice1_01..10`, `slice2_11..26`, `slice3_31..45`, `slice4_50..53`, `slice5_60..63`, `slice6_70..75`) |
+| Unported functions, stubbed so the host links | **132** (`port/host/br_stubs.c`) |
+| Data symbols with provisional storage | **0** (was 64; all now real definitions in `port/src/br_data.c`) |
 | Addresses with >1 name | **53** (heuristic count) |
+| Screen builders running | **11 of 16** (`./build/brally -all`) |
+
+
+### What "running" currently means
+
+`./build/brally -all` constructs a phase and runs each of the 16 ported screen
+builders in its own forked child, so one crash cannot hide the rest. **11 of 16
+run clean.** The other five die on a NULL vtable slot, which is deliberate: an
+unported method is left NULL so it faults loudly rather than silently doing
+nothing.
+
+Read the `ctl` column carefully. It is read out of the page struct, and is
+therefore only valid for builders whose module writes through the same model
+the host reads. Where it is not, the harness prints `--` rather than a number
+it cannot justify -- because that number is not merely wrong, it is
+NONDETERMINISTIC: one builder reported 9, 10, 12, 7 and 10 controls across five
+runs of the same binary, reading an offset nobody had written. `setText` and
+`place` are counted outside the struct and are valid for every builder.
+
+This is what `port/include/br_ui.h` exists to end. It is the canonical merged
+page and control model, with eleven conflicts adjudicated in-header against the
+disassembly. Migrating the modules onto it is in progress.
 
 ### The stub report is the work queue
 
