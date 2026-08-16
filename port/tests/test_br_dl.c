@@ -461,6 +461,376 @@ static void test_clip(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* 5b. lighting                                                       */
+/* ------------------------------------------------------------------ */
+
+/* The bytes at BRGlide 0x100A9FF0, read out of the DLL: one libultra
+ * `Lights1`, an 8-byte Ambient followed by a 16-byte Light.  The emitter at
+ * 0x1000A88B sends +8 to G_MOVEMEM index 0x86 (slot 0, diffuse) and +0 to
+ * index 0x88 (slot 1, ambient), which is gSPSetLights1's ordering exactly.
+ * Using the SHIPPED numbers rather than invented ones means a sign error in
+ * the direction shows up as a picture, not as an abstract failure. */
+static const uint8_t g_aLights1[24] = {
+    0x33, 0x33, 0x40, 0x00,  0x33, 0x33, 0x40, 0x00,            /* Ambient */
+    0xEE, 0xEE, 0xCC, 0x00,  0xEE, 0xEE, 0xCC, 0x00,            /* Light   */
+    0x54, 0x54, 0x54, 0x00
+};
+#define LIGHTS1_BASE 0x70000000u
+
+/* The preamble the GAME emits and a shipped .rca does not carry: numlights,
+ * the two light records, and the geometry mode with G_LIGHTING in it.
+ * Measured: bb.rca and ce.rca contain zero 0xB6, 0xB7, 0xBC and 0x03
+ * commands between them, so this state can only come from outside. */
+static size_t light_preamble(uint8_t *p, uint32_t geo)
+{
+    put(p + 0x00, 0xBC000002u, 0x80000040u);        /* numlights, (w1>>5)&15 */
+    put(p + 0x08, 0x03860010u, LIGHTS1_BASE + 8u);  /* slot 0: diffuse       */
+    put(p + 0x10, 0x03880010u, LIGHTS1_BASE + 0u);  /* slot 1: ambient       */
+    put(p + 0x18, 0xB7000000u, geo);                /* set geometry mode     */
+    put(p + 0x20, 0xB8000000u, 0u);
+    return 0x28;
+}
+
+#define GEO_LIT (BR_DL_GEO_ZBUFFER | BR_DL_GEO_SHADE | \
+                 BR_DL_GEO_SHADING_SMOOTH | BR_DL_GEO_LIGHTING)
+
+static void test_light_select(void)
+{
+    BrDl st;
+    printf("lighting: which transform 0x1001FD70 installs\n");
+
+    BrDlInit(&st, 64, 64);
+
+    /* The seven rows of the table in PART 4 of br_dl.c, which is 0x1001FE0D
+     * transcribed.  These are the ORIGINAL's addresses, so a future pass that
+     * re-derives the selection has something exact to disagree with. */
+    st.geoMode = BR_DL_GEO_ZBUFFER; st.fDecal = 0;
+    check(BrDlVtxRoutine(&st) == 0x10021A20u && !BrDlIsLit(&st),
+          "zbuffer, no lighting -> 0x10021A20, unlit");
+
+    st.geoMode = GEO_LIT;
+    check(BrDlVtxRoutine(&st) == 0x10021C70u && BrDlIsLit(&st),
+          "zbuffer + lighting -> 0x10021C70, lit");
+
+    st.fDecal = 1;
+    check(BrDlVtxRoutine(&st) == 0x100221D0u && BrDlIsLit(&st),
+          "...and the DECAL combiner row swaps in 0x100221D0");
+    st.fDecal = 0;
+
+    /* 0x1001FE48: texgen overrides the lighting choice, and TEXGEN_LINEAR
+     * picks between the two.  Both still light. */
+    st.geoMode = BR_DL_GEO_ZBUFFER | BR_DL_GEO_TEXTURE_GEN;
+    check(BrDlVtxRoutine(&st) == 0x10022600u && BrDlIsLit(&st),
+          "texgen -> 0x10022600 (lit) even with G_LIGHTING clear");
+    st.geoMode |= BR_DL_GEO_TEXTURE_GEN_LIN;
+    check(BrDlVtxRoutine(&st) == 0x10022BF0u,
+          "texgen + linear -> 0x10022BF0");
+
+    /* 0x1001FE99: without a z-buffer the choice is a different pair, and
+     * texgen is not consulted at all. */
+    st.geoMode = 0;
+    check(BrDlVtxRoutine(&st) == 0x10023110u && !BrDlIsLit(&st),
+          "no zbuffer, no lighting -> 0x10023110, unlit");
+    st.geoMode = BR_DL_GEO_LIGHTING | BR_DL_GEO_TEXTURE_GEN;
+    check(BrDlVtxRoutine(&st) == 0x10023360u && BrDlIsLit(&st),
+          "no zbuffer + lighting -> 0x10023360, and texgen is ignored");
+}
+
+/* Drive one vertex whose normal is `n` through the machine and return the
+ * colour the lit transform gave it.  The modelview is `pMtx` (16 floats, row
+ * major) or identity when NULL. */
+static void light_one(BrDl *pSt, const float *pMtx, const float *pN,
+                      float *pOut, uint32_t geo)
+{
+    static uint8_t dl[64];
+    static uint8_t verts[0x20];
+    static uint8_t mtx[64];
+    size_t n;
+    int i;
+
+    memset(mtx, 0, sizeof(mtx));
+    if (pMtx) { for (i = 0; i < 16; ++i) wf(mtx + i * 4, pMtx[i]); }
+    else      { wf(mtx + 0, 1.0f); wf(mtx + 5*4, 1.0f);
+                wf(mtx + 10*4, 1.0f); wf(mtx + 15*4, 1.0f); }
+
+    memset(verts, 0, sizeof(verts));
+    wf(verts + 0x14, pN[0]); wf(verts + 0x18, pN[1]); wf(verts + 0x1C, pN[2]);
+
+    memset(dl, 0, sizeof(dl));
+    n = light_preamble(dl, geo);
+    /* G_MTX load, modelview, no push -- so the light setup sees a real
+     * matrix and the cache flag gets cleared by it, which is the ordering
+     * the game uses too. */
+    put(dl + n - 8, 0x01020000u | 0x20000u, 0x50000000u);
+    put(dl + n + 0x00, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + n + 0x08, 0xB8000000u, 0u);
+
+    BrDlInit(pSt, 64, 64);
+    BrDlAddRegion(pSt, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+    BrDlAddRegion(pSt, 0x50000000u, mtx, sizeof(mtx));
+    BrDlAddRegion(pSt, 0x60000000u, verts, sizeof(verts));
+    BrDlRun(pSt, dl, sizeof(dl));
+
+    pOut[0] = pSt->aVtx[0].n0;
+    pOut[1] = pSt->aVtx[0].n1;
+    pOut[2] = pSt->aVtx[0].n2;
+}
+
+static void test_light_math(void)
+{
+    BrDl st;
+    float c[3], c2[3], nL[3], nBack[3], nPerp[3];
+    int i;
+
+    printf("lighting: the light record and the shading model\n");
+
+    /* --- the record layout, asserted against the shipped bytes ------ */
+    {
+        static uint8_t dl[64];
+        size_t n = light_preamble(dl, GEO_LIT);
+        (void)n;
+        BrDlInit(&st, 64, 64);
+        BrDlAddRegion(&st, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+        BrDlRun(&st, dl, sizeof(dl));
+
+        check(st.nLights == 2,
+              "G_MOVEWORD numlight: (0x80000040 >> 5) & 0xF == 2");
+        /* G_MOVEMEM 0x86 -> slot 0 at +0x10 of the Lights1 blob. */
+        check(st.aLight[BR_DL_LIGHT_DIFFUSE][BR_DL_LIGHT_COL + 0] == 0xEE &&
+              st.aLight[BR_DL_LIGHT_DIFFUSE][BR_DL_LIGHT_COL + 2] == 0xCC &&
+              st.aLight[BR_DL_LIGHT_DIFFUSE][BR_DL_LIGHT_DIR + 0] == 0x54,
+              "index 0x86 loads slot 0: colour at +0, direction at +8");
+        check(st.aLight[BR_DL_LIGHT_AMBIENT][BR_DL_LIGHT_COL + 0] == 0x33 &&
+              st.aLight[BR_DL_LIGHT_AMBIENT][BR_DL_LIGHT_COL + 2] == 0x40,
+              "index 0x88 loads slot 1: the ambient colour");
+        check(st.fLightCached == 0,
+              "and every light command leaves the cache flag clear");
+    }
+
+    /* --- the derived state ------------------------------------------ */
+    {
+        float n0[3] = { 0.0f, 0.0f, 1.0f };
+        light_one(&st, NULL, n0, c, GEO_LIT);
+        check(st.cLightSetup == 1, "the derived state is rebuilt exactly once");
+        check(st.lightScale[0] == 238.0f && st.lightScale[2] == 204.0f,
+              "the light colour is the raw bytes, 0..255 and NOT divided");
+        check(st.lightAmb[0] == 51.0f && st.lightAmb[2] == 64.0f,
+              "the ambient likewise");
+        /* (84,84,84)/128 normalised is (1,1,1)/sqrt(3). */
+        check(fabsf(st.lightDir[0] - 0.5773503f) < 1e-5f &&
+              fabsf(st.lightDir[1] - st.lightDir[0]) < 1e-6f &&
+              fabsf(st.lightDir[2] - st.lightDir[0]) < 1e-6f,
+              "the direction is the signed bytes /128, normalised");
+        for (i = 0; i < 3; ++i) nL[i] = st.lightDir[i];
+    }
+
+    /* --- the model ---------------------------------------------------- */
+    /* n == L: t == 1, so the unclamped colour would be 289/289/268 and every
+     * channel saturates.  That the CLAMP is a substitution of the literal
+     * 255.0f rather than a min() is invisible here because the two agree;
+     * what is visible is that nothing exceeds 255. */
+    light_one(&st, NULL, nL, c, GEO_LIT);
+    check(c[0] == 255.0f && c[1] == 255.0f && c[2] == 255.0f,
+          "n parallel to L saturates: 238+51 and 204+64 both clamp to 255");
+
+    /* A partially-lit normal, where the arithmetic is actually observable.
+     * The expectation is computed from the dot product rather than written
+     * down, so it tests the model and not a number. */
+    {
+        float v[3], t, e;
+        int k, fOk = 1;
+        v[0] = 0.6f; v[1] = 0.0f; v[2] = 0.8f;      /* unit */
+        t = v[0]*nL[0] + v[1]*nL[1] + v[2]*nL[2];
+        light_one(&st, NULL, v, c, GEO_LIT);
+        for (k = 0; k < 3; ++k) {
+            e = t * st.lightScale[k] + st.lightAmb[k];
+            if (e > 255.0f) e = 255.0f;
+            if (fabsf(c[k] - e) > 1e-3f) fOk = 0;
+        }
+        check(fOk && c[0] > 51.0f && c[0] < 255.0f,
+              "a partly-lit normal gives t*colour + ambient, unsaturated");
+    }
+
+    /* The bound the whole model lives inside, and the one a sign error or a
+     * backwards clamp breaks: every channel is between the ambient and the
+     * lesser of 255 and ambient+colour. */
+    {
+        int k, fOk = 1;
+        for (k = 0; k <= 12; ++k) {
+            float a = (float)k / 12.0f * 6.2831853f, v[3], lo, hi;
+            int j;
+            v[0] = cosf(a); v[1] = sinf(a); v[2] = 0.0f;
+            light_one(&st, NULL, v, c, GEO_LIT);
+            for (j = 0; j < 3; ++j) {
+                lo = st.lightAmb[j];
+                hi = lo + st.lightScale[j];
+                if (hi > 255.0f) hi = 255.0f;
+                if (c[j] < lo - 1e-3f || c[j] > hi + 1e-3f) fOk = 0;
+            }
+        }
+        check(fOk, "every channel stays within [ambient, min(255, amb+col)]");
+    }
+
+    /* n == -L: t < 0, ambient only -- and note this arm does NOT use the
+     * clamp and does NOT use the scale. */
+    for (i = 0; i < 3; ++i) nBack[i] = -nL[i];
+    light_one(&st, NULL, nBack, c, GEO_LIT);
+    check(c[0] == 51.0f && c[1] == 51.0f && c[2] == 64.0f,
+          "n opposed to L gives the ambient exactly");
+    check(st.cVtxLitAmbient == 1, "and takes the ambient-only arm");
+
+    /* t == 0 exactly is the boundary, and the original's test is `!(t >= 0)`
+     * -> lit, so zero must take the LIT arm and land on the ambient value by
+     * arithmetic rather than by the early return. */
+    nPerp[0] = 1.0f / sqrtf(2.0f); nPerp[1] = -nPerp[0]; nPerp[2] = 0.0f;
+    light_one(&st, NULL, nPerp, c, GEO_LIT);
+    check(fabsf(c[0] - 51.0f) < 1e-3f && fabsf(c[2] - 64.0f) < 1e-3f,
+          "n perpendicular to L gives the ambient");
+    check(st.cVtxLitAmbient == 0,
+          "...through the LIT arm: t == 0 is inside, not outside");
+
+    /* Monotone in n.L, which a sign error on either the dot or the direction
+     * transform breaks. */
+    {
+        float prev = -1.0f;
+        int fMono = 1, k;
+        for (k = 0; k <= 8; ++k) {
+            float a = (float)k / 8.0f;      /* lerp -L .. +L */
+            float v[3];
+            for (i = 0; i < 3; ++i) v[i] = nL[i] * (2.0f * a - 1.0f);
+            light_one(&st, NULL, v, c, GEO_LIT);
+            if (c[2] < prev - 1e-4f) fMono = 0;
+            prev = c[2];
+        }
+        check(fMono, "the colour is non-decreasing as n turns towards L");
+    }
+
+    /* THE INVARIANT THAT PINS THE DIRECTION TRANSFORM, and the reason it is
+     * worth a test of its own: the setup dots the light with the modelview's
+     * ROWS, which under this file's row-vector convention is M applied as a
+     * COLUMN-vector matrix -- i.e. M-transpose, i.e. M's inverse for a
+     * rotation.  Reading it the other way round is the classic error and it
+     * is invisible on axis-aligned geometry.
+     *
+     * The property: shading depends only on the WORLD-space normal.  So for
+     * any rotation R, a model-space normal n under modelview R must shade
+     * exactly as the world normal (n * R) does under the identity -- because
+     *     n . (R applied to d)  ==  (n * R) . d.
+     * Both sides are computed here; nothing is written down. */
+    {
+        float ang = 0.7f, ca = cosf(ang), sa = sinf(ang);
+        float R[16] = { 0 };
+        float nModel[3], nWorld[3];
+        R[0] = ca;  R[1] = sa;                /* row-major, row-vector */
+        R[4] = -sa; R[5] = ca;
+        R[10] = 1.0f; R[15] = 1.0f;
+
+        nModel[0] = 0.3f; nModel[1] = 0.5f; nModel[2] = 0.81f;
+        nWorld[0] = nModel[0]*R[0] + nModel[1]*R[4] + nModel[2]*R[8];
+        nWorld[1] = nModel[0]*R[1] + nModel[1]*R[5] + nModel[2]*R[9];
+        nWorld[2] = nModel[0]*R[2] + nModel[1]*R[6] + nModel[2]*R[10];
+
+        light_one(&st, NULL, nWorld, c, GEO_LIT);
+        light_one(&st, R, nModel, c2, GEO_LIT);
+        check(fabsf(c[0] - c2[0]) < 1e-2f && fabsf(c[1] - c2[1]) < 1e-2f &&
+              fabsf(c[2] - c2[2]) < 1e-2f,
+              "the light is pulled into MODEL space: n under M shades as "
+              "(n*M) under the identity");
+        /* And the transposed reading really is different, so the assertion
+         * above has teeth: R is not symmetric, so n*R != n*R-transpose. */
+        check(fabsf(nWorld[0] - (nModel[0]*R[0] + nModel[1]*R[1] +
+                                 nModel[2]*R[2])) > 0.05f,
+              "...and the two readings of R genuinely differ here");
+    }
+
+    /* Unlit geometry must still get the raw 1/128-scaled bytes: the whole
+     * point of the two transforms is that only one of them touches r/g/b. */
+    {
+        float n0[3] = { 0.25f, -0.5f, 0.75f };
+        light_one(&st, NULL, n0, c, BR_DL_GEO_ZBUFFER);
+        check(c[0] == 0.25f && c[1] == -0.5f && c[2] == 0.75f,
+              "with G_LIGHTING clear the trailing bytes pass through");
+        check(st.cVtxLit == 0 && st.cLightSetup == 0,
+              "and no light setup happens at all");
+        check(BrDlColourScale(&st) == 1.0f,
+              "BrDlColourScale reports the unlit convention");
+    }
+    {
+        float n0[3] = { 0.0f, 0.0f, 1.0f };
+        light_one(&st, NULL, n0, c, GEO_LIT);
+        check(BrDlColourScale(&st) == 1.0f / 255.0f,
+              "and the Glide 0..255 convention once a light ran");
+    }
+}
+
+static void test_light_cache(void)
+{
+    static uint8_t dl[128];
+    static uint8_t mtx[64];
+    static uint8_t verts[0x20];
+    BrDl st;
+    size_t n;
+    int i;
+
+    printf("lighting: what invalidates the derived state\n");
+
+    memset(mtx, 0, sizeof(mtx));
+    wf(mtx + 0, 1.0f); wf(mtx + 5*4, 1.0f); wf(mtx + 10*4, 1.0f);
+    wf(mtx + 15*4, 1.0f);
+    memset(verts, 0, sizeof(verts));
+    wf(verts + 0x1C, 1.0f);
+
+    /* Two G_VTX with nothing between them: one setup. */
+    memset(dl, 0, sizeof(dl));
+    n = light_preamble(dl, GEO_LIT);
+    put(dl + n - 8, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + n + 0x00, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + n + 0x08, 0xB8000000u, 0u);
+    BrDlInit(&st, 64, 64);
+    BrDlAddRegion(&st, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+    BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+    BrDlRun(&st, dl, sizeof(dl));
+    check(st.cVtxLit == 2 && st.cLightSetup == 1,
+          "two G_VTX, one setup: 0x105D17D0 latches");
+
+    /* A PROJECTION G_MTX between them must NOT invalidate: 0x10021080's two
+     * projection arms jump past the store at 0x1002116E. */
+    for (i = 0; i < 2; ++i) {
+        uint32_t mode = i ? (0x10000u | 0x20000u)      /* projection, load */
+                          : 0x20000u;                  /* modelview,  load */
+        memset(dl, 0, sizeof(dl));
+        n = light_preamble(dl, GEO_LIT);
+        put(dl + n - 8, 0x04000000u | (1u << 10), 0x60000000u);
+        put(dl + n + 0x00, 0x01000000u | mode, 0x50000000u);
+        put(dl + n + 0x08, 0x04000000u | (1u << 10), 0x60000000u);
+        put(dl + n + 0x10, 0xB8000000u, 0u);
+        BrDlInit(&st, 64, 64);
+        BrDlAddRegion(&st, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+        BrDlAddRegion(&st, 0x50000000u, mtx, sizeof(mtx));
+        BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+        BrDlRun(&st, dl, sizeof(dl));
+        check(st.cLightSetup == (uint32_t)(i ? 1 : 2),
+              i ? "a PROJECTION G_MTX does not invalidate the light cache"
+                : "a MODELVIEW G_MTX LOAD does -- and used not to");
+    }
+
+    /* And a G_MOVEWORD LIGHTCOL does. */
+    memset(dl, 0, sizeof(dl));
+    n = light_preamble(dl, GEO_LIT);
+    put(dl + n - 8, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + n + 0x00, 0xBC00000Au, 0x10203000u);   /* slot 0, triple at +0 */
+    put(dl + n + 0x08, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + n + 0x10, 0xB8000000u, 0u);
+    BrDlInit(&st, 64, 64);
+    BrDlAddRegion(&st, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+    BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+    BrDlRun(&st, dl, sizeof(dl));
+    check(st.cLightSetup == 2 && st.lightScale[0] == 16.0f &&
+          st.lightScale[1] == 32.0f && st.lightScale[2] == 48.0f,
+          "G_MOVEWORD LIGHTCOL invalidates and the new colour takes effect");
+}
+
+/* ------------------------------------------------------------------ */
 /* 6. retail geometry                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -724,7 +1094,155 @@ static void run_rca(const char *pszPath)
         }
     }
 
-    free(rgba); free(aStart); free(marked);
+    /* ---------------------------------------------------------------
+     * BEFORE / AFTER: the same model, unlit and lit
+     * ---------------------------------------------------------------
+     * The point of the whole exercise, and the only assertion in this file
+     * that is about a PICTURE.  Same geometry, same camera, same rasteriser;
+     * the only difference is the five-command preamble the game emits and a
+     * shipped .rca does not carry (measured: bb.rca and ce.rca contain zero
+     * 0xB6/0xB7/0xBC/0x03 commands, so the light state cannot come from the
+     * model).  The lights are the SHIPPED bytes at BRGlide 0x100A9FF0.
+     *
+     * The ramp is luminance, so a flat model prints as one character and a
+     * shaded one prints as a gradient -- which is exactly the difference
+     * being demonstrated.  There is no G_MTX in these runs, so the modelview
+     * stays identity and the light direction is used as authored. */
+    free(rgba);
+    rgba = (uint8_t *)calloc(128u * 128u * 4u, 1);
+    {
+        static uint8_t pre[64];
+        size_t cbPre = light_preamble(pre, GEO_LIT);
+        int iPass;
+        uint32_t aLevels[2] = { 0, 0 };
+        uint32_t cLit = 0, cAmb = 0;
+        int fInRange = 1;
+
+        for (iPass = 0; iPass < 2; ++iPass) {
+            uint8_t seen[16];
+            uint32_t nLevel = 0;
+            int ty, tx, k;
+
+            BrDlInit(&st, 128, 128);
+            BrDlAddRegion(&st, ARENA_BASE, ctx.pArena,
+                          ctx.cArena * sizeof(float));
+            BrDlAddRegion(&st, RCA_N64_BASE, ctx.pFile + RCA_FILE_BASE,
+                          ctx.cbFile - RCA_FILE_BASE);
+            BrDlAddRegion(&st, LIGHTS1_BASE, g_aLights1, sizeof(g_aLights1));
+
+            memset(&st.combined, 0, sizeof(st.combined));
+            st.combined.m[0][0] = 1.0f / maxAbs;
+            st.combined.m[1][1] = 1.0f / maxAbs;
+            st.combined.m[2][2] = 1.0f / maxAbs;
+            st.combined.m[2][3] = 0.25f / maxAbs;
+            st.combined.m[3][3] = 2.0f;
+            BrDlSetViewport(&st, 48.0f, 64.0f, -48.0f, 64.0f);
+
+            memset(rgba, 0, 128u * 128u * 4u);
+            ras.pRgba = rgba; ras.cx = 128; ras.cy = 128; ras.cCovered = 0;
+            BrDlAttachRaster(&st, &ras);
+
+            if (iPass == 1)
+                BrDlRun(&st, pre, cbPre);
+            for (i = 0; i < nRuns; ++i)
+                BrDlRun(&st, ctx.pFile + aStart[i], ctx.cbFile - aStart[i]);
+
+            printf("  %s  (G_VTX handler %08X)\n",
+                   iPass ? "AFTER  -- G_LIGHTING set, one directional light "
+                           "+ ambient"
+                         : "BEFORE -- as shipped: no light state at all",
+                   BrDlVtxRoutine(&st));
+            printf("    lit=%-5u ambient-only=%-5u setups=%u  px=%u\n",
+                   st.cVtxLit, st.cVtxLitAmbient, st.cLightSetup,
+                   ras.cCovered);
+
+            /* 2x4 blocks, AVERAGED (a max would flatten the gradient into
+             * one level and hide the very thing this is here to show), and
+             * cropped to rows 16..47 because the model occupies the middle
+             * of a 128px frame and blank rows are not evidence. */
+            memset(seen, 0, sizeof(seen));
+            for (ty = 0; ty < 32; ++ty) {
+                char row[65];
+                int fAny = 0;
+                for (tx = 0; tx < 64; ++tx) {
+                    int sum = 0, cov = 0, mx, my;
+                    for (my = 0; my < 4; ++my)
+                        for (mx = 0; mx < 2; ++mx) {
+                            const uint8_t *q =
+                                rgba + (((size_t)(ty * 4 + my) * 128u) +
+                                        (size_t)(tx * 2 + mx)) * 4u;
+                            if (!q[3]) continue;
+                            sum += (77 * q[0] + 150 * q[1] + 29 * q[2]) >> 8;
+                            cov++;
+                        }
+                    if (!cov) { row[tx] = ' '; continue; }
+                    k = (sum / cov) * 9 / 255;
+                    if (k > 9) k = 9;
+                    if (k < 0) k = 0;
+                    seen[k] = 1;
+                    fAny = 1;
+                    row[tx] = " .:-=+*#%@"[k];
+                }
+                row[64] = '\0';
+                if (fAny)                     /* auto-crop: blank rows are
+                                               * not evidence of anything */
+                    printf("    |%s|\n", row);
+            }
+
+            /* And the render itself, so the comparison is not only ASCII.
+             * Same naming scheme test_gfx uses. */
+            {
+                const char *pszLeaf = strrchr(pszPath, '/');
+                char szOut[256];
+                FILE *fo;
+                pszLeaf = pszLeaf ? pszLeaf + 1 : pszPath;
+                sprintf(szOut, "build/dl_%s.%s.ppm", pszLeaf,
+                        iPass ? "lit" : "unlit");
+                fo = fopen(szOut, "wb");
+                if (fo) {
+                    size_t q;
+                    fprintf(fo, "P6\n128 128\n255\n");
+                    for (q = 0; q < 128u * 128u; ++q)
+                        fwrite(rgba + q * 4u, 1, 3, fo);
+                    fclose(fo);
+                    printf("    -> %s\n", szOut);
+                }
+            }
+            for (k = 0; k < 10; ++k) nLevel += seen[k];
+            aLevels[iPass] = nLevel;
+
+            if (iPass == 1) {
+                cLit = st.cVtxLit;
+                cAmb = st.cVtxLitAmbient;
+                /* Every colour the lit pass produced must be a value the
+                 * shading model can produce.  A wrong sign, a missing
+                 * ambient or a broken clamp all break this. */
+                for (i = 0; i < BR_DL_VTX_COUNT; ++i) {
+                    int j;
+                    const float *pc = &st.aVtx[i].r;
+                    if (st.aVtx[i].outcode != 0) continue;
+                    for (j = 0; j < 3; ++j) {
+                        float lo = st.lightAmb[j];
+                        float hi = lo + st.lightScale[j];
+                        if (hi > 255.0f) hi = 255.0f;
+                        if (pc[j] < lo - 1e-2f || pc[j] > hi + 1e-2f)
+                            fInRange = 0;
+                    }
+                }
+            }
+        }
+
+        check(cLit > 0 && cAmb > 0,
+              "the lit pass ran and some faces genuinely turn away from L");
+        check(aLevels[1] > aLevels[0] && aLevels[1] >= 4,
+              "the lit render has more distinct brightness levels: it is "
+              "shaded, the unlit one is not");
+        check(fInRange,
+              "every lit colour lies in [ambient, min(255, ambient+colour)]");
+    }
+    free(rgba);
+
+    free(aStart); free(marked);
     free(ctx.pArena); free(ctx.pFile);
 }
 
@@ -736,6 +1254,9 @@ int main(void)
     test_combine();
     test_synthetic();
     test_clip();
+    test_light_select();
+    test_light_math();
+    test_light_cache();
 
     /* Not BR_REQUIRE_TESTDATA at the top: the five suites above need no
      * assets and must still run and still report on a fresh clone. */

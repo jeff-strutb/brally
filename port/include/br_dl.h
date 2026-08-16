@@ -231,17 +231,108 @@ typedef struct BrDlVtx {
  * port clamps and counts instead.  DEVIATION, recorded at the site. */
 #define BR_DL_CLIP_MAX     9
 
-/* The colour slots: 0x10021A20 copies source floats +0x14/+0x18/+0x1C -- the
- * N64 Vtx's last three bytes, scaled by 1/128 by BrVtxExpand -- straight into
- * r/g/b.  For an unlit model those bytes ARE the vertex colour; for a lit one
- * they are the normal and lighting must overwrite r/g/b.  Nothing in the
- * transform does that, so the lighting pass lives elsewhere and has NOT been
- * located.  See the header note in br_dl.c. */
+/* The colour slots.
+ *
+ * THE LIGHTING PASS HAS NOW BEEN FOUND.  It is not a second pass over the
+ * vertex array and it is not inside the triangle submitters: it is a SECOND
+ * VERTEX TRANSFORM, and the G_VTX handler is swapped for it.  See the
+ * "Lighting" section of br_dl.c for the whole chain; the one-line version is
+ *
+ *     0x1001FD70 rewrites dispatch-table slots 0x04 / 0xB1 / 0xBF
+ *     according to the geometry mode, and 0x100A9A68 IS slot 0x04
+ *     (0x100A9A58 + 4*4).
+ *
+ * so `G_LIGHTING` selects 0x10021C70 (or its decal twin 0x100221D0) in place
+ * of 0x10021A20, and THAT routine turns the Vtx's trailing three bytes --
+ * which are a NORMAL, measured: every one of the 864 vertices in bb.rca and
+ * the 931 in ce.rca has |(b12,b13,b14)| == 127.0 +/- 0.6 -- into a colour.
+ *
+ * So for an unlit model 0x10021A20's verbatim copy stands (and the combiner
+ * such a model uses ignores the iterated colour anyway); for a lit one the
+ * lighting overwrites r/g/b AND n0/n1/n2, the latter so that the clipper,
+ * which interpolates the nine floats from +0x44, carries the LIT colour
+ * across a clipped edge rather than the normal. */
 
 #define BR_DL_VTX_COUNT   32      /* 0x105CE318 .. one G_VTX can fill it   */
 #define BR_DL_MTX_STACK   11      /* 0x105CCD10, stride 0x40, index wraps  */
 #define BR_DL_DL_STACK    10      /* 0x105CE2E8; 0x10021020 exit(1)s at 10 */
 #define BR_DL_LIGHTS       8      /* 0x105CCC78, 16 bytes each             */
+
+/* ---------------------------------------------------------------------
+ * Geometry mode (0x105D17C8), and why these bits are not a guess
+ * ---------------------------------------------------------------------
+ * 0x1001FD70 tests them one at a time and each test lands on a Glide call
+ * that names the bit: 0x10000 -> fog mode, 0x1000/0x2000 -> cull mode,
+ * 0x0001 -> depth-buffer function, 0x0200 -> the flat/smooth triangle pair.
+ * They are F3D's `G_*` values exactly.  Corroboration from the emitter side:
+ * the game issues 0xB7 with 0x00020205 == ZBUFFER|SHADE|SHADING_SMOOTH|
+ * LIGHTING at 0x1000AA18 and 0x10015ADD, and 0xB6 with 0x000C0000 ==
+ * TEXTURE_GEN|TEXTURE_GEN_LINEAR at six sites. */
+#define BR_DL_GEO_ZBUFFER          0x00000001u
+#define BR_DL_GEO_TEXTURE_ENABLE   0x00000002u
+#define BR_DL_GEO_SHADE            0x00000004u
+#define BR_DL_GEO_SHADING_SMOOTH   0x00000200u
+#define BR_DL_GEO_CULL_FRONT       0x00001000u
+#define BR_DL_GEO_CULL_BACK        0x00002000u
+#define BR_DL_GEO_FOG              0x00010000u
+#define BR_DL_GEO_LIGHTING         0x00020000u
+#define BR_DL_GEO_TEXTURE_GEN      0x00040000u
+#define BR_DL_GEO_TEXTURE_GEN_LIN  0x00080000u
+
+/* ---------------------------------------------------------------------
+ * The light record, READ OFF THE CONSUMER
+ * ---------------------------------------------------------------------
+ * Eight 16-byte records at 0x105CCC78.  The layout below is taken from the
+ * three places that touch them, not from libultra:
+ *
+ *   0x1002386E (G_MOVEMEM): destination is
+ *       0x105CCC78 + ((idx - 0x86) >> 1) * 16, for (w0 & 0xFFFF) bytes.
+ *       So a slot is 16 bytes and idx 0x86,0x88,... are slots 0,1,...
+ *   0x10023A05 (G_MOVEWORD LIGHTCOL): byte address is (off >> 5) * 16, and
+ *       the low nibble of `off` picks +0 (nibble 0) or +4 (nibble 4) for the
+ *       three colour bytes -- so a record holds TWO colour triples.
+ *   0x10021C70 (the lit transform) reads, for slot 0:
+ *       0x105CCC78 +0 +1 +2   as UNSIGNED bytes  -> the light colour
+ *       0x105CCC80 +0 +1 +2   as SIGNED   bytes  -> the light direction
+ *     and for slot 1:
+ *       0x105CCC88 +0 +1 +2   as UNSIGNED bytes  -> the ambient colour
+ *     i.e. +0 colour, +4 the duplicate colour (never read), +8 direction.
+ *
+ * The emitter agrees exactly.  0x1000A88B issues
+ *     G_MOVEWORD numlight w1=0x80000040   -> (w1 >> 5) & 0xF == 2
+ *     G_MOVEMEM 0x86 len 16 from 0x100A9FF8
+ *     G_MOVEMEM 0x88 len 16 from 0x100A9FF0
+ * and 0x100A9FF0 is one libultra `Lights1` -- an 8-byte Ambient followed by a
+ * 16-byte Light -- whose bytes read
+ *     ambient  33 33 40 00  33 33 40 00
+ *     light    EE EE CC 00  EE EE CC 00  54 54 54 00
+ * i.e. a warm white (238,238,204) directional light along (+84,+84,+84) with
+ * a dim cool ambient (51,51,64), each colour stored twice.  That is `Light_t`
+ * / `Ambient_t`, established from both ends rather than assumed.
+ *
+ * ONLY TWO SLOTS ARE USED.  0x10021C70 reads slot 0 and slot 1 at FIXED
+ * addresses; `numlights` is only ever tested against zero.  A second
+ * directional light would be silently ignored by this build. */
+#define BR_DL_LIGHT_COL     0     /* +0..+2  unsigned colour              */
+#define BR_DL_LIGHT_COLC    4     /* +4..+6  the copy; nothing reads it   */
+#define BR_DL_LIGHT_DIR     8     /* +8..+10 signed direction             */
+#define BR_DL_LIGHT_DIFFUSE 0     /* slot 0 -- G_MOVEMEM index 0x86       */
+#define BR_DL_LIGHT_AMBIENT 1     /* slot 1 -- G_MOVEMEM index 0x88       */
+
+/* 1/128 (0x100773A0), the scale BrVtxExpand applies to the Vtx's trailing
+ * bytes -- so a lit model's normal arrives in [-1, 1).  0x10021C70 applies
+ * the same factor to the light direction, but as a DIVIDE by 0x10077420 ==
+ * 128.0f; br_dl.c writes that one out as a divide.  Exposed because a caller
+ * building an expanded vertex record needs the same number. */
+#define BR_DL_BYTE_SCALE  (1.0f / 128.0f)
+
+/* 0x10077418 == 255.0f.  The Glide build's iterated colours are 0..255, so
+ * the lit colour is clamped there.  The D3D build's counterpart 0x10022350
+ * (slice2_16.c's BrGbiLightVertex) is the same 301 bytes with the limit at
+ * 0x1008F3C4 == 1.0f and a 1/255 in its setup instead: the two builds differ
+ * only in the colour convention.  Glide is the reference (CONVENTIONS.md), so
+ * this port carries 0..255 and says so. */
+#define BR_DL_COLOUR_MAX  255.0f
 
 /* Clip outcode bits, in the order 0x10021A20 tests them. */
 #define BR_DL_CLIP_W      0x01    /*  w     <= 0 */
@@ -260,9 +351,14 @@ typedef struct BrDlVtx {
  * Glide argument tuples are recorded in br_dl.c beside each pattern; what
  * matters to a portable backend is that the set is closed and tiny.
  *
- * BR_DL_CC_DECAL is special: matching it flips the triangle-drawing function
- * pointer at 0x100A9A68 between 0x10021C70 and 0x100221D0, so it selects a
- * different rasterisation path, not merely a different blend.
+ * BR_DL_CC_DECAL is special: matching it flips 0x100A9A68 between 0x10021C70
+ * and 0x100221D0, so it selects a different code path, not merely a blend.
+ *
+ * ERRATUM, and it was the thing hiding the lighting: 0x100A9A68 is NOT a
+ * "triangle-drawing function pointer", which is what this note used to call
+ * it.  It is 0x100A9A58 + 4*4, i.e. DISPATCH-TABLE SLOT 0x04, and both
+ * routines are G_VTX transforms -- the lit one and its decal variant.  See
+ * PART 4 of br_dl.c.
  *
  * ERRATUM -- TWO OF THESE NAMES ARE THE WRONG WAY ROUND.  The argument
  * tuples this comment says are "recorded in br_dl.c" are not; they have since
@@ -357,7 +453,15 @@ typedef struct BrDl {
     BrMat4    aModel[BR_DL_MTX_STACK];       /* 0x105CCD10, stride 0x40    */
     int32_t   iModel;                        /* 0x100A9A50, 0 == none      */
     BrMat4    combined;                      /* 0x105D1760                 */
-    int32_t   fCombinedStale;                /* 0x105D17D0                 */
+    /* 0x105D17D0 is NOT a "combined matrix stale" flag, which is what this
+     * field used to be called.  It is the LIGHT CACHE flag, and it reads the
+     * other way round: 0x10021C70 recomputes the derived light state when it
+     * is zero and then sets it to 1.  Its three writers are exactly the three
+     * things the derived state depends on -- 0x1002116E (any MODELVIEW
+     * G_MTX; the two projection arms jump past it), 0x10023898 (G_MOVEMEM
+     * light) and 0x10023A33/0x10023A6C (G_MOVEWORD LIGHTCOL) -- all of which
+     * write 0. */
+    int32_t   fLightCached;                  /* 0x105D17D0                 */
 
     /* viewport: screen = trans + scale * (clip/w) */
     float     vpScaleX, vpTransX;            /* 0x105CCD48, 0x105CD9F8     */
@@ -384,6 +488,21 @@ typedef struct BrDl {
     uint8_t   aLight[BR_DL_LIGHTS][16];      /* 0x105CCC78                 */
     int32_t   nLights;                       /* 0x105CCFD0                 */
 
+    /* The derived light state 0x10021C70 builds once per change and every
+     * lit vertex then reads.  Nine contiguous floats in the original, and the
+     * D3D build has the same nine in the same roles at 0x104C15D0/DC/E8 --
+     * slice2_16.h's BrGbiLightState, whose `scale`/`dir`/`ambient` are these
+     * three triples under D3D addresses. */
+    float     lightScale[3];                 /* 0x105CE210 .. light colour */
+    float     lightDir[3];                   /* 0x105CE21C .. model space  */
+    float     lightAmb[3];                   /* 0x105CE228 .. ambient      */
+    /* The "no lights at all" fallback, and it does NOT use lightAmb: it
+     * copies three globals that are not even contiguous.  The D3D build has
+     * the same oddity (slice2_16.h calls the triple `off`), which is why it
+     * is reproduced rather than tidied. */
+    float     lightOff[3];                   /* 0x105D17A4, 0x105D17B4,
+                                              * 0x105CE2D0                 */
+
     const uint8_t *aStack[BR_DL_DL_STACK];   /* 0x105CE2E8                 */
     int32_t   sp;                            /* 0x105CCFE8                 */
 
@@ -404,7 +523,48 @@ typedef struct BrDl {
     uint32_t  cClipVtxMax;      /* widest polygon produced                  */
     uint32_t  cClipStarved;     /* pool empty: port drops, original faults  */
     uint32_t  cClipOverflow;    /* polygon wider than BR_DL_CLIP_MAX        */
+    /* lighting counters */
+    uint32_t  cLightSetup;      /* times the derived state was rebuilt      */
+    uint32_t  cVtxLit;          /* vertices through a lighting transform    */
+    uint32_t  cVtxLitAmbient;   /* ...of which n.L < 0, so ambient only     */
+    uint32_t  cVtxLitOff;       /* ...of which numlights == 0               */
+    uint32_t  cVtxTexGen;       /* would have used a TEXTURE_GEN routine    */
+    uint32_t  cLightNoMtx;      /* setup with no modelview -- see br_dl.c   */
+    /* Non-zero while the vertex array holds colours a LIGHTING transform
+     * produced, i.e. 0..255 rather than the raw 1/128-scaled bytes.  Not in
+     * the original -- there the whole rasteriser is swapped instead, which a
+     * BrDlSink has no way to express.  A consumer that wants one number
+     * should ask BrDlColourScale(). */
+    int32_t   fVtxLit;
 } BrDl;
+
+/* What one unit of r/g/b means for the vertices currently in pDl->aVtx:
+ * 1/255 after a lighting transform, 1/1 otherwise (where the slot carries the
+ * signed 1/128-scaled source byte and is not a colour at all).  Exists so a
+ * backend does not have to guess, and because the two ranges are the one
+ * observable difference the Glide/D3D split leaves in this data. */
+float BrDlColourScale(const BrDl *pDl);
+
+/* 0x1001FD70's choice of G_VTX handler, returned as the ORIGINAL's address.
+ * The interpreter does not branch per vertex: it rewrites dispatch-table slot
+ * 0x04 (== 0x100A9A68) whenever the geometry mode changes, and 0x1001E8FB
+ * swaps the two lit entries when the DECAL combiner row is selected.  Both
+ * inputs are per-BrDl state, so evaluating the same function at G_VTX time is
+ * exactly equivalent and is what the port does.
+ *
+ * One of 0x10021A20, 0x10021C70, 0x100221D0, 0x10022600, 0x10022BF0,
+ * 0x10023360, 0x10023110.
+ *
+ * CAVEAT, stated because it is the one place the equivalence is not exact:
+ * before the FIRST 0xB6/0xB7 the original's table still holds its link-time
+ * contents, which are 0x10021A20 / 0x1001ECF0 / 0x1001FA30 -- the choice for
+ * ZBUFFER|SHADING_SMOOTH -- while the geometry mode word is still zero and
+ * this function therefore answers 0x10023110.  Both are unlit and both take
+ * the same code path here, so nothing observable differs; the addresses do. */
+uint32_t BrDlVtxRoutine(const BrDl *pDl);
+
+/* Non-zero when BrDlVtxRoutine's answer is one of the five that light. */
+int BrDlIsLit(const BrDl *pDl);
 
 /* Screen size the fill/scissor handlers flip Y against (0x100A7518 is the
  * height, 0x100A7514 the width, both set from grSstWinOpen). */
@@ -471,6 +631,9 @@ typedef struct BrDlRaster {
     uint8_t *pRgba;
     int32_t  cx, cy;
     uint32_t cCovered;      /* pixels written */
+    /* Set by BrDlAttachRaster; read only to find out what the colour slots
+     * currently mean (BrDlColourScale).  Callers do not fill this in. */
+    const BrDl *pDl;
 } BrDlRaster;
 
 /* Install BrDlRaster as pDl's sink. */

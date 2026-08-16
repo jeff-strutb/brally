@@ -519,3 +519,32 @@ that crosses NEAR takes it to 512.
 
 When a subsystem reports zero work done, check whether it is idle or unreachable
 before believing the green.
+
+## A "function pointer" that is really a dispatch-table slot
+
+`br_dl.h` described `0x100A9A68` as "the triangle-drawing function pointer",
+because the one writer anyone had read swapped two triangle routines through
+it. It is dispatch-table slot **0x04 — G_VTX** (`0x100A9A58 + 4*4`), and
+`0x1001FD70` rewrites slots 0x04, 0xB1 and 0xBF together from the geometry
+mode.
+
+So `G_LIGHTING` does not select a lighting *pass*. It selects a **second vertex
+transform**, installed over the first. The static table image holds the unlit
+one, which is why every reader found the unlit one and concluded lighting was
+never applied.
+
+The general shape is worth remembering: when a table slot is written at
+runtime, the image tells you the DEFAULT, not the behaviour. Find the writers
+before concluding what a slot holds.
+
+## Measure the data before believing a hypothesis about it
+
+"The file already holds lit colours" was a live and plausible explanation for
+flat-looking geometry. It is false, and one measurement killed it: over every
+vertex the two retail models reach -- 864 in one, 931 in the other -- the
+magnitude of a Vtx's trailing three signed bytes is **127.0 +/- 0.6, every
+single one**. They are unit normals. What the port had been rendering was
+normals painted as colour.
+
+That took one loop over data already in hand, and it settled a question that
+had been open across three passes.
