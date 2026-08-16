@@ -90,7 +90,7 @@ void *BrOperatorNew(uint32_t cb)
 
 static const BrPhaseVtbl *g_pPhaseVtbl;   /* set up in main */
 
-BrPhase *BrPhaseCtor(BrPhase *pThis)
+BrPhase *BrOptObjCtor(BrPhase *pThis)
 {
     ++g_c.nCtor;
     pThis->pVtbl = g_pPhaseVtbl;

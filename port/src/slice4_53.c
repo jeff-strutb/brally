@@ -242,10 +242,10 @@ void BrMenuSub10044B90(int32_t n)
 }
 
 /* 0x10044A30 */
-void BrOptFn10044A30(BrOptObj *pThis)
+void BrOptFn10044A30(void *pEntity)
 {
     if (g_pBrSlice4PhaseCtx != NULL)
-        (void)BrPhaseLeave_10044A30(g_pBrSlice4PhaseCtx, pThis);
+        (void)BrPhaseLeave_10044A30(g_pBrSlice4PhaseCtx, pEntity);
 }
 
 /* ======================================================================

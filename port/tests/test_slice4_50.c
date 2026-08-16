@@ -367,7 +367,7 @@ static void test_menu44E20(void)
     CHECK(g_brPAA2968 != NULL);
     CHECK(g_brPAA2904 == g_brPAA2968);
     CHECK(g_cEnterA == 1 && g_pEnterA == g_brPAA2968);
-    CHECK(g_brPAA2968->pfn04 == EnterA);
+    CHECK(g_brPAA2968->pfnEnter == EnterA);
     CHECK(g_brPAA2968->f0C == 1 && g_brPAA2968->f68 == 1);
     /* 0x10043BF0's slot is untouched. */
     CHECK(g_brPAA2958 == NULL && g_cEnterB == 0);
@@ -416,7 +416,7 @@ static void test_sub43BF0(void)
     CHECK(g_brPAA2958 != NULL);
     CHECK(g_brPAA2904 == g_brPAA2958);
     CHECK(g_cEnterB == 1 && g_pEnterB == g_brPAA2958);
-    CHECK(g_brPAA2958->pfn04 == EnterB);
+    CHECK(g_brPAA2958->pfnEnter == EnterB);
     CHECK(g_brPAA2958->f0C == 1 && g_brPAA2958->f68 == 1);
     CHECK(g_brPAA2968 == NULL && g_cEnterA == 0);
 

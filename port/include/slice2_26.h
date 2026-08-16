@@ -273,8 +273,22 @@ typedef struct BrPhaseCtx {
 extern void *BrOperatorNew(uint32_t cb);
 
 /* XSLICE 0x10048710 */
-/* __thiscall constructor for the phase object; returns `this`. */
-extern BrPhase *BrPhaseCtor(BrPhase *pThis);
+/* __thiscall constructor for the phase object; returns `this`.
+ *
+ * WAS `BrPhaseCtor`, and that name is GONE. 0x10048710 had accumulated three
+ * host names -- `BrPhaseCtor` here, `BrOptObjCtor` in slice2_25.h over its own
+ * BrOptObj, and `BrOptObjCtor` again in slice6_73.h, which is the one with a
+ * real body (port/src/slice6_73.c). CONVENTIONS.md's rule for an address with
+ * several names is to reuse one, never to coin another, so the two call sites
+ * in this tree (slice2_26.c and slice3_31.c) now call the name that has the
+ * body, and port/host/br_stubs.c no longer stubs `BrPhaseCtor`.
+ *
+ * This declaration and slice6_73.h's are now token-for-token the same type,
+ * which they could not be until `BrPhase` became `BrPhase_`: the constructor
+ * writes +0x10, +0x12, +0x14.., +0x64, +0x6C.. +0xBC, +0xC0 and +0xC4, and the
+ * five-field BrPhase had none of them. Wiring it to a five-field model would
+ * have been a memory-corruption bug, not a fix. */
+extern BrPhase *BrOptObjCtor(BrPhase *pThis);
 
 /* XSLICE 0x1003D0B0 */
 /* Two arguments, the second an out-parameter. Its return value is discarded

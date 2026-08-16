@@ -101,7 +101,7 @@ static void BrOptFlushMessage(void)
  * leaves behind on each path. The C++ exception frame the original sets up
  * (`push -1 / push <funclet> / fs:[0]`, and the state variable it keeps at
  * [esp+0xC]) has no observable effect and is not reproduced. */
-static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfn04)
+static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
 {
     BrOptObj *p = *ppSlot;
 
@@ -112,9 +112,23 @@ static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfn04)
 
     /* 0x1007DFE0 is operator new == _nh_malloc(size, 1): the storage is NOT
      * zeroed. The constructor at 0x10048710 is what initialises it.
-     * DEVIATION: sizeof(BrOptObj) rather than the literal 0xC8 -- on a
-     * 64-bit host the three leading pointers make the object larger. */
-    p = (BrOptObj *)malloc(sizeof(BrOptObj));
+     *
+     * HARDENING (port): BR_PHASE_ALLOC_SIZE, not sizeof(BrOptObj).
+     *
+     * This line used to read `malloc(sizeof(BrOptObj))`, with a DEVIATION note
+     * explaining that the literal 0xC8 was wrong on a 64-bit host because the
+     * leading pointers widen. That reasoning was right and the fix was one
+     * model short: BrOptObj was a five-field view padded to 0xC8, so it came
+     * to 216 bytes here, while BrOptObjCtor -- which resolves at the host link
+     * to slice6_73.c's faithful body -- writes the whole 304-byte BrPhase_,
+     * ending with stores to +0xC0 and +0xC4. That was an 88-byte heap
+     * overflow on every phase installation.
+     *
+     * BrOptObj is now an alias for BrPhase_ (see slice2_25.h), so sizeof()
+     * would in fact be correct today; BR_PHASE_ALLOC_SIZE is used anyway
+     * because it is also never smaller than the original's 0xC8, and because
+     * it is the one spelling every phase allocation site in the tree shares. */
+    p = (BrOptObj *)malloc(BR_PHASE_ALLOC_SIZE);
     p = (p != NULL) ? BrOptObjCtor(p) : NULL;
 
     *ppSlot     = p;
@@ -122,12 +136,12 @@ static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfn04)
     if (p == NULL)
         return 0;
 
-    p->pfn04 = pfn04;
+    p->pfnEnter = pfnEnter;
     /* The original re-reads the global here rather than reusing the
      * register; kept, because a constructor that publishes itself could make
      * the two differ. */
     p = *ppSlot;
-    p->pfn04(p);
+    p->pfnEnter(p);
     g_brPAA2904->f0C = 1;
     g_brPAA2904->f68 = 1;
     return 1;
@@ -680,7 +694,7 @@ int BrOpt3810(BrGameObj *pGame)
             BrSub10046400(pGame);
             pObj = g_brPAA2950;
             if (pObj != NULL) {
-                pObj->pVtbl->pfnDeletingDtor(pObj, 1);
+                pObj->pVtbl->f00(pObj, 1);
                 g_brPAA2950 = NULL;
             }
             g_brPAA2904 = g_brPAA2948;
@@ -706,7 +720,7 @@ int BrOpt3810(BrGameObj *pGame)
         BrSub10046400(pGame);
         pObj = g_brPAA2950;
         if (pObj != NULL) {
-            pObj->pVtbl->pfnDeletingDtor(pObj, 1);
+            pObj->pVtbl->f00(pObj, 1);
             g_brPAA2950 = NULL;
         }
         BrOptOpen294C(NULL);
@@ -845,7 +859,7 @@ int BrOpt3F50(BrGameObj *pGame)
 
     pObj = g_brPAA2904;
     if (pObj != NULL)
-        pObj->pVtbl->pfnDeletingDtor(pObj, 1);
+        pObj->pVtbl->f00(pObj, 1);
 
     g_brPAA298C = NULL;
     g_brPAA2904 = g_brPAA2948;
@@ -873,7 +887,7 @@ int BrOpt3FC0(BrGameObj *pGame)
 
     pObj = g_brPAA2904;
     if (pObj != NULL)
-        pObj->pVtbl->pfnDeletingDtor(pObj, 1);
+        pObj->pVtbl->f00(pObj, 1);
 
     g_brAA2958 = 0;
     g_brAA29A8 = 0;
@@ -981,7 +995,7 @@ int BrOptOpen2950A(BrGameObj *pUnused)
     if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
         return 0;
 
-    g_brPAA29B8->pfn08 = BrOptFn10044970;
+    g_brPAA29B8->pfnHook = BrOptFn10044970;
     return 1;
 }
 
@@ -997,7 +1011,7 @@ int BrOptOpen2950B(BrGameObj *pUnused)
     if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
         return 0;
 
-    g_brPAA29B8->pfn08 = BrOptFn10044A30;
+    g_brPAA29B8->pfnHook = BrOptFn10044A30;
     return 1;
 }
 
@@ -1012,7 +1026,7 @@ int BrOpt44C0(BrGameObj *pGame)
 
     pObj = g_brPAA2904;
     if (pObj != NULL)
-        pObj->pVtbl->pfnDeletingDtor(pObj, 1);
+        pObj->pVtbl->f00(pObj, 1);
 
     g_brPAA294C = NULL;
     g_brPAA29B8 = NULL;

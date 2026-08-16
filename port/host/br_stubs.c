@@ -118,7 +118,6 @@ long BrOptFn10044970(void); long BrOptFn10044970(void) { return br_stub("BrOptFn
 long BrOptFn1004CAC0(void); long BrOptFn1004CAC0(void) { return br_stub("BrOptFn1004CAC0"); }
 long BrOptFn10056FF0(void); long BrOptFn10056FF0(void) { return br_stub("BrOptFn10056FF0"); }
 long BrOptFn10058750(void); long BrOptFn10058750(void) { return br_stub("BrOptFn10058750"); }
-long BrPhaseCtor(void); long BrPhaseCtor(void) { return br_stub("BrPhaseCtor"); }
 long BrPhaseEnterPlaceholder_1004A580(void); long BrPhaseEnterPlaceholder_1004A580(void) { return br_stub("BrPhaseEnterPlaceholder_1004A580"); }
 long BrPhaseEnterPlaceholder_1004B430(void); long BrPhaseEnterPlaceholder_1004B430(void) { return br_stub("BrPhaseEnterPlaceholder_1004B430"); }
 long BrPhaseEnterPlaceholder_1004BDC0(void); long BrPhaseEnterPlaceholder_1004BDC0(void) { return br_stub("BrPhaseEnterPlaceholder_1004BDC0"); }

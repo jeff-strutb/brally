@@ -10,6 +10,7 @@
  * the gotcha, not an omission.
  */
 #include <math.h>
+#include "br_tmpfile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -214,7 +215,7 @@ static void TestRelay(void)
 
 static void TestCfgSave(void)
 {
-    static const char szPath[] = "slice4_53_cfg.tmp";
+    const char *szPath = BrTmpPath(0, "slice4_53_cfg");
     unsigned char *pSrc;
     unsigned char *pFile;
     long           cbFile;
@@ -297,7 +298,7 @@ static void TestCfgSave(void)
 
     /* The wrapper must produce byte-identical output. */
     {
-        static const char szPath2[] = "slice4_53_cfg2.tmp";
+        const char *szPath2 = BrTmpPath(1, "slice4_53_cfg2");
         unsigned char *pFile2;
         long           cb2;
 

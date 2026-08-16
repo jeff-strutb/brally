@@ -154,8 +154,22 @@ void BrSub1006A4A0(void *a, void *b)    { (void)a; (void)b; }
 void BrSub10071130(int a, int b)        { (void)a; (void)b; }
 void BrSub10072AF0(int a, int b)        { (void)a; (void)b; }
 
-static void fakeDtor(BrOptObj *pThis, int fDelete) { (void)pThis; (void)fDelete; }
-static const BrOptObjVtbl s_optVtbl = { fakeDtor };
+/* Slot +0x00 is the MSVC scalar deleting destructor and RETURNS `this`
+ * (0x10048850 ends `mov eax,esi / ret 4`). This range discards the result.
+ * The table has nine slots (br_phase.h BrPhaseVtbl_); only +0x00 is driven
+ * here, and the rest are left NULL so a stray call faults rather than
+ * running into whatever followed the old one-slot model. */
+static void *fakeDtor(BrOptObj *pThis, int fDelete)
+{
+    (void)fDelete;
+    return pThis;
+}
+static const BrOptObjVtbl s_optVtbl = {
+    fakeDtor,               /* +0x00 */
+    NULL, NULL, NULL,       /* +0x04 +0x08 +0x0C */
+    NULL, NULL, NULL,       /* +0x10 +0x14 +0x18 */
+    NULL, NULL              /* +0x1C +0x20 */
+};
 
 BrOptObj *BrOptObjCtor(BrOptObj *pThis)
 {
@@ -179,8 +193,10 @@ void BrOptFn10056FF0(BrOptObj *p) { handler(p); }
 void BrOptFn100575F0(BrOptObj *p) { handler(p); }
 void BrOptFn10057C10(BrOptObj *p) { handler(p); }
 void BrOptFn10058750(BrOptObj *p) { handler(p); }
-void BrOptFn10044970(BrOptObj *p) { (void)p; }
-void BrOptFn10044A30(BrOptObj *p) { (void)p; }
+/* An ENTITY record, not the screen object -- see the adjudication in
+ * slice2_25.h. These are only stored and compared here, never called. */
+void BrOptFn10044970(void *pEntity) { (void)pEntity; }
+void BrOptFn10044A30(void *pEntity) { (void)pEntity; }
 
 void *BrGlobalHandle(void *p) { return p; }
 int   BrGlobalUnlock(void *h) { (void)h; ++s_nGlobalUnlock; return 0; }
@@ -758,7 +774,7 @@ static void test_open_2950(void)
     g_brPAA29B8 = (BrOptObj *)calloc(1, sizeof(BrOptObj));
     check(BrOptOpen2950A(NULL) == 1, "single-player entry returns 1");
     check(g_brAA2884 == 0, "0x10AA2884 cleared");
-    check(g_brPAA29B8->pfn08 == BrOptFn10044970, "installs 0x10044970");
+    check(g_brPAA29B8->pfnHook == BrOptFn10044970, "installs 0x10044970");
     free(g_brPAA2950);
     free(g_brPAA29B8);
 
@@ -767,7 +783,7 @@ static void test_open_2950(void)
     check(BrOptOpen2950B(NULL) == 1, "networked entry returns 1");
     check(g_brAA2884 == 1, "0x10AA2884 raised");
     check(g_br22AF18 == 2, "0x1022AF18 set to 2");
-    check(g_brPAA29B8->pfn08 == BrOptFn10044A30, "installs 0x10044A30");
+    check(g_brPAA29B8->pfnHook == BrOptFn10044A30, "installs 0x10044A30");
     free(g_brPAA2950);
     free(g_brPAA29B8);
 

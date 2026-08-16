@@ -177,12 +177,12 @@ static void BrOptInstall(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
         return;
     }
 
-    p->pfn04 = pfnEnter;
+    p->pfnEnter = pfnEnter;
     if (pfnEnter != NULL) {
         /* The original re-reads the slot global for both the argument and the
          * indirect call, and re-reads 0x10AA2904 for each of the two field
          * writes; identical here because nothing in between changes them. */
-        (*ppSlot)->pfn04(*ppSlot);
+        (*ppSlot)->pfnEnter(*ppSlot);
     }
     g_brPAA2904->f0C = 1;
     g_brPAA2904->f68 = 1;

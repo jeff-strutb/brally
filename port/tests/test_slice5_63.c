@@ -249,7 +249,9 @@ void *BrOperatorNew(uint32_t cb)
 }
 void BrOperatorDelete(void *p) { (void)p; }
 
-static const BrOptObjVtbl g_vtbl = { NULL };
+static const BrOptObjVtbl g_vtbl = {   /* nine slots (br_phase.h); none is driven by this test */
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
 static int g_nCtor;
 BrOptObj *BrOptObjCtor(BrOptObj *pThis)
 {
@@ -704,8 +706,8 @@ static void TestEnterOptions(void)
     pFirst = g_brPAA2948;
     CHECK(pFirst != NULL && g_nCtor == 1, "first call constructs the object");
     CHECK(g_brPAA2904 == pFirst, "0x10AA2904 points at it");
-    CHECK(pFirst->pfn04 == BrOptFn10056FF0, "pfn04 is installed");
-    CHECK(g_nFn56FF0 == 1 && g_thisFn56FF0 == pFirst, "pfn04 is called");
+    CHECK(pFirst->pfnEnter == BrOptFn10056FF0, "pfnEnter is installed");
+    CHECK(g_nFn56FF0 == 1 && g_thisFn56FF0 == pFirst, "pfnEnter is called");
     CHECK(pFirst->f0C == 1 && pFirst->f68 == 1, "+0x0C and +0x68 are set");
     CHECK(g_nC020 == 1 && g_seqC020 > g_seqFn56FF0,
           "0x1003C020 runs after, with the gates clear");
@@ -715,7 +717,7 @@ static void TestEnterOptions(void)
     g_brPAA2904 = NULL;
     BrExt_10043E70(0);
     CHECK(g_nCtor == 1 && g_nFn56FF0 == 1,
-          "second call neither constructs nor re-calls pfn04");
+          "second call neither constructs nor re-calls pfnEnter");
     CHECK(g_brPAA2904 == pFirst, "second call only re-points 0x10AA2904");
     CHECK(pFirst->f0C == 5 && pFirst->f68 == 5,
           "second call does NOT re-set +0x0C / +0x68");

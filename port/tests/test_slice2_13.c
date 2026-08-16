@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include "br_tmpfile.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -206,7 +207,7 @@ static void TestPathBaseName(void)
 
 static void TestFileHelpers(void)
 {
-    const char *pszPath = "/tmp/br_slice2_13_test.bin";
+    const char *pszPath = BrTmpPath(0,"/tmp/br_slice2_13_test");
     FILE       *pF;
     char        ab[8];
     int         cBefore;

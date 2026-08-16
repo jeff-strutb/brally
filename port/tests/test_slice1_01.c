@@ -7,6 +7,7 @@
  */
 
 #include "slice1_01.h"
+#include "br_tmpfile.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -292,7 +293,7 @@ static void test_ticks30(void)
 
 /* --------------------------------------------------------------- CHK_* I/O */
 
-#define TEST_PATH "/tmp/br_slice1_01_scratch.bin"
+#define TEST_PATH BrTmpPath(0,"/tmp/br_slice1_01_scratch")
 
 static void test_chk_file(void)
 {
@@ -312,7 +313,7 @@ static void test_chk_file(void)
     fclose(pFile);
 
     CHECK(BrChkFileExists(TEST_PATH) == 1);
-    CHECK(BrChkFileExists(TEST_PATH ".nope") == 0);
+    CHECK(BrChkFileExists(BrTmpPath(1, "/tmp/br_slice1_01_absent")) == 0);
 
     pFile = fopen(TEST_PATH, "rb");
     CHECK(pFile != NULL);
