@@ -116,7 +116,6 @@ long BrPhaseEnterPlaceholder_1004B430(void); long BrPhaseEnterPlaceholder_1004B4
 long BrPhaseEnterPlaceholder_1004BDC0(void); long BrPhaseEnterPlaceholder_1004BDC0(void) { return br_stub("BrPhaseEnterPlaceholder_1004BDC0"); }
 long BrPhaseEnterPlaceholder_1004C4A0(void); long BrPhaseEnterPlaceholder_1004C4A0(void) { return br_stub("BrPhaseEnterPlaceholder_1004C4A0"); }
 long BrPhaseVtbl_1008F700(void); long BrPhaseVtbl_1008F700(void) { return br_stub("BrPhaseVtbl_1008F700"); }
-long BrProbe1006F310(void); long BrProbe1006F310(void) { return br_stub("BrProbe1006F310"); }
 long BrSub100027F0(void); long BrSub100027F0(void) { return br_stub("BrSub100027F0"); }
 long BrSub10002870(void); long BrSub10002870(void) { return br_stub("BrSub10002870"); }
 long BrSub10005FE0(void); long BrSub10005FE0(void) { return br_stub("BrSub10005FE0"); }
@@ -136,7 +135,6 @@ long BrSub1005F5A0(void); long BrSub1005F5A0(void) { return br_stub("BrSub1005F5
 long BrSub100607B0(void); long BrSub100607B0(void) { return br_stub("BrSub100607B0"); }
 long BrSub10061010(void); long BrSub10061010(void) { return br_stub("BrSub10061010"); }
 long BrSub10062C50(void); long BrSub10062C50(void) { return br_stub("BrSub10062C50"); }
-long BrSub1006F4A0(void); long BrSub1006F4A0(void) { return br_stub("BrSub1006F4A0"); }
 long BrSub10070610(void); long BrSub10070610(void) { return br_stub("BrSub10070610"); }
 long BrSub10070E60(void); long BrSub10070E60(void) { return br_stub("BrSub10070E60"); }
 long BrSub10071480(void); long BrSub10071480(void) { return br_stub("BrSub10071480"); }
