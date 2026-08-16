@@ -100,7 +100,14 @@ struct BrPhase {
 
 /* The literal the original passes to operator new. Kept exact: the port
  * allocates this many bytes, which is >= sizeof(BrPhase) everywhere. */
+/* br_phase.h defines the same constant with the same value. Guarded rather
+ * than deleted so this header still stands alone for modules that do not
+ * include br_phase.h yet. If the two ever disagree, that is a real conflict
+ * and the #ifndef would HIDE it -- so it is asserted below, not assumed. */
+#ifndef BR_PHASE_ORIG_SIZE
 #define BR_PHASE_ORIG_SIZE 0xC8
+#endif
+typedef char BrPhaseOrigSizeAgrees[(BR_PHASE_ORIG_SIZE == 0xC8) ? 1 : -1];
 
 typedef char BrPhaseSizeCheck[(sizeof(BrPhase) <= BR_PHASE_ORIG_SIZE) ? 1 : -1];
 

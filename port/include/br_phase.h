@@ -65,7 +65,12 @@
 #include <stdint.h>
 
 #define BR_PHASE_PAGES      20
+/* slice2_26.h defines the same constant with the same value; whichever header
+ * a TU sees first wins, and an assertion below catches any disagreement rather
+ * than letting the guard hide it. */
+#ifndef BR_PHASE_ORIG_SIZE
 #define BR_PHASE_ORIG_SIZE  0xC8u
+#endif
 
 typedef struct BrPhase_     BrPhase_;
 typedef struct BrUiPage_    BrUiPage_;

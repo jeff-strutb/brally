@@ -21,6 +21,7 @@
  */
 
 #include <stddef.h>
+#include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
 #include "slice2_26.h"
 
@@ -67,9 +68,21 @@ static BrActResult BrPhaseActivateSlot(BrPhaseCtx     *pCtx,
         return BR_ACT_EXISTING;
     }
 
-    /* operator new does not zero the block; whatever the constructor at
+        /* HARDENING (port): allocate what THIS build's object needs.
+     *
+     * The original allocates 0xC8 and that is right for a 32-bit build.
+     * It is not right here: br_phase.h's BrPhase_ is ~300 bytes on LP64
+     * because every pointer widened, and 0x10048710 writes the whole
+     * object. Today this module uses the 5-field partial view and the
+     * real constructor is NOT wired to these sites, so nothing
+     * overflows -- but it has 37 call sites waiting, and the moment it
+     * is wired a 0xC8 block becomes a ~100-byte heap overflow per phase
+     * activation. BR_PHASE_ALLOC_SIZE is max(sizeof, 0xC8), so this is
+     * never smaller than the original either.
+     */
+/* operator new does not zero the block; whatever the constructor at
      * 0x10048710 leaves untouched stays garbage. */
-    p = (BrPhase *)BrOperatorNew(BR_PHASE_ORIG_SIZE);
+    p = (BrPhase *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
     p = (p != NULL) ? BrPhaseCtor(p) : NULL;
 
     /* Both globals are written even when the allocation failed, so a failed

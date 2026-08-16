@@ -229,6 +229,9 @@ clang $CFLAGS -Iport/tests -c port/tests/test_slice6_76.c -o build/test_slice6_7
 clang $CFLAGS -c port/src/slice6_77.c -o build/slice6_77.o
 clang $CFLAGS -Iport/tests -c port/tests/test_slice6_77.c -o build/test_slice6_77.o
 
+clang $CFLAGS -c port/src/slice6_78.c -o build/slice6_78.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_78.c -o build/test_slice6_78.o
+
 clang build/slice6_70.o build/test_slice6_70.o -lm -o build/test_slice6_70
 clang build/slice6_71.o build/test_slice6_71.o -lm -o build/test_slice6_71
 clang build/slice6_72.o build/test_slice6_72.o -lm -o build/test_slice6_72
@@ -238,6 +241,10 @@ clang build/slice6_76.o build/test_slice6_76.o -lm -o build/test_slice6_76
 # slice6_77 shares 0x100586A0's loop with br_slots.c, so the real br_slots.o
 # is linked rather than faked; every other dependency is supplied by the test.
 clang build/slice6_77.o build/br_slots.o build/test_slice6_77.o -lm -o build/test_slice6_77
+# slice6_78's CHK_* helpers call slice1_01.c's real BrChkAlloc/BrChkVerbose and
+# br_crt.c's real BrOperatorNew -- faking either would test the fake.  Every
+# other dependency is a recording stand-in supplied by the test.
+clang build/slice6_78.o build/slice1_01.o build/br_crt.o build/test_slice6_78.o -lm -o build/test_slice6_78
 
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
