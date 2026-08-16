@@ -413,6 +413,8 @@ BrKey BrGfxPollKey(BrGfx *g)
 /* macOS virtual key codes. Listed rather than #defined from a header because
  * AppKit does not ship portable names for them. */
 #define BR_VK_RETURN   36
+#define BR_VK_LBRACKET 33
+#define BR_VK_RBRACKET 30
 #define BR_VK_ESCAPE   53
 #define BR_VK_SPACE    49
 #define BR_VK_KPENTER  76
@@ -442,6 +444,9 @@ int BrGfxPumpEvents(BrGfx *g)
                  * Cmd-Q still quit; a menu that exits the process when the
                  * user asks to go back is not a menu. */
                 case BR_VK_ESCAPE: BrKeyPush(BR_KEY_BACK);     break;
+                /* Harness-only screen paging; see the enum. */
+                case BR_VK_LBRACKET: BrKeyPush(BR_KEY_PREV_SCREEN); break;
+                case BR_VK_RBRACKET: BrKeyPush(BR_KEY_NEXT_SCREEN); break;
                 default: break;
                 }
             }
