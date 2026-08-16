@@ -717,9 +717,22 @@ The N64's single call iterates candidate CONTACT FEATURES internally, with all
 four of its case strings inside one loop. Neither number is the other's
 denominator, so comparing them says nothing at all.
 
-If anything it favours the PC build, consistent with the precedence rule: time
-substepping is a finer integration than one solve per frame, which is what you
-would expect the later title to have gained.
+STRONGER, after the sibling re-checked its own claim one level up: there is NO
+fixed-timestep accumulator ANYWHERE in the N64 chain -- not in the solve, not
+in the entity loop, not in the race tick, and the main loop above it is a bare
+spin with no gate. So it is not "we substep and they iterate a different axis",
+it is "we substep and they do not". The PC build has an integration the earlier
+title lacks entirely, which is exactly what the precedence rule predicts and
+this time it is supported rather than merely un-contradicted.
+
+Their stated limit, kept because it bounds the claim: they have not located
+where the N64 blocks for frame pacing, so nobody can say its entity loop runs
+at a fixed rate -- only that nothing subdivides it.
+
+Worth noting HOW that arrived: the sibling had verified only the innermost
+enclosing loop, realised this port was about to build on the unchecked step
+above it, went and checked, and reported back that its own earlier claim was
+understated. That is the behaviour that makes a cross-read worth having.
 
 **The adoptable part was a SHAPE claim, and it points somewhere specific.** The
 N64's nose guard is the PARENT of both the resting solve and the case solve --
