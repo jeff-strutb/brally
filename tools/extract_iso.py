@@ -81,18 +81,48 @@ def find_record(fh, nsectors, want):
 
 # ---------------------------------------------------------------- ISO 9660
 
+# Set when the volume carries a Joliet supplementary descriptor, in which case
+# directory names are UCS-2 big-endian rather than 8.3 ASCII.
+JOLIET = [False]
+
+# The three escape sequences ECMA-119 assigns to Joliet's UCS-2 levels.
+_JOLIET_ESC = (b'%/@', b'%/C', b'%/E')
+
+
 def read_pvd(fh):
-    """Return (root_lba, root_size) from the Primary Volume Descriptor."""
+    """Return (root_lba, root_size), preferring JOLIET over the 8.3 tree.
+
+    WHY THIS MATTERS AND IS NOT COSMETIC: this disc stores long names in a
+    Joliet supplementary descriptor and MANGLED 8.3 names in the primary one.
+    Reading only the primary yields BUT-MA~1.BMP where the game asks for
+    but-maind.bmp -- so five sprites the executable names could not be found,
+    and it looked as though the disc simply did not ship them. It ships all of
+    them; the primary tree just cannot spell them.
+
+    The supplementary descriptor is preferred when present, and the escape
+    sequence is checked rather than assumed, because a type-2 descriptor is not
+    necessarily Joliet.
+    """
+    primary = None
     for lba in range(16, 32):
         d = iso_read(fh, lba * USER, USER)
         if d[1:6] != b'CD001':
             continue
-        if d[0] == 1:                      # primary volume descriptor
+        if d[0] == 1 and primary is None:
             root = d[156:156 + 34]
-            return (struct.unpack_from('<I', root, 2)[0],
-                    struct.unpack_from('<I', root, 10)[0])
-        if d[0] == 255:                    # terminator
+            primary = (struct.unpack_from('<I', root, 2)[0],
+                       struct.unpack_from('<I', root, 10)[0])
+        elif d[0] == 2:
+            esc = d[88:120].rstrip(b'\x00')
+            if esc in _JOLIET_ESC:
+                JOLIET[0] = True
+                root = d[156:156 + 34]
+                return (struct.unpack_from('<I', root, 2)[0],
+                        struct.unpack_from('<I', root, 10)[0])
+        elif d[0] == 255:
             break
+    if primary is not None:
+        return primary
     raise SystemExit("no Primary Volume Descriptor found")
 
 
@@ -116,7 +146,12 @@ def read_dir(fh, lba, size):
         if nlen == 1 and name in (b'\x00', b'\x01'):
             pass                            # '.' and '..'
         else:
-            yield (name.split(b';')[0].decode('ascii', 'replace'),
+            if JOLIET[0]:
+                # UCS-2 BE; the ';1' version suffix is encoded too.
+                text = name.decode('utf-16-be', 'replace').split(';')[0]
+            else:
+                text = name.split(b';')[0].decode('ascii', 'replace')
+            yield (text,
                    child_lba, child_size, bool(flags & 0x02))
         i += length
 

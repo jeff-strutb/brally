@@ -56,3 +56,18 @@ for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
     echo "assets: $out already present"
   fi
 done
+
+# The menu sprite sheets. br_uispr.c's 145-entry table names these; without
+# them the chrome can only be drawn as placeholder rectangles.
+if [ ! -d testdata/images ]; then
+  mkdir -p testdata/images
+  python3 tools/extract_iso.py --list "$BIN" 2>/dev/null \
+    | sed -n 's/^\([Ii]mages\/[A-Za-z0-9_.-]*\.[Bb][Mm][Pp]\).*/\1/p' \
+    | while read -r f; do
+        out="testdata/images/$(basename "$f" | tr 'A-Z' 'a-z')"
+        python3 tools/extract_iso.py --extract-path "$BIN" "$f" "$out" >/dev/null 2>&1
+      done
+  echo "assets: extracted $(ls testdata/images | wc -l | tr -d ' ') menu sprites"
+else
+  echo "assets: testdata/images already present"
+fi
