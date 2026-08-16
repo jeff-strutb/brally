@@ -98,6 +98,37 @@ present in the original, and aliasing behaviour where the original permits it.
     equality tests on the `(w0,w1)` pair — ten patterns plus a default.
     Render mode (`0x10021270`) is the same shape, nine values plus a
     bit-tested fallback. Neither is open-ended.
+- **The wheel ground probe can never find ground, on any track, at any
+  position** — and that is what the binary says, not a port defect.
+  `0x10068070` (D3D `0x1006F0C0`) keys the collision grid on the wheel's
+  BODY-LOCAL mount offset, `(+-1.5, +-1.0)`. `BrCollGridCellAcquire`'s key is
+  `(trunc(x)>>5) + ((trunc(y)>>5)<<6)`, so all four wheels ask for **key 0** —
+  world cell (0,0) — every frame. Worse, `BrGrid64Sample` rejects a negative
+  coordinate outright, so the first wheel to ask (mount `y == -1.0`) loads that
+  key with **zero** triangles and the other three hit the cache and get the
+  same empty cell. Measured on `race.trk`: `f1D8 == -100` (miss) for all four
+  wheels for a whole run, while `BrGroundProbeZ` — the same search keyed on the
+  WORLD point — reports the surface correctly at the same instant.
+  So either the shipped suspension is dead and the ground contact lives
+  entirely in `0x10067C30`'s five unported collision callees (`0x10066AD0`,
+  `0x10066D70`, `0x10067710`, `0x10068F80`), or there is a writer of
+  `wheel->f78` nobody has found. `br_phys.h`'s
+  `g_brPhysWheelGridWorldKey` exists to MEASURE the difference; it defaults to
+  the original and anything run with it set is a counterfactual.
+  The stack offsets were re-derived from the bytes rather than taken on trust:
+  `[esp+0x18]`/`[esp+0x1C]` hold `f78.x`/`f78.y`, the transform at
+  `0x1006DA20` writes to a disjoint slot, and the two are RELOADED unchanged
+  and pushed to the acquire.
+- The car's rigid body is built by D3D `0x10062C50` / `0x10063000` with
+  IMMEDIATES, not table data: chassis mode 1, dim (3.5, 2.0, 1.5), **mass
+  1000**; wheels mode 2, mass 0; chassis gravity force `(0,0,-15450.75)` and a
+  per-wheel `(0,0,-103.005)`. `-15450.75 == 1575 * 9.81` and
+  `-103.005 == 10.5 * 9.81`, so the units are metres/kg/s — but the chassis
+  mass is 1000, not 1575, so the chassis sees **15.45 m/s^2**. Spring rate
+  (body `+0x1B8`) is `(20 - n*-4) * 16000` with `n` at car `+0xE94`; damper
+  rate (body `+0x1BC`) is the immediate `-3000`. Force-list node layout is
+  `{next, kind, f[3], r[3]}`, 0x20 bytes, built by `0x100746E0` whose LAST
+  argument becomes `kind`.
 - `0x1007DFE0` is `operator new` (`_nh_malloc(size,1)`) and does **not** zero.
   `0x1007D350` is `malloc`; `0x1007DE40` is `operator delete`.
 - `0x1007C8A0` is `__ftol`: truncates toward zero, returns the **low dword** of a
@@ -274,6 +305,29 @@ made one object on this host. `BrFxRecord` is 32 bytes but `BrCollPlane` holds
 three `BrVec3 *` and widens under LP64, so the 600-record array cannot carry
 both views. The fix is to make `BrCollPlane` store vertex INDICES; until then
 `g_pBrCollGrid` stays NULL, which every consumer already guards.
+
+**...and the second half of that was a wrong diagnosis, which is worth keeping
+because of the shape of the error.** "Until then `g_pBrCollGrid` stays NULL"
+reads as *the pointer width is what keeps the grid empty*. It is not. The
+pointers land in `g_pBrCollVerts`, a genuine host `BrVec3 *` aimed at the track
+image, which `br_track.c` has already byte-swapped in place — host-order floats
+on a 12-byte stride, i.e. exactly `BrVec3`. A pointer into a host array
+survives LP64 perfectly well.
+
+What actually kept it NULL is much duller: **nothing in `port/src` ever DEFINED
+it.** Four test files declared their own storage and the host had none, so
+`br_phys.c`'s "a NULL grid means no ground" guard was taken on every probe of
+every run. `port/src/br_collgrid.c` gives the two globals storage and binds the
+five source tables (all five are .TRK header fields: `+0x0C`, `+0x14`, `+0x94`,
+`+0x20`, `+0x24`), and the ground probe then reads the track's real triangles.
+
+The ALIAS is still open and this changes nothing about it: `0x11750338` is two
+host objects. Making `BrCollPlane` index-based is still the right end state,
+because it is what would let that storage *be* `g_BrFx1750338` rather than sit
+beside it. It just was not the thing standing between the port and the ground.
+
+Generalising: "X is blocked on Y" is a claim about causation, and the cheap way
+to check it is to ask whether anyone has ever tried X. Nobody had.
 
 A pattern worth generalising from these: the aliases cluster where one packet
 names a global positionally (`g_i0AC300`) and another names it semantically

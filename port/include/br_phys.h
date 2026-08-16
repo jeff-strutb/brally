@@ -200,6 +200,37 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
                          BrGroundHit *pHit);
 
 /* ======================================================================
+ * A SWITCH FOR THE GRID-KEY DEFECT ABOVE.  DEFAULT 0 == THE ORIGINAL.
+ * ======================================================================
+ * The GOTCHA above says the wheel probe keys the collision grid on the
+ * wheel's BODY-LOCAL mount offset.  That was reproduced without anyone
+ * measuring what it costs.  It costs everything:
+ *
+ *   The mount offsets are (+-1.5, +-1.0).  BrCollGridCellAcquire's key is
+ *   (trunc(x) >> 5) + ((trunc(y) >> 5) << 6), so all four wheels ask for key
+ *   0 -- world cell (0,0), the 32x32 square at the origin -- on every frame
+ *   of every track.  Worse, BrGrid64Sample rejects a negative coordinate
+ *   outright, so the first wheel to ask (mount y == -1.0) loads that key with
+ *   ZERO triangles and the other three then hit the cache and get the same
+ *   empty cell.  The wheel probe can therefore never return anything but
+ *   BR_PHYS_PROBE_MISS, on any track, at any position.  Measured on
+ *   race.trk: 100.00 for all four wheels for the whole run, while
+ *   BrGroundProbeZ -- the same search keyed on the WORLD point -- reports the
+ *   surface correctly at the same instant.
+ *
+ * So either the shipped suspension really is dead and the ground contact
+ * lives entirely in 0x10067C30's five unported collision callees, or there
+ * is a writer of wheel->f78 nobody has found.  This port does not guess:
+ * the default reproduces the bytes.
+ *
+ * Setting this to 1 keys the cell on the WORLD point instead -- the one-line
+ * counterfactual.  It exists so the defect can be MEASURED (run the same
+ * field both ways and diff the dump), not so the physics can be "fixed":
+ * anything run with it set is a counterfactual and must be reported as one.
+ * ====================================================================== */
+extern int g_brPhysWheelGridWorldKey;
+
+/* ======================================================================
  * 0x1006F4A0 (D3D) / 0x10068450 (Glide), 134 bytes
  *
  * For each of pBody->child[0..3]:
@@ -217,5 +248,12 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
  * original's four-arm jump table does.
  * ====================================================================== */
 void BrWheelSuspensionSetZ(BrRbBodyFull *pBody);
+
+/* The same function with the per-wheel contact record kept.  The original
+ * writes it at wheel+0x1A0..+0x1B0 and 0x10067F30 (the aerodynamic drag pass,
+ * br_carphys.c) reads the surface byte of all four wheels; the DEVIATION
+ * above moved those fields to BrGroundHit, so somebody has to own the array.
+ * BrWheelSuspensionSetZ is this with aHit == NULL. */
+void BrWheelSuspensionSetZHit(BrRbBodyFull *pBody, BrGroundHit aHit[4]);
 
 #endif /* BR_PHYS_H */

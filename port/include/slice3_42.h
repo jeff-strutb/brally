@@ -375,7 +375,16 @@ typedef struct BrRbBodyFull {
     float                 f19C;         /* 0x19C                            */
     unsigned char         pad1A0[0x1B4 - 0x1A0];
     float                 f1B4;         /* 0x1B4  0 disables the torque leg */
-    unsigned char         pad1B8[0x1C0 - 0x1B8];
+    /* The pad here was exactly two floats and both are now identified, by
+     * br_carphys.c, from the two functions that read them and from the car
+     * constructor that writes them (D3D 0x10062D21 / 0x10062D49):
+     *   +0x1B8  the SUSPENSION SPRING RATE, (20 - n*-4) * 16000, read by
+     *           0x100684F0 as `fmul dword ptr [esi+0x1b8]`;
+     *   +0x1BC  the SHOCK ABSORBER RATE, the immediate -3000, read by
+     *           0x10068600 as `fmul dword ptr [esi+0x1bc]`.
+     * sizeof is unchanged: 0x1C0 - 0x1B8 == 8 == two floats. */
+    float                 f1B8;         /* 0x1B8  spring rate               */
+    float                 f1BC;         /* 0x1BC  damper rate               */
     float                 f1C0, f1C4, f1C8, f1CC, f1D0, f1D4, f1D8;
 } BrRbBodyFull;                          /* 0x1DC */
 

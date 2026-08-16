@@ -36,19 +36,32 @@ import pe as pelib
 SHARED = 'config/shared.csv'
 
 
-def pairing(addr):
-    """(paired_addr, side, how) from shared.csv, or (None, None, None)."""
+def pairings(addr):
+    """EVERY reading of this address: [(paired, side, how), ...].
+
+    A plain number is not self-describing. The same value can be a valid
+    function address in BOTH builds, naming two unrelated functions -- the two
+    images are the same size order and their .text ranges overlap almost
+    entirely. An earlier version of this tool searched the D3D column first and
+    returned on the first hit, so it confidently reported the Glide partner of
+    a D3D function when it had been handed a GLIDE address. It did that twice
+    in one session and both answers were wrong.
+
+    Now every match is returned and the caller prints all of them, so an
+    ambiguous address is visibly ambiguous instead of silently resolved.
+    """
+    out = []
     if not os.path.exists(SHARED):
-        return None, None, None
+        return out
     for r in csv.DictReader(open(SHARED)):
         d = int(r['d3d_va'], 16)
         g = int(r['glide_va'], 16) if r['glide_va'] else None
         how = r.get('matched_by', '')
         if d == addr:
-            return g, 'glide', how
+            out.append((g, 'glide', how, 'read as a D3D address'))
         if g == addr:
-            return d, 'd3d', how
-    return None, None, None
+            out.append((d, 'd3d', how, 'read as a GLIDE address'))
+    return out
 
 
 def grep_port(addr):
@@ -100,16 +113,22 @@ def size_of(csvpath, addr):
 def report(addr):
     print("0x%08X" % addr)
 
-    paired, side, how = pairing(addr)
-    if paired:
-        print("  paired    0x%08X (%s)   matched by %s" % (paired, side, how))
+    ps = pairings(addr)
+    if len(ps) > 1:
+        print("  AMBIGUOUS -- this number is a valid address in BOTH builds.")
+        print("              Both readings are shown; pick the one whose build")
+        print("              you actually have in hand.")
+    for paired, side, how, why in ps:
+        print("  paired    0x%08X (%s)   matched by %-6s   [%s]"
+              % (paired if paired else 0, side, how, why))
         if how == 'prefix':
             print("            ^ prefix match: the two maps disagreed about the")
             print("              EXTENT, not about the function.")
-    else:
+    if not ps:
         print("  paired    (none in shared.csv)")
 
-    for a, label in ((addr, 'this'), (paired, 'paired')):
+    cands = [(addr, 'this')] + [(p, 'paired/%s' % side) for p, side, _, _ in ps if p]
+    for a, label in cands:
         if a is None:
             continue
         hits = grep_port(a)
@@ -118,7 +137,7 @@ def report(addr):
         for h in hits[:4]:
             print("              %s" % h[:110])
 
-    if paired:
+    if ps:
         return
 
     # No pairing: try strings. This is the CRT-linkage case.
