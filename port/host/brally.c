@@ -58,6 +58,7 @@
 #include "br_font.h"
 #include "br_uictl.h"
 #include "br_uispr.h"
+#include "br_bmp.h"
 #include "br_uivt.h"
 /* br_uinav.h pulls slice3_32.h in under the rename slice3_32.c itself uses,
  * so it must come AFTER slice6_73.h and never the other way round -- the
@@ -730,6 +731,48 @@ static void FillRect(BrGfx *gfx, BrTexture t, float x, float y,
     BrGfxDrawTexture(gfx, t, x, y, w, h);
 }
 
+/* One texture per SPRITE, not per sheet.
+ *
+ * A sheet holds many sprites and each table entry names a source rectangle
+ * inside it, but the Metal backend only draws whole textures -- it has no
+ * source-rect or UV parameter. Rather than widen that interface for the menu's
+ * sake, each sprite is CROPPED out of its sheet once at load time. 145 small
+ * textures cost less than a general blitter nobody else needs yet.
+ *
+ * Sheets are cached while cropping so a sheet shared by twenty sprites is
+ * decoded once. */
+#define BR_SPR_MAX  BR_UI_SPR_COUNT
+static BrTexture g_aSprTex[BR_SPR_MAX];
+static int       g_cSpr;
+
+static int CropSprite(BrGfx *gfx, const BrBmp *pSheet, const int32_t *pRect,
+                      BrTexture *pOut)
+{
+    int32_t  l = pRect[0], t = pRect[1], r = pRect[2], b = pRect[3];
+    int32_t  w, h, y;
+    uint8_t *pBuf;
+
+    if (!pSheet->pRgba) return 0;
+    /* Clamp to the sheet. A table rect that overruns its art is the original's
+     * problem to have; here it must not read out of bounds. */
+    if (l < 0) l = 0;
+    if (t < 0) t = 0;
+    if (r > (int32_t)pSheet->w) r = (int32_t)pSheet->w;
+    if (b > (int32_t)pSheet->h) b = (int32_t)pSheet->h;
+    w = r - l; h = b - t;
+    if (w <= 0 || h <= 0) return 0;
+
+    pBuf = (uint8_t *)malloc((size_t)w * h * 4u);
+    if (!pBuf) return 0;
+    for (y = 0; y < h; y++)
+        memcpy(pBuf + (size_t)y * w * 4u,
+               pSheet->pRgba + ((size_t)(t + y) * pSheet->w + l) * 4u,
+               (size_t)w * 4u);
+    *pOut = BrGfxCreateTexture(gfx, (uint32_t)w, (uint32_t)h, pBuf);
+    free(pBuf);
+    return *pOut != 0;
+}
+
 /* ONE CONTROL'S CHROME, at the size and position br_uispr resolved.
  *
  * WHAT THIS IS AND IS NOT. The rectangle is the game's: br_uispr.c walked
@@ -750,6 +793,15 @@ static void DrawChrome(BrGfx *gfx, const BrUiChrome *pCh)
     float w = (float)pCh->w, h = (float)pCh->h;
 
     if (w <= 0.0f || h <= 0.0f) return;
+
+    /* Real art when it was extracted; the placeholder otherwise. The outline
+     * below is drawn only for placeholders -- on real art it would be a border
+     * the game does not have. */
+    if (pCh->iSprite >= 0 && pCh->iSprite < BR_SPR_MAX &&
+        g_aSprTex[pCh->iSprite]) {
+        BrGfxDrawTexture(gfx, g_aSprTex[pCh->iSprite], x, y, w, h);
+        return;
+    }
     FillRect(gfx, pCh->fDown ? g_texDown : g_texUp, x, y, w, h);
     /* The outline is what makes the sprite's exact extent readable in a
      * screenshot; without it a 640x480 backdrop and a 127x33 button are just
@@ -760,19 +812,64 @@ static void DrawChrome(BrGfx *gfx, const BrUiChrome *pCh)
     FillRect(gfx, g_texEdge, x + w - 1, y,         1.0f, h);
 }
 
-/* The three placeholder colours. Named for the STATE they stand for, not for
- * a look: the up/down pair exists so that the sprite swap 0x10048180 performs
- * is visible in a screenshot, which is the only way to check it happened. */
+/* The real sprite sheets, when they have been extracted; flat placeholders
+ * when they have not.
+ *
+ * The sheets are 24-bit BMPs in IMAGES\ on the retail disc, named by
+ * g_aBrUiSpriteName. tools/extract_assets.sh pulls them at build time, per the
+ * project's asset policy -- nothing is committed, and a missing sheet must
+ * degrade rather than fail. So this loads what it finds and leaves the rest as
+ * the outlined quads that were there before: a screenshot without the disc
+ * still shows every sprite at the right size in the right place, which is the
+ * property worth keeping.
+ *
+ * The up/down placeholder pair is retained for the same reason it existed --
+ * it is what makes the sprite swap at 0x10048180 visible when the art is
+ * absent. */
 static void MakeChromeTextures(BrGfx *gfx)
 {
     static const uint8_t up[4]   = { 0x38, 0x3C, 0x4C, 0xFF };
     static const uint8_t down[4] = { 0x96, 0x78, 0x24, 0xFF };
     static const uint8_t edge[4] = { 0xB4, 0xB8, 0xC4, 0xFF };
+    int i;
 
     g_texUp    = BrGfxCreateTexture(gfx, 1, 1, up);
     g_texDown  = BrGfxCreateTexture(gfx, 1, 1, down);
     g_texEdge  = BrGfxCreateTexture(gfx, 1, 1, edge);
     g_haveFill = (g_texUp != 0 && g_texDown != 0 && g_texEdge != 0);
+
+    {
+        BrBmp sheet; int iCached = -1;
+        memset(&sheet, 0, sizeof sheet);
+        g_cSpr = 0;
+        for (i = 0; i < BR_SPR_MAX; i++) {
+            const BrUiSprite *pS = BrUiSpriteAt(i);
+            const char *pszName;
+            char szPath[256];
+            g_aSprTex[i] = 0;
+            if (!pS) continue;
+            if (pS->iImage < 0 || pS->iImage >= BR_UI_SPR_COUNT) continue;
+            pszName = g_aBrUiSpriteName[pS->iImage];
+            if (!pszName || !*pszName) continue;
+            if (pS->iImage != iCached) {
+                BrBmpFree(&sheet);
+                snprintf(szPath, sizeof szPath, "testdata/images/%s", pszName);
+                if (BrBmpLoad(&sheet, szPath) != 0) { iCached = -1; continue; }
+                iCached = pS->iImage;
+            }
+            /* The table entry's bit 0 selects the colour-keyed blit; the key
+             * the original uses is pure magenta. Applied here rather than in
+             * the decoder because it is the TABLE that decides, not the file. */
+            if (pS->fBlit & 1) BrBmpApplyKey(&sheet, 0xFF00FF);
+            if (CropSprite(gfx, &sheet, pS->rect, &g_aSprTex[i])) g_cSpr++;
+        }
+        BrBmpFree(&sheet);
+    }
+    if (g_cSpr)
+        printf("chrome: %d of %d sprites cropped from the disc art\n",
+               g_cSpr, BR_SPR_MAX);
+    else
+        printf("chrome: no art in testdata/images -- drawing placeholders\n");
 }
 
 /* Captions, rasterised once with br_font and cached as textures.
