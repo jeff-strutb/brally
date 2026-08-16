@@ -200,16 +200,17 @@ static int         s_c10, s_c14;
 static const void *s_apF10Text[64];
 static int32_t     s_aF14[8][5];
 
-static void TestSubF10(BrTextList *pThis, const void *pText, int32_t a2,
-                       int32_t a3, const void *pStyle, int32_t a5)
+static int32_t TestSubF10(BrTextList *pThis, const void *pText, int32_t a2,
+                          int32_t a3, const void *pStyle, int32_t a5)
 {
     (void)pThis; (void)a2; (void)a3; (void)pStyle; (void)a5;
     if (s_c10 < 64) { s_apF10Text[s_c10] = pText; }
     ++s_c10;
+    return 1;
 }
 
-static void TestSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
-                       int32_t a3, int32_t a4, int32_t a5)
+static int32_t TestSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
+                          int32_t a3, int32_t a4, int32_t a5)
 {
     (void)pThis; (void)pStyle;
     if (s_c14 < 8) {
@@ -217,6 +218,7 @@ static void TestSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
         s_aF14[s_c14][2] = a3; s_aF14[s_c14][3] = a4; s_aF14[s_c14][4] = a5;
     }
     ++s_c14;
+    return 1;
 }
 
 /* The object at control +0x3838 is slice3_39.h's whole BrTextList (br_ui.h

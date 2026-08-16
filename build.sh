@@ -226,12 +226,18 @@ clang $CFLAGS -Iport/tests -c port/tests/test_slice6_74.c -o build/test_slice6_7
 clang $CFLAGS -c port/src/slice6_76.c -o build/slice6_76.o
 clang $CFLAGS -Iport/tests -c port/tests/test_slice6_76.c -o build/test_slice6_76.o
 
+clang $CFLAGS -c port/src/slice6_77.c -o build/slice6_77.o
+clang $CFLAGS -Iport/tests -c port/tests/test_slice6_77.c -o build/test_slice6_77.o
+
 clang build/slice6_70.o build/test_slice6_70.o -lm -o build/test_slice6_70
 clang build/slice6_71.o build/test_slice6_71.o -lm -o build/test_slice6_71
 clang build/slice6_72.o build/test_slice6_72.o -lm -o build/test_slice6_72
 clang build/slice6_73.o build/test_slice6_73.o -lm -o build/test_slice6_73
 clang build/slice6_74.o build/test_slice6_74.o -lm -o build/test_slice6_74
 clang build/slice6_76.o build/test_slice6_76.o -lm -o build/test_slice6_76
+# slice6_77 shares 0x100586A0's loop with br_slots.c, so the real br_slots.o
+# is linked rather than faked; every other dependency is supplied by the test.
+clang build/slice6_77.o build/br_slots.o build/test_slice6_77.o -lm -o build/test_slice6_77
 
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
@@ -273,6 +279,7 @@ clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_73.c -o build/host/slice6_73.o
 clang $CFLAGS -c port/host/br_wire71.c -o build/br_wire71.o
 clang $CFLAGS -c port/host/br_wire72.c -o build/br_wire72.o
 clang $CFLAGS -c port/host/br_wire75.c -o build/br_wire75.o
+clang $CFLAGS -c port/host/br_wire77.c -o build/br_wire77.o
 clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
 # real definitions for the cross-module data objects (was br_stubs' 1 MiB blocks)
 clang $CFLAGS -c port/src/br_data.c -o build/br_data.o
@@ -288,7 +295,7 @@ for o in build/*.o; do
   esac
   HOSTOBJS="$HOSTOBJS $o"
 done
-clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o build/br_wire75.o $HOSTOBJS \
+clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o build/br_wire75.o build/br_wire77.o $HOSTOBJS \
       build/host/slice3_32.o build/host/slice6_71.o build/host/slice6_73.o \
       build/br_gfx_metal.o -lm $FW -o build/brally
 echo "built: brally (host)"

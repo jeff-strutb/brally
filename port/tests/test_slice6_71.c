@@ -147,16 +147,19 @@ static int         g_cSubRows;
 static const void *g_pLastRow;
 static int32_t     g_aSubCfg[5];
 
-static void StubSubF10(BrTextList *pThis, const void *pText, int32_t a2,
-                       int32_t a3, const void *pStyle, int32_t a5)
+/* Both slots return int32_t -- 0x1005BC10 and 0x1005B910 end `mov eax,1`.
+ * slice6_71.c discards the result, so the stubs return the original's 1. */
+static int32_t StubSubF10(BrTextList *pThis, const void *pText, int32_t a2,
+                          int32_t a3, const void *pStyle, int32_t a5)
 {
     (void)pThis; (void)a2; (void)a3; (void)pStyle; (void)a5;
     g_pLastRow = pText;
     ++g_cSubRows;
+    return 1;
 }
 
-static void StubSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
-                       int32_t a3, int32_t a4, int32_t a5)
+static int32_t StubSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
+                          int32_t a3, int32_t a4, int32_t a5)
 {
     (void)pThis;
     Trace("sub.f14");
@@ -165,6 +168,7 @@ static void StubSubF14(BrTextList *pThis, int32_t a1, const void *pStyle,
     g_aSubCfg[2] = a3;
     g_aSubCfg[3] = a4;
     g_aSubCfg[4] = a5;
+    return 1;
 }
 
 static BrTextListVtbl g_subVtbl;

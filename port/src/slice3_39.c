@@ -314,9 +314,44 @@ BrCharMapEntry g_BrCharMap[BR_CHARMAP_COUNT] = {
     { 0x7E, 0x7E },
 };
 
+/* 0x100AB438 -- the 19-entry UI style-rectangle pool, read out of the image.
+ * See the derivation of the base and the extent in slice3_39.h -- and the
+ * note there that the LOWER bound is the one claim not pinned by anything. */
+const BrTextStyle g_aBrUiStyle[BR_UI_STYLE_COUNT] = {
+    {   0,   0, 639, 479 },   /*  0  0x100AB438  the screen */
+    { 148, 110, 358, 260 },   /*  1  0x100AB448 */
+    {  87,  61, 186, 132 },   /*  2  0x100AB458 */
+    { 330,  70, 447,  86 },   /*  3  0x100AB468 */
+    { 478,   0, 578,   0 },   /*  4  0x100AB478 */
+    { 440,   0, 540,   0 },   /*  5  0x100AB488 */
+    {  88,   0, 185,   0 },   /*  6  0x100AB498 */
+    { 330,   0, 447,   0 },   /*  7  0x100AB4A8 */
+    {  67,   0, 167,   0 },   /*  8  0x100AB4B8 */
+    { 230,   0, 547,   0 },   /*  9  0x100AB4C8 */
+    { 188, 130, 300, 225 },   /* 10  0x100AB4D8 */
+    { 188, 130, 300, 197 },   /* 11  0x100AB4E8 */
+    { 440, 128, 540, 204 },   /* 12  0x100AB4F8 */
+    { 100,  10, 410,  29 },   /* 13  0x100AB508 */
+    {  70, 213, 165, 285 },   /* 14  0x100AB518 */
+    { 128,  76, 384, 209 },   /* 15  0x100AB528 */
+    { 188, 130, 300, 206 },   /* 16  0x100AB538 */
+    { 162, 130, 318, 206 },   /* 17  0x100AB548 */
+    {  80,  29, 430,  48 },   /* 18  0x100AB558 */
+};
+
+/* Records 46 and 48 of the sprite table at 0x100AB568, both 16x16 in the
+ * image.  Not const: they are ordinary .data in the original and this port
+ * has not established that nothing writes them. */
+int32_t g_BrSprRect46[4] = { 0, 0, 16, 16 };   /* 0x100AB9BC */
+int32_t g_BrSprRect48[4] = { 0, 0, 16, 16 };   /* 0x100AB9EC */
+
 /* =====================================================================
  * Globals
  * ===================================================================== */
+
+/* 0x10AA2A70 -- see the note in slice3_39.h.  Zero, and it is zero in the
+ * original too. */
+char g_BrAA2A70[BR_AA2A70_SIZE];
 
 const BrTextBoxVtbl  *g_pBrTextBoxVtbl  = NULL;   /* 0x1008F728 */
 const BrTextListVtbl *g_pBrTextListVtbl = NULL;   /* 0x1008F758 */
@@ -524,9 +559,9 @@ BrTextList *BrTextListInit(BrTextList *pList)
 {
     int i;
 
-    pList->f18 = 0;
-    pList->f1C = 0;
-    pList->f20 = 0;
+    pList->f18   = 0;
+    pList->f1C.u = 0;
+    pList->f20.u = 0;
 
     /* 0x1007F680 is MSVC's vector constructor iterator: forward order. */
     for (i = 0; i < BR_TEXTLIST_ITEMS; ++i) {
@@ -577,6 +612,285 @@ BrTextList *BrTextListDeleteDtor(BrTextList *pList, uint32_t flags)
         BrOperatorDelete(pList);
     }
     return pList;
+}
+
+/* =====================================================================
+ * 0x1005B910 -- vtable +0x14, "configure the list"
+ *
+ * Both crashing menu builders (0x1004F700 in slice6_71.c and 0x1005A6E0 in
+ * slice6_72.c) die on this slot, and both reach the f1A99C[8] arm because they
+ * set f1A99C[8].i = 1 immediately before the call.
+ *
+ * The float constant at 0x1008F6B0 is -1.0f, read out of the image rather than
+ * assumed -- and it matters, because `fsub` against it is an ADD of one.  With
+ * it, branch B's f1A9B0 and f1A9C8 come out equal, i.e. the handle starts at
+ * the top of its travel; with the sign the other way it would start two pixels
+ * ABOVE its own minimum, which is the kind of wrong that renders and never
+ * asserts.
+ * ===================================================================== */
+
+/* 0x1008F6B0. */
+#define BR_TEXTLIST_K (-1.0f)
+
+int32_t BrTextListConfig(BrTextList *pList, int32_t a1, const void *pStyle,
+                         int32_t a2, int32_t a3, int32_t a4)
+{
+    const int32_t *pRect = (const int32_t *)pStyle;
+    int32_t dx, dy;
+
+    /* +0x1C / +0x20 take the first two rectangle members as FLOATS, and the
+     * four dwords at +0x1A93C take all four verbatim. */
+    pList->f1C.f = (float)pRect[0];
+    pList->f20.f = (float)pRect[1];
+
+    pList->f1A93C = pRect[0];
+    pList->f1A940 = pRect[1];
+    pList->f1A944 = pRect[2];
+    pList->f1A948 = pRect[3];
+
+    pList->f18 = (uint32_t)a1;
+
+    /* Three int32 arguments, three int16 fields: the original moves them a
+     * WORD at a time (`mov dx, word ptr [esp+0x1C]`), so the high half is
+     * discarded rather than saturated.  a4 == -1 at every ported call site. */
+    pList->f1A930 = (int16_t)a2;
+    pList->f1A92E = (int16_t)a3;
+    pList->f1A936 = (int16_t)a4;
+
+    /* The three sentinels BrTextListInit left at -1 get their real values
+     * here: '0', '.' and ':'. */
+    pList->f1A932 = 0x30;
+    pList->f1A934 = 0x2E;
+    pList->f1A938 = 0x3A;
+
+    /* The arrow sprite's size.  Clamped up to zero, and only afterwards --
+     * `test edi,edi / jge / xor edi,edi` -- so a negative rectangle yields 0,
+     * not an absolute value. */
+    dx = g_BrSprRect48[2] - g_BrSprRect48[0];
+    dy = g_BrSprRect48[3] - g_BrSprRect48[1];
+    if (dx < 0) { dx = 0; }
+    if (dy < 0) { dy = 0; }
+
+    if (pList->f1A99C[7].u != 0) {
+        /* Branch A -- the HORIZONTAL bar.  Runs along the rectangle's top
+         * edge; the travel is measured on x. */
+        int32_t x0 = pRect[0] + dx;             /* left edge of the travel  */
+        int32_t yb = pRect[3] + 3;              /* the bar's own top        */
+        int32_t xr = pRect[2] - dx;             /* right edge of the travel */
+        float   fLo;
+
+        pList->f1A96C = pRect[0];
+        pList->f1A970 = yb;
+        pList->f1A974 = x0;
+        pList->f1A978 = yb + dy;
+        pList->f1A97C = xr;
+        pList->f1A980 = yb;
+        pList->f1A984 = dx + xr;                /* == pRect[2]              */
+        pList->f1A988 = dy + yb;
+
+        fLo = (float)x0 - BR_TEXTLIST_K;
+        pList->f1A99C[4].f = fLo;
+        pList->f1A99C[5].f = (float)yb;
+        /* `fld st(0) / fsub st(2)` -- the travel LENGTH, high minus low. */
+        pList->f1A99C[13].f = (float)(xr - dx) - fLo;
+        pList->f1A99C[9].f  = (float)(x0 + 1);
+        pList->f1A99C[10].f = (float)(xr - dx);
+    } else if (pList->f1A99C[8].u != 0) {
+        /* Branch B -- the VERTICAL bar.  Runs down the rectangle's right
+         * edge; the travel is measured on y.  This is the arm both builders
+         * take.
+         *
+         * Note the asymmetry with branch A, which is in the original: A reads
+         * the arrow size out of record 48 for BOTH axes, B mixes record 48's
+         * right/bottom (as absolute coordinates, not as a size) into the box
+         * corners and record 46's right/bottom into the travel.  The two arms
+         * were plainly written at different times. */
+        int32_t xb = pRect[2] + 3;              /* the bar's own left       */
+        int32_t yt = pRect[1];                  /* its top                  */
+        int32_t y0 = g_BrSprRect48[3] + yt;     /* top of the travel        */
+        int32_t yh = pRect[3] - g_BrSprRect46[3];   /* bottom of the travel */
+        float   fLo;
+
+        pList->f1A94C = xb;
+        pList->f1A950 = yt;
+        pList->f1A954 = g_BrSprRect48[2] + xb;
+        pList->f1A958 = y0;
+        pList->f1A95C = xb;
+        pList->f1A960 = yh;
+        pList->f1A964 = g_BrSprRect46[2] + xb;
+        pList->f1A968 = pRect[3];
+
+        pList->f1A99C[4].f = (float)xb;         /* no -1 on this arm        */
+
+        fLo = (float)y0 - BR_TEXTLIST_K;
+        pList->f1A99C[5].f  = fLo;
+        pList->f1A99C[13].f = (float)(yh - dy) - fLo;
+        pList->f1A99C[11].f = (float)(y0 + 1);
+        pList->f1A99C[12].f = (float)(yh - dy);
+    }
+    /* else: neither arm.  The tail below still runs, and still reads
+     * f1A99C[4] and f1A99C[5] -- see the GOTCHA in slice3_39.h. */
+
+    pList->f1A98C = BrFtolTrunc(pList->f1A99C[4].f);
+    pList->f1A990 = BrFtolTrunc(pList->f1A99C[5].f);
+    pList->f1A994 = dx + pList->f1A98C;
+    pList->f1A998 = dy + pList->f1A990;
+
+    return 1;
+}
+
+/* =====================================================================
+ * 0x1005BC10 -- vtable +0x10, "append one row"
+ * ===================================================================== */
+
+/* 0x1008C320's single-byte-locale arm, which is the arm this build takes.
+ *
+ * Written out rather than reached for as strcasecmp() because the original's
+ * fold is ASCII-only by construction -- `sub al,0x41 / cmp al,0x1A / sbb cl,cl
+ * / and cl,0x20` folds exactly 'A'..'Z' and leaves every other byte, including
+ * every byte above 0x7F, untouched.  strcasecmp() is locale-sensitive, and the
+ * one call site only asks whether the answer is zero, so matching the fold
+ * exactly costs nothing and cannot drift with the host's locale. */
+static int BrStrICmpAscii(const char *s1, const char *s2)
+{
+    unsigned char a, b;
+
+    for (;;) {
+        b = (unsigned char)*s2++;
+        a = (unsigned char)*s1++;
+        if (a == b) {
+            if (b == 0) {
+                return 0;      /* `or al,al / je` -- s2's NUL ends the walk */
+            }
+            continue;
+        }
+        if (a - 0x41u < 0x1Au) { a = (unsigned char)(a + 0x20u); }
+        if (b - 0x41u < 0x1Au) { b = (unsigned char)(b + 0x20u); }
+        if (a != b) {
+            return (a < b) ? -1 : 1;
+        }
+    }
+}
+
+int32_t BrTextListAddRow(BrTextList *pList, const void *pText, int32_t a2,
+                         int32_t a3, const void *pStyle, int32_t a5)
+{
+    const int32_t *pRect = (const int32_t *)pStyle;
+    BrTextBox     *pItem;
+    uint16_t       iRow;
+
+    if (pText == NULL) {
+        return 0;
+    }
+
+    /* `cmp word ptr [ebp+0x1A92C], 0x64 / jb` -- an UNSIGNED compare, so a
+     * count that has somehow gone negative reads as huge and takes this arm.
+     * +0x2C is not ported; a NULL there faults, which is the intent. */
+    if ((uint16_t)pList->count >= (uint16_t)BR_TEXTLIST_ITEMS) {
+        pList->pVtbl->f2C(pList, 0);
+        pList->count = (int16_t)(BR_TEXTLIST_ITEMS - 1);
+    }
+
+    iRow  = (uint16_t)pList->count;
+    pItem = &pList->aItems[iRow];
+
+    if (a5 != 0) {
+        strcpy(pItem->sz, (const char *)pText);
+    } else {
+        /* GOTCHA: no NUL is guaranteed by strncpy here -- see slice3_39.h. */
+        strncpy(pItem->sz, (const char *)pText, 10);
+        strcat(pItem->sz, g_BrAA2A70);
+    }
+
+    pItem->f04  |= (uint32_t)a2;
+    pItem->f08   = (uint8_t)a3;
+    pItem->f41C  = 0;
+    pItem->height = 0;
+    pItem->width  = 0;
+
+    pItem->left  = pRect[0];
+    pItem->right = pRect[2];
+
+    /* The row pitch is 19, and the origin is the list's own +0x20 -- the
+     * float BrTextListConfig put there, truncated toward zero. */
+    pItem->f428 = BrFtolTrunc(pList->f20.f) + 19 * (int32_t)iRow;
+    pItem->f430 = pItem->f428 + 0x12;
+
+    pItem->x = (float)pRect[0];
+    pItem->y = (float)pItem->f428;
+
+    pItem->f418 = 0;
+    pItem->f420 = 0;
+
+    /* Measure through the ITEM's vtable, not the list's: slot +0x08 is font B
+     * (0x1005B160), slot +0x04 is font A (0x1005B0D0). */
+    if ((uint8_t)a3 == 3) {
+        pItem->pVtbl->pfn08(pItem);
+    } else {
+        pItem->pVtbl->pfn04(pItem);
+    }
+
+    /* `mov cx,[...+0x458] / sub cx,[...+0x450] / sub ecx,0x10 / mov [..],cx`
+     * -- 16-bit throughout on the store, so a rectangle wider than 32 KiB
+     * wraps. */
+    pItem->f41C = (int16_t)((int16_t)pItem->right - (int16_t)pItem->left - 0x10);
+
+    pList->count++;
+
+    if ((pList->f18 & 0x800000u) != 0) {
+        int16_t iSel;
+        int32_t nDen;
+        float   v;
+
+        /* Which row to compare against: the first one past the visible window
+         * unless that is off the end of the array, in which case the last row
+         * appended.  Both arms narrow to 16 bits before the sign extension. */
+        {
+            int16_t k = (int16_t)(pList->f1A930 + pList->f1A92E);
+            iSel = (k < 100) ? k : (int16_t)(pList->count - 1);
+        }
+
+        /* 0x1008C320 is the CRT's _stricmp.  A row that MATCHES the shared
+         * edit buffer stops the whole update and returns 0. */
+        if (BrStrICmpAscii(pList->aItems[iSel].sz, g_aBr39B720) == 0) {
+            return 0;
+        }
+
+        pList->f1A92E++;
+        if ((int32_t)pList->f1A92E >= (int32_t)(uint16_t)pList->count) {
+            pList->f1A92E = (int16_t)((uint16_t)pList->count - 1);
+        }
+
+        if (pList->f0C != NULL) {
+            pList->f0C();          /* `call eax` -- no arguments, no result */
+        }
+
+        /* The denominator is count - 1 in 16 bits, forced up to 1 when that
+         * is zero.  It is NOT forced up when count is 0, because 0 - 1 is
+         * 0xFFFF there, which is not zero -- so a single-row list divides by
+         * 1 and an empty one divides by 65535. */
+        nDen = (uint16_t)(pList->count - 1);
+        if (nDen == 0) {
+            nDen = 1;
+        }
+
+        /* `fdivr` -- the field is the NUMERATOR. */
+        v = pList->f1A99C[13].f / (float)nDen + pList->f1A99C[5].f;
+        pList->f1A99C[5].f = v;
+
+        /* fcom / test ah,1 tests C0 alone, which is set for UNORDERED as well
+         * as for less-than, so a NaN takes the clamp-to-low arm. */
+        if (!(v >= pList->f1A99C[11].f)) {
+            pList->f1A99C[5] = pList->f1A99C[11];
+        } else if (!(v <= pList->f1A99C[12].f)) {
+            pList->f1A99C[5] = pList->f1A99C[12];
+        }
+
+        pList->f1A990 = BrFtolTrunc(pList->f1A99C[5].f);
+        pList->f1A998 = pList->f1A990 + 0x10;
+    }
+
+    return 1;
 }
 
 /* =====================================================================

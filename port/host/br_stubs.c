@@ -156,7 +156,6 @@ long BrSub1003D210(void); long BrSub1003D210(void) { return br_stub("BrSub1003D2
 long BrSub1003D480(void); long BrSub1003D480(void) { return br_stub("BrSub1003D480"); }
 long BrSub1003E1D0(void); long BrSub1003E1D0(void) { return br_stub("BrSub1003E1D0"); }
 long BrSub100484E0(void); long BrSub100484E0(void) { return br_stub("BrSub100484E0"); }
-long BrSub100586A0(void); long BrSub100586A0(void) { return br_stub("BrSub100586A0"); }
 long BrSub10058700(void); long BrSub10058700(void) { return br_stub("BrSub10058700"); }
 long BrSub1005F5A0(void); long BrSub1005F5A0(void) { return br_stub("BrSub1005F5A0"); }
 long BrSub100607B0(void); long BrSub100607B0(void) { return br_stub("BrSub100607B0"); }

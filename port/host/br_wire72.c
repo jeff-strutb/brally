@@ -28,6 +28,7 @@
 #include "br_uictl.h"    /* BrUiCtlCtor           -- 0x100476C0 */
 #include "br_uivt.h"     /* BrUiPageCtor_10048470 -- 0x10048470 */
 #include "br_phase.h"
+#include "slice6_77.h"   /* BrFfbReprobe -- 0x100795D0 */
 #include <string.h>
 #include <stdlib.h>
 
@@ -57,6 +58,14 @@ static const BrGrfListVtbl g_grfListVtbl = { 0, GrfListScan };
 static BrUi72Hooks g_hooks72;     /* all slots NULL, deliberately */
 static Br72Env     g_env72;
 
+/* 0x118ABDBC, slice3_45.c's `g_br18ABDBC`. Hand-declared rather than reached
+ * through slice3_45.h, which cannot be included here: it defines `struct
+ * BrEnt` and so does slice1_05.h, which slice6_72.h pulls in -- one C tag,
+ * two definitions, exactly the class of clash br_wire71.c's banner describes
+ * and the reason each slice gets its own translation unit. The type matches
+ * slice3_45.h's declaration. */
+extern int32_t g_br18ABDBC;
+
 void BrHostWire72(void)
 {
     memset(&g_hooks72, 0, sizeof(g_hooks72));
@@ -70,9 +79,52 @@ void BrHostWire72(void)
     g_grfList.pVtbl = &g_grfListVtbl;
     if (g_pPhaseAA2908) g_pPhaseAA2908->fC4 = &g_grfList;
 
+    /* The style rectangles at 0x100AB438.. -- see slice3_39.h. Left NULL until
+     * 0x1005B910 was ported, because until then nothing in the port looked
+     * inside one; 0x1005A6E0 passes p0AB4D8 straight into it and it reads four
+     * int32s out. The banner about hook slots still holds. */
+    g_env72.p0AB438 = NULL;
+    g_env72.p0AB448 = NULL;
+    g_env72.p0AB458 = NULL;
+    g_env72.p0AB478 = NULL;
+    g_env72.p0AB488 = NULL;
+    g_env72.p0AB4A8 = NULL;
+    g_env72.p0AB4B8 = NULL;
+    g_env72.p0AB4C8 = NULL;
+    g_env72.p0AB4D8 = NULL;
+    g_env72.p0AB4F8 = NULL;
+    g_env72.p0AB508 = NULL;
+
     g_env72.pAA2908     = g_pPhaseAA2908;
     g_env72.pHooks      = &g_hooks72;
     g_env72.pfnCtlCtor  = BrUiCtlCtor;
     g_env72.pfnPageCtor = BrUiPageCtor_10048470;
+
+    /* Not a hook the builders merely store: BrExt_1004E830 CALLS this one,
+     * two controls into its build, to refresh 0x118ABDBC before reading it.
+     * 0x100795D0 is ported in slice6_77.c; the DirectInput root it ends up
+     * dereferencing is the host's, in br_wire77.c. */
+    g_env72.pfn100795D0 = BrFfbReprobe;
+
+    /* ALIASED STORAGE -- READ THIS BEFORE TRUSTING n18ABDBC.
+     *
+     * 0x118ABDBC has two models in this tree: slice3_45.c owns it as the
+     * global `g_br18ABDBC`, and Br72Env carries a COPY of it as `n18ABDBC`
+     * (slice6_72.h) because slice6_72 reaches every global through its
+     * context table. Until now nothing in the same process wrote the global,
+     * so the copy could not go stale. Wiring the probe changes that:
+     * BrFfbInit writes g_br18ABDBC, and BrExt_1004E830 re-reads pE->n18ABDBC
+     * on the very next line expecting to see the result.
+     *
+     * The seed below keeps the two consistent at wiring time. It does NOT
+     * make them one object, and it cannot: the copy is snapshotted here and
+     * the builder's mid-function re-read still sees the snapshot. Both are 0
+     * in this harness -- there is no force-feedback wheel, so BrFfbInit's
+     * fallback path clears the global to 0 and the copy already was 0 -- so
+     * nothing observable diverges today. The proper fix is to give Br72Env a
+     * POINTER to slice3_45's global instead of a copy, which is a change to
+     * slice6_72's model and belongs with that packet, not here. */
+    g_env72.n18ABDBC = g_br18ABDBC;
+
     g_pBr72Env = &g_env72;
 }
