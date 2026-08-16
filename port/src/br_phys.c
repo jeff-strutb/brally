@@ -44,7 +44,14 @@
 /* associative, so this is not cosmetic.                                  */
 /* ==================================================================== */
 
-/* 0 == the original's body-local grid key.  See br_phys.h. */
+/* VESTIGIAL.  It used to select between a "body-local" and a "world" grid key
+ * for the wheel probe, because two passes read 0x10068070 as keying the grid on
+ * the wheel's body-local mount offset.  That reading was WRONG -- see the
+ * adjudication in br_phys.h -- and the wheel probe now keys on the world point
+ * unconditionally, which is what the bytes say and what the D3D twin says too.
+ *
+ * The symbol survives only because port/host/brally.c reads it (`-worldkey`)
+ * and that file belongs to another pass.  Setting it changes NOTHING. */
 int g_brPhysWheelGridWorldKey = 0;
 
 static float BrPhysDot(const BrVec3 *pA, const BrVec3 *pB)
@@ -214,16 +221,20 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
     /* Cleared BEFORE the search, so it doubles as the "no contact" flag. */
     pWheel->f19C = 0.0f;
 
-    /* GOTCHA -- the grid cell comes from the BODY-LOCAL mount offset, not
-     * from `world`.  See the long note in br_phys.h.  Reproduced, and the
-     * switch below defaults to 0, which is the original.  The alternative
-     * arm is a MEASUREMENT INSTRUMENT, not a fix; br_phys.h says why it had
-     * to exist and what it costs to forget that. */
-    if (g_brPhysWheelGridWorldKey) {
-        cell = BrCollGridCellAcquire(world.x, world.y);
-    } else {
-        cell = BrCollGridCellAcquire(pWheel->f78.x, pWheel->f78.y);
-    }
+    /* The grid cell comes from the WORLD point, exactly as in the straight-down
+     * sibling.  This line was `BrCollGridCellAcquire(pWheel->f78.x, ...)` for
+     * two passes on the strength of a stack-offset misreading; the frame
+     * arithmetic that settles it is written out in br_phys.h.  In one line:
+     * the original's reload
+     *
+     *     100680DC  mov ecx, [esp+0x1c]
+     *     100680E0  mov edx, [esp+0x18]
+     *     100680E4  add esp, 0xc          <-- AFTER the reload, not before
+     *
+     * happens while esp is still 0xC below the frame the SPILL used, so the
+     * two identical-looking displacements name two different pairs of slots:
+     * the spill wrote f78.x/.y, the reload reads 0x1006DA20's OUTPUT. */
+    cell = BrCollGridCellAcquire(world.x, world.y);
 
     best = BrPhysProbeCell(cell, &world, &dir, BR_PHYS_PROBE_MISS, &pBest);
 

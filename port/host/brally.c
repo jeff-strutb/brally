@@ -33,7 +33,7 @@
  *                             headless scripted navigation: d down, u up,
  *                             j activate, . idle. Dumps the selection state
  *                             after every key and reports any phase change.
- *   ./build/brally -race <track.trk> <steps> [-drop <m>] [-worldkey]
+ *   ./build/brally -race <track.trk> <steps> [-drop <m>]
  *                             THE RACE, which is not a phase: load a track,
  *                             build the collision grid from its own triangles,
  *                             spawn sixteen cars, install the step in the slot
@@ -41,9 +41,7 @@
  *                             dumping car 0's position, velocity, |angVel|,
  *                             lap/gate and all four ground probes per step.
  *                             `-drop` is how far above the surface each grid
- *                             box starts (default 0.5 m).  `-worldkey` is a
- *                             COUNTERFACTUAL and is announced as one -- see
- *                             br_phys.h.
+ *                             box starts (default 0.5 m).
  *
  * THE MENU IS NAVIGABLE. `-keys` exists because "the selection moves" is not
  * something a terminal session or a CI job can check by looking, and an
@@ -1493,13 +1491,8 @@ static int RunRace(int argc, char **argv)
     int       i, cells = 0, planes = 0;
     int32_t   nGates;
 
-    /* The one counterfactual this mode can be asked for; see br_phys.h.
-     * It is opt-in, it is announced in the banner, and it is announced again
-     * in the dump header, because a number produced with it set is NOT a
-     * number about the shipped game. */
     for (i = 4; i < argc; ++i) {
-        if (strcmp(argv[i], "-worldkey") == 0) g_brPhysWheelGridWorldKey = 1;
-        else if (strcmp(argv[i], "-drop") == 0 && i + 1 < argc)
+        if (strcmp(argv[i], "-drop") == 0 && i + 1 < argc)
             g_raceDrop = (float)atof(argv[++i]);
     }
 
@@ -1560,9 +1553,6 @@ static int RunRace(int argc, char **argv)
         printf("no surface found under the start line; using the path Z\n");
     }
     if (g_brPhysWheelGridWorldKey) {
-        printf("*** COUNTERFACTUAL: the wheel probe's grid key has been "
-               "moved to the WORLD point.\n"
-               "*** This is NOT the shipped behaviour.  See br_phys.h.\n");
     }
 
     /* --- the field ---------------------------------------------------- */

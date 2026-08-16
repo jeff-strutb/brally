@@ -173,15 +173,9 @@ float BrGroundProbeZ(const BrVec3 *pPoint);
  * IS declared, f19C, carries 0.0f / 1.0f as the "did I touch anything" flag
  * the original gets from NULL / non-NULL.  Pass NULL for pHit to drop it.
  *
- * GOTCHA, and it looks like a genuine defect in the original -- reproduced:
- * the collision grid cell is looked up from pWheel->f78.x / .y DIRECTLY,
- * i.e. from the wheel's BODY-LOCAL mount offset, never from the world point
- * P that every subsequent test uses.  The two are unrelated once the car
- * leaves the origin.  The bytes are unambiguous: f78.x/.y are read into two
- * stack slots BEFORE the transform, the transform writes elsewhere, and those
- * same two slots are reloaded and pushed to 0x1006F720.  Recorded here rather
- * than "fixed", and asserted by test_br_phys so a future pass that decides it
- * is a misreading has something concrete to argue with.
+ * The grid cell is chosen from P -- the WORLD point -- exactly as in the
+ * straight-down sibling.  See THE GRID-KEY ADJUDICATION below; this was read
+ * as a body-local key by two passes and it is not one.
  * ====================================================================== */
 /* The six fields the original writes at wheel+0x19C..+0x1B0.  See the
  * DEVIATION above for why they are not written through BrRbBodyFull.
@@ -200,34 +194,96 @@ float BrWheelGroundProbe(const BrRbBodyFull *pBody, BrRbBodyFull *pWheel,
                          BrGroundHit *pHit);
 
 /* ======================================================================
- * A SWITCH FOR THE GRID-KEY DEFECT ABOVE.  DEFAULT 0 == THE ORIGINAL.
+ * THE GRID-KEY ADJUDICATION.  IT WAS A MISREADING.
  * ======================================================================
- * The GOTCHA above says the wheel probe keys the collision grid on the
- * wheel's BODY-LOCAL mount offset.  That was reproduced without anyone
- * measuring what it costs.  It costs everything:
+ * This header, br_phys.c, test_br_phys.c and CONVENTIONS.md all used to state
+ * as established fact that 0x10068070 keys the collision grid on the wheel's
+ * BODY-LOCAL mount offset, and that the shipped wheel probe therefore can
+ * never find ground on any track.  Two independent passes reached that
+ * conclusion.  Both were wrong, in the same way, and the way is worth keeping.
  *
- *   The mount offsets are (+-1.5, +-1.0).  BrCollGridCellAcquire's key is
- *   (trunc(x) >> 5) + ((trunc(y) >> 5) << 6), so all four wheels ask for key
- *   0 -- world cell (0,0), the 32x32 square at the origin -- on every frame
- *   of every track.  Worse, BrGrid64Sample rejects a negative coordinate
- *   outright, so the first wheel to ask (mount y == -1.0) loads that key with
- *   ZERO triangles and the other three then hit the cache and get the same
- *   empty cell.  The wheel probe can therefore never return anything but
- *   BR_PHYS_PROBE_MISS, on any track, at any position.  Measured on
- *   race.trk: 100.00 for all four wheels for the whole run, while
- *   BrGroundProbeZ -- the same search keyed on the WORLD point -- reports the
- *   surface correctly at the same instant.
+ * The claim rested on this pair of instructions:
  *
- * So either the shipped suspension really is dead and the ground contact
- * lives entirely in 0x10067C30's five unported collision callees, or there
- * is a writer of wheel->f78 nobody has found.  This port does not guess:
- * the default reproduces the bytes.
+ *     10068091  mov  dword ptr [esp+0x18], eax     ; <- f78.x spilled
+ *     10068099  mov  dword ptr [esp+0x1c], ecx     ; <- f78.y spilled
+ *     ...
+ *     100680DC  mov  ecx, dword ptr [esp+0x1c]     ; <- "the same slots"
+ *     100680E0  mov  edx, dword ptr [esp+0x18]     ;    reloaded
+ *     100680F1  push ecx
+ *     100680F2  push edx
+ *     100680F3  call 0x100686D0                    ; BrCollGridCellAcquire
  *
- * Setting this to 1 keys the cell on the WORLD point instead -- the one-line
- * counterfactual.  It exists so the defect can be MEASURED (run the same
- * field both ways and diff the dump), not so the physics can be "fixed":
- * anything run with it set is a counterfactual and must be reported as one.
- * ====================================================================== */
+ * Identical displacements, so identical slots -- except that ESP IS NOT THE
+ * SAME AT THE TWO POINTS.  Take R as esp on entry (pointing at the return
+ * address) and walk it:
+ *
+ *     10068070  sub  esp,0x34        esp = R-0x34
+ *     10068077  push esi             esp = R-0x38
+ *     10068078  push edi             esp = R-0x3C
+ *     10068091  [esp+0x18] -> R-0x24     f78.x     } the MOUNT vector,
+ *     10068099  [esp+0x1c] -> R-0x20     f78.y     } R-0x24 .. R-0x1C
+ *     1006809D  push eax             esp = R-0x40   (arg3 = &mount)
+ *     1006809E  lea  ecx,[esp+0x10] -> R-0x30       (arg1 = &world)
+ *     100680A2  push esi             esp = R-0x44   (arg2 = &body->m)
+ *     100680A3  push ecx             esp = R-0x48
+ *     100680BC  [esp+0x2c] -> R-0x1C = mount.z = 0  -- pins the mount vector
+ *     100680C4  call 0x1006DA20      writes WORLD at R-0x30/-0x2C/-0x28
+ *     100680C9  add  esp,0xc         esp = R-0x3C
+ *     100680D0  lea  eax,[esp+0x24] -> R-0x18       (arg1 = &dir)
+ *     100680D4  push edx / push esi / push eax      esp = R-0x48
+ *     100680D7  call 0x1006D9D0      writes DIR at R-0x18/-0x14/-0x10
+ *     100680DC  [esp+0x1c] -> R-0x2C = WORLD.y      <-- esp is STILL R-0x48
+ *     100680E0  [esp+0x18] -> R-0x30 = WORLD.x
+ *     100680E4  add  esp,0xc         esp = R-0x3C   <-- the cleanup is HERE
+ *
+ * The cleanup for the second transform's three arguments happens AFTER the
+ * two reloads, not before, so at 0x100680DC esp is 0xC lower than it was at
+ * the spill and `[esp+0x18]`/`[esp+0x1c]` name R-0x30/R-0x2C -- which is
+ * 0x1006DA20's OUTPUT, i.e. the world point.  The wheel probe keys the grid
+ * on the world point.  There is no defect.
+ *
+ * FOUR independent confirmations, none of which relies on the frame walk:
+ *
+ *  1. THE CALLEES ARE CDECL.  0x1006DA20, 0x1006D9D0 and 0x100686D0 all end
+ *     in a bare `ret`, never `ret 0xC`.  Callee-cleanup was the only way the
+ *     old reading could hold, and it would additionally make the explicit
+ *     `add esp,0xc` at 0x100680E4 corrupt the frame.
+ *  2. THE MOUNT SLOTS ARE REUSED, so "the same slots are reloaded" could not
+ *     have been true anyway.  At 0x10068206/0x1006820C/0x10068212 the hit
+ *     point is stored to R-0x24/R-0x20/R-0x1C -- exactly the three words the
+ *     mount vector occupied -- and 0x1006824F passes R-0x24 to the 2D
+ *     containment test.  The mount vector is dead by then.
+ *  3. EVERY OTHER READ AGREES.  R-0x30/-0x2C/-0x28 is passed to BrPlaneEval
+ *     (0x10068128), dotted with the normal (0x1006819B) and added to t*D to
+ *     build the hit point (0x100681F4).  R-0x18/-0x14/-0x10 is the direction
+ *     (0x10068159).  One consistent labelling covers the whole function.
+ *  4. THE D3D BUILD IS THE SAME FUNCTION.  0x1006F0C0 is byte-identical to
+ *     0x10068070 apart from relocations (callees 0x100747C0 / 0x10074770 /
+ *     0x1006F720, tables 0x11750338 / 0x117554A0).  Same displacements, same
+ *     `add esp,0xc` after the same two reloads.  The brief's decisive test --
+ *     "if one build has the bug and the other does not" -- returns "neither".
+ *
+ * WHAT THE OLD CLAIM PREDICTED, AND WHY NOBODY CAUGHT IT: it predicted a
+ * total failure of wheel ground contact on every track, which the shipped
+ * game plainly does not exhibit.  That contradiction was noticed and then
+ * explained away ("the contact must live in 0x10067C30's unported callees")
+ * instead of being treated as a refutation.  A reading that requires the
+ * shipped game to be broken needs more evidence than a reading that does not,
+ * and it had less: it had one displacement match, taken at face value.
+ *
+ * LESSON, and it generalises past this function: a stack displacement is
+ * meaningless without the ESP it is relative to.  When two `[esp+N]` with the
+ * same N are claimed to be the same slot, walk every push, pop, `sub esp` and
+ * `add esp` between them -- and check whether the callees in between are
+ * cdecl or stdcall, because that decides where the cleanup happens.
+ * ======================================================================
+ *
+ * VESTIGIAL.  This was the switch that selected between the two readings so
+ * the "defect" could be measured.  There is one reading now and this changes
+ * nothing.  It survives only so port/host/brally.c -- which parses
+ * `-worldkey` and prints a COUNTERFACTUAL banner when it is set -- keeps
+ * compiling; that flag and its banner should be deleted by whoever owns that
+ * file, and this declaration with them. */
 extern int g_brPhysWheelGridWorldKey;
 
 /* ======================================================================
