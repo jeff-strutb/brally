@@ -542,6 +542,83 @@ int BrUiNavPageFrame_10048530(BrUiNav *pNav, BrUiPage_ *pPage)
 }
 
 /* ==========================================================================
+ * 0x100489A0 -- phase vtable +0x0C, one frame of one phase.
+ *
+ * The top of the chain. slice3_32.c has this body over BrPhaseFull; see the
+ * DUPLICATE OWNERSHIP table in br_uinav.h and the banner beside
+ * BrPhaseRun_100489A0 in slice3_32.c. Every global it touches is reached
+ * through pNav->pG or through the pAA2904 / pAA2908 members whose single-
+ * population rule br_uinav.h states, so no storage is duplicated.
+ * ========================================================================== */
+
+/* The two-call teardown both failure exits run. slice3_32.c's is
+ * BrScrPhaseBail; the two differ only in the type of `this`.
+ *
+ * The vtable is passed in rather than re-read because the SECOND exit uses the
+ * pointer loaded before the tick call, which is the original's `edi`. */
+static void BrNavPhaseBail(BrUiNav *pNav, BrPhase_ *pThis,
+                           const BrPhaseVtbl_ *pV)
+{
+    BrSub1003E310();
+    BrSub1006A4A0(pNav->pG->pB4DF30, pNav->pG->pB4FBE8);
+    pThis->iPage = 0;
+    pV->f18(pThis, NULL);
+}
+
+int BrUiNavPhaseRun_100489A0(BrUiNav *pNav, BrPhase_ *pThis)
+{
+    const BrPhaseVtbl_ *pV;
+    int32_t i;
+
+    if (pThis->f68 == 0) {
+        BrNavPhaseBail(pNav, pThis, pThis->pVtbl);
+        return 0;
+    }
+
+    (void)pThis->pVtbl->f04(pThis);
+
+    /* 0x10060260, with the current phase temporarily pointed at the root.
+     * The swap is the original's and is restored immediately; the callee is
+     * host-injected, for the reason br_uinav.h's BrUiNavPollFn banner gives. */
+    {
+        BrPhase_ *pPrev = pNav->pAA2904;
+        pNav->pAA2904 = pNav->pAA2908;
+        if (pNav->pfnPoll != NULL)
+            pNav->pfnPoll(pNav);
+        pNav->pAA2904 = pPrev;
+    }
+
+    /* 0x1005FFB0 -- OUTSIDE the swap, which is why it is a separate call and
+     * not folded into the seam above. */
+    BrDikPollAndEdge();
+
+    pNav->pG->nAA2868 = (pNav->pAA2904 == pNav->pAA2908) ? 1 : 0;
+
+    pThis->iPage = 0;
+    for (i = 0; i < (int32_t)pThis->nPages; ++i) {
+        BrUiPage_ *pPg = pThis->aPages[i];
+
+        /* GOTCHA: pCur is written BEFORE the NULL test. */
+        pThis->pCur = pPg;
+        if (pPg == NULL)
+            return 0;
+        pThis->iPage = (uint16_t)(uint32_t)i;
+        if (pThis->aFlags[i] != 0) {
+            BrUiPage_ *pCur = pThis->pCur;   /* the original re-reads +0x64 */
+            if (pCur->pVtbl->f04(pCur) == 0)
+                return 0;
+        }
+    }
+
+    pV = pThis->pVtbl;
+    (void)pV->f08(pThis);
+    if (pThis->f68 != 0)
+        return 1;
+    BrNavPhaseBail(pNav, pThis, pV);
+    return 0;
+}
+
+/* ==========================================================================
  * 0x10048AA0 -- phase vtable +0x1C
  * ========================================================================== */
 
@@ -680,6 +757,14 @@ static int32_t   NavV_page04(BrUiPage_ *p)
 {
     return BrUiNavPageFrame_10048530(g_pBrUiNav, p);
 }
+static int32_t   NavV_phase0C(BrPhase_ *p)
+{
+    return (int32_t)BrUiNavPhaseRun_100489A0(g_pBrUiNav, p);
+}
+static void      NavV_phase1C(BrPhase_ *p)
+{
+    BrUiNavPhaseRelease_10048AA0(g_pBrUiNav, p);
+}
 
 void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
 {
@@ -697,6 +782,14 @@ void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
 void BrUiNavInstallPageVtbl(BrUiPageVtbl_ *pVtbl)
 {
     pVtbl->f04 = NavV_page04;
+}
+
+void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl)
+{
+    pVtbl->f0C = NavV_phase0C;
+    pVtbl->f1C = NavV_phase1C;
+    /* +0x00, +0x04, +0x08, +0x10, +0x14, +0x18 and +0x20 are NOT touched --
+     * see br_uinav.h. Three of them are dispatched through by the frame. */
 }
 
 /* 0x100603A0's two edges, and only those two. The step and the cursor are
