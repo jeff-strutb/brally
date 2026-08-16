@@ -8,6 +8,7 @@
  */
 
 #include <assert.h>
+#include "br_tmpfile.h"
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,7 +114,11 @@ const int32_t *g_brPACED34;
 int32_t g_brAA2A08, g_br0AC64C, g_br0AC650, g_br0AC654, g_br0AC65C;
 
 /* --- slice1_06.h --------------------------------------------------------- */
-const char *const g_pszBrRallySeasonDat = "test_slice4_52_season.tmp";
+/* Not a compile-time initialiser: the path carries the pid so concurrent test
+ * runs cannot truncate each other's file (see br_tmpfile.h). Assigned at the
+ * top of main() instead, before anything under test reads it. */
+static char g_seasonPath[256];
+const char *const g_pszBrRallySeasonDat = g_seasonPath;
 
 static const BrErrHost *g_errHost;
 static int32_t          g_errIdx;
@@ -906,6 +911,10 @@ static void test_51990(void)
 
 int main(void)
 {
+    /* The POINTER is const (slice1_06.h declares it so); the buffer is not.
+     * Filled here rather than at file scope because the name carries the pid. */
+    snprintf(g_seasonPath, sizeof g_seasonPath, "%s",
+             BrTmpPath(0, "test_slice4_52_season"));
     test_strget();
     test_polydist();
     test_random();

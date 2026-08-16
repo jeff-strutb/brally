@@ -61,6 +61,7 @@
 #include <stdint.h>
 
 #include "br_slots.h"   /* BrSlot, BR_SLOT_COUNT, BR_SLOT_EMPTY */
+#include "br_phase.h"   /* BrPhase_, BrPhaseVtbl_ -- CANONICAL, see below */
 
 /* ==========================================================================
  * Types
@@ -77,25 +78,61 @@
  * still in ecx and no stack cleanup by the caller -- i.e. thiscall with one
  * argument. That is the MSVC scalar deleting destructor; the argument 1
  * means "also free the storage".
- */
-typedef struct BrOptObj BrOptObj;
+ *
+ * ---------------------------------------------------------------------------
+ * ADJUDICATED: this is br_phase.h's BrPhase_, and it was a LIVE OVERFLOW.
+ *
+ * `BrOptObj` was the THIRD partial model of the object at 0x10048710 --
+ * slice2_26.h's BrPhase and slice3_33.h's BrUiPhase were the others -- and the
+ * only one that had already been wired to the real constructor. It named the
+ * same five fields the other two did (pVtbl, pfn04, pfn08, f0C, f68) and
+ * padded the gaps to reach 0xC8.
+ *
+ * The padding is what made it dangerous, because it looks like a size
+ * guarantee and is not one. `pad10[0x68-0x10]` and `pad6C[0xC8-0x6C]` are
+ * FIXED BYTE COUNTS, so on LP64 the three leading pointers widen, f68 stops
+ * being at +0x68, and the struct comes to 216 bytes -- while the object the
+ * constructor actually writes (BrPhase_) is 304. slice2_25.c's installer
+ * allocated `sizeof(BrOptObj)` and then called `BrOptObjCtor`, which resolves
+ * at the host link to slice6_73.c's faithful body. That body's last two stores
+ * are +0xC0 and +0xC4, i.e. bytes 288..303 of a 216-byte allocation: an
+ * 88-byte heap overflow on every phase installation, plus a scattering of
+ * fields landing in the wrong place on the way there.
+ *
+ * The header's own DEVIATION note said `sizeof(BrOptObj)` was used "because on
+ * a 64-bit host the three leading pointers make the object larger", and the
+ * transcription notes added "anything that assumes 0xC8 (notably the
+ * constructor at 0x10048710) must be ported with the same struct". Both are
+ * exactly right, and the second is the condition that was not met.
+ *
+ * So BrOptObj is an alias now, the allocation uses BR_PHASE_ALLOC_SIZE, and
+ * the condition is met by construction rather than by remembering.
+ *
+ * TYPE CHANGES, both adjudicated in br_phase.h from the disassembly:
+ *   - the vtable has NINE slots, not one; this range only calls slot +0x00.
+ *   - slot +0x00 returns `void *`. This header read it as the MSVC scalar
+ *     deleting destructor, which is right, and 0x10048850 ends `mov eax,esi /
+ *     ret 4` -- it returns `this`. Callers here discard it, as before.
+ *
+ * WRONG IF: BrOptObj's five fields are not the five br_phase.h names them.
+ * The installer writes +0x04 then calls it with `this`, and sets +0x0C and
+ * +0x68 to 1 -- the same three facts slice2_26.h recorded independently for
+ * the same object. All three models agree on all five fields.
+ * ------------------------------------------------------------------------- */
+typedef BrPhase_     BrOptObj;
+typedef BrPhaseVtbl_ BrOptObjVtbl;
 
-typedef struct BrOptObjVtbl {
-    void (*pfnDeletingDtor)(BrOptObj *pThis, int fDelete);  /* slot 0 */
-} BrOptObjVtbl;
+/* +0x04 and +0x08 hold plain cdecl function pointers, not vtable entries.
+ * br_phase.h types +0x08 as `void (*)(void *)` because slice2_26's call site
+ * passes the CALLER's argument rather than the phase; this range only ever
+ * stores +0x08, so it has no evidence either way and defers. */
+typedef BrPhaseEnterFn_ BrOptObjFn;
 
-/* +0x04 and +0x08 hold plain cdecl function pointers, not vtable entries. */
-typedef void (*BrOptObjFn)(BrOptObj *pThis);
-
-struct BrOptObj {
-    const BrOptObjVtbl *pVtbl;                  /* +0x00, set by 0x10048710 */
-    BrOptObjFn          pfn04;                  /* +0x04 */
-    BrOptObjFn          pfn08;                  /* +0x08 */
-    int32_t             f0C;                    /* +0x0C */
-    unsigned char       pad10[0x68 - 0x10];     /* +0x10..+0x67 */
-    int32_t             f68;                    /* +0x68 */
-    unsigned char       pad6C[0xC8 - 0x6C];     /* +0x6C..+0xC7 */
-};
+/* FIELD RENAMES done at the use sites, not with macros -- a `#define pfn04
+ * pfnEnter` would textually rewrite the unrelated `pfn04` members of BrUiCtl_
+ * and BrTextBoxVtbl the moment two headers met in one TU. Vtable slot 0 was
+ * `pfnDeletingDtor` here and is `f00` in br_phase.h; the five object fields
+ * are pVtbl / pfnEnter / pfnHook / f0C / f68. */
 
 /* --- the game object every transition handler is passed ------------------
  *
@@ -471,8 +508,38 @@ extern void BrSub1006A4A0(void *pThis, void *pArg);
 /* XSLICE 0x10057C10 */ extern void BrOptFn10057C10(BrOptObj *pThis);
 /* XSLICE 0x10058750 */ extern void BrOptFn10058750(BrOptObj *pThis);
 /* Handler functions installed into BrOptObj::pfn08 (never called here). */
-/* XSLICE 0x10044970 */ extern void BrOptFn10044970(BrOptObj *pThis);
-/* XSLICE 0x10044A30 */ extern void BrOptFn10044A30(BrOptObj *pThis);
+/* ADJUDICATED: these two take an ENTITY RECORD, not the screen object.
+ *
+ * They were declared `void (BrOptObj *pThis)` here, on the reasonable-looking
+ * grounds that this range only ever STORES them -- into the +0x08 slot of a
+ * BrOptObj -- and never calls them. Merging BrOptObj into BrPhase_ made the
+ * conflict a compile error instead of a silent one, because br_phase.h types
+ * +0x08 `void (*)(void *pEntity)`.
+ *
+ * br_phase.h is right, and the disassembly is not close:
+ *
+ *   0x100450F0, the dispatcher, does
+ *       mov eax,[esp+4]              ; the CALLER's own argument
+ *       mov ecx,[0x10AA29F4]         ; the phase
+ *       push eax / call [ecx+8]      ; +0x08 receives eax, NOT ecx
+ *   so the argument is whatever the caller was handed, never the phase.
+ *
+ *   0x10044970 itself then does
+ *       mov esi,[esp+8]              ; that argument
+ *       mov ecx,[esi+0x2AE8]         ; ... and reads +0x2AE8 out of it
+ *       call [[ecx]+0x18] / call [[ecx]+0x1C]
+ *   +0x2AE8 is slice2_26.h's BR_ENTITY_OFF_SUB, to the byte. A 0xC8-byte
+ *   screen object has no +0x2AE8; reading one would be a wild read 10KB past
+ *   its end.
+ *
+ * This is br_ui.h ADJ-8's rule again -- between a header that only watched a
+ * STORE and one that watched the CALL, the call site decides.
+ *
+ * WRONG IF: +0x2AE8 is a field of the screen object after all. The object is
+ * 0xC8 bytes, established by its own `operator new` literal and by its
+ * constructor's last store landing on +0xC4. */
+/* XSLICE 0x10044970 */ extern void BrOptFn10044970(void *pEntity);
+/* XSLICE 0x10044A30 */ extern void BrOptFn10044A30(void *pEntity);
 
 /* KERNEL32 imports, used verbatim by 0x10043810 and 0x10043A00 to dispose of
  * the session descriptor DirectPlay handed back. Supplied by the platform

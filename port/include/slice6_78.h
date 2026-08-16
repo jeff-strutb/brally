@@ -75,31 +75,39 @@
  *
  * DECLINED, AND WHY
  * =================
- * 0x10048710  BrPhaseCtor -- 37 CALL SITES, THE HIGHEST STATIC DEMAND IN THE
- *             WHOLE TREE, AND IT ALREADY HAS A BODY: slice6_73.c's
- *             `BrOptObjCtor`.  It is declined anyway, and the reason is
- *             CONVENTIONS' "two models of one object, shifted", which this is
- *             a live instance of:
+ * 0x10048710  RESOLVED -- WIRED.  Left here because the reasoning below was
+ *             right and is worth keeping; only the conclusion changed.
  *
- *               slice6_73.c writes through br_phase.h's `BrPhase_`  (13 fields)
- *               slice2_26.h / slice3_31.c call through `BrPhase`    ( 5 fields)
+ *             This packet declined it as "37 call sites, the highest static
+ *             demand in the whole tree, and it already has a body" on the
+ *             grounds that the body (slice6_73.c's `BrOptObjCtor`) writes
+ *             br_phase.h's 13-field `BrPhase_` while slice2_26.h and
+ *             slice3_31.c called through a 5-field `BrPhase` whose fifth
+ *             member `f68` lands where `BrPhase_` has nPages/iPage/aPages[0].
+ *             All of that was correct, and so was the verdict that the fix is
+ *             an adjudication and not an adapter.
  *
- *             `BrPhase`'s fifth member is `f68`.  In `BrPhase_` that offset
- *             holds `nPages`/`iPage`/`aPages[0]`.  So an adapter would have
- *             slice2_26.c's "just built" flag land in the middle of the page
- *             array.  Worse, both callers allocate `BR_PHASE_ORIG_SIZE`
- *             (0xC8) -- the literal br_phase.h explicitly forbids -- while
- *             `sizeof(BrPhase_)` on LP64 is about 300 bytes.  Wiring the
- *             adapter would convert a benign NULL into a 100-byte heap
- *             overflow on every phase activation.
+ *             The adjudication has now landed, in br_phase.h's banner.  It
+ *             turned out to be FIVE models of this one object, not two:
+ *             slice2_26.h's `BrPhase`, slice2_25.h's `BrOptObj`,
+ *             slice3_33.h's `BrUiPhase`, slice3_31.h's `BrPhaseVtblExt`
+ *             overlay on the vtable, and `BrPhase_` itself.  All are aliases
+ *             of `BrPhase_` now, or deleted.
  *
- *             THE FIX IS AN ADJUDICATION, NOT AN ADAPTER, and it is two
- *             edits in modules this packet does not own: make slice2_26.h's
- *             `BrPhase` a typedef of `BrPhase_`, and change slice2_26.c:72
- *             and slice3_31.c:78 from `BR_PHASE_ORIG_SIZE` to
- *             `BR_PHASE_ALLOC_SIZE`.  Until both land, the stub returning
- *             NULL is the SAFER of the two wrong answers.  This is the single
- *             highest-value item left and it should be its own packet.
+ *             It also turned out the stub was NOT the safe side of the trade.
+ *             `BrPhaseCtor` was stubbed, but slice2_25.c and slice5_63.c call
+ *             the constructor under its OTHER name, `BrOptObjCtor`, and so
+ *             were already reaching the real body at the host link -- one
+ *             allocating `sizeof(BrOptObj)` (216 bytes) and the other the raw
+ *             `0xC8` literal (200), against a 304-byte object.  Those were
+ *             live 88- and 104-byte heap overflows, not benign NULLs.  The
+ *             name `BrPhaseCtor` is retired; one address now has one name.
+ *
+ *             GENERAL LESSON, since this cost the most to find: "the stub is
+ *             the safe answer" is only true if the stub is on the path.  Grep
+ *             the ADDRESS for every name it has before believing a function
+ *             is unwired -- which is CONVENTIONS' aliased-storage rule applied
+ *             to code rather than to data.
  *
  * 0x1002BA80  BrSwapRec24Array = slice2_16 `BrRcaFixupArray`, which takes a
  *             `const BrRcaFixup *` the original does not have: the five

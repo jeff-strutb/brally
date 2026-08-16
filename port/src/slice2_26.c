@@ -83,7 +83,7 @@ static BrActResult BrPhaseActivateSlot(BrPhaseCtx     *pCtx,
 /* operator new does not zero the block; whatever the constructor at
      * 0x10048710 leaves untouched stays garbage. */
     p = (BrPhase *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
-    p = (p != NULL) ? BrPhaseCtor(p) : NULL;
+    p = (p != NULL) ? BrOptObjCtor(p) : NULL;
 
     /* Both globals are written even when the allocation failed, so a failed
      * activation leaves the current phase NULL. */

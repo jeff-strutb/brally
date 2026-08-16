@@ -637,14 +637,26 @@ void BrExt_1005FBC0(int32_t a)
  * 8. 0x10043E70
  * ========================================================================== */
 
-#define BR63_OPTOBJ_SIZE  0xC8
+/* The original's operator-new literal. Kept as documentation only: the
+ * allocation below uses BR_PHASE_ALLOC_SIZE, because 0xC8 under-allocates
+ * the phase object by 104 bytes on a 64-bit host. */
+#define BR63_OPTOBJ_ORIG_SIZE  0xC8
 
 void BrExt_10043E70(int32_t a)
 {
     (void)a;   /* pushed by the caller, never read */
 
     if (g_brPAA2948 == NULL) {
-        BrOptObj *p = (BrOptObj *)BrOperatorNew(BR63_OPTOBJ_SIZE);
+        /* HARDENING (port): BR_PHASE_ALLOC_SIZE, not the 0xC8 literal.
+         *
+         * This was `BrOperatorNew(BR63_OPTOBJ_SIZE)` with BR63_OPTOBJ_ORIG_SIZE ==
+         * 0xC8 -- the original's literal, and precisely the allocation
+         * CONVENTIONS.md singles out: "0xC8 under-allocates the phase object
+         * by 104 bytes on a 64-bit host". BrOptObjCtor resolves at the host
+         * link to slice6_73.c's faithful body, which writes all 304 bytes of
+         * a BrPhase_, so this was a 104-byte heap overflow every time the
+         * phase at 0x10AA2948 was first built. */
+        BrOptObj *p = (BrOptObj *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
 
         /* operator new does NOT zero (see CONTRACT); the ctor fills it. */
         p = (p != NULL) ? BrOptObjCtor(p) : NULL;
@@ -655,9 +667,9 @@ void BrExt_10043E70(int32_t a)
             return;
         }
 
-        p->pfn04 = BrOptFn10056FF0;
+        p->pfnEnter = BrOptFn10056FF0;
         /* The original re-reads 0x10AA2948 for both the `this` and the call. */
-        g_brPAA2948->pfn04(g_brPAA2948);
+        g_brPAA2948->pfnEnter(g_brPAA2948);
         g_brPAA2904->f0C = 1;
         g_brPAA2904->f68 = 1;
     } else {

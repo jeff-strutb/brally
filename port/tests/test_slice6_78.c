@@ -45,6 +45,7 @@
  * call -- faking them would test the fake) and br_crt.o (BrOperatorNew).
  */
 #include "slice6_78.h"
+#include "br_tmpfile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,7 +227,7 @@ static void TestBasenameEmptySourceIsTheDocumentedDeviation(void)
 
 static const char *WriteTempFile(const char *pszBody)
 {
-    static char szPath[] = "test_slice6_78_tmp.bin";
+    const char *szPath = BrTmpPath(0, "test_slice6_78_tmp");
     FILE *pf = fopen(szPath, "wb");
 
     if (pf == NULL) {

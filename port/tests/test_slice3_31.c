@@ -81,7 +81,7 @@ static const BrPhaseVtbl g_PhaseVtbl = {
     NULL                    /* +0x20 */
 };
 
-BrPhase *BrPhaseCtor(BrPhase *pThis)
+BrPhase *BrOptObjCtor(BrPhase *pThis)
 {
     pThis->pVtbl = &g_PhaseVtbl;
     pThis->pfnEnter = NULL;
@@ -225,7 +225,7 @@ int BrPhaseActivate_100451E0(BrPhaseCtx *pCtx)
     g_c451E0++;
     if (pCtx->pAA2918 == NULL) {
         BrPhase *p = (BrPhase *)BrOperatorNew(BR_PHASE_ORIG_SIZE);
-        pCtx->pAA2918 = (p != NULL) ? BrPhaseCtor(p) : NULL;
+        pCtx->pAA2918 = (p != NULL) ? BrOptObjCtor(p) : NULL;
     }
     pCtx->pAA2904 = pCtx->pAA2918;
     return pCtx->pAA2918 != NULL;
@@ -287,7 +287,7 @@ static void ResetAll(void)
 static BrPhase *MakePhase(void)
 {
     BrPhase *p = (BrPhase *)malloc(BR_PHASE_ORIG_SIZE);
-    return BrPhaseCtor(p);
+    return BrOptObjCtor(p);
 }
 
 /* ==========================================================================

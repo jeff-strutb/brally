@@ -89,7 +89,7 @@ void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt)
 static BrPhase *Br31NewPhase(void)
 {
     BrPhase *p = (BrPhase *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
-    return (p != NULL) ? BrPhaseCtor(p) : NULL;
+    return (p != NULL) ? BrOptObjCtor(p) : NULL;
 }
 
 /* The body every activate routine shares once its prologue has run.

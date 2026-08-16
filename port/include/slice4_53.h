@@ -205,8 +205,14 @@ void BrMenuSub10044B90(int32_t n);
 /* 0x10044A30 -> slice2_26's BrPhaseLeave_10044A30.
  * slice2_25 declares it as a one-argument BrOptObj::pfn08 hook; slice2_26
  * implements it as (ctx, entity).  The single argument IS the entity.
- * Needs BrSlice4SetPhaseCtx. */
-void BrOptFn10044A30(BrOptObj *pThis);
+ * Needs BrSlice4SetPhaseCtx.
+ *
+ * The parameter was spelled `BrOptObj *` while this header's own note said it
+ * is the entity, and the body forwards it to a `void *pEntity` parameter --
+ * so the type contradicted the comment, the body and the disassembly all at
+ * once, and only compiled because BrOptObj was a private five-field model.
+ * It is `void *` now; see the adjudication in slice2_25.h. */
+void BrOptFn10044A30(void *pEntity);
 
 /* ======================================================================
  * 7. Session timer (0x1003C230)
