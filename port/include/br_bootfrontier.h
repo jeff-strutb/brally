@@ -40,7 +40,10 @@ void    BrBootFrontier_10032530(void);          /* state 0 */
 void    BrBootFrontier_1006C290(int32_t set);   /* sfx bank select: 0=menu */
 void    BrBootFrontier_10058AF0(void);
 
-void    BrBootFrontier_1002E324(void);          /* state 2 -- ONE GAME FRAME */
+/* 0x1002E324 is NOT here: it is already ported as BrGameStepInvoke in
+ * br_gamestep.c. It was briefly given a frontier entry, which declared a
+ * transcribed function missing -- recorded because it is the recurring
+ * failure in this project, not a one-off. */
 
 /* TEST HOOK, and it exists to close a real hole rather than for convenience.
  *

@@ -9,7 +9,6 @@
 
 enum {
     F_10032530, F_1006C290, F_10058AF0,
-    F_1002E324,
     F_10063970, F_1006C990, F_100628B0,
     F_1006C460, F_10056260, F_1006E280, F_SETMODETAIL,
     F_COUNT
@@ -19,7 +18,6 @@ static const char *const s_apszName[F_COUNT] = {
     "0x10032530 state0 init",
     "0x1006C290 sfx bank select",
     "0x10058AF0 state0 init",
-    "0x1002E324 ONE GAME FRAME",
     "0x10063970 state3 (5 args)",
     "0x1006C990 load image",
     "0x100628B0 state3 init",
@@ -80,13 +78,6 @@ void BrBootFrontier_1006C290(int32_t set)
 {
     (void)set;
     ++s_aHits[F_1006C290];
-}
-
-void BrBootFrontier_1002E324(void)
-{
-    ++s_aHits[F_1002E324];
-    if (s_pfnFrameHook != NULL)
-        s_pfnFrameHook();
 }
 
 void BrBootFrontier_10063970(int32_t a1, int32_t a2, int32_t a3,
