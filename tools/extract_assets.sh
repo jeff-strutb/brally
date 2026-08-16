@@ -57,6 +57,19 @@ for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
   fi
 done
 
+# The SFX directory LISTING, not the audio itself. port/tests/test_br_sfx.c
+# checks that every file name the sound bank can build is a real file and that
+# the bank accounts for all 73 of them -- which needs the names and nothing
+# else, so this pulls a few hundred bytes rather than six megabytes of .wav.
+if [ ! -f testdata/sfx.txt ]; then
+  python3 tools/extract_iso.py --list "$BIN" 2>/dev/null \
+    | sed -n 's|^\([Ss][Ff][Xx]/[A-Za-z0-9_.-]*\.[Ww][Aa][Vv]\).*|\1|p' \
+    | tr 'A-Z' 'a-z' | sort -u > testdata/sfx.txt
+  echo "assets: listed $(wc -l < testdata/sfx.txt | tr -d ' ') sfx names"
+else
+  echo "assets: testdata/sfx.txt already present"
+fi
+
 # The menu sprite sheets. br_uispr.c's 145-entry table names these; without
 # them the chrome can only be drawn as placeholder rectangles.
 if [ ! -d testdata/images ]; then

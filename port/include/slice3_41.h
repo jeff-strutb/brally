@@ -93,12 +93,42 @@ extern int32_t g_Br0B380C;
  *   +0x7C int32
  * ===================================================================== */
 
-/* The two car fields the rank sort touches.  In the original these live at
- * +0xFF4 / +0xFF8 of the 0x2B68-byte entity record; when integration
- * lands a full car type, BrDriver::pCar should be re-pointed at it. */
+/* The car fields the driver record mirrors.  In the original these all live
+ * inside the 0x2B68-byte entity record; when integration lands a full car
+ * type, BrDriver::pCar should be re-pointed at it.
+ *
+ * EXTENDED by br_race.h's pass.  It was two fields, because the rank sort was
+ * the only consumer in this packet.  The lap/gate state machine (D3D
+ * 0x10066E90 == Glide 0x1005FF00 -- the "NOT PORTED" entry below) mirrors
+ * SEVEN more of them into the driver record on entry and back out on exit, so
+ * a second car model would have been a second view of one original object --
+ * exactly the aliased-storage bug CONVENTIONS.md records.  Extending is the
+ * fix; adding a rival struct is not.  Nothing here is overlaid on a foreign
+ * buffer, so the widened layout is harmless.
+ *
+ * fFF4 keeps its positional name because it has two readings that the port
+ * cannot yet collapse: 0x10066510 sorts on it as an opaque key, and
+ * 0x1005FF00 adjusts it by the track's lap length -- i.e. it is distance
+ * along the track, accumulated across laps. */
+#define BR_RACE_LAPTIME_MAX  12  /* (0xFE4 - 0xFB4) / 4 -- see br_race.h */
+
 typedef struct BrDriverCar {
-    float   fFF4;       /* +0xFF4  sort key                              */
-    int32_t fFF8;       /* +0xFF8  rank output                           */
+    BrVec3  pos;            /* +0x030  position this frame                */
+    BrVec3  posPrev;        /* +0xF80  position last frame                */
+    int32_t gateHi;         /* +0xFA0  furthest gate reached (unwrapped)  */
+    int32_t gate;           /* +0xFA4  current gate (unwrapped, may be <0)*/
+    int32_t lap;            /* +0xFA8  lap counter                        */
+    int32_t lapB;           /* +0xFAC  "technically earned" lap counter   */
+    float   tRun;           /* +0xFB0  time accumulated in the lap so far */
+    float   aLapTime[BR_RACE_LAPTIME_MAX];  /* +0xFB4  "lapTimeFinal[]"   */
+    float   tBest;          /* +0xFE4  best lap time, 0 == none yet       */
+    int32_t lapBest;        /* +0xFE8  lap the best was set on            */
+    float   tFinal;         /* +0xFEC  race time, trimmed at the flag     */
+    float   fFF4;           /* +0xFF4  sort key / distance along track    */
+    int32_t fFF8;           /* +0xFF8  rank output -- AND the finishing
+                             *         order, which 0x1005FF00 overwrites
+                             *         it with at the flag                */
+    float   f29B0;          /* +0x29B0 set to 0.9f at the flag            */
 } BrDriverCar;
 
 #define BR_DRIVER_SKIP  2u      /* +0x68 bit 1: slot takes no rank        */
@@ -110,14 +140,18 @@ typedef struct BrDriver {
     int32_t      f24;
     int32_t      f28;
     int32_t      f2C;
-    int32_t      f30;
-    int32_t      f34;
+    /* +0x30 and +0x34 were `int32_t` here on the strength of the constructor,
+     * which only zeroes them.  0x1005FF00 reads and writes both with
+     * fld/fstp: they are the running lap time and the best lap time.  +0x38
+     * is still only ever zeroed, so it stays an int32. */
+    float        f30;       /* running lap time                           */
+    float        f34;       /* best lap time, 0 == none set yet           */
     int32_t      f38;
     int32_t      f3C;
-    int32_t      f40;
-    int32_t      f44;
-    int32_t      f48;
-    int32_t      f4C;
+    int32_t      f40;       /* lap                                        */
+    int32_t      f44;       /* "technically earned" lap                   */
+    int32_t      f48;       /* furthest gate reached (unwrapped)          */
+    int32_t      f4C;       /* current gate (unwrapped, may be negative)  */
     float        f50;       /* sort key                                   */
     int32_t      f54;       /* rank, written only when pCar == NULL       */
     int32_t      f58;
@@ -351,8 +385,17 @@ void BrGfx69580(void);
  *               other half rewrites car+0x1A08 from a netplay accessor
  *               (0x10005E40) over the 0x2B68-stride array and needs a car
  *               type this packet does not pin down.
- *   0x10066650  2103 bytes of driver AI over ~15 opaque globals.
- *   0x10066E90  2534 bytes, likewise.
+ *   0x10066650  2103 bytes of driver AI over ~15 opaque globals.  NOT AI:
+ *               the Glide twin 0x1005F6C0 carries "saving lap (%d/%d) and
+ *               gate (%d/%d)" and "restoring lap (%d/%d) and gate (%d/%d)",
+ *               so this is the lap/gate snapshot pair.  Still unported.
+ *   0x10066E90  2534 bytes, likewise -- and likewise NOT AI.  The Glide twin
+ *               0x1005FF00 is the GATE/LAP/FINISH state machine, and the
+ *               lap-counting, finish-condition and car-mirror parts of it are
+ *               now ported in port/src/br_race.c.  What is still missing from
+ *               that file is listed in br_race.h: the debug prints, the HUD
+ *               banner, the two per-track record tables, and the standings
+ *               recompute at 0x1006044B.
  *   0x10067940  \
  *   0x10067960   |  four-line wrappers whose entire content is the address of
  *   0x10067980   |  a global BrVarBlock table (0x100B39B0, 0x100B3A68) and a
