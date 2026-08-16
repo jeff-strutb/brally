@@ -58,14 +58,29 @@ int BrF3dWalk(const void *pvList, size_t cbMax, BrF3dStats *pStats)
 
         switch (op) {
         case BR_G_VTX: {
-            /* F3DEX packing -- see the correction note in br_f3d.h. */
-            unsigned n   = (w0 >> 10) & 0x3F;         /* bits[15:10] = n     */
-            unsigned end = (w0 >> 1) & 0x7F;          /* bits[7:1]  = v0+n   */
-            if (n == 0 || n > 64 || end > 64) {
+            /* F3DEX packing, corrected -- see the note in br_f3d.h.
+             *
+             * bits[23:16] are the DESTINATION INDEX, not bits[7:1]. The real
+             * handler (Glide 0x10021A20) reads it as `mov cl, byte ptr
+             * [ebp-2]`, i.e. byte 2 of w0, then indexes a 104-byte-stride
+             * vertex array with it. bits[7:1] hold (16n - 1) and are not a
+             * bound on anything.
+             *
+             * The old reading rejected every G_VTX with n >= 9, because
+             * (16n - 1) >> 1 exceeds 64 from n = 9 upward -- and the walker
+             * returned on rejection, abandoning the whole list. bb.rca
+             * reported 76 triangles where the file holds 1824, and ce.rca 471
+             * where it holds 1079. The suite stayed green because its
+             * assertions only checked ratios and "> 0", which a 4% sample
+             * satisfies as happily as the whole model. */
+            unsigned n    = (w0 >> 10) & 0x3F;        /* bits[15:10] = n      */
+            unsigned dest = (w0 >> 16) & 0xFF;        /* bits[23:16] = index  */
+            if (n == 0 || dest + n > BR_F3D_VTX_SLOTS) {
                 pStats->cBadIndices++;
                 return 1;
             }
             (void)w1;                                  /* segment address */
+            (void)dest;
             pStats->cVtxLoads++;
             pStats->cVerticesLoaded += n;
             break;
