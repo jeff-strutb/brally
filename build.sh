@@ -250,14 +250,22 @@ clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
 clang build/br_audio.o build/test_audio.o -lm -o build/test_audio
 
-# br_font recovers the glyph pixels out of orig/BRD3D.dll and ports 0x10018590.
-# Its emitter builds the combine command with slice1_05.c's REAL 0x1002F900
-# rather than a fake -- faking it would test the fake -- and that in turn wants
-# br_seg.o's BrSegFixup.  The test skips itself when the DLL is not present.
+# br_font recovers the glyph pixels out of orig/BRGlide.dll (0x10015B10,
+# 0x10016980, 0x1006C790) or orig/BRD3D.dll (0x10018590, 0x100193C0,
+# 0x10073820) -- it works out which from the image.  Its emitter builds the
+# combine command with slice1_05.c's REAL 0x1002F900 rather than a fake --
+# faking it would test the fake -- and that in turn wants br_seg.o's
+# BrSegFixup.  test_br_font runs its whole battery against BOTH DLLs and skips
+# only if neither is present; test_br_font_glide holds the facts that are true
+# of one build and needs both images at once, so it skips unless both are.
 clang $CFLAGS -c port/src/br_font.c -o build/br_font.o
 clang $CFLAGS -Iport/tests -c port/tests/test_br_font.c -o build/test_br_font.o
 clang build/br_font.o build/slice1_05.o build/br_seg.o build/test_br_font.o \
       -lm -o build/test_br_font
+clang $CFLAGS -Iport/tests -c port/tests/test_br_font_glide.c \
+      -o build/test_br_font_glide.o
+clang build/br_font.o build/slice1_05.o build/br_seg.o \
+      build/test_br_font_glide.o -lm -o build/test_br_font_glide
 
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt

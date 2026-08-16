@@ -386,6 +386,23 @@ static void FillRect(BrGfx *gfx, float x, float y, float w, float h)
 static BrFont g_font;
 static int    g_haveFont;
 
+/* BRGlide.dll is the reference build (CONVENTIONS.md), so the host asks for it
+ * first and falls back to the D3D build.  br_font works out which one it got
+ * from the image itself; the two render the same caption. */
+static const char *LoadFont(void)
+{
+    if (BrFontLoad(&g_font, "orig/BRGlide.dll") == 0) {
+        g_haveFont = 1;
+        return "orig/BRGlide.dll";
+    }
+    if (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0) {
+        g_haveFont = 1;
+        return "orig/BRD3D.dll";
+    }
+    g_haveFont = 0;
+    return NULL;
+}
+
 static struct { BrTexture tex; float x, y; } g_aCapTex[BR_CAP_MAX];
 static int    g_cCap;
 
@@ -634,7 +651,7 @@ int main(int argc, char **argv)
         }
         g = BrGfxCreate(W, H);
         if (!g) { printf("gfx init failed: %s\n", BrGfxLastError()); return 1; }
-        g_haveFont = (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0);
+        (void)LoadFont();
         {
             static const uint8_t white[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
             g_texWhite  = BrGfxCreateTexture(g, 1, 1, white);
@@ -707,10 +724,14 @@ int main(int argc, char **argv)
         if (gfx) {
             g_texWhite  = BrGfxCreateTexture(gfx, 1, 1, white);
             g_haveWhite = (g_texWhite != 0);
-            g_haveFont  = (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0);
-            printf(g_haveFont
-                       ? "font: glyphs recovered from orig/BRD3D.dll\n"
-                       : "font: orig/BRD3D.dll not readable -- boxes only\n");
+            {
+                const char *pszFont = LoadFont();
+                if (pszFont)
+                    printf("font: glyphs recovered from %s\n", pszFont);
+                else
+                    printf("font: neither orig/BRGlide.dll nor "
+                           "orig/BRD3D.dll is readable -- boxes only\n");
+            }
             BuildCaptions(gfx, ph);
         }
         if (gfx && BrImgLoad(&img, "testdata/splash.img") == 0) {

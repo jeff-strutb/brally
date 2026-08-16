@@ -1,15 +1,24 @@
-/* test_br_font.c -- the font recovered from BRD3D.dll, and 0x10018590.
+/* test_br_font.c -- the font, and the emitter, in BOTH builds.
+ *
+ * The whole battery below runs twice: once against orig/BRD3D.dll (0x10018590
+ * and 0x100193C0) and once against orig/BRGlide.dll (0x10015B10 and
+ * 0x10016980).  Everything it asserts is something the two builds were shown
+ * to agree about, so a divergence appearing later fails here rather than
+ * silently.  The facts that are true of only ONE build -- the nibble order,
+ * the block layout, the 0xDD, the detail global -- are in
+ * test_br_font_glide.c, which also holds the cross-build pixel diff.
  *
  * The assertions here are properties of the DATA and of the emitter's control
  * flow, not counts.  Two of them are worth calling out because they are the
  * ones that would fail if the strips had been misidentified:
  *
- *  - "IA8, not something else": every renderable glyph contains BOTH texels
- *    with a zero high nibble and a full low nibble (outline: black, opaque)
- *    AND texels that are 0xFF (body: white, opaque).  Under any other 8-bit
- *    reading -- I8, A8, a palette index -- an outlined font would not split
- *    that way, and under a wrong base address the strip would be noise and
- *    would not split that way either.
+ *  - "an outlined two-nibble format, not something else": every renderable
+ *    glyph contains BOTH texels that are opaque with zero intensity (the
+ *    outline) AND texels that are 0xFF (body: white, opaque).  Under any other
+ *    8-bit reading -- I8, A8, a palette index -- an outlined font would not
+ *    split that way, and under a wrong base address the block would be noise
+ *    and would not split that way either.  Which nibble is which is read off
+ *    BrGlyph::fAlphaHigh, so this holds for IA8 and AI44 alike.
  *
  *  - "the two offset runs are concatenated": the table rises monotonically
  *    across 0..27 and again across 28..54 and DROPS between them.  That is
@@ -72,18 +81,18 @@ static size_t emit(const BrFont *pFont, const char *psz, int32_t scale,
     return st.cWordsWanted;
 }
 
-int main(void)
+/* Returns 1 if the DLL was there and the battery ran, 0 if it was skipped. */
+static int run(const char *pszDll)
 {
     BrFont f;
     Rect   aR[64], aR2[64];
     size_t n, n2, cw;
     int    i, s, cls, cRenderable = 0;
 
-    if (BrFontLoad(&f, "orig/BRD3D.dll") != 0) {
-        printf("SKIP br_font: orig/BRD3D.dll not readable\n");
+    if (BrFontLoad(&f, pszDll) != 0)
         return 0;
-    }
-    check(1, "BrFontLoad(orig/BRD3D.dll)");
+    printf("  ---- %s (build %d) ----\n", pszDll, (int)f.build);
+    check(1, "BrFontLoad");
 
     /* ---- the class map ------------------------------------------------ */
     check(BrFontClassOf(&f, '1') == 0 && BrFontClassOf(&f, '9') == 8 &&
@@ -139,9 +148,12 @@ int main(void)
                 ++cRenderable;
                 for (y = 0; y < gl.h; ++y)
                     for (x = 0; x < gl.w; ++x) {
-                        uint8_t t = gl.pIA8[y * gl.pitch + x];
-                        if ((t >> 4) == 0 && (t & 0xF) == 0xF) outline = 1;
-                        if (t == 0xFF)                          body    = 1;
+                        uint8_t t = gl.pTexels[y * gl.pitch + x];
+                        if (BR_FONT_TEXEL_I(t, gl.fAlphaHigh) == 0 &&
+                            BR_FONT_TEXEL_A(t, gl.fAlphaHigh) == 0xF)
+                            outline = 1;
+                        if (t == 0xFF)
+                            body = 1;
                     }
                 sawOutline |= outline;
                 sawBody    |= body;
@@ -151,9 +163,10 @@ int main(void)
         check(fits, "every renderable class resolves to a glyph inside its strip");
         check(cRenderable == 2 * (BR_FONT_CLASSES - 2),
               "53 renderable classes in each of the two sizes");
-        check(sawOutline && sawBody, "IA8: opaque-black and opaque-white texels present");
+        check(sawOutline && sawBody,
+              "opaque-zero-intensity and opaque-white texels both present");
         check(allHaveBoth, "every glyph has both an outline and a body -- "
-                           "the strips are outlined IA8, not noise");
+                           "the blocks are an outlined two-nibble format, not noise");
     }
 
     /* The gap class and out-of-range classes must be refused, because the
@@ -177,7 +190,7 @@ int main(void)
                 uint8_t t = f.aRamp[s][0][i];
                 if ((t >> 4) != (t & 0xF)) nibbled = 0;
             }
-        check(nibbled, "ramp bytes are nibble-replicated (IA8 with I == A)");
+        check(nibbled, "ramp bytes are nibble-replicated (I == A)");
         falls = f.aRamp[BR_FONT_LARGE][0][0] == 0xFF &&
                 f.aRamp[BR_FONT_LARGE][0][(BR_FONT_RAMP_H - 1) *
                                           BR_FONT_RAMP_W] == 0x00;
@@ -370,8 +383,23 @@ int main(void)
     }
 
     BrFontFree(&f);
-    check(f.aStrip[0][0].pIA8 == NULL, "BrFontFree releases the strips");
+    check(f.aStrip[0][0].pTexels == NULL, "BrFontFree releases the blocks");
+    return 1;
+}
 
+int main(void)
+{
+    int ran = 0;
+
+    /* BRGlide.dll first: it is the reference build per CONVENTIONS.md. */
+    ran += run("orig/BRGlide.dll");
+    ran += run("orig/BRD3D.dll");
+
+    if (ran == 0) {
+        printf("SKIP br_font: neither orig/BRGlide.dll nor orig/BRD3D.dll "
+               "is readable\n");
+        return 0;
+    }
     printf(g_fail ? "\n1 or more failures\n" : "\n0 failures\n");
     return g_fail;
 }

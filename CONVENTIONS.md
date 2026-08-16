@@ -83,15 +83,43 @@ present in the original, and aliasing behaviour where the original permits it.
   **not** stock libultra. `BrAtan2` takes **x first** and is a bisection accurate
   to ~0.01 rad — do not substitute `atan2f`.
 - Command byte `0xE1` is FILL RECTANGLE with **integer** corners here.
-- **The font is not a file.** The glyph pixels are compiled into `BRD3D.dll`'s
-  `.data`, as **IA8** (high nibble intensity, low nibble alpha), one byte per
-  texel, in four strips: `0x100946C8` and `0x1009B4C8` (pitch **704**, **40**
-  rows) and `0x100A22D0` and `0x100A4170` (pitch **392**, **20** rows). Every
-  strip butts exactly against the next object in the image, so the extents are
-  arithmetic, not guesswork. `0x10073820` registers them one glyph at a time
-  through the backend texture constructor at `0x118AA0AC` with fmt **3** (IA)
-  and siz **1** (8b); `0x10018590` draws them; `port/src/br_font.c` reads them.
-  Do not go looking on the disc for a font asset — there is not one.
+- **The font is not a file**, and each build carries its own copy. Do not go
+  looking on the disc for a font asset — there is not one.
+  - `BRD3D.dll`: **IA8** (high nibble intensity, low nibble alpha), one byte
+    per texel, four wide strips — `0x100946C8`/`0x1009B4C8` (pitch **704**,
+    **40** rows) and `0x100A22D0`/`0x100A4170` (pitch **392**, **20** rows),
+    indexed by column. `0x10073820` registers **106** textures through the
+    constructor at `0x118AA0AC` with fmt **3** (IA), siz **1** (8b);
+    `0x10018590` draws; `0x100193C0` measures.
+  - `BRGlide.dll`: **AI44** — the nibbles are the **other way round** (high
+    alpha, low intensity). Two blocks of 54 fixed-stride windows,
+    `0x1007B618` stride `0xA00` pitch **64** and `0x1009D218` stride `0x280`
+    pitch **32**, indexed by **class**, not column. `0x1006C790` makes just
+    **two** textures (64x64 and 32x32, format **4** =
+    `GR_TEXFMT_ALPHA_INTENSITY_44`) and `0x10015B10` re-points one of them per
+    glyph with an extra `0xDD` before each `0xDC`; `0x10016980` measures.
+  - The extents are arithmetic in **both**: every block butts exactly against
+    the next object in the image.
+  - The two blobs are the **same font**: for all 53 renderable classes in both
+    sizes, every Glide texel is the D3D texel **nibble-swapped**, at the
+    **same row**. So the bottom-up storage is a property of the font, not a
+    D3D artefact. The metrics (class map, both offset tables) and all four
+    shading ramps are byte-identical — and the ramps are **nibble-replicated**,
+    so they cannot be used as evidence about the format either way.
+  - `port/src/br_font.c` reads both and works out which from the image.
+- The **only** behavioural divergence between the two emitters is that
+  `0x100B8C90` ("detail") is read by the D3D build and **not** by Glide. It is
+  the same nine bytes in the width routines, which is why `0x100193C0` is 207
+  bytes and `0x10016980` is 198.
+- `config/functions_glide.csv` splits the Glide emitter in two — `0x10015B10`
+  (1019 bytes) and `0x10015F0B` (2287) — and `0x10015F0B` is **mid-flow**, a
+  jump target inside the function. The real extent is `0x10015B10`..`0x100166FA`
+  (3050 bytes), then two jump tables and their two `0x4A` index tables ending
+  at `0x100167FA`. The Glide emitter is very slightly **bigger** than the D3D
+  one, not a third of its size. Treat a suspiciously small Glide extent as a
+  split, not a measurement.
+- `tools/dumpasm.py` **ignores** a size argument: it always uses the CSV
+  extent. To disassemble past a bad extent, drive `Ctx` directly.
 - `0x10019140` is **not a function** despite `config/functions.csv` listing it
   as 254 bytes: it is `0x10018590`'s two jump tables plus their two 0x4A-byte
   index tables, sitting in `.text` after the function ends.
@@ -226,3 +254,54 @@ close enough to be the same logic; the emitters are not.
 **Lesson for any future cross-build check: match on the densest part of an
 object, not its start, and count the matches. One match on dense content is
 evidence; one match on a blank prefix is nothing.**
+
+### ...and then BOTH of those corrections were themselves wrong
+
+The section above is kept as written because the reasoning failure is the point.
+Two of its conclusions did not survive contact with the Glide build:
+
+**"The glyph pixels do not exist in BRGlide."** They do. They are the same
+pixels **nibble-swapped**: D3D stores IA8 (intensity high, alpha low), Glide
+stores AI44 (alpha high, intensity low). Every texel of all 53 renderable
+classes matches its D3D counterpart under the swap. Searching for identical
+bytes was the wrong test twice over -- first on blank prefixes, then on a format
+difference. The right test was to search for the *transformed* bytes.
+
+**"The Glide emitter is 1019 bytes, a third of D3D's 2992."** It is about 3050
+bytes -- slightly LARGER. `config/functions_glide.csv` splits it in two at
+`0x10015F0B`, which is a jump target in the middle of the function, and
+`tools/dumpasm.py` silently ignored its size argument and used the map's extent.
+Asking for 1019 bytes and receiving exactly 1019 read as confirmation. It was
+the tool agreeing with the map, and the map was wrong.
+
+`tools/dumpasm.py` now honours an explicit size and prints a NOTE when it
+disagrees with the map.
+
+**The rule that would have caught both: a measurement that merely agrees with
+the thing you already believed is not evidence. Check it a second way, ideally
+one that could produce a different answer.**
+
+### What the two builds actually do differently
+
+Exactly two behavioural differences, everything else compared item by item and
+identical (all 17 preamble commands, the 16 combine tokens, the epilogue, the
+space and pen advances, the tile width, the bounds test, the clamp arm, the
+escape grammar, both colour tables):
+
+1. `0x100B8C90` ("detail") is D3D-only -- it forces the small font when > 1.
+   Those same nine bytes are the *entire* difference between the two width
+   routines (207 vs 198), which is an independent second sighting of the same
+   fact.
+2. Glyph binding: D3D pre-registers 106 textures and emits one `0xDC`. Glide
+   registers two (one per size) and emits a `0xDD` carrying the window address
+   before each `0xDC` -- one texture, re-aimed.
+
+Glide glyph windows are indexed by CLASS, not column: large at `0x1007B618`
+stride `0xA00`, small at `0x1009D218` stride `0x280`. Both extents pin
+arithmetically against the class map.
+
+**All three quirks br_font.c documents hold in BOTH builds** -- the
+one-column-wider tile, the +1 per space the width routine does not add, and the
+clamp-at-zero-only that is not a scissor. The bottom-up storage claim is now
+*stronger* than when it was made: two independently laid-out blobs with
+independently pinned extents agree that row 0 is the bottom.

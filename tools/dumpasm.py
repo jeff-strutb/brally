@@ -81,10 +81,31 @@ class Ctx:
                         notes.append("g_%06X" % (v - self.p.image_base))
         return "  ; " + ", ".join(dict.fromkeys(notes)) if notes else ""
 
-    def dump(self, va, out):
-        size = self.size_of(va)
+    def dump(self, va, out, size=None):
+        """Disassemble `size` bytes at `va`, or the map's extent if size is None.
+
+        AN EXPLICIT SIZE OVERRIDES THE MAP ON PURPOSE. This tool used to accept a
+        size argument on the command line and silently DISCARD it, always using
+        config/functions.csv's extent -- and that map has documented failure
+        modes: it invents entries, misses entries, truncates functions and, in at
+        least one case that mattered, SPLITS one function into two at a jump
+        target in the middle of it.
+
+        The cost was not hypothetical. The Glide text emitter is one function of
+        about 3050 bytes; the map calls it 1019 plus a separate 2287. Asking for
+        1019 bytes and being handed exactly 1019 looked like confirmation, and a
+        "the Glide emitter is a third the size of D3D's" conclusion was published
+        off the back of it. Passing a size now does what it says.
+        """
+        mapped = self.size_of(va)
+        if size is None:
+            size = mapped
+        elif mapped and size != mapped:
+            print("; NOTE: explicit size %d overrides the map's %d for %08X"
+                  % (size, mapped, va), file=out)
         if not size:
-            print("no function at %08X" % va, file=sys.stderr)
+            print("no function at %08X (pass an explicit size to dump anyway)"
+                  % va, file=sys.stderr)
             return
         b = self.text[va - self.text_va: va - self.text_va + size]
         print("; ---------------------------------------------------------------", file=out)
@@ -100,7 +121,8 @@ class Ctx:
 def main():
     ctx = Ctx()
     if len(sys.argv) > 1:
-        ctx.dump(int(sys.argv[1], 16), sys.stdout)
+        want = int(sys.argv[2], 0) if len(sys.argv) > 2 else None
+        ctx.dump(int(sys.argv[1], 16), sys.stdout, want)
         return
     os.makedirs('asm', exist_ok=True)
     n = 0
