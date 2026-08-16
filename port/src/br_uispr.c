@@ -197,6 +197,25 @@ const BrUiSprite g_aBrUiSprite[BR_UI_SPR_COUNT] = {
  *             5, and the entry is 204x93, which is a digit strip.
  * ====================================================================== */
 
+
+/* SLOTS 16, 46, 63, 80, 97, 127 and 144 were NULL until a later pass.
+ *
+ * The pairing that recovered these names walks the loader at 0x10056260 and
+ * matches each `mov edi,<string>` with the `mov [0x10AC5xxx],edx` that follows
+ * it. That works for 138 of 145 -- and silently loses seven, because those
+ * seven store their table slot BEFORE they load the string, so a linear
+ * forward match pairs them with the next block's name or with nothing.
+ *
+ * Re-walked BLOCK-WISE instead (blocks delimited by the allocator call, one
+ * store and one load per block, in either order) it recovers all 145 with zero
+ * misses and zero duplicates.
+ *
+ * Corroborated from OUTSIDE the executable: every one of the seven files
+ * exists on the disc and its BMP header matches the sprite table's rectangle
+ * exactly -- 132x77, 16x16, 100x53, 640x384, 112x120, 97x64, 100x53. And each
+ * completes a series its neighbours already establish (desrttrk beside
+ * coasttrk, arrowdu beside arrowdd/ud/uu, noadv1 beside noadv2).
+ */
 const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "work1a.bmp",    /*   0 */
     "cursor.bmp",    /*   1 */
@@ -214,7 +233,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "softshok.bmp",  /*  13 */
     "medshok.bmp",   /*  14 */
     "hardshok.bmp",  /*  15 */
-    NULL,            /*  16 */
+    "desrttrk.bmp",            /*  16 */
     "coasttrk.bmp",  /*  17 */
     "trakc.bmp",     /*  18 */
     "fog.bmp",       /*  19 */
@@ -244,7 +263,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "carSP.bmp",     /*  43 */
     "carBB.bmp",     /*  44 */
     "arrowdd.bmp",   /*  45 */
-    NULL,            /*  46 */
+    "arrowdu.bmp",            /*  46 */
     "arrowud.bmp",   /*  47 */
     "arrowuu.bmp",   /*  48 */
     "joystk.bmp",    /*  49 */
@@ -261,7 +280,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "rboxend.bmp",   /*  60 */
     "lboxend.bmp",   /*  61 */
     "trakc_.bmp",    /*  62 */
-    NULL,            /*  63 */
+    "trakd_.bmp",            /*  63 */
     "trake_.bmp",    /*  64 */
     "desrttr_.bmp",  /*  65 */
     "coasttr_.bmp",  /*  66 */
@@ -278,7 +297,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "seasn5a.bmp",   /*  77 */
     "bgdim.bmp",     /*  78 */
     "congrat.bmp",   /*  79 */
-    NULL,            /*  80 */
+    "noadv1.bmp",            /*  80 */
     "noadv2.bmp",    /*  81 */
     "but-main.bmp",  /*  82 */
     "but-maind.bmp", /*  83 */
@@ -295,7 +314,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "cars5b.bmp",    /*  94 */
     "chatbar2.bmp",  /*  95 */
     "mousinpt.bmp",  /*  96 */
-    NULL,            /*  97 */
+    "ffstick.bmp",            /*  97 */
     "carwnoshad2.bmp", /*  98 */
     "carwshad2.bmp", /*  99 */
     "specoff.bmp",   /* 100 */
@@ -325,7 +344,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "z-carCE.bmp",   /* 124 */
     "z-carCU.bmp",   /* 125 */
     "z-carES.bmp",   /* 126 */
-    NULL,            /* 127 */
+    "z-carFH.bmp",            /* 127 */
     "z-carIP.bmp",   /* 128 */
     "z-carLD.bmp",   /* 129 */
     "z-carM3.bmp",   /* 130 */
@@ -342,7 +361,7 @@ const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT] = {
     "tire2off.bmp",  /* 141 */
     "listbox2.bmp",  /* 142 */
     "trakQ.bmp",     /* 143 */
-    NULL,            /* 144 */};
+    "trakQ_.bmp",            /* 144 */};
 
 /* ======================================================================
  * PART 3 -- the dispatch
