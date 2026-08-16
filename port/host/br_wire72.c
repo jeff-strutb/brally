@@ -83,17 +83,17 @@ void BrHostWire72(void)
      * 0x1005B910 was ported, because until then nothing in the port looked
      * inside one; 0x1005A6E0 passes p0AB4D8 straight into it and it reads four
      * int32s out. The banner about hook slots still holds. */
-    g_env72.p0AB438 = NULL;
-    g_env72.p0AB448 = NULL;
-    g_env72.p0AB458 = NULL;
-    g_env72.p0AB478 = NULL;
-    g_env72.p0AB488 = NULL;
-    g_env72.p0AB4A8 = NULL;
-    g_env72.p0AB4B8 = NULL;
-    g_env72.p0AB4C8 = NULL;
-    g_env72.p0AB4D8 = NULL;
-    g_env72.p0AB4F8 = NULL;
-    g_env72.p0AB508 = NULL;
+    g_env72.p0AB438 = BR_UI_STYLE(0x100AB438);
+    g_env72.p0AB448 = BR_UI_STYLE(0x100AB448);
+    g_env72.p0AB458 = BR_UI_STYLE(0x100AB458);
+    g_env72.p0AB478 = BR_UI_STYLE(0x100AB478);
+    g_env72.p0AB488 = BR_UI_STYLE(0x100AB488);
+    g_env72.p0AB4A8 = BR_UI_STYLE(0x100AB4A8);
+    g_env72.p0AB4B8 = BR_UI_STYLE(0x100AB4B8);
+    g_env72.p0AB4C8 = BR_UI_STYLE(0x100AB4C8);
+    g_env72.p0AB4D8 = BR_UI_STYLE(0x100AB4D8);
+    g_env72.p0AB4F8 = BR_UI_STYLE(0x100AB4F8);
+    g_env72.p0AB508 = BR_UI_STYLE(0x100AB508);
 
     g_env72.pAA2908     = g_pPhaseAA2908;
     g_env72.pHooks      = &g_hooks72;
