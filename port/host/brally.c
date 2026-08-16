@@ -414,7 +414,14 @@ static void BuildCaptions(BrGfx *gfx, const BrPhase_ *ph)
             if (!t) continue;
             g_aCapTex[g_cCap].tex = t;
             g_aCapTex[g_cCap].x   = (float)c->rcLeft;
-            g_aCapTex[g_cCap].y   = (float)c->rcTop;
+            /* The caption is rasterised into a tall scratch buffer with the
+             * PEN LINE at BR_CAP_BASE, so the glyph cell's top edge sits
+             * BR_CAP_BASE - BR_CAP_SCALE rows down from the buffer's top.
+             * Drawing the buffer at rcTop therefore puts the text that far
+             * BELOW the control. Subtract it so the cell top lands on rcTop,
+             * which is where the builder placed the control. */
+            g_aCapTex[g_cCap].y   = (float)c->rcTop
+                                  - (float)(BR_CAP_BASE - BR_CAP_SCALE);
             g_cCap++;
         }
     }
@@ -605,6 +612,67 @@ int main(int argc, char **argv)
      * undebuggable: the child dies, the parent prints "signal 11" and moves
      * on, and there is no process left to attach to. This runs the same
      * builder in the foreground so a debugger sees the fault. */
+
+    /* `-shot <n> <file.ppm>` renders builder n OFFSCREEN and writes the frame.
+     *
+     * This exists because "the window shows text" is not something a terminal
+     * session can check, and an unverified rendering claim is worth nothing.
+     * Offscreen means no window server, no compositor and no user present, so
+     * it also runs in CI. The readback is the same buffer the window would
+     * present. */
+    if (argc > 3 && strcmp(argv[1], "-shot") == 0) {
+        int b = atoi(argv[2]);
+        BrGfx *g;
+        uint8_t *px;
+        FILE *fh;
+        int32_t x, y, lit = 0;
+        const int32_t W = 640, H = 480;
+
+        if (b < 0 || b >= BR_NBUILDERS) {
+            printf("builder index must be 0..%d\n", BR_NBUILDERS - 1);
+            return 1;
+        }
+        g = BrGfxCreate(W, H);
+        if (!g) { printf("gfx init failed: %s\n", BrGfxLastError()); return 1; }
+        g_haveFont = (BrFontLoad(&g_font, "orig/BRD3D.dll") == 0);
+        {
+            static const uint8_t white[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+            g_texWhite  = BrGfxCreateTexture(g, 1, 1, white);
+            g_haveWhite = (g_texWhite != 0);
+        }
+        g_aBuilders[b].pfn(ph);
+        BuildCaptions(g, ph);
+        BrGfxBeginFrame(g, 0.06f, 0.06f, 0.09f, 1.0f);
+        DrawPhase(g, ph, 0, 0);
+        BrGfxEndFrame(g);
+
+        px = (uint8_t *)calloc((size_t)W * H, 4);
+        if (!px || BrGfxReadPixels(g, px) != 0) {
+            printf("readback failed\n"); return 1;
+        }
+        /* Count pixels that are neither the clear colour nor black. This is
+         * the actual evidence: a frame that drew nothing reads back uniform. */
+        for (y = 0; y < H; y++)
+            for (x = 0; x < W; x++) {
+                const uint8_t *p = px + ((size_t)y * W + x) * 4;
+                if (p[0] > 40 || p[1] > 40 || p[2] > 40) lit++;
+            }
+        fh = fopen(argv[3], "wb");
+        if (fh) {
+            fprintf(fh, "P6\n%d %d\n255\n", W, H);
+            for (y = 0; y < H; y++)
+                for (x = 0; x < W; x++) {
+                    const uint8_t *p = px + ((size_t)y * W + x) * 4;
+                    fwrite(p, 1, 3, fh);
+                }
+            fclose(fh);
+        }
+        printf("%s: %d lit pixels of %d -> %s\n",
+               g_aBuilders[b].pszName, lit, W * H, argv[3]);
+        BrGfxDestroy(g);
+        return 0;
+    }
+
     if (argc > 2 && strcmp(argv[1], "-b") == 0) {
         int b = atoi(argv[2]);
         if (b < 0 || b >= BR_NBUILDERS) {

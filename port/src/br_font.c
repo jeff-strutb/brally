@@ -786,7 +786,24 @@ size_t BrFontRasteriseDL(const BrFont *pFont,
 
             for (py = 0; py < dh; ++py) {
                 int32_t dy = uly + py;
-                int32_t sy = (py * tileH) / dh;
+                /* T IS SAMPLED BOTTOM-UP.
+                 *
+                 * The strips are stored with row 0 at the BOTTOM of the glyph:
+                 * dumping class 39 ('L') straight out of .data gives the foot
+                 * at row 6 and the stem below it -- an upside-down L. The
+                 * retail game plainly drew it the right way up, so the sampling
+                 * inverts T.
+                 *
+                 * It is not a dtdy sign: this build's 0xE3 is the TWO-word
+                 * integer-corner variant, so there are no step words in the
+                 * stream to carry one.
+                 *
+                 * The alternative explanation -- that the strip base addresses
+                 * are off by (rows-1)*pitch and we are reading from the wrong
+                 * end -- is ruled out by the extents being arithmetic: each
+                 * strip butts exactly against the next object in the image, so
+                 * the bases are pinned and cannot be shifted by a row. */
+                int32_t sy = tileH - 1 - ((py * tileH) / dh);
                 int32_t ramp = 255;
 
                 if (dy < 0 || dy >= cy)
