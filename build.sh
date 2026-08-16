@@ -6,6 +6,7 @@ CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -g -D_DARWIN_C_SOURCE -Ipor
 MFLAGS="-fobjc-arc -Wall -g -Iport/include -Iport/src/gfx"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
 
+clang $CFLAGS -c port/src/br_path.c           -o build/br_path.o
 clang $CFLAGS -c port/src/br_pod.c            -o build/br_pod.o
 clang $CFLAGS -c port/src/br_img.c            -o build/br_img.o
 clang $CFLAGS -c port/src/br_rca.c            -o build/br_rca.o
@@ -179,7 +180,12 @@ clang build/slice4_52.o build/test_slice4_52.o -lm -o build/test_slice4_52
 clang build/slice4_53.o build/test_slice4_53.o -lm -o build/test_slice4_53
 
 # layout assertions -- plain C99; failures break the BUILD
-clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_pod.o -o build/test_layout
+#
+# NOTE: this used to link build/br_pod.o, which broke the build: br_pod.c's
+# BrPodCleanupName calls slice6_78.c's BrPodWriterMakeName (0x10008B90), and
+# br_pod.o now has an outbound edge (BrPodCleanupName -> BrPodWriterMakeName),
+# so linking it alone no longer resolves; br_path.o supplies the callee.
+clang -std=c99 -Wall -Wextra -Iport/include port/tests/test_layout.c build/br_pod.o build/br_path.o -o build/test_layout
 
 # br_ui.h -- the canonical page/control types. Header-only, like test_layout:
 # most of its claims are compile-time assertions, so a bad element count breaks
@@ -244,7 +250,7 @@ clang build/slice6_77.o build/br_slots.o build/test_slice6_77.o -lm -o build/tes
 # slice6_78's CHK_* helpers call slice1_01.c's real BrChkAlloc/BrChkVerbose and
 # br_crt.c's real BrOperatorNew -- faking either would test the fake.  Every
 # other dependency is a recording stand-in supplied by the test.
-clang build/slice6_78.o build/slice1_01.o build/br_crt.o build/test_slice6_78.o -lm -o build/test_slice6_78
+clang build/slice6_78.o build/slice1_01.o build/br_crt.o build/br_path.o build/test_slice6_78.o -lm -o build/test_slice6_78
 
 clang $CFLAGS -c port/src/br_audio.c -o build/br_audio.o
 clang $CFLAGS -Iport/tests -c port/tests/test_audio.c -o build/test_audio.o
@@ -269,7 +275,8 @@ clang build/br_font.o build/slice1_05.o build/br_seg.o \
 
 clang build/br_uictl.o build/test_uictl.o -lm -o build/test_uictl
 clang build/br_uivt.o build/br_uictl.o build/br_crt.o build/test_uivt.o -lm -o build/test_uivt
-clang build/br_pod.o build/test_pod.o -o build/test_pod
+# br_pod now reuses slice6_78's 0x10008B90 rather than reimplementing it.
+clang build/br_pod.o build/test_pod.o build/br_path.o -o build/test_pod
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/test_gfx.o $FW -o build/test_gfx
 clang -fobjc-arc build/br_img.o build/br_gfx_metal.o build/brview.o  $FW -o build/brview
 clang build/br_rca.o build/test_rca.o -o build/test_rca

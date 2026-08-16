@@ -18,6 +18,7 @@
  */
 
 #include <stdarg.h>
+#include "br_path.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -252,51 +253,13 @@ void BrChkFClose(FILE **ppFile)
     free(pf);
 }
 
-/* ==========================================================================
- * 5. 0x10008B90 -- path to basename
- * ========================================================================== */
+/* 0x10008B90 (BrPodWriterMakeName) now lives in port/src/br_path.c.
+ * It was moved out because br_pod.c needs it too, and linking this
+ * packet just to reach one 40-line path splitter dragged in BrChkAlloc,
+ * BrOperatorNew, BrRandom and a dozen more. One original address still
+ * has exactly one body; it just lives somewhere both callers can reach
+ * without inheriting a packet. */
 
-void BrPodWriterMakeName(void *pStream, const char *pszSrc, char *pszDst)
-{
-    const char *p;
-    size_t      len;
-
-    /* The original's __thiscall `this`.  Both call sites set ecx; the body
-     * never reads it.  See the signature-conflict note in the header. */
-    (void)pStream;
-
-    len = strlen(pszSrc);
-
-    if (len == 0u) {
-        /* BUG IN THE ORIGINAL, and it cannot be reproduced safely.  With an
-         * empty string the scan starts at pszSrc - 1, which is already below
-         * the terminator it tests for, so it walks BACKWARDS through memory
-         * until it happens on a 0x5C byte and then copies from there.  This
-         * port copies the empty string instead.  DEVIATION. */
-        pszDst[0] = '\0';
-        return;
-    }
-
-    /* edi = pszSrc + len - 1: the LAST character, which is never itself
-     * examined as a separator.  A trailing '\\' is therefore kept. */
-    p = pszSrc + (len - 1u);
-
-    if (p != pszSrc) {
-        for (;;) {
-            if (p[-1] == '\\') {
-                break;              /* p is just past the last separator */
-            }
-            --p;
-            if (p == pszSrc) {
-                break;              /* ran back to the start; copy it all */
-            }
-        }
-    }
-
-    /* The original recomputes the length of the tail and copies it with the
-     * NUL, i.e. strcpy. */
-    memcpy(pszDst, p, strlen(p) + 1u);
-}
 
 /* ==========================================================================
  * 6. The CD track query
