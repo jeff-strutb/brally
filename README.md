@@ -86,13 +86,13 @@ builds function-for-function.
 **The ported core now links into one binary and boots.** `build/brally`
 constructs the phase object and runs a real menu builder; see "Quick start".
 
-**~1,519 distinct `Br*` functions defined.** 81 modules, 82 test suites, all
+**~1,660 distinct `Br*` functions defined.** 94 modules, 92 test suites, all
 green under one `./build.sh`. ~67,500 lines.
 
 The menus **render in the game's own artwork and navigate**; tracks parse; the
 3D display-list interpreter runs retail geometry. See "Quick start".
 
-Treat 1,519 as a count of what is DEFINED, not a completion percentage: it
+Treat 1,660 as a count of what is DEFINED, not a completion percentage: it
 includes adapters and thin forwarders. The denominator is now firmer than it
 was -- both function maps were rebuilt by flow analysis and `config/shared.csv`
 classes **1,739** functions as present in both renderer builds -- but "how much
@@ -103,13 +103,13 @@ close to complete; the game itself is early.
 |---|---|
 | `.text` | 581,632 bytes @ `0x10001000`, image base `0x10000000` |
 | Shared core (the target) | ~1,708 fns / 339,648 bytes |
-| **Distinct `Br*` functions defined** | **~1,519** |
+| **Distinct `Br*` functions defined** | **~1,660** |
 | Modules | 81 (`br_*`, `slice1..7_*`) |
-| Unported functions, stubbed so the host links | **82** (`port/host/br_stubs.c`) |
+| Unported functions, stubbed so the host links | **66** (`port/host/br_stubs.c`) |
 | Data symbols with provisional storage | **0** (was 64; all now real definitions in `port/src/br_data.c`) |
 | Addresses with >1 name | **53** (heuristic count) |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
-| Functions shared across both renderer builds | **1,739** (`config/shared.csv`) |
+| Functions shared across both renderer builds | **1,809** (`config/shared.csv`) |
 
 
 ### What "running" currently means
@@ -152,19 +152,30 @@ place as an outlined placeholder.
 with every face index checked against the vertex array and the section extents
 checked against the offsets the header stores.
 
-**3D.** The display-list interpreter runs retail geometry — 1,820 triangles out
-of `bb.rca`, 1,079 out of `ce.rca`, cross-checked against an independent opcode
-census — and rasterises them in software.
+**3D.** Retail car geometry renders **through Metal, textured and lit**: the
+display-list interpreter walks the game's own lists, the ported clipper runs,
+and the result matches an independent software rasteriser at 0.9999 silhouette
+IoU. Textures decode from the game's CI4/CI8/RGBA16 data through the ported N64
+texel expander.
+
+**Physics.** A car falls under the game's own 1/30 s integrator, finds real
+track triangles through the collision grid, and on flat ground settles to
+**0.190132** — which is the analytic force balance, not a number that was
+tuned to look right.
 
 ### What does NOT work
 
-There is no game. No physics, no AI, no race loop, no sound playback, no save
-games. Nothing is rendered through the GPU yet beyond menus. The clipper has
-never once executed. Nothing yet explains how a model's texture reaches the
-bind opcode, so 3D is untextured.
+There is still no game. Nothing drives a car: the race step is not wired end to
+end, no opponent updates run, and no sound plays.
 
-The front end is nearly finished. The game is early, and the gap between those
-two facts is most of the remaining work.
+And the physics **diverges on a real track**. On flat ground it is exact; on a
+slope the pitch rate grows from 0.017 to 11.96 rad/s in six steps. That is not
+a mystery -- it is measured per component, and the only unported code that can
+supply a pitch response is a 5,196-byte block of collision callees that runs
+four times per frame. Everything else in the force chain is ported.
+
+The front end is close to complete. The game is early, and the gap between
+those two facts is most of the remaining work.
 
 ### The stub report is the work queue
 
