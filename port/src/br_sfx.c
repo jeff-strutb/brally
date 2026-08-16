@@ -11,10 +11,15 @@
  *   0x1006B5F0 (0x10072680)  32.32 ratio -> SetFrequency
  *   0x1006B880 (0x10072910)  start + Hz -> 32.32 ratio
  *   0x1006B6C0 (0x10072750)  float Hz -> SetFrequency
+ *   0x10061470 (0x10068400)  the per-frame car sound driver -- only its
+ *                            engine PITCH arithmetic is here (three fragments,
+ *                            addresses on each function); the rest of that
+ *                            2757-byte function is one-shot triggering over
+ *                            globals this module does not model.
  *
- * Nothing in this file opens a file, touches a device or calls into
- * slice1_08's DirectSound wrapper.  That is deliberate: the platform layer is
- * a separate decision and this pass does not make it.
+ * Nothing in this file opens a file or touches a device.  The platform layer
+ * is br_mix.c, which supplies the object slice1_08.c's DirectSound calls go
+ * through; this file stays pure so its suite needs neither.
  */
 #include "br_sfx.h"
 
@@ -292,4 +297,52 @@ uint32_t BrSfxHzFromFloat(float hz)
 {
     /* 0x1006B6C0: `fld dword` then straight into _ftol. */
     return br_ftol32((double)hz);
+}
+
+/* ------------------------------------------------------- the engine curve */
+
+double BrSfxEngineHz(float rpm, float doppler)
+{
+    /* 0x1006156A:
+     *      fld [esi+0xE24]; fcomp 0.0f; fld [esi+0xE24]
+     *      test ah,0x41; jne  -> fmul -0.5f   (rpm <= 0, or unordered)
+     *                     else -> fmul  0.5f
+     *      fmul 15.714285850524902f      (0x100779F8, the float nearest 110/7)
+     *      fmul [esi+0xF74]              (the doppler ratio)
+     *      fcom 100000.0f  -> above  -> 0
+     *      fcom 0.0f       -> below  -> 0
+     *
+     * The two magnitude branches are written out rather than folded into a
+     * fabs so that the NaN path stays visible: a NaN rpm fails `> 0` and so
+     * takes the -0.5 arm, then fails both clamp tests and comes back 0. */
+    double v = (rpm > 0.0f) ? (double)rpm * 0.5 : (double)rpm * -0.5;
+
+    v = v * 15.714285850524902;      /* 0x100779F8 */
+    v = v * (double)doppler;
+
+    if (v > 100000.0)                /* 0x100779FC */
+        return 0.0;
+    if (!(v >= 0.0))                 /* negatives AND NaN */
+        return 0.0;
+    return v;
+}
+
+int64_t BrSfxEngineRatio(double hz)
+{
+    /* 0x10061601: `fmul dword 0x100779E4` then `fmul qword 0x100779E8`, then
+     * the same _ftol as everywhere else.  0x100779E4 is the float nearest
+     * 1/11000 -- a reciprocal MULTIPLY, where BrSfxRatioFromHz divides by the
+     * channel's rate.  See br_sfx.h: the rate it is derived against and the
+     * rate it is read back with are not the same number. */
+    static const float s_rcpRate = 9.09090886125341e-05f;
+
+    return br_ftol64(hz * (double)s_rcpRate * 4294967296.0);
+}
+
+uint32_t BrSfxEngineHighHz(float doppler)
+{
+    /* 0x10061995: `fld [esi+0xF74]; fmul dword 0x10077A00` (22050.0f), then
+     * 0x1006B6C0 -- which is BrSfxHzFromFloat.  The multiply is done in
+     * double for the same reason BrSfxEngineHz is. */
+    return br_ftol32((double)doppler * 22050.0);
 }

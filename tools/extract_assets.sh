@@ -57,10 +57,10 @@ for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
   fi
 done
 
-# The SFX directory LISTING, not the audio itself. port/tests/test_br_sfx.c
-# checks that every file name the sound bank can build is a real file and that
-# the bank accounts for all 73 of them -- which needs the names and nothing
-# else, so this pulls a few hundred bytes rather than six megabytes of .wav.
+# The SFX directory LISTING. port/tests/test_br_sfx.c checks that every file
+# name the sound bank can build is a real file and that the bank accounts for
+# all 73 of them -- which needs the names and nothing else, so this stays a
+# few hundred bytes even though the audio itself is pulled just below.
 if [ ! -f testdata/sfx.txt ]; then
   python3 tools/extract_iso.py --list "$BIN" 2>/dev/null \
     | sed -n 's|^\([Ss][Ff][Xx]/[A-Za-z0-9_.-]*\.[Ww][Aa][Vv]\).*|\1|p' \
@@ -68,6 +68,37 @@ if [ ! -f testdata/sfx.txt ]; then
   echo "assets: listed $(wc -l < testdata/sfx.txt | tr -d ' ') sfx names"
 else
   echo "assets: testdata/sfx.txt already present"
+fi
+
+# The SFX audio itself. The sound backend (port/src/br_mix.c) needs real PCM
+# to mix, and port/tests/test_br_sfxout.c renders the bank to a .wav it then
+# asserts against. 73 files, ~6 MB total -- small enough to take whole, and
+# taking whole is what makes "the bank reaches every file" checkable at the
+# sample level rather than only at the filename level.
+#
+# Names come from testdata/sfx.txt, so this cannot invent a file the listing
+# does not have. Per-file failures are counted and reported rather than
+# aborting: a disc that is missing one .wav must SKIP with a reason, not look
+# like a clean extraction (asset policy, README).
+if [ ! -d testdata/sfx ]; then
+  mkdir -p testdata/sfx
+  nok=0; nbad=0
+  while read -r f; do
+    [ -n "$f" ] || continue
+    out="testdata/sfx/$(basename "$f")"
+    # The ISO stores upper case; --extract-path matches the on-disc spelling.
+    up=$(echo "$f" | tr 'a-z' 'A-Z')
+    if python3 tools/extract_iso.py --extract-path "$BIN" "$up" "$out" >/dev/null 2>&1 \
+       && [ -s "$out" ]; then
+      nok=$((nok+1))
+    else
+      rm -f "$out"; nbad=$((nbad+1))
+    fi
+  done < testdata/sfx.txt
+  echo "assets: extracted $nok sfx wavs ($nbad missing)"
+  [ "$nbad" -gt 0 ] && echo "        (a partial SFX/ makes the audio suites SKIP, not pass)"
+else
+  echo "assets: testdata/sfx already present ($(ls testdata/sfx | wc -l | tr -d ' ') wavs)"
 fi
 
 # The menu sprite sheets. br_uispr.c's 145-entry table names these; without

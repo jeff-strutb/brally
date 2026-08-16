@@ -77,6 +77,8 @@
  * in scope through the headers above; it comes last for the same reason
  * br_uinav.h does. */
 #include "br_sprfont.h"
+#include "br_sfxout.h"
+#include "br_sfxaq.h"
 #include "br_crt.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1658,6 +1660,22 @@ int main(int argc, char **argv)
      * whole point of the mode is that the race step is not a phase. */
     if (argc > 2 && strcmp(argv[1], "-race") == 0) {
         return RunRace(argc, argv);
+    }
+
+    /* Sound, likewise: no phase, no window, no renderer.  Both modes render
+     * to a .wav as well as to the speakers, because the file is the evidence
+     * and the speaker is only the demonstration.  See port/include/br_mix.h.
+     *
+     *   -sfx <group>   one bank entry (name or number)
+     *   -sfxrpm [car]  the three engine loops swept from idle to redline
+     */
+    if (argc > 1 && strcmp(argv[1], "-sfx") == 0) {
+        return BrSfxDemoPlay(argc > 2 ? argv[2] : "beep",
+                             "build/sfx.wav", BrSfxAqPlay, NULL);
+    }
+    if (argc > 1 && strcmp(argv[1], "-sfxrpm") == 0) {
+        return BrSfxDemoRpmSweep(argc > 2 ? argv[2] : "ce",
+                                 "build/sfxrpm.wav", BrSfxAqPlay, NULL);
     }
 
     printf("phase object: sizeof=%zu, original 0x%X, allocating %zu\n",
