@@ -196,26 +196,39 @@ static void test_mat4_to_mat3(void)
 
 static void test_sub_repeated(void)
 {
-    const BrVec3 a = { 5.0f, 7.0f, 9.0f };
-    const BrVec3 b = { 1.0f, 2.0f, 3.0f };
-    BrVec3 out;
+    /* 0x10074B20 is a 3x3 MATRIX subtract -- nine floats, each once.
+     *
+     * This test used to assert the opposite: that three subtractions ran three
+     * times, with a case named "the visible face of the preserved bug" pinning
+     * b being subtracted three times from an aliased minuend. It passed, which
+     * is exactly why the misreading survived -- a wrong reading plus a test
+     * that enshrines it is far more durable than either alone.
+     *
+     * The bytes: the cursor reset sits ONE INSTRUCTION BEFORE the outer loop's
+     * target, so it never runs as part of the loop and the cursor advances
+     * across all nine elements. Corroborated by 0x10065C80, which passes a 3x3
+     * identity scaled by 1/mass. */
+    float a[9], b[9], out[9];
+    int i;
 
-    /* non-aliasing: the repetition is invisible */
-    BrVec3SubRepeated(&out, &a, &b);
-    CHECK(out.x == 4.0f && out.y == 5.0f && out.z == 6.0f);
+    for (i = 0; i < 9; ++i) { a[i] = (float)(i + 10); b[i] = (float)i; }
 
-    /* out aliasing the SUBTRAHEND: three rounds, odd count, so the result
-     * happens to come back to a - b.  This pins the repetition count's parity. */
-    out = b;
-    BrVec3SubRepeated(&out, &a, &out);
-    CHECK(out.x == 4.0f && out.y == 5.0f && out.z == 6.0f);
+    BrMat3Sub(out, a, b);
+    for (i = 0; i < 9; ++i)
+        CHECK(out[i] == 10.0f);
 
-    /* out aliasing the MINUEND: b is subtracted three times.  This is the
-     * visible face of the preserved bug -- a single-subtract implementation
-     * would give (4,5,6) here. */
-    out = a;
-    BrVec3SubRepeated(&out, &out, &b);
-    CHECK(out.x == 2.0f && out.y == 1.0f && out.z == 0.0f);
+    /* EVERY element must be touched -- the old reading wrote only three, so a
+     * poisoned tail is what distinguishes the two implementations. */
+    for (i = 0; i < 9; ++i) out[i] = -999.0f;
+    BrMat3Sub(out, a, b);
+    CHECK(out[8] == 10.0f);
+
+    /* Aliasing the subtrahend is now a plain in-place subtract: each element
+     * is read once and written once, so no element is subtracted twice. */
+    for (i = 0; i < 9; ++i) out[i] = b[i];
+    BrMat3Sub(out, a, out);
+    for (i = 0; i < 9; ++i)
+        CHECK(out[i] == 10.0f);
 }
 
 static void test_set_last_column(void)

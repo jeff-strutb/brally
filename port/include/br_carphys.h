@@ -132,6 +132,32 @@
  *                            outputs feed only the four above)
  *   They run FOUR TIMES PER FRAME, once per position substep.
  *
+ * ...AND THAT PARAGRAPH IS NOW TWO-FIFTHS OUT OF DATE, plus one factual
+ * error that cost this project the same two passes.  See br_collresp.h.
+ *
+ *   - 0x10066D70 IS PORTED, as BrCollRespTipKick.  The claim below that it is
+ *     "a test whose non-zero result only drives a printf" was WRONG: the
+ *     return value does only feed a printf (0x10008D60, which is one `c3`
+ *     byte in this build), but the function's last act is to write
+ *     save.angVel and call BrRbQuatDerivative on it.  It is the ONLY
+ *     unported callee of 0x1005A7A0 that wrote a pitch response directly,
+ *     and it was dismissed on the strength of its return value.
+ *     It is also NOT the divergence's answer, and that is measured, not
+ *     assumed: its third gate rejects a corner whose normal-velocity
+ *     magnitude EXCEEDS 0.1, so it fires on a car that has come to rest
+ *     balanced on one or two wheels and never on one that is still moving.
+ *   - 0x10066AD0 + 0x10067710 remain, as BR_CP_HOLE_BOX.  They are an OBB
+ *     versus triangle system and the box comes from f1DC/f1E0/f1E4/f1E8,
+ *     which the constructor leaves at (0, 0, 2, 0) and 0x10059A80 fills from
+ *     a car-data record this port does not load.  With two extents at zero
+ *     0x10067C30's reciprocals are infinite, so the OBB chain would be inert
+ *     even if it were transcribed; BrCollRespBoxDegenerate() measures that
+ *     rather than leaving it as a claim.
+ *   - 0x10068F80 remains, as BR_CP_HOLE_CARCAR.  It is CAR VERSUS CAR only:
+ *     it walks the entrant array at 0x10AF0858 and tests pairs of car+0x1DC
+ *     positions against 5.0f (0x10077BDC).  Nothing in it can touch the
+ *     ground, so it is not a candidate for the divergence at all.
+ *
  * 0x100651A0 and 0x100645A0 were the other two and are now ported.  Neither
  * was what the previous pass hoped, and this is the single most useful thing
  * in this header:
@@ -148,9 +174,26 @@
  * Measured on a 1-in-100 slope (3 cm across the 3 m wheelbase), the whole of
  * the divergence is in angVel.y: 0.017 rad/s at step 9, 2.6 at step 12, 7.2
  * at step 13, 11.96 at step 15, while angVel.x and angVel.z stay under
- * 0.01 rad/s -- the latter because 0x100645A0 is now pinning them.  So the
- * remaining pitch instability is the collision hole's, and the 5196 bytes
- * above are the only place left for it to live.
+ * 0.01 rad/s -- the latter because 0x100645A0 is now pinning them.
+ *
+ * That measurement is reproducible without a track file:
+ * test_collresp.c's TestSlopeDivergence builds the same slope out of two
+ * collision triangles and prints the triple every other step.  It is a
+ * PRINT, not an assertion -- asserting a particular divergence would encode
+ * today's behaviour rather than a property of the code.  The one thing it
+ * does assert is the SHAPE: |angVel.x| and |angVel.z| stay under 1 while y
+ * runs away, so a future pass cannot make the magnitude smaller by moving
+ * the divergence into roll or yaw without being caught.
+ *
+ * WHAT THE SLOPE MEASUREMENT SAYS ABOUT THE SPRING, since the collision hole
+ * turned out not to be the answer: at the step the divergence starts, the
+ * front wheels' f1D8 has passed 0 and the rear pair's is near -0.15.
+ * 0x100684F0 clamps f1D8 above at 0 and kills the force entirely below
+ * -0.3999, so the spring is BOUNDED -- about 28800 N at full compression and
+ * exactly 0 past full extension -- while the pitch it has to arrest is not.
+ * The one damper in the frame, 0x10068600, resists only a wheel moving UP.
+ * That asymmetry is in the bytes of both functions and is reproduced; naming
+ * it here so the next pass does not spend itself re-deriving it.
  *
  * What IS ported: gravity, the spring, the shock absorber, the aerodynamic
  * drag, the tyre pass, the drivetrain's axle constraint, both force solves,
@@ -417,10 +460,29 @@ typedef struct BrCarPhys {
     BrRbState    save;              /* car+0x278 == body+0x114              */
     BrRbState    next;              /* car+0x2BC == body+0x158              */
 
-    float        f1DC, f1E0, f1E4;  /* car+0x340..0x348, reciprocated in
-                                     * 0x10067C30 and consumed only by the
-                                     * unported collision callees            */
-    float        f1E8;              /* car+0x34C, same                       */
+    /* car+0x340..0x34C == body+0x1DC..+0x1E8.  THE CAR'S COLLISION BOX: two
+     * half-extents' worth of full extent in X and Y, a full extent in Z, and
+     * a Z offset.  0x10067C30 reciprocates the first three for the OBB
+     * transform and 0x10066D70 halves them for its corner.
+     *
+     * The car constructor, Glide 0x1005BCC0 (the twin of the D3D 0x10062C50
+     * this header already quotes -- 0x1005BCCB is the `car+0xE84 = 1` that
+     * 0x10062C5B is), writes them at 0x1005BD40 / 0x1005BD42 / 0x1005BD48 /
+     * 0x1005BD4E as 0, 0, 2.0f, 0.  The REAL values arrive from 0x10059A80,
+     * which copies a car-data record's +0x10..+0x1C over them, and that
+     * record comes off the disc.  br_collresp.h has the whole trail. */
+    float        f1DC, f1E0, f1E4;  /* car+0x340..0x348                      */
+    float        f1E8;              /* car+0x34C                             */
+
+    /* car+0x308 == body+0x1A4..+0x1AC, the CHASSIS's own contact-plane
+     * normal.  0x10066D70 reads it to choose the sign of its pitch kick.
+     * NOTHING in either build writes it for the chassis: the only writer of
+     * +0x1A4..+0x1B0 anywhere is 0x10068070, the wheel probe, and all four of
+     * its call sites pass a child body.  Modelled as an explicit zero, which
+     * is what a zeroed car record gives and which selects the negative arm.
+     * It cannot be a byte offset here -- it falls inside BrRbBodyFull's
+     * pad1A0, which does not survive LP64. */
+    BrVec3       bodyPlaneN;        /* car+0x308                             */
     int32_t      f1F8;              /* car+0x35C, the stuck/roll-over timer  */
     uint8_t      b208;              /* car+0x36C, the touchdown flag         */
 
@@ -463,12 +525,21 @@ typedef struct BrCarPhys {
 } BrCarPhys;
 
 /* ======================================================================
- * The three unported callees, as counted hooks
+ * The remaining unported callees, as counted hooks
  * ====================================================================== */
 
 typedef struct BrCarPhysHooks {
-    /* the five collision callees inside 0x10067C30, as one hook per substep */
+    /* 0x10066AD0 + 0x10067710 and their eight transitive callees -- the
+     * OBB-versus-triangle broad phase and impulse response.  One hook per
+     * substep.  See br_collresp.h for why this is still a hole and what
+     * exactly is missing. */
     void (*pfnCollide)(BrCarPhys *pCar);
+    /* 0x10068F80, 1444 B -- CAR VERSUS CAR.  It walks the entrant array at
+     * 0x10AF0858 on a 0x80 stride for g_100B2F00 entrants and tests each
+     * pair's car+0x1DC positions against 0x10077BDC (5.0f); nothing in it
+     * touches the ground.  It needs the entrant array, which is not this
+     * module's object, so it stays a hook. */
+    void (*pfnCarCar)(BrCarPhys *pCar);
 } BrCarPhysHooks;
 
 extern BrCarPhysHooks g_brCarPhysHooks;
@@ -477,10 +548,10 @@ extern BrCarPhysHooks g_brCarPhysHooks;
  * BR_CP_HOLE_*.  A run that reports zeroes here ran none of the missing
  * physics; a run that reports non-zeroes ran a NO-OP in its place.
  *
- * 0x100651A0 and 0x100645A0 used to be entries here.  They are PORTED now
- * (see below) and their slots are gone rather than left reporting zero,
- * which would read as "never entered". */
-enum { BR_CP_HOLE_COLLIDE, BR_CP_HOLE_COUNT };
+ * 0x100651A0, 0x100645A0 and 0x10066D70 used to be entries here (the last as
+ * part of BR_CP_HOLE_COLLIDE).  They are PORTED now and their slots are gone
+ * rather than left reporting zero, which would read as "never entered". */
+enum { BR_CP_HOLE_BOX, BR_CP_HOLE_CARCAR, BR_CP_HOLE_COUNT };
 extern uint32_t g_aBrCarPhysHole[BR_CP_HOLE_COUNT];
 void  BrCarPhysHoleReset(void);
 const char *BrCarPhysHoleName(int i);

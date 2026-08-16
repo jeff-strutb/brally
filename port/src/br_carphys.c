@@ -8,6 +8,11 @@
  *   0x10067F30   305 B   BrCarPhysDrag      aerodynamic drag
  *   0x10067C30   762 B   BrCarPhysAdvance   the four-substep position step
  *
+ * 0x10067C30's own collision callees live in br_collresp.c; read that file's
+ * header before changing BrCarPhysAdvance, because the substep loop's shape
+ * (in particular the conditional BrRbQuatDerivative + BrRbBuildMatrix pair at
+ * 0x10067DA7) is load-bearing and was missing here for three passes.
+ *
  * plus the car constructor's rigid-body half, D3D 0x10062C50 / 0x10063000
  * (the Glide twins are in the same packet and were read for the offsets; the
  * IMMEDIATES quoted below were read out of BRD3D.dll because that is the
@@ -28,6 +33,7 @@
 #include <string.h>
 
 #include "br_carphys.h"
+#include "br_collresp.h"
 
 /* ==================================================================== */
 /* The holes                                                             */
@@ -37,7 +43,8 @@ BrCarPhysHooks g_brCarPhysHooks;
 uint32_t       g_aBrCarPhysHole[BR_CP_HOLE_COUNT];
 
 static const char *const g_aBrCarPhysHoleName[BR_CP_HOLE_COUNT] = {
-    "0x10067C30 collision   (5 callees, 5196 B)"
+    "0x10066AD0+0x10067710 OBB vs track (+8 callees)",
+    "0x10068F80 car vs car  (1444 B)"
 };
 
 void BrCarPhysHoleReset(void)
@@ -1006,24 +1013,43 @@ void BrCarPhysSignDamp(BrRbState *pLive, const BrRbState *pNext)
 
 void BrCarPhysAdvance(BrCarPhys *pCar)
 {
-    BrRbBodyFull *pBody = &pCar->body;
-    float         t     = BR_PHYS_DT;
-    float         m22;
+    BrRbBodyFull   *pBody = &pCar->body;
+    float           t     = BR_PHYS_DT;
+    float           m22;
+    BrCollRespFrame frame;
 
-    /* 0x10067CAB..0x10067CC3 fill three stack floats with 0.1f and hand them,
-     * with the body matrix, to 0x1006DDD0 (== BrMat4BuildScaledTransposed,
-     * slice3_44.c) and then to 0x10066AD0.  Both outputs are consumed only by
-     * the collision callees, which are the BR_CP_HOLE_COLLIDE hook, so the
-     * pre-pass is not run: computing it and throwing it away would be a
-     * lookalike, not a port. */
+    /* 0x10067CAB..0x10067CD6: the BROAD PHASE, once per frame.  Three 0.1f
+     * immediates go into the scale slots, 0x1006DDD0 builds the box matrix
+     * out of them and the body matrix, and 0x10066AD0(body, matBox) gathers
+     * the nearby triangles into the list at 0x11778198.  The gather and
+     * everything downstream of it is BR_CP_HOLE_BOX; the matrix build is
+     * done anyway, because it is also what the in-loop rebuild overlaps with
+     * and leaving it out would hide the aliasing br_collresp.h documents. */
+    memset(&frame, 0, sizeof frame);
+    BrCollRespBuildBoxMatrix(&frame, &pBody->m, BR_CR_BROAD_SCALE,
+                             BR_CR_BROAD_SCALE, BR_CR_BROAD_SCALE);
+    ++g_aBrCarPhysHole[BR_CP_HOLE_BOX];
+    if (g_brCarPhysHooks.pfnCollide != NULL) {
+        g_brCarPhysHooks.pfnCollide(pCar);
+    }
+    if (BrCollRespBoxDegenerate(pCar->f1DC, pCar->f1E0, pCar->f1E4)) {
+        ++g_cBrCollRespDegenerate;
+    }
 
     for (;;) {
-        /* 0x10066D70 (a test whose non-zero result only drives a printf),
-         * 0x10068F80, 0x10067710 (the collision response) -- all inside the
-         * hole. */
-        ++g_aBrCarPhysHole[BR_CP_HOLE_COLLIDE];
-        if (g_brCarPhysHooks.pfnCollide != NULL) {
-            g_brCarPhysHooks.pfnCollide(pCar);
+        /* 0x10067D31: 0x10066D70.  PORTED -- BrCollRespTipKick.  Its return
+         * value only feeds the 0x10008D60 stub, which really is one `c3`
+         * byte in this build, but the function itself writes save.angVel.
+         * br_collresp.h explains what this header used to get wrong. */
+        (void)BrCollRespTipKick(pBody, pCar->aHit, &pCar->bodyPlaneN,
+                                &pCar->save, pCar->f1DC, pCar->f1E0,
+                                pCar->f1E4, pCar->f1E8);
+
+        /* 0x10067D4A: 0x10068F80, car versus car.  No arguments; it walks the
+         * entrant array itself. */
+        ++g_aBrCarPhysHole[BR_CP_HOLE_CARCAR];
+        if (g_brCarPhysHooks.pfnCarCar != NULL) {
+            g_brCarPhysHooks.pfnCarCar(pCar);
         }
 
         /* 0x1006D850 == D3D 0x100745F0 == BrRbIntegrateState(dst, src, dt). */
@@ -1031,6 +1057,23 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
 
         /* 0x1006D6B0 == BrRbBuildMatrix(&body->m, state). */
         BrRbBuildMatrix(&pBody->m, &pCar->next);
+
+        /* 0x10067D74..0x10067D9B: the box matrix is rebuilt from the freshly
+         * integrated body matrix, this time with (1/f1DC, 1/f1E0, 1/f1E4) as
+         * the scale -- so the box becomes the unit cube 0x10066260 tests
+         * against -- and handed to 0x10067710 with the body.
+         *
+         * 0x10067DA3: and if 0x10067710 says it rewrote `next`, the state's
+         * quaternion derivative and the body matrix are rebuilt so the
+         * rewrite survives the rest of the frame.  THAT conditional pair is
+         * where a collision's rotational response reaches the integrator, and
+         * it is the reason this call cannot be modelled as a no-op hook: the
+         * hook has no way to report that it changed anything.  Both are
+         * inside BR_CP_HOLE_BOX until 0x10067710 lands. */
+        BrCollRespBuildBoxMatrix(&frame, &pBody->m,
+                                 BR_CR_ONE / pCar->f1DC,
+                                 BR_CR_ONE / pCar->f1E0,
+                                 BR_CR_ONE / pCar->f1E4);
 
         /* 0x10067DBA: t -= 1/120, stored back, then compared.
          * `fcomp` + `test ah,0x41` + `je <loop>` continues while BOTH C0 and
@@ -1269,6 +1312,18 @@ void BrCarPhysInit(BrCarPhys *pCar, const float aMount[4][2])
     pCar->body.dim[2] = BR_CP_BODY_DIM_Z;
     pCar->body.mass   = BR_CP_BODY_MASS;
     BrCpInitInertia(&pCar->body);
+
+    /* car+0x340..0x34C, Glide 0x1005BD40 / 0x1005BD42 / 0x1005BD48 /
+     * 0x1005BD4E: the collision box.  ebx is 0 and edi is 0x40000000 at those
+     * four stores, so the constructor's box is (0, 0, 2.0) with a zero Z
+     * offset -- degenerate, and deliberately so: 0x10059A80 replaces all four
+     * from the car-data record.  Written out rather than left to the memset
+     * because the 2.0f is a real immediate and because a reader has to be
+     * able to see that this IS the constructor's answer. */
+    pCar->f1DC = 0.0f;
+    pCar->f1E0 = 0.0f;
+    pCar->f1E4 = 2.0f;
+    pCar->f1E8 = 0.0f;
 
     /* car+0x31C / +0x320 */
     pCar->body.f1B8 = (BR_CP_SPRING_BASE

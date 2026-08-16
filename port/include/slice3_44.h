@@ -103,17 +103,14 @@ void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc);
 void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
                       const BrMat4 *pSrc);
 
-/* 0x10074B20  out = a - b, componentwise over THREE floats.
+/* 0x10074B20 (Glide 0x1006DD80)  a 3x3 MATRIX subtract: nine floats, once each.
  *
- * PRESERVED BUG: the original has two nested 3-iteration loops but only the
- * inner one advances any pointer, and the outer one resets it.  The same
- * three subtractions are therefore performed three times.  That is visible
- * whenever pOut aliases pB (rounds 2 and 3 then read the already-written
- * result), so the repetition is reproduced rather than folded away.
- *
- * Named ...Repeated because BrVec3Sub (br_vec.h, 0x1003AEE0) is a different
- * address with the non-repeating behaviour. */
-void BrVec3SubRepeated(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB);
+ * CORRECTED. This was BrVec3SubRepeated, documented as a preserved bug in
+ * which "the outer loop resets the cursor" so three subtractions ran three
+ * times. The outer loop does not reset it -- the reset is one instruction
+ * before the loop target -- and 0x10065C80 passes a 3x3 identity scaled by
+ * 1/mass, which only makes sense for nine elements. See slice3_44.c. */
+void BrMat3Sub(float *pOut, const float *pA, const float *pB);
 
 /* 0x10075340  pM->m[0][3] = m[1][3] = m[2][3] = 0, pM->m[3][3] = 1.0f.
  * Only the fourth COLUMN is touched; the upper 3x3 and the translation row
