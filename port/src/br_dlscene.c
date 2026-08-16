@@ -94,7 +94,7 @@ int BrDlSceneLoad(BrDlScene *pScene, const char *pszPath)
      * which is what BrDlPatch requires (it byte-swaps IN PLACE). */
     for (off = BR_DLSCENE_FILE_BASE; off + 8 <= pScene->cbFile; off += 8) {
         uint32_t w0, w1;
-        size_t n, k;
+        size_t n, k, start;
 
         if (marked[off])
             continue;
@@ -103,18 +103,70 @@ int BrDlSceneLoad(BrDlScene *pScene, const char *pszPath)
         if ((w0 >> 24) != 0x04u || (w1 >> 24) != 0x80u)
             continue;
 
-        n = BrDlPatch(NULL, pScene->pFile + off, pScene->cbFile - off,
+        /* SCAFFOLDING, and the half that was missing: A LIST DOES NOT
+         * NECESSARILY BEGIN AT ITS FIRST G_VTX.  In testdata/bb.rca every
+         * list opens with its texture setup and only then loads vertices --
+         *
+         *      0097E0  B8 ENDDL          <- the previous list
+         *      0097E8  FD SETTIMG 803C91F8
+         *      0097F0  E6 LOADSYNC
+         *      0097F8  F3 LOADBLOCK
+         *      009800  F5 SETTILE  00F00020
+         *      009808  F2 SETTILESIZE
+         *      009810  04 G_VTX          <- where discovery used to start
+         *
+         * -- so entering at the G_VTX drops the SETTILE that carries maskS
+         * and maskT, and EVERY texture in that file registers as 1x1.  That
+         * is not a defect in the texture pass; it is the entry signature
+         * being too narrow.
+         *
+         * Widening it safely: walk back only over a CONTIGUOUS chain of
+         * RDP-setup opcodes, stop at anything else (an ENDDL, a G_NOOP, a
+         * vertex byte, or a byte another list already owns), and require a
+         * G_SETTIMG to carry a KSEG0 address.  BrDlPatch byte-swaps in
+         * place, so a false positive here is destructive -- hence the chain
+         * has to be anchored at a confirmed list and terminate on its own. */
+        start = off;
+        while (start >= BR_DLSCENE_FILE_BASE + 8) {
+            size_t q = start - 8;
+            unsigned op = pScene->pFile[q];      /* still big-endian here */
+            if (marked[q])
+                break;
+            switch (op) {
+            case 0xE6: case 0xE7: case 0xE8:     /* the three syncs        */
+            case 0xF0: case 0xF2: case 0xF3: case 0xF5:
+            case 0xB9: case 0xBA:                /* SETOTHERMODE_L / _H    */
+                break;
+            case 0xFD:                           /* G_SETTIMG              */
+                if ((br_dlscene_be32(pScene->pFile + q + 4) >> 24) != 0x80u)
+                    op = 0;                      /* not an address: stop   */
+                break;
+            default:
+                op = 0;
+                break;
+            }
+            if (op == 0)
+                break;
+            start = q;
+        }
+
+        n = BrDlPatch(NULL, pScene->pFile + start, pScene->cbFile - start,
                       br_dlscene_resolve, pScene);
         if (n == 0)
             continue;
-        for (k = 0; k < n * 8 && off + k < pScene->cbFile; ++k)
-            marked[off + k] = 1;
+        /* THE LOAD-TIME TEXTURE PASS, in the one place it belongs: after
+         * the patch pass has byte-swapped this list into host order and
+         * before anybody draws it.  0x10028820 plants a 0xDC over each
+         * texture-setup run; run it and `binds` stops being zero. */
+        BrTex3dScan(&pScene->tex, pScene->pFile + start, n * 8u);
+        for (k = 0; k < n * 8 && start + k < pScene->cbFile; ++k)
+            marked[start + k] = 1;
         /* BrDlPatch stops at G_ENDDL; if it stopped because it ran out of
          * buffer instead, the last command is not one. */
-        if (pScene->pFile[off + (n - 1) * 8 + 3] != 0xB8u)
+        if (pScene->pFile[start + (n - 1) * 8 + 3] != 0xB8u)
             pScene->fEndOk = 0;
         if (pScene->cRuns < BR_DLSCENE_MAX_RUNS)
-            pScene->aRun[pScene->cRuns++] = (uint32_t)off;
+            pScene->aRun[pScene->cRuns++] = (uint32_t)start;
     }
     free(marked);
 
@@ -142,7 +194,25 @@ void BrDlSceneFree(BrDlScene *pScene)
     free(pScene->pFile);
     free(pScene->pArena);
     free(pScene->pCache);
+    BrTex3dFree(&pScene->tex);
     memset(pScene, 0, sizeof(*pScene));
+}
+
+const uint8_t *BrDlSceneResolve(const BrDlScene *pScene, uint32_t addr,
+                                size_t *pcbAvail)
+{
+    size_t off;
+
+    if (pcbAvail != NULL)
+        *pcbAvail = 0;
+    if (pScene == NULL || pScene->pFile == NULL || addr < BR_DLSCENE_N64_BASE)
+        return NULL;
+    off = (size_t)BR_DLSCENE_FILE_BASE + (size_t)(addr - BR_DLSCENE_N64_BASE);
+    if (off >= pScene->cbFile)
+        return NULL;
+    if (pcbAvail != NULL)
+        *pcbAvail = pScene->cbFile - off;
+    return pScene->pFile + off;
 }
 
 void BrDlSceneBind(const BrDlScene *pScene, BrDl *pDl)

@@ -29,6 +29,7 @@
 #include <stddef.h>
 
 #include "br_dl.h"
+#include "br_tex3d.h"
 
 /* CONVENTIONS.md: ".rca: N64 struct at file 0x8000, N64 address 0x803C8000." */
 #define BR_DLSCENE_FILE_BASE   0x8000u
@@ -57,6 +58,13 @@ typedef struct BrDlScene {
     float     bbMin[3], bbMax[3];          /* model bounds, arena space */
     uint32_t  cVerts;
     int       fEndOk;                      /* every run stopped at G_ENDDL */
+
+    /* The load-time texture pass (br_tex3d.h, 0x10028820).  It runs over
+     * each list immediately after BrDlPatch, exactly where the original
+     * runs it -- the renderer vtable slot 0x118ED1DC is called from the
+     * .rca fixup 0x10030770, not from the draw loop.  Without it a shipped
+     * .rca contains no 0xDC at all and the whole texture path is dead. */
+    BrTex3d   tex;
 } BrDlScene;
 
 /* Read the file, find every display-list run, patch each exactly once and
@@ -66,6 +74,14 @@ void BrDlSceneFree(BrDlScene *pScene);
 
 /* Register the arena and the file image with pDl's address table. */
 void BrDlSceneBind(const BrDlScene *pScene, BrDl *pDl);
+
+/* Turn a 32-bit display-list address into a pointer into the loaded image,
+ * or NULL.  The texture pass records texel and palette addresses in the
+ * list's own 32-bit space (br_dl.h explains why the port keeps them there
+ * rather than rewriting them to host pointers), so a caller that wants the
+ * PIXELS needs this.  `*pcbAvail` receives how much of the image follows. */
+const uint8_t *BrDlSceneResolve(const BrDlScene *pScene, uint32_t addr,
+                                size_t *pcbAvail);
 
 /* SCAFFOLDING.  Set pDl->combined to a perspective view that frames the
  * model, and the viewport to a cx-by-cy target.  Angles in degrees; yaw is

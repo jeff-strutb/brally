@@ -92,6 +92,114 @@ static void geo_setup(BrDl *pDl, const BrDlScene *pScene)
                   geo_env("BR_GEO_FOV", 40.0f), GEO_W, GEO_H);
 }
 
+/* Decode every texture the load-time pass registered and hand it to the
+ * backend.  The addresses in the records are display-list addresses, so
+ * they are resolved through the scene's image exactly as br_dl.c resolves a
+ * G_VTX address -- no pointer is ever truncated into a 32-bit word. */
+/* The decoded texels themselves, laid out as one sheet.  The whole point of
+ * this exercise is to be able to LOOK at what the expander produced: a
+ * shaded model can hide a texture that is scrambled, tiled at the wrong
+ * rate, or reading the palette as texels. */
+#define SHEET_W 512
+#define SHEET_H 512
+
+static uint8_t g_aSheet[SHEET_H][SHEET_W][3];
+static uint32_t g_sheetX, g_sheetY, g_sheetRow;
+
+static void sheet_reset(void)
+{
+    memset(g_aSheet, 0, sizeof(g_aSheet));
+    g_sheetX = g_sheetY = g_sheetRow = 0;
+}
+
+static void sheet_add(const uint8_t *pRgba, uint32_t w, uint32_t h)
+{
+    uint32_t x, y;
+    if (w > SHEET_W)
+        return;
+    if (g_sheetX + w + 2 > SHEET_W) {
+        g_sheetX = 0;
+        g_sheetY += g_sheetRow + 2;
+        g_sheetRow = 0;
+    }
+    if (g_sheetY + h > SHEET_H)
+        return;
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+            const uint8_t *p = pRgba + ((size_t)y * w + x) * 4;
+            uint8_t *q = g_aSheet[g_sheetY + y][g_sheetX + x];
+            /* a checkerboard under the alpha, so a transparent texel is
+             * visible AS transparent rather than as black */
+            uint8_t bg = (uint8_t)((((x >> 3) ^ (y >> 3)) & 1) ? 96 : 48);
+            q[0] = (uint8_t)((p[0] * p[3] + bg * (255 - p[3])) / 255);
+            q[1] = (uint8_t)((p[1] * p[3] + bg * (255 - p[3])) / 255);
+            q[2] = (uint8_t)((p[2] * p[3] + bg * (255 - p[3])) / 255);
+        }
+    if (h > g_sheetRow)
+        g_sheetRow = h;
+    g_sheetX += w + 2;
+}
+
+static uint32_t geo_upload_textures(BrGfx *gfx, const BrDlScene *pScene,
+                                    uint32_t *pcUnsupported)
+{
+    const BrTex3d *pT = &pScene->tex;
+    uint32_t i, cMapped = 0, cBad = 0;
+    static const char *aszRc[] =
+        { "ok", "bad id", "format not transcribed", "source unresolved",
+          "degenerate" };
+
+    sheet_reset();
+
+    printf("    textures: %u registered, %u binds planted over %u runs"
+           " (%u multi-LOD)\n",
+           pT->cRec, pT->cPlanted, pT->cRuns, pT->cMultiLod);
+
+    for (i = 0; i < pT->cRec; i++) {
+        const BrTex3dRec *pR = &pT->aRec[i];
+        size_t cbTex = 0, cbPal = 0, cTexels;
+        const uint8_t *pTexels = BrDlSceneResolve(pScene, pR->texelSrc, &cbTex);
+        const uint8_t *pPal = (pR->palSrc != 0)
+            ? BrDlSceneResolve(pScene, pR->palSrc, &cbPal) : NULL;
+        uint16_t *pRaw;
+        uint8_t  *pRgba;
+        int rc;
+
+        cTexels = (size_t)pR->w * (size_t)pR->h;
+        pRaw  = (uint16_t *)malloc(cTexels * sizeof(uint16_t));
+        pRgba = (uint8_t *)malloc(cTexels * 4u);
+        if (pRaw == NULL || pRgba == NULL) { free(pRaw); free(pRgba); break; }
+
+        rc = BrTex3dDecode(pT, i, pTexels, cbTex, pPal, cbPal, pRaw);
+        printf("      [%2u] %3dx%-3d fmt=%d siz=%d tlut=%s line=%d "
+               "clamp=%d,%d texels=%08X pal=%08X -> %s\n",
+               i, pR->w, pR->h, pR->tile.fmt, pR->tile.siz,
+               pR->palSrc ? "yes" : "no", pR->tile.line,
+               pR->clampS, pR->clampT, pR->texelSrc, pR->palSrc,
+               aszRc[(rc >= 0 && rc <= 4) ? rc : 1]);
+
+        if (rc == BR_TEX3D_OK) {
+            BrTexture h;
+            BrTex3dToRgba8(pRaw, (uint32_t)cTexels, pRgba);
+            sheet_add(pRgba, (uint32_t)pR->w, (uint32_t)pR->h);
+            h = BrGfxCreateTexture(gfx, (uint32_t)pR->w, (uint32_t)pR->h, pRgba);
+            if (h != 0) {
+                float sS, sT;
+                BrTex3dTexScaleNorm(pT, i, &sS, &sT);
+                BrGfx3dMapTexture(gfx, i, h, sS, sT);
+                cMapped++;
+            }
+        } else {
+            cBad++;
+        }
+        free(pRaw);
+        free(pRgba);
+    }
+    if (pcUnsupported != NULL)
+        *pcUnsupported = cBad;
+    return cMapped;
+}
+
 static void thumb(const char *pszWhat, const uint8_t *pRgba)
 {
     int ty, tx;
@@ -120,8 +228,9 @@ static void test_geometry(const char *pszRca)
     BrDl st;
     BrDlRaster ras;
     BrGfx *gfx;
-    uint8_t *pSoft, *pHard, *pDepth;
+    uint8_t *pSoft, *pHard, *pDepth, *pTexd;
     uint32_t softTri, hardTri, i, both = 0, either = 0, softOnly = 0, hardOnly = 0;
+    uint32_t cMapped = 0, cUnsupported = 0, cBindsPlain = 0;
     double diff = 0.0;
     const BrGfx3dStats *pStats;
 
@@ -140,9 +249,10 @@ static void test_geometry(const char *pszRca)
     pSoft  = (uint8_t *)calloc((size_t)GEO_W * GEO_H * 4, 1);
     pHard  = (uint8_t *)calloc((size_t)GEO_W * GEO_H * 4, 1);
     pDepth = (uint8_t *)calloc((size_t)GEO_W * GEO_H * 4, 1);
-    if (pSoft == NULL || pHard == NULL || pDepth == NULL) {
+    pTexd  = (uint8_t *)calloc((size_t)GEO_W * GEO_H * 4, 1);
+    if (pSoft == NULL || pHard == NULL || pDepth == NULL || pTexd == NULL) {
         check(0, "alloc");
-        free(pSoft); free(pHard); free(pDepth);
+        free(pSoft); free(pHard); free(pDepth); free(pTexd);
         BrDlSceneFree(&scene);
         return;
     }
@@ -162,7 +272,7 @@ static void test_geometry(const char *pszRca)
     if (gfx == NULL) {
         printf("  [FAIL] BrGfxCreate: %s\n", BrGfxLastError());
         g_fail = 1;
-        free(pSoft); free(pHard); free(pDepth);
+        free(pSoft); free(pHard); free(pDepth); free(pTexd);
         BrDlSceneFree(&scene);
         return;
     }
@@ -221,6 +331,22 @@ static void test_geometry(const char *pszRca)
     BrDlSceneRun(&scene, &st);
     BrGfx3dEndFrame(gfx);
     BrGfxReadPixels(gfx, pDepth);
+    cBindsPlain = BrGfx3dGetStats(gfx)->cBinds;
+
+    /* --- 3b. the same render with the TEXTURES BOUND ----------------
+     * Deliberately after the three renders above, so every assertion that
+     * compares the two rasterisers is comparing what it always compared.
+     * The only thing that changes here is which pixels the fragment shader
+     * samples: the geometry, the state machine and the batching are the
+     * same walk of the same list. */
+    cMapped = geo_upload_textures(gfx, &scene, &cUnsupported);
+    geo_setup(&st, &scene);
+    BrGfx3dAttach(gfx, &st);
+    BrGfx3dSetDepthTest(gfx, 1);
+    BrGfx3dBeginFrame(gfx, 0.0f, 0.0f, 0.0f, 0.0f);
+    BrDlSceneRun(&scene, &st);
+    BrGfx3dEndFrame(gfx);
+    BrGfxReadPixels(gfx, pTexd);
 
     /* --- 4. compare ------------------------------------------------ */
     for (i = 0; i < (uint32_t)(GEO_W * GEO_H); i++) {
@@ -245,6 +371,61 @@ static void test_geometry(const char *pszRca)
     thumb("Metal (depth test off, to match)", pHard);
     thumb("Metal (depth test on -- the real render)", pDepth);
 
+    /* The texture path, asserted on what it can only be true of if the
+     * whole chain ran: a bind must have been PLANTED (nothing in a shipped
+     * .rca carries one), a handle must have RESOLVED to pixels, and binding
+     * it must have changed the picture without moving the silhouette. */
+    {
+        uint32_t litPlain = 0, litTex = 0, agree = 0, changed = 0, texOnly = 0;
+        double texDiff = 0.0;
+        for (i = 0; i < (uint32_t)(GEO_W * GEO_H); i++) {
+            int a = pDepth[i * 4 + 3] > 127, b = pTexd[i * 4 + 3] > 127;
+            if (a) litPlain++;
+            if (b) litTex++;
+            if (b && !a) texOnly++;
+            if (a && b) {
+                int k, d = 0;
+                agree++;
+                for (k = 0; k < 3; k++)
+                    d += abs((int)pDepth[i * 4 + k] - (int)pTexd[i * 4 + k]);
+                texDiff += d;
+                if (d > 24) changed++;
+            }
+        }
+        printf("    textured: mapped=%u unsupported=%u binds=%u  "
+               "opaque(plain)=%u opaque(textured)=%u textured-only=%u  "
+               "mean|RGB|delta=%.1f  pixels visibly changed=%u (%.1f%%)\n",
+               cMapped, cUnsupported, cBindsPlain, litPlain, litTex, texOnly,
+               agree ? texDiff / (agree * 3.0) : 0.0, changed,
+               agree ? 100.0 * (double)changed / (double)agree : 0.0);
+        thumb("Metal (textured)", pTexd);
+
+        check(scene.tex.cPlanted > 0,
+              "the load-time pass planted at least one 0xDC "
+              "(a shipped .rca carries none)");
+        check(cBindsPlain == scene.tex.cPlanted,
+              "every planted 0xDC reached the sink exactly once");
+        check(cMapped > 0, "at least one registered texture decoded to pixels");
+        /* Binding a texture cannot ADD coverage.  An unbound handle samples
+         * a 1x1 opaque white texel, so every texel a real texture supplies
+         * has alpha <= that -- these are 1-bit-alpha formats and the
+         * transparent texels are exactly the ones that drop out.  What must
+         * never happen is a pixel becoming opaque that was not, which is
+         * what a geometry or batching change would look like.
+         *
+         * This is deliberately NOT "the two silhouettes are equal": that
+         * would be an expectation about the ARTWORK (whether any texel is
+         * transparent), not a property of the code -- the trap
+         * CONVENTIONS.md records under "Tests". */
+        check(texOnly == 0,
+              "binding a texture removes coverage or leaves it alone, "
+              "never adds it");
+        /* ... and it must actually SAMPLE it.  An unmapped handle reads a
+         * 1x1 white texel, so if the mapping were inert this would be 0. */
+        check(changed > 0,
+              "binding the decoded textures changed the shaded pixels");
+    }
+
     check(either > 2000, "the model covers a substantial area");
     /* Two independent rasterisers over the same vertices must agree on the
      * silhouette to within their fill-rule difference, which is a boundary
@@ -264,10 +445,23 @@ static void test_geometry(const char *pszRca)
         write_ppm(szOut, pHard, GEO_W, GEO_H);
         snprintf(szOut, sizeof(szOut), "build/gfx_%.4s_metal_z.ppm", pszTag);
         write_ppm(szOut, pDepth, GEO_W, GEO_H);
-        printf("    -> build/gfx_%.4s_{soft,metal,metal_z}.ppm\n", pszTag);
+        snprintf(szOut, sizeof(szOut), "build/gfx_%.4s_metal_tex.ppm", pszTag);
+        write_ppm(szOut, pTexd, GEO_W, GEO_H);
+        snprintf(szOut, sizeof(szOut), "build/gfx_%.4s_textures.ppm", pszTag);
+        {
+            FILE *f = fopen(szOut, "wb");
+            if (f != NULL) {
+                fprintf(f, "P6\n%u %u\n255\n", (unsigned)SHEET_W,
+                        (unsigned)SHEET_H);
+                fwrite(g_aSheet, 1, sizeof(g_aSheet), f);
+                fclose(f);
+            }
+        }
+        printf("    -> build/gfx_%.4s_{soft,metal,metal_z,metal_tex,"
+               "textures}.ppm\n", pszTag);
     }
 
-    free(pSoft); free(pHard); free(pDepth);
+    free(pSoft); free(pHard); free(pDepth); free(pTexd);
     BrGfxDestroy(gfx);
     BrDlSceneFree(&scene);
 }

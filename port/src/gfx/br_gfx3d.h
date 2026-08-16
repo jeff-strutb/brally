@@ -135,9 +135,21 @@ void BrGfx3dBeginFrame(BrGfx *pGfx, float r, float g, float b, float a);
 void BrGfx3dEndFrame(BrGfx *pGfx);
 
 /* Point a display-list texture handle (0xDC's low 24 bits) at an uploaded
- * texture.  Nothing yet explains how a texture reaches the bind opcode, so
- * unmapped handles sample a 1x1 white texel and the combiner still runs. */
-void BrGfx3dMapTexture(BrGfx *pGfx, uint32_t handle, BrTexture tex);
+ * texture.  Unmapped handles sample a 1x1 white texel and the combiner
+ * still runs, which is what keeps an unported texture format from blanking
+ * the model rather than merely leaving it untextured.
+ *
+ * HANDLE 0 IS A REAL HANDLE -- it is the first entry of the array
+ * br_tex3d.h's load-time pass appends to -- so "nothing bound" is spelled
+ * 0xFFFFFFFF, a value the 24-bit payload cannot produce.
+ *
+ * `scaleS`/`scaleT` are the two texel-scale floats 0x100284E0 installs at
+ * 0x118ED1A4 / 0x118ED1A8 when it binds -- normalised, i.e. exactly what a
+ * raw N64 Vtx texture coordinate must be multiplied by.  br_dl.h records
+ * that br_dl_finish_vtx holds them at 1.0, so the scaling is the backend's
+ * to do; BrTex3dTexScaleNorm computes them. */
+void BrGfx3dMapTexture(BrGfx *pGfx, uint32_t handle, BrTexture tex,
+                       float scaleS, float scaleT);
 
 /* NOT FROM THE ORIGINAL: force every draw to BR_GFX3D_Z_ALWAYS with depth
  * writes off.  Exists so the Metal output can be compared against br_dl.c's
