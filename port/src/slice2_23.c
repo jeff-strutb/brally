@@ -10,7 +10,9 @@
  * Two CRT routines the original calls are used directly instead of ported,
  * per the contract's "at or above 0x1007CC40 is statically linked MSVC CRT"
  * rule: 0x1008C000 is _itoa (called as _itoa(v, buf, 10)) and 0x1008C320 is
- * strcmp. 0x1007C8A0 is __ftol and is reproduced locally as br23_ftol.
+ * _stricmp -- CASE-INSENSITIVE, see br_stricmp_1008C320 below; this line used
+ * to say strcmp and that was wrong at all three call sites in this file.
+ * 0x1007C8A0 is __ftol and is reproduced locally as br23_ftol.
  *
  * Every string move in this range is an inlined `rep movsd` + `rep movsb`
  * over strlen+1 bytes, i.e. exactly strcpy, with no bound. strcpy is used.
@@ -174,12 +176,49 @@ static void br23_clear_bit4_if_text(BrUiObj *pTarget, const char *pText)
     }
 }
 
-/* strcmp-then-copy, exactly as the original spells it. The comparison is
- * pure overhead -- copying unconditionally would be equivalent -- but it is
- * preserved because it is observable through a debugger and costs nothing. */
+
+/* 0x1008C320 IS `_stricmp`, NOT `strcmp` -- CASE-INSENSITIVE.
+ *
+ * BRGlide settles this with no inference at all, because it imports the CRT
+ * instead of linking it statically:
+ *
+ *     100384F4  ff1554058f11   call dword ptr [0x118f0554]  ; MSVCRT!_stricmp
+ *
+ * and BRD3D's statically linked 0x1008C320 confirms it from the other side
+ * with the classic ASCII fold (`sub 0x41 / cmp 0x1A / sbb / and 0x20`).
+ *
+ * Written out rather than calling strcasecmp: strcasecmp folds per the current
+ * LOCALE, while the original folds A-Z and nothing else. Under a Turkish
+ * locale strcasecmp maps 'I' differently and the two would disagree on real
+ * captions. This is a decompilation, so the original's exact fold is the
+ * specification.
+ *
+ * CONSEQUENCE, and it is observable: a caption differing from the stored one
+ * ONLY in case compares EQUAL, so the copy is skipped and the destination
+ * keeps its old capitalisation. */
+static int br_stricmp_1008C320(const char *pA, const char *pB)
+{
+    for (;;) {
+        unsigned char a = (unsigned char)*pA++;
+        unsigned char b = (unsigned char)*pB++;
+        if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 0x20);
+        if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 0x20);
+        if (a != b)  return (int)a - (int)b;
+        if (a == 0)  return 0;
+    }
+}
+
+/* _stricmp-then-copy, exactly as the original spells it.
+ *
+ * CORRECTION: this comment used to say the comparison was "pure overhead --
+ * copying unconditionally would be equivalent". That is true of strcmp and
+ * FALSE of _stricmp, which is what 0x1008C320 actually is. Under the real
+ * comparison "Yes" and "YES" are equal, so the copy is SKIPPED and pDst keeps
+ * its original capitalisation. The comparison is load-bearing, and the old
+ * note explained away a behaviour the original genuinely has. */
 static void br23_copy_if_differs(char *pDst, const char *pSrc)
 {
-    if (strcmp(pDst, pSrc) != 0) {
+    if (br_stricmp_1008C320(pDst, pSrc) != 0) {
         strcpy(pDst, pSrc);
     }
 }
@@ -662,7 +701,9 @@ int32_t BrUiFn1003EF90(BrUiObj *pObj, BrUiGlobals *pG)
     (void)BrUiItemApply(pObj, 0, pG);
     pText = BrUiItemText(pObj, 0);
     br23_clear_bit4_if_text(pG->pAA29E8, pText);
-    if (strcmp(pG->szA9CDF0, pText) != 0) {
+    /* 0x1003EFC4 `call 0x1008C320` -- _stricmp, not strcmp. Verified in the
+     * D3D listing; BRGlide imports MSVCRT!_stricmp at the twin site. */
+    if (br_stricmp_1008C320(pG->szA9CDF0, pText) != 0) {
         strcpy(pG->szA9CDF0, pText);
         /* GOTCHA: the mirror into szB4E1E4 is INSIDE the differs-branch. It
          * goes stale whenever the caption is unchanged. */

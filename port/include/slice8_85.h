@@ -173,6 +173,11 @@
  *               slice2_24.c's, they share BrMenuSetCaptionId / the two-step
  *               format-and-notify shape, and they should be transcribed as ONE
  *               family in one pass rather than piecemeal here.
+ *               UPDATE: 0x100413B0 is now done, in slice8_88.c, together with
+ *               0x100414B0 and four more of the same family.  This module
+ *               still leaves its own p100413B0 slot NULL -- slice8_88.c's
+ *               BrUiHook88Install73 fills it -- so nothing here changes and
+ *               test_slice8_85.c's NULL assertion still holds.
  *   0x10041DF0  0x10042020   the two list callbacks 0x10050060 installs.
  *               0x10041DF0 is 553 bytes and br_save.h already claims it as
  *               "the named save"; the two readings have to be reconciled

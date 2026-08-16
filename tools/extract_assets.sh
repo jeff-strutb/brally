@@ -21,6 +21,16 @@ if [ -z "$BIN" ]; then
   done
 fi
 
+# The .cue beside the .BIN. The soundtrack is Redbook CD audio in tracks 2..13
+# and only the cue sheet says where each one starts, so the BIN alone is not
+# enough to extract music.
+CUE=""
+if [ -n "$BIN" ]; then
+  for c in "${BIN%.BIN}.cue" "${BIN%.BIN}.CUE" "${BIN%.bin}.cue"; do
+    [ -f "$c" ] && CUE="$c" && break
+  done
+fi
+
 if [ -z "$BIN" ] || [ ! -f "$BIN" ]; then
   echo "assets: no disc image found -- skipping (the build still works;"
   echo "        the menu will show <str NNN> placeholders instead of captions)"
@@ -140,4 +150,40 @@ if [ ! -d testdata/images ]; then
   echo "assets: extracted $(ls testdata/images | wc -l | tr -d ' ') menu sprites"
 else
   echo "assets: testdata/images already present"
+fi
+
+# ---------------------------------------------------------------------------
+# THE SOUNDTRACK -- REAL CD AUDIO FROM THE DISC, NEVER A SUBSTITUTE.
+#
+# This step did not exist, and its absence was not visible: the music backend
+# reads build/audio/music and simply reports "0 tracks" when it is empty, which
+# reads as "no music on this machine" rather than "nobody ever extracted it".
+# During development a pass generated two synthesised FLACs there to prove the
+# backend worked. They did prove it -- and they also made the wiring report say
+# "2 track(s)", which is indistinguishable from real music in every log line.
+# They were sine tones. They have been deleted.
+#
+# So the rule, and it is the same one the rest of this file follows: game audio
+# comes from the builder's own disc or it does not exist. A machine without a
+# disc gets silence and is TOLD it got silence. Nothing is ever stood in for.
+if [ -n "$CUE" ] && [ -f "$CUE" ]; then
+  if [ ! -d build/audio/music ] || [ -z "$(ls -A build/audio/music 2>/dev/null)" ]; then
+    if command -v ffmpeg >/dev/null 2>&1; then
+      mkdir -p build/audio/music
+      if python3 tools/extract_cdaudio.py "$CUE" build/audio/music >/dev/null 2>&1; then
+        echo "assets: extracted $(ls build/audio/music | wc -l | tr -d ' ') music track(s) from the disc"
+      else
+        echo "assets: CD audio extraction FAILED -- the game will have no music."
+        echo "        (silence is the correct outcome; nothing is substituted)"
+      fi
+    else
+      echo "assets: ffmpeg not on PATH -- no music extracted (FLAC encoder)."
+      echo "        (silence is the correct outcome; nothing is substituted)"
+    fi
+  else
+    echo "assets: build/audio/music already present ($(ls build/audio/music | wc -l | tr -d ' ') tracks)"
+  fi
+else
+  echo "assets: no .cue beside the disc image -- no music extracted."
+  echo "        The BIN alone cannot locate the audio tracks."
 fi

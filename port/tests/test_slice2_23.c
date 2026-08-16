@@ -827,6 +827,28 @@ static void test_readback(void)
     CHECK(BrUiFn1003EF90(pObj, &g_G) == 1);      /* caption unchanged */
     CHECK(strcmp(g_G.szB4E1E4, "STALE") == 0);   /* mirror not refreshed */
 
+    /* THE COMPARISON IS _stricmp, AND THIS IS THE FIXTURE THAT PROVES IT.
+     *
+     * 0x1003EFC4 calls 0x1008C320, which is _stricmp and not strcmp -- BRGlide
+     * imports MSVCRT!_stricmp at the twin site, and BRD3D's static copy shows
+     * the A-Z fold. So a caption that differs ONLY IN CASE compares EQUAL, the
+     * differs-branch does not run, and the stored caption keeps its ORIGINAL
+     * capitalisation.
+     *
+     * Written because the fix went in with nothing able to fail on it: the
+     * whole suite passed identically with strcmp restored, so the corrected
+     * code was not evidence of anything. Under strcmp "ABC" != "abc", the
+     * branch runs, szA9CDF0 becomes "abc" and the mirror refreshes -- so both
+     * CHECKs below flip. Verified by reinstating strcmp and watching them
+     * fail, then restoring. */
+    pObj = fresh_obj();
+    strcpy(BrUiItemText(pObj, 0), "ABC");
+    strcpy(g_G.szA9CDF0, "abc");
+    strcpy(g_G.szB4E1E4, "SENTINEL");
+    CHECK(BrUiFn1003EF90(pObj, &g_G) == 1);
+    CHECK(strcmp(g_G.szA9CDF0, "abc") == 0);       /* NOT overwritten by "ABC" */
+    CHECK(strcmp(g_G.szB4E1E4, "SENTINEL") == 0);  /* branch never ran         */
+
     /* 0x1003F170 overwrites both the global and the caption from sz39B720
      * AFTER calling 0x1003D210, and never runs the apply path. */
     pObj = fresh_obj();

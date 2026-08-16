@@ -747,3 +747,45 @@ the first place to look for a pitch clamp, and it is a cheap check.
 The second shape claim is a carving test rather than a lead: the N64's resting
 solve is straight-line with no loops. A PC candidate for the same role that
 contains a loop has probably swallowed a neighbour.
+
+## A DETECTOR YOU HAVE NOT VALIDATED IS NOT EVIDENCE, AND IT FAILS TOWARD "MISSING"
+
+Twice in one session this project dispatched agents to port functions the tree
+already had, both times off a hand-rolled grep written minutes earlier and
+never checked against a known answer.
+
+  - "Which hook slots are installed?" scanned only slice8_84.c and slice8_85.c.
+    Reported 48 of 108 filled, 60 NULL. Truth: 99 and 9. slice7_81.c,
+    slice2_24.c, slice7_80.c and the host install hooks too.
+  - "Is this address already ported?" matched a declaration ending
+    `/* 0xADDR */` or a definition under a banner comment. Modules that name a
+    function AFTER its address -- BrUiHook81_100450F0, BrMenuCap0730,
+    BrOptToggle2F7C_C -- were invisible, so weeks-old ports read as missing.
+
+One agent found 8 of its 10 addresses already ported AND wired; another found
+6 of 8. The cost is not just wasted runs: slice7_81.c owns the storage for
+thirteen globals, and a second leave routine would have cleared the wrong word.
+
+Three rules fall out.
+
+FIRST: these detectors fail toward "missing", and that is the dangerous
+direction. A false "already ported" gets caught the moment someone looks for
+the function. A false "missing" ends with a duplicate that links, runs, and
+quietly fights the original for the same storage. When a scan reports work to
+do, that is the answer to distrust.
+
+SECOND: validate against a known answer BEFORE dispatching. Both scans would
+have died instantly on one spot check -- grep a function you know exists and
+confirm the detector sees it. That check costs one command. Not running it
+cost two agents most of a run each.
+
+THIRD: never encode one naming convention. tools/hookaudit.py now looks three
+ways (annotated declaration, banner-comment definition, address-in-name) and
+matches BOTH `->pXXXX =` and `.pXXXX =`, because the host writes its slots with
+a dot and the first version only understood arrows.
+
+AND: do not assume every hook is an action. +0x08 is the ACTION, called when
+the ACTIVATE bit is set; +0x04 is the per-frame caption setter. A brief calling
+a pfn04 caption setter an "action hook" sends an agent hunting a screen
+transition that never existed. That was also done here. hookaudit.py prints
+which slot each entry feeds, so the brief cannot get it wrong silently.

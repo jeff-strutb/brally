@@ -26,6 +26,11 @@
  */
 #include "slice6_72.h"
 #include "slice8_84.h"
+#include "slice7_80.h"   /* BrUiOptInstall72 -- Game Options' four toggles */
+#include "slice8_90.h"   /* BrUiHook90Install72 -- this pass's slots       */
+#include "slice8_89.h"   /* BrUiHook89Install72 -- 0x10044D00 / 0x10045050 */
+#include "slice8_87.h"   /* BrUiHook87Install72 */
+#include "slice8_88.h"   /* BrUiHook88Install72 */
 #include "br_uictl.h"    /* BrUiCtlCtor           -- 0x100476C0 */
 #include "br_uivt.h"     /* BrUiPageCtor_10048470 -- 0x10048470 */
 #include "br_phase.h"
@@ -99,6 +104,19 @@ void BrHostWire72(void)
     g_env72.pAA2908     = g_pPhaseAA2908;
     g_env72.pHooks      = &g_hooks72;
     BrUiHook84Install72(&g_hooks72);   /* slice8_84's 16 slots */
+    /* slice7_80.c has existed with these four adapters in it and nothing ever
+     * called its installer, so Game Options' toggle rows had a NULL +0x08 and
+     * activating one did nothing at all. Each installer writes only its own
+     * slots (both headers state that contract), so the three compose. */
+    BrUiOptInstall72(&g_hooks72);      /* 0x10043590 0x100435F0 0x10043650
+                                        * 0x100436B0                       */
+    BrUiHook90Install72(&g_hooks72);   /* this pass's slots -- slice8_90.h  */
+    BrUiHook89Install72(&g_hooks72);
+    /* see br_wire71.c -- both installers existed with no caller. */
+    BrUiHook87Install72(&g_hooks72);
+    BrUiHook88Install72(&g_hooks72);   /* 0x10044D00 0x10045050 -- the two
+                                        * screen transitions slice8_84.h
+                                        * listed under NOT DONE (D)        */
     g_env72.pfnCtlCtor  = BrUiCtlCtor;
     g_env72.pfnPageCtor = BrUiPageCtor_10048470;
 

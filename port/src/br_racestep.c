@@ -622,8 +622,20 @@ void BrRaceStepLights(void)
                 if (g_aBrRaceBeepT[iBeep] > g_brRaceLightT) {
                     ++g_brRaceBeep;                   /* 0x1001AD92 */
                     /* 0x1001AD9E is the GO horn (the counter has reached 4)
-                     * and 0x1001ADA5 a beep; the two are one hole because
-                     * neither is ported. */
+                     * and 0x1001ADA5 a beep.  BOTH ARE NOW PORTED, in
+                     * port/src/br_sfxsrc.c: 0x10060E00 and 0x10060DF0 are
+                     * eleven bytes each over 0x10060DB0, which plays source
+                     * 0xE (group 14, beep2) or 0xD (group 13, beep) on
+                     * channel 3 at 0x00200020.  br_sfxsrc.c's
+                     * BrSfxSrcRaceCountdown is exactly this two-way branch
+                     * and port/src/br_wireaudio.c installs it as pfnSound.
+                     *
+                     * The hole COUNTER stays, and it stays incremented on
+                     * every fire whether or not a hook is installed: it is
+                     * how the four-per-race invariant is observed, and a
+                     * counter that stopped counting once the hook existed
+                     * would have removed the only evidence that the hook is
+                     * being reached the right number of times. */
                     ++g_aBrRaceStepHole[BR_RS_HOLE_SOUND];
                     if (g_brRaceStepHooks.pfnSound != NULL)
                         g_brRaceStepHooks.pfnSound(g_brRaceBeep);

@@ -96,10 +96,21 @@ clang $CFLAGS -DBR_HOST_LINK -c port/src/slice3_32.c -o build/host/slice3_32.o
 clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_71.c -o build/host/slice6_71.o
 clang $CFLAGS -DBR_HOST_LINK -c port/src/slice6_73.c -o build/host/slice6_73.o
 
-clang $CFLAGS -c port/host/br_wire71.c -o build/br_wire71.o
-clang $CFLAGS -c port/host/br_wire72.c -o build/br_wire72.o
-clang $CFLAGS -c port/host/br_wire75.c -o build/br_wire75.o
-clang $CFLAGS -c port/host/br_wire77.c -o build/br_wire77.o
+# WIRING TUs ARE DISCOVERED, for the same reason modules and tests are.
+#
+# These four used to be named one clang line each, and that made port/host/ a
+# lock exactly like the one this script's header describes: a pass told to add
+# a new wiring TU would create the file, see a clean build, and never notice
+# its code was not compiled at all -- the link succeeds because nothing
+# references it yet. That is a silent no-op, which is worse than a link error.
+# It nearly happened: a pass was briefed to add port/host/br_wireaudio.c.
+WIREOBJS=""
+for w in port/host/br_wire*.c; do
+    [ -f "$w" ] || continue
+    wname=$(basename "$w" .c)
+    clang $CFLAGS -c "$w" -o "build/$wname.o"
+    WIREOBJS="$WIREOBJS build/$wname.o"
+done
 clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
 # real definitions for the cross-module data objects (was br_stubs' 1 MiB blocks)
 clang $CFLAGS -c port/src/br_data.c -o build/br_data.o
@@ -115,7 +126,16 @@ for o in build/*.o; do
   esac
   HOSTOBJS="$HOSTOBJS $o"
 done
-clang build/brally.o build/br_stubs.o build/br_wire71.o build/br_wire72.o build/br_wire75.o build/br_wire77.o $HOSTOBJS \
+clang build/brally.o build/br_stubs.o $WIREOBJS $HOSTOBJS \
       build/host/slice3_32.o build/host/slice6_71.o build/host/slice6_73.o \
       build/br_gfx_metal.o -lm $FW -o build/brally
+# SUCCESS STAMP. Written ONLY here, as the very last act of a build that did
+# not exit early -- `set -e` at the top guarantees any failure above skips it.
+# tools/regress.sh refuses to report a pass count unless this stamp is newer
+# than every source file, because this runner once printed "104 passed, 0
+# failed" from stale binaries while this script was failing partway through,
+# and that green report was used to confirm a change that had never been
+# compiled. A test result about code that was not built is worse than none.
+touch build/.build-ok
+
 echo "built: brally (host)"

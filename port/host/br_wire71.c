@@ -24,6 +24,9 @@
  */
 #include "slice6_71.h"
 #include "slice8_84.h"
+#include "slice8_90.h"   /* BrUiHook90Install71 -- 0x10041300 / 0x10041890 */
+#include "slice8_87.h"   /* BrUiHook87Install71 -- the 0x1003Fxxx setters  */
+#include "slice8_88.h"   /* BrUiHook88Install71 -- 0x100413B0 / 0x100414B0 */
 #include "br_phase.h"
 #include "slice6_77.h"   /* BrSub100586A0 -- 0x100586A0 */
 #include <string.h>
@@ -132,6 +135,18 @@ void BrHostWire71(void)
      * every control on slice6_71's screens activates into nothing -- which is
      * what "the menu does not navigate" actually was. */
     BrUiHook84Install71(&g_hooks71);
+    /* 0x10041300 (slice6_71.c:570) and 0x10041890 (:476), the two slice2_24
+     * pfn04 setters this table carries. See slice8_90.h for the marshal that
+     * lets a BrUiCtl_ * reach a body written over BrMenuItem. */
+    BrUiHook90Install71(&g_hooks71);
+    /* WRITTEN BUT UNCALLED until now. slice8_87 and slice8_88 were both
+     * transcribed, tested and left with nothing invoking their installers --
+     * which fills no slot at run time and shows up as no behaviour at all.
+     * tools/hookaudit.py now fails on exactly this, and found these two.
+     * Both contexts are zero-initialised with their lookups disabled at zero,
+     * so installing them is safe before the context is populated. */
+    BrUiHook87Install71(&g_hooks71);
+    BrUiHook88Install71(&g_hooks71);
     g_brS71.pA9D018 = g_a9d018;
     g_env71.pfnFopen  = HostFopen;
     g_env71.pfnFclose = HostFclose;
