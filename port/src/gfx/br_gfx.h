@@ -65,21 +65,7 @@ typedef enum BrKey {
     BR_KEY_UP,
     BR_KEY_DOWN,
     BR_KEY_ACTIVATE,   /* Enter or Space */
-    BR_KEY_BACK,       /* Escape         */
-
-    /* HARNESS-ONLY, and RESTORED after a pass deleted it.  The retail game has
-     * no such keys -- these page the 16 UI builders directly so a screen can be
-     * reached without navigating to it, which is how the menu work was
-     * inspected.  A later pass that did not use them removed them from this
-     * enum and from the Metal backend's key switch, and the committed host
-     * DOES use them, so the tree stopped building.
-     *
-     * Worth noting how it escaped: deleting an enum member that a consumer
-     * switches on is a compile error at the CONSUMER, never at the deleter.
-     * The removing pass's own build was green, and it links a different set of
-     * objects than the host does, so nothing it ran could have caught this. */
-    BR_KEY_PREV_SCREEN,   /* [ */
-    BR_KEY_NEXT_SCREEN    /* ] */
+    BR_KEY_BACK        /* Escape         */
 } BrKey;
 
 /* Dequeue one key, or BR_KEY_NONE. Only meaningful after BrGfxPumpEvents. */

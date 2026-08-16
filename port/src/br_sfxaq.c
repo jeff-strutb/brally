@@ -11,8 +11,42 @@
 #include <AudioToolbox/AudioToolbox.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* THE ONE PLACE A SPEAKER CAN BE REACHED.
+ *
+ * Every AudioQueueNewOutput in this file goes through here. The gate started
+ * out at the caller level and that was not good enough: the harness kept
+ * emitting beeps from headless runs, because a caller-level flag only covers
+ * the callers you remembered. There are three files that can open a device and
+ * several entry points across them, and the user heard the ones that were
+ * missed before anyone found them in the code.
+ *
+ * So the check sits at the syscall, not at the policy. Audible output is
+ * opt-in via BR_AUDIO_LIVE; everything else mixes exactly as before and the
+ * .wav evidence files are byte-identical, because the mixing was never the
+ * part that made noise.
+ */
+static int br_aq_live_allowed(void)
+{
+    const char *p = getenv("BR_AUDIO_LIVE");
+    return (p != NULL && *p != '\0' && *p != '0');
+}
+
+static OSStatus br_aq_new_output(const AudioStreamBasicDescription *pFmt,
+                                 AudioQueueOutputCallback pfnCb,
+                                 void *pUser, CFRunLoopRef rl,
+                                 CFStringRef mode, UInt32 flags,
+                                 AudioQueueRef *pOut)
+{
+    if (!br_aq_live_allowed()) {
+        if (pOut) *pOut = NULL;
+        return (OSStatus)-1;          /* same shape as a device failure */
+    }
+    return AudioQueueNewOutput(pFmt, pfnCb, pUser, rl, mode, flags, pOut);
+}
 
 /* Link AudioToolbox without a command-line flag.  build.sh discovers modules
  * and must not have to know that one of them wants a framework; ld64 honours
@@ -77,7 +111,7 @@ int BrSfxAqAvailable(void)
 
     memset(&st, 0, sizeof(st));
     aq_format(&fmt);
-    if (AudioQueueNewOutput(&fmt, aq_callback, &st, NULL, NULL, 0, &q) != noErr
+    if (br_aq_new_output(&fmt, aq_callback, &st, NULL, NULL, 0, &q) != noErr
         || q == NULL)
         return 0;
     AudioQueueDispose(q, true);
@@ -101,7 +135,7 @@ int BrSfxAqPlay(void *pUser, const int16_t *pPcm, int cFrames)
     st.cFrames = cFrames;
 
     aq_format(&fmt);
-    if (AudioQueueNewOutput(&fmt, aq_callback, &st, NULL, NULL, 0, &q) != noErr
+    if (br_aq_new_output(&fmt, aq_callback, &st, NULL, NULL, 0, &q) != noErr
         || q == NULL) {
         fprintf(stderr, "sfx: no audio output device -- rendering only\n");
         return 0;

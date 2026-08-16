@@ -87,8 +87,20 @@
  * in scope through the headers above; it comes last for the same reason
  * br_uinav.h does. */
 #include "br_sprfont.h"
+/* The three hook packets that fill BrUi73Hooks. Each one's installer touches
+ * only its own slots and tolerates a NULL argument, so the order below is
+ * free; it is the order the packets landed in. slice7_81.h is what makes the
+ * group includable at all -- it pulls slice6_73.h, slice6_71.h and br_uinav.h
+ * in exactly the order this file already uses (slice8_84.h's banner). */
+#include "slice7_81.h"    /* BrUiHook81Install  -- eight ACTIVATE hooks   */
+#include "slice8_85.h"    /* BrUiHook85Install  -- twenty-five slots      */
+#include "slice7_80.h"    /* BrUiOptInstall73   -- the two volume cyclers */
+#include "slice8_90.h"    /* BrUiHook90Install73 -- four slice2_24 setters */
+#include "slice8_87.h"    /* BrUiHook87Install73                          */
+#include "slice8_88.h"    /* BrUiHook88Install73                          */
 #include "br_sfxout.h"
 #include "br_sfxaq.h"
+#include "br_wireaudio.h"   /* BrHostWireAudio -- menu + countdown audio */
 #include "br_crt.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -533,20 +545,35 @@ static void WireNav(void)
      * byte-image BrSub10047360; see the banner there for why both exist. */
     g_navHooks.p10047360 = BrSprFontKindHook_10047360;
 
-    /* Declared here rather than by including slice8_85.h: that header carries
-     * its own model of the UI types, which is the conflict br_phase.h exists
-     * to resolve -- the same reason br_wire71.c declares BrOptObjCtor locally.
-     * The signature is slice8_85.h's verbatim. */
-    /* The third and last of the three hook tables. slice8_85 fills TWENTY-FIVE
-     * slots -- the control-activation family. Without it a selectable row's
-     * activate hook is NULL, so every control in every screen activated into
-     * nothing: the menu could move a selection but could never LEAVE a screen.
-     * It overlaps none of the three slots set above (checked slot by slot), so
-     * it composes in either order, exactly as its header claims. */
-    {
-        extern void BrUiHook85Install(BrUi73Hooks *pHooks);
-        BrUiHook85Install(&g_navHooks);
-    }
+    /* --- the installers ---------------------------------------------------
+     * These three packets have existed in port/src for some time and NOTHING
+     * called them. That is not a small omission: the BrUi73Hooks table this
+     * host handed the builders had THREE of fifty-one slots filled, so every
+     * screen slice6_73 builds had a NULL +0x08 on every row and Enter moved
+     * nothing. The bodies were ported; the table was not wired.
+     *
+     * Each installer writes only the slots its own packet owns and leaves the
+     * rest alone (each header states that contract), so they compose in any
+     * order and none of them can quietly overwrite another's slot. */
+    BrUiHook81Install(&g_navHooks);   /* 0x10045880 0x100458A0 0x10045AA0
+                                       * 0x100450F0 0x100463C0 0x10046620
+                                       * 0x10046EB0 0x100470E0             */
+    BrUiHook85Install(&g_navHooks);   /* the twenty-five slice6_73 hooks   */
+    BrUiOptInstall73(&g_navHooks);    /* 0x10042CF0 0x10042D60             */
+    BrUiHook90Install73(&g_navHooks); /* 0x10041300 0x10041670 0x10041710
+                                       * 0x100417B0 -- slice8_90.h        */
+    /* Both packets were transcribed and tested but never installed, so their
+     * slots stayed NULL and nothing they do could happen. hookaudit.py flags
+     * an installer with no caller now. */
+    BrUiHook87Install73(&g_navHooks);
+    BrUiHook88Install73(&g_navHooks);
+
+    /* 0x10048180 compares the +0x08 hook it is about to call against this
+     * word and takes a different audio path when they match (br_uinav.c's
+     * BrUiNavCtlFrame_10048180). slice7_80.h asks for the store to be made
+     * here because BrScrGlobals and slice6_73.h cannot share a translation
+     * unit inside that packet; in this file they already do. */
+    g_scr.pfn10042CF0 = (void *)BrUiOptHook_10042CF0;
 
     g_br73.pHooks     = &g_navHooks;
     g_br73.pPhaseVtbl = &g_navPhaseVtbl;
@@ -647,28 +674,25 @@ static void DumpRects(const BrPhase_ *ph)
     for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
         const BrUiPage_ *pg = ph->aPages[i];
         if (!pg) continue;
-        /* HOOK PROBE: which of the six hook slots a control actually carries.
-     * "the menu cannot leave a screen" is indistinguishable from "the hook
-     * ran and did nothing" without this. */
-    {
-        uint32_t q;
-        for (q = 0; q < pg->cCtl; ++q) {
-            const BrUiCtl_ *pc = pg->apCtl[q];
-            if (!pc) continue;
-            printf("    hooks[%u] 04=%p 08=%p 0C=%p 10=%p 14=%p 18=%p f1C=%08x\n",
-                   q, (void*)pc->pfn04, (void*)pc->pfn08, (void*)pc->pfn0C,
-                   (void*)pc->pfn10, (void*)pc->pfn14, (void*)pc->pfn18,
-                   (unsigned)pc->flags1C);
-        }
-    }
-    printf("  page %d  origin=(%.1f,%.1f)  cCtl=%u cSel=%u\n",
+        printf("  page %d  origin=(%.1f,%.1f)  cCtl=%u cSel=%u\n",
                i, (double)pg->fX, (double)pg->fY,
                (unsigned)pg->cCtl, (unsigned)pg->cSel);
         for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
             const BrUiCtl_ *c = pg->apCtl[j];
             if (!c) continue;
             {
-                const char *pszCap = CapFor(c);
+                /* The LIVE buffer first, the build-time record second.
+                 *
+                 * CapFor is a snapshot taken in the +0x34 vtable slot, i.e.
+                 * at BUILD time, and it was the only thing printed here. A
+                 * +0x04 hook writes aText[0].sz DIRECTLY -- that is what the
+                 * whole slice2_24 caption/text family does -- so every one of
+                 * them was invisible in this dump and a row it had just
+                 * filled in still read "(no caption)". The live buffer is
+                 * also what 0x1005B2B0 actually walks when it draws, so this
+                 * is the more faithful of the two, not merely the newer. */
+                const char *pszCap = (c->aText[0].sz[0] != '\0')
+                                     ? c->aText[0].sz : CapFor(c);
                 char        szChrome[56];
                 BrUiChrome  ch;
 
@@ -859,6 +883,17 @@ static int NavRunScript(BrPhase_ *ph, const char *pszKeys)
             char szWhen[16];
             szWhen[0] = '\''; szWhen[1] = *p; szWhen[2] = '\''; szWhen[3] = 0;
             NavDumpState(szWhen, phCur);
+            /* BR_KEYDUMP=1 prints the whole page after every key.
+             *
+             * It exists because the selection line above cannot see most of
+             * what a hook does. A +0x04 hook rewrites a caption or a sprite
+             * id; a +0x08 toggle moves a global that a +0x04 hook two rows
+             * away turns into a different sprite. Both are invisible in a
+             * line that prints only the CURRENT row's text, and "the
+             * selection did not move" was being read as "the hook did not
+             * run". The rects and sprite ids are where those hooks land. */
+            if (getenv("BR_KEYDUMP") != NULL)
+                DumpRects(phCur);
             if (phCur != phBefore) {
                 printf("  ** PHASE CHANGED %p -> %p (a ported +0x08 hook did "
                        "this, not the driver)\n",
@@ -1868,10 +1903,55 @@ int main(int argc, char **argv)
 
     printf("Boss Rally -- host boot\n");
 
+    /* AUDIO IS WIRED HERE, BEFORE THE MODE DISPATCH, AND THAT PLACEMENT IS
+     * THE WHOLE POINT.
+     *
+     * It was first added after WireNav() below, which is where the menu needs
+     * it -- but `-race` returns two lines down and never reaches WireNav at
+     * all, so the countdown ran silently in the one mode that actually has a
+     * countdown. The audio pass's evidence did not catch this because it drove
+     * BrRaceStepFrame() directly from a test harness with the mixer pumped by
+     * hand; that proves the transcription, not the wiring. Both need proving,
+     * and only the second one depends on where this line sits.
+     *
+     * It needs no phase, no window and no renderer, so it is safe for every
+     * mode including the ones that return early. */
+    /* Sound reaches the SPEAKERS only in the interactive windowed mode (or
+     * when BR_AUDIO_LIVE is set). Every other mode -- and the whole test suite
+     * -- mixes silently. See br_wireaudio.c: the default used to be live, and
+     * running the tests played beeps out of the machine with nothing on screen
+     * to say why. */
+    if (windowed)
+        BrWireAudioSetLive(1);
+    BrHostWireAudio();
+    if (getenv("BR_AUDIO_REPORT") != NULL)
+        BrHostWireAudioReport();
+
     /* `-race` runs BEFORE any menu wiring: it needs none of it, and the
      * whole point of the mode is that the race step is not a phase. */
     if (argc > 2 && strcmp(argv[1], "-race") == 0) {
-        return RunRace(argc, argv);
+        int rc;
+        /* THE RACE BANK, not the menu one. BrHostWireAudio loads set 0 (the
+         * front end: 7 voices) because that is what the original's 0x1006C290
+         * is called with for the menus. The countdown plays sources 13 and 14
+         * -- beep.wav / beep2.wav -- which live only in set 1, so with the
+         * menu bank loaded the hook fires, finds nothing, and the race is
+         * silent. The original swaps here too: Glide 0x10061310 calls
+         * 0x1006C290 with 1 from the race sound init.
+         *
+         * This is why the countdown appeared wired and still made no sound:
+         * the hook was installed and the bank was wrong, and the hole counter
+         * reads 4 either way. Frames-rendered before vs after the run is the
+         * measurement that actually distinguishes them. */
+        BrWireAudioLoadSet(BR_SFX_SET_RACE);
+        rc = RunRace(argc, argv);
+        /* Reported AFTER the race, not before. The startup report shows the
+         * frames rendered by opening the queue, which proves nothing about
+         * whether the countdown made a sound -- the two numbers have to be
+         * compared across the run for that. */
+        if (getenv("BR_AUDIO_REPORT") != NULL)
+            BrHostWireAudioReport();
+        return rc;
     }
 
     /* Sound, likewise: no phase, no window, no renderer.  Both modes render
@@ -2210,12 +2290,6 @@ int main(int argc, char **argv)
          * Nothing between the key and the selection is this file's logic. */
         {
             BrPhase_ *phCur = ph;
-            /* HARNESS-ONLY builder paging, restored -- see BrKey in br_gfx.h.
-             * `[` and `]` re-run a different one of the sixteen builders onto
-             * the live phase, so any screen can be reached without navigating
-             * to it. This is the harness's, not the game's: the retail title
-             * has no such key and no way to jump between screens. */
-            int iBuilder = -1;
             g_nav.pAA2904 = ph;
             while (gfx && BrGfxPumpEvents(gfx)) {
                 BrKey k;
@@ -2238,24 +2312,6 @@ int main(int argc, char **argv)
                             g_scr.wAA286C =
                                 (uint16_t)(NavPage(phCur)->cSel - 1);
                         fire = 1;
-                        break;
-                    /* Paging rebuilds the phase in place, so it must not
-                     * also feed a verb into the frame below -- the rebuilt
-                     * page would receive a stale up/down against a control
-                     * list that no longer exists. */
-                    case BR_KEY_PREV_SCREEN:
-                    case BR_KEY_NEXT_SCREEN:
-                        iBuilder += (k == BR_KEY_NEXT_SCREEN) ? 1 : -1;
-                        if (iBuilder < 0)             iBuilder = BR_NBUILDERS - 1;
-                        if (iBuilder >= BR_NBUILDERS) iBuilder = 0;
-                        printf("[harness] builder %d/%d: %s\n",
-                               iBuilder, BR_NBUILDERS - 1,
-                               g_aBuilders[iBuilder].pszName);
-                        fflush(stdout);
-                        g_aBuilders[iBuilder].pfn(phCur);
-                        g_cCap = 0;
-                        BuildCaptions(gfx, phCur);
-                        dir = 0; fire = 0;
                         break;
                     default: break;
                     }

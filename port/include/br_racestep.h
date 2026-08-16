@@ -272,7 +272,11 @@ enum {
     BR_RS_HOLE_SKID,
     /* 0x100623A0's two callees, 0x1005ACE0 and 0x10001CF0. */
     BR_RS_HOLE_ANIM,
-    /* 0x10060E00 and 0x10060DF0, the countdown's two sounds. */
+    /* 0x10060E00 and 0x10060DF0, the countdown's two sounds.  PORTED as of
+     * port/src/br_sfxsrc.c; the counter remains because it is what pins the
+     * four-fires-per-race invariant.  Install with
+     *     g_brRaceStepHooks.pfnSound = BrSfxSrcRaceCountdown;
+     * or let port/src/br_wireaudio.c's BrHostWireAudio do it. */
     BR_RS_HOLE_SOUND,
     /* 0x1001B27A..0x1001C0xx: the HUD, the mirror view and the renderer,
      * about 5.5 KB, entered once per frame. */
@@ -307,7 +311,10 @@ typedef struct BrRaceStepHooks {
     void (*pfnSkid)(BrDriverCar *pCar);      /* inside 0x100623E0       */
     void (*pfnAnim)(BrDriverCar *pCar);      /* 0x100623A0              */
     void (*pfnLapInfo)(BrDriverCar *pCar);   /* 0x10060A30              */
-    void (*pfnSound)(int iStep);             /* 0x10060DF0 / 0x10060E00 */
+    /* 0x10060DF0 / 0x10060E00.  iStep is the POST-increment beep counter,
+     * so 4 is the GO horn and 1..3 are the countdown -- which is the branch
+     * br_sfxsrc.c's BrSfxSrcRaceCountdown reproduces. */
+    void (*pfnSound)(int iStep);
 } BrRaceStepHooks;
 extern BrRaceStepHooks g_brRaceStepHooks;
 

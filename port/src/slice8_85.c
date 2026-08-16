@@ -355,6 +355,37 @@ int32_t BrUiHook85_1003EE20(BrUiCtl_ *pCtl)
  * Text hooks
  * ========================================================================== */
 
+/* 0x1008C320 IS `_stricmp`, NOT `strcmp` -- CASE-INSENSITIVE.
+ *
+ * BRGlide settles this with no inference at all, because it imports the CRT
+ * instead of linking it statically:
+ *
+ *     100384F4  ff1554058f11   call dword ptr [0x118f0554]  ; MSVCRT!_stricmp
+ *
+ * and BRD3D's statically linked 0x1008C320 confirms it from the other side
+ * with the classic ASCII fold (`sub 0x41 / cmp 0x1A / sbb / and 0x20`).
+ *
+ * Written out rather than calling strcasecmp: strcasecmp folds per the current
+ * LOCALE, while the original folds A-Z and nothing else. Under a Turkish
+ * locale strcasecmp maps 'I' differently and the two would disagree on real
+ * captions. This is a decompilation, so the original's exact fold is the
+ * specification.
+ *
+ * CONSEQUENCE, and it is observable: a caption differing from the stored one
+ * ONLY in case compares EQUAL, so the copy is skipped and the destination
+ * keeps its old capitalisation. */
+static int br_stricmp_1008C320(const char *pA, const char *pB)
+{
+    for (;;) {
+        unsigned char a = (unsigned char)*pA++;
+        unsigned char b = (unsigned char)*pB++;
+        if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 0x20);
+        if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 0x20);
+        if (a != b)  return (int)a - (int)b;
+        if (a == 0)  return 0;
+    }
+}
+
 /* 0x1003F050 and 0x1003F0B0 are the same 81 bytes over two buffers. */
 static int32_t Br85TextReadBack(BrUiCtl_ *pCtl, char *pszDst, size_t cbDst)
 {
@@ -362,10 +393,13 @@ static int32_t Br85TextReadBack(BrUiCtl_ *pCtl, char *pszDst, size_t cbDst)
 
     (void)Br85ItemApply(pCtl, 0);
 
+
+
     pszSrc = pCtl->aText[0].sz;        /* +0x2B65 */
-    /* `call 0x1008C320` is strcmp; the copy runs only when it answers
-     * non-zero, i.e. when the two differ. */
-    if (strcmp(pszDst, pszSrc) != 0) {
+    /* `call 0x1008C320` is _stricmp -- see br_stricmp_1008C320 above. The
+     * copy runs only when it answers non-zero, i.e. when the two differ by
+     * more than capitalisation. */
+    if (br_stricmp_1008C320(pszDst, pszSrc) != 0) {
         /* DEVIATION: the original is an unbounded `rep movsd`/`rep movsb`. */
         size_t cb = strlen(pszSrc);
         if (cb > cbDst - 1u) {

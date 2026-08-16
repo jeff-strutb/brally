@@ -152,7 +152,12 @@
  *    it, not here, because porting them here would need a second copy of that
  *    module's state block.
  *      0x100413B0  text setter, 245 B, string ids 0xB3..0xB6 off 0x10AA28A0
+ *                  -- NO LONGER TRUE: slice8_88.c has it, over BrUiCtl_.
  *      0x100414B0  text setter, 236 B, 0x10AA289C / 0x10AA28B8 / 0x10AA270E
+ *                  -- NO LONGER TRUE: slice8_88.c has it, over BrUiCtl_.
+ *                  Both needed no second copy of slice2_24's state block
+ *                  after all: every global but three is already owned by
+ *                  slice6_73.h's g_br73, and slice8_88.h names the three.
  *      0x10042170  BrTextList +0x04 callback (slice6_71.c:454)
  *      0x10042560  BrTextList +0x14 callback (slice6_72.c:1293)
  *      0x10042740  BrTextList +0x04 callback (slice6_72.c:1292)

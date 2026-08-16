@@ -420,8 +420,6 @@ BrKey BrGfxPollKey(BrGfx *g)
 #define BR_VK_RIGHT   124
 #define BR_VK_DOWN    125
 #define BR_VK_UP      126
-#define BR_VK_LBRACKET 33
-#define BR_VK_RBRACKET 30
 
 int BrGfxPumpEvents(BrGfx *g)
 {
@@ -444,9 +442,6 @@ int BrGfxPumpEvents(BrGfx *g)
                  * Cmd-Q still quit; a menu that exits the process when the
                  * user asks to go back is not a menu. */
                 case BR_VK_ESCAPE: BrKeyPush(BR_KEY_BACK);     break;
-                /* harness-only builder paging -- see BrKey in br_gfx.h */
-                case BR_VK_LBRACKET: BrKeyPush(BR_KEY_PREV_SCREEN); break;
-                case BR_VK_RBRACKET: BrKeyPush(BR_KEY_NEXT_SCREEN); break;
                 default: break;
                 }
             }
