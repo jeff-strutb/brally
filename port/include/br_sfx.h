@@ -252,4 +252,67 @@ uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate);
  * float is truncated by the same _ftol, so out-of-range yields 0. */
 uint32_t BrSfxHzFromFloat(float hz);
 
+/* ------------------------------------------------------- the engine curve */
+
+/* The three per-car loops are retuned every frame from the car's RPM, in
+ * 0x10061470 (D3D 0x10068400) -- the same function that packs BrSndPan's
+ * output into the level pair BR_SFX_LEVEL_MAX describes.  The two layers are
+ * driven DIFFERENTLY, and that asymmetry is the interesting part:
+ *
+ *   low / rev  (groups 0 and 25)   an absolute frequency in hertz, turned
+ *                                  into a 32.32 ratio and re-applied each
+ *                                  frame by 0x1006BDD0
+ *   high       (group 24)          the doppler ratio times 22050, straight
+ *                                  through BrSfxHzFromFloat -- no RPM at all
+ *
+ * The RPM input is the float at car+0xE24.  It is RPM and not speed: the
+ * gearbox code writes 800.0f, 900.0f and 8000.0f into that field (0x1006278F,
+ * 0x10062AE1, 0x10062AFE), which are idle, fast idle and redline.
+ *
+ * Addresses: 0x1006156A..0x100615C0 is BrSfxEngineHz, 0x10061601..0x1006162E
+ * is BrSfxEngineRatio, 0x10061995..0x100619AE is BrSfxEngineHighHz. */
+
+/* rpm -> hertz for the low and rev layers.
+ *
+ *      v = (rpm > 0 ? rpm*0.5f : rpm*-0.5f) * 15.714285850524902f * doppler
+ *      if (v > 100000 || !(v >= 0))  v = 0
+ *
+ * 15.714285850524902f is the float nearest 110/7, so with the 0.5 the scale
+ * is 55/7 Hz per RPM and unity pitch (11000 Hz, see BrSfxEngineRatio) lands
+ * at 1400 RPM.  The magnitude fold means a negative RPM sounds like its
+ * positive twin rather than silencing the engine.
+ *
+ * NaN takes the zero exit at BOTH tests, because an x87 unordered compare
+ * sets C0 exactly as "less than" does -- the same trap br_ftol64 documents.
+ *
+ * DEVIATION: the original keeps this whole chain in one 80-bit x87 register
+ * and never rounds to float, so the intermediates are computed in double
+ * here rather than float.  Rounding each step to float would be the larger
+ * deviation, not the smaller one. */
+double BrSfxEngineHz(float rpm, float doppler);
+
+/* hertz -> the 32.32 ratio the low/rev channel stores.
+ *
+ * GOTCHA, and it is a real one: this does NOT go through BrSfxRatioFromHz.
+ * The original multiplies by the FLOAT reciprocal of 11000 and then by 2^32
+ * (0x100779E4 and 0x100779E8) rather than dividing by the channel's base
+ * rate -- and the channel's base rate is 11025, because that is what row 0
+ * and row 25 of the bank carry.  0x1006B5F0 then converts the ratio back
+ * using 11025.  The engine therefore plays 11025/11000 sharp, about a
+ * quarter of a percent, and that is shipped behaviour rather than a
+ * transcription slip: the two constants are in the image and they disagree.
+ *
+ * Truncation is br_ftol64's, so an out-of-range value yields the x87 integer
+ * indefinite exactly as BrSfxRatioFromHz does. */
+int64_t BrSfxEngineRatio(double hz);
+
+/* The high layer's absolute frequency: doppler * 22050 (0x10077A00), through
+ * BrSfxHzFromFloat.  Group 24's base rate is also 22050, so a doppler of 1
+ * is unity pitch -- the high layer is pure doppler and ignores RPM. */
+uint32_t BrSfxEngineHighHz(float doppler);
+
+/* The base rate the low/rev ratio is DERIVED against, as against the 11025
+ * the bank rows carry and BrSfxHzFromRatio reads back with. */
+#define BR_SFX_ENGINE_RATIO_RATE  11000.0
+
 #endif /* BR_SFX_H */

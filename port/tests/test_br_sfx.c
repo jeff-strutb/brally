@@ -317,6 +317,108 @@ static void test_pitch(void)
           "an out-of-range float reads back as 0, per _ftol's low dword");
 }
 
+/* --------------------------------------------------------- engine curve */
+
+static void test_engine(void)
+{
+    double   hz;
+    uint32_t f, prev;
+    float    rpm;
+    int      ok;
+
+    printf("engine curve\n");
+
+    /* The scale is 55/7 Hz per RPM, so unity against the 11000 the ratio is
+     * derived with lands at 1400 RPM.  Stated as the arithmetic, because a
+     * remembered "11000 at 1400" is exactly the kind of number that survives
+     * a wrong constant. */
+    check(BrSfxEngineHz(1400.0f, 1.0f) > 10999.99
+       && BrSfxEngineHz(1400.0f, 1.0f) < 11000.01,
+          "1400 RPM is 11000 Hz -- 55/7 Hz per RPM");
+    check(BrSfxEngineHz(2800.0f, 1.0f) > 1.999 * BrSfxEngineHz(1400.0f, 1.0f)
+       && BrSfxEngineHz(2800.0f, 1.0f) < 2.001 * BrSfxEngineHz(1400.0f, 1.0f),
+          "the curve is linear in RPM");
+
+    /* The doppler is a plain multiplier on the low layer as well as being the
+     * high layer's entire input. */
+    check(BrSfxEngineHz(1400.0f, 2.0f) > 1.999 * BrSfxEngineHz(1400.0f, 1.0f),
+          "doppler multiplies the low layer too");
+
+    /* Magnitude fold: a negative RPM sounds like its positive twin.  The
+     * original does this with two multiply constants, +0.5 and -0.5, not an
+     * fabs, and the sign of zero decides which arm it takes. */
+    check(BrSfxEngineHz(-1400.0f, 1.0f) == BrSfxEngineHz(1400.0f, 1.0f),
+          "a negative RPM folds to its magnitude rather than silencing");
+    check(BrSfxEngineHz(0.0f, 1.0f) == 0.0, "zero RPM is zero Hz");
+
+    /* Both clamps, and the NaN that takes the same exit as a negative. */
+    check(BrSfxEngineHz(1.0e9f, 1.0f) == 0.0,
+          "past 100000 Hz the engine goes SILENT rather than clamping loud");
+    check(BrSfxEngineHz(1400.0f, -1.0f) == 0.0,
+          "a negative doppler drives it below zero and it silences");
+    {
+        float nan = 0.0f;
+        nan = nan / nan;
+        check(BrSfxEngineHz(nan, 1.0f) == 0.0,
+              "a NaN RPM takes the -0.5 arm and then both clamps: silence");
+        check(BrSfxEngineHz(1400.0f, nan) == 0.0, "...and so does a NaN doppler");
+    }
+
+    /* The ratio is NOT BrSfxRatioFromHz: it uses the float reciprocal of
+     * 11000, while the channel it is read back through carries 11025.  The
+     * two disagree by a quarter of a percent and the image says so. */
+    check(BrSfxEngineRatio(11000.0) != BrSfxRatioFromHz(11000, 11025.0),
+          "the engine ratio is derived against 11000, not the row's 11025");
+    {
+        /* Against 11000 the two DO describe the same pitch -- but not the
+         * same integer.  A reciprocal multiply by a float carries only 24
+         * bits, so it lands a few hundred units of 2^32 below the exact
+         * divide.  That is a part in 10^7 of pitch, i.e. inaudible, and it is
+         * the difference between "the constant is 1/11000" and "the constant
+         * is something else entirely" -- which is what this pins. */
+        int64_t a = BrSfxEngineRatio(11000.0);
+        int64_t b = BrSfxRatioFromHz(11000, 11000.0);
+        double  rel = (double)(b - a) / (double)b;
+        printf("  reciprocal vs divide at 11000 Hz: %lld vs %lld (%.2e)\n",
+               (long long)a, (long long)b, rel);
+        check(rel > 0.0 && rel < 1.0e-6,
+              "the float reciprocal lands just SHORT of the exact divide, by <1e-6");
+    }
+
+    hz = BrSfxEngineHz(1400.0f, 1.0f);
+    f  = BrSfxHzFromRatio(BrSfxEngineRatio(hz),
+                          BrSfxGroupBaseRate(BR_SFX_GROUP_ENGINE));
+    printf("  1400 RPM -> %.4f Hz -> applied %u Hz on an %.0f Hz row\n",
+           hz, f, BrSfxGroupBaseRate(BR_SFX_GROUP_ENGINE));
+    check(f == 11024,
+          "the round trip through the row's 11025 lands 24 Hz sharp, as shipped");
+
+    /* The audible span of the sweep, from the two RPM literals the gearbox
+     * writes: idle 800 and redline 8000. */
+    f = BrSfxHzFromRatio(BrSfxEngineRatio(BrSfxEngineHz(800.0f, 1.0f)), 11025.0);
+    check(f == 6299, "idle (800 RPM) plays the loop at 6299 Hz");
+    f = BrSfxHzFromRatio(BrSfxEngineRatio(BrSfxEngineHz(8000.0f, 1.0f)), 11025.0);
+    check(f == 62999, "redline (8000 RPM) plays it at 62999 Hz -- a 10:1 sweep");
+
+    /* Monotonic across the whole sweep: an engine that dips in pitch as it
+     * revs is the classic symptom of a truncation done in the wrong place. */
+    ok = 1;
+    prev = 0;
+    for (rpm = 0.0f; rpm <= 8000.0f; rpm += 5.0f) {
+        f = BrSfxHzFromRatio(BrSfxEngineRatio(BrSfxEngineHz(rpm, 1.0f)), 11025.0);
+        if (f < prev) { ok = 0; break; }
+        prev = f;
+    }
+    check(ok, "the applied frequency never falls as RPM rises");
+
+    /* The high layer is doppler and nothing else. */
+    check(BrSfxEngineHighHz(1.0f) == 22050,
+          "doppler 1.0 is unity on the high layer -- its row's rate is 22050");
+    check(BrSfxEngineHighHz(0.5f) == 11025 && BrSfxEngineHighHz(2.0f) == 44100,
+          "and it scales linearly");
+    check(BrSfxEngineHighHz(0.0f) == 0, "a zero doppler is a zero frequency");
+}
+
 /* ------------------------------------------------- the disc, when present */
 
 /* testdata/sfx.txt is one lower-cased "sfx/name.wav" per line, produced by
@@ -413,6 +515,7 @@ int main(void)
     test_table();
     test_filenames();
     test_pitch();
+    test_engine();
     test_against_disc();
 
     printf(g_fail ? "\nFAILED\n" : "\nALL PASSED\n");
