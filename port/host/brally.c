@@ -532,6 +532,22 @@ static void WireNav(void)
      * br_sprfont.c's transcription is the struct-model twin of slice3_31.c's
      * byte-image BrSub10047360; see the banner there for why both exist. */
     g_navHooks.p10047360 = BrSprFontKindHook_10047360;
+
+    /* Declared here rather than by including slice8_85.h: that header carries
+     * its own model of the UI types, which is the conflict br_phase.h exists
+     * to resolve -- the same reason br_wire71.c declares BrOptObjCtor locally.
+     * The signature is slice8_85.h's verbatim. */
+    /* The third and last of the three hook tables. slice8_85 fills TWENTY-FIVE
+     * slots -- the control-activation family. Without it a selectable row's
+     * activate hook is NULL, so every control in every screen activated into
+     * nothing: the menu could move a selection but could never LEAVE a screen.
+     * It overlaps none of the three slots set above (checked slot by slot), so
+     * it composes in either order, exactly as its header claims. */
+    {
+        extern void BrUiHook85Install(BrUi73Hooks *pHooks);
+        BrUiHook85Install(&g_navHooks);
+    }
+
     g_br73.pHooks     = &g_navHooks;
     g_br73.pPhaseVtbl = &g_navPhaseVtbl;
 
@@ -631,7 +647,21 @@ static void DumpRects(const BrPhase_ *ph)
     for (i = 0; i < (int)ph->nPages && i < BR_PHASE_PAGES; i++) {
         const BrUiPage_ *pg = ph->aPages[i];
         if (!pg) continue;
-        printf("  page %d  origin=(%.1f,%.1f)  cCtl=%u cSel=%u\n",
+        /* HOOK PROBE: which of the six hook slots a control actually carries.
+     * "the menu cannot leave a screen" is indistinguishable from "the hook
+     * ran and did nothing" without this. */
+    {
+        uint32_t q;
+        for (q = 0; q < pg->cCtl; ++q) {
+            const BrUiCtl_ *pc = pg->apCtl[q];
+            if (!pc) continue;
+            printf("    hooks[%u] 04=%p 08=%p 0C=%p 10=%p 14=%p 18=%p f1C=%08x\n",
+                   q, (void*)pc->pfn04, (void*)pc->pfn08, (void*)pc->pfn0C,
+                   (void*)pc->pfn10, (void*)pc->pfn14, (void*)pc->pfn18,
+                   (unsigned)pc->flags1C);
+        }
+    }
+    printf("  page %d  origin=(%.1f,%.1f)  cCtl=%u cSel=%u\n",
                i, (double)pg->fX, (double)pg->fY,
                (unsigned)pg->cCtl, (unsigned)pg->cSel);
         for (j = 0; j < (int)pg->cCtl && j < BR73_PAGE_CTL_MAX; j++) {
