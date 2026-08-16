@@ -1,4 +1,4 @@
-"""Extract a file from the retail CD image (MODE1/2352 raw sectors).
+"""Read the retail CD image (MODE1/2352 raw sectors): list it, or pull a file out.
 
 WHY RAW SECTORS MATTER: a .BIN ripped from a CD stores 2352 bytes per sector,
 of which only 2048 are user data -- 16 bytes of sync/header come first and 288
@@ -11,7 +11,16 @@ The image is verified to be 2352-byte sectors before anything is read: the
 first sector must begin with the CD sync pattern, and the file length must be
 an exact multiple of 2352.
 
-Usage:  extract_iso.py <image.bin> <NAME.EXT> <outfile>
+The listing walks the real ISO 9660 directory tree from the Primary Volume
+Descriptor, so it reports the actual filesystem -- names, sizes, LBAs and full
+paths -- rather than whatever a heuristic scan happens to recognise. The
+extract path still uses the tolerant scan, because for a single known name a
+scan cannot get lost.
+
+Usage:
+    extract_iso.py <image.bin> <NAME.EXT> <outfile>     extract one file
+    extract_iso.py --list <image.bin>                   list the whole tree
+    extract_iso.py --extract-path <image.bin> <ISO/PATH> <outfile>
 """
 import sys, struct
 
@@ -70,12 +79,91 @@ def find_record(fh, nsectors, want):
     return None, None
 
 
-def main():
-    if len(sys.argv) != 4:
-        raise SystemExit(__doc__)
-    image, want, out = sys.argv[1:]
+# ---------------------------------------------------------------- ISO 9660
+
+def read_pvd(fh):
+    """Return (root_lba, root_size) from the Primary Volume Descriptor."""
+    for lba in range(16, 32):
+        d = iso_read(fh, lba * USER, USER)
+        if d[1:6] != b'CD001':
+            continue
+        if d[0] == 1:                      # primary volume descriptor
+            root = d[156:156 + 34]
+            return (struct.unpack_from('<I', root, 2)[0],
+                    struct.unpack_from('<I', root, 10)[0])
+        if d[0] == 255:                    # terminator
+            break
+    raise SystemExit("no Primary Volume Descriptor found")
+
+
+def read_dir(fh, lba, size):
+    """Yield (name, child_lba, child_size, is_dir) for one directory extent."""
+    data = iso_read(fh, lba * USER, size)
+    i = 0
+    while i < len(data):
+        length = data[i]
+        if length == 0:
+            # records never straddle a 2048-byte block; skip to the next one
+            i = (i // USER + 1) * USER
+            if i >= len(data):
+                break
+            continue
+        nlen = data[i + 32]
+        name = bytes(data[i + 33:i + 33 + nlen])
+        flags = data[i + 25]
+        child_lba = struct.unpack_from('<I', data, i + 2)[0]
+        child_size = struct.unpack_from('<I', data, i + 10)[0]
+        if nlen == 1 and name in (b'\x00', b'\x01'):
+            pass                            # '.' and '..'
+        else:
+            yield (name.split(b';')[0].decode('ascii', 'replace'),
+                   child_lba, child_size, bool(flags & 0x02))
+        i += length
+
+
+def walk(fh, lba=None, size=None, prefix=''):
+    """Recursively yield (path, lba, size, is_dir) for the whole tree."""
+    if lba is None:
+        lba, size = read_pvd(fh)
+    for name, clba, csize, isdir in read_dir(fh, lba, size):
+        path = prefix + '/' + name if prefix else name
+        yield (path, clba, csize, isdir)
+        if isdir:
+            for row in walk(fh, clba, csize, path):
+                yield row
+
+
+def resolve(fh, isopath):
+    """Look up a '/'-separated ISO path, returning (lba, size)."""
+    want = isopath.upper().replace('\\', '/').strip('/')
+    for path, lba, size, isdir in walk(fh):
+        if not isdir and path.upper() == want:
+            return lba, size
+    return None, None
+
+
+def cmd_list(image):
     fh, nsectors = open_image(image)
-    lba, size = find_record(fh, nsectors, want)
+    rows = list(walk(fh))
+    total = 0
+    for path, lba, size, isdir in sorted(rows):
+        if isdir:
+            print("%-52s   <DIR>              lba %d" % (path, lba))
+        else:
+            print("%-52s %12d bytes   lba %d" % (path, size, lba))
+            total += size
+    nfile = sum(1 for r in rows if not r[3])
+    ndir = len(rows) - nfile
+    print("\n%d files, %d directories, %d bytes total (data track is %d sectors)"
+          % (nfile, ndir, total, nsectors))
+
+
+def cmd_extract(image, want, out, bypath=False):
+    fh, nsectors = open_image(image)
+    if bypath:
+        lba, size = resolve(fh, want)
+    else:
+        lba, size = find_record(fh, nsectors, want)
     if lba is None:
         raise SystemExit("%s: not found in %s" % (want, image))
     data = iso_read(fh, lba * USER, size)
@@ -85,6 +173,18 @@ def main():
     print("%s: lba %d, %d bytes -> %s" % (want, lba, size, out))
     if data[:2] == b'MZ':
         print("  (MZ header present -- looks like a PE image)")
+
+
+def main():
+    a = sys.argv[1:]
+    if len(a) == 2 and a[0] in ('--list', '-l'):
+        cmd_list(a[1])
+    elif len(a) == 4 and a[0] == '--extract-path':
+        cmd_extract(a[1], a[2], a[3], bypath=True)
+    elif len(a) == 3:
+        cmd_extract(a[0], a[1], a[2])
+    else:
+        raise SystemExit(__doc__)
 
 
 if __name__ == '__main__':

@@ -38,3 +38,21 @@ if [ ! -f testdata/strings.txt ]; then
 else
   echo "assets: testdata/strings.txt already present"
 fi
+
+# TRACKS/*.TRK are the actual game world: raw big-endian N64 memory images with
+# a 0x230-byte header, sitting as plain files on the disc rather than inside any
+# archive. See port/include/br_track.h.
+#
+# Two are pulled: race.trk is the smallest (0.9 MB) and desert.trk is the one
+# with a large instance array, so between them the loader's paths are covered.
+# The .hnt sidecars are tiny and exercise the ASCII hint parser -- coast.hnt is
+# the only one on the disc with more than a first line.
+mkdir -p testdata/tracks
+for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
+  out="testdata/tracks/$(echo "$f" | tr 'A-Z' 'a-z')"
+  if [ ! -f "$out" ]; then
+    python3 tools/extract_iso.py --extract-path "$BIN" "TRACKS/$f" "$out"
+  else
+    echo "assets: $out already present"
+  fi
+done
