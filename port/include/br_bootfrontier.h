@@ -36,6 +36,16 @@
 
 /* ---- the twelve unported callees, by original Glide address -------- */
 
+/* RallyMain's own chain, 0x1001CC00. */
+void    BrBootFrontier_10007F10(void);
+void    BrBootFrontier_10063860(void);
+void    BrBootFrontier_1006D1A0(void);
+void    BrBootFrontier_10007F40(const char *pszCmdLine);
+void    BrBootFrontier_10063060(void);          /* __thiscall config load */
+void    BrBootFrontier_10009C00(void);
+void    BrBootBuildConfigPath(void);            /* the inlined strcpy+strcat */
+const char *BrBootConfigPath(void);             /* 0x10B72F48, for tests */
+
 void    BrBootFrontier_10032530(void);          /* state 0 */
 void    BrBootFrontier_1006C290(int32_t set);   /* sfx bank select: 0=menu */
 void    BrBootFrontier_10058AF0(void);

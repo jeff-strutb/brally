@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 enum {
+    F_10007F10, F_10063860, F_1006D1A0, F_10007F40, F_10063060, F_10009C00,
     F_10032530, F_1006C290, F_10058AF0,
     F_10063970, F_1006C990, F_100628B0,
     F_1006C460, F_10056260, F_1006E280, F_SETMODETAIL,
@@ -15,6 +16,12 @@ enum {
 };
 
 static const char *const s_apszName[F_COUNT] = {
+    "0x10007F10 RallyMain init",
+    "0x10063860 RallyMain init",
+    "0x1006D1A0 RallyMain init",
+    "0x10007F40 RallyMain cmdline",
+    "0x10063060 config load",
+    "0x10009C00 RallyMain pre-loop",
     "0x10032530 state0 init",
     "0x1006C290 sfx bank select",
     "0x10058AF0 state0 init",
@@ -67,6 +74,37 @@ void BrBootFrontierReport(void)
 
 /* ---- the entries -------------------------------------------------- */
 
+void BrBootFrontier_10007F10(void) { ++s_aHits[F_10007F10]; }
+void BrBootFrontier_10063860(void) { ++s_aHits[F_10063860]; }
+void BrBootFrontier_1006D1A0(void) { ++s_aHits[F_1006D1A0]; }
+void BrBootFrontier_10063060(void) { ++s_aHits[F_10063060]; }
+void BrBootFrontier_10009C00(void) { ++s_aHits[F_10009C00]; }
+
+void BrBootFrontier_10007F40(const char *pszCmdLine)
+{
+    (void)pszCmdLine;
+    ++s_aHits[F_10007F40];
+}
+
+/* 0x1001CCB5..0x1001CD0D. The two inlined string ops, recognised as strcpy
+ * then strcat rather than transcribed as `repne scasb` / `rep movsd`. The
+ * SOURCE at 0x10B73540 is a directory this port does not own yet, so the
+ * result is the suffix alone until it does -- and that is visible in
+ * BrBootConfigPath() rather than hidden. */
+static char s_szConfigPath[512];
+
+void BrBootBuildConfigPath(void)
+{
+    size_t n = 0;
+    s_szConfigPath[0] = 0;
+    while (n + 1 < sizeof s_szConfigPath && "BossRally.cfg"[n] != 0) {
+        s_szConfigPath[n] = "BossRally.cfg"[n];
+        n++;
+    }
+    s_szConfigPath[n] = 0;
+}
+
+const char *BrBootConfigPath(void) { return s_szConfigPath; }
 void BrBootFrontier_10032530(void) { ++s_aHits[F_10032530]; }
 void BrBootFrontier_10058AF0(void) { ++s_aHits[F_10058AF0]; }
 void BrBootFrontier_100628B0(void) { ++s_aHits[F_100628B0]; }

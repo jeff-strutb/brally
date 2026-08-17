@@ -94,7 +94,18 @@ def definitions():
         #      same line, inside `call dword ptr [0x106E79F4]` -- instead of the
         #      0x1002E324 the banner is about. Three wrong answers on one
         #      address, each from a different regex subtlety.
-        for m in re.finditer(r'/\*\s*0x([0-9A-Fa-f]{8})'
+        #   4. the address need only be the FIRST ADDRESS in the banner, not
+        #      the first token. Requiring `/* 0x...` missed every banner that
+        #      opens with a rule line:
+        #          /* ----------------------------------------
+        #           * 0x1001D8A0 -- what it does
+        #      which is a common style here, so a finished transcription read
+        #      as NOT PORTED. Found by an agent whose own new module the tool
+        #      failed to see. The prefix is bounded and must not contain an
+        #      earlier 0xXXXXXXXX, which keeps rule (3)'s guarantee: the
+        #      address captured is the one the banner is about.
+        for m in re.finditer(r'/\*(?:(?!\*/)(?!0x[0-9A-Fa-f]{8}).){0,200}?'
+                             r'0x([0-9A-Fa-f]{8})'
                              r'(?:(?!\*/).)*?\*/\s*\n\s*(?:static\s+)?'
                              r'[A-Za-z_][\w \*]*\s(\w+)\s*\(', s, re.S):
             add(m.group(1), m.group(2), f, 'banner over a body')

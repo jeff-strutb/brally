@@ -151,6 +151,75 @@ int32_t BrAppStateRun(void);        /* 0x1001CDB0 */
 int32_t BrAppStateLoading(void);    /* 0x1001CDD0 */
 int32_t BrAppStateSetMode(void);    /* 0x1001CE20 */
 
+/* ------------------------------------------------------------------ *
+ * 0x1001CC00 -- RallyMain itself.
+ *
+ * THIS WAS MISSING WHILE THIS HEADER CLAIMED THE ENTRY POINT WAS DONE. The
+ * five state handlers and the frame tick were transcribed and the 324-byte
+ * function that drives them was not; a brief written off this header told an
+ * agent RallyMain was "now transcribed in br_boot.c", and the agent checked
+ * and found it was not. Recorded because the failure is the same one this
+ * project keeps making in the other direction -- asserting the state of the
+ * tree instead of querying it.
+ *
+ * The sequence, from the listing:
+ *
+ *   [0x105CCBC0] = 0                        the exit code
+ *   CoInitialize(NULL); hr < 0  -> uninit   (ole32, and it gates everything)
+ *   stash the four args at 0x105BC730..73C
+ *   BrDxDetect(&ver, &platform)             0x1001D8A0
+ *   ver < 0x600 (UNSIGNED) -> MessageBox(NULL, str(0x128), str(0x126),
+ *                                        MB_ICONHAND); return 0
+ *   0x10007E80() == 0      -> return 0      the start gate
+ *   0x10007F10(); 0x10063860(); 0x1006D1A0()
+ *   0x10007F40(cmdline)                     arg3
+ *   strcpy(0x10B72F48, 0x10B73540); strcat(..., "BossRally.cfg")
+ *   0x10063060(this = 0x10B71290, path)     __thiscall, the config load
+ *   0x10019670() == 0      -> uninit        create the window
+ *   0x10009C00()
+ *   0x10056260() == 0      -> uninit
+ *   0x10019730()                            the main loop
+ *   uninit: CoUninitialize(); return [0x105CCBC0]
+ *
+ * The two string operations are MSVC's inlined strcpy/strcat -- `repne scasb`
+ * to find the length, then `rep movsd` + `rep movsb`. They are recognised as
+ * the idiom rather than transcribed instruction by instruction.
+ *
+ * The version compare is `jae`, i.e. UNSIGNED, and that is load-bearing: the
+ * NT 3.x arm of BrDxDetect returns WITHOUT writing the version, and RallyMain
+ * never initialises the slot, so it can hold anything including a value with
+ * bit 31 set. Unsigned starts the game there; signed would not.
+ * ------------------------------------------------------------------ */
+
+/* The platform calls RallyMain makes directly. Required, never defaulted: a
+ * caller that supplies none must not receive a plausible boot. */
+typedef struct BrRallyMainOps {
+    int32_t (*pfnCoInitialize)(void *pUser);      /* < 0 aborts */
+    void    (*pfnCoUninitialize)(void *pUser);
+    void    (*pfnMessageBox)(void *pUser, int32_t idText, int32_t idCaption);
+    int32_t (*pfnDxVersion)(void *pUser);         /* 0x1001D8A0's first out */
+    int32_t (*pfnStartGate)(void *pUser);         /* 0x10007E80 */
+    int32_t (*pfnCreateWindow)(void *pUser);      /* 0x10019670 */
+    int32_t (*pfnPreLoopGate)(void *pUser);       /* 0x10056260 */
+    void    (*pfnRunLoop)(void *pUser);           /* 0x10019730 */
+    void     *pUser;
+} BrRallyMainOps;
+
+/* The DirectX version RallyMain demands. 0x600 == DirectX 6.0, written by
+ * BrDxDetect only after the primary surface answers QueryInterface for
+ * IID_IDirectDrawSurface4 -- the interface DX6 added. There is no 0x400;
+ * DirectX 4 never shipped. */
+#define BR_APP_MIN_DXVERSION  0x600
+
+/* String ids for the refusal box, from 0x1001CC65 / 0x1001CC73. */
+#define BR_APP_STR_DX_CAPTION 0x126
+#define BR_APP_STR_DX_TEXT    0x128
+
+int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps);
+
+/* The four values RallyMain stashed, for the window creation and ShowWindow. */
+const BrBootArgs *BrAppArgs(void);
+
 /* Reset every global this module owns to its load-time value, so a test can
  * run the state machine more than once. Not in the original -- the original
  * gets fresh .data from the loader. */

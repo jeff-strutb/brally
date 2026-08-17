@@ -893,7 +893,29 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
     const uint32_t *pRec;
     uint32_t        lo, hi;
 
-    if (alpha < 0.1f)             /* 0x1008F414 */
+    /* NEGATED, and that is the whole point -- found by the equivalence audit.
+     *
+     *   1002AF14  fcomp dword ptr [0x1008F414]   ; 0.1f
+     *   1002AF1A  fnstsw ax
+     *   1002AF1C  test  ah, 1                    ; C0
+     *   1002AF1F  jne   0x1002B120               ; -> ret
+     *
+     * `fcomp` sets C0 for LESS-THAN *and* for UNORDERED, so the original
+     * returns on NaN and emits nothing. `alpha < 0.1f` is FALSE for NaN, so
+     * the port fell through and emitted all ten display-list commands --
+     * including a G_SETPRIMCOLOR whose alpha byte came from __ftol(NaN).
+     *
+     * NaN is reachable here: `over` is a duration and a zero `over` yields an
+     * infinity that propagates into alpha (see slice2_16.h).
+     *
+     * This idiom was already understood in this very file -- BrFadeSetTarget
+     * below uses `!(to < pSt->value)` for exactly this reason. It simply was
+     * not applied here.
+     *
+     * The SECOND compare needs no negation: `test ah,0x41 / jne` fires only
+     * when C0 and C3 are both clear, i.e. strictly greater AND ordered, and
+     * `alpha > 0.7f` is already false for NaN. */
+    if (!(alpha >= 0.1f))         /* 0x1008F414 */
         return;
     if (alpha > 0.7f)             /* 0x1008F418; the original overwrites the
                                    * incoming argument slot */

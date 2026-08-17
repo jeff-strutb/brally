@@ -358,7 +358,24 @@ void BrKeyCacheReset(BrKeyCache *pCache);
  * only bytes 0..2 to 'P','O','D' -- the fourth byte of the magic is never
  * assigned, so it is whatever was left on the stack. Retail archives happen
  * to carry 0 there. This port writes 0 explicitly. */
-#define BR_POD_WRITER_MAX 1024      /* 0x13000 dwords zeroed / 76 bytes */
+/* 4096, NOT 1024. The old value read `0x13000` as a BYTE count; `rep stosd`
+ * counts DWORDS.
+ *
+ *   100089DD  mov ecx, 0x13000
+ *   100089E4  mov edi, 0x1022B358
+ *   100089EC  rep stosd            ; 0x13000 DWORDS = 0x4C000 bytes
+ *
+ * 0x4C000 / 76 = 4096. The image layout confirms it independently:
+ * 0x1022B358 + 0x4C000 = 0x10277358, which is exactly the cEntries global the
+ * very next instruction writes. The buffer ends where the count begins, so no
+ * other reading fits.
+ *
+ * This was not latent. BrPodWriteAdd carries a bound the ORIGINAL DOES NOT
+ * HAVE, so the undersized constant turned into silent truncation of any
+ * archive past 1024 members -- a sizing error converted into quiet data loss
+ * by a defensive guard. Found by the equivalence audit; untestable by
+ * construction, since nothing in this tree writes an archive that large. */
+#define BR_POD_WRITER_MAX 4096      /* 0x13000 DWORDS / 76 bytes per entry */
 #define BR_POD_WRITER_MAGIC_EXTRA 0x1F4
 
 typedef struct BrPodWriteEntry {
