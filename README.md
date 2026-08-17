@@ -83,7 +83,7 @@ builds function-for-function.
 
 ## Status
 
-**~34% of the game is decompiled.** That figure has a stated denominator so it
+**~42% of the game is transcribed; ~32% is transcribed and verified.** That figure has a stated denominator so it
 can be checked, which the three earlier figures in this file's history did not:
 
 | | bytes |
@@ -92,8 +92,8 @@ can be checked, which the three earlier figures in this file's history did not:
 | Unknown / untriaged | 39,973 |
 | D3D-only | 13,343 |
 | **Game code to port** | **477,689** |
-| **Ported** | **163,299 — 34%** |
-| **Ported and audited-equivalent** | **~26%** (76% of a random sample) |
+| **Transcribed** | **201,514 — 42%** (910 of 1,955 functions) |
+| **Transcribed and audited-equivalent** | **~32%** (76% of a random sample; range 26–38%) |
 
 Excluded, deliberately: the statically linked C runtime (61,513 bytes — the
 host supplies it) and the D3D renderer boundary (19,797 bytes — replaced by
@@ -175,8 +175,29 @@ read-only passes that did not write the code:
 
 95% confidence interval on the strict rate: **61% – 90%**.
 
-So of ~34% transcribed, roughly **26% of the game is transcribed *and*
-verified**. Treat that as the real number.
+So of ~42% transcribed, roughly **32% of the game is transcribed *and*
+verified**. Treat that as the real number, and the 61–90% confidence interval
+on the sample means the honest range is **26–38%**.
+
+### Why this figure jumped from 34%, and how much of it is real
+
+Mostly it is not. The 34% was measured with a detector that has since been
+shown to miss ~85 definitions outright (its regexes required whitespace before
+the function name, so `BrCtrlCfg *BrCtrlCfgCtor(...)` never matched) and, after
+`port/src` was organised into folders, to miss half the tree as well (a
+non-recursive glob). Replaying that old detector against today's tree gives
+150,422 bytes — *lower* than the number it produced before the reorganisation,
+because the reorganisation degraded it further.
+
+The two figures are therefore not comparable, and the increase is
+predominantly **measurement correction rather than transcription**. Real work
+did land in the same window — the entry point, the message loop, the DirectX
+probe, the install directory, the settings loader, the window and message
+handling, the binary config reader — but that is on the order of 8 KB, not
+50 KB.
+
+Stated plainly because this project has now reported five different coverage
+figures, and every previous revision of them was optimistic.
 
 All three divergences were genuine and all three are now fixed:
 
