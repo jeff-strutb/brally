@@ -53,12 +53,21 @@ fi
 # a 0x230-byte header, sitting as plain files on the disc rather than inside any
 # archive. See port/include/br_track.h.
 #
-# Two are pulled: race.trk is the smallest (0.9 MB) and desert.trk is the one
-# with a large instance array, so between them the loader's paths are covered.
-# The .hnt sidecars are tiny and exercise the ASCII hint parser -- coast.hnt is
-# the only one on the disc with more than a first line.
+# ALL EIGHT distinct tracks are pulled. g_apszTrackFiles (0x100B80B8, see
+# port/src/gamedata/br_data.c) names exactly these eight files: the six
+# championship tracks desert/mountain/coast/mine/amazon/race, plus gamewin and
+# bonus. They span the loader's full range in every header field that drives a
+# code path -- gamewin.trk is the smallest and most nearly degenerate (166
+# faces, 225 vertices), desert.trk carries the largest instance array (804),
+# and coast.trk is the largest file (2.3 MB). Cutting this to a two-file subset
+# left six real game worlds unexercised, so it is not cut.
+#
+# The .hnt sidecars are ASCII and exercise the hint parser. Every track's is
+# pulled: amazon.hnt (9 hint records) and coast.hnt (4) are the substantive
+# ones, the rest are a single line, and the parser is meant to eat all of them.
 mkdir -p testdata/tracks
-for f in RACE.TRK DESERT.TRK DESERT.HNT COAST.HNT; do
+for f in AMAZON.TRK BONUS.TRK COAST.TRK DESERT.TRK GAMEWIN.TRK MINE.TRK MOUNTAIN.TRK RACE.TRK \
+         AMAZON.HNT COAST.HNT DESERT.HNT MINE.HNT MOUNTAIN.HNT RACE.HNT; do
   out="testdata/tracks/$(echo "$f" | tr 'A-Z' 'a-z')"
   if [ ! -f "$out" ]; then
     python3 tools/extract_iso.py --extract-path "$BIN" "TRACKS/$f" "$out"
