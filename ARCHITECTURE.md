@@ -97,6 +97,41 @@ not navigate" was investigated for weeks as a bug in the menu.
   the missing half of the architecture, and it is what would let a subsystem be
   described by what runs it rather than by what it calls.
 
+## The installer map — the missing half, now built
+
+`tools/hookmap.py` reads the relocation table the other way round: a relocation
+inside `.text` whose stored dword is itself a function is an **address-taking
+instruction**, so the function containing it is an installer. That yields the
+`F installs G` edge the call graph cannot produce.
+
+    functions installed as hooks : 419   of which ported: 229 (55%)
+    distinct installers          : 140   of which ported:  75 (54%)
+    installed from exactly one function : 357
+    installed from several              :  62
+
+The heaviest installers are the engine's wiring points — each is where one
+subsystem is assembled, and each is worth more than its byte count suggests
+because nothing below it runs until it does:
+
+    0x10051600  25 hooks   4109 B      0x100439B0  21 hooks   3746 B
+    0x100498A0  20 hooks   3993 B      0x1004CBA0  20 hooks   3671 B
+    0x1004BE00  19 hooks   3475 B      0x1004AEE0  17 hooks   3862 B
+    0x1001FD70  15 hooks    371 B  <-- 15 hooks in 371 bytes: a pure table
+    0x10029B50  13 hooks    285 B  <-- likewise
+
+This is the correct work order. A hook target ported without its installer does
+nothing; an installer ported without its targets installs NULLs. The pairs are
+the unit of useful progress, which is not something the byte-count coverage
+figure can express.
+
+**Limits, stated because the survey's first two attempts both produced
+confident numbers that described the tool rather than the game:** this finds
+where a constant address is materialised, so it misses a pointer copied from
+one slot to another, and it misses a pointer *computed* rather than taken —
+which is exactly what the undecoded 256-entry table at 0x100A9A58 is likely to
+be. `installs` is therefore a superset of "could install" and a subset of "does
+install at run time".
+
 ## How this should change the work
 
 The next analysis is not "port more functions". It is: for each stored function
