@@ -184,18 +184,35 @@ static void test_buffer_max(void)
     BrStrResFree();
 }
 
+/* ---- id 0 is never ASKED FOR, even when the module has one ----------- *
+ * The walk starts at 1 because 0x1186C48C is &table[1]; BrStrGet's own lower
+ * bound is the matching half of the same reservation. */
+static void test_id_zero_never_asked(void)
+{
+    arm();
+    add(0, "zero");
+    add(1, "one");
+    BrStrResLoad(&g_ops);
+
+    CHECK(g_apBrStrTable[0] == NULL);
+    CHECK((const char *)g_apBrStrTable[1] == g_pBrStrResBlob);
+    CHECK(g_brStrResUsed == 4);          /* "one\0" only -- "zero" never came */
+    BrStrResFree();
+}
+
 /* ---- the walk covers exactly ids 1..0x12E ---------------------------- */
 static void test_id_range(void)
 {
     arm();
     add(1, "lo");
     add(0x12E, "hi");
+    add(0x12F, "past");     /* one past the last id the original walks */
     BrStrResLoad(&g_ops);
 
     CHECK(g_apBrStrTable[1] != NULL);
     CHECK(g_apBrStrTable[0x12E] != NULL);
     CHECK(strcmp((const char *)g_apBrStrTable[0x12E], "hi") == 0);
-    /* 302 ids asked for, no more and no fewer. */
+    /* 302 ids asked for, no more and no fewer: "past" was never fetched. */
     CHECK(g_brStrResUsed == 3 + 3);
     BrStrResFree();
 }
@@ -309,6 +326,7 @@ int main(void)
     test_path_and_file_calls();
     test_packing();
     test_miss_does_not_advance();
+    test_id_zero_never_asked();
     test_buffer_max();
     test_id_range();
     test_ask_count();
