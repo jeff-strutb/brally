@@ -209,7 +209,7 @@ static void pass(const BrImgBlitOps *pOps, const BrDlVtx av[4],
                  int32_t screenW, int32_t screenH)
 {
     if (hooked(BR_IMGBLIT_CLIPWINDOW, pOps->pfnClipWindow != NULL)) {
-        pOps->pfnClipWindow(pOps->pUser, 0, 0, 256, 256);
+        pOps->pfnClipWindow(pOps->pUser, 0, 0, screenW, screenH);
     }
     if (hooked(BR_IMGBLIT_BUFFERCLEAR, pOps->pfnBufferClear != NULL)) {
         pOps->pfnBufferClear(pOps->pUser, 0u, 0u, BR_IMGBLIT_CLEAR_DEPTH);
