@@ -26,6 +26,7 @@ uint32_t g_cBrCollRespDegenerate;
 uint32_t g_cBrCollRespBroad;
 uint32_t g_cBrCollRespGathered;
 uint32_t g_cBrCollRespOverflow;
+uint32_t g_cBrCollRespResponded;
 
 void BrCollRespCountersReset(void)
 {
@@ -34,6 +35,7 @@ void BrCollRespCountersReset(void)
     g_cBrCollRespBroad      = 0u;
     g_cBrCollRespGathered   = 0u;
     g_cBrCollRespOverflow   = 0u;
+    g_cBrCollRespResponded  = 0u;
 }
 
 /* ==================================================================== */

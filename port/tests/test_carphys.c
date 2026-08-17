@@ -518,11 +518,11 @@ static void TestSettle(void)
     /* One metre, not three.  The OBB response (0x10067710) is now wired into
      * the substep loop, so a three-metre free-drop -- which sinks the body
      * ~0.9 m through the ground before the springs turn it -- is a hard
-     * collision the box bounces, not a settle.  One metre still falls, still
-     * fires the box on landing, and settles to the spring equilibrium; the box
-     * offset keeps it clear of the ground at rest so the force balance below
-     * is untouched.  See test_collresp.c TestFlatSettleExact for the fuller
-     * note. */
+     * collision the box bounces, not a settle.  From one metre the fall is
+     * gentle enough that the box (held clear of the ground at rest by its f1E8
+     * offset) never fires, so the car eases onto its springs and the force
+     * balance below is what the height measures.  See test_collresp.c
+     * TestFlatSettleExact for the fuller note. */
     p.x = 10.0f; p.y = 10.0f; p.z = 1.0f;
     BrCarPhysPlace(&car, &p, 0.0f);
 

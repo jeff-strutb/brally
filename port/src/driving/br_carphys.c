@@ -1116,13 +1116,19 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
         ext[0] = pCar->f1DC; ext[1] = pCar->f1E0;
         ext[2] = pCar->f1E4; ext[3] = pCar->f1E8;
         memset(&eff, 0, sizeof eff);
-        if (BrCrRespWalk(pBody->mass, &pBody->invInertia, &pBody->m, ext,
-                         &pCar->next, &pCar->save.pos,
-                         (const BrVec3 *)&pCar->save.quat, &eff, pMatBox)) {
-            /* 0x10067DA7: the walker rewrote `next`; the qDot + matrix rebuild
-             * are what make the rewrite survive the rest of the frame. */
-            BrRbQuatDerivative(&pCar->next);
-            BrRbBuildMatrix(&pBody->m, &pCar->next);
+        {
+            int nResp = BrCrRespWalk(pBody->mass, &pBody->invInertia, &pBody->m,
+                                     ext, &pCar->next, &pCar->save.pos,
+                                     (const BrVec3 *)&pCar->save.quat, &eff,
+                                     pMatBox);
+            g_cBrCollRespResponded += (uint32_t)nResp;
+            if (nResp != 0) {
+                /* 0x10067DA7: the walker rewrote `next`; the qDot + matrix
+                 * rebuild are what make the rewrite survive the rest of the
+                 * frame. */
+                BrRbQuatDerivative(&pCar->next);
+                BrRbBuildMatrix(&pBody->m, &pCar->next);
+            }
         }
 
         /* 0x10067DBA: t -= 1/120, stored back, then compared.
