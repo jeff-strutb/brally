@@ -566,7 +566,23 @@ static void TestFlatSettleExact(void)
     BrCarPhysHoleReset();
     BrCollRespCountersReset();
 
-    p.x = 10.0f; p.y = 10.0f; p.z = 3.0f;
+    /* Released from ONE metre, not three.  This changed when 0x10067710 landed
+     * in the substep loop (br_carphys.c): the OBB response is no longer a
+     * no-op hole.  A three-metre free-drop sinks the body ~0.9 m THROUGH the
+     * ground before the suspension turns it (measured with the response off),
+     * and the collision box -- correctly -- reads that as a hard impact and
+     * bounces the car; it does not settle in 401 frames.  That is the box
+     * doing its job, not a regression, and it is exercised elsewhere.
+     *
+     * THIS test measures the SUSPENSION FORCE BALANCE, which the box does not
+     * touch at rest: the f1E8 box offset lifts the classified box clear of the
+     * ground at the spring equilibrium, so at z=0.19 the response never fires.
+     * One metre reaches that equilibrium the way the game does -- the box fires
+     * 11 times on the way down, arrests the sink, and the car still settles to
+     * 0.190132 to six decimals.  So the drop is now a STRONGER check than the
+     * old three-metre one: it proves the wired response neither corrupts the
+     * force balance nor fails to let the car rest. */
+    p.x = 10.0f; p.y = 10.0f; p.z = 1.0f;
     BrCarPhysPlace(&car, &p, 0.0f);
     pS = BrCarPhysBodyState(&car.body);
 

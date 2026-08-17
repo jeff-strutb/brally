@@ -36,6 +36,7 @@
  *                   BrRbIntegrateState(next, save, 1/120)
  *                   BrRbBuildMatrix(&body->m, next)
  *                   BrMat4BuildScaledTransposed(&body->m, matBox, scale)
+ *                   matBox.m[3][2] -= f1E8            <- the box Z lift, LIVE
  *                   r = 0x10067710(body, matBox)
  *                   if (r) { BrRbQuatDerivative(next);
  *                            BrRbBuildMatrix(&body->m, next); }
@@ -45,12 +46,22 @@
  * non-zero only when it has rewritten `next`, and the qDot rebuild + matrix
  * rebuild are what make that rewrite stick for the rest of the frame.
  *
- * A DEAD ACCUMULATOR, kept out.  0x10067D84..0x10067D97 does
- * `[R-0x08] = [R-0x08] - f1E8` once per substep.  R-0x08 is never written
- * anywhere else in the function and never read anywhere else, so it starts as
- * whatever the caller left on the stack and nothing consumes it.  It is not
- * reproduced, and unlike the duplicated BrRbQuatDerivative in 0x1005A7A0 it
- * cannot be: there is no object for it to live in.
+ * THE BOX Z LIFT, and a CORRECTION.  0x10067D84..0x10067D97 does
+ * `matBox.m[3][2] -= f1E8` once per substep, on the box matrix just built and
+ * on the SAME matrix 0x10067710 is then handed.  An earlier revision of this
+ * header called it "a dead accumulator, kept out" -- `[R-0x08]` "never read".
+ * THAT WAS WRONG, and br_carphys.c reproduces the subtraction.  `[R-0x08]` is
+ * matBox.m[3][2]: at 0x10067D91 esp sits so [esp+0x54] is byte 0x38 of the
+ * box matrix built at [esp+0x1c], which is its Z-translation (0x1006DDD0
+ * writes bytes 0x30/0x34/0x38 there, m[3][3]=1 -- row-major, translation in
+ * row 3).  0x10067710 reads it: BrMat4TransformPoint (0x1006DA20) adds
+ * [matrix+0x38] into out.z, so the store shifts every classified triangle's
+ * box-space Z by -f1E8.  That lift is what clears the chassis box off a
+ * surface the car RESTS on: on flat ground at the suspension equilibrium the
+ * box no longer straddles the ground, the response does not fire, and the car
+ * holds its spring height (~0.19) instead of climbing to the box-floor height
+ * (~0.40).  Verified against the BRGlide bytes -- dropping the lift floats the
+ * car; keeping it does not.
  *
  * ======================================================================
  * 0x10066D70, 1782 B -- AND WHY br_carphys.h WAS WRONG ABOUT IT

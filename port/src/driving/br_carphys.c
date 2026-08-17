@@ -34,6 +34,7 @@
 
 #include "br_carphys.h"
 #include "br_collresp.h"
+#include "br_collrespsolve.h"
 
 /* ==================================================================== */
 /* The holes                                                             */
@@ -1022,6 +1023,9 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
     float           t     = BR_PHYS_DT;
     float           m22;
     BrCollRespFrame frame;
+    BrMat4         *pMatBox;
+    float           ext[4];
+    BrCrEffect      eff;
 
     /* 0x10067C4E..0x10067C88: the candidate list's head and its bump cursor
      * are cleared once per frame, before the gather. */
@@ -1074,20 +1078,51 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
          * quaternion derivative and the body matrix are rebuilt so the
          * rewrite survives the rest of the frame.  THAT conditional pair is
          * where a collision's rotational response reaches the integrator, and
-         * it is the reason this call cannot be modelled as a no-op hook: the
-         * hook has no way to report that it changed anything.  Both are
-         * inside BR_CP_HOLE_BOX until 0x10067710 lands. */
+         * it is the reason this call could never be a no-op hook: the hook had
+         * no way to report that it changed anything.  0x10067710 has now
+         * LANDED (BrCrRespWalk) and both are reproduced just below. */
         BrCollRespBuildBoxMatrix(&frame, &pBody->m,
                                  BR_CR_ONE / pCar->f1DC,
                                  BR_CR_ONE / pCar->f1E0,
                                  BR_CR_ONE / pCar->f1E4);
 
-        /* 0x10067D9B: 0x10067710(body, matBox).  STILL A HOLE -- it and its
-         * impulse solver 0x10065C80 are the RESPONSE, the consumer of the
-         * list the broad phase above has just filled. */
+        /* 0x10067D84..0x10067D97: matBox.m[3][2] -= f1E8, applied to the box
+         * matrix just built and on the SAME matrix the walker is handed.  It
+         * shifts every triangle's box-space Z down by f1E8, lifting the
+         * classified unit box clear of a surface the chassis rests ON: on flat
+         * ground at the suspension rest the box no longer straddles the ground,
+         * so 0x10067710 finds no contact and the spring balance stands (z ~=
+         * 0.19, not the box-floor height ~0.40).
+         *
+         * br_collresp.h once filed this subtraction as a DEAD ACCUMULATOR
+         * ("[R-0x08] never read").  IT IS LIVE.  [R-0x08] is matBox.m[3][2]
+         * (byte 0x38 of the box matrix at [esp+0x1c]), it is the box's Z
+         * translation, and the walker reads it: 0x1006DA20 BrMat4TransformPoint
+         * adds [matrix+0x38] into out.z.  Dropping it here is what floats the
+         * car -- verified against the BRGlide bytes. */
+        pMatBox = BrCollRespFrameMat(&frame);
+        pMatBox->m[3][2] -= pCar->f1E8;
+
+        /* 0x10067D9B: 0x10067710(body, matBox) -- THE RESPONSE, consumer of the
+         * list the broad phase filled.  The port expands the two original
+         * arguments (body, matBox) into the chassis sub-objects the walker
+         * reads, per br_carphys.h's LP64 rule: mass/invInertia/m off the body,
+         * ext = f1DC..f1E8, next/save.pos/save.quat the sibling states.  The
+         * impact record body+0x1EC..0x200 is modelled as a zeroed effect --
+         * threshold reads 0 so the damping/peak path stays off (as for a zeroed
+         * car record), and the colour/intensity the solver writes have no
+         * consumer yet.  DEVIATION stated rather than hidden. */
         ++g_aBrCarPhysHole[BR_CP_HOLE_BOX];
-        if (g_brCarPhysHooks.pfnCollide != NULL) {
-            g_brCarPhysHooks.pfnCollide(pCar);
+        ext[0] = pCar->f1DC; ext[1] = pCar->f1E0;
+        ext[2] = pCar->f1E4; ext[3] = pCar->f1E8;
+        memset(&eff, 0, sizeof eff);
+        if (BrCrRespWalk(pBody->mass, &pBody->invInertia, &pBody->m, ext,
+                         &pCar->next, &pCar->save.pos,
+                         (const BrVec3 *)&pCar->save.quat, &eff, pMatBox)) {
+            /* 0x10067DA7: the walker rewrote `next`; the qDot + matrix rebuild
+             * are what make the rewrite survive the rest of the frame. */
+            BrRbQuatDerivative(&pCar->next);
+            BrRbBuildMatrix(&pBody->m, &pCar->next);
         }
 
         /* 0x10067DBA: t -= 1/120, stored back, then compared.
