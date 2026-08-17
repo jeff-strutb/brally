@@ -235,22 +235,34 @@
  * is the same false positive br_uiboot.h names for its own prologue and the
  * limit ARCHITECTURE.md states for the tool.
  *
- * SEVEN OF THE TEN TARGETS ARE ALREADY IN THIS TREE, under their D3D
- * addresses, which is CONVENTIONS.md's "grep BOTH builds" trap in its purest
- * form -- none of the Glide numbers appears anywhere in port/:
+ * ALL TEN TARGETS ARE NOW IN THIS TREE.  Nine are under their D3D addresses,
+ * which is CONVENTIONS.md's "grep BOTH builds" trap in its purest form --
+ * none of those Glide numbers appears anywhere in port/:
  *
  *   slot  Glide       D3D         already ported as
  *   ----  ----------  ----------  ------------------------------------------
  *   +08   0x1003ED90  0x10045900  BrPhaseActivate_10045900 (slice3_31.c:262)
  *   +08   0x1003D140  0x10043BF0  BrSub10043BF0            (slice4_50.c:203)
  *   +08   0x1003E0E0  0x10044B90  BrMenuSub10044B90        (slice4_53.c:235)
- *   +08   0x1003E4A0  0x10044F50  -- NOT PORTED
- *   +08   0x1003E730  0x100451E0  -- NOT PORTED
- *   +08   0x1003AED0  0x10041970  -- NOT PORTED, not mentioned anywhere
+ *   +08   0x1003E4A0  0x10044F50  BrPhaseActivate_10044F50 (slice2_26.c:380)
+ *   +08   0x1003E730  0x100451E0  BrPhaseActivate_100451E0 (slice2_26.c:408)
+ *   +08   0x1003AED0  0x10041970  BrUiCreditsAction_1003AED0
+ *                                                    (menus/br_uicredits.c)
  *   +08   0x1003F610  0x10046170  BrPhaseActivate_10046170 (slice3_31.c:358)
  *   +0C   0x100407B0  0x10047360  BrSub10047360            (slice3_31.c:745)
  *   +0C   0x10040AF0  0x100474B0  BrPhaseTick_100474B0     (slice3_31.c:798)
  *   +0C   0x10040A20  0x100475F0  BrPhaseTick_100475F0     (slice3_31.c:805)
+ *
+ * CORRECTION, and it is the trap this header was WARNING about, sprung on
+ * this header: the three "-- NOT PORTED" entries that stood in those rows
+ * were wrong about two of the three.  Glide 0x1003E4A0 and 0x1003E730 were
+ * already transcribed in slice2_26.c under 0x10044F50 / 0x100451E0, and both
+ * pairs were re-checked instruction by instruction across the two binaries
+ * before this line was written.  Only 0x1003AED0 was genuinely absent, and it
+ * is now port/src/menus/br_uicredits.c.  The same audit clears two more
+ * addresses this header names: the cursor driver 0x10041D10 is slice3_32.c's
+ * BrPhaseTick_100488C0 (D3D 0x100488C0), and SetStatusText 0x1003AF30 is
+ * slice5_62.c's BrExt_100419D0 (D3D 0x100419D0).  See br_uicredits.h.
  *
  * DO NOT read 0x1003E0E0 or 0x10040A20 as D3D numbers: tools/whereis.py
  * reports both AMBIGUOUS (0x1003E0E0 is also a valid D3D address, whose Glide

@@ -89,8 +89,31 @@ static int run(const char *pszDll)
     size_t n, n2, cw;
     int    i, s, cls, cRenderable = 0;
 
-    if (BrFontLoad(&f, pszDll) != 0)
-        return 0;
+    /* ASSET ABSENT AND MODULE BROKEN ARE DIFFERENT ANSWERS, and this used to
+     * give the same one for both. `run()` returned 0 whenever BrFontLoad
+     * failed, main() turned that into SKIP, and regress.sh's gate counts
+     * skips separately from failures -- so A DEFECT IN THE FONT LOADER
+     * SILENCED ITS OWN SUITE and the run stayed green.
+     *
+     * A mutation sweep demonstrated it three ways: no-op the little-endian
+     * reader, read the wrong byte in it, or flip one return in the PE opener,
+     * and this file printed SKIP and exited 0.
+     *
+     * The file's presence is now decided HERE, by fopen, before the module is
+     * given a chance to have an opinion. Absent -> skip, which is honest.
+     * Present but the loader refused it -> FAILURE, which is the whole point
+     * of the suite. */
+    {
+        FILE *fh = fopen(pszDll, "rb");
+        if (fh == NULL)
+            return 0;                      /* genuinely absent: skip */
+        fclose(fh);
+    }
+    if (BrFontLoad(&f, pszDll) != 0) {
+        check(0, "BrFontLoad refused a file that EXISTS -- loader defect, "
+                 "not a missing asset");
+        return 1;                          /* counted as RUN, and failed */
+    }
     printf("  ---- %s (build %d) ----\n", pszDll, (int)f.build);
     check(1, "BrFontLoad");
 

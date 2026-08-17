@@ -52,6 +52,10 @@ int32_t g_brAppModeH    = 0;
  * came to know there are two banks -- this is the other call site, and it is
  * the one that runs first.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: the very first thing the game does after the window is up --
+ * one-off setup, including loading the front-end sound bank so the menus have
+ * something to play, and then it hands over to the video-mode stage. It runs
+ * once and is never returned to. */
 /* @implements 0x1001CD70 glide BrAppStateColdInit */
 int32_t BrAppStateColdInit(void)
 {
@@ -71,6 +75,9 @@ int32_t BrAppStateColdInit(void)
  * directly; the original could have written 2 into 0x105CCBBC from state 3
  * and did not.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: a one-frame hop from the loading screen into the running
+ * game. It does no work of its own; it exists only as a place for the loading
+ * stage to land before play begins. */
 /* @implements 0x1001CDA0 glide BrAppStateEnterRun */
 int32_t BrAppStateEnterRun(void)
 {
@@ -91,6 +98,9 @@ int32_t BrAppStateEnterRun(void)
  * deeper callee writing 0x105CCBBC, or by 0x100A98F8 going to zero and the
  * main loop exiting.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: one tick of the running game. Counts the frame, does the
+ * frame's work, and reports whether the game should keep going. This is the
+ * state the game sits in for as long as it is being played. */
 /* @implements 0x1001CDB0 glide BrAppStateRun */
 int32_t BrAppStateRun(void)
 {
@@ -129,6 +139,9 @@ int32_t BrAppStateRun(void)
  *
  * "loading.img" at 0x100A9924 is the loading graphic.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: puts the loading screen on the display and moves on. The
+ * picture is "loading.img"; the game shows it while the next stage sets
+ * itself up. */
 /* @implements 0x1001CDD0 glide BrAppStateLoading */
 int32_t BrAppStateLoading(void)
 {
@@ -175,6 +188,10 @@ int32_t BrAppStateLoading(void)
  * tail is NOT transcribed here; it is reached through a counted frontier
  * entry so that a run reports having hit it rather than silently skipping it.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: decides what resolution the game runs at and gets the display
+ * ready. On a first run there is no choice recorded, so it picks 640x480. If
+ * the player has changed the mode it tears the old display down and rebuilds
+ * -- which also resets the sound, because that goes with the device. */
 /* @implements 0x1001CE20 glide BrAppStateSetMode */
 int32_t BrAppStateSetMode(void)
 {
@@ -217,6 +234,11 @@ int32_t BrAppStateSetMode(void)
  * no reachable path writes an out-of-range value, so the check is unobservable
  * on every input the game can actually produce.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: runs whichever stage the game is currently in -- cold start,
+ * video setup, loading screen, or play -- once per turn of the main loop, and
+ * passes back that stage's "keep going" answer. The original jumps blindly
+ * through a table; this port refuses an unrecognised stage instead, which is a
+ * deliberate difference described below. */
 /* @implements 0x1001CF80 glide BrAppFrame */
 int32_t BrAppFrame(void)
 {
@@ -253,7 +275,15 @@ void BrAppResetForTest(void)
 
 const BrBootArgs *BrAppArgs(void) { return &s_args; }
 
-/* 0x1001CC00 -- RallyMain. See br_boot.h for the full listing. */
+/* WHAT IT DOES: this is where Boss Rally starts. The launcher hands control
+ * here, and it brings the game up in order -- check the machine has DirectX 6
+ * (refusing with a message box if not), make sure another copy is not already
+ * running, read the settings file next to the game, create the window, and
+ * hand over to the message loop. When the loop ends it tidies up and returns
+ * the game's exit code. Most of the function is failure paths: there are five
+ * different ways to give up and they clean up differently.
+ *
+ * 0x1001CC00 -- see br_boot.h for the instruction-level listing. */
 /* @implements 0x1001CC00 glide BrRallyMain */
 int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
 {
