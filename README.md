@@ -194,16 +194,15 @@ Earlier revisions of this section (and `tools/isported.py`, which is
 comment-shape heuristics and **not authoritative** — use `whereis.py`) claimed
 all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
-milestone 6 — the per-frame race loop and the OBB collision **response**
-(`0x10067710` and its impulse solver `0x10065C80`), which is why cars still
-fall through the world. Three of that unit's four functions are now ported and
-oracle-verified in `port/src/driving/br_collrespsolve.c`: the contact-plane
-resolver `0x10067470`, the impulse solver `0x10065C80`, and the impulse-free
-contact "kick" `0x10065980` — each transcribed against `tools/x87emu.py`
-executing its real opcode stream, pinned by golden vectors, and mutation-tested.
-What remains is the walker `0x10067710` that drives the whole unit per contact;
-until it lands, the three consumers are verified but not yet wired to a live
-race.
+milestone 6 — the per-frame race loop and the OBB collision **response**, the
+reason cars fall through the world. **That whole unit is now transcribed end to
+end** in `port/src/driving/br_collrespsolve.c`, all four functions oracle-
+verified against `tools/x87emu.py` executing their real opcode streams, pinned
+by golden vectors and mutation-tested: the contact-plane resolver `0x10067470`,
+the impulse solver `0x10065C80`, the impulse-free contact "kick" `0x10065980`,
+and the walker `0x10067710` that drives them per contact. The remaining gap to a
+live race is the per-frame *caller* — the substep loop `0x10067D30` that runs the
+walker each frame — not the response itself.
 
 ### How to read the other numbers in this file
 
@@ -328,12 +327,13 @@ the runtime.
   section above). `RallyMain`, the main loop, window, wndproc and DX detect are
   transcribed and test-green; three init callees remain on the counted
   frontier. The gap that stops a real race is milestone 6, below, not startup.
-- **Cars fall through the world.** The collision *broad phase* is ported, and the
-  *response* is now half-ported: its impulse solver `0x10065C80` is transcribed
-  and oracle-verified, but the walker `0x10067710` that feeds it real contacts is
-  not, so nothing yet drives the solver in a live race. A headless race still
-  shows z descending monotonically, with the response entered as a counted no-op
-  14,400 times, until the walker lands.
+- **Cars fall through the world — but the response is now fully transcribed.** The
+  collision *broad phase* and the whole *response* unit (`0x10067710` and its three
+  callees) are ported and oracle-verified. What is not yet ported is the per-frame
+  *caller*, the substep loop `0x10067D30` that runs the walker each frame; until
+  that lands, nothing drives the verified response in a live race, so a headless
+  race still shows z descending monotonically (the response entered as a counted
+  no-op 14,400 times).
 - **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
   ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
   draws a race.
