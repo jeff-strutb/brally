@@ -84,9 +84,7 @@ not navigate" was investigated for weeks as a bug in the menu.
 
 ## What is still not understood
 
-- **39,973 bytes** inside `BRGlide.dll` classed `unknown` by `crossdiff.py` —
-  neither paired with the D3D build nor identified as CRT. Unclassified, not
-  merely unported.
+- ~~39,973 bytes classed `unknown`~~ — **characterised, see below.**
 - **13,343 bytes** `d3d_only`, reachable only from renderer entry points.
 - ~~The 256-entry table at 0x100A9A58~~ — **decoded, see below.**
 - `Boot.exe` (1,453 functions) and `BossRally.exe` (215) are identified from
@@ -152,6 +150,43 @@ The high opcodes (`0xB1`–`0xFC`) are the N64 F3DEX/RDP command set; the low
 ones (`0x01`–`0x06`) are the F3DEX matrix and display-list commands. A sibling
 analysis of the N64 ROM confirms the PC build handles a subset of stock F3DEX
 and repurposes `0xE1`, which the N64 never emits.
+
+## The `unknown` bucket — 138 functions, 39,973 bytes
+
+First, a naming correction that matters: `unknown` in `config/shared.csv` means
+**crossdiff could not pair it with a Glide counterpart**. It does not mean
+"unidentified", and it does not mean "unported" — six of the 138 are already
+transcribed, including `0x1004D640`, one of the sixteen screen builders. The
+class name invited exactly the wrong reading and this document previously took
+it.
+
+They are also **D3D addresses**, so `config/survey.csv` (built from the Glide
+image) cannot cross-reference them at all. 132 of 138 simply do not appear in
+it. That is a property of the two artifacts, not a finding about the code.
+
+What they actually are, from the D3D image:
+
+    138 functions        39,973 bytes    11 B .. 3,111 B, median 121 B
+      already ported        6             2,149 bytes
+      not ported          132            37,824 bytes
+
+      no direct caller anywhere in BRD3D    51    23,187 bytes
+        ...but the address IS taken         44
+        ...neither called nor taken          7
+
+The 51 with no caller are the interesting group and they are more than half the
+bytes. 44 of them have their address stored somewhere, so they are dispatched
+through — consistent with the engine-wide pattern. The largest are 1,000–1,200
+byte functions that reference **no strings at all** and open by reading globals
+in the `0x104Bxxxx`/`0x104Cxxxx` range, several in exact-size twin pairs
+(`0x100228F0` and `0x100231D0` are both 1,223 bytes). That shape — long, string-
+free, globals-driven, duplicated per variant — is what a specialised inner loop
+looks like, and it is why they have no Glide twin: the Glide build reaches the
+hardware through `glide2x.dll` instead.
+
+**7 functions are neither called nor pointer-taken.** Genuinely unreferenced in
+this image, or reached only by a computed target. That is the residue, and it
+is 7 functions rather than 138.
 
 ## How this should change the work
 
