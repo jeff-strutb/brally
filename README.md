@@ -168,28 +168,36 @@ figure in this file used the wrong denominator.
 Maps: `config/functions_boot.csv`, `functions_bossrally.csv`,
 `functions_brally.csv`, `functions_glide.csv`.
 
-### The entry point is not ported
+### The entry point IS ported — this section was stale (corrected 2026-08-17)
 
 `RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point —
-Glide `0x1001CC00`, 324 bytes. Its five-state machine is now transcribed
-(`port/src/br_boot.c`, `0 → 4 → 3 → 1 → 2`). **Every one of its eleven callees
-is still absent**, including `0x10019730` (205 B, the main loop), `0x10019670`
-(187 B, window creation — which names the wndproc at `0x100194C0`, where all
-input arrives), and `0x1001D8A0` (924 B, the argument parse everything
-downstream depends on).
+Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
+(`port/src/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
+**Verified by `@implements` bodies plus passing suites, not by grep:**
 
-An earlier revision of this section said nine of eleven were absent and two
-were ported. Both "ported" entries were **prose mentions of the address inside
-a comment**, found by a `grep -rl` that cannot tell a mention from a
-definition. `tools/isported.py` answers this properly and reports all eleven
-absent.
+| callee | what | where | test |
+|---|---|---|---|
+| `0x10019730` | the main loop | `startup/br_mainloop.c` | `test_br_mainloop` ✅ |
+| `0x10019670` | window creation | `startup/br_window.c` | `test_br_window` ✅ |
+| `0x100194C0` | the wndproc (input) | `controls/br_input.c` | `test_br_input` ✅ |
+| `0x1001D8A0` | **`BrDxDetect`** — DirectX version detect, **not** an argument parser (it never touches the command line) | `startup/br_dxver.c` | `test_br_dxver` ✅ |
+| `0x10007E80` | start gate | `startup/br_appstart.c` | ✅ |
+| `0x10063860` | install directory | `settings/br_basedir.c` | ✅ |
+| `0x1006D1A0` | string resources | `gamedata/br_strres.c` | ✅ |
+| `0x10063060` | config load | `settings/br_cfgfile.c` | ✅ |
+| `0x10056260` | pre-loop gate | `startup/br_uiboot.c` | ✅ |
 
-`port/host/brally.c` has been standing in for that startup — choosing a
-builder, constructing a phase, inventing the wiring — while the original's
-actual initialisation sat unread. Every "nothing builds the root menu" and
-"transitions land on an empty phase" note elsewhere in this file traces back to
-this single gap. Porting `RallyMain` and its chain is the correct root of the
-call graph and the next work.
+Still on the counted frontier (`br_bootfrontier.c`), not stood in for:
+`0x10007F10`, `0x10007F40`, `0x10009C00` (DirectPlay init).
+
+Earlier revisions of this section (and `tools/isported.py`, which is
+comment-shape heuristics and **not authoritative** — use `whereis.py`) claimed
+all eleven callees absent. They were wrong: nine of twelve are ported and
+green. `RallyMain` is therefore **not** the frontier. The real next gate is
+milestone 6 — the per-frame race loop and the OBB collision **response**
+(`0x10067710` and its impulse solver `0x10065C80`), which is why cars still
+fall through the world. See `port/src/driving/br_collrespsolve.c` for the first
+of that unit's four functions.
 
 ### How to read the other numbers in this file
 
@@ -310,9 +318,10 @@ tuned to look right.
 **There is no game.** The list below is not a set of loose ends; it is most of
 the runtime.
 
-- **The entry point is not ported.** `RallyMain` and nine of its eleven callees
-  are absent — see above. There is no real startup, no real main loop, and the
-  host fabricates both.
+- **The entry point IS ported** (this list was stale — see the corrected
+  section above). `RallyMain`, the main loop, window, wndproc and DX detect are
+  transcribed and test-green; three init callees remain on the counted
+  frontier. The gap that stops a real race is milestone 6, below, not startup.
 - **Cars fall through the world.** The collision *broad phase* is ported and the
   *response* (`0x10067710` + `0x10065C80`) is not, so contacts are detected and
   never resolved. A headless race shows z descending monotonically for the whole
