@@ -11,18 +11,27 @@
 #include <string.h>
 
 #include "br_collrespsolve.h"
+#include "br_collresp.h"   /* BrCollPlane/Node, g_pBrCollRespList (walker test) */
+#include "slice1_09.h"
+#include "slice3_42.h"
+#include "slice2_11.h"
 
 static int g_fail;
 
-/* slice3_44.o bundles rigid-body helpers this suite never calls; their
- * cross-module references (four symbols) must still resolve to link the matrix
- * helpers the solver drives.  Inert stand-ins, exactly as test_slice3_44.c
- * does -- TEST ONLY, not the port. */
+/* slice3_44.o / br_collresp.o bundle helpers this suite never calls; their
+ * cross-module references must still resolve.  Inert stand-ins -- TEST ONLY. */
 void BrStub8B80_1p(const void *p0) { (void)p0; }
 void BrGbiCall10075330(void *pv) { (void)pv; }
-void BrVec4Normalise(BrVec4 *pV) { (void)pV; }
 void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 { (void)pM; (void)pV; pOut->x = pOut->y = pOut->z = 0.0f; }
+/* br_collresp.o refs not on the BrCrTest path the walker uses */
+BrCollPlane *g_pBrCollGrid = 0;
+const uint16_t *g_pBrCollGridCount = 0;
+short BrCollGridCellAcquire(float x, float y) { (void)x; (void)y; return -1; }
+float BrPlaneEval(const BrVec3 *pN, float d, const BrVec3 *pP)
+{ (void)pN; (void)d; (void)pP; return 0.0f; }
+void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
+{ (void)pB; (void)pP; pOut->x = pOut->y = pOut->z = 0.0f; }
 
 #define CLOSE(a, b) do {                                                     \
     float _a = (a), _b = (b);                                               \
@@ -282,6 +291,110 @@ static void run_kick_cases(void)
     }
 }
 
+/* ---- 0x10067710 response walker --------------------------------------- *
+ * End-to-end goldens: the emulator drove the whole walker (loop, transform,
+ * BrCrTest, plane selection, BrCrPlaneResolve, BrCrImpulseSolve, and the
+ * push-out + quaternion rebuild) over a one-contact list.  These pin the C
+ * walker calling the real ported callees.  Body is mass 1000, identity
+ * orientation/box; each row varies velocity, inertia, extents and geometry. */
+struct WalkCase {
+    float vel[3], ang[3], invI[9], ext[4], tri[9];
+    float wantVel[3], wantAng[3];
+};
+static const struct WalkCase WALK_CASES[] = {
+{ {0.3f,-5,0.2f},{0.05f,0,0.05f},{1e-3f,0,0,0,1e-3f,0,0,0,1e-3f},{1,1,1,1},
+  {-1,0,0.3f,1,0,0.3f,0,0,-0.8f}, {0.6535f,-3.2325f,1.2605f},{-2.071f,-1.60217e-08f,0.757f} },
+{ {0.3f,-5,0.2f},{0.05f,0,0.05f},{1e-3f,0,0,0,1e-3f,0,0,0,1e-3f},{1,1,1,1},
+  {-1,-0.2f,0.3f,1,-0.1f,0.3f,0,0,-0.8f}, {-0.516727f,-1.3964f,-0.0700198f},{-1.61679f,-0.273353f,1.44344f} },
+{ {-2,-4,1.5f},{0.3f,-0.2f,0.1f},{8e-4f,1e-4f,0,1e-4f,1.2e-3f,0,0,0,9e-4f},{1.2f,0.8f,1.5f,0.5f},
+  {-1,-0.3f,0.3f,1,-0.3f,0.3f,0,0.6f,-0.7f}, {-2.3474f,-2.82101f,2.42729f},{0.192112f,-0.771049f,0.611593f} },
+{ {1,-6,-0.5f},{0.1f,0.2f,-0.1f},{1e-3f,0,0,0,1e-3f,0,0,0,1e-3f},{2,3,1,0.5f},
+  {-1.2f,0,0.2f,1.2f,0,0.2f,0,0,-0.9f}, {2.86f,-1.97f,1.36f},{-1.14f,0.2f,1.14f} },
+};
+
+static void run_walker_cases(void)
+{
+    static const BrMat4 IDENT = {{{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}}};
+    unsigned i;
+    for (i = 0; i < sizeof WALK_CASES / sizeof WALK_CASES[0]; ++i) {
+        const struct WalkCase *c = &WALK_CASES[i];
+        BrVec3 v0 = {c->tri[0],c->tri[1],c->tri[2]};
+        BrVec3 v1 = {c->tri[3],c->tri[4],c->tri[5]};
+        BrVec3 v2 = {c->tri[6],c->tri[7],c->tri[8]};
+        BrVec3 e1 = {v1.x-v0.x, v1.y-v0.y, v1.z-v0.z};
+        BrVec3 e2 = {v2.x-v0.x, v2.y-v0.y, v2.z-v0.z};
+        BrVec3 pn = {e1.y*e2.z-e1.z*e2.y, e1.z*e2.x-e1.x*e2.z, e1.x*e2.y-e1.y*e2.x};
+        float ln = sqrtf(pn.x*pn.x + pn.y*pn.y + pn.z*pn.z);
+        BrCollPlane plane;
+        BrCollRespNode node;
+        BrMat3 invI;
+        BrMat4 orient = IDENT, matBox = IDENT;
+        BrRbState next;
+        BrVec3 savePos = {0,0,0}, quatSrc = {0,0,0};
+        BrCrEffect eff;
+        int r;
+
+        pn.x/=ln; pn.y/=ln; pn.z/=ln;
+        memset(&plane, 0, sizeof plane);
+        plane.nx = pn.x; plane.ny = pn.y; plane.nz = pn.z;
+        plane.pV0 = &v0; plane.pV1 = &v1; plane.pV2 = &v2;
+        node.pPlane = &plane; node.pNext = NULL;
+        g_pBrCollRespList = &node;
+        memcpy(invI.m, c->invI, sizeof invI.m);
+        memset(&next, 0, sizeof next);
+        next.vel.x = c->vel[0]; next.vel.y = c->vel[1]; next.vel.z = c->vel[2];
+        next.angVel.x = c->ang[0]; next.angVel.y = c->ang[1]; next.angVel.z = c->ang[2];
+        memset(&eff, 0, sizeof eff);
+
+        r = BrCrRespWalk(1000.0f, &invI, &orient, c->ext, &next,
+                         &savePos, &quatSrc, &eff, &matBox);
+        if (r != 1) { printf("  FAIL walk %u: ret=%d\n", i, r); ++g_fail; }
+        RCLOSE(next.vel.x, c->wantVel[0]);
+        RCLOSE(next.vel.y, c->wantVel[1]);
+        RCLOSE(next.vel.z, c->wantVel[2]);
+        RCLOSE(next.angVel.x, c->wantAng[0]);
+        RCLOSE(next.angVel.y, c->wantAng[1]);
+        RCLOSE(next.angVel.z, c->wantAng[2]);
+    }
+
+    /* post-update pin: non-zero position/quaternion pushes the body out and
+     * rebuilds the orientation (scenario 0 geometry). */
+    {
+        BrVec3 v0 = {-1,0,0.3f}, v1 = {1,0,0.3f}, v2 = {0,0,-0.8f};
+        BrCollPlane plane;
+        BrCollRespNode node;
+        BrMat3 invI = {{1e-3f,0,0, 0,1e-3f,0, 0,0,1e-3f}};
+        BrMat4 orient = {{{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}}};
+        BrMat4 matBox = {{{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}}};
+        float ext[4] = {1,1,1,1};
+        BrRbState next;
+        BrVec3 savePos = {0.2f,-0.1f,0.4f}, quatSrc = {0.9f,0.1f,0.2f};
+        BrCrEffect eff;
+
+        memset(&plane, 0, sizeof plane);
+        plane.ny = 1.0f; plane.pV0 = &v0; plane.pV1 = &v1; plane.pV2 = &v2;
+        node.pPlane = &plane; node.pNext = NULL; g_pBrCollRespList = &node;
+        memset(&next, 0, sizeof next);
+        next.vel.x = 0.3f; next.vel.y = -5.0f; next.vel.z = 0.2f;
+        next.angVel.x = 0.05f; next.angVel.z = 0.05f;
+        next.pos.x = 0.3f; next.pos.y = -0.2f; next.pos.z = 0.5f;
+        memset(&eff, 0, sizeof eff);
+
+        BrCrRespWalk(1000.0f, &invI, &orient, ext, &next,
+                     &savePos, &quatSrc, &eff, &matBox);
+        /* push-out along the plane normal (0,1,0): pos.y -0.2 -> -0.09 */
+        RCLOSE(next.pos.x, 0.3f);
+        RCLOSE(next.pos.y, -0.09f);
+        RCLOSE(next.pos.z, 0.5f);
+        /* quaternion restored from quatSrc, then matrix rebuilt from it */
+        RCLOSE(next.quat.f00, 0.9f);
+        RCLOSE(next.quat.f04, 0.1f);
+        RCLOSE(next.quat.f08, 0.2f);
+        RCLOSE(orient.m[0][0], 0.78f);
+        RCLOSE(orient.m[0][2], -0.36f);
+    }
+}
+
 int main(void)
 {
     unsigned i;
@@ -312,9 +425,10 @@ int main(void)
 
     run_solver_cases();
     run_kick_cases();
+    run_walker_cases();
 
     if (g_fail) { printf("br_collrespsolve: %d FAILURES\n", g_fail); return 1; }
-    printf("br_collrespsolve: all checks passed "
-           "(0x10067470 + 0x10065C80 + 0x10065980 vs x87emu golden vectors)\n");
+    printf("br_collrespsolve: all checks passed (0x10067470 + 0x10065C80 + "
+           "0x10065980 + 0x10067710 vs x87emu golden vectors)\n");
     return 0;
 }

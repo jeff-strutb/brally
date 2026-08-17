@@ -113,4 +113,24 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
                     int dampFlag, int spinFlag, BrCrEffect *pEffect);
 
+/* 0x10067710 -- the response walker (see the .c).  Walks the broad phase's
+ * candidate list g_pBrCollRespList and resolves each surviving contact.
+ *
+ * mass/pInvInertia/pOrient   the chassis body (pOrient is REBUILT on a hit).
+ * ext                        box half-extents body+0x1DC..0x1E4 plus the +0x1E8
+ *                            z bias (ext[3]); drives the contact bank.
+ * pNext                      the `next` rigid-body state; vel/angVel/pos/quat/qDot
+ *                            are read and WRITTEN.
+ * pSavePos                   the pre-substep position, for the push-out depth.
+ * pQuatSrc                   the quaternion restored into next before the rebuild.
+ * pEffect                    the impact record.
+ * pMatBox                    the world->box matrix the vertices are tested in.
+ *
+ * The solver's "no torque" gate is orient.m[2][2] (body+0xE4 aliases it).
+ * Returns the number of contacts that produced a response. */
+int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
+                 const float ext[4],
+                 BrRbState *pNext, const BrVec3 *pSavePos, const BrVec3 *pQuatSrc,
+                 BrCrEffect *pEffect, const BrMat4 *pMatBox);
+
 #endif /* BR_COLLRESPSOLVE_H */

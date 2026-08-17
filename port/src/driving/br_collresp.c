@@ -700,7 +700,7 @@ static int BrCrExact(const float aV[9], const BrVec3 *pN)
  * way does it fall through to the exact -- and much more expensive --
  * intersection test. */
 /* @implements 0x10066AA0 glide BrCrTest */
-static int BrCrTest(const float aV[9], const BrVec3 *pN)
+int BrCrTest(const float aV[9], const BrVec3 *pN)
 {
     int r = BrCollRespBoxClassify(aV);
 

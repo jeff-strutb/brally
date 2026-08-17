@@ -320,6 +320,11 @@ typedef struct BrCollRespNode {
 /* 0x11778198 -- the head 0x10067710 would walk. */
 extern BrCollRespNode *g_pBrCollRespList;
 
+/* 0x10066AA0 -- classify a transformed triangle against the unit box; the
+ * response walker re-runs this per listed contact.  Exported for that walker
+ * (0x10067710, br_collrespsolve.c). */
+int BrCrTest(const float aV[9], const BrVec3 *pN);
+
 /* 0x10067C4E..0x10067C8E: the head and the bump cursor, cleared once per
  * frame before the broad phase runs. */
 void BrCollRespListReset(void);

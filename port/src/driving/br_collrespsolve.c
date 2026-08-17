@@ -7,6 +7,8 @@
 #include <string.h>
 
 #include "br_collrespsolve.h"
+#include "br_collresp.h"   /* BrCrTest, BrCollRespNode/Plane, g_pBrCollRespList */
+#include "slice1_09.h"     /* BrMat4TransformPoint, BrVec3Normalise             */
 
 /* 0x117787F0..FC and 0x117781A0..A8. */
 BrCrPlaneState g_brCrPlane;
@@ -329,4 +331,112 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
     }
 
     return 1;
+}
+
+/* 0x10077B8C -- 1.1, the penetration push-out gain in the walker's position fix. */
+#define BR_CR_PUSHOUT 1.1f
+
+/* ------------------------------------------------------------------ *
+ * 0x10067710 -- the response walker: the top of the collision response.
+ *
+ * It walks the broad phase's candidate list (g_pBrCollRespList) and, for each
+ * contact that survives the exact test, resolves the impulse and pushes the
+ * body back out of the triangle.  This is the function that finally wires the
+ * whole unit together, so the previous three all run because this calls them.
+ *
+ * Per contact:
+ *   1. transform the record's three triangle vertices into the car's box space
+ *      (BrMat4TransformPoint) and form the face normal e2 x e1, exactly as the
+ *      broad phase did;
+ *   2. BrCrTest the transformed triangle against the unit box; skip if clear;
+ *   3. build the contact plane: normalise the face normal, take planeD =
+ *      dot(normal, v0), and choose a box-corner sign per axis --
+ *      sign[i] = +0.5 if planeD*normal[i] >= 0 else -0.5.  The shared normal
+ *      bank is then (ext.x*sx, ext.y*sy, ext.z*sz + ext.w), the box corner the
+ *      contact drives toward;
+ *   4. BrCrPlaneResolve, then BrCrImpulseSolve with that bank as the normal and
+ *      the plane's own normal as the approach direction.  The solver's tangent
+ *      flag is off when the body's "no-torque" gate (body+0xE4) exceeds 0.5;
+ *   5. if the solver acted, push the body out: subtract 1.1x the penetration
+ *      (measured from the saved position along the plane normal) from next.pos,
+ *      restore the quaternion, and rebuild qDot and the orientation matrix.
+ *
+ * The mode-2 / contact-kick branch is gated on the debug global 0x100A9360 == 4
+ * (it is 1 in the shipped build), so the retail path always takes the impulse
+ * solver; that branch is not reproduced here.  The four "trace" calls
+ * (0x10008D60) are a one-byte `ret` stub and are dropped.
+ *
+ * pOrient/pNext are REBUILT on a resolved contact.  Returns the number of
+ * contacts that produced a response.
+ * ------------------------------------------------------------------ */
+/* @implements 0x10067710 glide BrCrRespWalk */
+int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
+                 const float ext[4],
+                 BrRbState *pNext, const BrVec3 *pSavePos, const BrVec3 *pQuatSrc,
+                 BrCrEffect *pEffect, const BrMat4 *pMatBox)
+{
+    const BrCollRespNode *pNode;
+    int nResponded = 0;
+
+    for (pNode = g_pBrCollRespList; pNode != NULL; pNode = pNode->pNext) {
+        const BrCollPlane *pP = pNode->pPlane;
+        float  aV[9];
+        BrVec3 e1, e2, nrm, normal, sign, planeN;
+        float  planeD, d;
+        int    flag, r;
+
+        /* 1. transform the triangle into box space and form its face normal */
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[0], pMatBox, pP->pV0);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[3], pMatBox, pP->pV1);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[6], pMatBox, pP->pV2);
+        e1.x = aV[3] - aV[0]; e1.y = aV[4] - aV[1]; e1.z = aV[5] - aV[2];
+        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];
+        nrm.x = e2.z * e1.y - e2.y * e1.z;
+        nrm.y = e2.x * e1.z - e2.z * e1.x;
+        nrm.z = e2.y * e1.x - e2.x * e1.y;
+
+        /* 2. exact test */
+        if (BrCrTest(aV, &nrm) == 0)
+            continue;
+
+        /* 3. contact plane: normalise the face normal, plane offset, box sign */
+        normal = nrm;
+        BrVec3Normalise(&normal);
+        planeD = normal.x * aV[0] + normal.y * aV[1] + normal.z * aV[2];
+        sign.x = (planeD * normal.x >= 0.0f) ? 0.5f : -0.5f;
+        sign.y = (planeD * normal.y >= 0.0f) ? 0.5f : -0.5f;
+        sign.z = (planeD * normal.z >= 0.0f) ? 0.5f : -0.5f;
+
+        g_brCrPlane.normal.x = ext[0] * sign.x;
+        g_brCrPlane.normal.y = ext[1] * sign.y;
+        g_brCrPlane.normal.z = ext[2] * sign.z + ext[3];
+        g_brCrPlane.modeFC   = 0u;
+
+        /* 4. resolve + solve */
+        BrCrPlaneResolve(&normal, &normal, planeD, &sign, (const BrVec3 *)(void *)aV);
+        /* the "no torque" gate is body+0xE4, which IS orient.m[2][2]: when the
+         * car's own up axis still points up (> 0.5) the tangential term is off. */
+        flag = (pOrient->m[2][2] > 0.5f) ? 0 : 1;
+        planeN.x = pP->nx; planeN.y = pP->ny; planeN.z = pP->nz;
+        r = BrCrImpulseSolve(mass, pInvInertia, pOrient, &pNext->vel, &pNext->angVel,
+                             &g_brCrPlane.normal, &planeN, flag, 0.0f, pEffect);
+        if (r == 0)
+            continue;
+        ++nResponded;
+
+        /* 5. push the body out along the plane normal, then rebuild orientation */
+        d = ((pNext->pos.x - pSavePos->x) * planeN.x
+           + (pNext->pos.y - pSavePos->y) * planeN.y
+           + (pNext->pos.z - pSavePos->z) * planeN.z) * BR_CR_PUSHOUT;
+        pNext->pos.x -= d * planeN.x;
+        pNext->pos.y -= d * planeN.y;
+        pNext->pos.z -= d * planeN.z;
+        pNext->quat.f00 = pQuatSrc->x;
+        pNext->quat.f04 = pQuatSrc->y;
+        pNext->quat.f08 = pQuatSrc->z;
+        BrRbQuatDerivative(pNext);
+        BrRbBuildMatrix(pOrient, pNext);
+    }
+
+    return nResponded;
 }
