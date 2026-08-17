@@ -53,6 +53,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Note the pattern must be '**/*.c' with recursive=True: '**' matches zero or
 # more directories, so it covers the top-level files too and the flat glob
 # does not need to be kept alongside it.
+# recursive=True IS REQUIRED at every call site. Without it, `**` behaves
+# exactly like `*` -- so this pattern saw 61 of 124 modules, silently missing
+# every loose sliceN_MM.c at the top level as well as anything nested deeper.
+# A path glob that looks recursive and is not is the same class of failure as
+# the non-recursive glob it replaced: the tool answers confidently about a tree
+# it cannot see.
 SRC = 'port/src/**/*.c'
 HDR = 'port/include/**/*.h'
 
@@ -117,10 +123,60 @@ def definitions():
         #      failed to see. The prefix is bounded and must not contain an
         #      earlier 0xXXXXXXXX, which keeps rule (3)'s guarantee: the
         #      address captured is the one the banner is about.
-        for m in re.finditer(r'/\*(?:(?!\*/)(?!0x[0-9A-Fa-f]{8}).){0,200}?'
+        #   5. the character before the NAME may be `*`, not only whitespace.
+        #      All four definition patterns here ended `[\w \*]*\s(\w+)\s*\(`,
+        #      which cannot match this tree's dominant pointer style:
+        #          BrCtrlCfg *BrCtrlCfgCtor(BrCtrlCfg *pThis)
+        #      because there is no whitespace immediately before the name. So
+        #      `void BrCtrlCfgInit` was found and `BrCtrlCfg *BrCtrlCfgCtor`
+        #      three lines away was not -- and the --chain output then called
+        #      0x10062B00 and 0x10062E50 "NOT PORTED ... Clean target" while
+        #      tools/whereis.py found both in slice3_42.c. An agent sent to
+        #      port 0x10063060 was told two of its three callees were unported
+        #      work. `[\s\*]` fixes all four.
+        #      Validated against nine known answers, both directions:
+        #      0x10069A90/0x10069DE0 flip to PORTED (the bug above),
+        #      0x10069C90/0x10063860/0x1002E324/0x10063060 stay PORTED, and
+        #      0x10070610/0x10008D60/0x10056260 stay NOT PORTED -- the last of
+        #      those being the frontier stub that must never read as a port.
+        #      THE PREFIX MUST BE DECORATION ONLY. Allowing arbitrary text
+        #      between the opener and the address is what let a file-header
+        #      INDEX match: br_sfx.c begins with a list of a dozen addresses,
+        #      the regex matched whichever one sat closest to the closing */,
+        #      and attributed it to the first function after the header --
+        #      reporting 0x1006C290 as "PORTED as join3". A FALSE PORTED is the
+        #      dangerous direction; a pass would skip a function this tree does
+        #      not have.
+        #
+        #      A real banner puts its address on the first content line:
+        #          /* 0x10041300 -- what it does
+        #          /* --------------------------------
+        #           * 0x1001D8A0 -- what it does
+        #      so the prefix may contain only whitespace, '*', '-' and '='.
+        #      Prose before the address means it is not that address's banner.
+        for m in re.finditer(r'/\*[\s\*\-=]{0,120}?'
                              r'0x([0-9A-Fa-f]{8})'
                              r'(?:(?!\*/).)*?\*/\s*\n\s*(?:static\s+)?'
                              r'[A-Za-z_][\w \*]*[\s\*](\w+)\s*\(', s, re.S):
+            #   6. REJECT A TABLE OF CONTENTS. A comment listing SEVERAL
+            #      addresses is an INDEX, not a banner about whichever function
+            #      happens to follow it. br_sfx.c opens with exactly such a
+            #      list and the tool reported 0x1006C290 as "PORTED as join3"
+            #      -- join3 being merely the first function after the file
+            #      header. That is a FALSE PORTED, the dangerous direction: a
+            #      pass would skip a function this tree does not have.
+            #
+            #      A real banner is about ONE address. Two or more distinct
+            #      8-hex addresses in the same comment means index, so skip it;
+            #      that costs nothing, because a genuine banner never needs a
+            #      second address to identify its subject.
+            # A COUNT OF ADDRESSES IS NOT THE TEST, and trying it broke a
+            # correct case: rejecting any banner that mentions two addresses
+            # threw away br_gamestep.c's
+            #     /* 0x1002E324 -- `call dword ptr [0x106E79F4]` ...
+            # because a banner naturally names the global its function operates
+            # on. The real distinction is WHERE the address sits, not how many
+            # there are, and the prefix rule above already draws it.
             add(m.group(1), m.group(2), f, 'banner over a body')
         for m in re.finditer(r'^[A-Za-z_][\w \*]*[\s\*](\w*?([0-9A-Fa-f]{8})\w*)\s*'
                              r'\([^;]*\)\s*\n?\s*\{', s, re.M):
