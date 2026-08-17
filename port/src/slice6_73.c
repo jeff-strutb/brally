@@ -1085,7 +1085,36 @@ void BrSub1003E680(void)
         for (i = 0; i < 0x46; ++i) { g_br73.a220B20[i] = 0; }
     }
 
+    /* 0x10AA27E0 LIES INSIDE THE BLOCK JUST ZEROED, and this port modelled the
+     * two as disjoint objects so the store was lost. Found by the equivalence
+     * audit; verified here against the listing:
+     *
+     *   1003E758  mov ecx, 0x53              83 dwords
+     *   1003E75F  mov edi, 0x10AA26F0
+     *   1003E76A  rep stosd                  zeroes 0x10AA26F0 .. 0x10AA283C
+     *   1003E784  mov word ptr [0x10AA27E0], 0x102
+     *
+     *   0x10AA27E0 - 0x10AA26F0 = 0xF0 = dword index 60, and 60 < 83.
+     *
+     * So the original leaves 0x00000102 at aAA26F0[60] and this port left 0.
+     * The word is the LOW half of that dword (little-endian), so the upper 16
+     * bits stay as the fill left them -- zero.
+     *
+     * What makes the miss notable rather than merely unlucky: the very next
+     * instruction does the identical thing to 0x10220B20 and THAT one is
+     * preserved below, comment and all. The idiom was understood; one of the
+     * two instances was modelled as a separate field and the aliasing dropped
+     * out with it.
+     *
+     * wAA27E0 is kept as the named view because 405 lines of this header
+     * describe it that way and other code reads it; both are written, which is
+     * what the single store in the original actually means for two views of
+     * one word. */
     g_br73.wAA27E0 = 0x0102;
+    if (g_br73.aAA26F0 != NULL) {
+        g_br73.aAA26F0[BR73_AA27E0_INDEX] =
+            (g_br73.aAA26F0[BR73_AA27E0_INDEX] & ~0xFFFF) | 0x0102;
+    }
     if (g_br73.a220B20 != NULL) {
         g_br73.a220B20[0] = -1;     /* re-dirties the block just cleared */
     }

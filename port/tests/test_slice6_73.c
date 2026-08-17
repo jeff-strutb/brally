@@ -909,7 +909,26 @@ static void TestReset(void)
     CHECK(strcmp(szA, "1") == 0);
     CHECK(strcmp(szB, "1") == 0);
 
-    for (i = 0; i < 0x53; ++i) { CHECK(a26F0[i] == 0 && a9DBD8[i] == 0); }
+    /* THIS LOOP USED TO ASSERT ALL 83 ENTRIES ARE ZERO, and in doing so it
+     * enshrined a real divergence: the equivalence audit found that
+     * 0x10AA27E0 lies INSIDE this block at dword index 60
+     * ((0x10AA27E0 - 0x10AA26F0) / 4 == 60), so the original's
+     * `mov word ptr [0x10AA27E0], 0x102` at 0x1003E784 re-dirties the block it
+     * just cleared -- exactly as the 0x10220B20 case two lines below does, and
+     * that one was always asserted correctly.
+     *
+     * A test that asserts the wrong answer is worse than no test: fixing the
+     * code broke this, which is how it was found, but for as long as it stood
+     * it certified the bug as intended behaviour. */
+    for (i = 0; i < 0x53; ++i) {
+        CHECK(a9DBD8[i] == 0);
+        if (i == BR73_AA27E0_INDEX) {
+            CHECK((a26F0[i] & 0xFFFF) == 0x0102);   /* the aliased word */
+            CHECK((uint32_t)a26F0[i] >> 16 == 0);   /* upper half stays cleared */
+        } else {
+            CHECK(a26F0[i] == 0);
+        }
+    }
     /* the third block is cleared and then its FIRST element is re-dirtied */
     CHECK(a220B20[0] == -1);
     for (i = 1; i < 0x46; ++i) { CHECK(a220B20[i] == 0); }

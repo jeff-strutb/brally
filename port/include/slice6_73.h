@@ -263,6 +263,10 @@ typedef struct BrNameListVtbl_ {
 
 /* The 48 addresses this packet stores into a control's / page's function
  * slots.  They are never called here, only installed. */
+/* (0x10AA27E0 - 0x10AA26F0) / 4 == 0xF0 / 4 == 60. Named rather than spelled
+ * so the arithmetic is stated once and can be checked. */
+#define BR73_AA27E0_INDEX 60
+
 typedef struct BrUi73Hooks {
     BrUiCtlHookFn_ p1003E7A0;
     BrUiCtlHookFn_ p1003E950;
@@ -402,7 +406,8 @@ typedef struct BrUi73Ctx {
     int32_t   nAA2A10;      /* 0x10AA2A10 */
     int32_t   nAA2A14;      /* 0x10AA2A14 */
     int32_t   nAA2A34;      /* 0x10AA2A34  = slice2_23.h BrUiGlobals::gAA2A34 */
-    uint16_t  wAA27E0;      /* 0x10AA27E0  <- 0x0102                        */
+    uint16_t  wAA27E0;      /* 0x10AA27E0  <- 0x0102, AND IT ALIASES        */
+                            /* aAA26F0[60] -- see BR73_AA27E0_INDEX below.  */
 
     /* 0x100AB428 / 0x100AB42C are read with `fild`, i.e. they are INTS.
      * slice3_33.h found them 0 and 380; 0x10054B50 uses them as the x and y
@@ -436,7 +441,8 @@ typedef struct BrUi73Ctx {
     /* 0x10AA26F0 / 0x10A9DBD8 / 0x10220B20 -- the three blocks 0x1003E680
      * clears (0x53, 0x53 and 0x46 dwords).  NULL means "not wired"; the
      * original's storage is static. */
-    int32_t  *aAA26F0;
+    int32_t  *aAA26F0;      /* 0x10AA26F0, 83 dwords. wAA27E0 is the low   */
+                            /* half of ENTRY 60 of this same block.         */
     int32_t  *aA9DBD8;
     int32_t  *a220B20;
 
