@@ -397,9 +397,35 @@ int32_t BrUiHook87_1003EF90(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* 0x1003F020. THE SECOND TRANSCRIPTION OF THIS ADDRESS -- slice2_23.c:715 has
+ * the first, as BrUiFn1003F020 over that module's byte-image BrUiObj. Two
+ * models of one object is the established pattern here, but two NAMES for one
+ * address is not, and CONVENTIONS.md forbids it. Recorded rather than silently
+ * left: they must not drift.
+ *
+ * The listing, and it is unguarded:
+ *
+ *   1003F030  repne scasb                  strlen of pCtl + 0x2B65
+ *   1003F034  dec ecx
+ *   1003F035  je  0x1003F040               empty string -> do nothing
+ *   1003F037  mov eax, [0x10AA29E8]        NO NULL TEST
+ *   1003F03C  and dword ptr [eax+0x1C], 0xFFFFFFEF
+ *
+ * DEVIATION, now stated instead of assumed: the NULL check on g_pBr72Env below
+ * is OURS. The original dereferences 0x10AA29E8 unconditionally and faults if
+ * it is null; the slice2_23 copy of this function correctly has no guard. The
+ * equivalence audit flagged this one as an undocumented divergence, which is
+ * the right call -- an undocumented guard is indistinguishable from a
+ * misreading, and this project has produced both.
+ *
+ * It is kept rather than removed because 0x10AA29E8 has no owner in this tree
+ * yet, so the pointer is genuinely NULL here and the original's fault would be
+ * a harness crash rather than reproduced behaviour. When the owner lands, this
+ * guard should go. */
 int32_t BrUiHook87_1003F020(BrUiCtl_ *pCtl)
 {
-    /* No apply and no copy -- the bit-4 clear alone. */
+    /* No apply and no copy -- the bit-4 clear alone, and only when the string
+     * is NON-empty (`dec ecx / je` at 0x1003F034). */
     Br87ClearBit4IfText((g_pBr72Env != NULL) ? g_pBr72Env->pAA29E8 : NULL,
                         pCtl->aText[0].sz);
     return 1;
