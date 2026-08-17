@@ -187,6 +187,101 @@ static void run_solver_cases(void)
     }
 }
 
+/* ---- 0x10065980 contact kick ------------------------------------------ *
+ * Golden vectors are the original's outputs from tools/x87emu.py over the same
+ * opcode stream; colour source is the shared bank g_brCrPlane.normal, set to
+ * (1.0, 0.5, 0.25) below.  wantB1fc/ff == -1 means "not written" (threshold<10).
+ * The wider random sweep (6000 cases) lives in the harness. */
+struct KickCase {
+    float vel[3], ang[3], N[3];
+    int   dampFlag, spinFlag, thr, peakIn;
+    int   wantRet;
+    float wantVel[3], wantAng[3];
+    int   wantB1fc, wantB1ff;
+};
+
+static const struct KickCase KICK_CASES[] = {
+/* separating (ret 0) */
+{ {0,3,0}, {0.1f,-0.2f,0.3f}, {0,1,0}, 0,0,0,0,
+  0, {0,3,0}, {0.100000001f,-0.200000003f,0.300000012f}, -1, -1 },
+/* reflect only */
+{ {0.4f,-5,0.2f}, {0.1f,-0.2f,0.3f}, {0,1,0}, 0,0,0,0,
+  1, {0.400000006f,0.25f,0.200000003f}, {0.100000001f,-0.200000003f,0.300000012f}, -1, -1 },
+/* reflect + damp(dampFlag) */
+{ {0.4f,-5,0.2f}, {0.1f,-0.2f,0.3f}, {0,1,0}, 1,0,0,0,
+  1, {0.359999985f,0.224999994f,0.179999992f}, {0.100000001f,-0.200000003f,0.300000012f}, -1, -1 },
+/* reflect + spin(spinFlag) */
+{ {0.4f,-5,0.2f}, {0.1f,-0.2f,0.3f}, {0,1,0}, 0,1,0,0,
+  1, {0.400000006f,0.25f,0.200000003f}, {0,0.200000003f,0}, -1, -1 },
+/* angled spin */
+{ {-2,-4,1.5f}, {0.3f,-0.2f,0.4f}, {0.266904199f,0.534808038f,0.801712237f}, 0,1,0,0,
+  1, {-1.587901f,-3.17425871f,2.73784018f}, {0.142515615f,-0.00265426887f,0.0757984519f}, -1, -1 },
+/* effect thr30 */
+{ {1,-6,0.5f}, {0.2f,-0.1f,0.05f}, {0,1,0}, 0,0,30,0,
+  1, {0.899999976f,0.269999743f,0.449999988f}, {0.200000003f,-0.100000001f,0.0500000007f}, 6, 156 },
+/* effect + damp + spin, peak_in 150 */
+{ {-1.5f,-5,2}, {0.1f,0.2f,-0.1f}, {0.303045763f,0.505076272f,0.808122036f}, 1,1,40,150,
+  1, {-0.863517821f,-3.46419621f,2.55728555f}, {0.0225461796f,-0.00887959171f,0.00444477657f}, 1, 150 },
+/* high-speed impact -- exercises the intensity clamp and peak saturation */
+{ {3,-60,2}, {0.2f,-0.1f,0.05f}, {0,1,0}, 0,0,30,0,
+  1, {2.69999981f,2.69999647f,1.79999995f}, {0.200000003f,-0.100000001f,0.0500000007f}, 27, 255 },
+/* threshold == 10 boundary (the effect path fires at >= 10, not > 10) */
+{ {0.5f,-4,0.3f}, {0.15f,-0.25f,0.35f}, {0,1,0}, 0,1,10,0,
+  1, {0.449999988f,0.179999828f,0.270000011f}, {0,0.25f,0}, 4, 146 },
+};
+
+static void run_kick_cases(void)
+{
+    static const float BANK[3] = { 1.0f, 0.5f, 0.25f };
+    unsigned i;
+    for (i = 0; i < sizeof KICK_CASES / sizeof KICK_CASES[0]; ++i) {
+        const struct KickCase *c = &KICK_CASES[i];
+        BrVec3 vel, ang, N;
+        BrCrEffect eff;
+        int ret;
+
+        vel.x = c->vel[0]; vel.y = c->vel[1]; vel.z = c->vel[2];
+        ang.x = c->ang[0]; ang.y = c->ang[1]; ang.z = c->ang[2];
+        N.x = c->N[0]; N.y = c->N[1]; N.z = c->N[2];
+        /* colour source is the shared bank */
+        g_brCrPlane.normal.x = BANK[0];
+        g_brCrPlane.normal.y = BANK[1];
+        g_brCrPlane.normal.z = BANK[2];
+        memset(&eff, 0, sizeof eff);
+        eff.threshold = (uint8_t)c->thr;
+        eff.peak      = (uint8_t)c->peakIn;
+
+        ret = BrCrContactKick(&vel, &ang, &N, c->dampFlag, c->spinFlag, &eff);
+
+        if (ret != c->wantRet) {
+            printf("  FAIL kick %u: ret=%d want %d\n", i, ret, c->wantRet);
+            ++g_fail;
+        }
+        RCLOSE(vel.x, c->wantVel[0]);
+        RCLOSE(vel.y, c->wantVel[1]);
+        RCLOSE(vel.z, c->wantVel[2]);
+        RCLOSE(ang.x, c->wantAng[0]);
+        RCLOSE(ang.y, c->wantAng[1]);
+        RCLOSE(ang.z, c->wantAng[2]);
+        if (c->wantB1fc >= 0) {
+            uint32_t bank[3];
+            memcpy(bank, &g_brCrPlane.normal, sizeof bank);
+            if (eff.intensity != (uint8_t)c->wantB1fc) {
+                printf("  FAIL kick %u: intensity=%u want %d\n",
+                       i, eff.intensity, c->wantB1fc); ++g_fail;
+            }
+            if (eff.peak != (uint8_t)c->wantB1ff) {
+                printf("  FAIL kick %u: peak=%u want %d\n",
+                       i, eff.peak, c->wantB1ff); ++g_fail;
+            }
+            if (eff.color[0] != bank[0] || eff.color[1] != bank[1] ||
+                eff.color[2] != bank[2]) {
+                printf("  FAIL kick %u: colour != bank bits\n", i); ++g_fail;
+            }
+        }
+    }
+}
+
 int main(void)
 {
     unsigned i;
@@ -216,9 +311,10 @@ int main(void)
     }
 
     run_solver_cases();
+    run_kick_cases();
 
     if (g_fail) { printf("br_collrespsolve: %d FAILURES\n", g_fail); return 1; }
     printf("br_collrespsolve: all checks passed "
-           "(0x10067470 + 0x10065C80 vs x87emu golden vectors)\n");
+           "(0x10067470 + 0x10065C80 + 0x10065980 vs x87emu golden vectors)\n");
     return 0;
 }

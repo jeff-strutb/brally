@@ -102,6 +102,7 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
 /* 0x10077B44 -1.05, 0x10077B40 0.2, 0x10077B38 0.9, 0x100B5170 1.0,
  * 0x10077AB8 27, 0x10077B3C 1e-4, 0x10077B30 -4.703703880, 0x10077B34 128. */
 #define BR_CR_RESTITUTION  (-1.05f)   /* -(1 + e), e = 0.05                    */
+#define BR_CR_KICK_REST     1.05f     /* 0x10077B2C -- +(1 + e), kick path     */
 #define BR_CR_TANGENT       0.2f      /* tangential fraction folded into rhs   */
 #define BR_CR_DAMP          0.9f      /* impact damping on the contact velocity*/
 #define BR_CR_CLAMP27      27.0f      /* intensity ceiling                     */
@@ -238,6 +239,94 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
     pAngVel->x -= mult * dw.x;
     pAngVel->y -= mult * dw.y;
     pAngVel->z -= mult * dw.z;
+
+    return 1;
+}
+
+/* ------------------------------------------------------------------ *
+ * 0x10065980 -- the contact "kick" (see the header).
+ *
+ * The linear part is a plain restitution reflection: remove 1.05x the velocity
+ * component along the contact normal, so an approaching body leaves with a small
+ * rebound.  Then, gated on the two flags and the effect threshold, come the
+ * damping and the spin fold.
+ *
+ * The spin fold (spinFlag) is the one non-obvious piece.  It builds an
+ * orthogonal frame M from the normal -- row 0 is N, row 1 is the quadratic
+ * tangent (Nx*Ny - Nz^2, Ny*Nz - Nx^2, Nx*Nz - Ny^2), row 2 is N x row 1 -- and
+ * forms M diag(Mt . N) Mt . angVel.  Because Mt.N has a single non-zero entry
+ * (N is row 0 of M, so Mt.N is |N|^2 along axis 0 and near-0 elsewhere), the
+ * result is the component of the spin about the contact normal, sign and scale
+ * carried by the frame.  Transcribed as the original computes it -- Mt.N, then
+ * Mt.angVel, their componentwise product, then M times that -- so the exact
+ * arithmetic (and any non-unit-N behaviour) matches.
+ *
+ * Verified against tools/x87emu.py over 6000 random cases (both flags, all
+ * effect branches), worst relative error ~2e-6.  Golden vectors pin it.
+ * ------------------------------------------------------------------ */
+/* @implements 0x10065980 glide BrCrContactKick */
+int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
+                    int dampFlag, int spinFlag, BrCrEffect *pEffect)
+{
+    const float nx = pNormal->x, ny = pNormal->y, nz = pNormal->z;
+    float d, s;
+
+    /* gate: separating (or NaN, as the x87 fcomp) -> no response */
+    d = nx * pVel->x + ny * pVel->y + nz * pVel->z;
+    if (!(d < 0.0f))
+        return 0;
+
+    /* restitution reflection: vel -= 1.05 * dot(N, vel) * N */
+    s = BR_CR_KICK_REST * d;
+    pVel->x -= s * nx;
+    pVel->y -= s * ny;
+    pVel->z -= s * nz;
+
+    /* effect record + extra damp, only for a hard enough hit (>= 10) */
+    if (pEffect->threshold >= 10u) {
+        float add   = -d;                                   /* |dot|, d < 0 */
+        float inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
+        uint8_t peak;
+
+        pEffect->intensity = br_cr_ftol_byte(inten);
+        /* colour is the shared normal bank's dwords, not pNormal */
+        memcpy(pEffect->color, &g_brCrPlane.normal, sizeof pEffect->color);
+        peak = br_cr_ftol_byte(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
+        if (peak > pEffect->peak)
+            pEffect->peak = peak;
+
+        pVel->x *= BR_CR_DAMP; pVel->y *= BR_CR_DAMP; pVel->z *= BR_CR_DAMP;
+    }
+
+    if (dampFlag) {
+        pVel->x *= BR_CR_DAMP; pVel->y *= BR_CR_DAMP; pVel->z *= BR_CR_DAMP;
+    }
+
+    if (spinFlag) {
+        /* frame M: row0 = N, row1 = quadratic tangent, row2 = N x row1 */
+        float r1x = nx * ny - nz * nz;
+        float r1y = ny * nz - nx * nx;
+        float r1z = nx * nz - ny * ny;
+        float r2x = ny * r1z - nz * r1y;
+        float r2y = nz * r1x - nx * r1z;
+        float r2z = nx * r1y - ny * r1x;
+        float wx = pAngVel->x, wy = pAngVel->y, wz = pAngVel->z;
+
+        /* a = Mt . N : out[i] = row0[i]*N.x + row1[i]*N.y + row2[i]*N.z */
+        float ax = nx * nx + r1x * ny + r2x * nz;
+        float ay = ny * nx + r1y * ny + r2y * nz;
+        float az = nz * nx + r1z * ny + r2z * nz;
+        /* b = Mt . angVel */
+        float bx = nx * wx + r1x * wy + r2x * wz;
+        float by = ny * wx + r1y * wy + r2y * wz;
+        float bz = nz * wx + r1z * wy + r2z * wz;
+        /* c = a (componentwise) b */
+        float c0 = ax * bx, c1 = ay * by, c2 = az * bz;
+        /* angVel = M . c : out[i] = row_i . c */
+        pAngVel->x = nx  * c0 + ny  * c1 + nz  * c2;
+        pAngVel->y = r1x * c0 + r1y * c1 + r1z * c2;
+        pAngVel->z = r2x * c0 + r2y * c1 + r2z * c2;
+    }
 
     return 1;
 }
