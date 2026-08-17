@@ -407,13 +407,26 @@ int BrGbiClipCodes(const float *pVert)
     float w = pVert[6];       /* +0x18 */
     int   f = 0;
 
-    if (w < 0.0f)                    f |= 0x01;
-    if (pVert[3] + w < 0.0f)         f |= 0x02;   /* +0x0C first */
-    if (w - pVert[3] < 0.0f)         f |= 0x04;
-    if (pVert[1] + w < 0.0f)         f |= 0x08;   /* then +0x04 */
-    if (w - pVert[1] < 0.0f)         f |= 0x10;
-    if (pVert[2] + w < 0.0f)         f |= 0x20;   /* then +0x08 */
-    if (w - pVert[2] < 0.0f)         f |= 0x40;
+    /* NEGATED, ALL SEVEN. The original is `fcomp / fnstsw ax / test ah,1`,
+     * and C0 is set for LESS-THAN *or* UNORDERED -- so a NaN in any component
+     * sets the clip bit and the vertex is REJECTED. `x < 0.0f` is false for
+     * NaN, which reported the vertex INSIDE and fed a NaN through the clipper.
+     *
+     * This project ports the same function twice. br_dl.c's copy
+     * (br_dl_outcode) writes all seven as `!(v >= 0.0f)` for exactly this
+     * reason, and its banner even names this function as the other copy. Two
+     * transcriptions of one routine, disagreeing on NaN, and this was the
+     * wrong one -- found by the round-3 equivalence audit.
+     *
+     * The duplication is the real defect and is recorded in CONVENTIONS.md;
+     * this fix makes the two agree while it stands. */
+    if (!(w >= 0.0f))                f |= 0x01;
+    if (!(pVert[3] + w >= 0.0f))     f |= 0x02;   /* +0x0C first */
+    if (!(w - pVert[3] >= 0.0f))     f |= 0x04;
+    if (!(pVert[1] + w >= 0.0f))     f |= 0x08;   /* then +0x04 */
+    if (!(w - pVert[1] >= 0.0f))     f |= 0x10;
+    if (!(pVert[2] + w >= 0.0f))     f |= 0x20;   /* then +0x08 */
+    if (!(w - pVert[2] >= 0.0f))     f |= 0x40;
     return f;
 }
 
