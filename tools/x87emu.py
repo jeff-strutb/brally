@@ -90,6 +90,17 @@ class Machine:
     def wr_f(self, a, v):
         self.wr_i(a, struct.unpack('<I', struct.pack('<f', f32(v)))[0])
 
+    def rd_f8(self, a):
+        """Read an 8-byte DOUBLE.  x87 `fld/fcom/fadd/... qword ptr` operands are
+        double precision; reading them as f32 (the low dword) is silently wrong --
+        e.g. 0.5 becomes 0.0, which made the OBB box-classify reject everything."""
+        return struct.unpack('<d', bytes(self.rd_u8(a + k) for k in range(8)))[0]
+
+    def wr_f8(self, a, v):
+        b = struct.pack('<d', v)
+        for k in range(8):
+            self.wr_u8(a + k, b[k])
+
     # ---- operand helpers ----------------------------------------------
     def mem_addr(self, s):
         s = s.strip()
@@ -225,9 +236,13 @@ class Machine:
 
     def step(self, addr, mn, ops):
         st = self.R
+        qword = 'qword ptr' in ops           # x87 double-precision memory operand
         ops = re.sub(r'\b(?:dword|qword|word|byte) ptr ', '', ops)
         byte = mn in ('movzx', 'movsx') or ' al' in (',' + ops) or False
         o = [x.strip() for x in ops.split(',')] if ops else []
+        # x87 memory operands are f32 (dword) or f64 (qword); route accordingly.
+        rdf = self.rd_f8 if qword else self.rd_f
+        wrf = self.wr_f8 if qword else self.wr_f
 
         def is8(x):
             return x in REG8 or (x.startswith('[') and False)  # byte flagged via mnemonic size
@@ -270,6 +285,66 @@ class Machine:
             bsize = (o[0] in REG8)
             self._flags_logic(self._val(o[0], byte=bsize) & self._val(o[1], byte=bsize),
                               width=8 if bsize else 32)
+        elif mn == 'neg':
+            v = self.rd_reg(o[0])
+            self.wr_reg(o[0], self._flags_sub(0, v))
+        elif mn == 'sbb':
+            d, s = o
+            a = self.rd_reg(d); b = self._val(s); c = self.CF
+            total = b + c
+            r = (a - total) & 0xFFFFFFFF
+            self.ZF = 1 if r == 0 else 0
+            self.SF = 1 if r & 0x80000000 else 0
+            self.CF = 1 if a < total else 0
+            self.OF = 1 if ((a ^ b) & (a ^ r) & 0x80000000) else 0
+            self.wr_reg(d, r)
+        elif mn == 'adc':
+            d, s = o
+            a = self.rd_reg(d); b = self._val(s); c = self.CF
+            r = (a + b + c) & 0xFFFFFFFF
+            self.ZF = 1 if r == 0 else 0
+            self.SF = 1 if r & 0x80000000 else 0
+            self.CF = 1 if (a + b + c) > 0xFFFFFFFF else 0
+            self.OF = 1 if (~(a ^ b) & (a ^ r) & 0x80000000) else 0
+            self.wr_reg(d, r)
+        elif mn == 'cdq':
+            self.R['edx'] = 0xFFFFFFFF if (self.R['eax'] & 0x80000000) else 0
+        elif mn in ('idiv', 'div'):
+            divisor = self._val(o[0])
+            dividend = (self.R['edx'] << 32) | self.R['eax']
+            if mn == 'idiv':
+                if dividend & (1 << 63):
+                    dividend -= (1 << 64)
+                dv = divisor - 0x100000000 if divisor & 0x80000000 else divisor
+                q = int(dividend / dv) if dv != 0 else 0   # truncate toward 0
+                rem = dividend - q * dv
+            else:
+                q = dividend // divisor if divisor else 0
+                rem = dividend % divisor if divisor else 0
+            self.R['eax'] = q & 0xFFFFFFFF
+            self.R['edx'] = rem & 0xFFFFFFFF
+        elif mn == 'imul':
+            if len(o) == 3:
+                a = self._val(o[1]); b = self._val(o[2]); dst = o[0]
+            else:
+                a = self.rd_reg(o[0]); b = self._val(o[1]); dst = o[0]
+            sa = a - 0x100000000 if a & 0x80000000 else a
+            sb = b - 0x100000000 if b & 0x80000000 else b
+            self.wr_reg(dst, (sa * sb) & 0xFFFFFFFF)
+        elif mn == 'not':
+            self.wr_reg(o[0], (~self.rd_reg(o[0])) & 0xFFFFFFFF)
+        elif mn in ('shl', 'sal', 'shr', 'sar'):
+            d, s = o
+            cnt = self._val(s) & 0x1F
+            v = self.rd_reg(d)
+            if mn in ('shl', 'sal'):
+                r = (v << cnt) & 0xFFFFFFFF
+            elif mn == 'shr':
+                r = v >> cnt
+            else:  # sar
+                sv = v - 0x100000000 if v & 0x80000000 else v
+                r = (sv >> cnt) & 0xFFFFFFFF
+            self.wr_reg(d, r); self._flags_logic(r)
         elif mn == 'xor':
             d, s = o
             if d == s:
@@ -297,21 +372,21 @@ class Machine:
             if o[0].startswith('st'):
                 self.st.insert(0, self.st[int(re.search(r'\d', o[0]).group())])
             else:
-                self.st.insert(0, self.rd_f(self.mem_addr(o[0])))
+                self.st.insert(0, rdf(self.mem_addr(o[0])))
         elif mn == 'fild':
             self.st.insert(0, float(s32(self.rd_i(self.mem_addr(o[0])))))
         elif mn == 'fst':
-            self.wr_f(self.mem_addr(o[0]), self.st[0])
+            wrf(self.mem_addr(o[0]), self.st[0])
         elif mn == 'fstp':
             if o[0].startswith('st'):
                 i = int(re.search(r'\d', o[0]).group()); self.st[i] = self.st[0]; self.st.pop(0)
             else:
-                self.wr_f(self.mem_addr(o[0]), self.st[0]); self.st.pop(0)
+                wrf(self.mem_addr(o[0]), self.st[0]); self.st.pop(0)
         elif mn in ('fmul', 'fadd', 'fsub', 'fsubr', 'fdiv', 'fdivr'):
             if o and o[0].startswith('st'):
                 other = self.st[int(re.search(r'\d', o[0]).group())]
             else:
-                other = self.rd_f(self.mem_addr(o[0]))
+                other = rdf(self.mem_addr(o[0]))
             a = self.st[0]
             if   mn == 'fmul':  self.st[0] = a * other
             elif mn == 'fadd':  self.st[0] = a + other
@@ -323,6 +398,8 @@ class Machine:
             self.st[0] = -self.st[0]
         elif mn == 'fabs':
             self.st[0] = abs(self.st[0])
+        elif mn == 'fsqrt':
+            self.st[0] = math.sqrt(self.st[0]) if self.st[0] >= 0.0 else float('nan')
         elif mn == 'fxch':
             i = int(re.search(r'\d', o[0]).group()) if o else 1
             self.st[0], self.st[i] = self.st[i], self.st[0]
@@ -337,7 +414,7 @@ class Machine:
             elif mn == 'fdivrp': self.st[i] = _ieee_div(b, a)
             self.st.pop(0)
         elif mn in ('fcom', 'fcomp', 'fcompp'):
-            other = (self.rd_f(self.mem_addr(o[0])) if (o and o[0].startswith('['))
+            other = (rdf(self.mem_addr(o[0])) if (o and o[0].startswith('['))
                      else self.st[int(re.search(r'\d', o[0]).group())] if o else self.st[1])
             a = self.st[0]
             self.C0 = 1 if (math.isnan(a) or math.isnan(other) or a < other) else 0
