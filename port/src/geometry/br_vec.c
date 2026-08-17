@@ -48,6 +48,7 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
     pA->z += pB->z;
 }
 
+/* @implements 0x1003ACE0 d3d BrVec3Scale */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
     pOut->x = pV->x * s;
@@ -74,6 +75,9 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
     pOut->z = pA->z + pB->z * s;
 }
 
+/* @implements 0x1003B020 d3d BrVec3MulAddTo */
+/* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add
+ * commutes, so pA.x + pB.x*s is bit-identical -- one multiply, one add. */
 void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
 {
     pA->x += pB->x * s;
@@ -96,6 +100,7 @@ void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
     pOut->z = -pV->z;
 }
 
+/* @implements 0x1003AF40 d3d BrVec3Add */
 void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = pA->x + pB->x;
