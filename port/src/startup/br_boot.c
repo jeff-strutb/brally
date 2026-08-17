@@ -150,6 +150,14 @@ int32_t BrAppStateLoading(void)
  *
  *   both zero      -> first run. Install 640x480 into the six mode globals,
  *                     call 0x1006C460, go to state 3 (the loading screen).
+ *
+ * CORRECTION: this file first described 0x1006C460 as "renderer create", which
+ * was a guess from its position in a video-mode state and was wrong. Its first
+ * instruction reads 0x100B55F0 -- BrSndG0B5DE8, the SOUND enable flag in
+ * slice1_08.c -- and it is gated on that plus two more sound globals before
+ * calling into the 0x1006BBxx family. It is a SOUND reset. The mode state
+ * resets audio because a mode change tears the device down, which is a
+ * different fact from the one the old label asserted.
  *                     Returns 1 immediately -- the tail below does not run.
  *   handle zero,
  *   flag non-zero  -> 0x1006C290(0), 0x10056260(), 0x1006E280() -> 0x10AC6748
