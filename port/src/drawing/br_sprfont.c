@@ -89,6 +89,12 @@ static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
     }
 }
 
+/* WHAT IT DOES: works out, once at start-up, where every picture sits inside
+ * four different sprite sheets -- the small letters, the large letters, and
+ * two sheets of big square pictures -- by laying each sheet out as a fixed
+ * grid. Everything that later draws a letter or a picture just asks for cell
+ * number N and gets the rectangle from here. */
+/* @implements 0x1005F800 d3d BrSprFontRectInit_1005F800 */
 void BrSprFontRectInit_1005F800(void)
 {
     BrSprGrid(g_aBrSprRectA, BR_SPRFONT_RECT_A, 8,  16,  16);
@@ -101,6 +107,12 @@ void BrSprFontRectInit_1005F800(void)
  * 2. 0x1005B730's leading chain -- kind to sheet
  * ========================================================================== */
 
+/* WHAT IT DOES: turns a piece of text's style setting into the lettering sheet
+ * it should be drawn from -- grey, white, mid-grey or yellow. Any style it does
+ * not recognise falls back to sheet zero, which is not a lettering sheet at all
+ * but the general artwork sheet, so an unexpected style draws garbage rather
+ * than plain text. */
+/* @implements 0x1005B730 d3d BrSprFontSheet_1005B730 */
 int32_t BrSprFontSheet_1005B730(uint8_t bKind)
 {
     /* `xor edx,edx` before the chain is the whole default arm. */
@@ -156,6 +168,11 @@ void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
             BrSprSheetBlitFlags(iSheet));
 }
 
+/* WHAT IT DOES: draws one character of the big lettering at the given place on
+ * screen. Unlike the small lettering there is no choice of colour here -- the
+ * large characters always come from one fixed sheet. The style argument it is
+ * handed is ignored. */
+/* @implements 0x1005B7A0 d3d BrSprFontGlyphB_1005B7A0 */
 void BrSprFontGlyphB_1005B7A0(int32_t iGlyph, float x, float y,
                               int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)
@@ -212,6 +229,10 @@ static int BrSprGlyphClassify(char c)
     return 1;
 }
 
+/* WHAT IT DOES: decides where the first letter of a line of text goes. Normally
+ * that is just the text box's own left edge, but a box marked as centred is
+ * asked to work out its centred starting point instead. */
+/* @implements 0x1005B2B0 d3d BrSprFontPenStart_1005B2B0 */
 float BrSprFontPenStart_1005B2B0(BrTextBox *pBox)
 {
     if (pBox == NULL) {

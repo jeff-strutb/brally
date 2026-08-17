@@ -20,6 +20,9 @@ static uint32_t br_ai_u32be(const unsigned char *p)
          | ((uint32_t)p[2] << 8)  |  (uint32_t)p[3];
 }
 
+/* WHAT IT DOES: reads a 16-bit number out of track data the N64 way round --
+ * most significant byte first. The track files are shipped as the N64 wrote
+ * them, so nothing in them can be read directly on a PC. */
 static uint16_t br_ai_u16be(const unsigned char *p)
 {
     return (uint16_t)(((uint32_t)p[0] << 8) | (uint32_t)p[1]);
@@ -45,6 +48,11 @@ static void br_ai_vec3be(BrVec3 *pOut, const unsigned char *p)
  * rest becomes an offset. The links inside the payload never pass through
  * br_track.c because its section swapper is not ported, so they are still raw
  * N64 addresses in the image and are relocated here on read. */
+/* WHAT IT DOES: converts an address stored inside track data into an offset
+ * into the loaded file. A zero stays zero, and anything pointing below where
+ * the track was loaded on the N64 becomes zero too, because it cannot refer
+ * to anything in this file. */
+/* @implements 0x100189E0 glide br_ai_reloc */
 static uint32_t br_ai_reloc(uint32_t n64va)
 {
     if (n64va == 0)

@@ -65,6 +65,11 @@ unsigned long BrAdler32(unsigned long adler, const unsigned char *pBuf,
  * sign fixup. v is masked to 8 bits before any of that, so the input is
  * always non-negative and the sign fixup never fires.
  */
+/* WHAT IT DOES: converts a music volume from the 0-255 scale the game's own
+ * settings use into the 0-10000 scale Windows CD audio wants. A volume of
+ * exactly 256 comes out as silence rather than full, because only the low
+ * byte is looked at. */
+/* @implements 0x10002A20 d3d BrCdVolumeScale */
 int BrCdVolumeScale(int vol)
 {
     return (10000 * (vol & 0xFF)) / 255;
@@ -88,6 +93,14 @@ int BrCdVolumeScale(int vol)
  *
  * DEVIATION: the grid base was the global at 0x106C7C6C; it is a parameter.
  */
+/* WHAT IT DOES: looks up a place in the world on a coarse 64-by-64 grid --
+ * each square covering thirty-two world units, so the grid spans a square
+ * region a couple of thousand units across -- and hands back both that
+ * square's value and the difference to the square next along, so a caller can
+ * blend between the two. WHAT THE GRID HOLDS IS NOT ESTABLISHED HERE. A
+ * position outside the covered region answers zero, which is indistinguishable
+ * from a square whose value genuinely is zero. */
+/* @implements 0x10002DE0 d3d BrGrid64Sample */
 uint32_t BrGrid64Sample(const uint16_t *pGrid, float x, float y)
 {
     unsigned int col, row, idx;
@@ -135,6 +148,11 @@ uint32_t BrGrid64Sample(const uint16_t *pGrid, float x, float y)
  *
  * DEVIATION: the table base was the global at 0x106C7C68; it is a parameter.
  */
+/* WHAT IT DOES: reads the next entry from a table and moves the reader on by
+ * one, counting down how many are left. Running off the end answers zero and
+ * leaves the reader where it was -- but zero is also a perfectly valid entry,
+ * so a caller cannot tell the two apart. */
+/* @implements 0x10002EF0 d3d BrU16CursorNext */
 uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
 {
     uint32_t rem, pos, packed;
@@ -164,6 +182,11 @@ uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
  * 0x100750F0 and subtracted the origin at 0x10220DD8. The subtraction is the
  * caller's job here.
  */
+/* WHAT IT DOES: converts a stretch of real time into the game's own clock,
+ * which runs at thirty ticks a second. It does the sum its own way rather
+ * than the obvious way, and the result is not quite even -- one tick value
+ * repeats once every tenth of a second. */
+/* @implements 0x10003460 d3d BrTicks30FromMs */
 uint32_t BrTicks30FromMs(uint32_t elapsedMs)
 {
     return 3u * (elapsedMs / 100u) + (elapsedMs % 100u) / 33u;
@@ -189,6 +212,12 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
  * wrapping size*count still produces the original's early-out and the
  * original's message.
  */
+/* WHAT IT DOES: reads from a file and insists on getting everything asked
+ * for. Reading nothing at all is reported to the caller as a plain failure --
+ * that is how the game detects the end of a file -- but a short read, where
+ * some but not all of the data arrived, is treated as the file being damaged
+ * and kills the game with a message. */
+/* @implements 0x100030E0 d3d BrFChkFRead */
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
     uint32_t wanted = (uint32_t)size * (uint32_t)count;
@@ -216,6 +245,11 @@ int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 }
 
 /* 0x10003170  CHK_FRead. Returns the destination buffer. */
+/* WHAT IT DOES: the same read, for callers who cannot cope with the file
+ * ending -- hitting the end of the file kills the game rather than being
+ * reported back. Used where the data being read is required for the game to
+ * carry on at all. */
+/* @implements 0x10003170 d3d BrChkFRead */
 void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
     if (BrFChkFRead(pDst, size, count, ppFile) == 0) {
@@ -248,6 +282,10 @@ int BrChkFileExists(const char *pPath)
 }
 
 /* 0x10003390  CHK_AllocateMemory. */
+/* WHAT IT DOES: asks for memory and gives up on the whole game if there is
+ * none, naming what it was trying to make room for so the player sees which
+ * part of the loading failed. Asking for nothing quietly gets nothing back. */
+/* @implements 0x10003390 d3d BrChkAlloc */
 void *BrChkAlloc(size_t size, const char *pWhat)
 {
     void *pMem;
@@ -269,6 +307,11 @@ void *BrChkAlloc(size_t size, const char *pWhat)
 }
 
 /* 0x100033F0  CHK_ReAllocateMemory. */
+/* WHAT IT DOES: grows or shrinks a block of memory, again giving up on the
+ * whole game if that cannot be done. Asking for a size of nothing loses the
+ * block that was just handed back, which is a leak in the original and is
+ * preserved. */
+/* @implements 0x100033F0 d3d BrChkRealloc */
 void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
 {
     void *pNew;

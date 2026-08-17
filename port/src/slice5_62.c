@@ -25,6 +25,13 @@ BrX419D0State *BrX419D0GetState(void)
     return &s_x419D0;
 }
 
+/* WHAT IT DOES: PURPOSE UNKNOWN. Observably it picks one object out of a
+ * table -- which one is decided by a separate global index -- and calls one
+ * particular routine on it, passing the caller's argument along with three
+ * fixed values. Neither the table nor the object has a recoverable type, so
+ * what the call is FOR cannot be stated. If the chosen slot is empty it does
+ * nothing. */
+/* @implements 0x100419D0 d3d BrExt_100419D0 */
 void BrExt_100419D0(void *p)
 {
     BrX419D0State  *pSt = &s_x419D0;
@@ -283,6 +290,10 @@ tail_a7a00:
 /* 4. 0x100020D0                                                        */
 /* ==================================================================== */
 
+/* WHAT IT DOES: turns a number of seconds into a lap or race time the player
+ * can read -- minutes, seconds and hundredths, as in "1:23.45". It does not
+ * cope with a negative or nonsensical time; those come out as garbled text
+ * rather than being clamped. */
 void BrSub_100020D0(char *pszOut, float v)
 {
     /* 0x1008F098 = 100.0f, read from the image. */
@@ -328,6 +339,14 @@ static int32_t BrScissorPack(int32_t v)
     return BrFtolTrunc((float)v * 1.0f);
 }
 
+/* WHAT IT DOES: restricts drawing to a rectangle of the screen, so anything
+ * drawn afterwards is trimmed to that region -- how the game keeps split
+ * screen halves and mirror insets from spilling over each other. The
+ * rectangle is trimmed to the screen first, but only its size is trimmed at
+ * the far edges, so a rectangle entirely off-screen still emits a zero-size
+ * one rather than being dropped, and an optional doubling is applied
+ * afterwards and can push it back outside. */
+/* @implements 0x1003289F d3d BrSub_1003289F */
 void BrSub_1003289F(int a, int b, int c, int d)
 {
     BrScissorClamp *p = &s_scissor;
@@ -383,6 +402,10 @@ void BrSub_1003289F(int a, int b, int c, int d)
 
 BrPool g_brPool10069490;
 
+/* WHAT IT DOES: hands out one scratch transform from the frame pool, for a
+ * caller that needs somewhere to build a position-and-facing that only has to
+ * survive the rest of this frame. */
+/* @implements 0x10069490 d3d BrSub_10069490 */
 BrMat4 *BrSub_10069490(void)
 {
     return (BrMat4 *)BrPoolAlloc(&g_brPool10069490);

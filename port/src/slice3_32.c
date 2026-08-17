@@ -148,6 +148,11 @@ static void *BrScrItemThis(BrUiObj *pObj)
  * 1. 0x10047930 / 0x10047980 / 0x100479D0 -- feeding 0x1005F5A0
  * ========================================================================== */
 
+/* WHAT IT DOES: draws the picture a menu row is currently showing, at the
+ * row's own position, taking the picture's shape and draw flags from the
+ * shared picture table. A row whose picture number is negative draws
+ * nothing. */
+/* @implements 0x10047930 d3d BrUiDrawCode_10047930 */
 int BrUiDrawCode_10047930(const BrScrGlobals *pG, BrUiObj *pObj)
 {
     int16_t wCode = BrScrLd16(pObj, BR_UI_OFF_W1E20C);
@@ -174,6 +179,11 @@ int BrUiDrawCode_10047930(const BrScrGlobals *pG, BrUiObj *pObj)
     return 1;
 }
 
+/* WHAT IT DOES: the same as its neighbour above, but draws the picture into a
+ * rectangle the caller supplies instead of the table's own. It does NOT check
+ * for a negative picture number first, so where the other one would draw
+ * nothing this one reads outside the table. */
+/* @implements 0x10047980 d3d BrUiDrawCodeRect_10047980 */
 int BrUiDrawCodeRect_10047980(const BrScrGlobals *pG, BrUiObj *pObj,
                               const void *pRect)
 {
@@ -192,6 +202,11 @@ int BrUiDrawCodeRect_10047980(const BrScrGlobals *pG, BrUiObj *pObj,
     return 1;
 }
 
+/* WHAT IT DOES: draws a numbered picture at an outright screen position,
+ * without any menu row being involved. It passes on the caller's number as the
+ * picture's identity rather than the one filed in the table -- in the shipped
+ * table those always agree. */
+/* @implements 0x100479D0 d3d BrUiDrawIndex_100479D0 */
 int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
                            int32_t x, int32_t y)
 {
@@ -203,6 +218,10 @@ int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
     return 1;
 }
 
+/* WHAT IT DOES: advances an animated menu element to its next frame -- swaps
+ * in that frame's picture and hands the element the frame's data. An element
+ * that is not animated is simply redrawn as it stands. */
+/* @implements 0x10047A10 d3d BrUiStepCode_10047A10 */
 int BrUiStepCode_10047A10(BrUiObj *pObj)
 {
     if (BrScrLd32(pObj, BR_SCR_UI_F296C) == 0) {
@@ -226,6 +245,10 @@ int BrUiStepCode_10047A10(BrUiObj *pObj)
  * 2. 0x10047CB0 .. 0x10047D30 -- the two-axis tween
  * ========================================================================== */
 
+/* WHAT IT DOES: starts a menu element sliding to a new place. It remembers
+ * where the element is now and works out how far it must travel per step to
+ * arrive in the number of steps asked for. */
+/* @implements 0x10047CB0 d3d BrUiTweenBegin_10047CB0 */
 int BrUiTweenBegin_10047CB0(BrUiObj *pObj, int32_t n)
 {
     /* fld [+0x3820]; fsub [+0x381C]; fidiv [n]. `n` is an INTEGER divisor;
@@ -241,6 +264,10 @@ int BrUiTweenBegin_10047CB0(BrUiObj *pObj, int32_t n)
     return 1;
 }
 
+/* WHAT IT DOES: says how far along its slide an element should be after a
+ * given number of milliseconds. The distance grows with the square of the time,
+ * so the element starts slowly and speeds up rather than moving evenly. */
+/* @implements 0x10047CE0 d3d BrUiTweenCurve_10047CE0 */
 float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
 {
     /* imul n, n -- a 32-bit signed multiply that WRAPS; done in unsigned so
@@ -259,6 +286,9 @@ float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
     return (float)d;
 }
 
+/* WHAT IT DOES: snaps a sliding element back to where it started and sets it
+ * moving again from there. */
+/* @implements 0x10047D10 d3d BrUiTweenReset_10047D10 */
 int BrUiTweenReset_10047D10(BrUiObj *pObj)
 {
     BrScrSt32(pObj, BR_UI_OFF_F3C, BrScrLd32(pObj, BR_SCR_UI_F30));
@@ -315,6 +345,12 @@ static int BrScrTweenAxis(BrUiObj *pObj, size_t offOn, size_t offDir,
     return 0;
 }
 
+/* WHAT IT DOES: moves a sliding element on by however much real time has
+ * passed since the last frame, on both axes independently, and stops the slide
+ * once both have reached their destinations. An axis that was never set moving
+ * counts as already arrived, and an axis that overshoots is pinned to its
+ * target. */
+/* @implements 0x10047D30 d3d BrUiTweenStep_10047D30 */
 int BrUiTweenStep_10047D30(BrUiObj *pObj)
 {
     int32_t nNow, nDelta;
@@ -348,6 +384,12 @@ int BrUiTweenStep_10047D30(BrUiObj *pObj)
  * 3. 0x10047EB0 / 0x10047FB0 -- setting the object up
  * ========================================================================== */
 
+/* WHAT IT DOES: gives a menu row its wording and the settings that go with it,
+ * asks the text to lay itself out, and then records the height and width that
+ * came back so the page can position everything around it. Every measurement it
+ * saves is re-read after the layout call, because laying out can move the row.
+ * There is no limit on the text it copies in. */
+/* @implements 0x10047EB0 d3d BrUiItemInit_10047EB0 */
 void BrUiItemInit_10047EB0(BrUiObj *pObj, const char *psz, uint32_t nFlags,
                            uint8_t bKind, const int32_t *pSrc)
 {
@@ -396,6 +438,11 @@ void BrUiItemInit_10047EB0(BrUiObj *pObj, const char *psz, uint32_t nFlags,
     BrScrSt16(pObj, BR_SCR_UI_W4A, w40C);
 }
 
+/* WHAT IT DOES: places a menu element: tells it which screen owns it, where it
+ * sits, three separate sets of behaviour flags, and which picture it starts
+ * with -- that last one being written into two fields at once, the live picture
+ * and the one to fall back to. */
+/* @implements 0x10047FB0 d3d BrUiInit_10047FB0 */
 void BrUiInit_10047FB0(BrUiObj *pObj, BrPhaseFull *pPhase,
                        float f3C, float f40,
                        uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
@@ -419,6 +466,11 @@ void BrUiInit_10047FB0(BrUiObj *pObj, BrPhaseFull *pPhase,
  * 4. 0x10048010 / 0x10048060 / 0x100480A0 / 0x10048180
  * ========================================================================== */
 
+/* WHAT IT DOES: the "the player chose this row" step. Depending on the row's
+ * flags it either passes the choice to the row's text object -- which is how a
+ * typing field takes the keystroke -- ignores it entirely, or asks the row's own
+ * handler and reports whether that handler was happy. */
+/* @implements 0x10048010 d3d BrUiEnter_10048010 */
 int BrUiEnter_10048010(BrUiObj *pObj)
 {
     uint32_t f;
@@ -441,6 +493,11 @@ int BrUiEnter_10048010(BrUiObj *pObj)
     return 0;
 }
 
+/* WHAT IT DOES: asks whether some OTHER menu row currently has the player's
+ * exclusive attention -- a name being typed in, for instance -- so the rest of
+ * the frame knows to keep out of the way. If the row asking is itself that row,
+ * the answer is no and the shared flag is deliberately left as it was. */
+/* @implements 0x10048060 d3d BrUiCheckOther_10048060 */
 int BrUiCheckOther_10048060(BrScrGlobals *pG, const BrUiObj *pObj)
 {
     BrUiObj *pOther = pG->pAA29C0;
@@ -461,6 +518,13 @@ int BrUiCheckOther_10048060(BrScrGlobals *pG, const BrUiObj *pObj)
     return 1;
 }
 
+/* WHAT IT DOES: runs a menu element's animation clock. An element with its own
+ * table of frame durations advances when the current frame's time is up and
+ * loops back to the start when it runs off the end; everything else simply
+ * ticks over every sixty milliseconds. Either way it raises the flag that tells
+ * the drawing code to move to the next picture, which is what makes the
+ * highlighted row pulse. A frame given a duration of zero never elapses. */
+/* @implements 0x100480A0 d3d BrUiTickSteps_100480A0 */
 int BrUiTickSteps_100480A0(BrUiObj *pObj)
 {
     int32_t nNow, nDelta;
@@ -519,6 +583,14 @@ static BrUiObj *BrScrChild(BrUiObj *pObj, int32_t i)
     return pPhase->pCur->aItems[k];
 }
 
+/* WHAT IT DOES: one frame of one menu element, and the heart of how the menus
+ * behave. It skips an element that is switched off, runs any slide in progress,
+ * lets the element's own per-frame hook veto or take over the rest, and then
+ * asks whether the player is acting on it. If so it runs the element's action
+ * -- playing the appropriate click sound first, unless the action is one of two
+ * particular ones -- and afterwards ticks any child elements the row owns. If
+ * the player is not on it, the element falls back to its resting picture. */
+/* @implements 0x10048180 d3d BrUiFrame_10048180 */
 int BrUiFrame_10048180(BrScrGlobals *pG, BrUiObj *pObj)
 {
     const BrScrUiVtbl *pV;
@@ -655,6 +727,10 @@ int BrUiFrame_10048180(BrScrGlobals *pG, BrUiObj *pObj)
  * 5. BrUiPage
  * ========================================================================== */
 
+/* WHAT IT DOES: makes a fresh, empty page: no rows, no owner, no hooks. Every
+ * menu screen is one or more of these. One field is deliberately left holding
+ * whatever the memory did, because the original never wrote it either. */
+/* @implements 0x10048470 d3d BrUiPageCtor_10048470 */
 BrUiPage *BrUiPageCtor_10048470(BrUiPage *pThis)
 {
     int i;
@@ -677,6 +753,10 @@ BrUiPage *BrUiPageCtor_10048470(BrUiPage *pThis)
     return pThis;
 }
 
+/* WHAT IT DOES: tears a page down, and frees its memory too if the caller asks
+ * for that. It hands the page's address back afterwards even when it has just
+ * been freed -- that is what a C++ deleting destructor compiles to. */
+/* @implements 0x100484C0 d3d BrUiPageDelete_100484C0 */
 void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags)
 {
     BrSub100484E0(pThis);
@@ -687,6 +767,11 @@ void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags)
     return pThis;
 }
 
+/* WHAT IT DOES: keeps the highlighted row on a page in range, wrapping round:
+ * moving past the last row lands on the first and moving above the first lands
+ * on the last. When the highlight is already in range it records it on the page
+ * without writing the shared position back. */
+/* @implements 0x100484F0 d3d BrUiPageSelect_100484F0 */
 int BrUiPageSelect_100484F0(BrScrGlobals *pG, BrUiPage *pThis)
 {
     uint32_t nMod = (uint32_t)pThis->f344;          /* zero-extended */
@@ -707,6 +792,13 @@ int BrUiPageSelect_100484F0(BrScrGlobals *pG, BrUiPage *pThis)
     return 1;
 }
 
+/* WHAT IT DOES: runs one page for one frame. It walks the page's rows in
+ * order, giving each its turn, skipping the hidden ones, and stepping the
+ * highlight past any row that cannot be selected so the cursor never rests on
+ * a heading. Rows that own children get those ticked too, and moving the
+ * highlight onto a new row resets which page of the screen is showing. Any row
+ * that reports failure abandons the rest of the page. */
+/* @implements 0x10048530 d3d BrUiPageFrame_10048530 */
 int BrUiPageFrame_10048530(BrScrGlobals *pG, BrUiPage *pThis)
 {
     int32_t i;
@@ -802,6 +894,9 @@ int BrUiPageFrame_10048530(BrScrGlobals *pG, BrUiPage *pThis)
  * 6. BrPhaseFull
  * ========================================================================== */
 
+/* WHAT IT DOES: tears a menu screen down and frees it if asked, returning its
+ * address either way -- the standard C++ deleting destructor shape. */
+/* @implements 0x10048850 d3d BrPhaseDelete_10048850 */
 void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags)
 {
     BrPhaseDtor_10048870(pThis);
@@ -810,6 +905,10 @@ void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags)
     return pThis;
 }
 
+/* WHAT IT DOES: tidies a menu screen up by letting go of the two list objects
+ * it owns -- the file list and the graphics list a screen may have been given
+ * -- and pointing it back at its base behaviours. */
+/* @implements 0x10048870 d3d BrPhaseDtor_10048870 */
 void BrPhaseDtor_10048870(BrPhaseFull *pThis)
 {
     BrScrRef *pRef;
@@ -829,6 +928,10 @@ void BrPhaseDtor_10048870(BrPhaseFull *pThis)
     pThis->fC4 = NULL;
 }
 
+/* WHAT IT DOES: calls one particular slot of a screen's own behaviour table
+ * and always reports success. Nothing in this packet fills that slot, so what
+ * the call actually does depends entirely on the screen. */
+/* @implements 0x100488B0 d3d BrPhaseFn_100488B0 */
 int BrPhaseFn_100488B0(BrPhaseFull *pThis)
 {
     /* vtable +0x20 -- a slot no function in this packet implements. */
@@ -836,6 +939,13 @@ int BrPhaseFn_100488B0(BrPhaseFull *pThis)
     return 1;
 }
 
+/* WHAT IT DOES: the once-a-frame housekeeping that runs behind whatever screen
+ * is showing. It keeps the current CD music track number up to date -- normally
+ * re-reading it only every hundred and twenty frames, but every frame in one
+ * mode -- and moves the mouse pointer element to wherever the mouse now is. It
+ * does that with the root screen temporarily made current and then puts the
+ * real one back. */
+/* @implements 0x100488C0 d3d BrPhaseTick_100488C0 */
 int BrPhaseTick_100488C0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     int fReTrack = 0;
@@ -898,6 +1008,11 @@ static void BrScrPhaseBail(BrScrGlobals *pG, BrPhaseFull *pThis,
     pV->f18(pThis, NULL);
 }
 
+/* WHAT IT DOES: runs one frame of a menu screen -- reads the keyboard, then
+ * gives every page of the screen its turn. If the screen has been asked to
+ * close, either before it starts or by the time it finishes, it saves the
+ * settings out and tells the screen to shut down rather than carrying on. */
+/* @implements 0x100489A0 d3d BrPhaseRun_100489A0 */
 int BrPhaseRun_100489A0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     const BrPhaseFullVtbl *pV;
@@ -943,6 +1058,10 @@ int BrPhaseRun_100489A0(BrScrGlobals *pG, BrPhaseFull *pThis)
     return 0;
 }
 
+/* WHAT IT DOES: throws a screen away entirely -- every row of every page, then
+ * the pages themselves -- and puts the menu highlight back to the top. This is
+ * what runs when the player leaves a screen. */
+/* @implements 0x10048AA0 d3d BrPhaseReleasePages_10048AA0 */
 void BrPhaseReleasePages_10048AA0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     int32_t i;
@@ -985,6 +1104,14 @@ static int BrScrDropPhase(BrPhaseFull **ppSlot)
     return 1;
 }
 
+/* WHAT IT DOES: closes the whole menu system down. It first stalls for a fixed
+ * time -- about four and a half seconds in one case -- so that a sound still
+ * playing can finish, then walks roughly forty screen slots in turn, telling
+ * each screen to release its pages and letting it go. Some slots also clear
+ * associated state as they empty. One slot appears twice in the list, so it is
+ * dropped and then dropped again. When called with no argument it also releases
+ * the root screen and the shared picture list. */
+/* @implements 0x10048B20 d3d BrPhaseShutdown_10048B20 */
 void BrPhaseShutdown_10048B20(BrScrGlobals *pG, void *pArg)
 {
     uint32_t nEnd;

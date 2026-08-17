@@ -143,6 +143,9 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 /* 0x1003B0E0 -- identical body to BrVec3DistSq, then tail-calls the fsqrt
  * wrapper at 0x10002250 (`fld [esp+4]; fsqrt; ret`). Summation order is
  * (dz*dz + dy*dy) + dx*dx, matching DistSq. */
+/* WHAT IT DOES: the straight-line distance between two points in 3D. One of
+ * the most-used routines in the game -- how far a car is from anything. */
+/* @implements 0x1003B0E0 d3d BrVec3Dist */
 float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
 {
     return sqrtf(BrVec3DistSq(pA, pB));

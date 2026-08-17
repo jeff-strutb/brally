@@ -179,6 +179,13 @@ static void BrRaceModeWrapUnwind(const BrRaceRules *pRules, BrDriver *pDrv)
  * 0x1005FF00
  * ========================================================================== */
 
+/* WHAT IT DOES: advances one driver through the race's checkpoint gates. It
+ * works out which gate they are heading for, tests whether the line they
+ * moved along this frame crossed it, and if so moves them on -- rolling over
+ * the lap counter and the lap time when they pass the last gate, and
+ * unwinding it again if they cross backwards. This is where lap counting
+ * actually happens. */
+/* @implements 0x1005FF00 glide BrRaceGateStep */
 int BrRaceGateStep(BrRaceRules *pRules, BrDriver *pDrv)
 {
     BrDriverCar *pCar;

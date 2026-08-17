@@ -188,6 +188,12 @@ static int BrCtrlProfileIndex(int32_t sel)
 }
 
 /* 0x10069C90 */
+/* WHAT IT DOES: puts the player's settings back to how the game ships -- all
+ * four control layouts restored to their factory bindings, the keyboard one
+ * selected, and the rest of the options block (screen size, sound and
+ * gameplay defaults) filled in. This is what a player gets on a first run or
+ * after choosing "restore defaults". */
+/* @implements 0x10069C90 d3d BrCtrlCfgInit */
 void BrCtrlCfgInit(BrCtrlCfg *pThis)
 {
     int i;
@@ -231,6 +237,10 @@ void BrCtrlCfgInit(BrCtrlCfg *pThis)
 }
 
 /* 0x10069A90 */
+/* WHAT IT DOES: brings a settings block into existence with everything at its
+ * default, and hands it back. It is the constructor; all the work is the
+ * defaulting above. */
+/* @implements 0x10069A90 d3d BrCtrlCfgCtor */
 BrCtrlCfg *BrCtrlCfgCtor(BrCtrlCfg *pThis)
 {
     BrCtrlCfgInit(pThis);
@@ -238,6 +248,10 @@ BrCtrlCfg *BrCtrlCfgCtor(BrCtrlCfg *pThis)
 }
 
 /* 0x10069A60 */
+/* WHAT IT DOES: sets up the one settings block the whole game shares, so
+ * every part of the game asking "what did the player choose?" has something
+ * to read before the settings file is loaded over the top. */
+/* @implements 0x10069A60 d3d BrCtrlCfgInitGlobal */
 BrCtrlCfg *BrCtrlCfgInitGlobal(void)
 {
     return BrCtrlCfgCtor(&g_BrCtrlCfg);
@@ -291,6 +305,10 @@ BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
 }
 
 /* 0x10069AA0 */
+/* WHAT IT DOES: throws away the player's edits to one control layout and puts
+ * that layout back to the shipped bindings. Only layouts 1, 2 and 3 can be
+ * named; every other number, including nonsense, resets the first layout. */
+/* @implements 0x10069AA0 d3d BrCtrlCfgLoadDefaults */
 void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile)
 {
     const int k = BrCtrlProfileIndex(profile);
@@ -298,6 +316,12 @@ void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile)
 }
 
 /* 0x10069B10 */
+/* WHAT IT DOES: binds one game action -- steer left, brake, look behind -- to
+ * a key, button or stick axis the player has just pressed on the redefine
+ * screen. It also restores that action's two backup bindings from the shipped
+ * defaults, and blanks either of them that would now clash with a binding
+ * already in use elsewhere in the layout. */
+/* @implements 0x10069B10 d3d BrCtrlCfgAssign */
 void BrCtrlCfgAssign(BrCtrlCfg *pThis, int32_t profile, int32_t action,
                      int32_t hi, int32_t lo)
 {
@@ -332,6 +356,10 @@ void BrCtrlCfgAssign(BrCtrlCfg *pThis, int32_t profile, int32_t action,
 }
 
 /* 0x10069BC0 -- name fixed by the XSLICE declaration in slice2_23.h. */
+/* WHAT IT DOES: says what KIND of thing an action is bound to -- keyboard,
+ * joystick button or joystick axis -- for one action of one control layout,
+ * which is how the redefine screen knows which sort of label to draw. */
+/* @implements 0x10069BC0 d3d BrFn10069BC0 */
 int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
@@ -341,6 +369,11 @@ int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 }
 
 /* 0x10069C30 -- name fixed by the XSLICE declaration in slice2_23.h. */
+/* WHAT IT DOES: says WHICH key, button or axis an action is bound to, as a
+ * bare number, paired with the kind reported above. The two answers are not
+ * symmetric -- for the keyboard layout it never looks at the axis case at
+ * all -- so a caller has to know the kind before the number means anything. */
+/* @implements 0x10069C30 d3d BrFn10069C30 */
 uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
@@ -386,6 +419,11 @@ static int BrReplayActiveCount(void)
 }
 
 /* 0x1006AA50 */
+/* WHAT IT DOES: throws away any recording in progress and switches recording
+ * off, so the next race starts with an empty replay. How many cars it clears
+ * depends on the game mode -- one in the two single-car modes, eight
+ * otherwise. */
+/* @implements 0x1006AA50 d3d BrReplayReset */
 void BrReplayReset(void)
 {
     const int n = BrReplayActiveCount();
@@ -400,6 +438,11 @@ void BrReplayReset(void)
 }
 
 /* 0x1006AAB0 */
+/* WHAT IT DOES: writes down where one car is and which way it is facing, into
+ * that car's slot for the current replay frame. It does nothing if recording
+ * is off, if playback is running, or if this car has already filled its
+ * allowance of frames -- the recording simply stops rather than wrapping. */
+/* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {
     BrCarState state;
@@ -426,6 +469,11 @@ void BrReplayRecord(void *pCar)
 }
 
 /* 0x1006AB20 */
+/* WHAT IT DOES: moves the recording on by one frame once every car has been
+ * written down, stopping each car's count at the end of its allowance. In the
+ * two single-car modes it also nudges the playback position along, so the
+ * recording and the thing watching it stay together. */
+/* @implements 0x1006AB20 d3d BrReplayAdvance */
 void BrReplayAdvance(void)
 {
     int n, i;
@@ -451,6 +499,10 @@ void BrReplayAdvance(void)
 }
 
 /* 0x1006ABB0 */
+/* WHAT IT DOES: sends the replay back to the start -- every car's playback
+ * position returns to its first recorded frame. The recording itself is
+ * untouched. */
+/* @implements 0x1006ABB0 d3d BrReplayRewind */
 void BrReplayRewind(void)
 {
     int i;
@@ -459,6 +511,14 @@ void BrReplayRewind(void)
 }
 
 /* 0x1006ABD0 */
+/* WHAT IT DOES: puts a car where the recording says it was, for the frame the
+ * replay is currently showing. It also fakes the car's speed by looking ahead
+ * to the next recorded frame and measuring how far the car is about to move,
+ * so anything driven by speed -- engine note, wheel spin -- still behaves;
+ * near the very end of the recording, with no next frame to look at, the
+ * speed is left as it was. In one playback mode a handful of the car's
+ * damage or effect flags are cleared as well. */
+/* @implements 0x1006ABD0 d3d BrReplayApply */
 void BrReplayApply(void *pCar, int32_t iPlayer)
 {
     BrCarState state;
@@ -503,12 +563,22 @@ void BrReplayApply(void *pCar, int32_t iPlayer)
 }
 
 /* 0x1006ACF0 */
+/* WHAT IT DOES: the same as the above, for a car that already knows its own
+ * number -- it looks the number up on the car rather than being told it. */
+/* @implements 0x1006ACF0 d3d BrReplayApplyCar */
 void BrReplayApplyCar(void *pCar)
 {
     BrReplayApply(pCar, BR_CAR_I32(pCar, BR_S42_CAR_OFF_INDEX));
 }
 
 /* 0x1006AD10 */
+/* WHAT IT DOES: works the replay transport from the buttons the player is
+ * holding -- play, step one frame either way, jump ten frames either way --
+ * and moves every car's playback position by the amount decided, stopping at
+ * the two ends of the recording. Holding a jump beats holding a single step,
+ * and asking for play beats both. Letting go of everything while scrubbing
+ * leaves the replay paused. */
+/* @implements 0x1006AD10 d3d BrReplaySeek */
 void BrReplaySeek(void)
 {
     const uint32_t bits = g_BrX18ABAD0;
@@ -696,6 +766,14 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
 }
 
 /* 0x1006B170 */
+/* WHAT IT DOES: turns all the pushes and twists that have been piled onto a
+ * physical body this frame into how fast it is about to speed up and how fast
+ * it is about to start spinning -- heavier bodies respond less, and the shape
+ * of the body decides how readily it turns. The forces on the four bodies
+ * attached to it are folded in too, but only sideways and forwards: the
+ * up-and-down direction ignores them entirely, which looks like an oversight
+ * in the original rather than an intention. */
+/* @implements 0x1006B170 d3d BrRbSolveAccel */
 void BrRbSolveAccel(BrRbBodyFull *pB)
 {
     BrVec3 t, u, w;
@@ -728,6 +806,12 @@ void BrRbSolveAccel(BrRbBodyFull *pB)
 }
 
 /* 0x1006B260 */
+/* WHAT IT DOES: one whole physics pass for a body: wipe last frame's answer,
+ * add up everything pushing on the body itself and on the four bodies
+ * attached to it, and work out the resulting acceleration and spin. This is
+ * the step that decides how a car moves this frame. The attached bodies' spin
+ * is deliberately not wiped, so theirs carries over from last frame. */
+/* @implements 0x1006B260 d3d BrRbAccumAll */
 void BrRbAccumAll(BrRbBodyFull *pB)
 {
     int k;
@@ -775,6 +859,11 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
 }
 
 /* 0x1006B510 */
+/* WHAT IT DOES: answers how fast one particular spot on a moving, spinning
+ * body is travelling -- which is not the same as how fast the body is
+ * travelling, because a spinning body drags its edges along faster than its
+ * middle. The spot is given directly. */
+/* @implements 0x1006B510 d3d BrRbVelAtPoint */
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
     BrVec3 p = *pPoint;         /* the original copies it to a stack slot */
@@ -782,6 +871,10 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 }
 
 /* 0x1006B430 */
+/* WHAT IT DOES: the same question, but about the spot belonging to another
+ * body -- how fast is this body moving at the place where that one is
+ * attached. */
+/* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
                         const BrRbBodyFull *pAt)
 {
@@ -790,6 +883,11 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
 }
 
 /* 0x1006B340 */
+/* WHAT IT DOES: the same again, except the attachment point is flattened --
+ * its height is ignored -- and the answer comes back measured against the
+ * world rather than against the body. The caller must not pass the same
+ * storage in twice, because the answer slot is used as scratch on the way. */
+/* @implements 0x1006B340 d3d BrRbVelAtBodyPointXY */
 void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
                           const BrRbBodyFull *pAt)
 {

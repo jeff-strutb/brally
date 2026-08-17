@@ -140,6 +140,13 @@ BrDPlayState *BrDPlayGetState(void)
 
 /* -- 0x1000C000 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: reacts to the housekeeping messages the networking layer sends
+ * about the multiplayer session itself. Only two matter: a player leaving,
+ * which makes the game tear that player's presence down, and one further
+ * message type that is handed straight on elsewhere. Everything else is
+ * ignored. The leaving case is skipped entirely while the lobby log is
+ * running, because the logging path does that clean-up instead. */
+/* @implements 0x1000C000 d3d BrDPlaySysMsgDispatch */
 void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
                            uint32_t cbData, uint32_t idFrom, uint32_t idTo)
 {
@@ -251,6 +258,12 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
 
 /* -- 0x1000C350 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: empties the network mailbox. It keeps asking for the next
+ * waiting message until there are none left, growing its receive buffer
+ * whenever a message turns out to be bigger than the buffer it has, and sends
+ * each one to the right place: messages from the session itself go to the
+ * housekeeping handler, messages from another player go to the game. */
+/* @implements 0x1000C350 d3d BrDPlayPump */
 int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 {
     void    *pvBuf  = NULL;
@@ -299,6 +312,11 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 
 /* -- 0x1000C440 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: the background thread that keeps multiplayer traffic flowing.
+ * It sleeps until either something arrives from the network or the game asks it
+ * to stop; on traffic it empties the mailbox and goes back to sleep, and on the
+ * stop request it ends the thread. */
+/* @implements 0x1000C440 d3d BrDPlayThreadProc */
 uint32_t BrDPlayThreadProc(void *pvCtx)
 {
     BrDPlayCtx *pCtx = (BrDPlayCtx *)pvCtx;
@@ -319,6 +337,12 @@ uint32_t BrDPlayThreadProc(void *pvCtx)
 
 /* -- 0x1000C510 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: leaves the multiplayer game and closes the networking down --
+ * asks the receiving thread to stop and waits for it, removes this machine's
+ * player from the session, and lets go of everything the session was holding.
+ * It is also the failure path for start-up, so it copes with any of those
+ * pieces never having existed. */
+/* @implements 0x1000C510 d3d BrDPlayShutdown */
 int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 {
     BrDPlayState *pSt = &g_BrDPlay;
@@ -365,6 +389,11 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 
 /* -- 0x1000C5D0 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: gets multiplayer networking ready -- clears the session out,
+ * creates the signals the receiving side waits on, and starts the background
+ * thread that will collect incoming traffic. If any step fails it undoes the
+ * lot and reports that it ran out of memory. */
+/* @implements 0x1000C5D0 d3d BrDPlayStartup */
 int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 {
     BrDPlayState *pSt = &g_BrDPlay;
@@ -397,6 +426,10 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 
 /* -- 0x1000C670 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: asks how many players are in the multiplayer session at this
+ * moment, so the lobby can show it. If the question cannot be answered it
+ * returns 0xFFFF rather than a count. */
+/* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
 uint32_t BrDPlayGetCurrentPlayers(void)
 {
     void    *pv = NULL;
@@ -497,6 +530,12 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
 
 /* -- 0x100109A0 ---------------------------------------------------------- */
 
+/* WHAT IT DOES: trims a shape against one straight edge, so that only the part
+ * on the visible side survives. It walks the ring of corners, drops the ones
+ * that fall outside, and puts a new corner exactly where the outline crosses
+ * the edge. Calling it four times -- once per side -- is how a triangle gets
+ * cut down to what actually fits on screen. */
+/* @implements 0x100109A0 d3d BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 {
     BrLerpNode *pPrev    = pList->pHead;

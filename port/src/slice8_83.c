@@ -451,6 +451,8 @@ void BrExt_10043260(void *pArg)
     (void)BrOptOpen296C((BrGameObj *)pArg);   /* argument unread downstream */
 }
 
+/* WHAT IT DOES: opens one particular options screen on behalf of a menu row. */
+/* @implements 0x10043330 d3d BrExt_10043330 */
 void BrExt_10043330(void *pArg)
 {
     (void)BrOptOpen2970((BrGameObj *)pArg);

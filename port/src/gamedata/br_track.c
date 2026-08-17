@@ -53,6 +53,10 @@ static void swap_u32(unsigned char *p)
  * `while (--c)` guarded by `if (c <= 0) return`, so c is signed there; a
  * negative count is a no-op, which the unsigned form below reproduces because
  * every caller derives c from a u16. */
+/* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in a
+ * track file, which is how N64 data is made readable on a PC. A count of
+ * nothing is a no-op. */
+/* @implements 0x10018A50 glide swap_u16_run */
 static void swap_u16_run(unsigned char *p, uint32_t c)
 {
     uint32_t i;

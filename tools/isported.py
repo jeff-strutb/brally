@@ -181,12 +181,28 @@ def definitions():
         for m in re.finditer(r'^[A-Za-z_][\w \*]*[\s\*](\w*?([0-9A-Fa-f]{8})\w*)\s*'
                              r'\([^;]*\)\s*\n?\s*\{', s, re.M):
             add(m.group(2), m.group(1), f, 'address in the name')
-        # short forms: BrMenuText1300 for 0x10041300, BrOpt37D0 for 0x100437D0
-        for m in re.finditer(r'^[A-Za-z_][\w \*]*[\s\*](\w*?([0-9A-Fa-f]{4})\w*)\s*'
-                             r'\([^;]*\)\s*\n?\s*\{', s, re.M):
-            frag = m.group(2).upper()
-            add(('1000' + frag)[-8:], m.group(1), f, 'short address in the name')
-            add(('100' + frag).ljust(8, '0')[:8], m.group(1), f, 'short address in the name')
+        # THE FOUR-DIGIT SHORT-FORM RULE IS REMOVED, and its output had to be
+        # purged from the source tree.
+        #
+        # It CONSTRUCTED an address by prefixing `0x1000` to four hex digits
+        # taken from a symbol name, or by padding to `0x100XXXX0`. That invents
+        # an address rather than reading one, and it guesses twice per symbol
+        # so at most one of the two can be right.
+        #
+        # Migrating its answers wrote 21 false `@implements` claims into the
+        # source. Ten landed in slice2_25.c, where `BrOpt3760` became
+        # `@implements 0x10003760` -- an address whose real code is an
+        # unrelated 111-byte realloc wrapper. Another put a host-side helper
+        # at 0x10063CA0, which is a replay forwarder already transcribed
+        # elsewhere under its D3D number.
+        #
+        # None of it was caught by a tool. It was caught by a pass writing
+        # plain-English descriptions, which had to READ each function in order
+        # to describe it and noticed the claims did not match the bodies. That
+        # is the argument for the descriptions being worth writing, quite apart
+        # from preservation: they force someone to look.
+        #
+        # A name ending in four hex digits is a hint. Use whereis.py.
     return out
 
 
@@ -351,7 +367,24 @@ def call_targets(addr):
                    re.findall(r'call\s+0x([0-9a-f]{8})', out)})
 
 
+BANNER = """
+!! isported.py INFERS from comment shape and IS NOT AUTHORITATIVE. !!
+
+   Use tools/manifest.py. This tool exists only to enumerate the residue that
+   has no @implements line yet.
+
+   It has been wrong eight distinct ways, including reporting an already-ported
+   function as a clean target (which causes duplicate transcriptions) and
+   reporting one build's address under the other build's function. Its
+   four-digit name rule wrote 21 false claims into the source before it was
+   removed.
+
+   Treat every answer below as a HYPOTHESIS to confirm with whereis.py.
+"""
+
+
 def main():
+    print(BANNER)
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if not args:
         raise SystemExit(__doc__)

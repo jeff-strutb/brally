@@ -131,6 +131,11 @@ static const char *brstr(int32_t id)
  * callee itself is the stub and the branch has no other body, which is a
  * different and much weaker claim -- it is safe.
  * ================================================================== */
+/* WHAT IT DOES: notes whether the game window has just been given or lost the
+ * keyboard focus, and whether it was minimised, so the main loop knows when to
+ * keep running and when to sit still. It only records the state; the actual
+ * pausing is done elsewhere. */
+/* @implements 0x10070370 glide BrOnActivate */
 void BrOnActivate(BrWParam wParam)
 {
     /* The original's registers are 32 bits wide. Masking reproduces
@@ -167,6 +172,13 @@ void BrOnActivate(BrWParam wParam)
  * RE-READ of the gate that runs the activate work. Both halves are in one
  * function and neither is an else of the other.
  * ================================================================== */
+/* WHAT IT DOES: handles the player switching away from the game and back
+ * again. On the way out it shuts the running subsystems down and marks the
+ * display as needing to be rebuilt; on the way back in it re-applies the video
+ * mode, and if that fails it apologises with a message box and asks the window
+ * to close. Both halves live in one function and the second is not an else of
+ * the first, so a single call can do both. */
+/* @implements 0x10019350 glide BrOnActivateApp */
 BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
     BrWndResult r;
@@ -265,6 +277,11 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
  *   100194A5 mov eax,[esp+0x10]R-4 + 0x10 = R+0xC  -> lParam
  * Bare `ret`, caller does `add esp,0xC`: __cdecl.
  * ================================================================== */
+/* WHAT IT DOES: refuses to let the player resize, move or maximise the game
+ * window from the system menu, so the display stays the size the game set it
+ * to; anything else on that menu is passed through to Windows untouched. It
+ * also asks Windows for the window's user data and throws the answer away. */
+/* @implements 0x10019480 glide BrOnSysCommand */
 BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
     BrWndResult r;
@@ -300,6 +317,14 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
  * See br_input.h for the prologue's ESP trace and for what this function is
  * and is not.
  * ================================================================== */
+/* WHAT IT DOES: the game's window procedure -- everything Windows wants to
+ * tell the game arrives here first. It offers each message to two optional
+ * hooks, deals with music-player notifications and CD/device arrival and
+ * removal, remembers the window handle when the window is created, quits when
+ * it is destroyed, keeps the mouse pointer hidden, and hands focus changes to
+ * the handlers above. Anything it does not recognise goes back to Windows for
+ * the default treatment. */
+/* @implements 0x100194C0 glide BrWndProc */
 BrWndResult BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
     BrWndResult r;

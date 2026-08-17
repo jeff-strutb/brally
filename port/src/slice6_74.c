@@ -228,6 +228,10 @@ void BrSub10074DC0(int n)
  * BrExt_10008B80, port/src/slice2_17.c for the variadic one).
  * ========================================================================== */
 
+/* WHAT IT DOES: nothing at all. The shipped game really does have an empty
+ * function here, called from a great many places under six different names
+ * and with varying numbers of arguments. Doing nothing is the transcribed
+ * behaviour, not a gap. */
 void BrExt_10008B80(void)
 {
 }
@@ -278,6 +282,12 @@ void BrStub8B80_5i(int32_t a0, int32_t a1, int32_t a2, int32_t a3, int32_t a4)
  * no signedness of its own, so the two declarations describe the same
  * instruction. The cast is explicit rather than implicit to keep that visible.
  */
+/* WHAT IT DOES: pulls the next few bits out of a packed stream of data -- the
+ * form the game stores network messages and compressed records in, where
+ * values are squeezed together without regard for byte boundaries. This is
+ * only a second name for a routine that already exists elsewhere in the tree;
+ * it decides nothing itself. */
+/* @implements 0x10073C90 d3d BrBitReaderRead */
 uint32_t BrBitReaderRead(struct BrBitReader *pReader, unsigned nBits)
 {
     return (uint32_t)BrBitStreamReadBits((BrBitStream *)pReader, (int)nBits);
@@ -293,6 +303,10 @@ uint32_t BrBitReaderRead(struct BrBitReader *pReader, unsigned nBits)
  * zero one. br_stubs.c's own banner flags this as the failure mode that only
  * shows up as a hit; it never showed up as a hit because nothing on the boot
  * path calls it yet. */
+/* WHAT IT DOES: measures how long a direction-and-distance is -- the length
+ * of a vector, used everywhere the game needs a speed or a distance from a
+ * pair of points. Another second name for an existing routine. */
+/* @implements 0x1003B170 d3d BrVec3Len */
 float BrVec3Len(const BrVec3 *pV)
 {
     return BrVec3Length(pV);
@@ -304,6 +318,10 @@ float BrVec3Len(const BrVec3 *pV)
  * behaviourally identical to br_crt.h's BrFtolTrunc. Out-of-range therefore
  * gives 0, per br_crt.c and CONVENTIONS (and NOT 0x80000000, per br_crt.h's
  * mistaken comment). 12 call sites. */
+/* WHAT IT DOES: turns a fractional number into a whole one by throwing away
+ * the fraction. Another second name for an existing routine; a number too big
+ * to fit comes back as zero. */
+/* @implements 0x1002B920 d3d BrFtolArg */
 int32_t BrFtolArg(float f)
 {
     return BrFtolTrunc(f);
@@ -327,6 +345,11 @@ void BrExt_10072AF0(int32_t a, uint32_t b)
  * "BrExt_1003CDA0 in slice2_26.h and BrSub1003CDA0 in slice2_25.h, same
  * `void (void)` shape, two names" -- and slice6_72.c owns the body. 8 call
  * sites. */
+/* WHAT IT DOES: a second name for a routine that lives in another module,
+ * reached under two different spellings by different parts of the game. It
+ * forwards and nothing more; what the routine itself does is described where
+ * its body is. */
+/* @implements 0x1003CDA0 d3d BrSub1003CDA0 */
 void BrSub1003CDA0(void)
 {
     BrExt_1003CDA0();
@@ -340,6 +363,12 @@ void BrSub1003CDA0(void)
  * slice3_40.h's `void *pDst220` is the car record's BrMat4 at +0x220 -- the
  * name says so and slice3_42.h types it as BrMat4 *. The cast is the whole
  * adapter. 3 call sites. */
+/* WHAT IT DOES: builds the transform that places and orients a car for
+ * drawing, from the position and facing the physics keeps. A second name for
+ * an existing routine -- and importantly not the other, similar-looking
+ * matrix builder, which scales rather than normalises and is not
+ * interchangeable with this one. */
+/* @implements 0x100695D0 d3d BrSub100695D0 */
 void BrSub100695D0(void *pDst220, const struct BrCarState *pState)
 {
     BrMat4FromCarState((BrMat4 *)pDst220, pState);

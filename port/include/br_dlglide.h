@@ -30,15 +30,19 @@
  * WHY THIS MODULE EXISTS ALONGSIDE br_dl.c, WHICH ALSO HANDLES THESE OPCODES
  * ----------------------------------------------------------------------
  * br_dl.c already carries a transcription of all twenty-eight opcodes.  Four
- * of these seven agree with the original.  THREE DO NOT, and the divergences
- * are behavioural rather than cosmetic:
+ * of these seven agreed with the original.  THREE DID NOT.  ALL THREE HAVE
+ * SINCE BEEN FIXED IN br_dl.c, re-derived from the same bytes rather than
+ * copied from here, each with a discriminating test and a reinstate-the-bug
+ * mutation (test_br_dl.c's MUTATIONS KILLED table).  The three are kept below
+ * because they are the derivation, not because they are still open:
  *
  *   1. 0xE2 and 0xED are DIFFERENT DECODES of the same command, and br_dl.c
  *      routes both to one function using the 0xED reading.  0x1001EB50 takes
  *      `(w >> 14) & 0x3FF` and `(w >> 2) & 0x3FF` -- 10.2 fixed point with the
  *      fraction dropped.  0x1001EBC0 takes `(w >> 12) & 0xFFF` and
  *      `w & 0xFFF` -- plain 12-bit integers.  So under br_dl.c an 0xE2 command
- *      is decoded with the wrong shifts and the wrong masks.  This is the
+ *      was decoded with the wrong shifts and the wrong masks; it now has one
+ *      handler per slot, br_dl_scissorE2 and br_dl_scissorED.  This is the
  *      exact relationship CONVENTIONS.md already records for 0xE1 against
  *      0xF6, and it is confirmed independently in BRD3D.dll, whose 0xE2
  *      (0x1001CE70) and 0xED (0x1001CDA0) split the same way at the same two
@@ -47,31 +51,36 @@
  *   2. NEITHER scissor handler's Y is stored as it arrives.  Both compute
  *      `screenHeight - uly` and `screenHeight - lry` (0x100A7518 is the
  *      grSstWinOpen height) before storing, because Glide's window origin is
- *      at the BOTTOM.  br_dl.c stores the raw fields, so its scisULY/scisLRY
- *      are in the opposite vertical direction from the original's globals and
- *      arrive in the opposite order -- what the original calls the MINIMUM Y
- *      comes out of the LR field, not the UL one.
+ *      at the BOTTOM.  br_dl.c stored the raw fields, so its scisULY/scisLRY
+ *      were in the opposite vertical direction from the original's globals and
+ *      arrived in the opposite order -- what the original calls the MINIMUM Y
+ *      comes out of the LR field, not the UL one.  It now stores
+ *      scisMinX/scisMinY/scisMaxX/scisMaxY with the flip applied.
  *
  *   3. 0xE1's four fields are SIGN-EXTENDED 12-bit integers (`shl 20 / sar 20`
  *      with no mask), and w0 carries the LOWER-RIGHT corner while w1 carries
  *      the UPPER-LEFT -- stock G_FILLRECT packing, and the opposite way round
- *      from 0xE2/0xED.  br_dl.c masks with 0xFFF (so a negative corner becomes
- *      a large positive one) and names w0's fields `ul`.  It also drops the
+ *      from 0xE2/0xED.  br_dl.c masked with 0xFFF (so a negative corner became
+ *      a large positive one) and named w0's fields `ul`.  It also dropped the
  *      `+1` on lrx and the `-1` on the flipped lry that 0x1001E720 applies
- *      before calling 0x1001E380.
+ *      before calling 0x1001E380.  All three are fixed; the window is recorded
+ *      as BrDl.rectMinX..rectMaxY, and the same three defects were present on
+ *      0xF6 because the two share one arm there.
  *
- * br_dl.c is deliberately not edited here: it is under concurrent work, and
- * CONVENTIONS.md's rule is to declare and wire rather than to reach into
- * someone else's module.  The divergences above are stated so they can be
- * reconciled deliberately; until they are, THIS module is the reading that
- * matches orig/BRGlide.dll and br_dl.c's is the one to change.
+ * br_dl.c was deliberately not edited when this module was written: it was
+ * under concurrent work, and CONVENTIONS.md's rule is to declare and wire
+ * rather than to reach into someone else's module.  It is no longer under
+ * concurrent work and the three were fixed there.
  *
- * NO STORAGE IS ALIASED.  br_dl.c's `BrDl.scisULX..scisLRY` and this module's
- * four clip-window fields model the same four original globals, and they are
- * NOT the same host object -- see CONVENTIONS.md, "Aliased storage: a
- * link-clean bug".  Nothing in the tree writes one and reads the other today,
- * and nothing should start: when the two readings are reconciled, one of them
- * must go, not both be kept in step.
+ * NO STORAGE IS ALIASED, AND THE DUPLICATION IS STILL OPEN.  br_dl.c's
+ * `BrDl.scisMinX..scisMaxY` (renamed from scisULX..scisLRY when the flip was
+ * put in) and this module's four clip-window fields model the same four
+ * original globals, and they are NOT the same host object -- see
+ * CONVENTIONS.md, "Aliased storage: a link-clean bug".  The two readings now
+ * AGREE, which removes the harm; it does not remove the duplicate.  Nothing
+ * in the tree writes one and reads the other, and nothing should start: the
+ * end state is that one of the two definitions goes, not that both are kept
+ * in step.  The same holds for 0xE1, 0xDC, 0xDD and 0xDF.
  *
  * WHAT IS NOT TRANSCRIBED, and it is declared rather than faked
  * ----------------------------------------------------------------------
@@ -251,8 +260,9 @@ const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p);  /* 0x1001EB50 
 
 /* 0xF2 -- 0x1001EC30.  A FRONTIER, DELIBERATELY: this opcode is already
  * transcribed, correctly, as br_dl.c's static `br_dl_settilesize`, and again
- * under its D3D address 0x1001CF30 as slice2_16.c's BrGbiSetScissor (which is
- * misnamed -- it is G_SETTILESIZE, see the report in test_br_dlglide.c).  This
+ * under its D3D address 0x1001CF30 as slice2_16.c's BrGbiSetTileSize -- which
+ * this file used to call BrGbiSetScissor and flag as misnamed; it has since
+ * been renamed there, with the dispatch-table evidence at the site.  This
  * entry decodes NOTHING.  It advances the cursor by eight, counts itself in
  * cF2Delegated, and exists so that a caller installing this module's table
  * over slots 0xDC..0xF2 cannot silently lose the opcode.  Route 0xF2 to

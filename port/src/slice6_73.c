@@ -189,6 +189,12 @@ static void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
  * 0x10048710 -- the phase constructor
  * ========================================================================== */
 
+/* WHAT IT DOES: creates the object that holds one whole menu -- its pages,
+ * which page is showing, and two lists of a hundred default names each,
+ * pre-filled as "Driver 1", "Driver 2" and so on from a pattern in the
+ * game's text table. It leaves the "what to do when this menu opens" slot
+ * untouched, so it holds rubbish until whoever created the menu fills it in. */
+/* @implements 0x10048710 d3d BrOptObjCtor */
 BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
 {
     BrNameList *pList;
@@ -260,6 +266,13 @@ BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
  * 0x100558A0 -- 17 controls
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out one of the game's menu screens -- seventeen labels,
+ * buttons and pickers, each at a fixed place with a fixed caption and a hook
+ * saying what happens when the player chooses it -- and switches the game
+ * into the mode that screen belongs to first. There is no logic here beyond
+ * the layout; the whole content of the function is the coordinates and the
+ * captions. Which screen it is was not established. */
+/* @implements 0x100558A0 d3d BrOptFn100558A0 */
 void BrOptFn100558A0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -402,6 +415,10 @@ void BrOptFn100558A0(BrPhase_ *pSelf)
  * 0x1004F2B0 -- 6 controls
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out another menu screen the same way -- a title, three
+ * choices the player can move between, and two decorations. Which screen it
+ * is was not established. */
+/* @implements 0x1004F2B0 d3d BrExt_1004F2B0 */
 void BrExt_1004F2B0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -453,6 +470,10 @@ void BrExt_1004F2B0(BrPhase_ *pSelf)
  * 0x1004D640 -- 7 controls
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out another menu screen, seven controls' worth, and
+ * hangs on to three of them so that other code can reach back and change them
+ * while the screen is up. Which screen it is was not established. */
+/* @implements 0x1004D640 d3d BrExt_1004D640 */
 void BrExt_1004D640(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -512,6 +533,11 @@ void BrExt_1004D640(BrPhase_ *pSelf)
  * 0x1004DFC0 -- the car screen, 12 controls
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out the car-selection screen -- twelve controls,
+ * including the list of car names and a bar whose fill is worked out from
+ * which of the twelve cars the cursor is on, so the display slides smoothly
+ * as the player scrolls. */
+/* @implements 0x1004DFC0 d3d BrExt_1004DFC0 */
 void BrExt_1004DFC0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -642,6 +668,12 @@ void BrExt_1004DFC0(BrPhase_ *pSelf)
  * 0x10050060 -- the season screen.  TWO pages.
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out the season and track screen. Alone among these
+ * builders it makes TWO pages rather than one, and asks the saved-game list
+ * for every file matching the season save pattern so the player can pick one.
+ * The second page is marked differently from the first, and the page cursor
+ * is not rewound before it is built. */
+/* @implements 0x10050060 d3d BrExt_10050060 */
 void BrExt_10050060(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -783,6 +815,11 @@ void BrExt_10050060(BrPhase_ *pSelf)
  * 0x10054B50 -- 20 controls, three of them rectangles
  * ========================================================================== */
 
+/* WHAT IT DOES: lays out the largest of the menu screens -- twenty controls,
+ * three of which are drawn boxes rather than text. All three boxes end up
+ * sharing a left edge because only the first works one out and the other two
+ * reuse it, which is the original's doing and not a simplification here. */
+/* @implements 0x10054B50 d3d BrExt_10054B50 */
 void BrExt_10054B50(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -959,6 +996,11 @@ static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
     return pBase + (ptrdiff_t)n * (ptrdiff_t)BR61_REC29D0_STRIDE;
 }
 
+/* WHAT IT DOES: starts editing a saved driver's name: it flips that record
+ * between "being edited" and "not", and on the way in it puts the existing
+ * name aside and blanks the record so the player types into an empty box.
+ * The put-aside copy is what the cancel half below puts back. */
+/* @implements 0x10041A00 d3d BrExt_10041A00 */
 int32_t BrExt_10041A00(void *pArg)
 {
     unsigned char *pRec;
@@ -994,6 +1036,11 @@ int32_t BrExt_10041A00(void *pArg)
     return 1;
 }
 
+/* WHAT IT DOES: cancels a name edit, putting the name that was set aside back
+ * on the record and clearing the edit box. It looks at the flag the commit
+ * half above set but writes into a DIFFERENT array of records than that half
+ * read from -- an asymmetry that is the original's, not a slip here. */
+/* @implements 0x100424D0 d3d BrExt_100424D0 */
 int32_t BrExt_100424D0(void *pArg)
 {
     unsigned char *pRec;
@@ -1026,6 +1073,12 @@ int32_t BrExt_100424D0(void *pArg)
  * 0x1003E680 -- the "new session" global reset
  * ========================================================================== */
 
+/* WHAT IT DOES: wipes the slate for a new game -- every choice the player
+ * could have made on the setup screens goes back to its default, the "1 of 1"
+ * counters are rebuilt, and three large blocks of session state are cleared.
+ * It prints the same number into both counter strings, because the value that
+ * ought to have made the second one different was zeroed moments before. */
+/* @implements 0x1003E680 d3d BrSub1003E680 */
 void BrSub1003E680(void)
 {
     int i;
@@ -1133,6 +1186,11 @@ void BrExt_1003E680(void)
  * 0x1003D030 -- the 16-byte join blob
  * ========================================================================== */
 
+/* WHAT IT DOES: fetches the small identifying blob for the network game the
+ * player has highlighted, which is what the join attempt hands to DirectPlay
+ * to say which session it wants. It reports success even when there was
+ * nothing to fetch, so the caller cannot tell the difference. */
+/* @implements 0x1003D030 d3d BrSub1003D030 */
 int32_t BrSub1003D030(void *pBlob)
 {
     const void *pSrc;
@@ -1153,6 +1211,10 @@ int32_t BrSub1003D030(void *pBlob)
  * 0x10071550
  * ========================================================================== */
 
+/* WHAT IT DOES: runs two other routines in order and reports success
+ * unconditionally. What the two do was not established, so the purpose is
+ * unclear; the caller ignores the answer in any case. */
+/* @implements 0x10071550 d3d BrSub10071550 */
 void BrSub10071550(void)
 {
     if (g_br73.pfn10071560 != NULL) { g_br73.pfn10071560(); }

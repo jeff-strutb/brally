@@ -237,6 +237,11 @@ void BrEntSetPos(BrEnt *pE, float x, float y, float z)
 }
 
 /* 0x100764C0 */
+/* WHAT IT DOES: points a car (or other object in the world) in a given
+ * compass direction, keeping it upright -- it can only turn about the
+ * vertical, not tip or roll. It writes the new facing into every copy of the
+ * object's state the physics keeps, so nothing is left pointing the old way. */
+/* @implements 0x100764C0 d3d BrEntSetHeading */
 void BrEntSetHeading(BrEnt *pE, float a)
 {
     float c  = cosf(a);
@@ -298,6 +303,12 @@ static void BrEntMirrorQuat(BrEnt *pE)
 }
 
 /* 0x10076700 */
+/* WHAT IT DOES: sets an object's position and facing wholesale from a
+ * ready-made transform, and works the facing back out into the form the
+ * physics stores. Note that it does NOT update the physics' idea of where the
+ * object is, only which way it is turned, so the rebuilt transform ends up
+ * with the new rotation but the old position. */
+/* @implements 0x10076700 d3d BrEntSetMatrix */
 void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
 {
     /* `rep movsd` of 16 dwords. */
@@ -310,6 +321,10 @@ void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
 }
 
 /* 0x100767A0 */
+/* WHAT IT DOES: tells an object how fast and in which direction it is
+ * travelling, writing it into all four places the game keeps that figure so
+ * they agree. Nothing else about the object is disturbed. */
+/* @implements 0x100767A0 d3d BrEntSetVel */
 void BrEntSetVel(BrEnt *pE, float x, float y, float z)
 {
     pE->st.vel.x = x;
@@ -330,6 +345,11 @@ void BrEntSetVel(BrEnt *pE, float x, float y, float z)
 }
 
 /* 0x10076820 */
+/* WHAT IT DOES: turns an object by three angles about its three axes. It
+ * ADDS the rotation to however the object was already facing rather than
+ * replacing it, and unlike the other setters here it leaves the object's
+ * drawing transform stale until something else rebuilds it. */
+/* @implements 0x10076820 d3d BrEntSetOrientation */
 void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
 {
     /* All three half-angles are formed up front, before any call. */
@@ -365,6 +385,9 @@ void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
 }
 
 /* 0x100769A0 */
+/* WHAT IT DOES: tells an object how fast it is spinning, writing it into all
+ * three places the game keeps that figure so they agree. */
+/* @implements 0x100769A0 d3d BrEntSetAngVel */
 void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
 {
     pE->st.angVel.x = x;
@@ -381,6 +404,12 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
 }
 
 /* 0x10076A00 */
+/* WHAT IT DOES: pushes the paint colour a car has been given down into the
+ * artwork the renderer actually uses, which is how the player's chosen colour
+ * reaches the screen. The colour loses precision on the way -- it is stored
+ * more coarsely than it was chosen -- so reading it back does not give the
+ * same value. */
+/* @implements 0x10076A00 d3d BrEntRefreshColour */
 void BrEntRefreshColour(BrEnt *pE)
 {
     BrCarGfxSetColour(pE->pRec, pE->r >> 3, pE->g >> 3, pE->b >> 3);
@@ -388,6 +417,11 @@ void BrEntRefreshColour(BrEnt *pE)
 }
 
 /* 0x10076A40 */
+/* WHAT IT DOES: attaches one of the sixteen car artwork records to this
+ * object -- which model and textures it is drawn with -- and immediately
+ * repaints it in its own colour. The record number is not checked at all, so
+ * an out-of-range one silently points at whatever memory follows the table. */
+/* @implements 0x10076A40 d3d BrEntSetRecord */
 void BrEntSetRecord(BrEnt *pE, int32_t idx)
 {
     /* The original's exact shift/add chain, in uint32_t so it wraps the same
@@ -406,6 +440,13 @@ void BrEntSetRecord(BrEnt *pE, int32_t idx)
 }
 
 /* 0x10076B20 */
+/* WHAT IT DOES: returns a car to a clean state -- straightens out all its
+ * internal transforms, stops it dead, and copies the handling constants for
+ * this particular car model out of the artwork record into the car itself,
+ * after which it lets go of the record. One of the six sub-transforms is
+ * skipped where the other five are done, which looks like a bug in the
+ * original and is preserved. */
+/* @implements 0x10076B20 d3d BrEntReset */
 void BrEntReset(BrEnt *pE)
 {
     const unsigned char *rec;
@@ -499,6 +540,12 @@ void BrSet680598(uint32_t v)
 #define BR_BUF(i) ((size_t)((i) & 1))
 
 /* 0x10078420 */
+/* WHAT IT DOES: answers "is the player holding down the control for this
+ * action right now?" -- checking whichever key, button, stick direction or
+ * mouse movement the action is bound to, plus up to two keyboard alternatives
+ * that always apply. Stick and mouse directions only count once they are
+ * pushed past a dead zone, so a resting stick reads as nothing. */
+/* @implements 0x10078420 d3d BrInputIsDown */
 uint8_t BrInputIsDown(int32_t action)
 {
     const BrInputBinding *b = &g_brInput.pBindings[action];
@@ -546,6 +593,12 @@ uint8_t BrInputIsDown(int32_t action)
  * original indexes a four-byte field with an unchecked byte. */
 
 /* 0x100786E0 */
+/* WHAT IT DOES: answers "did the player press this control on THIS frame?",
+ * by comparing what the controls read now against what they read last frame.
+ * It is what stops a held-down key repeating in the menus. Curiously it
+ * answers a different value for a stick edge than for a key press, so the
+ * caller cannot treat the two as interchangeable. */
+/* @implements 0x100786E0 d3d BrInputJustPressed */
 uint8_t BrInputJustPressed(int32_t action)
 {
     const BrInputBinding *b = &g_brInput.pBindings[action];
@@ -630,6 +683,11 @@ uint8_t BrInputJustPressed(int32_t action)
 /* ====================================================================== */
 
 /* 0x100773D0 */
+/* WHAT IT DOES: takes hold of the joystick or wheel so the game can read it,
+ * which Windows requires again every time the game comes back to the
+ * foreground. It reports whether it succeeded, and says "no" harmlessly if
+ * there is no such device. */
+/* @implements 0x100773D0 d3d BrDiAcquire */
 int32_t BrDiAcquire(void)
 {
     BrDiObj *pDev = g_brFfb.pDevice;
@@ -641,6 +699,11 @@ int32_t BrDiAcquire(void)
 }
 
 /* 0x10078BC0 */
+/* WHAT IT DOES: lets go of the keyboard, but only once as many parts of the
+ * game have finished with it as asked for it in the first place -- it counts
+ * users rather than shutting down on the first call. An extra call after the
+ * count has already reached zero does nothing at all. */
+/* @implements 0x10078BC0 d3d BrDiKeyboardShutdown */
 void BrDiKeyboardShutdown(void)
 {
     BrDiObj *pDev;
@@ -665,6 +728,11 @@ void BrDiKeyboardShutdown(void)
 }
 
 /* 0x10078C30 */
+/* WHAT IT DOES: tells Windows what range of numbers one axis of a controller
+ * should report -- how far left and right count as full deflection. A small
+ * convenience wrapper around the awkward Windows call; the game uses it to
+ * scale the wheel and stick into the range it wants. */
+/* @implements 0x10078C30 d3d BrDiSetPropRange */
 long BrDiSetPropRange(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
                       uint32_t dwHow, int32_t lMin, int32_t lMax)
 {
@@ -681,6 +749,10 @@ long BrDiSetPropRange(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
 }
 
 /* 0x10078C80 */
+/* WHAT IT DOES: the same, for controller settings that are a single number
+ * rather than a range -- the dead zone and the wheel's self-centring are the
+ * two the game sets this way. */
+/* @implements 0x10078C80 d3d BrDiSetPropDword */
 long BrDiSetPropDword(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
                       uint32_t dwHow, uint32_t dwData)
 {
@@ -719,6 +791,11 @@ static int BrFfbEnabled(void)
 }
 
 /* 0x10078E10 */
+/* WHAT IT DOES: chooses which way the next shake of a force-feedback wheel
+ * will push. It is remembered rather than sent, taking effect the next time
+ * the effect is committed, and it does nothing at all unless force feedback
+ * is switched on and a suitable wheel is attached. */
+/* @implements 0x10078E10 d3d BrFfbSetDirection */
 void BrFfbSetDirection(int32_t dir)
 {
     if (BrFfbEnabled()) {
@@ -727,6 +804,10 @@ void BrFfbSetDirection(int32_t dir)
 }
 
 /* 0x10078E50 */
+/* WHAT IT DOES: asks for the next shake of the wheel to be the long one --
+ * a quarter of a second. Like the direction it is only remembered, and only
+ * when force feedback is actually available. */
+/* @implements 0x10078E50 d3d BrFfbSetDurationLong */
 void BrFfbSetDurationLong(void)
 {
     if (BrFfbEnabled()) {
@@ -735,6 +816,8 @@ void BrFfbSetDurationLong(void)
 }
 
 /* 0x10078E90 */
+/* WHAT IT DOES: the same, for the short shake -- an eighth of a second. */
+/* @implements 0x10078E90 d3d BrFfbSetDurationShort */
 void BrFfbSetDurationShort(void)
 {
     if (BrFfbEnabled()) {
@@ -743,6 +826,10 @@ void BrFfbSetDurationShort(void)
 }
 
 /* 0x10078ED0 */
+/* WHAT IT DOES: actually delivers the shake -- it hands the wheel the length
+ * and direction that were chosen above and tells it to start, which is what
+ * the player feels on a bump or a collision. */
+/* @implements 0x10078ED0 d3d BrFfbCommitDuration */
 void BrFfbCommitDuration(void)
 {
     BrDiObj *pEff;
@@ -761,6 +848,11 @@ void BrFfbCommitDuration(void)
 }
 
 /* 0x100790B0 */
+/* WHAT IT DOES: sets how hard a force-feedback wheel pulls back towards
+ * centre -- the weight of the steering the player feels -- and sends the new
+ * strength to the wheel at once. Unusually for this group it does not first
+ * check that force feedback is enabled. */
+/* @implements 0x100790B0 d3d BrFfbSetSpringCoeff */
 void BrFfbSetSpringCoeff(int32_t coeff)
 {
     BrDiObj *pEff;
@@ -777,6 +869,13 @@ void BrFfbSetSpringCoeff(int32_t coeff)
 }
 
 /* 0x10078F20 */
+/* WHAT IT DOES: eases the weight of the steering up or down a step at a time
+ * rather than jumping to it, so the wheel's resistance changes smoothly as
+ * the car speeds up or slows down, stopping at a floor and a ceiling that
+ * depend on how much resistance the caller has asked for. Asking for it to be
+ * off stops the effect entirely, and asking for it again afterwards restarts
+ * it. The wheel is only told when the value has actually moved. */
+/* @implements 0x10078F20 d3d BrFfbUpdateSpring */
 void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
 {
     int32_t scaled;
@@ -858,6 +957,11 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
 static uint32_t g_brFfbAxes[2];
 
 /* 0x10079390 */
+/* WHAT IT DOES: builds the two force-feedback effects the game uses -- the
+ * constant centring pull that gives the steering its weight, and the shake
+ * used for bumps and impacts -- and hands both to the wheel ready to be
+ * started. The centring effect is created but deliberately left stopped. */
+/* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
     BrDiObj *pDev = g_brFfb.pDevice;
@@ -925,6 +1029,12 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 }
 
 /* 0x100790E0 */
+/* WHAT IT DOES: called by Windows once for each controller it finds; this is
+ * the game deciding to use that one. It opens the device, claims it, and
+ * describes what sort of data it wants back, stopping the search on the first
+ * one that works. Every way it can fail writes a message to the debugger and
+ * gives the device back. */
+/* @implements 0x100790E0 d3d BrFfbEnumDevice */
 int32_t BrFfbEnumDevice(const void *pDevInst, void *pvRef)
 {
     unsigned char guid[16];
@@ -969,6 +1079,13 @@ int32_t BrFfbEnumDevice(const void *pDevInst, void *pvRef)
 }
 
 /* 0x100791D0 */
+/* WHAT IT DOES: finds the player's wheel or joystick and gets it ready. It
+ * looks first for one that can do force feedback, and if it finds one it
+ * turns off the wheel's own self-centring (the game supplies its own) and
+ * builds the effects; failing that it settles for any controller at all. Then
+ * it sets both axes to the range the game expects with no dead zone. It only
+ * does the work once no matter how many times it is called. */
+/* @implements 0x100791D0 d3d BrFfbInit */
 int32_t BrFfbInit(void)
 {
     BrDiObj *pDev;

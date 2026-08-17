@@ -338,6 +338,11 @@ static unsigned BrCrSide(float v, double hi, double lo)
  * vertex is also outside.  The four sums are formed in the original's
  * order and association: (z + y) + x, (y + x) - z, (x - y) + z, (x - y) - z.
  * Written that way because the rounding differs from the tidy form. */
+/* WHAT IT DOES: the third and last stage of the cheap collision test: it
+ * checks a point against the eight corner planes that cut the corners off
+ * the bounding box. It is given the set of planes the point might still be
+ * outside and reports which of them it actually is outside. */
+/* @implements 0x100664F0 glide BrCrCorner */
 static unsigned BrCrCorner(const float aV[3], unsigned mask)
 {
     unsigned out = 0u;
@@ -690,6 +695,11 @@ static int BrCrExact(const float aV[9], const BrVec3 *pN)
 }
 
 /* 0x10066AA0 -- classify, and resolve the inconclusive answer. */
+/* WHAT IT DOES: decides whether a triangle touches the car's collision box.
+ * It tries the cheap box test first, and only when that cannot say either
+ * way does it fall through to the exact -- and much more expensive --
+ * intersection test. */
+/* @implements 0x10066AA0 glide BrCrTest */
 static int BrCrTest(const float aV[9], const BrVec3 *pN)
 {
     int r = BrCollRespBoxClassify(aV);

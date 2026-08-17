@@ -19,6 +19,10 @@ int BrIsAnyActive(const BrActiveFlags *p)
 
 /* 0x10073F40 -- reads count first, then conditionally increments, so a set
  * flag adds exactly one. */
+/* WHAT IT DOES: adds up a running count plus one for a flag, giving the
+ * total including whatever is pending. The count is read before the flag is
+ * examined, so a set flag adds exactly one. */
+/* @implements 0x10073F40 d3d BrCountedTotal */
 int BrCountedTotal(const BrCounted *pObj)
 {
     int n = pObj->count;

@@ -3,6 +3,10 @@
 
 /* 0x10035FA0 -- note it reads pending once and writes both fields, so a bit
  * present in pending and already set in latched stays set (OR, not XOR). */
+/* WHAT IT DOES: moves the chosen bits from "waiting" to "taken" in a two-
+ * word latch, leaving the rest waiting. A bit that was already taken stays
+ * taken, because the merge is an OR and not a flip. */
+/* @implements 0x10035FA0 d3d BrBitLatchTake */
 void BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
 {
     uint32_t pending = pLatch->pending;
@@ -12,6 +16,10 @@ void BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
 }
 
 /* 0x100383C0 -- unrolled swap of three u32s. */
+/* WHAT IT DOES: turns a 3D vector the right way round: three numbers, each
+ * with its bytes reversed. Boss Rally's data came from the N64 and stores
+ * its numbers the other way round from a PC. */
+/* @implements 0x100383C0 d3d BrSwapVec3 */
 void BrSwapVec3(void *pv)
 {
     unsigned char *p = (unsigned char *)pv;

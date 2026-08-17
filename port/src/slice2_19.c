@@ -92,6 +92,9 @@ void *g_BrLogArg;
 /* ================================================================== */
 
 /* 0x10035C70  DESTINATION FIRST -- see the header. */
+/* WHAT IT DOES: copies a point or direction from one place to another. Note
+ * the destination is the first argument, not the second. */
+/* @implements 0x10035C70 d3d BrVec3Copy */
 void BrVec3Copy(BrVec3 *pDst, const BrVec3 *pSrc)
 {
     pDst->x = pSrc->x;
@@ -109,6 +112,12 @@ static uint32_t *BrGfxTake2(void)
 }
 
 /* 0x10033CB1 */
+/* WHAT IT DOES: works out the wedge of the world the camera can currently
+ * see -- the four corners of the view at a given distance ahead, pulled back
+ * to three-quarters of that distance -- so that other code can ask whether
+ * something is worth drawing. In one of the game's modes the view is squeezed
+ * to half its height, which is what a split screen needs. */
+/* @implements 0x10033CB1 d3d BrCamFrustumBuild */
 void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
                        float a4, float a5)
 {
@@ -152,6 +161,12 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
 }
 
 /* 0x10033E83 */
+/* WHAT IT DOES: points the camera at what it is looking at and sets the lens,
+ * then combines the two into the single transform everything in the world is
+ * drawn through, and parks a copy of it where the renderer will find it.
+ * Anything nearer than a fixed close distance, or further than the caller's
+ * limit, is cut off. */
+/* @implements 0x10033E83 d3d BrCamMatrixSetup */
 void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
                       float a4, float a5)
 {
@@ -183,6 +198,11 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
 }
 
 /* 0x10033F7E  Both parameters are dead; see the header. */
+/* WHAT IT DOES: sets up a fixed camera looking straight at a flat scene at a
+ * fixed distance -- what the menus and other flat screens are drawn through --
+ * and issues the drawing commands that put that transform in force. The two
+ * values it is passed are never looked at. */
+/* @implements 0x10033F7E d3d BrCamMatrixSetupFixed */
 void BrCamMatrixSetupFixed(float a1, float a2)
 {
     uint32_t *pCmd;
@@ -213,6 +233,12 @@ void BrCamMatrixSetupFixed(float a1, float a2)
 }
 
 /* 0x1003407D */
+/* WHAT IT DOES: sets up flat drawing with no perspective at all, mapping a
+ * rectangle of the given width and height onto the screen with the origin at
+ * one corner, and issues the commands that put it in force. Depth is thrown
+ * away entirely, so nothing drawn this way can be in front of or behind
+ * anything else. */
+/* @implements 0x1003407D d3d BrCamMatrixSetupOrtho */
 void BrCamMatrixSetupOrtho(float w, float h)
 {
     uint32_t *pCmd;
@@ -251,6 +277,10 @@ void BrCamMatrixSetupOrtho(float w, float h)
 /* ================================================================== */
 
 /* 0x10035060 */
+/* WHAT IT DOES: corrects one address inside loaded data that still refers to
+ * where the data used to live, shifting it to where it now sits -- and leaves
+ * it alone if it points outside the block being moved. */
+/* @implements 0x10035060 d3d BrDlRebaseWord */
 void BrDlRebaseWord(uint32_t *pWord, uint32_t lo, uint32_t hi, uint32_t base)
 {
     if (*pWord >= lo && *pWord < hi)
@@ -258,6 +288,11 @@ void BrDlRebaseWord(uint32_t *pWord, uint32_t lo, uint32_t hi, uint32_t base)
 }
 
 /* 0x10035089 */
+/* WHAT IT DOES: walks a list of drawing commands just loaded from disk and
+ * corrects the addresses inside it -- the ones naming where a model's corner
+ * points and its textures live -- so that they point at where the data
+ * actually is in memory. It stops at the command that ends the list. */
+/* @implements 0x10035089 d3d BrDlRebase */
 void BrDlRebase(uint32_t *pDl, uint32_t lo, uint32_t hi, uint32_t base)
 {
     if (pDl == NULL)
@@ -276,6 +311,12 @@ void BrDlRebase(uint32_t *pDl, uint32_t lo, uint32_t hi, uint32_t base)
 }
 
 /* 0x1003445A */
+/* WHAT IT DOES: prepares one loaded model for drawing: it sets a global flag
+ * from the current game mode unless the model asks to be left alone, then
+ * scans the model's drawing commands and marks the model if that scan reports
+ * a hit. What the flag and the mark ultimately control was not established
+ * here, so the purpose beyond "per-model preparation" is unclear. */
+/* @implements 0x1003445A d3d BrDlOwnerFixup */
 void BrDlOwnerFixup(BrDlOwner *pOwner)
 {
     int32_t want;
@@ -306,6 +347,9 @@ static uint16_t BrSwapHalf(uint16_t v)
 }
 
 /* 0x10035CA0  __thiscall, ret 0xC. Only the low byte of each argument. */
+/* WHAT IT DOES: stores a colour as three separate red, green and blue
+ * amounts, keeping only the bottom byte of each. */
+/* @implements 0x10035CA0 d3d BrRgbSinkSet */
 void BrRgbSinkSet(BrRgbSink *pSink, int r, int g, int b)
 {
     pSink->r = (unsigned char)r;
@@ -314,6 +358,14 @@ void BrRgbSinkSet(BrRgbSink *pSink, int r, int g, int b)
 }
 
 /* 0x100350EE */
+/* WHAT IT DOES: repaints a car by writing the chosen colour into the twelve
+ * body panels of its model and re-submitting them for drawing, then fixes up
+ * the last panel's drawing settings differently depending on which extra
+ * pieces the car has -- shadows and reflections, judging by there being four
+ * separate variants. The colour is written into two slots of each panel while
+ * the see-through bit is taken from a third, which looks like an indexing
+ * slip in the original and is preserved. */
+/* @implements 0x100350EE d3d BrCarGfxSetColour */
 void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
 {
     int32_t   i;
@@ -408,6 +460,12 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
 }
 
 /* 0x10035452 */
+/* WHAT IT DOES: reads a car's current paint colour back out of its model and
+ * expands it to full red, green and blue values, which is how the menus show
+ * the player what colour the car is. The colour was stored more coarsely than
+ * it was chosen, so what comes back is close to but not exactly what went
+ * in. */
+/* @implements 0x10035452 d3d BrCarGfxReadColour */
 void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
 {
     const BrGfxSlot *pSlot = &pCar->pSlots[pCar->aSlotIdx[2]];
@@ -433,6 +491,11 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
 /* ================================================================== */
 
 /* 0x10035585 */
+/* WHAT IT DOES: sets how every animation in a set behaves -- play once, loop,
+ * or run back and forth -- by turning the relevant switches on and off across
+ * all of them at once. The three wrappers just below are the three settings a
+ * caller actually asks for. */
+/* @implements 0x10035585 d3d BrAnimFlagsApply */
 void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
 {
     int32_t i, n;
@@ -482,6 +545,15 @@ static int BrAnimLerp8(int lo, int hi, int frac)
 }
 
 /* 0x1003563A */
+/* WHAT IT DOES: advances every animation in a set by one frame's worth of
+ * time and works out the shape of the model in between its stored key poses,
+ * blending each corner point and its surface direction between the pose
+ * before and the pose after. Animations that have run off the end either stop,
+ * jump back to the start or turn round and play backwards, according to how
+ * they were set up. Several of the stopping cases end up interpolating
+ * between a pose and itself, which divides by zero -- harmless because the
+ * result is then multiplied by no difference at all, and preserved. */
+/* @implements 0x1003563A d3d BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *pSet)
 {
     BrAnimList *pList;
@@ -654,6 +726,15 @@ static float BrPadClamp(float v)
 }
 
 /* 0x10035CE0  __thiscall */
+/* WHAT IT DOES: turns one frame of raw controller readings into what the game
+ * understands -- which buttons are pressed, how far the stick is pushed, and
+ * how much the player is steering, with the stick scaled and limited to a
+ * full-left-to-full-right range. A disconnected controller reads as nothing
+ * pressed and centred. While the driving screen is the one in charge it also
+ * derives the extra combinations the car controls need, and lets a player
+ * steer with the direction pad instead of the stick when the stick is not in
+ * use. */
+/* @implements 0x10035CE0 d3d BrPadTranslate */
 void BrPadTranslate(BrPad *pPad)
 {
     BrPadRaw *pRaw = pPad->pRaw;
@@ -742,6 +823,10 @@ void BrPadTranslate(BrPad *pPad)
 }
 
 /* 0x10035FC0  __thiscall */
+/* WHAT IT DOES: splits a set of pressed buttons into "newly pressed this
+ * frame" and "still held from last frame", which is how the game tells a tap
+ * from a hold. */
+/* @implements 0x10035FC0 d3d BrBitEdgeSplit */
 void BrBitEdgeSplit(BrBitPair *pPair)
 {
     uint32_t a = pPair->a;
@@ -805,6 +890,12 @@ static uint16_t BrLd16(const void *pv)
 }
 
 /* 0x10036C00 */
+/* WHAT IT DOES: makes a model file usable after loading. The game's art was
+ * authored for a machine that stores numbers the other way round, so every
+ * number in the file has to be turned back to front, and every address in it
+ * corrected to where the data now sits -- header, geometry, animation frames
+ * and all. Each finished piece is then handed to the renderer. */
+/* @implements 0x10036C00 d3d BrModelSwap */
 void BrModelSwap(void *pImage)
 {
     unsigned char *pHdr = (unsigned char *)pImage;
@@ -907,6 +998,10 @@ void BrModelSwap(void *pImage)
 }
 
 /* 0x10036BD0 */
+/* WHAT IT DOES: loads a model from disk and makes it ready to draw -- reads
+ * the file in, tells the address fixer where it landed, and runs the
+ * byte-order and address correction over it. */
+/* @implements 0x10036BD0 d3d BrModelLoad */
 void *BrModelLoad(void *pMgr, void *a1, void *a2)
 {
     void *p;
@@ -924,6 +1019,11 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2)
 /* ================================================================== */
 
 /* 0x100347BA */
+/* WHAT IT DOES: adds to one entry of a running total, refusing to add more
+ * than a fixed amount at once and refusing to let the total exceed a fixed
+ * ceiling -- the shape of a damage or wear meter, though what this particular
+ * table records was not established. */
+/* @implements 0x100347BA d3d BrAccumAddClamp */
 void BrAccumAddClamp(float *aTable, int i, float amt)
 {
     if (amt > g_BrK08F520)
@@ -936,6 +1036,10 @@ void BrAccumAddClamp(float *aTable, int i, float amt)
 }
 
 /* 0x10035041 */
+/* WHAT IT DOES: clears one field of a two-field record and sets the other to
+ * the value given. What the record is for was not established, so nothing
+ * beyond that can honestly be said. */
+/* @implements 0x10035041 d3d BrPairSlotReset */
 void BrPairSlotReset(BrPairSlot *p, uint32_t v)
 {
     p->f04 = 0;
@@ -943,13 +1047,29 @@ void BrPairSlotReset(BrPairSlot *p, uint32_t v)
 }
 
 /* 0x10035059 */
+/* WHAT IT DOES: always answers "no". It exists to be installed where the game
+ * needs a handler that declines everything; what it is installed as was not
+ * established. */
+/* @implements 0x10035059 d3d BrRet0_10035059 */
 int BrRet0_10035059(void) { return 0; }
 /* 0x1003557B */
+/* WHAT IT DOES: always answers "yes"; the accepting counterpart of the
+ * above. What it is installed as was not established. */
+/* @implements 0x1003557B d3d BrRet1_1003557B */
 int BrRet1_1003557B(void) { return 1; }
 /* 0x10035B87 */
+/* WHAT IT DOES: a second, separate routine that also always answers "yes".
+ * Two identical bodies at different addresses, so callers of one are not
+ * callers of the other; what either is installed as was not established. */
+/* @implements 0x10035B87 d3d BrRet1_10035B87 */
 int BrRet1_10035B87(void) { return 1; }
 
 /* 0x10035520 */
+/* WHAT IT DOES: fills in one of the game's car slots. Beware the flag it is
+ * given: a non-zero flag means DO NOT load, in which case it only writes a
+ * note to the log; a zero flag is the one that actually loads the car. Either
+ * way the slot ends up pointing at the caller's data. */
+/* @implements 0x10035520 d3d BrCarSlotLoad */
 void BrCarSlotLoad(unsigned char *aCars, void **aCarPtr, int i,
                    void *pArg, int flag)
 {
@@ -966,6 +1086,10 @@ void BrCarSlotLoad(unsigned char *aCars, void **aCarPtr, int i,
 }
 
 /* 0x10035BA7  The parameter is never read. */
+/* WHAT IT DOES: writes out whatever message was last handed to the routine
+ * below. It ignores the argument it is given and reads the stored one
+ * instead. */
+/* @implements 0x10035BA7 d3d BrLogEmit */
 void BrLogEmit(void *ignored)
 {
     (void)ignored;
@@ -973,6 +1097,10 @@ void BrLogEmit(void *ignored)
 }
 
 /* 0x10035BBA */
+/* WHAT IT DOES: records a message and writes it out at once. Worth knowing
+ * because elsewhere in the tree this same address is reached under the name
+ * "BrFatal" -- it is not fatal, it only logs. */
+/* @implements 0x10035BBA d3d BrLogSet */
 void BrLogSet(void *p)
 {
     g_BrLogArg = p;

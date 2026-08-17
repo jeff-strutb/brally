@@ -173,6 +173,10 @@ void BrExt_1003E310(void)
 /* 0x1006A4A0, 8 call sites -- the config writer.  slice4_53.c has the body,
  * including the emit list and the "+0x2A4 is never written" gap.  Prototype
  * copied verbatim from slice3_31.h:289. */
+/* WHAT IT DOES: writes the game's settings out. This is only the name other
+ * modules call it by -- the actual writing lives in slice4_53.c, and this
+ * hands both arguments straight through. */
+/* @implements 0x1006A4A0 d3d BrExt_1006A4A0 */
 void BrExt_1006A4A0(void *pThis, void *pArg)
 {
     BrSub1006A4A0(pThis, pArg);
@@ -180,6 +184,11 @@ void BrExt_1006A4A0(void *pThis, void *pArg)
 
 /* 0x10060E90, 7 call sites -- the fake monotonic timer.  Prototype from
  * slice2_17.c:68; slice5_61.h returns int32_t, which is the same type here. */
+/* WHAT IT DOES: answers "what time is it now?" in the game's own steadily
+ * counting clock, which is what everything that has to happen after a delay
+ * measures against. The real clock lives in slice5_61.c; this is a second name
+ * for it. */
+/* @implements 0x10060E90 d3d BrX10060E90 */
 int BrX10060E90(void)
 {
     return (int)BrTimeNow();
@@ -195,6 +204,10 @@ void *BrX10069530(void)
 /* 0x10079550, 4 call sites -- force-feedback teardown, with its underflow
  * clamp that skips the teardown entirely.  slice1_10.c has the body and
  * slice3_45.c owns the single BrFfb, so this adapter binds no new storage. */
+/* WHAT IT DOES: switches the force-feedback effects off and releases the wheel,
+ * as part of shutting down. The work is slice1_10.c's; this just supplies the
+ * one force-feedback object the game has. */
+/* @implements 0x10079550 d3d BrExt_10079550 */
 void BrExt_10079550(void)
 {
     BrFfbShutdown(&g_brFfb);
@@ -322,6 +335,14 @@ const int32_t BrTextWidthSmall[BR_TEXT_GLYPHS] = {
  * the way in and halves the total on the way out, which is not a no-op: the
  * doubling happens BEFORE the large/small threshold test, so hi-res can select
  * the large font for a scale that would otherwise have taken the small one. */
+/* WHAT IT DOES: measures how wide a line of text will come out at a given
+ * size, which is what lets the menus centre captions and fit them into boxes.
+ * It picks the large or small lettering the same way the drawing code does,
+ * adds up each character's width, and treats the inline "%" colour codes as
+ * taking no space -- except that a code like "%rw" swallows one character too
+ * many, so text after a colour code measures narrower than it draws. Spaces are
+ * short by a pixel each for the same reason. */
+/* @implements 0x100193C0 d3d BrSub_100193C0 */
 int BrSub_100193C0(const char *psz, int scale)
 {
     const int32_t *pTable;
@@ -408,6 +429,10 @@ int BrSub_100193C0(const char *psz, int scale)
  *
  * Prototype copied verbatim from slice2_17.c:95, which declares it void.  The
  * result is therefore discarded -- see the conflict note in the header. */
+/* WHAT IT DOES: silences one of the game's sound-effect slots. If sound was
+ * never brought up, or that slot is not holding a sound, it quietly does
+ * nothing. */
+/* @implements 0x10072580 d3d BrX10072580 */
 void BrX10072580(int a0)
 {
     struct BrSndVoice *pVoice;

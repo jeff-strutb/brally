@@ -37,6 +37,13 @@ const int32_t g_aBr72RsId[BR72_RS_COUNT] = {
  * GOTCHA: `cmp eax,4` + `ja` is UNSIGNED, so a negative selector takes the
  * out-of-range arm rather than indexing backwards.
  */
+/* WHAT IT DOES: turns the chosen car group into the two derived numbers the
+ * rest of the game actually consults -- a bit pattern that looks like the set
+ * of cars that group allows, and a small count -- so nothing else has to know
+ * the group numbering. It only recomputes when the group differs from the last
+ * time it ran, which means that if anything else writes those two values they
+ * are left stale rather than corrected. */
+/* @implements 0x10044540 d3d BrSub10044540 */
 void BrSub10044540(void)
 {
     Br72Env *pE = g_pBr72Env;
@@ -67,6 +74,13 @@ void BrSub10044540(void)
 /* ==========================================================================
  * 0x1003E3A0
  * ========================================================================== */
+/* WHAT IT DOES: makes a set of options actually take effect. It picks the data
+ * table that goes with the selected entry, copies its name into the buffer the
+ * menus display, notes four on/off states, and then republishes a saved block
+ * of a dozen settings out into the individual globals the rest of the game
+ * reads. One setting cannot hold the value 1 and is quietly promoted to 2 on
+ * the way through. */
+/* @implements 0x1003E3A0 d3d BrSub1003E3A0 */
 void BrSub1003E3A0(void)
 {
     Br72Env *pE = g_pBr72Env;
@@ -156,6 +170,11 @@ void BrEnt35FC0(void *pThis)
 /* ==========================================================================
  * 0x1005B0C0 -- thiscall
  * ========================================================================== */
+/* WHAT IT DOES: the tidy-up step for a piece of on-screen text. All it does is
+ * point the object back at its base set of behaviours, which is what a C++
+ * destructor for a class with no owned memory compiles to -- there is nothing
+ * to release. */
+/* @implements 0x1005B0C0 d3d BrTextBoxDtor */
 void BrTextBoxDtor(BrTextBox *pBox)
 {
     /* The original stores the literal 0x1008F728.  slice3_39.h already
@@ -166,6 +185,12 @@ void BrTextBoxDtor(BrTextBox *pBox)
 /* ==========================================================================
  * 0x100771B0
  * ========================================================================== */
+/* WHAT IT DOES: reads which keys are down right now. If the game has lost the
+ * keyboard to another program in the meantime it quietly grabs it back and
+ * reads again. When there is no keyboard device at all it reports what looks
+ * like success and leaves the caller's buffer holding whatever was in it
+ * before, so keys can appear stuck. */
+/* @implements 0x100771B0 d3d BrDikGetDeviceState */
 int32_t BrDikGetDeviceState(uint8_t *pState)
 {
     Br72Env     *pE = g_pBr72Env;
@@ -262,6 +287,10 @@ void BrSub_1003407D(float a, float b)
  * drawn with dwVertexTypeDesc == 3.  Two triangles make the quad; y is
  * flipped about 0x100A81C4.
  */
+/* WHAT IT DOES: fills in one corner of a flat coloured rectangle for the
+ * graphics card -- its position, its colour and which bit of the texture it
+ * takes. Six of these make the two triangles that a filled box is drawn as. */
+/* @implements 0x1001BE90 d3d Br72FillVert */
 static void Br72FillVert(BrD3DTLVertex *pV, float x, float y,
                          uint32_t color, float tu, float tv)
 {
@@ -452,6 +481,11 @@ void BrSub_1001BE90(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 /* ==========================================================================
  * 0x10005B10
  * ========================================================================== */
+/* WHAT IT DOES: creates the locks that keep the game's threads out of each
+ * other's way -- sixteen for one bank of shared slots and ten more for
+ * individual pieces of shared state -- clears two counters, and starts the two
+ * subsystems that then rely on them. The argument its callers pass is never
+ * read. */
 void BrSub10005B10(int32_t a)
 {
     Br72Env *pE = g_pBr72Env;
@@ -638,6 +672,12 @@ static BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
  * GOTCHA: this is the ONLY builder in the family whose screen fX is 190.0f
  * (0x433E0000).  Every other one uses 195.0f.
  */
+/* WHAT IT DOES: builds the "modem dial-up" screen, where the player types the
+ * phone number to call for a modem game. It puts up the multiplayer banner, the
+ * heading, a "Phone Number" caption, a typing field on its name-bar graphic
+ * pre-filled with the number last used, and Continue and Back rows. It is the
+ * only screen in the game laid out five pixels to the left of all the others. */
+/* @implements 0x10056A10 d3d BrOptFn10056A10 */
 void BrOptFn10056A10(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
@@ -765,6 +805,14 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
  * GOTCHA: four whole controls are skipped unless 0x1022AF18 == 2, and it is
  * an EQUALITY test, not "non-zero".
  */
+/* WHAT IT DOES: builds the multiplayer game-setup screen -- the lobby everyone
+ * waits in before a network race. Only the host gets the four rows that decide
+ * the race: track, weather, laps and car group; a joining player sees the
+ * screen without them. The two action rows change their wording to match who
+ * you are, reading "Create Game" and "Quit to Lobby" for the host and
+ * "Continue" and "Back" otherwise. Alongside the rows it places the track and
+ * weather thumbnails, the lap count, a car picture and the chat readout. */
+/* @implements 0x10057C10 d3d BrOptFn10057C10 */
 void BrOptFn10057C10(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
@@ -928,6 +976,12 @@ void BrOptFn10057C10(BrPhase_ *pPhase)
 /* ==========================================================================
  * 0x10052030 -- BrExt_10052030.  Twenty-three controls.
  * ========================================================================== */
+/* WHAT IT DOES: builds the season-progress screen the player sees between
+ * championship rounds. It carries the heading, a Reset Round row, Continue and
+ * Back, the standings readouts, and down the right-hand side three picture
+ * buttons -- save, main menu and options -- each of which has a second
+ * "pressed" picture it swaps to. */
+/* @implements 0x10052030 d3d BrExt_10052030 */
 void BrExt_10052030(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
@@ -1171,6 +1225,10 @@ void BrExt_10052030(BrPhase_ *pPhase)
 /* ==========================================================================
  * 0x10059760 -- BrExt_10059760.  Six controls.
  * ========================================================================== */
+/* WHAT IT DOES: builds the time-attack menu -- the time-attack banner, then
+ * New Race, Load Race and Back. The gap between Load Race and Back is five rows
+ * wide, so the Back row sits well clear of the other two. */
+/* @implements 0x10059760 d3d BrExt_10059760 */
 void BrExt_10059760(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
@@ -1398,6 +1456,12 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
 /* ==========================================================================
  * 0x1004E830 -- BrExt_1004E830.  Sixteen controls.
  * ========================================================================== */
+/* WHAT IT DOES: builds the game-options screen: force feedback, skid marks,
+ * specular lighting and car shadow, each with a little picture showing what the
+ * setting looks like, and a Back row. It re-checks for a force-feedback device
+ * on the spot, right after placing the heading, and greys the force-feedback
+ * row out if there is not one. */
+/* @implements 0x1004E830 d3d BrExt_1004E830 */
 void BrExt_1004E830(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;

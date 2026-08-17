@@ -121,11 +121,6 @@ void BrAppStartSetHost(const BrAppStartHost *pHost)
  * only reached when the threads match, so || short-circuiting is not an
  * approximation of the original, it is the original.
  * ========================================================================== */
-/* WHAT IT DOES: checks whether Boss Rally is already running, and if it is,
- * brings that copy's window to the front instead of starting a second one.
- * Whether it restores the window depends on whether the other copy owns the
- * foreground and whether it is minimised. */
-/* @implements 0x10007E80 glide BrAppCheckPreviousApp */
 int32_t BrAppCheckPreviousApp(void)
 {
     const BrAppStartHost *pH = g_pBrAppStartHost;

@@ -72,6 +72,11 @@ static int32_t br_tex3d_find(const BrTex3d *pTex, const BrTex3dRec *pProbe)
 
 /* 0x10027A10 -- AppendTexture.  Returns the OLD count, which is the index
  * the 0xDC command carries. */
+/* WHAT IT DOES: adds a newly recognised texture to the game's texture table
+ * and reports the slot it went into, growing the table in blocks of 256 when
+ * it fills up. The slot number it gives back is the number that gets written
+ * into the drawing list in place of the texture-load commands. */
+/* @implements 0x10027A10 glide br_tex3d_append */
 static int32_t br_tex3d_append(BrTex3d *pTex, const BrTex3dRec *pRec)
 {
     if (pTex->cRec >= pTex->cRecMax) {
@@ -182,6 +187,9 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
 
 /* 0x100293D0.  The run ends at the FIRST command that is not part of the
  * setup grammar; later ones do not move it. */
+/* WHAT IT DOES: notes where a run of texture-setup commands stops. Only the
+ * first command that ends the run counts; later ones do not move it. */
+/* @implements 0x100293D0 glide br_tex3d_end */
 static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
 {
     (void)pTex;
@@ -190,6 +198,13 @@ static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
 }
 
 /* 0x10028B50 -- THE SEAM. */
+/* WHAT IT DOES: closes off a run of texture-setup commands and replaces it
+ * with a single one. It registers the texture the run describes, and if that
+ * works, overwrites the run's first command with "use texture number N, and
+ * skip this many commands", so the several commands the N64 needed to load a
+ * texture become one on the PC. This is the point where an N64 drawing list
+ * is rewritten into a PC one. */
+/* @implements 0x10028B50 glide br_tex3d_seam */
 static void br_tex3d_seam(BrTex3d *pTex, uint8_t *p,
                           uint8_t **ppStart, uint8_t **ppEnd)
 {
@@ -386,6 +401,11 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
  * by a byte swap, which is a BIG-endian read of the N64 halfword, then a
  * rotate right by one.  Reading the two bytes big-endian here is the same
  * value on every host (CONVENTIONS.md: decode byte-wise, never by overlay). */
+/* WHAT IT DOES: reads one 16-bit colour out of N64 texture data. As well as
+ * taking the two bytes the N64's way round, it rotates the value by one bit,
+ * which moves the transparency bit from the bottom of the N64's layout to
+ * the top of the layout the rest of this code uses. */
+/* @implements 0x100271F0 glide br_tex3d_texel */
 static uint16_t br_tex3d_texel(const uint8_t *p)
 {
     uint32_t v = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
@@ -435,6 +455,11 @@ size_t BrTex3dSrcBytes(const BrTex3d *pTex, uint32_t id)
 /* 0x10027850, the two floats at record +0x2AC/+0x2B0, divided by Glide's
  * 256-unit texture-coordinate space so the result multiplies a raw N64 Vtx
  * texture coordinate straight into [0,1].  See br_tex3d.h. */
+/* WHAT IT DOES: turns a texture-coordinate shift code into the multiplier it
+ * stands for -- a halving for each of the first ten codes, and a doubling
+ * for each step of the remainder. This is how a texture ends up sampled at
+ * the right scale. */
+/* @implements 0x10027850 glide br_tex3d_shift */
 static float br_tex3d_shift(int32_t shift)
 {
     float f = 1.0f;

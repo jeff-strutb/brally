@@ -3,6 +3,10 @@
 
 /* 0x10073B80 -- stores in the order +8, +0xC, +0, +4; order is irrelevant to
  * callers but the SET of fields is not: +0x10 is left untouched. */
+/* WHAT IT DOES: clears the first four fields of an object header while
+ * deliberately leaving the fifth alone. Which fields are cleared is the
+ * whole content of the routine; the order they are cleared in is not. */
+/* @implements 0x10073B80 d3d BrObjClear */
 void BrObjClear(BrObjHeader *pObj)
 {
     pObj->f08 = 0;

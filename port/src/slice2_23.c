@@ -345,6 +345,9 @@ const char *BrDPlayErrName(int32_t hr)
  * 0x1003DFC0
  * ========================================================================== */
 
+/* WHAT IT DOES: puts the whole game-setup block back to its starting values
+ * -- no track, no opponents chosen, the first control layout selected --
+ * which is what a fresh trip into the menus begins from. */
 /* @implements 0x1003DFC0 d3d BrUiFn1003DFC0 */
 void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
 {
@@ -363,6 +366,10 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
  * 0x1003E010 / 0x1003E040
  * ========================================================================== */
 
+/* WHAT IT DOES: stamps a fixed pair of values into two of the session
+ * settings. What the values mean was not established; they are the same
+ * pair the new-session reset writes, so this is a partial re-do of that
+ * reset. */
 /* @implements 0x1003E010 d3d BrUiFn1003E010 */
 void BrUiFn1003E010(BrUiGlobals *pG)
 {
@@ -370,6 +377,9 @@ void BrUiFn1003E010(BrUiGlobals *pG)
     pG->gAA2598 = 0x102;
 }
 
+/* WHAT IT DOES: the companion of the above, stamping a different fixed pair
+ * into two more session settings. Again the meaning of the values was not
+ * established. */
 /* @implements 0x1003E040 d3d BrUiFn1003E040 */
 void BrUiFn1003E040(BrUiGlobals *pG)
 {
@@ -435,6 +445,10 @@ int32_t BrUiDraw1003E7A0(BrUiObj *pObj)
  * 0x1003E840
  * ========================================================================== */
 
+/* WHAT IT DOES: sets the caption of a menu row to one of two pieces of text
+ * depending on the game mode -- the row reads differently in the plain
+ * single-player case than in every other. Unlike almost every other caption
+ * hook here it does not tell the row to re-measure itself afterwards. */
 /* @implements 0x1003E840 d3d BrUiText1003E840 */
 int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -452,6 +466,9 @@ int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E8D0 / 0x1003EA90
  * ========================================================================== */
 
+/* WHAT IT DOES: writes a plain number into a menu row's caption and tells
+ * the row to re-measure and redraw itself. This is the shared body behind
+ * the two number rows below. */
 /* @implements 0x1003E8D0 d3d br23_num_common */
 static int32_t br23_num_common(BrUiObj *pObj, int32_t value)
 {
@@ -472,6 +489,8 @@ int32_t BrUiNum1003E8D0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_num_common(pObj, (int32_t)pG->tAA26E8[pG->gAA28AC]);
 }
 
+/* WHAT IT DOES: shows the number held in the second of the two per-entry
+ * tables as a menu row's caption. */
 /* @implements 0x1003EA90 d3d BrUiNum1003EA90 */
 int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -482,6 +501,9 @@ int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E920 / 0x1003EA40
  * ========================================================================== */
 
+/* WHAT IT DOES: slides a menu row sideways to a position worked out from
+ * one of the settings, so the row's marker sits at the place that setting
+ * corresponds to. */
 /* @implements 0x1003E920 d3d BrUiFn1003E920 */
 int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -550,6 +572,10 @@ int32_t BrUiDraw1003E9E0(BrUiObj *pObj, BrUiGlobals *pG)
  * The poll family
  * ========================================================================== */
 
+/* WHAT IT DOES: asks the row's list which entry the player has moved to and
+ * remembers it as the current selection, leaving the selection alone if the
+ * list has no answer. Several near-identical hooks follow, differing only
+ * in which setting they store into. */
 /* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
 int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -584,6 +610,8 @@ int32_t BrUiPoll1003EC30(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_poll_commit(pObj, pG);
 }
 
+/* WHAT IT DOES: the same, storing into the setting that tracks which entry
+ * of a per-player table is current. */
 /* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
 int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -591,6 +619,7 @@ int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: the same, storing into a different setting again. */
 /* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
 int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -598,6 +627,9 @@ int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: asks the list which entry the player has moved to and then
+ * throws the answer away -- there is no store-back at all, so this hook only
+ * has whatever effect the asking itself has. */
 /* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
 int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -606,6 +638,10 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: asks the list for the current entry, remembers it, and then
+ * looks up a pointer for that entry out of a table hung off the menu
+ * object. There is no range check, and on the no-answer path the index used
+ * can still be negative. */
 /* @implements 0x1003EBE0 d3d BrUiPoll1003EBE0 */
 int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -625,6 +661,8 @@ int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: the same ask-and-remember, storing into yet another
+ * setting. */
 /* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
 int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -638,6 +676,8 @@ int32_t BrUiPoll1003ED10(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: the same ask-and-remember, storing into yet another
+ * setting. */
 /* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
 int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -713,6 +753,10 @@ int32_t BrUiItemApply(BrUiObj *pObj, int16_t index, BrUiGlobals *pG)
  * Text read-back callbacks
  * ========================================================================== */
 
+/* WHAT IT DOES: finishes an edit in a menu row and copies what the player
+ * typed into the game's store of that name -- but only when it differs by
+ * more than capitalisation. It also clears a highlight on a related control
+ * once the row has any text in it at all. */
 /* @implements 0x1003EEF0 d3d BrUiFn1003EEF0 */
 int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -725,6 +769,8 @@ int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: clears the same highlight when the row has text, and does
+ * nothing else -- the read-back half is somebody else's job. */
 /* @implements 0x1003EF60 d3d BrUiFn1003EF60 */
 int32_t BrUiFn1003EF60(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -750,6 +796,8 @@ int32_t BrUiFn1003EF90(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: clears a highlight on a different control once its row has
+ * text in it. */
 /* @implements 0x1003F020 d3d BrUiFn1003F020 */
 int32_t BrUiFn1003F020(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -774,12 +822,18 @@ int32_t BrUiFn1003F0B0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_readback(pObj, pG, pG->szB4E760);
 }
 
+/* WHAT IT DOES: finishes an edit and copies the typed text into a third
+ * name store, again only if it differs by more than capitalisation. */
 /* @implements 0x1003F110 d3d BrUiFn1003F110 */
 int32_t BrUiFn1003F110(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_readback(pObj, pG, pG->szA9DD28);
 }
 
+/* WHAT IT DOES: hands the typed text off to the routine that acts on it, then
+ * replaces both the store and the row's own caption with whatever that
+ * routine left behind -- so the player sees the text the game decided on
+ * rather than what they typed. */
 /* @implements 0x1003F170 d3d BrUiFn1003F170 */
 int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -796,6 +850,8 @@ int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: finishes an edit, clears a highlight, and copies the typed
+ * text into yet another name store if it has really changed. */
 /* @implements 0x1003F210 d3d BrUiFn1003F210 */
 int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -808,6 +864,8 @@ int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: clears that same highlight when the row has text, and
+ * nothing more. */
 /* @implements 0x1003F280 d3d BrUiFn1003F280 */
 int32_t BrUiFn1003F280(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -941,6 +999,11 @@ static int br23_is_solo(const BrUiGlobals *pG)
     return (pG->gAA2904 == pG->gAA2964 && pG->gAA28E8 == 0);
 }
 
+/* WHAT IT DOES: sets the caption of the row that names the track. In a solo
+ * session it shows one fixed piece of text instead; otherwise it looks the
+ * name up by track number, wrapping numbers above fifteen back down by
+ * sixteen -- a wrap, not a clamp, so the second sixteen tracks reuse the
+ * first sixteen names. */
 /* @implements 0x1003F760 d3d BrUiText1003F760 */
 int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -959,6 +1022,9 @@ int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, id);
 }
 
+/* WHAT IT DOES: sets the caption of one of the option rows from a table of
+ * names indexed by that option's current value. Which option it is was not
+ * established. */
 /* @implements 0x1003F7F0 d3d BrUiText1003F7F0 */
 int32_t BrUiText1003F7F0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -970,6 +1036,11 @@ int32_t BrUiText1003F860(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, pG->tAC3A8[pG->gAA2A08]);
 }
 
+/* WHAT IT DOES: sets the caption of the control-binding row. When a scan
+ * for clashing bindings has been run it shows the standard binding caption
+ * and marks the row differently if this particular binding clashes with
+ * another; otherwise it shows a piece of text supplied elsewhere and leaves
+ * the marking alone. */
 /* @implements 0x1003F8D0 d3d BrUiText1003F8D0 */
 int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -988,6 +1059,8 @@ int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* WHAT IT DOES: sets the caption of another option row from its own table
+ * of names. Which option it is was not established. */
 /* @implements 0x1003F990 d3d BrUiText1003F990 */
 int32_t BrUiText1003F990(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1043,12 +1116,17 @@ int32_t BrUiText1003FA00(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_item0_set_apply(pObj, pG, szTmp);
 }
 
+/* WHAT IT DOES: sets the caption of the row that names the play mode the
+ * player has chosen. */
 /* @implements 0x1003FC40 d3d BrUiText1003FC40 */
 int32_t BrUiText1003FC40(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC3F0[pG->gAA287C]);
 }
 
+/* WHAT IT DOES: sets the caption of the force-feedback row -- it names the
+ * current setting, but only when a force-feedback device was actually found;
+ * otherwise it shows a fixed piece of text instead. */
 /* @implements 0x1003FCB0 d3d BrUiText1003FCB0 */
 int32_t BrUiText1003FCB0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1056,6 +1134,8 @@ int32_t BrUiText1003FCB0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, id);
 }
 
+/* WHAT IT DOES: sets the caption of another option row from its own table
+ * of names. Which option it is was not established. */
 /* @implements 0x1003FD30 d3d BrUiText1003FD30 */
 int32_t BrUiText1003FD30(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1067,6 +1147,8 @@ int32_t BrUiText1003FDA0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, pG->tAC408[pG->gAA2A20]);
 }
 
+/* WHAT IT DOES: sets the caption of another option row from its own table
+ * of names. Which option it is was not established. */
 /* @implements 0x1003FE10 d3d BrUiText1003FE10 */
 int32_t BrUiText1003FE10(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1101,6 +1183,8 @@ int32_t BrUiText1003FE80(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, id);
 }
 
+/* WHAT IT DOES: sets the caption of another option row from its own table
+ * of names. Which option it is was not established. */
 /* @implements 0x1003FFD0 d3d BrUiText1003FFD0 */
 int32_t BrUiText1003FFD0(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1192,6 +1276,12 @@ int32_t BrUiText100400E0(BrUiObj *pObj, BrUiGlobals *pG,
  * 0x10040330
  * ========================================================================== */
 
+/* WHAT IT DOES: checks every control binding against every other and marks
+ * the ones that have been bound to the same key or button, so the redefine
+ * screen can show the player a clash. A binding that is not bound to
+ * anything never counts as clashing. Note it clears each row's mark as it
+ * reaches that row, so a mark set while examining an earlier row survives
+ * but one set while examining a later row is wiped. */
 /* @implements 0x10040330 d3d BrCfgFindConflicts */
 int32_t BrCfgFindConflicts(BrUiGlobals *pG, int32_t kind, void *pB4DF30)
 {

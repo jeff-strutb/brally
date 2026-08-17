@@ -76,6 +76,13 @@ static int32_t br_dlcmd_fistp(double v)
  * w1 is already a host pointer in the original (BrDlPatch's G_VTX arm ran it
  * through the vertex cache), and the loop steps it by 0x20 -- eight floats:
  * x, y, z, s, t, n0, n1, n2, which is what BrVtxExpand writes. */
+/* WHAT IT DOES: loads a batch of model corner points into the renderer's
+ * working set of vertices, moving each one from the model's own space into the
+ * camera's, working out where it lands on screen, and noting which edges of
+ * the view it falls outside so later triangles can be thrown away or trimmed.
+ * This is the plain version used when the model is not being lit; a lit
+ * version takes over the same slot once lighting is switched on. */
+/* @implements 0x10021A20 glide BrDlCmdVtx */
 const uint8_t *BrDlCmdVtx(BrDlCmd *pS, const uint8_t *p)
 {
     uint32_t w0 = br_dlcmd_w(p);
@@ -333,6 +340,11 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  * arguments for the clipper are still pushed, and [esp+0x18] at 0x1001EE5D,
  * where they are not.  Same argument; the displacement alone does not say so.
  */
+/* WHAT IT DOES: draws one triangle from three corner points already loaded.
+ * If all three are off the same side of the screen the triangle is dropped; if
+ * any of them is off the screen it is handed to the trimmer; otherwise its
+ * texture coordinates are finished and it goes to the card. */
+/* @implements 0x1001ECF0 glide BrDlCmdTri1 */
 const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
 {
     br_dlcmd_tri(pS, p[6], p[5], p[4]);
@@ -349,6 +361,11 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  *
  * Four exits, all `lea eax,[ebx+8]`; ebx holds the argument throughout and is
  * never reused, which is why this handler needs no reload. */
+/* WHAT IT DOES: draws two triangles from one command -- the packing the game
+ * uses for most of its geometry, since flat surfaces come in pairs. Each is
+ * dropped, trimmed or drawn on its own, and whatever happens to the first the
+ * second is still considered. */
+/* @implements 0x1001FA30 glide BrDlCmdTri2 */
 const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p)
 {
     br_dlcmd_tri(pS, p[2], p[1], p[0]);
@@ -453,6 +470,10 @@ const uint8_t *BrDlCmdFillColour(BrDlCmd *pS, const uint8_t *p)
  * `lea eax,[esi+8]`.  It stores NOTHING -- there is no fog-colour global on
  * this path, the value lives in the Glide driver.  (br_dl.c keeps one; that
  * is its own model, not a transcription.) */
+/* WHAT IT DOES: sets the colour that distant scenery fades towards. The colour
+ * is passed straight to the graphics card and this build keeps no copy of it
+ * of its own. */
+/* @implements 0x1001EA60 glide BrDlCmdFogColour */
 const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
 {
     if (pS->sink.pfnFogColor)
@@ -531,6 +552,11 @@ const uint8_t *BrDlCmdEnvColour(BrDlCmd *pS, const uint8_t *p)
  * The classification chain itself is 0x1001E7A0 and is NOT this function;
  * br_dl.c's BrDlClassifyCombine already models it and enumerates the ten
  * recognised (w0, w1) pairs. */
+/* WHAT IT DOES: chooses the recipe by which texture, lighting and flat colour
+ * are mixed together for everything drawn from here on. It remembers the
+ * choice as well as applying it, because the rectangle filler later checks
+ * which recipe is in force to decide where its colour comes from. */
+/* @implements 0x1001E770 glide BrDlCmdSetCombine */
 const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
 {
     uint32_t w0 = br_dlcmd_w(p);

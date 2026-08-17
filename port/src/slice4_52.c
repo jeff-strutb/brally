@@ -41,6 +41,10 @@ const BrUi51990Ctx   *g_pBrUi51990Ctx;
  * 0x10074030  BrStrGet
  * ========================================================================== */
 
+/* WHAT IT DOES: fetches one of the game's pieces of on-screen wording by
+ * number -- every menu caption, button label and message comes through here.
+ * A number that is not in the table gives nothing back rather than an error. */
+/* @implements 0x10074030 d3d BrStrGet */
 const char *BrStrGet(int id)
 {
     /* br_bits.h's BrHandleLookup IS this function with the table address
@@ -53,6 +57,11 @@ const char *BrStrGet(int id)
  * 0x10010960 / 0x10010980  BrPolyDistX / BrPolyDistY
  * ========================================================================== */
 
+/* WHAT IT DOES: tells the shape-trimming code how far a corner lies from the
+ * left edge of the screen -- which is just its horizontal position, so a
+ * negative answer means the corner is off to the left. Its neighbour below does
+ * the same for the top edge. */
+/* @implements 0x10010960 d3d BrPolyDistX */
 float BrPolyDistX(const struct BrScrPt *pPt)
 {
     return ((const BrScrPt *)pPt)->f0C;
@@ -67,6 +76,10 @@ float BrPolyDistY(const struct BrScrPt *pPt)
  * 0x1003BD50  BrRandom
  * ========================================================================== */
 
+/* WHAT IT DOES: the game's random number source. Each call moves the shared
+ * generator on one step and hands back the new value, which is always positive
+ * because the generator only ever produces 27 bits. */
+/* @implements 0x1003BD50 d3d BrRandom */
 int BrRandom(void)
 {
     /* The state after the step is what lands in eax; the modulus is 2^27, so
@@ -78,6 +91,12 @@ int BrRandom(void)
  * 0x1005FF30  BrMenuSub1005FF30
  * ========================================================================== */
 
+/* WHAT IT DOES: forgets everything the game currently believes about the
+ * keyboard -- which keys are held, which were just pressed, and what was held
+ * last frame -- so that keys still down when a screen changes do not carry over
+ * and register again. It only clears the first 64 entries of each table, not
+ * all of them. */
+/* @implements 0x1005FF30 d3d BrMenuSub1005FF30 */
 void BrMenuSub1005FF30(void)
 {
     /* DEVIATION (type pun): the original clears 0x40 dwords over each buffer
@@ -121,6 +140,11 @@ struct BrUiScreen *BrUiScreenCtor(struct BrUiScreen *pThis)
  * 0x10060260  BrSub10060260
  * ========================================================================== */
 
+/* WHAT IT DOES: purpose unclear. Observably it ignores whatever it is handed
+ * and calls one other routine with two fixed globals -- the input object and a
+ * window handle -- so it exists to supply that pair rather than to do anything
+ * itself. What the routine it calls is for is not established here. */
+/* @implements 0x10060260 d3d BrSub10060260 */
 void BrSub10060260(void *pThis)
 {
     /* Both operands come from globals.  The declared parameter has no
@@ -171,6 +195,10 @@ void BrSub1005F530(void)
  * 0x1003D9F0  BrSub1003D9F0
  * ========================================================================== */
 
+/* WHAT IT DOES: sends one particular kind of tagged message to the other
+ * machines in a multiplayer game, carrying a value taken from a global. What
+ * the message means to the receiver is not established here. */
+/* @implements 0x1003D9F0 d3d BrSub1003D9F0 */
 void BrSub1003D9F0(struct BrOptUi *pUi)
 {
     /* DEVIATION: slice2_25.h's BrOptUi and slice2_22.h's BrDPlayLink are two
@@ -182,6 +210,12 @@ void BrSub1003D9F0(struct BrOptUi *pUi)
  * 0x100709A0  BrMenuSub100709A0
  * ========================================================================== */
 
+/* WHAT IT DOES: writes the championship season out to its save file. The file
+ * starts with a four-letter marker and a checksum of the season data so a
+ * corrupted or foreign file can be spotted on load, then the season block
+ * itself, five loose settings, and a trailing block. If any of the large writes
+ * fails it gives up quietly, leaving a half-written file behind. */
+/* @implements 0x100709A0 d3d BrMenuSub100709A0 */
 void BrMenuSub100709A0(void)
 {
     unsigned long sum;
@@ -286,6 +320,12 @@ void BrSub10038F30(int code)
  * 0x10008CF0  BrLogPrint
  * ========================================================================== */
 
+/* WHAT IT DOES: the game's dead end. It shuts the current picture down, draws
+ * one line of text centred on an otherwise blank screen, and then never
+ * returns -- it sits spinning, and the only thing that gets the player out is
+ * pressing Escape, which quits the game. This is what a fatal message looks
+ * like from the inside. */
+/* @implements 0x10008CF0 d3d BrLogPrint */
 void BrLogPrint(const void *p)
 {
     const BrLogHost *pH = g_pBrLogHost;
@@ -335,6 +375,12 @@ void BrLogPrint(const void *p)
  * instead of dereferencing NULL after the (fatal) error report.
  */
 
+/* WHAT IT DOES: makes a fresh, empty page for a menu screen and hangs it off
+ * the menu phase that owns it, giving it the standard starting position that
+ * every screen's rows are then laid out from. If there is no memory for it the
+ * player gets a fatal error box. This is the opening move every screen builder
+ * makes. */
+/* @implements 0x10051990 d3d BrUi51990ScreenNew */
 static BrUiScreen *BrUi51990ScreenNew(const BrUi51990Ctx *pCtx,
                                       BrUiPhase *pPhase, float fY)
 {

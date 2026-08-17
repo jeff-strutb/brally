@@ -12,6 +12,11 @@
  * 0x100586A0
  * ========================================================================== */
 
+/* WHAT IT DOES: clears the player slot table and its counter at the start or
+ * end of a session. Beware that the counter it clears doubles as the gate
+ * that permits network sends, so clearing it here re-opens that gate --
+ * behaviour of the original, not of this port. */
+/* @implements 0x100586A0 d3d BrSub100586A0 */
 void BrSub100586A0(void)
 {
     /* The original clears the counter FIRST, before the loop. Kept in that
@@ -29,6 +34,12 @@ void BrSub100586A0(void)
  * 0x100795D0
  * ========================================================================== */
 
+/* WHAT IT DOES: re-detects the force-feedback wheel. It forces a known
+ * configuration, runs the force-feedback setup and immediately tears it down
+ * again -- the probe is the setup attempt itself -- and then restores the
+ * settings the player had, selecting the matching device record on the way
+ * back. */
+/* @implements 0x100795D0 d3d BrFfbReprobe */
 void BrFfbReprobe(void)
 {
     int32_t nSavedMode = g_brB4E1D0;   /* esi */

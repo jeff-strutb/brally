@@ -18,6 +18,10 @@ double BrVec3dDot(const BrVec3d *pA, const BrVec3d *pB)
 
 /* 0x100305B0 -- spills y and z to stack scratch then multiplies them back,
  * summing (z*z + y*y) + x*x, same ordering as the dot product. */
+/* WHAT IT DOES: the squared length of a 3D vector in double precision,
+ * summed in the original's own order because floating-point addition is not
+ * associative and the order is visible in the last digit. */
+/* @implements 0x100305B0 d3d BrVec3dLenSq */
 double BrVec3dLenSq(const BrVec3d *pV)
 {
     double zz = pV->z * pV->z;
@@ -35,6 +39,11 @@ double BrVec3dLen(const BrVec3d *pV)
  * epsilon. Very small non-zero lengths still divide, and can blow up. That is
  * the original behaviour and callers may depend on the resulting infinities
  * being visible rather than silently clamped. */
+/* WHAT IT DOES: scales a double-precision 3D vector to unit length. The zero
+ * guard is an exact test against zero, not a tolerance, so a very short but
+ * non-zero vector still divides and can produce enormous results -- which is
+ * the original's behaviour and callers may be relying on seeing it. */
+/* @implements 0x10030600 d3d BrVec3dNormalise */
 BrVec3d *BrVec3dNormalise(BrVec3d *pV)
 {
     double len = BrVec3dLen(pV);
@@ -48,6 +57,10 @@ BrVec3d *BrVec3dNormalise(BrVec3d *pV)
 }
 
 /* 0x10030670 -- destination is the THIRD argument; see br_vecd.h. */
+/* WHAT IT DOES: the cross product of two 3D vectors: the direction at right
+ * angles to both, which is how the game gets a surface's facing from two of
+ * its edges. Note the answer goes into the third argument, not the first. */
+/* @implements 0x10030670 d3d BrVec3dCross */
 void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
 {
     double x = pA->y * pB->z - pA->z * pB->y;

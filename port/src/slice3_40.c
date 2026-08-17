@@ -70,6 +70,9 @@ int32_t   BrPathWalkIndex;              /* 0x10ACD490 */
 /* ==================================================================== */
 
 /* 0x100609E0 */
+/* WHAT IT DOES: packs up this car's current state and sends it to the other
+ * players. Whether the send succeeded is thrown away. */
+/* @implements 0x100609E0 d3d BrCarNetSendState */
 void BrCarNetSendState(BrCar *pCar)
 {
     BrCarState state;   /* the original's 0xA0-byte stack buffer */
@@ -186,6 +189,12 @@ void BrCarApplyState(BrCar *pCar, const BrCarState *pState)
 }
 
 /* 0x10060CC0 */
+/* WHAT IT DOES: brings one other player's car up to date from the network.
+ * It does nothing for the local player's own car, and nothing at all when a
+ * particular flag is set; otherwise it asks the networking code to predict
+ * where that car should be by now, applies the answer, and rebuilds the
+ * car's transform matrices so it can be drawn. */
+/* @implements 0x10060CC0 d3d BrCarPredictRemote */
 int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
 {
     BrCarState state;   /* the original's 0xA0-byte stack buffer */
@@ -309,6 +318,13 @@ void BrGfx60E00(void *p0)
 /* ==================================================================== */
 
 /* 0x10061660 */
+/* WHAT IT DOES: walks the whole scene tree and, for each node it has not
+ * already visited, stamps a visit mark on it and then descends into it. The
+ * visible effect is that one particular per-node byte is cleared, but only
+ * in two specific game modes. The mark is set before descending, which is
+ * what stops a loop in the tree from running away forever -- it is a scratch
+ * bit, not a visibility flag. */
+/* @implements 0x10061660 d3d BrNodeMarkPass */
 void BrNodeMarkPass(BrNode *pNode)
 {
     while (pNode != NULL) {
@@ -330,6 +346,9 @@ void BrNodeMarkPass(BrNode *pNode)
 }
 
 /* 0x100616C0 */
+/* WHAT IT DOES: the exact reverse walk: it takes the visit mark off every
+ * node the pass above stamped, leaving the tree ready to be walked again. */
+/* @implements 0x100616C0 d3d BrNodeClearMarkPass */
 void BrNodeClearMarkPass(BrNode *pNode)
 {
     while (pNode != NULL) {
@@ -343,6 +362,10 @@ void BrNodeClearMarkPass(BrNode *pNode)
 }
 
 /* 0x10061700 */
+/* WHAT IT DOES: runs the mark pass and then the unmark pass over the whole
+ * scene tree, so that the only lasting effect is whatever the first pass
+ * changed on the way through. */
+/* @implements 0x10061700 d3d BrNodeRunMarkPass */
 void BrNodeRunMarkPass(void)
 {
     /* the root is re-read from the global between the two calls */
@@ -355,6 +378,10 @@ void BrNodeRunMarkPass(void)
 /* ==================================================================== */
 
 /* 0x10061BE0 */
+/* WHAT IT DOES: rebuilds the four transform matrices that place a car and
+ * its parts in the world, from the physics state of each. Called after
+ * anything moves the car -- the physics step, or a network update. */
+/* @implements 0x10061BE0 d3d BrCarBuildMatrices */
 void BrCarBuildMatrices(BrCar *pCar)
 {
     int i;
@@ -370,6 +397,10 @@ void BrCarBuildMatrices(BrCar *pCar)
 }
 
 /* 0x100633E0 */
+/* WHAT IT DOES: zeroes each block of memory in a list of address-and-size
+ * pairs, stopping at the first entry with no address. A block of size zero
+ * is stepped over rather than cleared. */
+/* @implements 0x100633E0 d3d BrZeroRegions */
 void BrZeroRegions(BrZeroRegion *pList)
 {
     if (pList == NULL || pList->p == NULL) {
@@ -392,6 +423,12 @@ void BrZeroRegions(BrZeroRegion *pList)
 }
 
 /* 0x10065630 */
+/* WHAT IT DOES: resets a car's working tables at the start of a race: a set
+ * of thresholds spaced evenly apart, several arrays of counters, and a block
+ * of paired values seeded with a fixed pattern. It opens by computing four
+ * floats and then immediately zeroes the very slots it just wrote -- a dead
+ * store that is in the original and is kept. */
+/* @implements 0x10065630 d3d BrCarInitTables */
 void BrCarInitTables(BrCar *pCar)
 {
     /* fild + fmul, both at x87 precision; nothing is stored yet */
@@ -443,6 +480,9 @@ void BrCarInitTables(BrCar *pCar)
 }
 
 /* 0x10065710 */
+/* WHAT IT DOES: clears a small block of a car's bookkeeping -- four numbers
+ * and one half-sized one -- back to zero. */
+/* @implements 0x10065710 d3d BrCarClear29C8 */
 void BrCarClear29C8(BrCar *pCar)
 {
     CAR_I32(pCar, 0x29C8) = 0;
@@ -484,6 +524,13 @@ static void BrPathCountCrossing(const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* 0x10065B20 */
+/* WHAT IT DOES: walks along a path a given distance and works out where that
+ * lands: which node, which segment, and the exact point between two path
+ * points. Along the way it counts how many of the stored segment lines the
+ * path crossed, and how many times that crossing wrapped back round to the
+ * first one. A distance of nonsense stops the walk where it is rather than
+ * running off the end. */
+/* @implements 0x10065B20 d3d BrPathWalk */
 void BrPathWalk(BrNode *pNode, float t)
 {
     BrPathCrossCount = 0;
@@ -581,6 +628,11 @@ void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
 /* ==================================================================== */
 
 /* 0x10061460 */
+/* WHAT IT DOES: sets the three colour multipliers that tint an image as it
+ * is drawn. Its caller passes three consecutive bytes out of an opponent
+ * car's record, so these are 0-to-255 colour components; what the tint is
+ * used for there is not established here. */
+/* @implements 0x10061460 d3d BrImgTintSetScale */
 void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
 {
     BrImgTintState.scaleR = r;   /* 0x10AA3440 */

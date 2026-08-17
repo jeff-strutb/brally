@@ -35,6 +35,11 @@ int BrMainLoopFrameAllowed(void)
     return 1;
 }
 
+/* WHAT IT DOES: the message loop: the outer loop the game sits in from
+ * startup to shutdown. Windows messages are drained first and completely,
+ * and only when the queue is empty does a frame get to run -- and then only
+ * if three separate readiness flags allow it. The loop ends when the window
+ * closes or a frame reports that the game should stop. */
 /* @implements 0x10019730 glide BrMainLoopRun */
 int32_t BrMainLoopRun(const BrMainLoopOps *pOps)
 {

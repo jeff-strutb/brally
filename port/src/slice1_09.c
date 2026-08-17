@@ -20,6 +20,10 @@
  * static here for one reason only: so this translation unit links without
  * br_obj.o. At integration the two should be collapsed into one.
  * DEVIATION: duplicate of an existing symbol, kept private (static). */
+/* WHAT IT DOES: moves the read position to the start of the next whole byte,
+ * so that a byte-sized read after some loose bits lands on a byte boundary.
+ * Every byte-at-a-time read in this file begins by calling it. */
+/* @implements 0x10073D20 d3d BrBitStreamAlignRead */
 static void BrBitStreamAlignRead(BrBitStream *pBs)
 {
     if (pBs->readBit != 0) {
@@ -29,6 +33,9 @@ static void BrBitStreamAlignRead(BrBitStream *pBs)
 }
 
 /* 0x10073F20 */
+/* WHAT IT DOES: the same rounding-up for the write position: finishes off a
+ * part-written byte so the next whole-byte write starts cleanly. */
+/* @implements 0x10073F20 d3d BrBitStreamAlignWrite */
 void BrBitStreamAlignWrite(BrBitStream *pBs)
 {
     if (pBs->writeBit != 0) {
@@ -40,6 +47,11 @@ void BrBitStreamAlignWrite(BrBitStream *pBs)
 /* 0x10073B60  __thiscall(ecx=this), ret 8.
  * Note the original zeroes +0x08 and +0x00/+0x04 and then stores arg2 into
  * +0x0C and arg1 into +0x10 -- the LENGTH goes into the write byte cursor. */
+/* WHAT IT DOES: sets up a buffer for reading and writing packed data --
+ * network packets and the game's own files. Note the buffer length is put
+ * into the write position, so a freshly initialised stream is set up to be
+ * read from the start and appended to at the end. */
+/* @implements 0x10073B60 d3d BrBitStreamInit */
 void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
 {
     pBs->writeBit  = 0;
@@ -50,6 +62,9 @@ void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
 }
 
 /* 0x10073BA0  __thiscall, ret 4 */
+/* WHAT IT DOES: skips forward a number of whole bytes in the stream,
+ * rounding up to a byte boundary first. */
+/* @implements 0x10073BA0 d3d BrBitStreamSkipBytes */
 void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
 {
     BrBitStreamAlignRead(pBs);
@@ -61,6 +76,11 @@ void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
  * left holding the top of the buffer pointer. Callers that used it as an
  * int would therefore see garbage, so it is typed as a byte here.
  * DEVIATION: return narrowed from the register-width EAX to unsigned char. */
+/* WHAT IT DOES: reads the next whole byte out of the stream. The original
+ * left junk in the upper part of the return register, so anything treating
+ * the answer as a full-width number would have seen garbage; here it is a
+ * byte and only a byte. */
+/* @implements 0x10073BC0 d3d BrBitStreamReadU8 */
 unsigned char BrBitStreamReadU8(BrBitStream *pBs)
 {
     int i;
@@ -71,6 +91,10 @@ unsigned char BrBitStreamReadU8(BrBitStream *pBs)
 }
 
 /* 0x10073BE0  big-endian u16; DH gets byte 0, DL byte 1, EDX pre-zeroed. */
+/* WHAT IT DOES: reads the next two bytes as a single number, most
+ * significant byte first. Boss Rally's data came from the N64 and is stored
+ * that way round throughout. */
+/* @implements 0x10073BE0 d3d BrBitStreamReadU16 */
 unsigned int BrBitStreamReadU16(BrBitStream *pBs)
 {
     const unsigned char *p;
@@ -83,6 +107,9 @@ unsigned int BrBitStreamReadU16(BrBitStream *pBs)
 }
 
 /* 0x10073C10  big-endian u24, zero-extended. */
+/* WHAT IT DOES: reads the next three bytes as a single number, most
+ * significant byte first. */
+/* @implements 0x10073C10 d3d BrBitStreamReadU24 */
 unsigned int BrBitStreamReadU24(BrBitStream *pBs)
 {
     const unsigned char *p;
@@ -103,6 +130,9 @@ unsigned int BrBitStreamReadU24(BrBitStream *pBs)
  * overflow, then converted -- the bit pattern is identical.
  * DEVIATION: unsigned intermediate, because a signed left shift into the
  * sign bit is undefined in C99. */
+/* WHAT IT DOES: reads the next four bytes as a single signed number, most
+ * significant byte first. */
+/* @implements 0x10073C40 d3d BrBitStreamReadS32 */
 int BrBitStreamReadS32(BrBitStream *pBs)
 {
     const unsigned char *p;
@@ -177,6 +207,9 @@ unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
 }
 
 /* 0x10073D40  __thiscall, no stack args. Signed compare (setge). */
+/* WHAT IT DOES: reports whether the reader has caught up with the end of the
+ * data, counting a partly consumed byte as consumed. */
+/* @implements 0x10073D40 d3d BrBitStreamAtEnd */
 int BrBitStreamAtEnd(const BrBitStream *pBs)
 {
     int pos = pBs->readByte;
@@ -186,6 +219,9 @@ int BrBitStreamAtEnd(const BrBitStream *pBs)
 }
 
 /* 0x10073D60  __thiscall, ret 4. Only the low byte of the argument is used. */
+/* WHAT IT DOES: writes one byte into the stream, rounding up to a byte
+ * boundary first. */
+/* @implements 0x10073D60 d3d BrBitStreamWriteU8 */
 void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
 {
     BrBitStreamAlignWrite(pBs);
@@ -194,6 +230,9 @@ void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
 }
 
 /* 0x10073DC0  big-endian 24-bit. */
+/* WHAT IT DOES: writes a three-byte number into the stream, most significant
+ * byte first. */
+/* @implements 0x10073DC0 d3d BrBitStreamWriteU24 */
 void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
 {
     int w;
@@ -206,6 +245,9 @@ void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
 }
 
 /* 0x10073E10  big-endian 32-bit. */
+/* WHAT IT DOES: writes a four-byte number into the stream, most significant
+ * byte first. */
+/* @implements 0x10073E10 d3d BrBitStreamWriteU32 */
 void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
 {
     int w;
@@ -228,6 +270,10 @@ void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
  * 1.0f at 0x1008FC48), then each component is multiplied by k. The
  * association is preserved below even though it cannot change the result by
  * more than rounding. */
+/* WHAT IT DOES: scales a 3D direction so it is exactly one unit long. Used
+ * wherever the game needs a pure direction -- a surface normal, a facing --
+ * rather than a length. */
+/* @implements 0x10074250 d3d BrVec3Normalise */
 void BrVec3Normalise(BrVec3 *pV)
 {
     float sum = (pV->y * pV->y + pV->z * pV->z) + pV->x * pV->x;
@@ -239,6 +285,9 @@ void BrVec3Normalise(BrVec3 *pV)
 
 /* 0x100741B0. Same shape over four components; sum is
  * ((f04^2 + f08^2) + f0C^2) + f00^2. */
+/* WHAT IT DOES: the same unit-length scaling over four components, which is
+ * what the game's car orientations use. */
+/* @implements 0x100741B0 d3d BrVec4Normalise */
 void BrVec4Normalise(BrVec4 *pV)
 {
     float sum = ((pV->f04 * pV->f04 + pV->f08 * pV->f08)
@@ -256,6 +305,12 @@ void BrVec4Normalise(BrVec4 *pV)
  * accumulated before the next one begins, and the translation row is added
  * to all three only afterwards. That ordering is observable when pOut
  * aliases pV. */
+/* WHAT IT DOES: moves a point through a transform: rotates and scales it by
+ * the matrix and then adds the matrix's translation. The awkward longhand
+ * here is deliberate, because the original writes each result component out
+ * before starting the next, which is visible if the caller passes the same
+ * point as both input and output. */
+/* @implements 0x100747C0 d3d BrMat4TransformPoint */
 void BrMat4TransformPoint(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
     pOut->x = 0.0f;
@@ -286,6 +341,10 @@ void BrMat4TransformPoint(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
  * same reason as BrBitStreamAlignRead above: 0x10076C90 calls it and this
  * translation unit must link on its own.
  * DEVIATION: duplicate of an existing symbol, kept private (static). */
+/* WHAT IT DOES: resets a transform matrix to "no transform at all" -- ones
+ * down the diagonal, zeroes everywhere else -- so whatever it is applied to
+ * comes through unchanged. */
+/* @implements 0x100307D0 d3d BrMat4IdentityLocal */
 static void BrMat4IdentityLocal(BrMat4 *pM)
 {
     int r, c;
@@ -295,6 +354,10 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
 }
 
 /* 0x10076AE0  __thiscall, ret 4. `cmp eax,0x10 / jl` -- signed. */
+/* WHAT IT DOES: records which of two banks of sixteen an object belongs to.
+ * Anything numbered sixteen or above is stored as the second bank with its
+ * number reduced by sixteen; anything below it is the first bank. */
+/* @implements 0x10076AE0 d3d BrEntitySetIndex */
 void BrEntitySetIndex(void *pEntity, int index)
 {
     unsigned char *p = (unsigned char *)pEntity;
@@ -324,6 +387,11 @@ void BrEntitySetIndex(void *pEntity, int index)
  * two strides below are the ORIGINAL 32-bit strides and are not adjusted --
  * they are the sizes of the game's own structures, not of anything declared
  * here. */
+/* WHAT IT DOES: links a world object to its matching record in a second,
+ * parallel array, by working out how far along the main array the object
+ * sits and stepping the same distance into the other one, and then resets
+ * the object's transform matrix to no transform. */
+/* @implements 0x10076C90 d3d BrEntityBindAux */
 void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
                      void *pAuxArrayBase)
 {
@@ -353,6 +421,12 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
  * The loop bound in the original is `cmp eax, 0x11829371 / jl` against a
  * cursor that starts at base+1 and steps 4, giving exactly 16 iterations
  * over a 0x40-byte table at 0x11829330. */
+/* WHAT IT DOES: fills a sixteen-entry colour table: every entry pure white,
+ * with the transparency stepping evenly from fully see-through to fully
+ * solid. Only this table build is transcribed; the rest of the original
+ * routine creates two textures through an unidentified backend call and is
+ * not ported. */
+/* @implements 0x10073A10 d3d BrAlphaRampBuild */
 void BrAlphaRampBuild(unsigned char *pOut)
 {
     int i;
@@ -396,6 +470,10 @@ void BrPairRingPush(BrPairRing *pRing, int a, int b)
  * DEVIATION: `ms` is a parameter instead of a call into
  * QueryPerformanceCounter / timeGetTime (0x10075020, skipped -- see below).
  * Everything else is verbatim, including the order of the three stores. */
+/* WHAT IT DOES: converts a time in milliseconds into the game's own clock,
+ * which counts thirty ticks a second -- the N64's frame rate, kept in the PC
+ * build. It also clears one other field of the timing record. */
+/* @implements 0x10075100 d3d BrTimeUpdate */
 void BrTimeUpdate(BrTimeState *pState, unsigned int ms)
 {
     pState->f12C   = 0;

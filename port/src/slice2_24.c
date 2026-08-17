@@ -77,6 +77,12 @@ static void BrStrCat(char *pszDst, size_t cbDst, const char *pszSrc)
  * negative and are left alone.  It uppercases in place and returns its
  * argument -- which matters at 0x10041300, where the argument is a string
  * TABLE entry, so the table is permanently uppercased by the first call. */
+/* WHAT IT DOES: turns a piece of text into capitals, in place. The menus put
+ * their values through this before showing them, which has a side effect worth
+ * knowing: one caller hands it a shared string-table entry, so the first time
+ * that row is drawn the stored wording itself is permanently capitalised for
+ * everyone who reads it afterwards. */
+/* @implements 0x1007F240 d3d BrStrUpr */
 static char *BrStrUpr(char *psz)
 {
     char *p = psz;
@@ -297,6 +303,11 @@ static int32_t BrMenuStoreFormatted(BrMenuItem *pItem, char *pszBuf,
  * ===================================================================== */
 
 /* 0x10040680 */
+/* WHAT IT DOES: switches the game over into menu mode the first time it is
+ * asked, wiping the keyboard, mouse and joystick state so that whatever was
+ * being held during play does not immediately act on the menu. Once the game is
+ * already in menu mode it does nothing at all. */
+/* @implements 0x10040680 d3d BrMenuEnter */
 int32_t BrMenuEnter(void)
 {
     BrMenuState *pSt = &g_menu;
@@ -385,6 +396,12 @@ static int BrMenuIsIdle(const BrMenuState *pSt)
 
 /* 0x100407A0.  -2 is the reserved "leave this item alone" answer; nothing
  * else in the packet returns it. */
+/* WHAT IT DOES: keeps the second, dimmed track picture on a race-setup row in
+ * step with whichever track is currently chosen. Note that the number it
+ * writes is a picture index into the game's image list, not a piece of
+ * wording. While the menus are sitting idle it returns the reserved "leave this
+ * row exactly as it is" answer instead of touching anything. */
+/* @implements 0x100407A0 d3d BrMenuCap07A0 */
 int32_t BrMenuCap07A0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -416,18 +433,30 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
 }
 
 /* 0x10040870 */
+/* WHAT IT DOES: puts the right gearbox picture on the transmission row of the
+ * car-setup screen -- the automatic-shift or the manual-shift artwork,
+ * according to which the player has chosen. */
+/* @implements 0x10040870 d3d BrMenuCap0870 */
 int32_t BrMenuCap0870(BrMenuItem *pItem)
 {
     return BrMenuSetCaptionId(pItem, BrTabS8(k_AC598, 4, g_menu.gAA2A08));
 }
 
 /* 0x10040890 */
+/* WHAT IT DOES: puts the right tyre picture on the tyres row of the car-setup
+ * screen -- wet, intermediate or dry artwork, according to the player's
+ * choice. */
+/* @implements 0x10040890 d3d BrMenuCap0890 */
 int32_t BrMenuCap0890(BrMenuItem *pItem)
 {
     return BrMenuSetCaptionId(pItem, BrTabS8(k_AC59C, 4, g_menu.g0AC64C));
 }
 
 /* 0x100408B0 */
+/* WHAT IT DOES: puts the right suspension picture on the shocks row of the
+ * car-setup screen -- soft, medium or hard artwork, according to the player's
+ * choice. */
+/* @implements 0x100408B0 d3d BrMenuCap08B0 */
 int32_t BrMenuCap08B0(BrMenuItem *pItem)
 {
     return BrMenuSetCaptionId(pItem, BrTabS8(k_AC5A0, 4, g_menu.g0AC650));
@@ -461,6 +490,9 @@ int32_t BrMenuCap0990(BrMenuItem *pItem)
 }
 
 /* 0x100409B0 */
+/* WHAT IT DOES: puts the car-shadow picture on the video-options row -- a car
+ * drawn with its shadow or without one, showing the player what the setting
+ * they are about to change actually looks like. */
 int32_t BrMenuCap09B0(BrMenuItem *pItem)
 {
     return BrMenuSetCaptionId(pItem, BrTabS8(k_AC634, 4, g_menu.gAA2A20));
@@ -473,6 +505,9 @@ int32_t BrMenuCap09D0(BrMenuItem *pItem)
 }
 
 /* 0x10041870 */
+/* WHAT IT DOES: puts the picture of the chosen input device on the input row --
+ * a keyboard, a steering wheel, a joystick or a mouse. */
+/* @implements 0x10041870 d3d BrMenuCap1870 */
 int32_t BrMenuCap1870(BrMenuItem *pItem)
 {
     return BrMenuSetCaptionId(pItem, BrTabS8(k_AC628, 4, g_menu.gAA2A0C));
@@ -745,6 +780,12 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
  * ===================================================================== */
 
 /* 0x10041890 */
+/* WHAT IT DOES: greys a menu row out, or brings it back, depending on whether
+ * the thing it offers is currently available. Enabling only clears the two
+ * "unavailable" bits; disabling also forces the row back to the plain grey
+ * lettering and resets its text style, so the two directions are not mirror
+ * images and a row switched off loses styling that switching it on does not
+ * restore. */
 int32_t BrMenuFlags1890(BrMenuItem *pItem)
 {
     if (g_menu.gAA28E0 != 0) {
@@ -767,6 +808,8 @@ int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 }
 
 /* 0x100418F0.  0x10041890 driven by 0x10AA28E8 instead. */
+/* WHAT IT DOES: the same greying-out as its neighbour above, but driven by a
+ * different availability flag, so it serves a different family of rows. */
 int32_t BrMenuFlags18F0(BrMenuItem *pItem)
 {
     if (g_menu.gAA28E8 != 0) {

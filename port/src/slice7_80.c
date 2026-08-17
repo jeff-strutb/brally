@@ -95,6 +95,9 @@ int32_t BrUiOptHook_10043650(BrUiCtl_ *pCtl)
     return (int32_t)BrOptCycleAA2A20();
 }
 
+/* WHAT IT DOES: steps the Specular option on to its next setting when the
+ * player activates that row. */
+/* @implements 0x100436B0 d3d BrUiOptHook_100436B0 */
 int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
 {
     (void)pCtl;

@@ -59,6 +59,11 @@ void BrMat4Identity(BrMat4 *pM)
 /* 0x10030810 -- see br_mat.h. The original computes the three differences
  * once each and divides by them repeatedly (fdiv against stack scratch),
  * which is what the expressions below reproduce. */
+/* WHAT IT DOES: builds the camera's projection matrix from the six edges of
+ * the viewing box -- what the player can see and how far into the distance.
+ * A degenerate box, where two opposite edges are equal, leaves the matrix
+ * untouched and reports failure rather than producing nonsense. */
+/* @implements 0x10030810 d3d BrMat4Frustum */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f)
 {
@@ -116,6 +121,9 @@ int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
 /* 0x100310F0 -- the original moves sy and sz as integers (plain `mov`, since
  * copying a float bit pattern needs no FPU) and only sx goes through
  * fld/fstp. Semantically identical. */
+/* WHAT IT DOES: builds a matrix that scales by a different amount along each
+ * axis, clearing everything else first. */
+/* @implements 0x100310F0 d3d BrMat4Scale */
 void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz)
 {
     int i, k;

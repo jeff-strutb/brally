@@ -89,6 +89,11 @@ static const float BrK08F118 =  1.0f;                    /* 0x1008F118 */
 /* 0x100058D0. The low test is `test ah,1` (C0: less, or unordered), so NaN
  * lands on the low bound; the high test is `test ah,0x41` inverted, i.e.
  * strictly greater, which NaN never satisfies. */
+/* WHAT IT DOES: keeps one component of a car's facing direction inside the
+ * range -1 to 1, in case a network prediction or a bad packet pushed it
+ * outside. Note the low bound also catches a value that is not a number at
+ * all, while the high bound does not, so nonsense comes out as -1. */
+/* @implements 0x100058D0 d3d BrCarClampUnit */
 void BrCarClampUnit(float *pv)
 {
     if (!(*pv >= BrK08F0B4))
@@ -98,6 +103,10 @@ void BrCarClampUnit(float *pv)
 }
 
 /* 0x10005900 */
+/* WHAT IT DOES: keeps one of a car's two horizontal position coordinates
+ * inside the track's 0-to-2048 world, so a rogue value cannot fling a
+ * networked car off the map. */
+/* @implements 0x10005900 d3d BrCarClampPosXY */
 void BrCarClampPosXY(float *pv)
 {
     if (!(*pv >= BrK08F0B0))
@@ -107,6 +116,9 @@ void BrCarClampPosXY(float *pv)
 }
 
 /* 0x10005930 */
+/* WHAT IT DOES: keeps a car's height inside -256 to 256, the range the
+ * game's position encoding can represent. */
+/* @implements 0x10005930 d3d BrCarClampPosZ */
 void BrCarClampPosZ(float *pv)
 {
     if (!(*pv >= BrK08F0BC))
@@ -120,6 +132,11 @@ void BrCarClampPosZ(float *pv)
  * ===================================================================== */
 
 /* 0x100065A0.  0.5 - v*128, then clamp the INTEGER to [-32, 31]. */
+/* WHAT IT DOES: squashes a small signed fraction down to a 6-bit number so
+ * it fits in a network packet. Rounding is to the nearest, with halves going
+ * up, and the result is pinned inside what 6 bits can hold. The decoder on
+ * the other end undoes this exactly. */
+/* @implements 0x100065A0 d3d BrFixPackS6Q7Neg */
 int32_t BrFixPackS6Q7Neg(float v)
 {
     int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0CC));
@@ -132,6 +149,11 @@ int32_t BrFixPackS6Q7Neg(float v)
 }
 
 /* 0x100065E0.  0.5 - v*32768, clamp to [-32768, 32767]. */
+/* WHAT IT DOES: squashes a signed fraction -- one component of a car's
+ * facing -- down to a 16-bit number for the network. Its opposite number in
+ * the decoder multiplies by a matching negative scale, so the two sign flips
+ * cancel and the value round-trips. */
+/* @implements 0x100065E0 d3d BrFixPackS16Q15Neg */
 int32_t BrFixPackS16Q15Neg(float v)
 {
     int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0D4));
@@ -144,6 +166,10 @@ int32_t BrFixPackS16Q15Neg(float v)
 }
 
 /* 0x10006620.  0.5 - v*(-256/361), clamp to [0, 255]. */
+/* WHAT IT DOES: turns an angle in degrees into a single byte for the
+ * network, using a scale chosen so a whole 360-degree circle just fills the
+ * byte and comes back the same on the other end. */
+/* @implements 0x10006620 d3d BrFixPackU8Angle */
 int32_t BrFixPackU8Angle(float v)
 {
     int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0D8));
@@ -156,6 +182,10 @@ int32_t BrFixPackU8Angle(float v)
 }
 
 /* 0x10006660.  0.5 - (v - 400)*(-1/120.63491821), clamp to [0, 63]. */
+/* WHAT IT DOES: packs a value that lives between 400 and 8000 into 6 bits
+ * for the network by subtracting the base and scaling. What the quantity is
+ * is not established here; the range is all this code establishes. */
+/* @implements 0x10006660 d3d BrFixPackU8Range */
 int32_t BrFixPackU8Range(float v)
 {
     double  d = ((double)v - (double)BrK08F0DC) * (double)BrK08F0E0;
@@ -170,6 +200,11 @@ int32_t BrFixPackU8Range(float v)
 
 /* 0x100066A0.  Three float compares, no arithmetic; the result is returned in
  * AL, so it is a byte in 0..3. Each test is `less, or unordered`. */
+/* WHAT IT DOES: sorts a value into one of four bands using three fixed
+ * thresholds, giving a 2-bit code for the network. The bands line up exactly
+ * with the four values the decoder produces, so the classification survives
+ * the round trip. What the quantity means is not established. */
+/* @implements 0x100066A0 d3d BrFixPackLevel */
 int32_t BrFixPackLevel(float v)
 {
     if (!(v >= BrK08F0CC))              /* < 128.0f, or NaN */
@@ -182,6 +217,9 @@ int32_t BrFixPackLevel(float v)
 }
 
 /* 0x100067B0.  0.5 - v*(-256), clamp to [-32768, 32767]. */
+/* WHAT IT DOES: packs a signed value with an eighth-of-a-pixel-style scale
+ * of 256 into 16 bits for the network. */
+/* @implements 0x100067B0 d3d BrFixPackS16Q8 */
 int32_t BrFixPackS16Q8(float v)
 {
     int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F108));
@@ -194,6 +232,9 @@ int32_t BrFixPackS16Q8(float v)
 }
 
 /* 0x100067F0.  0.5 - v*(-8), clamp to [-128, 127]. */
+/* WHAT IT DOES: packs a small signed value at a scale of 8 into a single
+ * signed byte for the network. */
+/* @implements 0x100067F0 d3d BrFixPackS8Q3 */
 int32_t BrFixPackS8Q3(float v)
 {
     int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F10C));
@@ -210,6 +251,12 @@ int32_t BrFixPackS8Q3(float v)
  * ===================================================================== */
 
 /* 0x100061A0 */
+/* WHAT IT DOES: writes one car's complete state -- facing, position, two
+ * more values, wheel or suspension figures, an angle, and a dozen or so
+ * on/off flags -- into a compact bit stream to be sent to the other players.
+ * Each field is quantised to just enough bits, giving 187 bits in all; eight
+ * fields of the car state are deliberately never sent. */
+/* @implements 0x100061A0 d3d BrCarStateEncode */
 void BrCarStateEncode(BrBitStream *pBs, const BrCarState *pSrc)
 {
     /* Orientation: s16 at Q15 (negative scale), keep the high byte. */
@@ -285,6 +332,14 @@ static int32_t BrCarStateDeltaCode(int32_t cur, int32_t ref,
 }
 
 /* 0x10006830 */
+/* WHAT IT DOES: writes a car's state as a difference from a previously sent
+ * one, so a routine update costs far fewer bits. The facing goes out in
+ * full, but position, height and one other field send only their low bits
+ * plus a two-bit hint about how far the high part moved. That hint is
+ * deliberately coarse: a jump of three or more steps cannot be
+ * reconstructed, which is a limitation of the original format, not of this
+ * transcription. */
+/* @implements 0x10006830 d3d BrCarStateEncodeDelta */
 void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
                            const BrCarState *pRef)
 {
@@ -361,6 +416,13 @@ static uint32_t BrGetU32(const uint8_t *p)
 }
 
 /* 0x10006BD0 */
+/* WHAT IT DOES: packs a car's state into a fixed 22-byte record -- a second,
+ * simpler wire format that has no bit stream behind it. Flags are hidden in
+ * the spare low bits of the quantised numbers, and two bytes are
+ * deliberately written on top of the high byte of an earlier value, so the
+ * order of the stores matters. Unlike the surrounding code this record is
+ * stored least-significant byte first. */
+/* @implements 0x10006BD0 d3d BrCarStatePack */
 void BrCarStatePack(BrCarPacked *pDst, const BrCarState *pSrc)
 {
     uint8_t *b = pDst->b;
@@ -481,6 +543,10 @@ void BrCarStateUnpack(BrCarState *pDst, const BrCarPacked *pSrc)
  * records. Either this walks a different array or it starts 0xF08 into the
  * record; the stride and the "first dword non-zero" test are all this code
  * establishes, so the base stays a parameter. */
+/* WHAT IT DOES: counts how many entries in a table of cars or other world
+ * objects are in use, by checking each record's first word for a non-zero
+ * value. */
+/* @implements 0x10005470 d3d BrEntityCountActive */
 uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
 {
     const unsigned char *p = (const unsigned char *)pvRecords;
@@ -498,6 +564,11 @@ uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
 }
 
 /* 0x10005D40, and 0x10005D90 over the other pair of globals. */
+/* WHAT IT DOES: takes the top entry off one of the networking code's small
+ * stacks of free numbers, locking it first so another thread cannot take the
+ * same one. A negative index means the stack is empty, and the caller gets
+ * -1. Note the top entry sits at the index itself, not one below it. */
+/* @implements 0x10005D40 d3d BrNetStackPop */
 int32_t BrNetStackPop(void *hMutex, int32_t *paStack, int32_t *piTop)
 {
     int32_t v;
@@ -514,6 +585,10 @@ int32_t BrNetStackPop(void *hMutex, int32_t *paStack, int32_t *piTop)
 }
 
 /* 0x10005E40 */
+/* WHAT IT DOES: reads one entry out of a networking table with the table's
+ * lock held. There is no bounds check, here or in the original, so a bad
+ * index reads whatever is next in memory. */
+/* @implements 0x10005E40 d3d BrNetGetA102212D0 */
 int32_t BrNetGetA102212D0(BrNetState *pNet, int32_t i)
 {
     int32_t v;
@@ -525,6 +600,10 @@ int32_t BrNetGetA102212D0(BrNetState *pNet, int32_t i)
 }
 
 /* 0x10005DE0 */
+/* WHAT IT DOES: reads four small pieces of one player's network slot at
+ * once, under that slot's lock: one number returned directly, and three
+ * bytes handed back through pointers. */
+/* @implements 0x10005DE0 d3d BrNetSlotGetF030 */
 int32_t BrNetSlotGetF030(BrNetState *pNet, int32_t slot,
                          uint8_t *pb34, uint8_t *pb35, uint8_t *pb36)
 {
@@ -546,6 +625,10 @@ int32_t BrNetSlotGetF030(BrNetState *pNet, int32_t slot,
 }
 
 /* 0x10005EE0 */
+/* WHAT IT DOES: stores a player's name into their network slot, under that
+ * slot's lock. The original copied without limit; this version truncates to
+ * the field's size. */
+/* @implements 0x10005EE0 d3d BrNetSlotSetName */
 void BrNetSlotSetName(BrNetState *pNet, int32_t slot, const char *pszName)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];
@@ -562,6 +645,12 @@ void BrNetSlotSetName(BrNetState *pNet, int32_t slot, const char *pszName)
 }
 
 /* 0x10005F40 */
+/* WHAT IT DOES: reads a small field of a player's slot, keeps its low six
+ * bits and subtracts four, never returning less than zero. Beware that it
+ * locks the slot and then calls another routine that locks the same slot
+ * again -- harmless on Windows, but a deadlock if the lock is replaced with
+ * a non-recursive one. */
+/* @implements 0x10005F40 d3d BrNetSlotGetF02CBiased */
 int32_t BrNetSlotGetF02CBiased(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];
@@ -577,6 +666,10 @@ int32_t BrNetSlotGetF02CBiased(BrNetState *pNet, int32_t slot)
 }
 
 /* 0x10005F90 */
+/* WHAT IT DOES: reads one number out of a player's slot under that slot's
+ * lock and reports it, with negative values reported as zero. Note the
+ * flooring happens after the lock is released. */
+/* @implements 0x10005F90 d3d BrNetSlotGetF974 */
 int32_t BrNetSlotGetF974(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];
@@ -592,6 +685,9 @@ int32_t BrNetSlotGetF974(BrNetState *pNet, int32_t slot)
 }
 
 /* 0x10006090 */
+/* WHAT IT DOES: raises a networking flag under its lock. What the flag
+ * signals is not established here. */
+/* @implements 0x10006090 d3d BrNetSetF10220DD0 */
 void BrNetSetF10220DD0(BrNetState *pNet)
 {
     BrNetMutexLock(pNet->h1022131C);
@@ -600,6 +696,9 @@ void BrNetSetF10220DD0(BrNetState *pNet)
 }
 
 /* 0x100060C0 */
+/* WHAT IT DOES: lowers the same networking flag its neighbour raises, under
+ * the same lock. */
+/* @implements 0x100060C0 d3d BrNetClearF10220DD0 */
 void BrNetClearF10220DD0(BrNetState *pNet)
 {
     BrNetMutexLock(pNet->h1022131C);
@@ -608,6 +707,11 @@ void BrNetClearF10220DD0(BrNetState *pNet)
 }
 
 /* 0x10006160 */
+/* WHAT IT DOES: raises a flag if the deadline the networking code is waiting
+ * on has passed. The comparison is unsigned, so the disarmed value of -1
+ * reads as an enormous future time and the flag never fires until a real
+ * deadline is set -- that is a disarmed timer, not an expired one. */
+/* @implements 0x10006160 d3d BrNetCheckDeadline */
 void BrNetCheckDeadline(BrNetState *pNet, uint32_t nowTicks, int32_t *pfFlag)
 {
     BrNetMutexLock(pNet->h10220CEC);
@@ -779,6 +883,12 @@ finish:
  * ===================================================================== */
 
 /* 0x10008670 */
+/* WHAT IT DOES: looks through a cache for the record whose 64-byte key
+ * matches the one asked for, and reports its position, or -1 if there is no
+ * match. Only the middle of each record takes part in the comparison; the
+ * first few words are payload the search ignores. What the cache holds is
+ * not established here. */
+/* @implements 0x10008670 d3d BrKeyCacheFind */
 int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
 {
     int32_t i;
@@ -800,6 +910,10 @@ int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
 }
 
 /* 0x10008970 */
+/* WHAT IT DOES: empties that cache: closes the file it was reading from,
+ * frees the records, and zeroes the bookkeeping, leaving only the object's
+ * first two words alone. */
+/* @implements 0x10008970 d3d BrKeyCacheReset */
 void BrKeyCacheReset(BrKeyCache *pCache)
 {
     if (pCache->pFile != NULL)
@@ -828,6 +942,11 @@ void BrKeyCacheReset(BrKeyCache *pCache)
 #define BR_POD_DIR_STRIDE 76
 
 /* 0x100089C0 */
+/* WHAT IT DOES: starts writing a POD archive -- the game's own bundle format
+ * for its data files. It opens the file, leaves room at the front for a
+ * header it can only fill in at the end, and clears the directory it will
+ * build up as members are added. */
+/* @implements 0x100089C0 d3d BrPodWriteOpen */
 int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
 {
     /* DEVIATION: the original opens through the stream object at +4
@@ -848,6 +967,12 @@ int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
 }
 
 /* 0x10008A00 */
+/* WHAT IT DOES: adds one member file to the archive being written: notes
+ * where in the file the data will sit, writes the data, and records the name
+ * (uppercased) and size in the directory. An over-long name is complained
+ * about and then used anyway, and the directory is capped here, which the
+ * original did not do. */
+/* @implements 0x10008A00 d3d BrPodWriteAdd */
 void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
                    const void *pvData, uint32_t cbData,
                    uint8_t b08, uint8_t b09)
@@ -895,6 +1020,10 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
 }
 
 /* 0x10008AA0 */
+/* WHAT IT DOES: finishes the archive: writes the directory of members at the
+ * end, rewinds to the front to fill in the header with the magic word,
+ * member count and directory position, and closes the file. */
+/* @implements 0x10008AA0 d3d BrPodWriteClose */
 void BrPodWriteClose(BrPodWriter *pW)
 {
     uint8_t  aRec[BR_POD_DIR_STRIDE];

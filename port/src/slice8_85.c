@@ -130,6 +130,12 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
  * GOTCHA: the early-out's `test esi,esi` is on `pCtl + 0x2B65 + stride*i`, an
  * ADDRESS that can never be null.  The guard is dead; kept as this comment.
  * GOTCHA: the index is sign-extended from 16 bits (`movsx eax,[esp+8]`). */
+/* WHAT IT DOES: finishes an edit the player has made in a menu box -- it asks
+ * the box whether the new value is acceptable and, if it is not (or if the
+ * control is already flagged as needing to close), takes the box out of edit
+ * mode and runs the control's own "something changed" handler. A box that was
+ * not being edited in the first place is simply refreshed and left alone. */
+/* @implements 0x1003EE50 d3d Br85ItemApply */
 static int32_t Br85ItemApply(BrUiCtl_ *pCtl, int16_t index)
 {
     BrTextBox           *pBox = &pCtl->aText[index];
@@ -195,6 +201,12 @@ static int32_t Br85ItemApply(BrUiCtl_ *pCtl, int16_t index)
  * Draw hooks -- three messages through control vtable +0x14
  * ========================================================================== */
 
+/* WHAT IT DOES: draws the frame round a menu box, stretched to fit the text
+ * inside it -- a left end piece, as many middle pieces as the width needs,
+ * then a right end piece. A box whose width comes out negative would draw
+ * middle pieces essentially for ever, because the count is treated as
+ * unsigned; that is the original's behaviour and is preserved. */
+/* @implements 0x1003E7A0 d3d BrUiHook85_1003E7A0 */
 int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
 {
     const BrTextBox *pBox = &pCtl->aText[0];
@@ -230,6 +242,10 @@ int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
 }
 
 /* 0x1003E980 / 0x1003E9E0 differ only in which count they read. */
+/* WHAT IT DOES: draws a volume bar as a row of blocks -- one block per step
+ * of the setting, laid out left to right after a leading piece. This is the
+ * shared body; the two hooks below differ only in which volume they read. */
+/* @implements 0x1003E980 d3d Br85DrawRow */
 static int32_t Br85DrawRow(BrUiCtl_ *pCtl, const int32_t *pCount)
 {
     int32_t  x = BrFtolTrunc(pCtl->x);            /* +0x3C */
@@ -252,6 +268,8 @@ int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
     return Br85DrawRow(pCtl, &g_brB4E708);
 }
 
+/* WHAT IT DOES: draws the music volume bar. */
+/* @implements 0x1003E9E0 d3d BrUiHook85_1003E9E0 */
 int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 {
     return Br85DrawRow(pCtl, &g_brB4E70C);
@@ -261,6 +279,10 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
  * Code and geometry hooks
  * ========================================================================== */
 
+/* WHAT IT DOES: picks which of two pictures a control is drawn with,
+ * depending on which of the two volume rows the player last touched -- the
+ * highlight that shows which row the cursor is on. */
+/* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
 {
     /* Note the inversion relative to the usual "flag set -> higher value". */
@@ -271,6 +293,10 @@ int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: slides a control sideways to sit at the end of whichever
+ * volume bar is currently selected, so the marker follows the level the
+ * player is setting. */
+/* @implements 0x1003EA40 d3d BrUiHook85_1003EA40 */
 int32_t BrUiHook85_1003EA40(BrUiCtl_ *pCtl)
 {
     uint32_t n = (g_br0AB3D8 != 0) ? (uint32_t)g_brB4E708
@@ -305,6 +331,11 @@ int32_t BrUiHook85_10040930(BrUiCtl_ *pCtl)
  * List-poll hooks -- ask the embedded list at +0x3838 for a new value
  * ========================================================================== */
 
+/* WHAT IT DOES: asks a scrolling list which row the player has moved to and
+ * remembers the answer as the current selection. If the list declines to
+ * answer, the previous selection stands. When a name is being edited it also
+ * tells the list that the selection has been taken. */
+/* @implements 0x1003EB10 d3d BrUiHook85_1003EB10 */
 int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
 {
     BrTextList *pList = &pCtl->list;
@@ -334,6 +365,11 @@ int32_t BrUiHook85_1003ED10(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: the same, for the twelve-entry car list -- it tells the list
+ * where the cursor is, treating anything outside the twelve as "nowhere", and
+ * takes back whatever row the list reports. Note the range check is applied
+ * only to what it sends, never to what it stores. */
+/* @implements 0x1003EE20 d3d BrUiHook85_1003EE20 */
 int32_t BrUiHook85_1003EE20(BrUiCtl_ *pCtl)
 {
     int32_t n = g_br73.nAA2A34;
@@ -374,6 +410,12 @@ int32_t BrUiHook85_1003EE20(BrUiCtl_ *pCtl)
  * CONSEQUENCE, and it is observable: a caption differing from the stored one
  * ONLY in case compares EQUAL, so the copy is skipped and the destination
  * keeps its old capitalisation. */
+/* WHAT IT DOES: compares two pieces of text while ignoring capitals, folding
+ * only the plain English A to Z and nothing else. Callers use it to decide
+ * whether the player has actually changed a name -- which means a name
+ * retyped in different capitals counts as unchanged and the new
+ * capitalisation is discarded. */
+/* @implements 0x1008C320 d3d br_stricmp_1008C320 */
 static int br_stricmp_1008C320(const char *pA, const char *pB)
 {
     for (;;) {
@@ -387,6 +429,11 @@ static int br_stricmp_1008C320(const char *pA, const char *pB)
 }
 
 /* 0x1003F050 and 0x1003F0B0 are the same 81 bytes over two buffers. */
+/* WHAT IT DOES: takes what the player has typed into a menu box and copies it
+ * into the game's own store of that name -- but only if it differs by more
+ * than capitalisation. This is the shared body; the two hooks that use it
+ * differ only in which name they write. */
+/* @implements 0x1003F050 d3d Br85TextReadBack */
 static int32_t Br85TextReadBack(BrUiCtl_ *pCtl, char *pszDst, size_t cbDst)
 {
     const char *pszSrc;
@@ -417,6 +464,9 @@ int32_t BrUiHook85_1003F050(BrUiCtl_ *pCtl)
                             sizeof(g_brHook85.szB4E740));
 }
 
+/* WHAT IT DOES: reads back what the player typed, into the second of the two
+ * name stores. */
+/* @implements 0x1003F0B0 d3d BrUiHook85_1003F0B0 */
 int32_t BrUiHook85_1003F0B0(BrUiCtl_ *pCtl)
 {
     return Br85TextReadBack(pCtl, g_brHook85.szB4E760,
@@ -484,6 +534,10 @@ int32_t BrUiHook85_100418D0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: puts a menu box into edit mode -- or takes it out again,
+ * since it toggles -- when the player picks it, and only the first time round:
+ * once the "an edit is in progress" flag is set it does nothing further. */
+/* @implements 0x10042AC0 d3d BrUiHook85_10042AC0 */
 int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
 {
     if (g_brAA28D8 == 0) {
@@ -495,6 +549,10 @@ int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: nothing except say "yes". It is installed where a menu
+ * control needs a handler that accepts and does no work -- the original does
+ * not even look at the control it is passed. */
+/* @implements 0x10042AF0 d3d BrUiHook85_10042AF0 */
 int32_t BrUiHook85_10042AF0(BrUiCtl_ *pCtl)
 {
     (void)pCtl;                 /* the original never even loads it */
@@ -566,6 +624,10 @@ int32_t BrUiHook85_100466C0(BrUiCtl_ *pCtl)
  * function and the two arms below are read from the D3D bodies.
  * ========================================================================== */
 
+/* WHAT IT DOES: records which of the game's play modes the player has just
+ * chosen and opens the next screen. This is the shared body behind three
+ * near-identical hooks, one per mode. */
+/* @implements 0x10044010 d3d Br85ModeOpen */
 static int32_t Br85ModeOpen(int32_t mode)
 {
     g_brAA287C = mode;
@@ -581,17 +643,33 @@ static int32_t Br85ModeKind(BrUiCtl_ *pCtl, int32_t mode)
 }
 
 int32_t BrUiHook85_10044010(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(0); }
+/* WHAT IT DOES: chooses the second play mode and opens the next screen. */
+/* @implements 0x10044050 d3d BrUiHook85_10044050 */
 int32_t BrUiHook85_10044050(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(1); }
+/* WHAT IT DOES: chooses the third play mode and opens the next screen. */
+/* @implements 0x10044090 d3d BrUiHook85_10044090 */
 int32_t BrUiHook85_10044090(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(2); }
 
+/* WHAT IT DOES: records the first play mode as the one under the cursor and
+ * refreshes how that menu entry is drawn -- the highlight, not the choice.
+ * These three are the drawing twins of the three above. */
+/* @implements 0x10044030 d3d BrUiHook85_10044030 */
 int32_t BrUiHook85_10044030(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 0); }
+/* WHAT IT DOES: the same for the second play mode's menu entry. */
+/* @implements 0x10044070 d3d BrUiHook85_10044070 */
 int32_t BrUiHook85_10044070(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 1); }
+/* WHAT IT DOES: the same for the third play mode's menu entry. */
+/* @implements 0x100440B0 d3d BrUiHook85_100440B0 */
 int32_t BrUiHook85_100440B0(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 2); }
 
 /* ==========================================================================
  * 0x1004E810 -- the car list's row callback
  * ========================================================================== */
 
+/* WHAT IT DOES: plays a preview of the music that goes with the row the
+ * player has moved to in a list -- row zero corresponds to the disc's third
+ * track, since the first two are not music the player picks. */
+/* @implements 0x1004E810 d3d BrUiHook85_1004E810 */
 int32_t BrUiHook85_1004E810(void *pUnused, const int32_t *pRow)
 {
     (void)pUnused;              /* `[esp+4]` is pushed and never read */

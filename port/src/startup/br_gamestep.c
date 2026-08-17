@@ -16,6 +16,12 @@ static int          g_cKnown;
 /* 0x1002E317 -- `mov eax,[ebp+8]; mov [0x106E79F4],eax`.  Thirteen bytes, no
  * validation of any kind: the original will happily install a null step and
  * the pump will happily call it. */
+/* WHAT IT DOES: chooses what the game does each frame. The game keeps one
+ * slot naming the current activity -- racing, sitting in the front end, or
+ * doing nothing -- and this is how that slot gets changed. It accepts
+ * whatever it is handed without checking, so handing it nothing leaves the
+ * game with no frame work to do. */
+/* @implements 0x1002E317 glide BrGameStepSet */
 void BrGameStepSet(BrGameStepFn pfn)
 {
     g_pfnStep = pfn;
@@ -35,6 +41,10 @@ void BrGameStepRegister(BrGameStepFn pfn, int id)
 }
 
 /* 0x1002E302 -- `xor ecx,ecx; cmp eax,[0x106E79F4]; sete cl`. */
+/* WHAT IT DOES: answers "is this the activity the game is currently running?"
+ * -- a yes/no check against the slot BrGameStepSet writes, used by code that
+ * needs to know whether it is, say, in a race before acting. */
+/* @implements 0x1002E302 glide BrGameStepIs */
 int BrGameStepIs(BrGameStepFn pfn)
 {
     return (g_pfnStep == pfn) ? 1 : 0;
@@ -43,6 +53,10 @@ int BrGameStepIs(BrGameStepFn pfn)
 /* 0x1002E324 -- `call dword ptr [0x106E79F4]`.  The original does NOT test
  * for NULL; this does, because a null call is a crash rather than a
  * behaviour, and the harness needs to be able to say "nothing installed". */
+/* WHAT IT DOES: runs one frame of whatever the game is currently doing. The
+ * window's message pump calls this over and over, and it is the single point
+ * where the race, or the front end, gets its turn each frame. */
+/* @implements 0x1002E324 glide BrGameStepInvoke */
 int BrGameStepInvoke(void)
 {
     if (g_pfnStep == NULL) {

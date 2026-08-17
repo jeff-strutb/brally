@@ -91,6 +91,11 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
 /* ================================================================== */
 
 /* 0x1001CD60 */
+/* WHAT IT DOES: handles one command in the game's drawing-command list by
+ * stashing the command's payload in a graphics setting, then moves on to the
+ * next command. What that setting controls is not established -- nothing in
+ * this packet reads it back -- so treat the effect on the picture as
+ * unknown. */
 /* @implements 0x1001CD60 d3d BrGbiSet0A79E8 */
 BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -99,6 +104,9 @@ BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x1001CD80 */
+/* WHAT IT DOES: another one-line drawing-command handler that parks the
+ * command's payload in a graphics setting and moves on. As with its
+ * neighbour, what the setting is used for is not established. */
 /* @implements 0x1001CD80 d3d BrGbiSet4C5174 */
 BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -110,6 +118,12 @@ BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
  * the opcode audit; BRD3D's dispatch table at 0x100A79F0 holds this address in
  * slot 0xF2 and holds 0x1001CE70 / 0x1001CDA0 in the two scissor slots, so the
  * arithmetic was never wrong -- only the name.  See slice2_16.h. */
+/* WHAT IT DOES: tells the renderer which rectangle of a texture the next
+ * drawings will use, and works out that rectangle's width and height in
+ * texture pixels. The coordinates arrive as fractions of a pixel and are
+ * unpacked and sign-corrected here. Despite an earlier name of "set
+ * scissor", this is the tile setter -- the real scissor commands are two
+ * other, longer functions. */
 /* @implements 0x1001CF30 d3d BrGbiSetTileSize */
 BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -127,6 +141,10 @@ BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x1001E790 */
+/* WHAT IT DOES: turns geometry features off. Drawing commands carry a set of
+ * switches -- lighting, fog, backface culling and the like -- and this
+ * clears the ones named in the command, remembering what they were before,
+ * then tells the renderer the switches changed. */
 /* @implements 0x1001E790 d3d BrGbiClearGeometryMode */
 BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -137,6 +155,9 @@ BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F20 */
+/* WHAT IT DOES: turns geometry features on: the mirror image of the clear
+ * above. It sets the switches named in the command, remembers the previous
+ * setting, and notifies the renderer. */
 /* @implements 0x10020F20 d3d BrGbiSetGeometryMode */
 BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -147,6 +168,11 @@ BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020D60 */
+/* WHAT IT DOES: jumps the drawing-command reader into another list of
+ * commands -- the equivalent of calling a subroutine while drawing. Unless
+ * the command says otherwise it remembers where to come back to. The return-
+ * address stack holds ten entries but the game complains one entry early,
+ * and stores anyway. */
 /* @implements 0x10020D60 d3d BrGbiDList */
 BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -165,6 +191,10 @@ BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020DA0 -- takes no argument in the original. */
+/* WHAT IT DOES: ends the current list of drawing commands and returns to
+ * whoever jumped into it. If nothing jumped in, it reports that there is
+ * nowhere to go back to, which is what stops the drawing-command reader
+ * altogether. */
 /* @implements 0x10020DA0 d3d BrGbiEndDList */
 BrGfxWords *BrGbiEndDList(BrGbiState *pSt)
 {
@@ -205,6 +235,11 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
 }
 
 /* 0x10020DC0 */
+/* WHAT IT DOES: installs a transform matrix -- either the camera's
+ * projection, or a model's position and orientation. It can replace the
+ * current matrix or combine with it, and optionally save the old one so it
+ * can be restored later. It always finishes by recomputing the single
+ * combined matrix the renderer actually uses. */
 /* @implements 0x10020DC0 d3d BrGbiMatrix */
 BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
 {
@@ -238,6 +273,8 @@ BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
 }
 
 /* 0x10020EF0 */
+/* WHAT IT DOES: restores the previously saved model matrix, undoing one save
+ * made by the matrix command above. If nothing was saved it does nothing. */
 /* @implements 0x10020EF0 d3d BrGbiPopMatrix */
 BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -252,6 +289,9 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F80 */
+/* WHAT IT DOES: handles a drawing command that parks the command's payload
+ * in a graphics setting and then passes that same value to another routine
+ * which acts on it. What the setting means is not established here. */
 /* @implements 0x10020F80 d3d BrGbiSet4C1694 */
 BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -261,6 +301,9 @@ BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F50 */
+/* WHAT IT DOES: a drawing command with a small selector byte in it: selector
+ * 0 and selector 3 each go to a different handler, and anything else is
+ * ignored and skipped. What the two arms do is described where they live. */
 /* @implements 0x10020F50 d3d BrGbiDispatch10020F50 */
 BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -274,6 +317,11 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10021510 */
+/* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
+ * command used for things like heads-up display panels rather than for 3D
+ * geometry. It unpacks the corners and the tile number and hands them to the
+ * rectangle drawer. Note it swallows three commands, not one, because the
+ * rectangle's texture coordinates follow it in the list. */
 /* @implements 0x10021510 d3d BrGbiTileRect */
 BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -291,6 +339,10 @@ BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10021B80 */
+/* WHAT IT DOES: the same textured-rectangle draw as above but with the
+ * corners given in whole screen pixels rather than quarter-pixels, so it
+ * scales them up before handing them on, and it consumes only its own
+ * command. */
 /* @implements 0x10021B80 d3d BrGbiTileRectS */
 BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -307,6 +359,11 @@ BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10022350 */
+/* WHAT IT DOES: works out how bright one vertex of a model should be. If
+ * lighting is switched off it just copies a fixed colour. Otherwise it
+ * measures how squarely the surface faces the light: surfaces facing away
+ * get plain ambient light, and the rest get ambient plus a share of the
+ * light's colour, capped so nothing goes brighter than white. */
 /* @implements 0x10022350 d3d BrGbiLightVertex */
 void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst)
 {
@@ -340,6 +397,10 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
 }
 
 /* 0x10022DC0 */
+/* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
+ * viewing frustum, and reports which of the seven boundaries it crossed. The
+ * renderer uses that to decide whether a triangle needs clipping or can be
+ * thrown away entirely. */
 /* @implements 0x10022DC0 d3d BrGbiClipCodes */
 int BrGbiClipCodes(const float *pVert)
 {
@@ -357,6 +418,9 @@ int BrGbiClipCodes(const float *pVert)
 }
 
 /* 0x10024240 */
+/* WHAT IT DOES: handles the drawing command that hands the renderer a ready-
+ * made combined transform matrix outright, replacing whatever the matrix
+ * commands had built up. */
 /* @implements 0x10024240 d3d BrGbiMoveMemMatrix */
 BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
                                const void *pSrc)
@@ -371,6 +435,11 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * 0x100241E8):  0x80 -> 0x10024179, 0x82 -> 0x10024185,
  * 0x84 -> 0x10024193, 0x86/88/8A/8C/8E/90/92/94 -> 0x100241AE,
  * 0x9E -> 0x100241A2, everything else in 0x80..0x9E -> 0x100241E2. */
+/* WHAT IT DOES: the drawing command that loads a block of renderer data from
+ * memory: the viewport, one of the two look-at vectors, one of the eight
+ * lights, or the combined transform matrix, chosen by an index byte. Indexes
+ * outside the known set are ignored. The port clamps a light copy to the
+ * light array, which the original did not. */
 /* @implements 0x10024150 d3d BrGbiMoveMem */
 BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
 {
@@ -417,6 +486,10 @@ BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
  * reach the table but land on the default arm; everything outside 0x02..0x0E
  * is rejected by the range check. The index is the SIGN-EXTENDED low byte of
  * w0, so 0x80..0xFF go to the default too. */
+/* WHAT IT DOES: the drawing command that pokes a single word of renderer
+ * data. Only two pokes are recognised: setting how many lights are active,
+ * and rewriting the colour or the direction bytes of one particular light.
+ * Everything else is skipped. */
 /* @implements 0x100242F0 d3d BrGbiMoveWord */
 BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
 {
@@ -459,6 +532,11 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10024A90 */
+/* WHAT IT DOES: the drawing-command reader itself. It reads the command's
+ * leading byte, calls the handler registered for it, and continues from
+ * wherever that handler says the next command is -- looping until a handler
+ * reports there is nothing left. This one loop is what draws every frame of
+ * the game. */
 /* @implements 0x10024A90 d3d BrGbiRun */
 void BrGbiRun(const BrGbiHandler *apTable, BrGfxWords *pCmd)
 {
@@ -478,6 +556,9 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
 }
 
 /* 0x10029E60 */
+/* WHAT IT DOES: during the pre-pass that hunts for texture loads, notes
+ * where the current run of commands ended, the first time anything ends it.
+ * Later ends are ignored so the run keeps its original extent. */
 /* @implements 0x10029E60 d3d BrGbiTexScanMark */
 void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
@@ -486,6 +567,12 @@ void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10029410 */
+/* WHAT IT DOES: closes off a recognised texture-load run and replaces it
+ * with a single command. The staged texture bytes are handed to the texture
+ * cache; if the cache accepts them and gives back an id, the run's first
+ * command is overwritten with a short "use texture id N, skip the next so-
+ * many commands" instruction, so the several commands the N64 needed to load
+ * a texture collapse into one on the PC. */
 /* @implements 0x10029410 d3d BrGbiTexScanFlush */
 void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
@@ -515,6 +602,9 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x10029EB0  G_SETTIMG */
+/* WHAT IT DOES: during the texture-load hunt, notes the address and pixel
+ * size of the image a load is about to read from, and -- if a run was not
+ * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
 void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
@@ -534,6 +624,9 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10029F10  G_LOADTLUT */
+/* WHAT IT DOES: during the texture-load hunt, copies a colour palette out of
+ * the source image into the palette buffer. The number of bytes comes
+ * straight from the command and is not checked, here or in the original. */
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
 void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                           const void *pSrc)
@@ -557,6 +650,9 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
 }
 
 /* 0x10029F80  G_RDPLOADSYNC */
+/* WHAT IT DOES: during the texture-load hunt, advances the state machine
+ * when the expected wait-for-load command shows up after an image address
+ * was set. */
 /* @implements 0x10029F80 d3d BrGbiTexScanLoadSync */
 void BrGbiTexScanLoadSync(BrGbiTexScan *pSt)
 {
@@ -565,6 +661,10 @@ void BrGbiTexScanLoadSync(BrGbiTexScan *pSt)
 }
 
 /* 0x10029FA0  G_LOADBLOCK */
+/* WHAT IT DOES: during the texture-load hunt, copies the texture's pixels
+ * into a staging buffer so the texture cache can be offered them later. It
+ * records the size the command asked for even though the copy itself is
+ * clamped to the buffer, which the original was not. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
 void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                            const void *pSrc)
@@ -591,6 +691,8 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
 }
 
 /* 0x1002A000  G_RDPPIPESYNC */
+/* WHAT IT DOES: during the texture-load hunt, advances the state machine
+ * when the expected pipeline-wait command shows up after a palette load. */
 /* @implements 0x1002A000 d3d BrGbiTexScanPipeSync */
 void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
 {
@@ -599,6 +701,9 @@ void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
 }
 
 /* 0x1002A020  G_RDPTILESYNC */
+/* WHAT IT DOES: during the texture-load hunt, advances the state machine
+ * when the expected tile-wait command shows up after a pixel or palette
+ * load. */
 /* @implements 0x1002A020 d3d BrGbiTexScanTileSync */
 void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
 {
@@ -607,6 +712,10 @@ void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
 }
 
 /* 0x1002A040  G_SETTILE */
+/* WHAT IT DOES: during the texture-load hunt, records everything one of the
+ * eight texture slots is being configured with -- pixel format and size,
+ * where it sits in texture memory, and how it wraps, mirrors or clamps in
+ * each direction -- and notes the highest slot used. */
 /* @implements 0x1002A040 d3d BrGbiTexScanSetTile */
 void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
@@ -636,6 +745,8 @@ void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A140  G_SETTILESIZE */
+/* WHAT IT DOES: during the texture-load hunt, records which rectangle of the
+ * image one of the eight texture slots covers. */
 /* @implements 0x1002A140 d3d BrGbiTexScanSetTileSize */
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
@@ -651,6 +762,10 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A1A0  G_SETOTHERMODE_L */
+/* WHAT IT DOES: during the texture-load hunt, watches for changes to the
+ * blending mode and works out whether the material being set up is one that
+ * needs special handling. A handful of specific blend settings, and anything
+ * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
 void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
@@ -673,6 +788,10 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A250 */
+/* WHAT IT DOES: during the texture-load hunt, reads the texture-filtering
+ * setting out of a render-mode change and records which of two filtering
+ * choices is in force. A zero is ignored rather than treated as a third
+ * choice. */
 /* @implements 0x1002A250 d3d BrGbiTexScanOtherModeH0E */
 void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
@@ -687,6 +806,9 @@ void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A210  G_SETOTHERMODE_H */
+/* WHAT IT DOES: during the texture-load hunt, sorts a render-mode change
+ * into the two fields the hunt cares about: texture filtering, and one other
+ * setting that is on only for one exact value. */
 /* @implements 0x1002A210 d3d BrGbiTexScanOtherModeH */
 void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
@@ -716,6 +838,11 @@ void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * DEVIATION: G_LOADTLUT and G_LOADBLOCK need the bytes their w1 points at.
  * The original dereferences the already-segment-fixed address; here the
  * walker goes through BrGbiTexScanData so a 64-bit host can supply them. */
+/* WHAT IT DOES: walks a whole list of drawing commands without drawing
+ * anything, looking for the multi-command sequences the N64 used to load a
+ * texture so they can be collapsed into a single command for the PC
+ * renderer. Along the way it also picks up the colours, texture slots and
+ * render modes in force. It stops at the end-of-list command. */
 /* @implements 0x100290E0 d3d BrGbiTexScanRun */
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
@@ -809,6 +936,11 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 /* ================================================================== */
 
 /* 0x10027C00 */
+/* WHAT IT DOES: rounds a size up to the next power of two and reports the
+ * answer as a shift count -- how many times you would double 1 to reach it.
+ * Textures have to be powers of two, so this is how an odd width or height
+ * gets rounded up. Anything above 128 is capped, and anything of 1 or less
+ * gives zero. */
 /* @implements 0x10027C00 d3d BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
@@ -824,6 +956,9 @@ int BrGbiSizeShift(int n)
 }
 
 /* 0x10028C70 */
+/* WHAT IT DOES: says how many texture pixels are packed into one machine
+ * word for a given pixel-size code: 16 for the smallest, then 8, then 4, and
+ * 2 for anything else. */
 /* @implements 0x10028C70 d3d BrGbiTexelsPerWord */
 int BrGbiTexelsPerWord(int siz)
 {
@@ -836,6 +971,10 @@ int BrGbiTexelsPerWord(int siz)
 }
 
 /* 0x10028BF0 */
+/* WHAT IT DOES: passes a texture upload through to the graphics backend,
+ * working out for it the one thing it does not get told -- how many bytes
+ * one row of the texture occupies, given the width rounded up to a power of
+ * two and the pixel size. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 void BrGbiBlit(BrGbiBlitFn pfn,
                uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
@@ -851,6 +990,11 @@ void BrGbiBlit(BrGbiBlitFn pfn,
 }
 
 /* 0x1002A280 */
+/* WHAT IT DOES: builds the backend's version of a texture from a record the
+ * game already holds, translating the record's flag bits into a pixel format
+ * and size and rounding the dimensions up to powers of two. It refuses if
+ * the record has no source pixels or if one particular flag bit is set, so
+ * it never fills in a record that was empty. */
 /* @implements 0x1002A280 d3d BrGbiTexCreate */
 void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
 {
@@ -881,6 +1025,10 @@ void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
 }
 
 /* 0x1002A740 */
+/* WHAT IT DOES: makes the flat 4x4 placeholder texture used wherever a real
+ * texture is not available, filling it with a dim value in two of the
+ * display modes and a brighter one otherwise, then handing it to the backend
+ * as a real texture. */
 /* @implements 0x1002A740 d3d BrGbiSolidTexBuild */
 void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
 {
@@ -899,6 +1047,10 @@ void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
 /* ================================================================== */
 
 /* 0x1002AEA0 */
+/* WHAT IT DOES: releases one hold on the screen-transition effect and, when
+ * the last hold goes, runs the teardown. Beware that the check is for
+ * exactly zero after the decrement, so releasing one time too many drops the
+ * count below zero and the teardown can never fire again. */
 /* @implements 0x1002AEA0 d3d BrFadeRelease */
 int BrFadeRelease(BrFadeState *pSt)
 {
@@ -909,6 +1061,8 @@ int BrFadeRelease(BrFadeState *pSt)
 }
 
 /* 0x1002AEC0 */
+/* WHAT IT DOES: resets the screen-transition wipe to its starting position
+ * by copying two stored values into the live ones. */
 /* @implements 0x1002AEC0 d3d BrFadeLatch */
 void BrFadeLatch(BrFadeState *pSt)
 {
@@ -929,6 +1083,11 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
 }
 
 /* 0x1002AF10 */
+/* WHAT IT DOES: draws the translucent full-screen tint used during a
+ * transition, at the requested opacity. It gives up entirely if the tint
+ * would be too faint to see, and never lets it get more than about seven-
+ * tenths opaque. The rectangle it covers comes from a table of screen
+ * regions. */
 /* @implements 0x1002AF10 d3d BrFadeDrawSprite */
 void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
 {
@@ -991,6 +1150,11 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
 }
 
 /* 0x1002B130 */
+/* WHAT IT DOES: aims the screen wipe at a new position, to be reached over
+ * the given time. Going forward it simply sets the target and speed; going
+ * backward it may instead flag a bounce, so a wipe already on its way out
+ * reverses when it lands rather than restarting. Note the time is a duration
+ * and is divided into, so asking for zero time gives an infinite speed. */
 /* @implements 0x1002B130 d3d BrFadeSetTarget */
 void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 {
@@ -1014,6 +1178,10 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B1C0 */
+/* WHAT IT DOES: aims one of the two independent brightness ramps at a new
+ * value over the given time, choosing to climb or fall depending on which
+ * side of the target it is currently on. As with the wipe, a zero duration
+ * gives an infinite rate. */
 /* @implements 0x1002B1C0 d3d BrFadeSetTargetA */
 void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 {
@@ -1027,6 +1195,8 @@ void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B220 */
+/* WHAT IT DOES: the same as the ramp above, for the second of the two
+ * independent brightness ramps. */
 /* @implements 0x1002B220 d3d BrFadeSetTargetB */
 void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 {
@@ -1040,6 +1210,8 @@ void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B2A0 */
+/* WHAT IT DOES: reports whether the screen transition is on its way closed
+ * -- either currently moving backward, or flagged to reverse when it lands. */
 /* @implements 0x1002B2A0 d3d BrFadeIsClosing */
 int BrFadeIsClosing(const BrFadeState *pSt)
 {
@@ -1049,6 +1221,9 @@ int BrFadeIsClosing(const BrFadeState *pSt)
 }
 
 /* 0x1002B2D0 */
+/* WHAT IT DOES: reports whether the screen transition has finished moving
+ * and has no reversal pending, which is how the game knows it can proceed to
+ * whatever the transition was covering. */
 /* @implements 0x1002B2D0 d3d BrFadeIsSettled */
 int BrFadeIsSettled(const BrFadeState *pSt)
 {
@@ -1058,6 +1233,8 @@ int BrFadeIsSettled(const BrFadeState *pSt)
 }
 
 /* 0x1002B300 */
+/* WHAT IT DOES: reports whether the screen transition is fully closed:
+ * moving backward, arrived at zero, and with no reversal pending. */
 /* @implements 0x1002B300 d3d BrFadeIsShut */
 int BrFadeIsShut(const BrFadeState *pSt)
 {
@@ -1081,6 +1258,11 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
 }
 
 /* 0x1002B340 */
+/* WHAT IT DOES: draws the wipe bars -- the solid blocks that sweep across
+ * the screen during a transition -- by emitting the filled-rectangle
+ * commands for them. It draws nothing while the wipe is fully open, and only
+ * a limited number of frames' worth of bars once the wipe has run out of
+ * travel. */
 /* @implements 0x1002B340 d3d BrFadeDrawBars */
 void BrFadeDrawBars(BrFadeState *pSt)
 {
@@ -1172,6 +1354,11 @@ static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
 }
 
 /* 0x1002B670 */
+/* WHAT IT DOES: advances the screen transition by one frame: moves the wipe
+ * toward its target, reverses it if a bounce was pending and it just
+ * arrived, recomputes where the bars now sit, and steps both brightness
+ * ramps, publishing each as a 0-255 value. One quirk worth knowing: the wipe
+ * treats landing exactly on its target as an overshoot and the ramps do not. */
 /* @implements 0x1002B670 d3d BrFadeTick */
 void BrFadeTick(BrFadeState *pSt)
 {
@@ -1231,6 +1418,8 @@ void BrFadeTick(BrFadeState *pSt)
 /* ================================================================== */
 
 /* 0x1002B930 */
+/* WHAT IT DOES: copies thirty-two bytes from one place to another,
+ * destination first. Used where the game moves a fixed-size record around. */
 /* @implements 0x1002B930 d3d BrCopy8Words */
 void BrCopy8Words(void *pDst, const void *pSrc)
 {
@@ -1238,6 +1427,8 @@ void BrCopy8Words(void *pDst, const void *pSrc)
 }
 
 /* 0x1002B9C0 */
+/* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
+ * batch of loaded geometry starts from nothing. */
 /* @implements 0x1002B9C0 d3d BrRcaResetCounts */
 void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 {
@@ -1246,6 +1437,10 @@ void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 }
 
 /* 0x1002B9E0 */
+/* WHAT IT DOES: flips the byte order of a run of 16-bit values. Boss Rally's
+ * data files came from the N64 and are stored the other way round from what
+ * a PC expects, so loaded data has to be turned around before it can be
+ * used. */
 /* @implements 0x1002B9E0 d3d BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {
@@ -1261,6 +1456,8 @@ void BrSwapU16Array(void *pv, int count)
 }
 
 /* 0x1002BA20 -- fully unrolled in the original over offsets 0,2,4,6. */
+/* WHAT IT DOES: flips the byte order of the four 16-bit values in one eight-
+ * byte record of N64-ordered data. */
 /* @implements 0x1002BA20 d3d BrSwapU16x4 */
 void BrSwapU16x4(void *pv)
 {
@@ -1273,6 +1470,8 @@ void BrSwapU16x4(void *pv)
 }
 
 /* 0x1002BA00 */
+/* WHAT IT DOES: flips the byte order of a whole array of those four-value
+ * records. */
 /* @implements 0x1002BA00 d3d BrSwapU16x4Array */
 void BrSwapU16x4Array(void *pv, int count)
 {
@@ -1288,6 +1487,8 @@ void BrSwapU16x4Array(void *pv, int count)
 }
 
 /* 0x1002BA60 */
+/* WHAT IT DOES: flips the byte order of a whole array of 3D vectors read out
+ * of an N64-ordered data file. */
 /* @implements 0x1002BA60 d3d BrSwapVec3Array */
 void BrSwapVec3Array(void *pv, int count)
 {
@@ -1303,6 +1504,11 @@ void BrSwapVec3Array(void *pv, int count)
 }
 
 /* 0x1002BC90 */
+/* WHAT IT DOES: turns a loaded mesh header the right way round: its entry
+ * count, one following word, and then three words for each entry. Note the
+ * entry count is re-read from the header on every pass of the loop, exactly
+ * as the original does, so swapping it can change how many entries get
+ * processed. */
 /* @implements 0x1002BC90 d3d BrRcaSwapMesh */
 void BrRcaSwapMesh(void *pv)
 {
@@ -1326,6 +1532,12 @@ void BrRcaSwapMesh(void *pv)
 }
 
 /* 0x1002BAA0 */
+/* WHAT IT DOES: prepares one texture record loaded from an .rca data file
+ * for use: turns its fields the right way round, rebases the two addresses
+ * it carries onto real memory, and then pulls in the actual pixel data --
+ * either through an attached mesh header that says where in the file blob
+ * the pixels live, or through a plain index into that blob. When the copying
+ * is switched off it just does the byte order and lets the record go. */
 /* @implements 0x1002BAA0 d3d BrRcaFixupRecord */
 void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec)
 {
@@ -1424,6 +1636,8 @@ void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec)
 }
 
 /* 0x1002BA80 */
+/* WHAT IT DOES: runs the record preparation above over a whole array of
+ * records from an .rca data file. */
 /* @implements 0x1002BA80 d3d BrRcaFixupArray */
 void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
 {

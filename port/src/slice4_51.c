@@ -79,6 +79,9 @@ int32_t BrSub1003D0B0(struct BrDPlay4Obj *pObjIn, void **ppvOut)
  * 0x1003E070 -- `call 0x1005FF60` / `jmp 0x1005FFF0`
  * ===================================================================== */
 
+/* WHAT IT DOES: refreshes both sets of input edges for this frame --
+ * keyboard keys and controller buttons -- so the menus can tell a fresh
+ * press from a held one. */
 /* @implements 0x1003E070 d3d BrFn1003E070 */
 void BrFn1003E070(void)
 {
@@ -191,6 +194,13 @@ static void BrGbiRectFlush(BrGbiRectState *pSt)
     pSt->dirty = 0;
 }
 
+/* WHAT IT DOES: actually draws a screen rectangle. It converts the four
+ * edges from the display list's pixel coordinates into the renderer's own
+ * space, flipping the vertical axis and dividing through by the perspective
+ * factor, builds the four corners with their texture coordinates, and hands
+ * over two triangles. It also flushes any renderer settings that were queued
+ * up but not yet sent. Note the tile number it is given is never used, in
+ * the original or here. */
 /* @implements 0x10021560 d3d BrGbiCall10021560 */
 void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
 {

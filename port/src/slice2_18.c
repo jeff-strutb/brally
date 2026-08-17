@@ -551,18 +551,31 @@ void BrFrameBegin(int32_t *pRec, int32_t fHiRes)
 }
 
 /* 0x10032873 */
+/* WHAT IT DOES: starts a frame at normal resolution: it resets the drawing-
+ * command cursor to this frame's buffer and lays down the fixed block of
+ * commands every frame opens with -- scissor, blend and combine setup,
+ * geometry switches, the identity matrix and the viewport. */
+/* @implements 0x10032873 d3d BrFrameBeginRec */
 void BrFrameBeginRec(int32_t *pRec)
 {
     BrFrameBegin(pRec, 0);
 }
 
 /* 0x10032886 */
+/* WHAT IT DOES: starts a frame at the high resolution instead, using the
+ * game's own frame record. Switching resolution mid-run is noticed and
+ * reloads the state that everything downstream keys off when it halves or
+ * doubles a rectangle. */
+/* @implements 0x10032886 d3d BrFrameBeginHiRes */
 void BrFrameBeginHiRes(void)
 {
     BrFrameBegin(BrG_6C1628, 1);
 }
 
 /* 0x1003289A */
+/* WHAT IT DOES: does nothing. It sits in a run of frame-setup routines and
+ * is empty in this build; whether it ever had a body is not established. */
+/* @implements 0x1003289A d3d BrFrameNop */
 void BrFrameNop(void)
 {
 }
@@ -747,6 +760,9 @@ void BrViewportReEmit(void)
 }
 
 /* 0x1003348E, 0x10033493 */
+/* WHAT IT DOES: does nothing. One of a pair of empty routines in this build,
+ * sitting between the viewport and heads-up-display code. */
+/* @implements 0x1003348E d3d BrGfxNopA */
 void BrGfxNopA(void) { }
 void BrGfxNopB(void) { }
 

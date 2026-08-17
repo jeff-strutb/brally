@@ -132,6 +132,11 @@ static int BrCfgReadProfile(FILE *pFile, BrCtrlProfile *pOut)
  * 0x10063060 -- load the settings file over an existing config object.
  * ====================================================================== */
 
+/* WHAT IT DOES: loads the player's control settings from disk on top of the
+ * settings already in memory. It checks the file's magic word and version
+ * first, and works through a temporary copy so a partly-read file cannot
+ * leave the live settings half-updated. */
+/* @implements 0x10063060 glide BrCtrlCfgReadFile */
 int32_t BrCtrlCfgReadFile(BrCtrlCfg *pThis, const char *pszPath)
 {
     /* The stack temporary at B+0x18.  `BrCtrlCfg`, not 0x874 bytes: the

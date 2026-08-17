@@ -59,6 +59,10 @@ const BrGfxWords g_aBrAA8C8[BR_DLSUB_AA8C8_COUNT] = {
 /* 1. 0x100243D0                                                          */
 /* ====================================================================== */
 
+/* WHAT IT DOES: does nothing but step over its drawing command. It occupies
+ * a slot in the command table that the shipped data apparently never
+ * exercises with anything meaningful. */
+/* @implements 0x100243D0 d3d BrGbiCall100243D0 */
 BrGfxWords *BrGbiCall100243D0(BrGfxWords *pCmd)
 {
     /* `add eax, 8` -- one 8-byte command. */
@@ -86,6 +90,12 @@ static void BrRsSet(BrGbiRectState *pSt, uint32_t *pDirty,
         *pDirty |= (1u << i);
 }
 
+/* WHAT IT DOES: queues up a batch of renderer settings from one packed
+ * value, comparing each against what the renderer already has and marking
+ * only the ones that actually changed, so that the flush afterwards sends
+ * the minimum. Note the very first setting's previous value is read once at
+ * the top and reused later, so two of the arms compare against a stale copy. */
+/* @implements 0x10020FA0 d3d BrGbiCall10020FA0 */
 void BrGbiCall10020FA0(uint32_t w1)
 {
     BrGbiRectState *pSt = BrGbiRectGetState();

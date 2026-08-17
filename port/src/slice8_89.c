@@ -177,6 +177,10 @@ int32_t BrUiHook89_10045050(BrUiCtl_ *pCtl)
  * LEAVE
  * ========================================================================== */
 
+/* WHAT IT DOES: leaves a screen and goes back: tells the owning screen to
+ * release its pages, tells the current screen it is going away, and repoints
+ * the game at the screen behind it. */
+/* @implements 0x10046CD0 d3d BrUiHook89_10046CD0 */
 int32_t BrUiHook89_10046CD0(BrUiCtl_ *pCtl)
 {
     BrUiNav  *pNav   = g_pBrUiNav;

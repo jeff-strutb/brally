@@ -20,6 +20,10 @@ extern void BrAppMsg107(void *pv1, const void *pData, uint32_t cbData,
 
 /* 0x1000C4D0 is IDirectPlay4A::Send under a critical section; slice1_03 owns
  * it. This wrapper exists only so the six senders read like the original. */
+/* WHAT IT DOES: sends a block of data to every other player in the network
+ * game, through the networking library, taking the lock around the call. The
+ * send is marked as guaranteed delivery. */
+/* @implements 0x1000C4D0 d3d BrDPlayRawSend */
 static int BrDPlayRawSend(void *pIface, uint32_t idFrom,
                           const void *pData, uint32_t cbData)
 {

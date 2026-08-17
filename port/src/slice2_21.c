@@ -33,6 +33,10 @@
  * -------------------------------------------------------------------------- */
 
 /* 0x1003ADA0 */
+/* WHAT IT DOES: works out which way one point lies from another as a unit
+ * direction. Two points in exactly the same place have no direction, so it
+ * answers "straight up" rather than dividing by zero. */
+/* @implements 0x1003ADA0 d3d BrVec3Direction */
 void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
 {
     float dx = pTo->x - pFrom->x;
@@ -72,12 +76,19 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
 }
 
 /* 0x1003B1C0 */
+/* WHAT IT DOES: measures how long a vector is looking down from above, that
+ * is, ignoring height. */
+/* @implements 0x1003B1C0 d3d BrVec3LenXY */
 float BrVec3LenXY(const BrVec3 *pV)
 {
     return BrSqrtF(pV->y * pV->y + pV->x * pV->x);
 }
 
 /* 0x1003B0A0 */
+/* WHAT IT DOES: measures the distance between two points as seen from above,
+ * ignoring any difference in height -- which is what "how far apart are these
+ * two cars on the track" means. */
+/* @implements 0x1003B0A0 d3d BrVec3DistXY */
 float BrVec3DistXY(const BrVec3 *pA, const BrVec3 *pB)
 {
     float dx = pA->x - pB->x;
@@ -86,6 +97,12 @@ float BrVec3DistXY(const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* 0x1003B7B0 */
+/* WHAT IT DOES: works out the compass angle of a direction. Rather than a
+ * lookup table it folds the direction into one eighth of a circle and then
+ * hunts for the answer by halving the interval sixteen times, stopping early
+ * once it is close enough -- about a quarter of a degree. Note its two
+ * arguments are in the opposite order to the C library's atan2. */
+/* @implements 0x1003B7B0 d3d BrAtan2 */
 float BrAtan2(float x, float y)
 {
     float acc = 0.0f;   /* the reduction offset, [esp+8] */
@@ -151,6 +168,10 @@ float BrAtan2(float x, float y)
 
 /* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE
  * declaration (a bare `const float *` matrix) so the two link. */
+/* WHAT IT DOES: puts a point through a transform -- moving, rotating and
+ * scaling it in one step -- and keeps the fourth component, which is what the
+ * perspective divide later needs. */
+/* @implements 0x1003B2A0 d3d BrMat4TransformPoint4 */
 void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
 {
     int j;
@@ -161,6 +182,10 @@ void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
 }
 
 /* 0x1003B3F0 */
+/* WHAT IT DOES: puts a direction through a transform. Unlike a point, a
+ * direction is only rotated and scaled and never moved, so the transform's
+ * position part is deliberately left out. */
+/* @implements 0x1003B3F0 d3d BrMtxXfmDir3 */
 void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 {
     float a[3];
@@ -173,6 +198,10 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 }
 
 /* 0x1003B470 */
+/* WHAT IT DOES: combines two transforms into one. It builds the answer in a
+ * scratch copy first, so it is safe to write the result back over either of the
+ * things being multiplied. */
+/* @implements 0x1003B470 d3d BrMtxMul */
 void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
 {
     BrMat4 t;   /* the original's 64-byte stack temp: aliasing is safe */
@@ -190,6 +219,12 @@ void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
 }
 
 /* 0x1003B4F0 */
+/* WHAT IT DOES: works out the transform that undoes a given one -- how to get
+ * from world space back into an object's own space, for instance. A transform
+ * that cannot be undone, because it squashes everything flat, yields the
+ * identity instead. It reports success either way, so the caller cannot tell
+ * the two apart. */
+/* @implements 0x1003B4F0 d3d BrMtxInvert */
 int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
 {
     const float (*m)[4] = pM->m;
@@ -276,6 +311,10 @@ static int BrSeg2Cross(const BrVec2 *pA, const BrVec2 *pB,
 }
 
 /* 0x1003BC90 */
+/* WHAT IT DOES: asks which side of a line two points fall on: nothing if they
+ * are both on the same side, and otherwise whether they straddle it normally or
+ * lie exactly balanced across it. */
+/* @implements 0x1003BC90 d3d BrSeg2SideTest */
 int BrSeg2SideTest(const BrVec2 *pA, const BrVec2 *pB,
                    const BrVec2 *pC, const BrVec2 *pD)
 {
@@ -286,6 +325,12 @@ int BrSeg2SideTest(const BrVec2 *pA, const BrVec2 *pB,
 }
 
 /* 0x1003BA70 */
+/* WHAT IT DOES: asks whether two line segments cross. It first rules out the
+ * easy cases where their bounding boxes do not even overlap, then checks that
+ * each segment really does straddle the other. It distinguishes an ordinary
+ * crossing from a balanced one, but only the first of the two straddle tests
+ * gets a say in which. */
+/* @implements 0x1003BA70 d3d BrSeg2Intersect */
 int BrSeg2Intersect(const BrVec2 *pA, const BrVec2 *pB,
                     const BrVec2 *pC, const BrVec2 *pD)
 {
@@ -334,6 +379,12 @@ int BrSeg2Intersect(const BrVec2 *pA, const BrVec2 *pB,
  * -------------------------------------------------------------------------- */
 
 /* 0x1003A6B0 */
+/* WHAT IT DOES: marks a straight line's footprint onto a coarse grid of
+ * 32-unit cells: both its endpoints, and then every cell the line passes
+ * through as it climbs from one row to the next, including the cells either
+ * side when it runs close to a boundary. This is how a shape's outline becomes
+ * a set of covered cells. */
+/* @implements 0x1003A6B0 d3d BrSpanAddLine */
 void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
 {
     int nx0, nx1, lo, hi, row, rowEnd;
@@ -405,6 +456,9 @@ void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
 }
 
 /* 0x1003A950 */
+/* WHAT IT DOES: asks whether a point falls inside the covered area, by
+ * dropping it into the coarse grid and checking that cell. */
+/* @implements 0x1003A950 d3d BrSpanTestPoint */
 int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
 {
     return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
@@ -412,6 +466,12 @@ int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
 }
 
 /* 0x1003A990 */
+/* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a
+ * top point, a bottom point and a four-corner ring between them -- by wiping the
+ * grid, drawing all twelve of its edges onto it, and then reducing each column
+ * to the first and last row that the shape reaches. The result is a cheap
+ * stand-in for the shape that later tests can be run against. */
+/* @implements 0x1003A990 d3d BrSpanBuildHull */
 void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6])
 {
     static const unsigned char aEdge[12][2] = {
@@ -471,6 +531,10 @@ void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6])
  * -------------------------------------------------------------------------- */
 
 /* 0x1003A4D0, free-list half. */
+/* WHAT IT DOES: empties the particle pool -- puts every record back on the
+ * free list and clears the three lists of particles in flight, so all the dust
+ * and spray currently in the air vanishes. */
+/* @implements 0x1003A4D0 d3d BrPfxReset */
 void BrPfxReset(BrPfxPool *pPool)
 {
     int i;
@@ -484,6 +548,9 @@ void BrPfxReset(BrPfxPool *pPool)
 }
 
 /* 0x1003A610 */
+/* WHAT IT DOES: takes a complete copy of the particle pool -- every record and
+ * all four list heads -- so it can be examined or restored later. */
+/* @implements 0x1003A610 d3d BrPfxSaveState */
 void BrPfxSaveState(const BrPfxPool *pPool, BrPfxSnapshot *pOut)
 {
     pOut->iFree   = pPool->iFree;
@@ -502,6 +569,11 @@ static void BrPfxFree(BrPfxPool *pPool, uint16_t *piLink, uint16_t iRec)
 }
 
 /* 0x1003A200 */
+/* WHAT IT DOES: moves one family of particles on by a frame: each drifts along
+ * its own velocity, is carried by the ambient drift, rises slightly, and fades
+ * as it ages. Once a particle has faded past a threshold it is returned to the
+ * pool and disappears. These ones do not fall -- they have no gravity. */
+/* @implements 0x1003A200 d3d BrPfxUpdateB0 */
 void BrPfxUpdateB0(BrPfxPool *pPool, const BrPfxEnv *pEnv)
 {
     float k = pEnv->dt * 0.3f;      /* 0x1008F5C4 */
@@ -533,6 +605,12 @@ void BrPfxUpdateB0(BrPfxPool *pPool, const BrPfxEnv *pEnv)
 }
 
 /* 0x1003A340 */
+/* WHAT IT DOES: moves the other two families of particles on by a frame. Like
+ * their sibling above they drift and fade, but these also fall -- twice normal
+ * gravity is taken off their vertical speed each frame -- and a particle is
+ * dropped either when it fades out or when it is falling fast enough to have
+ * clearly gone. */
+/* @implements 0x1003A340 d3d BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(BrPfxPool *pPool, const BrPfxEnv *pEnv)
 {
     float k = pEnv->dt * 0.699999988079071f;   /* 0x1008F60C */
@@ -589,6 +667,14 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
 #define WHEEL_LIVE(w) (*(int32_t *)    ((w) + 0x1B4))
 
 /* 0x10039F20 */
+/* WHAT IT DOES: throws dust and spray up from a car's wheels. It only does
+ * anything above about forty units of speed, and then only for wheels actually
+ * touching a loose surface; the faster the car goes the more often each wheel
+ * emits, and each new particle is flung backwards and outwards from the wheel,
+ * with the two front wheels also thrown sideways. New particles are nudged part
+ * of the way toward where that wheel emitted last time, so a spray follows the
+ * wheel's path instead of appearing in a line of separate puffs. */
+/* @implements 0x10039F20 d3d BrCarPfxSpawn */
 void BrCarPfxSpawn(struct BrCar *pCar, BrPfxPool *pPool, const BrPfxEnv *pEnv,
                    uint32_t *pSeed)
 {
@@ -676,6 +762,14 @@ void BrCarPfxSpawn(struct BrCar *pCar, BrPfxPool *pPool, const BrPfxEnv *pEnv,
 }
 
 /* 0x10039200 */
+/* WHAT IT DOES: works out, once a frame and for each of a car's four wheels,
+ * what kind of effect that wheel should be showing and which way it should be
+ * throwing it -- the direction and the point it comes from, both scaled by how
+ * fast the car is going and how much it is sliding sideways. Water is treated
+ * differently from dust, a wheel keeps emitting for three frames after it
+ * leaves the ground, and the results are written out in the packed form the
+ * effect drawing later reads. */
+/* @implements 0x10039200 d3d BrCarWheelFx */
 void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv, uint32_t *pSeed)
 {
     int bMasked = 0;
@@ -840,6 +934,13 @@ void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv, uint32_t *pSeed)
 }
 
 /* 0x1003A530 */
+/* WHAT IT DOES: the once-a-frame driver for all the dust, spray and wheel
+ * effects. It sets the pool up the first time it runs, then -- depending on
+ * which mode the game is in -- ages one or another family of particles, lets
+ * each car throw up new ones, and updates every car's wheel effects. In one
+ * mode no new particles are spawned at all and only the wheels are
+ * updated. */
+/* @implements 0x1003A530 d3d BrPfxTick */
 void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
                const BrCarFxEnv *pFxEnv, const BrPfxTickEnv *pTick,
                uint32_t *pSeed)

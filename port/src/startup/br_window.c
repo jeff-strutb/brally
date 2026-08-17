@@ -57,6 +57,12 @@ static const char s_szTitle[] = "Boss Rally";   /* 0x1007B384 */
 
 /* 0x10019670's parameters as data -- the WNDCLASSA built on the stack at
  * S+0x00..S+0x24 and CreateWindowExA's twelve arguments. */
+/* WHAT IT DOES: describes the game's main window -- its class, its icon and
+ * cursor, its background, and its title -- for the window system to create.
+ * The original stores the same string as both the menu name and the class
+ * name, and there is no menu by that name; that is reproduced because it is
+ * what the game asks for. */
+/* @implements 0x10019670 glide BrWindowDescribe */
 void BrWindowDescribe(BrWindowDesc *pDesc)
 {
     if (pDesc == NULL)
@@ -141,6 +147,12 @@ int BrWindowCreate(const BrWindowOps *pOps)
  *   10019773  call 0x10017E30
  *   10019778  add esp, 4                   ; cdecl
  * ================================================================== */
+/* WHAT IT DOES: brings up the surround-sound add-on before the main loop
+ * starts, in the one display mode that uses it. It loads the sound library
+ * and resolves its entry points; if that fails the game shows an error box
+ * and quits. A counter makes it run once only -- and it is never
+ * decremented, so a second call does nothing at all. */
+/* @implements 0x10017E30 glide BrWindowEarStartup */
 int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
 {
     int32_t iErr;
