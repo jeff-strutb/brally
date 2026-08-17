@@ -27,6 +27,18 @@ static const uint32_t s_aValue[BR_TEXINIT_NSLOTS] = {
 static uint32_t s_aInstalled[BR_TEXINIT_NSLOTS];
 static int      s_cInstalled;
 
+/* The tail's effects, recorded so they can be asserted. */
+static int32_t  s_g5E1820, s_g5E1808;
+static uint32_t s_aZeroed[5];
+static int      s_cZeroed, s_cFree, s_aTail[3];
+
+/* 0x10029C33..0x10029C5A, in the original's order. NOT sorted: 0x10697A58 and
+ * 0x10697A5C come first, then 0x10697A50 and 0x10697A48 -- descending, with
+ * 0x106B7A7C last. */
+static const uint32_t s_aZeroTarget[5] = {
+    0x10697A58, 0x10697A5C, 0x10697A50, 0x10697A48, 0x106B7A7C
+};
+
 uint32_t BrTexInitSlotAddr(int i)
 {
     return (i >= 0 && i < BR_TEXINIT_NSLOTS) ? s_aSlot[i] : 0;
@@ -43,9 +55,25 @@ uint32_t BrTexInitInstalledAt(int n)
     return (n >= 0 && n < s_cInstalled) ? s_aInstalled[n] : 0;
 }
 
+int32_t  BrTexInitGlobal5E1820(void) { return s_g5E1820; }
+int32_t  BrTexInitGlobal5E1808(void) { return s_g5E1808; }
+int      BrTexInitZeroedCount(void)  { return s_cZeroed; }
+uint32_t BrTexInitZeroedAt(int n)
+{
+    return (n >= 0 && n < s_cZeroed) ? s_aZeroed[n] : 0;
+}
+int      BrTexInitFreeCalls(void)    { return s_cFree; }
+int      BrTexInitTailCalls(int w)
+{
+    return (w >= 0 && w < 3) ? s_aTail[w] : 0;
+}
+
 void BrTexInitResetForTest(void)
 {
     int i;
+    s_g5E1820 = s_g5E1808 = 0;
+    s_cZeroed = s_cFree = 0;
+    for (i = 0; i < 3; ++i) s_aTail[i] = 0;
     for (i = 0; i < BR_TEXINIT_NSLOTS; ++i) s_aInstalled[i] = 0;
     s_cInstalled = 0;
     s_texmem = 0;
@@ -74,6 +102,7 @@ void BrTexInitResetForTest(void)
  * 4 MiB (0x400000) gets a threshold 194,304 bytes low, and no test on typical
  * hardware would notice.
  * ------------------------------------------------------------------ */
+/* @implements 0x10029B10 glide BrTexChooseLevel */
 int32_t BrTexChooseLevel(uint32_t texmem)
 {
     if (texmem <= g_brTexLowThreshold)          /* jbe -- UNSIGNED */
@@ -86,6 +115,7 @@ int32_t BrTexChooseLevel(uint32_t texmem)
 /* ------------------------------------------------------------------ *
  * 0x10029B50 -- install the thirteen hooks, then measure the card.
  * ------------------------------------------------------------------ */
+/* @implements 0x10029B50 glide BrTexInit */
 void BrTexInit(const BrTexInitHost *pHost)
 {
     uint32_t texmem;
@@ -100,6 +130,10 @@ void BrTexInit(const BrTexInitHost *pHost)
     s_cInstalled = 0;
     for (i = 0; i < BR_TEXINIT_NSLOTS; ++i)
         s_aInstalled[s_cInstalled++] = s_aSlot[i];
+
+    /* 0x10029BD4 -- BEFORE the measurement, which is easy to get wrong by
+     * reading the listing as "install, measure, then everything else". */
+    ++s_aTail[0];                       /* call 0x100281C0 -- frontier */
 
     /* 0x10029BDB..0x10029C14. grTexMaxAddress(tmu) - grTexMinAddress(tmu),
      * summed over the second TMU when 0x105CCBD0 > 1.
@@ -119,6 +153,29 @@ void BrTexInit(const BrTexInitHost *pHost)
     }
     s_texmem = texmem;
 
+    /* 0x10029C1C, before the level decision. */
+    s_g5E1820 = -1;
+
     /* 0x10029C22 */
     s_level = BrTexChooseLevel(texmem);
+
+    /* 0x10029C2C. Both of these are `or edi,0xFFFFFFFF` then stored, i.e. -1
+     * rather than 0 -- the `rep stosd` fills elsewhere in this binary that
+     * write 0xFFFFFFFF are the same idiom, and -1 means "empty" while 0 is a
+     * valid index. Getting it backwards is a documented hazard here. */
+    s_g5E1808 = -1;
+
+    /* 0x10029C3F. free() runs on whatever 0x106B7AA0 held, and the pointer is
+     * cleared AFTER the call -- so a second entry frees nothing rather than
+     * double-freeing. Transcribed rather than skipped because the ordering is
+     * the interesting part. */
+    ++s_cFree;
+
+    /* 0x10029C33..0x10029C5A -- five globals to zero, in the original's
+     * order, which is not ascending. */
+    for (i = 0; i < 5; ++i)
+        s_aZeroed[s_cZeroed++] = s_aZeroTarget[i];
+
+    ++s_aTail[1];                       /* 0x10029C60 call 0x10029C70   */
+    ++s_aTail[2];                       /* 0x10029C65 call 0x1006E180   */
 }

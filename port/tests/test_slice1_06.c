@@ -656,8 +656,14 @@ static void test_uiassets(void)
     for (i = 0; i < BR_UIASSET_COUNT; i++) {
         CHECK(apsz[i] != NULL);
         CHECK(strcmp(apsz[i], g_apszBrUiAssets[i]) == 0);
-        /* calloc'd: the tail of each buffer is zero. */
-        CHECK(apsz[i][BR_UIASSET_PATH_MAX - 1] == '\0');
+        /* REMOVED: this used to assert `apsz[i][BR_UIASSET_PATH_MAX-1] ==
+         * '\0'` under the comment "calloc'd: the tail of each buffer is
+         * zero". 0x1007DFE0 is operator new, not calloc -- see the correction
+         * in slice1_06.c's banner -- so the tail is UNINITIALISED in the
+         * original and the assertion was certifying a divergence as correct.
+         * The property that is actually true (only strlen+1 bytes are
+         * written) is asserted with a poisoning allocator in
+         * port/tests/test_br_uiimg.c, which is the only way to observe it. */
         /* Each entry is its own allocation, not a shared one. */
         if (i > 0) {
             CHECK(apsz[i] != apsz[i - 1]);

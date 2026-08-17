@@ -35,6 +35,7 @@ int BrMainLoopFrameAllowed(void)
     return 1;
 }
 
+/* @implements 0x10019730 glide BrMainLoopRun */
 int32_t BrMainLoopRun(const BrMainLoopOps *pOps)
 {
     int32_t cFrames = 0;

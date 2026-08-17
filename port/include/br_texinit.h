@@ -104,10 +104,40 @@ int32_t  BrTexInitLevel(void);
  * whole input space without a card. */
 int32_t  BrTexChooseLevel(uint32_t texmem);
 
-/* 0x10029B50's install-and-measure half. The original's tail also frees a
- * buffer and calls two further init routines; those are its frontier and are
- * counted, not faked. */
+/* 0x10029B50, WHOLE. An earlier revision transcribed only as far as
+ * 0x10029C22 and declared the rest "frontier" in this comment. The
+ * equivalence audit called that DIVERGENT and was right to: the header was
+ * honest, but the address still counted as ported in the coverage figure while
+ * roughly half its body did not exist. Being candid about an omission is not
+ * the same as not having one.
+ *
+ * The tail, in the original's order, now present:
+ *
+ *   0x10029BD4  call 0x100281C0            BEFORE the measurement, not after
+ *   0x10029C1C  [0x105E1820] = -1
+ *   0x10029C22  the level decision (0x10029B10)
+ *   0x10029C2C  [0x105E1808] = -1
+ *   0x10029C3F  free([0x106B7AA0]); [0x106B7AA0] = 0
+ *   0x10029C33..0x10029C5A  zero 0x10697A58, 0x10697A5C, 0x10697A50,
+ *                           0x10697A48, 0x106B7A7C
+ *   0x10029C60  call 0x10029C70
+ *   0x10029C65  call 0x1006E180
+ *
+ * The three calls are genuinely unported and are COUNTED frontier entries; the
+ * stores and the free are transcribed. That distinction is the whole point --
+ * a frontier entry is a named edge with a counter, not a licence to omit
+ * straight-line code around it. */
 void     BrTexInit(const BrTexInitHost *pHost);
+
+/* The five globals the tail zeroes, and the two set to -1, exposed so the
+ * order and the values can be asserted rather than described. */
+int32_t  BrTexInitGlobal5E1820(void);
+int32_t  BrTexInitGlobal5E1808(void);
+int32_t  BrTexInitZeroedCount(void);
+uint32_t BrTexInitZeroedAt(int nth);
+int      BrTexInitFreeCalls(void);
+int      BrTexInitTailCalls(int which);   /* 0 = 0x100281C0, 1 = 0x10029C70,
+                                             2 = 0x1006E180 */
 
 void     BrTexInitResetForTest(void);
 

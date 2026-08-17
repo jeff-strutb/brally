@@ -145,8 +145,59 @@ static void test_no_host(void)
     CHECK(BrTexInitInstalledCount() == 13);   /* installation still happened */
 }
 
+/* ---- the tail: three calls, two -1 stores, a free, five zeroes ------- *
+ * The audit found this whole half missing, so it is asserted in the original's
+ * ORDER and with the original's VALUES, not merely present. */
+static void test_tail(void)
+{
+    BrTexInitResetForTest();
+    BrTexInit(NULL);
+
+    /* 0x100281C0 runs BEFORE the measurement, which is the ordering a reader
+     * gets wrong by treating the tail as "everything after the level". */
+    CHECK(BrTexInitTailCalls(0) == 1);
+    CHECK(BrTexInitTailCalls(1) == 1);
+    CHECK(BrTexInitTailCalls(2) == 1);
+
+    /* -1, not 0. `or edi,0xFFFFFFFF` -- and in this binary -1 means empty
+     * while 0 is a valid index, so the distinction is load-bearing. */
+    CHECK(BrTexInitGlobal5E1820() == -1);
+    CHECK(BrTexInitGlobal5E1808() == -1);
+
+    CHECK(BrTexInitFreeCalls() == 1);
+
+    /* five globals, in the original's order, which is NOT ascending */
+    CHECK(BrTexInitZeroedCount() == 5);
+    CHECK(BrTexInitZeroedAt(0) == 0x10697A58u);
+    CHECK(BrTexInitZeroedAt(1) == 0x10697A5Cu);
+    CHECK(BrTexInitZeroedAt(2) == 0x10697A50u);
+    CHECK(BrTexInitZeroedAt(3) == 0x10697A48u);
+    CHECK(BrTexInitZeroedAt(4) == 0x106B7A7Cu);
+}
+
+/* ---- and the install-order check the audit called WEAK ---------------- *
+ * It compared BrTexInitInstalledAt(i) against BrTexInitSlotAddr(i) -- both
+ * sides reading the same array, so it restated the implementation and could
+ * not detect a wrong slot table at all. Pinned to LITERALS instead. */
+static void test_install_order_literal(void)
+{
+    static const uint32_t kOrder[13] = {
+        0x118ED1BC, 0x118ED1C0, 0x118ED1C4, 0x118ED1C8, 0x118ED1CC,
+        0x118ED1D0, 0x118ED1D4, 0x118ED1D8, 0x118ED1DC, 0x118ED1E0,
+        0x118ED19C, 0x118ED1E4, 0x118ED1E8
+    };
+    int i;
+    BrTexInitResetForTest();
+    BrTexInit(NULL);
+    CHECK(BrTexInitInstalledCount() == 13);
+    for (i = 0; i < 13; ++i)
+        CHECK(BrTexInitInstalledAt(i) == kOrder[i]);
+}
+
 int main(void)
 {
+    test_tail();
+    test_install_order_literal();
     test_slot_table();
     test_install_order();
     test_level_low_threshold();
