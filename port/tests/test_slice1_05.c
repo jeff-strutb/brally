@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "slice1_05.h"
+#include "br_gamestep.h"
 
 static int g_fail;
 static int g_checks;
@@ -427,15 +428,66 @@ static void test_sel(void)
     CHECK(a == 8);
     CHECK(b == 52);
 
-    /* Folding twice returns the original: it is an involution on 0..11. */
+    /* Folding twice returns the original: it is an involution on 0..11.
+     *
+     * THE SECOND ASSERTION HERE USED TO BE
+     *
+     *     CHECK(((twice >= 6) ? twice - 6 : twice + 6) == once);
+     *
+     * which COULD NOT FAIL. The line above it had already fixed
+     * twice == once + 6 with once == 4, so it evaluated
+     * (10 >= 6) ? 4 : 16 == 4 -- the test re-implemented the fold inside its
+     * own expectation and then checked its own arithmetic. BrSelLookup was
+     * not involved. It is replaced by a real ROUND TRIP: the fold is applied
+     * twice BY THE FUNCTION, by feeding it the row whose table value is what
+     * the first fold produced. table[10][0] == 10, so index 10 is that row. */
     {
-        int once, twice;
+        int once, twice, back;
+
         in.f00 = 0; in.f04 = 0; in.f05 = 4;
         BrSelLookup(&in, table, &once, &b);
+        CHECK(once == 4);
+
         in.f00 = 1;
         BrSelLookup(&in, table, &twice, &b);
-        CHECK(twice == once + 6);
-        CHECK(((twice >= 6) ? twice - 6 : twice + 6) == once);
+        CHECK(twice == 10);
+
+        in.f00 = 1; in.f04 = 0; in.f05 = 10;   /* table[10][0] == twice */
+        BrSelLookup(&in, table, &back, &b);
+        CHECK(back == once);
+    }
+
+    /* THE BOUNDARY IS `cmp ecx, 6 / jge`, at 0x1002F48D -- not a modulo, and
+     * not a comparison against 12. Six is the first value that SUBTRACTS. */
+    {
+        static const unsigned char edge[24][2] = {
+            {5,0},{6,0},{11,0},{0,0},{12,0},{200,0},{255,0},{0,0},
+            {0,0},{0,0},{0,0},{0,0},
+            {0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},
+            {0,0},{0,0},{0,0},{0,0}
+        };
+        int v;
+
+        in.f00 = 1; in.f04 = 0;
+
+        in.f05 = 0; BrSelLookup(&in, edge, &v, &b); CHECK(v == 11); /* 5  -> +6 */
+        in.f05 = 1; BrSelLookup(&in, edge, &v, &b); CHECK(v ==  0); /* 6  -> -6 */
+        in.f05 = 2; BrSelLookup(&in, edge, &v, &b); CHECK(v ==  5); /* 11 -> -6 */
+        in.f05 = 3; BrSelLookup(&in, edge, &v, &b); CHECK(v ==  6); /* 0  -> +6 */
+
+        /* AND IT IS NOT AN INVOLUTION ABOVE 11, which is the half a modulo
+         * would have hidden: 12 folds to 6, and 6 folds to 0, so the round
+         * trip above does NOT come back. The original has no wrap. */
+        in.f05 = 4; BrSelLookup(&in, edge, &v, &b); CHECK(v == 6);
+        CHECK(v != 12);
+
+        /* The table value is a BYTE, zero-extended (`xor edx,edx` +
+         * `mov dl, byte ptr [...]` at 0x1002F475/77), and the compare that
+         * follows is signed `jge`. Zero-extension makes the two agree, so a
+         * high byte still takes the subtract arm rather than the add arm --
+         * which is what a sign-extended load would have got wrong. */
+        in.f05 = 5; BrSelLookup(&in, edge, &v, &b); CHECK(v == 194); /* 200-6 */
+        in.f05 = 6; BrSelLookup(&in, edge, &v, &b); CHECK(v == 249); /* 255-6 */
     }
 
     /* Only bit 0 of f00 selects the fold. */
@@ -565,13 +617,27 @@ static void test_misc(void)
     BrHookSetB(&hooks, &dummyB);
     CHECK(hooks.pfA == (void *)&dummyA);
     CHECK(hooks.pfB == (void *)&dummyB);
-    CHECK(hooks.pfnC == NULL);
-
+    /* 0x10034C66 / 0x10034C73 write and call a FIXED GLOBAL, not a member:
+     * `hooks` is ignored by both, which is why there is no pfnC field to
+     * check. The slot is br_gamestep.c's, shared with BRGlide 0x1002E317 /
+     * 0x1002E324, so the setter must be visible through THAT view too --
+     * assert it, because a second storage object is exactly the bug this
+     * merge removed and it would pass every test that only used one view. */
     g_hookCalls = 0;
     BrHookSetC(&hooks, hook_cb);
+    CHECK(BrGameStepGet() == hook_cb);
+    CHECK(BrGameStepIsAddr((const void *)hook_cb) == 1);
     BrHookCallC(&hooks);
     BrHookCallC(&hooks);
     CHECK(g_hookCalls == 2);
+
+    /* ...and the other way round: setting through the BRGlide-side name must
+     * be what BrHookCallC then calls. */
+    BrGameStepSet(hook_cb);
+    BrHookCallC(&hooks);
+    CHECK(g_hookCalls == 3);
+    BrGameStepSet(NULL);
+    CHECK(BrGameStepIsAddr(NULL) == 1);
 
     /* The stubbed pair: the source argument is ignored, the flag is set and
      * the global is returned unchanged. */

@@ -172,7 +172,7 @@ static void EnterCommon(int id, BrPhase *pSelf)
     if (g_pCtx != NULL) {
         g_seenAC304 = g_pCtx->n0AC304;
         if (g_pRedirect != NULL)
-            g_pCtx->pAA2904 = g_pRedirect;   /* exercise the reload */
+            BR_PHASE_CUR = g_pRedirect;   /* exercise the reload */
     }
 }
 
@@ -191,8 +191,10 @@ void BrExt_1004DFC0(BrPhase *p) { EnterCommon(E_1004DFC0, p); }
 void BrExt_1004E830(BrPhase *p) { EnterCommon(E_1004E830, p); }
 
 /* the +0x08 hooks */
-void BrExt_10046CD0(void *pEntity) { ++g_c.n10046CD0; g_pLastEntity = pEntity; }
-void BrExt_10046DC0(void *pEntity) { ++g_c.n10046DC0; g_pLastEntity = pEntity; }
+int32_t BrExt_10046CD0(void *pEntity)
+{ ++g_c.n10046CD0; g_pLastEntity = pEntity; return 0; }
+int32_t BrExt_10046DC0(void *pEntity)
+{ ++g_c.n10046DC0; g_pLastEntity = pEntity; return 0; }
 
 /* ====================================================================== */
 /* fixtures                                                               */
@@ -275,6 +277,10 @@ static void Setup(void)
 {
     memset(&g_c, 0, sizeof(g_c));
     memset(&g_ctx, 0, sizeof(g_ctx));
+    /* 0x10AA2904 is no longer a member of BrPhaseCtx -- it is the one shared
+     * slot br_phasecur.h owns -- so clearing the struct no longer clears it.
+     * In the original this dword is .bss, so NULL is the right start state. */
+    BR_PHASE_CUR = NULL;
     memset(&g_slots, 0, sizeof(g_slots));
     EntityInit(&g_ent);
     EntityInit(&g_entD8);
@@ -330,7 +336,7 @@ static void TestActivateIsIdempotent(void)
     CHECK(BrPhaseActivate_10044B90(&g_ctx) == 1);
     pFirst = g_ctx.pAA295C;
     CHECK(pFirst != NULL);
-    CHECK(g_ctx.pAA2904 == pFirst);
+    CHECK(BR_PHASE_CUR == pFirst);
     CHECK(g_c.nCtor == 1);
     CHECK(g_c.aEnter[E_10059760] == 1);
     CHECK(pFirst->pfnEnter == BrExt_10059760);
@@ -338,10 +344,10 @@ static void TestActivateIsIdempotent(void)
     CHECK(pFirst->f68 == 1);
     CHECK(g_c.n100419D0 == 1);
 
-    g_ctx.pAA2904 = NULL;
+    BR_PHASE_CUR = NULL;
     CHECK(BrPhaseActivate_10044B90(&g_ctx) == 1);
     CHECK(g_ctx.pAA295C == pFirst);     /* not rebuilt */
-    CHECK(g_ctx.pAA2904 == pFirst);     /* but re-selected */
+    CHECK(BR_PHASE_CUR == pFirst);     /* but re-selected */
     CHECK(g_c.nCtor == 1);
     CHECK(g_c.aEnter[E_10059760] == 1); /* the enter hook does NOT re-run */
     CHECK(g_c.n100419D0 == 2);          /* the prologue DOES re-run */
@@ -356,7 +362,7 @@ static void TestActivateAllocFailure(void)
     g_allocFail = 1;
     CHECK(BrPhaseActivate_10044D00(&g_ctx) == 0);
     CHECK(g_ctx.pAA2964 == NULL);
-    CHECK(g_ctx.pAA2904 == NULL);
+    CHECK(BR_PHASE_CUR == NULL);
     CHECK(g_c.nCtor == 0);
     CHECK(g_c.nEnterTotal == 0);
     /* the prologue still ran */
@@ -441,7 +447,7 @@ static void TestEnterHookReload(void)
 
     CHECK(BrPhaseActivate_10045110(&g_ctx) == 1);
     CHECK(g_ctx.pAA2914 != NULL);
-    CHECK(g_ctx.pAA2904 == pOther);
+    CHECK(BR_PHASE_CUR == pOther);
     CHECK(pOther->f0C == 1);
     CHECK(pOther->f68 == 1);
     CHECK(g_ctx.pAA2914->f0C == 0);   /* the new object gets neither flag */
@@ -471,7 +477,7 @@ static void TestSlotToHookWiring(void)
     /* each one is a distinct object */
     CHECK(g_c.nCtor == 7);
     CHECK(g_c.nEnterTotal == 7);
-    CHECK(g_ctx.pAA2904 == g_ctx.pAA2964);   /* the last one activated */
+    CHECK(BR_PHASE_CUR == g_ctx.pAA2964);   /* the last one activated */
 
     free(g_ctx.pAA2914); free(g_ctx.pAA2918); free(g_ctx.pAA297C);
     free(g_ctx.pAA2980); free(g_ctx.pAA2984); free(g_ctx.pAA2988);
@@ -487,7 +493,7 @@ static void TestLeavePrologue(void)
     Setup();
     pCur  = MakePhase();
     pNext = MakePhase();
-    g_ctx.pAA2904 = pCur;
+    BR_PHASE_CUR = pCur;
     g_ctx.pAA2940 = pNext;
     g_ctx.nA9D000 = 0;
 
@@ -498,16 +504,16 @@ static void TestLeavePrologue(void)
     CHECK(g_c.nF00 == 1);
     CHECK(g_pNotified == pCur);
     CHECK(g_notifyArg == 1);
-    CHECK(g_ctx.pAA2904 == pNext);
+    CHECK(BR_PHASE_CUR == pNext);
     CHECK(g_c.n1003BF60 == 1);
 
     /* a NULL current phase is skipped, not dereferenced */
     Setup();
-    g_ctx.pAA2904 = NULL;
+    BR_PHASE_CUR = NULL;
     CHECK(BrPhaseLeave_10044AE0(&g_ctx, &g_ent) == 0);
     CHECK(g_c.nF1C == 1);
     CHECK(g_c.nF00 == 0);
-    CHECK(g_ctx.pAA2904 == NULL);   /* pAA2940 was NULL too */
+    CHECK(BR_PHASE_CUR == NULL);   /* pAA2940 was NULL too */
 
     /* nA9D000 set: +0x18 with 0, then 0x10038F30, then +0x1C */
     Setup();
@@ -548,7 +554,7 @@ static void TestLeaveClearSets(void)
     CHECK(g_ctx.nAA2880 == 0);
     CHECK(g_ctx.nAA298C == 7);      /* untouched here */
     CHECK(g_ctx.nAA29E8 == 7);
-    CHECK(g_ctx.pAA2904 == pNext);
+    CHECK(BR_PHASE_CUR == pNext);
 
     Setup();
     g_ctx.pAA2940 = pNext;
@@ -561,7 +567,7 @@ static void TestLeaveClearSets(void)
     CHECK(g_ctx.nAA29E8 == 0);
     CHECK(g_ctx.pAA2948 == pDead);  /* untouched here */
     CHECK(g_ctx.pAA29D8 == &g_entD8);
-    CHECK(g_ctx.pAA2904 == pNext);
+    CHECK(BR_PHASE_CUR == pNext);
     CHECK(g_c.n1003BF60 == 0);      /* 0x10044B40 does not call it */
 
     free(pDead);
@@ -580,7 +586,7 @@ static void TestLeaveFallbacks(void)
     g_ctx.pAA2908 = pB;
     CHECK(BrPhaseLeave_10044C70(&g_ctx, &g_ent) == 0);
     CHECK(g_ctx.pAA295C == NULL);
-    CHECK(g_ctx.pAA2904 == pB);
+    CHECK(BR_PHASE_CUR == pB);
 
     Setup();
     g_ctx.pAA295C = pA;
@@ -589,14 +595,14 @@ static void TestLeaveFallbacks(void)
     CHECK(BrPhaseLeave_10044CB0(&g_ctx, &g_ent) == 0);
     CHECK(g_ctx.pAA290C == NULL);
     CHECK(g_ctx.nAA29AC == 0);
-    CHECK(g_ctx.pAA2904 == pA);
+    CHECK(BR_PHASE_CUR == pA);
 
     Setup();
     g_ctx.pAA295C = pA;
     g_ctx.pAA2964 = pB;
     CHECK(BrPhaseLeave_10044DE0(&g_ctx, &g_ent) == 0);
     CHECK(g_ctx.pAA2964 == NULL);
-    CHECK(g_ctx.pAA2904 == pA);
+    CHECK(BR_PHASE_CUR == pA);
 
     free(pA);
     free(pB);
@@ -611,7 +617,7 @@ static void TestLeave10044F00NotifiesOther(void)
     pCur  = MakePhase();
     pDrop = MakePhase();
     pNext = MakePhase();
-    g_ctx.pAA2904 = pCur;
+    BR_PHASE_CUR = pCur;
     g_ctx.pAA2968 = pDrop;
     g_ctx.pAA295C = pNext;
 
@@ -619,12 +625,12 @@ static void TestLeave10044F00NotifiesOther(void)
     CHECK(g_c.nF00 == 1);
     CHECK(g_pNotified == pDrop);      /* NOT pCur */
     CHECK(g_ctx.pAA2968 == NULL);
-    CHECK(g_ctx.pAA2904 == pNext);
+    CHECK(BR_PHASE_CUR == pNext);
     CHECK(g_ctx.n0AA010 == 2);
 
     /* with the dropped slot already NULL nothing is notified */
     Setup();
-    g_ctx.pAA2904 = pCur;
+    BR_PHASE_CUR = pCur;
     g_ctx.pAA2968 = NULL;
     CHECK(BrPhaseLeave_10044F00(&g_ctx, &g_ent) == 0);
     CHECK(g_c.nF00 == 0);
@@ -803,7 +809,7 @@ static void TestBootWithHost(void)
     CHECK(g_c.n10044280 == 0);               /* the nAA2884 == 0 arm */
     CHECK(g_ctx.pAA2954 != NULL);
     CHECK(g_ctx.pAA2954->pfnEnter == BrExt_10058750);
-    CHECK(g_ctx.pAA2904 == g_ctx.pAA2954);
+    CHECK(BR_PHASE_CUR == g_ctx.pAA2954);
     CHECK(g_ctx.n0AA010 == 6);
     CHECK(g_c.n1003C150 == 1);
     CHECK(g_ctx.nAA2888 == 1);
@@ -866,7 +872,7 @@ static void TestBootWithoutHost(void)
     CHECK(g_ctx.n0AA010 == 0);               /* but never reached the 6 */
     CHECK(g_c.n1003C150 == 0);
     CHECK(g_c.n1003DB00 == 0);
-    CHECK(g_ctx.pAA2904 == NULL);
+    CHECK(BR_PHASE_CUR == NULL);
 
     /* a pA9D008 of NULL is tested, not dereferenced */
     Setup();

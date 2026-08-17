@@ -123,14 +123,24 @@ void BrSub10072AF0(int a, int b);
  * 3. Hooks
  * ========================================================================== */
 
-/* 0x106C0964. slice1_05.h models this address only as BrHooks::pfnC inside a
- * gathered struct, so there is no real global for BrHookIsCurrent to read.
- * Defined here as a plain data pointer (the value stored is a code address);
- * integration should alias it with BrHooks::pfnC. */
-extern void *g_brHook6C0964;
+/* 0x106C0964 -- RESOLVED, and it was a three-way alias.
+ *
+ * This header used to declare `g_brHook6C0964` here while slice1_05.h modelled
+ * the SAME dword as a member `BrHooks::pfnC`, and a third module modelled it
+ * again under BRGlide's number: 0x106E79F4, br_gamestep.c's game-step slot.
+ * shared.csv pairs 0x10034C51/0x10034C66/0x10034C73 with BRGlide's
+ * 0x1002E302/0x1002E317/0x1002E324 as byte-identical, so the three accessors
+ * are one set and the storage is one object. br_gamestep.c owns it; the
+ * globals here and in slice1_05.h are gone.
+ *
+ * That also names the slot. slice2_19.c gates the pad's two extra buttons on
+ * `BrHookIsCurrent(g_BrPadHookFn)`, and `g_BrPadHookFn` is the literal
+ * 0x1002C500, which shared.csv pairs with BRGlide 0x10019A70 -- the race
+ * step. The test reads "is a race the thing currently running". */
 
-/* 0x10034C51 -- declared by slice2_19.h. Returns 1 when 0x106C0964 equals
- * pfn, 0 otherwise. No null handling of any kind in the original. */
+/* 0x10034C51 -- declared by slice2_19.h. Returns 1 when the game-step slot
+ * equals pfn, 0 otherwise. No null handling of any kind in the original, so
+ * with nothing installed NULL "is current". Body in br_gamestep.c. */
 int BrHookIsCurrent(const void *pfn);
 
 /* ==========================================================================

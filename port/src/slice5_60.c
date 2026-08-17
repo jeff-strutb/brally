@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "slice5_60.h"
+#include "br_dlshared.h"   /* BR_DLS_SKIP_BYTES -- see BrGbiCall100243D0 */
 
 /* ====================================================================== */
 /* Globals this file owns.  Every one carries its original address; see the
@@ -62,11 +63,14 @@ const BrGfxWords g_aBrAA8C8[BR_DLSUB_AA8C8_COUNT] = {
 /* WHAT IT DOES: does nothing but step over its drawing command. It occupies
  * a slot in the command table that the shipped data apparently never
  * exercises with anything meaningful. */
+/* BRGlide's copy is 0x10021240 and br_dl.c ports it as br_dl_skip, over a
+ * byte pointer rather than a command pointer. `add eax,8` is the whole
+ * function; br_dlshared.h names the step so neither file spells the 8. */
 /* @implements 0x100243D0 d3d BrGbiCall100243D0 */
 BrGfxWords *BrGbiCall100243D0(BrGfxWords *pCmd)
 {
     /* `add eax, 8` -- one 8-byte command. */
-    return pCmd + 1;
+    return pCmd + BR_DLS_SKIP_BYTES / (int)sizeof(BrGfxWords);
 }
 
 /* ====================================================================== */
@@ -90,6 +94,24 @@ static void BrRsSet(BrGbiRectState *pSt, uint32_t *pDirty,
         *pDirty |= (1u << i);
 }
 
+/* RENDERER SLOT -- THIS IS THE D3D IMPLEMENTATION, AND THE GLIDE ONE IS NOT
+ * TRANSCRIBED.  See "Renderer slots" in CONVENTIONS.md.
+ *
+ *     slot           SETOTHERMODE / render mode, 1 aligned callsite
+ *     D3D    0x10020FA0   1,392 bytes   418 instructions   <-- this body
+ *     Glide  0x10021270     766 bytes   241 instructions   NOT PORTED
+ *     config/shared.csv: class `renderer`, matched_by `slot`, similarity 0.112
+ *
+ * This body maintains a shadow/pending pair of D3D render states and flushes
+ * the difference.  The Glide body does not queue anything: it is the chain of
+ * exact (w0,w1) equality tests CONVENTIONS.md describes ("nine values plus a
+ * bit-tested fallback"), and each arm calls glide2x.dll straight away --
+ * _grAlphaTestFunction, _grAlphaTestReferenceValue, _grAlphaBlendFunction,
+ * _grDepthMask, _grDepthBufferFunction, _grCullMode among them.  Different
+ * shape, different state model, same dispatch slot.
+ *
+ * The `d3d` tag is ACCURATE.  It is what makes this address show up in a
+ * census of d3d-tagged claims, which is the tag doing its job. */
 /* WHAT IT DOES: queues up a batch of renderer settings from one packed
  * value, comparing each against what the renderer already has and marking
  * only the ones that actually changed, so that the flush afterwards sends

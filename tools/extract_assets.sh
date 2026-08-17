@@ -187,3 +187,20 @@ else
   echo "assets: no .cue beside the disc image -- no music extracted."
   echo "        The BIN alone cannot locate the audio tracks."
 fi
+
+# ---------------------------------------------------------------------------
+# THE MANIFEST -- WHAT WAS EXTRACTED, AND WHICH DISC IT CAME OFF.
+#
+# Written LAST, after every step above, so a run that died partway leaves no
+# manifest and therefore claims nothing. Same rule as the soundtrack: a missing
+# asset must never look like a passing extraction.
+#
+# It carries the disc's ISO 9660 VOLUME IDENTIFIER, and that field is not
+# bookkeeping -- it is load-bearing. The game gates Championship on a CD-ROM
+# drive whose volume label strcmps equal to "Boss Rally" (BRGlide 0x1003EE90
+# walks the drives, 0x100377A0 applies the test, 0x1007B384 is the literal).
+# There is no physical disc in a drive here; the disc's contents are these
+# extracted files. Recording the label is what lets the port answer that test
+# from real data instead of stubbing it true. See port/include/br_volume.h.
+python3 tools/extract_iso.py --manifest "$BIN" testdata \
+        testdata/assets.manifest.json

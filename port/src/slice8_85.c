@@ -108,11 +108,45 @@ static void Br85ListAck(BrTextList *pList, int32_t v)
 }
 
 /* The three-argument message send every draw hook uses: control vtable +0x14,
- * `__thiscall` on the control with (msg, x, y). */
-static void Br85Msg(BrUiCtl_ *pCtl, int32_t msg, int32_t x, int32_t y)
+ * `__thiscall` on the control with (msg, x, y).
+ *
+ * THE SLOT IS READ ONCE PER HOOK, NOT ONCE PER MESSAGE.  Both draw hooks load
+ * `[[pCtl] + 0x14]` a single time, spill the pointer into the incoming
+ * argument slot, and reach every later message through the spill:
+ *
+ *   0x1003E7A0  0x1003E7E2 mov eax,[esi]   / 0x1003E7E7 mov eax,[eax+0x14]
+ *               0x1003E7F0 mov [esp+0x28],eax   (esp = E-36, so E+4 -- the
+ *                                                argument slot, reused)
+ *               0x1003E7F4 call eax             (the 0x3D message)
+ *               0x1003E806 call [esp+0x28]      (each 0x3B)
+ *               0x1003E823 call [esp+0x28]      (the 0x3C)
+ *
+ *   0x1003E980  0x1003E99C mov eax,[ebx]   / 0x1003E9A3 mov eax,[eax+0x14]
+ *               0x1003E9AA mov [esp+0x20],eax   (esp = E-28, so E+4 again)
+ *               0x1003E9AE call eax             (the 0x74 message)
+ *               0x1003E9C1 call [esp+0x20]      (every 0x75)
+ *
+ * Every one of those displacements resolves to E+4 once the pushes between
+ * them are counted, so it is one slot in both functions.  It matters because a
+ * handler that swaps the control's vtable mid-draw does NOT change where the
+ * rest of the row is sent -- so the send takes the pointer, and each hook
+ * fetches it exactly once.
+ *
+ * DEVIATION, unchanged from before: the original calls the slot with no null
+ * check at all.  The guard here answers an unwired vtable by doing nothing,
+ * which is the only safe reading on a host where a null call is not a trap. */
+typedef void (*Br85MsgFn)(BrUiCtl_ *pThis, int32_t msg, int32_t a, int32_t b);
+
+static Br85MsgFn Br85MsgSlot(const BrUiCtl_ *pCtl)
 {
-    if (pCtl->pVtbl != NULL && pCtl->pVtbl->f14 != NULL) {
-        pCtl->pVtbl->f14(pCtl, msg, x, y);
+    return (pCtl->pVtbl != NULL) ? pCtl->pVtbl->f14 : NULL;
+}
+
+static void Br85Msg(Br85MsgFn pfn, BrUiCtl_ *pCtl, int32_t msg,
+                    int32_t x, int32_t y)
+{
+    if (pfn != NULL) {
+        pfn(pCtl, msg, x, y);
     }
 }
 
@@ -219,8 +253,10 @@ int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
     uint32_t n       = (uint32_t)nSigned;
     uint32_t nRun    = 0u;
     int32_t  x       = x0;
+    /* 0x1003E7E2/E7: read AFTER both __ftol calls, and only once. */
+    Br85MsgFn pfn    = Br85MsgSlot(pCtl);
 
-    Br85Msg(pCtl, 0x3D, x0 - 8, y);
+    Br85Msg(pfn, pCtl, 0x3D, x0 - 8, y);
 
     /* GOTCHA: `test ebx,ebx / jbe` -- the guard is UNSIGNED, so only n == 0
      * skips the loop.  A negative nSigned runs it ~2^32 times, exactly as the
@@ -228,7 +264,7 @@ int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
     if (n != 0u) {
         uint32_t left = n;
         do {
-            Br85Msg(pCtl, 0x3B, x, y);
+            Br85Msg(pfn, pCtl, 0x3B, x, y);
             x += 0x10;
             left--;
         } while (left != 0u);
@@ -237,7 +273,7 @@ int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
 
     /* The third message's x is recomputed from the SAVED count and the SAVED
      * start, not from the walking x. */
-    Br85Msg(pCtl, 0x3C, (int32_t)(nRun << 4) + x0, y);
+    Br85Msg(pfn, pCtl, 0x3C, (int32_t)(nRun << 4) + x0, y);
     return 1;
 }
 
@@ -251,13 +287,18 @@ static int32_t Br85DrawRow(BrUiCtl_ *pCtl, const int32_t *pCount)
     int32_t  x = BrFtolTrunc(pCtl->x);            /* +0x3C */
     int32_t  y = BrFtolTrunc(pCtl->y) + 0x13;     /* +0x40 */
     uint32_t i;
+    /* 0x1003E99C/A3: read AFTER both __ftol calls, and only once.  Note the
+     * contrast with the loop bound just below -- the COUNT is re-read every
+     * iteration and the FUNCTION POINTER is not.  The original is explicit
+     * about both, and they point opposite ways. */
+    Br85MsgFn pfn = Br85MsgSlot(pCtl);
 
-    Br85Msg(pCtl, 0x74, x, y);
+    Br85Msg(pfn, pCtl, 0x74, x, y);
 
     /* The bound is re-read from the global every iteration -- the load sits
      * INSIDE the loop body in the original -- and the compare is UNSIGNED. */
     for (i = 0u; i < (uint32_t)*pCount; i++) {
-        Br85Msg(pCtl, 0x75, x, y);
+        Br85Msg(pfn, pCtl, 0x75, x, y);
         x += 0x0C;
     }
     return 1;

@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "slice4_50.h"
+#include "br_gamestep.h"   /* 0x10034C51 == BRGlide 0x1002E302 -- one slot, one owner */
 
 /* ==========================================================================
  * Cross-slice callees. Each is already declared, with this exact signature,
@@ -42,7 +43,11 @@ extern void     BrNetMutexUnlock(void *hMutex);
  * the two type conflicts it resolves)
  * ========================================================================== */
 
-void            *g_brHook6C0964 = NULL;
+/* 0x106C0964 used to have storage here.  It is the SAME original dword as
+ * BRGlide 0x106E79F4, which br_gamestep.c owns and whose three accessors
+ * (0x1002E302/17/24) are byte-identical to 0x10034C51/66/73.  A second host
+ * object for it was the aliased-storage bug CONVENTIONS.md describes, and
+ * nothing here could have found it -- the two names have no text in common. */
 BrOptEnterHooks  g_brOptEnterHooks = { NULL, NULL };
 
 int32_t   g_brACEE8C  = 0;
@@ -134,10 +139,14 @@ void BrSub10072AF0(int a, int b)
 /* WHAT IT DOES: answers whether a particular screen or handler is the one
  * currently installed -- how a menu asks "am I the one on screen right now?"
  * before acting. */
-/* @implements 0x10034C51 d3d BrHookIsCurrent */
+/* ONE BODY: br_gamestep.c's, which carries BRGlide's 0x1002E302 for it.  The
+ * `const void *` here rather than a function pointer is this range's model of
+ * the slot -- slice2_19.c's `g_BrPadHookFn` is a literal code ADDRESS -- and
+ * that address is BRD3D 0x1002C500, which shared.csv pairs with BRGlide
+ * 0x10019A70: the race step.  So this call asks "are we in a race". */
 int BrHookIsCurrent(const void *pfn)
 {
-    return (g_brHook6C0964 == pfn) ? 1 : 0;
+    return BrGameStepIsAddr(pfn);
 }
 
 /* ==========================================================================

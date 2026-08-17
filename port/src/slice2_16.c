@@ -3,6 +3,10 @@
 
 #include "slice2_16.h"
 
+/* The routines this file and br_dl.c BOTH used to transcribe.  Same original
+ * function, one host body -- see br_dlshared.h. */
+#include "br_dlshared.h"
+
 #include <string.h>
 
 /* ------------------------------------------------------------------ */
@@ -23,16 +27,41 @@ static int32_t br16_ftol(double x)
     return (int32_t)(uint32_t)((unsigned long long)v & 0xFFFFFFFFu);
 }
 
-/* The four tile-size fields are 12-bit two's complement. */
-static int32_t br16_sext12(uint32_t v)
-{
-    int32_t t = (int32_t)(v & 0xFFFu);
-    /* The original compares against 0x800 and subtracts 0x1000 only then;
-     * the store happens twice, which is invisible here. */
-    if (t >= 0x800)
-        t -= 0x1000;
-    return t;
-}
+/* ------------------------------------------------------------------ *
+ * x87 COMPARISON POLARITY, SPELLED ONCE
+ * ------------------------------------------------------------------ *
+ * `fcomp ST0, mem` then `fnstsw ax` puts C0 in bit 0 of ah and C3 in bit 6.
+ * C0 is set for LESS-THAN, C3 for EQUAL -- and an UNORDERED compare (either
+ * operand a NaN) sets C0, C2 and C3 all at once.  So each mask means:
+ *
+ *     test ah,1     nonzero <=> a <  b  OR unordered   ==   !(a >= b)
+ *     test ah,1     ZERO    <=> a >= b  AND ordered    ==    (a >= b)
+ *     test ah,0x40  nonzero <=> a == b  OR unordered   ==   BR16_FEQU(a, b)
+ *     test ah,0x40  ZERO    <=> a != b  AND ordered    ==   BR16_FNEO(a, b)
+ *     test ah,0x41  ZERO    <=> a >  b  AND ordered    ==    (a >  b)
+ *     test ah,0x41  nonzero <=> a <= b  OR unordered   ==   !(a >  b)
+ *
+ * FOUR OF THE SIX ARE ORDINARY C, because C's relational operators are all
+ * false for NaN: `a >= b`, `!(a >= b)`, `a > b` and `!(a > b)` are exact.
+ *
+ * THE OTHER TWO HAVE NO C OPERATOR AT ALL, and that is the trap this file
+ * fell into repeatedly.  `a == b` is FALSE for NaN where C3 is SET, and
+ * `a != b` is TRUE for NaN where !C3 is CLEAR -- so BOTH of C's equality
+ * operators get the unordered case wrong, in opposite directions, and there
+ * is no negation that rescues either.  These two macros spell them properly,
+ * using only relational operators:
+ *
+ *   ordered and unequal  <=>  exactly one of (a < b), (a > b) holds
+ *   equal or unordered   <=>  neither holds
+ *
+ * Use these rather than writing the disjunction out; eight sites in this file
+ * need one or the other, and every one of them was wrong before this pass. */
+#define BR16_FEQU(a, b)  (!((a) < (b) || (a) > (b)))  /* C3 set   */
+#define BR16_FNEO(a, b)   ((a) < (b) || (a) > (b))    /* C3 clear */
+
+/* The 12-bit two's-complement fold the tile-size fields use went to
+ * br_dlshared.c with BrDlsTileSizeDecode, which is the only thing in this
+ * file that wanted it. */
 
 static uint32_t br16_bswap32(uint32_t v)
 {
@@ -117,26 +146,27 @@ BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
 /* 0x1001CF30 -- G_SETTILESIZE, opcode 0xF2.  The name was G_SETSCISSOR until
  * the opcode audit; BRD3D's dispatch table at 0x100A79F0 holds this address in
  * slot 0xF2 and holds 0x1001CE70 / 0x1001CDA0 in the two scissor slots, so the
- * arithmetic was never wrong -- only the name.  See slice2_16.h. */
+ * arithmetic was never wrong -- only the name.  See slice2_16.h.
+ *
+ * ONE BODY: the decode is br_dlshared.c's and carries both builds' addresses.
+ * br_dl.c transcribed the same 178 bytes as br_dl_settilesize. */
 /* WHAT IT DOES: tells the renderer which rectangle of a texture the next
  * drawings will use, and works out that rectangle's width and height in
  * texture pixels. The coordinates arrive as fractions of a pixel and are
  * unpacked and sign-corrected here. Despite an earlier name of "set
  * scissor", this is the tile setter -- the real scissor commands are two
  * other, longer functions. */
-/* @implements 0x1001CF30 d3d BrGbiSetTileSize */
 BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 {
-    BrGbiTileSize *p = &pSt->tile;
+    BrDlsTileSize t;
 
-    p->uls = br16_sext12(pCmd->w0 >> 12);
-    p->ult = br16_sext12(pCmd->w0);
-    p->lrs = br16_sext12(pCmd->w1 >> 12);
-    p->lrt = br16_sext12(pCmd->w1);
-    /* `sar eax,2` at 0x1001CFCB: arithmetic, so a negative extent stays
-     * negative rather than becoming enormous. */
-    p->tileW = (p->lrs - p->uls + 4) >> 2;
-    p->tileH = (p->lrt - p->ult + 4) >> 2;
+    BrDlsTileSizeDecode(pCmd->w0, pCmd->w1, &t);
+    pSt->tile.uls   = t.uls;
+    pSt->tile.ult   = t.ult;
+    pSt->tile.lrs   = t.lrs;
+    pSt->tile.lrt   = t.lrt;
+    pSt->tile.tileW = t.tileW;
+    pSt->tile.tileH = t.tileH;
     return pCmd + 1;
 }
 
@@ -322,18 +352,15 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
  * geometry. It unpacks the corners and the tile number and hands them to the
  * rectangle drawer. Note it swallows three commands, not one, because the
  * rectangle's texture coordinates follow it in the list. */
-/* @implements 0x10021510 d3d BrGbiTileRect */
+/* The decode is br_dlshared.c's, which carries this address and BRGlide's
+ * 0x10021570. */
 BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
 {
-    uint32_t w0 = pCmd->w0;
-    uint32_t w1 = pCmd->w1;
+    BrDlsTileRect r;
 
     (void)pSt;
-    BrGbiCall10021560((int)((w1 >> 12) & 0xFFFu),
-                      (int)(w1 & 0xFFFu),
-                      (int)((w0 >> 12) & 0xFFFu),
-                      (int)(w0 & 0xFFFu),
-                      (int)((w1 >> 24) & 7u));
+    BrDlsTileRectDecode(pCmd->w0, pCmd->w1, 0, &r);
+    BrGbiCall10021560(r.ulx, r.uly, r.lrx, r.lry, r.tile);
     /* GOTCHA: three commands consumed, not one. */
     return pCmd + 3;
 }
@@ -343,22 +370,37 @@ BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
  * corners given in whole screen pixels rather than quarter-pixels, so it
  * scales them up before handing them on, and it consumes only its own
  * command. */
-/* @implements 0x10021B80 d3d BrGbiTileRectS */
+/* Likewise 0x10021B80 / BRGlide 0x100219D0. */
 BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
 {
-    uint32_t w0 = pCmd->w0;
-    uint32_t w1 = pCmd->w1;
+    BrDlsTileRect r;
 
     (void)pSt;
-    BrGbiCall10021560((int)(((w1 >> 12) & 0xFFFu) << 2),
-                      (int)((w1 & 0xFFFu) << 2),
-                      (int)(((w0 >> 12) & 0xFFFu) << 2),
-                      (int)((w0 & 0xFFFu) << 2),
-                      (int)((w1 >> 24) & 7u));
+    BrDlsTileRectDecode(pCmd->w0, pCmd->w1, 1, &r);
+    BrGbiCall10021560(r.ulx, r.uly, r.lrx, r.lry, r.tile);
     return pCmd + 1;
 }
 
-/* 0x10022350 */
+/* 0x10022350 -- AND IT IS *NOT* A DUPLICATE OF br_dl.c's
+ * br_dl_light_vertex, whatever the pairing table says.
+ *
+ * config/shared.csv pairs this with BRGlide 0x10022AC0 as `shared`, matched
+ * by `shape` -- the weakest class it has, a similarity rather than a byte
+ * match. Compared instruction by instruction the two are the same routine
+ * with ONE constant changed, three times over:
+ *
+ *     0x10022B35 (Glide)  mov eax, 0x437F0000   == 255.0f
+ *     0x10022385 (D3D)    mov eax, 0x3F800000   ==   1.0f
+ *
+ * and the limit each compares against matches its own ceiling (0x10077418 is
+ * 255.0f, 0x1008F3C4 is 1.0f). Glide's iterated colour runs 0..255 and D3D's
+ * runs 0..1, so this is a real behavioural divergence between the builds and
+ * the row should be classed `renderer` -- "same slot, different body" -- not
+ * `shared`. Two host bodies is correct here; they are two functions.
+ *
+ * (The x87 scheduling also differs at the top -- Glide loads +0x1C first and
+ * D3D loads +0x18 -- but the constant-to-component pairing is identical in
+ * both, so the dot product is the same sum in the same order.) */
 /* WHAT IT DOES: works out how bright one vertex of a model should be. If
  * lighting is switched off it just copies a fixed colour. Otherwise it
  * measures how squarely the surface faces the light: surfaces facing away
@@ -381,7 +423,14 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
      * where src[5] is the float at +0x14. */
     t = (pSrc[5] * pSt->dir[0] + pSrc[6] * pSt->dir[1]) + pSrc[7] * pSt->dir[2];
 
-    if (t < 0.0f) {           /* 0x1008F3C8 == 0.0f */
+    /* 0x10022375: `fcomp [0x1008F3C8] / fnstsw ax / test ah,1 / jne` --
+     * 0x1008F3C8 is 0.0f and bit 0 of ah is C0, which an UNORDERED compare
+     * sets as well.  So a NaN dot takes the ambient-only arm.
+     *
+     * THIS WAS `t < 0.0f`, WHICH IS FALSE FOR NaN and sent an unordered dot
+     * down the lit path instead. Same defect as 0x10022DC0's, in the same
+     * file, found the same way -- see the note there. */
+    if (!(t >= 0.0f)) {
         pDst[7] = pSt->ambient[0];
         pDst[8] = pSt->ambient[1];
         pDst[9] = pSt->ambient[2];
@@ -390,44 +439,41 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
 
     for (i = 0; i < 3; ++i) {
         float v = t * pSt->scale[i] + pSt->ambient[i];
-        /* The original substitutes the literal 1.0f (0x3F800000) rather than
-         * the limit it compared against; the limit at 0x1008F3C4 is 1.0f. */
-        pDst[7 + i] = (v <= 1.0f) ? v : 1.0f;
+        /* 0x100223A4 and its two repeats: `fcomp [0x1008F3C4] / test ah,0x41
+         * / mov eax,0x3F800000 / je`.  The ceiling is substituted only when
+         * the test is ZERO, i.e. C0 and C3 both clear, i.e. an ORDERED
+         * GREATER-THAN.  An unordered compare sets both, so a NaN is NOT
+         * clamped and passes through.
+         *
+         * THIS WAS `(v <= 1.0f) ? v : 1.0f`, which is false for NaN and
+         * therefore clamped it to 1.0f. The positive form is the faithful one
+         * here for the same reason it is in br_dl.c's copy: C's `v > 1.0f` is
+         * also false for NaN.
+         *
+         * The literal substituted is 0x3F800000, and the limit compared
+         * against at 0x1008F3C4 is also 1.0f. NOTE THAT BRGLIDE'S TWIN OF
+         * THIS FUNCTION USES 255.0f FOR BOTH (0x10022B35 `mov eax,0x437F0000`
+         * against 0x10077418 == 255.0f) -- these two are NOT the same
+         * function, whatever shared.csv's `shape` match suggests. See the
+         * banner above. */
+        pDst[7 + i] = (v > 1.0f) ? 1.0f : v;
     }
 }
 
-/* 0x10022DC0 */
-/* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
- * viewing frustum, and reports which of the seven boundaries it crossed. The
- * renderer uses that to decide whether a triangle needs clipping or can be
- * thrown away entirely. */
-/* @implements 0x10022DC0 d3d BrGbiClipCodes */
+/* 0x10022DC0 -- ONE BODY, in br_dlshared.c, which carries both builds'
+ * addresses.  This is now only the float-array layout: +0x04 x, +0x08 y,
+ * +0x0C z, +0x18 w.
+ *
+ * KEPT AS A WARNING: the two copies of this function -- here and
+ * br_dl_outcode in br_dl.c -- disagreed about NaN for as long as both
+ * existed, and this was the wrong one: it wrote `x < 0.0f`, which is false
+ * for NaN, so an unordered vertex was reported INSIDE and fed through the
+ * clipper. The original's `test ah,1` reads C0, which an unordered compare
+ * sets, so a NaN is REJECTED. Making the two agree was not the fix; deleting
+ * one of them was. */
 int BrGbiClipCodes(const float *pVert)
 {
-    float w = pVert[6];       /* +0x18 */
-    int   f = 0;
-
-    /* NEGATED, ALL SEVEN. The original is `fcomp / fnstsw ax / test ah,1`,
-     * and C0 is set for LESS-THAN *or* UNORDERED -- so a NaN in any component
-     * sets the clip bit and the vertex is REJECTED. `x < 0.0f` is false for
-     * NaN, which reported the vertex INSIDE and fed a NaN through the clipper.
-     *
-     * This project ports the same function twice. br_dl.c's copy
-     * (br_dl_outcode) writes all seven as `!(v >= 0.0f)` for exactly this
-     * reason, and its banner even names this function as the other copy. Two
-     * transcriptions of one routine, disagreeing on NaN, and this was the
-     * wrong one -- found by the round-3 equivalence audit.
-     *
-     * The duplication is the real defect and is recorded in CONVENTIONS.md;
-     * this fix makes the two agree while it stands. */
-    if (!(w >= 0.0f))                f |= 0x01;
-    if (!(pVert[3] + w >= 0.0f))     f |= 0x02;   /* +0x0C first */
-    if (!(w - pVert[3] >= 0.0f))     f |= 0x04;
-    if (!(pVert[1] + w >= 0.0f))     f |= 0x08;   /* then +0x04 */
-    if (!(w - pVert[1] >= 0.0f))     f |= 0x10;
-    if (!(pVert[2] + w >= 0.0f))     f |= 0x20;   /* then +0x08 */
-    if (!(w - pVert[2] >= 0.0f))     f |= 0x40;
-    return f;
+    return (int)BrDlsClipCodes(pVert[1], pVert[2], pVert[3], pVert[6]);
 }
 
 /* 0x10024240 */
@@ -1173,16 +1219,38 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 {
     pSt->kick = 1;
 
-    if (!(to < pSt->value) && to != 0.0f) {   /* 0x1008F410 == 0.0f */
+    /* 0x1002B134 `fcomp [value] / test cl,ah` with cl==1 -- an `ah,1` test
+     * spelled with a register -- then `jne 0x1002B176`, i.e. the C0 case
+     * jumps AWAY from this arm.  So this arm needs C0 CLEAR: ordered and
+     * to >= value, which is exactly C's `>=`.
+     *
+     * THIS WAS `!(to < pSt->value)`, and it was held up in the note over
+     * BrFadeDrawSprite as the idiom to copy.  It is the right idiom for the
+     * OPPOSITE branch sense: negation is faithful when the original jumps INTO
+     * the arm on C0, and wrong when it jumps out of it, because NaN belongs on
+     * the C0 side either way.  Reading "there is a negation, so NaN was
+     * considered" is not the same as checking which side it lands on.
+     *
+     * Second compare, 0x1002B14F: `test ah,0x40 / jne` away -- C3 (equal or
+     * unordered) leaves, so this arm needs ordered-and-unequal against 0.0f
+     * (0x1008F410).  `to != 0.0f` is true for NaN and was wrong; it is also
+     * unreachable with a NaN `to` once the first test is right, because `&&`
+     * short-circuits exactly as the original's branch does. */
+    if (to >= pSt->value && BR16_FNEO(to, 0.0f)) {   /* 0x1008F410 == 0.0f */
         pSt->target = to;
-        pSt->rate   = 1.0f / over;            /* 0x1008F420 == 1.0f */
+        pSt->rate   = 1.0f / over;                   /* 0x1008F420 == 1.0f */
         return;
     }
 
     /* GOTCHA: the guard is value != 1.0f, not == 1.0f -- the `jne` after
-     * `test ah,0x40` leaves the bounce path only when the two are UNequal.
-     * 0x1008F420 == 1.0f, 0x1008F428 == 0.0 (a double). */
-    if (pSt->value != 1.0f && !(pSt->rate <= 0.0)) {
+     * `test ah,0x40` (0x1002B184) leaves the bounce path only when the two
+     * are UNequal.  0x1008F420 == 1.0f, 0x1008F428 == 0.0 (a double).
+     *
+     * Both halves were NaN-wrong.  `value != 1.0f` is true for an unordered
+     * compare where the original's C3 sends it to the tail; and 0x1002B197's
+     * `test ah,0x41 / jne` away means the bounce needs ORDERED GREATER, which
+     * is plain `> 0.0` -- `!(rate <= 0.0)` is true for NaN and was not. */
+    if (BR16_FNEO(pSt->value, 1.0f) && pSt->rate > 0.0) {
         pSt->bounce = 1;
         return;
     }
@@ -1201,7 +1269,22 @@ void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
     pSt->kickA = 1;
     pSt->tgtA  = to;
 
-    if (!(to - pSt->curA < 0.0f) && to != 0.0f)
+    /* 0x1002B1DD `fcomp [0.0f] / test ah,1 / jne 0x1002B20C` on (to - curA),
+     * and 0x1002B1EE `fcomp [0.0f] / test ah,0x40 / jne 0x1002B20C` on `to`.
+     * BOTH jumps go to the NEGATIVE-rate tail, so the positive arm needs both
+     * flags CLEAR: ordered `>= 0` and ordered `!= 0`.  The old
+     * `!(to - curA < 0.0f) && to != 0.0f` was true for NaN on both halves and
+     * therefore sent an unordered input to the positive arm where the
+     * original sends it to the negative one.
+     *
+     * MUTATION SURVIVOR, and legitimately so: replacing the BR16_FNEO with a
+     * plain `to != 0.0f` changes nothing for ANY input.  The two differ only
+     * when `to` is a NaN, and a NaN `to` makes `to - curA` a NaN too, so the
+     * first operand is already false and `&&` never evaluates the second --
+     * which is exactly what the original's first `jne` does.  The faithful
+     * spelling is kept because it records the flag mask, not because a test
+     * can reach it. */
+    if (to - pSt->curA >= 0.0f && BR16_FNEO(to, 0.0f))
         pSt->rateA = 1.0f / over;
     else
         pSt->rateA = -1.0f / over;
@@ -1216,7 +1299,9 @@ void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
     pSt->kickB = 1;
     pSt->tgtB  = to;
 
-    if (!(to - pSt->curB < 0.0f) && to != 0.0f)
+    /* 0x1002B23D / 0x1002B24E -- instruction for instruction the same as
+     * BrFadeSetTargetA; see the note there. */
+    if (to - pSt->curB >= 0.0f && BR16_FNEO(to, 0.0f))
         pSt->rateB = 1.0f / over;
     else
         pSt->rateB = -1.0f / over;
@@ -1228,7 +1313,10 @@ void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 /* @implements 0x1002B2A0 d3d BrFadeIsClosing */
 int BrFadeIsClosing(const BrFadeState *pSt)
 {
-    if (pSt->rate < 0.0f)
+    /* 0x1002B2AE `test ah,1 / jne 0x1002B2BF`, and 0x1002B2BF is
+     * `mov eax,1 / ret`.  C0 is set for unordered too, so an unordered rate
+     * returns 1 here.  `rate < 0.0f` is false for NaN and returned 0. */
+    if (!(pSt->rate >= 0.0f))
         return 1;
     return (pSt->bounce != 0) ? 1 : 0;
 }
@@ -1240,7 +1328,12 @@ int BrFadeIsClosing(const BrFadeState *pSt)
 /* @implements 0x1002B2D0 d3d BrFadeIsSettled */
 int BrFadeIsSettled(const BrFadeState *pSt)
 {
-    if (pSt->value != pSt->target)
+    /* 0x1002B2DE `test ah,0x40 / je 0x1002B2F2`, and 0x1002B2F2 is
+     * `xor eax,eax / ret`.  The zero-flag case is C3 CLEAR -- ordered AND
+     * unequal -- so an unordered pair falls through and is reported SETTLED
+     * (subject to the bounce flag).  `value != target` is true for NaN and
+     * returned 0. */
+    if (BR16_FNEO(pSt->value, pSt->target))
         return 0;
     return (pSt->bounce != 0) ? 0 : 1;
 }
@@ -1251,9 +1344,20 @@ int BrFadeIsSettled(const BrFadeState *pSt)
 /* @implements 0x1002B300 d3d BrFadeIsShut */
 int BrFadeIsShut(const BrFadeState *pSt)
 {
-    if (!(pSt->rate < 0.0f))
+    /* BOTH tests leave by `je 0x1002B335`, which is `xor eax,eax / ret`.
+     *
+     *   0x1002B30E  test ah,1     je -> return 0   ==>  continue on C0
+     *   0x1002B321  test ah,0x40  je -> return 0   ==>  continue on C3
+     *
+     * C0 and C3 are BOTH set by an unordered compare, so a NaN rate or a NaN
+     * value makes the original continue and report SHUT.  The port had
+     * `!(rate < 0.0f)` (true for NaN -> returned 0) and `value != 0.0f`
+     * (also true for NaN -> returned 0), so it returned the opposite answer
+     * on both.  This one is LIVE: BrFadeDrawBars calls it and sets
+     * `bars = 3` from the result. */
+    if (pSt->rate >= 0.0f)
         return 0;
-    if (pSt->value != 0.0f)
+    if (BR16_FNEO(pSt->value, 0.0f))
         return 0;
     return (pSt->bounce != 0) ? 0 : 1;
 }
@@ -1281,7 +1385,11 @@ void BrFadeDrawBars(BrFadeState *pSt)
 {
     BrGfxWords *p;
 
-    if (pSt->value == 1.0f)            /* 0x1008F420 */
+    /* 0x1002B34F `test ah,0x40 / jne 0x1002B661` (return).  C3 is set for
+     * EQUAL and for UNORDERED, so a NaN value emits nothing.  `value == 1.0f`
+     * is false for NaN, so the port emitted the whole twelve-command bar
+     * sequence where the original emits none. */
+    if (BR16_FEQU(pSt->value, 1.0f))   /* 0x1008F420 */
         return;
 
     p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
@@ -1330,7 +1438,16 @@ void BrFadeDrawBars(BrFadeState *pSt)
             p->w1 = (uint32_t)(((uint32_t)pSt->pos << pSt->shift) & 0xFFFu)
                     << 12;
         }
-    } else if (pSt->value == 0.0f && pSt->bars != 0) {   /* 0x1008F410 */
+        /* 0x1002B5D5 `test ah,0x40 / je 0x1002B643` -- the arm is taken on
+         * C3, i.e. equal OR UNORDERED.  `value == 0.0f` skipped it on NaN.
+         *
+         * MUTATION SURVIVOR, legitimately: the guard at the top of this
+         * function already returns on a NaN `value`, and nothing between here
+         * and there writes it (BrFadeIsShut takes a const pointer), so this
+         * site can never see one.  Spelled faithfully anyway -- it is free,
+         * and the next edit to that top guard would otherwise silently make
+         * this one wrong. */
+    } else if (BR16_FEQU(pSt->value, 0.0f) && pSt->bars != 0) {  /* 0x1008F410 */
         p = br16_fade_alloc(pSt);
         pSt->bars -= 1;
         p->w0 = br16_bar_w0(pSt->span, pSt->width, pSt->shift);
@@ -1342,24 +1459,38 @@ void BrFadeDrawBars(BrFadeState *pSt)
 }
 
 /* One ramp step. Shared by the two ramp arms of 0x1002B670, which are
- * identical instruction for instruction.
+ * identical instruction for instruction: ramp A at 0x1002B7F2..0x1002B864 and
+ * ramp B at 0x1002B88B onward.
  *
  * GOTCHA: unlike the wipe, a ramp that lands exactly on its target is left
- * alone -- the forward arm tests `cur <= tgt` where the wipe tests
- * `value < target`. */
+ * alone -- the forward arm tests `ah,0x41` (ordered GREATER) where the wipe
+ * tests `ah,1` (ordered greater-or-EQUAL).
+ *
+ * ALL FOUR COMPARISONS HERE WERE NaN-WRONG, addresses from ramp A:
+ *
+ *   0x1002B800  test ah,0x40 / jne skip   -- the guard is C3 CLEAR, ordered
+ *               and unequal.  `*pCur != tgt` is true for NaN and stepped.
+ *   0x1002B827  test ah,1, read by the `je` at 0x1002B83E (`fnstsw` does not
+ *               touch EFLAGS, so the zero flag survives the intervening
+ *               fstp/fld/fcomp).  Forward is C0 CLEAR: ordered rate >= 0.
+ *               `!(rate < 0.0f)` made an unordered rate go FORWARD.
+ *   0x1002B856  test ah,0x41 / jne skip   -- clamp only on ordered greater.
+ *               `!(*pCur <= tgt)` clamped a NaN; the original does not.
+ *   0x1002B843  test ah,1 / je skip       -- clamp on C0, so unordered DOES
+ *               clamp.  `*pCur < tgt` is false for NaN and did not. */
 static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
                            int32_t *pKick, uint8_t *pOut)
 {
     if (*pKick != 0) {
         *pKick = 0;
-    } else if (*pCur != tgt) {
-        int forward = !(rate < 0.0f);
+    } else if (BR16_FNEO(*pCur, tgt)) {
+        int forward = (rate >= 0.0f);
         *pCur = rate * dt + *pCur;
         if (forward) {
-            if (!(*pCur <= tgt))
+            if (*pCur > tgt)
                 *pCur = tgt;
         } else {
-            if (*pCur < tgt)
+            if (!(*pCur >= tgt))
                 *pCur = tgt;
         }
     }
@@ -1375,16 +1506,30 @@ static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
 /* @implements 0x1002B670 d3d BrFadeTick */
 void BrFadeTick(BrFadeState *pSt)
 {
+    /* THE WIPE'S FOUR COMPARISONS, all NaN-wrong before this pass:
+     *
+     *   0x1002B690  test ah,0x40 / jne skip-the-whole-block -- the guard is
+     *               C3 CLEAR (ordered and unequal).  `value != target` is
+     *               true for NaN and moved a wipe the original leaves alone.
+     *   0x1002B6BB  test ah,1 on `rate` vs 0.0f, whose zero flag is read by
+     *               the `je 0x1002B6E5` at 0x1002B6D2 -- `fnstsw` does not
+     *               write EFLAGS, so ZF survives the fstp/fld/fcomp between
+     *               them.  ZF set means C0 CLEAR: forward is ordered
+     *               rate >= 0.  `!(rate < 0.0f)` sent NaN forward.
+     *   0x1002B6E8  (forward) test ah,1 / jne skip -- clamp on C0 CLEAR, so
+     *               ordered value >= target.  `!(value < target)` clamped NaN.
+     *   0x1002B6D7  (backward) test ah,1 / je skip -- clamp on C0, so
+     *               unordered DOES clamp.  `value < target` did not. */
     if (pSt->kick != 0) {
         pSt->kick = 0;
-    } else if (pSt->value != pSt->target) {
-        int forward = !(pSt->rate < 0.0f);
+    } else if (BR16_FNEO(pSt->value, pSt->target)) {
+        int forward = (pSt->rate >= 0.0f);
 
         pSt->value = pSt->rate * pSt->dt + pSt->value;
         if (forward) {
             /* Overshoot INCLUDES equality here -- that is what lets the
              * bounce fire when the wipe lands exactly on its target. */
-            if (!(pSt->value < pSt->target)) {
+            if (pSt->value >= pSt->target) {
                 pSt->value = pSt->target;
                 if (pSt->bounce != 0) {
                     pSt->rate   = -pSt->rate;
@@ -1393,7 +1538,7 @@ void BrFadeTick(BrFadeState *pSt)
                 }
             }
         } else {
-            if (pSt->value < pSt->target)
+            if (!(pSt->value >= pSt->target))
                 pSt->value = pSt->target;
         }
     }
@@ -1403,12 +1548,19 @@ void BrFadeTick(BrFadeState *pSt)
     pSt->f57550C            = 0;
     pSt->f5754FC            = pSt->width;
 
+    /* 0x1002B764 `test ah,0x41 / jne` -- the fall-through is the ZERO case,
+     * ordered GREATER, which is exactly C's `>`.  THE ONE COMPARISON IN THIS
+     * FILE THAT WAS ALREADY RIGHT AND IS UNCHANGED.
+     *
+     * 0x1002B795 `test ah,1 / je 0x1002B7DA` -- the else-if is the C0 case
+     * (less-than OR UNORDERED), so a NaN rate takes THIS arm, not the final
+     * else.  `pSt->rate < 0.0f` is false for NaN and took the else. */
     if (pSt->rate > 0.0f) {
         int32_t v;
         pSt->pos2 = 0;
         v = br16_ftol((double)pSt->span * (double)pSt->value);
         pSt->pos = (v + 3) & ~3;
-    } else if (pSt->rate < 0.0f) {
+    } else if (!(pSt->rate >= 0.0f)) {
         int32_t v = br16_ftol((double)pSt->span * (double)pSt->value);
         int32_t step = ((pSt->span - v - pSt->pos2) + 3) & ~3;
         pSt->pos  += step;
@@ -1449,24 +1601,9 @@ void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
     pList->n = 0;
 }
 
-/* 0x1002B9E0 */
-/* WHAT IT DOES: flips the byte order of a run of 16-bit values. Boss Rally's
- * data files came from the N64 and are stored the other way round from what
- * a PC expects, so loaded data has to be turned around before it can be
- * used. */
-/* @implements 0x1002B9E0 d3d BrSwapU16Array */
-void BrSwapU16Array(void *pv, int count)
-{
-    uint8_t *p = (uint8_t *)pv;
-    int      i;
-
-    if (count <= 0)
-        return;
-    for (i = 0; i < count; ++i) {
-        br16_swap_u16_at(p);
-        p += 2;
-    }
-}
+/* 0x1002B9E0 has moved to br_bits.c, which carries both builds' addresses:
+ * br_track.c had transcribed the same function as `swap_u16_run` under
+ * BRGlide's 0x10018A50.  br_bits is a leaf both can link. */
 
 /* 0x1002BA20 -- fully unrolled in the original over offsets 0,2,4,6. */
 /* WHAT IT DOES: flips the byte order of the four 16-bit values in one eight-

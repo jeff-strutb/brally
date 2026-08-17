@@ -24,6 +24,7 @@
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
 #include "slice2_26.h"
+#include "br_phaseact.h"   /* the one activate body -- see br_phaseact.h */
 
 /* ==========================================================================
  * Byte-offset access into the 0x2B68 entity record (slice1_09.h precedent:
@@ -51,67 +52,10 @@ static void BrEntityClearF2B64(void *pEntity)
  * The shared body of the thirteen activate routines
  * ========================================================================== */
 
-typedef enum BrActResult {
-    BR_ACT_FAILED   = 0,   /* operator new returned NULL; caller returns 0   */
-    BR_ACT_EXISTING = 1,   /* the singleton was already built                */
-    BR_ACT_CREATED  = 2    /* built here; the enter hook has run             */
-} BrActResult;
-
-static BrActResult BrPhaseActivateSlot(BrPhaseCtx     *pCtx,
-                                       BrPhase       **ppSlot,
-                                       BrPhaseEnterFn  pfnEnter)
-{
-    BrPhase *p;
-
-    if (*ppSlot != NULL) {
-        pCtx->pAA2904 = *ppSlot;
-        return BR_ACT_EXISTING;
-    }
-
-        /* HARDENING (port): allocate what THIS build's object needs.
-     *
-     * The original allocates 0xC8 and that is right for a 32-bit build.
-     * It is not right here: br_phase.h's BrPhase_ is ~300 bytes on LP64
-     * because every pointer widened, and 0x10048710 writes the whole
-     * object. Today this module uses the 5-field partial view and the
-     * real constructor is NOT wired to these sites, so nothing
-     * overflows -- but it has 37 call sites waiting, and the moment it
-     * is wired a 0xC8 block becomes a ~100-byte heap overflow per phase
-     * activation. BR_PHASE_ALLOC_SIZE is max(sizeof, 0xC8), so this is
-     * never smaller than the original either.
-     */
-/* operator new does not zero the block; whatever the constructor at
-     * 0x10048710 leaves untouched stays garbage. */
-    p = (BrPhase *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
-    p = (p != NULL) ? BrOptObjCtor(p) : NULL;
-
-    /* Both globals are written even when the allocation failed, so a failed
-     * activation leaves the current phase NULL. */
-    *ppSlot       = p;
-    pCtx->pAA2904 = p;
-
-    if (p == NULL)
-        return BR_ACT_FAILED;
-
-    p->pfnEnter = pfnEnter;
-
-    /* The original re-reads the slot global here and calls through that,
-     * rather than through the register holding the new object. */
-    p = *ppSlot;
-    p->pfnEnter(p);
-
-    /* ...and re-reads the current-phase global once per store. If the enter
-     * hook re-pointed it, these two flags land on the hook's phase. */
-    /* DEVIATION: the original dereferences unconditionally and would fault if
-     * the hook cleared the current phase. Guarded here for memory safety;
-     * behaviour is unchanged wherever the original does not fault. */
-    if (pCtx->pAA2904 != NULL)
-        pCtx->pAA2904->f0C = 1;
-    if (pCtx->pAA2904 != NULL)
-        pCtx->pAA2904->f68 = 1;
-
-    return BR_ACT_CREATED;
-}
+/* THE SHARED ACTIVATE BODY has moved to br_phaseact.c, which is a leaf both
+ * this file and slice3_31.c can link.  slice3_31.c had transcribed the same
+ * inlined sequence a second time, and the two disagreed about whether the two
+ * flag stores are guarded -- they are not.  See br_phaseact.h. */
 
 /* The shared prologue of the eight leave routines: poke the entity's
  * sub-object, then notify a phase. ppNotify is a pointer to the global rather
@@ -238,10 +182,10 @@ int BrPhaseLeave_10044970(BrPhaseCtx *pCtx, void *pEntity)
     int32_t mode;
 
     BrPhaseLeaveHead(pCtx, pEntity);
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->nAA2950 = 0;
-    pCtx->pAA2904 = pCtx->pAA2948;
+    BR_PHASE_CUR = pCtx->pAA2948;
 
     if (pCtx->pAA29D8 != NULL)
         BrEntityClearFlag1C10(pCtx->pAA29D8);
@@ -265,10 +209,10 @@ int BrPhaseLeave_10044A30(BrPhaseCtx *pCtx, void *pEntity)
     int32_t mode;
 
     BrPhaseLeaveHead(pCtx, pEntity);
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->nAA2950 = 0;
-    pCtx->pAA2904 = pCtx->pAA294C;
+    BR_PHASE_CUR = pCtx->pAA294C;
 
     BrExt_1003BF60();
 
@@ -292,14 +236,14 @@ int BrPhaseLeave_10044A30(BrPhaseCtx *pCtx, void *pEntity)
 /* @implements 0x10044AE0 d3d BrPhaseLeave_10044AE0 */
 int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
 {
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->pAA2948 = NULL;
     pCtx->nAA29B8 = 0;
     pCtx->pAA29D8 = NULL;
     pCtx->nAA29D4 = 0;
     pCtx->nAA2880 = 0;
-    pCtx->pAA2904 = pCtx->pAA2940;
+    BR_PHASE_CUR = pCtx->pAA2940;
 
     BrExt_1003BF60();
     return 0;
@@ -311,11 +255,11 @@ int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
 /* @implements 0x10044B40 d3d BrPhaseLeave_10044B40 */
 int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
 {
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->nAA298C = 0;
     pCtx->nAA29E8 = 0;
-    pCtx->pAA2904 = pCtx->pAA2940;
+    BR_PHASE_CUR = pCtx->pAA2940;
     return 0;
 }
 
@@ -325,20 +269,20 @@ int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
 /* @implements 0x10044C70 d3d BrPhaseLeave_10044C70 */
 int BrPhaseLeave_10044C70(BrPhaseCtx *pCtx, void *pEntity)
 {
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->pAA295C = NULL;
-    pCtx->pAA2904 = pCtx->pAA2908;
+    BR_PHASE_CUR = pCtx->pAA2908;
     return 0;
 }
 
 int BrPhaseLeave_10044CB0(BrPhaseCtx *pCtx, void *pEntity)
 {
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->pAA290C = NULL;
     pCtx->nAA29AC = 0;
-    pCtx->pAA2904 = pCtx->pAA295C;
+    BR_PHASE_CUR = pCtx->pAA295C;
     return 0;
 }
 
@@ -347,10 +291,10 @@ int BrPhaseLeave_10044CB0(BrPhaseCtx *pCtx, void *pEntity)
 /* @implements 0x10044DE0 d3d BrPhaseLeave_10044DE0 */
 int BrPhaseLeave_10044DE0(BrPhaseCtx *pCtx, void *pEntity)
 {
-    BrPhaseLeavePrologue(pEntity, &pCtx->pAA2904);
+    BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
 
     pCtx->pAA2964 = NULL;
-    pCtx->pAA2904 = pCtx->pAA295C;
+    BR_PHASE_CUR = pCtx->pAA295C;
     return 0;
 }
 
@@ -365,7 +309,7 @@ int BrPhaseLeave_10044F00(BrPhaseCtx *pCtx, void *pEntity)
     BrPhaseLeavePrologue(pEntity, &pCtx->pAA2968);
 
     pCtx->pAA2968 = NULL;
-    pCtx->pAA2904 = pCtx->pAA295C;
+    BR_PHASE_CUR = pCtx->pAA295C;
     pCtx->n0AA010 = 2;
     return 0;
 }

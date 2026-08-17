@@ -11,10 +11,13 @@
  * touch.
  */
 #include "slice3_31.h"
+#include "br_volume.h"          /* 0x10045A00 is answered for real; see below */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static int g_cFail;
 
@@ -151,7 +154,7 @@ static void EnterCommon(BrPhase *pSelf)
     g_cEnter++;
     g_pLastEnter = pSelf;
     if (g_pHijack != NULL)
-        g_pCtxForHijack->pAA2904 = g_pHijack;
+        BR_PHASE_CUR = g_pHijack;
 }
 
 #define ENTER_STUB(name) void name(BrPhase *pSelf) { EnterCommon(pSelf); }
@@ -170,7 +173,12 @@ ENTER_STUB(BrExt_10054B50)
 
 /* --- everything else ------------------------------------------------------ */
 
-static int      g_fA00Ok = 1;   /* what 0x10045A00 reports                  */
+/* 0x10045A00 IS NOT STOOD IN FOR HERE. It used to be -- a static int this file
+ * set to 0 or 1 -- and that made the Championship guard's test a statement
+ * about a boolean rather than about the game. The real service is linked
+ * instead (br_volume, see build.d/test_slice3_31.deps) and driven by building
+ * the two trees it distinguishes: one with an extraction in it and one
+ * without. See test_activate_10045900_guard. */
 static int      g_c419D0;       /* 0x100419D0 calls                         */
 static void    *g_p419D0Last;
 static int      g_c72AF0;
@@ -190,8 +198,11 @@ static int      g_c5FBC0;
 static int      g_c8B80, g_c3DFC0, g_c3E510, g_c3E680;
 static void    *g_p74030 = (void *)"msg";
 
-int32_t BrExt_10045A00(void)              { return g_fA00Ok; }
-void   *BrExt_10074030(int32_t n)         { (void)n; return g_p74030; }
+/* The message-table lookup. Its ARGUMENT is recorded, because the status code
+ * the refusal reports is the observable the user sees and 0xD is a fact about
+ * 0x10045900, not about this stand-in. Nothing recorded it before. */
+static int32_t g_n74030Last = -1;
+void   *BrExt_10074030(int32_t n)         { g_n74030Last = n; return g_p74030; }
 void    BrExt_100419D0(void *p)           { g_c419D0++; g_p419D0Last = p; }
 void    BrExt_10072AF0(int32_t a, uint32_t b)
                                           { g_c72AF0++; g_n72AF0A = a;
@@ -227,7 +238,7 @@ int BrPhaseActivate_100451E0(BrPhaseCtx *pCtx)
         BrPhase *p = (BrPhase *)BrOperatorNew(BR_PHASE_ORIG_SIZE);
         pCtx->pAA2918 = (p != NULL) ? BrOptObjCtor(p) : NULL;
     }
-    pCtx->pAA2904 = pCtx->pAA2918;
+    BR_PHASE_CUR = pCtx->pAA2918;
     return pCtx->pAA2918 != NULL;
 }
 
@@ -265,6 +276,8 @@ static BrPhaseCtx31 g_Ext;
 static void ResetAll(void)
 {
     memset(&g_Base, 0, sizeof(g_Base));
+    BR_PHASE_CUR = NULL;   /* no longer a member of BrPhaseCtx; see
+                            * br_phasecur.h. The original's dword is .bss. */
     memset(&g_Ext,  0, sizeof(g_Ext));
     BrPhase31SetCtx(&g_Base, &g_Ext);
 
@@ -273,7 +286,7 @@ static void ResetAll(void)
     g_cSlot7 = 0;
     g_cEnter = 0; g_pLastEnter = NULL;
     g_pHijack = NULL; g_pCtxForHijack = &g_Base;
-    g_fA00Ok = 1; g_c419D0 = 0; g_p419D0Last = NULL;
+    g_c419D0 = 0; g_p419D0Last = NULL; g_n74030Last = -1;
     g_c72AF0 = 0; g_n72AF0A = 0; g_n72AF0B = 0;
     g_f3E0E0 = 0; g_c47660 = 0; g_c79550 = 0; g_c3E310 = 0; g_c6A4A0 = 0;
     g_cEdit = 0; g_nEditWhich = 0; g_c43260 = 0; g_c43330 = 0; g_c5FBC0 = 0;
@@ -325,7 +338,7 @@ static void test_activate_three_outcomes(void)
     ResetAll();
     CHECK(BrPhaseActivate_10045AF0() == 1);
     CHECK(g_Ext.pAA2924 != NULL);
-    CHECK(g_Base.pAA2904 == g_Ext.pAA2924);
+    CHECK(BR_PHASE_CUR == g_Ext.pAA2924);
     CHECK(g_cEnter == 1);
     CHECK(g_pLastEnter == g_Ext.pAA2924);
     CHECK(g_Ext.pAA2924->f0C == 1);
@@ -336,10 +349,10 @@ static void test_activate_three_outcomes(void)
     /* (b) already built -> 1, nothing allocated, no hook, flags untouched */
     g_Ext.pAA2924->f0C = 77;
     g_cNew = 0; g_cEnter = 0;
-    g_Base.pAA2904 = NULL;
+    BR_PHASE_CUR = NULL;
     CHECK(BrPhaseActivate_10045AF0() == 1);
     CHECK(g_Ext.pAA2924 == pFirst);
-    CHECK(g_Base.pAA2904 == pFirst);
+    CHECK(BR_PHASE_CUR == pFirst);
     CHECK(g_cNew == 0);
     CHECK(g_cEnter == 0);
     CHECK(pFirst->f0C == 77);
@@ -349,7 +362,7 @@ static void test_activate_three_outcomes(void)
     g_fNewFails = 1;
     CHECK(BrPhaseActivate_10045AF0() == 0);
     CHECK(g_Ext.pAA2924 == NULL);
-    CHECK(g_Base.pAA2904 == NULL);
+    CHECK(BR_PHASE_CUR == NULL);
     CHECK(g_cEnter == 0);
 }
 
@@ -374,7 +387,7 @@ static void test_activate_reread_gotcha(void)
     CHECK(pOther->f68 == 1);
     CHECK(g_Ext.pAA2934->f0C != 1);
     CHECK(g_Ext.pAA2934->f68 != 1);
-    CHECK(g_Base.pAA2904 == pOther);
+    CHECK(BR_PHASE_CUR == pOther);
 
     free(pOther);
 }
@@ -405,24 +418,85 @@ static void test_activate_second_object(void)
     CHECK(g_Ext.pAA2974->f68 != 1);
 }
 
-/* 0x10045900's guard: a refusal builds nothing and reports. */
+/* 0x10045900's guard, driven by the REAL volume service in both directions.
+ *
+ * This is the Championship screen. The original refuses to open it unless a
+ * CD-ROM drive holds a disc whose volume label strcmps equal to "Boss Rally",
+ * and reports status 0xD when it does not. This port has no drive; it has the
+ * disc's contents extracted into an asset root, with the disc's own volume
+ * label recorded beside them by tools/extract_assets.sh.
+ *
+ * BOTH DIRECTIONS ARE THE TEST. A scan stubbed to 0 refused on every machine,
+ * which is what this replaces; a scan stubbed to 1 would open on every machine,
+ * which is the same defect with the sign flipped. Neither survives a pair of
+ * trees that differ only in whether anything was extracted into them.
+ */
+static void MakeAssetTree(char *pszOut, size_t cbOut, int fExtracted)
+{
+    char  szTmpl[512];
+    char  szPath[1024];
+    FILE *fh;
+
+    snprintf(szTmpl, sizeof szTmpl, "%s/br_31_assets_XXXXXX",
+             getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp");
+    if (mkdtemp(szTmpl) == NULL) {
+        printf("FAIL %s:%d  cannot create a temporary directory\n",
+               __FILE__, __LINE__);
+        g_cFail++;
+        pszOut[0] = '\0';
+        return;
+    }
+    snprintf(pszOut, cbOut, "%s", szTmpl);
+    if (!fExtracted)
+        return;                     /* an empty tree: nothing was extracted */
+
+    snprintf(szPath, sizeof szPath, "%s/cars", pszOut);
+    (void)mkdir(szPath, 0777);
+    snprintf(szPath, sizeof szPath, "%s/cars/ce.rca", pszOut);
+    fh = fopen(szPath, "wb");
+    if (fh != NULL) { fputs("RCar", fh); fclose(fh); }
+
+    /* The label is the retail disc's ISO 9660 volume identifier, which is the
+     * literal string the game compares against. */
+    snprintf(szPath, sizeof szPath, "%s/%s", pszOut, BR_VOLUME_MANIFEST);
+    fh = fopen(szPath, "wb");
+    if (fh != NULL) {
+        fputs("{\"volume_label\": \"Boss Rally\",\n"
+              " \"files\": [\"cars/ce.rca\"]}\n", fh);
+        fclose(fh);
+    }
+}
+
 static void test_activate_10045900_guard(void)
 {
+    char szNone[512], szHave[512];
+
+    MakeAssetTree(szNone, sizeof szNone, 0);
+    MakeAssetTree(szHave, sizeof szHave, 1);
+
+    /* NOTHING EXTRACTED -> the disc is not available -> refuse, with 0xD. */
     ResetAll();
-    g_fA00Ok = 0;
+    BrVolumeSetRoot(szNone);
+    CHECK(BrExt_10045A00() == 0);
     CHECK(BrPhaseActivate_10045900() == 0);
     CHECK(g_Ext.pAA291C == NULL);
     CHECK(g_cNew == 0);
     CHECK(g_c419D0 == 1);
     CHECK(g_p419D0Last == g_p74030);    /* the message, not p0AD300 */
+    CHECK(g_n74030Last == 0xD);         /* the status the player is shown */
 
+    /* THE ASSETS EXTRACTED -> the label matches -> the screen opens. */
     ResetAll();
     g_Base.p0AD300 = (void *)&g_Base;
-    g_fA00Ok = 1;
+    BrVolumeSetRoot(szHave);
+    CHECK(BrExt_10045A00() != 0);
     CHECK(BrPhaseActivate_10045900() == 1);
     CHECK(g_Ext.pAA291C != NULL);
     CHECK(g_c419D0 == 1);
     CHECK(g_p419D0Last == g_Base.p0AD300);
+    CHECK(g_n74030Last == -1);          /* no message: nothing was refused */
+
+    BrVolumeSetRoot(NULL);
 }
 
 /* 0x10046170 sets nAA2854 on BOTH paths -- including the already-built one. */
@@ -517,7 +591,7 @@ static void test_leave_prologue(void)
     pObj  = ObjReset();
     pCur  = MakePhase();
     pNext = MakePhase();
-    g_Base.pAA2904 = pCur;
+    BR_PHASE_CUR = pCur;
     g_Base.pAA2908 = pNext;
     g_Base.pAA290C = MakePhase();
     g_Ext.pAA29AC  = MakePhase();
@@ -529,14 +603,14 @@ static void test_leave_prologue(void)
     CHECK(g_nLastF00Arg == 1);          /* always 1 */
     CHECK(g_Base.pAA290C == NULL);      /* the documented clears */
     CHECK(g_Ext.pAA29AC == NULL);
-    CHECK(g_Base.pAA2904 == pNext);     /* repointed */
+    CHECK(BR_PHASE_CUR == pNext);     /* repointed */
 
     free(pCur); free(pNext);
 
     /* With no current phase the notify is skipped but everything else runs. */
     ResetAll();
     pObj = ObjReset();
-    g_Base.pAA2904 = NULL;
+    BR_PHASE_CUR = NULL;
     g_Base.pAA2908 = NULL;
     BrPhaseLeave_10046450(pObj);
     CHECK(g_cSlot7 == 1);
@@ -649,7 +723,7 @@ static void test_leave_10046F60(void)
     pCur    = MakePhase();
     pSecond = MakePhase();
     pEnd    = MakePhase();
-    g_Base.pAA2904 = pCur;
+    BR_PHASE_CUR = pCur;
     g_Ext.pAA292C  = pSecond;
     g_Ext.pAA2974  = MakePhase();
     g_Base.pAA2908 = pEnd;
@@ -659,7 +733,7 @@ static void test_leave_10046F60(void)
     CHECK(g_cF00 == 2);                 /* current, then the saved one */
     CHECK(g_Ext.pAA292C == NULL);
     CHECK(g_Ext.pAA2974 == NULL);
-    CHECK(g_Base.pAA2904 == pEnd);
+    CHECK(BR_PHASE_CUR == pEnd);
 
     free(pCur); free(pSecond); free(pEnd);
 }
@@ -681,7 +755,7 @@ static void test_leave_10046FD0(void)
     CHECK(g_Ext.pAA2938 == NULL);
     CHECK(g_Ext.pAA293C == NULL);
     CHECK(g_Ext.pAA2974 == NULL);
-    CHECK(g_Base.pAA2904 == g_Base.pAA2908);
+    CHECK(BR_PHASE_CUR == g_Base.pAA2908);
 
     /* NULL slots are skipped, not called. */
     g_cF1C = 0;
@@ -712,7 +786,7 @@ static void test_leave_10047120_guard(void)
         memset(g_Ext.aAA2740, 0x11, sizeof(g_Ext.aAA2740));
         g_Ext.nAA28C4 = 3;
         g_Ext.pAA296C = MakePhase();
-        g_Base.pAA2904 = MakePhase();
+        BR_PHASE_CUR = MakePhase();
 
         BrPhaseLeave_10047120(ObjReset());
 
@@ -723,8 +797,8 @@ static void test_leave_10047120_guard(void)
         CHECK(g_cSlot7 == 1);
         CHECK(g_Ext.pAA296C == NULL);
         /* This routine notifies pAA296C, and never touches pAA2904. */
-        CHECK(g_Base.pAA2904 != NULL);
-        free(g_Base.pAA2904);
+        CHECK(BR_PHASE_CUR != NULL);
+        free(BR_PHASE_CUR);
     }
 }
 
@@ -1019,11 +1093,11 @@ static void test_gotos(void)
     g_Ext.pAA293C = MakePhase();
 
     BrPhaseGoto_10046F50();
-    CHECK(g_Base.pAA2904 == g_Ext.pAA2974);
+    CHECK(BR_PHASE_CUR == g_Ext.pAA2974);
     BrPhaseGoto_10046FC0();
-    CHECK(g_Base.pAA2904 == g_Ext.pAA292C);
+    CHECK(BR_PHASE_CUR == g_Ext.pAA292C);
     BrPhaseGoto_10047050();
-    CHECK(g_Base.pAA2904 == g_Ext.pAA293C);
+    CHECK(BR_PHASE_CUR == g_Ext.pAA293C);
 
     /* No phase was notified and no sub-object was driven. */
     CHECK(g_cF00 == 0 && g_cF1C == 0 && g_cSlot7 == 0);
@@ -1034,6 +1108,135 @@ static void test_gotos(void)
 /* ==========================================================================
  * main
  * ========================================================================== */
+
+/* 0x10AA2904 IS THE HOST'S SLOT.
+ *
+ * These three gotos are the whole of 0x10046F50 / 0x10046FC0 / 0x10047050 --
+ * `mov eax,[0x10aa2974]; mov [0x10aa2904],eax; xor eax,eax; ret` -- so the
+ * only thing they do is move ONE dword.  Until this range shared that dword
+ * with br_uinav.h's BrUiNav::pAA2904, the move happened into a BrPhaseCtx
+ * member the frame loop does not read, and every transition this range
+ * performed was invisible while every check above still passed: they read
+ * back through the same name they wrote.
+ *
+ * So the assertion here is an address identity plus a cross-name read.  That
+ * is the only shape that can tell one object from two. */
+static void test_current_phase_is_the_host_slot(void)
+{
+    BrPhase_ *host = NULL;
+
+    ResetAll();
+    g_Ext.pAA2974 = MakePhase();
+
+    BrPhaseCurBind(&host);
+    CHECK(&BR_PHASE_CUR == &host);      /* one object, not a copy */
+
+    BrPhaseGoto_10046F50();
+    CHECK(host == g_Ext.pAA2974);       /* ...and the goto lands in it */
+
+    BrPhaseCurBind(NULL);
+    BR_PHASE_CUR = NULL;
+}
+
+/* ==========================================================================
+ * THE RETURN VALUE OF EVERY LEAVE / GOTO ROUTINE
+ * ==========================================================================
+ *
+ * These forty-three routines are stored into the original's +0x08 hook slot,
+ * and 0x10048180 TESTS the result:
+ *
+ *     10048280  ff5608   call dword ptr [esi + 8]
+ *     10048286  85c0     test eax, eax
+ *     10048288  7508     jne  0x10048292      ; zero -> return 0 immediately
+ *
+ * So the value is behaviour, not decoration: a zero makes the whole row's
+ * frame stop before `[0x10AA33E4] = 0`, before `flags &= ~2`, before the child
+ * loop and before the vtable +0x08 draw. They were `void` for the life of this
+ * port and every assertion below is new.
+ *
+ * The expected value comes from the DISASSEMBLY, one address at a time -- the
+ * comment on each line is the address of the instruction that leaves eax zero,
+ * so any single row can be re-checked without re-deriving the rest. Thirty-
+ * five are an explicit `xor eax, eax` in the return slot; the eight marked
+ * SCAN take their zero from the `repne scasb` scan character of the second
+ * inlined strcpy, with nothing between it and the `ret` touching eax.
+ */
+static void test_leave_family_returns_zero(void)
+{
+    /* --- BR31_LEAVE, 24 routines -------------------------------------- */
+    ResetAll(); CHECK(BrPhaseLeave_100463C0(ObjReset()) == 0); /* 100463F5 */
+    ResetAll(); CHECK(BrPhaseLeave_10046450(ObjReset()) == 0); /* 1004648F */
+    ResetAll(); CHECK(BrPhaseLeave_100464A0(ObjReset()) == 0); /* 100464D5 */
+    ResetAll(); CHECK(BrPhaseLeave_100464E0(ObjReset()) == 0); /* 10046515 */
+    ResetAll(); CHECK(BrPhaseLeave_10046520(ObjReset()) == 0); /* 10046555 */
+    ResetAll(); CHECK(BrPhaseLeave_100465A0(ObjReset()) == 0); /* 100465D5 */
+    ResetAll(); CHECK(BrPhaseLeave_100465E0(ObjReset()) == 0); /* 10046615 */
+    ResetAll(); CHECK(BrPhaseLeave_10046620(ObjReset()) == 0); /* 1004665F */
+    ResetAll(); CHECK(BrPhaseLeave_10046670(ObjReset()) == 0); /* 100466AF */
+    ResetAll(); CHECK(BrPhaseLeave_10046710(ObjReset()) == 0); /* 10046745 */
+    ResetAll(); CHECK(BrPhaseLeave_10046750(ObjReset()) == 0); /* 10046785 */
+    ResetAll(); CHECK(BrPhaseLeave_10046830(ObjReset()) == 0); /* 10046865 */
+    ResetAll(); CHECK(BrPhaseLeave_10046910(ObjReset()) == 0); /* 10046945 */
+    ResetAll(); CHECK(BrPhaseLeave_100469F0(ObjReset()) == 0); /* 10046A25 */
+    ResetAll(); CHECK(BrPhaseLeave_10046AD0(ObjReset()) == 0); /* 10046B05 */
+    ResetAll(); CHECK(BrPhaseLeave_10046BB0(ObjReset()) == 0); /* 10046BE5 */
+    ResetAll(); CHECK(BrPhaseLeave_10046C90(ObjReset()) == 0); /* 10046CC5 */
+    ResetAll(); CHECK(BrExt_10046CD0(ObjReset())        == 0); /* 10046D0F */
+    ResetAll(); CHECK(BrPhaseLeave_10046D20(ObjReset()) == 0); /* 10046D5F */
+    ResetAll(); CHECK(BrPhaseLeave_10046D70(ObjReset()) == 0); /* 10046DB9 */
+    ResetAll(); CHECK(BrExt_10046DC0(ObjReset())        == 0); /* 10046E09 */
+    ResetAll(); CHECK(BrPhaseLeave_10047060(ObjReset()) == 0); /* 10047095 */
+    ResetAll(); CHECK(BrPhaseLeave_100470A0(ObjReset()) == 0); /* 100470D5 */
+    ResetAll(); CHECK(BrPhaseLeave_100470E0(ObjReset()) == 0); /* 10047115 */
+
+    /* --- BR31_LEAVE_NAMED, 7 routines; all SCAN ------------------------ */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046790(ObjReset()) == 0); /* 10046818 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046870(ObjReset()) == 0); /* 100468F8 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046950(ObjReset()) == 0); /* 100469D8 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046A30(ObjReset()) == 0); /* 10046AB8 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046B10(ObjReset()) == 0); /* 10046B98 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046BF0(ObjReset()) == 0); /* 10046C78 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046EB0(ObjReset()) == 0); /* 10046F38 */
+
+    /* --- the ones the two macros could not carry ----------------------- */
+    ResetAll(); CHECK(BrSub10046400(ObjReset())         == 0); /* 10046446 */
+    ResetAll(); CHECK(BrPhaseLeave_10046560(ObjReset()) == 0); /* 1004659A */
+    ResetAll(); CHECK(BrPhaseLeave_100466C0(ObjReset()) == 0); /* 10046709 */
+    ResetAll(); CHECK(BrPhaseLeaveNamed_10046E10(ObjReset()) == 0); /* 10046E8C SCAN */
+    ResetAll(); CHECK(BrPhaseLeave_10046F60(ObjReset()) == 0); /* 10046FB7 */
+    ResetAll(); CHECK(BrPhaseLeave_10046FD0(ObjReset()) == 0); /* 10047043 */
+    ResetAll(); CHECK(BrPhaseLeave_10047120(ObjReset()) == 0); /* 100471A0 */
+    ResetAll(); CHECK(BrPhaseLeave_100471B0(ObjReset()) == 0); /* 100471E3 */
+    ResetAll(); CHECK(BrPhaseLeave_10047290(ObjReset()) == 0); /* 1004732D */
+
+    /* --- the three gotos ----------------------------------------------- */
+    ResetAll(); CHECK(BrPhaseGoto_10046F50() == 0);            /* 10046F5A */
+    ResetAll(); CHECK(BrPhaseGoto_10046FC0() == 0);            /* 10046FCA */
+    ResetAll(); CHECK(BrPhaseGoto_10047050() == 0);            /* 1004705A */
+}
+
+/* Why the value above matters, exercised rather than asserted about: the hook
+ * SLOT's declared type must be able to carry an int32_t, or the value is lost
+ * between the store and the call however the callee is written. That is the
+ * shape of the defect this pass fixed -- the bodies were right and the type
+ * threw the answer away. Going through pfnHook is what the original's
+ * `call dword ptr [esi + 8]` does. */
+static void test_hook_slot_carries_the_return(void)
+{
+    BrPhase *p;
+
+    ResetAll();
+    p = MakePhase();
+
+    p->pfnHook = BrPhaseLeave_100463C0;
+    CHECK(p->pfnHook(ObjReset()) == 0);
+
+    /* The name-resetting family goes through the same slot. */
+    p->pfnHook = BrPhaseLeaveNamed_10046790;
+    CHECK(p->pfnHook(ObjReset()) == 0);
+
+    free(p);
+}
 
 int main(void)
 {
@@ -1059,6 +1262,9 @@ int main(void)
     test_ticks();
     test_mode_callbacks();
     test_gotos();
+    test_leave_family_returns_zero();
+    test_hook_slot_carries_the_return();
+    test_current_phase_is_the_host_slot();
 
     if (g_cFail != 0) {
         printf("%d failure(s)\n", g_cFail);

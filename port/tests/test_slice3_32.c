@@ -666,6 +666,65 @@ static void TestFrame(void)
     free(p);
 }
 
+/* THE +0x08 ACTION HOOK'S RETURN VALUE.
+ *
+ * This path had NO coverage at all, which is how the whole slice3_31 LEAVE
+ * family stayed `void` through an equivalence audit: the assertions above
+ * exercise +0x04's -1/-2 sentinels and the +0x0C arm, and never once install
+ * a +0x08 hook. Every routine slice3_31.c puts in this slot returns 0, so the
+ * zero arm is the one the shipped game takes on every menu action.
+ *
+ *     10048280  ff5608   call dword ptr [esi + 8]
+ *     10048286  85c0     test eax, eax
+ *     10048288  7508     jne  0x10048292
+ *     1004828A  5f 5e 5d 5b 83c408 c3   ; eax is still 0 -> return 0
+ *
+ * A zero must therefore leave FOUR things undone -- 0x100482AA's
+ * `[0x10AA33E4] = 0`, the `flags &= ~2` at 0x100482C4, the child loop and the
+ * vtable +0x08 draw -- and each is asserted separately so a failure says
+ * which one leaked. */
+static void TestFramePfn08Return(void)
+{
+    BrUiObj *p = NewObj();
+
+    BrScrStSlot(p, BR_SCR_SLOT_VTBL, (void *)&s_UiVtbl);
+    BrScrStSlot(p, BR_SCR_SLOT_ITEMVTBL, (void *)&s_ItemVtbl);
+    BrScrStSlot(p, BR_SCR_SLOT_PFN08, (void *)Hook_ret);
+
+    /* --- zero: stop here ------------------------------------------------ */
+    ResetUi();
+    s_nRet20 = 1;
+    s_G.nAA28D8 = 0;
+    s_G.nAA33E4 = 0x5A;
+    BrScrSt32(p, BR_UI_OFF_FLAGS, BR_SCR_F1C_0002);
+    s_nHookRet = 0; s_nHookCalls = 0;
+
+    CHECK(BrUiFrame_10048180(&s_G, p) == 0);
+    CHECK(s_nHookCalls == 1);                   /* it did run */
+    CHECK(s_G.nAA33E4 == 0x5A);                 /* NOT cleared */
+    CHECK((BrScrLd32(p, BR_UI_OFF_FLAGS) & BR_SCR_F1C_0002) != 0);  /* NOT cleared */
+    CHECK(s_aUi[0x08 / 4] == 0);                /* no vtable +0x08 draw */
+
+    /* --- non-zero: carry on, same fixture, only the hook's answer differs */
+    ResetUi();
+    s_G.nAA33E4 = 0x5A;
+    BrScrSt32(p, BR_UI_OFF_FLAGS, BR_SCR_F1C_0002);
+    s_nHookRet = 1; s_nHookCalls = 0;
+
+    CHECK(BrUiFrame_10048180(&s_G, p) == 1);
+    CHECK(s_nHookCalls == 1);
+    CHECK(s_G.nAA33E4 == 0);                    /* cleared */
+    CHECK((BrScrLd32(p, BR_UI_OFF_FLAGS) & BR_SCR_F1C_0002) == 0);  /* cleared */
+    CHECK(s_aUi[0x08 / 4] == 1);                /* and the draw ran */
+
+    /* The two runs differ in exactly one input -- the hook's return -- so
+     * they cannot both pass under a body that ignores it. */
+
+    BrScrStSlot(p, BR_SCR_SLOT_PFN08, NULL);
+    s_nHookRet = 0;
+    free(p);
+}
+
 /* ==========================================================================
  * 7. BrUiPage
  * ========================================================================== */
@@ -1021,11 +1080,29 @@ static void TestShutdown(void)
     s_G.pAA2940 = &a;
     s_ppSelfClear = &s_G.pAA2940;
     s_nSeq = 0;
+    /* SEEDED, and it has to be: the memset above already left this zero, so
+     * the assertion below used to hold whether or not the clear at 0x10048BC3
+     * ran at all.  It is the first slot's extra clear, and it sits INSIDE the
+     * `slot was non-NULL` arm -- so what is under test is that a +0x1C which
+     * empties its own slot still reaches it. */
+    s_G.nA9CFFC = 0x5A5A;
     BrPhaseShutdown_10048B20(&s_G, (void *)&i);
     CHECK(s_nSeq == 1);                        /* +0x1C ran, +0x00 did not */
     CHECK(s_aSeq[0] == (0x1C0000 | 1));
     CHECK(s_G.pAA2940 == NULL);
     CHECK(s_G.nA9CFFC == 0);                   /* the extra clear still ran */
+
+    /* The negative half, which is what makes the line above mean something:
+     * an EMPTY first slot must leave the field alone -- `mov [0x10A9CFFC],ebx`
+     * is inside the `je` that skips the whole slot. */
+    memset(&s_G, 0, sizeof s_G);
+    s_G.apA9E3D0 = ap; s_G.nA9E3D0 = (int32_t)BR_SCR_A9E3D0_COUNT;
+    s_ppSelfClear = NULL;
+    s_G.pAA2940 = NULL;
+    s_G.nA9CFFC = 0x5A5A;
+    s_nSeq = 0;
+    BrPhaseShutdown_10048B20(&s_G, (void *)&i);
+    CHECK(s_G.nA9CFFC == 0x5A5A);              /* untouched: the slot was empty */
 
     a.pVtbl = &s_RecVtbl;
     s_nTickStep = 0;
@@ -1101,6 +1178,7 @@ int main(void)
     TestCheckOther();
     TestTickSteps();
     TestFrame();
+    TestFramePfn08Return();
     TestPage();
     TestPageSelect();
     TestPageFrame();

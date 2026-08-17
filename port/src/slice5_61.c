@@ -4,10 +4,13 @@
  * packet that turned out to be ALREADY IMPLEMENTED under a different name and
  * the six that are not tractable.
  *
- * FLOAT CONSTANTS -- read out of orig/BRD3D.dll .rdata with tools/pe.py, not
+ * FLOAT CONSTANTS -- read out of the images' .rdata with tools/pe.py, not
  * guessed:
- *     0x1008F3EC =  0.25f      (viewport scale/translate, 2.2 fixed point)
- *     0x1008F3F0 = -0.25f      (the Y SCALE only)
+ *     BRD3D    0x1008F3EC =  0.25f     (viewport scale/translate, 2.2 fixed)
+ *     BRD3D    0x1008F3F0 = -0.25f     (the Y SCALE only)
+ *     BRGlide  0x1007740C =  0.25f     (ALL FOUR -- Glide has no -0.25f here)
+ *     BRGlide  0x100A7518 =  480       (an INT, `fild`: the screen height)
+ * See BrGbiCall10024260, which now transcribes the Glide arithmetic.
  */
 #include "slice5_61.h"
 
@@ -71,25 +74,62 @@ void BrSub_10019290(void)
 }
 
 /* ==========================================================================
- * 0x10024260  G_MOVEMEM 0x80 -- load viewport
+ * 0x10023920 (Glide) / 0x10024260 (D3D)  G_MOVEMEM 0x80 -- load viewport
  * ========================================================================== */
 
 /* The original does `fild [slot] / fstp dword [slot] / fld dword [slot]`
  * around every conversion, i.e. it ROUNDS THE INTEGER TO FLOAT before the
  * multiply. Every value it converts is a sign-extended int16, which is exact
- * in a float, so the round trip is a no-op and is not reproduced literally. */
+ * in a float, so the round trip is a no-op and is not reproduced literally.
+ *
+ * BUILD DIVERGENCE -- HOW Y IS FLIPPED, and the port had the D3D answer.
+ *
+ * The two builds differ in exactly two places, and BOTH are on the Y axis:
+ *
+ *   Y SCALE.  D3D 0x1002429D multiplies by [0x1008F3F0] == -0.25f; every
+ *   other multiply in either build is [0x1008F3EC] / [0x1007740C] == +0.25f.
+ *   Glide 0x1002396A uses +0.25f here too -- BRGlide's .rdata does not carry
+ *   a -0.25f for this function at all.
+ *
+ *   Y TRANSLATE.  Glide opens with `fild dword [0x100A7518]` (0x10023925),
+ *   parks it in a stack slot, and closes the fourth value with
+ *   `fsubr dword [esp]` at 0x100239B0 -- `mem - ST0`, i.e.
+ *
+ *       vtransY = (float)screenHeight - 0.25f * v3
+ *
+ *   D3D 0x100242DD just stores 0.25f * v3 and has no such preamble; its
+ *   whole prologue is two instructions where Glide's is five.
+ *
+ * So the two builds flip the vertical axis by DIFFERENT MEANS -- D3D negates
+ * the scale and leaves the origin at the top, Glide keeps the scale positive
+ * and reflects the translate through the screen height.  They are not two
+ * spellings of one thing: taking D3D's negation without D3D's translate, or
+ * vice versa, gives geometry that is upside down about the wrong axis.
+ *
+ * THE COMMENT WAS PART OF THE DEFECT.  This banner previously read "the
+ * vertical scale comes out negated, because the drawing list counts down the
+ * screen and the renderer counts up", stated as a fact about the game.  It
+ * was a fact about BRD3D.dll, and it is the reason nobody re-derived the
+ * line under it.  CONVENTIONS.md: derive expected values from the
+ * disassembly, never from a comment.
+ *
+ * 0x100A7518 is Glide's grSstWinOpen height (480 in the shipped image, read
+ * with `fild` because it is an int32).  config/globals_shared.csv pairs it
+ * with D3D 0x100A81C4 at 9 votes, which is exactly BrScreenInfo::cy -- so the
+ * port already models it and no new global is needed. */
 /* WHAT IT DOES: handles the drawing command that loads the viewport -- the
  * mapping from the renderer's own coordinates onto the screen. It unpacks
  * four fixed-point numbers from the payload and scales them into the four
- * viewport values the projection uses. The vertical scale comes out negated,
- * because the drawing list counts down the screen and the renderer counts
- * up. */
-/* @implements 0x10024260 d3d BrGbiCall10024260 */
+ * viewport values the projection uses. The vertical one is measured down from
+ * the bottom of the screen rather than the top, which is how the drawing
+ * list's top-down coordinates become the renderer's bottom-up ones. */
+/* @implements 0x10023920 glide BrGbiCall10024260 */
 BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
 {
     BrRdpRegs      *pRegs = BrRdpGetRegs();
     const uint8_t  *pVp;
     int             vscaleX, vscaleY, vtransX, vtransY;
+    float           cyScreen;
 
     /* DEVIATION: w1 is a 32-bit address in the original and the port keeps
      * display-list words 32 bits wide, so on a 64-bit host it cannot hold a
@@ -109,10 +149,18 @@ BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
     vtransX = (int16_t)((uint16_t)pVp[8] | ((uint16_t)pVp[9] << 8));
     vtransY = (int16_t)((uint16_t)pVp[10] | ((uint16_t)pVp[11] << 8));
 
-    pRegs->f4BBF08 = (float)vscaleX *  0.25f;   /* 0x104BBF08 */
-    g_br4BC198     = (float)vscaleY * -0.25f;   /* 0x104BC198, NEGATED */
-    pRegs->f4C0BB0 = (float)vtransX *  0.25f;   /* 0x104C0BB0 */
-    pRegs->f4C0BB8 = (float)vtransY *  0.25f;   /* 0x104C0BB8 */
+    /* Glide 0x10023925 -- read ONCE at the top, before any of the four
+     * conversions, and used only by the last of them. */
+    cyScreen = (float)BrScreenGet()->cy;         /* 0x100A7518 */
+
+    /* Glide 0x10023950 / 0x10023970 / 0x10023990 / 0x100239B4.  The host
+     * field names are the D3D globals, because that is what slice2_15.h's
+     * BrRdpRegs models; the ARITHMETIC below is BRGlide's. */
+    pRegs->f4BBF08 = (float)vscaleX * 0.25f;    /* 0x105CCD48 / 0x104BBF08 */
+    g_br4BC198     = (float)vscaleY * 0.25f;    /* 0x105CCFDC / 0x104BC198 */
+    pRegs->f4C0BB0 = (float)vtransX * 0.25f;    /* 0x105CD9F8 / 0x104C0BB0 */
+    /* `fsubr dword [esp]` at 0x100239B0 is `mem - ST0`, not `ST0 - mem`. */
+    pRegs->f4C0BB8 = cyScreen - (float)vtransY * 0.25f;  /* 0x105CD9FC */
 
     return pCmd + 1;                            /* `add eax, 8` */
 }

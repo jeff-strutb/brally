@@ -458,10 +458,15 @@ void BrExt_10043330(void *pArg)
     (void)BrOptOpen2970((BrGameObj *)pArg);
 }
 
-void BrOptFn10044970(void *pEntity)
+/* RETURN VALUE: 0. 0x10044970 ends `xor eax, eax` at 0x10044A1E, and the
+ * +0x08 slot this is stored into is TESTED by 0x10048180 -- see br_phase.h.
+ * The frontier guard also returns 0, which is the same answer the original
+ * gives; there is no path here that can return anything else. */
+int32_t BrOptFn10044970(void *pEntity)
 {
     if (g_pBrSlice4PhaseCtx == NULL)
-        return;
+        return 0;
 
     (void)BrPhaseLeave_10044970(g_pBrSlice4PhaseCtx, pEntity);
+    return 0;
 }

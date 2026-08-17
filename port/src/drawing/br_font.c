@@ -598,6 +598,12 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * are simply swallowed. Characters that would fall off the left or top of the
  * screen get pulled back to the edge, but ones falling off the right or bottom
  * are still drawn in full. */
+/* TWO CLAIMS, because this body genuinely implements both: `fGlide` selects
+ * between the two divergences marked below and nothing else differs.  The
+ * Glide line was missing for the same reason BrFontMeasure's was -- see the
+ * note there -- which left the reference build's emitter unclaimed while the
+ * D3D one was claimed, in a file whose whole point is that it does both. */
+/* @implements 0x10015B10 glide BrTextEmitString */
 /* @implements 0x10018590 d3d BrTextEmitString */
 void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 {
@@ -908,7 +914,27 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * the next glyph starts.  What they disagree about is the TILE, which is one
  * column wider, and the SPACE, which the emitter pads by one
  * (0x100161E1 `lea ebp,[ebp+edx+1]` against 0x10016A2A's plain `add`).  So a
- * caption with spaces draws wider than it measures in both builds. */
+ * caption with spaces draws wider than it measures in both builds.
+ *
+ * WHY THIS CLAIM LINE HAD TO BE ADDED, which is the interesting part.
+ *
+ * A census of every d3d-tagged claim looking for functions where the builds
+ * diverge and the port followed BRD3D reported 0x100193C0 as a hit, pointing
+ * at slice6_76.c's BrSub_100193C0 and its `g_i0B8C90 <= 1 &&`.  That reading
+ * is CORRECT -- it is the D3D one and the claim says `d3d` -- and the tree
+ * has the build-aware routine right here.  The census could not see it,
+ * because THIS FUNCTION CARRIED NO @implements LINE AT ALL, so the only claim
+ * on the pair was the D3D-only twin's.
+ *
+ * A function with no claim is invisible to every tool that reads the manifest,
+ * and the failure direction is the dangerous one CONVENTIONS.md names: it
+ * fails toward "missing", so the census reported work to do that was already
+ * done.  The Glide claim below is what makes the pair visible.
+ *
+ * The D3D number stays with slice6_76.c.  Two bodies implement 0x100193C0 and
+ * that is a real duplicate (br_font.h:547 records it); merging them is a
+ * separate job and is not made better by moving a label. */
+/* @implements 0x10016980 glide BrFontMeasure */
 int32_t BrFontMeasure(const BrFont *pFont, const char *psz,
                       int32_t scale, int32_t fHiRes, int32_t detail)
 {

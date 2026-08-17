@@ -70,7 +70,9 @@ const int32_t *g_brPACED34;
 BrOptFlagObj  *g_brPAA29D8;
 BrObj29D4     *g_brPAA29D4;
 
-BrOptObj *g_brPAA2904, *g_brPAA2908, *g_brPAA2940, *g_brPAA2948;
+/* g_brPAA2904 is deliberately absent: 0x10AA2904 is one dword and its storage
+ * is the slot br_phasecur.h owns.  slice2_25.h makes the name an alias for it. */
+BrOptObj *g_brPAA2908, *g_brPAA2940, *g_brPAA2948;
 BrOptObj *g_brPAA294C, *g_brPAA2950, *g_brPAA2954, *g_brPAA296C;
 BrOptObj *g_brPAA2970, *g_brPAA298C, *g_brPAA2998, *g_brPAA29B8;
 

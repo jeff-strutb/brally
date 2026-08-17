@@ -59,10 +59,30 @@
  *     pointer (display-list branch targets, .rca fixups) the port keeps the
  *     u32 and, where it must dereference, goes through a caller-supplied
  *     resolver. Noted at each site.
- *   - x87 computes at 80-bit internal precision and its comparison flags
- *     treat unordered as "less or equal". Neither is reproduced; results are
- *     computed in float/double and NaN inputs will take different branches.
- *     Where the original's evaluation ORDER is observable it is preserved.
+ *   - x87 computes at 80-bit internal precision. That is not reproduced;
+ *     results are computed in float/double. Where the original's evaluation
+ *     ORDER is observable it is preserved.
+ *
+ *     THE SECOND HALF OF THIS CLAUSE HAS BEEN DELETED, AND WHAT IT SAID IS
+ *     WORTH RECORDING. It read: "...and its comparison flags treat unordered
+ *     as 'less or equal'. Neither is reproduced; ... NaN inputs will take
+ *     different branches."
+ *
+ *     That is a FILE-WIDE PRE-AUTHORISATION for a defect class this project
+ *     has now found live SIX times, and it was self-contradicted: the note
+ *     over BrGbiLightVertex treats an identical `test ah,1` mismatch as a
+ *     real bug and repairs it, in this same file. One clause waived what
+ *     another fixed.
+ *
+ *     CONVENTIONS.md's rule is a deviation documented AT THE SITE WITH A
+ *     REASON. A file-wide waiver is not that. It converts an unbounded number
+ *     of unexamined divergences into "documented" ones, and its practical
+ *     effect was that an auditor had to argue past it rather than just read
+ *     the code -- so 24 of this file's 31 x87 compare sites went unchecked
+ *     until someone did.
+ *
+ *     All 31 have now been derived from the flag masks. Where a comparison
+ *     genuinely cannot be reproduced it is documented at its own site.
  *   - Fields whose meaning could not be established are named positionally
  *     (fNN = the low bytes of the global's address).
  */
@@ -660,8 +680,11 @@ void BrCopy8Words(void *pDst, const void *pSrc);
  * (0x1067B548), both owned by slice1_05. */
 void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList);
 
-/* 0x1002B9E0  Byte-swap `count` u16s in place. */
-void BrSwapU16Array(void *pv, int count);
+/* 0x1002B9E0  Byte-swap `count` u16s in place.  DEFINED IN br_bits.c, which
+ * also carries BRGlide's 0x10018A50 for it -- br_track.c had its own copy of
+ * the same 29 bytes.  Declared there; re-declared here only so this header
+ * stays a complete index of the range. */
+#include "br_bits.h"
 /* 0x1002BA20  Byte-swap the four u16s of one 8-byte record.
  * 0x1002BA00  ... over an array of them. */
 void BrSwapU16x4(void *pv);

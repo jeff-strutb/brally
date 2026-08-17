@@ -54,6 +54,23 @@ void         BrGameStepRegister(BrGameStepFn pfn, int id);
 
 /* 0x1002E302, 21 bytes. */
 int          BrGameStepIs(BrGameStepFn pfn);
+
+/* The same 0x1002E302, for the modules that model this slot as a plain
+ * ADDRESS rather than as a host function pointer.
+ *
+ * THIS SLOT HAD THREE HOST NAMES.  0x1002E302 / 0x1002E317 / 0x1002E324 are
+ * BRD3D's 0x10034C51 / 0x10034C66 / 0x10034C73 -- shared.csv pairs all three
+ * as byte-identical -- and BRD3D reaches the same object as 0x106C0964, which
+ * slice4_50.h modelled as `g_brHook6C0964` and slice1_05.h modelled AGAIN as
+ * a member `BrHooks::pfnC`.  One original dword, three host objects, and the
+ * two D3D copies could not see this one because none of them shares a name.
+ *
+ * The identification is worth stating because it also explains a call site:
+ * slice2_19.c tests `BrHookIsCurrent(g_BrPadHookFn)` before granting the pad
+ * its two extra buttons, and `g_BrPadHookFn` is the literal 0x1002C500 --
+ * which config/shared.csv pairs with BRGlide's 0x10019A70, THE RACE STEP.  So
+ * that test reads "are we in a race", and it is this slot it asks. */
+int          BrGameStepIsAddr(const void *pv);
 /* 0x1002E324, 11 bytes.  Returns 0 if the slot is NULL and 1 if it ran. */
 int          BrGameStepInvoke(void);
 

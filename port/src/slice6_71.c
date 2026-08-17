@@ -121,9 +121,9 @@ void BrExt_10038F30(int32_t a)
     /* Both the phase and 0x100AC300 must be non-zero. The phase's +0x68 is
      * cleared BEFORE the vtable call, and the global is re-read for the
      * call's `this` exactly as the original does. */
-    if (g_brS71.pAA2904 != NULL && g_brS71.n0AC300 != 0) {
-        g_brS71.pAA2904->f68 = 0;
-        g_brS71.pAA2904->pVtbl->f18(g_brS71.pAA2904, NULL);
+    if (BR_PHASE_CUR != NULL && g_brS71.n0AC300 != 0) {
+        BR_PHASE_CUR->f68 = 0;
+        BR_PHASE_CUR->pVtbl->f18(BR_PHASE_CUR, NULL);
     }
 
     pEnv->pfn1002C4A0();

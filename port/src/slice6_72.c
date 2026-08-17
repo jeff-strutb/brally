@@ -290,7 +290,12 @@ void BrSub_1003407D(float a, float b)
 /* WHAT IT DOES: fills in one corner of a flat coloured rectangle for the
  * graphics card -- its position, its colour and which bit of the texture it
  * takes. Six of these make the two triangles that a filled box is drawn as. */
-/* @implements 0x1001BE90 d3d Br72FillVert */
+/* NOT A CLAIM.  This is a HELPER of BrSub_1001BE90 below, which is where
+ * 0x1001BE90's @implements line lives.  It used to be here, and it was the
+ * br_ftol64 shape exactly: 1,934 bytes of original attached to eight field
+ * writes, while the real transcription sat forty lines further down with no
+ * claim on it at all.  The original has no such helper -- the eight stores
+ * are written out six times inline at 0x1001C2D3 and 0x1001C3E7. */
 static void Br72FillVert(BrD3DTLVertex *pV, float x, float y,
                          uint32_t color, float tu, float tv)
 {
@@ -304,6 +309,33 @@ static void Br72FillVert(BrD3DTLVertex *pV, float x, float y,
     pV->tv       = tv;
 }
 
+/* RENDERER SLOT -- THIS IS THE D3D IMPLEMENTATION, AND THE GLIDE ONE IS NOT
+ * TRANSCRIBED.  See "Renderer slots" in CONVENTIONS.md for why that is stated
+ * rather than fixed.
+ *
+ *     slot           the rectangle filler, 2 aligned callsites
+ *     D3D    0x1001BE90   1,934 bytes   534 instructions   <-- this body
+ *     Glide  0x1001E380     914 bytes   228 instructions   NOT PORTED
+ *     config/shared.csv: class `renderer`, matched_by `slot`, similarity 0.118
+ *
+ * The two are not variants of one routine.  This body builds BrD3DTLVertex
+ * records -- rhw, specular, a D3D device -- and the Glide body reaches the
+ * hardware through glide2x.dll directly: its calls resolve to _grDrawTriangle,
+ * _grClipWindow, _grAlphaCombine, _grAlphaBlendFunction, _grAlphaTestFunction,
+ * _grAlphaTestReferenceValue, _grCullMode, _grDepthMask and
+ * _grDepthBufferFunction.  There is no constant to swap and no gate to
+ * restore; there are two implementations and this tree contains one.
+ *
+ * The `d3d` tag below is therefore ACCURATE, not a defect -- it is the reason
+ * a census of d3d-tagged claims surfaces this address, and the reason the
+ * right response is a label rather than an edit. */
+/* WHAT IT DOES: paints a flat coloured rectangle over part of the screen. It
+ * first pulls the corners back inside the visible area, works out the colour
+ * from whichever of the two colour sources the renderer currently has live,
+ * and then draws the box -- either as two triangles through the graphics card,
+ * or, on a machine not running the Direct3D path, by handing the rectangle to
+ * the software surface instead. */
+/* @implements 0x1001BE90 d3d BrSub_1001BE90 */
 void BrSub_1001BE90(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
     Br72Env      *pE = g_pBr72Env;

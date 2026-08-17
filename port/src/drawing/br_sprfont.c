@@ -112,7 +112,11 @@ void BrSprFontRectInit_1005F800(void)
  * not recognise falls back to sheet zero, which is not a lettering sheet at all
  * but the general artwork sheet, so an unexpected style draws garbage rather
  * than plain text. */
-/* @implements 0x1005B730 d3d BrSprFontSheet_1005B730 */
+/* NOT A CLAIM.  This is 0x1005B730..0x1005B75F, the `cmp/jne` ladder that
+ * opens it, split out because 0x1005B7A0's caller needs it on its own.
+ * 0x1005B730's @implements line lives on BrSprFontGlyphA_1005B730 below,
+ * which is the whole 112 bytes: this ladder, the sheet lookup, the two
+ * __ftol conversions and the blit at 0x1005B790. */
 int32_t BrSprFontSheet_1005B730(uint8_t bKind)
 {
     /* `xor edx,edx` before the chain is the whole default arm. */
@@ -137,6 +141,12 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
     return (pS != NULL) ? pS->fBlit : 0;
 }
 
+/* WHAT IT DOES: draws one character of the small lettering at the given place
+ * on screen. It picks the lettering sheet from the text's style, rounds the
+ * position down to whole pixels, and hands the sheet, the character's
+ * rectangle and the sheet's transparency setting to whatever does the actual
+ * drawing. */
+/* @implements 0x1005B730 d3d BrSprFontGlyphA_1005B730 */
 void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
                               float x, float y, int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)

@@ -287,26 +287,95 @@ static void test_centre_x(void)
 /* 0x1005B540 -- character map                                         */
 /* ------------------------------------------------------------------ */
 
+/* Every code 0..0xFF whose answer is NOT zero, decoded out of the two shipped
+ * images (both agree, byte for byte) rather than taken from any comment. The
+ * loop below asserts this table AND asserts zero for every code not in it, so
+ * it is exhaustive over the function's whole reachable input domain -- adding
+ * a spurious record or deleting a real one both fail. */
+static const struct { int32_t code; uint8_t ch; } s_aCharMapNonZero[] = {
+    { 0x00, 0x54 },   /* "Time" -- see the UNREACHABLE note below           */
+    { 0x09, 0x09 },   /* TAB                                               */
+    { 0x80, 0x1C },
+    { 0xA0, 0x34 },
+    { 0xAA, 0xC6 },
+    { 0xBA, 0x3A },   /* ':'  -- one of the three real VK_OEM records      */
+    { 0xBD, 0x2D },   /* '-'                                               */
+    { 0xBE, 0x2E },   /* '.'                                               */
+    { 0xD0, 0xE1 },
+    { 0xE2, 0xFF },
+    { 0xF0, 0xFF }
+    /* 0x20..0x7E identity is handled by the loop, not listed. */
+};
+
 static void test_charmap(void)
 {
-    int i;
+    int i, k;
 
     /* Printable ASCII maps to itself. */
     for (i = 0x20; i <= 0x7E; ++i) {
         CHECK(BrCharMapLookup(i) == (uint8_t)i);
     }
 
-    /* The three VK_OEM codes the map exists for. */
-    CHECK(BrCharMapLookup(0xBA) == ':');
-    CHECK(BrCharMapLookup(0xBD) == '-');
-    CHECK(BrCharMapLookup(0xBE) == '.');
+    /* EXHAUSTIVE over 0..0xFF. The original's loop bound is an ADDRESS, so
+     * it walks 784 records -- 686 of them past the module's real table -- and
+     * fifteen of those accidental (code, ch) pairs have a code a WM_CHAR
+     * wParam can carry. This port transcribed 98 of the 784 and every one of
+     * the fifteen answered 0 instead. */
+    for (i = 0; i <= 0xFF; ++i) {
+        uint8_t want = (i >= 0x20 && i <= 0x7E) ? (uint8_t)i : 0u;
+        for (k = 0; k < (int)(sizeof s_aCharMapNonZero
+                              / sizeof s_aCharMapNonZero[0]); ++k) {
+            if (s_aCharMapNonZero[k].code == i) {
+                want = s_aCharMapNonZero[k].ch;
+                break;
+            }
+        }
+        ++g_checks;
+        if (BrCharMapLookup(i) != want) {
+            printf("FAIL %s:%d  BrCharMapLookup(0x%02X) == 0x%02X, want 0x%02X\n",
+                   __FILE__, __LINE__, i, BrCharMapLookup(i), want);
+            ++g_fails;
+        }
+    }
 
-    /* Anything else is a miss, and a miss is 0 -- which is what 0x1005B570
-     * treats as "no character to append". */
-    CHECK(BrCharMapLookup(0x00) == 0);
+    /* THE ONE THAT MATTERS. Pressing Tab appends a character in the original.
+     * Record 544 (BRGlide 557) is the pair of dwords (9, 9) that sits just
+     * before the first intensity ramp at 0x100ADF6C; the record framing turns
+     * it into code 9 -> 0x09. This port returned 0 and appended nothing. */
+    CHECK(BrCharMapLookup(0x09) == 0x09);
+
+    /* UNREACHABLE, AND SAID SO. Code 0 matches record 156 (BRGlide 163),
+     * whose `ch` dword is 0x656D6954 -- the first four bytes of the string
+     * "Time" -- so the function returns 0x54, 'T'. The port used to return 0
+     * here and a test asserted that WRONG answer as if it were verified.
+     *
+     * It cannot happen in the shipped game, and the instruction that stops it
+     * is the reason, not an assumption:
+     *
+     *     1005B6A6  a1e433aa10  mov eax, [0x10AA33E4]
+     *     1005B6AB  3bc5        cmp eax, ebp        ; ebp == 0
+     *     1005B6AD  746d        je  0x1005B71C      ; never reaches the lookup
+     *
+     * The value is still asserted, because a caller-side filter is not a
+     * property of BrCharMapLookup. */
+    CHECK(BrCharMapLookup(0x00) == 0x54);
+
+    /* Code 8 is diverted the same way, by `cmp eax, 8 / jne 0x1005B6E0` at
+     * 0x1005B6AF -- it is the backspace path. No record has code 8 in either
+     * image, so the answer would have been 0 regardless. */
+    CHECK(BrCharMapLookup(0x08) == 0);
+
+    /* Genuine misses -- no record in either image carries these codes. */
     CHECK(BrCharMapLookup(0x1F) == 0);
     CHECK(BrCharMapLookup(0x7F) == 0);
     CHECK(BrCharMapLookup(0x1234) == 0);
+
+    /* -1 IS ZERO FOR A DIFFERENT REASON, and the distinction is why this one
+     * is kept: 0xFFFFFFFF is not a miss. It MATCHES record 561 (BRGlide 574),
+     * one of the -1 fields of the 0x20-byte descriptor block at 0x100AE080,
+     * whose paired dword is 0. The port reaches the same answer by missing,
+     * which is the right answer by luck. Unreachable anyway -- the wParam is
+     * 0..0xFF. */
     CHECK(BrCharMapLookup(-1) == 0);
 }
 

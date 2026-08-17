@@ -265,6 +265,77 @@ static void TestWalk(void)
           "'a' and 'A' are the same glyph at the same advance");
 }
 
+/* ---------------------------------------------------------------------- *
+ * 0x1005B730 ITSELF, called directly.
+ *
+ * BrSprFontGlyphA_1005B730 now carries 0x1005B730's @implements line (it used
+ * to sit on BrSprFontSheet_1005B730, which is only the `cmp/jne` ladder at
+ * 0x1005B730..0x1005B75F).  Everything above reaches this function through
+ * BrSprFontDraw_1005B2B0, which always passes the box's own kind and a
+ * non-negative pen -- so the two facts that distinguish the WHOLE function
+ * from its ladder were untested.  Both are read off the bytes:
+ *
+ *   THE FOURTH ARGUMENT IS DEAD.  `ret 0x10` is four dwords: [esp+4] is the
+ *   glyph (movsx word, 0x1005B770), [esp+0xC] feeds the first __ftol and
+ *   entry+8 the second.  [esp+0x10] is never read by any instruction in the
+ *   function.  The sheet comes from `mov al,[ecx+8]` at 0x1005B730 -- the
+ *   BOX -- so a caller that pushes a contradictory kind is ignored.
+ *
+ *   THE CONVERSION TRUNCATES TOWARD ZERO.  0x1005B780 and 0x1005B78A both
+ *   call 0x1007C8A0, which is __ftol: a 64-bit fistp under a round-toward-
+ *   zero control word, low dword taken.  For a negative coordinate that is
+ *   -3, where a floor would give -4.  Nothing else in this file feeds it a
+ *   negative number.
+ * ---------------------------------------------------------------------- */
+static void TestGlyphDirect(void)
+{
+    BrTextBox box;
+    Rec       rec;
+
+    /* The box says kind 1 (sheet 3); the dead argument says kind 4 (sheet
+     * 0x34).  The box must win, because the original never reads the
+     * argument. */
+    memset(&rec, 0, sizeof rec);
+    BoxInit(&box, "A", 1, 0.0f, 0.0f);
+    BrSprFontGlyphA_1005B730(&box, 5, 10.0f, 20.0f, 4, RecBlit, &rec);
+    CHECK(rec.n == 1, "one call, one blit");
+    if (rec.n == 1) {
+        CHECK(rec.iSpr[0] == 3,
+              "the sheet is the BOX's kind, not the dead fourth argument");
+        CHECK(rec.fBlit[0] == g_aBrUiSprite[3].fBlit,
+              "the blit flag is sheet 3's table entry +0x14");
+        CHECK(memcmp(rec.rc[0], g_aBrSprRectA[5], sizeof rec.rc[0]) == 0,
+              "the rect is table A's cell 5, the argument's own index");
+        CHECK(rec.x[0] == 10 && rec.y[0] == 20,
+              "x and y arrive the way round the two __ftols take them");
+    }
+
+    /* Change ONLY the dead argument.  Nothing may move. */
+    memset(&rec, 0, sizeof rec);
+    BrSprFontGlyphA_1005B730(&box, 5, 10.0f, 20.0f, 0, RecBlit, &rec);
+    CHECK(rec.n == 1 && rec.iSpr[0] == 3,
+          "the fourth argument changes nothing at all");
+
+    /* Truncation toward zero, on both coordinates. */
+    memset(&rec, 0, sizeof rec);
+    BrSprFontGlyphA_1005B730(&box, 5, -3.5f, -7.9f, 1, RecBlit, &rec);
+    CHECK(rec.n == 1, "a negative pen still blits");
+    if (rec.n == 1) {
+        CHECK(rec.x[0] == -3,
+              "__ftol truncates toward zero: -3.5 is -3, not -4");
+        CHECK(rec.y[0] == -7,
+              "and -7.9 is -7, not -8");
+    }
+
+    /* Positive fractions truncate the same way, which is the half of it a
+     * floor would agree with -- asserted so a mutation to floor() has to
+     * fail on the negative case rather than on nothing. */
+    memset(&rec, 0, sizeof rec);
+    BrSprFontGlyphA_1005B730(&box, 5, 9.9f, 0.5f, 1, RecBlit, &rec);
+    CHECK(rec.n == 1 && rec.x[0] == 9 && rec.y[0] == 0,
+          "9.9 -> 9 and 0.5 -> 0");
+}
+
 /* ---------------------------------------------------------------------- */
 
 /* ORIENTATION. Rasterise one glyph out of the real sheet and weigh its ink
@@ -366,6 +437,7 @@ int main(void)
     TestTablesMeetMetrics();
     TestSheetMap();
     TestWalk();
+    TestGlyphDirect();
     fArt = TestOrientation();
 
     if (!fArt) {

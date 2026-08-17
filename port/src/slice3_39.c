@@ -312,6 +312,55 @@ BrCharMapEntry g_BrCharMap[BR_CHARMAP_COUNT] = {
     { 0x7C, 0x7C },
     { 0x7D, 0x7D },
     { 0x7E, 0x7E },
+
+    /* ------------------------------------------------------------------
+     * THE FIFTEEN RECORDS PAST THE 98
+     * ------------------------------------------------------------------
+     * The 98 above are the module's real, hand-written table. The original's
+     * loop bound is the ADDRESS 0x100AE6D8, not a count, so it keeps walking
+     * for another 686 records into whatever follows in .data -- and fifteen
+     * of those accidental (code, ch) pairs have a code the caller can
+     * actually deliver. slice3_39.h used to call them "string literals and
+     * pointers" whose codes "get a garbage character back", and declined to
+     * transcribe them on that basis. That rationale was wrong twice: the
+     * bytes are not all strings, and nothing about the result is garbage --
+     * the original returns these exact values, deterministically, on every
+     * run of both builds.
+     *
+     * Decoded out of the images rather than reasoned about. The D3D and
+     * GLIDE record indices differ because the two string pools differ in
+     * length; the (code, ch) PAIRS are byte-identical in both, as is the
+     * whole 0..0xFF behaviour of the function (checked code by code, zero
+     * disagreements). Both indices are given so either image can be checked.
+     *
+     * ORDER MATTERS and is preserved: the original takes the FIRST match, so
+     * these must stay AFTER the 98. None of their codes appears among the
+     * 98, so no entry here can shadow a real one, and their codes are all
+     * distinct from each other, so their order among themselves is free.
+     *
+     * With these fifteen the port is COMPLETE over the whole reachable input
+     * domain: 113 distinct codes exist in 0..0xFF across all 784 records,
+     * 98 first-matched by the real table and 15 here.
+     *
+     *   code  ch          d3d rec @ va          glide rec @ va       what it is
+     */
+    { 0x00, 0x656D6954 },  /* 156 @ 100AD338  |  163 @ 100ACB10  "Time" -- 'T' */
+    { 0x09, 0x00000009 },  /* 544 @ 100ADF58  |  557 @ 100AD760  the pair (9,9)
+                            * that precedes the first ramp. TAB. This is the
+                            * one that changes what the player sees. */
+    { 0x01, 0x00000000 },  /* 545 @ 100ADF60  |  558 @ 100AD768 */
+    { 0xAA, 0x000000C6 },  /* 549 @ 100ADF80  |  562 @ 100AD788  ramp 1 */
+    { 0xE2, 0x000000FF },  /* 550 @ 100ADF88  |  563 @ 100AD790  ramp 1 */
+    { 0xD0, 0x000000E1 },  /* 554 @ 100ADFA8  |  567 @ 100AD7B0  ramp 2 */
+    { 0xF0, 0x000000FF },  /* 555 @ 100ADFB0  |  568 @ 100AD7B8  ramp 2 */
+    { 0x04, 0x00000000 },  /* 591 @ 100AE0D0  |  604 @ 100AD8D8  descriptors */
+    { 0x80, 0x0000001C },  /* 592 @ 100AE0D8  |  605 @ 100AD8E0  descriptors */
+    { 0x03, 0x00000000 },  /* 596 @ 100AE0F8  |  609 @ 100AD900 */
+    { 0x05, 0x00000000 },  /* 601 @ 100AE120  |  614 @ 100AD928 */
+    { 0x07, 0x00000000 },  /* 606 @ 100AE148  |  619 @ 100AD950 */
+    { 0x06, 0x00000000 },  /* 616 @ 100AE198  |  629 @ 100AD9A0 */
+    { 0xA0, 0x00000034 },  /* 617 @ 100AE1A0  |  630 @ 100AD9A8  '4' */
+    { 0x02, 0x00000000 },  /* 621 @ 100AE1C0  |  634 @ 100AD9C8 */
 };
 
 /* 0x100AB418 -- the 21-entry UI style-rectangle pool, read out of the image.
@@ -555,9 +604,11 @@ float BrTextBoxCentreX(BrTextBox *pBox)
  * 0x1005B540 -- character map lookup
  * ===================================================================== */
 
-/* WHAT IT DOES: translates a key code into the character it should produce,
- * by walking a small table until it finds a match. Codes that are not in the
- * table produce nothing. */
+/* WHAT IT DOES: translates a typed key into the character it should produce,
+ * by walking a table until it finds a match and taking the first one. Keys
+ * that are not in the table produce nothing -- and a handful of keys, Tab
+ * among them, produce something only because the walk runs off the end of the
+ * real table and keeps going through the data that happens to follow it. */
 /* @implements 0x1005B540 d3d BrCharMapLookup */
 uint8_t BrCharMapLookup(int32_t code)
 {

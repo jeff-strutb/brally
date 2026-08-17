@@ -54,6 +54,10 @@
  * see PART 2 on why this file must not own a second copy of them. */
 #include "slice1_03.h"
 
+/* The routines this file and slice2_16.c BOTH used to transcribe.  Same
+ * original function, one host body -- see br_dlshared.h. */
+#include "br_dlshared.h"
+
 #include <string.h>
 
 /* slice1_05.c owns 0x100306C0 (D3D) == 0x10029D70 (Glide), which shared.csv
@@ -246,7 +250,11 @@ void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
 
 typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
 
-/* 0x10021240 -- 228 of the 256 table slots point here. */
+/* 0x10021240 -- 228 of the 256 table slots point here.  BRD3D's copy is
+ * 0x100243D0 and slice5_60.c ports it as BrGbiCall100243D0; the whole
+ * function is `add eax,8`, so the shared part is the step, and it is named
+ * once in br_dlshared.h rather than written as a bare 8 in both files. The
+ * counter is this port's, not the original's. */
 /* WHAT IT DOES: the do-nothing handler that most of the drawing-command
  * table points at: it counts the command as unhandled and steps over it. The
  * N64 command set is far larger than the game actually uses, so the great
@@ -255,7 +263,7 @@ typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
 static const uint8_t *br_dl_skip(BrDl *pDl, const uint8_t *p)
 {
     pDl->cUnhandled++;
-    return p + 8;
+    return p + BR_DLS_SKIP_BYTES;
 }
 
 /* ---- 0x01 G_MTX  (0x10021080, SHARED) ------------------------------- */
@@ -655,33 +663,16 @@ float BrDlColourScale(const BrDl *pDl)
     return pDl->fVtxLit ? (1.0f / BR_DL_COLOUR_MAX) : 1.0f;
 }
 
-/* --- 0x10022120 (== BRD3D 0x10022DC0 == slice2_16's BrGbiClipCodes, and
- * `shared` in config/shared.csv) -----------------------------------------
- * 0x10021A20 inlines these seven tests; 0x10021C70 calls them.  Factored out
- * here so both transforms use the one copy.  slice2_16 already models the
- * same function, on a bare float array with a different layout; the tests and
- * their order agree exactly and this note exists so a later pass reads them
- * as one function under two builds' addresses, not as two opinions.
- *
- * Every test is `fcomp 0.0 / test ah,1`, i.e. C0 -- STRICTLY LESS THAN, and
- * NaN takes the true side because an unordered compare also sets C0.  Written
- * as `!(v >= 0)` for exactly that reason. */
-/* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
- * viewing frustum and reports which of the seven boundaries it crossed, so
- * the triangle assembler knows whether to clip, keep or discard. A
- * coordinate that is not a number counts as outside. */
-/* @implements 0x10022120 glide br_dl_outcode */
+/* --- 0x10022120, and it is now ONE body -------------------------------
+ * 0x10021A20 inlines these seven tests; 0x10021C70 calls them.  The tests
+ * themselves used to be written out here AND again in slice2_16.c as
+ * BrGbiClipCodes (BRD3D 0x10022DC0), and the two disagreed about NaN for as
+ * long as both existed.  Both are gone; br_dlshared.c holds the one copy and
+ * carries both addresses.  This is now nothing but the BrDlVtx field
+ * ordering, which is this file's own business. */
 static int32_t br_dl_outcode(const BrDlVtx *pV)
 {
-    int32_t oc = 0;
-    if (!(pV->cw >= 0.0f))              oc |= BR_DL_CLIP_W;
-    if (!(pV->cz + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_NEAR;
-    if (!(pV->cw - pV->cz >= 0.0f))     oc |= BR_DL_CLIP_FAR;
-    if (!(pV->cx + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_LEFT;
-    if (!(pV->cw - pV->cx >= 0.0f))     oc |= BR_DL_CLIP_RIGHT;
-    if (!(pV->cy + pV->cw >= 0.0f))     oc |= BR_DL_CLIP_BOTTOM;
-    if (!(pV->cw - pV->cy >= 0.0f))     oc |= BR_DL_CLIP_TOP;
-    return oc;
+    return BrDlsClipCodes(pV->cx, pV->cy, pV->cz, pV->cw);
 }
 
 /* --- 0x10022070, and the identical tail 0x10021BAD..0x10021C48 ---------
@@ -1303,15 +1294,37 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
     int32_t ulx, uly, lrx, lry, tile = 0;
 
     if (fTextured) {
-        /* 0x10021570 / 0x100219D0 both call 0x100215C0 with
-         * (ulx, uly, lrx, lry, tile) in 10.2; the integer form multiplies
-         * by four on the way in, so both are reduced to pixels here. */
-        lrx = (int32_t)((w0 >> 12) & 0xFFFu);
-        lry = (int32_t)(w0 & 0xFFFu);
-        ulx = (int32_t)((w1 >> 12) & 0xFFFu);
-        uly = (int32_t)(w1 & 0xFFFu);
-        tile = (int32_t)((w1 >> 24) & 7u);
-        if (fFixed) { lrx >>= 2; lry >>= 2; ulx >>= 2; uly >>= 2; }
+        /* 0x10021570 (0xE4) and 0x100219D0 (0xE3) are br_dlshared.c's -- ONE
+         * body, both builds' addresses, and slice2_16.c's BrGbiTileRect /
+         * BrGbiTileRectS now go through the same one.
+         *
+         * CORRECTED HERE.  This file used to decode both forms itself, and it
+         * had the scaling BACKWARDS: it shifted 0xE4's corners RIGHT by two
+         * and left 0xE3's alone.  The bytes say the opposite -- 0xE4 shifts
+         * nothing (`and 0xFFF`, 0x1002157E onward) and 0xE3 shifts LEFT by
+         * two (`shl edx,2` at 0x100219EE, `shr ecx,0xA / and 0x3FFC` at
+         * 0x100219EB).  The comment that stood here even SAID "the integer
+         * form multiplies by four", and the code below it did neither.
+         *
+         * The two mistakes cancelled at the sink, because a right shift of
+         * the quarter-pixel form and no shift of the whole-pixel form both
+         * land on whole pixels -- so nothing downstream could see it.  The
+         * decode is now the original's, in quarter-pixels, and the
+         * conversion to the pixels this file's sink deals in is done once,
+         * below, where it is visible.
+         *
+         * DEVIATION: the sink is a port-level observer, not a transcription
+         * of 0x100215C0, and it takes whole pixels because 0xE1 and 0xF6
+         * deliver whole pixels.  The `>> 2` here is that adaptation and
+         * nothing else; it discards the sub-pixel bits, which the original
+         * keeps and passes on. */
+        BrDlsTileRect r;
+        BrDlsTileRectDecode(w0, w1, !fFixed, &r);
+        tile = r.tile;
+        ulx = r.ulx >> 2;
+        uly = r.uly >> 2;
+        lrx = r.lrx >> 2;
+        lry = r.lry >> 2;
     } else if (fFixed) {
         /* 0xF6, 0x1001E320.  Unsigned 10.2. */
         lrx = (int32_t)((w0 >> 14) & 0x3FFu);
@@ -1337,7 +1350,8 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
     if (pDl->sink.pfnRect)
         pDl->sink.pfnRect(pDl->sink.pUser, fTextured, tile, ulx, uly, lrx, lry);
     /* 0xE4 alone is three double-words. */
-    return p + ((fTextured && fFixed) ? 0x18 : 8);
+    return p + ((fTextured && fFixed) ? BR_DLS_TILERECT_E4_BYTES
+                                      : BR_DLS_SKIP_BYTES);
 }
 
 /* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
@@ -1357,12 +1371,13 @@ static const uint8_t *br_dl_fillE1(BrDl *d, const uint8_t *p)
  * command behind heads-up display panels and menu artwork -- with its
  * corners given in quarter-pixel units. It swallows three commands' worth of
  * data, because the texture coordinates follow it. */
-/* @implements 0x10021570 glide br_dl_texE4 */
+/* The decode is br_dlshared.c's BrDlsTileRectDecode, which carries this
+ * address and BRD3D's 0x10021510. */
 static const uint8_t *br_dl_texE4(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 1); }
 /* WHAT IT DOES: the same textured screen rectangle with its corners given as
  * whole pixels, scaled up to quarter-pixels on the way through. */
-/* @implements 0x100219D0 glide br_dl_texE3 */
+/* Likewise 0x100219D0 / BRD3D 0x10021B80. */
 static const uint8_t *br_dl_texE3(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 0); }
 
@@ -1446,25 +1461,24 @@ static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
 /* ---- 0xF2 G_SETTILESIZE  (0x1001EC30, SHARED) -----------------------
  * The D3D twin is 0x1001CF30, which slice2_16.c ports as BrGbiSetTileSize
  * -- it was called BrGbiSetScissor until this pass.  Same 178 bytes, same
- * slot 0xF2 in both builds' tables; one function under two addresses. */
+ * slot 0xF2 in both builds' tables; one function under two addresses, and
+ * ONE BODY: br_dlshared.c holds the decode and carries both addresses. */
 /* WHAT IT DOES: tells the renderer which rectangle of a texture the next
  * drawings will use, and works out that rectangle's width and height in
  * texture pixels. Sign is preserved throughout, so a negative span stays
  * negative. */
-/* @implements 0x1001EC30 glide br_dl_settilesize */
 static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
 {
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
+    BrDlsTileSize t;
 
-    pDl->uls = br_dl_s12(w0 >> 12);
-    pDl->ult = br_dl_s12(w0);
-    pDl->lrs = br_dl_s12(w1 >> 12);
-    pDl->lrt = br_dl_s12(w1);
-    /* `(lrs - uls + 4) >> 2` with an ARITHMETIC shift, so a negative span
-     * rounds toward -inf.  Preserved. */
-    pDl->tileW = (pDl->lrs - pDl->uls + 4) >> 2;
-    pDl->tileH = (pDl->lrt - pDl->ult + 4) >> 2;
-    return p + 8;
+    BrDlsTileSizeDecode(br_dl_w(p), br_dl_w(p + 4), &t);
+    pDl->uls   = t.uls;
+    pDl->ult   = t.ult;
+    pDl->lrs   = t.lrs;
+    pDl->lrt   = t.lrt;
+    pDl->tileW = t.tileW;
+    pDl->tileH = t.tileH;
+    return p + BR_DLS_SKIP_BYTES;
 }
 
 /* ---- 0xF7 fill colour, 0xF8 fog colour ------------------------------

@@ -262,6 +262,6 @@ void BrExt_10043330(void *pArg);
  * ALREADY EXISTING `g_pBrSlice4PhaseCtx` rather than coining a second
  * pointer at the same object -- slice4_53.c:248 binds its sibling
  * BrPhaseLeave_10044A30 through that very pointer. */
-void BrOptFn10044970(void *pEntity);
+int32_t BrOptFn10044970(void *pEntity);   /* 0. `xor eax,eax` @ 0x10044A1E */
 
 #endif /* SLICE8_83_H */

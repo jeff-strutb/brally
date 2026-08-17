@@ -79,10 +79,11 @@ extern unsigned char *g_brPAA29D0;
 extern char g_aBrA9D018[];
 extern char g_aBrA9D078[];
 
-/* 0x104BC198 -- the viewport's Y SCALE. slice2_15.h's BrRdpRegs gathers the
- * other three viewport globals (0x104BBF08, 0x104C0BB0, 0x104C0BB8) but not
- * this one, because nothing in that packet writes it. Defined by
- * slice5_61.c; if BrRdpRegs ever grows a field for it, drop this. */
+/* 0x104BC198 (Glide 0x105CCFDC) -- the viewport's Y SCALE. slice2_15.h's
+ * BrRdpRegs gathers the other three viewport globals (0x104BBF08, 0x104C0BB0,
+ * 0x104C0BB8) but not this one, because nothing in that packet writes it.
+ * Defined by slice5_61.c; if BrRdpRegs ever grows a field for it, drop this.
+ * NOT NEGATED in the reference build -- see BrGbiCall10024260 below. */
 extern float g_br4BC198;
 
 /* 0x10AA26F4 / 0x10AA26F5 -- ALIASES slice3_31.h BrPhaseCtx31::bAA26F4 and
@@ -148,24 +149,36 @@ extern void BrSub1003E3A0(void);
  * reads, rather than a private copy. */
 void BrSub_10019290(void);
 
-/* 0x10024260 (138 bytes)  G_MOVEMEM index 0x80 -- LOAD VIEWPORT.
+/* 0x10023920 (Glide, 156 bytes) / 0x10024260 (D3D, 138 bytes)
+ * G_MOVEMEM index 0x80 -- LOAD VIEWPORT.
  *
  * pCmd->w1 is the (already segment-resolved) address of an N64 `Vp`:
  *     s16 vscale[4]; s16 vtrans[4];      // 2.2 fixed point
  * Four of the eight shorts are used, sign-extended, converted to float and
- * scaled:
- *     0x104BBF08 = vscale.x * ( 0.25f)   (0x1008F3EC)
- *     0x104BC198 = vscale.y * (-0.25f)   (0x1008F3F0)  <-- NEGATED
- *     0x104C0BB0 = vtrans.x * ( 0.25f)
- *     0x104C0BB8 = vtrans.y * ( 0.25f)
- * vscale.z / vtrans.z / the two w slots are ignored.
+ * scaled.  vscale.z / vtrans.z / the two w slots are ignored.
  *
- * GOTCHA: only the Y SCALE is negated, and it is negated by using a separate
- * -0.25f constant rather than by negating the result -- easy to miss.
+ * THE TWO BUILDS FLIP Y BY DIFFERENT MEANS.  BRGlide is the reference and is
+ * what the body implements:
  *
- * This confirms slice2_15.h's guesses from the other end of the pipe: it
- * records 0x104BBF08 and 0x104C0BB0 as "(float)(cx/2)" and 0x104C0BB8 as
- * "(float)(cy/2)", which is exactly a viewport for a cx x cy screen.
+ *     BRGlide 0x10023920                    BRD3D 0x10024260
+ *     0x105CCD48 = vscale.x *  0.25f        0x104BBF08 = vscale.x *  0.25f
+ *     0x105CCFDC = vscale.y *  0.25f        0x104BC198 = vscale.y * -0.25f
+ *     0x105CD9F8 = vtrans.x *  0.25f        0x104C0BB0 = vtrans.x *  0.25f
+ *     0x105CD9FC = H - vtrans.y * 0.25f     0x104C0BB8 = vtrans.y *  0.25f
+ *
+ * with H = `fild dword [0x100A7518]`, the grSstWinOpen height (480 shipped),
+ * loaded at 0x10023925 and applied by `fsubr dword [esp]` at 0x100239B0 --
+ * `mem - ST0`.  The Glide constant is 0x1007740C == 0.25f for all four; the
+ * D3D one is 0x1008F3EC == 0.25f except 0x1008F3F0 == -0.25f on the Y scale.
+ *
+ * THIS ENTRY PREVIOUSLY READ "GOTCHA: only the Y SCALE is negated" and cited
+ * slice2_15.h as independent confirmation.  It was not independent -- both
+ * notes were read off BRD3D -- and the confirmation is the reason the line
+ * survived a census.  slice2_15.h's "(float)(cy/2)" for 0x104C0BB8 describes
+ * the D3D global; under Glide the same slot holds H - cy/2.
+ *
+ * The four HOST field names are still the D3D globals, because that is what
+ * slice2_15.h's BrRdpRegs models.  Only the arithmetic changed.
  *
  * Returns pCmd + 1 (the original's `add eax, 8` -- BrGfxWords is 8 bytes).
  * GOTCHA: eax is set BEFORE any of the work, so the return value does not

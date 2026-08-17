@@ -22,11 +22,22 @@
  *     BrPhaseCtx*. A static thunk bridges the two; it has no address in the
  *     original and is deliberately not exported.
  *
- *  4. RETURN VALUES.  Five addresses here were pre-declared by slice2_25.h /
- *     slice2_26.h with `void` returns, and all the LEAVE routines are
- *     declared void so they can be stored in BrPhase.pfnHook. Each such
- *     original returns a constant (0, or 1 for 0x10047360's several exits)
- *     that no caller in the packet reads.
+ *  4. RETURN VALUES -- WAS A DEVIATION, AND WAS A BUG.  This entry used to
+ *     read "all the LEAVE routines are declared void so they can be stored in
+ *     BrPhase.pfnHook ... that no caller in the packet reads". The second
+ *     half was false. The +0x08 slot's result IS read, by 0x10048180:
+ *
+ *         10048280  ff5608   call dword ptr [esi + 8]
+ *         10048286  85c0     test eax, eax
+ *         10048288  7508     jne  0x10048292
+ *
+ *     -- a zero return makes 0x10048180 return 0 and skip the rest of the
+ *     row's frame. All forty routines here return 0, so the early exit is
+ *     what every one of them causes, and `void` could not express it. They
+ *     now return int32_t and BrPhaseHookFn_ carries it.
+ *
+ *     Still true, and still the DEVIATION: 0x10047360's several exits return
+ *     1 and no caller in THIS packet reads it.
  *
  *  5. OUT-OF-MODEL FIELDS.  BrSub10047360 reaches +0x1E20C and +0x3850 of
  *     the game object, past the end of slice2_25.h's BrGameObj. They are
@@ -38,6 +49,7 @@
  * signature (it adds a ctx parameter as a documented DEVIATION). The one-arg
  * hook form used here matches the ORIGINAL calling convention. */
 #include "slice3_31.h"
+#include "br_phaseact.h"   /* the one activate body -- see br_phaseact.h */
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
 #include <string.h>
@@ -94,39 +106,27 @@ static BrPhase *Br31NewPhase(void)
 
 /* The body every activate routine shares once its prologue has run.
  *
+ * THIS IS NO LONGER A SECOND TRANSCRIPTION.  slice2_26.c models the same
+ * inlined sequence for its own range as BrPhaseActivateSlot, and for a long
+ * time this file carried an independent copy of the same instructions. The
+ * two DISAGREED: slice2_26's wrapped the two flag stores in a NULL test that
+ * the original does not have, and this file's did not. Both are now the one
+ * body, which stores unconditionally as 0x1004559C / 0x100455AB do.
+ *
+ * What is left here is the calling shape this file's routines want: a 1/0
+ * "is the phase available" plus a separate "was it built here", against
+ * slice2_26's three-valued result.
+ *
  * ppSlot is the per-phase singleton. Returns 1 when the phase is available
  * (already built or just built), 0 when the allocation failed. *pfBuilt is
  * set only on the just-built path, which is the path the per-phase epilogue
- * is allowed to run on.
- *
- * GOTCHA (slice2_26's, reproduced): after the enter hook runs, the CURRENT
- * phase global is re-read for the f0C store and re-read AGAIN for the f68
- * store. A hook that repoints it therefore stamps the flags on whatever it
- * moved to, not on the object just constructed. */
+ * is allowed to run on. */
 static int Br31Activate(BrPhase **ppSlot, BrPhaseEnterFn pfnEnter, int *pfBuilt)
 {
-    BrPhase *p;
+    BrActResult r = BrPhaseActivateSlot(g_pBase, ppSlot, pfnEnter);
 
-    *pfBuilt = 0;
-
-    if (*ppSlot != NULL) {          /* already built */
-        g_pBase->pAA2904 = *ppSlot;
-        return 1;
-    }
-
-    p = Br31NewPhase();
-    *ppSlot          = p;
-    g_pBase->pAA2904 = p;
-    if (p == NULL)
-        return 0;                   /* note: 0, not 1 */
-
-    p->pfnEnter = pfnEnter;
-    (*ppSlot)->pfnEnter(*ppSlot);              /* re-read of the slot          */
-    g_pBase->pAA2904->f0C = 1;              /* re-read of the current phase */
-    g_pBase->pAA2904->f68 = 1;              /* and re-read again            */
-
-    *pfBuilt = 1;
-    return 1;
+    *pfBuilt = (r == BR_ACT_CREATED) ? 1 : 0;
+    return (r == BR_ACT_FAILED) ? 0 : 1;   /* note: 0, not 1, on failure */
 }
 
 /* The second, flag-light object that 0x10045C90 and 0x10045F70 build after
@@ -156,7 +156,7 @@ static void Br31LeavePrologue(void *pEntity)
 
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
 
-    pCur = g_pBase->pAA2904;
+    pCur = BR_PHASE_CUR;
     if (pCur != NULL)
         pCur->pVtbl->f00(pCur, 1);
 }
@@ -219,9 +219,10 @@ static void Br31NotifyAndClear(BrPhase **ppSlot)
  * that takes one argument, so this supplies the shared context that the real
  * leave routine needs alongside it. */
 /* @implements 0x10044CB0 d3d Br31Thunk_10044CB0 */
-static void Br31Thunk_10044CB0(void *pEntity)
+static int32_t Br31Thunk_10044CB0(void *pEntity)
 {
     (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
+    return 0;
 }
 
 /* ==========================================================================
@@ -468,14 +469,20 @@ int BrPhaseHook_10046380(void *pArg)
  * written into pAA2904 after them, which is the original's order.
  */
 
+/* RETURN VALUE: every routine this macro generates ends in `xor eax, eax`,
+ * so it returns 0, and that 0 is READ -- 0x10048180 does `test eax,eax / jne`
+ * on the +0x08 slot's result and returns 0 itself when it is zero. The macro
+ * used to generate `void` and the value was lost for the whole family.
+ * Verified one address at a time; the instruction is listed in slice3_31.h. */
 #define BR31_LEAVE(fn, next, clears)                    \
-    void fn(void *pEntity)                              \
+    int32_t fn(void *pEntity)                           \
     {                                                   \
         BrPhase *pNext;                                 \
         Br31LeavePrologue(pEntity);                     \
         pNext = (next);                                 \
         clears                                          \
-        g_pBase->pAA2904 = pNext;                       \
+        BR_PHASE_CUR = pNext;                       \
+        return 0;                                       \
     }
 
 BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
@@ -485,7 +492,7 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
  * that went with it, and hands the player back to a remembered screen. */
 /* @implements 0x10046400 d3d BrSub10046400 */
-void BrSub10046400(BrGameObj *p)
+int32_t BrSub10046400(BrGameObj *p)
 {
     BrPhase *pNext;
 
@@ -495,7 +502,8 @@ void BrSub10046400(BrGameObj *p)
     g_pExt->nAA29E4  = 0;
     g_pExt->nAA29E0  = 0;
     g_pExt->nAA285C  = 0;
-    g_pBase->pAA2904 = pNext;
+    BR_PHASE_CUR = pNext;
+    return 0;
 }
 
 BR31_LEAVE(BrPhaseLeave_10046450, g_pBase->pAA2908,
@@ -555,46 +563,57 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
  * force feedback off -- so this is the exit from a screen that had it
  * running. */
 /* @implements 0x10046560 d3d BrPhaseLeave_10046560 */
-void BrPhaseLeave_10046560(void *pEntity)
+int32_t BrPhaseLeave_10046560(void *pEntity)
 {
     BrPhase *pNext;
 
     Br31LeavePrologue(pEntity);
     pNext = g_pBase->pAA297C;
     g_pExt->pAA2998 = NULL;
-    g_pBase->pAA2904 = pNext;
+    BR_PHASE_CUR = pNext;
 
     BrExt_10079550();
+    return 0;
 }
 
 /* 0x100466C0 */
 /* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
  * goes, so changes made on it survive. */
 /* @implements 0x100466C0 d3d BrPhaseLeave_100466C0 */
-void BrPhaseLeave_100466C0(void *pEntity)
+int32_t BrPhaseLeave_100466C0(void *pEntity)
 {
     BrPhase *pNext;
 
     Br31LeavePrologue(pEntity);
     pNext = g_pBase->pAA2918;
     g_pBase->pAA2984 = NULL;
-    g_pBase->pAA2904 = pNext;
+    BR_PHASE_CUR = pNext;
 
     BrExt_1003E310();
     /* __thiscall: `this` is 0x10B4DF30, its one argument 0x10B4FBE8. */
     BrExt_1006A4A0(g_pExt->pB4DF30, g_pExt->pB4FBE8);
+    return 0;
 }
 
 /* --- the eight LEAVE routines that also reset the player name ------------ */
 
+/* RETURN VALUE: 0, same as BR31_LEAVE, but reached differently and so worth
+ * stating separately. These eight have no `xor eax, eax` in the return slot;
+ * the zero is left over from the `repne scasb` scan character that the second
+ * inlined strcpy sets up (0x10046818, 0x100468F8, 0x100469D8, 0x10046AB8,
+ * 0x10046B98, 0x10046C78, 0x10046E8C, 0x10046F38 -- one per routine), and
+ * nothing between there and the `ret` touches eax. So the value is 0 by
+ * accident of the compiler's scheduling rather than by an explicit store, and
+ * it is 0 all the same. */
 #define BR31_LEAVE_NAMED(fn, next)                      \
-    void fn(void *pEntity)                              \
+    int32_t fn(void *pEntity)                           \
     {                                                   \
         BrPhase *pNext;                                 \
         Br31LeavePrologue(pEntity);                     \
         Br31ResetName();                                \
         pNext = (next);                                 \
-        g_pBase->pAA2904 = pNext;                       \
+        BR_PHASE_CUR = pNext;                       \
+        return 0;                                       \
     }
 
 BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046790, g_pExt->pAA292C)
@@ -611,7 +630,7 @@ BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
  * the seven other name-resetting exits do, so it is not simply another one of
  * them. */
 /* @implements 0x10046E10 d3d BrPhaseLeaveNamed_10046E10 */
-void BrPhaseLeaveNamed_10046E10(void *pEntity)
+int32_t BrPhaseLeaveNamed_10046E10(void *pEntity)
 {
     BrPhase *pNext;
 
@@ -624,7 +643,8 @@ void BrPhaseLeaveNamed_10046E10(void *pEntity)
     Br31CopyName(g_pExt->szA9D618, g_pExt->sz39B720);
 
     pNext = g_pExt->pAA291C;
-    g_pBase->pAA2904 = pNext;
+    BR_PHASE_CUR = pNext;
+    return 0;
 }
 
 /* --- the three one-statement gotos ---------------------------------------- */
@@ -632,15 +652,15 @@ void BrPhaseLeaveNamed_10046E10(void *pEntity)
 /* WHAT IT DOES: switches straight to one particular screen without closing
  * anything down first -- a jump, not a leave. */
 /* @implements 0x10046F50 d3d BrPhaseGoto_10046F50 */
-void BrPhaseGoto_10046F50(void) { g_pBase->pAA2904 = g_pExt->pAA2974; }
+int32_t BrPhaseGoto_10046F50(void) { BR_PHASE_CUR = g_pExt->pAA2974; return 0; }
 /* WHAT IT DOES: switches straight to a different particular screen, again with
  * no teardown. */
 /* @implements 0x10046FC0 d3d BrPhaseGoto_10046FC0 */
-void BrPhaseGoto_10046FC0(void) { g_pBase->pAA2904 = g_pExt->pAA292C; }
+int32_t BrPhaseGoto_10046FC0(void) { BR_PHASE_CUR = g_pExt->pAA292C; return 0; }
 /* WHAT IT DOES: the third of the plain jumps -- makes one particular screen
  * current and nothing else. */
 /* @implements 0x10047050 d3d BrPhaseGoto_10047050 */
-void BrPhaseGoto_10047050(void) { g_pBase->pAA2904 = g_pExt->pAA293C; }
+int32_t BrPhaseGoto_10047050(void) { BR_PHASE_CUR = g_pExt->pAA293C; return 0; }
 
 /* --- LEAVE routines with a different shape -------------------------------- */
 
@@ -650,20 +670,21 @@ void BrPhaseGoto_10047050(void) { g_pBase->pAA2904 = g_pExt->pAA293C; }
  * screen current at all, which the release runs inside -- so anything that
  * release does sees no current screen. */
 /* @implements 0x10046F60 d3d BrPhaseLeave_10046F60 */
-void BrPhaseLeave_10046F60(void *pEntity)
+int32_t BrPhaseLeave_10046F60(void *pEntity)
 {
     BrPhase *pSaved;
 
     Br31LeavePrologue(pEntity);
 
     pSaved = g_pExt->pAA292C;
-    g_pBase->pAA2904 = NULL;        /* visible only to the notify below */
+    BR_PHASE_CUR = NULL;        /* visible only to the notify below */
     g_pExt->pAA2974  = NULL;
     if (pSaved != NULL) {
         pSaved->pVtbl->f00(pSaved, 1);
         g_pExt->pAA292C = NULL;
     }
-    g_pBase->pAA2904 = g_pBase->pAA2908;
+    BR_PHASE_CUR = g_pBase->pAA2908;
+    return 0;
 }
 
 /* 0x10046FD0 */
@@ -671,7 +692,7 @@ void BrPhaseLeave_10046F60(void *pEntity)
  * then returns the player to the root menu. This is the exit that unwinds a
  * whole branch of the menus rather than one step. */
 /* @implements 0x10046FD0 d3d BrPhaseLeave_10046FD0 */
-void BrPhaseLeave_10046FD0(void *pEntity)
+int32_t BrPhaseLeave_10046FD0(void *pEntity)
 {
     Br31DestroyPhase(&g_pExt->pAA2934);
     Br31DestroyPhase(&g_pExt->pAA2938);
@@ -680,7 +701,8 @@ void BrPhaseLeave_10046FD0(void *pEntity)
     Br31LeavePrologue(pEntity);
 
     g_pExt->pAA2974  = NULL;
-    g_pBase->pAA2904 = g_pBase->pAA2908;
+    BR_PHASE_CUR = g_pBase->pAA2908;
+    return 0;
 }
 
 /* 0x10047120 */
@@ -688,7 +710,7 @@ void BrPhaseLeave_10046FD0(void *pEntity)
  * the three blocks of entered data behind it clean. It does NOT change which
  * screen is current -- whatever opens next has to say so itself. */
 /* @implements 0x10047120 d3d BrPhaseLeave_10047120 */
-void BrPhaseLeave_10047120(void *pEntity)
+int32_t BrPhaseLeave_10047120(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
 
@@ -703,19 +725,21 @@ void BrPhaseLeave_10047120(void *pEntity)
 
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA296C);   /* pAA2904 is NOT touched */
+    return 0;
 }
 
 /* 0x100471B0 */
 /* WHAT IT DOES: leaves a screen, opening the screen behind it and letting go
  * of one other, without changing which screen is current. */
 /* @implements 0x100471B0 d3d BrPhaseLeave_100471B0 */
-void BrPhaseLeave_100471B0(void *pEntity)
+int32_t BrPhaseLeave_100471B0(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
 
     BrExt_10045C90(pEntity);
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA2970);
+    return 0;
 }
 
 /* 0x10047290 */
@@ -723,7 +747,7 @@ void BrPhaseLeave_100471B0(void *pEntity)
  * of three different routes out depending on which of two markers is set -- and
  * clears that marker as it goes, so the special route is taken once only. */
 /* @implements 0x10047290 d3d BrPhaseLeave_10047290 */
-void BrPhaseLeave_10047290(void *pEntity)
+int32_t BrPhaseLeave_10047290(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
 
@@ -743,6 +767,7 @@ void BrPhaseLeave_10047290(void *pEntity)
 
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA293C);
+    return 0;
 }
 
 /* ==========================================================================

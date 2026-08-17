@@ -165,7 +165,24 @@ typedef struct BrUiPage_    BrUiPage_;
  * values and order are unchanged.
  * ------------------------------------------------------------------------- */
 typedef void (*BrPhaseEnterFn_)(BrPhase_ *pSelf);
-typedef void (*BrPhaseHookFn_)(void *pEntity);
+
+/* RETURN VALUE (corrected -- this used to be `void`, and the value was lost).
+ *
+ * The +0x08 slot is the ACTION hook, and its result is TESTED. 0x10048180
+ * dispatches it and branches on eax:
+ *
+ *     10048280  ff5608   call dword ptr [esi + 8]
+ *     10048286  85c0     test eax, eax
+ *     10048288  7508     jne  0x10048292
+ *
+ * -- a zero return makes 0x10048180 return 0 immediately, skipping the
+ * `[0x10AA33E4] = 0` store, the `flags &= ~2` clear, the child loop and the
+ * vtable +0x08 draw. Every one of the forty routines slice3_31.c installs
+ * here ends in `xor eax, eax`, so all of them take that early exit; a `void`
+ * host type could not express it. See slice3_31.h for the per-address table.
+ *
+ * The width is int32_t because the one reader is a 32-bit `test eax, eax`. */
+typedef int32_t (*BrPhaseHookFn_)(void *pEntity);
 
 /* vtable at 0x1008F700. Slots verified against the ctor/dtor pair; unused slots
  * are void* rather than given plausible-but-unverified signatures. */

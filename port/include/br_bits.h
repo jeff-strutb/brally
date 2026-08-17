@@ -16,6 +16,15 @@ void BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask);
  * parameter. */
 void BrSwapVec3(void *pv);
 
+/* 0x10018A50 (glide) == 0x1002B9E0 (d3d)  byte-swap `count` consecutive u16s
+ * in place.  The count is SIGNED and a count of zero or less is a no-op --
+ * `test ecx,ecx / jle` before the loop.
+ *
+ * This lives in a leaf module because br_track.c and slice2_16.c both need it
+ * and neither may depend on the other; each used to carry its own copy under
+ * its own build's address.  See br_bits.c. */
+void BrSwapU16Array(void *pv, int count);
+
 /* 0x10074030  bounds-checked handle table lookup.
  *
  * Valid handles are 1..0x12E inclusive: the original rejects anything below 1

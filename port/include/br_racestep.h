@@ -426,6 +426,16 @@ int  BrRaceStepAllFinished(void);
  * same reason. */
 void BrRaceStepLights(void);
 
+/* 0x10019A70 CARRIES NO @implements LINE, AND THAT IS ON PURPOSE.
+ *
+ * The three functions below transcribe about 2,000 of its 11,223 bytes -- the
+ * script seed, the light machine and the per-frame arm.  The other ~9,200 are
+ * the one-time arm's asset loading and the HUD/mirror/renderer tail, and
+ * neither is here.  The manifest form is whole-function only (see
+ * tools/manifest.py), so there is no way to claim 16% of an address; the claim
+ * that used to sit on BrRaceStepInit claimed 100% of it for 2%.  See the long
+ * note at that function in br_racestep.c before adding one back. */
+
 /* The one-time arm's race state: the script seed at 0x1001A97C..0x1001A9EF
  * and 0x105CCB94 = 1.  Everything else in that arm is asset loading.
  * Returns the light state it seeded. */
@@ -435,8 +445,10 @@ int  BrRaceStepInit(void);
 void BrRaceStepFrame(void);
 
 /* BrGameStepSet(BrRaceStepFrame) plus the registration that makes
- * BrGameStepId answer BR_GAMESTEP_RACE.  This one IS 0x10019A70, so the
- * registration is a claim the module is entitled to make. */
+ * BrGameStepId answer BR_GAMESTEP_RACE.  0x10019A70 is what the original
+ * installs in that slot, so registering BrRaceStepFrame there is the right
+ * wiring -- which is a statement about the SLOT, not an @implements claim on
+ * the address.  See the note above BrRaceStepInit. */
 void BrRaceStepInstall(void);
 
 #endif /* BR_RACESTEP_H */

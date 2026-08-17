@@ -212,7 +212,7 @@ void BrMenuSub10044B90(int32_t n);
  * so the type contradicted the comment, the body and the disassembly all at
  * once, and only compiled because BrOptObj was a private five-field model.
  * It is `void *` now; see the adjudication in slice2_25.h. */
-void BrOptFn10044A30(void *pEntity);
+int32_t BrOptFn10044A30(void *pEntity);   /* 0. `xor eax,eax` @ 0x10044AD6 */
 
 /* ======================================================================
  * 7. Session timer (0x1003C230)

@@ -204,8 +204,10 @@ static int g_n2870, g_n27F0, g_lastTrack;
 void BrSub10002870(int track) { ++g_n2870; g_lastTrack = track; }
 void BrSub100027F0(int track) { ++g_n27F0; g_lastTrack = track; }
 
-static int g_ret7A840, g_ret7A940, g_n7A840, g_n7A940;
-int BrSub1007A840(void) { ++g_n7A840; return g_ret7A840; }
+/* No stand-in for 0x1007A840: the Glide reference build has no such function
+ * and 0x10058F90 does not call it.  A stub here would let the gate creep back
+ * in unnoticed. */
+static int g_ret7A940, g_n7A940;
 int BrSub1007A940(void) { ++g_n7A940; return g_ret7A940; }
 
 /* Variadic in the original; the two call sites pass one int. */
@@ -645,15 +647,29 @@ static void TestSmall(void)
     CHECK(g_n27F0 == 2 && g_n2870 == 1,
           "2 also selects 0x100027F0 -- the test is ==1, not !=0");
 
-    /* --- 0x1007AC00 gate --------------------------------------------- */
-    g_n7A840 = g_n7A940 = 0;
-    g_ret7A840 = 0;
+    /* --- 0x10058F90: NO GATE ------------------------------------------
+     * These two assertions replace a pair that asserted the OPPOSITE -- that
+     * 0x1007A940 is skipped when the D3D-only enumerator 0x1007A840 returns
+     * zero.  That is the D3D build's behaviour (0x1007AC00, 22 bytes); the
+     * Glide reference is 0x10058F90, twelve bytes and five instructions, with
+     * no gate at all.  The old test passed because the port had transcribed
+     * the wrong build, which is exactly the shape CONVENTIONS.md warns about:
+     * a test written to pin a reading converts it into a regression guard
+     * defending itself.
+     *
+     * The property asserted is "the callee runs EVERY time, whatever it
+     * returns", which is what the absence of a branch means.  Both return
+     * values are exercised because a reinstated gate could test either
+     * polarity. */
+    g_n7A940 = 0;
+    g_ret7A940 = 0;
     BrExt_1007AC00();
-    CHECK(g_n7A840 == 1 && g_n7A940 == 0,
-          "0x1007A940 is skipped when 0x1007A840 returns 0");
-    g_ret7A840 = 1; g_ret7A940 = 7;
+    CHECK(g_n7A940 == 1,
+          "0x10058F90 calls 0x10058E20 unconditionally (returns 0)");
+    g_ret7A940 = 7;
     BrExt_1007AC00();
-    CHECK(g_n7A940 == 1, "0x1007A940 runs when 0x1007A840 is non-zero");
+    CHECK(g_n7A940 == 2,
+          "0x10058F90 calls 0x10058E20 unconditionally (returns non-zero)");
 
     /* --- text pokes --------------------------------------------------- */
     g_text.align = 9; g_text.scale = 9; g_br4B0358 = 9;

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 
 #include "slice2_20.h"
@@ -135,7 +136,20 @@ void BrSub1003445A(void *pv) { (void)pv; }
 static int g_cInit35BD1;
 void BrSub10035BD1(void) { ++g_cInit35BD1; }
 void BrSub10061010(int a, int b) { (void)a; (void)b; }
-void BrSub10037990(const char *p) { (void)p; }
+/* Captures the path BrTrackLoadHandling built, so the extension it appends
+ * can be asserted on. It used to discard it, which is why the build's `.hnd`
+ * / `.hnt` divergence had no coverage at all. */
+static char g_szLastHandlingPath[512];
+static int  g_cHandlingLoads;
+void BrSub10037990(const char *p)
+{
+    ++g_cHandlingLoads;
+    g_szLastHandlingPath[0] = '\0';
+    if (p != NULL) {
+        strncpy(g_szLastHandlingPath, p, sizeof g_szLastHandlingPath - 1);
+        g_szLastHandlingPath[sizeof g_szLastHandlingPath - 1] = '\0';
+    }
+}
 
 static float g_fLenResult = 1.0f;
 float BrVec3Len(const BrVec3 *v) { (void)v; return g_fLenResult; }
@@ -149,7 +163,20 @@ int   BrChkFileExists(const char *p) { (void)p; return 1; }
 FILE **BrChkFReadOpen(const char *p) { (void)p; return NULL; }
 int   BrChkFileSize(FILE **f) { (void)f; return 0; }
 void  BrChkFClose(FILE **f) { (void)f; }
-int   BrSprintf(char *d, const char *f, ...) { (void)f; d[0] = 0; return 0; }
+/* THIS USED TO BE `{ (void)f; d[0] = 0; return 0; }` -- a stand-in that threw
+ * the formatted string away. Anything asserting on a path this function built
+ * would have passed vacuously against an empty buffer, which is exactly the
+ * "fixture leaves the deciding value zeroed" failure CONVENTIONS.md lists. It
+ * formats for real now. */
+int   BrSprintf(char *d, const char *f, ...)
+{
+    va_list ap;
+    int     n;
+    va_start(ap, f);
+    n = vsprintf(d, f, ap);
+    va_end(ap);
+    return n;
+}
 void  BrFatal(const char *m) { (void)m; }
 
 static int g_c18AA084;
@@ -616,9 +643,54 @@ static void TestRealRca(const char *pszName)
     free(pFile);
 }
 
+/* 0x10031140 (Glide) / 0x10037A90 (D3D)  BrTrackLoadHandling
+ *
+ * THE TWO BUILDS APPEND DIFFERENT EXTENSIONS and the port had the wrong one.
+ * Glide 0x1003117B loads 0x100AA338 == ".hnt"; D3D 0x10037AC9 loads
+ * 0x100AABA8 == ".hnd"; neither literal appears in the other image. The disc
+ * ships testdata/tracks/desert.hnt and coast.hnt and no .hnd at all, so the
+ * reference build is also the one that agrees with the data.
+ *
+ * The assertion is against the file the extracted assets actually contain,
+ * not against the port's own macro, so it cannot pass by agreeing with
+ * itself -- and a literal is used rather than BR_TRACK_HANDLING_EXT for the
+ * same reason. */
+static void TestTrackHandlingExt(void)
+{
+    const char *p;
+
+    g_cHandlingLoads = 0;
+    BrTrackLoadHandling(0);   /* g_apszTrackFiles[0] == "desert.pod" */
+
+    /* NOTE (added by the LEAVE-return pass, not by this test's author): this
+     * file's CHECK is `CHECK(cond, fmt, ...)` and expands `printf(fmt, ...)`,
+     * so a bare `CHECK(cond)` does not compile under -std=c99. The seven
+     * assertions below arrived without messages and broke ./build.sh; the
+     * conditions are untouched and only the messages were added. */
+    CHECK(g_cHandlingLoads == 1, "loads=%d, want 1", g_cHandlingLoads);
+    CHECK(strcmp(g_szLastHandlingPath, "tracks/desert.hnt") == 0,
+          "path=\"%s\", want \"tracks/desert.hnt\"", g_szLastHandlingPath);
+
+    /* Spelled out separately so a failure says WHICH half is wrong: the
+     * "tracks/" + name join, or the extension swap. */
+    CHECK(strncmp(g_szLastHandlingPath, "tracks/", 7) == 0,
+          "no \"tracks/\" prefix: \"%s\"", g_szLastHandlingPath);
+    p = strrchr(g_szLastHandlingPath, '.');
+    CHECK(p != NULL && strcmp(p, ".hnt") == 0,
+          "extension is \"%s\", want \".hnt\"", (p != NULL) ? p : "(none)");
+
+    /* The original replaces the extension in place rather than appending, so
+     * exactly one dot survives -- ".pod" must be gone, not merely followed. */
+    CHECK(strstr(g_szLastHandlingPath, ".pod") == NULL,
+          "\".pod\" survives in \"%s\"", g_szLastHandlingPath);
+    CHECK(strchr(g_szLastHandlingPath, '.') == p,
+          "more than one dot in \"%s\"", g_szLastHandlingPath);
+}
+
 int main(void)
 {
     printf("slice2_20 tests\n");
+    TestTrackHandlingExt();
     TestSwapPrimitives();
     TestSwapRec28();
     TestF08FromMax();

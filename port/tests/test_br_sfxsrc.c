@@ -268,6 +268,23 @@ static void test_dispatch(void)
               == BrSfxRatioFromHz(11025,
                                   BrSfxGroupBaseRate(BR_SFXSRC_BEEP2)));
 
+    /* ...and 0x1006B91C/22 write it a SECOND time, into the stride-24 array
+     * at 0x1184C080 that records what the voice has actually been told.  The
+     * source registers differ in the listing (eax then ecx) but 0x1006B90F
+     * reloads ecx out of the slot 0x1006B903 has just written, so the two
+     * copies must be equal -- and non-zero, or "both copies agree" would hold
+     * over a pair of untouched zeroes. */
+    CHECK(g_aBrSfxChan[BR_SFXSRC_CHANNEL].ratio != 0);
+    CHECK(g_aBrSfxChanApplied[BR_SFXSRC_CHANNEL].ratio
+              == g_aBrSfxChan[BR_SFXSRC_CHANNEL].ratio);
+
+    /* Only the ratio is mirrored on this path.  0x1006B880 never touches the
+     * applied record's +0x00 or +0x14; those are 0x1006BDD0's to write, and
+     * that function is not ported.  A transcription that "helpfully" mirrored
+     * the whole record would break the dirty check it exists to feed. */
+    CHECK_EQ(g_aBrSfxChanApplied[BR_SFXSRC_CHANNEL].group, 0);
+    CHECK_EQ(g_aBrSfxChanApplied[BR_SFXSRC_CHANNEL].packed, 0u);
+
     /* A one-shot: 0x1006B5B0 wrote the source's loop flag into the voice. */
     CHECK_EQ(s_voice[BR_SFXSRC_BEEP2].f18, 0);
     /* ...and 0x1006B880 -> BrSndVoiceStart actually started it. */

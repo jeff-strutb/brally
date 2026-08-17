@@ -18,15 +18,27 @@ That boots the ported core and prints what it built:
 after ctor:
 phase  nPages=0 iPage=0 f0C=0 f68=1
 
-running builder 0x1004D640 ...
-  page 0  cCtl=7 cSel=3 origin=(195.0,130.0) flags=1
+entering the ROOT PHASE (0x100425E0, the main menu) ...
+  page 0  origin=(195.0,125.0)  cCtl=15 cSel=7
+    [ 1] x=100   y=10    w=310  h=16  text kind=1   Main Menu
+    [ 2] x=148   y=125   w=210  h=16  text kind=1   Championship
+    [ 4] x=148   y=144   w=210  h=16  text kind=1   Multiplayer
+    ...
+    [13] x=148   y=239   w=210  h=16  text kind=1   Quit
 
-controls built: 7   setText=3 place=7
+controls built: 15   setText=9 place=16
 stubs: none reached -- everything the run touched is ported
 ```
 
+That is the MAIN MENU, built by the root phase's own enter hook rather than by
+one of the sixteen sub-screen builders. It used to run 0x1004D640 here, because
+nothing filled `g_brUiRoot` and 0x100425E0 therefore returned on its first line;
+`port/host/br_wire78.c` and `br_wire79.c` are what fill it.
+
 `./build/brally -w` does the same and opens a Metal window drawing the controls
 at the coordinates the builder computed. `./tools/regress.sh` runs every suite.
+`root` may be given wherever a builder index is expected -- `-b root`,
+`-keys root "dd"`, `-shot root out.ppm` -- to drive the main menu instead.
 
 Verified from a clean clone on macOS 26 / Apple Silicon.
 
@@ -311,31 +323,6 @@ use vtable dispatch. RTTI is absent only because MSVC 5 defaults it off.
 
 See `CONVENTIONS.md` for the coding rules this port follows -- most of them are
 non-obvious and each one has cost real time.
-
-## Is a function already ported?
-
-`tools/manifest.py 0xADDR`. Not a grep, and not `isported.py`.
-
-Modules declare what they implement, in the source:
-
-    /* @implements 0x1001CC00 glide BrRallyMain */
-
-The build field is mandatory — the same address names different functions in
-the two renderer builds, and omitting it has produced false "already ported"
-answers repeatedly. `tools/manifest.py --audit` shows how much of the tree is
-still known only by inference. See CONVENTIONS.md for why the inferring tool
-was abandoned after seven distinct defects.
-
-**`config/ported.csv`** is the same information as a table you can read without
-running anything — address, build, symbol, file, line — for every function this
-tree claims to implement. It is **generated** from the `@implements` lines by
-`tools/manifest.py --emit`, never edited by hand: a hand-kept index drifts the
-moment a function moves and nothing fails when it does. Regenerate and diff to
-check the two agree.
-
-It records *claims*, not verified facts. The 792 entries migrated from the old
-detector were preserved rather than checked, and at least one is known wrong.
-Equivalence auditing is what tests them; the manifest only makes them testable.
 
 ## Tooling
 

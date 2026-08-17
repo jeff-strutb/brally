@@ -504,13 +504,37 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
 }
 
 /* ==========================================================================
- * 0x10037A90  BrTrackLoadHandling
+ * 0x10031140 (Glide) / 0x10037A90 (D3D)  BrTrackLoadHandling
  * ========================================================================== */
 
+/* BUILD DIVERGENCE -- THE EXTENSION, and the port had the wrong one.
+ *
+ * The two builds are the same routine (config/shared.csv pairs them, matched
+ * by callsite) with ONE string changed, and each string exists in only one
+ * image:
+ *
+ *     Glide  0x1003117B  mov edi, 0x100AA338   -> ".hnt"
+ *     D3D    0x10037AC9  mov edi, 0x100AABA8   -> ".hnd"
+ *
+ * Searching each image for the OTHER literal finds nothing, so this is a real
+ * edit between the builds and not one shared constant read twice.
+ *
+ * WHICH ONE IS RIGHT IS NOT A COIN FLIP -- THE DISC SETTLES IT.  The extracted
+ * assets under testdata/tracks/ are `desert.hnt` and `coast.hnt`, and there is
+ * no `.hnd` anywhere on the disc.  So the shipped data is what the Glide build
+ * asks for, and a D3D build run against this disc would open a file that does
+ * not exist.  Glide is this project's declared reference (CONVENTIONS.md,
+ * "Source precedence"), the asset evidence agrees with it independently, and
+ * this body therefore transcribes Glide and carries the Glide claim.
+ *
+ * THE CLAIM MOVED WITH THE STRING.  While this said ".hnd" it was an honest
+ * transcription of D3D 0x10037A90 and was labelled as one; the defect was
+ * which build the port had chosen, not a mislabelled body.  Saying ".hnt"
+ * under a `d3d` tag would be a body that matches neither image. */
 /* WHAT IT DOES: loads a track's handling file -- the physics settings for
  * driving on it. It builds the track's path, swaps the extension for the
  * handling one, and hands it on to be read. */
-/* @implements 0x10037A90 d3d BrTrackLoadHandling */
+/* @implements 0x10031140 glide BrTrackLoadHandling */
 void BrTrackLoadHandling(int iTrack)
 {
     char szPath[0x400];
@@ -523,7 +547,7 @@ void BrTrackLoadHandling(int iTrack)
      * it.  Every shipped name has an extension, so the guard is unreachable
      * in practice. */
     if (pExt != NULL)
-        strcpy(pExt, ".hnd");
+        strcpy(pExt, BR_TRACK_HANDLING_EXT);
 
     BrSub10037990(szPath);
 }

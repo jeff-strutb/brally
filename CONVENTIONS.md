@@ -366,6 +366,73 @@ beside it. It just was not the thing standing between the port and the ground.
 Generalising: "X is blocked on Y" is a claim about causation, and the cheap way
 to check it is to ask whether anyone has ever tried X. Nobody had.
 
+## 0x10AA2904, and the sweep that found 350 more
+
+`tools/aliasmap.py` does the address-keyed sweep this section had been doing by
+hand: it binds host declarations to original addresses through three channels
+(an address in the declaration's own trailing comment, an address baked into
+the identifier, and a lead comment), gates every candidate on the shipped
+images' section table, and reports each address whose declarations come from
+more than one OWNER. **350 addresses in this tree have more than one host
+model.** Read its docstring before using the list -- it measures 4/5 on the
+five known instances and says which one it misses and why.
+
+Three things it got wrong on the way, all worth keeping:
+
+  - Gating on `config/globals.csv` looked obviously right and drove recall to
+    3/5. That file is the set of addresses `globals.py` could decode a
+    reference to, and it is **missing 0x105D17A4 and 0x1184C088** -- two of the
+    five calibration cases. Both misses were "no host object here", the
+    dangerous direction. The section table is complete by construction; use it.
+  - The declarator regex parsed `float primR;` as type `float prim`, name `R`,
+    because a greedy type and an optional-whitespace separator let the type eat
+    all but the last letter. It reported the calibration case under three
+    nonsense names and still said PASS.
+  - Grouping by field NAME reported thirteen "models" of one phase vtable --
+    a struct every field of which is commented with the struct's own vtable
+    address is annotated, not aliased. An alias is two OWNERS.
+
+The Glide/D3D pairing it needs is DERIVED, not guessed: for a `body`-matched
+pair in `shared.csv`, an offset carrying a 32-bit fixup in BOTH relocation
+tables holds the same object under two numbers. 2,157 pairs, a clean bijection,
+and it independently rediscovers both pairings this file already records --
+`0x106C0964 <-> 0x106E79F4` and `0x10AA2904 <-> 0x10AC5C5C`.
+
+**0x10AA2904 is resolved.** It had NINE declarations and SIX with real storage.
+Four were `BrPhase_ *` under three type aliases (`BrPhase`, `BrOptObj`) and
+they were four separate objects:
+
+| host object | instance | what it did |
+|---|---|---|
+| `BrUiNav::pAA2904` | `brally.c` `g_nav` | what the frame loop READ |
+| `BrPhaseCtx::pAA2904` | `br_wire78.c` `g_phaseBase` | what slice2_26/slice3_31/br_phaseact WROTE |
+| `g_brPAA2904` | `slice2_25.c` | what slice2_25/slice4_50/slice5_63 WROTE |
+| `BrS71Globals::pAA2904` | `slice6_71.c` `g_brS71` | what 0x10038F30 READ |
+
+`port/include/br_phasecur.h` owns the one slot; `brally.c` binds it to
+`g_nav.pAA2904`; the other three reach it as `BR_PHASE_CUR` / `g_brPAA2904`.
+No cast is involved -- this is NOT the `BrPhase_`/`BrUiPhase` case, and the
+two models that DO need a cast were deliberately left alone (below).
+
+Measured, not asserted. `./build/brally -keys root ".dj"` before: the row's
+action ran, `phase=` never moved, and the harness printed which slot each name
+resolved to -- three different ones. After: `** PHASE CHANGED`, on every one of
+the five rows whose action is ported. Reinstating just the host's one-line bind
+reproduces the old behaviour exactly, which is how the causal claim was checked
+rather than argued.
+
+**And that mutation SURVIVES `tools/regress.sh`.** 131 suites, 0 failures, with
+the split fully reinstated -- because no suite links `port/host`. The unit-level
+assertions added here pin the module and both leaf ranges; the host's bind is
+pinned only by running the harness. A green suite is not evidence that the
+front end is wired.
+
+Still two objects, and deliberately: `BrScrGlobals::pAA2904` is `BrPhaseFull *`
+and `BrUiGlobals`/`BrMenuState` model the same dword as a bare `int32_t`.
+`BrPhaseFull` is a separate struct with the same layout as `BrPhase_`, and
+merging them means merging `BrUiPage`/`BrUiPage_` too. That is the retyping job,
+not this one.
+
 A pattern worth generalising from these: the aliases cluster where one packet
 names a global positionally (`g_i0AC300`) and another names it semantically
 (`g_BrCamMode`). Neither pass can find the other by grepping its own name, and
@@ -379,6 +446,92 @@ without any comparison at all: **a field with no writer.** `lightOff` was read
 in exactly one place and assigned in none, which a grep for the symbol shows in
 one line. Before believing a struct models the original's state, check that
 every field is written by something.
+
+## Duplicate FUNCTIONS, and why the list of them was mostly wrong
+
+The aliased-storage section above is about one address under two data names.
+The same thing happens to CODE, and it is harder to see: two modules
+transcribe one original function under the two BUILDS' addresses, so neither
+can find the other by grepping its own number.
+
+Nineteen candidates were produced by grouping `config/ported.csv` through
+`config/shared.csv`'s Glide/D3D pairing. **Eight of them were not duplicates
+at all, and the reason is a property of the pairing data that will keep
+producing false positives.**
+
+- **`matched_by = body-dup:N` is not a pairing.** It means the D3D function is
+  byte-identical to N BRGlide functions and *the evidence does not say which*.
+  crossdiff writes the same `glide_va` on all of them, so N distinct D3D
+  functions collide on one number. Five of the nineteen were this — the
+  10-byte, 17-byte, 36-byte and 184-byte stubs at `0x10019810` (three-way),
+  `0x1001EB10`, `0x1002EC2C`, `0x1003E9B0` and `0x10040900` (five-way). Every
+  one is several real, distinct functions.
+- **`matched_by = shape` is a similarity, not a match.** `0x10022350` /
+  `0x10022AC0` (light one vertex) is classed `shared` on a shape match and the
+  two builds genuinely differ: Glide clamps the result to **255.0f**
+  (`0x10022B35 mov eax,0x437F0000`) and D3D to **1.0f** (`0x3F800000`),
+  because Glide's iterated colour runs 0..255 and D3D's runs 0..1. That row
+  should be `renderer`, like the font pair at `0x1006C790` which is already
+  classed correctly.
+- **A bare address is not self-describing, and neither is a bare grouping.**
+  Two of the nineteen — `0x1001CC00` (BrRallyMain vs a fill-colour handler)
+  and `0x1001C7A0` (a rect handler vs a car-table remove) — were an artefact
+  of grouping on the NUMBER and ignoring the build tag. `shared.csv` has both
+  rows and both are right: glide `0x1001CC00` pairs with d3d `0x10079820`,
+  and d3d `0x1001CC00` pairs with glide `0x1001E9F0`. The same number names
+  two different functions in the two images. This is `manifest.py`'s defect
+  (6) reappearing in a different tool.
+
+The audit that found these also checked all 772 manifest claims for a repeated
+address, and for a repeated address+build, with `uniq -d`: **none**. So a
+duplicate in this tree never looks like two `@implements` lines on one number.
+It only ever appears through the pairing step, which is exactly why the
+pairing data's weak classes have to be read before the list is believed.
+
+**The eleven that were real, and what each cost.** Three of them DISAGREED,
+and in every case the copy that looked better was the wrong one:
+
+| addresses | the disagreement | which was right |
+|---|---|---|
+| `0x10021570`/`0x10021510` (0xE4) and `0x100219D0`/`0x10021B80` (0xE3) | br_dl.c shifted 0xE4's corners RIGHT by two and left 0xE3's alone; the bytes do the opposite — 0xE4 shifts nothing and 0xE3 shifts LEFT by two | slice2_16.c. br_dl.c's own comment said "the integer form multiplies by four" and the code under it did neither |
+| `0x10045520`-family (the phase activate body) | slice2_26.c guarded the two flag stores with `if (pCtx->pAA2904 != NULL)` as a "memory safety" DEVIATION; slice3_31.c stored unconditionally, as the original does | slice3_31.c — the UNGUARDED one |
+| `0x10028B50`/`0x10029410` (the texture seam) | br_tex3d.c guarded the plant with `*ppStart != NULL`; the original stores through the global unguarded, and so did slice2_16.c. The guard was also DEAD: the run start is written on the same transition that makes `state` non-zero | slice2_16.c |
+
+Two more were latent rather than live: `swap_u16_run` took an UNSIGNED count
+where the original's guard is `test ecx,ecx / jle` (a negative count is a
+no-op, not four billion swaps), and `BrHookCallC`/`BrHookSetC` read and wrote
+through a `BrHooks *` argument that **the original does not have** —
+`0x10034C66` is `mov [0x106C0964],eax`, a plain global store, and the note
+elsewhere in this tree explaining the pair as `__thiscall` with the `this`
+dropped was describing a struct the game has no trace of.
+
+**A three-way alias fell out of that one.** `0x106C0964` (D3D) is the same
+dword as `0x106E79F4` (Glide) — `shared.csv` pairs all three of its accessors
+`0x10034C51`/`0x10034C66`/`0x10034C73` with `0x1002E302`/`0x1002E317`/
+`0x1002E324` as byte-identical — and the port had it under THREE host names:
+`g_pfnStep` (br_gamestep.c), `g_brHook6C0964` (slice4_50.c) and
+`BrHooks::pfnC` (slice1_05.c). br_gamestep.c owns it now. Identifying it also
+names it: slice2_19.c gates the pad's two extra buttons on
+`BrHookIsCurrent(g_BrPadHookFn)`, and `g_BrPadHookFn` is the literal
+`0x1002C500`, which `shared.csv` pairs with BRGlide `0x10019A70` — **the race
+step**. The test reads "is a race the thing currently running".
+
+**Where the shared bodies live, and why not in either module.** `br_dlshared.c`
+(the display-list routines), `br_bits.c` (`BrSwapU16Array`) and
+`br_phaseact.c` (the activate sequence) are leaves. That is forced, not
+tidiness: slice2_26.c drags in a dozen enter hooks so slice3_31's suite cannot
+link it, and slice3_31.c is the same in reverse. A module that only one of the
+two can link leaves two bodies however the code is written.
+
+**Two pairs are deliberately still two bodies**, and the reason is recorded at
+both sites: `0x10028B50`/`0x10029410` and `0x100293D0`/`0x10029E60` differ in
+how they must REACH a display-list command. br_tex3d.c writes words byte-wise
+into a possibly-unaligned `uint8_t *` — which the portability rules above
+require of a foreign buffer — and slice2_16.c stores through a `BrGfxWords`
+overlay. Sharing a body means picking one, and the byte-wise store changes
+slice2_16's behaviour on a big-endian host while the overlay puts an unaligned
+32-bit store in br_tex3d. The DISAGREEMENT between them is gone; the two
+bodies are not.
 
 ## Two models of one object, shifted
 
@@ -585,6 +738,68 @@ anyway:
 Both-rebuilt is now shipped. `.text` is 100% accounted for in both binaries as
 code, switch table, padding or data, with no undecodable bytes inside any
 function.
+
+## Renderer slots: one dispatch slot, two implementations, and only one ported
+
+`config/shared.csv` has a class `renderer` with `matched_by = slot`. It means
+the two builds put **genuinely different code** behind the same dispatch slot
+-- crossdiff paired them by their aligned CALL SITES, not by their bodies.
+These are not "the port picked the wrong constant". There are two
+implementations and the tree contains one.
+
+Four are known, all D3D-side, and the numbers are worth having in one place:
+
+| slot | D3D | Glide | similarity | state |
+|---|---|---|---|---|
+| rectangle filler | `0x1001BE90` 1934 B / 534 ins | `0x1001E380` 914 B / 228 ins | 0.118 | D3D only |
+| render mode | `0x10020FA0` 1392 B / 418 ins | `0x10021270` 766 B / 241 ins | 0.112 | D3D only |
+| textured rect | `0x10021560` 1567 B / 396 ins | `0x100215C0` 1032 B / 239 ins | 0.306 | D3D only |
+| font registration | `0x10073820` 291 B / 102 ins | `0x1006C790` 105 B / 33 ins | -- | **both**, `br_font.c` |
+
+**They are different because the Glide build talks to `glide2x.dll` and the
+D3D build does not.** This is checkable rather than inferred: the three
+un-ported Glide bodies' calls resolve through the IAT to `_grDrawTriangle`,
+`_grClipWindow`, `_grAlphaCombine`, `_grAlphaBlendFunction`,
+`_grAlphaTestFunction`, `_grAlphaTestReferenceValue`, `_grCullMode`,
+`_grDepthMask` and `_grDepthBufferFunction`. The D3D bodies build
+`BrD3DTLVertex` records with `rhw` and `specular` and go through a device.
+There is no constant to swap.
+
+**DO NOT "fix" one of these by transcribing the Glide body over the D3D one.**
+That silently swaps which renderer the tree implements and destroys work. The
+D3D bodies are correct transcriptions of real functions; their `d3d` tags are
+accurate, and a census of `d3d`-tagged claims surfacing them is the tag doing
+its job, not a defect report.
+
+### What the honest options are, and when each applies
+
+`br_font.c` is the worked example of the good end state: **one file, both
+bodies, both claimed, an explicit selector.** `BrFontRegisterPages`
+(`0x1006C790`, glide) and `BrFontRegisterGlyphs` (`0x10073820`, d3d) sit
+fifteen lines apart, and `BrTextEmitString` / `BrFontMeasure` go further and
+share ONE body with an `fGlide` flag where the divergence is small enough.
+
+That works there for a reason that does not generalise: **the font blob
+discriminates.** `BrFontLoad` decides `pFont->build` by looking at the image
+it was handed, so both arms are reachable and both get exercised. There is no
+project-wide "which renderer am I" flag, and inventing one for the three
+slots above would give every Glide arm zero coverage forever -- which
+CONVENTIONS.md already names as its own hazard ("a path that has never
+executed is not tested"). A seam whose second arm cannot run is not a seam,
+it is 3,000 bytes of unexercised transcription wearing one.
+
+So the rule is:
+
+- **Seam it** when the divergence is small and something in the DATA already
+  says which build is in play. `br_font.c`'s `fGlide` and `pFont->build`.
+- **Label it** when the two bodies are genuinely different code and nothing
+  selects between them yet. State the slot, both addresses, both sizes, the
+  similarity, which body is present and which is not, at the site.
+
+**An accurate label plus a stated gap beats a hasty seam.** The thing that
+must never be left is the third option -- a body that implements one build
+under a comment describing the other, which is how the nine divergences this
+section came out of survived a census.
 
 ## Grep BOTH builds' addresses before deciding something is unported
 
@@ -921,3 +1136,81 @@ RULES:
   - Do not invent purpose. If what a function is FOR is genuinely unknown,
     write what it observably does and say the purpose is unclear. A confident
     guess in plain English is harder to catch than a confident guess in hex.
+
+## A `void` RETURN TYPE IS WHERE A BEHAVIOUR GOES TO DIE
+
+Forty-three routines in `slice3_31.c` -- everything the two `BR31_LEAVE`
+macros generate, plus the hand-written leaves and the three gotos -- were
+declared `void`. Every one of them ends `xor eax, eax`, and the header said
+so, then explained the `void` with "no caller anywhere looks at the value".
+
+The caller looks at the value.
+
+    10048280  ff5608   call dword ptr [esi + 8]
+    10048286  85c0     test eax, eax
+    10048288  7508     jne  0x10048292      ; zero -> return 0 immediately
+
+`0x10048180` dispatches the +0x08 ACTION hook and a zero makes it return 0 and
+skip the rest of the row's frame -- the `[0x10AA33E4] = 0` store, the
+`flags &= ~2` clear, the child loop and the vtable +0x08 draw. Since all
+forty-three return 0, that early exit is what the shipped game does on every
+menu action, and the port could not express any of it.
+
+Three things kept it hidden, and each is the generalisable part:
+
+  - **The bodies were right and the TYPE threw the answer away.** Reviewing
+    the transcription of any one function finds nothing wrong with it. The
+    defect lives in `BrPhaseHookFn_`, one line in `br_phase.h`, and in the two
+    macros -- none of which is "a function".
+  - **A macro spreads one decision over a whole family.** One `void` in
+    `BR31_LEAVE` is thirty-one lost returns, and grepping for the symptom
+    finds a macro invocation list, not thirty-one mistakes.
+  - **The caller's arm had never executed.** `test_slice3_32.c` exercised
+    +0x04's `-1`/`-2` sentinels and the +0x0C arm and never once installed a
+    +0x08 hook, so `if (r == 0) return 0;` -- which was correct all along --
+    had no coverage. `0x10048180` had been audited EQUIVALENT in the same
+    round that flagged the leaves.
+
+Rule: before writing `void` on a transcription of a function that ends by
+setting eax, find the call site and check whether anything TESTS it. And when
+a hook slot's host type is `void`, that is a claim about every function ever
+stored in it, not about the one in front of you.
+
+## A DOCUMENTED DEVIATION'S REASON IS A CLAIM, AND NOBODY RE-CHECKS IT
+
+`slice3_39.h` transcribed 98 of `BrCharMapLookup`'s 784 records and explained
+the other 686 as "string literals and pointers" whose codes would give "a
+garbage character back". It passed review because it was a documented
+deviation with a stated reason -- **which is worse than an undocumented one,
+because it had been checked and cleared.**
+
+Decoding the region killed both halves. It is not all strings: past the string
+pool sit two ten-entry intensity ramps and a block of 0x20-byte descriptor
+records, and the eight-byte record framing cuts them into perfectly ordinary
+`(code, ch)` pairs. And nothing is garbage: these are fixed bytes in the
+shipped image, returned deterministically, **identical in both builds** over
+the whole 0..0xFF domain -- checked code by code, zero disagreements.
+
+Fifteen of those accidental pairs carry a code the caller can deliver. The
+loudest is `0x09`: **pressing Tab appends a character in the original and
+appended nothing in this port.**
+
+Two rules fall out.
+
+FIRST: when a deviation says "the rest is garbage/unreachable/irrelevant",
+that is the sentence to test, and the test is usually cheap -- here it was one
+loop over bytes already on disk. The deviation's *existence* being documented
+is not evidence; only its *reason* is, and a reason nobody re-derived is a
+guess with a comment on it.
+
+SECOND: state unreachability with the INSTRUCTION that enforces it. Code 0 is
+genuinely unreachable -- `1005B6AB cmp eax, ebp / je 0x1005B71C` filters it
+before the lookup -- and code 8 is diverted by `1005B6AF cmp eax, 8 / jne`.
+That is checkable. "The remaining records would give garbage" was not.
+
+The matching test defect: `test_slice3_39.c` asserted
+`BrCharMapLookup(0x00) == 0`, which is the PORT's answer; the original returns
+`0x54` ('T', out of the string "Time"). Its four neighbouring assertions were
+correct, which is what made the wrong one look verified. **An assertion sitting
+in a block of correct ones inherits their credibility and none of their
+evidence.**

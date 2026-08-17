@@ -194,6 +194,24 @@ static void BrGbiRectFlush(BrGbiRectState *pSt)
     pSt->dirty = 0;
 }
 
+/* RENDERER SLOT -- THIS IS THE D3D IMPLEMENTATION, AND THE GLIDE ONE IS NOT
+ * TRANSCRIBED.  See "Renderer slots" in CONVENTIONS.md.
+ *
+ *     slot           the textured-rectangle drawer, 2 aligned callsites
+ *     D3D    0x10021560   1,567 bytes   396 instructions   <-- this body
+ *     Glide  0x100215C0   1,032 bytes   239 instructions   NOT PORTED
+ *     config/shared.csv: class `renderer`, matched_by `slot`, similarity 0.306
+ *
+ * 0.306 is the highest similarity of the three renderer slots in this pass,
+ * which is exactly why it needs saying out loud: the two DO share a shape --
+ * both unpack four edges, flip Y and emit two triangles -- and the temptation
+ * is to read that as "one routine, some constants moved".  It is not.  The
+ * Glide body's four calls all land on 0x1001EE70, its own triangle submitter,
+ * and br_dlshared.h already records that the two builds' rect handlers "end in
+ * the same five-argument call (0x100215C0 in BRGlide)" -- the same slot, not
+ * the same body.
+ *
+ * The `d3d` tag is ACCURATE. */
 /* WHAT IT DOES: actually draws a screen rectangle. It converts the four
  * edges from the display list's pixel coordinates into the renderer's own
  * space, flipping the vertical axis and dividing through by the perspective

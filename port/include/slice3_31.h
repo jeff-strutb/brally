@@ -424,45 +424,96 @@ int BrPhaseHook_10046380(void *pArg);
  * global it is about to read, so the two orders agree -- but the original's
  * order is reproduced anyway.
  *
- * All of them return 0 in the original. They are declared void because eight
- * of them are stored into BrPhase.pfn08, whose type (BrPhaseHookFn) is
- * void(void*), and because no caller anywhere looks at the value.
+ * RETURN VALUE.  This block used to read "All of them return 0 in the
+ * original. They are declared void ... because no caller anywhere looks at
+ * the value." The first sentence is right and the last clause was WRONG, and
+ * the wrong clause is what set the type.
+ *
+ * The +0x08 slot is the ACTION hook and 0x10048180 TESTS its result:
+ *
+ *     10048280  ff5608   call dword ptr [esi + 8]
+ *     10048286  85c0     test eax, eax
+ *     10048288  7508     jne  0x10048292      ; zero -> return 0 immediately
+ *
+ * A zero makes BrUiFrame_10048180 return 0 and skip the `[0x10AA33E4] = 0`
+ * store, the `flags &= ~2` clear, the child loop and the vtable +0x08 draw.
+ * 0x1004CECC is one install site, seen in the D3D build:
+ *
+ *     1004CECC  c7470860650410  mov dword ptr [edi + 8], 0x10046560
+ *     1004CED3  66c7870ce201000300  mov word ptr [edi + 0x1e20c], 3
+ *
+ * -- a UI object of exactly the shape 0x10048180 frames.
+ *
+ * So every routine below returns int32_t, and BrPhaseHookFn_ (br_phase.h) is
+ * `int32_t (*)(void *)`. The value is 0 for ALL FORTY-THREE of them; each was
+ * disassembled rather than assumed, and the address of the instruction that
+ * leaves eax zero is given per routine so the claim can be re-checked one
+ * line at a time. Two shapes produce it:
+ *
+ *   - an explicit `xor eax, eax` in the return slot (35 routines), and
+ *   - the leftover scan character of the second inlined strcpy (the 8 that
+ *     reset the player name; the `xor` is ~20 bytes earlier and nothing
+ *     between it and the `ret` writes eax).
  */
-void BrPhaseLeave_100463C0(void *pEntity); /* -> pAA2958; clears pAA2940   */
+/* 0x100463F5 */
+int32_t BrPhaseLeave_100463C0(void *pEntity); /* -> pAA2958; clears pAA2940 */
 /* 0x10046400 is BrSub10046400 (slice2_25.h): -> pAA2950; clears pAA2954,
  * nAA29E4, nAA29E0, nAA285C. */
-void BrPhaseLeave_10046450(void *pEntity); /* -> pAA2908; pAA290C, pAA29AC */
-void BrPhaseLeave_100464A0(void *pEntity); /* -> pAA2908; pAA2910          */
-void BrPhaseLeave_100464E0(void *pEntity); /* -> pAA290C; pAA2914          */
-void BrPhaseLeave_10046520(void *pEntity); /* -> pAA2908; pAA2918          */
-void BrPhaseLeave_10046560(void *pEntity); /* -> pAA297C; pAA2998; then
+/* 1004648F */
+int32_t BrPhaseLeave_10046450(void *pEntity); /* -> pAA2908; pAA290C, pAA29AC */
+/* 100464D5 */
+int32_t BrPhaseLeave_100464A0(void *pEntity); /* -> pAA2908; pAA2910          */
+/* 10046515 */
+int32_t BrPhaseLeave_100464E0(void *pEntity); /* -> pAA290C; pAA2914          */
+/* 10046555 */
+int32_t BrPhaseLeave_10046520(void *pEntity); /* -> pAA2908; pAA2918          */
+/* 1004659A */
+int32_t BrPhaseLeave_10046560(void *pEntity); /* -> pAA297C; pAA2998; then
                                             * BrExt_10079550()             */
-void BrPhaseLeave_100465A0(void *pEntity); /* -> pAA2918; pAA297C          */
-void BrPhaseLeave_100465E0(void *pEntity); /* -> pAA2918; pAA2980          */
-void BrPhaseLeave_10046620(void *pEntity); /* -> pAA2980; pAA2990, nAA29F0 */
-void BrPhaseLeave_10046670(void *pEntity); /* -> pAA2980; pAA2994, nAA29EC */
-void BrPhaseLeave_100466C0(void *pEntity); /* -> pAA2918; pAA2984; then
+/* 100465D5 */
+int32_t BrPhaseLeave_100465A0(void *pEntity); /* -> pAA2918; pAA297C          */
+/* 10046615 */
+int32_t BrPhaseLeave_100465E0(void *pEntity); /* -> pAA2918; pAA2980          */
+/* 1004665F */
+int32_t BrPhaseLeave_10046620(void *pEntity); /* -> pAA2980; pAA2990, nAA29F0 */
+/* 100466AF */
+int32_t BrPhaseLeave_10046670(void *pEntity); /* -> pAA2980; pAA2994, nAA29EC */
+/* 10046709 */
+int32_t BrPhaseLeave_100466C0(void *pEntity); /* -> pAA2918; pAA2984; then
                                             * BrExt_1003E310() and
                                             * BrExt_1006A4A0(pB4DF30,
                                             *                pB4FBE8)      */
-void BrPhaseLeave_10046710(void *pEntity); /* -> pAA2918; pAA2988          */
-void BrPhaseLeave_10046750(void *pEntity); /* -> pAA292C; pAA2918          */
-void BrPhaseLeave_10046830(void *pEntity); /* -> pAA2930; pAA2918          */
-void BrPhaseLeave_10046910(void *pEntity); /* -> pAA2934; pAA2918          */
-void BrPhaseLeave_100469F0(void *pEntity); /* -> pAA2938; pAA2918          */
-void BrPhaseLeave_10046AD0(void *pEntity); /* -> pAA293C; pAA2918          */
-void BrPhaseLeave_10046BB0(void *pEntity); /* -> pAA2914; pAA2918          */
-void BrPhaseLeave_10046C90(void *pEntity); /* -> pAA2908; pAA291C          */
+/* 10046745 */
+int32_t BrPhaseLeave_10046710(void *pEntity); /* -> pAA2918; pAA2988          */
+/* 10046785 */
+int32_t BrPhaseLeave_10046750(void *pEntity); /* -> pAA292C; pAA2918          */
+/* 10046865 */
+int32_t BrPhaseLeave_10046830(void *pEntity); /* -> pAA2930; pAA2918          */
+/* 10046945 */
+int32_t BrPhaseLeave_10046910(void *pEntity); /* -> pAA2934; pAA2918          */
+/* 10046A25 */
+int32_t BrPhaseLeave_100469F0(void *pEntity); /* -> pAA2938; pAA2918          */
+/* 10046B05 */
+int32_t BrPhaseLeave_10046AD0(void *pEntity); /* -> pAA293C; pAA2918          */
+/* 10046BE5 */
+int32_t BrPhaseLeave_10046BB0(void *pEntity); /* -> pAA2914; pAA2918          */
+/* 10046CC5 */
+int32_t BrPhaseLeave_10046C90(void *pEntity); /* -> pAA2908; pAA291C          */
 /* 0x10046CD0 is BrExt_10046CD0 (slice2_26.h): -> pAA2930; clears pAA2914
  * and pAA29B4. */
-void BrPhaseLeave_10046D20(void *pEntity); /* -> pAA295C; pAA2914, pAA29B4 */
-void BrPhaseLeave_10046D70(void *pEntity); /* -> pAA291C; pAA292C, pAA29B0,
+/* 10046D5F */
+int32_t BrPhaseLeave_10046D20(void *pEntity); /* -> pAA295C; pAA2914, pAA29B4 */
+/* 10046DB9 */
+int32_t BrPhaseLeave_10046D70(void *pEntity); /* -> pAA291C; pAA292C, pAA29B0,
                                             *              pAA2974         */
 /* 0x10046DC0 is BrExt_10046DC0 (slice2_26.h): -> pAA2924; clears pAA292C,
  * pAA29B0 and pAA2974 -- the same three as 0x10046D70. */
-void BrPhaseLeave_10047060(void *pEntity); /* -> pAA292C; pAA2930          */
-void BrPhaseLeave_100470A0(void *pEntity); /* -> pAA2934; pAA2938          */
-void BrPhaseLeave_100470E0(void *pEntity); /* -> pAA2938; pAA293C          */
+/* 10047095 */
+int32_t BrPhaseLeave_10047060(void *pEntity); /* -> pAA292C; pAA2930          */
+/* 100470D5 */
+int32_t BrPhaseLeave_100470A0(void *pEntity); /* -> pAA2934; pAA2938          */
+/* 10047115 */
+int32_t BrPhaseLeave_100470E0(void *pEntity); /* -> pAA2938; pAA293C          */
 
 /* --- the eight LEAVE routines that also reset the player name ------------
  *
@@ -476,50 +527,65 @@ void BrPhaseLeave_100470E0(void *pEntity); /* -> pAA2938; pAA293C          */
  * is the empty string until something else writes it. The original's copies
  * are unbounded inline `rep movs`; see the DEVIATION in the .c.
  */
-void BrPhaseLeaveNamed_10046790(void *pEntity);  /* -> pAA292C */
-void BrPhaseLeaveNamed_10046870(void *pEntity);  /* -> pAA2930 */
-void BrPhaseLeaveNamed_10046950(void *pEntity);  /* -> pAA2934 */
-void BrPhaseLeaveNamed_10046A30(void *pEntity);  /* -> pAA2938 */
-void BrPhaseLeaveNamed_10046B10(void *pEntity);  /* -> pAA293C */
-void BrPhaseLeaveNamed_10046BF0(void *pEntity);  /* -> pAA2914 */
-void BrPhaseLeaveNamed_10046EB0(void *pEntity);  /* -> pAA2934 */
+/* 10046818 */
+int32_t BrPhaseLeaveNamed_10046790(void *pEntity);  /* -> pAA292C */
+/* 100468F8 */
+int32_t BrPhaseLeaveNamed_10046870(void *pEntity);  /* -> pAA2930 */
+/* 100469D8 */
+int32_t BrPhaseLeaveNamed_10046950(void *pEntity);  /* -> pAA2934 */
+/* 10046AB8 */
+int32_t BrPhaseLeaveNamed_10046A30(void *pEntity);  /* -> pAA2938 */
+/* 10046B98 */
+int32_t BrPhaseLeaveNamed_10046B10(void *pEntity);  /* -> pAA293C */
+/* 10046C78 */
+int32_t BrPhaseLeaveNamed_10046BF0(void *pEntity);  /* -> pAA2914 */
+/* 10046F38 */
+int32_t BrPhaseLeaveNamed_10046EB0(void *pEntity);  /* -> pAA2934 */
 
 /* 0x10046E10  The odd one out: it clears pAA2924 and nAA28E0 where the other
  * seven clear pAA2928, nAA29C0, nAA29CC and nAA28E4. It still sets
  * n0AB3F4 = -1 and still does both name copies. -> pAA291C. */
-void BrPhaseLeaveNamed_10046E10(void *pEntity);
+/* 10046E8C */
+int32_t BrPhaseLeaveNamed_10046E10(void *pEntity);
 
 /* --- LEAVE routines with a different shape -------------------------------- */
 
 /* 0x10046F50 / 0x10046FC0 / 0x10047050  Three bodies of one statement:
  * pAA2904 = <some phase>. They read no argument at all -- the original takes
  * none -- and return 0. */
-void BrPhaseGoto_10046F50(void);   /* pAA2904 = pAA2974 */
-void BrPhaseGoto_10046FC0(void);   /* pAA2904 = pAA292C */
-void BrPhaseGoto_10047050(void);   /* pAA2904 = pAA293C */
+/* 10046F5A */
+int32_t BrPhaseGoto_10046F50(void);   /* pAA2904 = pAA2974 */
+/* 10046FCA */
+int32_t BrPhaseGoto_10046FC0(void);   /* pAA2904 = pAA292C */
+/* 1004705A */
+int32_t BrPhaseGoto_10047050(void);   /* pAA2904 = pAA293C */
 
 /* 0x10046F60  Standard prologue, then it clears pAA2904 and pAA2974, and if
  * the phase it saved out of pAA292C first is non-NULL it notifies THAT one
  * too (slot +0x00 with 1) and clears pAA292C. Finally pAA2904 = pAA2908.
  * GOTCHA: pAA2904 is stored as NULL and then immediately overwritten -- the
  * NULL is visible only to the second notify's callee. */
-void BrPhaseLeave_10046F60(void *pEntity);
+/* 10046FB7 */
+int32_t BrPhaseLeave_10046F60(void *pEntity);
 
 /* 0x10046FD0  Tears down pAA2934, pAA2938 and pAA293C through the phase
  * vtable's slot +0x1C (see BrPhaseVtblExt) and NULLs each, then the standard
  * prologue, then pAA2974 = NULL and pAA2904 = pAA2908. */
-void BrPhaseLeave_10046FD0(void *pEntity);
+/* 10047043 */
+int32_t BrPhaseLeave_10046FD0(void *pEntity);
 
 /* 0x10047120  BrExt_10045C90(pEntity); then, only if nAA26F0 > 0 and both
  * bAA26F4 and bAA26F5 are zero, wipes three blocks (0x10AA26F6 24 bytes,
  * 0x10AA270E 48 bytes, 0x10AA2740 96 bytes); nAA28C4 = 0; the entity's
  * +0x2AE8 slot +0x1C; then it notifies and clears pAA296C -- NOT pAA2904,
  * which it never touches. */
-void BrPhaseLeave_10047120(void *pEntity);
+/* 100471A0 */
+int32_t BrPhaseLeave_10047120(void *pEntity);
 
 /* 0x100471B0  BrExt_10045C90(pEntity), the entity's slot +0x1C, then notify
  * and clear pAA2970. Again pAA2904 is untouched. */
-void BrPhaseLeave_100471B0(void *pEntity);
+/* 100471E3 */
+int32_t BrPhaseLeave_100471B0(void *pEntity);
 
 /* 0x10047290  BrExt_1005FBC0(1); tear down pAA2934 and pAA2938 through slot
  * +0x1C; then exactly ONE of three branches --
@@ -527,7 +593,8 @@ void BrPhaseLeave_100471B0(void *pEntity);
  *     nAA28B4 != 0 -> BrExt_10043330(pEntity), nAA28B4 = 0
  *     otherwise    -> BrExt_10045C90(pEntity)
  * -- then the entity's slot +0x1C, then notify and clear pAA293C. */
-void BrPhaseLeave_10047290(void *pEntity);
+/* 1004732D */
+int32_t BrPhaseLeave_10047290(void *pEntity);
 
 /* ==========================================================================
  * Small helpers

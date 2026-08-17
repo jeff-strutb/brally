@@ -68,6 +68,7 @@
 
 #include "br_slots.h"   /* 0x100586A0 == BrSlotsReset */
 #include "br_phase.h"   /* BrPhase_, BrPhaseVtbl_ -- CANONICAL, see below */
+#include "br_phasecur.h" /* BR_PHASE_CUR -- 0x10AA2904, the ONE current phase */
 
 /* ==========================================================================
  * The phase object (0xC8 bytes, allocated at 0x1004488E and eleven twins)
@@ -206,8 +207,14 @@ typedef struct BrObjA9D008 {
  * ========================================================================== */
 
 typedef struct BrPhaseCtx {
-    /* --- phase singletons; every one of these is a BrPhase * ------------- */
-    BrPhase *pAA2904;   /* 0x10AA2904 -- the CURRENT phase                   */
+    /* --- phase singletons; every one of these is a BrPhase * -------------
+     *
+     * 0x10AA2904, the CURRENT phase, is NOT a member here.  It used to be,
+     * and that made it a second object beside br_uinav.h's BrUiNav::pAA2904 --
+     * so this range published every transition it performed into a slot the
+     * frame loop does not read, and the screen never changed.  Use
+     * BR_PHASE_CUR (br_phasecur.h); it is the same `BrPhase *` and it is the
+     * host's one slot.  See the collapse note in br_phasecur.h. */
     BrPhase *pAA2908;   /* 0x10AA2908 */
     BrPhase *pAA290C;   /* 0x10AA290C */
     BrPhase *pAA2914;   /* 0x10AA2914 */
@@ -348,14 +355,22 @@ extern void BrPhaseEnterPlaceholder_1004C4A0(BrPhase *pSelf);
 /* XSLICE 0x1004E830 */ extern void BrExt_1004E830(BrPhase *pSelf);
 
 /* The hooks stored into BrPhase.pfn08. */
-/* XSLICE 0x10046CD0 */ extern void BrExt_10046CD0(void *pEntity);
-/* XSLICE 0x10046DC0 */ extern void BrExt_10046DC0(void *pEntity);
+/* Both are slice3_31.c LEAVE routines and both return 0 -- `xor eax, eax`
+ * at 0x10046D0F and 0x10046E09. They are stored into the +0x08 hook slot,
+ * whose result 0x10048180 tests; see br_phase.h. */
+/* XSLICE 0x10046CD0 */ extern int32_t BrExt_10046CD0(void *pEntity);
+/* XSLICE 0x10046DC0 */ extern int32_t BrExt_10046DC0(void *pEntity);
 
 /* ==========================================================================
  * The range itself
  * ========================================================================== */
 
 /* --- activate ------------------------------------------------------------ */
+
+/* THE SHARED ACTIVATE BODY is br_phaseact.h's BrPhaseActivateSlot.  It is a
+ * module of its own because slice2_26.c and slice3_31.c BOTH inline it and
+ * neither may drag the other in; each used to carry its own transcription and
+ * the two drifted apart.  See br_phaseact.c. */
 
 /* 0x100447D0  The heavy one. Resets the slot table, tears three subsystems
  * down, brings one of two back up depending on nAA2884, then activates the

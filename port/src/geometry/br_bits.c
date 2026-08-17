@@ -35,6 +35,43 @@ void BrSwapVec3(void *pv)
     }
 }
 
+/* 0x10018A50 (glide) == 0x1002B9E0 (d3d), 29 bytes, byte-identical.
+ *
+ * ONE BODY, AND IT LIVES HERE because both of the modules that need it are
+ * leaves that must not depend on each other: br_track.c had it as
+ * `swap_u16_run` and slice2_16.c as `BrSwapU16Array`, transcribed
+ * independently under the two builds' addresses.  Neither was wrong, which is
+ * the point -- they would have drifted, as 0x10022120's two copies did.
+ *
+ * THE COUNT IS SIGNED and the guard is `test ecx,ecx / jle`, so a negative
+ * count is a no-op rather than a run of four billion.  br_track.c's copy took
+ * an unsigned count and would have looped forever on one; nothing passed one,
+ * so nothing showed it.
+ *
+ * The loop itself is `dec ecx / jne`, entered only after the guard, and the
+ * source pointer is loaded ONCE before the loop label at 0x10018A5C -- the
+ * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it. */
+/* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
+ * Boss Rally's data files came from the N64 and store their numbers the other
+ * way round from a PC, so they have to be turned around after loading. Asking
+ * for nothing, or for a negative number of them, does nothing. */
+/* @implements 0x10018A50 glide BrSwapU16Array */
+/* @implements 0x1002B9E0 d3d BrSwapU16Array */
+void BrSwapU16Array(void *pv, int count)
+{
+    unsigned char *p = (unsigned char *)pv;
+    int i;
+
+    if (count <= 0)
+        return;
+    for (i = 0; i < count; i++) {
+        unsigned char t = p[0];
+        p[0] = p[1];
+        p[1] = t;
+        p += 2;
+    }
+}
+
 void *BrHandleLookup(void *const *apTable, uint32_t handle)
 {
     if (handle < BR_HANDLE_MIN || handle > BR_HANDLE_MAX)

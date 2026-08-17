@@ -2,6 +2,7 @@
  * See slice1_05.h for the per-function notes and gotchas. */
 
 #include "slice1_05.h"
+#include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
 
 #include <stddef.h>
 
@@ -398,21 +399,39 @@ void BrHookSetB(BrHooks *pH, void *pv)
     pH->pfB = pv;
 }
 
-/* 0x10034C66 */
+/* 0x10034C66 -- ONE BODY, br_gamestep.c's (BrGameStepSet), which carries
+ * BRGlide's 0x1002E317 for it.
+ *
+ * `pH` IS NOT USED, AND WAS NEVER USED BY THE ORIGINAL.  0x10034C66 is
+ *     push ebp / mov ebp,esp / mov eax,[ebp+8] / mov [0x106C0964],eax / ret
+ * -- one cdecl argument written to a fixed global.  There is no `this`: the
+ * BrHooks struct is a port-side gathering of six unrelated globals, and a
+ * note elsewhere in the tree explaining this pair as __thiscall with the
+ * `this` dropped was reading a struct that does not exist in the game.  The
+ * parameter is kept only so the existing call sites need no change. */
 void BrHookSetC(BrHooks *pH, void (*pfn)(void))
 {
-    pH->pfnC = pfn;
+    (void)pH;
+    BrGameStepSet(pfn);
 }
 
-/* 0x10034C73  No null check in the original; preserved. */
-/* WHAT IT DOES: calls whichever routine has been plugged into one particular
- * hook slot. Nothing checks that anything has been plugged in, so calling it
- * before the slot is filled crashes -- that is the original's behaviour, not an
- * oversight in transcription. */
-/* @implements 0x10034C73 d3d BrHookCallC */
+/* 0x10034C73 -- ONE BODY, br_gamestep.c's (BrGameStepInvoke), which carries
+ * BRGlide's 0x1002E324 for it.  `pH` is unused for the same reason as the
+ * setter above: the original is `call dword ptr [0x106C0964]` and takes no
+ * argument at all.
+ *
+ * DEVIATION, inherited from the surviving body and stated here because this
+ * declaration used to promise the opposite: br_gamestep.c tests the slot for
+ * NULL and returns 0, where the original calls through it and faults.  The
+ * host harness needs to be able to report "nothing installed" rather than
+ * die; the fault is the only behaviour lost. */
+/* WHAT IT DOES: runs one frame of whatever the game is currently doing --
+ * the race, or the front end -- by calling the routine installed in the
+ * single slot that names the current activity. */
 void BrHookCallC(const BrHooks *pH)
 {
-    pH->pfnC();
+    (void)pH;
+    (void)BrGameStepInvoke();
 }
 
 /* 0x10034C83 */

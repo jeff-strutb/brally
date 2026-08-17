@@ -105,9 +105,11 @@ extern void BrSub100027F0(int track);
 extern void BrSub1003E3A0(void);
 /* XSLICE 0x1003CC70 -- called with 0x10277B40. */
 extern void BrSub1003CC70(void *p);
-/* XSLICE 0x1007A840 */
-extern int BrSub1007A840(void);
-/* XSLICE 0x1007A940 */
+/* 0x1007A840 IS DELIBERATELY NOT DECLARED HERE.  It is the D3D-only gate in
+ * front of 0x1007AC00's one call; BRGlide.dll has no counterpart of it and
+ * the Glide twin 0x10058F90 calls the body unconditionally.  See the banner
+ * over BrExt_1007AC00. */
+/* XSLICE 0x1007A940 (Glide 0x10058E20 -- byte-identical, shared.csv `body`) */
 extern int BrSub1007A940(void);
 
 /* ==========================================================================
@@ -177,20 +179,42 @@ void BrCdTrackPlay(int track)
     BrSub100027F0(track);
 }
 
-/* 0x1007AC00 */
-/* WHAT IT DOES: asks one question, and if the answer is anything at all asks
- * a second -- then throws both answers away. What the two questions are is
- * not established, so the only observable effect is whatever the second call
- * does along the way; the purpose is unclear. */
-/* @implements 0x1007AC00 d3d BrExt_1007AC00 */
+/* 0x10058F90 (Glide) / 0x1007AC00 (D3D)
+ *
+ * BUILD DIVERGENCE -- A WHOLE GUARD, and the port had the D3D one.
+ *
+ *     Glide 0x10058F90, 12 bytes, FIVE instructions:
+ *         call 0x10058E20 / neg eax / sbb eax,eax / neg eax / ret
+ *
+ *     D3D   0x1007AC00, 22 bytes:
+ *         call 0x1007A840 / test eax,eax / jne +1 / ret
+ *         call 0x1007A940 / neg / sbb / neg / ret
+ *
+ * config/shared.csv pairs 0x1007A940 with 0x10058E20 as `shared`/`body` --
+ * byte-identical, so the CALLEE is the same routine in both builds.  The gate
+ * is not: 0x1007A840 is class `unknown` with no glide_va, and a scan of
+ * BRGlide.dll finds no counterpart of its 244-byte body.  It enumerates
+ * display devices (its strings include "%s (Primary)" and it writes the
+ * adapter global 0x118AC238), which is exactly the kind of thing the Glide
+ * build reaches through glide2x.dll instead of doing itself.
+ *
+ * So UNDER GLIDE THE BODY ALWAYS RUNS.  The port's `if (... == 0) return;`
+ * suppressed it whenever the D3D-only enumerator would have failed -- a gate
+ * that does not exist in the reference build, standing in front of the only
+ * call that has side effects.  Removed, and BrSub1007A840 with it: nothing
+ * else references it and keeping a declaration for a function the reference
+ * build does not contain invites it back.
+ *
+ * The `neg eax / sbb eax,eax / neg eax` tail is `(v != 0)` in both builds and
+ * is dropped in both, because the caller declares this void. */
+/* WHAT IT DOES: asks one question and throws the answer away, so the only
+ * thing it accomplishes is whatever that call does along the way. What the
+ * question is has not been established; the purpose is unclear. */
+/* @implements 0x10058F90 glide BrExt_1007AC00 */
 void BrExt_1007AC00(void)
 {
-    if (BrSub1007A840() == 0) {
-        return;
-    }
-    /* `neg eax / sbb eax,eax / neg eax` is (v != 0). The caller declares this
-     * void, so the value is computed and dropped -- kept as a call so the side
-     * effects of 0x1007A940 still happen. */
+    /* Kept as a call so the side effects of 0x10058E20 (== D3D 0x1007A940)
+     * still happen; the comparison itself is dead. */
     (void)(BrSub1007A940() != 0);
 }
 
