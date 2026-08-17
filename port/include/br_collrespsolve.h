@@ -92,4 +92,25 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
                      const BrVec3 *pNormal, const BrVec3 *pRelDir,
                      int flag, float restOffset, BrCrEffect *pEffect);
 
+/* 0x10065980 -- the contact "kick": the impulse-free branch of the response.
+ * Where 0x10065C80 solves the full inertia contact, this one just reflects the
+ * body's linear velocity off the contact plane with restitution and (optionally)
+ * folds the spin onto the contact axis -- the cheaper path the walker takes when
+ * the full solve is not wanted.
+ *
+ * pVel      body+0x164, next.vel     -- READ and WRITTEN (the reflection).
+ * pAngVel   body+0x180, next.angVel  -- WRITTEN only when spinFlag is set.
+ * pNormal   arg2, the contact normal; drives the gate and the reflection.
+ * dampFlag  arg3; when non-zero, multiplies the reflected velocity by 0.9.
+ * spinFlag  arg4; when non-zero, replaces angVel with M diag(Mt N) Mt angVel,
+ *           where M's rows are (N; the quadratic tangent NxNy-Nz^2, ...; N x that)
+ *           -- it isolates the spin about the contact normal.
+ * pEffect   threshold IN; when threshold >= 10 the intensity/peak/colour are
+ *           written and the reflected velocity is additionally damped 0.9.  The
+ *           colour is g_brCrPlane.normal's dwords (the shared bank), NOT pNormal.
+ *
+ * Returns 1 if it acted, 0 if the contact was separating (dot(N, vel) >= 0). */
+int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
+                    int dampFlag, int spinFlag, BrCrEffect *pEffect);
+
 #endif /* BR_COLLRESPSOLVE_H */

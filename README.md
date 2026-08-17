@@ -196,14 +196,14 @@ all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
 milestone 6 — the per-frame race loop and the OBB collision **response**
 (`0x10067710` and its impulse solver `0x10065C80`), which is why cars still
-fall through the world. Two of that unit's four functions are now ported and
+fall through the world. Three of that unit's four functions are now ported and
 oracle-verified in `port/src/driving/br_collrespsolve.c`: the contact-plane
-resolver `0x10067470` and the impulse solver `0x10065C80` itself — the latter
-transcribed against `tools/x87emu.py` executing its real opcode stream and
-pinned by golden vectors (both response paths, the effect record, and the
-restitution/damping gates). What remains is the per-contact effect record
-`0x10065980` and the walker `0x10067710` that drives the whole unit; until the
-walker lands, the solver is verified but not yet wired to a live race.
+resolver `0x10067470`, the impulse solver `0x10065C80`, and the impulse-free
+contact "kick" `0x10065980` — each transcribed against `tools/x87emu.py`
+executing its real opcode stream, pinned by golden vectors, and mutation-tested.
+What remains is the walker `0x10067710` that drives the whole unit per contact;
+until it lands, the three consumers are verified but not yet wired to a live
+race.
 
 ### How to read the other numbers in this file
 
