@@ -720,12 +720,57 @@ void BrRaceStepLights(void)
  * 0x10019A70
  * ========================================================================== */
 
+/* 0x10019A70 IS DELIBERATELY UNCLAIMED, AND THIS IS WHERE THE CLAIM USED TO BE
+ * ============================================================================
+ * `/ * @implements 0x10019A70 glide BrRaceStepInit * /` sat on this line and
+ * it was false.  0x10019A70 is 11,223 bytes making 131 calls.  The body below
+ * annotates 0x1001A97C..0x1001AA5E -- about 230 bytes, TWO PER CENT, and it
+ * starts roughly 4 KB into the function.  Under that claim the address counted
+ * as ported and the other 98% was neither transcribed, nor marked, nor counted
+ * as missing.
+ *
+ * WHY IT WAS DROPPED RATHER THAN MOVED OR NARROWED
+ *
+ *   - NARROWED is not available.  tools/manifest.py's form is
+ *     `@implements 0xADDR BUILD SYMBOL` and nothing else; there is no
+ *     sub-range or partial syntax anywhere in the tree.  A claim is
+ *     whole-function or it is absent.
+ *   - MOVED to BrRaceStepFrame was the obvious fix and is still wrong.
+ *     BrRaceStepFrame is the right SHAPE -- it is 0x10019A70's entry and its
+ *     substate branch, the per-frame arm the pump calls -- but it and
+ *     BrRaceStepLights together cover 0x1001AB71..0x1001B261, about 1,780
+ *     bytes.  That is 16%, not 100%.  Trading a 2% lie for a 16% one is not
+ *     an honest outcome; it is a quieter one.
+ *
+ * SO THE ADDRESS READS AS UNPORTED, WHICH IT IS.  What exists is:
+ *
+ *     BrRaceStepInit    0x1001A97C..0x1001AA5E   the script seed          ~230 B
+ *     BrRaceStepFrame   0x1001AB71..0x1001B261   the per-frame arm      ~1,780 B
+ *     BrRaceStepLights  0x1001ABFB..0x1001B171   (inside the above)
+ *
+ * and what does not:
+ *
+ *     0x10019AFE..0x1001AB6F   the one-time arm's asset loading and screen
+ *                              setup, ~4.2 KB, of which 0x1005F310 (538 B,
+ *                              the driver-record constructor and the grid
+ *                              placement) is the counter increment below
+ *     0x1001B261..0x1001C647   the HUD, the rear-view mirror and the whole
+ *                              renderer, ~5.1 KB, counted as BR_RS_HOLE_HUD
+ *
+ * DO NOT READ "UNPORTED" AS "UNTOUCHED" AND SEND SOMEONE TO START OVER.
+ * br_racestep.h is 500 lines of derivation for this address and the three
+ * functions above are checked transcriptions of the parts they name.  The
+ * missing 84% is asset loading and rendering, which this module does not own.
+ * Restoring an @implements line here without also transcribing that 84% just
+ * puts the same defect back. */
+
 /* WHAT IT DOES: starts a race. It rewinds the starting-light sequence to the
- * beginning, clears the finished-driver count and puts every car on the grid.
- * A replay, or the one mode that has no start procedure, skips straight past
- * the lights to the racing state, and a replay also leaves the existing grid
- * alone since the cars' positions are coming off the recording. */
-/* @implements 0x10019A70 glide BrRaceStepInit */
+ * beginning and clears the finished-driver count. A replay, or the one mode
+ * that has no start procedure, skips straight past the lights to the racing
+ * state. Putting the cars on the grid is the one thing it does NOT do that
+ * the original does: that is a separate 538-byte routine this module does not
+ * own, so the per-driver loop below only counts how many times it would have
+ * been called. */
 int BrRaceStepInit(void)
 {
     int32_t i;

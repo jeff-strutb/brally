@@ -47,7 +47,8 @@ static const BrSfxSrcDef s_aBrSfxSrcImage[BR_SFXSRC_COUNT] = {
 
 BrSfxSrcDef g_aBrSfxSrc[BR_SFXSRC_COUNT];
 
-BrSfxChan   g_aBrSfxChan[BR_SFX_CHANNELS];
+BrSfxChan   g_aBrSfxChan[BR_SFX_CHANNELS];        /* 0x118EEF40, stride 24 */
+BrSfxChan   g_aBrSfxChanApplied[BR_SFX_CHANNELS]; /* 0x1184C080, stride 24 */
 BrSndVoice *g_apBrSfxChanVoice[BR_SFX_CHANNELS];
 double      g_aBrSfxChanRate[BR_SFX_CHANNELS];
 
@@ -159,6 +160,14 @@ int BrSfxChanSetLevels(int ch, uint32_t packed)
     return 1;
 }
 
+/* WHAT IT DOES: actually starts a sound playing on one of the mixer's
+ * channels. It finds the sound the channel is meant to be playing, sets it
+ * going, works out how fast to step through the samples so the sound comes out
+ * at its recorded pitch, and remembers that speed in two places -- the
+ * channel's own record and the separate note of what the hardware has really
+ * been told -- so the per-frame retune can tell whether anything has changed.
+ * With sound switched off it reports success without doing anything. */
+/* @implements 0x1006B880 glide BrSfxChanStart */
 int BrSfxChanStart(int group, int ch, int32_t loop)
 {
     int         idx;
@@ -189,20 +198,41 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
      * is br_sfx.c's BrSfxRatioFromHz exactly -- including the unguarded
      * divide, which is why a channel bound to a rate of 0 yields the x87
      * indefinite here rather than a diagnostic. */
+    /* 0x1006B903/09, esi = ch*24 */
     g_aBrSfxChan[ch].ratio = BrSfxRatioFromHz(pVoice->f0C,
                                               g_aBrSfxChanRate[ch]);
 
     /* 0x1006B915: only NOW does the channel's bound voice become this one on
      * the path where 0x1006B530 was never called. */
     g_apBrSfxChanVoice[ch] = pVoice;
+
+    /* THE SECOND STORE, which this port used not to make at all.  The ratio
+     * goes to TWO stride-24 arrays:
+     *
+     *   1006B903  mov [esi+0x118EEF48], eax    ; chan[ch].ratio, low
+     *   1006B909  mov [esi+0x118EEF4C], edx    ;                 high
+     *   1006B90F  mov ecx, [esi+0x118EEF48]    ; READ BACK the low dword
+     *   1006B915  mov [edi*4+0x1184C268], ebx  ; the bound voice, above
+     *   1006B91C  mov [esi+0x1184C088], ecx    ; applied[ch].ratio, low
+     *   1006B922  mov [esi+0x1184C08C], edx    ;                    high
+     *
+     * The two source registers differ -- eax then ecx -- and that is worth
+     * being explicit about, because it looks like two different values and is
+     * not one: 0x1006B90F reloads ecx from the slot 0x1006B903 has just
+     * written, with only the high-dword store in between, so ecx == eax and
+     * edx is still the same high dword.  The two arrays get the same 64-bit
+     * ratio.  Writing chan -> applied rather than the ftol result twice is the
+     * literal instruction order. */
+    g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
     return 1;
 }
 
 void BrSfxSrcChannelsReset(void)
 {
-    memset(g_apBrSfxChanVoice, 0, sizeof g_apBrSfxChanVoice);
-    memset(g_aBrSfxChanRate,   0, sizeof g_aBrSfxChanRate);
-    memset(g_aBrSfxChan,       0, sizeof g_aBrSfxChan);
+    memset(g_apBrSfxChanVoice,  0, sizeof g_apBrSfxChanVoice);
+    memset(g_aBrSfxChanRate,    0, sizeof g_aBrSfxChanRate);
+    memset(g_aBrSfxChan,        0, sizeof g_aBrSfxChan);
+    memset(g_aBrSfxChanApplied, 0, sizeof g_aBrSfxChanApplied);
 }
 
 /* ==========================================================================
@@ -275,12 +305,18 @@ void BrSfxSrcTrigger(int iSrc)
     g_brSfxSrcLast = (int32_t)iSrc;
 }
 
-void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* 0x10060DF0 */
+/* Both are eleven bytes -- `push <n>; call 0x10060DB0; add esp,4; ret` -- and
+ * the ONLY thing that tells them apart is that immediate.  The manifest line
+ * below used to read 0x10060DF0 for Beep2, which is the address of Beep. */
+/* WHAT IT DOES: plays the game's ordinary beep -- the one the countdown uses
+ * for three, two and one. */
+/* @implements 0x10060DF0 glide BrSfxSrcBeep */
+void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* push 0x0D */
 /* WHAT IT DOES: plays the second of the game's two beeps -- the one used for
  * the "go" at the end of the race countdown, where the first three steps use
  * the ordinary beep. */
-/* @implements 0x10060DF0 glide BrSfxSrcBeep2 */
-void BrSfxSrcBeep2(void) { BrSfxSrcTrigger(BR_SFXSRC_BEEP2); }   /* 0x10060E00 */
+/* @implements 0x10060E00 glide BrSfxSrcBeep2 */
+void BrSfxSrcBeep2(void) { BrSfxSrcTrigger(BR_SFXSRC_BEEP2); }   /* push 0x0E */
 
 void BrSfxSrcRaceCountdown(int iStep)
 {

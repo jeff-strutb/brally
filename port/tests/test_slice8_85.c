@@ -111,6 +111,31 @@ static void MsgSend(BrUiCtl_ *pThis, int32_t msg, int32_t x, int32_t y)
     ++s_cMsg;
 }
 
+/* The SECOND control vtable, and the handler that swaps a control onto it.
+ *
+ * 0x1003E7A0 and 0x1003E980 read the +0x14 slot ONCE and spill the pointer
+ * (0x1003E7F0 / 0x1003E9AA, both into E+4), then reach every later message
+ * through the spill (`call [esp+0x28]` / `call [esp+0x20]`).  So a handler
+ * that re-points the control's vtable mid-draw does NOT redirect the rest of
+ * the row.  Nothing but a swap can tell a cached pointer from a re-read, which
+ * is why this stand-in exists.  MsgSendOther logs into its own counter; if the
+ * module ever goes back to re-reading `pCtl->pVtbl->f14`, that counter moves
+ * and s_cMsg stops. */
+static int s_cMsgOther;
+static BrUiCtlVtbl_ s_ctlVtblOther;
+static void MsgSendOther(BrUiCtl_ *pThis, int32_t msg, int32_t x, int32_t y)
+{ (void)pThis; (void)msg; (void)x; (void)y; ++s_cMsgOther; }
+
+static BrUiCtl_ *s_pSwapCtl;
+static int32_t   s_swapOnMsg;
+static void MsgSendSwap(BrUiCtl_ *pThis, int32_t msg, int32_t x, int32_t y)
+{
+    MsgSend(pThis, msg, x, y);
+    if (msg == s_swapOnMsg && s_pSwapCtl != NULL) {
+        s_pSwapCtl->pVtbl = &s_ctlVtblOther;
+    }
+}
+
 /* Text-box vtable.  +0x14 is CONFLICT 2: the module calls it through an
  * int-returning type, so the stand-in is declared that way and installed
  * through the same union trick, which is itself part of what is being
@@ -169,6 +194,10 @@ static void Wire(void)
 
     memset(&s_ctlVtbl, 0, sizeof s_ctlVtbl);
     s_ctlVtbl.f14 = MsgSend;
+
+    memset(&s_ctlVtblOther, 0, sizeof s_ctlVtblOther);
+    s_ctlVtblOther.f14 = MsgSendOther;
+    s_cMsgOther = 0; s_pSwapCtl = NULL; s_swapOnMsg = 0;
 
     memset(&s_boxVtbl, 0, sizeof s_boxVtbl);
     s_boxVtbl.pfn04 = Box04;
@@ -266,6 +295,42 @@ static void TestDraw(void)
     (void)BrUiHook85_1003E980(p);
     CHECK(s_cMsg == 1);
 
+    printf("the +0x14 slot is fetched ONCE per hook, not once per message\n");
+    /* 0x1003E9AA saves the slot and 0x1003E9C1 sends every 0x75 through the
+     * saved pointer, so a 0x74 handler that swaps the vtable must not
+     * redirect the row.  Same shape at 0x1003E7F0 / 0x1003E806 / 0x1003E823. */
+    g_brB4E708 = 3;
+    s_ctlVtbl.f14 = MsgSendSwap;
+    s_swapOnMsg   = 0x74;
+    s_pSwapCtl    = p;
+    p->pVtbl      = &s_ctlVtbl;
+    s_cMsg = 0; s_cMsgOther = 0;
+    CHECK(BrUiHook85_1003E980(p) == 1);
+    CHECK(s_cMsg      == 4);   /* 0x74 + three 0x75, all down the saved ptr */
+    CHECK(s_cMsgOther == 0);   /* the swapped-in vtable is never consulted  */
+    CHECK(p->pVtbl    == &s_ctlVtblOther);   /* the swap really did happen  */
+
+    /* And the same for the three-message hook: the swap lands on the 0x3D. */
+    p->pVtbl          = &s_ctlVtbl;
+    p->aText[0].x     = 100.0f;
+    p->aText[0].y     = 50.0f;
+    p->aText[0].width = 48;      /* -> 0x3D, four 0x3B, 0x3C */
+    s_swapOnMsg = 0x3D;
+    s_cMsg = 0; s_cMsgOther = 0;
+    CHECK(BrUiHook85_1003E7A0(p) == 1);
+    CHECK(s_cMsg      == 6);
+    CHECK(s_cMsgOther == 0);
+
+    /* ...and on a 0x3B, so the spill is proved live across the loop too. */
+    p->pVtbl    = &s_ctlVtbl;
+    s_swapOnMsg = 0x3B;
+    s_cMsg = 0; s_cMsgOther = 0;
+    (void)BrUiHook85_1003E7A0(p);
+    CHECK(s_cMsg      == 6);
+    CHECK(s_cMsgOther == 0);
+
+    s_ctlVtbl.f14 = MsgSend;
+    s_pSwapCtl    = NULL;
     free(p);
 }
 

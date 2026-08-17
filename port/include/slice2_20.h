@@ -151,8 +151,22 @@ void BrRcaFixup(void *pvFile, size_t cbFile);
  * It only feeds BrRcaFixup's bounds check. */
 void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar);
 
-/* 0x10037A90  Build "tracks/<name>", replace the extension with ".hnd" and
- * hand it to 0x10037990.  iTrack indexes the table at 0x100B80B8. */
+/* The track handling-file extension, and it is a BUILD DIVERGENCE: Glide
+ * 0x1003117B loads 0x100AA338 == ".hnt", D3D 0x10037AC9 loads 0x100AABA8 ==
+ * ".hnd", and neither literal appears in the other image.  The disc ships
+ * `desert.hnt` and `coast.hnt` and no `.hnd` at all, so Glide -- this
+ * project's reference -- is also the build that agrees with the data.
+ * Named rather than inlined so a test can assert on the same token the
+ * implementation uses without the two drifting apart. */
+#define BR_TRACK_HANDLING_EXT  ".hnt"
+
+/* 0x10031140 (Glide) / 0x10037A90 (D3D)  Build "tracks/<name>", replace the
+ * extension with BR_TRACK_HANDLING_EXT and hand it to 0x10037990 (Glide
+ * 0x10031030).  iTrack indexes the table at 0x100B80B8 (Glide 0x100B78C0).
+ *
+ * NOTE the Glide number: 0x10031140 names THIS function in BRGlide.dll and
+ * BrMat4Translate in BRD3D.dll.  A bare address is not self-describing here
+ * (manifest.py defect 6), which is why the claim carries its build. */
 void BrTrackLoadHandling(int iTrack);
 
 /* 0x100378B0  Read a whole file into pvDest.

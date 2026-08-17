@@ -304,10 +304,20 @@ void BrSelLookup(const BrSelInput *pIn, const unsigned char (*aTable)[2],
  * in this build they only set a flag. That is faithful; the copy semantics
  * the call sites were written against are not recoverable from this binary.
  */
+/* THIS STRUCT IS A PORT-SIDE GATHERING, NOT AN OBJECT THE GAME HAS.  Every
+ * one of these accessors writes a FIXED GLOBAL (`mov [0x106C1608],eax`), not
+ * a member through a `this`, so nothing in the original ties the six
+ * addresses together.  It is kept because the call sites are written against
+ * it; do not read it as evidence about the game's layout.
+ *
+ * `pfnC` HAS BEEN REMOVED from it. 0x106C0964 is the same original dword as
+ * BRGlide 0x106E79F4 -- shared.csv pairs its three accessors 0x10034C51 /
+ * 0x10034C66 / 0x10034C73 with 0x1002E302 / 0x1002E317 / 0x1002E324 as
+ * byte-identical -- and br_gamestep.c owns it. Modelling it here as well made
+ * three host objects for one slot. */
 typedef struct BrHooks {
     void  *pfA;             /* 0x106C198C */
     void  *pfB;             /* 0x106C1608 */
-    void (*pfnC)(void);     /* 0x106C0964 */
     uint32_t g0938;         /* 0x106C0938 */
     uint32_t g3300;         /* 0x106C3300 */
     int      f7C44;         /* 0x106C7C44 -- set to 1 by the stub 0x100378A0 */
@@ -316,8 +326,17 @@ typedef struct BrHooks {
 void BrHookNopA(void);                                /* 0x10034C32, empty */
 void BrHookSetA(BrHooks *pH, void *pv);               /* 0x10034C37 */
 void BrHookSetB(BrHooks *pH, void *pv);               /* 0x10034C44 */
-void BrHookSetC(BrHooks *pH, void (*pfn)(void));      /* 0x10034C66 */
-/* 0x10034C73  Calls through pfnC. GOTCHA: no null check in the original. */
+/* 0x10034C66 / 0x10034C73  The game-step slot's setter and invoker. BOTH
+ * IGNORE pH -- the originals address 0x106C0964 directly and the setter takes
+ * one plain cdecl argument -- and both forward to br_gamestep.c, which holds
+ * the one body and the one copy of the storage. The parameter survives only
+ * so the call sites read unchanged.
+ *
+ * GOTCHA, CORRECTED: this header used to say "no null check in the original",
+ * which is true of the original and no longer true of the port. The surviving
+ * body returns without calling when nothing is installed, so the harness can
+ * report an empty slot instead of faulting. */
+void BrHookSetC(BrHooks *pH, void (*pfn)(void));
 void BrHookCallC(const BrHooks *pH);
 void BrHookNopB(void);                                /* 0x10034C83, empty */
 /* 0x10034C88  The original passes (&g0938, (char*)pSrc + 4, 4) to the stub.

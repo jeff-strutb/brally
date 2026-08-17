@@ -79,6 +79,7 @@
 #include <stdint.h>
 
 #include "br_phase.h"    /* BrPhase_ -- canonical 0xC8 phase object          */
+#include "br_phasecur.h" /* BR_PHASE_CUR -- 0x10AA2904, the ONE current phase */
 #include "br_crt.h"      /* BrOperatorNew, BrFtolTrunc -- 0x1007C8A0         */
 #include "br_ui.h"       /* BrUiPage_ / BrUiCtl_ -- CANONICAL. Pulls
                           * slice3_39.h for BrTextBox / BrTextList.          */
@@ -235,8 +236,10 @@ typedef struct BrS71Globals {
     uint8_t *pAA29D8_b2B64;
     int32_t *pAA29D8_f1C;
 
-    /* --- 0x10038F30 ---------------------------------------------------- */
-    BrPhase_ *pAA2904;     /* 0x10AA2904 -- the current phase               */
+    /* --- 0x10038F30 ----------------------------------------------------
+     * 0x10AA2904, the current phase, is NOT a member here.  It is the same
+     * dword as br_uinav.h's BrUiNav::pAA2904, and a second copy of it meant
+     * 0x10038F30 tested a phase nothing else ever set.  Use BR_PHASE_CUR. */
     int32_t   n0AC300;     /* 0x100AC300 */
     int32_t   n0940A4;     /* 0x100940A4 */
     void    (*pfnB501CC)(void);    /* 0x10B501CC -- called if non-null      */

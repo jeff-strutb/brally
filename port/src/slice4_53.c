@@ -278,10 +278,13 @@ void BrMenuSub10044B90(int32_t n)
  * behalf of the given world object. One of a pair of near-identical leave
  * routines that differ in which flags they touch on the way out. */
 /* @implements 0x10044A30 d3d BrOptFn10044A30 */
-void BrOptFn10044A30(void *pEntity)
+/* RETURN VALUE: 0. 0x10044A30 ends `xor eax, eax` at 0x10044AD6, and the
+ * +0x08 slot this is stored into is TESTED by 0x10048180 -- see br_phase.h. */
+int32_t BrOptFn10044A30(void *pEntity)
 {
     if (g_pBrSlice4PhaseCtx != NULL)
         (void)BrPhaseLeave_10044A30(g_pBrSlice4PhaseCtx, pEntity);
+    return 0;
 }
 
 /* ======================================================================

@@ -265,7 +265,15 @@ int BrSfxGroupFileName(int set, int group, const char *pszPrefix,
  * behaves at the edges. It chops toward zero, and a value too large to
  * convert -- or one that is not a number -- comes out as the processor's
  * "indefinite" value rather than as a clamp. */
-/* @implements 0x1006B880 glide br_ftol64 */
+/* NOT @implements ANYTHING, and it used to claim 0x1006B880.  That claim was
+ * false in both directions: 0x1006B880 is a 201-byte three-argument routine
+ * that starts a sound channel (gates on three globals, indexes the voice table
+ * `lea eax,[eax+eax*8] / lea ecx,[edi+eax*2]`, calls 0x1006B950, and only then
+ * does ratio arithmetic), and it is transcribed in full as BrSfxChanStart in
+ * br_sfxsrc.c, which now carries the manifest line.  The _ftol that routine
+ * uses is `call 0x10074560`, six bytes of `jmp [0x118F0560]` -- an IMPORT
+ * thunk to MSVCRT's _ftol.  So the thing this helper models is not in this
+ * binary's code at all and cannot be claimed by any address here. */
 static int64_t br_ftol64(double v)
 {
     /* -2^63 is representable exactly and is in range; +2^63 is not. */
@@ -280,7 +288,21 @@ static int64_t br_ftol64(double v)
 /* WHAT IT DOES: the 32-bit form of the same conversion, keeping only the
  * bottom half of the result. That is why a value too large to convert reads
  * back as zero here rather than as a huge negative number. */
-/* @implements 0x1006B6C0 glide br_ftol32 */
+/* NOT @implements ANYTHING either, and it used to claim 0x1006B6C0.  Same
+ * shape of error: 0x1006B6C0 is a 32-byte THREE-argument function ending in a
+ * tail call --
+ *
+ *   1006B6C0  fld dword [esp+0xc]      ; a3
+ *   1006B6C4  call 0x10074560          ; _ftol
+ *   1006B6C9  mov edx,[esp+4]          ; a1
+ *   1006B6D2  lea ecx,[eax+eax]        ; a2 * 2
+ *   1006B6D7  call 0x1006B6E0          ; f(a1, a2*2, ftol(a3))
+ *
+ * -- and this helper is the second instruction of it.  0x1006B6C0 has NO
+ * implementation in this tree: 0x1006B6E0 (voice = BrSndVoices[a1*18 + a2],
+ * then 0x1006B670, which writes voice+0x0C and calls 0x1006B420) is unported
+ * too, so there is nothing to attach the address to and it is left unclaimed
+ * rather than re-hung on the nearest plausible symbol. */
 static uint32_t br_ftol32(double v)
 {
     return (uint32_t)((uint64_t)br_ftol64(v) & 0xFFFFFFFFu);
@@ -305,7 +327,11 @@ uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate)
 
 uint32_t BrSfxHzFromFloat(float hz)
 {
-    /* 0x1006B6C0: `fld dword` then straight into _ftol. */
+    /* PARTIAL, and labelled as such rather than as a transcription: this is
+     * 0x1006B6C0's first two instructions only (`fld dword [esp+0xc]` then
+     * `call 0x10074560`).  The other twenty-six bytes double the second
+     * argument and tail-call 0x1006B6E0, which is what actually reaches the
+     * voice -- see br_ftol32 above.  Do not attach 0x1006B6C0 to this. */
     return br_ftol32((double)hz);
 }
 

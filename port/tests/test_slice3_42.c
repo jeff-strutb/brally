@@ -613,13 +613,21 @@ static void test_rb_solve(void)
     BrRbBodyFull b, c[4];
     int k;
 
+    /* THE FOUR CHILDREN USED TO GET IDENTICAL accel, which made this fixture
+     * blind to everything the function actually does with them: with
+     * x == 1 in all four, `c2 + c1 + c0 + c3` is 4 whether the code reads
+     * four different children, one child four times, or three children with
+     * one counted twice. The two summation orders the comment below calls out
+     * were likewise indistinguishable. Distinct POWERS OF TWO fix the first
+     * problem exactly -- every subset has a unique sum and every sum is
+     * exact in float, so `==` is safe and any substitution shows up. */
     IdentityBody(&b);
     for (k = 0; k < 4; ++k) {
         IdentityBody(&c[k]);
         b.child[k] = &c[k];
-        c[k].accel.x = 1.0f;
-        c[k].accel.y = 10.0f;
-        c[k].accel.z = 100.0f;   /* must NOT reach the result */
+        c[k].accel.x = (float)(1 << k);          /*   1,  2,  4,   8 */
+        c[k].accel.y = (float)(16 << k);         /*  16, 32, 64, 128 */
+        c[k].accel.z = (float)(4096 << k);       /* must NOT reach the result */
     }
     b.mass = 2.0f;
     b.accel.x = 8.0f;
@@ -628,12 +636,67 @@ static void test_rb_solve(void)
 
     BrRbSolveAccel(&b);
 
-    /* x: (1+1+1+1 + 8)/2 = 6 ; y: (10*4 + 8)/2 = 24 ;
-     * z: 8/2 = 4  -- the children's 400 is dropped.  That asymmetry is the
-     * point of this test. */
-    CHECK(NEAR(b.accel.x, 6.0));
-    CHECK(NEAR(b.accel.y, 24.0));
-    CHECK(NEAR(b.accel.z, 4.0));
+    /* x: (1+2+4+8 + 8)/2 = 11.5 ; y: (16+32+64+128 + 8)/2 = 124 ;
+     * z: 8/2 = 4 -- the children's 61440 is dropped. That asymmetry is the
+     * point of this test, and the disassembly is explicit about it: the x sum
+     * at 0x1006B1B3 and the y sum at 0x1006B1DF each fold four child fields,
+     * and the z path at 0x1006B209 is `fld [esp+0x24] / fdiv [esi+0x2C]` with
+     * nothing in between. */
+    CHECK(b.accel.x == 11.5f);
+    CHECK(b.accel.y == 124.0f);
+    CHECK(b.accel.z == 4.0f);
+
+    /* AND NOW THE ORDERS THEMSELVES.
+     *
+     * The x sum starts at child[2] and the y sum starts at child[3]:
+     *
+     *   1006B1A5  mov  eax, [esi+0x0C]      ; eax = child[2]
+     *   1006B1AA  mov  ecx, [esi+0x08]      ; ecx = child[1]
+     *   1006B1BF  mov  edx, [esi+0x04]      ; edx = child[0]
+     *   1006B1C2  mov  ebp, [esi+0x10]      ; ebp = child[3]
+     *
+     *   x: fld [eax+0xFC] / fadd [ecx+0xFC] / fadd [edx+0xFC] / fadd [ebp+0xFC]
+     *        -> c2, c1, c0, c3
+     *   y: fld [ebp+0x100]/ fadd [edx+0x100]/ fadd [ecx+0x100]/ fadd [eax+0x100]
+     *        -> c3, c0, c1, c2
+     *
+     * In exact arithmetic those are the same number, so no choice of ordinary
+     * values can tell them apart -- which is why the old fixture could not,
+     * and why distinct values alone would not either. Float addition is NOT
+     * associative, and that is the only handle there is. With
+     * c0 = 0, c1 = c2 = 2^-24, c3 = 1 and mass 1:
+     *
+     *   x = (((2^-24 + 2^-24) + 0) + 1)  = (2^-23 + 1) = 1 + 2^-23  exactly
+     *   y = (((1 + 0) + 2^-24) + 2^-24)  = 1           -- each 2^-24 is a tie
+     *                                       and rounds to even, i.e. away
+     *
+     * So x and y come out ONE ULP APART from inputs that differ only in which
+     * order they are added. Swapping the two orders in the source swaps these
+     * two answers. Exact `==` is required here; NEAR would hide the whole
+     * point, since the gap is 1.19e-07. */
+    {
+        const float tiny = 5.9604644775390625e-08f;   /* 2^-24, exact */
+
+        IdentityBody(&b);
+        for (k = 0; k < 4; ++k) {
+            IdentityBody(&c[k]);
+            b.child[k] = &c[k];
+        }
+        c[0].accel.x = c[0].accel.y = 0.0f;
+        c[1].accel.x = c[1].accel.y = tiny;
+        c[2].accel.x = c[2].accel.y = tiny;
+        c[3].accel.x = c[3].accel.y = 1.0f;
+        b.mass = 1.0f;
+        b.accel.x = b.accel.y = b.accel.z = 0.0f;
+
+        BrRbSolveAccel(&b);
+
+        CHECK(b.accel.x == 1.0f + 2.0f * tiny);   /* 1 + 2^-23 */
+        CHECK(b.accel.y == 1.0f);
+        CHECK(b.accel.x != b.accel.y);            /* the orders are separated */
+    }
+
+    /* Restore the plain fixture for the angular check below. */
 
     /* Identity inertia and identity M leave the angular part alone. */
     IdentityBody(&b);

@@ -267,6 +267,47 @@ def run(map_a, map_b, quiet=False):
     return A, B, pairs, groups, buckets, crt_names
 
 
+def overrides(path='config/shared_overrides.csv'):
+    """Hand-adjudicated rows that the generator MUST NOT overwrite.
+
+    WHY THIS EXISTS
+
+    config/shared.csv is generated wholesale by this file, and every run
+    rewrote the note column as ''. A cross-build audit then spent a long pass
+    adjudicating sixteen rows FROM THE BYTES -- resolving `body-dup:N`
+    ambiguity through C++ static ctor/dtor thunk triples and through the
+    display-list dispatch tables, and reclassifying four rows `shared` ->
+    `renderer` where the two builds genuinely differ. All sixteen carry their
+    evidence in the note.
+
+    Every one of them would have been destroyed by the next run of this
+    script, silently, with no diff to notice because the file is generated and
+    nobody reads its diffs.
+
+    That is the same failure this project already fixed once for the ported
+    manifest: a generated index cannot hold a human judgement, because the
+    generator has no way to know the judgement happened. The answer there was
+    to move the claim into the source and generate the index from it. The
+    answer here is the same shape -- the adjudications live in a separate
+    checked-in file, and generation applies them on top.
+
+    WHAT BELONGS HERE: a row where reading the two disassemblies settled
+    something the matcher cannot settle by itself. Not a guess, and not a
+    preference. The note must carry the evidence, because the whole point is
+    that the next person can check it rather than re-derive it.
+
+    An override whose address no longer appears in the function map is
+    REPORTED as possibly stale rather than dropped in silence.
+    """
+    out = {}
+    if not os.path.exists(path):
+        return out
+    with open(path) as fh:
+        for r in csv.DictReader(fh):
+            out['0x%08X' % int(r['d3d_va'], 16)] = r
+    return out
+
+
 def main():
     # Both sides are overridable so the two maps can be varied independently.
     # That matters because a hash match requires BOTH maps to agree about the
@@ -285,6 +326,8 @@ def main():
     print("matching stages:")
     A, B, pairs, groups, buckets, crt_names = run(map_a, map_b)
 
+    over = overrides()
+
     os.makedirs('config', exist_ok=True)
     with open(out, 'w', newline='') as fh:
         w = csv.writer(fh)
@@ -292,16 +335,29 @@ def main():
         for va in sorted(A.funcs):
             if A.funcs[va] < 8:
                 continue
-            if va in pairs:
+            key = '0x%08X' % va
+            if key in over:
+                # A HAND-ADJUDICATED ROW WINS. See overrides() for why these
+                # exist and why the generator must not overwrite them.
+                o = over.pop(key)
+                w.writerow([key, o['glide_va'], A.funcs[va],
+                            o['class'], o['matched_by'], o['note']])
+            elif va in pairs:
                 g, how = pairs[va]
-                w.writerow(['0x%08X' % va, '0x%08X' % g, A.funcs[va], 'shared', how, ''])
+                w.writerow([key, '0x%08X' % g, A.funcs[va], 'shared', how, ''])
             else:
                 cls, note, gva = buckets.get(va, ('unknown', '', None))
                 # A `renderer` row DOES carry a BRGlide address, because the
                 # correspondence is real. `matched_by` says `slot`, and the
                 # class says `renderer`, so nothing reads it as shared code.
-                w.writerow(['0x%08X' % va, '0x%08X' % gva if gva else '',
+                w.writerow([key, '0x%08X' % gva if gva else '',
                             A.funcs[va], cls, 'slot' if gva else '', note])
+
+    # An override that matched NOTHING is reported rather than dropped: it
+    # means the address no longer exists in the map, so the adjudication it
+    # records has quietly stopped applying to anything.
+    for key in sorted(over):
+        print("  WARNING: override for %s matched no row -- stale?" % key)
 
     # ---------------- report ----------------
     # The report, like the CSV, covers the functions big enough to be evidence

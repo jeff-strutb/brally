@@ -358,9 +358,38 @@ void BrUiAssetPathsFree(char *apszOut[BR_UIASSET_COUNT]);
  * NOT PORTED, and why
  * ==========================================================================
  *   0x1003E100  CD-ROM volume-label check. Win32-only (GetDriveTypeA,
- *               GetVolumeInformationA) and three unresolved helper calls
- *               (0x1007C830, 0x1007F1C0, 0x1007F0D0) whose signatures decide
- *               what the "%C:\" format string is even formatting.
+ *               GetVolumeInformationA).
+ *
+ *               THE "three unresolved helper calls" ARE RESOLVED, and the
+ *               reason they were unresolvable here is worth keeping: they are
+ *               STATICALLY LINKED CRT in BRD3D.dll and IMPORT THUNKS in
+ *               BRGlide.dll, so the Glide build names them and the D3D build
+ *               cannot. Glide 0x100377A0 is the same function and its
+ *               listing reads:
+ *
+ *                 D3D 0x1007C830  ==  MSVCRT sprintf
+ *                 D3D 0x1007F1C0  ==  MSVCRT _chdrive
+ *                 D3D 0x1007F0D0  ==  MSVCRT _chdir
+ *
+ *               so "%C:\" is formatting ONE argument, `drive + 0x40`, into a
+ *               root path such as "D:\" -- 3 == 'C'. The function is
+ *                   sprintf(root, "%C:\\", drive + 0x40);
+ *                   _chdrive(drive) == 0 && GetDriveTypeA(NULL) == 5 &&
+ *                   _chdir("\\") == 0 &&
+ *                   GetVolumeInformationA(root, vol, 0x104, 0,0,0,0,0) &&
+ *                   strcmp(vol, "Boss Rally") == 0
+ *               and its caller D3D 0x10045A00 / Glide 0x1003EE90 is the loop
+ *               that runs it over drives 3..26 ('C'..'Z'), saving and
+ *               restoring the current drive and directory around the scan.
+ *
+ *               Still NOT PORTED, and now for a stated rather than an
+ *               inferred reason: every instruction in both bodies is an OS
+ *               call. There is no game logic to transcribe, and enumerating
+ *               removable volumes is a host service (port/host), not
+ *               portable C. See BrExt_10045A00 in slice3_31.h -- a machine
+ *               with no "Boss Rally" disc in it makes this return 0, and the
+ *               menu's status-line refusal is then the ORIGINAL's correct
+ *               behaviour, not a gap in the port.
  *   0x1003E3A0  Options apply. Reaches through pointer-valued globals whose
  *               targets are outside this range and calls 0x1003E2C0, which
  *               is not in this packet.

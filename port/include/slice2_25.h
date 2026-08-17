@@ -372,7 +372,15 @@ extern const int32_t *g_brPACED34;  /* 0x10ACED34  source of the 0x53-dword copy
 extern BrOptFlagObj *g_brPAA29D8;   /* 0x10AA29D8 */
 extern BrObj29D4    *g_brPAA29D4;   /* 0x10AA29D4 */
 
-extern BrOptObj *g_brPAA2904;   /* 0x10AA2904  "current screen" */
+/* 0x10AA2904, "current screen", is NOT storage of this module's.  It is the
+ * same dword br_uinav.h calls BrUiNav::pAA2904 and slice2_26.h calls
+ * BrPhaseCtx::pAA2904, and modelling it separately here is why an option
+ * screen could publish itself as current and the frame loop never see it.
+ * `BrOptObj` is `BrPhase_` (above), so this is a rename, not a cast.
+ * The macro keeps every existing `g_brPAA2904` read, write and address-of
+ * working unchanged -- see br_phasecur.h. */
+#include "br_phasecur.h"        /* BR_PHASE_CUR -- the ONE 0x10AA2904 slot */
+#define g_brPAA2904   BR_PHASE_CUR
 extern BrOptObj *g_brPAA2908;   /* 0x10AA2908 */
 extern BrOptObj *g_brPAA2940;   /* 0x10AA2940 */
 extern BrOptObj *g_brPAA2948;   /* 0x10AA2948 */
@@ -481,7 +489,7 @@ extern int  BrSub1003F320(int index);
 /* XSLICE 0x10041B50 */ extern void BrSub10041B50(void);
 /* XSLICE 0x10043BF0 */ extern void BrSub10043BF0(BrGameObj *p);
 /* XSLICE 0x10044540 */ extern void BrSub10044540(void);
-/* XSLICE 0x10046400 */ extern void BrSub10046400(BrGameObj *p);
+/* XSLICE 0x10046400 */ extern int32_t BrSub10046400(BrGameObj *p);  /* 0 @ 0x10046446 */
 /* XSLICE 0x10047360 */ extern void BrSub10047360(BrGameObj *p);
 /* XSLICE 0x10048710 -- thiscall constructor, returns pThis. */
 extern BrOptObj *BrOptObjCtor(BrOptObj *pThis);
@@ -538,8 +546,8 @@ extern void BrSub1006A4A0(void *pThis, void *pArg);
  * WRONG IF: +0x2AE8 is a field of the screen object after all. The object is
  * 0xC8 bytes, established by its own `operator new` literal and by its
  * constructor's last store landing on +0xC4. */
-/* XSLICE 0x10044970 */ extern void BrOptFn10044970(void *pEntity);
-/* XSLICE 0x10044A30 */ extern void BrOptFn10044A30(void *pEntity);
+/* XSLICE 0x10044970 */ extern int32_t BrOptFn10044970(void *pEntity);
+/* XSLICE 0x10044A30 */ extern int32_t BrOptFn10044A30(void *pEntity);
 
 /* KERNEL32 imports, used verbatim by 0x10043810 and 0x10043A00 to dispose of
  * the session descriptor DirectPlay handed back. Supplied by the platform

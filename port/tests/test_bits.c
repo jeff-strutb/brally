@@ -29,6 +29,27 @@ int main(void)
     for (i = 0; i < 12; i++) if (buf[i] != i) g_fail = 1;
     check(1, "swapping twice restores the original");
 
+    /* 0x10018A50 == 0x1002B9E0. br_track.c and slice2_16.c each used to have
+     * their own copy of these 29 bytes; this is the one that survived.
+     *
+     * MUTATION: the count is SIGNED and the guard is `test ecx,ecx / jle`.
+     * br_track.c's copy took an `uint32_t` and looped `i < c`, which turns a
+     * negative count into a run of four billion swaps off the end of the
+     * buffer. Nothing passed one, so nothing showed it. */
+    for (i = 0; i < 12; i++) buf[i] = (unsigned char)i;
+    BrSwapU16Array(buf, 3);
+    check(buf[0]==1 && buf[1]==0 && buf[4]==5 && buf[5]==4,
+          "three u16s swap, byte-wise");
+    check(buf[6]==6 && buf[7]==7, "and the fourth is untouched -- count is exact");
+    BrSwapU16Array(buf, 3);
+    for (i = 0; i < 12; i++) if (buf[i] != i) g_fail = 1;
+    check(1, "swapping twice restores the original");
+    BrSwapU16Array(buf, 0);
+    check(buf[0] == 0 && buf[1] == 1, "MUTATION: a count of zero is a no-op");
+    BrSwapU16Array(buf, -3);
+    check(buf[0] == 0 && buf[1] == 1,
+          "MUTATION: a NEGATIVE count is a no-op, not four billion swaps");
+
     for (i = 0; i < 0x130; i++) tab[i] = (void *)(long)(i + 100);
     check(BrHandleLookup(tab, 0) == 0, "handle 0 is reserved null");
     check(BrHandleLookup(tab, 1) == (void *)101L, "handle 1 is the first valid");

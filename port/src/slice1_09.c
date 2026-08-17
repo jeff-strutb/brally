@@ -426,7 +426,16 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
  * solid. Only this table build is transcribed; the rest of the original
  * routine creates two textures through an unidentified backend call and is
  * not ported. */
-/* @implements 0x10073A10 d3d BrAlphaRampBuild */
+/* 0x10073A10 CARRIES NO @implements LINE.  The banner above already called
+ * this PARTIAL and it is: the original is four statements and this is one of
+ * them, 37 of its 167 bytes.  The two surface creations write 0x11829100 and
+ * 0x11829104 and the sub_100098A0 call writes 0x11829318 -- three globals a
+ * caller of 0x10073A10 gets and a caller of this does not.  The manifest form
+ * is whole-function only, so "@implements 0x10073A10" asserted all four, the
+ * address counted as ported, and nobody was going to come back for the other
+ * three.  It is better read as unported until the backend call at 0x118AA0B0
+ * is identified.  The table build itself stands and is used; only the CLAIM
+ * was wrong. */
 void BrAlphaRampBuild(unsigned char *pOut)
 {
     int i;

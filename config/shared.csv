@@ -285,7 +285,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x100192A0,0x10016860,69,shared,body,
 0x100192F0,0x100168B0,10,shared,body+callsite,
 0x10019300,0x100168C0,180,shared,body,
-0x100193C0,0x10016980,207,shared,callsite,
+0x100193C0,0x10016980,207,renderer,callsite,"BUILD DIVERGENCE: D3D 0x100193D5 has `cmp [0x100B8C90],1 / jg` which Glide 0x10016995 lacks -- 207 B vs 198 B, the whole difference. Both readings are ported (br_font.c BrFontMeasure / slice6_76.c BrSub_100193C0)."
 0x10019490,0x10016A50,75,shared,body,
 0x100194E0,0x10016AA0,306,shared,body,
 0x10019620,0x10016BE0,174,shared,body,
@@ -362,8 +362,8 @@ d3d_va,glide_va,size,class,matched_by,note
 0x1001CC00,0x1001E9F0,110,shared,body,
 0x1001CC70,,40,unknown,,
 0x1001CCA0,0x1001E930,183,shared,body-dup:1,
-0x1001CD60,0x1001EB10,17,shared,body-dup:2,
-0x1001CD80,0x1001EB10,17,shared,body-dup:2,
+0x1001CD60,0x1001EB10,17,shared,body-dup:2,"confirmed by DISPATCH SLOT: 0x100A79F0[0xDE]==0x1001CD60, 0x100A9A58[0xDE]==0x1001EB10."
+0x1001CD80,0x1001EB30,17,shared,body-dup:2,body-dup fixed by DISPATCH SLOT: 0x100A79F0[0xDF]==0x1001CD80 and 0x100A9A58[0xDF]==0x1001EB30. 0x1001CD60/0x1001EB10 are slot 0xDE and already correct; each image has exactly two handlers of this shape.
 0x1001CDA0,,197,unknown,,
 0x1001CE70,,191,unknown,,
 0x1001CF30,0x1001EC30,178,shared,body,
@@ -410,7 +410,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x10021BD0,,682,unknown,,
 0x10021E80,,1097,unknown,,
 0x100222D0,,119,unknown,,
-0x10022350,0x10022AC0,301,shared,shape,
+0x10022350,0x10022AC0,301,renderer,shape,"BUILD DIVERGENCE, not `shape`: Glide 0x10022B35 clamps to 0x437F0000==255.0f against 0x10077418; D3D 0x10022385 clamps to 0x3F800000==1.0f against 0x1008F3C4. Glide's iterated colour is 0..255, D3D's 0..1. Both bodies are ported (br_dl.c / slice2_16.c)."
 0x10022480,,1133,unknown,,
 0x100228F0,,1223,unknown,,
 0x10022DC0,0x10022120,162,shared,body,
@@ -527,7 +527,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x1002C290,0x10019800,10,shared,body-dup:5,
 0x1002C2A0,0x10019810,10,shared,body-dup:6,
 0x1002C2B0,0x10019820,14,shared,body-dup:4,
-0x1002C2C0,0x10019810,10,shared,body-dup:6,
+0x1002C2C0,0x10019830,10,shared,body-dup:6,body-dup fixed: C++ static dtor thunk. 0x1002C2B0 (paired 0x10019820) pushes 0x1002C2C0; 0x10019820 pushes 0x10019830. Objects 0x106806B0/0x105BC858; dtors 0x10075240/0x1006E4A0 already paired `body`.
 0x1002C2D0,0x10019840,71,shared,body,
 0x1002C320,0x10019890,98,shared,body,
 0x1002C390,0x10019900,34,shared,body,
@@ -658,7 +658,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x100378B0,0x10030F50,127,shared,callsite,
 0x10037930,0x10030FD0,83,shared,body,
 0x10037990,0x10031030,252,shared,callsite,
-0x10037A90,0x10031140,116,shared,callsite,
+0x10037A90,0x10031140,116,renderer,callsite,"BUILD DIVERGENCE: Glide 0x10031140 loads "".hnt"" (0x100AA338), D3D loads "".hnd"" (0x100AABA8); neither literal is in the other image. The disc ships .hnt."
 0x10037B10,0x100311C0,764,shared,prefix,
 0x10037E10,0x100314D0,398,shared,body,
 0x10037FA0,0x10031660,58,shared,body,
@@ -674,9 +674,9 @@ d3d_va,glide_va,size,class,matched_by,note
 0x10038B20,0x10032190,368,shared,body,
 0x10038CB0,0x10032320,461,shared,body,
 0x10038E80,0x10019800,10,shared,body-dup:5,
-0x10038E90,0x10019810,10,shared,body-dup:6,
-0x10038EA0,0x10019820,14,shared,body-dup:4,
-0x10038EB0,0x10019810,10,shared,body-dup:6,
+0x10038E90,0x10032500,10,shared,body-dup:6,"body-dup fixed: ctor thunk. jmp targets 0x10008580/0x10008760 are paired `body`; registrar 0x10038EA0 pushes 0x10038EB0, 0x10032510 pushes 0x10032520."
+0x10038EA0,0x10032510,14,shared,body-dup:4,body-dup fixed: atexit registrar of the 0x10008580/0x10008760 triple (objects 0x10A99780/0x10AC0810).
+0x10038EB0,0x10032520,10,shared,body-dup:6,body-dup fixed: dtor thunk; jmp targets 0x100085E0/0x100087C0 are paired `body`.
 0x10038EC0,0x10032530,103,shared,callsite,
 0x10038F30,0x100325B0,195,shared,prefix,
 0x10039000,0x10032680,32,shared,body,
@@ -1284,9 +1284,9 @@ d3d_va,glide_va,size,class,matched_by,note
 0x10069800,0x10062870,49,shared,body,
 0x10069840,0x100628B0,525,shared,body,
 0x10069A50,0x10019800,10,shared,body-dup:5,
-0x10069A60,0x10019810,10,shared,body-dup:6,
-0x10069A70,0x10019820,14,shared,body-dup:4,
-0x10069A80,0x10019810,10,shared,body-dup:6,
+0x10069A60,0x10062AD0,10,shared,body-dup:6,"body-dup fixed: ctor thunk; jmp targets 0x10069A90/0x10062B00 are paired `body`. Was pointed at 0x10019810, which 0x1002C2A0 already claims."
+0x10069A70,0x10062AE0,14,shared,body-dup:4,"body-dup fixed: atexit registrar; pushes 0x10069A80, Glide 0x10062AE0 pushes 0x10062AF0."
+0x10069A80,0x10062AF0,10,shared,body-dup:6,"body-dup fixed: dtor thunk. Both jmp to a stub -- D3D 0x10008B80 (`ret`), Glide 0x10008D60 (`c3`)."
 0x10069A90,0x10062B00,12,shared,body,
 0x10069AA0,0x10062B10,103,shared,body,
 0x10069B10,0x10062B80,169,shared,body,
@@ -1362,7 +1362,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x10071560,0x1006A4D0,100,shared,body,
 0x100715D0,0x10019800,10,shared,body-dup:5,
 0x100715E0,0x1006A550,28,shared,body,
-0x10071600,0x10019820,14,shared,body-dup:4,
+0x10071600,0x1006A570,14,shared,body-dup:4,"body-dup fixed: atexit registrar; pushes 0x10071610, paired `body` with Glide 0x1006A580, which 0x1006A570 pushes."
 0x10071610,0x1006A580,23,shared,body,
 0x10071630,0x1006A5A0,69,shared,body,
 0x10071680,0x1006A5F0,84,shared,body,
@@ -1542,9 +1542,9 @@ d3d_va,glide_va,size,class,matched_by,note
 0x10079550,0x10072840,120,shared,body,
 0x100795D0,0x100728C0,145,shared,body,
 0x10079670,0x10019800,10,shared,body-dup:5,
-0x10079680,0x10019810,10,shared,body-dup:6,
-0x10079690,0x10019820,14,shared,body-dup:4,
-0x100796A0,0x10019810,10,shared,body-dup:6,
+0x10079680,,10,d3d_only,body-dup:6,"body-dup REMOVED: no Glide counterpart. Object 0x118ABE10, ctor 0x1001BA00 is class `unknown` with no glide_va. BRGlide has exactly four atexit registrars (0x10019820/0x10032510/0x10062AE0/0x1006A570) and all four are claimed by other D3D triples, so this triple is D3D-only."
+0x10079690,,14,d3d_only,body-dup:4,body-dup REMOVED: no Glide counterpart -- see 0x10079680.
+0x100796A0,,10,d3d_only,body-dup:6,body-dup REMOVED: no Glide counterpart -- see 0x10079680.
 0x100796B0,0x10019670,107,renderer,slot,"same slot, 1 aligned callsite; DIFFERENT CODE"
 0x10079720,0x10019730,25,renderer,slot,"same slot, 1 aligned callsite; DIFFERENT CODE"
 0x10079740,,215,unknown,,
@@ -1575,7 +1575,7 @@ d3d_va,glide_va,size,class,matched_by,note
 0x1007A7D0,,108,d3d_only,,reached from a renderer entry point; no caller that exists in BRGlide
 0x1007A840,,244,unknown,,
 0x1007A940,0x10058E20,695,shared,callsite,
-0x1007AC00,0x10058F90,22,shared,callsite,
+0x1007AC00,0x10058F90,22,renderer,callsite,"NOT byte-equal: D3D 22 B has a `call 0x1007A840 / test / ret` guard, Glide 0x10058F90 is 12 B with none. 0x1007A840 is class `unknown` and absent from BRGlide. Callees 0x1007A940/0x10058E20 ARE paired `body`."
 0x1007AC20,,114,d3d_only,,reached from a renderer entry point; no caller that exists in BRGlide
 0x1007AD40,,3111,unknown,,
 0x1007B967,,14,unknown,,

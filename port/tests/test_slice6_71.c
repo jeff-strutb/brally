@@ -389,6 +389,11 @@ static void ResetAll(void)
     g_a10005BE0 = -1; g_codeExit = -1; g_this10008970 = NULL;
     g_hKillWnd = NULL; g_idKill = 0;
     g_fFopenOk = 1; g_pFileOpened = NULL;
+    /* 0x10AA2904 is no longer a member of g_brS71 -- it is the one shared
+     * slot br_phasecur.h owns -- so clearing the struct no longer clears it.
+     * Reset it explicitly, or the "phase NULL" case below inherits the
+     * pointer the previous case installed. */
+    BR_PHASE_CUR = NULL;
 
     g_ctlVtbl.f34 = StubF34;
     g_ctlVtbl.f38 = StubF38;
@@ -568,7 +573,7 @@ static void Test3BF60(void)
 static void Test38F30(void)
 {
     ResetAll();
-    g_brS71.pAA2904 = &g_phase2904;
+    BR_PHASE_CUR = &g_phase2904;
     g_brS71.n0AC300 = 1;
     g_brS71.n22AF18 = 1;
     g_brS71.n0940A4 = 1;
@@ -600,7 +605,7 @@ static void Test38F30(void)
 
     /* --- both gates are required for the phase call --------------------- */
     ResetAll();
-    g_brS71.pAA2904 = &g_phase2904;
+    BR_PHASE_CUR = &g_phase2904;
     g_brS71.n0AC300 = 0;
     BrExt_10038F30(0);
     CHECK(g_cPhaseF18 == 0);

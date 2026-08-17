@@ -201,17 +201,72 @@ float BrTextBoxCentreX(BrTextBox *pBox);
  * text widget.  Mostly identity over 0x20..0x7E, plus three VK_OEM codes
  * (0xBA -> ':', 0xBD -> '-', 0xBE -> '.').
  *
- * GOTCHA: the original's loop bound is the ADDRESS 0x100AE6D8, i.e. 784
- * records, but only the first 98 are real -- 0x100ACE58 + 98*8 == 0x100AD168
- * is where the string pool starts.  The remaining 686 "records" are string
- * literals and pointers.  A code that happens to equal one of those dwords
- * gets a garbage character back.
+ * GOTCHA: the original's loop bound is the ADDRESS 0x100AE6D8, not a count.
+ * (0x100AE6D8 - 0x100ACE58) / 8 == 784, and the `cmp eax, 0x100AE6D8 / jb`
+ * at 0x1005B553 sits AFTER the `add eax, 8`, so records 0..783 are all
+ * tested.  Only the first 98 are the module's real table -- 0x100ACE58 +
+ * 98*8 == 0x100AD168 is where the string pool starts.
  *
- * DEVIATION: only the 98 real records are reproduced.  Codes that would have
- * matched the string pool return 0 here instead of garbage.
+ * THE OLD NOTE HERE WAS WRONG, AND ITS BEING WRONG IS THE POINT.  It said
+ * the remaining 686 dwords were "string literals and pointers" and that a
+ * code matching one of them "gets a garbage character back", and it used
+ * that to justify transcribing 98 of 784.  It passed review because it was
+ * a DOCUMENTED deviation with a stated reason -- which is worse than an
+ * undocumented one, because it had been checked and cleared.  Both halves
+ * are false:
+ *
+ *   - The bytes are not all strings.  Decoded, the region past 0x100AD168
+ *     is: the asset-name and message string pool ("9.img", "hazel",
+ *     "images\loading.bmp", "Init: loading.bmp failed to load!", ...); then
+ *     at 0x100ADF6C and 0x100ADF94 two 10-entry intensity RAMPS,
+ *     {0,1C,38,55,71,8D,AA,C6,E2,FF} and {0,55,78,93,AA,BE,D0,E1,F0,FF},
+ *     which the 8-byte record framing cuts into (code, ch) pairs; then from
+ *     0x100AE080 a run of 0x20-byte descriptor records carrying pointers
+ *     into 0x100B35xx.
+ *   - Nothing about the result is garbage.  These are fixed bytes in the
+ *     shipped image and the function returns them deterministically, the
+ *     same in BOTH builds.  The whole 0..0xFF behaviour was compared code by
+ *     code between BRD3D.dll and BRGlide.dll: ZERO disagreements.
+ *
+ * WHAT IS ACTUALLY REACHABLE, with the instructions that decide it.  The
+ * only caller in either image is 0x1005B6E1 inside 0x1005B570 (BRGlide:
+ * 0x10054501 inside 0x10054390; there are no other calls and no pointer to
+ * 0x1005B540 anywhere in .text).  It passes 0x10AA33E4, which 0x10060060
+ * fills at 0x100600D7 with the WM_CHAR (0x102) wParam -- so the argument is
+ * a CHARACTER code, not a virtual key code, and lives in 0..0xFF.  Two
+ * values never get that far:
+ *
+ *     1005B6A6  a1e433aa10  mov eax, [0x10AA33E4]
+ *     1005B6AB  3bc5        cmp eax, ebp        ; ebp == 0
+ *     1005B6AD  746d        je  0x1005B71C      ; code 0 -> no lookup
+ *     1005B6AF  83f808      cmp eax, 8
+ *     1005B6B2  752c        jne 0x1005B6E0      ; code 8 -> backspace path
+ *
+ * So the reachable domain is 1..0xFF minus 8.  113 distinct codes exist in
+ * 0..0xFF across all 784 records: 98 first-matched by the real table and 15
+ * first-matched further out.  ALL 113 ARE NOW TRANSCRIBED, in original
+ * first-match order, so BrCharMapLookup is exact over its whole reachable
+ * domain rather than over three quarters of it.  The fifteen are listed with
+ * both builds' record numbers at the table in slice3_39.c.
+ *
+ * The one that changed observable behaviour: 0x09 (TAB) returns 0x09 in the
+ * original and appended nothing in this port.
+ *
+ * Code 0x00 -> 0x54 ('T', the head of the string "Time") is transcribed too,
+ * but it is UNREACHABLE through the only caller -- 0x1005B6AB above filters
+ * it.  It is kept because BrCharMapLookup's own contract is the table walk,
+ * and a caller-side filter is not a property of this function.
+ *
+ * The other 669 records are NOT transcribed, and this time with a reason
+ * that is checkable: every one of them can only be reached by a code outside
+ * 0..0xFF (their codes are string bytes, 0x100B35xx pointers and the like),
+ * which the sole caller cannot produce.  Several of those dwords are also
+ * RELOCATED pointers, so their values are not even stable in the original if
+ * the DLL is rebased -- there is no fixed answer to transcribe for them.
  * ===================================================================== */
 
-#define BR_CHARMAP_COUNT 98
+/* 98 real records + the 15 accidental ones the caller can reach. */
+#define BR_CHARMAP_COUNT 113
 
 typedef struct BrCharMapEntry {
     uint32_t code;   /* +0x00 */

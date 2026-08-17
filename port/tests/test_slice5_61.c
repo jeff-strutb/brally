@@ -40,6 +40,14 @@ BrTextState *BrTextGetState(void) { return &s_text; }
 static BrRdpRegs s_regs;
 BrRdpRegs *BrRdpGetRegs(void) { return &s_regs; }
 
+/* --- slice2_15: the screen info ------------------------------------------
+ * `cy` is 0x100A81C4 in BRD3D and 0x100A7518 in BRGlide (paired in
+ * config/globals_shared.csv at 9 votes).  BrGbiCall10024260 reads it, because
+ * the Glide build reflects the viewport's Y translate through the screen
+ * height instead of negating the Y scale. */
+static BrScreenInfo s_screen;
+BrScreenInfo *BrScreenGet(void) { return &s_screen; }
+
 /* --- slice5_61's own externs ---------------------------------------------- */
 int32_t        g_br0AB3F4;
 unsigned char *g_brPAA29D0;
@@ -188,44 +196,78 @@ static void test_24260(void)
     cmd[0].w0 = 0x00800000u;
     cmd[0].w1 = 0x0BADF00Du;
 
-    /* An N64 viewport for a 320x240 screen: scale = (cx*2, cy*2) and
-     * translate = (cx*2, cy*2) in 2.2 fixed point.  The documented result is
-     * half the screen in each direction, with Y NEGATED on the scale only.
-     * This is the property slice2_15.h independently recorded for
-     * 0x104BBF08 / 0x104C0BB0 / 0x104C0BB8. */
+    /* THESE ASSERTIONS USED TO PIN THE D3D READING and passed, because the
+     * port had transcribed BRD3D 0x10024260.  The reference build is BRGlide
+     * 0x10023920, which flips Y the other way round:
+     *
+     *     Y SCALE      Glide 0x1002396A `fmul [0x1007740C]` == +0.25f;
+     *                  D3D   0x1002429D `fmul [0x1008F3F0]` == -0.25f.
+     *     Y TRANSLATE  Glide 0x100239B0 `fsubr dword [esp]` where [esp] holds
+     *                  `fild [0x100A7518]` from 0x10023925, i.e.
+     *                  screenHeight - 0.25*v; D3D has no such preamble.
+     *
+     * The old comment even said "with Y NEGATED on the scale only", quoting
+     * slice2_15.h -- a header note derived from the same wrong build, so the
+     * "independent" corroboration was the same reading seen twice. */
+    s_screen.cy = 480;                       /* 0x100A7518 in the shipped DLL */
+
+    /* An N64 viewport for a 320x240 screen inside a 640x480 frame: scale and
+     * translate both (cx*2, cy*2) in 2.2 fixed point. */
     PutVp(vp, 640, 480, 0x1FF, 0, 640, 480, 0x1FF, 0);
     pNext = BrGbiCall10024260(&cmd[0]);
 
     CHECK(pNext == &cmd[1]);                 /* `add eax, 8` */
-    CHECK(s_regs.f4BBF08 == 160.0f);         /*  cx / 2      */
-    CHECK(g_br4BC198     == -120.0f);        /* -cy / 2      */
+    CHECK(s_regs.f4BBF08 == 160.0f);         /* cx / 2 */
+    CHECK(g_br4BC198     == 120.0f);         /* cy / 2, NOT negated */
     CHECK(s_regs.f4C0BB0 == 160.0f);
-    CHECK(s_regs.f4C0BB8 == 120.0f);
+    CHECK(s_regs.f4C0BB8 == 360.0f);         /* 480 - 120 */
+
+    /* THE SCREEN HEIGHT IS A LIVE INPUT, and only to the Y translate. The
+     * same payload under a different height must move f4C0BB8 by exactly the
+     * difference and leave the other three alone -- which is what separates
+     * `H - 0.25*v` from both `0.25*v` and `-0.25*v`. */
+    s_screen.cy = 200;
+    (void)BrGbiCall10024260(&cmd[0]);
+    CHECK(s_regs.f4BBF08 == 160.0f);
+    CHECK(g_br4BC198     == 120.0f);
+    CHECK(s_regs.f4C0BB0 == 160.0f);
+    CHECK(s_regs.f4C0BB8 ==  80.0f);         /* 200 - 120 */
+    s_screen.cy = 480;
 
     /* z and w of both vectors are ignored: changing only those must not
      * change any output. */
     PutVp(vp, 640, 480, 0x7FFF, 0x7FFF, 640, 480, 0x7FFF, 0x7FFF);
     (void)BrGbiCall10024260(&cmd[0]);
     CHECK(s_regs.f4BBF08 == 160.0f);
-    CHECK(g_br4BC198     == -120.0f);
+    CHECK(g_br4BC198     == 120.0f);
     CHECK(s_regs.f4C0BB0 == 160.0f);
-    CHECK(s_regs.f4C0BB8 == 120.0f);
+    CHECK(s_regs.f4C0BB8 == 360.0f);
 
     /* The shorts are SIGN-extended, not zero-extended: 0xFFFF is -1. */
     PutVp(vp, -1, -1, 0, 0, -1, -1, 0, 0);
     (void)BrGbiCall10024260(&cmd[0]);
     CHECK(s_regs.f4BBF08 == -0.25f);
-    CHECK(g_br4BC198     ==  0.25f);   /* -(-1) * 0.25 */
+    CHECK(g_br4BC198     == -0.25f);         /* +0.25 * -1, not -0.25 * -1 */
     CHECK(s_regs.f4C0BB0 == -0.25f);
-    CHECK(s_regs.f4C0BB8 == -0.25f);
+    CHECK(s_regs.f4C0BB8 == 480.25f);        /* 480 - (0.25 * -1) */
 
-    /* Only the Y SCALE is negated -- the Y TRANSLATE is not. Feeding equal
-     * magnitudes must give opposite signs on the scale pair and equal signs
-     * on the translate pair. */
+    /* ALL FOUR MULTIPLIES CARRY THE SAME SIGN in this build. Feeding equal
+     * magnitudes must give the SAME value on the scale pair -- the D3D body
+     * gives opposite ones, so this single line separates the two builds. */
     PutVp(vp, 100, 100, 0, 0, 100, 100, 0, 0);
     (void)BrGbiCall10024260(&cmd[0]);
-    CHECK(s_regs.f4BBF08 == -g_br4BC198);
-    CHECK(s_regs.f4C0BB0 == s_regs.f4C0BB8);
+    CHECK(s_regs.f4BBF08 == g_br4BC198);
+    /* ...and the translate pair does NOT match, because only Y is reflected. */
+    CHECK(s_regs.f4C0BB0 == 25.0f);
+    CHECK(s_regs.f4C0BB8 == 455.0f);         /* 480 - 25 */
+
+    /* `fsubr` is `mem - ST0`, not `ST0 - mem`. With the screen height at zero
+     * the translate must come out as the NEGATION of the scaled value; the
+     * reversed operand order would give the value itself. */
+    s_screen.cy = 0;
+    (void)BrGbiCall10024260(&cmd[0]);
+    CHECK(s_regs.f4C0BB8 == -25.0f);
+    s_screen.cy = 480;
 
     /* 2.2 fixed point: the four scale steps between successive integers must
      * be exactly 0.25 apart, with no rounding. */
@@ -240,9 +282,9 @@ static void test_24260(void)
     PutVp(vp, 32767, -32768, 0, 0, 32767, -32768, 0, 0);
     (void)BrGbiCall10024260(&cmd[0]);
     CHECK(s_regs.f4BBF08 ==  32767.0f * 0.25f);
-    CHECK(g_br4BC198     ==  32768.0f * 0.25f);
+    CHECK(g_br4BC198     == -32768.0f * 0.25f);
     CHECK(s_regs.f4C0BB0 ==  32767.0f * 0.25f);
-    CHECK(s_regs.f4C0BB8 == -32768.0f * 0.25f);
+    CHECK(s_regs.f4C0BB8 == 480.0f - (-32768.0f * 0.25f));
 }
 
 /* ==========================================================================

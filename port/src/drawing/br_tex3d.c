@@ -185,8 +185,23 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
 /* 0x10028820 -- the scan                                               */
 /* ==================================================================== */
 
-/* 0x100293D0.  The run ends at the FIRST command that is not part of the
- * setup grammar; later ones do not move it. */
+/* 0x100293D0 == BRD3D 0x10029E60, which slice2_16.c ports as
+ * BrGbiTexScanMark. Nineteen bytes, byte-identical in both images.  TWO HOST
+ * BODIES REMAIN for this and for its caller below, and the reason is stated
+ * rather than left to be found: the two modules disagree about the
+ * REPRESENTATION of a display-list command -- this file writes words
+ * byte-wise into a possibly-unaligned `uint8_t *` (which is what
+ * CONVENTIONS.md requires of a foreign buffer) and slice2_16.c stores through
+ * a `BrGfxWords` overlay.  A shared body would have to pick one, and picking
+ * the byte-wise one changes slice2_16's stores on a big-endian host while
+ * picking the overlay puts an unaligned 32-bit store in this one.
+ *
+ * What HAS been removed is the disagreement: this file had a NULL guard on
+ * the run start that the original does not have and slice2_16.c did not have
+ * either.  See the seam below.
+ *
+ * The run ends at the FIRST command that is not part of the setup grammar;
+ * later ones do not move it. */
 /* WHAT IT DOES: notes where a run of texture-setup commands stops. Only the
  * first command that ends the run counts; later ones do not move it. */
 /* @implements 0x100293D0 glide br_tex3d_end */
@@ -197,7 +212,8 @@ static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
         *ppEnd = p;
 }
 
-/* 0x10028B50 -- THE SEAM. */
+/* 0x10028B50 == BRD3D 0x10029410 == slice2_16.c's BrGbiTexScanFlush.  Ninety-
+ * two bytes, byte-identical in both images.  THE SEAM. */
 /* WHAT IT DOES: closes off a run of texture-setup commands and replaces it
  * with a single one. It registers the texture the run describes, and if that
  * works, overwrites the run's first command with "use texture number N, and
@@ -216,10 +232,24 @@ static void br_tex3d_seam(BrTex3d *pTex, uint8_t *p,
     pTex->cRuns++;
 
     id = br_tex3d_register(pTex);
-    if (id >= 0 && *ppStart != NULL) {
+    /* THE `*ppStart != NULL` TEST THAT USED TO BE HERE IS GONE.  The original
+     * dereferences the run-start global unguarded (0x10028B7D loads it,
+     * 0x10028B8D stores through it, no test between), and slice2_16.c's
+     * transcription of the same 92 bytes -- BrGbiTexScanFlush, BRD3D
+     * 0x10029410 -- did not have it either. So the port had one function
+     * written twice and disagreeing.
+     *
+     * It was also DEAD: the run start is written on the same state 0 -> 1
+     * transition that makes `state` non-zero, and the early return above
+     * covers state 0, so it cannot be NULL when this line runs. A guard that
+     * cannot fire still costs, because it reads as evidence that it can. */
+    if (id >= 0) {
         br_tex3d_putw(*ppStart, 0xDC000000u | ((uint32_t)id & 0x00FFFFFFu));
+        /* `sar edx,3` at 0x10028B9B -- an arithmetic SHIFT, not a divide.
+         * The two round the same way for the non-negative lengths this can
+         * produce, and the shift is what the bytes say. */
         br_tex3d_putw(*ppStart + 4,
-                      (uint32_t)((*ppEnd - *ppStart) / 8));
+                      (uint32_t)((*ppEnd - *ppStart) >> 3));
         pTex->cPlanted++;
     }
     pTex->state = 0;

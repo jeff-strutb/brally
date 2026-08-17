@@ -132,17 +132,10 @@ void BrSegFixup(const BrSegMap *pMap, uint32_t *pPtr)
         *pPtr += pMap->hostBase - pMap->n64Base;
 }
 
-/* Stand-in for 0x100383C0. */
-void BrSwapVec3(void *pv)
-{
-    unsigned char *p = (unsigned char *)pv;
-    int i;
-    for (i = 0; i < 12; i += 4) {
-        unsigned char t;
-        t = p[i]; p[i] = p[i+3]; p[i+3] = t;
-        t = p[i+1]; p[i+1] = p[i+2]; p[i+2] = t;
-    }
-}
+/* 0x100383C0 and 0x1002B9E0 both come from the real br_bits.o now: this file
+ * used to stand in for the first, and this suite exercises the second, which
+ * moved there when br_track.c's independent copy of it was retired. Linking
+ * the real one is strictly better -- a stand-in cannot catch a drift. */
 
 /* ================================================================== */
 /* 1. Tile size (0x1001CF30 -- opcode 0xF2, NOT the scissor)           */
@@ -452,6 +445,63 @@ static void test_light_vertex(void)
     src[5] = 0.0f; src[7] = 1.0f;
     BrGbiLightVertex(&ls, src, dst);
     CHECK(dst[7] == 0.75f);
+
+    /* ---- NaN POLARITY, both compares -------------------------------------
+     * Two separate mutations live here and this suite could not see either
+     * one until now. The original's compares are x87 `fnstsw`/`test ah`
+     * pairs and both are unordered-aware; C's ordered `<` and `<=` are not.
+     *
+     * (1) 0x10022375, the dot test: `test ah,1` reads C0, which an unordered
+     *     compare SETS, so a NaN dot takes the AMBIENT arm. Writing it as
+     *     `t < 0.0f` -- which is what stood here -- is false for NaN and sent
+     *     the NaN down the LIT path, where it multiplied through into all
+     *     three colour channels.
+     *
+     * (2) 0x100223A4 and its two repeats, the clamp: `test ah,0x41 / mov
+     *     eax,<ceiling> / je` substitutes the ceiling only when BOTH C0 and
+     *     C3 are clear, i.e. ordered greater-than. An unordered compare sets
+     *     both, so a NaN is NOT clamped and passes through. Writing it as
+     *     `(v <= 1.0f) ? v : 1.0f` -- which is what stood here -- clamps NaN
+     *     to 1.0f instead.
+     *
+     * These are the same defect that 0x10022DC0 had, in the same file, and
+     * they were found the same way: by comparing the two transcriptions of
+     * one function. */
+    {
+        const float nan = (float)(0.0 / 0.0);
+        int         j;
+
+        ls.numLights = 1;
+        ls.dir[0] = 1.0f; ls.dir[1] = 0.0f; ls.dir[2] = 0.0f;
+        ls.scale[0] = ls.scale[1] = ls.scale[2] = 0.5f;
+        ls.ambient[0] = ls.ambient[1] = ls.ambient[2] = 0.25f;
+        for (j = 0; j < 10; ++j) src[j] = 0.0f;
+
+        /* (1) a NaN dot must take the ambient arm. */
+        src[5] = nan;
+        for (j = 7; j < 10; ++j) dst[j] = -99.0f;
+        BrGbiLightVertex(&ls, src, dst);
+        CHECK(dst[7] == 0.25f && dst[8] == 0.25f && dst[9] == 0.25f);
+
+        /* (2) a NaN that reaches the clamp must pass through UNCLAMPED. Get
+         * one there without a NaN dot: an infinite dot times a zero scale is
+         * a NaN inside the loop, and the dot itself is ordered and positive
+         * so arm (1) is not taken. */
+        ls.scale[0] = ls.scale[1] = ls.scale[2] = 0.0f;
+        src[5] = (float)(1.0 / 0.0);
+        for (j = 7; j < 10; ++j) dst[j] = -99.0f;
+        BrGbiLightVertex(&ls, src, dst);
+        for (j = 7; j < 10; ++j)
+            CHECK(dst[j] != dst[j]);        /* i.e. it is still NaN */
+
+        /* ...and the ceiling still applies to an ordered overshoot, so the
+         * assertion above is not just "the clamp does nothing". */
+        ls.scale[0] = ls.scale[1] = ls.scale[2] = 1.0f;
+        src[5] = 1000.0f;
+        BrGbiLightVertex(&ls, src, dst);
+        for (j = 7; j < 10; ++j)
+            CHECK(dst[j] == 1.0f);
+    }
 }
 
 /* ================================================================== */
@@ -1045,6 +1095,254 @@ static void test_fade_tick(void)
     CHECK(st.pos == 50 && st.pos2 == 0);
 }
 
+/* ==================================================================
+ * 13b. Fade -- UNORDERED (NaN) COMPARISONS
+ * ==================================================================
+ * WHY THIS SECTION EXISTS. slice2_16.h used to carry a file-wide clause
+ * saying x87 comparison flags "treat unordered as less or equal", that this
+ * was not reproduced, and that NaN inputs would take different branches --
+ * a blanket waiver for the whole file. Under it, 24 of the file's 31 x87
+ * compare sites were NaN-wrong, and every existing fade assertion above uses
+ * ordered values, so all of them pass under BOTH the right and the wrong
+ * polarity. The waiver is gone; these are the assertions that hold the fixes.
+ *
+ * THE RULE BEING TESTED, once: `fcomp` sets C0 (less-than) and C3 (equal)
+ * and sets BOTH when either operand is a NaN. So `test ah,1` and
+ * `test ah,0x40` are each TRUE for an unordered compare, and `test ah,0x41`
+ * is NONZERO for one. C's `==` is false for NaN and its `!=` is true for it,
+ * so neither equality operator can express `test ah,0x40` in either
+ * direction -- which is why BR16_FEQU / BR16_FNEO exist in slice2_16.c.
+ *
+ * NaN IS REACHABLE HERE, not hypothetical: every rate in this state block is
+ * `+-1.0f / over`, and `over` is a caller-supplied duration. A zero duration
+ * gives an infinity, and an infinity times a zero dt gives a NaN that lands
+ * straight in `value`. slice2_16.h has said so about `over` all along.
+ */
+
+/* A quiet NaN built from its bit pattern rather than 0.0f/0.0f, which a
+ * compiler is entitled to fold, or the NAN macro, which would drag math.h
+ * into a file that does not otherwise need it. */
+static float br_test_nanf(void)
+{
+    uint32_t bits = 0x7FC00000u;
+    float    f;
+    memcpy(&f, &bits, sizeof f);
+    return f;
+}
+
+static void test_fade_nan(void)
+{
+    const float qnan = br_test_nanf();
+    BrFadeState st;
+    BrGfxWords  buf[32];
+
+    /* Sanity: the host really does give us an unordered value. Without this
+     * every assertion below could pass vacuously on a platform that folded
+     * the NaN away. */
+    CHECK(!(qnan == qnan));
+    CHECK(!(qnan < 0.0f) && !(qnan >= 0.0f));
+
+    /* --- 0x1002B2A0 BrFadeIsClosing ---------------------------------
+     * `test ah,1 / jne 0x1002B2BF`, and 0x1002B2BF is `mov eax,1 / ret`.
+     * C0 is set for unordered, so a NaN rate reports CLOSING. */
+    memset(&st, 0, sizeof st);
+    st.rate = qnan; st.bounce = 0;
+    CHECK(BrFadeIsClosing(&st) == 1);
+
+    /* --- 0x1002B2D0 BrFadeIsSettled ---------------------------------
+     * `test ah,0x40 / je 0x1002B2F2` (return 0). The zero case is C3 CLEAR,
+     * i.e. ordered AND unequal, so an unordered pair does NOT return 0 and
+     * the bounce flag decides. */
+    memset(&st, 0, sizeof st);
+    st.value = qnan; st.target = 0.5f; st.bounce = 0;
+    CHECK(BrFadeIsSettled(&st) == 1);
+    st.bounce = 1;
+    CHECK(BrFadeIsSettled(&st) == 0);   /* still the bounce that decides */
+    memset(&st, 0, sizeof st);
+    st.value = 0.5f; st.target = qnan;  /* unordered either way round */
+    CHECK(BrFadeIsSettled(&st) == 1);
+
+    /* --- 0x1002B300 BrFadeIsShut ------------------------------------
+     * Both tests leave by `je 0x1002B335` (return 0), so both continue on
+     * their flag being SET -- and unordered sets both. */
+    memset(&st, 0, sizeof st);
+    st.rate = qnan; st.value = 0.0f; st.bounce = 0;
+    CHECK(BrFadeIsShut(&st) == 1);
+    memset(&st, 0, sizeof st);
+    st.rate = -1.0f; st.value = qnan; st.bounce = 0;
+    CHECK(BrFadeIsShut(&st) == 1);
+    st.bounce = 1;
+    CHECK(BrFadeIsShut(&st) == 0);
+
+    /* --- 0x1002B130 BrFadeSetTarget ---------------------------------
+     * 0x1002B147's `jne` sends C0 AWAY from the retarget arm, so a NaN `to`
+     * falls through to the bounce block instead of retargeting. */
+    memset(&st, 0, sizeof st);
+    st.value = 0.5f; st.rate = 1.0f; st.target = 7.0f;
+    BrFadeSetTarget(&st, qnan, 4.0f);
+    CHECK(st.bounce == 1);
+    CHECK(st.target == 7.0f);           /* NOT overwritten with the NaN */
+    CHECK(st.rate == 1.0f);
+
+    /* 0x1002B184: the bounce needs value ORDERED and != 1.0f, so a NaN
+     * value skips the bounce and takes the negative-rate tail. */
+    memset(&st, 0, sizeof st);
+    st.value = qnan; st.rate = 1.0f;
+    BrFadeSetTarget(&st, 0.25f, 4.0f);
+    CHECK(st.bounce == 0);
+    CHECK(st.target == 0.25f);
+    CHECK(st.rate == -0.25f);
+
+    /* 0x1002B197: `test ah,0x41 / jne` away, so the bounce needs an ORDERED
+     * rate > 0. A NaN rate takes the tail. */
+    memset(&st, 0, sizeof st);
+    st.value = 0.5f; st.rate = qnan;
+    BrFadeSetTarget(&st, 0.25f, 4.0f);
+    CHECK(st.bounce == 0);
+    CHECK(st.target == 0.25f);
+    CHECK(st.rate == -0.25f);
+
+    /* --- 0x1002B1C0 / 0x1002B220 the two ramp aims -------------------
+     * Both `jne`s go to the NEGATIVE-rate tail, so anything unordered gets
+     * the negative rate. Two ways in: a NaN target, and a NaN current. */
+    memset(&st, 0, sizeof st);
+    st.curA = 0.0f;
+    BrFadeSetTargetA(&st, qnan, 4.0f);
+    CHECK(st.rateA == -0.25f);
+    memset(&st, 0, sizeof st);
+    st.curA = qnan;
+    BrFadeSetTargetA(&st, 1.0f, 4.0f);
+    CHECK(st.rateA == -0.25f);
+    memset(&st, 0, sizeof st);
+    st.curB = qnan;
+    BrFadeSetTargetB(&st, 1.0f, 4.0f);
+    CHECK(st.rateB == -0.25f);
+
+    /* --- 0x1002B340 BrFadeDrawBars ----------------------------------
+     * `test ah,0x40 / jne 0x1002B661` returns on C3, which unordered sets,
+     * so a NaN value emits NOTHING at all. */
+    memset(&st, 0, sizeof st);
+    memset(buf, 0, sizeof buf);
+    st.pCmd = buf;
+    st.value = qnan;
+    st.span = 200; st.width = 320; st.shift = 2; st.bars = 2;
+    BrFadeDrawBars(&st);
+    CHECK(st.pCmd == buf);              /* not one command written */
+    CHECK(st.bars == 2);                /* and nothing spent */
+
+    /* --- 0x1002B670 BrFadeTick, the wipe ----------------------------
+     * 0x1002B690 `test ah,0x40 / jne` skips the whole move on C3, so an
+     * unordered value/target pair leaves `value` exactly as it was.
+     *
+     * THE NaN MUST GO IN `target`, NOT IN `value`. With `value = NaN` the
+     * wrong reading enters the block, steps a NaN, and then correctly
+     * declines to clamp it -- so `value` is still NaN either way and the
+     * assertion cannot tell the two apart. Mutation testing is what found
+     * that: `BR16_FNEO -> !=` SURVIVED the value-NaN version of this test.
+     * With the NaN in `target` the wrong reading enters, steps to -0.5, and
+     * the backward clamp (which fires on C0, and unordered sets C0) writes
+     * the NaN target into `value` -- an observable difference. */
+    memset(&st, 0, sizeof st);
+    st.kick = 0; st.value = 0.5f; st.target = qnan;
+    st.rate = -1.0f; st.dt = 1.0f; st.span = 200;
+    BrFadeTick(&st);
+    CHECK(st.value == 0.5f);            /* untouched: never entered the block */
+
+    /* The value-NaN direction is still worth asserting -- it says the wipe
+     * does not move -- it just cannot stand alone as the guard's test. */
+    memset(&st, 0, sizeof st);
+    st.kick = 0; st.value = qnan; st.target = 1.0f;
+    st.rate = 1.0f; st.dt = 1.0f; st.span = 200;
+    BrFadeTick(&st);
+    CHECK(!(st.value == st.value));     /* still the NaN, never stepped */
+
+    /* The forward/backward choice is C0 on `rate` vs 0, read by the `je` at
+     * 0x1002B6D2 -- so a NaN rate goes BACKWARD, and the backward arm has no
+     * bounce handling. A pending bounce must therefore survive. */
+    memset(&st, 0, sizeof st);
+    st.kick = 0; st.value = 0.5f; st.target = 1.0f;
+    st.rate = qnan; st.dt = 1.0f; st.bounce = 1; st.span = 200;
+    BrFadeTick(&st);
+    CHECK(st.bounce == 1);              /* the forward arm would have spent it */
+    CHECK(st.value == 1.0f);            /* backward clamp: !(NaN >= target) */
+
+    /* Forward arm, 0x1002B6E8 `test ah,1 / jne` skip: the clamp needs an
+     * ORDERED value >= target, so a value that became NaN during the step is
+     * left alone and the bounce does not fire. A NaN `dt` is the way in. */
+    memset(&st, 0, sizeof st);
+    st.kick = 0; st.value = 0.5f; st.target = 1.0f;
+    st.rate = 1.0f; st.dt = qnan; st.bounce = 1; st.span = 200;
+    BrFadeTick(&st);
+    CHECK(!(st.value == st.value));     /* NaN, NOT clamped to target */
+    CHECK(st.bounce == 1);              /* so the bounce never fired */
+    CHECK(st.target == 1.0f);
+
+    /* 0x1002B795 `test ah,1 / je 0x1002B7DA`: the rate < 0 ARM is the C0
+     * case, so a NaN rate takes it rather than the final else. The two are
+     * told apart by pos2, which the else arm zeroes and this arm advances. */
+    memset(&st, 0, sizeof st);
+    st.kick = 1;                        /* skip the move block entirely */
+    st.rate = qnan; st.value = 0.5f; st.span = 200;
+    st.pos = 0; st.pos2 = 0;
+    BrFadeTick(&st);
+    /* This arm: v = ftol(200 * 0.5) = 100, step = ((200-100-0)+3) & ~3 = 100,
+     * so pos and pos2 both become 100. The final else would have written
+     * pos2 = 0 and pos = span = 200, which is what the port did before. */
+    CHECK(st.pos2 == 100);
+    CHECK(st.pos  == 100);
+
+    /* --- 0x1002B670's two ramps (br16_ramp_step) --------------------
+     * 0x1002B800 `test ah,0x40 / jne` skips the step on C3, so an unordered
+     * cur/tgt pair is left where it is. Both ramps share one body in the
+     * port; ramp B is asserted too because they are separate call sites.
+     *
+     * SAME TRAP AS THE WIPE GUARD ABOVE, and mutation testing found it the
+     * same way: with the NaN in `cur` the wrong reading steps a NaN and then
+     * correctly refuses to clamp it, so `cur` is NaN under both readings.
+     * The NaN goes in `tgt`, where the wrong reading enters, steps to -0.5,
+     * and the backward clamp writes the NaN target back. `outA` is asserted
+     * too because it is an integer and says the same thing without any float
+     * comparison: br16_ftol of a NaN is 0, of 0.5*255 is 127. */
+    memset(&st, 0, sizeof st);
+    st.kick = 1; st.rate = 0.0f; st.span = 200; st.dt = 1.0f;
+    st.kickA = 0; st.curA = 0.5f; st.tgtA = qnan; st.rateA = -1.0f;
+    st.kickB = 0; st.curB = 0.5f; st.tgtB = qnan; st.rateB = -1.0f;
+    BrFadeTick(&st);
+    CHECK(st.curA == 0.5f);
+    CHECK(st.curB == 0.5f);
+    CHECK(st.outA == 127);
+    CHECK(st.outB == 127);
+
+    /* The cur-NaN direction, for what it does say: the ramp does not move. */
+    memset(&st, 0, sizeof st);
+    st.kick = 1; st.rate = 0.0f; st.span = 200;
+    st.kickA = 0; st.curA = qnan; st.tgtA = 1.0f; st.rateA = 1.0f;
+    st.kickB = 0; st.curB = qnan; st.tgtB = 1.0f; st.rateB = 1.0f;
+    st.dt = 1.0f;
+    BrFadeTick(&st);
+    CHECK(!(st.curA == st.curA));
+    CHECK(!(st.curB == st.curB));
+
+    /* Ramp forward/backward is C0 on rateA, so a NaN rate goes BACKWARD, and
+     * the backward clamp fires on C0 -- which unordered sets. So a ramp that
+     * goes NaN under a NaN rate is snapped to its target, where the forward
+     * arm's `test ah,0x41` would have left it alone. */
+    memset(&st, 0, sizeof st);
+    st.kick = 1; st.rate = 0.0f; st.span = 200; st.dt = 1.0f;
+    st.kickA = 0; st.curA = 0.5f; st.tgtA = 1.0f; st.rateA = qnan;
+    BrFadeTick(&st);
+    CHECK(st.curA == 1.0f);
+
+    /* ...and the mirror: a forward ramp whose step produces a NaN is NOT
+     * clamped, because 0x1002B856's `test ah,0x41 / jne` needs an ordered
+     * greater-than. */
+    memset(&st, 0, sizeof st);
+    st.kick = 1; st.rate = 0.0f; st.span = 200; st.dt = qnan;
+    st.kickA = 0; st.curA = 0.5f; st.tgtA = 1.0f; st.rateA = 1.0f;
+    BrFadeTick(&st);
+    CHECK(!(st.curA == st.curA));
+}
+
 static void test_fade_emit(void)
 {
     BrFadeState st;
@@ -1430,6 +1728,7 @@ int main(void)
     test_fade_state();
     test_fade_predicates();
     test_fade_tick();
+    test_fade_nan();
     test_fade_emit();
     test_swaps();
     test_swap_mesh();

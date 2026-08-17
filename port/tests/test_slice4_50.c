@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "slice4_50.h"
+#include "br_gamestep.h"
 
 /* ==========================================================================
  * STAND-INS
@@ -280,23 +281,36 @@ static void test_snd(void)
 }
 
 /* --- 0x10034C51 ---------------------------------------------------------- */
+/* The slot this reads is br_gamestep.c's -- 0x106C0964 is the same original
+ * dword as BRGlide 0x106E79F4, and this module used to keep a SECOND host
+ * object for it. Driving it through the other view is deliberate: it is the
+ * only way this suite can tell "one slot" from "two that happen to agree". */
+static void hook_a(void) { }
+static void hook_b(void) { }
+
 static void test_hook(void)
 {
-    int a = 0, b = 0;
-
-    g_brHook6C0964 = NULL;
-    /* GOTCHA reproduced: with the global unset, NULL "is current". */
+    BrGameStepSet(NULL);
+    /* GOTCHA reproduced: with the slot unset, NULL "is current". */
     CHECK(BrHookIsCurrent(NULL) == 1);
-    CHECK(BrHookIsCurrent(&a) == 0);
+    CHECK(BrHookIsCurrent((const void *)hook_a) == 0);
 
-    g_brHook6C0964 = &a;
-    CHECK(BrHookIsCurrent(&a) == 1);
-    CHECK(BrHookIsCurrent(&b) == 0);
+    BrGameStepSet(hook_a);
+    CHECK(BrHookIsCurrent((const void *)hook_a) == 1);
+    CHECK(BrHookIsCurrent((const void *)hook_b) == 0);
     CHECK(BrHookIsCurrent(NULL) == 0);
     /* The result is only ever 0 or 1. */
-    CHECK((BrHookIsCurrent(&a) | BrHookIsCurrent(&b)) == 1);
+    CHECK((BrHookIsCurrent((const void *)hook_a) |
+           BrHookIsCurrent((const void *)hook_b)) == 1);
 
-    g_brHook6C0964 = NULL;
+    /* ...and the D3D-side name and the Glide-side name must move TOGETHER.
+     * Two objects would pass every line above and fail this one. */
+    BrGameStepSet(hook_b);
+    CHECK(BrHookIsCurrent((const void *)hook_b) == 1);
+    CHECK(BrGameStepIs(hook_b) == 1);
+    CHECK(BrGameStepIs(hook_a) == 0);
+
+    BrGameStepSet(NULL);
 }
 
 /* --- 0x10030930 ---------------------------------------------------------- */

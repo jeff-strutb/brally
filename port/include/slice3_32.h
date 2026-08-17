@@ -501,13 +501,47 @@ typedef struct BrScrGlobals {
     /* 0x10048B20 walks 145 slots of stride 0x74 from 0x10A9E3D0 to
      * 0x10AA2584, freeing the pointer at the start of each. The port takes
      * the array as an explicit pointer + count so no address arithmetic on a
-     * fabricated base is needed. */
-    void      **apA9E3D0;     /* 145 entries, each a `void *` slot           */
+     * fabricated base is needed.
+     *
+     * ==== THE STRIDE IS A BUILD DIVERGENCE, AND THIS DECLARATION MATCHES
+     * ==== NEITHER BUILD.  READ THIS BEFORE PORTING ANY OTHER FIELD.
+     *
+     *     D3D    0x10048B7D  esi = 0x10A9E3D0
+     *            0x10048B93  add esi, 0x74
+     *            0x10048B96  cmp esi, 0x10AA2584   -> 0x41B4 / 0x74 == 145
+     *     Glide  0x10041FAD  esi = 0x10AC53EC
+     *            0x10041FC3  add esi, 8
+     *            0x10041FC6  cmp esi, 0x10AC5874   -> 0x488  / 8    == 145
+     *
+     * SAME COUNT, DIFFERENT ELEMENT.  145 in both, but a D3D element is 0x74
+     * bytes and a Glide element is 8.  `void **` is neither: it is 4 bytes in
+     * the original's world and 8 on an LP64 host, and it happens to coincide
+     * with the Glide stride only by accident of host pointer width.
+     *
+     * THE BEHAVIOUR IS STILL RIGHT AND IS DELIBERATELY LEFT ALONE.  The loop
+     * only ever touches the pointer at offset 0 of each element -- it frees it
+     * and NULLs it -- so 145 iterations over 145 pointers is exactly what the
+     * original does in both builds, whatever sits between them.  Modelling the
+     * padding would add 145 * 0x6C bytes of fiction to satisfy nothing.
+     *
+     * BUT ANY FUTURE PORT OF THAT ARRAY'S OTHER FIELDS MUST USE THE GLIDE
+     * LAYOUT and will otherwise be wrong, because Glide is the reference and
+     * its element is 8 bytes, not 0x74.  Note also where the Glide array
+     * STARTS: 0x10AC53EC is four bytes past 0x10AC53E8, the stride-8 BMP
+     * sprite table br_uispr.h describes.  So the Glide element is very likely
+     * `{ int32_t something; void *bitmap; }` with this loop freeing the second
+     * word -- which would mean the two builds do not merely pad this array
+     * differently, they store different things in it.  That is a lead, not a
+     * finding; it has not been confirmed and nothing here depends on it. */
+    void      **apA9E3D0;     /* 145 entries; see the stride note above      */
     int32_t     nA9E3D0;      /* == BR_SCR_A9E3D0_COUNT                      */
 } BrScrGlobals;
 
-#define BR_SCR_A9E3D0_COUNT   145u   /* (0x10AA2584-0x10A9E3D0)/0x74 exactly */
-#define BR_SCR_A9E3D0_STRIDE  0x74u
+/* The COUNT is build-neutral -- both builds walk 145 elements -- and is the
+ * only one of these three numbers the port actually relies on. */
+#define BR_SCR_A9E3D0_COUNT   145u   /* (0x10AA2584-0x10A9E3D0)/0x74  ==
+                                      * (0x10AC5874-0x10AC53EC)/8    == 145 */
+#define BR_SCR_A9E3D0_STRIDE  0x74u  /* D3D ONLY. Glide's is 8 -- see above. */
 
 /* ==========================================================================
  * 8. Cross-slice imports. Stand-ins live in port/tests/test_slice3_32.c and

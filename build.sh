@@ -67,6 +67,11 @@ clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 for t in port/tests/test_*.c; do
     tname=$(basename "$t" .c)
     mod=${tname#test_}
+    # test_host_wiring is the one suite that links port/host, so it needs the
+    # host's whole object set and cannot be matched to a single module by name.
+    # It is built at the bottom of this script, off the SAME object list the
+    # brally binary is linked from -- see there for why that matters.
+    if [ "$tname" = "test_host_wiring" ]; then continue; fi
     clang $CFLAGS -c "$t" -o "build/$tname.o"
 
     # A test is matched to its module by name. Most are test_<mod> for <mod>.c,
@@ -148,19 +153,34 @@ clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
 # repathed -- one fewer explicit path to go stale.
 clang $CFLAGS -Iport/tests -c port/tests/test_data.c -o build/test_data.o
 clang build/br_data.o build/test_data.o -lm -o build/test_data
-clang $CFLAGS -c port/host/brally.c   -o build/brally.o
+clang $CFLAGS -c port/host/brally.c      -o build/brally.o
+# THE ENTRY POINT IS A SEPARATE OBJECT, and that separation is what puts the
+# wiring under test. brally.c is now `main`-free, so it links into a test
+# binary; brally_main.o supplies `main` to the game binary and to nothing else.
+# See the banner in port/host/brally_main.c.
+clang $CFLAGS -c port/host/brally_main.c -o build/brally_main.o
 
 HOSTOBJS=""
 for o in build/*.o; do
   case "$o" in
-    *test_*|*brview*|*br_gfx_metal*|*brally.o|*br_stubs.o|*br_wire7*.o) continue;;
+    *test_*|*brview*|*br_gfx_metal*|*brally.o|*brally_main.o|*br_stubs.o|*br_wire7*.o) continue;;
     */slice3_32.o|*/slice6_71.o|*/slice6_73.o) continue;;   # host uses build/host/ copies
   esac
   HOSTOBJS="$HOSTOBJS $o"
 done
-clang build/brally.o build/br_stubs.o $WIREOBJS $HOSTOBJS \
+HOSTLINK="build/br_stubs.o $WIREOBJS $HOSTOBJS \
       build/host/slice3_32.o build/host/slice6_71.o build/host/slice6_73.o \
-      build/br_gfx_metal.o -lm $FW -o build/brally
+      build/br_gfx_metal.o"
+clang build/brally.o build/brally_main.o $HOSTLINK -lm $FW -o build/brally
+
+# THE HOST'S OWN SUITE. Linked from $HOSTLINK -- the SAME list the binary above
+# is linked from -- with test_host_wiring.o in place of brally_main.o. Building
+# it from a hand-picked subset instead would let the suite pass against an
+# object set the game never runs, which is the class of green report this
+# project has already been burned by twice (see tools/regress.sh's header).
+clang $CFLAGS -c port/tests/test_host_wiring.c -o build/test_host_wiring.o
+clang build/test_host_wiring.o build/brally.o $HOSTLINK -lm $FW \
+      -o build/test_host_wiring
 # SUCCESS STAMP. Written ONLY here, as the very last act of a build that did
 # not exit early -- `set -e` at the top guarantees any failure above skips it.
 # tools/regress.sh refuses to report a pass count unless this stamp is newer

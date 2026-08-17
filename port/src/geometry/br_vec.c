@@ -142,7 +142,9 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 
 /* 0x1003B0E0 -- identical body to BrVec3DistSq, then tail-calls the fsqrt
  * wrapper at 0x10002250 (`fld [esp+4]; fsqrt; ret`). Summation order is
- * (dz*dz + dy*dy) + dx*dx, matching DistSq. */
+ * (dx*dx + dy*dy) + dz*dz, matching DistSq: at 0x1003B119 the stack is
+ * st0=dy^2 st1=dz^2 st2=dx^2, so `faddp st(2)` makes dx^2+dy^2 and the
+ * `faddp st(1)` at 0x1003B11B adds dz^2 to it. */
 /* WHAT IT DOES: the straight-line distance between two points in 3D. One of
  * the most-used routines in the game -- how far a car is from anything. */
 /* @implements 0x1003B0E0 d3d BrVec3Dist */
@@ -151,11 +153,66 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
     return sqrtf(BrVec3DistSq(pA, pB));
 }
 
-/* 0x1003B170 -- the original copies y and z through stack scratch, then sums
- * and rounds to float32 before calling the fsqrt wrapper. The intermediate
- * round is observable, so it is spelled out rather than folded. */
+/* 0x1003B170 (Glide 0x100347F0, `shared`, matched by body) -- 65 bytes, traced
+ * through every fxch:
+ *
+ *   1003B17B  fld [eax]          st0=x
+ *   1003B185  fld [esp]          st0=z            st1=x
+ *   1003B189  fld [esp+8]        st0=y            st1=z     st2=x
+ *   1003B18D  fmul [esp+8]       st0=y*y
+ *   1003B191  fxch st(1)         st0=z            st1=y*y   st2=x
+ *   1003B193  fmul [esp]         st0=z*z
+ *   1003B197  fld st(2)          st0=x            st1=z*z   st2=y*y  st3=x
+ *   1003B199  fmul st(3)         st0=x*x
+ *   1003B19B  fxch st(1)         st0=z*z          st1=x*x   st2=y*y
+ *   1003B19D  faddp st(2)        st2 = y*y + z*z, pop
+ *   1003B1A0  faddp st(1)        st1 = (y*y + z*z) + x*x, pop
+ *   1003B1A2  fstp dword [esp]   ONE round, to float32
+ *   1003B1A7  call 0x10002250    `fld [esp+4]; fsqrt; ret`
+ *
+ * Two things the previous transcription had wrong, and they are separate:
+ *
+ * ASSOCIATION.  Y and Z are summed FIRST; X joins last.  The old body was
+ * `x*x + y*y + z*z`, i.e. (x^2+y^2)+z^2, which is a different expression.
+ * Fixed here.  Measured, it is not observable through this function's float32
+ * return -- the two groupings of three NON-NEGATIVE addends differ by at most
+ * ~2^-51 relative, which is 2^27 times finer than float32 can record, and a
+ * search of 20M uniform plus 400M targeted triples found no float32
+ * disagreement.  It is corrected because it is what the instructions say, not
+ * because a test can see it.
+ *
+ * PRECISION.  The three products and both partial sums stay in x87 registers
+ * and are rounded exactly ONCE, at the `fstp dword`.  The old body rounded to
+ * float32 after every operation, so each square could underflow to zero (or to
+ * the wrong denormal) before the sum was formed.  That IS observable:
+ * (2e-23, 2e-23, 2e-23) gives 3.74339207e-23 here and gave 0 before, and
+ * (3e-23, 3e-23, 0) gives 3.74339207e-23 here and gave 5.29395592e-23 before.
+ *
+ * DEVIATION, stated: the intermediates are modelled with `double`, not `long
+ * double`.  MSVC's CRT initialises the x87 control word to 0x027F, i.e. 53-bit
+ * precision, so `double` is an EXACT model of these registers rather than an
+ * approximation -- `long double` would model a 64-bit-mantissa control word
+ * this process never runs in.  Each product is exact either way (a float32
+ * square needs at most 48 mantissa bits).  The final `sqrtf` of a float32 is
+ * likewise exact: a correctly-rounded wider sqrt re-rounded to float32 equals
+ * the correctly-rounded float32 sqrt, so the wrapper's fsqrt needs no model.
+ *
+ * NOT fixed, and deliberately: BrVec3DistSq / BrVec3Dist above have the same
+ * single-rounding shape (plus a `fst`/`fmul` pair that squares an 80-bit
+ * difference against its own float32 copy) and are still written in float32
+ * throughout.  That is a separate transcription, out of this change's scope,
+ * and is recorded here rather than left silent. */
+/* WHAT IT DOES: how long a vector is -- the distance from the origin to the
+ * point it names. Used everywhere a speed or a reach has to come out of an
+ * (x, y, z) triple. */
 float BrVec3Length(const BrVec3 *pV)
 {
-    float sum = pV->x * pV->x + pV->y * pV->y + pV->z * pV->z;
+    double xx = (double)pV->x * (double)pV->x;
+    double yy = (double)pV->y * (double)pV->y;
+    double zz = (double)pV->z * (double)pV->z;
+
+    /* `fstp dword [esp]` -- the sum is rounded to float32 BEFORE the sqrt. */
+    float sum = (float)((yy + zz) + xx);
+
     return sqrtf(sum);
 }

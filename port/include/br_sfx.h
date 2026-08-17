@@ -249,7 +249,20 @@ uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate);
 
 /* 0x1006B6C0 (D3D 0x10072750) sets an absolute frequency from a float: the
  * engine's high layer is driven this way rather than through the ratio.  The
- * float is truncated by the same _ftol, so out-of-range yields 0. */
+ * float is truncated by the same _ftol, so out-of-range yields 0.
+ *
+ * THIS IS A FRAGMENT OF 0x1006B6C0, NOT 0x1006B6C0.  All thirty-two bytes:
+ *
+ *      fld dword [esp+0xc] / call 0x10074560   <- what is modelled here
+ *      mov edx,[esp+4] / push eax
+ *      mov eax,[esp+0xc] / lea ecx,[eax+eax] / push ecx / push edx
+ *      call 0x1006B6E0                         <- and this is not
+ *
+ * so the real routine is `f(a1, a2 * 2, ftol(a3))`, where 0x1006B6E0 looks up
+ * BrSndVoices[a1*18 + a2] behind the usual three gates and hands it to
+ * 0x1006B670 (store voice+0x0C, then 0x1006B420).  None of that tail is
+ * ported, so the ADDRESS is unclaimed and this declaration is the truncation
+ * arithmetic only.  Do not put an @implements on it. */
 uint32_t BrSfxHzFromFloat(float hz);
 
 /* ------------------------------------------------------- the engine curve */

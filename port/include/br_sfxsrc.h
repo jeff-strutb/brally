@@ -182,6 +182,34 @@ typedef struct BrSfxChan {
 
 extern BrSfxChan g_aBrSfxChan[BR_SFX_CHANNELS];
 
+/* 0x1184C080, stride 24 -- a SECOND array with the SAME BrSfxChan layout,
+ * holding what has actually been pushed at the voice.  It was missing from
+ * this port entirely, so the second half of 0x1006B880's ratio store had
+ * nowhere to go.
+ *
+ * The layout is pinned by field, not assumed: every reference into this block
+ * in BRGlide's .text is at base + ch*24 + {0x00, 0x08, 0x0C, 0x14}, and each
+ * one is paired with the identical offset off 0x118EEF40 by the frame sync at
+ * 0x1006BDD0:
+ *
+ *   0x1006BE9E  eax = chan[ch].group    ecx = applied[ch].group   (+0x00)
+ *   0x1006BEB4  eax:ecx = chan[ch].ratio  edx = applied[ch].ratio (+0x08)
+ *   0x1006BEDF  eax = chan[ch].packed   ecx = applied[ch].packed  (+0x14)
+ *
+ * and each pair gates a re-send: a ratio that already matches is not pushed
+ * again (0x1006BEC8/D2 skip the call to 0x1006B5F0).  So this is a dirty
+ * check, and it is why the pair BrSfxRatioFromHz / BrSfxHzFromRatio not being
+ * an exact inverse does not accumulate -- br_sfx.h says the same from the
+ * other end.  +0x04 and +0x10 are never referenced and stay dead here too.
+ *
+ * NOTHING IN THIS PORT READS IT YET, which is honest rather than an oversight:
+ * both readers -- 0x1006B5F0 (set the voice frequency from a ratio, and record
+ * it here on success) and 0x1006BDD0 (the per-frame sync above) -- are
+ * untranscribed.  BrSfxChanStart is the only writer either binary has on the
+ * start path, and it is ported, so the field is written by the thing that
+ * writes it in the original and by nothing else. */
+extern BrSfxChan g_aBrSfxChanApplied[BR_SFX_CHANNELS];
+
 /* 0x1184C268 -- the voice currently bound to each channel, and 0x1184C1E8 --
  * that channel's base rate in Hz.  Both are indexed by channel and both are
  * written by 0x1006B530. */

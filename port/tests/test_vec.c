@@ -103,6 +103,26 @@ int main(void)
       check(near(BrVec3Length(&v)*BrVec3Length(&v), BrVec3Dot(&v,&v)),
             "length squared agrees with dot-with-self"); }
 
+    /* 0x1003B170 keeps all three squares and both partial sums in the x87
+     * registers and rounds ONCE, at `fstp dword [esp]` (0x1003B1A2), before
+     * the fsqrt wrapper.  A transcription that rounds to float32 after every
+     * operation loses each square to underflow separately, and the three
+     * cases below are where that is visible.  Exact equality, not `near`:
+     * these pin a rounding decision, and a tolerance would hide it.
+     *
+     * Both expected values are sqrtf(0x1p-149f) -- the sum of squares rounds
+     * to exactly one float32 denormal step in each case. */
+    { BrVec3 a = {2e-23f, 2e-23f, 2e-23f};   /* per-step: each square -> 0   */
+      BrVec3 b = {3e-23f, 3e-23f, 0.0f};     /* per-step: each square -> 1ulp */
+      BrVec3 c = {1e-23f, 0.0f, 0.0f};       /* underflows either way        */
+      check(BrVec3Length(&a) == 0x1.6a09e6p-75f,
+            "length rounds once: (2e-23)^3 is 3.74339207e-23, not 0");
+      check(BrVec3Length(&b) == 0x1.6a09e6p-75f,
+            "length rounds once: (3e-23,3e-23,0) is 3.74339207e-23, "
+            "not 5.29395592e-23");
+      check(BrVec3Length(&c) == 0.0f,
+            "the single round is to float32, so 1e-23 still underflows"); }
+
     printf(g_fail ? "\nFAILED\n" : "\nALL PASSED\n");
     return g_fail;
 }

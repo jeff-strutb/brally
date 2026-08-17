@@ -87,7 +87,13 @@ long BrAppMsg107(void); long BrAppMsg107(void) { return br_stub("BrAppMsg107"); 
 long BrEnt35CE0(void); long BrEnt35CE0(void) { return br_stub("BrEnt35CE0"); }
 long BrExt_10041AC0(void); long BrExt_10041AC0(void) { return br_stub("BrExt_10041AC0"); }
 long BrExt_10041BD0(void); long BrExt_10041BD0(void) { return br_stub("BrExt_10041BD0"); }
-long BrExt_10045A00(void); long BrExt_10045A00(void) { return br_stub("BrExt_10045A00"); }
+/* BrExt_10045A00 (the CD-ROM volume scan, Glide 0x1003EE90 / D3D 0x10045A00)
+ * WAS stubbed here, returning 0. That made BrPhaseActivate_10045900 report
+ * status 0xD and refuse to open Championship on EVERY machine, including one
+ * where tools/extract_assets.sh had extracted every asset successfully. It is
+ * now answered for real by port/src/gamedata/br_volume.c, out of the volume
+ * label the extraction records in testdata/assets.manifest.json. A tree with
+ * nothing extracted still gets 0, which is the honest answer and still 0xD. */
 long BrExt_10047660(void); long BrExt_10047660(void) { return br_stub("BrExt_10047660"); }
 long BrExt_10049C20(void); long BrExt_10049C20(void) { return br_stub("BrExt_10049C20"); }
 long BrExt_1004A260(void); long BrExt_1004A260(void) { return br_stub("BrExt_1004A260"); }

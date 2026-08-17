@@ -142,7 +142,7 @@ int  BrSub1003F320(int i) { return (i >= 0 && i < 32) ? (int)((s_okMask3F320 >> 
 void BrSub10041B50(void)                { }
 void BrSub10043BF0(BrGameObj *p)        { (void)p; }
 void BrSub10044540(void)                { ++s_n44540; }
-void BrSub10046400(BrGameObj *p)        { (void)p; }
+int32_t BrSub10046400(BrGameObj *p)     { (void)p; return 0; }
 void BrSub10047360(BrGameObj *p)        { (void)p; }
 int  BrSub10058700(void)                { return 77; }
 void BrSub100586A0(void)                { int i; for (i = 0; i < BR_SLOT_COUNT; ++i)
@@ -195,8 +195,8 @@ void BrOptFn10057C10(BrOptObj *p) { handler(p); }
 void BrOptFn10058750(BrOptObj *p) { handler(p); }
 /* An ENTITY record, not the screen object -- see the adjudication in
  * slice2_25.h. These are only stored and compared here, never called. */
-void BrOptFn10044970(void *pEntity) { (void)pEntity; }
-void BrOptFn10044A30(void *pEntity) { (void)pEntity; }
+int32_t BrOptFn10044970(void *pEntity) { (void)pEntity; return 0; }
+int32_t BrOptFn10044A30(void *pEntity) { (void)pEntity; return 0; }
 
 void *BrGlobalHandle(void *p) { return p; }
 int   BrGlobalUnlock(void *h) { (void)h; ++s_nGlobalUnlock; return 0; }
@@ -317,6 +317,46 @@ static void test_plain_cycler(void)
     up();
     BrOptCycleAA2A08();
     check(g_brAA2A08 == 0, "0x10042E80 is a two-state option");
+
+    /* 0x10042E20, the fourth of the four and the one that had no test at all.
+     * Its three siblings above are checked and it was not, which is exactly
+     * how a wrong counter or a wrong table gets through: all four bodies are
+     * the same twenty-one instructions with four operands changed, so a copy
+     * that kept a neighbour's operand would still compile, link and cycle.
+     * Read off 0x10042E20 rather than off the sibling:
+     *   0x10042E29  counter 0x100AC650   0x10042E2F  cmp eax,2  -> MAX 2
+     *   0x10042E6A  table   0x100AC4B0   0x10042E76  dest 0x10094358 */
+    reset();
+    up();
+    BrOptCycleAC650();
+    check(g_br0AC650 == 1 && g_br094358 == g_aBrAC4B0[1],
+          "0x10042E20 publishes table[index] from its OWN table");
+    check(g_br0AC64C == 0 && g_brAA2A08 == 0,
+          "0x10042E20 steps 0x100AC650 and none of its siblings' counters");
+
+    reset();
+    up();
+    for (i = 0; i < BR_OPT_AC650_MAX; ++i) BrOptCycleAC650();
+    check(g_br0AC650 == BR_OPT_AC650_MAX, "0x10042E20 steps up to 2");
+    check(BrOptCycleAC650() == 1, "0x10042E20 returns 1");
+    check(g_br0AC650 == 0, "0x10042E20 wraps 2 -> 0");
+
+    reset();
+    down();
+    BrOptCycleAC650();
+    check(g_br0AC650 == BR_OPT_AC650_MAX, "0x10042E20 wraps 0 -> 2");
+
+    /* 0x10042E65 is the join of all three arms, so the publish happens even
+     * when neither input is set -- the same property the plain cycler's
+     * "republished even when idle" line pins for 0x10042C80. */
+    reset();
+    idle();
+    g_br0AC650  = BR_OPT_AC650_MAX;
+    g_br094358  = -1;
+    BrOptCycleAC650();
+    check(g_br0AC650 == BR_OPT_AC650_MAX, "0x10042E20: no input, no step");
+    check(g_br094358 == g_aBrAC4B0[BR_OPT_AC650_MAX],
+          "0x10042E20 republishes table[index] even when idle");
 }
 
 static void test_one_based_cycler(void)
@@ -806,6 +846,39 @@ static void test_open_2950(void)
     check(g_brPAA2950 == NULL, "still no screen");
 }
 
+/* 0x10AA2904 IS THE SHARED SLOT, not storage of this module's.
+ *
+ * This range publishes "the current screen" through the name `g_brPAA2904`,
+ * and br_uinav.h's BrUiNav::pAA2904 and slice2_26.h's BR_PHASE_CUR are the
+ * SAME original dword.  When they were separate objects, every screen this
+ * range opened was published where the frame loop could not see it and the
+ * front end looked inert.
+ *
+ * The assertion is an ADDRESS identity, deliberately.  A value check --
+ * "after the call, g_brPAA2904 == p" -- already exists above and passes under
+ * both arrangements, because it reads back through the same name it wrote.
+ * Only comparing storage can tell whether there is one object or two. */
+static void test_current_phase_is_the_shared_slot(void)
+{
+    BrPhase_ *host = NULL;
+
+    printf("0x10AA2904 -- one dword, one object\n");
+
+    check((void *)&g_brPAA2904 == (void *)BrPhaseCurSlot(),
+          "g_brPAA2904 names the shared 0x10AA2904 slot, not a private one");
+
+    /* Bound to a host member -- which is what port/host/brally.c does with
+     * g_nav.pAA2904 -- this range's writes must land in it. */
+    BrPhaseCurBind(&host);
+    check((void *)&g_brPAA2904 == (void *)&host,
+          "after a bind, g_brPAA2904 IS the host's storage");
+    g_brPAA2904 = (BrOptObj *)0x1234;
+    check(host == (BrPhase_ *)0x1234,
+          "a write through g_brPAA2904 reaches the host's storage");
+    BrPhaseCurBind(NULL);
+    g_brPAA2904 = NULL;
+}
+
 int main(void)
 {
     printf("test_slice2_25\n");
@@ -820,6 +893,7 @@ int main(void)
     test_lobby_slot_update();
     test_start_race();
     test_open_2950();
+    test_current_phase_is_the_shared_slot();
     printf(g_fail ? "FAILED\n" : "ALL PASS\n");
     return g_fail;
 }

@@ -21,8 +21,10 @@ Usage:
     extract_iso.py <image.bin> <NAME.EXT> <outfile>     extract one file
     extract_iso.py --list <image.bin>                   list the whole tree
     extract_iso.py --extract-path <image.bin> <ISO/PATH> <outfile>
+    extract_iso.py --volume-id <image.bin>              print the volume label
+    extract_iso.py --manifest <image.bin> <root> <out.json>
 """
-import sys, struct
+import sys, struct, os, json, hashlib
 
 RAW, USER, HDR = 2352, 2048, 16
 SYNC = b'\x00' + b'\xff' * 10 + b'\x00'
@@ -126,6 +128,94 @@ def read_pvd(fh):
     raise SystemExit("no Primary Volume Descriptor found")
 
 
+# The volume identifier: 32 bytes at offset 40 of a volume descriptor
+# (ECMA-119 8.4.7). Space-padded, NOT NUL-terminated.
+VOLID_OFF, VOLID_LEN = 40, 32
+
+
+def _volid(field, joliet):
+    """Decode one volume-identifier field the way a filesystem driver would.
+
+    Trailing spaces are padding and are stripped -- Windows' GetVolumeInformationA
+    hands the caller the label without them, and it is that string the game
+    compares. INTERIOR spaces are part of the label and are kept, which is the
+    whole question for this disc: the label is 'Boss Rally', two words.
+    """
+    if joliet:
+        text = field.decode('utf-16-be', 'replace')
+    else:
+        text = field.decode('ascii', 'replace')
+    return text.rstrip(' \x00')
+
+
+def read_volume_labels(fh):
+    """Return {'primary': str|None, 'joliet': str|None} from the descriptors.
+
+    WHY THIS IS HERE: the PC game gates its Championship mode on the CD being in
+    a drive, and the test it applies is a case-sensitive strcmp of the volume
+    label against the literal "Boss Rally" (BRGlide 0x1007B384, reached from the
+    per-drive predicate 0x100377A0). This decomp ships code only and the disc's
+    contents live as extracted files instead, so the label has to be RECORDED at
+    extraction time or the port has no honest way to answer that test. See
+    port/include/br_volume.h.
+
+    Both descriptors are returned rather than one, because they are independent
+    fields and a disc may disagree with itself. On the retail image they do not:
+    both say 'Boss Rally'.
+    """
+    out = {'primary': None, 'joliet': None}
+    for lba in range(16, 32):
+        d = iso_read(fh, lba * USER, USER)
+        if d[1:6] != b'CD001':
+            continue
+        field = d[VOLID_OFF:VOLID_OFF + VOLID_LEN]
+        if d[0] == 1 and out['primary'] is None:
+            out['primary'] = _volid(field, False)
+        elif d[0] == 2:
+            esc = d[88:120].rstrip(b'\x00')
+            if esc in _JOLIET_ESC and out['joliet'] is None:
+                out['joliet'] = _volid(field, True)
+        elif d[0] == 255:
+            break
+    return out
+
+
+def source_fingerprint(path, fh):
+    """Identify the source disc cheaply: image size plus its volume descriptors.
+
+    Deliberately NOT a hash of the whole 600 MB image, for the same reason
+    tools/extract_cdaudio.py gives: the hash would cost more than the extraction
+    it exists to describe. NOTE that the two tools cover DIFFERENT bytes --
+    extract_cdaudio hashes the cue sheet's audio track table, this hashes the
+    volume descriptor block -- so the two `source_fingerprint` values are not
+    comparable with each other. `fingerprint_covers` records which is which.
+    """
+    h = hashlib.sha256()
+    h.update(b"%d\n" % os.path.getsize(path))
+    for lba in range(16, 20):
+        h.update(iso_read(fh, lba * USER, USER))
+    return h.hexdigest()
+
+
+def inventory(root, skip):
+    """Relative paths of every file under `root`, sorted, `skip` excluded.
+
+    This is what makes the manifest a claim about EXTRACTED ASSETS rather than
+    only about the disc. A manifest sitting alone in an empty tree vouches for
+    nothing, and port/src/gamedata/br_volume.c requires at least one listed file
+    to be present before it will report a volume at all.
+    """
+    rows = []
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, root).replace(os.sep, '/')
+            if rel == skip:
+                continue
+            rows.append(rel)
+    return sorted(rows)
+
+
 def read_dir(fh, lba, size):
     """Yield (name, child_lba, child_size, is_dir) for one directory extent."""
     data = iso_read(fh, lba * USER, size)
@@ -210,12 +300,62 @@ def cmd_extract(image, want, out, bypath=False):
         print("  (MZ header present -- looks like a PE image)")
 
 
+def cmd_volume_id(image):
+    fh, _nsectors = open_image(image)
+    labels = read_volume_labels(fh)
+    if labels['primary'] is None:
+        raise SystemExit("%s: no Primary Volume Descriptor" % image)
+    print(labels['primary'])
+    if labels['joliet'] is not None and labels['joliet'] != labels['primary']:
+        print("; joliet descriptor disagrees: %r" % labels['joliet'],
+              file=sys.stderr)
+
+
+def cmd_manifest(image, root, out):
+    """Record WHERE the extracted assets came from, beside the assets.
+
+    Written LAST by tools/extract_assets.sh, after every extraction step, so an
+    interrupted or partial run leaves no manifest and therefore no claim of
+    provenance. That is the same discipline extract_cdaudio.py applies with its
+    .part rename: a missing asset must never look like a passing extraction.
+    """
+    fh, _nsectors = open_image(image)
+    labels = read_volume_labels(fh)
+    if labels['primary'] is None:
+        raise SystemExit("%s: no Primary Volume Descriptor" % image)
+    if not os.path.isdir(root):
+        raise SystemExit("%s: not a directory" % root)
+
+    name = os.path.basename(out)
+    files = inventory(root, name)
+    doc = {
+        "image": os.path.basename(image),
+        "source_fingerprint": source_fingerprint(image, fh),
+        "fingerprint_covers": "image size + volume descriptor block (lba 16..19)",
+        "volume_label": labels['primary'],
+        "volume_label_joliet": labels['joliet'],
+        "asset_root": root,
+        "files": files,
+    }
+    tmp = out + ".part"
+    with open(tmp, "w") as ofh:
+        json.dump(doc, ofh, indent=2, sort_keys=True)
+        ofh.write("\n")
+    os.replace(tmp, out)
+    print("manifest: volume %r, %d extracted file(s) -> %s"
+          % (doc["volume_label"], len(files), out))
+
+
 def main():
     a = sys.argv[1:]
     if len(a) == 2 and a[0] in ('--list', '-l'):
         cmd_list(a[1])
+    elif len(a) == 2 and a[0] == '--volume-id':
+        cmd_volume_id(a[1])
     elif len(a) == 4 and a[0] == '--extract-path':
         cmd_extract(a[1], a[2], a[3], bypath=True)
+    elif len(a) == 4 and a[0] == '--manifest':
+        cmd_manifest(a[1], a[2], a[3])
     elif len(a) == 3:
         cmd_extract(a[0], a[1], a[2])
     else:

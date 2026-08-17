@@ -62,7 +62,12 @@ static const char s_szTitle[] = "Boss Rally";   /* 0x1007B384 */
  * The original stores the same string as both the menu name and the class
  * name, and there is no menu by that name; that is reproduced because it is
  * what the game asks for. */
-/* @implements 0x10019670 glide BrWindowDescribe */
+/* NOT A CLAIM.  0x10019670's @implements line lives on BrWindowCreate below.
+ * This function is the argument setup only: it registers nothing, creates
+ * nothing and returns nothing, so it cannot be what a caller of 0x10019670
+ * gets.  The claim used to sit here, which made the address read as ported by
+ * a function that makes no calls at all -- the shape claimcheck.py looks for
+ * and, in this case, correctly found. */
 void BrWindowDescribe(BrWindowDesc *pDesc)
 {
     if (pDesc == NULL)
@@ -103,7 +108,16 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
 
 /* 0x10019670 -- RegisterClassA + CreateWindowExA. Returns 1 if a window came
  * back, 0 if not. Does NOT store the handle; the window procedure does, from
- * WM_CREATE. */
+ * WM_CREATE.
+ *
+ * This is 0x10019670: the instance-handle copy at 0x1001967B, both Win32
+ * calls and the 0x1001971E return are all here, and the WNDCLASSA/
+ * CreateWindowExA argument block is filled by BrWindowDescribe above. */
+/* WHAT IT DOES: makes the game's main window. It asks the window system to
+ * learn about the game's window class and then to create the window itself,
+ * and reports whether one came back. It does not remember the window: the
+ * window's own message handler does that when it is told the window exists. */
+/* @implements 0x10019670 glide BrWindowCreate */
 int BrWindowCreate(const BrWindowOps *pOps)
 {
     BrWindowDesc desc;

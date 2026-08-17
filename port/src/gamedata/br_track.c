@@ -9,6 +9,9 @@
  */
 #include "br_track.h"
 
+/* BrSwapU16Array -- 0x10018A50, shared with slice2_16.c's 0x1002B9E0. */
+#include "br_bits.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,21 +52,15 @@ static void swap_u32(unsigned char *p)
     t = p[1]; p[1] = p[2]; p[2] = t;
 }
 
-/* 0x10018A50 -- reverse `c` consecutive u16s. The original's loop is
- * `while (--c)` guarded by `if (c <= 0) return`, so c is signed there; a
- * negative count is a no-op, which the unsigned form below reproduces because
- * every caller derives c from a u16. */
-/* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in a
- * track file, which is how N64 data is made readable on a PC. A count of
- * nothing is a no-op. */
-/* @implements 0x10018A50 glide swap_u16_run */
+/* 0x10018A50 -- reverse a run of consecutive u16s.  This file used to carry
+ * its own copy under BRGlide's address while slice2_16.c carried the same 29
+ * bytes as BrSwapU16Array under BRD3D's 0x1002B9E0.  There is now one, in
+ * br_bits.c, and it takes a SIGNED count as the original does -- the copy
+ * here took an unsigned one, which would have run away on a negative rather
+ * than doing nothing. */
 static void swap_u16_run(unsigned char *p, uint32_t c)
 {
-    uint32_t i;
-    unsigned char t;
-    for (i = 0; i < c; i++) {
-        t = p[i * 2]; p[i * 2] = p[i * 2 + 1]; p[i * 2 + 1] = t;
-    }
+    BrSwapU16Array(p, (int)c);
 }
 
 /* Reinterpret a host-order dword as a float without aliasing through a
