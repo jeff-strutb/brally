@@ -369,6 +369,12 @@ extern uint32_t g_cBrCollRespDegenerate;
 extern uint32_t g_cBrCollRespBroad;
 extern uint32_t g_cBrCollRespGathered;
 extern uint32_t g_cBrCollRespOverflow;
+/* Total contacts the response walker (0x10067710) actually resolved across a
+ * run -- the sum of its return values, accumulated by BrCarPhysAdvance.  This
+ * is the one counter that proves the RESPONSE fired, not merely that the box
+ * step was entered (g_aBrCarPhysHole[BR_CP_HOLE_BOX] counts the latter and is
+ * non-zero even when every contact is rejected). */
+extern uint32_t g_cBrCollRespResponded;
 void BrCollRespCountersReset(void);
 
 #endif /* BR_COLLRESP_H */

@@ -572,16 +572,18 @@ static void TestFlatSettleExact(void)
      * ground before the suspension turns it (measured with the response off),
      * and the collision box -- correctly -- reads that as a hard impact and
      * bounces the car; it does not settle in 401 frames.  That is the box
-     * doing its job, not a regression, and it is exercised elsewhere.
+     * doing its job on a hard landing (TestResponseFires below exercises it),
+     * not a regression.
      *
-     * THIS test measures the SUSPENSION FORCE BALANCE, which the box does not
-     * touch at rest: the f1E8 box offset lifts the classified box clear of the
-     * ground at the spring equilibrium, so at z=0.19 the response never fires.
-     * One metre reaches that equilibrium the way the game does -- the box fires
-     * 11 times on the way down, arrests the sink, and the car still settles to
-     * 0.190132 to six decimals.  So the drop is now a STRONGER check than the
-     * old three-metre one: it proves the wired response neither corrupts the
-     * force balance nor fails to let the car rest. */
+     * THIS test measures the SUSPENSION FORCE BALANCE.  From one metre the car
+     * never sinks deep enough to touch the collision box: the f1E8 box offset
+     * lifts the classified box clear of the ground at the spring equilibrium,
+     * so the response stays quiet the whole way down and the car eases onto its
+     * springs.  The response is WIRED (proven separately), but its being wired
+     * must not perturb this balance -- and it does not: the car still settles
+     * to 0.190132 to six decimals, exactly as with the old no-op hole.  The
+     * point of dropping from one metre rather than three is only to stay in the
+     * regime where that balance is what the height measures. */
     p.x = 10.0f; p.y = 10.0f; p.z = 1.0f;
     BrCarPhysPlace(&car, &p, 0.0f);
     pS = BrCarPhysBodyState(&car.body);
@@ -614,6 +616,18 @@ static void TestFlatSettleExact(void)
     }
     CHECK(g_cBrCollRespOverflow == 0u);
 
+    /* THE RESPONSE STAYED QUIET, which is the point.  From one metre the box
+     * never touches the ground (its f1E8 offset holds it clear at the spring
+     * rest and the fall is too gentle to breach that), so 0x10067710 resolves
+     * ZERO contacts across the whole settle.  Asserting that is what says the
+     * box lift is doing its job: a wiring that let the box fire on flat ground
+     * is exactly the bug that floated the car to ~0.40, and there this counter
+     * would be non-zero.  TestResponseFires proves the same walker DOES fire on
+     * a real impact, so a zero here is "correctly quiet", not "never wired". */
+    printf("  response: %u contacts resolved (expected 0 -- box clears at rest)\n",
+           (unsigned)g_cBrCollRespResponded);
+    CHECK(g_cBrCollRespResponded == 0u);
+
     /* SIX DECIMALS.  If this moves, the force balance changed. */
     CHECK_NEAR(pS->pos.z, 0.190132, 5e-7);
 
@@ -630,6 +644,55 @@ static void TestFlatSettleExact(void)
     } else {
         CHECK(g_cBrCollRespDegenerate == 401u);
     }
+}
+
+/* The wiring is LIVE: 0x10067710 resolves real contacts in the substep loop.
+ *
+ * TestFlatSettleExact deliberately stays in the gentle regime where the box
+ * never fires, so on its own it cannot tell a wired response from the old
+ * no-op hole.  This test closes that gap from the other side: it drops the car
+ * hard enough (three metres) that the chassis box breaches the ground, and
+ * asserts the response actually FIRED -- g_cBrCollRespResponded > 0.  With the
+ * pfnCollide call reverted to a no-op this count is 0, so it is exactly the
+ * assertion that fails if the walker is ever un-wired.
+ *
+ * What it does NOT assert is where the car ends up.  A hard impact bounces (the
+ * response is undamped at the zeroed effect threshold), and the resting height
+ * after such a bounce is the assumed-faithful-but-not-oracle-checked regime
+ * noted in br_carphys.c -- encoding a number for it would pin today's dynamics,
+ * the failure CONVENTIONS.md records.  So: it fired, and it stayed finite. */
+static void TestResponseFires(void)
+{
+    BrCarPhys  car;
+    BrVec3     p;
+    BrRbState *pS;
+    int        i;
+
+    if (BrCarDataDefault() == NULL) {
+        return;                 /* no box without car data -- nothing to fire */
+    }
+
+    BuildSlope(0.0f, 0.0, 0);
+    BrCarPhysInit(&car, NULL);
+    BrCarPhysHoleReset();
+    BrCollRespCountersReset();
+
+    p.x = 10.0f; p.y = 10.0f; p.z = 3.0f;
+    BrCarPhysPlace(&car, &p, 0.0f);
+    pS = BrCarPhysBodyState(&car.body);
+
+    for (i = 0; i < 401; ++i) {
+        BrCarPhysStep(&car);
+    }
+
+    printf("  hard drop: %u contacts resolved, final z = %.4f\n",
+           (unsigned)g_cBrCollRespResponded, (double)pS->pos.z);
+
+    /* It fired -- the walker is wired and did work. */
+    CHECK(g_cBrCollRespResponded > 0u);
+    /* And it did not blow up into a NaN or run to infinity. */
+    CHECK(pS->pos.z == pS->pos.z);
+    CHECK(fabs((double)pS->pos.z) < 100.0);
 }
 
 /* The measurement br_carphys.h's pitch finding came out of, reproduced here
@@ -690,6 +753,7 @@ int main(void)
     TestBroadPhase();
     TestTipKickGates();
     TestFlatSettleExact();
+    TestResponseFires();
     TestSlopeDivergence();
 
     if (g_fail == 0) {
