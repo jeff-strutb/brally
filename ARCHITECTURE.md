@@ -184,11 +184,40 @@ free, globals-driven, duplicated per variant — is what a specialised inner loo
 looks like, and it is why they have no Glide twin: the Glide build reaches the
 hardware through `glide2x.dll` instead.
 
-**7 functions are neither called nor pointer-taken.** Genuinely unreferenced in
-this image, or reached only by a computed target. That is the residue, and it
-is 7 functions rather than 138.
+**7 of the 138 are neither called nor pointer-taken** — genuinely unreferenced
+in the D3D image, or reached only by a computed target.
 
-## How this should change the work
+Note that this "7" is about the D3D `unknown` bucket specifically. The Glide
+survey's `dead` tier is a different and larger set — see below.
+
+## The `dead` tier — 47 functions, 3,120 bytes, and mostly not interesting
+
+`config/survey.csv` marks 47 functions in the Glide image as reached by neither
+a call nor a stored pointer. Read literally that is "0.7% of the program is
+dead code", which would be a finding. It mostly is not, and the bytes say why:
+
+    x3   55 8B EC 5D C3                    push ebp; mov ebp,esp; pop ebp; ret
+    x2   55 8B EC B8 01000000 5D C3        ... mov eax,1; pop ebp; ret
+    x2   C3                                a bare `ret`
+    x2   CB                                `retf`
+    x2   CF                                `iret`
+
+So the set is three things mixed together:
+
+- **Genuinely empty functions.** `push ebp / mov ebp,esp / pop ebp / ret` and
+  `return 1` stubs, kept by the linker and called by nobody. Real, and
+  uninteresting.
+- **Map artifacts.** The single-byte `C3`/`CB`/`CF` entries are not functions
+  at all — those are the terminator bytes `funcmap2` scans for, promoted to
+  function starts by its weak gap-and-prologue heuristic. Six of the 47.
+- **A handful of real unreferenced functions**, the largest 579 bytes.
+
+41 of the 47 are not 16-byte aligned, which is consistent rather than
+suspicious: this build has zero inter-function padding, so a genuine function
+often begins on an odd boundary immediately after its predecessor.
+
+None of it is worth porting, and the reason to write it down is that "47 dead
+functions" and "0.7% dead code" are both technically true and both misleading.
 
 The next analysis is not "port more functions". It is: for each stored function
 pointer, find the instruction that stores it and the instruction that calls
