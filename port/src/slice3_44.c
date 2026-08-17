@@ -103,7 +103,12 @@ void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
     pOut->m[8] =  0.0f;
 }
 
-/* 0x10074C10 */
+/* WHAT IT DOES: solves the 3x3 system pM * x = pV for x by Cramer's rule and
+ * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
+ * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
+ * an x87 emulation of 0x1006DE70 over random and structured inputs. */
+/* @implements 0x10074C10 d3d BrMat3Solve */
+/* @implements 0x1006DE70 glide BrMat3Solve */
 void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 {
     const float *m  = pM->m;
