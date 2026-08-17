@@ -29,7 +29,27 @@ MFLAGS="-fobjc-arc -Wall -g -Iport/include -Iport/src/gfx"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
 
 # --- modules ---------------------------------------------------------------
-for src in port/src/*.c; do
+# MODULES ARE ORGANISED BY ARCHITECTURAL CONCERN, and discovered recursively.
+#
+#   port/src/math/      vectors, matrices, fixed point, bit twiddling
+#   port/src/platform/  entry point, main loop, window, config, files, pools
+#   port/src/input/     the game's own input handling
+#   port/src/render/    display lists, textures, surfaces, fonts
+#   port/src/world/     tracks, scenes, paths, car data
+#   port/src/physics/   integrator, collision
+#   port/src/race/      race step, laps, AI
+#   port/src/ui/        pages, controls, navigation
+#   port/src/audio/     bank, mixer, output, music
+#   port/src/           <- everything still named after an ADDRESS BATCH
+#
+# The last line is the point: a `sliceN_MM.c` is a batch of whatever happened
+# to sit in one address range, so it mixes concerns and cannot be filed until
+# its functions are split. Those files staying at the top level is the visible
+# measure of that work, and it is deliberate that they look out of place.
+#
+# The object name is the BASENAME, so a module's directory can change without
+# touching any build.d/*.deps file.
+for src in $(find port/src -name '*.c' -not -path 'port/src/gfx/*' | sort); do
     clang $CFLAGS -c "$src" -o "build/$(basename "$src" .c).o"
 done
 clang $MFLAGS -c port/src/gfx/metal/br_gfx_metal.m -o build/br_gfx_metal.o
@@ -113,7 +133,10 @@ for w in port/host/br_wire*.c; do
 done
 clang $CFLAGS -c port/host/br_stubs.c -o build/br_stubs.o
 # real definitions for the cross-module data objects (was br_stubs' 1 MiB blocks)
-clang $CFLAGS -c port/src/br_data.c -o build/br_data.o
+# br_data.c is already built by the recursive loop above; this line named its
+# old flat path and broke the moment the tree was organised by concern. The
+# object it produces is identical, so the rebuild is dropped rather than
+# repathed -- one fewer explicit path to go stale.
 clang $CFLAGS -Iport/tests -c port/tests/test_data.c -o build/test_data.o
 clang build/br_data.o build/test_data.o -lm -o build/test_data
 clang $CFLAGS -c port/host/brally.c   -o build/brally.o
