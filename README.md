@@ -93,6 +93,7 @@ can be checked, which the three earlier figures in this file's history did not:
 | D3D-only | 13,343 |
 | **Game code to port** | **477,689** |
 | **Ported** | **163,299 — 34%** |
+| **Ported and audited-equivalent** | **~26%** (76% of a random sample) |
 
 Excluded, deliberately: the statically linked C runtime (61,513 bytes — the
 host supplies it) and the D3D renderer boundary (19,797 bytes — replaced by
@@ -143,7 +144,8 @@ They measure different things and only one of them is coverage.
 
 | | |
 |---|---|
-| Modules | 112 (`br_*`, `slice1..8_*`) |
+| Modules | 121, organised by concern under `port/src/` — see `port/src/README.md` |
+| ...still named after an address batch | **62** (`sliceN_MM.c`, loose at the top level) |
 | Test suites | 105, 0 failures |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
 | Unported functions stubbed so the host links | **50** (`port/host/br_stubs.c`) |
@@ -159,9 +161,42 @@ only coverage number here, and treat it as a ceiling on code *transcribed*, not
 a floor on code *correct*: 42 call sites reach a placeholder or stub, and 43
 hole annotations across 6 modules mark paths that are deliberately inert.
 
-An audit of the ~705 claimed-ported functions against the original's
-disassembly — behavioural equivalence, not existence — has not been done. Until
-it has, the working fraction is unknown and is lower than 30%.
+### The equivalence audit, and what the coverage figure is really worth
+
+**It has now been done, on a sample.** 33 functions drawn at random from the
+776 claimed-ported, audited against the original's disassembly by three
+read-only passes that did not write the code:
+
+| verdict | | |
+|---|---:|---|
+| EQUIVALENT | 25 / 33 | **76%** |
+| ACCEPTABLE-DEVIATION | 5 / 33 | documented at the site, with a reason |
+| DIVERGENT | 3 / 33 | 9% |
+
+95% confidence interval on the strict rate: **61% – 90%**.
+
+So of ~34% transcribed, roughly **26% of the game is transcribed *and*
+verified**. Treat that as the real number.
+
+All three divergences were genuine and all three are now fixed:
+
+- an x87 **NaN polarity** inversion (`fcomp` sets C0 for less-than *and* for
+  unordered, so the original returns on NaN and `alpha < 0.1f` did not);
+- a buffer sized **4× too small** because `0x13000` was read as bytes where
+  `rep stosd` counts dwords — and the port had added a bound the original does
+  not have, turning the sizing error into silent truncation;
+- a **lost aliased store**: a word written at an address that lies *inside* a
+  block just zeroed, where the port modelled the two as separate objects.
+
+The last one is the instructive case. Fixing it turned the suite red, because
+the test asserted all 83 entries were zero — **the test had certified the bug
+as correct behaviour**. Any later pass reading it would have "restored" the
+divergence to keep the suite green.
+
+The same audit found four tests that cannot fail, including one that applies a
+byte-swap **twice** and compares against the input, which a no-op passes. That
+is why a coverage percentage alone means very little here, and why
+mutation-testing every new assertion is now mandatory (see CONVENTIONS.md).
 
 ## What actually works today
 
