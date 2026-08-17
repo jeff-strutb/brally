@@ -236,6 +236,12 @@ int32_t BrUiHook81_10045AA0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: the handler on a menu row that opens one particular screen:
+ * it builds that screen if it does not exist yet, makes it current, runs its
+ * builder, and then wires the new screen's back row so it knows how to get
+ * out again. The argument -- the row that was chosen -- is pushed and then
+ * never looked at. */
+/* @implements 0x100458A0 d3d BrUiHook81_100458A0 */
 int32_t BrUiHook81_100458A0(BrUiCtl_ *pCtl)
 {
     BrUiCtl_ *pBack;
@@ -249,6 +255,12 @@ int32_t BrUiHook81_100458A0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: the same open-a-screen handler for a different screen. It
+ * nudges one shared string first, builds and enters the screen, and wires
+ * that screen's back row to the matching leave routine. Note the screen this
+ * one opens is not transcribed anywhere in this tree yet, so following it
+ * today lands on an empty screen. */
+/* @implements 0x10045880 d3d BrUiHook81_10045880 */
 int32_t BrUiHook81_10045880(BrUiCtl_ *pCtl)
 {
     BrUiCtl_ *pBack;
@@ -278,6 +290,12 @@ int32_t BrUiHook81_100450F0(BrUiCtl_ *pCtl)
  * LEAVE
  * ========================================================================== */
 
+/* WHAT IT DOES: leaves the current screen: tells the owning screen to
+ * release all its pages, tells the current screen it is going away, forgets
+ * one screen singleton, and makes a previously remembered screen current
+ * again. That last one is read before the forgetting, which matters if the
+ * two happen to be the same. */
+/* @implements 0x100463C0 d3d BrUiHook81_100463C0 */
 int32_t BrUiHook81_100463C0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -301,6 +319,10 @@ int32_t BrUiHook81_10046620(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the back handler for one particular screen: releases that
+ * screen's pages, forgets it, and returns to whichever screen was remembered
+ * as the one behind it. */
+/* @implements 0x10046AD0 d3d BrUiHook81_10046AD0 */
 int32_t BrUiHook81_10046AD0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -312,6 +334,12 @@ int32_t BrUiHook81_10046AD0(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the back handler for a screen that had the player typing a
+ * name into it. As well as the usual release-and-return, it clears the name-
+ * entry state and copies the shared edit buffer into two places. Unlike the
+ * plain leave routines, this one reads the screen it is returning to after
+ * doing all that rather than before. */
+/* @implements 0x10046B10 d3d BrUiHook81_10046B10 */
 int32_t BrUiHook81_10046B10(BrUiCtl_ *pCtl)
 {
     Br81LeavePrologue(pCtl);
@@ -322,6 +350,10 @@ int32_t BrUiHook81_10046B10(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the back handler for the screen that was built as a pair: it
+ * releases the pages, forgets both halves of the pair and the control that
+ * pointed at them, and returns to the screen behind. */
+/* @implements 0x10046D70 d3d BrUiHook81_10046D70 */
 int32_t BrUiHook81_10046D70(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -335,6 +367,9 @@ int32_t BrUiHook81_10046D70(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the twin of the other name-entry back handler: same release,
+ * same name-entry reset, but it returns to a different remembered screen. */
+/* @implements 0x10046EB0 d3d BrUiHook81_10046EB0 */
 int32_t BrUiHook81_10046EB0(BrUiCtl_ *pCtl)
 {
     Br81LeavePrologue(pCtl);
@@ -343,6 +378,9 @@ int32_t BrUiHook81_10046EB0(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: a plain back handler: release the pages, forget one screen
+ * singleton, and return to the screen remembered behind it. */
+/* @implements 0x100470E0 d3d BrUiHook81_100470E0 */
 int32_t BrUiHook81_100470E0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;

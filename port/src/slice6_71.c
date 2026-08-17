@@ -108,6 +108,12 @@ void BrExt_1003BF60(void)
 /* A straight line of calls. The value is in the ORDER and in the four
  * conditionals, so every call is kept even where the callee is known to be a
  * stub (0x10008B80 -- see the contract). */
+/* WHAT IT DOES: quits the game. It takes every running part of it down in a
+ * fixed order -- the current menu phase, graphics, sound, network, input, the
+ * race session -- and then hands the given code to the C library's exit. The
+ * order is the whole content of the function; several of the steps are only
+ * taken if the matching subsystem was ever started. */
+/* @implements 0x10038F30 d3d BrExt_10038F30 */
 void BrExt_10038F30(int32_t a)
 {
     const BrS71Env *pEnv = g_brS71Env;
@@ -256,6 +262,10 @@ static void Br71PlaceRoot(BrUiCtl_ *pCtl, BrPhase_ *pPhase)
  * 0x10049F40
  * ========================================================================== */
 
+/* WHAT IT DOES: puts up the "are you sure you want to exit the season?"
+ * confirmation screen -- the question as a heading, then a Yes row and a No
+ * row for the player to choose between. */
+/* @implements 0x10049F40 d3d BrExt_10049F40 */
 void BrExt_10049F40(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
@@ -306,6 +316,13 @@ void BrExt_10049F40(BrPhase_ *pSelf)
  * 0x10051D30
  * ========================================================================== */
 
+/* WHAT IT DOES: puts up the "not enough points to advance to next season"
+ * screen the player gets when they finish a championship short. Below the
+ * heading it places one selectable panel with no text at all -- a rectangle
+ * showing the "no advance" artwork, which flashes between its two frames on a
+ * twenty-four step cycle of sixty milliseconds each, fifteen steps on the
+ * first picture and nine on the second. */
+/* @implements 0x10051D30 d3d BrOptFn10051D30 */
 void BrOptFn10051D30(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
@@ -377,6 +394,14 @@ void BrOptFn10051D30(BrPhase_ *pThis)
  * 0x1004F700
  * ========================================================================== */
 
+/* WHAT IT DOES: builds the "load championship season" screen. It first rescans
+ * the folder for saved season files, then puts up the heading, a scrolling list
+ * of the saves it found, and Continue / Restore Autosave / Back rows -- with
+ * Restore Autosave shown greyed out and unselectable when there is no autosave
+ * file on disk. It also puts the championship banner artwork up, and down the
+ * right-hand side adds Year, Round and Season labels with value fields beside
+ * them, which fill in as the player moves through the list. */
+/* @implements 0x1004F700 d3d BrExt_1004F700 */
 void BrExt_1004F700(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;
@@ -577,6 +602,14 @@ void BrExt_1004F700(BrPhase_ *pSelf)
  * 0x100575F0
  * ========================================================================== */
 
+/* WHAT IT DOES: builds the "multi-player create game" screen, where the host
+ * names the game others will see in the lobby. It resets the player slot table,
+ * puts up the multiplayer banner artwork, the heading and a "Game Name"
+ * caption, then a typing field on its name-bar graphic pre-filled with the name
+ * already in use -- or with "My Game" if that name is a single character or
+ * empty, since one character counts as no name here -- and finishes with
+ * Continue and Back. */
+/* @implements 0x100575F0 d3d BrOptFn100575F0 */
 void BrOptFn100575F0(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;

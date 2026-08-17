@@ -106,11 +106,21 @@
  * (`and 0x3FF`), which is what makes the sign extension unobservable and lets
  * the port write the extraction as a plain shift-and-mask.
  *
- * WHERE br_dl.c DIVERGES FROM THESE FUNCTIONS
+ * WHERE br_dl.c USED TO DIVERGE FROM THESE FUNCTIONS -- ALL FOUR NOW FIXED
  * ----------------------------------------------------------------------
- * Recorded here rather than fixed, because br_dl.c is shared ground.  Each
- * was found by transcribing the handler, and each is asserted in
- * port/tests/test_br_dlcmd.c against THIS module:
+ * The four below were recorded rather than fixed because br_dl.c was under
+ * concurrent work at the time.  It no longer is, and all four have been
+ * corrected there against the same disassembly, with a discriminating test
+ * and a reinstate-the-bug mutation for each (see test_br_dl.c's MUTATIONS
+ * KILLED table).  THE LIST IS KEPT because it is the derivation, and because
+ * this module's transcription is what it was checked against -- but nothing
+ * below is an open divergence any more.
+ *
+ * The duplication itself is NOT resolved: br_dl.c and this module both
+ * define 0x1001E320, 0x1001E9F0, 0x1001EA80 and 0x1001E930.  Two host
+ * definitions of one original address is what CONVENTIONS.md's aliased-
+ * storage section is about; they now agree, which removes the harm but not
+ * the duplicate.
  *
  *  1. 0xF6 corner assignment.  br_dl_rect()'s untextured arm reads ul from w0
  *     and lr from w1.  0x1001E320 reads them the OTHER way round -- w0 is
@@ -135,8 +145,10 @@
  *     +/-0.5 and truncates, which is ties-away-from-zero.  They differ on
  *     every exact half, e.g. 0.625 -> 2.5 quarters -> 0.50 here, 0.75 there.
  *
- * None of the four is a crash; all four are silent.  They are listed because
- * "the two models disagree" is the finding, not "the new one is right".
+ * None of the four was a crash; all four were silent.  They were listed
+ * because "the two models disagree" was the finding, not "the new one is
+ * right" -- and each was then re-derived from the bytes before br_dl.c was
+ * changed, rather than copied across from here.
  *
  * FLOATING POINT
  * ----------------------------------------------------------------------

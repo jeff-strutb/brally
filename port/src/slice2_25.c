@@ -284,6 +284,13 @@ int BrOptToggle2F7C_C(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
  * candidate, rather than back where the user left it.
  * ========================================================================== */
 
+/* WHAT IT DOES: moves the track selection on to the next track the player
+ * is allowed to pick, skipping any that are still locked, and announces the
+ * new choice to the other players in a network game. If every track is
+ * rejected the selection still ends up moved by one rather than back where
+ * the player left it, because the search compares against the already-
+ * stepped value. */
+/* @implements 0x10042B30 d3d BrOptCycleTrack */
 int BrOptCycleTrack(void)
 {
     int32_t v, vStart, iName;
@@ -360,6 +367,10 @@ int BrOptCycleTrack(void)
  * ========================================================================== */
 
 /* 0x10042C80 */
+/* WHAT IT DOES: steps one of the settings rows to its next value and copies
+ * the result into the place the game reads it from. Which setting this is
+ * was not established. */
+/* @implements 0x10042C80 d3d BrOptCycleAC65C */
 int BrOptCycleAC65C(void)
 {
     g_br094350 = BrOptCycle(&g_br0AC65C, BR_OPT_AC65C_MAX);
@@ -386,6 +397,10 @@ int BrOptCycleB4E70C(void)
 }
 
 /* 0x10042DC0 */
+/* WHAT IT DOES: steps another settings row on to its next value, looking
+ * the real value up in that row's table. Which setting this is was not
+ * established. */
+/* @implements 0x10042DC0 d3d BrOptCycleAC64C */
 int BrOptCycleAC64C(void)
 {
     g_br09435C = g_aBrAC4A0[BrOptCycle(&g_br0AC64C, BR_OPT_AC64C_MAX)];
@@ -393,6 +408,9 @@ int BrOptCycleAC64C(void)
 }
 
 /* 0x10042E20 */
+/* WHAT IT DOES: steps another settings row on to its next value in the same
+ * way. Which setting this is was not established. */
+/* @implements 0x10042E20 d3d BrOptCycleAC650 */
 int BrOptCycleAC650(void)
 {
     g_br094358 = g_aBrAC4B0[BrOptCycle(&g_br0AC650, BR_OPT_AC650_MAX)];
@@ -400,6 +418,9 @@ int BrOptCycleAC650(void)
 }
 
 /* 0x10042E80 */
+/* WHAT IT DOES: steps another settings row on to its next value in the same
+ * way. Which setting this is was not established. */
+/* @implements 0x10042E80 d3d BrOptCycleAA2A08 */
 int BrOptCycleAA2A08(void)
 {
     g_br094354 = g_aBrAC518[BrOptCycle(&g_brAA2A08, BR_OPT_AA2A08_MAX)];
@@ -498,6 +519,10 @@ int BrOptCycleCar(void)
  * 0x100430B0 -- the 1-based cycler
  * ========================================================================== */
 
+/* WHAT IT DOES: steps the number-of-laps-style setting up or down, wrapping
+ * round its range -- and this one counts from one rather than zero, so it
+ * never lands on nothing. It announces the new number to the other players. */
+/* @implements 0x100430B0 d3d BrOptCycleBD3E0 */
 int BrOptCycleBD3E0(void)
 {
     char    aNum[BR_OPT_TEXT_MAX];   /* the original's is 0x20 of stack */
@@ -535,6 +560,10 @@ int BrOptCycleBD3E0(void)
  * 0x10043180
  * ========================================================================== */
 
+/* WHAT IT DOES: steps another settings row on and announces the new choice
+ * by name. Note the caption is looked up by the VALUE the row now holds,
+ * not by the row's position. Which setting this is was not established. */
+/* @implements 0x10043180 d3d BrOptCycleAA2A00 */
 int BrOptCycleAA2A00(void)
 {
     int32_t iVal = g_aBrAC4C0[BrOptCycle(&g_brAA2A00, BR_OPT_AA2A00_MAX)];
@@ -553,12 +582,17 @@ int BrOptCycleAA2A00(void)
  * 0x10043260, 0x10043330, 0x100434C0 -- screen installers
  * ========================================================================== */
 
+/* WHAT IT DOES: opens one of the menu screens, building it the first time
+ * and reusing it afterwards. Which screen this is was not established. */
+/* @implements 0x10043260 d3d BrOptOpen296C */
 int BrOptOpen296C(BrGameObj *pUnused)
 {
     (void)pUnused;
     return BrOptEnsureObj(&g_brPAA296C, BrOptFn10051990);
 }
 
+/* WHAT IT DOES: opens another menu screen the same way. Which screen this
+ * is was not established. */
 int BrOptOpen2970(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -575,6 +609,11 @@ int BrOptOpen2998(BrGameObj *pUnused)
  * 0x10043400 -- the cycler that skips 1
  * ========================================================================== */
 
+/* WHAT IT DOES: steps a settings row that has a hole in it: value one is
+ * skipped in both directions, so stepping up goes straight past it and
+ * stepping down does too. The result also selects which of four control
+ * layouts is the active one. */
+/* @implements 0x10043400 d3d BrOptCycleAA2A0C */
 int BrOptCycleAA2A0C(void)
 {
     int32_t v;
@@ -652,6 +691,10 @@ int BrOptCycleAA2A24(void)
  * ========================================================================== */
 
 /* 0x10043760. Returns 0. */
+/* WHAT IT DOES: leaves the current menu screen: it tells the screen to
+ * close, resets a couple of race settings in single-player, saves the
+ * settings block and returns to the caller with "stop here". */
+/* @implements 0x10043760 d3d BrOpt3760 */
 int BrOpt3760(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -671,6 +714,9 @@ int BrOpt3760(BrGameObj *pGame)
 }
 
 /* 0x100437B0 */
+/* WHAT IT DOES: makes the network session the game is talking to match the
+ * one the player has highlighted, and does nothing if it already does. */
+/* @implements 0x100437B0 d3d BrOpt37B0 */
 int BrOpt37B0(void)
 {
     if (g_brPA9D008->f08 != g_br0AB3E0)
@@ -679,6 +725,10 @@ int BrOpt37B0(void)
 }
 
 /* 0x100437D0 */
+/* WHAT IT DOES: backs out of a network screen when the connection has gone
+ * away -- it closes the screen and tears the session down. If the
+ * connection is still up it does nothing at all. */
+/* @implements 0x100437D0 d3d BrOpt37D0 */
 int BrOpt37D0(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -694,6 +744,12 @@ int BrOpt37D0(BrGameObj *pGame)
 }
 
 /* 0x10043810 */
+/* WHAT IT DOES: the once-a-frame handler for the network lobby: it deals
+ * with the player having left or the host having started, notes for each
+ * connected player whether anybody else is present, and on the way out
+ * closes the lobby and plays a sound. Most of the function is the several
+ * different ways of leaving. */
+/* @implements 0x10043810 d3d BrOpt3810 */
 int BrOpt3810(BrGameObj *pGame)
 {
     BrGameSub       *pSub;
@@ -780,6 +836,12 @@ int BrOpt3810(BrGameObj *pGame)
 
 /* 0x10043A00. GOTCHA: the DirectPlay pointer is NOT null-checked before
  * 0x1003D0B0 is called with it -- unlike every other use in this packet. */
+/* WHAT IT DOES: the host pressing "go": it refuses if there is nobody else
+ * connected, refuses if any joined player has not confirmed they are ready,
+ * and otherwise closes the session to further joiners and starts the race.
+ * Note it asks DirectPlay for the session details without first checking
+ * there is a session -- unlike everywhere else in this module. */
+/* @implements 0x10043A00 d3d BrOpt3A00 */
 int BrOpt3A00(void)
 {
     BrDPSessionDesc *pDesc = NULL;
@@ -829,12 +891,17 @@ int BrOpt3A00(void)
  * 0x10043CD0 .. 0x10043E70 -- more screen installers
  * ========================================================================== */
 
+/* WHAT IT DOES: opens another menu screen, building it once and reusing it.
+ * Which screen this is was not established. */
+/* @implements 0x10043CD0 d3d BrOptOpen2940 */
 int BrOptOpen2940(BrGameObj *pUnused)
 {
     (void)pUnused;
     return BrOptEnsureObj(&g_brPAA2940, BrOptFn100558A0);
 }
 
+/* WHAT IT DOES: opens another menu screen the same way. Which screen this
+ * is was not established. */
 int BrOptOpen298C(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -843,6 +910,11 @@ int BrOptOpen298C(BrGameObj *pUnused)
 
 /* 0x10043E70. Unlike its siblings the reuse path does NOT return early: it
  * falls into the same tail as the create path. */
+/* WHAT IT DOES: opens a menu screen and, unlike its siblings, keeps going
+ * after finding an existing one -- so it also starts the network connection
+ * attempt on every call, not just the first, provided the game is in a mode
+ * that wants one. */
+/* @implements 0x10043E70 d3d BrOptOpen2948 */
 int BrOptOpen2948(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -861,6 +933,10 @@ int BrOptOpen2948(BrGameObj *pUnused)
  * ========================================================================== */
 
 /* 0x10043F50. Returns 0. */
+/* WHAT IT DOES: leaves the current screen for the one behind it,
+ * remembering which play mode was in force. The screen being left is told
+ * to close first. */
+/* @implements 0x10043F50 d3d BrOpt3F50 */
 int BrOpt3F50(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -880,6 +956,9 @@ int BrOpt3F50(BrGameObj *pGame)
 }
 
 /* 0x10043FA0. Returns 0. */
+/* WHAT IT DOES: leaves the current screen for the one behind it, in the
+ * simplest form -- close and go back. */
+/* @implements 0x10043FA0 d3d BrOpt3FA0 */
 int BrOpt3FA0(BrGameObj *pGame)
 {
     BrGameSub *pSub = pGame->pSub;
@@ -890,6 +969,9 @@ int BrOpt3FA0(BrGameObj *pGame)
 }
 
 /* 0x10043FC0. Returns 0. */
+/* WHAT IT DOES: leaves the current screen for the one behind it and clears
+ * two globals belonging to the screen being closed. */
+/* @implements 0x10043FC0 d3d BrOpt3FC0 */
 int BrOpt3FC0(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -909,9 +991,13 @@ int BrOpt3FC0(BrGameObj *pGame)
 }
 
 int BrOpt4010(BrGameObj *pGame) { g_brAA287C = 0; BrOptOpen2948(pGame); return 1; }
+/* WHAT IT DOES: records the first play mode as the one under the cursor and
+ * refreshes how that menu entry is drawn -- the highlight, not the choice. */
 int BrOpt4030(BrGameObj *pGame) { g_brAA287C = 0; BrSub10047360(pGame); return 1; }
 int BrOpt4050(BrGameObj *pGame) { g_brAA287C = 1; BrOptOpen2948(pGame); return 1; }
 int BrOpt4070(BrGameObj *pGame) { g_brAA287C = 1; BrSub10047360(pGame); return 1; }
+/* WHAT IT DOES: chooses the third play mode and opens the screen that follows
+ * it. */
 int BrOpt4090(BrGameObj *pGame) { g_brAA287C = 2; BrOptOpen2948(pGame); return 1; }
 int BrOpt40B0(BrGameObj *pGame) { g_brAA287C = 2; BrSub10047360(pGame); return 1; }
 
@@ -919,6 +1005,9 @@ int BrOpt40B0(BrGameObj *pGame) { g_brAA287C = 2; BrSub10047360(pGame); return 1
  * 0x100440D0 .. 0x100446D0
  * ========================================================================== */
 
+/* WHAT IT DOES: opens another menu screen, building it once and reusing it.
+ * Which screen this is was not established. */
+/* @implements 0x100440D0 d3d BrOptOpen294C */
 int BrOptOpen294C(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -932,6 +1021,12 @@ int BrOptOpen294C(BrGameObj *pUnused)
  * GOTCHA: the session descriptor fetched here is never released -- there is
  * no GlobalHandle/GlobalFree pair on this path, unlike 0x10043810 and
  * 0x10043A00. That leak is in the original. */
+/* WHAT IT DOES: sets up the network game screens: it re-opens the session
+ * to joiners if it had been closed, builds the several screens the lobby
+ * needs, and either starts hosting or announces the session, depending on
+ * whether this machine is the host. The session details it fetches from
+ * DirectPlay are never given back -- that leak is in the original. */
+/* @implements 0x100441A0 d3d BrOpt41A0 */
 void BrOpt41A0(void)
 {
     BrDPSessionDesc *pDesc;
@@ -972,6 +1067,11 @@ void BrOpt41A0(void)
 }
 
 /* 0x10044280 */
+/* WHAT IT DOES: joins somebody else's network game and opens the lobby
+ * screen for it. It refuses to go ahead when the player has not typed a
+ * long enough name in one of the modes, and falls back to setting the
+ * connection up first if there is nothing to join yet. */
+/* @implements 0x10044280 d3d BrOptOpen2950A */
 int BrOptOpen2950A(BrGameObj *pUnused)
 {
     int fOpen;
@@ -1013,6 +1113,10 @@ int BrOptOpen2950A(BrGameObj *pUnused)
 }
 
 /* 0x100443E0 */
+/* WHAT IT DOES: the hosting counterpart: marks this machine as the host and
+ * opens the same lobby screen, with the host's own set of controls attached
+ * to it. */
+/* @implements 0x100443E0 d3d BrOptOpen2950B */
 int BrOptOpen2950B(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -1029,6 +1133,10 @@ int BrOptOpen2950B(BrGameObj *pUnused)
 }
 
 /* 0x100444C0. Returns 0. */
+/* WHAT IT DOES: leaves the network lobby and goes back to the screen behind
+ * it, dropping the lobby's screens and, in the two modes that need it,
+ * tearing the connection down and starting a fresh one. */
+/* @implements 0x100444C0 d3d BrOpt44C0 */
 int BrOpt44C0(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -1058,6 +1166,11 @@ int BrOpt44C0(BrGameObj *pGame)
 
 /* 0x10044600. GOTCHA: 0x10044540 is NOT called when neither input is set --
  * the "no input" branch jumps past it. Contrast 0x10042CF0. */
+/* WHAT IT DOES: steps a settings row up or down through its values and
+ * announces the new choice by name -- and unlike its cousin above it does
+ * NOT re-apply the setting when neither the up nor the down input is
+ * active. Which setting this is was not established. */
+/* @implements 0x10044600 d3d BrOptCycleAA2A18 */
 int BrOptCycleAA2A18(void)
 {
     int32_t v;
@@ -1089,6 +1202,10 @@ int BrOptCycleAA2A18(void)
 }
 
 /* 0x100446D0 */
+/* WHAT IT DOES: opens the screen the game shows once a network race is
+ * agreed on, switches the game into that mode, and, if this machine is the
+ * host, starts hosting the session at that point. */
+/* @implements 0x100446D0 d3d BrOptOpen2954 */
 int BrOptOpen2954(BrGameObj *pUnused)
 {
     (void)pUnused;

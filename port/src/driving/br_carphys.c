@@ -84,6 +84,11 @@ BrRbState *BrCarPhysBodyState(BrRbBodyFull *pBody)
 
 /* 0x1006D600 == D3D 0x100743A0 == BrRbIntegrateVelocity, which reads only
  * pBody->accel and pBody->angAccel. */
+/* WHAT IT DOES: adds one time step's worth of acceleration to a car's speed
+ * and spin. This is a thin adapter: the actual work lives with the rigid-
+ * body physics, and the copying here exists only because two modules model
+ * the car's body differently. */
+/* @implements 0x1006D600 glide BrCpIntegrateVelocity */
 static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
                                   float dt)
 {

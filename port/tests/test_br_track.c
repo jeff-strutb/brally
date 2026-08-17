@@ -20,6 +20,7 @@
  */
 #include "br_track.h"
 #include "br_testdata.h"
+#include "br_tmpfile.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -217,6 +218,232 @@ static void report(const char *pszPath)
     check(trk.pbImage == NULL && trk.cbImage == 0, "close releases the image");
 }
 
+/* ====================================================================== *
+ * LITERALS FROM race.trk's OWN BYTES
+ *
+ * Everything in report() above is a relation between two numbers this
+ * suite reads through the SAME loader -- which means a decoder that is
+ * uniformly wrong satisfies all of them.  The instance block was the
+ * clearest case: it recomputed the uniform-scale identity from the matrix
+ * and compared it against the flag and the scale the loader had computed
+ * from the same matrix, and BOTH sides come out of rd_u32be.  Make
+ * rd_u32be return 0 for every read and every matrix becomes the zero
+ * matrix, every length becomes zero, the pass skips every record and the
+ * test compares 0 against 0, in the green.
+ *
+ * These literals were read out of the file with xxd and a byte-wise
+ * decode script, not taken from any comment in the tree.  race.trk is a
+ * big-endian N64 image; file offset 0 is N64 0x80025C00, so a header
+ * pointer's file offset is the stored address minus that base.
+ *
+ *   +0x08 cFaces      0x0A2E =  2606        +0x0C faces      0x80087D38
+ *   +0x10 cVertices   0x0924 =  2340        +0x14 vertices   0x80080F88
+ *   +0x18 cSections   0x0095 =   149        +0x60 instances  0x800C3A68
+ *   +0x64 cInstances  0x0182 =   386
+ *
+ * so the instance array is at file 0x0009DE68 and the vertex array at
+ * file 0x0005B388.
+ *
+ * Floats are compared as BIT PATTERNS, because that is what is actually
+ * in the file and a decimal literal invites a rounding argument.
+ * ====================================================================== */
+
+#define TRK_RACE "testdata/tracks/race.trk"
+
+static uint32_t f2b(float f)
+{
+    uint32_t u;
+    memcpy(&u, &f, sizeof u);
+    return u;
+}
+
+/* Instance 1 of race.trk, sixteen big-endian dwords at file 0x0009DEBC:
+ * a uniform 1/64 scale with the translation (856, 804, 4) in the LAST row.
+ * The last row is what proves the matrix is read in file order rather than
+ * transposed, and 0x3C800000 == 0.015625f is what proves rd_u32be assembles
+ * its four bytes the right way round. */
+static const uint32_t g_aRaceInst1[16] = {
+    0x3C800000u, 0x00000000u, 0x00000000u, 0x00000000u,
+    0x00000000u, 0x3C800000u, 0x00000000u, 0x00000000u,
+    0x00000000u, 0x00000000u, 0x3C800000u, 0x00000000u,
+    0x44560000u, 0x44490000u, 0x40800000u, 0x3F800000u
+};
+
+static void race_literals(void)
+{
+    BrTrack  trk;
+    BrMat4   m;
+    BrVec3   v;
+    uint16_t aFace[4];
+    float    s;
+    uint32_t flags, i, cWrong;
+
+    printf("\n=== %s: literals ===\n", TRK_RACE);
+    if (BrTrackOpen(&trk, TRK_RACE) != 0) {
+        printf("SKIP literals: %s not extracted\n", TRK_RACE);
+        return;
+    }
+
+    /* --- header counts and offsets ---------------------------------- */
+    check(BrTrackFaceCount(&trk)     == 2606u, "race.trk has 2606 faces");
+    check(BrTrackVertexCount(&trk)   == 2340u, "race.trk has 2340 vertices");
+    check(BrTrackSectionCount(&trk)  ==  149u, "race.trk has 149 sections");
+    check(BrTrackInstanceCount(&trk) ==  386u, "race.trk has 386 instances");
+    check(BrTrackGridItemCount(&trk) == 6953u, "race.trk grid holds 6953 items");
+    check(BrTrackHdrU32(&trk, BR_TRK_H_VERTICES)  == 0x0005B388u,
+          "vertex array relocates to file 0x5B388");
+    check(BrTrackHdrU32(&trk, BR_TRK_H_FACES)     == 0x00062138u,
+          "face array relocates to file 0x62138");
+    check(BrTrackHdrU32(&trk, BR_TRK_H_INSTANCES) == 0x0009DE68u,
+          "instance array relocates to file 0x9DE68");
+    /* The RGBA quad the swapper skips: 7F 7F 7F 00 on disc, and it must
+     * come back in THAT order, not reversed. */
+    check(trk.abHdr[BR_TRK_H_RGBA + 0] == 0x7F
+       && trk.abHdr[BR_TRK_H_RGBA + 1] == 0x7F
+       && trk.abHdr[BR_TRK_H_RGBA + 2] == 0x7F
+       && trk.abHdr[BR_TRK_H_RGBA + 3] == 0x00,
+          "the +0x80 RGBA quad is 7F 7F 7F 00, unswapped");
+
+    /* --- one vertex, one face --------------------------------------- */
+    check(BrTrackVertex(&trk, 0, &v) == 0, "vertex 0 reads");
+    check(f2b(v.x) == 0x44455CA9u && f2b(v.y) == 0x44523DD4u
+       && f2b(v.z) == 0x3B31FEEBu,
+          "vertex 0 is 44455CA9 44523DD4 3B31FEEB (789.448, 840.966, 0.002716)");
+    check(BrTrackVertex(&trk, 1, &v) == 0, "vertex 1 reads");
+    check(f2b(v.z) == 0x42A0292Eu, "vertex 1 z is 42A0292E (80.0804)");
+    check(BrTrackFace(&trk, 1, aFace) == 0, "face 1 reads");
+    check(aFace[0] == 3 && aFace[1] == 2 && aFace[2] == 1 && aFace[3] == 3,
+          "face 1 is (3, 2, 1, 3)");
+
+    /* --- the instance block, element by element ---------------------- */
+    check(BrTrackInstance(&trk, 1, &m, &s, &flags) == 0, "instance 1 reads");
+    cWrong = 0;
+    for (i = 0; i < 16; i++) {
+        if (f2b(m.m[i / 4][i % 4]) != g_aRaceInst1[i])
+            cWrong++;
+    }
+    check(cWrong == 0, "instance 1's sixteen floats match the file's dwords");
+    check(m.m[0][0] == 0.015625f && m.m[1][1] == 0.015625f
+       && m.m[2][2] == 0.015625f,
+          "instance 1's diagonal is exactly 1/64");
+    check(m.m[3][0] == 856.0f && m.m[3][1] == 804.0f && m.m[3][2] == 4.0f
+       && m.m[3][3] == 1.0f,
+          "instance 1's translation row is (856, 804, 4, 1)");
+    /* 1/|column 0| for a 1/64 diagonal is 64, and the pass must have
+     * written that dword into the image at record +0x40. */
+    check(f2b(s) == 0x42800000u, "instance 1's stored 1/|scale| is 64.0f");
+    /* Disc flags byte is 0x44; the pass ORs 0x20 in, so it reads 0x64. */
+    check(flags == 0x64u, "instance 1's flag byte is 0x44 | 0x20 == 0x64");
+
+    /* Instance 0's matrix is ALL ZERO on disc, so its column-0 length is
+     * zero and the pass takes the discard path: no flag, no scale write.
+     * The `if (!(len != 0.0f)) continue;` has no other test. */
+    check(BrTrackInstance(&trk, 0, &m, &s, &flags) == 0, "instance 0 reads");
+    check(f2b(m.m[0][0]) == 0u && f2b(m.m[3][3]) == 0u,
+          "instance 0's matrix is entirely zero on disc");
+    check(flags == 0x00u, "instance 0 gains no flag, because it is discarded");
+
+    /* Instance 2: disc flags 0x40, same 1/64 scale, translation (788, 840, 1). */
+    check(BrTrackInstance(&trk, 2, &m, &s, &flags) == 0, "instance 2 reads");
+    check(m.m[3][0] == 788.0f && m.m[3][1] == 840.0f && m.m[3][2] == 1.0f,
+          "instance 2's translation row is (788, 840, 1)");
+    check(flags == 0x60u, "instance 2's flag byte is 0x40 | 0x20 == 0x60");
+
+    check(trk.cInstancesUniform == 385u,
+          "385 of race.trk's 386 instances are pure uniform scales");
+
+    BrTrackClose(&trk);
+}
+
+/* ====================================================================== *
+ * THE SCALE WRITE, ON A DOCTORED COPY
+ *
+ * wr_u32le writes four bytes and only one call site's result is ever read
+ * back: the 1/|scale| the instance pass stores at record +0x40.  On every
+ * shipped track that value is 64.0f == 0x42800000, whose low byte is zero
+ * -- and the four bytes already in the file there are zero too, so
+ * DELETING `p[0] = v & 0xFF` changes nothing observable.  The relocation
+ * call site cannot catch it either: the N64 base 0x80025C00 has a zero low
+ * byte, so subtracting it never changes byte 0 of any pointer.
+ *
+ * So the byte has to be made to matter.  This loads a byte-for-byte copy
+ * of race.trk with a non-zero sentinel poked into two records' +0x40 and
+ * asserts what the pass does with it:
+ *
+ *   instance 1  -- has a length, so the pass MUST overwrite all four
+ *                  bytes with 0x42800000;
+ *   instance 0  -- zero matrix, discarded, so the sentinel MUST survive
+ *                  intact.
+ * ====================================================================== */
+
+#define TRK_INST_ARRAY   0x0009DE68u   /* header +0x60, relocated */
+#define TRK_SENTINEL     0x11223344u
+
+static void race_scale_write(void)
+{
+    const char    *pszTmp = BrTmpPath(0, "test_br_track_poked");
+    unsigned char *pb;
+    long           cb;
+    size_t         off;
+    FILE          *f;
+    BrTrack        trk;
+    float          s;
+    int            fWrote = 0;
+
+    printf("\n=== %s: the +0x40 scale write ===\n", TRK_RACE);
+
+    f = fopen(TRK_RACE, "rb");
+    if (f == NULL) {
+        printf("SKIP scale write: %s not extracted\n", TRK_RACE);
+        return;
+    }
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); check(0, "seek"); return; }
+    cb = ftell(f);
+    rewind(f);
+    pb = (unsigned char *)malloc((size_t)cb);
+    if (pb == NULL || fread(pb, 1, (size_t)cb, f) != (size_t)cb) {
+        free(pb); fclose(f); check(0, "read race.trk"); return;
+    }
+    fclose(f);
+
+    /* The four bytes are zero on disc; that is exactly why they hide a
+     * dropped write, and exactly why they are safe to overwrite here. */
+    off = TRK_INST_ARRAY + 0 * BR_TRK_INSTANCE_STRIDE + BR_TRK_INST_SCALEOFF;
+    check(pb[off] == 0 && pb[off + 1] == 0 && pb[off + 2] == 0
+       && pb[off + 3] == 0, "instance 0's +0x40 is four zero bytes on disc");
+    for (fWrote = 0; fWrote < 2; fWrote++) {
+        off = TRK_INST_ARRAY + (size_t)fWrote * BR_TRK_INSTANCE_STRIDE
+            + BR_TRK_INST_SCALEOFF;
+        pb[off + 0] = (unsigned char)(TRK_SENTINEL & 0xFFu);
+        pb[off + 1] = (unsigned char)((TRK_SENTINEL >> 8) & 0xFFu);
+        pb[off + 2] = (unsigned char)((TRK_SENTINEL >> 16) & 0xFFu);
+        pb[off + 3] = (unsigned char)((TRK_SENTINEL >> 24) & 0xFFu);
+    }
+
+    f = fopen(pszTmp, "wb");
+    if (f == NULL) { free(pb); check(0, "open scratch copy"); return; }
+    fWrote = (fwrite(pb, 1, (size_t)cb, f) == (size_t)cb);
+    fclose(f);
+    free(pb);
+    if (!fWrote) { remove(pszTmp); check(0, "write scratch copy"); return; }
+
+    if (BrTrackOpen(&trk, pszTmp) != 0) {
+        remove(pszTmp);
+        check(0, "the doctored copy still loads");
+        return;
+    }
+    s = 0.0f;
+    check(BrTrackInstance(&trk, 1, NULL, &s, NULL) == 0, "poked instance 1 reads");
+    check(f2b(s) == 0x42800000u,
+          "the pass overwrites ALL FOUR bytes of +0x40 with 64.0f");
+    s = 0.0f;
+    check(BrTrackInstance(&trk, 0, NULL, &s, NULL) == 0, "poked instance 0 reads");
+    check(f2b(s) == TRK_SENTINEL,
+          "a discarded instance's +0x40 is left exactly as it was");
+    BrTrackClose(&trk);
+    remove(pszTmp);
+}
+
 int main(int argc, char **argv)
 {
     const char *pszPath = (argc > 1) ? argv[1] : "testdata/tracks/race.trk";
@@ -236,6 +463,11 @@ int main(int argc, char **argv)
     report(pszPath);
     if (argc > 2)
         report(argv[2]);
+
+    /* These two are keyed to race.trk's own bytes, so they run against
+     * that file regardless of what was passed on the command line. */
+    race_literals();
+    race_scale_write();
 
     /* The .HNT sidecar, if it was extracted. Its absence is not a failure --
      * a missing asset skips, per the asset policy. */

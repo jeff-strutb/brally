@@ -84,6 +84,12 @@ int BrUiBootOpsComplete(const BrUiBootOps *pOps)
 /* ==========================================================================
  * 0x10056260
  * ========================================================================== */
+/* WHAT IT DOES: the last thing done before the main loop starts: it clears
+ * the image tables, sets up the menu picture paths, builds the first menu
+ * screen and publishes it. It reports whether the game is fit to continue.
+ * Note the picture-path setup's result is deliberately ignored, so a failure
+ * there does not stop the game. */
+/* @implements 0x10056260 glide BrUiBootPreLoopGate */
 int32_t BrUiBootPreLoopGate(const BrUiBootOps *pOps)
 {
     BrUiImgAlloc  alloc;

@@ -609,6 +609,158 @@ static void TestFreeFall(void)
     CHECK(a > (float)((double)BR_CP_GRAVITY_BODY / (double)BR_CP_BODY_MASS));
 }
 
+/* ================================================================== */
+/* THE ADAPTER'S FIELD ORDER                                           */
+/*                                                                     */
+/* BrCpIntegrateVelocity copies pBody->accel.x/y/z into tmp.accel[0/1/2] */
+/* one at a time, and getting that order right is the entire reason the  */
+/* adapter exists -- BrRbBodyFull and BrRbBody put `accel` at different  */
+/* host offsets, so a cast would be the "two models of one object" bug.  */
+/*                                                                      */
+/* TestFreeFall above cannot see the order at all: it drops the car      */
+/* straight down from rest, where accel is (0, 0, g) and swapping the    */
+/* two zeroes changes nothing.  This drives it with a velocity that has  */
+/* DIFFERENT x and y, so drag hands the integrator an acceleration whose */
+/* three components are all different.                                   */
+/*                                                                      */
+/* The prediction is closed-form.  In free fall list A carries only the  */
+/* gravity node, which is (0, 0, -15450.75), so pass A leaves x and y     */
+/* alone; list B's drag node is -110 * v with no second term (surface 0   */
+/* is not the surface-4 the second term needs).  So one frame multiplies  */
+/* both x and y by exactly 1 + dt*(-110)/1000, and NOTHING mixes them.    */
+/* Swap accel[0] and accel[1] and x is decayed by y's rate and y by x's,  */
+/* which moves both by 0.08 m/s -- 300x the tolerances below.             */
+/* ================================================================== */
+static void TestFreeFallLateral(void)
+{
+    BrCarPhys  car;
+    BrVec3     p;
+    BrRbState *pS;
+    double     f;
+
+    memset(s_count, 0, sizeof s_count);   /* no triangles anywhere */
+    BrCarPhysInit(&car, NULL);
+    p.x = 10.0f; p.y = 10.0f; p.z = 500.0f;
+    BrCarPhysPlace(&car, &p, 0.0f);
+    pS = BrCarPhysBodyState(&car.body);
+
+    /* x and y deliberately unequal, and non-zero: a zero component would
+     * be masked by the sign-change damper, which zeroes any component
+     * whose sign changed and so cannot distinguish "stayed 0" from
+     * "moved off 0 and got damped back". */
+    pS->vel.x = 30.0f;
+    pS->vel.y =  7.0f;
+    pS->vel.z =  0.0f;
+    BrRbBuildMatrix(&car.body.m, pS);
+
+    BrCarPhysStep(&car);
+
+    f = 1.0 + (double)BR_PHYS_DT * (double)BR_CP_DRAG_K
+              / (double)BR_CP_BODY_MASS;
+    CHECK_NEAR(pS->vel.x, 30.0 * f, 1e-4);
+    CHECK_NEAR(pS->vel.y,  7.0 * f, 1e-4);
+    /* Same decay factor on both axes -- stated as its own check because it
+     * is the property that survives if the drag constant is ever re-read. */
+    CHECK_NEAR((double)pS->vel.x / 30.0, (double)pS->vel.y / 7.0, 1e-6);
+    /* and the two axes did not trade places */
+    CHECK(pS->vel.x > pS->vel.y);
+}
+
+/* ================================================================== */
+/* 0x1006543F -- the weather row, and its SIXTEEN-BIT clamp            */
+/*                                                                     */
+/* BrCpWeatherRow is `(int16_t)(weather - 1)` clamped into [0, 2], and  */
+/* the truncation is the interesting half: 0x10001 answers row 0, not   */
+/* row 0x10000.  Nothing in this suite ever set g_brCarPhysWeather, so   */
+/* the whole function could return a constant 0 unnoticed.               */
+/*                                                                       */
+/* It is observed through BrCpDrvSlip, which indexes three tables at      */
+/* row*8 + surface.  For surface 0 and compound 0 rows 0 and 1 hold the   */
+/* SAME numbers, so weather 1 and 2 are indistinguishable by design --    */
+/* row 2 is the only one that reads differently, which is why every       */
+/* comparison below is against weather 3.                                */
+/* ================================================================== */
+
+/* The lateral velocity left after one drivetrain call, with the axle
+ * demand pushed above the table's cap so the slip fraction is
+ *      (T3 / T2) * T1 * 20 * 1.5
+ * and hence directly proportional to T1 * T3 / T2 for this weather row.
+ * The speed is 30 m/s, above the 27 m/s floor, so the slow-speed
+ * override does not flatten the two rows onto the same value. */
+static float LateralAfterDrive(int32_t weather)
+{
+    BrCarPhys  car;
+    BrRbState *pS;
+    int        i;
+
+    BrCarPhysInit(&car, NULL);
+    g_brCarPhysWeather = weather;
+    pS = BrCarPhysBodyState(&car.body);
+    for (i = 0; i < 4; ++i) ArmWheel(&car, i, 1.0f);
+    pS->angVel.x = 0.0f; pS->angVel.y = 0.0f; pS->angVel.z = 0.0f;
+    pS->vel.x = 0.0f; pS->vel.y = 30.0f; pS->vel.z = 0.0f;
+    BrRbBuildMatrix(&car.body.m, pS);
+    car.bE80 = 0u; car.bE78 = 0u;
+    car.fE7C = 0.0f; car.fE74 = 0.0f;
+    BrCarPhysDrive(&car, BR_PHYS_DT);
+    return pS->vel.y;
+}
+
+static void TestWeatherRow(void)
+{
+    float  y0, y1, y2, y3, y4, yHi, yLo, yNeg;
+    double f0, f2;
+    int32_t save = g_brCarPhysWeather;
+
+    /* The three table entries the two rows differ in, as literals read out
+     * of 0x100B4C30 / 0x100B4E70 / 0x100B4F90 -- row r, surface 0,
+     * compound 0 is index 8*r for T2 and T3 and 8*r + 24*0 for T1. */
+    CHECK(g_pBrCarPhysDrvT1[0]  == 0.0820000023f);
+    CHECK(g_pBrCarPhysDrvT2[0]  == 90000.0f);
+    CHECK(g_aBrCarPhysDrvT3[0]  == 3000.0f);
+    CHECK(g_pBrCarPhysDrvT1[16] == 0.0649999976f);
+    CHECK(g_pBrCarPhysDrvT2[16] == 120000.0f);
+    CHECK(g_aBrCarPhysDrvT3[16] == 3000.0f);
+
+    y0   = LateralAfterDrive(0);
+    y1   = LateralAfterDrive(1);
+    y2   = LateralAfterDrive(2);
+    y3   = LateralAfterDrive(3);
+    y4   = LateralAfterDrive(4);
+    yHi  = LateralAfterDrive(0x00010003);
+    yLo  = LateralAfterDrive(0x00010001);
+    yNeg = LateralAfterDrive(-1);
+
+    /* The row is READ.  Without this the function can return a constant. */
+    CHECK(y3 != y1);
+    /* Row 2's grip is lower, so it removes LESS lateral velocity. */
+    CHECK(y3 > y1);
+
+    /* And by exactly the ratio of the two rows' T1 * T3 / T2.  The rest of
+     * the drivetrain is linear in the slip fraction, so the velocity
+     * REMOVED scales with it. */
+    f0 = 0.0820000023 * (3000.0 / 90000.0);
+    f2 = 0.0649999976 * (3000.0 / 120000.0);
+    CHECK_NEAR((30.0 - (double)y3) / (30.0 - (double)y1), f2 / f0, 1e-4);
+
+    /* THE 16-BIT CLAMP.  0x10003 is 3 in sixteen bits, so it must answer
+     * row 2 exactly as 3 does -- and 0x10001 must answer row 0, not some
+     * row 0x10000 that does not exist. */
+    CHECK(yHi == y3);
+    CHECK(yLo == y1);
+    /* Out of range in both directions folds to row 0: weather 4 gives
+     * w == 3 (> 2) and weather 0 gives w == -1 (< 0). */
+    CHECK(y4   == y1);
+    CHECK(y0   == y1);
+    CHECK(yNeg == y1);
+    /* Rows 0 and 1 hold identical numbers here, so weather 2 must NOT
+     * differ -- asserted so that "row 2 is special" cannot be mistaken for
+     * "any non-1 weather is special". */
+    CHECK(y2 == y1);
+
+    g_brCarPhysWeather = save;
+}
+
 int main(void)
 {
     TestSign();
@@ -618,8 +770,10 @@ int main(void)
     TestDrag();
     TestTyre();
     TestDrive();
+    TestWeatherRow();
     TestSettle();
     TestFreeFall();
+    TestFreeFallLateral();
 
     if (g_fail == 0) {
         /* A count, not a bare OK. tools/regress.sh calls an uncounted OK

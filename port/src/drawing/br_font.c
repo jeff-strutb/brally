@@ -379,6 +379,11 @@ done:
  * backend, so it plants the token BrFontRasteriseDL understands, and the two
  * staging copies have no analogue here -- this module already holds the
  * blocks. */
+/* WHAT IT DOES: makes the game's lettering available to the graphics hardware
+ * in the Glide build, as just two textures -- one holding every big character,
+ * one holding every small one. Drawing a particular letter then means aiming at
+ * a window inside the right sheet. */
+/* @implements 0x1006C790 glide BrFontRegisterPages */
 void BrFontRegisterPages(BrFont *pFont)
 {
     pFont->ahPage[BR_FONT_LARGE] = BR_FONT_TOK_PAGE(BR_FONT_LARGE);
@@ -390,6 +395,12 @@ void BrFontRegisterPages(BrFont *pFont)
  * small letters.  Class BR_FONT_CLASS_GAP is written by neither, so it stays
  * 0 -- which is exactly what the original's .bss slot holds, and is why the
  * emitter can be handed a class-27 index without faulting. */
+/* WHAT IT DOES: the Direct3D build's version of the same job -- it gives every
+ * single character of both sizes its own texture rather than sharing two big
+ * sheets, so drawing a letter means switching to that letter's texture. The
+ * unused slot between the punctuation run and the alphabet run is deliberately
+ * left blank. */
+/* @implements 0x10073820 d3d BrFontRegisterGlyphs */
 void BrFontRegisterGlyphs(BrFont *pFont)
 {
     int i;
@@ -578,6 +589,16 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * epilogue commands, is the same code at different addresses; writing it out
  * twice would double the surface without recording anything the comparison
  * did not already establish. */
+/* WHAT IT DOES: draws a line of the game's text. It picks the big or the small
+ * lettering according to how large the caller asked for, sets up the two-colour
+ * gradient the characters are shaded with, then walks the string stamping one
+ * character at a time and moving the pen along. Text can carry colour codes
+ * inline: a "%" followed by two letters picks a preset gradient, "%xRRGGBB"
+ * gives an exact colour, "%%" prints a literal percent sign, and a few codes
+ * are simply swallowed. Characters that would fall off the left or top of the
+ * screen get pulled back to the edge, but ones falling off the right or bottom
+ * are still drawn in full. */
+/* @implements 0x10018590 d3d BrTextEmitString */
 void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 {
     uint32_t        aCombine[2];

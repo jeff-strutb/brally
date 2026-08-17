@@ -19,6 +19,11 @@ static int br05_s16le(const unsigned char *p)
 /* ================================================================== */
 
 /* 0x1002BDD0 */
+/* WHAT IT DOES: puts a batch of the game's original N64 vertices the right way
+ * round for a PC. The console stored its numbers most-significant byte first,
+ * so each of the six 16-bit fields in a vertex has its two bytes exchanged; the
+ * colour or normal bytes at the end need no swapping and are left alone. */
+/* @implements 0x1002BDD0 d3d BrVtxSwap */
 void BrVtxSwap(void *pVerts, int count)
 {
     unsigned char *p = (unsigned char *)pVerts;
@@ -41,6 +46,11 @@ void BrVtxSwap(void *pVerts, int count)
 }
 
 /* 0x1002BE30 */
+/* WHAT IT DOES: unpacks a batch of the game's compact N64 vertices into the
+ * floating-point positions, texture coordinates and normals the PC renderer
+ * works with, appending them to a running buffer. It hands back where in that
+ * buffer the batch started. */
+/* @implements 0x1002BE30 d3d BrVtxExpand */
 float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
 {
     const unsigned char *p = (const unsigned char *)pVerts;
@@ -77,6 +87,12 @@ float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
 }
 
 /* 0x1002BF00 */
+/* WHAT IT DOES: notes that a particular batch of vertices has already been
+ * unpacked, and where the unpacked copy lives, so the same batch does not have
+ * to be converted twice. Once the note table is full, further batches are
+ * silently not remembered -- they still work, they just get converted again
+ * every time. */
+/* @implements 0x1002BF00 d3d BrVtxCacheInsert */
 void BrVtxCacheInsert(BrVtxCache *pCache, void *pSrc, int count, float *pOut)
 {
     int n = pCache->nEntries;
@@ -91,6 +107,12 @@ void BrVtxCacheInsert(BrVtxCache *pCache, void *pSrc, int count, float *pOut)
 }
 
 /* 0x1002BD50 */
+/* WHAT IT DOES: hands back the PC-ready version of a batch of the game's N64
+ * vertices. If that batch has been seen before it returns the copy made last
+ * time; otherwise it byte-swaps it, unpacks it, and remembers the result for
+ * next time. This is the seam where console geometry becomes something the PC
+ * can draw. */
+/* @implements 0x1002BD50 d3d BrVtxCacheResolve */
 void BrVtxCacheResolve(BrVtxCache *pCache, void **ppVerts, int count)
 {
     void *pSrc = *ppVerts;
@@ -121,6 +143,11 @@ void BrVtxCacheResolve(BrVtxCache *pCache, void **ppVerts, int count)
 /* ================================================================== */
 
 /* 0x1002C150 */
+/* WHAT IT DOES: repairs a "load these vertices" instruction in a piece of the
+ * game's original console drawing script, turning the console's segmented
+ * address into somewhere that actually exists in this process, and reports how
+ * many vertices the instruction loads. */
+/* @implements 0x1002C150 d3d BrF3DVtxFixup */
 unsigned BrF3DVtxFixup(const BrSegMap *pMap, BrGfxWords *pCmd)
 {
     uint32_t base = pMap->n64Base;
@@ -135,6 +162,10 @@ unsigned BrF3DVtxFixup(const BrSegMap *pMap, BrGfxWords *pCmd)
 }
 
 /* 0x1002C190 */
+/* WHAT IT DOES: repairs a draw-one-triangle instruction in the console drawing
+ * script. The console counted its vertices in units of two bytes, so each of
+ * the three vertex numbers is halved to become a plain index. */
+/* @implements 0x1002C190 d3d BrF3DTri1Fixup */
 void BrF3DTri1Fixup(void *pCmd)
 {
     unsigned char *p = (unsigned char *)pCmd;
@@ -146,6 +177,9 @@ void BrF3DTri1Fixup(void *pCmd)
 }
 
 /* 0x1002C1B0 */
+/* WHAT IT DOES: the same repair as its neighbour above, for the instruction
+ * that draws two triangles at once -- six vertex numbers instead of three. */
+/* @implements 0x1002C1B0 d3d BrF3DTri2Fixup */
 void BrF3DTri2Fixup(void *pCmd)
 {
     unsigned char *p = (unsigned char *)pCmd;
@@ -163,6 +197,11 @@ void BrF3DTri2Fixup(void *pCmd)
 /* ================================================================== */
 
 /* 0x1002FAF0 */
+/* WHAT IT DOES: translates one named colour ingredient -- the texture, the
+ * shading, a flat colour, and so on -- into the number the graphics hardware
+ * uses for it. Plain zero and plain one are special-cased; everything else is
+ * just an offset. */
+/* @implements 0x1002FAF0 d3d BrRdpCCMux */
 int BrRdpCCMux(int token)
 {
     if (token == 0)
@@ -173,6 +212,10 @@ int BrRdpCCMux(int token)
 }
 
 /* 0x1002FAC0 */
+/* WHAT IT DOES: the same translation as its neighbour above, but for the
+ * transparency channel, where the hardware numbers the ingredients differently
+ * and one of them is not available at all. */
+/* @implements 0x1002FAC0 d3d BrRdpACMux */
 int BrRdpACMux(int token)
 {
     if (token == 0)
@@ -185,6 +228,13 @@ int BrRdpACMux(int token)
 }
 
 /* 0x1002F900 */
+/* WHAT IT DOES: builds the single instruction that tells the graphics hardware
+ * how to mix its ingredients together to get a pixel's colour -- which of the
+ * texture, the lighting, the flat colours and so on go into each of the two
+ * mixing stages, for colour and for transparency alike. Sixteen choices are
+ * squeezed into two words, and the instruction's own identifying byte falls out
+ * of the packing rather than being written in. */
+/* @implements 0x1002F900 d3d BrRdpSetCombineLERP */
 void BrRdpSetCombineLERP(BrGfxWords *pOut,
                          int a0,  int b0,  int c0,  int d0,
                          int Aa0, int Ab0, int Ac0, int Ad0,
@@ -224,6 +274,12 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
 /* ================================================================== */
 
 /* 0x100306C0 */
+/* WHAT IT DOES: multiplies two 4x4 transforms together, which is how the game
+ * combines a rotation with a position, or an object's placing with the camera.
+ * If the answer is being written back over one of the inputs it works through a
+ * scratch copy -- and, oddly, adds the four products up in a different order on
+ * that path, so the two routes can disagree in the last bit or two. */
+/* @implements 0x100306C0 d3d BrMat4Mul */
 void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
 {
     BrMat4 tmp;
@@ -273,6 +329,10 @@ void BrMat4Translate(BrMat4 *pM, float tx, float ty, float tz)
 /* ================================================================== */
 
 /* 0x1002B280 */
+/* WHAT IT DOES: points both halves of a pair of cursors at the same place,
+ * which is how a buffer gets rewound to its start. What the buffer holds is not
+ * established here. */
+/* @implements 0x1002B280 d3d BrCursorPairSet */
 void BrCursorPairSet(BrCursorPair *pPair, void *pv)
 {
     pPair->f10 = pv;
@@ -280,6 +340,9 @@ void BrCursorPairSet(BrCursorPair *pPair, void *pv)
 }
 
 /* 0x1002C1F0 */
+/* WHAT IT DOES: appends one more entry to a fixed-length list. Once the list
+ * is full further entries are dropped without a word and without an error. */
+/* @implements 0x1002C1F0 d3d BrPtrListAdd */
 void BrPtrListAdd(BrPtrList *pList, void *pv)
 {
     int n = pList->n;
@@ -292,6 +355,13 @@ void BrPtrListAdd(BrPtrList *pList, void *pv)
 }
 
 /* 0x1002F460 */
+/* WHAT IT DOES: purpose unclear. Observably it reads a pair of numbers out of
+ * a table using two selector bytes as a row and column, and if one flag bit is
+ * set it rotates the first of the pair by half a turn of twelve -- six becomes
+ * zero, zero becomes six -- which has the shape of a mirroring or opposite-
+ * direction rule. The second number is looked up fresh so the rotation cannot
+ * affect it. What the table describes is not established here. */
+/* @implements 0x1002F460 d3d BrSelLookup */
 void BrSelLookup(const BrSelInput *pIn, const unsigned char (*aTable)[2],
                  int *pOutA, int *pOutB)
 {
@@ -335,6 +405,11 @@ void BrHookSetC(BrHooks *pH, void (*pfn)(void))
 }
 
 /* 0x10034C73  No null check in the original; preserved. */
+/* WHAT IT DOES: calls whichever routine has been plugged into one particular
+ * hook slot. Nothing checks that anything has been plugged in, so calling it
+ * before the slot is filled crashes -- that is the original's behaviour, not an
+ * oversight in transcription. */
+/* @implements 0x10034C73 d3d BrHookCallC */
 void BrHookCallC(const BrHooks *pH)
 {
     pH->pfnC();
@@ -346,6 +421,10 @@ void BrHookNopB(void)
 }
 
 /* 0x10034C88 */
+/* WHAT IT DOES: purpose unclear. Observably it raises one flag and hands back
+ * the value of a counter, ignoring the pointer it is passed -- the routine the
+ * original called with it does not read it either. */
+/* @implements 0x10034C88 d3d BrHookTakeA */
 uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
 {
     (void)pSrc;                 /* the callee 0x100378A0 ignores it */
@@ -354,6 +433,10 @@ uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
 }
 
 /* 0x10034CA8 */
+/* WHAT IT DOES: the twin of the routine above -- same raised flag, same
+ * ignored argument, but it returns a different counter. Purpose equally
+ * unclear. */
+/* @implements 0x10034CA8 d3d BrHookTakeB */
 uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
 {
     (void)pSrc;
@@ -366,6 +449,11 @@ uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
 /* ================================================================== */
 
 /* 0x10036030 */
+/* WHAT IT DOES: finds which slot in the network player table belongs to a
+ * given player. If that player is not there yet it gives back the first free
+ * slot instead, so the same call both looks up and allocates; if the table is
+ * full it reports failure. The local player is always slot zero. */
+/* @implements 0x10036030 d3d BrPeerFind */
 int BrPeerFind(const BrPeer *aPeers, uint32_t id)
 {
     int i;
@@ -388,6 +476,10 @@ int BrPeerFind(const BrPeer *aPeers, uint32_t id)
 }
 
 /* 0x10035FE0 */
+/* WHAT IT DOES: prepares one entity for use -- clears its state, works out its
+ * own number from where it sits in the array, and links it to the matching
+ * record in the parallel table so the two can find each other later. */
+/* @implements 0x10035FE0 d3d BrEntInit */
 void BrEntInit(BrEnt *pEnt, BrEnt *pBase, BrEntRec *pRecs)
 {
     long idx;

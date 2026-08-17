@@ -219,6 +219,12 @@ int32_t BrUiHook84_10046E10(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: backs out of the screen the player is on. It closes that
+ * screen's pages, forgets the rows and screens it had published for other code
+ * to find, and makes the screen remembered as the one to return to current.
+ * This one is not wired in when a screen is built -- it is poked onto a Back
+ * row at the moment that screen is opened. */
+/* @implements 0x10046DC0 d3d BrUiHook84_10046DC0 */
 int32_t BrUiHook84_10046DC0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -233,6 +239,10 @@ int32_t BrUiHook84_10046DC0(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the Back row of the game-options screen -- the one with skid
+ * marks, specular lighting and car shadow on it. Picking it closes the options
+ * pages and returns the player to the menu that opened them. */
+/* @implements 0x10046710 d3d BrUiHook84_10046710 */
 int32_t BrUiHook84_10046710(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -244,6 +254,9 @@ int32_t BrUiHook84_10046710(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the Back row of the season-progress screen. It closes that
+ * screen down and returns the player to the menu they came in from. */
+/* @implements 0x10047060 d3d BrUiHook84_10047060 */
 int32_t BrUiHook84_10047060(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -255,6 +268,11 @@ int32_t BrUiHook84_10047060(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: backs out of the options screen reached from the season
+ * progress buttons. It is wired onto that screen's Back row at the moment the
+ * screen is opened, and picking it closes the screen and returns the player to
+ * the one that opened it. */
+/* @implements 0x10046830 d3d BrUiHook84_10046830 */
 int32_t BrUiHook84_10046830(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -266,6 +284,12 @@ int32_t BrUiHook84_10046830(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* WHAT IT DOES: the same kind of back-out as its neighbours, but it also
+ * throws away whatever name was being edited -- both working copies of the name
+ * are reset from the shared scratch text and the remembered selection is
+ * cleared -- so leaving through this row abandons an edit rather than keeping
+ * it. */
+/* @implements 0x10046870 d3d BrUiHook84_10046870 */
 int32_t BrUiHook84_10046870(BrUiCtl_ *pCtl)
 {
     Br84LeavePrologue(pCtl);
@@ -395,6 +419,10 @@ int32_t BrUiHook84_100450C0(BrUiCtl_ *pCtl)
     return Br84WireBackRow();
 }
 
+/* WHAT IT DOES: the Options button on the season-progress screen -- one of the
+ * three picture buttons down its right-hand side. It opens the options screen
+ * and wires that screen's Back row so the player comes back here when done. */
+/* @implements 0x100457C0 d3d BrUiHook84_100457C0 */
 int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
 {
     BrUiCtl_ *pBack;
@@ -408,6 +436,11 @@ int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: the Save button on the season-progress screen. It opens the
+ * save-season screen and wires that screen's Back row to the variant that also
+ * throws away the name being typed -- which is why backing out of a save
+ * abandons the edit rather than keeping it. */
+/* @implements 0x100457E0 d3d BrUiHook84_100457E0 */
 int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
 {
     BrUiCtl_ *pBack;

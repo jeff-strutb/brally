@@ -160,6 +160,12 @@ static uint32_t s17_ptrword(const void *p)
 /* ================================================================== */
 
 /* 0x100309A0 */
+/* WHAT IT DOES: builds the transform that puts the world in front of a camera
+ * -- given where the camera is, what it is looking at and which way is up, it
+ * produces the matrix that turns world positions into positions relative to
+ * that camera. This is what a view through the windscreen or from the trackside
+ * is set up with. */
+/* @implements 0x100309A0 d3d BrMat4LookAt */
 void BrMat4LookAt(BrMat4 *pM,
                   float xEye, float yEye, float zEye,
                   float xAt,  float yAt,  float zAt,
@@ -214,6 +220,10 @@ static void s17_pack_dirs(const BrMat4 *pM, BrLightPair *pLights)
 }
 
 /* 0x10030E20 */
+/* WHAT IT DOES: builds a camera transform and then squeezes two of its axes
+ * down into the byte-sized direction pair the lighting hardware wants, so the
+ * scene is lit relative to how it is being viewed. */
+/* @implements 0x10030E20 d3d BrLightDirsFromLookAt */
 void BrLightDirsFromLookAt(BrMat4 *pM, BrLightPair *pLights,
                            float xEye, float yEye, float zEye,
                            float xAt,  float yAt,  float zAt,
@@ -255,6 +265,12 @@ static int32_t s17_ftol(double v)
 }
 
 /* 0x10030B50 */
+/* WHAT IT DOES: does the lighting set-up of its neighbour above and then works
+ * out where two given directions land on the sky -- as a pair of horizontal and
+ * vertical angles each, which is how the sky texture is scrolled to follow the
+ * camera. The first pair is measured against a fixed scale and the second
+ * against one the caller supplies. */
+/* @implements 0x10030B50 d3d BrLightDirsAndAngles */
 void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
                           BrSkyAngles *pAngles,
                           float xEye, float yEye, float zEye,
@@ -313,6 +329,12 @@ static void s17_identity(BrMat4 *pM)
 }
 
 /* 0x10030EE0 */
+/* WHAT IT DOES: builds the transform that turns things a given number of
+ * degrees about any axis you name. It does it by building a frame of reference
+ * around the axis, spinning flat inside that frame, and then undoing the frame.
+ * An axis of zero length -- or one containing a not-a-number -- yields the
+ * do-nothing transform instead. */
+/* @implements 0x10030EE0 d3d BrMat4RotateAxis */
 void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
 {
     BrMat4 basis, basisT, rot;
@@ -356,6 +378,9 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
 }
 
 /* 0x100312A7 */
+/* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
+ * sign, and never returns less than zero. */
+/* @implements 0x100312A7 d3d BrFloat12MaxAbs */
 float BrFloat12MaxAbs(const float *pv)
 {
     float lo = 0.0f;    /* most negative seen */
@@ -395,6 +420,9 @@ static uint32_t s17_rgba5551(int r, int g, int b)
 }
 
 /* 0x100314E8 */
+/* WHAT IT DOES: wipes the whole screen to one flat colour, switching the
+ * hardware into its fast fill mode to do it and putting it back afterwards. */
+/* @implements 0x100314E8 d3d BrGfxClearScreen */
 void BrGfxClearScreen(int r, int g, int b)
 {
     uint32_t c = s17_rgba5551(r, g, b);
@@ -417,6 +445,12 @@ void BrGfxClearScreen(int r, int g, int b)
 }
 
 /* 0x10031688 */
+/* WHAT IT DOES: fills a rectangle with one flat colour. In the double-size
+ * display mode every coordinate is doubled first -- and then the bottom-right
+ * corner is doubled a second time on its way into the command while the
+ * top-left corner is not scaled at all, so in that mode the rectangle comes out
+ * larger than asked for. That asymmetry is the original's. */
+/* @implements 0x10031688 d3d BrGfxFillRect */
 void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 {
     uint32_t c;
@@ -450,6 +484,10 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 }
 
 /* 0x10031481 */
+/* WHAT IT DOES: tells the hardware to use one particular texture out of a
+ * table, unless that texture's record is flagged as one to skip, in which case
+ * nothing is emitted and whatever texture was in use stays. */
+/* @implements 0x10031481 d3d BrGfxEmitTexCmd */
 void BrGfxEmitTexCmd(int i, const void *pRecords)
 {
     const unsigned char *rec =
@@ -466,6 +504,11 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
 /* ================================================================== */
 
 /* 0x1002FB20 */
+/* WHAT IT DOES: draws the trackside scenery -- the objects standing around the
+ * course. It sets the lighting up from a fixed overhead direction, configures
+ * how the objects are shaded and depth-tested, and then walks the list drawing
+ * each one. */
+/* @implements 0x1002FB20 d3d BrScenePropsDraw */
 void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
 {
     uint32_t *pCombine;
@@ -606,6 +649,12 @@ static unsigned char *s17_car(int i)
 }
 
 /* 0x1002F130 */
+/* WHAT IT DOES: adds a car to the race: fetches its colour and its driver's
+ * name from the owning player, registers its engine sound, and files it in the
+ * car table. The counter is re-read between almost every step rather than being
+ * kept, which matters because the owner is recorded against the slot the
+ * counter held BEFORE it was bumped. */
+/* @implements 0x1002F130 d3d BrCarTableAdd */
 void BrCarTableAdd(void *pOwner)
 {
     int n = g_s17.nEntB;
@@ -634,6 +683,12 @@ void BrCarTableAdd(void *pOwner)
 }
 
 /* 0x1002F230 */
+/* WHAT IT DOES: takes a player's car out of the race when that player leaves.
+ * It marks the car inactive, silences its engine, and clears it out of every
+ * slot that was pointing at it. It scans the whole table rather than stopping
+ * at the first match, so a player owning more than one car loses all of
+ * them. */
+/* @implements 0x1002F230 d3d BrCarTableRemove */
 void BrCarTableRemove(const void *pOwner)
 {
     int i = 0;
@@ -666,6 +721,10 @@ void BrCarTableRemove(const void *pOwner)
 }
 
 /* 0x1002F2A0 */
+/* WHAT IT DOES: takes a copy of each car's championship figures -- points and
+ * the other per-car running totals -- and notes that a copy now exists, so the
+ * results can be put back after whatever is about to happen. */
+/* @implements 0x1002F2A0 d3d BrCarStateSave */
 void BrCarStateSave(void)
 {
     int i;
@@ -690,6 +749,12 @@ void BrCarStateSave(void)
 }
 
 /* 0x1002F320 */
+/* WHAT IT DOES: puts each car's saved championship figures back. When the game
+ * is in the right mode and a saved copy exists, it also patches the numbers
+ * straight into the drawing commands for the standings display, so the points
+ * on screen match what has just been restored. One of the five saved values is
+ * written by the save and never read back by anything. */
+/* @implements 0x1002F320 d3d BrCarStateRestore */
 void BrCarStateRestore(void)
 {
     int i;
@@ -758,6 +823,10 @@ void BrCarStateRestore(void)
 /* ================================================================== */
 
 /* 0x1002BF40 */
+/* WHAT IT DOES: asks whether something is already in a list. A null thing is
+ * reported as present without the list being looked at, which is how callers
+ * get "nothing to do" for free. */
+/* @implements 0x1002BF40 d3d BrPtrListContains */
 int BrPtrListContains(const BrPtrList *pList, const void *pv)
 {
     int i;
@@ -803,18 +872,29 @@ void BrS17BankFlip(void)
 }
 
 /* 0x1002C2A0 */
+/* WHAT IT DOES: lets go of one particular long-lived object. What that object
+ * is was not established here. */
+/* @implements 0x1002C2A0 d3d BrS17Release */
 void BrS17Release(void)
 {
     BrX100751D0(g_s17.pThis6806B0);
 }
 
 /* 0x1002C2B0 */
+/* WHAT IT DOES: books a tidy-up routine to run automatically when the program
+ * exits, and reports whether the booking was accepted. */
+/* @implements 0x1002C2B0 d3d BrS17RegisterAtExit */
 int BrS17RegisterAtExit(void)
 {
     return BrXAtExit(BrX1002C2C0);
 }
 
 /* 0x1002C2D0 */
+/* WHAT IT DOES: draws the scene, but only if drawing is switched on at all.
+ * In one particular mode it temporarily zeroes one setting across the draw and
+ * puts it back afterwards, so that mode renders differently without the setting
+ * being permanently changed. */
+/* @implements 0x1002C2D0 d3d BrS17DrawGated */
 void BrS17DrawGated(void)
 {
     /* DEVIATION: the original's local is an uninitialised `push ecx` slot.
@@ -839,6 +919,11 @@ void BrS17DrawGated(void)
 }
 
 /* 0x1002C320 */
+/* WHAT IT DOES: draws one frame of the world -- the scene, then a second pass
+ * over it -- with a colour marker set around each part, which is how the frame
+ * was profiled on a debug machine. The whole thing is skipped while one
+ * suppression flag is raised. */
+/* @implements 0x1002C320 d3d BrS17DrawFrame */
 void BrS17DrawFrame(void)
 {
     if (g_s17.f6909B4 != 0)
@@ -852,6 +937,10 @@ void BrS17DrawFrame(void)
 }
 
 /* 0x1002C390 */
+/* WHAT IT DOES: switches the game into one particular mode, sets a second mode
+ * value alongside it, and installs the routine that will run for it. Which mode
+ * that is -- what the player would see -- was not established here. */
+/* @implements 0x1002C390 d3d BrS17SetMode4 */
 void BrS17SetMode4(void)
 {
     g_s17.f0AA010 = 4;
@@ -860,6 +949,10 @@ void BrS17SetMode4(void)
 }
 
 /* 0x1002C410 */
+/* WHAT IT DOES: counts down a chain of countdown records by one each, walking
+ * forward until it reaches a record that is not in use. An entirely empty chain
+ * is left alone. */
+/* @implements 0x1002C410 d3d BrS17TimerTick */
 void BrS17TimerTick(void *pRecords)
 {
     unsigned char *rec = (unsigned char *)pRecords;
@@ -874,6 +967,11 @@ void BrS17TimerTick(void *pRecords)
 }
 
 /* 0x1002C430 */
+/* WHAT IT DOES: works out how fast a car is actually travelling, in miles per
+ * hour, from its velocity in all three directions -- this is the number the
+ * speedometer shows. A car with the relevant flag clear keeps its old speed,
+ * but the follow-up step runs either way. */
+/* @implements 0x1002C430 d3d BrCarUpdateSpeedMph */
 void BrCarUpdateSpeedMph(void *pCar)
 {
     unsigned char *car = (unsigned char *)pCar;
@@ -893,6 +991,9 @@ void BrCarUpdateSpeedMph(void *pCar)
 }
 
 /* 0x1002C4A0 */
+/* WHAT IT DOES: releases every one of the currently active player slots, one
+ * at a time. */
+/* @implements 0x1002C4A0 d3d BrS17SlotsRelease */
 void BrS17SlotsRelease(void)
 {
     int i;
@@ -902,6 +1003,10 @@ void BrS17SlotsRelease(void)
 }
 
 /* 0x10031190 */
+/* WHAT IT DOES: hands out the next of thirty-two scratch buffers, cycling
+ * round them in turn. If all of them are still in use it waits for one to come
+ * free rather than handing out a buffer that is still being read. */
+/* @implements 0x10031190 d3d BrScratchRingAlloc */
 void *BrScratchRingAlloc(void)
 {
     int i;
@@ -923,6 +1028,10 @@ void *BrScratchRingAlloc(void)
 }
 
 /* 0x100311E4 */
+/* WHAT IT DOES: waits until every scratch buffer that has been handed out has
+ * come back, which is how the game makes sure the graphics hardware has
+ * finished with them before going further. */
+/* @implements 0x100311E4 d3d BrScratchRingDrain */
 void BrScratchRingDrain(void)
 {
     while (g_s17.nScratchDepth != 0) {
@@ -934,6 +1043,9 @@ void BrScratchRingDrain(void)
 /* 0x10031212 -- DEVIATION: the original zeroes its own two argument slots
  * on the caller's stack. C parameters are by value, so the stores are not
  * observable and are omitted; the return value is what callers use. */
+/* WHAT IT DOES: nothing. It takes two arguments, ignores both, and always
+ * answers zero -- a placeholder that fits where a real routine would go. */
+/* @implements 0x10031212 d3d BrScratchRingNull */
 int BrScratchRingNull(int a0, int a1)
 {
     (void)a0;
@@ -957,12 +1069,18 @@ void BrRenderCountersReset(void)
 }
 
 /* 0x10031282 */
+/* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
+ * what the routine below does and nothing else. */
+/* @implements 0x10031282 d3d BrScreenSizeInit */
 void BrScreenSizeInit(void)
 {
     BrScreenSizeApply();
 }
 
 /* 0x1003128C */
+/* WHAT IT DOES: sets the game's working screen size back to the build's
+ * defaults -- 640 by 480 here. */
+/* @implements 0x1003128C d3d BrScreenSizeApply */
 void BrScreenSizeApply(void)
 {
     g_s17.screenW = g_s17.defaultW;     /* 0x100A81C0 = 640 in this build */
@@ -970,11 +1088,20 @@ void BrScreenSizeApply(void)
 }
 
 /* 0x10031342 */
+/* WHAT IT DOES: nothing at all. It exists so that something expecting a
+ * routine to call has one. */
+/* @implements 0x10031342 d3d BrTexNoOp */
 void BrTexNoOp(void)
 {
 }
 
 /* 0x10031347 */
+/* WHAT IT DOES: works out how many bits are needed to count up to a given
+ * texture dimension -- which is what the hardware wants instead of the size
+ * itself -- and reports an error for anything above 1024, in which case it
+ * leaves the answer as whatever it was. Its other output is always the same
+ * fixed value regardless of the size asked about. */
+/* @implements 0x10031347 d3d BrTexSizeShift */
 void BrTexSizeShift(int size, int *pOut1, int *pOut2)
 {
     int n = size - 1;

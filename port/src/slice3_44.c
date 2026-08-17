@@ -41,6 +41,10 @@ extern void BrGbiCall10075330(void *pv);
 /* ================================================================== */
 
 /* 0x10074830 */
+/* WHAT IT DOES: rotates a 3D vector by a 3x3 matrix. Used all through the
+ * car physics, where the same quantity has to be moved between the world's
+ * frame of reference and the car's own. */
+/* @implements 0x10074830 d3d BrMat3MulVec3 */
 void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 {
     const float *m = pM->m;
@@ -61,6 +65,9 @@ void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 }
 
 /* 0x10074AC0 */
+/* WHAT IT DOES: combines two 3x3 rotations into one, so that applying the
+ * result does the same as applying both in turn. */
+/* @implements 0x10074AC0 d3d BrMat3Mul */
 void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 {
     const float *a = pA->m;
@@ -78,6 +85,11 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 }
 
 /* 0x100749D0 */
+/* WHAT IT DOES: builds the little 3x3 matrix that stands in for a cross
+ * product: multiplying a vector by it gives the same answer as crossing it
+ * with the vector this was built from. The physics uses it to turn "a force
+ * applied at this offset" into a twist. */
+/* @implements 0x100749D0 d3d BrMat3Skew */
 void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
 {
     pOut->m[0] =  0.0f;
@@ -143,6 +155,9 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 }
 
 /* 0x10074A90 */
+/* WHAT IT DOES: pulls the rotation part out of a full 4x4 transform,
+ * dropping the translation and leaving a compact 3x3. */
+/* @implements 0x10074A90 d3d BrMat4ToMat3 */
 void BrMat4ToMat3(BrMat3 *pOut, const BrMat4 *pSrc)
 {
     int i, j;
@@ -153,6 +168,10 @@ void BrMat4ToMat3(BrMat3 *pOut, const BrMat4 *pSrc)
 }
 
 /* 0x10074A50 */
+/* WHAT IT DOES: the same extraction but flipped along the diagonal, which
+ * for a pure rotation is the same as reversing it -- so this gives the
+ * matrix that undoes the transform's rotation. */
+/* @implements 0x10074A50 d3d BrMat4ToMat3Transposed */
 void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc)
 {
     int i, j;
@@ -163,6 +182,10 @@ void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc)
 }
 
 /* 0x10074A10 */
+/* WHAT IT DOES: extracts the rotation part of a 4x4 transform twice at once,
+ * once flipped and once straight, because the physics needs both to move
+ * quantities into the body's frame and back out again. */
+/* @implements 0x10074A10 d3d BrMat4ToMat3Both */
 void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
                       const BrMat4 *pSrc)
 {
@@ -178,6 +201,11 @@ void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
 }
 
 /* 0x10074B20 */
+/* WHAT IT DOES: subtracts one 3x3 matrix from another, all nine elements. An
+ * earlier reading of this had it covering only three, described as a
+ * faithfully preserved bug of the original; that was a misreading, and the
+ * note in the code explains how it was caught. */
+/* @implements 0x10074B20 d3d BrMat3Sub */
 void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 {
     int i;
@@ -207,6 +235,9 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 }
 
 /* 0x10075340 */
+/* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
+ * perspective" values, undoing anything that had been left there. */
+/* @implements 0x10075340 d3d BrMat4SetLastColumn */
 void BrMat4SetLastColumn(BrMat4 *pM)
 {
     pM->m[3][3] = 1.0f;
@@ -269,6 +300,10 @@ void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
 /* ================================================================== */
 
 /* 0x100742D0 */
+/* WHAT IT DOES: works out how fast a body's orientation is changing, given
+ * how fast it is spinning. The result is what the integrator adds to the
+ * orientation each step to make the body actually turn. */
+/* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
     /* the three halved components are stored to 4-byte slots by the original,
@@ -290,6 +325,10 @@ void BrRbQuatDerivative(BrRbState *pS)
 }
 
 /* 0x100743A0 */
+/* WHAT IT DOES: adds one time step's worth of acceleration to a body's speed
+ * and spin -- the first half of the physics step, before anything has
+ * actually moved. */
+/* @implements 0x100743A0 d3d BrRbIntegrateVelocity */
 void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
 {
     pS->vel.x    = pBody->accel[0]    * dt + pS->vel.x;      /* 0x0C <- 0xFC  */
@@ -301,6 +340,12 @@ void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
 }
 
 /* 0x100745F0 */
+/* WHAT IT DOES: advances a body one time step: moves it by its speed, turns
+ * it by the rate its orientation is changing, and renormalises the
+ * orientation afterwards so accumulated rounding does not slowly distort the
+ * body. Speed and spin are carried across unchanged, since the previous step
+ * already updated them. */
+/* @implements 0x100745F0 d3d BrRbIntegrateState */
 void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 {
     pDst->pos.x = pSrc->pos.x + dt * pSrc->vel.x;
@@ -321,6 +366,10 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 }
 
 /* 0x10074450 */
+/* WHAT IT DOES: builds the transform matrix that places a body in the world,
+ * from its orientation and position -- the matrix the renderer needs to draw
+ * the car where the physics says it is. */
+/* @implements 0x10074450 d3d BrRbBuildMatrix */
 void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 {
     const float a = pS->quat.f00;   /* w */
@@ -366,6 +415,13 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 }
 
 /* 0x10074870 */
+/* WHAT IT DOES: sets a body up for physics: clears its accumulated forces,
+ * plants a few fixed constants, and computes how hard it is to spin about
+ * each axis. For the two box-shaped modes that comes from the standard
+ * solid-box formula using the body's size and mass; other modes are left
+ * with the placeholder value of one, which is worth knowing because it means
+ * an unrecognised mode gets unit resistance rather than an error. */
+/* @implements 0x10074870 d3d BrRbInitInertia */
 void BrRbInitInertia(BrRbBody *pB)
 {
     int i, j;
@@ -421,6 +477,11 @@ void BrRbInitInertia(BrRbBody *pB)
 /* ================================================================== */
 
 /* 0x100746E0 */
+/* WHAT IT DOES: copies seven values into a block, with a deliberate shuffle:
+ * the last argument lands in the first written slot and the rest shift down
+ * behind it, and the block's very first slot is left untouched. What the
+ * block is for is not established. */
+/* @implements 0x100746E0 d3d BrX100746E0 */
 void BrX100746E0(unsigned int *pDst,
                  unsigned int a2, unsigned int a3, unsigned int a4,
                  unsigned int a5, unsigned int a6, unsigned int a7,
@@ -440,6 +501,9 @@ void BrX100746E0(unsigned int *pDst,
 unsigned int g_BrX1829850[8];
 
 /* 0x10074E00 */
+/* WHAT IT DOES: clears an eight-word block of state back to zero. What that
+ * block holds is not established. */
+/* @implements 0x10074E00 d3d BrSub10074E00 */
 void BrSub10074E00(void)
 {
     int i;
@@ -449,6 +513,9 @@ void BrSub10074E00(void)
 }
 
 /* 0x10074E20 */
+/* WHAT IT DOES: copies that same eight-word block out to the caller -- a
+ * snapshot of it, whatever it holds. */
+/* @implements 0x10074E20 d3d BrSub10074E20 */
 void BrSub10074E20(unsigned int *pDst)
 {
     int i;

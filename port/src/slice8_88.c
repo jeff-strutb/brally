@@ -202,6 +202,11 @@ static void Br88StoreText(BrTextBox *pBox, const char *psz)
  * Caption setters
  * ========================================================================== */
 
+/* WHAT IT DOES: sets the caption on one menu row by looking the current
+ * selection up in a small table. Which selection it uses depends on the game
+ * mode. Note that unlike its neighbours this one takes the table entry
+ * unsigned, which for the shipped tables makes no difference. */
+/* @implements 0x10040730 d3d BrUiHook88_10040730 */
 int32_t BrUiHook88_10040730(BrUiCtl_ *pCtl)
 {
     uint32_t i;
@@ -231,6 +236,11 @@ static int Br88IsIdle(void)
     return (pCur == g_brHook88.pAA2964) && (g_brAA28E8 == 0);
 }
 
+/* WHAT IT DOES: the same kind of table-driven caption setter for a
+ * neighbouring menu row, but guarded: while the screen it belongs to is not
+ * the one the player is on, it answers "leave this item alone" and changes
+ * nothing. That answer is unique to this hook. */
+/* @implements 0x100407E0 d3d BrUiHook88_100407E0 */
 int32_t BrUiHook88_100407E0(BrUiCtl_ *pCtl)
 {
     uint32_t i;
@@ -250,6 +260,11 @@ int32_t BrUiHook88_100407E0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: sets a menu row's caption from a four-entry table, or --
+ * when one particular flag is clear -- from a fixed entry. The fixed one is
+ * element one of that same table, not element zero, which is easy to
+ * misread. */
+/* @implements 0x10040950 d3d BrUiHook88_10040950 */
 int32_t BrUiHook88_10040950(BrUiCtl_ *pCtl)
 {
     /* The original's arm order is kept: the SET arm is the table lookup and

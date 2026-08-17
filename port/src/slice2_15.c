@@ -127,6 +127,11 @@ static const BrHudSprite *BrHudSpriteAt(int32_t i)
 /* =====================================================================
  * 0x10016A60
  * ===================================================================== */
+/* WHAT IT DOES: draws one rectangular picture on screen at a given position
+ * and size -- the workhorse behind every dashboard graphic and menu image. It
+ * points the hardware at the picture, tells it how much of it to use, and then
+ * asks for the rectangle. */
+/* @implements 0x10016A60 d3d BrGfxDrawTexRect */
 void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 {
     BrGfxCmd *p;
@@ -155,6 +160,13 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 /* =====================================================================
  * 0x10016B40
  * ===================================================================== */
+/* WHAT IT DOES: draws the rev counter on the dashboard -- the dial face and
+ * the needle sweeping round it. The needle angle comes from the engine, with a
+ * small random shake added so it never sits perfectly still, and the dial face
+ * itself is one of sixteen pictures chosen the same way. In split screen the
+ * face is skipped and only the needle is drawn, and even then the artwork is
+ * taken from the first player's record rather than the current one. */
+/* @implements 0x10016B40 d3d BrHudDrawDial */
 void BrHudDrawDial(BrHudView *aViews)
 {
     const BrHudSprite *pSpr;
@@ -335,6 +347,11 @@ void BrHudDrawDial(BrHudView *aViews)
 /* =====================================================================
  * 0x10017690
  * ===================================================================== */
+/* WHAT IT DOES: draws the game's own banner message across the middle of the
+ * player's view -- things like PAUSED or WRONG WAY. It shows nothing when there
+ * is no message set, or while the game is in the state that suppresses banner
+ * text. */
+/* @implements 0x10017690 d3d BrHudDrawViewCentreText */
 void BrHudDrawViewCentreText(const BrHudView *aViews)
 {
     const BrHudView *pView;
@@ -365,6 +382,12 @@ void BrHudDrawViewCentreText(const BrHudView *aViews)
 /* =====================================================================
  * 0x10017790
  * ===================================================================== */
+/* WHAT IT DOES: draws the race's current announcement in the middle of the
+ * player's view -- lap records, finishing places and the like. There are two
+ * message slots and the first takes priority; the first is also drawn half
+ * again as large as the second, so which slot a message lands in changes how
+ * big it appears. Two separate suppression flags can silence it entirely. */
+/* @implements 0x10017790 d3d BrHudDrawViewMessage */
 void BrHudDrawViewMessage(const BrHudView *aViews)
 {
     const BrHudView *pView;
@@ -402,6 +425,12 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
 /* =====================================================================
  * 0x10017CD0
  * ===================================================================== */
+/* WHAT IT DOES: works out how many seconds behind the leader this car is, by
+ * taking the gap between them along the track and dividing by the car's own
+ * speed. A stopped or barely-moving car has its speed treated as a minimum so
+ * the gap does not blow up, but there is no upper limit, and a car that is not
+ * behind anyone gets zero. */
+/* @implements 0x10017CD0 d3d BrHudGapSeconds */
 float BrHudGapSeconds(const BrCar *aCars, int iCar)
 {
     int32_t best = 0xFF;              /* 10017CE8 */
@@ -437,6 +466,10 @@ float BrHudGapSeconds(const BrCar *aCars, int iCar)
 /* =====================================================================
  * 0x10017C80
  * ===================================================================== */
+/* WHAT IT DOES: turns the gap to the leader into the "+12.34" text shown on
+ * the dashboard. A car that is not behind gets an empty string rather than a
+ * zero, so nothing is drawn for the leader. */
+/* @implements 0x10017C80 d3d BrHudFormatGapString */
 const char *BrHudFormatGapString(const BrCar *aCars, int iCar)
 {
     float f = BrHudGapSeconds(aCars, iCar);
@@ -454,6 +487,9 @@ const char *BrHudFormatGapString(const BrCar *aCars, int iCar)
 /* =====================================================================
  * 0x10017FE0
  * ===================================================================== */
+/* WHAT IT DOES: draws one line of the split-time list -- a position number and
+ * a time as minutes, seconds and hundredths -- at the given spot. */
+/* @implements 0x10017FE0 d3d BrHudDrawSplitLine */
 void BrHudDrawSplitLine(const char *pszPrefix, int rank, float fSeconds,
                         int x, int y)
 {
@@ -507,6 +543,12 @@ void BrHudDrawSplitList(const BrHudView *aViews)
 /* =====================================================================
  * 0x10017D90
  * ===================================================================== */
+/* WHAT IT DOES: draws the whole in-race dashboard for one player's view: the
+ * rev counter, the lap and position readouts, the split times, the race
+ * messages, and the speed with its unit. Speed is shown in miles or kilometres
+ * per hour depending on the player's setting, and a negative speed is shown as
+ * zero. */
+/* @implements 0x10017D90 d3d BrHudDraw */
 void BrHudDraw(BrHudView *aViews, int a2)
 {
     const BrHudView *pView;
@@ -571,6 +613,10 @@ void BrHudDraw(BrHudView *aViews, int a2)
 /* =====================================================================
  * 0x10018070
  * ===================================================================== */
+/* WHAT IT DOES: decides whether this frame's background is just a flat colour
+ * rather than the sky. Five separate conditions each force the flat fill --
+ * among them having no sky picture loaded at all. */
+/* @implements 0x10018070 d3d BrSceneUsePlainClear */
 int BrSceneUsePlainClear(void)
 {
     if (g_scene.f6C661C != 0) return 1;
@@ -584,6 +630,11 @@ int BrSceneUsePlainClear(void)
 /* =====================================================================
  * 0x100180B0
  * ===================================================================== */
+/* WHAT IT DOES: lays down the background before anything else in the frame is
+ * drawn. That is either a flat colour wash over the player's view -- brightened
+ * for one frame on alternate lightning flashes, which is what makes a storm
+ * flicker -- or the sky drawn through the camera's current view. */
+/* @implements 0x100180B0 d3d BrSceneSetupFrame */
 void BrSceneSetupFrame(const BrHudView *aViews)
 {
     const BrHudView *pView;
@@ -675,6 +726,11 @@ void BrSceneSetupFrame(const BrHudView *aViews)
 /* =====================================================================
  * 0x10019490
  * ===================================================================== */
+/* WHAT IT DOES: scatters the rain or snow to random positions, which is what
+ * gets the weather started and what resets it when the view jumps. Each layer
+ * is filled with 512 particles; the handful of spare slots past that are left
+ * as they were. */
+/* @implements 0x10019490 d3d BrWeatherRandomiseParticles */
 void BrWeatherRandomiseParticles(void)
 {
     int layer, i;
@@ -697,6 +753,11 @@ void BrWeatherRandomiseParticles(void)
 /* =====================================================================
  * 0x100194E0
  * ===================================================================== */
+/* WHAT IT DOES: drifts the wind on by one frame. Both its direction and its
+ * strength wander randomly rather than being set anywhere -- the direction
+ * wraps round the compass and the strength is held between half and full -- and
+ * the result is turned into the horizontal push the snow is blown by. */
+/* @implements 0x100194E0 d3d BrWeatherStepWind */
 void BrWeatherStepWind(void)
 {
     double r, a;
@@ -735,6 +796,12 @@ void BrWeatherStepWind(void)
 /* =====================================================================
  * 0x10019620
  * ===================================================================== */
+/* WHAT IT DOES: runs a lightning strike. Most frames it just rolls the dice --
+ * about one chance in five hundred -- and on a hit it picks a random spot in
+ * the sky and lights it for three frames. After the flash it tracks the thunder
+ * travelling outward at the speed of sound, and once that has gone far enough
+ * it starts watching for the next strike. */
+/* @implements 0x10019620 d3d BrWeatherStepLightning */
 void BrWeatherStepLightning(void)
 {
     if (g_weather.lightning < 0) {
@@ -766,6 +833,13 @@ void BrWeatherStepLightning(void)
 /* =====================================================================
  * 0x100196D0
  * ===================================================================== */
+/* WHAT IT DOES: moves the rain or snow on by one frame for each player's view.
+ * The particles are carried along with the camera, so what the player sees is
+ * weather falling past them rather than weather they drive through; rain falls
+ * straight down while snow is pushed sideways by the wind. Very fast camera
+ * movement is damped so the weather does not streak. If neither rain nor snow
+ * is on it abandons the whole loop, not just the current view. */
+/* @implements 0x100196D0 d3d BrWeatherStepParticles */
 void BrWeatherStepParticles(void)
 {
     int32_t iView;
@@ -920,6 +994,10 @@ void BrWeatherStepParticles(void)
 /* =====================================================================
  * 0x1001A4B0
  * ===================================================================== */
+/* WHAT IT DOES: purpose unclear. Observably it hands one entry of a table,
+ * chosen by number, plus two fixed globals, to another routine and does nothing
+ * else. What that routine does with them is not established here. */
+/* @implements 0x1001A4B0 d3d BrForward1001A4B0 */
 void BrForward1001A4B0(int i)
 {
     BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,

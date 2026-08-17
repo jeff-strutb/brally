@@ -49,6 +49,12 @@ typedef struct BrRankPair {
 } BrRankPair;
 
 /* 0x10066620 */
+/* WHAT IT DOES: the "who is ahead" test used when the game sorts the field
+ * into race order -- it compares two drivers' progress figures and says which
+ * comes first. If either figure is not a real number the answer it gives is
+ * "less than" rather than "equal", which is the original's behaviour and not
+ * a tidy-up opportunity. */
+/* @implements 0x10066620 d3d BrRankCmpKey */
 int BrRankCmpKey(const void *pA, const void *pB)
 {
     const float a = *(const float *)pA;
@@ -111,6 +117,11 @@ void BrRankAssign(BrDriver *pSlots, int32_t n)
  * ===================================================================== */
 
 /* 0x10067880 */
+/* WHAT IT DOES: gathers a list of scattered game variables into one
+ * contiguous block of memory -- the snapshot the replay and save-state code
+ * works from. If the block turns out not to have been big enough it stops the
+ * game with an error, but only after the overrun has already happened. */
+/* @implements 0x10067880 d3d BrVarSave */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 {
     uint8_t *pOut = (uint8_t *)pDst;
@@ -136,6 +147,10 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 }
 
 /* 0x10067900 */
+/* WHAT IT DOES: puts a previously gathered snapshot back where it came from,
+ * restoring every variable in the list. It trusts the buffer completely --
+ * there is no length given and no check made. */
+/* @implements 0x10067900 d3d BrVarLoad */
 void BrVarLoad(const BrVarBlock *pTable, const void *pSrc)
 {
     const uint8_t *pIn = (const uint8_t *)pSrc;
@@ -152,6 +167,12 @@ void BrVarLoad(const BrVarBlock *pTable, const void *pSrc)
  * ===================================================================== */
 
 /* 0x10067AE0 */
+/* WHAT IT DOES: works out how much to raise or lower the pitch of a sound
+ * because the thing making it and the thing hearing it are moving relative to
+ * one another -- the rising-then-falling note of a car going past. It uses the
+ * real speed of sound, and it has no protection against a source approaching
+ * faster than sound, which sends the answer negative. */
+/* @implements 0x10067AE0 d3d BrSndDoppler */
 float BrSndDoppler(const BrVec3 *pSrcPos, const BrVec3 *pSrcPrev,
                    const BrVec3 *pLisPos, const BrVec3 *pLisPrev)
 {
@@ -181,6 +202,15 @@ float BrSndDoppler(const BrVec3 *pSrcPos, const BrVec3 *pSrcPrev,
 }
 
 /* 0x10067BC0 */
+/* WHAT IT DOES: places a sound in the stereo image and decides how loud it
+ * should be, from where it is relative to the listener: how far off to one
+ * side gives the balance between the two speakers, how far away gives the
+ * volume. Sounds very nearly centred are snapped to dead centre so they do
+ * not wander, and anything closer than a fixed minimum distance is treated as
+ * being at that distance so it cannot become infinitely loud. A "narrow" mode
+ * squeezes the whole stereo spread towards the middle. Which of the two gains
+ * is the left speaker and which the right could not be established. */
+/* @implements 0x10067BC0 d3d BrSndPan */
 void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
               float *pGainA, float *pGainB, int32_t *pVol, int32_t fNarrow)
 {
@@ -255,6 +285,11 @@ BrSndNearest g_BrSndNearest;
 int32_t      g_BrSndAA3470 = -1;
 
 /* 0x10067DA0 */
+/* WHAT IT DOES: clears the "closest sound this frame" contest so a new round
+ * of candidates can be offered, while deliberately keeping the record of
+ * whatever won last time -- that is how the game later notices a sound that
+ * has stopped being offered at all. */
+/* @implements 0x10067DA0 d3d BrSndNearestInvalidate */
 void BrSndNearestInvalidate(void)
 {
     g_BrSndNearest.metric = BR_SND_NEAREST_FAR;
@@ -264,6 +299,11 @@ void BrSndNearestInvalidate(void)
 }
 
 /* 0x10067DC0 */
+/* WHAT IT DOES: wipes the closest-sound tracker completely, including the
+ * memory of what won on previous frames -- the full reset done when the
+ * game changes scene, as opposed to the light per-frame clear above. One
+ * field, the base pitch, is left as it was. */
+/* @implements 0x10067DC0 d3d BrSndNearestReset */
 void BrSndNearestReset(void)
 {
     g_BrSndAA3470 = -1;
@@ -292,6 +332,10 @@ void BrSndNearestReset(void)
 }
 
 /* 0x10067E50 */
+/* WHAT IT DOES: puts one sound source forward as a candidate for the single
+ * slot the game reserves for the nearest sound, and it takes that slot only
+ * if it is closer to the listener than anything offered so far this frame. */
+/* @implements 0x10067E50 d3d BrSndNearestOffer */
 void BrSndNearestOffer(int32_t f8C, int32_t f84, int32_t f9C, float f98,
                        const BrVec3 *pPos, const BrMat4 *pListener)
 {
@@ -313,6 +357,10 @@ void BrSndNearestOffer(int32_t f8C, int32_t f84, int32_t f9C, float f98,
 }
 
 /* 0x10068210 */
+/* WHAT IT DOES: offers a sound for a thing that has no sound of its own,
+ * picking a stock one -- but only in two particular game modes; in every
+ * other mode it offers nothing and returns having done nothing at all. */
+/* @implements 0x10068210 d3d BrSndNearestOfferDefault */
 void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
                               const BrMat4 *pListener)
 {
@@ -359,6 +407,11 @@ void *BrFrameBankAlloc(BrFrameBank *pBank)
 }
 
 /* 0x100694E0 */
+/* WHAT IT DOES: hands out one small scratch block that only has to last the
+ * rest of the frame, from a pool that is thrown away wholesale at the end of
+ * it. Once the pool is full every further request gets the same last block
+ * back, so late callers quietly share one. */
+/* @implements 0x100694E0 d3d BrPool16Alloc */
 void *BrPool16Alloc(void)
 {
     return BrFrameBankAlloc(&g_BrPool16);
@@ -371,6 +424,10 @@ void *BrPool32Alloc(void)
 }
 
 /* 0x10069580.  Order preserved: 64-byte counter, then 16, then 32. */
+/* WHAT IT DOES: throws away everything handed out of the three frame-scratch
+ * pools, which is how they are emptied -- nothing is freed individually, the
+ * counts simply go back to zero and the space is reused. */
+/* @implements 0x10069580 d3d BrGfx69580 */
 void BrGfx69580(void)
 {
     /* DEVIATION: the original writes 0x10B01C40 directly.  That counter is

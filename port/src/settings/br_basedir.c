@@ -25,6 +25,11 @@ void BrBaseDirResetForTest(void)
 }
 
 /* 0x10063860 */
+/* WHAT IT DOES: works out where the game's data files live, by reading the
+ * install path the installer wrote into the registry. If there is no such
+ * entry -- or no way to read one -- it falls back to the root of the C
+ * drive, which is why a badly installed copy goes looking in c:\TRACKS
+ * rather than beside the executable. */
 /* @implements 0x10063860 glide BrBaseDirInit */
 void BrBaseDirInit(void)
 {

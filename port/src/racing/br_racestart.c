@@ -84,6 +84,9 @@ static void put_u16le(unsigned char *pb, int32_t off, uint32_t v)
 /* ==========================================================================
  * 0x1002F6C0 -- eleven bytes, one store.
  * ========================================================================== */
+/* WHAT IT DOES: sets one race global to a fixed value. What that value
+ * controls is not established here. */
+/* @implements 0x1002F6C0 glide BrRaceSub1002F6C0 */
 void BrRaceSub1002F6C0(void)
 {
     g_brRace6EECC8 = BR_RACESTART_6EECC8_VALUE;
@@ -97,6 +100,12 @@ void BrRaceSub1002F6C0(void)
  * one operation in the original, and 0x100628B0 then repeats BOTH of them
  * separately a few instructions later.  Both repeats are preserved.
  * ========================================================================== */
+/* WHAT IT DOES: records how many cars are in the race and, in the same
+ * breath, installs the do-nothing frame step -- so the game stops doing per-
+ * frame work while the race is being set up. The two really are one
+ * operation in the original, and the routine that calls it repeats both a
+ * moment later. */
+/* @implements 0x10062850 glide BrRaceEntrantCountSet */
 void BrRaceEntrantCountSet(int32_t n, BrGameStepFn pfnNullStep)
 {
     g_brRaceNEntrant = n;

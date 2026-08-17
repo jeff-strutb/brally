@@ -457,6 +457,10 @@ int32_t BrUiHook87_1003F280(BrUiCtl_ *pCtl)
  * Code hooks -- a WORD into control +0x1E20C
  * ========================================================================== */
 
+/* WHAT IT DOES: sets a menu row's caption code from a five-way choice on one
+ * of the option values. An out-of-range value gives the same answer as
+ * choice zero, so the two cannot be told apart. */
+/* @implements 0x1003F5E0 d3d BrUiHook87_1003F5E0 */
 int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
 {
     uint32_t k = (g_pBr72Env != NULL) ? (uint32_t)g_pBr72Env->nAA2A18 : 0u;
@@ -476,6 +480,11 @@ int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* WHAT IT DOES: the twin of the hook above, on the same option value but
+ * with a different set of caption codes. This one maps both choice zero and
+ * an out-of-range value to the "no caption" sentinel, which is where the two
+ * twins part company. */
+/* @implements 0x1003F680 d3d BrUiHook87_1003F680 */
 int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
 {
     uint32_t k = (g_pBr72Env != NULL) ? (uint32_t)g_pBr72Env->nAA2A18 : 0u;

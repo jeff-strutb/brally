@@ -43,6 +43,11 @@ static int32_t br_strres_measure(const char *pszPath)
  * 0x1006D1A0 -- load the string resource
  * ========================================================================== */
 
+/* WHAT IT DOES: loads the game's text -- every menu label, message and
+ * prompt -- out of the resource module into one block of memory, and builds
+ * the table that maps a string number to its text. It clears the table
+ * first, and then does nothing at all if the text has already been loaded. */
+/* @implements 0x1006D1A0 glide BrStrResLoad */
 void BrStrResLoad(const BrStrResOps *pOps)
 {
     void   *hModule;
@@ -134,6 +139,11 @@ void BrStrResLoad(const BrStrResOps *pOps)
  * 0x1006D2A0 -- release it
  * ========================================================================== */
 
+/* WHAT IT DOES: frees the block of game text. Note the lookup table is
+ * deliberately not cleared, so all three hundred entries are left pointing
+ * into memory that has just been given back -- that is the original's
+ * behaviour. */
+/* @implements 0x1006D2A0 glide BrStrResFree */
 void BrStrResFree(void)
 {
     if (g_pBrStrResBlob == NULL) {

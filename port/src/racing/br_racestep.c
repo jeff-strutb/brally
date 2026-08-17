@@ -123,6 +123,14 @@ void        (*g_pfnBrRaceAiControl)(BrDriverCar *);
  * 0x1005ECF0 -- the path walk
  * ========================================================================== */
 
+/* WHAT IT DOES: slides a position a given distance forward along the track's
+ * built-in racing line, stepping from one stretch of the line to the next and
+ * skipping over stretches marked to be ignored, and leaves the resulting
+ * position and place-in-the-line where the caller can pick them up. This is
+ * how a car that has no physics of its own -- an entrant the player never
+ * sees driving -- is moved round the circuit. If it runs out of line it leaves
+ * the answer untouched rather than reporting an error. */
+/* @implements 0x1005ECF0 glide BrRacePathAdvance */
 void BrRacePathAdvance(uint32_t offNode, uint32_t index,
                        float ratio, float dist)
 {
@@ -266,6 +274,11 @@ int BrRaceSeedPhantom(BrDriver *pDrv, float dist)
  * 0x10061430 -- eleven bytes, and all of them
  * ========================================================================== */
 
+/* WHAT IT DOES: clears one value on a car at the very start of every race
+ * frame, before anything else touches it. What that value is FOR is unknown --
+ * nothing transcribed so far reads it -- so all that can honestly be said is
+ * that each car begins the frame with it at zero. */
+/* @implements 0x10061430 glide BrRaceCarPre */
 void BrRaceCarPre(BrDriverCar *pCar)
 {
     /* `mov dword ptr [ecx+0xF78], 0` / `ret`.  Nothing ported here reads
@@ -486,6 +499,12 @@ void BrRaceDriverAnim(BrDriver *pDrv)
  * 0x100623E0 -- one driver, part two.  The car entrant's gate step.
  * ========================================================================== */
 
+/* WHAT IT DOES: the tidying-up pass over one driver after the driving has been
+ * done for the frame: lay down skid marks if the car has been sliding, credit
+ * the car with any lap gates it has just crossed, work out how fast it is
+ * actually travelling from how far it moved, and run down a short per-car
+ * countdown. Nothing happens at all while the game is paused. */
+/* @implements 0x100623E0 glide BrRaceDriverPost */
 void BrRaceDriverPost(BrDriver *pDrv)
 {
     BrDriverCar *pCar;
@@ -701,6 +720,12 @@ void BrRaceStepLights(void)
  * 0x10019A70
  * ========================================================================== */
 
+/* WHAT IT DOES: starts a race. It rewinds the starting-light sequence to the
+ * beginning, clears the finished-driver count and puts every car on the grid.
+ * A replay, or the one mode that has no start procedure, skips straight past
+ * the lights to the racing state, and a replay also leaves the existing grid
+ * alone since the cars' positions are coming off the recording. */
+/* @implements 0x10019A70 glide BrRaceStepInit */
 int BrRaceStepInit(void)
 {
     int32_t i;

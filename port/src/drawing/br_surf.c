@@ -75,6 +75,12 @@ void BrSurfFree(BrSurf *pSurf)
  * inside it, so a 0-wide or 0-tall bitmap writes nothing rather than
  * underflowing a do/while.
  * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: copies a loaded Windows bitmap's pixels into the game's own
+ * image format, converting full-colour pixels down to the 16-bit colour the
+ * renderer uses and flipping the picture the right way up, since Windows
+ * stores bitmaps bottom row first. A zero-width or zero-height picture copies
+ * nothing rather than running away. */
+/* @implements 0x100011C0 glide BrSurfBlt24 */
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                  int32_t cx, int32_t cy, int32_t cbWidthBytes)
 {
@@ -111,6 +117,12 @@ void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
  * 8bpp -- leaves here as NULL and the caller reports
  * "DDraw_DoInit: Bitmap %d failed to load!".
  * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: turns a bitmap Windows has just loaded into an image the game
+ * can draw, by making room for it and converting the pixels. This build only
+ * understands full-colour 24-bit bitmaps, so anything else -- a paletted or
+ * compressed BMP -- is simply rejected, and the caller reports that the image
+ * failed to load. */
+/* @implements 0x10001240 glide BrSurfFromBitmap */
 BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
 {
     BrSurf *pSurf;
@@ -137,6 +149,11 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
  *
  *   RGB(0,255,0) == 0x0000FF00 -> 0x07E0.
  * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: tells an image which colour counts as "see through", so that
+ * colour is skipped when the image is drawn. The colour is given in the
+ * ordinary Windows form and stored in the reduced form the renderer compares
+ * against. */
+/* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
     uint32_t ecx, edx, eax;

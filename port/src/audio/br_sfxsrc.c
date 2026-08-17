@@ -276,6 +276,10 @@ void BrSfxSrcTrigger(int iSrc)
 }
 
 void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* 0x10060DF0 */
+/* WHAT IT DOES: plays the second of the game's two beeps -- the one used for
+ * the "go" at the end of the race countdown, where the first three steps use
+ * the ordinary beep. */
+/* @implements 0x10060DF0 glide BrSfxSrcBeep2 */
 void BrSfxSrcBeep2(void) { BrSfxSrcTrigger(BR_SFXSRC_BEEP2); }   /* 0x10060E00 */
 
 void BrSfxSrcRaceCountdown(int iStep)

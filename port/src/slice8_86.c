@@ -38,6 +38,11 @@ int g_iBrCdFirstTrack86 = BR86_CD_FIRST_MUSIC_TRACK;
  *    written out in the header.
  * ========================================================================== */
 
+/* WHAT IT DOES: builds one of the game's menu screens when the player enters
+ * it -- laying out its rows of labels and selectable controls. This is only
+ * the glue that hands the screen off to the builder that does the work; a
+ * host that has not supplied the surrounding menu state gets nothing built. */
+/* @implements 0x1004A580 d3d BrPhaseEnterPlaceholder_1004A580 */
 void BrPhaseEnterPlaceholder_1004A580(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -45,6 +50,8 @@ void BrPhaseEnterPlaceholder_1004A580(void *pSelf)
     BrExt_1004A580(g_pBrUiBuildCtx86, (BrUiPhase *)pSelf);
 }
 
+/* WHAT IT DOES: the same glue for a second menu screen. */
+/* @implements 0x1004B430 d3d BrPhaseEnterPlaceholder_1004B430 */
 void BrPhaseEnterPlaceholder_1004B430(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -52,6 +59,8 @@ void BrPhaseEnterPlaceholder_1004B430(void *pSelf)
     BrExt_1004B430(g_pBrUiBuildCtx86, (BrUiPhase *)pSelf);
 }
 
+/* WHAT IT DOES: the same glue for a third menu screen. */
+/* @implements 0x1004BDC0 d3d BrPhaseEnterPlaceholder_1004BDC0 */
 void BrPhaseEnterPlaceholder_1004BDC0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -59,6 +68,8 @@ void BrPhaseEnterPlaceholder_1004BDC0(void *pSelf)
     BrExt_1004BDC0(g_pBrUiBuildCtx86, (BrUiPhase *)pSelf);
 }
 
+/* WHAT IT DOES: the same glue for a fourth menu screen. */
+/* @implements 0x1004C4A0 d3d BrPhaseEnterPlaceholder_1004C4A0 */
 void BrPhaseEnterPlaceholder_1004C4A0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -66,6 +77,9 @@ void BrPhaseEnterPlaceholder_1004C4A0(void *pSelf)
     BrExt_1004C4A0(g_pBrUiBuildCtx86, (BrUiPhase *)pSelf);
 }
 
+/* WHAT IT DOES: the same glue for a fifth menu screen -- the one whose rows
+ * come out of the game's table of on-screen text. */
+/* @implements 0x1004CAC0 d3d BrOptFn1004CAC0 */
 void BrOptFn1004CAC0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -100,6 +114,10 @@ void BrSub10002870(int track)
 /* 0x100027F0 -- the middleware path. Clamps into [first, count] and stores
  * the result BEFORE testing whether the module is running, which is why
  * br_audio.c records the selection even when disabled. */
+/* WHAT IT DOES: starts a piece of music playing, counting from the first
+ * music track on the disc rather than from track one -- the audio CD's first
+ * track is the game's data. This is the route used when the music is going
+ * through the game's own audio module rather than straight to Windows. */
 void BrSub100027F0(int track)
 {
     if (g_pBrAudio86 == NULL)
@@ -335,6 +353,10 @@ static void br86_st32(void *p, size_t off, int32_t v)
 
 /* 0x10075190 -- (re)start the clock. Private to this pair: its only two
  * callers are 0x100751D0's two arms. */
+/* WHAT IT DOES: starts the frame clock ticking from now, noting the current
+ * time and when the next frame is due. It uses the machine's precise timer
+ * where there is one and the ordinary Windows clock otherwise. */
+/* @implements 0x10075190 d3d br86_timer_restart */
 static void br86_timer_restart(void *pThis)
 {
     if (g_br86HasPerf) {
@@ -377,6 +399,10 @@ void BrX100751D0(void *pThis)
 }
 
 /* 0x10075240 -- the teardown 0x1002C2C0 tail-calls into. */
+/* WHAT IT DOES: gives back the finer timer resolution the game asked Windows
+ * for, and only on machines that needed it -- where the precise timer was
+ * available nothing was asked for and nothing is returned. */
+/* @implements 0x10075240 d3d br86_timer_end_period */
 static void br86_timer_end_period(void)
 {
     if (g_br86HasPerf == 0) {
@@ -386,6 +412,9 @@ static void br86_timer_end_period(void)
     }
 }
 
+/* WHAT IT DOES: shuts the frame clock down on the way out of the game, by
+ * handing back the timer resolution above. */
+/* @implements 0x1002C2C0 d3d BrX1002C2C0 */
 void BrX1002C2C0(void)
 {
     /* `mov ecx, 0x106806B0 / jmp 0x10075240`. The ecx load is DEAD: the

@@ -134,6 +134,12 @@ void BrBmpGdiFree(BrGdiBitmapMem *pMem)
  * depend on it and is kept exactly where it was: AFTER the conversion, and
  * only when the conversion succeeded.
  * ====================================================================== */
+/* WHAT IT DOES: loads a Windows bitmap file from disk and turns it into a
+ * drawing surface in the game's 16-bit colour format, tagging it with the
+ * transparency key. Only 24-bit-colour bitmaps are accepted. The original
+ * could also load a bitmap out of its own resources, but the DLL carries
+ * none, so that path always failed and is not transcribed. */
+/* @implements 0x10001290 glide BrBmpLoadSurface */
 BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 {
     BrGdiBitmapMem mem;
@@ -158,6 +164,12 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
  *
  * This is the function br_bmp.c used to be, before anyone looked for it.
  * ====================================================================== */
+/* WHAT IT DOES: loads a Windows bitmap file and hands back its pixels as
+ * full-colour four-byte pixels ready for the 3D card, along with the
+ * picture's size. It flips the image the right way up on the way through,
+ * because bitmap files are stored bottom row first. Only 24-bit-colour
+ * bitmaps are accepted. */
+/* @implements 0x1005A210 glide BrBmpLoadRgba */
 uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
 {
     BrGdiBitmapMem mem;

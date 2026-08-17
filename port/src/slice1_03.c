@@ -56,6 +56,13 @@ void BrClipPoolFree(BrClipVert *pNode)
 }
 
 /* 0x1001D940 */
+/* WHAT IT DOES: makes a new vertex sitting part way between two existing
+ * ones, blending every one of its nine properties -- position, texture
+ * coordinates and colour. This is what produces the new corner where a
+ * triangle is cut by the edge of the screen. It takes the vertex off a small
+ * fixed pool; the original would crash if that pool ran dry, whereas this
+ * reports failure and the callers skip the insertion. */
+/* @implements 0x1001D940 d3d BrClipLerpVert */
 BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
                            float t)
 {
@@ -248,6 +255,9 @@ BrTextState *BrTextGetState(void)
 }
 
 /* 0x100192A0 */
+/* WHAT IT DOES: sets the two sets of three colour values that text is drawn
+ * with, and raises the flag that says a colour has been chosen. */
+/* @implements 0x100192A0 d3d BrTextSetColors */
 void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
 {
     g_text.f0A74A8 = a1;
@@ -260,6 +270,14 @@ void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
 }
 
 /* 0x10019300 */
+/* WHAT IT DOES: draws a line of text at the given position. It first tells
+ * the renderer to ignore depth for this text, so the writing always sits on
+ * top of the scene, then works out where the line actually starts -- as
+ * given, centred, or right-aligned, measuring the string when it needs to --
+ * and hands it to the glyph drawer. Note that an alignment value it does not
+ * recognise leaves the horizontal position at whatever the previous call
+ * used. */
+/* @implements 0x10019300 d3d BrTextDraw */
 void BrTextDraw(const char *psz, int x, int y)
 {
     int w;
@@ -329,6 +347,11 @@ void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
 }
 
 /* 0x100171F0 */
+/* WHAT IT DOES: draws one labelled time on the heads-up display -- a lap
+ * time or a split -- formatting the seconds as minutes, seconds and
+ * hundredths and putting the number fifteen pixels below its label. The
+ * number goes out before the label. */
+/* @implements 0x100171F0 d3d BrHudDrawTimeEntry */
 void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
                         float fSeconds, int x, int y)
 {
@@ -366,6 +389,12 @@ BrAppMsgHooks *BrAppMsgGetHooks(void)
  *    appears at exactly ONE index, 0xD6, i.e. id 0x107.
  *
  * So the whole table apparatus is equivalent to a single `if`. */
+/* WHAT IT DOES: routes an application message to whoever handles it. The
+ * original looks like a wide switch with a jump table, but the tables decode
+ * to almost nothing: only two message numbers do anything at all, and
+ * everything else simply returns. Two of the five arguments are passed by
+ * every caller and never read. */
+/* @implements 0x1000BEA0 d3d BrAppMsgDispatch */
 void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
                       void *pv5)
 {
@@ -411,6 +440,12 @@ BrComLockHooks *BrComGetLockHooks(void)
 }
 
 /* 0x1000C4A0 */
+/* WHAT IT DOES: hands a held object back to whatever owns it, through that
+ * object's own release entry point, and then forgets the argument it was
+ * holding. Nothing happens unless the holder, the object and the argument
+ * are all present. Note the holder is looked up again after the call, so a
+ * callback that swaps it out clears the new holder rather than the old one. */
+/* @implements 0x1000C4A0 d3d BrComHolderRelease */
 int BrComHolderRelease(void)
 {
     BrComHolder *pHolder = g_pComHolder;

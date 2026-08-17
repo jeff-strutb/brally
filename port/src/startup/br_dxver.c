@@ -152,6 +152,11 @@ const char BrDxMsgCreateSurfaceFailed[] = "Couldn't CreateSurface\r\n";
  * and with a decorative rule line first it reported this very function as
  * unported -- which is precisely the false negative that tool exists to
  * prevent. Validated by running it after writing this. */
+/* WHAT IT DOES: works out which version of DirectX is installed and which
+ * family of Windows this is, by trying progressively newer interfaces and
+ * seeing how far it gets. This is what the startup code consults before
+ * refusing to run on a machine without DirectX 6. */
+/* @implements 0x1001D8A0 glide BrDxDetect */
 void BrDxDetect(const BrDxHost *pH,
                 uint32_t *pdwDXVersion, uint32_t *pdwDXPlatform)
 {

@@ -378,6 +378,12 @@ int32_t   g_BrAA3398[7];              /* 0x10AA3398 */
  * 0x1005B050 -- BrTextBox constructor (thiscall)
  * ===================================================================== */
 
+/* WHAT IT DOES: sets up a fresh text box -- one line of on-screen text with
+ * its own position and size. It clears the string and the measurements but
+ * deliberately leaves the box's left and right edges as it found them, and
+ * since the allocator does not zero either, a brand-new box has junk in
+ * those fields until something fills them in. */
+/* @implements 0x1005B050 d3d BrTextBoxInit */
 BrTextBox *BrTextBoxInit(BrTextBox *pBox)
 {
     /* The vtable store comes FIRST, before the buffer clear -- the clear
@@ -404,6 +410,10 @@ BrTextBox *BrTextBoxInit(BrTextBox *pBox)
  * 0x1005B0A0 -- scalar deleting destructor
  * ===================================================================== */
 
+/* WHAT IT DOES: destroys a text box and, if asked, frees it too. It hands
+ * the pointer back even when it has just freed it, which is what the
+ * compiler's standard destructor does and is kept. */
+/* @implements 0x1005B0A0 d3d BrTextBoxDeleteDtor */
 BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
 {
     BrTextBoxDtor(pBox);
@@ -524,6 +534,9 @@ void BrTextBoxMeasureB(BrTextBox *pBox)
  * 0x1005B200 -- centre horizontally
  * ===================================================================== */
 
+/* WHAT IT DOES: centres a line of text horizontally between the box's two
+ * edges, storing the resulting left position and also handing it back. */
+/* @implements 0x1005B200 d3d BrTextBoxCentreX */
 float BrTextBoxCentreX(BrTextBox *pBox)
 {
     float fLeft  = (float)pBox->left;
@@ -542,6 +555,10 @@ float BrTextBoxCentreX(BrTextBox *pBox)
  * 0x1005B540 -- character map lookup
  * ===================================================================== */
 
+/* WHAT IT DOES: translates a key code into the character it should produce,
+ * by walking a small table until it finds a match. Codes that are not in the
+ * table produce nothing. */
+/* @implements 0x1005B540 d3d BrCharMapLookup */
 uint8_t BrCharMapLookup(int32_t code)
 {
     int i;
@@ -558,6 +575,12 @@ uint8_t BrCharMapLookup(int32_t code)
  * 0x1005B7F0 / 0x1005B8D0 / 0x1005B8F0 -- BrTextList lifetime
  * ===================================================================== */
 
+/* WHAT IT DOES: sets up a list of text rows -- the widget behind the game's
+ * scrolling menus and high-score tables. It builds a hundred empty rows,
+ * clears the scroll bookkeeping, plants three placeholder characters that
+ * get their real values later, and clears the hundred slots that can hold an
+ * arbitrary lump of data alongside each row. */
+/* @implements 0x1005B7F0 d3d BrTextListInit */
 BrTextList *BrTextListInit(BrTextList *pList)
 {
     int i;
@@ -900,6 +923,12 @@ int32_t BrTextListAddRow(BrTextList *pList, const void *pText, int32_t a2,
  * 0x1005C200 -- store an opaque blob against an item slot
  * ===================================================================== */
 
+/* WHAT IT DOES: attaches a lump of arbitrary data to one row of a list --
+ * whatever the menu wants to remember alongside the visible text. Passing -1
+ * means the row just added. Beware a real bug that is kept: the memory is
+ * only allocated the first time a slot is used, so storing a bigger lump
+ * into a slot that already has a smaller one writes past the end of it. */
+/* @implements 0x1005C200 d3d BrTextListSetBlob */
 int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
                           uint32_t size, int32_t index)
 {
@@ -929,6 +958,11 @@ int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
  * 0x1005FF60 / 0x1005FFB0 / 0x1005FFD0 / 0x1005FFF0 -- input edges
  * ===================================================================== */
 
+/* WHAT IT DOES: works out which keys were pressed this frame as opposed to
+ * merely being held down. For each key it records whether it is down now and
+ * flags it only if it was up on the previous frame -- so a held key
+ * registers once, not every frame. */
+/* @implements 0x1005FF60 d3d BrMenuSub1005FF60 */
 void BrMenuSub1005FF60(void)
 {
     int i;
@@ -956,6 +990,10 @@ void BrMenuSub1005FFF0(void)
     }
 }
 
+/* WHAT IT DOES: reports which key was newly pressed this frame, taking the
+ * first one it finds, or -1 if none were. This is how a "press any key"
+ * prompt is answered. */
+/* @implements 0x1005FFD0 d3d BrFn1005FFD0 */
 int32_t BrFn1005FFD0(void)
 {
     int32_t i;
@@ -979,6 +1017,10 @@ void BrDikPollAndEdge(void)
  * 0x10060210 / 0x100602B0 / 0x10060780 -- small utilities
  * ===================================================================== */
 
+/* WHAT IT DOES: records the screen's width and height and works out its
+ * centre point, then clears seven other numbers. Its argument is never
+ * looked at. */
+/* @implements 0x10060210 d3d BrFn10060210 */
 int32_t BrFn10060210(void *pUnused)
 {
     int i;

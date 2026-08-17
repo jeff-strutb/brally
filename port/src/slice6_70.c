@@ -186,6 +186,11 @@ void BrExt_1003C020(void)
  * ========================================================================== */
 
 /* 0x1003BF60 */
+/* WHAT IT DOES: shuts a multiplayer session down: clears the player slots,
+ * stops the once-a-second timer, tears down the networking, and -- except in
+ * two particular modes -- clears a flag and a byte on the shared object. It
+ * finishes by clearing four session flags whatever else happened. */
+/* @implements 0x1003BF60 d3d BrExt_1003BF60 */
 void BrExt_1003BF60(void)
 {
     BrSub100586A0();                    /* br_slots.h's BrSlotsReset */
@@ -299,6 +304,10 @@ void BrSub1003E680(void)
  * ========================================================================== */
 
 /* 0x1003DB00 */
+/* WHAT IT DOES: sends one of the ungated network messages to the other
+ * players. Unlike the numbered messages that check a gate first, this one
+ * always goes out; whatever it fails with is thrown away. */
+/* @implements 0x1003DB00 d3d BrExt_1003DB00 */
 void BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
 {
     /* CONFLICT 2: the body is slice2_22.c's BrDPlaySendTag7, which already
@@ -334,6 +343,14 @@ void BrExt_1003C150(void)
  * ========================================================================== */
 
 /* 0x100173F0 */
+/* WHAT IT DOES: draws the two pieces of race text on the heads-up display:
+ * which lap you are on -- or a "finished" message once you have done them
+ * all -- and, at the bottom, your position with its ordinal suffix. Both are
+ * skipped in one particular game mode, and the position can be suppressed
+ * separately. Note it takes its horizontal position from the first view
+ * rather than from the view being drawn, which is the original's own
+ * asymmetry. */
+/* @implements 0x100173F0 d3d BrSub_100173F0 */
 void BrSub_100173F0(BrHudView *aViews, int a2)
 {
     char          szBuf[BR70_173F0_BUF];

@@ -196,6 +196,7 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
     return BrNavPtIn(pRc->left, pRc->top, pRc->right, pRc->bottom, x, y);
 }
 
+/* @implements 0x10047A60 d3d BrUiNavCtlHit_10047A60 */
 int BrUiNavCtlHit_10047A60(BrUiNav *pNav, BrUiCtl_ *pCtl)
 {
     BrScrGlobals  *pG = pNav->pG;
@@ -705,6 +706,7 @@ int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* @implements 0x10046C90 d3d BrUiNavHook_10046C90 */
 int32_t BrUiNavHook_10046C90(BrUiCtl_ *pCtl)
 {
     BrUiNav  *pNav = g_pBrUiNav;
@@ -794,6 +796,7 @@ void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl)
 
 /* 0x100603A0's two edges, and only those two. The step and the cursor are
  * written together because that function writes them together. */
+/* @implements 0x100603A0 d3d BrUiNavMove */
 void BrUiNavMove(BrUiNav *pNav, int dir)
 {
     if (dir < 0) {

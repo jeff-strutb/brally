@@ -215,6 +215,10 @@ static void Br31NotifyAndClear(BrPhase **ppSlot)
 
 /* DEVIATION 3: slice2_26's 0x10044CB0 wants a context as its first argument;
  * BrPhase.pfnHook can only pass one void*. */
+/* WHAT IT DOES: an adapter, nothing more. Menu rows can only call a routine
+ * that takes one argument, so this supplies the shared context that the real
+ * leave routine needs alongside it. */
+/* @implements 0x10044CB0 d3d Br31Thunk_10044CB0 */
 static void Br31Thunk_10044CB0(void *pEntity)
 {
     (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
@@ -260,6 +264,10 @@ BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
  * ========================================================================== */
 
 /* 0x10045900 */
+/* WHAT IT DOES: brings up a screen that needs the game CD in the drive. It
+ * checks for the disc first, and if it is not there it puts up the "please
+ * insert Boss Rally CD" message and refuses to open the screen at all. */
+/* @implements 0x10045900 d3d BrPhaseActivate_10045900 */
 int BrPhaseActivate_10045900(void)
 {
     int fBuilt;
@@ -275,6 +283,10 @@ int BrPhaseActivate_10045900(void)
 
 /* 0x10045AA0 -- an installer, not an activate, but it lives here in the
  * original's layout. */
+/* WHAT IT DOES: opens a screen, clears the shared text buffer and the season
+ * block behind it, wires the new screen's Back row so the player can get out,
+ * and puts the menus back in their default mode. */
+/* @implements 0x10045AA0 d3d BrPhaseHook_10045AA0 */
 int BrPhaseHook_10045AA0(void *pArg)
 {
     g_pBase->n0AA010 = 0;
@@ -288,6 +300,9 @@ int BrPhaseHook_10045AA0(void *pArg)
 }
 
 /* 0x10045AF0 */
+/* WHAT IT DOES: brings up the "load championship season" screen, building it
+ * the first time and just making it current thereafter. */
+/* @implements 0x10045AF0 d3d BrPhaseActivate_10045AF0 */
 int BrPhaseActivate_10045AF0(void)
 {
     int fBuilt;
@@ -295,6 +310,9 @@ int BrPhaseActivate_10045AF0(void)
 }
 
 /* 0x10045BC0 */
+/* WHAT IT DOES: brings up the screen the season-save button leads to,
+ * building it the first time. */
+/* @implements 0x10045BC0 d3d BrPhaseActivate_10045BC0 */
 int BrPhaseActivate_10045BC0(void)
 {
     int fBuilt;
@@ -304,6 +322,11 @@ int BrPhaseActivate_10045BC0(void)
 /* 0x10045C90 -- pre-declared by slice2_26.h. Two objects; the second is built
  * only on the just-built path of the first. The original returns 1, or 0 if
  * either allocation failed. */
+/* WHAT IT DOES: opens a menu screen and, the first time round only, also
+ * builds the "are you sure you want to exit the season?" confirmation behind it
+ * so it is ready when the player asks to leave. If the screen was already open
+ * the confirmation is not rebuilt. It ignores the argument it is handed. */
+/* @implements 0x10045C90 d3d BrExt_10045C90 */
 void BrExt_10045C90(void *p)
 {
     int fBuilt;
@@ -319,6 +342,9 @@ void BrExt_10045C90(void *p)
 }
 
 /* 0x10045DC0 */
+/* WHAT IT DOES: brings up the season-progress screen, copying the current
+ * round number into the slot that screen reads from first. */
+/* @implements 0x10045DC0 d3d BrPhaseActivate_10045DC0 */
 int BrPhaseActivate_10045DC0(void)
 {
     int fBuilt;
@@ -329,6 +355,9 @@ int BrPhaseActivate_10045DC0(void)
 }
 
 /* 0x10045EA0 */
+/* WHAT IT DOES: brings one particular menu screen up, building it if it is not
+ * already there. Which screen it is was not established here. */
+/* @implements 0x10045EA0 d3d BrPhaseActivate_10045EA0 */
 int BrPhaseActivate_10045EA0(void)
 {
     int fBuilt;
@@ -336,6 +365,11 @@ int BrPhaseActivate_10045EA0(void)
 }
 
 /* 0x10045F70 -- the twin of 0x10045C90. */
+/* WHAT IT DOES: opens a menu screen and, only when that screen has to be built
+ * for the first time, also builds a second screen behind it -- the same
+ * two-at-once pattern used for a screen and its confirmation. Which pair these
+ * are was not established here. */
+/* @implements 0x10045F70 d3d BrPhaseActivate_10045F70 */
 int BrPhaseActivate_10045F70(void)
 {
     int fBuilt;
@@ -349,6 +383,9 @@ int BrPhaseActivate_10045F70(void)
 }
 
 /* 0x100460A0 */
+/* WHAT IT DOES: brings one particular menu screen up, building it if needed.
+ * Which screen it is was not established here. */
+/* @implements 0x100460A0 d3d BrPhaseActivate_100460A0 */
 int BrPhaseActivate_100460A0(void)
 {
     int fBuilt;
@@ -356,6 +393,10 @@ int BrPhaseActivate_100460A0(void)
 }
 
 /* 0x10046170 */
+/* WHAT IT DOES: brings up a menu screen and switches the background music over
+ * to a different track as it does so -- and it does that switch every time,
+ * including when the screen was already open. */
+/* @implements 0x10046170 d3d BrPhaseActivate_10046170 */
 int BrPhaseActivate_10046170(void)
 {
     int fBuilt;
@@ -368,6 +409,11 @@ int BrPhaseActivate_10046170(void)
 }
 
 /* 0x10046260 */
+/* WHAT IT DOES: opens the screen that the game leaves the menus through,
+ * resetting a good deal of shared state on the way: the menu mode, the season
+ * block, a marker byte and two guard flags. The three final set-up steps and
+ * the wiring of its exit row happen only when the screen has to be built. */
+/* @implements 0x10046260 d3d BrPhaseActivate_10046260 */
 int BrPhaseActivate_10046260(void)
 {
     int fBuilt;
@@ -399,6 +445,10 @@ int BrPhaseActivate_10046260(void)
 }
 
 /* 0x10046380 */
+/* WHAT IT DOES: opens a screen with one guard flag suppressed across the
+ * opening, wires the resulting screen's Back row, and leaves the menus in a
+ * particular mode. */
+/* @implements 0x10046380 d3d BrPhaseHook_10046380 */
 int BrPhaseHook_10046380(void *pArg)
 {
     g_pBase->n0AC304 = 0;
@@ -432,6 +482,9 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
            g_pBase->pAA2940 = NULL;)
 
 /* 0x10046400 -- pre-declared by slice2_25.h. */
+/* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
+ * that went with it, and hands the player back to a remembered screen. */
+/* @implements 0x10046400 d3d BrSub10046400 */
 void BrSub10046400(BrGameObj *p)
 {
     BrPhase *pNext;
@@ -498,6 +551,10 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
  * tail call AFTER the repoint of pAA2904. */
 
 /* 0x10046560 */
+/* WHAT IT DOES: leaves a screen and, on the way out, switches the wheel's
+ * force feedback off -- so this is the exit from a screen that had it
+ * running. */
+/* @implements 0x10046560 d3d BrPhaseLeave_10046560 */
 void BrPhaseLeave_10046560(void *pEntity)
 {
     BrPhase *pNext;
@@ -511,6 +568,9 @@ void BrPhaseLeave_10046560(void *pEntity)
 }
 
 /* 0x100466C0 */
+/* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
+ * goes, so changes made on it survive. */
+/* @implements 0x100466C0 d3d BrPhaseLeave_100466C0 */
 void BrPhaseLeave_100466C0(void *pEntity)
 {
     BrPhase *pNext;
@@ -546,6 +606,11 @@ BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046BF0, g_pBase->pAA2914)
 BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
 
 /* 0x10046E10 -- clears a different set of globals from the other seven. */
+/* WHAT IT DOES: leaves a screen and resets the name being edited back to the
+ * shared working copy -- but it clears a different, smaller set of state than
+ * the seven other name-resetting exits do, so it is not simply another one of
+ * them. */
+/* @implements 0x10046E10 d3d BrPhaseLeaveNamed_10046E10 */
 void BrPhaseLeaveNamed_10046E10(void *pEntity)
 {
     BrPhase *pNext;
@@ -564,13 +629,27 @@ void BrPhaseLeaveNamed_10046E10(void *pEntity)
 
 /* --- the three one-statement gotos ---------------------------------------- */
 
+/* WHAT IT DOES: switches straight to one particular screen without closing
+ * anything down first -- a jump, not a leave. */
+/* @implements 0x10046F50 d3d BrPhaseGoto_10046F50 */
 void BrPhaseGoto_10046F50(void) { g_pBase->pAA2904 = g_pExt->pAA2974; }
+/* WHAT IT DOES: switches straight to a different particular screen, again with
+ * no teardown. */
+/* @implements 0x10046FC0 d3d BrPhaseGoto_10046FC0 */
 void BrPhaseGoto_10046FC0(void) { g_pBase->pAA2904 = g_pExt->pAA292C; }
+/* WHAT IT DOES: the third of the plain jumps -- makes one particular screen
+ * current and nothing else. */
+/* @implements 0x10047050 d3d BrPhaseGoto_10047050 */
 void BrPhaseGoto_10047050(void) { g_pBase->pAA2904 = g_pExt->pAA293C; }
 
 /* --- LEAVE routines with a different shape -------------------------------- */
 
 /* 0x10046F60 */
+/* WHAT IT DOES: leaves a screen all the way back to the root menu, releasing
+ * the confirmation screen that was sitting behind it. It briefly leaves no
+ * screen current at all, which the release runs inside -- so anything that
+ * release does sees no current screen. */
+/* @implements 0x10046F60 d3d BrPhaseLeave_10046F60 */
 void BrPhaseLeave_10046F60(void *pEntity)
 {
     BrPhase *pSaved;
@@ -588,6 +667,10 @@ void BrPhaseLeave_10046F60(void *pEntity)
 }
 
 /* 0x10046FD0 */
+/* WHAT IT DOES: leaves a screen and throws away three other screens with it,
+ * then returns the player to the root menu. This is the exit that unwinds a
+ * whole branch of the menus rather than one step. */
+/* @implements 0x10046FD0 d3d BrPhaseLeave_10046FD0 */
 void BrPhaseLeave_10046FD0(void *pEntity)
 {
     Br31DestroyPhase(&g_pExt->pAA2934);
@@ -601,6 +684,10 @@ void BrPhaseLeave_10046FD0(void *pEntity)
 }
 
 /* 0x10047120 */
+/* WHAT IT DOES: leaves a screen and, if nothing has been entered yet, wipes
+ * the three blocks of entered data behind it clean. It does NOT change which
+ * screen is current -- whatever opens next has to say so itself. */
+/* @implements 0x10047120 d3d BrPhaseLeave_10047120 */
 void BrPhaseLeave_10047120(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
@@ -619,6 +706,9 @@ void BrPhaseLeave_10047120(void *pEntity)
 }
 
 /* 0x100471B0 */
+/* WHAT IT DOES: leaves a screen, opening the screen behind it and letting go
+ * of one other, without changing which screen is current. */
+/* @implements 0x100471B0 d3d BrPhaseLeave_100471B0 */
 void BrPhaseLeave_100471B0(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
@@ -629,6 +719,10 @@ void BrPhaseLeave_100471B0(void *pEntity)
 }
 
 /* 0x10047290 */
+/* WHAT IT DOES: leaves a screen and unwinds two others with it, then takes one
+ * of three different routes out depending on which of two markers is set -- and
+ * clears that marker as it goes, so the special route is taken once only. */
+/* @implements 0x10047290 d3d BrPhaseLeave_10047290 */
 void BrPhaseLeave_10047290(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
@@ -656,6 +750,11 @@ void BrPhaseLeave_10047290(void *pEntity)
  * ========================================================================== */
 
 /* 0x100471F0 */
+/* WHAT IT DOES: the per-frame check that gets the player out of a screen when
+ * whatever it was waiting on has finished or been cancelled: if so it leaves
+ * the screen and tells the caller to stop, otherwise it lets the frame carry
+ * on. */
+/* @implements 0x100471F0 d3d BrPhaseGuard_100471F0 */
 int BrPhaseGuard_100471F0(void *pEntity)
 {
     if (BrExt_1003E0E0() != 0) {
@@ -666,6 +765,11 @@ int BrPhaseGuard_100471F0(void *pEntity)
 }
 
 /* 0x10047210 */
+/* WHAT IT DOES: handles the player acting on an editable row, taking one of
+ * two different routes depending on whether an edit is already in progress. If
+ * neither applies it does nothing and lets the frame continue -- and only that
+ * do-nothing path leaves the pending keystroke unconsumed. */
+/* @implements 0x10047210 d3d BrPhaseEdit_10047210 */
 int BrPhaseEdit_10047210(void *pArg)
 {
     if (g_pExt->nAA2AD4 != 0) {
@@ -680,6 +784,9 @@ int BrPhaseEdit_10047210(void *pArg)
 }
 
 /* 0x10047250 */
+/* WHAT IT DOES: the same two-way edit handling as its neighbour above, but for
+ * a different kind of row, with its own pair of handlers. */
+/* @implements 0x10047250 d3d BrPhaseEdit_10047250 */
 int BrPhaseEdit_10047250(void *pArg)
 {
     if (g_pExt->nAA2AD4 != 0) {
@@ -694,6 +801,9 @@ int BrPhaseEdit_10047250(void *pArg)
 }
 
 /* 0x10047340 */
+/* WHAT IT DOES: wipes the name the player has been typing back to empty and
+ * clears the two markers that went with it, so the field starts over. */
+/* @implements 0x10047340 d3d BrPhaseNameClear_10047340 */
 int BrPhaseNameClear_10047340(void)
 {
     memset(g_pExt->szA9D618, 0, sizeof(g_pExt->szA9D618));   /* 8 dwords */
@@ -744,6 +854,12 @@ static const unsigned char g_aJump10047470[0x33] = {
 
 /* 0x10047360 -- pre-declared by slice2_25.h. Original returns int; see
  * DEVIATION 4 and the table in slice3_31.h. */
+/* WHAT IT DOES: makes the highlighted menu row pulse. Every sixty milliseconds
+ * it steps that row's lettering on through grey, white and mid-grey and then
+ * back to the start, so the selection breathes rather than sitting still; if
+ * the mouse is over the row it jumps straight to yellow instead and the cycle
+ * is skipped. Rows that are disabled or hidden are left entirely alone. */
+/* @implements 0x10047360 d3d BrSub10047360 */
 void BrSub10047360(BrGameObj *p)
 {
     uint32_t uFlags;
@@ -796,6 +912,9 @@ void BrSub10047360(BrGameObj *p)
 }
 
 /* 0x100474B0 */
+/* WHAT IT DOES: the once-a-frame step for a menu row -- it just runs the
+ * highlight pulse and reports success. */
+/* @implements 0x100474B0 d3d BrPhaseTick_100474B0 */
 int BrPhaseTick_100474B0(BrGameObj *pObj)
 {
     BrSub10047360(pObj);
@@ -803,6 +922,10 @@ int BrPhaseTick_100474B0(BrGameObj *pObj)
 }
 
 /* 0x100475F0 */
+/* WHAT IT DOES: the once-a-frame step for a row the player can type into: it
+ * first takes any waiting keystroke into the typed-text buffer, then runs the
+ * same highlight pulse as its plainer neighbour above. */
+/* @implements 0x100475F0 d3d BrPhaseTick_100475F0 */
 int BrPhaseTick_100475F0(BrGameObj *pObj)
 {
     BrPhaseKeyPush_10047610();
@@ -811,6 +934,11 @@ int BrPhaseTick_100475F0(BrGameObj *pObj)
 }
 
 /* 0x10047610 */
+/* WHAT IT DOES: takes the key the player last pressed and adds it to the
+ * running buffer of typed characters -- lower-casing capital letters on the
+ * way, so typed names come out in lower case. The buffer holds thirty-two
+ * characters and wraps round rather than stopping. */
+/* @implements 0x10047610 d3d BrPhaseKeyPush_10047610 */
 void BrPhaseKeyPush_10047610(void)
 {
     unsigned char bKey;
@@ -842,6 +970,10 @@ void BrPhaseKeyPush_10047610(void)
 
 /* --- the six mode callbacks ----------------------------------------------- */
 
+/* WHAT IT DOES: one of six near-identical routines behind menu rows: it raises
+ * one particular setting's flag and plays the menu's confirmation sound. Which
+ * setting each of the six turns on was not established here. */
+/* @implements 0x100474D0 d3d BrPhaseMode_100474D0 */
 void BrPhaseMode_100474D0(void)
 {
     g_pExt->nAA28F0 = 1;
@@ -849,6 +981,9 @@ void BrPhaseMode_100474D0(void)
     g_pExt->nAA2854 = 2;
 }
 
+/* WHAT IT DOES: the same as the routine above for a different setting -- raise
+ * its flag, play the confirmation sound. */
+/* @implements 0x10047500 d3d BrPhaseMode_10047500 */
 void BrPhaseMode_10047500(void)
 {
     g_pExt->nAA28F8 = 1;
@@ -856,6 +991,9 @@ void BrPhaseMode_10047500(void)
     g_pExt->nAA2854 = 2;
 }
 
+/* WHAT IT DOES: the third of the six -- a third setting's flag, the same
+ * confirmation sound. */
+/* @implements 0x10047530 d3d BrPhaseMode_10047530 */
 void BrPhaseMode_10047530(void)
 {
     g_pExt->nAA28FC = 1;
@@ -863,6 +1001,10 @@ void BrPhaseMode_10047530(void)
     g_pExt->nAA2854 = 2;
 }
 
+/* WHAT IT DOES: the odd one of the six: instead of raising a flag it sets a
+ * value to its maximum, and it plays a different sound from its five
+ * neighbours. */
+/* @implements 0x10047560 d3d BrPhaseMode_10047560 */
 void BrPhaseMode_10047560(void)
 {
     g_pExt->n0AC6A4 = 0x7FFF;
@@ -870,6 +1012,9 @@ void BrPhaseMode_10047560(void)
     g_pExt->nAA2854 = 3;
 }
 
+/* WHAT IT DOES: the fifth of the six -- another setting's flag and the same
+ * confirmation sound. */
+/* @implements 0x10047590 d3d BrPhaseMode_10047590 */
 void BrPhaseMode_10047590(void)
 {
     g_pExt->nAA2A40 = 1;
@@ -877,6 +1022,9 @@ void BrPhaseMode_10047590(void)
     g_pExt->nAA2854 = 2;
 }
 
+/* WHAT IT DOES: the last of the six -- one more setting's flag and the same
+ * confirmation sound. */
+/* @implements 0x100475C0 d3d BrPhaseMode_100475C0 */
 void BrPhaseMode_100475C0(void)
 {
     g_pExt->nAA28F4 = 1;

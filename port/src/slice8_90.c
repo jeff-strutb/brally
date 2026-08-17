@@ -210,12 +210,20 @@ int32_t BrUiHook90_100417B0(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuText17
 int32_t BrUiHook90_10041890(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuFlags1890); }
 
 /* The two that read a word another module now writes. */
+/* WHAT IT DOES: sets the caption on the Car Shadow option row so it reads
+ * the current setting. It first copies the toggle's value across from where
+ * the option code keeps it, because in this port the reader and the writer
+ * of that setting live in two different places. */
+/* @implements 0x100409B0 d3d BrUiHook90_100409B0 */
 int32_t BrUiHook90_100409B0(BrUiCtl_ *pCtl)
 {
     Br90BridgeToggles();
     return Br90Call(pCtl, BrMenuCap09B0);
 }
 
+/* WHAT IT DOES: the same for the Specular option row: bridge the toggle's
+ * value across, then set the caption to match. */
+/* @implements 0x100409D0 d3d BrUiHook90_100409D0 */
 int32_t BrUiHook90_100409D0(BrUiCtl_ *pCtl)
 {
     Br90BridgeToggles();

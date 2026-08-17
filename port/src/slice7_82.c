@@ -40,6 +40,11 @@ extern BrPtrList *g_pBrDlPtrList;      /* 0x1067B548 / 0x1067B550, slice5_60 */
  * ========================================================================== */
 
 /* 0x1008C000  `_itoa` */
+/* WHAT IT DOES: converts a number to text in a given base -- the C library
+ * routine the game uses to build strings out of numbers. Only base ten is
+ * treated as signed, so a negative number in base sixteen comes out as its
+ * unsigned bit pattern. */
+/* @implements 0x1008C000 d3d BrItoa */
 char *BrItoa(int value, char *pszBuf, int radix)
 {
     /* 32 binary digits + sign + NUL is the widest any radix >= 2 can be. */
@@ -246,6 +251,11 @@ int BrDlIsRegistered(const void *pv)
  * BR_SLOT_COUNT.  The match key is the record's FIRST dword (the id) against
  * the UI object's +0x08.
  */
+/* WHAT IT DOES: flips one player slot's flag on or off and reports the new
+ * value, finding the slot by matching an identifier against the one the
+ * current object carries. Nothing happens, and it answers no, if there is no
+ * such slot. */
+/* @implements 0x10058700 d3d BrSub10058700 */
 int BrSub10058700(void)
 {
     int i;

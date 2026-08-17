@@ -90,6 +90,11 @@ void BrFatal(const char *pszMsg)
 }
 
 /* 0x1007C830 */
+/* WHAT IT DOES: builds a piece of text from a pattern and some values -- the
+ * game's general-purpose "write this number into that message" routine. It
+ * has no idea how big the destination is and cannot be given one, so it is
+ * the caller's job to make sure the result fits. */
+/* @implements 0x1007C830 d3d BrSprintf */
 int BrSprintf(char *pszDest, const char *pszFmt, ...)
 {
     va_list ap;
@@ -110,6 +115,10 @@ int BrSprintf(char *pszDest, const char *pszFmt, ...)
  * ========================================================================== */
 
 /* 0x10072AF0 */
+/* WHAT IT DOES: plays a sound effect from one of the game's sound banks, in
+ * the simple case where the caller does not care about the result. A second
+ * name for a routine whose body lives in the sound module. */
+/* @implements 0x10072AF0 d3d BrSub10072AF0 */
 void BrSub10072AF0(int a, int b)
 {
     /* BrSndPlayGroup(a, b, 0) == BrSndPlayEx(a, 1, b, 0). The two callers
@@ -122,6 +131,10 @@ void BrSub10072AF0(int a, int b)
  * ========================================================================== */
 
 /* 0x10034C51 */
+/* WHAT IT DOES: answers whether a particular screen or handler is the one
+ * currently installed -- how a menu asks "am I the one on screen right now?"
+ * before acting. */
+/* @implements 0x10034C51 d3d BrHookIsCurrent */
 int BrHookIsCurrent(const void *pfn)
 {
     return (g_brHook6C0964 == pfn) ? 1 : 0;
@@ -132,6 +145,11 @@ int BrHookIsCurrent(const void *pfn)
  * ========================================================================== */
 
 /* 0x10030930 */
+/* WHAT IT DOES: sets up the camera lens -- how wide a view the player sees
+ * and how near and far things can be before they are cut off. One of the
+ * seven values it is handed, a scale, is passed along and then never looked
+ * at by anything. */
+/* @implements 0x10030930 d3d BrMat4Perspective7 */
 int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
                        float fovyDegrees, float aspect,
                        float n, float f, float scale)
@@ -189,6 +207,12 @@ static void BrOptInstall(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
 }
 
 /* 0x10044E20 */
+/* WHAT IT DOES: opens one of the menu screens, building it the first time it
+ * is asked for and reusing it afterwards, then making it the screen the game
+ * is showing. It also copies two settings into place before doing anything
+ * else, on every call and not just the first. Which screen this is was not
+ * established. */
+/* @implements 0x10044E20 d3d BrMenuSub10044E20 */
 void BrMenuSub10044E20(int32_t n)
 {
     (void)n;                        /* the original reads no argument */
@@ -201,6 +225,10 @@ void BrMenuSub10044E20(int32_t n)
 }
 
 /* 0x10043BF0 */
+/* WHAT IT DOES: opens a different menu screen the same way, first committing
+ * the choices the player has made so far so the new screen sees them. Which
+ * screen this is was not established either. */
+/* @implements 0x10043BF0 d3d BrSub10043BF0 */
 void BrSub10043BF0(BrGameObj *p)
 {
     (void)p;                        /* the original reads no argument */
@@ -216,6 +244,11 @@ void BrSub10043BF0(BrGameObj *p)
  * ========================================================================== */
 
 /* 0x100053F0 */
+/* WHAT IT DOES: sends a status message out to the other machines in a network
+ * game, but only once every player expected has actually turned up -- it
+ * compares the number of cars in play against the number of players connected
+ * and stays quiet if they disagree. */
+/* @implements 0x100053F0 d3d BrNetSendFlush */
 void BrNetSendFlush(void)
 {
     uint32_t cActive;
@@ -246,6 +279,11 @@ void BrNetSendFlush(void)
  * ========================================================================== */
 
 /* 0x1003C150 */
+/* WHAT IT DOES: sets this machine up as the host of a network game, so other
+ * players can find and join it. If hosting fails it composes an explanatory
+ * message and then throws it away without showing it to anyone -- the player
+ * sees nothing. */
+/* @implements 0x1003C150 d3d BrSub1003C150 */
 void BrSub1003C150(void)
 {
     unsigned char aDesc[BR50_DPDESC_SIZE];
@@ -274,6 +312,12 @@ void BrSub1003C150(void)
 }
 
 /* 0x1003C260 */
+/* WHAT IT DOES: joins a network game somebody else is hosting, under the
+ * player's Windows user name. If that name is already taken it asks whether
+ * to try again and does so with the same name -- which will fail the same way
+ * unless something else changed it. As with hosting, the failure message it
+ * builds is discarded rather than shown. */
+/* @implements 0x1003C260 d3d BrSub1003C260 */
 int BrSub1003C260(void)
 {
     unsigned char aJoin[BR50_DPJOIN_SIZE];
@@ -334,6 +378,11 @@ int BrSub1003C260(void)
 }
 
 /* 0x1003D950 */
+/* WHAT IT DOES: sends one small message to the other players from a menu
+ * screen -- a fixed tag and one number. What the number means was not
+ * established. Whether it sends at all is gated on a global, so the same call
+ * can silently do nothing. */
+/* @implements 0x1003D950 d3d BrSub1003D950 */
 void BrSub1003D950(BrOptUi *pUi, int a)
 {
     /* CONFLICT: slice2_25.h models BrOptUi as three int32_t, but +0x00 is
@@ -384,6 +433,12 @@ static int32_t BrPerfToMs(int64_t counter)
 }
 
 /* 0x10075020 */
+/* WHAT IT DOES: tells the caller how many milliseconds have passed since the
+ * game started. On its first call it works out how to read the machine's
+ * high-resolution clock and notes the starting point; from then on it uses
+ * that, falling back to the ordinary Windows clock on any machine where the
+ * precise one is unavailable. */
+/* @implements 0x10075020 d3d BrSub10075020 */
 int32_t BrSub10075020(void)
 {
     int64_t now;

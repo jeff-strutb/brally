@@ -160,6 +160,11 @@ void BrErrorf(const char *pszFmt, ...)
  * to stderr -- no fixed buffer, so the %s cases cannot overflow it, which the
  * original could.  slice1_01.c states the same deviation for its five.
  */
+/* WHAT IT DOES: opens a game data file for reading and hands back a handle
+ * that also remembers the file's name, so later messages can name it. If the
+ * file will not open the game writes an error line to a log on the C drive,
+ * echoes it, and quits outright -- there is no recovery path here. */
+/* @implements 0x10002FE0 d3d BrChkFReadOpen */
 FILE **BrChkFReadOpen(const char *pPath)
 {
     BrChkFile *pf;
@@ -218,6 +223,12 @@ FILE **BrChkFReadOpen(const char *pPath)
  *
  * No error is checked anywhere in the original -- a failing ftell returns -1
  * and that -1 is the answer. */
+/* WHAT IT DOES: reports how big an open file is, by remembering where the
+ * read position was, jumping to the end to measure, and putting the position
+ * back. Because it restores the position, callers can measure a file they
+ * are part-way through reading, and several do. Nothing checks for failure:
+ * a failed measurement simply comes back as -1. */
+/* @implements 0x10002F90 d3d BrChkFileSize */
 int BrChkFileSize(FILE **ppFile)
 {
     BrChkFile *pf = ChkFromPun(ppFile);
@@ -233,6 +244,10 @@ int BrChkFileSize(FILE **ppFile)
 }
 
 /* 0x10003290  CHK_FClose. */
+/* WHAT IT DOES: closes a game data file and releases the handle and the copy
+ * of the name that went with it. A failed close is treated as fatal and the
+ * game quits. */
+/* @implements 0x10003290 d3d BrChkFClose */
 void BrChkFClose(FILE **ppFile)
 {
     BrChkFile *pf = ChkFromPun(ppFile);
@@ -266,6 +281,10 @@ void BrChkFClose(FILE **ppFile)
  * ========================================================================== */
 
 /* 0x10002490 */
+/* WHAT IT DOES: reports which CD audio track is playing, or zero if there is
+ * none -- CD music is off, nothing is playing, or the disc is not readable
+ * all give zero. */
+/* @implements 0x10002490 d3d BrCdTrackGetEar */
 int BrCdTrackGetEar(void)
 {
     if (g_brCdEnabled == 0) {
@@ -300,12 +319,20 @@ int BrCdTrackGet(void)
  * ========================================================================== */
 
 /* 0x1002B9D0 */
+/* WHAT IT DOES: sets a single global flag. Worth knowing: the same storage
+ * is what the .rca loader reads to decide whether to do its copying at all,
+ * so anything that clears this switches that copying off. */
+/* @implements 0x1002B9D0 d3d BrSegSetFlag */
 void BrSegSetFlag(uint32_t v)
 {
     g_br675540 = (int32_t)v;
 }
 
 /* 0x10019240 -- `mov byte [0x104B0360], 1` */
+/* WHAT IT DOES: raises a one-byte flag that the text glyph drawing code
+ * reads to pick between two different drawing commands. What visual
+ * difference that makes is not established here. */
+/* @implements 0x10019240 d3d BrSub_10019240 */
 void BrSub_10019240(void)
 {
     g_br4B0360 = 1u;
@@ -342,12 +369,19 @@ void BrGfx2F900(uint32_t *pCmd,
 
 /* 0x100192F0, 27 call sites.  slice5_63.c routes it through BrTextGetState()
  * so the scale stays shared with BrTextDraw. */
+/* WHAT IT DOES: sets the size text is drawn at from here on. This is a
+ * wrapper; the body lives with the rest of the text drawing so the size
+ * stays shared with the routine that draws. */
+/* @implements 0x100192F0 d3d BrTextSetSize */
 void BrTextSetSize(int size)
 {
     BrSub_100192F0(size);
 }
 
 /* 0x10019260, 12 call sites. */
+/* WHAT IT DOES: clears one of the text drawing flags. A wrapper onto the
+ * body that lives with the rest of the text code. */
+/* @implements 0x10019260 d3d BrTextFlag358Clear */
 void BrTextFlag358Clear(void)
 {
     BrSub_10019260();

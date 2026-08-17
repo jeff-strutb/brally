@@ -315,6 +315,28 @@ static void TestBroadPrimitives(void)
     aV[6] = 0.9f; aV[7] = 0.0f; aV[8] = 0.9f;
     CHECK(BrCollRespBoxClassify(aV) == 0);
 
+    /* ONE NAMED EDGE PLANE, x - y == +1, which is stage 2's bit 0x004.
+     * Stage 2 has twelve arms and this suite reached none of them by name
+     * -- the corner case above lands on x+y+z, so `c |= 0x004u` could be
+     * deleted outright and nothing noticed.
+     *
+     * All three vertices satisfy x - y > 1, and no single FACE plane holds
+     * for all three: v0 is right-of and below the box, v1 only right-of,
+     * v2 only below, so stage 1's AND is empty and no vertex is inside.
+     * That leaves stage 2, where 0x004 is the one bit every vertex sets.
+     * Correct answer 0 (separated); with the arm gone the mask empties on
+     * the first vertex and the routine answers -1, a phantom overlap. */
+    aV[0] =  0.6f; aV[1] = -0.6f; aV[2] = 0.0f;   /* x-y = 1.2 */
+    aV[3] =  2.0f; aV[4] =  0.0f; aV[5] = 0.0f;   /* x-y = 2.0 */
+    aV[6] =  0.0f; aV[7] = -2.0f; aV[8] = 0.0f;   /* x-y = 2.0 */
+    CHECK(BrCollRespBoxClassify(aV) == 0);
+    /* Mirrored onto x - y < -1, i.e. bit 0x008 -- the else-arm of the same
+     * block, which only runs because the 0x004 arm did NOT fire. */
+    aV[0] = -0.6f; aV[1] =  0.6f;
+    aV[3] = -2.0f; aV[4] =  0.0f;
+    aV[6] =  0.0f; aV[7] =  2.0f;
+    CHECK(BrCollRespBoxClassify(aV) == 0);
+
     /* --- 0x10066800, segment versus cube ---------------------------- */
     a.x = -3.0f; a.y = 0.0f;  a.z = 0.0f;
     b.x =  3.0f; b.y = 0.0f;  b.z = 0.0f;
@@ -330,6 +352,27 @@ static void TestBroadPrimitives(void)
     CHECK(BrCollRespSegBox(&a, &b) == 0);
     /* ...and shifting it to x + y == -0.6 makes it clip the corner. */
     a.y = 1.4f; b.x = 1.4f;
+    CHECK(BrCollRespSegBox(&a, &b) != 0);
+
+    /* THE Z SLAB.  Nothing above ever rejects on axis 2: the x case is
+     * covered by "outside the y slab" only for y, and every other segment
+     * here lies in the z == 0 plane.  So `for (i = 0; i < 3; ++i)` over the
+     * slabs could be `i < 2` and this suite stayed green -- in a codebase
+     * that has already shipped one genuine "never sums Z" defect.
+     *
+     * Both z compares get their own case, because they are separate
+     * instructions in the original.  Each segment is chosen so that the
+     * three cross-product tests all PASS, which is what makes the slab the
+     * only thing that can reject it: with d == (0, 0, 1) and a on the z
+     * axis, every C term is identically zero and every h*h >= C*C holds. */
+    a.x = 0.0f; a.y = 0.0f; a.z =  5.0f;    /* both ends above +0.5 */
+    b.x = 0.0f; b.y = 0.0f; b.z =  6.0f;
+    CHECK(BrCollRespSegBox(&a, &b) == 0);   /* a[2]*sgn > 0.5      */
+    a.z = -6.0f; b.z = -5.0f;               /* both ends below -0.5 */
+    CHECK(BrCollRespSegBox(&a, &b) == 0);   /* b[2]*sgn < -0.5     */
+    /* ...and the same segment run through the cube still hits, so the two
+     * above are the slab rejecting and not the cross tests. */
+    a.z = -3.0f; b.z = 3.0f;
     CHECK(BrCollRespSegBox(&a, &b) != 0);
 
     /* --- 0x10066610, point in triangle ------------------------------ */

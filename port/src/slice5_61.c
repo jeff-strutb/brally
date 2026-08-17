@@ -62,6 +62,9 @@ static int32_t Br61Ld32(const void *pBase, size_t off)
  * 0x10019290  text alignment := 1
  * ========================================================================== */
 
+/* WHAT IT DOES: makes the next text drawn right-aligned, so it ends at the
+ * position given rather than starting there. */
+/* @implements 0x10019290 d3d BrSub_10019290 */
 void BrSub_10019290(void)
 {
     BrTextGetState()->align = BR_TEXT_ALIGN_RIGHT;   /* the literal 1 */
@@ -75,6 +78,13 @@ void BrSub_10019290(void)
  * around every conversion, i.e. it ROUNDS THE INTEGER TO FLOAT before the
  * multiply. Every value it converts is a sign-extended int16, which is exact
  * in a float, so the round trip is a no-op and is not reproduced literally. */
+/* WHAT IT DOES: handles the drawing command that loads the viewport -- the
+ * mapping from the renderer's own coordinates onto the screen. It unpacks
+ * four fixed-point numbers from the payload and scales them into the four
+ * viewport values the projection uses. The vertical scale comes out negated,
+ * because the drawing list counts down the screen and the renderer counts
+ * up. */
+/* @implements 0x10024260 d3d BrGbiCall10024260 */
 BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
 {
     BrRdpRegs      *pRegs = BrRdpGetRegs();
@@ -275,6 +285,13 @@ void BrSub1003CE80(void)
  * 0x1003E510  mode selection / derived-global refresh
  * ========================================================================== */
 
+/* WHAT IT DOES: refreshes all the derived settings after the player has
+ * changed something in the options: it looks up the chosen track, car and
+ * half a dozen other choices in their respective tables and publishes the
+ * values the rest of the game reads. It also nudges the track and car
+ * selections forward to the next one that is actually available, so a locked
+ * choice cannot be left selected. */
+/* @implements 0x1003E510 d3d BrSub1003E510 */
 void BrSub1003E510(void)
 {
     BrSub1003E3A0();
@@ -314,6 +331,13 @@ void BrSub1003E510(void)
  * 0x10042410  commit the edited name into record 0x100AB3F4
  * ========================================================================== */
 
+/* WHAT IT DOES: commits an edited name into the record it belongs to, saving
+ * the record's old name first so it can be put back. It also flips a flag on
+ * the record, and the flip is written in an odd way: it reads the flag,
+ * writes the opposite, then reads it back, so what gets published is always
+ * 0 or 1 rather than whatever the flag held before, and the name is only
+ * committed when the flag had previously been clear. */
+/* @implements 0x10042410 d3d BrExt_10042410 */
 int32_t BrExt_10042410(void *pArg)
 {
     unsigned char *pRec;

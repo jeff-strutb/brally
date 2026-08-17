@@ -260,6 +260,12 @@ int BrSfxGroupFileName(int set, int group, const char *pszPrefix,
  * The range test is written NEGATED on purpose: an x87 unordered compare sets
  * C0/C3 exactly as "less than" does, so NaN must take the indefinite side.
  * See CONVENTIONS.md. */
+/* WHAT IT DOES: the compiler's float-to-integer conversion as the sound code
+ * uses it, transcribed because the sound pitch arithmetic depends on how it
+ * behaves at the edges. It chops toward zero, and a value too large to
+ * convert -- or one that is not a number -- comes out as the processor's
+ * "indefinite" value rather than as a clamp. */
+/* @implements 0x1006B880 glide br_ftol64 */
 static int64_t br_ftol64(double v)
 {
     /* -2^63 is representable exactly and is in range; +2^63 is not. */
@@ -271,6 +277,10 @@ static int64_t br_ftol64(double v)
 /* The 32-bit flavour: the same fistp, of which only the low dword is kept.
  * The low dword of the indefinite value is zero, which is why an overflow
  * here reads as 0 rather than as 0x80000000. */
+/* WHAT IT DOES: the 32-bit form of the same conversion, keeping only the
+ * bottom half of the result. That is why a value too large to convert reads
+ * back as zero here rather than as a huge negative number. */
+/* @implements 0x1006B6C0 glide br_ftol32 */
 static uint32_t br_ftol32(double v)
 {
     return (uint32_t)((uint64_t)br_ftol64(v) & 0xFFFFFFFFu);

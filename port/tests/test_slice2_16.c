@@ -36,6 +36,11 @@ static int      g_registerId = -1;
 static const void *g_registerArg;
 static void    *g_releaseArg;
 static int      g_releaseCalls;
+/* Every release argument in order, not just the last one. The array walker's
+ * only observable is WHICH record each call saw, and a single-slot capture
+ * cannot tell "walked three records" from "did record 0 three times". */
+#define REL_ARG_SLOTS 8
+static void    *g_releaseArgs[REL_ARG_SLOTS];
 
 void BrGbiGeoModeChanged(void)          { g_geoChanged++; }
 void BrGbiStackOverflow(int code)       { (void)code; g_overflow++; }
@@ -57,7 +62,13 @@ int BrGbiCall10029470(const void *pStage)
     return g_registerId;
 }
 
-void BrGbiCall10075330(void *pv) { g_releaseArg = pv; g_releaseCalls++; }
+void BrGbiCall10075330(void *pv)
+{
+    if (g_releaseCalls >= 0 && g_releaseCalls < REL_ARG_SLOTS)
+        g_releaseArgs[g_releaseCalls] = pv;
+    g_releaseArg = pv;
+    g_releaseCalls++;
+}
 
 /* --- slice1_05 / br_seg / br_bits stand-ins ------------------------ */
 
@@ -1321,14 +1332,51 @@ static void test_rca_fixup(void)
     CHECK(g_dstB[0] == 0);
     CHECK(g_releaseCalls == 1);
 
-    /* The array wrapper walks 0x24 bytes at a time and ignores counts <= 0. */
+    /* The array wrapper walks 0x24 bytes at a time and ignores counts <= 0.
+     *
+     * THE FIXTURE IS THE TEST HERE.  This block used to be three records
+     * memset to ZERO with `g_releaseCalls == 3` as its only assertion, and
+     * three identical zero records make "walk the array" and "do record 0
+     * three times" produce exactly the same observation -- so deleting
+     * `p += BR_RCA_REC_SIZE` from the walker left the suite green.  The
+     * records below are all different, and each one's own +0x04 is checked
+     * against the release call it produced, in order.
+     *
+     * With enable == 0 the record path is short: swap +0x00 and +0x04,
+     * rebase both (identity here, seg base 0), swap the six u16 at
+     * +0x0C..+0x17 and the dword at +0x20, then release with the VALUE at
+     * +0x04.  So the release argument identifies the record uniquely and
+     * the +0x0C..+0x0D swap proves the record itself was touched. */
     ctx.enable = 0;
     g_releaseCalls = 0;
     {
         uint8_t arr[BR_RCA_REC_SIZE * 3];
+        int     r;
+
         memset(arr, 0, sizeof arr);
+        memset(g_releaseArgs, 0, sizeof g_releaseArgs);
+        for (r = 0; r < 3; ++r) {
+            uint8_t *p = arr + (size_t)r * BR_RCA_REC_SIZE;
+            put_be32(p + 0x00, 0x00410000u + (uint32_t)r);
+            put_be32(p + 0x04, 0x00420000u + (uint32_t)r);
+            p[0x0C] = (uint8_t)(0x10 + r);
+            p[0x0D] = (uint8_t)(0xA0 + r);
+        }
+
         BrRcaFixupArray(&ctx, arr, 3);
         CHECK(g_releaseCalls == 3);
+        /* call n saw record n -- this is the stride */
+        for (r = 0; r < 3; ++r) {
+            CHECK(g_releaseArgs[r]
+                  == (void *)(uintptr_t)(0x00420000u + (uint32_t)r));
+        }
+        /* ...and every record was byte-swapped in place exactly once */
+        for (r = 0; r < 3; ++r) {
+            const uint8_t *p = arr + (size_t)r * BR_RCA_REC_SIZE;
+            CHECK(p[0x0C] == (uint8_t)(0xA0 + r));
+            CHECK(p[0x0D] == (uint8_t)(0x10 + r));
+        }
+
         BrRcaFixupArray(&ctx, arr, 0);
         BrRcaFixupArray(&ctx, arr, -2);
         CHECK(g_releaseCalls == 3);

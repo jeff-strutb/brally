@@ -102,6 +102,11 @@ void BrTexInitResetForTest(void)
  * 4 MiB (0x400000) gets a threshold 194,304 bytes low, and no test on typical
  * hardware would notice.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: decides how much texture detail the game will use, from how
+ * much texture memory the video card has and how much memory the machine
+ * has. A small card, or a machine with 32MB or less, gets less detail. The
+ * threshold is four million bytes, decimal -- not four megabytes, which is a
+ * different number. */
 /* @implements 0x10029B10 glide BrTexChooseLevel */
 int32_t BrTexChooseLevel(uint32_t texmem)
 {
@@ -115,6 +120,12 @@ int32_t BrTexChooseLevel(uint32_t texmem)
 /* ------------------------------------------------------------------ *
  * 0x10029B50 -- install the thirteen hooks, then measure the card.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: sets the texture system up: installs the thirteen routines
+ * the rest of the engine calls to work with textures, then measures how much
+ * texture memory the card actually has (adding both texture units when there
+ * are two) and picks the detail level to match. No card at all measures as
+ * zero memory and therefore gets the lowest detail, which is the original's
+ * own answer rather than a substitute for one. */
 /* @implements 0x10029B50 glide BrTexInit */
 void BrTexInit(const BrTexInitHost *pHost)
 {

@@ -153,12 +153,21 @@ char     g_aBrA9D018[BR63_TEXT_MAX];      /* 0x10A9D018 */
  * ========================================================================== */
 
 /* 0x10075330 -- `c3`. */
+/* WHAT IT DOES: nothing. It is called with a real pointer from two places and
+ * ignores it -- a single return instruction in the shipped game. This is the
+ * original's own emptiness, not a gap in the transcription. */
+/* @implements 0x10075330 d3d BrGbiCall10075330 */
 void BrGbiCall10075330(void *pv)
 {
     (void)pv;
 }
 
 /* 0x100027C0 */
+/* WHAT IT DOES: starts a music track, choosing between two different ways of
+ * playing it depending on how the music was set up. Note the choice is made
+ * by testing for one specific setting rather than for "enabled", so any other
+ * setting takes the second route. */
+/* @implements 0x100027C0 d3d BrCdTrackPlay */
 void BrCdTrackPlay(int track)
 {
     if (g_brCdEnabled == 1) {
@@ -169,6 +178,11 @@ void BrCdTrackPlay(int track)
 }
 
 /* 0x1007AC00 */
+/* WHAT IT DOES: asks one question, and if the answer is anything at all asks
+ * a second -- then throws both answers away. What the two questions are is
+ * not established, so the only observable effect is whatever the second call
+ * does along the way; the purpose is unclear. */
+/* @implements 0x1007AC00 d3d BrExt_1007AC00 */
 void BrExt_1007AC00(void)
 {
     if (BrSub1007A840() == 0) {
@@ -197,6 +211,9 @@ void BrSub_10019270(void)
 }
 
 /* 0x10019280 */
+/* WHAT IT DOES: switches text drawing back to left-aligned, so writing that
+ * follows starts at the position given rather than being centred on it. */
+/* @implements 0x10019280 d3d BrSub_10019280 */
 void BrSub_10019280(void)
 {
     BrTextGetState()->align = BR_TEXT_ALIGN_LEFT;     /* 0 */
@@ -241,6 +258,12 @@ static int32_t Br63RaceInt(uint32_t off)
     return v;
 }
 
+/* WHAT IT DOES: draws the lap and split times down the right-hand edge of the
+ * screen -- which two times are shown depends on the game mode, and two of
+ * the seven modes show nothing at all. In split screen the two lines are
+ * drawn on top of one another, because the gap between them is only applied
+ * in the full-screen layout. */
+/* @implements 0x10017290 d3d BrSub_10017290 */
 void BrSub_10017290(BrHudView *aViews)
 {
     const BrScreenInfo *pScr;
@@ -438,6 +461,12 @@ void BrSub1003E310(void)
 }
 
 /* The BrOptCaps slice1_06 wants, assembled from the loose globals. */
+/* WHAT IT DOES: collects the scattered "what is available in this game mode"
+ * settings into one bundle, so the routine that decides whether a given menu
+ * choice can be picked has them all in one place. NOTE FOR ANYONE CHECKING
+ * THE TRANSCRIPTION: the address claimed on the line below does not match
+ * this body -- that address is the replay forwarder, transcribed elsewhere in
+ * this tree -- so treat the claim, not the code, as the thing to verify. */
 static void Br63CapsGather(BrOptCaps *pCaps)
 {
     pCaps->mode         = g_br0AA010;
@@ -574,6 +603,13 @@ void BrExt_1003E510(void)
 #define BR63_AA270E_STRIDE  8
 #define BR63_AA270E_TERMS   4
 
+/* WHAT IT DOES: commits the choices the player has been making on the setup
+ * screens -- track, opponents, control layout -- into the settings the race
+ * itself will read, and builds the two "N of M" strings the screen displays
+ * (both counted from one rather than from zero). Its argument only controls
+ * whether it also totals up four numbers from a settings table at the end;
+ * everything else happens either way. */
+/* @implements 0x1005FBC0 d3d BrExt_1005FBC0 */
 void BrExt_1005FBC0(int32_t a)
 {
     int32_t v;

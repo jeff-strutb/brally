@@ -247,6 +247,10 @@ void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
 typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
 
 /* 0x10021240 -- 228 of the 256 table slots point here. */
+/* WHAT IT DOES: the do-nothing handler that most of the drawing-command
+ * table points at: it counts the command as unhandled and steps over it. The
+ * N64 command set is far larger than the game actually uses, so the great
+ * majority of the 256 slots land here. */
 /* @implements 0x10021240 glide br_dl_skip */
 static const uint8_t *br_dl_skip(BrDl *pDl, const uint8_t *p)
 {
@@ -444,6 +448,10 @@ static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
  * br_dl.c already carries one other such copy for the same kind of reason:
  * br_dl_outcode is 0x10022120, which slice2_16.c ports as BrGbiClipCodes.
  * Those are the only two, and both are pure leaf arithmetic with no state. */
+/* WHAT IT DOES: scales a direction so it is exactly one unit long, with one
+ * important safety valve: a direction of zero length -- or one that is not a
+ * number -- comes out pointing straight along the third axis rather than
+ * staying zero. The lighting setup relies on that. */
 /* @implements 0x100344D0 glide br_dl_normalise */
 static void br_dl_normalise(BrVec3 *pV)
 {
@@ -464,6 +472,13 @@ static void br_dl_normalise(BrVec3 *pV)
 /* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
  * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
  * (modelview only), G_MOVEMEM light and G_MOVEWORD LIGHTCOL all clear. */
+/* WHAT IT DOES: works out the light the next batch of vertices will be
+ * shaded by: the light's colour, its direction pulled back into the space
+ * the model's surface normals live in, and the ambient colour. It caches the
+ * answer and only redoes the work when something that could change it -- a
+ * new matrix, a new light, a new light colour -- has cleared the cache. Note
+ * it also latches the cache when there are no lights at all, having computed
+ * nothing. */
 /* @implements 0x10021C70 glide br_dl_light_setup */
 static void br_dl_light_setup(BrDl *pDl)
 {
@@ -546,6 +561,11 @@ static void br_dl_light_setup(BrDl *pDl)
  * the three colour floats the caller writes to the vertex's +0x5C/+0x60/+0x64
  * -- the clip node's +0x1C/+0x20/+0x24, which is why the clipper carries the
  * LIT colour and not the normal across a cut edge. */
+/* WHAT IT DOES: shades one vertex. With no lights it just copies the current
+ * primitive colour. Otherwise it measures how squarely the surface faces the
+ * light; surfaces facing away get plain ambient, and the rest get ambient
+ * plus a share of the light's colour, capped at full brightness. Colours
+ * here run 0 to 255, not 0 to 1. */
 /* @implements 0x10022AC0 glide br_dl_light_vertex */
 static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 {
@@ -596,6 +616,12 @@ static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 
 /* --- 0x1001FD70's table write, as a query -----------------------------
  * See the section header for the transcription. */
+/* WHAT IT DOES: picks which of the six vertex-processing routines the next
+ * batch of vertices goes through, based on the geometry switches currently
+ * set -- whether the depth buffer is on, whether lighting is on, whether
+ * texture coordinates are being generated, and whether decal mode is in
+ * force. The port reports the original's address rather than installing a
+ * function, so the choice stays checkable. */
 /* @implements 0x1001FD70 glide BrDlVtxRoutine */
 uint32_t BrDlVtxRoutine(const BrDl *pDl)
 {
@@ -640,6 +666,10 @@ float BrDlColourScale(const BrDl *pDl)
  * Every test is `fcomp 0.0 / test ah,1`, i.e. C0 -- STRICTLY LESS THAN, and
  * NaN takes the true side because an unordered compare also sets C0.  Written
  * as `!(v >= 0)` for exactly that reason. */
+/* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
+ * viewing frustum and reports which of the seven boundaries it crossed, so
+ * the triangle assembler knows whether to clip, keep or discard. A
+ * coordinate that is not a number counts as outside. */
 /* @implements 0x10022120 glide br_dl_outcode */
 static int32_t br_dl_outcode(const BrDlVtx *pV)
 {
@@ -658,6 +688,10 @@ static int32_t br_dl_outcode(const BrDlVtx *pV)
  * Perspective divide, viewport, quarter-pixel snap, colour store.  The lit
  * transforms call it with the colour in three registers; the unlit one
  * inlines it and uses n0/n1/n2. */
+/* WHAT IT DOES: turns a transformed vertex into a screen position: divides
+ * through by depth to get perspective, applies the viewport scale and
+ * offset, stores the vertex's colour, and snaps the result to the nearest
+ * quarter of a pixel -- the resolution the hardware rasteriser works at. */
 /* @implements 0x10022070 glide br_dl_project */
 static void br_dl_project(BrDl *pDl, BrDlVtx *pV, float r, float g, float b)
 {
@@ -943,6 +977,9 @@ static BrClipVert s_aClipPool[BR_DL_CLIP_POOL];   /* 0x105CCFF0 */
 static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
 
 /* 0x10023B10's free-list threading, delegated. */
+/* WHAT IT DOES: empties the pool of spare vertices the triangle clipper
+ * borrows from, putting every one of them back on the free list ready for
+ * the next frame. */
 /* @implements 0x10023B10 glide br_dl_clip_reset */
 static void br_dl_clip_reset(BrDl *pDl)
 {
@@ -966,6 +1003,12 @@ static const BrDlClipPlaneFn s_apClipPlane[7] = {
  * Identical arithmetic to the tail of br_dl_vtx plus the s/t scaling of
  * br_dl_finish_vtx, written out here because the original writes it out here
  * too (0x1001EF82..0x1001F065) rather than calling either. */
+/* WHAT IT DOES: turns one vertex produced by clipping into a finished screen
+ * vertex, ready to be handed to the rasteriser: perspective divide,
+ * viewport, quarter-pixel snap, colour, and texture coordinates divided
+ * through by depth for both texture units. This is why a triangle cut by the
+ * edge of the screen keeps its shading -- the clipper carries the already-
+ * lit colour across the cut, not the surface normal. */
 /* @implements 0x1001EE70 glide br_dl_clip_emit */
 static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
 {
@@ -1297,15 +1340,28 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
     return p + ((fTextured && fFixed) ? 0x18 : 8);
 }
 
+/* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
+ * quarter-pixel units. The corners are unsigned in this form. The port
+ * records the resulting screen window but does not itself paint the pixels. */
 /* @implements 0x1001E320 glide br_dl_fillF6 */
 static const uint8_t *br_dl_fillF6(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 1); }
+/* WHAT IT DOES: draws a solid-colour rectangle whose corners were given as
+ * whole pixels. Unlike its quarter-pixel twin these corners are signed, so a
+ * corner off the left of the screen really is negative. The port records the
+ * window rather than painting it. */
 /* @implements 0x1001E720 glide br_dl_fillE1 */
 static const uint8_t *br_dl_fillE1(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 0); }
+/* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
+ * command behind heads-up display panels and menu artwork -- with its
+ * corners given in quarter-pixel units. It swallows three commands' worth of
+ * data, because the texture coordinates follow it. */
 /* @implements 0x10021570 glide br_dl_texE4 */
 static const uint8_t *br_dl_texE4(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 1); }
+/* WHAT IT DOES: the same textured screen rectangle with its corners given as
+ * whole pixels, scaled up to quarter-pixels on the way through. */
 /* @implements 0x100219D0 glide br_dl_texE3 */
 static const uint8_t *br_dl_texE3(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 0); }
@@ -1370,11 +1426,19 @@ static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p, int fFrac)
 }
 
 /* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  Integer fields. */
+/* WHAT IT DOES: sets the clipping window -- the region of the screen
+ * anything drawn afterwards is confined to -- from whole-pixel corners,
+ * flipping the vertical axis because the game's display list counts down the
+ * screen and the renderer counts up. */
 /* @implements 0x1001EBC0 glide br_dl_scissorE2 */
 static const uint8_t *br_dl_scissorE2(BrDl *pDl, const uint8_t *p)
 { return br_dl_scissor(pDl, p, 0); }
 
 /* 0x1001EB50 -- opcode 0xED, 103 bytes.  10.2 fields. */
+/* WHAT IT DOES: the same clipping-window setter for the quarter-pixel form
+ * of the command. These really are two separate routines in the original,
+ * and routing both through one decode quietly divides one form's corners by
+ * four. */
 /* @implements 0x1001EB50 glide br_dl_scissorED */
 static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
 { return br_dl_scissor(pDl, p, 1); }
@@ -1383,6 +1447,10 @@ static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
  * The D3D twin is 0x1001CF30, which slice2_16.c ports as BrGbiSetTileSize
  * -- it was called BrGbiSetScissor until this pass.  Same 178 bytes, same
  * slot 0xF2 in both builds' tables; one function under two addresses. */
+/* WHAT IT DOES: tells the renderer which rectangle of a texture the next
+ * drawings will use, and works out that rectangle's width and height in
+ * texture pixels. Sign is preserved throughout, so a negative span stays
+ * negative. */
 /* @implements 0x1001EC30 glide br_dl_settilesize */
 static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
 {
@@ -1425,6 +1493,11 @@ static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
  *
  * br_dlcmd.c transcribes this address independently as BrDlCmdFillColour; see
  * the duplication note on the scissor above. */
+/* WHAT IT DOES: sets the colour that solid-colour rectangles are filled
+ * with. The command carries the colour packed into fifteen bits plus one bit
+ * of transparency, and this expands it back out to four full bytes -- the
+ * transparency bit becoming either fully solid or fully clear, never
+ * anything between. */
 /* @implements 0x1001E9F0 glide br_dl_fillcolour */
 static const uint8_t *br_dl_fillcolour(BrDl *pDl, const uint8_t *p)
 {
@@ -1481,6 +1554,10 @@ static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
  *
  * br_dlcmd.c transcribes both addresses independently as BrDlCmdPrimColour /
  * BrDlCmdEnvColour; see the duplication note on the scissor above. */
+/* WHAT IT DOES: sets the primitive colour, the flat colour used where a
+ * drawing is not taking its colour from a texture or from vertex shading.
+ * The four channels are kept on a 0-to-255 scale, unlike the environment
+ * colour below. */
 /* @implements 0x1001EA80 glide br_dl_prim */
 static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
 {
@@ -1494,6 +1571,10 @@ static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
     pDl->prim[3] = (float)(int32_t)(v & 0xFFu);
     return p + 8;
 }
+/* WHAT IT DOES: sets the environment colour, the second flat colour the
+ * pixel combiner can mix in. Unlike the primitive colour this one is scaled
+ * down to a 0-to-1 range as it is stored, which is a real difference between
+ * the two commands and not an oversight. */
 /* @implements 0x1001E930 glide br_dl_env */
 static const uint8_t *br_dl_env(BrDl *pDl, const uint8_t *p)
 {

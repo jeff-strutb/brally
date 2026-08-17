@@ -36,6 +36,9 @@ extern void BrGbiStackOverflow(int code);
  * ====================================================================== */
 
 /* 0x10002240 */
+/* WHAT IT DOES: the game's sine, a one-instruction wrapper round the
+ * processor's own sine. Used throughout the physics and the camera work. */
+/* @implements 0x10002240 d3d BrSinF */
 float BrSinF(float x)
 {
     /* DEVIATION: `fsin` computes in 80-bit and is undefined for |x| >= 2^63
@@ -51,6 +54,9 @@ float BrSub10002240(float x)
 }
 
 /* 0x10002250 */
+/* WHAT IT DOES: the game's square root, a one-instruction wrapper round the
+ * processor's own. Used everywhere a distance or a vector length is needed. */
+/* @implements 0x10002250 d3d BrSqrtF */
 float BrSqrtF(float x)
 {
     return sqrtf(x);
@@ -176,24 +182,39 @@ void BrSub1006A4A0(void *pThis, void *pArg)
  * ====================================================================== */
 
 /* 0x1002C210 */
+/* WHAT IT DOES: swaps the two halves of the debug scratch area and clears
+ * the one just made current, so the next frame's debug output starts on a
+ * clean page while last frame's is still readable. */
+/* @implements 0x1002C210 d3d BrGfx2C210 */
 void BrGfx2C210(void)
 {
     BrS17BankFlip();
 }
 
 /* 0x10031227 */
+/* WHAT IT DOES: zeroes the eight counters the renderer tallies each frame --
+ * how much it drew and how much it skipped -- ready for the next frame. */
+/* @implements 0x10031227 d3d BrGfx31227 */
 void BrGfx31227(void)
 {
     BrRenderCountersReset();
 }
 
 /* 0x10039020 */
+/* WHAT IT DOES: runs a car's particle emitter for one frame: it counts up a
+ * timer and, once a quarter of a second has gone by, takes one node off the
+ * free list and starts a new particle at the car with a velocity based on
+ * how the car is moving. If the pool is empty nothing is spawned. */
+/* @implements 0x10039020 d3d BrCarSub9020 */
 void BrCarSub9020(struct BrCar *pCar)
 {
     BrPoolEmit(pCar);
 }
 
 /* 0x10037740 */
+/* WHAT IT DOES: loads one car's model and data out of the game's .rca
+ * archive into the given buffer. */
+/* @implements 0x10037740 d3d BrSub10037740 */
 void BrSub10037740(void *pCar, void *pArg)
 {
     /* DEVIATION: pArg is declared void* by slice2_19 but is an integer index
@@ -204,12 +225,19 @@ void BrSub10037740(void *pCar, void *pArg)
 }
 
 /* 0x1003551B -- five bytes of prologue and epilogue, no body. */
+/* WHAT IT DOES: does nothing at all. The original really is just a function
+ * prologue and epilogue with no body -- most likely a routine that was
+ * emptied out rather than deleted. */
+/* @implements 0x1003551B d3d BrSub1003551B */
 void BrSub1003551B(void *pCar)
 {
     (void)pCar;
 }
 
 /* 0x1003DA40 */
+/* WHAT IT DOES: sends one particular kind of small message to the other
+ * players in a network game, if the network link is up. */
+/* @implements 0x1003DA40 d3d BrSub1003DA40 */
 void BrSub1003DA40(BrOptUi *pUi, int a)
 {
     /* The gate slice2_22 takes as an argument is the global 0x10AA288C. */
@@ -233,6 +261,10 @@ void BrSlice4SetPhaseCtx(BrPhaseCtx *pCtx)
 }
 
 /* 0x10044B90 */
+/* WHAT IT DOES: switches the game into one particular menu phase. It is a
+ * thin forwarder to the phase machinery, and it ignores the argument it is
+ * passed because the original took none. */
+/* @implements 0x10044B90 d3d BrMenuSub10044B90 */
 void BrMenuSub10044B90(int32_t n)
 {
     (void)n;                            /* the original takes no argument */
@@ -242,6 +274,10 @@ void BrMenuSub10044B90(int32_t n)
 }
 
 /* 0x10044A30 */
+/* WHAT IT DOES: leaves the current phase for another particular one, on
+ * behalf of the given world object. One of a pair of near-identical leave
+ * routines that differ in which flags they touch on the way out. */
+/* @implements 0x10044A30 d3d BrOptFn10044A30 */
 void BrOptFn10044A30(void *pEntity)
 {
     if (g_pBrSlice4PhaseCtx != NULL)
@@ -266,6 +302,12 @@ static uint32_t BrPlatSetTimerStub(void *hWnd, uint32_t idEvent,
 
 BrPlatSetTimerFn g_pfnBrPlatSetTimer = BrPlatSetTimerStub;
 
+/* WHAT IT DOES: starts the once-a-second session timer: it does some setup
+ * and then asks the window to be poked every thousand milliseconds,
+ * recording the timer's identifier and flagging that it is running. The
+ * message that arrives has no callback attached, so it goes to the window's
+ * normal message handling. */
+/* @implements 0x1003C230 d3d BrTimerStart1003C230 */
 int BrTimerStart1003C230(void)
 {
     BrSub1003C020();

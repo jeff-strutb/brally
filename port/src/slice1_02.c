@@ -24,6 +24,12 @@
  * indefinite" 0x8000000000000000 when the value does not fit in 64 bits, whose
  * low dword is 0, and simply truncates the high dword away otherwise. Both are
  * reproduced explicitly so the clamps downstream see what they saw before. */
+/* WHAT IT DOES: the compiler's own float-to-integer conversion, transcribed
+ * because the game's rounding depends on exactly how it behaves at the
+ * edges. It chops toward zero and keeps only the bottom half of the result,
+ * and a value too big to convert at all comes out as zero rather than as
+ * garbage. */
+/* @implements 0x1007C8A0 d3d BrFtol */
 static int32_t BrFtol(double d)
 {
     int64_t  wide;
@@ -69,6 +75,11 @@ static int32_t BrSext24(uint32_t v)
  * The clamp happens on the FLOAT, before __ftol, so the int conversion can
  * never overflow here. The low guard is written as "C0 set", which x87 also
  * sets for unordered, so a NaN input lands on 0 -- kept via !(d >= 0.0). */
+/* WHAT IT DOES: packs a position coordinate into a 24-bit whole number for
+ * the network, rounding to nearest with halves going up and pinning the
+ * result inside what 24 bits can hold. The pinning happens before the
+ * conversion, so it can never overflow. */
+/* @implements 0x100066E0 d3d BrFixPackU24Q13 */
 int32_t BrFixPackU24Q13(float v)
 {
     double d = BrFloor(0.5 - (double)v * -8192.0);
@@ -82,6 +93,9 @@ int32_t BrFixPackU24Q13(float v)
 
 /* 0x10006730.  0x1008F100 = -2.0f. Clamp is on the INTEGER, after __ftol, and
  * with signed compares (jge/jle). */
+/* WHAT IT DOES: packs a signed value at half-unit resolution into 24 bits
+ * for the network, pinned to that range. */
+/* @implements 0x10006730 d3d BrFixPackS24Q1 */
 int32_t BrFixPackS24Q1(float v)
 {
     int32_t r = BrFtol(BrFloor(0.5 - (double)v * -2.0));
@@ -94,6 +108,9 @@ int32_t BrFixPackS24Q1(float v)
 }
 
 /* 0x10006770.  0x1008F104 = -128.0f. Clamp is on the integer, as above. */
+/* WHAT IT DOES: packs a signed height into 16 bits at 1/128 resolution for
+ * the network, pinned to that range. */
+/* @implements 0x10006770 d3d BrFixPackS16Q7 */
 int32_t BrFixPackS16Q7(float v)
 {
     int32_t r = BrFtol(BrFloor(0.5 - (double)v * -128.0));
@@ -108,6 +125,10 @@ int32_t BrFixPackS16Q7(float v)
 /* 0x10007250.  Scale 0x1008F11C = -0.0078125f (= -1/128).
  * The sign test is on bit 5 of the low byte; the original ORs in 0xC0 to
  * extend, or ANDs with 0x3F when clear -- both branches then `movsx al`. */
+/* WHAT IT DOES: unpacks a small signed fraction that was sent in 6 bits,
+ * sign-extending it by hand before scaling. This is the exact inverse of the
+ * matching packer. */
+/* @implements 0x10007250 d3d BrFixUnpackS6Q7Neg */
 float BrFixUnpackS6Q7Neg(int32_t v)
 {
     uint32_t b = (uint32_t)v & 0xFFu;
@@ -117,12 +138,19 @@ float BrFixUnpackS6Q7Neg(int32_t v)
 }
 
 /* 0x10007280.  Scale 0x1008F120 = -3.0517578125e-05f (= -1/32768). */
+/* WHAT IT DOES: unpacks one component of a car's facing direction from the
+ * 16 bits it was sent in. The scale is negative, which cancels the negative
+ * scale the packer used, so the value comes back unchanged. */
+/* @implements 0x10007280 d3d BrFixUnpackS16Q15Neg */
 float BrFixUnpackS16Q15Neg(int32_t v)
 {
     return (float)((double)BrSext16((uint32_t)v) * -0.000030517578125);
 }
 
 /* 0x100072A0.  Scale 0x1008F124 = 1.41015625f (= 361/256). */
+/* WHAT IT DOES: turns a byte back into an angle in degrees, using a scale
+ * chosen so the byte covers a full circle. */
+/* @implements 0x100072A0 d3d BrFixUnpackU8Angle */
 float BrFixUnpackU8Angle(int32_t v)
 {
     return (float)((double)(int32_t)((uint32_t)v & 0xFFu) * 1.41015625);
@@ -132,6 +160,10 @@ float BrFixUnpackU8Angle(int32_t v)
  * the original's `fsubr` makes that 400 - (v * -120.63...), i.e. a rising
  * ramp. 63 * 120.63491821289062 is 7600 to float precision, so with the 6-bit
  * field its only caller passes, the range is [400, 8000]. */
+/* WHAT IT DOES: turns a 6-bit code back into a value between 400 and 8000,
+ * the inverse of the matching packer. What the quantity represents is not
+ * established here. */
+/* @implements 0x100072C0 d3d BrFixUnpackU8Range */
 float BrFixUnpackU8Range(int32_t v)
 {
     double x = (double)(int32_t)((uint32_t)v & 0xFFu);
@@ -141,6 +173,10 @@ float BrFixUnpackU8Range(int32_t v)
 /* 0x100072E0.  A chain of byte compares, not a table lookup: anything above 2
  * falls through to 255. Constants 0x1008F0C8 = 0.0f, 0x1008F12C = 170.0f,
  * 0x1008F130 = 212.0f, 0x1008F134 = 255.0f. */
+/* WHAT IT DOES: turns a 2-bit code back into one of four fixed values: 0,
+ * 170, 212 or 255. It is written as a chain of comparisons rather than a
+ * table, so any code above 2 gives the top value. */
+/* @implements 0x100072E0 d3d BrFixUnpackLevel */
 float BrFixUnpackLevel(int32_t v)
 {
     uint32_t b = (uint32_t)v & 0xFFu;
@@ -156,30 +192,45 @@ float BrFixUnpackLevel(int32_t v)
 
 /* 0x10007310.  Scale 0x1008F138 = 0.0001220703125f (= 1/8192).
  * `fild qword` over {v, 0} -- the value is UNSIGNED. */
+/* WHAT IT DOES: turns a packed whole number back into a position coordinate
+ * by scaling it down. The packed value is treated as unsigned. */
+/* @implements 0x10007310 d3d BrFixUnpackU32Q13 */
 float BrFixUnpackU32Q13(uint32_t v)
 {
     return (float)((double)v * 0.0001220703125);
 }
 
 /* 0x10007340.  Scale 0x1008F0D0 = 0.5f; sign bit is bit 23. */
+/* WHAT IT DOES: turns a packed 24-bit signed value back into a float at
+ * half-unit resolution. */
+/* @implements 0x10007340 d3d BrFixUnpackS24Q1 */
 float BrFixUnpackS24Q1(uint32_t v)
 {
     return (float)((double)BrSext24(v) * 0.5);
 }
 
 /* 0x10007380.  Scale 0x1008F13C = 0.0078125f (= 1/128). */
+/* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
+ * 1/128 resolution -- the car's height, among other things. */
+/* @implements 0x10007380 d3d BrFixUnpackS16Q7 */
 float BrFixUnpackS16Q7(int32_t v)
 {
     return (float)((double)BrSext16((uint32_t)v) * 0.0078125);
 }
 
 /* 0x100073A0.  Scale 0x1008F140 = 0.00390625f (= 1/256). */
+/* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
+ * 1/256 resolution. */
+/* @implements 0x100073A0 d3d BrFixUnpackS16Q8 */
 float BrFixUnpackS16Q8(int32_t v)
 {
     return (float)((double)BrSext16((uint32_t)v) * 0.00390625);
 }
 
 /* 0x100073C0.  Scale 0x1008F144 = 0.125f. */
+/* WHAT IT DOES: turns a packed signed byte back into a float at 1/8
+ * resolution. */
+/* @implements 0x100073C0 d3d BrFixUnpackS8Q3 */
 float BrFixUnpackS8Q3(int32_t v)
 {
     return (float)((double)BrSext8((uint32_t)v) * 0.125);
@@ -232,6 +283,13 @@ static uint32_t BrCarStateDeltaMerge(uint32_t prev, uint32_t bits,
 /* 0x10006EC0.  Field order is the bitstream order and must not be reordered.
  * The two arguments are (destination, reader); the original loads the reader
  * from the second stack slot into edi before anything else. */
+/* WHAT IT DOES: reads one car's complete state out of a network packet and
+ * fills in the car record: facing, position, speed-like values, wheel or
+ * suspension figures, an angle (which fills four fields, twice raw and twice
+ * offset by 35 degrees and wrapped), and a stack of on/off flags. Four
+ * fields are deliberately left alone and one is zeroed without any bits
+ * being read, so the caller must not assume the whole record was written. */
+/* @implements 0x10006EC0 d3d BrCarStateDecode */
 void BrCarStateDecode(BrCarState *pDst, BrBitReader *pReader)
 {
     float angle, wrapped;
@@ -299,6 +357,13 @@ void BrCarStateDecode(BrCarState *pDst, BrBitReader *pReader)
 /* 0x100073E0.  Arguments are (destination, reference, reader): the original
  * loads edi from the third stack slot, ebx from the first and ebp from the
  * second. */
+/* WHAT IT DOES: reads a car's state sent as a difference from an earlier
+ * one. Facing comes through in full; position, height and one other field
+ * arrive as low bits plus a two-bit hint that nudges the high part up one
+ * step, up two, or down one. Everything the packet does not mention is left
+ * as the caller had it, so the caller must seed the record from the
+ * reference first. */
+/* @implements 0x100073E0 d3d BrCarStateDecodeDelta */
 void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
                            BrBitReader *pReader)
 {
@@ -355,6 +420,14 @@ void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
 }
 
 /* 0x100079E0.  0x1008F0C8 = 0.0f, 0x1008F148 = 10.0f, 0x1008F118 = 1.0f. */
+/* WHAT IT DOES: blends between two car states -- the heart of the game's
+ * smoothing between network updates. The blend factor may run up to ten
+ * times past the second state, because the game is predicting ahead of the
+ * last packet it received rather than merely filling in between two it has.
+ * When the two facings point opposite ways it flips one of them first, so a
+ * car does not spin the long way round; and the last field is copied
+ * outright rather than blended. */
+/* @implements 0x100079E0 d3d BrCarStateLerp */
 void BrCarStateLerp(BrCarState *pDst, float t,
                     const BrCarState *pA, const BrCarState *pB)
 {
@@ -400,6 +473,12 @@ void BrCarStateLerp(BrCarState *pDst, float t,
  * ===================================================================== */
 
 /* 0x10005960 */
+/* WHAT IT DOES: wipes the multiplayer state back to empty at the start of a
+ * session: clears every player slot's samples and status under that slot's
+ * own lock, and resets the shared counters, queues and timers. A few fields
+ * are deliberately stepped over and left as they were, and the disarmed
+ * timers are set to -1 rather than zero. */
+/* @implements 0x10005960 d3d BrNetReset */
 int BrNetReset(BrNetState *pNet)
 {
     int i;
@@ -476,6 +555,8 @@ int BrNetReset(BrNetState *pNet)
 }
 
 /* 0x10004A10 */
+/* WHAT IT DOES: reads a player slot's status word under that slot's lock. */
+/* @implements 0x10004A10 d3d BrNetSlotGetF02C */
 int32_t BrNetSlotGetF02C(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
@@ -488,6 +569,8 @@ int32_t BrNetSlotGetF02C(BrNetState *pNet, int32_t slot)
 }
 
 /* 0x10004A50 */
+/* WHAT IT DOES: writes a player slot's status word under that slot's lock. */
+/* @implements 0x10004A50 d3d BrNetSlotSetF02C */
 void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
@@ -498,6 +581,9 @@ void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
 }
 
 /* 0x10005CF0 */
+/* WHAT IT DOES: reads one identifying number out of a player slot under that
+ * slot's lock. */
+/* @implements 0x10005CF0 d3d BrNetSlotGetF004 */
 int32_t BrNetSlotGetF004(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
@@ -510,6 +596,11 @@ int32_t BrNetSlotGetF004(BrNetState *pNet, int32_t slot)
 }
 
 /* 0x10005E70 */
+/* WHAT IT DOES: hands back a player's name, copied under that slot's lock
+ * into a shared scratch buffer. Because the buffer is shared, the answer is
+ * only good until the next call. The original copied with no length limit at
+ * either end; this one is bounded. */
+/* @implements 0x10005E70 d3d BrNetSlotName */
 char *BrNetSlotName(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
@@ -532,6 +623,12 @@ char *BrNetSlotName(BrNetState *pNet, int32_t slot)
 }
 
 /* 0x10005FE0 */
+/* WHAT IT DOES: drops every player whose identifier matches the one given --
+ * the disconnect path. For each match it puts the slot number on the free
+ * list, clears the slot's status, and announces "<name> left the game" to
+ * the other players. The announcement really does begin with a literal
+ * percent-fifteen, which is a colour code in the game's message text. */
+/* @implements 0x10005FE0 d3d BrNetDropMatching */
 void BrNetDropMatching(BrNetState *pNet, int32_t key)
 {
     char    szMsg[0x400];       /* the original's stack buffer, same size */
@@ -575,6 +672,9 @@ void BrNetDropMatching(BrNetState *pNet, int32_t key)
 /* 0x100049C0.  Records are 3 bytes (`ecx + ecx*2 + base`) and the copy is
  * straight: source +0 -> dest +0, +1 -> +1, +2 -> +2 (no channel swap). The
  * original writes the last byte first; order is immaterial. */
+/* WHAT IT DOES: reads one colour out of a palette: three bytes at the
+ * entry's position, copied straight through with no channel reordering. */
+/* @implements 0x100049C0 d3d BrPalFetch */
 void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
 {
     const uint8_t *p = pTable + (ptrdiff_t)index * 3;

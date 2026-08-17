@@ -42,6 +42,12 @@ typedef char br06_assert_namelist[
  * 0x10037030
  * ========================================================================== */
 
+/* WHAT IT DOES: puts one more item on a fixed-length waiting list. When the
+ * list is already full the item is simply thrown away and a "dropped" tally is
+ * bumped -- but the length still counts up, so once it overflows it never
+ * agrees with what is actually stored again. What the items are is not
+ * established here. */
+/* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
     if (pList->count < BR_PENDLIST_MAX) {
@@ -66,6 +72,12 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
  * 0x10037070
  * ========================================================================== */
 
+/* WHAT IT DOES: answers whether any of a fixed set of records -- reached
+ * through an index table rather than in order -- is both in use, of one
+ * particular kind, and already holding the value being asked about. It reads
+ * like a "is this already taken?" test for input-device assignments, but
+ * nothing in this packet confirms that, so treat the purpose as unconfirmed. */
+/* @implements 0x10037070 d3d BrDevRecMatch */
 int BrDevRecMatch(const BrDevRec *aRecs, const uint8_t *abIndex,
                   uint32_t value)
 {
@@ -91,6 +103,11 @@ int BrDevRecMatch(const BrDevRec *aRecs, const uint8_t *abIndex,
  * 0x10037930
  * ========================================================================== */
 
+/* WHAT IT DOES: looks a key up in a small table and hands back the pair of
+ * values filed against it, reporting whether it found anything. The key is
+ * shifted by the table's own offset first, and the search runs from the end
+ * backwards, so where a key appears twice the later entry wins. */
+/* @implements 0x10037930 d3d BrKeyTableFind */
 int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
                    uint32_t *pA, uint32_t *pB)
 {
@@ -154,6 +171,12 @@ int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
  * 0x1003D180
  * ========================================================================== */
 
+/* WHAT IT DOES: fetches a piece of information from a system object whose size
+ * is not known in advance -- it asks once with no buffer to be told how big the
+ * answer is, allocates that much, then asks again to have it filled in, and
+ * hands the block to the caller. On any failure it releases the block and
+ * reports the error instead. */
+/* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
     BrComGetFn pfn = pObj->pVtbl->pfnGet;
@@ -197,6 +220,10 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
  * 0x1003E1D0
  * ========================================================================== */
 
+/* WHAT IT DOES: wipes a pair of scratch buffers back to zeros, pointing each
+ * at its own built-in storage first if it has not been given anywhere else to
+ * live. What the buffers hold is not established here. */
+/* @implements 0x1003E1D0 d3d BrPairBufReset */
 int BrPairBufReset(BrPairBuf *pBuf)
 {
     if (pBuf->pA == NULL) {
@@ -262,6 +289,11 @@ void BrErrShow(const BrErrHost *pHost, int32_t idx)
  * 0x1003E310
  * ========================================================================== */
 
+/* WHAT IT DOES: takes a snapshot of twelve of the game's option settings into
+ * one block, so they can be put back later. The values come from two separate
+ * places and are interleaved in a fixed order that is neither array's order --
+ * the shuffle is the whole content of the function. */
+/* @implements 0x1003E310 d3d BrOptSave */
 void BrOptSave(BrOptScratch *pDst, const BrOptState *pSrc)
 {
     pDst->a[0]  = pSrc->aCfg[0];   /* 0x100AC648 -> 0x10B4E710 */
@@ -314,6 +346,14 @@ int32_t BrOptAvailA(const BrOptCaps *pCaps, uint32_t n)
  * 0x1003F320
  * ========================================================================== */
 
+/* WHAT IT DOES: decides whether one particular option is offered to the player
+ * or shown unavailable, by testing its number against a bitmask of what the
+ * machine and the current mode support. Which mask applies depends on the mode,
+ * and there are several special cases -- some modes fold a high number back
+ * into the low range, some declare everything below sixteen always available,
+ * and one number is remapped to a different one entirely. Its sibling above
+ * answers the same question for the other family of options. */
+/* @implements 0x1003F320 d3d BrOptAvailB */
 int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
 {
     int32_t idx = (int32_t)n;
@@ -369,6 +409,10 @@ int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
  * 0x1005CB90
  * ========================================================================== */
 
+/* WHAT IT DOES: sets up a list of a hundred name slots and writes the same
+ * starting text into every one of them, so an unused slot reads as something
+ * rather than as blank. */
+/* @implements 0x1005CB90 d3d BrNameListInit */
 BrNameList *BrNameListInit(BrNameList *pThis, const void *pVtbl,
                            const char *pszFill)
 {

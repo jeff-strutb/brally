@@ -226,6 +226,13 @@ static void *BrPtrAt(const void *pv)
  * 0x100370D0  BrRcaFixup
  * ========================================================================== */
 
+/* WHAT IT DOES: makes a freshly loaded car file usable. Boss Rally's PC
+ * version reads the N64's data files exactly as they are, so every number in
+ * them is stored the wrong way round and every internal reference points at
+ * an N64 address. This walks the whole car -- geometry, textures,
+ * descriptors, transforms -- turning each field around and rewriting each
+ * reference to point at where the data actually sits in memory now. */
+/* @implements 0x100370D0 d3d BrRcaFixup */
 void BrRcaFixup(void *pvFile, size_t cbFile)
 {
     uint8_t *pFile = (uint8_t *)pvFile;
@@ -418,6 +425,11 @@ void BrRcaFixup(void *pvFile, size_t cbFile)
  * 0x100378B0  BrFileReadInto
  * ========================================================================== */
 
+/* WHAT IT DOES: reads a whole file into a buffer. Asking for a negative size
+ * means "however long the file is". A positive size is used as given, with
+ * no check against either the file's real length or the buffer's, and a
+ * missing file is complained about and then read from anyway. */
+/* @implements 0x100378B0 d3d BrFileReadInto */
 void BrFileReadInto(void *pvDest, const char *pszPath, int cbMax)
 {
     char szMsg[0x200];
@@ -495,6 +507,10 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
  * 0x10037A90  BrTrackLoadHandling
  * ========================================================================== */
 
+/* WHAT IT DOES: loads a track's handling file -- the physics settings for
+ * driving on it. It builds the track's path, swaps the extension for the
+ * handling one, and hands it on to be read. */
+/* @implements 0x10037A90 d3d BrTrackLoadHandling */
 void BrTrackLoadHandling(int iTrack)
 {
     char szPath[0x400];
@@ -516,6 +532,11 @@ void BrTrackLoadHandling(int iTrack)
  * 0x10038510  BrTrackHdrRead
  * ========================================================================== */
 
+/* WHAT IT DOES: reads a track's header and turns it the right way round: the
+ * counts and sizes get their bytes reversed, and every reference in it is
+ * rebased onto real memory. One word in the middle is skipped entirely,
+ * which is the only gap in the whole header and is in the original. */
+/* @implements 0x10038510 d3d BrTrackHdrRead */
 void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
     static const uint16_t s_aFixup[] = {
@@ -643,6 +664,11 @@ void BrTrackFixupList78(void *pvHdr)
  * 0x10038010 / 0x10037FE0 -- the 0x54-byte object records
  * ========================================================================== */
 
+/* WHAT IT DOES: prepares one drawable object of a track: turns all its
+ * numbers round, rebases the one reference it carries -- which points at the
+ * object's drawing commands -- and then registers those commands and hands
+ * them to the graphics backend. */
+/* @implements 0x10038010 d3d BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {
     uint8_t *p = (uint8_t *)pvRec;
@@ -680,6 +706,11 @@ void BrTrackFixupList60(void *pvHdr)
  * 0x10038450  BrTexCopyRecords
  * ========================================================================== */
 
+/* WHAT IT DOES: copies the actual texture pixels and colour palettes out of
+ * the loaded track image and into the places the texture records point at,
+ * for those records that ask for it. Records that fail any of half a dozen
+ * checks are quietly skipped. */
+/* @implements 0x10038450 d3d BrTexCopyRecords */
 void BrTexCopyRecords(void *pvTable, int cRecords)
 {
     uint8_t *pTable = (uint8_t *)pvTable;
@@ -921,6 +952,9 @@ void BrTrackFixupCmds(void *pvHdr)
  * 0x10039000  BrInit220B20
  * ========================================================================== */
 
+/* WHAT IT DOES: clears a block of state, plants an 8 in its first slot, and
+ * calls on to further setup. What the block holds is not established here. */
+/* @implements 0x10039000 d3d BrInit220B20 */
 void BrInit220B20(void)
 {
     memset(g_a220B20, 0, sizeof(uint32_t) * 0x46);

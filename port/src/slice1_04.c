@@ -26,6 +26,11 @@ static int BrTexShiftLadder(int *pShift, int n)
 }
 
 /* 0x100251A0 */
+/* WHAT IT DOES: picks the size code for a texture from its width and height:
+ * it takes whichever is larger and works out which power of two it fits in,
+ * counted downward from 256. It also reports whether the size was an exact
+ * power of two or had to be rounded up. */
+/* @implements 0x100251A0 d3d BrTexShiftFromSize */
 int BrTexShiftFromSize(int *pShift, int a, int b)
 {
     /* The original duplicates the ladder rather than taking a max, but the
@@ -68,6 +73,10 @@ int BrTexAspectFromSize(int *pCode, int a, int b)
 }
 
 /* 0x10028720 */
+/* WHAT IT DOES: the reverse of the size coding: given a size code and an
+ * aspect code, works back out the texture's width and height. An aspect code
+ * it does not recognise leaves the height as the caller had it. */
+/* @implements 0x10028720 d3d BrTexSizeFromShiftAspect */
 void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
 {
     /* First jump table: 9 entries at 0x10028820, indices 0..8, plus a
@@ -100,6 +109,11 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
 }
 
 /* 0x10027B90 */
+/* WHAT IT DOES: decides which of the backend's pixel formats a texture
+ * should be created in, from the N64's own format and size codes plus one
+ * extra mode flag. Most combinations fall through to the same general
+ * format; only a couple of specific pairings get a format of their own. */
+/* @implements 0x10027B90 d3d BrTexFormatCode */
 int BrTexFormatCode(int a, int b, int c)
 {
     if (a == 0) {
