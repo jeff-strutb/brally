@@ -196,8 +196,14 @@ all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
 milestone 6 — the per-frame race loop and the OBB collision **response**
 (`0x10067710` and its impulse solver `0x10065C80`), which is why cars still
-fall through the world. See `port/src/driving/br_collrespsolve.c` for the first
-of that unit's four functions.
+fall through the world. Two of that unit's four functions are now ported and
+oracle-verified in `port/src/driving/br_collrespsolve.c`: the contact-plane
+resolver `0x10067470` and the impulse solver `0x10065C80` itself — the latter
+transcribed against `tools/x87emu.py` executing its real opcode stream and
+pinned by golden vectors (both response paths, the effect record, and the
+restitution/damping gates). What remains is the per-contact effect record
+`0x10065980` and the walker `0x10067710` that drives the whole unit; until the
+walker lands, the solver is verified but not yet wired to a live race.
 
 ### How to read the other numbers in this file
 
@@ -322,10 +328,12 @@ the runtime.
   section above). `RallyMain`, the main loop, window, wndproc and DX detect are
   transcribed and test-green; three init callees remain on the counted
   frontier. The gap that stops a real race is milestone 6, below, not startup.
-- **Cars fall through the world.** The collision *broad phase* is ported and the
-  *response* (`0x10067710` + `0x10065C80`) is not, so contacts are detected and
-  never resolved. A headless race shows z descending monotonically for the whole
-  run, with the response entered as a counted no-op 14,400 times.
+- **Cars fall through the world.** The collision *broad phase* is ported, and the
+  *response* is now half-ported: its impulse solver `0x10065C80` is transcribed
+  and oracle-verified, but the walker `0x10067710` that feeds it real contacts is
+  not, so nothing yet drives the solver in a live race. A headless race still
+  shows z descending monotonically, with the response entered as a counted no-op
+  14,400 times, until the walker lands.
 - **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
   ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
   draws a race.

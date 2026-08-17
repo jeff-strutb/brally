@@ -14,6 +14,16 @@
 
 static int g_fail;
 
+/* slice3_44.o bundles rigid-body helpers this suite never calls; their
+ * cross-module references (four symbols) must still resolve to link the matrix
+ * helpers the solver drives.  Inert stand-ins, exactly as test_slice3_44.c
+ * does -- TEST ONLY, not the port. */
+void BrStub8B80_1p(const void *p0) { (void)p0; }
+void BrGbiCall10075330(void *pv) { (void)pv; }
+void BrVec4Normalise(BrVec4 *pV) { (void)pV; }
+void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
+{ (void)pM; (void)pV; pOut->x = pOut->y = pOut->z = 0.0f; }
+
 #define CLOSE(a, b) do {                                                     \
     float _a = (a), _b = (b);                                               \
     if (fabsf(_a - _b) > 1e-5f) {                                           \
@@ -54,6 +64,129 @@ static const struct Case CASES[] = {
     {0.407894999f,-0.343462497f,0.334410042f}, {0,-0.5f,0}},
 };
 
+/* ---- 0x10065C80 impulse solver ---------------------------------------- *
+ * Golden vectors below are the ORIGINAL's outputs, produced by tools/x87emu.py
+ * executing 0x10065C80's real opcode stream over well-conditioned physical
+ * inputs (orthonormal orientation, symmetric positive inverse inertia).  See
+ * gen_golden.py.  The wider random equivalence sweep (>14000 cases, both paths)
+ * lives in that harness; these pin representative branches in-tree. */
+struct SolveCase {
+    float mass, W[9], M4[16], vel[3], ang[3], N[3], a3[3];
+    int   flag, thr, peakIn;
+    float arg5;
+    int   wantRet;
+    float wantVel[3], wantAng[3];
+    int   wantB1fc, wantB1ff;
+};
+
+static const struct SolveCase SOLVE_CASES[] = {
+/* separating (ret 0) */
+{ 1000.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}, {0,3,0}, {0,0,0}, {0,1,0}, {0,1,0}, 1,0,0,0.0f,
+  0, {0,3,0}, {0,0,0}, 0, 0 },
+/* flat ground, flag0 */
+{ 1000.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}, {0.4f,-5,0.2f}, {0.1f,0,0.1f}, {0,1,0}, {0,1,0}, 0,0,0,0.0f,
+  1, {0.400000006f,0.249999255f,0.200000003f}, {0.100000001f,0,0.100000001f}, 5, 0 },
+/* flat ground, flag1 */
+{ 1000.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}, {0.4f,-5,0.2f}, {0.1f,0,0.1f}, {0,1,0}, {0,1,0}, 1,0,0,0.0f,
+  1, {0.366068214f,0.249999255f,0.170592457f}, {0.0664075464f,-0.00192280044f,0.129068226f}, 5, 0 },
+/* angled hit, rotated body */
+{ 850.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {0.860089338f,-0.17434874f,-0.479425539f,0, 0.0509402927f,0.964440821f,-0.25934338f,0,
+   0.507593752f,0.198636399f,0.838386644f,0, 0,0,0,1},
+  {-2,-4,1.5f}, {0.3f,-0.2f,0.1f}, {0.267f,0.535f,0.802f}, {0.267f,0.535f,0.802f}, 1,0,0,0.0f,
+  1, {-1.09996414f,-2.78904486f,2.05025983f}, {0.126357257f,-0.259596437f,0.319907457f}, 1, 0 },
+/* effect path (thr 30) */
+{ 1000.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}, {1,-6,0.5f}, {0.2f,-0.1f,0.05f}, {0,1,0}, {0,1,0}, 1,30,0,0.0f,
+  1, {0.903859973f,-0.330001146f,0.437678635f}, {0.130021363f,-0.103347935f,0.133409947f}, 6, 156 },
+/* effect path, peak_in 150 */
+{ 1200.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {0.860089338f,-0.17434874f,-0.479425539f,0, 0.0509402927f,0.964440821f,-0.25934338f,0,
+   0.507593752f,0.198636399f,0.838386644f,0, 0,0,0,1},
+  {-1.5f,-5,2}, {0.1f,0.2f,-0.1f}, {0.267f,0.535f,0.802f}, {0.267f,0.535f,0.802f}, 1,40,150,0.0f,
+  1, {-0.625100255f,-3.75034404f,2.59965539f}, {-0.135536164f,0.0174314287f,0.269673347f}, 1, 150 },
+/* light hit thr 11 flag0 */
+{ 700.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {0.860089338f,-0.17434874f,-0.479425539f,0, 0.0509402927f,0.964440821f,-0.25934338f,0,
+   0.507593752f,0.198636399f,0.838386644f,0, 0,0,0,1},
+  {0.5f,-3,-1}, {0.05f,0.1f,0}, {0.267f,0.535f,0.802f}, {0.267f,0.535f,0.802f}, 0,11,0,0.0f,
+  1, {1.41233444f,-1.8624171f,0.241841868f}, {0.263745457f,-0.45437637f,0.169777066f}, 2, 138 },
+/* high-speed impact -- |approach| > 27 exercises the intensity clamp and the
+ * saturating peak byte */
+{ 1000.0f, {0.0012f,0.0001f,5e-05f,0.0001f,0.0018f,3e-05f,5e-05f,3e-05f,0.0009f},
+  {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}, {3,-60,2}, {0.2f,-0.1f,0.05f}, {0,1,0}, {0,1,0}, 1,30,0,0.0f,
+  1, {2.70140028f,-3.30000257f,1.80421364f}, {-0.020013649f,-0.110620648f,0.308950335f}, 27, 255 },
+};
+
+/* relative-tolerant compare -- the emulator carries doubles and rounds to f32
+ * on store; the port is f32 throughout, so agreement is to a few ulPS of the
+ * magnitude, not bit-exact. */
+#define RCLOSE(a, b) do {                                                    \
+    float _a = (a), _b = (b), _s = fabsf(_b) > 1.0f ? fabsf(_b) : 1.0f;      \
+    if (fabsf(_a - _b) > 2e-4f * _s) {                                       \
+        printf("  FAIL %s:%d  %s=%.9g want %.9g (d=%.3e)\n",                 \
+               __FILE__, __LINE__, #a, _a, _b, fabsf(_a - _b));             \
+        ++g_fail;                                                           \
+    }                                                                      \
+} while (0)
+
+static void run_solver_cases(void)
+{
+    unsigned i;
+    for (i = 0; i < sizeof SOLVE_CASES / sizeof SOLVE_CASES[0]; ++i) {
+        const struct SolveCase *c = &SOLVE_CASES[i];
+        BrMat3 W;
+        BrMat4 M;
+        BrVec3 vel, ang, N, a3;
+        BrCrEffect eff;
+        int ret;
+
+        memcpy(W.m, c->W, sizeof W.m);
+        memcpy(M.m, c->M4, sizeof M.m);
+        vel.x = c->vel[0]; vel.y = c->vel[1]; vel.z = c->vel[2];
+        ang.x = c->ang[0]; ang.y = c->ang[1]; ang.z = c->ang[2];
+        N.x = c->N[0]; N.y = c->N[1]; N.z = c->N[2];
+        a3.x = c->a3[0]; a3.y = c->a3[1]; a3.z = c->a3[2];
+        memset(&eff, 0, sizeof eff);
+        eff.threshold = (uint8_t)c->thr;
+        eff.peak      = (uint8_t)c->peakIn;
+
+        ret = BrCrImpulseSolve(c->mass, &W, &M, &vel, &ang, &N, &a3,
+                               c->flag, c->arg5, &eff);
+
+        if (ret != c->wantRet) {
+            printf("  FAIL case %u: ret=%d want %d\n", i, ret, c->wantRet);
+            ++g_fail;
+        }
+        RCLOSE(vel.x, c->wantVel[0]);
+        RCLOSE(vel.y, c->wantVel[1]);
+        RCLOSE(vel.z, c->wantVel[2]);
+        RCLOSE(ang.x, c->wantAng[0]);
+        RCLOSE(ang.y, c->wantAng[1]);
+        RCLOSE(ang.z, c->wantAng[2]);
+        if (ret) {
+            /* effect bytes are exact; colour is the normal's dwords verbatim */
+            uint32_t nbits[3];
+            memcpy(nbits, &N, sizeof nbits);
+            if (eff.intensity != (uint8_t)c->wantB1fc) {
+                printf("  FAIL case %u: intensity=%u want %d\n",
+                       i, eff.intensity, c->wantB1fc); ++g_fail;
+            }
+            if (eff.peak != (uint8_t)c->wantB1ff) {
+                printf("  FAIL case %u: peak=%u want %d\n",
+                       i, eff.peak, c->wantB1ff); ++g_fail;
+            }
+            if (eff.color[0] != nbits[0] || eff.color[1] != nbits[1] ||
+                eff.color[2] != nbits[2]) {
+                printf("  FAIL case %u: colour != normal bits\n", i); ++g_fail;
+            }
+        }
+    }
+}
+
 int main(void)
 {
     unsigned i;
@@ -82,7 +215,10 @@ int main(void)
         CLOSE(g_brCrPlane.normal.z, c->wantNormal[2]);
     }
 
+    run_solver_cases();
+
     if (g_fail) { printf("br_collrespsolve: %d FAILURES\n", g_fail); return 1; }
-    printf("br_collrespsolve: all checks passed (0x10067470 vs x87emu golden vectors)\n");
+    printf("br_collrespsolve: all checks passed "
+           "(0x10067470 + 0x10065C80 vs x87emu golden vectors)\n");
     return 0;
 }

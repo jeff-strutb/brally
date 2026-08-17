@@ -18,6 +18,8 @@
 #include <stdint.h>
 
 #include "br_vec.h"
+#include "br_mat.h"       /* BrMat4                                          */
+#include "slice3_44.h"    /* BrMat3 + the packed-3x3 helpers the solver drives */
 
 /* The shared contact-plane state.  0x10067710 and its helpers hand geometry to
  * one another through these, not through arguments. */
@@ -49,5 +51,45 @@ extern BrCrPlaneState g_brCrPlane;
  * shared normal/modeFC state; the other mode leaves it untouched. */
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
                       const BrVec3 *pEdgeN, const BrVec3 aVerts[3]);
+
+/* The impact "effect" record the solver stamps on a struck body (original
+ * offsets body+0x1EC..0x200).  It is the damage/particle cue, not physics --
+ * the impulse is applied whether or not it is written.  Field ORDER here is not
+ * the original's byte order (that does not survive to a 64-bit host); these are
+ * the fields, named. */
+typedef struct BrCrEffect {
+    uint8_t  threshold;   /* +0x200  IN  -- > 10 arms the damping/peak path   */
+    uint8_t  intensity;   /* +0x1FC  OUT -- trunc(min(|approach|, 27))        */
+    uint8_t  peak;        /* +0x1FF  IN/OUT -- max(peak, trunc(128 + k*inten))*/
+    uint32_t color[3];    /* +0x1EC/1F0/1F4 OUT -- the contact normal's bits  */
+} BrCrEffect;
+
+/* 0x10065C80 -- the impulse solver.  THE function that stops a car falling
+ * through the world: given one contact it computes and applies the collision
+ * impulse to the body's `next` velocity and angular velocity.
+ *
+ * mass          body+0x2C.
+ * pInvInertia   body+0x54, the body-frame inverse inertia (BrMat3).
+ * pOrient       body+0xBC, the body->world orientation (BrMat4; only its 3x3).
+ * pVel          body+0x164, next.vel     -- READ and WRITTEN.
+ * pAngVel       body+0x180, next.angVel  -- READ and WRITTEN.
+ * pNormal       arg2, the contact normal (== g_brCrPlane.normal); its dwords
+ *               are ALSO copied verbatim into pEffect->color.
+ * pRelDir       arg3, the world-space direction the approach is measured along.
+ * flag          arg4; when non-zero a tangential term (0.2x) is folded into the
+ *               solve's right-hand side, otherwise only the normal component is.
+ * restOffset    arg5; the walker passes 0.  Adds to the restitution multiplier
+ *               (which is then 1.05 = 1 + e) and, when >= 1e-4, SUPPRESSES the
+ *               damping/peak path.  Its non-zero behaviour is transcribed but
+ *               unexercised by the shipped caller.
+ * pEffect       the impact record (see above); may be written even on a light
+ *               hit (intensity/color always, peak only on the damping path).
+ *
+ * Returns 1 if an impulse was applied, 0 if the contact was separating
+ * (approach speed >= 0) and nothing was touched. */
+int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrient,
+                     BrVec3 *pVel, BrVec3 *pAngVel,
+                     const BrVec3 *pNormal, const BrVec3 *pRelDir,
+                     int flag, float restOffset, BrCrEffect *pEffect);
 
 #endif /* BR_COLLRESPSOLVE_H */
