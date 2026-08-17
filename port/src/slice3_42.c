@@ -6,13 +6,19 @@
  * 0x1006A8A0 (Win32 registry), and the four large x87 physics routines
  * 0x1006B5F0, 0x1006C1F0, 0x1006C9D0 and 0x1006CCD0.
  *
- * FLOAT PRECISION.  The original is x87 with a 64-bit mantissa and spills
- * intermediates to 4-byte slots at irregular points.  This port uses plain
- * `float` throughout, which rounds at every step instead of only at the
- * spills.  Where the original's spill points are load-bearing for the shape
- * of the expression they are reproduced with explicit temporaries; where they
- * only affect the last ulp they are not.  Flagged once here rather than at
- * every line.
+ * FLOAT PRECISION.  This paragraph used to read "the original is x87 with a
+ * 64-bit mantissa ... where [the spills] only affect the last ulp they are
+ * not [reproduced].  Flagged once here rather than at every line."  The
+ * mantissa is 53 bits, not 64: the CRT's x87 control word is 0x027F (see
+ * CONVENTIONS.md), so an unspilled intermediate is EXACTLY a C `double` and
+ * computing it in `float` rounds where the original does not.  There is no
+ * last-ulp band inside which the spills stop mattering, which is what the old
+ * wording licensed.
+ *
+ * The rule here: unspilled intermediates are `double`; every point where the
+ * original stores to a 4-byte slot rounds through a `float` temporary,
+ * because the store is the rounding.  Spill points are recorded per function
+ * with the instruction that makes them.
  */
 
 #include <string.h>
@@ -840,7 +846,8 @@ void BrRbAccumAll(BrRbBodyFull *pB)
  * point comes from. */
 static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
 {
-    BrVec3 r, c, sum;
+    BrVec3 r, sum;
+    double cx, cy, cz;
 
     BrMat4MulVec3Transposed(&r, &pB->m, pP);
 
@@ -850,11 +857,41 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
      * kept here rather than folded away. */
     *pOut = pB->vel;
 
-    c = BrS42Cross(&pB->angVel, &r);
+    /* SPILL MAP, checked in all three callers -- 0x1006B510, 0x1006B430 and
+     * 0x1006B340 -- because a shared C body is only honest if the bodies it
+     * stands for agree:
+     *
+     *   r comes back from 0x10074770 through a stack BrVec3, so it IS
+     *   float-rounded, and reading it out of `r` here reproduces that.
+     *
+     *   The six products and three differences of the cross stay in x87
+     *   registers.  The ONLY store among them is `fst dword [esp+0x14]` at
+     *   1006B5C0 (0x1006B510) and 1006B4E4 (0x1006B430) -- and that slot is
+     *   never reloaded, so it rounds nothing; the add at 1006B5CB takes the
+     *   register copy `fst` left behind.  0x1006B340 has no such store at
+     *   all.  So all three cross components reach their add unrounded.
+     *
+     *   Each sum is stored exactly once -- straight into pOut for the first
+     *   two, into a stack BrVec3 for 0x1006B340 -- so it rounds to float
+     *   there and nowhere earlier.  Returning a BrVec3 by value is that
+     *   store.
+     *
+     * This is why the cross is written out here instead of calling
+     * BrS42Cross: that helper returns a BrVec3, which would round all three
+     * components a step early.  BrS42Cross is left alone because its other
+     * caller (BrRbAccumOwnForces, 0x1006AEB0) has not been traced for spill
+     * points, and widening it on the strength of this function's evidence
+     * would be assuming the answer for a function nobody has read. */
+    cx = (double)pB->angVel.y * (double)r.z
+       - (double)pB->angVel.z * (double)r.y;
+    cy = (double)pB->angVel.z * (double)r.x
+       - (double)pB->angVel.x * (double)r.z;
+    cz = (double)pB->angVel.x * (double)r.y
+       - (double)pB->angVel.y * (double)r.x;
 
-    sum.x = c.x + pOut->x;
-    sum.y = c.y + pOut->y;
-    sum.z = c.z + pOut->z;
+    sum.x = (float)(cx + (double)pOut->x);
+    sum.y = (float)(cy + (double)pOut->y);
+    sum.z = (float)(cz + (double)pOut->z);
     return sum;
 }
 

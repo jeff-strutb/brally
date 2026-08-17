@@ -59,9 +59,14 @@
  *     pointer (display-list branch targets, .rca fixups) the port keeps the
  *     u32 and, where it must dereference, goes through a caller-supplied
  *     resolver. Noted at each site.
- *   - x87 computes at 80-bit internal precision. That is not reproduced;
- *     results are computed in float/double. Where the original's evaluation
- *     ORDER is observable it is preserved.
+ *   - The x87 computes at 53-bit precision, NOT 80-bit: the CRT's control
+ *     word is 0x027F (CONVENTIONS.md). This clause used to say 80-bit and
+ *     that "that is not reproduced", which was the surviving half of the
+ *     waiver described below and had the same shape -- a property of the
+ *     original declared out of reach. It is not out of reach: a C `double`
+ *     models an unspilled intermediate exactly, and a value the original
+ *     stores to a 32-bit slot is rounded to `float` there. The original's
+ *     evaluation ORDER is preserved.
  *
  *     THE SECOND HALF OF THIS CLAUSE HAS BEEN DELETED, AND WHAT IT SAID IS
  *     WORTH RECORDING. It read: "...and its comparison flags treat unordered

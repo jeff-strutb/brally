@@ -207,6 +207,59 @@ static void test_keyboard(void)
     }
 }
 
+/* ---- the unbounded sprintf's real margin ----------------------------
+ *
+ * br_ctlname.h excuses an unbounded sprintf into a 32-byte field with a claim
+ * about how long the shipped strings are.  That claim only covers the seven
+ * ids this routine uses, so pin the thing that actually matters: the longest
+ * name the builder can ever produce.  It is "BUTTON 127" at ten characters,
+ * and the bound comes from BR_CTLNAME_JOY_BUTTONS -- widening that is the
+ * change that would eat the margin, which is why this asserts the length and
+ * not just "it fits". */
+static void test_name_lengths(void)
+{
+    size_t i, cbMax = 0;
+    int    fTerminated = 1;
+    const char *pszLongest = "";
+
+    BrCtlNameInit();
+    for (i = 0; i < BR_CTLNAME_JOY_COUNT; ++i) {
+        const char *p = g_aBrCtlNameJoy[i].szText;
+        size_t n = strnlen(p, sizeof g_aBrCtlNameJoy[i].szText);
+        if (n == sizeof g_aBrCtlNameJoy[i].szText) fTerminated = 0;
+        if (n > cbMax) { cbMax = n; pszLongest = p; }
+    }
+    for (i = 0; i < BR_CTLNAME_MOUSE_COUNT; ++i) {
+        const char *p = g_aBrCtlNameMouse[i].szText;
+        size_t n = strnlen(p, sizeof g_aBrCtlNameMouse[i].szText);
+        if (n == sizeof g_aBrCtlNameMouse[i].szText) fTerminated = 0;
+        if (n > cbMax) { cbMax = n; pszLongest = p; }
+    }
+    CHECK(fTerminated);
+    /* Ten, not eleven and not nine.  Several names tie at ten -- every
+     * three-digit BUTTON and both Z axes -- so the length is the assertion
+     * and the identity of the winner is not. */
+    CHECK(cbMax == 10);
+    CHECK(strlen(pszLongest) == 10);
+    /* the highest-numbered button is the one that sets the bound */
+    CHECK(strcmp(g_aBrCtlNameJoy[BR_CTLNAME_JOY_BUTTONS - 1].szText,
+                 "BUTTON 127") == 0);
+    CHECK(cbMax + 1 <= sizeof g_aBrCtlNameJoy[0].szText);
+    /* the static keyboard table is a different object and is NOT sprintf'd;
+     * its longest is "RIGHT CONTROL" at 13, so the ten-character bound is a
+     * statement about this routine, not about the module. */
+    {
+        size_t cbKey = 0;
+        for (i = 0; i < BR_CTLNAME_KEY_COUNT; ++i) {
+            size_t n = strnlen(g_aBrCtlNameKey[i].szText,
+                               sizeof g_aBrCtlNameKey[i].szText);
+            if (n > cbKey) cbKey = n;
+        }
+        CHECK(cbKey == 13);
+        CHECK(cbKey < sizeof g_aBrCtlNameKey[0].szText);
+    }
+}
+
 /* ---- the tables view slice2_23.c's lookup takes ---------------------- */
 static void test_tables_view(void)
 {
@@ -241,6 +294,7 @@ int main(void)
     test_short_clears();
     test_keys_unique();
     test_keyboard();
+    test_name_lengths();
     test_tables_view();
     test_idempotent();
 

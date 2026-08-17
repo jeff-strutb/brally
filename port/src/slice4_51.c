@@ -244,8 +244,13 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
     /* Each of these is stored to a dword and reloaded before use, so every
      * one is rounded to float first; the divisions and subtractions that
      * follow stay in x87 registers.  Reproduced as float inputs feeding a
-     * double expression, which is as close as C99 gets to 80-bit temporaries
-     * without assuming long double is x87. */
+     * double expression -- which is not an approximation of the original but
+     * an exact model of it, because the x87 here runs at 53-bit precision
+     * (CRT control word 0x027F -- CONVENTIONS.md).  This note used to explain
+     * the double as the closest C99 could get to 80-bit temporaries "without
+     * assuming long double is x87"; `long double` would in fact have been
+     * WRONG, modelling a 64-bit-mantissa control word this process never
+     * runs in. */
     cx = (float)BrG_0A81C0;
     cy = (float)BrG_0A81C4;
     w2 = cx / BR_GBI_RECT_C_HALF;      /* stored as float in the original */

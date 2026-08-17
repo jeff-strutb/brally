@@ -198,9 +198,9 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
  * the correctly-rounded float32 sqrt, so the wrapper's fsqrt needs no model.
  *
  * NOT fixed, and deliberately: BrVec3DistSq / BrVec3Dist above have the same
- * single-rounding shape (plus a `fst`/`fmul` pair that squares an 80-bit
- * difference against its own float32 copy) and are still written in float32
- * throughout.  That is a separate transcription, out of this change's scope,
+ * single-rounding shape (plus a `fst`/`fmul` pair that squares a 53-bit
+ * register difference against its own float32 copy) and are still written in
+ * float32 throughout.  That is a separate transcription, out of this change's scope,
  * and is recorded here rather than left silent. */
 /* WHAT IT DOES: how long a vector is -- the distance from the origin to the
  * point it names. Used everywhere a speed or a reach has to come out of an

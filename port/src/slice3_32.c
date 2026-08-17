@@ -281,8 +281,12 @@ float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
     d *= (double)0.5f;
     d *= (double)1.0e-3f;
 
-    /* DEVIATION: the original leaves the product in st(0) at 80-bit
-     * precision; the port rounds once to float on return. */
+    /* The original leaves the product in st(0) at the x87's working
+     * precision, which is 53-bit (CRT control word 0x027F -- CONVENTIONS.md)
+     * and not the 80-bit this note used to claim. The `double` chain above is
+     * therefore an exact model of it. The one remaining departure is the
+     * narrowing to float on return, which is real: the caller sees st(0)
+     * unrounded. */
     return (float)d;
 }
 

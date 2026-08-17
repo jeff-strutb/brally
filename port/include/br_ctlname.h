@@ -67,10 +67,37 @@
  * 0x10058AF4 is `mov ecx,0x37 / rep stosd` -- 0x37 DWORDS, 220 bytes, of a
  * 360-byte table -- and 0x10058B02 is 0x56 DWORDS, 344 bytes, of a 4824-byte
  * one.  Every record's key and name are written by the loops regardless, so
- * the only bytes affected are the padding after each name's terminator; on a
- * cold boot the whole of .data is zero anyway and the clears change nothing.
+ * the only bytes affected are the padding after each name's terminator.
  * The counts are DWORD counts: read as byte counts they would be 55 and 86,
  * which is how a buffer got sized four times too small in this tree before.
+ *
+ * THE CLEARS CHANGE NOTHING, AND THE REASON IS STRONGER THAN THE ONE THIS
+ * HEADER USED TO GIVE.  It said "on a cold boot the whole of .data is zero
+ * anyway", which is a claim about the FIRST pass only and says nothing about
+ * a second.  Measured instead of assumed, three ways:
+ *
+ *   1. Both tables are past .data's raw image and are therefore loader
+ *      zero-fill: Glide .data raw stops at VA 0x100BCE00 and the tables
+ *      start at 0x10B71B08; D3D raw stops at 0x100C1400 and the tables start
+ *      at 0x10B4E7A8.  `pe.va_to_off` returns None for both.  So the cold
+ *      boot really is zero -- but that is only half the question.
+ *   2. NOTHING ELSE WRITES THEM.  Every instruction in either image whose
+ *      operand names an address inside [0x10B71B08, 0x10B72F48) (Glide) or
+ *      [0x10B4E7A8, 0x10B4FBE8) (D3D) was enumerated over the full function
+ *      map: eleven instructions in each build, and all eleven are inside
+ *      just two functions -- this builder and the reader 0x10039580 /
+ *      0x10040040.  The extra references at 0x10B4FBE8 are the config path
+ *      that ABUTS the table, not part of it.
+ *   3. The builder has exactly ONE call site in each build (Glide
+ *      0x1001CD7F inside 0x1001CD70, which is itself reached only through
+ *      the state pointer at 0x100A9900; D3D 0x1002F6BF).  And even a second
+ *      pass would be a no-op: both names depend only on the record index and
+ *      the string table, so pass two writes byte-for-byte what pass one did
+ *      and the untouched padding is unchanged.
+ *
+ * So the clears are dead on EVERY pass, not just the first.  The generalising
+ * point: "it is zero anyway" is a claim about one moment; "nothing ever
+ * writes it" is a claim you can check.
  *
  * A NULL STRING IS NOT GUARDED, because the original does not guard it.
  * BrStrGet returns NULL for an id that never loaded, and 0x10058AF0 hands
@@ -78,7 +105,28 @@
  * unreachable -- RallyMain runs 0x1006D1A0 long before state 0 runs this --
  * but a caller that skips br_strres.c will crash exactly where the original
  * would.  The sprintf is likewise unbounded into a 32-byte field, as it is in
- * the original; the shipped strings are at most ten characters.
+ * the original.
+ *
+ * WHY THE UNBOUNDED sprintf DOES NOT OVERFLOW, measured rather than asserted.
+ * THE BOUND IS ON THE SEVEN STRINGS THIS ROUTINE USES, NOT ON "the shipped
+ * strings" -- which is how this note used to read, and that wider sentence is
+ * false: the shipped table's longest entry is id 302 at 180 characters, and
+ * seventeen entries are 31 or longer.  None of them reaches this sprintf.
+ * Over the recovered resource (testdata/strings.txt, 303 ids):
+ *
+ *      0xC3 "BUTTON %d"    9      0xC4 "Left"        4
+ *      0xC5 "Right"        5      0xC6 "Forward"     7
+ *      0xC7 "Backward"     8      0xC8 "Z Negative" 10
+ *                                 0xC9 "Z Positive" 10
+ *
+ * and the only formatted one is "BUTTON %d" over the joystick's 0..127, whose
+ * longest result is "BUTTON 127" -- exactly 10 characters, 11 bytes with the
+ * terminator, into a 32-byte field.  The margin is 21 bytes and it comes from
+ * the loop bound, so widening BR_CTLNAME_JOY_BUTTONS is the change that would
+ * eat it.  (The static keyboard table is a different object and is not
+ * sprintf'd; its longest name is "RIGHT CONTROL" at 13, and nothing there
+ * reaches 32 either -- checked over all 120 records in both builds, which are
+ * byte-identical.)
  */
 #ifndef BR_CTLNAME_H
 #define BR_CTLNAME_H

@@ -12,6 +12,7 @@
  */
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "slice3_44.h"
@@ -544,6 +545,87 @@ static void test_misc(void)
     for (i = 0; i < 8; ++i) CHECK(out[i] == 0u);
 }
 
+
+/* ================================================================== */
+/* THE SPILL MODEL                                                     */
+/* ================================================================== */
+
+/* These pin the ONE thing the double conversion of slice3_44.c is for: the
+ * original rounds an intermediate to float exactly where it stores one, and
+ * nowhere else.  They exist because the first mutation run found that NOTHING
+ * in this tree could observe any of it -- eight separate spill decisions were
+ * reversed one at a time and every suite stayed green, including
+ * test_collresp's slope trace, which is bit-identical under all of them.
+ *
+ * The inputs are not arbitrary.  Each was found by searching for a triple on
+ * which the two readings disagree, because for "nice" values (the ones the
+ * existing fixtures use) they agree exactly -- which is precisely why the
+ * defect was invisible.  Every expected value below is one ULP away from the
+ * value the wrong reading produces, and is stated as a bit pattern so it
+ * cannot be re-derived from the port it is testing.
+ *
+ * NOT covered here, because it cannot be: BrRbQuatDerivative's hx/hy/hz.  The
+ * original stores hx with `fstp` and hy/hz with `fst`, keeping an unrounded
+ * copy of each for one use -- but the scale is 0.5, and halving a normal
+ * float is exact, so the rounded and unrounded copies are the same number for
+ * every non-denormal input.  That is an equivalent mutation, not a gap: 400k
+ * random floats produce zero disagreements.  The asymmetry is real in the
+ * bytes and unobservable in the results. */
+
+static uint32_t fbits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
+
+static void test_spill_model(void)
+{
+    BrRbState  s, dst;
+    BrRbBody   body;
+    BrMat4     m;
+
+    /* --- BrRbIntegrateVelocity: accel[2]*dt is SPILLED (100743EB fstp) and
+     * reloaded (100743F5), so it rounds to float BEFORE the add; accel[0]
+     * and accel[1] are never stored.  Dropping that rounding gives
+     * 0xBFFB83CF instead of 0xBFFB83D0. */
+    memset(&s, 0, sizeof s);
+    memset(&body, 0, sizeof body);
+    body.accel[2] = 67.9935531616211f;
+    s.vel.z       = -5.180332660675049f;
+    BrRbIntegrateVelocity(&s, &body, 0.047289375215768814f);
+    CHECK(fbits(s.vel.z) == 0xBFFB83D0u);
+
+    /* --- BrRbIntegrateState: dt*vel.z is SPILLED (10074623) and reloaded
+     * (10074637); dt*vel.x and dt*vel.y are not.  Unspilled gives
+     * 0x423EA363 instead of 0x423EA362. */
+    memset(&s, 0, sizeof s);
+    memset(&dst, 0, sizeof dst);
+    s.vel.z    = 43.70212173461914f;
+    s.pos.z    = 45.500064849853516f;
+    s.quat.f00 = 1.0f;                      /* keep the normalise well-posed */
+    BrRbIntegrateState(&dst, &s, 0.04941386356949806f);
+    CHECK(fbits(dst.pos.z) == 0x423EA362u);
+
+    /* --- BrRbBuildMatrix: t2da is stored with `fst` (10074521) and KEPT, so
+     * m[0][1] at 10074547 adds the UNROUNDED copy to the rounded t2cb.
+     * Using the rounded copy gives 0x3F7075B2 instead of 0x3F7075B1. */
+    memset(&s, 0, sizeof s);
+    s.quat.f00 = -0.2707282304763794f;      /* a = w */
+    s.quat.f04 = -0.5590753555297852f;      /* b = x */
+    s.quat.f08 = -0.5463083386421204f;      /* c = y */
+    s.quat.f0C = -0.6065876483917236f;      /* d = z */
+    BrRbBuildMatrix(&m, &s);
+    CHECK(fbits(m.m[0][1]) == 0x3F7075B1u);
+
+    /* --- BrRbInitInertia: y*y and z*z are spilled to [esp+0x18] (10074946,
+     * 1007492D) but x*x never is, so m[4]'s (xx + zz) takes an unrounded xx.
+     * Rounding it gives 0x46208DF4 instead of 0x46208DF5. */
+    memset(&body, 0, sizeof body);
+    body.mode   = 0;
+    body.dim[0] = 8.42031192779541f;
+    body.dim[1] = 1.0f;
+    body.dim[2] = 4.846786975860596f;
+    body.mass   = 1306.3031005859375f;
+    BrRbInitInertia(&body);
+    CHECK(fbits(body.inertia.m[4]) == 0x46208DF5u);
+}
+
 int main(void)
 {
     test_skew_is_cross();
@@ -556,6 +638,7 @@ int main(void)
     test_build_matrix();
     test_integrate();
     test_init_inertia();
+    test_spill_model();
     test_misc();
 
     if (g_fail) {

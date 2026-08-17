@@ -136,9 +136,59 @@
  * this project failed that way.  It is read off two functions:
  *
  *   0x10027220 (== BRD3D 0x10027B90 == slice1_04's BrTexFormatCode) maps the
- *   tile's (siz, fmt) onto a Glide GrTextureFormat_t.  CI4, CI8 and RGBA16 --
- *   everything the models actually use -- fall to the catch-all 11 ==
- *   GR_TEXFMT_ARGB_1555.  Only IA4/I8/IA8 pick anything else.
+ *   tile's (siz, fmt) onto a Glide GrTextureFormat_t.  Argument order is
+ *   (siz, fmt, mode); the font pins it -- 0x1006C790 registers an IA/8b font
+ *   as Glide format 4, and only (siz=1, fmt=3) reaches 4.  Exhaustively, the
+ *   only three inputs that do NOT return the catch-all 11 == ARGB_1555 are
+ *
+ *       I4   (siz 0, fmt 4)  ->  11 if mode == 1 else 2  == ALPHA_8
+ *       IA8  (siz 1, fmt 3)  ->  12 if mode == 1 else 4  == ALPHA_INTENSITY_44
+ *       I8   (siz 1, fmt 4)  ->  2  always               == ALPHA_8
+ *
+ *   `mode` is 0x106B7AAC, which br_tex3d.h shows is 0 for retail car models.
+ *
+ *   THIS ENTRY USED TO SAY "CI4, CI8 and RGBA16 -- everything the models
+ *   actually use -- fall to the catch-all ... only IA4/I8/IA8 pick anything
+ *   else", AND BOTH HALVES WERE WRONG.  It named IA4, which is a catch-all
+ *   case (siz 0, fmt 3 -> 11), where the real third case is I4; and the
+ *   parenthesis about the models was a guess that nobody had decoded.
+ *
+ *   DECODED, over all nineteen shipped assets in testdata/ (16 .rca cars, two
+ *   .trk tracks, BossRally.pod).  Every G_SETTILE (0xF5) sitting in the
+ *   canonical texture-load idiom -- a G_SETTIMG, a load (0xF3/0xF4/0xF0),
+ *   this 0xF5, then a 0xF2 G_SETTILESIZE, syncs only in between -- was
+ *   counted.  Coincidental bytes cannot satisfy that five-command shape, and
+ *   a plain linear scan for 0xF5 was run alongside as the recall check.
+ *
+ *       RGBA16  1155   fifteen cars (not hm.rca), both tracks -- 733 of them
+ *                      in desert.trk and 386 in race.trk
+ *       CI4      277   fifteen cars (not bb.rca), and desert.trk 8
+ *       I4        32   desert.trk 8, BossRally.pod 24
+ *       IA8       16   desert.trk 4, BossRally.pod 12
+ *       CI8        0   NOWHERE
+ *
+ *   So the models use FOUR formats, not three; CI8 is used by nothing at all;
+ *   and the two extra ones are exactly two of the three that do NOT fall to
+ *   the catch-all.  desert.trk's twelve are self-consistent five ways over --
+ *   each tile's `line` (64-bit words per row) equals width * bytes-per-texel
+ *   exactly, for all five distinct textures (IA8 64x32 and 64x64, I4 16x16
+ *   and two 32x8), and every G_SETTIMG address resolves inside the file.
+ *   BossRally.pod's are NOT counted as evidence: CONVENTIONS.md records the
+ *   POD as a leftover holding one entry, and its sites repeat at a fixed
+ *   0x1A0 stride with three G_SETTILEs in a row, which is not the idiom.
+ *
+ *   WHAT THIS COSTS, stated rather than papered over.  BrTexFormatCode itself
+ *   is transcribed correctly and test_slice1_04.c pins all three non-default
+ *   arms, so the MAPPING is fine.  The gap is downstream: br_tex3d.c's
+ *   `br_tex3d_bpp` accepts CI4, CI8 and RGBA16 and returns 0 for everything
+ *   else, because it was written to this claim.  desert.trk's five IA8/I4
+ *   textures therefore come back BR_TEX3D_UNSUPPORTED and do not expand.
+ *   That is an honest frontier, not a fabrication -- but it is a frontier
+ *   nobody knew was there.  Closing it means transcribing two more arms of
+ *   the 8480-byte expander 0x100250D0; the bpp values are not in doubt (the
+ *   data confirms 8 and 4) but the per-texel conversion has not been read,
+ *   and inventing one would be exactly the wrong-but-plausible function
+ *   CONVENTIONS.md warns about.  It is left undone and named.
  *
  *   0x100271F0, forty-four bytes, is the per-texel conversion, and it is
  *   exactly:

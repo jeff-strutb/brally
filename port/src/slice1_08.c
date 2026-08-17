@@ -21,10 +21,19 @@ float BrPlaneEval(const BrVec3 *pN, float d, const BrVec3 *pP)
      *   st0 = Py*Ny, st1 = Pz*Nz, st2 = Nx*Px
      *   faddp -> (Py*Ny + Pz*Nz), then + Nx*Px, then + d.
      *
-     * DEVIATION: the original keeps every intermediate in an 80-bit x87
-     * register and never rounds to float until the caller stores it (the
-     * caller at 0x1006F184 compares st0 directly). A portable build rounds
-     * each step to `float`, so results can differ in the last bits. */
+     * DEVIATION: the original keeps every intermediate in an x87 register
+     * and never rounds to float until the caller stores it -- the caller at
+     * 0x1006F184 compares st0 directly. This note used to call the register
+     * 80-bit and the difference "the last bits"; it is 53-bit (CRT control
+     * word 0x027F -- CONVENTIONS.md), so the whole chain is exactly a C
+     * `double` and computing it in `float` rounds four times where the
+     * original rounds none.
+     *
+     * STILL OPEN, and labelled rather than waived, because the fix is not
+     * local: the value is never stored, so modelling it faithfully means
+     * returning `double` and re-tracing 0x1006F184's comparison, which sees
+     * the unrounded value. Narrowing to `float` at the return would move the
+     * rounding rather than remove it. */
     return ((pP->y * pN->y + pP->z * pN->z) + pN->x * pP->x) + d;
 }
 

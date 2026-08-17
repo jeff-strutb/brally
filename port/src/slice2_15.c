@@ -11,11 +11,15 @@
  * ---------------------------------------------------------------------------
  * DEVIATIONS (all of them, collected)
  * ---------------------------------------------------------------------------
- *  - x87 intermediates: the original computes in 80-bit extended precision.
- *    This port uses `double`. Results differ in the last bits of long chains
- *    (notably the four sin/cos in BrHudDrawDial). Where the original round-
- *    trips a value through a 32-bit memory slot the port stores to `float` so
- *    that rounding step is preserved.
+ *  - x87 intermediates: the original computes at 53-bit precision, per the
+ *    CRT control word 0x027F (CONVENTIONS.md), NOT the 80-bit extended this
+ *    entry used to claim. This port uses `double`, which therefore models
+ *    those registers exactly -- so the old rider that "results differ in the
+ *    last bits of long chains" does not apply and has been dropped. Where the
+ *    original round-trips a value through a 32-bit memory slot the port stores
+ *    to `float` so that rounding step is preserved. That pairing -- double for
+ *    registers, float at the spills -- is the whole model, and this file
+ *    already had it right.
  *  - display-list addresses: command words are 32 bits, host pointers may be
  *    64. BrGfxAddr() takes the low 32 bits and is marked at each use.
  *  - sprintf -> snprintf, with the original's buffer sizes.

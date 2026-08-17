@@ -129,23 +129,34 @@ def main():
         missed = sorted(KNOWN_CATEGORY_ERRORS - hit)
         for a in sorted(KNOWN_CATEGORY_ERRORS & hit):
             print("  fires on %s (known DIVERGENT-PORTED-D3D)" % a)
-        if missed:
-            # A claim that was REPAIRED no longer exists to fire on, and that
-            # is a fix, not a regression -- so say which, rather than failing
-            # blind. An earlier detector here failed its selftest for exactly
-            # this reason: it asserted a defect stays present.
-            sh = shared()
-            gone = [a for a in missed if a not in {c[0] for c in cat}]
-            print("  NOT FIRING on: %s" % ', '.join(missed))
-            print("  -> check each: a repaired claim is a FIX (the d3d tag was")
-            print("     removed or re-pointed); a claim still tagged d3d on a")
-            print("     renderer row and not reported is a DETECTOR REGRESSION.")
-            for a in gone:
-                row = sh.get(a)
-                print("     %s  shared.csv class=%s" % (a, row[1] if row else 'ABSENT'))
+        # A REPAIRED CALIBRATION CASE MUST NOT READ AS A REGRESSION.
+        #
+        # This selftest first asserted "the known category errors are all still
+        # in the worklist" -- a contract that destroys itself the moment anyone
+        # does the work. 0x10024260's claim was re-pointed from d3d 0x10024260
+        # to glide 0x10023920, which is precisely the correct fix, and the
+        # selftest reported a DETECTOR REGRESSION for it. tools/claimcheck.py
+        # made the identical mistake and was corrected the same way.
+        #
+        # The rule is therefore: each known case must EITHER still fire, OR be
+        # demonstrably repaired -- no d3d claim on that address any more. Only
+        # an address still tagged d3d on a renderer row and NOT reported is a
+        # real regression, and that is the one case that fails.
+        d3d_claimed = {a for a, b, _s, _f in claims() if b == 'd3d'}
+        repaired = [a for a in missed if a not in d3d_claimed]
+        regressed = [a for a in missed if a in d3d_claimed]
+        sh = shared()
+        for a in repaired:
+            row = sh.get(a)
+            print("  repaired: %s carries no d3d claim now (row class=%s)"
+                  % (a, row[1] if row else 'ABSENT'))
+        if regressed:
+            print("SELFTEST FAILED: still d3d-claimed on a renderer/slot row "
+                  "and NOT reported: %s" % ', '.join(regressed))
             return 1
-        print("selftest ok: rule 1 fires on all %d known category errors"
-              % len(KNOWN_CATEGORY_ERRORS))
+        print("selftest ok: %d of %d known category errors fire, %d repaired"
+              % (len(KNOWN_CATEGORY_ERRORS & hit), len(KNOWN_CATEGORY_ERRORS),
+                 len(repaired)))
         return 0
 
     print("CATEGORY ERROR -- d3d claim on a row shared.csv classes renderer/slot.")

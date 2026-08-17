@@ -55,8 +55,11 @@ static int BrIsNonZero(float v)
 /* Every quantiser stores its x87 result as a double before calling floor, so
  * the whole chain is reproduced in double here.
  *
- * DEVIATION: the original computes in 80-bit extended precision and rounds to
- * double only at the `fstp qword`. Products of two floats and sums with 0.5
+ * DEVIATION: the original computes at the x87's working precision -- 53-bit,
+ * per the CRT control word 0x027F (CONVENTIONS.md), not the 80-bit extended
+ * this note used to claim -- and rounds to double only at the `fstp qword`.
+ * Since the working precision IS double's, the `double` chain here is exact
+ * and the residual-risk sentence below is conservative rather than needed. Products of two floats and sums with 0.5
  * are exact in double for every input the callers can produce, so the two
  * agree; a hand-crafted input sitting exactly on a rounding boundary could
  * still differ by one unit in the last place of the intermediate. */

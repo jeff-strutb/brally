@@ -19,9 +19,27 @@
  *   0x10028BB0  the registrar     build the descriptor, dedup, append
  *   0x10027A70  the dedup        texel source + palette source + mode + 8B
  *   0x10027A10  AppendTexture    the growable array 0xDC indexes
- *   0x10027220  BrTexFormatCode  (slice1_04.c) -- CI4/CI8/RGBA16 -> ARGB1555
- *   0x100250D0  BrTex3dDecode    the expander's CI4, CI8 and RGBA16 arms
+ *   0x10027220  BrTexFormatCode  (slice1_04.c) -- everything but I4/I8/IA8
+ *                                maps to 11 == ARGB1555; see br_dl.h
+ *   0x100250D0  BrTex3dExpand    the expander, WHOLE -- all nine arms
  *   0x100271F0  the per-texel conversion
+ *
+ * THE THREE ARMS WERE NOT ENOUGH, AND THE REASON THEY LOOKED LIKE ENOUGH WAS
+ * A CLAIM NOBODY DECODED.  br_dl.h used to say CI4/CI8/RGBA16 was "everything
+ * the models actually use"; a census of every G_SETTILE in the canonical
+ * load idiom across all nineteen shipped assets says otherwise -- RGBA16
+ * 1155, CI4 277, I4 32, IA8 16, and CI8 ZERO.  testdata/tracks/desert.trk
+ * carries five real textures the three arms could not touch (IA8 64x32 and
+ * 64x64, I4 16x16 and two 32x8).
+ *
+ * ALL NINE ARMS ARE NOW TRANSCRIBED, under BrTex3dExpand.  What remains is
+ * narrower and is a property of THIS FILE's wrapper rather than of the
+ * original: BrTex3dDecode hands back 16-bit texels, and five of the nine
+ * arms produce EIGHT-bit output (I4, AI44, I8 and the two the mode flag
+ * gates), which that buffer cannot carry.  So BrTex3dDecode still answers
+ * BR_TEX3D_UNSUPPORTED for them, and a caller that wants those formats calls
+ * BrTex3dExpand.  `br_tex3d_bpp` is the wrapper's format gate, not the
+ * expander's.
  *
  * THE STATE MACHINE, as the two tables at 0x10028A48 / 0x100289FC give it.
  * The byte table maps opcode-4 onto a state, the dword table maps the state
@@ -80,12 +98,22 @@
  *     RGBA16 alike -- it is the N64's TMEM interleave.
  *   - the texel cursor starts at texelSource + tile.tmem * 8.
  *
- * NOT MODELLED, and each says so where it matters: the LOD chain beyond the
- * base tile (0x106B7AB0..0x106B7A94; retail car models have one level), the
- * Glide TMEM allocator 0x10028200/0x100283C0, the aspect/shift encoding the
- * registrar computes for grTexDownloadMipMap, and the IA4/I8/IA8 arms of
- * the expander -- BrTex3dDecode reports BR_TEX3D_UNSUPPORTED for those
- * rather than guessing.
+ * NOT MODELLED, and each says so where it matters: the registrar's LOD-count
+ * trim (0x106B7AB0..0x106B7A94; retail car models have one level -- and note
+ * that 0x10027B60 hands the expander descriptor +0x58 as the FIRST level and
+ * +0x5C as the bound, while 0x10028F07 writes the SAME value to both, so
+ * something after 0x10028F19 must raise +0x5C and this file does not model
+ * what), the Glide TMEM allocator 0x10028200/0x100283C0, and the
+ * aspect/shift encoding the registrar computes for grTexDownloadMipMap.
+ *
+ * TWO ARMS ARE REACHED BY SHIPPED DATA AND ARE STILL REFUSED BY THE WRAPPER:
+ * IA8 and I4, both in testdata/tracks/desert.trk (see the census above and
+ * in br_dl.h).  That paragraph once named them "IA4/I8/IA8", which was
+ * inherited from br_dl.h and wrong twice -- IA4 is a catch-all case in
+ * 0x10027220, and I8 occurs in no shipped asset at all.  Both are
+ * transcribed in BrTex3dExpand now; test_br_tex3d.c's
+ * `test_unsupported_is_refused` pins that the 16-bit ENTRY POINT keeps
+ * saying no rather than truncating them.
  */
 #ifndef BR_TEX3D_H
 #define BR_TEX3D_H
@@ -170,10 +198,49 @@ enum {
     BR_TEX3D_DEGENERATE     /* w or h is not positive                       */
 };
 
-/* 0x100250D0's CI4, CI8 and RGBA16 arms plus 0x100271F0, for the BASE LOD.
- * `pTexels` must address at least the whole source rectangle and `pPal` 32
- * bytes when the format is CI; `pOut` receives w*h ARGB1555 halfwords in
- * host order. */
+/* 0x100250D0, THE EXPANDER, whole -- all nine arms and both mirrors.
+ *
+ * This is the GLIDE body.  The same dispatch slot holds a DIFFERENT function
+ * in BRD3D.dll (0x10025AB0) and config/shared.csv classes the pair
+ * `renderer`; the two differ in the destination pixel format -- 16-bit
+ * stores and an ARGB1555 helper here, 32-bit stores and an ARGB8888 helper
+ * there.  See the banner at the definition for the measurement.
+ *
+ * The nine arms, by the (siz, fmt, mode) triple that selects them:
+ *
+ *   siz 0  fmt 2            CI4  -> ARGB1555 through the palette
+ *   siz 0  fmt 2  flags&2   CI4  -> the bare 4-bit index, widened to u16,
+ *                                   and only for level 1
+ *   siz 0  fmt 4  mode 1    I4   -> ARGB1555, brightness mixing two colours
+ *   siz 0  fmt 4            I4   -> u8, the nibble replicated (i * 17)
+ *   siz 1  fmt 2            CI8  -> ARGB1555 through the palette
+ *   siz 1  fmt 3  mode 1    IA8  -> ARGB4444, mixed colour + the low nibble
+ *   siz 1  fmt 3            IA8  -> u8 with the nibbles SWAPPED, i.e. AI44
+ *   siz 1  fmt 4            I8   -> u8, copied
+ *   siz 2  fmt 0            RGBA16 -> ARGB1555 through 0x100271F0
+ *
+ * Anything else is a no-op for that level.  `cbOut` is a byte budget, tested
+ * AFTER each element is stored, so one element is always written; `maskOdd`
+ * is the row-swizzle mask (descriptor +0x298, always 1 in shipped data);
+ * `hi0..hi3` / `lo0..lo3` are the eight dedup state bytes, and lo2/lo3 are
+ * the two the registrar never writes.  Arguments are in the original's
+ * order. */
+void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
+                   const uint8_t *pTexels, const uint8_t *pPal, int32_t fmt,
+                   int32_t fMirrorS, int32_t fMirrorT,
+                   int32_t lod, int32_t lodEnd,
+                   const BrTex3dTile *aTile, int32_t flags, int32_t mode,
+                   int32_t hi0, int32_t hi1, int32_t hi2, int32_t hi3,
+                   int32_t lo0, int32_t lo1, int32_t lo2, int32_t lo3,
+                   int32_t maskOdd);
+
+/* The validated wrapper over BrTex3dExpand for the three arms whose output
+ * is 16 bits wide, for the BASE LOD.  `pTexels` must address at least the
+ * whole source rectangle and `pPal` 32 bytes when the format is CI; `pOut`
+ * receives w*h ARGB1555 halfwords in host order.  The five arms whose output
+ * is 8 bits wide, and the raw-index one, are reachable only through
+ * BrTex3dExpand -- this entry point's buffer contract cannot express them,
+ * which is why it still answers BR_TEX3D_UNSUPPORTED for those formats. */
 int BrTex3dDecode(const BrTex3d *pTex, uint32_t id,
                   const uint8_t *pTexels, size_t cbTexels,
                   const uint8_t *pPal, size_t cbPal,

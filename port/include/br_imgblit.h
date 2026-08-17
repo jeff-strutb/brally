@@ -78,9 +78,33 @@
  *
  * i.e. a 256x256 texture, regardless of the file.  `loading.img` is 256x200,
  * so the download reads 28,672 bytes past the payload.  It is harmless in the
- * original -- the scratch buffer is 0x1184C488, deep inside a 24 MB `.data`
- * -- and the quad only samples rows 0..h-1, but it is real and it is why this
- * header states the declared size separately from the file's.
+ * original, and the quad only samples rows 0..h-1, but it is real and it is
+ * why this header states the declared size separately from the file's.
+ *
+ * "HARMLESS" WAS AN ASSERTION ABOUT WHAT IS MAPPED AT 0x1184C488, SO HERE IS
+ * WHAT IS ACTUALLY THERE.  The old reason -- "deep inside a 24 MB .data" --
+ * is true but too weak to settle it: being inside a big section says nothing
+ * about whose bytes the over-read touches.  Measured off BRGlide's section
+ * table and a full-image reference scan:
+ *
+ *   .data runs 0x1007B000..0x118EF184 with only 0x100BCE00 of raw image, so
+ *   0x1184C488 is loader zero-fill, not initialised data.  The over-read
+ *   region is 0x11865488..0x1186C488, which ends 535,804 bytes short of the
+ *   section's end -- it cannot fault.
+ *
+ *   Stronger than that, THE BUFFER IS EXACTLY THE DECLARED TEXTURE.
+ *   0x1184C488 + 256*256*2 == 0x1186C488, and 0x1186C488 is `g_apBrStrTable`,
+ *   the 303-pointer string table br_strres.h recovers -- the next referenced
+ *   object, abutting exactly.  So the scratch buffer is precisely 0x20000
+ *   bytes, sized for the 256x256 the code declares, and the over-read reads
+ *   the BUFFER'S OWN unused tail, not anyone else's storage.
+ *
+ *   Confirmed from the other side too: enumerating every instruction in the
+ *   image whose operand names an address in 0x11865488..0x1186C488 returns
+ *   ZERO, and the whole 0x1184C488..0x1186C488 range is named by exactly four
+ *   instructions, all of them 0x1006C990's own pushes.  Nothing else lives
+ *   there.  CONFIRMED -- and it is harmless for a better reason than the one
+ *   this header used to give.
  *
  * THE PLACEMENT IS HALF FIXED AND HALF FROM THE FILE, which is the single
  * easiest thing here to get wrong:

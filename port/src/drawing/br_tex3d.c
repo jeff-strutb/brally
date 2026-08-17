@@ -446,10 +446,338 @@ static uint16_t br_tex3d_texel(const uint8_t *p)
  * cursor -- bytes 4,5,6,7, 0,1,2,3, 12,13,14,15, 8,9,10,11 ... -- which is
  * `i ^ 4`, and the 16-bit arm at 0x10026FBD does the same thing two bytes at
  * a time.  The mask the row index is tested against is descriptor +0x298,
- * which 0x10028EF0 sets to 1 and nothing else writes. */
+ * which 0x10028EF0 sets to 1 and nothing else writes.
+ *
+ * The cursor form and `i ^ 4` agree for EVERY row width, not just multiples
+ * of eight, which is why this one line can stand in for the four-way
+ * unrolled loop.  The unrolled form is
+ *
+ *     L1: p += 4; run four (or until i == w); p -= 8;
+ *         run four (or until i == w);        p += 4; repeat
+ *
+ * so a run that stops short leaves the cursor wherever it stopped, and the
+ * NEXT group is entered only when i < w -- which re-establishes
+ * p == pRow + (i & ~7).  Worked at w = 3, 6 and 10 against the listing. */
 static size_t br_tex3d_swiz(size_t i, int fOdd)
 {
     return fOdd ? (i ^ 4u) : i;
+}
+
+/* ==================================================================== */
+/* 0x100250D0 -- the expander                                           */
+/* ==================================================================== */
+
+/* WHICH BUILD THIS IS, BECAUSE THE SLOT HOLDS TWO DIFFERENT FUNCTIONS.
+ *
+ * config/shared.csv classes 0x100250D0 (Glide) / 0x10025AB0 (D3D) as
+ * `renderer`, matched by SLOT: crossdiff paired them by their call sites,
+ * not by their bodies.  The bodies really do differ, and the difference is
+ * the destination pixel format, measured rather than assumed:
+ *
+ *   - the Glide body stores 47 sixteen-bit words to the output cursor and
+ *     no dwords; the D3D body stores 67 DWORDS and no words.
+ *   - the per-texel helper each calls is a different function.  Glide's
+ *     0x100271F0 is 44 bytes and returns ARGB1555 (br_tex3d_texel above);
+ *     D3D's 0x10027B10 is 116 bytes and expands the same RGBA5551 source
+ *     into ARGB8888 with each 5-bit channel replicated as (c<<3)|(c&7) and
+ *     alpha as 0x00 or 0xFF.
+ *
+ * The two are otherwise the same shape -- 22 cdecl arguments, 14 calls to
+ * their respective helper, 8480 against 8288 bytes -- so this is one
+ * algorithm compiled against two backends, not two algorithms.  THIS FILE
+ * TRANSCRIBES THE GLIDE BODY.  Do not fold the D3D one in.
+ *
+ * WHAT THE ARGUMENTS ARE, read off the real caller 0x10027B60, which passes
+ * the 0x2B4-byte texture descriptor field by field:
+ *
+ *   1  pOut     0x1186C988, the staging buffer      2  cbOut    desc +0x29C
+ *   3  siz      tile[base].siz                      4  pTexels  desc +0x48
+ *   5  pPal     desc +0x4C                          6  fmt      tile[base].fmt
+ *   7  fMirrorS desc +0x50                          8  fMirrorT desc +0x54
+ *   9  lod      desc +0x58                         10  lodEnd   desc +0x5C
+ *  11  aTile    desc +0x60 (eight 0x40-byte tiles) 12  flags    desc +0x260
+ *  13  mode     desc +0x264                    14..17  desc +0x290..+0x293
+ *  18..21       desc +0x294..+0x297            22  maskOdd  desc +0x298
+ *
+ * -- so arguments 14..21 are the dedup's eight state bytes: the G_SETENVCOLOR
+ * RGBA (0xFB, +0x290..+0x293) as the HIGH colour and the G_SETPRIMCOLOR pair
+ * (0xFA, +0x294/+0x295) plus TWO BYTES NOTHING EVER WRITES (+0x296/+0x297)
+ * as the LOW colour.  br_tex3d_find above already records that defect from
+ * the other side; here is what it costs -- the blue and alpha of the low
+ * colour in the two blend arms are uninitialised stack in the original.  The
+ * port zeroes them, as it does in the dedup.
+ *
+ * The other caller, 0x10024E60, builds a one-tile descriptor on its own
+ * stack and zeroes all eight bytes explicitly. */
+
+typedef struct BrTexExpSink {
+    uint8_t *p;         /* esi */
+    int32_t  cb;        /* edi -- output bytes so far */
+    int32_t  cbMax;     /* ebp -- argument 2          */
+} BrTexExpSink;
+
+/* Every emit in the function has the same three steps in the same order:
+ * store, advance by the element size, then `cmp edi,ebp / jge` straight out
+ * of the whole function.  The budget test is AFTER the store, so the first
+ * element is written even when cbOut is zero -- preserved.  Returns 1 when
+ * the caller must unwind. */
+static int br_te_put(BrTexExpSink *pS, uint32_t v, int elem)
+{
+    if (elem == 1) {
+        pS->p[0] = (uint8_t)v;
+    } else {
+        uint16_t h = (uint16_t)v;
+        memcpy(pS->p, &h, sizeof h);
+    }
+    pS->p  += elem;
+    pS->cb += elem;
+    return pS->cb >= pS->cbMax;
+}
+
+static uint32_t br_te_get(const uint8_t *p, int elem)
+{
+    uint16_t h;
+    if (elem == 1)
+        return (uint32_t)p[0];
+    memcpy(&h, p, sizeof h);
+    return (uint32_t)h;
+}
+
+/* The arms, named for the (siz, fmt, mode) triple that selects them. */
+enum {
+    BR_TE_CI4,        /* siz 0 fmt 2            palette   -> ARGB1555 */
+    BR_TE_IDX4,       /* siz 0 fmt 2, flags&2   raw index -> u16      */
+    BR_TE_I4BLEND,    /* siz 0 fmt 4 mode 1     blend     -> ARGB1555 */
+    BR_TE_I4,         /* siz 0 fmt 4            i*17      -> u8       */
+    BR_TE_CI8,        /* siz 1 fmt 2            palette   -> ARGB1555 */
+    BR_TE_IA8BLEND,   /* siz 1 fmt 3 mode 1     blend     -> ARGB4444 */
+    BR_TE_AI44,       /* siz 1 fmt 3            swap      -> u8       */
+    BR_TE_I8,         /* siz 1 fmt 4            copy      -> u8       */
+    BR_TE_RGBA16,     /* siz 2 fmt 0            0x100271F0-> ARGB1555 */
+    BR_TE_NONE
+};
+
+/* 0x10025809.  Four channels, each `lo + i*(hi-lo)/255` at 32 bits, each
+ * then SPILLED TO A BYTE -- the three colour channels shifted right by 3 and
+ * the fourth by 7, which is what makes the fourth exactly one bit.  The
+ * division is the SIGNED magic sequence (imul 0x80808081, sar 7, add sign),
+ * i.e. C's `/ 255` truncating toward zero.
+ *
+ * The 20 bits assembled here are stored through a 16-bit `mov`, so the top
+ * four are discarded and the result is ARGB1555 with argument 14/18 as red. */
+static uint16_t br_te_blend1555(int32_t i, const int32_t *aHi,
+                                const int32_t *aLo)
+{
+    int32_t ch[4];
+    uint32_t v;
+    int k;
+
+    for (k = 0; k < 4; k++) {
+        int32_t lo = aLo[k] & 0xFF;
+        int32_t d  = (aHi[k] & 0xFF) - lo;
+        ch[k] = lo + (i * d) / 255;
+    }
+    v = (uint32_t)((ch[3] >> 7) & 0xFF);
+    v = (v << 5) | (uint32_t)((ch[0] >> 3) & 0xFF);
+    v = (v << 5) | (uint32_t)((ch[1] >> 3) & 0xFF);
+    v = (v << 5) | (uint32_t)((ch[2] >> 3) & 0xFF);
+    return (uint16_t)v;
+}
+
+/* 0x10026705.  THREE channels, not four: the alpha of an IA8 texel is the
+ * source's own low nibble and no colour is blended into it.
+ *
+ * DIFFERENT ARITHMETIC FROM THE ARM ABOVE, and this is not tidiness to be
+ * harmonised away: 0x10026747 is `mul` + `shr edx,7` -- the UNSIGNED magic
+ * divide -- where 0x1002585B is `imul` + `sar` + sign fixup.  So a high
+ * colour darker than the low one wraps here and clamps toward zero there.
+ * Nothing masks the shifted channels either; the four nibbles are assembled
+ * in a register and truncated only by the 16-bit store. */
+static uint16_t br_te_blend4444(uint32_t b, const int32_t *aHi,
+                                const int32_t *aLo)
+{
+    uint32_t i = (b >> 4) | (b & 0xF0u);        /* 0x10026720 */
+    uint32_t v = b & 0x0Fu;                     /* 0x10026728 */
+    int k;
+
+    for (k = 0; k < 3; k++) {
+        uint32_t lo   = (uint32_t)aLo[k] & 0xFFu;
+        uint32_t prod = (uint32_t)((int32_t)(((uint32_t)aHi[k] & 0xFFu) - lo)
+                                   * (int32_t)i);
+        v = (v << 4) | ((lo + prod / 255u) >> 4);
+    }
+    return (uint16_t)v;
+}
+
+/* One SOURCE unit -- one byte for the 4bpp and 8bpp arms, one halfword for
+ * RGBA16 -- turned into one or two output elements. */
+static int br_te_unit(BrTexExpSink *pS, int kind, const uint8_t *pu,
+                      const uint8_t *pPal, const int32_t *aHi,
+                      const int32_t *aLo)
+{
+    uint32_t b = pu[0];
+
+    switch (kind) {
+    case BR_TE_CI4:
+        /* 0x10025467: the HIGH nibble first, both times. */
+        if (br_te_put(pS, br_tex3d_texel(pPal + (b >> 4) * 2u), 2)) return 1;
+        return br_te_put(pS, br_tex3d_texel(pPal + (b & 15u) * 2u), 2);
+    case BR_TE_IDX4:
+        /* 0x100251E3: `movzx dx,dl` of the bare nibble -- no palette. */
+        if (br_te_put(pS, b >> 4, 2)) return 1;
+        return br_te_put(pS, b & 15u, 2);
+    case BR_TE_I4BLEND:
+        if (br_te_put(pS, br_te_blend1555((int32_t)((b >> 4) | (b & 0xF0u)),
+                                          aHi, aLo), 2)) return 1;
+        return br_te_put(pS, br_te_blend1555(
+            (int32_t)(((b << 4) | (b & 15u)) & 0xFFu), aHi, aLo), 2);
+    case BR_TE_I4:
+        if (br_te_put(pS, (b & 0xF0u) | (b >> 4), 1)) return 1;
+        return br_te_put(pS, ((b << 4) | (b & 15u)) & 0xFFu, 1);
+    case BR_TE_CI8:
+        return br_te_put(pS, br_tex3d_texel(pPal + b * 2u), 2);
+    case BR_TE_IA8BLEND:
+        return br_te_put(pS, br_te_blend4444(b, aHi, aLo), 2);
+    case BR_TE_AI44:
+        /* 0x10026C04: the nibbles swap.  This is the whole of the IA8 ->
+         * AI44 difference CONVENTIONS.md records for the Glide font. */
+        return br_te_put(pS, ((b << 4) | (b >> 4)) & 0xFFu, 1);
+    case BR_TE_I8:
+        return br_te_put(pS, b, 1);
+    default:
+        return br_te_put(pS, br_tex3d_texel(pu), 2);
+    }
+}
+
+/* WHAT IT DOES: turns the N64's packed texture data into the pixels the
+ * Glide card can hold. It walks each level of detail a texture has, reads
+ * one row at a time, undoes the console's habit of swapping every other
+ * row's halves, and writes out one colour per texel -- looking colours up in
+ * a palette, mixing between two colours by brightness, or passing the
+ * colour straight through, whichever the texture's format calls for. It also
+ * duplicates the picture left-right and top-bottom when the texture is
+ * marked as mirrored, and it stops the moment the destination buffer is
+ * full. */
+/* @implements 0x100250D0 glide BrTex3dExpand */
+void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
+                   const uint8_t *pTexels, const uint8_t *pPal, int32_t fmt,
+                   int32_t fMirrorS, int32_t fMirrorT,
+                   int32_t lod, int32_t lodEnd,
+                   const BrTex3dTile *aTile, int32_t flags, int32_t mode,
+                   int32_t hi0, int32_t hi1, int32_t hi2, int32_t hi3,
+                   int32_t lo0, int32_t lo1, int32_t lo2, int32_t lo3,
+                   int32_t maskOdd)
+{
+    BrTexExpSink s;
+    int32_t aHi[4], aLo[4];
+
+    aHi[0] = hi0; aHi[1] = hi1; aHi[2] = hi2; aHi[3] = hi3;
+    aLo[0] = lo0; aLo[1] = lo1; aLo[2] = lo2; aLo[3] = lo3;
+
+    s.p = pOut; s.cb = 0; s.cbMax = cbOut;
+
+    /* 0x100250F5.  The guard is on the FIRST iteration's condition, so an
+     * empty LOD range leaves the buffer untouched. */
+    for (; lod < lodEnd; lod++) {
+        /* 0x1002510D: the tile array is indexed by the ABSOLUTE tile number
+         * and the cursor restarts from the texel base every level. */
+        const BrTex3dTile *pT = &aTile[lod];
+        const uint8_t *pRow = pTexels + (size_t)pT->tmem * 8;
+        int32_t w, h, y, rowElems;
+        int kind, elem, nPer, srcUnit;
+
+        if (siz == 0) {
+            if (fmt == 2) {
+                /* 0x10025148.  Both halves of the test matter: the raw-index
+                 * arm needs bit 1 of the descriptor's +0x260 flags AND the
+                 * level to be exactly 1.  It reads its width, height and
+                 * pitch from tile[1] by a hard-coded displacement rather
+                 * than from tile[lod] -- the same tile, because of the
+                 * guard, so the two spellings cannot disagree. */
+                kind = ((flags & 2) != 0 && lod == 1) ? BR_TE_IDX4 : BR_TE_CI4;
+            } else if (fmt == 4) {
+                kind = (mode == 1) ? BR_TE_I4BLEND : BR_TE_I4;
+            } else {
+                continue;
+            }
+            /* 0x10025169: maskS MINUS ONE, because a 4bpp row is half as
+             * many bytes as it is texels, and the loops below count BYTES. */
+            w = (int32_t)((uint32_t)1 << ((uint32_t)(pT->maskS - 1) & 31u));
+        } else if (siz == 1) {
+            if (fmt == 2)      kind = BR_TE_CI8;
+            else if (fmt == 3) kind = (mode == 1) ? BR_TE_IA8BLEND : BR_TE_AI44;
+            else if (fmt == 4) kind = BR_TE_I8;
+            else               continue;
+            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
+        } else if (siz == 2 && fmt == 0) {
+            kind = BR_TE_RGBA16;
+            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
+        } else {
+            continue;
+        }
+        h = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskT & 31u));
+
+        elem    = (kind == BR_TE_I4 || kind == BR_TE_AI44 ||
+                   kind == BR_TE_I8) ? 1 : 2;
+        nPer    = (kind == BR_TE_CI4 || kind == BR_TE_IDX4 ||
+                   kind == BR_TE_I4BLEND || kind == BR_TE_I4) ? 2 : 1;
+        srcUnit = (kind == BR_TE_RGBA16) ? 2 : 1;
+
+        for (y = 0; y < h; y++) {
+            int fOdd = (y & maskOdd) != 0;
+            int32_t i;
+
+            for (i = 0; i < w; i++) {
+                size_t off = br_tex3d_swiz((size_t)i * (size_t)srcUnit, fOdd);
+                if (br_te_unit(&s, kind, pRow + off, pPal, aHi, aLo)) {
+                    /* 0x10026FEE.  The RGBA16 SWIZZLED loop -- and only that
+                     * one -- tests the row bound BEFORE the budget, so the
+                     * last texel of a row does not abandon the row's mirror
+                     * tail.  Every other arm tests the budget first. */
+                    if (!(kind == BR_TE_RGBA16 && fOdd && i + 1 >= w))
+                        return;
+                }
+            }
+
+            /* 0x10025680: the S mirror re-emits the row just written,
+             * backwards, doubling its width. */
+            if (fMirrorS) {
+                const uint8_t *q = s.p - elem;
+                int32_t k, n = w * nPer;
+                for (k = 0; k < n; k++) {
+                    uint32_t v = br_te_get(q, elem);
+                    q -= elem;
+                    if (br_te_put(&s, v, elem))
+                        return;
+                }
+            }
+
+            /* 0x100256BC: the source pitch is the tile's `line`, added once
+             * per row and NOT clamped up to the row width -- a `line`
+             * narrower than the mask makes consecutive rows overlap, which
+             * is the N64 idiom for a non-power-of-two image. */
+            pRow += (size_t)pT->line;
+        }
+
+        /* 0x100256E8: and the T mirror does the same to whole rows, walking
+         * the finished image backwards a row at a time. */
+        if (fMirrorT && h > 0) {
+            uint8_t *q = s.p;
+            rowElems = (fMirrorS ? 2 : 1) * w * nPer;
+            for (y = 0; y < h; y++) {
+                const uint8_t *p;
+                int32_t k;
+                q -= (size_t)rowElems * (size_t)elem;
+                p = q;
+                for (k = 0; k < rowElems; k++) {
+                    uint32_t v = br_te_get(p, elem);
+                    p += elem;
+                    if (br_te_put(&s, v, elem))
+                        return;
+                }
+            }
+        }
+    }
 }
 
 static int br_tex3d_bpp(const BrTex3dTile *pT)
@@ -532,11 +860,9 @@ int BrTex3dDecode(const BrTex3d *pTex, uint32_t id,
 {
     const BrTex3dRec *pR;
     const BrTex3dTile *pT;
-    const uint8_t *pRow;
-    int32_t texW, texH, x, y;
+    int32_t texW, texH;
     int bpp;
     size_t row, pitch, need;
-    uint16_t *o = pOut;
 
     if (pTex == NULL || pOut == NULL || id >= pTex->cRec)
         return BR_TEX3D_BADID;
@@ -571,48 +897,33 @@ int BrTex3dDecode(const BrTex3d *pTex, uint32_t id,
     if (pT->fmt == 2 && (pPal == NULL || cbPal < ((pT->siz == 0) ? 32u : 512u)))
         return BR_TEX3D_NOSRC;
 
-    /* 0x1002511F: the cursor starts at the texel source plus the tile's
-     * TMEM offset, which is in 64-bit words. */
-    pRow = pTexels + (size_t)pT->tmem * 8u;
+    /* THE PIXEL LOOPS ARE NOT REPEATED HERE.  They used to be, and that made
+     * the tree hold two host models of one original function -- exactly the
+     * hazard CONVENTIONS.md's "aliased storage" section describes, one level
+     * up.  BrTex3dExpand above IS 0x100250D0; this routine is the validated
+     * wrapper the port's own callers want, and nothing else.
+     *
+     * DEVIATION, and it is this wrapper's rather than the original's: the
+     * expander adds `line` to the row cursor unconditionally, so a tile with
+     * line == 0 reads the same source row every time.  A record built from a
+     * real G_SETTILE never has that, but a hand-built fixture can, so the
+     * fallback pitch computed above is handed over in a tile COPY.  The
+     * expander itself is untouched. */
+    {
+        BrTex3dTile t = *pT;
+        int32_t outW = texW * (pT->mirrorS ? 2 : 1);
+        int32_t outH = texH * (pT->mirrorT ? 2 : 1);
+        int32_t siz  = (bpp == 4) ? 0 : (bpp == 8) ? 1 : 2;
+        int32_t fmt  = (bpp == 16) ? 0 : 2;
 
-    for (y = 0; y < texH; y++) {
-        int fOdd = (y & 1) != 0;
-        uint16_t *pRowOut = o;
-
-        for (x = 0; x < texW; x++) {
-            uint16_t v;
-            if (bpp == 4) {
-                size_t i = (size_t)(x >> 1);
-                uint8_t b = pRow[br_tex3d_swiz(i, fOdd)];
-                /* 0x10025467: the HIGH nibble first. */
-                unsigned idx = (x & 1) ? (b & 0x0Fu) : (unsigned)(b >> 4);
-                v = br_tex3d_texel(pPal + idx * 2u);
-            } else if (bpp == 8) {
-                uint8_t b = pRow[br_tex3d_swiz((size_t)x, fOdd)];
-                v = br_tex3d_texel(pPal + (size_t)b * 2u);
-            } else {
-                size_t i = (size_t)x * 2u;
-                v = br_tex3d_texel(pRow + br_tex3d_swiz(i, fOdd));
-            }
-            *o++ = v;
-        }
-        /* 0x10025680: the mirror emits the row it has just written,
-         * backwards, doubling the width. */
-        if (pT->mirrorS) {
-            for (x = 0; x < texW; x++)
-                *o++ = pRowOut[texW - 1 - x];
-        }
-        pRow += pitch;                              /* 0x100256BC */
-    }
-
-    /* 0x100256E8: and the T mirror does the same to whole rows. */
-    if (pT->mirrorT) {
-        int32_t stride = pR->w;
-        for (y = 0; y < texH; y++) {
-            const uint16_t *pSrc = pOut + (size_t)(texH - 1 - y) * (size_t)stride;
-            for (x = 0; x < stride; x++)
-                *o++ = pSrc[x];
-        }
+        t.line = (int32_t)pitch;
+        BrTex3dExpand((uint8_t *)pOut, outW * outH * 2, siz,
+                      pTexels, pPal, fmt,
+                      pT->mirrorS, pT->mirrorT,
+                      0, 1, &t,
+                      /* flags */ 0, /* mode */ 0,
+                      0, 0, 0, 0, 0, 0, 0, 0,
+                      /* maskOdd */ 1);
     }
     return BR_TEX3D_OK;
 }

@@ -159,6 +159,53 @@ typedef struct BrDriverCar {
     float   f29C0Steer;     /* +0x29C0 -> +0x20, the steering command      */
     uint8_t b29C024;        /* +0x29C0 -> +0x24                            */
     uint8_t b360;           /* +0x360   the skid-trail sample count        */
+
+    /* ---- EXTENDED AGAIN, by br_racebegin.h's pass -----------------------
+     * Same rule and the same reason as the two extensions above: Glide
+     * 0x10019A70's ONE-TIME ARM reads and writes these on the SAME 0x2B68
+     * record, so a rival struct would be a second view of one original
+     * object.  Every one carries its original offset and the instruction
+     * that pins it.
+     *
+     * The four equipment slots are named by TWO independent readings that
+     * agree: 0x1001A490 copies them out of the equipment record whose
+     * offsets br_racestart.h pins from 0x100628B0, and 0x10019EBD reads the
+     * same four out of the eight-byte replay header 0x1001A14A builds.
+     * car+0xE94 being the suspension also agrees with CONVENTIONS.md's
+     * spring rate, `(20 - n*-4) * 16000` with `n` at car+0xE94. */
+    int32_t  f730;          /* +0x730   0x100199AC gates the speed update  */
+    BrVec3   f1E8;          /* +0x1E8   the velocity 0x100199BC takes the
+                             *          length of.  Its components are read
+                             *          in the order +0x1EC, +0x1E8, +0x1F0
+                             *          and summed (y*y + x*x) + z*z, which
+                             *          is the order the port keeps          */
+    int32_t  fE88;          /* +0xE88   0x1001A619 gates the 0x1006FCE0
+                             *          call on this being zero            */
+    uint8_t *pEquip;        /* +0xE8C   -> the 0x200-byte equipment record
+                             *          slice5_60.h reaches as
+                             *          g_BrCarEquipTarget.  RAW BYTES: the
+                             *          record is written to disc verbatim  */
+    int32_t  fE90;          /* +0xE90   tire type,        0x1001A4A3       */
+    int32_t  fE94;          /* +0xE94   suspension type,  0x1001A498       */
+    int32_t  fE98;          /* +0xE98   handling type,    0x1001A4B9       */
+    int32_t  fE9C;          /* +0xE9C   transmission,     0x1001A49B       */
+    int32_t  fF7C;          /* +0xF7C   0x1001A641                         */
+    int32_t  fFFC;          /* +0xFFC   0x1001A644                         */
+    int32_t  f1004;         /* +0x1004  0x1001A64A, and the byte count
+                             *          0x1001A8D0's download returns       */
+    int32_t  f29A4;         /* +0x29A4  the car model REQUESTED; 0x10019EA7
+                             *          writes it and passes the same value
+                             *          to 0x1006FD50                       */
+    int32_t  f29A8;         /* +0x29A8  the car model APPLIED; 0x1001A127
+                             *          records THIS into the replay header
+                             *          and 0x1001A61E passes it on         */
+
+    /* +0x29C0's POINTEE.  The three fields above (f29C0Ctl, f29C0Steer,
+     * b29C024) are that block's +0x00, +0x20 and +0x24 flattened into this
+     * record; br_racebegin.h's BrRaceCtl deliberately does NOT repeat them,
+     * so there is exactly one model of each dword.  A host that supplies a
+     * real block has to decide which object owns those three. */
+    struct BrRaceCtl *pCtl; /* +0x29C0                                     */
 } BrDriverCar;
 
 /* The three bits of car+0x29C0's first dword that 0x10061F60 writes.  br_ai.h

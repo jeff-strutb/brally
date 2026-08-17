@@ -41,9 +41,13 @@ extern void BrGbiStackOverflow(int code);
 /* @implements 0x10002240 d3d BrSinF */
 float BrSinF(float x)
 {
-    /* DEVIATION: `fsin` computes in 80-bit and is undefined for |x| >= 2^63
-     * (it returns the operand untouched with C2 set).  sinf has neither
-     * property.  No call site approaches the limit. */
+    /* DEVIATION: `fsin` rounds its result at the x87's current precision,
+     * which is 53-bit here and not the 80-bit this note used to claim (CRT
+     * control word 0x027F -- CONVENTIONS.md), and it is undefined for
+     * |x| >= 2^63, returning the operand untouched with C2 set.  `sinf` has
+     * neither property: it computes at float precision, so the two can differ
+     * in the last float bit where a 53-bit sine rounded down to float would
+     * not.  No call site approaches the 2^63 limit. */
     return sinf(x);
 }
 
