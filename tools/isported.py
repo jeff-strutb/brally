@@ -144,14 +144,70 @@ def size_of(addr):
     return None
 
 
+def pairing(addr):
+    """Both builds' readings of this number, from config/shared.csv.
+
+    THE DEFECT THIS CLOSES, and it was wrong in BOTH dangerous directions at
+    once on a single chain:
+
+      Glide 0x10003320 is CHK_FReadOpen and is NOT ported. This tool said
+      "PORTED as BrChkFileExists -- DO NOT re-transcribe", because BrChkFileExists
+      carries the D3D address 0x10003320 in its name. Following that would have
+      SKIPPED a real function.
+
+      Glide 0x10003680 IS CHK_FileExists and IS ported. This tool said "clean
+      target", because the D3D number for it is different. Following that would
+      have DUPLICATED an existing transcription -- the failure mode that ends
+      with two routines fighting over one global.
+
+    The cause was matching address TEXT with no idea which image the number
+    belongs to. slice1_01.h says in its first line that it is written against
+    BRD3D.dll; most modules here use D3D addresses; some use Glide. A bare
+    number is not self-describing and never was.
+    """
+    out = []
+    if not os.path.exists('config/shared.csv'):
+        return out
+    for r in csv.DictReader(open('config/shared.csv')):
+        try:
+            d = int(r['d3d_va'], 16)
+            g = int(r['glide_va'], 16) if r['glide_va'] else None
+        except Exception:
+            continue
+        if d == addr and g is not None:
+            out.append(('glide', g))
+        if g == addr:
+            out.append(('d3d', d))
+    return out
+
+
 def report(addr, defs):
     key = '%08X' % addr
     print('0x%s   %s bytes' % (key, size_of(addr) if size_of(addr) else '?'))
     if key in defs:
         name, f, how = defs[key]
         print('  PORTED as %s  (%s, found by %s)' % (name, f, how))
+        ps = pairing(addr)
+        if ps:
+            print('  AMBIGUOUS: this number also reads as %s'
+                  % ', '.join('0x%08X in %s' % (o, side) for side, o in ps))
+            print('  -> confirm WHICH BUILD the module is written against before')
+            print('     trusting this. A name carrying one build\'s address says')
+            print('     nothing about the other build\'s function at that number.')
         print('  -> DO NOT re-transcribe. Wire it, or extend it.')
         return True
+    # Before declaring anything absent, look up the SAME FUNCTION under the
+    # other build's address. That is where the false "clean target" came from.
+    for side, other in pairing(addr):
+        k2 = '%08X' % other
+        if k2 in defs:
+            name, f, how = defs[k2]
+            print('  PORTED under its %s address 0x%s, as %s  (%s)'
+                  % (side.upper(), k2, name, f))
+            print('  -> DO NOT re-transcribe. This number and 0x%s are the '
+                  'same function' % k2)
+            print('     in the two builds. Confirm with tools/whereis.py.')
+            return True
     ms = mentions(addr)
     if ms:
         print('  not defined anywhere -- but MENTIONED %d time(s):' % len(ms))

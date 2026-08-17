@@ -55,6 +55,8 @@ void BrWindowResetForTest(void)
 static const char s_szClass[] = "BossRally";    /* 0x1007B378 */
 static const char s_szTitle[] = "Boss Rally";   /* 0x1007B384 */
 
+/* 0x10019670's parameters as data -- the WNDCLASSA built on the stack at
+ * S+0x00..S+0x24 and CreateWindowExA's twelve arguments. */
 void BrWindowDescribe(BrWindowDesc *pDesc)
 {
     if (pDesc == NULL)
