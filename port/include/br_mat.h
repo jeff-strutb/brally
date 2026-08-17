@@ -23,6 +23,12 @@ void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV);
  * the inverse rotation. */
 void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV);
 
+/* 0x100349C0  project pV through pM (v' = v*M, linear+projection column only,
+ * no translation row) and divide x/y/z by the resulting w.  Glide-only.
+ * NOTE the argument order is (out, v, M) -- vector before matrix, unlike the
+ * two MulVec3 routines above. */
+void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM);
+
 /* 0x100307A0  copy a full 4x4 (16 dwords).
  *
  * WARNING: argument order is SOURCE FIRST, unlike every routine in br_vec.h

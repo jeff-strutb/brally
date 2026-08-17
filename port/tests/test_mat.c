@@ -118,6 +118,25 @@ int main(void)
       BrMat4MulVec3(&so, &sm, &sv);
       check(near(so.x,1) && near(so.y,2) && near(so.z,3), "unit scale is identity"); }
 
+    /* BrVec3Project: v*M (linear+projection column) then perspective divide. */
+    { BrVec3 pv = {1.0f, 2.0f, 4.0f}, po;
+      /* identity: w = m[3][3] = 1, so projection is a no-op */
+      BrVec3Project(&po, &pv, &id);
+      check(near(po.x,1) && near(po.y,2) && near(po.z,4),
+            "project: identity leaves the point (w==1)");
+
+      /* divide-by-z: m[2][3]=1 makes w == vz; x/y/z all scale by 1/vz */
+      { BrMat4 pz = id; pz.m[2][3] = 1.0f; pz.m[3][3] = 0.0f;
+        BrVec3Project(&po, &pv, &pz);
+        check(near(po.x,0.25f) && near(po.y,0.5f) && near(po.z,1.0f),
+              "project: m[2][3]=1 divides x/y/z by z"); }
+
+      /* the translation row m[3][0..2] must be ignored (only m[3][3] feeds w) */
+      { BrMat4 tj = id; tj.m[3][0]=1e6f; tj.m[3][1]=1e6f; tj.m[3][2]=1e6f;
+        BrVec3Project(&po, &pv, &tj);
+        check(near(po.x,1) && near(po.y,2) && near(po.z,4),
+              "project: translation row is not read"); } }
+
     printf(g_fail ? "\nFAILED\n" : "\nALL PASSED\n");
     return g_fail;
 }
