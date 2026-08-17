@@ -79,6 +79,7 @@ int32_t BrSub1003D0B0(struct BrDPlay4Obj *pObjIn, void **ppvOut)
  * 0x1003E070 -- `call 0x1005FF60` / `jmp 0x1005FFF0`
  * ===================================================================== */
 
+/* @implements 0x1003E070 d3d BrFn1003E070 */
 void BrFn1003E070(void)
 {
     BrMenuSub1005FF60();
@@ -190,6 +191,7 @@ static void BrGbiRectFlush(BrGbiRectState *pSt)
     pSt->dirty = 0;
 }
 
+/* @implements 0x10021560 d3d BrGbiCall10021560 */
 void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
 {
     BrGbiRectState *pSt  = BrGbiRectGetState();
@@ -265,12 +267,16 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
         v3.node.f1C = 1.0f; v3.node.f20 = 1.0f; v3.node.f24 = 1.0f;
     }
 
-    /* Texture coordinates: the SCISSOR, not the rectangle.  See the pairing
-     * GOTCHA in slice4_51.h -- this is transcribed, not rationalised. */
-    u0  = (float)pGbi->scissor.ulx * BR_GBI_RECT_C_UVSCL;   /* 0x118AA080 */
-    u1  = (float)pGbi->scissor.lrx * BR_GBI_RECT_C_UVSCL;   /* 0x1182983C */
-    vt0 = (float)pGbi->scissor.uly * BR_GBI_RECT_C_UVSCL;   /* 0x11829838 */
-    vt1 = (float)pGbi->scissor.lry * BR_GBI_RECT_C_UVSCL;   /* 0x118A9870 */
+    /* Texture coordinates: the latched TILE, not the rectangle.  These four
+     * globals used to be called the scissor here, and on that reading "the
+     * texture coordinates come from the scissor" was a standing GOTCHA in
+     * slice4_51.h.  0x1001CF30 is opcode 0xF2 -- G_SETTILESIZE -- so they are
+     * uls/lrs/ult/lrt, and a tile rectangle taking its texture coordinates
+     * from the tile is not a gotcha at all.  See slice2_16.h. */
+    u0  = (float)pGbi->tile.uls * BR_GBI_RECT_C_UVSCL;      /* 0x118AA080 */
+    u1  = (float)pGbi->tile.lrs * BR_GBI_RECT_C_UVSCL;      /* 0x1182983C */
+    vt0 = (float)pGbi->tile.ult * BR_GBI_RECT_C_UVSCL;      /* 0x11829838 */
+    vt1 = (float)pGbi->tile.lrt * BR_GBI_RECT_C_UVSCL;      /* 0x118A9870 */
 
     v0.node.f10 = u1;  v0.node.f14 = vt1;
     v1.node.f10 = u0;  v1.node.f14 = vt0;

@@ -124,19 +124,36 @@ extern void BrGbiCall10075330(void *pv);
 /* 1. F3D command handlers                                            */
 /* ================================================================== */
 
-/* --- scissor (0x1001CF30) ------------------------------------------
- * G_SETSCISSOR. Each of the four 12-bit 10.2 fields is sign-extended by
- * hand: `if (v >= 0x800) v -= 0x1000`. w and h are the pixel extents,
- * (lr - ul + 4) >> 2, with an ARITHMETIC shift so negative extents stay
- * negative. */
-typedef struct BrGbiScissor {
-    int32_t ulx;   /* 0x118AA080  (w0 >> 12) & 0xFFF, sign-extended */
-    int32_t uly;   /* 0x11829838   w0        & 0xFFF, sign-extended */
-    int32_t lrx;   /* 0x1182983C  (w1 >> 12) & 0xFFF, sign-extended */
-    int32_t lry;   /* 0x118A9870   w1        & 0xFFF, sign-extended */
-    int32_t w;     /* 0x11829840  (lrx - ulx + 4) >> 2 */
-    int32_t h;     /* 0x118AA094  (lry - uly + 4) >> 2 */
-} BrGbiScissor;
+/* --- tile size (0x1001CF30) ----------------------------------------
+ * G_SETTILESIZE, opcode 0xF2 -- NOT G_SETSCISSOR, which is what this was
+ * called until the display-list opcode audit.  It is a NAMING defect only:
+ * the arithmetic below was right all along.
+ *
+ * THE EVIDENCE, and it is the dispatch table rather than the shape:
+ *   - BRD3D's table at 0x100A79F0 holds 0x1001CF30 in slot 0xF2.  Slots 0xE2
+ *     and 0xED -- the two that really are the scissor -- hold 0x1001CE70 and
+ *     0x1001CDA0, two different, longer functions (191 and 197 bytes) that
+ *     end in a clip-window call.  0x1001CF30 calls nothing at all.
+ *   - Its Glide counterpart is 0x1001EC30, the same 178 bytes, which
+ *     BRGlide's table at 0x100A9A58 also holds in slot 0xF2, and which
+ *     br_dl.c transcribes as br_dl_settilesize.  The two are the same
+ *     function under the two builds' addresses; do not give them a third
+ *     name.
+ *   - A scissor has no `(lr - ul + 4) >> 2` extent.  A tile does: that is
+ *     the texel width and height of the loaded tile.
+ *
+ * Each of the four 12-bit 10.2 fields is sign-extended by hand:
+ * `if (v >= 0x800) v -= 0x1000`.  tileW and tileH are the texel extents,
+ * (lr - ul + 4) >> 2, with an ARITHMETIC shift (`sar eax,2` at 0x1001CFCB)
+ * so negative extents stay negative. */
+typedef struct BrGbiTileSize {
+    int32_t uls;    /* 0x118AA080  (w0 >> 12) & 0xFFF, sign-extended */
+    int32_t ult;    /* 0x11829838   w0        & 0xFFF, sign-extended */
+    int32_t lrs;    /* 0x1182983C  (w1 >> 12) & 0xFFF, sign-extended */
+    int32_t lrt;    /* 0x118A9870   w1        & 0xFFF, sign-extended */
+    int32_t tileW;  /* 0x11829840  (lrs - uls + 4) >> 2 */
+    int32_t tileH;  /* 0x118AA094  (lrt - ult + 4) >> 2 */
+} BrGbiTileSize;
 
 /* --- geometry mode (0x1001E790 clear, 0x10020F20 set) --------------
  * `prev` is written with the value the mode had BEFORE the change, on both
@@ -206,7 +223,7 @@ typedef struct BrGbiLightState {
 
 /* --- the aggregate ------------------------------------------------- */
 typedef struct BrGbiState {
-    BrGbiScissor    scissor;
+    BrGbiTileSize   tile;
     BrGbiGeoMode    geo;
     BrGbiDLStack    dl;
     BrGbiMtxState   mtx;
@@ -223,8 +240,10 @@ typedef struct BrGbiState {
 BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd);
 /* 0x1001CD80  f4C5174 = w1. */
 BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd);
-/* 0x1001CF30  G_SETSCISSOR. */
-BrGfxWords *BrGbiSetScissor(BrGbiState *pSt, BrGfxWords *pCmd);
+/* 0x1001CF30  G_SETTILESIZE, opcode 0xF2 -- see BrGbiTileSize above for
+ * why this is not the scissor.  Glide 0x1001EC30 == br_dl.c's
+ * br_dl_settilesize is the same function. */
+BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd);
 /* 0x1001E790  G_CLEARGEOMETRYMODE: cur &= ~w1. */
 BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd);
 /* 0x10020F20  G_SETGEOMETRYMODE:   cur |= w1. */

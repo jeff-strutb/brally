@@ -335,6 +335,7 @@ symbols, of which there were none.
 | `0x106C661C` / `0x106C6624` | `g_i6C661C` vs `g_Br6C661C` | Storage in `br_data.c` |
 | `0x10AA26F4` | `g_brAA26F4`+`g_brAA26F5` (two bytes) vs `g_aBrAA26F4[4]` (one dword) | One array, owned by slice5_63.c; the byte names are macros over `[0]`/`[1]` |
 | `0x118AA0C4` | `g_pfn18AA0C4(void *)` vs `g_BrGfxSubmitB(uint32_t)` | **NOT resolved.** The two disagree about the ARGUMENT (host pointer vs 32-bit DL address). Needs an adjudication, not a cast |
+| `0x105D17A4` / `0x105D17B4` / `0x105CE2D0` | `BrDl.prim[0..2]` vs `BrDl.lightOff[3]`, **both in br_dl.h** | **Was a live bug, now resolved.** These three globals are 0xFA's R/G/B destinations (`0x1001EA80`) AND the numlights==0 fallback colour `0x10022AC0` copies at `0x10022BCC`. Modelled apart, `lightOff` had **no writer anywhere in the port**, so every unlit-but-lighting-enabled vertex came out black. `lightOff` is gone; `br_dl_light_vertex` reads `prim` |
 
 Also still open, and the reason it is: `0x11750338` / `0x117554A0` cannot be
 made one object on this host. `BrFxRecord` is 32 bytes but `BrCollPlane` holds
@@ -369,6 +370,15 @@ A pattern worth generalising from these: the aliases cluster where one packet
 names a global positionally (`g_i0AC300`) and another names it semantically
 (`g_BrCamMode`). Neither pass can find the other by grepping its own name, and
 both are right about the address.
+
+**The prim/lightOff row is the same pattern INSIDE ONE HEADER**, which is the
+part worth keeping. Both names are in `br_dl.h`, twelve lines apart, and the
+comment on `lightOff` even lists the three addresses -- so the evidence was
+never hidden, it was just never compared. The tell that would have caught it
+without any comparison at all: **a field with no writer.** `lightOff` was read
+in exactly one place and assigned in none, which a grep for the symbol shows in
+one line. Before believing a struct models the original's state, check that
+every field is written by something.
 
 ## Two models of one object, shifted
 

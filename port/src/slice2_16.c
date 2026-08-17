@@ -23,7 +23,7 @@ static int32_t br16_ftol(double x)
     return (int32_t)(uint32_t)((unsigned long long)v & 0xFFFFFFFFu);
 }
 
-/* The four scissor fields are 12-bit two's complement. */
+/* The four tile-size fields are 12-bit two's complement. */
 static int32_t br16_sext12(uint32_t v)
 {
     int32_t t = (int32_t)(v & 0xFFFu);
@@ -91,6 +91,7 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
 /* ================================================================== */
 
 /* 0x1001CD60 */
+/* @implements 0x1001CD60 d3d BrGbiSet0A79E8 */
 BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f0A79E8 = pCmd->w1;
@@ -98,29 +99,35 @@ BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x1001CD80 */
+/* @implements 0x1001CD80 d3d BrGbiSet4C5174 */
 BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f4C5174 = pCmd->w1;
     return pCmd + 1;
 }
 
-/* 0x1001CF30 */
-BrGfxWords *BrGbiSetScissor(BrGbiState *pSt, BrGfxWords *pCmd)
+/* 0x1001CF30 -- G_SETTILESIZE, opcode 0xF2.  The name was G_SETSCISSOR until
+ * the opcode audit; BRD3D's dispatch table at 0x100A79F0 holds this address in
+ * slot 0xF2 and holds 0x1001CE70 / 0x1001CDA0 in the two scissor slots, so the
+ * arithmetic was never wrong -- only the name.  See slice2_16.h. */
+/* @implements 0x1001CF30 d3d BrGbiSetTileSize */
+BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 {
-    BrGbiScissor *p = &pSt->scissor;
+    BrGbiTileSize *p = &pSt->tile;
 
-    p->ulx = br16_sext12(pCmd->w0 >> 12);
-    p->uly = br16_sext12(pCmd->w0);
-    p->lrx = br16_sext12(pCmd->w1 >> 12);
-    p->lry = br16_sext12(pCmd->w1);
-    /* `sar` in the original: arithmetic, so a negative extent stays
+    p->uls = br16_sext12(pCmd->w0 >> 12);
+    p->ult = br16_sext12(pCmd->w0);
+    p->lrs = br16_sext12(pCmd->w1 >> 12);
+    p->lrt = br16_sext12(pCmd->w1);
+    /* `sar eax,2` at 0x1001CFCB: arithmetic, so a negative extent stays
      * negative rather than becoming enormous. */
-    p->w = (p->lrx - p->ulx + 4) >> 2;
-    p->h = (p->lry - p->uly + 4) >> 2;
+    p->tileW = (p->lrs - p->uls + 4) >> 2;
+    p->tileH = (p->lrt - p->ult + 4) >> 2;
     return pCmd + 1;
 }
 
 /* 0x1001E790 */
+/* @implements 0x1001E790 d3d BrGbiClearGeometryMode */
 BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->geo.prev = pSt->geo.cur;
@@ -130,6 +137,7 @@ BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F20 */
+/* @implements 0x10020F20 d3d BrGbiSetGeometryMode */
 BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->geo.prev = pSt->geo.cur;
@@ -139,6 +147,7 @@ BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020D60 */
+/* @implements 0x10020D60 d3d BrGbiDList */
 BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrGbiDLStack *p = &pSt->dl;
@@ -156,6 +165,7 @@ BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020DA0 -- takes no argument in the original. */
+/* @implements 0x10020DA0 d3d BrGbiEndDList */
 BrGfxWords *BrGbiEndDList(BrGbiState *pSt)
 {
     BrGbiDLStack *p = &pSt->dl;
@@ -195,6 +205,7 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
 }
 
 /* 0x10020DC0 */
+/* @implements 0x10020DC0 d3d BrGbiMatrix */
 BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
 {
     BrGbiMtxState *pM = &pSt->mtx;
@@ -227,6 +238,7 @@ BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
 }
 
 /* 0x10020EF0 */
+/* @implements 0x10020EF0 d3d BrGbiPopMatrix */
 BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrGbiMtxState *pM = &pSt->mtx;
@@ -240,6 +252,7 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F80 */
+/* @implements 0x10020F80 d3d BrGbiSet4C1694 */
 BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f1694 = pCmd->w1;
@@ -248,6 +261,7 @@ BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10020F50 */
+/* @implements 0x10020F50 d3d BrGbiDispatch10020F50 */
 BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     int sel = (int8_t)((pCmd->w0 >> 16) & 0xFFu);
@@ -260,6 +274,7 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10021510 */
+/* @implements 0x10021510 d3d BrGbiTileRect */
 BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     uint32_t w0 = pCmd->w0;
@@ -276,6 +291,7 @@ BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10021B80 */
+/* @implements 0x10021B80 d3d BrGbiTileRectS */
 BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     uint32_t w0 = pCmd->w0;
@@ -291,6 +307,7 @@ BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10022350 */
+/* @implements 0x10022350 d3d BrGbiLightVertex */
 void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst)
 {
     float t;
@@ -323,6 +340,7 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
 }
 
 /* 0x10022DC0 */
+/* @implements 0x10022DC0 d3d BrGbiClipCodes */
 int BrGbiClipCodes(const float *pVert)
 {
     float w = pVert[6];       /* +0x18 */
@@ -339,6 +357,7 @@ int BrGbiClipCodes(const float *pVert)
 }
 
 /* 0x10024240 */
+/* @implements 0x10024240 d3d BrGbiMoveMemMatrix */
 BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
                                const void *pSrc)
 {
@@ -352,6 +371,7 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * 0x100241E8):  0x80 -> 0x10024179, 0x82 -> 0x10024185,
  * 0x84 -> 0x10024193, 0x86/88/8A/8C/8E/90/92/94 -> 0x100241AE,
  * 0x9E -> 0x100241A2, everything else in 0x80..0x9E -> 0x100241E2. */
+/* @implements 0x10024150 d3d BrGbiMoveMem */
 BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
 {
     uint32_t idx = (pCmd->w0 >> 16) & 0xFFu;
@@ -397,6 +417,7 @@ BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
  * reach the table but land on the default arm; everything outside 0x02..0x0E
  * is rejected by the range check. The index is the SIGN-EXTENDED low byte of
  * w0, so 0x80..0xFF go to the default too. */
+/* @implements 0x100242F0 d3d BrGbiMoveWord */
 BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     int      sel = (int8_t)(pCmd->w0 & 0xFFu);
@@ -438,6 +459,7 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10024A90 */
+/* @implements 0x10024A90 d3d BrGbiRun */
 void BrGbiRun(const BrGbiHandler *apTable, BrGfxWords *pCmd)
 {
     while (pCmd != NULL)
@@ -456,6 +478,7 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
 }
 
 /* 0x10029E60 */
+/* @implements 0x10029E60 d3d BrGbiTexScanMark */
 void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     if (pSt->pRunEnd == NULL)
@@ -463,6 +486,7 @@ void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10029410 */
+/* @implements 0x10029410 d3d BrGbiTexScanFlush */
 void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     int id;
@@ -491,6 +515,7 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x10029EB0  G_SETTIMG */
+/* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
 void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     int32_t s = pSt->state;
@@ -509,6 +534,7 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 }
 
 /* 0x10029F10  G_LOADTLUT */
+/* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
 void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                           const void *pSrc)
 {
@@ -531,6 +557,7 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
 }
 
 /* 0x10029F80  G_RDPLOADSYNC */
+/* @implements 0x10029F80 d3d BrGbiTexScanLoadSync */
 void BrGbiTexScanLoadSync(BrGbiTexScan *pSt)
 {
     if (pSt->state == 1)
@@ -538,6 +565,7 @@ void BrGbiTexScanLoadSync(BrGbiTexScan *pSt)
 }
 
 /* 0x10029FA0  G_LOADBLOCK */
+/* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
 void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                            const void *pSrc)
 {
@@ -563,6 +591,7 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
 }
 
 /* 0x1002A000  G_RDPPIPESYNC */
+/* @implements 0x1002A000 d3d BrGbiTexScanPipeSync */
 void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
 {
     if (pSt->state == 7)
@@ -570,6 +599,7 @@ void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
 }
 
 /* 0x1002A020  G_RDPTILESYNC */
+/* @implements 0x1002A020 d3d BrGbiTexScanTileSync */
 void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
 {
     if (pSt->state == 3 || pSt->state == 7)
@@ -577,6 +607,7 @@ void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
 }
 
 /* 0x1002A040  G_SETTILE */
+/* @implements 0x1002A040 d3d BrGbiTexScanSetTile */
 void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t   w0 = pCmd->w0;
@@ -605,6 +636,7 @@ void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A140  G_SETTILESIZE */
+/* @implements 0x1002A140 d3d BrGbiTexScanSetTileSize */
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t   w0 = pCmd->w0;
@@ -619,6 +651,7 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A1A0  G_SETOTHERMODE_L */
+/* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
 void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t v;
@@ -640,6 +673,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A250 */
+/* @implements 0x1002A250 d3d BrGbiTexScanOtherModeH0E */
 void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t v = pCmd->w1;
@@ -653,6 +687,7 @@ void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 
 /* 0x1002A210  G_SETOTHERMODE_H */
+/* @implements 0x1002A210 d3d BrGbiTexScanOtherModeH */
 void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t sel = pCmd->w0 & 0xFF00u;
@@ -681,6 +716,7 @@ void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * DEVIATION: G_LOADTLUT and G_LOADBLOCK need the bytes their w1 points at.
  * The original dereferences the already-segment-fixed address; here the
  * walker goes through BrGbiTexScanData so a 64-bit host can supply them. */
+/* @implements 0x100290E0 d3d BrGbiTexScanRun */
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     if (pCmd == NULL)
@@ -773,6 +809,7 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 /* ================================================================== */
 
 /* 0x10027C00 */
+/* @implements 0x10027C00 d3d BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
     if (n <= 1)    return 0;
@@ -787,6 +824,7 @@ int BrGbiSizeShift(int n)
 }
 
 /* 0x10028C70 */
+/* @implements 0x10028C70 d3d BrGbiTexelsPerWord */
 int BrGbiTexelsPerWord(int siz)
 {
     switch (siz) {
@@ -798,6 +836,7 @@ int BrGbiTexelsPerWord(int siz)
 }
 
 /* 0x10028BF0 */
+/* @implements 0x10028BF0 d3d BrGbiBlit */
 void BrGbiBlit(BrGbiBlitFn pfn,
                uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
                uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
@@ -812,6 +851,7 @@ void BrGbiBlit(BrGbiBlitFn pfn,
 }
 
 /* 0x1002A280 */
+/* @implements 0x1002A280 d3d BrGbiTexCreate */
 void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
 {
     uint32_t flags, sel, fmt, siz;
@@ -841,6 +881,7 @@ void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
 }
 
 /* 0x1002A740 */
+/* @implements 0x1002A740 d3d BrGbiSolidTexBuild */
 void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
 {
     uint8_t fill = (pSt->mode == 2 || pSt->mode == 3) ? 0x20u : 0x80u;
@@ -858,6 +899,7 @@ void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
 /* ================================================================== */
 
 /* 0x1002AEA0 */
+/* @implements 0x1002AEA0 d3d BrFadeRelease */
 int BrFadeRelease(BrFadeState *pSt)
 {
     pSt->refCount -= 1;
@@ -867,6 +909,7 @@ int BrFadeRelease(BrFadeState *pSt)
 }
 
 /* 0x1002AEC0 */
+/* @implements 0x1002AEC0 d3d BrFadeLatch */
 void BrFadeLatch(BrFadeState *pSt)
 {
     pSt->pos      = pSt->srcC0;
@@ -886,6 +929,7 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
 }
 
 /* 0x1002AF10 */
+/* @implements 0x1002AF10 d3d BrFadeDrawSprite */
 void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
 {
     BrGfxWords     *p;
@@ -947,6 +991,7 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
 }
 
 /* 0x1002B130 */
+/* @implements 0x1002B130 d3d BrFadeSetTarget */
 void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 {
     pSt->kick = 1;
@@ -969,6 +1014,7 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B1C0 */
+/* @implements 0x1002B1C0 d3d BrFadeSetTargetA */
 void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 {
     pSt->kickA = 1;
@@ -981,6 +1027,7 @@ void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B220 */
+/* @implements 0x1002B220 d3d BrFadeSetTargetB */
 void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 {
     pSt->kickB = 1;
@@ -993,6 +1040,7 @@ void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 }
 
 /* 0x1002B2A0 */
+/* @implements 0x1002B2A0 d3d BrFadeIsClosing */
 int BrFadeIsClosing(const BrFadeState *pSt)
 {
     if (pSt->rate < 0.0f)
@@ -1001,6 +1049,7 @@ int BrFadeIsClosing(const BrFadeState *pSt)
 }
 
 /* 0x1002B2D0 */
+/* @implements 0x1002B2D0 d3d BrFadeIsSettled */
 int BrFadeIsSettled(const BrFadeState *pSt)
 {
     if (pSt->value != pSt->target)
@@ -1009,6 +1058,7 @@ int BrFadeIsSettled(const BrFadeState *pSt)
 }
 
 /* 0x1002B300 */
+/* @implements 0x1002B300 d3d BrFadeIsShut */
 int BrFadeIsShut(const BrFadeState *pSt)
 {
     if (!(pSt->rate < 0.0f))
@@ -1031,6 +1081,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
 }
 
 /* 0x1002B340 */
+/* @implements 0x1002B340 d3d BrFadeDrawBars */
 void BrFadeDrawBars(BrFadeState *pSt)
 {
     BrGfxWords *p;
@@ -1121,6 +1172,7 @@ static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
 }
 
 /* 0x1002B670 */
+/* @implements 0x1002B670 d3d BrFadeTick */
 void BrFadeTick(BrFadeState *pSt)
 {
     if (pSt->kick != 0) {
@@ -1179,12 +1231,14 @@ void BrFadeTick(BrFadeState *pSt)
 /* ================================================================== */
 
 /* 0x1002B930 */
+/* @implements 0x1002B930 d3d BrCopy8Words */
 void BrCopy8Words(void *pDst, const void *pSrc)
 {
     memcpy(pDst, pSrc, 8 * sizeof(uint32_t));
 }
 
 /* 0x1002B9C0 */
+/* @implements 0x1002B9C0 d3d BrRcaResetCounts */
 void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 {
     pCache->nEntries = 0;
@@ -1192,6 +1246,7 @@ void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 }
 
 /* 0x1002B9E0 */
+/* @implements 0x1002B9E0 d3d BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1206,6 +1261,7 @@ void BrSwapU16Array(void *pv, int count)
 }
 
 /* 0x1002BA20 -- fully unrolled in the original over offsets 0,2,4,6. */
+/* @implements 0x1002BA20 d3d BrSwapU16x4 */
 void BrSwapU16x4(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1217,6 +1273,7 @@ void BrSwapU16x4(void *pv)
 }
 
 /* 0x1002BA00 */
+/* @implements 0x1002BA00 d3d BrSwapU16x4Array */
 void BrSwapU16x4Array(void *pv, int count)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1231,6 +1288,7 @@ void BrSwapU16x4Array(void *pv, int count)
 }
 
 /* 0x1002BA60 */
+/* @implements 0x1002BA60 d3d BrSwapVec3Array */
 void BrSwapVec3Array(void *pv, int count)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1245,6 +1303,7 @@ void BrSwapVec3Array(void *pv, int count)
 }
 
 /* 0x1002BC90 */
+/* @implements 0x1002BC90 d3d BrRcaSwapMesh */
 void BrRcaSwapMesh(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1267,6 +1326,7 @@ void BrRcaSwapMesh(void *pv)
 }
 
 /* 0x1002BAA0 */
+/* @implements 0x1002BAA0 d3d BrRcaFixupRecord */
 void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec)
 {
     uint8_t *r = (uint8_t *)pRec;
@@ -1364,6 +1424,7 @@ void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec)
 }
 
 /* 0x1002BA80 */
+/* @implements 0x1002BA80 d3d BrRcaFixupArray */
 void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
 {
     uint8_t *p = (uint8_t *)pv;

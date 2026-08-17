@@ -884,10 +884,25 @@ static void br3d_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
     if (g->p3dDl != NULL && g->stCombine != BR_DL_CC_TEX_SHADE_C1 &&
         g->stCombine != BR_DL_CC_TEX_SHADE_CW &&
         g->stCombine != BR_DL_CC_TEX_SHADE_C0) {
-        g->stKonst[0] = g->p3dDl->prim[0];
-        g->stKonst[1] = g->p3dDl->prim[1];
-        g->stKonst[2] = g->p3dDl->prim[2];
-        g->stKonst[3] = g->p3dDl->prim[3];
+        /* prim[] IS 0..255, NOT 0..1, and stKonst is a normalised colour.
+         *
+         * This read was correct until br_dl.c was fixed: the port had been
+         * scaling G_SETPRIMCOLOR by 1/255 where the original does not.
+         * 0x1001EA80 is four `fild qword / fstp dword` with NO `fmul` in its
+         * 138 bytes, while 0x1001E930 (env colour) multiplies by 1/255 from
+         * 0x10077400 four times. So prim is raw 0..255 and env is normalised
+         * -- the two commands genuinely differ, and the port had flattened
+         * them together.
+         *
+         * Correcting br_dl.c therefore broke this backend silently: every
+         * primitive colour would have come through 255x too bright and
+         * clamped to white. Nothing in the suite covers it, which is why the
+         * pass that made the fix flagged it rather than finding it. */
+        const float kPrim = 1.0f / (float)BR_DL_COLOUR_MAX;
+        g->stKonst[0] = g->p3dDl->prim[0] * kPrim;
+        g->stKonst[1] = g->p3dDl->prim[1] * kPrim;
+        g->stKonst[2] = g->p3dDl->prim[2] * kPrim;
+        g->stKonst[3] = g->p3dDl->prim[3] * kPrim;
     }
 
     if (br3d_reserve(g, 3) != 0)
