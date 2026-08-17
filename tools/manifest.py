@@ -103,13 +103,53 @@ def legacy():
         return {}
 
 
-def report(addr, man, leg):
+def pairs():
+    """glide addr -> d3d addr and back, from config/shared.csv.
+
+    WHY THIS IS HERE: the same function has two addresses, one per build, and a
+    claim is tagged with the build it was read from. So asking about a GLIDE
+    address whose D3D twin is already transcribed used to answer "not
+    implemented" -- and that answer nearly sent work to re-transcribe eleven
+    helpers that already existed under their D3D numbers. The cross-build twin
+    is not the same claim, but it is the same code, so the honest answer is
+    "already done, under 0x<other> in the other build" rather than "missing".
+
+    `body-dup:N` is excluded: it means byte-identical to N Glide functions with
+    no evidence which, so it is not a pairing and must not resolve to one.
+    """
+    g2d, d2g = {}, {}
+    try:
+        with open('config/shared.csv') as fh:
+            for r in csv.DictReader(fh):
+                if not r['glide_va'] or not r['d3d_va']:
+                    continue
+                if r.get('matched_by', '').startswith('body-dup'):
+                    continue
+                g = '%08X' % int(r['glide_va'], 16)
+                d = '%08X' % int(r['d3d_va'], 16)
+                g2d[g] = d
+                d2g[d] = g
+    except OSError:
+        pass
+    return g2d, d2g
+
+
+def report(addr, man, leg, twin=None):
     k = '%08X' % addr
     print("0x%s" % k)
     rows = man.get(k, [])
     if rows:
         for build, sym, f, ln in rows:
             print("  IMPLEMENTED  %-5s %s   (%s:%d)  [manifest]" % (build, sym, f, ln))
+        return True
+    # Not claimed at this address -- but its cross-build twin might be, and that
+    # is the same function. Report it so nobody re-transcribes existing code.
+    if twin and twin in man:
+        for build, sym, f, ln in man[twin]:
+            print("  IMPLEMENTED via its %s twin 0x%s  %s   (%s:%d)" % (
+                build, twin, sym, f, ln))
+        print("  -> this address is not claimed, but 0x%s is the same function" % twin)
+        print("     in the other build. Reuse it; do not re-transcribe.")
         return True
     if k in leg:
         sym, f, how = leg[k]
@@ -163,8 +203,12 @@ def main():
     if not args:
         raise SystemExit(__doc__)
     leg = legacy()
+    g2d, d2g = pairs()
     for a in args:
-        report(int(a, 16), man, leg)
+        addr = int(a, 16)
+        k = '%08X' % addr
+        twin = g2d.get(k) or d2g.get(k)   # whichever build this address is in
+        report(addr, man, leg, twin)
         print()
 
 

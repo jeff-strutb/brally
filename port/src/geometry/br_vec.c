@@ -19,11 +19,20 @@ void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->x = x; pOut->y = y; pOut->z = z;
 }
 
+/* @implements 0x1003AC90 d3d BrVec3Dot */
+/* PRECISION CAVEAT (Dot only; the four componentwise helpers below are exact --
+ * one operation per store, one rounding, same as the original). Like
+ * BrVec3Length above, the original forms this sum on the x87 stack (53-bit,
+ * PC=2) and rounds once, summing y*y+z*z BEFORE x*x, whereas this body
+ * evaluates left-to-right in float and rounds at every step. A last-bit
+ * difference; recorded here rather than asserted equivalent, and left for an
+ * audited precision pass to settle alongside BrVec3DistSq / BrVec3Dist. */
 float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
 {
     return pA->x * pB->x + pA->y * pB->y + pA->z * pB->z;
 }
 
+/* @implements 0x1003AEE0 d3d BrVec3Sub */
 void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = pA->x - pB->x;
@@ -73,6 +82,7 @@ void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
     pOut->z = (pA->z - pB->z) * t + pB->z;
 }
 
+/* @implements 0x1003ACC0 d3d BrVec3Negate */
 void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
 {
     pOut->x = -pV->x;
@@ -106,6 +116,7 @@ void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
     pOut->z = pV->z * r;
 }
 
+/* @implements 0x1003AD70 d3d BrVec3DivBy */
 void BrVec3DivBy(BrVec3 *pV, float s)
 {
     float r = 1.0f / s;
@@ -115,6 +126,7 @@ void BrVec3DivBy(BrVec3 *pV, float s)
 }
 
 /* 0.5f constant lives at 0x1008F638. */
+/* @implements 0x1003B050 d3d BrVec3Midpoint */
 void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = (pA->x + pB->x) * 0.5f;
