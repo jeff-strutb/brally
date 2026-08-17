@@ -361,10 +361,15 @@ address,build,symbol,file,line
 0x1003A6B0,d3d,BrSpanAddLine,slice2_21.c,387
 0x1003A950,d3d,BrSpanTestPoint,slice2_21.c,461
 0x1003A990,d3d,BrSpanBuildHull,slice2_21.c,474
+0x1003AC90,d3d,BrVec3Dot,br_vec.c,22
+0x1003ACC0,d3d,BrVec3Negate,br_vec.c,85
+0x1003AD70,d3d,BrVec3DivBy,br_vec.c,119
 0x1003ADA0,d3d,BrVec3Direction,slice2_21.c,39
 0x1003AED0,glide,BrUiCreditsAction_1003AED0,br_uicredits.c,58
+0x1003AEE0,d3d,BrVec3Sub,br_vec.c,35
+0x1003B050,d3d,BrVec3Midpoint,br_vec.c,129
 0x1003B0A0,d3d,BrVec3DistXY,slice2_21.c,91
-0x1003B0E0,d3d,BrVec3Dist,br_vec.c,150
+0x1003B0E0,d3d,BrVec3Dist,br_vec.c,162
 0x1003B170,d3d,BrVec3Len,slice6_74.c,309
 0x1003B1C0,d3d,BrVec3LenXY,slice2_21.c,81
 0x1003B2A0,d3d,BrMat4TransformPoint4,slice2_21.c,174
