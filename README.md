@@ -340,9 +340,11 @@ the runtime.
   with the `f1E8` box-matrix Z lift applied first. On flat ground the box clears
   the surface at the suspension rest (the lift is *live*, not the dead accumulator
   an earlier header claimed), so the car holds `0.190132` rather than floating to
-  the box-floor height; a car that lands is caught. A headless flat-ground settle
-  now fires the response on impact and comes to rest instead of z descending
-  monotonically.
+  the box-floor height; a car that lands is caught. A gentle flat-ground settle
+  stays in the spring regime (the box never breaches the ground, so the response
+  is correctly quiet and the car rests at `0.190132`); a hard drop breaches the
+  box and the walker fires — `test_collresp.c` asserts both, so the wiring is
+  proven live from both sides.
 - **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
   ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
   draws a race.
