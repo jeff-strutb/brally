@@ -32,7 +32,7 @@ happen (or not)._
 |---|---|---|
 | 1 | Boots the ported core | ✅ done |
 | 2 | Front-end screen renders (backdrop, captions, disc art) | ✅ done |
-| 3 | Menu navigates by keyboard, in a live window | ✅ done |
+| 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens — see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
 | 6 | Driving — the per-frame physics + render loop | 🔴 not yet: the per-frame race render (`0x10011FA0`) is untranscribed and has 23 unported callees |
@@ -276,7 +276,10 @@ mutation-testing every new assertion is now mandatory (see CONVENTIONS.md).
 
 **Menus.** All sixteen ported screen builders run, in the game's own artwork,
 with captions recovered from `BRString.dll` and laid out by the game's own
-place routine. Selection moves, controls activate, screens transition.
+place routine. Selection moves and controls activate within a screen. The
+transition mechanism also fires — an activate flips the current-phase pointer —
+but the destination is a placeholder, not a finished screen: this is *not* a
+front end you can walk end to end (see *What does NOT work* below).
 `./build/brally -keys 4 "dd"` drives it headlessly; `-shot <n> <file.ppm>`
 writes a frame offscreen with no window server, which is how every rendering
 claim here is checked.
