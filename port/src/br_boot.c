@@ -30,6 +30,10 @@ int32_t g_brAppContinue = 1;                 /* 0x100A98F8 */
  * 0x100A7514/0x100A7518 are the pair CreateWindowExA reads at 0x100196EC,
  * which is how the window gets its size -- so these are not merely a record
  * of the mode, they are the mode. */
+/* 0x105BC730..0x105BC73C, written by RallyMain's prologue and read later by
+ * the window creation (hInstance) and ShowWindow (nCmdShow). */
+static BrBootArgs s_args;
+
 int32_t g_brAppModeW    = 0;
 int32_t g_brAppModeH    = 0;
 
@@ -220,5 +224,83 @@ void BrAppResetForTest(void)
     g_brAppContinue = 1;
     g_brAppModeW    = 0;
     g_brAppModeH    = 0;
+    /* 0x105BC730..73C too. They are module globals and this function's job is
+     * load-time state; without it, "CoInitialize failed so the argument stores
+     * never ran" is indistinguishable from "a previous test left them set",
+     * and the abort-path test silently passes on stale data. */
+    s_args.hInstance = NULL; s_args.hPrevInstance = NULL;
+    s_args.pszCmdLine = NULL; s_args.nCmdShow = 0;
     BrBootFrontierReset();
+}
+
+/* ==================================================================== *
+ * 0x1001CC00 -- RallyMain. See the banner in br_boot.h for the listing.
+ * ==================================================================== */
+
+const BrBootArgs *BrAppArgs(void) { return &s_args; }
+
+int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
+{
+    int32_t dxVersion;
+
+    if (pArgs == NULL || pOps == NULL ||
+        pOps->pfnCoInitialize == NULL || pOps->pfnCoUninitialize == NULL ||
+        pOps->pfnMessageBox   == NULL || pOps->pfnDxVersion      == NULL ||
+        pOps->pfnStartGate    == NULL || pOps->pfnCreateWindow   == NULL ||
+        pOps->pfnPreLoopGate  == NULL || pOps->pfnRunLoop        == NULL) {
+        return 0;
+    }
+
+    g_brAppExitCode = 0;                       /* 0x1001CC03 */
+
+    /* 0x1001CC11. A failure here skips EVERYTHING, including the argument
+     * stores below -- the jump goes straight to CoUninitialize. */
+    if (pOps->pfnCoInitialize(pOps->pUser) < 0) {
+        pOps->pfnCoUninitialize(pOps->pUser);
+        return g_brAppExitCode;
+    }
+
+    s_args = *pArgs;                           /* 0x1001CC2F..0x1001CC4A */
+
+    /* 0x1001CC50 -> 0x1001D8A0, then the UNSIGNED compare at 0x1001CC5C. */
+    dxVersion = pOps->pfnDxVersion(pOps->pUser);
+    if ((uint32_t)dxVersion < (uint32_t)BR_APP_MIN_DXVERSION) {
+        /* 0x1001CC63: MessageBoxA(NULL, str(0x128), str(0x126), 0x10).
+         * The push order in the listing is uType, caption, text, hWnd, so the
+         * TEXT is 0x128 and the CAPTION is 0x126 -- the reverse of the order
+         * the ids appear in. */
+        pOps->pfnMessageBox(pOps->pUser, BR_APP_STR_DX_TEXT,
+                            BR_APP_STR_DX_CAPTION);
+        return 0;                              /* 0x1001CC89 xor eax,eax */
+    }
+
+    /* 0x1001CC91. Zero aborts, and note it returns WITHOUT CoUninitialize --
+     * the original really does leak the apartment on this one path. Preserved:
+     * it is observable to anything else in the process. */
+    if (pOps->pfnStartGate(pOps->pUser) == 0) {
+        return 0;
+    }
+
+    BrBootFrontier_10007F10();
+    BrBootFrontier_10063860();
+    BrBootFrontier_1006D1A0();
+    BrBootFrontier_10007F40(s_args.pszCmdLine);   /* 0x1001CCB0, arg3 */
+
+    /* 0x1001CCB5..0x1001CD0D -- inlined strcpy then strcat, building
+     * <dir> + "BossRally.cfg" at 0x10B72F48 from 0x10B73540. */
+    BrBootBuildConfigPath();
+
+    /* 0x1001CD12, __thiscall on 0x10B71290 with the path just built. */
+    BrBootFrontier_10063060();
+
+    /* 0x1001CD17. Window creation; zero goes to the CoUninitialize tail. */
+    if (pOps->pfnCreateWindow(pOps->pUser) != 0) {
+        BrBootFrontier_10009C00();             /* 0x1001CD20 */
+        if (pOps->pfnPreLoopGate(pOps->pUser) != 0) {   /* 0x1001CD25 */
+            pOps->pfnRunLoop(pOps->pUser);     /* 0x1001CD2E -- the main loop */
+        }
+    }
+
+    pOps->pfnCoUninitialize(pOps->pUser);      /* 0x1001CD33 */
+    return g_brAppExitCode;                    /* 0x1001CD39 */
 }
