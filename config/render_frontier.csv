@@ -24,7 +24,7 @@ va,glide_size,aligned,status,name,note
 0x100168B0,10,yes,done,BrTextSetSize,implemented
 0x100168C0,180,yes,done,BrTextDraw,implemented
 0x10017110,2039,yes,TODO,,
-0x10017F60,21,yes,TODO,,
+0x10017F60,21,yes,done,BrSceneAccumReset,"implemented (glide); zeroes the two per-frame accumulators g_4B16A0/g_4B16AC"
 0x10017F80,529,yes,done,BrFadeDrawSprite,implemented
 0x100183B0,803,yes,done,BrFadeDrawBars,implemented
 0x100186E0,685,yes,done,BrFadeTick,implemented

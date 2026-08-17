@@ -82,6 +82,23 @@ BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
 BrWeather    *BrWeatherGet(void)  { return &g_weather; }
 BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
 
+/* ---- per-frame scene accumulators -------------------------------------- *
+ * A pair of float accumulators the per-frame race render maintains.  Their
+ * TRUE linkage is global: they are written from a different object (the geometry
+ * pass at 0x1000BEB0, still on the render frontier) and read again inside the
+ * frame builder at 0x10011FA0, so they are NOT static -- see slice2_15.h for the
+ * shared declarations.
+ *
+ * Named by their Glide .data address (the reference target).  The geometry pass
+ * ADDS into each of them a BrVec3Dot-derived, epsilon-clamped, squared term; the
+ * frame builder later reads the pair back as `g_4B16AC - g_4B16A0*k` and
+ * `g_4B16A0 + g_4B16AC`, each handed to BrFadeDrawSprite (0x10017F80) as its
+ * alpha.  Their exact geometric meaning is not yet pinned down, so they keep
+ * address names rather than a guessed role.  BrSceneAccumReset (below) zeroes
+ * both at the top of every frame. */
+float g_4B16A0 = 0.0f;   /* 0x104B16A0 */
+float g_4B16AC = 0.0f;   /* 0x104B16AC */
+
 /* ---- helpers ----------------------------------------------------------- */
 
 /* 0x1007C8A0 __ftol: x87 truncation toward zero, then the LOW DWORD of the
@@ -629,6 +646,25 @@ int BrSceneUsePlainClear(void)
     if (g_scene.f6C7C98 == 0) return 1;   /* note the inverted sense */
     if (g_scene.f0B4050 == 2) return 1;
     return 0;
+}
+
+/* =====================================================================
+ * 0x10017F60
+ * ===================================================================== */
+/* WHAT IT DOES: clears the two per-frame scene accumulators (g_4B16A0 and
+ * g_4B16AC) back to zero.  The per-frame race render calls it once at the very
+ * top of the frame -- right after BrSceneSetupFrame lays the background and just
+ * before BrSpanBuildHull -- so the geometry pass (0x1000BEB0) accumulates into a
+ * clean slate every frame.  Body is exactly two stores of 0.0f and a return.
+ *
+ * SOURCE: transcribed from the Glide build (asm/10010000.asm).  The D3D twin is
+ * 0x1002AEF0 (shared, same 21 bytes) but its body sits in a run the D3D dump
+ * folded into padding, so it is not the transcription source. */
+/* @implements 0x10017F60 glide BrSceneAccumReset */
+void BrSceneAccumReset(void)
+{
+    g_4B16AC = 0.0f;
+    g_4B16A0 = 0.0f;
 }
 
 /* =====================================================================
