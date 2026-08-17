@@ -11,6 +11,7 @@
 
 #include <math.h>
 
+/* @implements 0x1003AC30 d3d BrVec3Cross */
 void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     float x = pA->y * pB->z - pA->z * pB->y;
@@ -61,6 +62,11 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
     pV->z *= s;
 }
 
+/* @implements 0x1003AFE0 d3d BrVec3MulAdd */
+/* pOut = pA + pB*s.  The original scales the SECOND vector arg ([esp+0xc]) and
+ * adds the first ([esp+8]); under cdecl that is pB and pA respectively, so the
+ * argument order here matches.  One multiply then one add per component -- same
+ * two roundings as the x87, so this is exact, not just close. */
 void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
 {
     pOut->x = pA->x + pB->x * s;
