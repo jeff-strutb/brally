@@ -242,7 +242,7 @@ void BrAppResetForTest(void)
 }
 
 /* ==================================================================== *
- * 0x1001CC00 -- RallyMain. See the banner in br_boot.h for the listing.
+ * RallyMain and the argument block. See br_boot.h for the full listing.
  * ==================================================================== */
 
 const BrBootArgs *BrAppArgs(void) { return &s_args; }

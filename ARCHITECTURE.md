@@ -88,8 +88,7 @@ not navigate" was investigated for weeks as a bug in the menu.
   neither paired with the D3D build nor identified as CRT. Unclassified, not
   merely unported.
 - **13,343 bytes** `d3d_only`, reachable only from renderer entry points.
-- The **256-entry table at 0x100A9A58** is the largest dispatch structure in
-  the image and has not been decoded.
+- ~~The 256-entry table at 0x100A9A58~~ — **decoded, see below.**
 - `Boot.exe` (1,453 functions) and `BossRally.exe` (215) are identified from
   strings and imports, **not from reading their code**. The judgement that
   neither contains game logic is an inference.
@@ -131,6 +130,28 @@ one slot to another, and it misses a pointer *computed* rather than taken —
 which is exactly what the undecoded 256-entry table at 0x100A9A58 is likely to
 be. `installs` is therefore a superset of "could install" and a subset of "does
 install at run time".
+
+## The 256-entry table at 0x100A9A58 — decoded
+
+It is the **display-list opcode dispatch**, indexed by the command byte. 256
+slots, **28 live handlers**, and the remaining 228 all point at one 8-byte stub
+at `0x10021240` — the default/no-op for an unimplemented opcode. That is a
+closed command set, established by the data rather than inferred from a name.
+
+    0x01 matrix      0x03 movemem     0x04 (584 B)     0x06 dlist
+    0xB1 (696 B)     0xB6 cleargeom   0xB7 setgeom     0xB8 enddlist
+    0xB9 ...         0xBC moveword    0xBD popmatrix   0xBF (378 B)
+    0xDC 0xDD 0xDE 0xDF 0xE1 0xE2 0xE3 tilerects 0xE4
+    0xED 0xF2 0xF6 0xF7 0xF8 0xFA 0xFB 0xFC
+
+**13 of 28 are ported** (all but one under their D3D addresses in
+`slice2_16.c`); 15 remain, totalling 2,592 bytes. That is a small, bounded and
+fully enumerated piece of work, which is what decoding the table bought.
+
+The high opcodes (`0xB1`–`0xFC`) are the N64 F3DEX/RDP command set; the low
+ones (`0x01`–`0x06`) are the F3DEX matrix and display-list commands. A sibling
+analysis of the N64 ROM confirms the PC build handles a subset of stock F3DEX
+and repurposes `0xE1`, which the N64 never emits.
 
 ## How this should change the work
 
