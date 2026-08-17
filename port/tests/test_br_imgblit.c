@@ -310,6 +310,17 @@ static void test_place(void)
     CHECK((y0 + y1 + 1.0f) / 2.0f == 212.0f);
     CHECK(y0 != 140.0f);
 
+    /* The near corner is centred on the LITERAL 256, in BOTH axes.  Every
+     * shipped .img is 256 wide, so an x centred on the file's own width
+     * would be indistinguishable on real data -- this is the synthetic case
+     * that separates them, and it exists because mutation testing showed the
+     * assertion above could not fail on that substitution. */
+    BrImgBlitPlace(200, 120, 640, 480, &x0, &y0, &x1, &y1);
+    CHECK(x0 == 192.0f);            /* 220.0f if it centred on cx == 200 */
+    CHECK(y0 == 112.0f);            /* 180.0f if it centred on cy == 120 */
+    CHECK(x1 == 391.0f);            /* the FAR corner does use the file  */
+    CHECK(y1 == 231.0f);
+
     /* The clamp.  A mode narrower or shorter than 256 would put the near
      * corner off-screen; the original pins it at zero and lets the far
      * corner run past the edge. */
