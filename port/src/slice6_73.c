@@ -1014,6 +1014,25 @@ int32_t BrExt_10041A00(void *pArg)
         g_br73.pfnClearSub70(pArg);
     }
 
+    /* DEVIATION, AND IT IS OURS. The original does not test this pointer:
+     * 0x10041A22 loads it and 0x10041A27 indexes straight off it, so a NULL
+     * faults. This guard was added without a note, which is what made the
+     * round-3 equivalence audit call it DIVERGENT rather than an acceptable
+     * deviation -- an undocumented guard is indistinguishable from a
+     * misreading, and this project has produced both.
+     *
+     * It is NOT dead code: slice7_81.c and slice8_84.c each set this pointer
+     * to NULL while faithfully reproducing the original's zero-store, so the
+     * path is reachable. On it the original faults; this returns 1 AND SKIPS
+     * PUBLISHING g_brAA28D8, leaving that latch stale -- a second-order
+     * effect beyond suppressing the crash, and the reason the deviation is
+     * worth more than a comment.
+     *
+     * Kept rather than removed, because the pointer genuinely has no owner in
+     * this tree yet and the original's fault would be a harness crash rather
+     * than reproduced behaviour. When an owner lands, this goes. The sibling
+     * transcription of the same routine, BrExt_10042410 in slice5_61.c, has
+     * no such guard and should stay that way. */
     if (g_br73.pAA29CC == NULL) {
         return 1;
     }

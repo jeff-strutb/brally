@@ -373,6 +373,34 @@ static void test_clip_codes(void)
     /* Exactly on the plane is inside: the test is strict. */
     v[3] = 1.0f;
     CHECK(BrGbiClipCodes(v) == 0);
+
+    /* NaN REJECTS, and nothing tested it -- which is how the wrong polarity
+     * survived here while the other copy of this function had it right.
+     *
+     * `fcomp` sets C0 for less-than OR unordered, so the original clips a
+     * vertex with a NaN in any component. Written as `x < 0.0f` the test is
+     * false for NaN and the vertex is reported INSIDE, feeding a NaN into the
+     * clipper. Every one of the seven planes is checked, because the bug was
+     * seven separate comparisons and fixing six would look identical here. */
+    {
+        float v[7];
+        int   k;
+        static const int kBit[7] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40 };
+        /* which component to poison for each plane: w, z, z, x, x, y, y */
+        static const int kIdx[7] = { 6, 3, 3, 1, 1, 2, 2 };
+        float nan;
+        memcpy(&nan, "\x00\x00\xC0\x7F", 4);
+
+        for (k = 0; k < 7; k++) {
+            int f;
+            v[0] = 0.0f; v[1] = 0.0f; v[2] = 0.0f; v[3] = 0.0f;
+            v[4] = 0.0f; v[5] = 0.0f; v[6] = 1.0f;      /* comfortably inside */
+            CHECK(BrGbiClipCodes(v) == 0);
+            v[kIdx[k]] = nan;
+            f = BrGbiClipCodes(v);
+            CHECK((f & kBit[k]) != 0);   /* a NaN must set this plane's bit */
+        }
+    }
 }
 
 /* ================================================================== */
