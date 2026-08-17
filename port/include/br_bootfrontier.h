@@ -42,6 +42,21 @@ void    BrBootFrontier_10063860(void);
 void    BrBootFrontier_1006D1A0(void);
 void    BrBootFrontier_10007F40(const char *pszCmdLine);
 void    BrBootFrontier_10063060(void);          /* __thiscall config load */
+/* 0x10009C00 is eleven bytes: GetDesktopWindow(), then a TAIL JUMP to
+ * 0x10035400 -- which is DIRECTPLAY initialisation. Established from its
+ * strings ("Could not create DirectPlay object because of error 0x%08X") and
+ * its call to 0x10035BB0, not from its position in the boot chain.
+ *
+ * Recorded because the frontier previously labelled it "RallyMain pre-loop",
+ * which is where it sits rather than what it does -- the same mistake that had
+ * 0x1006C460 down as "renderer create" when it is a sound reset. A label taken
+ * from a function's neighbourhood is a guess wearing a fact's clothes.
+ *
+ * NOT ported: it is the head of a networking chain (DirectPlay session
+ * enumeration, lobby, the 0x10035xxx family) that is out of scope for the
+ * single-player path and large. RallyMain ignores its result -- there is no
+ * `test eax,eax` after the call at 0x1001CD20 -- so a game with no multiplayer
+ * still reaches the main loop, which is why nothing has missed it so far. */
 void    BrBootFrontier_10009C00(void);
 void    BrBootBuildConfigPath(void);            /* the inlined strcpy+strcat */
 const char *BrBootConfigPath(void);             /* 0x10B72F48, for tests */

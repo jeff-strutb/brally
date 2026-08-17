@@ -21,7 +21,7 @@ static const char *const s_apszName[F_COUNT] = {
     "0x1006D1A0 RallyMain init",
     "0x10007F40 RallyMain cmdline",
     "0x10063060 config load",
-    "0x10009C00 RallyMain pre-loop",
+    "0x10009C00 DirectPlay init (net)",
     "0x10032530 state0 init",
     "0x1006C290 sfx bank select",
     "0x10058AF0 state0 init",
