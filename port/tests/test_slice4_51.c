@@ -304,10 +304,10 @@ static void SetupGbi(float e, float z)
     memset(&g_gbi, 0, sizeof g_gbi);
     g_gbi.f0A79E8 = FloatBits(e);
     g_gbi.f4C5174 = FloatBits(z);
-    g_gbi.scissor.ulx = 1;
-    g_gbi.scissor.uly = 2;
-    g_gbi.scissor.lrx = 3;
-    g_gbi.scissor.lry = 4;
+    g_gbi.tile.uls = 1;
+    g_gbi.tile.ult = 2;
+    g_gbi.tile.lrs = 3;
+    g_gbi.tile.lrt = 4;
     g_gbi.light.off[0] = 0.25f;
     g_gbi.light.off[1] = 0.50f;
     g_gbi.light.off[2] = 0.75f;
@@ -396,20 +396,20 @@ static void test_21560_uv_and_colour(void)
     BrClipVert av[4];
     int i;
 
-    /* --- texture coordinates come from the scissor, times 8 -------- */
+    /* --- texture coordinates come from the latched TILE, times 8 --- */
     SetupGbi(1.0f, 0.0f);
     g_gbi.geo.cur = 0x1000u;
     BrGbiCall10021560(0, 0, 2560, 1920, 0);
     GrabCorners(av);
 
-    CHECK(av[V1].f10 == (float)g_gbi.scissor.ulx * 8.0f);
-    CHECK(av[V3].f10 == (float)g_gbi.scissor.ulx * 8.0f);
-    CHECK(av[V0].f10 == (float)g_gbi.scissor.lrx * 8.0f);
-    CHECK(av[V2].f10 == (float)g_gbi.scissor.lrx * 8.0f);
-    CHECK(av[V1].f14 == (float)g_gbi.scissor.uly * 8.0f);
-    CHECK(av[V2].f14 == (float)g_gbi.scissor.uly * 8.0f);
-    CHECK(av[V0].f14 == (float)g_gbi.scissor.lry * 8.0f);
-    CHECK(av[V3].f14 == (float)g_gbi.scissor.lry * 8.0f);
+    CHECK(av[V1].f10 == (float)g_gbi.tile.uls * 8.0f);
+    CHECK(av[V3].f10 == (float)g_gbi.tile.uls * 8.0f);
+    CHECK(av[V0].f10 == (float)g_gbi.tile.lrs * 8.0f);
+    CHECK(av[V2].f10 == (float)g_gbi.tile.lrs * 8.0f);
+    CHECK(av[V1].f14 == (float)g_gbi.tile.ult * 8.0f);
+    CHECK(av[V2].f14 == (float)g_gbi.tile.ult * 8.0f);
+    CHECK(av[V0].f14 == (float)g_gbi.tile.lrt * 8.0f);
+    CHECK(av[V3].f14 == (float)g_gbi.tile.lrt * 8.0f);
 
     /* The x/u pairing follows the corner, not the vertex index. */
     CHECK((av[V1].f04 == av[V3].f04) && (av[V1].f10 == av[V3].f10));

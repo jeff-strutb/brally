@@ -134,7 +134,7 @@ void BrSwapVec3(void *pv)
 }
 
 /* ================================================================== */
-/* 1. Scissor                                                          */
+/* 1. Tile size (0x1001CF30 -- opcode 0xF2, NOT the scissor)           */
 /* ================================================================== */
 
 static uint32_t pack12(uint32_t hi, uint32_t lo)
@@ -142,35 +142,48 @@ static uint32_t pack12(uint32_t hi, uint32_t lo)
     return ((hi & 0xFFFu) << 12) | (lo & 0xFFFu);
 }
 
-static void test_scissor(void)
+static void test_tilesize(void)
 {
     BrGbiState st;
     BrGfxWords cmd[2];
 
     memset(&st, 0, sizeof st);
 
-    /* A plain 320x240 scissor in 10.2 fixed point. */
+    /* A 320x240 tile in 10.2 fixed point. */
     cmd[0].w0 = pack12(0, 0);
     cmd[0].w1 = pack12(320u * 4u - 4u, 240u * 4u - 4u);
-    CHECK(BrGbiSetScissor(&st, cmd) == cmd + 1);
-    CHECK(st.scissor.ulx == 0 && st.scissor.uly == 0);
-    CHECK(st.scissor.w == 320 && st.scissor.h == 240);
+    CHECK(BrGbiSetTileSize(&st, cmd) == cmd + 1);
+    CHECK(st.tile.uls == 0 && st.tile.ult == 0);
+    CHECK(st.tile.tileW == 320 && st.tile.tileH == 240);
 
     /* 0x7FF is the largest positive 12-bit value, 0x800 the most negative:
      * the sign extension must break exactly there. */
     cmd[0].w0 = pack12(0x7FFu, 0x800u);
     cmd[0].w1 = pack12(0xFFFu, 0u);
-    BrGbiSetScissor(&st, cmd);
-    CHECK(st.scissor.ulx == 0x7FF);
-    CHECK(st.scissor.uly == -0x800);
-    CHECK(st.scissor.lrx == -1);
-    CHECK(st.scissor.lry == 0);
+    BrGbiSetTileSize(&st, cmd);
+    CHECK(st.tile.uls == 0x7FF);
+    CHECK(st.tile.ult == -0x800);
+    CHECK(st.tile.lrs == -1);
+    CHECK(st.tile.lrt == 0);
 
-    /* lrx < ulx: the arithmetic shift must keep the extent negative rather
+    /* lrs < uls: the arithmetic shift must keep the extent negative rather
      * than turning it into a huge positive. */
-    CHECK(st.scissor.w < 0);
+    CHECK(st.tile.tileW < 0);
     /* (0 - (-0x800) + 4) >> 2 */
-    CHECK(st.scissor.h == (0x800 + 4) >> 2);
+    CHECK(st.tile.tileH == (0x800 + 4) >> 2);
+
+    /* 0x1001CF30 IS 0x1001EC30 IS br_dl.c's br_dl_settilesize: the D3D and
+     * Glide builds hold the same 178-byte function in the same slot 0xF2.
+     * This asserts the two ports agree rather than merely coexisting -- the
+     * numbers below are br_dl_settilesize's for the same command words, and
+     * were computed from the disassembly, not from either port. */
+    cmd[0].w0 = pack12(0x004u, 0x008u);      /* uls = 1.0, ult = 2.0 texels */
+    cmd[0].w1 = pack12(0x104u, 0x208u);      /* lrs = 65.0, lrt = 130.0     */
+    BrGbiSetTileSize(&st, cmd);
+    CHECK(st.tile.uls == 4 && st.tile.ult == 8);
+    CHECK(st.tile.lrs == 0x104 && st.tile.lrt == 0x208);
+    CHECK(st.tile.tileW == ((0x104 - 4 + 4) >> 2));
+    CHECK(st.tile.tileH == ((0x208 - 8 + 4) >> 2));
 }
 
 /* ================================================================== */
@@ -1326,7 +1339,7 @@ static void test_rca_fixup(void)
 
 int main(void)
 {
-    test_scissor();
+    test_tilesize();
     test_geometry_mode();
     test_dl_stack();
     test_matrix_stack();

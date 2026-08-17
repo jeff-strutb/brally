@@ -30,8 +30,22 @@
  *     is here; the s/t derivation is not, and pDl->cVtxTexGen counts the
  *     vertices that would have had it so the gap is visible rather than
  *     silent.  Nothing in this port sets G_TEXTURE_GEN today.
- *   - The 0xFA (prim colour) handler is 138 bytes in Glide and 183 in D3D
- *     and was not read; only the payload is recorded here.
+ *   - 0x1001E380, the 914-byte rectangle emitter both untextured fill-rect
+ *     opcodes call.  Its four opening CLAMPS are read (they are what pin
+ *     which scissor global is min and which is max) and its emission is not.
+ *     The four arguments 0xE1 and 0xF6 compute for it are recorded in
+ *     pDl->rectMinX..rectMaxY; the clamp and the two Glide triangles are not
+ *     performed.
+ *
+ * FOURTEEN OPCODES ARE TRANSCRIBED TWICE IN THIS TREE, stated here rather
+ * than left to be found.  br_dlglide.c independently ports 0xDC 0xDD 0xDF
+ * 0xE1 0xE2 0xED and br_dlcmd.c independently ports 0x04 0xB1 0xBF 0xF6 0xF7
+ * 0xFA 0xFB 0xFC, all under the same original addresses this file uses.  Two
+ * host definitions of one original address is the hazard CONVENTIONS.md's
+ * "Aliased storage" section names.  They now AGREE -- the seven places where
+ * they did not are the subject of the opcode audit this pass acted on -- but
+ * agreeing is not the same as being one object, and the end state is that one
+ * of each pair goes.
  */
 
 #include "br_dl.h"
@@ -79,11 +93,44 @@ static void br_dl_putw(uint8_t *p, uint32_t v)
     p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
 }
 
-/* 0x1001EC30's sign fold: a 12-bit field above 0x800 is negative. */
+/* 0x1001EC30's sign fold: a 12-bit field above 0x800 is negative.  0x1001E720
+ * does the same thing with `shl 20 / sar 20` on all four of its corner fields;
+ * written as the explicit fold because C99 leaves a signed right shift
+ * implementation-defined. */
+/* NOT 0x1001EC30 -- an annotation pass attached that address here because
+ * the comment above opens with it.  0x1001EC30 is the 178-byte 0xF2
+ * handler, which is br_dl_settilesize below; this is a six-line helper it
+ * and 0x1001E720 both use. */
 static int32_t br_dl_s12(uint32_t v)
 {
     int32_t x = (int32_t)(v & 0xFFFu);
     return (x >= 0x800) ? x - 0x1000 : x;
+}
+
+/* `fistp dword ptr [0x105CE310]` under MSVC's startup control word: round to
+ * NEAREST, TIES TO EVEN.  Out of range -- and NaN -- stores the x87 integer
+ * indefinite 0x80000000.
+ *
+ * This is NOT __ftol (0x1007C8A0 / MSVCRT `_ftol` at 0x10074560), which
+ * truncates toward zero and yields 0 out of range.  Both appear in this
+ * binary, a few hundred bytes apart, and the quarter-pixel snap uses the
+ * FIRST: 0x100220D4 is a bare `fistp`, with no control-word change anywhere
+ * in 0x10022070 or its callers.  The port used to add +/-0.5 and truncate,
+ * which is ties-AWAY-from-zero and differs from the original on every exact
+ * half -- e.g. 0.125 * 4 == 0.5 snaps to 0 here and to 1 that way.
+ *
+ * rint() honours the current rounding mode, which is the same ties-to-even.
+ * br_dlcmd.c's br_dlcmd_fistp is the identical helper for the same `fistp`;
+ * the two files are separate translation units transcribing separate original
+ * functions, so this is a duplicated LEAF, not a duplicated address. */
+static int32_t br_dl_fistp(double v)
+{
+    double r = rint(v);
+    /* Negated conjunction so NaN takes the indefinite side, as x87 does;
+     * `r < min || r > max` would let NaN through. */
+    if (!(r >= -2147483648.0 && r <= 2147483647.0))
+        return (int32_t)0x80000000;
+    return (int32_t)r;
 }
 
 /* Read a float out of a host-order 32-bit pattern without aliasing. */
@@ -155,20 +202,35 @@ void BrDlInit(BrDl *pDl, int32_t cxScreen, int32_t cyScreen)
     BrMat4Identity(&pDl->proj);
     BrMat4Identity(&pDl->combined);
 
-    pDl->scisULX = 0;
-    pDl->scisULY = 0;
-    pDl->scisLRX = cxScreen;
-    pDl->scisLRY = cyScreen;
-
     /* 0x100A7514 / 0x100A7518 -- the grSstWinOpen dimensions the fill and
-     * scissor handlers flip Y against. */
+     * scissor handlers flip Y against.  Latched because both 0x1001EB50 and
+     * 0x1001E720 read 0x100A7518 directly. */
+    pDl->cxScreen = cxScreen;
+    pDl->cyScreen = cyScreen;
+
+    /* The clip window as 0x1001E1E0 / 0x1001E200 leave it for a full-screen
+     * view, in the BOTTOM-UP min/max form the two scissor handlers write.
+     * Those writers are outside this file, so this is a starting value rather
+     * than a transcription and is stated as such. */
+    pDl->scisMinX = 0;
+    pDl->scisMinY = 0;
+    pDl->scisMaxX = cxScreen;
+    pDl->scisMaxY = cyScreen;
+
     pDl->vpScaleX = (float)cxScreen * 0.5f;
     pDl->vpTransX = (float)cxScreen * 0.5f;
     pDl->vpScaleY = (float)cyScreen * -0.5f;
     pDl->vpTransY = (float)cyScreen * 0.5f;
 
+    /* Both colour globals are zero-initialised in the original (they are past
+     * the end of .data's raw bytes).  This port has always started them at
+     * WHITE instead, so a list that draws before its first 0xFA/0xFB is not
+     * black; that is a port default and not a transcription, and it is kept.
+     * The number differs between the two because the UNITS differ: env is
+     * 0..1 (0xFB multiplies by 1/255) and prim is 0..255 (0xFA does not). */
     pDl->env[0] = pDl->env[1] = pDl->env[2] = pDl->env[3] = 1.0f;
-    pDl->prim[0] = pDl->prim[1] = pDl->prim[2] = pDl->prim[3] = 1.0f;
+    pDl->prim[0] = pDl->prim[1] = pDl->prim[2] = pDl->prim[3] =
+        BR_DL_COLOUR_MAX;
 }
 
 void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
@@ -185,6 +247,7 @@ void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
 typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
 
 /* 0x10021240 -- 228 of the 256 table slots point here. */
+/* @implements 0x10021240 glide br_dl_skip */
 static const uint8_t *br_dl_skip(BrDl *pDl, const uint8_t *p)
 {
     pDl->cUnhandled++;
@@ -381,6 +444,7 @@ static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
  * br_dl.c already carries one other such copy for the same kind of reason:
  * br_dl_outcode is 0x10022120, which slice2_16.c ports as BrGbiClipCodes.
  * Those are the only two, and both are pure leaf arithmetic with no state. */
+/* @implements 0x100344D0 glide br_dl_normalise */
 static void br_dl_normalise(BrVec3 *pV)
 {
     float len = (float)sqrt((double)(pV->y * pV->y + pV->z * pV->z +
@@ -400,6 +464,7 @@ static void br_dl_normalise(BrVec3 *pV)
 /* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
  * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
  * (modelview only), G_MOVEMEM light and G_MOVEWORD LIGHTCOL all clear. */
+/* @implements 0x10021C70 glide br_dl_light_setup */
 static void br_dl_light_setup(BrDl *pDl)
 {
     const uint8_t *pL = pDl->aLight[BR_DL_LIGHT_DIFFUSE];   /* 0x105CCC78 */
@@ -481,16 +546,22 @@ static void br_dl_light_setup(BrDl *pDl)
  * the three colour floats the caller writes to the vertex's +0x5C/+0x60/+0x64
  * -- the clip node's +0x1C/+0x20/+0x24, which is why the clipper carries the
  * LIT colour and not the normal across a cut edge. */
+/* @implements 0x10022AC0 glide br_dl_light_vertex */
 static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 {
     float t;
     int i;
 
-    /* 0x10022AC6 / 0x10022BCC.  Note this arm does NOT use the ambient. */
+    /* 0x10022AC6 / 0x10022BCC.  Note this arm does NOT use the ambient -- it
+     * copies 0x105D17A4, 0x105D17B4 and 0x105CE2D0, which are exactly 0xFA's
+     * first three destinations.  There was a separate `lightOff[3]` here with
+     * no writer anywhere in the port, so this arm always produced (0,0,0);
+     * one original object had two host names and only one of them was ever
+     * assigned.  See br_dl.h on `prim`. */
     if (pDl->nLights == 0) {
-        pOut[0] = pDl->lightOff[0];
-        pOut[1] = pDl->lightOff[1];
-        pOut[2] = pDl->lightOff[2];
+        pOut[0] = pDl->prim[0];
+        pOut[1] = pDl->prim[1];
+        pOut[2] = pDl->prim[2];
         pDl->cVtxLitOff++;
         return;
     }
@@ -525,6 +596,7 @@ static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 
 /* --- 0x1001FD70's table write, as a query -----------------------------
  * See the section header for the transcription. */
+/* @implements 0x1001FD70 glide BrDlVtxRoutine */
 uint32_t BrDlVtxRoutine(const BrDl *pDl)
 {
     uint32_t geo = pDl->geoMode;
@@ -568,6 +640,7 @@ float BrDlColourScale(const BrDl *pDl)
  * Every test is `fcomp 0.0 / test ah,1`, i.e. C0 -- STRICTLY LESS THAN, and
  * NaN takes the true side because an unordered compare also sets C0.  Written
  * as `!(v >= 0)` for exactly that reason. */
+/* @implements 0x10022120 glide br_dl_outcode */
 static int32_t br_dl_outcode(const BrDlVtx *pV)
 {
     int32_t oc = 0;
@@ -585,6 +658,7 @@ static int32_t br_dl_outcode(const BrDlVtx *pV)
  * Perspective divide, viewport, quarter-pixel snap, colour store.  The lit
  * transforms call it with the colour in three registers; the unlit one
  * inlines it and uses n0/n1/n2. */
+/* @implements 0x10022070 glide br_dl_project */
 static void br_dl_project(BrDl *pDl, BrDlVtx *pV, float r, float g, float b)
 {
     float invW, sx, sy;
@@ -596,11 +670,16 @@ static void br_dl_project(BrDl *pDl, BrDlVtx *pV, float r, float g, float b)
     pV->r = r;
     pV->g = g;
     pV->b = b;
-    /* 0x100220C6: snap to quarter-pixels -- multiply by 4.0 (0x10077408),
-     * round through fistp/fild, multiply by 0.25 (0x1007740C).  fistp is
-     * round-to-nearest under the default control word, NOT truncation. */
-    sx = (float)((int32_t)(sx * 4.0f + (sx >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
-    sy = (float)((int32_t)(sy * 4.0f + (sy >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    /* 0x100220C6..0x10022115: snap to quarter-pixels.
+     *     fld x; fmul 4.0 (0x10077408); fstp [ebp-0xC]   <- rounds to float
+     *     fld [ebp-0xC]; fistp [0x105CE310]              <- TIES TO EVEN
+     *     fild [0x105CE310]; fstp [ebp-0xC]              <- back to float
+     *     fld [ebp-0xC]; fmul 0.25 (0x1007740C); fstp x
+     * The spill through [ebp-0xC] is a real rounding to float and is
+     * reproduced.  See br_dl_fistp on why this is ties-to-even and not the
+     * +/-0.5-and-truncate this line used to carry. */
+    sx = (float)((float)br_dl_fistp((double)(float)(sx * 4.0f)) * 0.25f);
+    sy = (float)((float)br_dl_fistp((double)(float)(sy * 4.0f)) * 0.25f);
     pV->x = sx;
     pV->y = sy;
 }
@@ -864,6 +943,7 @@ static BrClipVert s_aClipPool[BR_DL_CLIP_POOL];   /* 0x105CCFF0 */
 static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
 
 /* 0x10023B10's free-list threading, delegated. */
+/* @implements 0x10023B10 glide br_dl_clip_reset */
 static void br_dl_clip_reset(BrDl *pDl)
 {
     (void)pDl;
@@ -886,6 +966,7 @@ static const BrDlClipPlaneFn s_apClipPlane[7] = {
  * Identical arithmetic to the tail of br_dl_vtx plus the s/t scaling of
  * br_dl_finish_vtx, written out here because the original writes it out here
  * too (0x1001EF82..0x1001F065) rather than calling either. */
+/* @implements 0x1001EE70 glide br_dl_clip_emit */
 static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
 {
     float invW, sx, sy;
@@ -900,8 +981,10 @@ static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
 
     sx = pDl->vpScaleX * invW * pN->f04 + pDl->vpTransX;
     sy = pDl->vpScaleY * invW * pN->f08 + pDl->vpTransY;
-    sx = (float)((int32_t)(sx * 4.0f + (sx >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
-    sy = (float)((int32_t)(sy * 4.0f + (sy >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+    /* The same fmul 4 / fistp / fild / fmul 0.25 as br_dl_project, written out
+     * again because 0x1001EFxx writes it out again.  Ties to even. */
+    sx = (float)((float)br_dl_fistp((double)(float)(sx * 4.0f)) * 0.25f);
+    sy = (float)((float)br_dl_fistp((double)(float)(sy * 4.0f)) * 0.25f);
     pOut->x = sx;
     pOut->y = sy;
 
@@ -1138,7 +1221,37 @@ static const uint8_t *br_dl_setDF(BrDl *pDl, const uint8_t *p)
  * CONVENTIONS.md already records "0xE1 is FILL RECTANGLE with integer
  * corners here"; the table pins that -- 0x100A9A58 + 0xE1*4 holds
  * 0x1001E720, whose only difference from the 0xF6 handler is `sar 0x14`
- * where the other has `sar 0x16`, i.e. no /4. */
+ * where the other has `sar 0x16` and an `and 0x3FF`.
+ *
+ * ALL FOUR PUT THE LOWER-RIGHT CORNER IN w0 AND THE UPPER-LEFT IN w1.  This
+ * is stock RDP packing and the file used to get it backwards on the
+ * untextured pair while getting it right on the textured pair, which is the
+ * strongest evidence available that the untextured arm was the wrong one.
+ * Read off the disassembly:
+ *
+ *   0x10021570 (0xE4) pushes, last-first,  (w1>>12, w1&0xFFF, w0>>12,
+ *     w0&0xFFF, tile) into 0x100215C0 -- so w1 is the FIRST corner.
+ *   0x1001E320 (0xF6) and 0x1001E720 (0xE1) push, last-first,
+ *     (w1 hi, H - (w0 lo) - 1, (w0 hi) + 1, H - (w1 lo)) into 0x1001E380,
+ *     whose four opening clamps are max, max, min, min -- so the w1 fields
+ *     are the MINIMA (upper-left) and the w0 fields the maxima.
+ *
+ * THE THREE FIELD DECODES, each verbatim:
+ *   0xE1  shl 20 / sar 20            signed 12-bit integer, no mask.  A -8
+ *                                    corner is -8; masking it with 0xFFF
+ *                                    makes it 4088.
+ *   0xF6  shl 20 / sar 22 / and 0x3FF   net (w >> 2) & 0x3FF -- the sign
+ *                                    extension is masked straight off again,
+ *                                    so 0xF6's corners are UNSIGNED.
+ *   0xE3/0xE4  and 0xFFF, and 0xE3 additionally shifts each field left two
+ *                                    on the way in, so both reach 0x100215C0
+ *                                    in 10.2 and both are unsigned.
+ *
+ * AND THE UNTEXTURED PAIR DO NOT PASS THE CORNERS ON RAW.  They flip Y
+ * against 0x100A7518 and adjust both maxima by one:
+ *     0x1001E380(ulx, H - lry - 1, lrx + 1, H - uly)
+ * (`inc edi` at 0x1001E74E / 0x1001E363, `dec edx` at 0x1001E753 /
+ * 0x1001E368).  That window is recorded in pDl->rectMinX..rectMaxY. */
 
 static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
                                  int fTextured, int fFixed)
@@ -1156,12 +1269,25 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
         uly = (int32_t)(w1 & 0xFFFu);
         tile = (int32_t)((w1 >> 24) & 7u);
         if (fFixed) { lrx >>= 2; lry >>= 2; ulx >>= 2; uly >>= 2; }
+    } else if (fFixed) {
+        /* 0xF6, 0x1001E320.  Unsigned 10.2. */
+        lrx = (int32_t)((w0 >> 14) & 0x3FFu);
+        lry = (int32_t)((w0 >> 2) & 0x3FFu);
+        ulx = (int32_t)((w1 >> 14) & 0x3FFu);
+        uly = (int32_t)((w1 >> 2) & 0x3FFu);
     } else {
-        ulx = (int32_t)((w0 >> 12) & 0xFFFu);
-        uly = (int32_t)(w0 & 0xFFFu);
-        lrx = (int32_t)((w1 >> 12) & 0xFFFu);
-        lry = (int32_t)(w1 & 0xFFFu);
-        if (fFixed) { ulx >>= 2; uly >>= 2; lrx >>= 2; lry >>= 2; }
+        /* 0xE1, 0x1001E720.  Signed 12-bit integer. */
+        lrx = br_dl_s12(w0 >> 12);
+        lry = br_dl_s12(w0);
+        ulx = br_dl_s12(w1 >> 12);
+        uly = br_dl_s12(w1);
+    }
+
+    if (!fTextured) {
+        pDl->rectMinX = ulx;
+        pDl->rectMinY = pDl->cyScreen - lry - 1;
+        pDl->rectMaxX = lrx + 1;
+        pDl->rectMaxY = pDl->cyScreen - uly;
     }
 
     pDl->cRects++;
@@ -1171,27 +1297,93 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
     return p + ((fTextured && fFixed) ? 0x18 : 8);
 }
 
+/* @implements 0x1001E320 glide br_dl_fillF6 */
 static const uint8_t *br_dl_fillF6(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 1); }
+/* @implements 0x1001E720 glide br_dl_fillE1 */
 static const uint8_t *br_dl_fillE1(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 0); }
+/* @implements 0x10021570 glide br_dl_texE4 */
 static const uint8_t *br_dl_texE4(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 1); }
+/* @implements 0x100219D0 glide br_dl_texE3 */
 static const uint8_t *br_dl_texE3(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 1, 0); }
 
-/* ---- 0xED / 0xE2 scissor  (0x1001EB50 / 0x1001EBC0, both Glide-only) */
-static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p)
+/* ---- 0xED / 0xE2 scissor  (0x1001EB50 / 0x1001EBC0, both Glide-only) --
+ * TWO FUNCTIONS, TWO CONVENTIONS.  This file used to route both slots to one
+ * handler using the 0xED decode, which silently divided 0xE2's corners by
+ * four.  They are 103 and 97 bytes and differ in exactly the four shift/mask
+ * pairs:
+ *
+ *   0x1001EB61  shr eax,0xE ; and eax,0x3FF   |  0x1001EBD1  shr eax,0xC
+ *   0x1001EB70  shr ecx,2   ; and ecx,0x3FF   |              ; and eax,0xFFF
+ *   0x1001EB84  shr ecx,0xE ; and ecx,0x3FF   |  0x1001EBE0  and ecx,0xFFF
+ *   0x1001EB97  shr ebx,2   ; and ebx,0x3FF   |  ...
+ *
+ * Confirmed independently in BRD3D.dll, where the same two slots hold
+ * 0x1001CDA0 (0xED: `shr 0xE / and 0x3FF` at 0x1001CDBB) and 0x1001CE70
+ * (0xE2: `shr 0xC / and 0xFFF` at 0x1001CE8B).
+ *
+ * THE SHIFTS ARE `shr`, NOT `sar`: unlike 0xE1 the scissor corners are
+ * UNSIGNED in both forms.  Preserved.
+ *
+ * THE Y FLIP IS THE POINT, and the roles of the two Y corners swap with it:
+ *     0x105D17BC = ulx      = minX        0x105D17B8 = lrx      = maxX
+ *     0x105D17C0 = H - lry  = minY        0x105CCFE0 = H - uly  = maxY
+ * Established from the CONSUMER, not from the names: 0x1001E380 opens with
+ * four clamps -- `jge` against 0x105D17BC, `jge` against 0x105D17C0, `jle`
+ * against 0x105D17B8, `jle` against 0x105CCFE0 -- i.e. max, max, min, min.
+ * The tail (0x1001EBAB) passes the same four to grClipWindow through the
+ * thunk 0x100729D2 in the order (minx, miny, maxx, maxy).
+ *
+ * DUPLICATION, stated rather than left to be found: br_dlglide.c transcribes
+ * these two addresses independently and correctly as BrDlGlScissorInt /
+ * BrDlGlScissorFrac.  Two host definitions of one original address is what
+ * CONVENTIONS.md's aliased-storage section is about; they no longer DISAGREE,
+ * which is the part that was actively harmful, but the duplication is real
+ * and outlives this pass.  Same for 0xE1 (BrDlGlFillRect), 0xDC, 0xDD and
+ * 0xDF here, and for 0xF6/0xF7/0xFA/0xFB in br_dlcmd.c. */
+static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p, int fFrac)
 {
     uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
-    pDl->scisULX = (int32_t)((w0 >> 14) & 0x3FFu);
-    pDl->scisULY = (int32_t)((w0 >> 2) & 0x3FFu);
-    pDl->scisLRX = (int32_t)((w1 >> 14) & 0x3FFu);
-    pDl->scisLRY = (int32_t)((w1 >> 2) & 0x3FFu);
+    int32_t  H  = pDl->cyScreen;
+    int32_t  ulx, uly, lrx, lry;
+
+    if (fFrac) {                        /* 0xED, 0x1001EB50: 10.2 */
+        ulx = (int32_t)((w0 >> 14) & 0x3FFu);
+        uly = (int32_t)((w0 >> 2) & 0x3FFu);
+        lrx = (int32_t)((w1 >> 14) & 0x3FFu);
+        lry = (int32_t)((w1 >> 2) & 0x3FFu);
+    } else {                            /* 0xE2, 0x1001EBC0: integer */
+        ulx = (int32_t)((w0 >> 12) & 0xFFFu);
+        uly = (int32_t)(w0 & 0xFFFu);
+        lrx = (int32_t)((w1 >> 12) & 0xFFFu);
+        lry = (int32_t)(w1 & 0xFFFu);
+    }
+
+    pDl->scisMinX = ulx;                /* 0x105D17BC */
+    pDl->scisMaxY = H - uly;            /* 0x105CCFE0 */
+    pDl->scisMaxX = lrx;                /* 0x105D17B8 */
+    pDl->scisMinY = H - lry;            /* 0x105D17C0 */
     return p + 8;
 }
 
-/* ---- 0xF2 G_SETTILESIZE  (0x1001EC30, SHARED) ----------------------- */
+/* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  Integer fields. */
+/* @implements 0x1001EBC0 glide br_dl_scissorE2 */
+static const uint8_t *br_dl_scissorE2(BrDl *pDl, const uint8_t *p)
+{ return br_dl_scissor(pDl, p, 0); }
+
+/* 0x1001EB50 -- opcode 0xED, 103 bytes.  10.2 fields. */
+/* @implements 0x1001EB50 glide br_dl_scissorED */
+static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
+{ return br_dl_scissor(pDl, p, 1); }
+
+/* ---- 0xF2 G_SETTILESIZE  (0x1001EC30, SHARED) -----------------------
+ * The D3D twin is 0x1001CF30, which slice2_16.c ports as BrGbiSetTileSize
+ * -- it was called BrGbiSetScissor until this pass.  Same 178 bytes, same
+ * slot 0xF2 in both builds' tables; one function under two addresses. */
+/* @implements 0x1001EC30 glide br_dl_settilesize */
 static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
 {
     uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
@@ -1207,11 +1399,55 @@ static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
     return p + 8;
 }
 
-/* ---- 0xF7 fill colour, 0xF8 fog colour ------------------------------ */
+/* ---- 0xF7 fill colour, 0xF8 fog colour ------------------------------
+ * 0x1001E9F0 IS NOT A RAW STORE.  110 bytes, and every one of them is a
+ * decode: it expands the LOW RGBA5551 half of w1 into four separate BYTE
+ * globals, which the rectangle emitter 0x1001E380 reads at 0x1001E441 --
+ * `mov bl,[0x105CCD40] / mov al,[0x105CCFD8] / mov cl,[0x105D17A0] /
+ * mov dl,[0x105CE208]` -- on the arm taken whenever the latched combiner is
+ * not the prim-colour row.  So 0xF7 is the colour 0xF6 fills with, and
+ * keeping the word verbatim leaves that decode unwritten.
+ *
+ * The three colour channels use one idiom three times, e.g. for red at
+ * 0x1001E9F8..0x1001EA09:
+ *     mov ecx,w1 ; shr ecx,8      cl = bits 15:8
+ *     mov edx,w1 ; shr edx,0xD    dl = bits 15:13
+ *     xor dl,cl ; and dl,7 ; xor dl,cl
+ * The three-instruction tail is the standard bitfield merge
+ * `a ^ ((a ^ b) & mask)` == `(a & ~7) | (b & 7)`, i.e. the 5->8 widening
+ * (v << 3) | (v >> 2) assembled out of one register pair.  Green is the same
+ * with shifts 3 and 8; blue is `and cl,0xFE / shl cl,2` -- an EIGHT-BIT
+ * shift, so bits 6 and 7 fall off the end, which is what leaves room for the
+ * low three from `shr edx,3`.
+ *
+ * Alpha is `and cl,1 / neg cl / sbb ecx,ecx / and ecx,0xFF`: bit 0 spread to
+ * all eight, giving 0 or 255, never 0 or 1.
+ *
+ * br_dlcmd.c transcribes this address independently as BrDlCmdFillColour; see
+ * the duplication note on the scissor above. */
+/* @implements 0x1001E9F0 glide br_dl_fillcolour */
 static const uint8_t *br_dl_fillcolour(BrDl *pDl, const uint8_t *p)
 {
-    pDl->fillColour = br_dl_w(p + 4);
-    return p + 8;
+    uint32_t w1 = br_dl_w(p + 4);
+    uint8_t  hi, lo;
+
+    hi = (uint8_t)(w1 >> 8);            /* bits 15:8  -- carries R << 3 */
+    lo = (uint8_t)(w1 >> 13);           /* bits 15:13 -- carries R >> 2 */
+    pDl->fillR = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
+
+    hi = (uint8_t)(w1 >> 3);            /* bits 10:3  -- carries G << 3 */
+    lo = (uint8_t)(w1 >> 8);            /* bits 10:8  -- carries G >> 2 */
+    pDl->fillG = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
+
+    hi = (uint8_t)((uint8_t)(w1 & 0xFEu) << 2);
+    lo = (uint8_t)(w1 >> 3);            /* bits 5:3   -- carries B >> 2 */
+    pDl->fillB = (uint8_t)(hi | (lo & 0x07u));
+
+    pDl->fillA = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
+
+    /* Port bookkeeping, not a global -- see br_dl.h. */
+    pDl->fillColour = w1;
+    return p + 8;                       /* 0x1001EA4E `add eax,8` */
 }
 static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
 {
@@ -1219,24 +1455,55 @@ static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
     return p + 8;
 }
 
-/* ---- 0xFA prim colour, 0xFB env colour  (0x1001EA80 / 0x1001E930) --- */
-static void br_dl_unpack(uint32_t v, float *pOut)
-{
-    /* 0x1001E930 multiplies each byte by 0x10077400 == 1/255 in that exact
-     * order: R (bits 31:24), G, B, A. */
-    pOut[0] = (float)((v >> 24) & 0xFFu) * (1.0f / 255.0f);
-    pOut[1] = (float)((v >> 16) & 0xFFu) * (1.0f / 255.0f);
-    pOut[2] = (float)((v >> 8) & 0xFFu) * (1.0f / 255.0f);
-    pOut[3] = (float)(v & 0xFFu) * (1.0f / 255.0f);
-}
+/* ---- 0xFA prim colour, 0xFB env colour  (0x1001EA80 / 0x1001E930) ---
+ * ONE UNPACK IS WRONG FOR ONE OF THEM.  Both take the same four bytes in the
+ * same order -- R (bits 31:24), G, B, A -- and both `fild` each into a float.
+ * There the two part company, and this file used to divide both by 255:
+ *
+ *   0x1001EA80 (0xFA)  fild qword [esp+4] ; fstp dword [dest]
+ *                      -- four times, at 0x1001EAA0 / EABE / EADC / EAF3.
+ *                      NO fmul anywhere in the 138 bytes.  Prim is 0..255.
+ *   0x1001E930 (0xFB)  fild ; fstp scratch ; fld scratch ;
+ *                      fmul [0x10077400] ; fstp dest
+ *                      -- four times, and 0x10077400 is 0x3B808081, the float
+ *                      nearest 1/255.  Env is 0..1.
+ *
+ * Three independent corroborations that 0..255 is the reading and not an
+ * oversight: BR_DL_COLOUR_MAX (0x10077418) is 255.0f and is what the lit
+ * colour is clamped to two functions away; 0x1001E380 passes all four of
+ * 0xFA's destinations through _ftol (0x10074560) into single BYTES at
+ * 0x1001E412..0x1001E43B, which only makes sense for 0..255; and the
+ * "lights off" fallback at 0x10022BCC copies three of them straight into a
+ * vertex colour in a pipeline whose ceiling is 255.
+ *
+ * The spill through a stack slot between 0xFB's fild and its fmul is a real
+ * rounding to float.  Reproduced rather than folded, as br_dlcmd.c does.
+ *
+ * br_dlcmd.c transcribes both addresses independently as BrDlCmdPrimColour /
+ * BrDlCmdEnvColour; see the duplication note on the scissor above. */
+/* @implements 0x1001EA80 glide br_dl_prim */
 static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
 {
-    br_dl_unpack(br_dl_w(p + 4), pDl->prim);
+    uint32_t v = br_dl_w(p + 4);
+
+    /* 0x105D17A4, 0x105D17B4, 0x105CE2D0, 0x105CD9F0.  The first three are
+     * also br_dl_light_vertex's numlights==0 fallback -- one object. */
+    pDl->prim[0] = (float)(int32_t)((v >> 24) & 0xFFu);
+    pDl->prim[1] = (float)(int32_t)((v >> 16) & 0xFFu);
+    pDl->prim[2] = (float)(int32_t)((v >> 8) & 0xFFu);
+    pDl->prim[3] = (float)(int32_t)(v & 0xFFu);
     return p + 8;
 }
+/* @implements 0x1001E930 glide br_dl_env */
 static const uint8_t *br_dl_env(BrDl *pDl, const uint8_t *p)
 {
-    br_dl_unpack(br_dl_w(p + 4), pDl->env);
+    uint32_t v = br_dl_w(p + 4);
+    const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
+
+    pDl->env[0] = (float)(int32_t)((v >> 24) & 0xFFu) * k;
+    pDl->env[1] = (float)(int32_t)((v >> 16) & 0xFFu) * k;
+    pDl->env[2] = (float)(int32_t)((v >> 8) & 0xFFu) * k;
+    pDl->env[3] = (float)(int32_t)(v & 0xFFu) * k;
     return p + 8;
 }
 
@@ -1318,10 +1585,10 @@ static void br_dl_build_table(void)
     s_aTable[0xDE] = br_dl_setDE;
     s_aTable[0xDF] = br_dl_setDF;
     s_aTable[0xE1] = br_dl_fillE1;
-    s_aTable[0xE2] = br_dl_scissor;
+    s_aTable[0xE2] = br_dl_scissorE2;    /* 0x1001EBC0 -- integer */
     s_aTable[0xE3] = br_dl_texE3;
     s_aTable[0xE4] = br_dl_texE4;
-    s_aTable[0xED] = br_dl_scissor;
+    s_aTable[0xED] = br_dl_scissorED;    /* 0x1001EB50 -- 10.2    */
     s_aTable[0xF2] = br_dl_settilesize;
     s_aTable[0xF6] = br_dl_fillF6;
     s_aTable[0xF7] = br_dl_fillcolour;
@@ -1356,12 +1623,23 @@ size_t BrDlRun(BrDl *pDl, const uint8_t *pList, size_t cbMax)
      *     while (p) p = table[p[3]](p);
      * with no bound at all.  The `pEnd` test is a DEVIATION; it can only
      * fire on a list the original would have walked off the end of, and
-     * only for lists that stay inside [pList, pList+cbMax) -- a G_DL into
+     * only for lists that stay inside [pList, pList+cbMax] -- a G_DL into
      * another buffer legitimately leaves the range, so the bound is applied
-     * only while the cursor is still inside it. */
+     * only while the cursor is still inside it.
+     *
+     * THE END OF THE RANGE IS INCLUSIVE, and it has to be.  This test used to
+     * read `p < pEnd`, which is FALSE at exactly the address the last
+     * in-range handler leaves the cursor at -- so the one position the guard
+     * exists for was the one position it skipped, and `p[3]` then read a
+     * fourth byte past the buffer.  Landing on pEnd is the ordinary way a
+     * well-formed list without a G_ENDDL runs out (a 0xE4 advances 0x18, so
+     * it is easy to step over a terminator and finish exactly on the end).
+     * ASan found it; `<= pEnd` is the whole fix, and it does not change the
+     * G_DL case at all, because a cursor in another buffer is either below
+     * pList or above pEnd and skips the guard either way. */
     while (p != NULL) {
         unsigned op;
-        if (p >= pList && p < pEnd && (size_t)(pEnd - p) < 8u)
+        if (p >= pList && p <= pEnd && (size_t)(pEnd - p) < 8u)
             break;
         op = p[3];
         pDl->cCommands++;

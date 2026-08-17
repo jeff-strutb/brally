@@ -413,7 +413,12 @@ typedef struct BrDlSink {
     /* 0xDD: re-aim that texture at `addr` (Glide's one-texture scheme). */
     void (*pfnRetarget)(void *pUser, uint32_t handle, uint32_t addr);
     /* A screen rectangle. `fTextured` distinguishes 0xE3/0xE4 from 0xE1/0xF6.
-     * Corners are integer pixels; 10.2 payloads have already been divided. */
+     * Corners are integer pixels in the COMMAND's top-down convention -- 10.2
+     * payloads have already been divided, and 0xE1's are sign-extended.  The
+     * bottom-up window the untextured handlers actually hand to 0x1001E380,
+     * with its Y flip and its +1/-1, is in BrDl.rectMinX..rectMaxY; it is not
+     * passed here because 0xE3/0xE4 reach a different emitter that flips
+     * differently. */
     void (*pfnRect)(void *pUser, int fTextured, int tile,
                     int32_t ulx, int32_t uly, int32_t lrx, int32_t lry);
 } BrDlSink;
@@ -473,9 +478,36 @@ typedef struct BrDl {
     BrDlCombine combine;
     int32_t   fDecal;                        /* 0x105CDA04                 */
 
+    /* 0xFB, 0x1001E930.  Each byte is `fild`ed and then multiplied by
+     * 0x10077400 == 1/255, so an ENV colour is 0..1. */
     float     env[4];                        /* 0x105CCD44/5CD9F4/5CCCF8/5CCC74 */
-    float     prim[4];
-    uint32_t  fillColour;                    /* raw w1 of 0xF7             */
+    /* 0xFA, 0x1001EA80.  Each byte is `fild`ed and stored WITH NO SCALE, so a
+     * PRIM colour is 0..255 -- the Glide iterated-colour range, the same one
+     * BR_DL_COLOUR_MAX names.  The two handlers sit 350 bytes apart and this
+     * is the only thing that differs between them; a port that divides both
+     * by 255 makes prim disagree with the fallback below and with the 255.0f
+     * clamp in br_dl_light_vertex.
+     *
+     * THESE ARE THE "LIGHTS OFF" FALLBACK COLOUR.  0x10022AC0's numlights==0
+     * arm (0x10022BCC) copies 0x105D17A4 / 0x105D17B4 / 0x105CE2D0 into the
+     * vertex, and those are exactly this handler's R/G/B destinations -- so
+     * `lightOff` and `prim[0..2]` were two host names for one set of original
+     * globals, which is the aliased-storage hazard CONVENTIONS.md describes.
+     * The `lightOff[3]` field that used to sit further down had NO writer at
+     * all; br_dl_light_vertex now reads these three, which is the one
+     * object. */
+    float     prim[4];                       /* 0x105D17A4, 0x105D17B4,
+                                              * 0x105CE2D0, 0x105CD9F0     */
+    /* 0xF7, 0x1001E9F0.  The handler does NOT store the word: it expands the
+     * LOW RGBA5551 half of w1 into four separate byte globals, which the
+     * rectangle emitter 0x1001E380 reads at 0x1001E441.  R/G/B are the 5-bit
+     * channels widened as `(v << 3) | (v >> 2)`; A is bit 0 spread to 0 or
+     * 255 by `and 1 / neg / sbb / and 0xFF`. */
+    uint8_t   fillR, fillG, fillB, fillA;    /* 0x105CCD40, 0x105CCFD8,
+                                              * 0x105D17A0, 0x105CE208     */
+    /* PORT BOOKKEEPING, not an original global: the raw w1 the expansion came
+     * from, kept so a consumer can see the untouched payload. */
+    uint32_t  fillColour;
     uint32_t  fogColour;                     /* raw w1 of 0xF8             */
     float     f0A9A54;                       /* 0xDE payload (0x100A9A54)  */
     float     f5D17C4;                       /* 0xDF payload (0x105D17C4)  */
@@ -483,7 +515,39 @@ typedef struct BrDl {
     int32_t   uls, ult, lrs, lrt;            /* 0xF2, 10.2 sign-folded     */
     int32_t   tileW, tileH;                  /* derived, (lr-ul+4)>>2      */
 
-    int32_t   scisULX, scisULY, scisLRX, scisLRY;
+    /* The grSstWinOpen dimensions.  0x100A7518 is the HEIGHT and is what both
+     * scissor handlers and both untextured fill-rect handlers subtract Y
+     * from; 0x100A7514 is the width and is read by the texture-rect helper
+     * 0x100215C0.  In the shipped build they are 640 and 480. */
+    int32_t   cxScreen;                      /* 0x100A7514                 */
+    int32_t   cyScreen;                      /* 0x100A7518                 */
+
+    /* 0xE2 (0x1001EBC0) and 0xED (0x1001EB50) -- ONE clip window in Glide's
+     * BOTTOM-UP screen space, which is why these are min/max and not ul/lr.
+     * Both handlers end in grClipWindow(minx, miny, maxx, maxy) through the
+     * thunk 0x100729D2, and the Y flip is not optional bookkeeping: an F3D
+     * scissor has uly ABOVE lry in a top-down screen, so
+     *     minY = H - lry     maxY = H - uly
+     * and the two corners SWAP ROLES.  Store them unflipped and the window
+     * comes out inverted.  Which global is which is fixed by the consumer
+     * 0x1001E380, whose four opening clamps run max, max, min, min against
+     * 0x105D17BC, 0x105D17C0, 0x105D17B8, 0x105CCFE0 in that order. */
+    int32_t   scisMinX;                      /* 0x105D17BC == ulx          */
+    int32_t   scisMinY;                      /* 0x105D17C0 == H - lry      */
+    int32_t   scisMaxX;                      /* 0x105D17B8 == lrx          */
+    int32_t   scisMaxY;                      /* 0x105CCFE0 == H - uly      */
+
+    /* The four arguments the two UNTEXTURED rect handlers hand to the
+     * emitter 0x1001E380 -- 0xE1 at 0x1001E752..0x1001E75A and 0xF6 at
+     * 0x1001E367..0x1001E370, the same four pushes in the same order:
+     *     (ulx, H - lry - 1, lrx + 1, H - uly)
+     * The `inc edi` on X and the `dec edx` on the flipped Y make both spans
+     * (corner difference + 1) pixels wide.  Not an original global -- the
+     * original passes them in registers to a function this port has not
+     * transcribed -- but they are the handler's whole output, so they are
+     * recorded here rather than dropped.  Untextured only: 0xE3/0xE4 reach
+     * 0x100215C0 instead, which does its own flip in floating point. */
+    int32_t   rectMinX, rectMinY, rectMaxX, rectMaxY;
 
     uint8_t   aLight[BR_DL_LIGHTS][16];      /* 0x105CCC78                 */
     int32_t   nLights;                       /* 0x105CCFD0                 */
@@ -496,12 +560,15 @@ typedef struct BrDl {
     float     lightScale[3];                 /* 0x105CE210 .. light colour */
     float     lightDir[3];                   /* 0x105CE21C .. model space  */
     float     lightAmb[3];                   /* 0x105CE228 .. ambient      */
-    /* The "no lights at all" fallback, and it does NOT use lightAmb: it
-     * copies three globals that are not even contiguous.  The D3D build has
-     * the same oddity (slice2_16.h calls the triple `off`), which is why it
-     * is reproduced rather than tidied. */
-    float     lightOff[3];                   /* 0x105D17A4, 0x105D17B4,
-                                              * 0x105CE2D0                 */
+    /* The "no lights at all" fallback does NOT use lightAmb: it copies three
+     * globals that are not even contiguous.  The D3D build has the same
+     * oddity (slice2_16.h calls the triple `off`), which is why it is
+     * reproduced rather than tidied.
+     *
+     * There is no field for it.  0x105D17A4 / 0x105D17B4 / 0x105CE2D0 are
+     * `prim[0..2]` above -- 0xFA's own destinations -- and a second float
+     * triple here would be one original object under two host names.  See the
+     * note on `prim`. */
 
     const uint8_t *aStack[BR_DL_DL_STACK];   /* 0x105CE2E8                 */
     int32_t   sp;                            /* 0x105CCFE8                 */

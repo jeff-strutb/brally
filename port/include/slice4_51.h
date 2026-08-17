@@ -163,7 +163,7 @@ extern const uint32_t BrGbiRectRenderState[BR_GBI_RECT_RS_COUNT];
  * Field names are positional wherever the meaning is not established by a
  * call this packet can see. */
 typedef struct BrGbiRectState {
-    /* the slice2_16 aggregate: scissor, geo.cur (0x104C5178), light.off
+    /* the slice2_16 aggregate: tile, geo.cur (0x104C5178), light.off
      * (0x104C5154/0x104C5160/0x104C1690), f0A79E8, f4C5174 */
     struct BrGbiState *pGbi;
 
@@ -217,18 +217,23 @@ BrGbiRectState *BrGbiRectGetState(void);
  * the shipped image and is a DIVISOR five times over -- a display list that
  * puts 0 there produces infinities, and there is no guard.
  *
- * GOTCHA: the texture coordinates do not come from the rectangle at all.
- * They come from the SCISSOR (BrGbiState.scissor), scaled by 8.0f, and they
- * are paired with the corners like this:
+ * The texture coordinates do not come from the rectangle's own arguments.
+ * They come from the LATCHED TILE (BrGbiState.tile, written by 0x1001CF30 --
+ * opcode 0xF2, G_SETTILESIZE), scaled by 8.0f:
  *
- *      x from `lrs`  <-> u = scissor.ulx * 8      (0x118AA080)
- *      x from `uls`  <-> u = scissor.lrx * 8      (0x1182983C)
- *      y from `lrt`  <-> v = scissor.lry * 8      (0x118A9870)
- *      y from `ult`  <-> v = scissor.uly * 8      (0x11829838)
+ *      x from `lrs`  <-> u = tile.uls * 8         (0x118AA080)
+ *      x from `uls`  <-> u = tile.lrs * 8         (0x1182983C)
+ *      y from `lrt`  <-> v = tile.lrt * 8         (0x118A9870)
+ *      y from `ult`  <-> v = tile.ult * 8         (0x11829838)
  *
- * i.e. the pairing is consistent for x/u only if `lrs`/`uls` are really the
- * upper-left/lower-right pair in that order, and it is inverted for y/v
- * either way.  Preserved exactly; no attempt is made to "fix" it.
+ * This USED TO BE A GOTCHA, on the strength of those four globals being
+ * called the scissor -- "the texture coordinates come from the scissor" is a
+ * genuine oddity, and it was preserved rather than explained.  It is not
+ * true: 0x1001CF30 sits in dispatch slot 0xF2, not 0xE2/0xED, so the four are
+ * uls/ult/lrs/lrt and a tile rectangle textured from the tile is the ordinary
+ * thing.  The remaining oddity is smaller and real: the x pairing crosses
+ * (the vertex at `lrs` takes u from `uls`) and so does the y.  Preserved
+ * exactly; no attempt is made to "fix" it.
  *
  * GOTCHA: the winding of both triangles is chosen by bit 0x1000 of
  * BrGbiState.geo.cur (F3D G_CULL_FRONT).  Set => (v3,v0,v1) and (v0,v2,v1);

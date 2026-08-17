@@ -1246,6 +1246,382 @@ static void run_rca(const char *pszPath)
     free(ctx.pArena); free(ctx.pFile);
 }
 
+/* ------------------------------------------------------------------ */
+/* 9. RDP state: the seven opcode readings that were wrong             */
+/* ------------------------------------------------------------------ */
+/* MUTATIONS KILLED (run under -fsanitize=address,undefined; each defect was
+ * reinstated on its own, the suite rebuilt, and the red assertions recorded):
+ *
+ *   M1  route 0xE2 at the 0xED decode              -> 3 red
+ *   M2  store the scissor's raw fields, no Y flip  -> 3 red
+ *   M3a 0xE1 masks 0xFFF instead of sign-extending -> 3 red
+ *   M3b drop the +1/-1 on the emitter window       -> 3 red
+ *   M4  swap the untextured corners (ul from w0)   -> 4 red
+ *   M5  scale 0xFA's prim colour by 1/255          -> 3 red
+ *   M6  keep 0xF7 as a raw store                   -> 2 red
+ *   M7  snap ties AWAY from zero instead of even   -> 3 red
+ *   M8  lights-off fallback reads an unwritten
+ *       lightOff[] instead of prim[]               -> 1 red
+ *   M10 BrDlRun's bound back to `p < pEnd`         -> ASan
+ *                                                     global-buffer-overflow
+ *
+ * (M9 is in test_slice2_16.c: dropping the +4 from G_SETTILESIZE's extent
+ * turns five assertions red there.)
+ *
+ * Every one was detected.  The pre-existing quarter-pixel assertion in
+ * test_synthetic is NOT in this table, and could not be: it checks that the
+ * result lands on a quarter-pixel, which is true under both roundings. */
+/* Every number below is computed from the disassembly of orig/BRGlide.dll
+ * and written down here BEFORE the code was changed, not read back out of
+ * the port.  Each block names the instructions it rests on, so the next
+ * reader can disagree with the binary rather than with this file.
+ *
+ * All of these are 640x480, which is what 0x100A7514 / 0x100A7518 hold in the
+ * shipped image, so H == 480 throughout. */
+
+static struct { int fTex, tile; int32_t ulx, uly, lrx, lry; int n; } g_rc;
+static void on_rect2(void *u, int fTex, int tile, int32_t a, int32_t b,
+                     int32_t c, int32_t d)
+{
+    (void)u;
+    g_rc.fTex = fTex; g_rc.tile = tile;
+    g_rc.ulx = a; g_rc.uly = b; g_rc.lrx = c; g_rc.lry = d;
+    g_rc.n++;
+}
+
+/* Run one two-word command and stop.  The terminator goes at BOTH +8 and
+ * +0x18 because 0xE4 is the one opcode here that advances 0x18 and would
+ * otherwise step straight over a terminator at +8. */
+static void one_cmd(BrDl *pSt, uint32_t w0, uint32_t w1)
+{
+    static uint8_t dl[64];
+    memset(dl, 0, sizeof(dl));
+    put(dl + 0x00, w0, w1);
+    put(dl + 0x08, 0xB8000000u, 0u);
+    put(dl + 0x18, 0xB8000000u, 0u);
+    BrDlRun(pSt, dl, sizeof(dl));
+}
+
+/* The port-only bound in BrDlRun, and the position it used to miss.
+ *
+ * The original walks `while (p) p = table[p[3]](p)` with no bound at all, so
+ * every byte of this is a DEVIATION -- but a deviation that reads off the end
+ * of the buffer is not a deviation, it is a defect, and this is the case that
+ * exercised it: three no-op commands in a 24-byte list leave the cursor on
+ * pEnd exactly.  `p < pEnd` is false there, so the guard was skipped and
+ * `p[3]` read a fourth byte past the array.  ASan reported it as a
+ * global-buffer-overflow; without ASan it read whatever followed in .bss and
+ * the suite merely looked flaky. */
+static void test_walk_bound(void)
+{
+    static uint8_t dl[24];
+    BrDl st;
+    size_t n;
+
+    printf("BrDlRun's bound stops ON the end, not one byte past it\n");
+
+    /* Three unhandled opcodes, no G_ENDDL: 3 * 8 == 24 == sizeof(dl), so the
+     * third handler returns exactly pEnd. */
+    memset(dl, 0, sizeof(dl));
+    put(dl + 0x00, 0xF5000000u, 0u);
+    put(dl + 0x08, 0xF5000000u, 0u);
+    put(dl + 0x10, 0xF5000000u, 0u);
+    BrDlInit(&st, 640, 480);
+    n = BrDlRun(&st, dl, sizeof(dl));
+    check(n == 3 && st.cUnhandled == 3,
+          "a list that ends exactly on pEnd runs its last command and stops");
+
+    /* And a list with a trailing fragment shorter than one command still
+     * stops before reading it -- the case the bound was written for. */
+    {
+        static uint8_t dl2[20];
+        memset(dl2, 0, sizeof(dl2));
+        put(dl2 + 0x00, 0xF5000000u, 0u);
+        put(dl2 + 0x08, 0xF5000000u, 0u);
+        BrDlInit(&st, 640, 480);
+        n = BrDlRun(&st, dl2, sizeof(dl2));
+        check(n == 2, "a four-byte tail is not decoded as a command");
+    }
+}
+
+static void test_scissor_ops(void)
+{
+    BrDl st;
+
+    printf("0xE2 / 0xED: two conventions, one clip window\n");
+
+    /* w0 and w1 are chosen so the two decodes cannot coincide.
+     *   w0 = 0x0002C051, w1 = 0x001400F0
+     * 0xE2 (0x1001EBC0, `shr 0xC / and 0xFFF` and `and 0xFFF`):
+     *     ulx = 0x02C = 44   uly = 0x051 = 81
+     *     lrx = 0x140 = 320  lry = 0x0F0 = 240
+     * 0xED (0x1001EB50, `shr 0xE / and 0x3FF` and `shr 2 / and 0x3FF`):
+     *     ulx = 11   uly = 20   lrx = 80   lry = 60
+     * and both then store minX=ulx, minY=H-lry, maxX=lrx, maxY=H-uly. */
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xE202C051u, 0x001400F0u);
+    check(st.scisMinX == 44 && st.scisMaxX == 320,
+          "0xE2 reads the X pair as plain 12-bit integers");
+    check(st.scisMinY == 480 - 240 && st.scisMaxY == 480 - 81,
+          "0xE2 flips Y against 0x100A7518: minY = H-lry, maxY = H-uly");
+
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xED02C051u, 0x001400F0u);
+    check(st.scisMinX == 11 && st.scisMaxX == 80,
+          "0xED reads the SAME words as 10.2 -- a different answer");
+    check(st.scisMinY == 480 - 60 && st.scisMaxY == 480 - 20,
+          "0xED flips Y the same way");
+
+    /* The property the un-flipped version broke, stated on its own: the
+     * window 0x1001E380 clamps against must have min below max.  With the raw
+     * fields stored, uly < lry makes scisMinY the LARGER of the two. */
+    check(st.scisMinY < st.scisMaxY,
+          "and the window comes out with min below max, not inverted");
+
+    /* The two opcodes must not be the same host function.  Feeding both the
+     * same words and getting the same window would mean one decode is
+     * serving two slots -- which is exactly the defect. */
+    {
+        BrDl a, b;
+        BrDlInit(&a, 640, 480); one_cmd(&a, 0xE202C051u, 0x001400F0u);
+        BrDlInit(&b, 640, 480); one_cmd(&b, 0xED02C051u, 0x001400F0u);
+        check(a.scisMinX != b.scisMinX && a.scisMaxX != b.scisMaxX &&
+              a.scisMinY != b.scisMinY && a.scisMaxY != b.scisMaxY,
+              "0xE2 and 0xED disagree on all four corners: two functions");
+    }
+}
+
+static void test_fill_rects(void)
+{
+    BrDl st;
+
+    printf("0xE1 / 0xF6: which word is which corner, and the sign\n");
+
+    /* 0xE1, 0x1001E720.  `shl 20 / sar 20` on all four fields, so a 12-bit
+     * field of 0xFF8 is -8 and NOT 4088.  w0 carries the LOWER-RIGHT pair and
+     * w1 the UPPER-LEFT: the pushes at 0x1001E752..0x1001E759 are
+     * (H - w1.lo, w0.hi + 1, H - w0.lo - 1, w1.hi), read last-first as
+     *     0x1001E380(ulx, H - lry - 1, lrx + 1, H - uly). */
+    BrDlInit(&st, 640, 480);
+    st.sink.pfnRect = on_rect2;
+    g_rc.n = 0;
+    one_cmd(&st, 0xE1064032u, 0x00FF8FFCu);
+    check(g_rc.n == 1 && g_rc.fTex == 0, "0xE1 is one untextured rectangle");
+    check(g_rc.ulx == -8 && g_rc.uly == -4,
+          "0xE1 takes the UPPER-LEFT from w1, sign-extended: (-8, -4)");
+    check(g_rc.lrx == 100 && g_rc.lry == 50,
+          "...and the LOWER-RIGHT from w0: (100, 50)");
+    check(st.rectMinX == -8 && st.rectMaxX == 101,
+          "the emitter gets ulx and lrx+1 -- `inc edi` at 0x1001E74E");
+    check(st.rectMinY == 480 - 50 - 1 && st.rectMaxY == 480 + 4,
+          "and H-lry-1 / H-uly -- `dec edx` at 0x1001E753");
+
+    /* 0xF6, 0x1001E320.  Same shape, but `sar 0x16` plus `and 0x3FF`, so the
+     * sign extension is masked straight off again: unsigned 10.2.  Corners
+     * lr = (100, 50) and ul = (10, 20) in pixels. */
+    BrDlInit(&st, 640, 480);
+    st.sink.pfnRect = on_rect2;
+    g_rc.n = 0;
+    one_cmd(&st, 0xF61900C8u, 0x00028050u);
+    check(g_rc.ulx == 10 && g_rc.uly == 20,
+          "0xF6 takes the UPPER-LEFT from w1 too: (10, 20)");
+    check(g_rc.lrx == 100 && g_rc.lry == 50,
+          "...and the LOWER-RIGHT from w0: (100, 50)");
+    check(st.rectMinX == 10 && st.rectMinY == 480 - 50 - 1 &&
+          st.rectMaxX == 101 && st.rectMaxY == 480 - 20,
+          "0xF6 hands 0x1001E380 the same four expressions as 0xE1");
+
+    /* THE CROSS-CHECK THAT WOULD HAVE CAUGHT IT.  0xE4 (0x10021570) reads its
+     * first two words with the same corner assignment as 0xF6 -- its pushes
+     * into 0x100215C0 are (tile, w0.lo, w0.hi, w1.lo, w1.hi), i.e. w1 first.
+     * Feed the two the same eight bytes and the four corners must match. */
+    {
+        int32_t f6[4];
+        BrDlInit(&st, 640, 480); st.sink.pfnRect = on_rect2; g_rc.n = 0;
+        one_cmd(&st, 0xF61900C8u, 0x00028050u);
+        f6[0] = g_rc.ulx; f6[1] = g_rc.uly; f6[2] = g_rc.lrx; f6[3] = g_rc.lry;
+
+        BrDlInit(&st, 640, 480); st.sink.pfnRect = on_rect2; g_rc.n = 0;
+        one_cmd(&st, 0xE41900C8u, 0x00028050u);
+        check(g_rc.fTex == 1 && g_rc.ulx == f6[0] && g_rc.uly == f6[1] &&
+              g_rc.lrx == f6[2] && g_rc.lry == f6[3],
+              "0xF6 and 0xE4 assign the same eight bytes to the same corners");
+    }
+
+    /* 0xE3 (0x100219D0) is the integer form of the same call: it shifts each
+     * field LEFT two on the way in, so the pixel corners come out identical
+     * to 0xE4's when the fields are a quarter as large. */
+    BrDlInit(&st, 640, 480);
+    st.sink.pfnRect = on_rect2;
+    g_rc.n = 0;
+    one_cmd(&st, 0xE3064032u, 0x0000A014u);
+    check(g_rc.ulx == 10 && g_rc.uly == 20 &&
+          g_rc.lrx == 100 && g_rc.lry == 50,
+          "0xE3 multiplies by four and lands on the same pixels");
+}
+
+static void test_colours(void)
+{
+    BrDl st;
+
+    printf("0xFA / 0xFB / 0xF7: three colour payloads, three decodes\n");
+
+    /* 0xFA, 0x1001EA80: four `fild qword ; fstp dword`, and there is no
+     * `fmul` in the whole 138 bytes.  0..255.
+     * 0xFB, 0x1001E930: the same four, each followed by
+     * `fmul [0x10077400]`, and 0x10077400 is 0x3B808081 == 1/255.  0..1. */
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xFA000000u, 0x8040C0FFu);
+    check(st.prim[0] == 128.0f && st.prim[1] == 64.0f &&
+          st.prim[2] == 192.0f && st.prim[3] == 255.0f,
+          "0xFA stores the four bytes UNSCALED: 0..255");
+
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xFB000000u, 0x8040C0FFu);
+    /* Written as a MULTIPLY by the constant, not as a divide by 255: the
+     * original is `fmul [0x10077400]` and 0x3B808081 is the float nearest
+     * 1/255, so `128.0f * k` and `128.0f / 255.0f` differ in the last bit.
+     * Asserting the divide form fails, and the code is the right one. */
+    check(st.env[0] == 128.0f * (1.0f / 255.0f) &&
+          st.env[1] == 64.0f * (1.0f / 255.0f) &&
+          st.env[2] == 192.0f * (1.0f / 255.0f) && st.env[3] == 1.0f,
+          "0xFB multiplies each by 1/255: 0..1");
+
+    /* Stated as the relation, because that is what one shared unpack
+     * destroyed: the same word through the two opcodes differs by exactly
+     * the factor 255. */
+    {
+        BrDl a, b;
+        BrDlInit(&a, 640, 480); one_cmd(&a, 0xFA000000u, 0x8040C0FFu);
+        BrDlInit(&b, 640, 480); one_cmd(&b, 0xFB000000u, 0x8040C0FFu);
+        check(fabsf(a.prim[0] - b.env[0] * 255.0f) < 1e-3f &&
+              fabsf(a.prim[2] - b.env[2] * 255.0f) < 1e-3f &&
+              a.prim[0] != b.env[0],
+              "prim is env times 255 -- the two handlers are not one handler");
+    }
+
+    /* The consequence that pins WHICH of the two is right, independently of
+     * the fmul: 0x10022AC0's numlights==0 arm (0x10022BCC) copies 0x105D17A4,
+     * 0x105D17B4 and 0x105CE2D0 -- 0xFA's own first three destinations --
+     * into the vertex colour, in a pipeline whose ceiling (0x10077418) is
+     * 255.0f.  A 0..1 prim would make that arm 255 times too dark, and the
+     * port had no writer for it at all, so it was black. */
+    {
+        static uint8_t dl[64];
+        static uint8_t mtx[64];
+        static uint8_t verts[0x20];
+
+        memset(mtx, 0, sizeof(mtx));
+        wf(mtx + 0, 1.0f); wf(mtx + 5*4, 1.0f);
+        wf(mtx + 10*4, 1.0f); wf(mtx + 15*4, 1.0f);
+        memset(verts, 0, sizeof(verts));
+        wf(verts + 0x1C, 1.0f);                  /* a unit normal */
+
+        memset(dl, 0, sizeof(dl));
+        put(dl + 0x00, 0xB7000000u, GEO_LIT);            /* G_SETGEOMETRYMODE */
+        put(dl + 0x08, 0xFA000000u, 0x8040C0FFu);        /* prim colour       */
+        put(dl + 0x10, 0x01020000u | 0x20000u, 0x50000000u);
+        put(dl + 0x18, 0x04000000u | (1u << 10), 0x60000000u);
+        put(dl + 0x20, 0xB8000000u, 0u);
+
+        BrDlInit(&st, 640, 480);
+        BrDlAddRegion(&st, 0x50000000u, mtx, sizeof(mtx));
+        BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+        BrDlRun(&st, dl, sizeof(dl));
+
+        check(st.nLights == 0 && st.cVtxLitOff == 1,
+              "G_LIGHTING with no G_MOVEWORD numlights takes the fallback");
+        check(st.aVtx[0].n0 == 128.0f && st.aVtx[0].n1 == 64.0f &&
+              st.aVtx[0].n2 == 192.0f,
+              "and the fallback colour IS the prim colour -- one object");
+    }
+
+    /* 0xF7, 0x1001E9F0.  Not a store: three bitfield merges plus a bit
+     * spread.  Low half 0xFAAB is R=31, G=10, B=21, A=1, and the widening is
+     * (v << 3) | (v >> 2):
+     *     R = 248 | 7 = 255      G = 80 | 2 = 82
+     *     B = 168 | 5 = 173      A = 255  (bit 0 spread, not 0/1) */
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xF7000000u, 0x0000FAABu);
+    check(st.fillR == 255 && st.fillG == 82 && st.fillB == 173,
+          "0xF7 widens RGBA5551 as (v << 3) | (v >> 2)");
+    check(st.fillA == 255, "and spreads bit 0 to 0 or 255, never 0 or 1");
+
+    BrDlInit(&st, 640, 480);
+    one_cmd(&st, 0xF7000000u, 0x0000FAAAu);     /* alpha bit clear */
+    check(st.fillA == 0, "alpha bit clear gives 0");
+
+    /* A 32-bit fill colour is two RGBA5551 pixels and this build reads one.
+     * Every mask in the handler lands inside bits 15:0, so the high half must
+     * make no difference at all. */
+    {
+        BrDl a, b;
+        BrDlInit(&a, 640, 480); one_cmd(&a, 0xF7000000u, 0x0000FAABu);
+        BrDlInit(&b, 640, 480); one_cmd(&b, 0xF7000000u, 0xFFFFFAABu);
+        check(a.fillR == b.fillR && a.fillG == b.fillG &&
+              a.fillB == b.fillB && a.fillA == b.fillA,
+              "the high halfword of w1 is not read");
+    }
+}
+
+static void test_quarter_snap(void)
+{
+    static uint8_t dl[64];
+    static uint8_t mtx[64];
+    static uint8_t verts[0x20];
+    BrDl st;
+    int i;
+
+    /* Three viewport translations and the value each must snap to.  The
+     * vertex sits at the origin with an identity matrix and the viewport
+     * SCALE at zero, so the screen coordinate is exactly the translation and
+     * nothing else can move it.
+     *
+     * 0x100220C6: `fmul 4.0 / fistp [0x105CE310] / fild / fmul 0.25`.  fistp
+     * rounds to nearest with TIES TO EVEN under the startup control word, and
+     * nothing in 0x10022070 or its callers touches that word.  So a value
+     * whose quadrupled form is an exact half goes to the EVEN neighbour:
+     *
+     *    0.125 -> 0.5  -> 0 -> 0.00      (+/-0.5 and truncate gives 0.25)
+     *    0.625 -> 2.5  -> 2 -> 0.50      (...gives 0.75)
+     *   -0.125 -> -0.5 -> 0 -> 0.00      (...gives -0.25)
+     *    0.200 -> 0.8  -> 1 -> 0.25      the CONTROL: not a tie, both agree
+     */
+    static const float aIn[4]  = { 0.125f, 0.625f, -0.125f, 0.2f };
+    static const float aOut[4] = { 0.00f,  0.50f,   0.00f,  0.25f };
+
+    printf("the quarter-pixel snap rounds ties to EVEN\n");
+
+    memset(mtx, 0, sizeof(mtx));
+    wf(mtx + 0, 1.0f); wf(mtx + 5*4, 1.0f);
+    wf(mtx + 10*4, 1.0f); wf(mtx + 15*4, 1.0f);
+    memset(verts, 0, sizeof(verts));
+
+    memset(dl, 0, sizeof(dl));
+    put(dl + 0x00, 0x01020000u | 0x20000u, 0x50000000u);
+    put(dl + 0x08, 0x04000000u | (1u << 10), 0x60000000u);
+    put(dl + 0x10, 0xB8000000u, 0u);
+
+    for (i = 0; i < 4; ++i) {
+        char sz[96];
+        BrDlInit(&st, 640, 480);
+        BrDlAddRegion(&st, 0x50000000u, mtx, sizeof(mtx));
+        BrDlAddRegion(&st, 0x60000000u, verts, sizeof(verts));
+        BrDlSetViewport(&st, 0.0f, aIn[i], 0.0f, aIn[i]);
+        BrDlRun(&st, dl, sizeof(dl));
+        {
+            float away = (float)((int32_t)(aIn[i] * 4.0f +
+                          (aIn[i] >= 0.0f ? 0.5f : -0.5f))) * 0.25f;
+            sprintf(sz, "%.3f snaps to %.2f%s", (double)aIn[i],
+                    (double)aOut[i],
+                    away == aOut[i] ? "  (not a tie: both roundings agree)"
+                                    : " -- ties-away would give another value");
+        }
+        check(st.cVtxTransformed == 1 &&
+              st.aVtx[0].x == aOut[i] && st.aVtx[0].y == aOut[i], sz);
+    }
+}
+
 int main(void)
 {
     test_layout();
@@ -1257,6 +1633,11 @@ int main(void)
     test_light_select();
     test_light_math();
     test_light_cache();
+    test_walk_bound();
+    test_scissor_ops();
+    test_fill_rects();
+    test_colours();
+    test_quarter_snap();
 
     /* Not BR_REQUIRE_TESTDATA at the top: the five suites above need no
      * assets and must still run and still report on a fresh clone. */
