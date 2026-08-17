@@ -213,6 +213,44 @@ def size_of(addr):
     return None
 
 
+def file_build(path, _cache={}):
+    """Which BUILD is this module's addresses written against?
+
+    THE TRAP THIS CLOSES IS THE WORST ONE IN THIS TOOL'S HISTORY. `defs` is
+    keyed by a bare address with no build tag, so the cross-build lookup
+    happily matched a D3D number against a banner that meant the GLIDE number:
+
+        Glide 0x1001E9F0 pairs to D3D 0x1001CC00
+        Glide 0x1001CC00 is RallyMain, and br_boot.c's banner says 0x1001CC00
+
+    so a display-list opcode handler was reported as "PORTED as BrAppArgs".
+    A bare number is not self-describing -- that is written at the top of
+    whereis.py and this tool did it anyway, one layer down.
+
+    Modules here state their reference build in the file banner. Where they do
+    not, return None and the caller declines to make a cross-build claim rather
+    than guessing, because guessing here fails toward FALSE PORTED.
+    """
+    if path in _cache:
+        return _cache[path]
+    b = None
+    try:
+        head = open(path, errors='ignore').read(4000)
+    except Exception:
+        head = ''
+    lo = head.lower()
+    if 'brglide.dll' in lo and 'brd3d.dll' not in lo:
+        b = 'glide'
+    elif 'brd3d.dll' in lo and 'brglide.dll' not in lo:
+        b = 'd3d'
+    elif 'reference: brglide' in lo or 'against brglide' in lo:
+        b = 'glide'
+    elif 'reference: brd3d' in lo or 'against brd3d' in lo:
+        b = 'd3d'
+    _cache[path] = b
+    return b
+
+
 def pairing(addr):
     """Both builds' readings of this number, from config/shared.csv.
 
@@ -271,6 +309,21 @@ def report(addr, defs):
         k2 = '%08X' % other
         if k2 in defs:
             name, f, how = defs[k2]
+            # `side` is the build `other` belongs to. Only believe the match if
+            # the file that defines it is written against THAT build. Unknown
+            # or mismatched -> say so and do not claim a port.
+            import glob as _g
+            cand = [q for q in _g.glob('port/src/**/' + f, recursive=True)
+                    + _g.glob('port/include/**/' + f, recursive=True)]
+            fb = file_build(cand[0]) if cand else None
+            if fb is not None and fb != side:
+                print('  a %s-build module (%s) defines 0x%s, but that number is'
+                      % (fb, f, k2))
+                print('     the counterpart only when read as %s. NOT a match --'
+                      % side.upper())
+                print('     the same number names different functions in the two')
+                print('     builds. Confirm with tools/whereis.py.')
+                continue
             print('  PORTED under its %s address 0x%s, as %s  (%s)'
                   % (side.upper(), k2, name, f))
             print('  -> DO NOT re-transcribe. This number and 0x%s are the '
