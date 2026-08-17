@@ -35,6 +35,19 @@ static const char *const s_apszName[F_COUNT] = {
 };
 
 static int32_t s_aHits[F_COUNT];
+
+static void (*s_pfn10007F10)(void);
+static void (*s_pfn10007F40)(const char *);
+static void (*s_pfn10063060)(void);
+
+void BrBootFrontierInstall(void (*pfn10007F10)(void),
+                           void (*pfn10007F40)(const char *),
+                           void (*pfn10063060)(void))
+{
+    s_pfn10007F10 = pfn10007F10;
+    s_pfn10007F40 = pfn10007F40;
+    s_pfn10063060 = pfn10063060;
+}
 static void (*s_pfnFrameHook)(void);
 
 void BrBootFrontierSetFrameHook(void (*pfn)(void)) { s_pfnFrameHook = pfn; }
@@ -53,6 +66,7 @@ void BrBootFrontierReset(void)
 {
     int i;
     s_pfnFrameHook = NULL;
+    s_pfn10007F10 = NULL; s_pfn10007F40 = NULL; s_pfn10063060 = NULL;
     for (i = 0; i < F_COUNT; i++)
         s_aHits[i] = 0;
 }
@@ -74,16 +88,40 @@ void BrBootFrontierReport(void)
 
 /* ---- the entries -------------------------------------------------- */
 
-void BrBootFrontier_10007F10(void) { ++s_aHits[F_10007F10]; }
+/* THE FRONTIER TAKES NO DEPENDENCIES, and that is a design constraint rather
+ * than an accident.
+ *
+ * 0x10007F10 and 0x10007F40 are now transcribed in br_appstart.c, so the
+ * obvious move is to call them from here. That was tried and reverted: it
+ * couples the boot chain to br_appstart's whole closure -- slice1_01,
+ * slice1_08, br_racestep, br_vec, and onward -- so every boot test would have
+ * to link the config and race graph to assert a state transition. One of those
+ * modules also defines a stand-in that collides with a real definition, which
+ * is the documented reason this tree does not use an archive.
+ *
+ * Instead the frontier carries OPTIONAL HOOKS, NULL by default. A run with no
+ * hook still counts the reach and does nothing, which is the honest edge; a
+ * host that has the full graph linked installs the real functions and the same
+ * counters then record real work. Nothing here fabricates a result either way.
+ */
+void BrBootFrontier_10007F10(void)
+{
+    ++s_aHits[F_10007F10];
+    if (s_pfn10007F10 != NULL) s_pfn10007F10();
+}
 void BrBootFrontier_10063860(void) { ++s_aHits[F_10063860]; }
 void BrBootFrontier_1006D1A0(void) { ++s_aHits[F_1006D1A0]; }
-void BrBootFrontier_10063060(void) { ++s_aHits[F_10063060]; }
+void BrBootFrontier_10063060(void)
+{
+    ++s_aHits[F_10063060];
+    if (s_pfn10063060 != NULL) s_pfn10063060();
+}
 void BrBootFrontier_10009C00(void) { ++s_aHits[F_10009C00]; }
 
 void BrBootFrontier_10007F40(const char *pszCmdLine)
 {
-    (void)pszCmdLine;
     ++s_aHits[F_10007F40];
+    if (s_pfn10007F40 != NULL) s_pfn10007F40(pszCmdLine);
 }
 
 /* 0x1001CCB5..0x1001CD0D. The two inlined string ops, recognised as strcpy

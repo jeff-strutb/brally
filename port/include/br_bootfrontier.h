@@ -88,6 +88,14 @@ int32_t BrBootGlobal_B71A54(void);   /* 0x10B71A54 }                      */
 void    BrBootSetModeGlobals(int32_t cx, int32_t cy);
 void    BrBootSetAC6748(int32_t v);  /* 0x10AC6748 */
 
+/* Install the real transcriptions for the three entries that now have them.
+ * NULL leaves the entry counting and doing nothing, which is the honest edge.
+ * The frontier deliberately takes no link dependency on those modules -- see
+ * the banner in br_bootfrontier.c for why the direct call was reverted. */
+void BrBootFrontierInstall(void (*pfn10007F10)(void),
+                           void (*pfn10007F40)(const char *),
+                           void (*pfn10063060)(void));
+
 /* ---- the report --------------------------------------------------- */
 
 /* Number of frontier entries. */

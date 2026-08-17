@@ -175,8 +175,54 @@ static void test_null_ops(void)
     CHECK(h.cCoInit == 0);           /* refused before touching anything */
 }
 
+/* ---- the frontier hooks: NULL counts, installed runs ---------------- *
+ * The three entries that now have real transcriptions are reached through
+ * optional hooks rather than a direct call, so the boot chain takes no link
+ * dependency on the config graph. This asserts BOTH halves: with no hook the
+ * reach is still counted, and with one it actually runs. */
+static int g_cHookRuns;
+static void hook_f10(void)              { g_cHookRuns++; }
+static void hook_f40(const char *p)     { (void)p; g_cHookRuns++; }
+static void hook_63060(void)            { g_cHookRuns++; }
+
+static int32_t frontier_hits(const char *pszNeedle)
+{
+    int i, n = BrBootFrontierCount();
+    for (i = 0; i < n; i++)
+        if (strstr(BrBootFrontierName(i), pszNeedle) != NULL)
+            return BrBootFrontierHits(i);
+    return -1;
+}
+
+static void test_frontier_hooks(void)
+{
+    H h; BrRallyMainOps o;
+
+    /* no hooks: reached, counted, nothing run */
+    reset(&h); o = ops_for(&h); g_cHookRuns = 0;
+    (void)BrRallyMain(&kArgs, &o);
+    CHECK(frontier_hits("0x10007F10") == 1);
+    CHECK(frontier_hits("0x10007F40") == 1);
+    CHECK(frontier_hits("0x10063060") == 1);
+    CHECK(g_cHookRuns == 0);
+
+    /* hooks installed: same counts, and now they run */
+    reset(&h); o = ops_for(&h); g_cHookRuns = 0;
+    BrBootFrontierInstall(hook_f10, hook_f40, hook_63060);
+    (void)BrRallyMain(&kArgs, &o);
+    CHECK(frontier_hits("0x10007F40") == 1);
+    CHECK(g_cHookRuns == 3);
+
+    /* and a reset clears them again, so one test cannot leak into the next */
+    BrAppResetForTest();
+    reset(&h); o = ops_for(&h); g_cHookRuns = 0;
+    (void)BrRallyMain(&kArgs, &o);
+    CHECK(g_cHookRuns == 0);
+}
+
 int main(void)
 {
+    test_frontier_hooks();
     test_full_boot();
     test_co_fails();
     test_dx_too_old();
