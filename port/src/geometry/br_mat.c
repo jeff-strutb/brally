@@ -35,6 +35,45 @@ void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
     }
 }
 
+/* @implements 0x100349C0 glide BrVec3Project */
+/* WHAT IT DOES: projects the point pV through the 4x4 matrix pM using the
+ * row-vector convention (v' = v * M, no translation row -- see below) and then
+ * divides all three components by the resulting w.  This is the vertex ->
+ * clip/screen projection the render frontier uses (caller 0x10017110 runs a
+ * vertex array through g_6E78F0 with it).  GLIDE-ONLY: no D3D twin exists.
+ *
+ * THREE FAITHFULNESS POINTS, all read straight off the x87 sequence:
+ *  1. Only the linear 3x3 and the projection column (m[*][3]) participate.  The
+ *     translation row m[3][0..2] is NOT added to the x/y/z numerators; only
+ *     m[3][3] is added to w.  That is what the original computes -- it assumes a
+ *     pure projection matrix -- so it is reproduced verbatim, not "fixed".
+ *  2. The summation GROUPING differs between components because MSVC scheduled
+ *     the first column around the divide: x groups (m10*vy + m20*vz) + m00*vx,
+ *     while y and z group (m0k*vx + m1k*vy) + m2k*vz, and w groups
+ *     (m13*vy + m03*vx) + m23*vz + m33.  Float add is not associative, so these
+ *     orders are preserved exactly.
+ *  3. The divisor g_0775F0 is 1.0f (same constant br_dl.c divides by), and the
+ *     original forms it as `fdivr` (1.0 / w), so the reciprocal is taken once
+ *     and then multiplied in -- reproduced as `1.0 / w`.
+ * Intermediates are held in double, which models the x87 registers at their
+ * 53-bit precision (PC=2, CONVENTIONS.md); only the stores to pOut round to
+ * float, exactly as the original's `fstp dword`. */
+void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
+{
+    double vx = pV->x, vy = pV->y, vz = pV->z;
+    const float (*m)[4] = pM->m;
+    double w = (((double)m[1][3] * vy + (double)m[0][3] * vx)
+                 + (double)m[2][3] * vz) + (double)m[3][3];
+    double r = 1.0 / w;                 /* g_0775F0 == 1.0f, taken via fdivr */
+
+    pOut->x = (float)((((double)m[1][0] * vy + (double)m[2][0] * vz)
+                        + (double)m[0][0] * vx) * r);
+    pOut->y = (float)((((double)m[0][1] * vx + (double)m[1][1] * vy)
+                        + (double)m[2][1] * vz) * r);
+    pOut->z = (float)((((double)m[0][2] * vx + (double)m[1][2] * vy)
+                        + (double)m[2][2] * vz) * r);
+}
+
 /* Source first -- see the warning in br_mat.h. The original copies 4 rows of
  * 4 dwords using a displacement trick (ecx = src - dst, then [ecx+eax]);
  * that is just how MSVC strength-reduced two pointers into one. */
