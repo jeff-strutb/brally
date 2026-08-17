@@ -1,5 +1,46 @@
 # Boss Rally — decompilation project
 
+## Progress at a glance
+
+_Measured 2026-08-17. Coverage is against the Glide build's `.text`, the
+reference target; D3D-derived transcriptions are mapped onto their Glide
+counterparts through the shared-function table. "Verified" is the transcribed
+fraction scaled by the pooled strict equivalence-audit rate (90/127 = 70.9%,
+95% CI 62.4–78.1%), so it moves only as auditing confirms code, never on
+transcription alone._
+
+### Decompilation into the unified C base
+
+| Source | Role | Into the base | Progress (transcribed) |
+|---|---|---|---|
+| **PC — shared core** (BRGlide.dll / BRD3D.dll, 1999) | primary target | 41.0% of `.text` · 733 / 2140 functions | `████████░░░░░░░░░░░░` 41% |
+| &nbsp;&nbsp;└ of which strictly **verified** | — | ~29% | `██████░░░░░░░░░░░░░░░░` 29% |
+| **N64 — Top Gear Rally** (1997 sibling, F3DEX) | live reference | analysis complete; 0% merged as code | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| **Unified base** | one portable C99 tree | PC-derived today; N64 merges where it clarifies or conflicts (PC wins ties) | — |
+
+The two games share a codebase (same studio, matching error strings, the PC
+disc even ships N64 textures verbatim), so the N64 ROM is read as a second
+witness to the same logic rather than decompiled in parallel. Nothing from it
+is transcribed into the tree yet; see [N64_MENU.md](N64_MENU.md).
+
+### Path to a playable race
+
+_Milestone-based, not a code percentage — each step is a thing you can watch
+happen (or not)._
+
+| # | Milestone | Status |
+|---|---|---|
+| 1 | Boots the ported core | ✅ done |
+| 2 | Front-end screen renders (backdrop, captions, disc art) | ✅ done |
+| 3 | Menu navigates by keyboard, in a live window | ✅ done |
+| 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
+| 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
+| 6 | Driving — the per-frame physics + render loop | 🔴 not yet: the per-frame race render (`0x10011FA0`) is untranscribed and has 23 unported callees |
+| 7 | Full race: HUD, audio, results | 🔴 not yet |
+
+`░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
+loop is the next gate and is not yet crossed.
+
 ## Quick start
 
 Requires only clang and the macOS SDK. No dependencies, no package manager, no
