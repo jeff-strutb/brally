@@ -80,6 +80,8 @@ static struct {
     int32_t     idxErr;
 
     BrPhase_   *pLastCtorArg;
+    void       *pLastBigAlloc;   /* the last non-path, non-0x400 block */
+    uint32_t    cbLastBigAlloc;
     int         nCtor;
 
     void       *apOwned[BR_UIIMG_COUNT + 8];
@@ -134,6 +136,10 @@ static void *HAlloc(void *pUser, uint32_t cb)
     if (p != NULL) {
         memset(p, 0xA5, cb);         /* operator new does not zero */
         Own(p);
+    }
+    if (cb != BR_UIBOOT_OBJ400_SIZE && cb != BR_UIIMG_PATH_MAX) {
+        g_h.pLastBigAlloc  = p;      /* the 0xC8 phase block */
+        g_h.cbLastBigAlloc = cb;
     }
     return p;
 }
@@ -312,12 +318,31 @@ static void test_gate_success(void)
 
     CHECK(g_h.nErrShow == 0, "no error is reported");
     CHECK(g_h.pPublishedPhase != NULL, "a phase object was published");
-    CHECK(g_h.pPublishedPhase == g_h.pLastCtorArg,
-          "the published pointer is the constructor's return, not the raw one");
+    /* The constructor is handed the block that was just allocated, and the
+     * pointer that reaches the two globals is the constructor's return.
+     * 0x10041B60 returns `this`, so the two are the same value -- which is
+     * why the assertion is that the CONSTRUCTOR SAW THE ALLOCATION, not that
+     * the two pointers differ.  A first draft asserted `published ==
+     * ctorArg`, which is true under every transcription and could not fail. */
+    CHECK(g_h.pLastCtorArg == (BrPhase_ *)g_h.pLastBigAlloc,
+          "the constructor is called on the 0xC8 block, not on something else");
+    CHECK(g_h.pPublishedPhase == (BrPhase_ *)g_h.pLastBigAlloc,
+          "and that same object reaches both phase globals");
+
+    /* CONVENTIONS.md: "0xC8 under-allocates the phase object by 104 bytes on
+     * a 64-bit host".  The gate must ask for BR_PHASE_ALLOC_SIZE, never the
+     * literal, and on this host the two differ -- so this assertion has real
+     * content here and would be vacuous on a 32-bit one. */
+    CHECK(g_h.cbLastBigAlloc >= (uint32_t)sizeof(BrPhase_),
+          "the phase allocation is sizeof(BrPhase_), not the 0xC8 literal");
     CHECK(g_h.pObj400 != NULL, "the 0x400 singleton exists");
 
-    /* THE HOOK.  The constructor above deliberately leaves +0x04 alone. */
-    CHECK(g_h.pPublishedPhase->pfnEnter == HPhaseEnter,
+    /* THE HOOK.  The constructor above deliberately leaves +0x04 alone.
+     * Guarded, so that a transcription which never publishes reports THIS
+     * assertion rather than dying in the test harness -- a suite that
+     * segfaults still fails, but it does not say what broke. */
+    CHECK(g_h.pPublishedPhase != NULL &&
+          g_h.pPublishedPhase->pfnEnter == HPhaseEnter,
           "0x100425E0 is stored into phase +0x04");
 
     /* Concern A + C really ran: the table clear and the 145 paths. */
@@ -487,7 +512,7 @@ static void test_incomplete_ops(void)
     Ops(&ops);
     ops.pfnPhaseEnter = NULL;
     CHECK(BrUiBootPreLoopGate(&ops) == 1, "a NULL hook still boots");
-    CHECK(g_h.pPublishedPhase->pfnEnter == NULL,
+    CHECK(g_h.pPublishedPhase != NULL && g_h.pPublishedPhase->pfnEnter == NULL,
           "...and installs a NULL slot, which is what the engine does");
 }
 
@@ -502,7 +527,8 @@ static void test_hook_overwrites(void)
     ops.pfnPhaseEnter = HOtherEnter;
 
     CHECK(BrUiBootPreLoopGate(&ops) == 1, "gate ok");
-    CHECK(g_h.pPublishedPhase->pfnEnter == HOtherEnter,
+    CHECK(g_h.pPublishedPhase != NULL &&
+          g_h.pPublishedPhase->pfnEnter == HOtherEnter,
           "the stored value is the ops' hook, not a leftover");
 }
 

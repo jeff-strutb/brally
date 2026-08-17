@@ -167,9 +167,23 @@ typedef struct BrUiSprite {
 extern const BrUiSprite g_aBrUiSprite[BR_UI_SPR_COUNT];   /* 0x100AB568 */
 
 /* The BMP each entry names, recovered by walking 0x10056260 and pairing its
- * string loads with its stores into the image table.  Seven entries could not
- * be paired and are NULL; the geometry above is read straight out of the
- * image and is unaffected by that gap. */
+ * string loads with its stores into the image table.
+ *
+ * THE SEVEN GAPS ARE CLOSED.  This comment used to end "Seven entries could
+ * not be paired and are NULL"; the array has been complete for a while and
+ * the note was stale.  WHY there were exactly seven is worth keeping, because
+ * it is a property of the compiler's output and not of the data: MSVC emits
+ * `mov edi,<literal>` BEFORE the table store in 138 of the 145 blocks and
+ * AFTER it in the other seven, so a pass that pairs each store with the
+ * nearest EARLIER literal duplicates the previous name in exactly those
+ * seven -- 16, 46, 63, 80, 97, 127 and 144.  Grouping on the
+ * `call <operator new>` that opens each block instead recovers all 145.
+ *
+ * Independently re-derived from BRGlide.dll for port/src/drawing/br_uiimg.c;
+ * that list, this one and slice1_06.c's g_apszBrUiAssets (read off BRD3D.dll)
+ * agree on all 145, which port/tests/test_br_uiimg.c asserts entry by entry.
+ * The geometry above is read straight out of the image and never depended on
+ * the pairing either way. */
 extern const char *const g_aBrUiSpriteName[BR_UI_SPR_COUNT];
 
 /* Index by the ORIGINAL address, the way slice3_39.h's BR_UI_STYLE does, so a

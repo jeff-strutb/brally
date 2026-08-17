@@ -12,10 +12,16 @@
  *    the NUL, which is exactly the difference between the two readings and
  *    cannot pass under a calloc transcription.
  *
- *  - THE POINTER IS PUBLISHED BEFORE THE STRING IS COPIED.  The original
- *    stores eax into the table and only then runs `rep movsd`.  The allocator
- *    stub reads the table back as it goes, so a transcription that copied
- *    first and stored afterwards fails.
+ *  - NOT ASSERTED, and recorded because a first draft of this file DID assert
+ *    it and the assertion could not fail: "the pointer is published before the
+ *    string is copied".  The original stores eax into the table and only then
+ *    runs `rep movsd`, and br_uiimg.c is transcribed in that order -- but the
+ *    difference is invisible to any single-threaded observer, because nothing
+ *    can look at the table between the two.  The draft's allocator stub
+ *    checked the PREVIOUS entry on the next call, which by then is filled
+ *    under either order, so it passed both ways.  Mutation testing found it;
+ *    it is gone rather than weakened, and the order stays in the .c because
+ *    it is what the disassembly says, not because a test defends it.
  *
  *  - THE ORDER IS THE IMAGE INDEX.  Seven entries -- 16, 46, 63, 80, 97, 127,
  *    144 -- are the ones where MSVC emitted the store before the string load,
@@ -77,22 +83,12 @@ static int g_fails;
 static int      g_nAlloc;
 static int      g_nFree;
 static int      g_iFailAt = -1;    /* fail the n'th allocation, -1 = never   */
-static int      g_fCheckPublished; /* assert the table already holds the ptr */
-static int      g_nPublishedOk;
 
 static void *TestAlloc(void *pUser, uint32_t cb)
 {
     void *p;
 
     (void)pUser;
-
-    if (g_fCheckPublished && g_nAlloc > 0) {
-        /* The PREVIOUS block must already be in the table by now, because
-         * the original publishes before it copies. */
-        if (g_aBrUiImg[g_nAlloc - 1].pszPath != NULL) {
-            ++g_nPublishedOk;
-        }
-    }
 
     if (g_nAlloc == g_iFailAt) {
         ++g_nAlloc;
@@ -121,8 +117,6 @@ static void ResetAlloc(void)
     g_nAlloc = 0;
     g_nFree = 0;
     g_iFailAt = -1;
-    g_fCheckPublished = 0;
-    g_nPublishedOk = 0;
 }
 
 /* ========================================================================== */
@@ -165,14 +159,9 @@ static void test_paths(void)
 
     ResetAlloc();
     BrUiImgTableClear();
-    g_fCheckPublished = 1;
 
     CHECK(BrUiImgPathsInit(&g_alloc) == 0, "every allocation succeeded");
     CHECK(g_nAlloc == BR_UIIMG_COUNT, "exactly 145 allocations, one per image");
-
-    /* 144 of the 145 could be observed (the first has no predecessor). */
-    CHECK(g_nPublishedOk == BR_UIIMG_COUNT - 1,
-          "the pointer is stored into the table BEFORE the string is copied");
 
     nFilled = 0;
     for (i = 0; i < BR_UIIMG_COUNT; ++i) {
@@ -187,7 +176,9 @@ static void test_paths(void)
 
     /* THE ALLOCATOR DOES NOT ZERO.  Everything past the NUL is still the
      * poison the stub wrote.  Under a calloc transcription this fails. */
-    {
+    if (g_aBrUiImg[0].pszPath == NULL) {
+        CHECK(0, "index 0 has a path at all");
+    } else {
         size_t n = strlen(g_aBrUiImg[0].pszPath);
         CHECK((unsigned char)g_aBrUiImg[0].pszPath[n + 1u] == POISON,
               "operator new does NOT zero: the tail past the NUL is untouched");

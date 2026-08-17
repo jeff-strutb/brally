@@ -36,18 +36,25 @@
  * ==========================================================================
  *
  * ARCHITECTURE.md's installer ranking is the right question to ask of any big
- * function in this engine, and here the answer is no.  tools/hookmap.py's
- * table of installers does not list 0x10056260 at all: it materialises exactly
- * ONE function address in 8,349 bytes --
+ * function in this engine, and here the answer is no.  0x10056260 does not
+ * appear in tools/hookmap.py's installer table, whose smallest entry hands
+ * out nine hooks.  config/hookmap.csv credits it with two, and one of those
+ * is a false positive worth naming: the relocation it counts at 0x10056262 is
+ * `push 0x100765F6`, the SEH handler in the prologue, which is an address
+ * MATERIALISED but never installed anywhere.  That is precisely the limit
+ * ARCHITECTURE.md states for the tool ("installs is a superset of could
+ * install"), and this function is a clean instance of it.
+ *
+ * The real count is ONE, in 8,349 bytes:
  *
  *     0x10058246  mov dword ptr [eax + 4], 0x100425E0
  *
- * -- the phase object's +0x04 slot, br_phase.h's `pfnEnter`, and 0x100425E0
- * is one of the eleven functions hookmap ranks as installers in its own right
- * (11 hooks, 2,659 bytes; D3D 0x100491B0, not ported -- slice3_32.h lists it
- * under "NOT PORTED").  So this function is not where a subsystem is
- * assembled; it is where the front end's ROOT OBJECT is created and handed
- * its one entry point, and the assembly happens inside that entry point.
+ * -- the phase object's +0x04 slot, br_phase.h's `pfnEnter`.  0x100425E0 is
+ * itself an installer of ELEVEN hooks in 2,659 bytes (D3D 0x100491B0, not
+ * ported -- slice3_32.h lists it under "NOT PORTED"), so this function is not
+ * where a subsystem is assembled; it is where the front end's ROOT OBJECT is
+ * created and handed its one entry point, and the assembly happens inside
+ * that entry point.
  *
  * That single store is still the load-bearing line in the file.  br_phase.h
  * records that the constructor 0x10048710 does NOT initialise +0x04 and that
