@@ -134,6 +134,44 @@
  *   slices overlap.  Nothing samples the tail: the emitter's G_SETTILESIZE
  *   stops at `offset[k+1] - offset[k] + 1` columns, exactly as in D3D.
  *
+ *   THAT LAST SENTENCE WAS A CLAIM ABOUT DATA WITH NO DECODE BEHIND IT, SO
+ *   HERE IS THE DECODE.  Three things had to be pinned: what the emitter
+ *   asks for, how big the blob really is, and whether the two ever cross.
+ *
+ *   WHAT IS SAMPLED.  0x1001606F emits `w0 = 0xF2002002`, i.e. uls = ult = 2
+ *   in 10.2 fixed point = 0.5 texels.  w1 is built at 0x10016056..0x10016077:
+ *   `lea edx,[ebx*4-2]` with ebx = the cell height gives lrt = 4*cell - 2 =
+ *   cell - 0.5, and `shl esi,0xE / sub esi,0x2000` with esi = the width ecx
+ *   gives lrs = 4*w - 2 = w - 0.5.  ecx is `off[k+1] - off[k]` then `inc ecx`
+ *   at 0x10015FB7.  So the sampled rectangle is exactly w columns by `cell`
+ *   rows, from texel 0 -- no tail, no bleed into column w.
+ *
+ *   HOW BIG THE BLOB IS -- and this is not arithmetic this time, the image
+ *   states it.  0x1006C790 checksums each block before registering it:
+ *   BrAdler32 over 0x1007B618 for 0x21C00 bytes and over 0x1009D218 for
+ *   0x8700.  0x21C00 == 54 * 0xA00 and 0x8700 == 54 * 0x280, so the game's
+ *   own checksum extents confirm the stride arithmetic exactly.
+ *
+ *   WHERE THEY MEET.  The class map is read as `base + char` guarded to
+ *   0x21..0x7F (0x10015F8A/0x10015F92), so its live range is 0x100A5918..
+ *   0x100A5976 -- which is why the small blob ends at 0x100A5918 -- and over
+ *   that range it holds only 0..26 and 28..53, never 27 and never > 53, in
+ *   BOTH builds byte-identically.  So class 53 is the last window there is.
+ *   Walking every class:
+ *
+ *     large  widest glyph w=50 (class 14); worst window leaves 14 of its
+ *            2560 bytes unread; class 53's last sampled byte is 0x1009D1F2,
+ *            37 bytes before the blob ends at 0x1009D218.
+ *     small  widest glyph w=27 (class 14); worst window leaves 5 of its 640
+ *            bytes unread; class 53's last sampled byte is 0x100A5906, 17
+ *            bytes before the blob ends at 0x100A5918.
+ *
+ *   D3D agrees by its own layout: the four strips' last sampled bytes are
+ *   0x1009B4AA, 0x100A22C1, 0x100A415B and 0x100A6008, respectively 29, 6, 20
+ *   and 7 bytes short of their block ends -- and the last of those block ends
+ *   IS the D3D class map's first live entry, 0x100A6010.  Nothing in either
+ *   build samples past its blob.  CONFIRMED, both builds, every class.
+ *
  *   The Glide metrics live at 0x100A58F7 (class map), 0x100A5978 (large
  *   offsets) and 0x100A5A58 (small offsets), and the ramps at 0x100A6C78 /
  *   0x100A6DB8 (large) and 0x100A6EF8 / 0x100A7038 (small).  All are
@@ -409,7 +447,10 @@ int  BrFontClassOf(const BrFont *pFont, int ch);
 
 /* Where a class's pixels are.  `w` is offset[k+1] - offset[k] + 1, the width
  * the drawing routine puts in its G_SETTILESIZE; `h` is the cell height.
- * Returns 0 for the gap class or an out-of-range one.
+ * Returns 0 on success and -1 for the gap class, the terminator or an
+ * out-of-range one.  (This line used to say it "returns 0 for the gap class",
+ * which is the opposite of what the code does and is what a test written
+ * against the comment rather than the code found.)
  *
  * `pTexels` is one byte per texel in BOTH builds, but the nibbles are the
  * other way round, so the two accessors below exist rather than an open-coded

@@ -26,9 +26,13 @@
  *                                    -> slice1_10, BrFfbShutdown
  *
  * GENERAL DEVIATION (float): the original is x87 and keeps intermediates in
- * 80-bit registers. This port evaluates in `float`. Nothing in this file does
- * more than one arithmetic operation per store, so the only visible effect is
- * in sinf/cosf themselves.
+ * registers of 53-BIT precision -- not 80-bit, as this entry used to say; the
+ * CRT's control word is 0x027F (CONVENTIONS.md). This port evaluates in
+ * `float`. The bound that makes that harmless here is unaffected and is the
+ * part worth keeping: nothing in this file does more than ONE arithmetic
+ * operation per store, so there is no unspilled intermediate to lose and the
+ * only visible effect is in sinf/cosf themselves. A waiver with a checkable
+ * bound is a different object from one without.
  *
  * GENERAL DEVIATION (pointer width): several structs below have pointer
  * members at offsets pinned by the 32-bit original. On a 64-bit host the

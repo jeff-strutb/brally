@@ -18,9 +18,13 @@
  *     convention already set by br_seg.h / br_pool.h / br_span.h, that state
  *     is passed in as a struct instead. The global address of every field is
  *     recorded in a comment so the mapping is not lost.
- *   - x87 computes at 80-bit internal precision. Nothing here reproduces
- *     that; results are computed in float/double as C specifies them. Where
- *     the original's summation ORDER is observable it is preserved.
+ *   - The x87 computes at 53-bit precision here, NOT 80-bit -- the CRT's
+ *     control word is 0x027F, see CONVENTIONS.md. This entry used to claim
+ *     80-bit and that "nothing here reproduces that", which turned a
+ *     reproducible property into a blanket exemption. A C `double` models an
+ *     unspilled intermediate exactly; a value the original stores to a 32-bit
+ *     slot is rounded to `float` at that point and nowhere else. The
+ *     original's summation ORDER is preserved.
  *   - Field names are positional (fNN = offset 0xNN) wherever the meaning
  *     could not be established from the code.
  */

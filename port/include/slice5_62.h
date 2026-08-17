@@ -416,11 +416,21 @@ void BrNetKeepAliveTick(void);
  * GOTCHA: BrVec4Normalise has no zero-length guard (slice1_09.h), so a matrix
  * that lands on the degenerate case of its branch yields NaNs.
  *
- * DEVIATION: the original computes in x87 80-bit registers and rounds to
- * float only at each store; this is written in float.  The stored values can
- * differ in the last bit or two, and the two comparisons are made on
- * float-rounded sums here rather than on extended-precision ones.  There is
- * no portable way to reproduce 80-bit intermediates.
+ * DEVIATION: the original computes in x87 registers and rounds to float only
+ * at each store; this is written in float, so it rounds at every step.
+ *
+ * The last sentence of this note used to read "There is no portable way to
+ * reproduce 80-bit intermediates."  Both halves are wrong.  The registers are
+ * 53-bit here (CRT control word 0x027F -- CONVENTIONS.md), and a C `double`
+ * reproduces them exactly, portably.  The difference is a real rounding
+ * error at each step and the two comparisons really are made on the wrong
+ * values, which matters because they SELECT A CASE -- a comparison decided on
+ * a float-rounded sum can take a different branch, not just return a slightly
+ * different number.
+ *
+ * STILL OPEN, and labelled rather than waived: fixing it needs this
+ * function's spill points traced at the instruction level, so that values the
+ * original stores keep their float rounding.  See slice3_44.c for the shape.
  *
  * The constants used are the image's: 0x1008FC60 = 0.0f, 0x1008FC74 = -1.0f,
  * 0x1008FC78 = 1.0f. */

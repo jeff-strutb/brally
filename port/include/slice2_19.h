@@ -24,11 +24,14 @@
  *       global here, named g_Br<something> with the original address in the
  *       comment. Function-pointer globals are likewise real function
  *       pointers the caller installs.
- *   D3. Where the original reads a float constant out of .rdata and the
- *       packet does not contain .rdata, the constant is a module global
- *       named for its address (g_BrK08FnnnN). Each one says whether its value
- *       is DERIVED (provable from the code) or ASSUMED (a default that the
- *       integrator must confirm). Do not treat the assumed ones as facts.
+ *   D3. Where the original reads a float constant out of .rdata, the constant
+ *       is a module global named for its address (g_BrK08FnnnN). This entry
+ *       used to say each was DERIVED or ASSUMED and that the assumed ones
+ *       were not facts -- which is true, but the packet's not containing
+ *       .rdata was never a reason to guess, because the IMAGE contains it.
+ *       All eleven have now been READ OUT OF BRD3D.dll and each carries its
+ *       byte pattern below. Two of the eight guesses were wrong, one of them
+ *       (0x1008F548) by 12.5% on every analog axis of every frame.
  *   D4. Two indexed global tables have no determinable extent in this packet
  *       (0x106C5468, 0x100C12A0/0x106C6558). Following the precedent set by
  *       BrHandleLookup in br_bits.h, they are passed in as arguments so the
@@ -79,48 +82,61 @@
  *   [ K/w 0 0 0 ][ 0 K/h 0 0 ][ 0 0 0 0 ][ -1 -1 0 1 ]
  * which is only a screen matrix for K == 2. 0x1003596E independently uses it
  * as `K*lo - t`, a reflection about `lo`, which also needs K == 2. */
-extern float g_BrK08F514;   /* 0x1008F514 == 2.0f */
+extern float g_BrK08F514;   /* 0x1008F514 == 40000000 == 2.0f -- MEASURED */
 
-/* ASSUMED == 1.0f. 0x10033E83 computes the guPerspective fovy as
+/* MEASURED. 0x10033E83 computes the guPerspective fovy as
  *   a2 * K08F518 * (a5/a4) * K08F51C.
- * guPerspective wants DEGREES, so one of these is very likely a
- * radians-to-degrees factor, but neither value is in this packet. */
-extern float g_BrK08F518;   /* 0x1008F518 -- NOT ESTABLISHED */
-extern float g_BrK08F51C;   /* 0x1008F51C -- NOT ESTABLISHED */
+ * This entry used to read "ASSUMED == 1.0f ... neither value is in this
+ * packet". Both values were always in the IMAGE, which is the only packet
+ * that counts, and the assumption was wrong: with 1.0f the field of view came
+ * out around 0.75 degrees. The .c had been corrected and this header had not,
+ * so the two disagreed about whether the numbers were even known. */
+extern float g_BrK08F518;   /* 0x1008F518 == 3FAAAAAB == 1.33333337f (4/3)    */
+extern float g_BrK08F51C;   /* 0x1008F51C == 42652EE0 == 57.2957764f (180/pi) */
 
-/* ASSUMED. 0x100347BA is a saturating clamp: it compares against these and
- * assigns 2.5f / 5.0f respectively. Threshold == target is the standard
- * clamp idiom, so they are defaulted to the assigned values, but the
- * comparison operands themselves are not in the packet. */
-extern float g_BrK08F520;   /* 0x1008F520 -- defaulted to 2.5f */
-extern float g_BrK08F524;   /* 0x1008F524 -- defaulted to 5.0f */
+/* MEASURED, and the guess was right. 0x100347BA is a saturating clamp: it
+ * compares against these and assigns 2.5f / 5.0f respectively. Threshold ==
+ * target is the standard clamp idiom -- and the bytes agree. */
+extern float g_BrK08F520;   /* 0x1008F520 == 40200000 == 2.5f */
+extern float g_BrK08F524;   /* 0x1008F524 == 40A00000 == 5.0f */
 
 /* DERIVED == 4096.0f. 0x1003563A multiplies the normalised keyframe
  * parameter (which is (t-lo)/(hi-lo), so in [0,1]) by this, truncates to int,
  * and then uses the result as a Q12 fraction (`imul` followed by `sar 12`).
  * Only 4096 makes that a unit interval. */
-extern float g_BrK08F52C;   /* 0x1008F52C == 4096.0f */
+extern float g_BrK08F52C;   /* 0x1008F52C == 45800000 == 4096.0f -- MEASURED */
 
-/* ASSUMED == 1/128. Scales an interpolated int8 into the animated vertex's
- * +0x14..+0x1C slot (a normal, by position in a 0x20-byte vertex). 1/127 is
- * equally plausible; the value is not in the packet. */
-extern float g_BrK08F530;   /* 0x1008F530 -- NOT ESTABLISHED */
+/* MEASURED, and the guess was right -- 1/128, not the equally plausible
+ * 1/127. Scales an interpolated int8 into the animated vertex's +0x14..+0x1C
+ * slot (a normal, by position in a 0x20-byte vertex). */
+extern float g_BrK08F530;   /* 0x1008F530 == 3C000000 == 0.0078125f (1/128) */
 
-/* ASSUMED == 0.5f. 0x1003563A scales the ping-pong wrap span by it exactly
- * once. Not in the packet. */
-extern float g_BrK08F534;   /* 0x1008F534 -- NOT ESTABLISHED */
+/* MEASURED, and the guess was right. 0x1003563A scales the ping-pong wrap
+ * span by it exactly once. */
+extern float g_BrK08F534;   /* 0x1008F534 == 3F000000 == 0.5f */
 
-/* ASSUMED == 1/80. Converts a signed-byte stick axis to a float that is then
- * clamped to +/-1. The N64 stick saturates near +/-80, and 0x10035CE0 itself
- * synthesises +/-0x50 (== +/-80) for digital left/right, which is what makes
- * 1/80 the best-supported reading -- but it is still a reading. */
-extern float g_BrK08F548;   /* 0x1008F548 -- NOT ESTABLISHED */
+/* MEASURED, and the guess was WRONG BY 12.5%. This entry used to say
+ * "ASSUMED == 1/80 ... but it is still a reading". The image says 1/70, and
+ * this constant scales every analog axis on every frame.
+ *
+ * The reasoning that produced 1/80 is worth keeping, because it is a sound
+ * inference from a true observation. The observation -- 0x10035CE0
+ * synthesises +/-0x50 (+/-80) for digital left/right -- is correct. The
+ * inference, that the constant must therefore map 80 onto exactly 1.0, is
+ * not: 80 * (1/70) == 1.14285719f, and the +/-1 clamp at 0x10035F66 /
+ * 0x10035F7D cuts it straight back to +/-1. The digital arm SATURATES by
+ * design, so it lands on +/-1 under either constant and is evidence for
+ * neither. Verified by enumeration in test_slice2_19.c.
+ *
+ * The general shape: a value that a later clamp makes insensitive to the
+ * constant cannot pin the constant. Before leaning on a piece of evidence,
+ * check that it could have come out differently. */
+extern float g_BrK08F548;   /* 0x1008F548 == 3C6A0EA1 == 0.0142857144f (1/70) */
 
-/* ASSUMED. Upper / lower clamp thresholds in 0x10035CE0, which assigns
- * +1.0f / -1.0f on the far side of each. Same saturation idiom as
- * 0x1008F520/0x1008F524 above. */
-extern float g_BrK08F54C;   /* 0x1008F54C -- defaulted to  1.0f */
-extern float g_BrK08F550;   /* 0x1008F550 -- defaulted to -1.0f */
+/* MEASURED, and the guess was right. Upper / lower clamp thresholds in
+ * 0x10035CE0, which assigns +1.0f / -1.0f on the far side of each. */
+extern float g_BrK08F54C;   /* 0x1008F54C == 3F800000 ==  1.0f */
+extern float g_BrK08F550;   /* 0x1008F550 == BF800000 == -1.0f */
 
 /* ================================================================== */
 /* 1. Camera / matrix set-up                                          */

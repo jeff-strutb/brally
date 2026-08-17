@@ -31,6 +31,57 @@
  * (plenty of (a) fields are never fixed up) but the converse holds: no (b)
  * field is ever fixed up.
  *
+ * THAT CONVERSE IS A UNIVERSAL OVER EVERY SITE IN THE MODULE, AND IT WAS
+ * SETTLED BY DECODING ALL OF THEM RATHER THAN BY SAMPLING.
+ *
+ * The two idioms are separable in the machine code.  (b) is a `shl reg,8`
+ * twice with two `or`s and one `mov [field], reg`; (a) is two pairs of byte
+ * moves swapping [f+0]<->[f+3] and [f+1]<->[f+2].  Counting `shl r32,8` over
+ * the whole D3D range 0x100370D0..0x10039030 gives 30 instructions, i.e.
+ * exactly 15 (b) sites, and there are 34 calls to BrSegFixup (0x1002B970).
+ * Six functions hold all of them:
+ *
+ *      0x100370D0   3 (b)    7 fixups
+ *      0x10038010   0        1
+ *      0x10038250   0        1
+ *      0x100382A0   0        4
+ *      0x10038510   9       19
+ *      0x10038B20   3        2
+ *
+ * BRGlide gives the identical table -- 0x10030770, 0x100316D0, 0x10031910,
+ * 0x10031960, 0x10031B80, 0x10032190 with 3/7, 0/1, 0/1, 0/4, 9/19, 3/2 --
+ * so the reference build agrees function for function.
+ *
+ * Resolving each fixup's argument back to the field it names (through the
+ * stack slots in 0x10038510, and tracking the esp delta, because the
+ * `mov reg,[esp+D]` sits BEFORE the `add esp,4` and naming the slot without
+ * that correction shifts every answer by one -- CONVENTIONS.md, "a stack
+ * displacement means nothing without the ESP it is relative to"):
+ *
+ *   0x100370D0  (b) at +0x8000 +0x8008 +0x8010
+ *               fixed +0x8004 +0x800C +0x8014 +0x8018 +0x8094 +0x80BC +0x811C
+ *   0x10038510  (b) at +0x00 +0x04 +0x08 +0x10 +0x18 +0x64 +0x7C +0x88 +0x160
+ *               fixed +0x0C +0x1C +0x20 +0x24 +0x50 +0x54 +0x58 +0x5C +0x60
+ *                     +0x68 +0x6C +0x70 +0x74 +0x78 +0x84 +0x8C +0x90 +0x94
+ *
+ * INTERSECTION EMPTY in every function, and the header's fields interleave
+ * tightly enough that this is a real test rather than a lucky one: +0x64 is
+ * (b) between two fixed neighbours +0x60 and +0x68, and +0x88 is (b) between
+ * +0x84 and +0x8C.
+ *
+ * THE ONE APPARENT COUNTEREXAMPLE, AND WHY IT IS NOT ONE.  In 0x10038B20 the
+ * expression [esi-5] is both a (b) store target (0x10038C6D) and a fixup
+ * argument (0x10038BCE and 0x10038C2C).  Those are three arms of ONE SWITCH
+ * on the record's kind byte [esi+3] (jump table at 0x10038C90, records of 12
+ * bytes, `add esi,0xc`).  The arms at 0x10038BB3 and 0x10038C11 treat the
+ * record's first dword as a pointer -- idiom (a), then fix it up; the arm at
+ * 0x10038C51 treats the same four bytes as a scalar -- idiom (b), no fixup.
+ * They are mutually exclusive, so no execution ever does both.
+ *
+ * The refinement worth carrying: the rule is per-SITE, not per-OFFSET.  Which
+ * idiom a field gets is a property of the record's KIND, and reading "offset
+ * X uses (b), so offset X is a scalar" across a switch would be wrong here.
+ *
  * THE 32-BIT POINTER PROBLEM
  * --------------------------
  * BrSegFixup (br_seg.h) rewrites an embedded N64 address into a host address

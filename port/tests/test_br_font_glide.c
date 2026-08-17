@@ -127,6 +127,71 @@ int main(void)
         return 0;
     }
 
+    /* ---- NOTHING SAMPLES THE TAIL -------------------------------------
+     *
+     * br_font.h asserts that no glyph's sampled rectangle runs past its
+     * block, on the strength of the emitter's G_SETTILESIZE stopping at
+     * `off[k+1] - off[k] + 1` columns.  That is a claim about the shipped
+     * offset tables, so measure it instead of believing it: for every
+     * renderable class in both sizes and BOTH builds, the last byte the
+     * emitter can address -- row h-1, column w-1 -- must lie inside the
+     * block the glyph came from.
+     *
+     * Both builds are checked because the two lay the blob out completely
+     * differently (one window per class at stride 0xA00/0x280 against one
+     * wide strip at pitch 704/392) and only share the offset tables.  A
+     * single build passing would say nothing about the other. */
+    {
+        int okG = 1, okD = 1, okBlob = 1, cChecked = 0;
+
+        for (s = 0; s < 2; ++s) {
+            for (cls = 0; cls < BR_FONT_CLASSES; ++cls) {
+                int b;
+                for (b = 0; b < 2; ++b) {
+                    const BrFont *pF = b ? &d : &g;
+                    BrGlyph gl;
+                    const uint8_t *pLast, *pBlobEnd = NULL, *pCellEnd = NULL;
+                    int t;
+
+                    if (BrFontGlyph(pF, cls, s, &gl) != 0)
+                        continue;              /* the gap class, and 54 */
+                    /* the last byte the emitted G_SETTILESIZE can address */
+                    pLast = gl.pTexels + (size_t)(gl.h - 1) * (size_t)gl.pitch
+                          + (size_t)(gl.w - 1);
+                    for (t = 0; t < 2; ++t) {
+                        const BrFontStrip *pS = &pF->aStrip[s][t];
+                        size_t cb;
+                        if (pS->pTexels == NULL)
+                            continue;
+                        cb = (pS->stride != 0)
+                             ? (size_t)pS->stride * (size_t)BR_FONT_G_CELLS
+                             : (size_t)pS->pitch * (size_t)pS->height;
+                        if (gl.pTexels >= pS->pTexels &&
+                            gl.pTexels <  pS->pTexels + cb) {
+                            pBlobEnd = pS->pTexels + cb;
+                            /* Glide gives each class a fixed window; D3D
+                             * gives the whole run one strip. */
+                            pCellEnd = (pS->stride != 0)
+                                     ? pS->pTexels + (size_t)pS->stride * (size_t)(cls + 1)
+                                     : pBlobEnd;
+                        }
+                    }
+                    if (pBlobEnd == NULL) { okBlob = 0; continue; }
+                    if (pLast >= pBlobEnd) okBlob = 0;
+                    if (pLast >= pCellEnd) { if (b) okD = 0; else okG = 0; }
+                    ++cChecked;
+                }
+            }
+        }
+        check(cChecked == 4 * (BR_FONT_CLASSES - 2),
+              "every renderable class in both sizes and both builds measured");
+        check(okG, "Glide: a class's sampled rectangle stays inside its own "
+                   "0xA00/0x280 window -- the column tail is never read");
+        check(okD, "D3D: the same, against a wholly different layout");
+        check(okBlob, "and no glyph in either build samples past the end of "
+                      "its blob, class 53 included");
+    }
+
     /* ---- the loader tells the two apart -------------------------------- */
     check(g.build == BR_FONT_BUILD_GLIDE && d.build == BR_FONT_BUILD_D3D,
           "BrFontLoad identifies each build from the image, not the path");

@@ -306,22 +306,55 @@ void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
 /* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
-    /* the three halved components are stored to 4-byte slots by the original,
-     * so they are float-rounded before use */
-    const float hx = pS->angVel.x * 0.5f;
-    const float hy = pS->angVel.y * 0.5f;
-    const float hz = pS->angVel.z * 0.5f;
+    /* SPILL MAP, traced instruction by instruction.  The scale is 0x1008FC4C
+     * == 3F000000 == 0.5f.  The three halved components go to stack slots
+     * [esp], [esp+4], [esp+8] -- but NOT the same way, and that is the whole
+     * subtlety of this function:
+     *
+     *   100742EE  fstp dword [esp]     hx: stored AND POPPED, so the only
+     *                                  copy left anywhere is the rounded one.
+     *   10074306  fst  dword [esp+4]   hy: stored and KEPT.  st0 still holds
+     *   10074314  fst  dword [esp+8]   hz: the unrounded 53-bit product.
+     *
+     * `fst` is not `fstp`.  Each of hy and hz therefore has TWO live values
+     * after its store -- the rounded one in memory and the unrounded one in
+     * the register -- and the original uses the register copy exactly ONCE
+     * before it is consumed, then reloads the rounded slot for everything
+     * else:
+     *
+     *   10074323  fmul [eax+0x20]   the kept hy, times quat.y  -> qDot.f00
+     *   1007433E  fmul [eax+0x1c]   the kept hz, times quat.x  -> qDot.f08
+     *
+     * Every other use comes from `fld [esp+N]` and is rounded.  So of the
+     * twelve products below, ten take a float-rounded half-rate and two do
+     * not.  Writing all three as `float` (which this did) rounds two products
+     * the original leaves alone; writing all three as `double` would round
+     * ten it does not.  Neither is right, and the asymmetry is not visible
+     * from the C -- only from the fst/fstp distinction in the bytes.
+     *
+     * The four results are `fstp dword` at 1007438A..10074397, so each
+     * expression rounds to float exactly once, at the store. */
+    const double hxU = (double)pS->angVel.x * 0.5;
+    const float  hx  = (float)hxU;              /* 100742EE fstp -- popped */
 
-    const float w = pS->quat.f00;
-    const float x = pS->quat.f04;
-    const float y = pS->quat.f08;
-    const float z = pS->quat.f0C;
+    const double hyU = (double)pS->angVel.y * 0.5;
+    const float  hy  = (float)hyU;              /* 10074306 fst  -- kept   */
 
-    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first */
-    pS->qDot.f00 = ((-(hx * x)) - hy * y) - hz * z;
-    pS->qDot.f04 = (hy * z + hx * w) - hz * y;
-    pS->qDot.f08 = (hz * x + hy * w) - hx * z;
-    pS->qDot.f0C = (hx * y + hz * w) - hy * x;
+    const double hzU = (double)pS->angVel.z * 0.5;
+    const float  hz  = (float)hzU;              /* 10074314 fst  -- kept   */
+
+    const double w = (double)pS->quat.f00;
+    const double x = (double)pS->quat.f04;
+    const double y = (double)pS->quat.f08;
+    const double z = (double)pS->quat.f0C;
+
+    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first.  hyU and hzU appear
+     * once each, in the two positions named above; every other term uses the
+     * rounded hx/hy/hz. */
+    pS->qDot.f00 = (float)(((-((double)hx * x)) - hyU * y) - (double)hz * z);
+    pS->qDot.f04 = (float)(((double)hy * z + (double)hx * w) - (double)hz * y);
+    pS->qDot.f08 = (float)((hzU * x + (double)hy * w) - (double)hx * z);
+    pS->qDot.f0C = (float)(((double)hx * y + (double)hz * w) - (double)hy * x);
 }
 
 /* 0x100743A0 */
@@ -331,12 +364,45 @@ void BrRbQuatDerivative(BrRbState *pS)
 /* @implements 0x100743A0 d3d BrRbIntegrateVelocity */
 void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
 {
-    pS->vel.x    = pBody->accel[0]    * dt + pS->vel.x;      /* 0x0C <- 0xFC  */
-    pS->vel.y    = pBody->accel[1]    * dt + pS->vel.y;      /* 0x10 <- 0x100 */
-    pS->vel.z    = pBody->accel[2]    * dt + pS->vel.z;      /* 0x14 <- 0x104 */
-    pS->angVel.x = pBody->angAccel[0] * dt + pS->angVel.x;   /* 0x28 <- 0x108 */
-    pS->angVel.y = pBody->angAccel[1] * dt + pS->angVel.y;   /* 0x2C <- 0x10C */
-    pS->angVel.z = pBody->angAccel[2] * dt + pS->angVel.z;   /* 0x30 <- 0x110 */
+    /* SPILL MAP.  Six products, and exactly ONE of them is rounded:
+     *
+     *   100743EB  fstp dword [esp+8]   accel[2]*dt -- stored AND POPPED, then
+     *   100743F5  fld  dword [esp+8]   reloaded.  This one really is float.
+     *
+     *   100743FB  fst  dword [esp]     angAccel[0]*dt \  stored and KEPT, and
+     *   10074405  fst  dword [esp+4]   angAccel[1]*dt  > the three slots are
+     *   1007440B  fst  dword [esp+8]   angAccel[2]*dt /  NEVER RELOADED.
+     *
+     * Nothing between 1007440F and the epilogue reads [esp], [esp+4] or
+     * [esp+8].  Those three stores are dead -- register-allocator spill slots
+     * the compiler wrote and did not need -- so the adds at 1007441B,
+     * 10074420 and 10074425 all consume the unrounded register copies.  A
+     * spill that is never reloaded rounds nothing, and treating `fst` as
+     * evidence of rounding without checking for the matching `fld` would have
+     * put a float here on the strength of an instruction with no effect.
+     *
+     * accel[0]*dt and accel[1]*dt are never stored at all.
+     *
+     * All six results are `fstp dword` at 1007442F..10074442, so each sum
+     * rounds to float once, at the store. */
+    const double d = (double)dt;
+
+    /* 0x0C <- 0xFC   product never spilled */
+    pS->vel.x    = (float)((double)pBody->accel[0] * d + (double)pS->vel.x);
+    /* 0x10 <- 0x100  product never spilled */
+    pS->vel.y    = (float)((double)pBody->accel[1] * d + (double)pS->vel.y);
+    /* 0x14 <- 0x104  product SPILLED and reloaded: rounded before the add */
+    pS->vel.z    = (float)((double)(float)((double)pBody->accel[2] * d)
+                           + (double)pS->vel.z);
+    /* 0x28 <- 0x108  spill slot written but never read */
+    pS->angVel.x = (float)((double)pBody->angAccel[0] * d
+                           + (double)pS->angVel.x);
+    /* 0x2C <- 0x10C  likewise */
+    pS->angVel.y = (float)((double)pBody->angAccel[1] * d
+                           + (double)pS->angVel.y);
+    /* 0x30 <- 0x110  likewise */
+    pS->angVel.z = (float)((double)pBody->angAccel[2] * d
+                           + (double)pS->angVel.z);
 }
 
 /* 0x100745F0 */
@@ -348,16 +414,52 @@ void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
 /* @implements 0x100745F0 d3d BrRbIntegrateState */
 void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 {
-    pDst->pos.x = pSrc->pos.x + dt * pSrc->vel.x;
-    pDst->pos.y = pSrc->pos.y + dt * pSrc->vel.y;
-    pDst->pos.z = pSrc->pos.z + dt * pSrc->vel.z;
+    /* SPILL MAP.  Seven products; three are spilled and reloaded, four are
+     * not, and they alternate in a way no rule of thumb would predict:
+     *
+     *   10074623  fstp [esp+0x10]  dt*vel.z    reloaded 10074637  ROUNDED
+     *   10074670  fstp [esp+0x0C]  dt*qDot[1]  reloaded 10074681  ROUNDED
+     *   10074689  fstp [esp+0x14]  dt*qDot[3]  reloaded 100746A0  ROUNDED
+     *
+     * dt*vel.x, dt*vel.y, dt*qDot[0] and dt*qDot[2] are never stored: they go
+     * straight into their `fadd` from the register (10074611, 1007461F,
+     * 10074666, 10074695).  So pos.x and pos.y round once and pos.z rounds
+     * twice; quat.f00 and quat.f08 round once and quat.f04 and quat.f0C round
+     * twice.  There is no pattern to carry over -- each one was read off its
+     * own instruction.
+     *
+     * (The reload at 100746A0 reads [esp+0x18], not [esp+0x14], because the
+     * `push eax` at 10074697 moved esp by four between the store and the
+     * load.  Same slot, different displacement -- the trap CONVENTIONS.md
+     * records under the wheel-probe entry.)
+     *
+     * Every destination is `fstp dword`, so each expression rounds to float
+     * at its store.  vel, angVel and qDot are copied as raw dwords by
+     * integer moves and carry no arithmetic at all. */
+    const double d = (double)dt;
+
+    /* 10074611: fadd from the register */
+    pDst->pos.x = (float)((double)pSrc->pos.x + d * (double)pSrc->vel.x);
+    /* 1007461F: fadd st(1), also from the register */
+    pDst->pos.y = (float)((double)pSrc->pos.y + d * (double)pSrc->vel.y);
+    /* 10074623/10074637: spilled, reloaded, so the product is float first */
+    pDst->pos.z = (float)((double)pSrc->pos.z
+                          + (double)(float)(d * (double)pSrc->vel.z));
 
     pDst->vel = pSrc->vel;
 
-    pDst->quat.f00 = pSrc->quat.f00 + dt * pSrc->qDot.f00;
-    pDst->quat.f04 = pSrc->quat.f04 + dt * pSrc->qDot.f04;
-    pDst->quat.f08 = pSrc->quat.f08 + dt * pSrc->qDot.f08;
-    pDst->quat.f0C = pSrc->quat.f0C + dt * pSrc->qDot.f0C;
+    /* 10074666: from the register */
+    pDst->quat.f00 = (float)((double)pSrc->quat.f00
+                             + d * (double)pSrc->qDot.f00);
+    /* 10074670/10074681: spilled and reloaded */
+    pDst->quat.f04 = (float)((double)pSrc->quat.f04
+                             + (double)(float)(d * (double)pSrc->qDot.f04));
+    /* 10074695: from the register */
+    pDst->quat.f08 = (float)((double)pSrc->quat.f08
+                             + d * (double)pSrc->qDot.f08);
+    /* 10074689/100746A0: spilled and reloaded */
+    pDst->quat.f0C = (float)((double)pSrc->quat.f0C
+                             + (double)(float)(d * (double)pSrc->qDot.f0C));
 
     BrVec4Normalise(&pDst->quat);
 
@@ -372,38 +474,74 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 /* @implements 0x10074450 d3d BrRbBuildMatrix */
 void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 {
-    const float a = pS->quat.f00;   /* w */
-    const float b = pS->quat.f04;   /* x */
-    const float c = pS->quat.f08;   /* y */
-    const float d = pS->quat.f0C;   /* z */
+    const double a = (double)pS->quat.f00;   /* w */
+    const double b = (double)pS->quat.f04;   /* x */
+    const double c = (double)pS->quat.f08;   /* y */
+    const double d = (double)pS->quat.f0C;   /* z */
 
-    /* every one of these is spilled to a 4-byte slot by the original */
-    const float aa = a * a;
-    const float bb = b * b;
-    const float cc = c * c;
-    const float dd = d * d;
-    const float ab = aa - bb;
+    /* SPILL MAP.  The old comment here said "every one of these is spilled to
+     * a 4-byte slot by the original", and that is true of the five squares
+     * but NOT of the six doubled cross terms, three of which are stored with
+     * `fst` and keep their unrounded register copy for one further use.
+     *
+     * Spilled with `fstp` -- popped, so every later use is the rounded slot:
+     *   1007449C [esp+4]     aa        100744AA [esp]       bb
+     *   100744CE [esp+0x24]  cc        100744EB [esp+0x18]  ab
+     *   10074565 [esp]       dd
+     *   10074503 [esp+4]     t2cb      1007452D [esp+8]     t2ca
+     *   10074537 [esp+0x10]  t2dc
+     *
+     * Stored with `fst` -- kept, one unrounded use each:
+     *   10074521 [esp]       t2da  -> used unrounded at 10074547 (m[0][1])
+     *   10074527 [esp+0x0C]  t2db  -> used unrounded at 1007454D (m[0][2])
+     *   10074541 [esp+0x14]  t2ba  -> used unrounded at 10074559 (m[1][2])
+     *
+     * So each doubled term appears in exactly two matrix entries, once
+     * unrounded and once rounded, and which of the two is which is fixed by
+     * the instruction order.  The doubling itself (`fadd st(0),st(0)`) is
+     * applied to the unrounded product, so the value that reaches the `fst`
+     * is 2*(the 53-bit product) and the float slot is its single rounding. */
+    const double aaU = a * a;
+    const float  aa  = (float)aaU;   /* 1007449C fstp */
+    const double bbU = b * b;
+    const float  bb  = (float)bbU;   /* 100744AA fstp */
+    const double ccU = c * c;
+    const float  cc  = (float)ccU;   /* 100744CE fstp */
+    const double ddU = d * d;
+    const float  dd  = (float)ddU;   /* 10074565 fstp */
+    /* 100744C3 fsub: BOTH operands come from the rounded slots */
+    const float  ab  = (float)((double)aa - (double)bb);   /* 100744EB fstp */
 
-    const float t2da = (d * a) + (d * a);
-    const float t2cb = (c * b) + (c * b);
-    const float t2db = (d * b) + (d * b);
-    const float t2ca = (c * a) + (c * a);
-    const float t2dc = (d * c) + (d * c);
-    const float t2ba = (b * a) + (b * a);
+    /* the doubled cross terms, unrounded, and their single float rounding */
+    const double t2daU = (d * a) + (d * a);
+    const float  t2da  = (float)t2daU;   /* 10074521 fst -- KEPT   */
+    const double t2cbU = (c * b) + (c * b);
+    const float  t2cb  = (float)t2cbU;   /* 10074503 fstp -- popped */
+    const double t2dbU = (d * b) + (d * b);
+    const float  t2db  = (float)t2dbU;   /* 10074527 fst -- KEPT   */
+    const double t2caU = (c * a) + (c * a);
+    const float  t2ca  = (float)t2caU;   /* 1007452D fstp -- popped */
+    const double t2dcU = (d * c) + (d * c);
+    const float  t2dc  = (float)t2dcU;   /* 10074537 fstp -- popped */
+    const double t2baU = (b * a) + (b * a);
+    const float  t2ba  = (float)t2baU;   /* 10074541 fst -- KEPT   */
 
-    pM->m[0][0] = ((bb + aa) - cc) - dd;
-    pM->m[0][1] = t2da + t2cb;
-    pM->m[0][2] = t2db - t2ca;
+    /* 100744E1 / 1007456F: (bb + aa) from the two rounded slots, then - cc */
+    pM->m[0][0] = (float)((((double)bb + (double)aa) - (double)cc)
+                          - (double)dd);
+    pM->m[0][1] = (float)(t2daU + (double)t2cb);   /* 10074547 */
+    pM->m[0][2] = (float)(t2dbU - (double)t2ca);   /* 1007454D */
     pM->m[0][3] = 0.0f;
 
-    pM->m[1][0] = t2cb - t2da;
-    pM->m[1][1] = (cc + ab) - dd;
-    pM->m[1][2] = t2ba + t2dc;
+    pM->m[1][0] = (float)((double)t2cb - (double)t2da);   /* 10074553 */
+    pM->m[1][1] = (float)(((double)cc + (double)ab) - (double)dd);
+    pM->m[1][2] = (float)(t2baU + (double)t2dc);   /* 10074559 */
     pM->m[1][3] = 0.0f;
 
-    pM->m[2][0] = t2ca + t2db;
-    pM->m[2][1] = t2dc - t2ba;
-    pM->m[2][2] = (ab - cc) + dd;
+    pM->m[2][0] = (float)((double)t2ca + (double)t2db);   /* 1007455F */
+    pM->m[2][1] = (float)((double)t2dc - (double)t2ba);   /* 1007457B */
+    /* 100745B2..100745BA, after the stores: (ab - cc) + dd, all rounded */
+    pM->m[2][2] = (float)(((double)ab - (double)cc) + (double)dd);
     pM->m[2][3] = 0.0f;
 
     pM->m[3][0] = pS->pos.x;
@@ -446,26 +584,57 @@ void BrRbInitInertia(BrRbBody *pB)
             pB->inertia.m[3 * i + j] = (i == j) ? 1.0f : 0.0f;
 
     if (pB->mode >= 0 && pB->mode <= 1) {
-        const float x  = pB->dim[0];
-        const float y  = pB->dim[1];
-        const float z  = pB->dim[2];
-        const float xx = x * x;
-        const float yy = y * y;
-        const float zz = z * z;
-        const float m  = pB->mass;
+        /* SPILL MAP.  Three squares, and only TWO of them are rounded:
+         *
+         *   1007492D  fstp [esp+0x18]  z*z  reloaded 10074938 / 10074940
+         *   10074946  fstp [esp+0x18]  y*y  reloaded 1007494C / 10074952
+         *
+         * x*x is never stored -- it is produced at 10074927, duplicated with
+         * `fld st(2)` at 1007493E and consumed by two adds from the register.
+         * The two stores reuse the SAME slot, which is why z*z has to be
+         * reloaded (10074938) before y*y overwrites it.
+         *
+         * So the diagonal is not symmetric in its rounding: m[0] takes two
+         * rounded squares, and m[4] and m[8] each take one rounded and one
+         * unrounded. The multiply by mass (0x2C) and by 1/12 (0x1008FC54 ==
+         * 3DAAAAAB) stay in registers, so each entry rounds to float exactly
+         * once, at its `fstp` (1007497F / 10074982 / 10074985). */
+        const double x  = (double)pB->dim[0];
+        const double y  = (double)pB->dim[1];
+        const double z  = (double)pB->dim[2];
+        const double xx = x * x;                   /* never stored */
+        const float  yy = (float)(y * y);          /* 10074946 fstp */
+        const float  zz = (float)(z * z);          /* 1007492D fstp */
+        const double m  = (double)pB->mass;
+        const double k  = (double)BR_K_ONE_TWELFTH;
 
-        pB->inertia.m[0] = ((zz + yy) * m) * BR_K_ONE_TWELFTH;
-        pB->inertia.m[4] = ((xx + zz) * m) * BR_K_ONE_TWELFTH;
-        pB->inertia.m[8] = ((xx + yy) * m) * BR_K_ONE_TWELFTH;
+        pB->inertia.m[0] = (float)((((double)zz + (double)yy) * m) * k);
+        pB->inertia.m[4] = (float)(((xx + (double)zz) * m) * k);
+        pB->inertia.m[8] = (float)(((xx + (double)yy) * m) * k);
 
         BrGbiCall10075330(&pB->inertia);
     }
 
     if (pB->mode != 2) {
-        /* only the diagonal -- see the header's gotcha */
-        pB->invInertia.m[0] = 1.0f / pB->inertia.m[0];
-        pB->invInertia.m[4] = 1.0f / pB->inertia.m[4];
-        pB->invInertia.m[8] = 1.0f / pB->inertia.m[8];
+        /* only the diagonal -- see the header's gotcha.
+         *
+         * `fld [0x1008FC48] (== 1.0f); fdiv dword ptr; fstp dword ptr` at
+         * 10074996..100749B7.  The DIVIDE happens at the register's 53-bit
+         * precision and only the result is narrowed, so this is written as a
+         * double divide narrowed once -- which is what the instructions do.
+         *
+         * It is written that way for faithfulness, NOT because it changes an
+         * answer: for this particular divide the double rounding is benign.
+         * Checked exhaustively rather than argued -- over all 8,388,608 float
+         * significands in [1,2), `(float)(1.0/(double)x)` and `1.0f/x` agree
+         * on every one, and scaling x by a power of two scales both results
+         * exactly, so that settles the whole normal range.  Reverting this
+         * line to `1.0f / m[i]` is therefore an equivalent mutation and no
+         * test can catch it; that is a property of the arithmetic, not a gap
+         * in the suite. */
+        pB->invInertia.m[0] = (float)(1.0 / (double)pB->inertia.m[0]);
+        pB->invInertia.m[4] = (float)(1.0 / (double)pB->inertia.m[4]);
+        pB->invInertia.m[8] = (float)(1.0 / (double)pB->inertia.m[8]);
     }
 
     pB->f1D4 = 0.0f;

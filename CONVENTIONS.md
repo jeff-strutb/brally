@@ -36,7 +36,20 @@ real time on this project, and most of them are not obvious.
   comparisons (`!(a >= b)`), never the tidy positive form.
 - Read float constants out of the binary rather than assuming them. This is cheap
   and has repeatedly been load-bearing — a dial rendered as a degenerate sliver
-  until its two radii turned out to be different constants.
+  until its two radii turned out to be different constants; and an analog stick
+  scaled by 1/80 for months where `.rdata` says 1/70.
+  - `tools/constcheck.py` now does this over the whole tree, so the check is
+    one command and the DENOMINATOR is reportable. It matches an address-
+    annotated float declaration three ways (address in the trailing comment,
+    address baked into the name, bare literal with an address comment) and
+    `--selftest` validates it against four known answers, a negative control
+    and three recall cases before it will be believed.
+  - Two of its rules were wrong on the way and both are recorded in its
+    docstring. Accepting `.text` as constant data made every *instruction*
+    annotation "resolve", so 257 of 1274 lines were reported wrong against
+    machine code read as IEEE754. And keying the load width on the `f` suffix
+    is unsound in BOTH directions here, because this tree deliberately widens
+    float constants to double literals to model the 53-bit registers.
 
 ## Portability
 
@@ -65,6 +78,73 @@ round-trips (swap twice restores the original), boundary conditions actually
 present in the original, and aliasing behaviour where the original permits it.
 
 ## Facts not to re-derive
+
+- **The x87 runs at 53-BIT precision, not 80-bit, so a C `double` is an EXACT
+  model of these registers.** `0x10091A48` in `BRD3D.dll`'s `.rdata` is the
+  CRT's stored x87 control word and holds **`0x027F`**:
+
+  | field | bits | value | meaning |
+  |---|---|---|---|
+  | IM DM ZM OM UM PM | 0-5 | `111111` | every exception masked |
+  | PC | 8-9 | `10` | **53-bit mantissa** |
+  | RC | 10-11 | `00` | round to nearest even |
+
+  It is not merely a constant sitting there. Six sites in the CRT read the
+  LIVE control word and compare it against `0x027F` before doing anything —
+  `1007E554`, `1007E604`, `1007E6B8`, `1007E774`, `1007FA59`, `10085A7E`, each
+  `fnstcw [esp]` / `cmp word ptr [esp], 0x27F` / `fldcw [0x10091A48]` only if
+  it differs. So the CRT asserts at run time that the process runs at 53-bit,
+  and `fldcw` from that address is the only absolute control-word load in the
+  image. `0x027F` is the MSVC default; the x87's own power-on default is
+  `0x037F` (64-bit), which this build never installs. BRGlide has no such site
+  because it imports the CRT from MSVCRT.DLL rather than linking it, which is
+  the same reason ~29 CRT functions are absent from its map — same CRT, same
+  default.
+
+  Consequences, because this is the part that keeps being got wrong:
+  - An x87 intermediate that is *not* spilled is a `double`, exactly. It is
+    not an approximation and there is no "last ulp" difference to waive.
+  - Computing such an intermediate in `float` is a REAL defect, not a
+    tolerable one, because it rounds where the original does not.
+  - **But preserve the spills.** Where the original STORES an intermediate to
+    a 32-bit slot, the port must round to `float` there too. The job is to
+    model the register width, not to widen everything: widening a value the
+    original spills is the same bug pointing the other way.
+  - Stated limit: PC controls the significand only. The registers keep a
+    15-bit exponent, so `double` and the x87 still diverge on overflow and in
+    the denormal range. Nothing in this game's arithmetic goes near either,
+    but that is the boundary of the claim.
+
+  **The waivers are not the cause, only where someone noticed.** `slice2_21.c`
+  carries about 200 float arithmetic operators in float context, uses `double`
+  nowhere at all, and has no precision note of any kind — larger than
+  `slice3_44.c` and `slice3_42.c` together, and with nothing to remove. So
+  removing a waiver does not remove the defect class; it removes the
+  permission slip. The files that never wrote one are not the safe ones.
+
+  **And the spill model may be invisible to the suite that covers it.** When
+  `slice3_44.c` and `slice3_42.c` were converted, eight separate spill
+  decisions were each reversed in turn and every suite stayed green —
+  including `test_collresp`'s slope trace, which was bit-identical under all
+  eight, though a one-ulp perturbation of `qDot.f00` does move it. The cause
+  was the FIXTURES: on "nice" values the two readings agree exactly, so the
+  inputs have to be searched for. Three of the eight turned out to be
+  provably equivalent (halving a float is exact; `(float)(1.0/(double)x)` and
+  `1.0f/x` agree on all 8,388,608 significands in [1,2)); the other five were
+  real gaps and are now pinned by bit-pattern assertions on searched inputs.
+  Before believing a numeric transcription is guarded, mutate it — and if it
+  survives, find out whether the mutation is equivalent or the fixture is
+  blind, because those are opposite conclusions.
+
+  **This had been re-derived, wrongly, at least seven times** — as a file-wide
+  waiver in `slice3_44.h`, `slice3_42.c`, `slice1_05.h` and `slice2_16.h`, and
+  per-site in `slice1_07.c`, `slice6_73.c` and `slice2_19.c`. Every one said
+  80-bit or "64-bit mantissa", called the difference "the last ulp", and three
+  called it "unavoidable in portable C". All three claims are false, and the
+  cost was that the waivers licensed exactly the defect they were describing.
+  The check is one `fldcw` operand. The generalisable part: **a difficulty
+  asserted file-wide is never re-examined**, because it reads as a limit of
+  the medium rather than as a claim about this program.
 
 - Microcode is **F3DEX**: `G_VTX` has `n` in bits[15:10]. **The rest of this
   entry was wrong and is corrected below** — `v0+n` is NOT in bits[7:1], and

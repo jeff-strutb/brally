@@ -33,14 +33,28 @@ float g_BrK08F514 = 2.0f;          /* DERIVED   */
  * have looked right. */
 float g_BrK08F518 = 1.3333333730697632f;   /* MEASURED  4/3    */
 float g_BrK08F51C = 57.2957763671875f;     /* MEASURED  180/pi */
-float g_BrK08F520 = 2.5f;          /* ASSUMED   */
-float g_BrK08F524 = 5.0f;          /* ASSUMED   */
-float g_BrK08F52C = 4096.0f;       /* DERIVED   */
-float g_BrK08F530 = 1.0f / 128.0f; /* ASSUMED   */
-float g_BrK08F534 = 0.5f;          /* ASSUMED   */
-float g_BrK08F548 = 1.0f / 80.0f;  /* ASSUMED   */
-float g_BrK08F54C =  1.0f;         /* ASSUMED   */
-float g_BrK08F550 = -1.0f;         /* ASSUMED   */
+/* All eight below are now MEASURED out of BRD3D.dll .rdata, byte pattern in
+ * the comment.  Six of the eight confirmed the guess exactly; 0x1008F518 and
+ * 0x1008F548 did not.  Reading them cost one script. */
+float g_BrK08F520 = 2.5f;          /* MEASURED 40200000 */
+float g_BrK08F524 = 5.0f;          /* MEASURED 40A00000 */
+float g_BrK08F52C = 4096.0f;       /* MEASURED 45800000 */
+float g_BrK08F530 = 1.0f / 128.0f; /* MEASURED 3C000000 == 0.0078125 exactly */
+float g_BrK08F534 = 0.5f;          /* MEASURED 3F000000 */
+/* MEASURED, was ASSUMED 1/80 and WRONG BY 12.5%.  0x1008F548 holds 3C6A0EA1
+ * == 0.0142857144f == 1/70, and it scales EVERY analog axis of EVERY frame
+ * (0x10035EE1 / 0x10035EF5 / 0x10035F13, the three fmul sites in
+ * BrPadTranslate).  The old reading's evidence was that the digital arm
+ * synthesises +/-0x50 (+/-80), so 1/80 lands exactly on +/-1.  The bytes
+ * refute the inference rather than the observation: 80 * (1/70) is
+ * 1.14285719f, and the +/-1 clamp two instructions later (0x1008F54C /
+ * 0x1008F550) cuts it back to exactly +/-1.  The digital path was designed to
+ * SATURATE, so it produces the same +/-1 under either constant and could
+ * never have discriminated between them.  What it does discriminate is the
+ * ANALOG path, which is the one that runs while driving. */
+float g_BrK08F548 = 0.0142857144f; /* MEASURED 3C6A0EA1 == 1/70 */
+float g_BrK08F54C =  1.0f;         /* MEASURED 3F800000 */
+float g_BrK08F550 = -1.0f;         /* MEASURED BF800000 */
 
 BrVec3 g_BrCamEye;
 BrVec3 g_BrCamCentre;
@@ -716,6 +730,18 @@ static void BrPadRamp(const int32_t *pEnable, int32_t *pCur, const int32_t *pLim
 
 /* Reproduces `if (v > hi) v = 1; else if (v < lo) v = -1;` including the
  * unordered case, which the original routes to the LOW assignment. */
+/* The two comparisons are 0x10035EFD / 0x10035F2B and their siblings.  The
+ * upper one is `fcomp ; test ah,0x41 ; je <clamp>`, so the clamping arm is
+ * taken only when NEITHER C0 nor C3 is set -- ordered and strictly greater.
+ * NaN sets both and takes the other arm, which the positive `v > hi` also
+ * does, so the positive form is exact here.  The lower one is
+ * `test ah,1 ; jne <clamp>`, where NaN DOES clamp, hence the negated form.
+ *
+ * Mutation note: rewriting the upper test as `v >= g_BrK08F54C` survives the
+ * suite, and that is an equivalent mutation rather than missing coverage.
+ * The two differ only at v == g_BrK08F54C, and there the clamp returns 1.0f
+ * while falling through returns v, which IS 1.0f.  A threshold equal to its
+ * own clamp target cannot distinguish `>` from `>=`. */
 static float BrPadClamp(float v)
 {
     if (v > g_BrK08F54C)
@@ -816,9 +842,26 @@ void BrPadTranslate(BrPad *pPad)
 
     pPad->axisX     = BrPadClamp(pPad->axisX);
     pPad->axisY     = BrPadClamp(pPad->axisY);
-    /* DEVIATION: the original compares the steering axis while it is still
-     * in an x87 register (80-bit), unlike the other two which are reloaded
-     * from their 32-bit slots. The port compares the 32-bit value. */
+    /* NOT a deviation -- this was one, and the difference has now been
+     * enumerated away rather than waived.
+     *
+     * The original does treat the steering axis differently.  axisX and axisY
+     * are spilled (0x10035EED, 0x10035F1E) and RELOADED before their compare
+     * (0x10035EF0, 0x10035F3E), so those two compare a rounded float; the
+     * steer's compare at 0x10035F66 is an `fcom` against the value still in
+     * st0, never reloaded.  So the original compares the unrounded product
+     * there and the rounded one for the other two.
+     *
+     * That register is 53-bit, not 80-bit (see CONVENTIONS.md), so `double`
+     * models it exactly and the two readings can simply be compared over the
+     * whole input domain.  The input is an int8, so the domain is 256 values.
+     * Enumerated: the 53-bit product and its float spill disagree about the
+     * clamp at exactly TWO inputs, steer == +70 and steer == -70, where the
+     * product is +/-1.0000000055879354 and the spill is exactly +/-1.0f.  At
+     * both, clamping yields +/-1.0f and not clamping yields the stored
+     * +/-1.0f -- the SAME bits.  The distinction is therefore unobservable in
+     * the output for every one of the 256 reachable inputs, and comparing the
+     * 32-bit value here is exact, not approximate. */
     pPad->axisSteer = BrPadClamp(pPad->axisSteer);
 }
 

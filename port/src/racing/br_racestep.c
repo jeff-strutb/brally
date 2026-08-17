@@ -748,14 +748,30 @@ void BrRaceStepLights(void)
  *     BrRaceStepFrame   0x1001AB71..0x1001B261   the per-frame arm      ~1,780 B
  *     BrRaceStepLights  0x1001ABFB..0x1001B171   (inside the above)
  *
- * and what does not:
+ * and, SINCE THIS NOTE WAS WRITTEN, port/src/racing/br_racebegin.c:
  *
- *     0x10019AFE..0x1001AB6F   the one-time arm's asset loading and screen
- *                              setup, ~4.2 KB, of which 0x1005F310 (538 B,
- *                              the driver-record constructor and the grid
- *                              placement) is the counter increment below
- *     0x1001B261..0x1001C647   the HUD, the rear-view mirror and the whole
- *                              renderer, ~5.1 KB, counted as BR_RS_HOLE_HUD
+ *     BrRaceStepClock   0x10019A70..0x10019AF8   the frame clock and the
+ *                                                substate branch           144 B
+ *     BrRaceStepBegin   0x10019AFE..0x1001AB70   THE WHOLE ONE-TIME ARM  4,209 B
+ *
+ * -- which is the first of the two blocks this note listed as missing.  It
+ * delegates 0x1001A97C..0x1001AA5E back to BrRaceStepInit rather than
+ * repeating it, so the five globals that block writes keep one host object
+ * each.  br_racebegin.h carries the derivation, including the eight-byte
+ * replay header whose writer and reader are both inside that arm.
+ *
+ * What STILL does not exist:
+ *
+ *     0x1001B261..0x1001C646   the replay camera, the HUD, the rear-view
+ *                              mirror, the per-car render marshalling, the
+ *                              pause and camera input, the race exit and the
+ *                              frame limiter -- 5,094 B, counted as
+ *                              BR_RS_HOLE_HUD
+ *
+ * so 6,129 of 11,223 bytes (54.6%) are transcribed and 45.4% are not.  The
+ * claim still cannot be made, and putting one here would put the same defect
+ * back.  0x1005F310 (538 B, the driver-record constructor and the grid
+ * placement) is still the counter increment below.
  *
  * DO NOT READ "UNPORTED" AS "UNTOUCHED" AND SEND SOMEONE TO START OVER.
  * br_racestep.h is 500 lines of derivation for this address and the three

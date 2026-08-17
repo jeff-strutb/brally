@@ -19,11 +19,13 @@
  *     0x10019AF8   jne 0x1001AB71                   -> the PER-FRAME arm
  *                  (fall through)                   -> the ONE-TIME arm
  *
- * The one-time arm (0x10019AFE..0x1001AB6F, ~4.2 KB) loads the track, builds
+ * The one-time arm (0x10019AFE..0x1001AB70, 4,209 B) loads the track, builds
  * the field, seeds the start-light script and ends at 0x1001AA5E with
- * `0x105CCB94 = 1`, so it never runs again.  Almost all of it is asset
- * loading and screen setup; the part that is the RACE's own state is ported
- * here as BrRaceStepInit and the rest is named, counted and left out.
+ * `0x105CCB94 = 1`, so it never runs again.  The part that is the RACE's own
+ * state is ported here as BrRaceStepInit; ALL OF THE REST IS NOW PORTED TOO,
+ * in port/src/racing/br_racebegin.c, which calls BrRaceStepInit for that one
+ * block rather than repeating it.  This paragraph used to end "the rest is
+ * named, counted and left out" -- that is no longer where the gap is.
  *
  * The per-frame arm (0x1001AB71..the end) is what this module is for.
  *
@@ -39,7 +41,9 @@
  *   0x1001B20B  0x100623E0 over the same                       -- ported
  *   0x1001B22D  if (mode == 0) 0x1005F6C0 over every car       -- HOLE
  *   0x1001B25C  0x1005F580, THE STANDINGS                      -- ported
- *   0x1001B261  the HUD, the mirror, the renderer, ~5.5 KB     -- HOLE
+ *   0x1001B261  the replay camera, the HUD, the mirror, the per-car render
+ *               marshalling, the pause/camera input, the race exit and the
+ *               frame limiter -- 5,094 B, THE ONLY PART STILL MISSING -- HOLE
  *
  * 0x1005F580 is worth its own line: it is the GLIDE TWIN of D3D 0x10066510,
  * which slice3_41.c already ports as BrRankAssign.  Read it side by side --
@@ -429,12 +433,17 @@ void BrRaceStepLights(void);
 /* 0x10019A70 CARRIES NO @implements LINE, AND THAT IS ON PURPOSE.
  *
  * The three functions below transcribe about 2,000 of its 11,223 bytes -- the
- * script seed, the light machine and the per-frame arm.  The other ~9,200 are
- * the one-time arm's asset loading and the HUD/mirror/renderer tail, and
- * neither is here.  The manifest form is whole-function only (see
- * tools/manifest.py), so there is no way to claim 16% of an address; the claim
- * that used to sit on BrRaceStepInit claimed 100% of it for 2%.  See the long
- * note at that function in br_racestep.c before adding one back. */
+ * script seed, the light machine and the per-frame arm.  br_racebegin.h adds
+ * another 4,353: the opening frame clock and the WHOLE one-time arm,
+ * 0x10019A70..0x1001AB70.  That is 6,129 of 11,223, 54.6%.
+ *
+ * The remaining 5,094 bytes -- 0x1001B261..0x1001C646, the replay camera, the
+ * HUD, the mirror, the per-car render marshalling, the pause and camera
+ * input, the race exit and the frame limiter -- are still absent.  The
+ * manifest form is whole-function only (see tools/manifest.py), so there is
+ * no way to claim 54.6% of an address; the claim that used to sit on
+ * BrRaceStepInit claimed 100% of it for 2%.  See the long note at that
+ * function in br_racestep.c before adding one back. */
 
 /* The one-time arm's race state: the script seed at 0x1001A97C..0x1001A9EF
  * and 0x105CCB94 = 1.  Everything else in that arm is asset loading.

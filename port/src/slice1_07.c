@@ -380,9 +380,24 @@ int16_t BrTriContainsPoint2D(const BrTri *pTri, const float *pPoint)
     if (!(v >= 0.0f)) return 0;
     if (!((u + v) <= 1.0f)) return 0;
 
-    /* DEVIATION: the original keeps the numerator, denominator and v in
-     * 80-bit x87 registers (only u is round-tripped through a float32 slot).
-     * These are float32 throughout, so results can differ in the last ulp
-     * for points sitting exactly on an edge. */
+    /* DEVIATION, and the reason given for it was wrong. It read: "the
+     * original keeps the numerator, denominator and v in 80-bit x87
+     * registers ... results can differ in the last ulp".
+     *
+     * The observation is right and the number is not. The x87 here runs at
+     * 53-bit precision (CRT control word 0x027F -- CONVENTIONS.md), so those
+     * three values are exactly C `double`s and the difference is a real
+     * rounding error at each of the four arithmetic steps above, not a
+     * last-ulp artefact of an unrepresentable format.
+     *
+     * STILL OPEN, stated rather than waived. The fix is mechanical and
+     * precisely bounded by the original's own spill points: `u` is
+     * round-tripped through a 32-bit slot and must stay `float`; the
+     * numerator, the denominator and `v` are never stored and should be
+     * `double`. It is not done here because this file's arithmetic has not
+     * been re-traced for its spill points at the instruction level, and
+     * guessing which values the original stores would introduce the opposite
+     * defect -- widening something the original rounds. Anyone re-tracing
+     * these two branches should finish this. */
     return 1;
 }

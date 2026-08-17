@@ -637,25 +637,153 @@ static void test_pad_derived_bits_and_ramp(void)
     g_Br6909B4 = 0;
 }
 
+/* Exact float equality, because these are transcriptions of specific bytes
+ * and "close enough" is what let the axis scale be 12.5% wrong for months. */
+static int exactly(float a, float b) { return a == b; }
+
+static void test_pad_axis_constant(void)
+{
+    /* THE CONSTANT ITSELF. 0x1008F548 in BRD3D.dll holds the byte pattern
+     * 3C6A0EA1. Asserting the bit pattern rather than a decimal makes this
+     * a claim about the image, checkable with one hexdump.
+     *
+     * The version of this test that this one replaces opened by ASSIGNING
+     * g_BrK08F548 = 1.0f/80.0f and then checked the results of its own
+     * assignment, so it passed under any value the module could hold. That
+     * is the failure mode CONVENTIONS.md calls "a test that cannot fail". */
+    uint32_t bits;
+    memcpy(&bits, &g_BrK08F548, 4);
+    CHECK(bits == 0x3C6A0EA1u);
+    CHECK(exactly(g_BrK08F548, 0.0142857144f));
+
+    /* And the two clamp thresholds it feeds, same source. */
+    memcpy(&bits, &g_BrK08F54C, 4);
+    CHECK(bits == 0x3F800000u);
+    memcpy(&bits, &g_BrK08F550, 4);
+    CHECK(bits == 0xBF800000u);
+}
+
 static void test_pad_axes(void)
 {
+    /* The three fmul sites are 0x10035EE1 (stickX -> axisX), 0x10035EF5
+     * (pPad->steer -> axisSteer) and 0x10035F13 (stickY -> axisY). Each is
+     * `fild <int8>; fmul [0x1008F548]; fstp <32-bit slot>`, so the stored
+     * value is the int8 product ROUNDED TO FLOAT -- computed here as the
+     * float product, which for an 8-bit integer times a 24-bit float is the
+     * same number. Expected values below come from those bytes, not from the
+     * port. */
     PadReset();
-    g_BrK08F548 = 1.0f / 80.0f;
-    g_raw.stickX = 40;
-    g_raw.stickY = -40;
+    g_raw.stickX = 35;                 /*  35 * 1/70 == exactly 0.5f  */
+    g_raw.stickY = -35;
     BrPadTranslate(&g_pad);
-    CHECK(approx(g_pad.axisX,  0.5f));
-    CHECK(approx(g_pad.axisY, -0.5f));
+    CHECK(exactly(g_pad.axisX,  0.5f));
+    CHECK(exactly(g_pad.axisY, -0.5f));
+
+    /* 1 is the tightest possible statement of the scale: the stored float IS
+     * the constant. Under the old 1/80 this reads 0.0125f. */
+    PadReset();
+    g_raw.stickX = 1;
+    g_raw.stickY = -1;
+    BrPadTranslate(&g_pad);
+    CHECK(exactly(g_pad.axisX,  0.0142857144f));
+    CHECK(exactly(g_pad.axisY, -0.0142857144f));
+
+    /* 40, the value the superseded test used. Under 1/70 it is 0.571428597f
+     * (0x3F124925); under 1/80 it is exactly 0.5f. Both are inside the clamp,
+     * so this input DOES discriminate -- unlike the digital arm below. */
+    PadReset();
+    g_raw.stickX = 40;
+    BrPadTranslate(&g_pad);
+    CHECK(exactly(g_pad.axisX, 0.571428597f));
+
+    /* 70 is the last unclamped magnitude: 70 * (1/70) is exactly 1.0f, and
+     * 71 is over. Under 1/80 the axis would not reach 1.0 until 80. */
+    PadReset();
+    g_raw.stickX = 70;
+    g_raw.stickY = -70;
+    BrPadTranslate(&g_pad);
+    CHECK(exactly(g_pad.axisX,  1.0f));
+    CHECK(exactly(g_pad.axisY, -1.0f));
 
     /* Saturation, both ends, on all three axes. */
     PadReset();
     g_raw.stickX = 127;
     g_raw.stickY = -128;
-    PadSetButtons(0x0200u);            /* steer -80 -> exactly -1 */
+    PadSetButtons(0x0200u);            /* digital left: steer := 0xB0 == -80 */
     BrPadTranslate(&g_pad);
-    CHECK(approx(g_pad.axisX,  1.0f));
-    CHECK(approx(g_pad.axisY, -1.0f));
-    CHECK(approx(g_pad.axisSteer, -1.0f));
+    CHECK(exactly(g_pad.axisX,  1.0f));
+    CHECK(exactly(g_pad.axisY, -1.0f));
+    CHECK(exactly(g_pad.axisSteer, -1.0f));
+}
+
+/* THE DIGITAL ARM SATURATES, which is the thing that made 1/80 look right.
+ *
+ * 0x10035E0A stores 0x50 (+80) and 0x10035E00 stores 0xB0 (-80) into
+ * pPad->steer, and 0x10035EF5 scales that byte. 80 * (1/70) is 1.14285719f,
+ * which the +/-1 clamp at 0x10035F66 / 0x10035F7D cuts back to exactly +/-1
+ * -- the same answer 1/80 would have produced without any clamping. So the
+ * digital path cannot distinguish the two constants, and the analog path
+ * (test_pad_axes above) can. This test asserts the saturation directly, so
+ * the reason the wrong guess survived is itself pinned. */
+static void test_pad_digital_saturates(void)
+{
+    PadReset();
+    PadSetButtons(0x0100u);            /* digital right: steer := 0x50 == +80 */
+    BrPadTranslate(&g_pad);
+    CHECK(g_pad.steer == (int8_t)0x50);
+    CHECK((float)(int)g_pad.steer * g_BrK08F548 > 1.0f);   /* it overshoots */
+    CHECK(exactly(g_pad.axisSteer, 1.0f));                 /* and is cut back */
+
+    PadReset();
+    PadSetButtons(0x0200u);            /* digital left:  steer := 0xB0 == -80 */
+    BrPadTranslate(&g_pad);
+    CHECK(g_pad.steer == (int8_t)0xB0);
+    CHECK((float)(int)g_pad.steer * g_BrK08F548 < -1.0f);
+    CHECK(exactly(g_pad.axisSteer, -1.0f));
+
+    /* Both digital directions at once cancels to a centred stick
+     * (0x10035E10 stores bl, which is zero), and 0 is the one input on which
+     * the two constants agree without the clamp doing the work. */
+    PadReset();
+    PadSetButtons(0x0300u);
+    BrPadTranslate(&g_pad);
+    CHECK(g_pad.steer == 0);
+    CHECK(exactly(g_pad.axisSteer, 0.0f));
+}
+
+/* The steer axis is compared in the REGISTER and the other two from their
+ * 32-bit spills -- see the note at the clamp site in slice2_19.c. The claim
+ * made there is that the difference is unobservable across the whole int8
+ * domain; this enumerates it rather than trusting the prose. `double` is an
+ * exact model of the original's registers (CONVENTIONS.md: the CRT sets the
+ * x87 control word to 0x027F, so PC == 53-bit), so the two readings can be
+ * computed side by side here. */
+static void test_pad_steer_register_vs_spill(void)
+{
+    int v;
+    int nDisagree = 0;
+
+    for (v = -128; v <= 127; v++) {
+        double  reg   = (double)v * (double)g_BrK08F548;  /* what fcom sees   */
+        float   spill = (float)v * g_BrK08F548;           /* what fld sees    */
+        float   viaReg, viaSpill;
+
+        viaReg   = (reg   >  1.0)  ? 1.0f : (!(reg   >= -1.0)  ? -1.0f : spill);
+        viaSpill = (spill >  1.0f) ? 1.0f : (!(spill >= -1.0f) ? -1.0f : spill);
+
+        if ((reg > 1.0) != (spill > 1.0f))
+            nDisagree++;                       /* upper clamp disagrees */
+        else if (!(reg >= -1.0) != !(spill >= -1.0f))
+            nDisagree++;                       /* lower clamp disagrees */
+        /* Whatever the two paths decide, they must land on the same bits. */
+        CHECK(exactly(viaReg, viaSpill));
+    }
+
+    /* And the disagreement is real, not vacuous: it happens at +70 and -70,
+     * where the 53-bit product is +/-1.0000000055879354 and the float spill
+     * is exactly +/-1.0f. If this ever reads 0 the loop above has stopped
+     * testing anything. */
+    CHECK(nDisagree == 2);
 }
 
 /* ================================================================== */
@@ -1160,7 +1288,10 @@ int main(void)
     test_pad_error_neutralises();
     test_pad_steering();
     test_pad_derived_bits_and_ramp();
+    test_pad_axis_constant();
     test_pad_axes();
+    test_pad_digital_saturates();
+    test_pad_steer_register_vs_spill();
 
     test_model_swap();
     test_model_swap_null_block();

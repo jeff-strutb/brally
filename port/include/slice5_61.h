@@ -43,6 +43,37 @@
  *                                   nowhere in the port yet. Their callers
  *                                   only ever take their ADDRESS, so a stub
  *                                   links exactly as well as a guess.
+ *
+ * "THEIR CALLERS ONLY EVER TAKE THEIR ADDRESS" IS A UNIVERSAL, SO IT WAS
+ * CHECKED EXHAUSTIVELY RATHER THAN SPOT-CHECKED, and it holds. Every mapped
+ * function in BOTH images was disassembled and every `call`/`jmp` with an
+ * immediate target collected, plus every relocated dword in the whole image.
+ * (The scanner was calibrated first against two known answers: 0x10021A20's
+ * dispatch pointer at 0x100A9A68, and 0x1006C990's two documented call sites.
+ * Both came back exact.) All five, in both builds:
+ *
+ *   D3D          Glide        direct CALL  direct JMP  address-taken
+ *   0x10051D30   0x1004ABE0        0           0        1  (mov imm32)
+ *   0x10057C10   0x10050AC0        0           0        2
+ *   0x10052030   0x1004AEE0        0           0        1
+ *   0x1005A6E0   0x10053590        0           0        1
+ *   0x1004E830   0x100476E0        0           0        1
+ *
+ * Zero direct calls and zero direct jumps, so no tail call reaches them
+ * either, and the two builds agree row for row. Note the Glide column:
+ * 0x1005A6E0 is ALSO a Glide address, for a different 82-byte function -- the
+ * "one number, two functions" trap CONVENTIONS.md records -- so the Glide
+ * scan used 0x10053590 out of shared.csv, not the D3D number.
+ *
+ * WHAT THE STUB DOES NOT BUY, stated because the sentence above invites the
+ * wrong reading. Every one of those references is a `mov dword ptr [eax+4],
+ * <addr>` that installs the function into a freshly `operator new`'d object,
+ * and in Glide 0x1003C880 the slot is INVOKED six instructions later on that
+ * same object: `mov eax,[0x10AC5CC8] / push eax / call dword ptr [eax+4]`.
+ * (0x10AC5C5C, written alongside, is the Glide half of the 0x10AA2904 pair.)
+ * So a stub links exactly as well as a guess AND RUNS NOTHING. These are the
+ * five menu screens' constructor bodies; the stubs are frontiers, not
+ * substitutes, which is why they are listed here rather than implemented.
  */
 #ifndef SLICE5_61_H
 #define SLICE5_61_H

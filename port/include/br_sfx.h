@@ -298,10 +298,14 @@ uint32_t BrSfxHzFromFloat(float hz);
  * NaN takes the zero exit at BOTH tests, because an x87 unordered compare
  * sets C0 exactly as "less than" does -- the same trap br_ftol64 documents.
  *
- * DEVIATION: the original keeps this whole chain in one 80-bit x87 register
- * and never rounds to float, so the intermediates are computed in double
- * here rather than float.  Rounding each step to float would be the larger
- * deviation, not the smaller one. */
+ * NOT a deviation, and it used to be filed as one.  The original keeps this
+ * whole chain in one x87 register and never rounds to float, and that
+ * register is 53-bit (CRT control word 0x027F -- CONVENTIONS.md).  So the
+ * `double` used here is an EXACT model of it, not a nearer approximation.
+ * The old note's instinct was right -- "rounding each step to float would be
+ * the larger deviation" -- but it called the result a deviation anyway,
+ * because it believed the register was 80-bit and therefore unreachable.  It
+ * is reachable, and this is it. */
 double BrSfxEngineHz(float rpm, float doppler);
 
 /* hertz -> the 32.32 ratio the low/rev channel stores.

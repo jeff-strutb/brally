@@ -591,8 +591,11 @@ void BrExt_1004DFC0(BrPhase_ *pSelf)
     }
 
     /* second read of 0x10AA2A34, with a DIFFERENT three-way split.
-     * DEVIATION (x87): the original keeps the whole chain in 80-bit
-     * registers; here it is float throughout.
+     * DEVIATION (x87): the original keeps the whole chain in registers.  This
+     * note used to call them "80-bit"; they are 53-bit (CRT control word
+     * 0x027F -- CONVENTIONS.md), so the chain is exactly a C `double` and the
+     * float here rounds at every step.  Left as float pending a re-trace of
+     * this chain's spill points; see slice3_44.c for the shape of the fix.
      *
      * Offsets: control +0x1E1E8 / +0x1E200 / +0x1E204 are list.f1A99C[5] /
      * [11] / [12] (br_ui.h ADJ-6).  The original copies the first two arms as

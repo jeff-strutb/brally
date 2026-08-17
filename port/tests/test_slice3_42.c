@@ -10,6 +10,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "slice3_42.h"
@@ -741,6 +742,48 @@ static void test_rb_accum_all(void)
     CHECK(NEAR(b.accel.y, 0.0));
 }
 
+
+/* THE SPILL MODEL in BrS42VelAt.
+ *
+ * The cross product's three components stay in x87 registers and reach their
+ * add unrounded: the only store among them is `fst dword [esp+0x14]`
+ * (1006B5C0 in 0x1006B510, 1006B4E4 in 0x1006B430) and that slot is never
+ * reloaded, so it rounds nothing.  Each sum is then stored once.
+ *
+ * This exists because the mutation run found the whole distinction
+ * unobservable: rounding all three cross components to float before the add
+ * left every suite green AND left test_collresp's slope trace bit-identical.
+ * The reason is that the other fixtures use values on which the two readings
+ * agree exactly.  The inputs below were searched for -- they are a triple on
+ * which the readings differ by one ulp -- and the expected value is given as
+ * a bit pattern so it is a claim about the arithmetic and not about the port.
+ *
+ * With the identity matrix, BrMat4MulVec3Transposed returns the point
+ * unchanged, so r is exactly (rx, ry, rz) and cx = wy*rz - wz*ry. */
+static void test_rb_velocity_spill(void)
+{
+    BrRbBodyFull b;
+    BrVec3 p, out;
+    uint32_t u;
+
+    IdentityBody(&b);
+    b.angVel.x = 0.0f;
+    b.angVel.y = 10.00561809539795f;      /* wy */
+    b.angVel.z = -12.859130859375f;       /* wz */
+    b.vel.x    = -16.748279571533203f;
+    b.vel.y    = 0.0f;
+    b.vel.z    = 0.0f;
+
+    p.x = 0.0f;
+    p.y = 11.565417289733887f;            /* ry */
+    p.z = -0.878690242767334f;            /* rz */
+
+    BrRbVelAtPoint(&out, &b, &p);
+    memcpy(&u, &out.x, 4);
+    /* Rounding cx to float before the add gives 0x42F65CBA. */
+    CHECK(u == 0x42F65CB9u);
+}
+
 int main(void)
 {
     test_mat4_from_carstate();
@@ -748,6 +791,7 @@ int main(void)
     test_replay();
     test_fx_clear();
     test_rb_velocity();
+    test_rb_velocity_spill();
     test_rb_forces();
     test_rb_solve();
     test_rb_accum_all();

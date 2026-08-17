@@ -23,13 +23,21 @@
  * straight off the pointer increments in the original (0x10 vs 0x0C) and is
  * the single easiest thing to get wrong in this file.
  *
- * GENERAL DEVIATION (applies to every float routine below): the original is
- * x87 and keeps intermediate products and sums in 80-bit registers, spilling
- * to 32 bits only where it stores.  This port evaluates in `float`, so every
- * intermediate is rounded.  Results can differ in the last ulp.  The ORDER of
- * every add/sub/mul has been preserved from the traced x87 stack, which is
- * the part that actually matters; the precision difference is unavoidable in
- * portable C and is not repeated as a per-line DEVIATION comment.
+ * FLOAT PRECISION.  This entry used to be a GENERAL DEVIATION covering every
+ * float routine below: "the original ... keeps intermediates in 80-bit
+ * registers ... results can differ in the last ulp ... unavoidable in
+ * portable C".  All three of those are wrong.  The x87 here runs at 53-BIT
+ * precision -- the CRT's control word is 0x027F, see CONVENTIONS.md -- so a
+ * C `double` is an EXACT model of an unspilled intermediate, the difference
+ * is not a last-ulp rounding artefact, and it is entirely avoidable.
+ *
+ * So the rule in this file is:
+ *   - an intermediate the original does NOT store goes in a `double`;
+ *   - an intermediate the original DOES store to a 32-bit slot is rounded
+ *     through a `float` temporary at that point, because that is what the
+ *     store does.  Widening those would be the same bug reversed.
+ * The ORDER of every add/sub/mul is still preserved from the traced x87
+ * stack.  Per-function notes below record which values are spilled and where.
  */
 #ifndef SLICE3_44_H
 #define SLICE3_44_H
