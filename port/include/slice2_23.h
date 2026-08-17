@@ -287,6 +287,11 @@ extern uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key);
 /* Both are entered through an 11-byte hot-patch stub (`jmp` + `nop` padding)
  * in the original; the stub carries no behaviour. */
 void BrUiFn1003E010(BrUiGlobals *pG);   /* 0x102 -> gAA27E0 (word) and gAA2598 */
+/* 0x1007C8A0's local reproduction, exposed so its out-of-range answer can be
+ * asserted: it returns 0, not INT32_MIN, and no caller can be handed a float
+ * that reaches that path. */
+int32_t BrUiFtolProbe(float f);
+
 void BrUiFn1003E040(BrUiGlobals *pG);   /* 0x37  -> gAA27E2 (word) and gA9D010 */
 
 /* ==========================================================================

@@ -312,6 +312,31 @@ use vtable dispatch. RTTI is absent only because MSVC 5 defaults it off.
 See `CONVENTIONS.md` for the coding rules this port follows -- most of them are
 non-obvious and each one has cost real time.
 
+## Is a function already ported?
+
+`tools/manifest.py 0xADDR`. Not a grep, and not `isported.py`.
+
+Modules declare what they implement, in the source:
+
+    /* @implements 0x1001CC00 glide BrRallyMain */
+
+The build field is mandatory — the same address names different functions in
+the two renderer builds, and omitting it has produced false "already ported"
+answers repeatedly. `tools/manifest.py --audit` shows how much of the tree is
+still known only by inference. See CONVENTIONS.md for why the inferring tool
+was abandoned after seven distinct defects.
+
+**`config/ported.csv`** is the same information as a table you can read without
+running anything — address, build, symbol, file, line — for every function this
+tree claims to implement. It is **generated** from the `@implements` lines by
+`tools/manifest.py --emit`, never edited by hand: a hand-kept index drifts the
+moment a function moves and nothing fails when it does. Regenerate and diff to
+check the two agree.
+
+It records *claims*, not verified facts. The 792 entries migrated from the old
+detector were preserved rather than checked, and at least one is known wrong.
+Equivalence auditing is what tests them; the manifest only makes them testable.
+
 ## Tooling
 
 - `tools/pe.py` — PE/COFF reader (sections, imports, exports, base relocations).

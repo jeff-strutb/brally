@@ -124,6 +124,24 @@ def report(addr, man, leg):
 
 def main():
     man = manifest()
+    if '--emit' in sys.argv:
+        # config/ported.csv is the HUMAN-READABLE record, and it is GENERATED
+        # from the @implements lines in the source rather than maintained by
+        # hand. That direction matters: a hand-kept index drifts the moment a
+        # function moves and nothing fails when it does. Regenerate and diff to
+        # check the two agree -- a non-empty diff means someone edited the
+        # wrong one.
+        rows = []
+        for k in sorted(man):
+            for build, sym, f, ln in man[k]:
+                rows.append(('0x' + k, build, sym, f, ln))
+        with open('config/ported.csv', 'w', newline='') as fh:
+            w = csv.writer(fh)
+            w.writerow(['address', 'build', 'symbol', 'file', 'line'])
+            for r in rows:
+                w.writerow(r)
+        print("wrote config/ported.csv  (%d entries)" % len(rows))
+        return
     if '--list' in sys.argv:
         for k in sorted(man):
             for build, sym, f, ln in man[k]:

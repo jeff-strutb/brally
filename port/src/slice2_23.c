@@ -103,13 +103,35 @@ const BrUiWidgetVtbl *BrUiItemVtblOf(BrUiObj *pObj, int32_t i)
  * Local reproductions of routines the contract already pins down
  * ========================================================================== */
 
-/* 0x1007C8A0 __ftol: x87 `fistp` with the rounding control set to truncate,
- * low dword taken before any clamp. On overflow or NaN the x87 stores the
- * "integer indefinite" value 0x80000000, which is what this returns. */
+static int32_t br23_ftol(float f);
+
+/* 0x1007C8A0 __ftol. RETURNS 0 OUT OF RANGE, NOT 0x80000000.
+ *
+ * This banner used to say the opposite, and the code followed the banner:
+ *
+ *   1007C8B9  fistp qword ptr [ebp-0xC]     <- SIXTY-FOUR bits
+ *   1007C8BF  mov   eax, dword ptr [ebp-0xC]   <- the LOW dword
+ *
+ * The x87's integer-indefinite for a 64-bit store is 0x8000000000000000, so
+ * the low dword -- which is what `eax` receives -- is ZERO. 0x80000000 would
+ * be right only for a 32-bit `fistp dword`, which this is not.
+ *
+ * CONVENTIONS.md has carried "__ftol returns 0 out of range, not 0x80000000"
+ * for some time, and slice1_02.c, slice2_18.c and slice2_24.c all state it
+ * correctly. This file was the lone outlier: the rule was written down, three
+ * modules obeyed it, and one contradicted it in prose and then in code.
+ *
+ * Found by the round-3 equivalence audit. Affects 0x1003E040 and 0x1003E920,
+ * where an out-of-range value now yields 0 rather than a large negative. */
+/* Exposed for the suite: the out-of-range value is the whole point and it is
+ * not reachable through any caller with a float a caller can supply. Naming it
+ * is better than an assertion that cannot get at it. */
+int32_t BrUiFtolProbe(float f) { return br23_ftol(f); }
+
 static int32_t br23_ftol(float f)
 {
     if (!(f >= -2147483648.0f && f < 2147483648.0f)) {
-        return INT32_MIN;
+        return 0;
     }
     return (int32_t)f;
 }
@@ -323,6 +345,7 @@ const char *BrDPlayErrName(int32_t hr)
  * 0x1003DFC0
  * ========================================================================== */
 
+/* @implements 0x1003DFC0 d3d BrUiFn1003DFC0 */
 void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
 {
     pState->g0B380C = 0;
@@ -340,12 +363,14 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
  * 0x1003E010 / 0x1003E040
  * ========================================================================== */
 
+/* @implements 0x1003E010 d3d BrUiFn1003E010 */
 void BrUiFn1003E010(BrUiGlobals *pG)
 {
     pG->gAA27E0 = (int16_t)0x0102;
     pG->gAA2598 = 0x102;
 }
 
+/* @implements 0x1003E040 d3d BrUiFn1003E040 */
 void BrUiFn1003E040(BrUiGlobals *pG)
 {
     pG->gAA27E2 = (int16_t)0x0037;
@@ -410,6 +435,7 @@ int32_t BrUiDraw1003E7A0(BrUiObj *pObj)
  * 0x1003E840
  * ========================================================================== */
 
+/* @implements 0x1003E840 d3d BrUiText1003E840 */
 int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t id = 0x0C;
@@ -426,6 +452,7 @@ int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E8D0 / 0x1003EA90
  * ========================================================================== */
 
+/* @implements 0x1003E8D0 d3d br23_num_common */
 static int32_t br23_num_common(BrUiObj *pObj, int32_t value)
 {
     BrUiObj              *pItem0 = BrUiItem(pObj, 0);
@@ -445,6 +472,7 @@ int32_t BrUiNum1003E8D0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_num_common(pObj, (int32_t)pG->tAA26E8[pG->gAA28AC]);
 }
 
+/* @implements 0x1003EA90 d3d BrUiNum1003EA90 */
 int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_num_common(pObj, (int32_t)pG->tA9D068[pG->gAA28AC]);
@@ -454,6 +482,7 @@ int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E920 / 0x1003EA40
  * ========================================================================== */
 
+/* @implements 0x1003E920 d3d BrUiFn1003E920 */
 int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
 {
     /* lea ecx,[eax+eax*4] ; lea edx,[eax+ecx*2+0x3D]  ->  11*a + 61 */
@@ -521,6 +550,7 @@ int32_t BrUiDraw1003E9E0(BrUiObj *pObj, BrUiGlobals *pG)
  * The poll family
  * ========================================================================== */
 
+/* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
 int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->g0AB3F4);
@@ -554,18 +584,21 @@ int32_t BrUiPoll1003EC30(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_poll_commit(pObj, pG);
 }
 
+/* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
 int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->gAA28AC);
     return 1;
 }
 
+/* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
 int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->gAA2880);
     return 1;
 }
 
+/* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
 int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     /* The answer is thrown away -- there is no store-back here. */
@@ -573,6 +606,7 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003EBE0 d3d BrUiPoll1003EBE0 */
 int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t r = br23_sel_offer(pObj, pG->gAA2880);
@@ -591,6 +625,7 @@ int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
 int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->gAA2840);
@@ -603,6 +638,7 @@ int32_t BrUiPoll1003ED10(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
 int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->gAA2A30);
@@ -677,6 +713,7 @@ int32_t BrUiItemApply(BrUiObj *pObj, int16_t index, BrUiGlobals *pG)
  * Text read-back callbacks
  * ========================================================================== */
 
+/* @implements 0x1003EEF0 d3d BrUiFn1003EEF0 */
 int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText;
@@ -688,6 +725,7 @@ int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003EF60 d3d BrUiFn1003EF60 */
 int32_t BrUiFn1003EF60(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29A8, BrUiItemText(pObj, 0));
@@ -712,6 +750,7 @@ int32_t BrUiFn1003EF90(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003F020 d3d BrUiFn1003F020 */
 int32_t BrUiFn1003F020(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29E8, BrUiItemText(pObj, 0));
@@ -735,11 +774,13 @@ int32_t BrUiFn1003F0B0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_readback(pObj, pG, pG->szB4E760);
 }
 
+/* @implements 0x1003F110 d3d BrUiFn1003F110 */
 int32_t BrUiFn1003F110(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_readback(pObj, pG, pG->szA9DD28);
 }
 
+/* @implements 0x1003F170 d3d BrUiFn1003F170 */
 int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText = BrUiItemText(pObj, 0);
@@ -755,6 +796,7 @@ int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003F210 d3d BrUiFn1003F210 */
 int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText;
@@ -766,6 +808,7 @@ int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003F280 d3d BrUiFn1003F280 */
 int32_t BrUiFn1003F280(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29BC, BrUiItemText(pObj, 0));
@@ -898,6 +941,7 @@ static int br23_is_solo(const BrUiGlobals *pG)
     return (pG->gAA2904 == pG->gAA2964 && pG->gAA28E8 == 0);
 }
 
+/* @implements 0x1003F760 d3d BrUiText1003F760 */
 int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t id;
@@ -915,6 +959,7 @@ int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, id);
 }
 
+/* @implements 0x1003F7F0 d3d BrUiText1003F7F0 */
 int32_t BrUiText1003F7F0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC348[pG->g0AC64C]);
@@ -925,6 +970,7 @@ int32_t BrUiText1003F860(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, pG->tAC3A8[pG->gAA2A08]);
 }
 
+/* @implements 0x1003F8D0 d3d BrUiText1003F8D0 */
 int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     if (pG->gAA2850 != 0) {
@@ -942,6 +988,7 @@ int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 }
 
+/* @implements 0x1003F990 d3d BrUiText1003F990 */
 int32_t BrUiText1003F990(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC358[pG->g0AC650]);
@@ -996,17 +1043,20 @@ int32_t BrUiText1003FA00(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_item0_set_apply(pObj, pG, szTmp);
 }
 
+/* @implements 0x1003FC40 d3d BrUiText1003FC40 */
 int32_t BrUiText1003FC40(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC3F0[pG->gAA287C]);
 }
 
+/* @implements 0x1003FCB0 d3d BrUiText1003FCB0 */
 int32_t BrUiText1003FCB0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t id = (pG->g18ABDBC != 0) ? pG->tAC400[pG->gAA2A1C] : 0x74;
     return br23_text_id(pObj, pG, id);
 }
 
+/* @implements 0x1003FD30 d3d BrUiText1003FD30 */
 int32_t BrUiText1003FD30(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC418[pG->gAA2A28]);
@@ -1017,6 +1067,7 @@ int32_t BrUiText1003FDA0(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, pG->tAC408[pG->gAA2A20]);
 }
 
+/* @implements 0x1003FE10 d3d BrUiText1003FE10 */
 int32_t BrUiText1003FE10(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC410[pG->gAA2A24]);
@@ -1050,6 +1101,7 @@ int32_t BrUiText1003FE80(BrUiObj *pObj, BrUiGlobals *pG)
     return br23_text_id(pObj, pG, id);
 }
 
+/* @implements 0x1003FFD0 d3d BrUiText1003FFD0 */
 int32_t BrUiText1003FFD0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC3E0[pG->gAA2A0C]);
@@ -1140,6 +1192,7 @@ int32_t BrUiText100400E0(BrUiObj *pObj, BrUiGlobals *pG,
  * 0x10040330
  * ========================================================================== */
 
+/* @implements 0x10040330 d3d BrCfgFindConflicts */
 int32_t BrCfgFindConflicts(BrUiGlobals *pG, int32_t kind, void *pB4DF30)
 {
     /* Records whose key is one of these are never taken as the `j` of a

@@ -891,3 +891,54 @@ A percentage without its divisor is not a measurement. And "ported" is a
 ceiling on code TRANSCRIBED, never a floor on code CORRECT: this tree has 42
 call sites reaching a placeholder or stub and 43 hole annotations, and no audit
 of behavioural equivalence against the original has been done.
+
+## THE PORTED MANIFEST IS THE ANSWER TO "IS THIS ALREADY DONE?"
+
+Ask `tools/manifest.py 0xADDR` FIRST. Not `isported.py`, not `grep`.
+
+A module states what it implements, in the source, next to the function:
+
+    /* @implements 0x1001CC00 glide BrRallyMain */
+    int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
+
+The BUILD FIELD IS MANDATORY. A bare address is not self-describing: the same
+number names DIFFERENT FUNCTIONS in BRGlide.dll and BRD3D.dll. Glide 0x1001E9F0
+pairs to D3D 0x1001CC00, and Glide 0x1001CC00 is RallyMain -- so a display-list
+opcode handler was once reported as the entry point's accessor. Omitting the
+build reintroduces that class of error immediately.
+
+WHY IT LIVES IN THE SOURCE rather than in a config file: a separate index drifts
+the moment someone moves a function, and nothing fails when it does. A comment
+adjacent to the definition moves with it.
+
+WHY IT EXISTS AT ALL. `tools/isported.py` answered this question by matching
+the SHAPE OF THE COMMENT above a function. It has been wrong SEVEN distinct
+ways -- a non-recursive glob that saw half the tree, a character class that
+could not cross a line, a lazy quantifier that ran from a passing mention into
+the next function, a greedy prefix that captured a different address on the
+same line, counting this project's own frontier stubs as ports, a cross-build
+match with no build tag, and a prefix rule so strict that six already-ported
+handlers read as missing at once. That last one sent an agent to re-transcribe
+work that already existed. Four attempts to fix it each broke something that
+had been correct.
+
+Comments are prose, and this tree grew three naming conventions organically. No
+regex separates a banner from a file-header index from a passing mention in
+every case, because the distinction is not reliably encoded in the text. A
+better parser was never the answer. Writing the claim down is.
+
+WHAT THE MANIFEST DOES NOT DO. It records a claim; it does not verify one. The
+792 entries migrated from the old detector were PRESERVED, NOT VERIFIED, and at
+least one is known wrong -- `@implements 0x1001EC30` was attached to a six-line
+helper because that helper's comment opens with the address. Equivalence
+auditing is what checks claims. The manifest only makes them checkable.
+
+RULES:
+  - every new transcription gets an `@implements` line, with the build
+  - `tools/manifest.py --audit` reports what is still known only by inference;
+    that number is a backlog and is meant to reach zero
+  - two `@implements` lines for one address is a DUPLICATE TRANSCRIPTION, which
+    this file forbids elsewhere and which the manifest is the cheapest way to
+    detect. Fourteen display-list opcodes are currently in that state.
+  - `isported.py` is retained for the inferred residue only. Treat any answer
+    it gives as a hypothesis.

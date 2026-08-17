@@ -416,6 +416,25 @@ static void test_scalar_callbacks(void)
         CHECK(BrUiLdF(pObj, BR_UI_OFF_F3C) == (float)(11 * n + 0x3D));
     }
 
+    /* __ftol RETURNS 0 OUT OF RANGE, NOT INT32_MIN, and nothing asserted it.
+     *
+     * 0x1007C8A0 is `fistp qword` then `mov eax, LOW dword`. The 64-bit
+     * integer-indefinite is 0x8000000000000000, so the low half -- what eax
+     * gets -- is zero. 0x80000000 would be right only for a 32-bit fistp.
+     *
+     * slice2_23.c returned INT32_MIN because its banner said so; three other
+     * modules and CONVENTIONS.md had it right. Found by the round-3 audit, one
+     * step before the wrong value could reach anything. Asserted through the
+     * real consumer rather than the static helper. */
+    {
+        float fBig = 1.0e10f;                 /* far past 2^31 */
+        g_G.g0AC65C = 0;
+        CHECK(BrUiFtolProbe(fBig) == 0);    /* NOT INT32_MIN */
+        CHECK(BrUiFtolProbe(-1.0e10f) == 0);
+        CHECK(BrUiFtolProbe(2147483648.0f) == 0);   /* exactly 2^31: out */
+        CHECK(BrUiFtolProbe(2147483520.0f) == 2147483520); /* largest in */
+    }
+
     /* 0x1003EA40 picks its count with g0AB3D8 and the two are NOT
      * interchangeable. */
     g_G.gB4E708 = 3u;
