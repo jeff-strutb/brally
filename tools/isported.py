@@ -40,8 +40,21 @@ import sys, os, re, csv, glob
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-SRC = 'port/src/*.c'
-HDR = 'port/include/*.h'
+# RECURSIVE, and it was not. port/src/ is no longer flat -- port/src/README.md
+# files modules under a responsibility folder and the sliceN_MM.c at the top
+# level are the shrinking backlog, not the tree. A flat glob therefore saw 63
+# files out of 123 and could not see ANY finished module: br_boot.c's
+# BrRallyMain (0x1001CC00) and br_basedir.c's BrBaseDirInit (0x10063860) both
+# came back "not defined anywhere", which is the precise false negative this
+# tool exists to prevent and the precise reason this project keeps restarting
+# work it already has. It also meant FRONTIER_FILES never fired, since
+# br_bootfrontier.c is itself inside a folder.
+#
+# Note the pattern must be '**/*.c' with recursive=True: '**' matches zero or
+# more directories, so it covers the top-level files too and the flat glob
+# does not need to be kept alongside it.
+SRC = 'port/src/**/*.c'
+HDR = 'port/include/**/*.h'
 
 # Files that DECLARE the frontier rather than implement the game. A counted
 # no-op named after an address is not a transcription of it, and reporting one
@@ -60,12 +73,12 @@ def definitions():
             return                      # a stub is not a port
         out.setdefault(addr.upper(), (name, os.path.basename(f), how))
 
-    for f in glob.glob(HDR):
+    for f in glob.glob(HDR, recursive=True):
         for ln in open(f, errors='ignore'):
-            m = re.search(r'^\s*[A-Za-z_][\w \*]*\s(\w+)\s*\([^;]*\)\s*;\s*/\*\s*0x([0-9A-Fa-f]{8})', ln)
+            m = re.search(r'^\s*[A-Za-z_][\w \*]*[\s\*](\w+)\s*\([^;]*\)\s*;\s*/\*\s*0x([0-9A-Fa-f]{8})', ln)
             if m:
                 add(m.group(2), m.group(1), f, 'annotated declaration')
-    for f in glob.glob(SRC):
+    for f in glob.glob(SRC, recursive=True):
         s = open(f, errors='ignore').read()
         # NON-GREEDY TO THE COMMENT TERMINATOR, and this was wrong first time.
         # The original pattern used [^*]* to reach the closing */, which cannot
@@ -107,13 +120,13 @@ def definitions():
         for m in re.finditer(r'/\*(?:(?!\*/)(?!0x[0-9A-Fa-f]{8}).){0,200}?'
                              r'0x([0-9A-Fa-f]{8})'
                              r'(?:(?!\*/).)*?\*/\s*\n\s*(?:static\s+)?'
-                             r'[A-Za-z_][\w \*]*\s(\w+)\s*\(', s, re.S):
+                             r'[A-Za-z_][\w \*]*[\s\*](\w+)\s*\(', s, re.S):
             add(m.group(1), m.group(2), f, 'banner over a body')
-        for m in re.finditer(r'^[A-Za-z_][\w \*]*\s(\w*?([0-9A-Fa-f]{8})\w*)\s*'
+        for m in re.finditer(r'^[A-Za-z_][\w \*]*[\s\*](\w*?([0-9A-Fa-f]{8})\w*)\s*'
                              r'\([^;]*\)\s*\n?\s*\{', s, re.M):
             add(m.group(2), m.group(1), f, 'address in the name')
         # short forms: BrMenuText1300 for 0x10041300, BrOpt37D0 for 0x100437D0
-        for m in re.finditer(r'^[A-Za-z_][\w \*]*\s(\w*?([0-9A-Fa-f]{4})\w*)\s*'
+        for m in re.finditer(r'^[A-Za-z_][\w \*]*[\s\*](\w*?([0-9A-Fa-f]{4})\w*)\s*'
                              r'\([^;]*\)\s*\n?\s*\{', s, re.M):
             frag = m.group(2).upper()
             add(('1000' + frag)[-8:], m.group(1), f, 'short address in the name')
@@ -124,7 +137,7 @@ def definitions():
 def mentions(addr):
     out = []
     pat = '0x%08X' % addr
-    for f in glob.glob(SRC) + glob.glob(HDR):
+    for f in glob.glob(SRC, recursive=True) + glob.glob(HDR, recursive=True):
         for i, ln in enumerate(open(f, errors='ignore'), 1):
             if pat.lower() in ln.lower():
                 out.append((os.path.basename(f), i, ln.strip()[:88]))

@@ -28,9 +28,9 @@ static const char *const s_apszName[F_COUNT] = {
     "0x10063970 state3 (5 args)",
     "0x1006C990 load image",
     "0x100628B0 state3 init",
-    "0x1006C460 renderer create",
+    "0x1006C460 SOUND reset (not renderer)",
     "0x10056260 state4",
-    "0x1006E280 state4 -> 0x10AC6748",
+    "0x1006E280 state4 (PORTED: BrSub10075020)",
     "0x1001CE9D state4 config tail"
 };
 
