@@ -3,21 +3,21 @@ va,glide_size,aligned,status,name,note
 0x10009FC0,322,yes,TODO,,
 0x1000A110,7577,yes,TODO,,
 0x1000BEB0,1576,yes,TODO,,
-0x1000CB20,96,yes,TODO,,
+0x1000CB20,96,yes,done,BrGfxSetBankPointers,D3D twin ported before the frontier was drawn; verified real body
 0x1000EAF0,9354,yes,TODO,,
-0x10010F80,47,yes,TODO,,
+0x10010F80,47,yes,done,BrRasterSelect,D3D twin ported before the frontier was drawn; verified real body
 0x10011650,847,yes,TODO,,
 0x100119C0,837,yes,TODO,,
 0x10011D20,383,yes,TODO,,
 0x10011EA0,253,yes,TODO,,
-0x10013140,160,yes,TODO,,
+0x10013140,160,yes,done,BrHudDrawText,D3D twin ported before the frontier was drawn; verified real body
 0x10014C00,164,yes,done,BrHudDrawViewCentreText,implemented
 0x10014D00,246,yes,done,BrHudDrawViewMessage,implemented
 0x10014E00,1007,yes,TODO,,
 0x10015300,402,yes,done,BrHudDraw,implemented
 0x10015630,1239,yes,done,BrSceneSetupFrame,implemented
 0x10016820,8,yes,done,BrTextFlag358Clear,implemented
-0x10016830,8,yes,TODO,,
+0x10016830,8,yes,done,BrTextAlignCentre,D3D twin ported before the frontier was drawn; verified real body
 0x10016840,8,yes,done,BrSub_10019280,implemented
 0x10016850,8,yes,done,BrSub_10019290,implemented
 0x10016860,69,yes,done,BrTextSetColors,implemented
@@ -32,16 +32,16 @@ va,glide_size,aligned,status,name,note
 0x1002AB94,5,yes,n/a,,"bare-ret/empty stub — omit at call site (cf. 0x10008D60), not a port"
 0x1002AB99,416,no,done,BrGfxClearScreen,implemented
 0x1002AD39,478,no,done,BrGfxFillRect,implemented
-0x1002AF17,1241,no,TODO,,unaligned start — verify boundary before porting
-0x1002B480,1303,yes,TODO,,
+0x1002AF17,1241,no,done,BrFogUpdate,D3D twin ported before the frontier was drawn; verified real body
+0x1002B480,1303,yes,done,BrHudColorsUpdate,D3D twin ported before the frontier was drawn; verified real body
 0x1002BF24,19,yes,done,BrFrameBeginRec,implemented
 0x1002BF50,419,yes,done,BrSub_1003289F,implemented
-0x1002C0F3,502,no,TODO,,unaligned start — verify boundary before porting
-0x1002C2E9,442,no,TODO,,unaligned start — verify boundary before porting
+0x1002C0F3,502,no,done,BrViewportSet,D3D twin ported before the frontier was drawn; verified real body
+0x1002C2E9,442,no,done,BrViewportSetFull,D3D twin ported before the frontier was drawn; verified real body
 0x1002C509,5,no,n/a,,"bare-ret/empty stub — omit at call site (cf. 0x10008D60), not a port"
 0x1002C50E,1585,no,TODO,,unaligned start — verify boundary before porting
 0x1002CB49,744,no,TODO,,unaligned start — verify boundary before porting
-0x1002CEE9,1145,no,TODO,,unaligned start — verify boundary before porting
+0x1002CEE9,1145,no,done,BrFrameEnd,D3D twin ported before the frontier was drawn; verified real body
 0x1002D362,466,no,done,BrCamFrustumBuild,implemented
 0x1002D534,251,yes,done,BrCamMatrixSetup,implemented
 0x1002D72E,310,no,done,BrCamMatrixSetupOrtho,implemented

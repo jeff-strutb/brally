@@ -35,7 +35,7 @@ happen (or not)._
 | 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens — see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
-| 6 | Driving — the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER still to go: the per-frame race render (`0x10011FA0`) is untranscribed. Of its 50 direct callees, 23 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **23 to port** — 17 boundary-clean, 6 mid-function starts to resolve first. Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
+| 6 | Driving — the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER still to go: the per-frame race render (`0x10011FA0`) is untranscribed. Of its 50 direct callees, 32 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **14 to port** — 12 boundary-clean, 2 mid-function starts to resolve first. Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
 | 7 | Full race: HUD, audio, results | 🔴 not yet |
 
 `░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
@@ -333,13 +333,16 @@ the runtime.
   section above). `RallyMain`, the main loop, window, wndproc and DX detect are
   transcribed and test-green; three init callees remain on the counted
   frontier. The gap that stops a real race is milestone 6, below, not startup.
-- **Cars fall through the world — but the response is now fully transcribed.** The
-  collision *broad phase* and the whole *response* unit (`0x10067710` and its three
-  callees) are ported and oracle-verified. What is not yet ported is the per-frame
-  *caller*, the substep loop `0x10067D30` that runs the walker each frame; until
-  that lands, nothing drives the verified response in a live race, so a headless
-  race still shows z descending monotonically (the response entered as a counted
-  no-op 14,400 times).
+- **Cars no longer fall through the world.** The collision *broad phase* and the
+  whole *response* unit (`0x10067710` and its three callees) are ported and
+  oracle-verified, AND the per-frame *caller* now drives them: `BrCarPhysAdvance`
+  (`0x10067C30`) calls the walker each substep where the `pfnCollide` hole was,
+  with the `f1E8` box-matrix Z lift applied first. On flat ground the box clears
+  the surface at the suspension rest (the lift is *live*, not the dead accumulator
+  an earlier header claimed), so the car holds `0.190132` rather than floating to
+  the box-floor height; a car that lands is caught. A headless flat-ground settle
+  now fires the response on impact and comes to rest instead of z descending
+  monotonically.
 - **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
   ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
   draws a race.
