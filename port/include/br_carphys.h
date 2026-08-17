@@ -544,12 +544,11 @@ typedef struct BrCarPhys {
  * ====================================================================== */
 
 typedef struct BrCarPhysHooks {
-    /* 0x10067710 and its impulse solver 0x10065C80 -- the OBB RESPONSE.
-     * One hook per substep.  Its broad phase, 0x10066AD0 and the six
-     * callees under it, IS PORTED now (br_collresp.h) and fills the
-     * candidate list this would consume; what is missing is the half that
-     * writes `next` back. */
-    void (*pfnCollide)(BrCarPhys *pCar);
+    /* 0x10067710 and its impulse solver 0x10065C80 -- the OBB RESPONSE -- USED
+     * to be a hook here.  It is ported now (BrCrRespWalk, br_collrespsolve.c)
+     * and BrCarPhysAdvance calls it directly in the substep loop, the way it
+     * calls BrCollRespTipKick; there is no longer a hole to inject.  Only the
+     * car-versus-car half below still needs a hook. */
     /* 0x10068F80, 1444 B -- CAR VERSUS CAR.  It walks the entrant array at
      * 0x10AF0858 on a 0x80 stride for g_100B2F00 entrants and tests each
      * pair's car+0x1DC positions against 0x10077BDC (5.0f); nothing in it
