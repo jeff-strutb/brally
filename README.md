@@ -35,7 +35,7 @@ happen (or not)._
 | 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens — see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
-| 6 | Driving — the per-frame physics + render loop | 🔴 not yet: the per-frame race render (`0x10011FA0`) is untranscribed. Of its 50 direct callees, 23 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **23 to port** — 17 boundary-clean, 6 mid-function starts to resolve first. Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
+| 6 | Driving — the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER still to go: the per-frame race render (`0x10011FA0`) is untranscribed. Of its 50 direct callees, 23 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **23 to port** — 17 boundary-clean, 6 mid-function starts to resolve first. Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
 | 7 | Full race: HUD, audio, results | 🔴 not yet |
 
 `░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
@@ -200,9 +200,15 @@ end** in `port/src/driving/br_collrespsolve.c`, all four functions oracle-
 verified against `tools/x87emu.py` executing their real opcode streams, pinned
 by golden vectors and mutation-tested: the contact-plane resolver `0x10067470`,
 the impulse solver `0x10065C80`, the impulse-free contact "kick" `0x10065980`,
-and the walker `0x10067710` that drives them per contact. The remaining gap to a
-live race is the per-frame *caller* — the substep loop `0x10067D30` that runs the
-walker each frame — not the response itself.
+and the walker `0x10067710` that drives them per contact. **The response is now
+WIRED INTO THE LIVE PHYSICS LOOP** — `BrCarPhysAdvance` (`0x10067C30`) calls the
+walker each substep where the `pfnCollide` hole was, with the `f1E8` box-matrix
+Z lift the caller applies before it (a *live* offset, not the dead accumulator
+an earlier `br_collresp.h` claimed): on flat ground the box clears the surface at
+the suspension rest, so the car holds `0.190132` instead of floating to the
+box-floor height, and a car that lands is caught instead of falling through. So
+cars no longer fall through the world. The remaining half of milestone 6 is the
+per-frame race **render** `0x10011FA0` (work-queue below).
 
 ### How to read the other numbers in this file
 
