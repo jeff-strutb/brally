@@ -471,6 +471,21 @@ static void TestPlainClear(void)
  * ===================================================================== */
 static BrHudView g_views[4];
 
+static void TestSceneAccumReset(void)
+{
+    /* The reset zeroes both accumulators no matter what they held. */
+    g_4B16A0 = 123.5f;
+    g_4B16AC = -7.0f;
+    BrSceneAccumReset();
+    CHECK(g_4B16A0 == 0.0f);
+    CHECK(g_4B16AC == 0.0f);
+
+    /* Idempotent -- zeroing an already-zero pair leaves it zero. */
+    BrSceneAccumReset();
+    CHECK(g_4B16A0 == 0.0f);
+    CHECK(g_4B16AC == 0.0f);
+}
+
 static void TestSceneSetup(void)
 {
     BrSceneEnv *pE = BrSceneGetEnv();
@@ -993,6 +1008,7 @@ int main(void)
     TestGap();
     TestSplitLine();
     TestPlainClear();
+    TestSceneAccumReset();
     TestSceneSetup();
     TestWind();
     TestLightning();

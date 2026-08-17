@@ -393,6 +393,14 @@ void BrHudDrawSplitLine(const char *pszPrefix, int rank, float fSeconds,
  * OR f6C7C98 is zero, OR f0B4050 == 2. Zero only when all five agree. */
 int BrSceneUsePlainClear(void);
 
+/* 0x10017F60  zero the two per-frame scene accumulators at frame top.
+ * The accumulators have true external linkage: the geometry pass (0x1000BEB0)
+ * writes them and the frame builder (0x10011FA0) reads them, both from other
+ * objects, so they are declared here rather than kept static. */
+extern float g_4B16A0;   /* 0x104B16A0 */
+extern float g_4B16AC;   /* 0x104B16AC */
+void BrSceneAccumReset(void);
+
 /* 0x100180B0  emit the frame's fixed setup command block. */
 void BrSceneSetupFrame(const BrHudView *aViews);
 
