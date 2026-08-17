@@ -1,4 +1,4 @@
-/* br_dlcmd.h -- eight display-list opcode handlers, at the ORIGINAL's level.
+/* br_dlcmd.h -- nine display-list opcode handlers, at the ORIGINAL's level.
  *
  * RESPONSIBILITY: drawing/ -- turn geometry and images into pixels.  This
  * module is the *handler layer* of the display-list machine that br_dl.h
@@ -14,21 +14,29 @@
  * simplified there, and four of those simplifications are measurable
  * divergences from the Glide code (listed at the bottom of this header).
  *
- * This module is the other half: the eight handlers below are written from
+ * This module is the other half: the nine handlers below are written from
  * the disassembly instruction by instruction, they keep the original's
  * globals as named fields, and every backend call the original makes is a
  * callback with the original's argument list.  The point is that the
  * NEXT-COMMAND POINTER and the exact argument arithmetic become directly
  * assertable, which is what the dispatch loop's correctness rests on.
  *
- * THE CALLING CONVENTION, read off all eight
+ * A SIBLING MODULE EXISTS.  port/include/br_dlglide.h does the same job for a
+ * DISJOINT set of opcodes -- 0xDC, 0xDD, 0xDF, 0xE1, 0xE2, 0xED, 0xF2 -- with
+ * its own state object (BrDlGl) and its own hook struct.  The two do not share
+ * storage and neither claims an opcode the other does; between them they cover
+ * sixteen of the table's twenty-eight.  0xE1 in particular lives THERE, which
+ * is why 0xF6's fixed-point convention is argued from 0xF6 below rather than
+ * inherited from its integer twin.
+ *
+ * THE CALLING CONVENTION, read off all nine
  * ----------------------------------------------------------------------
  * Each handler takes ONE argument -- a pointer to its own 8-byte command,
  * w0 at +0 and w1 at +4 -- and RETURNS THE ADDRESS OF THE NEXT COMMAND.  The
  * loop at 0x10023C90 is `while (p) p = table[p[3]](p);`, so a handler that
  * returns the wrong pointer desynchronises everything after it.
  *
- *   ALL EIGHT of these return `p + 8`, on EVERY path.  That includes the
+ *   ALL NINE of these return `p + 8`, on EVERY path.  That includes the
  *   early-out paths, which are the ones worth checking:
  *     0x04  n == 0 skips the loop entirely and still returns p + 8
  *           (0x10021A49 `jle 0x10021C5F`, which lands ON the `lea eax,[esi+8]`)
@@ -151,7 +159,7 @@
                           * grDrawTriangle.  Never redefine it here. */
 
 /* ---------------------------------------------------------------------
- * The backend seam, one callback per call the eight handlers actually make.
+ * The backend seam, one callback per call the nine handlers actually make.
  *
  * Deliberately NOT BrDlSink: this seam is shaped like the original's call
  * sites, arguments and all, so a test can assert the arithmetic that reaches
@@ -197,7 +205,7 @@ typedef struct BrDlCmdSink {
 } BrDlCmdSink;
 
 /* ---------------------------------------------------------------------
- * State -- the Glide globals these eight handlers touch, and only those.
+ * State -- the Glide globals these nine handlers touch, and only those.
  * Every field carries the address it stands for.
  * --------------------------------------------------------------------- */
 typedef struct BrDlCmd {
@@ -212,6 +220,34 @@ typedef struct BrDlCmd {
     int32_t  snapScratch;                 /* 0x105CE310                   */
 
     /* --- 0x04 / 0xBF / 0xB1 share this ------------------------------ */
+    /* THE 32 IS FINE FOR THIS BUILD, and that is a measurement rather than an
+     * inheritance -- worth writing down because br_f3d.h currently leaves it
+     * open in the other direction.
+     *
+     * br_f3d.h documents stock F3DEX's G_VTX as carrying `v0 + n` in bits
+     * 7:1, and records that field "observed as high as 63", concluding the
+     * vertex cache may be 64 entries.  THIS BUILD NEVER READS THAT FIELD.
+     * 0x10021A20 spills w0 and takes `cl` from [ebp-2] -- byte 2, bits 23:16
+     * -- and nothing else in the handler touches bits 7:1.  Nor does the
+     * loader supply it: 0x10019210, the patch pass's G_VTX arm, rewrites only
+     * w1 (segment fixup, then the vertex cache) and leaves w0 untouched, so
+     * whatever is on disc is what the handler sees.
+     *
+     * On disc, byte 2 is ZERO.  Scanning testdata/bb.rca and ce.rca for
+     * 8-aligned commands with opcode 0x04 and 1 <= n <= 32 gives 191 hits; the
+     * 8 with a non-zero byte 2 all have n == 1 and junk w1, i.e. they are
+     * payload bytes the raw scan mistook for commands.  Every plausible G_VTX
+     * has byte 2 == 0 and n <= 32, so the destination range is 0..n-1 and 32
+     * slots hold it exactly.  The bits-7:1 field IS populated (values up to
+     * 127) -- the emitter still writes stock F3DEX; the interpreter just
+     * ignores it.
+     *
+     * For completeness on the storage itself: the next absolutely-addressed
+     * global above 0x105CE318 in BRGlide's .text is 0x105D1718, a gap of
+     * 13,312 bytes == 128 x 0x68 exactly.  So the array is not tight at 32;
+     * it simply is not filled past it.  BrDlCmdVtx still clamps and counts
+     * (cVtxClamped), because none of these handlers bounds the index and a
+     * malformed list must not be able to write past the array. */
     BrDlVtx  aVtx[BR_DL_VTX_COUNT];       /* 0x105CE318, stride 0x68      */
 
     /* --- 0xBF / 0xB1 read these ------------------------------------- */
@@ -269,7 +305,7 @@ typedef const uint8_t *(*BrDlCmdFn)(BrDlCmd *pS, const uint8_t *p);
 void BrDlCmdInit(BrDlCmd *pS, int32_t cyScreen);
 
 /* ---------------------------------------------------------------------
- * The eight.  Each is `p` in, next command out; each returns p + 8.
+ * The nine.  Each is `p` in, next command out; each returns p + 8.
  * --------------------------------------------------------------------- */
 
 /* 0x04  0x10021A20 -- G_VTX, unlit.  Transforms n vertices from the record
@@ -317,7 +353,7 @@ const uint8_t *BrDlCmdEnvColour(BrDlCmd *pS, const uint8_t *p);
  * the call, which matters: 0x1001E380 reads the pair. */
 const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p);
 
-/* Which of the eight owns this opcode, or NULL.  Exists so a test can drive
+/* Which of the nine owns this opcode, or NULL.  Exists so a test can drive
  * the dispatch by command byte -- the way 0x10023C90 does -- rather than by
  * naming a function, since "the right handler for the byte" is itself part of
  * what the table asserts. */

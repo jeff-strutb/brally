@@ -2,8 +2,27 @@
  *
  * Constants quoted below were read straight out of orig/BRD3D.dll rather than
  * guessed: 0x1008F62C is 0.0f, the table at 0x100AC660 is nine 8-byte
- * records, 0x1007DFE0 is calloc(n,1) (it tail-calls 0x1007D370 with a second
- * argument of 1), and 0x1008F788 is a vtable whose first slot is 0x1005CBF0.
+ * records, and 0x1008F788 is a vtable whose first slot is 0x1005CBF0.
+ *
+ * CORRECTED: this banner used to say "0x1007DFE0 is calloc(n,1) (it tail-calls
+ * 0x1007D370 with a second argument of 1)". IT IS NOT. 0x1007DFE0 is
+ * `operator new` == `_nh_malloc(size, 1)`, and the literal 1 is nhFlag, not
+ * calloc's element count:
+ *
+ *   0x1007D370(size, nhFlag) reads nhFlag into edi and uses it for NOTHING
+ *   but `test edi,edi / je fail` around `call 0x10082ED0` (_callnewh) and a
+ *   retry loop. The allocation is `push esi / call 0x1007D3C0` -- ONE
+ *   argument -- and 0x1007D3C0 ends in `HeapAlloc(heap, 0, size)` with flags
+ *   ZERO, not HEAP_ZERO_MEMORY.
+ *
+ * Nothing on that path zeroes. CONVENTIONS.md has always said so ("0x1007DFE0
+ * is operator new (_nh_malloc(size,1)) and does not zero"); this file
+ * contradicted it, BrUiAssetPathsInit below called calloc on the strength of
+ * it, and test_slice1_06.c asserted the resulting zero tail as if it were the
+ * original's behaviour. Found while transcribing the Glide twin of the same
+ * function (Glide 0x10056260 -> port/src/drawing/br_uiimg.c), where the
+ * allocator is the MSVCRT import thunk 0x10074572 -> ??2@YAPAXI@Z and the
+ * absence of zeroing is not in doubt.
  */
 
 #include "slice1_06.h"
@@ -549,7 +568,10 @@ int BrUiAssetPathsInit(char *apszOut[BR_UIASSET_COUNT])
     }
 
     for (i = 0; i < BR_UIASSET_COUNT; i++) {
-        char *p = (char *)calloc(BR_UIASSET_PATH_MAX, 1u);
+        /* malloc, NOT calloc: 0x1007DFE0 is operator new and does not zero,
+         * so everything past the NUL is whatever the heap held. See the
+         * correction in this file's banner. */
+        char *p = (char *)malloc(BR_UIASSET_PATH_MAX);
 
         /* DEVIATION: the original stores the allocation and copies into it
          * without checking for NULL. */

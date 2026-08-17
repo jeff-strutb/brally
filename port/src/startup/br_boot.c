@@ -52,6 +52,7 @@ int32_t g_brAppModeH    = 0;
  * came to know there are two banks -- this is the other call site, and it is
  * the one that runs first.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CD70 glide BrAppStateColdInit */
 int32_t BrAppStateColdInit(void)
 {
     BrBootFrontier_10032530();
@@ -70,6 +71,7 @@ int32_t BrAppStateColdInit(void)
  * directly; the original could have written 2 into 0x105CCBBC from state 3
  * and did not.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CDA0 glide BrAppStateEnterRun */
 int32_t BrAppStateEnterRun(void)
 {
     g_brAppState = BR_APP_RUN;       /* 2 */
@@ -89,6 +91,7 @@ int32_t BrAppStateEnterRun(void)
  * deeper callee writing 0x105CCBBC, or by 0x100A98F8 going to zero and the
  * main loop exiting.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CDB0 glide BrAppStateRun */
 int32_t BrAppStateRun(void)
 {
     ++g_brAppFrame;
@@ -126,6 +129,7 @@ int32_t BrAppStateRun(void)
  *
  * "loading.img" at 0x100A9924 is the loading graphic.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CDD0 glide BrAppStateLoading */
 int32_t BrAppStateLoading(void)
 {
     BrBootFrontier_10063970(3,
@@ -171,6 +175,7 @@ int32_t BrAppStateLoading(void)
  * tail is NOT transcribed here; it is reached through a counted frontier
  * entry so that a run reports having hit it rather than silently skipping it.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CE20 glide BrAppStateSetMode */
 int32_t BrAppStateSetMode(void)
 {
     const int32_t hDevice = BrBootGlobal_AC5C5C();
@@ -212,6 +217,7 @@ int32_t BrAppStateSetMode(void)
  * no reachable path writes an out-of-range value, so the check is unobservable
  * on every input the game can actually produce.
  * ------------------------------------------------------------------ */
+/* @implements 0x1001CF80 glide BrAppFrame */
 int32_t BrAppFrame(void)
 {
     switch (g_brAppState) {
@@ -248,6 +254,7 @@ void BrAppResetForTest(void)
 const BrBootArgs *BrAppArgs(void) { return &s_args; }
 
 /* 0x1001CC00 -- RallyMain. See br_boot.h for the full listing. */
+/* @implements 0x1001CC00 glide BrRallyMain */
 int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
 {
     int32_t dxVersion;

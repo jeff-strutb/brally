@@ -25,6 +25,7 @@ void BrBaseDirResetForTest(void)
 }
 
 /* 0x10063860 */
+/* @implements 0x10063860 glide BrBaseDirInit */
 void BrBaseDirInit(void)
 {
     size_t len;

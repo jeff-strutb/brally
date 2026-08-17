@@ -217,17 +217,17 @@ typedef const uint8_t *(*BrDlGlHandler)(BrDlGl *pGl, const uint8_t *p);
  * Calls [0x118ED1CC] with the low 24 bits of w0, then returns `p + 8*w1`.
  * The multiply is `lea eax,[esi+ecx*8]`, so w1 == 0 returns p UNCHANGED and
  * the original spins forever on such a command; that is preserved. */
-const uint8_t *BrDlGlBindTexture(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlBindTexture(BrDlGl *pGl, const uint8_t *p);  /* 0x1001E2E0 */
 
 /* 0xDD -- 0x1001E300 (shared with D3D 0x1001BE10).  Calls [0x118ED1D0] with
  * (w0 & 0xFFFFFF, w1) -- note w1 is passed whole -- and returns p + 8. */
-const uint8_t *BrDlGlRetarget(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlRetarget(BrDlGl *pGl, const uint8_t *p);  /* 0x1001E300 */
 
 /* 0xDF -- 0x1001EB30 (Glide-only; the D3D twin 0x1001CD80 is slice2_16.c's
  * BrGbiSet4C5174, whose global is 0x104C5174).  Stores w1 in 0x105D17C4 and
  * returns p + 8.  Named for the address it writes rather than for a guessed
  * meaning, following that twin. */
-const uint8_t *BrDlGlSet5D17C4(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlSet5D17C4(BrDlGl *pGl, const uint8_t *p);  /* 0x1001EB30 */
 
 /* 0xE1 -- 0x1001E720 (shared with D3D 0x1001C7A0).  FILL RECTANGLE with plain
  * SIGNED 12-bit integer corners, w0 carrying the lower-right and w1 the
@@ -238,16 +238,16 @@ const uint8_t *BrDlGlSet5D17C4(BrDlGl *pGl, const uint8_t *p);
  * and returns p + 8.  The only difference from the 0xF6 handler 0x1001E320 is
  * `sar 0x14` where that one has `sar 0x16` plus an `and 0x3FF` -- i.e. 0xF6
  * divides by four and masks the sign away, and 0xE1 does neither. */
-const uint8_t *BrDlGlFillRect(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlFillRect(BrDlGl *pGl, const uint8_t *p);  /* 0x1001E720 */
 
 /* 0xE2 -- 0x1001EBC0 (Glide-only).  SET SCISSOR with plain 12-bit INTEGER
  * corners: `(w >> 12) & 0xFFF` and `w & 0xFFF`, unsigned, no sign fold.
  * w0 is the upper-left and w1 the lower-right.  Returns p + 8. */
-const uint8_t *BrDlGlScissorInt(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlScissorInt(BrDlGl *pGl, const uint8_t *p);  /* 0x1001EBC0 */
 
 /* 0xED -- 0x1001EB50 (Glide-only).  The SAME command in 10.2: the integer part
  * is `(w >> 14) & 0x3FF` and `(w >> 2) & 0x3FF`.  Returns p + 8. */
-const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p);
+const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p);  /* 0x1001EB50 */
 
 /* 0xF2 -- 0x1001EC30.  A FRONTIER, DELIBERATELY: this opcode is already
  * transcribed, correctly, as br_dl.c's static `br_dl_settilesize`, and again
@@ -258,6 +258,12 @@ const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p);
  * over slots 0xDC..0xF2 cannot silently lose the opcode.  Route 0xF2 to
  * br_dl.c's dispatcher -- BrDlRun -- for the real decode. */
 const uint8_t *BrDlGlSetTileSize(BrDlGl *pGl, const uint8_t *p);
+/* ...and note that line carries NO trailing address annotation, unlike the six
+ * above it.  That is deliberate: an annotated address is one of the three ways
+ * tools/isported.py decides a function IS the port of that address, and this
+ * one is a counted frontier.  Annotating it would report 0x1001EC30 as ported
+ * by a function that decodes nothing -- a false PORTED, which CONVENTIONS.md
+ * names as the dangerous direction. */
 
 /* The handler the original's table at 0x100A9A58 holds for `op`, or NULL for
  * every opcode this module does not own (which includes the 228 that fall to
