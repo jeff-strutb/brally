@@ -620,7 +620,20 @@ static void test_name_clear_asymmetry(void)
     g_Ext.bAA26F5 = 4;
 
     CHECK(BrPhaseNameClear_10047340() == 1);
-    CHECK(g_Ext.szA9D618[0] == '\0');
+    /* THE EXTENT IS THE POINT, and asserting only index 0 missed it -- the
+     * equivalence audit flagged this. The original is `rep stosd` with ecx = 8,
+     * i.e. EIGHT DWORDS = 32 bytes, and the count is the single most
+     * defect-prone property of the function: a 1-byte, 4-byte or 8-byte clear
+     * passes an index-0 check identically to the correct one.
+     *
+     * The fixture fills 31 bytes with 'b' and leaves the 32nd as the array's
+     * terminator, so every byte the clear must touch starts non-zero. */
+    {
+        size_t k;
+        for (k = 0; k < sizeof g_Ext.szA9D618; ++k)
+            CHECK(g_Ext.szA9D618[k] == '\0');
+        CHECK(sizeof g_Ext.szA9D618 == 32);   /* 8 dwords, per the rep stosd */
+    }
     CHECK(g_Ext.szAA2518[0] == 'a');    /* untouched */
     CHECK(g_Ext.nAA28A4 == 0);
     CHECK(g_Ext.bAA26F5 == 0);

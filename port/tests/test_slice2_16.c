@@ -1101,11 +1101,41 @@ static void test_swaps(void)
     BrSwapU16Array(a, 16);
     CHECK(memcmp(a, b, 32) == 0);
 
+    /* THESE ROUND TRIPS CANNOT FAIL ON THEIR OWN, and the equivalence audit
+     * caught it: applying an involution twice and comparing to the input
+     * passes for a NO-OP, and for any wrong-but-symmetric permutation. The
+     * BrSwapU16Array block above does assert "it changed" after a single
+     * application; that assertion was simply not written for these two.
+     *
+     * A round trip is still worth keeping -- it catches an asymmetric bug --
+     * but it has to be paired with a single-application check against an
+     * independently-computed expectation, or it certifies nothing. */
     BrSwapU16x4Array(a, 4);
+    CHECK(memcmp(a, b, 32) != 0);            /* it actually did something */
+    {   /* and it did the RIGHT thing: 16 independent u16 swaps, computed
+         * here byte-wise rather than by calling the function under test */
+        unsigned char exp[32]; int k;
+        memcpy(exp, b, 32);
+        for (k = 0; k < 32; k += 2) {
+            unsigned char t = exp[k]; exp[k] = exp[k+1]; exp[k+1] = t;
+        }
+        CHECK(memcmp(a, exp, 32) == 0);
+    }
     BrSwapU16x4Array(a, 4);
-    CHECK(memcmp(a, b, 32) == 0);
+    CHECK(memcmp(a, b, 32) == 0);            /* and it round-trips */
 
     BrSwapVec3Array(a, 2);
+    CHECK(memcmp(a, b, 24) != 0);            /* same treatment */
+    {   /* six 32-bit lanes, each byte-reversed */
+        unsigned char exp[24]; int k;
+        memcpy(exp, b, 24);
+        for (k = 0; k < 24; k += 4) {
+            unsigned char t;
+            t = exp[k];   exp[k]   = exp[k+3]; exp[k+3] = t;
+            t = exp[k+1]; exp[k+1] = exp[k+2]; exp[k+2] = t;
+        }
+        CHECK(memcmp(a, exp, 24) == 0);
+    }
     BrSwapVec3Array(a, 2);
     CHECK(memcmp(a, b, 24) == 0);
 
