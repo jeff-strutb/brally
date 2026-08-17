@@ -39,6 +39,7 @@ static int32_t s_aHits[F_COUNT];
 static void (*s_pfn10007F10)(void);
 static void (*s_pfn10007F40)(const char *);
 static void (*s_pfn10063060)(void);
+static void (*s_pfn10063860)(void);
 
 void BrBootFrontierInstall(void (*pfn10007F10)(void),
                            void (*pfn10007F40)(const char *),
@@ -47,6 +48,13 @@ void BrBootFrontierInstall(void (*pfn10007F10)(void),
     s_pfn10007F10 = pfn10007F10;
     s_pfn10007F40 = pfn10007F40;
     s_pfn10063060 = pfn10063060;
+}
+
+/* 0x10063860 -- the install directory, now transcribed in br_basedir.c. Same
+ * hook shape and the same reason: the frontier takes no link dependencies. */
+void BrBootFrontierInstallBaseDir(void (*pfn10063860)(void))
+{
+    s_pfn10063860 = pfn10063860;
 }
 static void (*s_pfnFrameHook)(void);
 
@@ -67,6 +75,7 @@ void BrBootFrontierReset(void)
     int i;
     s_pfnFrameHook = NULL;
     s_pfn10007F10 = NULL; s_pfn10007F40 = NULL; s_pfn10063060 = NULL;
+    s_pfn10063860 = NULL;
     for (i = 0; i < F_COUNT; i++)
         s_aHits[i] = 0;
 }
@@ -109,7 +118,11 @@ void BrBootFrontier_10007F10(void)
     ++s_aHits[F_10007F10];
     if (s_pfn10007F10 != NULL) s_pfn10007F10();
 }
-void BrBootFrontier_10063860(void) { ++s_aHits[F_10063860]; }
+void BrBootFrontier_10063860(void)
+{
+    ++s_aHits[F_10063860];
+    if (s_pfn10063860 != NULL) s_pfn10063860();
+}
 void BrBootFrontier_1006D1A0(void) { ++s_aHits[F_1006D1A0]; }
 void BrBootFrontier_10063060(void)
 {

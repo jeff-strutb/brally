@@ -96,6 +96,8 @@ void BrBootFrontierInstall(void (*pfn10007F10)(void),
                            void (*pfn10007F40)(const char *),
                            void (*pfn10063060)(void));
 
+void BrBootFrontierInstallBaseDir(void (*pfn10063860)(void));
+
 /* ---- the report --------------------------------------------------- */
 
 /* Number of frontier entries. */
