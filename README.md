@@ -35,7 +35,7 @@ happen (or not)._
 | 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens — see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
-| 6 | Driving — the per-frame physics + render loop | 🔴 not yet: the per-frame race render (`0x10011FA0`) is untranscribed and has 23 unported callees |
+| 6 | Driving — the per-frame physics + render loop | 🔴 not yet: the per-frame race render (`0x10011FA0`) is untranscribed. Of its 50 direct callees, 23 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **23 to port** — 17 boundary-clean, 6 mid-function starts to resolve first. Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
 | 7 | Full race: HUD, audio, results | 🔴 not yet |
 
 `░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
