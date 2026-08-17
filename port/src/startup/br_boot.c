@@ -247,6 +247,7 @@ void BrAppResetForTest(void)
 
 const BrBootArgs *BrAppArgs(void) { return &s_args; }
 
+/* 0x1001CC00 -- RallyMain. See br_boot.h for the full listing. */
 int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
 {
     int32_t dxVersion;
