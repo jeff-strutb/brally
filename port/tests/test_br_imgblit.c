@@ -220,7 +220,11 @@ static void test_checksum(void)
                        g_abBuf, sizeof g_abBuf, &hdr, &sum);
 
     CHECK(rc == BR_IMGBLIT_OK);
-    CHECK(sum == BR_IMGBLIT_SPLASH_ADLER);
+    /* The LITERAL 0x2AC7E58B off the disassembly at 0x10032553, not the
+     * header macro -- comparing a computed value against the same macro
+     * the module used would pass whatever the macro said. */
+    CHECK(sum == 0x2AC7E58Bu);
+    CHECK(BR_IMGBLIT_SPLASH_ADLER == 0x2AC7E58Bu);
     CHECK(hdr.cx == 256);
     CHECK(hdr.cy == 256);
     CHECK(hdr.cbPixels == 256 * 256 * 2);
@@ -272,10 +276,11 @@ static void test_loading_img(void)
 
     /* The other file's sum, so the routine is not accidentally specific to
      * the splash.  State 3 passes 0 and never exercises this. */
-    rc = BrImgBlitLoad("testdata/loading.img", BR_IMGBLIT_LOADING_ADLER,
+    rc = BrImgBlitLoad("testdata/loading.img", 0x440E8E2Cu,
                        g_abBuf, sizeof g_abBuf, &hdr, &sum);
     CHECK(rc == BR_IMGBLIT_OK);
-    CHECK(sum == BR_IMGBLIT_LOADING_ADLER);
+    CHECK(sum == 0x440E8E2Cu);
+    CHECK(BR_IMGBLIT_LOADING_ADLER == 0x440E8E2Cu);
 
     /* The declared texture is 256x256 whatever the file is, so the download
      * over-reads by this much on the loading screen.  Recorded as an

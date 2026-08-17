@@ -105,7 +105,7 @@ static int32_t h_load(void *p, int32_t phase, int32_t a2)
     if (phase == BR_RACESTART_LOAD_PHASE_A) { ++g_aLoadPerPhase[0]; }
     if (phase == BR_RACESTART_LOAD_PHASE_B) { ++g_aLoadPerPhase[1]; }
     ++g_cLoad;
-    CHECK(a2 == BR_RACESTART_LOAD_ARG2);
+    CHECK(a2 == 1);            /* the literal, NOT the macro -- see below */
 
     /* Sampled here because this is the first hook that runs AFTER the race
      * step is installed and after the interim weather value is written. */
@@ -236,8 +236,8 @@ static void test_order(void)
     CHECK(g_brRaceNCar == 2);
 
     /* 0x1002F6C0 ran, and it ran before the first load call. */
-    CHECK(g_brRace6EECC8 == BR_RACESTART_6EECC8_VALUE);
-    CHECK(g_6EECC8DuringLoad == BR_RACESTART_6EECC8_VALUE);
+    CHECK(g_brRace6EECC8 == 0x80096400u);
+    CHECK(g_6EECC8DuringLoad == 0x80096400u);
 
     /* The race step is installed before the loading loops run, not after --
      * which is what makes the loading screen a step of the race. */
@@ -380,7 +380,7 @@ static void test_weather(void)
 
     /* The interim literal 1 at 0x10062986, sampled from inside the loading
      * loop -- otherwise the first of the two stores is invisible. */
-    CHECK(g_weatherDuringLoad == BR_RACESTART_WEATHER_INIT);
+    CHECK(g_weatherDuringLoad == 1);
     /* ...and the config value at 0x10062A2D. */
     CHECK(g_brCarPhysWeather == 3);
 }
@@ -394,8 +394,12 @@ static void test_load(void)
     g_loadAfter = 0;                 /* done immediately */
     BrRaceStart(&g_ops, f_raceStep, f_nullStep);
     CHECK(g_cLoad == 2);
-    CHECK(g_aPhase[0] == BR_RACESTART_LOAD_PHASE_A);
-    CHECK(g_aPhase[1] == BR_RACESTART_LOAD_PHASE_B);
+    /* The LITERAL phase numbers, not the macros.  Comparing a recorded
+     * value against the same macro the module used is a tautology that
+     * passes whatever the macro says -- mutation testing caught exactly
+     * that here, and every constant this suite checks is now a literal. */
+    CHECK(g_aPhase[0] == 0);
+    CHECK(g_aPhase[1] == 2);
     CHECK(BrRaceStartSpun() == 0);
 
     /* Not done for two calls: three calls in the first phase, one in the
