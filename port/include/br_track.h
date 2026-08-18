@@ -48,6 +48,27 @@
  * 0x10031030, which the Glide map has and the D3D map does not list at the
  * same address.
  *
+ * WHERE THIS BUFFER LIVES AT RUNTIME -- the 0x106EED00 global cluster
+ * ------------------------------------------------------------------
+ * The header is not heap-allocated: 0x100311C0 reads, swaps and relocates the
+ * file straight into a RESIDENT GLOBAL buffer at Glide 0x106EECD8 (D3D
+ * 0x106C7C48) -- it pushes that base to the swapper 0x10031B80 at 0x10031275.
+ * That is why the "globals" g_6EECD8..g_6EEE38 (globals_shared.csv rows around
+ * Glide 0x106EED00 / D3D 0x106C7C70) have NO per-field store anywhere in .text:
+ * the whole run is filled in one pass from the .TRK image. So a read of an
+ * absolute 0x106EEDxx is a read of abHdr[0x106EEDxx - 0x106EECD8].
+ *
+ * The AI/race half of the header is therefore already modelled -- it is these
+ * same resident fields, named where the reading code proves them, NOT a
+ * separate scene object:
+ *   +0x70  BR_TRK_H_AIPATH  (br_ai.h)  the path ring root; Glide g_6EED48, the
+ *          "scene-object ptr" some render code (e.g. 0x10011D20) reads. Its
+ *          target's +0x64 is the lap length (br_race.h's pfLapLength).
+ *   +0x74  BR_TRK_H_AIPATH2 (br_ai.h)  second entry point into the ring.
+ *   +0x98  BR_TRK_H_GATES   (br_ai.h)  checkpoint/path-seg array, stride 0x14.
+ *   +0x160 BR_TRK_H_CGATES  (br_ai.h)  count; BrRaceRules (br_race.h) gathers
+ *          all of these for BrRaceGateStep (0x1005FF00).
+ *
  * WHAT THIS MODULE DOES NOT DO, NAMED PLAINLY
  * -------------------------------------------
  *  - The section array (header +0x1C, stride 0x24) is left BIG-ENDIAN. Its
