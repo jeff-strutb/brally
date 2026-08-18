@@ -73,7 +73,8 @@ address,build,symbol,file,line
 0x10008A00,d3d,BrPodWriteAdd,slice2_12.c,978
 0x10008AA0,d3d,BrPodWriteClose,slice2_12.c,1029
 0x10008CF0,d3d,BrLogPrint,slice4_52.c,328
-0x10009C10,glide,BrCarDrawWheels,br_drawcar.c,175
+0x10009C10,glide,BrCarDrawWheels,br_drawcar.c,177
+0x10009FC0,glide,BrCarVisibilityUpdate,br_drawcar.c,278
 0x1000BEA0,d3d,BrAppMsgDispatch,slice1_03.c,397
 0x1000C000,d3d,BrDPlaySysMsgDispatch,slice2_13.c,149
 0x1000C350,d3d,BrDPlayPump,slice2_13.c,266
@@ -202,7 +203,7 @@ address,build,symbol,file,line
 0x10029410,d3d,BrGbiTexScanFlush,slice2_16.c,635
 0x10029B10,glide,BrTexChooseLevel,br_texinit.c,110
 0x10029B50,glide,BrTexInit,br_texinit.c,129
-0x10029E50,glide,BrGuMtxStore,br_drawcar.c,116
+0x10029E50,glide,BrGuMtxStore,br_drawcar.c,118
 0x10029E60,d3d,BrGbiTexScanMark,slice2_16.c,621
 0x10029EB0,d3d,BrGbiTexScanSetImg,slice2_16.c,667
 0x10029F10,d3d,BrGbiTexScanLoadTlut,slice2_16.c,689
@@ -217,7 +218,7 @@ address,build,symbol,file,line
 0x1002A250,d3d,BrGbiTexScanOtherModeH0E,slice2_16.c,854
 0x1002A280,d3d,BrGbiTexCreate,slice2_16.c,1057
 0x1002A740,d3d,BrGbiSolidTexBuild,slice2_16.c,1091
-0x1002A9F2,glide,BrGuMtxHookNop,br_drawcar.c,93
+0x1002A9F2,glide,BrGuMtxHookNop,br_drawcar.c,95
 0x1002AEA0,d3d,BrFadeRelease,slice2_16.c,1113
 0x1002AEC0,d3d,BrFadeLatch,slice2_16.c,1125
 0x1002AF10,d3d,BrFadeDrawSprite,slice2_16.c,1150

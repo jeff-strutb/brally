@@ -274,6 +274,138 @@ static void test_mtx_store(void)
     CHECK(src[0] == 0xA0000000u, "mtx store must not write its source");
 }
 
+/* ==================================================================== *
+ * BrCarVisibilityUpdate (0x10009FC0)
+ *
+ * The pass reads five slice2_18 globals and calls BrFogFactorAtPoint and
+ * BrSpanTestPoint, both in grab-bag objects.  This suite links br_drawcar
+ * alone, so it supplies the globals and stubs the two calls (build.sh's
+ * header documents that).  BrVec3Dist/BrVec3MulAdd ARE the real br_vec, so
+ * the probe point the mode path forms is checked, not assumed.
+ * ==================================================================== */
+#include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint signature */
+#include "br_vec.h"
+
+void   *BrG_6C6490;   /* the object the discarded distance is measured to */
+void   *BrG_6C2CF8;   /* the player car */
+int32_t BrG_6C661C;   /* mode flag */
+int32_t BrG_6C6624;   /* mode flag */
+int32_t BrG_6C6614;   /* player-translucent override */
+
+static const BrVec3 *s_fogPt;
+static int           s_fogN;
+float BrFogFactorAtPoint(const BrVec3 *pPoint)
+{
+    s_fogPt = pPoint;
+    ++s_fogN;
+    return 0.5f;
+}
+
+static float s_spanX[8], s_spanY[8];
+static int   s_spanN;
+static int   s_spanReturn;      /* what the stub answers */
+int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
+{
+    (void)pVol;
+    if (s_spanN < 8) { s_spanX[s_spanN] = x; s_spanY[s_spanN] = y; }
+    ++s_spanN;
+    return s_spanReturn;
+}
+
+/* One 0x2B68 car record, plus a tiny object for BrG_6C6490. */
+static unsigned char s_visCar[0x2B68];
+static unsigned char s_ref[0x40];
+
+#define CARF(off) (*(float *)(s_visCar + (off)))
+#define CARP(off) (*(void **)(s_visCar + (off)))
+
+static void car_reset(void)
+{
+    memset(s_visCar, 0, sizeof s_visCar);
+    memset(s_ref, 0, sizeof s_ref);
+    CARP(BR_CAR_OFF_GUARD) = s_visCar;          /* non-NULL */
+    CARF(BR_CAR_OFF_POS + 0) = 10.0f;        /* pos = (10,20,30) */
+    CARF(BR_CAR_OFF_POS + 4) = 20.0f;
+    CARF(BR_CAR_OFF_POS + 8) = 30.0f;
+    CARF(BR_CAR_OFF_MTX + 0) = 1.0f;         /* mtx.m[0] = (1,0,0) */
+    *(int32_t *)(s_visCar + BR_CAR_OFF_ICAR) = 3;
+    BrG_6C6490 = s_ref;
+    BrG_6C2CF8 = (void *)0xD00D;             /* not our car, by default */
+    BrG_6C661C = BrG_6C6624 = BrG_6C6614 = 0;
+    s_fogN = s_spanN = 0;
+    s_spanReturn = 0;
+    g_BrCarVisOpaque[3] = g_BrCarVisAny[3] = 77;   /* sentinels */
+}
+
+static void test_vis_guard(void)
+{
+    car_reset();
+    CARP(BR_CAR_OFF_GUARD) = NULL;
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(s_fogN == 0, "guard: no fog");
+    CHECK(s_spanN == 0, "guard: no span");
+    CHECK(g_BrCarVisOpaque[3] == 77 && g_BrCarVisAny[3] == 77, "guard: flags untouched");
+}
+
+static void test_vis_opaque_visible(void)
+{
+    car_reset();
+    s_spanReturn = 1;                        /* on screen */
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(s_fogN == 1 && CARF(BR_CAR_OFF_FOG) == 0.5f, "opaque: fog written");
+    CHECK(s_spanN == 1, "opaque: one span test");
+    CHECK(s_spanX[0] == 10.0f && s_spanY[0] == 20.0f, "opaque: span at pos.xy");
+    CHECK(g_BrCarVisOpaque[3] == 1 && g_BrCarVisAny[3] == 1, "opaque: both flags set");
+}
+
+static void test_vis_culled(void)
+{
+    car_reset();
+    s_spanReturn = 0;                        /* off screen */
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(g_BrCarVisOpaque[3] == 0 && g_BrCarVisAny[3] == 0, "culled: both zero");
+}
+
+static void test_vis_kind2(void)
+{
+    car_reset();
+    s_spanReturn = 1;
+    s_visCar[BR_CAR_OFF_KIND] = 2;              /* translucent class */
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(g_BrCarVisOpaque[3] == 0 && g_BrCarVisAny[3] == 1, "kind2: only Any set");
+}
+
+static void test_vis_mode_probe(void)
+{
+    car_reset();
+    BrG_6C661C = 1;                          /* mode path: probe 6 units aside */
+    s_spanReturn = 1;
+    BrCarVisibilityUpdate(s_visCar);
+    /* probe = pos + 6*mtx.m[0] = (10,20,30)+(6,0,0) = (16,20,..); the first
+     * span test uses the probe, computed by the real BrVec3MulAdd. */
+    CHECK(s_spanX[0] == 16.0f && s_spanY[0] == 20.0f, "mode: span at probe.xy");
+    CHECK(g_BrCarVisOpaque[3] == 1 && g_BrCarVisAny[3] == 1, "mode: visible");
+}
+
+static void test_vis_player_translucent(void)
+{
+    car_reset();
+    BrG_6C2CF8 = s_visCar;                      /* this IS the player car */
+    CARP(BR_CAR_OFF_ACTIVECAM) = s_visCar + BR_CAR_OFF_CAMA;  /* points at cam A */
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(s_spanN == 0, "player: no span test");
+    CHECK(g_BrCarVisOpaque[3] == 0 && g_BrCarVisAny[3] == 1, "player-cam: only Any");
+}
+
+static void test_vis_player_fallthrough(void)
+{
+    car_reset();
+    BrG_6C2CF8 = s_visCar;
+    CARP(BR_CAR_OFF_ACTIVECAM) = (void *)0xBEEF;   /* neither cam frame */
+    BrCarVisibilityUpdate(s_visCar);
+    CHECK(g_BrCarVisOpaque[3] == 1 && g_BrCarVisAny[3] == 1, "player-nocam: both set");
+}
+
 int main(void)
 {
     test_plain_pass();
@@ -282,6 +414,13 @@ int main(void)
     test_alt_list();
     test_frontier_invents_nothing();
     test_mtx_store();
+    test_vis_guard();
+    test_vis_opaque_visible();
+    test_vis_culled();
+    test_vis_kind2();
+    test_vis_mode_probe();
+    test_vis_player_translucent();
+    test_vis_player_fallthrough();
     printf("test_br_drawcar: %d failures\n", g_fails);
     return g_fails ? 1 : 0;
 }
