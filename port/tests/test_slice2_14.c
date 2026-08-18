@@ -6,10 +6,13 @@
  * every intermediate is exactly representable in binary32.
  */
 #include "slice2_14.h"
+#include "slice2_17.h"   /* BrPropList */
+#include "slice3_40.h"   /* BrNode, BrPathPoint */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 static int g_fails;
 
@@ -569,6 +572,139 @@ static void test_lru(void)
     CHECK(lru.aStamp[2] == 0x00000005u);   /* base(cur=0)=4, +1 */
 }
 
+/* ================================================================== */
+/* 0x100147B0 BrModelLightsDraw                                        */
+/* ================================================================== */
+/* The draw reads six cross-slice globals; defined here so the suite links
+ * without dragging in the race/scene/gfx modules, and captures the one
+ * BrScenePropsDraw call so its matrix can be checked. The math helpers
+ * (BrVec3Direction/Cross/MulAdd, BrMat4Scale/Mul) ARE the real modules --
+ * see build.d/test_slice2_14.deps. */
+int32_t   g_brRaceHudB;
+float     g_brRaceFade;
+void     *BrG_0AA730;
+uint32_t *BrG_6C0680;
+void     *g_BrMtxSlot;
+BrNode   *BrG_6C7CB8;
+
+static const BrPropList *s_mlList;
+static BrMat4            s_mlMtx;
+static int               s_mlCount;
+
+void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
+{
+    s_mlList = pList;
+    s_mlMtx  = *pViewMtx;
+    s_mlCount++;
+}
+
+/* BrVec3Direction (slice2_21.c) and BrMat4Mul (slice1_05.c) live in grab-bag
+ * objects that drag the trig/span/pool subsystems into the link. They have
+ * their own suites; reproduced here as faithful stubs so this suite stays
+ * self-contained. BrVec3Cross/MulAdd (br_vec) and BrMat4Scale (br_mat) ARE
+ * the real modules -- see build.d/test_slice2_14.deps. */
+void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
+{
+    float dx = pTo->x - pFrom->x;
+    float dy = pTo->y - pFrom->y;
+    float dz = pTo->z - pFrom->z;
+    float len = sqrtf(dx * dx + dy * dy + dz * dz);
+
+    if (len == 0.0f) {
+        pOut->x = 0.0f; pOut->y = 0.0f; pOut->z = 1.0f;
+        return;
+    }
+    len = 1.0f / len;
+    pOut->x = len * dx; pOut->y = len * dy; pOut->z = len * dz;
+}
+
+void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
+{
+    BrMat4 tmp;
+    int i, j, k;
+
+    for (i = 0; i < 4; ++i) {
+        for (j = 0; j < 4; ++j) {
+            float s = 0.0f;
+            for (k = 0; k < 4; ++k) {
+                s += pA->m[i][k] * pB->m[k][j];
+            }
+            tmp.m[i][j] = s;
+        }
+    }
+    *pOut = tmp;
+}
+
+static int mclose(float a, float b) { return fabsf(a - b) < 1e-5f; }
+
+static void test_model_lights(void)
+{
+    /* one BrNode + one BrPathPoint of trailing storage (pts is a FAM). */
+    unsigned char buf[sizeof(BrNode) + sizeof(BrPathPoint)];
+    BrNode      *pNode = (BrNode *)buf;
+    BrPropList   list;
+    uint32_t     dl[8];
+    const float  s = 1.0f / 1024.0f;
+
+    memset(buf, 0, sizeof buf);
+    /* pts[0].pos = origin; the +0x0C vec = (1,0,0) so fwd = +X. */
+    pNode->pts[0].pos.x = 0.0f;
+    pNode->pts[0].pos.y = 0.0f;
+    pNode->pts[0].pos.z = 0.0f;
+    pNode->pts[0].f0C   = 1.0f;
+    pNode->pts[0].f10   = 0.0f;
+    pNode->pts[0].f14   = 0.0f;
+
+    BrG_0AA730     = (void *)(uintptr_t)0x100AA730u;
+    g_BrMtxSlot    = (void *)(uintptr_t)0x106C32D0u;
+    g_BrModelLights = &list;
+    g_brRaceFade   = 0.0f;
+
+    /* Gate 1: the toggle off -- nothing drawn, cursor untouched. */
+    g_brRaceHudB = 0;
+    BrG_6C7CB8   = pNode;
+    BrG_6C0680   = dl;
+    s_mlCount    = 0;
+    BrModelLightsDraw();
+    CHECK(s_mlCount == 0);
+    CHECK(BrG_6C0680 == dl);
+
+    /* Gate 2: no path root -- still nothing. */
+    g_brRaceHudB = 1;
+    BrG_6C7CB8   = NULL;
+    BrModelLightsDraw();
+    CHECK(s_mlCount == 0);
+    CHECK(BrG_6C0680 == dl);
+
+    /* Full path: two G_MTX commands emitted, then one props draw. */
+    g_brRaceHudB = 1;
+    BrG_6C7CB8   = pNode;
+    BrG_6C0680   = dl;
+    BrModelLightsDraw();
+
+    CHECK(BrG_6C0680 == dl + 4);               /* two 8-byte commands       */
+    CHECK(dl[0] == 0x01060040u);               /* G_MTX push|load modelview */
+    CHECK(dl[1] == 0x100AA730u);               /* identity payload (low 32)  */
+    CHECK(dl[2] == 0x01030040u);               /* G_MTX load projection      */
+    CHECK(dl[3] == 0x106C32D0u);               /* pool-slot payload (low 32) */
+
+    CHECK(s_mlCount == 1);
+    CHECK(s_mlList == &list);
+
+    /* M = scale(1/1024) * frame. Frame basis at the origin point:
+     *   right = fwd x up = (0,-1,0), fwd = up x right = (1,0,0), up = +Z.
+     * The top three rows are scaled; the translation row is not:
+     *   transl = (0,0,0+fade+2) - 0.3*right - 0.6*fwd = (-0.6, 0.3, 2). */
+    CHECK(mclose(s_mlMtx.m[0][0], 0.0f) && mclose(s_mlMtx.m[0][1], -s) &&
+          mclose(s_mlMtx.m[0][2], 0.0f) && mclose(s_mlMtx.m[0][3], 0.0f));
+    CHECK(mclose(s_mlMtx.m[1][0],  s)   && mclose(s_mlMtx.m[1][1], 0.0f) &&
+          mclose(s_mlMtx.m[1][2], 0.0f) && mclose(s_mlMtx.m[1][3], 0.0f));
+    CHECK(mclose(s_mlMtx.m[2][0], 0.0f) && mclose(s_mlMtx.m[2][1], 0.0f) &&
+          mclose(s_mlMtx.m[2][2],  s)   && mclose(s_mlMtx.m[2][3], 0.0f));
+    CHECK(mclose(s_mlMtx.m[3][0], -0.6f) && mclose(s_mlMtx.m[3][1], 0.3f) &&
+          mclose(s_mlMtx.m[3][2],  2.0f) && mclose(s_mlMtx.m[3][3], 1.0f));
+}
+
 int main(void)
 {
     test_lerp_node();
@@ -580,6 +716,7 @@ int main(void)
     test_raster_select();
     test_hud();
     test_lru();
+    test_model_lights();
 
     if (g_fails != 0) {
         printf("%d FAILURES\n", g_fails);
