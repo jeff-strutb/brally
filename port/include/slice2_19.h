@@ -188,8 +188,13 @@ extern BrMat4   g_BrCurMat;      /* 0x106C29A8  view*proj, or the screen matrix 
 extern uint16_t g_BrPerspNorm;   /* 0x106C067C  guPerspective's perspNorm */
 extern float    g_BrCamFar;      /* 0x106C5AB4                            */
 extern float    g_BrCamNear;     /* 0x106C3360  hardcoded to 0.8f         */
-extern void    *g_BrMtxSlot;     /* 0x106C32D0  the 64-byte pool slot the
-                                  *             matrix was copied into    */
+extern void    *g_BrMtxSlot;     /* 0x106C32D0 (glide 0x106EA360) the 64-byte
+                                  *             pool slot the matrix was copied
+                                  *             into -- i.e. a pointer to the
+                                  *             current frame's projection
+                                  *             matrix. G_MTX 0x01030040 payload
+                                  *             re-emitted by render fns such as
+                                  *             the glide frontier 0x10011D20. */
 extern uint32_t *g_BrGfxPtr;     /* 0x106C0680  display-list write cursor */
 extern BrPool   *g_BrPool;       /* the original's BrPoolAlloc globals    */
 
