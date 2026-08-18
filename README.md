@@ -1,17 +1,17 @@
-# Boss Rally — decompilation project
+# Boss Rally, decompilation project
 
 ## Objective
 
 A **complete, MAME-standard bit-exact decompilation** of Boss Rally (the 1999
-`BRGlide.dll` / `BRD3D.dll` core) into one portable C99 tree — every function
-transcribed and verified byte-identical to the original — reached by the **most
+`BRGlide.dll` / `BRD3D.dll` core) into one portable C99 tree, every function
+transcribed and verified byte-identical to the original, reached by the **most
 efficient path**. Work is ordered strictly by cheapest-to-verify given
 dependencies; verified-function coverage is driven up monotonically with zero
 rework. Progress is measured by that coverage, not by demo milestones.
 
 **Playability is a side effect, never a driver.** That a car drives, the menus
 navigate, or a race renders are consequences of transcribing the right functions
-correctly — not reasons to prioritise one part of the code over another. No demo
+correctly, not reasons to prioritise one part of the code over another. No demo
 detours; no "path to playable" steering.
 
 ## Progress at a glance
@@ -20,17 +20,17 @@ _Measured 2026-08-17. Coverage is against the Glide build's `.text`, the
 reference target; D3D-derived transcriptions are mapped onto their Glide
 counterparts through the shared-function table. "Verified" is the transcribed
 fraction scaled by the pooled strict equivalence-audit rate (90/127 = 70.9%,
-95% CI 62.4–78.1%), so it moves only as auditing confirms code, never on
+95% CI 62.4-78.1%), so it moves only as auditing confirms code, never on
 transcription alone._
 
 ### Decompilation into the unified C base
 
 | Source | Role | Into the base | Progress (transcribed) |
 |---|---|---|---|
-| **PC — shared core** (BRGlide.dll / BRD3D.dll, 1999) | primary target | 41.0% of `.text` · 733 / 2140 functions | `████████░░░░░░░░░░░░` 41% |
-| &nbsp;&nbsp;└ of which strictly **verified** | — | ~29% | `██████░░░░░░░░░░░░░░░░` 29% |
-| **N64 — Top Gear Rally** (1997 sibling, F3DEX) | live reference | analysis complete; 0% merged as code | `░░░░░░░░░░░░░░░░░░░░` 0% |
-| **Unified base** | one portable C99 tree | PC-derived today; N64 merges where it clarifies or conflicts (PC wins ties) | — |
+| **PC, shared core** (BRGlide.dll / BRD3D.dll, 1999) | primary target | 41.0% of `.text` · 733 / 2140 functions | `████████░░░░░░░░░░░░` 41% |
+| &nbsp;&nbsp;└ of which strictly **verified** | | ~29% | `██████░░░░░░░░░░░░░░░░` 29% |
+| **N64, Top Gear Rally** (1997 sibling, F3DEX) | live reference | analysis complete; 0% merged as code | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| **Unified base** | one portable C99 tree | PC-derived today; N64 merges where it clarifies or conflicts (PC wins ties) | |
 
 The two games share a codebase (same studio, matching error strings, the PC
 disc even ships N64 textures verbatim), so the N64 ROM is read as a second
@@ -39,17 +39,17 @@ is transcribed into the tree yet; see [N64_MENU.md](N64_MENU.md).
 
 ### Path to a playable race
 
-_Milestone-based, not a code percentage — each step is a thing you can watch
+_Milestone-based, not a code percentage, each step is a thing you can watch
 happen (or not)._
 
 | # | Milestone | Status |
 |---|---|---|
 | 1 | Boots the ported core | ✅ done |
 | 2 | Front-end screen renders (backdrop, captions, disc art) | ✅ done |
-| 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens — see milestone 4) |
+| 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens, see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
-| 6 | Driving — the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER now being drained: the per-frame race render (`0x10011FA0`) is untranscribed, and its 50 direct callees are being ported one at a time from the Glide side. 33 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **13 to port** — 11 boundary-clean, 2 unaligned starts to resolve first. First drained this pass: `BrSceneAccumReset` (`0x10017F60`, the per-frame accumulator clear). Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
+| 6 | Driving, the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER now being drained: the per-frame race render (`0x10011FA0`) is untranscribed, and its 50 direct callees are being ported one at a time from the Glide side. 33 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **13 to port**, 11 boundary-clean, 2 unaligned starts to resolve first. First drained this pass: `BrSceneAccumReset` (`0x10017F60`, the per-frame accumulator clear). Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
 | 7 | Full race: HUD, audio, results | 🔴 not yet |
 
 `░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
@@ -92,8 +92,8 @@ nothing filled `g_brUiRoot` and 0x100425E0 therefore returned on its first line;
 
 `./build/brally -w` does the same and opens a Metal window drawing the controls
 at the coordinates the builder computed. `./tools/regress.sh` runs every suite.
-`root` may be given wherever a builder index is expected -- `-b root`,
-`-keys root "dd"`, `-shot root out.ppm` -- to drive the main menu instead.
+`root` may be given wherever a builder index is expected, `-b root`,
+`-keys root "dd"`, `-shot root out.ppm`, to drive the main menu instead.
 
 Verified from a clean clone on macOS 26 / Apple Silicon.
 
@@ -101,7 +101,7 @@ Verified from a clean clone on macOS 26 / Apple Silicon.
 
 It is the game's own menu code running: the real phase constructor
 (`0x10048710`) and a real screen builder (`0x1004D640`), both decompiled. Every
-coordinate is computed by ported game logic -- the host invents no geometry.
+coordinate is computed by ported game logic, the host invents no geometry.
 
 It is **not the game**. There is no input, no game loop, and no scene
 rendering. One menu screen is constructed and its controls are placed. Treat it
@@ -136,7 +136,7 @@ For the **renderer**, BRGlide is the better reference, for two reasons:
 
 Practical consequence: when implementing the Metal backend against the ~73
 divergent functions, read the **Glide** side. The game emits N64 F3DEX display
-lists either way -- the producer is shared, only the consumer differs -- and the
+lists either way, the producer is shared, only the consumer differs, and the
 Glide consumer is the better model of what the game intends to draw.
 
 `config/functions_glide.csv` already exists; `tools/crossdiff.py` pairs the two
@@ -159,11 +159,11 @@ can be checked, which the three earlier figures in this file's history did not:
 | Unknown / untriaged | 39,973 |
 | D3D-only | 13,343 |
 | **Game code to port** | **477,689** |
-| **Transcribed** | **201,514 — 42%** (910 of 1,955 functions) |
-| **Transcribed and audited-equivalent** | **~32%** (76% of a random sample; range 26–38%) |
+| **Transcribed** | **201,514, 42%** (910 of 1,955 functions) |
+| **Transcribed and audited-equivalent** | **~32%** (76% of a random sample; range 26-38%) |
 
-Excluded, deliberately: the statically linked C runtime (61,513 bytes — the
-host supplies it) and the D3D renderer boundary (19,797 bytes — replaced by
+Excluded, deliberately: the statically linked C runtime (61,513 bytes, the
+host supplies it) and the D3D renderer boundary (19,797 bytes, replaced by
 Metal, not ported).
 
 ### What the executables are
@@ -174,7 +174,7 @@ figure in this file used the wrong denominator.
 
 | image | `.text` | functions | what it is |
 |---|---|---|---|
-| `Boot.exe` | 96,768 | 1,453 | CD autorun shell — runs SETUP/DXSETUP/SetVideo. **Installer** |
+| `Boot.exe` | 96,768 | 1,453 | CD autorun shell, runs SETUP/DXSETUP/SetVideo. **Installer** |
 | `BossRally.exe` | 23,552 | 215 | plays `brally.avi`, launches `brally.exe`. **Intro player** |
 | `BRally.exe` | 3,584 | 39 | reads `BossRally.ini`, `LoadLibrary`s the renderer DLL, calls `RallyMain`. **Launcher** |
 | `BRGlide.dll` | 481,280 | ~2,700 | **the game** |
@@ -182,9 +182,9 @@ figure in this file used the wrong denominator.
 Maps: `config/functions_boot.csv`, `functions_bossrally.csv`,
 `functions_brally.csv`, `functions_glide.csv`.
 
-### The entry point IS ported — this section was stale (corrected 2026-08-17)
+### The entry point IS ported, this section was stale (corrected 2026-08-17)
 
-`RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point —
+`RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point
 Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
 (`port/src/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
 **Verified by `@implements` bodies plus passing suites, not by grep:**
@@ -194,7 +194,7 @@ Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
 | `0x10019730` | the main loop | `startup/br_mainloop.c` | `test_br_mainloop` ✅ |
 | `0x10019670` | window creation | `startup/br_window.c` | `test_br_window` ✅ |
 | `0x100194C0` | the wndproc (input) | `controls/br_input.c` | `test_br_input` ✅ |
-| `0x1001D8A0` | **`BrDxDetect`** — DirectX version detect, **not** an argument parser (it never touches the command line) | `startup/br_dxver.c` | `test_br_dxver` ✅ |
+| `0x1001D8A0` | **`BrDxDetect`**. DirectX version detect, **not** an argument parser (it never touches the command line) | `startup/br_dxver.c` | `test_br_dxver` ✅ |
 | `0x10007E80` | start gate | `startup/br_appstart.c` | ✅ |
 | `0x10063860` | install directory | `settings/br_basedir.c` | ✅ |
 | `0x1006D1A0` | string resources | `gamedata/br_strres.c` | ✅ |
@@ -205,17 +205,17 @@ Still on the counted frontier (`br_bootfrontier.c`), not stood in for:
 `0x10007F10`, `0x10007F40`, `0x10009C00` (DirectPlay init).
 
 Earlier revisions of this section (and `tools/isported.py`, which is
-comment-shape heuristics and **not authoritative** — use `whereis.py`) claimed
+comment-shape heuristics and **not authoritative**, use `whereis.py`) claimed
 all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
-milestone 6 — the per-frame race loop and the OBB collision **response**, the
+milestone 6, the per-frame race loop and the OBB collision **response**, the
 reason cars fall through the world. **That whole unit is now transcribed end to
 end** in `port/src/driving/br_collrespsolve.c`, all four functions oracle-
 verified against `tools/x87emu.py` executing their real opcode streams, pinned
 by golden vectors and mutation-tested: the contact-plane resolver `0x10067470`,
 the impulse solver `0x10065C80`, the impulse-free contact "kick" `0x10065980`,
 and the walker `0x10067710` that drives them per contact. **The response is now
-WIRED INTO THE LIVE PHYSICS LOOP** — `BrCarPhysAdvance` (`0x10067C30`) calls the
+WIRED INTO THE LIVE PHYSICS LOOP**, `BrCarPhysAdvance` (`0x10067C30`) calls the
 walker each substep where the `pfnCollide` hole was, with the `f1E8` box-matrix
 Z lift the caller applies before it (a *live* offset, not the dead accumulator
 an earlier `br_collresp.h` claimed): on flat ground the box clears the surface at
@@ -230,7 +230,7 @@ They measure different things and only one of them is coverage.
 
 | | |
 |---|---|
-| Modules | 121, organised by concern under `port/src/` — see `port/src/README.md` |
+| Modules | 121, organised by concern under `port/src/`, see `port/src/README.md` |
 | ...still named after an address batch | **62** (`sliceN_MM.c`, loose at the top level) |
 | Test suites | 105, 0 failures |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
@@ -239,7 +239,7 @@ They measure different things and only one of them is coverage.
 | Functions classed present in both renderer builds | 1,955 (`config/shared.csv`) |
 
 **None of these is a completion measure.** "16 of 16 builders run clean" means
-nothing crashed — several of those builders lead to placeholders. "105 suites
+nothing crashed, several of those builders lead to placeholders. "105 suites
 pass" means this project's own tests agree with this project's own code; two
 tests have been found that could not fail under any implementation, one of
 which hid a bug that dropped 96% of track geometry. Treat the 30% above as the
@@ -259,11 +259,11 @@ read-only passes that did not write the code:
 | ACCEPTABLE-DEVIATION | 5 / 33 | documented at the site, with a reason |
 | DIVERGENT | 3 / 33 | 9% |
 
-95% confidence interval on the strict rate: **61% – 90%**.
+95% confidence interval on the strict rate: **61% - 90%**.
 
 So of ~42% transcribed, roughly **32% of the game is transcribed *and*
-verified**. Treat that as the real number, and the 61–90% confidence interval
-on the sample means the honest range is **26–38%**.
+verified**. Treat that as the real number, and the 61-90% confidence interval
+on the sample means the honest range is **26-38%**.
 
 ### Why this figure jumped from 34%, and how much of it is real
 
@@ -272,14 +272,14 @@ shown to miss ~85 definitions outright (its regexes required whitespace before
 the function name, so `BrCtrlCfg *BrCtrlCfgCtor(...)` never matched) and, after
 `port/src` was organised into folders, to miss half the tree as well (a
 non-recursive glob). Replaying that old detector against today's tree gives
-150,422 bytes — *lower* than the number it produced before the reorganisation,
+150,422 bytes, *lower* than the number it produced before the reorganisation,
 because the reorganisation degraded it further.
 
 The two figures are therefore not comparable, and the increase is
 predominantly **measurement correction rather than transcription**. Real work
-did land in the same window — the entry point, the message loop, the DirectX
+did land in the same window, the entry point, the message loop, the DirectX
 probe, the install directory, the settings loader, the window and message
-handling, the binary config reader — but that is on the order of 8 KB, not
+handling, the binary config reader, but that is on the order of 8 KB, not
 50 KB.
 
 Stated plainly because this project has now reported five different coverage
@@ -290,13 +290,13 @@ All three divergences were genuine and all three are now fixed:
 - an x87 **NaN polarity** inversion (`fcomp` sets C0 for less-than *and* for
   unordered, so the original returns on NaN and `alpha < 0.1f` did not);
 - a buffer sized **4× too small** because `0x13000` was read as bytes where
-  `rep stosd` counts dwords — and the port had added a bound the original does
+  `rep stosd` counts dwords, and the port had added a bound the original does
   not have, turning the sizing error into silent truncation;
 - a **lost aliased store**: a word written at an address that lies *inside* a
   block just zeroed, where the port modelled the two as separate objects.
 
 The last one is the instructive case. Fixing it turned the suite red, because
-the test asserted all 83 entries were zero — **the test had certified the bug
+the test asserted all 83 entries were zero, **the test had certified the bug
 as correct behaviour**. Any later pass reading it would have "restored" the
 divergence to keep the suite green.
 
@@ -310,7 +310,7 @@ mutation-testing every new assertion is now mandatory (see CONVENTIONS.md).
 **Menus.** All sixteen ported screen builders run, in the game's own artwork,
 with captions recovered from `BRString.dll` and laid out by the game's own
 place routine. Selection moves and controls activate within a screen. The
-transition mechanism also fires — an activate flips the current-phase pointer —
+transition mechanism also fires, an activate flips the current-phase pointer
 but the destination is a placeholder, not a finished screen: this is *not* a
 front end you can walk end to end (see *What does NOT work* below).
 `./build/brally -keys 4 "dd"` drives it headlessly; `-shot <n> <file.ppm>`
@@ -319,7 +319,7 @@ claim here is checked.
 
 **Assets.** Extracted at build time from the builder's own disc, never
 committed: 172 menu sprites, the string table, tracks, and the CD audio. A
-missing disc degrades — the build still succeeds, suites that need data SKIP
+missing disc degrades, the build still succeeds, suites that need data SKIP
 with a reason, and the menu draws every sprite at the right size in the right
 place as an outlined placeholder.
 
@@ -335,7 +335,7 @@ texel expander.
 
 **Physics.** A car falls under the game's own 1/30 s integrator, finds real
 track triangles through the collision grid, and on flat ground settles to
-**0.190132** — which is the analytic force balance, not a number that was
+**0.190132**, which is the analytic force balance, not a number that was
 tuned to look right.
 
 ### What does NOT work
@@ -343,7 +343,7 @@ tuned to look right.
 **There is no game.** The list below is not a set of loose ends; it is most of
 the runtime.
 
-- **The entry point IS ported** (this list was stale — see the corrected
+- **The entry point IS ported** (this list was stale, see the corrected
   section above). `RallyMain`, the main loop, window, wndproc and DX detect are
   transcribed and test-green; three init callees remain on the counted
   frontier. The gap that stops a real race is milestone 6, below, not startup.
@@ -357,10 +357,10 @@ the runtime.
   the box-floor height; a car that lands is caught. A gentle flat-ground settle
   stays in the spring regime (the box never breaches the ground, so the response
   is correctly quiet and the car rests at `0.190132`); a hard drop breaches the
-  box and the walker fires — `test_collresp.c` asserts both, so the wiring is
+  box and the walker fires, `test_collresp.c` asserts both, so the wiring is
   proven live from both sides.
-- **Nothing renders a race.** `0x1001B27A` — the in-race render, HUD and mirror,
-  ~5.5 KB — is unported. `-race` is headless by design and no mode anywhere
+- **Nothing renders a race.** `0x1001B27A`, the in-race render, HUD and mirror,
+  ~5.5 KB, is unported. `-race` is headless by design and no mode anywhere
   draws a race.
 - **No car can drive itself.** Drive torque at `car+0x1CC` is written by the
   control chain at `0x1006F170`, unported. Lap progress in the race harness
@@ -386,7 +386,7 @@ Run with `BR_STUB_ABORT=1` to die at the first stub instead of continuing on a
 zero return.
 
 Two caveats that matter. Stubs return an integer 0, so a caller expecting a
-**float** gets whatever was in `xmm0`, not `0.0` -- such a gap shows up as a hit
+**float** gets whatever was in `xmm0`, not `0.0`, such a gap shows up as a hit
 rather than being silently trusted. And the 63 provisional data symbols are
 zeroed blocks; anything whose behaviour depends on a non-zero initial value will
 differ from the original until its owning module is ported.
@@ -394,11 +394,11 @@ differ from the original until its owning module is ported.
 ### Read this before trusting any number above
 
 `config/functions.csv` has **three confirmed failure modes**, all found during analysis:
-1. **Invents entries** -- `0x100331FF`, `0x100334D7`, `0x100312BB` are
+1. **Invents entries**, `0x100331FF`, `0x100334D7`, `0x100312BB` are
    mid-instruction, not function starts.
-2. **Misses entries** -- e.g. `0x1002C2B0`, `0x100311E4`, `0x10031212`,
+2. **Misses entries**, e.g. `0x1002C2B0`, `0x100311E4`, `0x10031212`,
    `0x10031347`, `0x10069A70`, `0x10073D80`.
-3. **Records wrong sizes** -- `0x10069A60` is 10 bytes, the map says 30, which
+3. **Records wrong sizes**, `0x10069A60` is 10 bytes, the map says 30, which
    swallows the padding *and* the following function.
 
 Because extents can swallow functions, **the denominator ~1,708 is itself
@@ -407,23 +407,23 @@ uncertain**. Treat the map as a good index, never as ground truth.
 The codebase is *not* pure C: ~9% of functions take `this` in `ecx` and ~14%
 use vtable dispatch. RTTI is absent only because MSVC 5 defaults it off.
 
-See `CONVENTIONS.md` for the coding rules this port follows -- most of them are
+See `CONVENTIONS.md` for the coding rules this port follows, most of them are
 non-obvious and each one has cost real time.
 
 ## Tooling
 
-- `tools/pe.py` — PE/COFF reader (sections, imports, exports, base relocations).
-- `tools/funcmap.py` — function discovery. Seeds from entry point, exports, every
+- `tools/pe.py`. PE/COFF reader (sections, imports, exports, base relocations).
+- `tools/funcmap.py`, function discovery. Seeds from entry point, exports, every
   direct `CALL` target, and every relocated dword pointing into `.text`. Recursive
   descent from each seed; switch tables recovered from `jmp [reg*4+disp]` where the
   table entries are themselves relocated. Address-taken pointers are only accepted as
-  function *starts* if they follow inter-function padding or a terminator instruction —
+  function *starts* if they follow inter-function padding or a terminator instruction
   without that filter, switch-table entries get mistaken for functions.
-- `tools/names.py` — recovers names from function-scoped diagnostic strings
+- `tools/names.py`, recovers names from function-scoped diagnostic strings
   (`CHK_FReadOpen():`, `DDraw_DoInit:`, …). Ceiling is 21 such strings → 15 names.
-- `tools/crossdiff.py` — matches functions between the two DLLs by instruction-mnemonic
+- `tools/crossdiff.py`, matches functions between the two DLLs by instruction-mnemonic
   fingerprint (raw bytes don't match; addresses and register allocation differ).
-- `tools/dumpasm.py` — annotated disassembly with resolved call targets, inlined string
+- `tools/dumpasm.py`, annotated disassembly with resolved call targets, inlined string
   literals, import names, and `g_<rva>` tags for globals.
 
 Run anything with `.venv/bin/python tools/<x>.py`.
@@ -437,7 +437,7 @@ Run anything with `.venv/bin/python tools/<x>.py`.
 ## Goal: portable source, not byte-matching
 
 Decided 2026-08-13. The target is **readable, platform-agnostic C that recompiles
-into a working game** -- not a byte-identical rebuild of BRD3D.dll.
+into a working game**, not a byte-identical rebuild of BRD3D.dll.
 
 ### Accuracy first; playability is the consequence, not the target
 
@@ -455,8 +455,8 @@ What that rules out, concretely, because each of these was done here:
 - Reporting "it builds", "N suites pass" or "16 of 16 builders run" as
   progress. Those measure that nothing crashed and that our own tests agree
   with our own code.
-- Chasing a visible symptom — a menu that will not navigate, a race that will
-  not draw — by wiring around the gap instead of decompiling the function the
+- Chasing a visible symptom, a menu that will not navigate, a race that will
+  not draw, by wiring around the gap instead of decompiling the function the
   gap is made of. The entry point went unread for weeks while the host
   hand-wrote a substitute for it.
 
@@ -486,8 +486,8 @@ functions shared between BRD3D.dll and BRGlide.dll are the platform-agnostic
 game core, and the per-renderer halves are exactly what gets replaced. Phases:
 
 1. Decompile the shared core to portable C (in progress).
-2. Replace the platform layer -- DirectDraw/Glide/DirectInput/DirectPlay/MSACM
-   -- with a portable backend (SDL is the obvious candidate).
+2. Replace the platform layer. DirectDraw/Glide/DirectInput/DirectPlay/MSACM,
+   with a portable backend (SDL is the obvious candidate).
 3. Asset loading needs no reversing; the formats are open (BMP, WAV, POD, RCA,
    and raw N64 CI4/LUT4 textures shipped verbatim).
 
@@ -508,7 +508,7 @@ Portability rules adopted now, so they do not have to be retrofitted:
 | **br_pool** (2 fns) | core, `0x10069490` | decompiled, verified |
 | **br_slots** (2 fns) | core, `0x100586A0` | decompiled, verified |
 | **br_state** (2 fns) | core, `0x1003E080`, `0x10073F40` | decompiled, verified |
-| **br_obj** (4 fns) | core, `0x10073B40`-`0x10073F50` | **MISNAMED — see erratum in header; these are bit-stream members** |
+| **br_obj** (4 fns) | core, `0x10073B40`-`0x10073F50` | **MISNAMED, see erratum in header; these are bit-stream members** |
 | **br_bits** (3 fns) | core, `0x10035FA0`, `0x100383C0`, `0x10074030` | decompiled, verified |
 | **br_vecd** (6 fns) | core, `0x100305B0`-`0x10030DE0` | decompiled, verified |
 | br_img | format reversed | decodes retail `splash`/`loading.img` |
@@ -526,37 +526,37 @@ the module list below.)
 
 | Thing | Gotcha |
 |---|---|
-| POD entry `+0x08` | is **two bytes** (`+0x08`,`+0x09`) from two separate `Add()` args -- `+0x0A/+0x0B` are **never written** (stack garbage). The header's 4th magic byte is never assigned either; do not validate it |
-| `BrNetSlot +0x058..0x557` | slice1_02 recorded this as never touched -- it is **eight `BrCarState` records of 0xA0**, indexed in parallel with the sequence and occupied arrays |
-| 22-byte record | **little-endian**, unlike every other serialised form in this game, and it **steals two bytes** from the top of earlier dword stores -- write order is load-bearing |
-| decoded booleans | are **128.0f**, not 1.0f -- except `f70`/`f74`, which really are 1.0f |
-| `guLookAtF` (`0x100309A0`) | **not stock libultra** -- Gram-Schmidts `up` (`y = norm(up - dot(up,z)z); x = y x z`) instead of `x = norm(up x z); y = z x x`. Do not substitute a stock version. No degenerate guard: `eye == at` yields an all-zero 3x3, no error |
-| `guRotateF` (`0x10030EE0`) | built from lookAt as `L . Rz . L^T`, and passes `up = (y,z,x)` -- a cyclic shift of the axis, not a world up. Not a typo |
+| POD entry `+0x08` | is **two bytes** (`+0x08`,`+0x09`) from two separate `Add()` args, `+0x0A/+0x0B` are **never written** (stack garbage). The header's 4th magic byte is never assigned either; do not validate it |
+| `BrNetSlot +0x058..0x557` | slice1_02 recorded this as never touched, it is **eight `BrCarState` records of 0xA0**, indexed in parallel with the sequence and occupied arrays |
+| 22-byte record | **little-endian**, unlike every other serialised form in this game, and it **steals two bytes** from the top of earlier dword stores, write order is load-bearing |
+| decoded booleans | are **128.0f**, not 1.0f, except `f70`/`f74`, which really are 1.0f |
+| `guLookAtF` (`0x100309A0`) | **not stock libultra**. Gram-Schmidts `up` (`y = norm(up - dot(up,z)z); x = y x z`) instead of `x = norm(up x z); y = z x x`. Do not substitute a stock version. No degenerate guard: `eye == at` yields an all-zero 3x3, no error |
+| `guRotateF` (`0x10030EE0`) | built from lookAt as `L . Rz . L^T`, and passes `up = (y,z,x)`, a cyclic shift of the axis, not a world up. Not a typo |
 | **two rect encodings** | `0x1001BE30` reads the 12-bit fields as **10.2 fixed point** (masked to 10 bits); `0x1001C7A0` reads the *same layout* as plain signed integers. Feeding one to the other silently scales by **4** |
-| rect Y flip | both handlers call as `(x1, cy-y2-1, x2+1, cy-y1)` -- a zero-extent rect still yields a 1x1 box |
+| rect Y flip | both handlers call as `(x1, cy-y2-1, x2+1, cy-y1)`, a zero-extent rect still yields a 1x1 box |
 | `0x10016B40` dial | the two radii are **different constants** (5.0f/7.0f vs 15.0f/20.0f); the code reaches past a clobbered stack slot for the second. Assuming they match gives a degenerate needle |
 | `0x10016B40` | mixes per-view and **record-0** access on one pointer, and indexes the dial table **backwards** (`aDial[15-v]`) |
-| `0x10019620` | integrates **upward** -- `fsubr` against `-343.0*dt` adds 343/s. It is a thunder front's distance, ending past 2048.0 |
-| command `0xE1` | is **FILL RECTANGLE** in this build with plain 12-bit **integer** corners -- NOT the N64's `0xF6` with 10.2 fixed point |
+| `0x10019620` | integrates **upward**, `fsubr` against `-343.0*dt` adds 343/s. It is a thunder front's distance, ending past 2048.0 |
+| command `0xE1` | is **FILL RECTANGLE** in this build with plain 12-bit **integer** corners. NOT the N64's `0xF6` with 10.2 fixed point |
 | `0x10031688` | scales asymmetrically (original bug): the lower-right corner is shifted **twice** and the upper-left not at all |
 | `0x100312BB` | is the **middle of a function**; the real entry is `0x100312A7`. Another function-map error, alongside `0x100331FF`/`0x100334D7` |
-| `.rca` geometry | N64 struct at file **0x8000**, N64 address **0x803C8000** -- that pair goes to `BrSegSetBases`. No flat vertex array exists; geometry is reached via F3DEX lists after rebasing |
+| `.rca` geometry | N64 struct at file **0x8000**, N64 address **0x803C8000**, that pair goes to `BrSegSetBases`. No flat vertex array exists; geometry is reached via F3DEX lists after rebasing |
 | `.rca` name padding | loader overwrites file bytes `0x7C` and `0x80..0x93` (inside szName's padding) with backend surface handles |
-| `0x100370D0` | swaps `+0x90` but rebases `+0x94` -- every other site does both to the same dword. Retail cars leave `+0x90` holding a raw N64 address forever |
-| `0x10038B20` tag 5 | has **no count of its own** -- it reuses the vertex count from the last tag-4 record, carried across loop iterations. A tag 5 before any tag 4 does nothing |
+| `0x100370D0` | swaps `+0x90` but rebases `+0x94`, every other site does both to the same dword. Retail cars leave `+0x90` holding a raw N64 address forever |
+| `0x10038B20` tag 5 | has **no count of its own**, it reuses the vertex count from the last tag-4 record, carried across loop iterations. A tag 5 before any tag 4 does nothing |
 | palette size | comes from the **parallel** table at `0x106C7C64` (+0x20, same index/stride), not from the record being copied: `0x1000000` -> 32 bytes (CI4), else 512 (CI8) |
 | `BrVec3Length` | was **missing** from br_vec.h despite sitting inside the cluster; sum of squares is rounded to **float32 before the sqrt**, unlike `BrVec3dLen` |
 | camera frames | entity holds **five 0x44-byte frames** at +0x0000/+0x273C/+0x2780/+0x27C4/+0x2808: 4x4 row-major (fwd/right/up/pos) + one trailing float |
 | `0x100019D0` | compiled-in bug: `[this+0x28F8]` gets two back-to-back unconditional stores in both arms, so the clamps are dead and it is **always 0.05f**. Do not fix |
 | keepalive counters | read AFTER the wrap reset, so on the frame the counter hits its limit the packet is **skipped**, not sent |
-| `BrVec3Lerp` | computes `(a-b)*t+b` -- **t=0 gives b, t=1 gives a** (inverted) |
-| `BrRbSolveAccel` | **copy-paste bug in the original**: X and Y fold in all four children's accel, **Z never sums them** -- it only divides by mass. Pinned by test |
+| `BrVec3Lerp` | computes `(a-b)*t+b`, **t=0 gives b, t=1 gives a** (inverted) |
+| `BrRbSolveAccel` | **copy-paste bug in the original**: X and Y fold in all four children's accel, **Z never sums them**, it only divides by mass. Pinned by test |
 | two quaternion matrix builders | `0x100695D0` divides by the norm (guarded at 0), `0x10074450` does **not** and scales the matrix instead. **Not interchangeable** |
 | `BrCarState` quaternion | **scalar-first**: `f00 = w`, `f04/f08/f0C = x/y/z`, `f10..f18` translation. Proven via `0x100695D0`'s only caller |
-| lerp convention **bit in practice** | `BrPathWalk` passes `(out, pts[i+1], pts[i], u)` while `BrPathWalkFrom` passes `(out, pts[i], pts[i+1], s)` -- mirrored, and because `BrVec3Lerp` is `(a-b)*t+b` these are genuinely different functions of the parameter. They coincide only at `s==1` |
-| NaN in car state | `fcomp 0.0 / test ah,0x40` is **C3 alone**, and unordered sets C3 -- so **NaN takes the zero branch**. Writing these as `== 0.0f` in C is wrong |
+| lerp convention **bit in practice** | `BrPathWalk` passes `(out, pts[i+1], pts[i], u)` while `BrPathWalkFrom` passes `(out, pts[i], pts[i+1], s)`, mirrored, and because `BrVec3Lerp` is `(a-b)*t+b` these are genuinely different functions of the parameter. They coincide only at `s==1` |
+| NaN in car state | `fcomp 0.0 / test ah,0x40` is **C3 alone**, and unordered sets C3, so **NaN takes the zero branch**. Writing these as `== 0.0f` in C is wrong |
 | volume sliders | slider A's table is **linear**, slider B's (master volume, `0x100BBAE0`) is a **perceptual curve**. Do not merge them |
-| **two lerp conventions** | `0x10010B00` computes `(arg2-arg1)*t+arg1`, so **t=0 gives the FIRST arg** -- the opposite of `BrVec3Lerp`. Same math, opposite argument order. Do NOT harmonise |
+| **two lerp conventions** | `0x10010B00` computes `(arg2-arg1)*t+arg1`, so **t=0 gives the FIRST arg**, the opposite of `BrVec3Lerp`. Same math, opposite argument order. Do NOT harmonise |
 | LRU (`0x100169B0`) | stamp compare is **unsigned** (`jb`), so a wrapped stamp sorts lowest and is re-picked immediately; ties go to the **later** index |
 | `0x10010BF0` | writes the Z output FIRST (it is the depth guard); on rejection **nothing** is written, so callers can only tell kept-vs-replaced via the flags array. Both guards reject on NaN |
 | `0x106C0860` | is a `BrMat4` (confirmed: passed to `BrMat4Scale`), row-vector convention |
@@ -566,107 +566,107 @@ the module list below.)
 | `BrSpanAdd` | clamps out-of-range input rather than rejecting it |
 | `BrSegFixup` | below-base pointers become **0**, not passed through |
 | `BrSpanReset` | **CORRECTED**: emptiness markers are **64 and 0**, not INT_MAX/INT_MIN; and `0x1003A4D0` never touches the grid at all (it is cleared by `0x1003A990`). Both errors fixed |
-| `BrAtan2` | takes **x first**, range `[0,2pi)`, and is a 16-step bisection with a 0.005 early-out -- accuracy ~0.01 rad. Do **not** substitute `atan2f` |
-| `BrMtxInvert` | returns 1 on **both** exits (success and identity fallback) -- useless as a status. Do not fix |
+| `BrAtan2` | takes **x first**, range `[0,2pi)`, and is a 16-step bisection with a 0.005 early-out, accuracy ~0.01 rad. Do **not** substitute `atan2f` |
+| `BrMtxInvert` | returns 1 on **both** exits (success and identity fallback), useless as a status. Do not fix |
 | three normalisers | `0x1003AE50` maps zero to `(0,0,1)`; `0x10074180` has **no guard** (NaN); `BrVec3dNormalise` leaves zero untouched. Same operation, three behaviours |
-| `car+0x10AC` | is a **struct-of-arrays** -- cursor advances 4 bytes per wheel while fields sit at +0x00/+0x10/+0x20/+0x30. Reading it as a record is silently wrong |
-| wheel index order | `{0x994, 0x57C, 0x370, 0x788}` -- **not** address order |
+| `car+0x10AC` | is a **struct-of-arrays**, cursor advances 4 bytes per wheel while fields sit at +0x00/+0x10/+0x20/+0x30. Reading it as a record is silently wrong |
+| wheel index order | `{0x994, 0x57C, 0x370, 0x788}`, **not** address order |
 | `BrPoolAlloc` | never returns NULL; past 256/frame every caller aliases one slot |
-| `BrVec3d` | separate DOUBLE-precision vector type -- do not fold into `BrVec3` |
+| `BrVec3d` | separate DOUBLE-precision vector type, do not fold into `BrVec3` |
 | `BrVec3dDot` | sums `(z*z + y*y) + x*x`; FP addition is not associative |
 | `BrVec3dCross` | **output is the THIRD arg**, opposite to `BrVec3Cross` |
 | `BrVec3dNormalise` | guards on `len != 0.0` exactly, no epsilon; tiny lengths still blow up |
-| `BrPackNormalByte` | `+1.0` maps to 128 and clamps to 127 -- asymmetric by design |
-| `BrMat4Frustum` | **7 args, no `scale`** -- stock libultra `guFrustumF` has 8 |
+| `BrPackNormalByte` | `+1.0` maps to 128 and clamps to 127, asymmetric by design |
+| `BrMat4Frustum` | **7 args, no `scale`**, stock libultra `guFrustumF` has 8 |
 | `BrMat4Perspective` | writes a **hardcoded** perspNorm of 1; stock computes it from n/f |
-| `BrMat4Perspective` | **DECLARED WRONG — takes 7 args, not 6**; the omitted trailing `scale` is present at both call sites. See adjudications |
+| `BrMat4Perspective` | **DECLARED WRONG, takes 7 args, not 6**; the omitted trailing `scale` is present at both call sites. See adjudications |
 | `BrSlotsReset` | empty marker is **-1**, so id 0 is a VALID occupied slot |
-| **`BrSlotTable` layout** | **ERRATUM**: slots (`0x10AA2538`, 8x12B) and `count` (`0x10AA288C`) are **756 bytes apart**, not adjacent -- the struct is a fiction. Do not overlay it on the real globals |
-| **`0x10AA288C` dual role** | it is BOTH `BrSlotTable::count` AND the DirectPlay **send gate** -- a non-empty slot table silently suppresses network tags 2/3/4/5. Tags 6/7/8 ignore it |
+| **`BrSlotTable` layout** | **ERRATUM**: slots (`0x10AA2538`, 8x12B) and `count` (`0x10AA288C`) are **756 bytes apart**, not adjacent, the struct is a fiction. Do not overlay it on the real globals |
+| **`0x10AA288C` dual role** | it is BOTH `BrSlotTable::count` AND the DirectPlay **send gate**, a non-empty slot table silently suppresses network tags 2/3/4/5. Tags 6/7/8 ignore it |
 | `0x1000C4D0` | slice1_03 named this `BrComCallLocked68`; it is **`IDirectPlay4A::Send`** under a critical section, always `DPID_ALLPLAYERS` + `DPSEND_GUARANTEED` |
-| option cyclers | `0x10AA33D4` steps **up**, `0x10AA33D0` steps **down** (33D4 wins if both) -- these are `a1`/`a0` in `br_state.h`, which only names them positionally |
+| option cyclers | `0x10AA33D4` steps **up**, `0x10AA33D0` steps **down** (33D4 wins if both), these are `a1`/`a0` in `br_state.h`, which only names them positionally |
 | search cyclers | move even when nothing is selectable: the full-circle test compares the **already-stepped** value, so all-rejected lands on the first candidate, not where the user was |
-| `0x10042880` | itoa scratch at frame+0x10 and the name at frame+0x14 -- **4 bytes apart**, so a four-digit index corrupts the prefix before it is read. Preserved |
+| `0x10042880` | itoa scratch at frame+0x10 and the name at frame+0x14, **4 bytes apart**, so a four-digit index corrupts the prefix before it is read. Preserved |
 | `0x10040330` | **real bug, preserved**: outer pass i zeroes flag[i] but the inner loop only visits j>i, so flags set on j are wiped when the outer loop reaches j. Conflict 0-vs-1 leaves flag[0]=1, flag[1]=0 |
-| `0x1003FA00` | **saves the wrong field** -- saves obj+0x40, restores into obj+0x2F70, destroying that field's prior contents |
-| `BrUiObj` | offsets **cannot** be reconciled into one struct: arrays at +0x2B5C and +0x3C98 both stride 0x438, but their difference (0x113C) is not a multiple of 0x438. Modelled as offset constants, not a struct -- do not "fix" this |
+| `0x1003FA00` | **saves the wrong field**, saves obj+0x40, restores into obj+0x2F70, destroying that field's prior contents |
+| `BrUiObj` | offsets **cannot** be reconciled into one struct: arrays at +0x2B5C and +0x3C98 both stride 0x438, but their difference (0x113C) is not a multiple of 0x438. Modelled as offset constants, not a struct, do not "fix" this |
 | `0x1003E7A0` | loop guard is unsigned `jbe` over a signed count; `W40A <= -32` makes the original spin ~2^32 times. Preserved |
 | `0x1003BD50` RNG | borrows the 16807 multiplier but the modulus is **2^27**, not 2^31-1. Do NOT substitute a stock minimal-standard PRNG. Seed 0 is absorbing |
-| SP GUID table | GUID order maps to rows **0,1,3,2** -- rows 2 and 3 are swapped vs address order. Regenerating from the GUID array gets it wrong |
+| SP GUID table | GUID order maps to rows **0,1,3,2**, rows 2 and 3 are swapped vs address order. Regenerating from the GUID array gets it wrong |
 | `0x1003CE80` tail | scans 0..31 inclusive; if nothing is available the index is left at its STARTING value with **no failure signal** |
-| `0x1003D850` | **dead code** -- matches a GUID, walks a string list, discards everything, returns 1. Do not port |
+| `0x1003D850` | **dead code**, matches a GUID, walks a string list, discards everything, returns 1. Do not port |
 | lap-time formatter | seconds via `ftol(centis * 0.01f)` and `0.01f` is `0.00999999977648`, so **exact multiples of 100 centis lose a second**: 1.000s prints `0:00.100`, 60.000s prints `0:59.100`. Verified. Real times are never exact multiples of 10ms, which is why it shipped. Invariant that DOES hold: `min*6000+sec*100+hundredths == trunc(t*100)` |
-| `0x10041300` | looks the string id up twice and `_strupr`s the second result -- **uppercases the string-table entry itself, permanently** |
-| `if (pItem + 0x2B65)` | an **interior pointer, never NULL** -- the guarded call always runs. Not a real null check |
+| `0x10041300` | looks the string id up twice and `_strupr`s the second result, **uppercases the string-table entry itself, permanently** |
+| `if (pItem + 0x2B65)` | an **interior pointer, never NULL**, the guarded call always runs. Not a real null check |
 | phase switcher | after the enter hook it **re-reads** the current-phase global for `+0x0C` and `+0x68`; a hook that re-points the phase gets the flags on ITS object. Caching that read changes behaviour |
-| phase switcher | **three outcomes, not two** -- "already built" and "just built" both return 1 but run different epilogues; allocation failure returns **0** |
-| `0x10AA2888` vs `0x10AA288C` | adjacent but **distinct** globals -- one is the phase flag, the other the slot-table count / DirectPlay send gate |
-| `BrIsAnyActive` | 5th flag is **inverted** -- set forces 0, and suppresses only the flags after it |
+| phase switcher | **three outcomes, not two**, "already built" and "just built" both return 1 but run different epilogues; allocation failure returns **0** |
+| `0x10AA2888` vs `0x10AA288C` | adjacent but **distinct** globals, one is the phase flag, the other the slot-table count / DirectPlay send gate |
+| `BrIsAnyActive` | 5th flag is **inverted**, set forces 0, and suppresses only the flags after it |
 | `BrSegSetBases` | arg order is (n64Base, hostBase); swapping them inverts every fixup |
-| `BrObjClear` | clears +0x00..+0x0C only -- **+0x10 deliberately survives** |
+| `BrObjClear` | clears +0x00..+0x0C only, **+0x10 deliberately survives** |
 | **br_obj naming** | **ERRATUM**: all four are members of one big-endian BIT STREAM class, not object accessors. `BrObjConsumeFlag` = *align read cursor to byte*. Behaviour correct, names wrong. Merge into slice1_09's stream API |
-| bit stream | length arg lands in the **write cursor**, not a size field -- which is why "at end" means read cursor caught up to write cursor |
+| bit stream | length arg lands in the **write cursor**, not a size field, which is why "at end" means read cursor caught up to write cursor |
 | bit stream | every BYTE-granular accessor silently aligns first, discarding a partial byte. `ReadBits` does **not**. All multi-byte is big-endian, MSB-first |
 | `BrVec3Normalise` (0x10074250) | **NO zero-length guard**, unlike `BrVec3dNormalise` which has one. Do not unify them |
 | `0x100747C0` transform | applies the upper 3x3 **TRANSPOSED** (like `MulVec3Transposed`, not `MulVec3`) plus the fourth ROW as translation. `pOut` must not alias `pV` |
 | entity array | stride is **0x2B68** (11112 bytes), confirmed twice: magic divide and two caller base addresses differing by exactly that |
-| `0x10074F70` ring | no read cursor, no fullness check -- the 257th push overwrites slot 0 |
-| `BrMat4Mul` (0x100306C0) | destination is **LAST** -- `(a, b, out)`. Its two paths sum the four products in **different orders**; both preserved. Null `pOut` writes through address 0 |
-| `BrVtxCacheResolve` | key is the (pointer, count) PAIR but a miss byte-swaps the source **in place** -- resolving the same memory twice under different counts corrupts it |
+| `0x10074F70` ring | no read cursor, no fullness check, the 257th push overwrites slot 0 |
+| `BrMat4Mul` (0x100306C0) | destination is **LAST**, `(a, b, out)`. Its two paths sum the four products in **different orders**; both preserved. Null `pOut` writes through address 0 |
+| `BrVtxCacheResolve` | key is the (pointer, count) PAIR but a miss byte-swaps the source **in place**, resolving the same memory twice under different counts corrupts it |
 | `BrF3DVtxFixup` | a zero `w1` does **not** stay null: the segment prefix merges in before the fixup, so `BrSegFixup`'s null rule is unreachable from here |
 | `BrPeerFind` | returns 0, -1 and 1..15 with **three different meanings**; record 0 is reserved and never scanned. Treating 0 as "not found" is wrong |
-| `0x10008B80` / `0x100378A0` | **stubs in the shipped DLL** -- a bare `ret` and a flag-set. Called with 1/3/6 args that are all ignored. Their intended semantics are unrecoverable from this binary |
-| `BrRdpACMux` vs `CCMux` | `1013` (LOD_FRACTION) maps to **0** in alpha but **13** in colour -- the one asymmetric token |
-| `BR_VTX_NORMAL_SCALE` | `0x1008F440` = 1/128 exactly, the inverse of `BrPackNormalByte`'s 128.0 -- they are an encode/decode pair |
+| `0x10008B80` / `0x100378A0` | **stubs in the shipped DLL**, a bare `ret` and a flag-set. Called with 1/3/6 args that are all ignored. Their intended semantics are unrecoverable from this binary |
+| `BrRdpACMux` vs `CCMux` | `1013` (LOD_FRACTION) maps to **0** in alpha but **13** in colour, the one asymmetric token |
+| `BR_VTX_NORMAL_SCALE` | `0x1008F440` = 1/128 exactly, the inverse of `BrPackNormalByte`'s 128.0, they are an encode/decode pair |
 | `BrObjInitInline` | +0x10 aims at storage INSIDE the object; never free it, re-point on copy |
 | `BrHandleLookup` | valid range is **1..0x12E**; handle 0 is reserved null, not index 0 |
 | `BrHandleLookup` sig | **CORRECTED**: original takes ONE arg (the handle); the table is hardcoded. Our table parameter is an undocumented-until-now DEVIATION. Observed handles are string ids -> likely a string table |
-| `0x10060030` error box | **silently drops the error code** -- every call site passes the failing HRESULT and it is never loaded. Also caption/text are the inverse of how call sites read |
+| `0x10060030` error box | **silently drops the error code**, every call site passes the failing HRESULT and it is never loaded. Also caption/text are the inverse of how call sites read |
 | `0x1006C740` | 2D test, not 3D: the dominant axis is projected out and never re-examined, so a point far off the plane still reports inside. Axis ties pick axis **2** |
-| `0x1006C740` barycentric | `u` weights **C** and `v` weights **B** -- reversed from the obvious reading. Returns **AX only** |
+| `0x1006C740` barycentric | `u` weights **C** and `v` weights **B**, reversed from the obvious reading. Returns **AX only** |
 | tint blit | colour key is `R==0 && G==B`; alpha byte copied through untouched; source stride is `(x1-x0)*4`, **not** `x1*4`, and x0/y0 apply to the DESTINATION only |
-| `0x10063420` | mixes a clamped and an **unclamped** index into one 24-byte-record table -- values >3 read out of bounds. Looks like a real bug |
-| `0x1006ABA0`/`0x1006AE00` | despite matching x24 / /24 factors these touch **different globals** (`0x10B502E8` vs `0x10B502EC`) -- NOT a getter/setter pair |
-| race entrants | 16 objects of stride **0x2B68** at `0x10ACDEA8` + parallel 16 of stride `0x15C`; index cached at `+0x140`. For index < 2 only, `+0xE8C` points at a 332-byte sub-block, else NULL -- always check |
+| `0x10063420` | mixes a clamped and an **unclamped** index into one 24-byte-record table, values >3 read out of bounds. Looks like a real bug |
+| `0x1006ABA0`/`0x1006AE00` | despite matching x24 / /24 factors these touch **different globals** (`0x10B502E8` vs `0x10B502EC`). NOT a getter/setter pair |
+| race entrants | 16 objects of stride **0x2B68** at `0x10ACDEA8` + parallel 16 of stride `0x15C`; index cached at `+0x140`. For index < 2 only, `+0xE8C` points at a 332-byte sub-block, else NULL, always check |
 | sound return codes | **INVERTED WITHIN ONE MODULE**: `0x10072820` returns 1=success, everything else returns an HRESULT where 0=success. `0x10072A90` consumes both. Getting either backwards silently inverts playback |
 | disabled sound | all three gates zero => returns **success**; a NULL voice returns **failure**. Absent hardware is success, bad argument is not |
-| `0x100722D0` | on the Unlock-failed path `mov esi,eax` overwrites the saved HRESULT with the retry's result -- a genuinely failed create can report success with a NULL buffer. Reproduced |
-| sound Unlock | passed `nDataBytes`, **not** the count Lock reported -- a short lock would overrun the copy |
+| `0x100722D0` | on the Unlock-failed path `mov esi,eax` overwrites the saved HRESULT with the retry's result, a genuinely failed create can report success with a NULL buffer. Reproduced |
+| sound Unlock | passed `nDataBytes`, **not** the count Lock reported, a short lock would overrun the copy |
 | sound neutral point | **400** is neutral for both pan and volume; engine does no clamping, relies on DirectSound |
-| chain walkers | `0x10072BF0`/`0x10072C20` **skip the head** -- they start at `pHead->pNext`; the head is never stopped or freed |
+| chain walkers | `0x10072BF0`/`0x10072C20` **skip the head**, they start at `pHead->pNext`; the head is never stopped or freed |
 | `0x1006F720` cache | compares a **zero**-extended u16 against a **sign**-extended i16, so negative-x/y cells never hit and rebuild every frame. Real bug. Also no bound check on a 150-entry cell |
 | ground probe `0x1006F0C0` | rejects unless `\|dot(N,D)\| > 0.001`, `t < 2.0`, `t < best`, and **`N.z > 0.2`** (upward faces only); `t` initialised to `100.0f` |
 | `BrSwapVec3` | swaps exactly 3 u32s (unrolled); it is not a general byteswap |
-| `BrFChkFRead`/`BrChkFRead` | take **`FILE **`, not `FILE *` — a `FILE *` compiles and reads garbage |
+| `BrFChkFRead`/`BrChkFRead` | take **`FILE **`, not `FILE *`, a `FILE *` compiles and reads garbage |
 | `BrAdler32` | `buf==NULL` returns 1 ignoring the seed; `len==0` returns the seed unchanged. Not interchangeable |
-| `CHK_*` family | all call **`exit(1)`** on failure — not recoverable, callers get no error return |
+| `CHK_*` family | all call **`exit(1)`** on failure, not recoverable, callers get no error return |
 | `BrChkRealloc` | checks size AFTER realloc; `(NULL,0)` allocates then drops the pointer (leak, preserved) |
-| `BrChkAlloc(0)` | returns NULL quietly — zero size falls through as the return value, not an OOM abort |
-| `BrTicks30FromMs` | **not** `ms*30/1000`; it is `3*(ms/100) + min((ms%100)/33, 3)`, so 99ms and 100ms both give tick 3 (verified). Duplicated inline at `0x10075100` — keep in sync |
+| `BrChkAlloc(0)` | returns NULL quietly, zero size falls through as the return value, not an OOM abort |
+| `BrTicks30FromMs` | **not** `ms*30/1000`; it is `3*(ms/100) + min((ms%100)/33, 3)`, so 99ms and 100ms both give tick 3 (verified). Duplicated inline at `0x10075100`, keep in sync |
 | `BrCdVolumeScale` | masks to 8 bits before scaling, so **256 is silence**, not full volume |
 | `BrGrid64Sample` | `x` is column, `y` is row (`row<<6 + col`); rejection value 0 is indistinguishable from a real zero cell |
 | `BrU16CursorNext` | returns **AX only**; and `pos+1` carries into bit 0 of the count, so `pos==0xFFFF` makes the count fail to decrement → caller loops forever |
-| `test r,r / jbe` | `test` clears CF so `jbe` degenerates to `je` — an equality test, not a comparison. Appears in adler32 and likely elsewhere |
-| clip vertex list | **CIRCULAR, and every clip call rotates it** — head ends one past where it started; on early exit it can point at a discarded vertex |
+| `test r,r / jbe` | `test` clears CF so `jbe` degenerates to `je`, an equality test, not a comparison. Appears in adler32 and likely elsewhere |
+| clip vertex list | **CIRCULAR, and every clip call rotates it**, head ends one past where it started; on early exit it can point at a discarded vertex |
 | clip loop exits | `cVerts < 2` is tested BEFORE `--i <= 0`, so a fully-rejected triangle exits with `cVerts == 1`, not 0. Callers must test `< 2`, never `== 0` |
 | clip lerp args | always passed **outside-first**, which appears as *opposite* operand order on the two splice paths. Do not "harmonise" |
-| clip node pool | only addresses inside `0x104C01A8..0x104C0BA8` (64 records x 0x28) are recycled; foreign vertices are silently dropped but still consume a pool node — the free list drains one-way |
-| clip NaN | NaN clips as **OUTSIDE** (branch on x87 C0, set for unordered). Port as `>= 0.0f`, never `!(< 0.0f)` — the inverse spelling flips it |
+| clip node pool | only addresses inside `0x104C01A8..0x104C0BA8` (64 records x 0x28) are recycled; foreign vertices are silently dropped but still consume a pool node, the free list drains one-way |
+| clip NaN | NaN clips as **OUTSIDE** (branch on x87 C0, set for unordered). Port as `>= 0.0f`, never `!(< 0.0f)`, the inverse spelling flips it |
 | `BrTextDraw` align | case 0 **falls through** to default, so any align other than 0/1/2 does not write x at all and reuses the previous call's x. Centring uses `sar` (arithmetic), so negatives round the other way |
 | time formatting | truncates toward zero in all four divisions; negatives yield negative fields (`-1.5f` -> `0:-1.-50`) and minutes never wrap into hours (3661.25s -> `61:01.25`) |
-| POD `0x10008C60` | read helper takes **(FILE*, buf, n)** — file FIRST, unlike stdio |
-| POD `BrFatal` | formats the message then **never prints or stores it** — leaked, then `exit(1)`. Every POD diagnostic in the original is silently discarded |
-| `0x1000BEA0` dispatch | two tables collapse to one `if`: only message id **0x107** (and id 5) reach real code. Forwarding order is `f0C, f10, f08` — **not** ascending |
+| POD `0x10008C60` | read helper takes **(FILE*, buf, n)**, file FIRST, unlike stdio |
+| POD `BrFatal` | formats the message then **never prints or stores it**, leaked, then `exit(1)`. Every POD diagnostic in the original is silently discarded |
+| `0x1000BEA0` dispatch | two tables collapse to one `if`: only message id **0x107** (and id 5) reach real code. Forwarding order is `f0C, f10, f08`, **not** ascending |
 
 ### Identified but NOT yet decompiled
 
 | Address | Size | Identification | Evidence |
 |---|---|---|---|
-| ~~`0x100309A0`~~ | 427 | **DONE** -- `guLookAtF`, but NOT stock libultra | subtracts one 3-float point from another (eye-at), calls `0x10030600` (`BrVec3dNormalise`), then `0x10030640` (`BrVec3dDot`) against a third vector, followed by a Gram-Schmidt `fmul`/`fsubr` pattern. Args look like `(mtx, eye[3], at[3], up[3])` at `[esp+0x50..0x74]`. |
+| ~~`0x100309A0`~~ | 427 | **DONE**, `guLookAtF`, but NOT stock libultra | subtracts one 3-float point from another (eye-at), calls `0x10030600` (`BrVec3dNormalise`), then `0x10030640` (`BrVec3dDot`) against a third vector, followed by a Gram-Schmidt `fmul`/`fsubr` pattern. Args look like `(mtx, eye[3], at[3], up[3])` at `[esp+0x50..0x74]`. |
 
 Structural note worth keeping: `guLookAt` takes **float** arguments but spills
 them to `qword` and performs the entire construction in **double** precision.
-That is why the engine carries a separate `BrVec3d` type -- the precision
+That is why the engine carries a separate `BrVec3d` type, the precision
 matters in the view-matrix path, and folding it into `BrVec3` would change
 results.
 
@@ -681,26 +681,26 @@ results.
 Deliberately not written yet: these are dense interleaved x87 or platform-coupled,
 and a partial trace of them would produce plausible-but-wrong code. `guFrustumF`
 in particular should be transcribed line by line rather than assumed to match
-stock libultra -- Boss Game Studios may have modified it.
+stock libultra. Boss Game Studios may have modified it.
 
 ### Integration decisions (integration)
 
-**`BrComVtbl`/`BrComObj` name collision — RESOLVED.** slice1_03 and slice1_06 both
+**`BrComVtbl`/`BrComObj` name collision. RESOLVED.** slice1_03 and slice1_06 both
 defined these with different layouts; including both failed to compile. They are
 genuinely different interfaces (03 = generic holder, 06 = DirectPlay, keyed by
 `DPERR_BUFFERTOOSMALL 0x8877001E`), so slice1_06's were renamed to
-`BrDPlayVtbl`/`BrDPlayObj`. Renamed, not merged -- merging would have been wrong.
+`BrDPlayVtbl`/`BrDPlayObj`. Renamed, not merged, merging would have been wrong.
 
-**`br_f3d` microcode — CORRECTED to F3DEX.** The file decoded G_VTX with plain
+**`br_f3d` microcode. CORRECTED to F3DEX.** The file decoded G_VTX with plain
 F3D's layout (`n = (byte3+1)/16`). A later pass established the real format from the
 game's OWN G_VTX fixup at `0x1002C150`, which extracts `n` as `(w0 >> 10) & 0x3F`
 -- F3DEX packing. Verified: the two readings disagree on **57 of 151** G_VTX
 commands in ce.rca, and F3D systematically undercounts (8 where the truth is 24,
 16 where it is 32). Triangle decoding was unaffected. `bb.rca` went from 56 to 76
 triangles after the fix. **OPEN:** `(v0+n)` reaches 63, so the vertex cache may be
-64 entries, not 32 -- unsettled.
+64 entries, not 32, unsettled.
 
-**`0x1007DFE0` — three independent readings disagreed. ADJUDICATED as `operator new`.**
+**`0x1007DFE0`, three independent readings disagreed. ADJUDICATED as `operator new`.**
 - one reading: `operator new`, tail-calls `_nh_malloc(size, 1)`
 - one reading: listed it as `malloc`
 - one reading: called it `calloc(n, 1)`
@@ -710,18 +710,18 @@ The first reading wins on evidence: it read `_nh_malloc`'s body (the `__newmode`
 retry) and distinguished it from `0x1007D350` = `malloc`, which passes `__newmode`
 where this passes a literal 1. **`calloc` is wrong and dangerous**: the second
 argument is the new-handler flag, NOT an element count, so the result is NOT
-zero-initialised. It was later noted this call appears 147 times in one function --
+zero-initialised. It was later noted this call appears 147 times in one function
 assuming zeroed memory there would be a real bug.
 
-### INTEGRATION STATE — measured by an actual full link (not predicted)
+### INTEGRATION STATE, measured by an actual full link (not predicted)
 
 A link of **all 46 modules** into one binary was attempted. Results:
 
 - **0 duplicate definitions.** The predicted `BrG_<ADDR>` global collision did
-  **not** materialise -- analysis passes used file-scope statics or address-suffixed
+  **not** materialise, analysis passes used file-scope statics or address-suffixed
   names. My earlier warning about this was wrong; recorded so nobody spends
   effort on a non-problem.
-- **304 undefined symbols** -- the real, measured integration debt. Full list in
+- **304 undefined symbols**, the real, measured integration debt. Full list in
   regenerable with `tools/linkqueue.py`. These are cross-slice references to functions
   that are declared (usually as `/* XSLICE */`) but implemented nowhere yet.
 
@@ -734,8 +734,8 @@ function some module already calls but nothing defines yet.
 
 **Naming debt: 53 addresses carry more than one function name** (e.g. `0x10032873`
 is both `BrFrameBegin` and `BrFrameBeginRec`; `0x10035BBA` is `BrFatal`,
-`BrLogEmit` and `BrLogSet`). This is heuristic -- it matches names to the nearest
-address comment -- so treat it as an order-of-magnitude figure, not an exact list.
+`BrLogEmit` and `BrLogSet`). This is heuristic, it matches names to the nearest
+address comment, so treat it as an order-of-magnitude figure, not an exact list.
 
 The round-3 contract added a "grep the address before naming" rule. It did not
 work, and the reason is structural: analysis passes grep for the *address*, but the
@@ -744,7 +744,7 @@ different names for one address they each reached from different call sites.
 Address-grepping cannot catch either. A shared append-only name registry, or
 integration reconciliation, is the only thing that will.
 
-### Superseded note — global symbol collisions at final link
+### Superseded note, global symbol collisions at final link
 
 A later pass defines **101 file-scope globals** named `BrG_<ADDR>` (the convention
 `slice1_07.h`/`slice1_08.h` set). Several of those addresses have 10-35 users
@@ -757,7 +757,7 @@ collision will surface only when everything is linked into one game binary.
 
 Resolution when that happens: promote shared globals into a single owning
 translation unit (`port/src/br_globals.c`) with `extern` declarations elsewhere.
-Do NOT resolve it by renaming per-module -- that would create N copies of what
+Do NOT resolve it by renaming per-module, that would create N copies of what
 is one object in the original, and the aliasing is load-bearing (see the
 `0x10AA288C` dual-role entry above).
 
@@ -768,7 +768,7 @@ address; unify at final link.
 
 ### Function-map errors found during analysis (cumulative)
 
-`0x100331FF`, `0x100334D7`, `0x100312BB` are **not function entries** -- packets
+`0x100331FF`, `0x100334D7`, `0x100312BB` are **not function entries**, packets
 starting there begin mid-instruction. A later pass also found **4 additional real
 functions** hiding inside listed byte ranges (`0x1002C2B0`, `0x100311E4`,
 `0x10031212`, `0x10031347`), i.e. the map both invents entries and misses them.
@@ -777,13 +777,13 @@ functions** hiding inside listed byte ranges (`0x1002C2B0`, `0x100311E4`,
 Also confirmed: `0x10069A60` is really **10 bytes** (`mov ecx` + `jmp`, then five
 `nop`s). The map records 30, swallowing the padding *and* `0x10069A70`, which is
 absent from the map entirely. So the map's *sizes* are wrong too, not just its
-entry set -- an over-long extent silently hides a following function.
+entry set, an over-long extent silently hides a following function.
 
 Net: treat `config/functions.csv` as a good starting index, not ground truth.
 
 ### Adjudicated cross-slice conflicts (integration)
 
-**`0x10575510`/`0x10575518` — float, NOT pointer. slice1_05 is wrong.**
+**`0x10575510`/`0x10575518`, float, NOT pointer. slice1_05 is wrong.**
 `slice1_05.h` models these as `BrCursorPair { void *f10, *f18; }`. A later pass reads
 them as floats throughout. Adjudicated in a later pass's favour on direct evidence:
 `0x1002B134` is `fcomp dword ptr [0x10575518]`, an unambiguous float compare.
@@ -791,18 +791,18 @@ them as floats throughout. Adjudicated in a later pass's favour on direct eviden
 pattern moves the same way), so it follows its partner. Fix slice1_05 at
 integration; do not propagate the pointer typing.
 
-**`BrMat4Perspective` takes SEVEN arguments, not six — my declaration is wrong.**
+**`BrMat4Perspective` takes SEVEN arguments, not six, my declaration is wrong.**
 `br_mat.h` carries a self-flagged caveat asking for a call-site check. A later pass
 did it: two call sites (`0x10033E83`, `0x10033F7E`) both clean up with
 `add esp,0x1c` = 28 bytes = 7 args, and one uses literals that pin the order:
-`(mf, perspNorm, 45.0f, 1.3333334f, 10.0f, 2000.0f, 1.0f)` -- stock
+`(mf, perspNorm, 45.0f, 1.3333334f, 10.0f, 2000.0f, 1.0f)`, stock
 `guPerspectiveF` order **including the trailing `scale`** that br_mat.h omits.
 NOTE: I could not reproduce the disassembly myself (that address is one of the
 map's mid-function entries), so this rests on a later pass's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
 
-### RESOLVED — canonical phase layout is now `port/include/br_phase.h`
+### RESOLVED, canonical phase layout is now `port/include/br_phase.h`
 
 `BrPhase_` there is the merged superset (promoted from slice3_32's `BrPhaseFull`,
 which had already reconciled the destructor at `0x10048870` and the vtable at
@@ -816,7 +816,7 @@ This makes the LP64 hazard concrete rather than theoretical:
     this host (LP64)    sizeof      = 304   nPages@28  pCur@192  f68@200
 
 So byte offsets do NOT survive on a 64-bit host. `br_phase.h` therefore asserts
-only what is portable -- field ORDER -- and supplies `BR_PHASE_ALLOC_SIZE` so
+only what is portable, field ORDER, and supplies `BR_PHASE_ALLOC_SIZE` so
 callers stop allocating the `0xC8` literal, which under-allocates by 104 bytes
 here. Nothing may overlay this struct on a file image or foreign buffer.
 
@@ -824,13 +824,13 @@ here. Nothing may overlay this struct on a file image or foreign buffer.
 
 Five menu-screen builders (`0x10049F40`, `0x1004D640`, `0x10056FF0`, `0x1004F700`,
 `0x10053CF0`) have been declined **independently by five separate attempts**. Their
-bodies are not the problem -- `slice3_33.c` has already decompiled the same family
+bodies are not the problem, `slice3_33.c` has already decompiled the same family
 five times. The blocker is a TYPE:
 
 - `slice2_26.h` `BrPhase` and `slice2_25.h` `BrOptObj` model the 0xC8-byte object as
   `{pVtbl, pfn04, pfn08, f0C, f68}`.
 - The builders need `+0x10` (uint16 screen count), `+0x14` (screen array) and
-  `+0x6C` (parallel int array) -- which is `slice3_33.h`'s `BrUiPhase`, an
+  `+0x6C` (parallel int array), which is `slice3_33.h`'s `BrUiPhase`, an
   incompatible layout for the same memory.
 - `slice3_32.h` adds a third view, `BrPhaseFull`, with the full 0xC8 map recovered
   from the destructor and vtable: `+0x10` page count, `+0x12` index,
@@ -847,9 +847,9 @@ wrong shape; `slice2_26.h`'s `void(*)(void *pEntity)` is right.
 
 ### Analysis tooling
 
-`tools/modules.py` -- topological work order (callees before callers), 513
+`tools/modules.py`, topological work order (callees before callers), 513
 shared leaves with no prerequisites, 1255 address-contiguous module clusters.
-`tools/globals.py` -- 2569 referenced globals, 213 identified as arrays via
+`tools/globals.py`, 2569 referenced globals, 213 identified as arrays via
 indexed-access scale; this is what unblocks the global-dependent core.
 
     ./build.sh
@@ -869,7 +869,7 @@ gears 1-4 (3.23, 2.10, 1.46, 1.11) and differing only in the top two
 words rather than guessed at; naming them needs the physics code decompiled.
 Geometry and the embedded RGBA5551 textures are not yet decoded.
 
-This is the handling data -- the most directly moddable thing found so far.
+This is the handling data, the most directly moddable thing found so far.
 
 **Geometry is NOT yet decoded, and two hypotheses have been tested and
 rejected.** Recorded so they are not retried:
@@ -877,7 +877,7 @@ rejected.** Recorded so they are not retried:
 1. *Float XYZ triples.* A scan appeared to find 6738 floats at 0x16C0, but the
    scan wrongly accepted `0.0` as float-like and had locked onto a large zero
    region. Excluding zeros, the entire file contains only 128 bytes of
-   plausible float data -- far too little for a car mesh.
+   plausible float data, far too little for a car mesh.
 2. *N64-style s16 `Vtx` (16-byte: s16 x,y,z, flag, u,v, rgba).* The best
    "match" at 0x85D0 has every field of every vertex holding the same value
    (2313 across x, y, z, flag, u and v). It is uniform filler, and the
@@ -896,7 +896,7 @@ From the parser `sub_100370D0`, which opens by assembling bytes in reverse:
 So `.rca` is N64 data shipped verbatim on the PC disc, like `.ci4`/`.lut4`.
 Any future scan of this file MUST read big-endian. Note the little-endian
 header fields (`RCar`, name, gear ratios) still parse correctly little-endian,
-so the file is mixed -- only the payload from +0x8000 is swapped.
+so the file is mixed, only the payload from +0x8000 is swapped.
 
 *Unconfirmed:* a big-endian s16 `Vtx`-style scan yields a candidate at
 `0x00FB30` with car-scale coordinates, but `flag` and `uv` are zero on every
@@ -911,7 +911,7 @@ structured geometry. Read `sub_100370D0` (1641 bytes) instead.
 
 | Address | Size | References |
 |---|---|---|
-| `0x10037740` | 338 | `.rca`, `RCar`, `cars/` -- builds the path, parsing is downstream |
+| `0x10037740` | 338 | `.rca`, `RCar`, `cars/`, builds the path, parsing is downstream |
 | `0x10007BD0` | 2541 | `cars/` |
 | `0x100798F0` | 408 | `splash.img` |
 | `0x1002F690` | 606 | `loading.img` |
@@ -952,7 +952,7 @@ copy it was meant to guard.
 ### What the analysis says the port actually costs
 
 `tools/apiboundary.py` aligns the two builds' call graphs to find every call site
-where BRD3D and BRGlide diverge -- one logical operation, two implementations.
+where BRD3D and BRGlide diverge, one logical operation, two implementations.
 That set *is* the platform API:
 
 | | functions | bytes |
@@ -971,7 +971,7 @@ it. Anything else CRT-shaped near the top deserves the same suspicion.
 
 "Platform agnostic" and "Metal" are not in tension: build a thin renderer
 interface and make Metal its first backend. The original proves the seam is
-real -- it already shipped two backends behind one core.
+real, it already shipped two backends behind one core.
 
     port/src/core/      decompiled game logic, no platform types
     port/src/gfx/       renderer interface
@@ -992,7 +992,7 @@ real -- it already shipped two backends behind one core.
 1. Platform skeleton: AppKit window + Metal device + swapchain, clear to colour.
 2. Asset pipeline on top of the POD reader: `.img`, `.bmp`, `.ci4`/`.lut4`
    textures decoded and uploaded as Metal textures.
-3. **Milestone -- asset viewer.** Draw real game textures and `.rca` car models
+3. **Milestone, asset viewer.** Draw real game textures and `.rca` car models
    with Metal. This derisks the entire renderer *before* the core decomp lands,
    and is the first point where something visible runs.
 4. Implement the 73 boundary functions against the renderer interface.
@@ -1003,7 +1003,7 @@ real -- it already shipped two backends behind one core.
 
 1. **Stand up the toolchain** (above) and prove the loop: compile one trivial function,
    diff against the original bytes.
-2. **CRT boundary — now partly established.** `0x1007CC40` is `_cexit`, identified
+2. **CRT boundary, now partly established.** `0x1007CC40` is `_cexit`, identified
    from its callee (`_doexit(0,0,1)`, atexit walk, `ExitProcess`). So the CRT starts at
    or below `0x1007CC40`, NOT `0x10078000+` as earlier guessed. Confirmed CRT, do not
    port: `0x1007CC40 _cexit`, `0x1007CD10/20 _lockexit/_unlockexit`, `0x1007CE90 fopen`,
@@ -1014,11 +1014,11 @@ real -- it already shipped two backends behind one core.
    `0x10079550`.
 
    CORRECTION: an earlier note in this file called `0x1007DFE0` "malloc". It is
-   `operator new` — both tail-call `_nh_malloc`, but malloc (`0x1007D350`) passes the
+   `operator new`, both tail-call `_nh_malloc`, but malloc (`0x1007D350`) passes the
    `__newmode` global while operator new passes a literal 1.
 3. **Recover globals.** 16,021 relocations in `.text` point into `.data`; clustering
    them by access pattern is how the ~25MB BSS layout gets reconstructed.
-4. **Start decompiling** from the leaves — the pod/file I/O group (`LoadPod`, `ReadPod`,
+4. **Start decompiling** from the leaves, the pod/file I/O group (`LoadPod`, `ReadPod`,
    `GetPodLength`, `CHK_FReadOpen`) is well-named, self-contained, and a good first
    module.
 
@@ -1029,7 +1029,7 @@ real -- it already shipped two backends behind one core.
   real instruction boundary. MSVC does not 4-align every entry.
   Caveat: that audit proves *instruction* alignment, not that each entry is a whole
   function rather than a mid-function basic block. `0x1003289F` was flagged as a
-  suspect case and is now **RESOLVED** -- it is a real function, `BrScissorSet`.
+  suspect case and is now **RESOLVED**, it is a real function, `BrScissorSet`.
   Separately, two packet listings (`0x100331FF`, `0x100334D7`) genuinely begin
   mid-instruction, so those ARE scanner errors; both were correctly skipped.
 - Function *boundaries* are inferred, not authoritative. Extents run from one detected
@@ -1045,7 +1045,7 @@ real -- it already shipped two backends behind one core.
 The retail PC game selects a music backend from `PlayMusic=` in `BossRally.ini`:
 `0` off, `1` Redbook CD audio via WINMM MCI, `2` the EAR driver (`earpds.dll`).
 **`2` is what is compiled into `.data`**, so a default install used EAR, not the
-CD. `0x100027C0` is a two-way dispatcher on that value, NOT an enable check --
+CD. `0x100027C0` is a two-way dispatcher on that value, NOT an enable check
 anything other than 1 takes the second backend and runs normally.
 
 The two backends differ at end of track, and this is load-bearing:
@@ -1065,7 +1065,7 @@ The port plays neither Redbook nor XM. It plays FLAC produced locally:
     python tools/extract_xm.py "reference/tgrally/Top Gear Rally (USA).z64" build/audio/n64
 
 Both are idempotent; a re-run extracts nothing. The N64 modules are not raw in
-the ROM -- they sit in a chunked-zlib container (big-endian `u32` total, `u32`
+the ROM, they sit in a chunked-zlib container (big-endian `u32` total, `u32`
 unpacked size, then length-prefixed zlib streams of <=16000 bytes, **2-byte**
 aligned). `tools/xm_render.c` renders them, since ffmpeg here has no libopenmpt.
 
@@ -1074,8 +1074,8 @@ structurally (every effect used by all six modules is implemented; anything
 outside that set makes extraction FAIL rather than write wrong audio) and
 arithmetically (for the four modules without tempo changes, rendered length
 matches tracker arithmetic exactly). It has NOT been A/B'd against FastTracker II
-or a real N64 capture, so fine detail -- vibrato depth scaling, envelope edge
-cases -- may differ. Sample playback uses linear interpolation; the N64 mixer
+or a real N64 capture, so fine detail, vibrato depth scaling, envelope edge
+cases, may differ. Sample playback uses linear interpolation; the N64 mixer
 resampled, and point-sampling would bake aliasing permanently into a lossless
 file.
 
@@ -1108,7 +1108,7 @@ To build and run the tests you need a retail copy of Boss Rally (PC, 1999) and m
 populate:
 
     orig/       BRD3D.dll, BRGlide.dll   (BRD3D.dll is the core decompilation
-                target -- sha256 29af141ebd44bbcc79a9e58ca9cba62936792d6750c2e8b9
+                target, sha256 29af141ebd44bbcc79a9e58ca9cba62936792d6750c2e8b9
                 df1a3805ae684b99. BRGlide.dll is the RENDERER reference; see the
                 note at the top of this file.)
     testdata/   BossRally.pod, splash.img, loading.img, ce.rca, bb.rca,
