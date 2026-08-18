@@ -301,6 +301,20 @@ void    *g_BrMtxSlot;                       /* projection slot (slice2_19) */
 uint32_t BrG_6C0258, BrG_6C0688;            /* othermode payloads          */
 float    g_4B16A0, g_4B16AC;                /* scene accumulators (slice2_15) */
 
+/* Globals BrCarDrawVehicle (0x1000A110) adds. */
+uint8_t  BrG_6C0260, BrG_6C1614, BrG_6C0200;  /* fog RGB bytes            */
+uint8_t  BrG_6C1580, BrG_6C335C, BrG_6C0968;  /* light RGB bytes          */
+uint8_t  BrG_6C0960, BrG_6C65BC;               /* dim G/B bytes            */
+int32_t  BrG_6C6618;                            /* mode flag                */
+int32_t  BrG_6C1174;                            /* cull ref                 */
+int32_t  g_brRaceBeginDifficulty;               /* difficulty ref           */
+int32_t  g_brRaceBeginNTexSet;                  /* texture set count        */
+int32_t  g_brCfgGameMode;                       /* game mode                */
+
+static struct { int32_t f6C161C; } s_s17State;
+void *BrS17GetState(void) { return &s_s17State; }
+int32_t BrBootGlobal_ABAA0(void) { return 0; }
+
 /* The texture command is emitted by a grab-bag object; stub it and record
  * the one call BrCarDrawBody makes. */
 static int         s_texN;

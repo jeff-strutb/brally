@@ -89,6 +89,8 @@
 #include "br_mat.h"     /* BrMat4, BrMat4Scale (0x1002A7A0 == d3d 0x100310F0) */
 #include "br_vec.h"     /* BrVec3 and the 0x1003Axxx cluster                  */
 
+#define BR_CAR_MAX           16       /* BR_CARDATA_CARS; the flag-array bound */
+
 /* --------------------------------------------------------------------
  * The car, as this code reads it.
  * -------------------------------------------------------------------- */
@@ -156,6 +158,21 @@ extern BrMat4   g_BrDrawScale;        /* 0x106E7930  the 1/255 scale mtx  */
 extern BrMat4   g_BrDrawWorld;        /* 0x10273570  scale * car          */
 extern BrMat4   g_BrDrawView;         /* 0x106E9A38  the view matrix      */
 extern BrMat4   g_BrDrawCombined;     /* 0x106E78F0  world * view         */
+extern int32_t  g_BrDrawClass[BR_CAR_MAX];  /* 0x10273520  per-car LOD       */
+extern uint8_t  g_BrDrawLights[24 * BR_CAR_MAX]; /* 0x102733A0 light copies */
+extern uint32_t g_BrDrawModeBase;     /* 0x10273640  render mode base       */
+extern int32_t  g_BrDrawSuppress;     /* 0x10273304  suppress underside     */
+extern int32_t  g_BrDrawLodFloor;     /* 0x106ED6C0  minimum LOD level      */
+extern BrVec3   g_BrDrawDir0;        /* 0x10273390  light direction 0      */
+extern BrVec3   g_BrDrawDir1;        /* 0x10273560  light direction 1      */
+extern int32_t  g_BrDrawRefIndex;     /* 0x10273688  ref colour index       */
+extern int32_t  g_BrDrawReflectEnable; /* 0x10B7153C BSS 0                  */
+extern int32_t  g_BrDrawReflectFlag;  /* 0x100A5B40  .data = 1              */
+extern void    *g_BrDrawTrackFlags;   /* 0x106EED38  ptr to 84-byte recs    */
+extern const void *g_BrDrawTexBlob;   /* 0x100A5C88  palette blob           */
+extern void   (*g_BrDrawModelDlHook)(uint32_t, uint32_t); /* 0x118ED1BC    */
+extern uint8_t  g_BrDrawByte80;       /* 0x106B7C80  light colour byte      */
+extern uint8_t  g_BrDrawByte78;       /* 0x106B7C78  env colour byte        */
 
 /* The display-list cursor is slice2_18's BrG_6C0680 -- 0x106C0680 in the
  * D3D build IS 0x106E7710 in Glide.  It is not modelled again here; see
@@ -201,23 +218,35 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel);
 #define BR_CAR_OFF_MTX       0x0000u  /* BrMat4 world transform             */
 #define BR_CAR_OFF_ROW2      0x0020u  /* BrVec3 mtx.m[2]; the headlight basis */
 #define BR_CAR_OFF_POS       0x0030u  /* BrVec3 position == mtx.m[3]         */
+#define BR_CAR_OFF_AWHEEL    0x0040u  /* 4 x BrMat4 wheel transforms         */
 #define BR_CAR_OFF_ICAR      0x0140u  /* int32 car index, 0..BR_CAR_MAX-1    */
+#define BR_CAR_OFF_P0168     0x0168u  /* ptr; guard -- must be non-NULL       */
+#define BR_CAR_OFF_P016C     0x016Cu  /* ptr; guard                           */
+#define BR_CAR_OFF_P0170     0x0170u  /* ptr; guard                           */
+#define BR_CAR_OFF_P0174     0x0174u  /* ptr; guard                           */
+#define BR_CAR_OFF_F0E68     0x0E68u  /* float; sign selects model DL variant */
+#define BR_CAR_OFF_P0F00     0x0F00u  /* ptr; has int at own +0x64            */
 #define BR_CAR_OFF_GUARD     0x0F08u  /* ptr; NULL => the pass does nothing  */
-#define BR_CAR_OFF_CAMSLOT   0x27C4u  /* body pass: player culls if the active
-                                       * camera object equals record+0x27C4  */
+#define BR_CAR_OFF_I2714     0x2714u  /* int32; 0/1 written by +0x290C gate   */
+#define BR_CAR_OFF_F2718     0x2718u  /* float; G_SETTILESIZE scale factor    */
 #define BR_CAR_OFF_FOG       0x2730u  /* float; written = fog at the position */
 #define BR_CAR_OFF_ACTIVECAM 0x2734u  /* ptr; player: == +0x273C or +0x2890  */
 #define BR_CAR_OFF_CAMA      0x273Cu  /* a cam frame inside the record        */
+#define BR_CAR_OFF_CAMSLOT   0x27C4u  /* body pass: player culls if the active
+                                       * camera object equals record+0x27C4  */
 #define BR_CAR_OFF_CAMB      0x2890u  /* the other cam frame                  */
+#define BR_CAR_OFF_U290C     0x290Cu  /* uint16; index into 84-byte records   */
+#define BR_CAR_OFF_P294C     0x294Cu  /* ptr; non-NULL enables +0x290C test   */
 #define BR_CAR_OFF_KIND      0x29AFu  /* draw class; 2 == translucent pass    */
+#define BR_CAR_OFF_ALPHA     0x29B0u  /* float; 0..1 fog/prim alpha           */
+#define BR_CAR_OFF_I29B4     0x29B4u  /* int32; entity bank                   */
+#define BR_CAR_OFF_U29C0     0x29C0u  /* ptr; aux flags at target dword       */
 #define BR_CAR_OFF_MODEL     0x29C4u  /* ptr; the car's model record          */
 
 /* The model record, by raw offset (the body pass reaches it through the
  * scratch global BrG_6C3308, the same way 0x1000A110 does). */
 #define BR_MODEL_OFF_TEXRECS 0x8014u  /* ptr; BrGfxEmitTexCmd's record array   */
 #define BR_MODEL_OFF_BODYDL  0x802Cu  /* uint32 body geometry display list     */
-
-#define BR_CAR_MAX           16       /* BR_CARDATA_CARS; the flag-array bound */
 
 /* Per-car visibility flags the pass writes and the two draw passes read.
  * Indexed by the car's +0x140. Opaque = set only for non-class-2 cars that
@@ -241,5 +270,10 @@ void BrCarVisibilityUpdate(void *pCar);
  * cars) accumulate its headlight glare into the two per-frame scene
  * accumulators g_4B16A0 / g_4B16AC.  pCar is the raw 0x2B68 car record. */
 void BrCarDrawBody(void *pCar);
+
+/* 0x1000A110 -- emit one vehicle's complete display list (body, underside,
+ * glass, detail, reflection, wheels). pCar is the raw 0x2B68 car record.
+ * lodBias is added to the distance-derived detail level. */
+void BrCarDrawVehicle(void *pCar, int32_t lodBias);
 
 #endif /* BR_DRAWCAR_H */
