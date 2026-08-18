@@ -73,9 +73,10 @@ address,build,symbol,file,line
 0x10008A00,d3d,BrPodWriteAdd,slice2_12.c,978
 0x10008AA0,d3d,BrPodWriteClose,slice2_12.c,1029
 0x10008CF0,d3d,BrLogPrint,slice4_52.c,328
-0x10009C10,glide,BrCarDrawWheels,br_drawcar.c,177
-0x10009FC0,glide,BrCarVisibilityUpdate,br_drawcar.c,278
+0x10009C10,glide,BrCarDrawWheels,br_drawcar.c,181
+0x10009FC0,glide,BrCarVisibilityUpdate,br_drawcar.c,287
 0x1000BEA0,d3d,BrAppMsgDispatch,slice1_03.c,397
+0x1000BEB0,glide,BrCarDrawBody,br_drawcar.c,393
 0x1000C000,d3d,BrDPlaySysMsgDispatch,slice2_13.c,149
 0x1000C350,d3d,BrDPlayPump,slice2_13.c,266
 0x1000C440,d3d,BrDPlayThreadProc,slice2_13.c,319
@@ -203,7 +204,7 @@ address,build,symbol,file,line
 0x10029410,d3d,BrGbiTexScanFlush,slice2_16.c,635
 0x10029B10,glide,BrTexChooseLevel,br_texinit.c,110
 0x10029B50,glide,BrTexInit,br_texinit.c,129
-0x10029E50,glide,BrGuMtxStore,br_drawcar.c,118
+0x10029E50,glide,BrGuMtxStore,br_drawcar.c,122
 0x10029E60,d3d,BrGbiTexScanMark,slice2_16.c,621
 0x10029EB0,d3d,BrGbiTexScanSetImg,slice2_16.c,667
 0x10029F10,d3d,BrGbiTexScanLoadTlut,slice2_16.c,689
@@ -218,7 +219,7 @@ address,build,symbol,file,line
 0x1002A250,d3d,BrGbiTexScanOtherModeH0E,slice2_16.c,854
 0x1002A280,d3d,BrGbiTexCreate,slice2_16.c,1057
 0x1002A740,d3d,BrGbiSolidTexBuild,slice2_16.c,1091
-0x1002A9F2,glide,BrGuMtxHookNop,br_drawcar.c,95
+0x1002A9F2,glide,BrGuMtxHookNop,br_drawcar.c,99
 0x1002AEA0,d3d,BrFadeRelease,slice2_16.c,1113
 0x1002AEC0,d3d,BrFadeLatch,slice2_16.c,1125
 0x1002AF10,d3d,BrFadeDrawSprite,slice2_16.c,1150
@@ -300,11 +301,11 @@ address,build,symbol,file,line
 0x10031481,d3d,BrGfxEmitTexCmd,slice2_17.c,490
 0x100314E8,d3d,BrGfxClearScreen,slice2_17.c,425
 0x10031688,d3d,BrGfxFillRect,slice2_17.c,453
-0x10032873,d3d,BrFrameBeginRec,slice2_18.c,558
-0x10032886,d3d,BrFrameBeginHiRes,slice2_18.c,569
-0x1003289A,d3d,BrFrameNop,slice2_18.c,578
+0x10032873,d3d,BrFrameBeginRec,slice2_18.c,560
+0x10032886,d3d,BrFrameBeginHiRes,slice2_18.c,571
+0x1003289A,d3d,BrFrameNop,slice2_18.c,580
 0x1003289F,d3d,BrSub_1003289F,slice5_62.c,349
-0x1003348E,d3d,BrGfxNopA,slice2_18.c,765
+0x1003348E,d3d,BrGfxNopA,slice2_18.c,767
 0x10033CB1,d3d,BrCamFrustumBuild,slice2_19.c,134
 0x10033E83,d3d,BrCamMatrixSetup,slice2_19.c,183
 0x10033F7E,d3d,BrCamMatrixSetupFixed,slice2_19.c,219

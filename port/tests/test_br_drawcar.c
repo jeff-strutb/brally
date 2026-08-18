@@ -22,6 +22,7 @@
 #include "br_drawcar.h"
 #include "slice1_05.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -292,6 +293,26 @@ int32_t BrG_6C661C;   /* mode flag */
 int32_t BrG_6C6624;   /* mode flag */
 int32_t BrG_6C6614;   /* player-translucent override */
 
+/* Globals BrCarDrawBody (0x1000BEB0) adds.  Same rule: this suite links
+ * br_drawcar alone, so it supplies their storage. */
+void    *BrG_6C3308;                        /* model scratch ptr           */
+void    *BrG_0AA838, *BrG_0AA860, *BrG_0AA868;  /* canned DL / light lists */
+void    *g_BrMtxSlot;                       /* projection slot (slice2_19) */
+uint32_t BrG_6C0258, BrG_6C0688;            /* othermode payloads          */
+float    g_4B16A0, g_4B16AC;                /* scene accumulators (slice2_15) */
+
+/* The texture command is emitted by a grab-bag object; stub it and record
+ * the one call BrCarDrawBody makes. */
+static int         s_texN;
+static int         s_texI;
+static const void *s_texRecs;
+void BrGfxEmitTexCmd(int i, const void *pRecords)
+{
+    s_texI = i;
+    s_texRecs = pRecords;
+    ++s_texN;
+}
+
 static const BrVec3 *s_fogPt;
 static int           s_fogN;
 float BrFogFactorAtPoint(const BrVec3 *pPoint)
@@ -406,6 +427,214 @@ static void test_vis_player_fallthrough(void)
     CHECK(g_BrCarVisOpaque[3] == 1 && g_BrCarVisAny[3] == 1, "player-nocam: both set");
 }
 
+/* ==================================================================== *
+ * BrCarDrawBody (0x1000BEB0)
+ *
+ * The command payloads and the two combiner words are DERIVED FROM THE
+ * DISASSEMBLY, and the glare accumulator values are GOLDEN VECTORS FROM
+ * tools/x87emu.py executing the real opcode stream of 0x1000BEB0 out of
+ * orig/BRGlide.dll -- not this port's output.  Regenerate with the emulator
+ * (scratchpad glow_golden.py), never by copying the port's own numbers back.
+ *
+ * Combiner #1 tokens (a0..Ad1):
+ *   {0,0,0,1, 0,0,0,TEXEL0, 0,0,0,1, 0,0,0,TEXEL0}
+ * Combiner #2 tokens:
+ *   {TEXEL0,0,PRIM,0} x4
+ * Both words are the ones-fill shift chain of 0x1002F900 run by hand with
+ * the mux table (CC: 0->31 1->6 TEXEL0->1 PRIM->4; AC: 0->7 1->6 TEXEL0->1
+ * PRIM->4).  Written as literals so a change to BrRdpSetCombineLERP -- or a
+ * wrong token order here -- FAILS rather than moves with the code.
+ * ==================================================================== */
+#define BODY_COMBINE1_W0  0xFCFFFFFFu
+#define BODY_COMBINE1_W1  0xFFFF73B9u
+#define BODY_COMBINE2_W0  0xFC121824u
+#define BODY_COMBINE2_W1  0xFF33FFFFu
+
+static unsigned char s_bodyCar[0x2B68];
+static unsigned char s_bodyModel[0x8040];
+static unsigned char s_bodyCam[0x40];
+static unsigned char s_texbuf[4];
+
+#define BCARP(off) (*(void **)(s_bodyCar + (off)))
+
+static void body_reset(uint8_t kind, int withBody)
+{
+    memset(s_bodyCar, 0, sizeof s_bodyCar);
+    memset(s_bodyModel, 0, sizeof s_bodyModel);
+    memset(s_bodyCam, 0, sizeof s_bodyCam);
+
+    *(int32_t *)(s_bodyCar + BR_CAR_OFF_ICAR) = 3;
+    s_bodyCar[BR_CAR_OFF_KIND] = kind;
+    BCARP(BR_CAR_OFF_MODEL) = s_bodyModel;
+    *(const void **)(s_bodyModel + BR_MODEL_OFF_TEXRECS) = s_texbuf;
+    *(uint32_t *)(s_bodyModel + BR_MODEL_OFF_BODYDL) = withBody ? 0x0B0D0000u : 0;
+
+    BrG_6C661C = 1;                 /* mode flag set -> the pass runs        */
+    BrG_6C6624 = 0;
+    BrG_6C2CF8 = (void *)0xD00D;    /* not our car: non-player, glow runs    */
+    BrG_6C6490 = s_bodyCam;         /* glow dereferences its +0 and +0x30    */
+    g_BrCarVisOpaque[3] = 1;        /* marked visible for the opaque pass    */
+
+    g_BrCarMtxSlot[3]   = 0x11110000u;
+    g_BrCarLightSlot[3] = 0x22220000u;
+    g_BrMtxSlot = (void *)0x0A030303u;
+    BrG_0AA838  = (void *)0x0A838838u;
+    BrG_0AA860  = (void *)0x0A860860u;
+    BrG_0AA868  = (void *)0x0A868868u;
+    BrG_6C0258  = 0x02580258u;
+    BrG_6C0688  = 0x06880688u;
+    g_4B16A0 = g_4B16AC = 0.0f;
+
+    s_texN = 0;
+    dl_reset();
+}
+
+static void test_body_stream(void)
+{
+    body_reset(0, 1);               /* opaque car, model carries a body list */
+    BrCarDrawBody(s_bodyCar);
+
+    CHECK(dl_count() == 29, "body: %d commands, want 29", dl_count());
+    if (dl_count() != 29) return;
+
+    CHECK(w0(0)  == 0x01060040u && w1(0)  == 0x11110000u, "body: model mtx");
+    CHECK(w0(1)  == 0x01030040u && w1(1)  == 0x0A030303u, "body: proj mtx");
+    CHECK(w0(2)  == 0x039E0010u && w1(2)  == 0x22220000u, "body: light 9E");
+    CHECK(w0(3)  == 0x03980010u && w1(3)  == 0x22220010u, "body: light 98");
+    CHECK(w0(4)  == 0x039A0010u && w1(4)  == 0x22220020u, "body: light 9A");
+    CHECK(w0(5)  == 0x039C0010u && w1(5)  == 0x22220030u, "body: light 9C");
+    CHECK(w0(6)  == 0x06000000u && w1(6)  == 0x0A838838u, "body: setup DL");
+    CHECK(w0(7)  == 0xE7000000u, "body: pipe sync");
+    CHECK(w0(8)  == 0xBA001402u && w1(8) == 0, "body: two-cycle");
+    CHECK(w0(9)  == 0xBC00000Au, "body: moveword 00");
+    CHECK(w0(10) == 0xBC00040Au, "body: moveword 04");
+    CHECK(w0(11) == 0xBC00200Au && w1(11) == 0xFFFFFF00u, "body: prim 20");
+    CHECK(w0(12) == 0xBC00240Au && w1(12) == 0xFFFFFF00u, "body: prim 24");
+    CHECK(w0(13) == BODY_COMBINE1_W0 && w1(13) == BODY_COMBINE1_W1,
+          "body: combine1 %08X %08X", w0(13), w1(13));
+    CHECK(w0(14) == 0xB900031Du && w1(14) == 0x004049D8u, "body: render mode");
+    CHECK(w0(15) == 0xBA000602u && w1(15) == 0x80u, "body: othermode");
+    CHECK(w0(16) == 0x06000000u && w1(16) == 0x0B0D0000u, "body: body geom");
+    CHECK(w0(17) == 0xE7000000u, "body: sync 2");
+    CHECK(w0(18) == 0xBA000602u && w1(18) == 0x06880688u, "body: othermode 2");
+    CHECK(w0(19) == 0xE7000000u, "body: tail sync");
+    CHECK(w0(20) == 0xBA001402u, "body: tail two-cycle");
+    CHECK(w0(21) == 0xBD000000u, "body: pop mtx");
+    CHECK(w0(22) == 0xB6000000u && w1(22) == 0x00040000u, "body: clear geom");
+    CHECK(w0(23) == 0xBC000002u && w1(23) == 0x80000040u, "body: moveword tail");
+    CHECK(w0(24) == 0x03860010u && w1(24) == 0x0A868868u, "body: light 0");
+    CHECK(w0(25) == 0x03880010u && w1(25) == 0x0A860860u, "body: ambient");
+    CHECK(w0(26) == 0xBA000C02u && w1(26) == 0x02580258u, "body: othermode C02");
+    CHECK(w0(27) == 0xBA000E02u && w1(27) == 0, "body: othermode E02");
+    CHECK(w0(28) == BODY_COMBINE2_W0 && w1(28) == BODY_COMBINE2_W1,
+          "body: combine2 %08X %08X", w0(28), w1(28));
+
+    CHECK(s_texN == 1 && s_texI == 5 && s_texRecs == (const void *)s_texbuf,
+          "body: one tex command (5, model texrecs)");
+}
+
+static void test_body_no_bodydl(void)
+{
+    /* 0x1000C147 tests the model's +0x802C: with no body list the G_DL is
+     * dropped and ONLY it -- 28 commands, and index 16 is the sync that
+     * followed the (absent) body list, not a G_DL. */
+    body_reset(0, 0);
+    BrCarDrawBody(s_bodyCar);
+    CHECK(dl_count() == 28, "body-nogeom: %d commands, want 28", dl_count());
+    if (dl_count() == 28)
+        CHECK(w0(16) == 0xE7000000u, "body-nogeom: sync where the geom was");
+}
+
+static void test_body_guards(void)
+{
+    /* Each of the four early returns leaves the cursor untouched. */
+    body_reset(0, 1); BrG_6C661C = BrG_6C6624 = 0;
+    BrCarDrawBody(s_bodyCar);
+    CHECK(dl_count() == 0, "guard mode-flags: %d", dl_count());
+
+    body_reset(0, 1); g_BrCarVisOpaque[3] = 0;
+    BrCarDrawBody(s_bodyCar);
+    CHECK(dl_count() == 0, "guard not-visible: %d", dl_count());
+
+    body_reset(0, 1);
+    BrG_6C2CF8 = s_bodyCar;                          /* this IS the player */
+    BrG_6C6490 = s_bodyCar + BR_CAR_OFF_CAMSLOT;     /* camera == +0x27C4  */
+    BrCarDrawBody(s_bodyCar);
+    CHECK(dl_count() == 0, "guard player-camslot: %d", dl_count());
+
+    body_reset(2, 1);                                /* class 2 (translucent) */
+    BrCarDrawBody(s_bodyCar);
+    CHECK(dl_count() == 0, "guard kind2: %d", dl_count());
+}
+
+/* Golden accumulator values from tools/x87emu.py over 0x1000C1C2..0x1000C38A;
+ * dist 9, threshold cleared by 0.05 -> 0.05*750/81. */
+#define GLOW_GOLDEN  0.462963074f
+
+static void body_setvec(unsigned off, float x, float y, float z)
+{
+    *(float *)(s_bodyCar + off + 0) = x;
+    *(float *)(s_bodyCar + off + 4) = y;
+    *(float *)(s_bodyCar + off + 8) = z;
+}
+static void cam_setvec(unsigned off, float x, float y, float z)
+{
+    *(float *)(s_bodyCam + off + 0) = x;
+    *(float *)(s_bodyCam + off + 4) = y;
+    *(float *)(s_bodyCam + off + 8) = z;
+}
+static void CHECKF(float a, float b, const char *msg)
+{
+    if (fabsf(a - b) > 1e-4f) {
+        printf("FAIL %s  got %.9g want %.9g\n", msg, (double)a, (double)b);
+        ++g_fails;
+    }
+}
+
+static void test_body_glow(void)
+{
+    /* FRONT glare -> g_4B16AC.  row0=(-1,0,0), pos=0, cam basis=(1,0,0),
+     * campos=(-10,0,0): dir=(-9,0,0), unit=(-1,0,0), dot=-1 (<0), align=1. */
+    body_reset(0, 1);
+    body_setvec(BR_CAR_OFF_MTX,  -1, 0, 0);
+    body_setvec(BR_CAR_OFF_ROW2,  0, 0, 1);
+    body_setvec(BR_CAR_OFF_POS,   0, 0, 0);
+    cam_setvec(0x00,  1, 0, 0);
+    cam_setvec(0x30, -10, 0, 0);
+    BrCarDrawBody(s_bodyCar);
+    CHECKF(g_4B16AC, GLOW_GOLDEN, "glow front -> g_4B16AC");
+    CHECKF(g_4B16A0, 0.0f,        "glow front leaves g_4B16A0");
+
+    /* BACK glare -> g_4B16A0.  row0=(1,0,0), cam basis=(1,0,0),
+     * campos=(10,0,0): dir=(9,0,0), unit=(1,0,0), dot=1 (>0.95). */
+    body_reset(0, 1);
+    body_setvec(BR_CAR_OFF_MTX,   1, 0, 0);
+    body_setvec(BR_CAR_OFF_ROW2,  0, 0, 1);
+    cam_setvec(0x00,  1, 0, 0);
+    cam_setvec(0x30, 10, 0, 0);
+    BrCarDrawBody(s_bodyCar);
+    CHECKF(g_4B16A0, GLOW_GOLDEN, "glow back -> g_4B16A0");
+    CHECKF(g_4B16AC, 0.0f,        "glow back leaves g_4B16AC");
+
+    /* NO glare: camera basis orthogonal to the view direction. */
+    body_reset(0, 1);
+    body_setvec(BR_CAR_OFF_MTX,  1, 0, 0);
+    cam_setvec(0x00, 0, 1, 0);
+    cam_setvec(0x30, 0, 10, 0);
+    BrCarDrawBody(s_bodyCar);
+    CHECKF(g_4B16A0, 0.0f, "glow none -> g_4B16A0 clear");
+    CHECKF(g_4B16AC, 0.0f, "glow none -> g_4B16AC clear");
+
+    /* The player's own car never glows (the gate at 0x1000C1B5). */
+    body_reset(0, 1);
+    BrG_6C2CF8 = s_bodyCar;
+    body_setvec(BR_CAR_OFF_MTX, -1, 0, 0);
+    cam_setvec(0x00,  1, 0, 0);
+    cam_setvec(0x30, -10, 0, 0);
+    BrCarDrawBody(s_bodyCar);
+    CHECKF(g_4B16AC, 0.0f, "glow player: no accumulate");
+}
+
 int main(void)
 {
     test_plain_pass();
@@ -421,6 +650,10 @@ int main(void)
     test_vis_mode_probe();
     test_vis_player_translucent();
     test_vis_player_fallthrough();
+    test_body_stream();
+    test_body_no_bodydl();
+    test_body_guards();
+    test_body_glow();
     printf("test_br_drawcar: %d failures\n", g_fails);
     return g_fails ? 1 : 0;
 }

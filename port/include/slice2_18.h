@@ -225,6 +225,15 @@ extern void    *BrG_0AA730;     /* 0x100AA730 (glide 0x100A9EC0) float identity
                                  * matrix; G_MTX 0x01060040 payload -- the base
                                  * modelview several render fns load (e.g. the
                                  * glide frontier 0x10011D20). */
+extern void    *BrG_6C3308;     /* 0x106C3308 (glide 0x106EA398) car-draw model
+                                 * scratch ptr; BrCarDrawBody and 0x1000A110 set
+                                 * it from the car record's +0x29C4 model. */
+extern void    *BrG_0AA838;     /* 0x100AA838 (glide 0x100A9FC8) canned car-body
+                                 * setup display list; G_DL 0x06000000 payload. */
+extern void    *BrG_0AA860;     /* 0x100AA860 (glide 0x100A9FF0) static Lights1
+                                 * ambient; G_MOVEMEM 0x03880010 payload. */
+extern void    *BrG_0AA868;     /* 0x100AA868 (glide 0x100A9FF8) static Lights1
+                                 * light 0; G_MOVEMEM 0x03860010 payload. */
 extern int32_t  BrG_0AA884;     /* 0x100AA884 */
 extern uint8_t *BrG_0AA770;     /* 0x100AA770  array of 0x28-byte sub-lists */
 extern int32_t  BrG_6C65FC;     /* 0x106C65FC  index into the above */
