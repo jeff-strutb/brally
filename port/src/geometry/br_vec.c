@@ -41,6 +41,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = pA->z - pB->z;
 }
 
+/* @implements 0x1003AF70 d3d BrVec3AddTo */
 void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x += pB->x;
@@ -56,6 +57,7 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
     pOut->z = pV->z * s;
 }
 
+/* @implements 0x1003AD10 d3d BrVec3ScaleBy */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
 {
     pV->x *= s;
@@ -85,6 +87,7 @@ void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
     pA->z += pB->z * s;
 }
 
+/* @implements 0x1003AFA0 d3d BrVec3Lerp */
 void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
 {
     pOut->x = (pA->x - pB->x) * t + pB->x;
@@ -108,6 +111,7 @@ void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = pA->z + pB->z;
 }
 
+/* @implements 0x1003AF10 d3d BrVec3SubFrom */
 void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x -= pB->x;
@@ -119,6 +123,7 @@ void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
  * multiplies each component -- one divide instead of three. Reproduced
  * faithfully because it is also observably different from three divides in
  * the low bits, and physics code may depend on that. */
+/* @implements 0x1003AD40 d3d BrVec3Div */
 void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
     float r = 1.0f / s;
@@ -145,6 +150,7 @@ void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = (pA->z + pB->z) * 0.5f;
 }
 
+/* @implements 0x1003B090 d3d BrVec3Zero */
 void BrVec3Zero(BrVec3 *pV)
 {
     pV->x = 0.0f;
@@ -155,6 +161,7 @@ void BrVec3Zero(BrVec3 *pV)
 /* The original spills dx and dy to stack scratch and multiplies them back in,
  * which is just how MSVC scheduled the x87 stack; the arithmetic is a plain
  * squared distance. */
+/* @implements 0x1003B130 d3d BrVec3DistSq */
 float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 {
     float dx = pA->x - pB->x;
