@@ -680,6 +680,7 @@ address,build,symbol,file,line
 0x10061700,d3d,BrNodeRunMarkPass,slice3_40.c,368
 0x10061BE0,d3d,BrCarBuildMatrices,slice3_40.c,384
 0x100623E0,glide,BrRaceDriverPost,br_racestep.c,507
+0x100625A0,glide,BrPool32Alloc,slice3_41.c,423
 0x10062850,glide,BrRaceEntrantCountSet,br_racestart.c,108
 0x10063060,glide,BrCtrlCfgReadFile,br_cfgfile.c,139
 0x100633E0,d3d,BrZeroRegions,slice3_40.c,403
@@ -704,7 +705,7 @@ address,build,symbol,file,line
 0x10068210,d3d,BrSndNearestOfferDefault,slice3_41.c,363
 0x10069490,d3d,BrSub_10069490,slice5_62.c,408
 0x100694E0,d3d,BrPool16Alloc,slice3_41.c,414
-0x10069580,d3d,BrGfx69580,slice3_41.c,430
+0x10069580,d3d,BrGfx69580,slice3_41.c,433
 0x100695D0,d3d,BrSub100695D0,slice6_74.c,371
 0x10069A60,d3d,BrCtrlCfgInitGlobal,slice3_42.c,260
 0x10069A90,d3d,BrCtrlCfgCtor,slice3_42.c,249
