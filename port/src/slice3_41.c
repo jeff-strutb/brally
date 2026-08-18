@@ -417,7 +417,10 @@ void *BrPool16Alloc(void)
     return BrFrameBankAlloc(&g_BrPool16);
 }
 
-/* 0x10069530 */
+/* Glide 0x100625A0 == D3D 0x10069530 (shared.csv pair).  Tagged on the Glide
+ * side -- the reference build, and the address 0x1000A110's specular pass
+ * calls -- so claimcheck audits the body against it. */
+/* @implements 0x100625A0 glide BrPool32Alloc */
 void *BrPool32Alloc(void)
 {
     return BrFrameBankAlloc(&g_BrPool32);
