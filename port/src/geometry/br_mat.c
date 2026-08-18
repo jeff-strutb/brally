@@ -9,6 +9,7 @@
 #include <math.h>
 #include <stddef.h>
 
+/* @implements 0x10074720 d3d BrMat4MulVec3 */
 void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
     const float *v = &pV->x;
@@ -22,6 +23,7 @@ void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
     }
 }
 
+/* @implements 0x10074770 d3d BrMat4MulVec3Transposed */
 void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
     const float *v = &pV->x;
