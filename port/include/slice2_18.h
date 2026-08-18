@@ -165,6 +165,7 @@ extern int32_t   BrG_6C65EC;    /* 0x106C65EC  double-buffer index, 0 or 1 */
 
 /* Mode selectors.  Exactly one of these four is expected to be non-zero;
  * BrFogUpdate and BrHudColorsUpdate test them in this priority order. */
+extern int32_t BrG_6C6614;      /* 0x106C6614  forces player-car translucent */
 extern int32_t BrG_6C661C;      /* 0x106C661C */
 extern int32_t BrG_6C6620;      /* 0x106C6620 */
 extern int32_t BrG_6C6624;      /* 0x106C6624 */

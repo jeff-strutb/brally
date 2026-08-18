@@ -187,4 +187,38 @@ void BrGuMtxHookNop(const BrMat4 *pM);
 /* 0x10009C10 -- emit the four wheels of one car. */
 void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel);
 
+/* --------------------------------------------------------------------
+ * The car VISIBILITY pass (0x10009FC0) and its shared state.
+ *
+ * ARCHITECTURE NOTE: BrCarView above is a REPACKED view, byte-accurate
+ * only through +0x140, used by the read-only draw functions. The
+ * visibility pass instead WRITES back into the car record (the fog factor
+ * at +0x2730) and into the two per-car flag arrays below, which a repack
+ * cannot model -- so it reaches the record by raw byte offset, the way the
+ * original does. These offsets are the access convention the cull/emit
+ * functions share.
+ * -------------------------------------------------------------------- */
+#define BR_CAR_OFF_MTX       0x0000u  /* BrMat4 world transform             */
+#define BR_CAR_OFF_POS       0x0030u  /* BrVec3 position == mtx.m[3]         */
+#define BR_CAR_OFF_ICAR      0x0140u  /* int32 car index, 0..BR_CAR_MAX-1    */
+#define BR_CAR_OFF_GUARD     0x0F08u  /* ptr; NULL => the pass does nothing  */
+#define BR_CAR_OFF_FOG       0x2730u  /* float; written = fog at the position */
+#define BR_CAR_OFF_ACTIVECAM 0x2734u  /* ptr; player: == +0x273C or +0x2890  */
+#define BR_CAR_OFF_CAMA      0x273Cu  /* a cam frame inside the record        */
+#define BR_CAR_OFF_CAMB      0x2890u  /* the other cam frame                  */
+#define BR_CAR_OFF_KIND      0x29AFu  /* draw class; 2 == translucent pass    */
+
+#define BR_CAR_MAX           16       /* BR_CARDATA_CARS; the flag-array bound */
+
+/* Per-car visibility flags the pass writes and the two draw passes read.
+ * Indexed by the car's +0x140. Opaque = set only for non-class-2 cars that
+ * pass; Any = set for every car that passes (or the player). */
+extern int32_t g_BrCarVisOpaque[BR_CAR_MAX];   /* 0x10273648 (d3d 0x10277E60) */
+extern int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
+
+/* 0x10009FC0 -- per-car pre-draw pass: compute the fog factor and decide
+ * whether the car is visible this frame, setting the two flags above. pCar
+ * is the raw 0x2B68 car record. */
+void BrCarVisibilityUpdate(void *pCar);
+
 #endif /* BR_DRAWCAR_H */

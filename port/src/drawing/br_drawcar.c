@@ -7,7 +7,9 @@
  */
 #include "br_drawcar.h"
 #include "slice1_05.h"   /* BrGfxWords, BrRdpSetCombineLERP, BrMat4Mul   */
-#include "slice2_18.h"   /* BrG_6C0680 -- the display-list write cursor  */
+#include "slice2_18.h"   /* BrG_6C0680 cursor; BrFogFactorAtPoint; car globals */
+#include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint                */
+#include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd                     */
 
 #include <string.h>
 
@@ -247,6 +249,102 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
 
         put(0xBD000000u, 0);                    /* pop matrix            */
     }
+}
+
+/* ==================================================================== *
+ * 0x10009FC0 -- the per-car visibility pass.
+ *
+ * Runs once per car before the draw passes.  It computes the car's fog
+ * factor (stored back into the record at +0x2730) and decides whether the
+ * car is on screen this frame, recording the answer in the two flag arrays
+ * that 0x1000A110's opaque and translucent passes gate on.
+ *
+ * The frame's on-screen coverage is a global span hull (g_BrFrameHull,
+ * the original's grid at Glide 0x10AC2C54 / D3D 0x10A9BBC4).  The original's
+ * span test read that grid implicitly; the port's BrSpanTestPoint takes the
+ * volume explicitly, so the hull is passed in.  Nothing builds the hull yet
+ * (the frame setup that calls BrSpanBuildHull is unported), so in the live
+ * host it is empty and every non-player car culls -- faithful to the code,
+ * inert until that setup lands.  Verified against the byte-identical D3D
+ * twin 0x1000CA90.
+ * ==================================================================== */
+
+/* The per-frame coverage hull.  See slice2_21's BrSpanBuildHull. */
+BrSpanVolume g_BrFrameHull;
+
+int32_t g_BrCarVisOpaque[BR_CAR_MAX];   /* 0x10273648 (d3d 0x10277E60) */
+int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
+
+/* @implements 0x10009FC0 glide BrCarVisibilityUpdate */
+void BrCarVisibilityUpdate(void *pCar)
+{
+    unsigned char *car = (unsigned char *)pCar;
+    const BrVec3  *pPos;
+    int32_t        iCar;
+
+    /* +0xF08 is one of the record's guard pointers; nothing happens without it. */
+    if (*(void *const *)(car + BR_CAR_OFF_GUARD) == NULL) {
+        return;
+    }
+
+    pPos = (const BrVec3 *)(car + BR_CAR_OFF_POS);
+
+    /* A distance from the car to BrG_6C6490's +0x30 that the original computes
+     * and then discards (fstp st(0)).  Kept for fidelity; it has no effect. */
+    (void)BrVec3Dist(pPos,
+                     (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
+
+    iCar = *(const int32_t *)(car + BR_CAR_OFF_ICAR);
+    g_BrCarVisOpaque[iCar] = 0;
+    g_BrCarVisAny[iCar]    = 0;
+
+    *(float *)(car + BR_CAR_OFF_FOG) = BrFogFactorAtPoint(pPos);
+
+    /* The player's own car is never span-culled; jump straight to the
+     * self/active-camera test.  Otherwise a car is visible if its position --
+     * or, when a mode flag forces it, a point 6 units to its side -- lands in
+     * the hull. */
+    if ((void *)car != BrG_6C2CF8) {
+        if (BrG_6C661C != 0 || BrG_6C6624 != 0) {
+            BrVec3 probe;
+            BrVec3MulAdd(&probe, pPos,
+                         (const BrVec3 *)(car + BR_CAR_OFF_MTX), 6.0f);
+            if (BrSpanTestPoint(&g_BrFrameHull, probe.x, probe.y) == 0 &&
+                BrSpanTestPoint(&g_BrFrameHull, pPos->x, pPos->y) == 0) {
+                return;                         /* culled */
+            }
+        } else if (BrSpanTestPoint(&g_BrFrameHull, pPos->x, pPos->y) == 0) {
+            return;                             /* culled */
+        }
+
+        /* Visible.  The player-car branch below only applies to the player,
+         * so a non-player car falls straight through to the flag set. */
+        if ((void *)car != BrG_6C2CF8) {
+            goto set_flags;
+        }
+    }
+
+    /* Player car (reached directly, or as a visible car that is the player):
+     * if its active camera points at one of its own two cam frames and the
+     * override flag is clear, it counts only for the translucent pass. */
+    {
+        const void *pActiveCam = *(const void *const *)(car + BR_CAR_OFF_ACTIVECAM);
+        if (pActiveCam == (const void *)(car + BR_CAR_OFF_CAMA) ||
+            pActiveCam == (const void *)(car + BR_CAR_OFF_CAMB)) {
+            if (BrG_6C6614 == 0) {
+                g_BrCarVisAny[iCar] = 1;
+                return;
+            }
+        }
+    }
+
+set_flags:
+    /* Opaque cars (class != 2) show in both passes; class-2 cars only in the
+     * translucent pass. */
+    if (*(const unsigned char *)(car + BR_CAR_OFF_KIND) != 2) {
+        g_BrCarVisOpaque[iCar] = 1;
+    }
+    g_BrCarVisAny[iCar] = 1;
 }
 
 /* ==================================================================== *
