@@ -1,5 +1,19 @@
 # Boss Rally — decompilation project
 
+## Objective
+
+A **complete, MAME-standard bit-exact decompilation** of Boss Rally (the 1999
+`BRGlide.dll` / `BRD3D.dll` core) into one portable C99 tree — every function
+transcribed and verified byte-identical to the original — reached by the **most
+efficient path**. Work is ordered strictly by cheapest-to-verify given
+dependencies; verified-function coverage is driven up monotonically with zero
+rework. Progress is measured by that coverage, not by demo milestones.
+
+**Playability is a side effect, never a driver.** That a car drives, the menus
+navigate, or a race renders are consequences of transcribing the right functions
+correctly — not reasons to prioritise one part of the code over another. No demo
+detours; no "path to playable" steering.
+
 ## Progress at a glance
 
 _Measured 2026-08-17. Coverage is against the Glide build's `.text`, the
