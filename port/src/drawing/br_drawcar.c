@@ -8,13 +8,10 @@
 #include "br_drawcar.h"
 #include "slice1_05.h"   /* BrGfxWords, BrRdpSetCombineLERP, BrMat4Mul   */
 #include "slice2_15.h"   /* g_4B16A0 / g_4B16AC scene accumulators       */
-#include "slice2_17.h"   /* BrGfxEmitTexCmd, BrS17GetState               */
+#include "slice2_17.h"   /* BrGfxEmitTexCmd                             */
 #include "slice2_18.h"   /* BrG_6C0680 cursor; BrFogFactorAtPoint; car globals */
 #include "slice2_19.h"   /* g_BrMtxSlot current projection slot          */
 #include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint                */
-#include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
-#include "br_appstart.h"  /* g_brCfgGameMode                             */
-#include "br_bootfrontier.h" /* BrBootGlobal_ABAA0                       */
 #include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd, the glow cluster   */
 
 #include <string.h>
@@ -30,29 +27,6 @@ BrMat4   g_BrDrawScale;        /* 0x106E7930 */
 BrMat4   g_BrDrawWorld;        /* 0x10273570 */
 BrMat4   g_BrDrawView;         /* 0x106E9A38 */
 BrMat4   g_BrDrawCombined;     /* 0x106E78F0 */
-int32_t  g_BrDrawClass[BR_CAR_MAX];        /* 0x10273520  per-car LOD     */
-uint8_t  g_BrDrawLights[24 * BR_CAR_MAX];  /* 0x102733A0  light copies    */
-uint32_t g_BrDrawModeBase;                  /* 0x10273640  render mode base*/
-int32_t  g_BrDrawSuppress;                  /* 0x10273304  suppress under  */
-int32_t  g_BrDrawLodFloor;                  /* 0x106ED6C0  minimum LOD     */
-BrVec3   g_BrDrawDir0;                      /* 0x10273390  light dir 0     */
-BrVec3   g_BrDrawDir1;                      /* 0x10273560  light dir 1     */
-int32_t  g_BrDrawRefIndex;                  /* 0x10273688  ref colour idx  */
-int32_t  g_BrDrawReflectEnable;             /* 0x10B7153C  BSS 0           */
-int32_t  g_BrDrawReflectFlag = 1;           /* 0x100A5B40  .data = 1       */
-void    *g_BrDrawTrackFlags;                /* 0x106EED38  84-byte recs    */
-const void *g_BrDrawTexBlob;                /* 0x100A5C88  palette blob    */
-void   (*g_BrDrawModelDlHook)(uint32_t, uint32_t);  /* 0x118ED1BC  BSS    */
-uint8_t  g_BrDrawByte80;                    /* 0x106B7C80  light colour    */
-uint8_t  g_BrDrawByte78;                    /* 0x106B7C78  env colour      */
-
-static const int32_t s_refIndex[16] = {
-    3, 3, 0, 1, 2, 2, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0
-};
-static const uint32_t s_refColor[8] = {
-    0x118EDA10u, 0x118ED210u, 0x118ED210u, 0x100B98C0u,
-    0x118ED1F0u, 0x118EE210u, 0x118EE210u, 0x100BA0C8u
-};
 
 static BrDrawCarHooks s_hooks;
 static int32_t        s_cFrontier;
@@ -560,489 +534,109 @@ void BrCarDrawBody(void *pCar)
         TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO);
 }
 
-
-/* ------------------------------------------------------------------ *
- * wheel_call -- bridge from the raw 0x2B68 car record into the repacked
- * BrCarView / BrModelView that BrCarDrawWheels takes.  0x1000A110 calls
- * 0x10009C10 with the raw pointer; BrCarDrawWheels takes the view pair.
- * Only the fields BrCarDrawWheels actually reads are populated.
- * ------------------------------------------------------------------ */
-static void wheel_call(unsigned char *car)
-{
-    const unsigned char *mdl = (const unsigned char *)BrG_6C3308;
-    BrCarView   cv;
-    BrModelView mv;
-    memset(&cv, 0, sizeof(cv));
-    memset(&mv, 0, sizeof(mv));
-    memcpy(cv.aWheel, car + BR_CAR_OFF_AWHEEL, sizeof(cv.aWheel));
-    cv.bKind      = *(car + BR_CAR_OFF_KIND);
-    mv.dlWheel    = *(const uint32_t *)(mdl + 0x80BC);
-    mv.dlWheelAlt = *(const uint32_t *)(mdl + 0x80C4);
-    BrCarDrawWheels(&cv, &mv);
-}
-
 /* ==================================================================== *
- * 0x1000A110 -- draw one vehicle: body, underside, glass, detail,
- * reflection and wheels.  7,577 bytes.
+ * 0x1000A110 -- draw one vehicle.  7,577 bytes.  MAPPED, NOT CLAIMED.
+ * ====================================================================
  *
- * Three interleaved-x87 blocks are deferred (marked TODO below) and will
- * be filled by x87emu arg-capture in a later session:
- *   0xA5A1-0xA6F3  light-direction computation (g_BrDrawDir0/Dir1)
- *   0xA6F6-0xA81B  specular setup (pool + guLookAtReflectF/HiliteF)
- *   0xB685-0xB925  reflection pass (gated on g_BrDrawReflectEnable = 0)
+ * Read in full for this pass.  It is recorded here rather than
+ * transcribed, because a whole-function `@implements` over a partial body
+ * is the failure CONVENTIONS.md names, and 7,577 bytes of branchy x87 plus
+ * forty-five globals is not something this pass could finish and
+ * mutation-test honestly.  Everything below is read off the disassembly.
+ *
+ * SIGNATURE.  `void f(void *pCar, int32_t lod)` -- cdecl, two arguments.
+ * `lod` is IN/OUT on the caller's stack: 0x1000A27F adds the distance-
+ * derived level to it, clamps at 2, and writes it back to [esp+0x64].
+ * 0x10011FA0 always passes 0.
+ *
+ * GUARDS (0x1000A11B .. 0x1000A16E).  Returns without emitting anything if
+ * any of +0xF08, +0x168, +0x170, +0x16C, +0x174 is NULL, or if
+ * 0x10273350[car->+0x140] is zero.  A sixth exit at 0x1000A37A: for the
+ * PLAYER's car, if +0x2734 points at either self+0x273C or self+0x2890 and
+ * 0x106ED6A4 is zero.
+ *
+ * DETAIL LEVEL (0x1000A174 .. 0x1000A295).  dist = BrVec3Dist(car+0x30,
+ * cam+0x30) -- 0x10034760, whose result STAYS IN st0 across the next four
+ * comparisons; `fst [esp+0x20]` spills a float copy without popping.  When
+ * 0x100AA044 == 2 the level is 0 below 40, 1 below 80, else 2, then raised
+ * to at least 0x106ED6C0; otherwise it is 0x106ED6C0 outright.  A separate
+ * flag records dist < 100.  All four tests are `test ah,1` after `fcom`,
+ * so NaN takes the LOW side every time -- write them as !(d >= k), never
+ * as (d < k).
+ *
+ * FOG (0x1000A198).  Draw class 2 only: 0x102735FC = __ftol(alpha*255) and
+ * a G_SETFOGCOLOR whose RGB is (0x106E72F0, 0x106E86A4, 0x106E7290) and
+ * whose alpha is that byte.
+ *
+ * MATRICES (0x1000A2AA .. 0x1000A34F).  Scale(1/255) * car -> 0x10273570,
+ * stored into a pooled matrix recorded in 0x102735B0[iCar]; then
+ * 0x10273570 * 0x106E9A38 -> 0x106E78F0, stored into a second pooled
+ * matrix recorded in 0x10273600[iCar].  0x1002A9F2 is called on the
+ * combined matrix and does nothing (see above).
+ *
+ * TWO LIGHT COLOURS (0x1000A393 .. 0x1000A556).  Three arms produce the
+ * pair of G_MW_LIGHTCOL words:
+ *   - 0x106ED6AC set: each channel is __ftol(byte / max(dist*0.1f, 1.0f)),
+ *     three divisions sharing one x87 register;
+ *   - else, if the +0x290C record's +0x4C carries bit 0x10: colour A is 0
+ *     and colour B is each byte scaled by 4/5 (an 0x66666667 magic divide);
+ *   - else: the bytes unscaled.
+ * Both words are RGBA with A == 0 in every arm.
+ *
+ * LIGHTS (0x1000A86A .. 0x1000A9CE).  With 0x106ED6AC and 0x106ED6B4 both
+ * clear it emits the static Lights1 at 0x100A9FF0 (gsSPLight(&l[0],1) to
+ * 0x100A9FF8 and gsSPLight(&a,2) to 0x100A9FF0 -- textbook F3D).
+ * Otherwise it copies that Lights1 into 0x102733A0 + 24*iCar and overwrites
+ * its direction with __ftol(player->m00/m01/m02 * -120.0f), then points the
+ * two G_MOVEMEMs at the copy.  The 24-byte stride is Ambient(8)+Light(16).
+ *
+ * CULLING (0x1000AA83 .. 0x1000AADB).  G_CULL_FRONT and G_CULL_BACK are
+ * SWAPPED when 0x106EA3F4 != 0x106E8204 -- set gets 0x1000/0x2000 and
+ * clear gets the other.  Both are built with the `neg/sbb` idiom.
+ *
+ * RENDER MODE (0x1000AADE .. 0x1000AB7E).  0x10273640 is 0x011049D8 for
+ * class 2, else 0x00112078 for the player / 0x00112038 for anyone else
+ * when dist < 100, else 0x00112230.  One extra arm: session kind 2, a
+ * non-NULL +0xF00 whose +0x64 is set, and an alpha of exactly 0x3EC00000
+ * force 0x10273640 = 2 and 0x10273644 = 0.
+ *
+ * THE FIVE DRAW PASSES, in emission order:
+ *   1. 0x1000AB7E  body        -> model->aLod[lod] + 0x1C
+ *   2. 0x1000AE72  underside   -> model->aLod[lod] + 0x18, only when
+ *                                 0x10273304 == 0 and car->+0x29B4 == 0
+ *   3. 0x1000B2CB  glass       -> model->aLod[lod] + 0x10, only when
+ *                                 dot(car row 2, carPos - camPos) > 0
+ *                                 (0x10034310, compared against a DOUBLE
+ *                                 zero at 0x100771C0)
+ *   4. 0x1000B4AA  detail      -> model->aLod[lod] + 0x04
+ *   5. 0x1000B6E6  reflection  -> gated on 0x10B7153C set, 0x106ED6B0 and
+ *                                 0x106ED6B4 clear, 0x10273304 clear,
+ *                                 car->+0x29B4 clear, and a two-armed test
+ *                                 on 0x106ED6AC against the player
+ * then 0x1000BC7B emits aLod[lod] + 0x08 and aLod[lod] + 0x1C again, pops
+ * the matrix, and calls 0x10009C10 for the wheels -- EARLY (0x1000ACCA)
+ * for draw class 2 and LATE (0x1000BDE8) for everything else, so the
+ * wheels are drawn exactly once either way.
+ *
+ * THE SPECULAR HIGHLIGHT (0x1000A6F6 .. 0x1000A81B).  Three pool
+ * allocations, then 0x1002A4D0 with eleven arguments and 0x1002A200 with
+ * twenty.  Those two are guLookAtReflectF and guLookAtHiliteF: the twenty
+ * are exactly (mf, l, h, eye[3], at[3], up[3], light1[3], light2[3],
+ * twidth, theight), and the 16-byte record 0x1002A200 fills is the Hilite
+ * whose two dwords 0x1000B882 unpacks into a G_SETTILESIZE.  Neither is
+ * transcribed anywhere in this tree.
+ *
+ * THE ONE INDIRECT CALL.  0x1000B1EF calls through 0x118ED1BC with two
+ * display-list addresses: always model->+0x80, and one of +0x84/+0x88/
+ * +0x8C/+0x90 chosen by (aux flags & 0xC0000) crossed with the sign of
+ * car->+0xE68.
+ *
+ * THE STACK TRAP, recorded because it is live here.  The two argument
+ * slots are reused as locals, and the SAME displacement names different
+ * things at different points:
+ *   [esp+0x64] is `lod` at 0x1000A27F (esp = E-0x5C) and a saved command
+ *   pointer after 0x1000B876; and at 0x1000A655 esp is E-0x60 because a
+ *   `push` is outstanding, so that `fst [esp+0x64]` writes the ARG1 slot,
+ *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
+ *   two slots, one function.
  * ==================================================================== */
-/* @implements 0x1000A110 glide BrCarDrawVehicle */
-void BrCarDrawVehicle(void *pCar, int32_t lodBias)
-{
-    unsigned char *car = (unsigned char *)pCar;
-    const unsigned char *model;
-    int32_t  iCar, lod, distNear, flag290C;
-    float    dist;
-    uint32_t colourA, colourB;
-    uint32_t lodOff;
-    uint32_t specMem = 0;
-    BrMat4  *pSlot;
-    uint8_t  bKind;
-
-    /* 0xA11B -- six guard tests. */
-    if (*(void **)(car + BR_CAR_OFF_GUARD) == 0) return;
-    if (*(void **)(car + BR_CAR_OFF_P0168) == 0) return;
-    if (*(void **)(car + BR_CAR_OFF_P0170) == 0) return;
-    if (*(void **)(car + BR_CAR_OFF_P016C) == 0) return;
-    if (*(void **)(car + BR_CAR_OFF_P0174) == 0) return;
-    iCar    = *(int32_t *)(car + BR_CAR_OFF_ICAR);
-    flag290C = 0;
-    if (g_BrCarVisAny[iCar] == 0) return;
-
-    /* 0xA174 -- distance + LOD. */
-    dist = BrVec3Dist(
-        (const BrVec3 *)(car + BR_CAR_OFF_POS),
-        (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
-
-    bKind = *(car + BR_CAR_OFF_KIND);
-
-    /* 0xA198 -- fog (class 2 only). */
-    if (bKind == 2) {
-        g_BrDrawFogAlpha =
-            (int32_t)(*(const float *)(car + BR_CAR_OFF_ALPHA) * 255.0f);
-        put(0xF8000000u,
-            ((uint32_t)BrG_6C0260 << 24) |
-            ((uint32_t)BrG_6C1614 << 16) |
-            ((uint32_t)BrG_6C0200 << 8)  |
-            ((uint32_t)g_BrDrawFogAlpha & 0xFFu));
-    }
-
-    /* 0xA1F1 -- flag290C gate from track records. */
-    *(int32_t *)(car + BR_CAR_OFF_I2714) = 0;
-    if (*(void *const *)(car + BR_CAR_OFF_P294C) != 0) {
-        uint32_t k = *(const uint16_t *)(car + BR_CAR_OFF_U290C);
-        const unsigned char *flags = (const unsigned char *)g_BrDrawTrackFlags;
-        if (flags[k * 84 + 0x4C] & 0x10) {
-            flag290C = 1;
-            *(int32_t *)(car + BR_CAR_OFF_I2714) = 1;
-        }
-    }
-
-    /* 0xA232 -- model setup. */
-    BrG_6C3308 = *(void *const *)(car + BR_CAR_OFF_MODEL);
-    model = (const unsigned char *)BrG_6C3308;
-
-    /* 0xA23D -- LOD computation. */
-    if (g_brRaceBeginNTexSet == 2) {
-        if      (!(dist >= 40.0f))  lod = 0;
-        else if (!(dist >= 80.0f))  lod = 1;
-        else                        lod = 2;
-        if (lod < g_BrDrawLodFloor)
-            lod = g_BrDrawLodFloor;
-    } else {
-        lod = g_BrDrawLodFloor;
-    }
-    lod += lodBias;
-    if (lod > 2) lod = 2;
-
-    /* 0xA295 -- near-distance flag. */
-    distNear = !(dist >= 100.0f);
-
-    /* 0xA2AA -- matrices: scale(1/255) * car -> world, world * view -> combined. */
-    BrMat4Scale(&g_BrDrawScale, 0.003921569f, 0.003921569f, 0.003921569f);
-    BrMat4Mul(&g_BrDrawScale, (const BrMat4 *)car, &g_BrDrawWorld);
-
-    pSlot = mtx_alloc(&g_BrCarMtxSlot[iCar]);
-    if (pSlot) BrGuMtxStore(&g_BrDrawWorld, pSlot);
-
-    BrMat4Mul(&g_BrDrawWorld, &g_BrDrawView, &g_BrDrawCombined);
-    BrGuMtxHookNop(&g_BrDrawCombined);
-
-    pSlot = mtx_alloc(&g_BrCarLightSlot[iCar]);
-    if (pSlot) BrGuMtxStore(&g_BrDrawCombined, pSlot);
-
-    /* 0xA354 -- player self-view guard. */
-    if ((void *)car == BrG_6C2CF8) {
-        void *activeCam = *(void *const *)(car + BR_CAR_OFF_ACTIVECAM);
-        if (activeCam == (void *)(car + BR_CAR_OFF_CAMA) ||
-            activeCam == (void *)(car + BR_CAR_OFF_CAMB)) {
-            if (BrG_6C6614 == 0)
-                return;
-        }
-    }
-
-    /* 0xA386 -- record LOD class for this car. */
-    g_BrDrawClass[iCar] = lod;
-
-    /* 0xA393 -- three-arm light colour computation. */
-    if (BrG_6C661C != 0) {
-        float div = dist * 0.1f;
-        if (!(div >= 1.0f)) div = 1.0f;
-        {
-            uint32_t r = (uint32_t)(int32_t)((float)(int32_t)BrG_6C1580 / div);
-            uint32_t g = (uint32_t)(int32_t)((float)(int32_t)BrG_6C335C / div);
-            uint32_t b = (uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div);
-            colourA = ((r & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8);
-        }
-        colourB = ((uint32_t)g_BrDrawByte80 << 24) |
-                  ((uint32_t)BrG_6C0960 << 16) |
-                  ((uint32_t)BrG_6C65BC << 8);
-    } else if (flag290C != 0) {
-        colourA = 0;
-        colourB = ((uint32_t)((int32_t)(g_BrDrawByte80 * 4) / 5) << 24) |
-                  ((uint32_t)((int32_t)(BrG_6C0960   * 4) / 5) << 16) |
-                  ((uint32_t)((int32_t)(BrG_6C65BC   * 4) / 5) << 8);
-    } else {
-        colourA = ((uint32_t)BrG_6C1580 << 24) |
-                  ((uint32_t)BrG_6C335C << 16) |
-                  ((uint32_t)BrG_6C0968 << 8);
-        colourB = ((uint32_t)g_BrDrawByte80 << 24) |
-                  ((uint32_t)BrG_6C0960 << 16) |
-                  ((uint32_t)BrG_6C65BC << 8);
-    }
-
-    /* 0xA556 -- two G_MTX pushes: model and projection. */
-    put(0x01060040u, g_BrCarMtxSlot[iCar]);
-    put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
-
-    /* TODO 0xA5A1-0xA6F3: light-direction computation.
-     * Builds g_BrDrawDir0 / g_BrDrawDir1 from camera, player, and car
-     * positions via BrVec3 ops.  Deferred: interleaved x87 requiring
-     * x87emu arg-capture. */
-
-    /* TODO 0xA6F6-0xA81B: specular highlight setup.
-     * Pool allocations + guLookAtReflectF / guLookAtHiliteF.
-     * Deferred: x87emu required.  specMem remains 0. */
-
-    /* 0xA86A -- Lights1 emission: static or dynamic. */
-    if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
-        put(0xBC000002u, 0x80000040u);
-        put(0x03860010u, (uint32_t)(uintptr_t)BrG_0AA868);
-        put(0x03880010u, (uint32_t)(uintptr_t)BrG_0AA860);
-    } else {
-        unsigned char *dst = g_BrDrawLights + 24 * iCar;
-        const float   *pPlayer = (const float *)BrG_6C2CF8;
-        memcpy(dst, (const void *)BrG_0AA860, 24);
-        dst[0x10] = (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
-        dst[0x11] = (uint8_t)(int32_t)(pPlayer[1] * -120.0f);
-        dst[0x12] = (uint8_t)(int32_t)(pPlayer[2] * -120.0f);
-        put(0xBC000002u, 0x80000040u);
-        put(0x03860010u, (uint32_t)(uintptr_t)&dst[8]);
-        put(0x03880010u, (uint32_t)(uintptr_t)dst);
-    }
-
-    /* 0xA9CE -- post-lights header: sync, two-cycle, geom mode. */
-    put(0xE7000000u, 0);
-    put(0xBA001001u, 0x00010000u);
-    put(0xB7000000u, 0x00020205u);
-
-    /* 0xAA25 -- BrG_6C6618 branch: set geom + render mode. */
-    if (BrG_6C6618 != 0) {
-        put(0xB7000000u, 0x00010000u);
-        if (bKind != 2)
-            g_BrDrawRenderMode = 0xC8000000u;
-        else
-            g_BrDrawRenderMode = 0x0C080000u;
-    } else {
-        g_BrDrawRenderMode = 0x0C080000u;
-    }
-
-    /* 0xAA83 -- culling: set (B7) and clear (B6), difficulty-swapped. */
-    {
-        uint32_t cullSet, cullClr;
-        if (g_brRaceBeginDifficulty != BrG_6C1174) {
-            cullSet = 0x00001000u;
-            cullClr = 0x00002000u;
-        } else {
-            cullSet = 0x00002000u;
-            cullClr = 0x00001000u;
-        }
-        put(0xB7000000u, cullSet);
-        put(0xB6000000u, cullClr);
-    }
-
-    /* 0xAADE -- render mode base selection. */
-    if (bKind == 2) {
-        g_BrDrawModeBase = 0x011049D8u;
-        put(0xFA000000u, ((uint32_t)g_BrDrawFogAlpha & 0xFF));
-        if (g_brCfgGameMode == 2) {
-            void *p = *(void *const *)(car + BR_CAR_OFF_P0F00);
-            if (p != 0 &&
-                *(const int32_t *)((const unsigned char *)p + 0x64) != 0 &&
-                *(const uint32_t *)(car + BR_CAR_OFF_ALPHA) == 0x3EC00000u) {
-                g_BrDrawRenderMode = 0;
-                g_BrDrawModeBase   = 2;
-            }
-        }
-    } else {
-        if (distNear) {
-            if ((void *)car == BrG_6C2CF8)
-                g_BrDrawModeBase = 0x00112078u;
-            else
-                g_BrDrawModeBase = 0x00112038u;
-        } else {
-            g_BrDrawModeBase = 0x00112230u;
-        }
-    }
-
-    /* 0xAB7E -- body pass header. */
-    put(0xBA001402u, 0x00100000u);
-    put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
-
-    BrRdpSetCombineLERP(put_slot(),
-        TK_TEXEL0,   TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_TEXEL0,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED);
-
-    put(0xBA000C02u, BrG_6C0258);
-    put(0xBA001001u, 0);
-    put(0xB6000000u, 0x000C0000u);
-    put(0xBC00000Au, colourA);
-    put(0xBC00040Au, colourA);
-    put(0xBC00200Au, colourB);
-    put(0xBC00240Au, colourB);
-
-    /* 0xACCA -- early wheel call (class 2 only). */
-    if (bKind == 2)
-        wheel_call(car);
-
-    /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
-    put(0x039E0010u, g_BrCarLightSlot[iCar]);
-    put(0x03980010u, g_BrCarLightSlot[iCar] + 0x10);
-    put(0x039A0010u, g_BrCarLightSlot[iCar] + 0x20);
-    put(0x039C0010u, g_BrCarLightSlot[iCar] + 0x30);
-
-    /* 0xAD77 -- TLUT palette load. */
-    put(0xFD100000u, (uint32_t)(uintptr_t)g_BrDrawTexBlob);
-    put(0xE8000000u, 0);
-    put(0xF50001E0u, 0x07000000u);
-    put(0xE6000000u, 0);
-    put(0xF0000000u, 0x0703C000u);
-    put(0xE7000000u, 0);
-
-    /* 0xAE34 -- specular MOVEMEM (payload from the TODO specular block). */
-    put(0x03840010u, specMem);
-    put(0x03820010u, specMem + 0x10);
-
-    /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
-    lodOff = (uint32_t)lod * 40;
-
-    if (g_BrDrawSuppress == 0 &&
-        *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
-        put(0xBB000001u, 0xFFFFFFFFu);
-        put(0xB6000000u, 0x000C0000u);
-        put(0xE8000000u, 0);
-        put(0xF5100000u, 0x07000000u);
-        put(0xF50001F0u, 0x06000000u);
-        put(0xF5000100u, 0x05000000u);
-        put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
-
-        BrRdpSetCombineLERP(put_slot(),
-            TK_TEXEL0,   TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-            TK_ZERO,     TK_ZERO, TK_ZERO,      TK_TEXEL0,
-            TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED,
-            TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED);
-
-        put(0xBA000E02u, 0);
-
-        BrRdpSetCombineLERP(put_slot(),
-            TK_TEXEL0,   TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-            TK_TEXEL0,   TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-            TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED,
-            TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED);
-
-        put(0xB6000000u, 0x00040000u);
-        put(0xBC00000Au, colourA);
-        put(0xBC00040Au, colourA);
-        put(0xBC00200Au, colourB);
-        put(0xBC00240Au, colourB);
-        put(0xBA000C02u, BrG_6C0258);
-        {
-            uint32_t underDL = *(const uint32_t *)(model + 0x8038 + lodOff);
-            if (underDL != 0)
-                put(0x06000000u, underDL);
-        }
-
-        /* 0xB0C6 -- shared tile setup (still inside suppress guard). */
-        put(0xBB000001u, 0xFFFFFFFFu);
-        put(0xB6000000u, 0x000C0000u);
-        put(0xE8000000u, 0);
-        put(0xF5100000u, 0x07000000u);
-        put(0xF50001F0u, 0x06000000u);
-        put(0xF5000100u, 0x05000000u);
-    }
-
-    /* 0xB176 -- model DL hook: 4-way selection on aux flags x f0E68 sign. */
-    {
-        uint8_t iTex = *(const uint8_t *)(model + 0x811B);
-        const unsigned char *pTexRecs =
-            *(const unsigned char *const *)(model + 0x8014);
-        if (*(const uint32_t *)(pTexRecs + (uint32_t)iTex * 36 + 4) != 0 &&
-            BrBootGlobal_ABAA0() == 0) {
-            float fe68 = *(const float *)(car + BR_CAR_OFF_F0E68);
-            uint32_t auxFlags =
-                *(const uint32_t *)(*(void *const *)(car + BR_CAR_OFF_U29C0));
-            uint32_t dlBase = *(const uint32_t *)(model + 0x80);
-            uint32_t dlSel;
-            if (auxFlags & 0xC0000u) {
-                dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)(model + 0x90)
-                    : *(const uint32_t *)(model + 0x88);
-            } else {
-                dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)(model + 0x8C)
-                    : *(const uint32_t *)(model + 0x84);
-            }
-            if (g_BrDrawModelDlHook)
-                g_BrDrawModelDlHook(dlBase, dlSel);
-        }
-    }
-
-    /* 0xB1F8 -- glass prep: setup tiles + dot test. */
-    {
-        BrVec3 tmp;
-        float  dot;
-        put(0xBA001001u, 0x00010000u);
-        put(0xBB000001u, 0xFFFFFFFFu);
-        put(0xF5100000u, 0x07000000u);
-        put(0xF50001F0u, 0x06000000u);
-        put(0xF5000100u, 0x05000000u);
-
-        BrVec3Sub(&tmp,
-            (const BrVec3 *)(car + BR_CAR_OFF_POS),
-            (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
-        dot = BrVec3Dot(
-            (const BrVec3 *)(car + BR_CAR_OFF_ROW2), &tmp);
-
-        if (dot > 0.0) {
-            /* 0xB2CB -- glass pass. */
-            BrGfxEmitTexCmd(6,
-                *(const void *const *)(model + 0x8014));
-            put(0xE7000000u, 0);
-            put(0xBA001402u, 0x00100000u);
-            put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
-
-            BrRdpSetCombineLERP(put_slot(),
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO);
-
-            put(0xBC00000Au, colourA);
-            put(0xBC00040Au, colourA);
-            put(0xBC00200Au, colourB);
-            put(0xBC00240Au, colourB);
-            put(0xBB000001u, 0xFFFFFFFFu);
-            put(0xF5100000u, 0x07000000u);
-            put(0xF50001F0u, 0x06000000u);
-            put(0xF5000100u, 0x05000000u);
-            {
-                uint32_t glassDL = *(const uint32_t *)(model + 0x8030 + lodOff);
-                if (glassDL != 0)
-                    put(0x06000000u, glassDL);
-            }
-        }
-    }
-
-    /* 0xB4AA -- detail pass. */
-    BrGfxEmitTexCmd(3,
-        *(const void *const *)(model + 0x8014));
-    put(0xE7000000u, 0);
-    put(0xBA001402u, 0x00100000u);
-    put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
-
-    BrRdpSetCombineLERP(put_slot(),
-        TK_TEXEL0,   TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_PRIMITIVE,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED,
-        TK_ZERO,     TK_ZERO, TK_ZERO,      TK_COMBINED);
-
-    put(0xBC00000Au, colourA);
-    put(0xBC00040Au, colourA);
-    put(0xBC00200Au, colourB);
-    put(0xBC00240Au, colourB);
-    put(0xBB000001u, 0xFFFFFFFFu);
-    put(0xF5100000u, 0x07000000u);
-    put(0xF50001F0u, 0x06000000u);
-    put(0xF5000100u, 0x05000000u);
-    {
-        uint32_t detailDL = *(const uint32_t *)(model + 0x8024 + lodOff);
-        if (detailDL != 0)
-            put(0x06000000u, detailDL);
-    }
-
-    /* TODO 0xB685-0xB925: reflection pass.
-     * Gated on g_BrDrawReflectEnable (BSS 0), g_BrDrawWheelAlt == 0,
-     * BrG_6C6624 == 0, g_BrDrawSuppress == 0, car->i29B4 == 0, plus a
-     * two-arm test on BrG_6C661C vs the player.  Dead path in the running
-     * port (g_BrDrawReflectEnable is BSS 0). */
-
-    /* TODO 0xB925-0xBC7B (~854 bytes): post-detail setup block.
-     * Contains ~17 puts: E7 sync, BA001402/0x100000, B7 with neg/sbb on
-     * g_0A5B40, BB000001/0x08001000, BA000C02/BrG_6C0258, combiner call,
-     * 3-arm FB colour (branching on BrG_6C6618 x specMem), B900031D x2, E8,
-     * BA000E02, DC indexed table lookup, BA000E02/0x8000, F2 float-based
-     * settile, E7, and 2 specular MOVEMEMs (0384/0382).  Requires x87emu
-     * capture for the F2 settile float args. */
-
-    /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
-    {
-        uint32_t bodyDL2 = *(const uint32_t *)(model + 0x8028 + lodOff);
-        if (bodyDL2 != 0)
-            put(0x06000000u, bodyDL2);
-    }
-
-    /* 0xBCBF -- reflection DL at model + lodOff + 0x803C (conditional). */
-    {
-        uint32_t refDL = *(const uint32_t *)(model + 0x803C + lodOff);
-        if (refDL != 0 &&
-            (g_BrDrawSuppress != 0 ||
-             *(const int32_t *)(car + BR_CAR_OFF_I29B4) != 0))
-            put(0x06000000u, refDL);
-    }
-
-    /* 0xBD1A -- pop the model matrix, clear geom, restore light colours. */
-    put(0xBD000000u, 0);
-    put(0xB6000000u, 0x00040000u);
-    put(0xBC00000Au, colourA);
-    put(0xBC00040Au, colourA);
-    put(0xBC00200Au, colourB);
-    put(0xBC00240Au, colourB);
-    put(0xBA000C02u, BrG_6C0258);
-    put(0xBA000E02u, 0);
-
-    /* 0xBDE8 -- late wheel call (non-class 2). */
-    if (bKind != 2)
-        wheel_call(car);
-
-    /* 0xBE14 -- final: sync, combiner, render mode. */
-    put(0xE7000000u, 0);
-    put(0xBA001402u, 0);
-
-    BrRdpSetCombineLERP(put_slot(),
-        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO);
-
-    put(0xB900031Du, 3);
-
-    /* 0xBE98 -- model cost accumulation. */
-    BrS17GetState()->f6C161C += *(const int32_t *)(model + 0x8000);
-}
