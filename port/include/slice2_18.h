@@ -220,7 +220,10 @@ extern int32_t  BrG_0AA890;     /* 0x100AA890 */
 extern uint32_t BrG_6C0258;     /* 0x106C0258 */
 extern uint32_t BrG_6C0688;     /* 0x106C0688 */
 extern uint32_t BrG_6C0920;     /* 0x106C0920 */
-extern void    *BrG_0AA730;     /* 0x100AA730  float identity matrix */
+extern void    *BrG_0AA730;     /* 0x100AA730 (glide 0x100A9EC0) float identity
+                                 * matrix; G_MTX 0x01060040 payload -- the base
+                                 * modelview several render fns load (e.g. the
+                                 * glide frontier 0x10011D20). */
 extern int32_t  BrG_0AA884;     /* 0x100AA884 */
 extern uint8_t *BrG_0AA770;     /* 0x100AA770  array of 0x28-byte sub-lists */
 extern int32_t  BrG_6C65FC;     /* 0x106C65FC  index into the above */
