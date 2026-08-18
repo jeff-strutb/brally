@@ -117,6 +117,13 @@ void BrScrPtKeepNearest(const BrMat4 *pM, BrScrPt *aOut, int *aFlags, int idx,
  * (0x100310F0). */
 extern BrMat4 g_BrScrProjMat;
 
+/* 0x100147B0 (glide 0x10011D20) -- draw the model-lights prop marker at the
+ * head of the AI path. See the banner in slice2_14.c. g_BrModelLights holds
+ * the pointer to the misc\\modelLights.blob prop list (0x10680944). */
+struct BrPropList;
+extern struct BrPropList *g_BrModelLights;
+void BrModelLightsDraw(void);
+
 /* 0x10010D10  IN PLACE: project the position at +0x00..+0x08 through
  * g_BrScrProjMat and store only the first TWO output components:
  *

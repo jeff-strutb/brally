@@ -9,8 +9,11 @@
  * file so the information does not get lost.
  */
 #include "slice2_14.h"
+#include "slice2_17.h"   /* BrPropList, BrScenePropsDraw (0x1002FB20)          */
+#include "slice3_40.h"   /* BrNode, BrPathPoint, BrG_6C7CB8 -- the AI path root */
 
 #include <stddef.h>
+#include <stdint.h>
 
 /* Layout guards: both of these strides are load-bearing (0x20 is the index
  * scale in 0x10010BF0, 4 is the element size passed to qsort at 0x10010E9E). */
@@ -330,6 +333,112 @@ int BrLruAcquire(BrLru *pLru)
 }
 
 /* ================================================================== */
+/* 0x100147B0 -- draw the model-lights marker at the head of the path  */
+/* ================================================================== */
+/*
+ * Glide twin 0x10011D20 (byte-identical structure). One of the race
+ * render frontier's draw functions (a direct callee of 0x10011FA0).
+ *
+ * Gated twice: by g_brRaceHudB (a render toggle) and by the AI path
+ * root BrG_6C7CB8 (0x106C7CB8, glide 0x106EED48 == track header +0x70)
+ * existing. It builds a Z-up orientation frame M at the first path
+ * point pts[0]:
+ *
+ *   fwd  (row 1) = BrVec3Direction(pts[0].pos -> pts[0].f0C vec)
+ *   up   (row 2) = (0, 0, 1)
+ *   right(row 0) = fwd x up
+ *   fwd  (row 1) = up x right           (re-orthogonalise)
+ *   transl(row 3)= pts[0].pos, with z lifted by g_brRaceFade and the
+ *                  .rdata constant 0x1008F2D4 == -2.0 (so z += fade + 2),
+ *                  then pulled back 0.3*right and 0.6*fwd.
+ *
+ * Two G_MTX display-list commands are emitted through the command
+ * cursor BrG_6C0680 -- the base modelview (the float identity carried
+ * by BrG_0AA730) and the current projection (the pooled slot
+ * g_BrMtxSlot) -- exactly as the sibling draw functions do. The frame
+ * is then scaled to 1/1024 (g_BrScrProjMat as scratch), folded into M
+ * (M = scale * M; BrMat4Mul's output is arg3, and it copies through a
+ * temp because pB == pOut), and the modelLights prop list is drawn
+ * through M.
+ *
+ * NOTE the aliasing the range comment below used to flag: the three
+ * basis rows and the translation all live in the one 0x40-byte M, and
+ * 0x1003ADA0 is BrVec3Direction (slice2_21.c) -- both now resolved.
+ */
+
+/* 0x10680944 (glide 0x105BCAEC) -- holds the pointer to the modelLights
+ * prop list seeded from misc\\modelLights.blob (br_racebegin.c). NULL
+ * until that load runs; BrScenePropsDraw is handed whatever it holds. */
+BrPropList *g_BrModelLights;
+
+/* The globals this draw shares with the gfx/race packets. Declared here
+ * in the file's local style (cf. g_BrScrProjMat) rather than dragging in
+ * their whole headers. */
+extern int32_t   g_brRaceHudB;   /* 0x105CCB78 (d3d 0x106909D0) render toggle  */
+extern float     g_brRaceFade;   /* 0x105BC764 (d3d 0x106805BC) per-frame fade */
+extern void     *BrG_0AA730;     /* 0x100AA730 float identity modelview        */
+extern uint32_t *BrG_6C0680;     /* 0x106C0680 display-list write cursor       */
+extern void     *g_BrMtxSlot;    /* 0x106C32D0 current projection pool slot     */
+void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo);
+void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut);
+
+void BrModelLightsDraw(void)
+{
+    BrNode   *pNode;
+    BrMat4    M;
+    uint32_t *pCmd;
+
+    if (g_brRaceHudB == 0) {
+        return;
+    }
+    pNode = BrG_6C7CB8;
+    if (pNode == NULL) {
+        return;
+    }
+
+    /* The w column is (0,0,0,1); up is seeded before the crosses run. */
+    M.m[0][3] = 0.0f;
+    M.m[1][3] = 0.0f;
+    M.m[2][0] = 0.0f;
+    M.m[2][1] = 0.0f;
+    M.m[2][2] = 1.0f;
+    M.m[2][3] = 0.0f;
+    M.m[3][3] = 1.0f;
+
+    BrVec3Direction((BrVec3 *)M.m[1], &pNode->pts[0].pos,
+                    (const BrVec3 *)&pNode->pts[0].f0C);
+    BrVec3Cross((BrVec3 *)M.m[0], (const BrVec3 *)M.m[1],
+                (const BrVec3 *)M.m[2]);
+    BrVec3Cross((BrVec3 *)M.m[1], (const BrVec3 *)M.m[2],
+                (const BrVec3 *)M.m[0]);
+
+    M.m[3][0] = pNode->pts[0].pos.x;
+    M.m[3][1] = pNode->pts[0].pos.y;
+    /* fld z; fadd fade; fsub (-2.0) -- association order preserved. */
+    M.m[3][2] = (pNode->pts[0].pos.z + g_brRaceFade) - (-2.0f);
+    BrVec3MulAdd((BrVec3 *)M.m[3], (const BrVec3 *)M.m[3],
+                 (const BrVec3 *)M.m[0], -0.3f);
+    BrVec3MulAdd((BrVec3 *)M.m[3], (const BrVec3 *)M.m[3],
+                 (const BrVec3 *)M.m[1], -0.6f);
+
+    pCmd = BrG_6C0680;
+    BrG_6C0680 += 2;
+    pCmd[0] = 0x01060040u;                                  /* G_MTX push|load */
+    pCmd[1] = (uint32_t)(uintptr_t)BrG_0AA730;              /* base modelview  */
+
+    pCmd = BrG_6C0680;
+    BrG_6C0680 += 2;
+    pCmd[0] = 0x01030040u;                                  /* G_MTX load proj */
+    pCmd[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
+
+    BrMat4Scale(&g_BrScrProjMat, 1.0f / 1024.0f, 1.0f / 1024.0f,
+                1.0f / 1024.0f);
+    BrMat4Mul(&g_BrScrProjMat, &M, &M);                     /* M = scale * M   */
+
+    BrScenePropsDraw(g_BrModelLights, &M);
+}
+
+/* ================================================================== */
 /* Skipped, and why                                                    */
 /* ================================================================== */
 /*
@@ -350,13 +459,6 @@ int BrLruAcquire(BrLru *pLru)
  *   is only meaningful against a command-buffer type that does not exist in
  *   port/include yet, and 0x100b36f8 / 0x106c32d0 / 0x11829108 are all
  *   cross-packet. These want a single owner for the F3D emitter state.
- *
- * 0x100147B0 (383 bytes) -- builds a basis from 0x106C7CB8+0x4C/+0x58 via
- *   0x1003ADA0 (signature unknown; it writes into a caller buffer whose
- *   layout is only implied by the pre-call stores at esp+0x18/0x28/0x38/0x48)
- *   and then two BrVec3Cross calls, BrVec3MulAdd, BrMat4Scale, 0x100306C0 and
- *   0x1002FB20. The aliasing between the three stack vectors is resolvable
- *   but 0x1003ADA0's contract is not, and guessing it would poison the rest.
  *
  * 0x10014930 (252 bytes) -- the FPS readout. The arithmetic is clear
  *   (sum the int array, then count * 1000.0f / sum; the constants are
