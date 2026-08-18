@@ -279,13 +279,13 @@ address,build,symbol,file,line
 0x10030670,d3d,BrVec3dCross,br_vecd.c,63
 0x100306C0,d3d,BrMat4Mul,slice1_05.c,283
 0x100307D0,d3d,BrMat4IdentityLocal,slice1_09.c,347
-0x10030810,d3d,BrMat4Frustum,br_mat.c,105
+0x10030810,d3d,BrMat4Frustum,br_mat.c,107
 0x10030930,d3d,BrMat4Perspective7,slice4_50.c,161
 0x100309A0,d3d,BrMat4LookAt,slice2_17.c,168
 0x10030B50,d3d,BrLightDirsAndAngles,slice2_17.c,273
 0x10030E20,d3d,BrLightDirsFromLookAt,slice2_17.c,226
 0x10030EE0,d3d,BrMat4RotateAxis,slice2_17.c,337
-0x100310F0,d3d,BrMat4Scale,br_mat.c,165
+0x100310F0,d3d,BrMat4Scale,br_mat.c,167
 0x10031140,glide,BrTrackLoadHandling,slice2_20.c,537
 0x10031190,d3d,BrScratchRingAlloc,slice2_17.c,1009
 0x100311E4,d3d,BrScratchRingDrain,slice2_17.c,1034
@@ -311,7 +311,7 @@ address,build,symbol,file,line
 0x1003445A,d3d,BrDlOwnerFixup,slice2_19.c,333
 0x100344D0,glide,br_dl_normalise,br_dl.c,463
 0x100347BA,d3d,BrAccumAddClamp,slice2_19.c,1069
-0x100349C0,glide,BrVec3Project,br_mat.c,38
+0x100349C0,glide,BrVec3Project,br_mat.c,40
 0x10034C51,d3d,BrGameStepIs,br_gamestep.c,49
 0x10034C66,d3d,BrGameStepSet,br_gamestep.c,25
 0x10034C73,d3d,BrGameStepInvoke,br_gamestep.c,73
@@ -759,6 +759,8 @@ address,build,symbol,file,line
 0x10074450,d3d,BrRbBuildMatrix,slice3_44.c,479
 0x100745F0,d3d,BrRbIntegrateState,slice3_44.c,419
 0x100746E0,d3d,BrX100746E0,slice3_44.c,658
+0x10074720,d3d,BrMat4MulVec3,br_mat.c,12
+0x10074770,d3d,BrMat4MulVec3Transposed,br_mat.c,26
 0x100747C0,d3d,BrMat4TransformPoint,slice1_09.c,313
 0x10074830,d3d,BrMat3MulVec3,slice3_44.c,47
 0x10074870,d3d,BrRbInitInertia,slice3_44.c,567
