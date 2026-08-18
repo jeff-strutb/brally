@@ -69,6 +69,8 @@ int32_t  BrG_0AA8B4, BrG_0A81C0, BrG_0A81C4;
 int32_t  BrG_6C299C, BrG_6C0684, BrG_0AA890;
 uint32_t BrG_6C0258, BrG_6C0688, BrG_6C0920;
 void    *BrG_0AA730;
+void    *BrG_6C3308;
+void    *BrG_0AA838, *BrG_0AA860, *BrG_0AA868;
 int32_t  BrG_0AA884;
 uint8_t *BrG_0AA770;
 int32_t  BrG_6C65FC, BrG_6C6604;

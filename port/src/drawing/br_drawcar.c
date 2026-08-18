@@ -7,9 +7,12 @@
  */
 #include "br_drawcar.h"
 #include "slice1_05.h"   /* BrGfxWords, BrRdpSetCombineLERP, BrMat4Mul   */
+#include "slice2_15.h"   /* g_4B16A0 / g_4B16AC scene accumulators       */
+#include "slice2_17.h"   /* BrGfxEmitTexCmd                             */
 #include "slice2_18.h"   /* BrG_6C0680 cursor; BrFogFactorAtPoint; car globals */
+#include "slice2_19.h"   /* g_BrMtxSlot current projection slot          */
 #include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint                */
-#include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd                     */
+#include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd, the glow cluster   */
 
 #include <string.h>
 
@@ -74,6 +77,7 @@ static BrGfxWords *put_slot(void)
 /* Combiner tokens, as the game spells them.  0x1001D180/0x1001D150 map
  * 0x3E8 + n to n, and 0 to G_CCMUX_0 / G_ACMUX_0. */
 #define TK_ZERO       0
+#define TK_ONE        1        /* G_?CMUX_1; 0x1002FAF0/AC0 map token 1 -> 6 */
 #define TK_COMBINED   0x3E8
 #define TK_TEXEL0     0x3E9
 #define TK_TEXEL1_A   0x3EB
@@ -275,6 +279,11 @@ BrSpanVolume g_BrFrameHull;
 int32_t g_BrCarVisOpaque[BR_CAR_MAX];   /* 0x10273648 (d3d 0x10277E60) */
 int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
 
+/* Per-car pooled-matrix DL addresses -- 0x1000A110 fills these, this pass
+ * reads them.  Zero until it runs. */
+uint32_t g_BrCarMtxSlot[BR_CAR_MAX];    /* 0x102735B0 */
+uint32_t g_BrCarLightSlot[BR_CAR_MAX];  /* 0x10273600 */
+
 /* @implements 0x10009FC0 glide BrCarVisibilityUpdate */
 void BrCarVisibilityUpdate(void *pCar)
 {
@@ -345,6 +354,184 @@ set_flags:
         g_BrCarVisOpaque[iCar] = 1;
     }
     g_BrCarVisAny[iCar] = 1;
+}
+
+/* ==================================================================== *
+ * 0x1000BEB0 -- emit ONE opaque car's body.  1,576 bytes.
+ *
+ * The sibling of 0x10009C10 (the wheels): where that one walks the four
+ * wheel matrices, this one lays down the body pass -- two matrices, the four
+ * light-matrix blocks, a canned setup list, the texture command, two colour
+ * combiners around the body geometry, and the static Lights1.  Run once per
+ * opaque car by the frame driver, after the visibility pass has set the
+ * flags.  Verified against the byte-identical D3D twin 0x1000E950.
+ *
+ * IT ALSO ACCUMULATES.  For every car that is NOT the player it folds a
+ * headlight-glare term into the two per-frame scene accumulators
+ * slice2_15's BrSceneAccumReset (0x10017F60) zeroes at frame top -- so this
+ * is the "geometry pass" that header names as their writer.  g_4B16AC takes
+ * the FRONT-facing glare (the view direction opposes the camera basis) and
+ * g_4B16A0 the BACK-facing one; each term is (align - 0.95) * 750 / dist^2
+ * above a 0.95 alignment threshold, and the two are mutually exclusive per
+ * car.  The glow arithmetic sits in the file's stack-aliasing region and was
+ * transcribed against tools/x87emu.py, not hand-derived (see the golden
+ * vectors in test_br_drawcar.c).
+ *
+ * The record and its model are reached by raw byte offset, the write-back
+ * convention the visibility pass established: this pass writes gfx state and
+ * the shared accumulators, which the read-only BrCarView cannot model.
+ *
+ * Consts read out of the binary: g_0771A8 = 0.0 (the divide-by-zero guard on
+ * the distance), g_0771CC = 0.95 (the alignment threshold), g_0771D0 = 750.0
+ * (the glare gain).  1.0f / 0.0f scale factors on the basis vector are the
+ * shipped build's -- BrVec3Scale(row0, 1.0) then BrVec3MulAddTo(row2, 0.0)
+ * reduces to a copy of row0, emitted as written.
+ * ==================================================================== */
+/* WHAT IT DOES: draws the solid shell of one car and, for the other racers,
+ * adds a little bloom wherever their headlights point roughly at or away from
+ * the camera, so oncoming and receding cars glow. */
+/* @implements 0x1000BEB0 glide BrCarDrawBody */
+void BrCarDrawBody(void *pCar)
+{
+    unsigned char       *car = (unsigned char *)pCar;
+    const unsigned char *model;
+    int32_t              iCar;
+    uint32_t             slotL;
+
+    /* 0x1000BEB0 -- nothing draws unless one of the two mode flags is set. */
+    if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
+        return;
+    }
+    /* 0x1000BED0 -- only cars the visibility pass marked for the opaque pass. */
+    iCar = *(const int32_t *)(car + BR_CAR_OFF_ICAR);
+    if (g_BrCarVisOpaque[iCar] == 0) {
+        return;
+    }
+    /* 0x1000BEE3 -- the player's own car, when its active camera object is the
+     * record's own +0x27C4 slot, is left to the other passes. */
+    if ((void *)car == BrG_6C2CF8 &&
+        BrG_6C6490 == (void *)(car + BR_CAR_OFF_CAMSLOT)) {
+        return;
+    }
+    /* 0x1000BEFF -- class 2 is the translucent pass, not this one. */
+    if (*(const unsigned char *)(car + BR_CAR_OFF_KIND) == 2) {
+        return;
+    }
+
+    /* 0x1000BF0C -- publish the model to the scratch global the tail (and
+     * 0x1000A110) read, then work from it. */
+    BrG_6C3308 = *(void *const *)(car + BR_CAR_OFF_MODEL);
+    model      = (const unsigned char *)BrG_6C3308;
+
+    /* 0x1000BF18 -- the two matrices: the car's pooled model matrix pushed as
+     * the modelview, the shared projection slot loaded after it. */
+    put(0x01060040u, g_BrCarMtxSlot[iCar]);
+    put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
+
+    /* 0x1000BF5F -- the four 16-byte blocks of the car's lighting matrix
+     * (0x9E/0x98/0x9A/0x9C at +0/+0x10/+0x20/+0x30 of one pooled slot). */
+    slotL = g_BrCarLightSlot[iCar];
+    put(0x039E0010u, slotL);
+    put(0x03980010u, slotL ? slotL + 0x10u : 0);
+    put(0x039A0010u, slotL ? slotL + 0x20u : 0);
+    put(0x039C0010u, slotL ? slotL + 0x30u : 0);
+
+    /* 0x1000C004 -- the canned setup list, then the model's texture command. */
+    put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA838);
+    BrGfxEmitTexCmd(5, *(const void *const *)(model + BR_MODEL_OFF_TEXRECS));
+
+    /* 0x1000C035 -- pipe sync, two-cycle, and the move-word run that primes
+     * the primitive colour (0x200A/0x240A carry 0xFFFFFF00). */
+    put(0xE7000000u, 0);
+    put(0xBA001402u, 0);
+    put(0xBC00000Au, 0);
+    put(0xBC00040Au, 0);
+    put(0xBC00200Au, 0xFFFFFF00u);
+    put(0xBC00240Au, 0xFFFFFF00u);
+
+    /* 0x1000C0FD -- combiner #1: shade the body from TEXEL0 with a solid
+     * "1" in the d slot (colour and alpha both). */
+    BrRdpSetCombineLERP(put_slot(),
+        TK_ZERO, TK_ZERO, TK_ZERO, TK_ONE,
+        TK_ZERO, TK_ZERO, TK_ZERO, TK_TEXEL0,
+        TK_ZERO, TK_ZERO, TK_ZERO, TK_ONE,
+        TK_ZERO, TK_ZERO, TK_ZERO, TK_TEXEL0);
+
+    /* 0x1000C108 -- render mode, othermode. */
+    put(0xB900031Du, 0x004049D8u);
+    put(0xBA000602u, 0x00000080u);
+
+    /* 0x1000C147 -- the body geometry, only if the model carries one. */
+    if (*(const uint32_t *)(model + BR_MODEL_OFF_BODYDL) != 0) {
+        put(0x06000000u, *(const uint32_t *)(model + BR_MODEL_OFF_BODYDL));
+    }
+    put(0xE7000000u, 0);
+    put(0xBA000602u, BrG_6C0688);
+
+    /* 0x1000C1B5 -- headlight glare, non-player cars only. */
+    if ((void *)car != BrG_6C2CF8) {
+        const BrVec3 *pRow0     = (const BrVec3 *)(car + BR_CAR_OFF_MTX);
+        const BrVec3 *pRow2     = (const BrVec3 *)(car + BR_CAR_OFF_ROW2);
+        const BrVec3 *pPos      = (const BrVec3 *)(car + BR_CAR_OFF_POS);
+        const BrVec3 *pCamBasis = (const BrVec3 *)BrG_6C6490;
+        const BrVec3 *pCamPos   =
+            (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30);
+        BrVec3 dir, basis;
+        float  len, dot2, dot1, val;
+
+        /* dir = camPos - (pos + row0); its length is the car-to-camera
+         * distance measured from a point one basis unit ahead. */
+        BrVec3Add(&dir, pPos, pRow0);
+        BrVec3Sub(&dir, pCamPos, &dir);
+        len = BrVec3Length(&dir);
+
+        if (len != 0.0f) {                       /* g_0771A8 == 0.0 */
+            BrVec3DivBy(&dir, len);              /* dir -> unit direction */
+            dot2 = BrVec3Dot(&dir, pCamBasis);
+
+            /* 0x1000C243 -- FRONT glare: the view opposes the camera basis. */
+            if (dot2 < 0.0f) {
+                BrVec3Scale(&basis, pRow0, 1.0f);
+                BrVec3MulAddTo(&basis, pRow2, 0.0f);   /* basis = row0 */
+                dot1 = BrVec3Dot(&dir, &basis);
+                val  = -(dot2 * dot1);
+                if (val > 0.95f) {               /* g_0771CC == 0.95 */
+                    g_4B16AC += ((val - 0.95f) * 750.0f) / (len * len);
+                }
+            }
+
+            /* 0x1000C2FA -- BACK glare: the view runs with the camera basis. */
+            dot2 = BrVec3Dot(&dir, pCamBasis);
+            if (dot2 > 0.95f) {
+                BrVec3Scale(&basis, pRow0, 1.0f);
+                BrVec3MulAddTo(&basis, pRow2, 0.0f);
+                dot1 = BrVec3Dot(&dir, &basis);
+                val  = dot2 * dot1;
+                if (val > 0.95f) {
+                    g_4B16A0 += ((val - 0.95f) * 750.0f) / (len * len);
+                }
+            }
+        }
+    }
+
+    /* 0x1000C38A -- the tail: sync, pop the model matrix, clear the shade
+     * geom-mode bit, then the two static Lights1 blocks and combiner #2. */
+    put(0xE7000000u, 0);
+    put(0xBA001402u, 0);
+    put(0xBD000000u, 0);
+    put(0xB6000000u, 0x00040000u);
+    put(0xBC000002u, 0x80000040u);
+    put(0x03860010u, (uint32_t)(uintptr_t)BrG_0AA868);
+    put(0x03880010u, (uint32_t)(uintptr_t)BrG_0AA860);
+    put(0xBA000C02u, BrG_6C0258);
+    put(0xBA000E02u, 0);
+
+    /* 0x1000C4CA -- combiner #2: sample TEXEL0 modulated by the primitive. */
+    BrRdpSetCombineLERP(put_slot(),
+        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
+        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
+        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
+        TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO);
 }
 
 /* ==================================================================== *

@@ -85,7 +85,7 @@ BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
 /* ---- per-frame scene accumulators -------------------------------------- *
  * A pair of float accumulators the per-frame race render maintains.  Their
  * TRUE linkage is global: they are written from a different object (the geometry
- * pass at 0x1000BEB0, still on the render frontier) and read again inside the
+ * pass at 0x1000BEB0 == BrCarDrawBody, br_drawcar.c) and read again inside the
  * frame builder at 0x10011FA0, so they are NOT static -- see slice2_15.h for the
  * shared declarations.
  *

@@ -199,14 +199,23 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel);
  * functions share.
  * -------------------------------------------------------------------- */
 #define BR_CAR_OFF_MTX       0x0000u  /* BrMat4 world transform             */
+#define BR_CAR_OFF_ROW2      0x0020u  /* BrVec3 mtx.m[2]; the headlight basis */
 #define BR_CAR_OFF_POS       0x0030u  /* BrVec3 position == mtx.m[3]         */
 #define BR_CAR_OFF_ICAR      0x0140u  /* int32 car index, 0..BR_CAR_MAX-1    */
 #define BR_CAR_OFF_GUARD     0x0F08u  /* ptr; NULL => the pass does nothing  */
+#define BR_CAR_OFF_CAMSLOT   0x27C4u  /* body pass: player culls if the active
+                                       * camera object equals record+0x27C4  */
 #define BR_CAR_OFF_FOG       0x2730u  /* float; written = fog at the position */
 #define BR_CAR_OFF_ACTIVECAM 0x2734u  /* ptr; player: == +0x273C or +0x2890  */
 #define BR_CAR_OFF_CAMA      0x273Cu  /* a cam frame inside the record        */
 #define BR_CAR_OFF_CAMB      0x2890u  /* the other cam frame                  */
 #define BR_CAR_OFF_KIND      0x29AFu  /* draw class; 2 == translucent pass    */
+#define BR_CAR_OFF_MODEL     0x29C4u  /* ptr; the car's model record          */
+
+/* The model record, by raw offset (the body pass reaches it through the
+ * scratch global BrG_6C3308, the same way 0x1000A110 does). */
+#define BR_MODEL_OFF_TEXRECS 0x8014u  /* ptr; BrGfxEmitTexCmd's record array   */
+#define BR_MODEL_OFF_BODYDL  0x802Cu  /* uint32 body geometry display list     */
 
 #define BR_CAR_MAX           16       /* BR_CARDATA_CARS; the flag-array bound */
 
@@ -216,9 +225,21 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel);
 extern int32_t g_BrCarVisOpaque[BR_CAR_MAX];   /* 0x10273648 (d3d 0x10277E60) */
 extern int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
 
+/* Per-car pooled-matrix display-list addresses, one slot per car, filled by
+ * 0x1000A110's prologue (still on the frontier) and read by BrCarDrawBody as
+ * the G_MTX / G_MOVEMEM payloads.  Zero until 0x1000A110 runs -- the same
+ * "count the reach, invent no address" contract as BrDrawCarHooks. */
+extern uint32_t g_BrCarMtxSlot[BR_CAR_MAX];    /* 0x102735B0  model matrix    */
+extern uint32_t g_BrCarLightSlot[BR_CAR_MAX];  /* 0x10273600  lighting matrix */
+
 /* 0x10009FC0 -- per-car pre-draw pass: compute the fog factor and decide
  * whether the car is visible this frame, setting the two flags above. pCar
  * is the raw 0x2B68 car record. */
 void BrCarVisibilityUpdate(void *pCar);
+
+/* 0x1000BEB0 -- emit ONE opaque car's body display list, and (for non-player
+ * cars) accumulate its headlight glare into the two per-frame scene
+ * accumulators g_4B16A0 / g_4B16AC.  pCar is the raw 0x2B68 car record. */
+void BrCarDrawBody(void *pCar);
 
 #endif /* BR_DRAWCAR_H */

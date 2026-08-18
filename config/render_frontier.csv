@@ -2,7 +2,7 @@ va,glide_size,aligned,status,name,note
 0x10008D60,1,yes,done,trace,inferred
 0x10009FC0,322,yes,done,BrCarVisibilityUpdate,"br_drawcar.c; first car-draw-subsystem fn; raw-record access"
 0x1000A110,7577,yes,TODO,,
-0x1000BEB0,1576,yes,TODO,,
+0x1000BEB0,1576,yes,done,BrCarDrawBody,"br_drawcar.c; body pass + headlight-glare accumulators (writer of g_4B16A0/AC)"
 0x1000CB20,96,yes,done,BrGfxSetBankPointers,D3D twin ported before the frontier was drawn; verified real body
 0x1000EAF0,9354,yes,TODO,,
 0x10010F80,47,yes,done,BrRasterSelect,D3D twin ported before the frontier was drawn; verified real body
