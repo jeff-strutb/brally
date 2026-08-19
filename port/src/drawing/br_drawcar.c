@@ -91,15 +91,7 @@ static BrGfxWords *put_slot(void)
     return p;
 }
 
-/* Combiner tokens, as the game spells them.  0x1001D180/0x1001D150 map
- * 0x3E8 + n to n, and 0 to G_CCMUX_0 / G_ACMUX_0. */
-#define TK_ZERO       0
-#define TK_ONE        1        /* G_?CMUX_1; 0x1002FAF0/AC0 map token 1 -> 6 */
-#define TK_COMBINED   0x3E8
-#define TK_TEXEL0     0x3E9
-#define TK_TEXEL1_A   0x3EB
-#define TK_PRIMITIVE  0x3EC
-#define TK_SHADE      0x3ED
+/* Combiner tokens TK_* are in br_drawcar.h. */
 
 /* ------------------------------------------------------------------ *
  * 0x1002A9F2 -- five bytes: push ebp / mov ebp,esp / pop ebp / ret.
