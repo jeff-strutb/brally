@@ -10,8 +10,8 @@
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 
-#include "../br_gfx.h"
-#include "../br_gfx3d.h"
+#include "br_gfx.h"
+#include "br_gfx3d.h"
 
 #include <stdlib.h>
 #include <string.h>

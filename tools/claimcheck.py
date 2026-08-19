@@ -212,7 +212,7 @@ def c_calls(text, symbol):
 
 
 def find(name):
-    for base in ('port/src', 'port/include', 'port/host'):
+    for base in ('src/core', 'include', 'src/backends/macos'):
         for dirpath, _, files in os.walk(base):
             if name in files:
                 return os.path.join(dirpath, name)

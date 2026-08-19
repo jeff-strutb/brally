@@ -32,7 +32,7 @@ def undefined_symbols(objdir='/tmp'):
         return None, "no objects; build them first"
     main_c = os.path.join(objdir, '_lq_main.c')
     open(main_c, 'w').write('int main(void){return 0;}\n')
-    r = subprocess.run(['clang', '-std=c99', '-Iport/include', main_c] + objs +
+    r = subprocess.run(['clang', '-std=c99', '-Iinclude', main_c] + objs +
                        ['-lm', '-o', os.path.join(objdir, '_lq_bin')],
                        capture_output=True, text=True)
     syms = sorted({m[1:] for m in re.findall(r'"(_[A-Za-z0-9_]+)"', r.stderr)})
@@ -43,7 +43,7 @@ def bind_addresses(undef):
     """name -> address, using same-declaration evidence only."""
     bound = {}
     conflicts = collections.defaultdict(set)
-    for h in glob.glob('port/include/*.h'):
+    for h in glob.glob('include/*.h'):
         lines = open(h).read().splitlines()
         for i, line in enumerate(lines):
             m = XSL.search(line)
@@ -93,7 +93,7 @@ def main():
 
     # who needs each symbol
     need = collections.defaultdict(set)
-    for c in glob.glob('port/src/*.c'):
+    for c in glob.glob('src/core/*.c'):
         txt = open(c).read()
         for s in ok:
             if re.search(r'\b%s\s*\(' % re.escape(s), txt):

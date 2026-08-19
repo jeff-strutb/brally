@@ -122,11 +122,11 @@ PORT = os.path.join(ROOT, "port")
 
 # ---------------------------------------------------------------- the corpus
 
-# Declarations are looked for here.  port/tests is scanned for TRAFFIC but not
+# Declarations are looked for here.  tests/ is scanned for TRAFFIC but not
 # for declarations: a test that defines storage for a global it links against
 # is not a competing model of the original, it is a link fixture.
-DECL_DIRS = ["include", "src", "host"]
-TRAFFIC_DIRS = ["include", "src", "host", "tests"]
+DECL_DIRS = ["include", "src"]
+TRAFFIC_DIRS = ["include", "src", "tests"]
 
 
 def walk(dirs):
@@ -618,7 +618,7 @@ def report(by_addr, known, reads, writes, files_with, ambiguous, limit=None):
             print("               %-28s r=%-4d w=%-4d %-20s %s%s" %
                   (m[:28], r, w,
                    ",".join(sorted({d.name for d in mds}))[:20],
-                   sorted({"%s:%d" % (d.file.replace("port/", ""), d.line)
+                   sorted({"%s:%d" % (d.file, d.line)
                            for d in mds})[0][:34], amb))
     print("\n%d addresses modelled by more than one host object" % len(rows))
     return rows
@@ -638,7 +638,7 @@ def transpose(decls, known):
     for k, v in sorted(out, key=lambda kv: -len(kv[1])):
         print("  %-34s %-4d  %s   %s" %
               (k, len(v), " ".join("0x%08X" % a for a in sorted(v)),
-               site[k].replace("port/", "")))
+               site[k]))
     print("%d host names claiming more than one address" % len(out))
     return out
 
@@ -661,7 +661,7 @@ def find_ambiguous(decls):
 # honest way to measure recall against it.
 CAL = [
     dict(label="1 lightOff/prim", addr=0x105D17A4,
-         mutate=("port/include/br_dl.h",
+         mutate=("include/br_dl.h",
                  "    float     prim[4];",
                  "    float     lightOff[3];  /* 0x105D17A4, 0x105D17B4, "
                  "0x105CE2D0 */\n    float     prim[4];")),
@@ -669,11 +669,11 @@ CAL = [
          # The historical shape, exactly: the original writes the ratio to
          # 0x118EEF48 and mirrors it at 0x1184C088, and the port modelled the
          # first array only.  So the mutation DELETES the second declaration.
-         mutate=("port/include/br_sfxsrc.h",
+         mutate=("include/br_sfxsrc.h",
                  "extern BrSfxChan g_aBrSfxChanApplied[BR_SFX_CHANNELS];",
                  "/* deleted by aliasmap --selftest */")),
     dict(label="3 0x106C0964 three names", addr=0x106C0964,
-         mutate=("port/include/slice8_83.h",
+         mutate=("include/slice8_83.h",
                  "/* 0x106C0964 and friends",
                  "extern void *g_brHook6C0964;   /* 0x106C0964 */\n"
                  "/* 0x106C0964 and friends")),
