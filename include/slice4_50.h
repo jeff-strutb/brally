@@ -303,7 +303,7 @@ void BrNetSendFlush(void);
 #define BR50_DPJOIN_SIZE   0x10u
 #define BR50_DPNAME_SIZE   0x320u
 #define BR50_DPNAME_CB     0xC8u    /* the length handed to GetUserNameA */
-#define BR50_DPMSG_SIZE    0x3F8u
+#define BR50_DPMSG_SIZE    0x400u
 
 /* XSLICE 0x1003D130 -- fills the 0xCC-byte session descriptor. */
 extern void    BrSub1003D130(void *pDesc);
