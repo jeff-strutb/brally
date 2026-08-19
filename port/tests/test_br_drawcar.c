@@ -302,6 +302,24 @@ void    *g_BrMtxSlot;                       /* projection slot (slice2_19) */
 uint32_t BrG_6C0258, BrG_6C0688;            /* othermode payloads          */
 float    g_4B16A0, g_4B16AC;                /* scene accumulators (slice2_15) */
 
+/* Light-direction block adds. */
+BrVec3   BrG_6C0670;                            /* light dir source vec3    */
+void BrVec3NormaliseGuard(BrVec3 *pV) { (void)pV; }
+
+/* Specular block stubs. */
+void *BrPool16Alloc(void) { return 0; }
+void *BrPool32Alloc(void) { return 0; }
+void BrLightDirsFromLookAt(BrMat4 *pM, BrLightPair *pL,
+    float a, float b, float c, float d, float e, float f,
+    float g, float h, float i)
+{ (void)pM;(void)pL;(void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g;(void)h;(void)i; }
+void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pL, BrSkyAngles *pA,
+    float a, float b, float c, float d, float e, float f,
+    float g, float h, float i, float j, float k, float l,
+    float m, float n, float o, int p, int q)
+{ (void)pM;(void)pL;(void)pA;(void)a;(void)b;(void)c;(void)d;(void)e;(void)f;
+  (void)g;(void)h;(void)i;(void)j;(void)k;(void)l;(void)m;(void)n;(void)o;(void)p;(void)q; }
+
 /* Globals BrCarDrawVehicle (0x1000A110) adds. */
 uint8_t  BrG_6C0260, BrG_6C1614, BrG_6C0200;  /* fog RGB bytes            */
 uint8_t  BrG_6C1580, BrG_6C335C, BrG_6C0968;  /* light RGB bytes          */
