@@ -324,7 +324,7 @@ float BrVec3Len(const BrVec3 *pV)
 /* @implements 0x1002B920 d3d BrFtolArg */
 int32_t BrFtolArg(float f)
 {
-    return BrFtolTrunc(f);
+    return (int32_t)f;
 }
 
 /* 0x10072AF0.  slice1_08.c already transcribes this address as
