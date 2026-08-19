@@ -9,7 +9,7 @@ va,glide_size,aligned,status,name,note
 0x10011650,847,yes,TODO,,
 0x100119C0,837,yes,TODO,,
 0x10011D20,383,yes,done,BrModelLightsDraw,"slice2_14.c via d3d twin 0x100147B0; first frontier draw fn landed"
-0x10011EA0,253,yes,TODO,,
+0x10011EA0,253,yes,done,BrFpsReadout,"slice2_14.c; the FPS text readout; two timer accumulators + sprintf + BrTextDraw"
 0x10013140,160,yes,done,BrHudDrawText,D3D twin ported before the frontier was drawn; verified real body
 0x10014C00,164,yes,done,BrHudDrawViewCentreText,implemented
 0x10014D00,246,yes,done,BrHudDrawViewMessage,implemented
