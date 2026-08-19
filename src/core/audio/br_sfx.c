@@ -314,7 +314,7 @@ int64_t BrSfxRatioFromHz(uint32_t hz, double baseRate)
      * high dword zeroed and loaded with `fild qword`, so it is
      * zero-extended, then multiplied by 0x10077C08 (2^32) and divided by the
      * channel's base rate.  No guard on baseRate. */
-    return br_ftol64((double)(uint64_t)hz * 4294967296.0 / baseRate);
+    return br_ftol64((double)(int64_t)(uint32_t)hz * 4294967296.0 / baseRate);
 }
 
 uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate)

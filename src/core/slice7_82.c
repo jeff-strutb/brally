@@ -17,8 +17,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifndef _MSC_VER
 #include <unistd.h>
 #include <sched.h>
+#endif
 
 #include "slice7_82.h"
 
@@ -124,6 +126,12 @@ void *BrGlobalFree(void *hMem)
  * nanoseconds. */
 #define BR82_PERF_HZ  ((int64_t)1000000)
 
+#ifdef _MSC_VER
+static int64_t br82_micros(void)
+{
+    return 0;
+}
+#else
 static int64_t br82_micros(void)
 {
     struct timespec ts;
@@ -133,6 +141,7 @@ static int64_t br82_micros(void)
     }
     return (int64_t)ts.tv_sec * BR82_PERF_HZ + (int64_t)(ts.tv_nsec / 1000);
 }
+#endif
 
 int32_t BrPlatQueryPerfFreq(int64_t *pFreq)
 {
@@ -161,13 +170,13 @@ uint32_t BrPlatTimeGetTime(void)
 
 void BrScrSleep(uint32_t ms)
 {
+#ifdef _MSC_VER
+    (void)ms;
+#else
     if (ms == 0u) {
-        /* Sleep(0) on Windows yields the timeslice rather than sleeping. */
         (void)sched_yield();
         return;
     }
-    /* usleep's argument is bounded at 1000000 on some hosts, so sleep whole
-     * seconds first. */
     while (ms >= 1000u) {
         (void)usleep(999999);
         ms -= 1000u;
@@ -175,6 +184,7 @@ void BrScrSleep(uint32_t ms)
     if (ms != 0u) {
         (void)usleep((useconds_t)ms * 1000u);
     }
+#endif
 }
 
 int32_t BrPlatGetUserName(char *pszBuf, uint32_t *pcb)
