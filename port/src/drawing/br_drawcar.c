@@ -15,6 +15,7 @@
 #include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
 #include "br_appstart.h"  /* g_brCfgGameMode                             */
 #include "br_bootfrontier.h" /* BrBootGlobal_ABAA0                       */
+#include "slice3_41.h"   /* BrPool16Alloc, BrPool32Alloc                 */
 #include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd, the glow cluster   */
 
 #include <string.h>
@@ -718,14 +719,97 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x01060040u, g_BrCarMtxSlot[iCar]);
     put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
 
-    /* TODO 0xA5A1-0xA6F3: light-direction computation.
-     * Builds g_BrDrawDir0 / g_BrDrawDir1 from camera, player, and car
-     * positions via BrVec3 ops.  Deferred: interleaved x87 requiring
-     * x87emu arg-capture. */
+    /* 0xA5A1 -- light-direction computation: build g_BrDrawDir0 and
+     * g_BrDrawDir1 from camera, player, and car positions. */
+    if (BrG_6C661C != 0) {
+        if (BrG_6C6490 == (void *)((unsigned char *)BrG_6C2CF8 + 0x2808))
+            BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C6490);
+        else
+            BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
+    } else {
+        g_BrDrawDir0 = BrG_6C0670;
+    }
+    BrVec3NormaliseGuard(&g_BrDrawDir0);
 
-    /* TODO 0xA6F6-0xA81B: specular highlight setup.
-     * Pool allocations + guLookAtReflectF / guLookAtHiliteF.
-     * Deferred: x87emu required.  specMem remains 0. */
+    g_BrDrawDir1 = g_BrDrawDir0;
+
+    {
+        BrVec3 tmp;
+        float  len;
+        BrVec3Sub(&tmp,
+            (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30),
+            (const BrVec3 *)(car + BR_CAR_OFF_POS));
+        len = BrVec3Length(&tmp);
+        if (len == 0.0f)
+            BrVec3Negate(&tmp, (const BrVec3 *)BrG_6C6490);
+        else
+            BrVec3DivBy(&tmp, len);
+
+        BrVec3Midpoint(&g_BrDrawDir1, &tmp, &g_BrDrawDir1);
+
+        len = BrVec3Length(&g_BrDrawDir1);
+        if (len == 0.0f) {
+            const float *pCam = (const float *)BrG_6C6490;
+            g_BrDrawDir1.x = pCam[8];
+            g_BrDrawDir1.y = pCam[9];
+            g_BrDrawDir1.z = pCam[10];
+        } else {
+            BrVec3DivBy(&g_BrDrawDir1, len);
+        }
+    }
+
+    /* 0xA6F6 -- specular highlight setup: three pool allocations, then
+     * BrLightDirsFromLookAt and BrLightDirsAndAngles. */
+    {
+        void          *pDiscard;
+        BrLightPair   *pLights;
+        BrSkyAngles   *pAngles;
+        float          eyeX, eyeY, atOffset, eyeScale;
+        const float   *pCam = (const float *)BrG_6C6490;
+        const float   *pCarF = (const float *)car;
+
+        pDiscard = BrPool16Alloc();
+        (void)pDiscard;
+        pLights  = (BrLightPair *)BrPool32Alloc();
+        pAngles  = (BrSkyAngles *)BrPool32Alloc();
+        specMem  = pLights
+                   ? (uint32_t)(uintptr_t)pLights : 0;
+
+        atOffset = 0.0f;
+        eyeScale = 0.0f;
+
+        if (pCam[12] == pCarF[12] &&
+            pCam[13] == pCarF[13] &&
+            pCam[14] != pCarF[14]) {
+            eyeScale = 0.1f;
+        } else if (pCam[12] == pCarF[12] &&
+                   pCam[13] == pCarF[13] &&
+                   pCam[14] == pCarF[14]) {
+            atOffset = 1.0f;
+        }
+
+        eyeX = pCam[0];
+        eyeY = pCam[1];
+        if (eyeX == 0.0f && eyeY == 0.0f) {
+            union { uint32_t u; float f; } fix;
+            fix.u = 0x38D1B717u;
+            eyeX = fix.f;
+        }
+
+        BrLightDirsFromLookAt(&g_BrDrawCombined, pLights,
+            eyeX, eyeY, 0.0f,
+            0.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f);
+
+        BrLightDirsAndAngles(&g_BrDrawCombined, pLights, pAngles,
+            pCam[12], pCam[13], pCam[14],
+            pCarF[12] + eyeScale, pCarF[13],
+            pCarF[14] + atOffset,
+            0.0f, 0.0f, 1.0f,
+            g_BrDrawDir1.x, g_BrDrawDir1.y, g_BrDrawDir1.z,
+            g_BrDrawDir1.x, g_BrDrawDir1.y, g_BrDrawDir1.z,
+            64, 64);
+    }
 
     /* 0xA86A -- Lights1 emission: static or dynamic. */
     if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
