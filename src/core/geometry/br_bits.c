@@ -1,5 +1,6 @@
 /* br_bits.c -- see br_bits.h. */
 #include "br_bits.h"
+#include "br_match.h"
 
 /* 0x10035FA0 -- note it reads pending once and writes both fields, so a bit
  * present in pending and already set in latched stays set (OR, not XOR). */
@@ -7,7 +8,7 @@
  * word latch, leaving the rest waiting. A bit that was already taken stays
  * taken, because the merge is an OR and not a flip. */
 /* @implements 0x10035FA0 d3d BrBitLatchTake */
-void BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
+void BR_THISCALL BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
 {
     uint32_t pending = pLatch->pending;
 
