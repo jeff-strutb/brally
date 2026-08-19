@@ -587,13 +587,11 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
- * Deferred TODO blocks:
- *   0xA5A1-0xA6F3  light-direction computation (g_BrDrawDir0/Dir1)
- *   0xA6F6-0xA81B  specular setup (pool + guLookAtReflectF/HiliteF)
- *   0xB925-0xBC7B  post-detail setup block (~854 bytes, F2 settile)
- * The reflection pass (0xB685-0xB925) is also TODO but gated on
- * g_BrDrawReflectEnable which is BSS 0 (dead path).
+ * The reflection pass (0xB685-0xB925) is NOT transcribed: it is gated
+ * on g_BrDrawReflectEnable which is BSS 0 and never set by any code
+ * in either build. The gate fires unconditionally, skipping the block.
  * ==================================================================== */
+/* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
     unsigned char *car = (unsigned char *)pCar;
