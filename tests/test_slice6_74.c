@@ -540,17 +540,9 @@ static void TestAdapterVec3Len(void)
 
 static void TestAdapterFtolArg(void)
 {
-    s_ftolArg    = 0.0f;
-    s_ftolResult = -7;
-
-    CHECK(BrFtolArg(2.75f) == -7);
-    CHECK(s_ftolArg == 2.75f);
-
-    /* Out-of-range handling belongs to __ftol and is NOT re-implemented in the
-     * adapter; assert only that the adapter is transparent to it. */
-    s_ftolResult = 0;
-    CHECK(BrFtolArg(1.0e30f) == 0);
-    CHECK(s_ftolArg == 1.0e30f);
+    CHECK(BrFtolArg(2.75f) == 2);
+    CHECK(BrFtolArg(-3.9f) == -3);
+    CHECK(BrFtolArg(0.0f) == 0);
 }
 
 static void TestAdapterSndPlaySimple(void)
