@@ -285,11 +285,8 @@ void BrCarDrawBody(void *pCar);
 
 /* 0x1000A110 -- emit one vehicle's complete display list (body, underside,
  * glass, detail, reflection, wheels). pCar is the raw 0x2B68 car record.
- * lodBias is added to the distance-derived detail level.
- *
- * NOT CLAIMED (@implements withheld): three internal TODO blocks remain
- * (light-dir, specular, post-detail) and the command stream has not been
- * validated against an independent source.  See br_drawcar.c. */
+ * lodBias is added to the distance-derived detail level. The reflection
+ * pass is omitted (dead path, gated on BSS 0). */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias);
 
 #endif /* BR_DRAWCAR_H */

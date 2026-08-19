@@ -847,6 +847,51 @@ static void test_veh_final_combiner(void)
     CHECK(i >= 0, "veh: found a combiner word in the stream");
 }
 
+static void test_veh_body_header(void)
+{
+    veh_reset(0);
+    BrG_6C0258 = 0xAAAAu;
+    BrCarDrawVehicle(s_vehCar, 0);
+
+    CHECK(dl_count() > 15, "body header: %d commands", dl_count());
+    if (dl_count() < 15) return;
+
+    /* The first two commands after guards pass are the two G_MTX pushes
+     * (model matrix then projection slot). Their payloads are the pool
+     * addresses, independently derived from the pool allocator. */
+    CHECK(w0(0) == 0x01060040u, "body header: model mtx opcode");
+    CHECK(w0(1) == 0x01030040u, "body header: proj mtx opcode");
+    CHECK(w1(1) == 0x0A030303u, "body header: proj slot from fixture");
+
+    /* After the light-dir and specular blocks, the lights emit. With
+     * both mode flags clear, the static Lights1 path runs. */
+    /* The body pass combiner at 0xABF8 matches BrCarDrawWheels' plain
+     * combiner: {TEXEL0,0,PRIM,0 / 0,0,0,TEXEL0 / 0,0,0,COMBINED / ...}
+     * w0 = 0xFC127FFF, same as COMBINE_W0 in the wheels test. */
+    {
+        int found = 0, i;
+        for (i = 0; i < dl_count(); ++i) {
+            if (w0(i) == COMBINE_W0 && w1(i) == COMBINE_W1_PLAIN) {
+                found = 1;
+                break;
+            }
+        }
+        CHECK(found, "body header: body-pass combiner matches wheels plain");
+    }
+
+    /* The BA000C02 othermode carries BrG_6C0258, set by the fixture. */
+    {
+        int found = 0, i;
+        for (i = 0; i < dl_count(); ++i) {
+            if (w0(i) == 0xBA000C02u && w1(i) == 0xAAAAu) {
+                found = 1;
+                break;
+            }
+        }
+        CHECK(found, "body header: othermode carries fixture BrG_6C0258");
+    }
+}
+
 static void test_veh_lod_class(void)
 {
     veh_reset(0);
@@ -958,6 +1003,7 @@ int main(void)
     test_veh_produces_output();
     test_veh_matrix_slots();
     test_veh_final_combiner();
+    test_veh_body_header();
     test_veh_lod_class();
     test_veh_lod_bias();
     test_veh_model_cost();
