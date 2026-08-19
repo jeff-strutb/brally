@@ -45,6 +45,7 @@ extern void BrSub_10019260(void);
 extern void BrSub_10019270(void);
 extern void BrSub_100192F0(int size);
 extern uint8_t g_br4B0358;
+extern int g_br4B0348;
 
 /* slice1_03.h:138 -- 0x100192A0. */
 extern void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6);
@@ -376,7 +377,7 @@ void BrGfx2F900(uint32_t *pCmd,
 /* @implements 0x100192F0 d3d BrTextSetSize */
 void BrTextSetSize(int size)
 {
-    BrSub_100192F0(size);
+    g_br4B0348 = size;
 }
 
 /* 0x10019260, 12 call sites. */

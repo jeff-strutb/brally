@@ -63,6 +63,7 @@ static int g_fails;
  * ====================================================================== */
 
 uint8_t g_br4B0358;
+int     g_br4B0348;
 
 /* 0x1002F900 -- slice1_05.c.  Records the object and all sixteen arguments so
  * a transposition is visible. */
@@ -454,14 +455,11 @@ static void TestTextAdaptersForward(void)
 {
     int i;
 
-    g_sizeCalls = 0;
     BrTextSetSize(37);
-    CHECK(g_sizeCalls == 1);
-    CHECK(g_sizeSeen == 37);
+    CHECK(g_br4B0348 == 37);
 
-    /* Negative sizes reach the state unchanged; nothing clamps. */
     BrTextSetSize(-4);
-    CHECK(g_sizeSeen == -4);
+    CHECK(g_br4B0348 == -4);
 
     g_br4B0358 = 99;
     BrTextFlag358Clear();

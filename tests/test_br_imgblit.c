@@ -54,6 +54,7 @@ static int g_fails;
  * ==================================================================== */
 
 uint8_t g_br4B0358;
+int     g_br4B0348;
 
 struct BrGfxWords;
 void BrRdpSetCombineLERP(struct BrGfxWords *pOut,
