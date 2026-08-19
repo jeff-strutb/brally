@@ -209,7 +209,7 @@ static const BrDiEffVtbl *BrDiEff(BrDiObj *p)
 /* 1. Entity state setters                                                 */
 /* ====================================================================== */
 
-/* 0x10076420 */
+/* @implements 0x10076420 d3d BrEntSetPos */
 void BrEntSetPos(BrEnt *pE, float x, float y, float z)
 {
     /* Store order is the original's: mat0.m[3], f26C8, st, stB, stA. */

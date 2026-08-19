@@ -1265,6 +1265,7 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  * 0x1006F720 -- load the collision-grid cell containing (x, y)
  * ========================================================================== */
 
+/* @implements 0x1006F720 d3d BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {
     int32_t      ix, iy;
