@@ -21,6 +21,7 @@
  */
 #include "br_drawcar.h"
 #include "slice1_05.h"
+#include "slice2_17.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -301,8 +302,22 @@ void    *g_BrMtxSlot;                       /* projection slot (slice2_19) */
 uint32_t BrG_6C0258, BrG_6C0688;            /* othermode payloads          */
 float    g_4B16A0, g_4B16AC;                /* scene accumulators (slice2_15) */
 
+/* Globals BrCarDrawVehicle (0x1000A110) adds. */
+uint8_t  BrG_6C0260, BrG_6C1614, BrG_6C0200;  /* fog RGB bytes            */
+uint8_t  BrG_6C1580, BrG_6C335C, BrG_6C0968;  /* light RGB bytes          */
+uint8_t  BrG_6C0960, BrG_6C65BC;               /* dim G/B bytes            */
+int32_t  BrG_6C6618;                            /* mode flag                */
+int32_t  BrG_6C1174;                            /* cull ref                 */
+int32_t  g_brRaceBeginDifficulty;               /* difficulty ref           */
+int32_t  g_brRaceBeginNTexSet;                  /* texture set count        */
+int32_t  g_brCfgGameMode;                       /* game mode                */
+
+static BrS17State s_s17State;
+BrS17State *BrS17GetState(void) { return &s_s17State; }
+int32_t BrBootGlobal_ABAA0(void) { return 0; }
+
 /* The texture command is emitted by a grab-bag object; stub it and record
- * the one call BrCarDrawBody makes. */
+ * the calls BrCarDrawBody / BrCarDrawVehicle make. */
 static int         s_texN;
 static int         s_texI;
 static const void *s_texRecs;
@@ -635,6 +650,261 @@ static void test_body_glow(void)
     CHECKF(g_4B16AC, 0.0f, "glow player: no accumulate");
 }
 
+/* ==================================================================== *
+ * BrCarDrawVehicle (0x1000A110) -- NOT CLAIMED, partial transcription.
+ *
+ * This test exercises the function's STRUCTURAL behaviour: the six guard
+ * paths (early returns), matrix allocation, the final combiner word
+ * (cross-validated against BrCarDrawBody's combiner #2 -- both emit
+ * {TEXEL0,0,PRIM,0}x4 = 0xFC121824 / 0xFF33FFFF), and that the wheel
+ * call dispatches (early for class 2, late for non-class 2).
+ *
+ * IT IS NOT A FULL COMMAND-STREAM GOLDEN-BYTES TEST.  A test whose
+ * expected values are derived from the same asm reading that produced the
+ * body would prove nothing -- see implements-requires-execution.md for
+ * the lesson that cost the 66dbe21 revert.  The combiner words are safe
+ * because they cross-validate against siblings; the guard tests are safe
+ * because they check dl_count() == 0, not specific bytes.
+ * ==================================================================== */
+
+static unsigned char s_vehCar[0x2B68];
+static unsigned char s_vehModel[0x8100];
+static unsigned char s_vehCam[0x40];
+static unsigned char s_vehTexRecs[40];
+static unsigned char s_vehTrackFlags[256];
+static unsigned char s_vehAuxFlags[4];
+
+#define VCARP(off)  (*(void **)(s_vehCar + (off)))
+#define VCARF(off)  (*(float *)(s_vehCar + (off)))
+
+static void veh_reset(uint8_t kind)
+{
+    memset(s_vehCar, 0, sizeof s_vehCar);
+    memset(s_vehModel, 0, sizeof s_vehModel);
+    memset(s_vehCam, 0, sizeof s_vehCam);
+    memset(s_vehTexRecs, 0, sizeof s_vehTexRecs);
+    memset(s_vehTrackFlags, 0, sizeof s_vehTrackFlags);
+    memset(s_vehAuxFlags, 0, sizeof s_vehAuxFlags);
+
+    /* Set ALL guard pointers non-NULL. */
+    VCARP(BR_CAR_OFF_GUARD) = s_vehCar;
+    VCARP(BR_CAR_OFF_P0168) = s_vehCar;
+    VCARP(BR_CAR_OFF_P016C) = s_vehCar;
+    VCARP(BR_CAR_OFF_P0170) = s_vehCar;
+    VCARP(BR_CAR_OFF_P0174) = s_vehCar;
+    VCARP(BR_CAR_OFF_U29C0) = s_vehAuxFlags;
+
+    *(int32_t *)(s_vehCar + BR_CAR_OFF_ICAR) = 2;
+    s_vehCar[BR_CAR_OFF_KIND] = kind;
+    VCARP(BR_CAR_OFF_MODEL) = s_vehModel;
+    *(const void **)(s_vehModel + BR_MODEL_OFF_TEXRECS) = s_vehTexRecs;
+
+    /* Position the car at (10,0,0), camera at origin. */
+    VCARF(BR_CAR_OFF_POS + 0) = 10.0f;
+    /* Identity-ish world matrix row0 for glass dot test. */
+    VCARF(BR_CAR_OFF_MTX + 0) = 1.0f;
+    VCARF(BR_CAR_OFF_ROW2 + 8) = 1.0f;
+
+    g_BrCarVisAny[2] = 1;
+    BrG_6C6490 = s_vehCam;
+    BrG_6C2CF8 = (void *)0xD00D;
+    BrG_6C661C = 0;
+    BrG_6C6624 = 0;
+    BrG_6C6614 = 0;
+    BrG_6C6618 = 0;
+    BrG_6C1174 = 0;
+    g_brRaceBeginDifficulty = 0;
+    g_brRaceBeginNTexSet = 2;
+    g_brCfgGameMode = 1;
+    g_BrDrawSuppress = 0;
+    g_BrDrawLodFloor = 0;
+    g_BrDrawReflectEnable = 0;
+    g_BrDrawTrackFlags = s_vehTrackFlags;
+    g_BrDrawTexBlob = s_vehTexRecs;
+    g_BrDrawModelDlHook = 0;
+    g_BrDrawByte80 = 0;
+    g_BrDrawByte78 = 0;
+    BrG_6C0258 = 0;
+    BrG_6C0260 = BrG_6C1614 = BrG_6C0200 = 0;
+    BrG_6C1580 = BrG_6C335C = BrG_6C0968 = 0;
+    BrG_6C0960 = BrG_6C65BC = 0;
+    g_BrMtxSlot = (void *)0x0A030303u;
+    BrG_0AA838 = (void *)0x0A838838u;
+    BrG_0AA860 = (void *)0x0A860860u;
+    BrG_0AA868 = (void *)0x0A868868u;
+    s_s17State.f6C161C = 0;
+    s_nPool = 0;
+    s_texN = 0;
+    dl_reset();
+    BrDrawCarFrontierReset();
+    BrDrawCarSetHooks(&s_hooks);
+}
+
+static void test_veh_guard_f08(void)
+{
+    veh_reset(0);
+    VCARP(BR_CAR_OFF_GUARD) = 0;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(dl_count() == 0, "veh guard F08: %d", dl_count());
+}
+
+static void test_veh_guard_ptrs(void)
+{
+    int i;
+    const unsigned offsets[] = {
+        BR_CAR_OFF_P0168, BR_CAR_OFF_P016C,
+        BR_CAR_OFF_P0170, BR_CAR_OFF_P0174
+    };
+    for (i = 0; i < 4; ++i) {
+        veh_reset(0);
+        VCARP(offsets[i]) = 0;
+        BrCarDrawVehicle(s_vehCar, 0);
+        CHECK(dl_count() == 0, "veh guard ptr %d: %d", i, dl_count());
+    }
+}
+
+static void test_veh_guard_visany(void)
+{
+    veh_reset(0);
+    g_BrCarVisAny[2] = 0;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(dl_count() == 0, "veh guard visany: %d", dl_count());
+}
+
+static void test_veh_guard_player_selfview(void)
+{
+    veh_reset(0);
+    BrG_6C2CF8 = s_vehCar;
+    VCARP(BR_CAR_OFF_ACTIVECAM) = s_vehCar + BR_CAR_OFF_CAMA;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(s_nPool == 2, "veh player-selfview: allocates matrices before guard");
+    CHECK(dl_count() == 0, "veh player-selfview: no commands after guard");
+}
+
+static void test_veh_produces_output(void)
+{
+    veh_reset(0);
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(dl_count() > 20, "veh produces output: %d commands", dl_count());
+    CHECK(s_nPool == 2, "veh: 2 pool allocations (model + combined), got %d", s_nPool);
+}
+
+static void test_veh_matrix_slots(void)
+{
+    veh_reset(0);
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(g_BrCarMtxSlot[2] != 0, "veh: model matrix slot filled");
+    CHECK(g_BrCarLightSlot[2] != 0, "veh: light matrix slot filled");
+    CHECK(g_BrCarMtxSlot[2] != g_BrCarLightSlot[2],
+          "veh: model and light slots differ");
+}
+
+static void test_veh_final_combiner(void)
+{
+    int n, i;
+    veh_reset(0);
+    BrCarDrawVehicle(s_vehCar, 0);
+    n = dl_count();
+    CHECK(n > 4, "veh final combiner: need commands, got %d", n);
+    if (n < 4) return;
+    /* The LAST combiner in the stream is the final body combiner at 0xBE64:
+     * {TEXEL0,0,PRIM,0}x4.  This cross-validates against BrCarDrawBody's
+     * combiner #2 (BODY_COMBINE2_W0/W1). */
+    for (i = n - 1; i >= 0; --i) {
+        if ((w0(i) & 0xFF000000u) == 0xFC000000u) {
+            CHECK(w0(i) == BODY_COMBINE2_W0 && w1(i) == BODY_COMBINE2_W1,
+                  "veh final combiner: %08X %08X", w0(i), w1(i));
+            break;
+        }
+    }
+    CHECK(i >= 0, "veh: found a combiner word in the stream");
+}
+
+static void test_veh_lod_class(void)
+{
+    veh_reset(0);
+    g_BrDrawClass[2] = -1;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(g_BrDrawClass[2] == 0, "veh lod: dist 10 -> lod 0, got %d",
+          g_BrDrawClass[2]);
+
+    veh_reset(0);
+    VCARF(BR_CAR_OFF_POS + 0) = 50.0f;
+    g_BrDrawClass[2] = -1;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(g_BrDrawClass[2] == 1, "veh lod: dist 50 -> lod 1, got %d",
+          g_BrDrawClass[2]);
+
+    veh_reset(0);
+    VCARF(BR_CAR_OFF_POS + 0) = 90.0f;
+    g_BrDrawClass[2] = -1;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(g_BrDrawClass[2] == 2, "veh lod: dist 90 -> lod 2, got %d",
+          g_BrDrawClass[2]);
+}
+
+static void test_veh_lod_bias(void)
+{
+    veh_reset(0);
+    g_BrDrawClass[2] = -1;
+    BrCarDrawVehicle(s_vehCar, 1);
+    CHECK(g_BrDrawClass[2] == 1, "veh lod bias: 0+1=1, got %d",
+          g_BrDrawClass[2]);
+
+    veh_reset(0);
+    g_BrDrawClass[2] = -1;
+    BrCarDrawVehicle(s_vehCar, 5);
+    CHECK(g_BrDrawClass[2] == 2, "veh lod bias: clamped to 2, got %d",
+          g_BrDrawClass[2]);
+}
+
+static void test_veh_model_cost(void)
+{
+    veh_reset(0);
+    *(int32_t *)(s_vehModel + 0x8000) = 42;
+    s_s17State.f6C161C = 100;
+    BrCarDrawVehicle(s_vehCar, 0);
+    CHECK(s_s17State.f6C161C == 142, "veh model cost: 100+42=%d",
+          s_s17State.f6C161C);
+}
+
+static void test_veh_wheels_late(void)
+{
+    int n_no_wheel, n_with_wheel;
+    /* Non-class-2: wheels happen LATE (after the body/detail passes).
+     * With no wheel DL, the wheel call is a no-op and the count is the
+     * same as with one -- but the COUNT of commands differs when wheels
+     * have geometry. */
+    veh_reset(0);
+    *(uint32_t *)(s_vehModel + 0x80BC) = 0;
+    BrCarDrawVehicle(s_vehCar, 0);
+    n_no_wheel = dl_count();
+
+    veh_reset(0);
+    *(uint32_t *)(s_vehModel + 0x80BC) = 0xDEADBEEF;
+    BrCarDrawVehicle(s_vehCar, 0);
+    n_with_wheel = dl_count();
+    CHECK(n_with_wheel > n_no_wheel,
+          "veh wheels late: with=%d > without=%d", n_with_wheel, n_no_wheel);
+}
+
+static void test_veh_wheels_early_class2(void)
+{
+    int n_no_wheel, n_with_wheel;
+    veh_reset(2);
+    *(uint32_t *)(s_vehModel + 0x80BC) = 0;
+    BrCarDrawVehicle(s_vehCar, 0);
+    n_no_wheel = dl_count();
+
+    veh_reset(2);
+    *(uint32_t *)(s_vehModel + 0x80BC) = 0xDEADBEEF;
+    BrCarDrawVehicle(s_vehCar, 0);
+    n_with_wheel = dl_count();
+    CHECK(n_with_wheel > n_no_wheel,
+          "veh wheels early class2: with=%d > without=%d",
+          n_with_wheel, n_no_wheel);
+}
+
 int main(void)
 {
     test_plain_pass();
@@ -654,6 +924,18 @@ int main(void)
     test_body_no_bodydl();
     test_body_guards();
     test_body_glow();
+    test_veh_guard_f08();
+    test_veh_guard_ptrs();
+    test_veh_guard_visany();
+    test_veh_guard_player_selfview();
+    test_veh_produces_output();
+    test_veh_matrix_slots();
+    test_veh_final_combiner();
+    test_veh_lod_class();
+    test_veh_lod_bias();
+    test_veh_model_cost();
+    test_veh_wheels_late();
+    test_veh_wheels_early_class2();
     printf("test_br_drawcar: %d failures\n", g_fails);
     return g_fails ? 1 : 0;
 }
