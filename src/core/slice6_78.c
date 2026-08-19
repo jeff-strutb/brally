@@ -44,6 +44,7 @@ extern void BrRdpSetCombineLERP(struct BrGfxWords *pOut,
 extern void BrSub_10019260(void);
 extern void BrSub_10019270(void);
 extern void BrSub_100192F0(int size);
+extern uint8_t g_br4B0358;
 
 /* slice1_03.h:138 -- 0x100192A0. */
 extern void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6);
@@ -384,7 +385,7 @@ void BrTextSetSize(int size)
 /* @implements 0x10019260 d3d BrTextFlag358Clear */
 void BrTextFlag358Clear(void)
 {
-    BrSub_10019260();
+    g_br4B0358 = 0;
 }
 
 /* 0x10019270, 9 call sites. */

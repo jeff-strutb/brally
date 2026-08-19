@@ -117,7 +117,8 @@ extern int BrSub1007A940(void);
  *
  * Every one of these was unnamed everywhere else in the port; see the header.
  * ========================================================================== */
-uint8_t  g_br4B0358;                      /* 0x104B0358 */
+uint8_t     g_br4B0358;                      /* 0x104B0358 */
+signed char g_br4B035C;                      /* 0x104B035C -- BrTextState::align */
 int32_t  g_br0BD3EC;                      /* 0x100BD3EC */
 int32_t  g_aBrB4E710[BR63_SCRATCH_COUNT]; /* 0x10B4E710 */
 
@@ -240,7 +241,7 @@ void BrSub_10019270(void)
 /* @implements 0x10019280 d3d BrSub_10019280 */
 void BrSub_10019280(void)
 {
-    BrTextGetState()->align = BR_TEXT_ALIGN_LEFT;     /* 0 */
+    g_br4B035C = 0;
 }
 
 /* 0x100192F0 */

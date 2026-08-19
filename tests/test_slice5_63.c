@@ -275,6 +275,7 @@ void BrOptFn10056FF0(BrOptObj *pThis)
 /* --- slice1_03 -------------------------------------------------------- */
 static BrTextState g_text;
 BrTextState *BrTextGetState(void) { return &g_text; }
+extern signed char g_br4B035C;
 
 typedef struct TimeEntry {
     int   idLabel;
@@ -679,7 +680,7 @@ static void TestSmall(void)
     BrSub_10019270();
     CHECK(g_text.align == BR_TEXT_ALIGN_CENTER, "0x10019270 -> centre");
     BrSub_10019280();
-    CHECK(g_text.align == BR_TEXT_ALIGN_LEFT, "0x10019280 -> left");
+    CHECK(g_br4B035C == BR_TEXT_ALIGN_LEFT, "0x10019280 -> left");
     BrSub_100192F0(0x14);
     CHECK(g_text.scale == 0x14, "0x100192F0 -> scale");
 

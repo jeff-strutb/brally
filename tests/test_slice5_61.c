@@ -35,6 +35,7 @@ static int g_fails;
 /* --- slice1_03: the text state ------------------------------------------- */
 static BrTextState s_text;
 BrTextState *BrTextGetState(void) { return &s_text; }
+signed char g_br4B035C;
 
 /* --- slice2_15: the RDP register block ------------------------------------ */
 static BrRdpRegs s_regs;
@@ -148,17 +149,16 @@ static int32_t TestGetSessionDesc(void *pObj, void **ppvOut)
 
 static void test_19290(void)
 {
-    s_text.align = (signed char)BR_TEXT_ALIGN_CENTER;
+    g_br4B035C = (signed char)BR_TEXT_ALIGN_CENTER;
     BrSub_10019290();
-    CHECK(s_text.align == BR_TEXT_ALIGN_RIGHT);
+    CHECK(g_br4B035C == BR_TEXT_ALIGN_RIGHT);
 
-    /* It is an unconditional store, so it is idempotent from any state. */
     BrSub_10019290();
-    CHECK(s_text.align == BR_TEXT_ALIGN_RIGHT);
+    CHECK(g_br4B035C == BR_TEXT_ALIGN_RIGHT);
 
-    s_text.align = (signed char)BR_TEXT_ALIGN_LEFT;
+    g_br4B035C = (signed char)BR_TEXT_ALIGN_LEFT;
     BrSub_10019290();
-    CHECK(s_text.align == BR_TEXT_ALIGN_RIGHT);
+    CHECK(g_br4B035C == BR_TEXT_ALIGN_RIGHT);
 }
 
 /* ==========================================================================
