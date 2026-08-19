@@ -277,9 +277,9 @@ def selftest(imgs):
     # and always in the same direction -- under-reporting what is there.  So
     # check that the scanner FINDS declarations known to exist, in each of the
     # three naming styles the tree uses, before believing any count it prints.
-    want_found = [('port/src/slice2_12.c', 'BrK08F0A8'),
-                  ('port/src/slice2_15.c', 'kF308'),
-                  ('port/src/slice2_19.c', 'g_BrK08F548')]
+    want_found = [('src/core/slice2_12.c', 'BrK08F0A8'),
+                  ('src/core/slice2_15.c', 'kF308'),
+                  ('src/core/slice2_19.c', 'g_BrK08F548')]
     found = set()
     for full, _n, _t, name, _s, _va in scan([os.path.join(ROOT, 'port')]):
         found.add((os.path.relpath(full, ROOT), name))

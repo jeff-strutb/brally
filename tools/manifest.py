@@ -69,7 +69,7 @@ Usage:
 """
 import sys, os, re, csv, glob
 
-SRC = ('port/src/**/*.c', 'port/include/**/*.h', 'port/host/**/*.c')
+SRC = ('src/core/**/*.c', 'include/**/*.h', 'src/backends/macos/**/*.c')
 RE_IMPL = re.compile(
     r'/\*\s*@implements\s+0x([0-9A-Fa-f]{8})\s+(glide|d3d)\s+(\w+)\s*\*/')
 

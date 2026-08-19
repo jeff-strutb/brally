@@ -48,7 +48,7 @@ Usage:  hookaudit.py            # full audit
 """
 import re, sys, glob, os, collections
 
-BUILDERS = ('port/src/slice6_71.c', 'port/src/slice6_72.c', 'port/src/slice6_73.c')
+BUILDERS = ('src/core/slice6_71.c', 'src/core/slice6_72.c', 'src/core/slice6_73.c')
 
 # The six hook slots on a control, plus the page's. Named so the report can say
 # WHICH behaviour a NULL slot costs, rather than just that one is missing.
@@ -92,13 +92,13 @@ def _called_installers():
     """
     called = set()
     host = ""
-    for f in glob.glob('port/host/*.c'):
+    for f in glob.glob('src/backends/macos/*.c'):
         host += open(f, errors='ignore').read()
     for m in re.finditer(r'\b(\w*(?:Install|Wire)\w*)\s*\(', host):
         called.add(m.group(1))
     # One hop: a host-called wiring function may call further installers.
     for _ in range(3):
-        for f in glob.glob('port/src/*.c') + glob.glob('port/host/*.c'):
+        for f in glob.glob('src/core/*.c') + glob.glob('src/backends/macos/*.c'):
             s = open(f, errors='ignore').read()
             for fn in re.findall(r'^(?:void|int|int32_t)\s+(\w+)\s*\([^;]*\)\s*\n?\s*\{', s, re.M):
                 if fn not in called:
@@ -118,7 +118,7 @@ def installed():
     """
     called = _called_installers()
     out = {}
-    for f in sorted(glob.glob('port/src/*.c') + glob.glob('port/host/*.c')):
+    for f in sorted(glob.glob('src/core/*.c') + glob.glob('src/backends/macos/*.c')):
         s = open(f, errors='ignore').read()
         # split into function bodies so a slot is credited only when the
         # enclosing installer is reachable
@@ -145,13 +145,13 @@ def ported():
     def add(addr, name, f):
         out.setdefault(addr.upper(), (name, os.path.basename(f)))
 
-    for f in glob.glob('port/include/*.h'):
+    for f in glob.glob('include/*.h'):
         for ln in open(f, errors='ignore'):
             # 1. declaration annotated with its address
             m = re.search(r'^\s*[A-Za-z_][\w \*]*\s(\w+)\s*\([^;]*\)\s*;\s*/\*\s*0x([0-9A-Fa-f]{8})', ln)
             if m:
                 add(m.group(2), m.group(1), f)
-    for f in glob.glob('port/src/*.c'):
+    for f in glob.glob('src/core/*.c'):
         s = open(f, errors='ignore').read()
         # 2. definition under a banner naming the address
         for m in re.finditer(r'/\*\s*0x([0-9A-Fa-f]{8})[^*]*\*/\s*\n\s*(?:static\s+)?[A-Za-z_][\w \*]*\s(\w+)\s*\(', s):

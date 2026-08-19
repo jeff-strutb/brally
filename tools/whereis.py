@@ -86,7 +86,7 @@ def grep_port(addr):
     """Every port/ line mentioning this address."""
     pat = '0x%08X' % addr
     try:
-        out = subprocess.run(['grep', '-rniE', pat, 'port/'],
+        out = subprocess.run(['grep', '-rniE', pat, 'src/', 'include/', 'tests/'],
                              capture_output=True, text=True).stdout
     except Exception:
         return []

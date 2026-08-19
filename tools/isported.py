@@ -59,8 +59,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 # A path glob that looks recursive and is not is the same class of failure as
 # the non-recursive glob it replaced: the tool answers confidently about a tree
 # it cannot see.
-SRC = 'port/src/**/*.c'
-HDR = 'port/include/**/*.h'
+SRC = 'src/core/**/*.c'
+HDR = 'include/**/*.h'
 
 # Files that DECLARE the frontier rather than implement the game. A counted
 # no-op named after an address is not a transcription of it, and reporting one
@@ -329,8 +329,8 @@ def report(addr, defs):
             # the file that defines it is written against THAT build. Unknown
             # or mismatched -> say so and do not claim a port.
             import glob as _g
-            cand = [q for q in _g.glob('port/src/**/' + f, recursive=True)
-                    + _g.glob('port/include/**/' + f, recursive=True)]
+            cand = [q for q in _g.glob('src/core/**/' + f, recursive=True)
+                    + _g.glob('include/**/' + f, recursive=True)]
             fb = file_build(cand[0]) if cand else None
             if fb is not None and fb != side:
                 print('  a %s-build module (%s) defines 0x%s, but that number is'

@@ -3,11 +3,14 @@
 ## Objective
 
 A **complete, MAME-standard bit-exact decompilation** of Boss Rally (the 1999
-`BRGlide.dll` / `BRD3D.dll` core) into one portable C99 tree, every function
-transcribed and verified byte-identical to the original, reached by the **most
-efficient path**. Work is ordered strictly by cheapest-to-verify given
-dependencies; verified-function coverage is driven up monotonically with zero
-rework. Progress is measured by that coverage, not by demo milestones.
+`BRGlide.dll` / `BRD3D.dll` core), following the SM64 model: one C codebase
+that compiles to **byte-identical output** under the original compiler (MSVC 5.0)
+**and** cross-compiles to modern platforms (macOS/Metal today, anything
+tomorrow). Same source, two build targets.
+
+Work is ordered strictly by cheapest-to-verify given dependencies;
+verified-function coverage is driven up monotonically with zero rework.
+Progress is measured by that coverage, not by demo milestones.
 
 **Playability is a side effect, never a driver.** That a car drives, the menus
 navigate, or a race renders are consequences of transcribing the right functions
@@ -57,43 +60,52 @@ loop is the next gate and is not yet crossed.
 
 ## Quick start
 
-Requires only clang and the macOS SDK. No dependencies, no package manager, no
-game data:
+### Port build (macOS)
+
+Requires only clang and the macOS SDK:
 
 ```
 git clone git@github.com:jeff-strutb/brally.git
 cd brally
-./build.sh
-./build/brally
+./build.sh            # build the port
+./tools/regress.sh    # run all tests
+./build/brally        # boot the game
 ```
 
-That boots the ported core and prints what it built:
+`./build/brally -w` opens a Metal window. `./tools/regress.sh` runs every suite.
+
+### Matching build (byte-identical verification)
+
+Requires Wine and MSVC 5.0. Run `setup.sh` to install Wine and prepare the
+compiler directory:
 
 ```
-after ctor:
-phase  nPages=0 iPage=0 f0C=0 f68=1
-
-entering the ROOT PHASE (0x100425E0, the main menu) ...
-  page 0  origin=(195.0,125.0)  cCtl=15 cSel=7
-    [ 1] x=100   y=10    w=310  h=16  text kind=1   Main Menu
-    [ 2] x=148   y=125   w=210  h=16  text kind=1   Championship
-    [ 4] x=148   y=144   w=210  h=16  text kind=1   Multiplayer
-    ...
-    [13] x=148   y=239   w=210  h=16  text kind=1   Quit
-
-controls built: 15   setText=9 place=16
-stubs: none reached -- everything the run touched is ported
+./setup.sh
 ```
 
-That is the MAIN MENU, built by the root phase's own enter hook rather than by
-one of the sixteen sub-screen builders. It used to run 0x1004D640 here, because
-nothing filled `g_brUiRoot` and 0x100425E0 therefore returned on its first line;
-`port/host/br_wire78.c` and `br_wire79.c` are what fill it.
+This installs Wine via Homebrew (stripping the Gatekeeper quarantine that causes
+the deprecation warning — Wine works fine), extracts the original function bytes
+from the DLL, and creates `tools/msvc5/`. If you have the VC5 ISO, mount it and
+the setup script tells you which files to copy. The compiler files are ~15 MB:
 
-`./build/brally -w` does the same and opens a Metal window drawing the controls
-at the coordinates the builder computed. `./tools/regress.sh` runs every suite.
-`root` may be given wherever a builder index is expected, `-b root`,
-`-keys root "dd"`, `-shot root out.ppm`, to drive the main menu instead.
+    tools/msvc5/
+      bin/          cl.exe, c1.dll, c2.exe, link.exe, mspdb50.dll
+      include/      CRT and Win32 SDK headers
+      lib/          CRT and Win32 libraries
+
+Once set up:
+
+```
+./build_match.sh                        # compile + diff all decomped functions
+./build_match.sh src/core/br_bits.c     # compile + diff one file
+```
+
+Each function reports MATCH (byte-identical) or DIFF (with a hex dump of the
+first divergence). Verified functions can be patched into the original DLL:
+
+```
+python3 tools/pe_patch.py orig/BRD3D.dll build/match/verified/ build/BRD3D_patched.dll
+```
 
 Verified from a clean clone on macOS 26 / Apple Silicon.
 
@@ -143,10 +155,12 @@ Glide consumer is the better model of what the game intends to draw.
 builds function-for-function.
 
     orig/       pristine binaries + sha256 (the match target)
-    tools/      analysis tooling (Python + capstone, in .venv)
+    tools/      analysis and build tooling (Python + capstone, in .venv)
     config/     generated maps: functions, names, strings, shared-code classification
     asm/        annotated disassembly, one file per 64KB of .text
-    port/       the portable port: include/ src/ tests/
+    src/        the decomp: core/ (matching C) + backends/ (platform-specific)
+    include/    headers
+    tests/      test suites
 
 ## Status
 
@@ -186,7 +200,7 @@ Maps: `config/functions_boot.csv`, `functions_bossrally.csv`,
 
 `RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point
 Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
-(`port/src/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
+(`src/core/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
 **Verified by `@implements` bodies plus passing suites, not by grep:**
 
 | callee | what | where | test |
@@ -210,7 +224,7 @@ all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
 milestone 6, the per-frame race loop and the OBB collision **response**, the
 reason cars fall through the world. **That whole unit is now transcribed end to
-end** in `port/src/driving/br_collrespsolve.c`, all four functions oracle-
+end** in `src/core/driving/br_collrespsolve.c`, all four functions oracle-
 verified against `tools/x87emu.py` executing their real opcode streams, pinned
 by golden vectors and mutation-tested: the contact-plane resolver `0x10067470`,
 the impulse solver `0x10065C80`, the impulse-free contact "kick" `0x10065980`,
@@ -230,11 +244,11 @@ They measure different things and only one of them is coverage.
 
 | | |
 |---|---|
-| Modules | 121, organised by concern under `port/src/`, see `port/src/README.md` |
+| Modules | 121, organised by concern under `src/core/`, see `src/core/README.md` |
 | ...still named after an address batch | **62** (`sliceN_MM.c`, loose at the top level) |
 | Test suites | 105, 0 failures |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
-| Unported functions stubbed so the host links | **50** (`port/host/br_stubs.c`) |
+| Unported functions stubbed so the host links | **50** (`src/backends/macos/br_stubs.c`) |
 | UI hook slots filled | 99 of 108 |
 | Functions classed present in both renderer builds | 1,955 (`config/shared.csv`) |
 
@@ -270,7 +284,7 @@ on the sample means the honest range is **26-38%**.
 Mostly it is not. The 34% was measured with a detector that has since been
 shown to miss ~85 definitions outright (its regexes required whitespace before
 the function name, so `BrCtrlCfg *BrCtrlCfgCtor(...)` never matched) and, after
-`port/src` was organised into folders, to miss half the tree as well (a
+`src/core` was organised into folders, to miss half the tree as well (a
 non-recursive glob). Replaying that old detector against today's tree gives
 150,422 bytes, *lower* than the number it produced before the reorganisation,
 because the reorganisation degraded it further.
@@ -434,67 +448,61 @@ Run anything with `.venv/bin/python tools/<x>.py`.
 `Add`, `AppendTexture`, `TIDFromTextureAppend`, `DDraw_DoInit`,
 `MakeEnemyCarColorPanels`, `APPMSG_HOSTSTARTED`, `RallyMain` (export).
 
-## Goal: portable source, not byte-matching
+## Architecture: matching decomp + port (SM64 model)
 
-Decided 2026-08-13. The target is **readable, platform-agnostic C that recompiles
-into a working game**, not a byte-identical rebuild of BRD3D.dll.
+The project follows the SM64 decompilation model: the C source is the single
+source of truth, compiling to **byte-identical output** under the original
+compiler (MSVC 5.0 / Visual Studio 97, via Wine) and also cross-compiling to
+macOS/Metal with clang. The matching build is the verification path; the port
+build is a platform target.
+
+    src/core/           the decomp — matching C, shared by both builds
+      startup/          bring the game up and take it down
+      driving/          how a car behaves (physics, collision)
+      drawing/          display lists, textures, fonts, sprites
+      racing/           race rules, AI, lap progress
+      menus/            the front end
+      geometry/         positions, orientations, transforms
+      scene/            what is in the world and where
+      gamedata/         file formats, archives, tracks
+      settings/         config, save, base directory
+      controls/         input
+      audio/            sound and music
+      *.c               unfiled address-batch modules (sliceN_MM.c)
+
+    src/backends/
+      d3d/              original D3D renderer calls (matching build)
+      glide/            original Glide renderer calls (matching build)
+      metal/            macOS port renderer
+      win32/            original Win32 platform calls (matching build)
+      macos/            macOS host wiring, stubs, entry point
+
+    include/            headers
+    tests/              test suites
+    tools/              analysis and build tooling
+
+The original game already had this architecture: `BRD3D.dll` and `BRGlide.dll`
+are the same core with two renderer backends. The ~1,739 shared functions are
+the platform-agnostic game core in `src/core/`; the ~73 divergent functions are
+renderer-specific and live in `src/backends/`.
+
+### Verification
+
+`@implements` means the function compiles to **byte-identical output** under
+MSVC 5.0, verified by `tools/match_diff.py` against the original DLL's
+extracted bytes. The matching build (`build_match.sh`) compiles each source
+file, parses the COFF symbol table, and diffs function-by-function.
+
+Verified functions can be patched into the original DLL with `tools/pe_patch.py`
+to produce a hybrid binary for drop-in testing on Windows.
 
 ### Accuracy first; playability is the consequence, not the target
 
-Restated 2026-08-16, after this project spent a long stretch doing the opposite.
-
 The model is MAME, not ZSNES. Correctness of the decompilation is the point;
-being able to play the result is what falls out of getting it right. It is not
-a milestone to be pursued directly, and it is not evidence of anything on its
-own.
+being able to play the result is what falls out of getting it right.
 
-What that rules out, concretely, because each of these was done here:
-
-- Standing in for an unported function so that something visible happens. A
-  placeholder is debt with a counter on it, never a foundation to build on.
-- Reporting "it builds", "N suites pass" or "16 of 16 builders run" as
-  progress. Those measure that nothing crashed and that our own tests agree
-  with our own code.
-- Chasing a visible symptom, a menu that will not navigate, a race that will
-  not draw, by wiring around the gap instead of decompiling the function the
-  gap is made of. The entry point went unread for weeks while the host
-  hand-wrote a substitute for it.
-
-The metric that counts is per-function behavioural equivalence against the
-original's disassembly. Everything else is diagnostics.
-
-This removes every toolchain blocker: no MSVC 5.0, no Wine, no Windows VM.
-We build with clang natively and verify by **running against real shipped game
-data** instead of by diffing bytes.
-
-    port/include/  portable headers
-    port/src/      portable C99 implementation
-    port/tests/    tests that run against files from the retail disc
-    testdata/      real game data used by the tests
-
-    clang -std=c99 -Wall -Wextra -Iport/include \
-        port/src/br_pod.c port/tests/test_pod.c -o build/test_pod
-    ./build/test_pod testdata/BossRally.pod
-
-`tools/objdiff.py` is retained but is no longer the verification path; it stays
-useful for checking that a rewrite did not change behaviour structurally.
-
-### Architecture
-
-The DirectDraw/Glide split in the originals is the seam to build on: the ~1,684
-functions shared between BRD3D.dll and BRGlide.dll are the platform-agnostic
-game core, and the per-renderer halves are exactly what gets replaced. Phases:
-
-1. Decompile the shared core to portable C (in progress).
-2. Replace the platform layer. DirectDraw/Glide/DirectInput/DirectPlay/MSACM,
-   with a portable backend (SDL is the obvious candidate).
-3. Asset loading needs no reversing; the formats are open (BMP, WAV, POD, RCA,
-   and raw N64 CI4/LUT4 textures shipped verbatim).
-
-Portability rules adopted now, so they do not have to be retrofitted:
-- integers decoded byte-wise, never by struct overlay, so the code is endian-
-  and alignment-agnostic (the N64 build of this game is big-endian);
-- no Win32 types or calling conventions in portable code.
+The metric that counts is per-function byte-identical equivalence against the
+original binary. Everything else is diagnostics.
 
 ### Completed modules
 
@@ -756,7 +764,7 @@ module its own test binary, so slice modules are never linked together. The
 collision will surface only when everything is linked into one game binary.
 
 Resolution when that happens: promote shared globals into a single owning
-translation unit (`port/src/br_globals.c`) with `extern` declarations elsewhere.
+translation unit (`src/core/gamedata/br_globals.c`) with `extern` declarations elsewhere.
 Do NOT resolve it by renaming per-module, that would create N copies of what
 is one object in the original, and the aliasing is load-bearing (see the
 `0x10AA288C` dual-role entry above).
@@ -802,7 +810,7 @@ map's mid-function entries), so this rests on a later pass's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
 
-### RESOLVED, canonical phase layout is now `port/include/br_phase.h`
+### RESOLVED, canonical phase layout is now `include/br_phase.h`
 
 `BrPhase_` there is the merged superset (promoted from slice3_32's `BrPhaseFull`,
 which had already reconciled the destructor at `0x10048870` and the vtable at
@@ -942,7 +950,7 @@ splash.img have bit 0 set, and 51200 of 51200 pixels in loading.img have bit 15
 set. A real colour LSB/MSB would sit near 50%. **TODO:** replace with the flag
 the original passes, once the loader referencing those filenames is decompiled.
 
-Deviations from the original are documented at each site in `port/src/br_pod.c`.
+Deviations from the original are documented at each site in `src/core/gamedata/br_pod.c`.
 Two original bugs were deliberately *not* reproduced: bounds checks that
 reported and then indexed anyway, and a name-length check that ran after the
 copy it was meant to guard.
@@ -973,10 +981,9 @@ it. Anything else CRT-shaped near the top deserves the same suspicion.
 interface and make Metal its first backend. The original proves the seam is
 real, it already shipped two backends behind one core.
 
-    port/src/core/      decompiled game logic, no platform types
-    port/src/gfx/       renderer interface
-    port/src/gfx/metal/ Metal backend (Objective-C)
-    port/src/plat/      window, input, audio, file I/O
+    src/core/           decompiled game logic (matching C)
+    src/backends/metal/ Metal backend (Objective-C)
+    src/backends/macos/ macOS host wiring, stubs
 
 ### Toolchain on this machine
 
