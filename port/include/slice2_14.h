@@ -11,6 +11,7 @@
  *   0x10016910  BrLruInit              init the 5-entry slot cache
  *   0x10016990  BrLruShutdown          clear the init flag
  *   0x100169B0  BrLruAcquire           pick and stamp the least-recently-used slot
+ *   0x10011EA0  BrFpsReadout           compute and draw the FPS counter
  *
  * Skipped functions and the reason for each are listed at the bottom of
  * slice2_14.c.
@@ -268,5 +269,27 @@ void BrLruShutdown(BrLru *pLru);
  *    the stamp at base + (-1)*0x2E0F0, i.e. out of bounds. See the DEVIATION
  *    in the .c -- the port returns -1 and writes nothing. */
 int BrLruAcquire(BrLru *pLru);
+
+/* ------------------------------------------------------------------ */
+/* 0x10011EA0 (glide) / 0x10014930 (d3d) -- the FPS readout.           */
+/* ------------------------------------------------------------------ */
+
+/* Two independent frame-time accumulators, each with a sample array, a
+ * count, and a gate.  When the gate is clear the accumulator runs:
+ *   fps = count * 1000.0f / sum(samples[0..count-1])
+ * Only the second result is formatted and drawn. */
+extern void    *g_BrFpsGuard;             /* glide 0x10B73538 / d3d 0x10B501D8 */
+extern int32_t  g_BrFpsGateA;             /* glide 0x100A935C / d3d 0x100AA00C */
+extern int32_t  g_BrFpsCountA;            /* glide 0x100A9358 / d3d 0x100AA008 */
+extern int32_t *g_BrFpsSamplesA;          /* glide 0x105BC900 / d3d 0x10680758 */
+extern float    g_BrFpsValueA;            /* glide 0x100A64B0 / d3d 0x100A6CF0 */
+extern int32_t  g_BrFpsGateB;             /* glide 0x100B4C2C / d3d 0x100B5424 */
+extern int32_t  g_BrFpsCountB;            /* glide 0x100B4C28 / d3d 0x100B5420 */
+extern int32_t *g_BrFpsSamplesB;          /* glide 0x10B73348 / d3d 0x10B4FFE8 */
+extern float    g_BrFpsValueB;            /* glide 0x100A64B4 / d3d 0x100A6CF4 */
+extern int32_t  g_BrFpsScreenW;           /* glide 0x100A7514 / d3d 0x100A81C0 */
+extern int32_t  g_BrFpsScreenH;           /* glide 0x100A7518 / d3d 0x100A81C4 */
+
+void BrFpsReadout(void);
 
 #endif /* SLICE2_14_H */

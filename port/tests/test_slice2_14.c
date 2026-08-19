@@ -705,6 +705,69 @@ static void test_model_lights(void)
           mclose(s_mlMtx.m[3][2],  2.0f) && mclose(s_mlMtx.m[3][3], 1.0f));
 }
 
+/* ================================================================== */
+/* BrFpsReadout (0x10011EA0 glide / 0x10014930 d3d)                    */
+/* ================================================================== */
+
+static void test_fps_guard(void)
+{
+    g_BrFpsGuard = NULL;
+    g_nDraws = 0;
+    BrFpsReadout();
+    CHECK(g_nDraws == 0);
+}
+
+static void test_fps_computation(void)
+{
+    int32_t samples[4] = { 100, 100, 100, 100 };
+
+    g_BrFpsGuard    = &g_BrFpsGuard;
+    g_BrFpsGateA    = 0;
+    g_BrFpsCountA   = 4;
+    g_BrFpsSamplesA = samples;
+    g_BrFpsValueA   = 0.0f;
+    g_BrFpsGateB    = 0;
+    g_BrFpsCountB   = 4;
+    g_BrFpsSamplesB = samples;
+    g_BrFpsValueB   = 0.0f;
+    g_BrFpsScreenW  = 640;
+    g_BrFpsScreenH  = 480;
+    g_nDraws        = 0;
+
+    BrFpsReadout();
+
+    CHECK(fabsf(g_BrFpsValueA - 10.0f) < 0.01f);
+    CHECK(fabsf(g_BrFpsValueB - 10.0f) < 0.01f);
+    CHECK(g_nDraws == 1);
+    CHECK(g_draws[0].x == 320);
+    CHECK(g_draws[0].y == 470);
+    CHECK(g_draws[0].size == 0x0F);
+}
+
+static void test_fps_gate_skips(void)
+{
+    int32_t samples[2] = { 50, 50 };
+
+    g_BrFpsGuard    = &g_BrFpsGuard;
+    g_BrFpsGateA    = 1;
+    g_BrFpsGateB    = 1;
+    g_BrFpsCountA   = 2;
+    g_BrFpsCountB   = 2;
+    g_BrFpsSamplesA = samples;
+    g_BrFpsSamplesB = samples;
+    g_BrFpsValueA   = 99.0f;
+    g_BrFpsValueB   = 99.0f;
+    g_BrFpsScreenW  = 640;
+    g_BrFpsScreenH  = 480;
+    g_nDraws        = 0;
+
+    BrFpsReadout();
+
+    CHECK(g_BrFpsValueA == 99.0f);
+    CHECK(g_BrFpsValueB == 99.0f);
+    CHECK(g_nDraws == 1);
+}
+
 int main(void)
 {
     test_lerp_node();
@@ -717,6 +780,9 @@ int main(void)
     test_hud();
     test_lru();
     test_model_lights();
+    test_fps_guard();
+    test_fps_computation();
+    test_fps_gate_skips();
 
     if (g_fails != 0) {
         printf("%d FAILURES\n", g_fails);

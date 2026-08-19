@@ -11,9 +11,12 @@
 #include "slice2_14.h"
 #include "slice2_17.h"   /* BrPropList, BrScenePropsDraw (0x1002FB20)          */
 #include "slice3_40.h"   /* BrNode, BrPathPoint, BrG_6C7CB8 -- the AI path root */
+#include "slice1_03.h"   /* BrTextDraw                                          */
+#include "slice6_78.h"   /* BrTextSetSize, BrTextAlignCentre                    */
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /* Layout guards: both of these strides are load-bearing (0x20 is the index
  * scale in 0x10010BF0, 4 is the element size passed to qsort at 0x10010E9E). */
@@ -439,6 +442,54 @@ void BrModelLightsDraw(void)
 }
 
 /* ================================================================== */
+/* 0x10011EA0 (glide) / 0x10014930 (d3d) -- the FPS readout.          */
+/* ================================================================== */
+
+void    *g_BrFpsGuard;                  /* glide 0x10B73538 */
+int32_t  g_BrFpsGateA;                  /* glide 0x100A935C */
+int32_t  g_BrFpsCountA;                 /* glide 0x100A9358 */
+int32_t *g_BrFpsSamplesA;               /* glide 0x105BC900 */
+float    g_BrFpsValueA;                 /* glide 0x100A64B0 */
+int32_t  g_BrFpsGateB;                  /* glide 0x100B4C2C */
+int32_t  g_BrFpsCountB;                 /* glide 0x100B4C28 */
+int32_t *g_BrFpsSamplesB;               /* glide 0x10B73348 */
+float    g_BrFpsValueB;                 /* glide 0x100A64B4 */
+int32_t  g_BrFpsScreenW;                /* glide 0x100A7514 */
+int32_t  g_BrFpsScreenH;                /* glide 0x100A7518 */
+
+/* @implements 0x10011EA0 glide BrFpsReadout */
+void BrFpsReadout(void)
+{
+    char buf[0x108];
+    int x;
+
+    if (g_BrFpsGuard == NULL)
+        return;
+
+    if (g_BrFpsGateA == 0 && g_BrFpsCountA > 0) {
+        double sum = 0.0;
+        int i;
+        for (i = 0; i < g_BrFpsCountA; ++i)
+            sum += g_BrFpsSamplesA[i];
+        g_BrFpsValueA = (float)((double)g_BrFpsCountA * 1000.0 / sum);
+    }
+
+    if (g_BrFpsGateB == 0 && g_BrFpsCountB > 0) {
+        double sum = 0.0;
+        int i;
+        for (i = 0; i < g_BrFpsCountB; ++i)
+            sum += g_BrFpsSamplesB[i];
+        g_BrFpsValueB = (float)((double)g_BrFpsCountB * 1000.0 / sum);
+    }
+
+    sprintf(buf, "%6.2f FPS", (double)g_BrFpsValueB);
+    BrTextSetSize(0x0F);
+    BrTextAlignCentre();
+    x = (g_BrFpsScreenW / 2);
+    BrTextDraw(buf, x, g_BrFpsScreenH - 10);
+}
+
+/* ================================================================== */
 /* Skipped, and why                                                    */
 /* ================================================================== */
 /*
@@ -460,12 +511,7 @@ void BrModelLightsDraw(void)
  *   port/include yet, and 0x100b36f8 / 0x106c32d0 / 0x11829108 are all
  *   cross-packet. These want a single owner for the F3D emitter state.
  *
- * 0x10014930 (252 bytes) -- the FPS readout. The arithmetic is clear
- *   (sum the int array, then count * 1000.0f / sum; the constants are
- *   0x1008F2CC = 0.0f and 0x1008F2D8 = 1000.0f, read from .rdata), and it
- *   formats with "%6.2f FPS". Left out only because it is glued to five
- *   globals that belong to the timing module rather than to this range
- *   (0x100AA008/0x100AA00C sample array + gate, 0x100B5420/0x100B5424, and
- *   the outputs 0x100A6CF0/0x100A6CF4). Whoever owns the timer should take
- *   it; the derivation above is the whole of it.
+ * 0x10014930 (252 bytes) -- the FPS readout.  DONE above as BrFpsReadout,
+ *   tagged with the Glide address 0x10011EA0.  The timer globals it uses
+ *   are declared in slice2_14.h under their Glide addresses.
  */
