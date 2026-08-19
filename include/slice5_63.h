@@ -80,6 +80,7 @@ void BrSub_100192F0(int size);
  * reads it, so its meaning is unknown and the name is positional. */
 extern uint8_t g_br4B0358;
 extern signed char g_br4B035C;
+extern int g_br4B0348;
 
 /* ==========================================================================
  * 3. 0x10017290 -- the two-line lap/split time readout

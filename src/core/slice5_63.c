@@ -119,6 +119,7 @@ extern int BrSub1007A940(void);
  * ========================================================================== */
 uint8_t     g_br4B0358;                      /* 0x104B0358 */
 signed char g_br4B035C;                      /* 0x104B035C -- BrTextState::align */
+int         g_br4B0348;                      /* 0x104B0348 -- BrTextState::scale */
 int32_t  g_br0BD3EC;                      /* 0x100BD3EC */
 int32_t  g_aBrB4E710[BR63_SCRATCH_COUNT]; /* 0x10B4E710 */
 
