@@ -113,9 +113,11 @@ static void BrItoa10(char *pszOut, size_t cbOut, int32_t v)
  * 0x100AC650 = 1); everything else lands past the end of the DLL's
  * initialised data and therefore starts at zero. */
 static BrMenuState g_menu = {
-    .g0AC648 = 2u,
-    .g0AC64C = 1u,
-    .g0AC650 = 1u
+    NULL, NULL, NULL, NULL,     /* pStages, pTimes25A0, pTimes27A0, pTimes27FC */
+    0,                          /* g0AA010 */
+    2u,                         /* g0AC648 */
+    1u,                         /* g0AC64C */
+    1u                          /* g0AC650 */
 };
 
 BrMenuState *BrMenuGetState(void)

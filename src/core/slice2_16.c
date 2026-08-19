@@ -19,12 +19,12 @@
  * value would truncate to. */
 static int32_t br16_ftol(double x)
 {
-    long long v;
+    int64_t v;
 
     if (!(x > -9.2233720368547758e18 && x < 9.2233720368547758e18))
         return 0;
-    v = (long long)x;
-    return (int32_t)(uint32_t)((unsigned long long)v & 0xFFFFFFFFu);
+    v = (int64_t)x;
+    return (int32_t)(uint32_t)((uint64_t)v & 0xFFFFFFFFu);
 }
 
 /* ------------------------------------------------------------------ *

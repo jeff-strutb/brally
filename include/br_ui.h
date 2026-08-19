@@ -612,7 +612,11 @@ struct BrUiCtl_ {
  * actual evidence for the count. If someone later "corrects" a count, one of
  * these fails and points at the reasoning above.
  * ========================================================================== */
+#if defined(_MSC_VER) && _MSC_VER < 1200
+#define BR_UI_ASSERT(name, cond)
+#else
 #define BR_UI_ASSERT(name, cond) typedef char BR_UI_##name[(cond) ? 1 : -1]
+#endif
 
 /* --- the arithmetic that pins the counts (host-independent) -------------- */
 BR_UI_ASSERT(page_apctl_fills_to_338,

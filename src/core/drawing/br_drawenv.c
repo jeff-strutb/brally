@@ -130,13 +130,14 @@ void BrEnvEmit(void)
 
     /* 0x17257 -- conditional texture opcode. */
     if (BrG_6C6624 != 0) {
-        uint32_t texVal = g_BrEnvTexLookup[g_BrEnvSection];
-        uint32_t w0dd = (texVal & 0x00FFFFFFu) | 0xDD000000u;
-        uint32_t w1   = (uint32_t)g_BrEnvSection * 0x1000u
-                        + (uint32_t)(uintptr_t)g_BrEnvBitmap;
+        uint32_t texVal, w0dd, w1, w0dc;
+        texVal = g_BrEnvTexLookup[g_BrEnvSection];
+        w0dd = (texVal & 0x00FFFFFFu) | 0xDD000000u;
+        w1   = (uint32_t)g_BrEnvSection * 0x1000u
+               + (uint32_t)(uintptr_t)g_BrEnvBitmap;
         env_put(w0dd, w1);
 
-        uint32_t w0dc = (texVal & 0x00FFFFFFu) | 0xDC000000u;
+        w0dc = (texVal & 0x00FFFFFFu) | 0xDC000000u;
         env_put(w0dc, 1);
     } else {
         uint32_t w0dc = (g_BrEnvTexDefault & 0x00FFFFFFu) | 0xDC000000u;
@@ -218,6 +219,7 @@ void BrEnvEmit(void)
 
         /* 0x17654 -- viewW/viewH: screenW or -screenW depending on the
          * difficulty != cull_ref flag, then doubled. */
+        {
         float viewW, viewH;
         if (g_brRaceBeginDifficulty != BrG_6C1174)
             viewW = (float)(-g_BrFpsScreenW) * 2.0f;
@@ -249,6 +251,7 @@ void BrEnvEmit(void)
         (void)scaleB;
         (void)viewW;
         (void)viewH;
+        }
     }
 
     /* 0x178C3 -- tail: sync + othermode restore. */
