@@ -136,6 +136,7 @@ int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
  * accepting condition and an unordered compare (NaN) sets C0 and rejects. */
 #define BR06_TRI_EPS 0.0f
 
+/* @implements 0x1003B940 d3d BrTriContainsPoint */
 int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
                        const BrVec3 *pC, const BrVec3 *pRef)
 {
