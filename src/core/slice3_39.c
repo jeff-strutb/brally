@@ -612,7 +612,7 @@ float BrTextBoxCentreX(BrTextBox *pBox)
 /* @implements 0x1005B540 d3d BrCharMapLookup */
 uint8_t BrCharMapLookup(int32_t code)
 {
-    int i;
+    uint32_t i;
 
     for (i = 0; i < BR_CHARMAP_COUNT; ++i) {
         if (g_BrCharMap[i].code == (uint32_t)code) {
