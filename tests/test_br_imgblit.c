@@ -53,6 +53,8 @@ static int g_fails;
  * original terminate here too rather than letting an impossible path run on.
  * ==================================================================== */
 
+uint8_t g_br4B0358;
+
 struct BrGfxWords;
 void BrRdpSetCombineLERP(struct BrGfxWords *pOut,
                          int a0,  int b0,  int c0,  int d0,

@@ -79,6 +79,7 @@ void BrSub_100192F0(int size);
 /* 0x104B0358 -- written by 0x10019260 only. One byte. Nothing in any packet
  * reads it, so its meaning is unknown and the name is positional. */
 extern uint8_t g_br4B0358;
+extern signed char g_br4B035C;
 
 /* ==========================================================================
  * 3. 0x10017290 -- the two-line lap/split time readout

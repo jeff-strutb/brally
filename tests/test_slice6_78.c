@@ -62,6 +62,8 @@ static int g_fails;
  * globals br_data.c owns.
  * ====================================================================== */
 
+uint8_t g_br4B0358;
+
 /* 0x1002F900 -- slice1_05.c.  Records the object and all sixteen arguments so
  * a transposition is visible. */
 struct BrGfxWords;
@@ -461,11 +463,13 @@ static void TestTextAdaptersForward(void)
     BrTextSetSize(-4);
     CHECK(g_sizeSeen == -4);
 
-    g_seq = 0; g_seq19260 = 0; g_seq19270 = 0;
+    g_br4B0358 = 99;
     BrTextFlag358Clear();
+    CHECK(g_br4B0358 == 0);
+
+    g_seq = 0; g_seq19270 = 0;
     BrTextAlignCentre();
-    CHECK(g_seq19260 == 1);
-    CHECK(g_seq19270 == 2);      /* two distinct callees, not one twice */
+    CHECK(g_seq19270 == 1);
 
     g_colorCalls = 0;
     BrTextSetColor6(1, 2, 3, 4, 5, 6);

@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "slice1_03.h"   /* BrTextState / BrTextGetState, BR_TEXT_ALIGN_* */
+#include "slice5_63.h"   /* g_br4B035C -- raw text-align global */
 #include "slice2_15.h"   /* BrRdpRegs / BrRdpGetRegs -- 0x104BBF08 etc.   */
 #include "slice2_25.h"   /* the option globals, index tables and callees   */
 
@@ -70,7 +71,7 @@ static int32_t Br61Ld32(const void *pBase, size_t off)
 /* @implements 0x10019290 d3d BrSub_10019290 */
 void BrSub_10019290(void)
 {
-    BrTextGetState()->align = BR_TEXT_ALIGN_RIGHT;   /* the literal 1 */
+    g_br4B035C = 1;
 }
 
 /* ==========================================================================
