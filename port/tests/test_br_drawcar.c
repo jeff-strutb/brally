@@ -320,6 +320,10 @@ void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pL, BrSkyAngles *pA,
 { (void)pM;(void)pL;(void)pA;(void)a;(void)b;(void)c;(void)d;(void)e;(void)f;
   (void)g;(void)h;(void)i;(void)j;(void)k;(void)l;(void)m;(void)n;(void)o;(void)p;(void)q; }
 
+/* Post-detail block stubs. */
+static int8_t   s_stubRefTbl[16];
+static uint32_t s_stubRefColors[16];
+
 /* Globals BrCarDrawVehicle (0x1000A110) adds. */
 uint8_t  BrG_6C0260, BrG_6C1614, BrG_6C0200;  /* fog RGB bytes            */
 uint8_t  BrG_6C1580, BrG_6C335C, BrG_6C0968;  /* light RGB bytes          */
@@ -686,6 +690,7 @@ static void test_body_glow(void)
  * ==================================================================== */
 
 static unsigned char s_vehCar[0x2B68];
+static unsigned char s_vehPlayer[0x2B68];
 static unsigned char s_vehModel[0x8100];
 static unsigned char s_vehCam[0x40];
 static unsigned char s_vehTexRecs[40];
@@ -725,7 +730,8 @@ static void veh_reset(uint8_t kind)
 
     g_BrCarVisAny[2] = 1;
     BrG_6C6490 = s_vehCam;
-    BrG_6C2CF8 = (void *)0xD00D;
+    memset(s_vehPlayer, 0, sizeof s_vehPlayer);
+    BrG_6C2CF8 = s_vehPlayer;
     BrG_6C661C = 0;
     BrG_6C6624 = 0;
     BrG_6C6614 = 0;
@@ -742,6 +748,9 @@ static void veh_reset(uint8_t kind)
     g_BrDrawModelDlHook = 0;
     g_BrDrawByte80 = 0;
     g_BrDrawByte78 = 0;
+    g_BrDrawRefIndex = 0;
+    g_BrDrawRefTbl = s_stubRefTbl;
+    g_BrDrawRefColors = s_stubRefColors;
     BrG_6C0258 = 0;
     BrG_6C0260 = BrG_6C1614 = BrG_6C0200 = 0;
     BrG_6C1580 = BrG_6C335C = BrG_6C0968 = 0;
