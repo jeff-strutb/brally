@@ -182,6 +182,9 @@ extern const void *g_BrDrawTexBlob;   /* 0x100A5C88  palette blob           */
 extern void   (*g_BrDrawModelDlHook)(uint32_t, uint32_t); /* 0x118ED1BC    */
 extern uint8_t  g_BrDrawByte80;       /* 0x106B7C80  light colour byte      */
 extern uint8_t  g_BrDrawByte78;       /* 0x106B7C78  env colour byte        */
+extern int32_t  g_BrDrawRefIndex;     /* 0x10273688  ref colour index       */
+extern const int8_t  *g_BrDrawRefTbl;  /* 0x100A5C78  ref table (signed bytes)*/
+extern const uint32_t *g_BrDrawRefColors; /* 0x100A5C58 ref colour addresses */
 
 /* The display-list cursor is slice2_18's BrG_6C0680 -- 0x106C0680 in the
  * D3D build IS 0x106E7710 in Glide.  It is not modelled again here; see

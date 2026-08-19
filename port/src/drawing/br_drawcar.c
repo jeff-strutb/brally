@@ -45,6 +45,9 @@ const void *g_BrDrawTexBlob;                /* 0x100A5C88  palette blob    */
 void   (*g_BrDrawModelDlHook)(uint32_t, uint32_t);  /* 0x118ED1BC  BSS    */
 uint8_t  g_BrDrawByte80;                    /* 0x106B7C80  light colour    */
 uint8_t  g_BrDrawByte78;                    /* 0x106B7C78  env colour      */
+int32_t  g_BrDrawRefIndex;                  /* 0x10273688  ref colour idx  */
+const int8_t  *g_BrDrawRefTbl;              /* 0x100A5C78  ref table       */
+const uint32_t *g_BrDrawRefColors;          /* 0x100A5C58  ref colours     */
 
 static BrDrawCarHooks s_hooks;
 static int32_t        s_cFrontier;
@@ -1075,13 +1078,77 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * two-arm test on BrG_6C661C vs the player.  Dead path in the running
      * port (g_BrDrawReflectEnable is BSS 0). */
 
-    /* TODO 0xB925-0xBC7B (~854 bytes): post-detail setup block.
-     * Contains ~17 puts: E7 sync, BA001402/0x100000, B7 with neg/sbb on
-     * g_BrDrawReflectFlag, BB000001/0x08001000, BA000C02/BrG_6C0258,
-     * combiner call, 3-arm FB colour (branching on BrG_6C6618 x specMem),
-     * B900031D x2, E8, BA000E02, DC indexed table lookup, BA000E02/0x8000,
-     * F2 float-based settile, E7, and 2 specular MOVEMEMs (0384/0382).
-     * Requires x87emu capture for the F2 settile float args. */
+    /* 0xB925 -- post-detail setup block. */
+    put(0xE7000000u, 0);
+    put(0xBA001402u, 0x00100000u);
+
+    {
+        uint32_t geomVal = 0x00040000u;
+        if (g_BrDrawReflectFlag != 0)
+            geomVal |= 0x00080000u;
+        put(0xB7000000u, geomVal);
+    }
+
+    put(0xBB000001u, 0x08001000u);
+    put(0xBA000C02u, BrG_6C0258);
+
+    BrRdpSetCombineLERP(put_slot(),
+        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO,
+        0x3F4,       TK_ZERO, TK_SHADE,     TK_ZERO,
+        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO,
+        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO);
+
+    /* 0xBA18 -- 3-arm FB colour (G_SETENVCOLOR). */
+    {
+        uint32_t fbVal;
+        uint32_t rgb = ((uint32_t)BrG_6C0260 << 24) |
+                       ((uint32_t)BrG_6C1614 << 16) |
+                       ((uint32_t)BrG_6C0200 << 8);
+
+        if (BrG_6C6618 != 0) {
+            if (specMem != 0) {
+                uint32_t a = ((uint32_t)g_BrDrawByte78 >> 3) - 0x21;
+                fbVal = rgb | (a & 0xFFu);
+            } else {
+                uint32_t a = ((uint32_t)g_BrDrawByte78 >> 1) + 0x7F;
+                fbVal = rgb | (a & 0xFFu);
+            }
+        } else {
+            fbVal = rgb | 0xFFu;
+        }
+        put(0xFB000000u, fbVal);
+    }
+
+    put(0xB900031Du, 0);
+    put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
+    put(0xE8000000u, 0);
+    put(0xBA000E02u, 0);
+
+    /* 0xBB70 -- DC texture: indexed lookup via car+0x2714 and g_BrDrawRefIndex. */
+    {
+        int32_t idx2714 = *(const int32_t *)(car + BR_CAR_OFF_I2714);
+        int8_t tblIdx = g_BrDrawRefTbl[idx2714 * 2 + g_BrDrawRefIndex];
+        uint32_t texVal = g_BrDrawRefColors[tblIdx];
+        put((texVal & 0x00FFFFFFu) | 0xDC000000u, 1);
+    }
+
+    put(0xBA000E02u, 0x00008000u);
+
+    /* 0xBBCF -- F2 settile from player+0x2718 * -20.3718f. */
+    {
+        const float *pPlayer = (const float *)BrG_6C2CF8;
+        float tileF = pPlayer[0x2718 / 4] * -20.3718f;
+        int32_t tile = (int32_t)tileF;
+        int32_t lo = tile + 2;
+        int32_t hi = tile + 0x7E;
+        uint32_t w0 = ((lo << 12) & 0x00FFF000u) | 0xF2000002u;
+        uint32_t w1 = ((hi << 12) & 0x00FFF000u) | 0x000001FEu;
+        put(w0, w1);
+    }
+
+    put(0xE7000000u, 0);
+    put(0x03840010u, specMem);
+    put(0x03820010u, specMem + 0x10u);
 
     /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
     {
