@@ -42,13 +42,14 @@ static void *g_pLogArg;
 static int    g_cLogSet;
 void BrLogSet(void *p) { g_pLogArg = p; g_cLogSet++; }        /* STAND-IN */
 
-/* --- 0x10072AF0 (slice1_08.c's BrSndPlaySimple) -------------------------- */
+/* --- 0x10072820 (slice1_08.c's BrSndPlayGroup) --------------------------- */
 static int32_t  g_sndGroup;
 static uint32_t g_sndPacked;
+static int32_t  g_sndLoop;
 static int      g_cSnd;
-int32_t BrSndPlaySimple(int32_t group, uint32_t packed)       /* STAND-IN */
+int32_t BrSndPlayGroup(int32_t group, uint32_t packed, int32_t loop)
 {
-    g_sndGroup = group; g_sndPacked = packed; g_cSnd++;
+    g_sndGroup = group; g_sndPacked = packed; g_sndLoop = loop; g_cSnd++;
     return 1;
 }
 

@@ -20,8 +20,8 @@
 
 /* XSLICE 0x10035BBA -- slice2_19.h */
 extern void     BrLogSet(void *p);
-/* XSLICE 0x10072AF0 -- slice1_08.h */
-extern int32_t  BrSndPlaySimple(int32_t group, uint32_t packed);
+/* XSLICE 0x10072820 -- slice1_08.h */
+extern int32_t  BrSndPlayGroup(int32_t group, uint32_t packed, int32_t loop);
 /* XSLICE 0x1007DFE0 -- slice2_26.h / slice3_33.h. operator new; does NOT
  * zero the block (contract). */
 extern void    *BrOperatorNew(uint32_t cb);
@@ -128,7 +128,7 @@ void BrSub10072AF0(int a, int b)
 {
     /* BrSndPlayGroup(a, b, 0) == BrSndPlayEx(a, 1, b, 0). The two callers
      * discard the result. */
-    (void)BrSndPlaySimple((int32_t)a, (uint32_t)b);
+    (void)BrSndPlayGroup((int32_t)a, (uint32_t)b, 0);
 }
 
 /* ==========================================================================
