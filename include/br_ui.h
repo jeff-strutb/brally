@@ -472,6 +472,20 @@ struct BrUiPage_ {
  * invented: an unnamed region is spelled as an array of the width the
  * constructor filled it with, never as a plausible field.
  * ========================================================================== */
+/* PACKED, and only this struct.
+ *
+ * a012A is an array of dwords that starts at +0x12A -- a 2-mod-4 address.
+ * Natural alignment cannot place it there: the compiler bumps it to +0x12C,
+ * and because the array is 10000 bytes long every single field after it
+ * inherits the drift, which is most of the struct.  Packing pins a012A where
+ * the original put it and the rest of the layout falls into place behind it.
+ *
+ * The pack MUST NOT reach BrTextBox (slice3_39.h, included above and already
+ * a complete type here).  BrTextBox has two internal 2-byte alignment gaps
+ * that are genuinely present in the original; packing it too would shorten it
+ * from 0x438 to 0x434, and aText[3] would then pull every field after the
+ * array 12 bytes short.  Keep this pragma around this struct alone. */
+#pragma pack(push, 1)
 struct BrUiCtl_ {
     const BrUiCtlVtbl_ *pVtbl;   /* +0x00000  = 0x1008F6B8                   */
     BrUiCtlHookFn_ pfn04;        /* +0x00004  }                              */
@@ -584,6 +598,7 @@ struct BrUiCtl_ {
                                   *           slice6_71 p1E210). Its end is
                                   *           what makes the object 0x1E214. */
 };
+#pragma pack(pop)
 
 /* ===========================================================================
  * Allocation

@@ -18,8 +18,22 @@
 set -e
 
 MSVC="tools/msvc5"
-CL="wine $MSVC/cl.exe"
-CFLAGS="/nologo /O2 /W3 /I include /I $MSVC/include /DBR_MATCHING_BUILD"
+
+# The VC5 files get staged one of two ways: flattened into tools/msvc5/ (what
+# setup.sh's instructions describe), or as a wholesale copy of VC's bin/ (which
+# keeps the original uppercase names).  Accept either.
+for cand in "$MSVC/bin/cl.exe" "$MSVC/cl.exe"; do
+    [ -f "$cand" ] && { CL_EXE="$cand"; break; }
+done
+if [ -z "$CL_EXE" ]; then
+    echo "cl.exe not found under $MSVC/ -- run: sh setup.sh" >&2
+    exit 1
+fi
+
+CL="sh tools/wine.sh $CL_EXE"
+# msvc5-compat supplies stdint.h/stdbool.h, which VC5 predates.  It is tracked
+# in git, unlike $MSVC/include, which setup.sh re-extracts from the disc.
+CFLAGS="/nologo /O2 /W3 /I include /I tools/msvc5-compat /I $MSVC/include /DBR_MATCHING_BUILD"
 
 mkdir -p build/match/obj build/match/verified
 
@@ -35,8 +49,17 @@ match_file() {
 
     echo "--- $base ---"
 
-    # Compile
-    $CL $CFLAGS /c "$src" /Fo"$obj" 2>&1 | grep -v "^$" || true
+    # Drop any previous object FIRST.  Without this a compile that fails leaves
+    # the last successful build in place, and the diff below happily reports
+    # stale results as though they were fresh -- a failing build that looks
+    # like a passing one is the worst possible outcome here.
+    rm -f "$obj"
+
+    # Compile.  cl.exe parses /Fo as a Windows path, so it needs backslashes --
+    # given a forward-slash path it reports "cannot open compiler generated
+    # file" and writes nothing.
+    win_obj=$(echo "$obj" | tr '/' '\\')
+    $CL $CFLAGS /c "$src" "/Fo$win_obj" 2>&1 | grep -v "^$" || true
 
     if [ ! -f "$obj" ]; then
         echo "  FAIL: compile error"

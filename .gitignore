@@ -49,3 +49,7 @@ work/
 *.img
 *.xm
 tools/msvc5/
+tools/wine/
+
+# Scratch files -- anything named temp*
+temp*
