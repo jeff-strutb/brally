@@ -1,4 +1,4 @@
-# Boss Rally — decompilation
+# Boss Rally - a bit-exact decompilation from Jeffrey Wilbur (StrutB)
 
 ## Purpose
 
@@ -116,5 +116,5 @@ function.
 Further reading: [ARCHITECTURE.md](ARCHITECTURE.md) for the survey the work
 order comes from, [CONVENTIONS.md](CONVENTIONS.md) for the coding rules (each of
 which has cost real time), and [DECOMP_NOTES.md](DECOMP_NOTES.md) for the
-accumulated detail — original bugs that must be preserved, format reversing,
+accumulated detail; original bugs that must be preserved, format reversing,
 adjudicated conflicts, and the gotchas that bite if forgotten.
