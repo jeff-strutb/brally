@@ -73,6 +73,7 @@
 #include <stdint.h>
 
 #include "slice2_23.h"   /* BrUiObj + the BR_UI_* offsets of the same object */
+#include "br_match.h"    /* BR_THISCALL1 -- vtable slots are thiscall        */
 
 /* ==========================================================================
  * 1. Byte-offset accessors
@@ -283,14 +284,18 @@ typedef struct BrUiPageVtbl {
 /* 0x1008F700. */
 typedef struct BrPhaseFullVtbl {
     void *(*f00)(BrPhaseFull *pThis, int32_t nFlags);/* 0x10048850 */
-    int32_t (*f04)(BrPhaseFull *pThis);              /* 0x100488B0 */
+    int32_t (BR_THISCALL1 *f04)(BrPhaseFull *pThis); /* 0x100488B0 */
+    /* f08/f0C/f1C are thiscall in the original too, but the port's
+     * implementations carry an extra leading BrScrGlobals* that the slot does
+     * not have.  __fastcall would then put THAT in ecx instead of `this`, so
+     * they cannot be converted until the signatures are reconciled. */
     int32_t (*f08)(BrPhaseFull *pThis);              /* 0x100488C0 */
     int32_t (*f0C)(BrPhaseFull *pThis);              /* 0x100489A0 */
     void   *f10;
     void  (*f14)(BrPhaseFull *pThis);                /* 0x10048960, foreign */
     void  (*f18)(BrPhaseFull *pThis, void *pArg);    /* 0x10048B20 */
     void  (*f1C)(BrPhaseFull *pThis);                /* 0x10048AA0 */
-    void  (*f20)(BrPhaseFull *pThis);                /* 0x1005AFA0, foreign */
+    void  (BR_THISCALL1 *f20)(BrPhaseFull *pThis);   /* 0x1005AFA0, foreign */
 } BrPhaseFullVtbl;
 
 /* ==========================================================================
@@ -758,7 +763,7 @@ void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags);
 void BrPhaseDtor_10048870(BrPhaseFull *pThis);
 
 /* 0x100488B0  __thiscall. Fires the phase's own vtable +0x20 and returns 1. */
-int BrPhaseFn_100488B0(BrPhaseFull *pThis);
+int BR_THISCALL1 BrPhaseFn_100488B0(BrPhaseFull *pThis);
 
 /* 0x100488C0  __thiscall, phase vtable +0x08. Returns 0 (and does nothing)
  * when +0x08's low byte has bit 4 set; 1 otherwise.

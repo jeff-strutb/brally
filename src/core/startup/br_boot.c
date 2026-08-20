@@ -240,6 +240,31 @@ int32_t BrAppStateSetMode(void)
  * through a table; this port refuses an unrecognised stage instead, which is a
  * deliberate difference described below. */
 /* @implements 0x1001CF80 glide BrAppFrame */
+#ifdef BR_MATCHING_BUILD
+/* The original is twelve bytes: load the state and jump straight through a
+ * five-entry table -- `mov eax,[g_brAppState]; jmp dword ptr [tbl + eax*4]`,
+ * with no bounds check at all.  A C `switch` cannot produce that: MSVC always
+ * guards a switch's jump table with a `cmp`/`ja` pair, which is the entire
+ * divergence here.  Tail-dispatching through an explicit function-pointer
+ * table does produce the bare indirect jump.
+ *
+ * The states are contiguous 0..4, so the table is dense and index-exact.
+ * This arm deliberately inherits the original's blind jump; the port arm
+ * below keeps its guard, because refusing an unrecognised stage is a real
+ * safety property and it is not worth trading for a match. */
+static int32_t (* const s_apfnAppState[])(void) = {
+    BrAppStateColdInit,     /* BR_APP_COLD_INIT == 0 */
+    BrAppStateEnterRun,     /* BR_APP_ENTER_RUN == 1 */
+    BrAppStateRun,          /* BR_APP_RUN       == 2 */
+    BrAppStateLoading,      /* BR_APP_LOADING   == 3 */
+    BrAppStateSetMode       /* BR_APP_SET_MODE  == 4 */
+};
+
+int32_t BrAppFrame(void)
+{
+    return s_apfnAppState[g_brAppState]();
+}
+#else
 int32_t BrAppFrame(void)
 {
     switch (g_brAppState) {
@@ -251,6 +276,7 @@ int32_t BrAppFrame(void)
     default:               return 0;   /* see the banner: not the original's */
     }
 }
+#endif
 
 void BrAppResetForTest(void)
 {

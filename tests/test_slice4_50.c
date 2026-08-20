@@ -171,7 +171,7 @@ int32_t BrSub1003C740(BrDPlay *pDPlay, void *pBlob,            /* STAND-IN */
     g_cJoin++;
     return g_aHrJoin[g_iHrJoin++];
 }
-void BrSub10071550(void)      { g_c71550++; }
+int32_t BrSub10071550(void)   { g_c71550++; return 1; }
 void BrSub10005B10(int32_t a) { (void)a; g_c5B10++; }
 void BrSub1003BF60(void)      { g_cBF60++; }
 void BrSub1003C020(void)      { g_cC020++; }

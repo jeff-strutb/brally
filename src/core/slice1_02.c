@@ -98,7 +98,7 @@ int32_t BrFixPackU24Q13(float v)
 /* @implements 0x10006730 d3d BrFixPackS24Q1 */
 int32_t BrFixPackS24Q1(float v)
 {
-    int32_t r = BrFtol(BrFloor(0.5 - (double)v * -2.0));
+    int32_t r = (int32_t)BrFloor(0.5f - v * -2.0f);
 
     if (r < -8388608)
         r = -8388608;
@@ -113,7 +113,7 @@ int32_t BrFixPackS24Q1(float v)
 /* @implements 0x10006770 d3d BrFixPackS16Q7 */
 int32_t BrFixPackS16Q7(float v)
 {
-    int32_t r = BrFtol(BrFloor(0.5 - (double)v * -128.0));
+    int32_t r = (int32_t)BrFloor(0.5f - v * -128.0f);
 
     if (r < -32768)
         r = -32768;
@@ -131,9 +131,14 @@ int32_t BrFixPackS16Q7(float v)
 /* @implements 0x10007250 d3d BrFixUnpackS6Q7Neg */
 float BrFixUnpackS6Q7Neg(int32_t v)
 {
-    uint32_t b = (uint32_t)v & 0xFFu;
-    int32_t  s = (b & 0x20u) ? BrSext8(b | 0xC0u) : BrSext8(b & 0x3Fu);
+    unsigned char b = (unsigned char)v;
+    int32_t       s;
 
+    if (b & 0x20) {
+        s = (signed char)(unsigned char)(b | 0xC0u);
+        return (float)(s * -0.0078125f);
+    }
+    s = (signed char)(unsigned char)(b & 0x3Fu);
     return (float)(s * -0.0078125f);
 }
 
@@ -144,7 +149,7 @@ float BrFixUnpackS6Q7Neg(int32_t v)
 /* @implements 0x10007280 d3d BrFixUnpackS16Q15Neg */
 float BrFixUnpackS16Q15Neg(int32_t v)
 {
-    return (float)(BrSext16((uint32_t)v) * -0.000030517578125f);
+    return (float)((int16_t)v * -0.000030517578125f);
 }
 
 /* 0x100072A0.  Scale 0x1008F124 = 1.41015625f (= 361/256). */
@@ -153,7 +158,7 @@ float BrFixUnpackS16Q15Neg(int32_t v)
 /* @implements 0x100072A0 d3d BrFixUnpackU8Angle */
 float BrFixUnpackU8Angle(int32_t v)
 {
-    return (float)((int32_t)((uint32_t)v & 0xFFu) * 1.41015625f);
+    return (float)((v & 0xFF) * 1.41015625f);
 }
 
 /* 0x100072C0.  0x1008F128 = -120.63491821289062f, 0x1008F0DC = 400.0f, and
@@ -166,8 +171,7 @@ float BrFixUnpackU8Angle(int32_t v)
 /* @implements 0x100072C0 d3d BrFixUnpackU8Range */
 float BrFixUnpackU8Range(int32_t v)
 {
-    float x = (float)(int32_t)((uint32_t)v & 0xFFu);
-    return 400.0f - x * -120.63491821289062f;
+    return 400.0f - (v & 0xFF) * -120.63491821289062f;
 }
 
 /* 0x100072E0.  A chain of byte compares, not a table lookup: anything above 2
@@ -179,13 +183,13 @@ float BrFixUnpackU8Range(int32_t v)
 /* @implements 0x100072E0 d3d BrFixUnpackLevel */
 float BrFixUnpackLevel(int32_t v)
 {
-    uint32_t b = (uint32_t)v & 0xFFu;
+    unsigned char b = (unsigned char)v;
 
-    if (b == 0u)
+    if (b == 0)
         return 0.0f;
-    if (b == 1u)
+    if (b == 1)
         return 170.0f;
-    if (b == 2u)
+    if (b == 2)
         return 212.0f;
     return 255.0f;
 }
@@ -206,7 +210,11 @@ float BrFixUnpackU32Q13(uint32_t v)
 /* @implements 0x10007340 d3d BrFixUnpackS24Q1 */
 float BrFixUnpackS24Q1(uint32_t v)
 {
-    return (float)(BrSext24(v) * 0.5f);
+    int32_t x = (int32_t)v;
+
+    if (x & 0x800000)
+        return (float)((x | ~0xFFFFFF) * 0.5f);
+    return (float)((x & 0xFFFFFF) * 0.5f);
 }
 
 /* 0x10007380.  Scale 0x1008F13C = 0.0078125f (= 1/128). */
@@ -215,7 +223,7 @@ float BrFixUnpackS24Q1(uint32_t v)
 /* @implements 0x10007380 d3d BrFixUnpackS16Q7 */
 float BrFixUnpackS16Q7(int32_t v)
 {
-    return (float)(BrSext16((uint32_t)v) * 0.0078125f);
+    return (float)((int16_t)v * 0.0078125f);
 }
 
 /* 0x100073A0.  Scale 0x1008F140 = 0.00390625f (= 1/256). */
@@ -224,7 +232,7 @@ float BrFixUnpackS16Q7(int32_t v)
 /* @implements 0x100073A0 d3d BrFixUnpackS16Q8 */
 float BrFixUnpackS16Q8(int32_t v)
 {
-    return (float)(BrSext16((uint32_t)v) * 0.00390625f);
+    return (float)((int16_t)v * 0.00390625f);
 }
 
 /* 0x100073C0.  Scale 0x1008F144 = 0.125f. */
@@ -233,7 +241,7 @@ float BrFixUnpackS16Q8(int32_t v)
 /* @implements 0x100073C0 d3d BrFixUnpackS8Q3 */
 float BrFixUnpackS8Q3(int32_t v)
 {
-    return (float)(BrSext8((uint32_t)v) * 0.125f);
+    return (float)((int8_t)v * 0.125f);
 }
 
 /* =====================================================================

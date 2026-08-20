@@ -1235,13 +1235,20 @@ int32_t BrSub1003D030(void *pBlob)
 
 /* WHAT IT DOES: runs two other routines in order and reports success
  * unconditionally. What the two do was not established, so the purpose is
- * unclear; the caller ignores the answer in any case. */
+ * unclear; the caller ignores the answer in any case.
+ *
+ * The original is four instructions -- two `call rel32`, `mov eax, 1`, `ret`.
+ * The two callees are DIRECT calls to 0x10071560 and 0x10071630, not indirect
+ * calls through pointer slots, and there is no null test on either. */
+extern void BrSub10071560(void);
+extern void BrSub10071630(void);
+
 /* @implements 0x10071550 d3d BrSub10071550 */
-void BrSub10071550(void)
+int32_t BrSub10071550(void)
 {
-    if (g_br73.pfn10071560 != NULL) { g_br73.pfn10071560(); }
-    if (g_br73.pfn10071630 != NULL) { g_br73.pfn10071630(); }
-    /* the original returns 1; slice4_50.h declares it void */
+    BrSub10071560();
+    BrSub10071630();
+    return 1;
 }
 
 /* ==========================================================================

@@ -315,7 +315,7 @@ extern int32_t BrSub1003D030(void *pBlob);
 extern int32_t BrSub1003C740(BrDPlay *pDPlay, void *pBlob,
                              char *pszName, BrOptUi *pUi);
 /* XSLICE 0x10071550 */
-extern void    BrSub10071550(void);
+extern int32_t BrSub10071550(void);
 /* XSLICE 0x10005B10 */
 extern void    BrSub10005B10(int32_t a);
 /* XSLICE 0x1003E510 */

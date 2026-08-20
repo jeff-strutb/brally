@@ -13,6 +13,8 @@
 #ifndef BR_STATE_H
 #define BR_STATE_H
 
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+
 typedef struct BrActiveFlags {
     int a0;        /* 0x10AA33D0 */
     int a1;        /* 0x10AA33D4 */
@@ -30,6 +32,6 @@ int BrIsAnyActive(const BrActiveFlags *pFlags);
 
 /* 0x10073F40  thiscall: returns field at +0x0C, plus one if +0x08 is set. */
 typedef struct BrCounted { int pad0, pad4, flag, count; } BrCounted;
-int BrCountedTotal(const BrCounted *pObj);
+int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj);
 
 #endif /* BR_STATE_H */

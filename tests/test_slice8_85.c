@@ -59,9 +59,12 @@ int32_t BrFtolTrunc(float f) { return (int32_t)f; }
 static int s_nOpen2948;
 int BrOptOpen2948(void *pUnused)
 {
-    /* The real body never reads the argument; the test asserts that this
-     * module honours that by passing NULL. */
-    CHECK(pUnused == NULL);
+    /* The real body never reads the argument.  It used to be asserted NULL,
+     * but that only described the port's shared helper: the original passes
+     * each hook's own control pointer straight through, and the mode hooks
+     * now do the same.  Since the callee ignores it, either value is correct
+     * behaviour and there is nothing here worth pinning. */
+    (void)pUnused;
     ++s_nOpen2948;
     return 1;
 }

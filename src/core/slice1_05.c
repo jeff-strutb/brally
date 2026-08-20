@@ -334,11 +334,28 @@ void BrMat4Translate(BrMat4 *pM, float tx, float ty, float tz)
  * which is how a buffer gets rewound to its start. What the buffer holds is not
  * established here. */
 /* @implements 0x1002B280 d3d BrCursorPairSet */
+#ifdef BR_MATCHING_BUILD
+void *g_brCursor575510;   /* 0x10575510 */
+void *g_brCursor575518;   /* 0x10575518 */
+
+void BrCursorPairSet(void *pv)
+{
+    /* CLOSE, NOT MATCHING -- 16 bytes against the original's 18.  The one
+     * argument and the two absolute stores are now right; the original also
+     * keeps a second live copy (`mov ecx, eax`) and stores one register to
+     * each global, where MSVC here reuses eax for both.  A chained assignment
+     * (a = b = pv) does not produce the copy either -- register-allocation
+     * class, not source shape. */
+    g_brCursor575510 = pv;
+    g_brCursor575518 = pv;
+}
+#else
 void BrCursorPairSet(BrCursorPair *pPair, void *pv)
 {
     pPair->f10 = pv;
     pPair->f18 = pv;
 }
+#endif
 
 /* 0x1002C1F0 */
 /* WHAT IT DOES: appends one more entry to a fixed-length list. Once the list

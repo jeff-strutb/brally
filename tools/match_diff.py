@@ -66,6 +66,24 @@ def parse_implements(src_path):
     return results
 
 
+def undecorate(sname):
+    """Strip MSVC calling-convention decoration to the bare C identifier.
+
+    cdecl is _Name, stdcall is _Name@N, fastcall is @Name@N, where N is the
+    argument byte count.  Only the leading sigil and the trailing @<digits>
+    are decoration; what sits between them is the identifier an @implements
+    tag names.  Keying on the raw symbol makes every non-cdecl function
+    report not_in_obj, so it can never score a match no matter how correct
+    the bytes are.
+    """
+    name = sname[1:] if sname.startswith('@') else sname
+    name = name.lstrip('_')
+    at = name.rfind('@')
+    if at > 0 and name[at + 1:].isdigit():
+        name = name[:at]
+    return name
+
+
 def parse_coff_obj(obj_path):
     """Parse a COFF .obj and return {name: (bytes, reloc_offsets)} for .text symbols.
 
@@ -139,7 +157,7 @@ def parse_coff_obj(obj_path):
             if sec['name'] == '.text':
                 func_bytes = data[sec['rawoff'] + value:
                                   sec['rawoff'] + sec['rawsize']]
-                clean_name = sname.lstrip('_')
+                clean_name = undecorate(sname)
                 funcs[clean_name] = (func_bytes, sec['relocs'])
 
         sym_off += 18 * (1 + naux)

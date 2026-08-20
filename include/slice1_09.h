@@ -14,6 +14,8 @@
 #ifndef SLICE1_09_H
 #define SLICE1_09_H
 
+#include "br_match.h"   /* BR_THISCALL1 -- the bit-stream class is thiscall */
+
 #include <stddef.h>
 
 #include "br_vec.h"
@@ -70,23 +72,23 @@ void         BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes);
 
 /* 0x10073F20  align the WRITE cursor: if writeBit != 0, zero it and step
  * writeByte. (The read-side twin is 0x10073D20 / BrObjConsumeFlag.) */
-void         BrBitStreamAlignWrite(BrBitStream *pBs);
+void         BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs);
 
 /* 0x10073BA0  align the read cursor, then advance it by n BYTES.
  * n is not range-checked. */
 void         BrBitStreamSkipBytes(BrBitStream *pBs, int n);
 
 /* 0x10073BC0  align, then read one byte. */
-unsigned char BrBitStreamReadU8(BrBitStream *pBs);
+unsigned char BR_THISCALL1 BrBitStreamReadU8(BrBitStream *pBs);
 /* 0x10073BE0  align, then read 2 bytes big-endian. */
-unsigned int  BrBitStreamReadU16(BrBitStream *pBs);
+unsigned int  BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs);
 /* 0x10073C10  align, then read 3 bytes big-endian, zero-extended. */
-unsigned int  BrBitStreamReadU24(BrBitStream *pBs);
+unsigned int  BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs);
 /* 0x10073C40  align, then read 4 bytes big-endian.
  * The original sign-extends the FIRST byte (movsx) before shifting it left
  * 24 places, so the sign extension is discarded and the result is just the
  * 32-bit big-endian word -- but the natural return type is signed. */
-int           BrBitStreamReadS32(BrBitStream *pBs);
+int           BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs);
 
 /* 0x10073C90  read nBits bits MSB-first, WITHOUT aligning first.
  * Crosses byte boundaries; the accumulator is shifted left by the number of
@@ -97,7 +99,7 @@ unsigned int  BrBitStreamReadBits(BrBitStream *pBs, int nBits);
 /* 0x10073D40  1 once the read cursor has reached the write cursor.
  * A partially consumed byte counts as consumed: the test is
  *   readByte + (readBit != 0) >= writeByte     (signed compare). */
-int           BrBitStreamAtEnd(const BrBitStream *pBs);
+int           BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs);
 
 /* 0x10073D60  align the write cursor, then write the low byte of v. */
 void          BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v);

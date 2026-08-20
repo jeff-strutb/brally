@@ -92,6 +92,14 @@ void BrRaceSub1002F6C0(void)
     g_brRace6EECC8 = BR_RACESTART_6EECC8_VALUE;
 }
 
+/* The null step itself: glide 0x10008D60 / D3D 0x10008B80, a one-byte `ret`.
+ * The original does not receive this step as an argument -- it pushes the
+ * stub's address as an IMMEDIATE (`push 0x10008D60`), so the address has to
+ * come from a real function here too, not from a parameter. */
+static void BrRaceNullStep(void)
+{
+}
+
 /* ==========================================================================
  * 0x10062850 -- twenty-three bytes.
  *
@@ -99,6 +107,13 @@ void BrRaceSub1002F6C0(void)
  * a cdecl call to 0x1002E317.  So the entrant count and the null step are
  * one operation in the original, and 0x100628B0 then repeats BOTH of them
  * separately a few instructions later.  Both repeats are preserved.
+ *
+ * The original takes ONE argument.  The push is an immediate, not a reload of
+ * a second stack slot, and 0x1006294F calls it with a single argument (edi).
+ * `pfnNullStep` therefore has no counterpart in the original and is ignored;
+ * under cdecl an unused trailing parameter costs the callee nothing, so the
+ * body is byte-identical to the one-argument original.  The parameter is
+ * still in the signature only because br_racestart.h publishes it.
  * ========================================================================== */
 /* WHAT IT DOES: records how many cars are in the race and, in the same
  * breath, installs the do-nothing frame step -- so the game stops doing per-
@@ -108,8 +123,9 @@ void BrRaceSub1002F6C0(void)
 /* @implements 0x10062850 glide BrRaceEntrantCountSet */
 void BrRaceEntrantCountSet(int32_t n, BrGameStepFn pfnNullStep)
 {
+    (void)pfnNullStep;
     g_brRaceNEntrant = n;
-    BrGameStepSet(pfnNullStep);
+    BrGameStepSet(BrRaceNullStep);
 }
 
 /* ==========================================================================

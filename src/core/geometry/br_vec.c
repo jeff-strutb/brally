@@ -30,7 +30,26 @@ void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
  * audited precision pass to settle alongside BrVec3DistSq / BrVec3Dist. */
 float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
 {
-    return pA->x * pB->x + pA->y * pB->y + pA->z * pB->z;
+    /* Term order is y, z, x deliberately: the original accumulates
+     * (y + z) + x, and writing it that way reproduces the whole x87 body
+     * instruction for instruction and brings the compiled size to the
+     * original's 37 bytes exactly.
+     *
+     * NOT YET MATCHING -- two bytes remain, and they are the parameter
+     * loads, not the arithmetic:
+     *     original   mov eax,[esp+4]   mov ecx,[esp+8]
+     *     ours       mov eax,[esp+8]   mov ecx,[esp+4]
+     * i.e. the compiler assigns the two pointers to the opposite registers.
+     * Since a dot product is symmetric this is pure register allocation, not
+     * a maths difference. Operand order within the products does NOT move it
+     * -- VC5 canonicalises commutative fmul operands, and all-pA-first,
+     * all-pB-first and mixed were each tried. This is the known "register
+     * load order" class, not something source order controls.
+     *
+     * DEVIATION (port target): float addition is not associative, so the
+     * y,z,x order can differ from x,y,z in the last bit. That sits with the
+     * audited precision pass still owed alongside BrVec3DistSq / BrVec3Dist. */
+    return pA->y * pB->y + pA->z * pB->z + pB->x * pA->x;
 }
 
 /* @implements 0x1003AEE0 d3d BrVec3Sub */
@@ -52,6 +71,12 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
+    /* NOT MATCHING: the original fetches the SCALAR for the x term
+     * (`fld [esp+0xc]; fmul [eax]`) and the component for y and z, which ours
+     * has the other way round on x only.  Swapping the operands does nothing
+     * (VC5 canonicalises commutative fmul), and the naming lever that fixes
+     * BrVec3Midpoint does not apply: it works by naming a dereference, and
+     * `s` is already a plain memory operand with nothing to name. */
     pOut->x = pV->x * s;
     pOut->y = pV->y * s;
     pOut->z = pV->z * s;
@@ -126,8 +151,20 @@ void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
 /* @implements 0x1003AD40 d3d BrVec3Div */
 void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
-    float r = 1.0f / s;
-    pOut->x = pV->x * r;
+    float r;
+    /* The assignment to r is INSIDE the first product on purpose, and that is
+     * the whole reason this matches.  The original's first term is
+     * `fld st(0); fmul dword ptr [eax]` -- it duplicates the reciprocal while
+     * it is still fresh on the x87 stack from the fdiv -- while the y and z
+     * terms are the settled `fld mem; fmul st(1)` form.  Writing
+     * `float r = 1.0f/s;` as a separate statement makes all three terms take
+     * the settled form and loses the first one.
+     *
+     * Note what does NOT work, so nobody re-derives it: swapping the operands
+     * (r * pV->x) changes nothing, because VC5 canonicalises commutative fmul
+     * operands; neither does /Op, /Oa, /Ow, /O1 or /Ox.  It is expression
+     * SHAPE that decides, not operand order and not compiler flags. */
+    pOut->x = (r = 1.0f / s) * pV->x;
     pOut->y = pV->y * r;
     pOut->z = pV->z * r;
 }
@@ -136,6 +173,12 @@ void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
 void BrVec3DivBy(BrVec3 *pV, float s)
 {
     float r = 1.0f / s;
+    /* NOT MATCHING.  The original duplicates the reciprocal on the x87 stack
+     * (`fld st(0); fld st(1)`) and multiplies each copy by a component held as
+     * a memory operand; ours loads all three components first.  Tried and
+     * rejected: consuming the division inline as BrVec3Div does, and explicit
+     * `pV->x = r * pV->x` products instead of `*=`.  Neither moves it, so the
+     * in-place form is doing something the out-of-place BrVec3Div does not. */
     pV->x *= r;
     pV->y *= r;
     pV->z *= r;
@@ -145,17 +188,29 @@ void BrVec3DivBy(BrVec3 *pV, float s)
 /* @implements 0x1003B050 d3d BrVec3Midpoint */
 void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
+    /* The original does not fetch the two operands in a consistent order:
+     * x and z load from pB first, y loads from pA first.  The compiler picks
+     * that alternation by itself for x and y, but not for z, so z names its
+     * pB component to force it to be the fetched operand -- the same lever
+     * that matches BrVec3Div and BrMat4MulVec3Transposed. */
     pOut->x = (pA->x + pB->x) * 0.5f;
     pOut->y = (pA->y + pB->y) * 0.5f;
-    pOut->z = (pA->z + pB->z) * 0.5f;
+    {
+        float bz = pB->z;
+        pOut->z = (bz + pA->z) * 0.5f;
+    }
 }
 
 /* @implements 0x1003B090 d3d BrVec3Zero */
 void BrVec3Zero(BrVec3 *pV)
 {
-    pV->x = 0.0f;
-    pV->y = 0.0f;
+    /* Written back to front: the original stores z, then y, then x, and MSVC
+     * emits plain stores to distinct addresses in source order.  Unlike the
+     * register assignment that blocks BrVec3Dot, store order IS controllable
+     * from the source, so this is a real fix rather than a coincidence. */
     pV->z = 0.0f;
+    pV->y = 0.0f;
+    pV->x = 0.0f;
 }
 
 /* The original spills dx and dy to stack scratch and multiplies them back in,
@@ -178,10 +233,21 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 /* WHAT IT DOES: the straight-line distance between two points in 3D. One of
  * the most-used routines in the game -- how far a car is from anything. */
 /* @implements 0x1003B0E0 d3d BrVec3Dist */
+#ifdef _MSC_VER
+#pragma intrinsic(sqrt)
+#endif
 float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
 {
-    return sqrtf(BrVec3DistSq(pA, pB));
+    /* `sqrtf` is not on MSVC 5.0's intrinsic list and its CRT does not even
+     * declare it -- VC5 warns C4013 and assumes `extern int sqrtf()`, so the
+     * matching build was calling an undeclared function and converting an int
+     * return to float.  The double `sqrt` IS intrinsic, so this emits the
+     * inline `fsqrt` the original uses.  Same fix as BrSqrtF. */
+    return (float)sqrt(BrVec3DistSq(pA, pB));
 }
+#ifdef _MSC_VER
+#pragma function(sqrt)
+#endif
 
 /* 0x1003B170 (Glide 0x100347F0, `shared`, matched by body) -- 65 bytes, traced
  * through every fxch:

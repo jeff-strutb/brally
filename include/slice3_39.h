@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "br_match.h"    /* BR_THISCALL1 -- thiscall via __fastcall on VC5   */
+
 /* 0x100602B0 works on the object slice1_07.h calls BrDevSlot (0x10060280
  * clears it).  Only a forward declaration is taken here: slice1_07.h and
  * slice1_06.h currently declare `BrTriContainsPoint` with incompatible
@@ -146,6 +148,16 @@ typedef struct BrTextBox {
  * of being hard-coded; set it before calling BrTextBoxInit if the vtable
  * matters.  Default NULL. */
 extern const BrTextBoxVtbl *g_pBrTextBoxVtbl;   /* stands in for 0x1008F728 */
+
+#ifdef BR_MATCHING_BUILD
+/* The original does not load a pointer variable -- it plants the vtable's
+ * ADDRESS as an immediate, so matching needs an object to take the address
+ * of, not a pointer to read.  Only ever declared: the sweep compiles with
+ * /c and never links, and objdiff zeroes the relocation, so the definition
+ * (which lives in the original image at 0x1008F728) is not needed here.
+ * The port keeps using the g_pBrTextBoxVtbl hook above. */
+extern const BrTextBoxVtbl g_BrTextBoxVtbl;     /* 0x1008F728 */
+#endif
 
 /* 0x1005B050 (thiscall).  Zeroes sz[], width, height, x, y, f418, f41C,
  * f420 and f04; sets f08 = 1; returns pBox.
@@ -742,7 +754,7 @@ void BrMemFill(void *pDst, uint32_t count, int32_t value);
  * ===================================================================== */
 
 /* XSLICE 0x1005B0C0 */
-extern void BrTextBoxDtor(BrTextBox *pBox);
+extern void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox);
 
 /* XSLICE 0x1007DE40 */
 extern void BrOperatorDelete(void *p);

@@ -32,13 +32,16 @@
 #ifndef BR_OBJ_H
 #define BR_OBJ_H
 
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+
 typedef struct BrObjHeader {
     int f00, f04, f08, f0C;
     int f10;
 } BrObjHeader;
 
-/* 0x10073B80  zero +0x00..+0x0C. Note +0x10 is deliberately NOT cleared. */
-void BrObjClear(BrObjHeader *pObj);
+/* 0x10073B80  zero +0x00..+0x0C. Note +0x10 is deliberately NOT cleared.
+ * thiscall in the original: `this` arrives in ecx and nothing is pushed. */
+void BR_THISCALL1 BrObjClear(BrObjHeader *pObj);
 
 /* 0x10073F50  return the field at +0x10. */
 int  BrObjGetF10(const BrObjHeader *pObj);

@@ -44,6 +44,7 @@
 
 #include "br_vec.h"
 #include "br_mat.h"
+#include "br_match.h"    /* BR_THISCALL1 -- thiscall via __fastcall on VC5  */
 #include "slice1_09.h"   /* BrVec4, BrVec4Normalise (0x100741B0) */
 
 /* ================================================================== */
@@ -123,7 +124,8 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB);
 /* 0x10075340  pM->m[0][3] = m[1][3] = m[2][3] = 0, pM->m[3][3] = 1.0f.
  * Only the fourth COLUMN is touched; the upper 3x3 and the translation row
  * are left alone.  __thiscall in the original. */
-void BrMat4SetLastColumn(BrMat4 *pM);
+/* thiscall in the original: the matrix arrives in ecx, nothing is pushed. */
+void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM);
 
 /* 0x10074B70  build pOut from a transposed, per-column-scaled copy of pA and
  * a translation taken from pS.  Positional names: the meaning of pS's row 0

@@ -11,6 +11,12 @@
 
 #include "slice8_86.h"
 #include "slice7_82.h"   /* BrGlobalHandle/Unlock/Free, BrPlat* clocks */
+#include "br_match.h"    /* BR_THISCALL1 */
+
+/* The frame-timer object itself, defined in slice2_17.c. 0x1002C2C0 plants
+ * its ADDRESS in ecx as an immediate, so the object has to be named here --
+ * routing through a pointer variable would cost a `mov eax, [mem]`. */
+extern unsigned char g_br6806B0[0x24];
 
 /* slice3_33.c's five bodies. Declared by slice3_33.h, which slice8_86.h
  * already pulls in. */
@@ -403,8 +409,12 @@ void BrX100751D0(void *pThis)
  * for, and only on machines that needed it -- where the precise timer was
  * available nothing was asked for and nothing is returned. */
 /* @implements 0x10075240 d3d br86_timer_end_period */
-static void br86_timer_end_period(void)
+static void BR_THISCALL1 br86_timer_end_period(void *pThis)
 {
+    /* `this` is passed but never read -- the body only looks at globals. It
+     * is declared so that 0x1002C2C0's thunk can load it into ecx. */
+    (void)pThis;
+
     if (g_br86HasPerf == 0) {
         if (g_pBrPlatOs86 != NULL && g_pBrPlatOs86->pfnTimeEndPeriod != NULL) {
             g_pBrPlatOs86->pfnTimeEndPeriod(1);
@@ -417,9 +427,11 @@ static void br86_timer_end_period(void)
 /* @implements 0x1002C2C0 d3d BrX1002C2C0 */
 void BrX1002C2C0(void)
 {
-    /* `mov ecx, 0x106806B0 / jmp 0x10075240`. The ecx load is DEAD: the
-     * callee never reads it. slice2_17.c's `void (void)` is right. */
-    br86_timer_end_period();
+    /* `mov ecx, 0x106806B0 / jmp 0x10075240`. The operand is an IMMEDIATE --
+     * the ADDRESS of the frame-timer object -- so the object is named here and
+     * its address taken; nothing is pushed. The callee never reads ecx, but
+     * the thunk still loads it, so the callee wears BR_THISCALL1. */
+    br86_timer_end_period(g_br6806B0);
 }
 
 /* ==========================================================================

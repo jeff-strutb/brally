@@ -80,6 +80,72 @@ void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt)
     g_pExt  = pExt;
 }
 
+/* --------------------------------------------------------------------------
+ * MATCHING BUILD: the globals the original addresses absolutely.
+ *
+ * DEVIATION 1 above routes every one of these through g_pExt / g_pBase, which
+ * costs an extra `mov reg,[ctx]` and turns a `mov [abs],imm` into
+ * `mov [reg+off],imm`. The original has no context pointer at all. Under
+ * BR_MATCHING_BUILD the same fields are named as what they are -- fixed
+ * globals -- and the port keeps the context indirection unchanged.
+ *
+ * Names follow the in-tree g_br<ADDRESS> convention. Seven of them already
+ * have definitions elsewhere in-tree (slice2_25.c, slice5_63.c); the rest are
+ * declared here only, since the matching build compiles and never links.
+ * ------------------------------------------------------------------------ */
+#ifdef BR_MATCHING_BUILD
+extern int32_t  g_brAA28F0;   /* 0x10AA28F0  (defined in slice5_63.c)  */
+extern int32_t  g_brAA28F4;   /* 0x10AA28F4  (defined in slice5_63.c)  */
+extern int32_t  g_brAA28F8;   /* 0x10AA28F8  (defined in slice5_63.c)  */
+extern int32_t  g_brAA28FC;   /* 0x10AA28FC  (defined in slice2_25.c)  */
+extern int32_t  g_brAA2854;   /* 0x10AA2854  (defined in slice2_25.c)  */
+extern int32_t  g_brAA28A4;   /* 0x10AA28A4  (defined in slice5_63.c)  */
+extern char     g_aBrA9D618[];/* 0x10A9D618  (defined in slice5_63.c)  */
+extern int32_t  g_brAA2A40;   /* 0x10AA2A40                            */
+extern uint16_t g_br0AC6A4;   /* 0x100AC6A4                            */
+extern int32_t  g_brAA33E4;   /* 0x10AA33E4  the pending key           */
+extern int32_t  g_brAA2AD4;   /* 0x10AA2AD4  edit-in-progress selector */
+extern uint8_t  g_brAA26F5;   /* 0x10AA26F5  == g_aBrAA26F4[1]         */
+extern BrPhase *g_brAA29C8;   /* 0x10AA29C8                            */
+extern BrPhase *g_brAA29F4;   /* 0x10AA29F4                            */
+extern int32_t  g_brAA2A48;   /* 0x10AA2A48  ring write index          */
+extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
+
+#  define BR31_AA28F0   g_brAA28F0
+#  define BR31_AA28F4   g_brAA28F4
+#  define BR31_AA28F8   g_brAA28F8
+#  define BR31_AA28FC   g_brAA28FC
+#  define BR31_AA2854   g_brAA2854
+#  define BR31_AA28A4   g_brAA28A4
+#  define BR31_A9D618   g_aBrA9D618
+#  define BR31_AA2A40   g_brAA2A40
+#  define BR31_0AC6A4   g_br0AC6A4
+#  define BR31_AA33E4   g_brAA33E4
+#  define BR31_AA2AD4   g_brAA2AD4
+#  define BR31_AA26F5   g_brAA26F5
+#  define BR31_AA29C8   g_brAA29C8
+#  define BR31_AA29F4   g_brAA29F4
+#  define BR31_AA2A48   g_brAA2A48
+#  define BR31_A9E150   g_aBrA9E150
+#else
+#  define BR31_AA28F0   (g_pExt->nAA28F0)
+#  define BR31_AA28F4   (g_pExt->nAA28F4)
+#  define BR31_AA28F8   (g_pExt->nAA28F8)
+#  define BR31_AA28FC   (g_pExt->nAA28FC)
+#  define BR31_AA2854   (g_pExt->nAA2854)
+#  define BR31_AA28A4   (g_pExt->nAA28A4)
+#  define BR31_A9D618   (g_pExt->szA9D618)
+#  define BR31_AA2A40   (g_pExt->nAA2A40)
+#  define BR31_0AC6A4   (g_pExt->n0AC6A4)
+#  define BR31_AA33E4   (g_pExt->nAA33E4)
+#  define BR31_AA2AD4   (g_pExt->nAA2AD4)
+#  define BR31_AA26F5   (g_pExt->bAA26F5)
+#  define BR31_AA29C8   (g_pExt->pAA29C8)
+#  define BR31_AA29F4   (g_pBase->pAA29F4)
+#  define BR31_AA2A48   (g_pExt->nAA2A48)
+#  define BR31_A9E150   (g_pExt->aA9E150)
+#endif
+
 /* ==========================================================================
  * Shared shapes
  * ========================================================================== */
@@ -649,18 +715,58 @@ int32_t BrPhaseLeaveNamed_10046E10(void *pEntity)
 
 /* --- the three one-statement gotos ---------------------------------------- */
 
+/* GLOBAL ACCESS, and the one place in this module where the two build targets
+ * spell the same four dwords differently.
+ *
+ * All three routines are a single dword move, and the original reaches both
+ * ends of it by absolute address:
+ *
+ *     10046F50  a1 74 29 aa 10   mov eax, [0x10aa2974]
+ *     10046F55  a3 04 29 aa 10   mov [0x10aa2904], eax
+ *     10046F5A  33 c0            xor eax, eax
+ *     10046F5C  c3               ret                       -- thirteen bytes
+ *
+ * The portable form cannot produce those thirteen. It reaches the source
+ * through this module's g_pExt context pointer (DEVIATION 1 at the top of the
+ * file) and the destination through br_phasecur.h's indirection, so each end
+ * costs a pointer load first -- four instructions where the original has two,
+ * and no amount of scheduling removes them.
+ *
+ * So the matching build names the four globals directly and the port keeps
+ * the context-pointer form. This is the SAME STORAGE either way: 0x10AA2904
+ * is BR_PHASE_CUR's one slot and 0x10AA2974 / 0x10AA292C / 0x10AA293C are the
+ * three BrPhaseExt members, so the routines move the same dword between the
+ * same two places under both targets. Only the spelling of the addresses
+ * changes -- and only here, because only here is the whole function body one
+ * move, with nothing else for the extra loads to hide behind. */
+#ifdef _MSC_VER
+extern BrPhase_ *g_brPhaseAA2904;   /* 0x10AA2904 -- BR_PHASE_CUR's dword  */
+extern BrPhase_ *g_brPhaseAA2974;   /* 0x10AA2974 -- g_pExt->pAA2974       */
+extern BrPhase_ *g_brPhaseAA292C;   /* 0x10AA292C -- g_pExt->pAA292C       */
+extern BrPhase_ *g_brPhaseAA293C;   /* 0x10AA293C -- g_pExt->pAA293C       */
+#define BR31_GOTO_CUR    g_brPhaseAA2904
+#define BR31_GOTO_2974   g_brPhaseAA2974
+#define BR31_GOTO_292C   g_brPhaseAA292C
+#define BR31_GOTO_293C   g_brPhaseAA293C
+#else
+#define BR31_GOTO_CUR    BR_PHASE_CUR
+#define BR31_GOTO_2974   g_pExt->pAA2974
+#define BR31_GOTO_292C   g_pExt->pAA292C
+#define BR31_GOTO_293C   g_pExt->pAA293C
+#endif
+
 /* WHAT IT DOES: switches straight to one particular screen without closing
  * anything down first -- a jump, not a leave. */
 /* @implements 0x10046F50 d3d BrPhaseGoto_10046F50 */
-int32_t BrPhaseGoto_10046F50(void) { BR_PHASE_CUR = g_pExt->pAA2974; return 0; }
+int32_t BrPhaseGoto_10046F50(void) { BR31_GOTO_CUR = BR31_GOTO_2974; return 0; }
 /* WHAT IT DOES: switches straight to a different particular screen, again with
  * no teardown. */
 /* @implements 0x10046FC0 d3d BrPhaseGoto_10046FC0 */
-int32_t BrPhaseGoto_10046FC0(void) { BR_PHASE_CUR = g_pExt->pAA292C; return 0; }
+int32_t BrPhaseGoto_10046FC0(void) { BR31_GOTO_CUR = BR31_GOTO_292C; return 0; }
 /* WHAT IT DOES: the third of the plain jumps -- makes one particular screen
  * current and nothing else. */
 /* @implements 0x10047050 d3d BrPhaseGoto_10047050 */
-int32_t BrPhaseGoto_10047050(void) { BR_PHASE_CUR = g_pExt->pAA293C; return 0; }
+int32_t BrPhaseGoto_10047050(void) { BR31_GOTO_CUR = BR31_GOTO_293C; return 0; }
 
 /* --- LEAVE routines with a different shape -------------------------------- */
 
@@ -797,14 +903,14 @@ int BrPhaseGuard_100471F0(void *pEntity)
 /* @implements 0x10047210 d3d BrPhaseEdit_10047210 */
 int BrPhaseEdit_10047210(void *pArg)
 {
-    if (g_pExt->nAA2AD4 != 0) {
+    if (BR31_AA2AD4 != 0) {
         (void)BrExt_10041A00(pArg);
     } else if (BrExt_1003E0E0() != 0) {
         (void)BrExt_10041AC0(pArg);
     } else {
         return 1;                   /* nAA33E4 is NOT cleared on this path */
     }
-    g_pExt->nAA33E4 = 0;
+    BR31_AA33E4 = 0;
     return -1;
 }
 
@@ -814,14 +920,14 @@ int BrPhaseEdit_10047210(void *pArg)
 /* @implements 0x10047250 d3d BrPhaseEdit_10047250 */
 int BrPhaseEdit_10047250(void *pArg)
 {
-    if (g_pExt->nAA2AD4 != 0) {
+    if (BR31_AA2AD4 != 0) {
         (void)BrExt_10042410(pArg);
     } else if (BrExt_1003E0E0() != 0) {
         (void)BrExt_100424D0(pArg);
     } else {
         return 1;
     }
-    g_pExt->nAA33E4 = 0;
+    BR31_AA33E4 = 0;
     return -1;
 }
 
@@ -831,9 +937,9 @@ int BrPhaseEdit_10047250(void *pArg)
 /* @implements 0x10047340 d3d BrPhaseNameClear_10047340 */
 int BrPhaseNameClear_10047340(void)
 {
-    memset(g_pExt->szA9D618, 0, sizeof(g_pExt->szA9D618));   /* 8 dwords */
-    g_pExt->nAA28A4 = 0;
-    g_pExt->bAA26F5 = 0;
+    memset(BR31_A9D618, 0, BR_NAME31_LEN);   /* 8 dwords */
+    BR31_AA28A4 = 0;
+    BR31_AA26F5 = 0;
     return 1;
 }
 
@@ -970,10 +1076,10 @@ void BrPhaseKeyPush_10047610(void)
     signed char   cKey;
     int32_t       i;
 
-    if (g_pExt->nAA33E4 == 0)
+    if (BR31_AA33E4 == 0)
         return;
 
-    bKey = (unsigned char)(uint32_t)g_pExt->nAA33E4;
+    bKey = (unsigned char)(uint32_t)BR31_AA33E4;
 
     /* SIGNED byte comparisons: 0x80..0xFF are negative and fall through
      * untouched, so only 'A'..'Z' are lowercased. */
@@ -981,16 +1087,16 @@ void BrPhaseKeyPush_10047610(void)
     if (cKey >= 0x41 && cKey <= 0x5A)
         cKey = (signed char)(cKey + 0x20);
 
-    i = g_pExt->nAA2A48;
-    g_pExt->aA9E150[i] = (int32_t)cKey;     /* movsx -- sign-extended */
+    i = BR31_AA2A48;
+    BR31_A9E150[i] = (int32_t)cKey;         /* movsx -- sign-extended */
 
     i++;
-    g_pExt->nAA2A48 = i;
+    BR31_AA2A48 = i;
     if (i >= 32)                            /* wraps AFTER the store */
-        g_pExt->nAA2A48 = 0;
+        BR31_AA2A48 = 0;
 
     BrExt_10047660();
-    g_pExt->nAA33E4 = 0;
+    BR31_AA33E4 = 0;
 }
 
 /* --- the six mode callbacks ----------------------------------------------- */
@@ -1001,9 +1107,9 @@ void BrPhaseKeyPush_10047610(void)
 /* @implements 0x100474D0 d3d BrPhaseMode_100474D0 */
 void BrPhaseMode_100474D0(void)
 {
-    g_pExt->nAA28F0 = 1;
+    BR31_AA28F0 = 1;
     BrExt_10072AF0(2, 0x00200020u);
-    g_pExt->nAA2854 = 2;
+    BR31_AA2854 = 2;
 }
 
 /* WHAT IT DOES: the same as the routine above for a different setting -- raise
@@ -1011,9 +1117,9 @@ void BrPhaseMode_100474D0(void)
 /* @implements 0x10047500 d3d BrPhaseMode_10047500 */
 void BrPhaseMode_10047500(void)
 {
-    g_pExt->nAA28F8 = 1;
+    BR31_AA28F8 = 1;
     BrExt_10072AF0(2, 0x00200020u);
-    g_pExt->nAA2854 = 2;
+    BR31_AA2854 = 2;
 }
 
 /* WHAT IT DOES: the third of the six -- a third setting's flag, the same
@@ -1021,9 +1127,9 @@ void BrPhaseMode_10047500(void)
 /* @implements 0x10047530 d3d BrPhaseMode_10047530 */
 void BrPhaseMode_10047530(void)
 {
-    g_pExt->nAA28FC = 1;
+    BR31_AA28FC = 1;
     BrExt_10072AF0(2, 0x00200020u);
-    g_pExt->nAA2854 = 2;
+    BR31_AA2854 = 2;
 }
 
 /* WHAT IT DOES: the odd one of the six: instead of raising a flag it sets a
@@ -1032,9 +1138,9 @@ void BrPhaseMode_10047530(void)
 /* @implements 0x10047560 d3d BrPhaseMode_10047560 */
 void BrPhaseMode_10047560(void)
 {
-    g_pExt->n0AC6A4 = 0x7FFF;
+    BR31_0AC6A4 = 0x7FFF;
     BrExt_10072AF0(3, 0x00200020u);
-    g_pExt->nAA2854 = 3;
+    BR31_AA2854 = 3;
 }
 
 /* WHAT IT DOES: the fifth of the six -- another setting's flag and the same
@@ -1042,9 +1148,9 @@ void BrPhaseMode_10047560(void)
 /* @implements 0x10047590 d3d BrPhaseMode_10047590 */
 void BrPhaseMode_10047590(void)
 {
-    g_pExt->nAA2A40 = 1;
+    BR31_AA2A40 = 1;
     BrExt_10072AF0(2, 0x00200020u);
-    g_pExt->nAA2854 = 2;
+    BR31_AA2854 = 2;
 }
 
 /* WHAT IT DOES: the last of the six -- one more setting's flag and the same
@@ -1052,7 +1158,7 @@ void BrPhaseMode_10047590(void)
 /* @implements 0x100475C0 d3d BrPhaseMode_100475C0 */
 void BrPhaseMode_100475C0(void)
 {
-    g_pExt->nAA28F4 = 1;
+    BR31_AA28F4 = 1;
     BrExt_10072AF0(2, 0x00200020u);
-    g_pExt->nAA2854 = 2;
+    BR31_AA2854 = 2;
 }

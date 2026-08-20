@@ -126,22 +126,38 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
  * this packet reads it back -- so treat the effect on the picture as
  * unknown. */
 /* @implements 0x1001CD60 d3d BrGbiSet0A79E8 */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd)
+{
+    g_brGbi0A79E8 = pCmd->w1;
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f0A79E8 = pCmd->w1;
     return pCmd + 1;
 }
+#endif
 
 /* 0x1001CD80 */
 /* WHAT IT DOES: another one-line drawing-command handler that parks the
  * command's payload in a graphics setting and moves on. As with its
  * neighbour, what the setting is used for is not established. */
 /* @implements 0x1001CD80 d3d BrGbiSet4C5174 */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiSet4C5174(BrGfxWords *pCmd)
+{
+    g_brGbi4C5174 = pCmd->w1;
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f4C5174 = pCmd->w1;
     return pCmd + 1;
 }
+#endif
 
 /* 0x1001CF30 -- G_SETTILESIZE, opcode 0xF2.  The name was G_SETSCISSOR until
  * the opcode audit; BRD3D's dispatch table at 0x100A79F0 holds this address in
@@ -323,12 +339,25 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
  * in a graphics setting and then passes that same value to another routine
  * which acts on it. What the setting means is not established here. */
 /* @implements 0x10020F80 d3d BrGbiSet4C1694 */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd)
+{
+    /* w1 named once: the original loads it a single time and reuses that
+     * register for both the store and the call argument. */
+    uint32_t w1 = pCmd->w1;
+
+    g_brGbi4C1694 = w1;
+    BrGbiCall10020FA0(w1);
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->f1694 = pCmd->w1;
     BrGbiCall10020FA0(pCmd->w1);
     return pCmd + 1;
 }
+#endif
 
 /* 0x10020F50 */
 /* WHAT IT DOES: a drawing command with a small selector byte in it: selector
@@ -342,7 +371,11 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
     if (sel == 0)
         return BrGbiCall100243D0(pCmd);
     if (sel == 3)
+#ifdef BR_MATCHING_BUILD
+        return BrGbiSet4C1694(pCmd);
+#else
         return BrGbiSet4C1694(pSt, pCmd);
+#endif
     return pCmd + 1;
 }
 
@@ -614,57 +647,44 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
     return (const void *)(uintptr_t)addr;
 }
 
-/* 0x10029E60 */
-/* WHAT IT DOES: during the pre-pass that hunts for texture loads, notes
- * where the current run of commands ended, the first time anything ends it.
- * Later ends are ignored so the run keeps its original extent. */
-/* @implements 0x10029E60 d3d BrGbiTexScanMark */
-void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd)
-{
-    if (pSt->pRunEnd == NULL)
-        pSt->pRunEnd = pCmd;
-}
-
-/* 0x10029410 */
-/* WHAT IT DOES: closes off a recognised texture-load run and replaces it
- * with a single command. The staged texture bytes are handed to the texture
- * cache; if the cache accepts them and gives back an id, the run's first
- * command is overwritten with a short "use texture id N, skip the next so-
- * many commands" instruction, so the several commands the N64 needed to load
- * a texture collapse into one on the PC. */
-/* @implements 0x10029410 d3d BrGbiTexScanFlush */
-void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd)
-{
-    int id;
-
-    if (pSt->state == 0)
-        return;
-    if (pSt->pRunEnd == NULL)
-        pSt->pRunEnd = pCmd;
-
-    id = BrGbiCall10029470(pSt->aStage);
-    if (id != -1) {
-        BrGfxWords *pRun = pSt->pRunStart;
-        pRun->w0 = ((uint32_t)id & 0x00FFFFFFu) | 0xDC000000u;
-        /* Length in 8-byte commands: the original does the pointer
-         * subtraction and an arithmetic shift right by 3. */
-        pRun->w1 = (uint32_t)(int32_t)(pSt->pRunEnd - pSt->pRunStart);
-    }
-    pSt->state = 0;
-}
-
 /* 0x10029E80  G_TEXTURE */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanTexture(const BrGfxWords *pCmd)
+{
+    g_brTexScan5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
+    g_brTexScan5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
+}
+#else
 void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     pSt->f5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
     pSt->f5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
 }
+#endif
 
 /* 0x10029EB0  G_SETTIMG */
 /* WHAT IT DOES: during the texture-load hunt, notes the address and pixel
  * size of the image a load is about to read from, and -- if a run was not
  * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetImg(BrGfxWords *pCmd)
+{
+    int32_t s = g_brTexScanState;
+
+    if (s != 0 && s != 3 && s != 6)
+        return;
+
+    g_brTexScanTimgSiz  = (int32_t)((pCmd->w0 >> 19) & 3u);
+    g_brTexScanTimgAddr = pCmd->w1;
+    g_brTexScanSrcSeen  = 0;
+    if (s == 0) {
+        g_brTexScanRunStart = pCmd;
+        g_brTexScanRunEnd   = NULL;
+    }
+    g_brTexScanState = 1;
+}
+#else
 void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     int32_t s = pSt->state;
@@ -681,6 +701,7 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
     }
     pSt->state = 1;
 }
+#endif
 
 /* 0x10029F10  G_LOADTLUT */
 /* WHAT IT DOES: during the texture-load hunt, copies a colour palette out of
@@ -706,17 +727,6 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
      * data-driven; the original does not check it and neither does this. */
     memcpy(pSt->pTlutDst, pSrc, len);
     pSt->state = 7;
-}
-
-/* 0x10029F80  G_RDPLOADSYNC */
-/* WHAT IT DOES: during the texture-load hunt, advances the state machine
- * when the expected wait-for-load command shows up after an image address
- * was set. */
-/* @implements 0x10029F80 d3d BrGbiTexScanLoadSync */
-void BrGbiTexScanLoadSync(BrGbiTexScan *pSt)
-{
-    if (pSt->state == 1)
-        pSt->state = 2;
 }
 
 /* 0x10029FA0  G_LOADBLOCK */
@@ -749,33 +759,39 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
     pSt->state = 3;
 }
 
-/* 0x1002A000  G_RDPPIPESYNC */
-/* WHAT IT DOES: during the texture-load hunt, advances the state machine
- * when the expected pipeline-wait command shows up after a palette load. */
-/* @implements 0x1002A000 d3d BrGbiTexScanPipeSync */
-void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
-{
-    if (pSt->state == 7)
-        pSt->state = 8;
-}
-
-/* 0x1002A020  G_RDPTILESYNC */
-/* WHAT IT DOES: during the texture-load hunt, advances the state machine
- * when the expected tile-wait command shows up after a pixel or palette
- * load. */
-/* @implements 0x1002A020 d3d BrGbiTexScanTileSync */
-void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
-{
-    if (pSt->state == 3 || pSt->state == 7)
-        pSt->state = 4;
-}
-
 /* 0x1002A040  G_SETTILE */
 /* WHAT IT DOES: during the texture-load hunt, records everything one of the
  * eight texture slots is being configured with -- pixel format and size,
  * where it sits in texture memory, and how it wraps, mirrors or clamps in
  * each direction -- and notes the highest slot used. */
 /* @implements 0x1002A040 d3d BrGbiTexScanSetTile */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetTile(const BrGfxWords *pCmd)
+{
+    uint32_t   w0 = pCmd->w0;
+    uint32_t   w1 = pCmd->w1;
+    int32_t    tile = (int32_t)((w1 >> 24) & 7u);
+    BrGbiTile *p = &g_brTexScanTiles[tile];
+
+    p->fmt     = (int32_t)((w0 >> 21) & 7u);
+    p->siz     = (int32_t)((w0 >> 19) & 3u);
+    p->line    = (int32_t)(((w0 >> 9) & 0x1FFu) << 3);
+    p->tmem    = (int32_t)(w0 & 0x1FFu);
+    p->mirrorS = (int32_t)((w1 >> 8)  & 1u);
+    p->clampS  = (int32_t)((w1 >> 9)  & 1u);
+    p->mirrorT = (int32_t)((w1 >> 18) & 1u);
+    p->clampT  = (int32_t)((w1 >> 19) & 1u);
+    p->maskS   = (int32_t)((w1 >> 4)  & 0xFu);
+    p->maskT   = (int32_t)((w1 >> 14) & 0xFu);
+    p->shiftS  = (int32_t)(w1 & 0xFu);
+    p->shiftT  = (int32_t)((w1 >> 10) & 0xFu);
+
+    if (g_brTexScanState == 3 || g_brTexScanState == 4 ||
+        g_brTexScanState == 7 || tile > g_brTexScanMaxTile)
+        g_brTexScanMaxTile = tile;
+    g_brTexScanState = 5;
+}
+#else
 void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t   w0 = pCmd->w0;
@@ -802,11 +818,26 @@ void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
         pSt->maxTile = tile;
     pSt->state = 5;
 }
+#endif
 
 /* 0x1002A140  G_SETTILESIZE */
 /* WHAT IT DOES: during the texture-load hunt, records which rectangle of the
  * image one of the eight texture slots covers. */
 /* @implements 0x1002A140 d3d BrGbiTexScanSetTileSize */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetTileSize(const BrGfxWords *pCmd)
+{
+    uint32_t   w0 = pCmd->w0;
+    uint32_t   w1 = pCmd->w1;
+    BrGbiTile *p = &g_brTexScanTiles[(w1 >> 24) & 7u];
+
+    p->uls = (int32_t)((w0 >> 12) & 0xFFFu);
+    p->ult = (int32_t)(w0 & 0xFFFu);
+    g_brTexScanState = 6;
+    p->lrs = (int32_t)((w1 >> 12) & 0xFFFu);
+    p->lrt = (int32_t)(w1 & 0xFFFu);
+}
+#else
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t   w0 = pCmd->w0;
@@ -819,6 +850,7 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
     p->lrs = (int32_t)((w1 >> 12) & 0xFFFu);
     p->lrt = (int32_t)(w1 & 0xFFFu);
 }
+#endif
 
 /* 0x1002A1A0  G_SETOTHERMODE_L */
 /* WHAT IT DOES: during the texture-load hunt, watches for changes to the
@@ -826,6 +858,26 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * needs special handling. A handful of specific blend settings, and anything
  * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
+{
+    uint32_t v;
+
+    if ((pCmd->w0 & 0xFF00u) != 0x300u)
+        return;
+
+    v = pCmd->w1;
+    if (v == 0x504F50u || v == 0xC184240u || v == 0x504240u || v == 0) {
+        g_brTexScan575414 = 0;
+        return;
+    }
+    if ((v & 0x1800u) == 0) {
+        g_brTexScan575414 = 0;
+        return;
+    }
+    g_brTexScan575414 = (int32_t)((v >> 16) & 1u);
+}
+#else
 void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 {
     uint32_t v;
@@ -845,6 +897,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
     }
     pSt->f575414 = (int32_t)((v >> 16) & 1u);
 }
+#endif
 
 /* 0x1002A250 */
 /* WHAT IT DOES: during the texture-load hunt, reads the texture-filtering
@@ -1595,11 +1648,19 @@ void BrCopy8Words(void *pDst, const void *pSrc)
 /* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
  * batch of loaded geometry starts from nothing. */
 /* @implements 0x1002B9C0 d3d BrRcaResetCounts */
+#ifdef BR_MATCHING_BUILD
+void BrRcaResetCounts(void)
+{
+    g_brRca67B54C = 0;
+    g_brRca67B548 = 0;
+}
+#else
 void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 {
     pCache->nEntries = 0;
     pList->n = 0;
 }
+#endif
 
 /* 0x1002B9E0 has moved to br_bits.c, which carries both builds' addresses:
  * br_track.c had transcribed the same function as `swap_u16_run` under
@@ -1613,10 +1674,14 @@ void BrSwapU16x4(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
 
-    br16_swap_u16_at(p + 0);
-    br16_swap_u16_at(p + 2);
-    br16_swap_u16_at(p + 4);
-    br16_swap_u16_at(p + 6);
+    /* MATCHING: the original inlines all four swaps and merges each pair of
+     * byte stores into one 16-bit store built as `lo | (hi << 8)` -- the
+     * `xor ecx,ecx / mov cl / mov ch / mov [p],cx` shape.  Calling
+     * br16_swap_u16_at() four times will never reproduce that. */
+    *(uint16_t *)(void *)(p + 0) = (uint16_t)(p[1] | (p[0] << 8));
+    *(uint16_t *)(void *)(p + 2) = (uint16_t)(p[3] | (p[2] << 8));
+    *(uint16_t *)(void *)(p + 4) = (uint16_t)(p[5] | (p[4] << 8));
+    *(uint16_t *)(void *)(p + 6) = (uint16_t)(p[7] | (p[6] << 8));
 }
 
 /* 0x1002BA00 */
@@ -1625,15 +1690,20 @@ void BrSwapU16x4(void *pv)
 /* @implements 0x1002BA00 d3d BrSwapU16x4Array */
 void BrSwapU16x4Array(void *pv, int count)
 {
-    uint8_t *p = (uint8_t *)pv;
-    int      i;
+    uint8_t *p;
 
+    /* MATCHING: the original tests the count BEFORE it ever touches pv, so
+     * the count register is allocated first (edi) and the cursor second
+     * (esi).  Hoisting `p` above the guard swaps the two pushes.  The loop
+     * is a do/while on the count itself -- `dec edi / jne` -- not a separate
+     * induction variable. */
     if (count <= 0)
         return;
-    for (i = 0; i < count; ++i) {
+    p = (uint8_t *)pv;
+    do {
         BrSwapU16x4(p);
         p += 8;
-    }
+    } while (--count);
 }
 
 /* 0x1002BA60 */
@@ -1642,15 +1712,17 @@ void BrSwapU16x4Array(void *pv, int count)
 /* @implements 0x1002BA60 d3d BrSwapVec3Array */
 void BrSwapVec3Array(void *pv, int count)
 {
-    uint8_t *p = (uint8_t *)pv;
-    int      i;
+    uint8_t *p;
 
+    /* MATCHING: same shape as BrSwapU16x4Array -- count tested first, cursor
+     * materialised inside the guard, do/while on the count. */
     if (count <= 0)
         return;
-    for (i = 0; i < count; ++i) {
+    p = (uint8_t *)pv;
+    do {
         BrSwapVec3(p);
         p += 12;
-    }
+    } while (--count);
 }
 
 /* 0x1002BC90 */

@@ -243,7 +243,7 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 /* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
  * perspective" values, undoing anything that had been left there. */
 /* @implements 0x10075340 d3d BrMat4SetLastColumn */
-void BrMat4SetLastColumn(BrMat4 *pM)
+void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
 {
     pM->m[3][3] = 1.0f;
     pM->m[2][3] = 0.0f;

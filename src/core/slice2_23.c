@@ -23,6 +23,62 @@
 #include <stdio.h>
 #include <string.h>
 
+/* ==========================================================================
+ * Matching build: direct globals and the thiscall bridge
+ *
+ * The port threads a BrUiGlobals pointer, but the original addresses every one
+ * of these settings absolutely (`a1 f4 b3 0a 10` == `mov eax,[0x100AB3F4]`).
+ * The addresses are the ones the BrUiGlobals field comments in slice2_23.h
+ * already carry; the names follow the "XSLICE 0x..." convention used by
+ * slice2_20.c.
+ *
+ * The nested widget at +0x3838 is dispatched __thiscall -- `this` in ecx and
+ * the one int argument pushed and cleaned by the callee.  VC5's C compiler has
+ * no __thiscall keyword; __fastcall puts the first REGISTER-ELIGIBLE argument
+ * in ecx, and a struct is never register-eligible, so a 4-byte struct in
+ * second position is forced back onto the stack.  Same trick, same reasoning
+ * as BrSub10060260 in slice4_52.c -- see br_match.h.
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+/* XSLICE 0x100AA010 */ extern int32_t  g_i0AA010;
+/* XSLICE 0x10220B20 */ extern int32_t  g_i220B20;
+/* XSLICE 0x100AB3D8 */ extern int32_t  g_i0AB3D8;
+/* XSLICE 0x100AB3E0 */ extern void    *g_p0AB3E0;
+/* XSLICE 0x100AB3F4 */ extern int32_t  g_i0AB3F4;
+/* XSLICE 0x100AC65C */ extern int32_t  g_i0AC65C;
+/* XSLICE 0x10AA2840 */ extern int32_t  g_iAA2840;
+/* XSLICE 0x10AA2880 */ extern int32_t  g_iAA2880;
+/* XSLICE 0x10AA28AC */ extern int32_t  g_iAA28AC;
+/* XSLICE 0x10AA28D8 */ extern int32_t  g_iAA28D8;
+/* XSLICE 0x10AA2A2C */ extern int32_t  g_iAA2A2C;
+/* XSLICE 0x10AA2A30 */ extern int32_t  g_iAA2A30;
+/* XSLICE 0x10AA2A34 */ extern int32_t  g_iAA2A34;
+/* XSLICE 0x10B4E708 */ extern uint32_t g_uB4E708;
+/* XSLICE 0x10B4E70C */ extern uint32_t g_uB4E70C;
+/* XSLICE 0x10AA26E8 */ extern const int8_t  g_abAA26E8[];
+/* XSLICE 0x10A9D068 */ extern const int16_t g_awA9D068[];
+
+typedef struct { int32_t v; } BrUiSelArg;
+typedef int32_t(__fastcall *BrUiSelOfferFn)(BrUiObj *pThis, BrUiSelArg a);
+typedef void(__fastcall *BrUiSelCommitFn)(BrUiObj *pThis, BrUiSelArg a);
+
+/* BrUiLdPtr is an extern in slice2_23.h, so VC5 cannot inline it and emits a
+ * real call where the original has a bare `mov edx,[eax+0x3838]`.  Dereference
+ * directly instead. */
+#define BR23_SEL_VTBL(pObj_) \
+    (*(const BrUiWidgetVtbl *const *)((pObj_) + BR_UI_OFF_SEL))
+
+/* `pVt->f20(pSel, v)` spelled as the original's thiscall. */
+#define BR23_SEL_OFFER(pObj_, r_, v_)                                        \
+    do {                                                                     \
+        BrUiObj              *pSel_ = (pObj_) + BR_UI_OFF_SEL;               \
+        const BrUiWidgetVtbl *pVt_  = BR23_SEL_VTBL(pObj_);                  \
+        BrUiSelArg            a_;                                            \
+        a_.v = (v_);                                                         \
+        (r_) = ((BrUiSelOfferFn)pVt_->f20)(pSel_, a_);                       \
+    } while (0)
+#endif /* BR_MATCHING_BUILD */
+
 /* Layout facts the original's arithmetic depends on. */
 typedef char br23_assert_cfgrec[(sizeof(BrCfgRec) == 0x24) ? 1 : -1];
 typedef char br23_assert_item[
@@ -579,7 +635,16 @@ int32_t BrUiDraw1003E9E0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
 int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_i0AB3F4);
+    if (r >= 0) {
+        g_i0AB3F4 = r;
+    }
+#else
     (void)br23_poll_store(pObj, &pG->g0AB3F4);
+#endif
     return 1;
 }
 

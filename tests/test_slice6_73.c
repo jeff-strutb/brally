@@ -332,8 +332,12 @@ void BrVec3Normalise(BrVec3 *pV)
 /* the two hooks 0x10071550 calls */
 static int s_a71550[2];
 static int s_i71550;
-static void Hook71560(void) { s_a71550[s_i71550++ & 1] = 1560; }
-static void Hook71630(void) { s_a71550[s_i71550++ & 1] = 1630; }
+/* 0x10071550 calls these two directly, not through the g_br73.pfn* slots --
+ * the original has no indirection and no null test.  They are therefore real
+ * external symbols now rather than installable hooks; neither body is
+ * decompiled yet, so these stand in and still record call order. */
+void BrSub10071560(void) { s_a71550[s_i71550++ & 1] = 1560; }
+void BrSub10071630(void) { s_a71550[s_i71550++ & 1] = 1630; }
 
 /* ==========================================================================
  * Fixture
@@ -375,8 +379,6 @@ static void Setup(void)
     g_br73.pPhaseVtbl    = &s_phaseVtbl;
     g_br73.n0AB428       = 0;
     g_br73.n0AB42C       = 380;
-    g_br73.pfn10071560   = Hook71560;
-    g_br73.pfn10071630   = Hook71630;
     strcpy(g_aBr39B720, "");
 }
 

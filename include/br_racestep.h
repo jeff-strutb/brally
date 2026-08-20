@@ -208,6 +208,7 @@
 #include "br_track.h"     /* BrTrack                                      */
 #include "br_vec.h"       /* BrVec3                                       */
 #include "slice3_41.h"    /* BrDriver, BrDriverCar, BrRankAssign          */
+#include "br_match.h"     /* BR_THISCALL1 -- thiscall via __fastcall      */
 
 /* ======================================================================
  * The start-light script, 0x100A9578
@@ -414,7 +415,9 @@ void BrRacePathAdvance(uint32_t offNode, uint32_t index,
 int  BrRaceSeedPhantom(BrDriver *pDrv, float dist);
 
 /* 0x10061430, 11 bytes: `car->fF78 = 0`.  Its whole body. */
-void BrRaceCarPre(BrDriverCar *pCar);
+/* thiscall in the original: `this` in ecx, nothing pushed.  BR_THISCALL1 is
+ * empty off-MSVC, so the port signature is unchanged. */
+void BR_THISCALL1 BrRaceCarPre(BrDriverCar *pCar);
 
 /* 0x10061F60 and 0x100623E0 -- one driver, before and after. */
 void BrRaceDriverStep(BrDriver *pDrv);

@@ -38,6 +38,11 @@
 #include "slice8_86.h"
 #include "slice7_82.h"
 
+/* 0x1002C2C0 loads the address of the 0x106806B0 frame-timer object as an
+ * immediate and passes it in ecx.  The object itself lives in slice2_17.c,
+ * which this test does not link, so it needs storage here. */
+unsigned char g_br6806B0[0x24];
+
 static int g_fail;
 
 #define CHECK(cond, ...)                                                     \

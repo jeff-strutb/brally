@@ -536,7 +536,7 @@ void BrEnt35FC0(void *pThis);
 /* 0x1005B0C0 (thiscall).  Re-seats the text widget's vtable to 0x1008F728
  * and nothing else -- the destructor body of a class with no members to
  * release. */
-void BrTextBoxDtor(BrTextBox *pBox);
+void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox);
 
 /* 0x100771B0.  Fills a 256-byte DirectInput keyboard buffer.  Returns 1 when
  * there is no device (a POSITIVE value, so callers testing >= 0 proceed with
