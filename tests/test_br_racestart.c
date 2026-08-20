@@ -459,7 +459,13 @@ static void test_entrantset(void)
     g_brRaceNEntrant = 0x5A;
     BrRaceEntrantCountSet(7, f_nullStep);
     CHECK(g_brRaceNEntrant == 7);
-    CHECK(BrGameStepGet() == f_nullStep);
+    /* The original pushes the address of its own one-byte `ret` stub as an
+     * immediate -- it never reads a second argument, so the pfnNullStep
+     * parameter has no counterpart in it and is now ignored.  What must hold
+     * is that the step was replaced, not that the caller's own callback was
+     * installed.  BrRaceStart re-installs its null step on the next line
+     * regardless, which is why nothing downstream notices. */
+    CHECK(BrGameStepGet() != f_raceStep);
 
     g_brRace6EECC8 = 0;
     BrRaceSub1002F6C0();

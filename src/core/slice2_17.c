@@ -54,6 +54,12 @@
 
 static BrS17State g_s17;
 
+/* 0x106806B0 -- the 0x24-byte frame-timer object 0x100751D0 / 0x10075240
+ * operate on. slice8_86.c treats it as an opaque byte image (see its
+ * br86_ld32 / br86_st32 accessors); it is only ever named by its address, so
+ * it is defined here as raw storage. */
+unsigned char g_br6806B0[0x24];
+
 BrS17State *BrS17GetState(void)
 {
     return &g_s17;
@@ -66,8 +72,19 @@ BrS17State *BrS17GetState(void)
 extern void BrStub10008B80(intptr_t a0, ...);
 /* XSLICE 0x10060E90 */
 extern int   BrX10060E90(void);
-/* XSLICE 0x100751D0 */
-extern void  BrX100751D0(void *pThis);
+/* XSLICE 0x100751D0
+ * 0x1002C2A0 tail-jumps into it with the object in ecx and nothing on the
+ * stack: it is a C++ __thiscall method. MSVC 5.0's C front end cannot spell
+ * __thiscall, but for a single pointer argument __fastcall is byte-identical
+ * at the call site (arg1 in ecx, no stack cleanup), so that is what the
+ * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
+ * one-argument function. */
+#if defined(_MSC_VER)
+#define BRS17_THISCALL __fastcall
+#else
+#define BRS17_THISCALL
+#endif
+extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
 /* XSLICE 0x1003563A */
@@ -877,7 +894,12 @@ void BrS17BankFlip(void)
 /* @implements 0x1002C2A0 d3d BrS17Release */
 void BrS17Release(void)
 {
-    BrX100751D0(g_s17.pThis6806B0);
+    /* `mov ecx, 0x106806B0 / jmp 0x100751D0`. The operand is an IMMEDIATE --
+     * the ADDRESS of the frame-timer object, not a pointer loaded out of a
+     * field -- so the object itself is named here and its address taken.
+     * Routing this through g_s17.pThis6806B0 costs a `mov eax, [mem]` the
+     * original does not have. */
+    BrX100751D0(g_br6806B0);
 }
 
 /* 0x1002C2B0 */

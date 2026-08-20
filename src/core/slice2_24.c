@@ -441,7 +441,14 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
 /* @implements 0x10040870 d3d BrMenuCap0870 */
 int32_t BrMenuCap0870(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC598, 4, g_menu.gAA2A08));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both -- the bounds test, the table
+     * read and the store are one body, so the delegating form is short
+     * by the call setup. */
+    uint32_t i = (uint32_t)(g_menu.gAA2A08);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC598[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x10040890 */
@@ -451,7 +458,14 @@ int32_t BrMenuCap0870(BrMenuItem *pItem)
 /* @implements 0x10040890 d3d BrMenuCap0890 */
 int32_t BrMenuCap0890(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC59C, 4, g_menu.g0AC64C));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both -- the bounds test, the table
+     * read and the store are one body, so the delegating form is short
+     * by the call setup. */
+    uint32_t i = (uint32_t)(g_menu.g0AC64C);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC59C[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x100408B0 */
@@ -461,13 +475,27 @@ int32_t BrMenuCap0890(BrMenuItem *pItem)
 /* @implements 0x100408B0 d3d BrMenuCap08B0 */
 int32_t BrMenuCap08B0(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC5A0, 4, g_menu.g0AC650));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both -- the bounds test, the table
+     * read and the store are one body, so the delegating form is short
+     * by the call setup. */
+    uint32_t i = (uint32_t)(g_menu.g0AC650);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC5A0[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x10040930 */
 int32_t BrMenuCap0930(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC62C, 4, g_menu.gAA287C));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both -- the bounds test, the table
+     * read and the store are one body, so the delegating form is short
+     * by the call setup. */
+    uint32_t i = (uint32_t)(g_menu.gAA287C);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC62C[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x10040950.  When 0x118ABDBC is clear the entry is hard-wired to
@@ -497,13 +525,23 @@ int32_t BrMenuCap0990(BrMenuItem *pItem)
  * they are about to change actually looks like. */
 int32_t BrMenuCap09B0(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC634, 4, g_menu.gAA2A20));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both. */
+    uint32_t i = (uint32_t)(g_menu.gAA2A20);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC634[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x100409D0 */
 int32_t BrMenuCap09D0(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC638, 4, g_menu.gAA2A24));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both. */
+    uint32_t i = (uint32_t)(g_menu.gAA2A24);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC638[i] : (int16_t)0;
+    return 1;
 }
 
 /* 0x10041870 */
@@ -512,7 +550,12 @@ int32_t BrMenuCap09D0(BrMenuItem *pItem)
 /* @implements 0x10041870 d3d BrMenuCap1870 */
 int32_t BrMenuCap1870(BrMenuItem *pItem)
 {
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC628, 4, g_menu.gAA2A0C));
+    /* Written out rather than routed through BrMenuSetCaptionId and
+     * BrTabS8: the original inlines both. */
+    uint32_t i = (uint32_t)(g_menu.gAA2A0C);
+
+    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC628[i] : (int16_t)0;
+    return 1;
 }
 
 /* =====================================================================

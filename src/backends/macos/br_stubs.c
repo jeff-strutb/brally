@@ -129,6 +129,10 @@ long BrSub10061010(void); long BrSub10061010(void) { return br_stub("BrSub100610
 long BrSub10062C50(void); long BrSub10062C50(void) { return br_stub("BrSub10062C50"); }
 long BrSub10070610(void); long BrSub10070610(void) { return br_stub("BrSub10070610"); }
 long BrSub10070E60(void); long BrSub10070E60(void) { return br_stub("BrSub10070E60"); }
+/* Called directly by 0x10071550, which has no null test and no indirection.
+ * void rather than long: that is the signature slice6_73.c declares. */
+void BrSub10071560(void); void BrSub10071560(void) { (void)br_stub("BrSub10071560"); }
+void BrSub10071630(void); void BrSub10071630(void) { (void)br_stub("BrSub10071630"); }
 long BrSub100773F0(void); long BrSub100773F0(void) { return br_stub("BrSub100773F0"); }
 long BrSub1007A840(void); long BrSub1007A840(void) { return br_stub("BrSub1007A840"); }
 long BrSub1007A940(void); long BrSub1007A940(void) { return br_stub("BrSub1007A940"); }

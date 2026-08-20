@@ -67,6 +67,8 @@
 #ifndef SLICE2_19_H
 #define SLICE2_19_H
 
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -569,7 +571,7 @@ void BrPadTranslate(BrPad *pPad);
  * the mask FROM the second field and OVERWRITES it. Both fields are rewritten
  * from the pre-call values, so it is a single atomic edge split. */
 typedef struct BrBitPair { uint32_t a, b; } BrBitPair;
-void BrBitEdgeSplit(BrBitPair *pPair);
+void BR_THISCALL1 BrBitEdgeSplit(BrBitPair *pPair);
 
 /* ================================================================== */
 /* 6. Big-endian model fixup                                          */

@@ -175,11 +175,18 @@ void BrEnt35FC0(void *pThis)
  * destructor for a class with no owned memory compiles to -- there is nothing
  * to release. */
 /* @implements 0x1005B0C0 d3d BrTextBoxDtor */
-void BrTextBoxDtor(BrTextBox *pBox)
+void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox)
 {
-    /* The original stores the literal 0x1008F728.  slice3_39.h already
-     * carries that vtable as a hook rather than an address. */
+    /* The original is `mov dword ptr [ecx], 0x1008F728; ret` -- seven bytes.
+     * Two things have to line up.  `this` arrives in ecx, which BR_THISCALL1
+     * supplies; and the vtable is planted as an immediate ADDRESS, so this
+     * has to be an address-of, not a load through the g_pBrTextBoxVtbl hook
+     * (that would emit an extra `mov eax,[mem]` and miss by an instruction). */
+#ifdef BR_MATCHING_BUILD
+    pBox->pVtbl = &g_BrTextBoxVtbl;
+#else
     pBox->pVtbl = g_pBrTextBoxVtbl;
+#endif
 }
 
 /* ==========================================================================

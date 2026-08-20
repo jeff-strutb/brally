@@ -200,7 +200,7 @@ static int BrCtrlProfileIndex(int32_t sel)
  * gameplay defaults) filled in. This is what a player gets on a first run or
  * after choosing "restore defaults". */
 /* @implements 0x10069C90 d3d BrCtrlCfgInit */
-void BrCtrlCfgInit(BrCtrlCfg *pThis)
+void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
 {
     int i;
 
@@ -246,8 +246,14 @@ void BrCtrlCfgInit(BrCtrlCfg *pThis)
 /* WHAT IT DOES: brings a settings block into existence with everything at its
  * default, and hands it back. It is the constructor; all the work is the
  * defaulting above. */
+/* The original is __thiscall: `this` arrives in ecx and nothing is pushed.
+ * BR_THISCALL1 spells that as __fastcall, which for a single pointer argument
+ * is the same convention byte for byte -- and that is what lets 0x10069A60
+ * below tail-jump straight into it.  BrCtrlCfgInit must carry the convention
+ * too, otherwise the inner call here compiles as a cdecl push/add-esp pair
+ * where the original passes in the register. */
 /* @implements 0x10069A90 d3d BrCtrlCfgCtor */
-BrCtrlCfg *BrCtrlCfgCtor(BrCtrlCfg *pThis)
+BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis)
 {
     BrCtrlCfgInit(pThis);
     return pThis;

@@ -936,7 +936,7 @@ void BrPhaseDtor_10048870(BrPhaseFull *pThis)
  * and always reports success. Nothing in this packet fills that slot, so what
  * the call actually does depends entirely on the screen. */
 /* @implements 0x100488B0 d3d BrPhaseFn_100488B0 */
-int BrPhaseFn_100488B0(BrPhaseFull *pThis)
+int BR_THISCALL1 BrPhaseFn_100488B0(BrPhaseFull *pThis)
 {
     /* vtable +0x20 -- a slot no function in this packet implements. */
     pThis->pVtbl->f20(pThis);

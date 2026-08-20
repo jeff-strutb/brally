@@ -262,9 +262,22 @@ typedef struct BrGbiState {
 } BrGbiState;
 
 /* 0x1001CD60  f0A79E8 = w1. */
+#ifdef BR_MATCHING_BUILD
+/* One argument, not two: the original latches into the global directly and
+ * never receives a state pointer.  The port threads BrGbiState through so the
+ * latch is reachable without a fixed address. */
+extern uint32_t g_brGbi0A79E8;   /* 0x100A79E8 */
+BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd);
+#else
 BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd);
+#endif
 /* 0x1001CD80  f4C5174 = w1. */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t g_brGbi4C5174;   /* 0x104C5174 */
+BrGfxWords *BrGbiSet4C5174(BrGfxWords *pCmd);
+#else
 BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd);
+#endif
 /* 0x1001CF30  G_SETTILESIZE, opcode 0xF2 -- see BrGbiTileSize above for
  * why this is not the scissor.  Glide 0x1001EC30 == br_dl.c's
  * br_dl_settilesize is the same function. */
@@ -305,7 +318,13 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd);
  * 0 -> 0x100243D0, 3 -> 0x10020F80, anything else -> next command. */
 BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd);
 /* 0x10020F80  f1694 = w1, then 0x10020FA0(w1). */
+#ifdef BR_MATCHING_BUILD
+/* One argument in the original: the latch is a fixed global, not a field. */
+extern uint32_t g_brGbi4C1694;   /* 0x104C1694 */
+BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd);
+#else
 BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd);
+#endif
 
 /* 0x10021510  Unpacks (uls,ult) from w0 and (lrs,lrt,tile) from w1 and hands
  * them to 0x10021560 unscaled.
@@ -454,13 +473,29 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr);
 /* 0x10029410  Close a run: register aStage and, if accepted, overwrite the
  * run's first command with `0xDC000000 | (id & 0xFFFFFF)` and its w1 with
  * the run length in 8-byte commands. Reached from G_VTX / G_TRI1 / G_TRI2. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanFlush(BrGfxWords *pCmd);
+#else
 void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd);
+#endif
 /* 0x10029E60  Remember the first command that ends the run. Default arm. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanMark(BrGfxWords *pCmd);
+#else
 void BrGbiTexScanMark(BrGbiTexScan *pSt, BrGfxWords *pCmd);
+#endif
 /* 0x10029E80  G_TEXTURE. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanTexture(const BrGfxWords *pCmd);
+#else
 void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd);
+#endif
 /* 0x10029EB0  G_SETTIMG. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetImg(BrGfxWords *pCmd);
+#else
 void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd);
+#endif
 /* 0x10029F10  G_LOADTLUT: copies ((lrs-uls)+1) * ((lrt-ult)+1) * 2 bytes
  * from timgAddr to pTlutDst. DEVIATION: the length is entirely data-driven
  * and, exactly as in the original, unchecked -- pTlutDst must be big enough.
@@ -468,7 +503,26 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd);
 void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                           const void *pSrc);
 /* 0x10029F80  G_RDPLOADSYNC. */
+#ifdef BR_MATCHING_BUILD
+/* These three take NO argument in the original -- they read and write the
+ * state word at its absolute address.  The port threads BrGbiTexScan through
+ * so the state is reachable without a fixed address. */
+extern int32_t     g_brTexScanState;    /* 0x104D51AC */
+extern int32_t     g_brTexScanTimgSiz;  /* 0x104D51B4 */
+extern uint32_t    g_brTexScanTimgAddr; /* 0x104D51BC */
+extern uint32_t    g_brTexScanSrcSeen;  /* 0x10575434 */
+extern BrGfxWords *g_brTexScanRunStart; /* 0x105553FC */
+extern BrGfxWords *g_brTexScanRunEnd;   /* 0x10575438 */
+extern uint8_t     g_brTexScanStage[BR_GBI_STAGE_SIZE];  /* 0x104C51A8 */
+extern int32_t     g_brTexScan575414;   /* 0x10575414 */
+extern int32_t     g_brTexScan5553E8;   /* 0x105553E8 */
+extern int32_t     g_brTexScan5553E0;   /* 0x105553E0 */
+extern int32_t     g_brTexScanMaxTile;  /* 0x10575430 */
+extern BrGbiTile   g_brTexScanTiles[BR_GBI_TILE_COUNT];  /* 0x105551D8 */
+void BrGbiTexScanLoadSync(void);
+#else
 void BrGbiTexScanLoadSync(BrGbiTexScan *pSt);
+#endif
 /* 0x10029FA0  G_LOADBLOCK: stages 2*((lrs-uls)+1) bytes from `pSrc`.
  * DEVIATION: clamped to BR_GBI_STAGE_SIZE; `stageLen` still records the
  * unclamped request so the value the original would have published is not
@@ -477,13 +531,30 @@ void BrGbiTexScanLoadSync(BrGbiTexScan *pSt);
 void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                            const void *pSrc);
 /* 0x1002A000  G_RDPPIPESYNC.  0x1002A020  G_RDPTILESYNC. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanPipeSync(void);
+void BrGbiTexScanTileSync(void);
+#else
 void BrGbiTexScanPipeSync(BrGbiTexScan *pSt);
 void BrGbiTexScanTileSync(BrGbiTexScan *pSt);
+#endif
 /* 0x1002A040  G_SETTILE.  0x1002A140  G_SETTILESIZE. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetTile(const BrGfxWords *pCmd);
+#else
 void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd);
+#endif
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanSetTileSize(const BrGfxWords *pCmd);
+#else
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd);
+#endif
 /* 0x1002A1A0  G_SETOTHERMODE_L, only when w0 bits[15:8] == 0x03. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd);
+#else
 void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd);
+#endif
 /* 0x1002A210  G_SETOTHERMODE_H, w0 bits[15:8] of 0x0E or 0x11. */
 void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd);
 /* 0x1002A250  the 0x0E arm of the above. */
@@ -683,7 +754,16 @@ void BrCopy8Words(void *pDst, const void *pSrc);
 /* 0x1002B9C0  Reset both counters that 0x1002B9A0 leaves alone: the vertex
  * cache's entry count (0x1067B54C) and the pointer list's count
  * (0x1067B548), both owned by slice1_05. */
+#ifdef BR_MATCHING_BUILD
+/* The original takes NO arguments -- it zeroes the two counters at their
+ * absolute addresses.  The port passes the owning objects instead, which is
+ * why it loads two pointers off the stack that the original never reads. */
+extern int32_t g_brRca67B54C;   /* 0x1067B54C  vertex cache entry count */
+extern int32_t g_brRca67B548;   /* 0x1067B548  pointer list count       */
+void BrRcaResetCounts(void);
+#else
 void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList);
+#endif
 
 /* 0x1002B9E0  Byte-swap `count` u16s in place.  DEFINED IN br_bits.c, which
  * also carries BRGlide's 0x10018A50 for it -- br_track.c had its own copy of

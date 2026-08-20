@@ -870,7 +870,7 @@ void BrPadTranslate(BrPad *pPad)
  * frame" and "still held from last frame", which is how the game tells a tap
  * from a hold. */
 /* @implements 0x10035FC0 d3d BrBitEdgeSplit */
-void BrBitEdgeSplit(BrBitPair *pPair)
+void BR_THISCALL1 BrBitEdgeSplit(BrBitPair *pPair)
 {
     uint32_t a = pPair->a;
     uint32_t b = pPair->b;

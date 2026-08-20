@@ -562,9 +562,11 @@ void BrExt_1003E680(void);
  * success. */
 int32_t BrSub1003D030(void *pBlob);
 
-/* 0x10071550 (16 bytes)  Two calls, then `mov eax,1`.  The caller declares
- * it `void` (slice4_50.h), so the 1 is dropped. */
-void BrSub10071550(void);
+/* 0x10071550 (16 bytes)  Two direct calls, then `mov eax,1`.  It really does
+ * return int32_t: the original is `call; call; mov eax,1; ret`, with neither
+ * call guarded by a null test.  Callers are free to drop the 1, but declaring
+ * the function `void` cost the `mov eax,1` and blocked the match. */
+int32_t BrSub10071550(void);
 
 /* 0x10031140 -- ADAPTER.  See CONFLICT 4.  Delegates to slice1_05.c's
  * BrMat4Translate after reinterpreting the two int32_t bit patterns. */

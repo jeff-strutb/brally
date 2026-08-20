@@ -23,8 +23,15 @@ int BrIsAnyActive(const BrActiveFlags *p)
  * total including whatever is pending. The count is read before the flag is
  * examined, so a set flag adds exactly one. */
 /* @implements 0x10073F40 d3d BrCountedTotal */
-int BrCountedTotal(const BrCounted *pObj)
+int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj)
 {
+    /* CLOSE, NOT MATCHING.  The thiscall convention above is now right, so
+     * `this` arrives in ecx and the two field offsets are correct.  What is
+     * left is scheduling: the original loads the flag into eax, tests it, then
+     * overwrites eax with the count, whereas MSVC here holds the flag in edx
+     * and issues both loads before the test.  Reading the flag into a named
+     * local first does NOT change it -- this is the register/scheduling class,
+     * not source order. */
     int n = pObj->count;
     if (pObj->flag != 0)
         n++;

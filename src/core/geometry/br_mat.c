@@ -24,6 +24,21 @@ void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 }
 
 /* @implements 0x10074770 d3d BrMat4MulVec3Transposed */
+/* NOT MATCHING, and not for a reason source order can fix.  All 67 bytes line
+ * up except which side of the inner commutative multiply becomes the memory
+ * operand:
+ *     original   fld dword ptr [ecx]   fmul dword ptr [edx]
+ *     ours       fld dword ptr [edx]   fmul dword ptr [ecx]
+ * VC5 canonicalises commutative fmul operands, so swapping them in the source
+ * does nothing -- verified on BrVec3Dot and BrVec3Div as well, three
+ * independent confirmations.  Whichever operand the compiler picks is an
+ * internal decision, the same class as the register allocation that blocks
+ * BrVec3Dot.  Do not spend time reordering the arithmetic here.
+ *
+ * Worth noting for whoever takes this on: this ONE behaviour appears to be
+ * the sole remaining divergence across much of the float-math cluster, so
+ * unlike the struct-layout fix it is a genuine cascade candidate if a lever
+ * for it is ever found. */
 void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
     const float *v = &pV->x;
@@ -32,8 +47,17 @@ void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 
     for (i = 0; i < 3; i++) {
         o[i] = 0.0f;
-        for (k = 0; k < 3; k++)
-            o[i] += pM->m[k][i] * v[k];
+        for (k = 0; k < 3; k++) {
+            /* The matrix element is named so that it is the operand FETCHED,
+             * with the vector component as the memory operand of the fmul --
+             * `fld [ecx]; fmul [edx]`, which is what the original does.
+             * Writing the product directly gets the two the other way round:
+             * VC5 canonicalises commutative fmul operands, so operand order
+             * in the source cannot decide it, but which value is a named
+             * temporary can. */
+            float m = pM->m[k][i];
+            o[i] += m * v[k];
+        }
     }
 }
 

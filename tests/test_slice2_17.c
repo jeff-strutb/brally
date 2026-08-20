@@ -114,6 +114,11 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
 /* TEST-ONLY stand-ins for the XSLICE callees.                        */
 /* ================================================================== */
 
+/* BrS17Release forwards the 0x106806B0 object itself, not a pointer read out
+ * of BrS17State.  The original loads that address as an immediate, so the
+ * object is a raw global rather than a struct field. */
+extern unsigned char g_br6806B0[];
+
 static int g_stubCalls;
 static int g_call10060E90;
 static int g_call1003563A_arg;
@@ -731,7 +736,6 @@ static void test_glue(void)
 static void test_gated(void)
 {
     BrS17State *st = BrS17GetState();
-    int thisObj;
 
     /* 0x1002C2D0: nothing happens at all when 0x106909B0 is zero. */
     st->f6909B0 = 0;
@@ -779,10 +783,9 @@ static void test_gated(void)
     CHECK(g_call10034C66_n == 1);
 
     /* 0x1002C2A0 forwards the 0x106806B0 object unchanged. */
-    st->pThis6806B0 = &thisObj;
     g_call100751D0_this = NULL;
     BrS17Release();
-    CHECK(g_call100751D0_this == &thisObj);
+    CHECK(g_call100751D0_this == g_br6806B0);
 
     /* 0x1002C2B0 */
     g_atexit_n = 0;

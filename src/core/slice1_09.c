@@ -24,7 +24,9 @@
  * so that a byte-sized read after some loose bits lands on a byte boundary.
  * Every byte-at-a-time read in this file begins by calling it. */
 /* @implements 0x10073D20 d3d BrBitStreamAlignRead */
-static void BrBitStreamAlignRead(BrBitStream *pBs)
+/* thiscall like the rest of the class: its callers pass the stream in ecx and
+ * push nothing.  File-static, so no header change is involved. */
+static void BR_THISCALL1 BrBitStreamAlignRead(BrBitStream *pBs)
 {
     if (pBs->readBit != 0) {
         pBs->readBit = 0;
@@ -36,7 +38,7 @@ static void BrBitStreamAlignRead(BrBitStream *pBs)
 /* WHAT IT DOES: the same rounding-up for the write position: finishes off a
  * part-written byte so the next whole-byte write starts cleanly. */
 /* @implements 0x10073F20 d3d BrBitStreamAlignWrite */
-void BrBitStreamAlignWrite(BrBitStream *pBs)
+void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
 {
     if (pBs->writeBit != 0) {
         pBs->writeBit = 0;
@@ -81,7 +83,7 @@ void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
  * the answer as a full-width number would have seen garbage; here it is a
  * byte and only a byte. */
 /* @implements 0x10073BC0 d3d BrBitStreamReadU8 */
-unsigned char BrBitStreamReadU8(BrBitStream *pBs)
+unsigned char BR_THISCALL1 BrBitStreamReadU8(BrBitStream *pBs)
 {
     int i;
     BrBitStreamAlignRead(pBs);
@@ -95,7 +97,7 @@ unsigned char BrBitStreamReadU8(BrBitStream *pBs)
  * significant byte first. Boss Rally's data came from the N64 and is stored
  * that way round throughout. */
 /* @implements 0x10073BE0 d3d BrBitStreamReadU16 */
-unsigned int BrBitStreamReadU16(BrBitStream *pBs)
+unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 {
     const unsigned char *p;
     int i;
@@ -110,7 +112,7 @@ unsigned int BrBitStreamReadU16(BrBitStream *pBs)
 /* WHAT IT DOES: reads the next three bytes as a single number, most
  * significant byte first. */
 /* @implements 0x10073C10 d3d BrBitStreamReadU24 */
-unsigned int BrBitStreamReadU24(BrBitStream *pBs)
+unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 {
     const unsigned char *p;
     int i;
@@ -133,7 +135,7 @@ unsigned int BrBitStreamReadU24(BrBitStream *pBs)
 /* WHAT IT DOES: reads the next four bytes as a single signed number, most
  * significant byte first. */
 /* @implements 0x10073C40 d3d BrBitStreamReadS32 */
-int BrBitStreamReadS32(BrBitStream *pBs)
+int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {
     const unsigned char *p;
     unsigned int v;
@@ -210,7 +212,7 @@ unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
 /* WHAT IT DOES: reports whether the reader has caught up with the end of the
  * data, counting a partly consumed byte as consumed. */
 /* @implements 0x10073D40 d3d BrBitStreamAtEnd */
-int BrBitStreamAtEnd(const BrBitStream *pBs)
+int BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs)
 {
     int pos = pBs->readByte;
     if (pBs->readBit != 0)

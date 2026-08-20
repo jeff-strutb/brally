@@ -153,6 +153,13 @@ const uint8_t  *g_pBrCollTriFlags  = s_aTriFlags;
 const uint16_t *g_pBrGrid64;
 const uint16_t *g_pBrTriTable;
 
+/* --- slice6_73.c's direct callees ----------------------------------------
+ * 0x10071550 calls these two directly, with no indirection and no null test,
+ * so they are real external symbols rather than installable hook slots.
+ * Neither body is decompiled yet. */
+void BrSub10071560(void) { }
+void BrSub10071630(void) { }
+
 /* --- slice3_39.h --------------------------------------------------------- */
 void BrTextBoxDtor(BrTextBox *pBox) { (void)pBox; }
 int32_t BrDikGetDeviceState(uint8_t *pState) { (void)pState; return 0; }

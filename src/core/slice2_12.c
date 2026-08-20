@@ -99,10 +99,10 @@ static const float BrK08F118 =  1.0f;                    /* 0x1008F118 */
 /* @implements 0x100058D0 d3d BrCarClampUnit */
 void BrCarClampUnit(float *pv)
 {
-    if (!(*pv >= BrK08F0B4))
-        *pv = BrK08F0B4;                /* -1.0f */
-    if (*pv > BrK08F0A8)
-        *pv = BrK08F0A8;                /*  1.0f */
+    if (!(*pv >= -1.0f))
+        *pv = -1.0f;
+    if (*pv > 1.0f)
+        *pv = 1.0f;
 }
 
 /* 0x10005900 */
@@ -112,10 +112,10 @@ void BrCarClampUnit(float *pv)
 /* @implements 0x10005900 d3d BrCarClampPosXY */
 void BrCarClampPosXY(float *pv)
 {
-    if (!(*pv >= BrK08F0B0))
-        *pv = BrK08F0B0;                /* 0.0f */
-    if (*pv > BrK08F0B8)
-        *pv = BrK08F0B8;                /* 2048.0f */
+    if (!(*pv >= 0.0f))
+        *pv = 0.0f;
+    if (*pv > 2048.0f)
+        *pv = 2048.0f;
 }
 
 /* 0x10005930 */
@@ -124,10 +124,10 @@ void BrCarClampPosXY(float *pv)
 /* @implements 0x10005930 d3d BrCarClampPosZ */
 void BrCarClampPosZ(float *pv)
 {
-    if (!(*pv >= BrK08F0BC))
-        *pv = BrK08F0BC;                /* -256.0f */
-    if (*pv > BrK08F0C0)
-        *pv = BrK08F0C0;                /* 256.0f */
+    if (!(*pv >= -256.0f))
+        *pv = -256.0f;
+    if (*pv > 256.0f)
+        *pv = 256.0f;
 }
 
 /* =====================================================================
@@ -142,7 +142,7 @@ void BrCarClampPosZ(float *pv)
 /* @implements 0x100065A0 d3d BrFixPackS6Q7Neg */
 int32_t BrFixPackS6Q7Neg(float v)
 {
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0CC));
+    int32_t n = (int32_t)BrFloor(0.5f - v * 128.0f);
 
     if (n < -32)
         n = -32;
@@ -159,7 +159,7 @@ int32_t BrFixPackS6Q7Neg(float v)
 /* @implements 0x100065E0 d3d BrFixPackS16Q15Neg */
 int32_t BrFixPackS16Q15Neg(float v)
 {
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0D4));
+    int32_t n = (int32_t)BrFloor(0.5f - v * 32768.0f);
 
     if (n < -32768)
         n = -32768;
@@ -175,7 +175,7 @@ int32_t BrFixPackS16Q15Neg(float v)
 /* @implements 0x10006620 d3d BrFixPackU8Angle */
 int32_t BrFixPackU8Angle(float v)
 {
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F0D8));
+    int32_t n = (int32_t)BrFloor(0.5f - v * -0.7091412544250488f);
 
     if (n < 0)
         n = 0;
@@ -191,8 +191,7 @@ int32_t BrFixPackU8Angle(float v)
 /* @implements 0x10006660 d3d BrFixPackU8Range */
 int32_t BrFixPackU8Range(float v)
 {
-    double  d = ((double)v - (double)BrK08F0DC) * (double)BrK08F0E0;
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - d));
+    int32_t n = (int32_t)BrFloor(0.5f - (v - 400.0f) * -0.008289474062621593f);
 
     if (n < 0)
         n = 0;
@@ -225,7 +224,7 @@ int32_t BrFixPackLevel(float v)
 /* @implements 0x100067B0 d3d BrFixPackS16Q8 */
 int32_t BrFixPackS16Q8(float v)
 {
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F108));
+    int32_t n = (int32_t)BrFloor(0.5f - v * -256.0f);
 
     if (n < -32768)
         n = -32768;
@@ -240,7 +239,7 @@ int32_t BrFixPackS16Q8(float v)
 /* @implements 0x100067F0 d3d BrFixPackS8Q3 */
 int32_t BrFixPackS8Q3(float v)
 {
-    int32_t n = BrFtol(BrFloor((double)BrK08F0D0 - (double)v * (double)BrK08F10C));
+    int32_t n = (int32_t)BrFloor(0.5f - v * -8.0f);
 
     if (n < -128)
         n = -128;
@@ -464,13 +463,13 @@ void BrCarStatePack(BrCarPacked *pDst, const BrCarState *pSrc)
     b[0x0B] = (uint8_t)((uint32_t)BrFixPackU8Angle(pSrc->f3C) & 0xFFu);
 
     b[0x14] = (uint8_t)((BrIsNonZero(pSrc->f4C) ? 0x80u : 0u)
-                        | (((uint32_t)BrFtol((double)pSrc->f5C) & 7u) << 4)
+                        | (((uint32_t)(int32_t)pSrc->f5C & 7u) << 4)
                         | (BrIsNonZero(pSrc->f50) ? 8u : 0u)
-                        | ((uint32_t)BrFtol((double)pSrc->f60) & 7u));
+                        | ((uint32_t)(int32_t)pSrc->f60 & 7u));
     b[0x15] = (uint8_t)((BrIsNonZero(pSrc->f54) ? 0x80u : 0u)
-                        | (((uint32_t)BrFtol((double)pSrc->f64) & 7u) << 4)
+                        | (((uint32_t)(int32_t)pSrc->f64 & 7u) << 4)
                         | (BrIsNonZero(pSrc->f58) ? 8u : 0u)
-                        | ((uint32_t)BrFtol((double)pSrc->f68) & 7u));
+                        | ((uint32_t)(int32_t)pSrc->f68 & 7u));
 
     /* Overwrites the high byte of the dword at 0x0C. */
     b[0x0F] = (uint8_t)(((uint32_t)BrFixPackU8Range(pSrc->f7C) & 0x3Fu)

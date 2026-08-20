@@ -112,6 +112,140 @@ extern int32_t g_Br0B380C;
  * along the track, accumulated across laps. */
 #define BR_RACE_LAPTIME_MAX  12  /* (0xFE4 - 0xFB4) / 4 -- see br_race.h */
 
+#ifdef BR_MATCHING_BUILD
+/* ============================ TRUE LAYOUT ================================
+ * The original record is 0x2B68 bytes and every field below sits at the
+ * offset the original instructions use.  The port arm further down keeps the
+ * fields packed sequentially with their offsets in comments only, which is
+ * why a store the original writes at +0xF78 came out at +0x84 and blocked
+ * BrRaceCarPre (0x10061430) from matching.  Displacement errors of that class
+ * cannot be fixed one function at a time -- the layout has to be right.
+ *
+ * WHY THIS ARM IS CONDITIONAL. The original is 32-bit, so its pointers are
+ * 4 bytes. pEquip sits at +0xE8C with fE90 immediately after it at +0x E90;
+ * on the 64-bit port an 8-byte pointer would overwrite that neighbour. True
+ * offsets are therefore only expressible where pointers are 4 bytes, which
+ * is exactly the build that needs them.
+ *
+ * The paddings are not trusted: every offset is asserted below, so a wrong
+ * one is a compile error rather than silent corruption.
+ *
+ * KNOWN GAP -- the three f29C0* fields are NOT at true offsets. In the
+ * original they are the +0x00, +0x20 and +0x24 of the block pCtl points at,
+ * not members of this record. They are parked in tail padding so the six
+ * call sites in br_racestep.c keep compiling. Moving them into BrRaceCtl is
+ * the next step and should HELP those functions, because the original reads
+ * them through the pointer and the flattened form does not. */
+typedef struct BrDriverCar {
+    uint8_t  _pad000[0x030];
+    BrVec3   pos;                           /* +0x030 */
+    uint8_t  _pad03C[0x140 - 0x03C];
+    int32_t  f140;                          /* +0x140 */
+    uint8_t  _pad144[0x1E8 - 0x144];
+    BrVec3   f1E8;                          /* +0x1E8 */
+    uint8_t  _pad1F4[0x360 - 0x1F4];
+    uint8_t  b360;                          /* +0x360 */
+    uint8_t  _pad361[0x730 - 0x361];
+    int32_t  f730;                          /* +0x730 */
+    uint8_t  _pad734[0xE70 - 0x734];
+    int32_t  fE70;                          /* +0xE70 */
+    uint8_t  _padE74[0xE88 - 0xE74];
+    int32_t  fE88;                          /* +0xE88 */
+    uint8_t *pEquip;                        /* +0xE8C */
+    int32_t  fE90;                          /* +0xE90 */
+    int32_t  fE94;                          /* +0xE94 */
+    int32_t  fE98;                          /* +0xE98 */
+    int32_t  fE9C;                          /* +0xE9C */
+    uint8_t  _padEA0[0xF00 - 0xEA0];
+    int32_t  fF00;                          /* +0xF00 */
+    int32_t  fF04;                          /* +0xF04 */
+    void   (*pfnControl)(struct BrDriverCar *); /* +0xF08 */
+    uint8_t  _padF0C[0xF78 - 0xF0C];
+    int32_t  fF78;                          /* +0xF78 */
+    int32_t  fF7C;                          /* +0xF7C */
+    BrVec3   posPrev;                       /* +0xF80 */
+    uint8_t  _padF8C[0xFA0 - 0xF8C];
+    int32_t  gateHi;                        /* +0xFA0 */
+    int32_t  gate;                          /* +0xFA4 */
+    int32_t  lap;                           /* +0xFA8 */
+    int32_t  lapB;                          /* +0xFAC */
+    float    tRun;                          /* +0xFB0 */
+    float    aLapTime[BR_RACE_LAPTIME_MAX]; /* +0xFB4 */
+    float    tBest;                         /* +0xFE4 */
+    int32_t  lapBest;                       /* +0xFE8 */
+    float    tFinal;                        /* +0xFEC */
+    uint8_t  _padFF0[0xFF4 - 0xFF0];
+    float    fFF4;                          /* +0xFF4 */
+    int32_t  fFF8;                          /* +0xFF8 */
+    int32_t  fFFC;                          /* +0xFFC */
+    uint8_t  _pad1000[0x1004 - 0x1000];
+    int32_t  f1004;                         /* +0x1004 */
+    uint8_t  _pad1008[0x1024 - 0x1008];
+    BrVec3   f1024;                         /* +0x1024 */
+    float    f1030;                         /* +0x1030 */
+    float    f1034;                         /* +0x1034 */
+    uint8_t  _pad1038[0x29A4 - 0x1038];
+    int32_t  f29A4;                         /* +0x29A4 */
+    int32_t  f29A8;                         /* +0x29A8 */
+    uint8_t  _pad29AC[0x29AF - 0x29AC];
+    uint8_t  b29AF;                         /* +0x29AF */
+    float    f29B0;                         /* +0x29B0 */
+    uint8_t  _pad29B4[0x29C0 - 0x29B4];
+    struct BrRaceCtl *pCtl;                 /* +0x29C0 */
+    /* NOT true offsets -- see KNOWN GAP above. */
+    uint32_t f29C0Ctl;
+    float    f29C0Steer;
+    uint8_t  b29C024;
+    uint8_t  _padTail[0x2B68 - 0x29CD];
+} BrDriverCar;
+
+/* Compile-time proof, in the project's usual idiom.  A wrong padding is a
+ * negative array size here rather than a runtime memory bug. */
+#define BR_DC_AT(name, off) \
+    typedef char BrDriverCarAt_##name[(offsetof(BrDriverCar, name) == (off)) ? 1 : -1]
+BR_DC_AT(pos,        0x030);
+BR_DC_AT(f140,       0x140);
+BR_DC_AT(f1E8,       0x1E8);
+BR_DC_AT(b360,       0x360);
+BR_DC_AT(f730,       0x730);
+BR_DC_AT(fE70,       0xE70);
+BR_DC_AT(fE88,       0xE88);
+BR_DC_AT(pEquip,     0xE8C);
+BR_DC_AT(fE90,       0xE90);
+BR_DC_AT(fE94,       0xE94);
+BR_DC_AT(fE98,       0xE98);
+BR_DC_AT(fE9C,       0xE9C);
+BR_DC_AT(fF00,       0xF00);
+BR_DC_AT(fF04,       0xF04);
+BR_DC_AT(pfnControl, 0xF08);
+BR_DC_AT(fF78,       0xF78);
+BR_DC_AT(fF7C,       0xF7C);
+BR_DC_AT(posPrev,    0xF80);
+BR_DC_AT(gateHi,     0xFA0);
+BR_DC_AT(gate,       0xFA4);
+BR_DC_AT(lap,        0xFA8);
+BR_DC_AT(lapB,       0xFAC);
+BR_DC_AT(tRun,       0xFB0);
+BR_DC_AT(aLapTime,   0xFB4);
+BR_DC_AT(tBest,      0xFE4);
+BR_DC_AT(lapBest,    0xFE8);
+BR_DC_AT(tFinal,     0xFEC);
+BR_DC_AT(fFF4,       0xFF4);
+BR_DC_AT(fFF8,       0xFF8);
+BR_DC_AT(fFFC,       0xFFC);
+BR_DC_AT(f1004,     0x1004);
+BR_DC_AT(f1024,     0x1024);
+BR_DC_AT(f1030,     0x1030);
+BR_DC_AT(f1034,     0x1034);
+BR_DC_AT(f29A4,     0x29A4);
+BR_DC_AT(f29A8,     0x29A8);
+BR_DC_AT(b29AF,     0x29AF);
+BR_DC_AT(f29B0,     0x29B0);
+BR_DC_AT(pCtl,      0x29C0);
+typedef char BrDriverCarOrigSize[(sizeof(BrDriverCar) == 0x2B68) ? 1 : -1];
+
+#else  /* ---- port arm: fields packed sequentially, offsets in comments ---- */
+
 typedef struct BrDriverCar {
     BrVec3  pos;            /* +0x030  position this frame                */
     BrVec3  posPrev;        /* +0xF80  position last frame                */
@@ -207,6 +341,8 @@ typedef struct BrDriverCar {
      * real block has to decide which object owns those three. */
     struct BrRaceCtl *pCtl; /* +0x29C0                                     */
 } BrDriverCar;
+
+#endif /* BR_MATCHING_BUILD -- true layout vs port layout */
 
 /* The three bits of car+0x29C0's first dword that 0x10061F60 writes.  br_ai.h
  * names the same word's 0x10000 / 0x20000 / 0x40000 from the controller's

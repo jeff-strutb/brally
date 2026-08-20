@@ -277,43 +277,47 @@ int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
     return 1;
 }
 
-/* 0x1003E980 / 0x1003E9E0 differ only in which count they read. */
-/* WHAT IT DOES: draws a volume bar as a row of blocks -- one block per step
- * of the setting, laid out left to right after a leading piece. This is the
- * shared body; the two hooks below differ only in which volume they read. */
-/* @implements 0x1003E980 d3d Br85DrawRow */
-static int32_t Br85DrawRow(BrUiCtl_ *pCtl, const int32_t *pCount)
+int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
 {
-    int32_t  x = BrFtolTrunc(pCtl->x);            /* +0x3C */
-    int32_t  y = BrFtolTrunc(pCtl->y) + 0x13;     /* +0x40 */
+    /* Written out rather than routed through a shared helper: the original
+     * has this body inline in each of the two row hooks, which is why the
+     * factored form comes out 32 bytes against the original's 92. */
+    /* Plain casts, not BrFtolTrunc: the original leaves the value on the x87
+     * stack and calls MSVC's own __ftol helper, where the wrapper pushes it
+     * as an integer argument instead. */
+    int32_t  x = (int32_t)pCtl->x;
+    int32_t  y = (int32_t)pCtl->y + 0x13;
     uint32_t i;
-    /* 0x1003E99C/A3: read AFTER both __ftol calls, and only once.  Note the
-     * contrast with the loop bound just below -- the COUNT is re-read every
-     * iteration and the FUNCTION POINTER is not.  The original is explicit
-     * about both, and they point opposite ways. */
     Br85MsgFn pfn = Br85MsgSlot(pCtl);
 
     Br85Msg(pfn, pCtl, 0x74, x, y);
 
-    /* The bound is re-read from the global every iteration -- the load sits
-     * INSIDE the loop body in the original -- and the compare is UNSIGNED. */
-    for (i = 0u; i < (uint32_t)*pCount; i++) {
+    for (i = 0u; i < (uint32_t)g_brB4E708; i++) {
         Br85Msg(pfn, pCtl, 0x75, x, y);
         x += 0x0C;
     }
     return 1;
 }
 
-int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
-{
-    return Br85DrawRow(pCtl, &g_brB4E708);
-}
-
 /* WHAT IT DOES: draws the music volume bar. */
 /* @implements 0x1003E9E0 d3d BrUiHook85_1003E9E0 */
 int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 {
-    return Br85DrawRow(pCtl, &g_brB4E70C);
+    /* Plain casts, not BrFtolTrunc: the original leaves the value on the x87
+     * stack and calls MSVC's own __ftol helper, where the wrapper pushes it
+     * as an integer argument instead. */
+    int32_t  x = (int32_t)pCtl->x;
+    int32_t  y = (int32_t)pCtl->y + 0x13;
+    uint32_t i;
+    Br85MsgFn pfn = Br85MsgSlot(pCtl);
+
+    Br85Msg(pfn, pCtl, 0x74, x, y);
+
+    for (i = 0u; i < (uint32_t)g_brB4E70C; i++) {
+        Br85Msg(pfn, pCtl, 0x75, x, y);
+        x += 0x0C;
+    }
+    return 1;
 }
 
 /* ==========================================================================
@@ -665,43 +669,62 @@ int32_t BrUiHook85_100466C0(BrUiCtl_ *pCtl)
  * function and the two arms below are read from the D3D bodies.
  * ========================================================================== */
 
-/* WHAT IT DOES: records which of the game's play modes the player has just
- * chosen and opens the next screen. This is the shared body behind three
- * near-identical hooks, one per mode. */
-/* @implements 0x10044010 d3d Br85ModeOpen */
-static int32_t Br85ModeOpen(int32_t mode)
+/* Written out rather than routed through Br85ModeOpen: each hook stores the
+ * mode itself and passes its own pCtl to 0x10043E70, where the shared helper
+ * loses the argument (it passes NULL) and hoists the store.  The callee never
+ * reads the argument, so this is the same behaviour either way. */
+int32_t BrUiHook85_10044010(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = mode;
-    (void)BrOptOpen2948(NULL);          /* 0x10043E70, argument never read */
+    g_brAA287C = 0;
+    (void)BrOptOpen2948(pCtl);
     return 1;
 }
-
-static int32_t Br85ModeKind(BrUiCtl_ *pCtl, int32_t mode)
-{
-    g_brAA287C = mode;
-    (void)BrSprFontKindHook_10047360(pCtl);
-    return 1;
-}
-
-int32_t BrUiHook85_10044010(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(0); }
 /* WHAT IT DOES: chooses the second play mode and opens the next screen. */
 /* @implements 0x10044050 d3d BrUiHook85_10044050 */
-int32_t BrUiHook85_10044050(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(1); }
+int32_t BrUiHook85_10044050(BrUiCtl_ *pCtl)
+{
+    g_brAA287C = 1;
+    (void)BrOptOpen2948(pCtl);
+    return 1;
+}
 /* WHAT IT DOES: chooses the third play mode and opens the next screen. */
 /* @implements 0x10044090 d3d BrUiHook85_10044090 */
-int32_t BrUiHook85_10044090(BrUiCtl_ *pCtl) { (void)pCtl; return Br85ModeOpen(2); }
+int32_t BrUiHook85_10044090(BrUiCtl_ *pCtl)
+{
+    g_brAA287C = 2;
+    (void)BrOptOpen2948(pCtl);
+    return 1;
+}
 
 /* WHAT IT DOES: records the first play mode as the one under the cursor and
  * refreshes how that menu entry is drawn -- the highlight, not the choice.
  * These three are the drawing twins of the three above. */
 /* @implements 0x10044030 d3d BrUiHook85_10044030 */
-int32_t BrUiHook85_10044030(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 0); }
+/* Inlined for the same reason as the 0x10044010 family above: the original
+ * stores the mode itself and makes a one-argument tail call, where routing
+ * through Br85ModeKind pushes the mode as a second argument. */
+int32_t BrUiHook85_10044030(BrUiCtl_ *pCtl)
+{
+    g_brAA287C = 0;
+    (void)BrSprFontKindHook_10047360(pCtl);
+    return 1;
+}
 /* WHAT IT DOES: the same for the second play mode's menu entry. */
 /* @implements 0x10044070 d3d BrUiHook85_10044070 */
-int32_t BrUiHook85_10044070(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 1); }
+int32_t BrUiHook85_10044070(BrUiCtl_ *pCtl)
+{
+    g_brAA287C = 1;
+    (void)BrSprFontKindHook_10047360(pCtl);
+    return 1;
+}
 /* WHAT IT DOES: the same for the third play mode's menu entry. */
 /* @implements 0x100440B0 d3d BrUiHook85_100440B0 */
-int32_t BrUiHook85_100440B0(BrUiCtl_ *pCtl) { return Br85ModeKind(pCtl, 2); }
+int32_t BrUiHook85_100440B0(BrUiCtl_ *pCtl)
+{
+    g_brAA287C = 2;
+    (void)BrSprFontKindHook_10047360(pCtl);
+    return 1;
+}
 
 /* ==========================================================================
  * 0x1004E810 -- the car list's row callback

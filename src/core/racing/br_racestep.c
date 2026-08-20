@@ -279,7 +279,7 @@ int BrRaceSeedPhantom(BrDriver *pDrv, float dist)
  * nothing transcribed so far reads it -- so all that can honestly be said is
  * that each car begins the frame with it at zero. */
 /* @implements 0x10061430 glide BrRaceCarPre */
-void BrRaceCarPre(BrDriverCar *pCar)
+void BR_THISCALL1 BrRaceCarPre(BrDriverCar *pCar)
 {
     /* `mov dword ptr [ecx+0xF78], 0` / `ret`.  Nothing ported here reads
      * car+0xF78; the store is kept because the whole function is the store. */

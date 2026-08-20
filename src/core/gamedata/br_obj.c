@@ -7,7 +7,7 @@
  * deliberately leaving the fifth alone. Which fields are cleared is the
  * whole content of the routine; the order they are cleared in is not. */
 /* @implements 0x10073B80 d3d BrObjClear */
-void BrObjClear(BrObjHeader *pObj)
+void BR_THISCALL1 BrObjClear(BrObjHeader *pObj)
 {
     pObj->f08 = 0;
     pObj->f0C = 0;

@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include "br_match.h"     /* BR_THISCALL1 -- thiscall via __fastcall on VC5   */
+
 #include "br_vec.h"       /* BrVec3                                          */
 #include "br_mat.h"       /* BrMat4, BrMat4MulVec3, BrMat4MulVec3Transposed  */
 #include "slice1_02.h"    /* BrCarState                                      */
@@ -150,10 +152,10 @@ extern BrCtrlCfg g_BrCtrlCfg;
 /* 0x10069C90  in-place construct: all four profiles from the defaults,
  * active = 0, pActive = &profile[0], then the fixed field values listed
  * above.  Note 0x7B8/0x7BC = 640/480. */
-void BrCtrlCfgInit(BrCtrlCfg *pThis);
+void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis);
 
 /* 0x10069A90  __thiscall constructor: BrCtrlCfgInit then `return this`. */
-BrCtrlCfg *BrCtrlCfgCtor(BrCtrlCfg *pThis);
+BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis);
 
 /* 0x10069A60  a 10-byte thunk: load ecx with 0x10B4DF30 and tail-jump into
  * 0x10069A90, i.e. construct the global.

@@ -259,7 +259,18 @@ typedef struct BrCursorPair {
     void *f10;   /* 0x10575510 */
     void *f18;   /* 0x10575518 */
 } BrCursorPair;
+#ifdef BR_MATCHING_BUILD
+/* The original takes ONE argument and stores it to the two absolute addresses
+ * directly -- there is no pair object and no second parameter.  BrCursorPair
+ * is a port-side convenience that packs two globals 8 bytes apart into
+ * adjacent fields, which is why the port emits [ecx] / [ecx+4] where the
+ * original emits two absolute stores. */
+extern void *g_brCursor575510;   /* 0x10575510 */
+extern void *g_brCursor575518;   /* 0x10575518 */
+void BrCursorPairSet(void *pv);
+#else
 void BrCursorPairSet(BrCursorPair *pPair, void *pv);
+#endif
 
 /* 0x1002C1F0  Append a pointer to a flat list.
  * GOTCHA: identical silent-drop-when-full behaviour to the vertex cache; the
