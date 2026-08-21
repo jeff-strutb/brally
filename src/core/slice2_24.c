@@ -916,13 +916,32 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
      * movsx of the signed byte at 0x10AA28B8, not a call to BrMenuStageIndex),
      * the clamp, and BrMenuStoreFormatted's whole body.  See BrMenuText1670
      * for the strlen test and the BrStrUpr return value, and BrMenuText0A50
-     * for why the vtable loads live in an inner block. */
-
+     * for why the vtable loads live in an inner block.
+     *
+     * The branches yield the FIELD, not the index.  Written as
+     * `e = cond ? 0 : idx;` followed by one `g_brStages[e].f08`, VC5 keeps a
+     * generic index and does the load once at the join.  The original
+     * specialises the zero case into an absolute `mov eax, [0x100B3818]` --
+     * the table base plus 8 -- and only the indexed branch pays for the lea,
+     * so each branch has to name the field itself. */
     memset(sz, 0, sizeof sz);
 
-    v = g_brStages[(pSt->gAA289C == 0) ? 0 : (int32_t)(int8_t)pSt->gAA28B8].f08 - pSt->gAA28C4;
+    if (pSt->gAA289C == 0)
+        v = g_brStages[0].f08;
+    else
+        v = g_brStages[(int32_t)(int8_t)pSt->gAA28B8].f08;
+
+    v -= pSt->gAA28C4;
     if (v < 0)
         v = 0;
+
+    /* THE ONE REMAINING DIVERGENCE, and it is a single instruction.  The
+     * original clamps with `sub eax, mem` / `test eax, eax` / `jge`; VC5
+     * emits `sub` / `jns` here and drops the redundant `test`, because the
+     * subtract already set the flags.  Everything either side of it is
+     * byte-identical, sizes included.  Tried and did NOT move it: the ternary
+     * form `v = (v >= 0) ? v : 0`.  Do not spend a third attempt on this
+     * without a new idea -- it is scheduling, not shape. */
 
     BrItoa(v, sz, 10);
 
