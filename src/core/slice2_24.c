@@ -134,8 +134,11 @@ BrMenuState *BrMenuGetState(void)
  * 16 entries each (the last four of both look like a separate tail, but they
  * are contiguous with the table and no code proves a shorter length).
  *
- * DEVIATION: every lookup here is bounds-checked and yields 0 out of range.
- * The original indexes blind.
+ * The original indexes these blind.  The caption one-liners now do too --
+ * their guards were the whole reason they could not match, and BrTabS8 /
+ * BrTabU16 below are what is left of that DEVIATION: the callers that still
+ * go through a helper keep the bounds check, the ones transcribed straight
+ * do not.  Fold the rest as each is matched.
  * ===================================================================== */
 
 static const uint16_t k_AC550[16] = {
@@ -326,6 +329,7 @@ int32_t BrMenuEnter(void)
 }
 
 /* 0x10041930.  The comparison is signed (`jl`). */
+/* @implements 0x10041930 d3d BrMenuLeaveTo2 */
 int32_t BrMenuLeaveTo2(void)
 {
     BrMenuState *pSt = &g_menu;
@@ -340,6 +344,7 @@ int32_t BrMenuLeaveTo2(void)
 
 /* 0x10041B50.  Returns nothing: the early exit and the fall-through both
  * `ret` without touching EAX. */
+/* @implements 0x10041B50 d3d BrMenuAutoSaveName */
 void BrMenuAutoSaveName(void)
 {
     BrMenuState *pSt = &g_menu;
@@ -374,6 +379,7 @@ void BrMenuAutoSaveName(void)
  * neighbours.  The table index is g_0AC648 while 0x100AA010 is set, and the
  * stage byte otherwise; which of 0x10AA28A4 / 0x10AA28AC supplies the column
  * is chosen by the BYTE at 0x10AA28A8. */
+/* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -421,6 +427,7 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
 /* 0x100407E0.  Same shape as 0x10040730 but it takes the HIGH byte of the
  * same stage word (0x100B3821 rather than 0x100B3820), uses 0x10AA2A00 in
  * place of 0x100AC648, and sign-extends the table entry. */
+/* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -497,20 +504,18 @@ int32_t BrMenuCap08B0(BrMenuItem *pItem)
 }
 
 /* 0x10040930 */
+/* @implements 0x10040930 d3d BrMenuCap0930 */
 int32_t BrMenuCap0930(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both -- the bounds test, the table
-     * read and the store are one body, so the delegating form is short
-     * by the call setup. */
-    uint32_t i = (uint32_t)(g_menu.gAA287C);
+    /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC62C[i] : (int16_t)0;
+    pItem->f1E20C = k_AC62C[g_menu.gAA287C];
     return 1;
 }
 
 /* 0x10040950.  When 0x118ABDBC is clear the entry is hard-wired to
  * 0x100AC631 -- element 1 of the same table, not element 0. */
+/* @implements 0x10040950 d3d BrMenuCap0950 */
 int32_t BrMenuCap0950(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -522,36 +527,35 @@ int32_t BrMenuCap0950(BrMenuItem *pItem)
 
 /* 0x10040990.  The table is dwords but only the low word is taken, and it is
  * NOT sign-extended. */
+/* @implements 0x10040990 d3d BrMenuCap0990 */
 int32_t BrMenuCap0990(BrMenuItem *pItem)
 {
-    uint32_t i = g_menu.gAA2A28;
-    uint16_t v = (i < 2u) ? (uint16_t)(k_AC640[i] & 0xFFFFu) : (uint16_t)0;
+    /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    return BrMenuSetCaptionId(pItem, (int16_t)v);
+    pItem->f1E20C = (int16_t)(uint16_t)k_AC640[g_menu.gAA2A28];
+    return 1;
 }
 
 /* 0x100409B0 */
 /* WHAT IT DOES: puts the car-shadow picture on the video-options row -- a car
  * drawn with its shadow or without one, showing the player what the setting
  * they are about to change actually looks like. */
+/* @implements 0x100409B0 d3d BrMenuCap09B0 */
 int32_t BrMenuCap09B0(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both. */
-    uint32_t i = (uint32_t)(g_menu.gAA2A20);
+    /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC634[i] : (int16_t)0;
+    pItem->f1E20C = k_AC634[g_menu.gAA2A20];
     return 1;
 }
 
 /* 0x100409D0 */
+/* @implements 0x100409D0 d3d BrMenuCap09D0 */
 int32_t BrMenuCap09D0(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both. */
-    uint32_t i = (uint32_t)(g_menu.gAA2A24);
+    /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC638[i] : (int16_t)0;
+    pItem->f1E20C = k_AC638[g_menu.gAA2A24];
     return 1;
 }
 
@@ -608,6 +612,7 @@ int32_t BrMenuSeedFrom26F0(void)
 /* 0x100408D0.  Formats straight into the item's own text buffer -- no
  * intermediate and no _strupr -- and always returns 1, even when the idle
  * guard short-circuits it. */
+/* @implements 0x100408D0 d3d BrMenuText08D0 */
 int32_t BrMenuText08D0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -624,6 +629,7 @@ int32_t BrMenuText08D0(BrMenuItem *pItem)
 }
 
 /* 0x10040A50.  Goes through the global scratch buffer at 0x10AA2518. */
+/* @implements 0x10040A50 d3d BrMenuText0A50 */
 int32_t BrMenuText0A50(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -634,6 +640,7 @@ int32_t BrMenuText0A50(BrMenuItem *pItem)
 }
 
 /* 0x10040AC0.  Same as 0x10040A50 but 0x10AA28A4 and the 0x10A9D618 buffer. */
+/* @implements 0x10040AC0 d3d BrMenuText0AC0 */
 int32_t BrMenuText0AC0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -646,6 +653,7 @@ int32_t BrMenuText0AC0(BrMenuItem *pItem)
 /* 0x10040B30.  string 0x37, then "  " (0x100AD304), then the number.  This
  * one is a CAPTION assignment (vtable +0x04 / +0x10) even though it ends in
  * a number. */
+/* @implements 0x10040B30 d3d BrMenuText0B30 */
 int32_t BrMenuText0B30(BrMenuItem *pItem)
 {
     BrMenuState *pSt   = &g_menu;
@@ -679,6 +687,7 @@ static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
 }
 
 /* 0x10040C00 */
+/* @implements 0x10040C00 d3d BrMenuTime0C00 */
 int32_t BrMenuTime0C00(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -694,6 +703,7 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
 }
 
 /* 0x10040D70.  Identical to 0x10040C00 except for the float array. */
+/* @implements 0x10040D70 d3d BrMenuTime0D70 */
 int32_t BrMenuTime0D70(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -710,6 +720,7 @@ int32_t BrMenuTime0D70(BrMenuItem *pItem)
 
 /* 0x10040EE0.  Index 3 is reserved: it means "use 0x10AA28C8" instead of
  * indexing the array. */
+/* @implements 0x10040EE0 d3d BrMenuTime0EE0 */
 int32_t BrMenuTime0EE0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -729,6 +740,7 @@ int32_t BrMenuTime0EE0(BrMenuItem *pItem)
 }
 
 /* 0x10041040 */
+/* @implements 0x10041040 d3d BrMenuTime1040 */
 int32_t BrMenuTime1040(BrMenuItem *pItem)
 {
     char sz[32];
@@ -739,6 +751,7 @@ int32_t BrMenuTime1040(BrMenuItem *pItem)
 }
 
 /* 0x10041180 */
+/* @implements 0x10041180 d3d BrMenuTime1180 */
 int32_t BrMenuTime1180(BrMenuItem *pItem)
 {
     char sz[32];
@@ -751,6 +764,7 @@ int32_t BrMenuTime1180(BrMenuItem *pItem)
 /* 0x10041300.  GOTCHA: the string id is looked up TWICE -- once to measure
  * the result, once to use it -- and the second result is uppercased IN
  * PLACE, so the string table entry itself is modified. */
+/* @implements 0x10041300 d3d BrMenuText1300 */
 int32_t BrMenuText1300(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -771,6 +785,7 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
 }
 
 /* 0x100415A0.  `jge` after `test eax,eax` -- signed clamp at zero. */
+/* @implements 0x100415A0 d3d BrMenuText15A0 */
 int32_t BrMenuText15A0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -791,6 +806,7 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
 }
 
 /* 0x10041670 */
+/* @implements 0x10041670 d3d BrMenuText1670 */
 int32_t BrMenuText1670(BrMenuItem *pItem)
 {
     char sz[32];
@@ -801,6 +817,7 @@ int32_t BrMenuText1670(BrMenuItem *pItem)
 }
 
 /* 0x10041710.  0x10041670's twin without the +1. */
+/* @implements 0x10041710 d3d BrMenuText1710 */
 int32_t BrMenuText1710(BrMenuItem *pItem)
 {
     char sz[32];
@@ -813,6 +830,7 @@ int32_t BrMenuText1710(BrMenuItem *pItem)
 /* 0x100417B0.  0x100415A0 with 0x10220B24 for the record index and no
  * 0x10AA289C special case; the clamp is written `jns` here rather than
  * `jge`, which is the same test. */
+/* @implements 0x100417B0 d3d BrMenuText17B0 */
 int32_t BrMenuText17B0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -846,6 +864,7 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
  * lettering and resets its text style, so the two directions are not mirror
  * images and a row switched off loses styling that switching it on does not
  * restore. */
+/* @implements 0x10041890 d3d BrMenuFlags1890 */
 int32_t BrMenuFlags1890(BrMenuItem *pItem)
 {
     if (g_menu.gAA28E0 != 0) {
@@ -860,6 +879,7 @@ int32_t BrMenuFlags1890(BrMenuItem *pItem)
 
 /* 0x100418D0.  The odd one out: when the flag is clear it does nothing at
  * all -- it does not even read the item. */
+/* @implements 0x100418D0 d3d BrMenuFlags18D0 */
 int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 {
     if (g_menu.gAA28E4 != 0)
@@ -870,6 +890,7 @@ int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 /* 0x100418F0.  0x10041890 driven by 0x10AA28E8 instead. */
 /* WHAT IT DOES: the same greying-out as its neighbour above, but driven by a
  * different availability flag, so it serves a different family of rows. */
+/* @implements 0x100418F0 d3d BrMenuFlags18F0 */
 int32_t BrMenuFlags18F0(BrMenuItem *pItem)
 {
     if (g_menu.gAA28E8 != 0) {
