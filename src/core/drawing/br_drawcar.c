@@ -11,7 +11,20 @@
 #include "slice2_17.h"   /* BrGfxEmitTexCmd, BrS17GetState               */
 #include "slice2_18.h"   /* BrG_6C0680 cursor; BrFogFactorAtPoint; car globals */
 #include "slice2_19.h"   /* g_BrMtxSlot current projection slot          */
+#ifdef BR_MATCHING_BUILD
+/* Header is the port's (volume, x, y).  The original reads the span grid
+ * as a global and takes only (x, y).  Hide the port prototype so this TU
+ * can call the two-float form. */
+#define BrSpanTestPoint BrSpanTestPoint_port
+#endif
 #include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint                */
+#ifdef BR_MATCHING_BUILD
+#undef BrSpanTestPoint
+/* Original pushes the two world-space floats as dwords (mov/push), not
+ * through the x87.  Spelling the prototype as int32_t is what makes VC5
+ * emit that; a float prototype fld/fstps and the function grows. */
+int BrSpanTestPoint(int32_t xBits, int32_t yBits);
+#endif
 #include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
 #include "br_appstart.h"  /* g_brCfgGameMode                             */
 #include "br_bootfrontier.h" /* BrBootGlobal_ABAA0                       */
@@ -297,17 +310,22 @@ int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
 uint32_t g_BrCarMtxSlot[BR_CAR_MAX];    /* 0x102735B0 */
 uint32_t g_BrCarLightSlot[BR_CAR_MAX];  /* 0x10273600 */
 
+#ifdef BR_MATCHING_BUILD
+#define BR_CAR_SPAN(x, y) BrSpanTestPoint(*(int32_t *)&(x), *(int32_t *)&(y))
+#else
+#define BR_CAR_SPAN(x, y) BrSpanTestPoint(&g_BrFrameHull, (x), (y))
+#endif
+
 /* @implements 0x10009FC0 glide BrCarVisibilityUpdate */
 void BrCarVisibilityUpdate(void *pCar)
 {
     unsigned char *car = (unsigned char *)pCar;
     const BrVec3  *pPos;
-    int32_t        iCar;
+    BrVec3         probe;
 
     /* +0xF08 is one of the record's guard pointers; nothing happens without it. */
-    if (*(void *const *)(car + BR_CAR_OFF_GUARD) == NULL) {
+    if (*(void **)(car + BR_CAR_OFF_GUARD) == NULL)
         return;
-    }
 
     pPos = (const BrVec3 *)(car + BR_CAR_OFF_POS);
 
@@ -316,9 +334,10 @@ void BrCarVisibilityUpdate(void *pCar)
     (void)BrVec3Dist(pPos,
                      (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
 
-    iCar = *(const int32_t *)(car + BR_CAR_OFF_ICAR);
-    g_BrCarVisOpaque[iCar] = 0;
-    g_BrCarVisAny[iCar]    = 0;
+    /* Index is reloaded at every write -- a cached iCar claims ebx, which
+     * the original never saves. */
+    g_BrCarVisOpaque[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = 0;
+    g_BrCarVisAny[*(int32_t *)(car + BR_CAR_OFF_ICAR)]    = 0;
 
     *(float *)(car + BR_CAR_OFF_FOG) = BrFogFactorAtPoint(pPos);
 
@@ -328,33 +347,28 @@ void BrCarVisibilityUpdate(void *pCar)
      * the hull. */
     if ((void *)car != BrG_6C2CF8) {
         if (BrG_6C661C != 0 || BrG_6C6624 != 0) {
-            BrVec3 probe;
-            BrVec3MulAdd(&probe, pPos,
-                         (const BrVec3 *)(car + BR_CAR_OFF_MTX), 6.0f);
-            if (BrSpanTestPoint(&g_BrFrameHull, probe.x, probe.y) == 0 &&
-                BrSpanTestPoint(&g_BrFrameHull, pPos->x, pPos->y) == 0) {
+            BrVec3MulAdd(&probe, pPos, (const BrVec3 *)car, 6.0f);
+            if (BR_CAR_SPAN(probe.x, probe.y) == 0 &&
+                BR_CAR_SPAN(pPos->x, *(float *)(car + BR_CAR_OFF_POS + 4)) == 0)
                 return;                         /* culled */
-            }
-        } else if (BrSpanTestPoint(&g_BrFrameHull, pPos->x, pPos->y) == 0) {
+        } else if (BR_CAR_SPAN(pPos->x, *(float *)(car + BR_CAR_OFF_POS + 4)) == 0) {
             return;                             /* culled */
         }
 
         /* Visible.  The player-car branch below only applies to the player,
          * so a non-player car falls straight through to the flag set. */
-        if ((void *)car != BrG_6C2CF8) {
+        if ((void *)car != BrG_6C2CF8)
             goto set_flags;
-        }
     }
 
-    /* Player car (reached directly, or as a visible car that is the player):
-     * if its active camera points at one of its own two cam frames and the
-     * override flag is clear, it counts only for the translucent pass. */
+    /* Player car: if its active camera points at one of its own two cam
+     * frames and the override flag is clear, translucent pass only. */
     {
-        const void *pActiveCam = *(const void *const *)(car + BR_CAR_OFF_ACTIVECAM);
-        if (pActiveCam == (const void *)(car + BR_CAR_OFF_CAMA) ||
-            pActiveCam == (const void *)(car + BR_CAR_OFF_CAMB)) {
+        void *pActiveCam = *(void **)(car + BR_CAR_OFF_ACTIVECAM);
+        if (pActiveCam == (void *)(car + BR_CAR_OFF_CAMA) ||
+            pActiveCam == (void *)(car + BR_CAR_OFF_CAMB)) {
             if (BrG_6C6614 == 0) {
-                g_BrCarVisAny[iCar] = 1;
+                g_BrCarVisAny[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = 1;
                 return;
             }
         }
@@ -362,11 +376,14 @@ void BrCarVisibilityUpdate(void *pCar)
 
 set_flags:
     /* Opaque cars (class != 2) show in both passes; class-2 cars only in the
-     * translucent pass. */
-    if (*(const unsigned char *)(car + BR_CAR_OFF_KIND) != 2) {
-        g_BrCarVisOpaque[iCar] = 1;
+     * translucent pass.  `one` is a register (eax = 1) both stores share. */
+    {
+        unsigned char kind = *(unsigned char *)(car + BR_CAR_OFF_KIND);
+        int32_t       one  = 1;
+        if (kind != 2)
+            g_BrCarVisOpaque[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = one;
+        g_BrCarVisAny[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = one;
     }
-    g_BrCarVisAny[iCar] = 1;
 }
 
 /* ==================================================================== *
