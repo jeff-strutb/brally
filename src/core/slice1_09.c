@@ -4,7 +4,27 @@
  * Skipped functions and the reason for each are listed at the bottom of this
  * file so the information does not get lost.
  */
+#ifdef BR_MATCHING_BUILD
+/* slice1_09.h declares these cdecl; the originals are thiscall with stack
+ * args.  Hide those prototypes so the matching bodies can use __fastcall
+ * plus a struct-typed second argument (never register-eligible, so forced
+ * onto the stack).  Same split as thiscall; do not redefine BR_THISCALL. */
+#define BrBitStreamInit      BrBitStreamInit_cdecl
+#define BrBitStreamSkipBytes BrBitStreamSkipBytes_cdecl
+#define BrBitStreamWriteU8   BrBitStreamWriteU8_cdecl
+#define BrBitStreamWriteU24  BrBitStreamWriteU24_cdecl
+#define BrBitStreamWriteU32  BrBitStreamWriteU32_cdecl
+#define BrEntitySetIndex     BrEntitySetIndex_cdecl
+#endif
 #include "slice1_09.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrBitStreamInit
+#undef BrBitStreamSkipBytes
+#undef BrBitStreamWriteU8
+#undef BrBitStreamWriteU24
+#undef BrBitStreamWriteU32
+#undef BrEntitySetIndex
+#endif
 
 #include <math.h>
 #include <stddef.h>
@@ -54,6 +74,24 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * into the write position, so a freshly initialised stream is set up to be
  * read from the start and appended to at the end. */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
+#ifdef BR_MATCHING_BUILD
+/* thiscall, two stack args.  Both extra arguments are structs so neither
+ * claims edx.  Size-exact (29) but register-walled: original copies this
+ * to eax and zeroes via ecx; VC5 keeps this in ecx and zeroes via eax, and
+ * loads pBuf before nBytes.  Two attempts (named nBytes, dummy edx) did
+ * not move it. */
+typedef struct { void *p; } BrBitStreamInitBuf;
+typedef struct { int n; }   BrBitStreamInitLen;
+void __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pBuf,
+                                BrBitStreamInitLen nBytes)
+{
+    pBs->writeBit  = 0;
+    pBs->readBit   = 0;
+    pBs->readByte  = 0;
+    pBs->writeByte = nBytes.n;
+    pBs->pBuf      = (unsigned char *)pBuf.p;
+}
+#else
 void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
 {
     pBs->writeBit  = 0;
@@ -62,16 +100,26 @@ void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
     pBs->writeByte = nBytes;
     pBs->pBuf      = (unsigned char *)pBuf;
 }
+#endif
 
 /* 0x10073BA0  __thiscall, ret 4 */
 /* WHAT IT DOES: skips forward a number of whole bytes in the stream,
  * rounding up to a byte boundary first. */
 /* @implements 0x10073BA0 d3d BrBitStreamSkipBytes */
+#ifdef BR_MATCHING_BUILD
+typedef struct { int n; } BrBitStreamSkipArg;
+void __fastcall BrBitStreamSkipBytes(BrBitStream *pBs, BrBitStreamSkipArg n)
+{
+    BrBitStreamAlignRead(pBs);
+    pBs->readByte += n.n;
+}
+#else
 void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
 {
     BrBitStreamAlignRead(pBs);
     pBs->readByte += n;
 }
+#endif
 
 /* 0x10073BC0  __thiscall.
  * The original returns the byte in AL only; the upper 24 bits of EAX are
@@ -224,17 +272,43 @@ int BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs)
 /* WHAT IT DOES: writes one byte into the stream, rounding up to a byte
  * boundary first. */
 /* @implements 0x10073D60 d3d BrBitStreamWriteU8 */
+#ifdef BR_MATCHING_BUILD
+typedef struct { unsigned int v; } BrBitStreamByteArg;
+void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, BrBitStreamByteArg v)
+{
+    BrBitStreamAlignWrite(pBs);
+    pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
+    pBs->writeByte++;
+}
+#else
 void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
 {
     BrBitStreamAlignWrite(pBs);
     pBs->pBuf[pBs->writeByte] = (unsigned char)v;
     pBs->writeByte++;
 }
+#endif
 
 /* 0x10073DC0  big-endian 24-bit. */
 /* WHAT IT DOES: writes a three-byte number into the stream, most significant
  * byte first. */
 /* @implements 0x10073DC0 d3d BrBitStreamWriteU24 */
+#ifdef BR_MATCHING_BUILD
+/* thiscall.  Size-exact (70) but register-walled on the first pair:
+ * original loads writeByte into edx and pBuf into edi; VC5 swaps them.
+ * Naming writeByte first dropped below orig size. */
+void __fastcall BrBitStreamWriteU24(BrBitStream *pBs, BrBitStreamByteArg v)
+{
+    unsigned int x = v.v;
+    BrBitStreamAlignWrite(pBs);
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 16);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 8);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)x;
+    pBs->writeByte++;
+}
+#else
 void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
 {
     int w;
@@ -245,11 +319,28 @@ void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
     pBs->pBuf[w + 2] = (unsigned char)v;
     pBs->writeByte = w + 3;
 }
+#endif
 
 /* 0x10073E10  big-endian 32-bit. */
 /* WHAT IT DOES: writes a four-byte number into the stream, most significant
  * byte first. */
 /* @implements 0x10073E10 d3d BrBitStreamWriteU32 */
+#ifdef BR_MATCHING_BUILD
+/* thiscall.  Size-exact (88) but the same edx/edi swap as WriteU24. */
+void __fastcall BrBitStreamWriteU32(BrBitStream *pBs, BrBitStreamByteArg v)
+{
+    unsigned int x = v.v;
+    BrBitStreamAlignWrite(pBs);
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 24);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 16);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 8);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)x;
+    pBs->writeByte++;
+}
+#else
 void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
 {
     int w;
@@ -261,6 +352,7 @@ void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
     pBs->pBuf[w + 3] = (unsigned char)v;
     pBs->writeByte = w + 4;
 }
+#endif
 
 /* ================================================================== */
 /* Float math                                                          */
@@ -360,6 +452,24 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
  * Anything numbered sixteen or above is stored as the second bank with its
  * number reduced by sixteen; anything below it is the first bank. */
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
+#ifdef BR_MATCHING_BUILD
+/* thiscall, one stack arg.  Size-exact (50) but encoding-walled:
+ * original `sub eax, 0x10`, VC5 `add eax, -0x10`.  `i - 16` and `i -= 16`
+ * both emitted the add form. */
+typedef struct { int n; } BrEntityIndexArg;
+void __fastcall BrEntitySetIndex(void *pEntity, BrEntityIndexArg index)
+{
+    int i = index.n;
+    if (i >= 16) {
+        i -= 16;
+        *(int *)((unsigned char *)pEntity + BR_ENTITY_OFF_BANK)  = 1;
+        *(int *)((unsigned char *)pEntity + BR_ENTITY_OFF_INDEX) = i;
+    } else {
+        *(int *)((unsigned char *)pEntity + BR_ENTITY_OFF_BANK)  = 0;
+        *(int *)((unsigned char *)pEntity + BR_ENTITY_OFF_INDEX) = i;
+    }
+}
+#else
 void BrEntitySetIndex(void *pEntity, int index)
 {
     unsigned char *p = (unsigned char *)pEntity;
@@ -374,6 +484,7 @@ void BrEntitySetIndex(void *pEntity, int index)
         *pIndex = index;
     }
 }
+#endif
 
 /* 0x10076C90  __thiscall.
  *
