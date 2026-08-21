@@ -209,10 +209,11 @@ void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
 
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            float acc = 0.0f;
+            /* Store 0 then reload: the original is `mov dword [esi],0; fld [esi]`,
+             * not `fld` of a 0.0f constant. */
+            t.m[i][j] = 0.0f;
             for (k = 0; k < 4; k++)
-                acc = acc + pA->m[i][k] * pB->m[k][j];
-            t.m[i][j] = acc;
+                t.m[i][j] = t.m[i][j] + pA->m[i][k] * pB->m[k][j];
         }
     }
     *pOut = t;
