@@ -136,6 +136,29 @@ static const char *brstr(int32_t id)
  * keep running and when to sit still. It only records the state; the actual
  * pausing is done elsewhere. */
 /* @implements 0x10070370 glide BrOnActivate */
+#ifdef BR_MATCHING_BUILD
+/* Matching build names the three gates and the 0x10008B80 stub directly so
+ * MSVC emits the original's `mov [imm32]` stores and tail `jmp`. */
+extern uint32_t g_brActivateGate1;   /* 0x10680598 / 0x105BC740 */
+extern uint32_t g_brActivateGate2;   /* 0x1068059C / 0x105BC744 */
+extern uint32_t g_brActivateGate3;   /* 0x106805A0 / 0x105BC748 */
+extern void BrOnActivateTail(void);  /* 0x10008B80 / 0x10008D60, bare ret */
+
+void BrOnActivate(BrWParam wParam)
+{
+    uint32_t lo;
+    uint32_t hi;
+
+    lo = (uint32_t)wParam;
+    g_brActivateGate1 = lo;
+    lo &= 0xFFFFu;
+    hi = (uint32_t)wParam >> 16;
+    g_brActivateGate2 = lo;
+    g_brActivateGate3 = hi;
+    if (lo == 0u || hi != 0u)
+        BrOnActivateTail();
+}
+#else
 void BrOnActivate(BrWParam wParam)
 {
     /* The original's registers are 32 bits wide. Masking reproduces
@@ -154,6 +177,7 @@ void BrOnActivate(BrWParam wParam)
 
     /* 0x10070391..0x1007039C: both arms reach a bare `ret`. Nothing to do. */
 }
+#endif
 
 /* ================================================================== *
  * 0x10019350 -- WM_ACTIVATEAPP. 294 bytes, __cdecl, three arguments.
