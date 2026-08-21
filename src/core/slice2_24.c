@@ -930,22 +930,68 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
 /* @implements 0x10041670 d3d BrMenuText1670 */
 int32_t BrMenuText1670(BrMenuItem *pItem)
 {
-    char sz[32];
+    char  sz[32];
+    char *psz;
+
+    /* BrMenuStoreFormatted written out.  Two details are load bearing:
+     * the emptiness test is a real strlen (the original inlines it as
+     * repne scasb / not / dec / jne, which `sz[0] == 0` does not produce),
+     * and the copy source is BrStrUpr's RETURN value, not sz -- the original
+     * copies from the pointer the call leaves in eax.  See BrMenuText0A50
+     * for the inner block and the pointer test. */
 
     memset(sz, 0, sizeof sz);
     BrItoa((int32_t)(g_menu.gAA28A4 + 1u), sz, 10);
-    return BrMenuStoreFormatted(pItem, sz, 0);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* 0x10041710.  0x10041670's twin without the +1. */
 /* @implements 0x10041710 d3d BrMenuText1710 */
 int32_t BrMenuText1710(BrMenuItem *pItem)
 {
-    char sz[32];
+    char  sz[32];
+    char *psz;
+
+    /* BrMenuStoreFormatted written out.  Two details are load bearing:
+     * the emptiness test is a real strlen (the original inlines it as
+     * repne scasb / not / dec / jne, which `sz[0] == 0` does not produce),
+     * and the copy source is BrStrUpr's RETURN value, not sz -- the original
+     * copies from the pointer the call leaves in eax.  See BrMenuText0A50
+     * for the inner block and the pointer test. */
 
     memset(sz, 0, sizeof sz);
     BrItoa(g_menu.gAA28C4, sz, 10);
-    return BrMenuStoreFormatted(pItem, sz, 0);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* 0x100417B0.  0x100415A0 with 0x10220B24 for the record index and no
