@@ -51,6 +51,7 @@
 #include "slice3_31.h"
 #include "br_phaseact.h"   /* the one activate body -- see br_phaseact.h */
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 #include <string.h>
 
@@ -108,6 +109,7 @@ extern int32_t  g_brAA2AD4;   /* 0x10AA2AD4  edit-in-progress selector */
 extern uint8_t  g_brAA26F5;   /* 0x10AA26F5  == g_aBrAA26F4[1]         */
 extern BrPhase *g_brAA29C8;   /* 0x10AA29C8                            */
 extern BrPhase *g_brAA29F4;   /* 0x10AA29F4                            */
+extern BrPhase *g_brAA2970;   /* 0x10AA2970                            */
 extern int32_t  g_brAA2A48;   /* 0x10AA2A48  ring write index          */
 extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
 
@@ -125,6 +127,7 @@ extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
 #  define BR31_AA26F5   g_brAA26F5
 #  define BR31_AA29C8   g_brAA29C8
 #  define BR31_AA29F4   g_brAA29F4
+#  define BR31_AA2970   g_brAA2970
 #  define BR31_AA2A48   g_brAA2A48
 #  define BR31_A9E150   g_aBrA9E150
 #else
@@ -142,8 +145,23 @@ extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
 #  define BR31_AA26F5   (g_pExt->bAA26F5)
 #  define BR31_AA29C8   (g_pExt->pAA29C8)
 #  define BR31_AA29F4   (g_pBase->pAA29F4)
+#  define BR31_AA2970   (g_pExt->pAA2970)
 #  define BR31_AA2A48   (g_pExt->nAA2A48)
 #  define BR31_A9E150   (g_pExt->aA9E150)
+#endif
+
+#ifdef BR_MATCHING_BUILD
+/* Slot +0x1C is 1-arg thiscall. Slot +0x00 is thiscall with one stack arg:
+ * __fastcall would put a register-eligible second arg in edx, so the int 1
+ * is the third parameter and lands on the stack as `push 1`. The edx slot
+ * is filled with the vtable pointer the original already has there. */
+typedef struct {
+    void *pad[7];
+    void (BR_THISCALL1 *pfnSlot7)(BrGameSub *pThis);
+} Br31SubVtblMatch;
+typedef struct {
+    void *(BR_THISCALL1 *f00)(BrPhase *pThis, const void *pVtbl, int32_t n);
+} Br31PhaseVtblMatch;
 #endif
 
 /* ==========================================================================
@@ -841,10 +859,21 @@ int32_t BrPhaseLeave_10047120(void *pEntity)
 int32_t BrPhaseLeave_100471B0(void *pEntity)
 {
     BrGameObj *pObj = (BrGameObj *)pEntity;
+#ifdef BR_MATCHING_BUILD
+    BrPhase *p;
+#endif
 
     BrExt_10045C90(pEntity);
+#ifdef BR_MATCHING_BUILD
+    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
+    p = BR31_AA2970;
+    if (p != NULL)
+        (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
+    BR31_AA2970 = NULL;
+#else
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA2970);
+#endif
     return 0;
 }
 
