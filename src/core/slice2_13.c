@@ -429,6 +429,29 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 /* WHAT IT DOES: asks how many players are in the multiplayer session at this
  * moment, so the lobby can show it. If the question cannot be answered it
  * returns 0xFFFF rather than a count. */
+#ifdef BR_MATCHING_BUILD
+/* __declspec(dllimport) emits `call dword ptr [IAT]` (and, for GlobalHandle,
+ * a register-held IAT load because it is used twice). The portable pfnFree
+ * is a cdecl function pointer and cannot produce that sequence. */
+__declspec(dllimport) void *__stdcall GlobalHandle(void *pMem);
+__declspec(dllimport) int   __stdcall GlobalUnlock(void *hMem);
+__declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
+
+/* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
+uint32_t BrDPlayGetCurrentPlayers(void)
+{
+    void    *pv = NULL;
+    uint32_t n;
+
+    if (BrSub1003D0B0(g_BrDPlay.pDPGlobal, &pv) < 0)
+        return 0xFFFFu;
+
+    n = *(uint32_t *)((char *)pv + 0x2C);
+    GlobalUnlock(GlobalHandle(pv));
+    GlobalFree(GlobalHandle(pv));
+    return n;
+}
+#else
 /* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
 uint32_t BrDPlayGetCurrentPlayers(void)
 {
@@ -453,6 +476,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     g_BrDPlay.os.pfnFree(pv);
     return n;
 }
+#endif
 
 /* ==========================================================================
  * 4. The 0x102E54C0 clip pool
