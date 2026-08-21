@@ -273,12 +273,14 @@ int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
     return BrSfxChanStart(group, ch, loop);  /* 0x1006E516 */
 }
 
+/* @implements 0x1006E530 glide BrSfxSrcPlay */
 int BrSfxSrcPlay(int ch, int group, int32_t f0C, int32_t loop)
 {
     /* 0x1006E53C pushes 0x00200020 as the FIFTH argument. */
     return BrSfxSrcStart(ch, group, f0C, loop, BR_SFXSRC_PACKED);
 }
 
+/* @implements 0x1006E560 glide BrSfxSrcPlaySilent */
 int BrSfxSrcPlaySilent(int ch, int group, int32_t f0C, int32_t loop)
 {
     /* 0x1006E56C pushes 0.  The engine loops start inaudible and 0x10061470
@@ -310,7 +312,7 @@ void BrSfxSrcTrigger(int iSrc)
  * below used to read 0x10060DF0 for Beep2, which is the address of Beep. */
 /* WHAT IT DOES: plays the game's ordinary beep -- the one the countdown uses
  * for three, two and one. */
-/* @implements 0x10060DF0 glide BrSfxSrcBeep */
+/* @implements 0x10067D80 d3d BrSfxSrcBeep */
 void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* push 0x0D */
 /* WHAT IT DOES: plays the second of the game's two beeps -- the one used for
  * the "go" at the end of the race countdown, where the first three steps use
