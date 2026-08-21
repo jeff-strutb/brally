@@ -427,30 +427,30 @@ int BrSub_100193C0(const char *psz, int scale)
  * Three call sites.  Four guards, then a Stop; the original returns 1 from
  * every guard and (hr == 0) from the tail, expressed as `neg/sbb/inc`.
  *
- * Prototype copied verbatim from slice2_17.c:95, which declares it void.  The
- * result is therefore discarded -- see the conflict note in the header. */
+ * slice2_17.c:95 declares this void and discards the result.  The original
+ * returns int -- 1 from every guard, (hr == 0) from the tail -- and matching
+ * needs that, so the definition follows the image rather than the host
+ * prototype.  Callers still ignore eax. */
 /* WHAT IT DOES: silences one of the game's sound-effect slots. If sound was
  * never brought up, or that slot is not holding a sound, it quietly does
  * nothing. */
 /* @implements 0x10072580 d3d BrX10072580 */
-void BrX10072580(int a0)
+int BrX10072580(int a0)
 {
     struct BrSndVoice *pVoice;
 
-    if (BrSndG0B5DE8 == 0)
-        return;                         /* the original returns 1 */
-    if (BrSndPDS == NULL)
-        return;
-    if (BrSndG18290FC == NULL)
-        return;
-
-    /* No bounds check on a0 in the original.  Preserved. */
-    pVoice = (struct BrSndVoice *)g_aBrSndBankVoice[a0];
-    if (pVoice == NULL)
-        return;
-
-    /* The original's result is `BrSndVoiceStop(pVoice) == 0`. */
-    (void)BrSndVoiceStop(pVoice);
+    /* Nested so /O2 shares one `mov eax, 1 / ret` epilogue (`je` to it). */
+    if (BrSndG0B5DE8 != 0) {
+        if (BrSndPDS != NULL) {
+            if (BrSndG18290FC != NULL) {
+                /* No bounds check on a0 in the original.  Preserved. */
+                pVoice = (struct BrSndVoice *)g_aBrSndBankVoice[a0];
+                if (pVoice != NULL)
+                    return BrSndVoiceStop(pVoice) == 0;
+            }
+        }
+    }
+    return 1;
 }
 
 /* ==========================================================================
