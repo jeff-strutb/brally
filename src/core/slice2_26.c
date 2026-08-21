@@ -23,7 +23,21 @@
 #include <stddef.h>
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype threads pCtx; the original is one-arg cdecl. */
+#define BrPhaseHook_100450C0 BrPhaseHook_100450C0_port
+#endif
 #include "slice2_26.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrPhaseHook_100450C0
+extern int32_t  g_br0AA010;   /* 0x100AA010 */
+extern BrPhase *g_brAA29B0;   /* 0x10AA29B0 */
+#define BR26_AA29B0  g_brAA29B0
+#define BR26_0AA010  g_br0AA010
+#else
+#define BR26_AA29B0  (pCtx->pAA29B0)
+#define BR26_0AA010  (pCtx->n0AA010)
+#endif
 #include "br_phaseact.h"   /* the one activate body -- see br_phaseact.h */
 
 /* ==========================================================================
@@ -514,13 +528,17 @@ int BrPhaseHook_10045090(BrPhaseCtx *pCtx, void *pArg)
  * do-nothing stub in this build, so the two behave identically here; the
  * difference is preserved because the order is what the original recorded. */
 /* @implements 0x100450C0 d3d BrPhaseHook_100450C0 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseHook_100450C0(void *pArg)
+#else
 int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
+#endif
 {
     BrExt_10041BD0();
     BrExt_10045C90(pArg);
 
-    pCtx->pAA29B0->pfnHook = BrExt_10046DC0;
-    pCtx->n0AA010 = 0;
+    BR26_AA29B0->pfnHook = BrExt_10046DC0;
+    BR26_0AA010 = 0;
     return 1;
 }
 
