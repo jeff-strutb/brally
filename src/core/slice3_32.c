@@ -37,7 +37,15 @@
 #define BrUiPageCtor_10048470 BrUiPageCtor_10048470_scr32
 #endif
 
+#ifdef BR_MATCHING_BUILD
+/* slice3_32.h adds a leading BrScrGlobals* that the original does not have.
+ * Hide that prototype so the matching body can be the real __stdcall(code,x,y). */
+#define BrUiDrawIndex_100479D0 BrUiDrawIndex_100479D0_port
+#endif
 #include "slice3_32.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrUiDrawIndex_100479D0
+#endif
 
 /* ==========================================================================
  * 0. Byte-offset accessors -- memcpy only, no alignment or aliasing
@@ -207,6 +215,24 @@ int BrUiDrawCodeRect_10047980(const BrScrGlobals *pG, BrUiObj *pObj,
  * picture's identity rather than the one filed in the table -- in the shipped
  * table those always agree. */
 /* @implements 0x100479D0 d3d BrUiDrawIndex_100479D0 */
+#ifdef BR_MATCHING_BUILD
+/* Original is __stdcall(code, x, y) and indexes the table at 0x100AB568 by
+ * absolute address (`lea eax,[ecx+ecx*2]/shl eax,3` then
+ * `[eax+0x100AB57C]` / `lea eax,[eax+0x100AB56C]`).  The port's extra
+ * BrScrGlobals* is a pointer indirection the original does not have. */
+extern unsigned char g_aBrUiSprite[];
+int BR_STDCALL BrUiDrawIndex_100479D0(int32_t code, int32_t x, int32_t y)
+{
+    /* Spell *24 as *3 then <<3 so VC5 emits `lea`/`shl` rather than
+     * a scaled-index `[r*8+table]` operand. */
+    uint32_t off = (uint32_t)code * 3u;
+    off <<= 3;
+    BrSub1005F5A0(x, y, code,
+                  g_aBrUiSprite + off + 4u,
+                  *(int32_t *)(g_aBrUiSprite + off + 0x14u));
+    return 1;
+}
+#else
 int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
                            int32_t x, int32_t y)
 {
@@ -217,6 +243,7 @@ int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
     BrSub1005F5A0(x, y, code, &pEnt->rc, pEnt->f14);
     return 1;
 }
+#endif
 
 /* WHAT IT DOES: advances an animated menu element to its next frame -- swaps
  * in that frame's picture and hands the element the frame's data. An element
