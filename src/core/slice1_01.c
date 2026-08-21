@@ -153,6 +153,28 @@ uint32_t BrGrid64Sample(const uint16_t *pGrid, float x, float y)
  * leaves the reader where it was -- but zero is also a perfectly valid entry,
  * so a caller cannot tell the two apart. */
 /* @implements 0x10002EF0 d3d BrU16CursorNext */
+#ifdef BR_MATCHING_BUILD
+/* The original takes only the cursor; the table is the global at 0x106C7C68.
+ * The portable prototype keeps pTable as an explicit argument. */
+const uint16_t *g_br6C7C68;   /* 0x106C7C68 */
+
+uint16_t BrU16CursorNext(BrU16Cursor *pCur)
+{
+    uint16_t rem;
+    uint16_t pos;
+    uint32_t packed;
+
+    rem = pCur->remaining;
+    if (rem) {
+        pos = pCur->pos;
+        packed = ((uint32_t)rem + 0xFFFFu) << 16 | ((uint32_t)pos + 1u);
+        pCur->pos       = (uint16_t)packed;
+        pCur->remaining = (uint16_t)(packed >> 16);
+        return g_br6C7C68[pos];
+    }
+    return 0;
+}
+#else
 uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
 {
     uint32_t rem, pos, packed;
@@ -170,6 +192,7 @@ uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
 
     return pTable[pos];
 }
+#endif
 
 /* ---------------------------------------------------------------------------
  * 0x10003460 -- milliseconds to 30 Hz ticks.
