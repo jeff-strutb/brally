@@ -1032,6 +1032,12 @@ int BrOptOpen294C(BrGameObj *pUnused)
 void BrOpt41A0(void)
 {
     BrDPSessionDesc *pDesc;
+#ifdef _MSC_VER
+    /* Header types the slot cdecl; IDirectPlay4::SetSessionDesc is stdcall
+     * (`call [ecx+0x7C]` with no `add esp`). Local vtable view only. */
+    typedef long (__stdcall *BrOptSetSessFn)(BrDPlay *, BrDPSessionDesc *, uint32_t);
+    typedef struct { void *aSlots[31]; BrOptSetSessFn pfnSetSessionDesc; } BrOptDPlayVtblStd;
+#endif
 
     g_brAA287C = 1;
     BrSub100586A0();
@@ -1042,7 +1048,12 @@ void BrOpt41A0(void)
             BrSub1003D0B0(g_brP277B40, &pDesc);
         if (pDesc != NULL) {
             pDesc->dwFlags &= ~0x20u;    /* clear DPSESSION_JOINDISABLED */
+#ifdef _MSC_VER
+            ((const BrOptDPlayVtblStd *)g_brP277B40->pVtbl)
+                ->pfnSetSessionDesc(g_brP277B40, pDesc, 0);
+#else
             g_brP277B40->pVtbl->pfnSetSessionDesc(g_brP277B40, pDesc, 0);
+#endif
         }
     }
 
@@ -1064,8 +1075,10 @@ void BrOpt41A0(void)
             g_brAA2888 = 1;
             return;
         }
-        BrSub1003CDA0();
     }
+    /* Second test of 0x10AA2884: original keeps eax live and re-tests at 0x10044267. */
+    if (g_brAA2884 != 0)
+        BrSub1003CDA0();
 }
 
 /* 0x10044280 */
