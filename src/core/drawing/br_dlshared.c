@@ -2,7 +2,16 @@
  * share.  See br_dlshared.h for why this file exists and for the evidence
  * behind every constant in it.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is the portable four-float form.  The original takes one
+ * clip-vertex pointer; hide that prototype so this TU compiles the matching
+ * signature. */
+#define BrDlsClipCodes BrDlsClipCodes_Portable
+#endif
 #include "br_dlshared.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrDlsClipCodes
+#endif
 
 /* Sign-fold a 12-bit field.  The original spells it
  *      and edx,0xFFF ; cmp edx,0x800 ; jl .. ; sub edx,0x1000
@@ -68,6 +77,27 @@ void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
  * boundary it appears in. */
 /* @implements 0x10022120 glide BrDlsClipCodes */
 /* @implements 0x10022DC0 d3d BrDlsClipCodes */
+#ifdef BR_MATCHING_BUILD
+/* Original argument is the clip-vertex record, not four scalars:
+ *     +0x04 x, +0x08 y, +0x0C z, +0x18 w
+ * First bit is a store (`mov edx,1`) because edx was just zeroed; the rest
+ * are `or`. */
+int32_t BrDlsClipCodes(const float *pV)
+{
+    int32_t oc = 0;
+
+    /* NEGATED, ALL SEVEN -- see the header.  `!(v >= 0)` and not `v < 0`,
+     * because the original's `test ah,1` is true for UNORDERED too. */
+    if (!(pV[6] >= 0.0f))           oc  = 0x01;   /* w      */
+    if (!(pV[3] + pV[6] >= 0.0f))   oc |= 0x02;   /* near   */
+    if (!(pV[6] - pV[3] >= 0.0f))   oc |= 0x04;   /* far    */
+    if (!(pV[1] + pV[6] >= 0.0f))   oc |= 0x08;   /* left   */
+    if (!(pV[6] - pV[1] >= 0.0f))   oc |= 0x10;   /* right  */
+    if (!(pV[2] + pV[6] >= 0.0f))   oc |= 0x20;   /* bottom */
+    if (!(pV[6] - pV[2] >= 0.0f))   oc |= 0x40;   /* top    */
+    return oc;
+}
+#else
 int32_t BrDlsClipCodes(float cx, float cy, float cz, float cw)
 {
     int32_t oc = 0;
@@ -83,3 +113,4 @@ int32_t BrDlsClipCodes(float cx, float cy, float cz, float cw)
     if (!(cw - cy >= 0.0f))   oc |= 0x40;   /* top    */
     return oc;
 }
+#endif
