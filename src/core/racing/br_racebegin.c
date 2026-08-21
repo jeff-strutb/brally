@@ -7,7 +7,15 @@
  * Transcribed from orig/BRGlide.dll.  Every branch carries the address of the
  * instruction it is, so the two can be diffed.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header takes the race-step body as an argument; the original is void and
+ * pushes 0x10019A70 / 0x1002C500 as an immediate. */
+#define BrRaceEnterOutro BrRaceEnterOutro_port
+#endif
 #include "br_racebegin.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrRaceEnterOutro
+#endif
 
 #include <stddef.h>
 #include <string.h>
@@ -273,6 +281,16 @@ void BrRaceHudFrame(void)
  * the race step -- which is the same routine that runs an ordinary race, so
  * the ending plays through the race machinery rather than beside it. */
 /* @implements 0x10019900 glide BrRaceEnterOutro */
+#ifdef BR_MATCHING_BUILD
+void BrRaceEnterOutro(void)
+{
+    /* 0x10019900 / 0x1002C390: push 0x10019A70, then the two stores, then
+     * cdecl call 0x1002E317 / 0x10034C66 and add esp,4. */
+    g_brRaceRules.mode = 4;
+    g_brRaceBeginStage = 2;
+    BrGameStepSet(BrRaceStepFrame);
+}
+#else
 void BrRaceEnterOutro(void (*pfnRaceStep)(void))
 {
     /* 0x10019900 pushes 0x10019A70 -- the race step itself -- BEFORE the two
@@ -283,6 +301,7 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
     g_brRaceBeginStage  = 2;                          /* 0x1001990F */
     BrGameStepSet(pfnRaceStep);                       /* 0x10019919 */
 }
+#endif
 
 /* ==========================================================================
  * 0x10019930 / 0x10019980 -- the cue schedule
