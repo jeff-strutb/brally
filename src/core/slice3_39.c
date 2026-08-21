@@ -11,7 +11,15 @@
 #include <string.h>
 
 #include "slice1_07.h"   /* BrDevSlot -- see the note in slice3_39.h */
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl; matching needs thiscall.  Rename the cdecl
+ * declaration so the definition below can wear a different convention. */
+#define BrTextBoxDeleteDtor BrTextBoxDeleteDtor_cdecl
+#endif
 #include "slice3_39.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrTextBoxDeleteDtor
+#endif
 
 /* =====================================================================
  * Data tables, read out of BRD3D.dll's .data
@@ -463,6 +471,20 @@ BrTextBox *BrTextBoxInit(BrTextBox *pBox)
  * the pointer back even when it has just freed it, which is what the
  * compiler's standard destructor does and is kept. */
 /* @implements 0x1005B0A0 d3d BrTextBoxDeleteDtor */
+#ifdef BR_MATCHING_BUILD
+/* Original is 2-arg thiscall: `this` in ecx, flags on the stack, `ret 4`.
+ * BR_THISCALL1 (= __fastcall) would put flags in edx; a struct is never
+ * register-eligible, so it is forced back onto the stack. */
+typedef struct { uint32_t v; } BrTextBoxDeleteFlags;
+BrTextBox *BR_THISCALL1 BrTextBoxDeleteDtor(BrTextBox *pBox, BrTextBoxDeleteFlags flags)
+{
+    BrTextBoxDtor(pBox);
+    if (flags.v & 1u) {
+        BrOperatorDelete(pBox);
+    }
+    return pBox;
+}
+#else
 BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
 {
     BrTextBoxDtor(pBox);
@@ -472,6 +494,7 @@ BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
     /* Returns the (possibly freed) pointer, exactly as the original does. */
     return pBox;
 }
+#endif
 
 /* =====================================================================
  * 0x1005B0D0 / 0x1005B160 -- measure sz[]
