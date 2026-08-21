@@ -156,8 +156,10 @@ static char *BrItoa(int value, char *pszOut, int radix)
  * ships with a non-zero value (0x100AC648 = 2, 0x100AC64C = 1,
  * 0x100AC650 = 1); everything else lands past the end of the DLL's
  * initialised data and therefore starts at zero. */
+BrMenuStage g_brStages[BR_MENU_STAGES];
+
 static BrMenuState g_menu = {
-    NULL, NULL, NULL, NULL,     /* pStages, pTimes25A0, pTimes27A0, pTimes27FC */
+    NULL, NULL, NULL,           /* pTimes25A0, pTimes27A0, pTimes27FC */
     0,                          /* g0AA010 */
     2u,                         /* g0AC648 */
     1u,                         /* g0AC64C */
@@ -222,13 +224,11 @@ static int16_t BrTabU16(const uint16_t *pTab, size_t cTab, uint32_t i)
 static uint32_t BrMenuStageByte(const BrMenuState *pSt, int32_t e, uint32_t k,
                                 int hi)
 {
-    const uint8_t *p;
-    ptrdiff_t      off;
+    const uint8_t *p   = (const uint8_t *)g_brStages;
+    ptrdiff_t      off = (ptrdiff_t)0x10 + (ptrdiff_t)24 * e
+                       + 2 * (ptrdiff_t)k + hi;
 
-    if (pSt->pStages == NULL)          /* DEVIATION: the original would fault */
-        return 0;
-    p   = (const uint8_t *)pSt->pStages;
-    off = (ptrdiff_t)0x10 + (ptrdiff_t)24 * e + 2 * (ptrdiff_t)k + hi;
+    (void)pSt;
     return p[off];
 }
 
@@ -893,9 +893,7 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
     int32_t      id;
     char        *psz;
 
-    if (pSt->pStages == NULL)          /* DEVIATION: the original would fault */
-        return 0;
-    id = pSt->pStages[e].f00;
+    id = g_brStages[e].f00;
 
     psz = BrStringById(id);
     if (psz == NULL || psz[0] == '\0') /* DEVIATION: NULL, the original faults */
@@ -911,19 +909,38 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
     char         sz[32];
-    int32_t      e, v;
+    char        *psz;
+    int32_t      v;
+
+    /* Everything the original inlines is inlined: the record index (a plain
+     * movsx of the signed byte at 0x10AA28B8, not a call to BrMenuStageIndex),
+     * the clamp, and BrMenuStoreFormatted's whole body.  See BrMenuText1670
+     * for the strlen test and the BrStrUpr return value, and BrMenuText0A50
+     * for why the vtable loads live in an inner block. */
 
     memset(sz, 0, sizeof sz);
-    if (pSt->pStages == NULL)          /* DEVIATION: the original would fault */
-        return 0;
 
-    e = (pSt->gAA289C == 0) ? 0 : BrMenuStageIndex(pSt);
-    v = pSt->pStages[e].f08 - pSt->gAA28C4;
+    v = g_brStages[(pSt->gAA289C == 0) ? 0 : (int32_t)(int8_t)pSt->gAA28B8].f08 - pSt->gAA28C4;
     if (v < 0)
         v = 0;
 
     BrItoa(v, sz, 10);
-    return BrMenuStoreFormatted(pItem, sz, 0);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* 0x10041670 */
@@ -1002,18 +1019,38 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
     char         sz[32];
+    char        *psz;
     int32_t      v;
 
-    memset(sz, 0, sizeof sz);
-    if (pSt->pStages == NULL)          /* DEVIATION: the original would fault */
-        return 0;
+    /* Everything the original inlines is inlined: the record index (a plain
+     * movsx of the signed byte at 0x10AA28B8, not a call to BrMenuStageIndex),
+     * the clamp, and BrMenuStoreFormatted's whole body.  See BrMenuText1670
+     * for the strlen test and the BrStrUpr return value, and BrMenuText0A50
+     * for why the vtable loads live in an inner block. */
 
-    v = pSt->pStages[pSt->g220B24].f08 - pSt->gAA28C4;
+    memset(sz, 0, sizeof sz);
+
+    v = g_brStages[pSt->g220B24].f08 - pSt->gAA28C4;
     if (v < 0)
         v = 0;
 
     BrItoa(v, sz, 10);
-    return BrMenuStoreFormatted(pItem, sz, 0);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* =====================================================================

@@ -97,7 +97,9 @@ static int calls_are(int a, int b)
  * test, and that is fixed by the disassembly.
  * ===================================================================== */
 
-static BrMenuStage g_stages[4];
+/* The stage table is g_brStages now, not a host pointer the test can aim --
+ * see slice2_24.h.  The fixture is therefore written INTO it. */
+#define g_stages g_brStages
 
 static void stages_init(void)
 {
@@ -212,7 +214,6 @@ int main(void)
     {
         BrMenuState *pSt = state_reset();
         stages_init();
-        pSt->pStages = g_stages;
 
         item_reset();
         pSt->g0AA010 = 1;                 /* take the g0AC648 path */
@@ -398,7 +399,6 @@ int main(void)
     {
         BrMenuState *pSt = state_reset();
         stages_init();
-        pSt->pStages = g_stages;
 
         pSt->gAA289C = 0;                 /* forces record 0 */
         pSt->gAA28C4 = 3;
@@ -442,7 +442,6 @@ int main(void)
     {
         BrMenuState *pSt = state_reset();
         stages_init();
-        pSt->pStages = g_stages;
         pSt->gAA289C = 0;                 /* record 0 -> f00 == 0x40 */
 
         strtab_set(0x40, "monte carlo");

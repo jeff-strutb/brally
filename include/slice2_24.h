@@ -137,12 +137,28 @@ typedef struct BrMenuStage {
  * 3. Module state
  * ===================================================================== */
 
+/* 0x100B3810 -- the stage table, as a real array rather than a pointer.
+ *
+ * It used to be BrMenuState::pStages, supplied by the host.  That cost every
+ * stage reader its match: the original indexes fixed .data, encoding
+ * `[edx*2 + 0x100B3820]` straight into the instruction, where a pointer field
+ * forces a load and an extra register.  It is an ARRAY here for the same
+ * reason BrMenuItem is a byte image.
+ *
+ * The EXTENT is a port choice and nothing in this packet fixes it -- the
+ * record index arrives sign-extended from a byte, so the original can and
+ * does index this backwards.  128 records is chosen to be comfortably past
+ * anything the menus reach; reads outside it are the port's problem, not a
+ * fact about the image. */
+#define BR_MENU_STAGES 128
+extern BrMenuStage g_brStages[BR_MENU_STAGES];
+
 typedef struct BrMenuState {
-    /* The three float arrays and the stage table are supplied by the host.
-     * The original's are fixed arrays at 0x10AA25A0, 0x10AA27A0, 0x10AA27FC
-     * and 0x100B3810; their extents are not determinable from this packet,
-     * so they are pointers rather than guessed-at arrays. */
-    const BrMenuStage *pStages;    /* 0x100B3810 */
+    /* The three float arrays are supplied by the host.  The original's are
+     * fixed arrays at 0x10AA25A0, 0x10AA27A0 and 0x10AA27FC; their extents
+     * are not determinable from this packet, so they are pointers rather
+     * than guessed-at arrays.  (The stage table used to be here too; see
+     * g_brStages above for why it is not.) */
     const float       *pTimes25A0; /* 0x10AA25A0 */
     const float       *pTimes27A0; /* 0x10AA27A0 */
     const float       *pTimes27FC; /* 0x10AA27FC */
