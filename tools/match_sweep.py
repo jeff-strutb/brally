@@ -7,15 +7,30 @@ everything) and /Od (stubs and unoptimised wrappers) -- and each function takes
 whichever of the two matches.  Results land in build/match/report.csv so the
 next pass can sort the frontier by how close each function is.
 
+THE FULL SWEEP IS BOOKKEEPING, NOT WORK.  To make one function bit-exact you
+only need its own file compiled and objdiff'd -- about 11 seconds.  Sweeping all
+104 files to fix one function is pure waste; sweep the FILE you are working on.
+The whole-tree run exists to produce an accurate total, nothing more.
+
+Results are remembered.  EVERY run merges its rows into report.csv, including a
+single-file run -- that is what stops the report drifting out of date and
+removes any need to re-baseline.  A full sweep additionally skips files whose
+source and headers are unchanged since their cached result.
+
 Usage:
-    python3 tools/match_sweep.py                 # sweep everything
-    python3 tools/match_sweep.py src/core/x.c    # sweep one file
+    python3 tools/match_sweep.py                 # sweep everything (cached)
+    python3 tools/match_sweep.py src/core/x.c    # sweep one file  <- normal case
     python3 tools/match_sweep.py --summary       # re-print last report
+    python3 tools/match_sweep.py --force         # ignore the cache
 """
 import csv
+import hashlib
+import io
+import json
 import os
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from match_diff import parse_implements, parse_coff_obj  # noqa: E402
@@ -37,8 +52,107 @@ def find_cl():
 CL = find_cl()
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
+CACHE = os.path.join(ROOT, 'build', 'match', 'sweep_cache.json')
 
 VARIANTS = [('O2', '/O2'), ('Od', '/Od')]
+
+FIELDS = ['file', 'va', 'name', 'status', 'opt', 'orig_size', 'recomp_size',
+          'diffs']
+
+
+def headers_digest():
+    """Hash every header the compile could pull in.
+
+    Deliberately blunt: ANY header edit invalidates every cached file. Headers
+    here reach dozens of translation units, so per-file dependency tracking
+    would be the only alternative and it is not worth the complexity. During a
+    normal matching round the edits are in .c files and this costs nothing.
+    """
+    h = hashlib.sha256()
+    for base in ('include', os.path.join('tools', 'msvc5-compat')):
+        d = os.path.join(ROOT, base)
+        for dirpath, _, files in os.walk(d):
+            for fn in sorted(files):
+                p = os.path.join(dirpath, fn)
+                h.update(os.path.relpath(p, ROOT).encode())
+                try:
+                    with open(p, 'rb') as f:
+                        h.update(f.read())
+                except OSError:
+                    pass
+    h.update(repr(VARIANTS).encode())
+    return h.hexdigest()
+
+
+def file_key(src, hdigest):
+    """Cache key for one source file: its own bytes plus the header digest."""
+    h = hashlib.sha256()
+    h.update(hdigest.encode())
+    with open(src, 'rb') as f:
+        h.update(f.read())
+    return h.hexdigest()
+
+
+def load_cache():
+    try:
+        with open(CACHE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_cache(cache):
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    _atomic_write(CACHE, json.dumps(cache))
+
+
+def _atomic_write(path, text):
+    """Write via a temp file + rename so a killed run cannot truncate the file.
+
+    A previous session lost a whole round of work to files that were written
+    non-atomically and then rolled back; the report is cheap to protect.
+    """
+    d = os.path.dirname(path)
+    fd, tmp = tempfile.mkstemp(dir=d, prefix='.tmp-')
+    try:
+        with os.fdopen(fd, 'w', newline='') as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
+def merge_report(new_rows, swept_files):
+    """Fold this run's rows into report.csv instead of discarding them.
+
+    Single-file runs used to write nothing at all, so every incremental match
+    made the report staler and the only cure was a 20-minute full sweep. Now
+    each run REPLACES the row set of the files it swept and leaves every other
+    file's rows untouched, so the report is always current.
+
+    Replacing per FILE (rather than updating per function) is what makes a
+    function that was deleted, renamed or moved out of a file disappear from
+    the report instead of lingering as a stale row.
+    """
+    keep = []
+    if os.path.exists(REPORT):
+        with open(REPORT) as f:
+            keep = [r for r in csv.DictReader(f)
+                    if r.get('file') not in swept_files]
+
+    out = keep + new_rows
+    # Stable order so the file diffs cleanly between runs.
+    out.sort(key=lambda r: (r.get('file') or '', r.get('va') or ''))
+
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=FIELDS, extrasaction='ignore')
+    w.writeheader()
+    w.writerows(out)
+    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+    _atomic_write(REPORT, buf.getvalue())
+    return out
 
 
 def compile_variant(src, tag, opt):
@@ -81,11 +195,20 @@ def score(orig_bytes, recomp_bytes, relocs):
     return (ndiff == 0 and size_ok), ndiff, len(recomp_bytes)
 
 
-def sweep_file(src):
+def sweep_file(src, cache=None, fkey=None):
     """Return list of dicts, one per @implements'd function in src."""
     implements = parse_implements(src)
     if not implements:
         return []
+
+    if cache is not None and fkey is not None:
+        hit = cache.get(os.path.relpath(src, ROOT))
+        base = os.path.splitext(os.path.basename(src))[0]
+        have_objs = all(os.path.exists(os.path.join(
+            ROOT, 'build', 'match', 'obj_' + tag, base + '.obj'))
+            for tag, _ in VARIANTS)
+        if hit and hit.get('key') == fkey and have_objs:
+            return [dict(r) for r in hit['rows']]
 
     objs = {}
     errors = {}
@@ -174,35 +297,61 @@ def summarise(rows):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    if '--summary' in sys.argv:
-        with open(REPORT) as f:
-            summarise(list(csv.DictReader(f)))
-        return
+    # Parse flags EXPLICITLY and reject unknown ones. This used to filter out
+    # anything starting with '--' and treat whatever was left as the file list,
+    # so a typo -- or `--help` -- left zero arguments and silently launched the
+    # 20-minute whole-tree run. Three subagents tripped that in one session.
+    args, force = [], False
+    for a in sys.argv[1:]:
+        if not a.startswith('--'):
+            args.append(a)
+        elif a == '--summary':
+            with open(REPORT) as f:
+                summarise(list(csv.DictReader(f)))
+            return
+        elif a in ('--force', '--no-cache'):
+            force = True
+        elif a in ('--help', '-h'):
+            print(__doc__)
+            return
+        else:
+            sys.exit('unknown option %s (did you mean --summary or --force?)'
+                     % a)
 
     srcs = args or sources()
+    hdigest = headers_digest()
+    cache = {} if force else load_cache()
+
     all_rows = []
     for i, src in enumerate(srcs, 1):
-        rows = sweep_file(src)
+        fkey = file_key(src, hdigest)
+        rel = os.path.relpath(src, ROOT)
+        cached = (not force and cache.get(rel, {}).get('key') == fkey)
+        rows = sweep_file(src, cache=None if force else cache, fkey=fkey)
+        cache[rel] = {'key': fkey, 'rows': rows}
         all_rows.extend(rows)
         m = sum(1 for r in rows if r['status'] == 'match')
         # A build that will not compile must never look like a build that
         # compiled and matched nothing.
         broke = [r for r in rows if r['status'] == 'compile_error']
         note = '  !! COMPILE ERROR: %s' % broke[0]['diffs'][:70] if broke else ''
-        print('[%3d/%3d] %-40s %d/%d%s' % (i, len(srcs),
-                                           os.path.relpath(src, ROOT),
+        if not note and cached:
+            note = '  (cached)'
+        print('[%3d/%3d] %-40s %d/%d%s' % (i, len(srcs), rel,
                                            m, len(rows), note), flush=True)
 
-    if not args:                                # full sweep -- rewrite report
-        os.makedirs(os.path.dirname(REPORT), exist_ok=True)
-        with open(REPORT, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=['file', 'va', 'name', 'status',
-                                              'opt', 'orig_size',
-                                              'recomp_size', 'diffs'])
-            w.writeheader()
-            w.writerows(all_rows)
-    summarise(all_rows)
+    # EVERY run writes back, single-file runs included. Discarding the rows of
+    # a one-file run is what used to make report.csv drift until only a full
+    # sweep could fix it.
+    merged = merge_report(all_rows, {os.path.relpath(s, ROOT) for s in srcs})
+    save_cache(cache)
+
+    if args:
+        # A one-file run should still show where the tree as a whole stands,
+        # otherwise the only way to see the real total is the slow run.
+        summarise(all_rows)
+        print('  tree total, from report.csv:')
+    summarise(merged if args else all_rows)
 
 
 if __name__ == '__main__':

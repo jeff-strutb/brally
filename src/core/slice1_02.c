@@ -98,7 +98,16 @@ int32_t BrFixPackU24Q13(float v)
 /* @implements 0x10006730 d3d BrFixPackS24Q1 */
 int32_t BrFixPackS24Q1(float v)
 {
+#ifdef BR_MATCHING_BUILD
+    /* The original leaves the scaled value in ST(0) and `call __ftol`, and a
+     * plain cast is the only form VC5 compiles to that. */
     int32_t r = (int32_t)BrFloor(0.5f - v * -2.0f);
+#else
+    /* Host: the cast is undefined once the scaled value leaves int32, and
+     * ARM64 saturates where __ftol wraps. The clamp below is applied to the
+     * INTEGER, so it sees the wrapped value -- go through BrFtol to keep it. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -2.0f));
+#endif
 
     if (r < -8388608)
         r = -8388608;
@@ -113,7 +122,15 @@ int32_t BrFixPackS24Q1(float v)
 /* @implements 0x10006770 d3d BrFixPackS16Q7 */
 int32_t BrFixPackS16Q7(float v)
 {
+#ifdef BR_MATCHING_BUILD
+    /* As BrFixPackS24Q1 above: plain cast so VC5 emits `call __ftol`. */
     int32_t r = (int32_t)BrFloor(0.5f - v * -128.0f);
+#else
+    /* Host: __ftol's low-dword wrap, which the integer clamp below relies on.
+     * 1.0e9 scales to ~1.28e11 -- fits in int64, so it wraps NEGATIVE and
+     * clamps to -32768 rather than saturating to +32767. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -128.0f));
+#endif
 
     if (r < -32768)
         r = -32768;
