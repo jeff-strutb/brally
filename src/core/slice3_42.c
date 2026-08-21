@@ -438,8 +438,13 @@ static int BrReplayActiveCount(void)
 /* @implements 0x1006AA50 d3d BrReplayReset */
 void BrReplayReset(void)
 {
-    const int n = BrReplayActiveCount();
+    int n;
     int i;
+
+    /* Open-coded: two callers keep BrReplayActiveCount from inlining. */
+    n = 8;
+    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
+        n = 1;
 
     /* The `test ecx,ecx / jle` guard is dead (n is 1 or 8) but is kept as the
      * loop bound so the shape matches. */
