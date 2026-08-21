@@ -2,7 +2,7 @@
  * the evidence for the storage they use, and the gotchas. */
 #include "slice6_77.h"
 
-#include "br_slots.h"    /* BrSlotsResetArray -- the loop half of 0x100586A0 */
+#include "br_slots.h"    /* BrSlot */
 #include "slice2_25.h"   /* g_aBrAA2538, g_brAA288C, g_brB4E1D0/D4/E0,
                           * g_aBrB4DF30 and its stride/count                 */
 #include "slice3_45.h"   /* BrFfbInit (0x100791D0), g_brFfb; pulls in
@@ -19,15 +19,27 @@
 /* @implements 0x100586A0 d3d BrSub100586A0 */
 void BrSub100586A0(void)
 {
-    /* The original clears the counter FIRST, before the loop. Kept in that
-     * order; nothing here can observe the difference, but the two writes go to
-     * objects 0x2F4 bytes apart and the sequence is what the disassembly says.
-     *
-     * 0x10AA288C is the DirectPlay send gate as well as this table's counter
-     * -- see the warning at the foot of br_slots.h. Clearing it here re-opens
-     * that gate, which is behaviour of the original, not of this port. */
-    g_brAA288C = 0;
-    BrSlotsResetArray(g_aBrAA2538);
+    /* Cursor on field `a` (0x10AA253C): stores are [eax-4]/[eax]/[eax+4],
+     * bound 0x10AA259C. Zero is reused from edx; -1 from ecx. The original
+     * compare is signed (`jl`). */
+    int32_t *p;
+    int32_t nZero;
+    int32_t nEmpty;
+
+    nZero = 0;
+    p = (int32_t *)((char *)g_aBrAA2538 + 4);
+    g_brAA288C = nZero;
+    nEmpty = -1;
+    do {
+        p[-1] = nEmpty;
+        p[0]  = nZero;
+        p[1]  = nZero;
+        p += 3;
+#ifdef BR_MATCHING_BUILD
+    } while ((int32_t)p < (int32_t)((char *)g_aBrAA2538 + 0x64));
+#else
+    } while (p < (int32_t *)((char *)g_aBrAA2538 + 0x64));
+#endif
 }
 
 /* ==========================================================================
