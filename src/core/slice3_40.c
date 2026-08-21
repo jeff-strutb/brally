@@ -13,7 +13,17 @@
 
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl; the original is thiscall.  Rename the
+ * prototype so the thiscall definition is not a C2373 redefinition. */
+#define BrCarInitTables BrCarInitTables_cdecl_hdr
+#endif
 #include "slice3_40.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrCarInitTables
+#endif
+
+#include "br_match.h"    /* BR_THISCALL1 */
 
 /* ------------------------------------------------------------------ */
 /* Byte-offset accessors into the car record.                          */
@@ -429,36 +439,53 @@ void BrZeroRegions(BrZeroRegion *pList)
  * floats and then immediately zeroes the very slots it just wrote -- a dead
  * store that is in the original and is kept. */
 /* @implements 0x10065630 d3d BrCarInitTables */
-void BrCarInitTables(BrCar *pCar)
+/* Original is __thiscall (`fild [ecx+0x140]` / `ret`).  BR_THISCALL1 is the
+ * single-arg fastcall spelling; the header stays cdecl. */
+void BR_THISCALL1 BrCarInitTables(BrCar *pCar)
 {
-    /* fild + fmul, both at x87 precision; nothing is stored yet */
-    double v = (double)CAR_I32(pCar, 0x140) * (double)BR_K_08F9AC;
-    double a1, a2, a3;
+    /* float, not double: MSVC then emits `fmul/fsub dword` against .rdata.
+     * On x87 the unspilled product still has 53-bit precision until fstp. */
+    float v = CAR_I32(pCar, 0x140) * BR_K_08F9AC;
+    float a1, a2, a3;
+    int32_t *p;
+    uint8_t *pW;
+    uint8_t *pR;
     int i, j, k;
+    int two;
 
-    a1 = v  - (double)BR_K_08F9B0;
-    a2 = a1 - (double)BR_K_08F9B0;
-    a3 = a2 - (double)BR_K_08F9B0;
-
+    p = (int32_t *)CAR_AT(pCar, 0x10AC);
+    a1 = v - BR_K_08F9B0;
     /* DEAD STORES -- see the header.  The loop below zeroes all four. */
-    CAR_F32(pCar, 0x10AC) = (float)v;
-    CAR_F32(pCar, 0x10B0) = (float)a1;
-    CAR_F32(pCar, 0x10B4) = (float)a2;
-    CAR_F32(pCar, 0x10B8) = (float)a3;
+    *(float *)(void *)p = v;
 
-    for (i = 0; i < 4; ++i) {
-        CAR_I32(pCar, 0x10BC + 4 * i) = 2;
-        CAR_I32(pCar, 0x10AC + 4 * i) = 0;   /* kills the store above */
-        CAR_I32(pCar, 0x10DC + 4 * i) = 0;
-        CAR_I32(pCar, 0x10CC + 4 * i) = 0;
-        CAR_F32(pCar, 0x106C + 4 * i) =
-            (float)((double)i * (double)BR_K_08F9B4);
-    }
+    /* Hoist both later walking pointers so they occupy registers across
+     * the first loop, as the original's early lea edi/eax do. */
+    pW = CAR_BYTES(pCar) + 0x2320;
+    pR = CAR_BYTES(pCar) + 0x1120;
+
+    a2 = a1 - BR_K_08F9B0;
+    CAR_F32(pCar, 0x10B0) = a1;
+    two = 2;
+    a3 = a2 - BR_K_08F9B0;
+    CAR_F32(pCar, 0x10B4) = a2;
+    CAR_F32(pCar, 0x10B8) = a3;
+
+    i = 0;
+    do {
+        /* named so fild/fmul stay on the x87 stack; ++i then ++p matches
+         * the original `inc ebx` / `add edx,4` order. */
+        float f = i * BR_K_08F9B4;
+        p[4] = two;
+        p[0] = 0;
+        p[12] = 0;
+        p[8] = 0;
+        ++i;
+        ++p;
+        /* orig: add edx,4 then fstp [edx-0x44] (= -17 floats) */
+        ((float *)(void *)p)[-17] = f;
+    } while (i < 4);
 
     for (j = 0; j < 0x90; ++j) {
-        uint8_t *pW = CAR_BYTES(pCar) + 0x2320 + 6 * j;
-        uint8_t *pR = CAR_BYTES(pCar) + 0x1120 + 0x20 * j;
-
         *(uint16_t *)(void *)(pW + 4) = 0;
         *(uint16_t *)(void *)(pW + 2) = 0;
         *(uint16_t *)(void *)(pW + 0) = 0;
@@ -467,11 +494,18 @@ void BrCarInitTables(BrCar *pCar)
         *(int32_t *)(void *)(pR + 0x04) = 0;
         *(int32_t *)(void *)(pR + 0x08) = 0;
         *(int32_t *)(void *)(pR + 0x14) = 0;
-        /* the original's `test dl,1` two-way branch here writes the same
-         * zero on both arms -- a compiler artifact, not a condition */
-        *(int32_t *)(void *)(pR + 0x18) = 0;
+        /* orig `test dl,1` two-way branch.  Both arms write zero; the odd
+         * arm reloads the dword just stored at +0x00 so MSVC cannot fold
+         * the stores (mov ebx, esi / mov [eax+0x18], ebx vs esi). */
+        if (j & 1) {
+            *(int32_t *)(void *)(pR + 0x18) = *(int32_t *)(void *)(pR + 0x00);
+        } else {
+            *(int32_t *)(void *)(pR + 0x18) = 0;
+        }
         *(int32_t *)(void *)(pR + 0x1C) = 0;
         /* +0x0C and +0x10 are deliberately left alone */
+        pW += 6;
+        pR += 0x20;
     }
 
     for (k = 0; k < 0x12; ++k) {
