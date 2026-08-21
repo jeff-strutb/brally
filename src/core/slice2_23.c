@@ -698,8 +698,15 @@ int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
 int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
     /* The answer is thrown away -- there is no store-back here. */
+    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    (void)r;
+#else
     (void)br23_sel_offer(pObj, pG->gAA2880);
+#endif
     return 1;
 }
 
