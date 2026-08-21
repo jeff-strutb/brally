@@ -99,14 +99,12 @@ int BrRandom(void)
 /* @implements 0x1005FF30 d3d BrMenuSub1005FF30 */
 void BrMenuSub1005FF30(void)
 {
-    /* DEVIATION (type pun): the original clears 0x40 dwords over each buffer
-     * regardless of the element type the rest of the port gives it.  The casts
-     * go through void * so the dword count -- and therefore the "only the
-     * first 64 entries of edge[]/prev[]" behaviour -- is preserved exactly.
-     * Order matters only in that it is the original's. */
-    BrTables64Clear((uint32_t *)(void *)g_BrDikState,
-                    (uint32_t *)(void *)g_BrDikEdge,
-                    (uint32_t *)(void *)g_BrDikPrev);
+    /* Three inlined `rep stosd` of 0x40 dwords.  BrTables64Clear is the same
+     * body as a callee; the original does not call it.  The size is a dword
+     * count, not an element count of the two 256-entry int32 arrays. */
+    memset(g_BrDikState, 0, BR_TABLE64_COUNT * sizeof(uint32_t));
+    memset(g_BrDikEdge,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
+    memset(g_BrDikPrev,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
 }
 
 /* ==========================================================================
