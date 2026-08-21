@@ -209,6 +209,11 @@ int32_t BrUiHook90_10041710(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuText17
 int32_t BrUiHook90_100417B0(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuText17B0); }
 int32_t BrUiHook90_10041890(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuFlags1890); }
 
+#ifdef BR_MATCHING_BUILD
+/* 0x100AC634.  Restated: slice2_24.c's k_AC634 is file-static. */
+static const int8_t k_brAC634[4] = { 0x63, 0x62, 0, 0 };
+#endif
+
 /* The two that read a word another module now writes. */
 /* WHAT IT DOES: sets the caption on the Car Shadow option row so it reads
  * the current setting. It first copies the toggle's value across from where
@@ -217,8 +222,14 @@ int32_t BrUiHook90_10041890(BrUiCtl_ *pCtl) { return Br90Call(pCtl, BrMenuFlags1
 /* @implements 0x100409B0 d3d BrUiHook90_100409B0 */
 int32_t BrUiHook90_100409B0(BrUiCtl_ *pCtl)
 {
+#ifdef BR_MATCHING_BUILD
+    /* NO BOUNDS TEST -- see BrMenuCap09B0.  BrMenuItem.f1E20C is +0x1E20C. */
+    ((BrMenuItem *)pCtl)->f1E20C = k_brAC634[g_brAA2A20];
+    return 1;
+#else
     Br90BridgeToggles();
     return Br90Call(pCtl, BrMenuCap09B0);
+#endif
 }
 
 /* WHAT IT DOES: the same for the Specular option row: bridge the toggle's
