@@ -213,9 +213,11 @@ void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
 /* @implements 0x10074B20 d3d BrMat3Sub */
 void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 {
-    int i;
+    int i, j;
 
-    /* NINE elements: a 3x3 matrix subtract.
+    /* NINE elements: a 3x3 matrix subtract, nested 3x3 so the cursor
+     * walks continuously (the outer body reloads the pA/pOut offsets
+     * but does not reset the pB walker).
      *
      * This was previously modelled as three subtractions performed three
      * times, and recorded as a PRESERVED BUG of the original -- "only the
@@ -235,8 +237,9 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
      * It looks like diligence, it explains an oddity, and nobody re-derives
      * it. A claim that the original is wrong should be held to a HIGHER
      * standard than a claim that it is right, not a lower one. */
-    for (i = 0; i < 9; ++i)
-        pOut[i] = pA[i] - pB[i];
+    for (i = 0; i < 3; ++i)
+        for (j = 0; j < 3; ++j)
+            pOut[3 * i + j] = pA[3 * i + j] - pB[3 * i + j];
 }
 
 /* 0x10075340 */
