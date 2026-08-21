@@ -20,7 +20,13 @@
  */
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+#define BrExt_1007AC00 BrExt_1007AC00_decl
+#endif
 #include "slice5_63.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrExt_1007AC00
+#endif
 
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
@@ -105,10 +111,13 @@ extern void BrSub100027F0(int track);
 extern void BrSub1003E3A0(void);
 /* XSLICE 0x1003CC70 -- called with 0x10277B40. */
 extern void BrSub1003CC70(void *p);
-/* 0x1007A840 IS DELIBERATELY NOT DECLARED HERE.  It is the D3D-only gate in
- * front of 0x1007AC00's one call; BRGlide.dll has no counterpart of it and
- * the Glide twin 0x10058F90 calls the body unconditionally.  See the banner
- * over BrExt_1007AC00. */
+/* 0x1007A840 is the D3D-only gate in front of 0x1007AC00's one call;
+ * BRGlide.dll has no counterpart and the Glide twin 0x10058F90 calls the
+ * body unconditionally.  Declared only for the matching build, which diffs
+ * against BRD3D.dll. */
+#ifdef BR_MATCHING_BUILD
+extern int BrSub1007A840(void);
+#endif
 /* XSLICE 0x1007A940 (Glide 0x10058E20 -- byte-identical, shared.csv `body`) */
 extern int BrSub1007A940(void);
 
@@ -213,12 +222,26 @@ void BrCdTrackPlay(int track)
  * thing it accomplishes is whatever that call does along the way. What the
  * question is has not been established; the purpose is unclear. */
 /* @implements 0x10058F90 glide BrExt_1007AC00 */
+#ifdef BR_MATCHING_BUILD
+/* Matching diffs against BRD3D.dll, whose 22-byte body gates on 0x1007A840.
+ * The `neg/sbb/neg` tail is `return x != 0`; keeping the result as the
+ * function's return value is what stops VC5 turning the second call into a
+ * tail jmp.  The header prototype is void -- hidden above. */
+int BrExt_1007AC00(void)
+{
+    if (BrSub1007A840() == 0)
+        return 0;
+    return BrSub1007A940() != 0;
+}
+#else
 void BrExt_1007AC00(void)
 {
     /* Kept as a call so the side effects of 0x10058E20 (== D3D 0x1007A940)
-     * still happen; the comparison itself is dead. */
+     * still happen; the comparison itself is dead.  No 0x1007A840 gate:
+     * Glide 0x10058F90 has none. */
     (void)(BrSub1007A940() != 0);
 }
+#endif
 
 /* ==========================================================================
  * 2. Text / HUD state pokes
