@@ -406,11 +406,16 @@ static int BrMenuIsIdle(const BrMenuState *pSt)
 /* @implements 0x100407A0 d3d BrMenuCap07A0 */
 int32_t BrMenuCap07A0(BrMenuItem *pItem)
 {
-    BrMenuState *pSt = &g_menu;
-
-    if (BrMenuIsIdle(pSt))
+    /* BrMenuIsIdle, BrTabU16 and BrMenuSetCaptionId are all written out: the
+     * original is one straight-line body with a single forward branch, and
+     * every call setup the delegating form emits is a byte the original does
+     * not spend.  The table read is `mov dx, word ptr [ecx*2 + tab]` -- a
+     * plain 16-bit move, no extension and no bounds test. */
+    if (g_menu.gAA2904 == g_menu.gAA2964 && g_menu.gAA28E8 == 0)
         return -2;
-    return BrMenuSetCaptionId(pItem, BrTabU16(k_AC570, 16, pSt->g0AC648));
+
+    pItem->f1E20C = (int16_t)k_AC570[g_menu.g0AC648];
+    return 1;
 }
 
 /* 0x100407E0.  Same shape as 0x10040730 but it takes the HIGH byte of the
@@ -441,13 +446,15 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
 /* @implements 0x10040870 d3d BrMenuCap0870 */
 int32_t BrMenuCap0870(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both -- the bounds test, the table
-     * read and the store are one body, so the delegating form is short
-     * by the call setup. */
-    uint32_t i = (uint32_t)(g_menu.gAA2A08);
+    /* NO BOUNDS TEST, and no delegation.  The original is four instructions --
+     * `mov eax,[g]; mov edx,[esp+4]; movsx cx, byte ptr [eax+tab];
+     * mov word ptr [edx+0x1E20C], cx` -- with no cmp/jae anywhere.  Routing
+     * through BrMenuSetCaptionId/BrTabS8 and guarding the index both cost
+     * bytes the original never spends, so the guard is dropped: an
+     * out-of-range global reads past the table here exactly as it does there.
+     * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC598[i] : (int16_t)0;
+    pItem->f1E20C = k_AC598[g_menu.gAA2A08];
     return 1;
 }
 
@@ -458,13 +465,15 @@ int32_t BrMenuCap0870(BrMenuItem *pItem)
 /* @implements 0x10040890 d3d BrMenuCap0890 */
 int32_t BrMenuCap0890(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both -- the bounds test, the table
-     * read and the store are one body, so the delegating form is short
-     * by the call setup. */
-    uint32_t i = (uint32_t)(g_menu.g0AC64C);
+    /* NO BOUNDS TEST, and no delegation.  The original is four instructions --
+     * `mov eax,[g]; mov edx,[esp+4]; movsx cx, byte ptr [eax+tab];
+     * mov word ptr [edx+0x1E20C], cx` -- with no cmp/jae anywhere.  Routing
+     * through BrMenuSetCaptionId/BrTabS8 and guarding the index both cost
+     * bytes the original never spends, so the guard is dropped: an
+     * out-of-range global reads past the table here exactly as it does there.
+     * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC59C[i] : (int16_t)0;
+    pItem->f1E20C = k_AC59C[g_menu.g0AC64C];
     return 1;
 }
 
@@ -475,13 +484,15 @@ int32_t BrMenuCap0890(BrMenuItem *pItem)
 /* @implements 0x100408B0 d3d BrMenuCap08B0 */
 int32_t BrMenuCap08B0(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both -- the bounds test, the table
-     * read and the store are one body, so the delegating form is short
-     * by the call setup. */
-    uint32_t i = (uint32_t)(g_menu.g0AC650);
+    /* NO BOUNDS TEST, and no delegation.  The original is four instructions --
+     * `mov eax,[g]; mov edx,[esp+4]; movsx cx, byte ptr [eax+tab];
+     * mov word ptr [edx+0x1E20C], cx` -- with no cmp/jae anywhere.  Routing
+     * through BrMenuSetCaptionId/BrTabS8 and guarding the index both cost
+     * bytes the original never spends, so the guard is dropped: an
+     * out-of-range global reads past the table here exactly as it does there.
+     * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC5A0[i] : (int16_t)0;
+    pItem->f1E20C = k_AC5A0[g_menu.g0AC650];
     return 1;
 }
 
@@ -550,11 +561,15 @@ int32_t BrMenuCap09D0(BrMenuItem *pItem)
 /* @implements 0x10041870 d3d BrMenuCap1870 */
 int32_t BrMenuCap1870(BrMenuItem *pItem)
 {
-    /* Written out rather than routed through BrMenuSetCaptionId and
-     * BrTabS8: the original inlines both. */
-    uint32_t i = (uint32_t)(g_menu.gAA2A0C);
+    /* NO BOUNDS TEST, and no delegation.  The original is four instructions --
+     * `mov eax,[g]; mov edx,[esp+4]; movsx cx, byte ptr [eax+tab];
+     * mov word ptr [edx+0x1E20C], cx` -- with no cmp/jae anywhere.  Routing
+     * through BrMenuSetCaptionId/BrTabS8 and guarding the index both cost
+     * bytes the original never spends, so the guard is dropped: an
+     * out-of-range global reads past the table here exactly as it does there.
+     * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = (i < 4u) ? (int16_t)k_AC628[i] : (int16_t)0;
+    pItem->f1E20C = k_AC628[g_menu.gAA2A0C];
     return 1;
 }
 

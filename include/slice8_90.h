@@ -27,11 +27,16 @@
  * and BrUiCtl_ is the canonical 0x1E214 control.  The bodies are NOT written
  * against it:
  *
- *   slice2_24.c  `BrMenuItem` -- a THREE-FIELD struct { f1C, f1E20C, text }.
- *                It is a COMPRESSION, not a byte image: `offsetof(BrMenuItem,
- *                f1E20C)` is 4, and the original's is 0x1E20C.  Handing one of
- *                these a `BrUiCtl_ *` links cleanly and reads pfn10/pfn14 as
- *                the string id.
+ *   slice2_24.c  `BrMenuItem` -- a BYTE IMAGE of the same object, carrying
+ *                f1C at +0x1C, text at +0x2B5C and f1E20C at +0x1E20C.  It
+ *                used to be a three-field compression; it was widened to the
+ *                true displacements because the caption setters encode
+ *                `mov word ptr [edx + 0x1E20C], cx` and cannot otherwise come
+ *                out bit-identical.  That makes the two models AGREE on a
+ *                32-bit target -- and still disagree under LP64, where every
+ *                pointer ahead of the reached fields widens, by different
+ *                amounts in each struct.  A cast is therefore still wrong
+ *                here, for the same reason as the slice2_25 case below.
  *   slice2_25.c  `BrGameObj` -- a BYTE IMAGE with `pSub` pinned at +0x2AE8.
  *                On LP64 `offsetof(BrUiCtl_, pOwner)` is NOT 0x2AE8: the
  *                vtable pointer and the six hook pointers ahead of it widen

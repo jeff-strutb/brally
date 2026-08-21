@@ -4,10 +4,15 @@
  *
  * slice8_90.c exists for one reason: a control hook slot is
  * `int32_t (*)(BrUiCtl_ *)` and slice2_24.c's twelve bodies take a
- * `BrMenuItem *`, which is a THREE-FIELD COMPRESSION of the same original
- * object, not a byte image of it.  The failure a cast produces is silent --
- * it links, it runs, and it reads the wrong members -- so the test has to
- * assert the thing a cast would get wrong rather than "the hook returned 1".
+ * `BrMenuItem *`, a SECOND C MODEL of the same original object.  BrMenuItem is
+ * now a byte image at the original's own displacements (it has to be, or the
+ * caption setters could never come out bit-identical), so on the 32-bit
+ * matching build the two models happen to agree -- but they are still not the
+ * same type, and on this LP64 host they do NOT agree: every pointer ahead of
+ * the reached fields widens, in BrUiCtl_ and BrMenuItem by different amounts.
+ * The failure a cast produces is silent -- it links, it runs, and it reads the
+ * wrong members -- so the test asserts the thing a cast would get wrong rather
+ * than "the hook returned 1".
  *
  * So every body below is a STAND-IN that reports which member it saw.  The
  * real bodies are slice2_24.c's and are not linked here; this suite links
@@ -16,9 +21,9 @@
  * The five properties:
  *
  *   1. FIELD IDENTITY.  A body that reads f1E20C must see the control's
- *      w1E20C and not its pfn10/pfn14, which is what the raw cast reads.
- *      The negative half of the same claim is asserted directly:
- *      offsetof(BrMenuItem, f1E20C) is 4 and the original's is 0x1E20C.
+ *      w1E20C and not whatever a raw cast would land on.  The negative half
+ *      of the same claim is asserted directly: on this host the two models
+ *      disagree about where f1E20C / w1E20C lives, so a cast reads garbage.
  *   2. WRITE-BACK.  What the body stores in the view must land on the
  *      CONTROL, or the hook is a no-op with a plausible return value.
  *   3. THE SHIM VTABLE.  slice2_24's two tails call the text box through
@@ -170,10 +175,9 @@ static void TestMarshalFields(void)
     /* offsetof is the negative half of the claim: a raw cast through
      * BrUiCtlHookFn_ would read the control's pfn10/pfn14 as the string id.
      * This is not a style point -- it is the bug the module prevents. */
-    CHECK(offsetof(BrMenuItem, f1E20C) != 0x1E20Cu,
-          "BrMenuItem is a compression, so a cast cannot reach f1E20C");
     CHECK(offsetof(BrUiCtl_, w1E20C) != offsetof(BrMenuItem, f1E20C),
-          "...and the two models genuinely disagree about where it lives");
+          "the two models disagree about where the string id lives, so a "
+          "raw cast through BrUiCtlHookFn_ cannot reach it");
 
     p->flags1C = 0x00102001;
     p->w1E20C  = 0x0055;
