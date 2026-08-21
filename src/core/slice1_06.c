@@ -47,6 +47,41 @@ typedef char br06_assert_namelist[
  * bumped -- but the length still counts up, so once it overflows it never
  * agrees with what is actually stored again. What the items are is not
  * established here. */
+#ifdef BR_MATCHING_BUILD
+/* Original layout from the context pointer at 0x106C7C3C: items at +4,
+ * count at +0x7C. BrPendList in the header starts at the items, so matching
+ * uses a wrapper with the leading dword the original addresses through. */
+typedef struct BrPendCtx {
+    uint32_t unused0;
+    void    *apItems[BR_PENDLIST_MAX];
+    int32_t  count;
+} BrPendCtx;
+
+typedef char br06_assert_pendctx[
+    (offsetof(BrPendCtx, count) == 0x7C) ? 1 : -1];
+
+BrPendCtx *g_brPendCtx;     /* 0x106C7C3C */
+uint32_t   g_brPendDropped; /* 0x106C7C40 */
+
+/* The header keeps the portable 3-arg prototype. The original is cdecl with
+ * one stack argument (the item) at [esp+4], which is the first parameter;
+ * the other two occupy unread stack slots. */
+/* @implements 0x10037030 d3d BrPendListAdd */
+void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
+{
+    BrPendCtx *p = g_brPendCtx;
+    int32_t n = p->count;
+
+    if (n < BR_PENDLIST_MAX) {
+        p->apItems[n] = pList;
+        /* Reload 0x106C7C3C before incrementing -- the original does. */
+        g_brPendCtx->count++;
+    } else {
+        g_brPendDropped++;
+        p->count++;
+    }
+}
+#else
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
@@ -67,6 +102,7 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
     }
     pList->count++;
 }
+#endif
 
 /* ==========================================================================
  * 0x10037070
@@ -177,6 +213,53 @@ int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
  * answer is, allocates that much, then asks again to have it filled in, and
  * hands the block to the caller. On any failure it releases the block and
  * reports the error instead. */
+#ifdef BR_MATCHING_BUILD
+/* COM methods are stdcall; the header's BrComGetFn is cdecl. A local
+ * stdcall typedef is what removes the `add esp, 10h` the cdecl form emits
+ * after each call. __declspec(dllimport) is what emits `call dword ptr
+ * [IAT]` rather than a direct `call` thunk. */
+typedef int32_t (__stdcall *BrComGetFnStd)(void *pThis, void *pParam,
+                                           void *pvBuf, uint32_t *pcb);
+
+__declspec(dllimport) void *__stdcall GlobalAlloc(unsigned uFlags,
+                                                  unsigned dwBytes);
+__declspec(dllimport) void *__stdcall GlobalLock(void *hMem);
+__declspec(dllimport) void *__stdcall GlobalHandle(void *pMem);
+__declspec(dllimport) int   __stdcall GlobalUnlock(void *hMem);
+__declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
+
+/* @implements 0x1003D180 d3d BrComGetAlloc */
+int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
+{
+    BrComGetFnStd pfn = (BrComGetFnStd)pObj->pVtbl->pfnGet;
+    uint32_t      cb;
+    void         *pv = NULL;
+    int32_t       hr;
+
+    /* cb is uninitialised: the original reuses pObj's stack slot as the size
+     * out-param and never stores 0 into it. */
+    hr = pfn(pObj, pParam, NULL, &cb);
+    if (hr == BR_COM_E_BUFFERTOOSMALL) {
+        /* GMEM_MOVEABLE|GMEM_ZEROINIT == 0x42. */
+        pv = GlobalLock(GlobalAlloc(0x42u, cb));
+        if (pv == NULL) {
+            hr = BR_COM_E_OUTOFMEMORY;
+        } else {
+            hr = pfn(pObj, pParam, pv, &cb);
+            if (hr >= 0) {
+                *ppvOut = pv;
+                return 0;   /* the original discards hr here */
+            }
+        }
+    }
+
+    if (pv != NULL) {
+        GlobalUnlock(GlobalHandle(pv));
+        GlobalFree(GlobalHandle(pv));
+    }
+    return hr;
+}
+#else
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
@@ -216,6 +299,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
     }
     return hr;
 }
+#endif
 
 /* ==========================================================================
  * 0x1003E1D0
@@ -224,6 +308,36 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 /* WHAT IT DOES: wipes a pair of scratch buffers back to zeros, pointing each
  * at its own built-in storage first if it has not been given anywhere else to
  * live. What the buffers hold is not established here. */
+#ifdef BR_MATCHING_BUILD
+uint32_t *g_brPairA;                         /* 0x10ACED34 */
+uint32_t *g_brPairB;                         /* 0x10AD189C */
+uint32_t  g_brPairStaticA[BR_PAIRBUF_DWORDS]; /* 0x10AF9890 */
+uint32_t  g_brPairStaticB[BR_PAIRBUF_DWORDS]; /* 0x10AF99DC */
+
+/* The header keeps the portable prototype. The original takes no arguments
+ * and talks to four absolute addresses. */
+/* @implements 0x1003E1D0 d3d BrPairBufReset */
+int BrPairBufReset(BrPairBuf *pBuf)
+{
+    uint32_t *p;
+
+    p = g_brPairA;
+    if (p == NULL) {
+        p = g_brPairStaticA;
+        g_brPairA = p;
+    }
+    memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
+
+    p = g_brPairB;
+    if (p == NULL) {
+        p = g_brPairStaticB;
+        g_brPairB = p;
+    }
+    memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
+
+    return 1;
+}
+#else
 /* @implements 0x1003E1D0 d3d BrPairBufReset */
 int BrPairBufReset(BrPairBuf *pBuf)
 {
@@ -239,6 +353,7 @@ int BrPairBufReset(BrPairBuf *pBuf)
 
     return 1;
 }
+#endif
 
 /* ==========================================================================
  * 0x1003E260
