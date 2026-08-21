@@ -391,21 +391,24 @@ int32_t BrMenuLeaveTo2(void)
 /* @implements 0x10041B50 d3d BrMenuAutoSaveName */
 void BrMenuAutoSaveName(void)
 {
-    BrMenuState *pSt = &g_menu;
-    uint8_t     *p   = g_pBrMenuACED34;
+    uint8_t *p = g_pBrMenuACED34;
+    char    *pszName = "AutoSave.brf";
 
-    if (!pSt->gACED34_present || p == NULL)
+    /* One pointer, 0x10ACED34.  The port used to thread a separate
+     * gACED34_present flag AND a NULL check; the original is `mov edx,
+     * [0x10ACED34]; test edx,edx; je ret`.  strcpy, not BrStrCopy -- the
+     * original inlines the CRT copy into 0x11782CD0.  pszName hides the
+     * length so that expansion is the generic repne-scasb form. */
+
+    if (p == NULL)
         return;
 
-    BrStrCopy(pSt->g1782CD0, sizeof pSt->g1782CD0, "AutoSave.brf");
+    strcpy(g_menu.g1782CD0, pszName);
 
     if (p[4] == 0 && p[5] == 0) {
         /* three `rep stosd` runs of 6, 0xC and 0x18 dwords.  The original
          * re-reads 0x10ACED34 between them, which is why the pointer is
-         * refetched here even though nothing can have changed it.
-         * DEVIATION: the +6 and +0x1E runs are misaligned dword stores in the
-         * original; memset does the same bytes without the alignment fault
-         * risk. */
+         * refetched here even though nothing can have changed it. */
         memset(p + 0x06, 0, 6 * 4);
         p = g_pBrMenuACED34;
         memset(p + 0x1E, 0, 0xC * 4);
@@ -426,17 +429,31 @@ void BrMenuAutoSaveName(void)
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
-    BrMenuState *pSt = &g_menu;
-    uint32_t     i;
+    uint32_t i;
 
-    if (pSt->g0AA010 != 0) {
-        i = pSt->g0AC648;
+    /* Written out.  The original tests 0x100AA010 with jne to g0AC648 and
+     * falls into the stage path; the selector byte is tested before the
+     * movsx so the flags survive lea.  Arms are duplicated so VC5 does not
+     * hoist the movsx above that test. */
+    if (g_menu.g0AA010 == 0) {
+        if (g_menu.gAA28A8 != 0) {
+            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+            e3 = e3 + e3 * 2;
+            i = *((const uint8_t *)g_brStages
+                  + 0x10 + 2 * (g_menu.gAA28AC + (uint32_t)e3 * 4u));
+        } else {
+            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+            e3 = e3 + e3 * 2;
+            i = *((const uint8_t *)g_brStages
+                  + 0x10 + 2 * (g_menu.gAA28A4 + (uint32_t)e3 * 4u));
+        }
     } else {
-        int32_t  e = BrMenuStageIndex(pSt);
-        uint32_t k = (pSt->gAA28A8 != 0) ? pSt->gAA28AC : pSt->gAA28A4;
-        i = BrMenuStageByte(pSt, e, k, 0);
+        i = g_menu.g0AC648;
     }
-    return BrMenuSetCaptionId(pItem, BrTabU16(k_AC550, 16, i));
+    /* Keep `i` live across the store so the word load uses cx, not ax
+     * (which would clobber the index). */
+    pItem->f1E20C = (int16_t)k_AC550[i];
+    return 1;
 }
 
 /* The guard 0x100407A0, 0x100407E0 and 0x100408D0 share.  Non-zero means
@@ -474,20 +491,28 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
 /* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
-    BrMenuState *pSt = &g_menu;
-    uint32_t     i;
+    uint32_t i;
 
-    if (BrMenuIsIdle(pSt))
+    if (g_menu.gAA2904 == g_menu.gAA2964 && g_menu.gAA28E8 == 0)
         return -2;
 
-    if (pSt->g0AA010 != 0) {
-        i = pSt->gAA2A00;
+    if (g_menu.g0AA010 == 0) {
+        if (g_menu.gAA28A8 != 0) {
+            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+            e3 = e3 + e3 * 2;
+            i = *((const uint8_t *)g_brStages
+                  + 0x11 + 2 * (g_menu.gAA28AC + (uint32_t)e3 * 4u));
+        } else {
+            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+            e3 = e3 + e3 * 2;
+            i = *((const uint8_t *)g_brStages
+                  + 0x11 + 2 * (g_menu.gAA28A4 + (uint32_t)e3 * 4u));
+        }
     } else {
-        int32_t  e = BrMenuStageIndex(pSt);
-        uint32_t k = (pSt->gAA28A8 != 0) ? pSt->gAA28AC : pSt->gAA28A4;
-        i = BrMenuStageByte(pSt, e, k, 1);
+        i = g_menu.gAA2A00;
     }
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC590, 8, i));
+    pItem->f1E20C = k_AC590[i];
+    return 1;
 }
 
 /* 0x10040870 */
@@ -860,15 +885,55 @@ int32_t BrMenuTime0EE0(BrMenuItem *pItem)
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
 
+#ifdef _MSC_VER
+static __inline void
+#else
+static void
+#endif
+BrMenuFillLapTime(char *pszOut, float fTime)
+{
+    char    *pszDash = "--:--";
+    int32_t  nCenti, nSec, nHund, nMin, nSecOfMin;
+    float    fSecStored;
+
+    if (!(fTime > 0.0f)) {
+        strcpy(pszOut, pszDash);
+        return;
+    }
+    nCenti     = (int32_t)(fTime * 100.0f);
+    nSec       = (int32_t)((float)nCenti * 0.01f);
+    fSecStored = (float)nSec;
+    nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
+    nMin       = (int32_t)(fSecStored * 0.016666667f);
+    nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
+    sprintf(pszOut, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
+}
+
 /* 0x10041040 */
 /* @implements 0x10041040 d3d BrMenuTime1040 */
 int32_t BrMenuTime1040(BrMenuItem *pItem)
 {
-    char sz[32];
+    char  sz[32];
+    char *psz;
 
     memset(sz, 0, sizeof sz);
-    BrMenuFormatLapTime(sz, sizeof sz, g_menu.gAA28C8);
-    return BrMenuStoreFormatted(pItem, sz, 1);
+    BrMenuFillLapTime(sz, g_menu.gAA28C8);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn04(pText);
+        if (psz != NULL)
+            pVtbl->pfn10(pText);
+    }
+    return 1;
 }
 
 /* 0x10041180 */
