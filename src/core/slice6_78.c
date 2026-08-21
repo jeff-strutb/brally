@@ -289,17 +289,17 @@ void BrChkFClose(FILE **ppFile)
 /* @implements 0x10002490 d3d BrCdTrackGetEar */
 int BrCdTrackGetEar(void)
 {
-    if (g_brCdEnabled == 0) {
-        return 0;
+    /* Two success tests share one fail-out (`je` to `xor eax,eax / ret`).
+     * Early `return 0` inverts the branches. */
+    if (g_brCdEnabled != 0) {
+        if (g_brCdPlaying != 0) {
+            /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
+             * g_brCdMediaOk and ANDed with the track, not a branch.  The
+             * track is loaded either way. */
+            return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
+        }
     }
-    if (g_brCdPlaying == 0) {
-        return 0;
-    }
-
-    /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
-     * g_brCdMediaOk and ANDed with the track, not a branch.  The track is
-     * loaded either way. */
-    return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
+    return 0;
 }
 
 /* 0x10002910.  Both arms are tail jumps; the dispatcher adds nothing. */
