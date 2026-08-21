@@ -98,11 +98,55 @@ static char *BrStrUpr(char *psz)
     return psz;
 }
 
-/* 0x1008C000 is _itoa; every call site in this packet passes base 10. */
-static void BrItoa10(char *pszOut, size_t cbOut, int32_t v)
+/* 0x1008C000 is MSVC's _itoa; every call site in this packet passes base 10.
+ *
+ * This is a real three-argument call in the original's instruction stream --
+ * `push 0xA; push <dest>; push <value>; call _itoa` -- so it has to stay one
+ * here.  The wrapper this replaces took (dest, size, value) and was a bounded
+ * snprintf -- a different callee with the arguments in a different order,
+ * which put a different sequence on the stack and cost every text setter in
+ * the packet its match.
+ *
+ * DEVIATION (unchanged in substance): _itoa is unbounded.  Every caller in
+ * this packet hands it a 32-byte buffer and a value that is at most eleven
+ * characters, so no call here can overrun; the size argument the wrapper took
+ * was never doing any work. */
+#ifdef _MSC_VER
+char *_itoa(int value, char *pszOut, int radix);
+#define BrItoa _itoa
+#else
+static char *BrItoa(int value, char *pszOut, int radix)
 {
-    snprintf(pszOut, cbOut, "%d", (int)v);
+    char     tmp[36];
+    unsigned u;
+    int      neg = 0;
+    int      n   = 0;
+    char    *p   = pszOut;
+
+    if (radix < 2 || radix > 36) {
+        pszOut[0] = '\0';
+        return pszOut;
+    }
+    if (radix == 10 && value < 0) {
+        neg = 1;
+        u   = (unsigned)(-(value + 1)) + 1u;   /* INT_MIN-safe */
+    } else {
+        u = (unsigned)value;
+    }
+    do {
+        unsigned d = u % (unsigned)radix;
+        tmp[n++]   = (char)(d < 10u ? '0' + d : 'a' + (d - 10u));
+        u /= (unsigned)radix;
+    } while (u != 0u);
+
+    if (neg)
+        *p++ = '-';
+    while (n > 0)
+        *p++ = tmp[--n];
+    *p = '\0';
+    return pszOut;
 }
+#endif
 
 /* =====================================================================
  * 1. Module state
@@ -621,14 +665,25 @@ int32_t BrMenuSeedFrom26F0(void)
 int32_t BrMenuText08D0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
+    char        *psz;
 
-    if (BrMenuIsIdle(pSt))
+    /* BrMenuIsIdle written out: the original tests both globals in line and
+     * threads the fall-through straight into the body.  See BrMenuText0A50
+     * for why pVtbl / pText are derived in an inner block rather than named
+     * up here, and for the pointer test before the second poke. */
+    if (pSt->gAA2904 == pSt->gAA2964 && pSt->gAA28E8 == 0)
         return 1;
 
-    BrItoa10(pItem->text.sz, sizeof pItem->text.sz, pSt->g0BD3E0);
-    if (pItem->text.pVtbl != NULL) {   /* DEVIATION: NULL check */
-        pItem->text.pVtbl->pfn08(&pItem->text);
-        pItem->text.pVtbl->pfn2C(&pItem->text);
+    psz = pItem->text.sz;
+    BrItoa(pSt->g0BD3E0, psz, 10);
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
     }
     return 1;
 }
@@ -640,7 +695,7 @@ int32_t BrMenuText0A50(BrMenuItem *pItem)
     BrMenuState *pSt = &g_menu;
     char        *psz;
 
-    /* Transcribed inline, not routed through BrItoa10/BrMenuStoreValue.  The
+    /* Transcribed inline, not routed through BrItoa/BrMenuStoreValue.  The
      * original spends no call here beyond sprintf: the copy into +0x2B65 is
      * MSVC's inline strcpy (repne scasb + rep movsd/movsb) and the two vtable
      * pokes are thiscall through a vtable pointer fetched ONCE.  `psz` is the
@@ -682,7 +737,7 @@ int32_t BrMenuText0AC0(BrMenuItem *pItem)
     BrMenuState *pSt = &g_menu;
     char        *psz;
 
-    /* Transcribed inline, not routed through BrItoa10/BrMenuStoreValue.  The
+    /* Transcribed inline, not routed through BrItoa/BrMenuStoreValue.  The
      * original spends no call here beyond sprintf: the copy into +0x2B65 is
      * MSVC's inline strcpy (repne scasb + rep movsd/movsb) and the two vtable
      * pokes are thiscall through a vtable pointer fetched ONCE.  `psz` is the
@@ -726,8 +781,7 @@ int32_t BrMenuText0B30(BrMenuItem *pItem)
     BrMenuState *pSt   = &g_menu;
     BrMenuText  *pText = &pItem->text;
 
-    BrItoa10(pSt->gA9D618, sizeof pSt->gA9D618,
-             (int32_t)(pSt->gAA28A4 + 1u));
+    BrItoa((int32_t)(pSt->gAA28A4 + 1u), pSt->gA9D618, 10);
 
     BrStrCopy(pText->sz, sizeof pText->sz, BrStringById(0x37));
     BrStrCat(pText->sz, sizeof pText->sz, "  ");
@@ -868,7 +922,7 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
     if (v < 0)
         v = 0;
 
-    BrItoa10(sz, sizeof sz, v);
+    BrItoa(v, sz, 10);
     return BrMenuStoreFormatted(pItem, sz, 0);
 }
 
@@ -879,7 +933,7 @@ int32_t BrMenuText1670(BrMenuItem *pItem)
     char sz[32];
 
     memset(sz, 0, sizeof sz);
-    BrItoa10(sz, sizeof sz, (int32_t)(g_menu.gAA28A4 + 1u));
+    BrItoa((int32_t)(g_menu.gAA28A4 + 1u), sz, 10);
     return BrMenuStoreFormatted(pItem, sz, 0);
 }
 
@@ -890,7 +944,7 @@ int32_t BrMenuText1710(BrMenuItem *pItem)
     char sz[32];
 
     memset(sz, 0, sizeof sz);
-    BrItoa10(sz, sizeof sz, g_menu.gAA28C4);
+    BrItoa(g_menu.gAA28C4, sz, 10);
     return BrMenuStoreFormatted(pItem, sz, 0);
 }
 
@@ -912,7 +966,7 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
     if (v < 0)
         v = 0;
 
-    BrItoa10(sz, sizeof sz, v);
+    BrItoa(v, sz, 10);
     return BrMenuStoreFormatted(pItem, sz, 0);
 }
 
