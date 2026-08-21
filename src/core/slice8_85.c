@@ -344,13 +344,18 @@ int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
 /* @implements 0x1003EA40 d3d BrUiHook85_1003EA40 */
 int32_t BrUiHook85_1003EA40(BrUiCtl_ *pCtl)
 {
-    uint32_t n = (g_br0AB3D8 != 0) ? (uint32_t)g_brB4E708
-                                   : (uint32_t)g_brB4E70C;
-    /* `lea ecx,[eax*8+0x4A]` then `fild dword`: the sum is formed in 32-bit
-     * wraparound arithmetic and read back SIGNED. */
-    int32_t  v = (int32_t)(n * 8u + 0x4Au);
+    /* Both arms are written out: the original duplicates the lea/fild/fstp
+     * rather than joining after the load.  `lea ecx,[eax*8+0x4A]` then
+     * `fild dword` -- the sum is 32-bit wraparound, read back SIGNED. */
+    int32_t v;
 
-    pCtl->x = (float)v;        /* +0x3C */
+    if (g_br0AB3D8 != 0) {
+        v = g_brB4E708 * 8 + 0x4A;
+        pCtl->x = (float)v;    /* +0x3C */
+        return 1;
+    }
+    v = g_brB4E70C * 8 + 0x4A;
+    pCtl->x = (float)v;
     return 1;
 }
 
