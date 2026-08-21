@@ -364,10 +364,12 @@ void BrSndNearestOffer(int32_t f8C, int32_t f84, int32_t f9C, float f98,
 void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
                               const BrMat4 *pListener)
 {
+    /* Mode is read first so it occupies ecx; the volume scale then lands in edx. */
+    int32_t mode = g_Br0B380C;
     int32_t f84 = -1;
     int32_t f9C = 0x80;
 
-    if (g_Br0B380C == 4 || g_Br0B380C == 10) {
+    if (mode == 4 || mode == 10) {
         f84 = 0x0F;
         f9C = 0x180;
     }
