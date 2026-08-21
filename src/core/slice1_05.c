@@ -205,11 +205,16 @@ void BrF3DTri2Fixup(void *pCmd)
 /* @implements 0x1002FAF0 d3d BrRdpCCMux */
 int BrRdpCCMux(int token)
 {
-    if (token == 0)
+    /* orig 0x1002FAF0: `sub eax, 0` / `dec eax` is MSVC's consecutive
+     * switch on cases 0 and 1, not a pair of ifs. */
+    switch (token) {
+    case 0:
         return 31;              /* G_CCMUX_0 */
-    if (token == 1)
+    case 1:
         return 6;               /* G_CCMUX_1 */
-    return token - 1000;
+    default:
+        return token - 1000;
+    }
 }
 
 /* 0x1002FAC0 */
