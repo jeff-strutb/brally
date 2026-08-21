@@ -33,6 +33,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "br_match.h"
+
 /* =====================================================================
  * 1. The menu item
  * ===================================================================== */
@@ -43,19 +45,24 @@ struct BrMenuText;
  * are reached from this packet; the rest are here so the reached ones keep
  * their original indices.  No slot's meaning is established, so they are
  * named for their byte offset. */
+/* The slots are BR_THISCALL1, not cdecl.  The original calls them
+ * `mov ecx, esi; call dword ptr [edi+8]` -- `this` in ecx, callee cleanup --
+ * which is thiscall, and a one-argument thiscall is exactly __fastcall on
+ * VC5 (see br_match.h).  A cdecl declaration here pushes `this` and misses
+ * every text setter in the packet by four instructions. */
 typedef struct BrMenuTextVtbl {
-    void (*pfn00)(struct BrMenuText *pThis);
-    void (*pfn04)(struct BrMenuText *pThis);  /* after a CAPTION assignment */
-    void (*pfn08)(struct BrMenuText *pThis);  /* after a VALUE assignment   */
-    void (*pfn0C)(struct BrMenuText *pThis);
-    void (*pfn10)(struct BrMenuText *pThis);  /* follows pfn04 */
-    void (*pfn14)(struct BrMenuText *pThis);
-    void (*pfn18)(struct BrMenuText *pThis);
-    void (*pfn1C)(struct BrMenuText *pThis);
-    void (*pfn20)(struct BrMenuText *pThis);
-    void (*pfn24)(struct BrMenuText *pThis);
-    void (*pfn28)(struct BrMenuText *pThis);
-    void (*pfn2C)(struct BrMenuText *pThis);  /* follows pfn08 */
+    void (BR_THISCALL1 *pfn00)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn04)(struct BrMenuText *pThis);  /* after a CAPTION assignment */
+    void (BR_THISCALL1 *pfn08)(struct BrMenuText *pThis);  /* after a VALUE assignment   */
+    void (BR_THISCALL1 *pfn0C)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn10)(struct BrMenuText *pThis);  /* follows pfn04 */
+    void (BR_THISCALL1 *pfn14)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn18)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn1C)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn20)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn24)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn28)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn2C)(struct BrMenuText *pThis);  /* follows pfn08 */
 } BrMenuTextVtbl;
 
 /* DEVIATION: the original's text buffer is unbounded -- it strcpy()s and

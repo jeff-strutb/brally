@@ -93,7 +93,7 @@ static void Br90Pull(Br90Bind *pB)
  * with the box's REAL pointer.  Nothing is called through a type it was not
  * defined with, which is the entire reason this file exists. */
 #define BR90_SHIM_SLOT(name, member)                                        \
-    static void name(BrMenuText *pText)                                     \
+    static void BR_THISCALL1 name(BrMenuText *pText)                        \
     {                                                                       \
         Br90Bind  *pB = s_pBind;                                            \
         BrTextBox *pBox;                                                    \
