@@ -1,7 +1,16 @@
 /* slice2_16.c -- Boss Rally (BRD3D.dll), a later pass, 0x1001CD60..0x1002BC90.
  * See slice2_16.h for the per-function notes and gotchas. */
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is the port's (table, pCmd).  The original takes only
+ * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
+ * in this TU so the matching body can use the original shape. */
+#define BrGbiRun BrGbiRun_port
+#endif
 #include "slice2_16.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrGbiRun
+#endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
  * function, one host body -- see br_dlshared.h. */
@@ -630,11 +639,22 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
  * reports there is nothing left. This one loop is what draws every frame of
  * the game. */
 /* @implements 0x10024A90 d3d BrGbiRun */
+#ifdef BR_MATCHING_BUILD
+/* Original is cdecl, one argument: the table is the global at 0x100A79F0
+ * and the opcode is byte 3 of the command in host order. */
+extern BrGbiHandler g_brGbi0A79F0[];
+void BrGbiRun(BrGfxWords *pCmd)
+{
+    while (pCmd != NULL)
+        pCmd = g_brGbi0A79F0[((unsigned char *)pCmd)[3]](pCmd);
+}
+#else
 void BrGbiRun(const BrGbiHandler *apTable, BrGfxWords *pCmd)
 {
     while (pCmd != NULL)
         pCmd = apTable[(pCmd->w0 >> 24) & 0xFFu](pCmd);
 }
+#endif
 
 /* ================================================================== */
 /* 2. Texture-load scanning pass                                      */
