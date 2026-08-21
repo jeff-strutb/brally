@@ -28,7 +28,14 @@
  *   and COM from top to bottom -- so writing one would be inventing, not
  *   decompiling.
  */
+#ifdef BR_MATCHING_BUILD
+/* slice2_17.h prototypes a list pointer the original never takes. */
+#define BrPtrListContains BrPtrListContains_port
+#endif
 #include "slice2_17.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrPtrListContains
+#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -844,6 +851,28 @@ void BrCarStateRestore(void)
  * reported as present without the list being looked at, which is how callers
  * get "nothing to do" for free. */
 /* @implements 0x1002BF40 d3d BrPtrListContains */
+#ifdef BR_MATCHING_BUILD
+/* The original takes only pv and reads the list at two absolute addresses
+ * (count 0x1067B548, array 0x1067B550).  The port passes the list in. */
+extern int   g_br67B548;
+extern void *g_br67B550[];
+
+int BrPtrListContains(const void *pv)
+{
+    int i;
+    int n;
+
+    if (pv == NULL)
+        return 1;                    /* NULL short-circuits to "present" */
+
+    n = g_br67B548;
+    for (i = 0; i < n; ++i)
+        if (g_br67B550[i] == pv)
+            return 1;
+
+    return 0;
+}
+#else
 int BrPtrListContains(const BrPtrList *pList, const void *pv)
 {
     int i;
@@ -860,6 +889,7 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
 
     return 0;
 }
+#endif
 
 /* 0x1002C210 */
 void BrS17BankFlip(void)
