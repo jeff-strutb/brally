@@ -1,6 +1,14 @@
 /* slice2_12.c -- BRD3D.dll 0x100053F0-0x10008AA0. See slice2_12.h. */
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl; the original is thiscall.  Rename the
+ * prototype so the thiscall definition is not a C2373 redefinition. */
+#define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
+#endif
 #include "slice2_12.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrKeyCacheReset
+#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -916,7 +924,9 @@ int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
  * frees the records, and zeroes the bookkeeping, leaving only the object's
  * first two words alone. */
 /* @implements 0x10008970 d3d BrKeyCacheReset */
-void BrKeyCacheReset(BrKeyCache *pCache)
+/* Original is __thiscall (`mov esi, ecx` / `ret`).  BR_THISCALL1 is the
+ * single-arg fastcall spelling; the header stays cdecl. */
+void BR_THISCALL1 BrKeyCacheReset(BrKeyCache *pCache)
 {
     if (pCache->pFile != NULL)
         fclose(pCache->pFile);          /* 0x1007CD50 */
@@ -926,15 +936,10 @@ void BrKeyCacheReset(BrKeyCache *pCache)
     pCache->aEntries = NULL;
     pCache->pFile    = NULL;
     pCache->f420     = 0;
-
-    pCache->f008    = 0;
-    pCache->f00C    = 0;
-    pCache->cEntries = 0;
-    pCache->f014    = 0;
-
+    /* Four dwords at +0x008, then 0x100 dwords at +0x020.  The pointer
+     * pair at +0x018 and f420 are stored separately, as in the original. */
+    memset(&pCache->f008, 0, 16);
     memset(pCache->a020, 0, sizeof pCache->a020);
-    /* The `rep stosd` run starts at +0x008, so the vtable slot and +0x004
-     * are the only fields left alone. */
 }
 
 /* =====================================================================
