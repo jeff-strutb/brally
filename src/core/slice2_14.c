@@ -460,33 +460,49 @@ int32_t  g_BrFpsScreenH;                /* glide 0x100A7518 */
 /* @implements 0x10011EA0 glide BrFpsReadout */
 void BrFpsReadout(void)
 {
-    char buf[0x108];
-    int x;
+    char buf[256];
 
     if (g_BrFpsGuard == NULL)
         return;
 
-    if (g_BrFpsGateA == 0 && g_BrFpsCountA > 0) {
-        double sum = 0.0;
-        int i;
-        for (i = 0; i < g_BrFpsCountA; ++i)
-            sum += g_BrFpsSamplesA[i];
-        g_BrFpsValueA = (float)((double)g_BrFpsCountA * 1000.0 / sum);
+    /* Each accumulator runs even when count <= 0 (divides by the 0.0f
+     * seed). Samples are a table at a fixed address, added as unsigned. */
+    if (g_BrFpsGateA == 0) {
+        float sum = 0.0f;
+        int n = g_BrFpsCountA;
+        if (n > 0) {
+#ifdef BR_MATCHING_BUILD
+            int32_t *p = (int32_t *)&g_BrFpsSamplesA;
+#else
+            int32_t *p = g_BrFpsSamplesA;
+#endif
+            do {
+                sum += (unsigned)*p++;
+            } while (--n);
+        }
+        g_BrFpsValueA = ((float)g_BrFpsCountA * 1000.0f) / sum;
     }
 
-    if (g_BrFpsGateB == 0 && g_BrFpsCountB > 0) {
-        double sum = 0.0;
-        int i;
-        for (i = 0; i < g_BrFpsCountB; ++i)
-            sum += g_BrFpsSamplesB[i];
-        g_BrFpsValueB = (float)((double)g_BrFpsCountB * 1000.0 / sum);
+    if (g_BrFpsGateB == 0) {
+        float sum = 0.0f;
+        int n = g_BrFpsCountB;
+        if (n > 0) {
+#ifdef BR_MATCHING_BUILD
+            int32_t *p = (int32_t *)&g_BrFpsSamplesB;
+#else
+            int32_t *p = g_BrFpsSamplesB;
+#endif
+            do {
+                sum += (unsigned)*p++;
+            } while (--n);
+        }
+        g_BrFpsValueB = ((float)g_BrFpsCountB * 1000.0f) / sum;
     }
 
     sprintf(buf, "%6.2f FPS", (double)g_BrFpsValueB);
     BrTextSetSize(0x0F);
     BrTextAlignCentre();
-    x = (g_BrFpsScreenW / 2);
-    BrTextDraw(buf, x, g_BrFpsScreenH - 10);
+    BrTextDraw(buf, g_BrFpsScreenW / 2, g_BrFpsScreenH - 10);
 }
 
 /* ================================================================== */
