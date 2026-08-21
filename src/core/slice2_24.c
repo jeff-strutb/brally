@@ -638,10 +638,41 @@ int32_t BrMenuText08D0(BrMenuItem *pItem)
 int32_t BrMenuText0A50(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
+    char        *psz;
 
-    BrItoa10(pSt->gAA2518, sizeof pSt->gAA2518,
-             (int32_t)(pSt->gAA28A0 + 1u));
-    return BrMenuStoreValue(pItem, pSt->gAA2518);
+    /* Transcribed inline, not routed through BrItoa10/BrMenuStoreValue.  The
+     * original spends no call here beyond sprintf: the copy into +0x2B65 is
+     * MSVC's inline strcpy (repne scasb + rep movsd/movsb) and the two vtable
+     * pokes are thiscall through a vtable pointer fetched ONCE.  `psz` is the
+     * destination the original keeps in ebx and re-tests before the second
+     * poke -- the tautological test this file used to only document; it is in
+     * the original's instruction stream, so it is written out here.
+     *
+     * SHAPE MATTERS, not just content.  Naming pText/pVtbl at the top of the
+     * function makes VC5 compute them BEFORE the sprintf and carry them
+     * across the call in callee-saved registers, which costs a spill and an
+     * extra `lea`.  The original derives every one of them from a freshly
+     * reloaded pItem afterwards, so they live in the inner block below and
+     * must stay there.
+     *
+     * The bounded BrStrCopy is gone from this path.  Both buffers are known
+     * sizes (a 32-byte scratch holding at most an 11-character integer, into
+     * a 256-byte field), so nothing here can overrun. */
+
+    sprintf(pSt->gAA2518, "%d", (int)(pSt->gAA28A0 + 1u));
+
+    psz = pItem->text.sz;
+    strcpy(psz, pSt->gAA2518);
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* 0x10040AC0.  Same as 0x10040A50 but 0x10AA28A4 and the 0x10A9D618 buffer. */
@@ -649,10 +680,41 @@ int32_t BrMenuText0A50(BrMenuItem *pItem)
 int32_t BrMenuText0AC0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
+    char        *psz;
 
-    BrItoa10(pSt->gA9D618, sizeof pSt->gA9D618,
-             (int32_t)(pSt->gAA28A4 + 1u));
-    return BrMenuStoreValue(pItem, pSt->gA9D618);
+    /* Transcribed inline, not routed through BrItoa10/BrMenuStoreValue.  The
+     * original spends no call here beyond sprintf: the copy into +0x2B65 is
+     * MSVC's inline strcpy (repne scasb + rep movsd/movsb) and the two vtable
+     * pokes are thiscall through a vtable pointer fetched ONCE.  `psz` is the
+     * destination the original keeps in ebx and re-tests before the second
+     * poke -- the tautological test this file used to only document; it is in
+     * the original's instruction stream, so it is written out here.
+     *
+     * SHAPE MATTERS, not just content.  Naming pText/pVtbl at the top of the
+     * function makes VC5 compute them BEFORE the sprintf and carry them
+     * across the call in callee-saved registers, which costs a spill and an
+     * extra `lea`.  The original derives every one of them from a freshly
+     * reloaded pItem afterwards, so they live in the inner block below and
+     * must stay there.
+     *
+     * The bounded BrStrCopy is gone from this path.  Both buffers are known
+     * sizes (a 32-byte scratch holding at most an 11-character integer, into
+     * a 256-byte field), so nothing here can overrun. */
+
+    sprintf(pSt->gA9D618, "%d", (int)(pSt->gAA28A4 + 1u));
+
+    psz = pItem->text.sz;
+    strcpy(psz, pSt->gA9D618);
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
 }
 
 /* 0x10040B30.  string 0x37, then "  " (0x100AD304), then the number.  This

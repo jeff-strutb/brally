@@ -49,18 +49,18 @@ static int g_calls[16];
 static int g_cCalls;
 
 static void rec(int slot) { if (g_cCalls < 16) g_calls[g_cCalls++] = slot; }
-static void v00(BrMenuText *p) { (void)p; rec(0x00); }
-static void v04(BrMenuText *p) { (void)p; rec(0x04); }
-static void v08(BrMenuText *p) { (void)p; rec(0x08); }
-static void v0C(BrMenuText *p) { (void)p; rec(0x0C); }
-static void v10(BrMenuText *p) { (void)p; rec(0x10); }
-static void v14(BrMenuText *p) { (void)p; rec(0x14); }
-static void v18(BrMenuText *p) { (void)p; rec(0x18); }
-static void v1C(BrMenuText *p) { (void)p; rec(0x1C); }
-static void v20(BrMenuText *p) { (void)p; rec(0x20); }
-static void v24(BrMenuText *p) { (void)p; rec(0x24); }
-static void v28(BrMenuText *p) { (void)p; rec(0x28); }
-static void v2C(BrMenuText *p) { (void)p; rec(0x2C); }
+static void BR_THISCALL1 v00(BrMenuText *p) { (void)p; rec(0x00); }
+static void BR_THISCALL1 v04(BrMenuText *p) { (void)p; rec(0x04); }
+static void BR_THISCALL1 v08(BrMenuText *p) { (void)p; rec(0x08); }
+static void BR_THISCALL1 v0C(BrMenuText *p) { (void)p; rec(0x0C); }
+static void BR_THISCALL1 v10(BrMenuText *p) { (void)p; rec(0x10); }
+static void BR_THISCALL1 v14(BrMenuText *p) { (void)p; rec(0x14); }
+static void BR_THISCALL1 v18(BrMenuText *p) { (void)p; rec(0x18); }
+static void BR_THISCALL1 v1C(BrMenuText *p) { (void)p; rec(0x1C); }
+static void BR_THISCALL1 v20(BrMenuText *p) { (void)p; rec(0x20); }
+static void BR_THISCALL1 v24(BrMenuText *p) { (void)p; rec(0x24); }
+static void BR_THISCALL1 v28(BrMenuText *p) { (void)p; rec(0x28); }
+static void BR_THISCALL1 v2C(BrMenuText *p) { (void)p; rec(0x2C); }
 
 static const BrMenuTextVtbl g_vt = {
     v00, v04, v08, v0C, v10, v14, v18, v1C, v20, v24, v28, v2C
