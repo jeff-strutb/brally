@@ -518,11 +518,16 @@ int32_t BrMenuCap0930(BrMenuItem *pItem)
 /* @implements 0x10040950 d3d BrMenuCap0950 */
 int32_t BrMenuCap0950(BrMenuItem *pItem)
 {
-    BrMenuState *pSt = &g_menu;
-
-    if (pSt->g18ABDBC == 0)
-        return BrMenuSetCaptionId(pItem, (int16_t)k_AC630[1]);
-    return BrMenuSetCaptionId(pItem, BrTabS8(k_AC630, 4, pSt->gAA2A1C));
+    /* Branch polarity is the original's, not the reader's: it tests the flag
+     * and `je`s to the hard-wired entry, so the TABLE path is the one that
+     * falls through.  Writing the guard the other way round (`if (flag == 0)
+     * return const;`) inverts the jump and costs the match. */
+    if (g_menu.g18ABDBC != 0) {
+        pItem->f1E20C = k_AC630[g_menu.gAA2A1C];
+        return 1;
+    }
+    pItem->f1E20C = k_AC630[1];
+    return 1;
 }
 
 /* 0x10040990.  The table is dwords but only the low word is taken, and it is
