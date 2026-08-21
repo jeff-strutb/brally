@@ -31,9 +31,9 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original DLL. Roughly half of the game's `.text` has been transcribed
-into C, but only a small fraction of that currently reproduces the original
-bytes exactly — the matched set is dominated by small leaf functions, and the
-large ones are where the remaining work is. Separately, the macOS/Metal port of
+into C, and about a fifth of that now reproduces the original bytes exactly.
+The matched set is still dominated by small and mid-sized functions; the large
+ones are where the remaining work is. Separately, the macOS/Metal port of
 that same source boots, renders the front end from the game's own artwork,
 parses tracks, draws retail car geometry through Metal, and runs the physics
 integrator with collision response wired in; 136 test suites pass. The per-frame
@@ -41,14 +41,25 @@ race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 216,870 / 460,165 bytes of `.text` · 810 / 2,140 functions | `█████████░░░░░░░░░░░` 47% |
-| **Byte-exact under MSVC 5.0** | 120 of 810 transcribed functions · 3,791 bytes | `███░░░░░░░░░░░░░░░░░` 15% |
+| Transcribed into C | 220,646 / 460,165 bytes of `.text` · 836 / 2,140 functions | `██████████░░░░░░░░░░` 48% |
+| **Byte-exact under MSVC 5.0** | 172 of 836 transcribed functions · 6,492 bytes | `████░░░░░░░░░░░░░░░░` 21% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 136 / 136 green | `████████████████████` 100% |
 
 The second row is the one that counts; everything else is diagnostics.
-Regenerate all of it with `sh build_match.sh` → `build/match/report.csv`.
+
+Both denominators move as work lands, so the percentages are not monotonic. A
+function only enters the measured set once it carries an `@implements` claim,
+and a sweep of one long-untagged module can add more to the denominator than to
+the numerator — coverage counted honestly, not a regression. Read the absolute
+count alongside the percentage.
+
+Regenerate with `python3 tools/match_sweep.py` → `build/match/report.csv`. Every
+run merges its results back, so the normal case is a single file
+(`python3 tools/match_sweep.py src/core/<file>.c`, a few seconds, and it prints
+the tree total too); the whole-tree sweep is bookkeeping, not part of the work
+loop.
 
 ## Building
 
