@@ -55,9 +55,11 @@
  *     a byte-offset body cannot be pointed at a struct whose fields have
  *     moved under LP64.
  *
- * slice2_24.c types its four over `BrMenuItem`, a THREE-FIELD compression
- * `{ f1C, f1E20C, text }` -- so `BrMenuCap0730((BrMenuItem *)pCtl)` links
- * cleanly and writes 4 bytes into the control's +0x04, not its +0x1E20C.
+ * slice2_24.c types its four over `BrMenuItem`, which is now a byte image at
+ * the original's own displacements -- so `BrMenuCap0730((BrMenuItem *)pCtl)`
+ * links cleanly and is right only where the two structs' pointers are the
+ * same width.  Under LP64 they are not, and the cast writes into the wrong
+ * member exactly as the compressed layout used to.
  * slice2_25.c types 0x10042B00 over a `BrGameObj` byte image, same problem.
  * slice8_85.c already re-transcribed 0x10040930 (BrMenuCap0930's twin) and
  * 0x10042AC0 (0x10042B00's byte-identical twin) for exactly this reason.

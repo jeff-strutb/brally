@@ -73,11 +73,38 @@ typedef struct BrMenuText {
     char                  sz[BR_MENUTEXT_MAX]; /* +0x09 (item +0x2B65) */
 } BrMenuText;
 
+/* TRUE OFFSETS, not a compression.  The three reached fields sit at the
+ * displacements the original encodes into the instruction stream --
+ * `mov word ptr [edx + 0x1E20C], cx` is the store every caption setter ends
+ * with -- so the struct has to be a byte image or those functions can never
+ * come out bit-identical.  The padding is dead weight to the port and load
+ * bearing to the matching build; it is not a guess about what lives in the
+ * gaps, and nothing here reads it.  (It WAS a three-field compression; that
+ * cost the caption family every match it could have had.) */
 typedef struct BrMenuItem {
+    uint8_t    _pad00[0x1C];
     uint32_t   f1C;      /* +0x001C  -- bits 0x1010 are masked in and out */
-    int16_t    f1E20C;   /* +0x1E20C -- string id, written as a 16-bit word */
+    uint8_t    _pad20[0x2B5C - 0x20];
     BrMenuText text;     /* +0x2B5C */
+    uint8_t    _padText[0x1E20C - (0x2B5C + sizeof(BrMenuText))];
+    int16_t    f1E20C;   /* +0x1E20C -- string id, written as a 16-bit word */
 } BrMenuItem;
+
+/* Compile-time proof, in the project's usual idiom: wrong padding is a
+ * negative array size here rather than a store into the wrong field.
+ *
+ * Only asserted on a 32-bit target.  `text` leads with a pointer, and 0x2B5C
+ * is 4-aligned but not 8-aligned, so an LP64 build legitimately slides it to
+ * 0x2B60.  That is harmless -- the port never aliases one of these over a
+ * BrUiCtl_, slice8_90.c's marshal copies field by field -- and the matching
+ * build, which is the only one that needs the byte image, is 32-bit. */
+#if !defined(__LP64__) && !defined(_WIN64)
+#define BR_MI_AT(name, off) \
+    typedef char BrMenuItemAt_##name[(offsetof(BrMenuItem, name) == (off)) ? 1 : -1]
+BR_MI_AT(f1C,    0x0001C);
+BR_MI_AT(f1E20C, 0x1E20C);
+BR_MI_AT(text,   0x02B5C);
+#endif
 
 /* =====================================================================
  * 2. The stage table

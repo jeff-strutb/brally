@@ -26,8 +26,10 @@
  *
  *   slice2_23.c  models the argument as `BrUiObj`, a BYTE ARRAY, and reads it
  *                at literal 32-bit offsets (+0x1C, +0x2B5C, +0x1E20C ...).
- *   slice2_24.c  models it as `BrMenuItem`, a THREE-FIELD compression of the
- *                same object (f1C, f1E20C, text) -- a different layout again.
+ *   slice2_24.c  models it as `BrMenuItem`, a byte image of the same object
+ *                (f1C +0x1C, text +0x2B5C, f1E20C +0x1E20C) -- the original's
+ *                offsets, so it agrees with BrUiCtl_ on a 32-bit target and
+ *                parts company with it under LP64.
  *   slice2_25.c  models it as `BrGameObj`, `pad0000[0x2AE8]; pSub; ...` -- a
  *                byte image with the original's offsets.
  *   slice3_31.c  reaches the same object through Br31Ld32(p, off) with the
@@ -142,7 +144,8 @@
  *      0x1003FDA0 0x1003FE10 0x1003FE80
  *
  * B. THE slice2_24 FAMILY -- pfn04 caption/text setters. Bodies exist
- *    (port/src/slice2_24.c) over `BrMenuItem`, a three-field compression.
+ *    (port/src/slice2_24.c) over `BrMenuItem`, a byte image at the original's
+ *    own displacements -- which coincides with BrUiCtl_ only on 32-bit.
  *      0x10040730 0x100407E0 0x100408D0 0x10040950 0x10040990 0x100409B0
  *      0x100409D0 0x10040A50 0x10040AC0 0x10040B30 0x10041040 0x10041180
  *      0x10041300 0x100415A0

@@ -73,7 +73,9 @@
  *                byte offset through memcpy helpers.  0x1003E7A0, 0x1003E950,
  *                0x1003E980, 0x1003E9E0, 0x1003EA40, 0x1003EB10, 0x1003ED10,
  *                0x1003EE20, 0x1003F050, 0x1003F0B0 live there.
- *   slice2_24.c  `BrMenuItem` -- a THREE-FIELD struct {f1C, f1E20C, text}.
+ *   slice2_24.c  `BrMenuItem` -- a byte image at the original's own
+ *                displacements (f1C +0x1C, text +0x2B5C, f1E20C +0x1E20C),
+ *                which agrees with BrUiCtl_ only on a 32-bit target.
  *                0x10040930, 0x10040A50, 0x10040AC0, 0x100418D0 live there.
  *   slice2_25.c  `BrGameObj` byte image.  0x10042AC0, 0x10043FA0 and the six
  *                0x100440xx one-liners live there.
