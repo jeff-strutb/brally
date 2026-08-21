@@ -11,7 +11,16 @@
  * and the C below uses the negated-comparison forms that reproduce the
  * unordered case as well, not just the ordered one.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
+ * ret 0xC; hide that prototype so the definition can take the struct-arg
+ * __fastcall shape that reproduces it. */
+#define BrRgbSinkSet BrRgbSinkSet_hdr
+#endif
 #include "slice2_19.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrRgbSinkSet
+#endif
 
 #include <string.h>
 
@@ -364,12 +373,24 @@ static uint16_t BrSwapHalf(uint16_t v)
 /* WHAT IT DOES: stores a colour as three separate red, green and blue
  * amounts, keeping only the bottom byte of each. */
 /* @implements 0x10035CA0 d3d BrRgbSinkSet */
+#ifdef BR_MATCHING_BUILD
+/* Second argument is a struct so it is not register-eligible: __fastcall
+ * then puts `this` in ecx and the three ints on the stack, i.e. thiscall. */
+typedef struct { int r, g, b; } BrRgbSinkSetArgs;
+void BR_THISCALL1 BrRgbSinkSet(BrRgbSink *pSink, BrRgbSinkSetArgs a)
+{
+    pSink->r = (unsigned char)a.r;
+    pSink->g = (unsigned char)a.g;
+    pSink->b = (unsigned char)a.b;
+}
+#else
 void BrRgbSinkSet(BrRgbSink *pSink, int r, int g, int b)
 {
     pSink->r = (unsigned char)r;
     pSink->g = (unsigned char)g;
     pSink->b = (unsigned char)b;
 }
+#endif
 
 /* 0x100350EE */
 /* WHAT IT DOES: repaints a car by writing the chosen colour into the twelve
@@ -497,7 +518,17 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
     g = ((c >> 3) & 0xF8) | ((c >>  8) & 7);
     b = ((c << 2) & 0xF8) | ((c >>  3) & 7);
 
+#ifdef BR_MATCHING_BUILD
+    {
+        BrRgbSinkSetArgs a;
+        a.r = r;
+        a.g = g;
+        a.b = b;
+        BrRgbSinkSet(pSink, a);
+    }
+#else
     BrRgbSinkSet(pSink, r, g, b);
+#endif
 }
 
 /* ================================================================== */
