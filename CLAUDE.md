@@ -2,6 +2,11 @@
 
 Read this before touching anything. These are hard rules, not preferences.
 
+**Before matching any function, read `docs/VC5-IDIOMS.md`** — proven
+construct→codegen mappings. Infer the source from the bytes; never permute
+spellings by trial and error. Add every newly proven idiom to that file:
+each idiom is solved once, and this is how per-function cost drops.
+
 ## 0. BRGlide.dll is the reference binary. NOT BRD3D.dll.
 
 `BRGlide.dll` (3dfx Glide) is the mature target and the reference. `BRD3D.dll`
