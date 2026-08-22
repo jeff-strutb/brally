@@ -89,6 +89,36 @@ Shared headers under `include/` reach dozens of files. Parallel work splits by
 3. Do not trust a coverage number in prose — including in `README.md`.
    Query the tree.
 
+## Scope — which shipped binaries are being decompiled
+
+Established 2026-08-22 by reading each binary's imports, exports and strings,
+not by inference from filenames. Until then nothing recorded this, and the
+matching pipeline had silently covered exactly one file. Silence is not a
+decision; if scope changes, change it *here*.
+
+**IN SCOPE**
+
+| binary | .text | what it is |
+|---|---|---|
+| `BRGlide.dll` | 480,853 | **The game.** Imports 38 entry points from `glide2x.dll`, plus DirectInput, DirectPlay (multiplayer) and WINMM audio. Exports `RallyMain`. This is the primary target. |
+| `BRally.exe` | 3,584 | **The launcher.** Reads the registry, loads `BRGlide.dll` or `BRD3D.dll`, calls `RallyMain`. The code that chooses the renderer. |
+| `SetVideo.exe` | 36,476 | Renderer/display config utility; writes settings into `BossRally.ini`. Shares the game's file-check and list-parsing helpers, so part of it matches for free once the DLL's config layer lands. |
+| `BossRally.exe` | 23,552 | Plays `brally.avi`, then launches `brally.exe`. An intro shim — borderline, but shipped game code. Lowest priority. |
+
+In-scope EXE code is ~64 KB against 481 KB of game DLL: about 12% of the
+target. As of 2026-08-22 **none of the EXEs has been started.**
+`config/functions_boot.csv`, `functions_bossrally.csv` and `functions_brally.csv`
+exist but their name columns are empty — maps were generated, never worked.
+
+**OUT OF SCOPE**
+
+| binary | why |
+|---|---|
+| `BRD3D.dll` | Direct3D twin of the game. Reference/cross-check only — see rule 0. Its `.text` is ~100 KB larger than Glide's *because it statically links the CRT*: it imports no `MSVCRT.dll` at all, while `BRGlide.dll` imports 57 CRT functions dynamically. Matching D3D means matching Microsoft's CRT as a side effect. This is the evidence for rule 0, not just a preference. |
+| `Boot.exe` | CD autorun / installer front-end. Runs `setup.exe`, DirectX Setup, DXMEDIA, `setvideo.exe`. Imports COMCTL32, SHELL32, WINSPOOL, comdlg32 — a Windows dialog app. Its 96 KB is the largest EXE and is **not game code**. |
+| `REMOVE.EXE` | Uninstaller stub; spawns `IASINST.EXE`. |
+| `SETUP.EXE`, `_ISDEL.EXE`, `_SETUP.DLL` | 16-bit NE binaries, InstallShield. Not PE32, not game code. |
+
 ## Layout
 
 - `src/core/`, `src/backends/`, `include/`, `tests/`
