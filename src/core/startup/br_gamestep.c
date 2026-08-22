@@ -71,6 +71,14 @@ int BrGameStepIsAddr(const void *pv)
  * where the race, or the front end, gets its turn each frame. */
 /* @implements 0x1002E324 glide BrGameStepInvoke */
 /* @implements 0x10034C73 d3d BrGameStepInvoke */
+#ifdef BR_MATCHING_BUILD
+/* Orig: PUSH EBP / MOV EBP,ESP / CALL [g_pfnStep] / POP EBP / RET (11 B).
+ * No NULL guard -- just calls through the pointer and returns whatever EAX is. */
+int BrGameStepInvoke(void)
+{
+    return ((int (*)(void))g_pfnStep)();
+}
+#else
 int BrGameStepInvoke(void)
 {
     if (g_pfnStep == NULL) {
@@ -79,6 +87,7 @@ int BrGameStepInvoke(void)
     g_pfnStep();
     return 1;
 }
+#endif
 
 BrGameStepFn BrGameStepGet(void)
 {
