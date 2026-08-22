@@ -1,28 +1,29 @@
 symbol,addr,refs,corroborated,class,sources
 BrSub_100020D0,0x100020D0,1,0,"named global, no address recorded",0x10017C80
-BrExt_100025F0,0x100025F0,2,1,"named global, no address recorded",0x100025C0
-BrExt_10002660,0x10002660,2,1,"named global, no address recorded",0x100025C0
+BrExt_100025F0,0x100025F0,1,0,"named global, no address recorded",0x100025C0
+BrExt_10002660,0x10002660,1,0,"named global, no address recorded",0x100025C0
 BrSub100027F0,0x100027F0,1,0,"named global, no address recorded",0x100027C0
 BrSub10002870,0x10002870,1,0,"named global, no address recorded",0x100027C0
 BrNetCarStateSend,0x10005130,1,0,"named global, no address recorded",0x100609E0
 BrSub10005B10,0x10005B10,1,0,"named global, no address recorded",0x1003C150
 BrOnActivateTail,0x10008B80,1,0,"named global, no address recorded",0x10077090
-BrExt_10008B80,0x10008B80,6,1,"named global, no address recorded",0x1001BAE0 0x100715E0 0x10071610
+BrExt_10008B80,0x10008B80,3,1,"named global, no address recorded",0x1001BAE0 0x100715E0 0x10071610
 BrRaceNullStep,0x10008B80,1,0,"named global, no address recorded",0x100697E0
 BrStub10008B80,0x10008B80,3,1,"named global, no address recorded",0x1002C320
 BrTextAlignCentre,0x10019270,1,0,"named global, no address recorded",0x10014930
 BrSub_10019270,0x10019270,1,0,"named global, no address recorded",0x10017690
 BrSub_100192F0,0x100192F0,1,0,"named global, no address recorded",0x10017690
-BrExt_1001BAD0,0x1001BAD0,2,1,"named global, no address recorded",0x1001BAE0
+BrExt_1001BAD0,0x1001BAD0,1,0,"named global, no address recorded",0x1001BAE0
 BrGbiCall10029470,0x10029470,1,0,"named global, no address recorded",0x10029410
 BrSub_1002B2A0,0x1002B2A0,1,0,"named global, no address recorded",0x10017690
 BrRaceStepFrame,0x1002C500,1,0,"named global, no address recorded",0x1002C390
 BrX1002C500,0x1002C500,1,0,"named global, no address recorded",0x1002C390
 BrVec3dLen,0x100305F0,1,0,"named global, no address recorded",0x10030600
 BrFogFactorAtPoint,0x10031D3F,1,0,"named global, no address recorded",0x1000CA90
+BrFrameBegin,0x100322E6,2,1,"named global, no address recorded",0x10032873 0x10032886
 BrX10034C66,0x10034C66,1,0,"named global, no address recorded",0x1002C390
 BrSub10035BD1,0x10035BD1,1,0,"named global, no address recorded",0x10039000
-BrExt_10038EB0,0x10038EB0,2,1,"named global, no address recorded",0x10038EA0
+BrExt_10038EB0,0x10038EB0,1,0,"named global, no address recorded",0x10038EA0
 BrBootFrontier_10032530,0x10038EC0,1,0,"named global, no address recorded",0x1002F6B0
 BrX100397C0,0x100397C0,1,0,"named global, no address recorded",0x1002C320
 BrSub1003C5C0,0x1003C5C0,1,0,"named global, no address recorded",0x1003C150
@@ -32,28 +33,28 @@ BrSub1003D130,0x1003D130,1,0,"named global, no address recorded",0x1003C150
 BrExt_1003E0E0,0x1003E0E0,3,1,"named global, no address recorded",0x100471F0 0x10047210 0x10047250
 BrExt_10041AC0,0x10041AC0,1,0,"named global, no address recorded",0x10047210
 BrExt_10041BD0,0x10041BD0,1,0,"named global, no address recorded",0x100450C0
-BrExt_10043E70,0x10043E70,2,1,"named global, no address recorded",0x10044010
-BrExt_100451E0,0x100451E0,8,1,"named global, no address recorded",0x10045780 0x10045800 0x10045840 0x100458C0
+BrExt_10043E70,0x10043E70,1,0,"named global, no address recorded",0x10044010
+BrExt_100451E0,0x100451E0,4,1,"named global, no address recorded",0x10045780 0x10045800 0x10045840 0x100458C0
 BrUiHook81Activate_100451E0,0x100451E0,2,1,"named global, no address recorded",0x100457C0 0x10045880
-BrExt_10045BC0,0x10045BC0,6,1,"named global, no address recorded",0x100457A0 0x10045820 0x10045860
+BrExt_10045BC0,0x10045BC0,3,1,"named global, no address recorded",0x100457A0 0x10045820 0x10045860
 BrUiHook81Activate_10045BC0,0x10045BC0,1,0,"named global, no address recorded",0x100458A0
-BrExt_10046750,0x10046750,2,1,"named global, no address recorded",0x10045780
-BrExt_10046790,0x10046790,2,1,"named global, no address recorded",0x100457A0
-BrExt_10046910,0x10046910,2,1,"named global, no address recorded",0x10045800
-BrExt_10046950,0x10046950,2,1,"named global, no address recorded",0x10045820
-BrExt_100469F0,0x100469F0,2,1,"named global, no address recorded",0x10045840
-BrExt_10046A30,0x10046A30,2,1,"named global, no address recorded",0x10045860
-BrExt_10046BB0,0x10046BB0,2,1,"named global, no address recorded",0x100458C0
+BrExt_10046750,0x10046750,1,0,"named global, no address recorded",0x10045780
+BrExt_10046790,0x10046790,1,0,"named global, no address recorded",0x100457A0
+BrExt_10046910,0x10046910,1,0,"named global, no address recorded",0x10045800
+BrExt_10046950,0x10046950,1,0,"named global, no address recorded",0x10045820
+BrExt_100469F0,0x100469F0,1,0,"named global, no address recorded",0x10045840
+BrExt_10046A30,0x10046A30,1,0,"named global, no address recorded",0x10045860
+BrExt_10046BB0,0x10046BB0,1,0,"named global, no address recorded",0x100458C0
 BrExt_10046DC0,0x10046DC0,1,0,"named global, no address recorded",0x100450C0
 BrSprFontKindHook_10047360,0x10047360,3,1,"named global, no address recorded",0x10044030 0x10044070 0x100440B0
 BrBootFrontier_10058AF0,0x1005FDB0,1,0,"named global, no address recorded",0x1002F6B0
 BrMenuSub1005FFF0,0x1005FFF0,2,1,"named global, no address recorded",0x1003E070 0x10040680
 BrSub100603A0,0x100603A0,1,0,"named global, no address recorded",0x10060260
 BrSub100607B0,0x100607B0,1,0,"named global, no address recorded",0x100609E0
-BrExt_10067880,0x10067880,4,1,"named global, no address recorded",0x10067940 0x10067980
-BrExt_10067900,0x10067900,4,1,"named global, no address recorded",0x10067960 0x100679A0
+BrExt_10067880,0x10067880,2,1,"named global, no address recorded",0x10067940 0x10067980
+BrExt_10067900,0x10067900,2,1,"named global, no address recorded",0x10067960 0x100679A0
 BrSfxSrcTrigger,0x10067D40,2,1,"named global, no address recorded",0x10067D80 0x10067D90
-BrExt_10069A80,0x10069A80,2,1,"named global, no address recorded",0x10069A70
+BrExt_10069A80,0x10069A80,1,0,"named global, no address recorded",0x10069A70
 @BrCtrlCfgCtor@4,0x10069A90,1,0,"named global, no address recorded",0x10069A60
 BrCollRespBoxClassify,0x1006D2B0,1,0,"named global, no address recorded",0x1006DAF0
 BrCrExact,0x1006D9A0,1,0,"named global, no address recorded",0x1006DAF0
@@ -61,12 +62,12 @@ BrSub10071560,0x10071560,1,0,"named global, no address recorded",0x10071550
 BrSub10071630,0x10071630,1,0,"named global, no address recorded",0x10071550
 BrSndVoiceStop,0x10072550,1,0,"named global, no address recorded",0x10072580
 BrSndPlayGroup,0x10072A70,1,0,"named global, no address recorded",0x10072AF0
-BrExt_10072A90,0x10072A90,4,1,"named global, no address recorded",0x10072A70 0x10072B10
+BrExt_10072A90,0x10072A90,2,1,"named global, no address recorded",0x10072A70 0x10072B10
 BrExt_10072AF0,0x10072AF0,6,1,"named global, no address recorded",0x100474D0 0x10047500 0x10047530 0x10047560 0x10047590 0x100475C0
-BrExt_10072B30,0x10072B30,2,1,"named global, no address recorded",0x10072B80
+BrExt_10072B30,0x10072B30,1,0,"named global, no address recorded",0x10072B80
 BrBootFrontier_1006C290,0x10073320,1,0,"named global, no address recorded",0x1002F6B0
-BrExt_10073B40,0x10073B40,2,1,"named global, no address recorded",0x100715E0
-BrExt_10075020,0x10075020,2,1,"named global, no address recorded",0x100713A0
+BrExt_10073B40,0x10073B40,1,0,"named global, no address recorded",0x100715E0
+BrExt_10075020,0x10075020,1,0,"named global, no address recorded",0x100713A0
 @BrX100751D0@4,0x100751D0,1,0,"named global, no address recorded",0x1002C2A0
 @br86_timer_end_period@4,0x10075240,1,0,"named global, no address recorded",0x1002C2C0
 BrSfxSrcStart,0x10075260,2,1,"named global, no address recorded",0x100752D0 0x10075300
@@ -77,10 +78,10 @@ sprintf,0x1007C830,3,1,CRT / import,0x10014930 0x10040A50 0x10040AC0
 ftol,0x1007C8A0,9,1,"named global, no address recorded",0x100065A0 0x100065E0 0x10006620 0x10006660 0x10006730 0x10006770 0x100067B0 0x100067F0 0x1002B920
 free,0x1007D2E0,1,0,CRT / import,0x10074050
 floor,0x1007DB00,8,1,"named global, no address recorded",0x100065A0 0x100065E0 0x10006620 0x10006660 0x10006730 0x10006770 0x100067B0 0x100067F0
-BrExt_1007E8B0,0x1007E8B0,6,1,"named global, no address recorded",0x10038EA0 0x10069A70 0x10071600
+BrExt_1007E8B0,0x1007E8B0,3,1,"named global, no address recorded",0x10038EA0 0x10069A70 0x10071600
 BrXAtExit,0x1007E8B0,1,0,"named global, no address recorded",0x1002C2B0
-BrExt_1007F560@16,0x1007F560,2,1,"named global, no address recorded",0x10071610
-BrExt_1007F680@20,0x1007F680,2,1,"named global, no address recorded",0x100715E0
+BrExt_1007F560@16,0x1007F560,1,0,"named global, no address recorded",0x10071610
+BrExt_1007F680@20,0x1007F680,1,0,"named global, no address recorded",0x100715E0
 BrX100800C0,0x100800C0,1,0,"named global, no address recorded",0x1007C7F0
 BrX10080120,0x10080120,1,0,"named global, no address recorded",0x1007C7F0
 BrX10080190,0x10080190,1,0,"named global, no address recorded",0x1007C7F0
@@ -114,9 +115,9 @@ $T640,0x1008F138,1,0,compiler constant (needs .rdata placement),0x10007310
 $T644,0x1008F13C,1,0,compiler constant (needs .rdata placement),0x10007380
 $T646,0x1008F140,1,0,compiler constant (needs .rdata placement),0x100073A0
 $T648,0x1008F144,1,0,compiler constant (needs .rdata placement),0x100073C0
-$T1680,0x1008F2CC,2,1,compiler constant (needs .rdata placement),0x10014930
-$T1686,0x1008F2D8,2,1,compiler constant (needs .rdata placement),0x10014930
-kF300$S533,0x1008F300,1,0,file-static stand-in (no 1:1 original global),0x10017C80
+$T1683,0x1008F2CC,2,1,compiler constant (needs .rdata placement),0x10014930
+$T1689,0x1008F2D8,2,1,compiler constant (needs .rdata placement),0x10014930
+kF300$S536,0x1008F300,1,0,file-static stand-in (no 1:1 original global),0x10017C80
 $T147,0x1008F3C8,7,1,compiler constant (needs .rdata placement),0x10022DC0
 $T168,0x1008F478,1,0,compiler constant (needs .rdata placement),0x10030600
 $T303,0x1008F628,1,0,compiler constant (needs .rdata placement),0x1003AD40
@@ -141,7 +142,7 @@ g_brAppContinue,0x100AA5A8,1,0,"named global, no address recorded",0x1002F6F0
 s_apfnAppState$S225,0x100AA5B0,1,0,file-static stand-in (no 1:1 original global),0x1002F8F0
 ??_C@_0CP@BMCG@Could?5not?5host?5session?5because?5o@,0x100AADE0,1,0,"named global, no address recorded",0x1003C150
 g_i0AB3F4,0x100AB3F4,2,1,"named global, no address recorded",0x1003EAE0
-g_AC300,0x100AC300,2,1,"named global, no address recorded",0x1002F690
+g_AC300,0x100AC300,1,0,"named global, no address recorded",0x1002F690
 k_AC570$S447,0x100AC570,1,0,file-static stand-in (no 1:1 original global),0x100407A0
 k_AC598$S449,0x100AC598,1,0,file-static stand-in (no 1:1 original global),0x10040870
 k_AC59C$S450,0x100AC59C,1,0,file-static stand-in (no 1:1 original global),0x10040890
@@ -157,8 +158,8 @@ k_AC640$S457,0x100AC640,1,0,file-static stand-in (no 1:1 original global),0x1004
 g_aBr0B37D0,0x100B37D0,3,1,"named global, no address recorded",0x100049C0
 g_Br0B380C,0x100B380C,1,0,"named global, no address recorded",0x10068210
 g_brStages,0x100B3810,1,0,"named global, no address recorded",0x100417B0
-g_0B39B0,0x100B39B0,4,1,"named global, no address recorded",0x10067940 0x10067960
-g_0B3A68,0x100B3A68,4,1,"named global, no address recorded",0x10067980 0x100679A0
+g_0B39B0,0x100B39B0,2,1,"named global, no address recorded",0x10067940 0x10067960
+g_0B3A68,0x100B3A68,2,1,"named global, no address recorded",0x10067980 0x100679A0
 g_brRaceNEntrant,0x100B4050,1,0,"named global, no address recorded",0x100697E0
 g_BrFpsCountB,0x100B5420,2,1,"named global, no address recorded",0x10014930
 g_BrFpsGateB,0x100B5424,1,0,"named global, no address recorded",0x10014930
@@ -181,7 +182,7 @@ g_brH221324,0x10221324,2,1,"named global, no address recorded",0x10004BB0
 g_brH22AF04,0x1022AF04,2,1,"named global, no address recorded",0x10004BE0
 g_h1022AF30,0x1022AF30,3,1,"named global, no address recorded",0x10005D90
 g_brTexSysMem,0x1022B348,1,0,"named global, no address recorded",0x1002A5A0
-g_BrDPlay$S838,0x10277AFC,1,0,file-static stand-in (no 1:1 original global),0x1000C670
+g_BrDPlay$S841,0x10277AFC,1,0,file-static stand-in (no 1:1 original global),0x1000C670
 g_brP277B40,0x10277B40,4,1,"named global, no address recorded",0x1003C150 0x100441A0
 g_BrCarVisAny,0x10277B68,3,1,"named global, no address recorded",0x1000CA90
 g_BrCarVisOpaque,0x10277E60,2,1,"named global, no address recorded",0x1000CA90
@@ -207,6 +208,9 @@ g_br6806B0,0x106806B0,2,1,"named global, no address recorded",0x1002C2A0 0x1002C
 g_BrFpsSamplesA,0x10680758,1,0,"named global, no address recorded",0x10014930
 g_brAppFrame,0x10690A10,1,0,"named global, no address recorded",0x1002F6F0
 g_brAppState,0x10690A14,3,1,"named global, no address recorded",0x1002F6B0 0x1002F6E0 0x1002F8F0
+g_pfnStep$S53,0x106C0964,1,0,file-static stand-in (no 1:1 original global),0x10034C66
+BrG_6C1628,0x106C1628,1,0,"named global, no address recorded",0x10032886
+g_BrLogArg,0x106C2CF0,2,1,"named global, no address recorded",0x10035BA7 0x10035BBA
 g_brRace6EECC8,0x106C7C38,1,0,"named global, no address recorded",0x10036020
 g_aBrA9C0B8,0x10A9C0B8,1,0,"named global, no address recorded",0x1003CFC0
 g_brPA9D008,0x10A9D008,3,1,"named global, no address recorded",0x1003C150 0x100437B0 0x10058700
@@ -230,6 +234,10 @@ g_pBrMenuACED34,0x10ACED34,3,1,"named global, no address recorded",0x10041B50
 g_brPairB,0x10AD189C,2,1,"named global, no address recorded",0x1003E1D0
 g_brPairStaticA,0x10AF9890,1,0,"named global, no address recorded",0x1003E1D0
 g_brPairStaticB,0x10AF99DC,1,0,"named global, no address recorded",0x1003E1D0
+BrG_B01C50,0x10B01C50,1,0,"named global, no address recorded",0x10069530
+BrG_B01ED0,0x10B01ED0,1,0,"named global, no address recorded",0x10069530
+BrG_B02190,0x10B02190,1,0,"named global, no address recorded",0x100694E0
+BrG_B022D0,0x10B022D0,1,0,"named global, no address recorded",0x100694E0
 g_BrCtrlCfg,0x10B4DF30,1,0,"named global, no address recorded",0x10069A60
 g_BrFpsSamplesB,0x10B4FFE8,1,0,"named global, no address recorded",0x10014930
 g_BrFpsGuard,0x10B501D8,1,0,"named global, no address recorded",0x10014930

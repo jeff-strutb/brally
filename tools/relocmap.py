@@ -136,8 +136,15 @@ def classify(sym):
 
 
 def main():
-    objs = sys.argv[1:] or sorted(glob.glob(
-        os.path.join(ROOT, 'build', 'match', 'obj', '*.obj')))
+    # build/match/obj is a hand-staged 10-file subset; measuring the tree
+    # against it undercounts, which is how this tool's first run reported 25.7%
+    # of a tenth of the tree as if it were the tree.
+    #
+    # ONE variant, though. Unlike reloc_fill.py this counts relocation SLOTS,
+    # not addresses, and it has no way to tell the /O2 and /Od builds of the
+    # same function apart -- reading both would report every slot twice.
+    from reloc_learn import live_objs
+    objs = sys.argv[1:] or live_objs(('O2',))[0]
     fnmap, glmap = load_maps()
     lrmap = load_learned()
     print(f"maps: {len(fnmap)} function names, {len(glmap)} global symbols, "

@@ -98,24 +98,53 @@ def learn_from(path, fnmap, glmap):
             yield tsym['name'], target & 0xFFFFFFFF, name, va
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    out = None
-    if '--csv' in sys.argv:
-        out = sys.argv[sys.argv.index('--csv') + 1]
-        args = [a for a in args if a != out]
-    objs = args or sorted(glob.glob(
-        os.path.join(ROOT, 'build', 'match', 'obj', '*.obj')))
-    fnmap, glmap = load_maps()
+LEARNED_CSV = os.path.join(ROOT, 'config', 'globals_learned.csv')
+
+# The variants match_sweep.py compiles. Passed in explicitly when the sweep
+# calls learn_and_write(), so the sweep stays the authority on its own list;
+# this default is only for running the tool by hand.
+DEFAULT_TAGS = ('O2', 'Od')
+
+
+def live_objs(tags=DEFAULT_TAGS):
+    """Every variant .obj whose source file still exists.
+
+    A deleted .c leaves its .obj on disk forever: br_smallfn.obj outlived
+    br_smallfn.c by five modules and is still sitting in both variant dirs.
+    The masked-match guard means a stale obj cannot teach a WRONG address --
+    it still has to reproduce the original's bytes -- but it can teach one for
+    a symbol the tree no longer contains, and that is how report.csv came to
+    double-count. Same rule applies here: no live source, not read.
+    """
+    live = set()
+    for _, _, files in os.walk(os.path.join(ROOT, 'src')):
+        for fn in files:
+            if fn.endswith('.c'):
+                live.add(os.path.splitext(fn)[0])
+    out, dropped = [], []
+    for tag in tags:
+        d = os.path.join(ROOT, 'build', 'match', 'obj_' + tag)
+        for p in sorted(glob.glob(os.path.join(d, '*.obj'))):
+            if os.path.splitext(os.path.basename(p))[0] in live:
+                out.append(p)
+            else:
+                dropped.append(os.path.basename(p))
+    return out, sorted(set(dropped))
+
+
+def learn(objs, fnmap=None, glmap=None):
+    """Read addresses out of the image. Returns a result dict; writes nothing."""
+    if fnmap is None or glmap is None:
+        fnmap, glmap = load_maps()
 
     obs = {}      # symbol -> {address: [(func, va), ...]}
     for path in objs:
         try:
-            gen = list(learn_from(path, fnmap, glmap))
+            found = list(learn_from(path, fnmap, glmap))
         except Exception as e:
             print(f"  ! {os.path.basename(path)}: {e}", file=sys.stderr)
             continue
-        for sym, target, fn, fnva in gen:
+        for sym, target, fn, fnva in found:
             obs.setdefault(sym, {}).setdefault(target, []).append((fn, fnva))
 
     # A learned address is only as good as its agreement.
@@ -128,7 +157,7 @@ def main():
             conflict[sym] = cand
 
     # GUARD 2: symbols we already have an address for must reproduce it.
-    checked = ok = bad = 0
+    checked = ok = 0
     wrong = []
     for sym, (addr, _) in agreed.items():
         known = resolve(sym, fnmap, glmap, learned=False)
@@ -138,24 +167,80 @@ def main():
         if known == addr:
             ok += 1
         else:
-            bad += 1
-            wrong.append((sym, hex(known), hex(addr)))
+            wrong.append((sym, known, addr))
 
     new = {s: v for s, v in agreed.items()
            if resolve(s, fnmap, glmap, learned=False) is None}
-    corroborated = {s: v for s, v in new.items() if v[1] > 1}
+    return {'obs': obs, 'agreed': agreed, 'conflict': conflict, 'new': new,
+            'checked': checked, 'ok': ok, 'wrong': wrong, 'nobjs': len(objs)}
 
-    print(f"objs read: {len(objs)}")
+
+def write_map(path, res):
+    """Write the learned addresses, and ONLY those that survived both guards."""
+    new, obs = res['new'], res['obs']
+    with open(path, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['symbol', 'addr', 'refs', 'corroborated', 'class',
+                    'sources'])
+        # Store the undecorated name: every consumer looks up after
+        # lstrip('_'), so keeping the COFF underscore here would make the
+        # learned map the one map that misses.
+        #
+        # `sources` lists the functions the address was read out of. It is what
+        # lets reloc_fill.py refuse to score a function bit-exact on the
+        # strength of an address learned from that same function -- without it
+        # the check would be circular for every symbol with one reference.
+        for s, (a, n) in sorted(new.items(), key=lambda kv: kv[1][0]):
+            src = ' '.join(sorted({'0x%08X' % v for _, v in obs[s][a]}))
+            w.writerow([s.lstrip('_'), '0x%08X' % a, n, int(n > 1),
+                        classify(s), src])
+    return len(new)
+
+
+def learn_and_write(tags=DEFAULT_TAGS, path=LEARNED_CSV):
+    """One call for the sweep: relearn from live objs, rewrite the map.
+
+    A refusal to write on a contradiction is deliberate. If the image ever
+    disagrees with a surveyed address, something upstream is wrong and a
+    silently-rewritten map would bury it.
+    """
+    objs, dropped = live_objs(tags)
+    res = learn(objs)
+    if res['wrong']:
+        return res, dropped, None
+    return res, dropped, write_map(path, res)
+
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    out = None
+    if '--csv' in sys.argv:
+        out = sys.argv[sys.argv.index('--csv') + 1]
+        args = [a for a in args if a != out]
+    dropped = []
+    if args:
+        objs = args
+    else:
+        objs, dropped = live_objs()
+
+    res = learn(objs)
+    obs, conflict, new = res['obs'], res['conflict'], res['new']
+
+    print(f"objs read: {res['nobjs']}"
+          + (f"   (skipped {len(dropped)} with no live source: "
+             f"{', '.join(dropped)})" if dropped else ''))
     print(f"symbols observed in a masked-match function: {len(obs)}")
-    print(f"  single consistent address : {len(agreed)}")
+    print(f"  single consistent address : {len(res['agreed'])}")
     print(f"  conflicting addresses     : {len(conflict)}")
     print("\nVALIDATION -- learned vs. the address the tree already knows")
-    print(f"  checkable: {checked}   agree: {ok}   disagree: {bad}")
-    for s, k, l in wrong[:10]:
-        print(f"    ! {s}: map says {k}, image says {l}")
+    print(f"  checkable: {res['checked']}   agree: {res['ok']}   "
+          f"disagree: {len(res['wrong'])}")
+    for s, k, l in res['wrong'][:10]:
+        print(f"    ! {s}: map says {hex(k)}, image says {hex(l)}")
 
     print(f"\nNEW addresses (no map had one): {len(new)}")
-    print(f"  of those, seen from >1 function: {len(corroborated)}")
+    print(f"  of those, seen from >1 function: "
+          f"{sum(1 for v in new.values() if v[1] > 1)}")
     byc = {}
     for s in new:
         byc.setdefault(classify(s), []).append(s)
@@ -166,29 +251,13 @@ def main():
         print(f"\nCONFLICTS (reported, never written): {len(conflict)}")
         for s, cand in list(sorted(conflict.items(),
                                    key=lambda kv: -len(kv[1])))[:10]:
-            spread = ' '.join(hex(a) for a in sorted(cand))
-            print(f"    {s}: {spread}")
+            print(f"    {s}: {' '.join(hex(a) for a in sorted(cand))}")
 
     if out:
-        with open(out, 'w', newline='') as f:
-            w = csv.writer(f)
-            w.writerow(['symbol', 'addr', 'refs', 'corroborated', 'class',
-                        'sources'])
-            # Store the undecorated name: every consumer looks up after
-            # lstrip('_'), so keeping the COFF underscore here would make the
-            # learned map the one map that misses.
-            #
-            # `sources` lists the functions the address was read out of.  It is
-            # what lets reloc_fill.py refuse to score a function bit-exact on
-            # the strength of an address learned from that same function --
-            # without it the check would be circular for every symbol with one
-            # reference.
-            for s, (a, n) in sorted(new.items(), key=lambda kv: kv[1][0]):
-                src = ' '.join(sorted({'0x%08X' % v
-                                       for _, v in obs[s][a]}))
-                w.writerow([s.lstrip('_'), '0x%08X' % a, n, int(n > 1),
-                            classify(s), src])
-        print(f"\nwrote {len(new)} learned addresses -> {out}")
+        if res['wrong']:
+            sys.exit("REFUSING to write: the image contradicts a surveyed "
+                     "address. Fix that before trusting any learned map.")
+        print(f"\nwrote {write_map(out, res)} learned addresses -> {out}")
 
 
 if __name__ == '__main__':
