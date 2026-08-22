@@ -1773,108 +1773,124 @@ void BrRcaSwapMesh(void *pv)
     }
 }
 
-/* 0x1002BAA0 */
+int32_t  g_brSegN64Base;   /* 0x104B16E4 */
+int32_t  g_brSegHostBase;  /* 0x104B16E0 */
+uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
+
+/* 0x10018B60 */
+/* The in-place N64->host pointer rebase the record fixup calls three times:
+ * glide 0x100189E0, 43 bytes.  Zero stays zero; anything below the N64 load
+ * base (SIGNED compare) becomes zero; the rest is rebased onto the host
+ * image.  br_ai.c's static br_ai_reloc also claims this VA with a
+ * by-value shape -- that claim is stale and should be retired when br_ai
+ * is next touched. */
+/* @implements 0x100189E0 glide BrSegPtrFixup */
+void BrSegPtrFixup(uint32_t *p)
+{
+    if (*p == 0)
+        return;
+    if ((int32_t)*p < g_brSegN64Base) {
+        *p = 0;
+        return;
+    }
+    *p = (uint32_t)(g_brSegHostBase - g_brSegN64Base) + *p;
+}
+
 /* WHAT IT DOES: prepares one texture record loaded from an .rca data file
  * for use: turns its fields the right way round, rebases the two addresses
  * it carries onto real memory, and then pulls in the actual pixel data --
  * either through an attached mesh header that says where in the file blob
  * the pixels live, or through a plain index into that blob. When the copying
  * is switched off it just does the byte order and lets the record go. */
-/* @implements 0x1002BAA0 d3d BrRcaFixupRecord */
-void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec)
+/* @implements 0x10018B60 glide BrRcaFixupRecord */
+void BrRcaFixupRecord(void *pRec)
 {
     uint8_t *r = (uint8_t *)pRec;
+    uint32_t tmp;
     uint32_t flags;
-    uint32_t len;
-    uint8_t *pDst;
-    uint8_t *pSrc;
+    uint8_t  a, b;
 
-    /* Byte-swap and rebase the two embedded pointers. */
-    br16_swap_u32_at(r + 0x00);
-    BrSegFixup(pCtx->pSeg, (uint32_t *)(void *)(r + 0x00));
-    br16_swap_u32_at(r + 0x04);
-    BrSegFixup(pCtx->pSeg, (uint32_t *)(void *)(r + 0x04));
+    /* +0x00 and +0x04: 4-byte reversal, then the in-place rebase.  The
+     * three loads before any store are the original's order. */
+    {
+        uint8_t t0 = r[0], t3 = r[3], t1 = r[1];
+        r[3] = t0; r[0] = t3;
+        t3 = r[2];
+        r[2] = t1; r[1] = t3;
+    }
+    BrSegPtrFixup((uint32_t *)(void *)r);
 
-    br16_swap_u32_at(r + 0x08);
-    br16_swap_u16_at(r + 0x0C);
-    br16_swap_u16_at(r + 0x0E);
-    br16_swap_u16_at(r + 0x10);
-    br16_swap_u16_at(r + 0x12);
-    br16_swap_u16_at(r + 0x14);
-    br16_swap_u16_at(r + 0x16);
+    {
+        uint8_t t0 = r[4], t3 = r[7], t1 = r[5];
+        r[7] = t0; r[4] = t3;
+        t3 = r[6];
+        r[6] = t1; r[5] = t3;
+    }
+    BrSegPtrFixup((uint32_t *)(void *)(r + 4));
+
+    {
+        uint8_t t0 = r[8], t3 = r[11], t1 = r[9];
+        r[11] = t0; r[8] = t3;
+        t3 = r[10];
+        r[10] = t1; r[9] = t3;
+    }
+
+    *(uint16_t *)(r + 0x0C) = (uint16_t)(r[0x0D] | (r[0x0C] << 8));
+    *(uint16_t *)(r + 0x0E) = (uint16_t)(r[0x0F] | (r[0x0E] << 8));
+    *(uint16_t *)(r + 0x10) = (uint16_t)(r[0x11] | (r[0x10] << 8));
+    *(uint16_t *)(r + 0x12) = (uint16_t)(r[0x13] | (r[0x12] << 8));
+    *(uint16_t *)(r + 0x14) = (uint16_t)(r[0x15] | (r[0x14] << 8));
+    *(uint16_t *)(r + 0x16) = (uint16_t)(r[0x17] | (r[0x16] << 8));
     /* 0x18..0x1F are deliberately left alone. */
 
-    /* The original stages +0x20 on the stack and reassembles it from four
-     * unaligned byte reads; the net effect is a plain byte reversal. */
-    flags = br16_bswap32(br16_ld32(r + 0x20));
-    br16_st32(r + 0x20, flags);
+    /* +0x20 is staged in a stack slot and reassembled from its bytes --
+     * Horner form, matching the original's shl/or chain. */
+    tmp = *(uint32_t *)(r + 0x20);
+    flags = ((((((uint32_t)(uint8_t)tmp << 8)
+             | ((const uint8_t *)&tmp)[1]) << 8)
+             | ((const uint8_t *)&tmp)[2]) << 8)
+             | ((const uint8_t *)&tmp)[3];
+    *(uint32_t *)(r + 0x20) = flags;
 
-    if (pCtx->enable == 0) {
-        BrGbiCall10075330((void *)(uintptr_t)br16_ld32(r + 0x04));
-        return;
-    }
+    if (g_br675540 != 0) {
+        if ((uint8_t)(flags >> 20) & 1) {
+            uint8_t *mesh;
+            uint32_t off0, off1;
+            int      entry = 0;
 
-    /* Length of the SECOND payload: 0x20 when bits[27:24] are exactly 1,
-     * 0x200 otherwise (an neg/sbb equality test, not a comparison). */
-    len = ((flags & 0x0F000000u) == 0x01000000u) ? 0x20u : 0x200u;
+            BrSegPtrFixup((uint32_t *)(void *)(r + 8));
+            BrRcaSwapMesh(*(void **)(void *)(r + 8));
+            mesh = *(uint8_t **)(void *)(r + 8);
+            if (*(uint16_t *)(mesh + 2) == 2
+                && *(uint32_t *)(mesh + 8) == 0xFFFFFFFFu)
+                entry = 1;
 
-    if ((flags & 0x00100000u) != 0) {
-        uint8_t  *pMesh;
-        uint32_t  off0, off1;
-        int       entry = 0;
+            off1 = *(uint32_t *)(mesh + entry * 12 + 0x10);
+            off0 = *(uint32_t *)(mesh + (entry + 1) * 12);
 
-        BrSegFixup(pCtx->pSeg, (uint32_t *)(void *)(r + 0x08));
-        pMesh = (uint8_t *)pCtx->pfnResolve(pCtx->pUser, br16_ld32(r + 0x08));
-        BrRcaSwapMesh(pMesh);
-        /* DEVIATION: the original dereferences the mesh header immediately
-         * after 0x1002BC90 returns, without repeating that routine's own
-         * null check, so a null header faults. Here it falls straight
-         * through to the release call. */
-        if (pMesh == NULL) {
-            BrGbiCall10075330((void *)(uintptr_t)br16_ld32(r + 0x04));
-            return;
-        }
-
-        if (br16_ld16(pMesh + 2) == 2 && br16_ld32(pMesh + 8) == 0xFFFFFFFFu)
-            entry = 1;
-
-        /* off0 = entry[e].dword1 at (e+1)*12, off1 = entry[e].dword2 at
-         * e*12 + 0x10 -- the entries themselves start at +0x08, stride 12. */
-        off0 = br16_ld32(pMesh + (size_t)(entry + 1) * 12);
-        off1 = br16_ld32(pMesh + 0x10 + (size_t)entry * 12);
-
-        if (entry == 0) {
-            uint32_t n = flags & 0x0003FFFFu;
-            if (n != 0 && off0 != 0xFFFFFFFFu) {
-                /* GOTCHA: the destination taken from +0x00 is NOT null
-                 * checked here, unlike the one at +0x04 below. */
-                pDst = (uint8_t *)pCtx->pfnResolve(pCtx->pUser,
-                                                   br16_ld32(r + 0x00));
-                if (pDst != NULL)
-                    memcpy(pDst, pCtx->pBlob + off0, n);
+            if (entry == 0) {
+                uint32_t n = *(uint32_t *)(r + 0x20) & 0x0003FFFFu;
+                if (n != 0 && off0 != 0xFFFFFFFFu)
+                    memcpy(*(void **)(void *)r, g_brRcaBlob + off0, n);
+            }
+            if (*(void **)(void *)(r + 4) != NULL
+                && off1 != 0xFFFFFFFFu) {
+                uint32_t len =
+                    ((*(uint32_t *)(r + 0x20) & 0x0F000000u) == 0x01000000u)
+                        ? 0x20u : 0x200u;
+                memcpy(*(void **)(void *)(r + 4), g_brRcaBlob + off1, len);
+            }
+        } else {
+            /* +0x08 is a 12-bit index scaled by 32 rather than a pointer. */
+            uint32_t src = (*(uint32_t *)(r + 8) & 0xFFFu) << 5;
+            if (*(void **)(void *)(r + 4) != NULL) {
+                uint32_t len = ((flags & 0x0F000000u) == 0x01000000u)
+                                   ? 0x20u : 0x200u;
+                memcpy(*(void **)(void *)(r + 4), g_brRcaBlob + src, len);
             }
         }
-
-        pDst = (uint8_t *)pCtx->pfnResolve(pCtx->pUser, br16_ld32(r + 0x04));
-        if (pDst == NULL || off1 == 0xFFFFFFFFu) {
-            BrGbiCall10075330(pDst);
-            return;
-        }
-        pSrc = pCtx->pBlob + off1;
-    } else {
-        /* +0x08 is a 12-bit index scaled by 32 rather than a pointer. */
-        uint32_t idx = br16_ld32(r + 0x08) & 0xFFFu;
-
-        pDst = (uint8_t *)pCtx->pfnResolve(pCtx->pUser, br16_ld32(r + 0x04));
-        if (pDst == NULL) {
-            BrGbiCall10075330(pDst);
-            return;
-        }
-        pSrc = pCtx->pBlob + (idx << 5);
     }
-
-    memcpy(pDst, pSrc, len);
-    BrGbiCall10075330(pDst);
+    BrGbiCall10075330(*(void **)(void *)(r + 4));
 }
 
 /* 0x1002BA80 */
@@ -1889,7 +1905,7 @@ void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
     if (count <= 0)
         return;
     for (i = 0; i < count; ++i) {
-        BrRcaFixupRecord(pCtx, p);
+        BrRcaFixupRecord(p);
         p += BR_RCA_REC_SIZE;
     }
 }
