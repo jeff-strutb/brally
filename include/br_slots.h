@@ -62,6 +62,12 @@ void BrSlotsReset(BrSlotTable *pTable);
 /* Convenience: first free slot index, or -1. Not in the original. */
 int  BrSlotsFindFree(const BrSlotTable *pTable);
 
+/* 0x1003CA70  reset globals at 0x10AA2538 whose `b` is 0. */
+void BrSlotsResetIfBZero(void);
+
+/* 0x100586D0  return field `a` for matching id, or 0. */
+int BrSlotsFindById(int id);
+
 /* WARNING -- 0x10AA288C IS DUAL-PURPOSE.
  *
  * The same global that holds this table's `count` is ALSO the DirectPlay send

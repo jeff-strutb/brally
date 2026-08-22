@@ -10,6 +10,7 @@
  * `sub_XXXXXXXX @ XXXXXXXX` line: all twelve agree.
  */
 
+#include <stdint.h>
 #include <string.h>
 
 #include "slice6_70.h"
@@ -549,3 +550,90 @@ void BrSub_100173F0(BrHudView *aViews, int a2)
  *     externs `uint32_t g_a220B20[0x46]` and defines nothing; the name and
  *     extent are kept identical so the two resolve to one object.
  */
+
+uint8_t *g_brPAA29E4 = NULL;
+
+#ifdef BR_MATCHING_BUILD
+typedef struct { int i; } BrC9B0Arg;
+typedef struct BrC9B0Vtbl {
+    void *pad[11];
+    void (__fastcall *f2C)(void *pThis, BrC9B0Arg a);
+} BrC9B0Vtbl;
+#endif
+
+/* WHAT IT DOES: walks every row of one particular on-screen list -- the one
+ * the global 0x10AA29E4 currently points at -- and asks the nested list
+ * object at +0x3838 to do whatever its vtable slot +0x2C does for that row's
+ * index. A missing pointer or a zero row-count is a no-op. The pointer is
+ * re-read before every row because the call is allowed to replace it. */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x1003C9B0 d3d BrSub1003C9B0 */
+#endif
+void BrSub1003C9B0(void)
+{
+    uint8_t  *pObj;
+    unsigned  i;
+    unsigned  n;
+
+    pObj = g_brPAA29E4;
+    if (pObj == NULL) {
+        return;
+    }
+    n = *(uint16_t *)(pObj + 0x1E164);
+    for (i = 0; i < n; i++) {
+        uint8_t *pSub;
+#ifdef BR_MATCHING_BUILD
+        BrC9B0Arg a;
+#endif
+        pObj = g_brPAA29E4;
+        pSub = pObj + 0x3838;
+#ifdef BR_MATCHING_BUILD
+        a.i = (int)i;
+        (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
+#else
+        {
+            void **pVtbl = *(void ***)pSub;
+            ((void (*)(void *, unsigned))pVtbl[11])(pSub, i);
+        }
+#endif
+    }
+}
+
+/* WHAT IT DOES: the same walk as BrSub1003C9B0, over the list object at
+ * 0x10AA29D4 instead of 0x10AA29E4. */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x1003D070 d3d BrSub1003D070 */
+#endif
+void BrSub1003D070(void)
+{
+    unsigned char *p;
+    unsigned int   n;
+    unsigned int   i;
+
+    p = (unsigned char *)g_brPAA29D4;
+    if (p != NULL) {
+        n = 0;
+        i = 0;
+        n = *(unsigned short *)(p + 0x1E164);
+        if (n > 0) {
+            do {
+#ifdef BR_MATCHING_BUILD
+                BrC9B0Arg a;
+#endif
+                unsigned char *pSub;
+
+                pSub = (unsigned char *)g_brPAA29D4 + 0x3838;
+#ifdef BR_MATCHING_BUILD
+                a.i = (int)i;
+                (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
+#else
+                {
+                    void **pVtbl = *(void ***)pSub;
+                    ((void (*)(void *, unsigned))pVtbl[11])(pSub, i);
+                }
+#endif
+                i++;
+            } while (i < n);
+        }
+    }
+}

@@ -1188,3 +1188,34 @@ void BrTexSizeShift(int size, int *pOut1, int *pOut2)
 
     *pOut1 = 0xFFFF;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* XSLICE 0x10080580 */ extern void BrX10080580(void);
+/* XSLICE 0x10080120 */ extern void BrX10080120(void);
+/* XSLICE 0x100801B0 */ extern void BrX100801B0(void);
+/* XSLICE 0x100800C0 */ extern void BrX100800C0(void);
+/* XSLICE 0x10080190 */ extern void BrX10080190(void);
+
+/* XSLICE 0x100BDAB8 */ extern void (*g_0BDAB8)(void);
+/* XSLICE 0x100BDABC */ extern void (*g_0BDABC)(void);
+/* XSLICE 0x100BDAC0 */ extern void (*g_0BDAC0)(void);
+/* XSLICE 0x100BDAC4 */ extern void (*g_0BDAC4)(void);
+/* XSLICE 0x100BDAC8 */ extern void (*g_0BDAC8)(void);
+/* XSLICE 0x100BDACC */ extern void (*g_0BDACC)(void);
+
+/* 0x1007C7F0 */
+/* WHAT IT DOES: installs the six helpers used to print floating-point numbers
+ * -- convert, strip trailing zeros, assign, force a decimal point, test the
+ * sign -- with the converter occupying both the first and last slots. */
+/* @implements 0x1007C7F0 d3d BrSub1007C7F0 */
+void BrSub1007C7F0(void)
+{
+    /* eax is loaded with BrX10080580 first and reused for g_0BDAB8 / g_0BDACC. */
+    g_0BDABC = BrX10080120;
+    g_0BDAB8 = BrX10080580;
+    g_0BDAC0 = BrX100801B0;
+    g_0BDAC4 = BrX100800C0;
+    g_0BDAC8 = BrX10080190;
+    g_0BDACC = BrX10080580;
+}
+#endif

@@ -732,3 +732,51 @@ void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
     aOut[0] = p[0];
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
+extern void    *g_brH221324;
+extern int32_t  g_br22AAA8;
+extern void    *g_brH22AF04;
+extern int32_t  g_br22AAF4;
+
+/* WHAT IT DOES: under the mutex, turns on the broadcast-enable flag. */
+/* @implements 0x10004BB0 d3d BrNetLockSet22AAA8 */
+int BrNetLockSet22AAA8(void)
+{
+    WaitForSingleObject(g_brH221324, (unsigned long)-1);
+    g_br22AAA8 = 1;
+    ReleaseMutex(g_brH221324);
+    return 1;
+}
+
+/* WHAT IT DOES: seeds the keepalive counter if it is sitting at zero. */
+/* @implements 0x10004BE0 d3d BrNetLockSetIfZero22AAF4 */
+int BrNetLockSetIfZero22AAF4(void)
+{
+    WaitForSingleObject(g_brH22AF04, (unsigned long)-1);
+    if (g_br22AAF4 == 0)
+        g_br22AAF4 = 1;
+    ReleaseMutex(g_brH22AF04);
+    return 1;
+}
+#else
+int BrNetLockSet22AAA8(BrNetState *pNet)
+{
+    BrNetMutexLock(pNet->h10221324);
+    pNet->f1022AAA8 = 1;
+    BrNetMutexUnlock(pNet->h10221324);
+    return 1;
+}
+
+int BrNetLockSetIfZero22AAF4(BrNetState *pNet)
+{
+    BrNetMutexLock(pNet->h1022AF04);
+    if (pNet->f1022AAF4 == 0)
+        pNet->f1022AAF4 = 1;
+    BrNetMutexUnlock(pNet->h1022AF04);
+    return 1;
+}
+#endif

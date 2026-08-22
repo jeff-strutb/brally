@@ -382,3 +382,29 @@ uint32_t BrSfxEngineHighHz(float doppler)
      * double for the same reason BrSfxEngineHz is. */
     return br_ftol32((double)doppler * 22050.0);
 }
+
+typedef struct BrSndBankCarSlot {
+    int32_t iName;
+    int32_t pad;
+} BrSndBankCarSlot;
+
+#ifdef BR_MATCHING_BUILD
+extern BrSndBankCarSlot g_0B6540[];
+extern BrSndBankCarSlot g_0B6C00[];
+extern BrSndBankCarSlot g_0B6C48[];
+#else
+BrSndBankCarSlot g_0B6540[8];
+BrSndBankCarSlot g_0B6C00[8];
+BrSndBankCarSlot g_0B6C48[8];
+#endif
+
+/* WHAT IT DOES: records which car belongs in a given engine-voice slot.
+ * Zero means empty; stored codes start at 1. */
+/* @implements 0x10073080 d3d BrSndBankSetCar */
+void BrSndBankSetCar(int iCar, int iName)
+{
+    iName++;
+    g_0B6540[iCar].iName = iName;
+    g_0B6C00[iCar].iName = iName;
+    g_0B6C48[iCar].iName = iName;
+}

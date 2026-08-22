@@ -1071,3 +1071,41 @@ void BrPodWriteClose(BrPodWriter *pW)
     fclose(pW->pFile);                  /* 0x1007CD50 */
     pW->pFile = NULL;
 }
+
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
+extern void    *g_h1022AF30;
+extern int32_t  g_a10221288[];
+extern int32_t  g_i10221318;
+#else
+void    *g_h1022AF30;
+int32_t  g_a10221288[16];
+int32_t  g_i10221318;
+#endif
+
+/* WHAT IT DOES: pops the top free slot number from 0x10221288 under mutex. */
+/* @implements 0x10005D90 d3d BrNetStackPop221288 */
+int32_t BrNetStackPop221288(void)
+{
+    int32_t v;
+
+#ifdef BR_MATCHING_BUILD
+    WaitForSingleObject(g_h1022AF30, (unsigned long)-1);
+#else
+    BrNetMutexLock(g_h1022AF30);
+#endif
+    if (g_i10221318 >= 0) {
+        v = g_a10221288[g_i10221318];
+        g_i10221318 = g_i10221318 - 1;
+    } else {
+        v = -1;
+    }
+#ifdef BR_MATCHING_BUILD
+    ReleaseMutex(g_h1022AF30);
+#else
+    BrNetMutexUnlock(g_h1022AF30);
+#endif
+    return v;
+}

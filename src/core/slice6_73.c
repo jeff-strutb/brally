@@ -1392,3 +1392,19 @@ short BrCollGridCellAcquire(float x, float y)
     }
     return (short)iVictim;
 }
+
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_brAA287C;
+extern uint8_t g_aBrA9C0B8[];
+
+/* WHAT IT DOES: returns a pointer to the selected DirectPlay provider GUID. */
+/* @implements 0x1003CFC0 d3d BrSub1003CFC0 */
+int32_t BrSub1003CFC0(uint8_t **ppGuid)
+{
+    int32_t n;
+
+    n = g_brAA287C;
+    *ppGuid = g_aBrA9C0B8 + n * 224;
+    return 0;
+}
+#endif

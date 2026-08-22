@@ -64,4 +64,7 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB);
  * precision throughout. Do not implement this as sqrtf of a double sum. */
 float BrVec3Length(const BrVec3 *pV);
 
+/* 0x10071B60  1 if pA->y is strictly below pB->y, or either is NaN; else 0. */
+int BrSub10071B60(const BrVec3 *pA, const BrVec3 *pB);
+
 #endif /* BR_VEC_H */

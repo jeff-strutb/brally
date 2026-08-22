@@ -356,3 +356,72 @@ void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
     }
     return pNew;
 }
+
+#ifdef _MSC_VER
+typedef int (__stdcall *BrEarShutdownChannelFn)(int);
+#else
+typedef int (*BrEarShutdownChannelFn)(int);
+#endif
+
+#ifdef BR_MATCHING_BUILD
+extern int g_0940A4;
+extern int g_220CD0;
+extern int g_220C3C;
+extern int g_220C40;
+extern int g_220CD8;
+extern int g_0940A8;
+extern BrEarShutdownChannelFn g_575470;
+__declspec(dllimport) unsigned long __stdcall mciSendCommandA(
+    unsigned long id, unsigned long msg,
+    unsigned long flags, unsigned long param);
+#else
+int g_0940A4;
+int g_220CD0;
+int g_220C3C;
+int g_220C40;
+int g_220CD8;
+int g_0940A8;
+BrEarShutdownChannelFn g_575470;
+#endif
+
+/* WHAT IT DOES: closes the EAR music channel if one is actually running. */
+/* @implements 0x10002440 d3d BrCdMaybeClose */
+int BrCdMaybeClose(void)
+{
+    if (g_0940A4 != 0) {
+        if (g_220CD0 != 0) {
+            if (g_220C3C != 0) {
+                int h = g_0940A8;
+                g_220C3C = 0;
+#ifdef BR_MATCHING_BUILD
+                return g_575470(h);
+#else
+                (void)h;
+                return 1;
+#endif
+            }
+        }
+    }
+    return 1;
+}
+
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: pauses CD soundtrack if disc music is in use. */
+/* @implements 0x10002AE0 d3d BrCdMciPause */
+int BrCdMciPause(void)
+{
+    if (g_0940A4) {
+        if (g_220CD0) {
+            int media = g_220C3C;
+            g_220CD8 = 1;
+            if (media) {
+                if (mciSendCommandA((unsigned long)g_220C40, 0x809u, 0, 0)) {
+                    mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+#endif

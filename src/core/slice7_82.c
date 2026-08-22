@@ -341,3 +341,22 @@ void BrExt_10043CD0(int32_t a)
     (void)a;                        /* unread in the original */
     (void)BrOptOpen2940(NULL);
 }
+
+/* 0x10087260  29 bytes.  memcpy of 12 unrolls; this is the 3-iteration
+ * edx loop, source bound first so eax loads arg2. */
+/* WHAT IT DOES: copies twelve bytes from one place to another,
+ * destination first. */
+/* @implements 0x10087260 d3d BrCopy12 */
+void BrCopy12(void *pDst, void *pSrc)
+{
+    unsigned *src;
+    unsigned *dst;
+    int       n;
+
+    src = (unsigned *)pSrc;
+    dst = (unsigned *)pDst;
+    n = 3;
+    do {
+        *dst++ = *src++;
+    } while (--n);
+}
