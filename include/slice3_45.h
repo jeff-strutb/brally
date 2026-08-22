@@ -202,7 +202,7 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z);
  * Each byte is shifted right by 3 -- 8-bit to 5-bit, TRUNCATING, which is the
  * inverse of the replicate-expansion slice2_19.h documents for the readback
  * at 0x10035452. A round trip through both is therefore lossy. */
-void BrEntRefreshColour(BrEnt *pE);
+void __fastcall BrEntRefreshColour(BrEnt *pE);
 
 /* 0x10076A40  __thiscall, `ret 4`. Point pRec at entry `idx` of the table at
  * 0x100C12A0 and refresh the colour.
@@ -213,7 +213,11 @@ void BrEntRefreshColour(BrEnt *pE);
  * wrap-around behaviour on a large index matches.
  *
  * GOTCHA: `idx` is not range-checked at all. */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx);
+#else
 void BrEntSetRecord(BrEnt *pE, int32_t idx);
+#endif
 
 /* 0x10076B20  __thiscall. Reset the instance and pull constants out of pRec.
  *
@@ -282,7 +286,11 @@ extern void BrSub10074090(BrVec4 *pDst, const BrVec4 *pA, const BrVec4 *pB);
 
 /* 0x10062C50 -- __thiscall on the entity, no other arguments. */
 /* XSLICE 0x10062C50 */
+#ifdef BR_MATCHING_BUILD
+extern void __fastcall BrSub10062C50(BrEnt *pE);
+#else
 extern void BrSub10062C50(BrEnt *pE);
+#endif
 
 /* ====================================================================== */
 /* 2. 0x10077090                                                           */
