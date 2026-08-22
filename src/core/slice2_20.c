@@ -47,6 +47,7 @@ extern int BrDlIsRegistered(const void *pv);
 /* XSLICE 0x1002BF80 */
 /* Register and byte-swap a display list. */
 extern void BrDlRegister(void *pv);
+extern void BrSegPtrFixup(uint32_t *p);
 
 /* XSLICE 0x10074DC0 */
 extern void BrSub10074DC0(int n);
@@ -691,27 +692,72 @@ void BrTrackFixupList78(void *pvHdr)
 /* WHAT IT DOES: prepares one drawable object of a track: turns all its
  * numbers round, rebases the one reference it carries -- which points at the
  * object's drawing commands -- and then registers those commands and hands
- * them to the graphics backend. */
-/* @implements 0x10038010 d3d BrTrackFixupRec54 */
+ * them to the graphics backend.
+ *
+ * The original UNROLLS all eighteen dword reversals and six u16 swaps
+ * inline -- no loop, no helper -- and re-reads the +0x44 slot for both the
+ * register call and the texture scan (re-deref idiom, docs/VC5-IDIOMS.md).
+ *
+ * NOT MATCHING by 24 bytes in the u16 window +0x1C0..0x1F0: the original
+ * loads each pair's LOW byte first, VC5 here loads the highs first.  Three
+ * spellings (or-order, statement split) compile byte-identical, so the load
+ * order is scheduler-canonical -- allocator-residue class, do not grind. */
+/* @implements 0x100316D0 glide BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {
     uint8_t *p = (uint8_t *)pvRec;
-    void    *pDl;
-    int      i;
+    uint8_t  t, u;
 
-    for (i = 0; i < 0x48; i += 4)        /* eighteen dwords, +0x00 .. +0x47 */
-        BrSwap4(p + i);
+    t = p[0x00]; u = p[0x03]; p[0x03] = t; p[0x00] = u;
+    t = p[0x01]; u = p[0x02]; p[0x02] = t; p[0x01] = u;
+    t = p[0x04]; u = p[0x07]; p[0x07] = t; p[0x04] = u;
+    t = p[0x05]; u = p[0x06]; p[0x06] = t; p[0x05] = u;
+    t = p[0x08]; u = p[0x0B]; p[0x0B] = t; p[0x08] = u;
+    t = p[0x09]; u = p[0x0A]; p[0x0A] = t; p[0x09] = u;
+    t = p[0x0C]; u = p[0x0F]; p[0x0F] = t; p[0x0C] = u;
+    t = p[0x0D]; u = p[0x0E]; p[0x0E] = t; p[0x0D] = u;
+    t = p[0x10]; u = p[0x13]; p[0x13] = t; p[0x10] = u;
+    t = p[0x11]; u = p[0x12]; p[0x12] = t; p[0x11] = u;
+    t = p[0x14]; u = p[0x17]; p[0x17] = t; p[0x14] = u;
+    t = p[0x15]; u = p[0x16]; p[0x16] = t; p[0x15] = u;
+    t = p[0x18]; u = p[0x1B]; p[0x1B] = t; p[0x18] = u;
+    t = p[0x19]; u = p[0x1A]; p[0x1A] = t; p[0x19] = u;
+    t = p[0x1C]; u = p[0x1F]; p[0x1F] = t; p[0x1C] = u;
+    t = p[0x1D]; u = p[0x1E]; p[0x1E] = t; p[0x1D] = u;
+    t = p[0x20]; u = p[0x23]; p[0x23] = t; p[0x20] = u;
+    t = p[0x21]; u = p[0x22]; p[0x22] = t; p[0x21] = u;
+    t = p[0x24]; u = p[0x27]; p[0x27] = t; p[0x24] = u;
+    t = p[0x25]; u = p[0x26]; p[0x26] = t; p[0x25] = u;
+    t = p[0x28]; u = p[0x2B]; p[0x2B] = t; p[0x28] = u;
+    t = p[0x29]; u = p[0x2A]; p[0x2A] = t; p[0x29] = u;
+    t = p[0x2C]; u = p[0x2F]; p[0x2F] = t; p[0x2C] = u;
+    t = p[0x2D]; u = p[0x2E]; p[0x2E] = t; p[0x2D] = u;
+    t = p[0x30]; u = p[0x33]; p[0x33] = t; p[0x30] = u;
+    t = p[0x31]; u = p[0x32]; p[0x32] = t; p[0x31] = u;
+    t = p[0x34]; u = p[0x37]; p[0x37] = t; p[0x34] = u;
+    t = p[0x35]; u = p[0x36]; p[0x36] = t; p[0x35] = u;
+    t = p[0x38]; u = p[0x3B]; p[0x3B] = t; p[0x38] = u;
+    t = p[0x39]; u = p[0x3A]; p[0x3A] = t; p[0x39] = u;
+    t = p[0x3C]; u = p[0x3F]; p[0x3F] = t; p[0x3C] = u;
+    t = p[0x3D]; u = p[0x3E]; p[0x3E] = t; p[0x3D] = u;
+    t = p[0x40]; u = p[0x43]; p[0x43] = t; p[0x40] = u;
+    t = p[0x41]; u = p[0x42]; p[0x42] = t; p[0x41] = u;
+    t = p[0x44]; u = p[0x47]; p[0x47] = t; p[0x44] = u;
+    t = p[0x45]; u = p[0x46]; p[0x46] = t; p[0x45] = u;
 
-    BrFixupAt(p + 0x44);                 /* the only rebased field */
+    BrSegPtrFixup((uint32_t *)(void *)(p + 0x44));
 
-    for (i = 0x48; i < 0x54; i += 2)     /* six u16s, +0x48 .. +0x53 */
-        BrLoad16BE(p + i);
+    *(uint16_t *)(p + 0x48) = (uint16_t)((p[0x48] << 8) | p[0x49]);
+    *(uint16_t *)(p + 0x4A) = (uint16_t)((p[0x4A] << 8) | p[0x4B]);
+    *(uint16_t *)(p + 0x4C) = (uint16_t)((p[0x4C] << 8) | p[0x4D]);
+    *(uint16_t *)(p + 0x4E) = (uint16_t)((p[0x4E] << 8) | p[0x4F]);
+    *(uint16_t *)(p + 0x50) = (uint16_t)((p[0x50] << 8) | p[0x51]);
+    *(uint16_t *)(p + 0x52) = (uint16_t)((p[0x52] << 8) | p[0x53]);
 
-    pDl = BrPtrAt(p + 0x44);
-    BrDlRegister(pDl);
+    BrDlRegister(*(void **)(void *)(p + 0x44));
     BrSub1003445A(p);
     BrSub10074DC0(1);
-    g_pfn18AA0C4(pDl);
+    g_pfn18AA0C4(*(void **)(void *)(p + 0x44));
 }
 
 void BrTrackFixupList60(void *pvHdr)
