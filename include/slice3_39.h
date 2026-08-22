@@ -716,7 +716,7 @@ extern int32_t   g_BrAA3398[7];   /* 0x10AA3398 */
  *
  * The halving is `cdq / sub / sar 1`, i.e. division truncated toward zero,
  * not an arithmetic shift -- it differs from `>> 1` for odd negatives. */
-int32_t BrFn10060210(void *pUnused);
+int32_t __stdcall BrFn10060210(void *pUnused);
 
 /* The object BrDevSlot::pIface points at.  No slot's meaning is
  * established, so they are named for their byte offset.  0x100602B0 calls
