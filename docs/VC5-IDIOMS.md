@@ -50,6 +50,19 @@ the caller AND flipped a helper to match for free.
   fstp) is allocator-internal and NOT source-reachable. Documented wall
   class — see divergence-class triage. Do not burn time here.
 
+- **Re-deref, don't cache:** the original often writes `*p` repeatedly and
+  lets CSE cache it; an explicit `v = *p` local changes register allocation
+  (VC5 reuses the local's register where the CSE shape burns a fresh one).
+  Dropping the local matched BrSegPtrFixup (43 B) outright.
+- **`(uint8_t)(x >> 20) & 1` vs `x & 0x100000`:** `mov edx,ecx; shr edx,20;
+  test dl,1` comes from the byte-cast shift form. `test ecx,0x100000` comes
+  from the plain mask. Read which one the original used off the bytes.
+- **Allocator-internal residue in integer code:** which byte temp gets cl vs
+  dl, and which register holds a loaded offset (eax vs esi), cascade locally
+  then resync. Three different source shapes (temp decl order, reuse target)
+  compile byte-identical — same wall class as float scheduling, but rarer
+  and smaller. Land the structural match and move on.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
