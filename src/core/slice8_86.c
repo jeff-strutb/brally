@@ -408,7 +408,20 @@ void BrX100751D0(void *pThis)
 /* WHAT IT DOES: gives back the finer timer resolution the game asked Windows
  * for, and only on machines that needed it -- where the precise timer was
  * available nothing was asked for and nothing is returned. */
+/* @implements 0x1006E4A0 glide br86_timer_end_period */
 /* @implements 0x10075240 d3d br86_timer_end_period */
+#ifdef BR_MATCHING_BUILD
+/* Glide 0x1006E4A0: 18 B -- MOV EAX,[g_br86HasPerf] / TEST / JNZ+8 /
+ * PUSH 1 / CALL [IAT:timeEndPeriod] / RET.  No struct-pointer guard.
+ * Direct dllimport call produces FF 15 [IAT] = one reloc at offset 13. */
+__declspec(dllimport) void __stdcall timeEndPeriod(unsigned int uPeriod);
+static void BR_THISCALL1 br86_timer_end_period(void *pThis)
+{
+    (void)pThis;
+    if (g_br86HasPerf == 0)
+        timeEndPeriod(1);
+}
+#else
 static void BR_THISCALL1 br86_timer_end_period(void *pThis)
 {
     /* `this` is passed but never read -- the body only looks at globals. It
@@ -421,6 +434,7 @@ static void BR_THISCALL1 br86_timer_end_period(void *pThis)
         }
     }
 }
+#endif
 
 /* WHAT IT DOES: shuts the frame clock down on the way out of the game, by
  * handing back the timer resolution above. */
