@@ -96,22 +96,36 @@ def main():
     # every tagged function including the ones still diffing; laying those in
     # would measure the size of the undone work, not the truth of the claims.
     import csv
-    claimed = set()
+    claimed = {}
     names_at = {}
     for r in csv.DictReader(open(os.path.join(ROOT, 'build', 'match',
                                               'report.csv'))):
         if r.get('va') and r.get('status') == 'match':
-            claimed.add(int(r['va'], 16))
-            names_at.setdefault(int(r['va'], 16), set()).add(r['name'])
+            va = int(r['va'], 16)
+            claimed[va] = r
+            names_at.setdefault(va, set()).add(r['name'])
 
-    # Best build per address: fully-resolved beats partially-resolved.
-    best = {}
-    for va, name, code, unres in compiled_functions(objs, fnmap, glmap):
-        if va not in claimed:
+    # Take the build the SCORER matched -- its optimisation level, from its
+    # source file -- not whichever build happens to resolve most relocations.
+    # Every file is compiled at both /O2 and /Od and a function matches under
+    # one of them; picking the other yields different code at the same address
+    # and reads as a failed claim when nothing is wrong with the claim.
+    want = {}
+    for va, r in claimed.items():
+        if not r.get('opt'):
             continue
-        cur = best.get(va)
-        if cur is None or unres < cur[2]:
-            best[va] = (name, code, unres)
+        obj = os.path.join(ROOT, 'build', 'match', 'obj_' + r['opt'],
+                           os.path.basename(r['file'])[:-2] + '.obj')
+        want.setdefault(obj, []).append((va, r['name']))
+
+    best = {}
+    for obj, wanted in want.items():
+        if not os.path.exists(obj):
+            continue
+        byname = {n: va for va, n in wanted}
+        for va, name, code, unres in compiled_functions([obj], fnmap, glmap):
+            if byname.get(name) == va:
+                best[va] = (name, code, unres)
 
     usable = {va: v for va, v in best.items() if v[2] == 0}
     blocked = len(best) - len(usable)
