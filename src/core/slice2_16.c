@@ -1570,85 +1570,131 @@ static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
     *pOut = (uint8_t)br16_ftol((double)*pCur * 255.0);  /* 0x1008F438 */
 }
 
-/* 0x1002B670 */
+/* 0x100186E0 */
+/* Matching-model globals for the fade/wipe module (glide addresses).  The
+ * struct-based BrFadeState helpers above are the PORT's model of the same
+ * storage; nothing constructs both at once today, but if a BrFadeState is
+ * ever pointed at the shipped addresses these must be the storage, not a
+ * second copy (aliased-storage rule, slice6_78.h banner). */
+int32_t g_brFadeKick;      /* 0x104B16CC */
+int32_t g_brFadeBounce;    /* 0x104B16D8 */
+int32_t g_brFadeKickA;     /* 0x104B16D4 */
+int32_t g_brFadeKickB;     /* 0x104B16D0 */
+float   g_brFadeValue;     /* 0x104B16C0 */
+float   g_brFadeTarget;    /* 0x104B16B8 */
+float   g_brFadeRate;      /* 0x104B16BC */
+float   g_brFadeRateA;     /* 0x104B16C8 */
+float   g_brFadeRateB;     /* 0x104B16C4 */
+float   g_brFadeCurA;      /* 0x100A750C */
+float   g_brFadeTgtA;      /* 0x100A7508 */
+float   g_brFadeCurB;      /* 0x100A7504 */
+float   g_brFadeTgtB;      /* 0x100A7500 */
+float   g_brFadeDt;        /* 0x106E9D8C */
+int32_t g_brFadeParity;    /* 0x106ED67C */
+int32_t g_brFadePos;       /* 0x104B16B0 */
+int32_t g_brFadePos2;      /* 0x104B16A8 */
+int32_t g_brFadeWidth;     /* 0x106E9A2C */
+int32_t g_brFadeSpan;      /* 0x106E7714 */
+int32_t g_brFadeB4;        /* 0x104B16B4 */
+int32_t g_brFadeA4;        /* 0x104B16A4 */
+int32_t g_brFadePosHist[2];  /* 0x104B1698 */
+int32_t g_brFadePos2Hist[2]; /* 0x104B1690 */
+uint8_t g_brFadeOutA;      /* 0x100BB2EC */
+uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
+
 /* WHAT IT DOES: advances the screen transition by one frame: moves the wipe
  * toward its target, reverses it if a bounce was pending and it just
  * arrived, recomputes where the bars now sit, and steps both brightness
  * ramps, publishing each as a 0-255 value. One quirk worth knowing: the wipe
- * treats landing exactly on its target as an overshoot and the ramps do not. */
-/* @implements 0x1002B670 d3d BrFadeTick */
-void BrFadeTick(BrFadeState *pSt)
+ * treats landing exactly on its target as an overshoot and the ramps do not.
+ * The original INLINES both ramp steps (no helper) and works entirely in
+ * globals; the NaN notes from the struct-based pass still describe the
+ * comparison senses.
+ *
+ * NOT MATCHING by 4 bytes: one esi/edi role toggle in the backward-wipe
+ * arm (sub eax,esi vs edi and the paired adds/cmp).  Statement-order probes
+ * move the toggle between the load window and the arithmetic window but
+ * never clear both -- allocator-residue class. */
+/* @implements 0x100186E0 glide BrFadeTick */
+void BrFadeTick(void)
 {
-    /* THE WIPE'S FOUR COMPARISONS, all NaN-wrong before this pass:
-     *
-     *   0x1002B690  test ah,0x40 / jne skip-the-whole-block -- the guard is
-     *               C3 CLEAR (ordered and unequal).  `value != target` is
-     *               true for NaN and moved a wipe the original leaves alone.
-     *   0x1002B6BB  test ah,1 on `rate` vs 0.0f, whose zero flag is read by
-     *               the `je 0x1002B6E5` at 0x1002B6D2 -- `fnstsw` does not
-     *               write EFLAGS, so ZF survives the fstp/fld/fcomp between
-     *               them.  ZF set means C0 CLEAR: forward is ordered
-     *               rate >= 0.  `!(rate < 0.0f)` sent NaN forward.
-     *   0x1002B6E8  (forward) test ah,1 / jne skip -- clamp on C0 CLEAR, so
-     *               ordered value >= target.  `!(value < target)` clamped NaN.
-     *   0x1002B6D7  (backward) test ah,1 / je skip -- clamp on C0, so
-     *               unordered DOES clamp.  `value < target` did not. */
-    if (pSt->kick != 0) {
-        pSt->kick = 0;
-    } else if (BR16_FNEO(pSt->value, pSt->target)) {
-        int forward = (pSt->rate >= 0.0f);
-
-        pSt->value = pSt->rate * pSt->dt + pSt->value;
-        if (forward) {
-            /* Overshoot INCLUDES equality here -- that is what lets the
-             * bounce fire when the wipe lands exactly on its target. */
-            if (pSt->value >= pSt->target) {
-                pSt->value = pSt->target;
-                if (pSt->bounce != 0) {
-                    pSt->rate   = -pSt->rate;
-                    pSt->target = 0.0f;
-                    pSt->bounce = 0;
+    if (g_brFadeKick == 0) {
+        if (g_brFadeValue != g_brFadeTarget) {
+        g_brFadeValue = g_brFadeRate * g_brFadeDt + g_brFadeValue;
+        if (g_brFadeRate < 0.0f) {
+            if (!(g_brFadeValue >= g_brFadeTarget))
+                g_brFadeValue = g_brFadeTarget;
+        } else {
+            /* overshoot INCLUDES equality: this is what lets the bounce
+             * fire when the wipe lands exactly on its target */
+            if (g_brFadeValue >= g_brFadeTarget) {
+                g_brFadeValue = g_brFadeTarget;
+                if (g_brFadeBounce != 0) {
+                    g_brFadeRate   = -g_brFadeRate;
+                    g_brFadeTarget = 0.0f;
+                    g_brFadeBounce = 0;
                 }
             }
-        } else {
-            if (!(pSt->value >= pSt->target))
-                pSt->value = pSt->target;
         }
-    }
-
-    pSt->aPos2[pSt->parity] = pSt->pos2;
-    pSt->aPos[pSt->parity]  = pSt->pos;
-    pSt->f57550C            = 0;
-    pSt->f5754FC            = pSt->width;
-
-    /* 0x1002B764 `test ah,0x41 / jne` -- the fall-through is the ZERO case,
-     * ordered GREATER, which is exactly C's `>`.  THE ONE COMPARISON IN THIS
-     * FILE THAT WAS ALREADY RIGHT AND IS UNCHANGED.
-     *
-     * 0x1002B795 `test ah,1 / je 0x1002B7DA` -- the else-if is the C0 case
-     * (less-than OR UNORDERED), so a NaN rate takes THIS arm, not the final
-     * else.  `pSt->rate < 0.0f` is false for NaN and took the else. */
-    if (pSt->rate > 0.0f) {
-        int32_t v;
-        pSt->pos2 = 0;
-        v = br16_ftol((double)pSt->span * (double)pSt->value);
-        pSt->pos = (v + 3) & ~3;
-    } else if (!(pSt->rate >= 0.0f)) {
-        int32_t v = br16_ftol((double)pSt->span * (double)pSt->value);
-        int32_t step = ((pSt->span - v - pSt->pos2) + 3) & ~3;
-        pSt->pos  += step;
-        pSt->pos2 += step;
-        if (pSt->pos > pSt->span)
-            pSt->pos = pSt->span;
+        }
     } else {
-        pSt->pos2 = 0;
-        pSt->pos  = pSt->span;
+        g_brFadeKick = 0;
     }
 
-    br16_ramp_step(&pSt->curA, pSt->tgtA, pSt->rateA, pSt->dt,
-                   &pSt->kickA, &pSt->outA);
-    br16_ramp_step(&pSt->curB, pSt->tgtB, pSt->rateB, pSt->dt,
-                   &pSt->kickB, &pSt->outB);
+    g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
+    g_brFadePosHist[g_brFadeParity]  = g_brFadePos;
+    g_brFadeB4 = 0;
+    g_brFadeA4 = g_brFadeWidth;
+
+    if (g_brFadeRate > 0.0f) {
+        int32_t v = (int32_t)(g_brFadeSpan * g_brFadeValue);
+        g_brFadePos  = 0;
+        g_brFadePos2 = (v + 3) & ~3;
+    } else if (!(g_brFadeRate >= 0.0f)) {
+        int32_t v = (int32_t)(g_brFadeSpan * g_brFadeValue);
+        int32_t step = ((g_brFadeSpan - v - g_brFadePos) + 3) & ~3;
+        g_brFadePos2 += step;
+        g_brFadePos  += step;
+        if (g_brFadePos2 > g_brFadeSpan)
+            g_brFadePos2 = g_brFadeSpan;
+    } else {
+        g_brFadePos  = 0;
+        g_brFadePos2 = g_brFadeSpan;
+    }
+
+    if (g_brFadeKickA == 0) {
+        if (g_brFadeCurA != g_brFadeTgtA) {
+        g_brFadeCurA = g_brFadeRateA * g_brFadeDt + g_brFadeCurA;
+        if (g_brFadeRateA < 0.0f) {
+            if (!(g_brFadeCurA >= g_brFadeTgtA))
+                g_brFadeCurA = g_brFadeTgtA;
+        } else {
+            /* forward clamp is STRICT greater (test ah,0x41) */
+            if (g_brFadeCurA > g_brFadeTgtA)
+                g_brFadeCurA = g_brFadeTgtA;
+        }
+        }
+    } else {
+        g_brFadeKickA = 0;
+    }
+    g_brFadeOutA = (uint8_t)(int32_t)((double)g_brFadeCurA * 255.0);
+
+    if (g_brFadeKickB == 0) {
+        if (g_brFadeCurB != g_brFadeTgtB) {
+        g_brFadeCurB = g_brFadeRateB * g_brFadeDt + g_brFadeCurB;
+        if (g_brFadeRateB < 0.0f) {
+            if (!(g_brFadeCurB >= g_brFadeTgtB))
+                g_brFadeCurB = g_brFadeTgtB;
+        } else {
+            /* forward clamp is STRICT greater (test ah,0x41) */
+            if (g_brFadeCurB > g_brFadeTgtB)
+                g_brFadeCurB = g_brFadeTgtB;
+        }
+        }
+    } else {
+        g_brFadeKickB = 0;
+    }
+    g_brFadeOutB = (uint8_t)(int32_t)((double)g_brFadeCurB * 255.0);
 }
 
 /* ================================================================== */
