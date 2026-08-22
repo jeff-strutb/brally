@@ -742,7 +742,7 @@ void BrFadeDrawBars(BrFadeState *pSt);
  * GOTCHA: the wipe's overshoot test and the ramps' overshoot tests differ at
  * EQUALITY. The wipe clamps (and fires the bounce) when value >= target;
  * each ramp leaves cur alone when cur == tgt. Reproduced. */
-void BrFadeTick(BrFadeState *pSt);
+void BrFadeTick(void);
 
 /* ================================================================== */
 /* 4. .rca byte-swap and fixup helpers                                */
