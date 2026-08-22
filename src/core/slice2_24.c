@@ -181,10 +181,7 @@ BrMenuState *BrMenuGetState(void)
  * are contiguous with the table and no code proves a shorter length).
  *
  * The original indexes these blind.  The caption one-liners now do too --
- * their guards were the whole reason they could not match, and BrTabS8 /
- * BrTabU16 below are what is left of that DEVIATION: the callers that still
- * go through a helper keep the bounds check, the ones transcribed straight
- * do not.  Fold the rest as each is matched.
+ * their guards were the whole reason they could not match.
  * ===================================================================== */
 
 static const uint16_t k_AC550[16] = {
@@ -206,16 +203,6 @@ static const int8_t k_AC634[4]  = { 0x63, 0x62, 0, 0 };
 static const int8_t k_AC638[4]  = { 0x65, 0x64, 0, 0 };
 /* 0x100AC640 is a dword table but the code reads only its low word. */
 static const uint32_t k_AC640[2] = { 0x0000008Cu, 0x0000008Du };
-
-static int16_t BrTabS8(const int8_t *pTab, size_t cTab, uint32_t i)
-{
-    return (i < cTab) ? (int16_t)pTab[i] : (int16_t)0;
-}
-
-static int16_t BrTabU16(const uint16_t *pTab, size_t cTab, uint32_t i)
-{
-    return (i < cTab) ? (int16_t)pTab[i] : (int16_t)0;
-}
 
 /* One byte out of the stage table at 0x100B3810.  The original address is
  * 0x100B3820 + 2*(k + 12*e) + hi, and 0x100B3820 is the table base plus
@@ -242,14 +229,6 @@ static int32_t BrMenuStageIndex(const BrMenuState *pSt)
 /* =====================================================================
  * 3. Item plumbing
  * ===================================================================== */
-
-/* Store `id` into the item's 16-bit string-id field and report success.
- * Every caption setter in the packet ends exactly this way. */
-static int32_t BrMenuSetCaptionId(BrMenuItem *pItem, int16_t id)
-{
-    pItem->f1E20C = id;
-    return 1;
-}
 
 /* The two tails that follow a text assignment.  The original tests the text
  * pointer between the two vtable calls -- but that pointer is `pItem +
@@ -454,13 +433,6 @@ int32_t BrMenuCap0730(BrMenuItem *pItem)
      * (which would clobber the index). */
     pItem->f1E20C = (int16_t)k_AC550[i];
     return 1;
-}
-
-/* The guard 0x100407A0, 0x100407E0 and 0x100408D0 share.  Non-zero means
- * "bail out". */
-static int BrMenuIsIdle(const BrMenuState *pSt)
-{
-    return (pSt->gAA2904 == pSt->gAA2964) && (pSt->gAA28E8 == 0);
 }
 
 /* 0x100407A0.  -2 is the reserved "leave this item alone" answer; nothing
