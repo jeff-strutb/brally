@@ -63,9 +63,8 @@ typedef char br06_assert_pendctx[
 BrPendCtx *g_brPendCtx;     /* 0x106C7C3C */
 uint32_t   g_brPendDropped; /* 0x106C7C40 */
 
-/* The header keeps the portable 3-arg prototype. The original is cdecl with
- * one stack argument (the item) at [esp+4], which is the first parameter;
- * the other two occupy unread stack slots. */
+/* WHAT IT DOES: queue a piece of work to run later.  If the queue is
+ * already full the item is dropped, but the counter still moves on. */
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
@@ -82,6 +81,8 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
     }
 }
 #else
+/* WHAT IT DOES: queue a piece of work to run later.  If the queue is
+ * already full the item is dropped, but the counter still moves on. */
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
@@ -228,6 +229,9 @@ __declspec(dllimport) void *__stdcall GlobalHandle(void *pMem);
 __declspec(dllimport) int   __stdcall GlobalUnlock(void *hMem);
 __declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
 
+/* WHAT IT DOES: fetch a blob whose size is not known in advance -- ask
+ * once with no buffer, allocate that much, ask again, hand the block
+ * back.  On failure the block is released and the error is reported. */
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
@@ -260,6 +264,8 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
     return hr;
 }
 #else
+/* WHAT IT DOES: the same two-step fetch, using calloc instead of a
+ * Windows global heap block. */
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
@@ -314,8 +320,8 @@ uint32_t *g_brPairB;                         /* 0x10AD189C */
 uint32_t  g_brPairStaticA[BR_PAIRBUF_DWORDS]; /* 0x10AF9890 */
 uint32_t  g_brPairStaticB[BR_PAIRBUF_DWORDS]; /* 0x10AF99DC */
 
-/* The header keeps the portable prototype. The original takes no arguments
- * and talks to four absolute addresses. */
+/* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
+ * each at its own built-in storage first if it has nowhere else to live. */
 /* @implements 0x1003E1D0 d3d BrPairBufReset */
 int BrPairBufReset(BrPairBuf *pBuf)
 {
@@ -338,6 +344,8 @@ int BrPairBufReset(BrPairBuf *pBuf)
     return 1;
 }
 #else
+/* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
+ * each at its own built-in storage first if it has nowhere else to live. */
 /* @implements 0x1003E1D0 d3d BrPairBufReset */
 int BrPairBufReset(BrPairBuf *pBuf)
 {

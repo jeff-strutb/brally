@@ -288,6 +288,20 @@ int32_t BrMenuCap1870(BrMenuItem *pItem);
 int32_t BrMenuSeedFrom25D4(void);   /* 0x100409F0 */
 int32_t BrMenuSeedFrom26F0(void);   /* 0x10040A20 */
 
+/* Caption-column switch.  Caption setters later in this file read a byte
+ * at 0x10AA28A8: 0 = primary wording, non-zero = backup wording.
+ * Always report success. */
+int32_t BrMenuClearAA28A8(void);    /* 0x1003E8C0  use the primary column */
+int32_t BrMenuSetAA28A8(void);      /* 0x1003E8B0  use the backup column  */
+
+/* Which stored lap-time the next time-caption (BrMenuTime0EE0) reads.
+ * 0, 1, 2 index a times array; 3 means "use the live time instead".
+ * Always report success. */
+int32_t BrMenuSetAA28D0_0(void);    /* 0x100412C0  first stored time  */
+int32_t BrMenuSetAA28D0_1(void);    /* 0x100412D0  second stored time */
+int32_t BrMenuSetAA28D0_2(void);    /* 0x100412E0  third stored time  */
+int32_t BrMenuSetAA28D0_3(void);    /* 0x100412F0  live time          */
+
 /* -- text setters, family 2 ------------------------------------------- */
 int32_t BrMenuText08D0(BrMenuItem *pItem);   /* 0x100408D0 */
 int32_t BrMenuText0A50(BrMenuItem *pItem);   /* 0x10040A50 */

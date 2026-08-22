@@ -604,6 +604,24 @@ int main(void)
               "nor the 0x100709A0 call");
     }
 
+    {
+        BrMenuState *pSt = BrMenuGetState();
+        pSt->gAA28A8 = 7;
+        pSt->gAA28D0 = 9;
+        check(BrMenuClearAA28A8() == 1 && pSt->gAA28A8 == 0,
+              "0x1003E8C0 clears 0x10AA28A8");
+        check(BrMenuSetAA28A8() == 1 && pSt->gAA28A8 == 1,
+              "0x1003E8B0 sets 0x10AA28A8");
+        check(BrMenuSetAA28D0_0() == 1 && pSt->gAA28D0 == 0,
+              "0x100412C0 stores 0");
+        check(BrMenuSetAA28D0_1() == 1 && pSt->gAA28D0 == 1,
+              "0x100412D0 stores 1");
+        check(BrMenuSetAA28D0_2() == 1 && pSt->gAA28D0 == 2,
+              "0x100412E0 stores 2");
+        check(BrMenuSetAA28D0_3() == 1 && pSt->gAA28D0 == 3,
+              "0x100412F0 stores 3");
+    }
+
     printf(g_fail ? "\nFAILED\n" : "\nALL PASSED\n");
     return g_fail;
 }

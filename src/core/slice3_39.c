@@ -1163,6 +1163,8 @@ typedef struct {
 extern BrSub10060750Phase *g_brPhaseAA2904;   /* 0x10AA2904 */
 extern uint32_t            g_BrAA33E0;        /* 0x10AA33E0 */
 
+/* WHAT IT DOES: tell a device slot's object to show or hide itself,
+ * depending on whether the current screen is live and a related flag. */
 /* @implements 0x10060750 d3d BrSub10060750 */
 void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
 {
