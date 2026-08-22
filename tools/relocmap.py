@@ -64,6 +64,28 @@ def parse_obj(path):
     return relocs
 
 
+def load_learned():
+    """symbol -> VA, read back out of the original image by reloc_learn.py.
+
+    Kept in its own file, and its own return value, so a learned address is
+    never silently mistaken for a surveyed one.
+    """
+    return {s: a for s, (a, _) in load_learned_full().items()}
+
+
+def load_learned_full():
+    """symbol -> (VA, {source function VAs it was read out of})."""
+    lr = {}
+    p = os.path.join(ROOT, 'config', 'globals_learned.csv')
+    if os.path.exists(p):
+        for r in csv.DictReader(open(p)):
+            s = (r.get('symbol') or '').strip()
+            if s:
+                src = {int(v, 16) for v in (r.get('sources') or '').split()}
+                lr[s] = (int(r['addr'], 16), src)
+    return lr
+
+
 def load_maps():
     """name -> VA, from every source the tree actually has."""
     fn, gl = {}, {}
@@ -117,10 +139,12 @@ def main():
     objs = sys.argv[1:] or sorted(glob.glob(
         os.path.join(ROOT, 'build', 'match', 'obj', '*.obj')))
     fnmap, glmap = load_maps()
-    print(f"maps: {len(fnmap)} function names, {len(glmap)} global symbols\n")
+    lrmap = load_learned()
+    print(f"maps: {len(fnmap)} function names, {len(glmap)} global symbols, "
+          f"{len(lrmap)} learned addresses\n")
 
     tot = 0
-    hit_fn = hit_gl = hit_norm = miss = 0
+    hit_fn = hit_gl = hit_norm = hit_lr = miss = 0
     unresolved = {}
     buckets = {}
     bytype = {}
@@ -136,6 +160,8 @@ def main():
                 hit_gl += 1
             elif normalize(s) in glmap:
                 hit_norm += 1
+            elif s in lrmap:
+                hit_lr += 1
             else:
                 miss += 1
                 unresolved[s] = unresolved.get(s, 0) + 1
@@ -146,11 +172,12 @@ def main():
     print(f"  by type: {bytype}")
     if not tot:
         return
-    res = hit_fn + hit_gl + hit_norm
+    res = hit_fn + hit_gl + hit_norm + hit_lr
     print(f"\n  RESOLVABLE {res} ({100*res/tot:.1f}%)")
     print(f"    via function map (@implements): {hit_fn}")
     print(f"    via globals.csv, name as-is:    {hit_gl}")
     print(f"    via globals.csv after renaming: {hit_norm}")
+    print(f"    via addresses learned from image: {hit_lr}")
     print(f"\n  UNRESOLVED {miss} ({100*miss/tot:.1f}%), by cause:")
     for b, n in sorted(buckets.items(), key=lambda kv: -kv[1]):
         print(f"    {n:5d}  {b}")
