@@ -354,6 +354,26 @@ def main():
     merged = merge_report(all_rows, {os.path.relpath(s, ROOT) for s in srcs})
     save_cache(cache)
 
+    # Relearn the global addresses the image can tell us, on EVERY run for the
+    # same reason report.csv is rewritten on every run: a map that only some
+    # runs refresh is a map nobody can trust the age of. This reads objs, it
+    # does not compile, so a one-file sweep pays a second or two for it.
+    # It must come after merge_report -- the learner reads report.csv to know
+    # which name sits at which address.
+    try:
+        from reloc_learn import learn_and_write
+        res, dropped, wrote = learn_and_write(tuple(t for t, _ in VARIANTS))
+        if wrote is None:
+            print('  !! learned-address map NOT written: image contradicts '
+                  '%d surveyed address(es)' % len(res['wrong']))
+        else:
+            print('  learned addresses: %d written, %d/%d reproduce a known '
+                  'address%s' % (wrote, res['ok'], res['checked'],
+                                 ', %d stale obj skipped' % len(dropped)
+                                 if dropped else ''))
+    except Exception as e:
+        print('  !! learned-address map skipped: %s' % e)
+
     if args:
         # A one-file run should still show where the tree as a whole stands,
         # otherwise the only way to see the real total is the slow run.

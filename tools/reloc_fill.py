@@ -120,8 +120,11 @@ def resolve(sym, fnmap, glmap, learned=True):
 
 
 def main():
-    objs = sys.argv[1:] or sorted(glob.glob(
-        os.path.join(ROOT, 'build', 'match', 'obj', '*.obj')))
+    # Default to every live variant obj, NOT build/match/obj. That directory
+    # is a hand-staged set of 10; defaulting to it is what made this tool
+    # report 22 confirmed functions when the answer over the real tree was 67.
+    from reloc_learn import live_objs
+    objs = sys.argv[1:] or live_objs()[0]
     fnmap, glmap = load_maps()
     global LEARNED
     LEARNED = load_learned_full()
