@@ -110,6 +110,9 @@ extern uint8_t  g_brAA26F5;   /* 0x10AA26F5  == g_aBrAA26F4[1]         */
 extern BrPhase *g_brAA29C8;   /* 0x10AA29C8                            */
 extern BrPhase *g_brAA29F4;   /* 0x10AA29F4                            */
 extern BrPhase *g_brAA2970;   /* 0x10AA2970                            */
+extern BrPhase_ *g_brAA297C;  /* 0x10AA297C  = g_pBase->pAA297C        */
+extern BrPhase_ *g_brAA2998;  /* 0x10AA2998  = g_pExt->pAA2998         */
+extern BrPhase_ *g_brPhaseAA2904; /* 0x10AA2904 = BR_PHASE_CUR's dword  */
 extern int32_t  g_brAA2A48;   /* 0x10AA2A48  ring write index          */
 extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
 
@@ -649,15 +652,30 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
 /* @implements 0x10046560 d3d BrPhaseLeave_10046560 */
 int32_t BrPhaseLeave_10046560(void *pEntity)
 {
+#ifdef BR_MATCHING_BUILD
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+    BrPhase   *pCur;
+    BrPhase   *pNext;
+
+    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
+    pCur = g_brPhaseAA2904;
+    if (pCur != NULL)
+        (void)((const Br31PhaseVtblMatch *)pCur->pVtbl)->f00(pCur, pCur->pVtbl, 1);
+    pNext = g_brAA297C;
+    g_brAA2998 = NULL;
+    g_brPhaseAA2904 = pNext;
+    BrExt_10079550();
+    return 0;
+#else
     BrPhase *pNext;
 
     Br31LeavePrologue(pEntity);
     pNext = g_pBase->pAA297C;
     g_pExt->pAA2998 = NULL;
     BR_PHASE_CUR = pNext;
-
     BrExt_10079550();
     return 0;
+#endif
 }
 
 /* 0x100466C0 */
