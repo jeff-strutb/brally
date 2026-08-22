@@ -1095,7 +1095,7 @@ void BrDikPollAndEdge(void)
  * centre point, then clears seven other numbers. Its argument is never
  * looked at. */
 /* @implements 0x10060210 d3d BrFn10060210 */
-int32_t BrFn10060210(void *pUnused)
+int32_t __stdcall BrFn10060210(void *pUnused)
 {
     int i;
 
