@@ -1124,7 +1124,7 @@ void BrPairSlotReset(BrPairSlot *p, uint32_t v)
 /* WHAT IT DOES: always answers "no". It exists to be installed where the game
  * needs a handler that declines everything; what it is installed as was not
  * established. */
-/* @implements 0x10035059 d3d BrRet0_10035059 */
+/* @d3donly 0x10035059 BrRet0_10035059 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 int BrRet0_10035059(void) { return 0; }
 /* 0x1003557B */
 /* WHAT IT DOES: always answers "yes"; the accepting counterpart of the

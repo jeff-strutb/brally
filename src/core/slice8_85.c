@@ -465,7 +465,7 @@ int32_t BrUiHook85_1003EE20(BrUiCtl_ *pCtl)
  * whether the player has actually changed a name -- which means a name
  * retyped in different capitals counts as unchanged and the new
  * capitalisation is discarded. */
-/* @implements 0x1008C320 d3d br_stricmp_1008C320 */
+/* @d3donly 0x1008C320 br_stricmp_1008C320 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 static int br_stricmp_1008C320(const char *pA, const char *pB)
 {
     for (;;) {
@@ -602,7 +602,7 @@ int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: nothing except say "yes". It is installed where a menu
  * control needs a handler that accepts and does no work -- the original does
  * not even look at the control it is passed. */
-/* @implements 0x10042AF0 d3d BrUiHook85_10042AF0 */
+/* @d3donly 0x10042AF0 BrUiHook85_10042AF0 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 int32_t BrUiHook85_10042AF0(BrUiCtl_ *pCtl)
 {
     (void)pCtl;                 /* the original never even loads it */

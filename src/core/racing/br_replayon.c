@@ -29,7 +29,7 @@ void BrSet_1006AA90(void)
 }
 
 /* WHAT IT DOES: is replay recording on? */
-/* @implements 0x1006AAA0 d3d BrGet_1006AAA0 */
+/* @d3donly 0x1006AAA0 BrGet_1006AAA0 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 uint32_t BrGet_1006AAA0(void)
 {
     return g_1750308;

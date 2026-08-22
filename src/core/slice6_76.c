@@ -188,7 +188,7 @@ void BrExt_1006A4A0(void *pThis, void *pArg)
  * counting clock, which is what everything that has to happen after a delay
  * measures against. The real clock lives in slice5_61.c; this is a second name
  * for it. */
-/* @implements 0x10060E90 d3d BrX10060E90 */
+/* @d3donly 0x10060E90 BrX10060E90 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 int BrX10060E90(void)
 {
     return (int)BrTimeNow();

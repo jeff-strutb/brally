@@ -174,7 +174,7 @@ void BrEnt35FC0(void *pThis)
  * point the object back at its base set of behaviours, which is what a C++
  * destructor for a class with no owned memory compiles to -- there is nothing
  * to release. */
-/* @implements 0x1005B0C0 d3d BrTextBoxDtor */
+/* @d3donly 0x1005B0C0 BrTextBoxDtor -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox)
 {
     /* The original is `mov dword ptr [ecx], 0x1008F728; ret` -- seven bytes.

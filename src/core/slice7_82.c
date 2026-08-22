@@ -46,7 +46,7 @@ extern BrPtrList *g_pBrDlPtrList;      /* 0x1067B548 / 0x1067B550, slice5_60 */
  * routine the game uses to build strings out of numbers. Only base ten is
  * treated as signed, so a negative number in base sixteen comes out as its
  * unsigned bit pattern. */
-/* @implements 0x1008C000 d3d BrItoa */
+/* @d3donly 0x1008C000 BrItoa -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 char *BrItoa(int value, char *pszBuf, int radix)
 {
     /* 32 binary digits + sign + NUL is the widest any radix >= 2 can be. */
@@ -346,7 +346,7 @@ void BrExt_10043CD0(int32_t a)
  * edx loop, source bound first so eax loads arg2. */
 /* WHAT IT DOES: copies twelve bytes from one place to another,
  * destination first. */
-/* @implements 0x10087260 d3d BrCopy12 */
+/* @d3donly 0x10087260 BrCopy12 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrCopy12(void *pDst, void *pSrc)
 {
     unsigned *src;

@@ -1142,7 +1142,7 @@ void BrScreenSizeApply(void)
 /* 0x10031342 */
 /* WHAT IT DOES: nothing at all. It exists so that something expecting a
  * routine to call has one. */
-/* @implements 0x10031342 d3d BrTexNoOp */
+/* @d3donly 0x10031342 BrTexNoOp -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrTexNoOp(void)
 {
 }
@@ -1207,7 +1207,7 @@ void BrTexSizeShift(int size, int *pOut1, int *pOut2)
 /* WHAT IT DOES: installs the six helpers used to print floating-point numbers
  * -- convert, strip trailing zeros, assign, force a decimal point, test the
  * sign -- with the converter occupying both the first and last slots. */
-/* @implements 0x1007C7F0 d3d BrSub1007C7F0 */
+/* @d3donly 0x1007C7F0 BrSub1007C7F0 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 void BrSub1007C7F0(void)
 {
     /* eax is loaded with BrX10080580 first and reused for g_0BDAB8 / g_0BDACC. */

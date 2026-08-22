@@ -254,7 +254,7 @@ void BrSub10037740(void *pCar, void *pArg)
 /* WHAT IT DOES: does nothing at all. The original really is just a function
  * prologue and epilogue with no body -- most likely a routine that was
  * emptied out rather than deleted. */
-/* @implements 0x1003551B d3d BrSub1003551B */
+/* @d3donly 0x1003551B BrSub1003551B -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrSub1003551B(void *pCar)
 {
     (void)pCar;

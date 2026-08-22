@@ -29,7 +29,7 @@
  * edges. It chops toward zero and keeps only the bottom half of the result,
  * and a value too big to convert at all comes out as zero rather than as
  * garbage. */
-/* @implements 0x1007C8A0 d3d BrFtol */
+/* @d3donly 0x1007C8A0 BrFtol -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 static int32_t BrFtol(double d)
 {
     int64_t  wide;

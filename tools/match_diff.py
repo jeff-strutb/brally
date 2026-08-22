@@ -162,7 +162,12 @@ def parse_coff_obj(obj_path):
         else:
             sname = name_bytes.rstrip(b'\x00').decode()
 
-        if sclass == 2 and sec_num > 0 and (stype & 0x20):
+        # class 2 = EXTERNAL, class 3 = STATIC. A `static` C function is a real
+        # function definition emitted in .text; accepting only external symbols
+        # made every static function invisible and scored it not_in_obj no
+        # matter how correct the bytes -- whole files of them (br_dl, br_tex3d).
+        # The function-type guard (stype & 0x20) still excludes static DATA.
+        if sclass in (2, 3) and sec_num > 0 and (stype & 0x20):
             sec = sections[sec_num - 1]
             if sec['name'] == '.text':
                 func_bytes = data[sec['rawoff'] + value:
