@@ -480,11 +480,24 @@ void *BrPool32Alloc(void)
 }
 #endif
 
-/* 0x10069580.  Order preserved: 64-byte counter, then 16, then 32. */
+/* Glide 0x100625F0: XOR EAX,EAX / MOV [BrG_B01C40],EAX /
+ * MOV [BrG_B01C48],EAX / MOV [BrG_B01C44],EAX / RET (18 bytes, 3 relocs).
+ * Order: a0, a8, a4 -- the 64-byte counter first, then 16, then 32.
+ * D3D 0x10069580 clears a pool object instead; not byte-identical. */
+/* @implements 0x100625F0 glide BrGfx69580 */
+/* @implements 0x10069580 d3d BrGfx69580 */
+#ifdef BR_MATCHING_BUILD
+extern int32_t BrG_B01C40;      /* 0x10B24FA0  64-byte bank counter */
+void BrGfx69580(void)
+{
+    BrG_B01C40 = 0;
+    BrG_B01C48 = 0;
+    BrG_B01C44 = 0;
+}
+#else
 /* WHAT IT DOES: throws away everything handed out of the three frame-scratch
  * pools, which is how they are emptied -- nothing is freed individually, the
  * counts simply go back to zero and the space is reused. */
-/* @implements 0x10069580 d3d BrGfx69580 */
 void BrGfx69580(void)
 {
     /* DEVIATION: the original writes 0x10B01C40 directly.  That counter is
@@ -498,3 +511,4 @@ void BrGfx69580(void)
     g_BrPool32.count = 0;
     /* The frame index is untouched -- something else advances 0x106C65EC. */
 }
+#endif
