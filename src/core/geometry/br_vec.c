@@ -317,6 +317,17 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
 /* WHAT IT DOES: how long a vector is -- the distance from the origin to the
  * point it names. Used everywhere a speed or a reach has to come out of an
  * (x, y, z) triple. */
+/* @implements 0x1003B170 d3d BrVec3Length */
+#ifdef BR_MATCHING_BUILD
+float BrVec3Length(const BrVec3 *pV)
+{
+    float x = pV->x;
+    float y = pV->y;
+    float z = pV->z;
+
+    return BrSqrtF(y * y + z * z + x * x);
+}
+#else
 float BrVec3Length(const BrVec3 *pV)
 {
     double xx = (double)pV->x * (double)pV->x;
@@ -328,6 +339,7 @@ float BrVec3Length(const BrVec3 *pV)
 
     return sqrtf(sum);
 }
+#endif
 
 /* WHAT IT DOES: returns 1 if the first vector's y is below the second's y
  * (or either is a NaN), else 0. A two-way "is lower" test, not a three-way
