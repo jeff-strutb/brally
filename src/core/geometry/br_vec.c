@@ -233,20 +233,36 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 /* WHAT IT DOES: the straight-line distance between two points in 3D. One of
  * the most-used routines in the game -- how far a car is from anything. */
 /* @implements 0x1003B0E0 d3d BrVec3Dist */
-#ifdef _MSC_VER
-#pragma intrinsic(sqrt)
-#endif
+/* The original does NOT call BrVec3DistSq and does NOT use an inline fsqrt: it
+ * spells the three deltas out in its own body -- the same spill-and-multiply-
+ * back sequence BrVec3DistSq compiles to -- and then tail-calls the fsqrt
+ * wrapper at 0x10002250.  Calling the neighbour and taking the `sqrt`
+ * intrinsic gave a 32-byte body against the original's 75.  slice2_21.c
+ * already writes its distances this way.
+ *
+ * The two builds differ ONLY in which square root is named, and the arithmetic
+ * above it is identical in both.  The split exists because 0x10002250's single
+ * definition lives in slice4_53.c, a large module with a long include chain
+ * that nothing in the port links today -- naming it unconditionally leaves
+ * test_vec with an undefined symbol, and dragging slice4_53 into a vector
+ * test's deps to reach a seven-byte leaf is the wrong trade. */
+#ifdef BR_MATCHING_BUILD
+extern float BrSqrtF(float x);   /* 0x10002250 -- fld [esp+4]; fsqrt; ret */
 float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
 {
-    /* `sqrtf` is not on MSVC 5.0's intrinsic list and its CRT does not even
-     * declare it -- VC5 warns C4013 and assumes `extern int sqrtf()`, so the
-     * matching build was calling an undeclared function and converting an int
-     * return to float.  The double `sqrt` IS intrinsic, so this emits the
-     * inline `fsqrt` the original uses.  Same fix as BrSqrtF. */
-    return (float)sqrt(BrVec3DistSq(pA, pB));
+    float dx = pA->x - pB->x;
+    float dy = pA->y - pB->y;
+    float dz = pA->z - pB->z;
+    return BrSqrtF(dx * dx + dy * dy + dz * dz);
 }
-#ifdef _MSC_VER
-#pragma function(sqrt)
+#else
+float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
+{
+    float dx = pA->x - pB->x;
+    float dy = pA->y - pB->y;
+    float dz = pA->z - pB->z;
+    return sqrtf(dx * dx + dy * dy + dz * dz);
+}
 #endif
 
 /* 0x1003B170 (Glide 0x100347F0, `shared`, matched by body) -- 65 bytes, traced
