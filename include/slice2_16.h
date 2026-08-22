@@ -813,7 +813,16 @@ typedef struct BrRcaFixup {
  * The second payload's length is 0x20 bytes when the swapped +0x20 word's
  * bits[27:24] are exactly 0x1, and 0x200 otherwise -- an `neg / sbb` idiom,
  * so it really is an equality test and not a comparison. */
-void BrRcaFixupRecord(const BrRcaFixup *pCtx, void *pRec);
+void BrRcaFixupRecord(void *pRec);
+void BrSegPtrFixup(uint32_t *p);
+
+/* Matching-model globals for the .rca fixup path (glide addresses):
+ * 0x104B16E4 N64 load base (signed compare), 0x104B16E0 host base,
+ * 0x105B16E8 copy enable, 0x106B7C7C blob base. */
+extern int32_t  g_brSegN64Base;
+extern int32_t  g_brSegHostBase;
+extern int32_t  g_br675540;
+extern uint8_t *g_brRcaBlob;
 /* 0x1002BA80  ... over an array of them. */
 void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count);
 
