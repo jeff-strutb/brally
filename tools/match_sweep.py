@@ -135,12 +135,20 @@ def merge_report(new_rows, swept_files):
     Replacing per FILE (rather than updating per function) is what makes a
     function that was deleted, renamed or moved out of a file disappear from
     the report instead of lingering as a stale row.
+
+    That covers a file being EDITED, but not one being deleted: a file that no
+    longer exists is never swept again, so nothing ever replaces its rows and
+    they sit in the report forever.  When br_smallfn.c was split into five
+    named modules its 36 rows stayed behind, double-claiming 38 addresses that
+    the new modules also claim and inflating the match total by 36.  Rows whose
+    source file is gone are therefore dropped on every run.
     """
     keep = []
     if os.path.exists(REPORT):
         with open(REPORT) as f:
             keep = [r for r in csv.DictReader(f)
-                    if r.get('file') not in swept_files]
+                    if r.get('file') not in swept_files
+                    and os.path.exists(os.path.join(ROOT, r.get('file') or ''))]
 
     out = keep + new_rows
     # Stable order so the file diffs cleanly between runs.
