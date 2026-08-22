@@ -27,9 +27,11 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from relocmap import normalize, classify, REL_DIR32, REL_REL32  # noqa: E402
+from relocmap import (normalize, classify, load_learned,  # noqa: E402
+                      load_learned_full, REL_DIR32, REL_REL32)
 
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
+LEARNED = {}
 
 
 def parse(path):
@@ -90,20 +92,39 @@ def load_maps():
     return fn, gl
 
 
-def resolve(sym, fnmap, glmap):
+_LEARNED = None
+
+
+def resolve(sym, fnmap, glmap, learned=True):
+    """Address for a symbol, preferring maps the tree surveyed over addresses
+    read back out of the image.
+
+    `learned=False` is what reloc_learn.py's validation pass uses: asking
+    whether a learned address reproduces a KNOWN one has to consult only the
+    known maps, or the learned value would be checked against itself.
+    """
+    global _LEARNED
     s = sym.lstrip('_')
     if s in fnmap:
         return fnmap[s]
     if s in glmap:
         return glmap[s]
     n = normalize(s)
-    return glmap.get(n)
+    if n in glmap:
+        return glmap[n]
+    if not learned:
+        return None
+    if _LEARNED is None:
+        _LEARNED = load_learned()
+    return _LEARNED.get(s)
 
 
 def main():
     objs = sys.argv[1:] or sorted(glob.glob(
         os.path.join(ROOT, 'build', 'match', 'obj', '*.obj')))
     fnmap, glmap = load_maps()
+    global LEARNED
+    LEARNED = load_learned_full()
 
     strong = []      # bit-exact including addresses
     encoding_only = []   # all relocs resolved but bytes still differ
@@ -138,6 +159,7 @@ def main():
 
             # fill this function's relocations
             unres = []
+            self_taught = []   # learned addresses this function itself taught
             for rva, si, rt in relocs[sy['sec']]:
                 off = rva - sy['val']
                 if not (0 <= off < len(orig) - 3):
@@ -150,6 +172,14 @@ def main():
                 if target is None:
                     unres.append(tsym['name'] if tsym else '?')
                     continue
+                # Was this address read out of THIS function?  If so, matching
+                # here proves nothing -- the byte was copied from the original
+                # and then compared against the original.
+                ls = LEARNED.get(tsym['name'].lstrip('_'))
+                if ls and resolve(tsym['name'], fnmap, glmap,
+                                  learned=False) is None:
+                    if ls[1] and ls[1] <= {va}:
+                        self_taught.append(tsym['name'])
                 addend = struct.unpack_from('<i', code, off)[0]
                 if rt == REL_DIR32:
                     val = target + addend
@@ -163,7 +193,8 @@ def main():
             if unres:
                 blocked.append((name, hex(va), len(unres)))
             elif bytes(code) == orig:
-                strong.append((name, hex(va), len(orig)))
+                strong.append((name, hex(va), len(orig),
+                               len(set(self_taught))))
             else:
                 nd = sum(1 for i in range(len(orig)) if code[i] != orig[i])
                 encoding_only.append((name, hex(va), nd, len(orig)))
@@ -171,8 +202,8 @@ def main():
     # One row per ADDRESS: a function extracted into a named module still has a
     # copy in its old slice file, so the same VA turns up in two objs.
     us, ue, ub = {}, {}, {}
-    for n, v, sz in strong:
-        us[v] = (n, sz)
+    for n, v, sz, st in strong:
+        us[v] = (n, sz, st)
     for n, v, nd, sz in encoding_only:
         if v not in us:
             ue[v] = (n, nd, sz)
@@ -189,16 +220,27 @@ def main():
     m_strong = sum(1 for v in us if claimed.get(v) == 'match')
     m_total = sum(1 for v in claimed.values() if v == 'match')
 
+    # A function scored on an address only IT taught us is proving nothing.
+    circular = {v for v, (_, _, st) in us.items() if st}
+    indep = len(us) - len(circular)
+
     print(f"distinct addresses checked: {len(us) + len(ue) + len(ub)}\n")
     print(f"  BIT-EXACT incl. addresses         : {len(us)}")
+    print(f"    of which independently checked  : {indep}")
+    print(f"    scored on a self-taught address : {len(circular)}  "
+          f"(circular -- not evidence)")
     print(f"  relocs resolved, bytes still differ: {len(ue)}")
     print(f"  blocked on an unresolvable symbol  : {len(ub)}")
     print(f"\n  of the {m_total} functions the report calls 'match' "
           f"(encoding only), {m_strong} are confirmed bit-exact WITH addresses.")
+    m_indep = sum(1 for v in us
+                  if claimed.get(v) == 'match' and v not in circular)
+    print(f"  discounting circular cases, {m_indep} stand on evidence.")
     if us:
         print("\nbit-exact including every address:")
-        for v, (n, sz) in sorted(us.items(), key=lambda kv: -kv[1][1])[:20]:
-            print(f"   {sz:5d}b  {v}  {n}")
+        for v, (n, sz, st) in sorted(us.items(), key=lambda kv: -kv[1][1])[:20]:
+            flag = '  [self-taught]' if st else ''
+            print(f"   {sz:5d}b  {v}  {n}{flag}")
 
 
 if __name__ == '__main__':
