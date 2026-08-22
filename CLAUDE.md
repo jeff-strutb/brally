@@ -52,6 +52,12 @@ count is *of*: tagged functions, all known functions, or bytes of `.text`.
 Never mix strictness levels — encoding-match, address-verified, and
 independently-verified are three different numbers.
 
+## 4b. Be CONCISE. Always.
+
+Lead with the answer. No preamble, no recap of what was just done, no novel.
+Numbers carry denominators; prose carries nothing else. If the user asks a
+yes/no, the first word is yes or no. This is a hard rule, not a style note.
+
 ## 5. The toolchain lives in the repo.
 
 Wine and MSVC 5.0 are staged inside the tree by `setup.sh`. **Never install to
