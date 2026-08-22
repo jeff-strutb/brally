@@ -21,6 +21,14 @@ import sys
 
 
 def load_shared_map():
+    """d3d_va -> glide_va.
+
+    GLIDE IS CANONICAL (rule 0). This map used to run the other way, and with
+    it parse_implements() translated glide-tagged addresses INTO D3D space --
+    which is how the whole corpus came to be keyed to the wrong binary by
+    design rather than by accident. Both were inverted together; inverting one
+    alone silently scores every function against the wrong bytes.
+    """
     csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                             'config', 'shared.csv')
     mapping = {}
@@ -31,7 +39,7 @@ def load_shared_map():
             gva = row.get('glide_va', '').strip()
             dva = row.get('d3d_va', '').strip()
             if gva and dva:
-                mapping[int(gva, 16)] = int(dva, 16)
+                mapping[int(dva, 16)] = int(gva, 16)
     return mapping
 
 
@@ -58,7 +66,9 @@ def parse_implements(src_path):
                 va = int(m.group(1), 16)
                 build = m.group(2)
                 name = m.group(3)
-                if build == 'glide' and va in shared:
+                # Glide is canonical: a d3d-tagged address is translated INTO
+                # Glide space. This is the inverse of what it used to do.
+                if build == 'd3d' and va in shared:
                     va = shared[va]
                 if (va, name) not in seen:
                     results.append((va, name))

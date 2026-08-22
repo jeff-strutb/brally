@@ -94,7 +94,19 @@ def load_maps():
         for r in csv.DictReader(open(rep)):
             if r.get('name') and r.get('va'):
                 fn[r['name']] = int(r['va'], 16)
-    g = os.path.join(ROOT, 'config', 'globals.csv')
+    # config/globals.csv holds 2,569 addresses in D3D SPACE, and shared.csv
+    # maps functions only -- there is no twin map for globals. Now that Glide
+    # is canonical (rule 0) those addresses are simply wrong here, and feeding
+    # them in is worse than having none: the sweep's own guard caught it
+    # immediately, refusing to write a learned map because "the image
+    # contradicts a surveyed address".
+    #
+    # So the address-resolution path reads a Glide-space globals file and
+    # nothing else. Until one exists, the map is empty and reloc_learn.py
+    # rebuilds it by reading the addresses back out of the Glide image, which
+    # is what that tool was written for. globals.csv stays on disk untouched
+    # for the six other tools that still consume it in D3D terms.
+    g = os.path.join(ROOT, 'config', 'globals_glide.csv')
     if os.path.exists(g):
         for r in csv.DictReader(open(g)):
             s = (r.get('symbol') or '').strip()
