@@ -1037,7 +1037,7 @@ void BrWeatherStepParticles(void)
 /* WHAT IT DOES: purpose unclear. Observably it hands one entry of a table,
  * chosen by number, plus two fixed globals, to another routine and does nothing
  * else. What that routine does with them is not established here. */
-/* @implements 0x1001A4B0 d3d BrForward1001A4B0 */
+/* @d3donly 0x1001A4B0 BrForward1001A4B0 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 void BrForward1001A4B0(int i)
 {
     BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,

@@ -99,7 +99,7 @@ void BrFatal(const char *pszMsg)
  * game's general-purpose "write this number into that message" routine. It
  * has no idea how big the destination is and cannot be given one, so it is
  * the caller's job to make sure the result fits. */
-/* @implements 0x1007C830 d3d BrSprintf */
+/* @d3donly 0x1007C830 BrSprintf -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 int BrSprintf(char *pszDest, const char *pszFmt, ...)
 {
     va_list ap;

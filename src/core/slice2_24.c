@@ -82,7 +82,7 @@ static void BrStrCat(char *pszDst, size_t cbDst, const char *pszSrc)
  * knowing: one caller hands it a shared string-table entry, so the first time
  * that row is drawn the stored wording itself is permanently capitalised for
  * everyone who reads it afterwards. */
-/* @implements 0x1007F240 d3d BrStrUpr */
+/* @d3donly 0x1007F240 BrStrUpr -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 static char *BrStrUpr(char *psz)
 {
     char *p = psz;

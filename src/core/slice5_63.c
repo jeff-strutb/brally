@@ -169,7 +169,7 @@ char     g_aBrA9D018[BR63_TEXT_MAX];      /* 0x10A9D018 */
 /* WHAT IT DOES: nothing. It is called with a real pointer from two places and
  * ignores it -- a single return instruction in the shipped game. This is the
  * original's own emptiness, not a gap in the transcription. */
-/* @implements 0x10075330 d3d BrGbiCall10075330 */
+/* @d3donly 0x10075330 BrGbiCall10075330 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrGbiCall10075330(void *pv)
 {
     (void)pv;

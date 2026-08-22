@@ -577,7 +577,7 @@ void BrFrameBeginHiRes(void)
 /* 0x1003289A */
 /* WHAT IT DOES: does nothing. It sits in a run of frame-setup routines and
  * is empty in this build; whether it ever had a body is not established. */
-/* @implements 0x1003289A d3d BrFrameNop */
+/* @d3donly 0x1003289A BrFrameNop -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrFrameNop(void)
 {
 }
@@ -764,7 +764,7 @@ void BrViewportReEmit(void)
 /* 0x1003348E, 0x10033493 */
 /* WHAT IT DOES: does nothing. One of a pair of empty routines in this build,
  * sitting between the viewport and heads-up-display code. */
-/* @implements 0x1003348E d3d BrGfxNopA */
+/* @d3donly 0x1003348E BrGfxNopA -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 void BrGfxNopA(void) { }
 void BrGfxNopB(void) { }
 

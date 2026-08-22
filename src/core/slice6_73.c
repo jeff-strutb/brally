@@ -473,7 +473,7 @@ void BrExt_1004F2B0(BrPhase_ *pSelf)
 /* WHAT IT DOES: lays out another menu screen, seven controls' worth, and
  * hangs on to three of them so that other code can reach back and change them
  * while the screen is up. Which screen it is was not established. */
-/* @implements 0x1004D640 d3d BrExt_1004D640 */
+/* @d3donly 0x1004D640 BrExt_1004D640 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
 void BrExt_1004D640(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
