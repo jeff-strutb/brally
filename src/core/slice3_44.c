@@ -470,88 +470,67 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
     pDst->qDot   = pSrc->qDot;
 }
 
-/* 0x10074450 */
+/* 0x1006D6B0 */
 /* WHAT IT DOES: builds the transform matrix that places a body in the world,
  * from its orientation and position -- the matrix the renderer needs to draw
  * the car where the physics says it is. */
-/* @implements 0x10074450 d3d BrRbBuildMatrix */
+/* NOT MATCHING -- but CLOSE, and the old double-precision model was for the
+ * D3D twin's codegen, not this binary's.  The GLIDE original computes the
+ * whole function in FLOAT precision: squares from spilled float locals
+ * (a,b,c,d copied to slots via integer movs), cross products with both
+ * operands read straight from the struct, each doubled with fadd st(0),st(0).
+ * This float form compiles to 400 bytes against the original's 405 with the
+ * identical opening; the residue is one spill-allocator divergence: the
+ * original uses SEVEN stack slots (frame 0x1c) and re-reads aa/ab from
+ * memory, where VC5 here packs the same DAG into SIX (frame 0x18) and keeps
+ * one register copy (fst vs fstp).  Statement reordering does not move it:
+ * four orderings of the locals compile to byte-identical output (X3-X6
+ * scratch experiment, 2026-08-22), so the DAG is canonicalised and the slot
+ * count is an allocator-internal decision.  /Ox, /O1, /Og/Ot, /O2/Oy- all
+ * land farther away. */
+/* @implements 0x1006D6B0 glide BrRbBuildMatrix */
 void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 {
-    const double a = (double)pS->quat.f00;   /* w */
-    const double b = (double)pS->quat.f04;   /* x */
-    const double c = (double)pS->quat.f08;   /* y */
-    const double d = (double)pS->quat.f0C;   /* z */
+    float a = pS->quat.f00;   /* w */
+    float b = pS->quat.f04;   /* x */
+    float aa = a * a;
+    float bb = b * b;
+    float c = pS->quat.f08;   /* y */
+    float d = pS->quat.f0C;   /* z */
+    float cc = c * c;
+    float cb = pS->quat.f08 * pS->quat.f04;
+    float da = pS->quat.f0C * pS->quat.f00;
+    float db = pS->quat.f0C * pS->quat.f04;
+    float ca = pS->quat.f08 * pS->quat.f00;
+    float ab = aa - bb;
+    float dc = pS->quat.f0C * pS->quat.f08;
+    float ba = pS->quat.f04 * pS->quat.f00;
+    float t2cb = cb + cb;
+    float x = bb + aa - cc;
+    float t2da = da + da;
+    float t2db = db + db;
+    float t2ca = ca + ca;
+    float t2dc = dc + dc;
+    float t2ba = ba + ba;
+    float y = cc + ab;
+    float dd = d * d;
 
-    /* SPILL MAP.  The old comment here said "every one of these is spilled to
-     * a 4-byte slot by the original", and that is true of the five squares
-     * but NOT of the six doubled cross terms, three of which are stored with
-     * `fst` and keep their unrounded register copy for one further use.
-     *
-     * Spilled with `fstp` -- popped, so every later use is the rounded slot:
-     *   1007449C [esp+4]     aa        100744AA [esp]       bb
-     *   100744CE [esp+0x24]  cc        100744EB [esp+0x18]  ab
-     *   10074565 [esp]       dd
-     *   10074503 [esp+4]     t2cb      1007452D [esp+8]     t2ca
-     *   10074537 [esp+0x10]  t2dc
-     *
-     * Stored with `fst` -- kept, one unrounded use each:
-     *   10074521 [esp]       t2da  -> used unrounded at 10074547 (m[0][1])
-     *   10074527 [esp+0x0C]  t2db  -> used unrounded at 1007454D (m[0][2])
-     *   10074541 [esp+0x14]  t2ba  -> used unrounded at 10074559 (m[1][2])
-     *
-     * So each doubled term appears in exactly two matrix entries, once
-     * unrounded and once rounded, and which of the two is which is fixed by
-     * the instruction order.  The doubling itself (`fadd st(0),st(0)`) is
-     * applied to the unrounded product, so the value that reaches the `fst`
-     * is 2*(the 53-bit product) and the float slot is its single rounding. */
-    const double aaU = a * a;
-    const float  aa  = (float)aaU;   /* 1007449C fstp */
-    const double bbU = b * b;
-    const float  bb  = (float)bbU;   /* 100744AA fstp */
-    const double ccU = c * c;
-    const float  cc  = (float)ccU;   /* 100744CE fstp */
-    const double ddU = d * d;
-    const float  dd  = (float)ddU;   /* 10074565 fstp */
-    /* 100744C3 fsub: BOTH operands come from the rounded slots */
-    const float  ab  = (float)((double)aa - (double)bb);   /* 100744EB fstp */
-
-    /* the doubled cross terms, unrounded, and their single float rounding */
-    const double t2daU = (d * a) + (d * a);
-    const float  t2da  = (float)t2daU;   /* 10074521 fst -- KEPT   */
-    const double t2cbU = (c * b) + (c * b);
-    const float  t2cb  = (float)t2cbU;   /* 10074503 fstp -- popped */
-    const double t2dbU = (d * b) + (d * b);
-    const float  t2db  = (float)t2dbU;   /* 10074527 fst -- KEPT   */
-    const double t2caU = (c * a) + (c * a);
-    const float  t2ca  = (float)t2caU;   /* 1007452D fstp -- popped */
-    const double t2dcU = (d * c) + (d * c);
-    const float  t2dc  = (float)t2dcU;   /* 10074537 fstp -- popped */
-    const double t2baU = (b * a) + (b * a);
-    const float  t2ba  = (float)t2baU;   /* 10074541 fst -- KEPT   */
-
-    /* 100744E1 / 1007456F: (bb + aa) from the two rounded slots, then - cc */
-    pM->m[0][0] = (float)((((double)bb + (double)aa) - (double)cc)
-                          - (double)dd);
-    pM->m[0][1] = (float)(t2daU + (double)t2cb);   /* 10074547 */
-    pM->m[0][2] = (float)(t2dbU - (double)t2ca);   /* 1007454D */
+    pM->m[0][0] = x - dd;
+    pM->m[0][1] = t2da + t2cb;
+    pM->m[0][2] = t2db - t2ca;
     pM->m[0][3] = 0.0f;
-
-    pM->m[1][0] = (float)((double)t2cb - (double)t2da);   /* 10074553 */
-    pM->m[1][1] = (float)(((double)cc + (double)ab) - (double)dd);
-    pM->m[1][2] = (float)(t2baU + (double)t2dc);   /* 10074559 */
+    pM->m[1][0] = t2cb - t2da;
+    pM->m[1][1] = y - dd;
+    pM->m[1][2] = t2ba + t2dc;
     pM->m[1][3] = 0.0f;
-
-    pM->m[2][0] = (float)((double)t2ca + (double)t2db);   /* 1007455F */
-    pM->m[2][1] = (float)((double)t2dc - (double)t2ba);   /* 1007457B */
-    /* 100745B2..100745BA, after the stores: (ab - cc) + dd, all rounded */
-    pM->m[2][2] = (float)(((double)ab - (double)cc) + (double)dd);
+    pM->m[2][0] = t2ca + t2db;
+    pM->m[2][1] = t2dc - t2ba;
+    pM->m[2][2] = ab - cc + dd;
     pM->m[2][3] = 0.0f;
-
     pM->m[3][0] = pS->pos.x;
     pM->m[3][1] = pS->pos.y;
     pM->m[3][2] = pS->pos.z;
     pM->m[3][3] = 1.0f;
-
     BrStub8B80_1p(pM);
 }
 
