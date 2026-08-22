@@ -778,14 +778,14 @@ void BrWeatherRandomiseParticles(void)
     g_weather.cParticles = 0x200;
 
     for (layer = 0; layer < BR_PARTICLE_LAYERS; ++layer) {
+        /* Init p to [layer][0][2]: orig uses [p-4],[p-2],[p+0] writes,
+         * generating the store sequence 0xFC,0xFE,0x06 that the binary has. */
+        int16_t *p = &g_weather.aParticles[layer][0][2];
         for (i = 0; i < BR_PARTICLES_PER_LAYER; ++i) {
-            /* Three rand()s per record, stored as int16. The records beyond
-             * BR_PARTICLES_PER_LAYER (up to BR_PARTICLE_STRIDE) are left
-             * alone: the original's outer step of 0xC3C is ten records wider
-             * than the 512 it fills. */
-            g_weather.aParticles[layer][i][0] = (int16_t)BrRandom();
-            g_weather.aParticles[layer][i][1] = (int16_t)BrRandom();
-            g_weather.aParticles[layer][i][2] = (int16_t)BrRandom();
+            p[-2] = (int16_t)BrRandom();
+            p[-1] = (int16_t)BrRandom();
+            p[0]  = (int16_t)BrRandom();
+            p += 3;
         }
     }
 }
