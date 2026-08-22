@@ -8,7 +8,11 @@
  * and ORs them into `latched`, clearing them from pending. Bits not in the
  * mask stay pending. */
 typedef struct BrBitLatch { uint32_t pending, latched; } BrBitLatch;
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrBitLatchTake(BrBitLatch *pLatch, void *_dummy, uint32_t mask);
+#else
 void BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask);
+#endif
 
 /* 0x100383C0  byte-swap exactly THREE consecutive u32s in place -- a
  * big-endian Vec3, which is what the .rca payload stores. The original is

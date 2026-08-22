@@ -8,7 +8,13 @@
  * word latch, leaving the rest waiting. A bit that was already taken stays
  * taken, because the merge is an OR and not a flip. */
 /* @implements 0x10035FA0 d3d BrBitLatchTake */
+/* register allocation wall: orig loads EAX=mask before EDX=pending, compiler
+ * reverses the load order. Not fixable without inline asm. */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrBitLatchTake(BrBitLatch *pLatch, void *_dummy, uint32_t mask)
+#else
 void BR_THISCALL BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
+#endif
 {
     uint32_t pending = pLatch->pending;
 
