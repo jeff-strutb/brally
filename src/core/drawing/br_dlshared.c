@@ -28,7 +28,6 @@ static int32_t br_dls_sext12(uint32_t v)
  * and height in texture pixels. Sign is kept throughout, so a rectangle
  * given back to front stays back to front rather than becoming enormous. */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
-/* @implements 0x1001CF30 d3d BrDlsTileSizeDecode */
 void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
 {
     pOut->uls = br_dls_sext12(w0 >> 12);
@@ -47,9 +46,7 @@ void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
  * and one in whole pixels, and the whole-pixel form is scaled up here so both
  * hand on the same units. */
 /* @implements 0x10021570 glide BrDlsTileRectDecode */
-/* @implements 0x10021510 d3d BrDlsTileRectDecode */
 /* @implements 0x100219D0 glide BrDlsTileRectDecode */
-/* @implements 0x10021B80 d3d BrDlsTileRectDecode */
 void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
                          BrDlsTileRect *pOut)
 {
@@ -76,7 +73,6 @@ void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
  * it away. A coordinate that is not a number counts as outside on every
  * boundary it appears in. */
 /* @implements 0x10022120 glide BrDlsClipCodes */
-/* @implements 0x10022DC0 d3d BrDlsClipCodes */
 #ifdef BR_MATCHING_BUILD
 /* Original argument is the clip-vertex record, not four scalars:
  *     +0x04 x, +0x08 y, +0x0C z, +0x18 w

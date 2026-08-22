@@ -130,7 +130,7 @@ int BrInstall_1001BAE0(void)
 }
 
 /* WHAT IT DOES: select dispatch slot 2 for the next jump through that table. */
-/* @implements 0x1002F6E0 d3d BrSet_1002F6E0 */
+/* @d3donly 0x1002F6E0 BrSet_1002F6E0 -- glide twin 0x1001CDA0 COMDAT-folded onto br_boot.c:BrAppStateEnterRun */
 int BrSet_1002F6E0(void)
 {
     g_690A14 = 2;
@@ -238,14 +238,14 @@ void BrArm_100378A0(void)
 }
 
 /* WHAT IT DOES: write a packed sentinel into a related status word. */
-/* @implements 0x10036020 d3d BrSet_10036020 */
+/* @d3donly 0x10036020 BrSet_10036020 -- glide twin 0x1002F6C0 COMDAT-folded onto br_racestart.c:BrRaceSub1002F6C0 */
 void BrSet_10036020(void)
 {
     g_6C7C38 = 0x80096400u;
 }
 
 /* WHAT IT DOES: remember one pointer a later CRT/error path will read. */
-/* @implements 0x10086B80 d3d BrStore_10086B80 */
+/* @d3donly 0x10086B80 BrStore_10086B80 -- glide twin 0x100168B0 COMDAT-folded onto slice6_78.c:BrTextSetSize */
 void BrStore_10086B80(uint32_t v)
 {
     g_18AC2D0 = v;

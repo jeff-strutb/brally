@@ -22,7 +22,6 @@ static int          g_cKnown;
  * whatever it is handed without checking, so handing it nothing leaves the
  * game with no frame work to do. */
 /* @implements 0x1002E317 glide BrGameStepSet */
-/* @implements 0x10034C66 d3d BrGameStepSet */
 void BrGameStepSet(BrGameStepFn pfn)
 {
     g_pfnStep = pfn;
@@ -46,7 +45,6 @@ void BrGameStepRegister(BrGameStepFn pfn, int id)
  * -- a yes/no check against the slot BrGameStepSet writes, used by code that
  * needs to know whether it is, say, in a race before acting. */
 /* @implements 0x1002E302 glide BrGameStepIs */
-/* @implements 0x10034C51 d3d BrGameStepIs */
 int BrGameStepIs(BrGameStepFn pfn)
 {
     return (g_pfnStep == pfn) ? 1 : 0;
@@ -70,7 +68,6 @@ int BrGameStepIsAddr(const void *pv)
  * window's message pump calls this over and over, and it is the single point
  * where the race, or the front end, gets its turn each frame. */
 /* @implements 0x1002E324 glide BrGameStepInvoke */
-/* @implements 0x10034C73 d3d BrGameStepInvoke */
 #ifdef BR_MATCHING_BUILD
 /* Orig: PUSH EBP / MOV EBP,ESP / CALL [g_pfnStep] / POP EBP / RET (11 B).
  * No NULL guard -- just calls through the pointer and returns whatever EAX is. */

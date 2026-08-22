@@ -485,7 +485,6 @@ void *BrPool32Alloc(void)
  * Order: a0, a8, a4 -- the 64-byte counter first, then 16, then 32.
  * D3D 0x10069580 clears a pool object instead; not byte-identical. */
 /* @implements 0x100625F0 glide BrGfx69580 */
-/* @implements 0x10069580 d3d BrGfx69580 */
 #ifdef BR_MATCHING_BUILD
 extern int32_t BrG_B01C40;      /* 0x10B24FA0  64-byte bank counter */
 void BrGfx69580(void)

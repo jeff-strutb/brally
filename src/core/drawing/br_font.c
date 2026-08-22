@@ -400,7 +400,7 @@ void BrFontRegisterPages(BrFont *pFont)
  * sheets, so drawing a letter means switching to that letter's texture. The
  * unused slot between the punctuation run and the alphabet run is deliberately
  * left blank. */
-/* @implements 0x10073820 d3d BrFontRegisterGlyphs */
+/* @d3donly 0x10073820 BrFontRegisterGlyphs -- glide twin 0x1006C790 COMDAT-folded onto BrFontRegisterPages above */
 void BrFontRegisterGlyphs(BrFont *pFont)
 {
     int i;
@@ -604,7 +604,6 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * note there -- which left the reference build's emitter unclaimed while the
  * D3D one was claimed, in a file whose whole point is that it does both. */
 /* @implements 0x10015B10 glide BrTextEmitString */
-/* @implements 0x10018590 d3d BrTextEmitString */
 void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 {
     uint32_t        aCombine[2];

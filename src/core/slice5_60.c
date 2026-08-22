@@ -66,7 +66,7 @@ const BrGfxWords g_aBrAA8C8[BR_DLSUB_AA8C8_COUNT] = {
 /* BRGlide's copy is 0x10021240 and br_dl.c ports it as br_dl_skip, over a
  * byte pointer rather than a command pointer. `add eax,8` is the whole
  * function; br_dlshared.h names the step so neither file spells the 8. */
-/* @implements 0x100243D0 d3d BrGbiCall100243D0 */
+/* @d3donly 0x100243D0 BrGbiCall100243D0 -- glide twin 0x10021240 claimed by br_dl.c:br_dl_skip */
 BrGfxWords *BrGbiCall100243D0(BrGfxWords *pCmd)
 {
     /* `add eax, 8` -- one 8-byte command. */

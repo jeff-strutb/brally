@@ -1135,7 +1135,7 @@ int BrRet1_1003557B(void) { return 1; }
 /* WHAT IT DOES: a second, separate routine that also always answers "yes".
  * Two identical bodies at different addresses, so callers of one are not
  * callers of the other; what either is installed as was not established. */
-/* @implements 0x10035B87 d3d BrRet1_10035B87 */
+/* @d3donly 0x10035B87 BrRet1_10035B87 -- glide twin 0x1002EC2C COMDAT-folded onto BrRet1_1003557B */
 int BrRet1_10035B87(void) { return 1; }
 
 /* 0x10035520 */

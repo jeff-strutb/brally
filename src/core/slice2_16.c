@@ -448,7 +448,7 @@ BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
  * measures how squarely the surface faces the light: surfaces facing away
  * get plain ambient light, and the rest get ambient plus a share of the
  * light's colour, capped so nothing goes brighter than white. */
-/* @implements 0x10022350 d3d BrGbiLightVertex */
+/* @d3donly 0x10022350 BrGbiLightVertex -- glide twin 0x10022AC0 claimed by br_dl.c:br_dl_light_vertex */
 void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst)
 {
     float t;

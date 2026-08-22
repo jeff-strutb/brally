@@ -975,7 +975,7 @@ void BrS17DrawGated(void)
  * over it -- with a colour marker set around each part, which is how the frame
  * was profiled on a debug machine. The whole thing is skipped while one
  * suppression flag is raised. */
-/* @implements 0x1002C320 d3d BrS17DrawFrame */
+/* @d3donly 0x1002C320 BrS17DrawFrame -- glide twin 0x10019890 claimed by br_racebegin.c:BrRaceHudFrame */
 void BrS17DrawFrame(void)
 {
     if (g_s17.f6909B4 != 0)
@@ -992,7 +992,7 @@ void BrS17DrawFrame(void)
 /* WHAT IT DOES: switches the game into one particular mode, sets a second mode
  * value alongside it, and installs the routine that will run for it. Which mode
  * that is -- what the player would see -- was not established here. */
-/* @implements 0x1002C390 d3d BrS17SetMode4 */
+/* @d3donly 0x1002C390 BrS17SetMode4 -- glide twin 0x10019900 claimed by br_racebegin.c:BrRaceEnterOutro */
 void BrS17SetMode4(void)
 {
     g_s17.f0AA010 = 4;
@@ -1004,7 +1004,7 @@ void BrS17SetMode4(void)
 /* WHAT IT DOES: counts down a chain of countdown records by one each, walking
  * forward until it reaches a record that is not in use. An entirely empty chain
  * is left alone. */
-/* @implements 0x1002C410 d3d BrS17TimerTick */
+/* @d3donly 0x1002C410 BrS17TimerTick -- glide twin 0x10019980 claimed by br_racebegin.c:BrRaceCueRewind */
 void BrS17TimerTick(void *pRecords)
 {
     unsigned char *rec = (unsigned char *)pRecords;
@@ -1023,7 +1023,7 @@ void BrS17TimerTick(void *pRecords)
  * hour, from its velocity in all three directions -- this is the number the
  * speedometer shows. A car with the relevant flag clear keeps its old speed,
  * but the follow-up step runs either way. */
-/* @implements 0x1002C430 d3d BrCarUpdateSpeedMph */
+/* @d3donly 0x1002C430 BrCarUpdateSpeedMph -- glide twin 0x100199A0 claimed by br_racebegin.c:BrRaceCarCtlOutro */
 void BrCarUpdateSpeedMph(void *pCar)
 {
     unsigned char *car = (unsigned char *)pCar;
@@ -1045,7 +1045,7 @@ void BrCarUpdateSpeedMph(void *pCar)
 /* 0x1002C4A0 */
 /* WHAT IT DOES: releases every one of the currently active player slots, one
  * at a time. */
-/* @implements 0x1002C4A0 d3d BrS17SlotsRelease */
+/* @d3donly 0x1002C4A0 BrS17SlotsRelease -- glide twin 0x10019A10 claimed by br_racebegin.c:BrRaceDriverReset */
 void BrS17SlotsRelease(void)
 {
     int i;
