@@ -168,7 +168,17 @@ def parse_coff_obj(obj_path):
                 func_bytes = data[sec['rawoff'] + value:
                                   sec['rawoff'] + sec['rawsize']]
                 clean_name = undecorate(sname)
-                funcs[clean_name] = (func_bytes, sec['relocs'])
+                # Reloc offsets in sec['relocs'] are section-relative.
+                # With /O2 COMDAT each function is its own section (value=0),
+                # so they're also function-relative -- no adjustment needed.
+                # With /Od all functions share one .text section so the
+                # function starts at 'value' bytes in: subtract to make
+                # function-relative.  Offsets that fall below value are from
+                # a different function and become negative -- they never match
+                # the [0, len) range used during comparison, so they're safe
+                # to include in the set.
+                relocs = {r - value for r in sec['relocs']}
+                funcs[clean_name] = (func_bytes, relocs)
 
         sym_off += 18 * (1 + naux)
         i += 1 + naux
