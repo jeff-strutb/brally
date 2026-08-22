@@ -306,7 +306,11 @@ uint32_t BrBitReaderRead(struct BrBitReader *pReader, unsigned nBits)
 /* WHAT IT DOES: measures how long a direction-and-distance is -- the length
  * of a vector, used everywhere the game needs a speed or a distance from a
  * pair of points. Another second name for an existing routine. */
-/* @implements 0x1003B170 d3d BrVec3Len */
+/* NOT tagged: 0x1003B170's body is BrVec3Length in br_vec.c, which carries the
+ * @implements and matches byte-for-byte.  This is the second NAME the image
+ * gives that address, and as a thunk it compiles to a 16-byte call that can
+ * never reproduce the 65-byte original -- tagging it too put one address in the
+ * measured set twice and left one of the pair permanently unmatchable. */
 float BrVec3Len(const BrVec3 *pV)
 {
     return BrVec3Length(pV);
