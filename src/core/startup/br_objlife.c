@@ -105,7 +105,11 @@ int  BrExt_10075020(void) { return 0; }
 void BrFlagInit_1002B950(void)
 {
     g_67D550 = 0;
+#ifdef BR_MATCHING_BUILD
+    g_0A81C8 = 0x104B16E8u;  /* Glide VA */
+#else
     g_0A81C8 = 0x10575540u;
+#endif
 }
 
 /* WHAT IT DOES: turn on the gate that skips "part 2", dispatch slot 4. */
