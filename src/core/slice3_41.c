@@ -414,19 +414,71 @@ void *BrFrameBankAlloc(BrFrameBank *pBank)
  * it. Once the pool is full every further request gets the same last block
  * back, so late callers quietly share one. */
 /* @implements 0x100694E0 d3d BrPool16Alloc */
+/* The original does not have BrFrameBankAlloc.  It hand-inlines the same body
+ * into each allocator with that bank's four constants folded in -- usable
+ * count, slots per frame, slot size, and the two array bases -- reading the
+ * counter and the frame index as absolute globals rather than through a bank
+ * pointer.  Calling a shared helper compiles to a 16-byte thunk against the
+ * original's 77, so the matching build spells the body out per bank and the
+ * port keeps the factored version below.
+ *
+ * The counter store must be written `= ++c`, not `= c + 1`.  They compute the
+ * same number, but `c + 1` lets VC5 form the incremented value early
+ * (`lea eax,[ecx+1]` and a store before the address arithmetic), which costs a
+ * byte and changes the register picked for the index LEA; the pre-increment
+ * keeps the count in its register across the address computation and emits the
+ * original's trailing `inc ecx / mov [count],ecx`.  That one token is the whole
+ * difference between 78 bytes and an exact 77. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t BrG_6C65EC;      /* 0x106C65EC  frame parity, shared by all three */
+extern int32_t BrG_B01C48;      /* 0x10B01C48  16-byte bank counter              */
+extern uint8_t BrG_B02190[];    /* 0x10B02190  16-byte bank base                 */
+extern uint8_t BrG_B022D0[];    /* 0x10B022D0  16-byte bank overflow slot        */
+void *BrPool16Alloc(void)
+{
+    int32_t c = BrG_B01C48;
+    if (c < 20) {
+        uint8_t *p = &BrG_B02190[(BrG_6C65EC * 21 + c) * 16];
+        BrG_B01C48 = ++c;
+        return p;
+    }
+    BrG_B01C48 = ++c;
+    return &BrG_B022D0[BrG_6C65EC * 21 * 16];
+}
+#else
 void *BrPool16Alloc(void)
 {
     return BrFrameBankAlloc(&g_BrPool16);
 }
+#endif
 
 /* Glide 0x100625A0 == D3D 0x10069530 (shared.csv pair).  Tagged on the Glide
  * side -- the reference build, and the address 0x1000A110's specular pass
  * calls -- so claimcheck audits the body against it. */
 /* @implements 0x100625A0 glide BrPool32Alloc */
+/* Same template as BrPool16Alloc, with 32-byte slots (`shl eax,5`) and its own
+ * counter and two bases; see the note there for the `= ++c` requirement. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t BrG_B01C44;      /* 0x10B01C44  32-byte bank counter       */
+extern uint8_t BrG_B01C50[];    /* 0x10B01C50  32-byte bank base          */
+extern uint8_t BrG_B01ED0[];    /* 0x10B01ED0  32-byte bank overflow slot */
+void *BrPool32Alloc(void)
+{
+    int32_t c = BrG_B01C44;
+    if (c < 20) {
+        uint8_t *p = &BrG_B01C50[(BrG_6C65EC * 21 + c) * 32];
+        BrG_B01C44 = ++c;
+        return p;
+    }
+    BrG_B01C44 = ++c;
+    return &BrG_B01ED0[BrG_6C65EC * 21 * 32];
+}
+#else
 void *BrPool32Alloc(void)
 {
     return BrFrameBankAlloc(&g_BrPool32);
 }
+#endif
 
 /* 0x10069580.  Order preserved: 64-byte counter, then 16, then 32. */
 /* WHAT IT DOES: throws away everything handed out of the three frame-scratch
