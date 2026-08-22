@@ -223,14 +223,11 @@ void BrCdTrackPlay(int track)
  * question is has not been established; the purpose is unclear. */
 /* @implements 0x10058F90 glide BrExt_1007AC00 */
 #ifdef BR_MATCHING_BUILD
-/* Matching diffs against BRD3D.dll, whose 22-byte body gates on 0x1007A840.
- * The `neg/sbb/neg` tail is `return x != 0`; keeping the result as the
- * function's return value is what stops VC5 turning the second call into a
- * tail jmp.  The header prototype is void -- hidden above. */
+/* Glide 0x10058F90 is 12 bytes: CALL 0x10058E20 / NEG EAX / SBB EAX,EAX /
+ * NEG EAX / RET.  No BrSub1007A840 gate -- that guard exists only in D3D.
+ * `!= 0` keeps EAX alive so VC5 /O2 emits neg/sbb/neg rather than a tail jmp. */
 int BrExt_1007AC00(void)
 {
-    if (BrSub1007A840() == 0)
-        return 0;
     return BrSub1007A940() != 0;
 }
 #else
