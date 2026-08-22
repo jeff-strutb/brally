@@ -28,7 +28,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from relocmap import (normalize, classify, load_learned,  # noqa: E402
-                      load_learned_full, REL_DIR32, REL_REL32)
+                      load_learned_full, load_maps, REL_DIR32, REL_REL32)
 
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 LEARNED = {}
@@ -79,17 +79,13 @@ def parse(path):
     return d, secs, syms, relocs
 
 
-def load_maps():
-    fn, gl = {}, {}
-    rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
-    for r in csv.DictReader(open(rep)):
-        if r.get('name') and r.get('va'):
-            fn[r['name']] = int(r['va'], 16)
-    for r in csv.DictReader(open(os.path.join(ROOT, 'config', 'globals.csv'))):
-        s = (r.get('symbol') or '').strip()
-        if s:
-            gl[s] = int(r['addr'], 16)
-    return fn, gl
+# load_maps lives in relocmap.py and is re-exported here, NOT reimplemented.
+# It used to exist in both files. When the tree switched to Glide-canonical
+# addressing only relocmap's copy was repointed at the Glide-space globals,
+# this one kept reading the D3D file, and reloc_learn.py imports THIS one --
+# so the learner compared Glide image addresses against D3D map addresses and
+# reported 87 contradictions with a constant offset per data region. Two
+# loaders for one fact is the bug; there is now one.
 
 
 _LEARNED = None
