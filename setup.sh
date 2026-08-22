@@ -3,11 +3,11 @@
 #
 # Everything this script produces lives inside the repo.  Nothing is installed
 # onto the host: no package manager, no /Applications, no ~/.wine.  A fresh
-# clone plus this script plus the two disc images under reference/ is a
-# complete matching build, and deleting tools/wine/ and tools/msvc5/ puts the
+# clone plus this script plus the disc images under reference/ is a complete
+# matching build, and deleting tools/wine/, tools/msvc5/ and orig/ puts the
 # machine back exactly as it was.
 #
-# Two pieces get staged:
+# Four pieces get staged:
 #
 #   Wine        Downloaded as a portable macOS build and unpacked into
 #               tools/wine/.  Pinned to a version and checksummed, because the
@@ -18,6 +18,14 @@
 #               The compiler is proprietary and cannot be downloaded, but the
 #               image is right there, so there is no reason to make a human
 #               copy files by hand.
+#
+#   orig/       Game binaries pulled out of the Boss Rally BIN/CUE.  The match
+#               target is BRD3D.dll; BRGlide.dll is the renderer reference.
+#               Do not copy these by hand.
+#
+#   N64 music   XM modules rendered out of the Top Gear Rally ROM, if one is
+#               sitting under reference/tgrally/.  Optional: the matching
+#               build does not need it.
 set -e
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
@@ -165,11 +173,151 @@ fi
 
 echo ""
 
+# ---- Game originals, off the BIN/CUE and the N64 ROM ---------------------
+# Hashes of the dumps this tree was matched against.  Documented in README.md
+# so a builder can source the same images; checked here so a different dump
+# does not silently become the match target.
+BRALLY_BIN_MD5="31c64f9b1e09788c2dfc384b44af8f6c"
+BRALLY_CUE_MD5="a48a4a5860558177c3041afee57e03c9"
+TGR_ROM_MD5="6f7030284b6bc84a49e07da864526b52"
+
+md5_of() {
+    md5 -q "$1"
+}
+
+warn_md5() {
+    _path="$1"
+    _want="$2"
+    _label="$3"
+    _got=$(md5_of "$_path")
+    if [ "$_got" != "$_want" ]; then
+        echo "[warn] $_label MD5 does not match the dump this tree was built against."
+        echo "       expected $_want"
+        echo "       got      $_got"
+        echo "       (extraction continues; matching results may not agree)"
+        return 1
+    fi
+    echo "[ok] $_label MD5 $_want"
+    return 0
+}
+
+BRALLY_BIN=""
+for c in reference/brally/BossRally.BIN reference/brally/BossRally.bin; do
+    [ -f "$c" ] && BRALLY_BIN="$c" && break
+done
+BRALLY_CUE=""
+if [ -n "$BRALLY_BIN" ]; then
+    for c in "${BRALLY_BIN%.BIN}.cue" "${BRALLY_BIN%.BIN}.CUE" "${BRALLY_BIN%.bin}.cue"; do
+        [ -f "$c" ] && BRALLY_CUE="$c" && break
+    done
+fi
+
+TGR_ROM=""
+for c in "reference/tgrally/Top Gear Rally (USA).z64"; do
+    [ -f "$c" ] && TGR_ROM="$c" && break
+done
+if [ -z "$TGR_ROM" ]; then
+    for c in reference/tgrally/*.z64 reference/tgrally/*.n64 reference/tgrally/*.v64; do
+        [ -f "$c" ] && TGR_ROM="$c" && break
+    done
+fi
+
+need_orig=0
+for f in orig/BRD3D.dll orig/BRGlide.dll; do
+    [ -f "$f" ] || need_orig=1
+done
+
+if [ "$need_orig" -eq 0 ]; then
+    echo "[ok] orig/ already staged"
+elif [ -z "$BRALLY_BIN" ]; then
+    echo "[need] orig/BRD3D.dll and orig/BRGlide.dll, and no disc image at"
+    echo "       reference/brally/BossRally.BIN"
+    echo ""
+    echo "  Put the retail Boss Rally BIN/CUE there (MD5 of the BIN this tree"
+    echo "  was matched against: $BRALLY_BIN_MD5) and re-run.  setup.sh"
+    echo "  extracts the binaries; do not copy them into orig/ by hand."
+    exit 1
+else
+    echo "[extract] orig/ from $BRALLY_BIN"
+    warn_md5 "$BRALLY_BIN" "$BRALLY_BIN_MD5" "BossRally.BIN" || true
+    if [ -n "$BRALLY_CUE" ]; then
+        warn_md5 "$BRALLY_CUE" "$BRALLY_CUE_MD5" "BossRally.cue" || true
+    else
+        echo "[warn] no .cue beside $BRALLY_BIN (binaries still extract; CD audio will not)"
+    fi
+
+    mkdir -p orig
+    # src on the disc -> dest under orig/.  Names on the right are what the
+    # rest of the tree opens.
+    while read -r src dst; do
+        [ -n "$src" ] || continue
+        if [ -f "orig/$dst" ]; then
+            continue
+        fi
+        python3 tools/extract_iso.py --extract-path "$BRALLY_BIN" "$src" "orig/$dst" >/dev/null
+    done <<'EOF'
+BRD3D.dll BRD3D.dll
+BRGlide.dll BRGlide.dll
+BRally.exe BRally.exe
+Boot.exe Boot.exe
+BossRally.exe BossRally.exe
+SetVideo.exe SetVideo.exe
+Remove.exe REMOVE.EXE
+SETUP.EXE SETUP.EXE
+_ISDEL.EXE _ISDEL.EXE
+_SETUP.DLL _SETUP.DLL
+EOF
+
+    if [ ! -f orig/BRD3D.dll ] || [ ! -f orig/BRGlide.dll ]; then
+        echo "[fail] extraction finished but orig/BRD3D.dll or orig/BRGlide.dll is missing"
+        exit 1
+    fi
+    echo "[ok] orig/ staged from the disc"
+fi
+
+echo ""
+
+# Testdata assets (tracks, cars, sprites, CD audio).  Idempotent: skipped
+# once testdata/strings.txt is already there.
+if [ -n "$BRALLY_BIN" ]; then
+    if [ ! -f testdata/strings.txt ]; then
+        echo "[extract] testdata/ from $BRALLY_BIN"
+        tools/extract_assets.sh "$BRALLY_BIN"
+    else
+        echo "[ok] testdata/ already present"
+    fi
+fi
+
+echo ""
+
+if [ -n "$TGR_ROM" ]; then
+    echo "[ok] Top Gear Rally ROM at $TGR_ROM"
+    warn_md5 "$TGR_ROM" "$TGR_ROM_MD5" "$(basename "$TGR_ROM")" || true
+    if [ -f testdata/music_xm/xm.manifest.json ]; then
+        echo "[ok] N64 soundtrack already extracted"
+    elif command -v ffmpeg >/dev/null 2>&1; then
+        echo "[extract] N64 soundtrack from $TGR_ROM"
+        python3 tools/extract_xm.py "$TGR_ROM" testdata/music_xm
+    else
+        echo "[skip] N64 soundtrack: ffmpeg not on PATH (FLAC encoder)."
+        echo "       Matching does not need it; the port will have no N64 music."
+    fi
+else
+    echo "[skip] no Top Gear Rally ROM under reference/tgrally/ (optional)"
+fi
+
+echo ""
+
 # ---- Original function bytes ---------------------------------------------
+if [ ! -f orig/BRD3D.dll ]; then
+    echo "[fail] orig/BRD3D.dll is missing -- cannot extract function bytes"
+    exit 1
+fi
 if [ ! -d build/match/orig ] || [ -z "$(ls build/match/orig/ 2>/dev/null)" ]; then
     echo "[extract] original function bytes from the shipped game binary..."
     mkdir -p build/match/orig
     python3 tools/extract_funcs.py orig/BRD3D.dll config/functions.csv build/match/orig/
+    echo "[ok] original function bytes extracted ($(ls build/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
 else
     echo "[ok] original function bytes extracted ($(ls build/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
 fi
@@ -191,8 +339,12 @@ echo "=== Status ==="
                    || echo "  Wine:      MISSING"
 [ -n "$CL_FOUND" ] && echo "  cl.exe:    $CL_FOUND" \
                    || echo "  cl.exe:    MISSING (see above)"
-[ -d build/match/orig ] && echo "  Originals: extracted" \
-                        || echo "  Originals: not extracted"
+[ -f orig/BRD3D.dll ] && echo "  orig/:     BRD3D.dll staged" \
+                      || echo "  orig/:     MISSING"
+[ -d build/match/orig ] && echo "  Functions: extracted" \
+                        || echo "  Functions: not extracted"
+[ -n "$TGR_ROM" ] && echo "  TGR ROM:   $TGR_ROM" \
+                  || echo "  TGR ROM:   not present (optional)"
 echo ""
 
 if [ -x "$WINE_BIN" ] && [ -n "$CL_FOUND" ]; then
