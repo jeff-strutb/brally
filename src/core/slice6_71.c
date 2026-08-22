@@ -776,6 +776,8 @@ typedef char br71_assert_peer_f02c[
  * esi holds index*stride and the disp32 is the table base. */
 extern Br71Peer g_aBrPeer71[];
 
+/* WHAT IT DOES: under the peer mutex, read one word of that peer's
+ * record and hand it back -- a live snapshot, not a stale copy. */
 /* @implements 0x100714D0 d3d BrSub100714D0 */
 uint32_t BrSub100714D0(int index)
 {

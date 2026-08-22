@@ -131,6 +131,8 @@ int32_t  g_brTex0A7E00;               /* 0x100A7E00 */
 int32_t  g_brTex0A7E04;               /* 0x100A7E04 */
 int32_t  g_brTex0A7E08;               /* 0x100A7E08 */
 
+/* WHAT IT DOES: decide how much texture detail to use from how much
+ * texture memory the card has (and how much RAM the machine has). */
 /* @implements 0x1002A5A0 d3d BrTexChooseLevel */
 void BrTexChooseLevel(void)
 {
@@ -166,6 +168,8 @@ void BrTexChooseLevel(void)
     g_brTex0A7E08 = v;
 }
 #else
+/* WHAT IT DOES: the same detail-level choice, as a function of the
+ * measured texture memory rather than of the original's globals. */
 /* @implements 0x1002A5A0 d3d BrTexChooseLevel */
 int32_t BrTexChooseLevel(uint32_t texmem)
 {
@@ -234,6 +238,9 @@ int32_t  BrTexChooseLevelAbs(void);   /* 0x1002A5A0 -- leaves eax live */
 void     BrGbiSolidTexBuildAbs(void); /* 0x1002A740 */
 void     BrTexCreateMutex(void);      /* 0x10074F20 */
 
+/* WHAT IT DOES: set the texture system up -- install the thirteen
+ * routines the rest of the engine calls, measure the card, pick a
+ * detail level. */
 /* @implements 0x1002A640 d3d BrTexInit */
 void BrTexInit(void)
 {
@@ -277,6 +284,8 @@ void BrTexInit(void)
     (void)level;
 }
 #else
+/* WHAT IT DOES: the same setup, recording which hook went in which slot
+ * instead of writing the original's absolute addresses. */
 /* @implements 0x1002A640 d3d BrTexInit */
 void BrTexInit(const BrTexInitHost *pHost)
 {

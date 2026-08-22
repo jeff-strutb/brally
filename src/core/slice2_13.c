@@ -437,6 +437,8 @@ __declspec(dllimport) void *__stdcall GlobalHandle(void *pMem);
 __declspec(dllimport) int   __stdcall GlobalUnlock(void *hMem);
 __declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
 
+/* WHAT IT DOES: ask how many players are in the multiplayer session
+ * right now, so the lobby can show it.  0xFFFF means "could not tell". */
 /* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
 uint32_t BrDPlayGetCurrentPlayers(void)
 {
@@ -452,6 +454,8 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     return n;
 }
 #else
+/* WHAT IT DOES: the same player-count query, reading the count
+ * byte-wise so the port is not tied to a struct overlay. */
 /* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
 uint32_t BrDPlayGetCurrentPlayers(void)
 {

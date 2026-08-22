@@ -351,7 +351,8 @@ int32_t BrMenuEnter(void)
     return 1;
 }
 
-/* 0x10041930.  The comparison is signed (`jl`). */
+/* WHAT IT DOES: leave this menu for session-kind 2, tearing down two
+ * related screens first if the player has reached the required stage. */
 /* @implements 0x10041930 d3d BrMenuLeaveTo2 */
 int32_t BrMenuLeaveTo2(void)
 {
@@ -365,8 +366,9 @@ int32_t BrMenuLeaveTo2(void)
     return 1;
 }
 
-/* 0x10041B50.  Returns nothing: the early exit and the fall-through both
- * `ret` without touching EAX. */
+/* WHAT IT DOES: write the name "AutoSave.brf" into the save slot, and
+ * if that slot is empty, wipe the rest of its record so the next save
+ * starts clean. */
 /* @implements 0x10041B50 d3d BrMenuAutoSaveName */
 void BrMenuAutoSaveName(void)
 {
@@ -401,10 +403,9 @@ void BrMenuAutoSaveName(void)
  * 6. Callbacks -- caption setters
  * ===================================================================== */
 
-/* 0x10040730.  Note `mov cx, word` -- no sign extension here, unlike its
- * neighbours.  The table index is g_0AC648 while 0x100AA010 is set, and the
- * stage byte otherwise; which of 0x10AA28A4 / 0x10AA28AC supplies the column
- * is chosen by the BYTE at 0x10AA28A8. */
+/* WHAT IT DOES: put the right piece of wording on a stage-dependent
+ * caption -- championship vs the backup column, or a fixed options
+ * index when that mode is on. */
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
@@ -457,9 +458,9 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x100407E0.  Same shape as 0x10040730 but it takes the HIGH byte of the
- * same stage word (0x100B3821 rather than 0x100B3820), uses 0x10AA2A00 in
- * place of 0x100AC648, and sign-extends the table entry. */
+/* WHAT IT DOES: the same kind of caption as 0x10040730, but from the
+ * other byte of the stage word, and it sits idle (returns "leave this
+ * row alone") while the menus are not being used. */
 /* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
@@ -544,7 +545,8 @@ int32_t BrMenuCap08B0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040930 */
+/* WHAT IT DOES: put a caption from a play-mode table on this row --
+ * keyboard vs wheel vs joystick, that family of pictures. */
 /* @implements 0x10040930 d3d BrMenuCap0930 */
 int32_t BrMenuCap0930(BrMenuItem *pItem)
 {
@@ -554,8 +556,8 @@ int32_t BrMenuCap0930(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040950.  When 0x118ABDBC is clear the entry is hard-wired to
- * 0x100AC631 -- element 1 of the same table, not element 0. */
+/* WHAT IT DOES: put a caption from a small table on this row, or a
+ * hard-wired second entry when a related flag is clear. */
 /* @implements 0x10040950 d3d BrMenuCap0950 */
 int32_t BrMenuCap0950(BrMenuItem *pItem)
 {
@@ -571,8 +573,8 @@ int32_t BrMenuCap0950(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040990.  The table is dwords but only the low word is taken, and it is
- * NOT sign-extended. */
+/* WHAT IT DOES: put a caption from another small table on this row --
+ * only the low 16 bits of each table entry are the wording id. */
 /* @implements 0x10040990 d3d BrMenuCap0990 */
 int32_t BrMenuCap0990(BrMenuItem *pItem)
 {
@@ -595,7 +597,7 @@ int32_t BrMenuCap09B0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x100409D0 */
+/* WHAT IT DOES: put a caption from another small table on this row. */
 /* @implements 0x100409D0 d3d BrMenuCap09D0 */
 int32_t BrMenuCap09D0(BrMenuItem *pItem)
 {
@@ -651,13 +653,66 @@ int32_t BrMenuSeedFrom26F0(void)
     return 1;
 }
 
+/* WHAT IT DOES: use the primary caption column from now on, not the
+ * backup.  Menu caption setters consult this byte.  Always reports
+ * success. */
+/* @implements 0x1003E8C0 d3d BrMenuClearAA28A8 */
+int32_t BrMenuClearAA28A8(void)
+{
+    g_menu.gAA28A8 = 0;
+    return 1;
+}
+
+/* WHAT IT DOES: use the backup caption column from now on.  Always
+ * reports success. */
+/* @implements 0x1003E8B0 d3d BrMenuSetAA28A8 */
+int32_t BrMenuSetAA28A8(void)
+{
+    g_menu.gAA28A8 = 1;
+    return 1;
+}
+
+/* WHAT IT DOES: pick which stored lap-time the next time-caption reads:
+ * 0, 1 or 2 index a times array; 3 means "use the live time instead".
+ * Always reports success.  The four bodies differ only in the value. */
+/* @implements 0x100412C0 d3d BrMenuSetAA28D0_0 */
+int32_t BrMenuSetAA28D0_0(void)
+{
+    g_menu.gAA28D0 = 0;
+    return 1;
+}
+
+/* WHAT IT DOES: the next time-caption should show stored slot 1. */
+/* @implements 0x100412D0 d3d BrMenuSetAA28D0_1 */
+int32_t BrMenuSetAA28D0_1(void)
+{
+    g_menu.gAA28D0 = 1;
+    return 1;
+}
+
+/* WHAT IT DOES: the next time-caption should show stored slot 2. */
+/* @implements 0x100412E0 d3d BrMenuSetAA28D0_2 */
+int32_t BrMenuSetAA28D0_2(void)
+{
+    g_menu.gAA28D0 = 2;
+    return 1;
+}
+
+/* WHAT IT DOES: the next time-caption should show the live time, not a
+ * stored slot. */
+/* @implements 0x100412F0 d3d BrMenuSetAA28D0_3 */
+int32_t BrMenuSetAA28D0_3(void)
+{
+    g_menu.gAA28D0 = 3;
+    return 1;
+}
+
 /* =====================================================================
  * 8. Callbacks -- text setters
  * ===================================================================== */
 
-/* 0x100408D0.  Formats straight into the item's own text buffer -- no
- * intermediate and no _strupr -- and always returns 1, even when the idle
- * guard short-circuits it. */
+/* WHAT IT DOES: write the current stage number onto this row as plain
+ * decimal.  While the menus are idle it leaves the row alone. */
 /* @implements 0x100408D0 d3d BrMenuText08D0 */
 int32_t BrMenuText08D0(BrMenuItem *pItem)
 {
@@ -685,7 +740,8 @@ int32_t BrMenuText08D0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040A50.  Goes through the global scratch buffer at 0x10AA2518. */
+/* WHAT IT DOES: write a 1-based setting number onto this row (the value
+ * plus one), through a scratch buffer, then refresh the row's text. */
 /* @implements 0x10040A50 d3d BrMenuText0A50 */
 int32_t BrMenuText0A50(BrMenuItem *pItem)
 {
@@ -727,7 +783,8 @@ int32_t BrMenuText0A50(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040AC0.  Same as 0x10040A50 but 0x10AA28A4 and the 0x10A9D618 buffer. */
+/* WHAT IT DOES: the same 1-based number as 0x10040A50, from a different
+ * setting word and a different scratch buffer. */
 /* @implements 0x10040AC0 d3d BrMenuText0AC0 */
 int32_t BrMenuText0AC0(BrMenuItem *pItem)
 {
@@ -769,9 +826,9 @@ int32_t BrMenuText0AC0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10040B30.  string 0x37, then "  " (0x100AD304), then the number.  This
- * one is a CAPTION assignment (vtable +0x04 / +0x10) even though it ends in
- * a number. */
+/* WHAT IT DOES: write a labelled number on this row -- a stock caption,
+ * two spaces, then the 1-based setting -- as the row's heading, not its
+ * value. */
 /* @implements 0x10040B30 d3d BrMenuText0B30 */
 int32_t BrMenuText0B30(BrMenuItem *pItem)
 {
@@ -804,7 +861,8 @@ static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
     return pTimes[i];
 }
 
-/* 0x10040C00 */
+/* WHAT IT DOES: put a lap time from one stored table onto this row, or
+ * "--:--" if times are not available yet. */
 /* @implements 0x10040C00 d3d BrMenuTime0C00 */
 int32_t BrMenuTime0C00(BrMenuItem *pItem)
 {
@@ -820,7 +878,8 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
 
-/* 0x10040D70.  Identical to 0x10040C00 except for the float array. */
+/* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
+ * stored table. */
 /* @implements 0x10040D70 d3d BrMenuTime0D70 */
 int32_t BrMenuTime0D70(BrMenuItem *pItem)
 {
@@ -836,8 +895,8 @@ int32_t BrMenuTime0D70(BrMenuItem *pItem)
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
 
-/* 0x10040EE0.  Index 3 is reserved: it means "use 0x10AA28C8" instead of
- * indexing the array. */
+/* WHAT IT DOES: put a lap time onto this row from a chosen slot -- 0, 1
+ * or 2 index a table; 3 means the live time instead. */
 /* @implements 0x10040EE0 d3d BrMenuTime0EE0 */
 int32_t BrMenuTime0EE0(BrMenuItem *pItem)
 {
@@ -881,7 +940,7 @@ BrMenuFillLapTime(char *pszOut, float fTime)
     sprintf(pszOut, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
 }
 
-/* 0x10041040 */
+/* WHAT IT DOES: format one stored lap time onto this row as m:ss.hh. */
 /* @implements 0x10041040 d3d BrMenuTime1040 */
 int32_t BrMenuTime1040(BrMenuItem *pItem)
 {
@@ -908,7 +967,7 @@ int32_t BrMenuTime1040(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10041180 */
+/* WHAT IT DOES: format a second stored lap time onto this row as m:ss.hh. */
 /* @implements 0x10041180 d3d BrMenuTime1180 */
 int32_t BrMenuTime1180(BrMenuItem *pItem)
 {
@@ -919,9 +978,9 @@ int32_t BrMenuTime1180(BrMenuItem *pItem)
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
 
-/* 0x10041300.  GOTCHA: the string id is looked up TWICE -- once to measure
- * the result, once to use it -- and the second result is uppercased IN
- * PLACE, so the string table entry itself is modified. */
+/* WHAT IT DOES: put this stage's name on the row, in capitals.  The
+ * string-table entry itself is uppercased, so the next reader sees
+ * capitals too. */
 /* @implements 0x10041300 d3d BrMenuText1300 */
 int32_t BrMenuText1300(BrMenuItem *pItem)
 {
@@ -940,7 +999,9 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
     return BrMenuStoreCaption(pItem, psz);
 }
 
-/* 0x100415A0.  `jge` after `test eax,eax` -- signed clamp at zero. */
+/* WHAT IT DOES: show how many of something this stage still has left
+ * (a count minus what the player has used), never below zero, as a
+ * capitalised number. */
 /* @implements 0x100415A0 d3d BrMenuText15A0 */
 int32_t BrMenuText15A0(BrMenuItem *pItem)
 {
@@ -999,7 +1060,8 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10041670 */
+/* WHAT IT DOES: write a 1-based setting number onto this row, in
+ * capitals.  An empty string leaves the row untouched. */
 /* @implements 0x10041670 d3d BrMenuText1670 */
 int32_t BrMenuText1670(BrMenuItem *pItem)
 {
@@ -1033,7 +1095,8 @@ int32_t BrMenuText1670(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x10041710.  0x10041670's twin without the +1. */
+/* WHAT IT DOES: write that setting as stored (not 1-based) onto this
+ * row, in capitals. */
 /* @implements 0x10041710 d3d BrMenuText1710 */
 int32_t BrMenuText1710(BrMenuItem *pItem)
 {
@@ -1067,9 +1130,8 @@ int32_t BrMenuText1710(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x100417B0.  0x100415A0 with 0x10220B24 for the record index and no
- * 0x10AA289C special case; the clamp is written `jns` here rather than
- * `jge`, which is the same test. */
+/* WHAT IT DOES: the remaining-count readout of 0x100415A0, indexed from
+ * a different stage word and without the "times unavailable" special case. */
 /* @implements 0x100417B0 d3d BrMenuText17B0 */
 int32_t BrMenuText17B0(BrMenuItem *pItem)
 {
@@ -1137,8 +1199,9 @@ int32_t BrMenuFlags1890(BrMenuItem *pItem)
     return 1;
 }
 
-/* 0x100418D0.  The odd one out: when the flag is clear it does nothing at
- * all -- it does not even read the item. */
+/* WHAT IT DOES: if a related availability flag is set, un-grey this row
+ * (clear the two "dimmed" bits).  If the flag is clear it does not
+ * touch the row at all. */
 /* @implements 0x100418D0 d3d BrMenuFlags18D0 */
 int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 {

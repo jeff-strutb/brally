@@ -273,6 +273,8 @@ int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
     return BrSfxChanStart(group, ch, loop);  /* 0x1006E516 */
 }
 
+/* WHAT IT DOES: start a sound at full volume on a given channel -- a hit,
+ * a menu beep, an engine, whatever the group's bank holds. */
 /* @implements 0x1006E530 glide BrSfxSrcPlay */
 int BrSfxSrcPlay(int ch, int group, int32_t f0C, int32_t loop)
 {
@@ -280,6 +282,8 @@ int BrSfxSrcPlay(int ch, int group, int32_t f0C, int32_t loop)
     return BrSfxSrcStart(ch, group, f0C, loop, BR_SFXSRC_PACKED);
 }
 
+/* WHAT IT DOES: start the same sound silent.  Engine loops use this so
+ * the per-frame driver can raise the volume from how close the car is. */
 /* @implements 0x1006E560 glide BrSfxSrcPlaySilent */
 int BrSfxSrcPlaySilent(int ch, int group, int32_t f0C, int32_t loop)
 {
