@@ -68,15 +68,14 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
     pA->z += pB->z;
 }
 
+/* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
+/* FP SCHEDULING WALL: orig emits FLD [esp+0xC](s) / FMUL [eax](pV->x) for
+ * the x component, but FLD component / FMUL s for y and z.  VC5 canonicalises
+ * commutative FMUL regardless of source operand order, so no source form
+ * changes the FLD operand for x.  5 diffs remain. */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
-    /* NOT MATCHING: the original fetches the SCALAR for the x term
-     * (`fld [esp+0xc]; fmul [eax]`) and the component for y and z, which ours
-     * has the other way round on x only.  Swapping the operands does nothing
-     * (VC5 canonicalises commutative fmul), and the naming lever that fixes
-     * BrVec3Midpoint does not apply: it works by naming a dereference, and
-     * `s` is already a plain memory operand with nothing to name. */
     pOut->x = pV->x * s;
     pOut->y = pV->y * s;
     pOut->z = pV->z * s;
