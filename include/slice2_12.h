@@ -92,7 +92,7 @@ void BrCarClampPosZ(float *pv);
  * The inverse of each is named in its comment. */
 
 /* 0x100065A0  clamp(floor(0.5 - 128*v), -32, 31)      inverse of 0x10007250 */
-int32_t BrFixPackS6Q7Neg(float v);
+int8_t BrFixPackS6Q7Neg(float v);
 /* 0x100065E0  clamp(floor(0.5 - 32768*v), -32768, 32767)  inv. of 0x10007280 */
 int32_t BrFixPackS16Q15Neg(float v);
 /* 0x10006620  clamp(floor(0.5 + v*256/361), 0, 255)   inverse of 0x100072A0.
@@ -102,12 +102,12 @@ int32_t BrFixPackU8Angle(float v);
 /* 0x10006660  clamp(floor(0.5 + (v-400)/120.63491821), 0, 63)  inv. 0x100072C0.
  * GOTCHA: the clamp is to 6 bits (0..63) even though the dequantiser masks a
  * full byte, so the pair is only symmetric over [400, 8000]. */
-int32_t BrFixPackU8Range(float v);
+int8_t BrFixPackU8Range(float v);
 /* 0x100066A0  4-level classifier, inverse of 0x100072E0:
  *     v < 128 -> 0,  v < 171 -> 1,  v < 213 -> 2,  else 3
  * The thresholds sit one above each of 0x100072E0's outputs (0, 170, 212),
  * which is what makes the round trip exact. NaN takes the first arm -> 0. */
-int32_t BrFixPackLevel(float v);
+int8_t BrFixPackLevel(float v);
 /* 0x100067B0  clamp(floor(0.5 + 256*v), -32768, 32767)  inverse of 0x100073A0 */
 int32_t BrFixPackS16Q8(float v);
 /* 0x100067F0  clamp(floor(0.5 + 8*v), -128, 127)        inverse of 0x100073C0 */

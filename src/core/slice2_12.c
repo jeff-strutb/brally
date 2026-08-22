@@ -148,7 +148,7 @@ void BrCarClampPosZ(float *pv)
  * up, and the result is pinned inside what 6 bits can hold. The decoder on
  * the other end undoes this exactly. */
 /* @implements 0x100065A0 d3d BrFixPackS6Q7Neg */
-int32_t BrFixPackS6Q7Neg(float v)
+int8_t BrFixPackS6Q7Neg(float v)
 {
     int32_t n = (int32_t)BrFloor(0.5f - v * 128.0f);
 
@@ -197,7 +197,7 @@ int32_t BrFixPackU8Angle(float v)
  * for the network by subtracting the base and scaling. What the quantity is
  * is not established here; the range is all this code establishes. */
 /* @implements 0x10006660 d3d BrFixPackU8Range */
-int32_t BrFixPackU8Range(float v)
+int8_t BrFixPackU8Range(float v)
 {
     int32_t n = (int32_t)BrFloor(0.5f - (v - 400.0f) * -0.008289474062621593f);
 
@@ -215,7 +215,7 @@ int32_t BrFixPackU8Range(float v)
  * with the four values the decoder produces, so the classification survives
  * the round trip. What the quantity means is not established. */
 /* @implements 0x100066A0 d3d BrFixPackLevel */
-int32_t BrFixPackLevel(float v)
+int8_t BrFixPackLevel(float v)
 {
     if (!(v >= BrK08F0CC))              /* < 128.0f, or NaN */
         return 0;
@@ -432,56 +432,75 @@ static uint32_t BrGetU32(const uint8_t *p)
  * deliberately written on top of the high byte of an earlier value, so the
  * order of the stores matters. Unlike the surrounding code this record is
  * stored least-significant byte first. */
-/* @implements 0x10006BD0 d3d BrCarStatePack */
+/* @implements 0x10006F40 glide BrCarStatePack */
 void BrCarStatePack(BrCarPacked *pDst, const BrCarState *pSrc)
 {
     uint8_t *b = pDst->b;
 
     /* Orientation, low bit stolen for a flag. */
-    BrPutU16(b + 0x00, ((uint32_t)BrFixPackS16Q15Neg(pSrc->f00) & 0xFFFEu)
-                       | (uint32_t)BrIsNonZero(pSrc->f8C));
-    BrPutU16(b + 0x02, ((uint32_t)BrFixPackS16Q15Neg(pSrc->f04) & 0xFFFEu)
-                       | (uint32_t)BrIsNonZero(pSrc->f90));
-    BrPutU16(b + 0x04, ((uint32_t)BrFixPackS16Q15Neg(pSrc->f08) & 0xFFFEu)
-                       | (uint32_t)BrIsNonZero(pSrc->f94));
-    BrPutU16(b + 0x06, ((uint32_t)BrFixPackS16Q15Neg(pSrc->f0C) & 0xFFFEu)
-                       | (uint32_t)BrIsNonZero(pSrc->f98));
+    *(uint16_t *)(b + 0x00) =
+        (uint16_t)(((uint32_t)BrFixPackS16Q15Neg(pSrc->f00) & 0xFFFEu)
+                   | (uint32_t)(pSrc->f8C != 0.0f));
+    *(uint16_t *)(b + 0x02) =
+        (uint16_t)(((uint32_t)BrFixPackS16Q15Neg(pSrc->f04) & 0xFFFEu)
+                   | (uint32_t)(pSrc->f90 != 0.0f));
+    *(uint16_t *)(b + 0x04) =
+        (uint16_t)(((uint32_t)BrFixPackS16Q15Neg(pSrc->f08) & 0xFFFEu)
+                   | (uint32_t)(pSrc->f94 != 0.0f));
+    *(uint16_t *)(b + 0x06) =
+        (uint16_t)(((uint32_t)BrFixPackS16Q15Neg(pSrc->f0C) & 0xFFFEu)
+                   | (uint32_t)(pSrc->f98 != 0.0f));
 
     /* Position axis 1: three low bits are flags, the top byte is reused
      * below by the b[0x0B] store. */
-    BrPutU32(b + 0x08,
-             ((uint32_t)BrFixPackU24Q13(pSrc->f10) & 0xFFFFF8u)
-             | ((uint32_t)((BrIsNonZero(pSrc->f9C) * 2)
-                           | BrIsNonZero(pSrc->f88)) << 1)
-             | (uint32_t)BrIsNonZero(pSrc->f6C));
+    {
+        /* Hoist order (f6C, f88, f9C) and the un-distributed `shl` both
+         * come from spelling the flags as prior statements. */
+        int32_t t6C = (pSrc->f6C != 0.0f);
+        int32_t t88 = (pSrc->f88 != 0.0f);
+        int32_t t9C = (pSrc->f9C != 0.0f);
+        *(uint32_t *)(b + 0x08) =
+            ((uint32_t)BrFixPackU24Q13(pSrc->f10) & 0xFFFFF8u)
+            | ((uint32_t)((t9C << 1) | t88) << 1)
+            | (uint32_t)t6C;
+    }
 
     /* Position axis 2: two low bits are flags. */
-    BrPutU32(b + 0x0C,
-             ((uint32_t)BrFixPackU24Q13(pSrc->f14) & 0xFFFFFCu)
-             | ((uint32_t)BrIsNonZero(pSrc->f70) << 1)
-             | (uint32_t)BrIsNonZero(pSrc->f74));
+    *(uint32_t *)(b + 0x0C) =
+        ((uint32_t)BrFixPackU24Q13(pSrc->f14) & 0xFFFFFCu)
+        | ((uint32_t)(pSrc->f70 != 0.0f) * 2)
+        | (uint32_t)(pSrc->f74 != 0.0f);
 
-    BrPutU16(b + 0x10, (uint32_t)BrFixPackS16Q7(pSrc->f18) & 0xFFFFu);
-    b[0x12] = (uint8_t)((uint32_t)BrFixPackS8Q3(pSrc->f34) & 0xFFu);
-    b[0x13] = (uint8_t)(((uint32_t)BrFixPackS6Q7Neg(pSrc->f38) & 0x3Fu)
-                        | ((uint32_t)BrFixPackLevel(pSrc->f80) << 6));
+    *(uint16_t *)(b + 0x10) = (uint16_t)BrFixPackS16Q7(pSrc->f18);
+    b[0x12] = (uint8_t)BrFixPackS8Q3(pSrc->f34);
+    {
+        uint8_t t = (uint8_t)((uint8_t)BrFixPackS6Q7Neg(pSrc->f38) & 0x3Fu);
+        t |= (uint8_t)(BrFixPackLevel(pSrc->f80) << 6);
+        b[0x13] = t;
+    }
 
     /* Overwrites the high byte of the dword at 0x08, which the mask above
      * left clear. Order is load-bearing. */
-    b[0x0B] = (uint8_t)((uint32_t)BrFixPackU8Angle(pSrc->f3C) & 0xFFu);
+    b[0x0B] = (uint8_t)BrFixPackU8Angle(pSrc->f3C);
 
-    b[0x14] = (uint8_t)((BrIsNonZero(pSrc->f4C) ? 0x80u : 0u)
-                        | (((uint32_t)(int32_t)pSrc->f5C & 7u) << 4)
-                        | (BrIsNonZero(pSrc->f50) ? 8u : 0u)
-                        | ((uint32_t)(int32_t)pSrc->f60 & 7u));
-    b[0x15] = (uint8_t)((BrIsNonZero(pSrc->f54) ? 0x80u : 0u)
-                        | (((uint32_t)(int32_t)pSrc->f64 & 7u) << 4)
-                        | (BrIsNonZero(pSrc->f58) ? 8u : 0u)
-                        | ((uint32_t)(int32_t)pSrc->f68 & 7u));
+    /* Built incrementally: the original stores b[0x14]/b[0x15] after every
+     * OR, exactly as these statements read. */
+    b[0x14] = (uint8_t)((pSrc->f4C != 0.0f) ? 0x80u : 0u);
+    b[0x14] |= (uint8_t)(((uint8_t)(int32_t)pSrc->f5C & 7u) << 4);
+    b[0x14] |= (uint8_t)((pSrc->f50 != 0.0f) ? 8u : 0u);
+    b[0x14] |= (uint8_t)((uint8_t)(int32_t)pSrc->f60 & 7u);
+
+    b[0x15] = (uint8_t)((pSrc->f54 != 0.0f) ? 0x80u : 0u);
+    b[0x15] |= (uint8_t)(((uint8_t)(int32_t)pSrc->f64 & 7u) << 4);
+    b[0x15] |= (uint8_t)((pSrc->f58 != 0.0f) ? 8u : 0u);
+    b[0x15] |= (uint8_t)((uint8_t)(int32_t)pSrc->f68 & 7u);
 
     /* Overwrites the high byte of the dword at 0x0C. */
-    b[0x0F] = (uint8_t)(((uint32_t)BrFixPackU8Range(pSrc->f7C) & 0x3Fu)
-                        | ((uint32_t)BrFixPackLevel(pSrc->f84) << 6));
+    {
+        uint8_t t = (uint8_t)((uint8_t)BrFixPackU8Range(pSrc->f7C) & 0x3Fu);
+        t |= (uint8_t)(BrFixPackLevel(pSrc->f84) << 6);
+        b[0x0F] = t;
+    }
 }
 
 /* 0x10007730 */
