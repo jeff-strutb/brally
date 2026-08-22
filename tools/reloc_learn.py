@@ -190,7 +190,13 @@ def write_map(path, res):
         # lets reloc_fill.py refuse to score a function bit-exact on the
         # strength of an address learned from that same function -- without it
         # the check would be circular for every symbol with one reference.
-        for s, (a, n) in sorted(new.items(), key=lambda kv: kv[1][0]):
+        # Sort by (address, symbol), NOT address alone. Several symbols can
+        # share one address -- the linker folds identical stubs, so 0x10008B80
+        # carries four names -- and ties then fell back on dict insertion
+        # order, which varies with the order objs happen to be read. The sweep
+        # rewrites this file on every run, so that churned 273 lines each time
+        # and made a real change indistinguishable from reshuffling.
+        for s, (a, n) in sorted(new.items(), key=lambda kv: (kv[1][0], kv[0])):
             src = ' '.join(sorted({'0x%08X' % v for _, v in obs[s][a]}))
             w.writerow([s.lstrip('_'), '0x%08X' % a, n, int(n > 1),
                         classify(s), src])
