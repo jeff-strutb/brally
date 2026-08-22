@@ -328,6 +328,9 @@ int64_t BrSfxEngineRatio(double hz);
  * is unity pitch -- the high layer is pure doppler and ignores RPM. */
 uint32_t BrSfxEngineHighHz(float doppler);
 
+/* 0x10073080 / Glide 0x1006BFF0  store (iName+1) into three engine-bank tables. */
+void BrSndBankSetCar(int iCar, int iName);
+
 /* The base rate the low/rev ratio is DERIVED against, as against the 11025
  * the bank rows carry and BrSfxHzFromRatio reads back with. */
 #define BR_SFX_ENGINE_RATIO_RATE  11000.0

@@ -756,3 +756,67 @@ void BrUiAssetPathsFree(char *apszOut[BR_UIASSET_COUNT])
         apszOut[i] = NULL;
     }
 }
+
+/* ==========================================================================
+ * 0x1005CB40
+ * ========================================================================== */
+
+#ifdef BR_MATCHING_BUILD
+/* Original is thiscall: `this` in ecx, one stack argument, `ret 4`.  VC5 C
+ * has no __thiscall keyword; __fastcall puts the first REGISTER-ELIGIBLE
+ * argument in ecx, and a struct is never register-eligible, so a 4-byte
+ * struct in second position is forced onto the stack.  Same split as
+ * thiscall.  Both virtual calls below use the same trick:
+ *   vt+8    thiscall(this, arg)         ecx still holds this from entry
+ *   vt+0x1C thiscall(this, &scratch)    lea ecx, [scratch] / push ecx /
+ *                                       mov ecx, this
+ * scratch is the one stack slot (`push ecx` at entry), seeded -1, and is
+ * what the function returns. */
+
+typedef struct { uint32_t v; } BrSub1005CB40Arg;
+typedef struct { uint32_t *p; } BrSub1005CB40Ref;
+
+typedef struct BrSub1005CB40Vtbl {
+    void *f00;
+    void *f04;
+    void (__fastcall *f08)(void *pThis, BrSub1005CB40Arg a);
+    void *f0C;
+    void *f10;
+    void *f14;
+    void *f18;
+    void (__fastcall *f1C)(void *pThis, BrSub1005CB40Ref a);
+} BrSub1005CB40Vtbl;
+
+typedef struct BrSub1005CB40Obj {
+    const BrSub1005CB40Vtbl *pVtbl;
+} BrSub1005CB40Obj;
+
+int32_t  g_AA28D8;   /* 0x10AA28D8 */
+int32_t  g_AA2858;   /* 0x10AA2858 */
+uint16_t g_AA2870;   /* 0x10AA2870 */
+
+/* WHAT IT DOES: always forwards the incoming value through vtable slot +8,
+ * then -- only when 0x10AA28D8 and 0x10AA2858 are both clear -- asks slot
+ * +0x1C to write an answer over a dword that starts at -1. A 16-bit counter
+ * at 0x10AA2870 is incremented either way, and the dword is returned. What
+ * the two slots do with the value is not established here. */
+/* @implements 0x1005CB40 d3d BrSub1005CB40 */
+uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
+{
+    uint32_t scratch;
+    const BrSub1005CB40Vtbl *pVtbl;
+    BrSub1005CB40Ref out;
+
+    scratch = 0xFFFFFFFFu;
+    pVtbl = pThis->pVtbl;
+    pVtbl->f08((void *)pThis, arg);
+    if (g_AA28D8 == 0) {
+        if (g_AA2858 == 0) {
+            out.p = &scratch;
+            pVtbl->f1C((void *)pThis, out);
+        }
+    }
+    ++g_AA2870;
+    return scratch;
+}
+#endif

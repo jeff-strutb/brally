@@ -429,3 +429,28 @@ void BrUiHook81Install(BrUi73Hooks *pHooks)
      * +0x08 at run time by the three installers above, which is the original's
      * own mechanism. */
 }
+
+/* ==========================================================================
+ * 0x100770C0
+ * ========================================================================== */
+
+int g_18ABD38[14];   /* 0x118ABD38 */
+int g_18ABAD4;       /* 0x118ABAD4 */
+int g_18ABD80;       /* 0x118ABD80 */
+
+/* WHAT IT DOES: zeroes 14 dwords at 0x118ABD38, writes 0 to 0x118ABAD4, and
+ * writes 1 to 0x118ABD80. The three are separate globals, not one struct.
+ *
+ * GOTCHA: the two scalar stores are written first so MSVC 5 selects `C7 05`
+ * immediates; it then schedules the `rep stosd` ahead of them. Writing the
+ * zero-fill first CSE's the 0 into `mov [g_18ABAD4], eax`. */
+/* @implements 0x100770C0 d3d BrSub100770C0 */
+void BrSub100770C0(void)
+{
+    int i;
+
+    g_18ABAD4 = 0;
+    g_18ABD80 = 1;
+    for (i = 0; i < 14; ++i)
+        g_18ABD38[i] = 0;
+}

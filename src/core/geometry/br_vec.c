@@ -312,3 +312,16 @@ float BrVec3Length(const BrVec3 *pV)
 
     return sqrtf(sum);
 }
+
+/* WHAT IT DOES: returns 1 if the first vector's y is below the second's y
+ * (or either is a NaN), else 0. A two-way "is lower" test, not a three-way
+ * qsort comparator. The original compares the float at +4 of each pointer;
+ * that offset is BrVec3.y.  `test ah,1` is C0, so unordered takes the true
+ * side -- written `!(a >= b)`, never `a < b`. */
+/* @implements 0x10071B60 d3d BrSub10071B60 */
+int BrSub10071B60(const BrVec3 *pA, const BrVec3 *pB)
+{
+    if (!(pA->y >= pB->y))
+        return 1;
+    return 0;
+}

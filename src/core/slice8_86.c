@@ -503,3 +503,28 @@ const BrPhaseFullVtbl BrPhaseVtbl_1008F700 = {
     br86_phase_f1C,                 /* +0x1C  0x10048AA0 */
     NULL                            /* +0x20  0x1005AFA0 -- no body in port/ */
 };
+
+/* ==========================================================================
+ * 10. 0x10075150 -- 30 Hz tick stepper
+ *    Glide 0x1006E3B0
+ * ========================================================================== */
+
+#ifdef BR_MATCHING_BUILD
+static int32_t g_br18AB12C;                    /* 0x118AB12C */
+static int32_t g_br0BBAC8[3] = { 33, 33, 34 }; /* 0x100BBAC8 */
+static int32_t g_br18AB118;                    /* 0x118AB118 */
+static int32_t g_br18AB134;                    /* 0x118AB134 */
+
+/* WHAT IT DOES: walks the game's thirty-tick-a-second clock forward by one
+ * tick. A three-step counter picks 33, 33 or 34 milliseconds in turn from a
+ * small table, that amount is added to the millisecond clock, and the tick
+ * count goes up by one -- three calls add exactly one tenth of a second. */
+/* @implements 0x10075150 d3d BrSub10075150 */
+void BrSub10075150(void)
+{
+    if (++g_br18AB12C > 2)              /* `cmp eax,2 / jle` -- signed */
+        g_br18AB12C = 0;
+    g_br18AB118 += g_br0BBAC8[g_br18AB12C];
+    g_br18AB134++;
+}
+#endif
