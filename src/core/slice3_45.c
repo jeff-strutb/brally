@@ -448,7 +448,7 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
  * more coarsely than it was chosen -- so reading it back does not give the
  * same value. */
 /* @implements 0x10076A00 d3d BrEntRefreshColour */
-void BrEntRefreshColour(BrEnt *pE)
+void __fastcall BrEntRefreshColour(BrEnt *pE)
 {
     BrCarGfxSetColour(pE->pRec, pE->r >> 3, pE->g >> 3, pE->b >> 3);
     BrSub10062C50(pE);
@@ -460,7 +460,11 @@ void BrEntRefreshColour(BrEnt *pE)
  * repaints it in its own colour. The record number is not checked at all, so
  * an out-of-range one silently points at whatever memory follows the table. */
 /* @implements 0x10076A40 d3d BrEntSetRecord */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx)
+#else
 void BrEntSetRecord(BrEnt *pE, int32_t idx)
+#endif
 {
     /* The original's exact shift/add chain, in uint32_t so it wraps the same
      * way: ((((idx*11) << 6) - idx) << 4) + idx, times 8 == idx * 89992. */
