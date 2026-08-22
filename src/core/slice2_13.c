@@ -456,7 +456,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
 #else
 /* WHAT IT DOES: the same player-count query, reading the count
  * byte-wise so the port is not tied to a struct overlay. */
-/* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
+/* port-only variant of BrDPlayGetCurrentPlayers (matching build uses the #ifdef branch above) */
 uint32_t BrDPlayGetCurrentPlayers(void)
 {
     void    *pv = NULL;

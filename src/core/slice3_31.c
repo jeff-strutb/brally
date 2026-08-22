@@ -1161,7 +1161,7 @@ void BrPhaseMode_100474D0(void)
 
 /* WHAT IT DOES: the same as the routine above for a different setting -- raise
  * its flag, play the confirmation sound. */
-/* @implements 0x10047500 d3d BrPhaseMode_10047500 */
+/* @d3donly 0x10047500 BrPhaseMode_10047500 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
 void BrPhaseMode_10047500(void)
 {
     BR31_AA28F8 = 1;
@@ -1171,7 +1171,7 @@ void BrPhaseMode_10047500(void)
 
 /* WHAT IT DOES: the third of the six -- a third setting's flag, the same
  * confirmation sound. */
-/* @implements 0x10047530 d3d BrPhaseMode_10047530 */
+/* @d3donly 0x10047530 BrPhaseMode_10047530 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
 void BrPhaseMode_10047530(void)
 {
     BR31_AA28FC = 1;
@@ -1192,7 +1192,7 @@ void BrPhaseMode_10047560(void)
 
 /* WHAT IT DOES: the fifth of the six -- another setting's flag and the same
  * confirmation sound. */
-/* @implements 0x10047590 d3d BrPhaseMode_10047590 */
+/* @d3donly 0x10047590 BrPhaseMode_10047590 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
 void BrPhaseMode_10047590(void)
 {
     BR31_AA2A40 = 1;
@@ -1202,7 +1202,7 @@ void BrPhaseMode_10047590(void)
 
 /* WHAT IT DOES: the last of the six -- one more setting's flag and the same
  * confirmation sound. */
-/* @implements 0x100475C0 d3d BrPhaseMode_100475C0 */
+/* @d3donly 0x100475C0 BrPhaseMode_100475C0 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
 void BrPhaseMode_100475C0(void)
 {
     BR31_AA28F4 = 1;

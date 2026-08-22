@@ -107,7 +107,6 @@ void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
  * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
  * an x87 emulation of 0x1006DE70 over random and structured inputs. */
-/* @implements 0x10074C10 d3d BrMat3Solve */
 /* @implements 0x1006DE70 glide BrMat3Solve */
 void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 {
@@ -369,7 +368,7 @@ void BrRbQuatDerivative(BrRbState *pS)
 /* WHAT IT DOES: adds one time step's worth of acceleration to a body's speed
  * and spin -- the first half of the physics step, before anything has
  * actually moved. */
-/* @implements 0x100743A0 d3d BrRbIntegrateVelocity */
+/* @d3donly 0x100743A0 BrRbIntegrateVelocity -- glide twin 0x1006D600 claimed by br_carphys.c:BrCpIntegrateVelocity */
 void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
 {
     /* SPILL MAP.  Six products, and exactly ONE of them is rounded:

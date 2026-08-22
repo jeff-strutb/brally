@@ -452,7 +452,7 @@ int BrPhaseActivate_10045460(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: the twin of the routine above -- a different screen, but the
  * same extra step run whether the screen was just built or was already there.
  * Which screen it is was not established here. */
-/* @implements 0x10045520 d3d BrPhaseActivate_10045520 */
+/* @d3donly 0x10045520 BrPhaseActivate_10045520 -- glide twin 0x1003E9B0 COMDAT-folded onto BrPhaseActivate_10045460 */
 int BrPhaseActivate_10045520(BrPhaseCtx *pCtx)
 {
     if (BrPhaseActivateSlot(pCtx, &pCtx->pAA2994, BrExt_1004DB00) ==

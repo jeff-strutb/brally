@@ -260,10 +260,9 @@ typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
  * N64 command set is far larger than the game actually uses, so the great
  * majority of the 256 slots land here. */
 /* @implements 0x10021240 glide br_dl_skip */
-static const uint8_t *br_dl_skip(BrDl *pDl, const uint8_t *p)
+static const uint8_t *br_dl_skip(const uint8_t *p)
 {
-    pDl->cUnhandled++;
-    return p + BR_DLS_SKIP_BYTES;
+    return p + 8;
 }
 
 /* ---- 0x01 G_MTX  (0x10021080, SHARED) ------------------------------- */

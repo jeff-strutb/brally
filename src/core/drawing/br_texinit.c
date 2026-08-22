@@ -170,7 +170,7 @@ void BrTexChooseLevel(void)
 #else
 /* WHAT IT DOES: the same detail-level choice, as a function of the
  * measured texture memory rather than of the original's globals. */
-/* @implements 0x1002A5A0 d3d BrTexChooseLevel */
+/* port-only variant of BrTexChooseLevel (matching build uses the #ifdef branch above) */
 int32_t BrTexChooseLevel(uint32_t texmem)
 {
     if (texmem <= g_brTexLowThreshold)          /* jbe -- UNSIGNED */
@@ -286,7 +286,7 @@ void BrTexInit(void)
 #else
 /* WHAT IT DOES: the same setup, recording which hook went in which slot
  * instead of writing the original's absolute addresses. */
-/* @implements 0x1002A640 d3d BrTexInit */
+/* port-only variant of BrTexInit (matching build uses the #ifdef branch above) */
 void BrTexInit(const BrTexInitHost *pHost)
 {
     uint32_t texmem;

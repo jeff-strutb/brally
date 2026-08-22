@@ -219,7 +219,7 @@ static const int8_t k_brAC634[4] = { 0x63, 0x62, 0, 0 };
  * the current setting. It first copies the toggle's value across from where
  * the option code keeps it, because in this port the reader and the writer
  * of that setting live in two different places. */
-/* @implements 0x100409B0 d3d BrUiHook90_100409B0 */
+/* @d3donly 0x100409B0 BrUiHook90_100409B0 -- glide twin 0x10039EF0 claimed by slice2_24.c:BrMenuCap09B0 */
 int32_t BrUiHook90_100409B0(BrUiCtl_ *pCtl)
 {
 #ifdef BR_MATCHING_BUILD
@@ -234,7 +234,7 @@ int32_t BrUiHook90_100409B0(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: the same for the Specular option row: bridge the toggle's
  * value across, then set the caption to match. */
-/* @implements 0x100409D0 d3d BrUiHook90_100409D0 */
+/* @d3donly 0x100409D0 BrUiHook90_100409D0 -- glide twin 0x10039F10 claimed by slice2_24.c:BrMenuCap09D0 */
 int32_t BrUiHook90_100409D0(BrUiCtl_ *pCtl)
 {
     Br90BridgeToggles();

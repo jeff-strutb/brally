@@ -342,7 +342,7 @@ const int32_t BrTextWidthSmall[BR_TEXT_GLYPHS] = {
  * taking no space -- except that a code like "%rw" swallows one character too
  * many, so text after a colour code measures narrower than it draws. Spaces are
  * short by a pixel each for the same reason. */
-/* @implements 0x100193C0 d3d BrSub_100193C0 */
+/* @d3donly 0x100193C0 BrSub_100193C0 -- glide twin 0x10016980 claimed by br_font.c:BrFontMeasure */
 int BrSub_100193C0(const char *psz, int scale)
 {
     const int32_t *pTable;

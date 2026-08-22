@@ -63,7 +63,6 @@ void BrSwapVec3(void *pv)
  * way round from a PC, so they have to be turned around after loading. Asking
  * for nothing, or for a negative number of them, does nothing. */
 /* @implements 0x10018A50 glide BrSwapU16Array */
-/* @implements 0x1002B9E0 d3d BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {
     unsigned char *p = (unsigned char *)pv;

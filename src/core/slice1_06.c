@@ -83,7 +83,7 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 #else
 /* WHAT IT DOES: queue a piece of work to run later.  If the queue is
  * already full the item is dropped, but the counter still moves on. */
-/* @implements 0x10037030 d3d BrPendListAdd */
+/* port-only variant of BrPendListAdd (matching build uses the #ifdef branch above) */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
     if (pList->count < BR_PENDLIST_MAX) {
@@ -266,7 +266,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 #else
 /* WHAT IT DOES: the same two-step fetch, using calloc instead of a
  * Windows global heap block. */
-/* @implements 0x1003D180 d3d BrComGetAlloc */
+/* port-only variant of BrComGetAlloc (matching build uses the #ifdef branch above) */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
     BrComGetFn pfn = pObj->pVtbl->pfnGet;
@@ -346,7 +346,7 @@ int BrPairBufReset(BrPairBuf *pBuf)
 #else
 /* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
  * each at its own built-in storage first if it has nowhere else to live. */
-/* @implements 0x1003E1D0 d3d BrPairBufReset */
+/* port-only variant of BrPairBufReset (matching build uses the #ifdef branch above) */
 int BrPairBufReset(BrPairBuf *pBuf)
 {
     if (pBuf->pA == NULL) {

@@ -21,7 +21,7 @@
  * command is overwritten with a short "use texture id N, skip the next so-
  * many commands" instruction, so the several commands the N64 needed to load
  * a texture collapse into one on the PC. */
-/* @implements 0x10029410 d3d BrGbiTexScanFlush */
+/* @d3donly 0x10029410 BrGbiTexScanFlush -- glide twin 0x10028B50 claimed by br_tex3d.c:br_tex3d_seam */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanFlush(BrGfxWords *pCmd)
 {
@@ -66,7 +66,7 @@ void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 /* WHAT IT DOES: during the pre-pass that hunts for texture loads, notes
  * where the current run of commands ended, the first time anything ends it.
  * Later ends are ignored so the run keeps its original extent. */
-/* @implements 0x10029E60 d3d BrGbiTexScanMark */
+/* @d3donly 0x10029E60 BrGbiTexScanMark -- glide twin 0x100293D0 claimed by br_tex3d.c:br_tex3d_end */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanMark(BrGfxWords *pCmd)
 {

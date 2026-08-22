@@ -409,7 +409,6 @@ void BrX100751D0(void *pThis)
  * for, and only on machines that needed it -- where the precise timer was
  * available nothing was asked for and nothing is returned. */
 /* @implements 0x1006E4A0 glide br86_timer_end_period */
-/* @implements 0x10075240 d3d br86_timer_end_period */
 #ifdef BR_MATCHING_BUILD
 /* Glide 0x1006E4A0: 18 B -- MOV EAX,[g_br86HasPerf] / TEST / JNZ+8 /
  * PUSH 1 / CALL [IAT:timeEndPeriod] / RET.  No struct-pointer guard.

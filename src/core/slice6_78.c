@@ -374,7 +374,7 @@ void BrGfx2F900(uint32_t *pCmd,
 /* WHAT IT DOES: sets the size text is drawn at from here on. This is a
  * wrapper; the body lives with the rest of the text drawing so the size
  * stays shared with the routine that draws. */
-/* @implements 0x100192F0 d3d BrTextSetSize */
+/* @d3donly 0x100192F0 BrTextSetSize -- glide twin 0x100168B0 claimed by br_font.c */
 void BrTextSetSize(int size)
 {
     g_br4B0348 = size;
