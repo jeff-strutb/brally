@@ -31,7 +31,7 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original DLL. Roughly half of the game's `.text` has been transcribed
-into C, and about a fifth of that now reproduces the original bytes exactly.
+into C, and just over a quarter of that now reproduces the original bytes exactly.
 The matched set is still dominated by small and mid-sized functions; the large
 ones are where the remaining work is. Separately, the macOS/Metal port of
 that same source boots, renders the front end from the game's own artwork,
@@ -41,8 +41,8 @@ race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 220,646 / 460,165 bytes of `.text` · 836 / 2,140 functions | `██████████░░░░░░░░░░` 48% |
-| **Byte-exact under MSVC 5.0** | 172 of 836 transcribed functions · 6,492 bytes | `████░░░░░░░░░░░░░░░░` 21% |
+| Transcribed into C | 222,339 / 460,165 bytes of `.text` · 869 / 2,140 functions | `██████████░░░░░░░░░░` 48% |
+| **Byte-exact under MSVC 5.0** | 244 of 869 transcribed functions · 11,312 bytes | `██████░░░░░░░░░░░░░░░░` 28% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 136 / 136 green | `████████████████████` 100% |
@@ -71,21 +71,30 @@ listed; dropping a `.c` into `src/core/` and its test into `tests/` is enough.
 Needs only clang and the macOS SDK. `./tools/regress.sh` runs every suite.
 
 **`./setup.sh`** stages the matching build, entirely inside the repo — nothing
-is installed onto the host, and deleting `tools/wine/` and `tools/msvc5/` puts
-the machine back exactly as it was. It downloads a pinned, checksummed portable
-Wine build, copies the MSVC 5.0 compiler, headers and libraries out of a Visual
-C++ 5.0 disc image, and extracts the original function bytes from the game DLL.
+is installed onto the host, and deleting `tools/wine/`, `tools/msvc5/` and
+`orig/` puts the machine back exactly as it was. It downloads a pinned,
+checksummed portable Wine build, copies the MSVC 5.0 compiler, headers and
+libraries out of a Visual C++ 5.0 disc image, extracts the game binaries from
+the Boss Rally disc (and the N64 soundtrack from the Top Gear Rally ROM, if
+present), and extracts the original function bytes from the game DLL.
 
-Setup needs the following, all supplied by you and none of them tracked in git:
+Setup needs the following, all supplied by you and none of them tracked in git.
+These are the exact dumps the match counts were produced against — `setup.sh`
+checks the MD5s and warns if a different image is in `reference/`:
 
-    reference/msvc/VCPP-5.00.iso            Visual C++ 5.0 disc image
-    orig/BRD3D.dll, orig/BRGlide.dll        the retail game binaries
-    reference/brally/BossRally.BIN + .cue   retail PC disc  (assets, optional)
-    reference/tgrally/*.z64                 Top Gear Rally ROM (optional)
+    reference/msvc/VCPP-5.00.iso                  Visual C++ 5.0 disc image
+    reference/brally/BossRally.BIN                retail PC disc
+        MD5  31c64f9b1e09788c2dfc384b44af8f6c     616,572,096 bytes (MODE1/2352)
+    reference/brally/BossRally.cue                cue sheet (data + 12 audio tracks)
+        MD5  a48a4a5860558177c3041afee57e03c9     622 bytes
+    reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional)
+        MD5  6f7030284b6bc84a49e07da864526b52     8,388,608 bytes (big-endian, NGRE)
 
-plus Rosetta 2 on Apple Silicon, since the Wine build is x86_64. Assets are
-extracted at build time and never committed or redistributed; without them the
-tree still builds and the suites that need retail data skip with a reason.
+plus Rosetta 2 on Apple Silicon, since the Wine build is x86_64. `setup.sh`
+pulls `BRD3D.dll`, `BRGlide.dll` and the other game binaries out of the BIN
+into `orig/` — do not copy them by hand. Assets are extracted from the same
+images and never committed or redistributed; without them the tree still
+builds and the suites that need retail data skip with a reason.
 
 Then **`sh build_match.sh`** compiles with the original compiler and diffs. Each
 function reports MATCH or DIFF with a hex dump of the first divergence. Matched
