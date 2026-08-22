@@ -2696,3 +2696,5 @@ d3d_va,glide_va,size,class,matched_by,note
 0x1008EEBB,0x10074B3B,10,shared,body-dup:80,
 0x1008EED0,,11,unknown,,
 0x1008EEDB,0x10074B3B,10,shared,body-dup:80,
+0x10002240,0x10002560,7,shared,byte-exact-search,BrSinF fsin wrapper (learned twin, +0x320)
+0x10002250,0x10002570,7,shared,byte-exact-search,BrSqrtF fsqrt wrapper (learned twin, +0x320)
