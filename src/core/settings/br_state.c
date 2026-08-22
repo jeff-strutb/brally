@@ -22,16 +22,13 @@ int BrIsAnyActive(const BrActiveFlags *p)
 /* WHAT IT DOES: adds up a running count plus one for a flag, giving the
  * total including whatever is pending. The count is read before the flag is
  * examined, so a set flag adds exactly one. */
-/* @implements 0x10073F40 d3d BrCountedTotal */
+/* @implements 0x1006D180 glide BrCountedTotal */
+/* CLOSE, NOT MATCHING.  Orig: MOV EAX,[ECX+8] / TEST EAX,EAX / MOV EAX,[ECX+0Ch]
+ * / JZ / INC / RET.  Compiler always puts flag in EDX and count in EAX, issuing
+ * both loads before the TEST.  No source form changes the register assignment;
+ * this is a register allocation wall, not a source order issue. */
 int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj)
 {
-    /* CLOSE, NOT MATCHING.  The thiscall convention above is now right, so
-     * `this` arrives in ecx and the two field offsets are correct.  What is
-     * left is scheduling: the original loads the flag into eax, tests it, then
-     * overwrites eax with the count, whereas MSVC here holds the flag in edx
-     * and issues both loads before the test.  Reading the flag into a named
-     * local first does NOT change it -- this is the register/scheduling class,
-     * not source order. */
     int n = pObj->count;
     if (pObj->flag != 0)
         n++;
