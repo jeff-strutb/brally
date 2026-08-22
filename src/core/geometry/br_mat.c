@@ -86,18 +86,24 @@ void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
  * float, exactly as the original's `fstp dword`. */
 void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 {
-    double vx = pV->x, vy = pV->y, vz = pV->z;
+    float vx = pV->x, vy = pV->y, vz = pV->z;
     const float (*m)[4] = pM->m;
-    double w = (((double)m[1][3] * vy + (double)m[0][3] * vx)
-                 + (double)m[2][3] * vz) + (double)m[3][3];
-    double r = 1.0 / w;                 /* g_0775F0 == 1.0f, taken via fdivr */
+    float w = m[0][3] * vx + m[1][3] * vy + m[2][3] * vz + m[3][3];
+    float r = 1.0f / w;                /* g_0775F0 == 1.0f, taken via fdivr */
 
-    pOut->x = (float)((((double)m[1][0] * vy + (double)m[2][0] * vz)
-                        + (double)m[0][0] * vx) * r);
-    pOut->y = (float)((((double)m[0][1] * vx + (double)m[1][1] * vy)
-                        + (double)m[2][1] * vz) * r);
-    pOut->z = (float)((((double)m[0][2] * vx + (double)m[1][2] * vy)
-                        + (double)m[2][2] * vz) * r);
+    /* NOT MATCHING -- 30 bytes in the 0x28-0x4F scheduling window, and it is
+     * the documented float-cluster wall: the original computes vx*m[0][0] as
+     * `fld st(5); fmul dword [eax]` (x dup'd, matrix from memory) where VC5
+     * here emits `fld dword [eax]; fmul st(5)`.  Same instruction multiset,
+     * same 165 real bytes, opposite operand selection.  Source operand order
+     * is canonicalised away (V2 vs V9 scratch experiment, 2026-08-22):
+     * swapping to vx*m[0][0] restructures the whole function and lands
+     * farther (121 diffs).  This float-typed, flat-sum form is the closest
+     * spelling found: first 0x28 bytes and everything from +0x50 on are
+     * byte-identical (old double-typed form: 99 diffs; this: 30). */
+    pOut->x = (m[1][0] * vy + m[2][0] * vz + m[0][0] * vx) * r;
+    pOut->y = (m[0][1] * vx + m[1][1] * vy + m[2][1] * vz) * r;
+    pOut->z = (m[0][2] * vx + m[1][2] * vy + m[2][2] * vz) * r;
 }
 
 /* Source first -- see the warning in br_mat.h. The original copies 4 rows of
