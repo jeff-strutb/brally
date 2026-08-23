@@ -101,6 +101,14 @@ the caller AND flipped a helper to match for free.
 - **Win32 imports are `__declspec(dllimport)`** — `call [__imp__X]` (FF 15),
   never `call X` (E8). windows.h provides it; hand prototypes must carry it.
   Proven BrDllMain.
+- **The binary is /MD — CRT calls are FF 15 too.** Put
+  `#ifdef BR_MATCHING_BUILD / #define _CRTIMP __declspec(dllimport) / #endif`
+  BEFORE the first include (any header pulling a CRT decl locks _CRTIMP empty
+  — the errno C2370 error means the define came too late). Applied tree-wide
+  2026-08-23: +16 matches at zero losses, including the whole BrFixPack
+  family that had been misfiled as register-allocation walls. When a
+  CRT-calling function sits 1-5 diffs away, check the call form FIRST.
+  memcpy/memset/strlen at /O2 are /Oi intrinsics and unaffected.
 - **`for (;;)` vs `do {} while (1)` at /Od:** `for(;;)` loops back with a
   bare `jmp`; `do{}while(1)` emits `mov eax,1; test eax,eax; jne`. The
   original used `for(;;)` (Ghidra prints `do{}while(true)`). Proven
