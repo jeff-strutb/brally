@@ -442,7 +442,7 @@ __declspec(dllimport) int __stdcall PostMessageA(int hWnd, unsigned int msg, uns
 extern int g_brCdTrackLast;
 int FUN_100027e0();
 int FUN_10002c50();
-int FUN_10002dc0();
+int BrCdEnableApply(char param_1);
 extern int g_brCdEnabled;
 extern int g_brCdMediaOk;
 extern int g_brCdPlaying;
@@ -489,7 +489,7 @@ int BrCdVolumeSet(int param_1)
 
 {
   if (g_brCdEnabled == 1) {
-    FUN_10002dc0(param_1);
+    BrCdEnableApply(param_1);
     return;
   }
   BrCdVolumeScale(param_1);
@@ -594,6 +594,29 @@ int BrCdStartup(int param_1)
   DAT_1021c778 = 0;
   uVar1 = FUN_10002580();
   return uVar1;
+}
+
+/* WHAT IT DOES: apply a new CD-music enable byte: turning it on while a track is pending
+ * resumes playback; turning it off (or already-on) with a pending track pauses MCI.
+ * Always records the byte at 0x1021C80C and returns 1. */
+/* @implements 0x10002DC0 glide BrCdEnableApply */
+
+int BrCdEnableApply(char param_1)
+
+{
+  if ((param_1 == '\0') || (DAT_1021c80c != '\0')) {
+    if ((param_1 == '\0') && ((DAT_1021c80c != '\0' && (g_220CD8 != 0)))) {
+      BrCdMciPause();
+    }
+  }
+  else if (g_220CD8 != 0) {
+    DAT_1021c80c = param_1;
+    BrCdTrackResume();
+    DAT_1021c80c = param_1;
+    return 1;
+  }
+  DAT_1021c80c = param_1;
+  return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */
