@@ -1217,4 +1217,72 @@ void BrTex3dCreateBlank(int param_1,int param_2,int param_3,int param_4)
   return;
 }
 
+/* WHAT IT DOES: build a one-tile texture descriptor on the stack (same BrTexReq272
+ * record) for texels+palette at (param_2, param_3) sized (param_4, param_5), zero the
+ * eight dedup state bytes, and run the expander (0x100250D0) straight into `param_1`.
+ * Returns the output byte count. Installed in hook slot 0x118ED1C0. The eight state
+ * bytes are CHAR parameters -- VC5 pushes each as an unaligned dword window over the
+ * record, which is what Ghidra renders as overlapping CONCATs. */
+/* @implements 0x10024E60 glide BrTex3dExpandInto */
+
+void FUN_100250d0(int,int,int,int,int,int,int,int,int,int,int*,int,int,
+                  char,char,char,char,char,char,char,char,int);
+
+int BrTex3dExpandInto(int param_1,int param_2,int param_3,int param_4,
+                int param_5,int param_6,int param_7,int param_8)
+{
+  int uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  BrTexReq272 r;
+  
+  iVar4 = 1 << FUN_10027290(param_4);
+  iVar5 = 1 << FUN_10027290(param_5);
+  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  r.h = param_5;
+  r.hPow = param_5;
+  r.lod = 3;
+  r.w = param_4;
+  r.wPow = param_4;
+  r.f14 = 0;
+  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  r.aspect1 = r.aspect0;
+  r.iLevel = 0;
+  r.lv[0][3] = 0;
+  uVar2 = FUN_10027290(param_4);
+  r.lv[r.iLevel][8] = uVar2;
+  uVar2 = FUN_10027290(param_5);
+  _DAT_106b7aa8 = 0;
+  _DAT_106b7aa4 = 0;
+  r.lv[r.iLevel][9] = uVar2;
+  r.lv[r.iLevel][2] = param_6;
+  r.lv[r.iLevel][1] = param_7;
+  r.lv[r.iLevel][0] = param_8;
+  r.f5c = 1;
+  r.f298 = 0;
+  r.f264 = 0;
+  r.f268 = 0;
+  r.b297 = 0;
+  r.b296 = 0;
+  r.b295 = 0;
+  r.b294 = 0;
+  r.b293 = 0;
+  r.b292 = 0;
+  r.b291 = 0;
+  r.b290 = 0;
+  r.fmt = FUN_10027220(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
+  r.cbTotal = FUN_10024df0(r.fmt) * iVar5 * iVar4;
+  r.p1 = param_2;
+  r.p2 = param_3;
+  r.f260 = DAT_118ed1a0;
+  r.p8 = 0;
+  r.p9 = 0;
+  FUN_100250d0(param_1,r.cbTotal,r.lv[r.iLevel][1],param_2,param_3,
+               r.lv[r.iLevel][0],0,0,r.iLevel,r.f5c,&r.lv[0][0],DAT_118ed1a0,
+               r.f264,r.b290,r.b291,r.b292,r.b293,r.b294,r.b295,r.b296,r.b297,
+               r.f298);
+  return r.cbTotal;
+}
+
 #endif /* BR_MATCHING_BUILD */
