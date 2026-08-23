@@ -12,6 +12,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice4_52.h"
+#include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include "slice3_33.h"   /* BrUiScreen / BrUiCtl / BrUiPhase, BrOperatorNew,
                           * BrUiCtlCtor, BrErrShow  (pulls slice1_06.h)      */
@@ -235,11 +236,25 @@ void BrSub1005F530(void)
  * machines in a multiplayer game, carrying a value taken from a global. What
  * the message means to the receiver is not established here. */
 /* @implements 0x1003D9F0 d3d BrSub1003D9F0 */
-void BrSub1003D9F0(struct BrOptUi *pUi)
+int32_t BrSub1003D9F0(struct BrOptUi *pUi)
 {
-    /* DEVIATION: slice2_25.h's BrOptUi and slice2_22.h's BrDPlayLink are two
-     * models of the same object and disagree on a 64-bit host.  See header. */
-    (void)BrDPlaySendTag3((const BrDPlayLink *)(const void *)pUi, g_brAA288C);
+    /* The original inlines the whole send (tag 0x60000003, no payload store:
+     * the second packet dword is sent UNINITIALISED -- original defect,
+     * reproduced by not writing it).  Early-outs share one `return 0`.
+     * Shape identical to BrSub1003D950 (slice4_50.c), which see. */
+    void *const *aSlot = (void *const *)pUi;
+    void        *pObj;
+    int32_t      aPacket[2];
+
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+        return 0;
+    }
+    aPacket[0] = (int32_t)0x60000003u;
+    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
 }
 
 /* ==========================================================================
