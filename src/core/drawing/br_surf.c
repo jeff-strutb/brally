@@ -15,6 +15,10 @@
  * key packer) hit in Glide only.  So there is nothing to cross-check against
  * for these, and config/shared.csv reports them unpaired for the same reason.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_surf.h"
 
 #include <stdlib.h>
@@ -32,6 +36,7 @@
  * on that path, so nothing observes it, but the order is preserved because
  * there is no reason to depart from it.
  * ---------------------------------------------------------------------- */
+/* @implements 0x10001130 glide BrSurfNew */
 BrSurf *BrSurfNew(int32_t cx, int32_t cy)
 {
     BrSurf *pSurf = (BrSurf *)malloc(sizeof *pSurf);
@@ -54,6 +59,7 @@ BrSurf *BrSurfNew(int32_t cx, int32_t cy)
 /* ----------------------------------------------------------------------
  * 0x10001190 -- free it
  * ---------------------------------------------------------------------- */
+/* @implements 0x10001190 glide BrSurfFree */
 void BrSurfFree(BrSurf *pSurf)
 {
     if (!pSurf) return;
