@@ -486,12 +486,22 @@ const uint8_t *BrDlCmdFillColour(BrDlCmd *pS, const uint8_t *p)
  * is passed straight to the graphics card and this build keeps no copy of it
  * of its own. */
 /* @implements 0x1001EA60 glide BrDlCmdFogColour */
+#ifdef BR_MATCHING_BUILD
+/* Literal: one stdcall into the driver with the raw dword at p+4. */
+void __stdcall grFogColorValue(int);
+const uint8_t *BrDlCmdFogColour(const uint8_t *p, BrDlCmd *pS)
+{
+    grFogColorValue(*(const int *)(const void *)(p + 4));
+    return p + 8;
+}
+#else
 const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
 {
     if (pS->sink.pfnFogColor)
         pS->sink.pfnFogColor(pS->sink.pUser, br_dlcmd_w(p + 4));
     return p + 8;
 }
+#endif
 
 /* ====================================================================
  * 0x1001EA80 -- G_SETPRIMCOLOR, opcode 0xFA.  138 bytes, Glide-only.
