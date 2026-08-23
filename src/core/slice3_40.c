@@ -676,6 +676,10 @@ void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern unsigned char DAT_100ad770;
+extern unsigned char DAT_100ad798;
+extern unsigned char DAT_100bb2e0;
+extern unsigned char DAT_100bb2e8;
 int FUN_1006e590();
 
 /* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
@@ -685,6 +689,60 @@ int BrThunk5C440(void)
 
 {
   FUN_1006e590();
+  return;
+}
+
+/* WHAT IT DOES: step selection index A up (clamped at 9) and latch its byte from the
+ * 4-stride table at 0x100AD770 into 0x100BB2E0. */
+/* @implements 0x10059DC0 glide BrUiSelAInc */
+
+void BrUiSelAInc(void)
+
+{
+  if (g_brB4E70C < 9) {
+    g_brB4E70C = g_brB4E70C + 1;
+  }
+  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
+  return;
+}
+
+/* WHAT IT DOES: step selection index A down (clamped at 0) and latch its byte. */
+/* @implements 0x10059DE0 glide BrUiSelADec */
+
+void BrUiSelADec(void)
+
+{
+  if (0 < g_brB4E70C) {
+    g_brB4E70C = g_brB4E70C + -1;
+  }
+  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
+  return;
+}
+
+/* WHAT IT DOES: step selection index B up (clamped at 9) and latch its byte from the
+ * 4-stride table at 0x100AD798 into 0x100BB2E8. */
+/* @implements 0x10059E30 glide BrUiSelBInc */
+
+void BrUiSelBInc(void)
+
+{
+  if (g_brB4E708 < 9) {
+    g_brB4E708 = g_brB4E708 + 1;
+  }
+  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  return;
+}
+
+/* WHAT IT DOES: step selection index B down (clamped at 0) and latch its byte. */
+/* @implements 0x10059E50 glide BrUiSelBDec */
+
+void BrUiSelBDec(void)
+
+{
+  if (0 < g_brB4E708) {
+    g_brB4E708 = g_brB4E708 + -1;
+  }
+  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
   return;
 }
 
