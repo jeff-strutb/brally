@@ -358,7 +358,8 @@ void BrSub1003C150(void);
 int BrSub1003C260(void);
 
 /* 0x1003D950 -- declared by slice2_25.h as
- * `void BrSub1003D950(BrOptUi *pUi, int a)`.
+ * `int32_t BrSub1003D950(BrOptUi *pUi, int a)` (early-outs return 0; the
+ * send path returns the HRESULT).
  *
  * Sends an 8-byte packet {0x60000002, a} through slice1_03.h's
  * BrComCallLocked68 (IDirectPlay4A::Send, vtable +0x68), from player 0 to
@@ -374,7 +375,7 @@ int BrSub1003C260(void);
  * POINTERS. Reading them as int32_t truncates on a 64-bit host, so this
  * implementation takes them through a pointer-sized view of the same object.
  * BrOptUi's field types want fixing in slice2_25.h. */
-void BrSub1003D950(BrOptUi *pUi, int a);
+int32_t BrSub1003D950(BrOptUi *pUi, int a);
 
 /* ==========================================================================
  * 8. Millisecond clock  (0x10075020)

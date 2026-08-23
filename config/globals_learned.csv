@@ -15,6 +15,7 @@ BrExt_10008B80,0x10008D60,2,1,"named global, no address recorded",0x1006A550 0x1
 BrOnActivateTail,0x10008D60,1,0,"named global, no address recorded",0x10070370
 BrRaceNullStep,0x10008D60,1,0,"named global, no address recorded",0x10062850
 FUN_10008d60,0x10008D60,4,1,"named global, no address recorded",0x1002B997
+BrComCallLocked68,0x10009A00,1,0,"named global, no address recorded",0x10036FF0
 BrSub_10019270,0x10016830,1,0,"named global, no address recorded",0x10014C00
 BrTextAlignCentre,0x10016830,1,0,"named global, no address recorded",0x10011EA0
 BrSub_100192F0,0x100168B0,1,0,"named global, no address recorded",0x10014C00
@@ -460,7 +461,7 @@ g_brAA287C,0x10AC5BD4,7,1,"named global, no address recorded",0x10036650 0x1003D
 g_iAA2880,0x10AC5BD8,1,0,"named global, no address recorded",0x100381B0
 g_brAA2884,0x10AC5BDC,3,1,"named global, no address recorded",0x1003D6F0
 g_brAA2888,0x10AC5BE0,2,1,"named global, no address recorded",0x1003D6F0
-g_brAA288C,0x10AC5BE4,1,0,"named global, no address recorded",0x10051550
+g_brAA288C,0x10AC5BE4,2,1,"named global, no address recorded",0x10036FF0 0x10051550
 DAT_10ac5bf8,0x10AC5BF8,1,0,"named global, no address recorded",0x10039F30
 g_brAA28A4,0x10AC5BFC,2,1,"named global, no address recorded",0x10039F30 0x10040790
 DAT_10ac5c10,0x10AC5C10,1,0,"named global, no address recorded",0x10039F30

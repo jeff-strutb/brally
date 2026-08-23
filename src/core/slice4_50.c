@@ -392,7 +392,7 @@ int BrSub1003C260(void)
  * established. Whether it sends at all is gated on a global, so the same call
  * can silently do nothing. */
 /* @implements 0x1003D950 d3d BrSub1003D950 */
-void BrSub1003D950(BrOptUi *pUi, int a)
+int32_t BrSub1003D950(BrOptUi *pUi, int a)
 {
     /* CONFLICT: slice2_25.h models BrOptUi as three int32_t, but +0x00 is
      * dereferenced as an object pointer and +0x08 is passed on as a pointer.
@@ -403,15 +403,8 @@ void BrSub1003D950(BrOptUi *pUi, int a)
     void        *pArg;
     int32_t      aPacket[2];
 
-    if (pUi == NULL) {
-        return;
-    }
-    pObj = aSlot[0];
-    if (pObj == NULL) {
-        return;
-    }
-    if (g_brAA288C != 0) {
-        return;
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+        return 0;
     }
     pArg = aSlot[2];
 
@@ -421,11 +414,11 @@ void BrSub1003D950(BrOptUi *pUi, int a)
     /* (pObj, pArg, 0, 1, &packet, 8) -- IDirectPlay4A::Send through
      * slice1_03.h's critical-section wrapper. The original discards the
      * HRESULT. */
-    (void)BrComCallLocked68((BrComObj *)pObj, pArg,
-                            (void *)(uintptr_t)0u,
-                            (void *)(uintptr_t)1u,
-                            aPacket,
-                            (void *)(uintptr_t)8u);
+    return BrComCallLocked68((BrComObj *)pObj, pArg,
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
 }
 
 /* ==========================================================================

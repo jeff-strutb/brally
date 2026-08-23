@@ -477,7 +477,7 @@ extern const char *BrStrGet(int id);
 /* XSLICE 0x1003D0B0 -- fills *ppDesc with a Global-allocated session desc. */
 extern void BrSub1003D0B0(BrDPlay *pDPlay, BrDPSessionDesc **ppDesc);
 /* XSLICE 0x1003D210 */ extern void BrSub1003D210(void *a, BrOptUi *b, int c);
-/* XSLICE 0x1003D950 */ extern void BrSub1003D950(BrOptUi *pUi, int a);
+/* XSLICE 0x1003D950 */ extern int32_t BrSub1003D950(BrOptUi *pUi, int a);
 /* XSLICE 0x1003D9F0 */ extern void BrSub1003D9F0(BrOptUi *pUi);
 /* XSLICE 0x1003DA40 */ extern void BrSub1003DA40(BrOptUi *pUi, int a);
 /* XSLICE 0x1003E310 */ extern void BrSub1003E310(void);
