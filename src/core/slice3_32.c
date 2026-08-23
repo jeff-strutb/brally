@@ -792,6 +792,21 @@ BrUiPage *BrUiPageCtor_10048470(BrUiPage *pThis)
  * for that. It hands the page's address back afterwards even when it has just
  * been freed -- that is what a C++ deleting destructor compiles to. */
 /* @implements 0x100484C0 d3d BrUiPageDelete_100484C0 */
+#ifdef BR_MATCHING_BUILD
+/* C++ scalar deleting destructor: thiscall via __fastcall with unused EDX
+ * (BR_THISCALL1 idiom, as BrVt55A10DeleteDtor); byte-typed flags give the
+ * `test byte [esp+8],1`; the dtor body is thiscall too (ECX copy-prop). */
+void __fastcall FUN_10041930(void *pThis);
+void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
+                                         unsigned char nFlags)
+{
+    FUN_10041930(pThis);
+    if ((nFlags & 1) != 0) {
+        BrOperatorDelete(pThis);
+    }
+    return pThis;
+}
+#else
 void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags)
 {
     BrSub100484E0(pThis);
@@ -801,6 +816,7 @@ void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags)
      * it. Preserved; callers in this range discard it. */
     return pThis;
 }
+#endif
 
 /* WHAT IT DOES: keeps the highlighted row on a page in range, wrapping round:
  * moving past the last row lands on the first and moving above the first lands
@@ -932,6 +948,18 @@ int BrUiPageFrame_10048530(BrScrGlobals *pG, BrUiPage *pThis)
 /* WHAT IT DOES: tears a menu screen down and frees it if asked, returning its
  * address either way -- the standard C++ deleting destructor shape. */
 /* @implements 0x10048850 d3d BrPhaseDelete_10048850 */
+#ifdef BR_MATCHING_BUILD
+void __fastcall FUN_10041cc0(void *pThis);
+void *__fastcall BrPhaseDelete_10048850(BrPhaseFull *pThis, int _edx_unused,
+                                        unsigned char nFlags)
+{
+    FUN_10041cc0(pThis);
+    if ((nFlags & 1) != 0) {
+        BrOperatorDelete(pThis);
+    }
+    return pThis;
+}
+#else
 void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags)
 {
     BrPhaseDtor_10048870(pThis);
@@ -939,6 +967,7 @@ void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags)
         BrOperatorDelete(pThis);
     return pThis;
 }
+#endif
 
 /* WHAT IT DOES: tidies a menu screen up by letting go of the two list objects
  * it owns -- the file list and the graphics list a screen may have been given

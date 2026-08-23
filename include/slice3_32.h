@@ -736,7 +736,13 @@ BrUiPage *BrUiPageCtor_10048470(BrUiPage *pThis);
 
 /* 0x100484C0  __stdcall(nFlags) scalar deleting destructor; returns `this`
  * even after freeing it, exactly as MSVC emits. */
+#ifdef BR_MATCHING_BUILD
+/* thiscall in the original (scalar deleting dtor): __fastcall + unused EDX. */
+void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
+                                         unsigned char nFlags);
+#else
 void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags);
+#endif
 
 /* 0x100484F0  __thiscall. Re-clamps the global selection cursor against this
  * page's +0x344 and copies the result to +0x346. Returns 1.
@@ -754,7 +760,12 @@ int BrUiPageFrame_10048530(BrScrGlobals *pG, BrUiPage *pThis);
 /* --- BrPhaseFull --------------------------------------------------------- */
 
 /* 0x10048850  __stdcall(nFlags) scalar deleting destructor. */
+#ifdef BR_MATCHING_BUILD
+void *__fastcall BrPhaseDelete_10048850(BrPhaseFull *pThis, int _edx_unused,
+                                        unsigned char nFlags);
+#else
 void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags);
+#endif
 
 /* 0x10048870  __thiscall destructor body: re-seats the vtable, then releases
  * +0xC0 and +0xC4 through their own slot 0 with the argument 1.
