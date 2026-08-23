@@ -831,6 +831,7 @@ uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int operator_delete();
 typedef int (*funcptr)();
 #include <windows.h>
 extern int DAT_10ac5a48;
@@ -895,6 +896,20 @@ int __fastcall BrVtInit55A30(int *param_1)
 {
   *param_1 = &PTR_FUN_10077750;
   return;
+}
+
+/* WHAT IT DOES: C++ scalar deleting destructor for the 0x10077750-vtable object: run the
+ * destructor body, then operator delete if bit 0 of the flags is set. thiscall, spelled
+ * as __fastcall with an unused EDX slot (BR_THISCALL1 idiom). */
+/* @implements 0x10055A10 glide BrVt55A10DeleteDtor */
+
+void * __fastcall BrVt55A10DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+{
+  BrVtInit55A30((int *)param_1);
+  if ((param_2 & 1) != 0) {
+    operator_delete(param_1);
+  }
+  return param_1;
 }
 
 #endif /* BR_MATCHING_BUILD */
