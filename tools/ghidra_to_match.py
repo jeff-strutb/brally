@@ -460,6 +460,10 @@ typedef int (*funcptr)();
     for dat in sorted(unresolved_dat):
         if dat in called_dats:
             header += "extern funcptr %s;\n" % dat
+        elif re.search(r'&\s*%s\b\s*\+' % re.escape(dat), func_c):
+            # used as a byte-arithmetic base (&DAT + ofs): Ghidra emits
+            # byte-scaled address expressions for these — must be char.
+            header += "extern char %s;\n" % dat
         elif _is_pointer_typed(dat, func_c):
             header += "extern int *%s;\n" % dat
         elif dat.startswith('_DAT_'):
