@@ -126,6 +126,8 @@ FUN_1006c8b0,0x1006C8B0,1,0,"named global, no address recorded",0x1006E030
 BrExt_10073B40,0x1006CD80,1,0,"named global, no address recorded",0x1006A550
 FUN_1006e1d0,0x1006E1D0,5,1,"named global, no address recorded",0x1005F220
 BrExt_10075020,0x1006E280,1,0,"named global, no address recorded",0x1006A310
+FUN_1006e360,0x1006E360,1,0,"named global, no address recorded",0x10019A40
+@FUN_1006e3f0@4,0x1006E3F0,1,0,"named global, no address recorded",0x10019A40
 @BrX100751D0@4,0x1006E430,1,0,"named global, no address recorded",0x10019810
 BrSfxSrcStart,0x1006E4C0,2,1,"named global, no address recorded",0x1006E530 0x1006E560
 FUN_1006e590,0x1006E590,3,1,"named global, no address recorded",0x10011D10 0x1005C440 0x1006E580
@@ -201,6 +203,7 @@ g_br094294,0x1007B264,4,1,"named global, no address recorded",0x10004D30 0x10006
 g_0A6498,0x100A5C58,1,0,"named global, no address recorded",0x1006C910
 g_0A649C,0x100A5C5C,1,0,"named global, no address recorded",0x1006C950
 g_0A64A0,0x100A5C60,1,0,"named global, no address recorded",0x1006C950
+g_brRaceBeginLimitOn,0x100A5EA8,1,0,"named global, no address recorded",0x10019A40
 g_BrFpsValueA,0x100A64B0,1,0,"named global, no address recorded",0x10011EA0
 g_BrFpsValueB,0x100A64B4,2,1,"named global, no address recorded",0x10011EA0
 ??_C@_09MCI@?$CF6?42f?5FPS?$AA@,0x100A6B54,1,0,"named global, no address recorded",0x10011EA0
@@ -357,8 +360,10 @@ g_brActivateGate1,0x105BC740,1,0,"named global, no address recorded",0x10070370
 g_brActivateGate2,0x105BC744,1,0,"named global, no address recorded",0x10070370
 g_brActivateGate3,0x105BC748,1,0,"named global, no address recorded",0x10070370
 g_brRaceBeginStage,0x105BC760,1,0,"named global, no address recorded",0x10019900
+DAT_105bc858,0x105BC858,1,0,"named global, no address recorded",0x10019A40
 g_br6806B0,0x105BC858,2,1,"named global, no address recorded",0x10019810 0x10019830
 g_BrFpsSamplesA,0x105BC900,1,0,"named global, no address recorded",0x10011EA0
+g_brRaceClockCount,0x105BCAE4,1,0,"named global, no address recorded",0x10019A40
 g_brAppFrame,0x105CCBB8,1,0,"named global, no address recorded",0x1001CDB0
 g_690A14,0x105CCBBC,1,0,"named global, no address recorded",0x1001CD50
 g_brAppState,0x105CCBBC,3,1,"named global, no address recorded",0x1001CD70 0x1001CDA0 0x1001CF80
