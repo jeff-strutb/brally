@@ -251,6 +251,29 @@ the caller AND flipped a helper to match for free.
   (`add ptr,0x40`, `[ptr-4]`) by itself; an explicit `int *p` walk risks a
   different anchor field and operand order.
 
+- **`memset(p, 0, 12)` is the xor+reg-store triple.** Three consecutive
+  zero stores through one register (`xor edx,edx; mov [ecx],edx;
+  mov [ecx+4],edx; mov [ecx+8],edx`) are the /Oi small-memset expansion,
+  NOT three `= 0` statements (those emit imm stores, and a hand-written
+  zero variable constant-folds away). Proven BrS17BankFlip.
+- **Trailing void cdecl call = tail jmp.** A void function whose last
+  statement calls a void cdecl function compiles the call as a plain
+  `jmp` under /O2. Proven BrRaceClockReset.
+- **Wrapper/body splits hide free matches.** When the port factored a
+  helper out of an address (wrapper carries the tag, body sits untagged
+  in another module), the original inlined everything: either move the
+  tag to the body (BrS17BankFlip, BrRenderCountersReset) or give the
+  wrapper a BR_MATCHING_BUILD twin with the body inlined and globals as
+  direct DAT_ externs (the six-member DirectPlay send family, BrHookTakeA/B,
+  BrDlCmdFogColour, BrScratchRingDrain). Port-safety indirections (ops
+  tables, sink callbacks, factored range-checks) are the same class.
+- **The epilogue-signature audit finds these mechanically.** Compare frame
+  size, ret/pop-cluster count, callee-saved push count and first-push
+  offset between orig bytes and the recomp (tools/sigaudit.py): epilogue
+  or push-count mismatches on small-diff rows are structural (idiom-fixable),
+  not register residue. Skip functions whose orig starts `push -1` (C++ EH).
+  One session of working the flagged list produced 18 new matches.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
