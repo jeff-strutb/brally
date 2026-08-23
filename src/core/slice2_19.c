@@ -1655,4 +1655,40 @@ void BrPadFrameBegin(void)
   return;
 }
 
+/* WHAT IT DOES: emit the 21-command border/frame display list for the rect at
+ * (param_1, param_2) sized (param_3, param_4): two passes of E1 edge-fill commands under
+ * different othermode/fill settings, each coordinate packed x<<12|y into op and arg.
+ * The 0xF7 fill-color's 0x10001 is a SHORT local set to 1 and doubled up as
+ * `v | v << 16` -- Ghidra folded it, the /Od bytes still compute it (movsx x2). */
+/* @implements 0x1002C50E glide BrDlBorderEmit */
+
+void BrDlBorderEmit(unsigned int param_1,unsigned int param_2,int param_3,int param_4)
+
+{
+  short v;
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb900031d; p_[1] = 0xf0a4000; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001402; p_[1] = 0x300000; }
+  v = 1;
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf7000000; p_[1] = v | v << 16; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 1 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 - 2 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 + param_4 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 + param_4 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 - 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 - 2 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 + param_3 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb900031d; p_[1] = 0x55004240; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001402; p_[1] = 0; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | (param_2 - 1) + param_4 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = ((param_1 - 1) + param_3 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 2 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 + 2 + param_4 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 - 2 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 + 2 + param_3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
