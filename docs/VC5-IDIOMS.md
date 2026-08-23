@@ -63,6 +63,28 @@ the caller AND flipped a helper to match for free.
   compile byte-identical — same wall class as float scheduling, but rarer
   and smaller. Land the structural match and move on.
 
+- **Dead load:** `(void)*(volatile int32_t *)&p->field;` emits exactly one
+  `mov` with no store. A plain local init is elided; a volatile LOCAL spills.
+- **Zero-register (ebx) trigger:** VC5 dedicates a callee-saved register to
+  the constant 0 when zero feeds many small STORES through branchy code.
+  Ternaries (`c ? 0x80 : 0`) that compile to setcc/materialized ints can
+  suppress it — spelling the same logic as branchy if/else stores flipped
+  BrPadTranslate from 625 diffs to 220.
+- **Switch operands are compared SIGNED** (`jg` not `ja`) — switch on
+  int32_t, not uint32_t.
+- **BR_THISCALL1 (`__fastcall`, one arg) reproduces thiscall exactly** —
+  confirmed live on BrPadTranslate.
+- **Switch vs else-if:** a 15-case sparse switch lowers to a binary compare
+  tree; the equivalent else-if chain lowers to a LINEAR ladder (worse). But
+  the tree's node form can still differ (compacted `cmp;jg;je` vs the
+  original's `cmp;jg;cmp;je`) — an unresolved lowering-shape wall, first
+  seen on BrInputIsDown.
+- **The residue ceiling on big int functions:** four of five 490–700 B
+  functions landed at 4–24 divergent bytes, every one an allocator choice
+  (byte-reg pick, esi/edi role, imm-vs-pooled constant). Getting to that
+  ceiling took 3–10 min each; crossing it needs a type/shape insight (as
+  byte-width returns were for BrCarStatePack) or does not happen.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
