@@ -506,6 +506,15 @@ void BrSub10073B00(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int FUN_1006a650();
+int FUN_1006a7e0();
+int FUN_1006aaf0();
+int FUN_1006ab80();
+int FUN_1006b0e0();
+extern unsigned int DAT_11849ea8;
+extern unsigned int DAT_1184c070;
+extern int g_brP277B40;
+int BrDelta_100713A0();
 #include <windows.h>
 extern int DAT_11849e60;
 extern int DAT_1184c078;
@@ -572,6 +581,44 @@ int BrSndBufSetVolume(int param_1,int param_2)
     return 0;
   }
   return 1;
+}
+
+/* WHAT IT DOES: a 1 Hz service loop that never returns: read the elapsed-ms counter; if the
+ * next second has not arrived, Sleep until it does, otherwise run the five once-a-second
+ * steps and advance the deadline by 1000 ms. Both globals are unsigned (jb). */
+/* @implements 0x1006A5F0 glide BrSecondTickLoop */
+
+void BrSecondTickLoop(void)
+
+{
+  do {
+    while( 1 ) {
+      DAT_1184c070 = BrDelta_100713A0();
+      if (DAT_1184c070 < DAT_11849ea8) break;
+      FUN_1006a650();
+      FUN_1006a7e0();
+      FUN_1006aaf0();
+      FUN_1006ab80();
+      FUN_1006b0e0(&g_brP277B40);
+      DAT_11849ea8 = DAT_11849ea8 + 1000;
+    }
+    Sleep(DAT_11849ea8 - DAT_1184c070);
+  } while( 1 );
+}
+
+/* WHAT IT DOES: append node `param_2` to the singly linked list (next pointer at +0x1A8)
+ * headed at `param_1`, clearing the new node's next and its +0x1C word. Returns 0. */
+/* @implements 0x1006B3C0 glide BrSndListAppend */
+
+int BrSndListAppend(int param_1,int param_2)
+{
+  *(int *)(param_2 + 0x1a8) = 0;
+  *(int *)(param_2 + 0x1c) = 0;
+  while (*(int *)(param_1 + 0x1a8) != 0) {
+    param_1 = *(int *)(param_1 + 0x1a8);
+  }
+  *(int *)(param_1 + 0x1a8) = param_2;
+  return 0;
 }
 
 #endif /* BR_MATCHING_BUILD */
