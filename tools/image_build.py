@@ -21,7 +21,7 @@ A clean run means: everything we claim to have reproduced, assembled at the
 addresses we claim, reproduces the original image exactly.
 
 Usage:
-    python3 tools/image_build.py [--out build/BRD3D_rebuilt.dll]
+    python3 tools/image_build.py [--out build/BRGlide_rebuilt.dll]
 """
 import os
 import struct
@@ -34,7 +34,8 @@ from reloc_fill import parse, load_maps, resolve               # noqa: E402
 from reloc_learn import live_objs                              # noqa: E402
 from pe_patch import read_pe_text_info                         # noqa: E402
 
-ORIG_DLL = os.path.join(ROOT, 'orig', 'BRD3D.dll')
+ORIG_DLL = os.environ.get('BR_REF',
+             os.path.join(ROOT, 'orig', 'BRGlide.dll'))
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 
 
