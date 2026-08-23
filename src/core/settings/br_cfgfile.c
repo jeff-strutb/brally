@@ -4,6 +4,10 @@
  * RESPONSIBILITY: settings.  One function of the original lives here, Glide
  * 0x10063060 / D3D 0x10069FF0, plus the byte layout it demands.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_cfgfile.h"
 
 #include <stdio.h>

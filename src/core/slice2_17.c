@@ -32,6 +32,10 @@
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
 #endif
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice2_17.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains

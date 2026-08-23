@@ -8,6 +8,10 @@
  * are done on the SIGN-EXTENDED byte.  Both are reproduced literally.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 
 #include "slice1_07.h"   /* BrDevSlot -- see the note in slice3_39.h */

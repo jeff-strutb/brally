@@ -18,6 +18,10 @@
  * used as a flag -- set to 1 at 0x10043B10, tested at 0x10043925 -- not as a
  * count, which is further evidence they are unrelated.)
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice2_25.h"
 
 #include <stdlib.h>

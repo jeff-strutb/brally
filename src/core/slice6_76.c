@@ -506,6 +506,7 @@ void BrSub10073B00(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_11849e64;
 int FUN_1006a650();
 int FUN_1006a7e0();
 int FUN_1006aaf0();
@@ -619,6 +620,21 @@ int BrSndListAppend(int param_1,int param_2)
   }
   *(int *)(param_1 + 0x1a8) = param_2;
   return 0;
+}
+
+/* WHAT IT DOES: start the once-a-second service: create its wake event and spawn
+ * BrSecondTickLoop on its own thread, arming the first 1000 ms deadline. */
+/* @implements 0x1006A5A0 glide BrSecondTickStart */
+
+void BrSecondTickStart(void)
+
+{
+  DAT_11849e60 = (int)CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
+  DAT_1184c07c = (int)CreateThread((LPSECURITY_ATTRIBUTES)0x0,0,(LPTHREAD_START_ROUTINE)BrSecondTickLoop,
+                              (LPVOID)0x0,0,(LPDWORD)&DAT_11849e64);
+  DAT_11849ea8 = 1000;
+  DAT_1184c078 = 1;
+  return;
 }
 
 #endif /* BR_MATCHING_BUILD */

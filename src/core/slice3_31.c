@@ -1212,6 +1212,8 @@ void BrPhaseMode_100475C0(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int FUN_10040040();
+extern int g_AA29F4;
 extern int DAT_10ac5c4c;
 extern int DAT_10ac5c50;
 extern int DAT_10ac5c54;
@@ -1264,6 +1266,18 @@ int BrMenuOpt409F0(void)
   BrSub10072AF0(2,0x200020);
   g_brAA2854 = 2;
   return;
+}
+
+/* WHAT IT DOES: activate the 0x10045BC0 phase, then install code pointer 0x10040040 into
+ * slot +8 of the object at [g_AA29F4]. Returns 1. */
+/* @implements 0x1003ED70 glide BrPhaseActivate_1003ED70 */
+
+int BrPhaseActivate_1003ED70(int param_1)
+
+{
+  BrPhaseActivate_10045BC0(param_1);
+  *(char **)(g_AA29F4 + 8) = (char *)FUN_10040040;
+  return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */

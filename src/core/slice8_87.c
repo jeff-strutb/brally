@@ -27,6 +27,10 @@
  *    a 0x74-byte stack buffer in the original (esp+0x10 inside a 0x84-byte
  *    frame) that a longer string smashes; it is BR87_TEXT_MAX here.
  * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice8_87.h"
 
 #include <string.h>

@@ -18,6 +18,10 @@
  * gamedata/ is the concern that "locate, read and decode the game's own files"
  * names, which is what this does.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_volume.h"
 
 #include <stdio.h>

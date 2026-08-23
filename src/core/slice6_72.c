@@ -14,6 +14,10 @@
  * constant except 0x1008F6A0 -- which is POSITIVE -- is an addition.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 
 #include "slice6_72.h"

@@ -7,6 +7,10 @@
  * The two ESP traces that make these functions readable are in the header, not
  * here, because they are the thing a future reader has to check first.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_window.h"
 #include "br_input.h"      /* g_brWndPlatform: MessageBoxA / exit / the strings */
 #include "br_boot.h"       /* g_brAppModeW / g_brAppModeH == 0x100A7514 / 18 */

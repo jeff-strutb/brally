@@ -1,4 +1,8 @@
 /* br_basedir.c -- see br_basedir.h. 0x10063860. */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_basedir.h"
 
 #include <stddef.h>

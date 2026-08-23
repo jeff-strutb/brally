@@ -4,6 +4,10 @@
  * out[i] then does `fadd [eax]; fstp [eax]` each step), so out must not alias
  * v. The original has the same constraint.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_mat.h"
 
 #include <math.h>

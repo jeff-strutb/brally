@@ -19,6 +19,10 @@
  * Transcribed from orig/BRD3D.dll (these are D3D addresses) and cross-checked
  * against orig/BRGlide.dll.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice8_84.h"
 
 #include <stddef.h>

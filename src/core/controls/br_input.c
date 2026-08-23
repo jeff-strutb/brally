@@ -8,6 +8,10 @@
  * entries that do nothing and count, and the fifteen globals owned by modules
  * that do not exist yet are shadows with one re-point site each.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_input.h"
 #include "br_window.h"
 #include "br_mainloop.h"

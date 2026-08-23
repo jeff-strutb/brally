@@ -1,6 +1,10 @@
 /* slice2_22.c -- 0x1003BD50..0x1003DBC0 (DirectPlay module), portable part.
  * See slice2_22.h for the identification notes and every GOTCHA. */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <stdlib.h>
 #include <string.h>
 

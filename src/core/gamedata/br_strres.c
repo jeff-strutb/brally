@@ -4,6 +4,10 @@
  * is the localised text; this is the loader that turns it into the pointer
  * table BrStrGet indexes.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_strres.h"
 
 #include "slice4_52.h"   /* g_apBrStrTable, BR_STR_TABLE_COUNT -- the table

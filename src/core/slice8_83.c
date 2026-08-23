@@ -5,6 +5,10 @@
  * they differ from the D3D ones the rest of port/ is named after.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 
 #include "slice8_83.h"

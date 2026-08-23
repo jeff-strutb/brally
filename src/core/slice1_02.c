@@ -1,5 +1,9 @@
 /* slice1_02.c -- BRD3D.dll 0x100049C0-0x100079E0. See slice1_02.h. */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice1_02.h"
 
 #include <math.h>

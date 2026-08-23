@@ -12,6 +12,10 @@
  *     BRGlide  0x100A7518 =  480       (an INT, `fild`: the screen height)
  * See BrGbiCall10024260, which now transcribes the Glide arithmetic.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice5_61.h"
 
 #include <string.h>

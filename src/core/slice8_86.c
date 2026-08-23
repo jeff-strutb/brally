@@ -6,6 +6,10 @@
  * address named in a banner is the D3D one, because that is the numbering the
  * rest of port/ uses; the Glide address actually read is given beside it.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <stdlib.h>
 #include <string.h>
 

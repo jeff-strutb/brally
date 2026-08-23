@@ -1,6 +1,10 @@
 /* br_tex3d.c -- see br_tex3d.h.  The load-time texture pass, transcribed
  * from BRGlide.dll 0x10028820 and the eleven routines it reaches. */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_tex3d.h"
 #include "slice1_04.h"      /* BrTexFormatCode (0x10027220 == 0x10027B90) */
 
