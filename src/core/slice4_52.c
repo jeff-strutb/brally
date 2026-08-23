@@ -236,31 +236,6 @@ void BrSub1005F530(void)
  * 0x1003D9F0  BrSub1003D9F0
  * ========================================================================== */
 
-/* WHAT IT DOES: sends one particular kind of tagged message to the other
- * machines in a multiplayer game, carrying a value taken from a global. What
- * the message means to the receiver is not established here. */
-/* @implements 0x1003D9F0 d3d BrSub1003D9F0 */
-int32_t BrSub1003D9F0(struct BrOptUi *pUi)
-{
-    /* The original inlines the whole send (tag 0x60000003, no payload store:
-     * the second packet dword is sent UNINITIALISED -- original defect,
-     * reproduced by not writing it).  Early-outs share one `return 0`.
-     * Shape identical to BrSub1003D950 (slice4_50.c), which see. */
-    void *const *aSlot = (void *const *)pUi;
-    void        *pObj;
-    int32_t      aPacket[2];
-
-    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
-        return 0;
-    }
-    aPacket[0] = (int32_t)0x60000003u;
-    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
-                             aPacket,
-                             (void *)(uintptr_t)8u);
-}
-
 /* ==========================================================================
  * 0x100709A0  BrMenuSub100709A0
  * ========================================================================== */
