@@ -950,6 +950,15 @@ void BrTex3dToRgba8(const uint16_t *pArgb1555, uint32_t count, uint8_t *pRgba)
 #ifdef BR_MATCHING_BUILD
 extern int _DAT_10697a48;
 extern int _DAT_10697a50;
+extern int DAT_106b7aa0;
+extern int DAT_10697a4c;
+#ifndef BR_FUNCPTR_DEFINED
+#define BR_FUNCPTR_DEFINED
+typedef int (*funcptr)();
+#endif
+extern funcptr DAT_118ed1d0;
+int FUN_10027b60();
+int FUN_100283c0();
 
 /* WHAT IT DOES: extract two 3-bit tile indices from a packed command word. */
 /* @implements 0x100293F0 glide BrTexTileUnpack */
@@ -959,6 +968,56 @@ int BrTexTileUnpack(unsigned int *param_1)
 {
   _DAT_10697a50 = *param_1 >> 8 & 7;
   _DAT_10697a48 = *param_1 >> 0xb & 7;
+  return;
+}
+
+/* WHAT IT DOES: copy the first two words of texture record `src` into record `dst`
+ * (the 0x2B4-stride array at 0x106B7AA0). Installed in hook slot 0x118ED1BC. */
+/* @implements 0x10023D20 glide BrTex3dRecCopyHead */
+
+void BrTex3dRecCopyHead(int param_1,int param_2)
+
+{
+  *(int *)(DAT_106b7aa0 + param_1 * 0x2b4) = *(int *)(DAT_106b7aa0 + param_2 * 0x2b4);
+  *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4) =
+       *(int *)(DAT_106b7aa0 + 4 + param_2 * 0x2b4);
+  return;
+}
+
+/* WHAT IT DOES: store a word at +0x278 of texture record `idx`. */
+/* @implements 0x10024E30 glide BrTex3dRecSet278 */
+
+void BrTex3dRecSet278(int param_1,int param_2)
+
+{
+  *(int *)(DAT_106b7aa0 + 0x278 + param_1 * 0x2b4) = param_2;
+  return;
+}
+
+/* WHAT IT DOES: re-download texture `id` from a new texel address, unless it is the
+ * currently bound record. What hook slot 0x118ED1D0 holds (opcode 0xDD). */
+/* @implements 0x100285E0 glide BrTex3dReDownload */
+
+void BrTex3dReDownload(int param_1,int param_2)
+
+{
+  if (param_1 != DAT_10697a4c) {
+    FUN_100283c0(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4),param_2,0);
+  }
+  return;
+}
+
+/* WHAT IT DOES: reconvert texture `id`'s texels and re-download through [0x118ED1D0].
+ * Installed in hook slot 0x118ED1D8. */
+/* @implements 0x100287E0 glide BrTex3dReconvert */
+
+void BrTex3dReconvert(int param_1)
+
+{
+  int uVar1;
+  
+  uVar1 = FUN_10027b60(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+  (*DAT_118ed1d0)(param_1,uVar1);
   return;
 }
 
