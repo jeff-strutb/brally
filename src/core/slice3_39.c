@@ -1190,6 +1190,8 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int operator_delete();
+int __fastcall FUN_10054710(void *pThis);
 typedef int (*funcptr)();
 extern int * DAT_10ac66e8;
 extern int * DAT_10ac6720;
@@ -1233,6 +1235,20 @@ int BrInputLatchUpdate(void)
     iVar1 = iVar1 + 4;
   } while (iVar1 < 0x10);
   return;
+}
+
+/* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (FUN_10054710), then
+ * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
+ * unused EDX slot (BR_THISCALL1 idiom). */
+/* @implements 0x100546F0 glide BrObj546F0DeleteDtor */
+
+void * __fastcall BrObj546F0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+{
+  FUN_10054710(param_1);
+  if ((param_2 & 1) != 0) {
+    operator_delete(param_1);
+  }
+  return param_1;
 }
 
 #endif /* BR_MATCHING_BUILD */

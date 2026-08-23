@@ -1131,6 +1131,8 @@ int32_t BrNetStackPop221288(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int operator_delete();
+int __fastcall FUN_100087c0(void *pThis);
 extern int g_br094294;
 
 /* WHAT IT DOES: return the value of the global at g_br094294. */
@@ -1140,6 +1142,20 @@ int BrGetGlobal_94294(void)
 
 {
   return g_br094294;
+}
+
+/* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (FUN_100087c0), then
+ * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
+ * unused EDX slot (BR_THISCALL1 idiom). */
+/* @implements 0x100087A0 glide BrObj87A0DeleteDtor */
+
+void * __fastcall BrObj87A0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+{
+  FUN_100087c0(param_1);
+  if ((param_2 & 1) != 0) {
+    operator_delete(param_1);
+  }
+  return param_1;
 }
 
 #endif /* BR_MATCHING_BUILD */
