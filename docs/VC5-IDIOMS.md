@@ -193,6 +193,18 @@ the caller AND flipped a helper to match for free.
   mystery"; the allocator is innocent: function-scope decls in decl order,
   then block-scoped temps in textual order, compiler temps at the bottom.
 
+- **Ghidra shreds stack structs into locals — /O2 then dead-stores them.**
+  A recomp far SMALLER than orig with dozens of `uStack_...` locals means a
+  stack struct whose address only partly escapes: every non-escaping member
+  store gets deleted. Rebuild the struct (offsets = 0xNNN minus Ghidra's
+  local suffix), and spell field assignments in the ORIGINAL's store order —
+  which for parameter copies is natural parameter order (p1,p2,p8,p9), not
+  Ghidra's rearrangement. Also: `1 << fn(x)` on an int-returning fn emits
+  no mask (shl masks in hardware) — Ghidra's `& 0x1f` is decoration to
+  delete. Proven BrTex3dCreate (715 B). The permute-and-score loop
+  (itertools over statement orders, compile each) resolves store-order
+  residue in minutes — use it before declaring an allocator wall.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
