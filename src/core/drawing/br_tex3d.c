@@ -952,6 +952,53 @@ void BrTex3dToRgba8(const uint16_t *pArgb1555, uint32_t count, uint8_t *pRgba)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_105ccbd0;
+extern int _DAT_106b7aa4;
+extern int _DAT_106b7aa8;
+extern int DAT_118ed1a0;
+int FUN_10027290();
+int FUN_100242e0();
+int FUN_10027220();
+int FUN_10024df0();
+int FUN_100275c0();
+int FUN_10027710();
+typedef struct BrTexReq272 {
+    unsigned int fTmu2;         /* 0x000 */
+    unsigned char lod;          /* 0x004 */
+    int w;                      /* 0x008 */
+    int h;                      /* 0x00C */
+    int fmt;                    /* 0x010 */
+    int f14;                    /* 0x014 */
+    int aspect0;                /* 0x018 */
+    int aspect1;                /* 0x01C */
+    int f20;                    /* 0x020 */
+    unsigned int fClampS;       /* 0x024 */
+    unsigned int fClampT;       /* 0x028 */
+    int f2c;                    /* 0x02C */
+    int f30;                    /* 0x030 */
+    int f34;                    /* 0x034 */
+    int f38;                    /* 0x038 */
+    int cbTotal;                /* 0x03C */
+    int wPow;                   /* 0x040 */
+    int hPow;                   /* 0x044 */
+    int p1;                     /* 0x048 */
+    int p2;                     /* 0x04C */
+    int p8;                     /* 0x050 */
+    int p9;                     /* 0x054 */
+    int iLevel;                 /* 0x058 */
+    int f5c;                    /* 0x05C */
+    int lv[8][16];              /* 0x060..0x25F */
+    int f260;                   /* 0x260 */
+    int f264;                   /* 0x264 */
+    int f268;                   /* 0x268 */
+    char pad26c[0x24];          /* 0x26C */
+    char b290, b291, b292, b293;/* 0x290 */
+    char b294, b295, b296, b297;/* 0x294 */
+    int f298;                   /* 0x298 */
+    int cb29c;                  /* 0x29C */
+    int w2a0;                   /* 0x2A0 */
+    int h2a4;                   /* 0x2A4 */
+} BrTexReq272;
 extern int _DAT_10697a48;
 extern int _DAT_10697a50;
 extern int DAT_106b7aa0;
@@ -1022,6 +1069,87 @@ void BrTex3dReconvert(int param_1)
   
   uVar1 = FUN_10027b60(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
   (*DAT_118ed1d0)(param_1,uVar1);
+  return;
+}
+
+/* WHAT IT DOES: build a texture-creation request on the stack -- the 0x2A8-byte record
+ * the convert (0x10027B60) and make-Glide-texture (0x10027710) pair consume -- from the
+ * fifteen parameters: sizes to powers of two, format code, clamp flags, one mip level
+ * with GBI shifts, total texel bytes. Installed in hook slot 0x118ED1C4. Ghidra shredded
+ * the record into ~60 independent locals, which /O2 then dead-stored away; the struct
+ * spelling below is what makes every store live. */
+/* @implements 0x100272F0 glide BrTex3dCreate */
+
+void BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
+                 int param_6,int param_7,int param_8,int param_9,
+                 int param_10,int param_11,int param_12,int param_13,int param_14,
+                 int param_15)
+{
+  int iVar2;
+  int uVar3;
+  int iVar4;
+  int iVar5;
+  BrTexReq272 r;
+  
+  iVar4 = 1 << FUN_10027290(param_3);
+  iVar5 = 1 << FUN_10027290(param_4);
+  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  r.h2a4 = param_4;
+  r.h = param_4;
+  r.lod = 3;
+  r.w2a0 = param_3;
+  r.w = param_3;
+  r.wPow = iVar4;
+  r.hPow = iVar5;
+  r.f14 = 0;
+  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  r.aspect1 = r.aspect0;
+  r.iLevel = 0;
+  r.lv[0][3] = 0;
+  iVar2 = FUN_10027290(param_3);
+  r.lv[r.iLevel][8] = iVar2;
+  iVar2 = FUN_10027290(param_4);
+  r.lv[r.iLevel][9] = iVar2;
+  r.lv[r.iLevel][2] = param_5;
+  r.lv[r.iLevel][1] = param_6;
+  r.lv[r.iLevel][0] = param_7;
+  r.lv[r.iLevel][10] = param_12;
+  r.lv[r.iLevel][11] = param_13;
+  r.lv[r.iLevel][12] = 2;
+  r.lv[r.iLevel][13] = 2;
+  r.lv[r.iLevel][14] = param_3 * 4 + -2;
+  r.lv[r.iLevel][15] = param_4 * 4 + -2;
+  r.f5c = 1;
+  r.f298 = param_15;
+  r.f264 = 0;
+  r.f268 = 0;
+  r.b297 = 0;
+  r.b296 = 0;
+  r.b295 = 0;
+  r.b294 = 0;
+  r.b293 = 0;
+  r.b292 = 0;
+  r.b291 = 0;
+  r.b290 = 0;
+  _DAT_106b7aa8 = 0;
+  _DAT_106b7aa4 = 0;
+  r.fmt = FUN_10027220(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
+  r.cbTotal = FUN_10024df0(r.fmt) * iVar5 * iVar4;
+  r.p1 = param_1;
+  r.p2 = param_2;
+  r.p8 = param_8;
+  r.p9 = param_9;
+  r.fClampS = (unsigned int)(param_10 != 0);
+  r.fClampT = (unsigned int)(param_11 != 0);
+  FUN_100275c0(&r.f20,iVar4,iVar5);
+  r.f2c = 1;
+  r.f30 = 1;
+  r.f34 = 0xc0000000;
+  r.f38 = 0;
+  r.f260 = DAT_118ed1a0;
+  r.cb29c = r.cbTotal;
+  uVar3 = FUN_10027b60(&r);
+  FUN_10027710(&r,uVar3);
   return;
 }
 
