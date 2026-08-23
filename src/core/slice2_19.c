@@ -104,6 +104,17 @@ const unsigned char *g_BrPadModeBytes;
 int32_t              g_Br6909B4;
 const void          *g_BrPadHookFn;
 
+/* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
+ * address as an IMMEDIATE, so the matching build needs a function symbol,
+ * not a pointer variable.  The port keeps the variable. */
+#ifdef BR_MATCHING_BUILD
+extern void BrRaceStep_10019A70(void);
+#define BR_PAD_RACE_STEP ((const void *)BrRaceStep_10019A70)
+#else
+#define BR_PAD_RACE_STEP g_BrPadHookFn
+#endif
+extern int32_t g_br5CCB5C;   /* 0x105CCB5C */
+
 void  (*g_BrModelFixup)(uint32_t *pSlot);
 void *(*g_BrModelDeref)(uint32_t slot);
 BrSegMap *g_BrSegMap;
@@ -782,7 +793,7 @@ static float BrPadClamp(float v)
     return v;
 }
 
-/* 0x10035CE0  __thiscall */
+/* 0x1002F380  __thiscall (one arg in ecx -- BR_THISCALL1 is exact) */
 /* WHAT IT DOES: turns one frame of raw controller readings into what the game
  * understands -- which buttons are pressed, how far the stick is pushed, and
  * how much the player is steering, with the stick scaled and limited to a
@@ -790,62 +801,74 @@ static float BrPadClamp(float v)
  * pressed and centred. While the driving screen is the one in charge it also
  * derives the extra combinations the car controls need, and lets a player
  * steer with the direction pad instead of the stick when the stick is not in
- * use. */
-/* @implements 0x10035CE0 d3d BrPadTranslate */
-void BrPadTranslate(BrPad *pPad)
+ * use.
+ *
+ * Shape notes, all read off the bytes: members are re-derefed per statement
+ * (docs/VC5-IDIOMS.md); the button word is ONE u16 load tested by sub-
+ * register; the ramp pair is an inline two-lap pointer loop, not a helper;
+ * the x/y clamps compare the RELOADED member while steer's compares the
+ * unrounded register (hence the local for steer only).
+ *
+ * NOT MATCHING by 10 bytes in one window: VC5 here pools the 0x80 mode-byte
+ * mask into cl (mov cl,0x80; test [eax+n],cl) where the original repeats the
+ * immediate (test byte [eax+n],0x80).  &&, !-form, and split-statement
+ * spellings all pool; duplicated arms make it worse.  Allocator residue. */
+/* @implements 0x1002F380 glide BrPadTranslate */
+void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
 {
-    BrPadRaw *pRaw = pPad->pRaw;
-    unsigned lo, hi;
-    uint32_t bt;
+    uint32_t w;
 
-    if (pRaw->status != 0) {
-        pPad->f28 = (pRaw->status == 8) ? 1 : 0;
-        pRaw->stickX = 0;
-        pRaw->stickY = 0;
-        pRaw->b0 = 0;
-        pRaw->b1 = 0;
-    } else {
-        pPad->f28 = 0;
+    {
+        uint8_t st = pPad->pRaw->status;
+        if (st != 0) {
+            pPad->f28 = (st == 8) ? 1 : 0;
+            pPad->pRaw->stickX = 0;
+            pPad->pRaw->stickY = 0;
+            *(uint16_t *)(void *)&pPad->pRaw->b0 = 0;
+        } else {
+            pPad->f28 = 0;
+        }
     }
 
-    /* `mov ax, word ptr [edx]`: al is byte 0, ah is byte 1. */
-    lo = pRaw->b0;
-    hi = pRaw->b1;
+    w = *(const uint16_t *)(const void *)&pPad->pRaw->b0;
+    pPad->buttons = 0;
+    if (w & 0x0800u) pPad->buttons  = BR_PAD_DUP;
+    if (w & 0x0400u) pPad->buttons |= BR_PAD_DDOWN;
+    if (w & 0x0200u) pPad->buttons |= BR_PAD_DLEFT;
+    if (w & 0x0100u) pPad->buttons |= BR_PAD_DRIGHT;
+    if (w & 0x8000u) pPad->buttons |= BR_PAD_A;
+    if (w & 0x4000u) pPad->buttons |= BR_PAD_B;
+    if (w & 0x0020u) pPad->buttons |= BR_PAD_L;
+    if (w & 0x0010u) pPad->buttons |= BR_PAD_R;
+    if (w & 0x2000u) pPad->buttons |= BR_PAD_Z;
+    if (w & 0x1000u) pPad->buttons |= BR_PAD_START;
+    if (w & 0x0008u) pPad->buttons |= BR_PAD_CUP;
+    if (w & 0x0001u) pPad->buttons |= BR_PAD_CRIGHT;
+    if (w & 0x0004u) pPad->buttons |= BR_PAD_CDOWN;
+    if (w & 0x0002u) pPad->buttons |= BR_PAD_CLEFT;
 
-    bt = 0;
-    if (hi & 0x08u) bt  = BR_PAD_DUP;      /* CONT_UP    0x0800 */
-    if (hi & 0x04u) bt |= BR_PAD_DDOWN;    /* CONT_DOWN  0x0400 */
-    if (hi & 0x02u) bt |= BR_PAD_DLEFT;    /* CONT_LEFT  0x0200 */
-    if (hi & 0x01u) bt |= BR_PAD_DRIGHT;   /* CONT_RIGHT 0x0100 */
-    if (hi & 0x80u) bt |= BR_PAD_A;        /* CONT_A     0x8000 */
-    if (hi & 0x40u) bt |= BR_PAD_B;        /* CONT_B     0x4000 */
-    if (lo & 0x20u) bt |= BR_PAD_L;        /* CONT_L     0x0020 */
-    if (lo & 0x10u) bt |= BR_PAD_R;        /* CONT_R     0x0010 */
-    if (hi & 0x20u) bt |= BR_PAD_Z;        /* CONT_G     0x2000 */
-    if (hi & 0x10u) bt |= BR_PAD_START;    /* CONT_START 0x1000 */
-    if (lo & 0x08u) bt |= BR_PAD_CUP;      /* CONT_E     0x0008 */
-    if (lo & 0x01u) bt |= BR_PAD_CRIGHT;   /* CONT_F     0x0001 */
-    if (lo & 0x04u) bt |= BR_PAD_CDOWN;    /* CONT_D     0x0004 */
-    if (lo & 0x02u) bt |= BR_PAD_CLEFT;    /* CONT_C     0x0002 */
-    pPad->buttons = bt;
-
-    if (BrHookIsCurrent(g_BrPadHookFn)) {
+    if (BrHookIsCurrent(BR_PAD_RACE_STEP)) {
         if (pPad->buttons & BR_PAD_L) pPad->buttons |= BR_PAD_L_ALT;
         if (pPad->buttons & BR_PAD_R) pPad->buttons |= BR_PAD_R_ALT;
 
-        if ((g_BrPadModeBytes[1] & 0x80u) == 0 &&
-            (g_BrPadModeBytes[7] & 0x80u) == 0) {
+        if (!(g_BrPadModeBytes[1] & 0x80u) && !(g_BrPadModeBytes[7] & 0x80u)) {
             uint32_t a = pPad->buttons;
-            if (a & BR_PAD_DLEFT)
-                pPad->steer = (a & BR_PAD_DRIGHT) ? (int8_t)0 : (int8_t)0xB0;
-            else
-                pPad->steer = (a & BR_PAD_DRIGHT) ? (int8_t)0x50 : (int8_t)0;
+            if (a & BR_PAD_DLEFT) {
+                if (!(a & BR_PAD_DRIGHT))
+                    pPad->steer = (int8_t)0xB0;
+                else
+                    pPad->steer = 0;
+            } else if (a & BR_PAD_DRIGHT) {
+                pPad->steer = 0x50;
+            } else {
+                pPad->steer = 0;
+            }
         } else {
-            pPad->steer = pRaw->stickX;
+            pPad->steer = pPad->pRaw->stickX;
         }
 
         if (pPad->buttons & BR_PAD_A) {
-            if (pRaw->stickY < (int8_t)0xC0)          /* signed, -64 */
+            if (pPad->pRaw->stickY < (int8_t)0xC0)    /* signed, -64 */
                 pPad->buttons |= BR_PAD_A_BACK;
             pPad->buttons |= BR_PAD_A_D;
         }
@@ -861,39 +884,43 @@ void BrPadTranslate(BrPad *pPad)
     }
 
     if (pPad->f2C == 0 && pPad->f30 == 0) {
-        /* The original loads f44 into eax here and never uses it. */
+        /* the original's dead load of f44: a volatile READ with no
+         * assignment is exactly one mov, no store */
+        (void)*(volatile int32_t *)&pPad->f44;
     } else {
-        BrPadRamp(&pPad->f2C, &pPad->f34, &pPad->f3C);
-        BrPadRamp(&pPad->f30, &pPad->f38, &pPad->f40);
+        int32_t *p = &pPad->f34;
+        int      i;
+        for (i = 2; i > 0; --i, ++p) {
+            if (*(p - 2) != 0) {
+                if (*p < *(p + 2) && g_br5CCB5C == 0)
+                    *p += 2;
+            }
+        }
     }
 
-    pPad->axisX     = (float)(int)pRaw->stickX * g_BrK08F548;
-    pPad->axisY     = (float)(int)pRaw->stickY * g_BrK08F548;
-    pPad->axisSteer = (float)(int)pPad->steer  * g_BrK08F548;
+    {
+        float t;
 
-    pPad->axisX     = BrPadClamp(pPad->axisX);
-    pPad->axisY     = BrPadClamp(pPad->axisY);
-    /* NOT a deviation -- this was one, and the difference has now been
-     * enumerated away rather than waived.
-     *
-     * The original does treat the steering axis differently.  axisX and axisY
-     * are spilled (0x10035EED, 0x10035F1E) and RELOADED before their compare
-     * (0x10035EF0, 0x10035F3E), so those two compare a rounded float; the
-     * steer's compare at 0x10035F66 is an `fcom` against the value still in
-     * st0, never reloaded.  So the original compares the unrounded product
-     * there and the rounded one for the other two.
-     *
-     * That register is 53-bit, not 80-bit (see CONVENTIONS.md), so `double`
-     * models it exactly and the two readings can simply be compared over the
-     * whole input domain.  The input is an int8, so the domain is 256 values.
-     * Enumerated: the 53-bit product and its float spill disagree about the
-     * clamp at exactly TWO inputs, steer == +70 and steer == -70, where the
-     * product is +/-1.0000000055879354 and the spill is exactly +/-1.0f.  At
-     * both, clamping yields +/-1.0f and not clamping yields the stored
-     * +/-1.0f -- the SAME bits.  The distinction is therefore unobservable in
-     * the output for every one of the 256 reachable inputs, and comparing the
-     * 32-bit value here is exact, not approximate. */
-    pPad->axisSteer = BrPadClamp(pPad->axisSteer);
+        pPad->axisX = (float)pPad->pRaw->stickX * g_BrK08F548;
+        t = (float)pPad->steer * g_BrK08F548;
+        pPad->axisY = (float)pPad->pRaw->stickY * g_BrK08F548;
+        pPad->axisSteer = t;
+
+        if (pPad->axisX > 1.0f)
+            pPad->axisX = 1.0f;
+        else if (pPad->axisX < -1.0f)
+            pPad->axisX = -1.0f;
+
+        if (pPad->axisY > 1.0f)
+            pPad->axisY = 1.0f;
+        else if (pPad->axisY < -1.0f)
+            pPad->axisY = -1.0f;
+
+        if (t > 1.0f)
+            pPad->axisSteer = 1.0f;
+        else if (t < -1.0f)
+            pPad->axisSteer = -1.0f;
+    }
 }
 
 /* 0x10035FC0  __thiscall */

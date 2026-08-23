@@ -560,7 +560,7 @@ extern const void *g_BrPadHookFn;             /* the literal 0x1002C500     */
  * GOTCHA: the second byte of the two probed at g_BrPadModeBytes is +7, not
  * +2 -- they are not adjacent. When either has bit 7 set, steering comes
  * straight from pRaw->stickX instead of from the D-pad. */
-void BrPadTranslate(BrPad *pPad);
+void BR_THISCALL1 BrPadTranslate(BrPad *pPad);
 
 /* 0x10035FC0  __thiscall. Split `a` by `b`:
  *     a' = a & ~b        (bits present in a but not in b)
