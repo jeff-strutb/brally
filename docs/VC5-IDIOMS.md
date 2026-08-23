@@ -136,6 +136,13 @@ the caller AND flipped a helper to match for free.
   stays walled) or to force a `mov reg,reg` copy of a stored temp
   (BrCursorPairSet stays walled — chained/cast/struct temps all fold).
 
+- **Cross-jumped identical calls:** when every branch of an if/else chain
+  makes the SAME call differing only in one constant arg, VC5 merges the
+  common push suffix and each branch jumps into it after pushing its own
+  constant (`push 0xe; jmp common`). A single shared call through a variable
+  pushes a REGISTER instead — the source must repeat the call per branch
+  (macro chains are fine). Proven BrGlideResOpen, 545 B first try.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
