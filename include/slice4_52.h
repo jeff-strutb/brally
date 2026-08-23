@@ -197,7 +197,7 @@ void BrSub1005F530(void);
  * two models has to go. */
 extern int32_t g_brAA288C;   /* 0x10AA288C -- also br_slots.h's slot count */
 
-void BrSub1003D9F0(struct BrOptUi *pUi);
+int32_t BrSub1003D9F0(struct BrOptUi *pUi);
 
 /* ==========================================================================
  * 0x100709A0  BrMenuSub100709A0 -- write the season save file
