@@ -150,8 +150,14 @@ def clean_ghidra_types(code):
     # which leave if/else blocks without a body)
     code = re.sub(r'\bgoto\s+LAB_[0-9a-fA-F]+\s*;', '(void)0;', code)
     code = re.sub(r'LAB_[0-9a-fA-F]+\s*:', '/* label */ ;', code)
-    # &LAB_ (address-of label, used in switch tables) → cast to (void*)0
-    code = re.sub(r'&\s*LAB_[0-9a-fA-F]+', '(void*)0', code)
+    # &LAB_x / LAB_x where x is a known function start: Ghidra failed to make
+    # a function there but the reference is a real code pointer — keep it.
+    def _lab(m):
+        va = '0x' + m.group(1).upper()
+        if os.path.exists(os.path.join(ORIG_DIR, va + '.bin')):
+            return 'FUN_' + m.group(1).lower()
+        return '(void*)0'
+    code = re.sub(r'&\s*LAB_([0-9a-fA-F]{8})\b', _lab, code)
     # Any remaining LAB_ references (switch tables, address-of) → 0
     code = re.sub(r'\bLAB_[0-9a-fA-F]+\b', '0', code)
     # Ghidra 'code' pointer type → callable function pointer (trailing space
