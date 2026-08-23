@@ -362,6 +362,11 @@ void BrRaceStartResetForTest(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern char DAT_10af1208;
+extern char DAT_10b1c888;
+extern char DAT_106ed708;
+int __fastcall FUN_1005c560(void *pEnt);
+int __fastcall BrEntInit_1002F680(void *pPad);
 extern int BrG_6C661C;
 extern int BrG_6C6624;
 extern int DAT_106ed6a8;
@@ -409,6 +414,24 @@ int BrRaceDifficultyApply(int param_1)
   FUN_100627b0(param_1);
   FUN_1002db88();
   return;
+}
+
+/* WHAT IT DOES: walk the 16 entity slots (base 0x10AF1208, stride 0x2B68) in step with
+ * their pad blocks (base 0x106ED708, stride 0x15C), running 0x1005C560 on each entity and
+ * BrEntInit on each pad block. Pointer compare is SIGNED (jl). */
+/* @implements 0x10062870 glide BrEntSlotsReset */
+
+void BrEntSlotsReset(void)
+
+{
+  char *b = (char *)&DAT_106ed708;
+  char *a = (char *)&DAT_10af1208;
+  do {
+    FUN_1005c560(a);
+    BrEntInit_1002F680(b);
+    a += 0x2b68;
+    b += 0x15c;
+  } while ((int)a < (int)&DAT_10b1c888);
 }
 
 #endif /* BR_MATCHING_BUILD */

@@ -1246,6 +1246,8 @@ void BrLogSet(void *p)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern char DAT_106ed708;
+int FUN_1002ce5f();
 extern int DAT_106e7738;
 extern int DAT_106e79d0;
 extern int DAT_106ea430;
@@ -1390,6 +1392,22 @@ void BrIdleLoop_1002DE04(void)
     BrStubTrue(&DAT_106ec6a8,0,1);
     BrStubTrue(&DAT_106ed5d0,DAT_106e7738,1);
     DAT_106ed700 = DAT_106ed700 + 1 & 0xf;
+  }
+}
+
+/* WHAT IT DOES: run the per-pad input step: 0x1002CE5F once, then for each pad block
+ * (base 0x106ED708, stride 0x15C, count 1 in this build) translate the raw pad state and
+ * split the bit edges. thiscall callees via BR_THISCALL1. */
+/* @implements 0x1002CE9A glide BrPadTranslateAll */
+
+void BrPadTranslateAll(void)
+
+{
+  int i;
+  FUN_1002ce5f();
+  for (i = 0; i < 1; i++) {
+    BrPadTranslate((BrPad *)((char *)&DAT_106ed708 + i*0x15c));
+    BrBitEdgeSplit((BrBitPair *)((char *)&DAT_106ed708 + i*0x15c));
   }
 }
 
