@@ -1246,6 +1246,22 @@ void BrLogSet(void *p)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_106ed6e4;
+extern int DAT_106ea3f4;
+extern int DAT_106e8204;
+extern int DAT_106ed674;
+extern char DAT_106e8818;
+extern char DAT_106e881a;
+extern char DAT_106e881c;
+extern char DAT_106e881e;
+extern char DAT_106e8820;
+extern char DAT_106e8822;
+extern char DAT_106e8824;
+extern char DAT_106e8826;
+extern int *DAT_106e7710;
+extern int _DAT_106ed368;
+extern int _DAT_106ed648;
+int FUN_1002bf50();
 extern int DAT_106ed6fc;
 extern int DAT_100b2f04;
 extern unsigned char DAT_10af3bb7;
@@ -1468,6 +1484,68 @@ void BrEntGfxRebindAll(void)
     }
   }
   (*DAT_10b73534)();
+  return;
+}
+
+/* WHAT IT DOES: advance the 32-slot rect ring at 0x106E8818 (stride 0x10) and fill the
+ * next slot with a doubled/mirrored screen rect; emit display-list command 0x03800010
+ * pointing at the slot, and publish the slot's two 0x1FF fields. A negative width flips
+ * the mirror flag at 0x106E8204; 0x1002BF50 is called first when param_5 asks for it. */
+/* @implements 0x1002C0F3 glide BrDlRectCmdEmit */
+
+void BrDlRectCmdEmit(int param_1,int param_2,int param_3,int param_4,int param_5)
+{
+  int *puVar1;
+  int local_c;
+  
+  DAT_106ed6e4 = DAT_106ed6e4 + 1 & 0x1f;
+  if (param_5 != 0) {
+    if (param_3 < 0) {
+      local_c = -param_3;
+    }
+    else {
+      local_c = param_3;
+    }
+    FUN_1002bf50(param_1,param_2,local_c,param_4);
+  }
+  if (DAT_106ed674 != 0) {
+    param_1 = param_1 << 1;
+    param_2 = param_2 << 1;
+    param_3 = param_3 << 1;
+    param_4 = param_4 << 1;
+  }
+  if (param_3 < 0) {
+    if (DAT_106ea3f4 != 0) {
+      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 * -2);
+    }
+    else {
+      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 << 1);
+    }
+    param_3 = -param_3;
+    DAT_106e8204 = 1;
+  }
+  else {
+    if (DAT_106ea3f4 != 0) {
+      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 * -2);
+    }
+    else {
+      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 << 1);
+    }
+    DAT_106e8204 = 0;
+  }
+  *(short *)(&DAT_106e881a + DAT_106ed6e4 * 0x10) = (short)(param_4 << 1);
+  *(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e881e + DAT_106ed6e4 * 0x10) = 0;
+  *(short *)(&DAT_106e8820 + DAT_106ed6e4 * 0x10) = (short)((param_1 * 2 + param_3) * 2);
+  *(short *)(&DAT_106e8822 + DAT_106ed6e4 * 0x10) = (short)((param_2 * 2 + param_4) * 2);
+  *(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e8826 + DAT_106ed6e4 * 0x10) = 0;
+  puVar1 = DAT_106e7710;
+  DAT_106e7710 = DAT_106e7710 + 2;
+  *puVar1 = 0x3800010;
+  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
+  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
+  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
   return;
 }
 
