@@ -190,6 +190,94 @@ def clean_ghidra_types(code):
                 stack[-1][0] == re.match(r'^(\s*)', ln).group(1):
             stack.pop()
     code = '\n'.join(lines)
+    # Inlined strlen (/Oi repne scasb) that Ghidra decompiled to a manual
+    # loop.  Replace the loop with a real strlen() call so VC5 re-inlines it.
+    # After the loop the counter u holds 0xffffffff-(n+1); Ghidra spells the
+    # length as `~u - 1` and n+1 as `~u`.  We set u = strlen(...) and rewrite
+    # every `~u` use accordingly.
+    def _strcpy_sub(code):
+        # Inlined strcpy: strlen loop over SRC, then u = ~u, then a dword
+        # copy loop and a residual byte loop into DST -> strcpy(DST, SRC).
+        pat = re.compile(
+            r'(\w+) = 0xffffffff;\s*'
+            r'do \{\s*(\w+) = (\w+);\s*if \(\1 == 0\) break;\s*\1 = \1 - 1;\s*'
+            r'\2 = \3 \+ 1;\s*(\w+) = \*\3;\s*\3 = \2;\s*\} while \(\4 != \x27\\0\x27\);\s*'
+            r'\1 = ~\1;\s*'
+            r'\3 = \2 \+ -\1;\s*'
+            r'for \((\w+) = \1 >> 2; \5 != 0; \5 = \5 - 1\) \{\s*'
+            r'\*\([\w ]+\*\)(\w+) = \*\([\w ]+\*\)\3;\s*\3 = \3 \+ 4;\s*\6 = \6 \+ 4;\s*\}\s*'
+            r'for \(\1 = \1 & 3; \1 != 0; \1 = \1 - 1\) \{\s*'
+            r'\*\6 = \*\3;\s*\3 = \3 \+ 1;\s*\6 = \6 \+ 1;\s*\}')
+        while True:
+            m = pat.search(code)
+            if not m:
+                return code
+            src, dst = m.group(3), m.group(6)
+            code = code[:m.start()] + ('strcpy(%s,%s);' % (dst, src)) + code[m.end():]
+
+    def _strlen_sub(code):
+        # Find the loop body first (unambiguous), then locate the counter
+        # init and the pointer init that precede it, possibly with other
+        # statements in between.
+        loop_forms = [
+            r'do \{\s*if \((\w+) == 0\) break;\s*\1 = \1 - 1;\s*'
+            r'(\w+) = \*(\w+);\s*\3 = \3 \+ 1;\s*\} while \(\2 != \x27\\0\x27\);',
+            r'do \{\s*(?:\w+ = \w+;\s*)?if \((\w+) == 0\) break;\s*\1 = \1 - 1;\s*'
+            r'(\w+) = \*(\w+);\s*(\w+) = \3 \+ 1;\s*\} while \(\2 != \x27\\0\x27\);',
+        ]
+        changed = True
+        while changed:
+            changed = False
+            for f in loop_forms:
+                m = re.search(f, code)
+                if not m:
+                    continue
+                u, ptr = m.group(1), m.group(3)
+                # walker may be a copy: the initialized pointer is the one
+                # assigned from a non-pointer-arith expression just before.
+                pre = code[:m.start()]
+                mi = None
+                for cand in {ptr, m.group(4) if m.lastindex >= 4 else ptr}:
+                    for mm in re.finditer(r'(\w+) = ([^;=]+);\s*$', pre[-400:], re.M):
+                        pass
+                # last assignments of u and the pointer chain before the loop
+                mu = list(re.finditer(re.escape(u) + r' = 0xffffffff;\s*', pre))
+                if not mu:
+                    break
+                mu = mu[-1]
+                # find last `X = EXPR;` where X reaches ptr through copies
+                names = {ptr}
+                if m.lastindex and m.lastindex >= 4:
+                    names.add(m.group(4))
+                mp = None
+                for mm in re.finditer(r'(\w+) = ([^;]+);\s*', pre):
+                    if mm.group(1) in names and mm.start() > mu.start() - 800:
+                        if not re.match(r'^[\w\s]*\*', mm.group(2)) or True:
+                            mp = mm
+                if mp is None or mp.start() < mu.start() - 800:
+                    break
+                expr = mp.group(2)
+                if expr.strip() == '0xffffffff' or ' + 1' in expr:
+                    break
+                # splice: drop the counter init, the pointer init and the
+                # loop, and set u = strlen(expr) at the loop's position.
+                cuts = sorted([(mp.start(), mp.end()), (mu.start(), mu.end())],
+                              reverse=True)
+                for cs, ce in cuts:
+                    pre = pre[:cs] + pre[ce:]
+                tail = code[m.end():]
+                stop = re.search(re.escape(u) + r' = 0xffffffff;', tail)
+                scope_end = stop.start() if stop else len(tail)
+                seg = tail[:scope_end]
+                seg = re.sub(r'~%s - 1\b' % re.escape(u), u, seg)
+                seg = re.sub(r'~%s\b' % re.escape(u), '(%s + 1)' % u, seg)
+                code = (pre + ('%s = strlen(%s);' % (u, expr))
+                        + seg + tail[scope_end:])
+                changed = True
+                break
+        return code
+    code = _strcpy_sub(code)
+    code = _strlen_sub(code)
     # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
     code = re.sub(r'\bfcos\s*\(', 'cos(', code)
     code = re.sub(r'\bfsin\s*\(', 'sin(', code)
