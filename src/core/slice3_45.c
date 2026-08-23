@@ -581,53 +581,106 @@ void BrSet680598(uint32_t v)
  * port into the original's behaviour for every reachable state. */
 #define BR_BUF(i) ((size_t)((i) & 1))
 
-/* 0x10078420 */
+
+/* DIJOYSTATE padded to the original's 0x110 stride, and the 0x1C mouse rec */
+typedef struct BrInJoy {
+    int32_t lX, lY, lZ;               /* +0x00 +0x04 +0x08 */
+    uint8_t pad0C[0x30 - 0x0C];
+    uint8_t rgbButtons[0x110 - 0x30]; /* +0x30 */
+} BrInJoy;
+typedef struct BrInMouse {
+    int32_t x, y, z;                  /* +0x00 +0x04 +0x08 */
+    uint8_t pad0C[0x18 - 0x0C];
+    uint8_t buttons[0x1C - 0x18];     /* +0x18 */
+} BrInMouse;
+extern const unsigned char *g_BrPadModeBytes;   /* 0x10B71534, slice2_19.c */
+
+/* 0x10071710 */
+/* Matching-model globals for the DirectInput query path (glide addresses).
+ * The bindings pointer 0x10B71534 is the SAME object slice2_19.c reads as
+ * g_BrPadModeBytes -- one storage, aliased on purpose there, indexed here. */
+int32_t g_brInKeyCur;                     /* 0x118EEBF0 */
+int32_t g_brInJoyCur;                     /* 0x118EEBD0 */
+int32_t g_brInMouseCur;                   /* 0x118EEE98 */
+uint8_t g_brInKeys[2][256];               /* 0x118EE9D0 */
+BrInJoy   g_brInJoy[2];                   /* 0x118EEBF8, stride 0x110 */
+BrInMouse g_brInMouse[2];                 /* 0x118EEE50, stride 0x1C  */
+
 /* WHAT IT DOES: answers "is the player holding down the control for this
  * action right now?" -- checking whichever key, button, stick direction or
  * mouse movement the action is bound to, plus up to two keyboard alternatives
  * that always apply. Stick and mouse directions only count once they are
- * pushed past a dead zone, so a resting stick reads as nothing. */
-/* @implements 0x10078420 d3d BrInputIsDown */
+ * pushed past a dead zone, so a resting stick reads as nothing.
+ *
+ * The original indexes the key/button tables with UNCHECKED bytes (no & 1 /
+ * & 3 masks) and switches on the u16 binding word masked to its high byte.
+ *
+ * NOT MATCHING: VC5 here emits the compacted switch node (cmp; jg; je,
+ * flags reused) where the original re-compares at the root (cmp; jg; cmp;
+ * je) -- switch-lowering internal shape, plus entry register-role noise.
+ * An else-if chain lowers to a linear compare ladder and is farther. */
+/* @implements 0x10071710 glide BrInputIsDown */
 uint8_t BrInputIsDown(int32_t action)
 {
-    const BrInputBinding *b = &g_brInput.pBindings[action];
-    const uint8_t *keys = g_brInput.aKeys[BR_BUF(g_brInput.iKeyCur)];
-    const BrDiJoyState *joy = &g_brInput.aJoy[BR_BUF(g_brInput.iJoyCur)];
-    const BrMouseState *mou = &g_brInput.aMouse[BR_BUF(g_brInput.iMouseCur)];
-    uint8_t r = 0;
+    const uint8_t *b = g_BrPadModeBytes + 6 * action;
+    int32_t  cur = g_brInKeyCur;
+    uint8_t  r = 0;
+    int32_t  w = *(const uint16_t *)(const void *)b & 0xFF00;
 
-    switch (b->kind0) {
-    case BR_BIND_KEY:
-        r = (uint8_t)(keys[b->code0] & 0x80u);
+    switch (w) {
+    case 0x0000:
+        r = (uint8_t)(g_brInKeys[cur][b[0]] & 0x80u);
         break;
-    case BR_BIND_JOYBTN:
-        r = (uint8_t)(joy->rgbButtons[b->code0] & 0x80u);
+    case 0x0100:
+        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
         break;
-    case BR_BIND_MOUSEBTN:
-        r = (uint8_t)(mou->buttons[b->code0 & 3u] & 0x80u);
+    case 0x0300:
+        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
         break;
-    case BR_BIND_JOYXNEG: if (joy->lX < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_JOYXPOS: if (joy->lX >  BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_JOYYNEG: if (joy->lY < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_JOYYPOS: if (joy->lY >  BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_JOYZNEG: if (joy->lZ < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_JOYZPOS: if (joy->lZ >  BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUXNEG: if (mou->x  < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUXPOS: if (mou->x  >  BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUYNEG: if (mou->y  < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUYPOS: if (mou->y  >  BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUZNEG: if (mou->z  < -BR_BIND_DEADZONE) r = 0x80; break;
-    case BR_BIND_MOUZPOS: if (mou->z  >  BR_BIND_DEADZONE) r = 0x80; break;
+    case 0x8000:
+        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
+        break;
+    case 0x8100:
+        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
+        break;
+    case 0x8200:
+        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
+        break;
+    case 0x8300:
+        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
+        break;
+    case 0x8400:
+        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
+        break;
+    case 0x8500:
+        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
+        break;
+    case 0x8600:
+        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
+        break;
+    case 0x8700:
+        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
+        break;
+    case 0x8800:
+        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
+        break;
+    case 0x8900:
+        if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
+        break;
+    case 0x8A00:
+        if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
+        break;
+    case 0x8B00:
+        if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
+        break;
     default:
         break;
     }
 
-    if (b->kind1 == 0) {
-        r |= (uint8_t)(keys[b->code1] & 0x80u);
-    }
-    if (b->kind2 == 0) {
-        r |= (uint8_t)(keys[b->code2] & 0x80u);
-    }
+    if (b[3] == 0)
+        r |= (uint8_t)(g_brInKeys[cur][b[2]] & 0x80u);
+    if (b[5] == 0)
+        r |= (uint8_t)(g_brInKeys[cur][b[4]] & 0x80u);
     return r;
 }
 
