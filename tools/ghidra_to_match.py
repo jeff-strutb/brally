@@ -16,6 +16,9 @@ Run:
     python3 tools/ghidra_to_match.py --va 0x10001000     # one function
     python3 tools/ghidra_to_match.py --errors-only       # reprocess prior errors only
     python3 tools/ghidra_to_match.py --fallback          # try individual compile on batch failures
+    python3 tools/ghidra_to_match.py --refine [--max-diffs N] [--va X]
+        # hill-climb CLOSE rows over global retyping / comparison flips /
+        # local signedness; writes build/ghidra_work/<va>.refined.c
 """
 import csv
 import os
@@ -162,6 +165,25 @@ def clean_ghidra_types(code):
     code = re.sub(r'\bCONCAT\d+\b', '/* CONCAT */', code)
     # Ghidra SUB patterns (SUB41, SUB42 etc)
     code = re.sub(r'\bSUB\d+\(([^,]+),\d+\)', r'(\1)', code)
+    # Infinite loops: VC5 /Od compiles `do {} while (1)` to `mov eax,1; test;
+    # jne` but `for (;;)` to a bare `jmp` -- the original used for(;;).
+    code = re.sub(r'\bwhile\s*\(\s*true\s*\)\s*\{', 'for (;;) {', code)
+    lines = code.split('\n')
+    stack = []
+    for i, ln in enumerate(lines):
+        m = re.match(r'^(\s*)do \{\s*$', ln)
+        if m:
+            stack.append((m.group(1), i))
+            continue
+        m = re.match(r'^(\s*)\} while\s*\(\s*true\s*\)\s*;\s*$', ln)
+        if m and stack and stack[-1][0] == m.group(1):
+            ind, j = stack.pop()
+            lines[j] = ind + 'for (;;) {'
+            lines[i] = ind + '}'
+        elif re.match(r'^(\s*)\} while\b', ln) and stack and \
+                stack[-1][0] == re.match(r'^(\s*)', ln).group(1):
+            stack.pop()
+    code = '\n'.join(lines)
     # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
     code = re.sub(r'\bfcos\s*\(', 'cos(', code)
     code = re.sub(r'\bfsin\s*\(', 'sin(', code)
@@ -666,6 +688,164 @@ def single_compile_and_check(func, globals_map, fn_names):
         import shutil
         shutil.rmtree(tmpdir, ignore_errors=True)
 
+# ---------------------------------------------------------------------------
+# Refinement: hill-climb a CLOSE function over the edits Ghidra cannot know
+# ---------------------------------------------------------------------------
+
+_REFINE_TYPES = ['char', 'unsigned char', 'short', 'unsigned short',
+                 'unsigned int', 'int', 'float', 'double']
+_CMP_RE = re.compile(r'\(([^()<>=!&|]+?)\s*(<=|>=|<|>)\s*([^()<>=!&|]+?)\)')
+_CMP_FLIP = {'<': '>', '>': '<', '<=': '>=', '>=': '<='}
+
+def _score_source(src_text, func_name, orig_bytes, opts, tag):
+    """Compile src_text and return (diffs, opt) best over opts; (None, '') on error."""
+    import match_diff
+    import match_sweep
+    tmpdir = tempfile.mkdtemp(prefix='ghidra_ref_')
+    src_path = os.path.join(tmpdir, 'r.c')
+    best = (None, '')
+    try:
+        with open(src_path, 'w') as f:
+            f.write(src_text)
+        for opt in opts:
+            obj, errs = match_sweep.compile_variant(src_path, tag, opt)
+            if obj is None:
+                continue
+            try:
+                funcs = match_diff.parse_coff_obj(obj)
+            except Exception:
+                continue
+            found = None
+            for cand in funcs:
+                if cand.lstrip('_@').split('@')[0] == func_name:
+                    found = cand
+                    break
+            if found is None and len(funcs) == 1:
+                found = list(funcs)[0]
+            if found is None:
+                continue
+            rb, relocs = funcs[found]
+            ok, nd, _ = match_sweep.score(orig_bytes, rb, relocs)
+            if ok:
+                return (0, opt)
+            if best[0] is None or nd < best[0]:
+                best = (nd, opt)
+        return best
+    finally:
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _refine_candidates(src):
+    """Yield (label, new_src) single-edit variants of a wrapped source."""
+    head_end = src.find('\n\n', src.find('Forward declarations'))
+    head, body = src[:head_end], src[head_end:]
+    # (a) retype one extern global
+    for m in re.finditer(r'^extern (char|unsigned char|short|unsigned short|'
+                         r'unsigned int|int|float|double) (\w+);$', head, re.M):
+        cur, name = m.group(1), m.group(2)
+        for t in _REFINE_TYPES:
+            if t == cur:
+                continue
+            nh = head[:m.start()] + 'extern %s %s;' % (t, name) + head[m.end():]
+            yield ('%s:%s' % (name, t), nh + body)
+    # (b) flip one comparison's operand order
+    for m in _CMP_RE.finditer(body):
+        a, op, b = m.group(1).strip(), m.group(2), m.group(3).strip()
+        nb = body[:m.start()] + '(%s %s %s)' % (b, _CMP_FLIP[op], a) + body[m.end():]
+        yield ('flip:%s%s%s' % (a, op, b), head + nb)
+    # (c) make one local unsigned / signed
+    for m in re.finditer(r'^(\s+)(int|unsigned int) (\w+);$', body, re.M):
+        t = 'unsigned int' if m.group(2) == 'int' else 'int'
+        nb = body[:m.start()] + '%s%s %s;' % (m.group(1), t, m.group(3)) + body[m.end():]
+        yield ('local:%s:%s' % (m.group(3), t), head + nb)
+
+
+def refine_function(row, max_rounds=4, max_cands=80):
+    """Hill-climb one CLOSE/DIFF function. Returns an updated learnings row
+    and writes build/ghidra_work/<va>.refined.c when it improved."""
+    va_hex = row['va']
+    work = os.path.join(ROOT, 'build', 'ghidra_work', va_hex + '.c')
+    orig_file = os.path.join(ORIG_DIR, va_hex + '.bin')
+    if not (os.path.exists(work) and os.path.exists(orig_file)):
+        return row
+    src = open(work).read()
+    orig_bytes = open(orig_file, 'rb').read()
+    func_name = row['name']
+    opts = [row['opt']] if row.get('opt') else ['/O2', '/Od']
+    tag = 'ghidra_ref_' + va_hex[2:]
+    cur, cur_opt = _score_source(src, func_name, orig_bytes, opts, tag)
+    if cur is None:
+        return row
+    start = cur
+    applied = []
+    ncomp = 0
+    for _ in range(max_rounds):
+        if cur == 0:
+            break
+        improved = False
+        for label, cand in _refine_candidates(src):
+            ncomp += 1
+            if ncomp > max_cands:
+                break
+            nd, opt = _score_source(cand, func_name, orig_bytes, opts, tag)
+            if nd is not None and nd < cur:
+                src, cur, cur_opt = cand, nd, opt
+                applied.append(label)
+                improved = True
+                if cur == 0:
+                    break
+        if not improved or ncomp > max_cands:
+            break
+    if cur < start:
+        with open(work.replace('.c', '.refined.c'), 'w') as f:
+            f.write(src)
+        row = dict(row)
+        row['diffs'] = cur
+        row['opt'] = cur_opt
+        row['result'] = 'MATCH' if cur == 0 else (
+            'CLOSE(%d)' % cur if cur <= 5 else 'DIFF(%d)' % cur)
+        row['compile_errors'] = 'refined: ' + ' '.join(applied)
+        row['timestamp'] = datetime.now().isoformat(timespec='seconds')
+    return row
+
+
+def run_refine(max_diffs=5, target_va=None):
+    rows = []
+    with open(LEARNINGS_CSV) as f:
+        rows = list(csv.DictReader(f))
+    todo = []
+    for r in rows:
+        try:
+            d = int(r['diffs'])
+        except ValueError:
+            continue
+        if 0 < d <= max_diffs and (not target_va or r['va'].lower() == target_va.lower()):
+            todo.append(r)
+    print(f'refining {len(todo)} functions with 1..{max_diffs} diffs', flush=True)
+    WORKERS = min(os.cpu_count() or 4, 10)
+    out = {}
+    with ProcessPoolExecutor(max_workers=WORKERS) as pool:
+        futs = {pool.submit(refine_function, r): r['va'] for r in todo}
+        for fut in as_completed(futs):
+            try:
+                nr = fut.result()
+            except Exception as e:
+                print('  !!', futs[fut], e, flush=True)
+                continue
+            out[nr['va']] = nr
+            if nr.get('compile_errors', '').startswith('refined'):
+                print(f"    {nr['result']:10s} {nr['va']} {nr['name']}  {nr['compile_errors']}",
+                      flush=True)
+    merged = [out.get(r['va'], r) for r in rows]
+    with open(LEARNINGS_CSV, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=LEARNINGS_FIELDS)
+        w.writeheader()
+        w.writerows(merged)
+    n_match = sum(1 for r in out.values() if r['result'] == 'MATCH')
+    print(f'refine: {n_match} new MATCH of {len(todo)}', flush=True)
+
+
 def load_prior_errors():
     """Load VAs that were ERROR in the last run."""
     if not os.path.exists(LEARNINGS_CSV):
@@ -848,9 +1028,16 @@ def main():
     errors_only = '--errors-only' in sys.argv
     do_fallback = '--fallback' in sys.argv
 
+    max_diffs = 5
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg == '--va' and i < len(sys.argv) - 1:
             target_va = sys.argv[i + 1]
+        if arg == '--max-diffs' and i < len(sys.argv) - 1:
+            max_diffs = int(sys.argv[i + 1])
+
+    if '--refine' in sys.argv:
+        run_refine(max_diffs=max_diffs, target_va=target_va)
+        return
 
     run(target_va=target_va, small_only=small_only, dry_run=dry_run,
         errors_only=errors_only, do_fallback=do_fallback)
