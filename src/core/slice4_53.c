@@ -380,4 +380,12 @@ int BrTimerStart(void)
   return 1;
 }
 
+/* WHAT IT DOES: cosine of a float, returned on the x87 stack (inlined fcos). */
+/* @implements 0x100023E0 glide BrCosF */
+
+double BrCosF(float param_1)
+{
+  return cos((double)param_1);
+}
+
 #endif /* BR_MATCHING_BUILD */

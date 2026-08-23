@@ -93,6 +93,7 @@ def clean_ghidra_types(code):
     """Replace Ghidra type names with MSVC5-compatible ones."""
     subs = [
         # Ghidra's unkbyteN / unkuintN types
+        (r'\bunkbyte10\b', 'double'),   # x87 80-bit return/temporary
         (r'\bunkbyte\d+\b', 'int'),
         (r'\bunkuint\d+\b', 'unsigned int'),
         (r'\bunkint\d+\b', 'int'),
