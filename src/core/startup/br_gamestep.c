@@ -126,3 +126,26 @@ int BrGameStepPump(int state)
     }
     return BrGameStepInvoke();
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002E32F glide BrNop_1002E32F */
+
+void BrNop_1002E32F(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002E334 glide BrNop_1002E334 */
+
+void BrNop_1002E334(void)
+
+{
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */
