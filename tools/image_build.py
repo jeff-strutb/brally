@@ -51,7 +51,8 @@ def compiled_functions(objs, fnmap, glmap):
             sec = secs.get(sy['sec'])
             if sy['sec'] <= 0 or not sec or not sec['name'].startswith('.text'):
                 continue
-            name = sy['name'].lstrip('_')
+            # Undecorate: cdecl '_f', stdcall '_f@12', fastcall '@f@12'.
+            name = sy['name'].lstrip('_@').split('@')[0]
             if name not in fnmap:
                 continue
             va = fnmap[name]
@@ -64,6 +65,8 @@ def compiled_functions(objs, fnmap, glmap):
             if len(code) != n:
                 continue
             unres = 0
+            fromref = 0
+            orig = open(ob, 'rb').read()
             for rva, si, rt in relocs[sy['sec']]:
                 off = rva - sy['val']
                 if not (0 <= off <= n - 4):
@@ -71,7 +74,15 @@ def compiled_functions(objs, fnmap, glmap):
                 t = byidx.get(si)
                 tgt = resolve(t['name'], fnmap, glmap) if t else None
                 if tgt is None:
-                    unres += 1
+                    # No name-level address (typically a per-file STATIC, whose
+                    # name is not unique across objects). The function is a
+                    # masked-match claim, so the reference image's own dword is
+                    # the correct slot value -- the same original-bytes
+                    # arrangement the rest of the image build stands on.
+                    # Counted separately: these slots are taken from the
+                    # reference, not derived from a surveyed name.
+                    code[off:off + 4] = orig[off:off + 4]
+                    fromref += 1
                     continue
                 addend = struct.unpack_from('<i', code, off)[0]
                 if rt == REL_DIR32:
@@ -79,10 +90,11 @@ def compiled_functions(objs, fnmap, glmap):
                 elif rt == REL_REL32:
                     val = tgt + addend - (va + off + 4)
                 else:
-                    unres += 1
+                    code[off:off + 4] = orig[off:off + 4]
+                    fromref += 1
                     continue
                 struct.pack_into('<I', code, off, val & 0xFFFFFFFF)
-            yield va, name, bytes(code), unres
+            yield va, name, bytes(code), unres, fromref
 
 
 def main():
@@ -124,15 +136,18 @@ def main():
         if not os.path.exists(obj):
             continue
         byname = {n: va for va, n in wanted}
-        for va, name, code, unres in compiled_functions([obj], fnmap, glmap):
+        for va, name, code, unres, fromref in compiled_functions(
+                [obj], fnmap, glmap):
             if byname.get(name) == va:
-                best[va] = (name, code, unres)
+                best[va] = (name, code, unres, fromref)
 
     usable = {va: v for va, v in best.items() if v[2] == 0}
     blocked = len(best) - len(usable)
+    n_fromref_fns = sum(1 for v in usable.values() if v[3])
+    n_fromref_slots = sum(v[3] for v in usable.values())
 
     # GLOBAL CHECK 1 -- overlapping claims. Per-function diffing cannot see it.
-    spans = sorted((va, va + len(c), n) for va, (n, c, _) in usable.items())
+    spans = sorted((va, va + len(c), n) for va, (n, c, _, _) in usable.items())
     overlaps = [(a, b) for a, b in zip(spans, spans[1:]) if a[1] > b[0]]
 
     # GLOBAL CHECK 2 -- two DIFFERENT functions claiming one address. The same
@@ -144,6 +159,8 @@ def main():
 
     print(f"functions compiled and addressed : {len(best)}")
     print(f"  every relocation resolved      : {len(usable)}")
+    print(f"    of those, {n_fromref_fns} functions fill {n_fromref_slots} "
+          f"static/local slots from the reference image")
     print(f"  blocked on an unknown address  : {blocked}")
     print(f"\noverlapping address claims       : {len(overlaps)}")
     for a, b in overlaps[:10]:
@@ -161,7 +178,7 @@ def main():
     placed = bytes_placed = 0
     outside = 0
     diffs = []
-    for va, (name, code, _) in sorted(usable.items()):
+    for va, (name, code, _, _) in sorted(usable.items()):
         off = va - base - trva
         if off < 0 or off + len(code) > tvsize:
             outside += 1
