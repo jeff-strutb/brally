@@ -569,8 +569,11 @@ void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
     }
 }
 
+/* @implements 0x1002ECAC glide BrAnimSetOnce */
 void BrAnimSetOnce(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 0, 3); }
+/* @implements 0x1002ECC1 glide BrAnimSetLoop */
 void BrAnimSetLoop(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 1, 2); }
+/* @implements 0x1002ECD6 glide BrAnimSetPingPong */
 void BrAnimSetPingPong(BrAnimSet *pSet) { BrAnimFlagsApply(pSet, 3, 0); }
 
 /* 0x1007C8A0 __ftol -- truncate toward zero, low dword before any clamp.
@@ -1240,3 +1243,96 @@ void BrLogSet(void *p)
  *   and it changes every decoded length, so the function is unusable
  *   without it.
  */
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_106e8a1c;
+extern int DAT_106e8698;
+extern int DAT_106ed5d0;
+int BrStubTrue();
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002E136 glide BrNop_1002E136 */
+
+void BrNop_1002E136(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002E2DE glide BrNop_1002E2DE */
+
+void BrNop_1002E2DE(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002E2E3 glide BrNop_1002E2E3 */
+
+void BrNop_1002E2E3(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: store the argument into the global at 0x106E8A1C. */
+/* @implements 0x1002E2E8 glide BrSet_106E8A1C */
+
+void BrSet_106E8A1C(int param_1)
+
+{
+  DAT_106e8a1c = param_1;
+  return;
+}
+
+/* WHAT IT DOES: store the argument into the global at 0x106E8698. */
+/* @implements 0x1002E2F5 glide BrSet_106E8698 */
+
+void BrSet_106E8698(int param_1)
+
+{
+  DAT_106e8698 = param_1;
+  return;
+}
+
+/* WHAT IT DOES: return 0. */
+/* @implements 0x1002E70A glide BrRet0_1002E70A */
+
+int BrRet0_1002E70A(void)
+
+{
+  return 0;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002EBCC glide BrNop_1002EBCC */
+
+void BrNop_1002EBCC(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: return 1. */
+/* @implements 0x1002F238 glide BrRet1_1002F238 */
+
+int BrRet1_1002F238(void)
+
+{
+  return 1;
+}
+
+/* WHAT IT DOES: call BrStubTrue on the block at 0x106ED5D0 with (0,1). */
+/* @implements 0x1002F242 glide BrSub_1002F242 */
+
+void BrSub_1002F242(void)
+
+{
+  BrStubTrue(&DAT_106ed5d0,0,1);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */
