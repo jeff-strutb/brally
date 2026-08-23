@@ -183,6 +183,16 @@ the caller AND flipped a helper to match for free.
 - **`if (a ^ b)`:** `xor reg,[mem]; test` instead of cmp — the original
   spelled inequality as XOR (proven BrFrameBeginDl head).
 
+- **Ghidra constant-folds locals /Od never folds.** A runtime-computed
+  constant in the original bytes (`mov word [ebp-4],1; movsx; movsx; shl;
+  or` for 0x10001) is a LOCAL VARIABLE Ghidra folded away. Symptoms: /Od
+  frame one slot bigger than the visible variable count, and slot offsets
+  that look permuted (the folded var holds an early slot). Un-fold it
+  (`short v = 1; ... v | v << 16`) and both the frame and every later slot
+  snap into place. Proven BrDlBorderEmit (1585 B) — this WAS the "/Od slot
+  mystery"; the allocator is innocent: function-scope decls in decl order,
+  then block-scoped temps in textual order, compiler temps at the bottom.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
