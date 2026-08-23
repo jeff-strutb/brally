@@ -138,6 +138,7 @@ grSstWinClose,0x1007296C,1,0,"named global, no address recorded",0x1001E130
 grBufferSwap@4,0x10072972,1,0,"named global, no address recorded",0x1001DD50
 grBufferNumPending@0,0x10072978,2,1,"named global, no address recorded",0x1001DD50
 grSstWinOpen@28,0x10072984,1,0,"named global, no address recorded",0x1001DD80
+grFogColorValue@4,0x100729F6,1,0,"named global, no address recorded",0x1001EA60
 ftol,0x10074560,13,1,"named global, no address recorded",0x10006910 0x10006950 0x10006990 0x100069D0 0x10006AA0 0x10006AE0 0x10006B20 0x10006B60 0x10006F40 0x10018990
 BrOperatorDelete,0x1007456C,1,0,"named global, no address recorded",0x10053EC0
 operator_delete,0x1007456C,4,1,"named global, no address recorded",0x100087A0 0x10040CF0 0x100546F0 0x10055A10
