@@ -187,16 +187,18 @@ void BrVec3DivBy(BrVec3 *pV, float s)
 /* @implements 0x1003B050 d3d BrVec3Midpoint */
 void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
-    /* The original does not fetch the two operands in a consistent order:
-     * x and z load from pB first, y loads from pA first.  The compiler picks
-     * that alternation by itself for x and y, but not for z, so z names its
-     * pB component to force it to be the fetched operand -- the same lever
-     * that matches BrVec3Div and BrMat4MulVec3Transposed. */
+    /* The GLIDE original fetches pB first for x but pA first for y and z.
+     * The compiler alternates x by itself; y and z name their pA component
+     * to force it to be the fetched operand -- the same lever that matches
+     * BrVec3Div and BrMat4MulVec3Transposed. */
     pOut->x = (pA->x + pB->x) * 0.5f;
-    pOut->y = (pA->y + pB->y) * 0.5f;
     {
-        float bz = pB->z;
-        pOut->z = (bz + pA->z) * 0.5f;
+        float ay = pA->y;
+        pOut->y = (ay + pB->y) * 0.5f;
+    }
+    {
+        float az = pA->z;
+        pOut->z = (az + pB->z) * 0.5f;
     }
 }
 
