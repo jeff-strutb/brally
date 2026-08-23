@@ -118,7 +118,7 @@ def clean_ghidra_types(code):
         (r'\buint8_t\b', 'unsigned char'),
         (r'\bsize_t\b', 'unsigned int'),
         # Ghidra calling conventions MSVC5 doesn't know
-        (r'\b__thiscall\b', '__stdcall'),
+        # __thiscall is rewritten in fix_calling_convention (needs the signature)
         # Ghidra extended float types
         (r'\bfloat10\b', 'double'),
         (r'\bfloat8\b', 'double'),
@@ -161,10 +161,49 @@ def clean_ghidra_types(code):
     code = re.sub(r'\bCONCAT\d+\b', '/* CONCAT */', code)
     # Ghidra SUB patterns (SUB41, SUB42 etc)
     code = re.sub(r'\bSUB\d+\(([^,]+),\d+\)', r'(\1)', code)
+    # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
+    code = re.sub(r'\bfcos\s*\(', 'cos(', code)
+    code = re.sub(r'\bfsin\s*\(', 'sin(', code)
+    code = re.sub(r'\bfsqrt\s*\(', 'sqrt(', code)
+    code = re.sub(r'\bfpatan\s*\(', 'atan2(', code)
     # PTR_s_XXXXX (string pointer references) → extern globals (declared in wrapper)
     # PTR_XXXXX_exref (external references) → extern globals
     # These are left in place; wrap_for_compile will declare them.
     return code
+
+_SIG_RE = r'(^|\n)([^\n;{}/]*?)\b(%s)\s*\(([^)]*)\)\s*\n?\s*\{'
+
+def fix_calling_convention(code, func_name, orig_bytes):
+    """Rewrite the defined function's signature from the original bytes:
+    - __thiscall(this, a, b) → __fastcall(this, int _edx, a, b): same ecx
+      this, same stack args, same callee cleanup (BR_THISCALL1 idiom).
+    - trailing `ret imm16` with no convention → __stdcall with imm/4 params
+      (pads missing params as int).
+    """
+    m = re.search(_SIG_RE % re.escape(func_name), code)
+    if not m:
+        return code
+    pre, params = m.group(2), m.group(4).strip()
+    plist = [] if (not params or params == 'void') else [
+        x.strip() for x in params.split(',')]
+    if '__thiscall' in pre:
+        pre = pre.replace('__thiscall', '__fastcall')
+        if len(plist) >= 2:
+            plist.insert(1, 'int _edx_unused')
+    elif (len(orig_bytes) >= 3 and orig_bytes[-3] == 0xC2
+          and not any(c in pre for c in ('__fastcall', '__stdcall', '__cdecl'))):
+        imm = orig_bytes[-2] | (orig_bytes[-1] << 8)
+        if imm % 4 == 0 and imm <= 0x40:
+            want = imm // 4
+            while len(plist) < want:
+                plist.append('int _pad_%d' % len(plist))
+            pre = pre.rstrip() + ' __stdcall '
+    else:
+        return code
+    new_sig = '%s%s%s(%s)\n{' % (m.group(1), pre, func_name,
+                                 ','.join(plist) if plist else 'void')
+    return code[:m.start()] + new_sig + code[m.end():]
+
 
 def clean_ghidra_globals(code, globals_map):
     """Replace DAT_XXXXXXXX with known global names."""
@@ -204,16 +243,20 @@ _WIN32_API_NAMES = frozenset([
 def _is_pointer_typed(name, code):
     """Detect whether a DAT_ global is used as a pointer (deref, arith, arrow)."""
     esc = re.escape(name)
-    if re.search(r'\*\s*' + esc, code):
+    # deref: '*name' where the '*' is unary (preceded by an operator/open
+    # paren/statement start), not a multiplication 'a * name'
+    if re.search(r'(?:^|[=(,;{}?:!&|<>+\-*/])\s*\*\s*' + esc + r'\b', code, re.M):
         return True
-    if re.search(esc + r'\s*[\[+\-]', code):
+    if re.search(r'\b' + esc + r'\s*\[', code):
         return True
-    if re.search(esc + r'\s*->', code):
+    if re.search(r'\b' + esc + r'\s*->', code):
         return True
     # assigned from a pointer expression: name = (type *)expr
     if re.search(esc + r'\s*=\s*\([^)]*\*\)', code):
         return True
     return False
+
+KNOWN_FN_NAMES = set()
 
 def wrap_for_compile(func_c, va_hex):
     """Wrap a cleaned Ghidra function in a minimal compilable file."""
@@ -257,6 +300,10 @@ typedef int (*funcptr)();
             header += "extern funcptr %s;\n" % dat
         elif _is_pointer_typed(dat, func_c):
             header += "extern int *%s;\n" % dat
+        elif dat.startswith('_DAT_'):
+            # Ghidra's '_DAT_' prefix marks a typed (non-int) overlay at the
+            # address; in this binary that is nearly always a float constant.
+            header += "extern float %s;\n" % dat
         else:
             header += "extern int %s;\n" % dat
 
@@ -272,8 +319,14 @@ typedef int (*funcptr)();
 
     # Ghidra-named globals: s_*, g_*, BrG_*, BrSn*, Glob*, etc.
     # Skip names that collide with Win32 APIs (included via windows.h)
+    # Names known to be functions (report.csv) that appear uncalled, e.g.
+    # stored into a function-pointer slot: declare as functions, not data.
+    known_fns = set(KNOWN_FN_NAMES)
+    plain_called = set(re.findall(r'\b(\w+)\s*\(', func_c)) - defined_funcs
     ghidra_globals = set(re.findall(
         r'\b((?:s_|g_|BrG_|BrSn|Glob|Global)\w+)\b', func_c)) - defined_funcs
+    ghidra_globals -= plain_called
+    ghidra_globals -= known_fns
     # Also detect function-pointer and pointer-typed globals
     called_globals = set(re.findall(r'\(\*(\w+)\)\s*\(', func_c))
     for g in sorted(ghidra_globals):
@@ -292,6 +345,9 @@ typedef int (*funcptr)();
         safe_name = t.replace('$', '_dollar_')
         func_c = func_c.replace(t, safe_name)
         header += "int %s;\n" % safe_name
+    # ...and the ones prepare_function already sanitised to _S_Tnnn
+    for t in sorted(set(re.findall(r'\b(_S_T\d+)\b', func_c))):
+        header += "float %s;\n" % t
 
     # Ghidra stack references (stack0xNNNN) — declare as local ints
     stack_vars = set(re.findall(r'(stack0x[0-9a-fA-F]+)', func_c))
@@ -322,13 +378,21 @@ typedef int (*funcptr)();
         header += "int %s();\n" % bf
     # Non-called Br* that aren't globals — declare as extern int
     for bf in sorted(br_funcs - br_called):
-        if not any(bf.startswith(p) for p in ('BrG_', 'BrSn')):
+        if bf in known_fns:
+            header += "int %s();\n" % bf
+        elif not any(bf.startswith(p) for p in ('BrG_', 'BrSn')):
             header += "extern int %s;\n" % bf
 
     # br_* lowercase game functions
-    br_lower = set(re.findall(r'\b(br_\w+)\s*\(', func_c)) - defined_funcs
+    br_lower = set(re.findall(r'\b(br_\w+)\b', func_c)) - defined_funcs
     for bl in sorted(br_lower):
         header += "int %s();\n" % bl
+    # known function names (from report.csv) referenced without a call
+    for kf in sorted((known_fns & set(re.findall(r'\b(\w+)\b', func_c)))
+                     - defined_funcs - plain_called - br_called - br_lower):
+        if kf.startswith('Br') or kf.startswith('br_'):
+            continue  # already declared above
+        header += "int %s();\n" % kf
 
     # Windows struct types that MSVC5 headers may not expose directly
     # _MEMORYSTATUS, _MMCKINFO — use the non-underscore form via windows.h
@@ -498,7 +562,10 @@ def single_compile_and_check(func, globals_map, fn_names):
             'opt': '', 'compile_errors': 'prepare failed',
         }
 
-    compilable = wrap_for_compile(cleaned, va_hex)
+    KNOWN_FN_NAMES.update(fn_names.values())
+    # Wrapped source is kept for inspection in build/ghidra_work/<va>.c
+    work_dir = os.path.join(ROOT, 'build', 'ghidra_work')
+    os.makedirs(work_dir, exist_ok=True)
 
     orig_file = os.path.join(ORIG_DIR, f'{va_hex}.bin')
     if not os.path.exists(orig_file):
@@ -510,6 +577,11 @@ def single_compile_and_check(func, globals_map, fn_names):
     with open(orig_file, 'rb') as f:
         orig_bytes = f.read()
 
+    cleaned = fix_calling_convention(cleaned, func_name, orig_bytes)
+    compilable = wrap_for_compile(cleaned, va_hex)
+    with open(os.path.join(work_dir, f'{va_hex}.c'), 'w') as f:
+        f.write(compilable)
+
     tmpdir = tempfile.mkdtemp(prefix='ghidra_ind_')
     src_path = os.path.join(tmpdir, f'g_{va_hex}.c')
     tag = 'ghidra_' + os.path.basename(tmpdir)
@@ -519,6 +591,7 @@ def single_compile_and_check(func, globals_map, fn_names):
             f.write(compilable)
 
         last_errors = ''
+        best = None
         for opt in ['/O2', '/Od']:
             obj, errs = match_sweep.compile_variant(src_path, tag, opt)
             if obj is None:
@@ -530,10 +603,11 @@ def single_compile_and_check(func, globals_map, fn_names):
             except Exception:
                 continue
 
-            candidates = [func_name, '_' + func_name, func_name.lstrip('_')]
+            # decorated names: _f, @f@8, _f@8
             found_name = None
-            for cand in candidates:
-                if cand in funcs:
+            for cand in funcs:
+                base = cand.lstrip('_@').split('@')[0]
+                if base == func_name:
                     found_name = cand
                     break
             if found_name is None and len(funcs) == 1:
@@ -545,12 +619,18 @@ def single_compile_and_check(func, globals_map, fn_names):
             is_match, ndiff, recomp_sz = match_sweep.score(
                 orig_bytes, recomp_bytes, relocs)
 
-            return {
+            r = {
                 'va': va_hex, 'size': func['size'], 'name': func_name,
                 'match': is_match, 'diffs': ndiff,
                 'orig_size': len(orig_bytes), 'recomp_size': recomp_sz,
                 'opt': opt, 'compile_errors': '',
             }
+            if is_match:
+                return r
+            if best is None or ndiff < best['diffs']:
+                best = r
+        if best is not None:
+            return best
 
         return {
             'va': va_hex, 'size': func['size'], 'name': func_name,

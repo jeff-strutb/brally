@@ -1251,4 +1251,12 @@ void * __fastcall BrObj546F0DeleteDtor(void *param_1,int _edx_unused,unsigned ch
   return param_1;
 }
 
+/* WHAT IT DOES: stdcall stub taking three words and returning 0. */
+/* @implements 0x10054600 glide BrRet0Std3_10054600 */
+
+int __stdcall BrRet0Std3_10054600(int _pad_0,int _pad_1,int _pad_2)
+{
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
