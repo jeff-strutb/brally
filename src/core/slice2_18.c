@@ -937,3 +937,44 @@ void BrFrameEnd(void)
 
     BrG_6C65EC ^= 1;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002BF4B glide BrNop_1002BF4B */
+
+void BrNop_1002BF4B(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002C509 glide BrNop_1002C509 */
+
+void BrNop_1002C509(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002CB3F glide BrNop_1002CB3F */
+
+void BrNop_1002CB3F(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002CB44 glide BrNop_1002CB44 */
+
+void BrNop_1002CB44(void)
+
+{
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

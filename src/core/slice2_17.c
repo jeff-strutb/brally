@@ -1233,4 +1233,22 @@ int BrS17Init(void)
   return;
 }
 
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002AB8F glide BrNop_1002AB8F */
+
+void BrNop_1002AB8F(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002AB94 glide BrNop_1002AB94 */
+
+void BrNop_1002AB94(void)
+
+{
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
