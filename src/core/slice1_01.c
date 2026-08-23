@@ -428,6 +428,7 @@ int BrCdMciPause(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int g_brCdTrackLast;
 int FUN_100027e0();
 int FUN_10002c50();
 int FUN_10002dc0();
@@ -495,6 +496,44 @@ int BrCdTrackResume(void)
   if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
     uVar1 = BrCdTrackPlay(g_brCdTrackCur);
     return uVar1;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: play the next CD track, clamping to the last track. */
+/* @implements 0x10002CB0 glide BrCdTrackNext */
+
+int BrCdTrackNext(void)
+
+{
+  int iVar1;
+  
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = BrCdTrackGet();
+    g_brCdTrackCur = iVar1 + 1;
+    if (iVar1 + 1 > g_brCdTrackLast) {
+      g_brCdTrackCur = g_brCdTrackLast;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: play the next CD track, wrapping to the first track past the last. */
+/* @implements 0x10002CF0 glide BrCdTrackNextWrap */
+
+int BrCdTrackNextWrap(void)
+
+{
+  int iVar1;
+  
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = BrCdTrackGet();
+    g_brCdTrackCur = iVar1 + 1;
+    if (iVar1 + 1 > g_brCdTrackLast) {
+      g_brCdTrackCur = g_brCdTrackFirst;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
   }
   return 1;
 }

@@ -1225,3 +1225,27 @@ int32_t BrMenuFlags18F0(BrMenuItem *pItem)
     }
     return 1;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern char DAT_10ac592c;
+extern int DAT_10ac5930;
+extern int DAT_10ac5934;
+extern int DAT_10ac5bf8;
+extern char DAT_10ac5c10;
+extern int g_brAA28A4;
+
+/* WHAT IT DOES: latch the three pending menu values (two words and a byte) into their
+ * current slots. Returns 1. */
+/* @implements 0x10039F30 glide BrMenuLatchPending */
+
+int BrMenuLatchPending(void)
+
+{
+  DAT_10ac5bf8 = DAT_10ac5934;
+  DAT_10ac5c10 = DAT_10ac592c;
+  g_brAA28A4 = DAT_10ac5930;
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */
