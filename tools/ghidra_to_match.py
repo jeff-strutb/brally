@@ -215,6 +215,25 @@ def clean_ghidra_types(code):
             src, dst = m.group(3), m.group(6)
             code = code[:m.start()] + ('strcpy(%s,%s);' % (dst, src)) + code[m.end():]
 
+    def _memset_sub(code):
+        # Inlined memset(p, 0, N): dword loop (N>>2 stores of zero) plus
+        # residual byte loop (N&3).  Two dword-body shapes are seen.
+        pat = re.compile(
+            r'for \((?P<u>\w+) = (?P<n>[^;]+?) >> 2; (?P=u) != 0; (?P=u) = (?P=u) - 1\) \{\s*'
+            r'(?:(?P<p>\w+)\[0\] = \x27\\0\x27;\s*(?P=p)\[1\] = \x27\\0\x27;\s*'
+            r'(?P=p)\[2\] = \x27\\0\x27;\s*(?P=p)\[3\] = \x27\\0\x27;'
+            r'|\*\([\w ]+\*\)(?P<p2>\w+) = 0;)\s*'
+            r'(?P<pp>\w+) = (?P=pp) \+ 4;\s*\}\s*'
+            r'for \((?P<u2>\w+) = (?P=n) & 3; (?P=u2) != 0; (?P=u2) = (?P=u2) - 1\) \{\s*'
+            r'\*(?P=pp) = (?:\x27\\0\x27|0);\s*(?P=pp) = (?P=pp) \+ 1;\s*\}')
+        while True:
+            m = pat.search(code)
+            if not m:
+                return code
+            ptr = m.group('pp')
+            n = m.group('n').strip()
+            code = code[:m.start()] + ('memset(%s,0,%s);' % (ptr, n)) + code[m.end():]
+
     def _strlen_sub(code):
         # Find the loop body first (unambiguous), then locate the counter
         # init and the pointer init that precede it, possibly with other
@@ -277,6 +296,7 @@ def clean_ghidra_types(code):
                 break
         return code
     code = _strcpy_sub(code)
+    code = _memset_sub(code)
     code = _strlen_sub(code)
     # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
     code = re.sub(r'\bfcos\s*\(', 'cos(', code)
