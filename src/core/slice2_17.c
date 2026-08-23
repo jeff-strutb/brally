@@ -1219,3 +1219,18 @@ void BrSub1007C7F0(void)
     g_0BDACC = BrX10080580;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: release the S17 subsystem and register its atexit handler. */
+/* @implements 0x10019800 glide BrS17Init */
+
+int BrS17Init(void)
+
+{
+  BrS17Release();
+  BrS17RegisterAtExit();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

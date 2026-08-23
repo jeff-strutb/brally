@@ -215,3 +215,25 @@ void BrPodSetName(void *pThis, const char *pszName)
         strcpy((char *)pThis + 0x20, pszName);
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: identity function — returns its argument unchanged (fastcall). */
+/* @implements 0x10008D50 glide BrPodIdentity */
+
+int __fastcall BrPodIdentity(int param_1)
+
+{
+  return param_1;
+}
+
+/* WHAT IT DOES: no-op stub. */
+/* @implements 0x10008D60 glide BrPodNop */
+
+int BrPodNop(void)
+
+{
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

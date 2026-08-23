@@ -674,3 +674,48 @@ void BrSub10074E20(unsigned int *pDst)
     for (i = 0; i < 8; ++i)
         pDst[i] = g_BrX1829850[i];
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_118ed1a0;
+int FUN_1006c750();
+int FUN_1006c800();
+int FUN_1006c880();
+int FUN_1006c8b0();
+
+/* WHAT IT DOES: store the render-destination pointer for the font subsystem. */
+/* @implements 0x1006E020 glide BrFontSetRenderDst */
+
+int BrFontSetRenderDst(int param_1)
+
+{
+  DAT_118ed1a0 = param_1;
+  return;
+}
+
+/* WHAT IT DOES: create all font and UI textures and register font pages. */
+/* @implements 0x1006E030 glide BrFontTexInitAll */
+
+int BrFontTexInitAll(void)
+
+{
+  FUN_1006c750();
+  BrFontRegisterPages();
+  FUN_1006c800();
+  BrSub10073980();
+  BrSub100739B0();
+  FUN_1006c880();
+  FUN_1006c8b0();
+  return;
+}
+
+/* WHAT IT DOES: no-op — the shared target of multiple thunks. */
+/* @implements 0x1006E590 glide BrNop6E590 */
+
+int BrNop6E590(void)
+
+{
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

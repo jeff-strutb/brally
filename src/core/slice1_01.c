@@ -425,3 +425,78 @@ int BrCdMciPause(void)
     return 1;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int FUN_100027e0();
+int FUN_10002c50();
+int FUN_10002dc0();
+extern int g_brCdEnabled;
+extern int g_brCdMediaOk;
+extern int g_brCdPlaying;
+extern int g_brCdTrackCur;
+extern int g_brCdTrackFirst;
+
+/* WHAT IT DOES: get the current track number — EAR path when CD audio is enabled, real CD otherwise. */
+/* @implements 0x10002C50 glide BrCdTrackGet */
+
+int BrCdTrackGet(void)
+
+{
+  if (g_brCdEnabled == 1) {
+    FUN_100027e0();
+    return;
+  }
+  BrCdTrackGetEar();
+  return;
+}
+
+/* WHAT IT DOES: play the previous CD track, clamping to the first track. */
+/* @implements 0x10002C70 glide BrCdTrackPrev */
+
+int BrCdTrackPrev(void)
+
+{
+  int iVar1;
+  
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = FUN_10002c50();
+    g_brCdTrackCur = iVar1 + -1;
+    if (iVar1 + -1 < g_brCdTrackFirst) {
+      g_brCdTrackCur = g_brCdTrackFirst;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: set music volume — dispatches to EAR mixer or CD-audio path. */
+/* @implements 0x10002D30 glide BrCdVolumeSet */
+
+int BrCdVolumeSet(int param_1)
+
+{
+  if (g_brCdEnabled == 1) {
+    FUN_10002dc0(param_1);
+    return;
+  }
+  BrCdVolumeScale(param_1);
+  return;
+}
+
+/* WHAT IT DOES: resume the current CD track if the disc is ready and playback is enabled. */
+/* @implements 0x10002E80 glide BrCdTrackResume */
+
+int BrCdTrackResume(void)
+
+{
+  int uVar1;
+  
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    uVar1 = BrCdTrackPlay(g_brCdTrackCur);
+    return uVar1;
+  }
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -403,3 +403,6 @@ int32_t BrSprFontKindHook_10047360(BrUiCtl_ *pCtl)
     pCtl->flags1C = (int32_t)uFlags;
     return 1;
 }
+
+/* BrSprFontDraw (0x10058380) lives in ghidra_batch.c — the original binary
+ * calls BrUiSprClip with 6 args, but the port header declares 7. */

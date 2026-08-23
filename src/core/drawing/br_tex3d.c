@@ -945,3 +945,21 @@ void BrTex3dToRgba8(const uint16_t *pArgb1555, uint32_t count, uint8_t *pRgba)
         pRgba[i * 4 + 3] = (uint8_t)((v & 0x8000u) ? 255u : 0u);
     }
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int _DAT_10697a48;
+extern int _DAT_10697a50;
+
+/* WHAT IT DOES: extract two 3-bit tile indices from a packed command word. */
+/* @implements 0x100293F0 glide BrTexTileUnpack */
+
+int BrTexTileUnpack(unsigned int *param_1)
+
+{
+  _DAT_10697a50 = *param_1 >> 8 & 7;
+  _DAT_10697a48 = *param_1 >> 0xb & 7;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

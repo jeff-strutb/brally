@@ -75,3 +75,31 @@ int BrDelta_100713A0(void)
 {
     return BrExt_10075020() - (int)g_178FEE8;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int FUN_1002f282();
+extern int g_BrReplayOn;
+extern int g_a220B20;
+
+/* WHAT IT DOES: return whether replay playback is active. */
+/* @implements 0x10063A50 glide BrReplayIsOn */
+
+int BrReplayIsOn(void)
+
+{
+  return g_BrReplayOn;
+}
+
+/* WHAT IT DOES: set the app mode to 5 (return to menu) and call the mode-change handler. */
+/* @implements 0x1006A070 glide BrSetMode5 */
+
+int BrSetMode5(void)
+
+{
+  g_a220B20 = 5;
+  FUN_1002f282();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

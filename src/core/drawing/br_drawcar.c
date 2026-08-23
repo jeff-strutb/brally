@@ -1210,3 +1210,5 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     /* 0xBE98 -- model cost accumulation. */
     BrS17GetState()->f6C161C += *(const int32_t *)(model + 0x8000);
 }
+
+/* BrDesktopSetup (0x10009C00) stays in ghidra_batch.c — context-sensitive codegen. */

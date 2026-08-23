@@ -499,3 +499,25 @@ int32_t BrNetLockSetIfZero221314(void)
     return 1;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+extern int DAT_10078828;
+extern int DAT_10078858;
+
+/* WHAT IT DOES: create a COM object via CoCreateInstance and return its interface pointer. */
+/* @implements 0x10035BB0 glide BrComCreateInstance */
+
+int BrComCreateInstance(int *param_1)
+
+{
+  LPVOID local_4;
+  
+  local_4 = (LPVOID)0x0;
+  CoCreateInstance((IID *)&DAT_10078858,(LPUNKNOWN)0x0,1,(IID *)&DAT_10078828,&local_4);
+  *param_1 = local_4;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

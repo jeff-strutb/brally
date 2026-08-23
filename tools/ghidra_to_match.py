@@ -616,19 +616,22 @@ def run(target_va=None, small_only=False, dry_run=False,
             print(f"  ... and {len(targets)-20} more")
         return
 
-    # If --errors-only, load prior non-error results to preserve them
+    # Merge: keep prior rows for every VA not being reprocessed this run, so a
+    # --va / --small / --errors-only run never clobbers the rest of the table.
     prior_results = []
-    if errors_only and os.path.exists(LEARNINGS_CSV):
+    target_vas = {f['va'].lower() for f in targets}
+    if os.path.exists(LEARNINGS_CSV):
         with open(LEARNINGS_CSV) as f:
             for r in csv.DictReader(f):
-                if r['result'] != 'ERROR':
-                    prior_results.append(r)
+                if r['va'].lower() in target_vas or r['va'].lower() in covered_vas:
+                    continue
+                prior_results.append(r)
 
     learnings = list(prior_results)
     matches = sum(1 for r in prior_results if r['result'] == 'MATCH')
     close = sum(1 for r in prior_results if r['result'].startswith('CLOSE'))
     far = sum(1 for r in prior_results if r['result'].startswith('DIFF'))
-    errors = 0
+    errors = sum(1 for r in prior_results if r['result'] == 'ERROR')
 
     WORKERS = min(os.cpu_count() or 4, 10)
 

@@ -333,3 +333,57 @@ void BrSfxSrcRaceCountdown(int iStep)
     else
         BrSfxSrcBeep();
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_100b32b0;
+extern int DAT_100b32bc;
+extern int DAT_100b32c0;
+extern int DAT_1184c094;
+int FUN_1006b790();
+int FUN_1006e590();
+extern int g_BrSndAA3470;
+extern int g_aBrSndBankVoice;
+
+/* WHAT IT DOES: play an SFX bank entry by index (channel 3, bank-relative params). */
+/* @implements 0x10060DB0 glide BrSfxBankPlay */
+
+int BrSfxBankPlay(int param_1)
+
+{
+  BrSfxSrcPlay(3,(&DAT_100b32b0)[param_1 * 6],(&DAT_100b32bc)[param_1 * 6],
+               (&DAT_100b32c0)[param_1 * 6]);
+  g_BrSndAA3470 = param_1;
+  return;
+}
+
+/* WHAT IT DOES: set the playback frequency on a sound voice by bank index. */
+/* @implements 0x1006B730 glide BrSndVoiceSetFreq */
+
+int BrSndVoiceSetFreq(int param_1,int param_2)
+
+{
+  int iVar1;
+  
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    iVar1 = FUN_1006b790((&g_aBrSndBankVoice)[param_1],param_2);
+    if (iVar1 != 0) {
+      (&DAT_1184c094)[param_1 * 6] = param_2;
+      return 1;
+    }
+    return 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
+/* @implements 0x1006E580 glide BrThunk6E580 */
+
+int BrThunk6E580(void)
+
+{
+  FUN_1006e590();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

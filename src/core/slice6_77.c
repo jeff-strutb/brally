@@ -86,3 +86,50 @@ void BrFfbReprobe(void)
 
     g_brB4E1E0 = nSavedExcl;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int func_0x10074aec();
+void halt_baddata(void);
+/* WHAT IT DOES: no-op stub (CRT-region placeholder). */
+/* @implements 0x10073714 glide BrNop73714 */
+
+int BrNop73714(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: halt on bad data (CRT-region trap). */
+/* @implements 0x10073974 glide BrHalt73974 */
+
+int BrHalt73974(void)
+
+{
+                    
+  halt_baddata();
+}
+
+/* WHAT IT DOES: halt on bad data (CRT-region trap, second entry point). */
+/* @implements 0x10073979 glide BrHalt73979 */
+
+int BrHalt73979(void)
+
+{
+                    
+  halt_baddata();
+}
+
+/* WHAT IT DOES: validate a matrix magic number and call the rebuild path if it matches. */
+/* @implements 0x100747E0 glide BrMat3CheckMagic */
+
+int BrMat3CheckMagic(int *param_1)
+
+{
+  if (*(int *)*param_1 == -0x1f928c9d) {
+    func_0x10074aec();
+  }
+  return 0;
+}
+
+#endif /* BR_MATCHING_BUILD */

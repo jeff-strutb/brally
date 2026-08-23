@@ -408,3 +408,49 @@ void BrSndBankSetCar(int iCar, int iName)
     g_0B6C00[iCar].iName = iName;
     g_0B6C48[iCar].iName = iName;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int BrSndG0B5DE8;
+extern int BrSndG18290FC;
+extern int BrSndPDS;
+int FUN_1006bf90();
+extern int g_aBrSndBankVoice;
+
+/* WHAT IT DOES: return whether a sound voice is currently playing. */
+/* @implements 0x1006BF50 glide BrSndVoiceIsPlaying */
+
+int BrSndVoiceIsPlaying(int param_1)
+
+{
+  int uVar1;
+  
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    if ((&g_aBrSndBankVoice)[param_1] != 0) {
+      uVar1 = FUN_1006bf90((&g_aBrSndBankVoice)[param_1]);
+      return uVar1;
+    }
+    return 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: zero-initialize all entries in the sound-bank state arrays. */
+/* @implements 0x1006BFD0 glide BrSndBankClear */
+
+int BrSndBankClear(void)
+
+{
+  int *puVar1;
+  
+  puVar1 = &g_0B6C00;
+  do {
+    puVar1[-0x1b0] = 0;
+    *puVar1 = 0;
+    puVar1[0x12] = 0;
+    puVar1 = puVar1 + 1;
+  } while ((int)puVar1 < 0x100b6444);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

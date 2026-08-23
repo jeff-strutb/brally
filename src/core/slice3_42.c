@@ -948,3 +948,48 @@ void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
     sum = BrS42VelAt(pOut, pB, &p);
     BrMat4MulVec3(pOut, &pB->m, &sum);
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10b73668;
+extern int DAT_10cf3668;
+
+/* WHAT IT DOES: initialize the controller-config subsystem and register its atexit handler. */
+/* @implements 0x10062AC0 glide BrCtrlCfgBoot */
+
+int BrCtrlCfgBoot(void)
+
+{
+  BrCtrlCfgInitGlobal();
+  BrAtexit_10069A70();
+  return;
+}
+
+/* WHAT IT DOES: return a pointer to the primary replay data buffer. */
+/* @implements 0x10063B40 glide BrReplayGetBuf */
+
+char * BrReplayGetBuf(void)
+
+{
+  return &DAT_10b73668;
+}
+
+/* WHAT IT DOES: return the byte size of the current replay (frame count * 0x18). */
+/* @implements 0x10063B50 glide BrReplayGetSize */
+
+int BrReplayGetSize(void)
+
+{
+  return g_BrReplayCount[0] * 0x18;
+}
+
+/* WHAT IT DOES: return a pointer to the secondary replay data buffer. */
+/* @implements 0x10063DA0 glide BrReplayGetBuf2 */
+
+char * BrReplayGetBuf2(void)
+
+{
+  return &DAT_10cf3668;
+}
+
+#endif /* BR_MATCHING_BUILD */

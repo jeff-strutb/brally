@@ -503,3 +503,75 @@ void BrSub10073B00(void)
                                        0, 0, 0, 0);
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+extern int DAT_11849e60;
+extern int DAT_1184c078;
+extern int DAT_1184c07c;
+void BrSndVoiceApplyFreq(int);
+void BrSndVoiceApplyPan(int);
+
+/* WHAT IT DOES: signal the sound-mixing thread to exit, wait for it, and close its handles. */
+/* @implements 0x1006B1E0 glide BrSndThreadStop */
+
+int BrSndThreadStop(void)
+
+{
+  if (DAT_1184c078 != 0) {
+    SetEvent(DAT_11849e60);
+    WaitForSingleObject(DAT_1184c07c,0xffffffff);
+    CloseHandle(DAT_1184c07c);
+    DAT_1184c07c = (HANDLE)0x0;
+    CloseHandle(DAT_11849e60);
+    DAT_11849e60 = (HANDLE)0x0;
+    DAT_1184c078 = 0;
+  }
+  return;
+}
+
+/* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c — context-sensitive codegen. */
+
+typedef void (__stdcall *dsbuf_fn2)(int, int);
+
+/* WHAT IT DOES: call IDirectSoundBuffer::SetPan with a computed pan value. */
+/* @implements 0x1006B400 glide BrSndVoiceApplyPan */
+
+void BrSndVoiceApplyPan(int param_1)
+
+{
+  dsbuf_fn2 fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x40);
+  fn(*(int *)(param_1 + 0x9c), (*(int *)(param_1 + 0x10) + -400) * 10);
+  return;
+}
+
+/* WHAT IT DOES: call IDirectSoundBuffer::SetFrequency from the voice struct. */
+/* @implements 0x1006B420 glide BrSndVoiceApplyFreq */
+
+void BrSndVoiceApplyFreq(int param_1)
+
+{
+  dsbuf_fn2 fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x44);
+  fn(*(int *)(param_1 + 0x9c), *(int *)(param_1 + 0xc));
+  return;
+}
+
+/* WHAT IT DOES: set the volume on a DirectSound buffer and commit the change. */
+/* @implements 0x1006B670 glide BrSndBufSetVolume */
+
+int BrSndBufSetVolume(int param_1,int param_2)
+
+{
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    if (param_1 != 0) {
+      *(int *)(param_1 + 0xc) = param_2;
+      BrSndVoiceApplyFreq(param_1);
+      return 1;
+    }
+    return 0;
+  }
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */

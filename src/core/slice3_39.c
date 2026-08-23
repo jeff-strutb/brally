@@ -1187,3 +1187,52 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
     }
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+extern int * DAT_10ac66e8;
+extern int * DAT_10ac6720;
+extern int * DAT_10ac6730;
+extern funcptr PTR_FUN_100776F0;
+extern funcptr PTR_FUN_100776f0;
+
+/* WHAT IT DOES: stub that always returns 0. */
+/* @implements 0x10053E60 glide BrStubFalse */
+
+int BrStubFalse(void)
+
+{
+  return 0;
+}
+
+/* WHAT IT DOES: vtable constructor: install the function-pointer table at PTR_FUN_100776F0 (fastcall). */
+/* @implements 0x10053EE0 glide BrVtInit53EE0 */
+
+int __fastcall BrVtInit53EE0(int *param_1)
+
+{
+  *param_1 = &PTR_FUN_100776f0;
+  return;
+}
+
+/* WHAT IT DOES: update the button-latch state: detect new presses by comparing current vs previous frame. */
+/* @implements 0x10059060 glide BrInputLatchUpdate */
+
+int BrInputLatchUpdate(void)
+
+{
+  int iVar1;
+  
+  iVar1 = 0;
+  do {
+    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
+    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
+    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) =
+         *(unsigned int *)((int)&DAT_10ac6730 + iVar1) & *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
+    iVar1 = iVar1 + 4;
+  } while (iVar1 < 0x10);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

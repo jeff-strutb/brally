@@ -673,3 +673,19 @@ void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
     BrImgTintState.scaleG = g;   /* 0x10AA3448 */
     BrImgTintState.scaleB = b;   /* 0x10AA345C */
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int FUN_1006e590();
+
+/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
+/* @implements 0x1005C440 glide BrThunk5C440 */
+
+int BrThunk5C440(void)
+
+{
+  FUN_1006e590();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

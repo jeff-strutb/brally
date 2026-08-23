@@ -531,3 +531,19 @@ void BrFpsReadout(void)
  *   tagged with the Glide address 0x10011EA0.  The timer globals it uses
  *   are declared in slice2_14.h under their Glide addresses.
  */
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int FUN_1006e590();
+
+/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
+/* @implements 0x10011D10 glide BrThunk11D10 */
+
+int BrThunk11D10(void)
+
+{
+  FUN_1006e590();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

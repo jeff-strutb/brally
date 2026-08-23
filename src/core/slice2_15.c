@@ -1148,3 +1148,31 @@ const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
     g_regs.c4C15CC = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
     return pCmd + 1;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_104ab4f0;
+extern int DAT_104ab504;
+
+/* WHAT IT DOES: clear a one-shot flag (zeroes it if set, idempotent). */
+/* @implements 0x10013F00 glide BrClearFlag_AB504 */
+
+int BrClearFlag_AB504(void)
+
+{
+  if (DAT_104ab504 != 0) {
+    DAT_104ab504 = 0;
+  }
+  return;
+}
+
+/* WHAT IT DOES: return the value of a global flag at 0x104AB4F0. */
+/* @implements 0x10013FC0 glide BrGetFlag_AB4F0 */
+
+int BrGetFlag_AB4F0(void)
+
+{
+  return DAT_104ab4f0;
+}
+
+#endif /* BR_MATCHING_BUILD */

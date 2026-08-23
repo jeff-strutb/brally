@@ -828,3 +828,73 @@ uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
     return scratch;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+#include <windows.h>
+extern int DAT_10ac5a48;
+extern int DAT_10ac5a4c;
+extern funcptr PTR_FUN_10077750;
+
+/* WHAT IT DOES: set the HUD race-position icon from the current standings and AI difficulty. */
+/* @implements 0x10038980 glide BrRacePosIconSet */
+
+int BrRacePosIconSet(int param_1)
+
+{
+  if (0 < DAT_10ac5a48) {
+    switch(DAT_10ac5a48) {
+    case 1:
+      *(short *)(param_1 + 0x1e20c) = 0x73;
+      break;
+    case 2:
+      *(short *)(param_1 + 0x1e20c) = 0x72;
+      break;
+    case 3:
+      *(short *)(param_1 + 0x1e20c) = 0x71;
+      break;
+    case 4:
+      *(short *)(param_1 + 0x1e20c) = 0x70;
+      break;
+    case 5:
+      *(short *)(param_1 + 0x1e20c) = 0x6f;
+      break;
+    default:
+      *(short *)(param_1 + 0x1e20c) = 0xffff;
+    }
+  }
+  if (DAT_10ac5a48 == 0) {
+    switch(DAT_10ac5a4c & 0xff) {
+    case 1:
+      *(short *)(param_1 + 0x1e20c) = 0x47;
+      return 1;
+    case 2:
+      *(short *)(param_1 + 0x1e20c) = 0x49;
+      return 1;
+    case 3:
+      *(short *)(param_1 + 0x1e20c) = 0x4b;
+      return 1;
+    case 4:
+    case 5:
+    case 6:
+      *(short *)(param_1 + 0x1e20c) = 0x4d;
+      return 1;
+    default:
+      *(short *)(param_1 + 0x1e20c) = 0xffff;
+    }
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: vtable constructor: install the function-pointer table at PTR_FUN_10077750 (fastcall). */
+/* @implements 0x10055A30 glide BrVtInit55A30 */
+
+int __fastcall BrVtInit55A30(int *param_1)
+
+{
+  *param_1 = &PTR_FUN_10077750;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */
