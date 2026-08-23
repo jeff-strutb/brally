@@ -192,7 +192,7 @@ void BrSub1003551B(void *pCar);
  * uses int32_t where BrDPlayLink uses void*.  The cast here is exact on the
  * original's ABI and wrong on LP64.  Reconciling the two structs is a
  * integration job, not a per-packet one. */
-void BrSub1003DA40(BrOptUi *pUi, int a);
+int32_t BrSub1003DA40(BrOptUi *pUi, int a);
 
 /* 0x10041B50 -> slice2_24's BrMenuAutoSaveName. */
 void BrSub10041B50(void);

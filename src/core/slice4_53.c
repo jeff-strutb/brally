@@ -14,6 +14,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice4_53.h"
+#include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include <math.h>
 #include <stdio.h>
@@ -268,11 +269,25 @@ void BrSub1003551B(void *pCar)
 /* WHAT IT DOES: sends one particular kind of small message to the other
  * players in a network game, if the network link is up. */
 /* @implements 0x1003DA40 d3d BrSub1003DA40 */
-void BrSub1003DA40(BrOptUi *pUi, int a)
+int32_t BrSub1003DA40(BrOptUi *pUi, int a)
 {
-    /* The gate slice2_22 takes as an argument is the global 0x10AA288C. */
-    (void)BrDPlaySendTag4((const BrDPlayLink *)(const void *)pUi,
-                          g_brAA288C, (uint32_t)a);
+    /* Inlined send, tag 0x60000004 with `a` as the payload dword; the shape
+     * (||-merged return-0 early-outs, HRESULT returned) is BrSub1003D950's,
+     * which see in slice4_50.c. */
+    void *const *aSlot = (void *const *)pUi;
+    void        *pObj;
+    int32_t      aPacket[2];
+
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+        return 0;
+    }
+    aPacket[0] = (int32_t)0x60000004u;
+    aPacket[1] = (int32_t)a;
+    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
 }
 
 /* 0x10041B50 */
