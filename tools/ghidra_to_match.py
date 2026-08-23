@@ -146,10 +146,14 @@ def clean_ghidra_types(code):
     # They're declared as externs in wrap_for_compile instead
     # PTR_DAT_XXXXXXXX → data pointer refs
     code = re.sub(r'\bPTR_DAT_([0-9a-fA-F]{8})\b', r'DAT_\1', code)
-    # Ghidra goto labels — replace gotos with no-op statements (not comments,
-    # which leave if/else blocks without a body)
-    code = re.sub(r'\bgoto\s+LAB_[0-9a-fA-F]+\s*;', '(void)0;', code)
-    code = re.sub(r'LAB_[0-9a-fA-F]+\s*:', '/* label */ ;', code)
+    # Ghidra goto labels — KEEP them (they are the original's control flow;
+    # stripping them compiles semantically wrong code). Normalise the three
+    # label spellings to valid C identifiers and give each label a statement
+    # so `LAB_x: }` parses.
+    code = re.sub(r'\bswitchD_([0-9a-fA-F]+)_caseD_([0-9a-fA-F]+)\b',
+                  r'LAB_sw\1_\2', code)
+    code = re.sub(r'\bjoined_r0x([0-9a-fA-F]+)\b', r'LAB_j\1', code)
+    code = re.sub(r'^(\s*)(LAB_\w+)\s*:\s*$', r'\1\2: ;', code, flags=re.M)
     # &LAB_x / LAB_x where x is a known function start: Ghidra failed to make
     # a function there but the reference is a real code pointer — keep it.
     def _lab(m):
@@ -158,8 +162,8 @@ def clean_ghidra_types(code):
             return 'FUN_' + m.group(1).lower()
         return '(void*)0'
     code = re.sub(r'&\s*LAB_([0-9a-fA-F]{8})\b', _lab, code)
-    # Any remaining LAB_ references (switch tables, address-of) → 0
-    code = re.sub(r'\bLAB_[0-9a-fA-F]+\b', '0', code)
+    # (bare LAB_ value references in jump tables are left alone; the few
+    # functions using them fail loudly instead of compiling wrong code)
     # Ghidra 'code' pointer type → callable function pointer (trailing space
     # prevents concatenation with the variable name, e.g. code *pcVar3 → funcptr pcVar3)
     code = re.sub(r'\bcode\s*\*', 'funcptr ', code)
