@@ -421,6 +421,51 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
                              (void *)(uintptr_t)8u);
 }
 
+/* 0x1003D9A0 */
+/* WHAT IT DOES: sends the tag-5 sibling of the message above -- same gate,
+ * same shape, one payload number. */
+/* @implements 0x1003D9A0 d3d BrSub1003D9A0 */
+int32_t BrSub1003D9A0(BrOptUi *pUi, int a)
+{
+    /* Inlined send, tag 0x60000005; the shape (||-merged return-0
+     * early-outs, HRESULT returned) is BrSub1003D950's above. */
+    void *const *aSlot = (void *const *)pUi;
+    void        *pObj;
+    int32_t      aPacket[2];
+
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+        return 0;
+    }
+    aPacket[0] = (int32_t)0x60000005u;
+    aPacket[1] = (int32_t)a;
+    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
+}
+
+/* 0x1003DA90 */
+/* WHAT IT DOES: sends the tag-6 sibling -- ungated, like tag 7. */
+/* @implements 0x1003DA90 d3d BrSub1003DA90 */
+int32_t BrSub1003DA90(BrOptUi *pUi, int a)
+{
+    void *const *aSlot = (void *const *)pUi;
+    void        *pObj;
+    int32_t      aPacket[2];
+
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL) {
+        return 0;
+    }
+    aPacket[0] = (int32_t)0x60000006u;
+    aPacket[1] = (int32_t)a;
+    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
+}
+
 /* ==========================================================================
  * 8. Millisecond clock
  * ========================================================================== */
