@@ -56,7 +56,8 @@ def learn_from(path, fnmap, glmap):
         sec = secs.get(sy['sec'])
         if sy['sec'] <= 0 or not sec or not sec['name'].startswith('.text'):
             continue
-        name = sy['name'].lstrip('_')
+        # Undecorate: cdecl '_f', stdcall '_f@12', fastcall '@f@12'.
+        name = sy['name'].lstrip('_@').split('@')[0]
         if name not in fnmap:
             continue
         va = fnmap[name]
