@@ -1104,8 +1104,11 @@ void BrScratchRingDrain(void)
 /* @implements 0x10031212 d3d BrScratchRingNull */
 int BrScratchRingNull(int a0, int a1)
 {
-    (void)a0;
-    (void)a1;
+    /* The original really does store zero into both of its OWN argument
+     * slots (a1 first) before returning 0 -- kept for the byte match; C
+     * parameters are by value so nothing observable changes. */
+    a1 = 0;
+    a0 = 0;
     return 0;
 }
 
