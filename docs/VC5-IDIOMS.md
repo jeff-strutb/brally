@@ -143,6 +143,20 @@ the caller AND flipped a helper to match for free.
   pushes a REGISTER instead — the source must repeat the call per branch
   (macro chains are fine). Proven BrGlideResOpen, 545 B first try.
 
+- **/Od local slot order:** plain function-scope locals get slots in DECL
+  order (-4, -8, -0xC...), but a local declared INSIDE a nested block is
+  allocated AFTER every function-scope local, regardless of textual position.
+  When /Od slot offsets look permuted vs every decl-order permutation, a
+  counter was block-scoped inside a loop body. Proven BrEntGfxRebindAll
+  (424 B). Note also the pair anomaly seen while probing: with three
+  same-typed locals in loops, the two outer counters swapped slots by decl
+  order while the innermost always took the last slot — trust the byte
+  probe, not a rule, when slots misbehave.
+- **`xor cl,cl`-free unsigned byte load:** `xor ecx,ecx; mov cl,[mem]` is an
+  UNSIGNED char global read widened to int (`extern unsigned char`);
+  `movsx` means plain (signed) char. Compare against int constants, not
+  char literals, to keep the 32-bit compare.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
