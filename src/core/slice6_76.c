@@ -208,10 +208,60 @@ void *BrX10069530(void)
  * as part of shutting down. The work is slice1_10.c's; this just supplies the
  * one force-feedback object the game has. */
 /* @implements 0x10079550 d3d BrExt_10079550 */
+#ifdef BR_MATCHING_BUILD
+/* Literal: the original works on the force-feedback globals directly (the
+ * port factors this as slice1_10.c's BrFfbShutdown over a struct).  Same
+ * refcount clamp, same three vtable releases, same unacquire-then-release
+ * on the device.  See slice1_10.c for the annotated walkthrough. */
+typedef struct BrComVt76 {
+    int (__stdcall *f00)(void *);
+    int (__stdcall *f04)(void *);
+    int (__stdcall *pfnRelease)(void *);            /* +0x08 */
+    int (__stdcall *f0c[5])(void *);
+    int (__stdcall *pfnUnacquire)(void *);          /* +0x20 */
+} BrComVt76;
+typedef struct BrComObj76 { BrComVt76 *pVtbl; } BrComObj76;
+extern int DAT_118eef18;
+extern BrComObj76 *DAT_118eef14;
+extern BrComObj76 *DAT_118eef04;
+extern BrComObj76 *DAT_118eeeec;
+void BrExt_10079550(void)
+{
+    BrComObj76 *pObj;
+    int count;
+
+    count = DAT_118eef18 - 1;
+    DAT_118eef18 = count;
+    if (count < 0) {
+        DAT_118eef18 = 0;
+        return;
+    }
+    if (DAT_118eef18) {
+        return;
+    }
+    pObj = DAT_118eef14;
+    if (pObj) {
+        pObj->pVtbl->pfnRelease(pObj);
+        DAT_118eef14 = 0;
+    }
+    pObj = DAT_118eef04;
+    if (pObj) {
+        pObj->pVtbl->pfnRelease(pObj);
+        DAT_118eef04 = 0;
+    }
+    pObj = DAT_118eeeec;
+    if (pObj) {
+        pObj->pVtbl->pfnUnacquire(pObj);
+        DAT_118eeeec->pVtbl->pfnRelease(DAT_118eeeec);
+        DAT_118eeeec = 0;
+    }
+}
+#else
 void BrExt_10079550(void)
 {
     BrFfbShutdown(&g_brFfb);
 }
+#endif
 
 /* 0x100443E0 and 0x10044280, 3 and 2 call sites -- open the 0x10AA2950
  * options object in networked / local form.  slice2_25.c has both bodies.
