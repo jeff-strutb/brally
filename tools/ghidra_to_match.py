@@ -315,6 +315,8 @@ def wrap_for_compile(func_c, va_hex):
     header = """/* Auto-generated from Ghidra decompilation — %s */
 #ifdef BR_MATCHING_BUILD
 
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
