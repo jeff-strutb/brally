@@ -265,11 +265,25 @@ extern int DAT_106e9a2c;
 int FUN_1001dd80();
 int FUN_1001dfb0();
 int FUN_10032500();
+#ifndef BR_FUNCPTR_DEFINED
+#define BR_FUNCPTR_DEFINED
+typedef int (*funcptr)();
+#endif
+extern funcptr DAT_106b7ab4;
+extern funcptr DAT_10b73528;
+extern funcptr DAT_10b7352c;
+extern int DAT_10b73644;
+extern funcptr DAT_118ed1e8;
+extern funcptr PTR_FUN_100b849c;
+int BrPodNop();
+int BrTexInit();
+int br_dl_clip_reset();
 
-/* WHAT IT DOES: change the Glide framebuffer resolution, falling back to 640x480 on failure. */
+/* WHAT IT DOES: change the Glide framebuffer resolution, falling back to 640x480 on failure.
+ * The caller (0x10063970) pushes four words; the last two are never read here. */
 /* @implements 0x1001E130 glide BrGlideResSet */
 
-int BrGlideResSet(int param_1,int param_2)
+int BrGlideResSet(int param_1,int param_2,int param_3,int param_4)
 
 {
   int iVar1;
@@ -319,6 +333,57 @@ int BrObjLifeInit6A540(void)
 {
   BrWrap_100715E0();
   BrAtexit_10071600();
+  return;
+}
+
+/* WHAT IT DOES: record the render state; state 3 installs the object-ctor, display-list
+ * clip-reset and texture-init hooks into their three runtime slots. */
+/* @implements 0x10063940 glide BrRenderStateSet */
+
+void BrRenderStateSet(int param_1)
+
+{
+  DAT_10b73644 = param_1;
+  if (param_1 == 3) {
+    DAT_106b7ab4 = BrInstall_1001BAE0;
+    DAT_10b73528 = br_dl_clip_reset;
+    PTR_FUN_100b849c = BrTexInit;
+  }
+  return;
+}
+
+/* WHAT IT DOES: (re)start the renderer in a state: tear down the previous one through its
+ * hooks, set the state, change resolution, then run the three state hooks. */
+/* @implements 0x10063970 glide BrRenderModeStart */
+
+void BrRenderModeStart(int param_1,int param_2,int param_3,int param_4,
+                 int param_5)
+
+{
+  if (DAT_10b73644 != 0) {
+    BrPodNop();
+    (*DAT_10b7352c)();
+    (*DAT_118ed1e8)();
+  }
+  BrRenderStateSet(param_1);
+  BrGlideResSet(param_2,param_3,param_4,param_5);
+  (*(funcptr )PTR_FUN_100b849c)();
+  (*DAT_10b73528)();
+  BrFlagInit_1002B950();
+  return;
+}
+
+/* WHAT IT DOES: set the render state and run its three hooks without a resolution change. */
+/* @implements 0x100639D0 glide BrRenderModeRestart */
+
+void BrRenderModeRestart(int param_1)
+
+{
+  BrRenderStateSet(param_1);
+  (*DAT_106b7ab4)();
+  (*(funcptr )PTR_FUN_100b849c)();
+  (*DAT_10b73528)();
+  BrFlagInit_1002B950();
   return;
 }
 
