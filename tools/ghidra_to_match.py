@@ -258,6 +258,29 @@ def _is_pointer_typed(name, code):
 
 KNOWN_FN_NAMES = set()
 
+def callee_decl(fn):
+    """Declaration for an unresolved FUN_xxxxxxxx callee, read off ITS
+    original bytes: a trailing `ret imm16` on a non-this/fastcall function
+    means __stdcall with imm/4 word args (caller emits no `add esp`)."""
+    m = re.match(r'FUN_([0-9a-fA-F]{8})$', fn)
+    if m:
+        va_hex = '0x' + m.group(1).upper()
+        bin_path = os.path.join(ORIG_DIR, va_hex + '.bin')
+        dec_path = os.path.join(GHIDRA_DIR, va_hex + '.c')
+        if os.path.exists(bin_path) and os.path.exists(dec_path):
+            b = open(bin_path, 'rb').read()
+            if len(b) >= 3 and b[-3] == 0xC2:
+                imm = b[-2] | (b[-1] << 8)
+                sig = re.search(r'\n([^\n/]*\b%s\s*\([^)]*\))' % fn,
+                                open(dec_path).read())
+                sig = sig.group(1) if sig else ''
+                if (imm % 4 == 0 and imm <= 0x40
+                        and '__thiscall' not in sig and '__fastcall' not in sig):
+                    n = imm // 4
+                    return "int __stdcall %s(%s);\n" % (
+                        fn, ','.join(['int'] * n) if n else 'void')
+    return "int %s();\n" % fn
+
 def wrap_for_compile(func_c, va_hex):
     """Wrap a cleaned Ghidra function in a minimal compilable file."""
     header = """/* Auto-generated from Ghidra decompilation — %s */
@@ -289,7 +312,7 @@ typedef int (*funcptr)();
     defined_funcs = set(re.findall(r'(\w+)\s*\([^)]*\)\s*\n?\s*\{', func_c))
     unresolved = set(re.findall(r'(FUN_[0-9a-fA-F]{8})', func_c)) - defined_funcs
     for fn in sorted(unresolved):
-        header += "int %s();\n" % fn
+        header += callee_decl(fn)
 
     # Extract any DAT_ globals that weren't resolved
     # Detect usage patterns: called as funcptr, dereferenced as pointer, or plain int
