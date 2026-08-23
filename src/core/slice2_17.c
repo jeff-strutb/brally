@@ -896,6 +896,44 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
 #endif
 
 /* 0x1002C210 */
+/* @implements 0x1002C210 d3d BrS17BankFlip */
+#ifdef BR_MATCHING_BUILD
+/* Literal layout: the header triple and the byte banks are FIXED arrays at
+ * 0x105B9700 / 0x105B972C, not pointers loaded from the struct; the clear
+ * loop stores an immediate 0 every 0x800 bytes, counting down. */
+extern int DAT_105b9718;
+extern int DAT_105b9720;
+extern int DAT_105b9724;
+extern unsigned int DAT_105b9700[];
+extern unsigned char DAT_105b972c[];
+int FUN_10008d60();
+int FUN_10059f00();
+void BrS17BankFlip(void)
+{
+    int i;
+    int bank;
+    unsigned int *hdr;
+    unsigned char *buf;
+
+    for (i = 0; i < 3; ++i)
+        FUN_10008d60(i, 0xFF, 0, 0xFF, 0x7F);
+
+    DAT_105b9718 ^= 1;
+    DAT_105b9720 = FUN_10059f00();
+    DAT_105b9724 = 0;
+
+    bank = DAT_105b9718;
+    buf = DAT_105b972c + bank * 3 * 0x800;
+    hdr = DAT_105b9700 + bank * 3;
+
+    memset(hdr, 0, 0xC);
+
+    for (i = 3; i != 0; i--) {
+        *(unsigned int *)buf = 0;
+        buf += 0x800;
+    }
+}
+#else
 void BrS17BankFlip(void)
 {
     int i;
@@ -921,6 +959,7 @@ void BrS17BankFlip(void)
     for (i = 0; i < 3; ++i)
         s17_st32(buf + (size_t)i * 0x800, 0);
 }
+#endif
 
 /* 0x1002C2A0 */
 /* WHAT IT DOES: lets go of one particular long-lived object. What that object
@@ -1128,6 +1167,7 @@ int BrScratchRingNull(int a0, int a1)
 }
 
 /* 0x10031227 */
+/* @implements 0x10031227 d3d BrRenderCountersReset */
 void BrRenderCountersReset(void)
 {
     g_s17.f6C32CC = 0;
