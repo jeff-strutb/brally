@@ -1233,3 +1233,37 @@ void BrPhaseShutdown_10048B20(BrScrGlobals *pG, void *pArg)
         BrSub1005FCF0();
     }
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+extern funcptr DAT_106b7ab8;
+extern int DAT_10ac5d84;
+int FUN_100014e0();
+extern funcptr PTR_FUN_100776C0;
+extern funcptr PTR_FUN_100776c0;
+
+/* WHAT IT DOES: vtable constructor: install the function-pointer table at PTR_FUN_100776C0 (fastcall). */
+/* @implements 0x10041930 glide BrVtInit41930 */
+
+int __fastcall BrVtInit41930(int *param_1)
+
+{
+  *param_1 = &PTR_FUN_100776c0;
+  return;
+}
+
+/* WHAT IT DOES: menu teardown callback: release a resource and invoke the cleanup funcptr. */
+/* @implements 0x10041DB0 glide BrMenuCallback41DB0 */
+
+int BrMenuCallback41DB0(void)
+
+{
+  FUN_100014e0(DAT_10ac5d84);
+                    
+                    
+  (*DAT_106b7ab8)();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

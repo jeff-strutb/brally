@@ -1138,3 +1138,49 @@ void BrPoolEmit(void *pvThis)
                        + fU) * BR_K_08F58C);
     pNode->b1F = 0xFF;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: walk an array of 0x54-byte track records and fixup each one. */
+/* @implements 0x100316A0 glide BrTrackFixupAllRec54 */
+
+int BrTrackFixupAllRec54(int param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  
+  iVar1 = *(int *)(param_1 + 0x60);
+  iVar2 = 0;
+  if (0 < *(int *)(param_1 + 100)) {
+    do {
+      BrTrackFixupRec54(iVar1);
+      iVar1 = iVar1 + 0x54;
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < *(int *)(param_1 + 100));
+  }
+  return;
+}
+
+/* WHAT IT DOES: walk an array of Vec3s in a track struct and byte-swap each one. */
+/* @implements 0x10031A80 glide BrTrackSwapAllVec3 */
+
+int BrTrackSwapAllVec3(int param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  
+  iVar1 = *(int *)(param_1 + 0x84);
+  iVar2 = 0;
+  if (0 < *(int *)(param_1 + 0x88)) {
+    do {
+      BrSwapVec3(iVar1);
+      iVar1 = iVar1 + 0xc;
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < *(int *)(param_1 + 0x88));
+  }
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

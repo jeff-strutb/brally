@@ -487,3 +487,19 @@ int BrComCallLocked68(BrComObj *pThis, void *a2, void *a3, void *a4,
 
     return rc;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_104abb30;
+
+/* WHAT IT DOES: store a value into the global at 0x104ABB30. */
+/* @implements 0x100168B0 glide BrSetGlobal_ABB30 */
+
+int BrSetGlobal_ABB30(int param_1)
+
+{
+  DAT_104abb30 = param_1;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

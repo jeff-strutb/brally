@@ -1209,3 +1209,61 @@ void BrPhaseMode_100475C0(void)
     BrExt_10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10ac5c4c;
+extern int DAT_10ac5c50;
+extern int DAT_10ac5c54;
+extern int DAT_10ac5d98;
+extern int g_brAA2854;
+
+/* WHAT IT DOES: menu option handler: set flag 5C50, request redraw, mark dirty. */
+/* @implements 0x10040930 glide BrMenuOpt40930 */
+
+int BrMenuOpt40930(void)
+
+{
+  DAT_10ac5c50 = 1;
+  BrSub10072AF0(2,0x200020);
+  g_brAA2854 = 2;
+  return;
+}
+
+/* WHAT IT DOES: menu option handler: set flag 5C54, request redraw, mark dirty. */
+/* @implements 0x10040960 glide BrMenuOpt40960 */
+
+int BrMenuOpt40960(void)
+
+{
+  DAT_10ac5c54 = 1;
+  BrSub10072AF0(2,0x200020);
+  g_brAA2854 = 2;
+  return;
+}
+
+/* WHAT IT DOES: menu option handler: set flag 5D98, request redraw, mark dirty. */
+/* @implements 0x100409C0 glide BrMenuOpt409C0 */
+
+int BrMenuOpt409C0(void)
+
+{
+  DAT_10ac5d98 = 1;
+  BrSub10072AF0(2,0x200020);
+  g_brAA2854 = 2;
+  return;
+}
+
+/* WHAT IT DOES: menu option handler: set flag 5C4C, request redraw, mark dirty. */
+/* @implements 0x100409F0 glide BrMenuOpt409F0 */
+
+int BrMenuOpt409F0(void)
+
+{
+  DAT_10ac5c4c = 1;
+  BrSub10072AF0(2,0x200020);
+  g_brAA2854 = 2;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

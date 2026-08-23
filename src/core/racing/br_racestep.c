@@ -891,3 +891,27 @@ void BrRaceStepInstall(void)
     BrGameStepRegister(BrRaceStepFrame, BR_GAMESTEP_RACE);
     BrGameStepSet(BrRaceStepFrame);
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_100b2f04;
+
+/* WHAT IT DOES: zero every row in the sound-command table. */
+/* @implements 0x10061440 glide BrSndTableClear */
+
+int BrSndTableClear(void)
+
+{
+  int iVar1;
+  
+  iVar1 = 0;
+  if (0 < DAT_100b2f04) {
+    do {
+      BrWrap_10072B80(0x18,iVar1,0);
+      iVar1 = iVar1 + 1;
+    } while (iVar1 < DAT_100b2f04);
+  }
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

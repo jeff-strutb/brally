@@ -1128,3 +1128,18 @@ int32_t BrNetStackPop221288(void)
 #endif
     return v;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int g_br094294;
+
+/* WHAT IT DOES: return the value of the global at g_br094294. */
+/* @implements 0x100060A0 glide BrGetGlobal_94294 */
+
+int BrGetGlobal_94294(void)
+
+{
+  return g_br094294;
+}
+
+#endif /* BR_MATCHING_BUILD */

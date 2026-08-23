@@ -1899,3 +1899,31 @@ void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas)
     pDl->sink.pUser  = pRas;
     pDl->sink.pfnTri = br_ras_tri;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+extern funcptr DAT_118ed1cc;
+extern funcptr DAT_118ed1d0;
+
+/* WHAT IT DOES: display-list opcode: call a function pointer with the low 24 bits of the command word, advance by the stride. */
+/* @implements 0x1001E2E0 glide BrDlOpDispatch1 */
+
+unsigned int * BrDlOpDispatch1(unsigned int *param_1)
+
+{
+  (*DAT_118ed1cc)(*param_1 & 0xffffff);
+  return param_1 + param_1[1] * 2;
+}
+
+/* WHAT IT DOES: display-list opcode: call a function pointer with the command word and its argument, advance by 2. */
+/* @implements 0x1001E300 glide BrDlOpDispatch2 */
+
+unsigned int * BrDlOpDispatch2(unsigned int *param_1)
+
+{
+  (*DAT_118ed1d0)(*param_1 & 0xffffff,param_1[1]);
+  return param_1 + 2;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -273,3 +273,18 @@ void BrBmpFree(BrBmp *pBmp)
     pBmp->pRgba = NULL;
     pBmp->w = pBmp->h = 0;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_100b22d8;
+
+/* WHAT IT DOES: return the current BMP surface handle. */
+/* @implements 0x1005A070 glide BrBmpGetHandle */
+
+int BrBmpGetHandle(void)
+
+{
+  return DAT_100b22d8;
+}
+
+#endif /* BR_MATCHING_BUILD */

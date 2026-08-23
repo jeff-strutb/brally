@@ -511,3 +511,81 @@ void BrGfx69580(void)
     /* The frame index is untouched -- something else advances 0x106C65EC. */
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+void BrSndBankSetCar(int, int);
+extern int DAT_100b32b0;
+extern int DAT_100b32bc;
+extern int DAT_100b32c0;
+int FUN_1006c010();
+int FUN_1006e1d0();
+int FUN_1006f840();
+extern int g_AC300;
+
+/* WHAT IT DOES: apply texture slots from one model record to another, including optional extra slots when enabled. */
+/* @implements 0x1005F220 glide BrModelSlotApply */
+
+int BrModelSlotApply(int param_1,int param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  
+  iVar2 = 0;
+  iVar1 = *(int *)(*(int *)(param_1 + 0x29c4) + 0x7c);
+  if (0 < iVar1) {
+    do {
+      FUN_1006e1d0(*(int *)(*(int *)(param_1 + 0x29c4) + 4 + iVar2 * 4),
+                   *(int *)(*(int *)(param_2 + 0x78) + iVar2 * 4));
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < iVar1);
+  }
+  iVar2 = *(int *)(param_1 + 0x29c4);
+  if ((*(int *)(*(int *)(iVar2 + 0x8014) + 4 + (unsigned int)*(unsigned char *)(iVar2 + 0x811b) * 0x24) != 0) &&
+     (g_AC300 == 0)) {
+    if (*(int *)(iVar2 + 0x84) != 0) {
+      FUN_1006e1d0(*(int *)(iVar2 + 0x84),*(int *)(*(int *)(param_2 + 0x78) + iVar1 * 4));
+    }
+    iVar2 = *(int *)(*(int *)(param_1 + 0x29c4) + 0x88);
+    if (iVar2 != 0) {
+      FUN_1006e1d0(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 4 + iVar1 * 4));
+    }
+    iVar2 = *(int *)(*(int *)(param_1 + 0x29c4) + 0x8c);
+    if (iVar2 != 0) {
+      FUN_1006e1d0(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 8 + iVar1 * 4));
+    }
+    iVar2 = *(int *)(*(int *)(param_1 + 0x29c4) + 0x90);
+    if (iVar2 != 0) {
+      FUN_1006e1d0(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 0xc + iVar1 * 4));
+    }
+  }
+  return;
+}
+
+/* WHAT IT DOES: initialize the engine-sound bank for a car: set the bank, init the source, play silent. */
+/* @implements 0x100612D0 glide BrSfxCarBankInit */
+
+int BrSfxCarBankInit(int param_1,int param_2)
+
+{
+  BrSndBankSetCar(param_1,param_2);
+  FUN_1006c010(param_1);
+  BrSfxSrcPlaySilent(param_1 * 2,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
+  return;
+}
+
+/* WHAT IT DOES: copy a car position record and its trailing 3-vector. */
+/* @implements 0x10062610 glide BrRacePosCopy */
+
+int BrRacePosCopy(int param_1,int param_2)
+
+{
+  FUN_1006f840(param_2,param_1);
+  *(int *)(param_1 + 0x10) = *(int *)(param_2 + 0x30);
+  *(int *)(param_1 + 0x14) = *(int *)(param_2 + 0x34);
+  *(int *)(param_1 + 0x18) = *(int *)(param_2 + 0x38);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -637,3 +637,24 @@ void BrAppCfgResetForTest(void)
     g_brRaceNet            = 0;
     BrSndG0B5DE8           = 1;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+extern int DAT_10226e78;
+
+/* WHAT IT DOES: query total physical RAM via GlobalMemoryStatus and store it. */
+/* @implements 0x10007F10 glide BrMemoryQuery */
+
+int BrMemoryQuery(void)
+
+{
+  MEMORYSTATUS local_20;
+  
+  local_20.dwLength = 0x20;
+  GlobalMemoryStatus(&local_20);
+  DAT_10226e78 = local_20.dwTotalPhys;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

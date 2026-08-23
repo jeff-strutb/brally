@@ -675,3 +675,47 @@ void BrSub100739B0(void)
 }
 #endif
 
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+#include <windows.h>
+extern int DAT_100b84a8;
+extern int DAT_104af5c8;
+extern int DAT_104b05c8;
+extern int DAT_1184c480;
+extern int _DAT_1184c460;
+extern int _DAT_1184c464;
+extern int g_br18AB118_S_S1499;
+extern funcptr g_pfn18AA0B0;
+
+/* WHAT IT DOES: create a flat (no mip, no wrap) font texture via the registered callback. */
+/* @implements 0x1006C880 glide BrFontTexCreateFlat */
+
+int BrFontTexCreateFlat(void)
+
+{
+  DAT_1184c480 = (*g_pfn18AA0B0)(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
+  return;
+}
+
+/* WHAT IT DOES: create a pair of tileable font textures for the UI. */
+/* @implements 0x1006C8B0 glide BrFontTexCreatePair */
+
+int BrFontTexCreatePair(void)
+
+{
+  _DAT_1184c460 = (*g_pfn18AA0B0)(&DAT_104af5c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  _DAT_1184c464 = (*g_pfn18AA0B0)(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  return;
+}
+
+/* WHAT IT DOES: return the current timer subsystem state. */
+/* @implements 0x1006E350 glide BrGetTimerState */
+
+int BrGetTimerState(void)
+
+{
+  return g_br18AB118_S_S1499;
+}
+
+#endif /* BR_MATCHING_BUILD */

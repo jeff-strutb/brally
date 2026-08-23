@@ -469,3 +469,21 @@ BrWndResult BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lPara
     r.lResult      = 0;
     return r;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#include <mmsystem.h>
+/* WHAT IT DOES: seek a RIFF WAVE file to the start of its "data" chunk via mmioDescend. */
+/* @implements 0x10070170 glide BrWaveSeekData */
+
+int BrWaveSeekData(int *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
+
+{
+  mmioSeek((HMMIO)*param_1,param_3->dwDataOffset + 4,0);
+  param_2->ckid = 0x61746164;
+  mmioDescend((HMMIO)*param_1,param_2,param_3,0x10);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

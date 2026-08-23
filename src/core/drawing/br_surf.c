@@ -188,3 +188,36 @@ uint32_t BrSurf565ToRgb(uint16_t v)
     uint32_t b  = (b5 << 3) | (b5 >> 2);
     return (r << 16) | (g << 8) | b;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+void __stdcall grLfbWriteRegion(int, int, int, int, int, int, int, int);
+
+/* WHAT IT DOES: blit a surface's pixel data to the Glide linear frame buffer. */
+/* @implements 0x100014E0 glide BrGlideLfbWrite */
+
+void BrGlideLfbWrite(int *param_1)
+
+{
+  grLfbWriteRegion(1, 0, 0, 0, param_1[1], param_1[2], param_1[1] * 2, *param_1);
+  return;
+}
+
+/* WHAT IT DOES: compute a predicted position from pos + vel*3 + accel*2 + offset (fastcall, via entity at ECX). */
+/* @implements 0x10001C90 glide BrVec3Predict */
+
+int __fastcall BrVec3Predict(int param_1)
+
+{
+  int iVar1;
+  
+  iVar1 = param_1 + 0x2838;
+  *(int *)(param_1 + 0x2734) = param_1 + 0x2808;
+  BrVec3MulAdd(iVar1,param_1 + 0x30,param_1,0x40c00000);
+  BrVec3MulAddTo(iVar1,param_1 + 0x10,0x40000000);
+  BrVec3AddTo(iVar1,param_1 + 0x20);
+  *(int *)(param_1 + 0xf78) = 2;
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

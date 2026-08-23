@@ -384,3 +384,26 @@ BrDlGlHandler BrDlGlDispatch(unsigned op)
     default:   return NULL;
     }
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+int __stdcall grBufferNumPending(void);
+void __stdcall grBufferSwap(int);
+
+/* WHAT IT DOES: spin-wait until the Glide back-buffer is idle, then swap. */
+/* @implements 0x1001DD50 glide BrGlideFlipWait */
+
+void BrGlideFlipWait(void)
+
+{
+  int iVar1;
+
+  iVar1 = grBufferNumPending();
+  while (0 < iVar1) {
+    iVar1 = grBufferNumPending();
+  }
+  grBufferSwap(1);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

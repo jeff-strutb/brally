@@ -461,3 +461,18 @@ void BrMutexCloseAA0A0(void)
 #endif
     g_br18AA0A0 = NULL;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_1021c788;
+
+/* WHAT IT DOES: return the value of the global at 0x1021C788. */
+/* @implements 0x100027A0 glide BrGetGlobal_1C788 */
+
+int BrGetGlobal_1C788(void)
+
+{
+  return DAT_1021c788;
+}
+
+#endif /* BR_MATCHING_BUILD */

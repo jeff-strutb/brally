@@ -532,3 +532,30 @@ void BrOptFn10051990(struct BrOptObj *pThis)
 
     /* The original returns 1; the declared return type is void. */
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_117a5f28;
+int FUN_10069A80();
+int FUN_10069a80();
+
+/* WHAT IT DOES: return the float at offset +0x10 in a struct, cast to double. */
+/* @implements 0x1000DEE0 glide BrGetFieldFloat */
+
+double BrGetFieldFloat(int param_1)
+
+{
+  return (double)*(float *)(param_1 + 0x10);
+}
+
+/* WHAT IT DOES: forward a parameter to FUN_10069A80 with a fixed first argument. */
+/* @implements 0x10069DC0 glide BrSub69DC0 */
+
+int BrSub69DC0(int param_1)
+
+{
+  FUN_10069a80(&DAT_117a5f28,param_1);
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

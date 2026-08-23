@@ -780,3 +780,53 @@ int BrNetLockSetIfZero22AAF4(BrNetState *pNet)
     return 1;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+extern int DAT_1021c81c;
+extern int DAT_1021c908;
+extern int DAT_1021ce40;
+extern int DAT_1021ce4c;
+extern int DAT_1021ce58;
+extern int DAT_10226a54;
+extern int DAT_10226a58;
+extern int DAT_10226a5c;
+extern int DAT_10226a64;
+extern int g_brH220DDC;
+extern int g_h1022AF30;
+int BrNetReset();
+
+/* WHAT IT DOES: create Win32 mutexes for the net/multiplayer subsystem and reset the network layer. */
+/* @implements 0x10005E80 glide BrNetMutexInit */
+
+int BrNetMutexInit(void)
+
+{
+  HANDLE pvVar1;
+  int *puVar2;
+  
+  puVar2 = &DAT_1021ce58;
+  do {
+    pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    *puVar2 = pvVar1;
+    puVar2 = puVar2 + 0x25e;
+  } while ((int)puVar2 < 0x102265d8);
+  DAT_10226a54 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a58 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a5c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_h1022AF30 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021ce40 = 0;
+  DAT_1021c908 = 0;
+  BrTimeUpdate();
+  DAT_10226a64 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_brH221324 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_brH22AF04 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_brH220DDC = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021ce4c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021c81c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  ((int (*)())BrNetReset)();
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -359,3 +359,56 @@ void BrRaceStartResetForTest(void)
     }
     s_cSpun = 0;
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int BrG_6C661C;
+extern int BrG_6C6624;
+extern int DAT_106ed6a8;
+extern int DAT_106ed6b0;
+int FUN_1002db88();
+int FUN_100627b0();
+
+/* WHAT IT DOES: set difficulty flags from a 0-4 level selector (AI, rubber-banding, etc.). */
+/* @implements 0x100627B0 glide BrRaceDifficultySet */
+
+int BrRaceDifficultySet(int param_1)
+
+{
+  DAT_106ed6b0 = 0;
+  BrG_6C6624 = 0;
+  BrG_6C661C = 0;
+  switch(param_1) {
+  case 0:
+    DAT_106ed6a8 = 0;
+    return;
+  case 1:
+    DAT_106ed6a8 = 1;
+    return;
+  case 2:
+    DAT_106ed6a8 = 1;
+    BrG_6C6624 = 1;
+    return;
+  case 3:
+    DAT_106ed6a8 = 1;
+    DAT_106ed6b0 = 1;
+    return;
+  case 4:
+    DAT_106ed6a8 = 1;
+    BrG_6C661C = 1;
+  }
+  return;
+}
+
+/* WHAT IT DOES: set difficulty and apply it to the current race state. */
+/* @implements 0x10062830 glide BrRaceDifficultyApply */
+
+int BrRaceDifficultyApply(int param_1)
+
+{
+  FUN_100627b0(param_1);
+  FUN_1002db88();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

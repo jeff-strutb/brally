@@ -1408,3 +1408,71 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
     return 0;
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+extern int DAT_10ac315c;
+extern int DAT_117b324c;
+int FUN_1006a330();
+extern int g_178FEE8;
+extern int * g_aBr178FEF8;
+extern int * g_aBrPeer71;
+
+/* WHAT IT DOES: walk a table of GlobalAlloc pointers and free each one. */
+/* @implements 0x10036670 glide BrGlobalFreeAll */
+
+int BrGlobalFreeAll(void)
+
+{
+  LPCVOID pMem;
+  HGLOBAL pvVar1;
+  int *puVar2;
+  
+  puVar2 = &DAT_10ac315c;
+  do {
+    pMem = (LPCVOID)*puVar2;
+    if (pMem != (LPCVOID)0x0) {
+      pvVar1 = GlobalHandle(pMem);
+      GlobalUnlock(pvVar1);
+      pvVar1 = GlobalHandle(pMem);
+      GlobalFree(pvVar1);
+      *puVar2 = 0;
+    }
+    puVar2 = puVar2 + 0x38;
+  } while ((int)puVar2 < 0x10ac3f5c);
+  return;
+}
+
+/* WHAT IT DOES: create Win32 mutexes for each network peer and its sub-channels. */
+/* @implements 0x1006A4D0 glide BrNetPeerMutexInit */
+
+int BrNetPeerMutexInit(void)
+
+{
+  HANDLE pvVar1;
+  int iVar2;
+  int *puVar3;
+  int iVar4;
+  
+  g_178FEE8 = BrSub10075020();
+  DAT_117b324c = BrDelta_100713A0();
+  iVar2 = 0;
+  do {
+    pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    *(HANDLE *)((int)&g_aBrPeer71 + iVar2) = pvVar1;
+    puVar3 = (int *)((int)&g_aBr178FEF8 + iVar2);
+    iVar4 = 0x10;
+    do {
+      pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+      *puVar3 = pvVar1;
+      puVar3 = puVar3 + 0x25b0;
+      iVar4 = iVar4 + -1;
+    } while (iVar4 != 0);
+    iVar2 = iVar2 + 0x96c;
+  } while (iVar2 < 0x96c0);
+  FUN_1006a330();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

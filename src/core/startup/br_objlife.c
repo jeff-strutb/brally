@@ -255,3 +255,71 @@ void BrWrap_10035610(void *p)
 {
     BrExt_10035585(p, 1, 2);
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_100a7514;
+extern int DAT_100a7518;
+extern int DAT_106e7714;
+extern int DAT_106e9a2c;
+int FUN_1001dd80();
+int FUN_1001dfb0();
+int FUN_10032500();
+
+/* WHAT IT DOES: change the Glide framebuffer resolution, falling back to 640x480 on failure. */
+/* @implements 0x1001E130 glide BrGlideResSet */
+
+int BrGlideResSet(int param_1,int param_2)
+
+{
+  int iVar1;
+  int uVar2;
+  
+  if ((param_1 == DAT_100a7514) && (param_2 == DAT_100a7518)) {
+    DAT_106e7714 = param_1;
+    DAT_100a7514 = param_1;
+    DAT_106e9a2c = param_2;
+    DAT_100a7518 = param_2;
+    FUN_1001dfb0(param_1,param_2);
+    return 1;
+  }
+  grSstWinClose();
+  DAT_106e7714 = param_1;
+  DAT_100a7514 = param_1;
+  DAT_106e9a2c = param_2;
+  DAT_100a7518 = param_2;
+  iVar1 = FUN_1001dd80(param_1,param_2);
+  if (iVar1 == 0) {
+    DAT_106e7714 = 0x280;
+    DAT_100a7514 = 0x280;
+    DAT_106e9a2c = 0x1e0;
+    DAT_100a7518 = 0x1e0;
+    uVar2 = FUN_1001dd80(0x280,0x1e0);
+    return uVar2;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: initialize the object-lifecycle subsystem and register its atexit handler. */
+/* @implements 0x100324F0 glide BrObjLifeInit */
+
+int BrObjLifeInit(void)
+
+{
+  FUN_10032500();
+  BrAtexit_10038EA0();
+  return;
+}
+
+/* WHAT IT DOES: initialize a subsystem wrapper and register its atexit handler. */
+/* @implements 0x1006A540 glide BrObjLifeInit6A540 */
+
+int BrObjLifeInit6A540(void)
+
+{
+  BrWrap_100715E0();
+  BrAtexit_10071600();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -799,3 +799,44 @@ void BrUiHook85Install(BrUi73Hooks *pHooks)
      *   p100409F0  p10040A20   (the two PAGE hooks)
      * and the eleven slots slice7_80.c / slice7_81.c / the host already own. */
 }
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+extern int g_brAA28D8;
+
+/* WHAT IT DOES: stub that always returns 1. */
+/* @implements 0x100385E0 glide BrStubTrue */
+
+int BrStubTrue(void)
+
+{
+  return 1;
+}
+
+/* WHAT IT DOES: on first call, toggle a boolean field at +0x2F7C; subsequent calls are no-ops. */
+/* @implements 0x1003BFF0 glide BrToggleOnce_BFF0 */
+
+int BrToggleOnce_BFF0(int param_1)
+
+{
+  if (g_brAA28D8 == 0) {
+    g_brAA28D8 = 1;
+    *(unsigned int *)(param_1 + 0x2f7c) = (unsigned int)(*(int *)(param_1 + 0x2f7c) == 0);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: on first call, toggle a boolean field at +0x2F7C; subsequent calls are no-ops (second instance). */
+/* @implements 0x1003C050 glide BrToggleOnce_C050 */
+
+int BrToggleOnce_C050(int param_1)
+
+{
+  if (g_brAA28D8 == 0) {
+    g_brAA28D8 = 1;
+    *(unsigned int *)(param_1 + 0x2f7c) = (unsigned int)(*(int *)(param_1 + 0x2f7c) == 0);
+  }
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */

@@ -1294,3 +1294,69 @@ void BrSub10073980(void)
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
 #endif
+
+/* ── Ghidra-matched functions ─────────────────────────── */
+#ifdef BR_MATCHING_BUILD
+typedef int (*funcptr)();
+extern int DAT_100b64b0;
+extern int DAT_100ba2d0;
+extern int DAT_1184c470;
+extern int DAT_1184c478;
+extern int DAT_1184c484;
+extern int DAT_10ac53e8;
+extern int DAT_10ac5c2c;
+extern int DAT_10ac5d84;
+int FUN_10027fb0();
+void FUN_10001190();
+extern funcptr g_pfn18AA0B0;
+
+/* WHAT IT DOES: create the primary font texture via the registered texture-loader callback. */
+/* @implements 0x1006C750 glide BrFontTexCreate */
+
+int BrFontTexCreate(void)
+
+{
+  DAT_1184c470 = (*g_pfn18AA0B0)(&DAT_100ba2d0,0,0x40,0x40,1,4,0,0,1,1,0xf,0xf,1,0);
+  DAT_1184c478 = DAT_1184c470;
+  return;
+}
+
+/* WHAT IT DOES: create an alternate 64x64 font texture. */
+/* @implements 0x1006C800 glide BrFontTexCreateAlt */
+
+int BrFontTexCreateAlt(void)
+
+{
+  DAT_1184c484 = FUN_10027fb0(&DAT_100b64b0,0x40,0x40,2);
+  return;
+}
+
+/* WHAT IT DOES: free all font glyph textures and the sheet texture. */
+/* @implements 0x10058300 glide BrFontTexFreeAll */
+
+void BrFontTexFreeAll(void)
+
+{
+  int *piVar1;
+  int iVar2;
+
+  iVar2 = 0;
+  if ((unsigned short)DAT_10ac5c2c > 0) {
+    piVar1 = &DAT_10ac53e8;
+    do {
+      if (*piVar1 != 0) {
+        FUN_10001190(*piVar1);
+        *piVar1 = 0;
+      }
+      iVar2 = iVar2 + 1;
+      piVar1 = piVar1 + 2;
+    } while (iVar2 < (int)(DAT_10ac5c2c & 0xffff));
+  }
+  if (DAT_10ac5d84 != 0) {
+    FUN_10001190(DAT_10ac5d84);
+    DAT_10ac5d84 = 0;
+  }
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */
