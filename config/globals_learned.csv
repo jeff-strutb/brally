@@ -388,7 +388,8 @@ DAT_106e7738,0x106E7738,6,1,"named global, no address recorded",0x1002DD30 0x100
 DAT_106e79b0,0x106E79B0,2,1,"named global, no address recorded",0x1002B997
 DAT_106e79d0,0x106E79D0,1,0,"named global, no address recorded",0x1002DD30
 DAT_106e79d4,0x106E79D4,1,0,"named global, no address recorded",0x1002B997
-g_pfnStep$S53,0x106E79F4,2,1,file-static stand-in (no 1:1 original global),0x1002E317 0x1002E324
+g_pfnStep$S110,0x106E79F4,1,0,file-static stand-in (no 1:1 original global),0x1002E317
+g_pfnStep$S53,0x106E79F4,3,1,file-static stand-in (no 1:1 original global),0x1002E302 0x1002E317 0x1002E324
 DAT_106e8204,0x106E8204,3,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9
 DAT_106e8698,0x106E8698,1,0,"named global, no address recorded",0x1002E2F5
 BrG_6C1628,0x106E86B8,1,0,"named global, no address recorded",0x1002BF37

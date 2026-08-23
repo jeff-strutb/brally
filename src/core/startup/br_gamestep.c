@@ -47,7 +47,7 @@ void BrGameStepRegister(BrGameStepFn pfn, int id)
 /* @implements 0x1002E302 glide BrGameStepIs */
 int BrGameStepIs(BrGameStepFn pfn)
 {
-    return (g_pfnStep == pfn) ? 1 : 0;
+    return pfn == g_pfnStep;
 }
 
 /* The address-typed view of the SAME function, for slice4_50.c, whose whole

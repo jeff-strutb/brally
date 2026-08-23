@@ -54,7 +54,10 @@ ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 CACHE = os.path.join(ROOT, 'build', 'match', 'sweep_cache.json')
 
-VARIANTS = [('O2', '/O2'), ('Od', '/Od')]
+# O2y = /O2 with frame-pointer omission disabled: a minority of original TUs
+# keep push ebp/mov ebp,esp under otherwise full optimisation (first proven
+# on BrGameStepIs 0x1002E302; the 0x10031xxx region is the same class).
+VARIANTS = [('O2', '/O2'), ('Od', '/Od'), ('O2y', '/O2 /Oy-')]
 
 FIELDS = ['file', 'va', 'name', 'status', 'opt', 'orig_size', 'recomp_size',
           'diffs']
@@ -177,7 +180,7 @@ def compile_variant(src, tag, opt):
     rel_src = os.path.relpath(src, ROOT)
     # msvc5-compat supplies stdint.h/stdbool.h, which VC5 predates.  It is
     # tracked in git, unlike msvc5/include, which setup.sh re-extracts.
-    cmd = ['sh', WINE, CL, '/nologo', opt, '/W3', '/I', 'include',
+    cmd = ['sh', WINE, CL, '/nologo'] + opt.split() + ['/W3', '/I', 'include',
            '/I', 'tools/msvc5-compat', '/I', 'tools/msvc5/include',
            '/DBR_MATCHING_BUILD', '/c', rel_src, '/Fo' + rel_obj]
     # Wine occasionally wedges on a prefix lock; a stuck cl.exe must not stall
