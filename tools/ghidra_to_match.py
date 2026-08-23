@@ -39,6 +39,20 @@ ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 REPORT_CSV = os.path.join(ROOT, 'build', 'match', 'report.csv')
 LEARNINGS_CSV = os.path.join(ROOT, 'build', 'ghidra_learnings.csv')
 GLOBALS_CSV = os.path.join(ROOT, 'config', 'globals_learned.csv')
+WIDTHS_CSV = os.path.join(ROOT, 'build', 'orig_global_widths.csv')
+
+def load_widths():
+    """Ground-truth global types derived from the ORIGINAL bytes
+    (tools/orig_widths.py): addr -> C type string ('' = address-only)."""
+    w = {}
+    if os.path.exists(WIDTHS_CSV):
+        with open(WIDTHS_CSV) as f:
+            for r in csv.DictReader(f):
+                if r['ctype']:
+                    w[int(r['addr'], 16)] = r['ctype']
+    return w
+
+WIDTHS = load_widths()
 
 # ---------------------------------------------------------------------------
 # Load reference data
@@ -519,12 +533,17 @@ typedef int (*funcptr)();
             header += "extern char %s;\n" % dat
         elif _is_pointer_typed(dat, func_c):
             header += "extern int *%s;\n" % dat
-        elif dat.startswith('_DAT_'):
-            # Ghidra's '_DAT_' prefix marks a typed (non-int) overlay at the
-            # address; in this binary that is nearly always a float constant.
-            header += "extern float %s;\n" % dat
         else:
-            header += "extern int %s;\n" % dat
+            m2 = re.match(r'_?DAT_([0-9a-fA-F]{8})$', dat)
+            oracle = WIDTHS.get(int(m2.group(1), 16)) if m2 else None
+            if oracle:
+                header += "extern %s %s;\n" % (oracle, dat)
+            elif dat.startswith('_DAT_'):
+                # no byte evidence; Ghidra's '_DAT_' overlay is nearly
+                # always a float constant in this binary
+                header += "extern float %s;\n" % dat
+            else:
+                header += "extern int %s;\n" % dat
 
     # PTR_FUN_XXXXXXXX — function pointer globals (not replaced with 0 anymore)
     ptr_funs = set(re.findall(r'(PTR_FUN_[0-9a-fA-F]{8})', func_c))
