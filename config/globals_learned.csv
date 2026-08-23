@@ -1,6 +1,6 @@
 symbol,addr,refs,corroborated,class,sources
 FUN_10001190,0x10001190,2,1,"named global, no address recorded",0x10058300
-FUN_100014e0,0x100014E0,1,0,"named global, no address recorded",0x10041DB0
+FUN_100014e0,0x100014E0,2,1,"named global, no address recorded",0x10041DB0
 BrSub_100020D0,0x100023F0,1,0,"named global, no address recorded",0x100151F0
 FUN_10002580,0x10002580,1,0,"named global, no address recorded",0x10002910
 FUN_100027e0,0x100027E0,1,0,"named global, no address recorded",0x10002C50
@@ -77,6 +77,8 @@ FUN_10040040,0x10040040,1,0,"named global, no address recorded",0x1003ED70
 BrExt_10046DC0,0x10040210,1,0,"named global, no address recorded",0x1003E610
 BrSprFontKindHook_10047360,0x100407B0,3,1,"named global, no address recorded",0x1003D580 0x1003D5C0 0x1003D600
 @FUN_10040d10@4,0x10040D10,1,0,"named global, no address recorded",0x10040CF0
+@FUN_10041930@4,0x10041930,1,0,"named global, no address recorded",0x10041910
+@FUN_10041cc0@4,0x10041CC0,1,0,"named global, no address recorded",0x10041CA0
 @BrTextBoxDtor@4,0x10053EE0,1,0,"named global, no address recorded",0x10053EC0
 BrSub1005F5A0,0x10058380,1,0,"named global, no address recorded",0x10040E20
 BrBootFrontier_10058AF0,0x10058AF0,1,0,"named global, no address recorded",0x1001CD70
@@ -141,7 +143,7 @@ grBufferNumPending@0,0x10072978,2,1,"named global, no address recorded",0x1001DD
 grSstWinOpen@28,0x10072984,1,0,"named global, no address recorded",0x1001DD80
 grFogColorValue@4,0x100729F6,1,0,"named global, no address recorded",0x1001EA60
 ftol,0x10074560,13,1,"named global, no address recorded",0x10006910 0x10006950 0x10006990 0x100069D0 0x10006AA0 0x10006AE0 0x10006B20 0x10006B60 0x10006F40 0x10018990
-BrOperatorDelete,0x1007456C,1,0,"named global, no address recorded",0x10053EC0
+BrOperatorDelete,0x1007456C,3,1,"named global, no address recorded",0x10041910 0x10041CA0 0x10053EC0
 operator_delete,0x1007456C,4,1,"named global, no address recorded",0x100087A0 0x10040CF0 0x100546F0 0x10055A10
 BrExt_1007E8B0,0x100745E0,3,1,"named global, no address recorded",0x10032510 0x10062AE0 0x1006A570
 BrXAtExit,0x100745E0,2,1,"named global, no address recorded",0x10019820
@@ -186,7 +188,7 @@ $T169,0x100773D8,1,0,compiler constant (needs .rdata placement),0x1001DC90
 $T147,0x10077410,7,1,compiler constant (needs .rdata placement),0x10022120
 $T304,0x100775F0,1,0,compiler constant (needs .rdata placement),0x100343C0
 $T307,0x10077600,3,1,compiler constant (needs .rdata placement),0x100346D0
-PTR_FUN_100776c0,0x100776C0,1,0,"named global, no address recorded",0x10041930
+PTR_FUN_100776c0,0x100776C0,2,1,"named global, no address recorded",0x10041930
 PTR_FUN_100776f0,0x100776F0,1,0,"named global, no address recorded",0x10053EE0
 PTR_FUN_10077720,0x10077720,1,0,"named global, no address recorded",0x10054710
 PTR_FUN_10077750,0x10077750,1,0,"named global, no address recorded",0x10055A30
@@ -381,7 +383,7 @@ DAT_106b7aa0,0x106B7AA0,5,1,"named global, no address recorded",0x10023D20 0x100
 DAT_106b7aa4,0x106B7AA4,2,1,"named global, no address recorded",0x10024E60 0x100272F0
 DAT_106b7aa8,0x106B7AA8,2,1,"named global, no address recorded",0x10024E60 0x100272F0
 DAT_106b7ab4,0x106B7AB4,2,1,"named global, no address recorded",0x10063940 0x100639D0
-DAT_106b7ab8,0x106B7AB8,1,0,"named global, no address recorded",0x10041DB0
+DAT_106b7ab8,0x106B7AB8,2,1,"named global, no address recorded",0x10041DB0
 DAT_106b8090,0x106B8090,2,1,"named global, no address recorded",0x1002CE31 0x1002CE5F
 DAT_106e72e8,0x106E72E8,2,1,"named global, no address recorded",0x1002B997
 DAT_106e7710,0x106E7710,145,1,"named global, no address recorded",0x1002B997 0x1002C0F3 0x1002C2E9 0x1002C4A3 0x1002C50E
@@ -497,7 +499,7 @@ g_AA29C8,0x10AC5D20,4,1,"named global, no address recorded",0x1003EC10 0x1003EC9
 g_brPAA29D4,0x10AC5D2C,3,1,"named global, no address recorded",0x10035870 0x10036700
 g_brPAA29E4,0x10AC5D3C,2,1,"named global, no address recorded",0x10036040
 g_AA29F4,0x10AC5D4C,4,1,"named global, no address recorded",0x1003EC30 0x1003ECB0 0x1003ECF0 0x1003ED70
-DAT_10ac5d84,0x10AC5D84,4,1,"named global, no address recorded",0x10041DB0 0x10058300 0x10058380
+DAT_10ac5d84,0x10AC5D84,5,1,"named global, no address recorded",0x10041DB0 0x10058300 0x10058380
 DAT_10ac5d98,0x10AC5D98,1,0,"named global, no address recorded",0x100409C0
 g_BrDikEdge,0x10AC5DE0,3,1,"named global, no address recorded",0x10058FA0 0x10059040
 g_brAA2AD4,0x10AC5E34,2,1,"named global, no address recorded",0x10040660 0x100406A0
