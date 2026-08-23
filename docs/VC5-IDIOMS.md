@@ -125,6 +125,17 @@ the caller AND flipped a helper to match for free.
   [esp+4]; fcos; ret` under /O2 (/Oi). Return type must be double (Ghidra
   `unkbyte10`), or an `__ftol` call appears.
 
+- **Two-return vs temp-increment:** `if (f) return n + 1; return n;` loads
+  flag into EAX, tests, loads n into EAX between the test and its branch
+  (both paths need it); `int t = n; if (f) t++;` puts the flag in EDX
+  instead. Proven BrCountedTotal.
+- **Named-temp fetch order for x87:** naming ONE operand of a commutative
+  fadd (`float ay = pA->y; out = (ay + pB->y) * k;`) forces it to be the
+  FLD operand. Works per component; proven BrVec3Midpoint (glide order:
+  x pB-first, y/z pA-first). Does NOT work for fmul-by-scalar (BrVec3Scale
+  stays walled) or to force a `mov reg,reg` copy of a stored temp
+  (BrCursorPairSet stays walled — chained/cast/struct temps all fold).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
