@@ -15,7 +15,7 @@ BrExt_10008B80,0x10008D60,2,1,"named global, no address recorded",0x1006A550 0x1
 BrOnActivateTail,0x10008D60,1,0,"named global, no address recorded",0x10070370
 BrRaceNullStep,0x10008D60,1,0,"named global, no address recorded",0x10062850
 FUN_10008d60,0x10008D60,4,1,"named global, no address recorded",0x1002B997
-BrComCallLocked68,0x10009A00,4,1,"named global, no address recorded",0x10036FF0 0x10037090 0x100370E0 0x100371A0
+BrComCallLocked68,0x10009A00,6,1,"named global, no address recorded",0x10036FF0 0x10037040 0x10037090 0x100370E0 0x10037130 0x100371A0
 BrSub_10019270,0x10016830,1,0,"named global, no address recorded",0x10014C00
 BrTextAlignCentre,0x10016830,1,0,"named global, no address recorded",0x10011EA0
 BrSub_100192F0,0x100168B0,1,0,"named global, no address recorded",0x10014C00
@@ -314,10 +314,10 @@ g_220CD8,0x1021C808,4,1,"named global, no address recorded",0x10002BA0 0x10002DC
 DAT_1021c80c,0x1021C80C,5,1,"named global, no address recorded",0x10002BA0 0x10002DC0
 DAT_1021c81c,0x1021C81C,1,0,"named global, no address recorded",0x10005E80
 DAT_1021c908,0x1021C908,1,0,"named global, no address recorded",0x10005E80
-g_brH220DDC,0x1021C90C,3,1,"named global, no address recorded",0x10004F90 0x10005E80
+g_brH220DDC,0x1021C90C,5,1,"named global, no address recorded",0x10004F90 0x10005E80
 g_a10221288,0x1021CDB8,1,0,"named global, no address recorded",0x10006100
 DAT_1021ce40,0x1021CE40,1,0,"named global, no address recorded",0x10005E80
-g_br221314,0x1021CE44,2,1,"named global, no address recorded",0x10004F90
+g_br221314,0x1021CE44,4,1,"named global, no address recorded",0x10004F90
 g_i10221318,0x1021CE48,2,1,"named global, no address recorded",0x10006100
 DAT_1021ce4c,0x1021CE4C,1,0,"named global, no address recorded",0x10005E80
 g_brH221324,0x1021CE54,3,1,"named global, no address recorded",0x10004F20 0x10005E80
@@ -476,7 +476,7 @@ g_brAA287C,0x10AC5BD4,7,1,"named global, no address recorded",0x10036650 0x1003D
 g_iAA2880,0x10AC5BD8,1,0,"named global, no address recorded",0x100381B0
 g_brAA2884,0x10AC5BDC,3,1,"named global, no address recorded",0x1003D6F0
 g_brAA2888,0x10AC5BE0,2,1,"named global, no address recorded",0x1003D6F0
-g_brAA288C,0x10AC5BE4,4,1,"named global, no address recorded",0x10036FF0 0x10037090 0x100370E0 0x10051550
+g_brAA288C,0x10AC5BE4,5,1,"named global, no address recorded",0x10036FF0 0x10037040 0x10037090 0x100370E0 0x10051550
 DAT_10ac5bf8,0x10AC5BF8,1,0,"named global, no address recorded",0x10039F30
 g_brAA28A4,0x10AC5BFC,2,1,"named global, no address recorded",0x10039F30 0x10040790
 DAT_10ac5c10,0x10AC5C10,1,0,"named global, no address recorded",0x10039F30
@@ -616,7 +616,7 @@ g_18ABD38,0x118EEE50,1,0,"named global, no address recorded",0x100703A0
 g_18ABD80,0x118EEE98,1,0,"named global, no address recorded",0x100703A0
 DAT_118ef178,0x118EF178,1,0,"named global, no address recorded",0x10074B00
 imp__DisableThreadLibraryCalls@4,0x118F0448,1,0,"named global, no address recorded",0x10074B00
-imp__WaitForSingleObject@8,0x118F044C,9,1,"named global, no address recorded",0x10004F20 0x10004F50 0x10004F90 0x10006100 0x1006A440 0x1006A480 0x1006B1E0 0x1006E1D0 0x1006E220
+imp__WaitForSingleObject@8,0x118F044C,10,1,"named global, no address recorded",0x10004F20 0x10004F50 0x10004F90 0x10006100 0x1006A440 0x1006A480 0x1006B1E0 0x1006E1D0 0x1006E220
 imp__GlobalUnlock@4,0x118F0450,3,1,"named global, no address recorded",0x10009BA0 0x10036670 0x1006BB90
 imp__GlobalHandle@4,0x118F0454,3,1,"named global, no address recorded",0x10009BA0 0x10036670 0x1006BB90
 imp__CreateMutexA@12,0x118F045C,3,1,"named global, no address recorded",0x10005E80 0x1006A4D0 0x1006E180
@@ -625,7 +625,7 @@ imp__CreateThread@24,0x118F0490,1,0,"named global, no address recorded",0x1006A5
 imp__CloseHandle@4,0x118F0494,2,1,"named global, no address recorded",0x1006B1E0 0x1006E1A0
 imp__SetEvent@4,0x118F0498,1,0,"named global, no address recorded",0x1006B1E0
 imp__lstrlenA@4,0x118F04A8,1,0,"named global, no address recorded",0x10036EF0
-imp__ReleaseMutex@4,0x118F04BC,9,1,"named global, no address recorded",0x10004F20 0x10004F50 0x10004F90 0x10006100 0x1006A440 0x1006A480 0x1006E1D0 0x1006E220
+imp__ReleaseMutex@4,0x118F04BC,10,1,"named global, no address recorded",0x10004F20 0x10004F50 0x10004F90 0x10006100 0x1006A440 0x1006A480 0x1006E1D0 0x1006E220
 imp__GlobalFree@4,0x118F04C0,4,1,"named global, no address recorded",0x10009BA0 0x10036670 0x1006BB90
 imp__Sleep@4,0x118F04C4,1,0,"named global, no address recorded",0x1006A5F0
 imp__GlobalMemoryStatus@4,0x118F04C8,1,0,"named global, no address recorded",0x10007F10
