@@ -195,6 +195,37 @@ def clean_ghidra_types(code):
     # After the loop the counter u holds 0xffffffff-(n+1); Ghidra spells the
     # length as `~u - 1` and n+1 as `~u`.  We set u = strlen(...) and rewrite
     # every `~u` use accordingly.
+    def _dlemit_sub(code):
+        # The display-list emit family: Ghidra renders the original's
+        #   { BrDlCmd *p_ = G++; p_->op = C; p_->arg = A; }
+        # (G a struct{int op,arg;}* global) as a 5-statement temp dance.
+        # Rewrite it back; the wrapper types the global as BrDlCmd*.
+        pat = re.compile(
+            r'(\w+) = (\w+);\s*'
+            r'(\w+) = \2 \+ 2;\s*'
+            r'\*\2 =\s*([^;]+);\s*'
+            r'\2 = \3;\s*'
+            r'\1\[1\] =\s*([^;]+);')
+        n = 0
+        gvars = set()
+        def rep(m):
+            nonlocal n
+            n += 1
+            gvars.add(m.group(2))
+            return ('{ BrDlCmd *pEmit_ = %s++; pEmit_->op = %s; '
+                    'pEmit_->arg = %s; }' % (m.group(2),
+                                             ' '.join(m.group(4).split()),
+                                             ' '.join(m.group(5).split())))
+        code = pat.sub(rep, code)
+        if n:
+            # first-emit variant: p1 = base_expr; ... G = p1 + 2; *p1 = C; p1[1] = A;
+            code = ('#ifndef BR_DLCMD_DEFINED\n#define BR_DLCMD_DEFINED\n'
+                    'typedef struct BrDlCmd { int op; int arg; } BrDlCmd;\n'
+                    '#endif\n'
+                    + ''.join('extern BrDlCmd *%s;\n' % g for g in sorted(gvars))
+                    + code)
+        return code
+
     def _strcpy_sub(code):
         # Inlined strcpy: strlen loop over SRC, then u = ~u, then a dword
         # copy loop and a residual byte loop into DST -> strcpy(DST, SRC).
@@ -295,9 +326,25 @@ def clean_ghidra_types(code):
                 changed = True
                 break
         return code
+    code = _dlemit_sub(code)
+    # Drop local declarations left referencing nothing (e.g. the puVar temps
+    # the emit rewrite absorbed) — /Od would give dead decls stack slots.
+    def _dead_decls(code):
+        for m in list(re.finditer(
+                r'^\s+(?:unsigned |signed )?(?:int|char|short|long|float|double)'
+                r'\s*\**\s*(\w+);\s*$', code, re.M)):
+            if len(re.findall(r'\b%s\b' % re.escape(m.group(1)), code)) == 1:
+                code = code.replace(m.group(0) + '\n', '', 1)
+        return code
+    code = _dead_decls(code)
     code = _strcpy_sub(code)
     code = _memset_sub(code)
     code = _strlen_sub(code)
+    # /Od branchless ternaries Ghidra rationalised into arithmetic
+    code = re.sub(r'-\(unsigned int\)\(([^()]+) != 0\) & (0x[0-9a-fA-F]+|\d+)',
+                  r'((\1) ? \2 : 0)', code)
+    code = re.sub(r'2 - \(unsigned int\)\(([^()]+) != 0\)',
+                  r'((\1) ? 1 : 2)', code)
     # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
     code = re.sub(r'\bfcos\s*\(', 'cos(', code)
     code = re.sub(r'\bfsin\s*\(', 'sin(', code)
@@ -457,6 +504,8 @@ typedef int (*funcptr)();
     # Detect usage patterns: called as funcptr, dereferenced as pointer, or plain int
     called_dats = set(re.findall(r'\(\*(_?DAT_[0-9a-fA-F]{8})\)\s*\(', func_c))
     unresolved_dat = set(re.findall(r'(_?DAT_[0-9a-fA-F]{8})', func_c))
+    predeclared = set(re.findall(r'extern BrDlCmd \*(\w+);', func_c))
+    unresolved_dat -= predeclared
     for dat in sorted(unresolved_dat):
         if dat in called_dats:
             header += "extern funcptr %s;\n" % dat
@@ -544,6 +593,8 @@ typedef int (*funcptr)();
         header += "int %s();\n" % bf
     # Non-called Br* that aren't globals — declare as extern int
     for bf in sorted(br_funcs - br_called):
+        if bf == 'BrDlCmd':
+            continue
         if bf in known_fns:
             header += "int %s();\n" % bf
         elif not any(bf.startswith(p) for p in ('BrG_', 'BrSn')):
