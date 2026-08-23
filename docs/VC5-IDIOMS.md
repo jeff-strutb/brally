@@ -205,6 +205,18 @@ the caller AND flipped a helper to match for free.
   (itertools over statement orders, compile each) resolves store-order
   residue in minutes — use it before declaring an allocator wall.
 
+- **char parameters push as unaligned dword windows.** With a prototype
+  taking `char` params, VC5 /O2 pushes each byte argument as a full dword
+  load at the byte's address (upper three bytes are neighboring memory,
+  legally garbage). Ghidra renders these as overlapping CONCAT chains —
+  that pattern in a call means CHAR-TYPED PARAMS, not byte arithmetic.
+  Proven BrTex3dExpandInto (617 B).
+- **Ghidra also DROPS real stores** (not just folds constants): fields the
+  decompiler proves unread (fTmu2, lod, w/h copies) vanish from its output
+  while the /O2 bytes still write them. When a struct rebuild still runs
+  short, transcribe the store list from the original bytes, not from
+  Ghidra's text.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
