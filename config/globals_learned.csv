@@ -437,7 +437,7 @@ DAT_10ac2c5c,0x10AC2C5C,1,0,"named global, no address recorded",0x10033F90
 DAT_10ac2c60,0x10AC2C60,1,0,"named global, no address recorded",0x10033F90
 DAT_10ac2d60,0x10AC2D60,1,0,"named global, no address recorded",0x10033F90
 g_A9BFD0,0x10AC3060,1,0,"named global, no address recorded",0x100353C0
-g_brAC3060$S1170,0x10AC3060,2,1,file-static stand-in (no 1:1 original global),0x100353D0
+g_brAC3060$S1171,0x10AC3060,2,1,file-static stand-in (no 1:1 original global),0x100353D0
 DAT_10ac306c,0x10AC306C,1,0,"named global, no address recorded",0x10035870
 g_aBrA9C0B8,0x10AC3148,1,0,"named global, no address recorded",0x10036650
 DAT_10ac315c,0x10AC315C,1,0,"named global, no address recorded",0x10036670
@@ -571,6 +571,7 @@ g_1829314,0x1184C474,1,0,"named global, no address recorded",0x1006C850
 DAT_1184c478,0x1184C478,1,0,"named global, no address recorded",0x1006C750
 DAT_1184c480,0x1184C480,1,0,"named global, no address recorded",0x1006C880
 DAT_1184c484,0x1184C484,1,0,"named global, no address recorded",0x1006C800
+g_apBrStrTable,0x1186C488,1,0,"named global, no address recorded",0x1006D280
 g_pBrStrResBlob,0x1186C944,2,1,"named global, no address recorded",0x1006D2A0
 g_brStrResUsed,0x1186C948,1,0,"named global, no address recorded",0x1006D2A0
 g_brStrResSize,0x1186C94C,1,0,"named global, no address recorded",0x1006D2A0
