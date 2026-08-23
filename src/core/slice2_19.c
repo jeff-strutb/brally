@@ -934,10 +934,9 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
 void BR_THISCALL1 BrBitEdgeSplit(BrBitPair *pPair)
 {
     uint32_t a = pPair->a;
-    uint32_t b = pPair->b;
 
-    pPair->a = a & ~b;
-    pPair->b = a &  b;
+    pPair->a = ~pPair->b & a;
+    pPair->b = a &  pPair->b;
 }
 
 /* ================================================================== */

@@ -395,7 +395,7 @@ DAT_106e79d4,0x106E79D4,1,0,"named global, no address recorded",0x1002B997
 g_pfnStep$S110,0x106E79F4,1,0,file-static stand-in (no 1:1 original global),0x1002E317
 g_pfnStep$S53,0x106E79F4,3,1,file-static stand-in (no 1:1 original global),0x1002E302 0x1002E317 0x1002E324
 DAT_106e8204,0x106E8204,3,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9
-DAT_106e8698,0x106E8698,1,0,"named global, no address recorded",0x1002E2F5
+DAT_106e8698,0x106E8698,2,1,"named global, no address recorded",0x1002E2F5
 BrG_6C1628,0x106E86B8,1,0,"named global, no address recorded",0x1002BF37
 DAT_106e8818,0x106E8818,8,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9 0x1002C4A3
 DAT_106e881a,0x106E881A,2,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9
@@ -405,10 +405,10 @@ DAT_106e8820,0x106E8820,2,1,"named global, no address recorded",0x1002C0F3 0x100
 DAT_106e8822,0x106E8822,2,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9
 DAT_106e8824,0x106E8824,5,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9 0x1002C4A3
 DAT_106e8826,0x106E8826,2,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9
-DAT_106e8a1c,0x106E8A1C,1,0,"named global, no address recorded",0x1002E2E8
+DAT_106e8a1c,0x106E8A1C,2,1,"named global, no address recorded",0x1002E2E8
 DAT_106e9a2c,0x106E9A2C,7,1,"named global, no address recorded",0x1001E130 0x1002B997
 DAT_106e9a30,0x106E9A30,1,0,"named global, no address recorded",0x1002DE04
-g_BrLogArg,0x106E9D80,2,1,"named global, no address recorded",0x1002F258 0x1002F26B
+g_BrLogArg,0x106E9D80,3,1,"named global, no address recorded",0x1002F258 0x1002F26B
 BrG_6C2CF8,0x106E9D88,2,1,"named global, no address recorded",0x10009FC0
 DAT_106ea388,0x106EA388,1,0,"named global, no address recorded",0x1002DD9A
 DAT_106ea390,0x106EA390,2,1,"named global, no address recorded",0x1002E359
