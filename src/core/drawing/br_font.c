@@ -13,6 +13,10 @@
  * address literal below is tagged with the build it came from.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_font.h"
 
 #include <stdio.h>
@@ -1357,6 +1361,18 @@ void BrFontTexFreeAll(void)
     DAT_10ac5d84 = 0;
   }
   return;
+}
+
+/* WHAT IT DOES: free all font textures, then exit the process with code 0 (CRT exit
+ * through the import table). */
+/* @implements 0x10058360 glide BrFontFreeAndExit */
+
+int BrFontFreeAndExit(void)
+
+{
+  BrFontTexFreeAll();
+  exit(0);
+  return 0;
 }
 
 #endif /* BR_MATCHING_BUILD */
