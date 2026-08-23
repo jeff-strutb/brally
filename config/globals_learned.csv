@@ -15,7 +15,7 @@ BrExt_10008B80,0x10008D60,2,1,"named global, no address recorded",0x1006A550 0x1
 BrOnActivateTail,0x10008D60,1,0,"named global, no address recorded",0x10070370
 BrRaceNullStep,0x10008D60,1,0,"named global, no address recorded",0x10062850
 FUN_10008d60,0x10008D60,4,1,"named global, no address recorded",0x1002B997
-BrComCallLocked68,0x10009A00,2,1,"named global, no address recorded",0x10036FF0 0x10037090
+BrComCallLocked68,0x10009A00,3,1,"named global, no address recorded",0x10036FF0 0x10037090 0x100370E0
 BrSub_10019270,0x10016830,1,0,"named global, no address recorded",0x10014C00
 BrTextAlignCentre,0x10016830,1,0,"named global, no address recorded",0x10011EA0
 BrSub_100192F0,0x100168B0,1,0,"named global, no address recorded",0x10014C00
@@ -49,8 +49,8 @@ FUN_10032500,0x10032500,1,0,"named global, no address recorded",0x100324F0
 BrExt_10038EB0,0x10032520,1,0,"named global, no address recorded",0x10032510
 BrBootFrontier_10032530,0x10032530,1,0,"named global, no address recorded",0x1001CD70
 FUN_10035400,0x10035400,1,0,"named global, no address recorded",0x10009C00
-FUN_100356b0,0x100356B0,1,0,"named global, no address recorded",0x10035870
-FUN_10036300,0x10036300,1,0,"named global, no address recorded",0x10035870
+FUN_100356b0,0x100356B0,2,1,"named global, no address recorded",0x10035870
+FUN_10036300,0x10036300,2,1,"named global, no address recorded",0x10035870
 BrSub1003CE80,0x10036510,1,0,"named global, no address recorded",0x1003D6F0
 BrSub1003D0B0,0x10036740,2,1,"named global, no address recorded",0x10009BA0 0x1003D6F0
 FUN_10037130,0x10037130,1,0,"named global, no address recorded",0x10037180
@@ -332,7 +332,7 @@ g_h1022AF30,0x10226A60,4,1,"named global, no address recorded",0x10005E80 0x1000
 DAT_10226a64,0x10226A64,1,0,"named global, no address recorded",0x10005E80
 DAT_10226e78,0x10226E78,1,0,"named global, no address recorded",0x10007F10
 g_BrDPlay$S841,0x102732E4,1,0,file-static stand-in (no 1:1 original global),0x10009BA0
-g_brP277B40,0x10273328,4,1,"named global, no address recorded",0x10035870 0x1003D6F0 0x1006A5F0
+g_brP277B40,0x10273328,5,1,"named global, no address recorded",0x10035870 0x1003D6F0 0x1006A5F0
 g_BrCarVisAny,0x10273350,3,1,"named global, no address recorded",0x10009FC0
 g_BrCarVisOpaque,0x10273648,2,1,"named global, no address recorded",0x10009FC0
 g_363F68,0x1035F750,1,0,"named global, no address recorded",0x1000CB80
@@ -360,7 +360,7 @@ g_brRca67B548,0x105B76F0,1,0,"named global, no address recorded",0x10018A30
 g_brRca67B54C,0x105B76F4,1,0,"named global, no address recorded",0x10018A30
 g_br67B550,0x105B76F8,1,0,"named global, no address recorded",0x10019000
 g_67D550,0x105B96F8,1,0,"named global, no address recorded",0x100189C0
-g_brP680584,0x105BC72C,2,1,"named global, no address recorded",0x10035870 0x100592D0
+g_brP680584,0x105BC72C,3,1,"named global, no address recorded",0x10035870 0x100592D0
 g_brActivateGate1,0x105BC740,1,0,"named global, no address recorded",0x10070370
 g_brActivateGate2,0x105BC744,1,0,"named global, no address recorded",0x10070370
 g_brActivateGate3,0x105BC748,1,0,"named global, no address recorded",0x10070370
@@ -453,10 +453,10 @@ DAT_10ac2c60,0x10AC2C60,1,0,"named global, no address recorded",0x10033F90
 DAT_10ac2d60,0x10AC2D60,1,0,"named global, no address recorded",0x10033F90
 g_A9BFD0,0x10AC3060,1,0,"named global, no address recorded",0x100353C0
 g_brAC3060$S1171,0x10AC3060,2,1,file-static stand-in (no 1:1 original global),0x100353D0
-DAT_10ac306c,0x10AC306C,1,0,"named global, no address recorded",0x10035870
+DAT_10ac306c,0x10AC306C,2,1,"named global, no address recorded",0x10035870
 g_aBrA9C0B8,0x10AC3148,1,0,"named global, no address recorded",0x10036650
 DAT_10ac315c,0x10AC315C,1,0,"named global, no address recorded",0x10036670
-DAT_10ac408c,0x10AC408C,1,0,"named global, no address recorded",0x10035870
+DAT_10ac408c,0x10AC408C,2,1,"named global, no address recorded",0x10035870
 g_brPA9D008,0x10AC4098,3,1,"named global, no address recorded",0x10037180 0x1003CD00 0x100515B0
 g_aBrA9D618,0x10AC46A0,1,0,"named global, no address recorded",0x10040790
 DAT_10ac53e8,0x10AC53E8,2,1,"named global, no address recorded",0x10058300 0x10058380
@@ -476,7 +476,7 @@ g_brAA287C,0x10AC5BD4,7,1,"named global, no address recorded",0x10036650 0x1003D
 g_iAA2880,0x10AC5BD8,1,0,"named global, no address recorded",0x100381B0
 g_brAA2884,0x10AC5BDC,3,1,"named global, no address recorded",0x1003D6F0
 g_brAA2888,0x10AC5BE0,2,1,"named global, no address recorded",0x1003D6F0
-g_brAA288C,0x10AC5BE4,3,1,"named global, no address recorded",0x10036FF0 0x10037090 0x10051550
+g_brAA288C,0x10AC5BE4,4,1,"named global, no address recorded",0x10036FF0 0x10037090 0x100370E0 0x10051550
 DAT_10ac5bf8,0x10AC5BF8,1,0,"named global, no address recorded",0x10039F30
 g_brAA28A4,0x10AC5BFC,2,1,"named global, no address recorded",0x10039F30 0x10040790
 DAT_10ac5c10,0x10AC5C10,1,0,"named global, no address recorded",0x10039F30
@@ -496,7 +496,7 @@ g_brAA2970,0x10AC5CC8,2,1,"named global, no address recorded",0x10040600
 g_brPhaseAA2974,0x10AC5CCC,1,0,"named global, no address recorded",0x100403A0
 g_brAA29B0,0x10AC5D08,1,0,"named global, no address recorded",0x1003E610
 g_AA29C8,0x10AC5D20,4,1,"named global, no address recorded",0x1003EC10 0x1003EC90 0x1003ECD0 0x1003ED50
-g_brPAA29D4,0x10AC5D2C,3,1,"named global, no address recorded",0x10035870 0x10036700
+g_brPAA29D4,0x10AC5D2C,4,1,"named global, no address recorded",0x10035870 0x10036700
 g_brPAA29E4,0x10AC5D3C,2,1,"named global, no address recorded",0x10036040
 g_AA29F4,0x10AC5D4C,4,1,"named global, no address recorded",0x1003EC30 0x1003ECB0 0x1003ECF0 0x1003ED70
 DAT_10ac5d84,0x10AC5D84,5,1,"named global, no address recorded",0x10041DB0 0x10058300 0x10058380
@@ -637,7 +637,7 @@ imp__exit,0x118F057C,1,0,"named global, no address recorded",0x10058360
 imp__floor,0x118F059C,8,1,"named global, no address recorded",0x10006910 0x10006950 0x10006990 0x100069D0 0x10006AA0 0x10006AE0 0x10006B20 0x10006B60
 imp__GetDesktopWindow@0,0x118F05C4,1,0,"named global, no address recorded",0x10009C00
 imp__PostMessageA@16,0x118F05E8,1,0,"named global, no address recorded",0x10002BA0
-imp__SetTimer@16,0x118F064C,1,0,"named global, no address recorded",0x10035870
+imp__SetTimer@16,0x118F064C,2,1,"named global, no address recorded",0x10035870
 imp__mmioDescend@16,0x118F0654,1,0,"named global, no address recorded",0x10070170
 imp__mmioSeek@12,0x118F0664,1,0,"named global, no address recorded",0x10070170
 imp__timeEndPeriod@4,0x118F0678,2,1,"named global, no address recorded",0x1006E4A0
