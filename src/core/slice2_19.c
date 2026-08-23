@@ -1246,6 +1246,11 @@ void BrLogSet(void *p)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_106b8090;
+extern int DAT_106ec778;
+extern int DAT_106ed630;
+extern unsigned short _DAT_100b5598;
+int FUN_10059e70();
 extern int DAT_100a7514;
 extern int DAT_100a7518;
 extern int DAT_106ed6e4;
@@ -1278,7 +1283,7 @@ typedef int (*funcptr)();
 extern funcptr DAT_10b73534;
 int FUN_1002d864();
 extern char DAT_106ed708;
-int FUN_1002ce5f();
+void BrPadFrameBegin(void);
 extern int DAT_106e7738;
 extern int DAT_106e79d0;
 extern int DAT_106ea430;
@@ -1435,7 +1440,7 @@ void BrPadTranslateAll(void)
 
 {
   int i;
-  FUN_1002ce5f();
+  BrPadFrameBegin();
   for (i = 0; i < 1; i++) {
     BrPadTranslate((BrPad *)((char *)&DAT_106ed708 + i*0x15c));
     BrBitEdgeSplit((BrBitPair *)((char *)&DAT_106ed708 + i*0x15c));
@@ -1617,6 +1622,36 @@ void BrDlRectCmdFlush(void)
   puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
   _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
   _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  return;
+}
+
+/* WHAT IT DOES: once per frame, open the pad sampling window: on the first call set the
+ * in-progress flag, zero the u16 latch at 0x100B5598 and trace the 0x106B8090 block. */
+/* @implements 0x1002CE31 glide BrPadFrameInit */
+
+void BrPadFrameInit(void)
+
+{
+  if (DAT_106ec778 == 0) {
+    DAT_106ec778 = 1;
+    _DAT_100b5598 = 0;
+    BrStubTrue(&DAT_106b8090);
+  }
+  return;
+}
+
+/* WHAT IT DOES: begin the pad frame: init, trace, run 0x10059E70 on the 0x106ED630 block,
+ * mark the u16 latch live and clear the in-progress flag. */
+/* @implements 0x1002CE5F glide BrPadFrameBegin */
+
+void BrPadFrameBegin(void)
+
+{
+  BrPadFrameInit();
+  BrStubTrue(&DAT_106b8090,0,1);
+  FUN_10059e70(&DAT_106ed630);
+  _DAT_100b5598 = 1;
+  DAT_106ec778 = 0;
   return;
 }
 
