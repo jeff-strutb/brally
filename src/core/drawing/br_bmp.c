@@ -280,6 +280,10 @@ void BrBmpFree(BrBmp *pBmp)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern char DAT_100ad7ec;
+extern char DAT_100ad7f0;
+extern char DAT_100ad7f4;
+extern char DAT_100ad7f8;
 int FUN_10059f70();
 extern int DAT_10ac67c4;
 extern int DAT_10ac67c8;
@@ -314,6 +318,24 @@ void * BrBmpToRgba32(int param_1)
     DAT_10ac67c8 = *(int *)(param_1 + 8);
   }
   return pvVar1;
+}
+
+/* WHAT IT DOES: read the four words at +0/+4/+8/+0xC of record [param_1][param_2] from
+ * the 30-per-row, 0x28-stride table at 0x100AD7EC into the four out-pointers. */
+/* @implements 0x1005A020 glide BrBmpRect4Get */
+
+void BrBmpRect4Get(int param_1,int param_2,int *param_3,int *param_4,
+                 int *param_5,int *param_6)
+
+{
+  int iVar1;
+  
+  iVar1 = (param_2 + param_1 * 0x1e) * 0x28;
+  *param_3 = *(int *)(&DAT_100ad7ec + iVar1);
+  *param_4 = *(int *)(&DAT_100ad7f0 + iVar1);
+  *param_5 = *(int *)(&DAT_100ad7f4 + iVar1);
+  *param_6 = *(int *)(&DAT_100ad7f8 + iVar1);
+  return;
 }
 
 #endif /* BR_MATCHING_BUILD */
