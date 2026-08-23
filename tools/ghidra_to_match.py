@@ -1,0 +1,753 @@
+#!/usr/bin/env python3
+"""Ghidra-to-match pipeline: take Ghidra decompiled C, clean it up, compile
+with MSVC5, and check against original bytes.
+
+This is the progressive automation engine. Each run:
+1. Reads Ghidra's decompiled C for uncovered functions
+2. Applies cleanup transforms (Ghidra-isms → MSVC5-compatible C)
+3. Compiles via Wine + MSVC5
+4. Diffs against original bytes
+5. Records learnings for every function — match, close, or far
+
+Run:
+    python3 tools/ghidra_to_match.py                    # all uncovered functions
+    python3 tools/ghidra_to_match.py --small             # only <=64 byte functions
+    python3 tools/ghidra_to_match.py --report            # print learnings summary
+    python3 tools/ghidra_to_match.py --va 0x10001000     # one function
+    python3 tools/ghidra_to_match.py --errors-only       # reprocess prior errors only
+    python3 tools/ghidra_to_match.py --fallback          # try individual compile on batch failures
+"""
+import csv
+import os
+import re
+import struct
+import subprocess
+import sys
+import tempfile
+from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+
+GHIDRA_DIR = os.path.join(ROOT, 'build', 'ghidra_decomp')
+ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
+REPORT_CSV = os.path.join(ROOT, 'build', 'match', 'report.csv')
+LEARNINGS_CSV = os.path.join(ROOT, 'build', 'ghidra_learnings.csv')
+GLOBALS_CSV = os.path.join(ROOT, 'config', 'globals_learned.csv')
+
+# ---------------------------------------------------------------------------
+# Load reference data
+# ---------------------------------------------------------------------------
+
+def load_report_vas():
+    """VAs already in report.csv (already have source)."""
+    vas = set()
+    if os.path.exists(REPORT_CSV):
+        with open(REPORT_CSV) as f:
+            for r in csv.DictReader(f):
+                vas.add(r['va'].lower())
+    return vas
+
+def load_functions():
+    """All functions from functions_glide.csv."""
+    funcs = []
+    with open(os.path.join(ROOT, 'config', 'functions_glide.csv')) as f:
+        for r in csv.DictReader(f):
+            funcs.append({
+                'va': r['va'],
+                'size': int(r['size']),
+                'name': r.get('name', '').strip(),
+            })
+    return funcs
+
+def load_globals():
+    """Known globals from globals_learned.csv."""
+    g = {}
+    if os.path.exists(GLOBALS_CSV):
+        with open(GLOBALS_CSV) as f:
+            for r in csv.DictReader(f):
+                addr = r.get('addr', '').strip()
+                sym = r.get('symbol', '').strip()
+                if addr and sym:
+                    g[addr.lower()] = sym
+    return g
+
+def load_fn_names():
+    """Function VA → name from report.csv and @implements tags."""
+    names = {}
+    if os.path.exists(REPORT_CSV):
+        with open(REPORT_CSV) as f:
+            for r in csv.DictReader(f):
+                if r.get('name'):
+                    names[r['va'].lower()] = r['name']
+    return names
+
+
+# ---------------------------------------------------------------------------
+# Ghidra C cleanup transforms
+# ---------------------------------------------------------------------------
+
+def clean_ghidra_types(code):
+    """Replace Ghidra type names with MSVC5-compatible ones."""
+    subs = [
+        # Ghidra's unkbyteN / unkuintN types
+        (r'\bunkbyte\d+\b', 'int'),
+        (r'\bunkuint\d+\b', 'unsigned int'),
+        (r'\bunkint\d+\b', 'int'),
+        (r'\bundefined4\b', 'int'),
+        (r'\bundefined2\b', 'short'),
+        (r'\bundefined1\b', 'char'),
+        (r'\bundefined8\b', 'double'),
+        (r'\bundefined\b', 'char'),
+        (r'\bbyte\b', 'unsigned char'),
+        (r'\buint\b', 'unsigned int'),
+        (r'\bulong\b', 'unsigned long'),
+        (r'\bushort\b', 'unsigned short'),
+        (r'\bbool\b', 'int'),
+        (r'\blonglong\b', '__int64'),
+        (r'\bulonglong\b', 'unsigned __int64'),
+        (r'\bint64_t\b', '__int64'),
+        (r'\buint64_t\b', 'unsigned __int64'),
+        (r'\bint32_t\b', 'int'),
+        (r'\buint32_t\b', 'unsigned int'),
+        (r'\bint16_t\b', 'short'),
+        (r'\buint16_t\b', 'unsigned short'),
+        (r'\bint8_t\b', 'char'),
+        (r'\buint8_t\b', 'unsigned char'),
+        (r'\bsize_t\b', 'unsigned int'),
+        # Ghidra calling conventions MSVC5 doesn't know
+        (r'\b__thiscall\b', '__stdcall'),
+        # Ghidra extended float types
+        (r'\bfloat10\b', 'double'),
+        (r'\bfloat8\b', 'double'),
+        # Ghidra int3/int5/int6/int7 types
+        (r'\bint3\b', 'int'),
+        (r'\bint5\b', 'int'),
+        (r'\bint6\b', 'int'),
+        (r'\bint7\b', 'int'),
+        (r'\buint3\b', 'unsigned int'),
+        (r'\buint5\b', 'unsigned int'),
+        (r'\buint6\b', 'unsigned int'),
+        (r'\buint7\b', 'unsigned int'),
+        # Additional Ghidra/Windows types
+        (r'\bundefined3\b', 'int'),
+        (r'\bSIZE_T\b', 'unsigned int'),
+        (r'\bDWORD_PTR\b', 'unsigned long'),
+    ]
+    for pat, repl in subs:
+        code = re.sub(pat, repl, code)
+    # PTR_FUN_XXXXXXXX — keep as extern globals (replacing with 0 breaks &PTR_FUN_)
+    # They're declared as externs in wrap_for_compile instead
+    # PTR_DAT_XXXXXXXX → data pointer refs
+    code = re.sub(r'\bPTR_DAT_([0-9a-fA-F]{8})\b', r'DAT_\1', code)
+    # Ghidra goto labels — replace gotos with no-op statements (not comments,
+    # which leave if/else blocks without a body)
+    code = re.sub(r'\bgoto\s+LAB_[0-9a-fA-F]+\s*;', '(void)0;', code)
+    code = re.sub(r'LAB_[0-9a-fA-F]+\s*:', '/* label */ ;', code)
+    # &LAB_ (address-of label, used in switch tables) → cast to (void*)0
+    code = re.sub(r'&\s*LAB_[0-9a-fA-F]+', '(void*)0', code)
+    # Any remaining LAB_ references (switch tables, address-of) → 0
+    code = re.sub(r'\bLAB_[0-9a-fA-F]+\b', '0', code)
+    # Ghidra 'code' pointer type → callable function pointer (trailing space
+    # prevents concatenation with the variable name, e.g. code *pcVar3 → funcptr pcVar3)
+    code = re.sub(r'\bcode\s*\*', 'funcptr ', code)
+    # Ghidra cast patterns: (*(code **)(expr)) → ((funcptr*)(expr))
+    # Already handled by the above since 'code' is replaced
+    # Ghidra struct member access on int: ._0_1_, ._0_2_, ._0_4_ etc
+    code = re.sub(r'\._\d+_\d+_', '', code)
+    # Ghidra CONCAT patterns
+    code = re.sub(r'\bCONCAT\d+\b', '/* CONCAT */', code)
+    # Ghidra SUB patterns (SUB41, SUB42 etc)
+    code = re.sub(r'\bSUB\d+\(([^,]+),\d+\)', r'(\1)', code)
+    # PTR_s_XXXXX (string pointer references) → extern globals (declared in wrapper)
+    # PTR_XXXXX_exref (external references) → extern globals
+    # These are left in place; wrap_for_compile will declare them.
+    return code
+
+def clean_ghidra_globals(code, globals_map):
+    """Replace DAT_XXXXXXXX with known global names."""
+    def repl(m):
+        addr = '0x' + m.group(1).lower()
+        name = globals_map.get(addr)
+        if name:
+            return name
+        return m.group(0)
+    return re.sub(r'(?:_?)DAT_([0-9a-fA-F]{8})', repl, code)
+
+def clean_ghidra_functions(code, fn_names):
+    """Replace FUN_XXXXXXXX with known function names."""
+    def repl(m):
+        addr = '0x' + m.group(1).lower()
+        name = fn_names.get(addr)
+        if name:
+            return name
+        return m.group(0)
+    return re.sub(r'FUN_([0-9a-fA-F]{8})', repl, code)
+
+def clean_ghidra_warnings(code):
+    """Remove Ghidra WARNING comments."""
+    code = re.sub(r'/\*\s*WARNING:.*?\*/', '', code, flags=re.DOTALL)
+    return code
+
+def strip_ghidra_header(code):
+    """Remove the Ghidra header comment we added."""
+    return re.sub(r'/\*\s*Ghidra decompilation.*?\*/', '', code, flags=re.DOTALL)
+
+_WIN32_API_NAMES = frozenset([
+    'GlobalAlloc', 'GlobalFree', 'GlobalLock', 'GlobalUnlock',
+    'GlobalMemoryStatus', 'GlobalReAlloc', 'GlobalSize', 'GlobalHandle',
+    'GlobalFlags', 'LocalAlloc', 'LocalFree', 'LocalLock', 'LocalUnlock',
+])
+
+def _is_pointer_typed(name, code):
+    """Detect whether a DAT_ global is used as a pointer (deref, arith, arrow)."""
+    esc = re.escape(name)
+    if re.search(r'\*\s*' + esc, code):
+        return True
+    if re.search(esc + r'\s*[\[+\-]', code):
+        return True
+    if re.search(esc + r'\s*->', code):
+        return True
+    # assigned from a pointer expression: name = (type *)expr
+    if re.search(esc + r'\s*=\s*\([^)]*\*\)', code):
+        return True
+    return False
+
+def wrap_for_compile(func_c, va_hex):
+    """Wrap a cleaned Ghidra function in a minimal compilable file."""
+    header = """/* Auto-generated from Ghidra decompilation — %s */
+#ifdef BR_MATCHING_BUILD
+
+#include <windows.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <mmsystem.h>
+
+#ifndef true
+#define true 1
+#define false 0
+#endif
+#ifndef NAN
+unsigned long _ghidra_nan_bits = 0x7FC00000;
+#define NAN (*(float*)&_ghidra_nan_bits)
+#endif
+
+typedef int (*funcptr)();
+
+/* Forward declarations for unknown functions/globals */
+""" % va_hex
+
+    # Extract any FUN_ calls that weren't resolved — but skip the function
+    # being defined (its name appears in the body as the definition itself)
+    defined_funcs = set(re.findall(r'(\w+)\s*\([^)]*\)\s*\n?\s*\{', func_c))
+    unresolved = set(re.findall(r'(FUN_[0-9a-fA-F]{8})', func_c)) - defined_funcs
+    for fn in sorted(unresolved):
+        header += "int %s();\n" % fn
+
+    # Extract any DAT_ globals that weren't resolved
+    # Detect usage patterns: called as funcptr, dereferenced as pointer, or plain int
+    called_dats = set(re.findall(r'\(\*(_?DAT_[0-9a-fA-F]{8})\)\s*\(', func_c))
+    unresolved_dat = set(re.findall(r'(_?DAT_[0-9a-fA-F]{8})', func_c))
+    for dat in sorted(unresolved_dat):
+        if dat in called_dats:
+            header += "extern funcptr %s;\n" % dat
+        elif _is_pointer_typed(dat, func_c):
+            header += "extern int *%s;\n" % dat
+        else:
+            header += "extern int %s;\n" % dat
+
+    # PTR_FUN_XXXXXXXX — function pointer globals (not replaced with 0 anymore)
+    ptr_funs = set(re.findall(r'(PTR_FUN_[0-9a-fA-F]{8})', func_c))
+    for pf in sorted(ptr_funs):
+        header += "extern funcptr %s;\n" % pf
+
+    # PTR_PTR_XXXXXXXX — data pointer globals
+    ptr_ptrs = set(re.findall(r'(PTR_PTR_[0-9a-fA-F]{8})', func_c))
+    for pp in sorted(ptr_ptrs):
+        header += "extern int *%s;\n" % pp
+
+    # Ghidra-named globals: s_*, g_*, BrG_*, BrSn*, Glob*, etc.
+    # Skip names that collide with Win32 APIs (included via windows.h)
+    ghidra_globals = set(re.findall(
+        r'\b((?:s_|g_|BrG_|BrSn|Glob|Global)\w+)\b', func_c)) - defined_funcs
+    # Also detect function-pointer and pointer-typed globals
+    called_globals = set(re.findall(r'\(\*(\w+)\)\s*\(', func_c))
+    for g in sorted(ghidra_globals):
+        if g in _WIN32_API_NAMES:
+            continue
+        if g in called_globals:
+            header += "extern funcptr %s;\n" % g
+        elif _is_pointer_typed(g, func_c):
+            header += "extern int *%s;\n" % g
+        else:
+            header += "extern int %s;\n" % g
+
+    # Ghidra compiler temporaries ($T147 etc.) — declare as local ints
+    dollar_temps = set(re.findall(r'(\$T\d+)', func_c))
+    for t in sorted(dollar_temps):
+        safe_name = t.replace('$', '_dollar_')
+        func_c = func_c.replace(t, safe_name)
+        header += "int %s;\n" % safe_name
+
+    # Ghidra stack references (stack0xNNNN) — declare as local ints
+    stack_vars = set(re.findall(r'(stack0x[0-9a-fA-F]+)', func_c))
+    for sv in sorted(stack_vars):
+        header += "int %s;\n" % sv
+
+    # PTR_s_XXXXX (Ghidra string pointer refs) — extern globals
+    ptr_s_vars = set(re.findall(r'(PTR_s_\w+)', func_c))
+    for ps in sorted(ptr_s_vars):
+        header += "extern int %s;\n" % ps
+
+    # Ghidra *_exref (external reference stubs)
+    exref_vars = set(re.findall(r'(\w+_exref)\b', func_c)) - defined_funcs
+    for er in sorted(exref_vars):
+        header += "extern int %s;\n" % er
+
+    # Ghidra a_XXXXXXXX (array/data refs)
+    a_vars = set(re.findall(r'\b(a_[0-9a-fA-F]{6,8})\b', func_c))
+    for av in sorted(a_vars):
+        header += "extern int %s;\n" % av
+
+    # Ghidra Br* function names that aren't in report.csv or already declared
+    br_funcs = set(re.findall(
+        r'\b(Br\w+)\b', func_c)) - defined_funcs - ghidra_globals
+    # Only declare those that look like function calls (followed by '(')
+    br_called = set(re.findall(r'\b(Br\w+)\s*\(', func_c)) - defined_funcs
+    for bf in sorted(br_called):
+        header += "int %s();\n" % bf
+    # Non-called Br* that aren't globals — declare as extern int
+    for bf in sorted(br_funcs - br_called):
+        if not any(bf.startswith(p) for p in ('BrG_', 'BrSn')):
+            header += "extern int %s;\n" % bf
+
+    # br_* lowercase game functions
+    br_lower = set(re.findall(r'\b(br_\w+)\s*\(', func_c)) - defined_funcs
+    for bl in sorted(br_lower):
+        header += "int %s();\n" % bl
+
+    # Windows struct types that MSVC5 headers may not expose directly
+    # _MEMORYSTATUS, _MMCKINFO — use the non-underscore form via windows.h
+    func_c = re.sub(r'\b_MEMORYSTATUS\b', 'MEMORYSTATUS', func_c)
+    func_c = re.sub(r'\b_MMCKINFO\b', 'MMCKINFO', func_c)
+
+    # __m_cNumPods / __cNumPods style Ghidra globals
+    cpod_vars = set(re.findall(r'(__\w*cNumPods_[0-9a-fA-F]+)', func_c))
+    for cv in sorted(cpod_vars):
+        header += "extern int %s;\n" % cv
+
+    # $-renamed identifiers (kF300_S_S537 etc.) from globals_learned.csv
+    s_renamed = set(re.findall(r'\b(\w+_S_\w+)\b', func_c)) - defined_funcs
+    already_declared = set()  # track what's already declared above
+    for sr in sorted(s_renamed):
+        if sr not in already_declared:
+            header += "extern int %s;\n" % sr
+
+    # Ghidra _MAX_INST_*, _PtFuncCompare, _MMIOINFO, etc.
+    misc_undecl = set(re.findall(
+        r'\b(_(?:PtFuncCompare|MMIOINFO|MAX_INST_\w+))\b', func_c))
+    for m in sorted(misc_undecl):
+        header += "extern int %s;\n" % m
+
+    header += "\n"
+    footer = "\n#endif /* BR_MATCHING_BUILD */\n"
+    return header + func_c + footer
+
+
+# ---------------------------------------------------------------------------
+# Compile and check
+# ---------------------------------------------------------------------------
+
+def compile_and_check(src_text, func_name, va_hex, orig_bytes):
+    """Compile source, extract function bytes, compare against original.
+
+    Uses match_sweep.compile_variant for compilation (same path as the real
+    matching pipeline), so Wine/MSVC5 paths are handled correctly.
+
+    Returns dict with result info.
+    """
+    import match_diff
+    import match_sweep
+
+    tmpdir = tempfile.mkdtemp(prefix='ghidra_match_')
+    src_path = os.path.join(tmpdir, 'ghidra_test.c')
+
+    try:
+        with open(src_path, 'w') as f:
+            f.write(src_text)
+
+        last_errors = ''
+        for opt in ['/O2', '/Od']:
+            obj, errs = match_sweep.compile_variant(src_path, 'ghidra_auto', opt)
+            if obj is None:
+                last_errors = ' | '.join(errs)[:200]
+                continue
+
+            try:
+                funcs = match_diff.parse_coff_obj(obj)
+            except Exception:
+                continue
+
+            # Try to find our function under various decorated names
+            candidates = [func_name, '_' + func_name, func_name.lstrip('_')]
+            found_name = None
+            for cand in candidates:
+                if cand in funcs:
+                    found_name = cand
+                    break
+
+            if found_name is None:
+                if len(funcs) == 1:
+                    found_name = list(funcs.keys())[0]
+                else:
+                    continue
+
+            recomp_bytes, relocs = funcs[found_name]
+            is_match, ndiff, recomp_sz = match_sweep.score(
+                orig_bytes, recomp_bytes, relocs)
+
+            return {
+                'match': is_match,
+                'diffs': ndiff,
+                'orig_size': len(orig_bytes),
+                'recomp_size': recomp_sz,
+                'opt': opt,
+                'compile_errors': '',
+            }
+
+        return {
+            'match': False,
+            'diffs': -1,
+            'orig_size': len(orig_bytes),
+            'recomp_size': 0,
+            'opt': '',
+            'compile_errors': last_errors,
+        }
+
+    finally:
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
+
+LEARNINGS_FIELDS = [
+    'va', 'size', 'name', 'result', 'diffs', 'orig_size', 'recomp_size',
+    'opt', 'compile_errors', 'timestamp',
+]
+
+def prepare_function(func, globals_map, fn_names):
+    """Clean a single Ghidra decompilation and return (func_name, cleaned_c)."""
+    va_hex = f'0x{int(func["va"], 16):08X}'
+    ghidra_file = os.path.join(GHIDRA_DIR, f'{va_hex}.c')
+
+    with open(ghidra_file) as f:
+        ghidra_c = f.read()
+
+    cleaned = ghidra_c
+    cleaned = strip_ghidra_header(cleaned)
+    cleaned = clean_ghidra_warnings(cleaned)
+    cleaned = clean_ghidra_types(cleaned)
+    cleaned = clean_ghidra_globals(cleaned, globals_map)
+    cleaned = clean_ghidra_functions(cleaned, fn_names)
+    # Sanitize $ in identifiers AFTER globals/functions substitution,
+    # since globals_learned.csv names can contain $ (e.g. kF300$S537)
+    cleaned = re.sub(r'(\w*)\$(\w+)', lambda m: m.group(1) + '_S_' + m.group(2), cleaned)
+
+    fname_match = re.search(r'(\w+)\s*\(', cleaned)
+    func_name = fname_match.group(1) if fname_match else f'FUN_{va_hex[2:]}'
+
+    # Rename thunk_ functions to unique names (they collide in batches)
+    if func_name.startswith('thunk_'):
+        unique = f'THUNK_{va_hex[2:]}'
+        cleaned = cleaned.replace(func_name, unique, 1)
+        func_name = unique
+
+    return func_name, cleaned
+
+
+def single_compile_and_check(func, globals_map, fn_names):
+    """Compile one function individually, check against original.
+
+    Designed to run in a worker process — all imports happen inside.
+    Returns a result dict.
+    """
+    import match_diff
+    import match_sweep
+
+    va_hex = f'0x{int(func["va"], 16):08X}'
+    try:
+        func_name, cleaned = prepare_function(func, globals_map, fn_names)
+    except Exception as e:
+        return {
+            'va': va_hex, 'size': func['size'], 'name': f'FUN_{va_hex[2:]}',
+            'match': False, 'diffs': -1, 'orig_size': 0, 'recomp_size': 0,
+            'opt': '', 'compile_errors': str(e)[:200],
+        }
+
+    if cleaned is None:
+        return {
+            'va': va_hex, 'size': func['size'], 'name': f'FUN_{va_hex[2:]}',
+            'match': False, 'diffs': -1, 'orig_size': 0, 'recomp_size': 0,
+            'opt': '', 'compile_errors': 'prepare failed',
+        }
+
+    compilable = wrap_for_compile(cleaned, va_hex)
+
+    orig_file = os.path.join(ORIG_DIR, f'{va_hex}.bin')
+    if not os.path.exists(orig_file):
+        return {
+            'va': va_hex, 'size': func['size'], 'name': func_name,
+            'match': False, 'diffs': -1, 'orig_size': 0, 'recomp_size': 0,
+            'opt': '', 'compile_errors': 'no orig bin',
+        }
+    with open(orig_file, 'rb') as f:
+        orig_bytes = f.read()
+
+    tmpdir = tempfile.mkdtemp(prefix='ghidra_ind_')
+    src_path = os.path.join(tmpdir, f'g_{va_hex}.c')
+    tag = 'ghidra_' + os.path.basename(tmpdir)
+
+    try:
+        with open(src_path, 'w') as f:
+            f.write(compilable)
+
+        last_errors = ''
+        for opt in ['/O2', '/Od']:
+            obj, errs = match_sweep.compile_variant(src_path, tag, opt)
+            if obj is None:
+                last_errors = ' | '.join(errs)[:200]
+                continue
+
+            try:
+                funcs = match_diff.parse_coff_obj(obj)
+            except Exception:
+                continue
+
+            candidates = [func_name, '_' + func_name, func_name.lstrip('_')]
+            found_name = None
+            for cand in candidates:
+                if cand in funcs:
+                    found_name = cand
+                    break
+            if found_name is None and len(funcs) == 1:
+                found_name = list(funcs.keys())[0]
+            if found_name is None:
+                continue
+
+            recomp_bytes, relocs = funcs[found_name]
+            is_match, ndiff, recomp_sz = match_sweep.score(
+                orig_bytes, recomp_bytes, relocs)
+
+            return {
+                'va': va_hex, 'size': func['size'], 'name': func_name,
+                'match': is_match, 'diffs': ndiff,
+                'orig_size': len(orig_bytes), 'recomp_size': recomp_sz,
+                'opt': opt, 'compile_errors': '',
+            }
+
+        return {
+            'va': va_hex, 'size': func['size'], 'name': func_name,
+            'match': False, 'diffs': -1,
+            'orig_size': len(orig_bytes), 'recomp_size': 0,
+            'opt': '', 'compile_errors': last_errors,
+        }
+    finally:
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+def load_prior_errors():
+    """Load VAs that were ERROR in the last run."""
+    if not os.path.exists(LEARNINGS_CSV):
+        return set()
+    vas = set()
+    with open(LEARNINGS_CSV) as f:
+        for r in csv.DictReader(f):
+            if r['result'] == 'ERROR':
+                vas.add(r['va'].lower())
+    return vas
+
+
+def run(target_va=None, small_only=False, dry_run=False,
+        errors_only=False, do_fallback=False):
+    covered_vas = load_report_vas()
+    all_funcs = load_functions()
+    globals_map = load_globals()
+    fn_names = load_fn_names()
+
+    if errors_only:
+        prior_errors = load_prior_errors()
+
+    targets = []
+    for f in all_funcs:
+        va = f['va'].lower()
+        if va in covered_vas:
+            continue
+        if errors_only and va not in prior_errors:
+            continue
+        ghidra_file = os.path.join(GHIDRA_DIR, f'0x{int(va, 16):08X}.c')
+        if not os.path.exists(ghidra_file):
+            continue
+        orig_file = os.path.join(ORIG_DIR, f'0x{int(va, 16):08X}.bin')
+        if not os.path.exists(orig_file):
+            continue
+        targets.append(f)
+
+    if target_va:
+        tv = target_va.lower()
+        targets = [f for f in targets if f['va'].lower() == tv]
+
+    if small_only:
+        targets = [f for f in targets if f['size'] <= 64]
+
+    targets.sort(key=lambda f: f['size'])
+
+    print(f'{len(targets)} functions to process', flush=True)
+    if dry_run:
+        for f in targets[:20]:
+            print(f"  {f['va']}  {f['size']:5d}b  {f.get('name','')}")
+        if len(targets) > 20:
+            print(f"  ... and {len(targets)-20} more")
+        return
+
+    # If --errors-only, load prior non-error results to preserve them
+    prior_results = []
+    if errors_only and os.path.exists(LEARNINGS_CSV):
+        with open(LEARNINGS_CSV) as f:
+            for r in csv.DictReader(f):
+                if r['result'] != 'ERROR':
+                    prior_results.append(r)
+
+    learnings = list(prior_results)
+    matches = sum(1 for r in prior_results if r['result'] == 'MATCH')
+    close = sum(1 for r in prior_results if r['result'].startswith('CLOSE'))
+    far = sum(1 for r in prior_results if r['result'].startswith('DIFF'))
+    errors = 0
+
+    WORKERS = min(os.cpu_count() or 4, 10)
+
+    print(f'  {len(targets)} functions, {WORKERS} workers', flush=True)
+
+    done = 0
+    with ProcessPoolExecutor(max_workers=WORKERS) as pool:
+        futures = {
+            pool.submit(single_compile_and_check, func, globals_map,
+                        fn_names): func
+            for func in targets
+        }
+        for fut in as_completed(futures):
+            done += 1
+            try:
+                r = fut.result()
+            except Exception as e:
+                continue
+
+            if r['match']:
+                matches += 1
+                status = 'MATCH'
+            elif r['diffs'] < 0:
+                errors += 1
+                status = 'ERROR'
+            elif r['diffs'] <= 5:
+                close += 1
+                status = f"CLOSE({r['diffs']})"
+            else:
+                far += 1
+                status = f"DIFF({r['diffs']})"
+
+            learnings.append({
+                'va': r['va'],
+                'size': r['size'],
+                'name': r['name'],
+                'result': status,
+                'diffs': r['diffs'],
+                'orig_size': r['orig_size'],
+                'recomp_size': r['recomp_size'],
+                'opt': r['opt'],
+                'compile_errors': r.get('compile_errors', ''),
+                'timestamp': datetime.now().isoformat(timespec='seconds'),
+            })
+
+            if r['match']:
+                print(f'    MATCH  {r["va"]} {r["size"]:4d}b {r["name"]}',
+                      flush=True)
+            if done % 100 == 0:
+                print(f'  [{done}/{len(targets)}] done, '
+                      f'{matches} matches so far', flush=True)
+
+    os.makedirs(os.path.dirname(LEARNINGS_CSV), exist_ok=True)
+    with open(LEARNINGS_CSV, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=LEARNINGS_FIELDS)
+        w.writeheader()
+        w.writerows(learnings)
+
+    print(f'\n{"=" * 60}', flush=True)
+    print(f'  MATCH : {matches:4d}')
+    print(f'  CLOSE : {close:4d}  (<=5 diffs)')
+    print(f'  FAR   : {far:4d}')
+    print(f'  ERROR : {errors:4d}  (compile failures)')
+    print(f'  TOTAL : {matches+close+far+errors:4d}')
+    print(f'{"=" * 60}')
+    print(f'Learnings written to: {LEARNINGS_CSV}', flush=True)
+
+
+def print_report():
+    if not os.path.exists(LEARNINGS_CSV):
+        print('No learnings yet. Run: python3 tools/ghidra_to_match.py')
+        return
+    with open(LEARNINGS_CSV) as f:
+        rows = list(csv.DictReader(f))
+
+    results = Counter()
+    for r in rows:
+        if r['result'] == 'MATCH':
+            results['match'] += 1
+        elif r['result'].startswith('CLOSE'):
+            results['close'] += 1
+        elif r['result'].startswith('DIFF'):
+            results['diff'] += 1
+        elif r['result'] == 'ERROR':
+            results['error'] += 1
+
+    print(f'\n{"=" * 60}')
+    print(f'  Ghidra pipeline learnings ({len(rows)} functions)')
+    print(f'{"=" * 60}')
+    for k in ['match', 'close', 'diff', 'error']:
+        print(f'  {k:10s} {results.get(k, 0):4d}')
+
+    # Show close functions (best leads)
+    close = [r for r in rows if r['result'].startswith('CLOSE')]
+    if close:
+        print(f'\nClosest leads (<=5 diffs):')
+        close.sort(key=lambda r: int(r['diffs']))
+        for r in close[:20]:
+            print(f"  {r['va']}  {r['size']:>5s}b  {r['diffs']:>2s} diffs  {r['name']}")
+
+
+def main():
+    if '--report' in sys.argv:
+        print_report()
+        return
+
+    target_va = None
+    small_only = '--small' in sys.argv
+    dry_run = '--dry-run' in sys.argv
+    errors_only = '--errors-only' in sys.argv
+    do_fallback = '--fallback' in sys.argv
+
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == '--va' and i < len(sys.argv) - 1:
+            target_va = sys.argv[i + 1]
+
+    run(target_va=target_va, small_only=small_only, dry_run=dry_run,
+        errors_only=errors_only, do_fallback=do_fallback)
+
+
+if __name__ == '__main__':
+    main()
