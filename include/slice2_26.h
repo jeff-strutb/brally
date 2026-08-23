@@ -310,7 +310,7 @@ extern void BrExt_1003D0B0(BrHost *pHost, BrHostItem **ppOut);
 /* XSLICE 0x10044280 */ extern void BrExt_10044280(int32_t a);
 /* XSLICE 0x10038F30 */ extern void BrExt_10038F30(int32_t a);
 /* XSLICE 0x100419D0 */ extern void BrExt_100419D0(void *p);
-/* XSLICE 0x1003DB00 */ extern void BrExt_1003DB00(BrObjA9D008 *pObj, void *p);
+/* XSLICE 0x1003DB00 */ extern int32_t BrExt_1003DB00(BrObjA9D008 *pObj, void *p);
 /* XSLICE 0x1003BF60 */ extern void BrExt_1003BF60(void);
 /* XSLICE 0x1003C020 */ extern void BrExt_1003C020(void);
 /* XSLICE 0x1003C150 */ extern void BrExt_1003C150(void);
