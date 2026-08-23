@@ -1088,6 +1088,20 @@ void *BrScratchRingAlloc(void)
  * come back, which is how the game makes sure the graphics hardware has
  * finished with them before going further. */
 /* @implements 0x100311E4 d3d BrScratchRingDrain */
+#ifdef BR_MATCHING_BUILD
+/* Literal: the wait object is the global at 0x106ED570 itself (an immediate
+ * address in the bytes), not a stored pointer. */
+extern int DAT_106ed66c;
+extern int DAT_106ed570;
+int FUN_100385e0();
+void BrScratchRingDrain(void)
+{
+    while (DAT_106ed66c != 0) {
+        FUN_100385e0(&DAT_106ed570, 0, 1);
+        DAT_106ed66c = DAT_106ed66c - 1;
+    }
+}
+#else
 void BrScratchRingDrain(void)
 {
     while (g_s17.nScratchDepth != 0) {
@@ -1095,6 +1109,7 @@ void BrScratchRingDrain(void)
         g_s17.nScratchDepth -= 1;
     }
 }
+#endif
 
 /* 0x10031212 -- DEVIATION: the original zeroes its own two argument slots
  * on the caller's stack. C parameters are by value, so the stores are not
