@@ -458,7 +458,7 @@ DAT_10ac2c5c,0x10AC2C5C,1,0,"named global, no address recorded",0x10033F90
 DAT_10ac2c60,0x10AC2C60,1,0,"named global, no address recorded",0x10033F90
 DAT_10ac2d60,0x10AC2D60,1,0,"named global, no address recorded",0x10033F90
 g_A9BFD0,0x10AC3060,1,0,"named global, no address recorded",0x100353C0
-g_brAC3060$S1171,0x10AC3060,2,1,file-static stand-in (no 1:1 original global),0x100353D0
+g_brAC3060$S1171,0x10AC3060,4,1,file-static stand-in (no 1:1 original global),0x100353D0
 DAT_10ac306c,0x10AC306C,2,1,"named global, no address recorded",0x10035870
 g_aBrA9C0B8,0x10AC3148,1,0,"named global, no address recorded",0x10036650
 DAT_10ac315c,0x10AC315C,1,0,"named global, no address recorded",0x10036670
@@ -507,15 +507,15 @@ g_brPAA29E4,0x10AC5D3C,4,1,"named global, no address recorded",0x10036040
 g_AA29F4,0x10AC5D4C,4,1,"named global, no address recorded",0x1003EC30 0x1003ECB0 0x1003ECF0 0x1003ED70
 DAT_10ac5d84,0x10AC5D84,5,1,"named global, no address recorded",0x10041DB0 0x10058300 0x10058380
 DAT_10ac5d98,0x10AC5D98,1,0,"named global, no address recorded",0x100409C0
-g_BrDikEdge,0x10AC5DE0,3,1,"named global, no address recorded",0x10058FA0 0x10059040
+g_BrDikEdge,0x10AC5DE0,4,1,"named global, no address recorded",0x10058FA0 0x10059040
 g_brAA2AD4,0x10AC5E34,2,1,"named global, no address recorded",0x10040660 0x100406A0
 DAT_10ac5e50,0x10AC5E50,1,0,"named global, no address recorded",0x10037720
 DAT_10ac6050,0x10AC6050,1,0,"named global, no address recorded",0x10037720
 DAT_10ac610c,0x10AC610C,1,0,"named global, no address recorded",0x10037720
 DAT_10ac6114,0x10AC6114,1,0,"named global, no address recorded",0x10037720
 g_pBrAA2E80,0x10AC61E0,3,1,"named global, no address recorded",0x10059280 0x100592D0
-g_BrDikPrev,0x10AC61E8,1,0,"named global, no address recorded",0x10058FA0
-g_BrDikState,0x10AC65E8,1,0,"named global, no address recorded",0x10058FA0
+g_BrDikPrev,0x10AC61E8,2,1,"named global, no address recorded",0x10058FA0
+g_BrDikState,0x10AC65E8,2,1,"named global, no address recorded",0x10058FA0
 DAT_10ac66e8,0x10AC66E8,2,1,"named global, no address recorded",0x10059060
 g_BrAA3398,0x10AC66F8,1,0,"named global, no address recorded",0x10059280
 g_BrAA33B4,0x10AC6714,1,0,"named global, no address recorded",0x10059280

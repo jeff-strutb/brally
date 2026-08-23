@@ -309,33 +309,6 @@ void BrSub1003E680(void)
  * 4. 0x1003DB00 -- the tag-7 DirectPlay send
  * ========================================================================== */
 
-/* 0x1003DB00 */
-/* WHAT IT DOES: sends one of the ungated network messages to the other
- * players. Unlike the numbered messages that check a gate first, this one
- * always goes out; whatever it fails with is thrown away. */
-/* @implements 0x1003DB00 d3d BrExt_1003DB00 */
-int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
-{
-    /* Inlined send, tag 0x60000007, UNGATED (no 0x10AA288C check -- what
-     * makes tags 6/7/8 different from 2/3/4/5); the shape is otherwise
-     * BrSub1003D950's (slice4_50.c), which see.  `p` occupies the second
-     * payload dword, narrowed to 32 bits. */
-    void *const *aSlot = (void *const *)pObj;
-    void        *pIface;
-    int32_t      aPacket[2];
-
-    if (pObj == NULL || (pIface = aSlot[0]) == NULL) {
-        return 0;
-    }
-    aPacket[0] = (int32_t)0x60000007u;
-    aPacket[1] = (int32_t)(uintptr_t)p;
-    return BrComCallLocked68((struct BrComObj *)pIface, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
-                             aPacket,
-                             (void *)(uintptr_t)8u);
-}
-
 /* ==========================================================================
  * 5. 0x1003C150 -- host a session
  * ========================================================================== */
