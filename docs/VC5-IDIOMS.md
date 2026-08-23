@@ -85,6 +85,38 @@ the caller AND flipped a helper to match for free.
   ceiling took 3–10 min each; crossing it needs a type/shape insight (as
   byte-width returns were for BrCarStatePack) or does not happen.
 
+- **thiscall with stack args = `__fastcall(this, int _edx_unused, args...)`.**
+  Same ECX `this`, same stack layout, same `ret N`; an unused EDX slot costs
+  no bytes. Generalizes BR_THISCALL1. Proven on BrBoundsFits_10058CC0 and
+  four C++ scalar deleting destructors (`push esi; mov esi,ecx; call ~T;
+  test byte [esp+8],1; jz; push esi; call operator delete`).
+- **ECX copy-propagation:** after `mov esi,ecx`, calling a thiscall callee
+  with an explicit `this` argument (`Dtor(param_1)`, callee declared
+  `__fastcall`) emits NO `mov ecx,esi` reload — VC5 knows ECX still holds
+  it. So the callee can carry its real prototype (proven BrVt55A10DeleteDtor).
+- **`ret imm16` ⇒ stdcall with imm/4 word args.** For the callee: declare it
+  `__stdcall` with that many params (caller then emits no `add esp,N`); for
+  the function itself: pad to imm/4 params (`int __stdcall f(int,int,int)
+  {return 0;}` = `33 c0 c2 0c 00`). Proven BrObj54710Dtor, BrRet0Std3.
+- **Win32 imports are `__declspec(dllimport)`** — `call [__imp__X]` (FF 15),
+  never `call X` (E8). windows.h provides it; hand prototypes must carry it.
+  Proven BrDllMain.
+- **`for (;;)` vs `do {} while (1)` at /Od:** `for(;;)` loops back with a
+  bare `jmp`; `do{}while(1)` emits `mov eax,1; test eax,eax; jne`. The
+  original used `for(;;)` (Ghidra prints `do{}while(true)`). Proven
+  0x1002DE04.
+- **Comparison operand order survives:** `if (a > b)` → `cmp a,b; jle`;
+  `if (b < a)` → `cmp b,a; jge`. Ghidra canonicalizes to `<`; the original
+  was `>` (proven BrCdTrackNext). Unsigned globals give `jb`/`ja` (proven
+  BrSecondTickLoop). Byte globals need `char` externs (`mov cl,[x]`, proven
+  BrMenuLatchPending). The `--refine` pass of ghidra_to_match tries all three.
+- **`while (p->next) p = p->next;`** keeps `p` in ECX and loads via
+  `mov ecx,eax; mov eax,[ecx+N]`; Ghidra's two-temp form loads through EAX
+  (proven BrSndListAppend).
+- **x87 intrinsics:** `double f(float x){return cos(x);}` = `fld dword
+  [esp+4]; fcos; ret` under /O2 (/Oi). Return type must be double (Ghidra
+  `unkbyte10`), or an `__ftol` call appears.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
