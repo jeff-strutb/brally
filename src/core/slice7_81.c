@@ -10,6 +10,10 @@
  *
  * Transcribed from orig/BRGlide.dll and cross-checked against orig/BRD3D.dll.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice7_81.h"
 
 #include "slice5_61.h"   /* BrSub1003E510 (0x1003E510), g_br0AB3F4 (0x100AB3F4) */

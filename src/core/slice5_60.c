@@ -6,6 +6,10 @@
  * the asm/ banks; every table and literal was read out of orig/BRD3D.dll with
  * tools/pe.py rather than guessed.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <stdio.h>
 #include <string.h>
 

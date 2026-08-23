@@ -11,6 +11,10 @@
  *   - the bounds checks return instead of reporting and then indexing anyway.
  * Each of these is noted at the call site.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_pod.h"
 
 #include "br_path.h"

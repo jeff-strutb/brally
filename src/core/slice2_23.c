@@ -18,6 +18,10 @@
  * over strlen+1 bytes, i.e. exactly strcpy, with no bound. strcpy is used.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice2_23.h"
 
 #include <stdio.h>

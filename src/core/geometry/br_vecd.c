@@ -4,6 +4,10 @@
  * (z*z + y*y) + x*x. Floating-point addition is not associative, so the
  * summation order is preserved exactly rather than written left to right.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_vecd.h"
 
 #include <math.h>

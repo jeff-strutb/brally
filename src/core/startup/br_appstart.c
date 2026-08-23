@@ -10,6 +10,10 @@
  * 0x10007F40 <- D3D 0x10007BD0.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_appstart.h"
 
 #include <stdlib.h>

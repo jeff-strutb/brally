@@ -8,6 +8,10 @@
  * Skipped functions and the reason for each are listed at the bottom of this
  * file so the information does not get lost.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice2_14.h"
 #include "slice2_17.h"   /* BrPropList, BrScenePropsDraw (0x1002FB20)          */
 #include "slice3_40.h"   /* BrNode, BrPathPoint, BrG_6C7CB8 -- the AI path root */

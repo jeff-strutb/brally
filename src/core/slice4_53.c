@@ -9,6 +9,10 @@
  *   0x100B5418 = "RCfg"    (the magic, four bytes, no terminator)
  *   0x1008FA64 = 02 00 00 00   (the version dword, emitted verbatim)
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice4_53.h"
 
 #include <math.h>

@@ -9,6 +9,10 @@
  *
  * Concerns A, C and the save-path half of G are in port/src/drawing/br_uiimg.c.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_uiboot.h"
 
 #include "br_uiimg.h"

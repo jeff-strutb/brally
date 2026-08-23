@@ -12,6 +12,10 @@
  * 0x100484E0 sits inside the address range but was not in the packet listing,
  * so it is imported (BrSub100484E0) rather than guessed at.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 
 /* --- DUPLICATE SYMBOL, not duplicate work (host link only) ---------------

@@ -1,5 +1,9 @@
 /* slice1_04.c -- decompiled from BRD3D.dll, 0x1001DDB0-0x1002A8A0. */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice1_04.h"
 
 #include <stddef.h>

@@ -20,6 +20,10 @@
  *     a good canary, and port/tests/test_br_bmp.c uses it as one.
  *   - Pixels are stored B,G,R.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_bmp.h"
 
 #include <stdio.h>
@@ -276,6 +280,9 @@ void BrBmpFree(BrBmp *pBmp)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+int FUN_10059f70();
+extern int DAT_10ac67c4;
+extern int DAT_10ac67c8;
 extern int DAT_100b22d8;
 
 /* WHAT IT DOES: return the current BMP surface handle. */
@@ -285,6 +292,28 @@ int BrBmpGetHandle(void)
 
 {
   return DAT_100b22d8;
+}
+
+/* WHAT IT DOES: for a 24bpp bitmap header, malloc a cx*cy*4 RGBA buffer, convert the
+ * pixels via 0x10059F70, and publish cx/cy in the two globals. NULL if not 24bpp. */
+/* @implements 0x10059F10 glide BrBmpToRgba32 */
+
+void * BrBmpToRgba32(int param_1)
+
+{
+  void *pvVar1;
+  
+  if (*(short *)(param_1 + 0x12) != 0x18) {
+    return (void *)0x0;
+  }
+  pvVar1 = malloc(*(int *)(param_1 + 4) * *(int *)(param_1 + 8) * 4);
+  if (pvVar1 != (void *)0x0) {
+    FUN_10059f70(pvVar1,*(int *)(param_1 + 0x14),*(int *)(param_1 + 4),
+                 *(int *)(param_1 + 8),*(int *)(param_1 + 0xc));
+    DAT_10ac67c4 = *(int *)(param_1 + 4);
+    DAT_10ac67c8 = *(int *)(param_1 + 8);
+  }
+  return pvVar1;
 }
 
 #endif /* BR_MATCHING_BUILD */

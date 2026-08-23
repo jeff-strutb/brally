@@ -5,6 +5,10 @@
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
 #endif
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice2_12.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset

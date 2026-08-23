@@ -18,6 +18,10 @@
  * implementation of either function is created: the definitions in
  * slice1_06.c are the ones that run.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 
 #ifdef BR_MATCHING_BUILD

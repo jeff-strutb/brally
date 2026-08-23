@@ -7,6 +7,10 @@
  * pushes (195.0f == 0x43430000, 460.0f == 0x43E60000, ...).
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "slice4_52.h"
 
 #include "slice3_33.h"   /* BrUiScreen / BrUiCtl / BrUiPhase, BrOperatorNew,

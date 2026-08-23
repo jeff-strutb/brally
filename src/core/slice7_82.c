@@ -13,6 +13,10 @@
  *     0x1003C520  (D3D)  ==  0x10035BB0  (Glide)   46 bytes
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

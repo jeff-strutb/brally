@@ -17,6 +17,10 @@
  * have no observable effect on any path that returns, and are not reproduced.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>

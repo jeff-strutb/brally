@@ -6,6 +6,10 @@
 #define BrTexInit        BrTexInit_port
 #define BrTexChooseLevel BrTexChooseLevel_port
 #endif
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_texinit.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrTexInit

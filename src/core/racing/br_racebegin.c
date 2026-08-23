@@ -12,6 +12,10 @@
  * pushes 0x10019A70 / 0x1002C500 as an immediate. */
 #define BrRaceEnterOutro BrRaceEnterOutro_port
 #endif
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_racebegin.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrRaceEnterOutro

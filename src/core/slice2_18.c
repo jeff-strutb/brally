@@ -29,6 +29,10 @@
  * Everything else in the packet is here.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -21,6 +21,10 @@
  * is br_mix.c, which supplies the object slice1_08.c's DirectSound calls go
  * through; this file stays pure so its suite needs neither.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_sfx.h"
 
 #include <string.h>
