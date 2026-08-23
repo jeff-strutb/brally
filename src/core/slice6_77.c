@@ -89,6 +89,8 @@ void BrFfbReprobe(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_118ef178;
+__declspec(dllimport) int __stdcall DisableThreadLibraryCalls(void *hModule);
 int func_0x10074aec();
 void halt_baddata(void);
 /* WHAT IT DOES: no-op stub (CRT-region placeholder). */
@@ -130,6 +132,18 @@ int BrMat3CheckMagic(int *param_1)
     func_0x10074aec();
   }
   return 0;
+}
+
+/* WHAT IT DOES: the DLL entry point: on DLL_PROCESS_ATTACH, unless the flag at 0x118EF178
+ * is set, disable thread attach/detach notifications. Always returns TRUE. */
+/* @implements 0x10074B00 glide BrDllMain */
+
+int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
+{
+  if ((param_2 == 1) && (DAT_118ef178 == 0)) {
+    DisableThreadLibraryCalls(param_1);
+  }
+  return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */
