@@ -56,6 +56,7 @@ BrSub1003D0B0,0x10036740,2,1,"named global, no address recorded",0x10009BA0 0x10
 FUN_10037130,0x10037130,1,0,"named global, no address recorded",0x10037180
 FUN_10037720,0x10037720,1,0,"named global, no address recorded",0x10037780
 BrExt_1003E0E0,0x10037780,3,1,"named global, no address recorded",0x10040640 0x10040660 0x100406A0
+FUN_100385e0,0x100385E0,1,0,"named global, no address recorded",0x1002A894
 $L22554,0x10038A48,1,0,"named global, no address recorded",0x10038980
 $L22555,0x10038A5C,1,0,"named global, no address recorded",0x10038980
 BrExt_10041AC0,0x1003B020,1,0,"named global, no address recorded",0x10040660
@@ -419,10 +420,12 @@ DAT_106ec778,0x106EC778,3,1,"named global, no address recorded",0x1002CE31 0x100
 DAT_106ecb48,0x106ECB48,3,1,"named global, no address recorded",0x1002DD9A
 DAT_106ed368,0x106ED368,3,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9 0x1002C4A3
 BrG_6C6490,0x106ED520,1,0,"named global, no address recorded",0x10009FC0
+DAT_106ed570,0x106ED570,1,0,"named global, no address recorded",0x1002A894
 DAT_106ed5d0,0x106ED5D0,2,1,"named global, no address recorded",0x1002DE04 0x1002F242
 DAT_106ed630,0x106ED630,1,0,"named global, no address recorded",0x1002CE5F
 DAT_106ed648,0x106ED648,3,1,"named global, no address recorded",0x1002C0F3 0x1002C2E9 0x1002C4A3
 DAT_106ed650,0x106ED650,3,1,"named global, no address recorded",0x1002DD30
+DAT_106ed66c,0x106ED66C,3,1,"named global, no address recorded",0x1002A894
 DAT_106ed670,0x106ED670,1,0,"named global, no address recorded",0x1002B997
 DAT_106ed674,0x106ED674,4,1,"named global, no address recorded",0x1002B997 0x1002C0F3 0x1002C2E9
 BrG_6C65EC,0x106ED67C,6,1,"named global, no address recorded",0x10062500 0x10062550 0x100625A0
