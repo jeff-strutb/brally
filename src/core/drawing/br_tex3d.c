@@ -1153,4 +1153,68 @@ void BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   return;
 }
 
+/* WHAT IT DOES: build a texture-creation request for a BLANK texture of the given size
+ * and format code (format 2/1 level fields, no source data, clamp both axes, priority
+ * 0x10) and hand it to the convert + make-Glide-texture pair. Same 0x2A8-byte record as
+ * BrTex3dCreate. */
+/* @implements 0x10027FB0 glide BrTex3dCreateBlank */
+
+void BrTex3dCreateBlank(int param_1,int param_2,int param_3,int param_4)
+{
+  int iVar2;
+  int uVar3;
+  int iVar4;
+  int iVar5;
+  BrTexReq272 r;
+  
+  iVar4 = 1 << FUN_10027290(param_2);
+  iVar5 = 1 << FUN_10027290(param_3);
+  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  r.h2a4 = param_3;
+  r.h = param_3;
+  r.lod = 3;
+  r.w2a0 = param_2;
+  r.w = param_2;
+  r.wPow = iVar4;
+  r.hPow = iVar5;
+  r.f14 = 0;
+  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  r.aspect1 = r.aspect0;
+  r.iLevel = 0;
+  r.lv[0][3] = 0;
+  iVar2 = FUN_10027290(param_2);
+  r.lv[r.iLevel][8] = iVar2;
+  iVar2 = FUN_10027290(param_3);
+  r.lv[r.iLevel][9] = iVar2;
+  r.lv[r.iLevel][2] = param_2;
+  r.lv[r.iLevel][1] = 1;
+  r.lv[r.iLevel][0] = 2;
+  r.lv[r.iLevel][10] = 0;
+  r.lv[r.iLevel][11] = 0;
+  r.lv[r.iLevel][12] = 2;
+  r.lv[r.iLevel][13] = 2;
+  r.lv[r.iLevel][14] = param_2 * 4 + -2;
+  r.lv[r.iLevel][15] = param_3 * 4 + -2;
+  r.f5c = 1;
+  r.fmt = param_4;
+  r.cbTotal = FUN_10024df0(param_4) * iVar5 * iVar4;
+  r.p1 = param_1;
+  r.p2 = 0;
+  r.p8 = 0;
+  r.p9 = 0;
+  r.fClampS = 1;
+  r.fClampT = 1;
+  FUN_100275c0(&r.f20,iVar4,iVar5);
+  r.f2c = 1;
+  r.f30 = 1;
+  r.f34 = 0xc0000000;
+  r.f38 = 0;
+  r.f260 = 0x10;
+  r.f264 = 0;
+  r.f268 = 0;
+  uVar3 = FUN_10027b60(&r);
+  FUN_10027710(&r,uVar3);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
