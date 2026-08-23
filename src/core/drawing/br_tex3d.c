@@ -991,7 +991,11 @@ typedef struct BrTexReq272 {
     int f260;                   /* 0x260 */
     int f264;                   /* 0x264 */
     int f268;                   /* 0x268 */
-    char pad26c[0x24];          /* 0x26C */
+    int f26c;                   /* 0x26C */
+    int f270;                   /* 0x270 */
+    int f274;                   /* 0x274 */
+    int f278;                   /* 0x278 */
+    char pad27c[0x14];          /* 0x27C */
     char b290, b291, b292, b293;/* 0x290 */
     char b294, b295, b296, b297;/* 0x294 */
     int f298;                   /* 0x298 */
@@ -1010,6 +1014,38 @@ typedef int (*funcptr)();
 extern funcptr DAT_118ed1d0;
 int FUN_10027b60();
 int FUN_100283c0();
+int FUN_10027a70();
+int FUN_10029290();
+int FUN_10030fd0();
+int FUN_1005a070();
+int FUN_10030710();
+int FUN_100306d0();
+int FUN_10001000();
+int __stdcall grTexCalcMemRequired(int,int,int,int);
+extern int DAT_106b7ab0;
+extern int DAT_106b7a94;
+extern int DAT_100b8498;
+extern int DAT_106b7aac;
+extern int DAT_105d17f0;
+extern int DAT_106b7a98;
+extern unsigned char DAT_105e17f8;
+extern unsigned char DAT_105e1800;
+extern unsigned char DAT_1066182c;
+extern unsigned char DAT_106b7a78;
+extern unsigned char DAT_105d17e8;
+extern unsigned char DAT_10697a68;
+extern unsigned char DAT_10697a40;
+extern unsigned char DAT_10661828;
+extern int DAT_1186c968[];
+/* The 0x40-byte tile record array at 0x10697840 (see BrTex3dTile in
+ * br_tex3d.h); the registrar indexes it with a 0x40 stride. */
+typedef struct BrTexTile40 {
+    int fmt, siz, line, tmem;
+    int mirrorS, clampS, mirrorT, clampT;
+    int maskS, maskT, shiftS, shiftT;
+    int uls, ult, lrs, lrt;
+} BrTexTile40;
+extern BrTexTile40 DAT_10697840[];
 
 /* WHAT IT DOES: extract two 3-bit tile indices from a packed command word. */
 /* @implements 0x100293F0 glide BrTexTileUnpack */
@@ -1283,6 +1319,228 @@ int BrTex3dExpandInto(int param_1,int param_2,int param_3,int param_4,
                r.f264,r.b290,r.b291,r.b292,r.b293,r.b294,r.b295,r.b296,r.b297,
                r.f298);
   return r.cbTotal;
+}
+
+/* WHAT IT DOES: THE REGISTRAR (br_tex3d.h's table) -- build the full 0x2A8-byte
+ * descriptor for the tile run the scan just closed, from the tile records at
+ * 0x10697840 and the source/state globals; dedup through 0x10027A70; size the
+ * Glide texture (LOD/aspect codes, grTexCalcMemRequired, halving retries when
+ * the aspect is unrepresentable); convert and append via 0x10027B60/0x10027710.
+ * Returns the record index the 0xDC command will carry. */
+/* @implements 0x10028BB0 glide BrTex3dRegister */
+
+int BrTex3dRegister(void)
+
+{
+  unsigned short a;
+  unsigned short b;
+  int id;
+  int sMask;
+  int h;
+  int tMask;
+  int w;
+  int wReal;
+  int hReal;
+  int d;
+  int cb;
+  int slot;
+  int j;
+  int wCur;
+  int hCur;
+  BrTexReq272 r;
+
+  r.f264 = DAT_106b7aac;
+  r.p1 = DAT_105d17f0;
+  r.p2 = DAT_106b7a98;
+  r.b292 = DAT_105e17f8;
+  r.b290 = DAT_105e1800;
+  r.b291 = DAT_1066182c;
+  r.b295 = DAT_106b7a78;
+  r.b293 = DAT_105d17e8;
+  r.b294 = DAT_10697a68;
+  r.f268 = 0;
+  r.b296 = DAT_10697a40;
+  r.b297 = DAT_10661828;
+  id = FUN_10027a70(&r);
+  if (id != -1) {
+    return id;
+  }
+  r.iLevel = DAT_106b7ab0;
+  if (DAT_106b7a94 < DAT_106b7ab0) {
+    DAT_106b7a94 = DAT_106b7ab0;
+  }
+  r.fTmu2 = (unsigned int)(DAT_105ccbd0 > 1);
+  r.lod = 3;
+  sMask = DAT_10697840[DAT_106b7ab0].maskS;
+  w = 1 << sMask;
+  r.w = w;
+  r.wPow = w;
+  tMask = DAT_10697840[DAT_106b7ab0].maskT;
+  h = 1 << tMask;
+  r.h = h;
+  r.hPow = h;
+  if (DAT_106b7a94 > DAT_106b7ab0) {
+    w = tMask;
+    j = DAT_106b7ab0 + 1;
+    for (; j <= DAT_106b7a94; j++) {
+      sMask = sMask - 1;
+      if ((DAT_10697840[j].maskS != sMask) ||
+          (w = w - 1, DAT_10697840[j].maskT != w)) {
+        DAT_106b7a94 = j - 1;
+        break;
+      }
+    }
+  }
+  w = DAT_10697840[DAT_106b7ab0].mirrorS;
+  hCur = DAT_10697840[DAT_106b7ab0].mirrorT;
+  if (w) {
+    r.w = r.w * 2;
+  }
+  if (hCur) {
+    r.h = h * 2;
+  }
+  r.fmt = FUN_10027220(DAT_10697840[DAT_106b7ab0].siz,
+                       DAT_10697840[DAT_106b7ab0].fmt, DAT_106b7aac);
+  r.aspect0 = 8;
+  r.aspect1 = 8;
+  r.f14 = 2;
+  r.fClampS = (unsigned int)(DAT_10697840[r.iLevel].clampS != 0);
+  r.f20 = 3;
+  r.fClampT = (unsigned int)(DAT_10697840[r.iLevel].clampT != 0);
+  wReal = (DAT_10697840[r.iLevel].lrs - DAT_10697840[r.iLevel].uls + 4) >> 2;
+  hReal = (DAT_10697840[r.iLevel].lrt - DAT_10697840[r.iLevel].ult + 4) >> 2;
+  if (wReal != r.wPow) {
+    if (wReal == r.w) {
+      r.wPow = wReal;
+    }
+    else if ((wReal > r.w) && ((wReal / r.w) * r.w == wReal)) {
+      r.fClampS = 0;
+    }
+  }
+  if (hReal != r.hPow) {
+    if (hReal == r.h) {
+      r.hPow = hReal;
+    }
+    else if ((hReal > r.h) && ((hReal / r.h) * r.h == hReal)) {
+      r.fClampT = 0;
+    }
+  }
+  FUN_100242e0(&r.aspect1,r.w,r.h);
+  h = (FUN_100275c0(&r.f20,r.w,r.h) == 0);
+  d = DAT_106b7a94 - DAT_106b7ab0;
+  FUN_100242e0(&r.aspect0,r.w >> d,r.h >> d);
+  if (DAT_100b8498 > 1) {
+    r.aspect0 = r.aspect1;
+    DAT_106b7a94 = DAT_106b7ab0;
+  }
+  r.f2c = 1;
+  r.f30 = 1;
+  r.f34 = 0xc0000000;
+  r.f38 = 0;
+  cb = grTexCalcMemRequired(r.aspect0,r.aspect1,r.f20,r.fmt);
+  if (cb > 0x80000) {
+    cb = 0x80000;
+  }
+  r.cbTotal = cb;
+  memcpy(r.lv,DAT_10697840,0x200);
+  r.f5c = DAT_106b7a94 + 1;
+  r.p8 = w;
+  r.p9 = hCur;
+  r.f298 = 1;
+  r.w2a0 = r.w;
+  r.h2a4 = r.h;
+  if (r.w >= r.h) {
+    r.wPow = r.w;
+    r.hPow = r.w;
+  }
+  else {
+    r.wPow = r.h;
+    r.hPow = r.h;
+  }
+  if (h || w || hCur) {
+    wCur = r.w;
+    hCur = r.h;
+    if (w && (DAT_100b8498 > 1)) {
+      wCur = wCur / 2;
+      FUN_100242e0(&r.aspect1,wCur,hCur);
+      h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
+      d = r.aspect1 - DAT_106b7ab0;
+      r.aspect0 = d + DAT_106b7a94;
+    }
+    if (r.p9 && (DAT_100b8498 > 1)) {
+      hCur = hCur / 2;
+      FUN_100242e0(&r.aspect1,wCur,hCur);
+      h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
+      d = r.aspect1 - DAT_106b7ab0;
+      r.aspect0 = d + DAT_106b7a94;
+    }
+    if (h) {
+      id = r.w;
+      sMask = r.h;
+      if (r.w >= r.h) {
+        if (r.w > 1) {
+          id = r.w / 2;
+          FUN_100242e0(&r.aspect1,id,sMask);
+          FUN_100275c0(&r.f20,id,sMask);
+          d = r.aspect1 - DAT_106b7ab0;
+          r.aspect0 = d + DAT_106b7a94;
+        }
+      }
+      else if (r.h > 1) {
+        sMask = r.h / 2;
+        FUN_100242e0(&r.aspect1,id,sMask);
+        FUN_100275c0(&r.f20,id,sMask);
+        d = r.aspect1 - DAT_106b7ab0;
+        r.aspect0 = d + DAT_106b7a94;
+      }
+      FUN_10029290(&wCur,&hCur,r.aspect1,r.f20);
+    }
+    r.w = wCur;
+    r.h = hCur;
+  }
+  if ((DAT_100b8498 > 1) && FUN_10030fd0(r.p1,&r.w,&r.h)) {
+    FUN_100242e0(&r.aspect1,r.w,r.h);
+    FUN_100275c0(&r.f20,r.w,r.h);
+    d = r.aspect1 - DAT_106b7ab0;
+      r.aspect0 = d + DAT_106b7a94;
+  }
+  r.f260 = DAT_118ed1a0;
+  r.cb29c = r.cbTotal;
+  if ((r.f260 & 2) && (r.f5c == 2)) {
+    r.f260 = DAT_118ed1a0 | 0x80;
+  }
+  sMask = FUN_10027b60(&r);
+  id = FUN_10027710(&r,sMask);
+  if (*(int *)(DAT_106b7aa0 + 0x26c + id * 0x2b4)) {
+    slot = FUN_1005a070();
+    if ((slot >= 0) && (slot < 8)) {
+      DAT_1186c968[slot] = id;
+    }
+  }
+  if (r.f260 & 2) {
+    if (r.f268) {
+      if (r.f278) {
+        FUN_100306d0(id);
+      }
+    }
+    else if (FUN_10030710(r.p2)) {
+      a = *(unsigned short *)r.p2;
+      b = ((unsigned short *)r.p2)[1];
+      *(unsigned short *)r.p2 = 0xffff;
+      ((unsigned short *)r.p2)[1] = 0xffff;
+      sMask = FUN_10027b60(&r);
+      (*DAT_118ed1d0)(id,sMask);
+      hCur = FUN_10001000(FUN_10001000(0,0,0),sMask,r.cbTotal);
+      *(unsigned short *)r.p2 = a;
+      ((unsigned short *)r.p2)[1] = b;
+      sMask = FUN_10027b60(&r);
+      (*DAT_118ed1d0)(id,sMask);
+      if (FUN_10001000(FUN_10001000(0,0,0),sMask,r.cbTotal) != hCur) {
+        FUN_100306d0(id);
+      }
+    }
+  }
+  return id;
 }
 
 #endif /* BR_MATCHING_BUILD */

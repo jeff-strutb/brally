@@ -217,6 +217,40 @@ the caller AND flipped a helper to match for free.
   short, transcribe the store list from the original bytes, not from
   Ghidra's text.
 
+- **Semantically-redundant mid-returns block shrink-wrap.** When a branch
+  reads `f(x); return id;` in the BYTES (own pop-sequence + ret), and the
+  fall-through path also returns `id`, the source had NO mid-return — the
+  second epilogue is VC5's return-duplication. Writing the redundant
+  `return` in C forces the callee-saved pushes into the prologue (no
+  sinking past the early-out) and rotates the whole register allocation.
+  Proven BrTex3dRegister: deleting one redundant `return id` moved all four
+  pushes below the early-out and aligned 57 more instructions.
+- **Stack slots are per-VARIABLE; register webs are identity-blind.** /O2
+  gives each user variable one stack slot for its whole life (disjoint
+  lifetimes inside one variable share it; separate variables never do),
+  while registers go per def-use web regardless of names. When Ghidra's
+  output reuses one iVar for several unrelated roles, MERGE those locals in
+  the C — it is what shrinks the frame to the original's (BrTex3dRegister:
+  mirT+hCur+sum one slot; wInit+loopCopy+mirrorS one home). Conversely
+  declaration ORDER and pure renames never change /O2 output (proven by a
+  60-variant permutation sweep — all byte-identical), so never permute
+  decls hoping for a different allocation.
+- **Guard-if + for-loop vs do-while+break.** `if (g) for (j = a; j <= b;
+  j++) {...break;}` compiles to the entry test, a bottom `jle` backedge,
+  and a `jmp` over the outlined break-block. The same loop spelled
+  `do {} while` with a break gets its latch TAIL-DUPLICATED (the body's
+  first compare copied after the bottom test) — a different shape. Read
+  which one the bytes have off the latch.
+- **Cross-jump needs branch-symmetric temps** (extends the identical-calls
+  idiom): the arms merge only when their tails are identical instruction
+  streams, so route per-arm values through the SAME locals and hoist the
+  unchanged initializer above the branch: `w2 = w; h2 = h; if (wide)
+  w2 = w/2; else h2 = h/2;` then identical call blocks in both arms.
+- **Don't hand-write strength-reduced pointers.** Plain array indexing
+  `tab[j].field` in a loop produces the original's pointer walk
+  (`add ptr,0x40`, `[ptr-4]`) by itself; an explicit `int *p` walk risks a
+  different anchor field and operand order.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
