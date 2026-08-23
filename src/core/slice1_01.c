@@ -428,6 +428,9 @@ int BrCdMciPause(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_1021c77c;
+extern char DAT_1021c80c;
+__declspec(dllimport) int __stdcall PostMessageA(int hWnd, unsigned int msg, unsigned int wParam, int lParam);
 extern int g_brCdTrackLast;
 int FUN_100027e0();
 int FUN_10002c50();
@@ -534,6 +537,23 @@ int BrCdTrackNextWrap(void)
       g_brCdTrackCur = g_brCdTrackFirst;
     }
     BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: request CD track `param_1`: mark music pending, record the track, and if the
+ * disc is readable and the player window is live, post it message 0x3B9 (play, 1). */
+/* @implements 0x10002BA0 glide BrCdTrackRequest */
+
+int BrCdTrackRequest(int param_1)
+
+{
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    g_220CD8 = 1;
+    g_brCdTrackCur = param_1;
+    if ((g_brCdMediaOk != 0) && (DAT_1021c80c != '\0')) {
+      PostMessageA(DAT_1021c77c,0x3b9,1,g_220C40);
+    }
   }
   return 1;
 }

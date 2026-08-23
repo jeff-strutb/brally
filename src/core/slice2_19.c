@@ -1246,6 +1246,17 @@ void BrLogSet(void *p)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+extern int DAT_106e7738;
+extern int DAT_106e79d0;
+extern int DAT_106ea430;
+extern int DAT_106ed650;
+extern int DAT_106ea388;
+extern int DAT_106ea410;
+extern int DAT_106ecb48;
+extern int DAT_106e9a30;
+extern int DAT_106ec6a8;
+extern int DAT_106ed700;
+int BrPodNop();
 extern int DAT_106e8a1c;
 extern int DAT_106e8698;
 extern int DAT_106ed5d0;
@@ -1333,6 +1344,53 @@ void BrSub_1002F242(void)
 {
   BrStubTrue(&DAT_106ed5d0,0,1);
   return;
+}
+
+/* WHAT IT DOES: never-returning service loop: two (compiled-out) trace calls, then forever:
+ * stub-true on the 0x106ED650 block, a trace, stub-true on the 0x106EA430 block. */
+/* @implements 0x1002DD30 glide BrIdleLoop_1002DD30 */
+
+void BrIdleLoop_1002DD30(void)
+
+{
+  BrPodNop(&DAT_106ed650,&DAT_106e79d0,1);
+  BrPodNop(4,&DAT_106ed650,DAT_106e7738);
+  for (;;) {
+    BrStubTrue(&DAT_106ed650,0,1);
+    BrPodNop(1,0,0,0,0xff);
+    BrStubTrue(&DAT_106ea430,DAT_106e7738,1);
+  }
+}
+
+/* WHAT IT DOES: same shape as BrIdleLoop_1002DD30 over the 0x106ECB48 / 0x106EA410 blocks. */
+/* @implements 0x1002DD9A glide BrIdleLoop_1002DD9A */
+
+void BrIdleLoop_1002DD9A(void)
+
+{
+  BrPodNop(&DAT_106ecb48,&DAT_106ea388,1);
+  BrPodNop(9,&DAT_106ecb48,DAT_106e7738);
+  for (;;) {
+    BrStubTrue(&DAT_106ecb48,0,1);
+    BrPodNop(2,0,0,0,0xff);
+    BrStubTrue(&DAT_106ea410,DAT_106e7738,1);
+  }
+}
+
+/* WHAT IT DOES: never-returning loop over the 0x106EC6A8 / 0x106ED5D0 blocks, advancing the
+ * 16-entry ring index at 0x106ED700 each pass. */
+/* @implements 0x1002DE04 glide BrIdleLoop_1002DE04 */
+
+void BrIdleLoop_1002DE04(void)
+
+{
+  BrPodNop(&DAT_106ec6a8,&DAT_106e9a30,1);
+  BrPodNop(&DAT_106ec6a8,DAT_106e7738,1);
+  for (;;) {
+    BrStubTrue(&DAT_106ec6a8,0,1);
+    BrStubTrue(&DAT_106ed5d0,DAT_106e7738,1);
+    DAT_106ed700 = DAT_106ed700 + 1 & 0xf;
+  }
 }
 
 #endif /* BR_MATCHING_BUILD */

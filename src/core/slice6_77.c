@@ -146,4 +146,13 @@ int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
   return 1;
 }
 
+/* WHAT IT DOES: no-op stub (CRT-region placeholder). */
+/* @implements 0x10073719 glide BrNop73719 */
+
+int BrNop73719(void)
+
+{
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
