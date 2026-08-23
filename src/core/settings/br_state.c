@@ -23,16 +23,15 @@ int BrIsAnyActive(const BrActiveFlags *p)
  * total including whatever is pending. The count is read before the flag is
  * examined, so a set flag adds exactly one. */
 /* @implements 0x1006D180 glide BrCountedTotal */
-/* CLOSE, NOT MATCHING.  Orig: MOV EAX,[ECX+8] / TEST EAX,EAX / MOV EAX,[ECX+0Ch]
- * / JZ / INC / RET.  Compiler always puts flag in EDX and count in EAX, issuing
- * both loads before the TEST.  No source form changes the register assignment;
- * this is a register allocation wall, not a source order issue. */
+/* The count load sits BETWEEN the flag test and its jump because both return
+ * paths need it: spelled as two returns, VC5 hoists the common load there and
+ * reuses EAX for flag then count. The temp-and-increment form put the flag in
+ * EDX instead. */
 int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj)
 {
-    int n = pObj->count;
     if (pObj->flag != 0)
-        n++;
-    return n;
+        return pObj->count + 1;
+    return pObj->count;
 }
 
 /* ── Ghidra-matched functions ─────────────────────────── */
