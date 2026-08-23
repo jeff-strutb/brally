@@ -66,6 +66,7 @@ BrSub1007A940,0x10058E20,1,0,"named global, no address recorded",0x10058F90
 BrMenuSub1005FFF0,0x10059060,2,1,"named global, no address recorded",0x10037710 0x10039BC0
 BrSub100603A0,0x10059410,1,0,"named global, no address recorded",0x100592D0
 BrSub100607B0,0x10059820,1,0,"named global, no address recorded",0x10059A50
+FUN_10059f70,0x10059F70,1,0,"named global, no address recorded",0x10059F10
 BrExt_10067880,0x100608F0,2,1,"named global, no address recorded",0x100609B0 0x100609F0
 BrExt_10067900,0x10060970,2,1,"named global, no address recorded",0x100609D0 0x10060A10
 BrSfxSrcTrigger,0x10060DB0,2,1,"named global, no address recorded",0x10060DF0 0x10060E00
@@ -414,6 +415,8 @@ DAT_10ac6738,0x10AC6738,1,0,"named global, no address recorded",0x10037720
 DAT_10ac673c,0x10AC673C,1,0,"named global, no address recorded",0x10037720
 g_brAA33E4,0x10AC6744,2,1,"named global, no address recorded",0x10040660 0x100406A0
 BrImgTintState,0x10AC67A0,3,1,"named global, no address recorded",0x1005A4E0
+DAT_10ac67c4,0x10AC67C4,1,0,"named global, no address recorded",0x10059F10
+DAT_10ac67c8,0x10AC67C8,1,0,"named global, no address recorded",0x10059F10
 g_BrSndAA3470,0x10AC67D0,2,1,"named global, no address recorded",0x10060DB0 0x10060E30
 g_brPairA,0x10AF2094,2,1,"named global, no address recorded",0x10037870
 g_pBrMenuACED34,0x10AF2094,3,1,"named global, no address recorded",0x1003B0B0
@@ -508,7 +511,7 @@ imp__GlobalFree@4,0x118F04C0,4,1,"named global, no address recorded",0x10009BA0 
 imp__Sleep@4,0x118F04C4,1,0,"named global, no address recorded",0x1006A5F0
 imp__GlobalMemoryStatus@4,0x118F04C8,1,0,"named global, no address recorded",0x10007F10
 imp__srand,0x118F055C,1,0,"named global, no address recorded",0x10002910
-imp__malloc,0x118F0568,1,0,"named global, no address recorded",0x10001130
+imp__malloc,0x118F0568,2,1,"named global, no address recorded",0x10001130 0x10059F10
 imp__free,0x118F056C,3,1,"named global, no address recorded",0x10001130 0x10001190 0x1006D2A0
 imp__sprintf,0x118F0570,3,1,"named global, no address recorded",0x10011EA0 0x10039F90 0x1003A000
 imp__exit,0x118F057C,1,0,"named global, no address recorded",0x10058360
