@@ -157,6 +157,16 @@ the caller AND flipped a helper to match for free.
   `movsx` means plain (signed) char. Compare against int constants, not
   char literals, to keep the 32-bit compare.
 
+- **Cast placement picks the load width:** `(short)(x * -2)` loads x as
+  DWORD, multiplies, stores DX; `(short)x * -2` emits MOVSX first. Same for
+  sums: `(short)((a*2 + b) * 2)` keeps dword loads. And the hoist-order rule
+  applies inside: orig `lea [ecx+eax*2]` with a loaded first means the
+  source wrote `a*2 + b`, not `b + a*2`. Proven BrDlRectCmdEmit.
+- **Global post-increment via re-read:** `p = G; G = G + 2; *p = k;` loads G
+  twice (mov, mov+add+store) then stores through the saved copy. `p = G;
+  *G = k; G = p + 2;` orders the opcode store BEFORE the advance — different
+  bytes. Match the original's order of advance vs store.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
