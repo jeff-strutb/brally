@@ -14,7 +14,7 @@ BrNetCarStateSend,0x100054A0,1,0,"named global, no address recorded",0x10059A50
 BrExt_10008B80,0x10008D60,2,1,"named global, no address recorded",0x1006A550 0x1006A580
 BrOnActivateTail,0x10008D60,1,0,"named global, no address recorded",0x10070370
 BrRaceNullStep,0x10008D60,1,0,"named global, no address recorded",0x10062850
-FUN_10008d60,0x10008D60,4,1,"named global, no address recorded",0x1002B997
+FUN_10008d60,0x10008D60,6,1,"named global, no address recorded",0x100192D0 0x1002B997
 BrComCallLocked68,0x10009A00,6,1,"named global, no address recorded",0x10036FF0 0x10037040 0x10037090 0x100370E0 0x10037130 0x100371A0
 BrSub_10019270,0x10016830,1,0,"named global, no address recorded",0x10014C00
 BrTextAlignCentre,0x10016830,1,0,"named global, no address recorded",0x10011EA0
@@ -87,6 +87,7 @@ BrMenuSub1005FFF0,0x10059060,2,1,"named global, no address recorded",0x10037710 
 BrSub100603A0,0x10059410,1,0,"named global, no address recorded",0x100592D0
 BrSub100607B0,0x10059820,1,0,"named global, no address recorded",0x10059A50
 FUN_10059e70,0x10059E70,1,0,"named global, no address recorded",0x1002CE5F
+FUN_10059f00,0x10059F00,2,1,"named global, no address recorded",0x100192D0
 FUN_10059f70,0x10059F70,1,0,"named global, no address recorded",0x10059F10
 @BrSub10062C50@4,0x1005BCC0,1,0,"named global, no address recorded",0x1006FC70
 @FUN_1005c560@4,0x1005C560,1,0,"named global, no address recorded",0x10062870
@@ -360,6 +361,11 @@ g_brRca67B548,0x105B76F0,1,0,"named global, no address recorded",0x10018A30
 g_brRca67B54C,0x105B76F4,1,0,"named global, no address recorded",0x10018A30
 g_br67B550,0x105B76F8,1,0,"named global, no address recorded",0x10019000
 g_67D550,0x105B96F8,1,0,"named global, no address recorded",0x100189C0
+DAT_105b9700,0x105B9700,2,1,"named global, no address recorded",0x100192D0
+DAT_105b9718,0x105B9718,4,1,"named global, no address recorded",0x100192D0
+DAT_105b9720,0x105B9720,2,1,"named global, no address recorded",0x100192D0
+DAT_105b9724,0x105B9724,2,1,"named global, no address recorded",0x100192D0
+DAT_105b972c,0x105B972C,2,1,"named global, no address recorded",0x100192D0
 g_brP680584,0x105BC72C,3,1,"named global, no address recorded",0x10035870 0x100592D0
 g_brActivateGate1,0x105BC740,1,0,"named global, no address recorded",0x10070370
 g_brActivateGate2,0x105BC744,1,0,"named global, no address recorded",0x10070370

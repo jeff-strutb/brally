@@ -216,7 +216,6 @@ void BrSub1006A4A0(void *pThis, void *pArg)
 /* WHAT IT DOES: swaps the two halves of the debug scratch area and clears
  * the one just made current, so the next frame's debug output starts on a
  * clean page while last frame's is still readable. */
-/* @implements 0x1002C210 d3d BrGfx2C210 */
 void BrGfx2C210(void)
 {
     BrS17BankFlip();
@@ -225,7 +224,6 @@ void BrGfx2C210(void)
 /* 0x10031227 */
 /* WHAT IT DOES: zeroes the eight counters the renderer tallies each frame --
  * how much it drew and how much it skipped -- ready for the next frame. */
-/* @implements 0x10031227 d3d BrGfx31227 */
 void BrGfx31227(void)
 {
     BrRenderCountersReset();
