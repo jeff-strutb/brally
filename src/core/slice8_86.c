@@ -505,12 +505,14 @@ static void br86_phase_f1C(BrPhaseFull *pThis)         /* 0x10048AA0 */
 }
 
 const BrUiPageVtbl BrUiPageVtbl_1008F6F8 = {
-    BrUiPageDelete_100484C0,        /* +0x00  0x100484C0 */
+    /* Cast: the matching build gives the deleting dtor its real thiscall
+     * (__fastcall) signature; the slot keeps the port's cdecl type. */
+    (void *(*)(BrUiPage *, int32_t))(uintptr_t)BrUiPageDelete_100484C0, /* +0x00  0x100484C0 */
     br86_page_f04                   /* +0x04  0x10048530 */
 };
 
 const BrPhaseFullVtbl BrPhaseVtbl_1008F700 = {
-    BrPhaseDelete_10048850,         /* +0x00  0x10048850 */
+    (void *(*)(BrPhaseFull *, int32_t))(uintptr_t)BrPhaseDelete_10048850, /* +0x00  0x10048850 */
     BrPhaseFn_100488B0,             /* +0x04  0x100488B0 */
     br86_phase_f08,                 /* +0x08  0x100488C0 */
     br86_phase_f0C,                 /* +0x0C  0x100489A0 */
