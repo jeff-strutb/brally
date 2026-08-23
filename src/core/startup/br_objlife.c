@@ -262,8 +262,9 @@ extern int DAT_100a7514;
 extern int DAT_100a7518;
 extern int DAT_106e7714;
 extern int DAT_106e9a2c;
-int FUN_1001dd80();
 int FUN_1001dfb0();
+int __stdcall grSstWinOpen(int,int,int,int,int,int,int);
+int BrGlideResOpen(int param_1,int param_2);
 int FUN_10032500();
 #ifndef BR_FUNCPTR_DEFINED
 #define BR_FUNCPTR_DEFINED
@@ -278,6 +279,40 @@ extern funcptr PTR_FUN_100b849c;
 int BrPodNop();
 int BrTexInit();
 int br_dl_clip_reset();
+
+/* WHAT IT DOES: map the current width/height globals to a Glide resolution constant and
+ * open the 3dfx window with it; unknown sizes skip the open. Either way, push the size
+ * into the clip layer (0x1001DFB0). The identical grSstWinOpen call in every branch is
+ * what the original's cross-jumped push chains demand -- a shared call through a variable
+ * pushes a register, not the per-branch constants. Params are pushed by callers but
+ * unused: the sizes are read from the globals. */
+/* @implements 0x1001DD80 glide BrGlideResOpen */
+
+#define BR_TRY_RES(W,H,R) if (DAT_100a7514 == (W) && DAT_100a7518 == (H)) { if (grSstWinOpen(0,(R),0,2,1,2,1) == 0) return 0; } else
+
+int BrGlideResOpen(int param_1,int param_2)
+
+{
+  BR_TRY_RES(320,200,0)
+  BR_TRY_RES(320,240,1)
+  BR_TRY_RES(400,256,2)
+  BR_TRY_RES(512,384,3)
+  BR_TRY_RES(640,200,4)
+  BR_TRY_RES(640,350,5)
+  BR_TRY_RES(640,400,6)
+  BR_TRY_RES(640,480,7)
+  BR_TRY_RES(800,600,8)
+  BR_TRY_RES(960,720,9)
+  BR_TRY_RES(856,480,10)
+  BR_TRY_RES(512,256,11)
+  BR_TRY_RES(1024,768,12)
+  BR_TRY_RES(1280,1024,13)
+  BR_TRY_RES(1600,1200,14)
+  BR_TRY_RES(400,300,15)
+  { }
+  FUN_1001dfb0(DAT_100a7514,DAT_100a7518);
+  return 1;
+}
 
 /* WHAT IT DOES: change the Glide framebuffer resolution, falling back to 640x480 on failure.
  * The caller (0x10063970) pushes four words; the last two are never read here. */
@@ -302,13 +337,13 @@ int BrGlideResSet(int param_1,int param_2,int param_3,int param_4)
   DAT_100a7514 = param_1;
   DAT_106e9a2c = param_2;
   DAT_100a7518 = param_2;
-  iVar1 = FUN_1001dd80(param_1,param_2);
+  iVar1 = BrGlideResOpen(param_1,param_2);
   if (iVar1 == 0) {
     DAT_106e7714 = 0x280;
     DAT_100a7514 = 0x280;
     DAT_106e9a2c = 0x1e0;
     DAT_100a7518 = 0x1e0;
-    uVar2 = FUN_1001dd80(0x280,0x1e0);
+    uVar2 = BrGlideResOpen(0x280,0x1e0);
     return uVar2;
   }
   return 1;
