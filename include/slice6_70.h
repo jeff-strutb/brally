@@ -178,7 +178,7 @@ void BrSub1003E680(void);
  * it as the SECOND DWORD of an eight-byte wire payload. It is narrowed to 32
  * bits here, which is what actually goes on the wire. The one call site
  * (slice2_26.c:200) passes pA9D008->f08, which slice2_22.h types uint32_t. */
-void BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p);
+int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p);
 
 /* 0x1003C150  Host a session. See CONFLICT 1: the body is slice4_50.c's
  * BrSub1003C150 and this forwards to it. */

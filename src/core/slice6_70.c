@@ -16,6 +16,7 @@
 #endif
 #include <stdint.h>
 #include <string.h>
+#include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include "slice6_70.h"
 
@@ -313,20 +314,26 @@ void BrSub1003E680(void)
  * players. Unlike the numbered messages that check a gate first, this one
  * always goes out; whatever it fails with is thrown away. */
 /* @implements 0x1003DB00 d3d BrExt_1003DB00 */
-void BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
+int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
 {
-    /* CONFLICT 2: the body is slice2_22.c's BrDPlaySendTag7, which already
-     * carries both null checks (pLink, pLink->pIface) and the un-gated send
-     * that makes tags 6/7/8 different from 2/3/4/5. slice2_26.h types the
-     * object BrObjA9D008 {f00,f04,f08}; slice2_22.h types the same address
-     * BrDPlayLink {pIface,f04,f08,f0C}. The shared prefix is what is read.
-     *
-     * DEVIATION: `p` is `void *` in the declared signature but occupies the
-     * second DWORD of an eight-byte wire payload; narrowed to 32 bits, which
-     * is what actually goes out. The HRESULT is discarded, as the void
-     * declaration requires. */
-    (void)BrDPlaySendTag7((const struct BrDPlayLink *)pObj,
-                          (uint32_t)(uintptr_t)p);
+    /* Inlined send, tag 0x60000007, UNGATED (no 0x10AA288C check -- what
+     * makes tags 6/7/8 different from 2/3/4/5); the shape is otherwise
+     * BrSub1003D950's (slice4_50.c), which see.  `p` occupies the second
+     * payload dword, narrowed to 32 bits. */
+    void *const *aSlot = (void *const *)pObj;
+    void        *pIface;
+    int32_t      aPacket[2];
+
+    if (pObj == NULL || (pIface = aSlot[0]) == NULL) {
+        return 0;
+    }
+    aPacket[0] = (int32_t)0x60000007u;
+    aPacket[1] = (int32_t)(uintptr_t)p;
+    return BrComCallLocked68((struct BrComObj *)pIface, aSlot[2],
+                             (void *)(uintptr_t)0u,
+                             (void *)(uintptr_t)1u,
+                             aPacket,
+                             (void *)(uintptr_t)8u);
 }
 
 /* ==========================================================================
