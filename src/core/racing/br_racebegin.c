@@ -441,6 +441,24 @@ void BrRaceDriverReset(void)
  * finds it at zero and clears the total rather than adding to it -- and turns
  * the frame limiter back on. */
 /* @implements 0x10019A40 glide BrRaceClockReset */
+#ifdef BR_MATCHING_BUILD
+/* Direct calls: thiscall 0x1006E3F0 on the object at 0x105BC858, and the
+ * closing 0x1006E360 in tail position (VC5 emits it as a plain jmp). */
+extern int DAT_105bc858;
+void __fastcall FUN_1006e3f0(void *pThis);
+void FUN_1006e360(void);
+void BrRaceClockReset(void)
+{
+    FUN_1006e3f0(&DAT_105bc858);                      /* 0x10019A45 */
+
+    /* 0x10019A4A.  -1, not 0: the clock's own `inc` then `je` is what turns
+     * this into "clear the accumulator on the NEXT frame". */
+    g_brRaceClockCount   = -1;
+    g_brRaceBeginLimitOn = 1;                         /* 0x10019A54 */
+
+    FUN_1006e360();                                   /* 0x10019A5E, tail jmp */
+}
+#else
 void BrRaceClockReset(void)
 {
     if (OP(BR_RB_1006E3F0, pfn1006E3F0))              /* 0x10019A45 */
@@ -457,6 +475,7 @@ void BrRaceClockReset(void)
                                                        * happens either way   */
         g_brRaceBeginOps.pfn1006E360();
 }
+#endif
 
 /* ==========================================================================
  * 0x10019A70..0x10019AF8 -- the frame clock and the substate branch
