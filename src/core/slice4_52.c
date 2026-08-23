@@ -53,9 +53,13 @@ const BrUi51990Ctx   *g_pBrUi51990Ctx;
 const char *BrStrGet(int id)
 {
     /* br_bits.h's BrHandleLookup IS this function with the table address
-     * turned into an argument; the range test there is unsigned, which is
-     * what makes a negative id fall out as NULL here too. */
-    return (const char *)BrHandleLookup(g_apBrStrTable, (uint32_t)id);
+     * turned into an argument; the original INLINES it here (byte shape:
+     * both range tests jump to one shared `return NULL`).  The range test
+     * is unsigned, which is what makes a negative id fall out as NULL. */
+    if ((uint32_t)id >= 1u && (uint32_t)id < (uint32_t)BR_STR_TABLE_COUNT) {
+        return (const char *)g_apBrStrTable[id];
+    }
+    return NULL;
 }
 
 /* ==========================================================================
