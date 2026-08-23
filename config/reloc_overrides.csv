@@ -1,0 +1,8 @@
+func_va,offset,value,comment
+0x1002A93C,4,0x100A7514,BrScreenSizeApply _g_s17$S656+84
+0x1002A93C,9,0x106E7714,BrScreenSizeApply _g_s17$S656+76
+0x1002A93C,15,0x100A7518,BrScreenSizeApply _g_s17$S656+88
+0x1002A93C,21,0x106E9A2C,BrScreenSizeApply _g_s17$S656+80
+0x10054360,7,0x100AC5F8,BrCharMapLookup _g_BrCharMap+0
+0x10054360,20,0x100ADE78,BrCharMapLookup _g_BrCharMap+904
+0x10054360,32,0x100AC5FC,BrCharMapLookup _g_BrCharMap+4

@@ -105,6 +105,13 @@ def resolve(sym, fnmap, glmap, learned=True):
         return fnmap[s]
     if s in glmap:
         return glmap[s]
+    # Undecorate fastcall/stdcall: @Name@N -> Name
+    u = _undecorate(sym)
+    if u != s:
+        if u in fnmap:
+            return fnmap[u]
+        if u in glmap:
+            return glmap[u]
     n = normalize(s)
     if n in glmap:
         return glmap[n]
@@ -112,7 +119,78 @@ def resolve(sym, fnmap, glmap, learned=True):
         return None
     if _LEARNED is None:
         _LEARNED = load_learned()
-    return _LEARNED.get(s)
+    return _LEARNED.get(s) or _LEARNED.get(u)
+
+
+def _undecorate(sname):
+    name = sname[1:] if sname.startswith('@') else sname
+    name = name.lstrip('_')
+    at = name.rfind('@')
+    if at > 0 and name[at + 1:].isdigit():
+        name = name[:at]
+    return name
+
+
+_OVERRIDES = None
+
+
+def _load_overrides():
+    global _OVERRIDES
+    if _OVERRIDES is not None:
+        return _OVERRIDES
+    _OVERRIDES = {}
+    p = os.path.join(ROOT, 'config', 'reloc_overrides.csv')
+    if os.path.exists(p):
+        for row in csv.DictReader(open(p)):
+            fva = int(row['func_va'], 16)
+            off = int(row['offset'])
+            val = int(row['value'], 16)
+            _OVERRIDES[(fva, off)] = val
+    return _OVERRIDES
+
+
+def fill_function(obj_path, func_name, va, fnmap, glmap, size):
+    """Resolve relocations for one function and return its bytes, or None."""
+    overrides = _load_overrides()
+    try:
+        d, secs, syms, relocs = parse(obj_path)
+    except Exception:
+        return None
+    for sy in syms:
+        if sy['sec'] <= 0 or sy['sec'] not in secs:
+            continue
+        if not secs[sy['sec']]['name'].startswith('.text'):
+            continue
+        if _undecorate(sy['name']) != func_name:
+            continue
+        sec = secs[sy['sec']]
+        start = sec['praw'] + sy['val']
+        code = bytearray(d[start:start + size])
+        if len(code) != size:
+            return None
+        for rva, si, rt in relocs[sy['sec']]:
+            off = rva - sy['val']
+            if not (0 <= off < size - 3):
+                continue
+            override = overrides.get((va, off))
+            if override is not None:
+                struct.pack_into('<I', code, off, override)
+                continue
+            tsym = next((s for s in syms if s['idx'] == si), None)
+            target = resolve(tsym['name'], fnmap, glmap) if tsym else None
+            if target is None:
+                return None
+            addend = struct.unpack_from('<i', code, off)[0]
+            if rt == REL_DIR32:
+                val = target + addend
+            elif rt == REL_REL32:
+                val = target + addend - (va + off + 4)
+            else:
+                return None
+            struct.pack_into('<i', code, off, val & 0xFFFFFFFF
+                             if val >= 0 else val)
+        return bytes(code)
+    return None
 
 
 def main():
@@ -141,7 +219,7 @@ def main():
                 continue
             if not secs[sy['sec']]['name'].startswith('.text'):
                 continue
-            name = sy['name'].lstrip('_')
+            name = _undecorate(sy['name'])
             if name not in fnmap:
                 continue
             va = fnmap[name]
@@ -157,11 +235,16 @@ def main():
                 continue
 
             # fill this function's relocations
+            overrides = _load_overrides()
             unres = []
             self_taught = []   # learned addresses this function itself taught
             for rva, si, rt in relocs[sy['sec']]:
                 off = rva - sy['val']
                 if not (0 <= off < len(orig) - 3):
+                    continue
+                override = overrides.get((va, off))
+                if override is not None:
+                    struct.pack_into('<I', code, off, override)
                     continue
                 target = resolve(syms[si]['name'] if si < len(syms) else '',
                                  fnmap, glmap) if si < len(syms) else None

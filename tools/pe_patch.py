@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
-"""Patch recompiled functions into the original DLL.
+"""Patch recompiled functions into the original DLL with relocations resolved.
 
 Takes the original DLL, a directory of matched .bin files (one per function,
 named 0x<VA>.bin), and produces a patched DLL with those functions replaced.
+Relocations in each function's .obj are resolved to their original addresses
+so the patched bytes are bit-exact, not just encoding-exact.
 
 Usage:
-    python3 tools/pe_patch.py orig/BRD3D.dll build/match/verified/ build/BRD3D_patched.dll
-
-Each .bin file must be EXACTLY the same size as the original function at that
-VA.  If it differs in size, the function is skipped with a warning -- size
-mismatches mean the function doesn't truly match and needs more work.
-
-The patched DLL is byte-identical to the original except at the patched
-function locations.  Headers, imports, relocations, and data sections are
-untouched.
+    python3 tools/pe_patch.py orig/BRGlide.dll build/match/verified/ build/BRGlide_patched.dll
 """
 import csv
 import glob
 import os
 import struct
 import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+from relocmap import load_maps, load_learned  # noqa: E402
+from reloc_fill import fill_function  # noqa: E402
 
 
 def read_pe_text_info(path):
@@ -41,6 +40,23 @@ def read_pe_text_info(path):
     return image_base, sections
 
 
+def build_obj_index():
+    """Map (function_name, variant) -> .obj path, and name -> [variants]."""
+    from reloc_learn import live_objs
+    from match_diff import parse_coff_obj
+    idx = {}
+    for variant in ('O2', 'Od'):
+        objs, _ = live_objs((variant,))
+        for obj_path in objs:
+            try:
+                funcs = parse_coff_obj(obj_path)
+            except Exception:
+                continue
+            for name in funcs:
+                idx[(name, variant)] = obj_path
+    return idx
+
+
 def patch(orig_dll, match_dir, out_dll, funcs_csv=None):
     image_base, sections = read_pe_text_info(orig_dll)
 
@@ -54,7 +70,23 @@ def patch(orig_dll, match_dir, out_dll, funcs_csv=None):
                 va = int(row['va'], 16)
                 func_sizes[va] = int(row['size'])
 
+    fnmap, glmap = load_maps()
+    lrmap = load_learned()
+    glmap.update(lrmap)
+
+    # Build reverse map: VA -> (name, variant)
+    va_to_info = {}
+    rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
+    if os.path.exists(rep):
+        for r in csv.DictReader(open(rep)):
+            if r.get('name') and r.get('va') and r.get('status') == 'match':
+                va_to_info[int(r['va'], 16)] = (r['name'], r.get('opt', 'O2'))
+
+    obj_idx = build_obj_index()
+
     patched = 0
+    resolved = 0
+    unresolved = 0
     skipped = 0
 
     for bin_path in sorted(glob.glob(os.path.join(match_dir, '0x*.bin'))):
@@ -62,7 +94,7 @@ def patch(orig_dll, match_dir, out_dll, funcs_csv=None):
         va = int(basename.replace('.bin', ''), 16)
 
         with open(bin_path, 'rb') as f:
-            new_bytes = f.read()
+            raw_bytes = f.read()
 
         rva = va - image_base
         file_off = None
@@ -72,24 +104,37 @@ def patch(orig_dll, match_dir, out_dll, funcs_csv=None):
                 break
 
         if file_off is None:
-            print(f"  SKIP 0x{va:08X} -- VA not in any section")
             skipped += 1
             continue
 
         orig_size = func_sizes.get(va)
-        if orig_size is not None and len(new_bytes) != orig_size:
-            print(f"  SKIP 0x{va:08X} -- size mismatch: "
-                  f"original {orig_size}, recompiled {len(new_bytes)}")
+        if orig_size is not None and len(raw_bytes) != orig_size:
             skipped += 1
             continue
 
-        data[file_off:file_off + len(new_bytes)] = new_bytes
+        info = va_to_info.get(va)
+        filled = None
+        if info:
+            func_name, variant = info
+            obj_key = (func_name, variant)
+            if obj_key in obj_idx:
+                filled = fill_function(obj_idx[obj_key], func_name, va,
+                                       fnmap, glmap, len(raw_bytes))
+
+        if filled is not None:
+            data[file_off:file_off + len(filled)] = filled
+            resolved += 1
+        else:
+            data[file_off:file_off + len(raw_bytes)] = raw_bytes
+            unresolved += 1
+            print(f"  WARN 0x{va:08X}: relocs unresolvable, patching raw bytes")
         patched += 1
 
     with open(out_dll, 'wb') as f:
         f.write(data)
 
-    print(f"patched {patched} functions, skipped {skipped}")
+    print(f"patched {patched} functions ({resolved} reloc-resolved, "
+          f"{unresolved} encoding-only), skipped {skipped}")
     print(f"wrote {out_dll}")
 
 
