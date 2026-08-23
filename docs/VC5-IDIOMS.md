@@ -167,6 +167,22 @@ the caller AND flipped a helper to match for free.
   *G = k; G = p + 2;` orders the opcode store BEFORE the advance — different
   bytes. Match the original's order of advance vs store.
 
+- **/Od branchless ternary:** `x ? K : 0` (and `x ? 1 : 2`) compile to
+  `mov; neg; sbb; and/add` even at /Od — the neg/sbb borrow trick is the
+  TERNARY's codegen, while `-(x != 0) & K` emits cmp/setne. Proven
+  BrFrameBeginDl.
+- **Display-list emit is a struct post-increment.** The DL write pointer is
+  `struct BrDlCmd { int op, arg; } *`; every emit is
+  `{ BrDlCmd *p_ = DAT_106e7710++; p_->op = C; p_->arg = A; }` (a macro).
+  The post-increment's temp lands at the BOTTOM of the /Od frame (with the
+  switch-selector temp), while each block-scoped `p_` gets its own top-down
+  slot — a 23-emit function burns 0x60 bytes of frame. As a call argument,
+  `f(DAT_106e7710++, ...)` gives push-then-advance. Proven BrFrameBeginDl
+  (1421 B) after BrDlRectCmdEmit/BrDlScreenRectEmit matched the same shape
+  spelled longhand.
+- **`if (a ^ b)`:** `xor reg,[mem]; test` instead of cmp — the original
+  spelled inequality as XOR (proven BrFrameBeginDl head).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
