@@ -490,4 +490,58 @@ int BrWaveSeekData(int *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
   return;
 }
 
+/* ------------------------------------------------------------------ */
+/* 0x10059E70                                                         */
+/* ------------------------------------------------------------------ */
+
+unsigned int FUN_100706d0(unsigned char *, unsigned char *);
+
+/* WHAT IT DOES: reads the live joystick/pad buttons into two analog
+ * bytes plus a packed two-byte mask the rest of the input layer uses. */
+/* @implements 0x10059E70 glide BrPadPackButtons */
+void BrPadPackButtons(unsigned char *out)
+{
+    unsigned int flags;
+    unsigned char a[4];
+    unsigned char b[4];
+
+    flags = FUN_100706d0(a, b);
+    out[2] = a[0];
+    out[3] = b[0];
+    *(unsigned short *)out = 0;
+    if ((flags & 0x10) != 0) {
+        *(unsigned short *)out = 0x8400;
+    }
+    if ((flags & 4) != 0) {
+        out[1] |= 0x88;
+    }
+    if ((flags & 1) != 0) {
+        out[1] |= 2;
+    }
+    if ((flags & 2) != 0) {
+        out[1] |= 1;
+    }
+    if ((flags & 8) != 0) {
+        out[1] |= 0x40;
+    }
+    if ((flags & 0x100) != 0) {
+        out[0] |= 8;
+    }
+    if ((flags & 0x200) != 0) {
+        out[0] |= 2;
+    }
+    if ((flags & 0x400) != 0) {
+        out[0] |= 4;
+    }
+    if ((flags & 0x8000) != 0) {
+        out[1] |= 0x10;
+    }
+    if ((flags & 0x20) != 0) {
+        out[0] |= 0x10;
+    }
+    if ((flags & 0x40) != 0) {
+        out[0] |= 0x20;
+    }
+}
+
 #endif /* BR_MATCHING_BUILD */
