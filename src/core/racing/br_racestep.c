@@ -722,7 +722,7 @@ void BrRaceStepLights(void)
 
 /* 0x10019A70 IS DELIBERATELY UNCLAIMED, AND THIS IS WHERE THE CLAIM USED TO BE
  * ============================================================================
- * `/ * @implements 0x10019A70 glide BrRaceStepInit * /` sat on this line and
+ * `/ * implements 0x10019A70 glide BrRaceStepInit * /` sat on this line and
  * it was false.  0x10019A70 is 11,223 bytes making 131 calls.  The body below
  * annotates 0x1001A97C..0x1001AA5E -- about 230 bytes, TWO PER CENT, and it
  * starts roughly 4 KB into the function.  Under that claim the address counted
