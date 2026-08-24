@@ -267,6 +267,11 @@ the caller AND flipped a helper to match for free.
   direct DAT_ externs (the six-member DirectPlay send family, BrHookTakeA/B,
   BrDlCmdFogColour, BrScratchRingDrain). Port-safety indirections (ops
   tables, sink callbacks, factored range-checks) are the same class.
+- **`&extern_var != NULL` is not folded.** A `mov edx, offset DAT; test edx,edx;
+  je` before a strcpy that uses that same address is a real source-level
+  `if (p != 0)` / `if (&buf != 0)` on an extern object. VC5 /O2 does NOT
+  treat the address of an extern as a proven non-null. Proven
+  BrMenuCopyTrackName (0x1003B020, 144 B).
 - **The epilogue-signature audit finds these mechanically.** Compare frame
   size, ret/pop-cluster count, callee-saved push count and first-push
   offset between orig bytes and the recomp (tools/sigaudit.py): epilogue

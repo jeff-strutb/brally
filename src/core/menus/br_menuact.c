@@ -1,4 +1,8 @@
 /* br_menuact.c -- menus.  See br_menuact.h. */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_menuact.h"
 
 #include <stdint.h>
@@ -117,3 +121,61 @@ int BrHook_100458C0(void *p)
     g_AA29C8[2] = (uint32_t)(uintptr_t)&BrExt_10046BB0;
     return 1;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* CRT (strlen/strcpy/_stricmp) resolves via the FF 15 import table. */
+#include <string.h>
+/* ------------------------------------------------------------------ */
+/* 0x100384C0                                                         */
+/* ------------------------------------------------------------------ */
+
+int FUN_10038380(int, int);
+extern char DAT_10ac3e80;
+extern char DAT_10b71544;
+extern int DAT_10ac5d40;
+
+/* WHAT IT DOES: stores the car's display name if it changed, and clears the
+ * "name is a default" bit when the name string is not empty. */
+/* @implements 0x100384C0 glide BrCarNameCommit */
+int BrCarNameCommit(int param_1)
+{
+    char *s;
+
+    FUN_10038380(param_1, 0);
+    s = (char *)(param_1 + 0x2b65);
+    if (strlen(s) != 0) {
+        *(unsigned int *)(DAT_10ac5d40 + 0x1c) &= ~0x10u;
+    }
+    if (_stricmp(&DAT_10ac3e80, s) != 0) {
+        strcpy(&DAT_10ac3e80, s);
+        strcpy(&DAT_10b71544, &DAT_10ac3e80);
+    }
+    return 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* 0x1003B020                                                         */
+/* ------------------------------------------------------------------ */
+
+extern int DAT_10ac5c30;
+extern int DAT_10ac5c3c;
+extern char DAT_10ac4100;
+extern int DAT_10ac5d24;
+extern int DAT_100aab94;
+extern char DAT_10396f08;
+
+/* WHAT IT DOES: copies the current track name into the selected driver's
+ * slot, then copies the default name back over the working buffer. */
+/* @implements 0x1003B020 glide BrMenuCopyTrackName */
+int BrMenuCopyTrackName(int param_1)
+{
+    *(int *)(*(int *)(param_1 + 0x2ae8) + 0x70) = 0;
+    DAT_10ac5c3c = 0;
+    if (DAT_10ac5c30 != 0 && &DAT_10ac4100 != 0) {
+        strcpy((char *)(DAT_10ac5d24 + 0x35 + DAT_100aab94 * 0x438),
+               &DAT_10ac4100);
+        strcpy(&DAT_10ac4100, &DAT_10396f08);
+    }
+    return 1;
+}
+#endif /* BR_MATCHING_BUILD */
