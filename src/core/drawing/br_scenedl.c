@@ -96,14 +96,8 @@ extern int       DAT_106e86a0;
 extern int       DAT_106eed34;      /* object name table */
 extern char      DAT_100a5ea0[];    /* fallback name */
 extern char      DAT_100a5db4[];    /* "Bad Final Matrix..." */
-extern float     DAT_106e9a38, DAT_106e9a3c, DAT_106e9a40, DAT_106e9a44;
-extern float     DAT_106e9a48, DAT_106e9a4c, DAT_106e9a50, DAT_106e9a54;
-extern float     DAT_106e9a58, DAT_106e9a5c, DAT_106e9a60, DAT_106e9a64;
-extern float     DAT_106e9a68, DAT_106e9a6c, DAT_106e9a70, DAT_106e9a74;
-extern float     DAT_106e78f0, DAT_106e78f4, DAT_106e78f8, DAT_106e78fc;
-extern float     DAT_106e7900, DAT_106e7904, DAT_106e7908, DAT_106e790c;
-extern float     DAT_106e7910, DAT_106e7914, DAT_106e7918, DAT_106e791c;
-extern float     DAT_106e7920, DAT_106e7924, DAT_106e7928, DAT_106e792c;
+extern float     DAT_106e9a38[16];  /* the view matrix */
+extern float     DAT_106e78f0[16];  /* the scaled output matrix; [12..15] = the w row */
 extern float     DAT_100771f8;      /* clip range constants */
 extern double    DAT_10077238;
 extern double    DAT_10077240;
@@ -157,10 +151,10 @@ extern BrTrailSeg DAT_10273690[];
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
 void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 {
+    int      i;
     int      bSolo;
     int      bTexLoaded;
     uint32_t *pS;
-    int      i;
     int      cHead;
     int      base;
     int      nTotal;
@@ -173,9 +167,6 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
     int      ring;
     int      head;
     int      slot;
-    float    fMax;
-    float    fMin;
-    float    scale;
     uint32_t *pT;
     int      *pCar;
     uint8_t  active[32];
@@ -216,7 +207,7 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
         base = DAT_1035fb8c;
         DAT_1035fb74 = -1;
         cHead = -1;
-        DAT_1035f7d0 = BrFloat12MaxAbs((const float *)&DAT_106e9a38);
+        DAT_1035f7d0 = BrFloat12MaxAbs(DAT_106e9a38);
         DAT_1035f7e0 = 0;
         if (bSolo) {
             DAT_1035f7e0 = 0x800;
@@ -374,76 +365,72 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
                 idx = DAT_1035e710[nTotal - i];
                 pObj = (float *)(DAT_106eed38 + idx * 0x54);
 draw:
-                if ((*((uint8_t *)pObj + 0x4d) & 0x20) == 0) {
-                    float *pM = BrMtxPoolAlloc();
-                    BrGuMtxStore(pObj, pM);
-                    EMIT(0x1020040, pM);
-                    bTexLoaded = 0;
-                } else {
+                if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
+                    float fMax, fMin, scale;
                     if (!bTexLoaded) {
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    DAT_106e7920 = pObj[0xd] * DAT_106e9a48 +
-                                   pObj[0xe] * DAT_106e9a58 +
-                                   pObj[0xc] * DAT_106e9a38 + pObj[0xf] * DAT_106e9a68;
-                    DAT_106e7924 = pObj[0xd] * DAT_106e9a4c +
-                                   pObj[0xe] * DAT_106e9a5c +
-                                   pObj[0xc] * DAT_106e9a3c + pObj[0xf] * DAT_106e9a6c;
-                    DAT_106e7928 = pObj[0xd] * DAT_106e9a50 +
-                                   pObj[0xe] * DAT_106e9a60 +
-                                   pObj[0xc] * DAT_106e9a40 + pObj[0xf] * DAT_106e9a70;
-                    DAT_106e792c = pObj[0xd] * DAT_106e9a54 +
-                                   pObj[0xe] * DAT_106e9a64 +
-                                   pObj[0xc] * DAT_106e9a44 + pObj[0xf] * DAT_106e9a74;
+                    DAT_106e78f0[12] = DAT_106e9a38[4] * pObj[0xd] +
+                                   DAT_106e9a38[8] * pObj[0xe] +
+                                   DAT_106e9a38[0] * pObj[0xc] + DAT_106e9a38[12] * pObj[0xf];
+                    DAT_106e78f0[13] = DAT_106e9a38[5] * pObj[0xd] +
+                                   DAT_106e9a38[9] * pObj[0xe] +
+                                   DAT_106e9a38[1] * pObj[0xc] + DAT_106e9a38[13] * pObj[0xf];
+                    DAT_106e78f0[14] = DAT_106e9a38[6] * pObj[0xd] +
+                                   DAT_106e9a38[10] * pObj[0xe] +
+                                   DAT_106e9a38[2] * pObj[0xc] + DAT_106e9a38[14] * pObj[0xf];
+                    DAT_106e78f0[15] = DAT_106e9a38[7] * pObj[0xd] +
+                                   DAT_106e9a38[11] * pObj[0xe] +
+                                   DAT_106e9a38[3] * pObj[0xc] + DAT_106e9a38[15] * pObj[0xf];
                     scale = *pObj;
-                    DAT_106e78f0 = scale * DAT_106e9a38;
-                    DAT_106e78f4 = scale * DAT_106e9a3c;
-                    DAT_106e78f8 = scale * DAT_106e9a40;
-                    DAT_106e78fc = scale * DAT_106e9a44;
-                    DAT_106e7900 = scale * DAT_106e9a48;
-                    DAT_106e7904 = scale * DAT_106e9a4c;
-                    DAT_106e7908 = scale * DAT_106e9a50;
-                    DAT_106e790c = scale * DAT_106e9a54;
-                    DAT_106e7910 = scale * DAT_106e9a58;
-                    DAT_106e7914 = scale * DAT_106e9a5c;
-                    DAT_106e7918 = scale * DAT_106e9a60;
-                    DAT_106e791c = scale * DAT_106e9a64;
+                    DAT_106e78f0[0] = scale * DAT_106e9a38[0];
+                    DAT_106e78f0[1] = scale * DAT_106e9a38[1];
+                    DAT_106e78f0[2] = scale * DAT_106e9a38[2];
+                    DAT_106e78f0[3] = scale * DAT_106e9a38[3];
+                    DAT_106e78f0[4] = scale * DAT_106e9a38[4];
+                    DAT_106e78f0[5] = scale * DAT_106e9a38[5];
+                    DAT_106e78f0[6] = scale * DAT_106e9a38[6];
+                    DAT_106e78f0[7] = scale * DAT_106e9a38[7];
+                    DAT_106e78f0[8] = scale * DAT_106e9a38[8];
+                    DAT_106e78f0[9] = scale * DAT_106e9a38[9];
+                    DAT_106e78f0[10] = scale * DAT_106e9a38[10];
+                    DAT_106e78f0[11] = scale * DAT_106e9a38[11];
                     {
                     float *pM = BrMtxPoolAlloc();
                     fMax = 0.0f;
                     fMin = 0.0f;
-                    if (DAT_106e7920 >= DAT_100771f8) {
-                        fMax = DAT_106e7920;
+                    if (DAT_106e78f0[12] >= DAT_100771f8) {
+                        fMax = DAT_106e78f0[12];
                     }
-                    if (DAT_106e7920 <= DAT_100771f8) {
-                        fMin = DAT_106e7920;
+                    if (DAT_106e78f0[12] <= DAT_100771f8) {
+                        fMin = DAT_106e78f0[12];
                     }
-                    if (DAT_106e7924 >= fMax) {
-                        fMax = DAT_106e7924;
+                    if (DAT_106e78f0[13] >= fMax) {
+                        fMax = DAT_106e78f0[13];
                     }
-                    if (DAT_106e7924 <= fMin) {
-                        fMin = DAT_106e7924;
+                    if (DAT_106e78f0[13] <= fMin) {
+                        fMin = DAT_106e78f0[13];
                     }
-                    if (DAT_106e7928 >= fMax) {
-                        fMax = DAT_106e7928;
+                    if (DAT_106e78f0[14] >= fMax) {
+                        fMax = DAT_106e78f0[14];
                     }
-                    if (DAT_106e7928 <= fMin) {
-                        fMin = DAT_106e7928;
+                    if (DAT_106e78f0[14] <= fMin) {
+                        fMin = DAT_106e78f0[14];
                     }
-                    if (DAT_106e792c >= fMax) {
-                        fMax = DAT_106e792c;
+                    if (DAT_106e78f0[15] >= fMax) {
+                        fMax = DAT_106e78f0[15];
                     }
-                    if (DAT_106e792c <= fMin) {
-                        fMin = DAT_106e792c;
+                    if (DAT_106e78f0[15] <= fMin) {
+                        fMin = DAT_106e78f0[15];
                     }
                     if (fMax > DAT_10077238 || fMin < DAT_10077240) {
                         if (i == 1) {
                             char *pName;
-                            if (DAT_106eed34 == 0) {
-                                pName = DAT_100a5ea0;
-                            } else {
+                            if (DAT_106eed34 != 0) {
                                 pName = *(char **)(DAT_106eed34 + idx * 4);
+                            } else {
+                                pName = DAT_100a5ea0;
                             }
                             BrPodNop(DAT_100a5db4, idx, pName, (double)scale,
                                      (double)pObj[0], (double)pObj[1], (double)pObj[2],
@@ -452,55 +439,60 @@ draw:
                                      (double)pObj[9], (double)pObj[10], (double)pObj[0xb],
                                      (double)pObj[0xc], (double)pObj[0xd], (double)pObj[0xe],
                                      (double)pObj[0xf],
-                                     (double)DAT_106e9a38, (double)DAT_106e9a3c,
-                                     (double)DAT_106e9a40, (double)DAT_106e9a44,
-                                     (double)DAT_106e9a48, (double)DAT_106e9a4c,
-                                     (double)DAT_106e9a50, (double)DAT_106e9a54,
-                                     (double)DAT_106e9a58, (double)DAT_106e9a5c,
-                                     (double)DAT_106e9a60, (double)DAT_106e9a64,
-                                     (double)DAT_106e9a68, (double)DAT_106e9a6c,
-                                     (double)DAT_106e9a70, (double)DAT_106e9a74,
-                                     (double)DAT_106e78f0, (double)DAT_106e78f4,
-                                     (double)DAT_106e78f8, (double)DAT_106e78fc,
-                                     (double)DAT_106e7900, (double)DAT_106e7904,
-                                     (double)DAT_106e7908, (double)DAT_106e790c,
-                                     (double)DAT_106e7910, (double)DAT_106e7914,
-                                     (double)DAT_106e7918, (double)DAT_106e791c,
-                                     (double)DAT_106e7920, (double)DAT_106e7924,
-                                     (double)DAT_106e7928, (double)DAT_106e792c);
+                                     (double)DAT_106e9a38[0], (double)DAT_106e9a38[1],
+                                     (double)DAT_106e9a38[2], (double)DAT_106e9a38[3],
+                                     (double)DAT_106e9a38[4], (double)DAT_106e9a38[5],
+                                     (double)DAT_106e9a38[6], (double)DAT_106e9a38[7],
+                                     (double)DAT_106e9a38[8], (double)DAT_106e9a38[9],
+                                     (double)DAT_106e9a38[10], (double)DAT_106e9a38[11],
+                                     (double)DAT_106e9a38[12], (double)DAT_106e9a38[13],
+                                     (double)DAT_106e9a38[14], (double)DAT_106e9a38[15],
+                                     (double)DAT_106e78f0[0], (double)DAT_106e78f0[1],
+                                     (double)DAT_106e78f0[2], (double)DAT_106e78f0[3],
+                                     (double)DAT_106e78f0[4], (double)DAT_106e78f0[5],
+                                     (double)DAT_106e78f0[6], (double)DAT_106e78f0[7],
+                                     (double)DAT_106e78f0[8], (double)DAT_106e78f0[9],
+                                     (double)DAT_106e78f0[10], (double)DAT_106e78f0[11],
+                                     (double)DAT_106e78f0[12], (double)DAT_106e78f0[13],
+                                     (double)DAT_106e78f0[14], (double)DAT_106e78f0[15]);
                         }
-                        if (fMax <= -fMin) {
-                            fMin = DAT_1007724c / fMin;
-                        } else {
+                        if (fMax > -fMin) {
                             fMin = DAT_10077248 / fMax;
+                        } else {
+                            fMin = DAT_1007724c / fMin;
                         }
-                        DAT_106e78f0 = fMin * DAT_106e78f0;
-                        DAT_106e78f4 = fMin * DAT_106e78f4;
-                        DAT_106e78f8 = fMin * DAT_106e78f8;
-                        DAT_106e78fc = fMin * DAT_106e78fc;
-                        DAT_106e7900 = fMin * DAT_106e7900;
-                        DAT_106e7904 = fMin * DAT_106e7904;
-                        DAT_106e7908 = fMin * DAT_106e7908;
-                        DAT_106e790c = fMin * DAT_106e790c;
-                        DAT_106e7910 = fMin * DAT_106e7910;
-                        DAT_106e7914 = fMin * DAT_106e7914;
-                        DAT_106e7918 = fMin * DAT_106e7918;
-                        DAT_106e791c = fMin * DAT_106e791c;
-                        DAT_106e7920 = fMin * DAT_106e7920;
-                        DAT_106e7924 = fMin * DAT_106e7924;
-                        DAT_106e7928 = fMin * DAT_106e7928;
-                        DAT_106e792c = fMin * DAT_106e792c;
+                        DAT_106e78f0[0] = fMin * DAT_106e78f0[0];
+                        DAT_106e78f0[1] = fMin * DAT_106e78f0[1];
+                        DAT_106e78f0[2] = fMin * DAT_106e78f0[2];
+                        DAT_106e78f0[3] = fMin * DAT_106e78f0[3];
+                        DAT_106e78f0[4] = fMin * DAT_106e78f0[4];
+                        DAT_106e78f0[5] = fMin * DAT_106e78f0[5];
+                        DAT_106e78f0[6] = fMin * DAT_106e78f0[6];
+                        DAT_106e78f0[7] = fMin * DAT_106e78f0[7];
+                        DAT_106e78f0[8] = fMin * DAT_106e78f0[8];
+                        DAT_106e78f0[9] = fMin * DAT_106e78f0[9];
+                        DAT_106e78f0[10] = fMin * DAT_106e78f0[10];
+                        DAT_106e78f0[11] = fMin * DAT_106e78f0[11];
+                        DAT_106e78f0[12] = fMin * DAT_106e78f0[12];
+                        DAT_106e78f0[13] = fMin * DAT_106e78f0[13];
+                        DAT_106e78f0[14] = fMin * DAT_106e78f0[14];
+                        DAT_106e78f0[15] = fMin * DAT_106e78f0[15];
                     }
-                    BrGuMtxStore(&DAT_106e78f0, pM);
+                    BrGuMtxStore(DAT_106e78f0, pM);
                     EMIT(0x39e0010, pM);
                     EMIT(0x3980010, pM + 4);
                     EMIT(0x39a0010, pM + 8);
                     EMIT(0x39c0010, pM + 0xc);
                     }
+                } else {
+                    float *pM = BrMtxPoolAlloc();
+                    BrGuMtxStore(pObj, pM);
+                    EMIT(0x1020040, pM);
+                    bTexLoaded = 0;
                 }
-                if ((*(uint32_t *)(pObj + 0x13) & 0x4a4) != 0) {
-                    if ((*(uint32_t *)(pObj + 0x13) & 0x400) != 0) {
-                        if (DAT_106ed6ac == 0 || (*(uint32_t *)(pObj + 0x13) & 0x100) == 0) {
+                if ((*(uint16_t *)(pObj + 0x13) & 0x4a4) != 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 0x400) != 0) {
+                        if (DAT_106ed6ac == 0 || (*(uint16_t *)(pObj + 0x13) & 0x100) == 0) {
                             EMIT(0xbc00000a, 0);
                             EMIT(0xbc00040a, 0);
                         } else {
@@ -510,14 +502,14 @@ draw:
                         EMIT(0xbc00200a, DAT_106e79e0[*((uint8_t *)pObj + 0x4c) & 3]);
                         EMIT(0xbc00240a, DAT_106e79e0[*((uint8_t *)pObj + 0x4c) & 3]);
                     }
-                    if ((*(uint32_t *)(pObj + 0x13) & 4) != 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 4) != 0) {
                         EMIT(0xb6000000, 0x3000);
                     }
-                    if ((*(uint32_t *)(pObj + 0x13) & 0x20) != 0 && DAT_106ed6a8 != 0 &&
+                    if ((*(uint16_t *)(pObj + 0x13) & 0x20) != 0 && DAT_106ed6a8 != 0 &&
                         DAT_106ed6ac == 0 && DAT_106ed6b0 == 0 && DAT_106ed6b4 == 0) {
                         EMIT(0xb6000000, 0x10000);
                     }
-                    if ((*(uint32_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
                         EMIT(0xb6000000, 0x200);
                     }
                 }
@@ -531,8 +523,8 @@ draw:
                 } else {
                     FUN_1000cba0(param_1, idx, DAT_10386ca8[idx], param_2, param_4);
                 }
-                if ((*(uint32_t *)(pObj + 0x13) & 0x4a4) != 0) {
-                    if ((*(uint32_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
+                if ((*(uint16_t *)(pObj + 0x13) & 0x4a4) != 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
                         EMIT(0xb7000000, 0x200);
                     }
                     if ((*((uint8_t *)pObj + 0x4d) & 4) != 0) {
@@ -541,11 +533,11 @@ draw:
                         EMIT(0xbc00200a, DAT_106e9a78);
                         EMIT(0xbc00240a, DAT_106e9a78);
                     }
-                    if ((*(uint32_t *)(pObj + 0x13) & 4) != 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 4) != 0) {
                         EMIT(0xb7000000, ((DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000));
                     }
                     if (DAT_106ed6a8 != 0 && DAT_106ed6ac == 0 && DAT_106ed6b0 == 0 &&
-                        DAT_106ed6b4 == 0 && (*(uint32_t *)(pObj + 0x13) & 0x20) != 0) {
+                        DAT_106ed6b4 == 0 && (*(uint16_t *)(pObj + 0x13) & 0x20) != 0) {
                         EMIT(0xb7000000, 0x10000);
                     }
                 }
@@ -600,7 +592,7 @@ draw:
                 if (DAT_10b71b00 != 0) {
                     iWheel = 0;
                     do {
-                        char cls;
+                        int cls;
                         if (DAT_10226e80 == 2 || DAT_10226e80 == 3) {
                             if ((iWheel != 0 ||
                                  (pCar[-0xa1e] == 0 || *(int *)(pCar[-0xa1e] + 0x1b4) == 0)) &&
@@ -611,7 +603,7 @@ draw:
                                 (iWheel != 3 ||
                                  (pCar[-0xa1b] == 0 || *(int *)(pCar[-0xa1b] + 0x1b4) == 0)))
                                 goto no_mark;
-                            cls = '\x01';
+                            cls = 1;
                         } else {
                             int e;
                             if ((iWheel == 0 && (e = pCar[-0xa1e]) != 0 &&
@@ -622,45 +614,20 @@ draw:
                                  *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0) ||
                                 (iWheel == 3 && (e = pCar[-0xa1b]) != 0 &&
                                  *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0)) {
-                                cls = *((char *)pCar + -0x2673);
+                                cls = *((uint8_t *)pCar + -0x2673);
                             } else {
 no_mark:
-                                cls = '\0';
+                                cls = 0;
                             }
                         }
-                        if (cls == '\0') {
-                            ring = iWheel + iCar * 4;
-                            head = DAT_1035faf0[ring];
-                            if (DAT_1035f750[ring] != head) {
-                                slot = head - 1;
-                                if (slot < 0) {
-                                    slot = 499;
-                                }
-                                if ((DAT_10273690[slot + ring * 500].flags & 0x8000000) ==
-                                    0x8000000) {
-                                    DAT_10273690[ring * 500 + head].flags =
-                                        DAT_10273690[ring * 500 + head].flags & 0xf7ffffff;
-                                    head = head + 1;
-                                    if (499 < head) {
-                                        head = 0;
-                                    }
-                                    DAT_1035faf0[ring] = head;
-                                    if (head == DAT_1035f750[ring]) {
-                                        head = DAT_1035f750[ring] + 1;
-                                        if (499 < head) {
-                                            head = 0;
-                                        }
-                                        DAT_1035f750[ring] = head;
-                                    }
-                                }
-                            }
-                        } else {
+                        if (cls != 0) {
                             float dx, dy, len, ox, oy, x1, x2, y1, y2, z;
                             int iw = DAT_100a5d98[iWheel];
-                            float *pW = (float *)(param_4 +
-                                ((int)pCar + negCar0) + iw * 0x40);
-                            dx = pW[0x14];
-                            dy = pW[0x15];
+                            int wb = iw * 0x40 + param_4 + negCar0;
+                            float *pW;
+                            dx = *(float *)(wb + (int)pCar + 0x50);
+                            dy = *(float *)(wb + (int)pCar + 0x54);
+                            pW = (float *)(wb + (int)pCar);
                             len = (float)sqrt(dy * dy + dx * dx);
                             ox = (dx / len) * DAT_10077250;
                             oy = (dy / len) * DAT_10077250;
@@ -722,6 +689,32 @@ no_mark:
                                 }
                                 DAT_1035f750[ring] = head;
                             }
+                        } else {
+                            ring = iWheel + iCar * 4;
+                            head = DAT_1035faf0[ring];
+                            if (DAT_1035f750[ring] != head) {
+                                slot = head - 1;
+                                if (slot < 0) {
+                                    slot = 499;
+                                }
+                                if ((DAT_10273690[slot + ring * 500].flags & 0x8000000) ==
+                                    0x8000000) {
+                                    DAT_10273690[ring * 500 + head].flags =
+                                        DAT_10273690[ring * 500 + head].flags & 0xf7ffffff;
+                                    head = head + 1;
+                                    if (499 < head) {
+                                        head = 0;
+                                    }
+                                    DAT_1035faf0[ring] = head;
+                                    if (head == DAT_1035f750[ring]) {
+                                        head = DAT_1035f750[ring] + 1;
+                                        if (499 < head) {
+                                            head = 0;
+                                        }
+                                        DAT_1035f750[ring] = head;
+                                    }
+                                }
+                            }
                         }
                         iWheel = iWheel + 1;
                     } while (iWheel < 4);
@@ -756,97 +749,99 @@ no_mark:
                 } while (iCar < DAT_100b2f04);
             }
             do {
+                int dCar, dw, dring;
                 again = 0;
-                iCar = 0;
+                dCar = 0;
                 if (0 < DAT_100b2f04) {
                     int rowBase = 0;
                     uint8_t *pA = active;
                     do {
                         int row = rowBase;
-                        ring = iCar * 4;
-                        iWheel = 0;
+                        dring = dCar * 4;
+                        dw = 0;
                         do {
-                            if (pA[iWheel] != '\0') {
-                                head = cursor[ring];
-                                if (head == DAT_1035f750[ring]) goto dead;
+                            if (pA[dw] != '\0') {
+                                int dh, ds;
+                                dh = cursor[dring];
+                                if (dh == DAT_1035f750[dring]) goto dead;
                                 {
-                                    slot = head - 1;
-                                    if (slot < 0) {
-                                        slot = 0x1f3;
+                                    ds = dh - 1;
+                                    if (ds < 0) {
+                                        ds = 0x1f3;
                                     }
                                     {
-                                    uint32_t fl = DAT_10273690[head + row].flags & 0x8000000;
+                                    uint32_t fl = DAT_10273690[dh + row].flags & 0x8000000;
                                     if (fl == 0x8000000) {
-                                        if (slot == DAT_1035f750[ring]) goto dead;
-                                        if ((DAT_10273690[slot + row].flags & 0x8000000) ==
+                                        if (ds == DAT_1035f750[dring]) goto dead;
+                                        if ((DAT_10273690[ds + row].flags & 0x8000000) ==
                                             0x8000000 &&
-                                            ((DAT_10386ca8[DAT_10273690[head + row].flags &
+                                            ((DAT_10386ca8[DAT_10273690[dh + row].flags &
                                                            0xf7ffffff] & 0x80) == 0 ||
-                                             (DAT_10386ca8[DAT_10273690[slot + row].flags &
+                                             (DAT_10386ca8[DAT_10273690[ds + row].flags &
                                                            0xf7ffffff] & 0x80) == 0)) {
                                             if (DAT_1035f7dc + 0x20 >=
                                                 (uint32_t *)(DAT_102e16ac + 0x3e800))
                                                 goto full;
                                             TEMIT(0x400107f, DAT_1035f7dc);
                                             DAT_1035f7dc[0] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].x2;
+                                                *(uint32_t *)&DAT_10273690[ds + row].x2;
                                             DAT_1035f7dc[1] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].y2;
+                                                *(uint32_t *)&DAT_10273690[ds + row].y2;
                                             DAT_1035f7dc[2] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].z2;
+                                                *(uint32_t *)&DAT_10273690[ds + row].z2;
                                             DAT_1035f7dc[3] = 0;
                                             DAT_1035f7dc[4] = 0;
                                             DAT_1035f7dc = DAT_1035f7dc + 8;
                                             DAT_1035f7dc[0] =
-                                                *(uint32_t *)&DAT_10273690[head + row].x2;
+                                                *(uint32_t *)&DAT_10273690[dh + row].x2;
                                             DAT_1035f7dc[1] =
-                                                *(uint32_t *)&DAT_10273690[head + row].y2;
+                                                *(uint32_t *)&DAT_10273690[dh + row].y2;
                                             DAT_1035f7dc[2] =
-                                                *(uint32_t *)&DAT_10273690[head + row].z2;
+                                                *(uint32_t *)&DAT_10273690[dh + row].z2;
                                             DAT_1035f7dc[3] = 0x44800000;
                                             DAT_1035f7dc[4] = 0;
                                             DAT_1035f7dc = DAT_1035f7dc + 8;
                                             DAT_1035f7dc[0] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].x1;
+                                                *(uint32_t *)&DAT_10273690[ds + row].x1;
                                             DAT_1035f7dc[1] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].y1;
+                                                *(uint32_t *)&DAT_10273690[ds + row].y1;
                                             DAT_1035f7dc[2] =
-                                                *(uint32_t *)&DAT_10273690[slot + row].z1;
+                                                *(uint32_t *)&DAT_10273690[ds + row].z1;
                                             DAT_1035f7dc[3] = 0;
                                             DAT_1035f7dc[4] = 0x44800000;
                                             DAT_1035f7dc = DAT_1035f7dc + 8;
                                             DAT_1035f7dc[0] =
-                                                *(uint32_t *)&DAT_10273690[head + row].x1;
+                                                *(uint32_t *)&DAT_10273690[dh + row].x1;
                                             DAT_1035f7dc[1] =
-                                                *(uint32_t *)&DAT_10273690[head + row].y1;
+                                                *(uint32_t *)&DAT_10273690[dh + row].y1;
                                             DAT_1035f7dc[2] =
-                                                *(uint32_t *)&DAT_10273690[head + row].z1;
+                                                *(uint32_t *)&DAT_10273690[dh + row].z1;
                                             DAT_1035f7dc[3] = 0x44800000;
                                             DAT_1035f7dc[4] = 0x44800000;
                                             DAT_1035f7dc = DAT_1035f7dc + 8;
                                             TEMIT(0xb1000103, 0x302);
                                         }
                                         again = 1;
-                                        cursor[ring] = slot;
+                                        cursor[dring] = ds;
                                     } else if (fl == 0) {
                                         again = 1;
-                                        cursor[ring] = slot;
+                                        cursor[dring] = ds;
                                     }
                                     }
                                 }
                                 goto next;
 dead:
-                                pA[iWheel] = 0;
+                                pA[dw] = 0;
 next:;
                             }
-                            iWheel = iWheel + 1;
+                            dw = dw + 1;
                             row = row + 500;
-                            ring = ring + 1;
-                        } while (iWheel < 4);
-                        iCar = iCar + 1;
+                            dring = dring + 1;
+                        } while (dw < 4);
+                        dCar = dCar + 1;
                         rowBase = rowBase + 2000;
                         pA = pA + 4;
-                    } while (iCar < DAT_100b2f04);
+                    } while (dCar < DAT_100b2f04);
                 }
             } while (again);
 full:
