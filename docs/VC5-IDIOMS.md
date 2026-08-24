@@ -353,16 +353,34 @@ the caller AND flipped a helper to match for free.
   mid-function — the second role was a block-scoped variable. Declaring the
   right locals block-scoped (fMax/fMin/scale inside the transform arm, the
   drain loop's own counters) is how the frame converges. Proven 0x1000EAF0.
-- **fmul operand canonicalization is context-fixed, not source-reachable
-  (wall).** In 0x1000EAF0's row transforms the original FLDs the sixteen
-  view-matrix globals and FMULs the object fields; the recomp does the
-  mirror image, and no spelling flips it: operand order, sum association
-  (linear vs parenthesized-balanced), scalar vs array globals, and int vs
-  uint index types all compile to the SAME mirrored schedule. This extends
-  the float-DAG wall entry: the fld-side choice for both-memory products is
-  allocator-internal. Downstream effect: different spill points, different
-  block-var lifetimes, different slot packing — so a slot-layout cascade
-  behind a float-schedule mirror is ONE wall, not two.
+- **The fld-side of both-memory fmuls depends on the global's DECLARATION
+  FORM, not its spelling at the use.** Three forms of the same global
+  compile differently: `extern float g[16]` (reloc value 0),
+  `float g[16] = {1.0f}` (defined in-TU — reloc plus a real .data offset),
+  and `(*(float *)0x106e9a38)` (absolute, no reloc). On 0x1000EAF0 the
+  defined-in-TU form reproduced the original's scale block (slot preloaded
+  8x on the fld side, globals on the fmul side) where extern form matched
+  too; the absolute form reproduced the row transforms (globals on the fld
+  side) but broke the scale block. No single form fixed both blocks, and
+  within a form, operand order, sum association, term order (all 24
+  permutations scored identical), array-vs-scalar and cast spellings change
+  NOTHING — the per-expression schedule is canonicalized. So the residual
+  wall is narrower than "float DAG scheduling": it is the operand-RANKING
+  interaction between declaration form and reuse count, and a function can
+  be left with ONE block mirrored while the rest matches. Downstream: the
+  mirrored block shifts spill lifetimes, so a slot-layout cascade behind it
+  is the same single blocker.
+- **A probe is only evidence if the compile actually ran.** match_sweep
+  compiles NOTHING when the file has no `@implements` tag — it returns
+  before the compiler is invoked and every diff silently reuses the stale
+  .obj. Five spelling probes on 0x1000EAF0 were judged this way and all
+  five conclusions were wrong. Keep the tag on while iterating (a
+  tagged-but-diffing row is normal working state); the tell is `0/0 tagged
+  functions` in the sweep output.
+- **`float a = g[0], b = g[4]; x = a*m1 + b*m2 ...` ICEs VC5** (fatal
+  C1001) when the products feed a 4-term sum inside a deep if-else — the
+  named-temp lever cannot even be TESTED on fmul row shapes, and the
+  original source cannot have been spelled that way.
 
 ## Cost model (measured, 2026-08-22 timed test)
 
