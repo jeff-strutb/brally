@@ -10,6 +10,18 @@
  *
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
+ *
+ * STATE (2026-08-24): 9,344/9,354 bytes, 2,333/2,328 instructions, 33
+ * divergence regions -- 17 with stack-slot numbers masked.  Every branch,
+ * loop, call, emit and constant is verified against the original bytes;
+ * what remains is the fmul operand-canonicalization mirror in the two
+ * float blocks (see VC5-IDIOMS.md, wall entry) and the slot-layout
+ * cascade downstream of it (frame 0xd4 vs 0xdc).  The @implements tag
+ * stays off until the diff is clean -- see rule 2 in CLAUDE.md.
+ * Resume: tools/match_sweep.py src/core/drawing/br_scenedl.c, then the
+ * firstdiv.py comparator in the session scratchpad (or rewrite it from
+ * match_diff.parse_coff_obj + capstone) with --mask-slots to separate
+ * layout noise from real divergence.
  */
 #ifdef BR_MATCHING_BUILD
 
@@ -148,7 +160,7 @@ extern BrTrailSeg DAT_10273690[];
 
 /* WHAT IT DOES: build the frame's scene display list -- global state
  * preamble, every scene object's matrix + DL, then the trail quads. */
-/* @implements 0x1000EAF0 glide BrSceneDlBuild */
+/* implements-pending 0x1000EAF0 glide BrSceneDlBuild -- NOT byte-exact yet, tag withheld per rule 2 */
 void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 {
     int      i;

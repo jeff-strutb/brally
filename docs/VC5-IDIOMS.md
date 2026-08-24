@@ -279,6 +279,91 @@ the caller AND flipped a helper to match for free.
   not register residue. Skip functions whose orig starts `push -1` (C++ EH).
   One session of working the flagged list produced 18 new matches.
 
+- **`and esp,-8` means an 8-byte-aligned local.** VC5 emits
+  `push ebp; mov ebp,esp; and esp,-8` only when something in the frame
+  wants 8-byte alignment: a `double`, an `__int64`, or Ghidra's `float10` /
+  `undefined8` / `unkbyte10` (the pipeline rewrites those to `double` /
+  `__int64` in `tools/ghidra_to_match.py`). That steals ebp as a frame
+  pointer. A function whose original starts `sub esp, N; push ebx; push
+  ebp; …` with `xor ebp,ebp` is using ebp as a general register (often
+  the zero register) — it has no 8-byte local. Retype or delete the one
+  that does, and the compiler goes back to `sub esp, N` and frees ebp.
+  Observed on 0x10019A70: orig `83 ec 34` vs a draft that declared
+  `float10 fVar22` (an x87 return, not a stack slot) and compiled
+  `55 8b ec 83 e4 f8`. Instruction one cannot match until the aligned
+  local is gone; nothing downstream can until instruction one does.
+
+- **Empty `int f();` prototypes promote float args to double.** In C, a
+  call to an unprototyped function converts `float` arguments to
+  `double`, which emits `fstp qword [esp]` and is enough to force
+  `and esp,-8` on the caller's frame. Giving the callee its real
+  `float` parameters removes the aligned prologue. Proven 0x10019A70:
+  after `#include "br_vec.h"` (so BrVec3Lerp/ScaleBy/… take `float`),
+  `and esp,-8` disappeared and the four-register push matched; the
+  frame is still 8 bytes large (`sub esp, 0x3c` vs orig `0x34`) from
+  one remaining qword-arg call.
+
+- **0x10019A70 is one C function, last among the big targets.** 11,223 B
+  (11,223 / 480,853 of BRGlide.dll `.text`). Do not split it and do not
+  transcribe all 11 KB in one pass. Win `sub esp, 0x34` first (0x34-byte
+  frame, no 8-byte-aligned local), then grow section by section and watch
+  the first divergence march forward. It makes 131 distinct calls; every
+  wrong callee signature (stdcall vs cdecl, arity) corrupts the call site
+  and the stack cleanup, so it wants those callees matched first. The
+  port's Clock / Begin / Frame split is not a matching twin. Protocol:
+  `include/br_racestep.h`.
+
+- **Two-constant ternary `c ? K1 : K2` is neg/sbb/and (K1−K2)/add K2.**
+  Ghidra decompiles it as `(c ? K1-K2 : 0) + K2` — fold the add BACK INTO the
+  ternary or the expression scheduler treats the `+` as a separate node and
+  reorders the whole or-chain around it. Proven 0x1000EAF0's four
+  `b7000000` geometry-mode words: `(A ^ B ? 0x1000 : 0x2000) | ...` matched
+  where `((A ^ B ? 0xfffff000 : 0) + 0x2000) | ...` evaluated the or-terms
+  in a different order.
+- **Same-width flag reads CSE into one register load.** `mov ax,[esi+0x4c];
+  test eax,0x4a4; ...; test al,0x80` means the source read a USHORT field
+  once and tested it twice — spell every mask test in the group off the same
+  `*(uint16_t *)` read. A `uint32_t` read for one test and `uint16_t` for
+  another blocks the CSE and emits a memory-direct `test word ptr` plus a
+  re-read. Proven 0x1000EAF0 (post-draw flag group).
+- **An uncancelled `x + (y - x - K)` means the subtrahend was a VARIABLE.**
+  `mov eax,0xffffd620; sub eax,ecx` hoisted to a slot, then
+  `iw*0x40 + param + [slot] + cursor` summed at the use, is
+  `int negBase = -(param + 0x29e0);` assigned to a local before the loop —
+  spelled inline, VC5 algebraically cancels the ±param and the hoist
+  vanishes. The negated-base local blocks the cancellation and LICM spills
+  it. Proven 0x1000EAF0 (wheel-record addressing).
+- **A `lea reg,[base+index]` materialized after `[base+index+disp]` loads**
+  means the source read fields through a two-part sum before binding the
+  combined pointer: `dx = *(float *)(wb + (int)pCar + 0x50);` then
+  `pW = (float *)(wb + (int)pCar);` — folding both into pW first makes the
+  compiler pre-merge into one register. Proven 0x1000EAF0.
+- **A redundant-looking re-test of an unchanged variable is two SEPARATE
+  ifs.** `if (x) {A} ... if (!x) {B}` re-loads and re-tests x when the
+  distance is long (VC5 does not value-number across it); writing
+  `if (x) { A; goto tail; } B; tail:` folds the second test into a `jmp`.
+  Match the original's pair of tests with a pair of ifs. Proven 0x1000EAF0
+  (param_2 trail-section exit).
+- **Slot sharing crosses variables ONLY via block scope.** /O2 packs a
+  block-scoped local into the dead slot of ANY earlier variable (bSolo's
+  slot reused for a trail-loop float), refining the per-VARIABLE rule:
+  function-scoped locals never share with each other, but block-scoped ones
+  overlay dead function-scoped slots. When the original's frame is smaller
+  than the visible variable count suggests — or a Ghidra local changes type
+  mid-function — the second role was a block-scoped variable. Declaring the
+  right locals block-scoped (fMax/fMin/scale inside the transform arm, the
+  drain loop's own counters) is how the frame converges. Proven 0x1000EAF0.
+- **fmul operand canonicalization is context-fixed, not source-reachable
+  (wall).** In 0x1000EAF0's row transforms the original FLDs the sixteen
+  view-matrix globals and FMULs the object fields; the recomp does the
+  mirror image, and no spelling flips it: operand order, sum association
+  (linear vs parenthesized-balanced), scalar vs array globals, and int vs
+  uint index types all compile to the SAME mirrored schedule. This extends
+  the float-DAG wall entry: the fld-side choice for both-memory products is
+  allocator-internal. Downstream effect: different spill points, different
+  block-var lifetimes, different slot packing — so a slot-layout cascade
+  behind a float-schedule mirror is ONE wall, not two.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
