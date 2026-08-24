@@ -6,6 +6,7 @@
 #define _CRTIMP __declspec(dllimport)
 
 #include <windows.h>
+#include "br_match.h"   /* BR_THISCALL1 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -521,6 +522,163 @@ void BrMenuResetTrackStr(int param_1)
     strcpy(&DAT_10ac5870, &DAT_10396f08);
     strcpy(&DAT_10ac46a0, &DAT_10396f08);
     DAT_10ac5c5c = (BrDelObj *)DAT_10ac5c84;
+}
+
+/* ==================================================================== */
+/* Isolated byte-exact matches harvested from bulk pipeline worktrees.   */
+/* Verified match in a standalone TU; the port already carries           */
+/* different-signature or different-context versions of several (the     */
+/* file-exists helper, the flat-triangle commands), so they live here    */
+/* rather than in their named modules -- same reason as the block above. */
+/* ==================================================================== */
+
+extern int DAT_1021c810;
+extern char DAT_1007b1d4;
+extern char DAT_1007b0e0;
+
+/* WHAT IT DOES: reports whether a file can be opened for reading, and when
+ * the verbose-debug flag is set also prints CHK_FileExists(path) to the
+ * debugger. */
+/* @implements 0x10003680 glide BrChkFileExists */
+int BrChkFileExists(char *param_1)
+{
+    FILE *_File;
+    char local_400[1024];
+
+    if (DAT_1021c810 != 0) {
+        sprintf(local_400, &DAT_1007b1d4, param_1);
+        OutputDebugStringA(local_400);
+    }
+    _File = fopen(param_1, &DAT_1007b0e0);
+    if (_File == (FILE *)0x0) {
+        return 0;
+    }
+    fclose(_File);
+    return 1;
+}
+
+void FUN_1001ff60(int, int, int);
+void FUN_10020460(int, int, int);
+
+/* WHAT IT DOES: draws one flat-shaded z-buffered triangle, permuting the
+ * three vertex bytes according to a selector in the command. */
+/* @implements 0x1001FEF0 glide BrDlCmdTri1FlatZ */
+unsigned char *BrDlCmdTri1FlatZ(unsigned char *p)
+{
+    switch (p[7]) {
+    case 0:
+        FUN_1001ff60(p[6], p[5], p[4]);
+        return p + 8;
+    case 1:
+        FUN_1001ff60(p[5], p[4], p[6]);
+        return p + 8;
+    default:
+        FUN_1001ff60(p[4], p[6], p[5]);
+        return p + 8;
+    }
+}
+
+/* WHAT IT DOES: draws one flat-shaded triangle with the z-buffer off,
+ * permuting the three vertex bytes according to a selector in the command. */
+/* @implements 0x100203F0 glide BrDlCmdTri1Flat */
+unsigned char *BrDlCmdTri1Flat(unsigned char *p)
+{
+    switch (p[7]) {
+    case 0:
+        FUN_10020460(p[6], p[5], p[4]);
+        return p + 8;
+    case 1:
+        FUN_10020460(p[5], p[4], p[6]);
+        return p + 8;
+    default:
+        FUN_10020460(p[4], p[6], p[5]);
+        return p + 8;
+    }
+}
+
+extern int DAT_10ac5c50;
+extern int DAT_100a9360;
+extern int DAT_10ac5bf4;
+extern unsigned short DAT_10ac5b3a;
+extern int DAT_10ac40a0;
+extern int DAT_10ac5c54;
+extern int DAT_100aab8c;
+
+/* WHAT IT DOES: reports whether a numbered input bit is set, forcing
+ * off for code 12 and on for 13/14 under a lock flag. */
+/* @implements 0x100387F0 glide BrInputBitHeld */
+int BrInputBitHeld(int code)
+{
+    if (code == 0xc)
+        return 0;
+    if (DAT_10ac5c50 != 0)
+        return 1;
+    if (DAT_100a9360 == 0) {
+        if (DAT_10ac5bf4 != 0)
+            return (1 << code) & DAT_10ac5b3a;
+        return (1 << code) & DAT_10ac40a0;
+    }
+    if ((DAT_10ac5c54 != 0) && ((code == 0xe) || (code == 0xd)))
+        return 1;
+    return (1 << code) & DAT_100aab8c;
+}
+
+extern int DAT_10ac5bec;
+int BR_THISCALL1 FUN_1006d180(void *pThis);
+int BR_THISCALL1 FUN_1006d190(void *pThis);
+int FUN_1002f790(int *p, int a, int b, int c, int d);
+int FUN_10009a00(int a, int b, int c, int d, int e, int f);
+
+/* WHAT IT DOES: sends a DirectPlay payload built from a counted state
+ * object, or bails out with that count when a skip flag is set. */
+/* @implements 0x10005140 glide BrNetTrySend */
+int BrNetTrySend(int *param_1, void *param_2)
+{
+    int n;
+
+    if (DAT_10ac5bec != 0)
+        return FUN_1006d180(param_2);
+    if (param_1[3] != 0)
+        FUN_1002f790(param_1,
+                     FUN_1006d190(param_2),
+                     FUN_1006d180(param_2),
+                     1, 1);
+    n = FUN_10009a00(*param_1, param_1[2], 0, 0,
+                     FUN_1006d190(param_2),
+                     FUN_1006d180(param_2));
+    if (n == 0)
+        return FUN_1006d180(param_2);
+    return -1;
+}
+
+int BR_THISCALL1 BrCountedTotal(void *);
+int BR_THISCALL1 BrStateGetField10(void *);
+
+/* WHAT IT DOES: if a net-lock flag is set, just return the counted
+ * total; otherwise either dispatch through the local path or send a
+ * DirectPlay payload built from the link and the counted object. */
+/* @implements 0x10004A40 glide BrCountedNetSend */
+int BrCountedNetSend(int *param_1, void *param_2)
+{
+    int iVar2;
+
+    if (DAT_10ac5bec != 0) {
+        return BrCountedTotal(param_2);
+    }
+    if (param_1[3] != 0) {
+        FUN_1002f790(param_1,
+                     BrStateGetField10(param_2),
+                     BrCountedTotal(param_2),
+                     1, 1);
+        return BrCountedTotal(param_2);
+    }
+    iVar2 = FUN_10009a00(*param_1, param_1[2], 1, 0,
+                         BrStateGetField10(param_2),
+                         BrCountedTotal(param_2));
+    if (iVar2 == 0) {
+        return BrCountedTotal(param_2);
+    }
+    return -1;
 }
 
 #endif /* BR_MATCHING_BUILD */
