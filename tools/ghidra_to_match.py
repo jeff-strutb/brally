@@ -685,7 +685,7 @@ def compile_and_check(src_text, func_name, va_hex, orig_bytes):
             f.write(src_text)
 
         last_errors = ''
-        for opt in ['/O2', '/Od']:
+        for opt in ['/O2', '/Od', '/O2 /Oy-']:
             obj, errs = match_sweep.compile_variant(src_path, 'ghidra_auto', opt)
             if obj is None:
                 last_errors = ' | '.join(errs)[:200]
@@ -832,7 +832,7 @@ def single_compile_and_check(func, globals_map, fn_names):
 
         last_errors = ''
         best = None
-        for opt in ['/O2', '/Od']:
+        for opt in ['/O2', '/Od', '/O2 /Oy-']:
             obj, errs = match_sweep.compile_variant(src_path, tag, opt)
             if obj is None:
                 last_errors = ' | '.join(errs)[:200]
@@ -966,7 +966,7 @@ def refine_function(row, max_rounds=4, max_cands=80):
     src = open(work).read()
     orig_bytes = open(orig_file, 'rb').read()
     func_name = row['name']
-    opts = [row['opt']] if row.get('opt') else ['/O2', '/Od']
+    opts = [row['opt']] if row.get('opt') else ['/O2', '/Od', '/O2 /Oy-']
     tag = 'ghidra_ref_' + va_hex[2:]
     cur, cur_opt = _score_source(src, func_name, orig_bytes, opts, tag)
     if cur is None:
