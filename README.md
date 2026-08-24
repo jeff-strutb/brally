@@ -30,24 +30,39 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
-from the original DLL. Roughly half of the game's `.text` has been transcribed
-into C, and just over a quarter of that now reproduces the original bytes exactly.
-The matched set is still dominated by small and mid-sized functions; the large
-ones are where the remaining work is. Separately, the macOS/Metal port of
-that same source boots, renders the front end from the game's own artwork,
-parses tracks, draws retail car geometry through Metal, and runs the physics
-integrator with collision response wired in; 136 test suites pass. The per-frame
-race render is the last major gate.
+from the original DLL. Just over half of the game's `.text` is transcribed into
+C, and 45% of the transcribed functions now reproduce the original bytes
+exactly -- driven by a growing dictionary of proven compiler idioms
+(`docs/VC5-IDIOMS.md`) and a structural audit (`tools/sigaudit.py`) that flags
+which near-misses are idiom-fixable rather than allocator noise. The matched
+set still skews small (median 32 bytes); the 92 functions over 1 KB hold 48%
+of all code bytes and are where the campaign is decided. Separately, the
+macOS/Metal port of that same source boots, renders the front end from the
+game's own artwork, parses tracks, draws retail car geometry through Metal,
+and runs the physics integrator with collision response wired in; 136 test
+suites pass. The per-frame race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 222,339 / 460,165 bytes of `.text` · 869 / 2,140 functions | `██████████░░░░░░░░░░` 48% |
-| **Byte-exact under MSVC 5.0** | 244 of 869 transcribed functions · 11,312 bytes | `██████░░░░░░░░░░░░░░░░` 28% |
+| Transcribed into C | 238,118 / 460,165 bytes of `.text` · 1,047 / 2,140 mapped functions | `██████████░░░░░░░░░░` 52% |
+| **Byte-exact under MSVC 5.0** | 474 of 1,047 transcribed functions · 27,393 bytes | `█████████░░░░░░░░░░░` 45% |
+| Byte-exact, of all `.text` | 27,393 / 460,165 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 136 / 136 green | `████████████████████` 100% |
 
-The second row is the one that counts; everything else is diagnostics.
+The second and third rows are the ones that count; everything else is
+diagnostics. They tell the same story from opposite ends: nearly half of the
+transcribed functions are exact, but the exact set is small-function-heavy, so
+by raw bytes the campaign is just getting started.
+
+One denominator note: 747 of the 2,140 mapped entries are 16 bytes or smaller
+-- import thunks, jump stubs and exception-handling scaffolding the original
+toolchain generated, not code anyone wrote. Those are reproduced by the link
+stage of the rebuild, not by matched C, so the realistic hand-matching target
+is roughly 1,400 functions, of which 474 (34%) are done. The formal fence list
+for that class is still being drawn up; until it lands, the conservative
+2,140-function denominator stands in the table above.
 
 Both denominators move as work lands, so the percentages are not monotonic. A
 function only enters the measured set once it carries an `@implements` claim,
