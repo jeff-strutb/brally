@@ -727,6 +727,21 @@ void BrCollRespListReset(void)
     s_iNode           = 0;
 }
 
+#ifdef BR_MATCHING_BUILD
+/* The original's allocator is a POINTER bump cursor (0x11778844), not the
+ * port's index -- and it has no bound, which the header explains is safe. */
+extern BrCollRespNode *g_pBrCrCursor;           /* 0x11778844 */
+
+/* @implements 0x10066230 glide BrCrListPush */
+void BrCrListPush(const BrCollPlane *pPlane)
+{
+    BrCollRespNode *pN = g_pBrCrCursor++;
+
+    pN->pPlane = pPlane;
+    pN->pNext  = g_pBrCollRespList;
+    g_pBrCollRespList = pN;
+}
+#else
 static void BrCrListPush(const BrCollPlane *pPlane)
 {
     BrCollRespNode *pN;
@@ -745,6 +760,7 @@ static void BrCrListPush(const BrCollPlane *pPlane)
     pN->pNext  = g_pBrCollRespList;
     g_pBrCollRespList = pN;
 }
+#endif
 
 /* ==================================================================== */
 /* 0x10066AD0 -- the gather                                              */
