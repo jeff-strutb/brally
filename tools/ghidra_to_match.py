@@ -1026,6 +1026,35 @@ def _refine_candidates(src):
         nb = (body[:m.start()] +
               '((unsigned short)%s == 0xffff)' % m.group(1) + body[m.end():])
         yield ('imm16:%s' % m.group(1), head + nb)
+    # --- idiom transforms proven 2026-08-25, 0x1000EAF0 fourth pass
+    #     (see the VC5-IDIOMS.md fourth-pass entry) ---
+    # (l) retype an int local to unsigned short: a uint16_t variable loaded
+    #     from a word array compiles to the original's `mov r16, [mem];
+    #     and r32, 0xffff` (load-into-live + mask) and flips `mov; shl 3`
+    #     back to `lea [r*8]` in stride scaling; an int local gives
+    #     `xor r,r; mov r16, [mem]` instead (proven BrSceneDlBuild idx).
+    for m in re.finditer(r'^(\s+)(int|unsigned int) (\w+);$', body, re.M):
+        nb = (body[:m.start()] + '%sunsigned short %s;'
+              % (m.group(1), m.group(3)) + body[m.end():])
+        yield ('u16:%s' % m.group(3), head + nb)
+    # (m) widen a ushort mask global to int and truncate the test: the
+    #     original's `mov eax, [mask]; mov dx, [flags]; and edx, eax;
+    #     test dx, dx` means the mask global was int-sized and the AND
+    #     result compared 16-bit -- `(unsigned short)(flags & mask) == 0`
+    #     (proven BrSceneDlBuild flag gate). Ghidra types the global
+    #     ushort and the compiler then tests memory-direct instead.
+    for m in re.finditer(r'^extern (unsigned short|short) (\w+);$',
+                         head, re.M):
+        g = m.group(2)
+        um = re.search(r'\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*&\s*%s)\)'
+                       r'\s*==\s*0' % re.escape(g), body)
+        if um is None:
+            continue
+        nh = head[:m.start()] + 'extern int %s;' % g + head[m.end():]
+        nb = (body[:um.start()] +
+              '((unsigned short)(%s)) == 0' % um.group(1) +
+              body[um.end():])
+        yield ('maskw:%s' % g, nh + nb)
 
 
 def refine_function(row, max_rounds=4, max_cands=80):
