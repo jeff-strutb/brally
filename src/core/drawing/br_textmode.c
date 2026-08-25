@@ -52,10 +52,12 @@ void BR_THISCALL1 BrPairReset_10073B90(uint32_t *pThis)
 
 /* WHAT IT DOES: rebuilds the clipper's free list: 64 vertex nodes chained
  * together, last node first. */
+/* @implements 0x1000C9C0 glide BrNodeChainReset_1000F460 */
 void BrNodeChainReset_1000F460(void)
 {
-    uint32_t *p = &g_2E5E98;
+    /* prev is zeroed BEFORE the cursor is materialised (xor ecx,ecx first). */
     uint32_t prev = 0;
+    uint32_t *p = &g_2E5E98;
 
     do {
         *p = prev;
