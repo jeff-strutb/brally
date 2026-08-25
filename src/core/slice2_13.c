@@ -13,7 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl; the original is __stdcall. */
+#define BrFileWriteChecked BrFileWriteChecked_cdecl
+#endif
 #include "slice2_13.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrFileWriteChecked
+#endif
 #include "slice1_03.h"   /* BrAppMsg, BrAppMsgDispatch (= 0x1000BEA0) */
 
 /* ==========================================================================
@@ -80,11 +87,34 @@ FILE *BrFileOpenWrite(const char *pszPath)
     return pFile;
 }
 
+#ifdef BR_MATCHING_BUILD
+/* Both checked-IO twins are __stdcall (ret 0xC) and both report through the
+ * fatal printf at 0x10008EC0 with the READ string -- the fwrite one too. */
+extern void BrLogFatalPrintf(const char *pFmt, ...);
+
+/* @implements 0x10008E60 glide BrFileReadChecked */
+void __stdcall BrFileReadChecked(FILE *pFile, void *pvData, unsigned int cbData)
+{
+    if (fread(pvData, 1, cbData, pFile) != cbData) {
+        BrLogFatalPrintf("File read failure");
+    }
+}
+
+/* @implements 0x10008E90 glide BrFileWriteChecked */
+void __stdcall BrFileWriteChecked(FILE *pFile, const void *pvData,
+                                  unsigned int cbData)
+{
+    if (fwrite(pvData, 1, cbData, pFile) != cbData) {
+        BrLogFatalPrintf("File read failure");   /* sic -- an fwrite */
+    }
+}
+#else
 void BrFileWriteChecked(FILE *pFile, const void *pvData, uint32_t cbData)
 {
     if (fwrite(pvData, 1, cbData, pFile) != (size_t)cbData)
         BrErrorf("File read failure");   /* sic -- this is an fwrite */
 }
+#endif
 
 /* ==========================================================================
  * 2. 0x1000BA70 -- index walker
