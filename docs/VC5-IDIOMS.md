@@ -370,6 +370,20 @@ the caller AND flipped a helper to match for free.
   be left with ONE block mirrored while the rest matches. Downstream: the
   mirrored block shifts spill lifetimes, so a slot-layout cascade behind it
   is the same single blocker.
+  SECOND-PASS REFINEMENT (0x1000EAF0 rows, hand-simulated from the bytes):
+  the MIXED spelling that reproduces both operand-role patterns is
+  absolute-address derefs for the row transforms plus an extern-symbol
+  spelling for the scale products, in ONE TU — no single declaration does
+  both. The original's row schedule is tree ((f+c)+e)+d with the fadds
+  DEFERRED two products behind and the next row's loads interleaved; a
+  sequenced barrier (`float t = f_term;` then the rest as one expression)
+  reproduces the first six instructions exactly but forces the first add
+  early, and no probed form defers it: 24 term orders x left/right/balanced
+  trees, comma-joined rows, local += chains (spills), global += chains
+  (emits fst per step), two-temp forms (spill), /G3-/G6/GB, /Op, /Oa, /Ow,
+  /Ox, /Os, /O1 all fail differently. ~15 instructions of fxch/ordering
+  residue in one block is the function's floor pending a genuinely new
+  insight (different compiler patch level? an unprobed pragma?).
 - **A probe is only evidence if the compile actually ran.** match_sweep
   compiles NOTHING when the file has no `@implements` tag — it returns
   before the compiler is invoked and every diff silently reuses the stale
