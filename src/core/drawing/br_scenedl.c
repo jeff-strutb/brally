@@ -11,21 +11,16 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-08-24, second pass): 9,344/9,354 bytes, 2,333/2,328
- * instructions, 33 divergence regions -- 17 with stack-slot numbers
- * masked.  Every branch, loop, call, emit and constant is verified
- * against the original bytes.  The out/view matrices are DEFINED in-TU
- * (see VC5-IDIOMS.md: fld-side depends on declaration form), which
- * reproduces the scale block; the four row transforms remain mirrored
- * under every declaration form and spelling probed, and the slot-layout
- * cascade (frame 0xd4 vs 0xdc) sits downstream of that one block.
- * The @implements tag is LIVE while iterating (match_sweep skips
- * untagged files entirely); the row in report.csv is a diff row, and
- * rule 2 forbids calling this matched in prose until it diffs clean.
- * Resume: tools/match_sweep.py src/core/drawing/br_scenedl.c, and
- * rebuild the divergence comparator from match_diff.parse_coff_obj +
- * capstone (reloc-masked byte equality per instruction, resync window,
- * optional slot-displacement masking).
+ * STATE (2026-08-24, third pass): 9,264/9,354 bytes, 2,313/2,328
+ * instructions, 29 divergence regions (22 slot-masked).  The mixed
+ * declaration spelling (absolute VIEW/OUTM macros for the row transforms,
+ * extern VIEWS for the scale products) reproduces the original's operand
+ * roles in BOTH float blocks; what remains is ~15 instructions of add-
+ * deferral/fxch residue in the row block (see the wall entry's second-pass
+ * refinement in VC5-IDIOMS.md for the full probe map -- 60+ variants,
+ * all characterized) plus the slot-layout cascade behind it.  Everything
+ * structural is verified equivalent.  @implements stays live for the
+ * sweep; rule 2 forbids claiming a match until the diff is clean.
  */
 #ifdef BR_MATCHING_BUILD
 
@@ -139,10 +134,10 @@ extern uint32_t *DAT_1035f7dc;      /* trail vertex write cursor */
  * section offsets, which zero-valued extern relocs cannot reproduce.
  * (0x106e78f0 precedes 0x106e9a38 in the image; the definitions keep that
  * order.) */
-float DAT_106e78f0_def[16] = {1.0f};
-float DAT_106e9a38_def[16] = {1.0f};
-#define OUTM(k)  (DAT_106e78f0_def[k])
-#define VIEW(k)  (DAT_106e9a38_def[k])
+extern float DAT_106e9a38[16];   /* the view matrix (extern spelling) */
+#define OUTM(k)  (*(float *)(0x106e78f0 + (k) * 4))
+#define VIEW(k)  (*(float *)(0x106e9a38 + (k) * 4))
+#define VIEWS(k) (DAT_106e9a38[k])   /* symbol spelling, scale block */
 
 /* The trail ring: 500 segments per wheel, 4 wheels per car. */
 typedef struct BrTrailSeg {
@@ -231,7 +226,7 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
         base = DAT_1035fb8c;
         DAT_1035fb74 = -1;
         cHead = -1;
-        DAT_1035f7d0 = BrFloat12MaxAbs(DAT_106e9a38_def);
+        DAT_1035f7d0 = BrFloat12MaxAbs(DAT_106e9a38);
         DAT_1035f7e0 = 0;
         if (bSolo) {
             DAT_1035f7e0 = 0x800;
@@ -395,31 +390,27 @@ draw:
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    OUTM(12) = VIEW(4) * pObj[0xd] +
-                                   VIEW(8) * pObj[0xe] +
-                                   VIEW(0) * pObj[0xc] + VIEW(12) * pObj[0xf];
-                    OUTM(13) = VIEW(1) * pObj[0xc] +
-                                   VIEW(13) * pObj[0xf] +
-                                   VIEW(9) * pObj[0xe] + VIEW(5) * pObj[0xd];
-                    OUTM(14) = VIEW(2) * pObj[0xc] +
-                                   VIEW(14) * pObj[0xf] +
-                                   VIEW(10) * pObj[0xe] + VIEW(6) * pObj[0xd];
-                    OUTM(15) = VIEW(3) * pObj[0xc] +
-                                   VIEW(15) * pObj[0xf] +
-                                   VIEW(11) * pObj[0xe] + VIEW(7) * pObj[0xd];
+                                        OUTM(12) = ((VIEW(0) * pObj[0xc] + VIEW(12) * pObj[0xf]) +
+                                    VIEW(8) * pObj[0xe]) + VIEW(4) * pObj[0xd];
+                    OUTM(13) = ((VIEW(1) * pObj[0xc] + VIEW(13) * pObj[0xf]) +
+                                    VIEW(9) * pObj[0xe]) + VIEW(5) * pObj[0xd];
+                    OUTM(14) = ((VIEW(2) * pObj[0xc] + VIEW(14) * pObj[0xf]) +
+                                    VIEW(10) * pObj[0xe]) + VIEW(6) * pObj[0xd];
+                    OUTM(15) = ((VIEW(3) * pObj[0xc] + VIEW(15) * pObj[0xf]) +
+                                    VIEW(11) * pObj[0xe]) + VIEW(7) * pObj[0xd];
                     scale = *pObj;
-                    OUTM(0) = scale * VIEW(0);
-                    OUTM(1) = scale * VIEW(1);
-                    OUTM(2) = scale * VIEW(2);
-                    OUTM(3) = scale * VIEW(3);
-                    OUTM(4) = scale * VIEW(4);
-                    OUTM(5) = scale * VIEW(5);
-                    OUTM(6) = scale * VIEW(6);
-                    OUTM(7) = scale * VIEW(7);
-                    OUTM(8) = scale * VIEW(8);
-                    OUTM(9) = scale * VIEW(9);
-                    OUTM(10) = scale * VIEW(10);
-                    OUTM(11) = scale * VIEW(11);
+                    OUTM(0) = scale * VIEWS(0);
+                    OUTM(1) = scale * VIEWS(1);
+                    OUTM(2) = scale * VIEWS(2);
+                    OUTM(3) = scale * VIEWS(3);
+                    OUTM(4) = scale * VIEWS(4);
+                    OUTM(5) = scale * VIEWS(5);
+                    OUTM(6) = scale * VIEWS(6);
+                    OUTM(7) = scale * VIEWS(7);
+                    OUTM(8) = scale * VIEWS(8);
+                    OUTM(9) = scale * VIEWS(9);
+                    OUTM(10) = scale * VIEWS(10);
+                    OUTM(11) = scale * VIEWS(11);
                     {
                     float *pM = BrMtxPoolAlloc();
                     fMax = 0.0f;
@@ -502,7 +493,7 @@ draw:
                         OUTM(14) = fMin * OUTM(14);
                         OUTM(15) = fMin * OUTM(15);
                     }
-                    BrGuMtxStore(DAT_106e78f0_def, pM);
+                    BrGuMtxStore((float *)0x106e78f0, pM);
                     EMIT(0x39e0010, pM);
                     EMIT(0x3980010, pM + 4);
                     EMIT(0x39a0010, pM + 8);
