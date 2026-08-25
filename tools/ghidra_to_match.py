@@ -997,6 +997,24 @@ def _refine_candidates(src):
         t = 'unsigned int' if m.group(2) == 'int' else 'int'
         nb = body[:m.start()] + '%s%s %s;' % (m.group(1), t, m.group(3)) + body[m.end():]
         yield ('local:%s:%s' % (m.group(3), t), head + nb)
+    # (n) fold a trailing assignment into the return and make the function
+    #     return int: Ghidra prints `void f() { g = expr; return; }` when
+    #     callers ignore the result, but the original `return g = expr;`
+    #     forces the value into EAX (mov eax,edx after a magic divide, and
+    #     the short-form a3 store to a global).  Proven
+    #     BrReplayCountFromBytes 0x10063DB0.
+    vm = re.search(r'\bvoid(\s+(?:__\w+\s+)?\w+\s*\()', body)
+    tails = list(re.finditer(
+        r'\n(\s*)([\w\*\(\)\[\]\. \t>-]+?)\s*=\s*([^;=<>!][^;]*);\s*\n\s*return;\s*\n\}',
+        body))
+    if vm and tails:
+        t = tails[-1]
+        if t.start() > vm.start():
+            nb = (body[:vm.start()] + 'int' + body[vm.start() + 4:t.start()] +
+                  '\n%sreturn %s = %s;\n}' % (t.group(1), t.group(2).strip(),
+                                              t.group(3).strip()) +
+                  body[t.end():])
+            yield ('retassign:%s' % t.group(2).strip()[:16], head + nb)
     # --- idiom transforms proven 2026-08-25 (see docs/VC5-IDIOMS.md) ---
     # (d) `(X != 0) - 1` (and Ghidra's `(X == 0) - 1`) -> branchless ternary:
     #     the ternary compiles to neg/sbb/neg/dec, the arithmetic form to setne.
@@ -1160,6 +1178,14 @@ def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80,
     rows = []
     with open(LEARNINGS_CSV) as f:
         rows = list(csv.DictReader(f))
+    # Learnings rows go stale when a function lands in the tree by hand:
+    # never re-climb a VA report.csv already calls matched (19 such rows
+    # burned compiles in the first wide run). --va overrides for testing.
+    tree_matched = set()
+    if os.path.exists(REPORT_CSV):
+        with open(REPORT_CSV) as f:
+            tree_matched = {r['va'].lower() for r in csv.DictReader(f)
+                            if r['status'] == 'match'}
     todo = []
     for r in rows:
         try:
@@ -1168,6 +1194,8 @@ def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80,
             continue
         if int(r.get('orig_size') or 0) < min_size:
             continue  # tiny junk/thunks: unreachable from C, don't climb them
+        if r['va'].lower() in tree_matched and not target_va:
+            continue
         if 0 < d <= max_diffs and (not target_va or r['va'].lower() == target_va.lower()):
             todo.append(r)
     # Biggest payoff first, so an interrupted run banked the valuable half.
