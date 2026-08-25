@@ -26,43 +26,46 @@ DLLs over one shared core: `BRGlide.dll` (3dfx Glide, the mature target and the
 reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 ~100 KB of CRT that has to be identified and fenced off).
 
-## Status
+## Status (2026-08-25)
 
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
-from the original DLL. Just over half of the game's `.text` is transcribed into
-C, and 45% of the transcribed functions now reproduce the original bytes
-exactly -- driven by a growing dictionary of proven compiler idioms
-(`docs/VC5-IDIOMS.md`) and a structural audit (`tools/sigaudit.py`) that flags
-which near-misses are idiom-fixable rather than allocator noise. The matched
-set still skews small (median 32 bytes); the 92 functions over 1 KB hold 48%
-of all code bytes and are where the campaign is decided. Separately, the
+from the original DLL. Half of the game's `.text` is transcribed into C across
+1,090 functions, and 507 of those now reproduce the original bytes exactly --
+driven by a growing dictionary of proven compiler idioms
+(`docs/VC5-IDIOMS.md`), a Ghidra-assisted batch decompilation pipeline, and a
+structural audit (`tools/sigaudit.py`) that flags which near-misses are
+idiom-fixable rather than allocator noise. The matched set still skews small
+(median 35 bytes); the 44 functions over 1 KB hold 23% of all code bytes and
+are where the campaign is decided. The second-largest function (`0x1000EAF0`,
+9,264 bytes in `br_scenedl.c`) broke through its main float-scheduling wall on
+2026-08-25 and is down to 18 divergence regions from 29. Separately, the
 macOS/Metal port of that same source boots, renders the front end from the
 game's own artwork, parses tracks, draws retail car geometry through Metal,
-and runs the physics integrator with collision response wired in; 136 test
+and runs the physics integrator with collision response wired in; 137 test
 suites pass. The per-frame race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 238,118 / 460,165 bytes of `.text` · 1,047 / 2,140 mapped functions | `██████████░░░░░░░░░░` 52% |
-| **Byte-exact under MSVC 5.0** | 474 of 1,047 transcribed functions · 27,393 bytes | `█████████░░░░░░░░░░░` 45% |
-| Byte-exact, of all `.text` | 27,393 / 460,165 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
+| Transcribed into C | 240,601 / 480,853 bytes of `.text` · 1,090 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
+| **Byte-exact under MSVC 5.0** | 507 of 1,090 transcribed functions · 30,154 bytes | `█████████░░░░░░░░░░░` 47% |
+| Byte-exact, of all `.text` | 30,154 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
-| Port test suites | 136 / 136 green | `████████████████████` 100% |
+| Port test suites | 137 / 137 green | `████████████████████` 100% |
 
 The second and third rows are the ones that count; everything else is
 diagnostics. They tell the same story from opposite ends: nearly half of the
 transcribed functions are exact, but the exact set is small-function-heavy, so
 by raw bytes the campaign is just getting started.
 
-One denominator note: 747 of the 2,140 mapped entries are 16 bytes or smaller
+One denominator note: many of the 2,818 mapped entries are 16 bytes or smaller
 -- import thunks, jump stubs and exception-handling scaffolding the original
 toolchain generated, not code anyone wrote. Those are reproduced by the link
 stage of the rebuild, not by matched C, so the realistic hand-matching target
-is roughly 1,400 functions, of which 474 (34%) are done. The formal fence list
-for that class is still being drawn up; until it lands, the conservative
-2,140-function denominator stands in the table above.
+is smaller than the full map. The formal fence list for that class is still
+being drawn up; until it lands, the conservative 2,818-function denominator
+stands in the table above.
 
 Both denominators move as work lands, so the percentages are not monotonic. A
 function only enters the measured set once it carries an `@implements` claim,
