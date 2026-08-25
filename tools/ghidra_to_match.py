@@ -953,6 +953,79 @@ def _refine_candidates(src):
         t = 'unsigned int' if m.group(2) == 'int' else 'int'
         nb = body[:m.start()] + '%s%s %s;' % (m.group(1), t, m.group(3)) + body[m.end():]
         yield ('local:%s:%s' % (m.group(3), t), head + nb)
+    # --- idiom transforms proven 2026-08-25 (see docs/VC5-IDIOMS.md) ---
+    # (d) `(X != 0) - 1` (and Ghidra's `(X == 0) - 1`) -> branchless ternary:
+    #     the ternary compiles to neg/sbb/neg/dec, the arithmetic form to setne.
+    for m in re.finditer(r'\(([^()]+?)\s*(!=|==)\s*0\)\s*-\s*1', body):
+        tern = ('((%s != 0) ? 0 : -1)' if m.group(2) == '!=' else
+                '((%s == 0) ? 0 : -1)') % m.group(1).strip()
+        nb = body[:m.start()] + tern + body[m.end():]
+        yield ('tern:%s' % m.group(1).strip()[:20], head + nb)
+    # (e) char-constant equality -> open range test: Ghidra prints the
+    #     range-collapsed `X == '\x7f'` where the original compared `X > 0x7e`
+    #     (proven BrTextBoxMeasureA/B). Only kept when the byte diff drops.
+    for m in re.finditer(r"\((\w+)\s*==\s*'\\x([0-9a-fA-F]{2})'\)", body):
+        c = int(m.group(2), 16)
+        if c:
+            nb = (body[:m.start()] +
+                  "(%s > '\\x%02x')" % (m.group(1), c - 1) + body[m.end():])
+            yield ('rng:%s>%02x' % (m.group(1), c - 1), head + nb)
+    # (f) pointer-temp loop latch -> value temp: `pA = pB + N; pB = pB + M;`
+    #     followed by `while (*pA ...)` materialises a dead lea; the value
+    #     temp does not (proven BrHudTextListDraw).
+    for m in re.finditer(
+            r'(\w+) = (\w+) \+ (0x[0-9a-fA-F]+|\d+);\s*\n(\s*)\2 = \2 \+ '
+            r'(0x[0-9a-fA-F]+|\d+);\s*\n(\s*)\} while \(\*\1( != 0)?\);', body):
+        pA, pB, n, ind1, adv, ind2, nz = (m.group(1), m.group(2), m.group(3),
+                                          m.group(4), m.group(5), m.group(6),
+                                          m.group(7) or '')
+        repl = ('%sv_%s = %s[%s];\n%s%s = %s + %s;\n%s} while (v_%s%s);'
+                % ('', pA, pB, n, ind1, pB, pB, adv, ind2, pA, nz))
+        nb = body[:m.start()] + repl + body[m.end():]
+        # declare the value temp next to the pointer temp's decl
+        nb = re.sub(r'^(\s+)(?:\w+[\w \*]*?)\*\s*%s;$' % pA,
+                    r'\g<0>\n\1int v_%s;' % pA, nb, count=1, flags=re.M)
+        yield ('valtemp:%s' % pA, head + nb)
+    # (g) dword byte-swap rotation -> one temp holding the HIGH byte per pair
+    #     (proven BrTrackFixupSegList / BrTrackSwapRec28). Ghidra's rotation:
+    #       tA = E0; E0 = E3; tB = E2; E3 = tA; E2 = E1; E1 = tB;
+    #     The original's:
+    #       tA = E3; E3 = E0; E0 = tA; tA = E2; E2 = E1; E1 = tA;
+    swp = re.compile(
+        r'(\w+) = ([^;\n]+?);\s*\n(\s*)([^;\n]+?) = ([^;\n]+?);\s*\n'
+        r'\3(\w+) = ([^;\n]+?);\s*\n\3([^;\n]+?) = \1;\s*\n'
+        r'\3([^;\n]+?) = ([^;\n]+?);\s*\n\3([^;\n]+?) = \6;')
+    for m in swp.finditer(body):
+        tA, e0a, ind, e0b, e3a, tB, e2a, e3b, e2b, e1a, e1b = m.groups()
+        # shape check: tA=E0; E0=E3; tB=E2; E3=tA; E2=E1; E1=tB
+        if not (e0a.strip() == e0b.strip() and e3a.strip() == e3b.strip()
+                and e2a.strip() == e2b.strip() and e1b.strip() == e1a.strip()):
+            continue
+        E0, E3, E2, E1 = e0a.strip(), e3a.strip(), e2a.strip(), e1a.strip()
+        repl = ('%s = %s;\n%s%s = %s;\n%s%s = %s;\n%s%s = %s;\n%s%s = %s;\n'
+                '%s%s = %s;' % (tA, E3, ind, E3, E0, ind, E0, tA, ind,
+                                tA, E2, ind, E2, E1, ind, E1, tA))
+        nb = body[:m.start()] + repl + body[m.end():]
+        yield ('swaprot:%s' % tA, head + nb)
+    # (i) `X > C` -> `X >= C+1` (and via flipped spellings): the original
+    #     clamp compares against the power-of-two bound (proven BrSpanExtend:
+    #     `>= 0x40` where Ghidra prints `0x3f < x`).
+    for m in re.finditer(r'\(([^()<>=!&|]+?)\s*>\s*(0x[0-9a-fA-F]+|\d+)\)', body):
+        x, c = m.group(1).strip(), int(m.group(2), 0)
+        nb = (body[:m.start()] + '(%s >= 0x%x)' % (x, c + 1) + body[m.end():])
+        yield ('geq:%s>=%x' % (x[:16], c + 1), head + nb)
+    # (j) drop one narrowing cast in a masked compare: `((char)X & M)` /
+    #     `((unsigned char)X & M)` -> `(X & M)` — the plain int compare
+    #     narrows only the cmp (proven BrNetPeerMsgCancel).
+    for m in re.finditer(r'\((?:unsigned )?char\)\s*(\*?\w+(?:\[\w+\])?)', body):
+        nb = body[:m.start()] + m.group(1) + body[m.end():]
+        yield ('dropcast:%s' % m.group(1)[:16], head + nb)
+    # (k) short sentinel encoding: `X == -1` -> `(unsigned short)X == 0xffff`
+    #     (imm8 vs imm16 compare, proven BrTextBoxMeasureA).
+    for m in re.finditer(r'\((\w+)\s*==\s*-1\)', body):
+        nb = (body[:m.start()] +
+              '((unsigned short)%s == 0xffff)' % m.group(1) + body[m.end():])
+        yield ('imm16:%s' % m.group(1), head + nb)
 
 
 def refine_function(row, max_rounds=4, max_cands=80):
