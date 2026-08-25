@@ -11,16 +11,25 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-08-24, third pass): 9,264/9,354 bytes, 2,313/2,328
- * instructions, 29 divergence regions (22 slot-masked).  The mixed
- * declaration spelling (absolute VIEW/OUTM macros for the row transforms,
- * extern VIEWS for the scale products) reproduces the original's operand
- * roles in BOTH float blocks; what remains is ~15 instructions of add-
- * deferral/fxch residue in the row block (see the wall entry's second-pass
- * refinement in VC5-IDIOMS.md for the full probe map -- 60+ variants,
- * all characterized) plus the slot-layout cascade behind it.  Everything
- * structural is verified equivalent.  @implements stays live for the
- * sweep; rule 2 forbids claiming a match until the diff is clean.
+ * STATE (2026-08-25, fourth pass): 2,338/2,328 instructions, 9,360 vs
+ * 9,354 bytes, 18 divergence regions slot-masked (33 raw; the gap is the
+ * slot-layout cascade).  The old "fadd-deferral wall" is BROKEN: the
+ * store-side/load-side declaration forms control VC5's alias proof, and
+ * the row block's operand roles, product order, and store deferral are
+ * all spelling-reachable (see the 0x1000EAF0 entries in VC5-IDIOMS.md,
+ * fourth-pass section, for the operand-kind ladder and the per-product
+ * pair-shape rules).  The row transforms now match the original for the
+ * first 8 of ~24 ops per row; the scale block's 8+4 batch split is
+ * reproduced by the __inline per-row helpers.  REMAINING WALLS:
+ *   1. per-row: D-product's fld wants exactly ONE hoist notch (orig:
+ *      fld V4; fxch3; faddp2 -- ours: fxch2; faddp1 first).  Hoisting is
+ *      binary by operand kind (aggressive or none); no probed spelling
+ *      gives one notch.
+ *   2. scale block: one fld leaks across the 8|4 batch boundary.
+ *   3. frame is 8 bytes smaller than orig (sub esp 0xd4 vs 0xdc) plus
+ *      the slot cascade; likely downstream of walls 1-2.
+ * @implements stays live for the sweep; rule 2 forbids claiming a match
+ * until the diff is clean.
  */
 #ifdef BR_MATCHING_BUILD
 
@@ -97,7 +106,7 @@ extern int       DAT_102e16a8;
 extern uint16_t  DAT_1035e710[];    /* sorted object index list */
 extern int       DAT_10396eb0;      /* trail-quad enable */
 extern int       DAT_106eed38;      /* object table base, 0x54 stride */
-extern uint16_t  DAT_10396eb4;
+extern int       DAT_10396eb4;   /* mask read 32-bit, tested 16-bit */
 extern int       DAT_10396eac;
 extern int       DAT_10396ea8;
 extern uint32_t  DAT_106e79e0[];    /* fog colour table [4] */
@@ -134,10 +143,35 @@ extern uint32_t *DAT_1035f7dc;      /* trail vertex write cursor */
  * section offsets, which zero-valued extern relocs cannot reproduce.
  * (0x106e78f0 precedes 0x106e9a38 in the image; the definitions keep that
  * order.) */
-extern float DAT_106e9a38[16];   /* the view matrix (extern spelling) */
-#define OUTM(k)  (*(float *)(0x106e78f0 + (k) * 4))
-#define VIEW(k)  (*(float *)(0x106e9a38 + (k) * 4))
+extern float DAT_106e9a38[16];   /* the view matrix (1-D, scale block) */
+extern float DAT_106e9a48[4];    /* view matrix row 1 */
+extern float DAT_106e9a58[4];    /* view matrix row 2 */
+extern float DAT_106e9a68[4];    /* view matrix row 3 */
+extern float DAT_106e78f0[16];   /* the output matrix */
+typedef struct BrObjXlat { float tx, ty, tz, tw; } BrObjXlat;
+#define OUTM(k)  (DAT_106e78f0[k])
+#define VIEW(k)  (pView[k])
+
 #define VIEWS(k) (DAT_106e9a38[k])   /* symbol spelling, scale block */
+
+static __inline void BrRowScale8(float *d, float *sr, float k)
+{
+    d[0] = k * sr[0];
+    d[1] = k * sr[1];
+    d[2] = k * sr[2];
+    d[3] = k * sr[3];
+    d[4] = k * sr[4];
+    d[5] = k * sr[5];
+    d[6] = k * sr[6];
+    d[7] = k * sr[7];
+}
+static __inline void BrRowScale4(float *d, float *sr, float k)
+{
+    d[0] = k * sr[0];
+    d[1] = k * sr[1];
+    d[2] = k * sr[2];
+    d[3] = k * sr[3];
+}
 
 /* The trail ring: 500 segments per wheel, 4 wheels per car. */
 typedef struct BrTrailSeg {
@@ -178,7 +212,7 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
     int      base;
     int      nTotal;
     int      firstVis;
-    int      idx;
+    uint16_t idx;
     float    *pObj;
     uint16_t *pDst;
     int      iCar;
@@ -368,7 +402,7 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
             if (i < base) {
                 idx = DAT_1035e710[i];
                 pObj = (float *)(DAT_106eed38 + idx * 0x54);
-                if ((*(uint16_t *)(pObj + 0x12) & DAT_10396eb4) == 0 &&
+                if ((uint16_t)(*(uint16_t *)(pObj + 0x12) & DAT_10396eb4) == 0 &&
                     (DAT_10396eac == 0 || idx != (uint32_t)DAT_10396ea8) &&
                     (DAT_1035f7e0 & *(uint16_t *)(pObj + 0x13)) == 0) {
                     if ((*(uint16_t *)(pObj + 0x13) & 8) == 0) goto draw;
@@ -386,31 +420,23 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
+                    float *pView = DAT_106e9a38;
+                    float *pV3 = DAT_106e9a68;
+                    float *pV1 = DAT_106e9a48;
+                    float *pTw = pObj + 0xf;
+                    float *pTy = pObj + 0xd;
+                    float *pPos = pObj + 0xc;
                     if (!bTexLoaded) {
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                                        OUTM(12) = ((VIEW(0) * pObj[0xc] + VIEW(12) * pObj[0xf]) +
-                                    VIEW(8) * pObj[0xe]) + VIEW(4) * pObj[0xd];
-                    OUTM(13) = ((VIEW(1) * pObj[0xc] + VIEW(13) * pObj[0xf]) +
-                                    VIEW(9) * pObj[0xe]) + VIEW(5) * pObj[0xd];
-                    OUTM(14) = ((VIEW(2) * pObj[0xc] + VIEW(14) * pObj[0xf]) +
-                                    VIEW(10) * pObj[0xe]) + VIEW(6) * pObj[0xd];
-                    OUTM(15) = ((VIEW(3) * pObj[0xc] + VIEW(15) * pObj[0xf]) +
-                                    VIEW(11) * pObj[0xe]) + VIEW(7) * pObj[0xd];
+                    OUTM(12) = (((*(float *)(0x106e9a38 + 0)) * pPos[0] + pV3[0] * pTw[0]) + (*(float *)(0x106e9a58 + 0)) * pPos[2]) + pV1[0] * pTy[0];
+                    OUTM(13) = (((*(float *)(0x106e9a38 + 4)) * pPos[0] + pV3[1] * pTw[0]) + (*(float *)(0x106e9a58 + 4)) * pPos[2]) + pV1[1] * pTy[0];
+                    OUTM(14) = (((*(float *)(0x106e9a38 + 8)) * pPos[0] + pV3[2] * pTw[0]) + (*(float *)(0x106e9a58 + 8)) * pPos[2]) + pV1[2] * pTy[0];
+                    OUTM(15) = (((*(float *)(0x106e9a38 + 12)) * pPos[0] + pV3[3] * pTw[0]) + (*(float *)(0x106e9a58 + 12)) * pPos[2]) + pV1[3] * pTy[0];
                     scale = *pObj;
-                    OUTM(0) = scale * VIEWS(0);
-                    OUTM(1) = scale * VIEWS(1);
-                    OUTM(2) = scale * VIEWS(2);
-                    OUTM(3) = scale * VIEWS(3);
-                    OUTM(4) = scale * VIEWS(4);
-                    OUTM(5) = scale * VIEWS(5);
-                    OUTM(6) = scale * VIEWS(6);
-                    OUTM(7) = scale * VIEWS(7);
-                    OUTM(8) = scale * VIEWS(8);
-                    OUTM(9) = scale * VIEWS(9);
-                    OUTM(10) = scale * VIEWS(10);
-                    OUTM(11) = scale * VIEWS(11);
+                    BrRowScale8(DAT_106e78f0, DAT_106e9a38, scale);
+                    BrRowScale4(DAT_106e78f0 + 8, DAT_106e9a58, scale);
                     {
                     float *pM = BrMtxPoolAlloc();
                     fMax = 0.0f;
@@ -460,8 +486,8 @@ draw:
                                      (double)VIEW(6), (double)VIEW(7),
                                      (double)VIEW(8), (double)VIEW(9),
                                      (double)VIEW(10), (double)VIEW(11),
-                                     (double)VIEW(12), (double)VIEW(13),
-                                     (double)VIEW(14), (double)VIEW(15),
+                                     (double)DAT_106e9a68[0], (double)DAT_106e9a68[1],
+                                     (double)DAT_106e9a68[2], (double)DAT_106e9a68[3],
                                      (double)OUTM(0), (double)OUTM(1),
                                      (double)OUTM(2), (double)OUTM(3),
                                      (double)OUTM(4), (double)OUTM(5),

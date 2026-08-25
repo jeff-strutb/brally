@@ -384,6 +384,52 @@ the caller AND flipped a helper to match for free.
   /Ox, /Os, /O1 all fail differently. ~15 instructions of fxch/ordering
   residue in one block is the function's floor pending a genuinely new
   insight (different compiler patch level? an unprobed pragma?).
+  FOURTH-PASS (2026-08-25): the wall above is BROKEN — its floor was an
+  artifact of the absolute-deref spelling.  What actually governs the two
+  float blocks (all proven by A/B compiles on 0x1000EAF0):
+  * **Store deferral is an ALIAS question.** VC5 moves a global LOAD above
+    a pending global STORE only when both sides are named symbols (symbol
+    A vs symbol B = provably distinct).  An absolute `*(float *)0x...` on
+    either side kills the reorder, which is why the absolute spelling
+    could never reproduce the original's software-pipelined rows (next
+    row's fld-side loads hoist above this row's fstp).  Spell the store
+    target as an extern symbol (`DAT_106e78f0[k]`), never as an absolute
+    deref, when the original defers stores.
+  * **The fld/fmul side of `a*b` follows an operand-KIND ladder,** not
+    spelling permutations, displacement values, escape, declared size, or
+    use counts (all probed): absolute-const deref > deref of a plain
+    pointer copy of the TU's "main" array symbol > deref of a
+    pointer-to-pointer-arithmetic result / pObj[literal] > deref of a
+    plain copy of any OTHER symbol.  The higher kind takes the fld side.
+    A product's roles are set by its own pair; swapping the source
+    operand order NEVER changes them (mul operands canonicalize).
+  * **Product ORDER in a sum canonicalizes only between comparable
+    products.**  Two products whose operand-kind pairs are the same shape
+    get sorted (by displacement); pairs of DIFFERENT shapes keep source
+    order.  The original's per-row product order (V12*tw first, then V0,
+    V8, V4) is reachable only by giving the four products distinct pair
+    shapes — the landed spelling is absolute*pPos / symPtr*arithPtr /
+    absolute*pPos / symPtr*arithPtr with `pPos = pObj + 0xc` etc.
+  * **Load hoisting is binary by the same kind ladder:** absolute and
+    main-symbol-pointer loads hoist aggressively (2 products ahead);
+    other-symbol-pointer loads do not hoist at all.  No probed kind gives
+    the intermediate one-notch hoist the original's fourth product shows
+    (orig `fld V4; fxch3; faddp2` vs ours `fxch2; faddp1`) — that is the
+    current 2-insns-per-row floor of the row block.
+  * **The scale block's 8+4 batch split** (8 slot-preloads, drain, 4
+    more) is the inliner's region boundary: spell it as `static __inline`
+    per-row helpers (BrRowScale8/BrRowScale4).  One fld still leaks
+    across the batch boundary (scheduler refills greedily after the
+    first fstp frees a slot).
+  * **`uint16_t idx` vs `int idx` decides the zero-extend idiom**: the
+    original's `mov di, [mem]; and edi, 0xffff` (load into live reg +
+    mask) comes from a uint16_t variable; `int` gives `xor edi, edi;
+    mov di, [mem]`.  Retyping also flipped `mov eax,edi; shl eax,3` to
+    the original's `lea eax,[edi*8]` for the `idx*0x54` scaling.
+  * **A 16-bit flag test whose mask global is read 32-bit** (`mov eax,
+    [mask]; mov dx, [flags]; and edx, eax; test dx, dx`) means the mask
+    global was declared int-sized and the result truncated:
+    `(uint16_t)(*(uint16_t *)p & mask_int) == 0`.
 - **A probe is only evidence if the compile actually ran.** match_sweep
   compiles NOTHING when the file has no `@implements` tag — it returns
   before the compiler is invoked and every diff silently reuses the stale
