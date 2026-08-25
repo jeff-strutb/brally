@@ -1138,6 +1138,9 @@ def refine_function(row, max_rounds=4, max_cands=80):
     tag = 'ghidra_ref_' + va_hex[2:]
     cur, cur_opt, cur_rb, cur_rl = _score_source(
         src, func_name, orig_bytes, opts, tag)
+    if os.environ.get('BR_REFINE_DEBUG'):
+        print('DBG', va_hex, 'origlen', len(orig_bytes), 'initial', cur,
+              cur_opt, 'rb', len(cur_rb) if cur_rb else None, flush=True)
     if cur is None:
         row = dict(row)
         row['divergence'] = 'error'
@@ -1166,16 +1169,24 @@ def refine_function(row, max_rounds=4, max_cands=80):
         if not improved or ncomp > max_cands:
             break
     row = dict(row)
+    # Always record THIS run's truth — the old improvement-only condition
+    # (`cur < start`) left a row that scored 0 on its very first compile
+    # stuck at its stale DIFF result (0x1001E220 after the preamble fix).
     row['divergence'] = _classify_divergence(orig_bytes, cur_rb, cur_rl)
-    if cur < start:
+    row['diffs'] = cur
+    row['opt'] = cur_opt
+    row['result'] = 'MATCH' if cur == 0 else (
+        'CLOSE(%d)' % cur if cur <= 5 else 'DIFF(%d)' % cur)
+    row['timestamp'] = datetime.now().isoformat(timespec='seconds')
+    if applied:
         with open(work.replace('.c', '.refined.c'), 'w') as f:
             f.write(src)
-        row['diffs'] = cur
-        row['opt'] = cur_opt
-        row['result'] = 'MATCH' if cur == 0 else (
-            'CLOSE(%d)' % cur if cur <= 5 else 'DIFF(%d)' % cur)
         row['compile_errors'] = 'refined: ' + ' '.join(applied)
-        row['timestamp'] = datetime.now().isoformat(timespec='seconds')
+    elif cur == 0:
+        row['compile_errors'] = 'refined: as-is'
+        stale = work.replace('.c', '.refined.c')
+        if os.path.exists(stale):
+            os.remove(stale)  # autofile must take the .c, not a bad climb
     return row
 
 
