@@ -23,7 +23,9 @@
 #include "slice2_14.h"   /* BrScrPt                                          */
 #include "slice1_01.h"   /* BrAdler32                                        */
 
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* ==========================================================================
@@ -392,6 +394,72 @@ void BrLogPrint(const void *p)
         pH->pfnSleep(1);
     }
 }
+
+#ifdef BR_MATCHING_BUILD
+/* ==========================================================================
+ * 0x10008EC0 (glide)  BrLogFatalPrintf
+ * ========================================================================== */
+
+/* WHAT IT DOES: formats a fatal message into a fresh 0x400-byte buffer and
+ * exits with code 1.  The buffer is never printed or freed -- the original
+ * really does allocate, format, and die. */
+/* @implements 0x10008EC0 glide BrLogFatalPrintf */
+void BrLogFatalPrintf(const char *pFmt, ...)
+{
+    va_list ap;
+    char   *pBuf;
+
+    pBuf = (char *)BrOperatorNew(0x400);
+    va_start(ap, pFmt);
+    vsprintf(pBuf, pFmt, ap);
+    exit(1);
+}
+
+/* ==========================================================================
+ * 0x10008F90 (glide)  BrObjSelCycle
+ * ========================================================================== */
+
+/* The scene-DL selection state (see br_scenedl.c for the list's producer). */
+extern int      DAT_10273308;       /* pending cycle step, consumed here    */
+extern int      DAT_10396ea8;       /* current selected object index        */
+extern int      DAT_106eed3c;       /* index count (wrap bound)             */
+extern int      DAT_1035fb9c;       /* sorted-list entry count              */
+extern uint16_t DAT_1035e710[];     /* sorted object index list             */
+
+/* WHAT IT DOES: applies a pending selection step, wrapping at both ends,
+ * and keeps stepping until it lands on index 0 or on an index present in
+ * the sorted object list; then clears the pending step. */
+/* @implements 0x10008F90 glide BrObjSelCycle */
+void BrObjSelCycle(void)
+{
+    int       i;
+    uint16_t *p;
+
+    if (DAT_10273308 != 0) {
+        for (;;) {
+            DAT_10396ea8 = DAT_10396ea8 + DAT_10273308;
+            if (DAT_10396ea8 >= DAT_106eed3c) {
+                DAT_10396ea8 = 0;
+            }
+            if (DAT_10396ea8 < 0) {
+                DAT_10396ea8 = DAT_106eed3c - 1;
+            }
+            if (DAT_10396ea8 == 0) break;
+            i = 0;
+            if (0 < DAT_1035fb9c) {
+                p = DAT_1035e710;
+                do {
+                    if (DAT_10396ea8 == *p) goto LAB_selDone;
+                    i = i + 1;
+                    p = p + 1;
+                } while (i < DAT_1035fb9c);
+            }
+        }
+LAB_selDone: ;
+        DAT_10273308 = 0;
+    }
+}
+#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x10051990  BrOptFn10051990
