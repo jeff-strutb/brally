@@ -46,7 +46,7 @@ If it does not reproduce the original bytes, it does not carry the tag.
 
 Read once, decide once. No guessing, no re-deliberating settled questions, no
 writing code that gets reverted. **Read the docs before forming a plan** — this
-file, `README.md`, and the memory index. A session spent on a wrong assumption
+file, `README.md`, and the memory index (`docs/MEMORY.md`). A session spent on a wrong assumption
 that one file read would have caught is the most expensive failure mode here.
 
 ## 4. Every number carries its denominator.
@@ -91,12 +91,33 @@ merges its rows back. The full sweep is bookkeeping, and it takes ~20 minutes.
 Shared headers under `include/` reach dozens of files. Parallel work splits by
 `.c` file only.
 
+## 11a. 0x1000EAF0 is one wall from done. Do not re-derive it.
+
+`src/core/drawing/br_scenedl.c` holds the second-largest function at
+9,264/9,354 bytes with every structural element verified. Its remaining
+~15-instruction float wall and the 60+ probe variants that FAILED are
+mapped in `docs/VC5-IDIOMS.md` (the 0x1000EAF0 entries). Read the file
+header and those entries before touching it; re-running mapped probes is
+token waste. `tools/divergence.py` is the comparator. Fresh leads only:
+compiler patch level, unprobed pragmas. The sweep compiles NOTHING when a
+file has no `@implements` tag — a probe without a fresh compile proves
+nothing (this trap invalidated five conclusions once already).
+
+## 11. 0x10019A70 is last among the big targets.
+
+11,223 bytes — 11,223 / 480,853 of BRGlide.dll `.text` (2.33%). One original
+function, so one C function; the port's Clock/Begin/Frame split is not a
+matching twin. Win `sub esp, 0x34` first (no 8-byte-aligned local; ebp is a
+general register, `xor ebp,ebp`). Grow section by section against the first
+divergence. Gated on 131 callee signatures. Not "never" — prologue-first,
+and last. See `docs/VC5-IDIOMS.md` (`and esp,-8`) and `include/br_racestep.h`.
+
 ---
 
 ## Before you start any session
 
 1. Run `python3 tools/refcheck.py` and believe the result.
-2. Read the memory index; it carries current state and open leads.
+2. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
 3. Do not trust a coverage number in prose — including in `README.md`.
    Query the tree.
 
