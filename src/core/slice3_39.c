@@ -565,8 +565,53 @@ LAB_spaceA:
         c = pBox->sz[i];
     }
 }
+
+extern BrGlyphMetric12 g_BrGlyphFontB12[];   /* 0x100AC2FC (glide) */
+
+/* WHAT IT DOES: like A but font B supplies the metrics (advance - 4) while
+ * font A's sentinels still gate the glyph path -- the same cross-font gate
+ * the port documents.  Both sentinel tests compare memory directly against
+ * -1, which VC5 registerises (`or ebp,-1; cmp [mem],bp`). */
+/* @implements 0x10053F80 glide BrTextBoxMeasureB */
+void BR_THISCALL1 BrTextBoxMeasureB(BrTextBox *pBox)
+{
+    char    c;
+    int16_t k;
+    int16_t width;
+    int16_t maxH;
+    int16_t i;
+
+    width = 0;
+    i     = 0;
+    maxH  = pBox->height;
+    c     = pBox->sz[0];
+    for (;;) {
+        if (c == '\0' ||
+            (((k = (int16_t)((int16_t)c - 0x20)), k < 0 || k > 0x7F) &&
+             c != ' ')) {
+            pBox->height = maxH;
+            pBox->width  = width;
+            return;
+        }
+        if (c < '!' || c > '~' ||
+            (int16_t)g_BrGlyphFontA12[k].advance == -1 ||
+            (int16_t)g_BrGlyphFontA12[k].height == -1) {
+            if (c == ' ') {
+                width = width + BR_GLYPH_SPACE_ADVANCE;
+            }
+        } else {
+            width = width + (int16_t)(g_BrGlyphFontB12[k].advance - 4);
+            if (maxH < (int16_t)g_BrGlyphFontB12[k].height) {
+                maxH = (int16_t)g_BrGlyphFontB12[k].height;
+            }
+        }
+        i = i + 1;
+        c = pBox->sz[i];
+    }
+}
 #endif /* BR_MATCHING_BUILD */
 
+#ifndef BR_MATCHING_BUILD
 /* The shared prologue of both measurers: decide what kind of character this
  * is.  Returns 1 for "in the glyph range", 0 for "space-or-nothing", -1 for
  * "stop the walk entirely". */
@@ -588,7 +633,6 @@ static int BrGlyphClassify(char c)
     return 1;
 }
 
-#ifndef BR_MATCHING_BUILD
 void BrTextBoxMeasureA(BrTextBox *pBox)
 {
     uint16_t width = 0;
@@ -628,7 +672,6 @@ void BrTextBoxMeasureA(BrTextBox *pBox)
     pBox->height = (int16_t)maxH;
     pBox->width  = (int16_t)width;
 }
-#endif /* !BR_MATCHING_BUILD */
 
 void BrTextBoxMeasureB(BrTextBox *pBox)
 {
@@ -670,6 +713,7 @@ void BrTextBoxMeasureB(BrTextBox *pBox)
     pBox->height = (int16_t)maxH;
     pBox->width  = (int16_t)width;
 }
+#endif /* !BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 0x1005B200 -- centre horizontally
