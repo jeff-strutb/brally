@@ -828,8 +828,8 @@ def single_compile_and_check(func, globals_map, fn_names):
             'match': False, 'diffs': -1, 'orig_size': 0, 'recomp_size': 0,
             'opt': '', 'compile_errors': 'no orig bin',
         }
-    with open(orig_file, 'rb') as f:
-        orig_bytes = f.read()
+    import match_sweep
+    orig_bytes = match_sweep.load_orig(orig_file, va_hex)
 
     cleaned = fix_calling_convention(cleaned, func_name, orig_bytes)
     compilable = wrap_for_compile(cleaned, va_hex)
@@ -1128,9 +1128,13 @@ def refine_function(row, max_rounds=4, max_cands=80):
     if not (os.path.exists(work) and os.path.exists(orig_file)):
         return row
     src = open(work).read()
-    orig_bytes = open(orig_file, 'rb').read()
+    import match_sweep
+    orig_bytes = match_sweep.load_orig(orig_file, va_hex)
     func_name = row['name']
-    opts = [row['opt']] if row.get('opt') else ['/O2', '/Od', '/O2 /Oy-']
+    # Initial score tries ALL variants — the row's recorded opt can be a
+    # stale artifact of a divergent best (a /Od row whose real match is /O2
+    # walled 0x1001E220 until this).  The climb then stays in the winner.
+    opts = ['/O2', '/Od', '/O2 /Oy-']
     tag = 'ghidra_ref_' + va_hex[2:]
     cur, cur_opt, cur_rb, cur_rl = _score_source(
         src, func_name, orig_bytes, opts, tag)
@@ -1138,6 +1142,8 @@ def refine_function(row, max_rounds=4, max_cands=80):
         row = dict(row)
         row['divergence'] = 'error'
         return row
+    if cur > 0:
+        opts = [cur_opt]
     start = cur
     applied = []
     ncomp = 0
@@ -1175,6 +1181,26 @@ def refine_function(row, max_rounds=4, max_cands=80):
 
 def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80,
                min_size=0):
+    # Two refine runs write-back-race over the learnings CSV (a live wide
+    # run clobbered a targeted run's rows on 2026-08-25). One at a time.
+    lock = LEARNINGS_CSV + '.lock'
+    if os.path.exists(lock):
+        try:
+            os.kill(int(open(lock).read().strip() or 0), 0)
+            sys.exit('another refine run is live (%s) — wait for it or '
+                     'delete the lock if it crashed' % lock)
+        except (OSError, ValueError):
+            pass  # stale lock from a dead run
+    with open(lock, 'w') as f:
+        f.write(str(os.getpid()))
+    try:
+        _run_refine_locked(max_diffs, target_va, max_rounds, max_cands,
+                           min_size)
+    finally:
+        os.remove(lock)
+
+
+def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     rows = []
     with open(LEARNINGS_CSV) as f:
         rows = list(csv.DictReader(f))

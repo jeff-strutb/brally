@@ -54,6 +54,36 @@ ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 CACHE = os.path.join(ROOT, 'build', 'match', 'sweep_cache.json')
 
+# Ten originals carry a 16-byte link-stage preamble (jmp +0x0b over 11 nops)
+# fused into their map entry; the compiler's output starts at +0x10.  The
+# preamble bytes are link output — same category as relocs and jmp thunks —
+# so they are recorded in config/preambles.csv, verified VERBATIM here, and
+# the body is matched in full.  A tagged match still accounts for every
+# original byte: preamble verified + body compiler-matched.
+def _load_preambles():
+    p = os.path.join(ROOT, 'config', 'preambles.csv')
+    out = {}
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[r['va'].lower()] = bytes.fromhex(r['preamble_hex'])
+    return out
+
+PREAMBLES = _load_preambles()
+
+def load_orig(orig_path, va):
+    """Original bytes for `va` with any recorded link preamble verified and
+    stripped.  Dies loudly if the recorded preamble no longer matches."""
+    with open(orig_path, 'rb') as f:
+        b = f.read()
+    pre = PREAMBLES.get('0x%08x' % va if isinstance(va, int) else str(va).lower())
+    if pre is not None:
+        if not b.startswith(pre):
+            sys.exit('preambles.csv mismatch at %s: recorded %s, bin starts %s'
+                     % (va, pre.hex(), b[:len(pre)].hex()))
+        return b[len(pre):]
+    return b
+
 # O2y = /O2 with frame-pointer omission disabled: a minority of original TUs
 # keep push ebp/mov ebp,esp under otherwise full optimisation (first proven
 # on BrGameStepIs 0x1002E302; the 0x10031xxx region is the same class).
@@ -249,8 +279,7 @@ def sweep_file(src, cache=None, fkey=None):
             rows.append(row)
             continue
 
-        with open(orig_path, 'rb') as f:
-            orig_bytes = f.read()
+        orig_bytes = load_orig(orig_path, va)
         row['orig_size'] = len(orig_bytes)
 
         best = None

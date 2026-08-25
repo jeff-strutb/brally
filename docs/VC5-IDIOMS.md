@@ -475,6 +475,16 @@ the caller AND flipped a helper to match for free.
   the per-DLL CRT glue's __dllonexit as a plain extern; `_onexit`/`exit`/
   stdio keep `_CRTIMP` dllimport.  Proven BrCrtOnExit 0x100745B0,
   BrTex3dDownloadAt 0x100283C0.
+- **Ten originals carry a fused 16-byte link preamble** (`e9 0b 00 00 00` +
+  11×`90`, jmp over nops to the body at +0x10) inside their map entry —
+  link-stage output, unreachable from C, same category as relocs/thunks.
+  They are enumerated in `config/preambles.csv`; the comparator
+  (`match_sweep.load_orig`) verifies the recorded preamble VERBATIM and
+  matches the compiler body at +0x10, so every original byte stays
+  accounted for.  Never try to spell the preamble in source.  Proven
+  0x1001E220 (FPS screen-W/2 setter): the untouched Ghidra body scored 0
+  the moment the preamble was stripped.  The family: 0x10017F30,
+  0x1001E1E0/200/220/250/280/2B0, 0x100376B0/E0, 0x1005A480.
 
 ## Cost model (measured, 2026-08-22 timed test)
 
