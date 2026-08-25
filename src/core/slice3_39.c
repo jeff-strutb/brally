@@ -1193,6 +1193,7 @@ int32_t BrFn1005FFD0(void)
     return -1;
 }
 
+/* @implements 0x10059020 glide BrDikPollAndEdge */
 void BrDikPollAndEdge(void)
 {
     if (BrDikGetDeviceState(g_BrDikState) >= 0) {
