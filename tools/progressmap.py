@@ -97,43 +97,90 @@ def squarify(items, x, y, w, h):
         i = j
 
 
-def render(funcs, out_path):
-    total_b = sum(f["size"] for f in funcs)
-    match_b = sum(f["size"] for f in funcs if f["status"] == "match")
-    tag_b = sum(f["size"] for f in funcs if f["status"] != "todo")
-    n_match = sum(1 for f in funcs if f["status"] == "match")
-    n_tag = sum(1 for f in funcs if f["status"] != "todo")
+W, H = 1600, 900
 
+
+def stats(funcs):
+    return dict(
+        total_b=sum(f["size"] for f in funcs),
+        match_b=sum(f["size"] for f in funcs if f["status"] == "match"),
+        tag_b=sum(f["size"] for f in funcs if f["status"] != "todo"),
+        n_match=sum(1 for f in funcs if f["status"] == "match"),
+        n=len(funcs))
+
+
+def layout(funcs):
+    """Yields ('group', x,y,w,h, name) and ('fn', x,y,w,h, fn, group_name)."""
     groups = {}
     for f in funcs:
         groups.setdefault(group_key(f), []).append(f)
     gitems = sorted(((sum(f["size"] for f in fs), (k, fs)) for k, fs in groups.items()),
                     reverse=True, key=lambda it: it[0])
-
-    W, H = 1600, 900
-    cells = []
     for gx, gy, gw, gh, (gname, fs) in squarify(gitems, 0, 0, W, H):
         pad = 1.5
         show_label = gw > 70 and gh > 26
         top = 14 if show_label else 0
+        yield ("group", gx, gy, gw, gh, gname if show_label else None, None)
         ix, iy = gx + pad, gy + pad + top
         iw, ih = max(gw - 2 * pad, 0.1), max(gh - 2 * pad - top, 0.1)
-        cells.append(
-            '<div class="g" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx">%s</div>'
-            % (gx, gy, gw, gh,
-               '<span class="gl">%s</span>' % html.escape(gname.split("/")[-1]) if show_label else ""))
         fitems = sorted(((f["size"], f) for f in fs), reverse=True, key=lambda it: it[0])
         for fx, fy, fw, fh, f in squarify(fitems, ix, iy, iw, ih):
-            color = {"match": GREEN, "diff": AMBER, "todo": GRAY}[f["status"]]
-            tip = "%s  0x%08X  %dB" % (f["name"] or "(unnamed)", f["va"], f["size"])
-            if f["status"] == "diff":
-                tip += "  %d diff bytes" % f["diffs"]
-            tip += "  [%s]" % gname
+            yield ("fn", fx, fy, max(fw - .6, .4), max(fh - .6, .4), f, gname)
+
+
+def tooltip(f, gname):
+    tip = "%s  0x%08X  %dB" % (f["name"] or "(unnamed)", f["va"], f["size"])
+    if f["status"] == "diff":
+        tip += "  %d diff bytes" % f["diffs"]
+    return tip + "  [%s]" % gname
+
+
+def render_svg(funcs, out_path):
+    s = stats(funcs)
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" '
+             'font-family="sans-serif">' % (W, H + 30),
+             '<rect width="%d" height="%d" fill="#161b22"/>' % (W, H + 30)]
+    for kind, x, y, w, h, obj, gname in layout(funcs):
+        if kind == "group":
+            if obj:
+                parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>'
+                             % (x + 3, y + 10.5, html.escape(obj.split("/")[-1])))
+        else:
+            color = {"match": GREEN, "diff": AMBER, "todo": GRAY}[obj["status"]]
+            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s">'
+                         '<title>%s</title></rect>'
+                         % (x, y, w, h, color, html.escape(tooltip(obj, gname))))
+    parts.append('<text x="8" y="%d" font-size="13" fill="#e6edf3">'
+                 'byte-exact %d/%d functions &#183; %s / %s bytes exact (%.1f%%) &#183; '
+                 '%s bytes transcribed (%.1f%%)</text></svg>'
+                 % (H + 20, s["n_match"], s["n"], "{:,}".format(s["match_b"]),
+                    "{:,}".format(s["total_b"]), 100.0 * s["match_b"] / s["total_b"],
+                    "{:,}".format(s["tag_b"]), 100.0 * s["tag_b"] / s["total_b"]))
+    with open(out_path, "w") as f:
+        f.write("\n".join(parts))
+    print("%s: svg snapshot" % out_path)
+
+
+def render(funcs, out_path):
+    s = stats(funcs)
+    total_b, match_b, tag_b = s["total_b"], s["match_b"], s["tag_b"]
+    n_match = s["n_match"]
+
+    ngroups = 0
+    cells = []
+    for kind, x, y, w, h, obj, gname in layout(funcs):
+        if kind == "group":
+            ngroups += 1
+            cells.append(
+                '<div class="g" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx">%s</div>'
+                % (x, y, w, h,
+                   '<span class="gl">%s</span>' % html.escape(obj.split("/")[-1]) if obj else ""))
+        else:
+            color = {"match": GREEN, "diff": AMBER, "todo": GRAY}[obj["status"]]
             cells.append(
                 '<div class="f" title="%s" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;'
                 'height:%.1fpx;background:%s"></div>'
-                % (html.escape(tip, quote=True), fx, fy, max(fw - .6, .4),
-                   max(fh - .6, .4), color))
+                % (html.escape(tooltip(obj, gname), quote=True), x, y, w, h, color))
 
     page = """<!doctype html><meta charset="utf-8"><title>BRGlide decomp map</title>
 <style>
@@ -168,7 +215,7 @@ def render(funcs, out_path):
            gbp=100.0 * tag_b / total_b, dbp=100.0 * (tag_b - match_b) / total_b)
     with open(out_path, "w") as f:
         f.write(page)
-    print("%s: %d functions, %d groups" % (out_path, len(funcs), len(groups)))
+    print("%s: %d functions, %d groups" % (out_path, len(funcs), ngroups))
     print("byte-exact %d/%d functions, %d/%d bytes (%.1f%%)"
           % (n_match, len(funcs), match_b, total_b, 100.0 * match_b / total_b))
 
@@ -176,5 +223,9 @@ def render(funcs, out_path):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-o", default=os.path.join(ROOT, "build", "match", "map.html"))
+    ap.add_argument("--svg", help="also write an SVG snapshot (for the README)")
     a = ap.parse_args()
-    render(load(), a.o)
+    funcs = load()
+    render(funcs, a.o)
+    if a.svg:
+        render_svg(funcs, a.svg)
