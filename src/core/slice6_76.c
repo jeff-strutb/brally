@@ -595,6 +595,27 @@ int BrSndThreadStop(void)
 
 typedef void (__stdcall *dsbuf_fn2)(int, int);
 
+typedef int (__stdcall *dsbuf_fn1)(int);
+
+/* WHAT IT DOES: if the voice is playing, call IDirectSoundBuffer::Stop
+ * (vtable +0x48) and clear the playing flag on S_OK; returns the HRESULT. */
+/* @implements 0x1006B4C0 glide BrSndVoiceBufStop */
+
+int BrSndVoiceBufStop(int param_1)
+
+{
+  int iVar1;
+
+  if (*(int *)(param_1 + 0x1c) == 0) {
+    return 0;
+  }
+  iVar1 = (*(dsbuf_fn1 *)(**(int **)(param_1 + 0x9c) + 0x48))(*(int *)(param_1 + 0x9c));
+  if (iVar1 == 0) {
+    *(int *)(param_1 + 0x1c) = iVar1;
+  }
+  return iVar1;
+}
+
 /* WHAT IT DOES: call IDirectSoundBuffer::SetPan with a computed pan value. */
 /* @implements 0x1006B400 glide BrSndVoiceApplyPan */
 
