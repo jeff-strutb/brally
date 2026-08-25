@@ -17,8 +17,13 @@ Run:
     python3 tools/ghidra_to_match.py --errors-only       # reprocess prior errors only
     python3 tools/ghidra_to_match.py --fallback          # try individual compile on batch failures
     python3 tools/ghidra_to_match.py --refine [--max-diffs N] [--va X]
-        # hill-climb CLOSE rows over global retyping / comparison flips /
-        # local signedness; writes build/ghidra_work/<va>.refined.c
+                                     [--max-rounds N] [--max-cands N]
+        # hill-climb CLOSE/DIFF rows through the generator transforms;
+        # writes build/ghidra_work/<va>.refined.c. Learnings CSV is written
+        # back after every function (crash-safe); each row gets a
+        # 'divergence' class stamp for residue grouping.
+    python3 tools/ghidra_to_match.py --residue
+        # group the unmatched refine candidates by divergence class
 """
 import csv
 import os
@@ -743,8 +748,17 @@ def compile_and_check(src_text, func_name, va_hex, orig_bytes):
 
 LEARNINGS_FIELDS = [
     'va', 'size', 'name', 'result', 'diffs', 'orig_size', 'recomp_size',
-    'opt', 'compile_errors', 'timestamp',
+    'opt', 'compile_errors', 'timestamp', 'divergence',
 ]
+
+def write_learnings(rows):
+    """Rewrite the learnings CSV. Cheap (~ms); called after every refine
+    completion so a wedged multi-hour run loses at most one function."""
+    with open(LEARNINGS_CSV, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=LEARNINGS_FIELDS, restval='',
+                           extrasaction='ignore')
+        w.writeheader()
+        w.writerows(rows)
 
 def prepare_function(func, globals_map, fn_names):
     """Clean a single Ghidra decompilation and return (func_name, cleaned_c)."""
@@ -892,12 +906,13 @@ _CMP_RE = re.compile(r'\(([^()<>=!&|]+?)\s*(<=|>=|<|>)\s*([^()<>=!&|]+?)\)')
 _CMP_FLIP = {'<': '>', '>': '<', '<=': '>=', '>=': '<='}
 
 def _score_source(src_text, func_name, orig_bytes, opts, tag):
-    """Compile src_text and return (diffs, opt) best over opts; (None, '') on error."""
+    """Compile src_text and return (diffs, opt, recomp_bytes, relocs) best
+    over opts; (None, '', None, None) on error."""
     import match_diff
     import match_sweep
     tmpdir = tempfile.mkdtemp(prefix='ghidra_ref_')
     src_path = os.path.join(tmpdir, 'r.c')
-    best = (None, '')
+    best = (None, '', None, None)
     try:
         with open(src_path, 'w') as f:
             f.write(src_text)
@@ -921,13 +936,42 @@ def _score_source(src_text, func_name, orig_bytes, opts, tag):
             rb, relocs = funcs[found]
             ok, nd, _ = match_sweep.score(orig_bytes, rb, relocs)
             if ok:
-                return (0, opt)
+                return (0, opt, rb, relocs)
             if best[0] is None or nd < best[0]:
-                best = (nd, opt)
+                best = (nd, opt, rb, relocs)
         return best
     finally:
         import shutil
         shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _classify_divergence(orig_bytes, rb, relocs):
+    """Coarse failure class for residue grouping, spelled <class>@<first>/<n>.
+    Classes: short±N (recomp too small — structural, code missing),
+    long+N (extra code emitted), frame (diverges inside the first 0x10
+    bytes — prologue/frame shape wrong), dense (>=5% of bytes differ —
+    structural rewrite needed), scattered (localized diffs — encoding or
+    register-allocation, the hill-climbable band)."""
+    if rb is None:
+        return 'error'
+    delta = len(rb) - len(orig_bytes)
+    if delta < 0:
+        return 'short%d' % delta
+    trimmed = rb[:len(orig_bytes)]
+    pos = [i for i in range(len(orig_bytes))
+           if i not in relocs and trimmed[i] != orig_bytes[i]]
+    if not pos:
+        return 'match'
+    first = pos[0]
+    if delta > 8:
+        klass = 'long+%d' % delta
+    elif first < 0x10:
+        klass = 'frame'
+    elif len(pos) >= 20 and len(pos) >= 0.05 * len(orig_bytes):
+        klass = 'dense'
+    else:
+        klass = 'scattered'
+    return '%s@0x%x/%d' % (klass, first, len(pos))
 
 
 def _refine_candidates(src):
@@ -1070,8 +1114,11 @@ def refine_function(row, max_rounds=4, max_cands=80):
     func_name = row['name']
     opts = [row['opt']] if row.get('opt') else ['/O2', '/Od', '/O2 /Oy-']
     tag = 'ghidra_ref_' + va_hex[2:]
-    cur, cur_opt = _score_source(src, func_name, orig_bytes, opts, tag)
+    cur, cur_opt, cur_rb, cur_rl = _score_source(
+        src, func_name, orig_bytes, opts, tag)
     if cur is None:
+        row = dict(row)
+        row['divergence'] = 'error'
         return row
     start = cur
     applied = []
@@ -1084,19 +1131,21 @@ def refine_function(row, max_rounds=4, max_cands=80):
             ncomp += 1
             if ncomp > max_cands:
                 break
-            nd, opt = _score_source(cand, func_name, orig_bytes, opts, tag)
+            nd, opt, rb, rl = _score_source(
+                cand, func_name, orig_bytes, opts, tag)
             if nd is not None and nd < cur:
-                src, cur, cur_opt = cand, nd, opt
+                src, cur, cur_opt, cur_rb, cur_rl = cand, nd, opt, rb, rl
                 applied.append(label)
                 improved = True
                 if cur == 0:
                     break
         if not improved or ncomp > max_cands:
             break
+    row = dict(row)
+    row['divergence'] = _classify_divergence(orig_bytes, cur_rb, cur_rl)
     if cur < start:
         with open(work.replace('.c', '.refined.c'), 'w') as f:
             f.write(src)
-        row = dict(row)
         row['diffs'] = cur
         row['opt'] = cur_opt
         row['result'] = 'MATCH' if cur == 0 else (
@@ -1106,7 +1155,7 @@ def refine_function(row, max_rounds=4, max_cands=80):
     return row
 
 
-def run_refine(max_diffs=5, target_va=None):
+def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80):
     rows = []
     with open(LEARNINGS_CSV) as f:
         rows = list(csv.DictReader(f))
@@ -1118,11 +1167,18 @@ def run_refine(max_diffs=5, target_va=None):
             continue
         if 0 < d <= max_diffs and (not target_va or r['va'].lower() == target_va.lower()):
             todo.append(r)
-    print(f'refining {len(todo)} functions with 1..{max_diffs} diffs', flush=True)
+    # Biggest payoff first, so an interrupted run banked the valuable half.
+    todo.sort(key=lambda r: -int(r.get('orig_size') or 0))
+    print(f'refining {len(todo)} functions with 1..{max_diffs} diffs '
+          f'(rounds={max_rounds} cands={max_cands})', flush=True)
     WORKERS = min(os.cpu_count() or 4, 10)
     out = {}
+    done = 0
     with ProcessPoolExecutor(max_workers=WORKERS) as pool:
-        futs = {pool.submit(refine_function, r): r['va'] for r in todo}
+        # max_rounds/max_cands ride along explicitly: workers are spawned
+        # (macOS), so mutated parent globals would never reach them.
+        futs = {pool.submit(refine_function, r, max_rounds, max_cands): r['va']
+                for r in todo}
         for fut in as_completed(futs):
             try:
                 nr = fut.result()
@@ -1130,16 +1186,45 @@ def run_refine(max_diffs=5, target_va=None):
                 print('  !!', futs[fut], e, flush=True)
                 continue
             out[nr['va']] = nr
+            done += 1
+            # Crash-safe: merge back after EVERY completion, not at the end.
+            write_learnings([out.get(r['va'], r) for r in rows])
             if nr.get('compile_errors', '').startswith('refined'):
                 print(f"    {nr['result']:10s} {nr['va']} {nr['name']}  {nr['compile_errors']}",
                       flush=True)
-    merged = [out.get(r['va'], r) for r in rows]
-    with open(LEARNINGS_CSV, 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=LEARNINGS_FIELDS)
-        w.writeheader()
-        w.writerows(merged)
+            if done % 25 == 0:
+                print(f'  ... {done}/{len(todo)}', flush=True)
     n_match = sum(1 for r in out.values() if r['result'] == 'MATCH')
     print(f'refine: {n_match} new MATCH of {len(todo)}', flush=True)
+    if n_match:
+        print('file them: python3 tools/autofile.py', flush=True)
+
+
+def print_residue():
+    """Group refined-but-unmatched rows by divergence class so the hand pass
+    starts at 'which wall is biggest', not at raw diffs."""
+    with open(LEARNINGS_CSV) as f:
+        rows = list(csv.DictReader(f))
+    att = [r for r in rows if r.get('divergence')
+           and r['divergence'] not in ('', 'match')]
+    if not att:
+        print('no divergence data yet — run --refine first')
+        return
+    groups = defaultdict(list)
+    for r in att:
+        groups[r['divergence'].split('@')[0].split('+')[0].rstrip(
+            '-0123456789')].append(r)
+    print(f'{len(att)} unmatched refine candidates by divergence class:\n')
+    for k in sorted(groups, key=lambda k: -sum(
+            int(r.get('orig_size') or 0) for r in groups[k])):
+        g = groups[k]
+        tot = sum(int(r.get('orig_size') or 0) for r in g)
+        print(f'  {k:10s} {len(g):4d} fns  {tot / 1024.0:7.1f} KB')
+        for r in sorted(g, key=lambda r: -int(r.get('orig_size') or 0))[:5]:
+            print(f'      {r["va"]}  {r["orig_size"]:>6s}B  {r["diffs"]:>4s} diffs'
+                  f'  {r["divergence"]:20s}  {r["name"]}')
+    print('\nscattered = hill-climbable (needs a new generator idiom);')
+    print('frame/short/dense = structural — hand-solve one, mint a transform.')
 
 
 def load_prior_errors():
@@ -1325,14 +1410,25 @@ def main():
     do_fallback = '--fallback' in sys.argv
 
     max_diffs = 5
+    max_rounds = 4
+    max_cands = 80
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg == '--va' and i < len(sys.argv) - 1:
             target_va = sys.argv[i + 1]
         if arg == '--max-diffs' and i < len(sys.argv) - 1:
             max_diffs = int(sys.argv[i + 1])
+        if arg == '--max-rounds' and i < len(sys.argv) - 1:
+            max_rounds = int(sys.argv[i + 1])
+        if arg == '--max-cands' and i < len(sys.argv) - 1:
+            max_cands = int(sys.argv[i + 1])
+
+    if '--residue' in sys.argv:
+        print_residue()
+        return
 
     if '--refine' in sys.argv:
-        run_refine(max_diffs=max_diffs, target_va=target_va)
+        run_refine(max_diffs=max_diffs, target_va=target_va,
+                   max_rounds=max_rounds, max_cands=max_cands)
         return
 
     run(target_va=target_va, small_only=small_only, dry_run=dry_run,
