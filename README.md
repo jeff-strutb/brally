@@ -81,6 +81,11 @@ run merges its results back, so the normal case is a single file
 the tree total too); the whole-tree sweep is bookkeeping, not part of the work
 loop.
 
+`python3 tools/progressmap.py` renders the same data as a treemap —
+`build/match/map.html`, every known Glide function as a tile sized by its
+original bytes, grouped by module: green byte-exact, amber tagged with diffs
+remaining, gray untranscribed. Hover a tile for name, VA, size and diff count.
+
 ## Building
 
 **`./build.sh`** builds the port target: the whole decomp compiled with clang,
