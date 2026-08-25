@@ -31,9 +31,11 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original DLL. Half of the game's `.text` is transcribed into C across
-1,090 functions, and 507 of those now reproduce the original bytes exactly --
+1,096 functions, and 511 of those now reproduce the original bytes exactly --
 driven by a growing dictionary of proven compiler idioms
-(`docs/VC5-IDIOMS.md`), a Ghidra-assisted batch decompilation pipeline, and a
+(`docs/VC5-IDIOMS.md`), a Ghidra-assisted batch decompilation pipeline whose
+`--refine` hill-climb now encodes nine of those idioms as automatic source
+transforms (proven by reproducing hand matches end-to-end), and a
 structural audit (`tools/sigaudit.py`) that flags which near-misses are
 idiom-fixable rather than allocator noise. The matched set still skews small
 (median 35 bytes); the 44 functions over 1 KB hold 23% of all code bytes and
@@ -47,9 +49,9 @@ suites pass. The per-frame race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 240,601 / 480,853 bytes of `.text` · 1,090 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
-| **Byte-exact under MSVC 5.0** | 507 of 1,090 transcribed functions · 30,154 bytes | `█████████░░░░░░░░░░░` 47% |
-| Byte-exact, of all `.text` | 30,154 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
+| Transcribed into C | 240,867 / 480,853 bytes of `.text` · 1,096 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
+| **Byte-exact under MSVC 5.0** | 511 of 1,096 transcribed functions · 30,299 bytes | `█████████░░░░░░░░░░░` 47% |
+| Byte-exact, of all `.text` | 30,299 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
