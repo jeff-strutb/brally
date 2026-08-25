@@ -459,6 +459,31 @@ LAB_selDone: ;
         DAT_10273308 = 0;
     }
 }
+/* ==========================================================================
+ * 0x10008A70 (glide)  BrVt8A70CallPair
+ * ========================================================================== */
+
+/* A struct argument is never register-eligible, so the callee sees ECX
+ * `this` plus one STACK dword and no EDX setup (BrTextBoxDeleteDtor's trick). */
+typedef struct { int v; } BrVt8A70Arg;
+typedef int (__fastcall *BrVtFn8A70)(int *pThis, BrVt8A70Arg arg);
+
+/* WHAT IT DOES: thiscall pair through the object's vtable -- slot +0x0C
+ * transforms the argument, slot +0x24 consumes the result.  ECX
+ * copy-propagation: the first call reuses the entry ECX, only the second
+ * reloads `this`. */
+/* @implements 0x10008A70 glide BrVt8A70CallPair */
+void __fastcall BrVt8A70CallPair(int *pThis, BrVt8A70Arg param_2)
+{
+    int *vt;
+    BrVt8A70Arg a;
+
+    /* RESIDUE (3B): the original pushes the first call's result BEFORE
+     * reloading ecx with `this`; both probed spellings order it after. */
+    vt = (int *)*pThis;
+    a.v = ((BrVtFn8A70)vt[3])(pThis, param_2);
+    ((BrVtFn8A70)vt[9])(pThis, a);
+}
 #endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
