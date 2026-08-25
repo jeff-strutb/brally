@@ -1155,7 +1155,8 @@ def refine_function(row, max_rounds=4, max_cands=80):
     return row
 
 
-def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80):
+def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80,
+               min_size=0):
     rows = []
     with open(LEARNINGS_CSV) as f:
         rows = list(csv.DictReader(f))
@@ -1165,6 +1166,8 @@ def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80):
             d = int(r['diffs'])
         except ValueError:
             continue
+        if int(r.get('orig_size') or 0) < min_size:
+            continue  # tiny junk/thunks: unreachable from C, don't climb them
         if 0 < d <= max_diffs and (not target_va or r['va'].lower() == target_va.lower()):
             todo.append(r)
     # Biggest payoff first, so an interrupted run banked the valuable half.
@@ -1412,6 +1415,7 @@ def main():
     max_diffs = 5
     max_rounds = 4
     max_cands = 80
+    min_size = 0
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg == '--va' and i < len(sys.argv) - 1:
             target_va = sys.argv[i + 1]
@@ -1421,6 +1425,8 @@ def main():
             max_rounds = int(sys.argv[i + 1])
         if arg == '--max-cands' and i < len(sys.argv) - 1:
             max_cands = int(sys.argv[i + 1])
+        if arg == '--min-size' and i < len(sys.argv) - 1:
+            min_size = int(sys.argv[i + 1])
 
     if '--residue' in sys.argv:
         print_residue()
@@ -1428,7 +1434,8 @@ def main():
 
     if '--refine' in sys.argv:
         run_refine(max_diffs=max_diffs, target_va=target_va,
-                   max_rounds=max_rounds, max_cands=max_cands)
+                   max_rounds=max_rounds, max_cands=max_cands,
+                   min_size=min_size)
         return
 
     run(target_va=target_va, small_only=small_only, dry_run=dry_run,
