@@ -7,10 +7,32 @@
  * ======================================================================
  * WHAT 0x10019A70 IS
  * ======================================================================
- * 11223 bytes.  It is the body installed in the game-step slot at
- * 0x106E79F4 (br_gamestep.h), so the Win32 pump's state-2 arm calls it once
- * per frame for the whole of a race.  It is NOT a phase: the menu frame runs
- * INSIDE it.
+ * 11223 bytes (11,223 / 480,853 of BRGlide.dll `.text`).  It is the body
+ * installed in the game-step slot at 0x106E79F4 (br_gamestep.h), so the
+ * Win32 pump's state-2 arm calls it once per frame for the whole of a
+ * race.  It is NOT a phase: the menu frame runs INSIDE it.
+ *
+ * ======================================================================
+ * MATCHING PROTOCOL (byte-exact, not the port)
+ * ======================================================================
+ * One address, one C function.  The Clock / Begin / Frame / Lights split
+ * below is the PORT.  A matching twin cannot be that split.
+ *
+ * Do not transcribe all 11 KB in one pass.  Win the prologue first:
+ *
+ *     10019A70  sub  esp, 0x34          ; 52 bytes of locals, 4-byte aligned
+ *     10019A73  push ebx / ebp / esi / edi
+ *     …         xor  ebp, ebp           ; ebp is a GENERAL register
+ *
+ * `and esp,-8` means some local wants 8-byte alignment (a `double` or
+ * `__int64`; Ghidra's `float10` is an x87 return, not a slot).  Retype or
+ * delete it and the compiler returns to `sub esp, 0x34` and frees ebp.
+ * Until instruction one matches, nothing downstream can.
+ *
+ * Then grow section by section and recompile; the first divergence is the
+ * progress bar.  131 distinct callees — wrong signatures corrupt call
+ * sites — so this is last among the big targets, not first.  No
+ * `@implements` until the whole 11,223 bytes diff clean.
  *
  * Its very first branch splits it in two, and the split is the shape of this
  * module:
@@ -433,20 +455,11 @@ int  BrRaceStepAllFinished(void);
  * same reason. */
 void BrRaceStepLights(void);
 
-/* 0x10019A70 CARRIES NO @implements LINE, AND THAT IS ON PURPOSE.
+/* 0x10019A70 CARRIES NO @implements LINE.
  *
- * The three functions below transcribe about 2,000 of its 11,223 bytes -- the
- * script seed, the light machine and the per-frame arm.  br_racebegin.h adds
- * another 4,353: the opening frame clock and the WHOLE one-time arm,
- * 0x10019A70..0x1001AB70.  That is 6,129 of 11,223, 54.6%.
- *
- * The remaining 5,094 bytes -- 0x1001B261..0x1001C646, the replay camera, the
- * HUD, the mirror, the per-car render marshalling, the pause and camera
- * input, the race exit and the frame limiter -- are still absent.  The
- * manifest form is whole-function only (see tools/manifest.py), so there is
- * no way to claim 54.6% of an address; the claim that used to sit on
- * BrRaceStepInit claimed 100% of it for 2%.  See the long note at that
- * function in br_racestep.c before adding one back. */
+ * The port transcribes pieces (Clock / Begin / Init / Frame / Lights).  A
+ * matching twin must be one C function; see MATCHING PROTOCOL above.
+ * Do not tag this address on any of the split helpers. */
 
 /* The one-time arm's race state: the script seed at 0x1001A97C..0x1001A9EF
  * and 0x105CCB94 = 1.  Everything else in that arm is asset loading.

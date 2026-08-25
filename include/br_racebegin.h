@@ -32,10 +32,10 @@
  *                                and camera input, the race exit and the
  *                                frame limiter)
  *
- * 4,353 + 1,776 == 6,129 of 11,223, i.e. 54.6%.  A whole-function claim needs
- * the other 45.4% and there is no sub-range form in `tools/manifest.py`, so
- * 0x10019A70 STILL READS AS UNPORTED, WHICH IT STILL IS.  Do not put an
- * `@implements` line on it here or in br_racestep.c until the tail exists.
+ * 4,353 + 1,776 == 6,129 of 11,223, i.e. 54.6% of the PORT.  A matching
+ * claim is whole-function only and needs one C function — see the matching
+ * protocol in br_racestep.h.  Do not tag this address on any of these
+ * split helpers.
  *
  * The seven neighbours below ARE claimed, in full, because each is a whole
  * function with its own entry address.

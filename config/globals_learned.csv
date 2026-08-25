@@ -276,7 +276,7 @@ DAT_100ad7f0,0x100AD7F0,1,0,"named global, no address recorded",0x1005A020
 DAT_100ad7f4,0x100AD7F4,1,0,"named global, no address recorded",0x1005A020
 DAT_100ad7f8,0x100AD7F8,1,0,"named global, no address recorded",0x1005A020
 DAT_100b22d8,0x100B22D8,1,0,"named global, no address recorded",0x1005A070
-DAT_100b2f04,0x100B2F04,3,1,"named global, no address recorded",0x1002DB88 0x10061440
+DAT_100b2f04,0x100B2F04,5,1,"named global, no address recorded",0x1002DB88 0x10061440
 g_aBr0B37D0,0x100B2FD8,3,1,"named global, no address recorded",0x10004D30
 BrG_0B380C,0x100B3014,1,0,"named global, no address recorded",0x1005A6E0
 g_Br0B380C,0x100B3014,1,0,"named global, no address recorded",0x10061280
