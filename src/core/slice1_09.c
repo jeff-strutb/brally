@@ -289,6 +289,33 @@ void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
 }
 #endif
 
+/* 0x10073D80  big-endian 16-bit (glide 0x1006CFC0). */
+/* WHAT IT DOES: writes a two-byte number into the stream, most significant
+ * byte first. */
+/* @implements 0x1006CFC0 glide BrBitStreamWriteU16 */
+#ifdef BR_MATCHING_BUILD
+/* thiscall, ret 4; the argument is a SHORT (`mov ax,[esp+0xc]`). */
+typedef struct { unsigned short v; } BrBitStreamWordArg;
+void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
+{
+    BrBitStreamAlignWrite(pBs);
+    pBs->pBuf[pBs->writeByte] = (unsigned char)(v.v >> 8);
+    pBs->writeByte++;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
+    pBs->writeByte++;
+}
+#else
+void BrBitStreamWriteU16(BrBitStream *pBs, unsigned int v)
+{
+    int w;
+    BrBitStreamAlignWrite(pBs);
+    w = pBs->writeByte;
+    pBs->pBuf[w]     = (unsigned char)(v >> 8);
+    pBs->pBuf[w + 1] = (unsigned char)v;
+    pBs->writeByte = w + 2;
+}
+#endif
+
 /* 0x10073DC0  big-endian 24-bit. */
 /* WHAT IT DOES: writes a three-byte number into the stream, most significant
  * byte first. */
