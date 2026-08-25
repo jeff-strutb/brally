@@ -19,10 +19,14 @@
 /* Header prototype is cdecl; matching needs thiscall.  Rename the cdecl
  * declaration so the definition below can wear a different convention. */
 #define BrTextBoxDeleteDtor BrTextBoxDeleteDtor_cdecl
+#define BrTextBoxMeasureA  BrTextBoxMeasureA_cdecl
+#define BrTextBoxMeasureB  BrTextBoxMeasureB_cdecl
 #endif
 #include "slice3_39.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrTextBoxDeleteDtor
+#undef BrTextBoxMeasureA
+#undef BrTextBoxMeasureB
 #endif
 
 /* =====================================================================
@@ -504,6 +508,65 @@ BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
  * 0x1005B0D0 / 0x1005B160 -- measure sz[]
  * ===================================================================== */
 
+#ifdef BR_MATCHING_BUILD
+/* GLIDE's font table records are 12 bytes (`lea eax,[eax+eax*2]; shl eax,2`
+ * -- index * 12), not the 8-byte BrGlyphMetric the port carries.  Only the
+ * first two words are read here.  Table base 0x100ABE84 in BRGlide.dll. */
+typedef struct BrGlyphMetric12 {
+    uint16_t advance;   /* +0x00 */
+    uint16_t height;    /* +0x02 */
+    uint16_t s4, s6, s8, sA;
+} BrGlyphMetric12;
+extern BrGlyphMetric12 g_BrGlyphFontA12[];   /* 0x100ABE84 (glide) */
+
+/* WHAT IT DOES: walks sz[] adding up glyph advances from font A, growing the
+ * seeded height to the tallest glyph seen; a control byte stops the walk.
+ * The original is ONE loop -- the port's BrGlyphClassify split below is not
+ * a matching twin, so the matching build carries the inlined shape. */
+/* @implements 0x10053EF0 glide BrTextBoxMeasureA */
+void BR_THISCALL1 BrTextBoxMeasureA(BrTextBox *pBox)
+{
+    char    c;
+    int16_t h;
+    int16_t k;
+    int16_t adv;
+    int16_t width;
+    int16_t maxH;
+    int16_t i;
+
+    c     = pBox->sz[0];
+    maxH  = pBox->height;
+    width = 0;
+    i     = 0;
+    for (;;) {
+        if (c == '\0' ||
+            (((k = (int16_t)((int16_t)c - 0x20)), k < 0 || k > 0x7F) &&
+             c != ' ')) {
+            pBox->height = maxH;
+            pBox->width  = width;
+            return;
+        }
+        if (c < '!' || c > '~') {
+LAB_spaceA:
+            if (c == ' ') {
+                width = width + BR_GLYPH_SPACE_ADVANCE;
+            }
+        } else {
+            adv = (int16_t)g_BrGlyphFontA12[k].advance;
+            if (adv == -1 ||
+                ((h = (int16_t)g_BrGlyphFontA12[k].height),
+                 (uint16_t)h == BR_GLYPH_NONE)) goto LAB_spaceA;
+            width = width + adv;
+            if (maxH < h) {
+                maxH = h;
+            }
+        }
+        i = i + 1;
+        c = pBox->sz[i];
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* The shared prologue of both measurers: decide what kind of character this
  * is.  Returns 1 for "in the glyph range", 0 for "space-or-nothing", -1 for
  * "stop the walk entirely". */
@@ -525,6 +588,7 @@ static int BrGlyphClassify(char c)
     return 1;
 }
 
+#ifndef BR_MATCHING_BUILD
 void BrTextBoxMeasureA(BrTextBox *pBox)
 {
     uint16_t width = 0;
@@ -564,6 +628,7 @@ void BrTextBoxMeasureA(BrTextBox *pBox)
     pBox->height = (int16_t)maxH;
     pBox->width  = (int16_t)width;
 }
+#endif /* !BR_MATCHING_BUILD */
 
 void BrTextBoxMeasureB(BrTextBox *pBox)
 {
