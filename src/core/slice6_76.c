@@ -597,6 +597,23 @@ typedef void (__stdcall *dsbuf_fn2)(int, int);
 
 typedef int (__stdcall *dsbuf_fn1)(int);
 
+/* WHAT IT DOES: release the voice's DirectSound buffer (vtable +8 = Release)
+ * and clear the pointer; always returns 0. */
+/* @implements 0x1006B490 glide BrSndVoiceBufRelease */
+
+int BrSndVoiceBufRelease(int param_1)
+
+{
+  int *piVar1;
+
+  piVar1 = *(int **)(param_1 + 0x9c);
+  if (piVar1 != (int *)0x0) {
+    (*(dsbuf_fn1 *)(*piVar1 + 8))((int)piVar1);
+    *(int *)(param_1 + 0x9c) = 0;
+  }
+  return 0;
+}
+
 /* WHAT IT DOES: if the voice is playing, call IDirectSoundBuffer::Stop
  * (vtable +0x48) and clear the playing flag on S_OK; returns the HRESULT. */
 /* @implements 0x1006B4C0 glide BrSndVoiceBufStop */

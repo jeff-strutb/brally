@@ -348,6 +348,25 @@ void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
 }
 #endif
 
+#ifdef BR_MATCHING_BUILD
+/* br_obj.h's BrObjClear (0x10073B80 / glide 0x1006CDC0), redeclared over
+ * BrBitStream -- same layout, this TU does not pull br_obj.h. */
+void BR_THISCALL1 BrObjClear(BrBitStream *pBs);
+extern int DAT_1184c070;
+
+/* WHAT IT DOES: reset the message stream and write the 24-bit id at
+ * 0x1184C070 as its header. */
+/* @implements 0x1006AB60 glide BrObjResetMsgHdr */
+void BrObjResetMsgHdr(BrBitStream *pBs)
+{
+    BrBitStreamByteArg a;
+
+    BrObjClear(pBs);
+    a.v = (unsigned int)DAT_1184c070;
+    BrBitStreamWriteU24(pBs, a);
+}
+#endif
+
 /* 0x10073E10  big-endian 32-bit. */
 /* WHAT IT DOES: writes a four-byte number into the stream, most significant
  * byte first. */
