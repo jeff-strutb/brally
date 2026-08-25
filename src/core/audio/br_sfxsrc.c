@@ -6,7 +6,15 @@
  */
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* Header prototype takes int ch; the original's first argument is a SHORT
+ * (movsx esi,[esp+0xC]) and it returns nothing. */
+#define BrSfxSrcStart BrSfxSrcStart_cdecl
+#endif
 #include "br_sfxsrc.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrSfxSrcStart
+#endif
 #include "slice1_08.h"
 
 /* ==========================================================================
@@ -239,6 +247,27 @@ void BrSfxSrcChannelsReset(void)
  * The source layer
  * ========================================================================== */
 
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: bind and start a sound on a channel: record the channel's
+ * group/loop-flag/packed levels, bind the voice, then pan, frequency, start.
+ * The record stores happen before any gate; a2 is pushed by callers and
+ * never read. */
+/* @implements 0x1006E4C0 glide BrSfxSrcStart */
+void BrSfxSrcStart(short ch, int group, int32_t f0C, int32_t loop,
+                   uint32_t packed)
+{
+    int c = ch;
+
+    g_aBrSfxChan[c].group  = group;
+    g_aBrSfxChan[c].f10    = 0;
+    g_aBrSfxChan[c].packed = packed;
+    if (BrSfxChanBind(group, c) != 0) {
+        BrSfxChanSetLoop(c, loop);
+        BrSfxChanSetLevels(c, packed);
+        BrSfxChanStart(group, c, loop);
+    }
+}
+#else
 int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
                   uint32_t packed)
 {
@@ -272,6 +301,7 @@ int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
     (void)BrSfxChanSetLevels(ch, packed);    /* 0x1006E50B */
     return BrSfxChanStart(group, ch, loop);  /* 0x1006E516 */
 }
+#endif
 
 /* WHAT IT DOES: start a sound at full volume on a given channel -- a hit,
  * a menu beep, an engine, whatever the group's bank holds. */
