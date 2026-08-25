@@ -7,6 +7,20 @@ construct→codegen mappings. Infer the source from the bytes; never permute
 spellings by trial and error. Add every newly proven idiom to that file:
 each idiom is solved once, and this is how per-function cost drops.
 
+**The matching cadence (established 2026-08-25):** machine batch → hand-solve
+one representative per failure class → mint a generator → re-batch. Never
+hand-match what a generator could sweep. The wide batch is
+`tools/ghidra_to_match.py --refine --max-diffs 200 --min-size 16` (hours,
+zero tokens, crash-safe); `tools/autofile.py` files, sweep-verifies, and
+commits every MATCH; `--residue` groups the failures by divergence class.
+When a function is blocked on WHAT THE SOURCE SAYS (short/dense/frame
+classes: unknown structure, suspected inlined helper, recomp ≪ orig,
+ambiguous widths/signedness/arg order), **read its N64 twin first**: Top
+Gear Rally (`reference/tgrally/`) is the same source lineage, IDO MIPS is
+near-transparent, and 195 shared debug strings pair functions with
+certainty — see the `tgr-n64-viability` memory note. The N64 does NOT move
+register-allocation walls (scattered class) — don't burn time there.
+
 ## 0. BRGlide.dll is the reference binary. NOT BRD3D.dll.
 
 `BRGlide.dll` (3dfx Glide) is the mature target and the reference. `BRD3D.dll`
