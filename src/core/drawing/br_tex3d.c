@@ -1014,7 +1014,7 @@ typedef int (*funcptr)();
 extern funcptr DAT_118ed1d0;
 int FUN_10027b60();
 int FUN_100283c0();
-int FUN_10027a70();
+int FUN_10027a70(BrTexReq272 *);
 int FUN_10029290();
 int FUN_10030fd0();
 int FUN_1005a070();
@@ -1349,15 +1349,18 @@ int BrTex3dRegister(void)
   int hCur;
   BrTexReq272 r;
 
-  r.f264 = DAT_106b7aac;
+  /* Opening copies: orig stores p1, p2, then f264, then b290..b295 in
+   * field-offset order.  Ghidra's f264-first / b292-first order rotates
+   * the first three stores. */
   r.p1 = DAT_105d17f0;
   r.p2 = DAT_106b7a98;
-  r.b292 = DAT_105e17f8;
+  r.f264 = DAT_106b7aac;
   r.b290 = DAT_105e1800;
   r.b291 = DAT_1066182c;
-  r.b295 = DAT_106b7a78;
+  r.b292 = DAT_105e17f8;
   r.b293 = DAT_105d17e8;
   r.b294 = DAT_10697a68;
+  r.b295 = DAT_106b7a78;
   r.f268 = 0;
   r.b296 = DAT_10697a40;
   r.b297 = DAT_10661828;
@@ -1366,22 +1369,22 @@ int BrTex3dRegister(void)
     return id;
   }
   r.iLevel = DAT_106b7ab0;
-  if (DAT_106b7a94 < DAT_106b7ab0) {
-    DAT_106b7a94 = DAT_106b7ab0;
+  if (DAT_106b7a94 < r.iLevel) {
+    DAT_106b7a94 = r.iLevel;
   }
   r.fTmu2 = (unsigned int)(DAT_105ccbd0 > 1);
   r.lod = 3;
-  sMask = DAT_10697840[DAT_106b7ab0].maskS;
+  sMask = DAT_10697840[r.iLevel].maskS;
   w = 1 << sMask;
   r.w = w;
   r.wPow = w;
-  tMask = DAT_10697840[DAT_106b7ab0].maskT;
+  tMask = DAT_10697840[r.iLevel].maskT;
   h = 1 << tMask;
   r.h = h;
   r.hPow = h;
-  if (DAT_106b7a94 > DAT_106b7ab0) {
+  if (DAT_106b7a94 > r.iLevel) {
     w = tMask;
-    j = DAT_106b7ab0 + 1;
+    j = r.iLevel + 1;
     for (; j <= DAT_106b7a94; j++) {
       sMask = sMask - 1;
       if ((DAT_10697840[j].maskS != sMask) ||
@@ -1391,16 +1394,16 @@ int BrTex3dRegister(void)
       }
     }
   }
-  w = DAT_10697840[DAT_106b7ab0].mirrorS;
-  hCur = DAT_10697840[DAT_106b7ab0].mirrorT;
+  w = DAT_10697840[r.iLevel].mirrorS;
+  hCur = DAT_10697840[r.iLevel].mirrorT;
   if (w) {
     r.w = r.w * 2;
   }
   if (hCur) {
     r.h = h * 2;
   }
-  r.fmt = FUN_10027220(DAT_10697840[DAT_106b7ab0].siz,
-                       DAT_10697840[DAT_106b7ab0].fmt, DAT_106b7aac);
+  r.fmt = FUN_10027220(DAT_10697840[r.iLevel].siz,
+                       DAT_10697840[r.iLevel].fmt, DAT_106b7aac);
   r.aspect0 = 8;
   r.aspect1 = 8;
   r.f14 = 2;
@@ -1427,11 +1430,11 @@ int BrTex3dRegister(void)
   }
   FUN_100242e0(&r.aspect1,r.w,r.h);
   h = (FUN_100275c0(&r.f20,r.w,r.h) == 0);
-  d = DAT_106b7a94 - DAT_106b7ab0;
+  d = DAT_106b7a94 - r.iLevel;
   FUN_100242e0(&r.aspect0,r.w >> d,r.h >> d);
   if (DAT_100b8498 > 1) {
     r.aspect0 = r.aspect1;
-    DAT_106b7a94 = DAT_106b7ab0;
+    DAT_106b7a94 = r.iLevel;
   }
   r.f2c = 1;
   r.f30 = 1;
@@ -1464,14 +1467,14 @@ int BrTex3dRegister(void)
       wCur = wCur / 2;
       FUN_100242e0(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
-      d = r.aspect1 - DAT_106b7ab0;
+      d = r.aspect1 - r.iLevel;
       r.aspect0 = d + DAT_106b7a94;
     }
     if (r.p9 && (DAT_100b8498 > 1)) {
       hCur = hCur / 2;
       FUN_100242e0(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
-      d = r.aspect1 - DAT_106b7ab0;
+      d = r.aspect1 - r.iLevel;
       r.aspect0 = d + DAT_106b7a94;
     }
     if (h) {
@@ -1482,7 +1485,7 @@ int BrTex3dRegister(void)
           id = r.w / 2;
           FUN_100242e0(&r.aspect1,id,sMask);
           FUN_100275c0(&r.f20,id,sMask);
-          d = r.aspect1 - DAT_106b7ab0;
+          d = r.aspect1 - r.iLevel;
           r.aspect0 = d + DAT_106b7a94;
         }
       }
@@ -1490,7 +1493,7 @@ int BrTex3dRegister(void)
         sMask = r.h / 2;
         FUN_100242e0(&r.aspect1,id,sMask);
         FUN_100275c0(&r.f20,id,sMask);
-        d = r.aspect1 - DAT_106b7ab0;
+        d = r.aspect1 - r.iLevel;
         r.aspect0 = d + DAT_106b7a94;
       }
       FUN_10029290(&wCur,&hCur,r.aspect1,r.f20);
@@ -1501,7 +1504,7 @@ int BrTex3dRegister(void)
   if ((DAT_100b8498 > 1) && FUN_10030fd0(r.p1,&r.w,&r.h)) {
     FUN_100242e0(&r.aspect1,r.w,r.h);
     FUN_100275c0(&r.f20,r.w,r.h);
-    d = r.aspect1 - DAT_106b7ab0;
+    d = r.aspect1 - r.iLevel;
       r.aspect0 = d + DAT_106b7a94;
   }
   r.f260 = DAT_118ed1a0;
