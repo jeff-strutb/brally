@@ -1479,4 +1479,29 @@ int BrNetPeerMutexInit(void)
   return;
 }
 
+extern int DAT_117a9bb4;
+
+/* WHAT IT DOES: under each peer's mutex, clear the pending message slot whose
+ * id matches while its state (low 6 bits) is still early (< 5). */
+/* @implements 0x1006A3F0 glide BrNetPeerMsgCancel */
+
+int BrNetPeerMsgCancel(int id)
+
+{
+  int *puVar1;
+
+  puVar1 = &DAT_117a9bb4;
+  do {
+    WaitForSingleObject((HANDLE)puVar1[-0xb],0xffffffff);
+    /* mov ecx,[esi]; and ecx,0x3f; cmp cl,5; jge -- a plain INT compare;
+     * the and proves the high bits zero, so VC5 narrows just the cmp. */
+    if ((puVar1[-10] == id) && ((*puVar1 & 0x3f) < 5)) {
+      *puVar1 = 0;
+    }
+    ReleaseMutex((HANDLE)puVar1[-0xb]);
+    puVar1 = puVar1 + 0x25b;
+  } while ((int)puVar1 < 0x117b3274);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
