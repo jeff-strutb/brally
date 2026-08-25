@@ -1187,4 +1187,57 @@ int BrTrackSwapAllVec3(int param_1)
   return;
 }
 
+/* 0x10031960 -- swaps and fixes one record's three segment pointers. */
+int BrTrackFixupSegRec();
+
+/* WHAT IT DOES: walk the list of dword segment pointers at +0x78, byte-swap
+ * and rebase each, then fix up the record it points at. */
+/* @implements 0x10031910 glide BrTrackFixupSegList */
+
+int BrTrackFixupSegList(int param_1)
+
+{
+  char uVar1;
+  int *puVar3;
+  int iVar4;
+
+  puVar3 = *(int **)(param_1 + 0x78);
+  iVar4 = 0;
+  if (0 < *(int *)(param_1 + 0x7c)) {
+    do {
+      uVar1 = *(char *)((int)puVar3 + 3);
+      *(char *)((int)puVar3 + 3) = *(char *)puVar3;
+      *(char *)puVar3 = uVar1;
+      uVar1 = *(char *)((int)puVar3 + 2);
+      *(char *)((int)puVar3 + 2) = *(char *)((int)puVar3 + 1);
+      *(char *)((int)puVar3 + 1) = uVar1;
+      BrSegPtrFixup(puVar3);
+      BrTrackFixupSegRec(*puVar3);
+      puVar3 = puVar3 + 1;
+      iVar4 = iVar4 + 1;
+    } while (iVar4 < *(int *)(param_1 + 0x7c));
+  }
+  return;
+}
+
+/* WHAT IT DOES: byte-swap a 0x28-byte record: three Vec3s then one dword. */
+/* @implements 0x10031A40 glide BrTrackSwapRec28 */
+
+int BrTrackSwapRec28(int param_1)
+
+{
+  char uVar1;
+
+  BrSwapVec3(param_1);
+  BrSwapVec3(param_1 + 0xc);
+  BrSwapVec3(param_1 + 0x18);
+  uVar1 = *(char *)(param_1 + 0x27);
+  *(char *)(param_1 + 0x27) = *(char *)(param_1 + 0x24);
+  *(char *)(param_1 + 0x24) = uVar1;
+  uVar1 = *(char *)(param_1 + 0x26);
+  *(char *)(param_1 + 0x26) = *(char *)(param_1 + 0x25);
+  *(char *)(param_1 + 0x25) = uVar1;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
