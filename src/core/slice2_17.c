@@ -1327,4 +1327,18 @@ void THUNK_1001E200(void)
   return;
 }
 
+
+extern int DAT_105d17b8;
+extern int g_BrFpsScreenW;
+
+/* @implements 0x1001E1E0 glide THUNK_1001E1E0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void THUNK_1001E1E0(void)
+
+{
+  DAT_105d17b8 = g_BrFpsScreenW;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
