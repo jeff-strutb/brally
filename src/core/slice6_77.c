@@ -155,4 +155,37 @@ int BrNop73719(void)
   return;
 }
 
+/* The per-DLL CRT exit-handler glue every /MD DLL carries: an _onexit that
+ * routes to the module's own table via __dllonexit (a LOCAL thunk at
+ * 0x10074AE0, so the call is E8) or to MSVCRT's _onexit (FF 15 import). */
+extern int DAT_118ef17c;
+extern int DAT_118ef180;
+typedef int (__cdecl *BrOnExitFn)(void);
+__declspec(dllimport) BrOnExitFn __cdecl _onexit(BrOnExitFn pfn);
+BrOnExitFn __cdecl __dllonexit(BrOnExitFn pfn, int *ppEnd, int *ppStart);
+
+/* @implements 0x100745B0 glide BrCrtOnExit */
+
+BrOnExitFn BrCrtOnExit(BrOnExitFn pfn)
+
+{
+  if (DAT_118ef180 == -1) {
+    return _onexit(pfn);
+  }
+  return __dllonexit(pfn,&DAT_118ef180,&DAT_118ef17c);
+}
+
+/* WHAT IT DOES: the CRT's atexit -- 0x100745B0 wrapped, returning 0 or -1. */
+/* @implements 0x100745E0 glide BrCrtAtExit */
+
+int BrCrtAtExit(BrOnExitFn pfn)
+
+{
+  BrOnExitFn p;
+
+  p = BrCrtOnExit(pfn);
+  /* neg;sbb;neg;dec -- the ternary's branchless codegen, not setne. */
+  return (p != 0) ? 0 : -1;
+}
+
 #endif /* BR_MATCHING_BUILD */
