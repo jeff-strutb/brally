@@ -176,3 +176,33 @@ int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
                              (void *)(uintptr_t)8u);
 }
 
+
+#ifdef BR_MATCHING_BUILD
+/* ------------------------------------------------------------------ */
+/* 0x10037260 -- format-and-MessageBox                                 */
+/* ------------------------------------------------------------------ */
+
+__declspec(dllimport) int __cdecl wsprintfA(char *pDst, const char *pFmt, ...);
+__declspec(dllimport) int __stdcall MessageBoxA(void *hWnd, const char *pText,
+                                                const char *pCaption,
+                                                unsigned int uType);
+int FUN_100372b0();
+const char *BrStrGet(int id);
+
+/* WHAT IT DOES: resolve param_2 through 0x100372B0, format it with the given
+ * pattern into a 200-byte stack buffer, and MessageBox it with string 0x126
+ * as the caption. */
+/* @implements 0x10037260 glide BrNetErrMsgBox */
+
+void BrNetErrMsgBox(const char *param_1,int param_2)
+
+{
+  int uVar1;
+  char local_c8 [200];
+
+  uVar1 = FUN_100372b0(param_2);
+  wsprintfA(local_c8,param_1,uVar1);
+  MessageBoxA((void *)0x0,local_c8,BrStrGet(0x126),0);
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
