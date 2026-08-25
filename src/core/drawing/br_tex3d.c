@@ -1013,7 +1013,7 @@ typedef int (*funcptr)();
 #endif
 extern funcptr DAT_118ed1d0;
 int FUN_10027b60();
-int FUN_100283c0();
+void BrTex3dDownloadAt();
 int FUN_10027a70(BrTexReq272 *);
 int FUN_10029290();
 int FUN_10030fd0();
@@ -1081,6 +1081,42 @@ void BrTex3dRecSet278(int param_1,int param_2)
   return;
 }
 
+void __stdcall grTexDownloadMipMap(int tmu, int startAddress, int evenOdd,
+                                   void *pInfo);
+extern int DAT_105d17ec;
+extern int DAT_10661844;
+extern char DAT_10661854;
+extern char DAT_10661884;
+extern char DAT_10661888;
+extern char DAT_1066188c;
+extern char DAT_10661904;
+extern char DAT_10661914;
+
+/* WHAT IT DOES: for a live record in the 0xD8-stride texture table at
+ * 0x10661844, store the new start address (+0xD0 and +0x10) and hand the
+ * record's GrTexInfo (+0xC0) back to grTexDownloadMipMap.  Callers push a
+ * third argument the function never reads.
+ * RESIDUE (4B): the original keeps the [+0x48] arg load BELOW the two
+ * address stores; every probed spelling (char-offset, int-indexed, chained
+ * assignment) hoists it one slot -- scheduling residue, structure exact. */
+/* @implements 0x100283C0 glide BrTex3dDownloadAt */
+
+void BrTex3dDownloadAt(unsigned int param_1,int param_2)
+
+{
+  int iVar1;
+
+  if ((param_1 < (unsigned int)DAT_105d17ec) &&
+     (iVar1 = param_1 * 0xd8, (&DAT_10661844)[param_1 * 0x36] != 0)) {
+    *(int *)(&DAT_10661914 + iVar1) = param_2;
+    *(int *)(&DAT_10661854 + iVar1) = param_2;
+    grTexDownloadMipMap(*(int *)(&DAT_10661884 + iVar1),
+                        *(int *)(&DAT_1066188c + iVar1),
+                        *(int *)(&DAT_10661888 + iVar1),&DAT_10661904 + iVar1);
+  }
+  return;
+}
+
 /* WHAT IT DOES: re-download texture `id` from a new texel address, unless it is the
  * currently bound record. What hook slot 0x118ED1D0 holds (opcode 0xDD). */
 /* @implements 0x100285E0 glide BrTex3dReDownload */
@@ -1089,7 +1125,7 @@ void BrTex3dReDownload(int param_1,int param_2)
 
 {
   if (param_1 != DAT_10697a4c) {
-    FUN_100283c0(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4),param_2,0);
+    BrTex3dDownloadAt(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4),param_2,0);
   }
   return;
 }
