@@ -31,13 +31,21 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original DLL. Half of the game's `.text` is transcribed into C across
-1,096 functions, and 511 of those now reproduce the original bytes exactly --
+1,103 functions, and 519 of those now reproduce the original bytes exactly --
 driven by a growing dictionary of proven compiler idioms
 (`docs/VC5-IDIOMS.md`), a Ghidra-assisted batch decompilation pipeline whose
-`--refine` hill-climb now encodes nine of those idioms as automatic source
-transforms (proven by reproducing hand matches end-to-end), and a
-structural audit (`tools/sigaudit.py`) that flags which near-misses are
-idiom-fixable rather than allocator noise. The matched set still skews small
+`--refine` hill-climb encodes ten of those idioms as automatic source
+transforms, and a structural audit (`tools/sigaudit.py`) that flags which
+near-misses are idiom-fixable rather than allocator noise. As of 2026-08-25
+the loop runs unattended: a wide `--refine` batch grinds every open candidate
+(crash-safe, zero-cost reruns), `tools/autofile.py` files each machine-found
+match into the tree, verifies it with a single-file sweep, and commits it,
+and a divergence classifier groups every failure by wall type so hand work
+starts at "which idiom class is biggest" (`--residue`). Seven of today's
+eight new matches were found, filed, and committed by that loop — six of
+them a family blocked only by a fused 16-byte *linker* preamble no C source
+can produce, now enumerated in `config/preambles.csv`, byte-verified
+verbatim, and matched at the true body start. The matched set still skews small
 (median 35 bytes); the 44 functions over 1 KB hold 23% of all code bytes and
 are where the campaign is decided. The second-largest function (`0x1000EAF0`,
 9,264 bytes in `br_scenedl.c`) broke through its main float-scheduling wall on
@@ -49,9 +57,9 @@ suites pass. The per-frame race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 240,867 / 480,853 bytes of `.text` · 1,096 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
-| **Byte-exact under MSVC 5.0** | 511 of 1,096 transcribed functions · 30,299 bytes | `█████████░░░░░░░░░░░` 47% |
-| Byte-exact, of all `.text` | 30,299 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
+| Transcribed into C | 241,020 / 480,853 bytes of `.text` · 1,103 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
+| **Byte-exact under MSVC 5.0** | 519 of 1,103 transcribed functions · 30,880 bytes | `█████████░░░░░░░░░░░` 47% |
+| Byte-exact, of all `.text` | 30,880 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
 | Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
