@@ -53,3 +53,5 @@ tools/wine/
 
 # Scratch files -- anything named temp*
 temp*
+tools/ido/
+tools/ido53/

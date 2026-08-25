@@ -139,13 +139,13 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 
     cbUsed = (int32_t)(pOut - (uint8_t *)pDst);
     if (cbUsed > cbAvail) {
-        /* DEVIATION: the original sprintf()s into an 80-byte stack buffer
-         * (0x1007C830) before calling BrFatal (0x10035BBA).  snprintf into
-         * the same-sized buffer; the text is byte-for-byte the original's. */
+        /* sprintf into an 80-byte stack buffer, as the original does --
+         * confirmed against the N64 build (TGR USA 0x8022adcc), which
+         * compiles the same source with plain sprintf + fatal. */
         char szMsg[0x50];
-        snprintf(szMsg, sizeof szMsg,
-                 "VAR SAVE OVERFLOW (%d avail, %d used)",
-                 (int)cbAvail, (int)cbUsed);
+        sprintf(szMsg,
+                "VAR SAVE OVERFLOW (%d avail, %d used)",
+                (int)cbAvail, (int)cbUsed);
         BrFatal(szMsg);
     }
 }
