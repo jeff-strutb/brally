@@ -1081,6 +1081,59 @@ void BrTex3dRecSet278(int param_1,int param_2)
   return;
 }
 
+int FUN_10024490();
+
+/* WHAT IT DOES: download a full mip chain: fix the record's minor aspect
+ * field (+0x40/+0x44) from the aspect ratio, then per level from the global
+ * start LOD copy/convert (0x10024490) and advance both cursors by that
+ * level's byte size; returns the source bytes consumed. */
+/* @implements 0x10027E10 glide BrTex3dMipChainLoad */
+
+int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  int local_c;
+  int local_8;
+
+  local_c = 0;
+  iVar1 = FUN_10024df0(*(int *)(param_3 + 0x10));
+  iVar5 = *(int *)(param_3 + 0x2a0);
+  iVar6 = *(int *)(param_3 + 0x2a4);
+  iVar3 = *(int *)(param_3 + 8);
+  iVar4 = *(int *)(param_3 + 0xc);
+  /* RESIDUE (4B): the original's imul copies the DIMENSION into eax
+   * (mov eax,ebx / mov eax,ebp); every probed spelling copies the aspect --
+   * commutative-mult canonicalization, structure exact. */
+  if (iVar5 >= iVar6) {
+    *(int *)(param_3 + 0x44) = (iVar3 * iVar6) / iVar4;
+  }
+  else {
+    *(int *)(param_3 + 0x40) = (iVar4 * iVar5) / iVar3;
+  }
+  local_8 = DAT_106b7ab0;
+  if (DAT_106b7ab0 < *(int *)(param_3 + 0x5c)) {
+    do {
+      FUN_10024490(param_1,iVar3,iVar4,param_2,iVar5,iVar6,*(int *)(param_3 + 0x10));
+      iVar2 = iVar4 * iVar3 * iVar1;
+      local_c = local_c + iVar2;
+      param_1 = param_1 + iVar2;
+      param_2 = param_2 + iVar6 * iVar5 * iVar1;
+      iVar3 = iVar3 >> 1;
+      iVar4 = iVar4 >> 1;
+      iVar5 = iVar5 >> 1;
+      iVar6 = iVar6 >> 1;
+      local_8 = local_8 + 1;
+    } while (local_8 < *(int *)(param_3 + 0x5c));
+  }
+  return local_c;
+}
+
 void __stdcall grTexDownloadMipMap(int tmu, int startAddress, int evenOdd,
                                    void *pInfo);
 extern int DAT_105d17ec;
