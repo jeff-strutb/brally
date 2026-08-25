@@ -396,6 +396,40 @@ the caller AND flipped a helper to match for free.
   named-temp lever cannot even be TESTED on fmul row shapes, and the
   original source cannot have been spelled that way.
 
+- **`(*p & MASK) < K` narrows only the cmp.** A plain int compare after an
+  `&` mask emits the dword load + 32-bit and, then just the `cmp` narrowed
+  to the byte register (`mov ecx,[esi]; and ecx,0x3f; cmp cl,5; jge`).
+  A `(char)` cast on the expression narrows the whole chain to a byte load
+  (`mov cl,[esi]; and cl,0x3f`); an int local flips the web to eax/al.
+  Proven BrNetPeerMsgCancel 0x1006A3F0.
+- **Returning the assignment forces the quotient copy.** `return g = x / K;`
+  emits `mov eax,edx; shr eax,N; mov [g],eax` after the magic multiply —
+  the copy into EAX exists because the value is returned.  A void function
+  shifts EDX in place.  Proven BrReplayCountFromBytes 0x10063DB0.
+- **`x ? 0 : -1` vs `(x != 0) - 1`:** the ternary compiles to the branchless
+  `neg; sbb; neg; dec` chain (extends the /Od-ternary idiom to /O2 returns);
+  the arithmetic spelling emits `xor; test; setne; dec`.  Proven BrCrtAtExit
+  0x100745E0.
+- **Byte-pair swap: one temp, temp holds HIGH.** `t = p[hi]; p[hi] = p[lo];
+  p[lo] = t;` per pair, with the SAME temp variable reused across both pairs
+  of a dword swap, reproduces `mov al,[hi]; ...` with transients in AL and
+  the direct-move RHS in cl/dl.  Ghidra prints the temp-holds-mid rotation
+  and BrSwap4's temp-holds-low form; both rotate the byte registers (8 diffs).
+  Proven BrTrackFixupSegList 0x10031910 + BrTrackSwapRec28 0x10031A40.
+- **Loop-latch field test wants a VALUE temp.** `iNext = p[7]; p += 4;
+  } while (iNext)` loads `[esi+0x1c]`, advances, tests.  A POINTER temp
+  (`pNext = p + 7`) additionally materialises a dead `lea eax,[esi+0x1c]`.
+  Proven BrHudTextListDraw 0x10013140.
+- **thiscall with a short stack arg = struct-short via __fastcall.**
+  `typedef struct { unsigned short v; } Arg;` as the stack parameter of a
+  `__fastcall(this, Arg)` twin reproduces `mov ax,[esp+0xc]` (16-bit arg
+  load) and `ret 4`.  Proven BrBitStreamWriteU16 0x1006CFC0.
+- **Glide-API calls are E8 to local thunks, CRT via MSVCRT stays FF 15.**
+  Declare glide2x entry points as plain `__stdcall` externs (grTex...) and
+  the per-DLL CRT glue's __dllonexit as a plain extern; `_onexit`/`exit`/
+  stdio keep `_CRTIMP` dllimport.  Proven BrCrtOnExit 0x100745B0,
+  BrTex3dDownloadAt 0x100283C0.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
