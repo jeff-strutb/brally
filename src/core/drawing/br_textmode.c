@@ -66,3 +66,39 @@ void BrNodeChainReset_1000F460(void)
     } while ((int)(uintptr_t)p >= (int)(uintptr_t)&g_2E54C0);
     g_2E5ECC = prev;
 }
+
+#ifdef BR_MATCHING_BUILD
+extern int DAT_102e16ac;
+extern int DAT_102e16b0;
+extern char DAT_102e1710;
+extern int DAT_1035f7d8;
+extern int DAT_1035f7dc;
+extern int DAT_1035faec;
+extern int DAT_1035fba4;
+extern char DAT_1035fba8;
+extern char DAT_103874a8;
+extern int DAT_106ed67c;
+
+/* WHAT IT DOES: point the three per-view scratch buffers at view index
+ * 0x106ED67C's slice -- each base is stored to two cursors (base and write
+ * head).  Strides 80000 / 32000 / 256000 bytes lower as lea chains. */
+/* @implements 0x1000CB20 glide BrViewBuffersRebase */
+
+void BrViewBuffersRebase(void)
+
+{
+  /* ABSOLUTE base addresses (add ecx,imm32, no reloc) -- the same
+   * absolute-address spelling br_scenedl.c proved for its row transforms;
+   * a symbol base emits lea reg,[reg+disp32] instead. */
+  DAT_1035f7d8 = 0x1035fba8 + DAT_106ed67c * 80000;
+  DAT_102e16b0 = 0x1035fba8 + DAT_106ed67c * 80000;
+  /* RESIDUE (4B): the 32000 product's last lea lands in edx and folds the
+   * base add into a lea (orig keeps ecx and a plain add) -- coalescing
+   * residue; temp-binding and addend order probed, both no better. */
+  DAT_1035faec = 0x103874a8 + DAT_106ed67c * 32000;
+  DAT_1035fba4 = 0x103874a8 + DAT_106ed67c * 32000;
+  DAT_102e16ac = 0x102e1710 + DAT_106ed67c * 0x3e800;
+  DAT_1035f7dc = 0x102e1710 + DAT_106ed67c * 0x3e800;
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
