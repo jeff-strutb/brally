@@ -902,7 +902,13 @@ def single_compile_and_check(func, globals_map, fn_names):
 
 _REFINE_TYPES = ['char', 'unsigned char', 'short', 'unsigned short',
                  'unsigned int', 'int', 'float', 'double']
-_CMP_RE = re.compile(r'\(([^()<>=!&|]+?)\s*(<=|>=|<|>)\s*([^()<>=!&|]+?)\)')
+# Ghidra wraps the originally-first operand of a flipped compare in an
+# identity (int)/(unsigned int) cast, which hid the flip from this regex —
+# `if (bound <= (int)idx)` never offered the `idx >= bound` candidate that
+# matches (proven 0x10008F90 BrObjSelCycle, found by the Grok pass).
+_CASTINT = r'(?:\((?:unsigned )?int\)\s*)?'
+_CMP_RE = re.compile(r'\(' + _CASTINT + r'([^()<>=!&|]+?)\s*(<=|>=|<|>)\s*'
+                     + _CASTINT + r'([^()<>=!&|]+?)\)')
 _CMP_FLIP = {'<': '>', '>': '<', '<=': '>=', '>=': '<='}
 
 def _score_source(src_text, func_name, orig_bytes, opts, tag):
@@ -954,6 +960,13 @@ def _classify_divergence(orig_bytes, rb, relocs):
     register-allocation, the hill-climbable band)."""
     if rb is None:
         return 'error'
+    # Strip trailing .obj 16-byte-alignment padding before sizing — 65 of
+    # the first wide run's 137 'long' rows were nothing but this artifact
+    # (spotted on 0x10063DB0, proven corpus-wide by the Grok pass).
+    n = len(rb)
+    while n > len(orig_bytes) and rb[n - 1] in (0x90, 0xCC):
+        n -= 1
+    rb = rb[:n]
     delta = len(rb) - len(orig_bytes)
     if delta < 0:
         return 'short%d' % delta
@@ -997,6 +1010,15 @@ def _refine_candidates(src):
         t = 'unsigned int' if m.group(2) == 'int' else 'int'
         nb = body[:m.start()] + '%s%s %s;' % (m.group(1), t, m.group(3)) + body[m.end():]
         yield ('local:%s:%s' % (m.group(3), t), head + nb)
+    # (o) string global as char array: Ghidra externs a referenced string
+    #     literal as `extern int s_*`, which loads its VALUE and pushes a
+    #     register (`mov r,[s]; push r`); the original pushes the ADDRESS
+    #     (`push offset s`), reached from `extern char s_*[]` (proven
+    #     BrFileReadChecked/WriteChecked 0x10008E60/E90 by the Grok pass).
+    for m in re.finditer(r'^extern int (s_\w+);$', head, re.M):
+        nh = (head[:m.start()] + 'extern char %s[];' % m.group(1)
+              + head[m.end():])
+        yield ('strarr:%s' % m.group(1)[:20], nh + body)
     # (n) fold a trailing assignment into the return and make the function
     #     return int: Ghidra prints `void f() { g = expr; return; }` when
     #     callers ignore the result, but the original `return g = expr;`
@@ -1273,8 +1295,17 @@ def print_residue():
     starts at 'which wall is biggest', not at raw diffs."""
     with open(LEARNINGS_CSV) as f:
         rows = list(csv.DictReader(f))
+    # Stale learnings rows for functions the tree already matched by hand
+    # poisoned a hand-off once (0x10008F90 was recommended as a target a day
+    # after it was committed) — filter them out of the report.
+    tree_matched = set()
+    if os.path.exists(REPORT_CSV):
+        with open(REPORT_CSV) as f:
+            tree_matched = {r['va'].lower() for r in csv.DictReader(f)
+                            if r['status'] == 'match'}
     att = [r for r in rows if r.get('divergence')
-           and r['divergence'] not in ('', 'match')]
+           and r['divergence'] not in ('', 'match')
+           and r['va'].lower() not in tree_matched]
     if not att:
         print('no divergence data yet — run --refine first')
         return

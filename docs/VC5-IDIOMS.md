@@ -118,6 +118,31 @@ the caller AND flipped a helper to match for free.
   was `>` (proven BrCdTrackNext). Unsigned globals give `jb`/`ja` (proven
   BrSecondTickLoop). Byte globals need `char` externs (`mov cl,[x]`, proven
   BrMenuLatchPending). The `--refine` pass of ghidra_to_match tries all three.
+  **Ghidra's identity `(int)` cast hides the flip from `_CMP_RE`:** it
+  prints `if (bound <= (int)idx)` for original `if (idx >= bound)` (it
+  wraps the originally-first operand when it thinks the global might be
+  unsigned). Bytes: `cmp idx, bound; jl` (3B D7 / 7C) vs `cmp bound, idx;
+  jg` (3B FA / 7F) — two diffs, ModR/M + jcc. `_CMP_RE` is
+  `[^()<>=!&|]+` so the nested parens of `(int)idx` never match and the
+  existing flip refine cannot fire. Strip the cast AND flip. Proven
+  0x10008F90 (114 B, MATCH /O2).
+- **`long+N` with trailing 90s is COFF padding, not extra instructions.**
+  MSVC 5.0 aligns .obj functions to 16 bytes; a 114-byte body is 128 with
+  14 `nop`s after `ret`. `_classify_divergence` currently labels any
+  recomp longer by >8 as `long+N` *before* looking at the real diffs, so
+  0x10008F90 (2-byte compare-operand-order) and the 48 B fread/fwrite
+  twins (string-as-int, below) both landed in the 137-wide `long` bucket.
+  65 of those 137 extras were exactly 16-byte-align padding. Strip
+  trailing 0x90/0xCC down to orig_size before classifying. Proven
+  0x10008F90 (extra = 14× `90` after `c3`).
+- **A string passed to a function is an array (or a literal), not
+  `extern int`.** `f(s_Foo)` with `extern int s_Foo` emits
+  `mov r, [s_Foo]; push r` (load the first dword as a value). Original
+  `push offset s_Foo` is `extern char s_Foo[]` or a string literal. Proven
+  0x10008E60 / 0x10008E90 (48 B twins; Ghidra typed
+  `s_File_read_failure` as int). The fread temp
+  (`sVar1 = fread(...); if (sVar1 != n)`) is a no-op vs
+  `if (fread(...) != n)` — both compile identical.
 - **`while (p->next) p = p->next;`** keeps `p` in ECX and loads via
   `mov ecx,eax; mov eax,[ecx+N]`; Ghidra's two-temp form loads through EAX
   (proven BrSndListAppend).
