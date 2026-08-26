@@ -79,6 +79,21 @@ the caller AND flipped a helper to match for free.
   the tree's node form can still differ (compacted `cmp;jg;je` vs the
   original's `cmp;jg;cmp;je`) — an unresolved lowering-shape wall, first
   seen on BrInputIsDown.
+- **Ghidra folds default-equivalent case labels, collapsing a jump table
+  to a range check.** `switch(x) { case 2: case 3: case 4: return 1;
+  default: return 2; }` compiles to `cmp eax,2; jl; cmp eax,4; mov eax,1;
+  jle; mov eax,2; ret` (32 B). The original also listed
+  `case 11: case 12: return 2;` (same value as default — Glide texfmt
+  ARGB1555/4444), which keeps the dense range 2..12 and emits the
+  two-level table: `add eax,-2; cmp eax,0xa; ja; xor ecx;
+  mov cl,[eax+btab]; jmp [ecx*4+ptab]; mov eax,1; ret; mov eax,2; ret`
+  (39 B). A singleton extra `case 12: return 2;` is itself folded (still
+  32 B); a two-case cluster or a run through the high bound is not.
+  Distinguishing bytes: `83 c0 fe 83 f8 0a 77` vs `83 f8 02 7c`. Proven
+  0x10024DF0 (texture bytes-per-texel). The byte table
+  `[0,0,0, 2,2,2,2,2,2, 1,1]` (holes 5–10 → default slot 2; 11–12 → slot 1
+  even though both code addresses are `return 2`) is how you recover that
+  the high labels were a separate case-group, not a filled-in 5..12 run.
 - **The residue ceiling on big int functions:** four of five 490–700 B
   functions landed at 4–24 divergent bytes, every one an allocator choice
   (byte-reg pick, esi/edi role, imm-vs-pooled constant). Getting to that
