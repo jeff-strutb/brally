@@ -1457,23 +1457,28 @@ int BrTex3dRegister(void)
   if (id != -1) {
     return id;
   }
+  /* r.iLevel is a store of DAT_106b7ab0, not a cache: first-region
+   * indexing re-derefs the global so the CSE can die in the LOD walk
+   * (orig edx).  1 and h are one web (orig ebp): materialize 1 first so
+   * fTmu2 is cmp-reg not cmp-imm. */
   r.iLevel = DAT_106b7ab0;
-  if (DAT_106b7a94 < r.iLevel) {
-    DAT_106b7a94 = r.iLevel;
+  if (DAT_106b7a94 < DAT_106b7ab0) {
+    DAT_106b7a94 = DAT_106b7ab0;
   }
-  r.fTmu2 = (unsigned int)(DAT_105ccbd0 > 1);
+  h = 1;
+  r.fTmu2 = (unsigned int)(DAT_105ccbd0 > h);
   r.lod = 3;
-  sMask = DAT_10697840[r.iLevel].maskS;
-  w = 1 << sMask;
+  sMask = DAT_10697840[DAT_106b7ab0].maskS;
+  w = h << sMask;
   r.w = w;
   r.wPow = w;
-  tMask = DAT_10697840[r.iLevel].maskT;
-  h = 1 << tMask;
+  tMask = DAT_10697840[DAT_106b7ab0].maskT;
+  h = h << tMask;
   r.h = h;
   r.hPow = h;
-  if (DAT_106b7a94 > r.iLevel) {
+  if (DAT_106b7a94 > DAT_106b7ab0) {
     w = tMask;
-    j = r.iLevel + 1;
+    j = DAT_106b7ab0 + 1;
     for (; j <= DAT_106b7a94; j++) {
       sMask = sMask - 1;
       if ((DAT_10697840[j].maskS != sMask) ||
@@ -1483,16 +1488,16 @@ int BrTex3dRegister(void)
       }
     }
   }
-  w = DAT_10697840[r.iLevel].mirrorS;
-  hCur = DAT_10697840[r.iLevel].mirrorT;
+  w = DAT_10697840[DAT_106b7ab0].mirrorS;
+  hCur = DAT_10697840[DAT_106b7ab0].mirrorT;
   if (w) {
     r.w = r.w * 2;
   }
   if (hCur) {
     r.h = h * 2;
   }
-  r.fmt = FUN_10027220(DAT_10697840[r.iLevel].siz,
-                       DAT_10697840[r.iLevel].fmt, DAT_106b7aac);
+  r.fmt = FUN_10027220(DAT_10697840[DAT_106b7ab0].siz,
+                       DAT_10697840[DAT_106b7ab0].fmt, DAT_106b7aac);
   r.aspect0 = 8;
   r.aspect1 = 8;
   r.f14 = 2;
@@ -1519,11 +1524,11 @@ int BrTex3dRegister(void)
   }
   FUN_100242e0(&r.aspect1,r.w,r.h);
   h = (FUN_100275c0(&r.f20,r.w,r.h) == 0);
-  d = DAT_106b7a94 - r.iLevel;
+  d = DAT_106b7a94 - DAT_106b7ab0;
   FUN_100242e0(&r.aspect0,r.w >> d,r.h >> d);
   if (DAT_100b8498 > 1) {
     r.aspect0 = r.aspect1;
-    DAT_106b7a94 = r.iLevel;
+    DAT_106b7a94 = DAT_106b7ab0;
   }
   r.f2c = 1;
   r.f30 = 1;
@@ -1556,14 +1561,14 @@ int BrTex3dRegister(void)
       wCur = wCur / 2;
       FUN_100242e0(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
-      d = r.aspect1 - r.iLevel;
+      d = r.aspect1 - DAT_106b7ab0;
       r.aspect0 = d + DAT_106b7a94;
     }
     if (r.p9 && (DAT_100b8498 > 1)) {
       hCur = hCur / 2;
       FUN_100242e0(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
-      d = r.aspect1 - r.iLevel;
+      d = r.aspect1 - DAT_106b7ab0;
       r.aspect0 = d + DAT_106b7a94;
     }
     if (h) {
@@ -1574,7 +1579,7 @@ int BrTex3dRegister(void)
           id = r.w / 2;
           FUN_100242e0(&r.aspect1,id,sMask);
           FUN_100275c0(&r.f20,id,sMask);
-          d = r.aspect1 - r.iLevel;
+          d = r.aspect1 - DAT_106b7ab0;
           r.aspect0 = d + DAT_106b7a94;
         }
       }
@@ -1582,7 +1587,7 @@ int BrTex3dRegister(void)
         sMask = r.h / 2;
         FUN_100242e0(&r.aspect1,id,sMask);
         FUN_100275c0(&r.f20,id,sMask);
-        d = r.aspect1 - r.iLevel;
+        d = r.aspect1 - DAT_106b7ab0;
         r.aspect0 = d + DAT_106b7a94;
       }
       FUN_10029290(&wCur,&hCur,r.aspect1,r.f20);
@@ -1593,7 +1598,7 @@ int BrTex3dRegister(void)
   if ((DAT_100b8498 > 1) && FUN_10030fd0(r.p1,&r.w,&r.h)) {
     FUN_100242e0(&r.aspect1,r.w,r.h);
     FUN_100275c0(&r.f20,r.w,r.h);
-    d = r.aspect1 - r.iLevel;
+    d = r.aspect1 - DAT_106b7ab0;
       r.aspect0 = d + DAT_106b7a94;
   }
   r.f260 = DAT_118ed1a0;

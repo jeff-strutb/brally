@@ -337,7 +337,41 @@ the caller AND flipped a helper to match for free.
 - **Don't hand-write strength-reduced pointers.** Plain array indexing
   `tab[j].field` in a loop produces the original's pointer walk
   (`add ptr,0x40`, `[ptr-4]`) by itself; an explicit `int *p` walk risks a
-  different anchor field and operand order.
+  different anchor field and operand order.  A named `BrTexTile40 *pTile
+  = &tab[i]` for the *base* tile (not the walk) emits `shl eax,6; add
+  eax, &tab` (full pointer, extra stack slot, frame +4) where orig is
+  `mov eax,edx; shl eax,6` then `[eax+tab+field]` (offset only).  Proven
+  BrTex3dRegister: the extra slot is 0x2b4 vs orig 0x2b0.
+
+- **`h = 1` then `(g > h)` then `w = h << s; h = h << t` is one web.**
+  Orig `mov ebp,1; cmp edi,ebp; setg; mov ebx,ebp; shl ebx,cl; shl
+  ebp,cl`.  Spelling `fTmu2 = (g > 1)` with a literal emits `cmp ecx,1`
+  plus a later `mov edx,1` that steals edx from the base CSE.  Merging
+  1/h makes the compare a register-register `cmp` and copies 1 into the
+  w-shift register.  Does not by itself flip orig edx vs ours esi for
+  base — that coloring is the next bullet.  Proven BrTex3dRegister.
+
+- **Caller-saved vs callee-saved for a no-call-crossing CSE is first-
+  region coloring, not a live-across-call choice.**  On BrTex3dRegister
+  the DAT_106b7ab0 CSE dies in the LOD walk (orig `lea ecx,[edx+1]; mov
+  edx,ecx` kills edx; ours `inc esi` kills esi) and the fmt-call uses
+  leftover `eax = base<<6`, not base.  Orig still loads it `mov edx,
+  [DAT_106b7ab0]` *before* the callee-saved pushes; ours `push esi; mov
+  esi,[DAT]`.  Truncating *before* the fmt-call with stores kept live
+  puts base in eax (caller-saved); including the fmt-call (or any later
+  DAT_106b7ab0 use) flips it to esi even when those later uses are
+  `*(volatile int *)&DAT` and r.iLevel is store-only.  First-region
+  pressure is 7 values / 7 regs (base, max, 1/h, w, sMask, offset,
+  shift); orig colors base=edx, max=esi, 1=ebp, w=ebx, sMask=edi;
+  ours is that rotation with base in esi.  Ruled out as levers (all
+  byte-probed): decl rename (identity-blind), late r.iLevel store,
+  clamp-via-global vs clamp-via-field, hand-written tile pointer,
+  `__asm nop` (forces ebp frame pointer, prologue dies).  Volatile
+  post-call loads recover leftover-eax fmt-call shape (1177 diffs of
+  1755) but not the edx load.  Residue-ceiling wall on the 1,755 B
+  function: the coloring is determined, not a coin-flip, and no
+  remaining C-level lever moves edx vs esi.  Proven BrTex3dRegister
+  2026-08-26.
 
 - **`memset(p, 0, 12)` is the xor+reg-store triple.** Three consecutive
   zero stores through one register (`xor edx,edx; mov [ecx],edx;
