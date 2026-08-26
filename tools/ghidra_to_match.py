@@ -906,6 +906,10 @@ _REFINE_TYPES = ['char', 'unsigned char', 'short', 'unsigned short',
 # identity (int)/(unsigned int) cast, which hid the flip from this regex —
 # `if (bound <= (int)idx)` never offered the `idx >= bound` candidate that
 # matches (proven 0x10008F90 BrObjSelCycle, found by the Grok pass).
+_SW = re.compile(
+    r'switch\s*\((\w+)\)\s*\{\s*'
+    r'((?:\s*case\s+(?:0x[0-9a-fA-F]+|\d+):\s*)+)'
+    r'(\s*return\s+[^;]+;)\s*default:\s*return\s+([^;]+);\s*\}', re.S)
 _CASTINT = r'(?:\((?:unsigned )?int\)\s*)?'
 _CMP_RE = re.compile(r'\(' + _CASTINT + r'([^()<>=!&|]+?)\s*(<=|>=|<|>)\s*'
                      + _CASTINT + r'([^()<>=!&|]+?)\)')
@@ -1010,6 +1014,38 @@ def _refine_candidates(src):
         t = 'unsigned int' if m.group(2) == 'int' else 'int'
         nb = body[:m.start()] + '%s%s %s;' % (m.group(1), t, m.group(3)) + body[m.end():]
         yield ('local:%s:%s' % (m.group(3), t), head + nb)
+    # (p) un-fold default-equivalent switch cases Ghidra dropped: a
+    #     contiguous case-run returning X plus default returning Y compiles
+    #     to a 2-cmp range check, but the original's two-level jump table
+    #     needs its high labels kept even when they return Y's value. A
+    #     singleton extra case is folded again; a pair, or a fill through
+    #     the high bound, survives. Proven 0x10024DF0 (Grok pass). The
+    #     jump TABLE is data the scorer can't see — a swspan match needs
+    #     its table verified against the DLL by hand (see VC5-IDIOMS.md).
+    for m in _SW.finditer(body):
+        nums = [int(c, 0) for c in
+                re.findall(r'case\s+(0x[0-9a-fA-F]+|\d+)', m.group(2))]
+        if not nums:
+            continue
+        lo, hi, y = min(nums), max(nums), m.group(4).strip()
+        if hi - lo + 1 != len(set(nums)):
+            continue  # not a contiguous run
+        for high in (8, 10, 12, 15):
+            if high <= hi:
+                continue
+            fill = ''.join('  case %d:\n' % k for k in range(hi + 1, high + 1))
+            pair = ('  case %d:\n  case %d:\n' % (high - 1, high)
+                    if high - 1 > hi else fill)
+            # pair first: it ties with fill on code bytes (the table is
+            # invisible to the scorer) but is the spelling whose emitted
+            # table matched the DLL's actual bytes on 0x10024DF0
+            for kind, extra in (('pair', pair), ('fill', fill)):
+                repl = (m.group(0)[:m.group(0).find('default:')]
+                        + extra + '    return %s;\n  default:\n'
+                        '    return %s;\n  }' % (y, y))
+                nb = body[:m.start()] + repl + body[m.end():]
+                yield ('swspan:%s:%s:%d' % (kind, m.group(1), high),
+                       head + nb)
     # (o) string global as char array: Ghidra externs a referenced string
     #     literal as `extern int s_*`, which loads its VALUE and pushes a
     #     register (`mov r,[s]; push r`); the original pushes the ADDRESS
