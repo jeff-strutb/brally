@@ -254,7 +254,34 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
     abs_file = os.path.join(ROOT, relfile)
     provenance = (row.get('compile_errors') or '').replace('refined: ', '') \
         or 'none'
+    # Drop harvested callee-DECLARATIONS whose function is already DEFINED in
+    # the target file: `int f();` beside the real `void f(void){...}` is a
+    # C2371 that breaks the whole TU (dropped every sibling of 0x1002DEC3).
+    # The definition satisfies the reference; the decl is redundant + wrong.
+    def _decl_name(line):
+        m = DECL_FN.match(line.strip())
+        return m.group(1) if m else None
+    kept_decls = []
+    for d in decls:
+        n = _decl_name(d)
+        if n and re.search(r'\b%s\s*\([^;{)]*\)\s*\n?\s*\{' % re.escape(n),
+                           text):
+            continue
+        kept_decls.append(d)
+    decls = kept_decls
+    # Win32-calling bodies need windows.h; many slice files don't include it.
+    # Inject a guarded include at the TOP of the appended block — everything
+    # above it in the file is already fully parsed, so it can only affect the
+    # function being added, and the compile-verify below is the safety net.
+    win32 = re.search(r'\b(LPSECURITY_ATTRIBUTES|LPCSTR|LPCTSTR|HANDLE|HWND|'
+                      r'DWORD|LARGE_INTEGER|Create(?:Mutex|Event|Thread|File)'
+                      r'[AW]?|WaitForSingleObject|MEMORYSTATUS|MMCKINFO)\b',
+                      body)
+    need_win = bool(win32) and 'windows.h' not in text
     block = '\n'
+    if need_win:
+        block += ('#ifdef BR_MATCHING_BUILD\n#include <windows.h>\n'
+                  '#endif\n')
     if needs_funcptr and 'typedef int (*funcptr)' not in text:
         block += 'typedef int (*funcptr)();\n'
     if decls:

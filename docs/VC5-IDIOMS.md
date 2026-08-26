@@ -257,6 +257,26 @@ the caller AND flipped a helper to match for free.
   delete. Proven BrTex3dCreate (715 B). The permute-and-score loop
   (itertools over statement orders, compile each) resolves store-order
   residue in minutes — use it before declaring an allocator wall.
+  **At /Od the shred permutes slots, not just dead-stores.** Symptom: first
+  0x100+ bytes match, then `lea [ebp-0xc]` vs `lea [ebp-8]` on a Ghidra
+  `local_10` that should sit at the end of a 24-byte buffer. Decl-order
+  permutation of the shredded pieces does NOT move them (first-use wins);
+  only rebuilding ONE struct of the frame size does. 0x1002DEC3 (627 B,
+  MATCH /Od): Ghidra printed `int iVar1; char local_28[24]; uint local_10;
+  int local_c; char local_8[4];` — original is
+  `struct { int result; char buf[24]; uint flags; int idx; char tmp[4]; }`
+  (0x28 bytes, the whole frame). `lea [ebp-0x24]` is `&s.buf`,
+  `lea [ebp-4]` is `s.tmp`, `lea [ebp-0xc]` is `&s.flags`, loop counter
+  `[ebp-8]` is `s.idx`, call result `[ebp-0x28]` is `s.result`.
+- **`if (x > K) goto end_of_for_body` at /Od is `jle +2; jmp label`, not
+  `jg` and not `continue`.** Nested `if (x <= K) { body }` emits `cmp K;
+  jg skip`. `continue` emits `jle +2; jmp increment` (E9 backward to the
+  for-inc). Original skip target is the for-body tail (the `jmp inc` at
+  the bottom), a FORWARD short `eb`. Distinguisher: `83 7d xx 0b 7e 02
+  eb NN` vs `7f NN` vs `e9 xx xx xx xx`. Proven 0x1002DEC3: Ghidra's
+  `iVar1 < 0xc` (and `continue`) both missed; `if (result > 0xb) goto
+  next;` with `next:` immediately before the for-inc matched. The earlier
+  guards stay nested `if`s (`je/jne` near to that same tail).
 
 - **char parameters push as unaligned dword windows.** With a prototype
   taking `char` params, VC5 /O2 pushes each byte argument as a full dword
