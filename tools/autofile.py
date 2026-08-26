@@ -183,13 +183,15 @@ def slice_map(report_rows):
 
 
 def pick_slice(spans, va):
-    inside = [f for f, (lo, hi) in spans.items() if lo <= va <= hi]
-    if inside:
-        return min(inside, key=lambda f: spans[f][1] - spans[f][0])
-    below = [f for f, (lo, hi) in spans.items() if hi < va]
-    if below:
-        return max(below, key=lambda f: spans[f][1])
-    return min(spans, key=lambda f: spans[f][0])
+    """Slice files ranked best-first: bracketing (narrowest span first),
+    then nearest-below, then nearest-above."""
+    inside = sorted((f for f, (lo, hi) in spans.items() if lo <= va <= hi),
+                    key=lambda f: spans[f][1] - spans[f][0])
+    below = sorted((f for f, (lo, hi) in spans.items() if hi < va),
+                   key=lambda f: -spans[f][1])
+    rest = sorted((f for f in spans if f not in inside and f not in below),
+                  key=lambda f: spans[f][0])
+    return inside + below + rest
 
 
 def run_sweep(relfile):
@@ -238,14 +240,18 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
                     'symbol %s already defined in %s' % (name, hit))
             return False
 
-    relfile = pick_slice(spans, va)
-    abs_file = os.path.join(ROOT, relfile)
-    text = open(abs_file).read()
-    anchors = list(FOOTER_RE.finditer(text))
-    if not anchors:
+    relfile = None
+    for cand in pick_slice(spans, va):
+        text = open(os.path.join(ROOT, cand)).read()
+        anchors = list(FOOTER_RE.finditer(text))
+        if anchors:
+            relfile = cand
+            break
+    if relfile is None:
         log_row(logrows, va_hex, 'flag',
-                relfile + ' has no BR_MATCHING_BUILD #endif anchor')
+                'no slice file with a BR_MATCHING_BUILD #endif anchor')
         return False
+    abs_file = os.path.join(ROOT, relfile)
     provenance = (row.get('compile_errors') or '').replace('refined: ', '') \
         or 'none'
     block = '\n'
