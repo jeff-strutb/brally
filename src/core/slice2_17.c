@@ -1397,4 +1397,25 @@ void THUNK_1001E2B0(void)
   return;
 }
 
+
+
+/* @implements 0x10024DF0 glide FUN_10024df0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_10024df0(int param_1)
+
+{
+  switch(param_1) {
+  case 2:
+  case 3:
+  case 4:
+    return 1;
+  case 11:
+  case 12:
+    return 2;
+  default:
+    return 2;
+  }
+}
+
 #endif /* BR_MATCHING_BUILD */
