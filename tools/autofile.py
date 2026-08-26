@@ -158,7 +158,7 @@ def extract(tu, name):
         if bad in blob:
             return None, 'unsafe construct: ' + bad, None
     other_defs = set(re.findall(r'\b(\w+)\s*\([^;{)]*\)\s*\n?\s*\{', tu))
-    other_defs.discard(name)
+    other_defs -= {name, 'switch', 'if', 'while', 'for', 'return', 'sizeof'}
     for od in other_defs:
         if re.search(r'\b%s\b' % re.escape(od), body):
             return None, 'references sibling definition ' + od, None
