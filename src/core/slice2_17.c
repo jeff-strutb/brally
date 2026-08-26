@@ -1418,4 +1418,37 @@ int FUN_10024df0(int param_1)
   }
 }
 
+
+extern int DAT_105d1718;
+extern int DAT_106ed6a8;
+extern int DAT_106ed6b0;
+extern int BrG_6C661C;
+extern int BrG_6C6624;
+void __stdcall guFogGenerateLinear(int *table, float nearZ, float farZ);
+void __stdcall grFogTable(int *table);
+
+/* @implements 0x10023AA0 glide FUN_10023aa0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_10023aa0(void)
+
+{
+  if (DAT_106ed6a8 != 0) {
+    if (BrG_6C6624 != 0) {
+      guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
+    }
+    else if (DAT_106ed6b0 != 0) {
+      guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
+    }
+    else if (BrG_6C661C != 0) {
+      guFogGenerateLinear(&DAT_105d1718,60.0f,200.0f);
+    }
+    else {
+      guFogGenerateLinear(&DAT_105d1718,-40.0f,220.0f);
+    }
+  }
+  grFogTable(&DAT_105d1718);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
