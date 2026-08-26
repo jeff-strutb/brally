@@ -116,6 +116,21 @@ the caller AND flipped a helper to match for free.
 - **Win32 imports are `__declspec(dllimport)`** — `call [__imp__X]` (FF 15),
   never `call X` (E8). windows.h provides it; hand prototypes must carry it.
   Proven BrDllMain.
+- **Function pointers in a table are `__stdcall`, not `typedef int (*fp)()`.**
+  Orig `call [DAT]; test eax,eax` (no cleanup). Ghidra's empty `int (*fp)()`
+  is cdecl and emits `call [DAT]; add esp,N` (+3 bytes per call). Four
+  stdcall calls (4/1/2/2 args) were the 14 extra bytes on 0x10002580
+  (`83 c4 10` right after the first `FF 15`, shifting every later je).
+  Distinguisher: `FF 15 … 85 c0` vs `FF 15 … 83 c4`. Also: `if (fp(...)
+  != 0)` (no temp) is `test eax,eax`; `iVar1 = fp(...); if (iVar1 != 0)`
+  with a live zero-register is `cmp eax, esi`. Proven 0x10002580 (CD
+  redbook init, 471 B). Remaining residue after this fix is the store
+  burst: orig reloads caller-saved scratches (`xor edx,edx; mov eax,4;
+  xor ecx,ecx`) for a 7-store prefix then hoists `push 0x10000020`
+  after the handle load; ours uses esi for every zero and hoists the
+  push immediately. Named temps, comma-join, volatile load, and a
+  handle local all failed to force the edx/ecx pair — that burst is
+  scheduler-internal once the stdcall shape is right.
 - **The binary is /MD — CRT calls are FF 15 too.** Put
   `#ifdef BR_MATCHING_BUILD / #define _CRTIMP __declspec(dllimport) / #endif`
   BEFORE the first include (any header pulling a CRT decl locks _CRTIMP empty
