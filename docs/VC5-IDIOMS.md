@@ -182,6 +182,19 @@ the caller AND flipped a helper to match for free.
   constant (`push 0xe; jmp common`). A single shared call through a variable
   pushes a REGISTER instead — the source must repeat the call per branch
   (macro chains are fine). Proven BrGlideResOpen, 545 B first try.
+  **Ghidra CSE's this into temps + one call, which is the `short` class.**
+  It prints nested `if (g == 0) { … t1=A; t2=B; } else { t1=C; t2=D; }
+  f(p, t1, t2);` (range-check polarity, shared call). Original is an
+  else-if `!= 0` chain with the call spelled in each arm — even when two
+  arms push the SAME immediates (do NOT OR the guards: `if (b4 || b0)`
+  emits one push-pair, original has two). Bytes: `test; jz next_arm;
+  push imm32; push imm32; jmp common` vs a register-arg call after
+  mov-imm. Distinguisher: `68 xx xx xx xx 68 yy yy yy yy eb` (push/push/jmp)
+  vs `8b … 50 51 e8` (load temps, push regs, call). The two Glide callees
+  are `__stdcall` with `float` near/far (E8 to 6-byte thunks, no
+  `add esp`). Proven 0x10023AA0 (103 B fog-table builder, MATCH /O2;
+  Ghidra's temp form was 48 B, the 55-byte "short" was the three extra
+  push-pairs + jmps).
 
 - **/Od local slot order:** plain function-scope locals get slots in DECL
   order (-4, -8, -0xC...), but a local declared INSIDE a nested block is
