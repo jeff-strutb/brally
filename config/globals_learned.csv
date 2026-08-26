@@ -29,7 +29,8 @@ FUN_1001dfb0,0x1001DFB0,2,1,"named global, no address recorded",0x1001DD80 0x100
 FUN_1001ff60,0x1001FF60,3,1,"named global, no address recorded",0x1001FEF0
 FUN_10020460,0x10020460,3,1,"named global, no address recorded",0x100203F0
 FUN_100242e0,0x100242E0,3,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
-FUN_10024df0,0x10024DF0,3,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
+$L1330,0x10024E18,1,0,"named global, no address recorded",0x10024DF0
+$L1329,0x10024E24,1,0,"named global, no address recorded",0x10024DF0
 FUN_100250d0,0x100250D0,1,0,"named global, no address recorded",0x10024E60
 FUN_10027220,0x10027220,2,1,"named global, no address recorded",0x10024E60 0x100272F0
 FUN_10027290,0x10027290,12,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
