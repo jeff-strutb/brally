@@ -227,14 +227,16 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
         log_row(logrows, va_hex, 'flag', body)
         return False
 
-    # symbol collision anywhere in src/ (definition or conflicting extern)
+    # symbol collision: only a DEFINITION elsewhere collides — an extern
+    # callee reference is satisfied, not shadowed, by the new definition
     g = subprocess.run(['git', 'grep', '-l', r'\b%s\b' % name, '--', 'src/'],
                        cwd=ROOT, capture_output=True, text=True)
-    if g.stdout.strip():
-        log_row(logrows, va_hex, 'flag',
-                'symbol %s already appears in %s' %
-                (name, g.stdout.split()[0]))
-        return False
+    defre = re.compile(r'\b%s\s*\([^;{)]*\)\s*\n?\s*\{' % re.escape(name))
+    for hit in g.stdout.split():
+        if defre.search(open(os.path.join(ROOT, hit)).read()):
+            log_row(logrows, va_hex, 'flag',
+                    'symbol %s already defined in %s' % (name, hit))
+            return False
 
     relfile = pick_slice(spans, va)
     abs_file = os.path.join(ROOT, relfile)
