@@ -68,25 +68,58 @@ with the BRally C and a static-CRT header. Plus three CRT stubs.
 | 0x00401310 | 89 | CHK_FPutS | **0** | |
 | 0x00401370 | 144 | CHK_FClose | **0** | fclose then `free(name); free(p)` |
 | 0x00401610 | 58 | CountSections | **0** | FindFirst/FindNext until index==-1 |
+| 0x00401C10 | 91 | DlgProcOKCancel | **0** | last inner case (IDCANCEL) falls through to `return 0` |
+| 0x00401C70 | 332 | DlgProc | **0** | symptoms; CheckDlgButton as if/else duplicate calls (not `==0` sete) |
+| 0x00401DC0 | 251 | DlgProcRadio | **0** | method picker; CheckRadioButton spelled per arm |
 | 0x00401EC0 | 59 | ComboGetItemData | **0** | `CB_GETCURSEL` then `CB_GETITEMDATA` on ctl 0x3E9 |
+| 0x00401F00 | 298 | FillComboA | **0** | `[v:` sections, strncpy `strlen(s+1)-1` capped at 0x4F |
+| 0x00402030 | 298 | FillComboB | **0** | same, `[c:` chipset |
+| 0x00402160 | 248 | DlgProcComboA | **0** | vendor combo; merged EndDialog, `if (idx >= 0)` |
+| 0x00402260 | 248 | DlgProcComboB | **0** | chipset combo; same IDOK shape, FillComboB |
+| 0x004023B0 | 205 | GetIniValue | **0** | BRally for-init latch, no `_CRTIMP` |
+| 0x00402CE0 | 64 | GetSectionNameByIndex | **0** | `f(idx, pini)` — FindFirst, FindNext idx times, GetObj, free |
 
-## SetVideo-only, identified, not 0
+## SetVideo-only, identified, not 0 — walls, do not grind
 
-| SV VA | size | name | diffs |
-|---|---:|---|---:|
-| 0x00401150 | 217 | CHK_FGets | — (inlined FILE buffer / `_filbuf`/`ungetc`) |
-| 0x00401560 | 71 | FindFirstSection | 4 (edx vs ecx coloring) |
-| 0x004015B0 | 70 | FindNextSection | 44 |
-| 0x00401C10 | 91 | DlgProcOKCancel | 53 (`switch` vs `sub 0x110; dec`) |
-| 0x00401C70 | 332 | DlgProc | — |
-| 0x00401DC0 | 251 | DlgProcRadio | — |
-| 0x00401F00 / 2030 | 298 | FillComboA/B | — |
-| 0x00402160 / 2260 | 248 | DlgProcComboA/B | — |
-| 0x00402360 | 74 | FollowUse | 11 (`Use=` alias walk; esi/edi) |
-| 0x004023B0 | 205 | GetIniValue | 27 (same latch as BRally's 30) |
-| 0x00402480 | 930 | WinMain | map-truncated; continues into dialog/INI write |
-| 0x0040294F | 369 | WriteDefaultINI | CHK_FWriteOpen + CHK_FPutS of D3D* keys |
-| 0x00402AC0 / 2BCE | 238/240 | WriteVideoINI{,2} | write `[Video]` from current/dialog |
+| SV VA | size | name | diffs | class |
+|---|---:|---|---:|---|
+| 0x00401150 | 217 | CHK_FGets | **192** | getc `_cnt/_ptr/_filbuf` is right; `n<=0` is `test ebp,ebp; jle` to a tail that loads `buf` *after* the four pushes. Loading `buf` before `push edi` flips `jle`/`jg` and the ret-s merge with CR+EOF. Allocator-layout wall. |
+| 0x00401560 | 71 | FindFirstSection | **4** | edx vs ecx for pini. Rest byte-identical to SetSubstituteDir + `[0]=='['`. Coloring: no `name` arg, so pini lands in edx and `mov edx,[edx]` overwrites it with list. |
+| 0x004015B0 | 70 | FindNextSection | **3** | ecx vs edx for pini. Indexed `list->rgsz[i][0]` (`while (i < n)`). Pointer walk (`s = rgsz+i; do`) peels the first load (`+8`, 44 diffs). Same coloring class as FindFirst. |
+| 0x00402360 | 74 | FollowUse | **11** | esi/edi (p vs use). `for(;;)` + break. Orig has one GetIniValue and `test esi,esi; jne` back to it (use in callee-saved esi). `do-while(use)` is 5 diffs but **+20** (duplicates GetIniValue). |
+| 0x00402480 | 2144 | WinMain | ~1200 | **one** function. Map size 930 is truncated mid-body. Orig bytes now `build/match/orig_setvideo/0x00402480.bin` (2144). See below. |
+
+WinMain is **one** function. Map-splits at non-prologue boundaries (do not match as C):
+
+| SV VA | what |
+|---|---|
+| 0x004027FA | OK/Cancel `DialogBoxParamA(DlgProcOKCancel)` — also jump-table slot 0 |
+| 0x00402822 | method `DialogBoxParamA(DlgProcRadio)` |
+| 0x00402838 | `switch(result+1)` → table at 0x402CC0 |
+| 0x00402850 | symptoms `DlgProc` template `0x6a` |
+| 0x00402868 | vendor `DlgProcComboA` template `0x66` |
+| 0x004028DB | chipset `DlgProcComboB` template `0x69` |
+| 0x0040294F | WriteDefaultINI (starts `test eax,eax` — symptoms dialog result) |
+| 0x00402AC0 | WriteVideoINI (vendor card via GetSectionNameByIndex + FollowUse) |
+| 0x00402BAE / BC5 | `FreeINI(gINI); return 0` shared epilogue |
+| 0x00402BCE | WriteVideoINI2 (chipset, same write shape) |
+| 0x00402CC0 | jump table (`result+1`): 0→OK/Cancel `0x4027FA`, 1→cancel `0x402BA8`, 2→symptoms, 3→vendor, 4→chipset |
+
+Dialog templates: OK/Cancel `gPlusD ? 0x67 : 0x6c`; radio `gPlusD ? 0x68 : 0x6b`; symptoms `0x6a`; vendor `0x66`; chipset `0x69`. Radio Back (−1) returns to OK/Cancel; other Backs return to radio. First OK/Cancel cancel is `return 0` **without** FreeINI (`je 0x402BB6`).
+
+WinMain reconstruction (`build/setvideo_work/0x00402480.c`) is structurally the function: `or ebx,-1` as strcpy/strcat scasb count and `Sel.index/saved = -1`; `gPlusD = strstr(lpCmdLine, "+d") != 0`; missing-vdb `sprintf` + `MessageBoxA`; INI parse `strncmp`/`atoi` of the four D3D keys; `strcmp` of `Card=` against VDB section names (inlined); `switch (result + 1)` jump table; WriteDefaultINI / WriteVideoINI / WriteVideoINI2 as inlined tails. First real opcode wall after a matching strcpy/strcat prefix: orig `xor ecx,ecx; test eax,eax; setne cl; mov [gPlusD],ecx` vs recomp `neg; sbb; neg; mov [gPlusD],eax`. Frame `sub esp,0x528` vs `0x518` (16 B of extra orig spills — line at `+0x38`, buf at `+0x138`). Do not pad the frame; the 16 B is a live-set consequence. Not 0 — leave it.
+
+## Idioms proven here
+
+- **Last switch case falls through.** `case IDCANCEL: EndDialog(h, 0);` with **no** `return 0` — the outer `return 0` is the fall-through. An explicit `return 0` in the last case outlines it with `je` + a 5-byte xor-ret (53 diffs on DlgProcOKCancel). Outer `switch(msg)` **does** emit `sub eax, 0x110; je; dec; jne`. Inner `switch(wParam & 0xffff)` emits `and eax, 0xffff; dec; je IDOK; dec; jne default`.
+- **CheckDlgButton 0/1 is if/else duplicate calls**, not `CheckDlgButton(h, id, g==0)` (that is `sete`). Cross-jump merges the call; orig is `test; jne push0; push 1; jmp; push 0`.
+- **CheckRadioButton per arm**, not `id = …; CheckRadioButton(h, first, last, id)` (that is `neg/sbb` on the default `gPlusD` ternary). `switch(lParam) { case 2: Check(…, 0x3EC); return 1; case 3: Check(…, 0x3ED); return 1; }` then `if (gPlusD==0) Check(…, 0x3EC); else Check(…, 0x3EB);`.
+- **GetIniValue latch is a `for`**, same as BRally. Drop `_CRTIMP`.
+- **FillCombo strncpy**, not atoi (map misnamed 0x4036A0). `n = strlen(name+1)-1; if (n >= 0x4f) n = 0x4f; strncpy(buf, name+3, n); buf[n]=0;` then CB_ADDSTRING / SETITEMDATA(i) / SETCURSEL if `Sel.index==i`. Item data is the FindFirst/Next ordinal, not `psec->index`.
+- **GetSectionNameByIndex(int idx, INI *pini)** — pini is the **second** arg. `if (idx > 0) do { p = FindNextSection(p); idx--; } while (idx);`.
+- **Combo IDOK keeps `ok` live by merging EndDialog.** Two EndDialog sites (`if (idx < 0) { EndDialog(..., ok); return; } ok=1; EndDialog(..., ok)`) const-fold `ok` to `push 0`/`push 1`, drop ebp, extra −8 (IAT in ebx, 3 callee-saved). `if (idx < 0) saved; else { ok=1; index=idx; } EndDialog(ok)` keeps `ok` in edi / IAT in ebp / 4-reg prologue but **inverts** `jl`/`jge` (29 diffs). Winning form: `ok=0; idx=ComboGetItemData(h); if (idx >= 0) { ok=1; sel->index=idx; } else sel->index=sel->saved; EndDialog(h, ok);` — success is the true branch so orig `jl fail` is fall-through success, and the store-between-pushes on the fail path is scheduler output (no comma needed).
+- **FindNextSection is indexed, not a pointer walk.** `while (i < n) { if (list->rgsz[i][0]=='[') …; i++; }`. `s = rgsz+i; do { *s; s++; }` peels (`mov edi,[edx+ecx*4]; lea edx,[edx+ecx*4]`).
+- **WinMain `switch (result + 1)`**, not `switch (result)`. `lea eax,[ebx+1]; cmp eax,4; ja epilogue; jmp [eax*4+0x402CC0]`. DialogBoxParamA IAT cached in edi across the wizard. `or ebx,0xffffffff` is both the scasb count and the `Sel.index = Sel.saved = -1` value.
 
 ## What SetVideo does that BRally didn't
 
@@ -107,22 +140,41 @@ with the BRally C and a static-CRT header. Plus three CRT stubs.
 6. Title: `"Boss Rally Display Wizard"`. Registry dir is the same
    `HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory`.
 
-WinMain outline (from calls, not a 0-diff): GetDesktopWindow → GetInstallDir
-→ `strstr` path → CHK_FileExists(`BossRally.vdb`) → MessageBox on miss →
-ReadINI / CountSections → FReadOpen+FGets parse of the vdb → dialogs →
-FreeINI / WriteDefaultINI / WriteVideoINI.
+WinMain outline (structurally identified, not 0-diff): GetDesktopWindow →
+GetInstallDir → strcpy/strcat `BossRally.ini` → `strstr(lpCmdLine, "+d")` →
+CHK_FileExists(`BossRally.vdb`) → MessageBox on miss → ReadINI / CountSections
+→ FReadOpen+FGets parse of existing INI (four `D3D*` keys) → Card= vs VDB
+section names → wizard dialogs → WriteDefaultINI / WriteVideoINI /
+WriteVideoINI2 → FreeINI.
+
+WriteDefaultINI (`wt`): `[Video]`, blank, `Card=[Set via symptoms (use Direct3D)]`,
+`Driver=D3D`, `D3DAlphaCompare=%d`, `D3DAlwaysSquareTextures=0`,
+`D3DClearZBuffer=%d`, `D3DDrawCarShadow=%d`, `D3DWaitCanFlip=0`,
+`D3DWaitFlipDone=0`, `D3DInvSrcAlpha=%d`. WriteVideoINI dumps `[Video]` +
+`Card=<section name>` then FollowUse/BindSection/NextObj lines of the VDB
+section.
 
 ## Matching totals
 
-**28 / 342** functions at diffs=0 (**2,640 / 36,864** of `.text`, **7.2%**).
+**37 / 342** functions at diffs=0 (**4,675 / 36,864** of `.text`, **12.7%**).
 
-Of user-region code (`0x401000`–`0x4038D0` ≈ 10,448 B before CRT startup),
-the 0-diff set is 2,617 B (**25.0%** of that span). The other ~26 KB is
-statically-linked MSVC 5.0 CRT (named where identified: `malloc`/`free`/
-`fopen`/`sprintf`/`_chkstk`/`WinMainCRTStartup`/…).
+Of user-region code (`0x401000`–`0x4038D0` = 10,448 B before CRT startup),
+the 0-diff set is **4,652 / 10,448 (44.5%** of that span). +2 functions /
++496 B this pass (DlgProcComboA/B).
+
+Game user code (helpers through GetSectionNameByIndex, `0x401000`–`0x402D20`
+= 7,456 B) is **4,652 / 7,456 (62.4%)**. Remaining game bytes: WinMain 2,144
++ four walls 432 (CHK_FGets / FindFirst / FindNext / FollowUse) + alignment.
+
+The other ~26 KB is statically-linked MSVC 5.0 CRT starting at `0x402D20`
+(`free` / `exit` / `fclose` / `fopen` / `sprintf` / `_filbuf` / `ungetc` /
+`fputs` / `malloc` / `printf` / `_chkstk` / `strchr` / `strncmp` / `fgets` /
+`atoi` / `strstr` / `WinMainCRTStartup`). Fence, don't match — walls, not
+targets. `WinMainCRTStartup` at `0x4038D0` is one CRT function map-split
+into 7 entries at non-prologue boundaries (same class as BRally).
 
 Winning TUs: `build/setvideo_work/0x<VA>.c`. Orig bytes:
-`build/match/orig_setvideo/`. 70 / 342 map rows have names.
+`build/match/orig_setvideo/`. 79 / 342 map rows have names.
 
 ## CRT-header rule (SetVideo)
 
@@ -135,3 +187,31 @@ Winning TUs: `build/setvideo_work/0x<VA>.c`. Orig bytes:
 
 Do **not** `#define _CRTIMP __declspec(dllimport)` — that is the BRally/DLL
 convention and would emit `FF 15` against this binary's `E8`s.
+
+Globals used by the dialog/INI layer (VA in `.data` / bss):
+
+| VA | name |
+|---|---|
+| 0x40B29C | gD3DAlphaCompare (inverted checkbox 0x3EE) |
+| 0x40B2A0 | gD3DDrawCarShadow (inverted checkbox 0x3EF) |
+| 0x416BC0 | gD3DInvSrcAlpha (checkbox 0x3F0) |
+| 0x416BBC | gD3DClearZBuffer (checkbox 0x3F1) |
+| 0x416BC4 | gPlusD (`strstr(lpCmdLine, "+d")`) |
+| 0x416BB0 | gINI (ReadINI of BossRally.vdb) |
+| 0x40E998 | gSectionCount (CountSections) |
+| 0x4169A0 | Sel.saved |
+| 0x4169A4 | Sel.index (combo item data / section ordinal) |
+| 0x4169A8 | Sel.method (0 / 2 vendor / 3 chipset) |
+| 0x40E090 | gInstallDir |
+| 0x40E198 | gIniPath (install dir + `BossRally.ini`) |
+| 0x40E598 | gLineBuf |
+
+Dialog resource IDs (MAKEINTRESOURCE):
+
+| ID | dialog |
+|---|---|
+| 0x66 | vendor combo (DlgProcComboA) |
+| 0x67 / 0x6c | OK/Cancel (`gPlusD` ? 0x67 : 0x6c) |
+| 0x68 / 0x6b | method radio (`gPlusD` ? 0x68 : 0x6b) |
+| 0x69 | chipset combo (DlgProcComboB) |
+| 0x6a | symptoms (DlgProc) |

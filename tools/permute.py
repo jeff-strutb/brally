@@ -5,8 +5,26 @@ Modeled on simonlindholm/decomp-permuter: mutate semantically-equivalent C,
 compile with the original MSVC 5.0, score against original bytes, keep
 improvements, anneal (accept-worse) and restart from the best.
 
-Mutations target LIVENESS and TEMP COUNT — the levers that move VC5 coloring.
-Decl reordering and pure renames are proven /O2-neutral and are not used.
+Mutations target LIVENESS, TEMP COUNT, and REGISTER COLORING — the levers
+that move VC5's first-region graph coloring. Decl reordering and pure
+renames are proven /O2-neutral and are not used.
+
+Coloring-perturbing mutations (this pass):
+  identity     x → (x+0)/(x*1)/(x|0)/(x^0) on a rvalue (materialize)
+  addr_taken   (void)&v / volatile load through &v  (stack slot / class)
+  guard_nest   if (a && b) <-> if (a) if (b)  (live-across-branch)
+  first_live   extra first-region copy/use of a later value (caller-saved)
+  recompute    duplicate an early assignment so it competes for a reg
+  store_temp   t = rhs; lhs = t  on a field/deref store
+  store_swap   lhs = a OP b  →  lhs = b OP a  (store-side operand order)
+  self_assign  v = v; after an assignment (copy web)
+  live_merge   reuse one local across two disjoint assignment sites
+  paren        extra (x) on a rvalue
+  deref0       *p <-> *(p+0)  (real deref only; `x * y` is mul)
+  dead_use     (void)v; in the first region
+  binop_ident  a OP b → a OP (b+0)/(b|0)  (0x10007D50 24→16 lever)
+Existing split_local / merge_locals / reassoc / intro_temp still apply.
+split_add (a=b+c → t=b; a=t+c) cracked 0x1003CC00 — fold into _refine_candidates.
 
     python3 tools/permute.py --va 0x1002F380 --iters 20000
     python3 tools/permute.py --batch --iters 2000
@@ -134,12 +152,12 @@ def _skip_ws_comments(s, i):
     return i
 
 
-def _find_func_def(src, name=None):
-    """Return (start, open_brace, close_brace, name) of the last function def."""
+def _find_func_def(src, name=None, last=True):
+    """Return (start, open_brace, close_brace, name) of a function def."""
     pat = re.compile(
         r'(?:^|\n)(?:[\w \t\*]+?)(' + (re.escape(name) if name else IDENT)
         + r')\s*\(', re.M)
-    last = None
+    found = None
     _kw = set('if for while switch return sizeof do'.split())
     for m in pat.finditer(src):
         if m.group(1) in _kw:
@@ -152,9 +170,11 @@ def _find_func_def(src, name=None):
         if i < len(src) and src[i] == '{':
             close_b = _match_pair(src, i, '{', '}')
             if close_b > 0:
-                last = (m.start() if src[m.start()] != '\n' else m.start() + 1,
-                        i, close_b, m.group(1))
-    return last
+                found = (m.start() if src[m.start()] != '\n' else m.start() + 1,
+                         i, close_b, m.group(1))
+                if not last:
+                    return found
+    return found
 
 
 def _split_fn(src):
@@ -295,24 +315,42 @@ def _consume_stmt(body, i):
     return i
 
 
+_STMT_KW = set('if for while switch return sizeof do else case default '
+               'break continue goto typedef enum union struct'.split())
+_STOR_RE = re.compile(
+    r'^(?:const|static|unsigned|signed|volatile|struct|enum|union)\s+')
+
+
 def _is_decl(stmt):
+    """True for a local declarator, including typedef'd types (BrPhase *p)."""
     s = stmt.strip()
-    return bool(re.match(
-        r'(?:(?:const|static|unsigned|signed|volatile)\s+)*'
-        r'(?:int32_t|uint32_t|int16_t|uint16_t|uint8_t|int8_t|'
-        r'float|double|int|char|short|long|void|unsigned|struct\s+\w+|bool)\b'
-        r'[^;{]*=?\s*[^;{]*;?\s*$', s)) and '(' not in s.split('=')[0]
+    if not s or s.startswith('#') or '{' in s:
+        return False
+    head = s.split('=')[0]
+    if '(' in head:
+        return False
+    m = re.match(
+        r'^(?:(?:const|static|unsigned|signed|volatile)\s+)*'
+        r'(?:(?:struct|enum|union)\s+)?'
+        r'([A-Za-z_][A-Za-z0-9_]*)'
+        r'(?:\s*\*|\s)+'
+        r'([A-Za-z_][A-Za-z0-9_]*)\b', s)
+    if not m:
+        return False
+    if m.group(1) in _STMT_KW:
+        return False
+    return True
 
 
 def _decl_names(stmt):
     s = stmt.strip().rstrip(';')
-    # drop storage/type words, keep identifiers before '=' or ','
-    s = re.sub(
-        r'^(?:const|static|unsigned|signed|volatile|int32_t|uint32_t|'
-        r'int16_t|uint16_t|uint8_t|int8_t|float|double|int|char|short|'
-        r'long|void|struct\s+\w+|bool)\s+', '', s)
     s = s.split('=')[0]
-    return re.findall(IDENT, s)
+    while _STOR_RE.match(s):
+        s = _STOR_RE.sub('', s, count=1)
+    # drop the type ident, keep declarators
+    s = re.sub(r'^[A-Za-z_][A-Za-z0-9_]*\s*', '', s, count=1)
+    s = s.replace('*', ' ')
+    return [n for n in re.findall(IDENT, s) if n not in _STMT_KW]
 
 
 def _idents(s):
@@ -434,37 +472,90 @@ def extract_function_text(src_text, name):
     return src_text[line + 1:cb + 1]
 
 
-def _file_scope_decls(src_text):
-    """Map name -> 'extern <type> <name><array>;' for file-scope data."""
-    out = {}
-    # strip functions so we don't pick locals
-    stripped = src_text
-    # crude: remove bodies
+def _strip_c_comments(s):
+    s = re.sub(r'/\*.*?\*/', ' ', s, flags=re.S)
+    s = re.sub(r'//.*?$', '', s, flags=re.M)
+    return s
+
+
+def _file_scope_head(src_text):
+    """File-scope text with ALL function bodies removed."""
     i = 0
     chunks = []
     while True:
-        loc = _find_func_def(stripped[i:])
+        loc = _find_func_def(src_text[i:], last=False)
         if not loc:
-            chunks.append(stripped[i:])
+            chunks.append(src_text[i:])
             break
         start, ob, cb, _ = loc
-        chunks.append(stripped[i:i + start])
+        chunks.append(src_text[i:i + start])
         i = i + cb + 1
-    head = '\n'.join(chunks)
-    decl_re = re.compile(
-        r'^(?:extern\s+)?'
+    return _strip_c_comments('\n'.join(chunks))
+
+
+def _file_scope_decls(src_text):
+    """Map name -> C line to emit (extern ... or a copied static initializer)."""
+    out = {}
+    head = _file_scope_head(src_text)
+    unsigned_re = re.compile(
+        r'^\s*(?:extern\s+)?'
+        r'((?:(?:const|static|signed|volatile)\s+)*)'
+        r'unsigned(\s*\*)*\s+'
+        r'(' + IDENT + r')'
+        r'((?:\s*\[[^\]]*\])*)'
+        r'(?:\s*=\s*([^;]+))?;', re.M)
+    # Require space or stars between type and name so `aWheelOff` is not
+    # backtracked into type=`aWheelOf` name=`f`.
+    general_re = re.compile(
+        r'^\s*(?:extern\s+)?'
         r'((?:(?:const|static|unsigned|signed|volatile)\s+)*)'
         r'([A-Za-z_][A-Za-z0-9_]*)'
-        r'((?:\s*\*)*)\s*'
-        r'([A-Za-z_][A-Za-z0-9_]*)'
-        r'(\[[^\]]*\])?\s*(?:=[^;]*)?;', re.M)
-    for m in decl_re.finditer(head):
-        stor, typ, stars, name, arr = m.group(1), m.group(2), m.group(3) or '', m.group(4), m.group(5) or ''
-        if name in ('if', 'for', 'return', 'sizeof'):
+        r'((?:(?:\s*\*)+\s*|\s+))'
+        r'(' + IDENT + r')'
+        r'((?:\s*\[[^\]]*\])*)'
+        r'(?:\s*=\s*([^;]+))?;', re.M)
+    for m in unsigned_re.finditer(head):
+        stor, stars, name, arr, init = (m.group(1) or '', m.group(2) or '',
+                                        m.group(3), m.group(4) or '', m.group(5))
+        if name in _STMT_KW:
             continue
-        typ = (stor + typ + stars).replace('static', '').strip()
-        out[name] = 'extern %s %s%s;' % (typ or 'int', name, arr)
+        if 'static' in stor and init:
+            out[name] = 'static %sunsigned%s %s%s = %s;' % (
+                stor.replace('static', '').strip() + ' ' if stor.replace('static', '').strip() else '',
+                stars, name, arr, init.strip())
+        else:
+            typ = (stor + 'unsigned' + stars).replace('static', '').strip()
+            out[name] = 'extern %s %s%s;' % (typ, name, arr)
+    for m in general_re.finditer(head):
+        stor, typ, stars, name, arr, init = (
+            m.group(1) or '', m.group(2), m.group(3) or '',
+            m.group(4), m.group(5) or '', m.group(6))
+        if name in out or name in _STMT_KW or typ in _STMT_KW:
+            continue
+        if 'static' in stor and init:
+            out[name] = ('static %s%s%s %s%s = %s;' % (
+                stor.replace('static', ' ').strip() + ' ',
+                typ, stars, name, arr, init.strip())).replace('  ', ' ')
+        else:
+            t = (stor + typ + stars).replace('static', '').strip()
+            out[name] = 'extern %s %s%s;' % (t or 'int', name, arr)
     return out
+
+
+def _included_header_text(includes, src_path):
+    blobs = []
+    dirs = [os.path.join(ROOT, 'include'),
+            os.path.dirname(os.path.abspath(src_path))]
+    for inc in includes:
+        m = re.search(r'["<]([^">]+)[">]', inc)
+        if not m:
+            continue
+        for d in dirs:
+            fp = os.path.join(d, m.group(1))
+            if os.path.exists(fp):
+                blobs.append(open(fp).read())
+                break
+    return '\n'.join(blobs)
 
 
 def wrap_tree_function(src_path, func_name, va):
@@ -474,10 +565,13 @@ def wrap_tree_function(src_path, func_name, va):
         raise SystemExit('could not extract %s from %s' % (func_name, src_path))
     used = set(re.findall(r'\b' + IDENT + r'\b', fn))
     # macros referenced by the body pull in their expansion idents too
-    for m in re.finditer(r'^#define\s+(' + IDENT + r')\b([^\n]*)', text, re.M):
+    for m in re.finditer(r'^#define\s+(' + IDENT + r')(\([^)]*\))?([^\n]*)', text, re.M):
         if m.group(1) in used:
-            used.update(re.findall(r'\b' + IDENT + r'\b', m.group(2)))
+            used.update(re.findall(r'\b' + IDENT + r'\b', (m.group(2) or '') + (m.group(3) or '')))
     decls = _file_scope_decls(text)
+    # types named in those decls (BrTexTile40 DAT_10697840[]) must be in `used`
+    for line in decls.values():
+        used.update(re.findall(r'\b' + IDENT + r'\b', line))
     # includes from the source (top of file)
     includes = []
     for line in text.splitlines():
@@ -502,8 +596,6 @@ def wrap_tree_function(src_path, func_name, va):
     macros = {}
     macros_pref = {}
     for m in re.finditer(r'^#define\s+(' + IDENT + r')(\([^)]*\))?[^\n]*', text, re.M):
-        if m.group(2):
-            continue  # function-like macro; skip (needs continuation lines)
         if m.group(1) not in used:
             continue
         pre = text[max(0, m.start() - 400):m.start()]
@@ -523,10 +615,32 @@ def wrap_tree_function(src_path, func_name, va):
             continue
         header += inc + '\n'
     header += '\n'
+    inc_text = _included_header_text(includes, src_path)
+    # typedef / struct tags used as types (fn body or emitted decls) — before externs
+    i = 0
+    while True:
+        m = re.search(r'^typedef\b', text[i:], re.M)
+        if not m:
+            break
+        start = i + m.start()
+        j, depth = start, 0
+        while j < len(text):
+            if text[j] == '{':
+                depth += 1
+            elif text[j] == '}':
+                depth -= 1
+            elif text[j] == ';' and depth <= 0:
+                block = text[start:j + 1]
+                tail = re.search(r'\b(' + IDENT + r')\s*;\s*$', block.strip())
+                if tail and tail.group(1) in used:
+                    if block.strip() not in header:
+                        header += block.strip() + '\n'
+                i = j + 1
+                break
+            j += 1
+        else:
+            break
     # file-scope data used by the function
-    KW = set('if for while return sizeof void int char short long float double '
-             'unsigned signed const static extern struct typedef sizeof else '
-             'do switch case default break continue goto'.split())
     for name in sorted(used):
         if name in decls and name != func_name:
             header += decls[name] + '\n'
@@ -548,33 +662,10 @@ def wrap_tree_function(src_path, func_name, va):
     for c in sorted(called & defined):
         if re.search(r'#define\s+%s\b' % re.escape(c), header):
             continue
+        if re.search(r'\b%s\s*\(' % re.escape(c), inc_text):
+            continue
         if (' %s();' % c) not in header and (' %s(' % c) not in header:
             header += 'int %s();\n' % c
-    # typedef / struct tags used as types in the function (brace-aware)
-    i = 0
-    while True:
-        m = re.search(r'^typedef\b', text[i:], re.M)
-        if not m:
-            break
-        start = i + m.start()
-        j, depth = start, 0
-        while j < len(text):
-            if text[j] == '{':
-                depth += 1
-            elif text[j] == '}':
-                depth -= 1
-            elif text[j] == ';' and depth <= 0:
-                block = text[start:j + 1]
-                # last identifier before ';' is the typedef name
-                tail = re.search(r'\b(' + IDENT + r')\s*;\s*$', block.strip())
-                if tail and tail.group(1) in used:
-                    if block.strip() not in header:
-                        header += block.strip() + '\n'
-                i = j + 1
-                break
-            j += 1
-        else:
-            break
     for fun in sorted(set(re.findall(r'\b(FUN_[0-9a-fA-F]{8})\b', fn))):
         if fun == func_name:
             continue
@@ -584,7 +675,34 @@ def wrap_tree_function(src_path, func_name, va):
         if dat not in header:
             header += 'extern int %s;\n' % dat
     header += '\n'
-    return header + fn + WRAP_FOOT
+    return header + _strip_inner_matching_ifdef(fn) + WRAP_FOOT
+
+
+def _strip_inner_matching_ifdef(fn_src):
+    """Drop a nested #ifdef BR_MATCHING_BUILD / #else / #endif inside the body.
+
+    wrap_tree_function already selected the matching-build def; the leftover
+    inner ifdef wraps matching vs port and wastes mutations on the #else.
+    """
+    loc = _find_func_def(fn_src)
+    if not loc:
+        return fn_src
+    _start, ob, cb, _name = loc
+    body = fn_src[ob + 1:cb]
+    m = re.search(r'^\s*#ifdef\s+BR_MATCHING_BUILD\b', body, re.M)
+    if not m:
+        return fn_src
+    rest = body[m.end():]
+    else_m = re.search(r'^\s*#else\b', rest, re.M)
+    endif_m = list(re.finditer(r'^\s*#endif\b', body, re.M))
+    if not endif_m:
+        return fn_src
+    if else_m:
+        else_pos = m.end() + else_m.start()
+        kept = body[:m.start()] + body[m.end():else_pos] + body[endif_m[-1].end():]
+    else:
+        kept = body[:m.start()] + body[m.end():endif_m[-1].start()] + body[endif_m[-1].end():]
+    return fn_src[:ob + 1] + kept + fn_src[cb:]
 
 
 def load_seed(va, src_path=None):
@@ -616,11 +734,11 @@ def load_seed(va, src_path=None):
             pass
         # d3d-tagged implements: name is right, try anyway already failed
     if os.path.exists(refined):
-        src = open(refined).read()
+        src = _strip_inner_matching_ifdef(open(refined).read())
         loc = _find_func_def(src)
         return src, (loc[3] if loc else name or 'fn'), refined
     if os.path.exists(gw):
-        src = open(gw).read()
+        src = _strip_inner_matching_ifdef(open(gw).read())
         loc = _find_func_def(src)
         return src, (loc[3] if loc else name or 'fn'), gw
     raise SystemExit('no seed for %s (no --src, no ghidra_work, no tree row)' % va_u)
@@ -1048,23 +1166,467 @@ def mut_volatile_local(body, rng):
     return nb, 'volatile:%s' % m.group(3)
 
 
+# ---------------------------------------------------------------------------
+# Coloring-perturbing mutations
+# ---------------------------------------------------------------------------
+
+def _kind_map(body):
+    """name -> 'int' | 'float' | 'ptr' from local decls."""
+    kinds = {}
+    for stmt in _top_statements(body):
+        if not _is_decl(stmt):
+            continue
+        s = stmt.strip().rstrip(';')
+        is_ptr = '*' in s.split('=')[0]
+        is_float = bool(re.search(r'\b(float|double)\b', s.split('=')[0]))
+        kind = 'ptr' if is_ptr else ('float' if is_float else 'int')
+        for n in _decl_names(stmt):
+            kinds[n] = kind
+    return kinds
+
+
+def _rvalue_uses(body, name):
+    """Spans of rvalue occurrences of name (not lhs, not part of a larger ident)."""
+    out = []
+    for m in re.finditer(r'\b%s\b' % re.escape(name), body):
+        prev = body[m.start() - 1] if m.start() else ' '
+        if prev.isalnum() or prev == '_':
+            continue
+        line_start = body.rfind('\n', 0, m.start()) + 1
+        line_end = body.find('\n', m.start())
+        line = body[line_start: len(body) if line_end < 0 else line_end]
+        if _is_decl(line if line.rstrip().endswith(';') else line + ';'):
+            continue
+        j = m.end()
+        n = len(body)
+        while j < n and body[j] in ' \t':
+            j += 1
+        if j < n and body[j] == '=' and (j + 1 >= n or body[j + 1] != '='):
+            continue
+        if j < n and body[j:j + 2] in ('+=', '-=', '*=', '|=', '&=', '^=',
+                                       '++', '--'):
+            continue
+        out.append(m)
+    return out
+
+
+def _split_top_binop(cond, op):
+    """Split cond on the first depth-0 occurrence of 2-char op ('&&' / '||')."""
+    depth = 0
+    i = 0
+    n = len(cond)
+    while i < n - 1:
+        c = cond[i]
+        if c in '"\'':
+            q = c
+            i += 1
+            while i < n and cond[i] != q:
+                if cond[i] == '\\':
+                    i += 1
+                i += 1
+            i += 1
+            continue
+        if c in '([{':
+            depth += 1
+        elif c in ')]}':
+            depth -= 1
+        elif depth == 0 and cond[i:i + 2] == op:
+            left, right = cond[:i].strip(), cond[i + 2:].strip()
+            if left and right:
+                return left, right
+        i += 1
+    return None
+
+
+def mut_identity(body, rng):
+    """x → (x+0)/(x*1)/(x|0)/(x^0) on one rvalue. Forces a materialization."""
+    kinds = _kind_map(body)
+    names = list(kinds) or list(_decl_names_all(body))
+    rng.shuffle(names)
+    for name in names:
+        uses = _rvalue_uses(body, name)
+        if not uses:
+            continue
+        kind = kinds.get(name, 'int')
+        if kind == 'float':
+            forms = ['(%s + 0.0f)', '(%s * 1.0f)']
+        elif kind == 'ptr':
+            forms = ['(%s + 0)']
+        else:
+            forms = ['(%s + 0)', '(%s * 1)', '(%s | 0)', '(%s ^ 0)']
+        form = rng.choice(forms)
+        m = rng.choice(uses)
+        repl = form % name
+        return (body[:m.start()] + repl + body[m.end():],
+                'identity:%s' % (form % name))
+    _fail()
+
+
+def _decl_names_all(body):
+    names = []
+    for stmt in _top_statements(body):
+        if _is_decl(stmt):
+            names.extend(_decl_names(stmt))
+    # params / Ghidra iVars mentioned even without a matching decl
+    for m in re.finditer(r'\b(param_[0-9]+|iVar[0-9]+|uVar[0-9]+|local_[0-9a-f]+)\b',
+                         body):
+        if m.group(1) not in names:
+            names.append(m.group(1))
+    return names
+
+
+def mut_addr_taken(body, rng):
+    """Take the address of a local so it is forced to a stack slot / other class."""
+    names = _decl_names_all(body)
+    if not names:
+        _fail()
+    name = rng.choice(names)
+    kinds = _kind_map(body)
+    kind = kinds.get(name, 'int')
+    vt = 'float' if kind == 'float' else 'int'
+    forms = [
+        '  (void)&%s;\n' % name,
+        '  { volatile %s *_ap = (%s *)&%s; (void)*_ap; }\n' % (vt, vt, name),
+        '  *(volatile %s *)&%s;\n' % (vt, name),
+    ]
+    extra = rng.choice(forms)
+    stmts = _top_statements(body)
+    di = 0
+    while di < len(stmts) and _is_decl(stmts[di]):
+        di += 1
+    # park it in the first region (right after decls, or after stmt 0)
+    at = di if rng.random() < 0.6 else min(di + 1, len(stmts))
+    stmts.insert(at, extra)
+    return ''.join(stmts), 'addr_taken:%s' % name
+
+
+def mut_guard_nest(body, rng):
+    """if (a && b) S  <->  if (a) if (b) S. Changes what's live across the branch."""
+    # split: if (A && B) S  (no else)
+    pos = 0
+    splits = []
+    joins = []
+    while True:
+        m = re.search(r'\bif\s*\(', body[pos:])
+        if not m:
+            break
+        p = pos + m.end() - 1
+        q = _match_pair(body, p, '(', ')')
+        if q < 0:
+            break
+        cond = body[p + 1:q]
+        r = _skip_ws_comments(body, q + 1)
+        then_end = _consume_stmt(body, r)
+        s = _skip_ws_comments(body, then_end)
+        has_else = body[s:s + 4] == 'else'
+        pair = _split_top_binop(cond, '&&')
+        if pair and not has_else:
+            splits.append((pos + m.start(), p, q, r, then_end, pair[0], pair[1]))
+        # join: if (A) if (B) S   or  if (A) { if (B) S }
+        then_b = body[r:then_end].strip()
+        inner = re.match(r'^if\s*\(', then_b)
+        if inner and not has_else:
+            ip = r + then_b.find('(')
+            # r may have leading ws; find the inner if's '('
+            im = re.search(r'\bif\s*\(', body[r:then_end])
+            if im:
+                ip = r + im.end() - 1
+                iq = _match_pair(body, ip, '(', ')')
+                if iq > 0:
+                    inner_cond = body[ip + 1:iq]
+                    ir = _skip_ws_comments(body, iq + 1)
+                    inner_then_end = _consume_stmt(body, ir)
+                    ie = _skip_ws_comments(body, inner_then_end)
+                    if body[ie:ie + 4] != 'else' and inner_then_end <= then_end + 1:
+                        joins.append((pos + m.start(), p, q, cond, inner_cond,
+                                      ir, inner_then_end, then_end))
+        pos = q + 1
+        if pos > len(body) - 4:
+            break
+    if rng.random() < 0.55 and splits:
+        start, p, q, r, then_end, a, b = rng.choice(splits)
+        stmt = body[r:then_end]
+        repl = 'if (%s) if (%s) %s' % (a, b, stmt)
+        return body[:start] + repl + body[then_end:], 'guard_nest:split'
+    if joins:
+        start, p, q, a, b, ir, inner_then_end, then_end = rng.choice(joins)
+        stmt = body[ir:inner_then_end]
+        repl = 'if ((%s) && (%s)) %s' % (a.strip(), b.strip(), stmt)
+        return body[:start] + repl + body[then_end:], 'guard_nest:join'
+    if splits:
+        start, p, q, r, then_end, a, b = rng.choice(splits)
+        stmt = body[r:then_end]
+        repl = 'if (%s) if (%s) %s' % (a, b, stmt)
+        return body[:start] + repl + body[then_end:], 'guard_nest:split'
+    _fail()
+
+
+def mut_first_live(body, rng):
+    """Make a later-used value live in the first region (caller-saved coloring)."""
+    stmts = _top_statements(body)
+    di = 0
+    while di < len(stmts) and _is_decl(stmts[di]):
+        di += 1
+    if di >= len(stmts):
+        _fail()
+    later = ''.join(stmts[di + 2:]) if di + 2 < len(stmts) else ''.join(stmts[di:])
+    names = [n for n in _decl_names_all(body) if n in later]
+    if not names:
+        _fail()
+    name = rng.choice(names)
+    kinds = _kind_map(body)
+    kind = kinds.get(name, 'int')
+    tmp = _fresh('r')
+    if kind == 'float':
+        extra = '  float %s;\n  %s = %s;\n  %s = %s;\n' % (tmp, tmp, name, name, tmp)
+    elif kind == 'ptr':
+        extra = '  void *%s;\n  %s = %s;\n  %s = %s;\n' % (tmp, tmp, name, name, tmp)
+    else:
+        extra = '  int %s;\n  %s = %s;\n  %s = (%s | 0);\n' % (
+            tmp, tmp, name, name, tmp)
+    stmts.insert(di, extra)
+    return ''.join(stmts), 'first_live:%s' % name
+
+
+def mut_recompute(body, rng):
+    """Duplicate an early assignment so the value competes for a first-region reg."""
+    stmts = _top_statements(body)
+    cands = []
+    for i, s in enumerate(stmts):
+        if _is_decl(s):
+            continue
+        m = re.match(r'\s*(' + IDENT + r')\s*=\s*([^;]+);', s)
+        if not m:
+            continue
+        if re.search(r'\+\+|--', m.group(2)):
+            continue
+        cands.append((i, m.group(1), m.group(2).strip()))
+    if not cands:
+        _fail()
+    # prefer the first region
+    early = [c for c in cands if c[0] < max(8, len(stmts) // 3)] or cands
+    i, name, rhs = rng.choice(early)
+    tmp = _fresh('k')
+    extra = '  %s = %s;\n' % (name, rhs)
+    if rng.random() < 0.4:
+        extra = '  int %s = %s;\n  %s = %s;\n' % (tmp, rhs, name, tmp)
+    stmts.insert(i + 1, extra)
+    return ''.join(stmts), 'recompute:%s' % name
+
+
+def mut_self_assign(body, rng):
+    """Insert `v = v;` (or `v = (v | 0);`) after an assignment — extra copy web."""
+    stmts = _top_statements(body)
+    cands = []
+    for i, s in enumerate(stmts):
+        if _is_decl(s):
+            continue
+        m = re.match(r'\s*(' + IDENT + r')\s*=', s)
+        if m:
+            cands.append((i, m.group(1)))
+    if not cands:
+        _fail()
+    i, name = rng.choice(cands)
+    kinds = _kind_map(body)
+    kind = kinds.get(name, 'int')
+    if kind == 'int' and rng.random() < 0.5:
+        extra = '  %s = (%s | 0);\n' % (name, name)
+    else:
+        extra = '  %s = %s;\n' % (name, name)
+    stmts.insert(i + 1, extra)
+    return ''.join(stmts), 'self_assign:%s' % name
+
+
+def mut_store_swap(body, rng):
+    """lhs = a OP b  →  lhs = b OP a on a store/assign (store-side operand order)."""
+    ops = list(re.finditer(
+        r'=\s*((?:' + IDENT + r'|' + NUM + r'|\([^()]{0,48}\)))\s*'
+        r'([\+\*\|\&\^])\s*'
+        r'((?:' + IDENT + r'|' + NUM + r'|\([^()]{0,48}\)))\s*;', body))
+    comm = [m for m in ops if m.group(1).strip() != m.group(3).strip()]
+    if not comm:
+        _fail()
+    m = rng.choice(comm)
+    a, op, b = m.group(1).strip(), m.group(2), m.group(3).strip()
+    # keep the '=' — match started at '='
+    repl = '= %s %s %s;' % (b, op, a)
+    return body[:m.start()] + repl + body[m.end():], 'store_swap:%s' % op
+
+
+def mut_store_temp(body, rng):
+    """t = rhs; lhs = t;  on a pointer/field store — forces rhs into a temp."""
+    mlist = list(re.finditer(
+        r'((?:\*(?:\s*\([^)]*\))?\s*(?:' + IDENT + r'|\([^;]{1,50}\))|'
+        r'' + IDENT + r'\s*(?:->|\.)\s*' + IDENT + r'))\s*=\s*([^;]+);',
+        body))
+    if not mlist:
+        _fail()
+    m = rng.choice(mlist)
+    lhs, rhs = m.group(1).strip(), m.group(2).strip()
+    if len(rhs) < 2:
+        _fail()
+    tmp = _fresh('s')
+    assign = '%s = %s; %s = %s;' % (tmp, rhs, lhs, tmp)
+    body2 = body[:m.start()] + assign + body[m.end():]
+    stmts = _top_statements(body2)
+    di = 0
+    while di < len(stmts) and _is_decl(stmts[di]):
+        di += 1
+    stmts.insert(di, '  int %s;\n' % tmp)
+    return ''.join(stmts), 'store_temp:%s' % lhs[:32]
+
+
+def mut_live_merge(body, rng):
+    """Reuse one local for a later disjoint assignment (live-range merge)."""
+    stmts = _top_statements(body)
+    assigns = []
+    for i, s in enumerate(stmts):
+        if _is_decl(s):
+            continue
+        m = re.match(r'\s*(' + IDENT + r')\s*=', s)
+        if m:
+            assigns.append((i, m.group(1)))
+    if len(assigns) < 2:
+        _fail()
+    rng.shuffle(assigns)
+    for i, a in assigns:
+        for j, b in assigns:
+            if j <= i or a == b:
+                continue
+            # disjoint: a not used in (i, j] and b not used before j in a's range
+            mid = ''.join(stmts[i + 1:j])
+            if re.search(r'\b%s\b' % re.escape(a), mid):
+                continue
+            # replace b with a from assignment j onward
+            head = ''.join(stmts[:j])
+            tail = ''.join(stmts[j:])
+            tail = re.sub(r'\b%s\b' % re.escape(b), a, tail)
+            return head + tail, 'live_merge:%s<-%s' % (a, b)
+    _fail()
+
+
+def mut_paren(body, rng):
+    """Wrap one rvalue ident in extra parens (CSE / assoc noise)."""
+    names = list(_kind_map(body)) or list(_decl_names_all(body))
+    rng.shuffle(names)
+    for name in names:
+        uses = _rvalue_uses(body, name)
+        if uses:
+            m = rng.choice(uses)
+            return (body[:m.start()] + '(%s)' % name + body[m.end():],
+                    'paren:%s' % name)
+    _fail()
+
+
+def mut_deref0(body, rng):
+    """*p <-> *(p+0) — materializes the pointer without changing the value.
+
+    Skip `x * y` multiplies: a preceding ident/number/`)` makes `*` a binop.
+    (The 0x10007D50 24→16 drop was that accident; see mut_binop_ident.)
+    """
+    back = list(re.finditer(r'\*\(\s*(' + IDENT + r')\s*\+\s*0\s*\)', body))
+    fwd = []
+    for m in re.finditer(r'\*\s*(' + IDENT + r')\b', body):
+        line_start = body.rfind('\n', 0, m.start()) + 1
+        line_end = body.find('\n', m.start())
+        line = body[line_start: len(body) if line_end < 0 else line_end]
+        if _is_decl(line if line.rstrip().endswith(';') else line + ';'):
+            continue
+        prev = body[:m.start()].rstrip()
+        if prev and (prev[-1].isalnum() or prev[-1] in ')_.'):
+            continue  # multiply, not deref
+        # already *(p+0)
+        if any(b.start() <= m.start() < b.end() for b in back):
+            continue
+        fwd.append(m)
+    if rng.random() < 0.6 and fwd:
+        m = rng.choice(fwd)
+        return (body[:m.start()] + '*(%s + 0)' % m.group(1) + body[m.end():],
+                'deref0:%s' % m.group(1))
+    if back:
+        m = rng.choice(back)
+        return (body[:m.start()] + '*%s' % m.group(1) + body[m.end():],
+                'deref0back:%s' % m.group(1))
+    if fwd:
+        m = rng.choice(fwd)
+        return (body[:m.start()] + '*(%s + 0)' % m.group(1) + body[m.end():],
+                'deref0:%s' % m.group(1))
+    _fail()
+
+
+def mut_dead_use(body, rng):
+    """(void)v; in the first region — keeps v live / competing without a store."""
+    names = _decl_names_all(body)
+    if not names:
+        _fail()
+    name = rng.choice(names)
+    extra = '  (void)%s;\n' % name
+    stmts = _top_statements(body)
+    di = 0
+    while di < len(stmts) and _is_decl(stmts[di]):
+        di += 1
+    at = di if rng.random() < 0.7 else min(di + 1, len(stmts))
+    stmts.insert(at, extra)
+    return ''.join(stmts), 'dead_use:%s' % name
+
+
+def mut_binop_ident(body, rng):
+    """a OP b → a OP (b+0) / (b|0) / (b*1). Proven 0x10007D50 via accidental deref0 on `* t`."""
+    ops = []
+    for m in re.finditer(
+            r'([\+\-\*\|\&\^])\s*(' + IDENT + r')\b', body):
+        prev = body[:m.start()].rstrip()
+        # `= *p` / `, *p` / `(*p` is a deref, not a binop
+        if m.group(1) == '*' and (not prev or prev[-1] in '=,;({'):
+            continue
+        ops.append(m)
+    if not ops:
+        _fail()
+    m = rng.choice(ops)
+    name, op = m.group(2), m.group(1)
+    kinds = _kind_map(body)
+    kind = kinds.get(name, 'int')
+    if kind == 'float' or op in '+-*':
+        wrap = '(%s + 0)' if kind != 'float' else '(%s + 0.0f)'
+        if rng.random() < 0.4 and kind != 'ptr':
+            wrap = '(%s * 1)' if kind != 'float' else '(%s * 1.0f)'
+    else:
+        wrap = rng.choice(['(%s | 0)', '(%s ^ 0)', '(%s + 0)'])
+    repl = op + ' ' + (wrap % name)
+    return body[:m.start()] + repl + body[m.end():], 'binop_ident:%s%s' % (op, name)
+
+
 MUTATIONS = [
-    (16, mut_intro_temp),
-    (16, mut_inline_temp),
-    (8, mut_split_local),
-    (7, mut_merge_locals),
-    (8, mut_reassoc),
-    (8, mut_reorder_stmts),
-    (7, mut_hoist_sink),
-    (5, mut_width),
-    (5, mut_cmp_flip),
-    (3, mut_loop_shape),
-    (4, mut_block_scope),
-    (5, mut_if_invert),
-    (5, mut_copy_cond),
-    (8, mut_split_add),
-    (6, mut_plus_eq),
-    (4, mut_volatile_local),
+    (14, mut_intro_temp),
+    (10, mut_inline_temp),
+    (6, mut_split_local),
+    (5, mut_merge_locals),
+    (6, mut_reassoc),
+    (6, mut_reorder_stmts),
+    (5, mut_hoist_sink),
+    (3, mut_width),
+    (3, mut_cmp_flip),
+    (2, mut_loop_shape),
+    (3, mut_block_scope),
+    (4, mut_if_invert),
+    (4, mut_copy_cond),
+    (14, mut_split_add),          # folded candidate: cracked 0x1003CC00 at 0
+    (4, mut_plus_eq),
+    (3, mut_volatile_local),
+    # coloring-perturbing (this pass)
+    (12, mut_identity),
+    (10, mut_addr_taken),
+    (10, mut_guard_nest),
+    (12, mut_first_live),
+    (10, mut_recompute),
+    (8, mut_self_assign),
+    (8, mut_store_swap),
+    (8, mut_store_temp),
+    (7, mut_live_merge),
+    (6, mut_paren),
+    (6, mut_deref0),
+    (6, mut_dead_use),
+    (10, mut_binop_ident),         # folded candidate: 0x10007D50 24→16
 ]
 
 
@@ -1084,14 +1646,15 @@ def apply_mutations(src, rng, n=1):
         try:
             body, lab = f(body, rng)
             labels.append(lab)
-        except _Skip:
-            # try a few others
-            for f2 in rng.sample(fns, min(4, len(fns))):
+        except (_Skip, Exception):
+            for f2 in rng.sample(fns, len(fns)):
+                if f2 is f:
+                    continue
                 try:
                     body, lab = f2(body, rng)
                     labels.append(lab)
                     break
-                except _Skip:
+                except (_Skip, Exception):
                     continue
     if not labels:
         return src, []
@@ -1148,7 +1711,7 @@ def _src_hash(src):
 # ---------------------------------------------------------------------------
 
 def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
-           restart_every=250, muts_per_step=(1, 3), t0=10.0, cool=0.997,
+           restart_every=250, muts_per_step=(1, 4), t0=10.0, cool=0.997,
            max_seconds=0):
     rng = random.Random(seed)
     tag = 'p%08x' % int(va, 16)
@@ -1171,9 +1734,14 @@ def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
         if max_seconds and (time.time() - t0_run) >= max_seconds:
             print('  time cap %.0fs at iter %d' % (max_seconds, i), flush=True)
             break
-        if i % restart_every == 0 and best_src != cur_src:
-            cur_src, cur_diff = best_src, best_diff
-            T = max(T, t0 * 0.4)
+        if i % restart_every == 0:
+            # random restarts: sometimes the original seed, else the best
+            if rng.random() < 0.35:
+                cur_src, cur_diff = src, diffs
+                T = float(t0)
+            elif best_src != cur_src:
+                cur_src, cur_diff = best_src, best_diff
+                T = max(T, t0 * 0.5)
         nmut = rng.randint(muts_per_step[0], muts_per_step[1])
         cand, labs = apply_mutations(cur_src, rng, nmut)
         if not labs or cand == cur_src:
@@ -1254,6 +1822,30 @@ def _save_best(va, src, diffs, func_name, history):
 def permute_one(va, args):
     va = _norm_va(va)
     src, func_name, origin = load_seed(va, args.src)
+    perm_path = _out_paths(va)[0]
+    js_path = _out_paths(va)[1]
+    if (not getattr(args, 'no_resume', False)
+            and not args.src and not args.extract_only
+            and os.path.exists(perm_path)
+            and _find_func_def(open(perm_path).read())):
+        resume_ok = True
+        row = _report_row(va)
+        if os.path.exists(js_path) and row:
+            try:
+                js = json.load(open(js_path))
+                report_d = int(row.get('diffs') or 10 ** 9)
+                if int(js.get('best_diffs', 0)) > report_d:
+                    resume_ok = False
+                    print('skip worse resume %s (permuted %s > report %s)' % (
+                        va, js.get('best_diffs'), report_d), flush=True)
+            except (ValueError, TypeError, json.JSONDecodeError):
+                pass
+        if resume_ok:
+            src = _strip_inner_matching_ifdef(open(perm_path).read())
+            loc = _find_func_def(src)
+            if loc:
+                func_name = loc[3]
+            origin = perm_path + ' (resume)'
     orig_path = os.path.join(ORIG_DIR, ('0x%08X' % int(va, 16)) + '.bin')
     if not os.path.exists(orig_path):
         print('no orig bytes %s' % orig_path, flush=True)
@@ -1290,7 +1882,8 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--va', help='function VA (Glide)')
     ap.add_argument('--src', help='wrapped seed .c (overrides discovery)')
-    ap.add_argument('--iters', type=int, default=20000)
+    ap.add_argument('--iters', type=int, default=20000,
+                    help='anneal steps per function (default 20000)')
     ap.add_argument('--opts', default='/O2',
                     help='comma-separated cl flags, default /O2')
     ap.add_argument('--seed', type=int, default=None)
@@ -1303,6 +1896,8 @@ def main():
     ap.add_argument('--vas', help='comma-separated VA list (with --batch)')
     ap.add_argument('--max-seconds', type=int, default=0,
                     help='stop each function after this many seconds (0=off)')
+    ap.add_argument('--no-resume', action='store_true',
+                    help='ignore existing .permuted.c and start from the seed')
     args = ap.parse_args()
     vas = []
     if args.batch:

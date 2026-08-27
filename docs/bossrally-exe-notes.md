@@ -98,15 +98,24 @@ No file/INI helper is byte-identical. Three CRT scraps are:
 
 ## Matching results
 
-31 / 215 functions byte-exact under `/O2` (COFF 16-byte `nop` padding
+35 / 215 functions byte-exact under `/O2` (COFF 16-byte `nop` padding
 after `ret` ignored). Winning TUs: `build/bossrally_work/0x<VA>.c`.
 Original bytes: `build/match/orig_bossrally/`.
 
-31 / 215 functions, 1,757 / 23,552 of `.text` (7.46%).
+35 / 215 functions, 2,482 / 23,552 of `.text` (10.54%).
 
 User region is `0x401000`–`0x401BBF` (3,008 / 23,552 of `.text`, 12.8%).
-Of the 24 matched functions that live there, 1,706 / 3,008 (56.7%). The
-rest of `.text` is static CRT.
+28 matched functions live there, 2,431 / 3,008 (80.8%). Every CPlay-derived
+user function in that range is a MATCH. The three unmatched map rows
+inside it are CRT (`strncpy` `0x401A50`, `_fpmath` `0x401B50`,
+`_initp_misc_cfltcvt` `0x401B80`). The rest of `.text` is static CRT.
+
+Source lineage is the DirectX 7 CPlay sample (`cplay.c` / `media.c`,
+1998-08-17): same names (`DoMainLoop`, `OnGraphNotify`, `OnMediaStop`,
+`ChangeStateTo` → `SetMediaState`, `CanPlay` → `CanRun`, `CanStop` →
+`IsPlayingOrPaused`). BossRally strips the toolbar/About/file-dialog,
+hardcodes `brally.avi`, always `_spawnve`s `brally.exe`, and adds
+fullscreen + Escape-to-quit.
 
 | VA | size | name | diffs | opt |
 |---|---:|---|---:|---|
@@ -116,8 +125,8 @@ rest of `.text` is static CRT.
 | 0x004010F0 | 6 | CoUninitialize_thunk | **0** | /O2 |
 | 0x00401100 | 137 | RegisterWindowClass | **0** | /O2 |
 | 0x00401190 | 155 | CreatePlayerWindow | **0** | /O2 |
-| 0x00401230 | 261 | DoMainLoop | 184 | — |
-| 0x00401340 | 199 | WinMain | 57 | /O2 |
+| 0x00401230 | 261 | DoMainLoop | **0** | /O2 |
+| 0x00401340 | 199 | WinMain | **0** | /O2 |
 | 0x00401410 | 24 | CanRun | **0** | /O2 |
 | 0x00401430 | 24 | IsPlayingOrPaused | **0** | /O2 |
 | 0x00401450 | 15 | IsStopped | **0** | /O2 |
@@ -132,10 +141,10 @@ rest of `.text` is static CRT.
 | 0x00401700 | 161 | SetPlayerTitle | **0** | /O2 |
 | 0x004017B0 | 104 | OpenClip | **0** | /O2 |
 | 0x00401820 | 74 | OnMediaPlay | **0** | /O2 |
-| 0x00401870 | 126 | OnMediaStop | 99 | /O2 |
+| 0x00401870 | 126 | OnMediaStop | **0** | /O2 |
 | 0x004018F0 | 149 | OnMediaPauseStop | **0** | /O2 |
 | 0x00401990 | 6 | GetGraphEvent | **0** | /O2 |
-| 0x004019A0 | 139 | OnGraphNotify | 2 | /O2 |
+| 0x004019A0 | 139 | OnGraphNotify | **0** | /O2 |
 | 0x00401A30 | 21 | SpawnWait | **0** | /O2 |
 | 0x00401A50 | 254 | strncpy | — | CRT |
 | 0x00401B50 | 23 | _fpmath | — | CRT |
@@ -150,25 +159,7 @@ rest of `.text` is static CRT.
 | 0x00403075 | 3 | _matherr | **0** | /O2 |
 | 0x0040607D | 5 | CRT_ret_10 | **0** | /O2 |
 
-Residue on the four user misses:
-
-- **OnGraphNotify** (2 diffs): last `Release` is `mov ecx,[eax]; call [ecx+8]`
-  vs `mov edx,[eax]; call [edx+8]`. Allocator coloring.
-- **WinMain** (57 diffs, 199 vs 208): first ~0x1C bytes match (InitCOM
-  fail `ret 16`, load hPrev/hInst). Orig `push esi` then pushes hPrev in
-  eax; recomp hoists hPrev into esi because the fail path returns it
-  (`mov esi, [esp+0xc]` = hPrevInstance, usually 0). Cascade after that.
-  Tail (CoUninit + SpawnWait `ret 16`) is the same shape.
-- **OnMediaStop** (99 diffs /O2, 117 vs 126): body shape matches
-  (`sub esp,8`, two QIs, Stop, `put_CurrentPosition(0,0)` as `push 0;
-  push 0`). Orig keeps QI HRESULT in esi across Release and retests it
-  (dead after the first `jl`). VC5 /O2 DCEs the second test and drops
-  esi. 9-byte delta, then offsets cascade.
-- **DoMainLoop** (184 diffs): `WaitMessage` vs
-  `MsgWaitForMultipleObjects(1, &ev, 0, -1, QS_ALLINPUT)` two-path loop
-  with shared Peek/Translate/Dispatch. Goto shape is right; IAT hoist
-  (ebx/ebp/esi/edi) and the WM_CHAR / WM_SYSKEYDOWN nesting still
-  diverge.
+No coloring walls on the four named misses — all four MATCH `/O2`.
 
 ## Idioms that paid off here
 
@@ -190,3 +181,41 @@ Residue on the four user misses:
 - `OpenFile` collides with `windows.h`; the user function is `OpenClip`.
 - Spawn wrapper is 3-arg `(cmd, argv, env=NULL)`, **not**
   `_spawnv(mode, cmd, argv)`. Callee is local `_spawnve` (`E8`, /MT).
+- **DoMainLoop is CPlay's `while (TRUE)` with `GetGraphEvent` each
+  lap**, not a one-shot then `WaitMessage`. Shape:
+  `if ((ahObjects[0] = GetGraphEvent()) == NULL) WaitMessage(); else {
+  Result = MsgWaitForMultipleObjects(cObjects, ahObjects, FALSE,
+  INFINITE, QS_ALLINPUT); if (Result != WAIT_OBJECT_0 + cObjects) {
+  if (Result == WAIT_OBJECT_0) { OnGraphNotify(); … } continue; } }
+  while (PeekMessage(…, PM_REMOVE)) { … }`. Inner `while (PeekMessage)`
+  is the shared peek/dispatch; fail of the inner while returns to
+  GetGraphEvent, not to WaitMessage. IAT hoist (ebx=TranslateMessage,
+  ebp=MsgWait, esi=PostMessageA, edi=PeekMessageA) falls out of this
+  loop — WaitMessage / DispatchMessageA stay `FF 15`. BossRally extras
+  inside the Peek loop: `WM_CHAR` Escape → pause-stop +
+  `PostMessageA(hwnd, WM_QUIT, 0, 0)`; skip Translate/Dispatch on
+  `WM_SYSKEYDOWN`; after `OnGraphNotify`, `IsStopped` → same PostQuit.
+- **OnMediaStop is CPlay `OnMediaAbortStop` + `FROM_START`, no
+  MessageBox.** `Stop`, Release control, QI `IMediaPosition`, then two
+  *separate* `if (SUCCEEDED(hr))` — first does `put_CurrentPosition(0)`
+  + Release, second does `ChangeStateTo(Stopped)`. The second test is
+  dead after the first `jl`, but VC5 keeps hr in esi across the COM
+  calls only in this form. `if (hr < 0) return` after the QI **DCEs**
+  the retest and drops esi (the old 99-diff / 9-byte miss).
+- **OnGraphNotify is CPlay nested `SUCCEEDED`, not early-return
+  Release.** `if (SUCCEEDED(QI)) { if (SUCCEEDED(GetEvent)) { if
+  EC_COMPLETE OnMediaPauseStop; else if USERABORT||ERRORABORT
+  OnMediaStop; else if EC_FULLSCREEN_LOST SetFullScreen; } Release; }`.
+  The 2-diff `mov ecx,[eax]; call [ecx+8]` vs `edx` on the shared
+  Release was the early-return spelling, not a coloring wall. EC_COMPLETE
+  is 1, USERABORT 2, ERRORABORT 3, FULLSCREEN_LOST `0x12`.
+- **WinMain: do not write `nReturn = hPrevInstance`.** CPlay leaves
+  `UINT nReturn` uninitialized on the `Register && Create && Init`
+  fail path; VC5 materializes `mov esi, [esp+0xc]` (reload hPrev) at
+  the join. Spelling `nReturn = (UINT)hPrev` hoists hPrev into esi
+  *before* `RegisterWindowClass`, replacing orig `mov eax,[esp+8]; mov
+  ecx,[esp+4]; push esi; push eax; push ecx` (57-diff cascade). InitCOM
+  fail stays shrink-wrapped `ret 16`. Drain/fullscreen failure is
+  `goto fail` so those `je`s skip DoMainLoop and hit the hPrev reload.
+  Success still does the extra CPlay `DeleteContents` before the
+  always-on DeleteContents + CoUninit + SpawnWait.
