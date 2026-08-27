@@ -301,4 +301,26 @@ int FUN_1006b6e0(int param_1,int param_2,int param_3)
   return 1;
 }
 
+
+int FUN_1006b4c0(int);
+extern int DAT_100b55f8[];
+extern int BrSndG0B5DE8;
+extern int BrSndG18290FC;
+extern int BrSndPDS;
+
+/* @implements 0x1006BB10 glide FUN_1006bb10 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_1006bb10(int param_1,int param_2)
+
+{
+  int iVar1;
+
+  if ((((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) &&
+     (iVar1 = DAT_100b55f8[param_1 * 0x12 + param_2 * 2], iVar1 != 0)) {
+    return FUN_1006b4c0(iVar1) == 0;
+  }
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
