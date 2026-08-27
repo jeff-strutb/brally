@@ -42,8 +42,12 @@ Ghidra's cdecl default) and is folded into the free loop, so the ~220-function
 call-convention class is cracked automatically as it combines with every other
 generator. Register-allocation "coloring" walls — where the source is
 structurally correct but the compiler assigns registers differently — are the
-documented ceiling and now the largest remaining functions; they are batched
-for a randomized-permuter pass rather than hand-ground.
+documented ceiling and now the largest remaining functions. A randomized
+source-permuter (thousands of compile-and-score iterations per function) was
+built and run against them: it confirmed these walls are **not reachable by
+source permutation** (the three largest, 1.4–1.8 KB each, moved <3% and never
+flipped their register coloring). They are now accepted as link-time / hand-asm
+cases rather than search targets — a settled conclusion, not an open front.
 
 **The EXE workstream opened 2026-08-27.** The three in-scope executables
 (~64 KB, ~12% of the target) were untouched; now **BRally.exe is the first
@@ -65,7 +69,8 @@ through Metal, and runs the physics integrator with collision response wired in;
 | **Byte-exact under MSVC 5.0 (DLL)** | 536 of 1,118 transcribed functions · 34,764 bytes | `██████████░░░░░░░░░░` 48% |
 | Byte-exact, of all DLL `.text` | 34,764 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 7% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 28 matched · ~2,600 B (rest is static CRT) | `█████░░░░░░░░░░░░░░░░` 25% |
+| SetVideo.exe (user region) | 28 matched · ~2,600 B of 10,448 B (rest is static CRT) | `█████░░░░░░░░░░░░░░░░` 25% |
+| BossRally.exe (user region) | 24 matched · 1,706 B of 3,008 B (rest is static CRT) | `███████████░░░░░░░░░` 57% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
 
