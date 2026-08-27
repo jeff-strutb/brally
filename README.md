@@ -31,7 +31,7 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original binary. Half of the game DLL's `.text` is transcribed into C,
-and **536 functions now reproduce the original bytes exactly** — driven by a
+and **558 functions now reproduce the original bytes exactly** — driven by a
 growing dictionary of proven compiler idioms (`docs/VC5-IDIOMS.md`), a
 Ghidra-assisted batch pipeline whose `--refine` hill-climb encodes those idioms
 as automatic source transforms, and an auto-filer (`tools/autofile.py`) that
@@ -42,12 +42,22 @@ Ghidra's cdecl default) and is folded into the free loop, so the ~220-function
 call-convention class is cracked automatically as it combines with every other
 generator. Register-allocation "coloring" walls — where the source is
 structurally correct but the compiler assigns registers differently — are the
-documented ceiling and now the largest remaining functions. A randomized
+documented ceiling and the largest remaining functions. A randomized
 source-permuter (thousands of compile-and-score iterations per function) was
-built and run against them: it confirmed these walls are **not reachable by
-source permutation** (the three largest, 1.4–1.8 KB each, moved <3% and never
-flipped their register coloring). They are now accepted as link-time / hand-asm
-cases rather than search targets — a settled conclusion, not an open front.
+built and run against them and confirmed they are **not reachable by source
+permutation** (the three largest, 1.4–1.8 KB each, moved <3% and never flipped
+their register coloring); they are accepted as link-time / hand-asm cases, not
+search targets.
+
+**Two large classes were reopened as workstreams.** (1) The ~97 KB of C++
+exception-handling functions (20% of the DLL `.text`) that push a
+`__CxxFrameHandler` frame were previously fenced as "unreachable from C." A
+`.cpp`/`cl /GX` harness (`tools/cpp_score.py`) now reproduces one byte-exact
+and — critically — verifies all four pieces including the unwind tables in
+`.xdata`/`.rdata` that the normal `.text` comparison cannot see. Because those
+functions' bodies are largely already C-matched, the class is a finishing pass,
+not from-scratch work. (2) Plain SEH (`__try`/`__except`) is matchable in VC5 C
+and reproduces its frame byte-exact (five EH helpers matched).
 
 **The EXE workstream opened 2026-08-27.** The three in-scope executables
 (~64 KB, ~12% of the target) were untouched; now **BRally.exe is the first
@@ -65,12 +75,13 @@ through Metal, and runs the physics integrator with collision response wired in;
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C (DLL) | 244,421 / 480,853 bytes of `.text` · 1,118 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 536 of 1,118 transcribed functions · 34,764 bytes | `██████████░░░░░░░░░░` 48% |
-| Byte-exact, of all DLL `.text` | 34,764 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 7% |
+| Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 558 of 1,140 transcribed functions · 36,873 bytes | `██████████░░░░░░░░░░` 49% |
+| Byte-exact, of all DLL `.text` | 36,873 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 28 matched · ~2,600 B of 10,448 B (rest is static CRT) | `█████░░░░░░░░░░░░░░░░` 25% |
-| BossRally.exe (user region) | 24 matched · 1,706 B of 3,008 B (rest is static CRT) | `███████████░░░░░░░░░` 57% |
+| SetVideo.exe (user region) | 37 matched · 4,652 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
+| BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
+| C++ EH class (harness proven) | 1 of ~80 matched · workstream open (was a wall) | `░░░░░░░░░░░░░░░░░░░░` — |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
 
