@@ -224,13 +224,18 @@ int BrRdpCCMux(int token)
 /* @implements 0x1002FAC0 d3d BrRdpACMux */
 int BrRdpACMux(int token)
 {
-    if (token == 0)
+    /* orig 0x1001D150: `sub eax,0; je; dec; je; sub eax,0x3f4; je` is the
+     * consecutive-case switch 0 / 1 / 1013, same shape as BrRdpCCMux. */
+    switch (token) {
+    case 0:
         return 7;               /* G_ACMUX_0 */
-    if (token == 1)
+    case 1:
         return 6;               /* G_ACMUX_1 */
-    if (token == 1013)
+    case 1013:
         return 0;               /* LOD_FRACTION: 13 in colour, 0 in alpha */
-    return token - 1000;
+    default:
+        return token - 1000;
+    }
 }
 
 /* 0x1002F900 */
@@ -247,32 +252,37 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
                          int a1,  int b1,  int c1,  int d1,
                          int Aa1, int Ab1, int Ac1, int Ad1)
 {
-    uint32_t w0, w1;
+    /* Orig converts every argument first (a0..d0 live in ebx/esi/edi/ebp
+     * across the remaining calls; the rest overwrite their own stack slots)
+     * and only then packs. Interleaved convert-and-shift is 40 bytes short
+     * and never pushes ebp. */
+    a0  = BrRdpCCMux(a0);
+    b0  = BrRdpCCMux(b0);
+    c0  = BrRdpCCMux(c0);
+    d0  = BrRdpCCMux(d0);
+    Aa0 = BrRdpACMux(Aa0);
+    Ab0 = BrRdpACMux(Ab0);
+    Ac0 = BrRdpACMux(Ac0);
+    Ad0 = BrRdpACMux(Ad0);
+    a1  = BrRdpCCMux(a1);
+    b1  = BrRdpCCMux(b1);
+    c1  = BrRdpCCMux(c1);
+    d1  = BrRdpCCMux(d1);
+    Aa1 = BrRdpACMux(Aa1);
+    Ab1 = BrRdpACMux(Ab1);
+    Ac1 = BrRdpACMux(Ac1);
+    Ad1 = BrRdpACMux(Ad1);
 
     /* The 0xFC command byte comes out of this ones-fill after the shifts
-     * below total exactly 20 bits; it is never OR'd in explicitly. */
-    w0  = ((uint32_t)BrRdpCCMux(a0) & 0x0Fu) | 0xFFFFFFC0u;
-    w0  = (w0 << 5) | ((uint32_t)BrRdpCCMux(c0)  & 0x1Fu);
-    w0  = (w0 << 3) | ((uint32_t)BrRdpACMux(Aa0) & 0x07u);
-    w0  = (w0 << 3) | ((uint32_t)BrRdpACMux(Ac0) & 0x07u);
-    w0  = (w0 << 4) | ((uint32_t)BrRdpCCMux(a1)  & 0x0Fu);
-    w0  = (w0 << 5) | ((uint32_t)BrRdpCCMux(c1)  & 0x1Fu);
-
-    /* b0 is the one field the original does not mask; the 28-bit total
-     * shift is what discards the excess. */
-    w1  = (uint32_t)BrRdpCCMux(b0);
-    w1  = (w1 << 4) | ((uint32_t)BrRdpCCMux(b1)  & 0x0Fu);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Aa1) & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Ac1) & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpCCMux(d0)  & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Ab0) & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Ad0) & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpCCMux(d1)  & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Ab1) & 0x07u);
-    w1  = (w1 << 3) | ((uint32_t)BrRdpACMux(Ad1) & 0x07u);
-
-    pOut->w0 = w0;
-    pOut->w1 = w1;
+     * total exactly 20 bits; it is never OR'd in explicitly. b0 is the one
+     * field not masked; the 28-bit total shift discards the excess. */
+    pOut->w0 = ((((((a0 & 0x0F) | 0xFFFFFFC0) << 5 | (c0 & 0x1F)) << 3
+                  | (Aa0 & 7)) << 3 | (Ac0 & 7)) << 4 | (a1 & 0x0F)) << 5
+               | (c1 & 0x1F);
+    pOut->w1 = ((((((((b0 << 4 | (b1 & 0x0F)) << 3 | (Aa1 & 7)) << 3
+                     | (Ac1 & 7)) << 3 | (d0 & 7)) << 3 | (Ab0 & 7)) << 3
+                   | (Ad0 & 7)) << 3 | (d1 & 7)) << 3 | (Ab1 & 7)) << 3
+               | (Ad1 & 7);
 }
 
 /* ================================================================== */
