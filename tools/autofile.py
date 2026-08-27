@@ -240,94 +240,96 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
                     'symbol %s already defined in %s' % (name, hit))
             return False
 
-    relfile = None
-    for cand in pick_slice(spans, va):
-        text = open(os.path.join(ROOT, cand)).read()
-        anchors = list(FOOTER_RE.finditer(text))
-        if anchors:
-            relfile = cand
-            break
-    if relfile is None:
-        log_row(logrows, va_hex, 'flag',
-                'no slice file with a BR_MATCHING_BUILD #endif anchor')
-        return False
-    abs_file = os.path.join(ROOT, relfile)
     provenance = (row.get('compile_errors') or '').replace('refined: ', '') \
         or 'none'
-    # Drop harvested callee-DECLARATIONS whose function is already DEFINED in
-    # the target file: `int f();` beside the real `void f(void){...}` is a
-    # C2371 that breaks the whole TU (dropped every sibling of 0x1002DEC3).
-    # The definition satisfies the reference; the decl is redundant + wrong.
+
     def _decl_name(line):
         m = DECL_FN.match(line.strip())
         return m.group(1) if m else None
-    kept_decls = []
-    for d in decls:
-        n = _decl_name(d)
-        if n and re.search(r'\b%s\s*\([^;{)]*\)\s*\n?\s*\{' % re.escape(n),
-                           text):
-            continue
-        kept_decls.append(d)
-    decls = kept_decls
-    # Win32-calling bodies need windows.h; many slice files don't include it.
-    # Inject a guarded include at the TOP of the appended block — everything
-    # above it in the file is already fully parsed, so it can only affect the
-    # function being added, and the compile-verify below is the safety net.
-    win32 = re.search(r'\b(LPSECURITY_ATTRIBUTES|LPCSTR|LPCTSTR|HANDLE|HWND|'
-                      r'DWORD|LARGE_INTEGER|Create(?:Mutex|Event|Thread|File)'
-                      r'[AW]?|WaitForSingleObject|MEMORYSTATUS|MMCKINFO)\b',
-                      body)
-    need_win = bool(win32) and 'windows.h' not in text
-    block = '\n'
-    if need_win:
-        block += ('#ifdef BR_MATCHING_BUILD\n#include <windows.h>\n'
-                  '#endif\n')
-    if needs_funcptr and 'typedef int (*funcptr)' not in text:
-        block += 'typedef int (*funcptr)();\n'
-    if decls:
-        block += '\n'.join(decls) + '\n'
-    block += ('\n/* @implements 0x%08X glide %s */\n'
-              '/* auto-filed from ghidra --refine; transforms: %s */\n\n'
-              % (va, name, provenance))
-    block += body.strip('\n') + '\n\n'
 
-    if dry_run:
-        log_row(logrows, va_hex, 'would-file', '%s (+%d decl lines)'
-                % (relfile, len(decls)))
+    # Try each bracketing slice in turn: a filing can regress the target
+    # slice's siblings via a slice-local declaration clash (0x10061310
+    # regressed 12), so on any verify failure fall through to the NEXT
+    # candidate rather than giving up — a different slice often has no clash.
+    candidates = [c for c in pick_slice(spans, va)
+                  if FOOTER_RE.search(open(os.path.join(ROOT, c)).read())]
+    if not candidates:
+        log_row(logrows, va_hex, 'flag',
+                'no slice file with a BR_MATCHING_BUILD #endif anchor')
         return False
 
-    before = report_rows_for(relfile)
-    ins = anchors[-1].start()
-    with open(abs_file, 'w') as f:
-        f.write(text[:ins] + block + text[ins:])
+    last_why = 'no candidate verified'
+    for relfile in candidates:
+        abs_file = os.path.join(ROOT, relfile)
+        text = open(abs_file).read()
+        anchors = list(FOOTER_RE.finditer(text))
+        # Drop harvested callee-decls already DEFINED in THIS target file
+        # (`int f();` beside `void f(void){...}` is a C2371 that breaks the
+        # whole TU — dropped every sibling of 0x1002DEC3).
+        kept = []
+        for d in decls:
+            n = _decl_name(d)
+            if n and re.search(r'\b%s\s*\([^;{)]*\)\s*\n?\s*\{' % re.escape(n),
+                               text):
+                continue
+            kept.append(d)
+        # Win32-calling bodies need windows.h; inject it guarded at the top of
+        # the block (everything above it is already parsed; compile-verify is
+        # the net).
+        win32 = re.search(r'\b(LPSECURITY_ATTRIBUTES|LPCSTR|LPCTSTR|HANDLE|'
+                          r'HWND|DWORD|LARGE_INTEGER|Create(?:Mutex|Event|'
+                          r'Thread|File)[AW]?|WaitForSingleObject|'
+                          r'MEMORYSTATUS|MMCKINFO)\b', body)
+        block = '\n'
+        if win32 and 'windows.h' not in text:
+            block += '#ifdef BR_MATCHING_BUILD\n#include <windows.h>\n#endif\n'
+        if needs_funcptr and 'typedef int (*funcptr)' not in text:
+            block += 'typedef int (*funcptr)();\n'
+        if kept:
+            block += '\n'.join(kept) + '\n'
+        block += ('\n/* @implements 0x%08X glide %s */\n'
+                  '/* auto-filed from ghidra --refine; transforms: %s */\n\n'
+                  % (va, name, provenance))
+        block += body.strip('\n') + '\n\n'
 
-    ok, out = run_sweep(relfile)
-    after = report_rows_for(relfile)
-    regressed = [v for v, st in before.items()
-                 if st == 'match' and after.get(v) != 'match']
-    new_status = after.get(va_hex.lower())
-    if not ok or new_status != 'match' or regressed:
-        subprocess.run(['git', 'checkout', '--', relfile], cwd=ROOT,
-                       check=True)
-        run_sweep(relfile)  # restore accurate report rows for the file
-        why = ('sweep failed' if not ok else
-               'regressed: ' + ','.join(regressed) if regressed else
-               'status %s, not match' % new_status)
-        log_row(logrows, va_hex, 'verify-fail', why)
-        return False
+        if dry_run:
+            log_row(logrows, va_hex, 'would-file', '%s (+%d decl lines)'
+                    % (relfile, len(kept)))
+            return False
 
-    log_row(logrows, va_hex, 'filed', '%s (%sB, verified match)'
-            % (relfile, row['orig_size']))
-    if no_commit:
+        before = report_rows_for(relfile)
+        ins = anchors[-1].start()
+        with open(abs_file, 'w') as f:
+            f.write(text[:ins] + block + text[ins:])
+        ok, out = run_sweep(relfile)
+        after = report_rows_for(relfile)
+        regressed = [v for v, st in before.items()
+                     if st == 'match' and after.get(v) != 'match']
+        new_status = after.get(va_hex.lower())
+        if not ok or new_status != 'match' or regressed:
+            subprocess.run(['git', 'checkout', '--', relfile], cwd=ROOT,
+                           check=True)
+            run_sweep(relfile)  # restore accurate report rows
+            last_why = ('sweep failed' if not ok else
+                        'regressed: ' + ','.join(regressed[:6]) if regressed
+                        else 'status %s, not match' % new_status)
+            continue  # try the next bracketing slice
+
+        log_row(logrows, va_hex, 'filed', '%s (%sB, verified match)'
+                % (relfile, row['orig_size']))
+        if no_commit:
+            return True
+        msg = ('%s: %s auto-filed for glide %s (%sB) — matched by --refine '
+               '(transforms: %s), verified by single-file sweep'
+               % (os.path.basename(relfile), name, va_hex, row['orig_size'],
+                  provenance))
+        subprocess.run(['git', 'commit', '-m', msg, '--', relfile], cwd=ROOT,
+                       check=True, capture_output=True)
+        log_row(logrows, va_hex, 'committed', msg[:70])
         return True
-    msg = ('%s: %s auto-filed for glide %s (%sB) — matched by --refine '
-           '(transforms: %s), verified by single-file sweep'
-           % (os.path.basename(relfile), name, va_hex, row['orig_size'],
-              provenance))
-    subprocess.run(['git', 'commit', '-m', msg, '--', relfile], cwd=ROOT,
-                   check=True, capture_output=True)
-    log_row(logrows, va_hex, 'committed', msg[:70])
-    return True
+
+    log_row(logrows, va_hex, 'verify-fail', last_why + ' (all slices tried)')
+    return False
 
 
 def main():
