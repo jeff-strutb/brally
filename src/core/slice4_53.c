@@ -436,4 +436,73 @@ void FUN_100038a0(char *param_1)
   return;
 }
 
+
+extern int DAT_100aa044;
+extern int DAT_105ccb88;
+extern float _DAT_10077000;
+extern float _DAT_10077014;
+extern float _DAT_10077018;
+extern float _DAT_1007701c;
+extern float _DAT_10077020;
+extern int g_br0AA010;
+void BrVec3AddTo(void *, void *);
+float BrVec3Length(void *);
+void BrVec3Lerp(void *, void *, void *, float);
+void BrVec3MulAdd(void *, void *, void *, float);
+void BrVec3MulAddTo(void *, void *, float);
+void BrVec3Scale(void *, void *, float);
+void BrVec3ScaleBy(void *, float);
+void BrVec3Sub(void *, void *, void *);
+
+/* @implements 0x100018F0 glide FUN_100018f0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void __fastcall FUN_100018f0(int param_1, int _edx_unused, int param_2, float param_3)
+{
+  float tmp[3];
+  int dst;
+  float len;
+  float s;
+
+  if (*(int *)(param_1 + 0xf7c) != 0) {
+    dst = param_2 + 0x30;
+    BrVec3MulAdd((void *)dst, (void *)(param_1 + 0x30), (void *)(param_1 + 0x20), 2.4f);
+    s = -11.0f;
+    if (DAT_100aa044 != 1) {
+      s = -19.8f;
+    }
+    BrVec3MulAdd((void *)dst, (void *)dst, (void *)param_1, s);
+    return;
+  }
+  dst = param_2 + 0x30;
+  *(float *)(param_2 + 0x38) = *(float *)(param_2 + 0x38) - _DAT_10077014;
+  BrVec3Sub(tmp, (void *)dst, (void *)(param_1 + 0x30));
+  len = BrVec3Length(tmp);
+  if (len != _DAT_10077000) {
+    if (DAT_100aa044 == 1) {
+      BrVec3ScaleBy(tmp, _DAT_10077018 / len);
+    }
+    else {
+      BrVec3ScaleBy(tmp, _DAT_1007701c / len);
+    }
+  }
+  if (DAT_105ccb88 != 0) {
+    BrVec3Scale((void *)dst, (void *)param_1, 11.0f);
+  }
+  else if (g_br0AA010 == 5) {
+    BrVec3Scale((void *)dst, (void *)(param_1 + 0x10), -11.0f);
+    BrVec3MulAddTo((void *)dst, (void *)param_1, -13.0f);
+  }
+  else {
+    BrVec3Scale((void *)dst, (void *)param_1, -11.0f);
+  }
+  len = BrVec3Length((void *)dst);
+  if (len != _DAT_10077000) {
+    BrVec3ScaleBy((void *)dst, _DAT_10077018 / len);
+  }
+  BrVec3Lerp((void *)dst, (void *)dst, tmp, param_3);
+  BrVec3AddTo((void *)dst, (void *)(param_1 + 0x30));
+  *(float *)(param_2 + 0x38) = *(float *)(param_2 + 0x38) - _DAT_10077020;
+}
+
 #endif /* BR_MATCHING_BUILD */
