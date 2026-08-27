@@ -264,8 +264,21 @@ typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
  * N64 command set is far larger than the game actually uses, so the great
  * majority of the 256 slots land here. */
 /* @implements 0x10021240 glide br_dl_skip */
+#ifdef BR_MATCHING_BUILD
 static const uint8_t *br_dl_skip(const uint8_t *p)
 {
+    return p + 8;
+}
+#endif
+
+/* Table-compatible do-nothing handler for the PORT dispatch, which calls every
+ * slot as (pDl, p). The byte-exact original (br_dl_skip above) takes one arg;
+ * this two-arg wrapper does the same step (p + 8) so the 256-slot table is
+ * type-uniform. Called as s_aTable[op](pDl, p) — br_dl_skip's 1-arg form would
+ * mis-read pDl as p, so the table must hold this version. */
+static const uint8_t *br_dl_skip_h(BrDl *pDl, const uint8_t *p)
+{
+    (void)pDl;
     return p + 8;
 }
 
@@ -1665,7 +1678,7 @@ static void br_dl_build_table(void)
     if (s_fTableReady)
         return;
     for (i = 0; i < 256; ++i)
-        s_aTable[i] = br_dl_skip;
+        s_aTable[i] = br_dl_skip_h;
     s_aTable[0x01] = br_dl_mtx;
     s_aTable[0x03] = br_dl_movemem;
     s_aTable[0x04] = br_dl_vtx;
@@ -1700,7 +1713,7 @@ static void br_dl_build_table(void)
 int BrDlIsHandled(unsigned op)
 {
     br_dl_build_table();
-    return (op < 256u) && (s_aTable[op] != br_dl_skip);
+    return (op < 256u) && (s_aTable[op] != br_dl_skip_h);
 }
 
 /* ==================================================================== */
