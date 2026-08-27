@@ -226,6 +226,13 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
 
     decls, body, needs_funcptr = extract(tu, name)
     if decls is None:
+        # A self-contained construct (BrDlCmd's local typedef, ghidra NAN bits,
+        # stack/dollar temps) is unsafe to append into a SHARED slice (it
+        # collides with the file's includes/siblings) but is fine as its OWN
+        # TU — the whole ghidra_work file scored 0. Route those to standalone.
+        if body.startswith('unsafe construct'):
+            if file_standalone(row, va_hex, name, logrows, no_commit):
+                return True
         log_row(logrows, va_hex, 'flag', body)
         return False
 
