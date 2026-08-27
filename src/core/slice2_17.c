@@ -1523,4 +1523,58 @@ int FUN_100275c0(int *param_1,int param_2,int param_3)
   return 0;
 }
 
+
+extern int DAT_105ccbd0;
+extern int g_BrFpsScreenH;
+extern int g_BrFpsScreenW;
+void __stdcall grClipWindow(int, int, int, int);
+void __stdcall grDepthBufferMode(int);
+void __stdcall grDepthBufferFunction(int);
+void __stdcall grDepthMask(int);
+void __stdcall grBufferClear(int, int, int);
+void __stdcall grCullMode(int);
+void __stdcall grAlphaCombine(int, int, int, int, int);
+void __stdcall grAlphaTestFunction(int);
+void __stdcall grAlphaTestReferenceValue(int);
+void __stdcall grTexFilterMode(int, int, int);
+void __stdcall grConstantColorValue(int);
+void __stdcall grColorCombine(int, int, int, int, int);
+void __stdcall grTexCombine(int, int, int, int, int, int, int);
+
+/* @implements 0x1001DFB0 glide FUN_1001dfb0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_1001dfb0(void)
+
+{
+  int uVar1;
+  int uVar2;
+  int uVar3;
+  int uVar4;
+  
+  grClipWindow(0,0,g_BrFpsScreenW,g_BrFpsScreenH);
+  grDepthBufferMode(2);
+  grDepthBufferFunction(7);
+  grDepthMask(1);
+  grBufferClear(0,0,0xffff);
+  grCullMode(0);
+  grAlphaCombine(3,8,1,1,0);
+  grAlphaTestFunction(7);
+  grAlphaTestReferenceValue(0x80);
+  grTexFilterMode(0,0,0);
+  if (1 < DAT_105ccbd0) {
+    grTexFilterMode(1,0,0);
+  }
+  grConstantColorValue(0xffffffff);
+  grColorCombine(1,0,0,2,0);
+  if (1 < DAT_105ccbd0) {
+    grTexCombine(1, 1, 0, 1, 0, 0, 0);
+    grTexCombine(0, 3, 8, 3, 8, 0, 0);
+  }
+  else {
+    grTexCombine(0, 1, 0, 1, 0, 0, 0);
+  }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
