@@ -1233,16 +1233,6 @@ def refine_function(row, max_rounds=4, max_cands=80):
     # every other generator. No-op when the function has no indirect/import
     # calls; failures are swallowed (never break a refine). ~223 functions
     # share this call shape.
-    applied = []
-    try:
-        import gen_callconv
-        cc_calls = gen_callconv.analyze_orig(int(va_hex, 16), _cc_pe())
-        cc_src, cc_report = gen_callconv.transform(src, cc_calls)
-        if cc_report and cc_src != src:
-            src = cc_src
-            applied.append('callconv')
-    except Exception:
-        pass
     # Initial score tries ALL variants — the row's recorded opt can be a
     # stale artifact of a divergent best (a /Od row whose real match is /O2
     # walled 0x1001E220 until this).  The climb then stays in the winner.
@@ -1250,6 +1240,24 @@ def refine_function(row, max_rounds=4, max_cands=80):
     tag = 'ghidra_ref_' + va_hex[2:]
     cur, cur_opt, cur_rb, cur_rl = _score_source(
         src, func_name, orig_bytes, opts, tag)
+    # Try the calling-convention transform, but ADOPT it only if it does not
+    # make the function worse — it mis-fires on some shapes (poisoned an
+    # as-is 0-diff match, 0x100368A0, to 312). Only-if-better keeps the win
+    # on the ~223 it helps without corrupting the ones it hurts.
+    applied = []
+    if cur is not None:
+        try:
+            import gen_callconv
+            cc_calls = gen_callconv.analyze_orig(int(va_hex, 16), _cc_pe())
+            cc_src, cc_report = gen_callconv.transform(src, cc_calls)
+            if cc_report and cc_src != src:
+                cc = _score_source(cc_src, func_name, orig_bytes, opts, tag)
+                if cc[0] is not None and cc[0] <= cur:
+                    src = cc_src
+                    cur, cur_opt, cur_rb, cur_rl = cc
+                    applied.append('callconv')
+        except Exception:
+            pass
     if os.environ.get('BR_REFINE_DEBUG'):
         print('DBG', va_hex, 'origlen', len(orig_bytes), 'initial', cur,
               cur_opt, 'rb', len(cur_rb) if cur_rb else None, flush=True)
