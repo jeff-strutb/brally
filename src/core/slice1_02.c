@@ -833,4 +833,100 @@ int BrNetMutexInit(void)
   return 1;
 }
 
+
+extern int DAT_1007b268;
+extern float DAT_1021c820;
+extern float DAT_1021c990;
+extern float DAT_1021c994;
+extern float DAT_1021c998;
+extern float DAT_1021c99c;
+extern float DAT_1021c9a0;
+extern float DAT_1021c9a4;
+extern float DAT_1021c9a8;
+extern int DAT_10226a70;
+extern float _DAT_100770ac;
+extern float _DAT_1021c898;
+int FUN_10004fd0(float *);
+int FUN_100051c0(float *, float *);
+int FUN_10005330(void);
+int BrNetSendFlush(void);
+
+/* @implements 0x100054A0 glide FUN_100054a0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100054a0(float *param_1)
+{
+  int uVar1;
+
+  if ((param_1[0x1e] >= _DAT_100770ac) && (_DAT_1021c898 < _DAT_100770ac)) {
+    memcpy(&DAT_1021c820, param_1, 0xa0);
+    uVar1 = FUN_10004fd0(param_1);
+    return uVar1;
+  }
+  DAT_10226a70 = DAT_10226a70 + 1;
+  if (DAT_10226a70 < 3) {
+    if (DAT_1021c990 < param_1[0x20]) {
+      DAT_1021c990 = param_1[0x20];
+    }
+    if (DAT_1021c994 < param_1[0x21]) {
+      DAT_1021c994 = param_1[0x21];
+    }
+    if (DAT_1021c998 < param_1[0x22]) {
+      DAT_1021c998 = param_1[0x22];
+    }
+    if (DAT_1021c99c < param_1[0x23]) {
+      DAT_1021c99c = param_1[0x23];
+    }
+    if (DAT_1021c9a0 < param_1[0x24]) {
+      DAT_1021c9a0 = param_1[0x24];
+    }
+    if (DAT_1021c9a4 < param_1[0x25]) {
+      DAT_1021c9a4 = param_1[0x25];
+    }
+    if (DAT_1021c9a8 < param_1[0x26]) {
+      DAT_1021c9a8 = param_1[0x26];
+    }
+    return 1;
+  }
+  if (param_1[0x20] < DAT_1021c990) {
+    param_1[0x20] = DAT_1021c990;
+  }
+  if (param_1[0x21] < DAT_1021c994) {
+    param_1[0x21] = DAT_1021c994;
+  }
+  if (param_1[0x22] < DAT_1021c998) {
+    param_1[0x22] = DAT_1021c998;
+  }
+  if (param_1[0x23] < DAT_1021c99c) {
+    param_1[0x23] = DAT_1021c99c;
+  }
+  if (param_1[0x24] < DAT_1021c9a0) {
+    param_1[0x24] = DAT_1021c9a0;
+  }
+  if (param_1[0x25] < DAT_1021c9a4) {
+    param_1[0x25] = DAT_1021c9a4;
+  }
+  if (param_1[0x26] < DAT_1021c9a8) {
+    param_1[0x26] = DAT_1021c9a8;
+  }
+  DAT_1021c9a8 = 0.0f;
+  DAT_1007b268 = DAT_1007b268 + 1;
+  DAT_1021c9a4 = 0.0f;
+  DAT_1021c9a0 = 0.0f;
+  DAT_1021c99c = 0.0f;
+  DAT_1021c998 = 0.0f;
+  DAT_1021c994 = 0.0f;
+  DAT_1021c990 = 0.0f;
+  DAT_10226a70 = 0;
+  if (DAT_1007b268 % 4 == 0) {
+    memcpy(&DAT_1021c820, param_1, 0xa0);
+    uVar1 = FUN_10004fd0(param_1);
+    return uVar1;
+  }
+  uVar1 = FUN_100051c0(param_1, &DAT_1021c820);
+  BrNetSendFlush();
+  FUN_10005330();
+  return uVar1;
+}
+
 #endif /* BR_MATCHING_BUILD */
