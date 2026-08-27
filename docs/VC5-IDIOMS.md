@@ -105,6 +105,13 @@ the caller AND flipped a helper to match for free.
   no bytes. Generalizes BR_THISCALL1. Proven on BrBoundsFits_10058CC0 and
   four C++ scalar deleting destructors (`push esi; mov esi,ecx; call ~T;
   test byte [esp+8],1; jz; push esi; call operator delete`).
+- **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
+  { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
+  if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the
+  f0C/f68 stores (`89` vs orig `c7`). DECLARE ctor, no dtor (unwind is
+  `??3` only). Six activates matched: docs/cpp-family2-notes.md.
+  Sequential `new`s in one function: maxState = count, every toState=-1,
+  every unwind action 11 B `push; call ??3; pop; ret`.
 - **ECX copy-propagation:** after `mov esi,ecx`, calling a thiscall callee
   with an explicit `this` argument (`Dtor(param_1)`, callee declared
   `__fastcall`) emits NO `mov ecx,esi` reload — VC5 knows ECX still holds
