@@ -603,8 +603,16 @@ int32_t g_brInKeyCur;                     /* 0x118EEBF0 */
 int32_t g_brInJoyCur;                     /* 0x118EEBD0 */
 int32_t g_brInMouseCur;                   /* 0x118EEE98 */
 uint8_t g_brInKeys[2][256];               /* 0x118EE9D0 */
+#ifdef BR_MATCHING_BUILD
+/* Incomplete-type extern so axis compares stay `[reg + disp32]` (orig
+ * `cmp [ebx + g_brInJoy], imm`) instead of adding the base into the
+ * scaled index. The port keeps the sized arrays. */
+extern BrInJoy   g_brInJoy[];
+extern BrInMouse g_brInMouse[];
+#else
 BrInJoy   g_brInJoy[2];                   /* 0x118EEBF8, stride 0x110 */
 BrInMouse g_brInMouse[2];                 /* 0x118EEE50, stride 0x1C  */
+#endif
 
 /* WHAT IT DOES: answers "is the player holding down the control for this
  * action right now?" -- checking whichever key, button, stick direction or
@@ -615,72 +623,80 @@ BrInMouse g_brInMouse[2];                 /* 0x118EEE50, stride 0x1C  */
  * The original indexes the key/button tables with UNCHECKED bytes (no & 1 /
  * & 3 masks) and switches on the u16 binding word masked to its high byte.
  *
- * NOT MATCHING: VC5 here emits the compacted switch node (cmp; jg; je,
- * flags reused) where the original re-compares at the root (cmp; jg; cmp;
- * je) -- switch-lowering internal shape, plus entry register-role noise.
- * An else-if chain lowers to a linear compare ladder and is farther. */
+ * Nested `<=` / `!=` at each pivot reproduces orig's binary-tree node form
+ * (`cmp; jg; cmp; je` at the root; last three cases a linear == chain). A
+ * switch compactes the root; a flat else-if chain is a linear ladder. */
 /* @implements 0x10071710 glide BrInputIsDown */
 uint8_t BrInputIsDown(int32_t action)
 {
+    uint8_t r = 0;
     const uint8_t *b = g_BrPadModeBytes + 6 * action;
-    int32_t  cur = g_brInKeyCur;
-    uint8_t  r = 0;
-    int32_t  w = *(const uint16_t *)(const void *)b & 0xFF00;
+    int32_t cur = g_brInKeyCur;
+    int32_t w = *(const uint16_t *)(const void *)b & 0xFF00;
+    int32_t w2 = w;
 
-    switch (w) {
-    case 0x0000:
-        r = (uint8_t)(g_brInKeys[cur][b[0]] & 0x80u);
-        break;
-    case 0x0100:
-        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
-        break;
-    case 0x0300:
-        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
-        break;
-    case 0x8000:
-        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
-        break;
-    case 0x8100:
-        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
-        break;
-    case 0x8200:
-        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
-        break;
-    case 0x8300:
-        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
-        break;
-    case 0x8400:
-        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
-        break;
-    case 0x8500:
-        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
-        break;
-    case 0x8600:
-        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
-        break;
-    case 0x8700:
-        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
-        break;
-    case 0x8800:
-        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
-        break;
-    case 0x8900:
+    if (w <= 0x100) {
+        if (w2 != 0x100) {
+            if (w2 == 0)
+                r = (uint8_t)(g_brInKeys[cur][b[0]] & 0x80u);
+        } else {
+            r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
+        }
+    } else if (w <= 0x8000) {
+        if (w != 0x8000) {
+            if (w == 0x300)
+                r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
+        } else {
+            if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
+        }
+    } else if (w <= 0x8200) {
+        if (w != 0x8200) {
+            if (w == 0x8100) {
+                if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
+            }
+        } else {
+            if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
+        }
+    } else if (w <= 0x8400) {
+        if (w != 0x8400) {
+            if (w == 0x8300) {
+                if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
+            }
+        } else {
+            if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
+        }
+    } else if (w <= 0x8600) {
+        if (w != 0x8600) {
+            if (w == 0x8500) {
+                if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
+            }
+        } else {
+            if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
+        }
+    } else if (w <= 0x8800) {
+        if (w != 0x8800) {
+            if (w == 0x8700) {
+                if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
+            }
+        } else {
+            if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
+        }
+    } else if (w == 0x8900) {
         if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
-        break;
-    case 0x8A00:
+    } else if (w == 0x8A00) {
         if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
-        break;
-    case 0x8B00:
+    } else if (w == 0x8B00) {
         if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
-        break;
-    default:
-        break;
     }
 
-    if (b[3] == 0)
-        r |= (uint8_t)(g_brInKeys[cur][b[2]] & 0x80u);
-    if (b[5] == 0)
-        r |= (uint8_t)(g_brInKeys[cur][b[4]] & 0x80u);
+    if (!b[3]) {
+        unsigned idx = (unsigned char)b[2];
+        r |= (uint8_t)(g_brInKeys[cur][idx] & 0x80u);
+    }
+    if (!b[5]) {
+        unsigned idx = (unsigned char)b[4];
+        r |= (uint8_t)(g_brInKeys[cur][idx] & 0x80u);
+    }
     return r;
 }
 

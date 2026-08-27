@@ -11,7 +11,14 @@
  * comment slice3_32.c carries is repeated here so a future diff of the two is
  * a diff of behaviour and not of documentation.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header is cdecl (nav, ctl). Original is thiscall with this = ctl. */
+#define BrUiNavCtlHit_10047A60 BrUiNavCtlHit_10047A60_hdr
+#endif
 #include "br_uinav.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrUiNavCtlHit_10047A60
+#endif
 #include <stddef.h>
 
 BrUiNav *g_pBrUiNav;
@@ -197,6 +204,170 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
 }
 
 /* @implements 0x10047A60 d3d BrUiNavCtlHit_10047A60 */
+#ifdef BR_MATCHING_BUILD
+/* Orig is thiscall (this = pCtl in ecx, `mov esi, ecx`) and reads the
+ * cursor / hot-rects / ordinal / activity flags as standalone globals,
+ * not through a BrUiNav *. BrIsAnyActive is 0-arg cdecl; page-select is
+ * thiscall on pOwner->pCur. */
+typedef struct BrHitRect { int32_t l, t, r, b; } BrHitRect;
+typedef struct BrObj2C { int32_t _[11]; int32_t f2C; int32_t f30; } BrObj2C;
+extern int32_t   *g_navCursor;     /* 0x10AC5DD8 */
+extern uint16_t   g_wAA286C;       /* 0x10AC5BC4 */
+extern uint16_t   g_wAA2870;       /* 0x10AC5BC8 */
+extern uint16_t   g_w0AB3DC;       /* 0x100AAB7C */
+extern int32_t    g_nAA284C;       /* 0x10AC5BA4 */
+extern BrHitRect  g_hot0;          /* 0x100AABE8 */
+extern BrHitRect  g_hot1;          /* 0x100AABB8 */
+extern BrHitRect  g_hot2;          /* 0x100AABC8 */
+extern int32_t    g_act0;          /* 0x10AC6730 */
+extern int32_t    g_act1;
+extern int32_t    g_act2;
+extern int32_t    g_act3;
+extern int32_t    g_actOverride;   /* 0x10AC5BB4 */
+extern int32_t    g_act5;          /* 0x10AC5E50 */
+extern int32_t    g_act6;          /* 0x10AC6050 */
+extern BrObj2C   *g_pAA2E80;       /* 0x10AC61E0 */
+int BrIsAnyActiveGlide(void);
+int BR_THISCALL1 BrUiNavPageSelectGlide(BrUiPage_ *pPage);
+
+int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
+{
+    int fZero = 0;
+    int32_t f = pCtl->flags1C;
+    int32_t *pCurXY;
+    int fHot;
+    int fCurrent;
+    int32_t a;
+
+    if (f & 8)
+        return 0;
+
+    if (f & 0x10) {
+        if (g_wAA286C == g_wAA2870) {
+            g_wAA286C = (uint16_t)(g_wAA286C + g_w0AB3DC);
+            BrUiNavPageSelectGlide(pCtl->pOwner->pCur);
+        }
+        ++g_wAA2870;
+        return 0;
+    }
+
+    if (f & 0x80000) {
+        if (BrIsAnyActiveGlide() == 0) {
+            pCtl->flags1C &= 0xFFF7FFFD;
+            goto hit_test;
+        }
+    }
+    if (pCtl->flags1C & 0x80000) {
+        if (BrIsAnyActiveGlide() != 0) {
+            a = pCtl->flags1C;
+            *(unsigned char *)&a |= 0x22;
+            pCtl->flags1C = a;
+            return 1;
+        }
+    }
+
+hit_test:
+    pCurXY = g_navCursor;
+
+    if (g_hot0.l > pCurXY[0])
+        goto miss0;
+    if (g_hot0.r < pCurXY[0])
+        goto miss0;
+    if (g_hot0.t > pCurXY[1])
+        goto miss0;
+    if (g_hot0.b < pCurXY[1])
+        goto miss0;
+    fHot = 1;
+    fCurrent = 0;
+    goto after_hot;
+miss0:
+    if (g_hot1.l > pCurXY[0])
+        goto miss1;
+    if (g_hot1.r < pCurXY[0])
+        goto miss1;
+    if (g_hot1.t > pCurXY[1])
+        goto miss1;
+    if (g_hot1.b < pCurXY[1])
+        goto miss1;
+    fHot = 1;
+    fCurrent = 0;
+    goto after_hot;
+miss1:
+    if (g_hot2.l > pCurXY[0])
+        goto miss2;
+    if (g_hot2.r < pCurXY[0])
+        goto miss2;
+    if (g_hot2.t > pCurXY[1])
+        goto miss2;
+    if (g_hot2.b < pCurXY[1])
+        goto miss2;
+    fHot = 1;
+    fCurrent = 0;
+    goto after_hot;
+miss2:
+    {
+        int32_t ord = (int32_t)(int16_t)g_wAA2870;
+        int32_t sel = (int32_t)(int16_t)g_wAA286C;
+        fHot = 0;
+        fCurrent = (sel * 19 == ord * 19) ? 1 : fZero;
+    }
+after_hot:
+    ++g_wAA2870;
+    g_nAA284C = fHot;
+
+    if (pCtl->rcLeft > pCurXY[0])
+        goto not_inside;
+    if (pCtl->rcRight < pCurXY[0])
+        goto not_inside;
+    if (pCtl->rcTop > pCurXY[1])
+        goto not_inside;
+    if (pCtl->rcBottom < pCurXY[1])
+        goto not_inside;
+    goto inside;
+not_inside:
+    if (fCurrent == 0) {
+        a = pCtl->flags1C;
+        *(unsigned char *)&a &= 0xdd;
+        pCtl->flags1C = a;
+        return 0;
+    }
+inside:
+    if (fCurrent) {
+        if (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0)
+            return 1;
+    }
+
+    a = pCtl->flags1C;
+    if (a & 0x40000) {
+        if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
+            a |= 0x80002;
+        else
+            *(unsigned char *)&a &= 0xfd;
+    } else {
+        if (g_actOverride != 0)
+            goto do_pred;
+        if (g_act5 != 0)
+            goto set_bit;
+        if (g_act6 != 0)
+            goto set_bit;
+    do_pred:
+        if (BrIsAnyActiveGlide() == 0)
+            goto clear_bit;
+    set_bit:
+        a = pCtl->flags1C;
+        *(unsigned char *)&a |= 2;
+        goto store_f;
+    clear_bit:
+        a = pCtl->flags1C;
+        *(unsigned char *)&a &= 0xfd;
+    }
+store_f:
+    pCtl->flags1C = a;
+    *(unsigned char *)&a |= 0x20;
+    pCtl->flags1C = a;
+    return 1;
+}
+#else
 int BrUiNavCtlHit_10047A60(BrUiNav *pNav, BrUiCtl_ *pCtl)
 {
     BrScrGlobals  *pG = pNav->pG;
@@ -310,6 +481,7 @@ int BrUiNavCtlHit_10047A60(BrUiNav *pNav, BrUiCtl_ *pCtl)
     pCtl->flags1C = (int32_t)f;
     return 1;
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x10048180 -- control vtable +0x0C, one frame of one control.
@@ -749,7 +921,11 @@ static int32_t   NavV_f10(BrUiCtl_ *p)
 }
 static int32_t   NavV_f20(BrUiCtl_ *p)
 {
+#ifdef BR_MATCHING_BUILD
+    return BrUiNavCtlHit_10047A60(p);
+#else
     return BrUiNavCtlHit_10047A60(g_pBrUiNav, p);
+#endif
 }
 static int32_t   NavV_f3C(BrUiCtl_ *p)
 {
