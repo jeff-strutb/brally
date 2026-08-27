@@ -333,8 +333,58 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
         log_row(logrows, va_hex, 'committed', msg[:70])
         return True
 
+    # Fallback: no shared slice can hold it without regressing a sibling (it
+    # shares a global at a conflicting width). File it as its OWN standalone
+    # TU where there are no siblings to break — the build auto-discovers .c
+    # files. The ghidra_work TU already scored 0, so reuse it verbatim.
+    if file_standalone(row, va_hex, name, logrows, no_commit):
+        return True
     log_row(logrows, va_hex, 'verify-fail', last_why + ' (all slices tried)')
     return False
+
+
+def file_standalone(row, va_hex, name, logrows, no_commit):
+    """Write the scored-0 ghidra_work TU as its own tree file (no siblings to
+    regress) and commit it. Returns True on a verified match."""
+    work = os.path.join(ROOT, 'build', 'ghidra_work', va_hex + '.refined.c')
+    if not os.path.exists(work):
+        work = os.path.join(ROOT, 'build', 'ghidra_work', va_hex + '.c')
+    if not os.path.exists(work):
+        return False
+    tu = open(work).read()
+    va = int(va_hex, 16)
+    # inject the @implements tag before the function definition
+    m = re.search(r'^([\w][\w\s\*]*?\b%s\s*\([^;{]*\)\s*\n?\s*\{)'
+                  % re.escape(name), tu, re.M)
+    if not m:
+        return False
+    tag = '/* @implements 0x%08X glide %s */\n' % (va, name)
+    tagged = tu[:m.start()] + tag + tu[m.start():]
+    outdir = os.path.join(ROOT, 'src', 'core', 'generated')
+    os.makedirs(outdir, exist_ok=True)
+    relfile = os.path.join('src', 'core', 'generated', va_hex + '.c')
+    abs_file = os.path.join(ROOT, relfile)
+    with open(abs_file, 'w') as f:
+        f.write(tagged)
+    ok, out = run_sweep(relfile)
+    if not ok or report_rows_for(relfile).get(va_hex.lower()) != 'match':
+        subprocess.run(['git', 'checkout', '--', relfile], cwd=ROOT)
+        if os.path.exists(abs_file):
+            os.remove(abs_file)
+        return False
+    log_row(logrows, va_hex, 'filed', '%s (%sB, standalone TU)'
+            % (relfile, row['orig_size']))
+    if no_commit:
+        return True
+    subprocess.run(['git', 'add', relfile], cwd=ROOT, check=True)
+    msg = ('%s: %s standalone-filed for glide %s (%sB) — shares a global with '
+           'siblings at conflicting width, no shared slice holds it; verified '
+           'match as its own TU' % (va_hex + '.c', name, va_hex,
+                                    row['orig_size']))
+    subprocess.run(['git', 'commit', '-m', msg, '--', relfile], cwd=ROOT,
+                   check=True, capture_output=True)
+    log_row(logrows, va_hex, 'committed', msg[:70])
+    return True
 
 
 def main():
