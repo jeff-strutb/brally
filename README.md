@@ -79,6 +79,7 @@ through Metal, and runs the physics integrator with collision response wired in;
 
 | Aspect | Measure | |
 |---|---|---|
+| **TOTAL byte-exact (all binaries, C + C++)** | **692 functions · 62,136 bytes** — verify with `python3 tools/total.py` (re-scores every match) | |
 | Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
 | **Byte-exact under MSVC 5.0 (DLL)** | 558 of 1,140 transcribed functions · 36,873 bytes | `██████████░░░░░░░░░░` 49% |
 | Byte-exact, of all DLL `.text` | 36,873 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
