@@ -26,41 +26,46 @@ DLLs over one shared core: `BRGlide.dll` (3dfx Glide, the mature target and the
 reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 ~100 KB of CRT that has to be identified and fenced off).
 
-## Status (2026-08-25)
+## Status (2026-08-27)
 
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
-from the original DLL. Half of the game's `.text` is transcribed into C across
-1,103 functions, and 519 of those now reproduce the original bytes exactly --
-driven by a growing dictionary of proven compiler idioms
-(`docs/VC5-IDIOMS.md`), a Ghidra-assisted batch decompilation pipeline whose
-`--refine` hill-climb encodes ten of those idioms as automatic source
-transforms, and a structural audit (`tools/sigaudit.py`) that flags which
-near-misses are idiom-fixable rather than allocator noise. As of 2026-08-25
-the loop runs unattended: a wide `--refine` batch grinds every open candidate
-(crash-safe, zero-cost reruns), `tools/autofile.py` files each machine-found
-match into the tree, verifies it with a single-file sweep, and commits it,
-and a divergence classifier groups every failure by wall type so hand work
-starts at "which idiom class is biggest" (`--residue`). Seven of today's
-eight new matches were found, filed, and committed by that loop — six of
-them a family blocked only by a fused 16-byte *linker* preamble no C source
-can produce, now enumerated in `config/preambles.csv`, byte-verified
-verbatim, and matched at the true body start. The matched set still skews small
-(median 35 bytes); the 44 functions over 1 KB hold 23% of all code bytes and
-are where the campaign is decided. The second-largest function (`0x1000EAF0`,
-9,264 bytes in `br_scenedl.c`) broke through its main float-scheduling wall on
-2026-08-25 and is down to 18 divergence regions from 29. Separately, the
-macOS/Metal port of that same source boots, renders the front end from the
-game's own artwork, parses tracks, draws retail car geometry through Metal,
-and runs the physics integrator with collision response wired in; 137 test
-suites pass. The per-frame race render is the last major gate.
+from the original binary. Half of the game DLL's `.text` is transcribed into C,
+and **536 functions now reproduce the original bytes exactly** — driven by a
+growing dictionary of proven compiler idioms (`docs/VC5-IDIOMS.md`), a
+Ghidra-assisted batch pipeline whose `--refine` hill-climb encodes those idioms
+as automatic source transforms, and an auto-filer (`tools/autofile.py`) that
+files each machine-found match into the tree, verifies it with a single-file
+sweep, and commits it. The newest transform recovers each call's **calling
+convention directly from the original bytes** (stdcall/thiscall/COM-vtable vs
+Ghidra's cdecl default) and is folded into the free loop, so the ~220-function
+call-convention class is cracked automatically as it combines with every other
+generator. Register-allocation "coloring" walls — where the source is
+structurally correct but the compiler assigns registers differently — are the
+documented ceiling and now the largest remaining functions; they are batched
+for a randomized-permuter pass rather than hand-ground.
+
+**The EXE workstream opened 2026-08-27.** The three in-scope executables
+(~64 KB, ~12% of the target) were untouched; now **BRally.exe is the first
+fully game-code-complete binary — 24/24 user functions byte-exact (2,831 B,
+79% of its `.text`)**, with the remaining fifth correctly identified as
+statically-linked CRT/linker code to fence and link, not decompile. SetVideo.exe
+and BossRally.exe are in progress. A key finding: CRT linkage varies per binary
+(BRally is `/MD` dynamic, SetVideo is `/ML` static), which dictates the call
+form — and shared file/INI helpers reuse byte-identically across the family.
+
+Separately, the macOS/Metal port of that same source boots, renders the front
+end from the game's own artwork, parses tracks, draws retail car geometry
+through Metal, and runs the physics integrator with collision response wired in;
+137 test suites pass. The per-frame race render is the last major gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| Transcribed into C | 241,020 / 480,853 bytes of `.text` · 1,103 / 2,818 mapped functions | `██████████░░░░░░░░░░` 50% |
-| **Byte-exact under MSVC 5.0** | 519 of 1,103 transcribed functions · 30,880 bytes | `█████████░░░░░░░░░░░` 47% |
-| Byte-exact, of all `.text` | 30,880 / 480,853 bytes | `█░░░░░░░░░░░░░░░░░░░` 6% |
-| Race-render frontier | 42 / 50 direct callees of `0x10011FA0` drained | `█████████████████░░░` 84% |
+| Transcribed into C (DLL) | 244,421 / 480,853 bytes of `.text` · 1,118 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 536 of 1,118 transcribed functions · 34,764 bytes | `██████████░░░░░░░░░░` 48% |
+| Byte-exact, of all DLL `.text` | 34,764 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 7% |
+| **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
+| SetVideo.exe (user region) | 28 matched · ~2,600 B (rest is static CRT) | `█████░░░░░░░░░░░░░░░░` 25% |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
 

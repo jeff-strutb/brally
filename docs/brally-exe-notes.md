@@ -54,12 +54,14 @@ call (`_except_handler3`) compiles to the thunk; 2-arg wrappers do not
 
 ## Matching results
 
-25 / 39 functions byte-exact under `/O2` (COFF 16-byte `nop` padding after
-`ret` ignored, same as the DLL comparator). Winning TUs:
-`build/brally_work/0x<VA>.c`. Original bytes: `build/match/orig_brally/`.
+**28 / 39** map entries byte-exact under `/O2` (COFF 16-byte `nop` padding
+after `ret` ignored, same as the DLL comparator). **24 / 24** user
+functions (map sizes sum **2,831 / 3,584** of `.text`, 79.0%). Winning
+TUs: `build/brally_work/0x<VA>.c`. Original bytes: `build/match/orig_brally/`.
 
-User code is 0x401000–0x401AE0 (2,336 / 3,584 of `.text`, 65%). Of those
-24 functions, 21 match at 0. CRT/compiler glue is the rest.
+User code is `0x401000`–`0x401BBF` (FreeObjList through GetIniValue). The
+remaining **11 / 39** map entries are CRT / compiler / linker glue — walls,
+not targets (see below).
 
 | VA | size | name | diffs | opt |
 |---|---:|---|---:|---|
@@ -84,49 +86,91 @@ User code is 0x401000–0x401AE0 (2,336 / 3,584 of `.text`, 65%). Of those
 | 0x004016D0 | 212 | GetInstallDir | **0** | /O2 |
 | 0x004017B0 | 48 | LoadRallyMain | **0** | /O2 |
 | 0x004017E0 | 33 | UnloadRallyMain | **0** | /O2 |
-| 0x00401810 | 600 | WinMain | 233 | /O2 |
-| 0x00401A70 | 105 | AddSpawnArg | 56 | /Od |
-| 0x00401AE0 | 223 | GetIniValue | 30 | /O2 |
-| 0x00401BC0 | 47 | _chkstk | — | compiler helper |
-| 0x00401BF0 | 270 | WinMainCRTStartup | — | CRT, map-split |
-| 0x00401CFE | 54 | WinMainCRTStartup_cmdtail | — | map-split |
-| 0x00401D34 | 30 | WinMainCRTStartup_WinMain | — | map-split |
-| 0x00401D52 | 21 | WinMainCRTStartup_filter | — | map-split |
-| 0x00401D67 | 13 | WinMainCRTStartup_exit | — | map-split |
-| 0x00401D74 | 27 | WinMainCRTStartup_epilogue | — | map-split |
-| 0x00401D8F | 15 | WinMainCRTStartup_skipspace | — | map-split |
-| 0x00401DA0 | 6 | _XcptFilter_thunk | 6 | IAT thunk |
-| 0x00401DA6 | 6 | _initterm_thunk | 6 | IAT thunk |
+| 0x00401810 | 600 | WinMain | **0** | /O2 |
+| 0x00401A70 | 105 | AddSpawnArg | **0** | /O2 |
+| 0x00401AE0 | 223 | GetIniValue | **0** | /O2 |
+| 0x00401BC0 | 47 | _chkstk | WALL | compiler helper |
+| 0x00401BF0 | 270 | WinMainCRTStartup | WALL | CRT, map-split |
+| 0x00401CFE | 54 | WinMainCRTStartup_cmdtail | WALL | map-split |
+| 0x00401D34 | 30 | WinMainCRTStartup_WinMain | WALL | map-split |
+| 0x00401D52 | 21 | WinMainCRTStartup_filter | WALL | map-split |
+| 0x00401D67 | 13 | WinMainCRTStartup_exit | WALL | map-split |
+| 0x00401D74 | 27 | WinMainCRTStartup_epilogue | WALL | map-split |
+| 0x00401D8F | 15 | WinMainCRTStartup_skipspace | WALL | map-split |
+| 0x00401DA0 | 6 | _XcptFilter_thunk | WALL | 2-arg IAT thunk |
+| 0x00401DA6 | 6 | _initterm_thunk | WALL | 2-arg IAT thunk |
 | 0x00401DB0 | 19 | _setdefaultprecision | **0** | /O2 |
 | 0x00401DD0 | 3 | _matherr | **0** | /O2 |
 | 0x00401DE0 | 1 | CRT_empty | **0** | /O2 |
 | 0x00401DF0 | 6 | _except_handler3_thunk | **0** | /O2 (0-arg tail jmp) |
-| 0x00401DF6 | 6 | _controlfp_thunk | 6 | IAT thunk |
+| 0x00401DF6 | 6 | _controlfp_thunk | WALL | 2-arg IAT thunk |
 
-Residue on the three user misses:
+Game-code leftovers from the prior session, now matched:
 
-- **GetIniValue** (30 diffs, +1 byte): body matches including IAT-hoist of
-  `strchr`/`printf`. Latch is `jne loop` in orig vs `je fail; jmp loop`
-  (the loop-exit `return 0` merges with the BindSection-fail xor-eax
-  epilogue). Same wall class as the documented do-while latch.
-- **AddSpawnArg** (56 diffs): inline `strcpy` loads `gArgOff` before
-  scanning `s`; orig scans `s` first then loads `gArgOff` into ebx.
-  Hoist-order wall.
-- **WinMain** (233 diffs, 600 vs 608): first ~0xCB bytes match (registry
-  dir, `BossRally.ini` strcat, `CHK_FileExists`, `SetVideo.exe` spawn,
-  MessageBox). Remaining cascade is the Driver strcmp/strcpy dest-`lea`
-  placement (`lea edx, [dllname]` lives in two orig arms, one in the
-  recomp tail). After that the Free/LoadLibrary/RallyMain/`ret 16` shape
-  is the same, shifted.
+- **WinMain** (`0x401810`, 600 B): `"BRD3D.dll"` / `"BRGlide.dll"` as
+  `extern char[]` (`s_BRD3D` at `0x403178`, `s_BRGlide` at `0x403164`).
+  A string *literal* `strcpy` of those 10/12-byte names is a dword-move
+  burst; orig used generic `rep movs`, and that was the dest-lea cascade
+  (233 diffs). Literals for `"D3D"` / `"Glide"` / `"BossRally.ini"` stay
+  literals (strcmp/strcat, not short-strcpy).
+- **AddSpawnArg** (`0x401A70`, 105 B): dest is `&gArgBuf[gArgOff]` (scan
+  `s` first, then load `gArgOff` into ebx). A named `dst = gArgBuf +
+  gArgOff` hoists the load before the scan. Spell `gArgOff += strlen(s)
+  + 1` *before* `gArgv[gArgc] = 0` so the scasb-zero is hoisted into the
+  strcpy tail (`xor eax,eax` after `mov ecx,eax`) and reused for the
+  NULL store.
+- **GetIniValue** (`0x401AE0`, 223 B):
+  `for (line = NextObj(pini); line != 0; line = NextObj(pini))`.
+  A `do { …; line = NextObj(); } while (line)` merges loop-exit
+  `return 0` with the BindSection-fail xor-eax epilogue and emits
+  `je fail; jmp loop` instead of orig `jne loop` (30 diffs, +1 byte).
+  Same latch on SetVideo's GetIniValue (`0x4023B0`, 27 diffs) — use the
+  for-init form there, do not retry do-while / `return line`.
+
+## CRT / EH walls (11 / 39) — not targets
+
+Checked against the bytes. None of these is hand-written game code.
+
+| VA | bytes | what it is | why a wall |
+|---|---:|---|---|
+| `0x401BC0` | 47 | MSVC `_chkstk` | Probe EAX in pages of 0x1000, `test [ecx],eax`, then `mov esp,ecx` and ret-to-caller. Size in EAX. Compiler helper; no C spelling. |
+| `0x401BF0`–`0x401D9E` | ~430 | `WinMainCRTStartup` | MSVC 5.0 GUI CRT (`__set_app_type(2)`, `__p__fmode` / `__p__commode`, `__getmainargs`, `_initterm`, cmdtail quote/space skip, `WinMain`, `_XcptFilter` SEH). **One** function, map-split into 7 entries at non-prologue boundaries (`0x401CFE` is `mov al,[esi]` mid-stream). Do not match the slices as C. |
+| `0x401DA0` | 6 | `_XcptFilter` thunk | `ff 25 68 c1 40 00` — `jmp [IAT]`. Linker thunk. |
+| `0x401DA6` | 6 | `_initterm` thunk | `ff 25 74 c1 40 00` — same. |
+| `0x401DF6` | 6 | `_controlfp` thunk | `ff 25 8c c1 40 00` — same. |
+
+A 0-arg dllimport tail call *does* compile to `jmp [iat]` — that is why
+`_except_handler3` at `0x401DF0` matches (`void f(void) { _except_handler3(); }`).
+A 2-arg C wrapper copies args and `call` / `add esp,8`; it cannot become a
+6-byte `FF 25`. Those three thunks are linker output, not source.
+
+Matched CRT glue (not walls, tiny and C-reachable): `_setdefaultprecision`
+(E8 to the local `_controlfp` thunk), user `_matherr` stub (`xor eax,eax;
+ret`), empty user-init (`ret`), `_except_handler3` thunk.
 
 ## Idioms that paid off here
 
 - Shared-fail epilogue wants `if (p != 0) { … } return 0`, not
   `if (p == 0) return 0` (GetObj, BindSection, UnloadRallyMain).
 - Short string `strcpy` of a literal is a dword move; orig used the
-  generic `rep movs` form, so `"c:\\"` / `"\\"` must be `extern char[]`.
+  generic `rep movs` form, so `"c:\\"` / `"\\"` / `"BRD3D.dll"` /
+  `"BRGlide.dll"` must be `extern char[]`. `strcat` of a longer literal
+  (`"BossRally.ini"`) already uses `rep movs` — leave it a literal.
 - `n = 0` is hoisted *before* `ResetIncludeStack()` in ReadList
   (`xor ebp,ebp` then the call).
 - Comment char default is `'#'` (`0x40308c`); ReadINI temporarily sets `';'`.
 - List files open `"rt"`, CHK_FileExists opens `"rb"`. Verbose CHK_* uses
   `OutputDebugStringA`, not `fprintf(stderr, …)` (DLL twin).
+- **GetIniValue latch is a `for`**, not a `do-while`. First `NextObj` is
+  the for-init (its 0-result shares the BindSection xor-fail); the
+  increment `NextObj` is the latch (`test eax,eax; jne body`) and
+  fallthrough is the no-xor `return 0` (eax already 0). `do-while` plus
+  `return line` still folds to the xor epilogue and emits `je fail; jmp
+  loop`.
+- **AddSpawnArg dest is `&gArgBuf[gArgOff]`**, not a named `dst = gArgBuf
+  + gArgOff` (that loads `gArgOff` before scanning `s`). Statement order
+  after the copy: `gArgv[gArgc] = dest; gArgc++; gArgOff += strlen(s)+1;
+  gArgv[gArgc] = 0` — strlen *before* the NULL store, so `xor eax,eax`
+  lives in the strcpy tail and is reused. Putting the NULL store before
+  strlen steals eax for `gArgc` (`inc eax; mov [eax*4-4], dest`) and
+  materializes 0 as an immediate (`C7`).
