@@ -1723,4 +1723,16 @@ int32_t BrSub10071510(int32_t i)
     ReleaseMutex(h);
     return v;
 }
+
+_CRTIMP void __cdecl _except_handler3(void);
+
+/* @implements 0x10074AE6 glide FUN_10074ae6 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void
+FUN_10074ae6(void)
+{
+    _except_handler3();
+}
+
 #endif /* BR_MATCHING_BUILD */
