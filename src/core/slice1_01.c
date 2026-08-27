@@ -619,4 +619,70 @@ int BrCdEnableApply(char param_1)
   return 1;
 }
 
+
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#endif
+extern int DAT_1021c77c;
+extern int g_220C40;
+extern int g_220CD8;
+extern int g_brCdEnabled;
+extern int g_brCdMediaOk;
+extern int g_brCdPlaying;
+extern int g_brCdTrackCur;
+extern int g_brCdTrackFirst;
+extern int g_brCdTrackLast;
+extern char s_MCI_STATUS_returned__d_1007b07c[];
+extern char s_cdaudio_1007b094[];
+int BrSub10075020();
+
+/* @implements 0x10002980 glide FUN_10002980 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_10002980(int param_1)
+
+{
+  unsigned int _Seed;
+  MCIERROR MVar1;
+  MCI_STATUS_PARMS status;
+  MCI_SET_PARMS setp;
+  MCI_OPEN_PARMS open;
+  CHAR buf[1024];
+  
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying = g_brCdPlaying + 1, g_brCdPlaying == 1)) {
+    DAT_1021c77c = param_1;
+    _Seed = BrSub10075020();
+    srand(_Seed);
+    g_brCdTrackCur = 2;
+    g_brCdTrackFirst = 0;
+    g_brCdTrackLast = 0;
+    g_220CD8 = 0;
+    g_brCdMediaOk = 0;
+    open.lpstrDeviceType = s_cdaudio_1007b094;
+    MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD)&open);
+    if (MVar1 != 0) {
+      return 0;
+    }
+    g_220C40 = open.wDeviceID;
+    setp.dwTimeFormat = MCI_FORMAT_TMSF;
+    MVar1 = mciSendCommandA(open.wDeviceID, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD)&setp);
+    if (MVar1 != 0) {
+      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
+      return 0;
+    }
+    status.dwItem = MCI_STATUS_NUMBER_OF_TRACKS;
+    MVar1 = mciSendCommandA(g_220C40, MCI_STATUS, MCI_STATUS_ITEM | MCI_WAIT, (DWORD)&status);
+    if (MVar1 != 0) {
+      wsprintfA(buf, s_MCI_STATUS_returned__d_1007b07c, MVar1);
+      OutputDebugStringA(buf);
+      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
+      return 0;
+    }
+    g_brCdTrackFirst = 2;
+    g_brCdTrackLast = status.dwReturn;
+    g_brCdMediaOk = 1;
+  }
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
