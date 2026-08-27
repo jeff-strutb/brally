@@ -31,7 +31,7 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original binary. Half of the game DLL's `.text` is transcribed into C,
-and **565 functions now reproduce the original bytes exactly** — driven by a
+and **571 functions now reproduce the original bytes exactly** — driven by a
 growing dictionary of proven compiler idioms (`docs/VC5-IDIOMS.md`), a
 Ghidra-assisted batch pipeline whose `--refine` hill-climb encodes those idioms
 as automatic source transforms, and an auto-filer (`tools/autofile.py`) that
@@ -86,10 +86,10 @@ rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **701 functions · 65,329 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **707 functions · 71,091 bytes** — verify with `python3 tools/total.py` | |
 | Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 565 of 1,147 transcribed functions · 39,480 bytes | `██████████░░░░░░░░░░` 49% |
-| Byte-exact, of all DLL `.text` | 39,480 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 571 of 1,153 transcribed functions · 45,242 bytes | `██████████░░░░░░░░░░` 49% |
+| Byte-exact, of all DLL `.text` | 45,242 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
 | SetVideo.exe (user region) | 37 matched · 4,652 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
 | BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
