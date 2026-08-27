@@ -1177,6 +1177,17 @@ def _refine_candidates(src):
         yield ('maskw:%s' % g, nh + nb)
 
 
+_CC_PE = []
+def _cc_pe():
+    """Parse the reference PE once per process (gen_callconv re-parses it per
+    call otherwise — expensive across a wide batch). Cached in a workers-safe
+    way: each spawned worker builds its own on first use."""
+    if not _CC_PE:
+        import gen_callconv
+        _CC_PE.append(gen_callconv._pe())
+    return _CC_PE[0]
+
+
 def refine_function(row, max_rounds=4, max_cands=80):
     """Hill-climb one CLOSE/DIFF function. Returns an updated learnings row
     and writes build/ghidra_work/<va>.refined.c when it improved."""
@@ -1189,6 +1200,22 @@ def refine_function(row, max_rounds=4, max_cands=80):
     import match_sweep
     orig_bytes = match_sweep.load_orig(orig_file, va_hex)
     func_name = row['name']
+    # Calling-convention seed transform (gen_callconv): recover stdcall/
+    # thiscall/COM-vtable convention+arity from the orig bytes and rewrite the
+    # callee decls before the hill-climb, so the convention fix COMBINES with
+    # every other generator. No-op when the function has no indirect/import
+    # calls; failures are swallowed (never break a refine). ~223 functions
+    # share this call shape.
+    applied = []
+    try:
+        import gen_callconv
+        cc_calls = gen_callconv.analyze_orig(int(va_hex, 16), _cc_pe())
+        cc_src, cc_report = gen_callconv.transform(src, cc_calls)
+        if cc_report and cc_src != src:
+            src = cc_src
+            applied.append('callconv')
+    except Exception:
+        pass
     # Initial score tries ALL variants — the row's recorded opt can be a
     # stale artifact of a divergent best (a /Od row whose real match is /O2
     # walled 0x1001E220 until this).  The climb then stays in the winner.
@@ -1206,7 +1233,6 @@ def refine_function(row, max_rounds=4, max_cands=80):
     if cur > 0:
         opts = [cur_opt]
     start = cur
-    applied = []
     ncomp = 0
     for _ in range(max_rounds):
         if cur == 0:
