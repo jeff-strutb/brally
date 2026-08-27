@@ -107,6 +107,11 @@ int32_t g_brB4E1D0;
 int32_t g_brB4E1E0;
 int     g_brFlag6909E0;
 void   *g_brP680584;
+/* slice3_45.o references this pad-mode table (owned by slice2_19, whose full
+ * link closure pulls Mat4/Pool/etc.); stand it in with a real 8-byte buffer so
+ * the module's g_BrPadModeBytes[i] reads are valid rather than a NULL deref. */
+static unsigned char s_padModeBytes_stub[8];
+const unsigned char *g_BrPadModeBytes = s_padModeBytes_stub;
 
 /* ====================================================================== */
 /* Fake COM objects                                                        */

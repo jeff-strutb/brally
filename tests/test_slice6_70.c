@@ -916,6 +916,14 @@ static void Test173F0Bracket(void)
  * main
  * ========================================================================== */
 
+/* STAND-IN: br_netmsg.o pulls in BrSub1003D950 which calls this COM
+ * dispatcher; this test does not exercise that path, so a link-only stub
+ * (real def is slice1_03.c, whose COM closure is tangled). */
+int BrComCallLocked68(void *pThis, void *a2, void *a3, void *a4, void *a5, void *a6)
+{ (void)pThis; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; return 0; }
+
+int32_t g_brAA288C;  /* STAND-IN: slot-count global br_netmsg reads */
+
 int main(void)
 {
     Test1003DB00();

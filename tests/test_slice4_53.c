@@ -471,6 +471,12 @@ static void TestTimer(void)
 
 /* ====================================================================== */
 
+/* STAND-IN: br_netmsg.o pulls in BrSub1003D950 which calls this COM
+ * dispatcher; this test does not exercise that path, so a link-only stub
+ * (real def is slice1_03.c, whose COM closure is tangled). */
+int BrComCallLocked68(void *pThis, void *a2, void *a3, void *a4, void *a5, void *a6)
+{ (void)pThis; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; return 0; }
+
 int main(void)
 {
     TestMath();

@@ -132,9 +132,9 @@ void BrSub1003CDA0(void)                { ++s_n3CDA0; }
 void BrSub1003CE80(void)                { ++s_n3CE80; }
 void BrSub1003D0B0(BrDPlay *p, BrDPSessionDesc **pp) { (void)p; *pp = s_pDescToHandOut; }
 void BrSub1003D210(void *a, BrOptUi *b, int c) { (void)a; (void)b; (void)c; ++s_n3D210; }
-void BrSub1003D950(BrOptUi *p, int a)   { (void)p; (void)a; ++s_n3D950; }
-void BrSub1003D9F0(BrOptUi *p)          { (void)p; ++s_n3D9F0; }
-void BrSub1003DA40(BrOptUi *p, int a)   { p->f08 = a; }
+int32_t BrSub1003D950(BrOptUi *p, int a) { (void)p; (void)a; ++s_n3D950; return 0; }
+int32_t BrSub1003D9F0(BrOptUi *p)        { (void)p; ++s_n3D9F0; return 0; }
+int32_t BrSub1003DA40(BrOptUi *p, int a) { p->f08 = a; return 0; }
 void BrSub1003E310(void)                { }
 void BrSub1003E680(void)                { }
 int  BrSub1003F2B0(int i) { return (i >= 0 && i < 32) ? (int)((s_okMask3F2B0 >> i) & 1u) : 0; }
