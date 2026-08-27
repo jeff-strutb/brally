@@ -1451,4 +1451,76 @@ void FUN_10023aa0(void)
   return;
 }
 
+
+
+/* @implements 0x100275C0 glide FUN_100275c0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100275c0(int *param_1,int param_2,int param_3)
+
+{
+  int r;
+  
+  if (param_2 > param_3) {
+    r = (param_2 * 8) / param_3;
+    if (r == 0x40) {
+      *param_1 = 0;
+      return 1;
+    }
+    if (r == 0x20) {
+      *param_1 = 1;
+      return 1;
+    }
+    if (r == 0x10) {
+      *param_1 = 2;
+      return 1;
+    }
+    if (r > 0x40) {
+      *param_1 = 0;
+      return 0;
+    }
+    if (r > 0x20) {
+      *param_1 = 1;
+      return 0;
+    }
+    if (r > 0x10) {
+      *param_1 = 2;
+      return 0;
+    }
+    *param_1 = 3;
+    return 0;
+  }
+  r = (param_3 * 8) / param_2;
+  if (r == 0x40) {
+    *param_1 = 6;
+    return 1;
+  }
+  if (r == 0x20) {
+    *param_1 = 5;
+    return 1;
+  }
+  if (r == 0x10) {
+    *param_1 = 4;
+    return 1;
+  }
+  if (r == 8) {
+    *param_1 = 3;
+    return 1;
+  }
+  if (r > 0x40) {
+    *param_1 = 6;
+    return 0;
+  }
+  if (r > 0x20) {
+    *param_1 = 5;
+    return 0;
+  }
+  if (r > 0x10) {
+    *param_1 = 4;
+    return 0;
+  }
+  *param_1 = 3;
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
