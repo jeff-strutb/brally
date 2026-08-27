@@ -1504,4 +1504,45 @@ int BrNetPeerMsgCancel(int id)
   return;
 }
 
+
+int FUN_100378c0();
+extern char DAT_1007b600[];
+extern int g_brPhaseAA2904;
+extern char s_seasondesc_dat_100acb4c[];
+
+/* @implements 0x10055A40 glide FUN_10055a40 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int __stdcall FUN_10055a40(int _pad_0)
+{
+  char cVar1;
+  FILE *_File;
+  unsigned int sVar2;
+  unsigned int uVar3;
+  unsigned int uVar4;
+  int iVar5;
+  char *pcVar6;
+  char *pcVar7;
+  char acStack_64 [100];
+  
+  _File = fopen(s_seasondesc_dat_100acb4c, DAT_1007b600);
+  if (_File == (FILE *)0x0) {
+    FUN_100378c0(7);
+  }
+  iVar5 = 0;
+  for (;;) {
+    strcpy(acStack_64, (char *)(*(int *)(g_brPhaseAA2904 + 0xc0) + 4 + iVar5));
+    sVar2 = fwrite(acStack_64,1,100,_File);
+    if ((int)sVar2 < 100) {
+      FUN_100378c0(7);
+    }
+    iVar5 = iVar5 + 0x104;
+    if (iVar5 < 0x6590) {
+      continue;
+    }
+    fclose(_File);
+    return 1;
+  }
+}
+
 #endif /* BR_MATCHING_BUILD */
