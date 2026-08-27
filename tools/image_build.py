@@ -33,6 +33,7 @@ from relocmap import REL_DIR32, REL_REL32                      # noqa: E402
 from reloc_fill import parse, load_maps, resolve               # noqa: E402
 from reloc_learn import live_objs                              # noqa: E402
 from pe_patch import read_pe_text_info                         # noqa: E402
+from match_sweep import PREAMBLES                              # noqa: E402
 
 ORIG_DLL = os.environ.get('BR_REF',
              os.path.join(ROOT, 'orig', 'BRGlide.dll'))
@@ -59,17 +60,26 @@ def compiled_functions(objs, fnmap, glmap):
             ob = os.path.join(ORIG_DIR, '0x%08X.bin' % va)
             if not os.path.exists(ob):
                 continue
-            n = len(open(ob, 'rb').read())
+            orig = open(ob, 'rb').read()
+            # A few originals carry a 16-byte link-stage preamble (jmp +0x0b
+            # over nops) fused into the map entry; the compiler's output is the
+            # body, starting at +len(pre).  match_sweep strips+verifies the
+            # preamble and matches the body -- mirror that here or the body lands
+            # at offset 0 and the whole function reads as differing.  The
+            # preamble bytes are link output, laid down verbatim.
+            pre = PREAMBLES.get('0x%08x' % va, b'')
+            plen = len(pre)
+            body_n = len(orig) - plen
+            body_orig = orig[plen:]
             start = sec['praw'] + sy['val']
-            code = bytearray(d[start:start + n])
-            if len(code) != n:
+            code = bytearray(d[start:start + body_n])
+            if len(code) != body_n:
                 continue
             unres = 0
             fromref = 0
-            orig = open(ob, 'rb').read()
             for rva, si, rt in relocs[sy['sec']]:
-                off = rva - sy['val']
-                if not (0 <= off <= n - 4):
+                off = rva - sy['val']            # body-relative
+                if not (0 <= off <= body_n - 4):
                     continue
                 t = byidx.get(si)
                 tgt = resolve(t['name'], fnmap, glmap) if t else None
@@ -81,20 +91,22 @@ def compiled_functions(objs, fnmap, glmap):
                     # arrangement the rest of the image build stands on.
                     # Counted separately: these slots are taken from the
                     # reference, not derived from a surveyed name.
-                    code[off:off + 4] = orig[off:off + 4]
+                    code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
                     continue
                 addend = struct.unpack_from('<i', code, off)[0]
                 if rt == REL_DIR32:
                     val = tgt + addend
                 elif rt == REL_REL32:
-                    val = tgt + addend - (va + off + 4)
+                    # The body sits at va+plen in the image, so a pc-relative
+                    # site resolves against its post-preamble address.
+                    val = tgt + addend - (va + plen + off + 4)
                 else:
-                    code[off:off + 4] = orig[off:off + 4]
+                    code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
                     continue
                 struct.pack_into('<I', code, off, val & 0xFFFFFFFF)
-            yield va, name, bytes(code), unres, fromref
+            yield va, name, pre + bytes(code), unres, fromref
 
 
 def main():
