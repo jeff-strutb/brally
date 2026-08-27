@@ -1577,4 +1577,49 @@ void FUN_1001dfb0(void)
   return;
 }
 
+
+extern unsigned int DAT_105d17ec;
+extern int DAT_10661844;
+extern char DAT_1066185c;
+extern char DAT_10661860;
+extern char DAT_10661864;
+extern char DAT_10661868;
+extern char DAT_1066186c;
+extern char DAT_10661878;
+extern char DAT_10661884;
+extern char DAT_10661888;
+extern char DAT_1066188c;
+extern char DAT_10661890;
+extern char DAT_10661904;
+extern float _DAT_10077460;
+void __stdcall grTexSource(int tmu, int start, int evenOdd, void *info);
+void __stdcall grTexClampMode(int tmu, int s, int t);
+void __stdcall grTexFilterMode(int tmu, int min, int mag);
+void __stdcall grTexLodBiasValue(int tmu, float bias);
+void __stdcall grTexMipMapMode(int tmu, int mode, int lodBlend);
+
+/* @implements 0x10028420 glide FUN_10028420 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_10028420(unsigned int param_1)
+
+{
+  int uVar1;
+  int iVar2;
+  
+  if ((param_1 < DAT_105d17ec) && (iVar2 = param_1 * 0xd8, (&DAT_10661844)[param_1 * 0x36] != 0)) {
+    uVar1 = *(int *)(&DAT_10661884 + iVar2);
+    grTexSource(uVar1,*(int *)(&DAT_1066188c + iVar2),*(int *)(&DAT_10661888 + iVar2),
+                &DAT_10661904 + iVar2);
+    grTexClampMode(uVar1,*(int *)(&DAT_10661868 + iVar2),
+                   *(int *)(&DAT_1066186c + iVar2));
+    grTexFilterMode(uVar1,*(int *)(&DAT_10661864 + iVar2),
+                    *(int *)(&DAT_10661860 + iVar2));
+    grTexLodBiasValue(uVar1,(float)*(unsigned int *)(&DAT_10661878 + iVar2) * _DAT_10077460);
+    grTexMipMapMode(uVar1,*(int *)(&DAT_1066185c + iVar2),
+                    *(int *)(&DAT_10661890 + iVar2));
+  }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
