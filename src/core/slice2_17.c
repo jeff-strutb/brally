@@ -1622,4 +1622,38 @@ void FUN_10028420(unsigned int param_1)
   return;
 }
 
+
+extern int DAT_105d17ec;
+extern int DAT_10661834;
+extern int DAT_10661844;
+int __stdcall grTexMinAddress(int);
+
+/* @implements 0x100281C0 glide FUN_100281c0 */
+/* auto-filed from ghidra --refine; transforms: callconv */
+
+void FUN_100281c0(void)
+
+{
+  int *puVar1;
+  int uVar2;
+  int iVar3;
+  
+  puVar1 = &DAT_10661844;
+  iVar3 = 0;
+  do {
+    *puVar1 = 0;
+    puVar1 = puVar1 + 0x36;
+  } while ((int)puVar1 < 0x10697844);
+  DAT_105d17ec = 0;
+  puVar1 = &DAT_10661834;
+  do {
+    uVar2 = grTexMinAddress(iVar3);
+    puVar1[-1] = uVar2;
+    *puVar1 = 0x200000;
+    puVar1 = puVar1 + 2;
+    iVar3 = iVar3 + 1;
+  } while ((int)puVar1 < 0x10661844);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
