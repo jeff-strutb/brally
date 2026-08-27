@@ -843,4 +843,50 @@ int BrToggleOnce_C050(int param_1)
   return 1;
 }
 
+
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#endif
+int FUN_100377a0(int);
+extern char DAT_100acacc[];
+_CRTIMP int __cdecl _getdrive(void);
+_CRTIMP char *__cdecl _getcwd(char *, int);
+_CRTIMP int __cdecl _chdrive(int);
+_CRTIMP int __cdecl _chdir(const char *);
+
+/* @implements 0x1003EE90 glide FUN_1003ee90 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_1003ee90(void)
+
+{
+  int saved;
+  int d;
+  int result;
+  char cwd[260];
+  
+  result = 0;
+  saved = _getdrive();
+  _getcwd(cwd, 0x104);
+  for (d = 3; d <= 0x1a; d++) {
+    if (_chdrive(d) != 0) {
+      continue;
+    }
+    if (GetDriveTypeA((LPCSTR)0) != 5) {
+      continue;
+    }
+    if (_chdir(DAT_100acacc) != 0) {
+      continue;
+    }
+    if (FUN_100377a0(d) == 0) {
+      continue;
+    }
+    result = 1;
+    break;
+  }
+  _chdrive(saved);
+  _chdir(cwd);
+  return result;
+}
+
 #endif /* BR_MATCHING_BUILD */
