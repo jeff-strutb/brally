@@ -76,7 +76,13 @@ form — and shared file/INI helpers reuse byte-identically across the family.
 Separately, the macOS/Metal port of that same source boots, renders the front
 end from the game's own artwork, parses tracks, draws retail car geometry
 through Metal, and runs the physics integrator with collision response wired in;
-137 test suites pass. The per-frame race render is the last major gate.
+the port *source* compiles clean, but its test suite is currently out of sync
+with the matching work: as functions were refined to their byte-exact
+prototypes (e.g. `BrRcaFixupRecord(void *pRec)`), the port tests written for
+the older interfaces stopped compiling. Reconciling the tests to the current
+signatures is an open cleanup task; until it lands, treat the test count below
+as historical, not a live green. The per-frame race render is the last major
+rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
@@ -89,7 +95,8 @@ through Metal, and runs the physics integrator with collision response wired in;
 | BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
 | C++ EH class (tree-resident) | 36 functions · 15,832 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 40% of C++ code |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
-| Port test suites | 137 / 137 green | `████████████████████` 100% |
+| Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
+| Port test suites | out of sync — tests need reconciling to matched signatures (was 137 green historically) | `░░░░░░░░░░░░░░░░░░░░` — |
 
 The second and third rows are the ones that count; everything else is
 diagnostics. They tell the same story from opposite ends: nearly half of the
