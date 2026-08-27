@@ -16,6 +16,9 @@
 #endif
 #include <stdint.h>
 #include <string.h>
+#ifdef BR_MATCHING_BUILD
+#include <stdio.h>
+#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include "slice6_70.h"
@@ -336,6 +339,113 @@ void BrExt_1003C150(void)
  * rather than from the view being drawn, which is the original's own
  * asymmetry. */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
+#ifdef BR_MATCHING_BUILD
+/* Orig reads cViews / iView / the race object / the suppress flag as
+ * standalone globals (no BrScreenGet / BrHudGetEnv), sprintf via the IAT
+ * (CSE'd into ebp), and `switch (pos - 0)` with the zero live in ebx so
+ * 3rd-place leaves nudge at 0. Position is a field at +0xFF8 of the same
+ * object as cSplits, not a NULL-checked pointer. */
+typedef struct Br70Race {
+    char    _a[0xFA8];
+    int32_t cSplits;
+    char    _b[0xFF8 - 0xFAC];
+    int32_t pos;
+} Br70Race;
+extern int32_t   g_brCViews;     /* 0x100AA044 */
+extern int32_t   g_brIView;      /* 0x106EC798 */
+extern int32_t   g_brF22AF1C;    /* 0x10226A4C */
+extern Br70Race *g_pBrHudRace;   /* 0x106E9D88 */
+
+void BrSub_100173F0(BrHudView *aViews, int a2)
+{
+    char    szBuf[BR70_173F0_BUF];
+    int     w;
+    int     x;
+    int     y;
+    int32_t nudge;
+    int32_t pos;
+    const char *pszSuffix;
+
+    (void)a2;
+
+    if (g_br0AA010 == 3)
+        return;
+
+    x = aViews[0].x + 0x10;
+
+    if (g_br0BD3E8 != 0) {
+        if (g_pBrHudRace->cSplits < g_br0BD3E0 || g_brCViews == 1) {
+            const char *pszTag;
+            y = aViews[g_brIView].y + 5;
+            if (g_pBrHudRace->cSplits < g_br0BD3E0) {
+                if (g_brCViews == 2)
+                    pszTag = "L";
+                else
+                    pszTag = BrStrGet(BR70_STR_LAP_LONG);
+                sprintf(szBuf, "%%y1%s%d/%d", pszTag,
+                        g_pBrHudRace->cSplits + 1, g_br0BD3E0);
+            } else {
+                sprintf(szBuf, BrStrGet(BR70_STR_LAP_DONE));
+            }
+            BrSub_10019260();
+            BrSub_10019280();
+            BrSub_100192F0(0xF);
+            y += 0xF;
+            BrTextDraw(szBuf, x, y);
+        }
+    }
+
+    if (g_br0BD3F8 == 0)
+        return;
+    if (g_brF22AF1C != 0)
+        return;
+
+    x -= 2;
+    y = aViews[g_brIView].y + aViews[g_brIView].h - 0xC;
+
+    BrSub_10019240();
+    BrSub_10019280();
+    BrTextSetColors(0xFF, 0xF0, 0x7D, 0xFF, 0x78, 0);
+
+    sprintf(szBuf, "%d", g_pBrHudRace->pos + 1);
+
+    nudge = 0;
+    pos = g_pBrHudRace->pos;
+    switch (pos - nudge) {
+    case 0:
+        pszSuffix = BrStrGet(BR70_STR_POS_0);
+        nudge = -3;
+        break;
+    case 1:
+        pszSuffix = BrStrGet(BR70_STR_POS_1);
+        nudge = 1;
+        break;
+    case 2:
+        pszSuffix = BrStrGet(BR70_STR_POS_2);
+        break;
+    default:
+        pszSuffix = BrStrGet(BR70_STR_POS_N);
+        nudge = 1;
+        break;
+    }
+
+    if (g_brCViews == 1) {
+        BrSub_100192F0(0x28);
+        w = BrSub_100193C0(szBuf, 0x28);
+        BrTextDraw(szBuf, x - 1, y - 1);
+        BrSub_100192F0(0x14);
+        BrTextDraw(pszSuffix, w + nudge + x + 3, y - 0xF);
+    } else {
+        BrSub_100192F0(0x1A);
+        w = BrSub_100193C0(szBuf, 0x1A);
+        BrTextDraw(szBuf, x, y);
+        BrSub_100192F0(0xD);
+        BrTextDraw(pszSuffix, (2 * nudge) / 3 + w + x + 3, y - 0xA);
+    }
+
+    BrSub_10019250();
+}
+#else
 void BrSub_100173F0(BrHudView *aViews, int a2)
 {
     char          szBuf[BR70_173F0_BUF];
@@ -450,6 +560,7 @@ void BrSub_100173F0(BrHudView *aViews, int a2)
 
     BrSub_10019250();
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * WHAT IS NOT IN THIS FILE, AND WHY
