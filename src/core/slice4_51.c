@@ -410,4 +410,28 @@ int BrInputOrPlaybackActive(void)
   return 1;
 }
 
+
+int FUN_100038f0();
+int BrDPlayRawSend();
+
+/* @implements 0x100371F0 glide FUN_100371f0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100371f0(int *param_1,int param_2,int param_3)
+
+{
+  struct { int cmd; int a; int b; } msg;
+  
+  if ((param_1 != (int *)0x0) && (*param_1 != 0)) {
+    msg.a = param_2;
+    msg.cmd = 0x60000008;
+    msg.b = param_3;
+    if (param_1[3] != 0) {
+      FUN_100038f0(param_1,&msg,0xc,param_1[2],1);
+    }
+    return BrDPlayRawSend(*param_1,param_1[2],0,1,&msg,0xc);
+  }
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
