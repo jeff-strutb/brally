@@ -963,4 +963,35 @@ int FUN_1003c2b0(void)
   return 1;
 }
 
+
+extern int DAT_100abcd0[];
+extern int DAT_10ac5d74;
+extern int DAT_10ac6730;
+extern int DAT_10ac6734;
+extern int DAT_10b71540;
+
+/* @implements 0x1003CAE0 glide FUN_1003cae0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_1003cae0(void)
+
+{
+  if (DAT_10ac6734 != 0) {
+    DAT_10ac5d74 = DAT_10ac5d74 + 1;
+    if (DAT_10ac5d74 > 1) {
+      DAT_10ac5d74 = 0;
+    }
+  }
+  else {
+    if (DAT_10ac6730 != 0) {
+      DAT_10ac5d74 = DAT_10ac5d74 - 1;
+      if (DAT_10ac5d74 < 0) {
+        DAT_10ac5d74 = 1;
+      }
+    }
+  }
+  DAT_10b71540 = DAT_100abcd0[DAT_10ac5d74];
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
