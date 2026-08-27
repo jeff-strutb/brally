@@ -1735,4 +1735,20 @@ FUN_10074ae6(void)
     _except_handler3();
 }
 
+
+extern char DAT_100acad8[];
+extern char DAT_118ee590[];
+
+/* @implements 0x1006FF50 glide FUN_1006ff50 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_1006ff50(char *param_1)
+
+{
+  if (strstr(DAT_118ee590, param_1) == 0) {
+    strcat(DAT_118ee590, param_1);
+    strcat(DAT_118ee590, DAT_100acad8);
+  }
+}
+
 #endif /* BR_MATCHING_BUILD */
