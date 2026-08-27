@@ -1472,4 +1472,42 @@ int FUN_100377a0(int param_1)
   return 0;
 }
 
+
+int FUN_1003fac0(int);
+extern int DAT_10ac5d44;
+extern int DAT_10ac5d88;
+extern int DAT_10b71a48;
+extern int DAT_10b71a4c;
+extern int DAT_10b71a50;
+extern int DAT_10b71a54;
+extern int _DAT_10ac5bbc;
+
+/* @implements 0x100382D0 glide FUN_100382d0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100382d0(int param_1)
+
+{
+  int *puVar1;
+  int a;
+  int b;
+  int c;
+  int d;
+  int idx;
+
+  idx = DAT_10ac5d88;
+  puVar1 = *(int **)(DAT_10ac5d44 + 0x1de48 + idx * 8);
+  b = puVar1[1];
+  c = puVar1[2];
+  d = puVar1[3];
+  a = *puVar1;
+  _DAT_10ac5bbc = idx;
+  DAT_10b71a48 = a;
+  DAT_10b71a4c = b;
+  DAT_10b71a50 = c;
+  DAT_10b71a54 = d;
+  FUN_1003fac0(param_1);
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
