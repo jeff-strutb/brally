@@ -501,4 +501,220 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
   return result;
 }
 
+
+extern char DAT_10ac3070[];
+
+/* @implements 0x100372B0 glide FUN_100372b0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+char *FUN_100372b0(int hr)
+{
+  if (hr <= (int)0x80004001) {
+    if (hr != (int)0x80004001) {
+      if (hr != (int)0x8000000A) goto unknown;
+      return "DPERR_PENDING";
+    }
+    return "DPERR_UNSUPPORTED";
+  }
+  if (hr <= (int)0x80004005) {
+    if (hr != (int)0x80004005) {
+      if (hr != (int)0x80004002) goto unknown;
+      return "DPERR_NOINTERFACE";
+    }
+    return "DPERR_GENERIC";
+  }
+  if (hr <= (int)0x80070057) {
+    if (hr != (int)0x80070057) {
+      if (hr != (int)0x8007000E) goto unknown;
+      return "DPERR_OUTOFMEMORY";
+    }
+    return "DPERR_INVALIDPARAMS";
+  }
+  if (hr <= (int)0x8877000A) {
+    if (hr != (int)0x8877000A) {
+      if (hr != (int)0x88770005) goto unknown;
+      return "DPERR_ALREADYINITIALIZED";
+    }
+    return "DPERR_ACCESSDENIED";
+  }
+  if (hr <= (int)0x8877001E) {
+    if (hr != (int)0x8877001E) {
+      if (hr != (int)0x88770014) goto unknown;
+      return "DPERR_ACTIVEPLAYERS";
+    }
+    return "DPERR_BUFFERTOOSMALL";
+  }
+  if (hr <= (int)0x88770032) {
+    if (hr != (int)0x88770032) {
+      if (hr != (int)0x88770028) goto unknown;
+      return "DPERR_CANTADDPLAYER";
+    }
+    return "DPERR_CANTCREATEGROUP";
+  }
+  if (hr <= (int)0x88770046) {
+    if (hr != (int)0x88770046) {
+      if (hr != (int)0x8877003C) goto unknown;
+      return "DPERR_CANTCREATEPLAYER";
+    }
+    return "DPERR_CANTCREATESESSION";
+  }
+  if (hr <= (int)0x8877005A) {
+    if (hr != (int)0x8877005A) {
+      if (hr != (int)0x88770050) goto unknown;
+      return "DPERR_CAPSNOTAVAILABLEYET";
+    }
+    return "DPERR_EXCEPTION";
+  }
+  if (hr <= (int)0x88770082) {
+    if (hr != (int)0x88770082) {
+      if (hr != (int)0x88770078) goto unknown;
+      return "DPERR_INVALIDFLAGS";
+    }
+    return "DPERR_INVALIDOBJECT";
+  }
+  if (hr <= (int)0x8877009B) {
+    if (hr != (int)0x8877009B) {
+      if (hr != (int)0x88770096) goto unknown;
+      return "DPERR_INVALIDPLAYER";
+    }
+    return "DPERR_INVALIDGROUP";
+  }
+  if (hr <= (int)0x887700AA) {
+    if (hr != (int)0x887700AA) {
+      if (hr != (int)0x887700A0) goto unknown;
+      return "DPERR_NOCAPS";
+    }
+    return "DPERR_NOCONNECTION";
+  }
+  if (hr <= (int)0x887700C8) {
+    if (hr != (int)0x887700C8) {
+      if (hr != (int)0x887700BE) goto unknown;
+      return "DPERR_NOMESSAGES";
+    }
+    return "DPERR_NONAMESERVERFOUND";
+  }
+  if (hr <= (int)0x887700DC) {
+    if (hr != (int)0x887700DC) {
+      if (hr != (int)0x887700D2) goto unknown;
+      return "DPERR_NOPLAYERS";
+    }
+    return "DPERR_NOSESSIONS";
+  }
+  if (hr <= (int)0x887700F0) {
+    if (hr != (int)0x887700F0) {
+      if (hr != (int)0x887700E6) goto unknown;
+      return "DPERR_SENDTOOBIG";
+    }
+    return "DPERR_TIMEOUT";
+  }
+  if (hr <= (int)0x8877010E) {
+    if (hr != (int)0x8877010E) {
+      if (hr != (int)0x887700FA) goto unknown;
+      return "DPERR_UNAVAILABLE";
+    }
+    return "DPERR_BUSY";
+  }
+  if (hr <= (int)0x88770122) {
+    if (hr != (int)0x88770122) {
+      if (hr != (int)0x88770118) goto unknown;
+      return "DPERR_USERCANCEL";
+    }
+    return "DPERR_CANNOTCREATESERVER";
+  }
+  if (hr <= (int)0x88770136) {
+    if (hr != (int)0x88770136) {
+      if (hr != (int)0x8877012C) goto unknown;
+      return "DPERR_PLAYERLOST";
+    }
+    return "DPERR_SESSIONLOST";
+  }
+  if (hr <= (int)0x8877014A) {
+    if (hr != (int)0x8877014A) {
+      if (hr != (int)0x88770140) goto unknown;
+      return "DPERR_UNINITIALIZED";
+    }
+    return "DPERR_NONEWPLAYERS";
+  }
+  if (hr <= (int)0x8877015E) {
+    if (hr != (int)0x8877015E) {
+      if (hr != (int)0x88770154) goto unknown;
+      return "DPERR_INVALIDPASSWORD";
+    }
+    return "DPERR_CONNECTING";
+  }
+  if (hr <= (int)0x887703F2) {
+    if (hr != (int)0x887703F2) {
+      if (hr != (int)0x887703E8) goto unknown;
+      return "DPERR_BUFFERTOOLARGE";
+    }
+    return "DPERR_CANTCREATEPROCESS";
+  }
+  if (hr <= (int)0x88770406) {
+    if (hr != (int)0x88770406) {
+      if (hr != (int)0x887703FC) goto unknown;
+      return "DPERR_APPNOTSTARTED";
+    }
+    return "DPERR_INVALIDINTERFACE";
+  }
+  if (hr <= (int)0x8877041A) {
+    if (hr != (int)0x8877041A) {
+      if (hr != (int)0x88770410) goto unknown;
+      return "DPERR_NOSERVICEPROVIDER";
+    }
+    return "DPERR_UNKNOWNAPPLICATION";
+  }
+  if (hr <= (int)0x88770438) {
+    if (hr != (int)0x88770438) {
+      if (hr != (int)0x8877042E) goto unknown;
+      return "DPERR_NOTLOBBIED";
+    }
+    return "DPERR_SERVICEPROVIDERLOADED";
+  }
+  if (hr <= (int)0x8877044C) {
+    if (hr != (int)0x8877044C) {
+      if (hr != (int)0x88770442) goto unknown;
+      return "DPERR_ALREADYREGISTERED";
+    }
+    return "DPERR_NOTREGISTERED";
+  }
+  if (hr <= (int)0x887707DA) {
+    if (hr != (int)0x887707DA) {
+      if (hr != (int)0x887707D0) goto unknown;
+      return "DPERR_AUTHENTICATIONFAILED";
+    }
+    return "DPERR_CANTLOADSSPI";
+  }
+  if (hr <= (int)0x887707EE) {
+    if (hr != (int)0x887707EE) {
+      if (hr != (int)0x887707E4) goto unknown;
+      return "DPERR_ENCRYPTIONFAILED";
+    }
+    return "DPERR_SIGNFAILED";
+  }
+  if (hr <= (int)0x88770802) {
+    if (hr != (int)0x88770802) {
+      if (hr != (int)0x887707F8) goto unknown;
+      return "DPERR_CANTLOADSECURITYPACKAGE";
+    }
+    return "DPERR_ENCRYPTIONNOTSUPPORTED";
+  }
+  if (hr <= (int)0x88770816) {
+    if (hr != (int)0x88770816) {
+      if (hr != (int)0x8877080C) goto unknown;
+      return "DPERR_CANTLOADCAPI";
+    }
+    return "DPERR_NOTLOGGEDIN";
+  }
+  if (hr != (int)0x88770820) {
+    if (hr != 0) {
+      goto unknown;
+    }
+    return "DP_OK";
+  }
+  return "DPERR_LOGONDENIED";
+unknown:
+  wsprintfA(DAT_10ac3070, "0x%08X", hr);
+  return DAT_10ac3070;
+}
+
 #endif /* BR_MATCHING_BUILD */
