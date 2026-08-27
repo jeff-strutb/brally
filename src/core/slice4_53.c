@@ -380,4 +380,42 @@ double BrCosF(float param_1)
   return cos((double)param_1);
 }
 
+
+extern float _DAT_10077000;
+
+/* @implements 0x10001BB0 glide FUN_10001bb0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void __fastcall FUN_10001bb0(int *param_1,int _edx_unused,int *param_2)
+{
+  float len;
+  BrVec3 local;
+  BrVec3 *pFwd;
+  
+  pFwd = (BrVec3 *)param_2;
+  BrVec3Sub(&local, (BrVec3 *)(param_1 + 0xa38), (BrVec3 *)(param_2 + 0xc));
+  len = BrVec3Length(&local);
+  if (len != _DAT_10077000) {
+    BrVec3Div(pFwd, &local, len);
+  }
+  else {
+    len = BrVec3Length(pFwd);
+    if (len == _DAT_10077000) {
+      pFwd->x = *(float *)param_1;
+      pFwd->y = *(float *)(param_1 + 1);
+      pFwd->z = *(float *)(param_1 + 2);
+    }
+  }
+  if (param_1[0x3df] != 0) {
+    BrVec3Cross((BrVec3 *)(param_2 + 4), (BrVec3 *)(param_1 + 8), pFwd);
+  }
+  else {
+    local.x = 0.0f;
+    local.y = 0.0f;
+    local.z = 1.0f;
+    BrVec3Cross((BrVec3 *)(param_2 + 4), &local, pFwd);
+  }
+  BrVec3Cross((BrVec3 *)(param_2 + 8), pFwd, (BrVec3 *)(param_2 + 4));
+}
+
 #endif /* BR_MATCHING_BUILD */
