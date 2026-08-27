@@ -993,6 +993,33 @@ def _classify_divergence(orig_bytes, rb, relocs):
 
 def _refine_candidates(src):
     """Yield (label, new_src) single-edit variants of a wrapped source."""
+    # Combined folds first (one candidate each, not a search) so they always
+    # take a slot in the max_cands budget — (a) retype alone can emit 80+
+    # cands. Decision: docs/gen-structural2-notes.md. lebound is
+    # intentionally NOT folded (3 prey / 184, 0 MATCH).
+    import gen_structural2 as _gs2
+    # (q) `i = f(...); return i != 0;` -> `return f(...) != 0;` (and `== 0`,
+    #     and Ghidra's `return (uint)(i != 0)`). Orig of the call-in-the-
+    #     return expression is `neg; sbb; neg` (`f7 d8 1b c0 f7 d8`); the
+    #     temp form is `xor r,r; test eax; setne r; mov eax,r` (+3). `== 0`
+    #     is `neg; sbb; inc` (`f7 d8 1b c0 40`). Adjacent call-then-return
+    #     only — does not fold a load + intervening store (0x1006B530, orig
+    #     `setne`). Unused `int tmp;` decl stays (/Od slots). Proven MATCH
+    #     0x1006BAA0 / 0x1006B6E0 / 0x1006BB10 / 0x1006B4F0 / 0x10058F90.
+    _new, _ = _gs2.transform_ret_notemp(src)
+    if _new != src:
+        yield ('retnotemp', _new)
+    # (r) `-1 < x` / `x > -1` -> `x >= 0`. Orig `if (x >= 0)` is
+    #     `test r,r; jl` (`85 xx 7c`); Ghidra's spelling is `cmp r,-1; jle`
+    #     (`83 xx ff 7e`). Pushes may sit between test and jl (0x1006E0A0).
+    #     Skips Ghidra char/short temps (`cVar*`/`sVar*` — ASCII window,
+    #     0x100541B0 / 0x10054280). Does not touch `i + -1 < bound` or `<<`.
+    #     Hill-climb rejects a real `x > -1` (would move away from orig).
+    #     Proven moved 0x1006E130 / 0x10006460 / 0x100356B0 / 0x100031D0 /
+    #     0x1006E0A0 (0 MATCH as a standalone; fold for the climb).
+    _new, _ = _gs2.transform_ge0(src)
+    if _new != src:
+        yield ('ge0', _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
     # (a) retype one extern global

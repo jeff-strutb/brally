@@ -19,11 +19,25 @@ REPORT = os.path.join(ROOT, "build", "match", "report.csv")
 GREEN, AMBER, GRAY = "#3fb950", "#d29922", "#c8ccd2"
 
 
+def _match_set(path):
+    """VAs from a total.py manifest (build/match/<path>), or empty."""
+    p = os.path.join(ROOT, "build", "match", path)
+    out = {}
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[int(r["va"], 16)] = int(r.get("bytes") or 0)
+    return out
+
+
 def load():
     rep = {}
     with open(REPORT) as f:
         for r in csv.DictReader(f):
             rep[int(r["va"], 16)] = r
+    # C++ EH matches verified off-report (total.py manifest) — mark them
+    # matched so the DLL map reflects them, grouped into their own region.
+    cpp = _match_set("cpp_matches.csv")
     funcs = []
     with open(FUNCS) as f:
         for r in csv.DictReader(f):
@@ -31,15 +45,46 @@ def load():
             if size <= 0:
                 continue
             m = rep.get(va)
+            is_cpp = va in cpp
             funcs.append({
                 "va": va, "size": size,
                 "name": (m and m["name"]) or r.get("name") or "",
-                "file": (m and m["file"]) or "",
-                "status": ("match" if m and m["status"] == "match" else
-                           "diff" if m else "todo"),
-                "diffs": int(m["diffs"]) if m else -1,
+                "file": ("src/core/cpp/(C++ EH)" if is_cpp
+                         else (m and m["file"]) or ""),
+                "status": ("match" if is_cpp or (m and m["status"] == "match")
+                           else "diff" if m else "todo"),
+                "diffs": 0 if is_cpp else (int(m["diffs"]) if m else -1),
             })
+    # The three in-scope EXEs as their own regions.
+    exe_hit = {}
+    for r in _exe_rows():
+        exe_hit.setdefault(r[0], {})[int(r[1], 16)] = int(r[2] or 0)
+    for exe in ("brally", "setvideo", "bossrally"):
+        fmap = os.path.join(ROOT, "config", "functions_%s.csv" % exe)
+        if not os.path.exists(fmap):
+            continue
+        hits = exe_hit.get(exe, {})
+        with open(fmap) as f:
+            for r in csv.DictReader(f):
+                va, size = int(r["va"], 16), int(r["size"])
+                if size <= 0:
+                    continue
+                funcs.append({
+                    "va": va, "size": size,
+                    "name": r.get("name") or "",
+                    "file": "EXE: %s.exe" % exe,
+                    "status": "match" if va in hits else "todo",
+                    "diffs": 0 if va in hits else -1,
+                })
     return funcs
+
+
+def _exe_rows():
+    p = os.path.join(ROOT, "build", "match", "exe_matches.csv")
+    if not os.path.exists(p):
+        return []
+    with open(p) as f:
+        return [(r["exe"], r["va"], r["bytes"]) for r in csv.DictReader(f)]
 
 
 def group_key(fn):

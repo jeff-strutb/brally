@@ -1,0 +1,48 @@
+/* Auto-generated from disassembly — 0x00401B30
+ * GetInstallDir: HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory.
+ * Fallback "c:\\"; append '\\' if the value has none. */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x00401B30 setvideo.exe GetInstallDir */
+
+/* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */
+#include <windows.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#ifndef true
+#define true 1
+#define false 0
+#endif
+
+typedef int (*funcptr)();
+
+/* Forward declarations for unknown functions/globals */
+extern char gInstallDir[];
+extern char s_regkey[];
+extern char s_Directory[];
+extern char s_c_drive[];
+extern char s_backslash[];
+
+
+void GetInstallDir(void)
+{
+    HKEY h;
+    DWORD size;
+    LONG r;
+
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, s_regkey, 0, KEY_READ, &h) == 0) {
+        size = 0x104;
+        r = RegQueryValueExA(h, s_Directory, 0, 0, (BYTE *)gInstallDir, &size);
+        RegCloseKey(h);
+        if (r == 0) {
+            if (gInstallDir[strlen(gInstallDir) - 1] != '\\')
+                strcat(gInstallDir, s_backslash);
+            return;
+        }
+    }
+    strcpy(gInstallDir, s_c_drive);
+}
+
+
+#endif /* BR_MATCHING_BUILD */

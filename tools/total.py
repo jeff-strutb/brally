@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Authoritative combined match count across every binary and language.
 
-The DLL C matches live in build/match/report.csv; the C++ EH matches live as
-build/cpp_work/*.cpp (scored by tools/cpp_score.py, 4-piece); the EXE matches
-live as build/<exe>_work/*.c (scored by ghidra_to_match._score_source). Those
-last two are NOT in report.csv, so a plain report.csv total under-counts the
-finished work. This script re-scores them and prints the true grand total.
+The DLL C matches live in build/match/report.csv; the C++ EH matches live in
+src/core/cpp/*.cpp and are counted from build/match/report_cpp.csv (written
+by tools/cpp_sweep.py, 4-piece); the EXE matches live in src/exe/<exe>/*.c
+and are counted from build/match/report_exe.csv (written by
+tools/exe_sweep.py). Those last two are NOT in report.csv, so a plain
+report.csv total under-counts the finished work.
 
     python3 tools/total.py            # re-score everything, print the total
     python3 tools/total.py --fast     # trust report.csv for DLL, re-score rest
 
-Each C++/EXE work file is a byte-exact match only if it scores 0; wall attempts
-left in the work dirs score >0 and are excluded, so this is honest.
+C++ rows count only when report_cpp.csv says status=match and pieces=4/4.
+EXE rows count only when report_exe.csv says status=match. Wall attempts
+left in build/<exe>_work score >0 and are not copied into src/exe/.
 """
 import csv
 import os
@@ -33,58 +35,63 @@ def dll_c():
 
 
 def score_exe():
-    import ghidra_to_match as g
-    import match_sweep
-    import re
+    """Count EXE matches from report_exe.csv (src/exe via exe_sweep).
+
+    Does not walk build/<exe>_work — wall attempts live there and must not
+    count. If the report is missing, run exe_sweep once to produce it.
+    """
     n = b = 0
     rows = []
-    for exe in ('brally', 'setvideo', 'bossrally'):
-        d = os.path.join(ROOT, 'build', '%s_work' % exe)
-        ob = os.path.join(ROOT, 'build', 'match', 'orig_%s' % exe)
-        if not os.path.isdir(d):
-            continue
-        for fn in sorted(os.listdir(d)):
-            if not fn.endswith('.c'):
+    report = os.path.join(ROOT, 'build', 'match', 'report_exe.csv')
+    if not os.path.exists(report):
+        sw = os.path.join(ROOT, 'tools', 'exe_sweep.py')
+        if os.path.exists(sw):
+            subprocess.run([sys.executable, sw], cwd=ROOT)
+    if not os.path.exists(report):
+        return n, b, rows
+    with open(report) as f:
+        for r in csv.DictReader(f):
+            if r.get('status') != 'match' or not r.get('orig_size'):
                 continue
-            va = fn[:-2]
-            binp = os.path.join(ob, va + '.bin')
-            if not os.path.exists(binp):
-                continue
-            src = open(os.path.join(d, fn)).read()
-            orig = open(binp, 'rb').read()
-            m = re.search(r'\b(\w+)\s*\([^;{]*\)\s*\{', src)
-            name = m.group(1) if m else va
-            diffs = g._score_source(src, name, orig,
-                                    ['/O2', '/Od', '/O2 /Oy-'], 'tot' + va[2:])[0]
-            if diffs == 0:
-                n += 1
-                b += len(orig)
-                rows.append((exe, va, len(orig)))
+            n += 1
+            nb = int(r['orig_size'])
+            b += nb
+            rows.append((r.get('exe') or '', r['va'], nb))
     return n, b, rows
 
 
 def score_cpp():
+    """Count 4-piece C++ matches from report_cpp.csv (src/core/cpp via cpp_sweep).
+
+    Does not walk build/cpp_work — wall attempts live there and must not count.
+    If the report is missing, run cpp_sweep once to produce it.
+    """
     n = b = 0
     rows = []
-    d = os.path.join(ROOT, 'build', 'cpp_work')
-    if not os.path.isdir(d):
+    report = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    if not os.path.exists(report):
+        sw = os.path.join(ROOT, 'tools', 'cpp_sweep.py')
+        if os.path.exists(sw):
+            subprocess.run([sys.executable, sw], cwd=ROOT)
+    if not os.path.exists(report):
         return n, b, rows
-    for fn in sorted(os.listdir(d)):
-        if not fn.endswith('.cpp'):
-            continue
-        va = fn[:-4]
-        binp = os.path.join(ROOT, 'build', 'match', 'orig', va + '.bin')
-        if not os.path.exists(binp):
-            continue
-        r = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'cpp_score.py'),
-                            '--va', va], cwd=ROOT, capture_output=True, text=True)
-        # exit 0 == .text match; require the 4-piece "all four" line too
-        if r.returncode == 0 and 'all four' in r.stdout:
-            orig = open(binp, 'rb').read()
+    with open(report) as f:
+        for r in csv.DictReader(f):
+            if r.get('status') != 'match' or not r.get('orig_size'):
+                continue
+            if r.get('pieces') and r['pieces'] != '4/4':
+                continue
             n += 1
-            b += len(orig)
-            rows.append((va, len(orig)))
+            b += int(r['orig_size'])
+            rows.append((r['va'], int(r['orig_size'])))
     return n, b, rows
+
+
+def _write_manifest(path, header, rows):
+    with open(os.path.join(ROOT, 'build', 'match', path), 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(rows)
 
 
 def main():
@@ -92,6 +99,10 @@ def main():
     print('re-scoring EXE + C++ work dirs (this takes a few minutes)...', flush=True)
     en, eb, erows = score_exe()
     cn, cb, crows = score_cpp()
+    # Manifests of the verified off-report matches, so the progress map (and
+    # anything else) can mark them without re-scoring.
+    _write_manifest('cpp_matches.csv', ['va', 'bytes'], crows)
+    _write_manifest('exe_matches.csv', ['exe', 'va', 'bytes'], erows)
     print()
     print('=' * 58)
     print('  DLL  (C, report.csv)   %4d fns  %8d B' % (dn, db))
