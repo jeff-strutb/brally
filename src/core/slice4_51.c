@@ -434,4 +434,71 @@ int FUN_100371f0(int *param_1,int param_2,int param_3)
   return 0;
 }
 
+
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#endif
+int FUN_10036a30(int, int, LPCSTR, LPCVOID *, int);
+extern char DAT_10ac4db0[];
+extern int g_brAA288C;
+int BrDPlayRawSend(int, int, int, int, void *, unsigned int);
+
+/* @implements 0x100368A0 glide FUN_100368a0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100368a0(HWND param_1, int *param_2, int param_3)
+{
+  HGLOBAL hMem;
+  LPCSTR lpString;
+  int result;
+  int *pMem;
+  LPCVOID local_4;
+
+  pMem = 0;
+  local_4 = 0;
+  if (param_2 == 0 || *param_2 == 0 || g_brAA288C != 0) {
+    return 0;
+  }
+  hMem = GlobalAlloc(0x42, 0xc9);
+  lpString = GlobalLock(hMem);
+  if (lpString == 0) {
+    result = 0x8007000e;
+  }
+  else {
+    strcpy((char *)lpString, DAT_10ac4db0);
+    result = FUN_10036a30(*param_2, param_2[2], lpString, &local_4, param_3);
+    if (result >= 0) {
+      PostMessageA(param_1, 0x501, 0, (LPARAM)local_4);
+      local_4 = 0;
+      {
+        int n = lstrlenA(lpString);
+        n += 8;
+        hMem = GlobalAlloc(0x42, n);
+        pMem = GlobalLock(hMem);
+        if (pMem == 0) {
+          result = 0x8007000e;
+        }
+        else {
+          *pMem = (param_3 != 0) + 0x60000000;
+          lstrcpyA((LPSTR)(pMem + 1), lpString);
+          result = BrDPlayRawSend(*param_2, param_2[2], 0, 1, pMem, n);
+        }
+      }
+    }
+  }
+  if (lpString != 0) {
+    GlobalUnlock(GlobalHandle(lpString));
+    GlobalFree(GlobalHandle(lpString));
+  }
+  if (local_4 != 0) {
+    GlobalUnlock(GlobalHandle(local_4));
+    GlobalFree(GlobalHandle(local_4));
+  }
+  if (pMem != 0) {
+    GlobalUnlock(GlobalHandle(pMem));
+    GlobalFree(GlobalHandle(pMem));
+  }
+  return result;
+}
+
 #endif /* BR_MATCHING_BUILD */
