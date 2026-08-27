@@ -251,8 +251,13 @@ def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
     # slice's siblings via a slice-local declaration clash (0x10061310
     # regressed 12), so on any verify failure fall through to the NEXT
     # candidate rather than giving up — a different slice often has no clash.
+    # Cap the fall-through: each candidate costs a full 3-variant file sweep,
+    # and VAs in the interleaved-address region can bracket 16 slices — a
+    # match that regresses in every one turned a 10-match run into >1h.
+    # The correct home is almost always in the first few (narrowest span
+    # first); beyond that, flag for hand-filing rather than grind.
     candidates = [c for c in pick_slice(spans, va)
-                  if FOOTER_RE.search(open(os.path.join(ROOT, c)).read())]
+                  if FOOTER_RE.search(open(os.path.join(ROOT, c)).read())][:4]
     if not candidates:
         log_row(logrows, va_hex, 'flag',
                 'no slice file with a BR_MATCHING_BUILD #endif anchor')
