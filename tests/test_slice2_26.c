@@ -125,11 +125,12 @@ void BrExt_10038F30(int32_t a) { (void)a; ++g_c.n10038F30; }
 
 void BrExt_100419D0(void *p) { (void)p; ++g_c.n100419D0; }
 
-void BrExt_1003DB00(BrObjA9D008 *pObj, void *p)
+int32_t BrExt_1003DB00(BrObjA9D008 *pObj, void *p)
 {
     ++g_c.n1003DB00;
     g_p1003DB00_a = pObj;
     g_p1003DB00_b = p;
+    return 0;
 }
 
 void BrExt_1003BF60(void) { ++g_c.n1003BF60; }

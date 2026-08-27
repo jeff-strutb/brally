@@ -113,7 +113,9 @@ extern void BrRaceStep_10019A70(void);
 #else
 #define BR_PAD_RACE_STEP g_BrPadHookFn
 #endif
-extern int32_t g_br5CCB5C;   /* 0x105CCB5C */
+int32_t g_br5CCB5C;   /* 0x105CCB5C -- used only by this module; defined here
+                       * so the port links (matching pins the address via
+                       * config/globals.csv, unaffected by this BSS def). */
 
 void  (*g_BrModelFixup)(uint32_t *pSlot);
 void *(*g_BrModelDeref)(uint32_t slot);

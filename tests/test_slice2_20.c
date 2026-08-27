@@ -49,6 +49,16 @@ void BrSegFixup(const BrSegMap *pMap, uint32_t *pPtr)
     if (v < pMap->n64Base) { *pPtr = 0; return; }
     *pPtr = v - pMap->n64Base + pMap->hostBase;
 }
+/* slice2_20.o calls the flat-globals BrSegPtrFixup (owned by slice2_16, whose
+ * link closure pulls the fade/CD chain); stand it in with identity bases -- the
+ * module paths this test reaches rebase against an identity segment map. */
+static int32_t s_segN64Base_stub, s_segHostBase_stub;
+void BrSegPtrFixup(uint32_t *p)
+{
+    if (*p == 0) return;
+    if ((int32_t)*p < s_segN64Base_stub) { *p = 0; return; }
+    *p = (uint32_t)(s_segHostBase_stub - s_segN64Base_stub) + *p;
+}
 uint32_t BrSegResolve(const BrSegMap *pMap, uint32_t a)
 {
     if (a == 0 || a < pMap->n64Base) return 0;
