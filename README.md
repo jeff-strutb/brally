@@ -79,10 +79,10 @@ through Metal, and runs the physics integrator with collision response wired in;
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **694 functions · 62,722 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **701 functions · 65,329 bytes** — verify with `python3 tools/total.py` | |
 | Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 558 of 1,140 transcribed functions · 36,873 bytes | `██████████░░░░░░░░░░` 49% |
-| Byte-exact, of all DLL `.text` | 36,873 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 565 of 1,147 transcribed functions · 39,480 bytes | `██████████░░░░░░░░░░` 49% |
+| Byte-exact, of all DLL `.text` | 39,480 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
 | SetVideo.exe (user region) | 37 matched · 4,652 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
 | BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
