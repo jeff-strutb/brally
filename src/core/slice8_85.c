@@ -889,4 +889,41 @@ int FUN_1003ee90(void)
   return result;
 }
 
+
+int FUN_10059e00();
+extern int DAT_10ac6730;
+extern int DAT_10ac6734;
+extern int g_br0AB3D8;
+extern int g_brB4E708;
+
+/* @implements 0x1003C240 glide FUN_1003c240 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_1003c240(void)
+
+{
+  int dir;
+  
+  dir = DAT_10ac6734;
+  g_br0AB3D8 = 1;
+  if (dir != 0) {
+    g_brB4E708 = g_brB4E708 + 1;
+    if (g_brB4E708 > 9) {
+      g_brB4E708 = 0;
+      FUN_10059e00();
+      return 1;
+    }
+  }
+  else {
+    if (DAT_10ac6730 != 0) {
+      g_brB4E708 = g_brB4E708 - 1;
+      if (g_brB4E708 < 0) {
+        g_brB4E708 = 9;
+      }
+    }
+  }
+  FUN_10059e00();
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
