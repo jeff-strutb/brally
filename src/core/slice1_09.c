@@ -764,4 +764,99 @@ int BrGetTimerState(void)
   return g_br18AB118_S_S1499;
 }
 
+
+extern int DAT_117b3250;
+extern int DAT_11849e60;
+extern int DAT_1184c070;
+extern int DAT_1184c074;
+extern int g_aBr178FEF8;
+extern int g_aBrPeer71;
+
+/* @implements 0x1006A650 glide FUN_1006a650 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_1006a650(void)
+{
+  DWORD wr;
+  int *pPeer;
+  int *pAlt;
+  HANDLE h1[2];
+  HANDLE h2[2];
+  char skip;
+  int st;
+  int t;
+
+  pPeer = &g_aBrPeer71;
+  do {
+    h1[0] = (HANDLE)DAT_11849e60;
+    h1[1] = (HANDLE)*pPeer;
+    wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
+    if (wr == 0) {
+      ExitThread(0);
+    }
+    st = pPeer[0xb] & 0x3f;
+    if (st < 2 || st == 3) {
+      skip = 0;
+    }
+    else {
+      skip = 1;
+    }
+    ReleaseMutex((HANDLE)*pPeer);
+    if (skip) {
+      return;
+    }
+    pPeer = pPeer + 0x25b;
+  } while ((int)pPeer < 0x117b3248);
+
+  pAlt = &g_aBr178FEF8;
+  pPeer = &g_aBrPeer71;
+  for (;;) {
+    h1[0] = (HANDLE)DAT_11849e60;
+    h1[1] = (HANDLE)*pPeer;
+    wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
+    if (wr == 0) {
+      ExitThread(0);
+    }
+    st = pPeer[0xb];
+    skip = ((st & 0x3f) == 3);
+    ReleaseMutex((HANDLE)*pPeer);
+    if (skip) {
+      h2[0] = (HANDLE)DAT_11849e60;
+      h2[1] = (HANDLE)*pAlt;
+      wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+      if (wr == 0) {
+        ExitThread(0);
+      }
+      st = pAlt[0xb];
+      skip = ((st & 0x3f) != 3);
+      ReleaseMutex((HANDLE)*pAlt);
+      if (skip) {
+        return;
+      }
+    }
+    pPeer = pPeer + 0x25b;
+    pAlt = pAlt + 0x280b;
+    if ((int)pPeer >= 0x117b3248) {
+      pPeer = &g_aBrPeer71;
+      t = 4;
+      do {
+        h2[0] = (HANDLE)DAT_11849e60;
+        h2[1] = (HANDLE)*pPeer;
+        wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+        if (wr == 0) {
+          ExitThread(0);
+        }
+        if ((pPeer[0xb] & 0x3f) == 3) {
+          pPeer[0xb] = t;
+          DAT_117b3250 = 1;
+          DAT_1184c074 = DAT_1184c070 + 3000;
+        }
+        ReleaseMutex((HANDLE)*pPeer);
+        pPeer = pPeer + 0x25b;
+      } while ((int)pPeer < 0x117b3248);
+      return;
+    }
+  }
+}
+
 #endif /* BR_MATCHING_BUILD */
