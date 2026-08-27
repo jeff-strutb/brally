@@ -54,9 +54,13 @@ exception-handling functions (20% of the DLL `.text`) that push a
 `__CxxFrameHandler` frame were previously fenced as "unreachable from C." A
 `.cpp`/`cl /GX` harness (`tools/cpp_score.py`) now reproduces one byte-exact
 and — critically — verifies all four pieces including the unwind tables in
-`.xdata`/`.rdata` that the normal `.text` comparison cannot see. Because those
-functions' bodies are largely already C-matched, the class is a finishing pass,
-not from-scratch work. (2) Plain SEH (`__try`/`__except`) is matchable in VC5 C
+`.xdata`/`.rdata` that the normal `.text` comparison cannot see. The harness now has **~34 C++ functions matched byte-exact on all four
+pieces (~15 KB, including one 8,349-byte function — the largest single match
+in the project)**, verified but not yet folded into the counted DLL total.
+The clean wins are small-to-mid C++ functions and function families sharing
+one `.cpp` pattern; large C++ bodies land their exception *frame* but their
+*body* hits the same register-coloring ceiling as plain C, so those are
+classified as walls. (2) Plain SEH (`__try`/`__except`) is matchable in VC5 C
 and reproduces its frame byte-exact (five EH helpers matched).
 
 **The EXE workstream opened 2026-08-27.** The three in-scope executables
@@ -81,7 +85,7 @@ through Metal, and runs the physics integrator with collision response wired in;
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
 | SetVideo.exe (user region) | 37 matched · 4,652 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
 | BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
-| C++ EH class (harness proven) | 1 of ~80 matched · workstream open (was a wall) | `░░░░░░░░░░░░░░░░░░░░` — |
+| C++ EH class (verified, pending integration) | ~34 functions · ~15,246 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project); folds into the counted total once the `.cpp` tree module lands | `████████░░░░░░░░░░░░` 40% of C++ code |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port test suites | 137 / 137 green | `████████████████████` 100% |
 
