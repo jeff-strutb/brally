@@ -17,6 +17,12 @@ FUNCS = os.environ.get("BR_MAP", os.path.join(ROOT, "config", "functions_glide.c
 REPORT = os.path.join(ROOT, "build", "match", "report.csv")
 
 GREEN, AMBER, GRAY = "#3fb950", "#d29922", "#c8ccd2"
+FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompiled
+
+# Per-EXE static-CRT boundary: functions at/after this VA are linked library
+# code (fenced), not a decomp target. So they never turn green — distinct from
+# unfinished user code ("todo").
+CRT_START = {"brally": 0x401BC0, "setvideo": 0x402D20, "bossrally": 0x401BC0}
 
 
 def _match_set(path):
@@ -69,11 +75,17 @@ def load():
                 va, size = int(r["va"], 16), int(r["size"])
                 if size <= 0:
                     continue
+                if va in hits:
+                    st = "match"
+                elif va >= CRT_START.get(exe, 1 << 30):
+                    st = "fenced"   # linked CRT, not a decomp target
+                else:
+                    st = "todo"
                 funcs.append({
                     "va": va, "size": size,
                     "name": r.get("name") or "",
                     "file": "EXE: %s.exe" % exe,
-                    "status": "match" if va in hits else "todo",
+                    "status": st,
                     "diffs": 0 if va in hits else -1,
                 })
     return funcs
@@ -191,7 +203,7 @@ def render_svg(funcs, out_path):
                 parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>'
                              % (x + 3, y + 10.5, html.escape(obj.split("/")[-1])))
         else:
-            color = {"match": GREEN, "diff": AMBER, "todo": GRAY}[obj["status"]]
+            color = {"match": GREEN, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s">'
                          '<title>%s</title></rect>'
                          % (x, y, w, h, color, html.escape(tooltip(obj, gname))))
@@ -221,7 +233,7 @@ def render(funcs, out_path):
                 % (x, y, w, h,
                    '<span class="gl">%s</span>' % html.escape(obj.split("/")[-1]) if obj else ""))
         else:
-            color = {"match": GREEN, "diff": AMBER, "todo": GRAY}[obj["status"]]
+            color = {"match": GREEN, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
             cells.append(
                 '<div class="f" title="%s" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;'
                 'height:%.1fpx;background:%s"></div>'
