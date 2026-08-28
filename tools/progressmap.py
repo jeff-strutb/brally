@@ -59,7 +59,9 @@ def load():
                          else (m and m["file"]) or ""),
                 "status": ("match" if is_cpp or (m and m["status"] == "match")
                            else "diff" if m else "todo"),
-                "diffs": 0 if is_cpp else (int(m["diffs"]) if m else -1),
+                "diffs": 0 if is_cpp
+                         else (int(m["diffs"]) if (m and str(m["diffs"]).strip())
+                               else 0 if m else -1),
             })
     # The three in-scope EXEs as their own regions.
     exe_hit = {}

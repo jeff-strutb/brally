@@ -76,27 +76,28 @@ form — and shared file/INI helpers reuse byte-identically across the family.
 Separately, the macOS/Metal port of that same source boots, renders the front
 end from the game's own artwork, parses tracks, draws retail car geometry
 through Metal, and runs the physics integrator with collision response wired in;
-the port *source* compiles clean, but its test suite is currently out of sync
-with the matching work: as functions were refined to their byte-exact
-prototypes (e.g. `BrRcaFixupRecord(void *pRec)`), the port tests written for
-the older interfaces stopped compiling. Reconciling the tests to the current
-signatures is an open cleanup task; until it lands, treat the test count below
-as historical, not a live green. The per-frame race render is the last major
-rendering gate.
+the port *source* compiles clean and its **test suite is now 136/136 green**.
+That suite had drifted out of sync as functions were rematched to their real
+(glide, byte-exact) form — the reconciliation is done: stale pre-match test
+models were rewritten to the matched behaviour, cross-binary flat-globals-vs-
+struct splits (BrFadeTick, BrInputIsDown) were driven correctly, and a couple of
+cases that cannot hold on a 64-bit / non-x87 host are quarantined with reasons.
+The per-frame race render is the last major rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **707 functions · 71,091 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **706 functions · 71,179 bytes** — verify with `python3 tools/total.py` | |
+| Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
 | Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 571 of 1,153 transcribed functions · 45,242 bytes | `██████████░░░░░░░░░░` 49% |
-| Byte-exact, of all DLL `.text` | 45,242 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 570 of 1,153 transcribed functions · 45,234 bytes | `██████████░░░░░░░░░░` 49% |
+| Byte-exact, of all DLL `.text` | 45,234 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 8% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 37 matched · 4,652 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
-| BossRally.exe (user region) | 35 matched · 2,431 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
+| SetVideo.exe (user region) | 37 matched · 4,675 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
+| BossRally.exe (user region) | 35 matched · 2,482 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
 | C++ EH class (tree-resident) | 36 functions · 15,832 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 40% of C++ code |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
-| Port test suites | out of sync — tests need reconciling to matched signatures (was 137 green historically) | `░░░░░░░░░░░░░░░░░░░░` — |
+| Port test suite | **136 / 136 green** | `████████████████████` 100% |
 
 The second and third rows are the ones that count; everything else is
 diagnostics. They tell the same story from opposite ends: nearly half of the
