@@ -991,6 +991,184 @@ def _classify_divergence(orig_bytes, rb, relocs):
     return '%s@0x%x/%d' % (klass, first, len(pos))
 
 
+# Ghidra `local_N` ebp-relative offsets. sizeof for the types wrap emits.
+_STACKSHRED_SIZE = {
+    'char': 1, 'unsigned char': 1,
+    'short': 2, 'unsigned short': 2,
+    'int': 4, 'unsigned int': 4, 'long': 4, 'unsigned long': 4,
+    'float': 4, 'double': 8,
+}
+_LOCAL_DECL_RE = re.compile(
+    r'^([ \t]+)((?:unsigned[ \t]+)?(?:char|short|int|long|float|double))'
+    r'[ \t]+(local_([0-9a-fA-F]+))([ \t]*\[[ \t]*(\d+)[ \t]*\])?[ \t]*;'
+    r'[ \t]*$',
+    re.M)
+# Cap: C++ objects and the 0x760-class frames are not this idiom. 0x100027E0
+# is 0x10; 0x1002B3F0 is 0x1c. Proven MATCH 0x100027E0 at 0x10.
+_STACKSHRED_MAX = 0x40
+
+
+def _orig_sub_esp(orig):
+    """Imm of the first `sub esp, N` in the prologue, or None.
+
+    Skips a hoisted `mov eax,[g]`, `push ebp; mov ebp,esp`, and the
+    callee-saved pushes. 0x100027E0 is `mov eax,[g]; sub esp, 0x10`.
+    """
+    if not orig:
+        return None
+    i, n = 0, min(48, len(orig))
+    while i + 2 < n:
+        b = orig[i]
+        if b == 0x83 and orig[i + 1] == 0xEC:  # sub esp, imm8
+            return orig[i + 2]
+        if b == 0x81 and orig[i + 1] == 0xEC and i + 5 < n:  # sub esp, imm32
+            return struct.unpack_from('<I', orig, i + 2)[0]
+        if b == 0x55 and i + 2 < n and orig[i + 1] == 0x8B and orig[i + 2] == 0xEC:
+            i += 3  # push ebp; mov ebp, esp
+            continue
+        if b in (0x53, 0x56, 0x57, 0x55):  # push ebx/esi/edi/ebp
+            i += 1
+            continue
+        if b == 0xA1 and i + 5 <= n:  # mov eax, [imm32]
+            i += 5
+            continue
+        break
+    return None
+
+
+def transform_stackshred(src, orig=None):
+    """Rebuild Ghidra-shredded stack structs into one struct of the frame size.
+
+    Ghidra prints `char local_10[4]; int local_c; int local_8;` for a 16-byte
+    stack object (the 4th dword unread) and /O2 then emits `sub esp, 0xc`.
+    Orig `sub esp, 0x10`. Fold into one struct, pad holes (and up to orig's
+    `sub esp` when given), keep Ghidra's field names so uses rewrite as
+    `_fr.local_N`. Address-taken of the lowest local becomes `&_fr` via
+    array decay / first-field address.
+
+    Same family as BrTex3dCreate / 0x1002DEC3 (VC5-IDIOMS.md) and the
+    BrTex3dExpand `sub esp, 0x68` frame. Proven MATCH 0x100027E0 (80 B,
+    MCI_STATUS shred, /O2).
+
+    Tight: 2..8 `local_N` decls, frame <= 0x40, at least one address-taken,
+    no C++ EH (`unaff_FS_OFFSET`). No-op on 0x10002580 (no locals; its
+    frame@0xe/68 stamp is a jcc-displacement classifier artifact over a
+    store-burst coloring wall).
+    """
+    if 'unaff_FS_OFFSET' in src or 'puStack_' in src:
+        return src, False
+    decls = list(_LOCAL_DECL_RE.finditer(src))
+    if not (2 <= len(decls) <= 8):
+        return src, False
+    parsed = []
+    for m in decls:
+        typ = re.sub(r'\s+', ' ', m.group(2).strip())
+        name, hexoff = m.group(3), m.group(4)
+        n_elem = int(m.group(6)) if m.group(6) else 1
+        unit = _STACKSHRED_SIZE.get(typ)
+        if unit is None:
+            return src, False
+        off = int(hexoff, 16)
+        parsed.append({
+            'm': m, 'typ': typ, 'name': name, 'off': off,
+            'nbytes': unit * n_elem, 'arr': m.group(5), 'unit': unit,
+        })
+    # address-taken: &local_N, (unsigned long)local_N array-decay, or
+    # local_N passed as a call argument.
+    taken = False
+    for p in parsed:
+        n = p['name']
+        if (re.search(r'&' + n + r'\b', src)
+                or re.search(r'\(\s*(?:unsigned[ \t]+long|DWORD(?:_PTR)?)\s*\)\s*'
+                             + n + r'\b', src)
+                or re.search(r'[\(,]\s*' + n + r'\s*[,)]', src)):
+            taken = True
+            break
+    if not taken:
+        return src, False
+    max_off = max(p['off'] for p in parsed)
+    orig_frame = _orig_sub_esp(orig) if orig else None
+    frame = orig_frame or max_off
+    if frame < max_off or frame > _STACKSHRED_MAX or frame < 8:
+        return src, False
+    # Occupancy from the bottom of the frame (ebp - frame).
+    occ = [None] * frame  # byte -> name
+    byname = {}
+    for p in parsed:
+        start = frame - p['off']
+        if start < 0 or start + p['nbytes'] > frame:
+            return src, False
+        for i in range(p['nbytes']):
+            if occ[start + i] is not None:
+                return src, False  # overlap
+            occ[start + i] = p['name']
+        byname[p['name']] = p
+    # Reject a giant hole between two objects (buf[0x400] + a couple of
+    # ints is not one struct). A 4-byte unread field is the 0x100027E0 hole.
+    hole_run = 0
+    max_hole = 0
+    for b in occ:
+        if b is None:
+            hole_run += 1
+            if hole_run > max_hole:
+                max_hole = hole_run
+        else:
+            hole_run = 0
+    if max_hole > 16:
+        return src, False
+    # Emit fields low-address first (declaration order = address order).
+    fields = []
+    i = 0
+    seen = set()
+    pad_n = 0
+    while i < frame:
+        nm = occ[i]
+        if nm is None:
+            n = 0
+            while i + n < frame and occ[i + n] is None:
+                n += 1
+            while n >= 4:
+                fields.append('  int _pad_%d;' % pad_n)
+                pad_n += 1
+                n -= 4
+                i += 4
+            if n:
+                fields.append('  char _pad_%d[%d];' % (pad_n, n))
+                pad_n += 1
+                i += n
+            continue
+        if nm in seen:
+            i += 1
+            continue
+        seen.add(nm)
+        p = byname[nm]
+        arr = p['arr'] if p['arr'] else ''
+        fields.append('  %s %s%s;' % (p['typ'], p['name'], arr or ''))
+        i += p['nbytes']
+    struct_decl = ('  struct {\n' + '\n'.join(fields) + '\n  } _fr;\n')
+    first, last = decls[0], decls[-1]
+    # Only rewrite when the decls are a contiguous block (nothing but
+    # whitespace between them). Interleaved iVar decls stay put.
+    between = src[first.end():last.start()]
+    if re.search(r'\S', between):
+        # allow other local_ decls only
+        if re.search(r'\S', _LOCAL_DECL_RE.sub('', between)):
+            return src, False
+    new_src = src[:first.start()] + struct_decl + src[last.end():]
+    # Prefix remaining uses. Struct field names are inside `_fr { ... }`
+    # and must not be rewritten.
+    def _pfx(m, _names=set(p['name'] for p in parsed)):
+        return '_fr.' + m.group(0) if m.group(0) in _names else m.group(0)
+    # Split at the struct we just inserted so the field decls stay bare.
+    mark = struct_decl
+    ins = new_src.find(mark)
+    if ins < 0:
+        return src, False
+    head, tail = new_src[:ins + len(mark)], new_src[ins + len(mark):]
+    tail = re.sub(r'\blocal_[0-9a-fA-F]+\b', _pfx, tail)
+    return head + tail, True
+
+
 def _refine_candidates(src):
     """Yield (label, new_src) single-edit variants of a wrapped source."""
     # Combined folds first (one candidate each, not a search) so they always
@@ -1000,6 +1178,13 @@ def _refine_candidates(src):
     # docs/gen-fresh-notes.md (stringops; charret is orig-gated in
     # refine_function next to callconv).
     import gen_structural2 as _gs2
+    # (t) Ghidra-shredded stack struct -> one struct of the frame size.
+    #     Orig-gated padding (sub esp) is applied in refine_function next
+    #     to callconv; this candidate uses max(local_N) so 0x100027E0
+    #     still fires without orig (max 0x10 == orig frame, hole at +0x4).
+    _new, _ok = transform_stackshred(src)
+    if _ok and _new != src:
+        yield ('stackshred', _new)
     # (q) `i = f(...); return i != 0;` -> `return f(...) != 0;` (and `== 0`,
     #     and Ghidra's `return (uint)(i != 0)`). Orig of the call-in-the-
     #     return expression is `neg; sbb; neg` (`f7 d8 1b c0 f7 d8`); the
@@ -1037,6 +1222,15 @@ def _refine_candidates(src):
     _new, _ = _gf.transform_stringops(src)
     if _new != src:
         yield ('stringops', _new)
+    # (u) missing-code combined: shredded 16-byte mmioRead dest ->
+    #     PCMWAVEFORMAT, `if (h==0) err; else BODY` -> goto, success
+    #     `*out=h; return 0` -> `goto TEMPCLEANUP` joining cleanup's
+    #     store+return. One candidate. Orig-gate lives in
+    #     refine_function; the candidate still fires so a work file
+    #     that already has the struct can climb. Proven 0x1006FFC0.
+    _new, _labs = transform_misscode(src)
+    if _labs and _new != src:
+        yield ('misscode', _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
     # (a) retype one extern global
@@ -1221,6 +1415,244 @@ def _refine_candidates(src):
         yield ('maskw:%s' % g, nh + nb)
 
 
+# ---------------------------------------------------------------------------
+# misscode: shredded stack struct + else-flatten + shared-tail goto
+# Orig-gated, only-if-better (charret slot). Proven 0x1006FFC0 (WaveOpenFile).
+# ---------------------------------------------------------------------------
+
+def _brace_end(s, i):
+    """i points at '{'. Return index just past matching '}' or -1."""
+    if i >= len(s) or s[i] != '{':
+        return -1
+    depth = 0
+    n = len(s)
+    while i < n:
+        c = s[i]
+        if c == '"' or c == "'":
+            q = c
+            i += 1
+            while i < n and s[i] != q:
+                i += 2 if s[i] == '\\' else 1
+            i += 1
+            continue
+        if c == '/' and i + 1 < n:
+            if s[i + 1] == '/':
+                i = s.find('\n', i)
+                if i < 0:
+                    return -1
+                continue
+            if s[i + 1] == '*':
+                j = s.find('*/', i + 2)
+                if j < 0:
+                    return -1
+                i = j + 2
+                continue
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return -1
+
+
+def _dup_epilogue_orig(b):
+    """True if two `ret`s share an 8-byte tail (DX5 TEMPCLEANUP duplicate)."""
+    if not b:
+        return False
+    rets = [i for i, x in enumerate(b) if x == 0xC3]
+    if len(rets) < 2:
+        return False
+    for i in range(len(rets)):
+        for j in range(i + 1, len(rets)):
+            a, c = rets[i], rets[j]
+            n = 8
+            if a >= n and c >= n and b[a - n:a + 1] == b[c - n:c + 1]:
+                return True
+    return False
+
+
+def misscode_orig(b):
+    """Orig-gate: duplicated epilogue, or WaveOpenFile's 0x24 frame + `cmp ,0x10; jb`."""
+    if not b:
+        return False
+    if _dup_epilogue_orig(b):
+        return True
+    # `sub esp, 0x24` ... `cmp [esp+disp], 0x10; jb` (PCMWAVEFORMAT cksize).
+    return (b'\x83\xec\x24' in b) and (b'\x10\x0f\x82' in b)
+
+
+def _rewrite_pcmstruct(src):
+    """Rebuild 4 shredded ints that mmioRead(..., 0x10) writes as PCMWAVEFORMAT.
+
+    Ghidra's `int local_24..18` + `mmioRead(..., &local_24, 0x10)` is only
+    known to touch the first dword, so /O2 drops 12 bytes of frame (short-25
+    vs orig `sub esp, 0x24`) and copies garbage. A real PCMWAVEFORMAT makes
+    the 16-byte write visible. Also `0xf < cksize` -> `cksize >= 0x10`
+    (`cmp ,0x10; jb`)."""
+    labels = []
+    four = re.compile(
+        r'^(\s+)(?:int|unsigned int|undefined4|DWORD) (local_\w+);\s*\n'
+        r'\1(?:int|unsigned int|undefined4|DWORD) (local_\w+);\s*\n'
+        r'\1(?:int|unsigned int|undefined4|DWORD) (local_\w+);\s*\n'
+        r'\1(?:int|unsigned int|undefined4|DWORD) (local_\w+);',
+        re.M)
+    m = None
+    for cand in four.finditer(src):
+        a = cand.group(2)
+        if re.search(r'mmioRead\s*\([^;]*&\s*%s\b[^;]*,\s*(?:0x10|16)\s*\)'
+                     % re.escape(a), src):
+            m = cand
+            break
+    if m:
+        a, b, c, d = m.group(2), m.group(3), m.group(4), m.group(5)
+        ind = m.group(1)
+        src = src[:m.start()] + '%sPCMWAVEFORMAT pcmWaveFormat;' % ind + src[m.end():]
+        src = re.sub(r'&\s*%s\b' % re.escape(a), '&pcmWaveFormat', src)
+        src = re.sub(
+            r'\(short\)%s\s*==\s*1' % re.escape(a),
+            'pcmWaveFormat.wf.wFormatTag == WAVE_FORMAT_PCM', src)
+        src = re.sub(
+            r'\*(\w+) = %s;\s*\n(\s*)\1\[1\] = %s;\s*\n'
+            r'\2\1\[2\] = %s;\s*\n\2\1\[3\] = %s;'
+            % (re.escape(a), re.escape(b), re.escape(c), re.escape(d)),
+            r'*(PCMWAVEFORMAT *)\1 = pcmWaveFormat;', src)
+        # leftover scalar uses of the first dword
+        src = re.sub(r'\b%s\b' % re.escape(a), 'pcmWaveFormat', src)
+        labels.append('pcmstruct')
+    src2, n = re.subn(
+        r'\(0xf\s*<\s*([^)<>=!&|]+?\.cksize)\)',
+        r'(\1 >= 0x10)', src)
+    if n:
+        src = src2
+        labels.append('cksize>=16')
+    return src, labels
+
+
+def _rewrite_zerohandle(src):
+    """After `mmioClose(h, 0);` orig `xor r,r` is `h = 0` before `*out = h`."""
+    labels = []
+    new, n = re.subn(
+        r'(mmioClose\s*\(\s*(\w+)\s*,\s*0\s*\)\s*;)'
+        r'(?!\s*\2\s*=)',
+        r'\1\n    \2 = 0;', src)
+    if n:
+        src = new
+        labels.append('zerohandle')
+    return src, labels
+
+
+def _rewrite_elsetogoto(src):
+    """Ghidra `if (h == 0) { err = K; } else { BODY }` + cleanup label ->
+    `if (h == 0) { err = K; goto L; } BODY`. DX5 WaveOpenFile is gotos;
+    the else wrapping claims esi for the handle (35-diff colouring wall)."""
+    labels = []
+    pat = re.compile(
+        r'\n( +)if \((\w+) == (?:\([^)]+\)\s*)?(?:0x0|NULL|0)\) \{\n'
+        r'\1  (\w+) = (0x[0-9a-fA-F]+|\d+);\n'
+        r'\1\}\n'
+        r'\1else \{')
+    m = pat.search(src)
+    if not m:
+        return src, labels
+    else_open = m.end() - 1  # '{'
+    else_end = _brace_end(src, else_open)
+    if else_end < 0:
+        return src, labels
+    rest = src[else_end:]
+    lm = re.match(r'\s*(\w+)\s*:', rest)
+    if not lm:
+        return src, labels
+    lab = lm.group(1)
+    ind = m.group(1)
+    handle, err, imm = m.group(2), m.group(3), m.group(4)
+    body = src[else_open + 1:else_end - 1]
+    repl = ('\n%sif (%s == 0) {\n%s  %s = %s;\n%s  goto %s;\n%s}\n'
+            % (ind, handle, ind, err, imm, ind, lab, ind))
+    src = src[:m.start()] + repl + body + src[else_end:]
+    labels.append('elsetogoto')
+    return src, labels
+
+
+def _rewrite_sharedtail(src):
+    """Success `*out = h; return 0;` -> `goto TAIL` joining cleanup's
+    `*out = h; return err`. Orig duplicates `mov eax, esi` not `xor eax,eax`
+    (the join is not proven-0). DX5 `goto TEMPCLEANUP`."""
+    labels = []
+    # last `*name = expr; return var;`
+    tails = list(re.finditer(
+        r'\n([ \t]+)\*\s*(\w+)\s*=\s*([^;]+);\s*\n'
+        r'\1return\s+(\w+|0|0x0)\s*;', src))
+    if len(tails) < 2:
+        return src, labels
+    last = tails[-1]
+    out = last.group(2)
+    # earlier success stores to the same out-param
+    early = None
+    for t in tails[:-1]:
+        if t.group(2) == out:
+            early = t
+    if early is None:
+        return src, labels
+    handle = early.group(3).strip()
+    handle = re.sub(r'^\([^)]+\)\s*', '', handle)
+    retvar = last.group(4)
+    ind_e = early.group(1)
+    # collapse a wrapping `if (ret == 0) { store; return; } goto CLEAN;`
+    wrap = re.search(
+        r'\n([ \t]+)if \((\w+) == 0\) \{\s*'
+        + re.escape(early.group(0)) +
+        r'\s*\}\s*\n\1goto (\w+)\s*;', src)
+    if wrap and wrap.group(2) == retvar:
+        # Keep the error test: failed mmioAscend must still hit cleanup
+        # (free + close), not the success tail. Orig:
+        #   if ((nError = mmioAscend(...)) != 0) goto ERROR;
+        #   goto TEMPCLEANUP;
+        src = src[:wrap.start()] + (
+            '\n%sif (%s != 0) goto %s;\n%sgoto TEMPCLEANUP;\n'
+            % (wrap.group(1), wrap.group(2), wrap.group(3), wrap.group(1))
+        ) + src[wrap.end():]
+        labels.append('sharedtail')
+    else:
+        src = src[:early.start()] + (
+            '\n%sgoto TEMPCLEANUP;' % ind_e
+        ) + src[early.end():]
+        labels.append('sharedtail')
+    # re-find last tail (offsets shifted)
+    tails = list(re.finditer(
+        r'\n([ \t]+)\*\s*%s\s*=\s*([^;]+);\s*\n'
+        r'\1return\s+(\w+|0|0x0)\s*;' % re.escape(out), src))
+    if not tails:
+        return src, labels
+    last = tails[-1]
+    ind = last.group(1)
+    rhs = last.group(2).strip()
+    # `*out = 0` -> `*out = handle` (handle already zeroed on the error path)
+    if re.match(r'(?:\([^)]+\)\s*)?(?:0|0x0|NULL)$', rhs):
+        new_rhs = handle
+    else:
+        new_rhs = rhs
+    tail_block = ('\nTEMPCLEANUP:\n%s*%s = %s;\n%sreturn %s;'
+                  % (ind, out, new_rhs, ind, last.group(3)))
+    src = src[:last.start()] + tail_block + src[last.end():]
+    return src, labels
+
+
+def transform_misscode(src, orig=None):
+    """Combined missing-code rewrite. Orig-gated when orig is supplied."""
+    if orig is not None and orig and not misscode_orig(orig):
+        return src, []
+    labels = []
+    # sharedtail before elsetogoto: the success `*out=h; return` must still
+    # be nested in `if (err == 0)` for the wrap matcher.
+    for fn in (_rewrite_pcmstruct, _rewrite_zerohandle,
+               _rewrite_sharedtail, _rewrite_elsetogoto):
+        src, lab = fn(src)
+        labels.extend(lab)
+    return src, labels
+
+
 _CC_PE = []
 def _cc_pe():
     """Parse the reference PE once per process (gen_callconv re-parses it per
@@ -1293,6 +1725,37 @@ def refine_function(row, max_rounds=4, max_cands=80):
                         src = cr_src
                         cur, cur_opt, cur_rb, cur_rl = cr
                         applied.append('charret')
+        except Exception:
+            pass
+        # stack-shred: Ghidra `local_N` cluster whose address escapes, padded
+        # to orig `sub esp, N`. Only-if-better — a giant hole or a
+        # coincidental local_ pair must not poison the climb. Proven MATCH
+        # 0x100027E0 (MCI_STATUS, 80 B /O2). 0x10002580 is a no-op (no
+        # locals). Decision: frame residue class, 2026-08-27.
+        try:
+            sh_src, sh_ok = transform_stackshred(src, orig=orig_bytes)
+            if sh_ok and sh_src != src:
+                sh = _score_source(sh_src, func_name, orig_bytes, opts, tag)
+                if sh[0] is not None and sh[0] <= cur:
+                    src = sh_src
+                    cur, cur_opt, cur_rb, cur_rl = sh
+                    applied.append('stackshred')
+        except Exception:
+            pass
+        # missing-code: shredded PCMWAVEFORMAT + else-flatten +
+        # shared-tail goto (DX5 WaveOpenFile TEMPCLEANUP). Orig-gated
+        # (dup epilogue / `sub esp,0x24` + `cmp ,0x10; jb`). Only-if-
+        # better, same as callconv/charret. Proven MATCH 0x1006FFC0.
+        try:
+            if misscode_orig(orig_bytes):
+                mc_src, mc_labs = transform_misscode(src, orig=orig_bytes)
+                if mc_labs and mc_src != src:
+                    mc = _score_source(
+                        mc_src, func_name, orig_bytes, opts, tag)
+                    if mc[0] is not None and mc[0] <= cur:
+                        src = mc_src
+                        cur, cur_opt, cur_rb, cur_rl = mc
+                        applied.extend(mc_labs)
         except Exception:
             pass
     if os.environ.get('BR_REFINE_DEBUG'):
@@ -1389,7 +1852,12 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
             continue  # tiny junk/thunks: unreachable from C, don't climb them
         if r['va'].lower() in tree_matched and not target_va:
             continue
-        if 0 < d <= max_diffs and (not target_va or r['va'].lower() == target_va.lower()):
+        # --va tests one function regardless of the diffs cap (the
+        # representative 0x1006FFC0 sat at 339, above --max-diffs 200).
+        if target_va:
+            if r['va'].lower() == target_va.lower() and d != 0:
+                todo.append(r)
+        elif 0 < d <= max_diffs:
             todo.append(r)
     # Biggest payoff first, so an interrupted run banked the valuable half.
     todo.sort(key=lambda r: -int(r.get('orig_size') or 0))

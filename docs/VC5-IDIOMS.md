@@ -710,6 +710,35 @@ the caller AND flipped a helper to match for free.
   mixed (prologue-0, type-refine, other), not this shape. Proven
   0x10035400 2026-08-27.
 
+- **0x10002580 store-burst is a coloring wall, not a frame layout.**
+  Residue stamp `frame@0xe/68` is a classifier artifact: bytes 0..0xd
+  match (`mov eax,[g]; push ebx; push esi; xor esi,esi; cmp eax,esi;
+  push edi; 0f 84`); offset 0xe is the near-je displacement, off by 1
+  because the success-path body is a different length. Orig has no
+  `sub esp`. After the stdcall-fptr fix (4/1/2/2), the first real
+  divergence is 0x5d: orig `xor edx,edx; mov eax,4; xor ecx,ecx` then
+  a 7-store prefix (edx/eax/ecx) and `push 0x10000020` after the handle
+  reload; wrap `mov eax,4; push 0x10000020` immediately and uses esi
+  for every zero. Named temps (`z`/`four`/`z2`), a mid-burst handle
+  local, comma-join, and restoring `iVar1` all compile byte-identical
+  to the wrap (168 diffs). Retyping `_DAT_1021c784` / `DAT_1021c788`
+  to float drops 168→68 but is wrong (`orig_widths` are int; orig
+  `mov [x], esi`). Do not permute further. `stackshred` is a no-op
+  on this VA (no locals).
+
+- **Ghidra-shredded stack struct → one struct of the frame size
+  (`stackshred`).** Ghidra prints `char local_10[4]; int local_c; int
+  local_8;` for a 16-byte stack object whose 4th dword is unread, and
+  /O2 emits `sub esp, 0xc`. Orig `sub esp, 0x10`. Fold into one
+  struct, pad holes (and up to orig's `sub esp` when given), keep
+  Ghidra's field names as `_fr.local_N`. Same family as BrTex3dCreate
+  / 0x1002DEC3 and BrTex3dExpand `sub esp, 0x68`. Tight: 2..8
+  `local_N`, frame ≤ 0x40, at least one address-taken, no C++ EH.
+  Only-if-better (0x10027710 CLOSE(2) would become 159). Proven MATCH
+  0x100027E0 (MCI_STATUS, 80 B /O2) and 0x10002870 (MCI_PLAY 12-byte
+  parms, 109 B /O2, was short-29). Frame residue 52→51; 0x10002580
+  is not prey.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
