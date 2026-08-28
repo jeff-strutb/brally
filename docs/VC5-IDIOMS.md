@@ -112,6 +112,22 @@ the caller AND flipped a helper to match for free.
   `??3` only). Six activates matched: docs/cpp-family2-notes.md.
   Sequential `new`s in one function: maxState = count, every toState=-1,
   every unwind action 11 B `push; call ??3; pop; ret`.
+- **C++ thiscall `PutByte(unsigned char)` not `unsigned`:** a char stack
+  arg used in a byte `or` stays `mov bl,[esp+N]` only when the callee
+  prototype takes `unsigned char`. `PutByte(unsigned)` promotes the arg
+  to a dword load + `and ecx,0xff` (178 diffs on 0x10004900). Same
+  family: `volatile int g_id` keeps `mov eax,[g]; and al,0xf` (plain
+  `int` becomes `mov al,[g]`). Proven 0x10004900 / 0x10004AD0.
+- **CSE a mask twice, don't store it:** `if ((a8 & 0x3F) <= 2)` then
+  `if ((a8 & 0x3F) == 4)` emits `mov ebp,esi; and ebp,0x3f` (esi stays
+  the unmasked value). `kind = a8 & 0x3F` ands esi in place then copies
+  (5 diffs). Proven 0x10004AD0.
+- **Live-eax retest without an early return:** 0x1003DC20 used
+  `HostGo(); return 1` so a second top-level `if (g_host)` kept eax.
+  When a later tail must still run, `goto` past the second `if (h)`
+  from the first-time arm does the same (`test eax; je` on the
+  already-inited path). Proven on 0x1003DD20's host tail (obj-hook
+  eax/ecx coloring remains).
 - **ECX copy-propagation:** after `mov esi,ecx`, calling a thiscall callee
   with an explicit `this` argument (`Dtor(param_1)`, callee declared
   `__fastcall`) emits NO `mov ecx,esi` reload — VC5 knows ECX still holds
@@ -633,6 +649,29 @@ the caller AND flipped a helper to match for free.
   `refine_function` (ungated `int`→`char` would rewrite every `return 1`).
   Skip fnstsw helpers whose AL is a status nibble (0x10006A10). Proven
   0x10054390 (tree) and 0x10069930.
+
+- **`1 << ((char)*(int *)p - 1U & 0x1f)` is decoration.** Orig is
+  `mov ecx, dword [p]; dec ecx; shl r, cl` (and `mov ecx, dword [p];
+  shl r, cl` for the un-decremented maskT). The `(char)`/`(byte)` cast
+  emits `mov cl, byte [p]` plus `and ecx, 0x1f`. Delete both. Proven
+  0x100250D0 (BrTex3dExpand) at every tile maskS/maskT shift.
+- **Ghidra inverts `if ((flags & 2) && lod == 1)` to the CI4-first
+  `if ((flags & 2) == 0 || lod != 1)`.** Orig is `test byte [flags], 2;
+  je CI4; cmp lod, 1; jne CI4` with IDX4 as the fall-through. Swap the
+  arms. Proven 0x100250D0 at 0x10025148.
+- **LOD walk is empty-check then `do {…; lod++;} while (lod < end)`,
+  not test-at-top `for(;;) { if (lod >= end) return; }`.** Orig
+  `cmp lod, end; jge ret` then shrink-wrapped `ebp=cbOut; esi=pOut;
+  ebx=aTile`, body, latch `inc lod; cmp lod, end; jl body` (jl target
+  is the aTile reload, not the first compare). Putting `pOut = param_1`
+  before the empty-check prevents the sink. Proven 0x100250D0.
+- **Byte live across a call is `mov [esp+slot], dl; mov ebx, [esp+slot];
+  and ebx, 0xff`.** Two nibble uses of one unsigned char with
+  FUN_100271f0 between them (CI4 palette). Ghidra's one `bVar11` for
+  every arm shares a slot; orig has a slot per call-crossing loop.
+  CONCAT22 at those call sites is `mov dx, word [pal]; push edx`
+  (leftover high bits) — the source passes the ushort, not a
+  reconstructed dword. Proven 0x100250D0.
 
 ## Cost model (measured, 2026-08-22 timed test)
 
