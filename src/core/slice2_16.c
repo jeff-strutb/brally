@@ -1183,7 +1183,7 @@ void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
  * the last hold goes, runs the teardown. Beware that the check is for
  * exactly zero after the decrement, so releasing one time too many drops the
  * count below zero and the teardown can never fire again. */
-/* @implements 0x1002AEA0 d3d BrFadeRelease */
+/* port-only body; Glide match is src/core/generated/0x10017F10.c */
 int BrFadeRelease(BrFadeState *pSt)
 {
     pSt->refCount -= 1;
