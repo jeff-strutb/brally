@@ -662,7 +662,9 @@ static int br_te_unit(BrTexExpSink *pS, int kind, const uint8_t *pu,
  * duplicates the picture left-right and top-bottom when the texture is
  * marked as mirrored, and it stops the moment the destination buffer is
  * full. */
-/* @implements 0x100250D0 glide BrTex3dExpand */
+/* Port reconstruction (not byte-exact). Matching twin is BrTex3dExpand at
+ * 0x100250D0, transcribed separately. */
+#ifndef BR_MATCHING_BUILD
 void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
                    const uint8_t *pTexels, const uint8_t *pPal, int32_t fmt,
                    int32_t fMirrorS, int32_t fMirrorT,
@@ -783,6 +785,7 @@ void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
         }
     }
 }
+#endif /* BR_MATCHING_BUILD */
 
 static int br_tex3d_bpp(const BrTex3dTile *pT)
 {
