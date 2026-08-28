@@ -31,7 +31,7 @@ reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original binary. Half of the game DLL's `.text` is transcribed into C,
-and **598 functions now reproduce the original bytes exactly** — driven by a
+and **599 functions now reproduce the original bytes exactly** — driven by a
 growing dictionary of proven compiler idioms (`docs/VC5-IDIOMS.md`), a
 Ghidra-assisted batch pipeline whose `--refine` hill-climb encodes those idioms
 as automatic source transforms, and an auto-filer (`tools/autofile.py`) that
@@ -86,15 +86,15 @@ The per-frame race render is the last major rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **736 functions · 75,489 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **741 functions · 76,136 bytes** — verify with `python3 tools/total.py` | |
 | Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
 | Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 598 of 1,178 transcribed functions · 48,969 bytes | `██████████░░░░░░░░░░` 51% |
-| Byte-exact, of all DLL `.text` | 48,969 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 10% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 599 of 1,178 transcribed functions · 48,994 bytes | `██████████░░░░░░░░░░` 51% |
+| Byte-exact, of all DLL `.text` | 48,994 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 10% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 37 matched · 4,675 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 45% |
+| SetVideo.exe (user region) | 40 matched · 4,890 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 47% |
 | BossRally.exe (user region) | 35 matched · 2,482 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
-| C++ EH class (tree-resident) | 38 functions · 16,503 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 41% of C++ code |
+| C++ EH class (tree-resident) | 39 functions · 16,910 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 41% of C++ code |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
 | Port test suite | **136 / 136 green** | `████████████████████` 100% |
