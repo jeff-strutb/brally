@@ -685,4 +685,32 @@ int FUN_10002980(int param_1)
   return 1;
 }
 
+
+extern int g_220C40;
+extern int g_brCdEnabled;
+extern int g_brCdMediaOk;
+extern int g_brCdPlaying;
+
+/* @implements 0x100027E0 glide FUN_100027e0 */
+/* auto-filed from ghidra --refine; transforms: stackshred */
+
+int FUN_100027e0(void)
+
+{
+  struct {
+  char local_10 [4];
+  int local_c;
+  int local_8;
+  int _pad_0;
+  } _fr;
+
+  
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    _fr.local_8 = 8;
+    mciSendCommandA(g_220C40,0x814,0x100,(unsigned long)_fr.local_10);
+    return _fr.local_c;
+  }
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
