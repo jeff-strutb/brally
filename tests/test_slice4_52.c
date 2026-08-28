@@ -202,11 +202,17 @@ BrUiCtl *BrUiCtlCtor(BrUiCtl *pThis)
  * 0x10074030  BrStrGet
  * ========================================================================== */
 
-/* STAND-IN: br_netmsg.o pulls in BrSub1003D950 which calls this COM
- * dispatcher; this test does not exercise that path, so a link-only stub
- * (real def is slice1_03.c, whose COM closure is tangled). */
+/* STAND-IN recorder for BrSub1003D9F0's real send target, BrComCallLocked68
+ * (IDirectPlay4A::Send; real def slice1_03.c, whose COM closure is tangled). */
+static struct { void *pThis, *a2; int32_t aPacket[2]; int cCall; } g_com;
 int BrComCallLocked68(void *pThis, void *a2, void *a3, void *a4, void *a5, void *a6)
-{ (void)pThis; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; return 0; }
+{
+    (void)a3; (void)a4; (void)a6;
+    g_com.pThis = pThis; g_com.a2 = a2;
+    memcpy(g_com.aPacket, a5, sizeof g_com.aPacket);
+    g_com.cCall++;
+    return 0;
+}
 
 static void test_strget(void)
 {
@@ -217,10 +223,12 @@ static void test_strget(void)
     g_apBrStrTable[1]             = (void *)s1;
     g_apBrStrTable[BR_HANDLE_MAX] = (void *)sMax;
 
-    /* Delegation: the wrapper's whole job is to supply the hardcoded table. */
+    /* The matched BrStrGet (0x10074030) INLINES the handle lookup rather than
+     * delegating to BrHandleLookup (the source's byte shape: both range tests
+     * jump to one shared `return NULL`).  So there is no delegation to observe
+     * -- assert the direct result instead (g_lastTable/g_lastHandle would only
+     * be set if it called the stand-in, which the real function does not). */
     assert(BrStrGet(1) == s1);
-    assert(g_lastTable == g_apBrStrTable);
-    assert(g_lastHandle == 1u);
 
     assert(BrStrGet(BR_HANDLE_MAX) == sMax);
 
@@ -449,28 +457,39 @@ static void test_5F530(void)
 
 static void test_3D9F0(void)
 {
-    BrDPlayLink link;
+    void *aSlots[3];
+    char  comObj;
 
-    memset(&link, 0, sizeof(link));
+    aSlots[0] = &comObj;
+    aSlots[1] = NULL;
+    aSlots[2] = (void *)&aSlots[1];
 
-    /* The wrapper's only job: hand the object through and read the gate out of
-     * 0x10AA288C rather than taking it as an argument. */
-    g_brAA288C  = 0;
-    g_tag3Calls = 0;
-    BrSub1003D9F0((struct BrOptUi *)(void *)&link);
-    assert(g_tag3Calls == 1);
-    assert(g_tag3Link == &link);
-    assert(g_tag3Gate == 0);
+    /* Matched BrSub1003D9F0 (br_netmsg.c): sends tag 0x60000003 via
+     * IDirectPlay4A::Send (BrComCallLocked68), gated on g_brAA288C == 0.  pUi
+     * is a slot array ([0]=com object, [2]=send arg).  DEFECT (reproduced):
+     * it never writes the payload's second dword, so only aPacket[0] is
+     * meaningful.  (The old BrDPlaySendTag3 "still forwards when gated" model
+     * was a pre-match decomp; the real function suppresses on the gate.) */
+    memset(&g_com, 0, sizeof g_com);
+    g_brAA288C = 0;
+    BrSub1003D9F0((struct BrOptUi *)aSlots);
+    assert(g_com.cCall == 1);
+    assert(g_com.pThis == &comObj);
+    assert(g_com.a2 == aSlots[2]);
+    assert((uint32_t)g_com.aPacket[0] == 0x60000003u);
 
+    /* Gate: g_brAA288C != 0 suppresses the send entirely. */
     g_brAA288C = 7;
-    BrSub1003D9F0((struct BrOptUi *)(void *)&link);
-    assert(g_tag3Calls == 2);
-    assert(g_tag3Gate == 7);
+    BrSub1003D9F0((struct BrOptUi *)aSlots);
+    assert(g_com.cCall == 1);
+    g_brAA288C = 0;
 
-    /* NULL is legal and still reaches the sender, which does its own test. */
+    /* NULL pUi, and a NULL com object (slot 0), both suppress. */
     BrSub1003D9F0(NULL);
-    assert(g_tag3Calls == 3);
-    assert(g_tag3Link == NULL);
+    assert(g_com.cCall == 1);
+    aSlots[0] = NULL;
+    BrSub1003D9F0((struct BrOptUi *)aSlots);
+    assert(g_com.cCall == 1);
 }
 
 /* ==========================================================================

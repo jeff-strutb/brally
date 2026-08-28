@@ -278,7 +278,11 @@ static const uint8_t *br_dl_skip(const uint8_t *p)
  * mis-read pDl as p, so the table must hold this version. */
 static const uint8_t *br_dl_skip_h(BrDl *pDl, const uint8_t *p)
 {
-    (void)pDl;
+    /* Every unmapped opcode routes here (handled opcodes use real handlers),
+     * so this is where the port's unhandled-command stat is counted.  Port-only
+     * -- the matching build uses the byte-exact br_dl_skip above, which cannot
+     * touch pDl. */
+    pDl->cUnhandled++;
     return p + 8;
 }
 
