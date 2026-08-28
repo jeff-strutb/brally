@@ -253,7 +253,7 @@ int BrChkFileSize(FILE **ppFile)
 /* WHAT IT DOES: closes a game data file and releases the handle and the copy
  * of the name that went with it. A failed close is treated as fatal and the
  * game quits. */
-/* @implements 0x10003290 d3d BrChkFClose */
+/* port-only body; Glide match is src/core/generated/0x100035E0.c */
 void BrChkFClose(FILE **ppFile)
 {
     BrChkFile *pf = ChkFromPun(ppFile);
