@@ -258,6 +258,9 @@ int32_t BrSub1003CC70(struct BrDPlay *pDPlay)
 
 static const struct BrDPlayLink *g_pLinkSent;
 static uint32_t                  g_valueSent;
+/* Recorder for the matched BrExt_1003DB00's real send target (BrComCallLocked68,
+ * IDirectPlay4A::Send) -- defined below, declared here. */
+static struct { void *pThis, *a2; int32_t aPacket[2]; int cCall; } g_com;
 
 int BrDPlaySendTag7(const struct BrDPlayLink *pLink, uint32_t value)
 {
@@ -358,26 +361,34 @@ static void Test1003DB00(void)
     struct BrObjA9D008 obj;
 
     ResetAll();
+    /* pObj is a slot array: [0] is the COM interface, [2] the send arg. */
     obj.f00 = &g_dplay;
     obj.f04 = NULL;
     obj.f08 = (void *)(uintptr_t)0x11u;
 
-    g_pLinkSent = NULL;
-    g_valueSent = 0;
+    memset(&g_com, 0, sizeof g_com);
     BrExt_1003DB00(&obj, (void *)(uintptr_t)0xABCDu);
 
-    /* The object is handed through UNCHANGED: this address is slice2_22's
-     * body under a second name, and the adapter must not re-gate it (tags 6,
-     * 7 and 8 deliberately ignore the 0x10AA288C gate the others honour). */
-    CHECK((const void *)g_pLinkSent == (const void *)&obj);
-    CHECK_EQ(g_valueSent, 0xABCDu);
-    CHECK_EQ(LogCount("sendTag7:43981"), 1);
+    /* The matched BrExt_1003DB00 (br_netmsg.c) sends tag 0x60000007 via
+     * IDirectPlay4A::Send (BrComCallLocked68) -- UNGATED (tags 6/7/8 ignore
+     * the 0x10AA288C gate).  The interface is slot 0, the arg slot 2, and the
+     * argument becomes the payload's second dword (narrowed to 32 bits). */
+    CHECK_EQ(g_com.cCall, 1);
+    CHECK(g_com.pThis == &g_dplay);
+    CHECK(g_com.a2 == (void *)(uintptr_t)0x11u);
+    CHECK_EQ((uint32_t)g_com.aPacket[0], 0x60000007u);
+    CHECK_EQ((uint32_t)g_com.aPacket[1], 0xABCDu);
 
     /* The payload word is the low 32 bits of the argument -- the documented
      * narrowing. On a 32-bit host this is the identity. */
-    LogReset();
     BrExt_1003DB00(&obj, (void *)(uintptr_t)0xFFFFFFFFu);
-    CHECK_EQ(g_valueSent, 0xFFFFFFFFu);
+    CHECK_EQ((uint32_t)g_com.aPacket[1], 0xFFFFFFFFu);
+
+    /* Ungated: a null interface (slot 0) still suppresses the send. */
+    obj.f00 = NULL;
+    g_com.cCall = 0;
+    BrExt_1003DB00(&obj, (void *)(uintptr_t)0x1u);
+    CHECK_EQ(g_com.cCall, 0);
 }
 
 /* ==========================================================================
@@ -916,11 +927,17 @@ static void Test173F0Bracket(void)
  * main
  * ========================================================================== */
 
-/* STAND-IN: br_netmsg.o pulls in BrSub1003D950 which calls this COM
- * dispatcher; this test does not exercise that path, so a link-only stub
- * (real def is slice1_03.c, whose COM closure is tangled). */
+/* STAND-IN recorder for BrExt_1003DB00's real send target, BrComCallLocked68
+ * (IDirectPlay4A::Send; real def slice1_03.c, whose COM closure is tangled).
+ * g_com is declared up top so Test1003DB00 can read it. */
 int BrComCallLocked68(void *pThis, void *a2, void *a3, void *a4, void *a5, void *a6)
-{ (void)pThis; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; return 0; }
+{
+    (void)a3; (void)a4; (void)a6;
+    g_com.pThis = pThis; g_com.a2 = a2;
+    memcpy(g_com.aPacket, a5, sizeof g_com.aPacket);
+    g_com.cCall++;
+    return 0;
+}
 
 int32_t g_brAA288C;  /* STAND-IN: slot-count global br_netmsg reads */
 

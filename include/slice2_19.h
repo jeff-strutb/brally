@@ -537,7 +537,10 @@ enum {
 };
 
 extern const unsigned char *g_BrPadModeBytes; /* 0x10B4E1D4 (deref'd once)  */
-extern int32_t g_Br6909B4;                    /* 0x106909B4  gates the ramp */
+extern int32_t g_Br6909B4;                    /* 0x106909B4  gates BrPadRamp  */
+extern int32_t g_br5CCB5C;                    /* 0x105CCB5C  gates the f34 ramp
+                                               * (confirmed vs orig bytes at
+                                               * 0x1002F54A: cmp [0x105ccb5c]) */
 extern const void *g_BrPadHookFn;             /* the literal 0x1002C500     */
 
 /* 0x10035CE0  __thiscall. Translate the raw pad into pPad->buttons, derive
@@ -555,7 +558,9 @@ extern const void *g_BrPadHookFn;             /* the literal 0x1002C500     */
  * discards it -- a dead load in the original, reproduced as a comment only.
  *
  * GOTCHA: the ramp compares `cur < limit` and then adds 2, so the counter can
- * finish one past the limit. It only advances while g_Br6909B4 == 0.
+ * finish one past the limit. The stick ramp (BrPadRamp) only advances while
+ * g_Br6909B4 == 0; the separate f34 ramp only advances while g_br5CCB5C == 0
+ * (two DIFFERENT freeze globals -- verified against the original bytes).
  *
  * GOTCHA: the second byte of the two probed at g_BrPadModeBytes is +7, not
  * +2 -- they are not adjacent. When either has bit 7 set, steering comes

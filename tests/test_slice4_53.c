@@ -45,6 +45,8 @@ static void *g_pPoolEmit;      static int g_nPoolEmit;
 static void *g_pRcaDest;       static size_t g_cbRca; static int g_iRcaCar, g_nRca;
 static const BrDPlayLink *g_pTag4Link; static int32_t g_gateTag4;
 static uint32_t g_valTag4;     static int g_nTag4;
+/* Recorder for the matched BrSub1003DA40's real send target (see below). */
+static struct { void *pThis, *a2; int32_t aPacket[2]; int cCall; } g_com;
 static BrPhaseCtx *g_pActCtx;  static int g_nAct;
 static BrPhaseCtx *g_pLeaveCtx; static void *g_pLeaveEnt; static int g_nLeave;
 static int g_nC020, g_seqC020, g_seqTimer;
@@ -376,22 +378,37 @@ static void TestForwarders(void)
     CHECK(memcmp(probe, before, sizeof probe) == 0,
           "0x1003551B must not touch its argument");
 
-    /* The gate comes from the global, and BOTH values must pass through --
-     * the suppression decision belongs to BrDPlaySendPair, not here. */
-    memset(&ui, 0, sizeof ui);
-    g_nTag4 = 0;
-    g_brAA288C = 0;
-    BrSub1003DA40(&ui, 0x77);
-    CHECK(g_nTag4 == 1, "0x1003DA40 -> BrDPlaySendTag4");
-    CHECK(g_pTag4Link == (const BrDPlayLink *)(const void *)&ui,
-          "link forwarded");
-    CHECK(g_gateTag4 == 0, "gate 0 forwarded");
-    CHECK(g_valTag4 == 0x77u, "value forwarded");
+    /* 0x1003DA40 (matched, br_netmsg.c): sends tag 0x60000004 with `a` as the
+     * payload via IDirectPlay4A::Send (BrComCallLocked68), gated on
+     * g_brAA288C == 0.  pUi is a slot array: [0] is the com object, [2] the
+     * send arg.  (The old BrDPlaySendTag4 model was a different, pre-match
+     * decomp -- the real function calls the COM Send directly.) */
+    {
+        void *aSlots[3];
+        char  comObj;
+        void *pArg = (void *)&aSlots[1];
+        aSlots[0] = &comObj; aSlots[1] = NULL; aSlots[2] = pArg;
 
-    g_brAA288C = 1;
-    BrSub1003DA40(&ui, 0x78);
-    CHECK(g_nTag4 == 2, "second send still forwards");
-    CHECK(g_gateTag4 == 1, "gate is READ FROM 0x10AA288C, not assumed zero");
+        memset(&g_com, 0, sizeof g_com);
+        g_brAA288C = 0;
+        BrSub1003DA40((BrOptUi *)aSlots, 0x77);
+        CHECK(g_com.cCall == 1, "0x1003DA40 -> BrComCallLocked68 (Send)");
+        CHECK(g_com.pThis == &comObj, "com object (slot 0) forwarded");
+        CHECK(g_com.a2 == pArg, "send arg (slot 2) forwarded");
+        CHECK(g_com.aPacket[0] == (int32_t)0x60000004u, "tag 0x60000004");
+        CHECK(g_com.aPacket[1] == 0x77, "value forwarded as payload");
+
+        /* The gate: g_brAA288C != 0 suppresses the send entirely. */
+        g_brAA288C = 1;
+        BrSub1003DA40((BrOptUi *)aSlots, 0x78);
+        CHECK(g_com.cCall == 1, "g_brAA288C != 0 suppresses the send");
+        g_brAA288C = 0;
+
+        /* A null slot 0 (no link up) also suppresses. */
+        aSlots[0] = NULL;
+        BrSub1003DA40((BrOptUi *)aSlots, 0x79);
+        CHECK(g_com.cCall == 1, "null com object suppresses the send");
+    }
 
     /* Phase forwarders: inert while unwired, exact once wired. */
     memset(&ctx, 0, sizeof ctx);
@@ -471,11 +488,18 @@ static void TestTimer(void)
 
 /* ====================================================================== */
 
-/* STAND-IN: br_netmsg.o pulls in BrSub1003D950 which calls this COM
- * dispatcher; this test does not exercise that path, so a link-only stub
- * (real def is slice1_03.c, whose COM closure is tangled). */
+/* STAND-IN recorder for BrComCallLocked68 (IDirectPlay4A::Send via the
+ * crit-section wrapper; real def slice1_03.c, whose COM closure is tangled).
+ * BrSub1003DA40 forwards its send through this, so capture the call.
+ * (g_com is declared up top so the test body above can read it.) */
 int BrComCallLocked68(void *pThis, void *a2, void *a3, void *a4, void *a5, void *a6)
-{ (void)pThis; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; return 0; }
+{
+    (void)a3; (void)a4; (void)a6;
+    g_com.pThis = pThis; g_com.a2 = a2;
+    memcpy(g_com.aPacket, a5, sizeof g_com.aPacket);
+    g_com.cCall++;
+    return 0;
+}
 
 int main(void)
 {

@@ -107,11 +107,22 @@ int32_t g_brB4E1D0;
 int32_t g_brB4E1E0;
 int     g_brFlag6909E0;
 void   *g_brP680584;
-/* slice3_45.o references this pad-mode table (owned by slice2_19, whose full
- * link closure pulls Mat4/Pool/etc.); stand it in with a real 8-byte buffer so
- * the module's g_BrPadModeBytes[i] reads are valid rather than a NULL deref. */
-static unsigned char s_padModeBytes_stub[8];
-const unsigned char *g_BrPadModeBytes = s_padModeBytes_stub;
+/* slice3_45.o's BrInputIsDown reads bindings via `g_BrPadModeBytes + 6*action`
+ * -- the SAME storage as g_brInput.pBindings, aliased on purpose (see the
+ * slice3_45.c note).  Point it at the test's g_binds[] in InputClear() below;
+ * BrInputBinding is exactly 6 bytes, so 6*action lands on g_binds[action].
+ * (Stood in here rather than dragging slice2_19's Mat4/Pool link closure.) */
+const unsigned char *g_BrPadModeBytes;
+
+/* BrInputIsDown (glide 0x10071710) reads the FLAT glide input-state globals
+ * (0x118EE... range), NOT the D3D g_brInput struct (0x118AB...) the rest of
+ * this test uses -- same cross-binary split as BrFadeTick.  Declare a layout-
+ * compatible view here (BrInJoy is local to slice3_45.c; stride 0x110, lX at
+ * offset 0) so TestIsDown can drive what the function actually reads. */
+extern uint8_t g_brInKeys[2][256];
+extern int32_t g_brInKeyCur, g_brInJoyCur;
+struct TestInJoy { int32_t lX, lY, lZ; unsigned char pad[0x110 - 0x0C]; };
+extern struct TestInJoy g_brInJoy[2];
 
 /* ====================================================================== */
 /* Fake COM objects                                                        */
@@ -503,6 +514,13 @@ static void InputClear(void)
     /* An unbound entry is code 0 / kind 0, which IS a live binding to scan
      * code 0. Park the alternates on a key that is never pressed. */
     g_brInput.pBindings = g_binds;
+    g_BrPadModeBytes = (const unsigned char *)g_binds;  /* same storage, aliased */
+    /* Reset + select the current buffer for the glide flat globals too (what
+     * BrInputIsDown reads). */
+    memset(g_brInKeys, 0, sizeof g_brInKeys);
+    memset(g_brInJoy, 0, sizeof g_brInJoy);
+    g_brInKeyCur = 1;
+    g_brInJoyCur = 1;
     g_brInput.iKeyCur = 1;
     g_brInput.iKeyPrev = 0;
     g_brInput.iJoyCur = 1;
@@ -521,17 +539,17 @@ static void TestIsDown(void)
     g_binds[2].code1 = 0xFE; g_binds[2].kind1 = 0xFF;  /* alternate disabled */
     g_binds[2].code2 = 0xFD; g_binds[2].kind2 = 0xFF;
     CHECK(BrInputIsDown(2) == 0);
-    g_brInput.aKeys[1][0x11] = 0x80;
+    g_brInKeys[1][0x11] = 0x80;
     CHECK(BrInputIsDown(2) == 0x80);
     /* The PREVIOUS buffer is irrelevant to "is down". */
-    g_brInput.aKeys[1][0x11] = 0;
-    g_brInput.aKeys[0][0x11] = 0x80;
+    g_brInKeys[1][0x11] = 0;
+    g_brInKeys[0][0x11] = 0x80;
     CHECK(BrInputIsDown(2) == 0);
 
     /* An alternate whose kind byte is 0 is consulted and ORed in. */
     g_binds[2].kind1 = 0;
     g_binds[2].code1 = 0x22;
-    g_brInput.aKeys[1][0x22] = 0x80;
+    g_brInKeys[1][0x22] = 0x80;
     CHECK(BrInputIsDown(2) == 0x80);
     g_binds[2].kind1 = 0xFF;
     CHECK(BrInputIsDown(2) == 0);
@@ -542,13 +560,13 @@ static void TestIsDown(void)
     g_binds[4].kind0 = BR_BIND_JOYXNEG;
     g_binds[4].kind1 = 0xFF; g_binds[4].kind2 = 0xFF;
 
-    g_brInput.aJoy[1].lX = 50;
+    g_brInJoy[1].lX = 50;
     CHECK(BrInputIsDown(3) == 0);
-    g_brInput.aJoy[1].lX = 51;
+    g_brInJoy[1].lX = 51;
     CHECK(BrInputIsDown(3) == 0x80);
-    g_brInput.aJoy[1].lX = -50;
+    g_brInJoy[1].lX = -50;
     CHECK(BrInputIsDown(4) == 0);
-    g_brInput.aJoy[1].lX = -51;
+    g_brInJoy[1].lX = -51;
     CHECK(BrInputIsDown(4) == 0x80);
 
     /* An unrecognised kind reads as "not pressed" rather than falling into

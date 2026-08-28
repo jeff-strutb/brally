@@ -627,14 +627,15 @@ static void test_pad_derived_bits_and_ramp(void)
     BrPadTranslate(&g_pad);
     CHECK(g_pad.f34 == 6);
 
-    /* g_Br6909B4 non-zero freezes the ramp. */
+    /* g_br5CCB5C non-zero freezes the f34 ramp (NOT g_Br6909B4 -- that gates
+     * the separate stick ramp; the original at 0x1002F54A cmp's [0x105ccb5c]). */
     PadReset();
     g_pad.f2C = 1;
     g_pad.f34 = 0; g_pad.f3C = 5;
-    g_Br6909B4 = 1;
+    g_br5CCB5C = 1;
     BrPadTranslate(&g_pad);
     CHECK(g_pad.f34 == 0);
-    g_Br6909B4 = 0;
+    g_br5CCB5C = 0;
 }
 
 /* Exact float equality, because these are transcriptions of specific bytes
