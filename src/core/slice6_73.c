@@ -1585,4 +1585,47 @@ void FUN_1005a420(void)
   return;
 }
 
+
+int FUN_100378c0();
+extern char DAT_1007b0e0[];
+extern char DAT_100acaf8[];
+extern int g_brPhaseAA2904;
+extern char s_RallySeason_100acb00[];
+
+/* @implements 0x10055AF0 glide FUN_10055af0 */
+/* auto-filed from ghidra --refine; transforms: stringops */
+
+int __stdcall FUN_10055af0(short param_1)
+{
+  char cVar1;
+  FILE *_File;
+  unsigned int sVar2;
+  char *pcVar3;
+  unsigned int uVar4;
+  unsigned int uVar5;
+  int iVar6;
+  char *pcVar7;
+  char *pcVar8;
+  char acStack_20c [4];
+  char acStack_208 [260];
+  char acStack_104 [260];
+  
+  strcpy(acStack_208, s_RallySeason_100acb00);
+  _itoa((int)param_1,acStack_20c,10);
+  pcVar3 = acStack_208; strcat(acStack_208, acStack_20c);
+  pcVar3 = acStack_208; strcat(acStack_208, DAT_100acaf8);
+  _File = fopen(acStack_208,DAT_1007b0e0);
+  if (_File != (FILE *)0x0) {
+    memset(acStack_104, 0, 260);
+    sVar2 = fread(acStack_104,1,0x80,_File);
+    if ((int)sVar2 < 0x80) {
+      FUN_100378c0(7);
+    }
+    pcVar3 = _strupr(acStack_104);
+    strcpy((char *)(*(int *)(g_brPhaseAA2904 + 0xc0) + 4 + param_1 * 0x104), pcVar3);
+    fclose(_File);
+  }
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
