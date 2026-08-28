@@ -739,6 +739,25 @@ the caller AND flipped a helper to match for free.
   parms, 109 B /O2, was short-29). Frame residue 52→51; 0x10002580
   is not prey.
 
+- **Shared-tail goto, not early `return 0` (`misscode`).** DX5
+  WaveOpenFile success is `goto TEMPCLEANUP` joining cleanup's
+  `*phmmio = hmmio; return nError`. Ghidra prints `*out = h; return 0`
+  (or `return err` inside `if (err == 0)`), so /O2 peepholes
+  `xor eax,eax` and the cleanup store goes through ecx — 7 diffs on
+  top of the esi/edi colouring wall (35 diffs) while the outer
+  `if (h==0) err; else BODY` is still there. Orig duplicates
+  `mov [eax], edi; mov eax, esi; pops; add esp, 0x24; ret`
+  (`8bc65f5e5d5b83c424c3`) at both rets. Rewrite the success wrap to
+  `if (err != 0) goto CLEAN; goto TEMPCLEANUP;` and label the last
+  `*out = h; return err`. Distinguisher: two `ret`s share an 8-byte
+  tail, or `sub esp, 0x24` + `cmp ,0x10; jb`. Also: Ghidra shredded
+  PCMWAVEFORMAT into 4 ints so `mmioRead(..., 0x10)` is only known to
+  write one dword (short-25, frame 0x18 vs orig 0x24); `0xf < cksize`
+  is `cmp ,0xf; jbe`, orig `cmp ,0x10; jb`; after `mmioClose(h,0)` orig
+  `xor r,r` is `h = 0` before `*out = h`. Folded orig-gated
+  only-if-better (`misscode` in `refine_function`, one candidate in
+  `_refine_candidates`). Proven MATCH 0x1006FFC0 (425 B /O2).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
