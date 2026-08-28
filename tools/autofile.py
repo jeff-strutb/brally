@@ -32,6 +32,7 @@ import sys
 from datetime import datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
 WORK_DIR = os.path.join(ROOT, 'build', 'ghidra_work')
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 LEARNINGS = os.path.join(ROOT, 'build', 'ghidra_learnings.csv')
@@ -209,12 +210,71 @@ def report_rows_for(relfile):
                 if r['file'] == relfile}
 
 
+def _strip_stale_implements(relfile, va):
+    """Comment out @implements lines in relfile that parse to `va` (Glide
+    space, including a d3d tag remapped via shared.csv). Returns True if
+    a line was rewritten."""
+    from match_diff import get_shared_map
+    path = os.path.join(ROOT, relfile)
+    if not os.path.exists(path):
+        return False
+    shared = get_shared_map()
+    pat = re.compile(r'@implements\s+0x([0-9A-Fa-f]+)\s+(\w+)\s+(\w+)')
+    lines = open(path).read().splitlines(True)
+    out = []
+    changed = False
+    for line in lines:
+        m = pat.search(line)
+        if m:
+            iva = int(m.group(1), 16)
+            if m.group(2) == 'd3d' and iva in shared:
+                iva = shared[iva]
+            if iva == va:
+                line = ('/* port-only body; Glide match is '
+                        'src/core/generated/0x%08X.c */\n' % va)
+                changed = True
+        out.append(line)
+    if changed:
+        with open(path, 'w') as f:
+            f.writelines(out)
+    return changed
+
+
 def file_one(row, report_rows, spans, tagged_vas, dry_run, no_commit, logrows):
     va_hex = row['va']
     va = int(va_hex, 16)
     name = row['name']
-    if va_hex.lower() in tagged_vas:
-        log_row(logrows, va_hex, 'skip', 'already tagged in tree')
+    existing = [r for r in report_rows if r['va'].lower() == va_hex.lower()]
+    if any(r.get('status') == 'match' for r in existing):
+        log_row(logrows, va_hex, 'skip', 'already matched in tree')
+        return False
+    stale = [r for r in existing if r.get('status') != 'match']
+    if stale:
+        # Ghidra wrap MATCH vs a slice DIFF tag (often a d3d address
+        # remapped through shared.csv). File as generated/ and drop the
+        # stale @implements so report.csv has one row.
+        # Proven 0x100035E0 / 0x10017F10.
+        if dry_run:
+            log_row(logrows, va_hex, 'would-replace',
+                    stale[0].get('file', ''))
+            return False
+        if file_standalone(row, va_hex, name, logrows, no_commit):
+            for r in stale:
+                srcf = r.get('file') or ''
+                if srcf and _strip_stale_implements(srcf, va):
+                    run_sweep(srcf)
+                    if not no_commit:
+                        subprocess.run(['git', 'add', srcf], cwd=ROOT)
+                        subprocess.run(
+                            ['git', 'commit', '-m',
+                             '%s: drop stale @implements; Glide match is '
+                             'generated/%s.c' % (os.path.basename(srcf),
+                                                 va_hex),
+                             '--', srcf], cwd=ROOT, capture_output=True)
+            return True
+        log_row(logrows, va_hex, 'flag',
+                'standalone replace failed; left DIFF tag in %s'
+                % stale[0].get('file', ''))
         return False
     src_path = os.path.join(WORK_DIR, va_hex + '.refined.c')
     if not os.path.exists(src_path):
@@ -409,10 +469,14 @@ def main():
     with open(REPORT) as f:
         report_rows = list(csv.DictReader(f))
     tagged_vas = {r['va'].lower() for r in report_rows}
+    tagged_match = {r['va'].lower() for r in report_rows
+                    if r.get('status') == 'match'}
     spans = slice_map(report_rows)
 
-    todo = [r for r in matches if r['va'].lower() not in tagged_vas]
-    print('%d MATCH rows, %d not yet in tree' % (len(matches), len(todo)))
+    # DIFF-tagged VAs whose Ghidra wrap now MATCHes still need filing
+    # (0x10017F10 BrFadeRelease: slice d3d tag remaps to a 0-diff wrap).
+    todo = [r for r in matches if r['va'].lower() not in tagged_match]
+    print('%d MATCH rows, %d not yet a tree match' % (len(matches), len(todo)))
     logrows = []
     filed = 0
     for row in todo:                       # strictly serial (rule 10)

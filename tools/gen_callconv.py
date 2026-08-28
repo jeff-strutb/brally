@@ -942,6 +942,16 @@ def transform(src, calls):
         seen_fp.add(dat)
         arity = c['arity'] or 0
         if c['conv'] == 'stdcall':
+            # 0-arg cdecl and 0-arg stdcall are identical at the caller
+            # (`call` / `ret`, no add-esp). Do not rewrite — a stdcall
+            # decl is a no-op on FUN_ names and C2444 on wrap-renamed
+            # ones when the insert lands between the signature and `{`.
+            # Proven 0x10017F10 BrFadeRelease (as-is MATCH; stdcall-0
+            # was a compile fail).
+            if arity == 0:
+                report.append(
+                    'funcptr %s 0-arg stdcall ≡ cdecl; no rewrite' % dat)
+                continue
             decl_lines.append(
                 'extern int (__stdcall *%s)(%s);' % (dat, _ints(arity)))
             report.append('funcptr %s → __stdcall arity=%d' % (dat, arity))
@@ -996,15 +1006,28 @@ def transform(src, calls):
     if decl_lines:
         extra += '\n'.join(decl_lines) + '\n'
     if extra:
-        # Insert immediately before the function definition — NOT inside
-        # `#ifndef NAN` (math.h defines NAN, so decls placed there vanish).
-        sigs = list(re.finditer(
-            r'\n[^\n]*\b(?:FUN_|THUNK_)[0-9a-fA-F]+\s*\(', head))
-        if sigs:
-            pos = sigs[-1].start()
-            head = head[:pos] + '\n' + extra + head[pos:]
+        # Insert after the last forward-declaration semicolon, BEFORE the
+        # function signature. `head` is split at the body's `{`, so it
+        # already contains `int Foo(void)\n`. Appending extra to head
+        # lands decls BETWEEN the signature and `{` — C2444 — whenever
+        # wrap renamed FUN_ to a report.csv name (the FUN_/THUNK_ regex
+        # misses those). Proven 0x10017F10 BrFadeRelease, 0x1003D4F0
+        # BrOpt3FA0, 0x100706B0 BrDiAcquire.
+        last = head.rfind(';')
+        if last >= 0:
+            nl = head.find('\n', last)
+            if nl < 0:
+                nl = last + 1
+            head = head[:nl + 1] + extra + head[nl + 1:]
         else:
-            head = head + extra
+            sigs = list(re.finditer(
+                r'\n[^\n]*\b(?:FUN_|THUNK_)[0-9a-fA-F]+\s*\(', head))
+            if sigs:
+                pos = sigs[-1].start()
+                head = head[:pos] + '\n' + extra + head[pos:]
+            else:
+                # never append after the signature
+                head = extra + head
 
     return head + new_body, report
 

@@ -1664,14 +1664,72 @@ def _cc_pe():
     return _CC_PE[0]
 
 
-def refine_function(row, max_rounds=4, max_cands=80):
+def _is_callshape(va_hex, pe):
+    """True if orig has the callconv-class shape (FF15 stdcall, Glide
+    thunk, COM/thiscall vtable, .data funcptr)."""
+    try:
+        import gen_callconv as cc
+        calls = cc.analyze_orig(int(va_hex, 16), pe)
+    except Exception:
+        return False
+    for c in calls:
+        n = c.get('name') or ''
+        if c['kind'] in ('glide-thunk', 'thunk') and n.startswith(('gr', 'gu')):
+            return True
+        if c['kind'] == 'funcptr' and c['conv'] == 'stdcall':
+            return True
+        if (c['kind'] == 'vtable'
+                and c['conv'] in ('thiscall', 'stdcall-com', 'stdcall')):
+            return True
+        if c['kind'] == 'import' and c['conv'] == 'stdcall':
+            return True
+    return False
+
+
+def _wrap_va_to_work(va_hex):
+    """Write build/ghidra_work/<va>.c from a decomp wrap. Returns
+    (func_name, orig_size) or None. Wrap skipped these when report.csv
+    already had a DIFF tag (load_report_vas is all rows, not just match)."""
+    import match_sweep
+    funcs = load_functions()
+    target = None
+    for f in funcs:
+        if int(f['va'], 16) == int(va_hex, 16):
+            target = f
+            break
+    if target is None:
+        return None
+    gmap = load_globals()
+    fn_names = load_fn_names()
+    KNOWN_FN_NAMES.update(fn_names.values())
+    func_name, cleaned = prepare_function(target, gmap, fn_names)
+    if cleaned is None:
+        return None
+    orig_file = os.path.join(ORIG_DIR, va_hex + '.bin')
+    orig_bytes = match_sweep.load_orig(orig_file, va_hex)
+    cleaned = fix_calling_convention(cleaned, func_name, orig_bytes)
+    src = wrap_for_compile(cleaned, va_hex)
+    work_dir = os.path.join(ROOT, 'build', 'ghidra_work')
+    os.makedirs(work_dir, exist_ok=True)
+    with open(os.path.join(work_dir, va_hex + '.c'), 'w') as f:
+        f.write(src)
+    return func_name, len(orig_bytes)
+
+
+def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
     """Hill-climb one CLOSE/DIFF function. Returns an updated learnings row
     and writes build/ghidra_work/<va>.refined.c when it improved."""
     va_hex = row['va']
     work = os.path.join(ROOT, 'build', 'ghidra_work', va_hex + '.c')
     orig_file = os.path.join(ORIG_DIR, va_hex + '.bin')
-    if not (os.path.exists(work) and os.path.exists(orig_file)):
+    if not os.path.exists(orig_file):
         return row
+    if not os.path.exists(work):
+        wrapped = _wrap_va_to_work(va_hex)
+        if wrapped is None:
+            return row
+        row = dict(row)
+        row['name'] = wrapped[0]
     src = open(work).read()
     import match_sweep
     orig_bytes = match_sweep.load_orig(orig_file, va_hex)
@@ -1769,11 +1827,39 @@ def refine_function(row, max_rounds=4, max_cands=80):
         opts = [cur_opt]
     start = cur
     ncomp = 0
-    for _ in range(max_rounds):
+    # Hill-climb only inside the diffs cap. Newly wrapped call-shape rows
+    # enter with a dummy diffs=1 so as-is MATCH is recorded; a 300-diff
+    # wrap must not burn 80 cands.
+    do_climb = cur == 0 or max_diffs is None or cur <= max_diffs
+    cc_calls = None
+    try:
+        import gen_callconv as _cc_mod
+        cc_calls = _cc_mod.analyze_orig(int(va_hex, 16), _cc_pe())
+    except Exception:
+        cc_calls = None
+
+    def _cands(src):
+        # Re-offer callconv each round so it COMBINES with generators
+        # (notes recipe: one candidate, not a search). The seed above
+        # already applied it when better-or-equal; this catches the
+        # case a later transform changes the body and the convention
+        # rewrite can fire again. only-if-better is nd < cur below.
+        if cc_calls is not None:
+            try:
+                import gen_callconv as _cc
+                _csrc, _crep = _cc.transform(src, cc_calls)
+                if _crep and _csrc != src:
+                    yield ('callconv', _csrc)
+            except Exception:
+                pass
+        for item in _refine_candidates(src):
+            yield item
+
+    for _ in range(max_rounds if do_climb else 0):
         if cur == 0:
             break
         improved = False
-        for label, cand in _refine_candidates(src):
+        for label, cand in _cands(src):
             ncomp += 1
             if ncomp > max_cands:
                 break
@@ -1838,10 +1924,57 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     # never re-climb a VA report.csv already calls matched (19 such rows
     # burned compiles in the first wide run). --va overrides for testing.
     tree_matched = set()
+    report_rows = []
     if os.path.exists(REPORT_CSV):
         with open(REPORT_CSV) as f:
-            tree_matched = {r['va'].lower() for r in csv.DictReader(f)
+            report_rows = list(csv.DictReader(f))
+            tree_matched = {r['va'].lower() for r in report_rows
                             if r['status'] == 'match'}
+    # Wrap call-shape VAs that never entered learnings. wrap_for_compile
+    # skips anything already in report.csv (DIFF tags included), so the
+    # seed never saw them. 0x10017F10 BrFadeRelease wraps 0-diff as-is;
+    # callconv used to C2444 because wrap renamed FUN_ → BrFadeRelease.
+    learned = {r['va'].lower() for r in rows}
+    if report_rows and not target_va:
+        pe = _cc_pe()
+        seeded = 0
+        for rr in report_rows:
+            if rr['status'] == 'match':
+                continue
+            va = rr['va']
+            if va.lower() in learned:
+                continue
+            orig_file = os.path.join(ORIG_DIR, va + '.bin')
+            decomp = os.path.join(GHIDRA_DIR, va + '.c')
+            if not (os.path.exists(orig_file) and os.path.exists(decomp)):
+                continue
+            try:
+                osz = os.path.getsize(orig_file)
+            except OSError:
+                continue
+            if osz < min_size:
+                continue
+            if not _is_callshape(va, pe):
+                continue
+            work = os.path.join(ROOT, 'build', 'ghidra_work', va + '.c')
+            name = rr.get('name') or ('FUN_' + va[2:])
+            if not os.path.exists(work):
+                wrapped = _wrap_va_to_work(va)
+                if wrapped is None:
+                    continue
+                name, osz = wrapped
+            rows.append({
+                'va': va, 'size': str(osz), 'name': name,
+                'result': 'DIFF(1)', 'diffs': '1',
+                'orig_size': str(osz), 'recomp_size': '0',
+                'opt': '/O2', 'compile_errors': '',
+                'timestamp': '', 'divergence': '',
+            })
+            learned.add(va.lower())
+            seeded += 1
+        if seeded:
+            print('seeded %d unlearned call-shape wraps into refine'
+                  % seeded, flush=True)
     todo = []
     for r in rows:
         try:
@@ -1869,7 +2002,8 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     with ProcessPoolExecutor(max_workers=WORKERS) as pool:
         # max_rounds/max_cands ride along explicitly: workers are spawned
         # (macOS), so mutated parent globals would never reach them.
-        futs = {pool.submit(refine_function, r, max_rounds, max_cands): r['va']
+        futs = {pool.submit(refine_function, r, max_rounds, max_cands,
+                            max_diffs): r['va']
                 for r in todo}
         for fut in as_completed(futs):
             try:
