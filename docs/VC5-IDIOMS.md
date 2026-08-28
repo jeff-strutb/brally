@@ -673,6 +673,43 @@ the caller AND flipped a helper to match for free.
   (leftover high bits) — the source passes the ushort, not a
   reconstructed dword. Proven 0x100250D0.
 
+- **Nested call, not address-temp + inner call.** Orig
+  `push &DAT; push 0; call GetModuleHandleA; push eax; call f` is
+  `f(GetModuleHandleA(0), &DAT)` (args right-to-left, address already
+  on the stack before the inner call). Ghidra CSEs `&DAT` into a temp
+  (`ppi = &DAT; h = GetModuleHandleA(0); f(h, ppi)`), so the address
+  sits in a register and the first push is the inner call — first
+  divergence at that push. Same family: `msg(BrStrGet(id), hr)` is
+  `push hr; push id; call BrStrGet; add esp,4; push eax; call msg;
+  add esp,8`. Ghidra's `t = BrStrGet(id, hr); msg(t)` gives BrStrGet
+  a phantom second arg (orig is cdecl 1) and drops hr from msg.
+  Proven 0x10035400 (DirectPlay init, 307 B MATCH /O2).
+
+- **Flag stores belong in both arms, `!= 0` fall-through first.** Orig
+  `cmp [g], edi; je z; mov [a],2; mov [b], ebx; jmp join; z: mov [a],ebx;
+  mov [b], edi`. Ghidra's `if (g == 0) a=1; else a=2; b = (uint)(g != 0)`
+  re-tests `g` and emits a second compare. Spell the stores inside the
+  arms; `if (g != 0)` so the nonzero arm is the fall-through. The
+  refine pass's `DAT:float` on a `cmp dword, edi` flag is poison.
+  Proven 0x10035400.
+
+- **Load the flag, then store the sibling.** Orig `mov eax, [flag];
+  mov [other], imm; cmp eax, edi`. Ghidra stores `other` first then
+  reloads `flag`. A named temp (`t = flag; other = imm; if (t == 0)`)
+  restores the load-first order. Proven 0x10035400 (DAT_10ac4090 /
+  DAT_10ac5d2c).
+
+- **Map-split join is not a function — `long+N` is the tail.** The
+  analyzer cut 0x10035400 at the if/else join `mov [DAT_10ac4090], ebx`
+  (0x10035533, 174 B, no prologue). Ghidra correctly decompiled one
+  C function; wrap's recomp is 496 B vs the 307 B prefix. score()
+  trims to orig length, so the full source MATCHes 0x10035400 and the
+  extra bytes ARE 0x10035533. 0x10035533 cannot be a standalone C
+  function. nestcall-addr prey in the decomp corpus is exactly these
+  two files (same dump). Do not mint; the remaining `long` residue is
+  mixed (prologue-0, type-refine, other), not this shape. Proven
+  0x10035400 2026-08-27.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
