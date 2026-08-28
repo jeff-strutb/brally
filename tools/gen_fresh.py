@@ -13,8 +13,10 @@ flagged across the 2026-08-27 fresh DLL batches (VC5-IDIOMS-fresh{1,2,3}.md).
    args emit `mov bl; push ebx` (zero/one-register pattern).
 
 Each generator yields `(label, mutated_source)` in the `_refine_candidates`
-style. This does not write ghidra_work, does not edit ghidra_to_match.py,
-and does not commit. Decision logic: docs/gen-fresh-notes.md.
+style. stringops is folded as one combined candidate in
+`_refine_candidates`; charret is orig-gated in `refine_function` next to
+callconv (only-if-better). i64glob / ucharbx stay here until a wider
+add/adc or `8a; 53` batch. Decision logic: docs/gen-fresh-notes.md.
 
     python3 tools/gen_fresh.py --dry-run
     python3 tools/gen_fresh.py --dry-run --pool untrans
