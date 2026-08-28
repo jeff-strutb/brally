@@ -1992,6 +1992,45 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
                 todo.append(r)
         elif 0 < d <= max_diffs:
             todo.append(r)
+    if target_va and not todo:
+        # --va of an unlearned DIFF-tagged function: wrap from decomp
+        # and climb regardless of the diffs cap.
+        tv = '0x%08X' % int(target_va, 16)
+        work = os.path.join(ROOT, 'build', 'ghidra_work', tv + '.c')
+        orig_file = os.path.join(ORIG_DIR, tv + '.bin')
+        if os.path.exists(orig_file) and not any(
+                r['va'].lower() == tv.lower() for r in rows):
+            if not os.path.exists(work):
+                wrapped = _wrap_va_to_work(tv)
+                if wrapped:
+                    name, osz = wrapped
+                    rows.append({
+                        'va': tv, 'size': str(osz), 'name': name,
+                        'result': 'DIFF(1)', 'diffs': '1',
+                        'orig_size': str(osz), 'recomp_size': '0',
+                        'opt': '/O2', 'compile_errors': '',
+                        'timestamp': '', 'divergence': '',
+                    })
+            if os.path.exists(work):
+                rec = next((r for r in rows
+                            if r['va'].lower() == tv.lower()), None)
+                if rec is None:
+                    rec = {
+                        'va': tv, 'size': '0',
+                        'name': 'FUN_' + tv[2:],
+                        'result': 'DIFF(1)', 'diffs': '1',
+                        'orig_size': str(os.path.getsize(orig_file)),
+                        'recomp_size': '0', 'opt': '/O2',
+                        'compile_errors': '', 'timestamp': '',
+                        'divergence': '',
+                    }
+                    rows.append(rec)
+                try:
+                    d = int(rec.get('diffs') or 1)
+                except ValueError:
+                    d = 1
+                if d != 0:
+                    todo.append(rec)
     # Biggest payoff first, so an interrupted run banked the valuable half.
     todo.sort(key=lambda r: -int(r.get('orig_size') or 0))
     print(f'refining {len(todo)} functions with 1..{max_diffs} diffs '
