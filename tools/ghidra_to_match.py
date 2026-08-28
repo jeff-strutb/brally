@@ -995,8 +995,10 @@ def _refine_candidates(src):
     """Yield (label, new_src) single-edit variants of a wrapped source."""
     # Combined folds first (one candidate each, not a search) so they always
     # take a slot in the max_cands budget — (a) retype alone can emit 80+
-    # cands. Decision: docs/gen-structural2-notes.md. lebound is
-    # intentionally NOT folded (3 prey / 184, 0 MATCH).
+    # cands. Decision: docs/gen-structural2-notes.md (retnotemp/ge0;
+    # lebound is NOT folded, 3 prey / 184, 0 MATCH) and
+    # docs/gen-fresh-notes.md (stringops; charret is orig-gated in
+    # refine_function next to callconv).
     import gen_structural2 as _gs2
     # (q) `i = f(...); return i != 0;` -> `return f(...) != 0;` (and `== 0`,
     #     and Ghidra's `return (uint)(i != 0)`). Orig of the call-in-the-
@@ -1020,6 +1022,21 @@ def _refine_candidates(src):
     _new, _ = _gs2.transform_ge0(src)
     if _new != src:
         yield ('ge0', _new)
+    # (s) exploded `repne scasb` / `rep movsd` / `rep stosd` -> strcpy /
+    #     strcat / strlen / memset / memcpy, plus `extern char s_*[]`
+    #     (address push). Wrap's _strcpy_sub / _strlen_sub / _memset_sub
+    #     miss walker-rewind, signed `i = -1`, dest-scan strcat, and
+    #     dword-only stosd/movsd. One candidate, not a search. strarr
+    #     first so memcpy does not steal scasb copies. Decision:
+    #     docs/gen-fresh-notes.md. Proven MATCH 0x10038490 / 0x10038550 /
+    #     0x100387C0 (strlen:cmp), 0x10023900 / 0x10033C90 (memcpy:imm),
+    #     0x100418C0 (memset:imm), 0x10055AF0 (strcpy/strcat + memset
+    #     0x104 + char[]). Do not convert a stride-loop inner copy
+    #     (0x100013F0) or a comparison-only scasb (0x10040A90).
+    import gen_fresh as _gf
+    _new, _ = _gf.transform_stringops(src)
+    if _new != src:
+        yield ('stringops', _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
     # (a) retype one extern global
@@ -1256,6 +1273,26 @@ def refine_function(row, max_rounds=4, max_cands=80):
                     src = cc_src
                     cur, cur_opt, cur_rb, cur_rl = cc
                     applied.append('callconv')
+        except Exception:
+            pass
+        # char-width return: orig `mov al,1; pop*; ret` (`b0 01 5b c3`)
+        # came from `char` / BrBool, not Ghidra's `undefined4` -> wrap
+        # `int` (`b8 01 00 00 00 c3`). Orig-gated — an ungated int->char
+        # would compile every `return 1` as `mov al,1` and burn the cand
+        # budget. Only-if-better, same as callconv. Decision:
+        # docs/gen-fresh-notes.md. Proven MATCH 0x10054390 (already
+        # tree) and 0x10069930. Skips fnstsw helpers whose AL is a
+        # status nibble (0x10006A10; _DEF_SIG already skips ushort).
+        try:
+            import gen_fresh as _gf
+            if _gf.char_width_orig(orig_bytes):
+                cr_src, cr_labs = _gf.transform_charret(src, orig=orig_bytes)
+                if cr_labs and cr_src != src:
+                    cr = _score_source(cr_src, func_name, orig_bytes, opts, tag)
+                    if cr[0] is not None and cr[0] <= cur:
+                        src = cr_src
+                        cur, cur_opt, cur_rb, cur_rl = cr
+                        applied.append('charret')
         except Exception:
             pass
     if os.environ.get('BR_REFINE_DEBUG'):

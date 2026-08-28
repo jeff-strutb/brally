@@ -614,6 +614,25 @@ the caller AND flipped a helper to match for free.
   0x1001E220 (FPS screen-W/2 setter): the untouched Ghidra body scored 0
   the moment the preamble was stripped.  The family: 0x10017F30,
   0x1001E1E0/200/220/250/280/2B0, 0x100376B0/E0, 0x1005A480.
+- **`/Oi` string ops are CRT calls, not exploded scans.** Orig
+  `or ecx,-1; f2 ae; not ecx; shr ecx,2; f3 a5` is strcpy/strcat;
+  `or ecx,-1; f2 ae; not ecx; dec ecx; je` is `if (strlen(s) != 0)`
+  (Ghidra's signed `i = -1; … if (i != -2)`); `xor eax,eax; mov ecx,N;
+  f3 ab` is `memset(p, 0, N*4)`; `mov ecx,N; f3 a5` with no preceding
+  scasb is memcpy of a known size. `extern int s_*` loads the first
+  dword (`mov r,[s]; push r`); orig `push offset s` is `extern char
+  s_*[]`. Folded as one combined candidate (`stringops` in
+  `_refine_candidates`). Do not convert a stride-loop inner copy
+  (0x100013F0) or a comparison-only scasb (0x10040A90). Proven
+  0x10038490 / 0x10038550 / 0x100387C0 (strlen), 0x10023900 /
+  0x10033C90 (memcpy), 0x100418C0 (memset), 0x10055AF0 (strcpy/strcat +
+  memset 0x104 + char[]).
+- **Byte return is `char`, not `int`.** Orig `mov al,1; pop*; ret`
+  (`b0 01 5b c3`) vs wrap `int`'s `b8 01 00 00 00 c3`. Also `xor al,al`
+  / `or al,0xff` before the pops (`return (char)0xff`). Orig-gated in
+  `refine_function` (ungated `int`→`char` would rewrite every `return 1`).
+  Skip fnstsw helpers whose AL is a status nibble (0x10006A10). Proven
+  0x10054390 (tree) and 0x10069930.
 
 ## Cost model (measured, 2026-08-22 timed test)
 

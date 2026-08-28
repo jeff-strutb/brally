@@ -1,12 +1,13 @@
 # Fresh-batch generators — decision logic
 
-Standalone transforms (`tools/gen_fresh.py`). Do **not** copy this file
-into `ghidra_to_match.py` blindly: fold the *high-value* ones into
-`_refine_candidates` as one candidate per function (charret is orig-gated
-and folds in `refine_function`, next to callconv). Proven against
-BRGlide.dll orig bytes. Residue: 184 unmatched refine rows
-(`python3 tools/ghidra_to_match.py --residue`). Untranscribed: 564
-`build/ghidra_decomp/<VA>.c` with no work file and no tree MATCH.
+Standalone transforms (`tools/gen_fresh.py`). stringops + charret were
+folded 2026-08-27: stringops as one combined candidate in
+`_refine_candidates` (with retnotemp/ge0); charret orig-gated in
+`refine_function` next to callconv, only-if-better. i64glob / ucharbx
+stay standalone. Proven against BRGlide.dll orig bytes. Residue: 184
+unmatched refine rows (`python3 tools/ghidra_to_match.py --residue`).
+Untranscribed: 564 `build/ghidra_decomp/<VA>.c` with no work file and no
+tree MATCH.
 
 Four recurring idioms from the fresh DLL batches (VC5-IDIOMS-fresh{1,2,3}.md).
 Each generator yields `(label, mutated_source)` in the `_refine_candidates`
@@ -23,8 +24,8 @@ Hit-rate that matters is from-decomp.
 
 | generator | prey (decomp) | moved | MATCH | worse | fold? |
 |---|---|---|---|---|---|
-| **stringops** | 48 / 184 residue; **138 / 564** untrans | **27 + 98** | **2 + 24** | 5 + 3 | **FOLD** |
-| **charret** | 7 / 184; 9 / 564 | **4 + 4** | **1 + 1** | 0 | **FOLD** (orig-gated) |
+| **stringops** | 48 / 184 residue; **138 / 564** untrans | **27 + 98** | **2 + 24** | 5 + 3 | **FOLDED** 2026-08-27 |
+| **charret** | 7 / 184; 9 / 564 | **4 + 4** | **1 + 1** | 0 | **FOLDED** (orig-gated) |
 | i64glob | 2 / 184; 4 / 564 (1 fire) | 1 | 0 | 0 | **SKIP** as a search; seed the decl |
 | ucharbx | 13 / 184; 19 / 564 | 4 + 8 | 0 | 5 + 5 | **SKIP** as combined; CONCAT gated on orig `8a; 53` |
 
