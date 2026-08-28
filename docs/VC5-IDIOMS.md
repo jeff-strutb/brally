@@ -736,20 +736,22 @@ the caller AND flipped a helper to match for free.
   (`FUN_100250d0(..., char,char,char,char,char,char,char,char, int)`).
   Orig I4 loads `mov r, [esp+hi]; and r, 0xff`. maskOdd stays `int`.
   Proven 0x100250D0 / 0x10024E60.
-- **0x100250D0 insn-3 wall: lodEnd copy is DCE'd.** Orig
-  `mov ecx, [esp+0x90]` (param_10) while eax still holds param_4, then
-  the three pushes, store param_4, `mov eax, [esp+0x98]` (param_9),
-  `xor edi,edi; cmp eax, ecx; store lod; jge ret` — so lod ends in
-  eax and the loop top is `shl eax, 6; mov ebx, aTile`. A source
-  `lodEnd = param_10` is copy-propagated; first-use becomes param_9
-  (edx) then param_10 (eax), `cmp edx, eax`, and the cascade is
-  lod-in-edx / cbOut-in-ebx / siz-in-ecx instead of
-  ebp=cbOut, esi=pOut, ebx=aTile. Volatile lodEnd loads param_10
-  *before* param_4 (or into ebp if the latch uses lodEnd). Comma
-  `iVar10 = (lodEnd = param_10, param_9)`, `param_10*0`,
-  `param_4+(param_10-param_10)`, and `*(volatile int *)&param_10`
-  all DCE. Do not re-run those. Need a non-DCE scratch use of
-  param_10 after param_4 is in eax and before param_9 is loaded.
+- **A for/while bound that is a raw parameter is hoisted into a scratch
+  reg at LOOP SETUP — before the pushes.** THE fix for the 0x100250D0
+  insn-3 wall (broken 2026-08-27). Orig loads `mov ecx, [esp+0x90]`
+  (param_10) at orig+0x7 while eax still holds param_4. A `do-while`
+  references the bound only at the bottom latch, so the top guard loads
+  param_9 lazily into edx instead (the wrong insn 3). Writing the loop
+  as `for (lod = param_9; lod < param_10; lod++)` — bound is the RAW
+  parameter, no `lodEnd` local — makes VC5 hoist param_10 into ecx at
+  setup, reproducing orig+0x7 through +0x10 exactly. Use `lod < param_10`
+  (emits `cmp eax, ecx`), NOT `param_10 > lod` (emits `cmp ecx, eax`).
+  The lesson generalizes: an early load of a loop bound in scratch that
+  a do-while defers is a control-flow-shape fix, not a spill trick — no
+  prologue permutation reaches it (the whole merge/DCE/pragma do-not-
+  re-run family stays dead; see docs/idioms-A.md). Next divergence
+  (+0x11, param_4 spill vs esi-cache) is body-driven register pressure.
+  Proven 0x100250D0.
 
 - **0x10002580 store-burst is a coloring wall, not a frame layout.**
   Residue stamp `frame@0xe/68` is a classifier artifact: bytes 0..0xd

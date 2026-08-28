@@ -47,7 +47,16 @@ source-permuter (thousands of compile-and-score iterations per function) was
 built and run against them and confirmed they are **not reachable by source
 permutation** (the three largest, 1.4–1.8 KB each, moved <3% and never flipped
 their register coloring); they are accepted as link-time / hand-asm cases, not
-search targets.
+search targets. **One caveat, proven 2026-08-27:** a wall is not a coloring
+wall until control-flow shape is ruled out. The 8,480-byte texture-expand
+routine (`BrTex3dExpand`, 0x100250D0) was filed here — "blocked at instruction
+three" — but it was never a coloring wall: writing its LOD loop as a `for` over
+the raw bound instead of a `do`-while makes the compiler hoist the bound into
+the same register the original uses, and the first divergence moves from the
+third instruction to +0x11 (prologue and all three pushes byte-exact). Its
+remaining body gap is a source-shaped register-rotation problem (still open,
+`@implements` off), not an accepted wall. Screen "coloring walls" for
+control-flow causes before retiring them.
 
 **Two large classes were reopened as workstreams.** (1) The ~97 KB of C++
 exception-handling functions (20% of the DLL `.text`) that push a
