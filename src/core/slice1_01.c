@@ -713,4 +713,33 @@ int FUN_100027e0(void)
   return 0;
 }
 
+
+extern int g_220C40;
+extern int g_brCdTrackLast;
+
+/* @implements 0x10002870 glide FUN_10002870 */
+/* auto-filed from ghidra --refine; transforms: stackshred */
+
+MCIERROR FUN_10002870(int param_1,unsigned int param_2)
+
+{
+  MCIERROR MVar1;
+  struct {
+  int local_c;
+  unsigned int local_8;
+  unsigned int local_4;
+  } _fr;
+
+  
+  _fr.local_8 = param_2 & 0xff;
+  _fr.local_4 = g_brCdTrackLast & 0xff;
+  _fr.local_c = param_1;
+  MVar1 = mciSendCommandA(g_220C40,0x806,0xd,(unsigned long)&_fr.local_c);
+  if (MVar1 != 0) {
+    mciSendCommandA(g_220C40,0x804,0,0);
+    return MVar1;
+  }
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
