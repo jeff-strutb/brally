@@ -710,6 +710,47 @@ the caller AND flipped a helper to match for free.
   mixed (prologue-0, type-refine, other), not this shape. Proven
   0x10035400 2026-08-27.
 
+- **I4 blend channels as unsigned char locals restore `sub esp, 0x68`.**
+  Orig stores each 5-bit result (`(inten * d + lo) >> 3` and `>> 7` for
+  A) as `mov byte [esp+0x13], dl` (and +0x9c / +0x7c) because the value
+  is live across the next `imul 0x80808081` signed-div-by-255. Intensity
+  is `mov [slot], al; mov ecx, [slot]; and ecx, 0xff`. Ghidra's one
+  giant pack expression keeps those bytes in registers and the frame is
+  `sub esp, 0x64` (one dword short). Naming `unsigned char bI4inten,
+  chA, chR, chG, chB` and assigning them before the 1555 pack restores
+  `83 ec 68` and instruction two (`mov eax, [esp+0x78]` = param_4).
+  Proven 0x100250D0.
+- **Ghidra SSA-reuses the tile pointer as IDX4 width.** Orig
+  `lea edx, [lod*64+aTile]; mov [esp+0x30], edx` and every pitch-add
+  is `mov eax, [esp+0x30]; mov ecx, [eax+8]`. Ghidra's
+  `iVar5 = 1 << (*(int *)(param_11+0x60)-1)` overwrites the pointer, so
+  pitch has to spell `param_11+0x48`. Keep iVar5 as `&tile[lod]` for
+  the whole LOD body; IDX4 width is a separate temp (iVar17). Proven
+  0x100250D0 IDX4 arm.
+- **Budget checks are `iVar22 >= cbMax`, not `cbMax <= iVar22`.** Orig
+  `add edi, 2; cmp edi, ebp; jge ret` (count vs cbOut in ebp). Ghidra
+  prints `if (param_2 <= iVar22)` which emits `cmp cbMax, edi`. Flip
+  every guard (`iVar22 + 2 >= cbMax` for the mid-texel test). Proven
+  0x100250D0.
+- **Expand hi/lo are `unsigned char`.** Matched caller 0x10024E60
+  (`FUN_100250d0(..., char,char,char,char,char,char,char,char, int)`).
+  Orig I4 loads `mov r, [esp+hi]; and r, 0xff`. maskOdd stays `int`.
+  Proven 0x100250D0 / 0x10024E60.
+- **0x100250D0 insn-3 wall: lodEnd copy is DCE'd.** Orig
+  `mov ecx, [esp+0x90]` (param_10) while eax still holds param_4, then
+  the three pushes, store param_4, `mov eax, [esp+0x98]` (param_9),
+  `xor edi,edi; cmp eax, ecx; store lod; jge ret` — so lod ends in
+  eax and the loop top is `shl eax, 6; mov ebx, aTile`. A source
+  `lodEnd = param_10` is copy-propagated; first-use becomes param_9
+  (edx) then param_10 (eax), `cmp edx, eax`, and the cascade is
+  lod-in-edx / cbOut-in-ebx / siz-in-ecx instead of
+  ebp=cbOut, esi=pOut, ebx=aTile. Volatile lodEnd loads param_10
+  *before* param_4 (or into ebp if the latch uses lodEnd). Comma
+  `iVar10 = (lodEnd = param_10, param_9)`, `param_10*0`,
+  `param_4+(param_10-param_10)`, and `*(volatile int *)&param_10`
+  all DCE. Do not re-run those. Need a non-DCE scratch use of
+  param_10 after param_4 is in eax and before param_9 is loaded.
+
 - **0x10002580 store-burst is a coloring wall, not a frame layout.**
   Residue stamp `frame@0xe/68` is a classifier artifact: bytes 0..0xd
   match (`mov eax,[g]; push ebx; push esi; xor esi,esi; cmp eax,esi;
