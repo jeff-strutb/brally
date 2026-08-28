@@ -40,7 +40,15 @@ def load():
     rep = {}
     with open(REPORT) as f:
         for r in csv.DictReader(f):
-            rep[int(r["va"], 16)] = r
+            va = int(r["va"], 16)
+            # An address may carry more than one row (e.g. a function filed
+            # into its own module while a stale diff row from its old slice
+            # lingers). A VA is matched if ANY row matches — prefer a match
+            # row over a non-match one, independent of file order, so the
+            # count agrees with total.py's unique-matched-VA total.
+            prev = rep.get(va)
+            if prev is None or (r["status"] == "match" and prev["status"] != "match"):
+                rep[va] = r
     # C++ EH matches verified off-report (total.py manifest) — mark them
     # matched so the DLL map reflects them, grouped into their own region.
     cpp = _match_set("cpp_matches.csv")
