@@ -752,6 +752,66 @@ the caller AND flipped a helper to match for free.
   re-run family stays dead; see docs/idioms-A.md). Next divergence
   (+0x11, param_4 spill vs esi-cache) is body-driven register pressure.
   Proven 0x100250D0.
+- **Ghidra FOLDS two consecutive `count += N` into one `count += 2N` and
+  retests the first guard against the pre-value.** THE fix for the
+  0x100250D0 body (broken 2026-08-28; +1152 -> +512 B, +234 -> +81 insns).
+  Ghidra prints `*p = A; if (c + 2 >= b) EXIT; c = c + 4; p[1] = B;
+  p = p + 2; if (c >= b) EXIT;` for a source that reads
+  `c += 2; *p = A; p += 1; if (c >= b) EXIT; c += 2; *p = B; p += 1;
+  if (c >= b) EXIT;` — counter bumped BEFORE each store, pointer advanced
+  by ONE element per store, one budget check per store on its own control
+  edge. Semantically identical (the counter on the first exit path is
+  dead — that path returns) but the folded form lets VC5 coalesce the
+  pair into a batch (`mov [r]; mov [r+2]; add r,4`), which drops the
+  output pointer's register pressure, frees esi, and ROTATES THE
+  ALLOCATION ACROSS THE WHOLE FUNCTION. Generator:
+  `tools/gen_countfold.py`, wired as the `countfold` refine candidate
+  (12 of 16 sites unaided). Proven 0x100250D0 x15.
+  **The lesson that generalizes past this function: a whole-function
+  register rotation is usually a SYMPTOM of a structural source defect in
+  the body, not a terminal coloring wall.** 0x100250D0 was written off as
+  a coloring wall TWICE on the strength of a raw diff count; the rotation
+  dissolved once the source defect was fixed. Rank residue by the
+  REGISTER-BLIND multiset gap (`tools/fnmatch/`, `regnorm` mode), never by
+  raw diff count — raw read 1097/863 where the honest structural gap was
+  432/198.
+- **A 16-bit lvalue narrows the whole feeding expression.** `*pOut = ((((chA
+  << 5 | chR) << 5 | chG) << 5) | chB)` with `unsigned char` channel locals
+  and an `unsigned short *pOut` makes VC5 load each channel with a
+  16-BIT-destination `movzx ax, byte ptr [esp+S]` — only the low half is
+  live, because the store is `mov word ptr [esi-2], dx`. Spelling the
+  operands `(unsigned int)` instead forces `and edx,0xff` plus the
+  in-register widening idiom `xor dx,dx; mov dl,al`. `(unsigned short)` and
+  `(unsigned char)` operand casts are byte-identical — it is the LVALUE
+  width that decides. Proven 0x100250D0.
+- **A plain `unsigned char` local with 2+ uses is homed in a byte slot and
+  read back as `mov r32, [slot]; and r32, 0xff`** — not `movzx r32, byte
+  ptr [slot]` — and VC5 CSEs that widening across every use. So a distinct
+  byte local per loop body vs one shared local is byte-identical. Proven
+  0x100250D0.
+- **Narrow a callee prototype when orig pushes without zero-extension.**
+  `FUN_100271f0(unsigned int)` vs `(unsigned short)`: orig passes
+  `mov dx, word ptr [ecx+eax*2]; push edx` with no widening, so the wider
+  prototype costs 4 bytes of zero-extension at every call site (32 B over
+  8 calls). Return width is byte-neutral. Proven 0x100250D0.
+- **Ghidra canonicalises `if (ctr >= bound) break;` to
+  `if (bound <= ctr) break;`.** Byte-neutral at /O2 but it flips the
+  memory-operand side (`cmp reg,[esp+S]` vs `cmp [esp+S],reg`), so it moves
+  the register-blind gap — worth restoring when reading residue. By
+  contrast `0 < X` vs `X > 0` and integer `imul` operand order are both
+  fully byte-identical (54 and 6 sites measured). Proven 0x100250D0.
+- **Ghidra's `if ((mask & flag) == 0) { A } else { B }` inverts the source's
+  arm order whenever B is the inline fall-through block in the bytes.**
+  Read the jcc sense at the test to decide which arm the source wrote
+  first. Not universal — of six mask sites in 0x100250D0 three wanted the
+  flip and three were already right, so MEASURE each one. Proven 0x100250D0.
+- **MSVC 5.0 PACKS ORDINARY LOCALS INTO DEAD PARAMETER SLOTS.** Orig writes
+  both bytes and dwords into param_9's and param_1's incoming arg slots
+  ([esp+0x9c], [esp+0x7c]) at 0x100250D0. Therefore **Ghidra's `param_N`
+  scratch names are slot coincidences, not evidence about the source, and
+  renaming a local to chase orig's slot number is NOT a lever** — every
+  such rename measured worse (+16 B IDX4 arm, +32 B CI8 arm, +16 B I8 arm).
+  This retires a whole speculative class. Proven 0x100250D0.
 
 - **0x10002580 store-burst is a coloring wall, not a frame layout.**
   Residue stamp `frame@0xe/68` is a classifier artifact: bytes 0..0xd

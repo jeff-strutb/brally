@@ -1231,6 +1231,24 @@ def _refine_candidates(src):
     _new, _labs = transform_misscode(src)
     if _labs and _new != src:
         yield ('misscode', _new)
+    # (v) Ghidra's counter-fold across a two-store budget-checked loop body:
+    #     `*p = A; if (c + N >= b) EXIT; c = c + 2N; p[1] = B; p = p + 2;
+    #      if (c >= b) EXIT;` -> the original's two `c += N` halves, pOut
+    #     advanced by ONE element per store, one budget check per store on its
+    #     own control edge. The two forms are semantically identical (the
+    #     counter on the first exit path is dead, that path returns), but the
+    #     folded one lets VC5 batch the pair (`mov [r]; mov [r+2]; add r,4`),
+    #     which frees the output pointer's register and rotates the allocation
+    #     across the whole function. One candidate, not a search. Generic
+    #     artifact -- any decompiled loop writing two elements per iteration
+    #     under a running byte budget comes back folded. Proven 0x100250D0
+    #     (12 sites fire unaided: -160 B / -24 insns; 15 sites with the
+    #     ping-pong ones hand-finished: +1152 -> +512 B, +234 -> +81 insns).
+    #     Decision: docs/idioms-A.md.
+    import gen_countfold as _gcf
+    _new, _n = _gcf.transform_countfold(src)
+    if _n and _new != src:
+        yield ('countfold', _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
     # (a) retype one extern global

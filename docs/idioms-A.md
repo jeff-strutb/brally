@@ -1,274 +1,183 @@
-# 0x100250D0 insn-3 wall — BROKEN 2026-08-27
+# 0x100250D0 BrTex3dExpand — two walls broken
 
-BrTex3dExpand, 8480 B, `src/core/drawing/br_tex3d_expand.c`.
+`src/core/drawing/br_tex3d_expand.c`, 8480 B, 2407 insns. Second/third
+largest function in `BRGlide.dll`.
 
-**The insn-3 wall is BROKEN. The earlier "coloring wall, do not grind,
-mechanically impossible" verdict was WRONG.** First divergence moved from
-orig+0x7 to orig+0x11: the whole prologue plus all three pushes now match
-byte-for-byte. Tree file carries the fix (`for`-loop shape); `@implements`
-stays OFF (full body not matched yet).
+## State (2026-08-28)
 
-## The crack: for-loop with a raw-parameter bound
+|                          | 2026-08-26 | 2026-08-27 | 2026-08-28 |
+|--------------------------|-----------:|-----------:|-----------:|
+| bytes (orig 8480)        |      +1152 |      +1152 |   **+512** |
+| insns (orig 2407)        |       +234 |       +234 |    **+81** |
+| first divergence         |      +0x07 |      +0x11 |  **+0x14** |
+| register-blind gap (E+M) |    432+198 |    432+198 |**195+114** |
 
-Replace the `lodEnd = param_10; if (iVar10 >= lodEnd) return; do {...}
-while (iVar10 < param_10);` shape with a `for` whose bound is the raw
-parameter:
+`@implements` stays OFF. Two IDX4 arms are now instruction-for-instruction
+identical to the original, differing only in the global `esi = pOut` register
+rotation.
+
+**Both historical verdicts on this function were WRONG.** The "insn-3 coloring
+wall, mechanically impossible, do not grind" verdict fell on 2026-08-27 to a
+control-flow restructure. The follow-on "it is ONE lever, the `*p++` store
+spelling — a Fable-shaped insight sub-wall" framing was also wrong: the lever
+was never the pointer, it was the **counter**, and it was mechanical.
+
+---
+
+## Wall 1 (broken 2026-08-27): the prologue, insn 3
+
+Write the lod loop as a `for` whose bound is the RAW parameter, with the
+`lodEnd` local deleted:
 
 ```c
-iVar3 = (int)param_4;
-iVar22 = 0;
-cbMax = param_2;
-puVar21 = param_1;
 for (iVar10 = param_9; iVar10 < param_10; iVar10 = iVar10 + 1) {
-  ...
-  puVar21 = puVar9;
-}
 ```
 
-Drop the `int lodEnd;` local entirely. `iVar10 < param_10` (NOT
-`param_10 > iVar10`) is required: it emits `cmp eax, ecx` matching orig;
-the reversed spelling emits `cmp ecx, eax`.
+VC5 hoists a `for`/`while` bound that is a raw parameter into a scratch
+register at LOOP SETUP — `mov ecx, [esp+0x90]` at orig+0x7, before the pushes,
+while eax still holds param_4. A `do-while` references the bound only at the
+bottom latch, so its top guard loads param_9 lazily into edx instead. Use
+`iVar10 < param_10`, not `param_10 > iVar10`: the first emits `cmp eax, ecx`
+like the original, the reversed spelling emits `cmp ecx, eax`.
 
-**Why it works (and why every prologue probe failed):** a `for`/`while`
-loop bound that is a raw parameter is hoisted into a scratch register at
-LOOP SETUP — VC5 emits `mov ecx, [esp+0x90]` (param_10) at orig+0x7,
-before the pushes, while eax still holds param_4. A `do-while` references
-the bound only at the bottom latch, so the top guard instead loads
-param_9 lazily into edx (the documented wrong insn 3). Confirmed: all
-four do-while variants that inline raw param_10 into the top guard STILL
-diverge at +0x7 (`scratch_dw_1.obj`, w1-w4). The
-[[merge-lodEnd]] refutation ("topologically impossible") was correct
-about *local renaming* but a control-flow restructure changes the web
-graph itself — that is the escape it missed.
+The old "topologically impossible" refutation was right about LOCAL RENAMING
+(VC5 substitutes per-web; a single-def single-use prologue web always
+collapses) but a control-flow restructure changes the web graph itself.
 
-**Do-not-re-run confirmed dead FOR THE PROLOGUE** (all still +0x7): the
-merge-lodEnd family (iVar5/cbMax/one/iVar17 -> lodEnd, per-web split),
-the entire flag/pragma grid (one cl.exe patch level; /O2 is correct),
-and the do-while-with-raw-param_10 guards (w1-w4). See VC5-IDIOMS.md.
+## Wall 2 (broken 2026-08-28): Ghidra's counter-fold — the big one
 
-## Remaining divergence at +0x11 is BODY-DRIVEN, not prologue
+**Ghidra merges two consecutive `count += N` updates into one `count += 2N`
+and rewrites the first budget test against the pre-value.** What it prints:
 
-orig `mov [esp+0x58], eax` (spill param_4 to a slot) vs recomp
-`mov esi, [esp+0x78]` (cache param_4 in esi). esi is FREE in the recomp
-only because the body does not yet claim it for `pOut`. The honest /O2
-build is +1152 B / +234 insns over orig, all in three source-fixable
-body families (recon 2026-08-27):
-1. texel-store idiom — orig `*p++` per half-texel (`add esi,2; mov
-   [esi-2],dx`, budget check between halves); recomp batches
-   `mov [r]; mov [r+2]; add r,4`. ~100 insns.
-2. arm order / condition sense — whole arms in a different layout
-   (palette path out-of-line in orig, inline in recomp; maskOdd test
-   je vs jne); ~2 kB of moved blocks.
-3. temp caching — named locals cache tile fields orig reads as direct
-   memory operands (`mov r,[tile+0x24]` x8 etc.); +114 loads/+70 stores.
+```c
+*puVar21 = A;
+if (iVar22 + 2 >= cbMax) { return; }
+iVar22 = iVar22 + 4;
+puVar21[1] = B;
+puVar21 = puVar21 + 2;
+if (iVar22 >= cbMax) { return; }
+```
 
-Fix the body families -> pOut claims esi -> param_4 spills -> +0x11
-converges. That is the path to full match. Attack body-first now, not
-the prologue.
+What the original source says:
 
-## Body grind attempt 2026-08-27 (7-arm workflow) — NEGATIVE, key lesson
+```c
+iVar22 = iVar22 + 2;
+*puVar21 = A;
+puVar21 = puVar21 + 1;
+if (iVar22 >= cbMax) { return; }
+iVar22 = iVar22 + 2;
+*puVar21 = B;
+puVar21 = puVar21 + 1;
+if (iVar22 >= cbMax) { return; }
+```
 
-A workflow mapped 9 store arms, wrote per-arm `*p++` rewrites, and
-integrated them. Result did NOT converge and was NOT landed (tree stays
-at the clean for-loop checkpoint, first-div +0x11, frame 0x68).
+Counter bumped BEFORE each store, pOut advanced by ONE element per store, one
+budget check per store on its own control edge. The two forms are semantically
+identical — the counter value on the first exit path is dead, because that path
+returns.
 
-**Lesson: the naive `*p++` C spelling does NOT reproduce orig's store
-idiom.** The agents wrote `*puVar21 = x; puVar21 = puVar21 + 1;` with the
-budget check between the two half-texels — and VC5 STILL batched the
-stores (`mov [r]; mov [r+2]; add r,4`). So esi never flipped to pOut,
-param_4 never spilled, and the whole-function register rotation
-(`cmp edi,ebx` recomp x62 vs `cmp edi,ebp` orig x61) stayed live. The
-candidate's lower raw insn count (2544) was partly from DROPPING locals,
-which shrank the frame to 0x60 (breaks orig 0x68) — a regression, not
-convergence.
+**Why it dominates.** The folded form lets VC5 coalesce the store pair into a
+batch (`mov [r]; mov [r+2]; add r,4`). Batching drops pOut's register pressure,
+which frees esi, which rotates the allocation across the entire function
+(`cmp edi,ebx` recomp vs `cmp edi,ebp` orig, x61). Every previous session read
+that rotation as the disease. It was the symptom.
 
-**Open sub-wall for a Fable session (this is the real remaining work):**
-what source shape makes VC5 emit `mov word ptr [esi], bx; add esi, 2`
-(true `*p++`, pOut in esi) instead of coalescing the two half-texel
-stores? Candidates NOT yet tried: (a) hoist pOut into its own pointer
-variable that is the ONLY thing incremented (no parallel index like
-iVar22 advancing in lockstep — the twinned `iVar22 += 2` next to
-`puVar21 += 1` may be why VC5 batches); (b) split the two half-texel
-writes across a real control-flow edge (the budget check) so they cannot
-coalesce; (c) force param_4/iVar3 to spill directly (find the source
-that denies it a callee-saved reg) and let pOut fall into esi. The
-paired EXTRA/MISSING multiset shapes (see below) all collapse together
-once esi flips — it is ONE lever, not nine. Metric: scratchpad/mdiff.py
-(drive 2641 -> 2407). The winning candidate source and full gap list are
-in the workflow output (tasks/w4gmalb6r.output).
+Applied at 15 of 16 sites (nibble-expand, mirror-copy, forward-copy, palette,
+colour-interp, 4-way unrolled): **+1152 → +512 bytes, +234 → +81 instructions.**
 
-## Confirmed transcription fix (adopt independently)
+Generalised as `tools/gen_countfold.py` and wired into `_refine_candidates` as
+the `countfold` candidate. Unaided it fires on 12 of the 16 sites for
+−160 B / −24 insns; the 4 it skips have a `puVar9`/`puVar21` ping-pong that
+needs the exit-path values proved by hand. **Bulk payoff outside this function
+is currently ZERO** — the `X + N >= Y` guard shape does not occur anywhere in
+the 2139-file `build/ghidra_decomp/` corpus. Keep the generator anyway: it is
+free in the candidate list and it is where the knowledge lives.
 
-`iVar17 -> param_9` in the IDX4-16bit arm (file lines ~80-203): orig
-stores that arm's width into param_9's arg slot [esp+0x9c] (0x1002517e).
--3 insns toward orig. Not yet applied to the tree.
+## Four independent classes landed alongside it
+
+1. **Colour channels are `unsigned char` locals**, packed through an
+   `unsigned short` lvalue: `chR/chG/chB/chA`, not `(unsigned int)` int
+   arithmetic. Orig homes them in byte stack slots and reads them back with a
+   16-bit-destination `movzx ax, byte ptr [esp+S]` — VC5 uses the narrow load
+   because the destination is a 16-bit lvalue, so only the low half is live.
+   The tree's `(unsigned int)` casts forced `and edx,0xff` plus
+   `xor dx,dx; mov dl,al` instead.
+2. **`FUN_100271f0` takes `unsigned short`.** A wider prototype costs 32 bytes
+   of zero-extension across the 8 call sites. Orig passes
+   `mov dx, word ptr [ecx+eax*2]; push edx` with no widening. (The return
+   width is byte-neutral.)
+3. **Group-loop bound tests are `if (ctr >= bound) break;`** — Ghidra
+   canonicalises this to `if (bound <= ctr)`. Byte-neutral, but it moves the
+   register-blind gap by 25.
+4. **Three mask arms are written odd-path-first**: `if ((row & mask) != 0)
+   { ODD } else { PLAIN }`. Read the jcc sense at the test to decide which arm
+   the source wrote first — orig lays the fall-through arm inline. The OTHER
+   three mask sites were measured and are correct as Ghidra printed them; do
+   not flip them.
+
+Plus an explicit `if (param_9 >= param_10) return;` guard before the
+pOut/cbOut/aTile sinks (orig loads those only after the `jge ret`). This is
+what moved the first divergence from +0x11 to +0x14.
+
+---
+
+## MEASURED NEGATIVES — do not re-run
+
+- **`iVar17 -> param_9` and every other rename chasing orig's stack-slot
+  numbers.** MSVC 5.0 PACKS ORDINARY LOCALS INTO DEAD PARAMETER SLOTS, so
+  Ghidra's `param_N` scratch names are slot coincidences, not evidence about
+  the source. Orig really does write the IDX4 arm's width into param_9's arg
+  slot at 0x1002517e — and the rename still costs +16 B / +4 insns
+  post-transform (+32 B for the CI8 arm, +16 B for the I8 arm). **This
+  supersedes the "confirmed transcription fix, −3 insns" claim in the older
+  dossier and in memory; that measurement was taken pre-transform and does not
+  survive.**
+- Flipping `0 < X` to `X > 0`: byte-identical, 54 sites.
+- Swapping integer `imul` operand order: byte-identical.
+- `bVar11 = *pbVar12++;` folding the load pointer's bump: worse.
+- Naive `*p++` on the load pointer in the param_8 copy-back loops: worse.
+- A distinct `unsigned char` local per I4 loop body instead of a shared one:
+  byte-identical (VC5 CSEs the widening).
+- `do{}while` → `for` on the two `local_24`/`iVar13` group loops of arm 1:
+  worse. (Four other such conversions measured better and are in the tree.)
+- The whole flag/pragma grid, and the do-while-with-raw-param_10 prologue
+  guards (w1–w4). One cl.exe patch level; `/O2` is correct.
+
+## The metric, and the lesson about it
+
+Use the **register-blind** multiset diff, not the raw one:
+
+    sh tools/fnmatch/vdiff.sh <TAG>              # scorecard
+    sh tools/fnmatch/vdiff.sh <TAG> "" regnorm 30
+
+Raw read 1097 extra / 863 missing on the pre-transform file — a wall. Register
+normalised it read 432 / 198: roughly 650 of that "difference" was ONE global
+register rotation, and the real structural gap was under half the raw number.
+
+**A whole-function register rotation is usually a SYMPTOM of a structural
+source defect elsewhere in the body, not a terminal wall.** This function was
+declared a coloring wall twice on the strength of the raw number. Rank residue
+by the register-blind gap.
+
+## Remaining gap (+512 B / +81 insns), register-blind
+
+| | |
+|---|---|
+| +34/+32 | `mov [esp+S], R` / `mov R, [esp+S]` — 66 extra stack accesses |
+| −27/−4  | `inc R` / `dec R` vs +13 `add R, I`, +10 `lea R, [R+I]` |
+| −10/−7  | `lea R, [R+R]` / `add R, R` — orig doubles in-register |
+| −7/+7   | `imul R, R` vs `imul R, [esp+S]` — orig folds nothing from memory |
+| −7/−5   | `mov B, [R]` / `mov byte [R], B` — the 8-bit-output arms still batch |
+| −6/−3   | `or B, B`, `shr B, I`, `and B, I` — the IA8 arm still widens |
+| +10/−5  | `jge` vs `je` — residual branch sense |
+
+Open: the 8-bit-output arms want a real `unsigned char *` walked with `p++`
+(the tree casts the 16-bit pointer, `*(unsigned char *)puVar21 = ...`); the
+IA8 arm's nibble work should come from ONE widened `unsigned char` local; and
+tree line 477 is the last unconverted folded site.
 
 ## N64 twin: none
 
-TGR N64 has no BrTex3dExpand ancestor (PC-side TMEM-replacement code,
-no nibble-unpack signature anywhere in its 883 fns). Only second witness
-is the D3D twin 0x10025AB0 (shared.csv). Do not spend more time there.
-
----
-## HISTORICAL (pre-2026-08-27) — the failed prologue verdict
-
-The material below is the original dossier that concluded "coloring
-wall, stop." It is kept for the register map and the do-not-re-run
-lists, which are still valid *for the prologue*. The verdict itself is
-superseded by the for-loop crack above.
-
-**Superseded verdict: coloring wall. Stop. Not a MATCH. Do not grind.**
-
-## Orig vs wrap at the empty-check
-
-Orig (Glide 0x100250D0):
-
-```
-sub  esp, 0x68
-mov  eax, [esp+0x78]          ; param_4  (texel base, stays in eax)
-mov  ecx, [esp+0x90]          ; param_10 (lodEnd)     <-- insn 3 target
-push ebx
-push ebp
-push esi
-mov  [esp+0x58], eax          ; spill param_4
-mov  eax, [esp+0x98]          ; param_9  (lod) after 3 pushes
-push edi
-xor  edi, edi
-cmp  eax, ecx                 ; lod vs lodEnd
-mov  [esp+0x58], eax          ; store lod (different slot than the spill)
-jge  ret
-mov  ebp, [esp+0x80]          ; cbOut sink
-mov  esi, [esp+0x7c]          ; pOut  sink
-mov  ebx, [esp+0xa4]          ; aTile sink
-shl  eax, 6                   ; lod still in eax
-```
-
-Latch reloads lodEnd from the arg (`mov ecx, [esp+0xa0]`; `inc eax; cmp eax, ecx; jl 0x10025106`).
-ecx at insn 3 is short-lived: live only until the empty-check `cmp`.
-
-Wrap /O2 (honest source `iVar3 = param_4; lodEnd = param_10; iVar10 = param_9; if (iVar10 >= lodEnd) return;`):
-
-```
-sub  esp, 0x68
-mov  eax, [esp+0x78]          ; param_4
-mov  edx, [esp+0x8c]          ; param_9   <-- insn 3, wrong arg, wrong reg
-push ebx / ebp / esi
-mov  [esp+0x60], eax
-mov  eax, [esp+0x9c]          ; param_10 after 3 pushes
-push edi
-xor  edi, edi
-cmp  edx, eax
-```
-
-`lodEnd = param_10` is copy-propagated. First real use is the cmp, which
-loads param_9 (edx) then param_10 (eax). Cascade: lod in edx, cbOut in ebx,
-siz in ecx, instead of ebp=cbOut / esi=pOut / ebx=aTile.
-
-## Why this is coloring, not a missing statement
-
-After `mov eax, param_4`, edx is free. Mentioning param_9 at the empty-check
-(required: orig is `cmp eax, ecx; jge ret` with eax=lod) lets /O2 put lod in
-edx immediately. Orig instead holds lodEnd in ecx, spills eax, then reuses
-eax for lod. Same two live values (param_4, param_10), same free edx; the
-allocator picks edx-for-lod vs eax-reuse-for-lod. No C-level use of param_10
-forces the orig coloring without extra instructions orig does not have.
-
-## Lever that hits insn 3 — then dies
-
-Two volatile temps, source order param_4 then param_10:
-
-```
-volatile int va, vb;
-va = (int)param_4;
-vb = param_10;
-iVar3 = va;
-lodEnd = vb;
-```
-
-emits the target bytes at +0x7 (`8b 8c 24 90 00 00 00`) with eax still
-holding param_4. That is the non-DCE scratch use the brief asked for.
-
-It is not a match:
-
-- Two extra volatile stores (lodEnd is register-only in orig until the cmp;
-  orig never writes param_10's slot in the prologue).
-- If param_9 is in the empty-check (it must be), the next insn is
-  `mov edx, [esp+0x8c]` vs orig `push ebx`. lod is in edx, not eax.
-- Omitting param_9 from the check (diagnostic `if (lodEnd >= 0)`) matches
-  through `push ebx`, then diverges on the va store vs `push ebp`. Wrong
-  semantics.
-
-## 3+ successive first-divergence fixes that do not move lod out of edx
-
-With two-volatile (insn 3 matching, first-div at +0xe = p9-in-edx vs push ebx),
-all of these still emit `mov edx, [esp+0x8c]` at +0xe:
-
-1. `iVar5 = param_11` before the check
-2. `cbMax = param_2; puVar21 = param_1` before the check
-3. `if (param_9 >= lodEnd)` without an `iVar10` copy
-4. `&iVar3` address-taken / `*p = *p`
-5. `iVar10 = param_9 + iVar3; iVar10 -= iVar3`
-6. `iVar10 = iVar3; iVar10 = param_9`
-7. late `volatile int v9; v9 = param_9`
-
-That is the stop condition: register rename, no source lever that moves it
-while keeping `if (lod >= lodEnd)`.
-
-## Do not re-run (DCE or wrong order / extra insns)
-
-Already listed in VC5-IDIOMS.md, confirmed /O2-identical to wrap:
-
-- `volatile int lodEnd` (param_10 loads *before* param_4, or ebp if the
-  latch uses lodEnd)
-- `iVar10 = (lodEnd = param_10, param_9)`
-- `param_10*0` / `param_10|0` / `param_10^0` / `param_10+0`
-- `param_4+(param_10-param_10)` and `param_10 + iVar3 - iVar3` (one expr)
-- `*(volatile int *)&param_10`
-- `lodEnd = lodEnd` / `lodEnd = (lodEnd | 0)`
-- `iVar3 += (lodEnd = param_10, 0)`
-- `one = param_10` as the cmp RHS
-- `if (lodEnd <= iVar10)` (compare-flip)
-- `if (param_10 <= param_9)` as the first statement after param_4
-- `register int` copy of param_10
-- `if (iVar3) lodEnd = param_10; else lodEnd = param_10;`
-- `if (iVar3 == lodEnd) {}` empty
-- `one = iVar3` in the prologue (dead; `one = 1` is set before any read)
-- `param_10 = lodEnd` writeback / `param_10 = (param_10 | 0)`
-- `iVar3 += param_10; iVar3 -= param_10`
-- `(void)param_10`
-- `volatile int *p = &param_10; lodEnd = *p`
-
-Non-DCE but wrong (do not chase):
-
-- `volatile int scratch; scratch = param_10` after param_4: still hoists
-  param_10 before param_4 (no dependence on iVar3)
-- `scratch = param_10 + iVar3; lodEnd = scratch - iVar3`: loads param_4
-  then param_10 but **swaps** eax/ecx (`mov ecx, param_4; mov eax, param_10`)
-  plus extra add/store
-- `static int s_keep; s_keep = param_10`: store delayed to after the cmp
-  (copy-prop into eax=lodEnd); does not force the early ecx load
-- `one = 1` plus volatile param_10: param_10 still before param_4
-- `__asm` / `__asm nop`: forces ebp frame; prologue dies (BrTex3dRegister)
-
-## Honest source to keep
-
-```
-iVar3 = (int)param_4;
-lodEnd = param_10;
-iVar10 = param_9;
-iVar22 = 0;
-if (iVar10 >= lodEnd) {
-  return;
-}
-cbMax = param_2;
-puVar21 = param_1;
-```
-
-Empty-check then `do { …; lod++; } while (lod < param_10)` with pOut/cbOut
-sunk after the check. Latch must say `param_10`, not `lodEnd` (long-lived
-lodEnd becomes ebp). That shape is already in `br_tex3d_expand.c`.
-`@implements` stays off.
-
-Fresh lead only: a first-region value that occupies edx for a reason orig
-also has at +0xe, *or* a type/shape insight that makes lod and param_4 share
-eax without a volatile store. Do not permute registers.
+TGR N64 has no BrTex3dExpand ancestor (PC-side TMEM-replacement code, no
+nibble-unpack signature in its 883 functions). The only second witness is the
+D3D twin 0x10025AB0 in `shared.csv`. Do not spend more time there.
