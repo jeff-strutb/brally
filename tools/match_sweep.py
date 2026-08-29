@@ -87,7 +87,15 @@ def load_orig(orig_path, va):
 # O2y = /O2 with frame-pointer omission disabled: a minority of original TUs
 # keep push ebp/mov ebp,esp under otherwise full optimisation (first proven
 # on BrGameStepIs 0x1002E302; the 0x10031xxx region is the same class).
-VARIANTS = [('O2', '/O2'), ('Od', '/Od'), ('O2y', '/O2 /Oy-')]
+# O2p = /O2 with precise floating point.  Without /Op, MSVC 5.0 keeps an
+# int->float conversion in the x87 register; with it, every such conversion is
+# followed by the round-to-float idiom `fstp dword [tmp]; fld dword [tmp]`, and
+# `/ 2.0f` stops being strength-reduced to a multiply.  A float-heavy TU that
+# the original compiled this way can NEVER match under /O2 alone, so it was
+# invisible to every sweep before 2026-08-28.  Found on 0x100215C0, which goes
+# from a large multiset gap under /O2 to a single surplus fxch under /O2 /Op.
+VARIANTS = [('O2', '/O2'), ('Od', '/Od'), ('O2y', '/O2 /Oy-'),
+            ('O2p', '/O2 /Op')]
 
 FIELDS = ['file', 'va', 'name', 'status', 'opt', 'orig_size', 'recomp_size',
           'diffs']
