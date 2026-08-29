@@ -115,11 +115,11 @@ free in the candidate list and it is where the knowledge lives.
 3. **Group-loop bound tests are `if (ctr >= bound) break;`** — Ghidra
    canonicalises this to `if (bound <= ctr)`. Byte-neutral, but it moves the
    register-blind gap by 25.
-4. **Three mask arms are written odd-path-first**: `if ((row & mask) != 0)
+4. **Mask arms are written odd-path-first**: `if ((row & mask) != 0)
    { ODD } else { PLAIN }`. Read the jcc sense at the test to decide which arm
-   the source wrote first — orig lays the fall-through arm inline. The OTHER
-   three mask sites were measured and are correct as Ghidra printed them; do
-   not flip them.
+   the source wrote first — orig lays the fall-through arm inline. NOT a
+   blanket rule: six of the nine mask sites want the flip, three are already
+   correct as Ghidra printed them. Measure each one.
 
 Plus an explicit `if (param_9 >= param_10) return;` guard before the
 pOut/cbOut/aTile sinks (orig loads those only after the `jge ret`). This is
