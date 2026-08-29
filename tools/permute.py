@@ -975,8 +975,10 @@ def mut_hoist_sink(body, rng):
     if j < 0 or j >= len(stmts) or _is_decl(stmts[j]):
         _fail()
     a, b = stmts[i], stmts[j]
-    la = _lhs_names(a)
-    if la & _idents(b):
+    # Both directions: swapping is only safe when neither statement writes a
+    # name the other reads.  Checking one side lets `x = y + 1; y = 5;` swap
+    # into `y = 5; x = y + 1;`, which changes x.
+    if (_lhs_names(a) & _idents(b)) or (_lhs_names(b) & _idents(a)):
         _fail()
     stmts[i], stmts[j] = stmts[j], stmts[i]
     return ''.join(stmts), 'hoist_sink:%+d' % direction
@@ -1630,13 +1632,41 @@ MUTATIONS = [
 ]
 
 
+# Mutations that are NOT semantics-preserving.  They are excluded by default;
+# --unsound re-enables them for pure exploration (their output must never be
+# adopted without an independent correctness check).
+#
+# Proven unsound on 0x100250D0 (2026-08-28), where the body is one large loop
+# so every "top-level statement" test below is vacuous:
+#   first_live   inserts a USE of a later local at function entry, before it is
+#                assigned.  For a pointer local it emits a wild dereference
+#                (`t16 = *(unsigned short *)(pbVar12 + -4);` at entry).
+#   recompute    duplicates an assignment's RHS earlier, reading locals that
+#                are not yet assigned.
+#   live_merge   "disjointness" is tested only across TOP-LEVEL statements, so
+#                in a one-loop function it merges arbitrary locals.  It merged
+#                the running byte counter with the budget it is compared
+#                against, and the texel base with that same budget -- scoring a
+#                7910 -> 3241 byte "improvement" out of pure garbage.
+#   merge_locals merges two same-type locals with no liveness analysis at all.
+UNSOUND = {'mut_first_live', 'mut_recompute', 'mut_live_merge',
+           'mut_merge_locals'}
+
+
+def _mutation_table(allow_unsound=False):
+    if allow_unsound:
+        return MUTATIONS
+    return [(w, f) for w, f in MUTATIONS if f.__name__ not in UNSOUND]
+
+
 def apply_mutations(src, rng, n=1):
     parts = _split_fn(src)
     if not parts:
         return src, []
     body = parts['body']
     labels = []
-    weights = [w for w, _ in MUTATIONS]
+    table = _mutation_table(_ALLOW_UNSOUND)
+    weights = [w for w, _ in table]
     fns = [f for _, f in MUTATIONS]
     for _ in range(n):
         order = list(range(len(fns)))
@@ -1714,7 +1744,10 @@ def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
            restart_every=250, muts_per_step=(1, 4), t0=10.0, cool=0.997,
            max_seconds=0):
     rng = random.Random(seed)
-    tag = 'p%08x' % int(va, 16)
+    # WORKER-scoped so N independent anneals can run on the same VA at once:
+    # the compile tag names both the scratch .c and its obj dir, so sharing it
+    # across processes silently corrupts every worker's score.
+    tag = 'p%08x%s' % (int(va, 16), _WORKER_SFX)
     t_score = time.time()
     diffs, opt, rb, relocs = score_src(src, func_name, orig_bytes, opts, tag)
     dt = time.time() - t_score
@@ -1797,11 +1830,16 @@ def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
     }
 
 
+_WORKER_SFX = ''
+_ALLOW_UNSOUND = False
+
+
 def _out_paths(va):
     va_u = '0x%08X' % int(va, 16)
-    return (os.path.join(WORK_DIR, va_u + '.permuted.c'),
-            os.path.join(WORK_DIR, va_u + '.permute.json'),
-            os.path.join(WORK_DIR, va_u + '.permute.log'))
+    w = _WORKER_SFX
+    return (os.path.join(WORK_DIR, va_u + w + '.permuted.c'),
+            os.path.join(WORK_DIR, va_u + w + '.permute.json'),
+            os.path.join(WORK_DIR, va_u + w + '.permute.log'))
 
 
 def _save_best(va, src, diffs, func_name, history):
@@ -1896,9 +1934,20 @@ def main():
     ap.add_argument('--vas', help='comma-separated VA list (with --batch)')
     ap.add_argument('--max-seconds', type=int, default=0,
                     help='stop each function after this many seconds (0=off)')
+    ap.add_argument('--unsound', action='store_true',
+                    help='re-enable the mutations that do NOT preserve '
+                         'semantics (see UNSOUND). Exploration only -- their '
+                         'output must never be adopted unverified.')
+    ap.add_argument('--worker', default=None,
+                    help='worker id; scopes the compile tag and the state/'
+                         'output paths so several anneals can run on the SAME '
+                         'va concurrently (one per core, different --seed)')
     ap.add_argument('--no-resume', action='store_true',
                     help='ignore existing .permuted.c and start from the seed')
     args = ap.parse_args()
+    if args.worker:
+        globals()['_WORKER_SFX'] = '_w' + re.sub(r'\W', '', str(args.worker))
+    globals()['_ALLOW_UNSOUND'] = bool(args.unsound)
     vas = []
     if args.batch:
         vas = [v.strip() for v in (args.vas.split(',') if args.vas else BATCH)]
