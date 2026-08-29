@@ -184,7 +184,31 @@ by the register-blind gap.
 - Six of the nine mask arms want the odd-path-first flip; three do NOT.
   Measure each one — it is not a blanket rule.
 
-## Remaining gap (~52 real bytes / ~12 insns), register-blind
+## Honest state: size is solved, allocation is not
+
+| measure | state |
+|---|---|
+| true code size | 8471 vs 8480 (−9 B) |
+| instruction SHAPES correct (register-blind) | 2262 / 2407 = **94%** |
+| exact instruction sequence (runs >= 4) | **~30%** |
+| bytes identical | 5.7% (first divergence +0x14) |
+
+Do not read "size matches" as "nearly byte-exact". The gap between 94% of
+shapes and 30% of runs is fine-grained register and frame-slot allocation.
+The big role rotation IS fixed (`cmp edi,ebx` is 0 occurrences; esi=pOut,
+ebp=cbMax, edi=count all match orig).
+
+**Next concrete lever — frame layout.** Orig uses 27 local slots, recomp 26,
+total esp references 646 vs 660. The only structural difference is that orig
+has byte slots 0x12 and 0x13 (two `unsigned char` locals packed in one dword)
+where the recomp has one dword at 0x10. That is the I4-blend 8-bit nibble
+merge, which orig does entirely in byte registers through byte slots
+(`mov al,[esp+0x13] ... or dl,al ... mov [esp+0x48],dl`; orig has 15 8-bit
+`or B,B`, the recomp 9). Fixing it should also pull the slot assignment toward
+orig's, which perturbs displacement bytes throughout — high leverage, not a
+6-instruction detail.
+
+## Remaining shape gap, register-blind
 
 | | |
 |---|---|
