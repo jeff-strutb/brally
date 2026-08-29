@@ -1667,7 +1667,7 @@ def apply_mutations(src, rng, n=1):
     labels = []
     table = _mutation_table(_ALLOW_UNSOUND)
     weights = [w for w, _ in table]
-    fns = [f for _, f in MUTATIONS]
+    fns = [f for _, f in table]
     for _ in range(n):
         order = list(range(len(fns)))
         rng.shuffle(order)
