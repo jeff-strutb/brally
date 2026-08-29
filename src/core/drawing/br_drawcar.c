@@ -90,6 +90,21 @@ void    BrDrawCarFrontierReset(void) { s_cFrontier = 0; }
  * the two builds' numbers, and a second host model of it would be the
  * aliased-storage bug CONVENTIONS.md documents.
  * ------------------------------------------------------------------ */
+#ifdef BR_MATCHING_BUILD
+/* It is a MACRO, not a call.  The bytes evaluate the SECOND word only after
+ * the first has been stored -- 0x10009C9C writes 0xB900031D into [eax] and
+ * only then loads 0x10273644 for [eax+4], and the wheel-list tail at
+ * 0x10009F32 re-reads the model global after its own [eax] store.  A
+ * function, even __inline, evaluates its arguments first, so VC5 CSEs that
+ * load with the guard test in front of it and cross-jumps the two arms into
+ * one append.  Every argument at every site here is a pure load or a
+ * constant, so macro and call are equivalent; only the order differs. */
+#define put(w0_, w1_)                                                    \
+    do { uint32_t *p_ = BrG_6C0680;                                      \
+         BrG_6C0680 += 2;                                                \
+         p_[0] = (w0_);                                                  \
+         p_[1] = (w1_); } while (0)
+#else
 static void put(uint32_t w0, uint32_t w1)
 {
     uint32_t *p = BrG_6C0680;
@@ -97,11 +112,12 @@ static void put(uint32_t w0, uint32_t w1)
     p[0] = w0;
     p[1] = w1;
 }
+#endif
 
 /* The command the combiner builder writes into.  The original bumps the
  * cursor BEFORE the call and hands the routine the old slot, so a caller
  * that inspects the cursor mid-flight sees it already advanced. */
-static BrGfxWords *put_slot(void)
+static __inline BrGfxWords *put_slot(void)
 {
     BrGfxWords *p = (BrGfxWords *)BrG_6C0680;
     BrG_6C0680 += 2;
@@ -204,9 +220,96 @@ static BrMat4 *mtx_alloc(uint32_t *pAddr)
 /* WHAT IT DOES: draws a car's four wheels.  Each wheel has its own
  * position and spin, so each gets its own turn through the same wheel
  * shape, and a see-through car gets its transparency applied to them too. */
+/* The model record the original reaches through the global 0x106EA398 --
+ * slice2_18's BrG_6C3308.  Re-read at every use, the way the bytes do
+ * (0x10009C11, 0x10009F24, 0x10009F45, 0x10009F53, 0x10009F73). */
+#define BR_WHEEL_MDL(off) \
+    (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + (off)))
+
 /* @implements 0x10009C10 glide BrCarDrawWheels */
 void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
 {
+#ifdef BR_MATCHING_BUILD
+    /* The original takes ONE argument -- the raw 0x2B68 car record -- reads
+     * the model from the global above rather than from a second argument,
+     * and its matrix allocator (0x10062500 == d3d 0x10069490) cannot fail,
+     * so there is no NULL test and no separate display-list address.  The
+     * port form below is the same code through the repacked view pair and
+     * the frontier-safe allocator; this arm is what the bytes say.
+     * BrCarView is byte-accurate only to +0x140, so bKind is reached by raw
+     * offset the way BrCarDrawBody already reaches it. */
+    const unsigned char *car = (const unsigned char *)pCar;
+    const BrMat4 *pWheel;
+    BrMat4       *pSlot;
+    int           pass;
+
+    (void)pModel;
+
+    /* 0x10009C19 -- the gate, read once and from the model, not per pass */
+    if (BR_WHEEL_MDL(0x80BCu) == 0)
+        return;
+
+    /* 0x10009C2C -- edi walks the four 0x40-byte wheel matrices at car+0x40;
+     * the pass count is a spilled down-counter at [esp+0x10]. */
+    pWheel = (const BrMat4 *)(car + BR_CAR_OFF_AWHEEL);
+    pass = 4;
+    do {
+        put(0xE7000000u, 0);                    /* pipe sync            */
+        put(0xBA001402u, 0x00100000u);          /* two-cycle            */
+
+        if (car[BR_CAR_OFF_KIND] == 2) {
+            put(0xB900031Du, g_BrDrawRenderMode | 0x00104A50u);
+            put(0xFB000000u, (uint32_t)g_BrDrawFogAlpha & 0xFFu);
+            BrRdpSetCombineLERP(put_slot(),
+                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
+                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_TEXEL0,
+                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED,
+                TK_COMBINED, TK_ZERO, TK_SHADE,   TK_ZERO);
+        } else {
+            BrRdpSetCombineLERP(put_slot(),
+                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
+                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_TEXEL0,
+                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED,
+                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED);
+            put(0xB900031Du, g_BrDrawRenderMode | 0x00112230u);
+        }
+
+        /* 0x10009D75 -- the shared tail. */
+        BrMat4Scale(&g_BrDrawScale, 0.003921569f, 0.003921569f, 0.003921569f);
+        BrMat4Mul(&g_BrDrawScale, pWheel, &g_BrDrawWorld);
+
+        pSlot = BrSub_10069490();               /* 0x10062500, no arguments */
+        BrGuMtxStore(&g_BrDrawWorld, pSlot);
+        put(0x01060040u, (uint32_t)pSlot);      /* gsSPMatrix, PUSH|LOAD */
+
+        BrMat4Mul(&g_BrDrawWorld, &g_BrDrawView, &g_BrDrawCombined);
+
+        pSlot = BrSub_10069490();
+        BrGuMtxStore(&g_BrDrawCombined, pSlot);
+        put(0x039E0010u, (uint32_t)pSlot);
+        put(0x03980010u, (uint32_t)pSlot + 0x10u);
+        put(0x039A0010u, (uint32_t)pSlot + 0x20u);
+        put(0x039C0010u, (uint32_t)pSlot + 0x30u);
+
+        put(0xBB000001u, 0xFFFFFFFFu);          /* texture on            */
+        put(0xB6000000u, 0x000C0000u);          /* clear both texgen bits*/
+        put(0xE8000000u, 0);                    /* tile sync             */
+        put(0xF5100000u, 0x07000000u);
+        put(0xF50001F0u, 0x06000000u);
+        put(0xF5000100u, 0x05000000u);
+
+        if (g_BrDrawWheelAlt != 0) {
+            if (BR_WHEEL_MDL(0x80C4u) != 0)
+                put(0x06000000u, BR_WHEEL_MDL(0x80C4u));
+        } else {
+            if (BR_WHEEL_MDL(0x80BCu) != 0)
+                put(0x06000000u, BR_WHEEL_MDL(0x80BCu));
+        }
+
+        put(0xBD000000u, 0);                    /* pop matrix            */
+        pWheel = pWheel + 1;
+    } while (--pass != 0);
+#else
     int pass;
 
     /* 0x10009C19 -- the gate, read once and from the model, not per pass */
@@ -279,6 +382,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
 
         put(0xBD000000u, 0);                    /* pop matrix            */
     }
+#endif
 }
 
 /* ==================================================================== *
