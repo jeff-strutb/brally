@@ -508,6 +508,132 @@ void BrCarStateLerp(BrCarState *pDst, float t,
  * are deliberately stepped over and left as they were, and the disarmed
  * timers are set to -1 rather than zero. */
 /* @implements 0x10005960 d3d BrNetReset */
+#ifdef BR_MATCHING_BUILD
+/* The original takes no arguments and reaches every field as a loose global:
+ * the slot array runs from 0x1021CE58, and the shared state is scattered from
+ * 0x1021C81C to 0x105CCB80.  The mutex is the raw Win32 pair
+ * WaitForSingleObject(h, INFINITE) / ReleaseMutex(h) through the import table,
+ * not the port's BrNetMutexLock/Unlock wrappers.  pNet is the header's
+ * signature and is unused here. */
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
+extern int DAT_1021ce64;   /* slot[0] + 0x00C -- the walk pointer */
+extern int DAT_102265e4;   /* one past the last slot; also the pair array */
+extern int DAT_10226624;
+extern int DAT_10226a54;
+extern int DAT_10226a28;
+extern int DAT_10226a38;
+extern unsigned char DAT_1021c9b0;
+extern int DAT_10226a58;
+extern int DAT_1021ce00;
+extern int DAT_10226a5c;
+extern int DAT_1021c904;
+extern int DAT_10226a60;
+extern int DAT_1021ce48;
+extern int DAT_1021ce54;
+extern int DAT_102265d8;
+extern int DAT_10226a34;
+extern int DAT_1021c90c;
+extern int DAT_1021ce44;
+extern int DAT_1021ce4c;
+extern int DAT_1021c900;
+extern int DAT_1021c81c;
+extern int DAT_10226a30;
+extern int DAT_1021c908;
+extern int DAT_10226a6c;
+extern int DAT_10226a50;
+extern int DAT_105ccb80;
+
+int BrNetReset(BrNetState *pNet)
+{
+    int *p;
+    int *q;
+
+    (void)pNet;
+
+    /* q walks &slot->f00C (slot + 0x0C), one 0x978-byte record per turn; p is
+     * the record base.  Two things are load-bearing here:
+     *   - q, not p, is the loop variable.  VC5 substitutes the loop pointer
+     *     with the first derived address it has to materialise, so a p-based
+     *     loop moves the induction register to &slot->f038 and costs a `lea`
+     *     at the bottom test.  With q primary the test is `cmp esi, END`.
+     *   - the ReleaseMutex handle is read through q, not p.  Read through the
+     *     same pointer as the +0x558 stores, VC5 proves non-aliasing and
+     *     hoists `mov ecx,[esi-0xc]; push ecx` above them; through the other
+     *     pointer it cannot, and the load stays after the stores like orig. */
+    q = &DAT_1021ce64;
+    do {
+        p = q - 3;
+        WaitForSingleObject((void *)p[0], 0xffffffff);
+        p[2] = 0;                    /* +0x008 */
+        memset(q, 0, 32);            /* +0x00C..+0x02B  (rep stosd, 8 dwords) */
+        p[11] = 0;                   /* +0x02C */
+        memset(q + 11, 0, 32);       /* +0x038..+0x057 */
+        p[0x156] = 0;                /* +0x558 */
+        p[0x157] = 0;                /* +0x55C */
+        p[0x158] = -1;               /* +0x560 */
+        p[0x15a] = 0;                /* +0x568 */
+        p[0x15b] = 0;                /* +0x56C */
+        p[0x159] = 0;                /* +0x564 */
+        p[0x25d] = 0;                /* +0x974 */
+        ReleaseMutex((void *)q[-3]);
+        q += 0x25e;
+    } while ((int)q < (int)&DAT_102265e4);
+
+    WaitForSingleObject((void *)DAT_10226a54, 0xffffffff);
+    DAT_10226a28 = -1;
+    DAT_10226a38 = 0;
+    DAT_1021c9b0 = 0;
+    ReleaseMutex((void *)DAT_10226a54);
+
+    WaitForSingleObject((void *)DAT_10226a58, 0xffffffff);
+    memset(&DAT_1021ce00, 0, 64);
+    ReleaseMutex((void *)DAT_10226a58);
+
+    WaitForSingleObject((void *)DAT_10226a5c, 0xffffffff);
+    DAT_1021c904 = -1;
+    ReleaseMutex((void *)DAT_10226a5c);
+
+    WaitForSingleObject((void *)DAT_10226a60, 0xffffffff);
+    DAT_1021ce48 = -1;
+    ReleaseMutex((void *)DAT_10226a60);
+
+    WaitForSingleObject((void *)DAT_1021ce54, 0xffffffff);
+    DAT_102265d8 = 0;
+    ReleaseMutex((void *)DAT_1021ce54);
+
+    WaitForSingleObject((void *)DAT_10226a34, 0xffffffff);
+    DAT_10226624 = 0;
+    ReleaseMutex((void *)DAT_10226a34);
+
+    WaitForSingleObject((void *)DAT_1021c90c, 0xffffffff);
+    DAT_1021ce44 = 0;
+    ReleaseMutex((void *)DAT_1021c90c);
+
+    WaitForSingleObject((void *)DAT_1021ce4c, 0xffffffff);
+    DAT_1021c900 = 0;
+    ReleaseMutex((void *)DAT_1021ce4c);
+
+    WaitForSingleObject((void *)DAT_1021c81c, 0xffffffff);
+    DAT_10226a30 = -1;
+    ReleaseMutex((void *)DAT_1021c81c);
+
+    DAT_1021c908 = 0;
+    DAT_10226a6c = -1;
+
+    p = &DAT_102265e4;
+    do {
+        p[-1] = 0;
+        *p = 0;
+        p += 2;
+    } while ((int)p < (int)&DAT_10226624);
+
+    DAT_10226a50 = 0;
+    DAT_105ccb80 = 0;
+    return 1;
+}
+#else
 int BrNetReset(BrNetState *pNet)
 {
     int i;
@@ -582,6 +708,7 @@ int BrNetReset(BrNetState *pNet)
 
     return 1;
 }
+#endif
 
 /* 0x10004A10 */
 /* WHAT IT DOES: reads a player slot's status word under that slot's lock. */
