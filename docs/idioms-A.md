@@ -7,10 +7,14 @@ largest function in `BRGlide.dll`.
 
 |                          | 2026-08-26 | 2026-08-27 | 2026-08-28 |
 |--------------------------|-----------:|-----------:|-----------:|
-| bytes (orig 8480)        |      +1152 |      +1152 |   **+512** |
-| insns (orig 2407)        |       +234 |       +234 |    **+81** |
+| bytes (orig 8480)        |      +1152 |      +1152 |    **+64** |
+| insns (orig 2407)        |       +234 |       +234 |    **+24** |
 | first divergence         |      +0x07 |      +0x11 |  **+0x14** |
-| register-blind gap (E+M) |    432+198 |    432+198 |**195+114** |
+| register-blind gap (E+M) |    432+198 |    432+198 | **101+77** |
+
+12 of those 24 instructions and 12 of those 64 bytes are trailing `nop`
+padding after `ret` — .obj alignment, not code. **The real gap is ~52 bytes
+and ~12 instructions**: 94% of the byte deficit closed in one session.
 
 `@implements` stays OFF. Two IDX4 arms are now instruction-for-instruction
 identical to the original, differing only in the global `esi = pOut` register
@@ -82,8 +86,10 @@ which frees esi, which rotates the allocation across the entire function
 (`cmp edi,ebx` recomp vs `cmp edi,ebp` orig, x61). Every previous session read
 that rotation as the disease. It was the symptom.
 
-Applied at 15 of 16 sites (nibble-expand, mirror-copy, forward-copy, palette,
-colour-interp, 4-way unrolled): **+1152 → +512 bytes, +234 → +81 instructions.**
+Applied at 15 of 16 sites in the 2-byte form (nibble-expand, mirror-copy,
+forward-copy, palette, colour-interp, 4-way unrolled) and across the 8-bit
+output arms in the 1-byte form (`+= 1`, walking a real `unsigned char *`):
+**+1152 → +64 bytes, +234 → +24 instructions.**
 
 Generalised as `tools/gen_countfold.py` and wired into `_refine_candidates` as
 the `countfold` candidate. Unaided it fires on 12 of the 16 sites for
@@ -159,22 +165,35 @@ source defect elsewhere in the body, not a terminal wall.** This function was
 declared a coloring wall twice on the strength of the raw number. Rank residue
 by the register-blind gap.
 
-## Remaining gap (+512 B / +81 insns), register-blind
+## Also landed
+
+- **8-bit-output arms**: the counter-fold in its 1-byte form, walking a real
+  byte pointer (the tree spelled the destination as a cast of the halfword
+  pointer with `puVar21 += 1` covering two byte stores), plus pre-biased read
+  pointers in the mirror blocks matching orig's `lea eax,[esi-1]` / `dec eax`.
+- **IA8 arm**: the `puVar9`/`puVar21` ping-pong was Ghidra's rendering of the
+  folded double-step and collapses to one output pointer; the low nibble is a
+  named local; the nibble merge reads ONE widened value instead of
+  re-deriving from the source byte three times.
+- **The 4-texel group loops are `for`, not `do{}while` + top `break`.** The
+  do-while form makes VC5 peel the break test into a guard AND tail-duplicate
+  it at the latch — two instructions a site.
+- **Twin-counter collapses**: Ghidra prints two names for one variable
+  (`iVar16 = param_9 + 1; ...; param_9 = iVar16;`). Provably equal at every
+  read including the break edges.
+- Six of the nine mask arms want the odd-path-first flip; three do NOT.
+  Measure each one — it is not a blanket rule.
+
+## Remaining gap (~52 real bytes / ~12 insns), register-blind
 
 | | |
 |---|---|
-| +34/+32 | `mov [esp+S], R` / `mov R, [esp+S]` — 66 extra stack accesses |
-| −27/−4  | `inc R` / `dec R` vs +13 `add R, I`, +10 `lea R, [R+I]` |
-| −10/−7  | `lea R, [R+R]` / `add R, R` — orig doubles in-register |
-| −7/+7   | `imul R, R` vs `imul R, [esp+S]` — orig folds nothing from memory |
-| −7/−5   | `mov B, [R]` / `mov byte [R], B` — the 8-bit-output arms still batch |
-| −6/−3   | `or B, B`, `shr B, I`, `and B, I` — the IA8 arm still widens |
-| +10/−5  | `jge` vs `je` — residual branch sense |
-
-Open: the 8-bit-output arms want a real `unsigned char *` walked with `p++`
-(the tree casts the 16-bit pointer, `*(unsigned char *)puVar21 = ...`); the
-IA8 arm's nibble work should come from ONE widened `unsigned char` local; and
-tree line 477 is the last unconverted folded site.
+| +30   | `mov [esp+S], R` / `mov R, [esp+S]` — extra stack accesses |
+| −17   | `add R, R` / `lea R, [R+R]` — orig doubles in-register; the recomp reloads a slot and adds. 10 of orig's 18 sites reproduce; 8 do not. |
+| −6    | 8-bit `or B, B` — the I4-blend arms still widen their nibble merge (orig does it entirely in byte registers through byte slots) |
+| −4/+4 | `mov B, [R]` vs `mov B, [R+R]` — one indexed-vs-walking load site left |
+| −3    | `imul R, R` — orig folds nothing from memory into `imul` |
+| −4/+3 | `mov word [R−I], W` vs `mov word [R], W` — store scheduling, downstream |
 
 ## N64 twin: none
 
