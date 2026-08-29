@@ -805,6 +805,28 @@ the caller AND flipped a helper to match for free.
   Read the jcc sense at the test to decide which arm the source wrote
   first. Not universal — of six mask sites in 0x100250D0 three wanted the
   flip and three were already right, so MEASURE each one. Proven 0x100250D0.
+- **`/O2 /Op` is a REAL build variant — a float-heavy TU compiled with precise
+  FP can never match under plain /O2.** Without `/Op`, MSVC 5.0 keeps an
+  int->float conversion in the x87 register; with it, every conversion is
+  followed by the round-to-float idiom `fstp dword [tmp]; fld dword [tmp]`,
+  and `/ 2.0f` stops being strength-reduced to a multiply. Added to
+  match_sweep VARIANTS as `('O2p', '/O2 /Op')` 2026-08-28. Found on
+  0x100215C0: large multiset gap under /O2, ONE surplus `fxch` under /O2 /Op.
+- **A MACRO and an `__inline` function are NOT interchangeable — the macro
+  changes evaluation order.** A function evaluates all its arguments before
+  the body, so VC5 hoists an argument's global load ahead of a preceding
+  guard test and can cross-jump two call sites into one. A macro evaluates
+  each argument at its point of use. Proven 0x10009C10 (BrCarDrawWheels): the
+  two-word append stores word 0 before loading the global for word 1, which
+  only the macro form reproduces. Safe to convert only when every argument at
+  every site is a pure load or a constant.
+- **`v != 0.0f` is ONE compare** (`fcomp; fnstsw; test ah,0x40; jne`);
+  `(v < 0.0f) || (v > 0.0f)` is two. Proven 0x10006510.
+- **Relocation slots must be masked when scoring.** They are zero in an
+  unlinked .obj and patched at link time, so they ALWAYS differ from the
+  original. `match_sweep.score` masks them; a per-function harness that does
+  not will report a finished match as hundreds of differing bytes (this hid a
+  completed 0x10009C10 on 2026-08-28).
 - **MSVC 5.0 PACKS ORDINARY LOCALS INTO DEAD PARAMETER SLOTS.** Orig writes
   both bytes and dwords into param_9's and param_1's incoming arg slots
   ([esp+0x9c], [esp+0x7c]) at 0x100250D0. Therefore **Ghidra's `param_N`

@@ -95,24 +95,31 @@ def main():
     if name not in t:
         print('symbol %s not in %s (have: %s)' % (name, obj, ', '.join(list(t)[:8])))
         return 1
-    rc = t[name][0]
+    rc, relocs = t[name][0], t[name][1]
     while rc and rc[-1] == 0x90:
         rc = rc[:-1]
     ob = os.path.join(ROOT, 'build', 'match', 'orig', va + '.bin')
     orig = open(ob, 'rb').read()
-    fd = next((i for i in range(min(len(orig), len(rc))) if orig[i] != rc[i]),
+    # Relocation slots are zero in an unlinked .obj and are patched at link
+    # time, so they ALWAYS differ from the original and must be masked -- the
+    # sweep's own scorer does this (match_sweep.score).  Without it a genuinely
+    # byte-exact function reads as hundreds of differing bytes.
+    fd = next((i for i in range(min(len(orig), len(rc)))
+               if i not in relocs and orig[i] != rc[i]),
               min(len(orig), len(rc)))
+    ndiff = sum(1 for i in range(min(len(orig), len(rc)))
+                if i not in relocs and orig[i] != rc[i])
     oi = len(list(md.disasm(orig, 0))); ri = len(list(md.disasm(rc, 0)))
     res = {}
     for m in ('raw', 'regnorm'):
         O, R = bag(orig, m), bag(rc, m)
         res[m] = (sum((R - O).values()), sum((O - R).values()))
-    ident = (len(rc) == len(orig) and rc == orig)
+    ident = (len(rc) >= len(orig) and ndiff == 0)
     print('%s %s  [%s]' % (va, name, r['file']))
     print('  BYTES orig=%d recomp=%d (%+d)   INSNS orig=%d recomp=%d (%+d)'
           % (len(orig), len(rc), len(rc) - len(orig), oi, ri, ri - oi))
-    print('  FIRSTDIV=+0x%x   RAW %d+%d   REGNORM %d+%d%s'
-          % (fd, res['raw'][0], res['raw'][1], res['regnorm'][0],
+    print('  FIRSTDIV=+0x%x  DIFFS=%d (reloc-masked)  RAW %d+%d  REGNORM %d+%d%s'
+          % (fd, ndiff, res['raw'][0], res['raw'][1], res['regnorm'][0],
              res['regnorm'][1], '   *** BYTE-EXACT ***' if ident else ''))
     if a.detail is not None:
         m = a.detail[0] if a.detail else 'regnorm'
