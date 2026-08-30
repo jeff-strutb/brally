@@ -28,7 +28,10 @@
  * two-form battery.  Also probed and negative: struct-by-value returns
  * (the member still promotes AND the return temp counts as a side effect),
  * global/reference/deref object expressions.  Full map: 18 spellings x
- * 3 front ends x 10+ flag sets.  Remaining hypotheses: a fourth compiler
+ * 3 front ends x 10+ flag sets.  TWIN CHECK 2026-08-30: the D3D build's
+ * copy (0x100061A0) is shape-identical (push-early + sar ax + movsx) --
+ * stable across both shipped binaries: real compiler output, not
+ * post-processing.  Remaining hypotheses: a fourth compiler
  * (VC4.2-era static library?), or a source shape not yet conceived.
  *
  * The C transcription (slice2_12.c) is shape-exact except for 33 surplus
