@@ -828,6 +828,18 @@ the caller AND flipped a helper to match for free.
   Read the jcc sense at the test to decide which arm the source wrote
   first. Not universal — of six mask sites in 0x100250D0 three wanted the
   flip and three were already right, so MEASURE each one. Proven 0x100250D0.
+- **x87 argmin: Ghidra writes `if (b <= a)` (then-arm out of line) for orig
+  `test ah,1; je then` whose fall-through is `a < b`.** Source wrote
+  `if (t0 < t1) { x-vs-z } else { y-vs-z }` with a shared `goto` z-wins;
+  Ghidra inverted to `if (t1 <= t0)` and duplicated z. Restoring the `<`
+  fall-through plus the shared z recovered orig's 3 `je`s, the leftover
+  `fcom [Zero]; fld st(0); fchs` cluster, and the deferred-fnstsw sign
+  (`sgn = -1; if (!(c[0] < Zero)) sgn = 1` after the dead-axis stores).
+  Refer to `local_c[0]` not a named copy so raw cx stays under |cx| on
+  the x87 stack. `pA->y` at a goto-join hoists `lea r, [pA+4]` and steals
+  esi; `float *param_2; param_2[1]` keeps `[eax+4]`. Sequenced
+  `t = p[-3]; *pc = (t + p[3] + *p) * K` preserves orig addend order
+  (plain `p[-3]+p[3]` canonicalizes). Proven 0x10067470.
 - **x87 spill-slot HOMES follow computation order, and the scheduler's
   drain order keys off them.** Under /Op, paired temps (w2/h2 in
   0x100215C0) round-trip through [esp+4]/[esp+0xc] in the order computed;

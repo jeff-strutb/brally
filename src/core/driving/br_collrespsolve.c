@@ -46,17 +46,25 @@ BrCrPlaneState g_brCrPlane;
  * verified readable form).  Structural facts the bytes force:
  *  - the centroid is a 3-iteration walking-pointer loop into a float[3]
  *    (0x100674c0: eax walks &aVerts[1], ecx walks the stack array, edx=3);
- *  - |c| is compare-against-a-memory-zero + conditional fchs, keeping the
- *    RAW value beneath the abs on the x87 stack;
- *  - the sign is an INT -1/+1 homed at [esp+0x1c], converted with fild and
- *    scaled by the 0.5 memory constant;
- *  - the two dead axes are zeroed by direct stores BEFORE the sign pick;
+ *  - |c| is fcom [Zero] + fld st(0) + conditional fchs, keeping the RAW
+ *    value beneath the abs on the x87 stack; inner abs reloads from the
+ *    array, not from the already-abs temp;
+ *  - the argmin is `if (t0 < t1)` fall-through (orig je to the >= arm)
+ *    with a shared goto z-wins -- Ghidra inverted this to `<=` and
+ *    duplicated z;
+ *  - the sign is an INT -1/+1 packed into param_4's slot, converted with
+ *    fild and scaled by the 0.5 memory constant, fnstsw deferred past
+ *    the dead-axis zero stores;
  *  - the dot reads the normal BACK FROM THE GLOBALS, normal.x is scaled by
  *    the two extents in TWO separate statements, and modeFC is scaled as a
  *    float in place;
  *  - the extents live at +0x1dc/+0x1e0/+0x1e4 of the object pExt points
  *    into (the port prototype abstracts this);
- *  - the tail computes s = -(dot - planeD) (fsub then fchs) with s homed. */
+ *  - the tail computes s = -(dot - planeD) (fsub then fchs) with s homed.
+ * Remaining (REGNORM 16+21): per-abs fstp-st/fld-st shuffle vs orig's
+ * in-place fchs; s sunk to the join (one missing fsub/fchs); centroid
+ * loop strength-reduced (sub ecx,eax vs add ecx,4); early-dot product
+ * order (Ny before Nz); x87 fxch drain. */
 extern float BrCrK_Zero;     /* 0x10077A78 */
 extern float BrCrK_Third;    /* 0x10077B84 */
 extern float BrCrK_Half;     /* 0x10077AC8 */
@@ -64,100 +72,107 @@ extern float BrCrK_Half;     /* 0x10077AC8 */
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
                       const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
 {
-    float c[3];
-    float s;
-    float d;
-    int   sgn;
+    float local_c[3];
+    float fVar1;
+    float *param_2;
+    int sgn;
+
+    param_2 = (float *)pA;
 
     if (g_brCrPlane.modeFC != 2u) {
-        d = (pA->y * pEdgeN->y + pA->z * pEdgeN->z) + pA->x * pEdgeN->x;
-    } else {
-        {
-            const float *p = &aVerts[1].x;
-            float *pc = c;
-            int n = 3;
-            do {
-                *pc = ((p[-3] + p[3]) + p[0]) * BrCrK_Third;
-                p = p + 1;
-                pc = pc + 1;
-                n = n - 1;
-            } while (n != 0);
-        }
-        {
-            float a0, t0, t1;
+        /* Early arm is the fall-through.  s = -(dot - planeD) is left in
+         * fVar1 and the three out stores live at the join -- a goto-join
+         * on pA->y hoists lea [pA+4] and steals esi. */
+        fVar1 = -((*(float *)((char *)pEdgeN + 8) * param_2[2]
+                   + pEdgeN->y * param_2[1]
+                   + *param_2 * pEdgeN->x) - planeD);
+        goto LAB_tail;
+    }
+    {
+        float *pfVar3;
+        float *pfVar4;
+        float t;
+        int iVar5;
 
-            a0 = c[0];
-            t0 = a0;
-            if (a0 < BrCrK_Zero)
-                t0 = -t0;
-            t1 = c[1];
-            if (c[1] < BrCrK_Zero)
-                t1 = -t1;
-            if (t0 >= t1) {
-                float u0, u1;
-                u0 = t1;
-                if (t1 < BrCrK_Zero)
-                    u0 = -u0;
-                u1 = c[2];
-                if (c[2] < BrCrK_Zero)
-                    u1 = -u1;
-                if (u0 >= u1) {
-                    /* z wins */
-                    g_brCrPlane.normal.y = 0.0f;
-                    g_brCrPlane.normal.x = 0.0f;
-                    sgn = -1;
-                    if (!(a0 < BrCrK_Zero))
-                        sgn = 1;
-                    g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
-                } else {
-                    /* y wins */
-                    g_brCrPlane.normal.z = 0.0f;
-                    g_brCrPlane.normal.x = 0.0f;
-                    sgn = -1;
-                    if (!(a0 < BrCrK_Zero))
-                        sgn = 1;
-                    g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
-                }
+        iVar5 = 3;
+        pfVar3 = (float *)((int)aVerts + 0xc);
+        pfVar4 = local_c;
+        do {
+            iVar5 = iVar5 + -1;
+            t = pfVar3[-3];
+            *pfVar4 = (t + pfVar3[3] + *pfVar3) * BrCrK_Third;
+            pfVar3 = pfVar3 + 1;
+            pfVar4 = pfVar4 + 1;
+        } while (iVar5 != 0);
+    }
+    {
+        float t0, t1, u0, u1;
+
+        /* |c0| via fcom+fld st(0)+fchs, raw c0 kept live under it for the
+         * sign pick.  Refer to local_c[0], not a named copy. */
+        t0 = local_c[0];
+        if (t0 < BrCrK_Zero)
+            t0 = -t0;
+        t1 = local_c[1];
+        if (local_c[1] < BrCrK_Zero)
+            t1 = -t1;
+
+        /* Orig: test ah,1; je then-at-higher-addr; fall-through is |c0|<|c1|.
+         * Shared z-wins via goto -- duplicating it was the +76 B. */
+        if (t0 < t1) {
+            u0 = local_c[0];
+            if (u0 < BrCrK_Zero)
+                u0 = -u0;
+            u1 = local_c[2];
+            if (local_c[2] < BrCrK_Zero)
+                u1 = -u1;
+            if (u0 < u1) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.y = 0.0f;
+                sgn = -1;
+                if (!(local_c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
             } else {
-                float u0, u1;
-                u0 = t0;
-                if (t0 < BrCrK_Zero)
-                    u0 = -u0;
-                u1 = c[2];
-                if (c[2] < BrCrK_Zero)
-                    u1 = -u1;
-                if (u0 >= u1) {
-                    /* z wins */
-                    g_brCrPlane.normal.y = 0.0f;
-                    g_brCrPlane.normal.x = 0.0f;
-                    sgn = -1;
-                    if (!(a0 < BrCrK_Zero))
-                        sgn = 1;
-                    g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
-                } else {
-                    /* x wins */
-                    g_brCrPlane.normal.z = 0.0f;
-                    g_brCrPlane.normal.y = 0.0f;
-                    sgn = -1;
-                    if (!(a0 < BrCrK_Zero))
-                        sgn = 1;
-                    g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
-                }
+                goto LAB_z;
+            }
+        } else {
+            u0 = local_c[1];
+            if (local_c[1] < BrCrK_Zero)
+                u0 = -u0;
+            u1 = local_c[2];
+            if (local_c[2] < BrCrK_Zero)
+                u1 = -u1;
+            if (u0 < u1) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.x = 0.0f;
+                sgn = -1;
+                if (!(local_c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
+            } else {
+LAB_z:
+                g_brCrPlane.normal.y = 0.0f;
+                g_brCrPlane.normal.x = 0.0f;
+                sgn = -1;
+                if (!(local_c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
             }
         }
-        d = (pA->y * g_brCrPlane.normal.y + pA->z * g_brCrPlane.normal.z)
-          + pA->x * g_brCrPlane.normal.x;
-        g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
-        g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
-        *(float *)&g_brCrPlane.modeFC =
-            BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
     }
 
-    d = d - planeD;
-    s = -d;
-    g_brCrPlane.out.x = pA->x * s;
-    g_brCrPlane.out.y = pA->y * s;
-    g_brCrPlane.out.z = pA->z * s;
+    fVar1 = *param_2 * g_brCrPlane.normal.x;
+    g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
+    g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
+    *(float *)&g_brCrPlane.modeFC =
+        BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
+    fVar1 = -((fVar1 + g_brCrPlane.normal.y * param_2[1]
+               + g_brCrPlane.normal.z * param_2[2]) - planeD);
+LAB_tail:
+    g_brCrPlane.out.x = *param_2 * fVar1;
+    g_brCrPlane.out.y = fVar1 * param_2[1];
+    g_brCrPlane.out.z = fVar1 * param_2[2];
 }
 #else
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
