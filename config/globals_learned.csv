@@ -43,10 +43,10 @@ BrVec3dLen,0x1001DC80,1,0,"named global, no address recorded",0x1001DC90
 FUN_1001ff60,0x1001FF60,6,1,"named global, no address recorded",0x1001FEF0
 FUN_10020460,0x10020460,6,1,"named global, no address recorded",0x100203F0
 FUN_100242e0,0x100242E0,6,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
-$L1446,0x10024E18,1,0,"named global, no address recorded",0x10024DF0
-$L1450,0x10024E18,1,0,"named global, no address recorded",0x10024DF0
-$L1445,0x10024E24,1,0,"named global, no address recorded",0x10024DF0
-$L1449,0x10024E24,1,0,"named global, no address recorded",0x10024DF0
+$L1740,0x10024E18,1,0,"named global, no address recorded",0x10024DF0
+$L1744,0x10024E18,1,0,"named global, no address recorded",0x10024DF0
+$L1739,0x10024E24,1,0,"named global, no address recorded",0x10024DF0
+$L1743,0x10024E24,1,0,"named global, no address recorded",0x10024DF0
 FUN_100250d0,0x100250D0,2,1,"named global, no address recorded",0x10024E60
 FUN_10027220,0x10027220,4,1,"named global, no address recorded",0x10024E60 0x100272F0
 FUN_10027290,0x10027290,24,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
@@ -228,27 +228,27 @@ DAT_10077014,0x10077014,1,0,"named global, no address recorded",0x100018F0
 DAT_10077018,0x10077018,2,1,"named global, no address recorded",0x100018F0
 DAT_1007701c,0x1007701C,1,0,"named global, no address recorded",0x100018F0
 DAT_10077020,0x10077020,1,0,"named global, no address recorded",0x100018F0
-$T1165,0x100770A8,2,1,compiler constant (needs .rdata placement),0x10005C40
+$T1174,0x100770A8,2,1,compiler constant (needs .rdata placement),0x10005C40
 DAT_100770ac,0x100770AC,2,1,"named global, no address recorded",0x100054A0
-$T1164,0x100770B4,2,1,compiler constant (needs .rdata placement),0x10005C40
-$T1169,0x100770B8,2,1,compiler constant (needs .rdata placement),0x10005C70
-$T1172,0x100770C0,2,1,compiler constant (needs .rdata placement),0x10005CA0
+$T1173,0x100770B4,2,1,compiler constant (needs .rdata placement),0x10005C40
+$T1178,0x100770B8,2,1,compiler constant (needs .rdata placement),0x10005C70
+$T1181,0x100770C0,2,1,compiler constant (needs .rdata placement),0x10005CA0
 $T22364,0x100770C8,1,0,compiler constant (needs .rdata placement),0x10007650
-$T1175,0x100770CC,2,1,compiler constant (needs .rdata placement),0x10006910
-BrK08F0CC$S805,0x100770CC,2,1,file-static stand-in (no 1:1 original global),0x10006A10
-$T1176,0x100770D0,12,1,compiler constant (needs .rdata placement),0x10006910 0x10006950 0x10006990 0x100069D0 0x10006B20 0x10006B60
+$T1184,0x100770CC,2,1,compiler constant (needs .rdata placement),0x10006910
+BrK08F0CC$S814,0x100770CC,2,1,file-static stand-in (no 1:1 original global),0x10006A10
+$T1185,0x100770D0,12,1,compiler constant (needs .rdata placement),0x10006910 0x10006950 0x10006990 0x100069D0 0x10006B20 0x10006B60
 $T22351,0x100770D0,2,1,compiler constant (needs .rdata placement),0x10006AA0 0x10006AE0
-$T1178,0x100770D4,2,1,compiler constant (needs .rdata placement),0x10006950
-$T1180,0x100770D8,2,1,compiler constant (needs .rdata placement),0x10006990
-$T1182,0x100770DC,2,1,compiler constant (needs .rdata placement),0x100069D0
+$T1187,0x100770D4,2,1,compiler constant (needs .rdata placement),0x10006950
+$T1189,0x100770D8,2,1,compiler constant (needs .rdata placement),0x10006990
+$T1191,0x100770DC,2,1,compiler constant (needs .rdata placement),0x100069D0
 $T22362,0x100770DC,1,0,compiler constant (needs .rdata placement),0x10007630
-$T1183,0x100770E0,2,1,compiler constant (needs .rdata placement),0x100069D0
-BrK08F0E4$S811,0x100770E4,2,1,file-static stand-in (no 1:1 original global),0x10006A10
-BrK08F0E8$S812,0x100770E8,2,1,file-static stand-in (no 1:1 original global),0x10006A10
+$T1192,0x100770E0,2,1,compiler constant (needs .rdata placement),0x100069D0
+BrK08F0E4$S820,0x100770E4,2,1,file-static stand-in (no 1:1 original global),0x10006A10
+BrK08F0E8$S821,0x100770E8,2,1,file-static stand-in (no 1:1 original global),0x10006A10
 $T22349,0x10077100,1,0,compiler constant (needs .rdata placement),0x10006AA0
 $T22352,0x10077104,1,0,compiler constant (needs .rdata placement),0x10006AE0
 $T22353,0x10077104,1,0,compiler constant (needs .rdata placement),0x10006AE0
-$T1187,0x1007710C,2,1,compiler constant (needs .rdata placement),0x10006B60
+$T1196,0x1007710C,2,1,compiler constant (needs .rdata placement),0x10006B60
 $T22357,0x10077120,1,0,compiler constant (needs .rdata placement),0x100075F0
 $T22359,0x10077124,1,0,compiler constant (needs .rdata placement),0x10007610
 $T22361,0x10077128,1,0,compiler constant (needs .rdata placement),0x10007630
