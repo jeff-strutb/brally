@@ -412,6 +412,16 @@ the caller AND flipped a helper to match for free.
   direct DAT_ externs (the six-member DirectPlay send family, BrHookTakeA/B,
   BrDlCmdFogColour, BrScratchRingDrain). Port-safety indirections (ops
   tables, sink callbacks, factored range-checks) are the same class.
+- **Stride-0x978 global struct array is `slots[i].field`, not `imul`.**
+  `slots[i]` of a 0x978-byte struct compiles to `lea ecx,[eax+eax*4];
+  lea ecx,[ecx+ecx*4]; lea eax,[eax+ecx*4]; lea esi,[eax+eax*2];
+  shl esi,3` then `[esi+base]`. An `int` array indexed by `i*0x25e`
+  emits `imul`. A pointer local (`p = &slots[i]`) folds the base into
+  esi and encodes `[esi]`/`[esi+off]`, not `[esi+base]`. Three field
+  accesses (`hMutex`, `f02C`, `hMutex` again) keep the ReleaseMutex
+  handle as a reload. WaitForSingleObject must be the dllimport stdcall
+  (`push -1; FF 15`) — a cdecl wrapper is `E8` + `add esp` and was the
+  entire 4-byte miss. Proven BrNetSlotSetF02C 0x10004DC0 (60 B).
 - **`&extern_var != NULL` is not folded.** A `mov edx, offset DAT; test edx,edx;
   je` before a strcpy that uses that same address is a real source-level
   `if (p != 0)` / `if (&buf != 0)` on an extern object. VC5 /O2 does NOT

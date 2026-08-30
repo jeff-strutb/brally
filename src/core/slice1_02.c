@@ -748,9 +748,37 @@ int32_t BrNetSlotGetF02C(BrNetState *pNet, int32_t slot)
     return value;
 }
 
-/* 0x10004A50 */
+/* 0x10004DC0 / d3d 0x10004A50 */
 /* WHAT IT DOES: writes a player slot's status word under that slot's lock. */
-/* @implements 0x10004A50 d3d BrNetSlotSetF02C */
+/* @implements 0x10004DC0 glide BrNetSlotSetF02C */
+#ifdef BR_MATCHING_BUILD
+/* Orig is two-arg cdecl (index at [esp+4], value at [esp+8]), not the port's
+ * (pNet, slot, value).  Mutex lock is the raw import, same shape as BrNetReset:
+ * WaitForSingleObject(h, INFINITE) / ReleaseMutex(h), not BrNetMutexLock.
+ * Three indexings of the global so the ReleaseMutex handle reloads; a cached
+ * pointer would materialise the base into esi and encode [esi]/[esi+0x2c]
+ * instead of orig's [esi+0x1021ce58]/[esi+0x1021ce84]. */
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
+typedef struct BrNetSlot978 {
+    void *hMutex;                 /* +0x000 = 0x1021ce58 */
+    char  pad004[0x28];
+    int   f02C;                   /* +0x02C = 0x1021ce84 */
+    char  rest[0x978 - 0x30];
+} BrNetSlot978;
+
+typedef char br_assert_slot978[(sizeof(BrNetSlot978) == 0x978) ? 1 : -1];
+
+extern BrNetSlot978 slots[];      /* 0x1021ce58, stride 0x978 */
+
+void BrNetSlotSetF02C(int param_1, int param_2)
+{
+    WaitForSingleObject((void *)slots[param_1].hMutex, 0xffffffff);
+    slots[param_1].f02C = param_2;
+    ReleaseMutex((void *)slots[param_1].hMutex);
+}
+#else
 void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
@@ -759,6 +787,7 @@ void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
     p->f02C = value;
     BrNetMutexUnlock(p->hMutex);
 }
+#endif
 
 /* 0x10005CF0 */
 /* WHAT IT DOES: reads one identifying number out of a player slot under that
