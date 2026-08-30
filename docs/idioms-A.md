@@ -184,6 +184,37 @@ by the register-blind gap.
 - Six of the nine mask arms want the odd-path-first flip; three do NOT.
   Measure each one — it is not a blanket rule.
 
+## Session 3 (2026-08-29, in-session retranscription, no agents)
+
+Method: rewrite divergent regions fresh from orig.asm (see the
+retranscribe-not-patch memory rule), one region at a time, ~1.5s measure loop.
+
+Landed (`8073620`): the I8 byte-copy arm — group path inline (arm flip),
+DISTINCT group counters (orig runs edx then ebx), and the width bound as the
+reused assigned param_9, which VC5 memory-homes (matches orig's five in-loop
+bound reloads). **Memory-homing via an assigned parameter is a real
+mechanism** (same one as the iVar16-counter discovery) — distinct from the
+slot-name-chasing negative, which stands.
+
+## ‼ THE NEXT CONCRETE LEVER: one missing dword web in the blend group bodies
+
+Per-body probes (all measured 2026-08-29): restoring a widened
+`uVar19 = (unsigned int)bI4inten` temp in EITHER blend group body alone keeps
+the frame and jumps the first divergence +0x14 -> +0x27 — i.e. the whole
+frame-slot map (the +0x14 iVar3 displacement) is exactly ONE dword web short
+in that region. But the uVar19 vehicle costs +5 insns / +14 regnorm, and
+restoring it in BOTH bodies breaks the frame (`sub esp,0x6c`). Orig's group
+body (0x1002580d-) materialises BOTH the byte-slot inten ([esp+0x48]) and a
+widened dword copy ([esp+0x38]), plus HOMED deltas ([esp+0x2c]) — the right
+vehicle is one of those homed values, spelled so it adds exactly one web and
+no copies. Uniform restore in all six bodies: +40 insns, frame breaks —
+measured, do not re-run.
+
+Remaining misalignment (~478 of 2407 in-order, 95 register-blind shapes):
+the blend swizzled bodies (~192 insns, orig 0x10025af1-0x10025d05) and the
+IA8 arm (~158 insns, orig 0x100266ea-0x100268e0) — both want the same
+region-retranscription treatment. Worklist: tools/fnmatch/sites.py.
+
 ## Honest state: size is solved, allocation is not
 
 | measure | state |
