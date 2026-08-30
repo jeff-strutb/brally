@@ -177,8 +177,11 @@ def _find_func_def(src, name=None, last=True):
     return found
 
 
-def _split_fn(src):
-    loc = _find_func_def(src)
+def _split_fn(src, name=None):
+    # With a name, mutate THAT function inside a full multi-function TU
+    # (whole-file mode); without one, keep the wrapped single-function
+    # behaviour (last definition in the file).
+    loc = _find_func_def(src, name=name) if name else _find_func_def(src)
     if not loc:
         return None
     start, ob, cb, name = loc
@@ -1667,8 +1670,8 @@ def _mutation_table(allow_unsound=False):
     return [(w, f) for w, f in MUTATIONS if f.__name__ not in UNSOUND]
 
 
-def apply_mutations(src, rng, n=1):
-    parts = _split_fn(src)
+def apply_mutations(src, rng, n=1, fn_name=None):
+    parts = _split_fn(src, fn_name)
     if not parts:
         return src, []
     body = parts['body']
@@ -1792,7 +1795,8 @@ def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
                 cur_src, cur_diff = best_src, best_diff
                 T = max(T, t0 * 0.5)
         nmut = rng.randint(muts_per_step[0], muts_per_step[1])
-        cand, labs = apply_mutations(cur_src, rng, nmut)
+        cand, labs = apply_mutations(cur_src, rng, nmut,
+                                     fn_name=(func_name if _WHOLE_FILE else None))
         if not labs or cand == cur_src:
             T *= cool
             continue
@@ -1848,6 +1852,7 @@ def anneal(va, src, func_name, orig_bytes, opts, iters, seed=None,
 
 _WORKER_SFX = ''
 _ALLOW_UNSOUND = False
+_WHOLE_FILE = False
 
 
 def _out_paths(va):
@@ -1876,6 +1881,13 @@ def _save_best(va, src, diffs, func_name, history):
 def permute_one(va, args):
     va = _norm_va(va)
     src, func_name, origin = load_seed(va, args.src)
+    if _WHOLE_FILE:
+        row = _report_row(va)
+        if row and row.get('file'):
+            fpath = os.path.join(ROOT, row['file'])
+            src = open(fpath).read()
+            func_name = row['name']
+            origin = row['file'] + ' (whole-file)'
     perm_path = _out_paths(va)[0]
     js_path = _out_paths(va)[1]
     if (not getattr(args, 'no_resume', False)
@@ -1895,10 +1907,12 @@ def permute_one(va, args):
             except (ValueError, TypeError, json.JSONDecodeError):
                 pass
         if resume_ok:
-            src = _strip_inner_matching_ifdef(open(perm_path).read())
-            loc = _find_func_def(src)
-            if loc:
-                func_name = loc[3]
+            src = (open(perm_path).read() if _WHOLE_FILE else
+                   _strip_inner_matching_ifdef(open(perm_path).read()))
+            if not _WHOLE_FILE:
+                loc = _find_func_def(src)
+                if loc:
+                    func_name = loc[3]
             origin = perm_path + ' (resume)'
     orig_path = os.path.join(ORIG_DIR, ('0x%08X' % int(va, 16)) + '.bin')
     if not os.path.exists(orig_path):
@@ -1950,6 +1964,11 @@ def main():
     ap.add_argument('--vas', help='comma-separated VA list (with --batch)')
     ap.add_argument('--max-seconds', type=int, default=0,
                     help='stop each function after this many seconds (0=off)')
+    ap.add_argument('--whole-file', action='store_true',
+                    help='seed from the WHOLE tree .c and mutate only the '
+                         'target function body inside it -- no wrapping. '
+                         'Robust for slice files whose macros the wrapper '
+                         'mangles; each compile is the full file (~2s).')
     ap.add_argument('--unsound', action='store_true',
                     help='re-enable the mutations that do NOT preserve '
                          'semantics (see UNSOUND). Exploration only -- their '
@@ -1964,6 +1983,7 @@ def main():
     if args.worker:
         globals()['_WORKER_SFX'] = '_w' + re.sub(r'\W', '', str(args.worker))
     globals()['_ALLOW_UNSOUND'] = bool(args.unsound)
+    globals()['_WHOLE_FILE'] = bool(getattr(args, 'whole_file', False))
     vas = []
     if args.batch:
         vas = [v.strip() for v in (args.vas.split(',') if args.vas else BATCH)]
