@@ -41,6 +41,125 @@ BrCrPlaneState g_brCrPlane;
  *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
  * ------------------------------------------------------------------ */
 /* @implements 0x10067470 glide BrCrPlaneResolve */
+#ifdef BR_MATCHING_BUILD
+/* Matching arm, retranscribed from the bytes (the port arm below is the
+ * verified readable form).  Structural facts the bytes force:
+ *  - the centroid is a 3-iteration walking-pointer loop into a float[3]
+ *    (0x100674c0: eax walks &aVerts[1], ecx walks the stack array, edx=3);
+ *  - |c| is compare-against-a-memory-zero + conditional fchs, keeping the
+ *    RAW value beneath the abs on the x87 stack;
+ *  - the sign is an INT -1/+1 homed at [esp+0x1c], converted with fild and
+ *    scaled by the 0.5 memory constant;
+ *  - the two dead axes are zeroed by direct stores BEFORE the sign pick;
+ *  - the dot reads the normal BACK FROM THE GLOBALS, normal.x is scaled by
+ *    the two extents in TWO separate statements, and modeFC is scaled as a
+ *    float in place;
+ *  - the extents live at +0x1dc/+0x1e0/+0x1e4 of the object pExt points
+ *    into (the port prototype abstracts this);
+ *  - the tail computes s = -(dot - planeD) (fsub then fchs) with s homed. */
+extern float BrCrK_Zero;     /* 0x10077A78 */
+extern float BrCrK_Third;    /* 0x10077B84 */
+extern float BrCrK_Half;     /* 0x10077AC8 */
+#define BR_CR_EXT(off) (*(const float *)((const char *)pExt + (off)))
+void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
+                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
+{
+    float c[3];
+    float s;
+    float d;
+    int   sgn;
+
+    if (g_brCrPlane.modeFC != 2u) {
+        d = (pA->y * pEdgeN->y + pA->z * pEdgeN->z) + pA->x * pEdgeN->x;
+    } else {
+        {
+            const float *p = &aVerts[1].x;
+            float *pc = c;
+            int n = 3;
+            do {
+                *pc = ((p[-3] + p[3]) + p[0]) * BrCrK_Third;
+                p = p + 1;
+                pc = pc + 1;
+                n = n - 1;
+            } while (n != 0);
+        }
+        {
+            float a0, t0, t1;
+
+            a0 = c[0];
+            t0 = a0;
+            if (a0 < BrCrK_Zero)
+                t0 = -t0;
+            t1 = c[1];
+            if (c[1] < BrCrK_Zero)
+                t1 = -t1;
+            if (t0 >= t1) {
+                float u0, u1;
+                u0 = t1;
+                if (t1 < BrCrK_Zero)
+                    u0 = -u0;
+                u1 = c[2];
+                if (c[2] < BrCrK_Zero)
+                    u1 = -u1;
+                if (u0 >= u1) {
+                    /* z wins */
+                    g_brCrPlane.normal.y = 0.0f;
+                    g_brCrPlane.normal.x = 0.0f;
+                    sgn = -1;
+                    if (!(a0 < BrCrK_Zero))
+                        sgn = 1;
+                    g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
+                } else {
+                    /* y wins */
+                    g_brCrPlane.normal.z = 0.0f;
+                    g_brCrPlane.normal.x = 0.0f;
+                    sgn = -1;
+                    if (!(a0 < BrCrK_Zero))
+                        sgn = 1;
+                    g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
+                }
+            } else {
+                float u0, u1;
+                u0 = t0;
+                if (t0 < BrCrK_Zero)
+                    u0 = -u0;
+                u1 = c[2];
+                if (c[2] < BrCrK_Zero)
+                    u1 = -u1;
+                if (u0 >= u1) {
+                    /* z wins */
+                    g_brCrPlane.normal.y = 0.0f;
+                    g_brCrPlane.normal.x = 0.0f;
+                    sgn = -1;
+                    if (!(a0 < BrCrK_Zero))
+                        sgn = 1;
+                    g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
+                } else {
+                    /* x wins */
+                    g_brCrPlane.normal.z = 0.0f;
+                    g_brCrPlane.normal.y = 0.0f;
+                    sgn = -1;
+                    if (!(a0 < BrCrK_Zero))
+                        sgn = 1;
+                    g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
+                }
+            }
+        }
+        d = (pA->y * g_brCrPlane.normal.y + pA->z * g_brCrPlane.normal.z)
+          + pA->x * g_brCrPlane.normal.x;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
+        *(float *)&g_brCrPlane.modeFC =
+            BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
+    }
+
+    d = d - planeD;
+    s = -d;
+    g_brCrPlane.out.x = pA->x * s;
+    g_brCrPlane.out.y = pA->y * s;
+    g_brCrPlane.out.z = pA->z * s;
+}
+#else
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
                       const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
 {
@@ -100,6 +219,7 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
     g_brCrPlane.out.y = s * pA->y;
     g_brCrPlane.out.z = s * pA->z;
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* 0x10077B44 -1.05, 0x10077B40 0.2, 0x10077B38 0.9, 0x100B5170 1.0,
  * 0x10077AB8 27, 0x10077B3C 1e-4, 0x10077B30 -4.703703880, 0x10077B34 128. */
