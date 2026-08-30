@@ -65,6 +65,55 @@
 
 static BrS17State g_s17;
 
+/* 0x100AA5D0, 0x106C08A0 and 0x106C0860 are fixed STORAGE in the original,
+ * not pointers to storage: BrScenePropsDraw passes their addresses as
+ * immediates (`push 0x106e7930`) and indexes the colour table directly
+ * (`mov edx,[ecx*4+0x100a9930]`). BrS17State models all three as pointers,
+ * which costs a load at every use and rotates the whole allocation.
+ *
+ * PROPER FIX (header, serialised -- not done here): in include/slice2_17.h
+ * make them objects --
+ *      const uint32_t *pColAA5D0;  ->  const uint32_t colAA5D0[4];
+ *      BrMat4 *pLightMtx;          ->  BrMat4 lightMtx;
+ *      BrMat4 *pTransMtx;          ->  BrMat4 transMtx;
+ * and drop the three assignments in tests/test_slice2_17.c. Until then the
+ * matching build models them locally and the PORT IS LEFT EXACTLY AS IT
+ * WAS -- do not delete the #else arm. */
+#ifdef BR_MATCHING_BUILD
+static const uint32_t s17_colAA5D0[4];   /* 0x100AA5D0 */
+static BrMat4 s17_lightMtx;              /* 0x106C08A0 */
+static BrMat4 s17_transMtx;              /* 0x106C0860 */
+#define BRS17_COL       s17_colAA5D0
+#define BRS17_LIGHTMTX  (&s17_lightMtx)
+#define BRS17_TRANSMTX  (&s17_transMtx)
+#else
+#define BRS17_COL       g_s17.pColAA5D0
+#define BRS17_LIGHTMTX  g_s17.pLightMtx
+#define BRS17_TRANSMTX  g_s17.pTransMtx
+#endif
+
+/* BrPropItem's f04/f05 are ONE 16-bit flags word in the original: the loop
+ * head loads it whole (`mov ax,word ptr [esi]`) and tests the high half with
+ * `test ah,4`. Two adjacent unsigned char members do not reproduce that --
+ * VC5 narrows each use to its own byte load and the word never gets CSEd.
+ *
+ * PROPER FIX (header, serialised -- not done here): in include/slice2_17.h
+ * replace
+ *      unsigned char f04;  unsigned char f05;
+ * with
+ *      unsigned short flags;   (bit0..1 colour index, bit2, bit3 pass,
+ *                               bit7 gated on 0x100AA880,
+ *                               bit10 = old f05 bit2)
+ * and this shadow declaration goes away. f04/f05 are read nowhere else in
+ * the tree. The reinterpretation is layout-identical on every little-endian
+ * target. */
+typedef struct S17PropItem {
+    uint32_t dl;            /* +0x00 */
+    unsigned short flags;   /* +0x04, was f04 | f05 << 8 */
+    unsigned char f06, f07; /* +0x06 +0x07 */
+    float x, y, z;          /* +0x08 +0x0C +0x10 */
+} S17PropItem;
+
 /* 0x106806B0 -- the 0x24-byte frame-timer object 0x100751D0 / 0x10075240
  * operate on. slice8_86.c treats it as an opaque byte image (see its
  * br86_ld32 / br86_st32 accessors); it is only ever named by its address, so
@@ -165,23 +214,20 @@ static void s17_stf(unsigned char *p, float v)
 
 /* g_6C0680 is advanced by 8 bytes and then the two words are written --
  * the original reads the cursor, bumps the global, and only then stores. */
-static void s17_emit(uint32_t w0, uint32_t w1)
-{
-    uint32_t *p = g_s17.pGfx;
-
-    g_s17.pGfx = p + 2;
-    p[0] = w0;
-    p[1] = w1;
-}
+#define s17_emit(w0_, w1_)                                              \
+    do {                                                                \
+        uint32_t *p_ = g_s17.pGfx;                                      \
+                                                                        \
+        g_s17.pGfx = p_ + 2;                                            \
+        p_[0] = (w0_);                                                  \
+        p_[1] = (w1_);                                                  \
+    } while (0)
 
 /* DEVIATION: the original stores raw 32-bit pointers into the display list
  * (`mov [eax+4], esi`). On a 64-bit host that cannot round-trip, so the low
  * 32 bits are stored, exactly as the original would have. Consumers of the
  * stream in this port must not dereference these words. */
-static uint32_t s17_ptrword(const void *p)
-{
-    return (uint32_t)(uintptr_t)p;
-}
+#define s17_ptrword(p_)   ((uint32_t)(uintptr_t)(const void *)(p_))
 
 /* ================================================================== */
 /* 1. camera / basis matrices                                         */
@@ -542,7 +588,6 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
     uint32_t *pCombine;
     void *pLights;
     void *pMtx;
-    uint32_t depthWord;
     int pass;
 
     s17_emit(0xE7000000u, 0);
@@ -581,11 +626,12 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
 
     /* `neg / sbb / and 0xFFFFF000 / add 0x2000` -- 0x1000 when the two
      * globals differ, 0x2000 when they are equal. */
-    depthWord = (g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u;
-    s17_emit(0xB7000000u, depthWord | 0x000A0205u);
+    s17_emit(0xB7000000u,
+             (((g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u)
+              | 0x000A0205u));
 
     pLights = BrX10069530();
-    BrLightDirsFromLookAt(g_s17.pLightMtx, (BrLightPair *)pLights,
+    BrLightDirsFromLookAt(BRS17_LIGHTMTX, (BrLightPair *)pLights,
                           0.0f, -1.0f, 15.0f,
                           0.0f,  0.0f,  0.0f,
                           0.0f,  1.0f,  0.0f);
@@ -604,32 +650,27 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
     s17_emit(0xF5000100u, 0x05000000u);
 
     for (pass = 0; pass < 2; ++pass) {
-        uint32_t want = (pass == 0) ? 1u : 0u;
-        uint32_t k = 0;
-        const BrPropItem *it;
+        uint32_t k;
 
-        if ((uint32_t)pList->count == 0)
-            continue;
+        for (k = 0; k < (uint32_t)pList->count; ++k) {
+            const S17PropItem *it = (const S17PropItem *)&pList->items[k];
+            unsigned short f = it->flags;
+            uint32_t bit = ((uint32_t)(unsigned char)(~f) >> 3) & 1u;
 
-        it = &pList->items[0];
-        do {
-            uint32_t bit = ((uint32_t)(unsigned char)(~it->f04) >> 3) & 1u;
-
-            if (bit != want)
-                goto next;
+            if ((bit ^ (uint32_t)(pass == 0)) != 0)
+                continue;
             if (it->dl == 0)
-                goto next;
+                continue;
 
-            if (it->f05 & 4) {
-                const uint32_t col = g_s17.pColAA5D0[it->f04 & 3];
+            if (f & 0x400) {
                 s17_emit(0xBC00000Au, 0);
                 s17_emit(0xBC00040Au, 0);
-                s17_emit(0xBC00200Au, col);
-                s17_emit(0xBC00240Au, col);
+                s17_emit(0xBC00200Au, BRS17_COL[it->flags & 3]);
+                s17_emit(0xBC00240Au, BRS17_COL[it->flags & 3]);
             }
-            if (it->f04 & 4)
+            if (it->flags & 4)
                 s17_emit(0xB6000000u, 0x3000u);
-            if ((it->f04 & 0x80) && g_s17.f0AA880 != 0)
+            if ((it->flags & 0x80) && g_s17.f0AA880 != 0)
                 s17_emit(0xB6000000u, 0x200u);
 
             s17_emit(0xBB000001u, 0xFFFFFFFFu);
@@ -638,30 +679,26 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
             {
                 void *pItemMtx = BrX10069490();
 
-                BrMat4Translate(g_s17.pTransMtx, it->x, it->y, it->z);
-                BrMat4Copy(g_s17.pTransMtx, (BrMat4 *)pItemMtx);
+                BrMat4Translate(BRS17_TRANSMTX, it->x, it->y, it->z);
+                BrMat4Copy(BRS17_TRANSMTX, (BrMat4 *)pItemMtx);
                 s17_emit(0x01040040u, s17_ptrword(pItemMtx));
             }
 
             s17_emit(0x06000000u, it->dl);
             s17_emit(0xBD000000u, 0);
 
-            if ((it->f04 & 0x80) && g_s17.f0AA880 != 0)
+            if ((it->flags & 0x80) && g_s17.f0AA880 != 0)
                 s17_emit(0xB7000000u, 0x200u);
-            if (it->f04 & 4)
+            if (it->flags & 4)
                 s17_emit(0xB7000000u,
                          (g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u);
-            if (it->f05 & 4) {
+            if (it->flags & 0x400) {
                 s17_emit(0xBC00000Au, 0xFFFFFF00u);
                 s17_emit(0xBC00040Au, 0xFFFFFF00u);
                 s17_emit(0xBC00200Au, 0x40404000u);
                 s17_emit(0xBC00240Au, 0x40404000u);
             }
-
-        next:
-            ++k;
-            ++it;
-        } while (k < (uint32_t)pList->count);   /* count re-read each pass */
+        }
     }
 
     s17_emit(0xBD000000u, 0);

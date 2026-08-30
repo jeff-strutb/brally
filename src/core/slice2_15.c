@@ -117,20 +117,20 @@ static int32_t BrFtol(double v)
 }
 
 /* DEVIATION: 32-bit command word from a possibly-64-bit host pointer. */
-static uint32_t BrGfxAddr(const void *p)
+static __inline uint32_t BrGfxAddr(const void *p)
 {
     return (uint32_t)(uintptr_t)p;
 }
 
 /* The original's allocation idiom: read the cursor, bump it by 8, write. */
-static BrGfxCmd *BrGfxAlloc(void)
+static __inline BrGfxCmd *BrGfxAlloc(void)
 {
     BrGfxCmd *p = g_out.pCur;
     g_out.pCur = p + 1;
     return p;
 }
 
-static void BrGfxEmit(uint32_t w0, uint32_t w1)
+static __inline void BrGfxEmit(uint32_t w0, uint32_t w1)
 {
     BrGfxCmd *p = BrGfxAlloc();
     p->w0 = w0;
@@ -138,14 +138,15 @@ static void BrGfxEmit(uint32_t w0, uint32_t w1)
 }
 
 /* `11 * i` scaled by 8 == a 0x58-byte stride. */
-static BrHudView *BrHudViewAt(BrHudView *aViews, int32_t i)
+static __inline BrHudView *BrHudViewAt(BrHudView *aViews, int32_t i)
 {
     return &aViews[i];
 }
 
-static const BrHudSprite *BrHudSpriteAt(int32_t i)
+extern const uint8_t g_hudSpriteTable[];   /* 0x100BCDD0 -- an ARRAY */
+static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
 {
-    return (const BrHudSprite *)(g_hud.pSprites
+    return (const BrHudSprite *)(g_hudSpriteTable
                                  + (size_t)(uint32_t)i * BR_HUDSPRITE_STRIDE);
 }
 
@@ -195,11 +196,9 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 void BrHudDrawDial(BrHudView *aViews)
 {
     const BrHudSprite *pSpr;
-    BrHudView *pView;
-    BrRace *pRace;
     BrHudQuad *pQuad;
     BrGfxCmd *p;
-    int32_t x, y, iSeq, iView;
+    int32_t x, y, iSeq;
     float tip, base;
     float t;
 
@@ -208,22 +207,22 @@ void BrHudDrawDial(BrHudView *aViews)
     if (g_hud.f22AF1C != 0)              /* 10016B56 */
         return;
 
-    iView = g_screen.iView;
-    pView = BrHudViewAt(aViews, iView);
-    pRace = g_hud.pRace;
+    /* The sprite record is resolved BEFORE the call: the original loads
+     * g_screen.iView, aViews[iView].iSprite and the sprite address at
+     * 100140D2-10014109, all ahead of the call at 10014110. */
+    pSpr = BrHudSpriteAt(BrHudViewAt(aViews, g_screen.iView)->iSprite);
 
     /* 10016B68-10016BA0: the two globals are converted to float and handed to
      * 0x1003407D, whose result is discarded -- it is called for effect. */
     BrSub_1003407D((float)g_hud.f6C0684, (float)g_hud.f6C299C);
 
-    pSpr = BrHudSpriteAt(pView->iSprite);
-
     x = g_screen.cx - pSpr->e4 - 0x10;               /* 10016BB1 */
-    y = pView->y + pView->h - pSpr->e5 - 4;          /* 10016BC6 */
+    y = BrHudViewAt(aViews, g_screen.iView)->y
+      + BrHudViewAt(aViews, g_screen.iView)->h - pSpr->e5 - 4;  /* 10016BC6 */
 
     /* 10016BE9: NaN takes the zero path (C0 is set for unordered). */
-    if (pRace->f0E68 >= kF300)
-        iSeq = pRace->f0E70 + 1;
+    if (g_hud.pRace->f0E68 >= kF300)
+        iSeq = g_hud.pRace->f0E70 + 1;
     else
         iSeq = 0;
 
@@ -239,40 +238,44 @@ void BrHudDrawDial(BrHudView *aViews)
         BrGfxEmit(0xDE000000u, 0x3F800000u);   /* +1.0f as a payload */
         BrGfxEmit(0xDF000000u, 0xBF800000u);   /* -1.0f as a payload */
 
-        if (pSpr->mode == 1 || pSpr->mode == 2) {
-            double a;
-
+        /* 10014258: both tests are `je` into the dial path, so the source
+         * puts the non-dial arm first -- `mode != 1 && mode != 2`.  Each arm
+         * carries its OWN BrGfxDrawTexRect call (10014266-1001427F is a
+         * constant-folded copy reading aDial[0] at +0x14 directly); the two
+         * are cross-jumped at the last push, 10014311. */
+        if (pSpr->mode != 1 && pSpr->mode != 2) {
+            /* 10016CF6: the non-dial path always uses byte offset +0x14,
+             * which is aDial[0] -- the same slot iFrame == 15 selects. */
+            BrGfxDrawTexRect(aViews[0].aDial[0], x, y,
+                             pSpr->e4, pSpr->e5);
+        } else {
             /* 10016D14: with f6909B4 set the jitter is pinned to 0x40. */
             if (g_hud.f6909B4 != 0)
                 v = 0x40;
             else
                 v = BrRandom() & 0x7F;
 
-            a = ((double)v + (double)pRace->f0E24 - (double)kF304)
-                * (double)kF308;
-            a = a * (double)(pSpr->ea + 1);
-            iFrame = BrFtol(a - (double)kF30C);
+            /* 100142A2-100142DA: every operand is a dword -- float, not
+             * double -- and __ftol takes the value off the x87 stack. */
+            iFrame = (int32_t)(((float)v + g_hud.pRace->f0E24 - kF304)
+                               * kF308 * (float)(pSpr->ea + 1) - kF30C);
 
             if (iFrame < 0)         iFrame = 0;
             else if (iFrame > 0xF)  iFrame = 0xF;
-        } else {
-            /* 10016CF6: the non-dial path always uses byte offset +0x14,
-             * which is aDial[0] -- the same slot iFrame == 15 selects. */
-            iFrame = 0xF;
+
+            /* GOTCHA: aDial and dlOverlay come from RECORD 0, not iView. */
+            BrGfxDrawTexRect(aViews[0].aDial[15 - iFrame], x, y,
+                             pSpr->e4, pSpr->e5);
         }
 
-        /* GOTCHA: aDial and dlOverlay come from RECORD 0, not record iView. */
-        BrGfxDrawTexRect(aViews[0].aDial[15 - iFrame], x, y,
-                         pSpr->e4, pSpr->e5);
-
         /* 10016DB4: one cached sequence id per view. */
-        if (iSeq != g_hud.aLastSeq[iView]) {
+        if (iSeq != g_hud.aLastSeq[g_screen.iView]) {
             p = BrGfxAlloc();
             p->w0 = 0xDD000000u | (aViews[0].dlOverlay & 0x00FFFFFFu);
             /* DEVIATION: 32-bit truncation of a host pointer. */
             p->w1 = BrGfxAddr((const uint8_t *)pSpr + BR_HUDSPRITE_DATAOFF)
                   + (uint32_t)pSpr->fFC * (uint32_t)iSeq;
-            g_hud.aLastSeq[iView] = iSeq;
+            g_hud.aLastSeq[g_screen.iView] = iSeq;
         }
 
         BrGfxDrawTexRect(aViews[0].dlOverlay,
@@ -288,13 +291,13 @@ void BrHudDrawDial(BrHudView *aViews)
         else
             v = BrRandom() & 0x7F;
         /* Stored through a 32-bit slot, so the float32 rounding is real. */
-        t = (float)((double)v + (double)pRace->f0E24);
+        t = (float)v + g_hud.pRace->f0E24;
     }
 
     if (pSpr->mode != 0)                             /* 10016E7C */
         return;
 
-    pQuad = &g_hud.aQuads[iView + 2 * g_hud.f6C65EC];
+    pQuad = &g_hud.aQuads[g_screen.iView + 2 * g_hud.f6C65EC];
 
     if (g_screen.cViews == 2) {                      /* 10016E98 */
         base = kF314;          /* 5.0f  */
@@ -309,43 +312,53 @@ void BrHudDrawDial(BrHudView *aViews)
     }
 
     {
-        double A  = (double)pSpr->fF0;
-        double fx = (double)x;
-        double fy = (double)(g_screen.cy - y);
+        float A  = pSpr->fF0;
+        float  ang;
+        float fy = (float)(g_screen.cy - y);
 
         /* 10016F22: NaN takes the "no interpolation" path. */
         if (t > kF300) {
-            A = (double)pSpr->fF0
-              - ((double)pSpr->fF0 - (double)pSpr->fEC)
-                * (double)t * (double)kF320;
+            /* 100144AF is `fsubp st(1)`: A is updated IN PLACE on the x87
+             * stack -- the source subtracts FROM A. */
+            A -= (pSpr->fF0 - pSpr->fEC) * t * kF320;
         }
 
         /* The tip pair uses the 15/20 radius; the base pair uses 5/7. The
          * original loses the tip radius (its stack slot is reused) and reaches
          * for the deep x87 copy of the base radius instead -- these two really
          * are different numbers. */
-        pQuad->v[0].x = (float)(int16_t)BrFtol(cos(A - kF324) * tip  + fx);
-        pQuad->v[0].y = (float)(int16_t)BrFtol(sin(A - kF324) * tip  + fy);
+        ang = A - kF324;
+        pQuad->v[0].x = (float)(int16_t)(int32_t)(cos(ang) * tip  + (float)x);
+        pQuad->v[0].y = (float)(int16_t)(int32_t)(sin(ang) * tip  + fy);
         pQuad->v[0].z = 0.0f;
-        pQuad->v[1].x = (float)(int16_t)BrFtol(cos(A - kF328) * tip  + fx);
-        pQuad->v[1].y = (float)(int16_t)BrFtol(sin(A - kF328) * tip  + fy);
+        ang = A - kF328;
+        pQuad->v[1].x = (float)(int16_t)(int32_t)(cos(ang) * tip  + (float)x);
+        pQuad->v[1].y = (float)(int16_t)(int32_t)(sin(ang) * tip  + fy);
         pQuad->v[1].z = 0.0f;
-        pQuad->v[2].x = (float)(int16_t)BrFtol(cos(A - kF32C) * base + fx);
-        pQuad->v[2].y = (float)(int16_t)BrFtol(sin(A - kF32C) * base + fy);
+        ang = A - kF32C;
+        pQuad->v[2].x = (float)(int16_t)(int32_t)(cos(ang) * base + (float)x);
+        pQuad->v[2].y = (float)(int16_t)(int32_t)(sin(ang) * base + fy);
         pQuad->v[2].z = 0.0f;
-        pQuad->v[3].x = (float)(int16_t)BrFtol(cos(A - kF330) * base + fx);
-        pQuad->v[3].y = (float)(int16_t)BrFtol(sin(A - kF330) * base + fy);
+        ang = A - kF330;
+        pQuad->v[3].x = (float)(int16_t)(int32_t)(cos(ang) * base + (float)x);
+        pQuad->v[3].y = (float)(int16_t)(int32_t)(sin(ang) * base + fy);
         pQuad->v[3].z = 0.0f;
     }
 
-    {
-        int i;
-        for (i = 0; i < 4; ++i) {
-            pQuad->v[i].f14 = 0.0f;
-            pQuad->v[i].f18 = kF3BC;   /* 255.0f */
-            pQuad->v[i].f1C = 0.0f;
-        }
-    }
+    /* 100145F2-10014619: twelve straight-line stores, 255.0f materialised
+     * once as the immediate 0x437F0000 -- not a loop, not a named const. */
+    pQuad->v[0].f14 = 0.0f;
+    pQuad->v[0].f18 = 255.0f;
+    pQuad->v[0].f1C = 0.0f;
+    pQuad->v[1].f14 = 0.0f;
+    pQuad->v[1].f18 = 255.0f;
+    pQuad->v[1].f1C = 0.0f;
+    pQuad->v[2].f14 = 0.0f;
+    pQuad->v[2].f18 = 255.0f;
+    pQuad->v[2].f1C = 0.0f;
+    pQuad->v[3].f14 = 0.0f;
+    pQuad->v[3].f18 = 255.0f;
+    pQuad->v[3].f1C = 0.0f;
 
     /* 100170A9: three slots are taken in this order -- the third goes to
      * 0x1002F900, so the interleaving matters. */

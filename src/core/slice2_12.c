@@ -4,6 +4,13 @@
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
+/* The two 16-bit quantisers return `short` in the original: their results
+ * are shifted in AX (`sar ax,8` / `sar ax,1`) and only then widened
+ * (`movsx ecx,ax`), which VC5 only does when the value is known to be
+ * sign-extended from 16 bits.  The headers have to spell them int32_t for
+ * the port, so rename those prototypes and re-declare them narrow. */
+#define BrFixPackS16Q15Neg BrFixPackS16Q15Neg_int_hdr
+#define BrFixPackS16Q7     BrFixPackS16Q7_int_hdr
 #endif
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -12,6 +19,20 @@
 #include "slice2_12.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset
+#undef BrFixPackS16Q15Neg
+#undef BrFixPackS16Q7
+int16_t BrFixPackS16Q15Neg(float v);
+int16_t BrFixPackS16Q7(float v);
+
+/* 0x1006D0B0 BrBitStreamWriteBits is __thiscall in the original: `this` in
+ * ECX, `value` and `nBits` pushed right-to-left and popped by the callee
+ * (no `add esp,8` at any call site).  slice2_12.h has to declare it cdecl
+ * for the port, so reach the real convention here through the proven
+ * `__fastcall(this, _edx_unused, args...)` shim and keep every call site's
+ * spelling unchanged. */
+extern void __fastcall BrBitStreamWriteBitsT(BrBitStream *pBs, int _edx_unused,
+                                             int32_t value, int32_t nBits);
+#define BrBitStreamWriteBits(bs, v, n) BrBitStreamWriteBitsT((bs), 0, (v), (n))
 #endif
 
 #include <math.h>
@@ -169,7 +190,7 @@ int8_t BrFixPackS6Q7Neg(float v)
  * the decoder multiplies by a matching negative scale, so the two sign flips
  * cancel and the value round-trips. */
 /* @implements 0x100065E0 d3d BrFixPackS16Q15Neg */
-int32_t BrFixPackS16Q15Neg(float v)
+int16_t BrFixPackS16Q15Neg(float v)
 {
     int32_t n = (int32_t)BrFloor(0.5f - v * 32768.0f);
 
@@ -323,26 +344,35 @@ void BrCarStateEncode(BrBitStream *pBs, const BrCarState *pSrc)
  * `hiMask` selects the part of the value that is NOT transmitted and `step`
  * is its least significant bit. The four codes are 0, step, 2*step and
  * 3*step, and the final mask keeps exactly the two prefix bits. */
-static int32_t BrCarStateDeltaCode(int32_t cur, int32_t ref,
-                                   int32_t hiMask, int32_t step)
+/* INLINE in the original: all four sites are open-coded, with the final
+ * `and code, 3*step` on the code=0 path too, so the zero case is an arm of
+ * the if and not an early return.
+ *
+ * The high parts are UNSIGNED: `cmp ebx,ecx; sbb ecx,ecx; and ecx,-step;
+ * add ecx,3*step` is VC5's two-constant conditional over an unsigned `<`.
+ * That is not a semantic change -- `ref & hiMask` is non-negative for every
+ * one of the four masks (0x1F000, 0x7E00, 0xFFFF80), so the signed and
+ * unsigned orderings agree on every value either arm can see. */
+static __inline int32_t BrCarStateDeltaCode(uint32_t cur, uint32_t ref,
+                                            uint32_t hiMask, uint32_t step)
 {
-    int32_t code;
-    int32_t hiRef, hiCur;
+    uint32_t code;
+    uint32_t hiRef, hiCur;
 
-    if (((cur ^ ref) & hiMask) == 0)
-        return 0;
+    if (((cur ^ ref) & hiMask) == 0) {
+        code = 0;
+    } else {
+        hiRef = ref & hiMask;
+        hiCur = cur & hiMask;
 
-    hiRef = ref & hiMask;
-    hiCur = cur & hiMask;
+        if (hiRef + step == hiCur)
+            code = step;                /* exactly one step up */
+        else
+            code = (hiRef < hiCur) ? 2 * step   /* more than one step up */
+                                   : 3 * step;  /* at or below the reference */
+    }
 
-    if (hiRef + step == hiCur)
-        code = step;                    /* exactly one step up */
-    else if (hiRef < hiCur)
-        code = 2 * step;                /* more than one step up */
-    else
-        code = 3 * step;                /* at or below the reference */
-
-    return code & (3 * step);
+    return (int32_t)(code & (3 * step));
 }
 
 /* 0x10006830 */
@@ -358,11 +388,24 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
                            const BrCarState *pRef)
 {
     int32_t cur, ref;
+    /* `q` is the 16-bit lvalue that makes VC5 shift in AX: only an
+     * assignment to a `short` narrows a promoted `>>` to `sar ax,N`.  A
+     * (short) cast, a short parameter or a compound `q >>= N` all widen
+     * first (`movsx; sar r32`) -- all three were measured.  The pack
+     * callees are narrowed to int16_t above for the same reason.
+     * Plain `>>` on a signed value replaces BrSar here; it is
+     * implementation-defined rather than undefined, and arithmetic on
+     * every compiler this tree targets. */
+    int16_t q;
 
-    BrBitStreamWriteBits(pBs, BrSar(BrFixPackS16Q15Neg(pCur->f00), 8), 8);
-    BrBitStreamWriteBits(pBs, BrSar(BrFixPackS16Q15Neg(pCur->f04), 8), 8);
-    BrBitStreamWriteBits(pBs, BrSar(BrFixPackS16Q15Neg(pCur->f08), 8), 8);
-    BrBitStreamWriteBits(pBs, BrSar(BrFixPackS16Q15Neg(pCur->f0C), 8), 8);
+    q = BrFixPackS16Q15Neg(pCur->f00) >> 8;
+    BrBitStreamWriteBits(pBs, q, 8);
+    q = BrFixPackS16Q15Neg(pCur->f04) >> 8;
+    BrBitStreamWriteBits(pBs, q, 8);
+    q = BrFixPackS16Q15Neg(pCur->f08) >> 8;
+    BrBitStreamWriteBits(pBs, q, 8);
+    q = BrFixPackS16Q15Neg(pCur->f0C) >> 8;
+    BrBitStreamWriteBits(pBs, q, 8);
 
     /* f10: 17-bit quantity, 12 bits sent plus a 2-bit code on 0x1F000. */
     ref = (int32_t)((uint32_t)BrFixPackU24Q13(pRef->f10) >> 7);
@@ -376,8 +419,10 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
         BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
 
     /* f18: 15-bit SIGNED quantity, 9 bits sent plus a code on 0x7E00. */
-    ref = BrSar(BrFixPackS16Q7(pRef->f18), 1);
-    cur = BrSar(BrFixPackS16Q7(pCur->f18), 1);
+    q = BrFixPackS16Q7(pRef->f18) >> 1;
+    ref = q;
+    q = BrFixPackS16Q7(pCur->f18) >> 1;
+    cur = q;
     BrBitStreamWriteBits(pBs,
         (cur & 0x1FF) | BrCarStateDeltaCode(cur, ref, 0x7E00, 0x200), 11);
 
@@ -391,12 +436,17 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
     BrBitStreamWriteBits(pBs, (int32_t)((uint32_t)BrFixPackLevel(pCur->f80) & 0xFFu), 2);
     BrBitStreamWriteBits(pBs, (int32_t)((uint32_t)BrFixPackLevel(pCur->f84) & 0xFFu), 2);
 
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f88), 1);
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f8C), 1);
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f90), 1);
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f94), 1);
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f98), 1);
-    BrBitStreamWriteBits(pBs, BrIsNonZero(pCur->f9C), 1);
+    /* Open-coded in the original (`fld; fcomp; fnstsw; test ah,0x40; jne`),
+     * exactly as the matched BrCarStatePack below already spells it.  VC5
+     * gives 0 for a NaN here, which is what the original does and what
+     * BrIsNonZero was written to document; a strict-IEEE compiler would
+     * give 1, so this line is a byte-fidelity choice, not a portable one. */
+    BrBitStreamWriteBits(pBs, pCur->f88 != 0.0f, 1);
+    BrBitStreamWriteBits(pBs, pCur->f8C != 0.0f, 1);
+    BrBitStreamWriteBits(pBs, pCur->f90 != 0.0f, 1);
+    BrBitStreamWriteBits(pBs, pCur->f94 != 0.0f, 1);
+    BrBitStreamWriteBits(pBs, pCur->f98 != 0.0f, 1);
+    BrBitStreamWriteBits(pBs, pCur->f9C != 0.0f, 1);
 }
 
 /* =====================================================================
