@@ -11,9 +11,21 @@
  *     (any side effect in an arg makes VC5 pre-evaluate it before pushes;
  *      __inline helpers count as assignments -- the inliner's temp)
  *   short value PARAM    -> sar ax narrow BUT no movsx (pushes eax raw)
- * The original combines push-early WITH the narrow shift -- a spelling not
- * yet found.  Current text uses the assignment form: exact 1018-byte length,
- * value shapes exact, only the ~30 push placements differ.
+ * The original combines push-early WITH the narrow shift.  15+ spelling
+ * probes (dead temps, comma forms, functional/ref casts, short/int param
+ * permutations, /G3-/G6, /Za, /Os, /Op, /Ob, /GX on/off) show the two are
+ * MUTUALLY EXCLUSIVE under the staged RTM front end: narrowing fires only at
+ * an assignment, and any assignment in an argument forces pre-evaluation.
+ * Corpus cross-check: 11 MATCHED functions carry the hoisted-constant-push
+ * motif and every one passes PURE call expressions as arguments
+ * (BrCountedNetSend 0x10004A40 is the clean witness), consistent with the
+ * rule.  LEADING HYPOTHESIS: the shipped binaries (March 1999, VS97 SP3
+ * era) were compiled by an SP-patched C1XX.DLL whose pre-evaluation rule
+ * differed; the staged toolchain is RTM (VCPP-5.00.iso).  DECISIVE TEST:
+ * stage SP3's C1XX.DLL/C1.DLL/C2.EXE beside the RTM set and recompile THIS
+ * FILE -- if the 151 residual bytes drop to 0, the C++ workstream needs the
+ * SP3 front end (the 601 matched C functions go through C1.DLL and are
+ * unaffected evidence either way).
  *
  * The C transcription (slice2_12.c) is shape-exact except for 33 surplus
  * `xor edx,edx` -- the __fastcall dead-edx idiom faking the writer's
