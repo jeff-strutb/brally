@@ -805,6 +805,22 @@ the caller AND flipped a helper to match for free.
   Read the jcc sense at the test to decide which arm the source wrote
   first. Not universal — of six mask sites in 0x100250D0 three wanted the
   flip and three were already right, so MEASURE each one. Proven 0x100250D0.
+- **x87 spill-slot HOMES follow computation order, and the scheduler's
+  drain order keys off them.** Under /Op, paired temps (w2/h2 in
+  0x100215C0) round-trip through [esp+4]/[esp+0xc] in the order computed;
+  swapping which is computed first re-homes them and flips the whole
+  downstream sub/div drain sequence. Computing h2 BEFORE w2 took the
+  function from 547 to 129 masked diff bytes at exact length. When an x87
+  block matches in shape but drains slots mirrored, permute the SETUP
+  ORDER of the spilled temps, not the consuming statements. Proven
+  0x100215C0.
+- **A divider-pipeline interleave means PRE-DIVIDED TEMPS in the source.**
+  Orig starting two fdivs ahead of a second constant-divide pair
+  (fdiv/fdiv ... fdiv/fdiv interleaved with /Op round-trips) is not
+  reachable by statement reordering of combined chains — the source
+  divided the inputs into named temps first (`f = (float)(unsigned)v / K;`),
+  split around the other setup, and the chains consume the temps. Made
+  0x100215C0's +0x55..+0xd3 block instruction-identical. Proven 0x100215C0.
 - **C++ argument-list scheduling: VC5 pushes args in place, right-to-left,
   ONLY when no argument carries a side effect.** A later constant arg is
   pushed BEFORE a call inside an earlier arg (`push 8; push field; call
