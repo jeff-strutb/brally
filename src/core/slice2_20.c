@@ -13,7 +13,15 @@
 #endif
 #include <string.h>
 
+/* The original takes ONE argument: `mov esi,[esp+0x10]` after three
+ * pushes is arg1, and `mov [esp+0x14],3` later homes a LOCAL in the
+ * arg-1 slot -- there is no second parameter.  The port added cbFile
+ * for a bounds check the original does not have.  Rename the header
+ * prototype out of the way for this probe; the real fix is to drop
+ * cbFile from slice2_20.h. */
+#define BrRcaFixup BrRcaFixup_hdrdecl
 #include "slice2_20.h"
+#undef BrRcaFixup
 #include "br_seg.h"
 #include "br_bits.h"
 #include "br_vec.h"
@@ -237,57 +245,67 @@ static void *BrPtrAt(const void *pv)
  * an N64 address. This walks the whole car -- geometry, textures,
  * descriptors, transforms -- turning each field around and rewriting each
  * reference to point at where the data actually sits in memory now. */
+/* The original inlines both endian idioms at every site -- there is no call
+ * to a swap helper anywhere in this function -- so they are macros, not the
+ * out-of-line BrSwap4/BrLoad32BE the port used.  Store order is load-bearing:
+ * the original writes p[3] before p[0], i.e. `t = p[3]; p[3] = p[0]; p[0] = t`. */
+#define BR_SWAP4(pb) do {                                                     \
+        uint8_t a_, b_;                                                       \
+        a_ = ((uint8_t *)(pb))[0];  b_ = ((uint8_t *)(pb))[3];                \
+        ((uint8_t *)(pb))[3] = a_;  ((uint8_t *)(pb))[0] = b_;                \
+        a_ = ((uint8_t *)(pb))[1];  b_ = ((uint8_t *)(pb))[2];                \
+        ((uint8_t *)(pb))[2] = a_;  ((uint8_t *)(pb))[1] = b_;                \
+    } while (0)
+
+#define BR_LD32BE(pb) do {                                                    \
+        uint32_t v_;                                                          \
+        v_ = ((uint32_t)((uint8_t *)(pb))[0] << 8) | ((uint8_t *)(pb))[1];    \
+        v_ = (v_ << 8) | ((uint8_t *)(pb))[2];                                \
+        v_ = (v_ << 8) | ((uint8_t *)(pb))[3];                                \
+        *(uint32_t *)(pb) = v_;                                               \
+    } while (0)
+
+/* 0x1002B9A0.  Two arguments in the original: (n64Base, hostBase).  The port
+ * threads an explicit BrSegMap * through as a first argument; the original
+ * writes the module globals directly. */
+extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
+
 /* @implements 0x100370D0 d3d BrRcaFixup */
-void BrRcaFixup(void *pvFile, size_t cbFile)
+void BrRcaFixup(void *pvFile)
 {
     uint8_t *pFile = (uint8_t *)pvFile;
-    uint8_t *pData = pFile + 0x8000;          /* edi: the N64 struct */
     uint8_t *p;
     int i, j;
 
-    /* DEVIATION: the original passes the real address of pFile + 0x8000 as
-     * the host base.  A 64-bit host address does not fit in the u32 that
-     * BrSegFixup writes back into the image, so the port installs the
-     * surrogate BR_LOAD_BASE32 and remembers the matching host pointer. */
-    g_BrLoad.pImage  = pData;
-    g_BrLoad.uBase32 = BR_LOAD_BASE32;
-    g_BrLoad.cbImage = (cbFile > 0x8000u) ? (cbFile - 0x8000u) : 0u;
-
-    BrSegSetBases(&s_seg, 0x803C8000u, BR_LOAD_BASE32);
+    BrSegSetBasesG(0x803C8000u, pFile + 0x8000);
     BrSegSetFlag(0);
 
     g_p6C7C3C = pFile;
-    BrWr32(pFile + 0x7C, 0);
+    *(uint32_t *)(pFile + 0x7C) = 0;
 
-    BrLoad32BE(pData + 0x00);
-    BrSwap4(pData + 0x04);  BrFixupAt(pData + 0x04);
-    BrLoad32BE(pData + 0x08);
-    BrSwap4(pData + 0x0C);  BrFixupAt(pData + 0x0C);
-    BrLoad32BE(pData + 0x10);
-    BrSwap4(pData + 0x14);  BrFixupAt(pData + 0x14);
+    BR_LD32BE(pFile + 0x8000);
+    BR_SWAP4(pFile + 0x8004);  BrSegPtrFixup((uint32_t *)(pFile + 0x8004));
+    BR_LD32BE(pFile + 0x8008);
+    BR_SWAP4(pFile + 0x800C);  BrSegPtrFixup((uint32_t *)(pFile + 0x800C));
+    BR_LD32BE(pFile + 0x8010);
+    BR_SWAP4(pFile + 0x8014);  BrSegPtrFixup((uint32_t *)(pFile + 0x8014));
 
     /* [+0x14] is a table of [+0x10] records, stride 0x24. */
-    BrSwapRec24Array(BrPtrAt(pData + 0x14), (int)BrRd32(pData + 0x10));
+    BrSwapRec24Array(*(void **)(pFile + 0x8014), *(int *)(pFile + 0x8010));
 
     {
         /* Patch four u16s in the record selected by the byte at +0x11A. */
-        uint8_t *pTbl = (uint8_t *)BrPtrAt(pData + 0x14);
-        uint8_t *pDesc = NULL;
-
-        if (pTbl != NULL)
-            pDesc = (uint8_t *)BrLoadResolve(BrRd32(pTbl + pData[0x11A] * 0x24 + 4));
+        uint8_t *pDesc = *(uint8_t **)(*(uint8_t **)(pFile + 0x8014)
+                                       + pFile[0x811A] * 0x24 + 4);
 
         if (pDesc != NULL) {
             uint8_t *q = pDesc + 0x18;
-            for (i = 0; i < 4; ++i, q += 2) {
-                if (g_i6C661C == 0 && g_i6C6624 == 0) {
-                    /* DEVIATION: the original is `or byte [q+1], 1`, which on
-                     * x86 sets bit 8 of the little-endian u16.  Expressed on
-                     * the u16 so it means the same thing on any host. */
-                    BrWr16(q, (uint16_t)(BrRd16(q) | 0x0100u));
-                } else {
-                    BrWr16(q, (uint16_t)(BrRd16(q) & 0xFEFFu));
-                }
+            for (i = 0; i < 4; ++i) {
+                if (g_i6C661C == 0 && g_i6C6624 == 0)
+                    q[1] |= 1;
+                else
+                    *(uint16_t *)q &= 0xFEFF;
+                q += 2;
             }
         }
     }
@@ -295,135 +313,145 @@ void BrRcaFixup(void *pvFile, size_t cbFile)
     BrSub10074E00();
 
     /* Thirty display-list pointers at +0x18, walked as 3 x 10. */
-    p = pData + 0x18;
+    p = pFile + 0x8018;
     for (j = 0; j < 3; ++j) {
-        for (i = 0; i < 10; ++i, p += 4) {
-            void *pDl;
-            BrSwap4(p);
-            BrFixupAt(p);
-            pDl = BrPtrAt(p);
-            if (BrDlIsRegistered(pDl) == 0) {
-                BrDlRegister(pDl);
+        for (i = 0; i < 10; ++i) {
+            BR_SWAP4(p);
+            BrSegPtrFixup((uint32_t *)p);
+            if (BrDlIsRegistered(*(void **)p) == 0) {
+                BrDlRegister(*(void **)p);
                 BrSub10074DC0(2);
-                g_pfn18AA0C4(pDl);
+                g_pfn18AA0C4(*(void **)p);
             }
+            p += 4;
         }
     }
 
     /* GOTCHA (see the header): the swap is on +0x90, the rebase on +0x94. */
-    BrSwap4(pData + 0x90);
-    BrFixupAt(pData + 0x94);
+    BR_SWAP4(pFile + 0x8090);
+    BrSegPtrFixup((uint32_t *)(pFile + 0x8094));
 
-    for (i = 0; i < 6; ++i)
-        BrSwap4(pData + 0x98 + i * 4);          /* +0x98 .. +0xAF */
-    for (i = 0; i < 3; ++i)
-        BrSwap4(pData + 0xB0 + i * 4);          /* +0xB0 .. +0xBB */
+    /* +0x98..+0xAF: six separate fields, straight-line in the original. */
+    BR_SWAP4(pFile + 0x8098);
+    BR_SWAP4(pFile + 0x809C);
+    BR_SWAP4(pFile + 0x80A0);
+    BR_SWAP4(pFile + 0x80A4);
+    BR_SWAP4(pFile + 0x80A8);
+    BR_SWAP4(pFile + 0x80AC);
+
+    /* +0xB0..+0xBB: a three-element loop in the original. */
+    p = pFile + 0x80B0;
+    for (i = 0; i < 3; ++i) {
+        BR_SWAP4(p);
+        p += 4;
+    }
 
     /* Nine more display-list pointers at +0xBC, walked as 3 x 3. */
-    p = pData + 0xBC;
+    p = pFile + 0x80BC;
     for (j = 0; j < 3; ++j) {
-        for (i = 0; i < 3; ++i, p += 4) {
-            void *pDl;
-            BrSwap4(p);
-            BrFixupAt(p);
-            pDl = BrPtrAt(p);
-            if (BrDlIsRegistered(pDl) == 0) {
-                BrDlRegister(pDl);
+        for (i = 0; i < 3; ++i) {
+            BR_SWAP4(p);
+            BrSegPtrFixup((uint32_t *)p);
+            if (BrDlIsRegistered(*(void **)p) == 0) {
+                BrDlRegister(*(void **)p);
                 BrSub10074DC0(2);
-                g_pfn18AA0C4(pDl);
+                g_pfn18AA0C4(*(void **)p);
             }
+            p += 4;
         }
     }
 
     BrSub10074DC0(2);
 
     {
-        uint8_t *pTbl = (uint8_t *)BrPtrAt(pData + 0x14);
         uint8_t *pRec;
         uint8_t *pDesc;
 
-        /* Records 6, 3 and 5 of the same table, by byte offset. */
-        if (pTbl != NULL) {
-            g_pfn18AA0C8(pTbl + 0xD8, 0);
-            g_pfn18AA0C8(pTbl + 0x6C, 0);
-            g_pfn18AA0C8(pTbl + 0xB4, 0);
-        }
+        /* Records 6, 3 and 5 of the same table, by byte offset.  The table
+         * pointer is re-read from the image each time: the calls in between
+         * are allowed to move it. */
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xD8, 0);
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0x6C, 0);
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xB4, 0);
 
-        pRec  = (pTbl != NULL) ? pTbl + pData[0x11B] * 0x24 : NULL;
-        pDesc = (pRec != NULL) ? (uint8_t *)BrLoadResolve(BrRd32(pRec + 4)) : NULL;
+        pRec  = *(uint8_t **)(pFile + 0x8014) + pFile[0x811B] * 0x24;
+        pDesc = *(uint8_t **)(pRec + 4);
 
         if (pDesc != NULL && g_i0AC300 == 0) {
             /* The handle is read BEFORE the call and re-read after: the
              * callee is allowed to replace it, and both values are used. */
-            uint32_t hOld = BrRd32(pRec);
-            uint32_t hNew;
+            uint32_t hOld = *(uint32_t *)pRec;
 
             g_pfn18AA0C8(pRec, 1);
-            hNew = BrRd32(pRec);
-            BrWr32(pFile + 0x80, hNew);
+            *(uint32_t *)(pFile + 0x80) = *(uint32_t *)pRec;
 
             if (g_i6C661C == 0 && g_i6C6624 == 0) {
-                BrWr16(pDesc + 0x1E, 0x0190);
-                BrWr16(pDesc + 0x14, 0x01A0);
+                *(uint16_t *)(pDesc + 0x1E) = 0x0190;
+                *(uint16_t *)(pDesc + 0x14) = 0x01A0;
             } else {
-                BrWr16(pDesc + 0x1E, 0x0070);
-                BrWr16(pDesc + 0x14, 0x8290);
+                *(uint16_t *)(pDesc + 0x1E) = 0x0070;
+                *(uint16_t *)(pDesc + 0x14) = 0x8290;
             }
 
-            BrWr16(pDesc + 0x1C, 0x0190);
-            BrWr16(pDesc + 0x1A, BrRd16(pDesc + 0x1E));
-            BrWr16(pDesc + 0x12, 0x01A0);
-            BrWr16(pDesc + 0x10, BrRd16(pDesc + 0x14));
-            BrWr16(pDesc + 0x18, 0x8179);
-            BrWr16(pDesc + 0x0E, 0x4192);
-            BrWr16(pDesc + 0x16, 0x6BAD);
-            BrWr16(pDesc + 0x0C, 0x31C6);
-            BrWr32(pFile + 0x84,
-                   g_pfn18AA084(BrRd32(pFile + 0x80), hOld, pDesc));
+            *(uint16_t *)(pDesc + 0x1C) = 0x0190;
+            *(uint16_t *)(pDesc + 0x1A) = *(uint16_t *)(pDesc + 0x1E);
+            *(uint16_t *)(pDesc + 0x12) = 0x01A0;
+            *(uint16_t *)(pDesc + 0x10) = *(uint16_t *)(pDesc + 0x14);
+            *(uint16_t *)(pDesc + 0x18) = 0x8179;
+            *(uint16_t *)(pDesc + 0x0E) = 0x4192;
+            *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
+            *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
+            *(uint32_t *)(pFile + 0x84) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
 
-            BrWr16(pDesc + 0x1C, 0x00C0);
-            BrWr16(pDesc + 0x1A, 0x00C0);
-            BrWr16(pDesc + 0x12, 0x04F9);
-            BrWr16(pDesc + 0x10, 0x04F9);
-            BrWr16(pDesc + 0x16, 0x6BAD);
-            BrWr16(pDesc + 0x0C, 0x31C6);
-            BrWr32(pFile + 0x88,
-                   g_pfn18AA084(BrRd32(pFile + 0x80), hOld, pDesc));
+            *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x1A) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x12) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x10) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
+            *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
+            *(uint32_t *)(pFile + 0x88) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
 
-            BrWr16(pDesc + 0x1C, 0x0190);
-            BrWr16(pDesc + 0x1A, BrRd16(pDesc + 0x1E));
-            BrWr16(pDesc + 0x12, 0x01A0);
-            BrWr16(pDesc + 0x10, BrRd16(pDesc + 0x14));
-            BrWr16(pDesc + 0x16, 0x38E7);
-            BrWr16(pDesc + 0x0C, 0xFEFF);
-            BrWr32(pFile + 0x8C,
-                   g_pfn18AA084(BrRd32(pFile + 0x80), hOld, pDesc));
+            *(uint16_t *)(pDesc + 0x1C) = 0x0190;
+            *(uint16_t *)(pDesc + 0x1A) = *(uint16_t *)(pDesc + 0x1E);
+            *(uint16_t *)(pDesc + 0x12) = 0x01A0;
+            *(uint16_t *)(pDesc + 0x10) = *(uint16_t *)(pDesc + 0x14);
+            *(uint16_t *)(pDesc + 0x16) = 0x38E7;
+            *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
+            *(uint32_t *)(pFile + 0x8C) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
 
-            BrWr16(pDesc + 0x12, 0x04F9);
-            BrWr16(pDesc + 0x1C, 0x00C0);
-            BrWr16(pDesc + 0x1A, 0x00C0);
-            BrWr16(pDesc + 0x10, 0x04F9);
-            BrWr16(pDesc + 0x16, 0x38E7);
-            BrWr16(pDesc + 0x0C, 0xFEFF);
-            BrWr32(pFile + 0x90,
-                   g_pfn18AA084(BrRd32(pFile + 0x80), hOld, pDesc));
+            *(uint16_t *)(pDesc + 0x12) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x1A) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x10) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x16) = 0x38E7;
+            *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
+            *(uint32_t *)(pFile + 0x90) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
         } else {
-            BrWr32(pFile + 0x90, 0);
-            BrWr32(pFile + 0x8C, 0);
-            BrWr32(pFile + 0x88, 0);
-            BrWr32(pFile + 0x84, 0);
-            BrWr32(pFile + 0x80, 0);
+            *(uint32_t *)(pFile + 0x90) = 0;
+            *(uint32_t *)(pFile + 0x8C) = 0;
+            *(uint32_t *)(pFile + 0x88) = 0;
+            *(uint32_t *)(pFile + 0x84) = 0;
+            *(uint32_t *)(pFile + 0x80) = 0;
         }
     }
 
-    /* Twelve dwords at +0xE0, walked as 4 x 3. */
-    p = pData + 0xE0;
-    for (j = 0; j < 4; ++j)
-        for (i = 0; i < 3; ++i, p += 4)
-            BrSwap4(p);
+    /* Twelve dwords at +0xE0: FOUR records of THREE.  The original's loop
+     * pointer is biased (`lea eax,[esi+0x80e2]`, displacements -2..+1), which
+     * is what MSVC's strength reduction does to `p + i * 4` in a nested loop.
+     * The flat `BR_SWAP4(p); p += 4;` spelling does not reproduce it. */
+    p = pFile + 0x80E0;
+    for (j = 0; j < 4; ++j) {
+        for (i = 0; i < 3; ++i)
+            BR_SWAP4(p + i * 4);
+        p += 12;
+    }
 
-    BrSwap4(pData + 0x11C);
-    BrFixupAt(pData + 0x11C);
+    BR_SWAP4(pFile + 0x811C);
+    BrSegPtrFixup((uint32_t *)(pFile + 0x811C));
 }
 
 /* ==========================================================================
@@ -502,7 +530,7 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
 
     /* DEVIATION: cbDest is a port addition (the original is two-argument);
      * it exists only to give BrRcaFixup a bound for pointer resolution. */
-    BrRcaFixup(pvDest, cbDest);
+    BrRcaFixup(pvDest);
 
     if (!fPreview)
         g_i0B8C90 = fSaved;

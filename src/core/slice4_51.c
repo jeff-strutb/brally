@@ -219,115 +219,131 @@ static void BrGbiRectFlush(BrGbiRectState *pSt)
  * over two triangles. It also flushes any renderer settings that were queued
  * up but not yet sent. Note the tile number it is given is never used, in
  * the original or here. */
-/* @implements 0x10021560 d3d BrGbiCall10021560 */
+/* RE-TARGETED to the GLIDE original 0x100215C0 (1,032 B / 239 insns).  The
+ * D3D-shaped body that used to live here modelled a pointer-reached state
+ * block, a null guard and a deferred-state flush that the Glide function has
+ * none of: it reads flat globals, calls nothing but the triangle submitter,
+ * and takes its four edges as UNSIGNED (orig converts each with the
+ * lo/hi=0 `fild qword` pair, which is MSVC's unsigned->double sequence).
+ *
+ * BUILD FLAG: this translation unit needs `/O2 /Op`.  Every int->float
+ * conversion in the original is followed by `fstp dword [tmp]; fld dword
+ * [tmp]` -- MSVC 5.0's round-to-float idiom, which /O2 alone never emits (it
+ * keeps the value in the x87 register).  /Op also stops `/ 2.0f` and
+ * `/ 4.0f` being strength-reduced to a multiply; the two divisors are still
+ * modelled as unfoldable externs because the original divides by memory.
+ * Under `/O2 /Op` this body is 1,034 B / 240 insns against 1,032 / 239 with
+ * a single surplus `fxch` -- see docs note.  Under plain /O2 the rounds are
+ * absent and it is 1,014 B / 225 insns.
+ *
+ * @implements 0x100215C0 glide BrGbiCall10021560 -- NOT TAGGED: one fxch out. */
+/* --- BRGlide.dll flat globals this function reads directly ------------ */
+#define BR_GBI_RECT_C_RGB   255.0f   /* 0x10077418; the else-arm literal is
+                                      * 0x437F0000 = 255.0f in the original */
+extern float        BrGbiRectK_HALF;    /* 0x10077414 -- not foldable */
+extern float        BrGbiRectK_FIXED;   /* 0x10077408 -- not foldable */
+extern int          BrGbiRectG_A7514;
+extern int          BrGbiRectG_A7518;
+extern float        BrGbiRectG_A9A54;
+extern float        BrGbiRectG_5D17C4;
+extern int          BrGbiRectG_5CDA04;
+extern float        BrGbiRectG_5CCD44;
+extern float        BrGbiRectG_5CD9F4;
+extern float        BrGbiRectG_5CCCF8;
+extern float        BrGbiRectG_5D17A4;
+extern float        BrGbiRectG_5D17B4;
+extern float        BrGbiRectG_5CE2D0;
+extern int          BrGbiRectG_5D17C8;
+extern int          BrGbiRectG_18ED198;
+extern int          BrGbiRectG_186C954;
+extern int          BrGbiRectG_186C950;
+extern int          BrGbiRectG_18EC988;
+
 void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
 {
-    BrGbiRectState *pSt  = BrGbiRectGetState();
-    BrGbiState     *pGbi = (BrGbiState *)pSt->pGbi;
-    BrGbiRectVert   v0, v1, v2, v3;
-    float           cx, cy, w2, h2, e;
-    double          xLrs, xUls, yLrt, yUlt;
-    float           z, w;
-    float           u0, u1, vt0, vt1;
+    BrGbiRectVert v[4];
+    float cy, w2, h2;
+    float fLrs, fLrt, fUls, fUlt;
+    float xLrs, xUls, yLrt, yUlt;
+    float u0, u1, vt0, vt1;
 
-    /* GOTCHA: the fifth argument is loaded by neither the original nor this
-     * port.  Only the four rectangle edges are read. */
     (void)tile;
 
-    /* DEVIATION: the original has no such check; the state it reads lives at
-     * fixed addresses that always exist.  Here it is a pointer the
-     * integration has to wire, so a null one is a link-time mistake rather
-     * than a rendering condition, and crashing on it helps nobody. */
-    if (pGbi == NULL)
-        return;
+    fLrt = (float)(unsigned int)lrt;
+    fUlt = (float)(unsigned int)ult;
 
-    /* Each of these is stored to a dword and reloaded before use, so every
-     * one is rounded to float first; the divisions and subtractions that
-     * follow stay in x87 registers.  Reproduced as float inputs feeding a
-     * double expression -- which is not an approximation of the original but
-     * an exact model of it, because the x87 here runs at 53-bit precision
-     * (CRT control word 0x027F -- CONVENTIONS.md).  This note used to explain
-     * the double as the closest C99 could get to 80-bit temporaries "without
-     * assuming long double is x87"; `long double` would in fact have been
-     * WRONG, modelling a 64-bit-mantissa control word this process never
-     * runs in. */
-    cx = (float)BrG_0A81C0;
-    cy = (float)BrG_0A81C4;
-    w2 = cx / BR_GBI_RECT_C_HALF;      /* stored as float in the original */
-    h2 = cy / BR_GBI_RECT_C_HALF;      /* likewise */
-    e  = BrGbiRectBitsToFloat(pGbi->f0A79E8);
+    w2 = (float)BrGbiRectG_A7514 / BrGbiRectK_HALF;
+    cy = (float)BrGbiRectG_A7518;
+    h2 = cy / BrGbiRectK_HALF;
 
-    xLrs = (((double)((float)lrs / BR_GBI_RECT_C_FIXED) - w2) / w2) / e;
-    xUls = (((double)((float)uls / BR_GBI_RECT_C_FIXED) - w2) / w2) / e;
-    yLrt = (((double)(cy - (float)lrt / BR_GBI_RECT_C_FIXED) - h2) / h2) / e;
-    yUlt = (((double)(cy - (float)ult / BR_GBI_RECT_C_FIXED) - h2) / h2) / e;
+    fLrs = (float)(unsigned int)lrs;
+    fUls = (float)(unsigned int)uls;
 
-    z = (float)(BrGbiRectBitsToFloat(pGbi->f4C5174) / e);
-    w = (float)(BR_GBI_RECT_C_ONE / e);
+    xLrs = ((fLrs / BrGbiRectK_FIXED - w2) / w2) / BrGbiRectG_A9A54;
+    yLrt = ((cy - fLrt / BrGbiRectK_FIXED - h2) / h2) / BrGbiRectG_A9A54;
+    yUlt = ((cy - fUlt / BrGbiRectK_FIXED - h2) / h2) / BrGbiRectG_A9A54;
+    xUls = ((fUls / BrGbiRectK_FIXED - w2) / w2) / BrGbiRectG_A9A54;
 
-    /* v0 (uls, lrt)   v1 (lrs, ult)   v2 (uls, ult)   v3 (lrs, lrt) */
-    v0.node.f04 = (float)xUls;  v0.node.f08 = (float)yLrt;
-    v1.node.f04 = (float)xLrs;  v1.node.f08 = (float)yUlt;
-    v2.node.f04 = (float)xUls;  v2.node.f08 = (float)yUlt;
-    v3.node.f04 = (float)xLrs;  v3.node.f08 = (float)yLrt;
+    v[3].node.f04 = xLrs;  v[3].node.f08 = yLrt;
+    v[1].node.f04 = xLrs;  v[1].node.f08 = yUlt;
+    v[0].node.f04 = xUls;  v[0].node.f08 = yLrt;
+    v[2].node.f04 = xUls;  v[2].node.f08 = yUlt;
 
-    v0.node.f0C = z;  v1.node.f0C = z;  v2.node.f0C = z;  v3.node.f0C = z;
-    v0.node.f18 = w;  v1.node.f18 = w;  v2.node.f18 = w;  v3.node.f18 = w;
+    v[2].node.f0C = BrGbiRectG_5D17C4 / BrGbiRectG_A9A54;
+    v[1].node.f0C = v[2].node.f0C;
+    v[0].node.f0C = v[2].node.f0C;
+    v[3].node.f0C = v[2].node.f0C;
 
-    /* Colours.  The two vertices whose x comes from `lrs` (v1, v2) take
-     * BrGbiState.light.off, which slice2_16.h documents as the colour
-     * 0x10022350 falls back to when lighting is off; the other two take the
-     * unrelated triple this module owns.  With 0x104C0DC0 clear all twelve
-     * become the literal 1.0f (0x3F800000). */
-    if (pSt->f4C0DC0 != 0) {
-        v0.node.f1C = pSt->aRgb4BBF04[0];
-        v0.node.f20 = pSt->aRgb4BBF04[1];
-        v0.node.f24 = pSt->aRgb4BBF04[2];
-        v3.node.f1C = pSt->aRgb4BBF04[0];
-        v3.node.f20 = pSt->aRgb4BBF04[1];
-        v3.node.f24 = pSt->aRgb4BBF04[2];
+    v[2].node.f18 = BR_GBI_RECT_C_ONE / BrGbiRectG_A9A54;
+    v[1].node.f18 = v[2].node.f18;
+    v[0].node.f18 = v[2].node.f18;
+    v[3].node.f18 = v[2].node.f18;
 
-        v1.node.f1C = pGbi->light.off[0];
-        v1.node.f20 = pGbi->light.off[1];
-        v1.node.f24 = pGbi->light.off[2];
-        v2.node.f1C = pGbi->light.off[0];
-        v2.node.f20 = pGbi->light.off[1];
-        v2.node.f24 = pGbi->light.off[2];
+    if (BrGbiRectG_5CDA04 != 0) {
+        v[0].node.f1C = BrGbiRectG_5CCD44 * BR_GBI_RECT_C_RGB;
+        v[3].node.f1C = v[0].node.f1C;
+        v[0].node.f20 = BrGbiRectG_5CD9F4 * BR_GBI_RECT_C_RGB;
+        v[3].node.f20 = v[0].node.f20;
+        v[0].node.f24 = BrGbiRectG_5CCCF8 * BR_GBI_RECT_C_RGB;
+        v[3].node.f24 = v[0].node.f24;
+
+        v[2].node.f1C = BrGbiRectG_5D17A4;
+        v[1].node.f1C = BrGbiRectG_5D17A4;
+        v[2].node.f20 = BrGbiRectG_5D17B4;
+        v[1].node.f20 = BrGbiRectG_5D17B4;
+        v[2].node.f24 = BrGbiRectG_5CE2D0;
+        v[1].node.f24 = BrGbiRectG_5CE2D0;
     } else {
-        v0.node.f1C = 1.0f; v0.node.f20 = 1.0f; v0.node.f24 = 1.0f;
-        v1.node.f1C = 1.0f; v1.node.f20 = 1.0f; v1.node.f24 = 1.0f;
-        v2.node.f1C = 1.0f; v2.node.f20 = 1.0f; v2.node.f24 = 1.0f;
-        v3.node.f1C = 1.0f; v3.node.f20 = 1.0f; v3.node.f24 = 1.0f;
+        v[2].node.f1C = BR_GBI_RECT_C_RGB;
+        v[1].node.f1C = BR_GBI_RECT_C_RGB;
+        v[0].node.f1C = BR_GBI_RECT_C_RGB;
+        v[3].node.f1C = BR_GBI_RECT_C_RGB;
+        v[2].node.f20 = BR_GBI_RECT_C_RGB;
+        v[1].node.f20 = BR_GBI_RECT_C_RGB;
+        v[0].node.f20 = BR_GBI_RECT_C_RGB;
+        v[3].node.f20 = BR_GBI_RECT_C_RGB;
+        v[2].node.f24 = BR_GBI_RECT_C_RGB;
+        v[1].node.f24 = BR_GBI_RECT_C_RGB;
+        v[0].node.f24 = BR_GBI_RECT_C_RGB;
+        v[3].node.f24 = BR_GBI_RECT_C_RGB;
     }
 
-    /* Texture coordinates: the latched TILE, not the rectangle.  These four
-     * globals used to be called the scissor here, and on that reading "the
-     * texture coordinates come from the scissor" was a standing GOTCHA in
-     * slice4_51.h.  0x1001CF30 is opcode 0xF2 -- G_SETTILESIZE -- so they are
-     * uls/lrs/ult/lrt, and a tile rectangle taking its texture coordinates
-     * from the tile is not a gotcha at all.  See slice2_16.h. */
-    u0  = (float)pGbi->tile.uls * BR_GBI_RECT_C_UVSCL;      /* 0x118AA080 */
-    u1  = (float)pGbi->tile.lrs * BR_GBI_RECT_C_UVSCL;      /* 0x1182983C */
-    vt0 = (float)pGbi->tile.ult * BR_GBI_RECT_C_UVSCL;      /* 0x11829838 */
-    vt1 = (float)pGbi->tile.lrt * BR_GBI_RECT_C_UVSCL;      /* 0x118A9870 */
+    u0  = (float)BrGbiRectG_18ED198 * BR_GBI_RECT_C_UVSCL;
+    u1  = (float)BrGbiRectG_186C954 * BR_GBI_RECT_C_UVSCL;
+    vt0 = (float)BrGbiRectG_186C950 * BR_GBI_RECT_C_UVSCL;
+    vt1 = (float)BrGbiRectG_18EC988 * BR_GBI_RECT_C_UVSCL;
 
-    v0.node.f10 = u1;  v0.node.f14 = vt1;
-    v1.node.f10 = u0;  v1.node.f14 = vt0;
-    v2.node.f10 = u1;  v2.node.f14 = vt0;
-    v3.node.f10 = u0;  v3.node.f14 = vt1;
+    v[3].node.f10 = u0;  v[3].node.f14 = vt1;
+    v[1].node.f10 = u0;  v[1].node.f14 = vt0;
+    v[0].node.f10 = u1;  v[0].node.f14 = vt1;
+    v[2].node.f10 = u1;  v[2].node.f14 = vt0;
 
-    if (pSt->dirty != 0)
-        BrGbiRectFlush(pSt);
-
-    /* GOTCHA: bit 0x1000 of the geometry mode (F3D G_CULL_FRONT) picks the
-     * winding.  The two argument triples of the second branch are the exact
-     * reverse of the first branch's, vertex for vertex. */
-    if ((pGbi->geo.cur & 0x1000u) != 0) {
-        BrGbiCall1001D420(&v3, &v0, &v1);
-        BrGbiCall1001D420(&v0, &v2, &v1);
+    if ((BrGbiRectG_5D17C8 & 0x1000) != 0) {
+        BrGbiCall1001D420(&v[3], &v[0], &v[1]);
+        BrGbiCall1001D420(&v[0], &v[2], &v[1]);
     } else {
-        BrGbiCall1001D420(&v1, &v0, &v3);
-        BrGbiCall1001D420(&v1, &v2, &v0);
+        BrGbiCall1001D420(&v[1], &v[0], &v[3]);
+        BrGbiCall1001D420(&v[1], &v[2], &v[0]);
     }
 }
 
