@@ -1339,7 +1339,15 @@ def mut_guard_nest(body, rng):
                     ir = _skip_ws_comments(body, iq + 1)
                     inner_then_end = _consume_stmt(body, ir)
                     ie = _skip_ws_comments(body, inner_then_end)
-                    if body[ie:ie + 4] != 'else' and inner_then_end <= then_end + 1:
+                    # The inner if must be the ENTIRE outer then-block.  The
+                    # old `inner_then_end <= then_end + 1` was vacuously true
+                    # whenever the inner if merely ended before the outer
+                    # closing brace, so a join on `if (A) { if (B) S; T; }`
+                    # DELETED T and everything after it -- this halved
+                    # 0x100250D0 (whole format arms dropped) while the anneal
+                    # scored the shrinkage as a 7910->3827 improvement.
+                    tail = body[inner_then_end:then_end].strip()
+                    if body[ie:ie + 4] != 'else' and tail in ('', '}'):
                         joins.append((pos + m.start(), p, q, cond, inner_cond,
                                       ir, inner_then_end, then_end))
         pos = q + 1
@@ -1725,6 +1733,14 @@ def score_src(src, func_name, orig_bytes, opts, tag):
             continue
         rb, relocs = funcs[found]
         ok, nd, _ = match_sweep.score(orig_bytes, rb, relocs)
+        # score() counts diffs over min(len) -- a candidate that DELETES half
+        # the function scores half the diffs.  The anneal will happily walk
+        # into that hole (it did: 0x100250D0 "7910 -> 3827" was a 4032-byte
+        # torso).  Count every missing byte as a diff so shortness never pays.
+        short = len(orig_bytes) - len(rb)
+        if short > 0:
+            nd += short
+            ok = False
         if ok:
             return (0, opt, rb, relocs)
         if best[0] is None or nd < best[0]:
