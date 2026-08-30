@@ -25,6 +25,14 @@ the caller AND flipped a helper to match for free.
   must survive a call (flags into ebx/ebp, spills into stack slots) are
   hoisted in left-to-right source order. To hoist A before B, A's term must
   come first in the expression — or be a prior statement.
+- **Two stores, then an eax-clobbering load: mention the edx value first.**
+  `r.p1 = param_2; r.p2 = param_3; flag = r.f268;` hoists param_2 into edx
+  and param_3 into eax; the flag load clobbers eax, so param_3 is stored
+  first even though it was assigned second. Writing the stores in byte
+  order (`r.p2 = param_3; r.p1 = param_2`) inverts the hoist — 4
+  displacement diffs, REGNORM 0. Ghidra's `unsigned short iStack_40` for
+  that flag is a mis-type: orig is `mov eax, dword [slot]` /
+  `mov [slot], edi`. Proven 0x100298C0 (216 B, MATCH /O2).
 - **Shift distribution:** `(a*2 | b) << 1` gets the outer shift distributed
   into lea-scales. `((a << 1) | b) << 1` keeps the literal `shl`.
 - **Accumulate stores:** `b[k] = x; b[k] |= y;` emits one store per statement

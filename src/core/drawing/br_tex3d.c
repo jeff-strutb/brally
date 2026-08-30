@@ -1703,4 +1703,44 @@ int BrTex3dRegister(void)
   return id;
 }
 
+/* WHAT IT DOES: copy texture record `id`'s 0x2A8-byte descriptor (the
+ * BrTexReq272 sitting at slot+4), patch the texel/palette sources, and --
+ * when the half-res flag at +0x268 is set -- halve w/h and quarter the
+ * byte count, then re-shift. Convert + make with DAT_118ed1b4 set so the
+ * make path skips dedup. Installed in hook slot 0x118ED19C. */
+/* @implements 0x100298C0 glide FUN_100298c0 */
+
+void FUN_100298c0(int param_1,int param_2,int param_3)
+{
+  int uVar1;
+  int w;
+  int h;
+  int z;
+  BrTexReq272 r;
+  int flag;
+
+  DAT_118ed1b4 = 1;
+  memcpy(&r, (void *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4), 0xaa * 4);
+  /* param_2 first (edx), param_3 second (eax); flag load forces p2
+   * stored before p1. Byte-order stores invert the hoist. */
+  r.p1 = param_2;
+  r.p2 = param_3;
+  flag = r.f268;
+  z = 0;
+  if (flag != z) {
+    w = r.w / 2;
+    h = r.h / 2;
+    r.w = w;
+    r.h = h;
+    r.cbTotal = r.cbTotal / 4;
+    FUN_100242e0(&r.aspect1, w, h);
+    r.aspect0 = r.aspect1;
+    r.f268 = z;
+  }
+  uVar1 = FUN_10027b60(&r);
+  FUN_10027710(&r, uVar1);
+  DAT_118ed1b4 = z;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
