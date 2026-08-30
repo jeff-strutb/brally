@@ -994,34 +994,19 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
         }
       }
       else if (param_6 == 4) {
-        iVar17 = 1 << *(int *)(iVar5 + 0x20);
+        param_9 = 1 << *(int *)(iVar5 + 0x20);
         iVar15 = 1 << *(int *)(iVar5 + 0x24);
         param_1 = (unsigned short *)0x0;
         if (0 < iVar15) {
           do {
             pbVar12 = param_4;
-            if ((param_22 & (unsigned int)param_1) == 0) {
+            if ((param_22 & (unsigned int)param_1) != 0) {
               iVar16 = 0;
-              if (0 < iVar17) {
-                do {
-                  *(unsigned char *)puVar21 = *pbVar12;
-                  puVar21 = (unsigned short *)((int)puVar21 + 1);
-                  iVar22 = iVar22 + 1;
-                  if (iVar22 >= cbMax) {
-                    return;
-                  }
-                  pbVar12 = pbVar12 + 1;
-                  iVar16 = iVar16 + 1;
-                } while (iVar16 < iVar17);
-              }
-            }
-            else {
-              iVar16 = 0;
-              if (0 < iVar17) {
+              if (0 < param_9) {
                 do {
                   pbVar12 = pbVar12 + 4;
-                  for (iVar13 = 0; iVar13 < 4; iVar13 = iVar13 + 1) {
-                    if (iVar16 >= iVar17) break;
+                  for (local_24 = 0; local_24 < 4; local_24 = local_24 + 1) {
+                    if (iVar16 >= param_9) break;
                     *(unsigned char *)puVar21 = *pbVar12;
                     puVar21 = (unsigned short *)((int)puVar21 + 1);
                     iVar22 = iVar22 + 1;
@@ -1033,7 +1018,7 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                   }
                   pbVar12 = pbVar12 + -8;
                   for (iVar13 = 0; iVar13 < 4; iVar13 = iVar13 + 1) {
-                    if (iVar16 >= iVar17) break;
+                    if (iVar16 >= param_9) break;
                     *(unsigned char *)puVar21 = *pbVar12;
                     puVar21 = (unsigned short *)((int)puVar21 + 1);
                     iVar22 = iVar22 + 1;
@@ -1044,10 +1029,25 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     iVar16 = iVar16 + 1;
                   }
                   pbVar12 = pbVar12 + 4;
-                } while (iVar16 < iVar17);
+                } while (iVar16 < param_9);
               }
             }
-            if ((param_7 != 0) && (local_24 = 0, puVar9 = (unsigned short *)((int)puVar21 + -1), 0 < iVar17)) {
+            else {
+              iVar16 = 0;
+              if (0 < param_9) {
+                do {
+                  *(unsigned char *)puVar21 = *pbVar12;
+                  puVar21 = (unsigned short *)((int)puVar21 + 1);
+                  iVar22 = iVar22 + 1;
+                  if (iVar22 >= cbMax) {
+                    return;
+                  }
+                  pbVar12 = pbVar12 + 1;
+                  iVar16 = iVar16 + 1;
+                } while (iVar16 < param_9);
+              }
+            }
+            if ((param_7 != 0) && (local_24 = 0, puVar9 = (unsigned short *)((int)puVar21 + -1), 0 < param_9)) {
               do {
                 *(unsigned char *)puVar21 = *(unsigned char *)puVar9;
                 puVar21 = (unsigned short *)((int)puVar21 + 1);
@@ -1057,7 +1057,7 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                   return;
                 }
                 local_24 = local_24 + 1;
-              } while (local_24 < iVar17);
+              } while (local_24 < param_9);
             }
             param_4 = param_4 + *(int *)(iVar5 + 8);
             param_1 = (unsigned short *)((int)param_1 + 1);
@@ -1065,15 +1065,15 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
         }
         if ((param_8 != 0) && (puVar9 = puVar21, param_1 = (unsigned short *)0x0, 0 < iVar15)) {
           do {
-            iVar5 = iVar17 * 2;
+            iVar5 = param_9 * 2;
             if (param_7 == 0) {
-              iVar5 = iVar17;
+              iVar5 = param_9;
             }
             puVar9 = (unsigned short *)((int)puVar9 - iVar5);
             puVar2 = puVar9;
-            iVar5 = iVar17 * 2;
+            iVar5 = param_9 * 2;
             if (param_7 == 0) {
-              iVar5 = iVar17;
+              iVar5 = param_9;
             }
             for (; 0 < iVar5; iVar5 = iVar5 + -1) {
               *(unsigned char *)puVar21 = (unsigned char)*puVar2;
