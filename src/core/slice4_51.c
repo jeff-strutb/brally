@@ -269,20 +269,30 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
 
     (void)tile;
 
-    fLrt = (float)(unsigned int)lrt;
-    fUlt = (float)(unsigned int)ult;
+    /* The four edges are pre-divided by the fixed-point scale BEFORE the
+     * half-extent block, two before and two after: that is what starts two
+     * fdivs at +0x77 ahead of the /HALF pair and makes the whole divider-
+     * pipeline block (+0x55..+0xd3) instruction-identical to the original.
+     * Post-restructure the chains subtract the pre-divided temps. */
+    fLrs = (float)(unsigned int)lrs / BrGbiRectK_FIXED;
+    fLrt = (float)(unsigned int)lrt / BrGbiRectK_FIXED;
 
-    w2 = (float)BrGbiRectG_A7514 / BrGbiRectK_HALF;
+    /* h2 BEFORE w2: the spill-slot homes follow computation order, and the
+     * whole sub/div drain downstream keys off which of the two lives in
+     * [esp+4].  h-first: 129 masked diff bytes at exact 1,032-byte length;
+     * w-first: 547 (though its +0x55..+0xd3 prefix matches exactly).  All
+     * other placements of the setup lines are inert (9 probed, all tie). */
     cy = (float)BrGbiRectG_A7518;
     h2 = cy / BrGbiRectK_HALF;
+    w2 = (float)BrGbiRectG_A7514 / BrGbiRectK_HALF;
 
-    fLrs = (float)(unsigned int)lrs;
-    fUls = (float)(unsigned int)uls;
+    fUls = (float)(unsigned int)uls / BrGbiRectK_FIXED;
+    fUlt = (float)(unsigned int)ult / BrGbiRectK_FIXED;
 
-    xLrs = ((fLrs / BrGbiRectK_FIXED - w2) / w2) / BrGbiRectG_A9A54;
-    yLrt = ((cy - fLrt / BrGbiRectK_FIXED - h2) / h2) / BrGbiRectG_A9A54;
-    yUlt = ((cy - fUlt / BrGbiRectK_FIXED - h2) / h2) / BrGbiRectG_A9A54;
-    xUls = ((fUls / BrGbiRectK_FIXED - w2) / w2) / BrGbiRectG_A9A54;
+    xLrs = ((fLrs - w2) / w2) / BrGbiRectG_A9A54;
+    yLrt = ((cy - fLrt - h2) / h2) / BrGbiRectG_A9A54;
+    xUls = ((fUls - w2) / w2) / BrGbiRectG_A9A54;
+    yUlt = ((cy - fUlt - h2) / h2) / BrGbiRectG_A9A54;
 
     v[3].node.f04 = xLrs;  v[3].node.f08 = yLrt;
     v[1].node.f04 = xLrs;  v[1].node.f08 = yUlt;
