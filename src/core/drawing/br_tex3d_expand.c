@@ -66,15 +66,15 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
   
   iVar3 = (int)param_4;
   iVar22 = 0;
+  iVar10 = param_9;
   if (param_9 >= param_10) {
     return;
   }
   cbMax = param_2;
   puVar21 = param_1;
-  for (iVar10 = param_9; iVar10 < param_10; iVar10 = iVar10 + 1) {
+  for (; iVar10 < param_10; iVar10 = iVar10 + 1) {
     iVar5 = iVar10 * 0x40 + param_11;
     param_4 = (unsigned char *)(iVar3 + *(int *)(iVar10 * 0x40 + 0xc + param_11) * 8);
-    puVar9 = puVar21;
     if (param_3 == 0) {
       if (param_6 == 2) {
         if (((param_12 & 2) != 0) && (iVar10 == 1)) {
@@ -171,28 +171,33 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                   iVar16 = iVar16 + 1;
                 } while (iVar16 < iVar17);
               }
-              param_4 = param_4 + *(int *)(iVar5 + 8);
+              param_4 = param_4 + *(int *)(param_11 + 0x48);
               param_1 = (unsigned short *)((int)param_1 + 1);
             } while ((int)param_1 < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (param_1 = (unsigned short *)0x0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, param_1 = (unsigned short *)0x0, 0 < iVar15)) {
             do {
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = puVar21 + iVar16 * -2;
-              puVar2 = puVar21;
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
+              puVar9 = puVar9 + iVar16 * -2;
+              puVar2 = puVar9;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
               for (; 0 < iVar16; iVar16 = iVar16 + -1) {
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
                 }
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
@@ -304,24 +309,29 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
               local_44 = local_44 + 1;
             } while ((int)local_44 < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (local_44 = 0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, local_44 = 0, 0 < iVar15)) {
             do {
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = puVar21 + iVar5 * -2;
-              puVar2 = puVar21;
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
+              puVar9 = puVar9 + iVar5 * -2;
+              puVar2 = puVar9;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
               for (; 0 < iVar5; iVar5 = iVar5 + -1) {
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
                 }
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
@@ -500,24 +510,29 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
               local_3c = local_3c + 1;
             } while ((int)local_3c < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (local_3c = 0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, local_3c = 0, 0 < iVar15)) {
             do {
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = puVar21 + iVar5 * -2;
-              puVar2 = puVar21;
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
+              puVar9 = puVar9 + iVar5 * -2;
+              puVar2 = puVar9;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
               for (; 0 < iVar5; iVar5 = iVar5 + -1) {
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
                 }
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 puVar2 = puVar2 + 1;
                 if (iVar22 >= cbMax) {
                   return;
@@ -625,24 +640,29 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
               local_38 = local_38 + 1;
             } while ((int)local_38 < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (local_38 = 0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, local_38 = 0, 0 < iVar15)) {
             do {
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = puVar21 + -iVar16;
-              puVar2 = puVar21;
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
+              puVar9 = puVar9 + -iVar16;
+              puVar2 = puVar9;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
               for (; 0 < iVar16; iVar16 = iVar16 + -1) {
                 iVar22 = iVar22 + 1;
-                *(unsigned char *)puVar9 = *(unsigned char *)puVar2;
-                puVar9 = (unsigned short *)((int)puVar9 + 1);
+                *(unsigned char *)puVar21 = *(unsigned char *)puVar2;
+                puVar21 = (unsigned short *)((int)puVar21 + 1);
                 puVar2 = (unsigned short *)((int)puVar2 + 1);
                 if (iVar22 >= cbMax) {
                   return;
                 }
                 iVar22 = iVar22 + 1;
-                *(unsigned char *)puVar9 = *(unsigned char *)puVar2;
-                puVar9 = (unsigned short *)((int)puVar9 + 1);
+                *(unsigned char *)puVar21 = *(unsigned char *)puVar2;
+                puVar21 = (unsigned short *)((int)puVar21 + 1);
                 puVar2 = (unsigned short *)((int)puVar2 + 1);
                 if (iVar22 >= cbMax) {
                   return;
@@ -735,17 +755,22 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
             local_44 = local_44 + 1;
           } while ((int)local_44 < iVar17);
         }
-        puVar9 = puVar21;
-        if ((param_8 != 0) && (local_44 = 0, 0 < iVar17)) {
+        if ((param_8 != 0) && (puVar9 = puVar21, local_44 = 0, 0 < iVar17)) {
           do {
-            iVar5 = (param_7 != 0) ? iVar15 * 2 : iVar15;
-            puVar21 = puVar21 + -iVar5;
-            puVar2 = puVar21;
-            iVar5 = (param_7 != 0) ? iVar15 * 2 : iVar15;
+            iVar5 = iVar15 * 2;
+            if (param_7 == 0) {
+              iVar5 = iVar15;
+            }
+            puVar9 = puVar9 + -iVar5;
+            puVar2 = puVar9;
+            iVar5 = iVar15 * 2;
+            if (param_7 == 0) {
+              iVar5 = iVar15;
+            }
             for (; 0 < iVar5; iVar5 = iVar5 + -1) {
               iVar22 = iVar22 + 2;
-              *puVar9 = *puVar2;
-              puVar9 = puVar9 + 1;
+              *puVar21 = *puVar2;
+              puVar21 = puVar21 + 1;
               if (iVar22 >= cbMax) {
                 return;
               }
@@ -852,17 +877,22 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
               local_44 = local_44 + 1;
             } while ((int)local_44 < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (local_44 = 0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, local_44 = 0, 0 < iVar15)) {
             do {
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = puVar21 + -iVar5;
-              puVar2 = puVar21;
-              iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
+              puVar9 = puVar9 + -iVar5;
+              puVar2 = puVar9;
+              iVar5 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar5 = iVar17;
+              }
               for (; 0 < iVar5; iVar5 = iVar5 + -1) {
                 iVar22 = iVar22 + 2;
-                *puVar9 = *puVar2;
-                puVar9 = puVar9 + 1;
+                *puVar21 = *puVar2;
+                puVar21 = puVar21 + 1;
                 if (iVar22 >= cbMax) {
                   return;
                 }
@@ -945,16 +975,21 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
               param_1 = (unsigned short *)((int)param_1 + 1);
             } while ((int)param_1 < iVar15);
           }
-          puVar9 = puVar21;
-          if ((param_8 != 0) && (param_1 = (unsigned short *)0x0, 0 < iVar15)) {
+          if ((param_8 != 0) && (puVar9 = puVar21, param_1 = (unsigned short *)0x0, 0 < iVar15)) {
             do {
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-              puVar21 = (unsigned short *)((int)puVar21 - iVar16);
-              puVar2 = puVar21;
-              iVar16 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
+              puVar9 = (unsigned short *)((int)puVar9 - iVar16);
+              puVar2 = puVar9;
+              iVar16 = iVar17 * 2;
+              if (param_7 == 0) {
+                iVar16 = iVar17;
+              }
               for (; 0 < iVar16; iVar16 = iVar16 + -1) {
-                *(unsigned char *)puVar9 = (unsigned char)*puVar2;
-                puVar9 = (unsigned short *)((int)puVar9 + 1);
+                *(unsigned char *)puVar21 = (unsigned char)*puVar2;
+                puVar21 = (unsigned short *)((int)puVar21 + 1);
                 iVar22 = iVar22 + 1;
                 if (iVar22 >= cbMax) {
                   return;
@@ -1036,16 +1071,21 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
             param_1 = (unsigned short *)((int)param_1 + 1);
           } while ((int)param_1 < iVar15);
         }
-        puVar9 = puVar21;
-        if ((param_8 != 0) && (param_1 = (unsigned short *)0x0, 0 < iVar15)) {
+        if ((param_8 != 0) && (puVar9 = puVar21, param_1 = (unsigned short *)0x0, 0 < iVar15)) {
           do {
-            iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
-            puVar21 = (unsigned short *)((int)puVar21 - iVar5);
-            puVar2 = puVar21;
-            iVar5 = (param_7 != 0) ? iVar17 * 2 : iVar17;
+            iVar5 = iVar17 * 2;
+            if (param_7 == 0) {
+              iVar5 = iVar17;
+            }
+            puVar9 = (unsigned short *)((int)puVar9 - iVar5);
+            puVar2 = puVar9;
+            iVar5 = iVar17 * 2;
+            if (param_7 == 0) {
+              iVar5 = iVar17;
+            }
             for (; 0 < iVar5; iVar5 = iVar5 + -1) {
-              *(unsigned char *)puVar9 = (unsigned char)*puVar2;
-              puVar9 = (unsigned short *)((int)puVar9 + 1);
+              *(unsigned char *)puVar21 = (unsigned char)*puVar2;
+              puVar21 = (unsigned short *)((int)puVar21 + 1);
               iVar22 = iVar22 + 1;
               if (iVar22 >= cbMax) {
                 return;
@@ -1150,17 +1190,22 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
           local_44 = local_44 + 1;
         } while ((int)local_44 < iVar15);
       }
-      puVar9 = puVar21;
-      if ((param_8 != 0) && (local_44 = 0, 0 < iVar15)) {
+      if ((param_8 != 0) && (puVar9 = puVar21, local_44 = 0, 0 < iVar15)) {
         do {
-          uVar6 = (param_7 != 0) ? uVar14 * 2 : uVar14;
-          puVar21 = puVar21 + -uVar6;
-          puVar2 = puVar21;
-          uVar6 = (param_7 != 0) ? uVar14 * 2 : uVar14;
+          uVar6 = uVar14 * 2;
+          if (param_7 == 0) {
+            uVar6 = uVar14;
+          }
+          puVar9 = puVar9 + -uVar6;
+          puVar2 = puVar9;
+          uVar6 = uVar14 * 2;
+          if (param_7 == 0) {
+            uVar6 = uVar14;
+          }
           for (; 0 < (int)uVar6; uVar6 = uVar6 - 1) {
             iVar22 = iVar22 + 2;
-            *puVar9 = *puVar2;
-            puVar9 = puVar9 + 1;
+            *puVar21 = *puVar2;
+            puVar21 = puVar21 + 1;
             if (iVar22 >= cbMax) {
               return;
             }
@@ -1171,7 +1216,6 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
       }
     }
     }
-    puVar21 = puVar9;
   }
 }
 
