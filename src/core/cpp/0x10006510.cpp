@@ -20,12 +20,16 @@
  * motif and every one passes PURE call expressions as arguments
  * (BrCountedNetSend 0x10004A40 is the clean witness), consistent with the
  * rule.  LEADING HYPOTHESIS: the shipped binaries (March 1999, VS97 SP3
- * era) were compiled by an SP-patched C1XX.DLL whose pre-evaluation rule
- * differed; the staged toolchain is RTM (VCPP-5.00.iso).  DECISIVE TEST:
- * stage SP3's C1XX.DLL/C1.DLL/C2.EXE beside the RTM set and recompile THIS
- * FILE -- if the 151 residual bytes drop to 0, the C++ workstream needs the
- * SP3 front end (the 601 matched C functions go through C1.DLL and are
- * unaffected evidence either way).
+ * era) were compiled by an SP-patched front end.  TESTED AND DISPROVEN
+ * 2026-08-30: VS97 SP3 (vs97sp3 @ archive.org; staged tools/msvc5/bin-sp3,
+ * C1XX/C2 dated 1997-11-03) and VC6 RTM 12.00.8168 (vs6.iso @ archive.org;
+ * staged tools/msvc6/) both apply EXACTLY the same two rules -- assignment
+ * pre-evaluation and assignment-gated narrowing -- byte-for-byte on the
+ * two-form battery.  Also probed and negative: struct-by-value returns
+ * (the member still promotes AND the return temp counts as a side effect),
+ * global/reference/deref object expressions.  Full map: 18 spellings x
+ * 3 front ends x 10+ flag sets.  Remaining hypotheses: a fourth compiler
+ * (VC4.2-era static library?), or a source shape not yet conceived.
  *
  * The C transcription (slice2_12.c) is shape-exact except for 33 surplus
  * `xor edx,edx` -- the __fastcall dead-edx idiom faking the writer's
