@@ -321,7 +321,12 @@ the caller AND flipped a helper to match for free.
   load at the byte's address (upper three bytes are neighboring memory,
   legally garbage). Ghidra renders these as overlapping CONCAT chains —
   that pattern in a call means CHAR-TYPED PARAMS, not byte arithmetic.
-  Proven BrTex3dExpandInto (617 B).
+  Proven BrTex3dExpandInto (617 B). A prototyped `unsigned char` that
+  CSEs with a prior dword load of a nearby field is `mov al,[esi+N];
+  push eax` (high bits leftover — Ghidra CONCAT31). The same expression
+  to an unprototyped `int f()` default-promotes: `xor eax,eax; mov al;
+  push eax` (+2 insns per site). Distinguisher: orig `8a 46 04 51` vs
+  `33 c0 8a 46 04`. Proven 0x10027710 (319 B /O2).
 - **Ghidra also DROPS real stores** (not just folds constants): fields the
   decompiler proves unread (fTmu2, lod, w/h copies) vanish from its output
   while the /O2 bytes still write them. When a struct rebuild still runs

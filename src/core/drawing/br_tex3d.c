@@ -959,12 +959,20 @@ extern int DAT_105ccbd0;
 extern int _DAT_106b7aa4;
 extern int _DAT_106b7aa8;
 extern int DAT_118ed1a0;
+extern int DAT_118ed1b4;
+extern int DAT_1186c988;
+extern char s_Out_of_tex_mem__100a9e5c[];
 int FUN_10027290();
 int FUN_100242e0();
 int FUN_10027220();
 int FUN_10024df0();
 int FUN_100275c0();
 int FUN_10027710();
+int FUN_10023d70();
+int FUN_10028200(int, unsigned char, int, int, int, int, int, int, int, int, int, int, int, int, int);
+int FUN_100283c0();
+int FUN_10027850();
+void FUN_1006ff50(char *);
 typedef struct BrTexReq272 {
     unsigned int fTmu2;         /* 0x000 */
     unsigned char lod;          /* 0x004 */
@@ -1198,6 +1206,58 @@ void BrTex3dReconvert(int param_1)
   uVar1 = FUN_10027b60(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
   (*DAT_118ed1d0)(param_1,uVar1);
   return;
+}
+
+/* WHAT IT DOES: make the Glide texture from a filled BrTexReq272 -- skip
+ * dedup when DAT_118ed1b4 is set, else reuse 0x10027A70's hit; BMP-substitute
+ * through 0x10023D70; allocate a TMEM slot via 0x10028200 (retry TMU0 if the
+ * first TMU misses); download; then the texel-scale helper. Out-of-memory
+ * fills a dummy 32-byte block with 0x800F800F and returns the bound id.
+ * lod at +4 is unsigned char (the CONCAT in the Ghidra dump is leftover
+ * high bits of fmt in eax after `mov al,[esi+4]`). */
+/* @implements 0x10027710 glide FUN_10027710 */
+
+int FUN_10027710(int *param_1,int *param_2)
+
+{
+  int *piVar1;
+  int iVar2;
+  int *puVar3;
+  struct {
+  char local_24 [4];
+  int local_20 [8];
+  } _fr;
+
+  piVar1 = param_1;
+  if ((DAT_118ed1b4 != 0) || (iVar2 = FUN_10027a70(param_1), iVar2 == -1)) {
+    iVar2 = FUN_10023d70(_fr.local_24,&param_1,piVar1);
+    puVar3 = &DAT_1186c988;
+    if (iVar2 == 0) {
+      puVar3 = param_2;
+    }
+    iVar2 = FUN_10028200(*piVar1,*(unsigned char *)(piVar1 + 1),piVar1[2],
+                         piVar1[3],piVar1[4],piVar1[5],piVar1[6],piVar1[7],piVar1[8],piVar1[9],
+                         piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
+    while (iVar2 == -1) {
+      if (*piVar1 != 1) {
+        puVar3 = _fr.local_20;
+        for (iVar2 = 8; iVar2 != 0; iVar2 = iVar2 + -1) {
+          *puVar3 = 0x800f800f;
+          puVar3 = puVar3 + 1;
+        }
+        FUN_100283c0(DAT_10697a4c,_fr.local_20,0);
+        FUN_1006ff50(s_Out_of_tex_mem__100a9e5c);
+        return DAT_10697a4c;
+      }
+      *piVar1 = 0;
+      iVar2 = FUN_10028200(0,*(unsigned char *)(piVar1 + 1),piVar1[2],
+                           piVar1[3],piVar1[4],piVar1[5],piVar1[6],piVar1[7],piVar1[8],piVar1[9],
+                           piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
+    }
+    FUN_100283c0(iVar2,puVar3,0);
+    iVar2 = FUN_10027850(piVar1,iVar2);
+  }
+  return iVar2;
 }
 
 /* WHAT IT DOES: build a texture-creation request on the stack -- the 0x2A8-byte record
