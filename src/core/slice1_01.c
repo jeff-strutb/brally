@@ -720,7 +720,7 @@ extern int g_brCdTrackLast;
 /* @implements 0x10002870 glide FUN_10002870 */
 /* auto-filed from ghidra --refine; transforms: stackshred */
 
-MCIERROR FUN_10002870(int param_1,unsigned int param_2)
+MCIERROR FUN_10002870(int param_1,unsigned char param_2)
 
 {
   MCIERROR MVar1;
@@ -740,6 +740,28 @@ MCIERROR FUN_10002870(int param_1,unsigned int param_2)
     return MVar1;
   }
   return 0;
+}
+
+
+extern int DAT_1021c77c;
+extern int g_brCdEnabled;
+extern int g_brCdMediaOk;
+extern int g_brCdPlaying;
+extern int g_brCdTrackCur;
+
+/* @implements 0x10002830 glide FUN_10002830 */
+/* MCI "advance track" poll: true unless the CD is enabled, playing and the
+ * media is ready, in which case forward the current track to 0x10002870 and
+ * report success as its result being zero.  param_2 is a BYTE there -- the
+ * caller emits `mov al,[g_brCdTrackCur]`, so the callee takes unsigned char. */
+
+int FUN_10002830(void)
+
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return FUN_10002870(DAT_1021c77c,(unsigned char)g_brCdTrackCur) == 0;
+  }
+  return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */
