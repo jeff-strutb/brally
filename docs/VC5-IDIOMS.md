@@ -805,6 +805,27 @@ the caller AND flipped a helper to match for free.
   Read the jcc sense at the test to decide which arm the source wrote
   first. Not universal — of six mask sites in 0x100250D0 three wanted the
   flip and three were already right, so MEASURE each one. Proven 0x100250D0.
+- **C++ argument-list scheduling: VC5 pushes args in place, right-to-left,
+  ONLY when no argument carries a side effect.** A later constant arg is
+  pushed BEFORE a call inside an earlier arg (`push 8; push field; call
+  quantiser; ...; push result; call`). ANY side effect in an argument --
+  an assignment, or an `__inline` helper (whose expansion introduces the
+  inliner's temp) -- makes VC5 pre-evaluate that argument before beginning
+  the pushes, moving the constant push after the call. Proven by controlled
+  probes on 0x10006510 (build/match/sched.cpp, 2026-08-29).
+- **Narrow (16-bit) shift of a call result requires an assignment to a short
+  lvalue.** `short s; s = Q(x) >> 8;` emits `sar ax,8`; the same expression
+  inline in an argument emits `movsx; sar r32` -- and a `short`-typed
+  PARAMETER gets `sar ax` but skips the `movsx` (pushes eax raw). The
+  combination sar-narrow + movsx + push-early exists in the original
+  (0x10006510, ~30 sites) but no C/C++ spelling found yet produces all
+  three. Same probes.
+- **A `__thiscall` callee with stack args means the CALLER'S TU was C++ --
+  match it as C++, do not fake it from C.** The fastcall dummy-edx idiom
+  costs one `xor edx,edx` per call site (the entire +66 B gap on
+  0x10006510); a declared-not-defined class method costs zero. The
+  src/core/cpp/ convention already supports this. Broke the documented
+  "cxx-thiscall-wall" 2026-08-29.
 - **`/O2 /Op` is a REAL build variant — a float-heavy TU compiled with precise
   FP can never match under plain /O2.** Without `/Op`, MSVC 5.0 keeps an
   int->float conversion in the x87 register; with it, every conversion is
