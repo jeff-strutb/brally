@@ -328,7 +328,7 @@ BrPlatSetTimerFn g_pfnBrPlatSetTimer = BrPlatSetTimerStub;
  * recording the timer's identifier and flagging that it is running. The
  * message that arrives has no callback attached, so it goes to the window's
  * normal message handling. */
-/* @implements 0x1003C230 d3d BrTimerStart1003C230 */
+/* port-only body; Glide match is src/core/generated/0x100358C0.c */
 int BrTimerStart1003C230(void)
 {
     BrSub1003C020();
