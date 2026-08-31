@@ -199,7 +199,7 @@ void BrExt_1003C020(void)
  * stops the once-a-second timer, tears down the networking, and -- except in
  * two particular modes -- clears a flag and a byte on the shared object. It
  * finishes by clearing four session flags whatever else happened. */
-/* @implements 0x1003BF60 d3d BrExt_1003BF60 */
+/* port-only body; Glide match is src/core/generated/0x100355F0.c */
 void BrExt_1003BF60(void)
 {
     BrSub100586A0();                    /* br_slots.h's BrSlotsReset */
