@@ -533,7 +533,7 @@ int BrGbiClipCodes(const float *pVert)
 /* WHAT IT DOES: handles the drawing command that hands the renderer a ready-
  * made combined transform matrix outright, replacing whatever the matrix
  * commands had built up. */
-/* @implements 0x10024240 d3d BrGbiMoveMemMatrix */
+/* port-only body; Glide match is src/core/generated/0x10023900.c */
 BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
                                const void *pSrc)
 {
