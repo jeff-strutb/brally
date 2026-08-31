@@ -259,6 +259,23 @@ static BrDriverCar *car_at(int32_t i)
  * All three colour submissions go to a routine that is empty in this build,
  * so what the shipped game gets out of them is the two calls between them. */
 /* @implements 0x10019890 glide BrRaceHudFrame */
+#ifdef BR_MATCHING_BUILD
+/* Orig always calls 0x10008D60 with five args (add esp,0x14) even though
+ * the callee is a bare ret; omitting the call is a port-only fold. */
+void BrExt_10008D60(int a, int b, int c, int d, int e);
+void BrExt_10019840(void);
+void BrExt_10032E40(void);
+void BrRaceHudFrame(void)
+{
+    if (g_brRacePaused != 0)
+        return;
+    BrExt_10008D60(0, 0x80, 0x80, 0xF0, 0xFF);
+    BrExt_10019840();
+    BrExt_10008D60(0, 0, 0, 0xC0, 0xFF);
+    BrExt_10032E40();
+    BrExt_10008D60(0, 0, 0x82, 0, 0xFF);
+}
+#else
 void BrRaceHudFrame(void)
 {
     if (g_brRacePaused != 0)                          /* 0x10019897 */
@@ -275,6 +292,7 @@ void BrRaceHudFrame(void)
     /* 0x100198D9: (0, 0, 0x82, 0, 0xFF) */
     trace();
 }
+#endif
 
 /* ==========================================================================
  * 0x10019900 -- into the outro
@@ -318,6 +336,30 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * reads the starts back -- so all that can honestly be said is that this is
  * where their timings come from. */
 /* @implements 0x10019930 glide BrRaceCueLayout */
+#ifdef BR_MATCHING_BUILD
+void BrRaceCueLayout(void)
+{
+    int32_t *p;
+    int32_t  t, len, three;
+
+    t = g_brRaceCueBase;
+    if (g_brRaceCueArmed == 0)
+        return;
+    /* esi walks from record[0].len, not the record base: start is [esi-4],
+     * gap [esi+4], and after +0x10 the terminator is [esi+8] = next.next. */
+    p = &g_aBrRaceCue[0].len;
+    do {
+        len   = p[0];
+        three = (len * 3) / 4;
+        t += three;
+        p[-1] = t;
+        len   = p[0];
+        three = (len * 3) / 4;
+        t += (len - three) + p[1];
+        p += 4;
+    } while (p[2] != 0);
+}
+#else
 void BrRaceCueLayout(void)
 {
     int32_t t;
@@ -354,9 +396,24 @@ void BrRaceCueLayout(void)
             break;
     }
 }
+#endif
 
 /* WHAT IT DOES: moves every cue in the list one step earlier. */
 /* @implements 0x10019980 glide BrRaceCueRewind */
+#ifdef BR_MATCHING_BUILD
+void BrRaceCueRewind(void)
+{
+    BrRaceCue *p;
+
+    if (g_brRaceCueArmed == 0)
+        return;
+    p = g_aBrRaceCue;
+    do {
+        p->start--;
+        p++;
+    } while (p->next != 0);
+}
+#else
 void BrRaceCueRewind(void)
 {
     int i;
@@ -372,6 +429,7 @@ void BrRaceCueRewind(void)
             break;
     }
 }
+#endif
 
 /* ==========================================================================
  * 0x100199A0 -- the outro controller
@@ -424,6 +482,29 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
 /* WHAT IT DOES: gives every driver in the field the same reset, one after the
  * other. */
 /* @implements 0x10019A10 glide BrRaceDriverReset */
+#ifdef BR_MATCHING_BUILD
+/* Orig is `mov edi, 0x10AF07F8` — the drivers ARE that address, not a
+ * pointer stored there.  Slot +0x00 is 1-arg thiscall. */
+extern BrDriver DAT_10af07f8[];
+void __fastcall FUN_1005f530(BrDriver *pThis);
+void BrRaceDriverReset(void)
+{
+    int32_t   n;
+    int32_t   i;
+    BrDriver *p;
+
+    n = g_brRaceNDriver;
+    i = 0;
+    if (n <= 0)
+        return;
+    p = DAT_10af07f8;
+    do {
+        FUN_1005f530(p);
+        i++;
+        p++;
+    } while (i < g_brRaceNDriver);
+}
+#else
 void BrRaceDriverReset(void)
 {
     int32_t i;
@@ -435,6 +516,7 @@ void BrRaceDriverReset(void)
             g_brRaceBeginOps.pfn1005F530(&g_pBrRaceDriver[i]);
     }
 }
+#endif
 
 /* WHAT IT DOES: restarts the frame clock. It throws away the running total of
  * elapsed time -- by setting the frame counter so that the very next frame
