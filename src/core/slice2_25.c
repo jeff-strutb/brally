@@ -938,11 +938,11 @@ int BrOptOpen2948(BrGameObj *pUnused)
  * 0x10043F50 .. 0x100440B0
  * ========================================================================== */
 
-/* 0x10043F50. Returns 0. */
+/* 0x10043F50. Returns 0. Glide match is src/core/cpp/0x1003D4A0.cpp
+ * (C++ virtual thiscall; C __fastcall edx-slot colours vtbl into edx). */
 /* WHAT IT DOES: leaves the current screen for the one behind it,
  * remembering which play mode was in force. The screen being left is told
  * to close first. */
-/* @implements 0x10043F50 d3d BrOpt3F50 */
 int BrOpt3F50(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -994,10 +994,9 @@ int BrOpt3FA0(BrGameObj *pGame)
 }
 #endif
 
-/* 0x10043FC0. Returns 0. */
+/* 0x10043FC0. Returns 0. Glide match is src/core/cpp/0x1003D510.cpp. */
 /* WHAT IT DOES: leaves the current screen for the one behind it and clears
  * two globals belonging to the screen being closed. */
-/* @implements 0x10043FC0 d3d BrOpt3FC0 */
 int BrOpt3FC0(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -1171,11 +1170,10 @@ int BrOptOpen2950B(BrGameObj *pUnused)
     return 1;
 }
 
-/* 0x100444C0. Returns 0. */
+/* 0x100444C0. Returns 0. Glide match is src/core/cpp/0x1003DA10.cpp. */
 /* WHAT IT DOES: leaves the network lobby and goes back to the screen behind
  * it, dropping the lobby's screens and, in the two modes that need it,
  * tearing the connection down and starting a fresh one. */
-/* @implements 0x100444C0 d3d BrOpt44C0 */
 int BrOpt44C0(BrGameObj *pGame)
 {
     BrGameSub *pSub;

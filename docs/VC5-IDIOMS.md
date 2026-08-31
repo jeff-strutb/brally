@@ -127,6 +127,12 @@ the caller AND flipped a helper to match for free.
   inline so `push 1` precedes the ecx load. After the call, a named temp
   `p = DAT_src; DAT_dst = p;` is `a1`/`a3`; `DAT_dst = DAT_src; return 0;`
   hoists `xor eax,eax` and copies through ecx. Proven 0x1003D4F0 (30 B).
+  **Slot 0 with one stack arg is `mov eax,[ecx]; push 1; call [eax]`.** C
+  `__fastcall` edx-slot CSEs the vtbl into edx (`call [edx]`). Match the
+  caller as C++: `pObj->f00(1)` on a `virtual` method. No named temp on
+  the later pointer copy (`DAT_dst = DAT_src`) keeps ecx. Proven
+  0x1003D4A0 / 0x1003D510 / 0x1003DA10. Non-EH C++ TUs (no `new`) have
+  no FuncInfo on either side — that is a 4/4 vacuous sidecar, not a miss.
 - **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
   { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the

@@ -89,6 +89,8 @@ def _pick_funcinfo(oi, fis):
 
 def _score_unwinds(oi, ri):
     """True iff every orig unwind action .text matches the .obj action."""
+    if not oi and not ri:
+        return True
     if not oi or not ri:
         return False
     ou = oi.get('unwinds') or []
@@ -110,7 +112,9 @@ def _score_unwinds(oi, ri):
 
 
 def _score_handler(handler, ri):
-    if not handler or not ri:
+    if not handler:
+        return not ri or not ri.get('handler_bytes')
+    if not ri:
         return False
     hpath = os.path.join(cpp_score.ORIG_DIR, '0x%08X.bin' % handler)
     hb = ri.get('handler_bytes') or b''

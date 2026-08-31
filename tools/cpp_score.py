@@ -541,6 +541,8 @@ def load_pe():
 
 def funcinfo_struct_equal(orig, recomp):
     """Compare FuncInfo fields that are source-shaped, not linked addresses."""
+    if orig is None and recomp is None:
+        return True, 'no EH'
     if orig is None or recomp is None:
         return False, 'missing FuncInfo on one side'
     reasons = []
