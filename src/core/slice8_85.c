@@ -487,7 +487,7 @@ static int br_stricmp_1008C320(const char *pA, const char *pB)
  * into the game's own store of that name -- but only if it differs by more
  * than capitalisation. This is the shared body; the two hooks that use it
  * differ only in which name they write. */
-/* @implements 0x1003F050 d3d Br85TextReadBack */
+/* port-only body; Glide match is src/core/generated/0x10038580.c */
 static int32_t Br85TextReadBack(BrUiCtl_ *pCtl, char *pszDst, size_t cbDst)
 {
     const char *pszSrc;
@@ -520,7 +520,7 @@ int32_t BrUiHook85_1003F050(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: reads back what the player typed, into the second of the two
  * name stores. */
-/* @implements 0x1003F0B0 d3d BrUiHook85_1003F0B0 */
+/* port-only body; Glide match is src/core/generated/0x100385F0.c */
 int32_t BrUiHook85_1003F0B0(BrUiCtl_ *pCtl)
 {
     return Br85TextReadBack(pCtl, g_brHook85.szB4E760,
