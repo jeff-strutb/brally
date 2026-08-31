@@ -7,7 +7,18 @@
  * st(n)) are spelled out in the arithmetic here rather than "tidied", because
  * `fsubr m32` is `st0 = m32 - st0` and getting that backwards is silent.
  */
+#ifdef BR_MATCHING_BUILD
+#define BrSpanTestPoint BrSpanTestPoint_port
+#define BrPfxReset      BrPfxReset_port
+#endif
 #include "slice2_21.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrSpanTestPoint
+#undef BrPfxReset
+int  BrSpanTestPoint(float x, float y);
+void BrPfxReset(void);
+int  BrSpanContains(int param_1, int param_2);
+#endif
 
 #include <string.h>
 
@@ -37,6 +48,7 @@
  * direction. Two points in exactly the same place have no direction, so it
  * answers "straight up" rather than dividing by zero. */
 /* @implements 0x1003ADA0 d3d BrVec3Direction */
+/* @implements 0x10034420 glide BrVec3Direction */
 void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
 {
     float dx = pTo->x - pFrom->x;
@@ -44,16 +56,18 @@ void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
     float dz = pTo->z - pFrom->z;
     float len = BrSqrtF(dx * dx + dy * dy + dz * dz);
 
-    if (len == K_0) {
-        pOut->x = 0.0f;
-        pOut->y = 0.0f;
-        pOut->z = 1.0f;
+    /* Orig: `test ah,0x40; jne zeros` so normalize is the fall-through.
+     * `if (len == 0) { zeros; return; }` emits `je normalize` instead. */
+    if (len != K_0) {
+        len = K_1 / len;            /* fdivr: 1.0 / len, computed once */
+        pOut->x = len * dx;
+        pOut->y = len * dy;
+        pOut->z = len * dz;
         return;
     }
-    len = K_1 / len;                /* fdivr: 1.0 / len, computed once */
-    pOut->x = len * dx;
-    pOut->y = len * dy;
-    pOut->z = len * dz;
+    pOut->x = 0.0f;
+    pOut->y = 0.0f;
+    pOut->z = 1.0f;
 }
 
 /* 0x1003AE50 */
@@ -174,11 +188,11 @@ float BrAtan2(float x, float y)
 /* @implements 0x1003B2A0 d3d BrMat4TransformPoint4 */
 void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
 {
-    int j;
-    for (j = 0; j < 4; j++) {
-        pOut[j] = pM[0 * 4 + j] * pV->x + pM[1 * 4 + j] * pV->y
-                + pM[2 * 4 + j] * pV->z + pM[3 * 4 + j];
-    }
+    /* Orig is four unrolled columns, not a j<4 loop (66 B vs 157 B). */
+    pOut[0] = pM[0] * pV->x + pM[4] * pV->y + pM[8]  * pV->z + pM[12];
+    pOut[1] = pM[1] * pV->x + pM[5] * pV->y + pM[9]  * pV->z + pM[13];
+    pOut[2] = pM[2] * pV->x + pM[6] * pV->y + pM[10] * pV->z + pM[14];
+    pOut[3] = pM[3] * pV->x + pM[7] * pV->y + pM[11] * pV->z + pM[15];
 }
 
 /* 0x1003B3F0 */
@@ -188,13 +202,9 @@ void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
 /* @implements 0x1003B3F0 d3d BrMtxXfmDir3 */
 void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 {
-    float a[3];
-    int j;
-    for (j = 0; j < 3; j++)
-        a[j] = pM->m[0][j] * pV->x + pM->m[1][j] * pV->y + pM->m[2][j] * pV->z;
-    pOut->x = a[0];
-    pOut->y = a[1];
-    pOut->z = a[2];
+    pOut->x = pM->m[0][0] * pV->x + pM->m[1][0] * pV->y + pM->m[2][0] * pV->z;
+    pOut->y = pM->m[0][1] * pV->x + pM->m[1][1] * pV->y + pM->m[2][1] * pV->z;
+    pOut->z = pM->m[0][2] * pV->x + pM->m[1][2] * pV->y + pM->m[2][2] * pV->z;
 }
 
 /* 0x1003B470 */
@@ -460,11 +470,21 @@ void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
 /* WHAT IT DOES: asks whether a point falls inside the covered area, by
  * dropping it into the coarse grid and checking that cell. */
 /* @implements 0x1003A950 d3d BrSpanTestPoint */
+/* @implements 0x10033FD0 glide BrSpanTestPoint */
+#ifdef BR_MATCHING_BUILD
+int BrSpanTestPoint(float x, float y)
+{
+    /* Right-to-left: y ftol first, its eax is pushed, then x ftol, Contains. */
+    return BrSpanContains(BrFtolArg(x * K_CELL_RECIP),
+                          BrFtolArg(y * K_CELL_RECIP));
+}
+#else
 int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
 {
     return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
                                    BrFtolArg(y * K_CELL_RECIP));
 }
+#endif
 
 /* 0x1003A990 */
 /* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a
@@ -536,6 +556,45 @@ void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6])
  * free list and clears the three lists of particles in flight, so all the dust
  * and spray currently in the air vanishes. */
 /* @implements 0x1003A4D0 d3d BrPfxReset */
+/* @implements 0x10033B50 glide BrPfxReset */
+#ifdef BR_MATCHING_BUILD
+extern unsigned char DAT_10ac0c84[];   /* aRec[1].iNext, stride 0x20 */
+extern unsigned char DAT_10ac2c64[];   /* loop end (exclusive) */
+extern uint16_t DAT_10ac2c44;          /* aRec[255].iNext */
+extern uint16_t DAT_10ac0c38;          /* iFree */
+extern uint16_t DAT_10ac0c40;          /* iListB0 */
+extern uint16_t DAT_10ac0c3c;          /* iListAC */
+extern uint16_t DAT_10ac0c44;          /* iListB4 */
+extern int32_t  DAT_100b2f04;          /* nCars */
+extern int32_t  DAT_10af2264[];        /* car0 + 0x105C, stride 0x2B68 */
+void BrPfxReset(void)
+{
+    int i = 1;
+    unsigned char *p = DAT_10ac0c84;
+    int32_t n;
+
+    do {
+        *(uint16_t *)p = (uint16_t)(i + 1);
+        ++i;
+        p += 0x20;
+    } while ((int)p < (int)DAT_10ac2c64);
+
+    n = DAT_100b2f04;
+    DAT_10ac2c44 = 0;
+    DAT_10ac0c38 = 1;
+    if (n > 0) {
+        int32_t *car = DAT_10af2264;
+        do {
+            *car = 0;
+            car = (int32_t *)((unsigned char *)car + 0x2B68);
+            --n;
+        } while (n != 0);
+    }
+    DAT_10ac0c40 = 0;
+    DAT_10ac0c3c = 0;
+    DAT_10ac0c44 = 0;
+}
+#else
 void BrPfxReset(BrPfxPool *pPool)
 {
     int i;
@@ -547,6 +606,7 @@ void BrPfxReset(BrPfxPool *pPool)
     pPool->iListAC  = 0;
     pPool->iListB4  = 0;
 }
+#endif
 
 /* 0x1003A610 */
 /* WHAT IT DOES: takes a complete copy of the particle pool -- every record and
@@ -957,8 +1017,10 @@ void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
         BrPfxUpdateB0(pPool, pEnv);
         for (i = 0; i < pTick->nCar; i++) {
             struct BrCar *pCar = pTick->apCar[i];
+#ifndef BR_MATCHING_BUILD
             if (pCar == NULL)
                 continue;
+#endif
             BrCarSub9020(pCar);
             BrCarWheelFx(pCar, pFxEnv, pSeed);
         }
@@ -969,8 +1031,10 @@ void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
         BrPfxUpdateB4AC(pPool, pEnv);
         for (i = 0; i < pTick->nCar; i++) {
             struct BrCar *pCar = pTick->apCar[i];
+#ifndef BR_MATCHING_BUILD
             if (pCar == NULL)
                 continue;
+#endif
             BrCarPfxSpawn(pCar, pPool, pEnv, pSeed);
             BrCarWheelFx(pCar, pFxEnv, pSeed);
         }
@@ -979,8 +1043,10 @@ void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
 
     for (i = 0; i < pTick->nCar; i++) {
         struct BrCar *pCar = pTick->apCar[i];
+#ifndef BR_MATCHING_BUILD
         if (pCar == NULL)
             continue;
+#endif
         BrCarWheelFx(pCar, pFxEnv, pSeed);
     }
 }
