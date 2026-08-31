@@ -979,11 +979,11 @@ extern int DAT_100a5a58[];
 
 int32_t BrFontMeasure(const char *psz, int32_t scale)
 {
-    int total = 0;
+    int total;
     int s;
     int *pOff;
-    unsigned char c;
 
+    total = 0;
     s = scale;
     if (DAT_106ed674 != 0)
         s <<= 1;
@@ -995,33 +995,30 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
         pOff = DAT_100a5978;
     }
 
-    c = (unsigned char)*psz;
-    while (c != 0) {
-        int fGlyph = 1;
-
-        if ((signed char)c < (signed char)BR_FONT_CLASS_LO ||
-            (signed char)c > (signed char)BR_FONT_CLASS_HI) {
+    /* Re-deref *psz.  Caching the char in a local lets VC5 strength-reduce
+     * psz[1]/psz[2] into walking pointers (lea +1/+2, +18 B). */
+    while (*psz != '\0') {
+        if (*psz < (char)BR_FONT_CLASS_LO ||
+            *psz > (char)BR_FONT_CLASS_HI) {
             total += (14 * s) / 40;
-            fGlyph = 0;
-        } else if (c == '%' && psz[1] != '\0') {
-            if ((unsigned char)psz[1] == c) {
-                ++psz;
-            } else if (psz[1] == 'i' || psz[1] == 'n') {
-                ++psz;
-                fGlyph = 0;
+        } else if (*psz == '%' && psz[1] != '\0') {
+            if (psz[1] == *psz) {
+                psz++;
+                goto glyph;
+            }
+            if (psz[1] == 'i' || psz[1] == 'n') {
+                psz++;
             } else if (psz[2] != '\0') {
                 psz += 2;
-                fGlyph = 0;
+            } else {
+                goto glyph;
             }
+        } else {
+        glyph:
+            total += ((pOff[DAT_100a58f7[*psz] + 1] -
+                       pOff[DAT_100a58f7[*psz]]) * s) / scale;
         }
-
-        if (fGlyph) {
-            int k = DAT_100a58f7[(signed char)c];
-            total += ((pOff[k + 1] - pOff[k]) * s) / scale;
-        }
-
-        c = (unsigned char)psz[1];
-        ++psz;
+        psz++;
     }
 
     if (DAT_106ed674 != 0)
