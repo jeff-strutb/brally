@@ -167,7 +167,24 @@ exist but their name columns are empty — maps were generated, never worked.
 
 ## Layout
 
-- `src/core/`, `src/backends/`, `include/`, `tests/`
-- `config/` — function maps, globals, the `shared.csv` d3d↔glide twin table
+**The repo root IS the decomp** (the master, byte-matched against the 1999
+binaries). `ports/` is the only thing outside it — derived platform layers that
+are NOT byte-matched. Don't wrap the decomp in a `decomp/` subfolder: the
+toolchain (32 tools compute ROOT as the parent of `tools/`, plus the staged
+Wine/MSVC and venv) assumes the decomp is at root, which is also the decomp-
+project convention (SM64). See `ports/README.md`.
+
+- `src/core/` — portable game logic (byte-matched)
+- `src/backends/{glide,d3d,win32}` — original **Win9x** platform backends
+  (byte-matched; currently mostly filed into `src/core` modules)
+- `src/exe/` — the three Win9x executables (launcher / config / intro),
+  byte-matched
+- `include/`, `tests/`
+- `config/` — function maps, globals, `shared.csv` (d3d↔glide twins),
+  `binaries.csv` (per-binary compiler + CRT model + base + entry — the build
+  spec), `fenced.csv` / `fenced_exe.csv` (linker/CRT reproduced-by-linking,
+  not a decomp target)
 - `build/match/` — extracted reference bytes, per-function report, objs
 - `tools/` — matching pipeline, auditors, the staged MSVC toolchain
+- `ports/macos/` — the macOS/Metal port: NEW platform code, not byte-matched,
+  no `@implements`, invisible to the match tooling. Built by `build.sh`.

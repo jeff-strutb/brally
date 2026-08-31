@@ -106,7 +106,7 @@ def build_of():
 
 def existing_manifest():
     seen = set()
-    for pat in ('src/core/**/*.c', 'include/**/*.h', 'src/backends/macos/**/*.c'):
+    for pat in ('src/core/**/*.c', 'include/**/*.h', 'ports/macos/**/*.c'):
         for f in glob.glob(pat, recursive=True):
             for ln in open(f, errors='ignore'):
                 m = re.search(r'@implements\s+0x([0-9A-Fa-f]{8})', ln)
@@ -175,7 +175,7 @@ def main():
             continue
         paths = glob.glob('src/core/**/' + fname, recursive=True) \
               + glob.glob('include/**/' + fname, recursive=True) \
-              + glob.glob('src/backends/macos/**/' + fname, recursive=True)
+              + glob.glob('ports/macos/**/' + fname, recursive=True)
         if not paths:
             continue
         p = paths[0]

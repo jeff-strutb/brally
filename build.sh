@@ -37,7 +37,7 @@ FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCo
 for src in $(find src/core -name '*.c' | sort); do
     clang $CFLAGS -c "$src" -o "build/$(basename "$src" .c).o"
 done
-clang $MFLAGS -c src/backends/metal/br_gfx_metal.m -o build/br_gfx_metal.o
+clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
 # --- tests -----------------------------------------------------------------
 for t in tests/test_*.c; do
@@ -75,7 +75,7 @@ done
 clang $bvobjs build/br_gfx_metal.o -lm $FW -o build/brview
 
 # --- the host: links the whole core into one runnable binary ---------------
-# Undecomped functions are satisfied by src/backends/macos/br_stubs.c, so this
+# Undecomped functions are satisfied by ports/macos/br_stubs.c, so this
 # links today and reports at exit which stubs the run actually reached.
 mkdir -p build/host
 clang $CFLAGS -DBR_HOST_LINK -c src/core/slice3_32.c -o build/host/slice3_32.o
@@ -83,17 +83,17 @@ clang $CFLAGS -DBR_HOST_LINK -c src/core/slice6_71.c -o build/host/slice6_71.o
 clang $CFLAGS -DBR_HOST_LINK -c src/core/slice6_73.c -o build/host/slice6_73.o
 
 WIREOBJS=""
-for w in src/backends/macos/br_wire*.c; do
+for w in ports/macos/br_wire*.c; do
     [ -f "$w" ] || continue
     wname=$(basename "$w" .c)
     clang $CFLAGS -c "$w" -o "build/$wname.o"
     WIREOBJS="$WIREOBJS build/$wname.o"
 done
-clang $CFLAGS -c src/backends/macos/br_stubs.c -o build/br_stubs.o
+clang $CFLAGS -c ports/macos/br_stubs.c -o build/br_stubs.o
 clang $CFLAGS -Itests -c tests/test_data.c -o build/test_data.o
 clang build/br_data.o build/test_data.o -lm -o build/test_data
-clang $CFLAGS -c src/backends/macos/brally.c      -o build/brally.o
-clang $CFLAGS -c src/backends/macos/brally_main.c -o build/brally_main.o
+clang $CFLAGS -c ports/macos/brally.c      -o build/brally.o
+clang $CFLAGS -c ports/macos/brally_main.c -o build/brally_main.o
 
 HOSTOBJS=""
 for o in build/*.o; do
