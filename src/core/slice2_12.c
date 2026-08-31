@@ -735,7 +735,7 @@ int32_t BrNetStackPop(void *hMutex, int32_t *paStack, int32_t *piTop)
 /* WHAT IT DOES: reads one entry out of a networking table with the table's
  * lock held. There is no bounds check, here or in the original, so a bad
  * index reads whatever is next in memory. */
-/* @implements 0x10005E40 d3d BrNetGetA102212D0 */
+/* port-only body; Glide match is src/core/generated/0x100061B0.c */
 int32_t BrNetGetA102212D0(BrNetState *pNet, int32_t i)
 {
     int32_t v;
