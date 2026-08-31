@@ -213,6 +213,20 @@ static const BrDiEffVtbl *BrDiEff(BrDiObj *p)
     return (const BrDiEffVtbl *)(const void *)p->pVtbl;
 }
 
+#ifdef BR_MATCHING_BUILD
+typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
+typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
+#define BR_DI_SETPARAMS(p, eff, flags) \
+    ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
+#define BR_DI_SETPROP(p, prop, pdiph) \
+    ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
+#else
+#define BR_DI_SETPARAMS(p, eff, flags) \
+    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
+#define BR_DI_SETPROP(p, prop, pdiph) \
+    (BrDiDev(p)->pfnSetProperty((p), (prop), (pdiph)))
+#endif
+
 /* ====================================================================== */
 /* 1. Entity state setters                                                 */
 /* ====================================================================== */
@@ -868,31 +882,20 @@ long BrDiSetPropDword(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
                       uint32_t dwHow, uint32_t dwData)
 {
     BrDiPropDword d;
+    uint32_t data, obj, how;
 
+    /* Orig loads dwData, dwObj, dwHow (edx/eax/ecx) then stores data, obj, how. */
+    data = dwData;
+    obj  = dwObj;
+    how  = dwHow;
+    d.dwData = data;
+    d.dwObj  = obj;
+    d.dwHow  = how;
     d.dwSize       = 0x14u;
     d.dwHeaderSize = 0x10u;
-    d.dwObj        = dwObj;
-    d.dwHow        = dwHow;
-    d.dwData       = dwData;
 
-    return BrDiDev(pDev)->pfnSetProperty(pDev, prop, &d);
+    return BR_DI_SETPROP(pDev, prop, &d);
 }
-
-/* ====================================================================== */
-/* 5. Force feedback                                                       */
-/* ====================================================================== */
-
-/* The guard shared by 0x10078E10, 0x10078E50, 0x10078E90, 0x10078ED0 and
- * 0x10078F20. Written out inline in all five; identical every time.
- * A static helper does not inline under /O2 (call vs four global tests). */
-#ifdef BR_MATCHING_BUILD
-typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
-#else
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
-#endif
 
 /* 0x10078E10 */
 /* WHAT IT DOES: chooses which way the next shake of a force-feedback wheel
