@@ -1,24 +1,33 @@
 #!/usr/bin/env python3
-"""Bucket every report.csv `diff` by two proven mechanical width idioms.
+"""Bucket every report.csv `diff` by proven mechanical idioms.
 
 Dry-run detector. Does not edit source.
 
-The two signatures (proven, then exhausted on FUN_10002830 / FUN_10027710
-and BrTextBoxMeasureB / FUN_100298c0):
+The signatures (each proven, then exhausted on the functions named):
 
-  byte     orig loads a byte arg as `mov al,[mem]; push eax` (opcodes
-           a0/8a into a byte reg). Recomp with the param typed int emits
-           movzx / mov eax (and Ghidra CONCAT leftovers). Fix: callee
-           param `unsigned char`.
+  byte       orig loads a byte arg as `mov al,[mem]; push eax` (opcodes
+             a0/8a into a byte reg). Recomp with the param typed int emits
+             movzx / mov eax (and Ghidra CONCAT leftovers). Fix: callee
+             param `unsigned char`. Proven FUN_10002830 / FUN_10027710.
 
-  word16   orig stores/loads a 16-bit local with a 66-prefixed op
-           (66 89 / 66 8b, movsx ax, cmp ax,imm). Recomp with the local
-           typed int emits the 32-bit form. Fix: local `short` /
-           `unsigned short`.
+  word16     orig stores/loads a 16-bit local with a 66-prefixed op
+             (66 89 / 66 8b, movsx ax, cmp ax,imm). Recomp with the local
+             typed int emits the 32-bit form. Fix: local `short` /
+             `unsigned short`. Proven BrTextBoxMeasureB / FUN_100298c0.
 
-A function is bucketed `byte` or `word16` only when those paired extra/
-missing shapes DOMINATE the register-blind (regnorm) gap at >=70%.
-Anything else is `neither`. Gap 0 (identical shapes, different bytes) is
+  float-abs  recomp emits consecutive `fstp st(i); fld; fchs` (store-
+             reload-negate) where orig has fewer. That is `t = x; if
+             (t < Z) t = -t` — dest already exists, so the negate is a
+             NEW value. Fix: `t = (x < Z) ? -x : x` (in-place fchs).
+             Proven 0x10067470 (REGNORM extra 16→4). Extra fchs is
+             usually 0: orig has the same fchs, just without the shuffle.
+
+`byte` / `word16` land only when the paired extra/missing shapes
+DOMINATE the register-blind (regnorm) gap at >=70%. `float-abs` lands
+when the extra shuffle clusters dominate the EXTRA bag at >=70% (the
+miss side is usually unrelated fxch/slot drain — requiring 70% of
+extra+miss would have rejected the proven case itself, 12/37). Anything
+else is `neither`. Gap 0 (identical shapes, different bytes) is
 `regalloc` — a coloring residue, not a width class.
 
 A bucket with 1-2 members is not a class. A bucket with 8+ homogeneous
@@ -32,6 +41,7 @@ obj_{opt} from the last sweep are reused; --force recompiles.
     .venv/bin/python tools/idiom_scan.py              # dry-run table
     .venv/bin/python tools/idiom_scan.py --detail     # + extra/missing
     .venv/bin/python tools/idiom_scan.py --csv PATH
+    .venv/bin/python tools/idiom_scan.py --float-csv PATH
     .venv/bin/python tools/idiom_scan.py --va 0x...
     .venv/bin/python tools/idiom_scan.py --force      # recompile every file
 """
@@ -55,6 +65,7 @@ md.skipdata = True
 
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
+FLOAT_CSV = os.path.join(ROOT, 'build', 'match', 'float_worklist.csv')
 THRESHOLD = 0.70
 
 # Same normalisation as tools/fnmatch/fn.py and mdiff2.py.
@@ -138,6 +149,49 @@ def is_int32_op(shape):
         'mov', 'movzx', 'movsx', 'cmp', 'and', 'or', 'xor', 'add', 'sub',
         'test', 'shl', 'shr', 'sar', 'inc', 'dec', 'neg', 'not',
     )
+
+
+def is_fstp_st(mnem, op):
+    """x87 stack store-and-pop: `fstp st(i)`, not `fstp dword [mem]`."""
+    return mnem == 'fstp' and op.startswith('st')
+
+
+def count_float_abs_clusters(code):
+    """Count consecutive `fstp st(i); fld; fchs` triples.
+
+    That is the reassignment-abs shuffle: dest already lives (on the x87
+    stack or as a named temp), so `t = -t` pops the dest, reloads, and
+    negates. In-place `t = (x < Z) ? -x : x` is just `je; fchs`. Proven
+    on 0x10067470 (six such triples, extra 16→4 once rewritten).
+
+    Consecutive is the proven form. A leftover `fstp st(0)` that discards
+    a compared copy, or a post-store stack drain, is NOT this cluster.
+    """
+    seq = [(i.mnemonic, i.op_str) for i in md.disasm(code, 0)]
+    n = 0
+    i = 0
+    while i + 2 < len(seq):
+        m0, o0 = seq[i]
+        m1 = seq[i + 1][0]
+        m2 = seq[i + 2][0]
+        if is_fstp_st(m0, o0) and m1 == 'fld' and m2 == 'fchs':
+            n += 1
+            i += 3
+            continue
+        i += 1
+    return n
+
+
+def extra_fstp_st(extra):
+    return sum(c for s, c in extra.items() if s.startswith('fstp st'))
+
+
+def extra_fld(extra):
+    return sum(c for s, c in extra.items() if s.split()[0] == 'fld')
+
+
+def extra_fchs(extra):
+    return sum(c for s, c in extra.items() if s.split()[0] == 'fchs')
 
 
 def classify_bags(extra, miss):
@@ -261,37 +315,57 @@ def compile_group(src, opt, force):
     return obj, err
 
 
+def _empty_measure(row, bucket, err):
+    return dict(va=row['va'], name=row['name'], file=row['file'],
+                opt=row.get('opt', ''), bucket=bucket, gap=-1,
+                extra=0, miss=0, byte_n=0, word_n=0, byte_pct=0.0, word_pct=0.0,
+                cluster_count=0, cluster_orig=0, cluster_recomp=0,
+                float_n=0, float_pct=0.0, extra_fstp_st=0, extra_fld_n=0,
+                extra_fchs_n=0, o_bl=0, r_bl=0, o_zx=0, r_zx=0, o_66=0, r_66=0,
+                extra_bag=Counter(), miss_bag=Counter(),
+                orig_size=row.get('orig_size', ''),
+                diffs=row.get('diffs', ''), err=err)
+
+
 def measure(row, coff):
     name = row['name']
     va = row['va']
     if not coff or name not in coff:
-        return dict(va=va, name=name, file=row['file'], opt=row.get('opt', ''),
-                    bucket='no-sym', gap=-1, extra=0, miss=0,
-                    byte_n=0, word_n=0, byte_pct=0.0, word_pct=0.0,
-                    o_bl=0, r_bl=0, o_zx=0, r_zx=0, o_66=0, r_66=0,
-                    extra_bag=Counter(), miss_bag=Counter(),
-                    orig_size=row.get('orig_size', ''),
-                    diffs=row.get('diffs', ''), err='symbol not in obj')
+        return _empty_measure(row, 'no-sym', 'symbol not in obj')
     rc = strip_pad(coff[name][0])
     ob = os.path.join(ORIG_DIR, va + '.bin')
     if not os.path.exists(ob):
-        return dict(va=va, name=name, file=row['file'], opt=row.get('opt', ''),
-                    bucket='no-orig', gap=-1, extra=0, miss=0,
-                    byte_n=0, word_n=0, byte_pct=0.0, word_pct=0.0,
-                    o_bl=0, r_bl=0, o_zx=0, r_zx=0, o_66=0, r_66=0,
-                    extra_bag=Counter(), miss_bag=Counter(),
-                    orig_size=row.get('orig_size', ''),
-                    diffs=row.get('diffs', ''), err='no orig bin')
+        return _empty_measure(row, 'no-orig', 'no orig bin')
     orig = open(ob, 'rb').read()
     O = bag(orig, 'regnorm')
     R = bag(rc, 'regnorm')
     extra, miss = R - O, O - R
     bucket, gap, byte_n, word_n, bp, wp = classify_bags(extra, miss)
     o_bl, r_bl, o_zx, r_zx, o_66, r_66 = opcode_counts(orig, rc)
+
+    cluster_orig = count_float_abs_clusters(orig)
+    cluster_recomp = count_float_abs_clusters(rc)
+    cluster_count = cluster_recomp - cluster_orig
+    if cluster_count < 0:
+        cluster_count = 0
+    extra_n = sum(extra.values())
+    # Each excess cluster is extra `fstp st` + extra `fld`. Orig usually
+    # already has the fchs (in-place), so extra fchs is not the signal.
+    float_n = cluster_count * 2
+    float_pct = (float_n / float(extra_n)) if extra_n else 0.0
+    if bucket in ('neither', 'regalloc') and cluster_count > 0 \
+            and float_pct >= THRESHOLD:
+        bucket = 'float-abs'
+
     return dict(va=va, name=name, file=row['file'], opt=row.get('opt', ''),
                 bucket=bucket, gap=gap,
-                extra=sum(extra.values()), miss=sum(miss.values()),
+                extra=extra_n, miss=sum(miss.values()),
                 byte_n=byte_n, word_n=word_n, byte_pct=bp, word_pct=wp,
+                cluster_count=cluster_count, cluster_orig=cluster_orig,
+                cluster_recomp=cluster_recomp, float_n=float_n,
+                float_pct=float_pct,
+                extra_fstp_st=extra_fstp_st(extra), extra_fld_n=extra_fld(extra),
+                extra_fchs_n=extra_fchs(extra),
                 o_bl=o_bl, r_bl=r_bl, o_zx=o_zx, r_zx=r_zx,
                 o_66=o_66, r_66=r_66,
                 extra_bag=extra, miss_bag=miss,
@@ -301,16 +375,25 @@ def measure(row, coff):
 
 def rank_key(m):
     # Bucketed hits first, then larger shape-gap (more signal).
-    order = {'byte': 0, 'word16': 1, 'regalloc': 3, 'neither': 2}
-    return (order.get(m['bucket'], 9), -m['gap'], m['file'], m['va'])
+    order = {'float-abs': 0, 'byte': 1, 'word16': 2, 'neither': 3,
+             'regalloc': 4}
+    return (order.get(m['bucket'], 9), -m.get('cluster_count', 0),
+            -m['gap'], m['file'], m['va'])
+
+
+def float_rank_key(m):
+    # Excess shuffle clusters first, then larger register-blind gap.
+    return (-m['cluster_count'], -m['gap'], m['file'], m['va'])
 
 
 def print_table(rows, detail):
     n = len(rows)
     tally = Counter(m['bucket'] for m in rows)
-    print('scanned %d diff rows  (threshold %.0f%% of regnorm gap)'
-          % (n, THRESHOLD * 100))
-    for k in ('byte', 'word16', 'regalloc', 'neither', 'no-sym', 'no-orig'):
+    print('scanned %d diff rows  (width: %.0f%% of regnorm gap;  '
+          'float-abs: %.0f%% of extra bag)'
+          % (n, THRESHOLD * 100, THRESHOLD * 100))
+    for k in ('float-abs', 'byte', 'word16', 'regalloc', 'neither',
+              'no-sym', 'no-orig'):
         if tally[k]:
             print('  %-10s %4d' % (k, tally[k]))
     print()
@@ -325,29 +408,33 @@ def print_table(rows, detail):
         return '%s: %d members — bulk-win candidate' % (name, c)
 
     print('class test:')
+    print('  ' + homogeneous('float-abs'))
     print('  ' + homogeneous('byte'))
     print('  ' + homogeneous('word16'))
     print()
 
-    hdr = '%-11s %-28s %-36s %-8s %5s %6s %6s %s' % (
-        'VA', 'name', 'file', 'bucket', 'gap', 'byte%', 'word%', 'opt')
+    hdr = '%-11s %-28s %-36s %-9s %5s %6s %6s %5s %s' % (
+        'VA', 'name', 'file', 'bucket', 'gap', 'byte%', 'word%', 'clst', 'opt')
     print(hdr)
     print('-' * len(hdr))
 
     shown = 0
     for m in rows:
-        interesting = m['bucket'] in ('byte', 'word16') \
-            or (m['bucket'] == 'neither' and max(m['byte_pct'], m['word_pct']) >= 0.40)
-        if m['bucket'] in ('byte', 'word16', 'regalloc') or interesting:
-            print('%s %-28s %-36s %-8s %5d %5.0f%% %5.0f%% %s' % (
+        interesting = m['bucket'] in ('byte', 'word16', 'float-abs') \
+            or (m['bucket'] == 'neither'
+                and max(m['byte_pct'], m['word_pct'], m['float_pct']) >= 0.40)
+        if m['bucket'] in ('byte', 'word16', 'float-abs', 'regalloc') \
+                or interesting:
+            print('%s %-28s %-36s %-9s %5d %5.0f%% %5.0f%% %5d %s' % (
                 m['va'], m['name'][:28], m['file'][-36:], m['bucket'],
-                m['gap'], m['byte_pct'] * 100, m['word_pct'] * 100, m['opt']))
+                m['gap'], m['byte_pct'] * 100, m['word_pct'] * 100,
+                m['cluster_count'], m['opt']))
             shown += 1
-            if detail and m['bucket'] in ('byte', 'word16'):
+            if detail and m['bucket'] in ('byte', 'word16', 'float-abs'):
                 print('    EXTRA  %s' % m['extra_bag'].most_common(8))
                 print('    MISS   %s' % m['miss_bag'].most_common(8))
     if shown == 0:
-        print('(no byte/word16 members, no near-misses at 40%)')
+        print('(no byte/word16/float-abs members, no near-misses at 40%)')
     print()
     print('opcode support (orig-vs-recomp, not the bucket test):')
     more8a = sum(1 for m in rows if m['o_bl'] > m['r_bl'])
@@ -358,10 +445,56 @@ def print_table(rows, detail):
           % (more8a, morezx, both))
     print('  orig more 66-prefix: %d' % more66)
 
+    print()
+    print_float_worklist(rows, detail)
+
+
+def print_float_worklist(rows, detail):
+    """Ranked excess `fstp st(i); fld; fchs` clusters (recomp minus orig)."""
+    cands = [m for m in rows if m['cluster_count'] > 0]
+    cands.sort(key=float_rank_key)
+    print('float-abs worklist  (excess fstp-st / fld / fchs clusters, '
+          'then regnorm gap):')
+    if not cands:
+        extra_st = [m for m in rows if m.get('extra_fstp_st', 0) > 0]
+        extra_st.sort(key=lambda m: (-m['extra_fstp_st'], -m['gap'],
+                                     m['file'], m['va']))
+        print('  (empty — no status=diff row has more of the consecutive')
+        print('   store-reload-negate shuffle than orig.)')
+        if extra_st:
+            print('  %d row%s extra `fstp st(i)` without the fld+fchs '
+                  'cluster — leftover stack discards, not this idiom:'
+                  % (len(extra_st), '' if len(extra_st) == 1 else 's'))
+            for m in extra_st[:15]:
+                print('    %s %-28s fstp-st+%d  fld+%d  fchs+%d  gap %d  %s'
+                      % (m['va'], m['name'][:28], m['extra_fstp_st'],
+                         m.get('extra_fld_n', 0), m.get('extra_fchs_n', 0),
+                         m['gap'], m['file'][-36:]))
+        return
+    hdr = '%-11s %-28s %-36s %5s %5s %5s %5s %5s' % (
+        'VA', 'name', 'file', 'clst', 'gap', 'x-st', 'x-fld', 'xfchs')
+    print(hdr)
+    print('-' * len(hdr))
+    for m in cands[:15]:
+        print('%s %-28s %-36s %5d %5d %5d %5d %5d' % (
+            m['va'], m['name'][:28], m['file'][-36:],
+            m['cluster_count'], m['gap'],
+            m.get('extra_fstp_st', 0), m.get('extra_fld_n', 0),
+            m.get('extra_fchs_n', 0)))
+        if detail:
+            print('    EXTRA  %s' % m['extra_bag'].most_common(8))
+            print('    MISS   %s' % m['miss_bag'].most_common(8))
+    if len(cands) > 15:
+        print('  ... %d more' % (len(cands) - 15))
+    print('  %d candidate%s' % (len(cands), '' if len(cands) == 1 else 's'))
+
 
 def write_csv(path, rows):
     fields = ['va', 'name', 'file', 'opt', 'bucket', 'gap', 'extra', 'miss',
               'byte_n', 'word_n', 'byte_pct', 'word_pct',
+              'cluster_count', 'cluster_orig', 'cluster_recomp',
+              'float_n', 'float_pct',
+              'extra_fstp_st', 'extra_fld_n', 'extra_fchs_n',
               'o_bl', 'r_bl', 'o_zx', 'r_zx', 'o_66', 'r_66',
               'orig_size', 'diffs']
     with open(path, 'w', newline='') as f:
@@ -371,7 +504,32 @@ def write_csv(path, rows):
             out = dict(m)
             out['byte_pct'] = '%.3f' % m['byte_pct']
             out['word_pct'] = '%.3f' % m['word_pct']
+            out['float_pct'] = '%.3f' % m['float_pct']
             w.writerow(out)
+
+
+def write_float_csv(path, rows):
+    """Ranked worklist: VA, name, file, cluster-count, gap.
+
+    cluster_count is the excess consecutive `fstp st(i); fld; fchs`
+    triples in recomp over orig. Empty is a valid negative result.
+    """
+    cands = [m for m in rows if m['cluster_count'] > 0]
+    cands.sort(key=float_rank_key)
+    fields = ['va', 'name', 'file', 'cluster_count', 'gap']
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    with open(path, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+        w.writeheader()
+        for m in cands:
+            w.writerow({
+                'va': m['va'],
+                'name': m['name'],
+                'file': m['file'],
+                'cluster_count': m['cluster_count'],
+                'gap': m['gap'],
+            })
+    return len(cands)
 
 
 def main():
@@ -382,6 +540,11 @@ def main():
     ap.add_argument('--detail', action='store_true',
                     help='print extra/missing bags for bucket members')
     ap.add_argument('--csv', metavar='PATH', help='write full ranked table')
+    ap.add_argument('--float-csv', metavar='PATH', default=FLOAT_CSV,
+                    help='write ranked float-abs worklist (default: %s)'
+                         % os.path.relpath(FLOAT_CSV, ROOT))
+    ap.add_argument('--no-float-csv', action='store_true',
+                    help='skip the float-abs worklist CSV')
     ap.add_argument('--va', metavar='VA-or-name', help='one function only')
     a = ap.parse_args()
 
@@ -434,6 +597,10 @@ def main():
     if a.csv:
         write_csv(a.csv, rows)
         print('wrote', a.csv)
+    if not a.no_float_csv:
+        n = write_float_csv(a.float_csv, rows)
+        print('wrote %s  (%d float-abs candidate%s)'
+              % (a.float_csv, n, '' if n == 1 else 's'))
     return 0
 
 
