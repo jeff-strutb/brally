@@ -167,3 +167,22 @@ va,name,file,kind,regnorm,bytes,n64,note,updated
 0x100403B0,BrPhaseLeave_10046F60,src/core/slice3_31.c,structural-unconfirmed,n/a,90/96,no N64 (PC phase),second f00 on pAA292C with cur=NULL in between,2026-08-31
 0x10041300,BrUiItemInit_10047EB0,src/core/slice3_32.c,structural-unconfirmed,6+1,247/263,no N64 (PC UI),thiscall ret 0x10; extra push ecx frame slot, REGNORM 6+1,2026-08-31
 0x1003CD60,BrOpt3810,src/core/slice2_25.c,coloring,2+4,490/483,no twin (PC lobby),C matching-build: goto-tail leave_host DAT_10ac5c5c thiscall slot6/f1C IAT. C++ probe build/cpp_work/0x1003CD60.cpp is 490/490 with 2 diffs: leave_host mov eax vs ecx [esp+0x10]; push. Rec6A4A0::go thiscall has no edx. Named temp / n / C-style f1C on leave did not flip eax. See idioms_new/3cd60.md,2026-08-31
+0x10054020,BrTextBoxCentreX,src/core/slice3_39.c,structural-unconfirmed,1+4,80/74,no twin (PC UI),header says thiscall; leftover fxch/fild after BR_THISCALL1,2026-08-31
+0x10054610,BrTextListInit,src/core/slice3_39.c,structural-unconfirmed,14+19,218/152,no twin (PC UI),thiscall + MSVC vector-ctor iterator (push ctor/dtor/count/size) not a loop,2026-08-31
+0x10055020,BrTextListSetBlob,src/core/slice3_39.c,header-locked,0+0,110/110,no twin (PC UI),thiscall ret 0xc exact shape; blob/count offs +8 vs header,2026-08-31
+0x10058FD0,BrMenuSub1005FF60,src/core/slice3_39.c,coloring,7+7,67/54,no twin (PC input),sete-into-Edge then and; [eax*4+disp] vs [eax*4],2026-08-31
+0x10059D30,BrCarPredictRemote,src/core/slice3_40.c,structural-unconfirmed,1+10,129/101,no C twin,0xA0 state buf; DAT_ flag vs BrG_6909B4,2026-08-31
+0x1005C450,BrZeroRegions,src/core/slice3_40.c,structural-unconfirmed,0+2,62/58,no twin,DAT_100b2f08 no-arg list; 4B residue on edx walk,2026-08-31
+0x1005EB90,BrPathWalk,src/core/slice3_40.c,x87-schedule,11+57,345/185,N64 not for x87,fld/fsub/fcomp chain; DAT_ walk globals,2026-08-31
+0x100608F0,BrVarSave,src/core/slice3_41.c,structural-unconfirmed,2+5,118/108,N64 sprintf+fatal confirmed,memcpy table walk; 10B frame residue,2026-08-31
+0x10060970,BrVarLoad,src/core/slice3_41.c,structural-unconfirmed,2+6,60/54,N64 twin of Save,memcpy reverse; 6B residue,2026-08-31
+0x10040EB0,BrUiNavCtlHit_10047A60,src/core/menus/br_uinav.c,too-big,n/a,587/592,no N64 (PC UI),587 B over ~400,2026-08-31
+0x10059410,BrUiNavMove,src/core/menus/br_uinav.c,too-big,n/a,939/48,no N64 (PC UI),939 B stub recomp,2026-08-31
+0x10043050,BrUiQuitEnter_10043050,src/core/menus/br_uipages.c,too-big,n/a,794/336,no N64 (PC UI),794 B,2026-08-31
+0x1004F290,BrUiMultiEnter_1004F290,src/core/menus/br_uipages.c,too-big,n/a,1570/880,no N64 (PC UI),1570 B,2026-08-31
+0x100425E0,BrUiRootEnter_100425E0,src/core/menus/br_uiroot.c,too-big,n/a,2659/944,no N64 (PC UI),2659 B,2026-08-31
+0x1005FF00,BrRaceGateStep,src/core/racing/br_race.c,too-big,n/a,2538/576,no N64 (PC race),2538 B,2026-08-31
+0x10001320,BrUiSprClip,src/core/menus/br_uispr.c,header-locked,n/a,206/128,no N64 (PC UI),orig is 6-arg clip+blit; port header is 7-arg clip-only,2026-08-31
+0x10019930,BrRaceCueLayout,src/core/racing/br_racebegin.c,coloring,0+1,78/75,no N64 (PC race),unbounded walk in; leftover mov eax,[esi] vs ecx for len,2026-08-31
+0x100199A0,BrRaceCarCtlOutro,src/core/racing/br_racebegin.c,x87-schedule,0+0,106/106,no N64 (PC race),size-exact REGNORM 0; y/x integer loads swapped into ecx/eax,2026-08-31
+0x10017F80,BrFadeDrawSprite,src/core/slice2_16.c,coloring,0+0,529/529,no twin (PC GBI fade),size-matched REGNORM 0+0 RAW 0+0; 2 diffs commutative y1+y0 load order (+0xC vs +4 into esi/edi). 2-arg (pRecs,alpha) + DAT_106e7710 cursor + Combine(DAT++,17 args) landed. volatile blew scaled-index. See idioms_new/17f80.md,2026-08-31
