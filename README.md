@@ -95,11 +95,12 @@ The per-frame race render is the last major rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **851 functions · 89,509 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **887 functions · 90,140 bytes** — verify with `python3 tools/total.py` | |
 | Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
-| Transcribed into C (DLL) | 256,462 / 480,853 bytes of `.text` · 1,154 / 2,818 mapped functions | `██████████░░░░░░░░░░` 53% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 706 of 1,154 transcribed functions · 62,113 bytes | `████████████░░░░░░░░` 61% |
-| Byte-exact, of all DLL `.text` (C + C++ EH) | 79,277 / 480,853 bytes | `███░░░░░░░░░░░░░░░░░` 16% |
+| Hand-C target (DLL) | 1,529 functions (2,140 mapped − 611 linker/EH-reproduced) · 453,803 B of `.text` — `python3 tools/coverage.py` | |
+| Transcribed into C (DLL) | 1,191 / 1,529 hand-C functions · 256,928 B | `████████████████░░░░` 78% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 741 / 1,529 hand-C functions · 62,527 B (741 of the 1,191 transcribed, 62%) | `██████████░░░░░░░░░░` 48% |
+| Byte-exact, of all DLL `.text` (C + C++ EH) | 79,691 / 480,853 bytes | `███░░░░░░░░░░░░░░░░░` 17% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
 | SetVideo.exe (user region) | 44 matched · 4,919 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 47% |
 | BossRally.exe (user region) | 35 matched · 2,482 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
@@ -108,10 +109,14 @@ The per-frame race render is the last major rendering gate.
 | Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
 | Port test suite | **136 / 136 green** | `████████████████████` 100% |
 
-The second and third rows are the ones that count; everything else is
-diagnostics. They tell the same story from opposite ends: nearly half of the
-transcribed functions are exact, but the exact set is small-function-heavy, so
-by raw bytes the campaign is just getting started.
+The hand-C rows are the ones that count; everything else is diagnostics.
+Reading them together: of the 1,529 functions that are genuinely hand-written C
+(the rest of the map is linker/EH scaffolding — see the note below), 1,191 have
+been transcribed and 741 of those are byte-exact — about half the target by
+count. The exact set is small-function-heavy, so by raw bytes (62,527 of
+453,803) the campaign is earlier than the function count suggests. Of the 788
+not-yet-exact functions, 450 are transcribed and diffing, 338 are still only
+raw decompiler output awaiting a first pass.
 
 One denominator note: a large share of the mapped entries are not hand-written
 C at all -- linker import thunks, incremental-link jump stubs, and C++
