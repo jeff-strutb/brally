@@ -52,7 +52,7 @@ static void br_ai_vec3be(BrVec3 *pOut, const unsigned char *p)
  * into the loaded file. A zero stays zero, and anything pointing below where
  * the track was loaded on the N64 becomes zero too, because it cannot refer
  * to anything in this file. */
-/* @implements 0x100189E0 glide br_ai_reloc */
+/* port-only body; Glide match is src/core/slice2_16.c */
 static uint32_t br_ai_reloc(uint32_t n64va)
 {
     if (n64va == 0)
