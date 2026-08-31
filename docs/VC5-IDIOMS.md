@@ -221,6 +221,21 @@ the caller AND flipped a helper to match for free.
 - **x87 intrinsics:** `double f(float x){return cos(x);}` = `fld dword
   [esp+4]; fcos; ret` under /O2 (/Oi). Return type must be double (Ghidra
   `unkbyte10`), or an `__ftol` call appears.
+- **A `fmul dword` chain is float, not double.** Orig 0x10016AA0
+  (BrWeatherStepWind) is `fild; fmul [k]; fsub [1]; fmul [dt]; fadd [angle];
+  fst; fcomp`. Double casts emit `fld; fld; fmulp` (REGNORM extra 12 fld +
+  5 fmulp). Wrap/clamp became instruction-identical once spelled in float.
+- **sincos of a global: integer-bit copy plus fld of the global.**
+  `int ia = *(int*)&angle; z=0; *(int*)&a = ia; x=(float)cos(angle)*s*dt;
+  y=(float)sin(a)*s*dt` emits orig's `mov eax,[angle]; mov [z],0; fld
+  [angle]; mov [esp],eax; fld [esp]; fxch; fcos; fxch; fsin`. A named
+  `float a = angle` CSEs both loads back to the global. Proven 0x10016AA0.
+- **Dual fst-home of live fcos/fsin through one slot** (`fxch; fst [esp];
+  fxch; fst [esp]; fxch` before the interleaved scale-out) is /O2 skipping
+  the double-to-float of the first (cos) result. `/Op` on the function also
+  rounds the fild path (`fstp; fld`) which orig does not. A volatile store
+  of cos lands the first fst but keeps the slot live (epilogue restore).
+  Same 3-insn hole in a solo TU. 0x10016AA0 firstdiv +0xf7, REGNORM 0+3.
 
 - **Two-return vs temp-increment:** `if (f) return n + 1; return n;` loads
   flag into EAX, tests, loads n into EAX between the test and its branch
@@ -665,6 +680,15 @@ the caller AND flipped a helper to match for free.
   the direct-move RHS in cl/dl.  Ghidra prints the temp-holds-mid rotation
   and BrSwap4's temp-holds-low form; both rotate the byte registers (8 diffs).
   Proven BrTrackFixupSegList 0x10031910 + BrTrackSwapRec28 0x10031A40.
+- **Unrolled Vec3 bswap: inner pair high is p[2], not p[1].** Loop of 3
+  dword swaps is 43 B vs orig 75 B fully unrolled. Per dword:
+  `t=p[3]; p[3]=p[0]; p[0]=t; t=p[2]; p[2]=p[1]; p[1]=t;` (and +4/+8).
+  Temp-holds-LOW or inner `t=p[1]` rotates the cl/dl schedule. Proven
+  0x10018AF0 BrSwapVec3 (75 B, MATCH /O2).
+- **Accessor thunks vs a global are a CALL vs `mov r,[DAT]`.** Port
+  helpers `int g(void){return DAT;}` emit a call; orig loads the global
+  at the call site. Spell `extern int DAT; f(..., DAT, ...)` under
+  BR_MATCHING_BUILD. Proven 0x1001CDD0 BrAppStateLoading (67 B, MATCH /O2).
 - **Loop-latch field test wants a VALUE temp.** `iNext = p[7]; p += 4;
   } while (iNext)` loads `[esi+0x1c]`, advances, tests.  A POINTER temp
   (`pNext = p + 7`) additionally materialises a dead `lea eax,[esi+0x1c]`.
@@ -919,6 +943,14 @@ the caller AND flipped a helper to match for free.
   (with Cross/Dot/Scale) compiles `pV->x * k` as three `fld st` copies.
   Own TU — the adjacent 0x1006D410/0x1006D4B0 pair — matches.  Do not
   merge Normalise into the 0x100343xx vector cluster.
+- **Mat4 transform-point is two counted column-walks, not unrolled
+  products.** Orig 0x1006DA20 (100 B) is `mov ebp,3` / `mov esi,3`,
+  `sub edi,eax` (pM-pOut), inner `fld [v]; fmul [m]; add m,0x10; add v,4;
+  dec esi; fadd [eax]; fstp [eax]`, then translation from row 3 with pops
+  in the x87 delay slots. Unrolled products were +50 B. Named `vv=*v`
+  makes v the fld operand. Exact size, REGNORM 0+0; remaining 7 B is the
+  inner ecx/edx pointer swap (orig edx=v ecx=m). Solo TU same. Do not
+  grind. Proven 0x1006DA20.
 - **A 4-term sum must be left-to-right with no extra parens**
   (`y*y + z*z + w*w + x*x`) so the last load hoists into the previous
   add (`fld x; fxch; faddp st(3); fmul [x]`).  `(y*y + z*z) + w*w + x*x`

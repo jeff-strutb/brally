@@ -814,40 +814,44 @@ void BrWeatherRandomiseParticles(void)
  * strength wander randomly rather than being set anywhere -- the direction
  * wraps round the compass and the strength is held between half and full -- and
  * the result is turned into the horizontal push the snow is blown by. */
+/* @implements 0x10016AA0 glide BrWeatherStepWind */
 /* @implements 0x100194E0 d3d BrWeatherStepWind */
 void BrWeatherStepWind(void)
 {
-    double r, a;
+    float r, a;
 
-    /* rand()&0xFFFF scaled to [-1, +1), times dt. */
-    r = (double)(BrRandom() & 0xFFFF) * (double)kF350 - (double)kF354;
-    g_weather.windAngle = (float)((double)g_weather.windAngle
-                                  + r * (double)g_weather.dt);
-
+    /* orig: fild; fmul kF350; fsub 1; fmul dt; fadd angle; fst; fcomp 2pi.
+     * All memory operands are float -- double casts emit fld+fmulp. */
+    r = (float)(BrRandom() & 0xFFFF) * kF350 - kF354;
+    g_weather.windAngle = r * g_weather.dt + g_weather.windAngle;
     if (g_weather.windAngle >= kF358)
-        g_weather.windAngle = (float)((double)g_weather.windAngle
-                                      - (double)kF358);
+        g_weather.windAngle -= kF358;
     else if (g_weather.windAngle < kF35C)
-        g_weather.windAngle = (float)((double)g_weather.windAngle
-                                      - (double)kF360);   /* -(-2pi) = +2pi */
+        g_weather.windAngle -= kF360;   /* -(-2pi) = +2pi */
 
-    r = (double)(BrRandom() & 0xFFFF) * (double)kF350 - (double)kF354;
-    g_weather.windGain = (float)((double)g_weather.windGain
-                                 + r * (double)g_weather.dt);
-
-    /* Clamped to [0.5, 1.0]; a NaN takes the "> 1.0 is false" path and then
-     * the "< 0.5 is false" path, so it survives -- as in the original. */
+    r = (float)(BrRandom() & 0xFFFF) * kF350 - kF354;
+    g_weather.windGain = r * g_weather.dt + g_weather.windGain;
+    /* Then-arms are integer stores of 1.0f / 0.5f (mov imm32), not x87. */
     if (g_weather.windGain > kF354)
         g_weather.windGain = 1.0f;
     else if (g_weather.windGain < kF364)
         g_weather.windGain = 0.5f;
 
-    a = (double)g_weather.windAngle;
-    g_weather.windX = (float)(cos(a) * (double)g_weather.windGain
-                                     * (double)g_weather.dt);
-    g_weather.windY = (float)(sin(a) * (double)g_weather.windGain
-                                     * (double)g_weather.dt);
-    g_weather.windZ = 0.0f;
+    /* Integer-home of the angle (mov eax; mov [esp], eax; fld [esp]),
+     * windZ zeroed between the copy and the two flds, fcos of the global
+     * and fsin of the slot copy, then scale both by gain then dt.
+     *
+     * WALL: orig then `fxch; fst [esp]; fxch; fst [esp]; fxch` (round BOTH
+     * fcos/fsin results through the one slot) before the interleaved
+     * gain/dt scale-out.  /O2 emits only the sin fst; /Op on the function
+     * also rounds the fild path (`fstp; fld`) which orig does not. */
+    {
+        int ia = *(int *)&g_weather.windAngle;
+        g_weather.windZ = 0.0f;
+        *(int *)&a = ia;
+        g_weather.windX = (float)cos(g_weather.windAngle) * g_weather.windGain * g_weather.dt;
+        g_weather.windY = (float)sin(a) * g_weather.windGain * g_weather.dt;
+    }
 }
 
 /* =====================================================================
