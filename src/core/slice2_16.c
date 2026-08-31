@@ -6,10 +6,21 @@
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
+/* OtherMode H/0E and TexCreate: orig takes no state pointer — those fields
+ * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
+#define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
+#define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
+#define BrGbiTexCreate           BrGbiTexCreate_port
 #endif
 #include "slice2_16.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrGbiRun
+#undef BrGbiTexScanOtherModeH
+#undef BrGbiTexScanOtherModeH0E
+#undef BrGbiTexCreate
+/* Bodies live in br_gbitexscan.c; TexScanRun still calls them. */
+void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd);
+void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
 #endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
@@ -919,40 +930,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 }
 #endif
 
-/* 0x1002A250 */
-/* WHAT IT DOES: during the texture-load hunt, reads the texture-filtering
- * setting out of a render-mode change and records which of two filtering
- * choices is in force. A zero is ignored rather than treated as a third
- * choice. */
-/* @implements 0x1002A250 d3d BrGbiTexScanOtherModeH0E */
-void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
-{
-    uint32_t v = pCmd->w1;
-
-    if (v == 0)
-        return;
-    if (v == 0x8000u)
-        pSt->f5553DC = 0;
-    else if (v == 0xC000u)
-        pSt->f5553DC = 3;
-}
-
-/* 0x1002A210  G_SETOTHERMODE_H */
-/* WHAT IT DOES: during the texture-load hunt, sorts a render-mode change
- * into the two fields the hunt cares about: texture filtering, and one other
- * setting that is on only for one exact value. */
-/* @implements 0x1002A210 d3d BrGbiTexScanOtherModeH */
-void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
-{
-    uint32_t sel = pCmd->w0 & 0xFF00u;
-
-    if (sel == 0x0E00u) {
-        BrGbiTexScanOtherModeH0E(pSt, pCmd);
-        return;
-    }
-    if (sel == 0x1100u)
-        pSt->f5544C = (pCmd->w1 == 0x40000u) ? 1 : 0;
-}
+/* BrGbiTexScanOtherModeH / OtherModeH0E filed to drawing/br_gbitexscan.c. */
 
 /* 0x100290E0
  *
@@ -1002,7 +980,11 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
             BrGbiTexScanMark(pSt, pCmd);
             break;
         case 0xBA:
+#ifdef BR_MATCHING_BUILD
+            BrGbiTexScanOtherModeH(pCmd);
+#else
             BrGbiTexScanOtherModeH(pSt, pCmd);
+#endif
             break;
         case 0xBB:
             BrGbiTexScanTexture(pSt, pCmd);
@@ -1128,6 +1110,36 @@ void BrGbiBlit(BrGbiBlitFn pfn,
  * the record has no source pixels or if one particular flag bit is set, so
  * it never fills in a record that was empty. */
 /* @implements 0x1002A280 d3d BrGbiTexCreate */
+#ifdef BR_MATCHING_BUILD
+extern BrGbiTexCreateFn g_pfn18AA0B0;   /* 0x118ED1C8 */
+void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
+{
+    uint32_t flags, sel, fmt, siz;
+
+    if (pRec->pTex == NULL)
+        return;
+    flags = pRec->flags;
+    if ((flags & 0x100000u) != 0)
+        return;
+
+    sel = flags & 0x0F000000u;
+    if (sel == 0x01000000u) {
+        fmt = 0; siz = 2;
+    } else if (sel == 0x04000000u) {
+        fmt = 1; siz = 4;
+    } else {
+        fmt = 2; siz = 0;
+    }
+
+    pRec->pTex = g_pfn18AA0B0(pRec->pTex, pRec->f04,
+                     (uint32_t)(1 << BrGbiSizeShift((int)pRec->w)),
+                     (uint32_t)(1 << BrGbiSizeShift((int)pRec->h)),
+                     fmt, siz,
+                     (flags >> 31) & 1u, (flags >> 30) & 1u,
+                     (flags >> 29) & 1u, (flags >> 28) & 1u,
+                     0u, 0u, 1u, a2);
+}
+#else
 void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
 {
     uint32_t flags, sel, fmt, siz;
@@ -1155,6 +1167,7 @@ void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
                      (flags >> 29) & 1u, (flags >> 28) & 1u,
                      0u, 0u, 1u, a2);
 }
+#endif
 
 /* 0x1002A740 */
 /* WHAT IT DOES: makes the flat 4x4 placeholder texture used wherever a real
