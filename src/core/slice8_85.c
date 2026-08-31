@@ -746,9 +746,8 @@ int32_t BrUiHook85_100440B0(BrUiCtl_ *pCtl)
 int32_t BrUiHook85_1004E810(void *pUnused, const int32_t *pRow)
 {
     (void)pUnused;              /* `[esp+4]` is pushed and never read */
-    if (pRow != NULL) {         /* DEVIATION: the original dereferences it */
-        BrCdTrackPlay((int)(*pRow + 2));
-    }
+    /* Orig has no null guard: `mov eax,[esp+8]; mov ecx,[eax]; add ecx,2`. */
+    BrCdTrackPlay((int)(*pRow + 2));
     return 1;
 }
 
