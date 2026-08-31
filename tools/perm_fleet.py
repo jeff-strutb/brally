@@ -37,7 +37,22 @@ def mark(va, outcome):
         f.write('%s,%s\n' % (va, outcome))
 
 
-def bank(permuted_path, va, name, rel):
+def save_learning(va, name, before, after, mutation_seq):
+    """Save the winning before/after (and the mutation sequence that cracked it)
+    so the idiom-merge pass can generalize it into docs/VC5-IDIOMS.md -- turning a
+    permuter win into a reusable idiom for Grok and the local-LLM loop too."""
+    try:
+        d = os.path.join(ROOT, 'build', 'match', 'idioms_new')
+        os.makedirs(d, exist_ok=True)
+        seq = ('\nMUTATION SEQUENCE that cracked it: ' + mutation_seq + '\n') if mutation_seq else ''
+        with open(os.path.join(d, 'perm-' + va + '.md'), 'w') as f:
+            f.write(f'# {name} ({va}) -- byte-exact via deterministic permuter\n{seq}\n'
+                    f'BEFORE:\n```c\n{before}\n```\n\nAFTER (byte-exact):\n```c\n{after}\n```\n')
+    except OSError:
+        pass
+
+
+def bank(permuted_path, va, name, rel, mutation_seq=''):
     """Extract the function from the permuter's result and file it into the tree."""
     if not os.path.exists(permuted_path):
         return False
@@ -54,11 +69,13 @@ def bank(permuted_path, va, name, rel):
         if not tloc:
             return False
         tlines = open(path).read().split('\n')
+        before = '\n'.join(tlines[tloc[0]:tloc[1] + 1])
         open(path, 'w').write('\n'.join(tlines[:tloc[0]] + newfn + tlines[tloc[1] + 1:]))
         sc = ai_loop.fn_score(va)
         if sc.get('ok') and sc.get('byte_exact'):
             ai_loop.sh('git', 'add', '--', rel)
             ai_loop.sh('git', 'commit', '-q', '-m', f'{name}: byte-exact via permuter ({va})')
+            save_learning(va, name, before, '\n'.join(newfn), mutation_seq)
             return True
         ai_loop.sh('git', 'checkout', '--', rel)   # verify failed in tree context; revert
         return False
@@ -76,7 +93,10 @@ def work(va, name, rel, slots, secs, iters):
         if m:
             pf = m.group(1)
             pf = pf if os.path.isabs(pf) else os.path.join(ROOT, pf)
-            if bank(pf, va, name, rel):
+            # permute.py prints "  <va>: mut -> mut -> ..." under "cracked mutation sequences"
+            sm = re.search(re.escape(va) + r':\s*([^\n]+)', txt)
+            mutation_seq = sm.group(1).strip() if sm else ''
+            if bank(pf, va, name, rel, mutation_seq):
                 print(f'[{va} {name}] *** BYTE-EXACT -- banked & committed ***')
                 mark(va, 'landed'); return True
             print(f'[{va} {name}] permuter matched but bank failed (see {pf})')
