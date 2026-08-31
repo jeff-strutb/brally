@@ -846,6 +846,16 @@ the caller AND flipped a helper to match for free.
   esi; `float *param_2; param_2[1]` keeps `[eax+4]`. Sequenced
   `t = p[-3]; *pc = (t + p[3] + *p) * K` preserves orig addend order
   (plain `p[-3]+p[3]` canonicalizes). Proven 0x10067470.
+- **In-place x87 `fchs` is a ternary (or if/else that assigns both arms),
+  not a reassignment.** `t = x; if (t < Z) t = -t` emits
+  `fstp st(0); fld; fchs` — the dest already exists so the negate is a
+  NEW value. `t = (x < Z) ? -x : x` makes the pre-branch load the dest,
+  so the taken path is just `je; fchs`. When the RAW x must stay live
+  under the abs (later leftover `fcomp [Z]` for a sign pick), the first
+  of a pair is `fcom [Z]; fld st(0); je; fchs` and the second is
+  `fcomp [Z]; fld [mem]; je; fchs`. This is the 0x1000EAF0-class lever
+  too: a named temp that is reassigned is homed; a dest assigned once
+  stays in st(0). Proven 0x10067470 (REGNORM extra 16→4).
 - **x87 spill-slot HOMES follow computation order, and the scheduler's
   drain order keys off them.** Under /Op, paired temps (w2/h2 in
   0x100215C0) round-trip through [esp+4]/[esp+0xc] in the order computed;

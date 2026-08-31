@@ -61,10 +61,9 @@ BrCrPlaneState g_brCrPlane;
  *  - the extents live at +0x1dc/+0x1e0/+0x1e4 of the object pExt points
  *    into (the port prototype abstracts this);
  *  - the tail computes s = -(dot - planeD) (fsub then fchs) with s homed.
- * Remaining (REGNORM 16+21): per-abs fstp-st/fld-st shuffle vs orig's
- * in-place fchs; s sunk to the join (one missing fsub/fchs); centroid
- * loop strength-reduced (sub ecx,eax vs add ecx,4); early-dot product
- * order (Ny before Nz); x87 fxch drain. */
+ * Remaining (REGNORM 4+21): s sunk to the join (missing fsub/fchs and
+ * s-slot fmul/fstp); centroid loop strength-reduced (sub ecx,eax vs
+ * add ecx,4); extra fld Ax in the early dot; x87 fxch drain. */
 extern float BrCrK_Zero;     /* 0x10077A78 */
 extern float BrCrK_Third;    /* 0x10077B84 */
 extern float BrCrK_Half;     /* 0x10077AC8 */
@@ -108,24 +107,17 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
     {
         float t0, t1, u0, u1;
 
-        /* |c0| via fcom+fld st(0)+fchs, raw c0 kept live under it for the
-         * sign pick.  Refer to local_c[0], not a named copy. */
-        t0 = local_c[0];
-        if (t0 < BrCrK_Zero)
-            t0 = -t0;
-        t1 = local_c[1];
-        if (local_c[1] < BrCrK_Zero)
-            t1 = -t1;
+        /* Ternary abs: both arms assign t so the pre-branch load IS t and
+         * fchs is in-place.  `t = x; if (t < Z) t = -t` reassigns and
+         * emits fstp-st; fld; fchs. */
+        t0 = (local_c[0] < BrCrK_Zero) ? -local_c[0] : local_c[0];
+        t1 = (local_c[1] < BrCrK_Zero) ? -local_c[1] : local_c[1];
 
         /* Orig: test ah,1; je then-at-higher-addr; fall-through is |c0|<|c1|.
          * Shared z-wins via goto -- duplicating it was the +76 B. */
         if (t0 < t1) {
-            u0 = local_c[0];
-            if (u0 < BrCrK_Zero)
-                u0 = -u0;
-            u1 = local_c[2];
-            if (local_c[2] < BrCrK_Zero)
-                u1 = -u1;
+            u0 = (local_c[0] < BrCrK_Zero) ? -local_c[0] : local_c[0];
+            u1 = (local_c[2] < BrCrK_Zero) ? -local_c[2] : local_c[2];
             if (u0 < u1) {
                 g_brCrPlane.normal.z = 0.0f;
                 g_brCrPlane.normal.y = 0.0f;
@@ -137,12 +129,8 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
                 goto LAB_z;
             }
         } else {
-            u0 = local_c[1];
-            if (local_c[1] < BrCrK_Zero)
-                u0 = -u0;
-            u1 = local_c[2];
-            if (local_c[2] < BrCrK_Zero)
-                u1 = -u1;
+            u0 = (local_c[1] < BrCrK_Zero) ? -local_c[1] : local_c[1];
+            u1 = (local_c[2] < BrCrK_Zero) ? -local_c[2] : local_c[2];
             if (u0 < u1) {
                 g_brCrPlane.normal.z = 0.0f;
                 g_brCrPlane.normal.x = 0.0f;
