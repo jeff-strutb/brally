@@ -90,28 +90,40 @@ void BrSurfFree(BrSurf *pSurf)
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                  int32_t cx, int32_t cy, int32_t cbWidthBytes)
 {
-    const uint8_t *pRow = pBits + (size_t)(cy - 1) * (size_t)cbWidthBytes;
-    int32_t        y;
+    const uint8_t *pRow = pBits + (cy - 1) * cbWidthBytes;
 
     if (cy == 0) return;
 
-    for (y = cy; y != 0; y--) {
+    do {
         const uint8_t *pSrc = pRow;
-        int32_t        x;
+        int32_t        x = cx;
 
-        for (x = cx; x != 0; x--) {
-            /* Stored B,G,R. The masks are asymmetric -- 0xFC keeps six bits
-             * of green, 0xF8 keeps five of red -- and blue is shifted rather
-             * than masked. Transcribed as the original composes it. */
-            uint32_t b = pSrc[0];
-            uint32_t g = pSrc[1] & 0xFCu;
-            uint32_t r = pSrc[2] & 0xF8u;
-            pSrc += 3;
+        if (x != 0) {
+            do {
+                /* Byte loads, byte masks, 16-bit movzx, three `inc`s on the
+                 * source, dest post-inc as `add esi,2` / `mov [esi-2]`. */
+                unsigned char  b, g, r;
+                unsigned short acc, rs;
 
-            *pDst++ = (uint16_t)(((((r << 5) | g) << 3) | (b >> 3)) & 0xFFFFu);
+                b = *pSrc;
+                g = pSrc[1];
+                pSrc++;
+                g &= 0xFCu;
+                pSrc++;
+                pDst++;
+                acc = (unsigned short)g;
+                r = *pSrc;
+                pSrc++;
+                r &= 0xF8u;
+                rs = (unsigned short)r;
+                acc |= (unsigned short)(rs << 5);
+                acc <<= 3;
+                acc |= (unsigned short)((unsigned char)(b >> 3));
+                pDst[-1] = acc;
+            } while (--x);
         }
         pRow -= cbWidthBytes;
-    }
+    } while (--cy);
 }
 
 /* ----------------------------------------------------------------------
@@ -167,18 +179,26 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
     uint32_t ecx, edx, eax;
 
+#ifndef BR_MATCHING_BUILD
+    /* Port-only: orig loads pSurf after packing (`mov eax,[esp+4]; mov [eax+0xc],cx`). */
     if (!pSurf) return;
+#endif
 
-    ecx = colorref & 0xFFF8u;          /* and ecx, 0xfff8 */
-    edx = (colorref >> 8) & 0xFCu;     /* shr edx, 8 / and edx, 0xfc */
-    ecx <<= 5;                         /* shl ecx, 5 */
-    eax = (colorref >> 16) & 0xFFu;    /* shr eax, 0x10 -- then `shr al, 3` */
-    ecx |= edx;                        /* or ecx, edx */
-    eax = (eax >> 3) & 0x1Fu;          /* shr al, 3 / and eax, 0x1f */
-    ecx <<= 3;                         /* shl ecx, 3 */
-    ecx |= eax;                        /* or ecx, eax */
+    ecx = colorref;
+    edx = colorref;
+    eax = colorref;
+    ecx &= 0xFFF8u;
+    edx >>= 8;
+    ecx <<= 5;
+    edx &= 0xFCu;
+    eax >>= 16;
+    ecx |= edx;
+    eax = (unsigned char)eax >> 3;
+    ecx <<= 3;
+    eax &= 0x1Fu;
+    ecx |= eax;
 
-    pSurf->key = (uint16_t)(ecx & 0xFFFFu);   /* mov word ptr [eax+0xc], cx */
+    pSurf->key = (uint16_t)ecx;
 }
 
 /* ----------------------------------------------------------------------
