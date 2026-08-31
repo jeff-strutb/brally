@@ -97,6 +97,24 @@ BrRbState *BrCarPhysBodyState(BrRbBodyFull *pBody)
 static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
                                   float dt)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig loads all six body floats onto the x87 stack, then fxch/fmul
+     * dt.  Named products first so the loads hoist together. */
+    {
+        float dy  = pB->accel.y    * dt;
+        float dz  = pB->accel.z    * dt;
+        float dax = pB->angAccel.x * dt;
+        float day = pB->angAccel.y * dt;
+        float daz = pB->angAccel.z * dt;
+        float dx  = pB->accel.x    * dt;
+        pS->vel.y    = pS->vel.y    + dy;
+        pS->vel.z    = pS->vel.z    + dz;
+        pS->angVel.x = pS->angVel.x + dax;
+        pS->angVel.y = pS->angVel.y + day;
+        pS->angVel.z = pS->angVel.z + daz;
+        pS->vel.x    = pS->vel.x    + dx;
+    }
+#else
     BrRbBody tmp;
 
     memset(&tmp, 0, sizeof tmp);
@@ -108,6 +126,7 @@ static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
     tmp.angAccel[2] = pB->angAccel.z;
 
     BrRbIntegrateVelocity(pS, &tmp, dt);
+#endif
 }
 
 /* 0x10074870 == BrRbInitInertia, which reads mode/dim/mass and writes the two
