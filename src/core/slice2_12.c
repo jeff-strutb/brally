@@ -858,7 +858,7 @@ void BrNetClearF10220DD0(BrNetState *pNet)
  * on has passed. The comparison is unsigned, so the disarmed value of -1
  * reads as an enormous future time and the flag never fires until a real
  * deadline is set -- that is a disarmed timer, not an expired one. */
-/* @implements 0x10006160 d3d BrNetCheckDeadline */
+/* port-only body; Glide match is src/core/generated/0x100064D0.c */
 void BrNetCheckDeadline(BrNetState *pNet, uint32_t nowTicks, int32_t *pfFlag)
 {
     BrNetMutexLock(pNet->h10220CEC);
