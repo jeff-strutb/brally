@@ -133,7 +133,10 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
 {
     BrSurf *pSurf;
 
+#ifndef BR_MATCHING_BUILD
+    /* Port-only: orig has no NULL test (`mov esi,[esp+8]; cmp word [esi+12],18`). */
     if (!pbm) return NULL;
+#endif
     if (pbm->cBitsPixel != 24) return NULL;
 
     pSurf = BrSurfNew(pbm->cx, pbm->cy);
