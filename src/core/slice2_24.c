@@ -116,8 +116,17 @@ static char *BrStrUpr(char *psz)
  * characters, so no call here can overrun; the size argument the wrapper took
  * was never doing any work. */
 #ifdef _MSC_VER
+#ifdef BR_MATCHING_BUILD
+/* Orig is /MD: `call [__imp__itoa]` / `[__imp__strupr]` (FF 15), not E8. */
+__declspec(dllimport) char *_itoa(int value, char *pszOut, int radix);
+__declspec(dllimport) char *_strupr(char *psz);
+#else
 char *_itoa(int value, char *pszOut, int radix);
+#endif
 #define BrItoa _itoa
+#ifdef BR_MATCHING_BUILD
+#define BrStrUpr _strupr
+#endif
 #else
 static char *BrItoa(int value, char *pszOut, int radix)
 {
