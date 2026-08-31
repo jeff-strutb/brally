@@ -524,6 +524,33 @@ void BrMenuResetTrackStr(int param_1)
     DAT_10ac5c5c = (BrDelObj *)DAT_10ac5c84;
 }
 
+/* ------------------------------------------------------------------ */
+/* 0x1003AF30  SetStatusText                                          */
+/* ------------------------------------------------------------------ */
+
+/* thiscall with 4 stack args.  __fastcall puts `this` in ecx; the second
+ * register-eligible arg is edx.  Passing param_1 (already live in edx as
+ * the push temp) rather than literal 0 avoids `xor edx,edx`. */
+typedef int (__fastcall *BrCtlF34)(void *this, int _edx_unused, int, int, int, int);
+extern int DAT_10ac4c58;
+extern int DAT_100aacf8;
+
+/* WHAT IT DOES: SetStatusText.  Looks up the control named by the root
+ * page's status-line index (0x10AC4C58) on the current phase's first page
+ * (0x10AC5C5C)->+0x14, and if that slot is occupied calls vtable +0x34
+ * with (text, 1, 1, style 0x100AACF8). */
+/* @implements 0x1003AF30 glide BrExt_100419D0 */
+void BrExt_100419D0(int param_1)
+{
+    int *piVar1;
+
+    piVar1 = *(int **)(*(int *)((int)DAT_10ac5c5c + 0x14) + 0x18 + DAT_10ac4c58 * 4);
+    if (piVar1 != (int *)0x0) {
+        (*(BrCtlF34 *)(*(int *)(piVar1) + 52))(piVar1, param_1, param_1, 1, 1, &DAT_100aacf8);
+    }
+    return;
+}
+
 /* ==================================================================== */
 /* Isolated byte-exact matches harvested from bulk pipeline worktrees.   */
 /* Verified match in a standalone TU; the port already carries           */
