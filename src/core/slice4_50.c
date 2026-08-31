@@ -292,7 +292,7 @@ void BrNetSendFlush(void)
  * players can find and join it. If hosting fails it composes an explanatory
  * message and then throws it away without showing it to anyone -- the player
  * sees nothing. */
-/* @implements 0x1003C150 d3d BrSub1003C150 */
+/* port-only body; Glide match is src/core/generated/0x100357E0.c */
 void BrSub1003C150(void)
 {
     unsigned char aDesc[BR50_DPDESC_SIZE];

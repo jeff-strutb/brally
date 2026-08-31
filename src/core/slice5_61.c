@@ -390,7 +390,7 @@ void BrSub1003E510(void)
  * writes the opposite, then reads it back, so what gets published is always
  * 0 or 1 rather than whatever the flag held before, and the name is only
  * committed when the flag had previously been clear. */
-/* @implements 0x10042410 d3d BrExt_10042410 */
+/* port-only body; Glide match is src/core/generated/0x1003B970.c */
 int32_t BrExt_10042410(void *pArg)
 {
     unsigned char *pRec;
