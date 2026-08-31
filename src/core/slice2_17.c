@@ -509,7 +509,65 @@ static uint32_t s17_rgba5551(int r, int g, int b)
 /* 0x100314E8 */
 /* WHAT IT DOES: wipes the whole screen to one flat colour, switching the
  * hardware into its fast fill mode to do it and putting it back afterwards. */
+/* @implements 0x1002AB99 glide BrGfxClearScreen */
 /* @implements 0x100314E8 d3d BrGfxClearScreen */
+#ifdef BR_MATCHING_BUILD
+/* /Od TU: packing inlined, colour is a 16-bit slot, each emit has its own
+ * cursor local and re-reads pGfx to bump. screenW sits at pGfx+4 in the
+ * original (DAT_106e7714); g_s17.screenW is a later field. */
+extern int DAT_106e7714;
+extern int DAT_106e9a2c;
+extern int DAT_106ed674;
+void BrGfxClearScreen(int r, int g, int b)
+{
+    unsigned short c;
+    unsigned int *p1, *p2, *p3, *p4, *p5, *p6, *p7;
+
+    /* Keep r/g/b as unmodified params; temps live in eax/ecx/edx.
+     * `| 1` is on the packed int so it is `or al,1` before the word store. */
+    c = (unsigned short)(((r << 8) & 0xF800)
+                       | ((g << 3) & 0x7C0)
+                       | ((b >> 2) & 0x3E)
+                       | 1);
+
+    p1 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p1[0] = 0xE7000000u;
+    p1[1] = 0;
+
+    p2 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p2[0] = 0xB900031Du;
+    p2[1] = 0x0F0A4000u;
+
+    p3 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p3[0] = 0xBA001402u;
+    p3[1] = 0x00300000u;
+
+    p4 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p4[0] = 0xF7000000u;
+    p4[1] = (unsigned)c | ((unsigned)c << 16);
+
+    p5 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p5[0] = 0xE1000000u
+          | ((((DAT_106e7714 << DAT_106ed674) - 1) & 0xFFF) << 12)
+          | (((DAT_106e9a2c << DAT_106ed674) - 1) & 0xFFF);
+    p5[1] = 0;
+
+    p6 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p6[0] = 0xE7000000u;
+    p6[1] = 0;
+
+    p7 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p7[0] = 0xBA001402u;
+    p7[1] = 0;
+}
+#else
 void BrGfxClearScreen(int r, int g, int b)
 {
     uint32_t c = s17_rgba5551(r, g, b);
@@ -530,6 +588,7 @@ void BrGfxClearScreen(int r, int g, int b)
     s17_emit(0xE7000000u, 0);
     s17_emit(0xBA001402u, 0);
 }
+#endif
 
 /* 0x10031688 */
 /* WHAT IT DOES: fills a rectangle with one flat colour. In the double-size
@@ -537,7 +596,65 @@ void BrGfxClearScreen(int r, int g, int b)
  * corner is doubled a second time on its way into the command while the
  * top-left corner is not scaled at all, so in that mode the rectangle comes out
  * larger than asked for. That asymmetry is the original's. */
+/* @implements 0x1002AD39 glide BrGfxFillRect */
 /* @implements 0x10031688 d3d BrGfxFillRect */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_106ed674;
+void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
+{
+    unsigned short c;
+    unsigned int *p1, *p2, *p3, *p4, *p5, *p6, *p7;
+
+    if (DAT_106ed674 != 0) {
+        ulx = ulx << 1;
+        uly = uly << 1;
+        w = w << 1;
+        h = h << 1;
+    }
+
+    c = (unsigned short)(((r << 8) & 0xF800)
+                       | ((g << 3) & 0x7C0)
+                       | ((b >> 2) & 0x3E)
+                       | 1);
+
+    p1 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p1[0] = 0xE7000000u;
+    p1[1] = 0;
+
+    p2 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p2[0] = 0xB900031Du;
+    p2[1] = 0x0F0A4000u;
+
+    p3 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p3[0] = 0xBA001402u;
+    p3[1] = 0x00300000u;
+
+    p4 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p4[0] = 0xF7000000u;
+    p4[1] = (unsigned)c | ((unsigned)c << 16);
+
+    p5 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p5[0] = 0xE1000000u
+          | (((((ulx + w) << DAT_106ed674) - 1) & 0xFFF) << 12)
+          | ((((uly + h) << DAT_106ed674) - 1) & 0xFFF);
+    p5[1] = ((ulx & 0xFFF) << 12) | (uly & 0xFFF);
+
+    p6 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p6[0] = 0xE7000000u;
+    p6[1] = 0;
+
+    p7 = (unsigned int *)g_s17.pGfx;
+    g_s17.pGfx = g_s17.pGfx + 2;
+    p7[0] = 0xBA001402u;
+    p7[1] = 0;
+}
+#else
 void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 {
     uint32_t c;
@@ -569,6 +686,7 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
     s17_emit(0xE7000000u, 0);
     s17_emit(0xBA001402u, 0);
 }
+#endif
 
 /* 0x10031481 */
 /* WHAT IT DOES: tells the hardware to use one particular texture out of a
