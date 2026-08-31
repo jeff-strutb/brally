@@ -210,12 +210,25 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
 /* WHAT IT DOES: notes where a run of texture-setup commands stops. Only the
  * first command that ends the run counts; later ones do not move it. */
 /* @implements 0x100293D0 glide br_tex3d_end */
+#ifdef BR_MATCHING_BUILD
+/* Orig is one stack arg and a global at 0x106B7A9C: `if (g==0) g=p`.
+ * The port threads the end pointer through ppEnd. */
+extern int DAT_106b7a9c;
+static void br_tex3d_end(uint8_t *p)
+{
+    if (DAT_106b7a9c == 0)
+        DAT_106b7a9c = (int)p;
+}
+#define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(p)
+#else
 static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
 {
     (void)pTex;
     if (*ppEnd == NULL)
         *ppEnd = p;
 }
+#define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(pTex, p, ppEnd)
+#endif
 
 /* 0x10028B50 == BRD3D 0x10029410 == slice2_16.c's BrGbiTexScanFlush.  Ninety-
  * two bytes, byte-identical in both images.  THE SEAM. */
@@ -233,7 +246,7 @@ static void br_tex3d_host_seam(BrTex3d *pTex, uint8_t *p,
 
     if (pTex->state == 0)
         return;
-    br_tex3d_end(pTex, p, ppEnd);
+    br_tex3d_end3(pTex, p, ppEnd);
     pTex->cRuns++;
 
     id = br_tex3d_register(pTex);
@@ -285,7 +298,7 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
         /* 0x10028867: `add ecx,-4 / cmp ecx,0xF9 / ja` -- outside
          * 0x04..0xFD the byte table is not even consulted. */
         if (op < 0x04u || op > 0xFDu) {
-            br_tex3d_end(pTex, p, &pEnd);
+            br_tex3d_end3(pTex, p, &pEnd);
             off += 8;
             continue;
         }
@@ -404,7 +417,7 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
         case 0xB9:                                  /* SETOTHERMODE_L        */
             /* 0x10029710 latches an XLU flag the backend already models,
              * then 0x100293D0 closes the run. */
-            br_tex3d_end(pTex, p, &pEnd);
+            br_tex3d_end3(pTex, p, &pEnd);
             break;
 
         case 0xBA:                                  /* SETOTHERMODE_H        */
@@ -420,7 +433,7 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
             break;
 
         default:
-            br_tex3d_end(pTex, p, &pEnd);
+            br_tex3d_end3(pTex, p, &pEnd);
             break;
         }
         off += 8;
@@ -1755,7 +1768,6 @@ extern char s_AppendTexture__atdb_100a9e6c[];
 void *BrChkRealloc(void *, unsigned int, int);
 
 extern int DAT_105e17fc;
-extern int DAT_106b7a9c;
 extern int DAT_10697a64;
 extern int DAT_105d17f8;
 int FUN_10028BB0(int *);
