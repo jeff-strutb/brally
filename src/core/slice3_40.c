@@ -17,10 +17,12 @@
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
+#define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #endif
 #include "slice3_40.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
+#undef BrCarClear29C8
 #endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
@@ -517,7 +519,13 @@ void BR_THISCALL1 BrCarInitTables(BrCar *pCar)
 /* WHAT IT DOES: clears a small block of a car's bookkeeping -- four numbers
  * and one half-sized one -- back to zero. */
 /* @implements 0x10065710 d3d BrCarClear29C8 */
+#ifdef BR_MATCHING_BUILD
+/* Orig is thiscall, no stack args: `xor eax,eax` then stores through ecx.
+ * BR_THISCALL1 is __fastcall with one arg -- ecx = this, identical bytes. */
+void BR_THISCALL1 BrCarClear29C8(BrCar *pCar)
+#else
 void BrCarClear29C8(BrCar *pCar)
+#endif
 {
     CAR_I32(pCar, 0x29C8) = 0;
     CAR_I32(pCar, 0x29CC) = 0;
