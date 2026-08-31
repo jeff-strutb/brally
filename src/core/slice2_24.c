@@ -845,18 +845,27 @@ int32_t BrMenuText0AC0(BrMenuItem *pItem)
 /* @implements 0x10040B30 d3d BrMenuText0B30 */
 int32_t BrMenuText0B30(BrMenuItem *pItem)
 {
-    BrMenuState *pSt   = &g_menu;
-    BrMenuText  *pText = &pItem->text;
+    char *psz;
+    char *pszSp = "  ";
 
-    BrItoa((int32_t)(pSt->gAA28A4 + 1u), pSt->gA9D618, 10);
+    /* Transcribed inline.  Orig is sprintf into the A9D618 scratch (IAT),
+     * then strcpy(StringById(0x37)) / strcat("  ") / strcat(scratch) into
+     * the row text, then pfn04/pfn10.  Naming pText/pVtbl at the top of
+     * the function makes VC5 compute them before sprintf (see 0A50). */
+    sprintf(g_menu.gA9D618, "%d", (int)(g_menu.gAA28A4 + 1u));
 
-    BrStrCopy(pText->sz, sizeof pText->sz, BrStringById(0x37));
-    BrStrCat(pText->sz, sizeof pText->sz, "  ");
-    BrStrCat(pText->sz, sizeof pText->sz, pSt->gA9D618);
+    psz = pItem->text.sz;
+    strcpy(psz, BrStringById(0x37));
+    strcat(psz, pszSp);
+    strcat(psz, g_menu.gA9D618);
 
-    if (pText->pVtbl != NULL) {        /* DEVIATION: NULL check */
-        pText->pVtbl->pfn04(pText);
-        pText->pVtbl->pfn10(pText);
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn04(pText);
+        if (psz != NULL)
+            pVtbl->pfn10(pText);
     }
     return 1;
 }
@@ -957,11 +966,28 @@ BrMenuFillLapTime(char *pszOut, float fTime)
 /* @implements 0x10041040 d3d BrMenuTime1040 */
 int32_t BrMenuTime1040(BrMenuItem *pItem)
 {
-    char  sz[32];
-    char *psz;
+    char    sz[32];
+    char   *psz;
+    char   *pszDash = "--:--";
+    int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
+    float   fSecStored;
 
+    /* Inlined FillLapTime against the GLOBAL so fld/fcom stay live (fcomp
+     * would pop a parameter copy).  pszDash is a pointer so strcpy expands
+     * as mov-edi + rep movs, not as immediate word stores of the literal.
+     * `<=` so the dash copy is fall-through and format is `je`. */
     memset(sz, 0, sizeof sz);
-    BrMenuFillLapTime(sz, g_menu.gAA28C8);
+    if (g_menu.gAA28C8 <= 0.0f) {
+        strcpy(sz, pszDash);
+    } else {
+        nCenti     = (int32_t)(g_menu.gAA28C8 * 100.0f);
+        nSec       = (int32_t)((float)nCenti * 0.01f);
+        fSecStored = (float)nSec;
+        nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
+        nMin       = (int32_t)(fSecStored * 0.016666667f);
+        nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
+        sprintf(sz, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
+    }
 
     if (strlen(sz) == 0)
         return 0;
@@ -984,11 +1010,40 @@ int32_t BrMenuTime1040(BrMenuItem *pItem)
 /* @implements 0x10041180 d3d BrMenuTime1180 */
 int32_t BrMenuTime1180(BrMenuItem *pItem)
 {
-    char sz[32];
+    char    sz[32];
+    char   *psz;
+    char   *pszDash = "--:--";
+    int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
+    float   fSecStored;
 
     memset(sz, 0, sizeof sz);
-    BrMenuFormatLapTime(sz, sizeof sz, g_menu.gAA28CC);
-    return BrMenuStoreFormatted(pItem, sz, 1);
+    if (g_menu.gAA28CC <= 0.0f) {
+        strcpy(sz, pszDash);
+    } else {
+        nCenti     = (int32_t)(g_menu.gAA28CC * 100.0f);
+        nSec       = (int32_t)((float)nCenti * 0.01f);
+        fSecStored = (float)nSec;
+        nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
+        nMin       = (int32_t)(fSecStored * 0.016666667f);
+        nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
+        sprintf(sz, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
+    }
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn04(pText);
+        if (psz != NULL)
+            pVtbl->pfn10(pText);
+    }
+    return 1;
 }
 
 /* WHAT IT DOES: put this stage's name on the row, in capitals.  The
@@ -997,19 +1052,29 @@ int32_t BrMenuTime1180(BrMenuItem *pItem)
 /* @implements 0x10041300 d3d BrMenuText1300 */
 int32_t BrMenuText1300(BrMenuItem *pItem)
 {
-    BrMenuState *pSt = &g_menu;
-    int32_t      e   = (pSt->gAA289C == 0) ? 0 : BrMenuStageIndex(pSt);
-    int32_t      id;
-    char        *psz;
+    int32_t e = 0;
+    char   *psz;
 
-    id = g_brStages[e].f00;
+    /* Two BrStringById calls: orig strlen-tests the first and copies the
+     * uppercased second.  Index is a movsx of gAA28B8, not BrMenuStageIndex. */
+    if (g_menu.gAA289C != 0)
+        e = (int32_t)(int8_t)g_menu.gAA28B8;
 
-    psz = BrStringById(id);
-    if (psz == NULL || psz[0] == '\0') /* DEVIATION: NULL, the original faults */
+    if (strlen(BrStringById(g_brStages[e].f00)) == 0)
         return 0;
 
-    psz = BrStrUpr(BrStringById(id));
-    return BrMenuStoreCaption(pItem, psz);
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(BrStringById(g_brStages[e].f00)));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn04(pText);
+        if (psz != NULL)
+            pVtbl->pfn10(pText);
+    }
+    return 1;
 }
 
 /* WHAT IT DOES: show how many of something this stage still has left
