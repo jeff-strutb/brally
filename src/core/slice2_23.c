@@ -25,6 +25,7 @@
 #include "slice2_23.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* ==========================================================================
@@ -81,6 +82,7 @@ extern int32_t  DAT_10ac40a0;          /* gA9D010 */
 typedef struct { int32_t v; } BrUiSelArg;
 typedef int32_t(__fastcall *BrUiSelOfferFn)(BrUiObj *pThis, BrUiSelArg a);
 typedef void(__fastcall *BrUiSelCommitFn)(BrUiObj *pThis, BrUiSelArg a);
+typedef void (__fastcall *BrUiThis0)(void *pThis);
 
 /* BrUiLdPtr is an extern in slice2_23.h, so VC5 cannot inline it and emits a
  * real call where the original has a bare `mov edx,[eax+0x3838]`.  Dereference
@@ -573,6 +575,25 @@ int32_t BrUiDraw1003E7A0(BrUiObj *pObj)
 /* @implements 0x1003E840 d3d BrUiText1003E840 */
 int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    const char *s;
+    char *dst;
+    void *pItem;
+    void **vtbl;
+    (void)pG;
+    {
+        int32_t id = 0x0C;
+        if (g_i0AA010 == 0 && g_i220B20 == 0)
+            id = 0x51;
+        s = BrStrGet(id);
+    }
+    dst = (char *)(pObj + 0x2B65);
+    strcpy(dst, s);
+    pItem = pObj + 0x2B5C;
+    vtbl = *(void ***)pItem;
+    ((BrUiThis0)vtbl[1])(pItem);
+    return 1;
+#else
     int32_t id = 0x0C;
 
     if (pG->g0AA010 == 0 && pG->g220B20 == 0) {
@@ -581,6 +602,7 @@ int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
     /* No BrUiItemApply here -- see the header. */
     br23_item0_set(pObj, BrStrGet(id));
     return 1;
+#endif
 }
 
 /* ==========================================================================
@@ -591,6 +613,26 @@ int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
  * the row to re-measure and redraw itself. This is the shared body behind
  * the two number rows below. */
 /* @implements 0x1003E8D0 d3d br23_num_common */
+#ifdef BR_MATCHING_BUILD
+static int32_t br23_num_common(BrUiObj *pObj)
+{
+    /* Load the index first so orig's `mov eax,[g]` leads.  Keep pObj in
+     * esi through _itoa, then `mov ebx,[esi+0x2b5c]; add esi,0x2b5c`. */
+    int32_t idx = g_iAA28AC;
+    int32_t value = (int32_t)g_abAA26E8[idx];
+    char *buf = (char *)(pObj + 0x2B65);
+    void **vtbl;
+    void *pItem;
+
+    _itoa(value, buf, 10);
+    vtbl = *(void ***)(pObj + 0x2B5C);
+    pItem = pObj + 0x2B5C;
+    ((BrUiThis0)vtbl[2])(pItem);
+    if (buf != NULL)
+        ((BrUiThis0)vtbl[0x2C / 4])(pItem);
+    return 1;
+}
+#else
 static int32_t br23_num_common(BrUiObj *pObj, int32_t value)
 {
     BrUiObj              *pItem0 = BrUiItem(pObj, 0);
@@ -604,10 +646,16 @@ static int32_t br23_num_common(BrUiObj *pObj, int32_t value)
     pVt->f2C(pItem0);
     return 1;
 }
+#endif
 
 int32_t BrUiNum1003E8D0(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    (void)pG;
+    return br23_num_common(pObj);
+#else
     return br23_num_common(pObj, (int32_t)pG->tAA26E8[pG->gAA28AC]);
+#endif
 }
 
 /* WHAT IT DOES: shows the number held in the second of the two per-entry
@@ -615,7 +663,25 @@ int32_t BrUiNum1003E8D0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EA90 d3d BrUiNum1003EA90 */
 int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig inlines the itoa/thiscall body with movsx word from
+     * g_awA9D068[g_iAA28AC].  A CALL to the byte-table helper is 32 B. */
+    int32_t idx = g_iAA28AC;
+    int32_t value = (int32_t)g_awA9D068[idx];
+    char *buf = (char *)(pObj + 0x2B65);
+    void **vtbl;
+    void *pItem;
+    (void)pG;
+    _itoa(value, buf, 10);
+    vtbl = *(void ***)(pObj + 0x2B5C);
+    pItem = pObj + 0x2B5C;
+    ((BrUiThis0)vtbl[2])(pItem);
+    if (buf != NULL)
+        ((BrUiThis0)vtbl[0x2C / 4])(pItem);
+    return 1;
+#else
     return br23_num_common(pObj, (int32_t)pG->tA9D068[pG->gAA28AC]);
+#endif
 }
 
 /* ==========================================================================
@@ -811,6 +877,19 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EBE0 d3d BrUiPoll1003EBE0 */
 int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    int32_t v = g_iAA2880;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, v);
+    if (r >= 0)
+        g_iAA2880 = r;
+    else
+        r = g_iAA2880;
+    g_p0AB3E0 = *(void **)(pObj + BR_UI_OFF_TBL3C98
+                           + (size_t)BR_UI_ITEM_STRIDE * (size_t)r);
+    return 1;
+#else
     int32_t r = br23_sel_offer(pObj, pG->gAA2880);
 
     if (r >= 0) {
@@ -825,6 +904,7 @@ int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
                                  + (ptrdiff_t)BR_UI_ITEM_STRIDE * (ptrdiff_t)r,
                             0u);
     return 1;
+#endif
 }
 
 /* WHAT IT DOES: the same ask-and-remember, storing into yet another
