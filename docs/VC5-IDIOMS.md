@@ -105,6 +105,12 @@ the caller AND flipped a helper to match for free.
   `[0,0,0, 2,2,2,2,2,2, 1,1]` (holes 5–10 → default slot 2; 11–12 → slot 1
   even though both code addresses are `return 2`) is how you recover that
   the high labels were a separate case-group, not a filled-in 5..12 run.
+  **Void function: `return` not `break`.** Empty `case X: break;` groups
+  fold into default. `case X: return;` keeps a unique jump-table slot even
+  when the slot address is the same `pop; ret` as default. DirectPlay
+  DPSYS_* (3, 0x21, 0x31, 0x101, 0x102, 0x103 empty; 5 and 0x107 live)
+  is a 0x31..0x107 two-level table. Proven 0x10009530 BrDPlaySysMsgDispatch
+  (116 B body, MATCH /O2).
 - **The residue ceiling on big int functions:** four of five 490–700 B
   functions landed at 4–24 divergent bytes, every one an allocator choice
   (byte-reg pick, esi/edi role, imm-vs-pooled constant). Getting to that
@@ -167,6 +173,21 @@ the caller AND flipped a helper to match for free.
 - **Win32 imports are `__declspec(dllimport)`** — `call [__imp__X]` (FF 15),
   never `call X` (E8). windows.h provides it; hand prototypes must carry it.
   Proven BrDllMain.
+- **A nested `if (p) { …; if (p && x) }` deletes the second null test.**
+  Sibling `if (p) { … } if (p && x)` keeps `cmp p,0; je`. Proven
+  0x10009A40 BrDPlayShutdown (178 B, MATCH /O2).
+- **Two tests of the same `hr >= 0` (one wrapping the body, one as the
+  loop-exit) keep a shared `add esp; cmp; jge loop`.** A single
+  `if (hr < 0) break; body; loop` lets /O2 duplicate `add esp` into each
+  call arm and jump to the top, dropping the second compare. Proven
+  0x10009880 BrDPlayPump (236 B, MATCH /O2). COM methods on that path
+  are stdcall (local vtable typedef; the header's cdecl slots emit
+  `add esp`).
+- **Win32 thread proc is `__stdcall` (`ret 4`).** `WaitForMultipleObjects`
+  IAT loaded into a callee-saved, `ExitThread` via FF 15. Header cdecl
+  renamed around the include. Proven 0x10009970 BrDPlayThreadProc
+  (93 B, MATCH /O2).
+
 - **Function pointers in a table are `__stdcall`, not `typedef int (*fp)()`.**
   Orig `call [DAT]; test eax,eax` (no cleanup). Ghidra's empty `int (*fp)()`
   is cdecl and emits `call [DAT]; add esp,N` (+3 bytes per call). Four
