@@ -113,13 +113,18 @@ diagnostics. They tell the same story from opposite ends: nearly half of the
 transcribed functions are exact, but the exact set is small-function-heavy, so
 by raw bytes the campaign is just getting started.
 
-One denominator note: many of the 2,818 mapped entries are 16 bytes or smaller
--- import thunks, jump stubs and exception-handling scaffolding the original
-toolchain generated, not code anyone wrote. Those are reproduced by the link
-stage of the rebuild, not by matched C, so the realistic hand-matching target
-is smaller than the full map. The formal fence list for that class is still
-being drawn up; until it lands, the conservative 2,818-function denominator
-stands in the table above.
+One denominator note: a large share of the mapped entries are not hand-written
+C at all -- linker import thunks, incremental-link jump stubs, and C++
+exception-handling funclets the toolchain generated, not code anyone wrote.
+Those are reproduced by the link stage (thunks/stubs) or by their parent
+translation unit's `try`/`catch` (EH funclets), never as standalone matched C.
+The formal fence list for that class now exists -- `config/fenced.csv`, 611
+entries built by instruction signature -- and `python3 tools/coverage.py`
+reports the honest picture against the game binary's own map
+(`config/functions_glide.csv`, 2,140 functions -- the table's 2,818 is the
+larger D3D-keyed map): a **hand-C target of 1,529 functions**, of which 741 are
+byte-exact (48.5%), leaving 788 outstanding. Every &le;16-byte function that is
+genuinely hand-C is now matched.
 
 Both denominators move as work lands, so the percentages are not monotonic. A
 function only enters the measured set once it carries an `@implements` claim,
