@@ -45,10 +45,25 @@
 /* slice3_32.h adds a leading BrScrGlobals* that the original does not have.
  * Hide that prototype so the matching body can be the real __stdcall(code,x,y). */
 #define BrUiDrawIndex_100479D0 BrUiDrawIndex_100479D0_port
+/* Original is thiscall + one stack arg (`ret 4`); the port is cdecl. */
+#define BrUiTweenCurve_10047CE0 BrUiTweenCurve_10047CE0_port
+#define BrUiTweenBegin_10047CB0 BrUiTweenBegin_10047CB0_port
+#define BrUiTweenReset_10047D10 BrUiTweenReset_10047D10_port
+#define BrUiDrawCode_10047930   BrUiDrawCode_10047930_port
+#define BrUiDrawCodeRect_10047980 BrUiDrawCodeRect_10047980_port
+#define BrUiStepCode_10047A10   BrUiStepCode_10047A10_port
+#define BrUiTweenStep_10047D30  BrUiTweenStep_10047D30_port
 #endif
 #include "slice3_32.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrUiDrawIndex_100479D0
+#undef BrUiTweenCurve_10047CE0
+#undef BrUiTweenBegin_10047CB0
+#undef BrUiTweenReset_10047D10
+#undef BrUiDrawCode_10047930
+#undef BrUiDrawCodeRect_10047980
+#undef BrUiStepCode_10047A10
+#undef BrUiTweenStep_10047D30
 #endif
 
 /* ==========================================================================
@@ -299,6 +314,25 @@ int BrUiTweenBegin_10047CB0(BrUiObj *pObj, int32_t n)
  * given number of milliseconds. The distance grows with the square of the time,
  * so the element starts slowly and speeds up rather than moving evenly. */
 /* @implements 0x10047CE0 d3d BrUiTweenCurve_10047CE0 */
+#ifdef BR_MATCHING_BUILD
+/* thiscall + one stack arg (`ret 4`). Sequential `x *= 0.5f; x *= 1e-3f`
+ * keeps two `fmul dword [const]` -- a single expression folds them. */
+typedef struct BrUiTwCurve {
+    unsigned char pad[0x3824];
+    float twrate;
+} BrUiTwCurve;
+
+float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int _edx, int n)
+{
+    float x;
+    n = n * n;
+    x = (float)n;
+    x *= p->twrate;
+    x *= 0.5f;
+    x *= 1.0e-3f;
+    return x;
+}
+#else
 float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
 {
     /* imul n, n -- a 32-bit signed multiply that WRAPS; done in unsigned so
@@ -320,6 +354,7 @@ float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
      * unrounded. */
     return (float)d;
 }
+#endif
 
 /* WHAT IT DOES: snaps a sliding element back to where it started and sets it
  * moving again from there. */
