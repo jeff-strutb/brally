@@ -1119,27 +1119,24 @@ int BrPhaseTick_100475F0(BrGameObj *pObj)
 /* @implements 0x10047610 d3d BrPhaseKeyPush_10047610 */
 void BrPhaseKeyPush_10047610(void)
 {
-    unsigned char bKey;
-    signed char   cKey;
-    int32_t       i;
+    int n;
+    char c;
 
-    if (BR31_AA33E4 == 0)
+    n = BR31_AA33E4;
+    if (n == 0)
         return;
 
-    bKey = (unsigned char)(uint32_t)BR31_AA33E4;
+    /* SIGNED byte comparisons on AL: 0x80..0xFF are negative and fall
+     * through untouched, so only 'A'..'Z' are lowercased. */
+    c = (char)n;
+    if (c >= 0x41 && c <= 0x5A)
+        c += 0x20;
 
-    /* SIGNED byte comparisons: 0x80..0xFF are negative and fall through
-     * untouched, so only 'A'..'Z' are lowercased. */
-    cKey = (signed char)bKey;
-    if (cKey >= 0x41 && cKey <= 0x5A)
-        cKey = (signed char)(cKey + 0x20);
-
-    i = BR31_AA2A48;
-    BR31_A9E150[i] = (int32_t)cKey;         /* movsx -- sign-extended */
-
-    i++;
-    BR31_AA2A48 = i;
-    if (i >= 32)                            /* wraps AFTER the store */
+    /* Re-deref the index global -- a named `i = BR31_AA2A48` local puts
+     * the index in ecx (`mov ecx,[g]`) instead of eax (`a1` moffs). */
+    BR31_A9E150[BR31_AA2A48] = c;           /* movsx ecx, al */
+    BR31_AA2A48++;
+    if (BR31_AA2A48 >= 32)                  /* wraps AFTER the store */
         BR31_AA2A48 = 0;
 
     BrExt_10047660();
