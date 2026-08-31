@@ -16,8 +16,18 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+/* Port signatures take a BrFont*.  Originals write/read globals and take
+ * fewer args: RegisterPages is void(void); Measure is (psz, scale). */
+#define BrFontRegisterPages BrFontRegisterPages_Portable
+#define BrFontMeasure BrFontMeasure_Portable
 #endif
 #include "br_font.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrFontRegisterPages
+#undef BrFontMeasure
+void BrFontRegisterPages(void);
+int32_t BrFontMeasure(const char *psz, int32_t scale);
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -357,7 +367,11 @@ int BrFontLoad(BrFont *pFont, const char *pszDllPath)
         }
 
     if (pFont->build == BR_FONT_BUILD_GLIDE)
+#ifdef BR_MATCHING_BUILD
+        BrFontRegisterPages();
+#else
         BrFontRegisterPages(pFont);
+#endif
     else
         BrFontRegisterGlyphs(pFont);
     rc = 0;
@@ -388,11 +402,30 @@ done:
  * one holding every small one. Drawing a particular letter then means aiming at
  * a window inside the right sheet. */
 /* @implements 0x1006C790 glide BrFontRegisterPages */
+#ifdef BR_MATCHING_BUILD
+int FUN_10001000();
+int FUN_10027fb0();
+extern int DAT_1007b618;
+extern int DAT_1009d218;
+extern int DAT_1184c47c;
+extern int DAT_1184c46c;
+
+void BrFontRegisterPages(void)
+{
+    int sum;
+    DAT_1184c47c = FUN_10027fb0(&DAT_1007b618, 0x40, 0x40, 4);
+    sum = FUN_10001000(0, 0, 0);
+    sum = FUN_10001000(sum, &DAT_1007b618, 0x21C00);
+    DAT_1184c46c = FUN_10027fb0(&DAT_1009d218, 0x20, 0x20, 4);
+    FUN_10001000(sum, &DAT_1009d218, 0x8700);
+}
+#else
 void BrFontRegisterPages(BrFont *pFont)
 {
     pFont->ahPage[BR_FONT_LARGE] = BR_FONT_TOK_PAGE(BR_FONT_LARGE);
     pFont->ahPage[BR_FONT_SMALL] = BR_FONT_TOK_PAGE(BR_FONT_SMALL);
 }
+#endif
 
 /* 0x10073820 (D3D).  Four loops of 27, 26, 27, 26 over the two offset tables, in
  * the original's order: large punctuation, large letters, small punctuation,
@@ -938,6 +971,64 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * that is a real duplicate (br_font.h:547 records it); merging them is a
  * separate job and is not made better by moving a label. */
 /* @implements 0x10016980 glide BrFontMeasure */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_106ed674;
+extern signed char DAT_100a58f7[];
+extern int DAT_100a5978[];
+extern int DAT_100a5a58[];
+
+int32_t BrFontMeasure(const char *psz, int32_t scale)
+{
+    int total = 0;
+    int s;
+    int *pOff;
+    unsigned char c;
+
+    s = scale;
+    if (DAT_106ed674 != 0)
+        s <<= 1;
+    if (s < BR_FONT_LARGE_MIN) {
+        scale = BR_FONT_SMALL_CELL;
+        pOff = DAT_100a5a58;
+    } else {
+        scale = BR_FONT_LARGE_CELL;
+        pOff = DAT_100a5978;
+    }
+
+    c = (unsigned char)*psz;
+    while (c != 0) {
+        int fGlyph = 1;
+
+        if ((signed char)c < (signed char)BR_FONT_CLASS_LO ||
+            (signed char)c > (signed char)BR_FONT_CLASS_HI) {
+            total += (14 * s) / 40;
+            fGlyph = 0;
+        } else if (c == '%' && psz[1] != '\0') {
+            if ((unsigned char)psz[1] == c) {
+                ++psz;
+            } else if (psz[1] == 'i' || psz[1] == 'n') {
+                ++psz;
+                fGlyph = 0;
+            } else if (psz[2] != '\0') {
+                psz += 2;
+                fGlyph = 0;
+            }
+        }
+
+        if (fGlyph) {
+            int k = DAT_100a58f7[(signed char)c];
+            total += ((pOff[k + 1] - pOff[k]) * s) / scale;
+        }
+
+        c = (unsigned char)psz[1];
+        ++psz;
+    }
+
+    if (DAT_106ed674 != 0)
+        total >>= 1;
+    return total;
+}
+#else
 int32_t BrFontMeasure(const BrFont *pFont, const char *psz,
                       int32_t scale, int32_t fHiRes, int32_t detail)
 {
@@ -1017,6 +1108,7 @@ int32_t BrFontMeasure(const BrFont *pFont, const char *psz,
 
     return total;
 }
+#endif
 
 /* ======================================================================
  * PART 3 -- reference rasteriser
