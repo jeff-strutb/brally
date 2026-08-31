@@ -965,6 +965,25 @@ int BrOpt3F50(BrGameObj *pGame)
 /* WHAT IT DOES: leaves the current screen for the one behind it, in the
  * simplest form -- close and go back. */
 /* @implements 0x10043FA0 d3d BrOpt3FA0 */
+#ifdef BR_MATCHING_BUILD
+/* Orig is thiscall slot+0x18 with one stack arg (`push 1; mov ecx,this;
+ * mov edx,[ecx]; call [edx+0x18]`) then a1/a3 pointer copy.  Header
+ * pfnSlot6 is cdecl and g_brPAA2904 is (*g_ppBrPhaseCur).  Pass pVtbl as
+ * the unused edx slot so the call is `call [edx+0x18]`; a named temp
+ * keeps the subsequent copy as `a1`/`a3` instead of ecx + hoisted xor. */
+int BrOpt3FA0(BrGameObj *pGame)
+{
+    extern BrOptObj *DAT_10ac5c5c;
+    extern BrOptObj *DAT_10ac5c60;
+    typedef void (__fastcall *Slot6)(BrGameSub *pThis, void *edx_slot, int arg);
+    BrOptObj *p;
+
+    ((Slot6)pGame->pSub->pVtbl->pfnSlot6)(pGame->pSub, pGame->pSub->pVtbl, 1);
+    p = DAT_10ac5c60;
+    DAT_10ac5c5c = p;
+    return 0;
+}
+#else
 int BrOpt3FA0(BrGameObj *pGame)
 {
     BrGameSub *pSub = pGame->pSub;
@@ -973,6 +992,7 @@ int BrOpt3FA0(BrGameObj *pGame)
     g_brPAA2904 = g_brPAA2908;
     return 0;
 }
+#endif
 
 /* 0x10043FC0. Returns 0. */
 /* WHAT IT DOES: leaves the current screen for the one behind it and clears
