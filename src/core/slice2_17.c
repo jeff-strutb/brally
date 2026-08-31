@@ -868,6 +868,50 @@ static unsigned char *s17_car(int i)
  * kept, which matters because the owner is recorded against the slot the
  * counter held BEFORE it was bumped. */
 /* @implements 0x1002F130 d3d BrCarTableAdd */
+#ifdef BR_MATCHING_BUILD
+extern int32_t DAT_100b2f04;           /* nEntB */
+extern int32_t DAT_100b2f00;           /* nEntA */
+extern unsigned char DAT_10af1208[];   /* car0 base */
+void BrCarTableAdd(void *pOwner)
+{
+    int n;
+    unsigned char *car;
+    int r;
+
+    n = DAT_100b2f04;
+    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
+    r = BrX10005DE0(pOwner,
+                    car + BR_CAR_OFF_RGB + 0,
+                    car + BR_CAR_OFF_RGB + 1,
+                    car + BR_CAR_OFF_RGB + 2);
+
+    n = DAT_100b2f04;
+    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
+    /* Orig is thiscall: ecx = car, one stack arg. */
+#if defined(_MSC_VER)
+    {
+        typedef void (__fastcall *Fn76)(void *, int);
+        ((Fn76)BrX10076AE0)(car, r);
+    }
+#else
+    BrX10076AE0(car, r);
+#endif
+
+    n = DAT_100b2f04;
+    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
+    strcpy((char *)(car + BR_CAR_OFF_NAME), BrX10005E70(pOwner));
+
+    n = DAT_100b2f04;
+    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
+    BrX10068260(n, *(uint32_t *)(car + BR_CAR_OFF_TAG));
+
+    n = DAT_100b2f04;
+    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
+    DAT_100b2f04 = n + 1;
+    *(uint32_t *)(car + BR_CAR_OFF_OWNER) = (uint32_t)pOwner;
+    DAT_100b2f00 = DAT_100b2f00 + 1;
+}
+#else
 void BrCarTableAdd(void *pOwner)
 {
     int n = g_s17.nEntB;
@@ -894,6 +938,7 @@ void BrCarTableAdd(void *pOwner)
     s17_st32(s17_car(n) + BR_CAR_OFF_OWNER, s17_ptrword(pOwner));
     g_s17.nEntA = g_s17.nEntA + 1;
 }
+#endif
 
 /* 0x1002F230 */
 /* WHAT IT DOES: takes a player's car out of the race when that player leaves.
@@ -902,6 +947,55 @@ void BrCarTableAdd(void *pOwner)
  * at the first match, so a player owning more than one car loses all of
  * them. */
 /* @implements 0x1002F230 d3d BrCarTableRemove */
+/* @implements 0x1001C7A0 glide BrCarTableRemove */
+#ifdef BR_MATCHING_BUILD
+/* Orig walks DAT_10af2110 (active field) at stride 0x2B68; owner is
+ * [esi-0xDC4], car-base for the slot scan is esi-0xF08. */
+extern int32_t DAT_100b2f04;           /* nEntB */
+extern int32_t DAT_100b2f00;           /* nEntA */
+extern unsigned char DAT_10af2110[];   /* car0.active */
+extern unsigned char DAT_10af0858[];   /* slots */
+void BrCarTableRemove(const void *pOwner)
+{
+    int i = 0;
+    unsigned char *esi;
+
+    /* xor ebx,ebx is before the jle — i must be live on the early-out. */
+    if (DAT_100b2f04 <= 0)
+        return;
+
+    {
+    int arg = 0;
+    esi = DAT_10af2110;
+    do {
+        if (*(uint32_t *)(esi - 0xDC4) == (uint32_t)pOwner) {
+            int n;
+            unsigned char *slot;
+            unsigned char *car;
+
+            *(uint32_t *)esi = 0;
+            BrX10072580(arg);
+
+            n = DAT_100b2f00;
+            if (n > 0) {
+                car = esi - 0xF08;
+                slot = DAT_10af0858;
+                do {
+                    if (*(uint32_t *)slot == (uint32_t)car)
+                        *(uint32_t *)slot = 0;
+                    slot += BR_SLOT_STRIDE;
+                    --n;
+                } while (n != 0);
+            }
+        }
+
+        ++i;
+        arg += 2;
+        esi += BR_CAR_STRIDE;
+    } while (i < DAT_100b2f04);
+    }
+}
+#else
 void BrCarTableRemove(const void *pOwner)
 {
     int i = 0;
@@ -932,6 +1026,7 @@ void BrCarTableRemove(const void *pOwner)
         arg += 2;
     } while (i < g_s17.nEntB);         /* the count is re-read every pass */
 }
+#endif
 
 /* 0x1002F2A0 */
 /* WHAT IT DOES: takes a copy of each car's championship figures -- points and

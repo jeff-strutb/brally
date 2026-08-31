@@ -13,6 +13,9 @@
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
 #define BrGbiTexCreate           BrGbiTexCreate_port
+#define BrGbiTexScanLoadTlut     BrGbiTexScanLoadTlut_port
+#define BrGbiTexScanLoadBlock    BrGbiTexScanLoadBlock_port
+#define BrGbiSolidTexBuild       BrGbiSolidTexBuild_port
 /* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
  * state pointer.  Same rename so the matching bodies can use that shape. */
 #define BrGbiClearGeometryMode  BrGbiClearGeometryMode_port
@@ -32,6 +35,9 @@
 #undef BrGbiTexScanOtherModeH
 #undef BrGbiTexScanOtherModeH0E
 #undef BrGbiTexCreate
+#undef BrGbiTexScanLoadTlut
+#undef BrGbiTexScanLoadBlock
+#undef BrGbiSolidTexBuild
 #undef BrGbiClearGeometryMode
 #undef BrGbiSetGeometryMode
 #undef BrGbiDList
@@ -45,6 +51,9 @@
 /* Bodies live in br_gbitexscan.c; TexScanRun still calls them. */
 void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd);
 void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
+void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd);
+void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd);
+void BrGbiSolidTexBuild(void);
 #include <stdlib.h>
 BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd);
 BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd);
@@ -987,16 +996,17 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
 {
     int32_t s = g_brTexScanState;
+    int32_t z = 0;
 
-    if (s != 0 && s != 3 && s != 6)
+    if (s != z && s != 3 && s != 6)
         return;
 
     g_brTexScanTimgSiz  = (int32_t)((pCmd->w0 >> 19) & 3u);
     g_brTexScanTimgAddr = pCmd->w1;
-    g_brTexScanSrcSeen  = 0;
-    if (s == 0) {
+    g_brTexScanSrcSeen  = (uint32_t)z;
+    if (s == z) {
         g_brTexScanRunStart = pCmd;
-        g_brTexScanRunEnd   = NULL;
+        g_brTexScanRunEnd   = (BrGfxWords *)z;
     }
     g_brTexScanState = 1;
 }
@@ -1024,6 +1034,28 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * the source image into the palette buffer. The number of bytes comes
  * straight from the command and is not checked, here or in the original. */
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
+#ifdef BR_MATCHING_BUILD
+extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
+void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
+{
+    int32_t  ds, dt;
+    uint32_t len;
+    uint8_t *src;
+
+    if (g_brTexScanState != 1)
+        return;
+
+    src = (uint8_t *)g_brTexScanTimgAddr;
+    ds = (int32_t)(pCmd->w1 & 0xFFFu) - (int32_t)(pCmd->w0 & 0xFFFu);
+    dt = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
+         (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
+    len = (uint32_t)((ds + 1) * (dt + 1)) << 1;
+
+    g_brTexScanSrcSeen = (uint32_t)src;
+    memcpy(DAT_100a9e58, src, len);
+    g_brTexScanState = 7;
+}
+#else
 void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                           const void *pSrc)
 {
@@ -1044,6 +1076,7 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
     memcpy(pSt->pTlutDst, pSrc, len);
     pSt->state = 7;
 }
+#endif
 
 /* 0x10029FA0  G_LOADBLOCK */
 /* WHAT IT DOES: during the texture-load hunt, copies the texture's pixels
@@ -1051,6 +1084,28 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * records the size the command asked for even though the copy itself is
  * clamped to the buffer, which the original was not. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
+extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
+void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
+{
+    int32_t  d;
+    uint32_t len;
+    uint8_t *src;
+
+    if (g_brTexScanState != 2)
+        return;
+
+    src = (uint8_t *)g_brTexScanTimgAddr;
+    d = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
+        (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
+    DAT_105d17f0 = (uint32_t)src;
+    len = (uint32_t)(d + d + 2);
+    DAT_10697a54 = (int32_t)len;
+    memcpy(g_brTexScanStage, src, len);
+    g_brTexScanState = 3;
+}
+#else
 void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
                            const void *pSrc)
 {
@@ -1074,6 +1129,7 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
     memcpy(pSt->aStage, pSrc, copy);
     pSt->state = 3;
 }
+#endif
 
 /* 0x1002A040  G_SETTILE */
 /* WHAT IT DOES: during the texture-load hunt, records everything one of the
@@ -1081,26 +1137,25 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * where it sits in texture memory, and how it wraps, mirrors or clamps in
  * each direction -- and notes the highest slot used. */
 /* @implements 0x1002A040 d3d BrGbiTexScanSetTile */
+/* @implements 0x100295B0 glide BrGbiTexScanSetTile */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetTile(const BrGfxWords *pCmd)
 {
-    uint32_t   w0 = pCmd->w0;
-    uint32_t   w1 = pCmd->w1;
-    int32_t    tile = (int32_t)((w1 >> 24) & 7u);
-    BrGbiTile *p = &g_brTexScanTiles[tile];
+    int32_t tile = (int32_t)((pCmd->w1 >> 24) & 7u);
 
-    p->fmt     = (int32_t)((w0 >> 21) & 7u);
-    p->siz     = (int32_t)((w0 >> 19) & 3u);
-    p->line    = (int32_t)(((w0 >> 9) & 0x1FFu) << 3);
-    p->tmem    = (int32_t)(w0 & 0x1FFu);
-    p->mirrorS = (int32_t)((w1 >> 8)  & 1u);
-    p->clampS  = (int32_t)((w1 >> 9)  & 1u);
-    p->mirrorT = (int32_t)((w1 >> 18) & 1u);
-    p->clampT  = (int32_t)((w1 >> 19) & 1u);
-    p->maskS   = (int32_t)((w1 >> 4)  & 0xFu);
-    p->maskT   = (int32_t)((w1 >> 14) & 0xFu);
-    p->shiftS  = (int32_t)(w1 & 0xFu);
-    p->shiftT  = (int32_t)((w1 >> 10) & 0xFu);
+    /* Re-read w0/w1 each field — orig keeps pCmd in ecx and reloads. */
+    g_brTexScanTiles[tile].fmt     = (int32_t)((pCmd->w0 >> 21) & 7u);
+    g_brTexScanTiles[tile].siz     = (int32_t)((pCmd->w0 >> 19) & 3u);
+    g_brTexScanTiles[tile].line    = (int32_t)(((pCmd->w0 >> 9) & 0x1FFu) << 3);
+    g_brTexScanTiles[tile].tmem    = (int32_t)(pCmd->w0 & 0x1FFu);
+    g_brTexScanTiles[tile].mirrorS = (int32_t)((pCmd->w1 >> 8)  & 1u);
+    g_brTexScanTiles[tile].clampS  = (int32_t)((pCmd->w1 >> 9)  & 1u);
+    g_brTexScanTiles[tile].mirrorT = (int32_t)((pCmd->w1 >> 18) & 1u);
+    g_brTexScanTiles[tile].clampT  = (int32_t)((pCmd->w1 >> 19) & 1u);
+    g_brTexScanTiles[tile].maskS   = (int32_t)((pCmd->w1 >> 4)  & 0xFu);
+    g_brTexScanTiles[tile].maskT   = (int32_t)((pCmd->w1 >> 14) & 0xFu);
+    g_brTexScanTiles[tile].shiftS  = (int32_t)(pCmd->w1 & 0xFu);
+    g_brTexScanTiles[tile].shiftT  = (int32_t)((pCmd->w1 >> 10) & 0xFu);
 
     if (g_brTexScanState == 3 || g_brTexScanState == 4 ||
         g_brTexScanState == 7 || tile > g_brTexScanMaxTile)
@@ -1143,15 +1198,14 @@ void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetTileSize(const BrGfxWords *pCmd)
 {
-    uint32_t   w0 = pCmd->w0;
-    uint32_t   w1 = pCmd->w1;
-    BrGbiTile *p = &g_brTexScanTiles[(w1 >> 24) & 7u];
+    int32_t tile = (int32_t)((pCmd->w1 >> 24) & 7u);
 
-    p->uls = (int32_t)((w0 >> 12) & 0xFFFu);
-    p->ult = (int32_t)(w0 & 0xFFFu);
-    g_brTexScanState = 6;
-    p->lrs = (int32_t)((w1 >> 12) & 0xFFFu);
-    p->lrt = (int32_t)(w1 & 0xFFFu);
+    g_brTexScanTiles[tile].uls = (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
+    g_brTexScanTiles[tile].ult = (int32_t)(pCmd->w0 & 0xFFFu);
+    g_brTexScanTiles[tile].lrs = (int32_t)((pCmd->w1 >> 12) & 0xFFFu);
+    /* Volatile so /O2 cannot hoist state=6 above the lrs store. */
+    *(volatile int32_t *)&g_brTexScanState = 6;
+    g_brTexScanTiles[tile].lrt = (int32_t)(pCmd->w1 & 0xFFFu);
 }
 #else
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
@@ -1178,17 +1232,29 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
 {
     uint32_t v;
+    uint32_t z;
 
     if ((pCmd->w0 & 0xFF00u) != 0x300u)
         return;
 
     v = pCmd->w1;
-    if (v == 0x504F50u || v == 0xC184240u || v == 0x504240u || v == 0) {
+    /* Orig is three separate `cmp; jne; mov [g],0; ret` blocks, then
+     * `xor ecx,ecx; cmp eax,ecx` sharing the zero for the last fail. */
+    if (v == 0x504F50u) {
         g_brTexScan575414 = 0;
         return;
     }
-    if ((v & 0x1800u) == 0) {
+    if (v == 0xC184240u) {
         g_brTexScan575414 = 0;
+        return;
+    }
+    if (v == 0x504240u) {
+        g_brTexScan575414 = 0;
+        return;
+    }
+    z = 0;
+    if (v == z || (v & 0x1800u) == 0) {
+        g_brTexScan575414 = (int32_t)z;
         return;
     }
     g_brTexScan575414 = (int32_t)((v >> 16) & 1u);
@@ -1403,15 +1469,19 @@ void BrGbiBlit(BrGbiBlitFn pfn,
  * the record has no source pixels or if one particular flag bit is set, so
  * it never fills in a record that was empty. */
 /* @implements 0x1002A280 d3d BrGbiTexCreate */
+/* @implements 0x100297F0 glide BrGbiTexCreate */
 #ifdef BR_MATCHING_BUILD
 extern BrGbiTexCreateFn g_pfn18AA0B0;   /* 0x118ED1C8 */
 void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
 {
+    uint8_t *p = (uint8_t *)pRec;
     uint32_t flags, sel, fmt, siz;
 
-    if (pRec->pTex == NULL)
+    /* Glide record: pTex +0x00, f04 +0x04, w +0x0C, h +0x0E, flags +0x20.
+     * The header's packed BrGbiTexRec is the 64-bit port layout. */
+    if (*(uint32_t *)p == 0)
         return;
-    flags = pRec->flags;
+    flags = *(uint32_t *)(p + 0x20);
     if ((flags & 0x100000u) != 0)
         return;
 
@@ -1424,9 +1494,10 @@ void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
         fmt = 2; siz = 0;
     }
 
-    pRec->pTex = g_pfn18AA0B0(pRec->pTex, pRec->f04,
-                     (uint32_t)(1 << BrGbiSizeShift((int)pRec->w)),
-                     (uint32_t)(1 << BrGbiSizeShift((int)pRec->h)),
+    *(void **)p = g_pfn18AA0B0((void *)*(uint32_t *)p,
+                     *(uint32_t *)(p + 4),
+                     (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0C))),
+                     (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0E))),
                      fmt, siz,
                      (flags >> 31) & 1u, (flags >> 30) & 1u,
                      (flags >> 29) & 1u, (flags >> 28) & 1u,
@@ -1468,6 +1539,32 @@ void BrGbiTexCreate(BrGbiTexCreateFn pfn, BrGbiTexRec *pRec, uintptr_t a2)
  * display modes and a brighter one otherwise, then handing it to the backend
  * as a real texture. */
 /* @implements 0x1002A740 d3d BrGbiSolidTexBuild */
+/* @implements 0x10029C70 glide BrGbiSolidTexBuild */
+#ifdef BR_MATCHING_BUILD
+extern int     DAT_10226e80;           /* mode, 0x10226E80 */
+extern uint8_t DAT_105e1810[];         /* 16 texels, 0x105E1810 */
+extern int     DAT_10697a4c;           /* pTex out, 0x10697A4C */
+void BrGbiSolidTexBuild(void)
+{
+    uint8_t  fill;
+    uint8_t *p;
+
+    fill = (DAT_10226e80 == 2 || DAT_10226e80 == 3) ? 0x20u : 0x80u;
+    /* Orig: eax = &texels[1], write [eax-1]..[eax+2], add 4, jl &texels[17].
+     * Pointer compare is unsigned (jb); orig is signed (jl). */
+    p = DAT_105e1810 + 1;
+    do {
+        p[-1] = fill;
+        p[0]  = fill;
+        p[1]  = fill;
+        p[2]  = fill;
+        p += 4;
+    } while ((int)p < (int)(DAT_105e1810 + 0x11));
+
+    DAT_10697a4c = (int)g_pfn18AA0B0(DAT_105e1810, 0u, 4u, 4u, 1u, 4u,
+                                    0u, 0u, 1u, 1u, 0u, 0u, 1u, 0u);
+}
+#else
 void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
 {
     uint8_t fill = (pSt->mode == 2 || pSt->mode == 3) ? 0x20u : 0x80u;
@@ -1479,6 +1576,7 @@ void BrGbiSolidTexBuild(BrGbiTexCreateFn pfn, BrGbiSolidTex *pSt)
     pSt->pTex = pfn(pSt->aTexels, 0u, 4u, 4u, 1u, 4u,
                     0u, 0u, 1u, 1u, 0u, 0u, 1u, 0u);
 }
+#endif
 
 /* ================================================================== */
 /* 3. Screen wipe / fade                                              */
