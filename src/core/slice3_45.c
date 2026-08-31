@@ -828,7 +828,7 @@ int32_t BrDiAcquire(void)
  * game have finished with it as asked for it in the first place -- it counts
  * users rather than shutting down on the first call. An extra call after the
  * count has already reached zero does nothing at all. */
-/* @implements 0x10078BC0 d3d BrDiKeyboardShutdown */
+/* port-only body; Glide match is src/core/generated/0x10071EB0.c */
 void BrDiKeyboardShutdown(void)
 {
     BrDiObj *pDev;
