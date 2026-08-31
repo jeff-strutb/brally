@@ -1198,6 +1198,20 @@ the caller AND flipped a helper to match for free.
   2-arg wrapper into a shared helper does not match. Proven 0x1001E320
   (96 B) and 0x1001E720 (73 B) MATCH /O2.
 
+- **5-bit RGB expand is `(w >> s) & 0xF8 | (w >> t) & 7`, not the
+  xor-blend transcription.** Orig emits `mov r,w; mov r,w; shr; shr;
+  xor dl,cl; and dl,7; xor dl,cl` — that IS VC5's lowering of the
+  and/or form. Spelling the xor-blend as source (`a ^ ((a ^ b) & 7)`
+  with byte temps) compiles to a 2-register in-place shr (no esi, -6 B,
+  REGNORM 0+4). The and/or form keeps `w` live for both shifts, forcing
+  the two copies + `push esi` and the mid-function `pop esi` after
+  channel 2's copies. Reload `w = *(unsigned *)(p+4)` per channel;
+  p stays in eax (`add eax,8` return). Blue is a byte load `& 0xFE`,
+  `<< 2`, plus dword `>> 3` `& 7`. Alpha is `(w & 1) ? 0xFF : 0`
+  (`and cl,1; neg cl; sbb ecx,ecx; add eax,8; and ecx,0xff`) — not
+  `0 - (w & 1)` (that is `neg` with no sbb). Proven 0x1001E9F0
+  br_dl_fillcolour, 110 B, MATCH /O2.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
