@@ -908,6 +908,13 @@ the caller AND flipped a helper to match for free.
   (`y*y + z*z + w*w + x*x`) so the last load hoists into the previous
   add (`fld x; fxch; faddp st(3); fmul [x]`).  `(y*y + z*z) + w*w + x*x`
   adds w² before loading x (+2 B).  Proven 0x1006D410.
+- **12-float max-abs is a pointer walk with a stack zero, not an index
+  loop.** Orig 0x1002A957 is `push ebp; sub esp,0x18`, six slots
+  (hi/lo/zero/cursor/end/v), `jae` vs `pv+0x30`, integer-copied v,
+  `lo=-lo` as `fchs; fstp; fld`, ternary flds.  Closest is that source
+  under /Od (58 diffs, +6 B): /Od emits p++ before fld, `fst` not fstp,
+  and a return temp.  /O2 /Oy- keeps p/end in registers (112 B).  No C
+  spelling is both /Od-shaped and fnstsw-latency-scheduled.
 
 - **A divider-pipeline interleave means PRE-DIVIDED TEMPS in the source.**
   Orig starting two fdivs ahead of a second constant-divide pair
