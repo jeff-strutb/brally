@@ -18,11 +18,14 @@
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
+#define BrZeroRegions   BrZeroRegions_cdecl_hdr
 #endif
 #include "slice3_40.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
+#undef BrZeroRegions
+void BrZeroRegions(void);
 #endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
@@ -394,18 +397,26 @@ void BrNodeRunMarkPass(void)
  * its parts in the world, from the physics state of each. Called after
  * anything moves the car -- the physics step, or a network update. */
 /* @implements 0x10061BE0 d3d BrCarBuildMatrices */
+/* @implements 0x1005AC60 glide BrCarBuildMatrices */
 void BrCarBuildMatrices(BrCar *pCar)
 {
-    int i;
+    uint8_t *pSub;
 
     BrSub1006F4A0(CAR_AT(pCar, 0x164));
 
-    /* 0x168, 0x16C, 0x170, 0x174 in the original -- see BR_CAR_SUBPTR */
-    for (i = 0; i < 4; ++i) {
-        uint8_t *pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, i);
-        BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                        (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    }
+    /* Orig unrolls the four sub-object pointers at +0x168..+0x174. */
+    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 0);
+    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
+                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
+    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 1);
+    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
+                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
+    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 2);
+    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
+                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
+    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 3);
+    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
+                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
 }
 
 /* 0x100633E0 */
@@ -413,6 +424,26 @@ void BrCarBuildMatrices(BrCar *pCar)
  * pairs, stopping at the first entry with no address. A block of size zero
  * is stepped over rather than cleared. */
 /* @implements 0x100633E0 d3d BrZeroRegions */
+#ifdef BR_MATCHING_BUILD
+extern BrZeroRegion DAT_100b2f08[];    /* list head, 0x100B2F08 */
+void BrZeroRegions(void)
+{
+    BrZeroRegion *pList = DAT_100b2f08;
+
+    if (pList->p == NULL)
+        return;
+    for (;;) {
+        uint8_t *pBeg = (uint8_t *)pList->p;
+        uint8_t *pEnd = pBeg + pList->size;
+
+        if (pBeg < pEnd)
+            memset(pBeg, 0, (size_t)(pEnd - pBeg));
+        ++pList;
+        if (pList->p == NULL)
+            break;
+    }
+}
+#else
 void BrZeroRegions(BrZeroRegion *pList)
 {
     if (pList == NULL || pList->p == NULL) {
@@ -433,6 +464,7 @@ void BrZeroRegions(BrZeroRegion *pList)
         }
     }
 }
+#endif
 
 /* 0x10065630 */
 /* WHAT IT DOES: resets a car's working tables at the start of a race: a set
