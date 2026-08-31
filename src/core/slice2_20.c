@@ -462,7 +462,7 @@ void BrRcaFixup(void *pvFile)
  * means "however long the file is". A positive size is used as given, with
  * no check against either the file's real length or the buffer's, and a
  * missing file is complained about and then read from anyway. */
-/* @implements 0x100378B0 d3d BrFileReadInto */
+/* port-only body; Glide match is src/core/generated/0x10030F50.c */
 void BrFileReadInto(void *pvDest, const char *pszPath, int cbMax)
 {
     char szMsg[0x200];
@@ -567,7 +567,7 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
 /* WHAT IT DOES: loads a track's handling file -- the physics settings for
  * driving on it. It builds the track's path, swaps the extension for the
  * handling one, and hands it on to be read. */
-/* @implements 0x10031140 glide BrTrackLoadHandling */
+/* port-only body; Glide match is src/core/generated/0x10031140.c */
 void BrTrackLoadHandling(int iTrack)
 {
     char szPath[0x400];

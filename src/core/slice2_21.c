@@ -551,7 +551,7 @@ void BrPfxReset(BrPfxPool *pPool)
 /* 0x1003A610 */
 /* WHAT IT DOES: takes a complete copy of the particle pool -- every record and
  * all four list heads -- so it can be examined or restored later. */
-/* @implements 0x1003A610 d3d BrPfxSaveState */
+/* port-only body; Glide match is src/core/generated/0x10033C90.c */
 void BrPfxSaveState(const BrPfxPool *pPool, BrPfxSnapshot *pOut)
 {
     pOut->iFree   = pPool->iFree;
