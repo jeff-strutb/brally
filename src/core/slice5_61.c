@@ -128,9 +128,37 @@ void BrSub_10019290(void)
  * viewport values the projection uses. The vertical one is measured down from
  * the bottom of the screen rather than the top, which is how the drawing
  * list's top-down coordinates become the renderer's bottom-up ones. */
+#ifdef BR_MATCHING_BUILD
+/* Orig filds 0x100A7518 and fstp's 0x105CCD48 / 0x105CD9F8 / 0x105CD9FC
+ * as absolute globals, not through BrScreenGet / BrRdpGetRegs. */
+extern int32_t DAT_100a7518;
+extern float   DAT_105ccd48;
+extern float   DAT_105cd9f8;
+extern float   DAT_105cd9fc;
+#endif
+
 /* @implements 0x10023920 glide BrGbiCall10024260 */
 BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig: movsx from w1 as int16*, fild height first, /Op fstp;fld on
+     * each i16->float, fsubr height for Y translate, add eax,8 early. */
+    const int16_t *pVp;
+    float          cyScreen;
+    float         *pH;
+
+    pVp = (const int16_t *)pCmd->w1;
+    pCmd++;
+    /* Address-taken so height occupies its own slot (`push ecx` / [esp])
+     * and the last scale is `fsubr [esp]`, not `fsubp st(1)`. */
+    pH = &cyScreen;
+    *pH = (float)DAT_100a7518;
+    DAT_105ccd48 = (float)pVp[0] * 0.25f;
+    g_br4BC198   = (float)pVp[1] * 0.25f;
+    DAT_105cd9f8 = (float)pVp[4] * 0.25f;
+    DAT_105cd9fc = *pH - (float)pVp[5] * 0.25f;
+    return pCmd;
+#else
     BrRdpRegs      *pRegs = BrRdpGetRegs();
     const uint8_t  *pVp;
     int             vscaleX, vscaleY, vtransX, vtransY;
@@ -168,6 +196,7 @@ BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
     pRegs->f4C0BB8 = cyScreen - (float)vtransY * 0.25f;  /* 0x105CD9FC */
 
     return pCmd + 1;                            /* `add eax, 8` */
+#endif
 }
 
 /* ==========================================================================
