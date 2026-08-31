@@ -110,13 +110,31 @@ The per-frame race render is the last major rendering gate.
 | Port test suite | **136 / 136 green** | `████████████████████` 100% |
 
 The hand-C rows are the ones that count; everything else is diagnostics.
-Reading them together: of the 1,529 functions that are genuinely hand-written C
-(the rest of the map is linker/EH scaffolding — see the note below), 1,191 have
-been transcribed and 741 of those are byte-exact — about half the target by
-count. The exact set is small-function-heavy, so by raw bytes (62,527 of
-453,803) the campaign is earlier than the function count suggests. Of the 788
-not-yet-exact functions, 450 are transcribed and diffing, 338 are still only
-raw decompiler output awaiting a first pass.
+
+### Where every game-DLL function stands — four tiers
+
+Each of the 1,529 hand-C functions is in exactly one of these states
+(`python3 tools/tiers.py`, recomputed from the compared objects):
+
+| Tier | State | Functions | Bytes of `.text` | |
+|---|---|---|---|---|
+| **T1** | **still asm** — no hand-written C yet, only raw decompiler output | 338 | 196,875 | `████░░░░░░░░░░░░░░░░` 22% |
+| **T2** | **decomp'd, real differences remain** — C exists but instructions genuinely differ (missing/extra/changed logic) | 404 | 186,844 | `█████░░░░░░░░░░░░░░░` 26% |
+| **T3** | **codegen-only difference** — compiled to the *same instructions* as the original, differing only in register allocation / scheduling | 46 | 7,557 | `█░░░░░░░░░░░░░░░░░░░` 3% |
+| **T4** | **byte-exact** — diffs clean against the original | 741 | 62,527 | `█████████░░░░░░░░░░░` 48% |
+
+**T3 is a static estimate, not a behavioural proof.** "Functionally exact"
+strictly means *same inputs produce same outputs*, which requires running both
+versions against each other — an oracle that does not exist for arbitrary
+functions here. T3 is the strongest static proxy: an identical register-blind
+instruction multiset of matching length, so only register colouring and
+scheduling separate it from byte-exact. Read it as "done bar codegen", and as
+work not to be thrown away chasing the last bytes — not as certified.
+
+Reading the tiers together: 787 functions (T3+T4) are done or done-bar-codegen;
+404 are transcribed with real work left; 338 have not been started. The exact
+set is small-function-heavy, so by raw bytes (62,527 of 453,803) the campaign is
+earlier than the function count suggests.
 
 One denominator note: a large share of the mapped entries are not hand-written
 C at all -- linker import thunks, incremental-link jump stubs, and C++
