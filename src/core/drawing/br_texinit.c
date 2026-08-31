@@ -228,46 +228,93 @@ void     BrTexCreateMutex(void);      /* 0x10074F20 */
  * routines the rest of the engine calls, measure the card, pick a
  * detail level. */
 /* @implements 0x1002A640 d3d BrTexInit */
+void FUN_10023d20(void);
+void FUN_10024e60(void);
+void FUN_100272f0(void);
+void FUN_10027f00(void);
+void FUN_100284e0(void);
+void FUN_100285e0(void);
+void FUN_10028620(void);
+void FUN_100287e0(void);
+void FUN_10028820(void);
+void FUN_100297f0(void);
+void FUN_100298c0(void);
+void FUN_100299a0(void);
+void FUN_10029cd0(void);
+void FUN_100281c0(void);
+int  __stdcall FUN_10072a1a(int);
+int  __stdcall FUN_10072a14(int);
+void FUN_10029c70(void);
+void FUN_1006e180(void);
+void (*DAT_118ed1bc)(void);
+void (*DAT_118ed1c0)(void);
+void (*DAT_118ed1c4)(void);
+void (*DAT_118ed1c8)(void);
+void (*DAT_118ed1cc)(void);
+void (*DAT_118ed1d0)(void);
+void (*DAT_118ed1d4)(void);
+void (*DAT_118ed1d8)(void);
+void (*DAT_118ed1dc)(void);
+void (*DAT_118ed1e0)(void);
+void (*DAT_118ed19c)(void);
+void (*DAT_118ed1e4)(void);
+void (*DAT_118ed1e8)(void);
+void *DAT_106b7aa0;
+int   DAT_10697a58;
+int   DAT_10697a5c;
+int   DAT_10697a50;
+int   DAT_10697a48;
+int   DAT_106b7a7c;
+
 void BrTexInit(void)
 {
-    void *p = g_brTex57542C;
-    int32_t level;
+    int span;
 
-    g_brTexSlot18AA0A4 = BrTexHook_10024AB0;
-    g_brTexSlot18AA0A8 = BrTexHook_10025830;
-    g_brTexSlot18AA0AC = BrTexHook_10027C60;
-    g_brTexSlot18AA0B0 = BrTexHook_10028BF0;
-    g_brTexSlot18AA0B4 = BrTexHook_10028CA0;
-    g_brTexSlot18AA0B8 = BrTexHook_10028E00;
-    g_brTexSlot18AA0BC = BrTexHook_10028E70;
-    g_brTexSlot18AA0C0 = BrTexHook_10029060;
-    g_brTexSlot18AA0C4 = BrTexHook_100290E0;
-    g_brTexSlot18AA0C8 = BrTexHook_1002A280;
-    g_brTexSlot18AA084 = BrTexHook_1002A350;
-    g_brTexSlot18AA0CC = BrTexHook_1002A430;
-    g_brTexSlot18AA0D0 = BrTexHook_1002A7A0;
+    DAT_118ed1bc = FUN_10023d20;
+    DAT_118ed1c0 = FUN_10024e60;
+    DAT_118ed1c4 = FUN_100272f0;
+    DAT_118ed1c8 = FUN_10027f00;
+    DAT_118ed1cc = FUN_100284e0;
+    DAT_118ed1d0 = FUN_100285e0;
+    DAT_118ed1d4 = FUN_10028620;
+    DAT_118ed1d8 = FUN_100287e0;
+    DAT_118ed1dc = FUN_10028820;
+    DAT_118ed1e0 = FUN_100297f0;
+    DAT_118ed19c = FUN_100298c0;
+    DAT_118ed1e4 = FUN_100299a0;
+    DAT_118ed1e8 = FUN_10029cd0;
 
-    g_brTex575424 = 0;
-    g_brTex575428 = 0;
-    free(p);
-    g_brTex57542C = 0;
+    FUN_100281c0();
 
-    g_brTex1829844 = BrTexQueryAvail();
-    level = BrTexChooseLevelAbs();
+    {
+        int z = 0;
+        int hi = FUN_10072a1a(z);
+        span = hi - FUN_10072a14(z);
+    }
+    s_texmem = (uint32_t)span;
+    if (g_brTexTmuCount > 1) {
+        int hi = FUN_10072a1a(1);
+        span = hi - FUN_10072a14(1);
+        s_texmem = s_texmem + (uint32_t)span;
+    }
 
-    p = g_brTex57543C;
-    g_brTex4D51B8 = -1;
-    g_brTex5553F0 = 0;
-    g_brTex5553F4 = 0;
-    free(p);
-    g_brTex57543C = 0;
-    g_brTex5553E8 = 0;
-    g_brTex5553E0 = 0;
-    g_brTex575414 = 0;
+    s_g5E1820 = -1;
+    BrTexChooseLevel();
+    s_g5E1808 = -1;
 
-    BrGbiSolidTexBuildAbs();
-    BrTexCreateMutex();
-    (void)level;
+    {
+        void *pFree = DAT_106b7aa0;
+        DAT_10697a58 = 0;
+        DAT_10697a5c = 0;
+        free(pFree);
+    }
+    DAT_106b7aa0 = 0;
+    DAT_10697a50 = 0;
+    DAT_10697a48 = 0;
+    DAT_106b7a7c = 0;
+
+    FUN_10029c70();
+    FUN_1006e180();
 }
 #else
 /* WHAT IT DOES: the same setup, recording which hook went in which slot
