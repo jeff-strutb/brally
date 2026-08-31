@@ -1,0 +1,5 @@
+binary,kind,base,compiler,crt_model,crt_link,entry,notes
+BRGlide.dll,dll,0x10000000,MSVC 5.0 SP3 (cl 11.00.7022),/MD,dynamic (imports 57 CRT fns from MSVCRT.dll; CRT calls are FF15 via IAT),RallyMain,the game; primary target (rule 0)
+BRally.exe,exe,0x00400000,MSVC 5.0 SP3,/MD,dynamic (MSVCRT.dll; CRT calls FF15),WinMainCRTStartup,launcher; reads registry then loads BRGlide/BRD3D and calls RallyMain
+SetVideo.exe,exe,0x00400000,MSVC 5.0 SP3,/ML,static single-thread libc (CRT calls E8 direct; CRT bodies fenced),WinMainCRTStartup,display config util; writes BossRally.ini
+BossRally.exe,exe,0x00400000,MSVC 5.0 SP3,/MT,static multithread libcmt (CRT calls E8 direct; CRT bodies fenced),WinMainCRTStartup,intro shim; plays brally.avi then launches brally.exe

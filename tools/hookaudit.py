@@ -92,13 +92,13 @@ def _called_installers():
     """
     called = set()
     host = ""
-    for f in glob.glob('src/backends/macos/*.c'):
+    for f in glob.glob('ports/macos/*.c'):
         host += open(f, errors='ignore').read()
     for m in re.finditer(r'\b(\w*(?:Install|Wire)\w*)\s*\(', host):
         called.add(m.group(1))
     # One hop: a host-called wiring function may call further installers.
     for _ in range(3):
-        for f in glob.glob('src/core/*.c') + glob.glob('src/backends/macos/*.c'):
+        for f in glob.glob('src/core/*.c') + glob.glob('ports/macos/*.c'):
             s = open(f, errors='ignore').read()
             for fn in re.findall(r'^(?:void|int|int32_t)\s+(\w+)\s*\([^;]*\)\s*\n?\s*\{', s, re.M):
                 if fn not in called:
@@ -118,7 +118,7 @@ def installed():
     """
     called = _called_installers()
     out = {}
-    for f in sorted(glob.glob('src/core/*.c') + glob.glob('src/backends/macos/*.c')):
+    for f in sorted(glob.glob('src/core/*.c') + glob.glob('ports/macos/*.c')):
         s = open(f, errors='ignore').read()
         # split into function bodies so a slot is credited only when the
         # enclosing installer is reachable
