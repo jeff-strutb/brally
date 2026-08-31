@@ -816,7 +816,7 @@ int32_t BrNetSlotGetF02CBiased(BrNetState *pNet, int32_t slot)
 /* WHAT IT DOES: reads one number out of a player's slot under that slot's
  * lock and reports it, with negative values reported as zero. Note the
  * flooring happens after the lock is released. */
-/* @implements 0x10005F90 d3d BrNetSlotGetF974 */
+/* port-only body; Glide match is src/core/generated/0x10006300.c */
 int32_t BrNetSlotGetF974(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];
