@@ -137,39 +137,21 @@ int32_t  g_brTex0A7E08;               /* 0x100A7E08 */
 
 /* WHAT IT DOES: decide how much texture detail to use from how much
  * texture memory the card has (and how much RAM the machine has). */
+/* @implements 0x10029B10 glide BrTexChooseLevel */
 /* @implements 0x1002A5A0 d3d BrTexChooseLevel */
 void BrTexChooseLevel(void)
 {
-    uint32_t texmem = g_brTex1829844;
-    int32_t  v;
-
-    /* Inverted so the sbb/neg path is the fall-through: `jbe`/`jne` to
-     * level 2, then `jbe` to level 1, then cmp/sbb/neg. */
-    if (texmem > g_brTex1829848 && g_brTex575420 == 0) {
+    /* Orig fall-through is sbb/neg: `jbe` to level 2, `jbe` to level 1.
+     * `if (a <= b) x=2; else if ...` inverts to `ja`. */
+    if (s_texmem > g_brTexLowThreshold) {
         if (g_brTexSysMem > 0x2000000u) {
-            g_brTex0B8C90 = (texmem < 0x3D0900u) ? 1 : 0;
-            v = 0x100;
-            g_brTex0A7DFC = v;
-            g_brTex0A7E00 = v;
-            g_brTex0A7E04 = v;
-            g_brTex0A7E08 = v;
+            s_level = (s_texmem < 0x3D0900u) ? 1 : 0;
             return;
         }
-        v = 0x100;
-        g_brTex0B8C90 = 1;
-        g_brTex0A7DFC = v;
-        g_brTex0A7E00 = v;
-        g_brTex0A7E04 = v;
-        g_brTex0A7E08 = v;
+        s_level = 1;
         return;
     }
-    v = 0x40;
-    g_brTex0B8C90 = 2;
-    g_brTex0A7DFC = v;
-    g_brTex0A7E00 = v;
-    v = 0x20;
-    g_brTex0A7E04 = v;
-    g_brTex0A7E08 = v;
+    s_level = 2;
 }
 #else
 /* WHAT IT DOES: the same detail-level choice, as a function of the
