@@ -1001,6 +1001,12 @@ the caller AND flipped a helper to match for free.
   and `/ 2.0f` stops being strength-reduced to a multiply. Added to
   match_sweep VARIANTS as `('O2p', '/O2 /Op')` 2026-08-28. Found on
   0x100215C0: large multiset gap under /O2, ONE surplus `fxch` under /O2 /Op.
+- **A live float that orig `fsubr [esp]`s needs its own slot, not x87.**
+  Named `float h = (float)g;` under `/Op` keeps h in st (`fsubp st(1)`).
+  Address-taken (`float *p = &h; *p = (float)g; ... = *p - x`) emits
+  `push ecx` and orig's `fsubr [esp]`. Combined with movsx-from-int16*
+  payload and `/Op` fstp/fld on each i16->float, 0x10023920 (BrGbiCall10024260)
+  is 156 B MATCH /O2 /Op. Direct globals, not BrScreenGet/BrRdpGetRegs.
 - **A MACRO and an `__inline` function are NOT interchangeable — the macro
   changes evaluation order.** A function evaluates all its arguments before
   the body, so VC5 hoists an argument's global load ahead of a preceding
