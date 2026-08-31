@@ -358,11 +358,15 @@ void * BrBmpToRgba32(int param_1)
 
 {
   void *pvVar1;
+  int iVar1;
   
   if (*(short *)(param_1 + 0x12) != 0x18) {
     return (void *)0x0;
   }
-  pvVar1 = malloc(*(int *)(param_1 + 4) * *(int *)(param_1 + 8) * 4);
+  /* Named width pins imul operand order: orig `mov eax,[esi+4]; imul [esi+8]`.
+   * Bare `w * h * 4` commutes to load +8 first (2 displacement diffs). */
+  iVar1 = *(int *)(param_1 + 4);
+  pvVar1 = malloc(iVar1 * *(int *)(param_1 + 8) * 4);
   if (pvVar1 != (void *)0x0) {
     FUN_10059f70(pvVar1,*(int *)(param_1 + 0x14),*(int *)(param_1 + 4),
                  *(int *)(param_1 + 8),*(int *)(param_1 + 0xc));
