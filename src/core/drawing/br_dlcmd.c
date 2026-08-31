@@ -579,6 +579,22 @@ const uint8_t *BrDlCmdEnvColour(BrDlCmd *pS, const uint8_t *p)
  * choice as well as applying it, because the rectangle filler later checks
  * which recipe is in force to decide where its colour comes from. */
 /* @implements 0x1001E770 glide BrDlCmdSetCombine */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_105d17ac;
+extern int DAT_105d17b0;
+void FUN_1001e7a0(int, int);
+const uint8_t *BrDlCmdSetCombine(const uint8_t *p, BrDlCmd *pS)
+{
+    int w0, w1;
+
+    w0 = *(const int *)(const void *)p;
+    DAT_105d17ac = w0;
+    w1 = *(const int *)(const void *)(p + 4);
+    DAT_105d17b0 = w1;
+    FUN_1001e7a0(w0, w1);
+    return p + 8;
+}
+#else
 const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
 {
     uint32_t w0 = br_dlcmd_w(p);
@@ -591,6 +607,7 @@ const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
         pS->sink.pfnCombine(pS->sink.pUser, w0, w1);
     return p + 8;
 }
+#endif
 
 /* ==================================================================== */
 /* wiring                                                               */
