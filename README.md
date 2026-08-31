@@ -26,10 +26,10 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. **857 functions reproduce the original bytes exactly (89,786 B).**
+original binary. **873 functions reproduce the original bytes exactly (90,801 B).**
 The assembled DLL image diffs to **0 bytes** over every matched claim.
 
-- **Game DLL (`BRGlide.dll`)** — 711 functions byte-exact, 46.5% of the hand-C
+- **Game DLL (`BRGlide.dll`)** — 727 functions byte-exact, 47.5% of the hand-C
   target by count. The ceiling is register-allocation ("coloring") walls, where
   the C is structurally correct but the compiler assigns registers differently.
 - **C++ exception-handling class** — 42 functions byte-exact on all four pieces
@@ -46,9 +46,9 @@ The assembled DLL image diffs to **0 bytes** over every matched claim.
 | Tier | State | Fns | `.text` B |
 |---|---|--:|--:|
 | T1 | still asm (no hand-C yet) | 368 | 197,229 |
-| T2 | decomp'd, real diffs remain | 403 | 186,700 |
-| T3 | codegen-only diff (same instructions; register/scheduling) | 47 | 7,701 |
-| **T4** | **byte-exact** | **711** | **62,173** |
+| T2 | decomp'd, real diffs remain | 388 | 185,733 |
+| T3 | codegen-only diff (same instructions; register/scheduling) | 46 | 7,653 |
+| **T4** | **byte-exact** | **727** | **63,188** |
 
 T3 is a static proxy ("done bar codegen"), not a runtime proof.
 
@@ -60,7 +60,7 @@ T3 is a static proxy ("done bar codegen"), not a runtime proof.
 | BossRally.exe (intro) | 28 / 28 fns · 2,431 B | 100% |
 | SetVideo.exe (config) | 38 / 39 fns · 5,084 B | 70% (WinMain left) |
 
-**Totals** — 857 byte-exact functions / 89,786 B (`python3 tools/total.py`);
+**Totals** — 873 byte-exact functions / 90,801 B (`python3 tools/total.py`);
 DLL image assembles to 0 differing bytes (`python3 tools/image_build.py`); port
 tests 136/136.
 
