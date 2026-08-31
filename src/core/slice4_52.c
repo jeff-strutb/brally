@@ -72,7 +72,7 @@ const char *BrStrGet(int id)
  * left edge of the screen -- which is just its horizontal position, so a
  * negative answer means the corner is off to the left. Its neighbour below does
  * the same for the top edge. */
-/* @implements 0x10010960 d3d BrPolyDistX */
+/* @implements 0x1000DEC0 glide BrPolyDistX */
 float BrPolyDistX(const struct BrScrPt *pPt)
 {
     return ((const BrScrPt *)pPt)->f0C;

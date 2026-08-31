@@ -258,7 +258,7 @@ void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
  * below tail-jump straight into it.  BrCtrlCfgInit must carry the convention
  * too, otherwise the inner call here compiles as a cdecl push/add-esp pair
  * where the original passes in the register. */
-/* @implements 0x10069A90 d3d BrCtrlCfgCtor */
+/* @implements 0x10062B00 glide BrCtrlCfgCtor */
 BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis)
 {
     BrCtrlCfgInit(pThis);
@@ -269,7 +269,7 @@ BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis)
 /* WHAT IT DOES: sets up the one settings block the whole game shares, so
  * every part of the game asking "what did the player choose?" has something
  * to read before the settings file is loaded over the top. */
-/* @implements 0x10069A60 d3d BrCtrlCfgInitGlobal */
+/* @implements 0x10062AD0 glide BrCtrlCfgInitGlobal */
 BrCtrlCfg *BrCtrlCfgInitGlobal(void)
 {
     return BrCtrlCfgCtor(&g_BrCtrlCfg);

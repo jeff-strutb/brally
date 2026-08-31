@@ -200,7 +200,7 @@ void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     }
 }
 
-/* @implements 0x1003B090 d3d BrVec3Zero */
+/* @implements 0x10034710 glide BrVec3Zero */
 void BrVec3Zero(BrVec3 *pV)
 {
     /* Written back to front: the original stores z, then y, then x, and MSVC

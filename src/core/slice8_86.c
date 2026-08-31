@@ -441,7 +441,7 @@ static void BR_THISCALL1 br86_timer_end_period(void *pThis)
 
 /* WHAT IT DOES: shuts the frame clock down on the way out of the game, by
  * handing back the timer resolution above. */
-/* @implements 0x1002C2C0 d3d BrX1002C2C0 */
+/* @implements 0x10019830 glide BrX1002C2C0 */
 void BrX1002C2C0(void)
 {
     /* `mov ecx, 0x106806B0 / jmp 0x10075240`. The operand is an IMMEDIATE --

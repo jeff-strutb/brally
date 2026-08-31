@@ -858,15 +858,15 @@ extern BrPhase_ *g_brPhaseAA293C;   /* 0x10AA293C -- g_pExt->pAA293C       */
 
 /* WHAT IT DOES: switches straight to one particular screen without closing
  * anything down first -- a jump, not a leave. */
-/* @implements 0x10046F50 d3d BrPhaseGoto_10046F50 */
+/* @implements 0x100403A0 glide BrPhaseGoto_10046F50 */
 int32_t BrPhaseGoto_10046F50(void) { BR31_GOTO_CUR = BR31_GOTO_2974; return 0; }
 /* WHAT IT DOES: switches straight to a different particular screen, again with
  * no teardown. */
-/* @implements 0x10046FC0 d3d BrPhaseGoto_10046FC0 */
+/* @implements 0x10040410 glide BrPhaseGoto_10046FC0 */
 int32_t BrPhaseGoto_10046FC0(void) { BR31_GOTO_CUR = BR31_GOTO_292C; return 0; }
 /* WHAT IT DOES: the third of the plain jumps -- makes one particular screen
  * current and nothing else. */
-/* @implements 0x10047050 d3d BrPhaseGoto_10047050 */
+/* @implements 0x100404A0 glide BrPhaseGoto_10047050 */
 int32_t BrPhaseGoto_10047050(void) { BR31_GOTO_CUR = BR31_GOTO_293C; return 0; }
 
 /* --- LEAVE routines with a different shape -------------------------------- */

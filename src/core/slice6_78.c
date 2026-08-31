@@ -328,7 +328,7 @@ int BrCdTrackGet(void)
 /* WHAT IT DOES: sets a single global flag. Worth knowing: the same storage
  * is what the .rca loader reads to decide whether to do its copying at all,
  * so anything that clears this switches that copying off. */
-/* @implements 0x1002B9D0 d3d BrSegSetFlag */
+/* @implements 0x10018A40 glide BrSegSetFlag */
 void BrSegSetFlag(uint32_t v)
 {
     g_br675540 = (int32_t)v;
@@ -338,7 +338,7 @@ void BrSegSetFlag(uint32_t v)
 /* WHAT IT DOES: raises a one-byte flag that the text glyph drawing code
  * reads to pick between two different drawing commands. What visual
  * difference that makes is not established here. */
-/* @implements 0x10019240 d3d BrSub_10019240 */
+/* @implements 0x10016800 glide BrSub_10019240 */
 void BrSub_10019240(void)
 {
     g_br4B0360 = 1u;
@@ -387,7 +387,7 @@ void BrTextSetSize(int size)
 /* 0x10019260, 12 call sites. */
 /* WHAT IT DOES: clears one of the text drawing flags. A wrapper onto the
  * body that lives with the rest of the text code. */
-/* @implements 0x10019260 d3d BrTextFlag358Clear */
+/* @implements 0x10016820 glide BrTextFlag358Clear */
 void BrTextFlag358Clear(void)
 {
     g_br4B0358 = 0;

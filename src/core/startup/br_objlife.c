@@ -190,21 +190,21 @@ void BrWrap_100715E0(void)
 
 /* WHAT IT DOES: register that destructor with atexit so the array is
  * torn down at process exit if nobody destroyed it sooner. */
-/* @implements 0x10071600 d3d BrAtexit_10071600 */
+/* @implements 0x1006A570 glide BrAtexit_10071600 */
 void BrAtexit_10071600(void)
 {
     BrExt_1007E8B0(BrWrap_10071610);
 }
 
 /* WHAT IT DOES: arrange for one object's destructor to run at process exit. */
-/* @implements 0x10038EA0 d3d BrAtexit_10038EA0 */
+/* @implements 0x10032510 glide BrAtexit_10038EA0 */
 void BrAtexit_10038EA0(void)
 {
     BrExt_1007E8B0(BrExt_10038EB0);
 }
 
 /* WHAT IT DOES: the same atexit registration for a different object. */
-/* @implements 0x10069A70 d3d BrAtexit_10069A70 */
+/* @implements 0x10062AE0 glide BrAtexit_10069A70 */
 void BrAtexit_10069A70(void)
 {
     BrExt_1007E8B0(BrExt_10069A80);

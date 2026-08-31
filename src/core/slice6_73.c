@@ -1271,7 +1271,7 @@ int32_t BrSub1003D030(void *pBlob)
 extern void BrSub10071560(void);
 extern void BrSub10071630(void);
 
-/* @implements 0x10071550 d3d BrSub10071550 */
+/* @implements 0x1006A4C0 glide BrSub10071550 */
 int32_t BrSub10071550(void)
 {
     BrSub10071560();

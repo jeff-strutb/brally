@@ -669,7 +669,7 @@ int32_t BrMenuSeedFrom26F0(void)
 /* WHAT IT DOES: use the primary caption column from now on, not the
  * backup.  Menu caption setters consult this byte.  Always reports
  * success. */
-/* @implements 0x1003E8C0 d3d BrMenuClearAA28A8 */
+/* @implements 0x10037EE0 glide BrMenuClearAA28A8 */
 int32_t BrMenuClearAA28A8(void)
 {
     g_menu.gAA28A8 = 0;
@@ -678,7 +678,7 @@ int32_t BrMenuClearAA28A8(void)
 
 /* WHAT IT DOES: use the backup caption column from now on.  Always
  * reports success. */
-/* @implements 0x1003E8B0 d3d BrMenuSetAA28A8 */
+/* @implements 0x10037ED0 glide BrMenuSetAA28A8 */
 int32_t BrMenuSetAA28A8(void)
 {
     g_menu.gAA28A8 = 1;
@@ -688,7 +688,7 @@ int32_t BrMenuSetAA28A8(void)
 /* WHAT IT DOES: pick which stored lap-time the next time-caption reads:
  * 0, 1 or 2 index a times array; 3 means "use the live time instead".
  * Always reports success.  The four bodies differ only in the value. */
-/* @implements 0x100412C0 d3d BrMenuSetAA28D0_0 */
+/* @implements 0x1003A820 glide BrMenuSetAA28D0_0 */
 int32_t BrMenuSetAA28D0_0(void)
 {
     g_menu.gAA28D0 = 0;
@@ -696,7 +696,7 @@ int32_t BrMenuSetAA28D0_0(void)
 }
 
 /* WHAT IT DOES: the next time-caption should show stored slot 1. */
-/* @implements 0x100412D0 d3d BrMenuSetAA28D0_1 */
+/* @implements 0x1003A830 glide BrMenuSetAA28D0_1 */
 int32_t BrMenuSetAA28D0_1(void)
 {
     g_menu.gAA28D0 = 1;
@@ -704,7 +704,7 @@ int32_t BrMenuSetAA28D0_1(void)
 }
 
 /* WHAT IT DOES: the next time-caption should show stored slot 2. */
-/* @implements 0x100412E0 d3d BrMenuSetAA28D0_2 */
+/* @implements 0x1003A840 glide BrMenuSetAA28D0_2 */
 int32_t BrMenuSetAA28D0_2(void)
 {
     g_menu.gAA28D0 = 2;
@@ -713,7 +713,7 @@ int32_t BrMenuSetAA28D0_2(void)
 
 /* WHAT IT DOES: the next time-caption should show the live time, not a
  * stored slot. */
-/* @implements 0x100412F0 d3d BrMenuSetAA28D0_3 */
+/* @implements 0x1003A850 glide BrMenuSetAA28D0_3 */
 int32_t BrMenuSetAA28D0_3(void)
 {
     g_menu.gAA28D0 = 3;
