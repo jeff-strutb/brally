@@ -7,10 +7,16 @@
  * clip-vertex pointer; hide that prototype so this TU compiles the matching
  * signature. */
 #define BrDlsClipCodes BrDlsClipCodes_Portable
+/* Port decoders write a struct.  Originals are 1-arg DL walkers that
+ * store globals / call 0x100215C0. */
+#define BrDlsTileSizeDecode BrDlsTileSizeDecode_Portable
+#define BrDlsTileRectDecode BrDlsTileRectDecode_Portable
 #endif
 #include "br_dlshared.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrDlsClipCodes
+#undef BrDlsTileSizeDecode
+#undef BrDlsTileRectDecode
 #endif
 
 /* Sign-fold a 12-bit field.  The original spells it
@@ -28,6 +34,47 @@ static int32_t br_dls_sext12(uint32_t v)
  * and height in texture pixels. Sign is kept throughout, so a rectangle
  * given back to front stays back to front rather than becoming enormous. */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_118ed198;
+extern int DAT_1186c950;
+extern int DAT_1186c954;
+extern int DAT_118ec988;
+extern int DAT_1186c958;
+extern int DAT_118ed1ac;
+
+unsigned char *BrDlsTileSizeDecode(unsigned char *p)
+{
+    int uls, ult, lrs, lrt;
+
+    uls = (*(unsigned *)p >> 12) & 0xFFF;
+    DAT_118ed198 = uls;
+    if (uls >= 0x800) {
+        uls -= 0x1000;
+        DAT_118ed198 = uls;
+    }
+    ult = *(unsigned *)p & 0xFFF;
+    DAT_1186c950 = ult;
+    if (ult >= 0x800) {
+        ult -= 0x1000;
+        DAT_1186c950 = ult;
+    }
+    lrs = (*(unsigned *)(p + 4) >> 12) & 0xFFF;
+    DAT_1186c954 = lrs;
+    if (lrs >= 0x800) {
+        lrs -= 0x1000;
+        DAT_1186c954 = lrs;
+    }
+    lrt = *(unsigned *)(p + 4) & 0xFFF;
+    DAT_118ec988 = lrt;
+    if (lrt >= 0x800) {
+        lrt -= 0x1000;
+        DAT_118ec988 = lrt;
+    }
+    DAT_1186c958 = (lrs - uls + 4) >> 2;
+    DAT_118ed1ac = (lrt - ult + 4) >> 2;
+    return p + 8;
+}
+#else
 void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
 {
     pOut->uls = br_dls_sext12(w0 >> 12);
@@ -38,6 +85,7 @@ void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
     pOut->tileW = (pOut->lrs - pOut->uls + 4) >> 2;
     pOut->tileH = (pOut->lrt - pOut->ult + 4) >> 2;
 }
+#endif
 
 /* WHAT IT DOES: reads the drawing command that puts a piece of a texture
  * straight onto the screen -- the command behind heads-up panels and menu
@@ -45,8 +93,38 @@ void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
  * The command comes in two forms, one giving the corners in quarter-pixels
  * and one in whole pixels, and the whole-pixel form is scaled up here so both
  * hand on the same units. */
-/* @implements 0x10021570 glide BrDlsTileRectDecode */
-/* @implements 0x100219D0 glide BrDlsTileRectDecode */
+#ifdef BR_MATCHING_BUILD
+void FUN_100215c0(int, int, int, int, int);
+
+/* 0xE4 -- 10.2 corners, 24-byte command (texrect + two extra words). */
+/* @implements 0x10021570 glide BrDlsTileRectE4 */
+unsigned char *BrDlsTileRectE4(unsigned char *p)
+{
+    unsigned v, lry, lrx;
+
+    v = *(unsigned *)p;
+    p += 0x10;
+    lry = v & 0xFFF;
+    lrx = (v >> 12) & 0xFFF;
+    v = *(unsigned *)(p - 0xc);
+    FUN_100215c0((v >> 12) & 0xFFF, v & 0xFFF, lrx, lry, (v >> 24) & 7);
+    return p + 8;
+}
+
+/* 0xE3 -- integer corners scaled <<2, 8-byte command. */
+/* @implements 0x100219D0 glide BrDlsTileRectE3 */
+unsigned char *BrDlsTileRectE3(unsigned char *p)
+{
+    unsigned w1, w0;
+
+    w1 = *(unsigned *)(p + 4);
+    w0 = *(unsigned *)p;
+    FUN_100215c0((w1 >> 10) & 0x3FFC, (w1 & 0xFFF) << 2,
+                 (w0 >> 10) & 0x3FFC, (w0 & 0xFFF) << 2, (w1 >> 24) & 7);
+    return p + 8;
+}
+#else
+/* Port-only decode helper.  The originals are BrDlsTileRectE4 / E3 above. */
 void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
                          BrDlsTileRect *pOut)
 {
@@ -66,6 +144,7 @@ void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
         pOut->lry <<= 2;
     }
 }
+#endif
 
 /* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
  * viewing frustum and reports which of the seven boundaries it crossed, so
