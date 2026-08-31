@@ -18,6 +18,7 @@
  * match actually pins.  Addresses are named g_<VA> after the operand each
  * instruction carries in the original.
  */
+#include <math.h>       /* sqrt (intrinsic under MSVC, libm on the port) */
 #include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 /* ---- globals touched by these stubs (names follow the original's VAs) ---- */
@@ -40,6 +41,12 @@ extern int   BrSub1006E280(void);
 extern void  BrSub1006A4D0(void);
 extern void  BrSub1006A5A0(void);
 extern void  BrSub1006A580(void);
+extern void  BrSub1002A940(void);                     /* forward-call target */
+extern double BrSub1001DC40(int x);                   /* returns in st0      */
+
+#ifdef _MSC_VER
+#pragma intrinsic(sqrt)
+#endif
 
 /* forward decls for the in-file functions whose address is taken or that are
  * the tail-call target of another stub here */
@@ -148,3 +155,19 @@ int BrSub1006A310(void){ return BrSub1006E280() - g_17B3248; }
 /* two calls, return 1 */
 /* @implements 0x1006A4C0 glide BrSub1006A4C0 */
 int BrSub1006A4C0(void){ BrSub1006A4D0(); BrSub1006A5A0(); return 1; }
+
+/* plain forwarder that keeps an EBP frame: this one was built /Od, so it
+ * calls (not tail-jumps) inside a frame.  Force /Od for it alone. */
+#ifdef _MSC_VER
+#pragma optimize("", off)
+#endif
+/* @implements 0x1002A932 glide BrSub1002A932 */
+void BrSub1002A932(void){ BrSub1002A940(); }
+#ifdef _MSC_VER
+#pragma optimize("", on)
+#endif
+
+/* sqrt of a call result: the split temporaries make VC5 emit fsqrt before the
+ * cdecl stack cleanup, matching the original's instruction order. */
+/* @implements 0x1001DC80 glide BrSub1001DC80 */
+float BrSub1001DC80(int x){ double d = BrSub1001DC40(x); float r = (float)sqrt(d); return r; }
