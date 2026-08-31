@@ -53,6 +53,8 @@
 #define BrUiDrawCodeRect_10047980 BrUiDrawCodeRect_10047980_port
 #define BrUiStepCode_10047A10   BrUiStepCode_10047A10_port
 #define BrUiTweenStep_10047D30  BrUiTweenStep_10047D30_port
+#define BrUiInit_10047FB0       BrUiInit_10047FB0_port
+#define BrUiItemInit_10047EB0   BrUiItemInit_10047EB0_port
 #endif
 #include "slice3_32.h"
 #ifdef BR_MATCHING_BUILD
@@ -64,6 +66,8 @@
 #undef BrUiDrawCodeRect_10047980
 #undef BrUiStepCode_10047A10
 #undef BrUiTweenStep_10047D30
+#undef BrUiInit_10047FB0
+#undef BrUiItemInit_10047EB0
 #endif
 
 /* ==========================================================================
@@ -587,6 +591,30 @@ void BrUiItemInit_10047EB0(BrUiObj *pObj, const char *psz, uint32_t nFlags,
  * with -- that last one being written into two fields at once, the live picture
  * and the one to fall back to. */
 /* @implements 0x10047FB0 d3d BrUiInit_10047FB0 */
+#ifdef BR_MATCHING_BUILD
+/* Orig is thiscall / ret 0x20. BR_THISCALL1 is 1-arg only; a dummy edx
+ * slot keeps pPhase on the stack (no xor edx,edx — the param is unused). */
+void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
+                                   BrPhaseFull *pPhase, float f3C, float f40,
+                                   uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
+                                   uint32_t n2968, int16_t wCode)
+{
+    unsigned char *p = (unsigned char *)pObj;
+
+    (void)_edx;
+    *(BrPhaseFull **)(void *)(p + 0x2AE8) = pPhase;
+    *(uint32_t *)(void *)(p + 0x1C) |= nOr1C;
+    *(uint32_t *)(void *)(p + 0x24) |= nOr24;
+    *(uint32_t *)(void *)(p + 0x28) |= nOr28;
+    *(uint32_t *)(void *)(p + 0x2968) = n2968;
+    /* Mention f3C first so it hoists into edx; the wCode load clobbers
+     * eax, so f40 (eax) stores first and f3C (edx) after — orig order. */
+    *(float *)(void *)(p + 0x3C) = f3C;
+    *(float *)(void *)(p + 0x40) = f40;
+    *(uint16_t *)(void *)(p + 0x2A40) = (uint16_t)wCode;
+    *(uint16_t *)(void *)(p + 0x1E20C) = (uint16_t)wCode;
+}
+#else
 void BrUiInit_10047FB0(BrUiObj *pObj, BrPhaseFull *pPhase,
                        float f3C, float f40,
                        uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
@@ -605,6 +633,7 @@ void BrUiInit_10047FB0(BrUiObj *pObj, BrPhaseFull *pPhase,
     BrScrSt16(pObj, BR_UI_OFF_W2A40, (uint16_t)wCode);
     BrScrSt16(pObj, BR_UI_OFF_W1E20C, (uint16_t)wCode);
 }
+#endif
 
 /* ==========================================================================
  * 4. 0x10048010 / 0x10048060 / 0x100480A0 / 0x10048180
