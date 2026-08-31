@@ -451,21 +451,27 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
     BrMat4Mul(pM, &basisT, pM);     /* aliased -- BrMat4Mul handles it */
 }
 
-/* 0x100312A7 */
+/* 0x1002A957 */
 /* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
  * sign, and never returns less than zero. */
+/* @implements 0x1002A957 glide BrFloat12MaxAbs */
 /* @implements 0x100312A7 d3d BrFloat12MaxAbs */
 float BrFloat12MaxAbs(const float *pv)
 {
-    float lo = 0.0f;    /* most negative seen */
-    float hi = 0.0f;    /* most positive seen */
-    int i;
+    /* Orig is ebp-framed, six stack slots (hi/lo/zero/cursor/end/v), pointer
+     * walk (`jae` vs end = pv+12), integer-copied v, `lo = -lo` as fstp+fld,
+     * ternary flds.  /Od is the closest variant (+6 B: return temp, p++ before
+     * fld, fst not fstp).  /O2 /Oy- keeps p/end in registers. */
+    float hi = 0.0f;
+    float lo = 0.0f;
+    float zero = 0.0f;
+    const float *p = pv;
+    const float *end = pv + 12;
 
-    for (i = 0; i < 12; ++i) {
-        float v = pv[i];
-
-        /* C0 of `fcomp v, 0.0` -- set when v < 0 OR unordered. */
-        if (!(v >= 0.0f)) {
+    while (p < end) {
+        float v = *p;
+        p++;
+        if (v < zero) {
             if (lo > v)
                 lo = v;
         } else {
@@ -473,7 +479,6 @@ float BrFloat12MaxAbs(const float *pv)
                 hi = v;
         }
     }
-
     lo = -lo;
     return (lo > hi) ? lo : hi;
 }
