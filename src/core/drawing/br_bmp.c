@@ -143,6 +143,33 @@ void BrBmpGdiFree(BrGdiBitmapMem *pMem)
  * transparency key. Only 24-bit-colour bitmaps are accepted. The original
  * could also load a bitmap out of its own resources, but the DLL carries
  * none, so that path always failed and is not transcribed. */
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) void *__stdcall GetModuleHandleA(const char *);
+__declspec(dllimport) void *__stdcall LoadImageA(void *, const char *,
+    unsigned int, int, int, unsigned int);
+__declspec(dllimport) int __stdcall GetObjectA(void *, int, void *);
+__declspec(dllimport) int __stdcall DeleteObject(void *);
+
+/* @implements 0x10001290 glide BrBmpLoadSurface */
+BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
+{
+    BrGdiBitmap bm;
+    void       *hbm;
+    BrSurf     *pSurf;
+
+    hbm = LoadImageA(GetModuleHandleA(NULL), pszPath, 0, cx, cy, 0x2000);
+    if (hbm == 0)
+        hbm = LoadImageA(hbm, pszPath, (unsigned int)hbm, cx, cy, 0x2010);
+    if (hbm == 0)
+        return 0;
+    GetObjectA(hbm, 0x18, &bm);
+    pSurf = BrSurfFromBitmap(&bm);
+    DeleteObject(hbm);
+    if (pSurf)
+        pSurf->key = 0x7E0;
+    return pSurf;
+}
+#else
 /* @implements 0x10001290 glide BrBmpLoadSurface */
 BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 {
@@ -162,6 +189,7 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
     if (pSurf) pSurf->key = (uint16_t)BR_SURF_KEY_565;   /* 0x10001308 */
     return pSurf;
 }
+#endif
 
 /* ======================================================================
  * 0x1005A210 / 0x10059F10 / 0x10059F70 -- the RGBA8888 texture loader
@@ -173,6 +201,29 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
  * picture's size. It flips the image the right way up on the way through,
  * because bitmap files are stored bottom row first. Only 24-bit-colour
  * bitmaps are accepted. */
+#ifdef BR_MATCHING_BUILD
+void *BrBmpToRgba32(int param_1);
+
+/* @implements 0x1005A210 glide BrBmpLoadRgba */
+uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
+{
+    BrGdiBitmap bm;
+    void       *hbm;
+    void       *pOut;
+
+    (void)pcx;
+    (void)pcy;
+    hbm = LoadImageA(0, pszPath, 0, 0, 0, 0x2010);
+    if (hbm == 0)
+        return 0;
+    GetObjectA(hbm, 0x18, &bm);
+    if (bm.cBitsPixel != 0x18)
+        return 0;                 /* orig leaks hbm here */
+    pOut = BrBmpToRgba32((int)&bm);
+    DeleteObject(hbm);
+    return (uint8_t *)pOut;
+}
+#else
 /* @implements 0x1005A210 glide BrBmpLoadRgba */
 uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
 {
@@ -220,6 +271,7 @@ uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
     BrBmpGdiFree(&mem);
     return pOut;
 }
+#endif
 
 /* ======================================================================
  * The host adaptor -- 0x10001290 then 565 -> RGBA8888
