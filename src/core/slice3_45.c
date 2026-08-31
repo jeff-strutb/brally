@@ -883,23 +883,16 @@ long BrDiSetPropDword(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
 /* ====================================================================== */
 
 /* The guard shared by 0x10078E10, 0x10078E50, 0x10078E90, 0x10078ED0 and
- * 0x10078F20. Written out inline in all five; identical every time. */
-static int BrFfbEnabled(void)
-{
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
-        return 0;
-    }
-    if (g_brB4E1E0 == 0) {
-        return 0;
-    }
-    if (g_br18ABDBC == 0) {
-        return 0;
-    }
-    if (g_brFlag6909E0 != 0) {
-        return 0;
-    }
-    return 1;
-}
+ * 0x10078F20. Written out inline in all five; identical every time.
+ * A static helper does not inline under /O2 (call vs four global tests). */
+#ifdef BR_MATCHING_BUILD
+typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
+#define BR_DI_SETPARAMS(p, eff, flags) \
+    ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
+#else
+#define BR_DI_SETPARAMS(p, eff, flags) \
+    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
+#endif
 
 /* 0x10078E10 */
 /* WHAT IT DOES: chooses which way the next shake of a force-feedback wheel
@@ -909,9 +902,19 @@ static int BrFfbEnabled(void)
 /* @implements 0x10078E10 d3d BrFfbSetDirection */
 void BrFfbSetDirection(int32_t dir)
 {
-    if (BrFfbEnabled()) {
-        g_br0BD430[0] = dir;
+    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+        return;
     }
+    if (g_brB4E1E0 == 0) {
+        return;
+    }
+    if (g_br18ABDBC == 0) {
+        return;
+    }
+    if (g_brFlag6909E0 != 0) {
+        return;
+    }
+    g_br0BD430[0] = dir;
 }
 
 /* 0x10078E50 */
@@ -921,9 +924,19 @@ void BrFfbSetDirection(int32_t dir)
 /* @implements 0x10078E50 d3d BrFfbSetDurationLong */
 void BrFfbSetDurationLong(void)
 {
-    if (BrFfbEnabled()) {
-        g_br0BD438 = 0x3D090;   /* 250000 us */
+    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+        return;
     }
+    if (g_brB4E1E0 == 0) {
+        return;
+    }
+    if (g_br18ABDBC == 0) {
+        return;
+    }
+    if (g_brFlag6909E0 != 0) {
+        return;
+    }
+    g_br0BD438 = 0x3D090;   /* 250000 us */
 }
 
 /* 0x10078E90 */
@@ -931,9 +944,19 @@ void BrFfbSetDurationLong(void)
 /* @implements 0x10078E90 d3d BrFfbSetDurationShort */
 void BrFfbSetDurationShort(void)
 {
-    if (BrFfbEnabled()) {
-        g_br0BD438 = 0x1E848;   /* 125000 us */
+    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+        return;
     }
+    if (g_brB4E1E0 == 0) {
+        return;
+    }
+    if (g_br18ABDBC == 0) {
+        return;
+    }
+    if (g_brFlag6909E0 != 0) {
+        return;
+    }
+    g_br0BD438 = 0x1E848;   /* 125000 us */
 }
 
 /* 0x10078ED0 */
@@ -945,7 +968,16 @@ void BrFfbCommitDuration(void)
 {
     BrDiObj *pEff;
 
-    if (!BrFfbEnabled()) {
+    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+        return;
+    }
+    if (g_brB4E1E0 == 0) {
+        return;
+    }
+    if (g_br18ABDBC == 0) {
+        return;
+    }
+    if (g_brFlag6909E0 != 0) {
         return;
     }
     g_brDiEffSquare.dwDuration = (uint32_t)g_br0BD438;
@@ -955,7 +987,7 @@ void BrFfbCommitDuration(void)
         return;
     }
     /* 0x20000041 = DIEP_DURATION | DIEP_DIRECTION | DIEP_START */
-    BrDiEff(pEff)->pfnSetParameters(pEff, &g_brDiEffSquare, 0x20000041u);
+    BR_DI_SETPARAMS(pEff, &g_brDiEffSquare, 0x20000041u);
 }
 
 /* 0x100790B0 */
@@ -976,7 +1008,7 @@ void BrFfbSetSpringCoeff(int32_t coeff)
         return;
     }
     /* 0x100 = DIEP_TYPESPECIFICPARAMS */
-    BrDiEff(pEff)->pfnSetParameters(pEff, &g_brDiEffSpring, 0x100u);
+    BR_DI_SETPARAMS(pEff, &g_brDiEffSpring, 0x100u);
 }
 
 /* 0x10078F20 */
@@ -996,7 +1028,16 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
     int32_t bound;
     BrDiObj *pEff;
 
-    if (!BrFfbEnabled()) {
+    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+        return;
+    }
+    if (g_brB4E1E0 == 0) {
+        return;
+    }
+    if (g_br18ABDBC == 0) {
+        return;
+    }
+    if (g_brFlag6909E0 != 0) {
         return;
     }
 
