@@ -765,7 +765,7 @@ int BrUiFrame_10048180(BrScrGlobals *pG, BrUiObj *pObj)
 /* WHAT IT DOES: makes a fresh, empty page: no rows, no owner, no hooks. Every
  * menu screen is one or more of these. One field is deliberately left holding
  * whatever the memory did, because the original never wrote it either. */
-/* @implements 0x10048470 d3d BrUiPageCtor_10048470 */
+/* port-only body; Glide match is src/core/generated/0x100418C0.c */
 BrUiPage *BrUiPageCtor_10048470(BrUiPage *pThis)
 {
     int i;

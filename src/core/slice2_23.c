@@ -833,7 +833,7 @@ int32_t BrUiItemApply(BrUiObj *pObj, int16_t index, BrUiGlobals *pG)
  * typed into the game's store of that name -- but only when it differs by
  * more than capitalisation. It also clears a highlight on a related control
  * once the row has any text in it at all. */
-/* @implements 0x1003EEF0 d3d BrUiFn1003EEF0 */
+/* port-only body; Glide match is src/core/generated/0x10038420.c */
 int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText;
@@ -847,7 +847,7 @@ int32_t BrUiFn1003EEF0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: clears the same highlight when the row has text, and does
  * nothing else -- the read-back half is somebody else's job. */
-/* @implements 0x1003EF60 d3d BrUiFn1003EF60 */
+/* port-only body; Glide match is src/core/generated/0x10038490.c */
 int32_t BrUiFn1003EF60(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29A8, BrUiItemText(pObj, 0));
@@ -874,7 +874,7 @@ int32_t BrUiFn1003EF90(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: clears a highlight on a different control once its row has
  * text in it. */
-/* @implements 0x1003F020 d3d BrUiFn1003F020 */
+/* port-only body; Glide match is src/core/generated/0x10038550.c */
 int32_t BrUiFn1003F020(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29E8, BrUiItemText(pObj, 0));
@@ -900,7 +900,7 @@ int32_t BrUiFn1003F0B0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: finishes an edit and copies the typed text into a third
  * name store, again only if it differs by more than capitalisation. */
-/* @implements 0x1003F110 d3d BrUiFn1003F110 */
+/* port-only body; Glide match is src/core/generated/0x10038650.c */
 int32_t BrUiFn1003F110(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_readback(pObj, pG, pG->szA9DD28);
@@ -928,7 +928,7 @@ int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: finishes an edit, clears a highlight, and copies the typed
  * text into yet another name store if it has really changed. */
-/* @implements 0x1003F210 d3d BrUiFn1003F210 */
+/* port-only body; Glide match is src/core/generated/0x10038750.c */
 int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText;
@@ -942,7 +942,7 @@ int32_t BrUiFn1003F210(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: clears that same highlight when the row has text, and
  * nothing more. */
-/* @implements 0x1003F280 d3d BrUiFn1003F280 */
+/* port-only body; Glide match is src/core/generated/0x100387C0.c */
 int32_t BrUiFn1003F280(BrUiObj *pObj, BrUiGlobals *pG)
 {
     br23_clear_bit4_if_text(pG->pAA29BC, BrUiItemText(pObj, 0));
