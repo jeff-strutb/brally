@@ -742,7 +742,7 @@ int32_t BrNetSlotGetF030(BrNetState *pNet, int32_t slot,
 /* WHAT IT DOES: stores a player's name into their network slot, under that
  * slot's lock. The original copied without limit; this version truncates to
  * the field's size. */
-/* @implements 0x10005EE0 d3d BrNetSlotSetName */
+/* port-only body; Glide match is src/core/generated/0x10006250.c */
 void BrNetSlotSetName(BrNetState *pNet, int32_t slot, const char *pszName)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];

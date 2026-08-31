@@ -809,7 +809,7 @@ int32_t BrNetSlotGetF004(BrNetState *pNet, int32_t slot)
  * into a shared scratch buffer. Because the buffer is shared, the answer is
  * only good until the next call. The original copied with no length limit at
  * either end; this one is bounded. */
-/* @implements 0x10005E70 d3d BrNetSlotName */
+/* port-only body; Glide match is src/core/generated/0x100061E0.c */
 char *BrNetSlotName(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
