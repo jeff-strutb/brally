@@ -61,6 +61,22 @@
 /* XSLICE 0x10B4E70C */ extern uint32_t g_uB4E70C;
 /* XSLICE 0x10AA26E8 */ extern const int8_t  g_abAA26E8[];
 /* XSLICE 0x10A9D068 */ extern const int16_t g_awA9D068[];
+/* Glide addresses: 0x10037660 / 0x100376B0 / 0x100376E0 store these
+ * absolutely (`xor eax,eax` / `mov eax,K` then `mov [DAT],r`). */
+extern int32_t  DAT_100b3014;          /* g0B380C */
+extern int32_t  DAT_10226e80;          /* g22B350 */
+extern int32_t  DAT_10226e7c;          /* g22B34C */
+extern int32_t  DAT_1007b324;          /* g094354 */
+extern int32_t  DAT_1007b32c;          /* g09435C */
+extern int32_t  DAT_1007b328;          /* g094358 */
+extern int32_t  DAT_10b71530;          /* gB4E1D0 */
+extern void    *DAT_10b71534;          /* gB4E1D4 */
+extern int32_t  DAT_1007b320;          /* g094350 */
+extern unsigned char DAT_10b71290[];   /* g_B4DF30 */
+extern int16_t  DAT_10ac5b38;          /* gAA27E0 */
+extern int32_t  DAT_10ac58f0;          /* gAA2598 */
+extern int16_t  DAT_10ac5b3a;          /* gAA27E2 */
+extern int32_t  DAT_10ac40a0;          /* gA9D010 */
 
 typedef struct { int32_t v; } BrUiSelArg;
 typedef int32_t(__fastcall *BrUiSelOfferFn)(BrUiObj *pThis, BrUiSelArg a);
@@ -409,6 +425,26 @@ const char *BrDPlayErrName(int32_t hr)
  * -- no track, no opponents chosen, the first control layout selected --
  * which is what a fresh trip into the menus begins from. */
 /* @implements 0x1003DFC0 d3d BrUiFn1003DFC0 */
+#ifdef BR_MATCHING_BUILD
+/* Orig (Glide 0x10037660, 66 B) is ten stores to fixed globals and reads
+ * nothing off the stack.  `xor eax,eax` / `mov ecx,1` feed the 0/1 stores;
+ * 2 and the 0x10B4DF30 pointer are imm32.  The port's pState/pB4DF30
+ * arguments are the matching-build's DAT_ symbols. */
+void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
+{
+    (void)pState;
+    (void)pB4DF30;
+    DAT_100b3014 = 0;
+    DAT_10226e80 = 0;
+    DAT_10226e7c = 0;
+    DAT_1007b324 = 1;
+    DAT_1007b32c = 2;
+    DAT_1007b328 = 1;
+    DAT_10b71530 = 0;
+    DAT_10b71534 = DAT_10b71290;
+    DAT_1007b320 = 1;
+}
+#else
 void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
 {
     pState->g0B380C = 0;
@@ -421,6 +457,7 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
     pState->gB4E1D4 = pB4DF30;
     pState->g094350 = 1;
 }
+#endif
 
 /* ==========================================================================
  * 0x1003E010 / 0x1003E040
@@ -431,21 +468,45 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
  * pair the new-session reset writes, so this is a partial re-do of that
  * reset. */
 /* @implements 0x1003E010 d3d BrUiFn1003E010 */
+#ifdef BR_MATCHING_BUILD
+/* Orig materialises 0x102 in eax, stores ax as word then eax as dword.
+ * Link-stage jmp+nop preamble is stripped by match_sweep. */
+void BrUiFn1003E010(BrUiGlobals *pG)
+{
+    int v;
+    (void)pG;
+    v = 0x102;
+    DAT_10ac5b38 = (int16_t)v;
+    DAT_10ac58f0 = v;
+}
+#else
 void BrUiFn1003E010(BrUiGlobals *pG)
 {
     pG->gAA27E0 = (int16_t)0x0102;
     pG->gAA2598 = 0x102;
 }
+#endif
 
 /* WHAT IT DOES: the companion of the above, stamping a different fixed pair
  * into two more session settings. Again the meaning of the values was not
  * established. */
 /* @implements 0x1003E040 d3d BrUiFn1003E040 */
+#ifdef BR_MATCHING_BUILD
+void BrUiFn1003E040(BrUiGlobals *pG)
+{
+    int v;
+    (void)pG;
+    v = 0x37;
+    DAT_10ac5b3a = (int16_t)v;
+    DAT_10ac40a0 = v;
+}
+#else
 void BrUiFn1003E040(BrUiGlobals *pG)
 {
     pG->gAA27E2 = (int16_t)0x0037;
     pG->gA9D010 = 0x37;
 }
+#endif
 
 /* ==========================================================================
  * 0x1003E0E0
