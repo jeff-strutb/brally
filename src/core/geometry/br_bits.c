@@ -30,16 +30,15 @@ void BR_THISCALL BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
 void BrSwapVec3(void *pv)
 {
     unsigned char *p = (unsigned char *)pv;
-    int i;
+    unsigned char t;
 
-    for (i = 0; i < 3; i++) {
-        unsigned char a = p[i * 4 + 0];
-        unsigned char b = p[i * 4 + 1];
-        p[i * 4 + 0] = p[i * 4 + 3];
-        p[i * 4 + 3] = a;
-        p[i * 4 + 1] = p[i * 4 + 2];
-        p[i * 4 + 2] = b;
-    }
+    /* temp holds HIGH on both pairs of each dword (p[3]/p[0] then p[2]/p[1]). */
+    t = p[3];  p[3]  = p[0];  p[0]  = t;
+    t = p[2];  p[2]  = p[1];  p[1]  = t;
+    t = p[7];  p[7]  = p[4];  p[4]  = t;
+    t = p[6];  p[6]  = p[5];  p[5]  = t;
+    t = p[11]; p[11] = p[8];  p[8]  = t;
+    t = p[10]; p[10] = p[9];  p[9]  = t;
 }
 
 /* 0x10018A50 (glide) == 0x1002B9E0 (d3d), 29 bytes, byte-identical.
@@ -57,7 +56,10 @@ void BrSwapVec3(void *pv)
  *
  * The loop itself is `dec ecx / jne`, entered only after the guard, and the
  * source pointer is loaded ONCE before the loop label at 0x10018A5C -- the
- * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it. */
+ * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it.
+ * Word-compose `lo=p[1]; hi=p[0]; *(u16*)p = lo|(hi<<8)` is the orig shape
+ * (xor edx; mov dl/dh; mov [eax],dx). Remaining 4B is dh-then-dl vs
+ * dl-then-dh -- same bag, TU-local schedule, do not grind. */
 /* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
  * Boss Rally's data files came from the N64 and store their numbers the other
  * way round from a PC, so they have to be turned around after loading. Asking
@@ -65,17 +67,18 @@ void BrSwapVec3(void *pv)
 /* @implements 0x10018A50 glide BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {
-    unsigned char *p = (unsigned char *)pv;
-    int i;
+    unsigned char *p;
 
     if (count <= 0)
         return;
-    for (i = 0; i < count; i++) {
-        unsigned char t = p[0];
-        p[0] = p[1];
-        p[1] = t;
+    p = (unsigned char *)pv;
+    do {
+        unsigned short lo, hi;
+        lo = p[1];
+        hi = p[0];
+        *(unsigned short *)p = (unsigned short)(lo | (hi << 8));
         p += 2;
-    }
+    } while (--count);
 }
 
 void *BrHandleLookup(void *const *apTable, uint32_t handle)
