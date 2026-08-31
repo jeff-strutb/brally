@@ -119,6 +119,14 @@ extern BrPhase *g_brAA2970;   /* 0x10AA2970                            */
 extern BrPhase_ *g_brAA297C;  /* 0x10AA297C  = g_pBase->pAA297C        */
 extern BrPhase_ *g_brAA2998;  /* 0x10AA2998  = g_pExt->pAA2998         */
 extern BrPhase_ *g_brPhaseAA2904; /* 0x10AA2904 = BR_PHASE_CUR's dword  */
+extern int32_t   g_br0AA010;  /* 0x100AA010                            */
+extern int32_t   g_br0AC304;  /* 0x100AC304                            */
+extern BrPhase  *g_brAA29B4;  /* 0x10AA29B4                            */
+extern BrPhase  *g_brAA2950;  /* 0x10AA2950                            */
+extern BrPhase  *g_brAA2954;  /* 0x10AA2954                            */
+extern int32_t   g_brAA29E4;
+extern int32_t   g_brAA29E0;
+extern int32_t   g_brAA285C;
 extern int32_t  g_brAA2A48;   /* 0x10AA2A48  ring write index          */
 extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
 extern BrPhase *g_brAA2934;
@@ -563,6 +571,19 @@ int BrPhaseActivate_10046260(void)
  * opening, wires the resulting screen's Back row, and leaves the menus in a
  * particular mode. */
 /* @implements 0x10046380 d3d BrPhaseHook_10046380 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseHook_10046380(void *pArg)
+{
+    /* Orig is one-arg cdecl; it pushes that arg at Activate_45110, which
+     * ignores it. Same shape as BrPhaseHook_10045050, n0AA010 = 2. */
+    g_br0AC304 = 0;
+    (void)BrPhaseActivate_10045110((BrPhaseCtx *)pArg);
+    g_br0AC304 = 1;
+    g_brAA29B4->pfnHook = BrPhaseLeave_10046D20;
+    g_br0AA010 = 2;
+    return 1;
+}
+#else
 int BrPhaseHook_10046380(void *pArg)
 {
     g_pBase->n0AC304 = 0;
@@ -573,6 +594,7 @@ int BrPhaseHook_10046380(void *pArg)
     g_pBase->n0AA010 = 2;
     return 1;
 }
+#endif
 
 /* ==========================================================================
  * LEAVE routines
@@ -607,6 +629,22 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* @implements 0x10046400 d3d BrSub10046400 */
 int32_t BrSub10046400(BrGameObj *p)
 {
+#ifdef BR_MATCHING_BUILD
+    BrPhase *pCur;
+    BrPhase *pNext;
+
+    ((const Br31SubVtblMatch *)p->pSub->pVtbl)->pfnSlot7(p->pSub);
+    pCur = g_brPhaseAA2904;
+    if (pCur != NULL)
+        (void)((const Br31PhaseVtblMatch *)pCur->pVtbl)->f00(pCur, pCur->pVtbl, 1);
+    pNext = g_brAA2950;
+    g_brAA2954 = NULL;
+    g_brAA29E4 = 0;
+    g_brAA29E0 = 0;
+    g_brAA285C = 0;
+    g_brPhaseAA2904 = pNext;
+    return 0;
+#else
     BrPhase *pNext;
 
     Br31LeavePrologue(p);
@@ -617,6 +655,7 @@ int32_t BrSub10046400(BrGameObj *p)
     g_pExt->nAA285C  = 0;
     BR_PHASE_CUR = pNext;
     return 0;
+#endif
 }
 
 BR31_LEAVE(BrPhaseLeave_10046450, g_pBase->pAA2908,
