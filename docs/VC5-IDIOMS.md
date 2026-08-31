@@ -1205,3 +1205,12 @@ matched in ~10 min; a 165 B float function (BrVec3Project) is permanently
 stuck at 30 diffs of scheduling residue. Int/call-heavy code sustains
 5–10 min/function at any size once the file's context is loaded. The float/
 x87 cluster carries the walls and is a separate workstream.
+
+## 2026-08-30 wave merge
+
+Consumed `build/match/idioms_new/8bed6233.md` (one scratch file). POD writer
+family 0x10008BA0 / 0x10008BE0 / 0x10008C80 is already in Proven idioms
+(Add MATCH /O2; Open/Close REGNORM 0+0 store-vs-push schedule wall). **0 new.**
+
+`build/match/walls_log.csv` not present — no per-`<kind>` counts. No
+parked-wall kind newly retryable (no new idiom landed).
