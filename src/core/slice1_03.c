@@ -449,7 +449,7 @@ BrComLockHooks *BrComGetLockHooks(void)
  * holding. Nothing happens unless the holder, the object and the argument
  * are all present. Note the holder is looked up again after the call, so a
  * callback that swaps it out clears the new holder rather than the old one. */
-/* @implements 0x1000C4A0 d3d BrComHolderRelease */
+/* port-only body; Glide match is src/core/generated/0x100099D0.c */
 int BrComHolderRelease(void)
 {
     BrComHolder *pHolder = g_pComHolder;
