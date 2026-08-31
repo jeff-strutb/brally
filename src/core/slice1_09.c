@@ -403,40 +403,7 @@ void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
 /* Float math                                                          */
 /* ================================================================== */
 
-/* 0x10074250.
- * x87 order recovered by tracing the fxch chain: the sum is built as
- * (f04^2 + f08^2) + f00^2, then  k = 1.0f / sqrtf(sum)  (fdivr against the
- * 1.0f at 0x1008FC48), then each component is multiplied by k. The
- * association is preserved below even though it cannot change the result by
- * more than rounding. */
-/* WHAT IT DOES: scales a 3D direction so it is exactly one unit long. Used
- * wherever the game needs a pure direction -- a surface normal, a facing --
- * rather than a length. */
-/* @implements 0x10074250 d3d BrVec3Normalise */
-void BrVec3Normalise(BrVec3 *pV)
-{
-    float sum = (pV->y * pV->y + pV->z * pV->z) + pV->x * pV->x;
-    float k   = 1.0f / sqrtf(sum);
-    pV->x *= k;
-    pV->y *= k;
-    pV->z *= k;
-}
-
-/* 0x100741B0. Same shape over four components; sum is
- * ((f04^2 + f08^2) + f0C^2) + f00^2. */
-/* WHAT IT DOES: the same unit-length scaling over four components, which is
- * what the game's car orientations use. */
-/* @implements 0x100741B0 d3d BrVec4Normalise */
-void BrVec4Normalise(BrVec4 *pV)
-{
-    float sum = ((pV->f04 * pV->f04 + pV->f08 * pV->f08)
-                 + pV->f0C * pV->f0C) + pV->f00 * pV->f00;
-    float k   = 1.0f / sqrtf(sum);
-    pV->f00 *= k;
-    pV->f04 *= k;
-    pV->f08 *= k;
-    pV->f0C *= k;
-}
+/* BrVec3Normalise / BrVec4Normalise live in br_vecnorm.c. */
 
 /* 0x100747C0.
  * Written out longhand rather than with temporaries so that the write order

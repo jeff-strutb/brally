@@ -12,6 +12,7 @@
 #define BR_VEC_H
 
 typedef struct BrVec3 { float x, y, z; } BrVec3;
+typedef struct BrVec4 { float f00, f04, f08, f0C; } BrVec4;
 
 /* 0x1003AC30  out = a x b   (right-handed cross product) */
 void  BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB);
@@ -63,6 +64,11 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB);
  * spills it through a 4-byte stack slot), unlike BrVec3dLen which keeps double
  * precision throughout. Do not implement this as sqrtf of a double sum. */
 float BrVec3Length(const BrVec3 *pV);
+
+/* 0x1006D4B0  v *= 1.0f / |v|  (no zero-length guard) */
+void BrVec3Normalise(BrVec3 *pV);
+/* 0x1006D410  same over four components */
+void BrVec4Normalise(BrVec4 *pV);
 
 /* 0x10071B60  1 if pA->y is strictly below pB->y, or either is NaN; else 0. */
 int BrSub10071B60(const BrVec3 *pA, const BrVec3 *pB);
