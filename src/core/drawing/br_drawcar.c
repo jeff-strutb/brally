@@ -743,10 +743,10 @@ static void wheel_call(unsigned char *car)
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
     unsigned char *car = (unsigned char *)pCar;
-    const unsigned char *model;
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
+    uint8_t  pack[4];
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
@@ -791,9 +791,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         }
     }
 
-    /* 0xA232 -- model setup. */
+    /* 0xA232 -- model setup.  Re-read BrG_6C3308 at every use. */
     BrG_6C3308 = *(void *const *)(car + BR_CAR_OFF_MODEL);
-    model = (const unsigned char *)BrG_6C3308;
 
     /* 0xA23D -- LOD computation. */
     if (g_brRaceBeginNTexSet == 2) {
@@ -871,12 +870,16 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
                   ((uint32_t)((int32_t)(BrG_6C0960   * 4) / 5) << 16) |
                   ((uint32_t)((int32_t)(BrG_6C65BC   * 4) / 5) << 8);
     } else {
+        pack[0] = BrG_6C335C;
+        pack[1] = BrG_6C0968;
         colourA = ((uint32_t)BrG_6C1580 << 24) |
-                  ((uint32_t)BrG_6C335C << 16) |
-                  ((uint32_t)BrG_6C0968 << 8);
+                  ((uint32_t)pack[0] << 16) |
+                  ((uint32_t)pack[1] << 8);
+        pack[0] = BrG_6C0960;
+        pack[1] = BrG_6C65BC;
         colourB = ((uint32_t)g_BrDrawByte80 << 24) |
-                  ((uint32_t)BrG_6C0960 << 16) |
-                  ((uint32_t)BrG_6C65BC << 8);
+                  ((uint32_t)pack[0] << 16) |
+                  ((uint32_t)pack[1] << 8);
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
@@ -1114,7 +1117,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x03820010u, specMem + 0x10);
 
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
-    lodOff = (uint32_t)lodBias * 40;
+    /* lea eax,[eax+eax*4]; shl eax,3  — not imul 40. */
+    lodOff = (uint32_t)((lodBias + lodBias * 4) << 3);
 
     if (g_BrDrawSuppress == 0 &&
         *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
@@ -1147,7 +1151,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBC00240Au, colourB);
         put(0xBA000C02u, BrG_6C0258);
         {
-            uint32_t underDL = *(const uint32_t *)(model + 0x8038 + lodOff);
+            uint32_t underDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff);
             if (underDL != 0)
                 put(0x06000000u, underDL);
         }
@@ -1163,24 +1167,24 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xB176 -- model DL hook: 4-way selection on aux flags x f0E68 sign. */
     {
-        uint8_t iTex = *(const uint8_t *)(model + 0x811B);
+        uint8_t iTex = *(const uint8_t *)((const unsigned char *)BrG_6C3308 + 0x811B);
         const unsigned char *pTexRecs =
-            *(const unsigned char *const *)(model + 0x8014);
+            *(const unsigned char *const *)((const unsigned char *)BrG_6C3308 + 0x8014);
         if (*(const uint32_t *)(pTexRecs + (uint32_t)iTex * 36 + 4) != 0 &&
             BrBootGlobal_ABAA0() == 0) {
             float fe68 = *(const float *)(car + BR_CAR_OFF_F0E68);
             uint32_t auxFlags =
                 *(const uint32_t *)(*(void *const *)(car + BR_CAR_OFF_U29C0));
-            uint32_t dlBase = *(const uint32_t *)(model + 0x80);
+            uint32_t dlBase = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80);
             uint32_t dlSel;
             if (auxFlags & 0xC0000u) {
                 dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)(model + 0x90)
-                    : *(const uint32_t *)(model + 0x88);
+                    ? *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x90)
+                    : *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x88);
             } else {
                 dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)(model + 0x8C)
-                    : *(const uint32_t *)(model + 0x84);
+                    ? *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8C)
+                    : *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x84);
             }
             if (g_BrDrawModelDlHook)
                 g_BrDrawModelDlHook(dlBase, dlSel);
@@ -1206,7 +1210,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         if (dot > 0.0) {
             /* 0xB2CB -- glass pass. */
             BrGfxEmitTexCmd(6,
-                *(const void *const *)(model + 0x8014));
+                *(const void *const *)((const unsigned char *)BrG_6C3308 + 0x8014));
             put(0xE7000000u, 0);
             put(0xBA001402u, 0x00100000u);
             put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
@@ -1226,7 +1230,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(0xF50001F0u, 0x06000000u);
             put(0xF5000100u, 0x05000000u);
             {
-                uint32_t glassDL = *(const uint32_t *)(model + 0x8030 + lodOff);
+                uint32_t glassDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff);
                 if (glassDL != 0)
                     put(0x06000000u, glassDL);
             }
@@ -1235,7 +1239,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xB4AA -- detail pass. */
     BrGfxEmitTexCmd(3,
-        *(const void *const *)(model + 0x8014));
+        *(const void *const *)((const unsigned char *)BrG_6C3308 + 0x8014));
     put(0xE7000000u, 0);
     put(0xBA001402u, 0x00100000u);
     put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
@@ -1255,7 +1259,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xF50001F0u, 0x06000000u);
     put(0xF5000100u, 0x05000000u);
     {
-        uint32_t detailDL = *(const uint32_t *)(model + 0x8024 + lodOff);
+        uint32_t detailDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff);
         if (detailDL != 0)
             put(0x06000000u, detailDL);
     }
@@ -1379,14 +1383,14 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
     {
-        uint32_t bodyDL2 = *(const uint32_t *)(model + 0x8028 + lodOff);
+        uint32_t bodyDL2 = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8028 + lodOff);
         if (bodyDL2 != 0)
             put(0x06000000u, bodyDL2);
     }
 
     /* 0xBCBF -- reflection DL at model + lodOff + 0x803C (conditional). */
     {
-        uint32_t refDL = *(const uint32_t *)(model + 0x803C + lodOff);
+        uint32_t refDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x803C + lodOff);
         if (refDL != 0 &&
             (g_BrDrawSuppress != 0 ||
              *(const int32_t *)(car + BR_CAR_OFF_I29B4) != 0))
@@ -1429,7 +1433,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 #ifdef BR_MATCHING_BUILD
     g_6C161C += *(const int32_t *)((const unsigned char *)BrG_6C3308 + 0x8000);
 #else
-    BrS17GetState()->f6C161C += *(const int32_t *)(model + 0x8000);
+    BrS17GetState()->f6C161C += *(const int32_t *)((const unsigned char *)BrG_6C3308 + 0x8000);
 #endif
 }
 
