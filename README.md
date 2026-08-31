@@ -93,48 +93,54 @@ struct splits (BrFadeTick, BrInputIsDown) were driven correctly, and a couple of
 cases that cannot hold on a 64-bit / non-x87 host are quarantined with reasons.
 The per-frame race render is the last major rendering gate.
 
-| Aspect | Measure | |
-|---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **887 functions · 90,140 bytes** — verify with `python3 tools/total.py` | |
-| Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
-| Hand-C target (DLL) | 1,529 functions (2,140 mapped − 611 linker/EH-reproduced) · 453,803 B of `.text` — `python3 tools/coverage.py` | |
-| Transcribed into C (DLL) | 1,191 / 1,529 hand-C functions · 256,928 B | `████████████████░░░░` 78% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 741 / 1,529 hand-C functions · 62,527 B (741 of the 1,191 transcribed, 62%) | `██████████░░░░░░░░░░` 48% |
-| Byte-exact, of all DLL `.text` (C + C++ EH) | 79,691 / 480,853 bytes | `███░░░░░░░░░░░░░░░░░` 17% |
-| **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 44 matched · 4,919 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 47% |
-| BossRally.exe (user region) | 35 matched · 2,482 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
-| C++ EH class (tree-resident) | 42 functions · 17,164 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 43% of C++ code |
-| Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
-| Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
-| Port test suite | **136 / 136 green** | `████████████████████` 100% |
+### Completion by tier — BRGlide.dll, the game (1,529 hand-C functions)
 
-The hand-C rows are the ones that count; everything else is diagnostics.
-
-### Where every game-DLL function stands — four tiers
-
-Each of the 1,529 hand-C functions is in exactly one of these states
-(`python3 tools/tiers.py`, recomputed from the compared objects):
+Every hand-written-C function in the game DLL is in exactly one of four states
+(`python3 tools/tiers.py`, recomputed from the compared objects). This is the
+core of the project — the game DLL is 94% of the byte-exact target.
 
 | Tier | State | Functions | Bytes of `.text` | |
 |---|---|---|---|---|
 | **T1** | **still asm** — no hand-written C yet, only raw decompiler output | 338 | 196,875 | `████░░░░░░░░░░░░░░░░` 22% |
-| **T2** | **decomp'd, real differences remain** — C exists but instructions genuinely differ (missing/extra/changed logic) | 404 | 186,844 | `█████░░░░░░░░░░░░░░░` 26% |
-| **T3** | **codegen-only difference** — compiled to the *same instructions* as the original, differing only in register allocation / scheduling | 46 | 7,557 | `█░░░░░░░░░░░░░░░░░░░` 3% |
+| **T2** | **decomp'd, real differences remain** — C exists but the instructions genuinely differ (missing/extra/changed logic) | 404 | 186,844 | `█████░░░░░░░░░░░░░░░` 26% |
+| **T3** | **codegen-only difference** — compiles to the *same instructions* as the original; only register allocation / scheduling differ | 46 | 7,557 | `█░░░░░░░░░░░░░░░░░░░` 3% |
 | **T4** | **byte-exact** — diffs clean against the original | 741 | 62,527 | `█████████░░░░░░░░░░░` 48% |
+| | **T3 + T4 done or done-bar-codegen** | **787** | 70,084 | `██████████░░░░░░░░░░` 51% |
 
 **T3 is a static estimate, not a behavioural proof.** "Functionally exact"
 strictly means *same inputs produce same outputs*, which requires running both
 versions against each other — an oracle that does not exist for arbitrary
 functions here. T3 is the strongest static proxy: an identical register-blind
 instruction multiset of matching length, so only register colouring and
-scheduling separate it from byte-exact. Read it as "done bar codegen", and as
-work not to be thrown away chasing the last bytes — not as certified.
+scheduling separate it from byte-exact. Read it as "done bar codegen" — work not
+to be thrown away chasing the last bytes — not as certified.
 
-Reading the tiers together: 787 functions (T3+T4) are done or done-bar-codegen;
-404 are transcribed with real work left; 338 have not been started. The exact
-set is small-function-heavy, so by raw bytes (62,527 of 453,803) the campaign is
-earlier than the function count suggests.
+The exact set is small-function-heavy, so by raw bytes (62,527 of 453,803) the
+campaign is earlier than the function count suggests.
+
+### The other in-scope areas
+
+The game DLL's C++ exception-handling code and the three shipped executables are
+tracked as byte-exact / target; they are not yet split into the four tiers
+above (only completed matches are recorded for them).
+
+| Area | Byte-exact (T4) | Notes | |
+|---|---|---|---|
+| **BRally.exe** (launcher) | 24 / 24 user functions · 2,831 B | game code COMPLETE | `████████████████████` 100% |
+| BossRally.exe (user region) | 35 · 2,482 B of 3,008 B | rest is static CRT | `████████████████░░░░` 81% |
+| SetVideo.exe (user region) | 44 · 4,919 B of 10,448 B | rest is static CRT | `█████████░░░░░░░░░░░` 47% |
+| C++ EH class (in game DLL) | 42 · 17,164 B | of ~98; incl. the 8,349 B largest match in the project | `████████░░░░░░░░░░░░` 43% |
+
+### Whole-project totals
+
+| Aspect | Measure | |
+|---|---|---|
+| **TOTAL byte-exact (all binaries, C + C++)** | **887 functions · 90,140 bytes** — `python3 tools/total.py` | |
+| Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
+| Byte-exact, of all DLL `.text` (C + C++ EH) | 79,691 / 480,853 bytes | `███░░░░░░░░░░░░░░░░░` 17% |
+| Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
+| Port test suite | **136 / 136 green** | `████████████████████` 100% |
+| Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 
 One denominator note: a large share of the mapped entries are not hand-written
 C at all -- linker import thunks, incremental-link jump stubs, and C++
@@ -161,10 +167,12 @@ run merges its results back, so the normal case is a single file
 the tree total too); the whole-tree sweep is bookkeeping, not part of the work
 loop.
 
-`python3 tools/progressmap.py --svg docs/progress-map.svg` renders the same
-data as a treemap — every known Glide function as a tile sized by its original
-bytes, grouped by module: green byte-exact, amber tagged with diffs remaining,
-gray untranscribed. The interactive version is `build/match/map.html`; hover a
+`python3 tools/progressmap.py -o build/match/map.html --svg docs/progress-map.svg`
+renders the same data as a treemap — every known Glide function as a tile sized
+by its original bytes, grouped by module, coloured by the four tiers: **green
+T4 byte-exact, blue T3 codegen-only, amber T2 diffs remain, gray T1 still asm**,
+plus purple for linker/CRT code that is reproduced by the link stage (fenced,
+not a decomp target). The interactive version is `build/match/map.html`; hover a
 tile for name, VA, size and diff count.
 
 ![decomp progress treemap](docs/progress-map.svg)

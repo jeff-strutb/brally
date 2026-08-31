@@ -17,6 +17,7 @@ FUNCS = os.environ.get("BR_MAP", os.path.join(ROOT, "config", "functions_glide.c
 REPORT = os.path.join(ROOT, "build", "match", "report.csv")
 
 GREEN, AMBER, GRAY = "#3fb950", "#d29922", "#c8ccd2"
+BLUE = "#58a6ff"    # codegen-only diff (T3): same instructions, register/sched only
 FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompiled
 
 # Per-EXE static-CRT boundary: functions at/after this VA are linked library
@@ -52,6 +53,7 @@ def load():
     # C++ EH matches verified off-report (total.py manifest) — mark them
     # matched so the DLL map reflects them, grouped into their own region.
     cpp = _match_set("cpp_matches.csv")
+    t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/tiers.py
     funcs = []
     with open(FUNCS) as f:
         for r in csv.DictReader(f):
@@ -60,13 +62,20 @@ def load():
                 continue
             m = rep.get(va)
             is_cpp = va in cpp
+            if is_cpp or (m and m["status"] == "match"):
+                status = "match"
+            elif m and va in t3:
+                status = "codegen"     # T3: same instructions, register/sched only
+            elif m:
+                status = "diff"
+            else:
+                status = "todo"
             funcs.append({
                 "va": va, "size": size,
                 "name": (m and m["name"]) or r.get("name") or "",
                 "file": ("src/core/cpp/(C++ EH)" if is_cpp
                          else (m and m["file"]) or ""),
-                "status": ("match" if is_cpp or (m and m["status"] == "match")
-                           else "diff" if m else "todo"),
+                "status": status,
                 "diffs": 0 if is_cpp
                          else (int(m["diffs"]) if (m and str(m["diffs"]).strip())
                                else 0 if m else -1),
@@ -171,8 +180,10 @@ def stats(funcs):
     return dict(
         total_b=sum(f["size"] for f in funcs),
         match_b=sum(f["size"] for f in funcs if f["status"] == "match"),
+        codegen_b=sum(f["size"] for f in funcs if f["status"] == "codegen"),
         tag_b=sum(f["size"] for f in funcs if f["status"] != "todo"),
         n_match=sum(1 for f in funcs if f["status"] == "match"),
+        n_codegen=sum(1 for f in funcs if f["status"] == "codegen"),
         n=len(funcs))
 
 
@@ -213,16 +224,15 @@ def render_svg(funcs, out_path):
                 parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>'
                              % (x + 3, y + 10.5, html.escape(obj.split("/")[-1])))
         else:
-            color = {"match": GREEN, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s">'
                          '<title>%s</title></rect>'
                          % (x, y, w, h, color, html.escape(tooltip(obj, gname))))
     parts.append('<text x="8" y="%d" font-size="13" fill="#e6edf3">'
-                 'byte-exact %d/%d functions &#183; %s / %s bytes exact (%.1f%%) &#183; '
-                 '%s bytes transcribed (%.1f%%)</text></svg>'
-                 % (H + 20, s["n_match"], s["n"], "{:,}".format(s["match_b"]),
-                    "{:,}".format(s["total_b"]), 100.0 * s["match_b"] / s["total_b"],
-                    "{:,}".format(s["tag_b"]), 100.0 * s["tag_b"] / s["total_b"]))
+                 'T4 byte-exact %d &#183; T3 codegen-only %d &#183; %s/%s bytes exact '
+                 '(%.1f%%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>'
+                 % (H + 20, s["n_match"], s["n_codegen"], "{:,}".format(s["match_b"]),
+                    "{:,}".format(s["total_b"]), 100.0 * s["match_b"] / s["total_b"]))
     with open(out_path, "w") as f:
         f.write("\n".join(parts))
     print("%s: svg snapshot" % out_path)
@@ -243,7 +253,7 @@ def render(funcs, out_path):
                 % (x, y, w, h,
                    '<span class="gl">%s</span>' % html.escape(obj.split("/")[-1]) if obj else ""))
         else:
-            color = {"match": GREEN, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
             cells.append(
                 '<div class="f" title="%s" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;'
                 'height:%.1fpx;background:%s"></div>'
@@ -267,19 +277,20 @@ def render(funcs, out_path):
 <header>
  <h1>BRGlide.dll — matching decomp progress</h1>
  <div class="stats">
-  <span>byte-exact: <b>%(nm)d / %(nf)d</b> functions (%(nmp).1f%%)</span>
+  <span>T4 byte-exact: <b>%(nm)d / %(nf)d</b> functions (%(nmp).1f%%)</span>
+  <span>T3 codegen-only: <b>%(nc)d</b></span>
   <span>bytes exact: <b>%(mb)s / %(tb)s</b> (%(mbp).1f%%)</span>
-  <span>bytes transcribed (tagged): <b>%(gb)s</b> (%(gbp).1f%%)</span>
  </div>
- <div class="bar"><i style="width:%(mbp).2f%%;background:%(green)s"></i><i style="width:%(dbp).2f%%;background:%(amber)s"></i></div>
- <div class="legend"><i style="background:%(green)s"></i>byte-exact<i style="background:%(amber)s"></i>tagged, diffs remain<i style="background:%(gray)s"></i>untranscribed</div>
+ <div class="bar"><i style="width:%(mbp).2f%%;background:%(green)s"></i><i style="width:%(cbp).2f%%;background:%(blue)s"></i><i style="width:%(dbp).2f%%;background:%(amber)s"></i></div>
+ <div class="legend"><i style="background:%(green)s"></i>T4 byte-exact<i style="background:%(blue)s"></i>T3 codegen-only<i style="background:%(amber)s"></i>T2 diffs remain<i style="background:%(gray)s"></i>T1 still asm<i style="background:%(fenced)s"></i>linker/CRT (fenced)</div>
 </header>
 <div id="map">%(cells)s</div>
 """ % dict(W=W, H=H, cells="".join(cells), green=GREEN, amber=AMBER, gray=GRAY,
+           blue=BLUE, fenced=FENCED, nc=s["n_codegen"], cbp=100.0 * s["codegen_b"] / total_b,
            nm=n_match, nf=len(funcs), nmp=100.0 * n_match / len(funcs),
            mb="{:,}".format(match_b), tb="{:,}".format(total_b),
            mbp=100.0 * match_b / total_b, gb="{:,}".format(tag_b),
-           gbp=100.0 * tag_b / total_b, dbp=100.0 * (tag_b - match_b) / total_b)
+           gbp=100.0 * tag_b / total_b, dbp=100.0 * (tag_b - match_b - s["codegen_b"]) / total_b)
     with open(out_path, "w") as f:
         f.write(page)
     print("%s: %d functions, %d groups" % (out_path, len(funcs), ngroups))

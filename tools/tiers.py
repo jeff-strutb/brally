@@ -72,6 +72,13 @@ def main():
         near = m and (m['reg'] <= REG_GAP_MAX or (m['oi'] and m['reg'] <= REG_FRAC_MAX * m['oi']))
         (t3 if (complete and near) else t2).append((r, m))
 
+    # manifest of the T3 (codegen-only) VAs so the treemap can recolour them
+    man = os.path.join(ROOT, 'build', 'match', 'tier3.csv')
+    with open(man, 'w', newline='') as f:
+        w = csv.writer(f); w.writerow(['va', 'bytes'])
+        for r, _ in t3:
+            w.writerow([r['va'], r['orig_size']])
+
     n_target = len(target)
     n_tr = len(match) + len(diff)          # transcribed = has @implements
     n_t1 = n_target - n_tr
