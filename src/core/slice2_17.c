@@ -1258,7 +1258,7 @@ void BrS17Release(void)
 /* 0x1002C2B0 */
 /* WHAT IT DOES: books a tidy-up routine to run automatically when the program
  * exits, and reports whether the booking was accepted. */
-/* @implements 0x1002C2B0 d3d BrS17RegisterAtExit */
+/* @implements 0x10019820 glide BrS17RegisterAtExit */
 int BrS17RegisterAtExit(void)
 {
     return BrXAtExit(BrX1002C2C0);
@@ -1500,7 +1500,7 @@ void BrRenderCountersReset(void)
 /* 0x10031282 */
 /* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
  * what the routine below does and nothing else. */
-/* @implements 0x10031282 d3d BrScreenSizeInit */
+/* @implements 0x1002A932 glide BrScreenSizeInit */
 void BrScreenSizeInit(void)
 {
     BrScreenSizeApply();

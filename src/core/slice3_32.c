@@ -1133,7 +1133,7 @@ void BrPhaseDtor_10048870(BrPhaseFull *pThis)
 /* WHAT IT DOES: calls one particular slot of a screen's own behaviour table
  * and always reports success. Nothing in this packet fills that slot, so what
  * the call actually does depends entirely on the screen. */
-/* @implements 0x100488B0 d3d BrPhaseFn_100488B0 */
+/* @implements 0x10041D00 glide BrPhaseFn_100488B0 */
 int BR_THISCALL1 BrPhaseFn_100488B0(BrPhaseFull *pThis)
 {
     /* vtable +0x20 -- a slot no function in this packet implements. */

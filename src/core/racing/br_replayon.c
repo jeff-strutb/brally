@@ -70,7 +70,7 @@ void BrTickAdd_10078C10(void)
 
 /* WHAT IT DOES: how long has this been running?  Current counter minus
  * the value stored when the run started. */
-/* @implements 0x100713A0 d3d BrDelta_100713A0 */
+/* @implements 0x1006A310 glide BrDelta_100713A0 */
 int BrDelta_100713A0(void)
 {
     return BrExt_10075020() - (int)g_178FEE8;

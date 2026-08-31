@@ -263,7 +263,7 @@ void BrSub_10019270(void)
 /* 0x10019280 */
 /* WHAT IT DOES: switches text drawing back to left-aligned, so writing that
  * follows starts at the position given rather than being centred on it. */
-/* @implements 0x10019280 d3d BrSub_10019280 */
+/* @implements 0x10016840 glide BrSub_10019280 */
 void BrSub_10019280(void)
 {
     g_br4B035C = 0;

@@ -19,7 +19,7 @@ uint32_t g_363F68[32];
 
 /* WHAT IT DOES: turn off a one-byte text-pass flag sitting next to the
  * alignment byte.  The next string is drawn without that special pass. */
-/* @implements 0x10019250 d3d BrClear_10019250 */
+/* @implements 0x10016810 glide BrClear_10019250 */
 void BrClear_10019250(void)
 {
     g_4B0360 = 0;
@@ -27,7 +27,7 @@ void BrClear_10019250(void)
 
 /* WHAT IT DOES: centre the next string the HUD/menu text emitter draws.
  * 0 is left, 1 is right, 2 is centre -- this is the centre setter. */
-/* @implements 0x10019270 d3d BrSet_10019270 */
+/* @implements 0x10016830 glide BrSet_10019270 */
 void BrSet_10019270(void)
 {
     g_4B035C = 2;
@@ -43,7 +43,7 @@ void BrClearTables_1000F620(void)
 
 /* WHAT IT DOES: rewind a two-word cursor so the next read starts at the
  * beginning. */
-/* @implements 0x10073B90 d3d BrPairReset_10073B90 */
+/* @implements 0x1006CDD0 glide BrPairReset_10073B90 */
 void BR_THISCALL1 BrPairReset_10073B90(uint32_t *pThis)
 {
     pThis[0] = 0;
