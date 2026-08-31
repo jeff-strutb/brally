@@ -188,10 +188,10 @@ float BrSndDoppler(const BrVec3 *pSrcPos, const BrVec3 *pSrcPrev,
     BrVec3Sub(&vSrc, pSrcPos, pSrcPrev);    /* source travel this frame    */
 
     len = BrVec3Length(&u);
-    /* `fcomp 0.0f` then `test ah,0x40` (C3, "equal") and jne to skip.  An
-     * unordered compare also sets C3, so a NaN length skips normalising
-     * too -- hence the explicit two-sided test rather than `len != 0`. */
-    if (len > 0.0f || len < 0.0f)
+    /* orig: `fst [len]; fcomp 0.0f; fnstsw ax; test ah,0x40; jne skip`.
+     * VC5's `!= 0.0f` is that single C3 test (NaN also sets C3, so a NaN
+     * length skips too). A two-sided `> || <` emits a second fcomp. */
+    if (len != 0.0f)
         BrVec3DivBy(&u, len);
 
     /* Argument order preserved: the original passes the velocity first and
