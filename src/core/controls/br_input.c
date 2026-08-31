@@ -148,6 +148,17 @@ extern uint32_t g_brActivateGate2;   /* 0x1068059C / 0x105BC744 */
 extern uint32_t g_brActivateGate3;   /* 0x106805A0 / 0x105BC748 */
 extern void BrOnActivateTail(void);  /* 0x10008B80 / 0x10008D60, bare ret */
 
+__declspec(dllimport) int32_t __stdcall GetWindowLongA(void *hWnd, int nIndex);
+__declspec(dllimport) int32_t __stdcall DefWindowProcA(void *hWnd, uint32_t uMsg,
+                                                       uint32_t wParam, int32_t lParam);
+__declspec(dllimport) int32_t __stdcall InvalidateRect(void *hWnd, void *pRc, int fErase);
+__declspec(dllimport) int32_t __stdcall MessageBoxA(void *hWnd, const char *pszText,
+                                                    const char *pszCap, uint32_t uType);
+__declspec(dllimport) int32_t __stdcall PostMessageA(void *hWnd, uint32_t uMsg,
+                                                     uint32_t wParam, int32_t lParam);
+__declspec(dllimport) void    __stdcall PostQuitMessage(int nExit);
+__declspec(dllimport) void   *__stdcall SetCursor(void *hCursor);
+
 void BrOnActivate(BrWParam wParam)
 {
     uint32_t lo;
@@ -206,6 +217,66 @@ void BrOnActivate(BrWParam wParam)
  * mode, and if that fails it apologises with a message box and asks the window
  * to close. Both halves live in one function and the second is not an else of
  * the first, so a single call can do both. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_br105CCB5C;
+extern int32_t g_br105CCB88;
+extern int32_t g_br105BC8DC;
+extern int32_t g_br10226A48;
+extern int32_t g_br10226A44;
+extern int32_t g_br10AF21B0;
+extern int32_t g_br100BCBE8;
+extern int32_t g_br100A9354;
+extern int32_t g_brAppModeW;
+extern int32_t g_brAppModeH;
+extern void BrSub100609F0(void);
+extern void BrSub10002EB0(void);
+extern void BrSub1006BD70(void);
+extern void BrSub10061440(void);
+extern void BrSub10004F50(void);
+extern void BrSub10005330(void);
+extern void BrSub1007296C(void);
+extern int32_t BrSetVideoMode(int32_t w, int32_t h);
+extern char *BrStrId(int32_t id);
+extern void BrSub10019A40(void);
+
+/* @implements 0x10019350 glide BrOnActivateApp */
+BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
+{
+    g_brActivateGate1 = (uint32_t)wParam;
+    if (wParam == 0) {
+        if (g_br105CCB5C == 0 && g_br105CCB88 == 0) {
+            BrSub100609F0();
+            BrSub10002EB0();
+            BrSub1006BD70();
+            BrSub10061440();
+            g_br105BC8DC = 0;
+            if (g_br10226A48 != 0 && g_br10226A44 != 0 &&
+                g_br105CCB88 == 0 && g_br10AF21B0 < g_br100BCBE8) {
+                BrSub10004F50();
+                BrSub10005330();
+            } else {
+                g_br105CCB5C = 1;
+            }
+        }
+        BrOnActivateTail();
+        BrSub1007296C();
+        g_br100A9354 = 1;
+        InvalidateRect(hWnd, 0, 0);
+    }
+    if (g_brActivateGate1 != 0) {
+        if (g_br100A9354 == 1 && g_brActivateGate3 == 0) {
+            if (BrSetVideoMode(g_brAppModeW, g_brAppModeH) == 0) {
+                MessageBoxA(hWnd, BrStrId(0x129), 0, 0);
+                PostMessageA(hWnd, 0x10, 0, 0);
+            }
+            g_br100A9354 = 2;
+        }
+        BrOnActivateTail();
+        BrSub10019A40();
+    }
+    return DefWindowProcA(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
+}
+#else
 /* @implements 0x10019350 glide BrOnActivateApp */
 BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
@@ -292,6 +363,7 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
     r.lResult      = 0;
     return r;
 }
+#endif
 
 /* ================================================================== *
  * 0x10019480 -- WM_SYSCOMMAND. 61 bytes, __cdecl, three arguments.
@@ -309,6 +381,24 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
  * window from the system menu, so the display stays the size the game set it
  * to; anything else on that menu is passed through to Windows untouched. It
  * also asks Windows for the window's user data and throws the answer away. */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10019480 glide BrOnSysCommand */
+BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
+{
+    uint32_t sc;
+
+    GetWindowLongA(hWnd, -21);
+    sc = (uint32_t)wParam;
+    switch (sc) {
+    case 0xF000u:
+    case 0xF010u:
+    case 0xF030u:
+        return 0;
+    default:
+        return DefWindowProcA(hWnd, 0x112, sc, (int32_t)lParam);
+    }
+}
+#else
 /* @implements 0x10019480 glide BrOnSysCommand */
 BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
@@ -339,6 +429,7 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
     r.lResult      = 0;
     return r;
 }
+#endif
 
 /* ================================================================== *
  * 0x100194C0 -- THE WINDOW PROCEDURE. 423 bytes, __stdcall, four arguments.
@@ -352,6 +443,92 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
  * it is destroyed, keeps the mouse pointer hidden, and hands focus changes to
  * the handlers above. Anything it does not recognise goes back to Windows for
  * the default treatment. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_br10AC5C5C;
+extern int32_t g_br10AC5C58;
+extern int32_t g_br10AC408C;
+extern int32_t g_brAudioMode;      /* 0x1007B074 */
+extern int32_t g_brEarMsg;         /* 0x104B1620 */
+extern int32_t g_br1021C770;
+extern void   *g_brhWnd;
+extern int32_t BrGet1021C788(void);
+extern void __stdcall BrSub100590D0(int32_t, void *, uint32_t, uint32_t, int32_t);
+extern void __stdcall BrSub10035A30(void *, uint32_t, uint32_t, int32_t);
+extern void BrSub10002CF0(void);
+extern void BrSub10002580(void);
+extern void BrSub10002AF0(int32_t n);
+extern void BrSub10002F70(void);
+extern void BrSub10002760(void);
+extern void BrSub100325B0(int32_t a);
+extern void BrSub10002830(void);
+
+/* @implements 0x100194C0 glide BrWndProc */
+BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
+{
+    int32_t iMode;
+    int32_t *pHook = (int32_t *)g_br10AC5C5C;
+
+    if (pHook != 0 && pHook[0x68 / 4] != 0) {
+        BrSub100590D0(g_br10AC5C58, hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+        if (g_br10AC408C != 0)
+            BrSub10035A30(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+    }
+
+    iMode = g_brAudioMode;
+    if (iMode == 2) {
+        if ((int32_t)uMsg == g_brEarMsg) {
+            if (lParam == 2) {
+                if ((int32_t)wParam == BrGet1021C788())
+                    BrSub10002CF0();
+            }
+            return 0;
+        }
+        if (uMsg == 0x219u) {
+            if (wParam == 0x8000u) {
+                BrSub10002580();
+                BrSub10002AF0(1);
+            }
+            if (wParam == 0x8001u || wParam == 0x8003u || wParam == 0x8004u) {
+                BrSub10002F70();
+                BrSub10002760();
+            }
+            return 1;
+        }
+    }
+
+    switch (uMsg) {
+    case 1:
+        g_brhWnd = hWnd;
+        return 0;
+    case 2:
+        BrSub100325B0(0);
+        PostQuitMessage(0);
+        goto defwnd;
+    case 6:
+        BrOnActivate(wParam);
+        return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+    case 0x1C:
+        return BrOnActivateApp(hWnd, wParam, lParam);
+    case 0x20:
+        SetCursor(0);
+        return 1;
+    case 0x112:
+        return BrOnSysCommand(hWnd, wParam, lParam);
+    case 0x3B9:
+        if (iMode != 1)
+            goto defwnd;
+        if (lParam == (BrLParam)g_br1021C770 &&
+            wParam == 1 &&
+            g_br105CCB5C == 0)
+            BrSub10002830();
+        return 0;
+    default:
+        goto defwnd;
+    }
+defwnd:
+    return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+}
+#else
 /* @implements 0x100194C0 glide BrWndProc */
 BrWndResult BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
@@ -473,6 +650,7 @@ BrWndResult BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lPara
     r.lResult      = 0;
     return r;
 }
+#endif
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
