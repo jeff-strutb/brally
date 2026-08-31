@@ -113,6 +113,12 @@ the caller AND flipped a helper to match for free.
   no bytes. Generalizes BR_THISCALL1. Proven on BrBoundsFits_10058CC0 and
   four C++ scalar deleting destructors (`push esi; mov esi,ecx; call ~T;
   test byte [esp+8],1; jz; push esi; call operator delete`).
+  **Call site: do not pass literal 0 for `_edx_unused`.** That emits
+  `xor edx,edx` (the Ghidra `CC_fast_4(..., 0, args)` miss). Pass a value
+  already live in edx — here the first stack arg, which the original loads
+  into edx (`mov edx,[esp+4]`) and then `push edx`. `f(this, param_1,
+  param_1, …)` keeps ecx=this, four stack args, no edx setup. Proven
+  0x1003AF30 (42 B, MATCH /O2).
 - **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
   { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the

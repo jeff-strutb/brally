@@ -462,6 +462,7 @@ g_br0AB3E0,0x100AAB80,3,1,"named global, no address recorded",0x1003CD00
 DAT_100aab8c,0x100AAB8C,2,1,"named global, no address recorded",0x100387F0
 DAT_100aab94,0x100AAB94,2,1,"named global, no address recorded",0x1003B020
 g_i0AB3F4,0x100AAB94,12,1,"named global, no address recorded",0x10038220 0x1003AF60 0x1003B970
+DAT_100aacf8,0x100AACF8,2,1,"named global, no address recorded",0x1003AF30
 g_aBrUiSprite,0x100AAD08,4,1,"named global, no address recorded",0x10040E20
 g_AC300,0x100ABAA0,5,1,"named global, no address recorded",0x1001CD50 0x1005F220
 DAT_100abaa8,0x100ABAA8,3,1,"named global, no address recorded",0x1003C430
@@ -868,6 +869,7 @@ DAT_10ac40a0,0x10AC40A0,2,1,"named global, no address recorded",0x100387F0
 DAT_10ac40a8,0x10AC40A8,4,1,"named global, no address recorded",0x10038750
 DAT_10ac4100,0x10AC4100,10,1,"named global, no address recorded",0x1003AF60 0x1003B020 0x1003B970
 g_aBrA9D618,0x10AC46A0,3,1,"named global, no address recorded",0x10040790
+DAT_10ac4c58,0x10AC4C58,2,1,"named global, no address recorded",0x1003AF30
 DAT_10ac4db0,0x10AC4DB0,15,1,"named global, no address recorded",0x100368A0 0x10038650 0x1003C430
 DAT_10ac53e8,0x10AC53E8,5,1,"named global, no address recorded",0x10058300 0x10058380
 g_aBrAA2538,0x10AC5890,33,1,"named global, no address recorded",0x10036100 0x10051550 0x10051580 0x100515B0
@@ -906,6 +908,7 @@ g_brAA28F0,0x10AC5C48,3,1,"named global, no address recorded",0x10040900
 DAT_10ac5c4c,0x10AC5C4C,3,1,"named global, no address recorded",0x100409F0
 DAT_10ac5c50,0x10AC5C50,5,1,"named global, no address recorded",0x100387F0 0x10040930
 DAT_10ac5c54,0x10AC5C54,17,1,"named global, no address recorded",0x100387F0 0x1003C430 0x10040960
+DAT_10ac5c5c,0x10AC5C5C,2,1,"named global, no address recorded",0x1003AF30
 g_brPhaseAA2904,0x10AC5C5C,17,1,"named global, no address recorded",0x10038C60 0x100403A0 0x10040410 0x100404A0 0x10055A40 0x10055AF0 0x100597C0
 g_brPhaseAA292C,0x10AC5C84,3,1,"named global, no address recorded",0x10040410
 g_brPhaseAA293C,0x10AC5C94,3,1,"named global, no address recorded",0x100404A0

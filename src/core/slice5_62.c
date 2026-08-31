@@ -29,13 +29,11 @@ BrX419D0State *BrX419D0GetState(void)
     return &s_x419D0;
 }
 
-/* WHAT IT DOES: PURPOSE UNKNOWN. Observably it picks one object out of a
+/* WHAT IT DOES: SetStatusText. Observably it picks one object out of a
  * table -- which one is decided by a separate global index -- and calls one
  * particular routine on it, passing the caller's argument along with three
- * fixed values. Neither the table nor the object has a recoverable type, so
- * what the call is FOR cannot be stated. If the chosen slot is empty it does
- * nothing. */
-/* @implements 0x100419D0 d3d BrExt_100419D0 */
+ * fixed values. If the chosen slot is empty it does nothing.
+ * Matching twin: ghidra_batch.c BrExt_100419D0 (Glide 0x1003AF30). */
 void BrExt_100419D0(void *p)
 {
     BrX419D0State  *pSt = &s_x419D0;
