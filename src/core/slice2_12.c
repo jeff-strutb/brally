@@ -845,7 +845,7 @@ void BrNetSetF10220DD0(BrNetState *pNet)
 /* 0x100060C0 */
 /* WHAT IT DOES: lowers the same networking flag its neighbour raises, under
  * the same lock. */
-/* @implements 0x100060C0 d3d BrNetClearF10220DD0 */
+/* port-only body; Glide match is src/core/generated/0x10006430.c */
 void BrNetClearF10220DD0(BrNetState *pNet)
 {
     BrNetMutexLock(pNet->h1022131C);
