@@ -850,6 +850,56 @@ int BrOpt3810(BrGameObj *pGame)
 /* @implements 0x10043A00 d3d BrOpt3A00 */
 int BrOpt3A00(void)
 {
+#ifdef BR_MATCHING_BUILD
+    /* orig: KERNEL32 IAT (FF 15 / call esi), strcpy as repne scasb+rep movs,
+     * SetSessionDesc stdcall `push 0; push desc; push this; call [vtbl+0x7c]`,
+     * too-few path inlines FlushMessage (not a helper call). */
+    BrDPSessionDesc *pDesc;
+    int              fAllReady;
+    BrSlot          *pSlot;
+    typedef long (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
+    __declspec(dllimport) void *__stdcall GlobalHandle(void *);
+    __declspec(dllimport) int   __stdcall GlobalUnlock(void *);
+    __declspec(dllimport) void *__stdcall GlobalFree(void *);
+
+    pDesc = NULL;
+    BrSub1003D0B0(g_brP277B40, &pDesc);
+    if (pDesc == NULL)
+        return 1;
+
+    if (pDesc->dwCurrentPlayers <= 1) {
+        strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TOOFEW));
+        BrSub1003D210(g_brP680584, g_brPA9D008, 1);
+        strcpy(g_aBrA9DD28, g_aBr39B720);
+    } else if (g_brAA2884 != 0) {
+        fAllReady = 1;
+        for (pSlot = g_aBrAA2538; pSlot < g_aBrAA2538 + BR_SLOT_COUNT; pSlot++) {
+            if (pSlot->a != 0)
+                continue;
+            if (pSlot->id != BR_SLOT_EMPTY) {
+                fAllReady = 0;
+                break;
+            }
+        }
+        if (fAllReady) {
+            BrSub1003D9F0(g_brPA9D008);
+            g_brAA288C = 1;
+            pDesc->dwFlags |= 0x20;
+            ((FnSetDesc)g_brP277B40->pVtbl->pfnSetSessionDesc)(
+                g_brP277B40, pDesc, 0);
+        } else {
+            strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_NOTREADY));
+            BrSub1003D210(g_brP680584, g_brPA9D008, 1);
+            strcpy(g_aBrA9DD28, g_aBr39B720);
+        }
+    } else {
+        BrSub1003D950(g_brPA9D008, BrSub10058700());
+    }
+
+    GlobalUnlock(GlobalHandle(pDesc));
+    GlobalFree(GlobalHandle(pDesc));
+    return 1;
+#else
     BrDPSessionDesc *pDesc = NULL;
     int              fAllReady;
     int              i;
@@ -859,12 +909,9 @@ int BrOpt3A00(void)
         return 1;
 
     if (pDesc->dwCurrentPlayers <= 1) {
-        /* "not enough players": a bare string, not a format. */
-        strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TOOFEW));   /* DEVIATION */
+        strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TOOFEW));
         BrOptFlushMessage();
     } else if (g_brAA2884 != 0) {
-        /* Every occupied slot (id != BR_SLOT_EMPTY) must have a non-zero
-         * second field. An unoccupied slot never blocks. */
         fAllReady = 1;
         for (i = 0; i < BR_SLOT_COUNT; ++i) {
             if (g_aBrAA2538[i].a != 0)
@@ -877,10 +924,10 @@ int BrOpt3A00(void)
         if (fAllReady) {
             BrSub1003D9F0(g_brPA9D008);
             g_brAA288C = 1;
-            pDesc->dwFlags |= 0x20;    /* DPSESSION_JOINDISABLED */
+            pDesc->dwFlags |= 0x20;
             g_brP277B40->pVtbl->pfnSetSessionDesc(g_brP277B40, pDesc, 0);
         } else {
-            strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_NOTREADY)); /* DEVIATION */
+            strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_NOTREADY));
             BrSub1003D210(g_brP680584, g_brPA9D008, 1);
             strcpy(g_aBrA9DD28, g_aBr39B720);
         }
@@ -891,6 +938,7 @@ int BrOpt3A00(void)
     BrGlobalUnlock(BrGlobalHandle(pDesc));
     BrGlobalFree(BrGlobalHandle(pDesc));
     return 1;
+#endif
 }
 
 /* ==========================================================================
