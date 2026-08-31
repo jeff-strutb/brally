@@ -268,6 +268,39 @@ int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
  * in that frame's picture and hands the element the frame's data. An element
  * that is not animated is simply redrawn as it stands. */
 /* @implements 0x10047A10 d3d BrUiStepCode_10047A10 */
+#ifdef BR_MATCHING_BUILD
+typedef struct BrUiMVtbl {
+    void *f00, *f04, *f08, *f0C, *f10, *f14;
+    void (__fastcall *f18)(void *pThis, void *edx, void *p);
+    void (BR_THISCALL1 *f1C)(void *pThis);
+} BrUiMVtbl;
+typedef struct BrUiMStep {
+    struct BrUiMVtbl *pVtbl;
+    unsigned char pad04[0x128 - 4];
+    short w128;
+    unsigned char pad12a[0x296c - 0x12a];
+    int f296c;
+    unsigned char pad2970[0x2a40 - 0x2970];
+    short w2a40[1];
+    unsigned char pad2a42[0x1e20c - 0x2a42];
+    short w1e20c;
+    unsigned char pad1e20e[2];
+    unsigned char *p1e210;
+} BrUiMStep;
+
+int BR_THISCALL1 BrUiStepCode_10047A10(BrUiMStep *p)
+{
+    int i;
+    if (p->f296c == 0) {
+        p->pVtbl->f1C(p);
+        return 1;
+    }
+    i = p->w128;
+    p->w1e20c = p->w2a40[i];
+    p->pVtbl->f18(p, p->pVtbl, p->p1e210 + (i << 4));
+    return 1;
+}
+#else
 int BrUiStepCode_10047A10(BrUiObj *pObj)
 {
     if (BrScrLd32(pObj, BR_SCR_UI_F296C) == 0) {
@@ -286,6 +319,7 @@ int BrUiStepCode_10047A10(BrUiObj *pObj)
     }
     return 1;
 }
+#endif
 
 /* ==========================================================================
  * 2. 0x10047CB0 .. 0x10047D30 -- the two-axis tween
@@ -295,6 +329,27 @@ int BrUiStepCode_10047A10(BrUiObj *pObj)
  * where the element is now and works out how far it must travel per step to
  * arrive in the number of steps asked for. */
 /* @implements 0x10047CB0 d3d BrUiTweenBegin_10047CB0 */
+#ifdef BR_MATCHING_BUILD
+typedef struct BrUiTwBegin {
+    unsigned char pad00[0x30];
+    float f30, f34, f38, f3c, f40, f44;
+    unsigned char pad48[0x381c - 0x48];
+    float twlo;
+    float twhi;
+    float twrate;
+} BrUiTwBegin;
+
+int __fastcall BrUiTweenBegin_10047CB0(BrUiTwBegin *p, int _edx, int n)
+{
+    float r;
+    r = (p->twhi - p->twlo) / n;
+    p->f30 = p->f3c;
+    p->f38 = p->f44;
+    p->f34 = p->f40;
+    p->twrate = r;
+    return 1;
+}
+#else
 int BrUiTweenBegin_10047CB0(BrUiObj *pObj, int32_t n)
 {
     /* fld [+0x3820]; fsub [+0x381C]; fidiv [n]. `n` is an INTEGER divisor;
@@ -309,6 +364,7 @@ int BrUiTweenBegin_10047CB0(BrUiObj *pObj, int32_t n)
     BrScrStF(pObj, BR_SCR_UI_TWRATE, (float)d);
     return 1;
 }
+#endif
 
 /* WHAT IT DOES: says how far along its slide an element should be after a
  * given number of milliseconds. The distance grows with the square of the time,
@@ -359,6 +415,23 @@ float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
 /* WHAT IT DOES: snaps a sliding element back to where it started and sets it
  * moving again from there. */
 /* @implements 0x10047D10 d3d BrUiTweenReset_10047D10 */
+#ifdef BR_MATCHING_BUILD
+typedef struct BrUiTwReset {
+    unsigned char pad00[0x30];
+    float f30, f34, f38, f3c, f40, f44;
+    unsigned char pad48[0x3818 - 0x48];
+    int twactive;
+} BrUiTwReset;
+
+int BR_THISCALL1 BrUiTweenReset_10047D10(BrUiTwReset *p)
+{
+    p->f3c = p->f30;
+    p->f40 = p->f34;
+    p->twactive = 1;
+    p->f44 = p->f38;
+    return 1;
+}
+#else
 int BrUiTweenReset_10047D10(BrUiObj *pObj)
 {
     BrScrSt32(pObj, BR_UI_OFF_F3C, BrScrLd32(pObj, BR_SCR_UI_F30));
@@ -367,6 +440,7 @@ int BrUiTweenReset_10047D10(BrUiObj *pObj)
     BrScrSt32(pObj, BR_SCR_UI_F44, BrScrLd32(pObj, BR_SCR_UI_F38));
     return 1;
 }
+#endif
 
 /* One axis of 0x10047D30. Returns 1 when the axis counts as FINISHED. */
 static int BrScrTweenAxis(BrUiObj *pObj, size_t offOn, size_t offDir,
