@@ -133,11 +133,10 @@ void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
 /* @implements 0x10073BC0 d3d BrBitStreamReadU8 */
 unsigned char BR_THISCALL1 BrBitStreamReadU8(BrBitStream *pBs)
 {
-    int i;
     BrBitStreamAlignRead(pBs);
-    i = pBs->readByte;
-    pBs->readByte = i + 1;
-    return pBs->pBuf[i];
+    /* Orig `inc ecx` after the byte load: post-increment the cursor, do not
+     * write `i + 1` (that is `lea ecx,[ecx+1]`). */
+    return pBs->pBuf[pBs->readByte++];
 }
 
 /* 0x10073BE0  big-endian u16; DH gets byte 0, DL byte 1, EDX pre-zeroed. */
