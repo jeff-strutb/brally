@@ -574,18 +574,24 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 /* WHAT IT DOES: tells the hardware to use one particular texture out of a
  * table, unless that texture's record is flagged as one to skip, in which case
  * nothing is emitted and whatever texture was in use stays. */
+/* @implements 0x1002AB32 glide BrGfxEmitTexCmd */
 /* @implements 0x10031481 d3d BrGfxEmitTexCmd */
 void BrGfxEmitTexCmd(int i, const void *pRecords)
 {
 #ifdef BR_MATCHING_BUILD
-    /* Orig recomputes i*0x24 twice (`imul` each) and dword-loads
-     * `[base+i*0x24+0x20]` / `[base+i*0x24]`. A cached rec pointer plus
-     * memcpy ld32 drops the imuls and inserts CRT calls. */
+    /* Orig /Od: two `imul i,0x24`, dword `[base+i*0x24+disp]`,
+     * `if (((f20>>20)&1)==0) { p=pGfx; pGfx=pGfx+2; *p=w0; p[1]=1; }`.
+     * `if (bit) return` becomes je+jmp; the do-while(0) emit macro
+     * emits xor/test/jne under /Od; bumping from the local CSEs the
+     * second pGfx load. */
     if (((*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE + 0x20)
-          >> 20) & 1) != 0)
-        return;
-    s17_emit((*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE)
-              & 0x00FFFFFFu) | 0xDC000000u, 1);
+          >> 20) & 1) == 0) {
+        unsigned int *p = (unsigned int *)g_s17.pGfx;
+        g_s17.pGfx = g_s17.pGfx + 2;
+        p[0] = (*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE)
+                & 0x00FFFFFFu) | 0xDC000000u;
+        p[1] = 1;
+    }
 #else
     const unsigned char *rec =
         (const unsigned char *)pRecords + (size_t)i * BR_TEXREC_STRIDE;
