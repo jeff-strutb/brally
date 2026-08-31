@@ -793,7 +793,7 @@ void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
 /* 0x10005CF0 */
 /* WHAT IT DOES: reads one identifying number out of a player slot under that
  * slot's lock. */
-/* @implements 0x10005CF0 d3d BrNetSlotGetF004 */
+/* port-only body; Glide match is src/core/generated/0x10006060.c */
 int32_t BrNetSlotGetF004(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
