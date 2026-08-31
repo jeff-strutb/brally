@@ -1377,6 +1377,45 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
 /* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
  * quarter-pixel units. The corners are unsigned in this form. The port
  * records the resulting screen window but does not itself paint the pixels. */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_100a7518;
+void FUN_1001e380(int, int, int, int);
+
+/* @implements 0x1001E320 glide br_dl_fillF6 */
+static const uint8_t *br_dl_fillF6(const uint8_t *p)
+{
+    int H, ulx, uly, lrx, lry;
+    unsigned w0, w1;
+
+    w1 = *(const unsigned *)(p + 4);
+    w0 = *(const unsigned *)p;
+    H = DAT_100a7518;
+    uly = ((int)(w1 << 20) >> 22) & 0x3FF;
+    lry = ((int)(w0 << 20) >> 22) & 0x3FF;
+    lrx = ((int)(w0 << 8) >> 22) & 0x3FF;
+    ulx = ((int)(w1 << 8) >> 22) & 0x3FF;
+    FUN_1001e380(ulx, H - lry - 1, lrx + 1, H - uly);
+    return p + 8;
+}
+
+/* @implements 0x1001E720 glide br_dl_fillE1 */
+static const uint8_t *br_dl_fillE1(const uint8_t *p)
+{
+    int H, ulx, uly, lrx, lry;
+    unsigned w0, w1;
+
+    w1 = *(const unsigned *)(p + 4);
+    w0 = *(const unsigned *)p;
+    H = DAT_100a7518;
+    uly = (int)(w1 << 20) >> 20;
+    lry = (int)(w0 << 20) >> 20;
+    lrx = (int)(w0 << 8) >> 20;
+    ulx = (int)(w1 << 8) >> 20;
+    FUN_1001e380(ulx, H - lry - 1, lrx + 1, H - uly);
+    return p + 8;
+}
+
+#else
 /* @implements 0x1001E320 glide br_dl_fillF6 */
 static const uint8_t *br_dl_fillF6(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 1); }
@@ -1387,6 +1426,7 @@ static const uint8_t *br_dl_fillF6(BrDl *d, const uint8_t *p)
 /* @implements 0x1001E720 glide br_dl_fillE1 */
 static const uint8_t *br_dl_fillE1(BrDl *d, const uint8_t *p)
 { return br_dl_rect(d, p, 0, 0); }
+#endif
 /* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
  * command behind heads-up display panels and menu artwork -- with its
  * corners given in quarter-pixel units. It swallows three commands' worth of
@@ -1532,6 +1572,38 @@ static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
  * of transparency, and this expands it back out to four full bytes -- the
  * transparency bit becoming either fully solid or fully clear, never
  * anything between. */
+#ifdef BR_MATCHING_BUILD
+extern unsigned char DAT_105ccd40;
+extern unsigned char DAT_105ccfd8;
+extern unsigned char DAT_105d17a0;
+extern unsigned char DAT_105ce208;
+
+/* @implements 0x1001E9F0 glide br_dl_fillcolour */
+static const uint8_t *br_dl_fillcolour(const uint8_t *p)
+{
+    unsigned w1;
+    unsigned char a, b;
+
+    w1 = *(const unsigned *)(p + 4);
+    a = (unsigned char)(w1 >> 8);
+    b = (unsigned char)(w1 >> 13);
+    DAT_105ccd40 = (unsigned char)(a ^ ((a ^ b) & 7));
+
+    w1 = *(const unsigned *)(p + 4);
+    a = (unsigned char)(w1 >> 3);
+    b = (unsigned char)(w1 >> 8);
+    DAT_105ccfd8 = (unsigned char)(a ^ ((a ^ b) & 7));
+
+    a = (unsigned char)(*(const unsigned char *)(p + 4) & 0xFE);
+    b = (unsigned char)((*(const unsigned *)(p + 4) >> 3) & 7);
+    DAT_105d17a0 = (unsigned char)((unsigned char)(a << 2) | b);
+
+    w1 = *(const unsigned *)(p + 4);
+    DAT_105ce208 = (unsigned char)(0 - (int)(w1 & 1));
+    return p + 8;
+}
+
+#else
 /* @implements 0x1001E9F0 glide br_dl_fillcolour */
 static const uint8_t *br_dl_fillcolour(BrDl *pDl, const uint8_t *p)
 {
@@ -1556,6 +1628,7 @@ static const uint8_t *br_dl_fillcolour(BrDl *pDl, const uint8_t *p)
     pDl->fillColour = w1;
     return p + 8;                       /* 0x1001EA4E `add eax,8` */
 }
+#endif
 static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
 {
     pDl->fogColour = br_dl_w(p + 4);
@@ -1699,14 +1772,23 @@ static void br_dl_build_table(void)
     s_aTable[0xDD] = br_dl_retarget;
     s_aTable[0xDE] = br_dl_setDE;
     s_aTable[0xDF] = br_dl_setDF;
+#ifdef BR_MATCHING_BUILD
+    s_aTable[0xE1] = (BrDlHandler)br_dl_fillE1;
+#else
     s_aTable[0xE1] = br_dl_fillE1;
+#endif
     s_aTable[0xE2] = br_dl_scissorE2;    /* 0x1001EBC0 -- integer */
     s_aTable[0xE3] = br_dl_texE3;
     s_aTable[0xE4] = br_dl_texE4;
     s_aTable[0xED] = br_dl_scissorED;    /* 0x1001EB50 -- 10.2    */
     s_aTable[0xF2] = br_dl_settilesize;
+#ifdef BR_MATCHING_BUILD
+    s_aTable[0xF6] = (BrDlHandler)br_dl_fillF6;
+    s_aTable[0xF7] = (BrDlHandler)br_dl_fillcolour;
+#else
     s_aTable[0xF6] = br_dl_fillF6;
     s_aTable[0xF7] = br_dl_fillcolour;
+#endif
     s_aTable[0xF8] = br_dl_fogcolour;
     s_aTable[0xFA] = br_dl_prim;
     s_aTable[0xFB] = br_dl_env;
