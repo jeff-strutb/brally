@@ -4,6 +4,8 @@
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
+/* Orig takes no args: it walks DAT_10af2110 / DAT_100b2f04 directly. */
+#define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* The two 16-bit quantisers return `short` in the original: their results
  * are shifted in AX (`sar ax,8` / `sar ax,1`) and only then widened
  * (`movsx ecx,ax`), which VC5 only does when the value is known to be
@@ -19,10 +21,13 @@
 #include "slice2_12.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset
+#undef BrEntityCountActive
 #undef BrFixPackS16Q15Neg
 #undef BrFixPackS16Q7
 int16_t BrFixPackS16Q15Neg(float v);
 int16_t BrFixPackS16Q7(float v);
+/* 0x1007DE40 -- local `operator delete`, an E8, not CRT free (FF 15). */
+extern void BrOperatorDelete(void *p);
 
 /* 0x1006D0B0 BrBitStreamWriteBits is __thiscall in the original: `this` in
  * ECX, `value` and `nBits` pushed right-to-left and popped by the callee
@@ -630,6 +635,31 @@ void BrCarStateUnpack(BrCarState *pDst, const BrCarPacked *pSrc)
  * objects are in use, by checking each record's first word for a non-zero
  * value. */
 /* @implements 0x10005470 d3d BrEntityCountActive */
+#ifdef BR_MATCHING_BUILD
+/* Orig: `mov edx,[DAT_100b2f04]; mov ecx, offset DAT_10af2110` then a
+ * countdown do-while.  Parameters are a port convenience. */
+extern int32_t DAT_100b2f04;
+extern unsigned char DAT_10af2110[];
+uint32_t BrEntityCountActive(void)
+{
+    int32_t n = DAT_100b2f04;
+    uint32_t c = 0;
+    unsigned char *p;
+
+    /* Orig `test edx,edx; jle ret` — skip the countdown, do not early-return
+     * (that duplicates `ret`). */
+    if (n > 0) {
+        p = DAT_10af2110;
+        do {
+            if (*(int32_t *)p != 0)
+                ++c;
+            p += BR_ENTITY_STRIDE;
+            --n;
+        } while (n != 0);
+    }
+    return c;
+}
+#else
 uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
 {
     const unsigned char *p = (const unsigned char *)pvRecords;
@@ -645,6 +675,7 @@ uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
     }
     return n;
 }
+#endif
 
 /* 0x10005D40, and 0x10005D90 over the other pair of globals. */
 /* WHAT IT DOES: takes the top entry off one of the networking code's small
@@ -1002,9 +1033,13 @@ int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
 void BR_THISCALL1 BrKeyCacheReset(BrKeyCache *pCache)
 {
     if (pCache->pFile != NULL)
-        fclose(pCache->pFile);          /* 0x1007CD50 */
+        fclose(pCache->pFile);          /* 0x1007CD50  FF 15 */
     if (pCache->aEntries != NULL)
-        free(pCache->aEntries);         /* 0x1007DE40, operator delete */
+#ifdef BR_MATCHING_BUILD
+        BrOperatorDelete(pCache->aEntries);  /* 0x1007DE40  E8, not free */
+#else
+        free(pCache->aEntries);
+#endif
 
     pCache->aEntries = NULL;
     pCache->pFile    = NULL;
