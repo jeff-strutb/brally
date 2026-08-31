@@ -891,11 +891,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
     } else {
-        g_BrDrawDir0 = BrG_6C0670;
+        /* Orig: fld z, fld y, mov x, fstp y, mov x, fstp z — not a struct copy. */
+        g_BrDrawDir0.z = BrG_6C0670.z;
+        g_BrDrawDir0.y = BrG_6C0670.y;
+        g_BrDrawDir0.x = BrG_6C0670.x;
     }
     BrVec3NormaliseGuard(&g_BrDrawDir0);
 
-    g_BrDrawDir1 = g_BrDrawDir0;
+    /* Integer field copy, order x, z, y. */
+    g_BrDrawDir1.x = g_BrDrawDir0.x;
+    g_BrDrawDir1.z = g_BrDrawDir0.z;
+    g_BrDrawDir1.y = g_BrDrawDir0.y;
 
     {
         BrVec3 tmp;
@@ -979,21 +985,27 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             64, 64);
     }
 
-    /* 0xA820 -- dist-gated canned body-setup DL (0x100A9FC8 vs 0x100A9F00). */
+    /* 0xA820 -- dist-gated canned body-setup DL (0x100A9FC8 vs 0x100A9F00).
+     * Orig stores the ADDRESS of the object as an immediate, not a load. */
     if (dist > 10.0f)
-        put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA838);
+        put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA838);
     else
-        put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA770);
+        put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA770);
 
     /* 0xA86A -- Lights1 emission: static or dynamic. */
     if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
         put(0xBC000002u, 0x80000040u);
-        put(0x03860010u, (uint32_t)(uintptr_t)BrG_0AA868);
-        put(0x03880010u, (uint32_t)(uintptr_t)BrG_0AA860);
+        put(0x03860010u, (uint32_t)(uintptr_t)&BrG_0AA868);
+        put(0x03880010u, (uint32_t)(uintptr_t)&BrG_0AA860);
     } else {
-        unsigned char *dst = g_BrDrawLights + 24 * *(int32_t *)(car + BR_CAR_OFF_ICAR);
+        int32_t i = *(int32_t *)(car + BR_CAR_OFF_ICAR);
+        unsigned char *dst = g_BrDrawLights + ((i + i * 2) << 3);
         const float   *pPlayer = (const float *)BrG_6C2CF8;
+#ifdef BR_MATCHING_BUILD
+        memcpy(dst, (const void *)&BrG_0AA860, 24);
+#else
         memcpy(dst, (const void *)BrG_0AA860, 24);
+#endif
         dst[0x10] = (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
         dst[0x11] = (uint8_t)(int32_t)(pPlayer[1] * -120.0f);
         dst[0x12] = (uint8_t)(int32_t)(pPlayer[2] * -120.0f);
@@ -1079,7 +1091,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     if (car[BR_CAR_OFF_KIND] == 2)
         BrCarDrawWheels_raw(car);
 #else
-    if (bKind == 2)
+    if (car[BR_CAR_OFF_KIND] == 2)
         wheel_call(car);
 #endif
 
@@ -1396,7 +1408,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     if (car[BR_CAR_OFF_KIND] != 2)
         BrCarDrawWheels_raw(car);
 #else
-    if (bKind != 2)
+    if (car[BR_CAR_OFF_KIND] != 2)
         wheel_call(car);
 #endif
 
