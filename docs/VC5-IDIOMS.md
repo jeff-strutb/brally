@@ -1123,6 +1123,29 @@ the caller AND flipped a helper to match for free.
   (no init), `if (g != 0) { ... }` so one `je` to the shared pop/ret.
   Proven 0x10019840 (BrS17DrawGated, 71 B MATCH /O2).
 
+- **Segment-base setter is two globals plus a 0-arg helper, not a
+  pointer write.** Orig 0x10018A10 is `call BrRcaResetCounts; mov
+  [g_brSegN64Base],arg1; mov [g_brSegHostBase],arg2` (25 B). The port's
+  `pMap->n64Base = n64Base` is `[R],R` through the first arg. Keep the
+  3-arg header proto: matching treats arg1 as n64Base and arg2 as
+  hostBase, third unused. Proven 0x10018A10 (BrSegSetBases, MATCH /O2).
+
+- **LoadImageA is nested GetModuleHandleA; failed hbm is the live zero.**
+  Orig `push flags; ...; push 0; call GetModuleHandleA; push eax; call
+  LoadImageA`. On fail, `push 0x2010; push cy; push cx; push eax; push
+  name; push eax; call LoadImageA` — eax is still 0, used for both
+  IMAGE_BITMAP and hInst. `LoadImageA(NULL, ..., 0, ...)` emits extra
+  `push 0`. Proven 0x10001290 (136 B) and 0x1005A210 (101 B, file-only
+  LoadImageA(NULL, path, 0, 0, 0, 0x2010)) MATCH /O2.
+
+- **Fill-rect handlers are 1-arg; 10.2/s12 extract is shl/sar.** Orig
+  `mov esi,[esp+0xC]` (after push ebx/esi) then `mov edx,[DAT_100a7518]`.
+  `(w >> 2) & 0x3FF` is `shr` — orig is `((int)(w << 20) >> 22) & 0x3FF`
+  and `((int)(w << 8) >> 22) & 0x3FF` (0xF6) or `>> 20` with no mask
+  (0xE1). Then cdecl `FUN_1001e380(ulx, H-lry-1, lrx+1, H-uly)`. A
+  2-arg wrapper into a shared helper does not match. Proven 0x1001E320
+  (96 B) and 0x1001E720 (73 B) MATCH /O2.
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
