@@ -59,23 +59,14 @@ typedef struct BrRankPair {
  * "less than" rather than "equal", which is the original's behaviour and not
  * a tidy-up opportunity. */
 /* @implements 0x10066620 d3d BrRankCmpKey */
+/* @implements 0x1005F690 glide BrRankCmpKey */
 int BrRankCmpKey(const void *pA, const void *pB)
 {
-    const float a = *(const float *)pA;
-    const float b = *(const float *)pB;
-
-    /* First fcomp + `test ah,0x41` tests C0|C3, i.e. "a < b or a == b or
-     * unordered".  Taking the fall-through means strictly a > b, which is
-     * false for a NaN -- so `a > b` is the exact translation. */
-    if (a > b)
+    /* Orig is `fld [ecx]; fcomp [edx]` twice -- no float locals. */
+    if (*(const float *)pA > *(const float *)pB)
         return 1;
-
-    /* Second fcomp + `test ah,1` tests C0 alone, i.e. "a < b or unordered".
-     * !(a >= b) is exactly that, NaN included.  So an unordered pair reports
-     * -1 rather than 0; that is the original's behaviour, not a slip. */
-    if (!(a >= b))
+    if (!(*(const float *)pA >= *(const float *)pB))
         return -1;
-
     return 0;
 }
 
@@ -215,6 +206,7 @@ float BrSndDoppler(const BrVec3 *pSrcPos, const BrVec3 *pSrcPrev,
  * squeezes the whole stereo spread towards the middle. Which of the two gains
  * is the left speaker and which the right could not be established. */
 /* @implements 0x10067BC0 d3d BrSndPan */
+/* @implements 0x10060C30 glide BrSndPan */
 void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
               float *pGainA, float *pGainB, int32_t *pVol, int32_t fNarrow)
 {
@@ -225,9 +217,8 @@ void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
      * pan is measured along. */
     BrVec3Sub(&d, pSrcPos, (const BrVec3 *)(const void *)&pListener->m[3][0]);
 
-    /* Summation order is (m1x*dx + m1y*dy) + m1z*dz, as the fxch chain
-     * builds it. */
-    proj = pListener->m[1][0] * d.x + pListener->m[1][1] * d.y
+    /* Orig first fmul is m[1][1]*d.y (fld m10; fld m11; fmul dy). */
+    proj = pListener->m[1][1] * d.y + pListener->m[1][0] * d.x
          + pListener->m[1][2] * d.z;
 
     /* First branch falls through only on a strict >, second only on C0
