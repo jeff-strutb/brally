@@ -8,9 +8,16 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "slice4_50.h"
 #include "br_gamestep.h"   /* 0x10034C51 == BRGlide 0x1002E302 -- one slot, one owner */
+
+#ifdef BR_MATCHING_BUILD
+/* Orig inlines KERNEL32 IAT WaitForSingleObject / ReleaseMutex (FF 15). */
+__declspec(dllimport) int __stdcall WaitForSingleObject(void *, unsigned int);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+#endif
 
 /* ==========================================================================
  * Cross-slice callees. Each is already declared, with this exact signature,
@@ -29,7 +36,12 @@ extern void    *BrOperatorNew(uint32_t cb);
 extern void     BrExt_100419D0(void *p);
 /* XSLICE 0x10005470 -- slice2_12.h. The original reads its two operands from
  * 0x10ACEDB0 and 0x100B36FC; that port takes them as parameters. */
+#ifdef BR_MATCHING_BUILD
+/* Orig reads 0x10ACEDB0 / 0x100B36FC from inside the callee -- no args. */
+extern uint32_t BrEntityCountActive(void);
+#else
 extern uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords);
+#endif
 /* XSLICE 0x1000C670 -- slice2_13.h. 0xFFFF is its failure sentinel. */
 extern uint32_t BrDPlayGetCurrentPlayers(void);
 /* DEVIATION -- slice1_02.h. The original inlines KERNEL32
@@ -163,14 +175,23 @@ int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
                        float fovyDegrees, float aspect,
                        float n, float f, float scale)
 {
-    /* `scale` is pushed by the original and never read by 0x10030810; see the
-     * header. Consumed here so the argument list stays the caller's. */
+#ifdef BR_MATCHING_BUILD
+    /* pi/360 as a double so the half-angle multiply is `fmul qword`. fptan,
+     * two fchs, eight-arg call (scale is pushed and unused by Frustum).
+     * Return is the perspNorm pointer, not Frustum's status. */
+    float ty, h, w;
+    ty = (float)tan((double)fovyDegrees * 0.0087266462599716477);
+    h = n * ty;
+    w = h * aspect;
+    ((int (*)(BrMat4 *, float, float, float, float, float, float, float))BrMat4Frustum)
+        (pM, -w, w, -h, h, n, f, scale);
+    *pPerspNorm = 1;
+    return (int)pPerspNorm;
+#else
     (void)scale;
-
-    /* DEVIATION: returns BrMat4Frustum's status rather than the reloaded
-     * pPerspNorm pointer the original happens to leave in eax. */
     return BrMat4Perspective(pM, (unsigned short *)pPerspNorm,
                              fovyDegrees, aspect, n, f);
+#endif
 }
 
 /* ==========================================================================
@@ -261,26 +282,45 @@ void BrSub10043BF0(BrGameObj *p)
 void BrNetSendFlush(void)
 {
     uint32_t cActive;
+    uint32_t flag;
 
-    /* Taken and immediately released -- a rendezvous, not a critical
-     * section. See the header. */
+    /* Orig: WaitForSingleObject(h, INFINITE); reload h; load flag; ReleaseMutex(h). */
+#ifdef BR_MATCHING_BUILD
+    WaitForSingleObject(g_brH221324, 0xffffffffu);
+    flag = (uint32_t)g_br22AAA8;
+    ReleaseMutex(g_brH221324);
+    if (flag == 0) {
+        return;
+    }
+#else
     BrNetMutexLock(g_brH221324);
     BrNetMutexUnlock(g_brH221324);
 
     if (g_br22AAA8 == 0) {
         return;
     }
+#endif
 
+#ifdef BR_MATCHING_BUILD
+    cActive = BrEntityCountActive();
+#else
     cActive = BrEntityCountActive(g_brPACEDB0, g_br0B36FC);
+#endif
     if (cActive != BrDPlayGetCurrentPlayers()) {
         return;
     }
 
-    /* The original pushes the ADDRESS 0x10277B40, i.e. the pointer global
-     * itself, not the interface it holds. */
+    /* Orig pushes the ADDRESS of g_brP277B40 and of g_brPB4E2E8 (offset,
+     * not the pointer those globals hold). */
+#ifdef BR_MATCHING_BUILD
+    BrNetSend4760(&g_brP277B40, g_br094294, g_br22B34C,
+                  g_brAD0854[0], g_brAD0854[1], g_brAD0854[2],
+                  g_br277B48, (char *)&g_brPB4E2E8, 3, 0);
+#else
     BrNetSend4760(&g_brP277B40, g_br094294, g_br22B34C,
                   g_brAD0854[0], g_brAD0854[1], g_brAD0854[2],
                   g_br277B48, g_brPB4E2E8, 3, 0);
+#endif
 }
 
 /* ==========================================================================
