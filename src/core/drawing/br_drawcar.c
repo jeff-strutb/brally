@@ -32,6 +32,11 @@
  * through the x87.  Spelling the prototype as int32_t is what makes VC5
  * emit that; a float prototype fld/fstps and the function grows. */
 int BrSpanTestPoint(int32_t xBits, int32_t yBits);
+/* 0x10009C10 is cdecl 1-arg.  The 2-arg prototype is the port view; a
+ * 2-arg call here would push a dummy at both wheel sites. */
+void BrCarDrawWheels_raw(void *pCar);
+/* 0x106E86AC -- original adds model+0x8000 into this dword, no getter. */
+extern int32_t g_6C161C;
 #endif
 #include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
 #include "br_appstart.h"  /* g_brCfgGameMode                             */
@@ -69,6 +74,8 @@ uint8_t  g_BrDrawByte78;                    /* 0x106B7C78  env colour      */
 int32_t  g_BrDrawRefIndex;                  /* 0x10273688  ref colour idx  */
 const int8_t  *g_BrDrawRefTbl;              /* 0x100A5C78  ref table       */
 const uint32_t *g_BrDrawRefColors;          /* 0x100A5C58  ref colours     */
+uint32_t g_BrDrawReflectTexA;               /* 0x1184C474  DC tex, 6C661C  */
+uint32_t g_BrDrawReflectTexB;               /* 0x1184C480  DC tex, default */
 
 static BrDrawCarHooks s_hooks;
 static int32_t        s_cFrontier;
@@ -726,32 +733,34 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
- * The reflection pass (0xB685-0xB925) is NOT transcribed: it is gated
- * on g_BrDrawReflectEnable which is BSS 0 and never set by any code
- * in either build. The gate fires unconditionally, skipping the block.
+ * Frame: `sub esp, 0x4c; push ebx; mov ebx, pCar; push ebp; xor ebp,ebp`.
+ * ebp is the zero register (154 uses: `push ebp` for TK_ZERO / put w1=0).
+ * Arg slots are reused: lodBias at [esp+0x64] becomes lod, then a command
+ * pointer in the reflection pass.  Re-read car+0x140 and BrG_6C3308; do
+ * not cache them.
  * ==================================================================== */
 /* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
     unsigned char *car = (unsigned char *)pCar;
     const unsigned char *model;
-    int32_t  iCar, lod, distNear, flag290C;
+    int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
     uint32_t lodOff;
     uint32_t specMem = 0;
+    BrSkyAngles *pSkyAng = 0;
     BrMat4  *pSlot;
     uint8_t  bKind;
 
-    /* 0xA11B -- six guard tests. */
+    /* 0xA11B -- six guard tests.  Orig compares against ebp (zero-reg). */
     if (*(void **)(car + BR_CAR_OFF_GUARD) == 0) return;
     if (*(void **)(car + BR_CAR_OFF_P0168) == 0) return;
     if (*(void **)(car + BR_CAR_OFF_P0170) == 0) return;
     if (*(void **)(car + BR_CAR_OFF_P016C) == 0) return;
     if (*(void **)(car + BR_CAR_OFF_P0174) == 0) return;
-    iCar    = *(int32_t *)(car + BR_CAR_OFF_ICAR);
     flag290C = 0;
-    if (g_BrCarVisAny[iCar] == 0) return;
+    if (g_BrCarVisAny[*(int32_t *)(car + BR_CAR_OFF_ICAR)] == 0) return;
 
     /* 0xA174 -- distance + LOD. */
     dist = BrVec3Dist(
@@ -796,8 +805,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     } else {
         lod = g_BrDrawLodFloor;
     }
-    lod += lodBias;
-    if (lod > 2) lod = 2;
+    lodBias += lod;
+    if (lodBias > 2) lodBias = 2;
 
     /* 0xA295 -- near-distance flag. */
     distNear = !(dist >= 100.0f);
@@ -806,14 +815,29 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     BrMat4Scale(&g_BrDrawScale, 0.003921569f, 0.003921569f, 0.003921569f);
     BrMat4Mul(&g_BrDrawScale, (const BrMat4 *)car, &g_BrDrawWorld);
 
-    pSlot = mtx_alloc(&g_BrCarMtxSlot[iCar]);
+#ifdef BR_MATCHING_BUILD
+    /* 0x10062500 cannot fail; store the pointer itself (re-read iCar). */
+    pSlot = BrSub_10069490();
+    g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = (uint32_t)pSlot;
+    BrGuMtxStore(&g_BrDrawWorld,
+        (int (*)[4])g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
+#else
+    pSlot = mtx_alloc(&g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
     if (pSlot) BrGuMtxStore(&g_BrDrawWorld, pSlot);
+#endif
 
     BrMat4Mul(&g_BrDrawWorld, &g_BrDrawView, &g_BrDrawCombined);
     BrGuMtxHookNop(&g_BrDrawCombined);
 
-    pSlot = mtx_alloc(&g_BrCarLightSlot[iCar]);
+#ifdef BR_MATCHING_BUILD
+    pSlot = BrSub_10069490();
+    g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = (uint32_t)pSlot;
+    BrGuMtxStore(&g_BrDrawCombined,
+        (int (*)[4])g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
+#else
+    pSlot = mtx_alloc(&g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
     if (pSlot) BrGuMtxStore(&g_BrDrawCombined, pSlot);
+#endif
 
     /* 0xA354 -- player self-view guard. */
     if ((void *)car == BrG_6C2CF8) {
@@ -826,7 +850,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA386 -- record LOD class for this car. */
-    g_BrDrawClass[iCar] = lod;
+    g_BrDrawClass[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = lodBias;
 
     /* 0xA393 -- three-arm light colour computation. */
     if (BrG_6C661C != 0) {
@@ -856,7 +880,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
-    put(0x01060040u, g_BrCarMtxSlot[iCar]);
+    put(0x01060040u, g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
     put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
 
     /* 0xA5A1 -- light-direction computation: build g_BrDrawDir0 and
@@ -898,22 +922,26 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         }
     }
 
-    /* 0xA6F6 -- specular highlight setup: three pool allocations, then
-     * BrLightDirsFromLookAt and BrLightDirsAndAngles. */
+    /* 0xA6F6 -- four pool allocations, then look-at / angles.
+     * Orig: 0x10062500 (discarded), 0x10062550 → pSkyAng,
+     * two 0x100625A0 → pLights then specMem. */
     {
-        void          *pDiscard;
         BrLightPair   *pLights;
-        BrSkyAngles   *pAngles;
         float          eyeX, eyeY, atOffset, eyeScale;
         const float   *pCam = (const float *)BrG_6C6490;
         const float   *pCarF = (const float *)car;
 
-        pDiscard = BrPool16Alloc();
-        (void)pDiscard;
+#ifdef BR_MATCHING_BUILD
+        (void)BrSub_10069490();
+#endif
+        pSkyAng  = (BrSkyAngles *)BrPool16Alloc();
         pLights  = (BrLightPair *)BrPool32Alloc();
-        pAngles  = (BrSkyAngles *)BrPool32Alloc();
-        specMem  = pLights
-                   ? (uint32_t)(uintptr_t)pLights : 0;
+#ifdef BR_MATCHING_BUILD
+        specMem  = (uint32_t)(uintptr_t)BrPool32Alloc();
+#else
+        specMem  = pLights ? (uint32_t)(uintptr_t)pLights : 0;
+        (void)BrPool32Alloc();
+#endif
 
         atOffset = 0.0f;
         eyeScale = 0.0f;
@@ -941,7 +969,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f);
 
-        BrLightDirsAndAngles(&g_BrDrawCombined, pLights, pAngles,
+        BrLightDirsAndAngles(&g_BrDrawCombined, pLights, pSkyAng,
             pCam[12], pCam[13], pCam[14],
             pCarF[12] + eyeScale, pCarF[13],
             pCarF[14] + atOffset,
@@ -951,13 +979,19 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             64, 64);
     }
 
+    /* 0xA820 -- dist-gated canned body-setup DL (0x100A9FC8 vs 0x100A9F00). */
+    if (dist > 10.0f)
+        put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA838);
+    else
+        put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA770);
+
     /* 0xA86A -- Lights1 emission: static or dynamic. */
     if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
         put(0xBC000002u, 0x80000040u);
         put(0x03860010u, (uint32_t)(uintptr_t)BrG_0AA868);
         put(0x03880010u, (uint32_t)(uintptr_t)BrG_0AA860);
     } else {
-        unsigned char *dst = g_BrDrawLights + 24 * iCar;
+        unsigned char *dst = g_BrDrawLights + 24 * *(int32_t *)(car + BR_CAR_OFF_ICAR);
         const float   *pPlayer = (const float *)BrG_6C2CF8;
         memcpy(dst, (const void *)BrG_0AA860, 24);
         dst[0x10] = (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
@@ -1040,15 +1074,20 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xBC00200Au, colourB);
     put(0xBC00240Au, colourB);
 
-    /* 0xACCA -- early wheel call (class 2 only). */
+    /* 0xACCA -- early wheel call (class 2 only).  Orig: push ebx; call; add esp,4. */
+#ifdef BR_MATCHING_BUILD
+    if (car[BR_CAR_OFF_KIND] == 2)
+        BrCarDrawWheels_raw(car);
+#else
     if (bKind == 2)
         wheel_call(car);
+#endif
 
     /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
-    put(0x039E0010u, g_BrCarLightSlot[iCar]);
-    put(0x03980010u, g_BrCarLightSlot[iCar] + 0x10);
-    put(0x039A0010u, g_BrCarLightSlot[iCar] + 0x20);
-    put(0x039C0010u, g_BrCarLightSlot[iCar] + 0x30);
+    put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
+    put(0x03980010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x10);
+    put(0x039A0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x20);
+    put(0x039C0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30);
 
     /* 0xAD77 -- TLUT palette load. */
     put(0xFD100000u, (uint32_t)(uintptr_t)g_BrDrawTexBlob);
@@ -1063,7 +1102,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x03820010u, specMem + 0x10);
 
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
-    lodOff = (uint32_t)lod * 40;
+    lodOff = (uint32_t)lodBias * 40;
 
     if (g_BrDrawSuppress == 0 &&
         *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
@@ -1209,11 +1248,48 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(0x06000000u, detailDL);
     }
 
-    /* TODO 0xB685-0xB925: reflection pass.
-     * Gated on g_BrDrawReflectEnable (BSS 0), g_BrDrawWheelAlt == 0,
-     * BrG_6C6624 == 0, g_BrDrawSuppress == 0, car->i29B4 == 0, plus a
-     * two-arm test on BrG_6C661C vs the player.  Dead path in the running
-     * port (g_BrDrawReflectEnable is BSS 0). */
+    /* 0xB685-0xB925 -- reflection pass. */
+    if (g_BrDrawReflectEnable != 0 &&
+        g_BrDrawWheelAlt == 0 &&
+        BrG_6C6624 == 0 &&
+        !(flag290C != 0 && BrG_6C661C == 0) &&
+        !(BrG_6C661C != 0 && (void *)car == BrG_6C2CF8) &&
+        g_BrDrawSuppress == 0 &&
+        *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
+        uint32_t tex;
+        put(0xE7000000u, 0);
+        put(0xBA001402u, 0);
+        put(0xB7000000u, 0x00040000u);
+        put(0xBB000001u, 0x0F800F80u);
+        put(0xBA000C02u, BrG_6C0258);
+        put(0xFA000000u, 0xFFFFCCFFu);
+        BrRdpSetCombineLERP(put_slot(),
+            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_ZERO,
+            TK_TEXEL1_A, TK_ZERO, TK_ZERO,     TK_TEXEL0,
+            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL1_A,
+            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL0);
+        put(0xB900031Du, 4);
+        put(0xE8000000u, 0);
+        put(0xBA000E02u, 0);
+        tex = BrG_6C661C != 0 ? g_BrDrawReflectTexA : g_BrDrawReflectTexB;
+        put((tex & 0x00FFFFFFu) | 0xDC000000u, 1);
+        put(0xBA000602u, 0xC0u);
+        {
+            uint32_t s = (uint32_t)pSkyAng->s0;
+            uint32_t t = (uint32_t)pSkyAng->t0;
+            uint32_t w0 = (((s & 0xFFFu) | 0xFFFF2000u) << 12) | (t & 0xFFFu);
+            uint32_t w1 = ((((s + 0xFCu) << 12) & 0x00FFF000u) |
+                           ((t + 0xFCu) & 0xFFFu));
+            put(w0, w1);
+        }
+        {
+            uint32_t refDL = *(const uint32_t *)(
+                (const unsigned char *)BrG_6C3308 + lodOff + 0x803C);
+            if (refDL != 0)
+                put(0x06000000u, refDL);
+        }
+        put(0xBA000602u, BrG_6C0688);
+    }
 
     /* 0xB925 -- post-detail setup block. */
     put(0xE7000000u, 0);
@@ -1271,13 +1347,15 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     put(0xBA000E02u, 0x00008000u);
 
-    /* 0xBBCF -- F2 settile from player+0x2718 * -20.3718f. */
+    /* 0xBBCF -- F2 settile.  Orig: ftol(player+0x2718 * -20.3718), then
+     * ecx = 0xFFFFFFDF - tile; lo = ecx+2; hi = ecx+0x7E. */
     {
-        const float *pPlayer = (const float *)BrG_6C2CF8;
-        float tileF = pPlayer[0x2718 / 4] * -20.3718f;
-        int32_t tile = (int32_t)tileF;
-        int32_t lo = tile + 2;
-        int32_t hi = tile + 0x7E;
+        int32_t tile = (int32_t)(
+            *(const float *)((const unsigned char *)BrG_6C2CF8 + 0x2718) *
+            -20.3718318939209f);
+        int32_t adj = -33 - tile;
+        int32_t lo = adj + 2;
+        int32_t hi = adj + 0x7E;
         uint32_t w0 = ((lo << 12) & 0x00FFF000u) | 0xF2000002u;
         uint32_t w1 = ((hi << 12) & 0x00FFF000u) | 0x000001FEu;
         put(w0, w1);
@@ -1314,8 +1392,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xBA000E02u, 0);
 
     /* 0xBDE8 -- late wheel call (non-class 2). */
+#ifdef BR_MATCHING_BUILD
+    if (car[BR_CAR_OFF_KIND] != 2)
+        BrCarDrawWheels_raw(car);
+#else
     if (bKind != 2)
         wheel_call(car);
+#endif
 
     /* 0xBE14 -- final: sync, combiner, render mode. */
     put(0xE7000000u, 0);
@@ -1329,8 +1412,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     put(0xB900031Du, 3);
 
-    /* 0xBE98 -- model cost accumulation. */
+    /* 0xBE98 -- model cost accumulation.  Orig adds into 0x106E86AC
+     * directly from a reload of BrG_6C3308. */
+#ifdef BR_MATCHING_BUILD
+    g_6C161C += *(const int32_t *)((const unsigned char *)BrG_6C3308 + 0x8000);
+#else
     BrS17GetState()->f6C161C += *(const int32_t *)(model + 0x8000);
+#endif
 }
 
 /* BrDesktopSetup (0x10009C00) stays in ghidra_batch.c — context-sensitive codegen. */
