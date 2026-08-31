@@ -61,7 +61,10 @@ the caller AND flipped a helper to match for free.
 - **Re-deref, don't cache:** the original often writes `*p` repeatedly and
   lets CSE cache it; an explicit `v = *p` local changes register allocation
   (VC5 reuses the local's register where the CSE shape burns a fresh one).
-  Dropping the local matched BrSegPtrFixup (43 B) outright.
+  Dropping the local matched BrSegPtrFixup (43 B) outright. Same for
+  `ftell(*pp); fseek(*pp,...)` — orig `mov r,[esi]` at every CRT call,
+  IAT slots CSEd into edi/ebp; `FILE *f = *pp` folds those. Proven
+  0x100032D0 BrChkFileSize (70 B, MATCH /O2).
 - **`(uint8_t)(x >> 20) & 1` vs `x & 0x100000`:** `mov edx,ecx; shr edx,20;
   test dl,1` comes from the byte-cast shift form. `test ecx,0x100000` comes
   from the plain mask. Read which one the original used off the bytes.
