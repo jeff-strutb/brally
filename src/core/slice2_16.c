@@ -1676,21 +1676,34 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
     p->w0 = 0xBA000602u;
     p->w1 = 0xC0u;
 
-    p = DAT_106e7710++;
-    idx = DAT_106ec798;
-    pRec = pRecs + idx * BR_FADE_RECT_DWORDS;
-    /* orig load order: [+0xC] esi, [+4] edi, [+8] ebx, then [+0] via
-     * lea-base — ebx is why the prologue is push edi/esi/ebx. */
-    lo = pRec[3];
-    hi = pRec[1];
     {
-        uint32_t c, a;
-        c = pRec[2];
-        a = pRec[0];
-        lo = (lo + hi) & 0xFFFu;
-        hi = ((c + a) << 12) & 0xFFF000u;
-        p->w0 = 0xE1000000u | hi | lo;
-        p->w1 = ((a & 0xFFFu) << 12) | (pRec[1] & 0xFFFu);
+        /* 88-byte records: idx*11 then [base+eax*8+disp]. orig loads
+         * +0xC / +4 / +8 into esi/edi/ebx, lea-base, then [eax] for +0. */
+        typedef struct BrFadeRect {
+            uint32_t x0, y0, x1, y1;
+            uint32_t pad[18];
+        } BrFadeRect;
+        const BrFadeRect *pr;
+        const uint32_t *recs;
+        uint32_t s, d, b, a;
+
+        recs = pRecs;
+        p = DAT_106e7710++;
+        idx = DAT_106ec798;
+        pr = (const BrFadeRect *)recs + idx;
+        /* /O2 canonicalizes y1+y0 to load y0 first; orig loads +0xC then +4.
+         * Volatile access order blew the scaled [edx+eax*8] form. */
+        s = pr->y1;
+        d = pr->y0;
+        b = pr->x1;
+        s += d;
+        a = pr->x0;
+        b += a;
+        p->w0 = 0xE1000000u | ((b << 12) & 0xFFF000u) | (s & 0xFFFu);
+
+        idx = DAT_106ec798;
+        pr = (const BrFadeRect *)recs + idx;
+        p->w1 = ((pr->x0 & 0xFFFu) << 12) | (pr->y0 & 0xFFFu);
     }
 
     BrRdpSetCombineLERP(DAT_106e7710++,
