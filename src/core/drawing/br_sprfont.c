@@ -37,7 +37,16 @@
  * file reads BrUiNav's, because the control it is handed is a struct control
  * and therefore came through the struct frame.
  */
+#ifdef BR_MATCHING_BUILD
+#define BrSprFontGlyphA_1005B730 BrSprFontGlyphA_1005B730_port
+#define BrSprFontGlyphB_1005B7A0 BrSprFontGlyphB_1005B7A0_port
+#endif
 #include "br_sprfont.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrSprFontGlyphA_1005B730
+#undef BrSprFontGlyphB_1005B7A0
+#include "br_match.h"
+#endif
 
 #include <stddef.h>
 
@@ -94,13 +103,90 @@ static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
  * two sheets of big square pictures -- by laying each sheet out as a fixed
  * grid. Everything that later draws a letter or a picture just asks for cell
  * number N and gets the rectangle from here. */
-/* @implements 0x1005F800 d3d BrSprFontRectInit_1005F800 */
+/* @implements 0x10058540 glide BrSprFontRectInit_1005F800 */
 void BrSprFontRectInit_1005F800(void)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Four inlined pointer-walk loops.  Cursor/limit are distinct symbols
+     * so VC5 emits `mov ecx, offset` / `cmp ecx, offset` relocs (same-array
+     * CSE collapsed those to BSS-relative immediates).  ebx holds the
+     * integer divisor (5, then 3). */
+    {
+        extern char DAT_10ac420c[];   /* A[0][1] */
+        extern char DAT_10ac464c[];   /* A limit */
+        extern char DAT_10ac46c4[];   /* B[0][1] */
+        extern char DAT_10ac4804[];   /* B limit */
+        extern char DAT_10ac4adc[];   /* C[0][1] */
+        extern char DAT_10ac4bcc[];   /* C limit == D[0][1] */
+        int i;
+        volatile int *p;
+        int left, top;
+        int cols;
+
+        i = 0;
+        p = (int *)DAT_10ac420c;
+        do {
+            p += 4;
+            top  = (i / 8) * 16;
+            left = (i % 8) * 16;
+            p[-5] = left;
+            p[-4] = top;
+            p[-3] = left + 16;
+            p[-2] = top + 16;
+            i++;
+        } while ((int)p < (int)DAT_10ac464c);
+
+        i = 0;
+        p = (int *)DAT_10ac46c4;
+        cols = 5;
+        do {
+            p += 4;
+            /* div first so esi holds top while idiv needs cols in ebx. */
+            top  = (i / cols) * 44;
+            left = (i % cols) * 39;
+            p[-5] = left;
+            p[-4] = top;
+            p[-3] = left + 39;
+            p[-2] = top + 44;
+            i++;
+        } while ((int)p < (int)DAT_10ac4804);
+
+        i = 0;
+        p = (int *)DAT_10ac4adc;
+        cols = 5;
+        do {
+            p += 4;
+            top  = (i / cols) * 128;
+            left = (i % cols) * 128;
+            p[-5] = left;
+            p[-4] = top;
+            p[-3] = left + 128;
+            p[-2] = top + 128;
+            i++;
+        } while ((int)p < (int)DAT_10ac4bcc);
+
+        i = 0;
+        p = (int *)DAT_10ac4bcc;
+        cols = 3;
+        do {
+            p += 4;
+            top  = (i / cols) * 128;
+            left = (i % cols) * 128;
+            p[-5] = left;
+            p[-4] = top;
+            left += 128;
+            top  += 128;
+            i++;
+            p[-3] = left;
+            p[-2] = top;
+        } while (i + 15 < 24);
+    }
+#else
     BrSprGrid(g_aBrSprRectA, BR_SPRFONT_RECT_A, 8,  16,  16);
     BrSprGrid(g_aBrSprRectB, BR_SPRFONT_RECT_B, 5,  39,  44);
     BrSprGrid(g_aBrSprRectC, BR_SPRFONT_RECT_C, 5, 128, 128);
     BrSprGrid(g_aBrSprRectD, BR_SPRFONT_RECT_D, 3, 128, 128);
+#endif
 }
 
 /* ==========================================================================
@@ -146,10 +232,58 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
  * position down to whole pixels, and hands the sheet, the character's
  * rectangle and the sheet's transparency setting to whatever does the actual
  * drawing. */
+#ifdef BR_MATCHING_BUILD
+int FUN_10058380(int, int, int, int *, int);
+
+/* thiscall + 4 stack args (`ret 0x10`).  Struct-typed extras so edx stays
+ * free for the kind chain (dummy-edx fastcall stole it and `add ecx,imm`
+ * cost the extra byte). */
+typedef struct { short v; } BrGlyphI16;
+typedef struct { float v; } BrGlyphF32;
+typedef struct { int v; }   BrGlyphI32;
+/* @implements 0x10054550 glide BrSprFontGlyphA_1005B730 */
+int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
+    BrGlyphF32 x, BrGlyphF32 y, BrGlyphI32 unused)
+{
+    short sheet;
+    unsigned char k;
+
+    k = pBox->f08;
+    sheet = 0;
+    if (k == 0) {
+        sheet = 2;
+    } else if (k == 1) {
+        sheet = 3;
+    } else if (k == 2) {
+        sheet = 4;
+    } else if (k == 4) {
+        sheet = 0x34;
+    }
+    FUN_10058380((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
+                 g_aBrUiSprite[sheet].fBlit);
+    return 1;
+}
+
+/* @implements 0x100545C0 glide BrSprFontGlyphB_1005B7A0 */
+int BR_STDCALL BrSprFontGlyphB_1005B7A0(short iGlyph, float x, float y,
+                                       int unused)
+{
+    FUN_10058380((int)x, (int)y, 5, g_aBrSprRectB[iGlyph],
+                 g_aBrUiSprite[5].fBlit);
+    return 1;
+}
+#endif
+
 /* @implements 0x1005B730 d3d BrSprFontGlyphA_1005B730 */
+#ifdef BR_MATCHING_BUILD
+void BrSprFontGlyphA_1005B730_port(const BrTextBox *pBox, int32_t iGlyph,
+                              float x, float y, int32_t bKindUnused,
+                              BrSprFontBlitFn pfnBlit, void *pCtx)
+#else
 void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
                               float x, float y, int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)
+#endif
 {
     int32_t iSheet, ix, iy;
 
@@ -183,9 +317,15 @@ void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
  * large characters always come from one fixed sheet. The style argument it is
  * handed is ignored. */
 /* @implements 0x1005B7A0 d3d BrSprFontGlyphB_1005B7A0 */
+#ifdef BR_MATCHING_BUILD
+void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
+                              int32_t bKindUnused,
+                              BrSprFontBlitFn pfnBlit, void *pCtx)
+#else
 void BrSprFontGlyphB_1005B7A0(int32_t iGlyph, float x, float y,
                               int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)
+#endif
 {
     int32_t ix, iy;
 
@@ -287,7 +427,11 @@ float BrSprFontDraw_1005B2B0(BrTextBox *pBox,
             /* The DRAW gates on `sprite`; the two MEASURERS gate on
              * `advance` and `height`.  Preserved -- see the header. */
             if (pG->sprite != BR_GLYPH_NONE) {
+#ifdef BR_MATCHING_BUILD
+                BrSprFontGlyphA_1005B730_port(pBox, (int32_t)(int16_t)pG->sprite,
+#else
                 BrSprFontGlyphA_1005B730(pBox, (int32_t)(int16_t)pG->sprite,
+#endif
                                          x, pBox->y,
                                          (int32_t)(int8_t)pBox->f08,
                                          pfnBlit, pCtx);
