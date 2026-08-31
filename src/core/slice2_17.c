@@ -297,14 +297,22 @@ static void s17_pack_dirs(const BrMat4 *pM, BrLightPair *pLights)
 /* WHAT IT DOES: builds a camera transform and then squeezes two of its axes
  * down into the byte-sized direction pair the lighting hardware wants, so the
  * scene is lit relative to how it is being viewed. */
+/* @implements 0x1002A4D0 glide BrLightDirsFromLookAt */
 /* @implements 0x10030E20 d3d BrLightDirsFromLookAt */
 void BrLightDirsFromLookAt(BrMat4 *pM, BrLightPair *pLights,
                            float xEye, float yEye, float zEye,
                            float xAt,  float yAt,  float zAt,
                            float xUp,  float yUp,  float zUp)
 {
+    /* Orig inlines the six pack calls (186 B). A static helper stays a
+     * CALL and the body collapses to 75 B. */
     BrMat4LookAt(pM, xEye, yEye, zEye, xAt, yAt, zAt, xUp, yUp, zUp);
-    s17_pack_dirs(pM, pLights);
+    pLights->dir0[0] = BrPackNormalByte((double)pM->m[0][0]);
+    pLights->dir0[1] = BrPackNormalByte((double)pM->m[1][0]);
+    pLights->dir0[2] = BrPackNormalByte((double)pM->m[2][0]);
+    pLights->dir1[0] = BrPackNormalByte((double)pM->m[0][1]);
+    pLights->dir1[1] = BrPackNormalByte((double)pM->m[1][1]);
+    pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
 }
 
 /* dot(column c of pM, v), in the original's summation order:
@@ -569,6 +577,16 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 /* @implements 0x10031481 d3d BrGfxEmitTexCmd */
 void BrGfxEmitTexCmd(int i, const void *pRecords)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig recomputes i*0x24 twice (`imul` each) and dword-loads
+     * `[base+i*0x24+0x20]` / `[base+i*0x24]`. A cached rec pointer plus
+     * memcpy ld32 drops the imuls and inserts CRT calls. */
+    if (((*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE + 0x20)
+          >> 20) & 1) != 0)
+        return;
+    s17_emit((*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE)
+              & 0x00FFFFFFu) | 0xDC000000u, 1);
+#else
     const unsigned char *rec =
         (const unsigned char *)pRecords + (size_t)i * BR_TEXREC_STRIDE;
 
@@ -576,6 +594,7 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
         return;
 
     s17_emit((s17_ld32(rec) & 0x00FFFFFFu) | 0xDC000000u, 1);
+#endif
 }
 
 /* ================================================================== */
@@ -1156,7 +1175,28 @@ void BrS17SlotsRelease(void)
 /* WHAT IT DOES: hands out the next of thirty-two scratch buffers, cycling
  * round them in turn. If all of them are still in use it waits for one to come
  * free rather than handing out a buffer that is still being read. */
+/* @implements 0x1002A840 glide BrScratchRingAlloc */
 /* @implements 0x10031190 d3d BrScratchRingAlloc */
+#ifdef BR_MATCHING_BUILD
+/* Depth / index / wait-object / ring are four absolute addresses, not
+ * fields of g_s17. Orig is ebp-framed with no locals: `n = n + 1`
+ * (mov/add/mov, not inc-dword), signed `(i+1)%32` (cdq/xor/sub/and),
+ * then a re-read of the index for `ring + i*0x18`. */
+extern int DAT_106ed66c;
+extern int DAT_106ed668;
+extern int DAT_106ed570;
+extern unsigned char DAT_106e9a80[];
+int FUN_100385e0();
+void *BrScratchRingAlloc(void)
+{
+    if (DAT_106ed66c == BR_SCRATCH_DEPTH)
+        FUN_100385e0(&DAT_106ed570, 0, 1);
+    else
+        DAT_106ed66c = DAT_106ed66c + 1;
+    DAT_106ed668 = (DAT_106ed668 + 1) % BR_SCRATCH_SLOTS;
+    return DAT_106e9a80 + DAT_106ed668 * BR_SCRATCH_STRIDE;
+}
+#else
 void *BrScratchRingAlloc(void)
 {
     int i;
@@ -1176,6 +1216,7 @@ void *BrScratchRingAlloc(void)
 
     return g_s17.pScratch + (ptrdiff_t)i * BR_SCRATCH_STRIDE;
 }
+#endif
 
 /* 0x100311E4 */
 /* WHAT IT DOES: waits until every scratch buffer that has been handed out has
@@ -1270,34 +1311,47 @@ void BrTexNoOp(void)
  * itself -- and reports an error for anything above 1024, in which case it
  * leaves the answer as whatever it was. Its other output is always the same
  * fixed value regardless of the size asked about. */
+/* @implements 0x1002A9F7 glide BrTexSizeShift */
 /* @implements 0x10031347 d3d BrTexSizeShift */
 void BrTexSizeShift(int size, int *pOut1, int *pOut2)
 {
-    int n = size - 1;
+    /* Orig overwrites the size slot (`sub eax,1; mov [ebp+8],eax`) then
+     * re-reads it for every mask; a named `n` keeps a register and drops
+     * the `and cl,0`. Frame is 0x28 for the sprintf dest. Each arm is a
+     * store, not a ternary. */
+    char buf[0x28];
 
-    if ((n & ~0xFF) != 0) {                 /* `and cl, 0` then test ecx */
-        if ((n & ~0x3FF) != 0) {
-            char buf[64];
-            /* 0x1007C830 is the CRT's sprintf; the message carries n, not
-             * the size the caller asked for. */
-            snprintf(buf, sizeof buf, "ERROR: unhandled texture size: %d", n);
+    size = size - 1;
+    if ((size & ~0xFF) != 0) {              /* `and cl, 0` then test ecx */
+        if ((size & ~0x3FF) != 0) {
+            /* IAT sprintf; the message carries size-1, not the argument. */
+            sprintf(buf, "ERROR: unhandled texture size: %d", size);
             BrX10035BBA(buf);
             /* *pOut2 is deliberately left untouched on this path. */
-        } else if ((n & ~0x1FF) != 0) {
+        } else if ((size & ~0x1FF) != 0) {
             *pOut2 = 10;
         } else {
             *pOut2 = 9;
         }
-    } else if ((n & 0xF0) != 0) {
-        if ((n & 0xC0) != 0)
-            *pOut2 = (n & 0x80) ? 8 : 7;
+    } else if ((size & 0xF0) != 0) {
+        if ((size & 0xC0) != 0) {
+            if ((size & 0x80) != 0)
+                *pOut2 = 8;
+            else
+                *pOut2 = 7;
+        } else if ((size & 0xE0) != 0) {
+            *pOut2 = 6;
+        } else {
+            *pOut2 = 5;
+        }
+    } else if ((size & 0xFC) != 0) {
+        if ((size & 0xF8) != 0)
+            *pOut2 = 4;
         else
-            *pOut2 = (n & 0xE0) ? 6 : 5;
-    } else if ((n & 0xFC) != 0) {
-        *pOut2 = (n & 0xF8) ? 4 : 3;
-    } else if ((n & 0xFE) != 0) {
+            *pOut2 = 3;
+    } else if ((size & 0xFE) != 0) {
         *pOut2 = 2;
-    } else if (n != 0) {
+    } else if (size != 0) {
         *pOut2 = 1;
     } else {
         *pOut2 = 0;
