@@ -4,6 +4,7 @@
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
+#define BrKeyCacheFind  BrKeyCacheFind_cdecl_hdr
 /* Orig takes no args: it walks DAT_10af2110 / DAT_100b2f04 directly. */
 #define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* The two 16-bit quantisers return `short` in the original: their results
@@ -21,6 +22,7 @@
 #include "slice2_12.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset
+#undef BrKeyCacheFind
 #undef BrEntityCountActive
 #undef BrFixPackS16Q15Neg
 #undef BrFixPackS16Q7
@@ -1002,7 +1004,50 @@ finish:
  * match. Only the middle of each record takes part in the comparison; the
  * first few words are payload the search ignores. What the cache holds is
  * not established here. */
-/* @implements 0x10008670 d3d BrKeyCacheFind */
+#ifdef BR_MATCHING_BUILD
+/* Orig is thiscall, one stack arg (the vtbl[1] argument, not the key).
+ * vtbl[1](this, arg, &key) is thiscall / ret 8; the search is 16 unrolled
+ * dword compares at +0x0C of each 0x4C-byte record. */
+typedef void (__fastcall *BrKeyBuildFn)(BrKeyCache *pThis, int _edx,
+                                        void *pArg, int32_t *pKey);
+
+/* @implements 0x10008850 glide BrKeyCacheFind */
+int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, int _edx, void *pArg)
+{
+    int32_t          key[16];
+    int32_t          i;
+    uint32_t         n;
+    BrKeyCacheEntry *pEnt;
+    BrKeyBuildFn     pfn;
+
+    pfn = *(BrKeyBuildFn *)((char *)pCache->pVtbl + 4);
+    pfn(pCache, (int)pArg, pArg, key);
+
+    pEnt = pCache->aEntries;
+    n    = (uint32_t)pCache->cEntries;
+    for (i = 0; (uint32_t)i < n; ++i) {
+        if (pEnt[i].aKey[0]  != key[0])  continue;
+        if (pEnt[i].aKey[1]  != key[1])  continue;
+        if (pEnt[i].aKey[2]  != key[2])  continue;
+        if (pEnt[i].aKey[3]  != key[3])  continue;
+        if (pEnt[i].aKey[4]  != key[4])  continue;
+        if (pEnt[i].aKey[5]  != key[5])  continue;
+        if (pEnt[i].aKey[6]  != key[6])  continue;
+        if (pEnt[i].aKey[7]  != key[7])  continue;
+        if (pEnt[i].aKey[8]  != key[8])  continue;
+        if (pEnt[i].aKey[9]  != key[9])  continue;
+        if (pEnt[i].aKey[10] != key[10]) continue;
+        if (pEnt[i].aKey[11] != key[11]) continue;
+        if (pEnt[i].aKey[12] != key[12]) continue;
+        if (pEnt[i].aKey[13] != key[13]) continue;
+        if (pEnt[i].aKey[14] != key[14]) continue;
+        if (pEnt[i].aKey[15] != key[15]) continue;
+        return i;
+    }
+    return -1;
+}
+#else
+/* @implements 0x10008850 glide BrKeyCacheFind */
 int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
 {
     int32_t i;
@@ -1022,6 +1067,7 @@ int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
     }
     return -1;                          /* `or eax,0xffffffff` */
 }
+#endif
 
 /* 0x10008970 */
 /* WHAT IT DOES: empties that cache: closes the file it was reading from,
