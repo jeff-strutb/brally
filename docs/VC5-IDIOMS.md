@@ -604,6 +604,20 @@ the caller AND flipped a helper to match for free.
     [mask]; mov dx, [flags]; and edx, eax; test dx, dx`) means the mask
     global was declared int-sized and the result truncated:
     `(uint16_t)(*(uint16_t *)p & mask_int) == 0`.
+  FIFTH-PASS (2026-08-30): the in-place-fchs lever has no remaining
+  abs/negate site here (one `fchs`, already `fld fMax; fld fMin; fchs;
+  fxch; fcompp`).  The same dest-once class IS the trail distance
+  check: `if (d1=a, d2=b, d1<K && d2<K)` keeps both sqlens live for
+  orig's `fst` homes + dual fcomp (REGNORM extra 66→60, miss 64→56;
+  that DAG is instruction-identical).  `&&` of the raw products
+  short-circuits to fstp-st + recompute; statement-then-if extra-stores
+  the temps and splits a region.  Still 18 slot-masked regions.  Walls
+  1-3 (D-product one-notch, scale 5|7 vs 8|4, frame 0xd4 vs 0xdc) plus
+  trail ox/oy `fst` homes (named px/py integer-home instead of x87
+  preload) resisted: global-symbol helpers, nested-scope k copies,
+  volatile dest barrier, counted loops, comma D-preload, /Op, volatile
+  frame pad, nTotal-hoist, pPos-shared probe arg -- none dropped a
+  region.  Extra live floats grow the frame to 0xdc but inflate the DAG.
 - **A probe is only evidence if the compile actually ran.** match_sweep
   compiles NOTHING when the file has no `@implements` tag — it returns
   before the compiler is invoked and every diff silently reuses the stale
@@ -856,6 +870,13 @@ the caller AND flipped a helper to match for free.
   `fcomp [Z]; fld [mem]; je; fchs`. This is the 0x1000EAF0-class lever
   too: a named temp that is reassigned is homed; a dest assigned once
   stays in st(0). Proven 0x10067470 (REGNORM extra 16→4).
+  Corollary (dual compare, same class): `if (a < K && b < K)`
+  short-circuits, so VC5 `fstp st`s the second pair and recomputes it
+  in the taken arm. `if (d1 = a, d2 = b, d1 < K && d2 < K)` evaluates
+  both assignments before either compare and emits orig's `fst` homes
+  plus interleaved fmul + dual fcomp. Statement-then-if
+  (`d1=a; d2=b; if (d1<K && d2<K)`) extra-stores the temps. Proven
+  0x1000EAF0 trail distance (REGNORM extra 66→60, miss 64→56).
 - **x87 spill-slot HOMES follow computation order, and the scheduler's
   drain order keys off them.** Under /Op, paired temps (w2/h2 in
   0x100215C0) round-trip through [esp+4]/[esp+0xc] in the order computed;
