@@ -47,9 +47,39 @@ const int32_t g_aBr72RsId[BR72_RS_COUNT] = {
  * the group numbering. It only recomputes when the group differs from the last
  * time it ran, which means that if anything else writes those two values they
  * are left stale rather than corrected. */
-/* @implements 0x10044540 d3d BrSub10044540 */
+#ifdef BR_MATCHING_BUILD
+/* Orig stores through absolute globals, not g_pBr72Env->field. */
+extern int32_t g_brAA2A18;
+extern int32_t g_brAA2A44;
+extern int32_t g_br0AB3E8;
+extern int32_t g_br0AC654;
+#endif
+
+/* @implements 0x1003DA90 glide BrSub10044540 */
 void BrSub10044540(void)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t n = g_brAA2A18;
+
+    if (g_brAA2A44 == n) {
+        return;
+    }
+    g_brAA2A44 = n;
+
+    /* One unsigned cmp-4/ja plus a 0..4 jump table; case 4 is in the table,
+     * default (>4) writes the case-0 pair in reverse store order. */
+    switch (n) {
+    case 0:  g_br0AB3E8 = 0x102;  g_br0AC654 = 1;    break;
+    case 1:  g_br0AB3E8 = 0x81;   g_br0AC654 = 0;    break;
+    case 2:  g_br0AB3E8 = 0x4050; g_br0AC654 = 6;    break;
+    case 3:  g_br0AB3E8 = 0x202C; g_br0AC654 = 3;    break;
+    case 4:  g_br0AB3E8 = 0x1E00; g_br0AC654 = 0x0B; break;
+    default:
+        g_br0AC654 = 1;
+        g_br0AB3E8 = 0x102;
+        break;
+    }
+#else
     Br72Env *pE = g_pBr72Env;
     int32_t  n  = pE->nAA2A18;
 
@@ -73,6 +103,7 @@ void BrSub10044540(void)
     case 3:  pE->n0AB3E8 = 0x202C; pE->n0AC654 = 3;    break;
     default: pE->n0AB3E8 = 0x1E00; pE->n0AC654 = 0x0B; break;   /* case 4 */
     }
+#endif
 }
 
 /* ==========================================================================
@@ -201,9 +232,42 @@ void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox)
  * reads again. When there is no keyboard device at all it reports what looks
  * like success and leaves the caller's buffer holding whatever was in it
  * before, so keys can appear stuck. */
-/* @implements 0x100771B0 d3d BrDikGetDeviceState */
+#ifdef BR_MATCHING_BUILD
+typedef int32_t (__stdcall *BrDiGetStateFn)(BrDInputDev *, uint32_t, void *);
+typedef int32_t (__stdcall *BrDiAcquireFn)(BrDInputDev *);
+/* Orig is `mov eax,[0x118eeee8]` three times, not an env-struct field. */
+extern BrDInputDev *g_pBrDik18ABDD0;
+#endif
+
+/* @implements 0x10070490 glide BrDikGetDeviceState */
 int32_t BrDikGetDeviceState(uint8_t *pState)
 {
+#ifdef BR_MATCHING_BUILD
+    BrDInputDev *pDev;
+    int32_t      hr;
+    uint8_t     *p;
+
+    /* Load device first, then pState into esi so the NULL path still
+     * `push esi` / `pop esi` (orig does not shrink-wrap the save). */
+    pDev = g_pBrDik18ABDD0;
+    p = pState;
+    if (pDev == NULL) {
+        hr = 1;
+    } else {
+        hr = ((BrDiGetStateFn)pDev->pVtbl->GetDeviceState)(pDev, 0x100u, p);
+        if (hr < 0) {
+            if (hr == BR72_DIERR_NOTACQUIRED) {
+                pDev = g_pBrDik18ABDD0;
+                hr = ((BrDiAcquireFn)pDev->pVtbl->Acquire)(pDev);
+                if (hr >= 0) {
+                    pDev = g_pBrDik18ABDD0;
+                    hr = ((BrDiGetStateFn)pDev->pVtbl->GetDeviceState)(pDev, 0x100u, p);
+                }
+            }
+        }
+    }
+    return hr;
+#else
     Br72Env     *pE = g_pBr72Env;
     BrDInputDev *pDev = pE->pDik18ABDD0;
     int32_t      hr;
@@ -226,6 +290,7 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
          * DIERR_NOTACQUIRED. */
     }
     return hr;
+#endif
 }
 
 /* ==========================================================================
