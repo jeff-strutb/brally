@@ -2,6 +2,8 @@
  * See slice2_16.h for the per-function notes and gotchas. */
 
 #ifdef BR_MATCHING_BUILD
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
 /* Header prototype is the port's (table, pCmd).  The original takes only
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
@@ -11,6 +13,18 @@
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
 #define BrGbiTexCreate           BrGbiTexCreate_port
+/* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
+ * state pointer.  Same rename so the matching bodies can use that shape. */
+#define BrGbiClearGeometryMode  BrGbiClearGeometryMode_port
+#define BrGbiSetGeometryMode    BrGbiSetGeometryMode_port
+#define BrGbiDList              BrGbiDList_port
+#define BrGbiEndDList           BrGbiEndDList_port
+#define BrGbiMatrix             BrGbiMatrix_port
+#define BrGbiPopMatrix          BrGbiPopMatrix_port
+#define BrGbiDispatch10020F50   BrGbiDispatch10020F50_port
+#define BrGbiMoveMem            BrGbiMoveMem_port
+#define BrGbiMoveWord           BrGbiMoveWord_port
+#define BrGbiMoveMemMatrix      BrGbiMoveMemMatrix_port
 #endif
 #include "slice2_16.h"
 #ifdef BR_MATCHING_BUILD
@@ -18,9 +32,43 @@
 #undef BrGbiTexScanOtherModeH
 #undef BrGbiTexScanOtherModeH0E
 #undef BrGbiTexCreate
+#undef BrGbiClearGeometryMode
+#undef BrGbiSetGeometryMode
+#undef BrGbiDList
+#undef BrGbiEndDList
+#undef BrGbiMatrix
+#undef BrGbiPopMatrix
+#undef BrGbiDispatch10020F50
+#undef BrGbiMoveMem
+#undef BrGbiMoveWord
+#undef BrGbiMoveMemMatrix
 /* Bodies live in br_gbitexscan.c; TexScanRun still calls them. */
 void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd);
 void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
+#include <stdlib.h>
+BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd);
+BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd);
+BrGfxWords *BrGbiDList(BrGfxWords *pCmd);
+BrGfxWords *BrGbiEndDList(void);
+BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd);
+BrGfxWords *BrGbiPopMatrix(BrGfxWords *pCmd);
+BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd);
+BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd);
+BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd);
+BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd);
+extern int DAT_105d17c8;   /* geo.cur      */
+extern int DAT_105d17cc;   /* geo.prev     */
+extern int DAT_105ccfe8;   /* DL stack n   */
+extern int DAT_105ce2e8[]; /* DL stack     */
+extern int DAT_100a9a50;   /* mtx top      */
+extern int DAT_105ccd00;   /* projection   */
+extern int DAT_105ccd10;   /* modelview[0] */
+extern int DAT_105d17d0;   /* mtx.f5180    */
+extern int DAT_105d1760;   /* combined     */
+extern int DAT_105ce2d8;   /* lookat 0x82  */
+extern int DAT_105ce2dc;   /* lookat 0x84  */
+extern char DAT_105ccc78[]; /* lights      */
+extern int DAT_105ccfd0;   /* numLights    */
 #endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
@@ -211,7 +259,22 @@ BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
  * switches -- lighting, fog, backface culling and the like -- and this
  * clears the ones named in the command, remembering what they were before,
  * then tells the renderer the switches changed. */
-/* @implements 0x1001E790 d3d BrGbiClearGeometryMode */
+/* @implements 0x1001FD40 glide BrGbiClearGeometryMode */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd)
+{
+    unsigned cur = (unsigned)DAT_105d17c8;
+    unsigned w1;
+
+    DAT_105d17cc = (int)cur;
+    w1 = pCmd->w1;
+    w1 = ~w1;
+    cur &= w1;
+    DAT_105d17c8 = (int)cur;
+    BrGbiGeoModeChanged();
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->geo.prev = pSt->geo.cur;
@@ -219,12 +282,25 @@ BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
+#endif
 
 /* 0x10020F20 */
 /* WHAT IT DOES: turns geometry features on: the mirror image of the clear
  * above. It sets the switches named in the command, remembers the previous
  * setting, and notifies the renderer. */
-/* @implements 0x10020F20 d3d BrGbiSetGeometryMode */
+/* @implements 0x100211E0 glide BrGbiSetGeometryMode */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd)
+{
+    unsigned cur = (unsigned)DAT_105d17c8;
+
+    DAT_105d17cc = (int)cur;
+    cur |= pCmd->w1;
+    DAT_105d17c8 = (int)cur;
+    BrGbiGeoModeChanged();
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     pSt->geo.prev = pSt->geo.cur;
@@ -232,6 +308,7 @@ BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
+#endif
 
 /* 0x10020D60 */
 /* WHAT IT DOES: jumps the drawing-command reader into another list of
@@ -239,7 +316,29 @@ BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
  * the command says otherwise it remembers where to come back to. The return-
  * address stack holds ten entries but the game complains one entry early,
  * and stores anyway. */
-/* @implements 0x10020D60 d3d BrGbiDList */
+/* @implements 0x10021020 glide BrGbiDList */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiDList(BrGfxWords *pCmd)
+{
+    int n;
+
+    if ((pCmd->w0 & 0x00FF0000u) == 0) {
+        /* GOTCHA: the guard tests the value the counter is ABOUT to take and
+         * then stores anyway, so slot 9 is written and reported both.
+         * Orig calls exit() through the IAT, not a local helper.
+         * `inc eax` not `lea ecx,[eax+1]`: increment the loaded counter. */
+        n = DAT_105ccfe8;
+        n++;
+        if (n == 10)
+            exit(1);
+        n = DAT_105ccfe8;
+        DAT_105ce2e8[n] = (int)(pCmd + 1);
+        n++;
+        DAT_105ccfe8 = n;
+    }
+    return (BrGfxWords *)(uintptr_t)pCmd->w1;
+}
+#else
 BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrGbiDLStack *p = &pSt->dl;
@@ -255,13 +354,28 @@ BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
     /* DEVIATION: 32-bit branch target reinterpreted as a pointer. */
     return (BrGfxWords *)(uintptr_t)pCmd->w1;
 }
+#endif
 
 /* 0x10020DA0 -- takes no argument in the original. */
 /* WHAT IT DOES: ends the current list of drawing commands and returns to
  * whoever jumped into it. If nothing jumped in, it reports that there is
  * nowhere to go back to, which is what stops the drawing-command reader
  * altogether. */
-/* @implements 0x10020DA0 d3d BrGbiEndDList */
+/* @implements 0x10021060 glide BrGbiEndDList */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiEndDList(void)
+{
+    int n = DAT_105ccfe8;
+
+    if (n == 0)
+        goto empty;
+    n -= 1;
+    DAT_105ccfe8 = n;
+    return (BrGfxWords *)DAT_105ce2e8[n];
+empty:
+    return (BrGfxWords *)0;
+}
+#else
 BrGfxWords *BrGbiEndDList(BrGbiState *pSt)
 {
     BrGbiDLStack *p = &pSt->dl;
@@ -271,6 +385,7 @@ BrGfxWords *BrGbiEndDList(BrGbiState *pSt)
     p->n -= 1;
     return p->ap[p->n];
 }
+#endif
 
 BrMat4 *BrGbiMtxProj(BrGbiMtxState *pSt)
 {
@@ -306,7 +421,62 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
  * current matrix or combine with it, and optionally save the old one so it
  * can be restored later. It always finishes by recomputing the single
  * combined matrix the renderer actually uses. */
-/* @implements 0x10020DC0 d3d BrGbiMatrix */
+/* @implements 0x10021080 glide BrGbiMatrix */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
+{
+    unsigned  w0 = pCmd->w0;
+    void     *pIn = (void *)(uintptr_t)pCmd->w1;
+    int       top;
+    int       z = 0;
+    void     *cur;
+    BrMat4    tmp;
+
+    if ((w0 & 0x10000u) != 0) {
+        if ((w0 & 0x20000u) != 0)
+            memcpy(&DAT_105ccd00, pIn, 64);
+        else
+            BrMat4Mul(pIn, &DAT_105ccd00, &DAT_105ccd00);
+    } else if ((w0 & 0x20000u) != 0) {
+        top = DAT_100a9a50;
+        if ((w0 & 0x40000u) != 0) {
+            if (top == 10)
+                top = z;
+            top += 1;
+            DAT_100a9a50 = top;
+        }
+        memcpy((char *)&DAT_105ccd10 + (top << 6), pIn, 64);
+        DAT_105d17d0 = z;
+    } else {
+        top = DAT_100a9a50;
+        if (top == z)
+            cur = (void *)z;
+        else
+            cur = (char *)&DAT_105ccd10 + (top << 6);
+        BrMat4Mul(pIn, cur, &tmp);
+        w0 = pCmd->w0;
+        if ((w0 & 0x40000u) != 0) {
+            top = DAT_100a9a50;
+            if (top == 10)
+                top = z;
+            top += 1;
+            DAT_100a9a50 = top;
+        } else {
+            top = DAT_100a9a50;
+        }
+        memcpy((char *)&DAT_105ccd10 + (top << 6), &tmp, 64);
+        DAT_105d17d0 = z;
+    }
+
+    top = DAT_100a9a50;
+    if (top == z)
+        cur = (void *)z;
+    else
+        cur = (char *)&DAT_105ccd10 + (top << 6);
+    BrMat4Mul(cur, &DAT_105ccd00, &DAT_105d1760);
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
 {
     BrGbiMtxState *pM = &pSt->mtx;
@@ -337,11 +507,26 @@ BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
     BrMat4Mul(br16_mtx_current(pM), BrGbiMtxProj(pM), &pM->combined);
     return pCmd + 1;
 }
+#endif
 
 /* 0x10020EF0 */
 /* WHAT IT DOES: restores the previously saved model matrix, undoing one save
  * made by the matrix command above. If nothing was saved it does nothing. */
-/* @implements 0x10020EF0 d3d BrGbiPopMatrix */
+/* @implements 0x100211B0 glide BrGbiPopMatrix */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiPopMatrix(BrGfxWords *pCmd)
+{
+    int top = DAT_100a9a50;
+
+    if (top != 0) {
+        top -= 1;
+        DAT_100a9a50 = top;
+        if (top == 0)
+            DAT_100a9a50 = 10;
+    }
+    return pCmd + 1;
+}
+#else
 BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrGbiMtxState *pM = &pSt->mtx;
@@ -353,6 +538,7 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
     }
     return pCmd + 1;
 }
+#endif
 
 /* 0x10020F80 */
 /* WHAT IT DOES: handles a drawing command that parks the command's payload
@@ -383,7 +569,25 @@ BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
 /* WHAT IT DOES: a drawing command with a small selector byte in it: selector
  * 0 and selector 3 each go to a different handler, and anything else is
  * ignored and skipped. What the two arms do is described where they live. */
-/* @implements 0x10020F50 d3d BrGbiDispatch10020F50 */
+/* @implements 0x10021210 glide BrGbiDispatch10020F50 */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd)
+{
+    int sel = ((int)pCmd->w0 << 16) >> 24;
+
+    /* sar ZF => je sel0 (laid out last).  cmp 3 => je sel3 (before sel0).
+     * Default is the fall-through between the two tests and the arms. */
+    if (sel == 0)
+        goto sel0;
+    if (sel == 3)
+        goto sel3;
+    return pCmd + 1;
+sel3:
+    return BrGbiSet4C1694(pCmd);
+sel0:
+    return BrGbiCall100243D0(pCmd);
+}
+#else
 BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     int sel = (int8_t)((pCmd->w0 >> 16) & 0xFFu);
@@ -391,13 +595,10 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
     if (sel == 0)
         return BrGbiCall100243D0(pCmd);
     if (sel == 3)
-#ifdef BR_MATCHING_BUILD
-        return BrGbiSet4C1694(pCmd);
-#else
         return BrGbiSet4C1694(pSt, pCmd);
-#endif
     return pCmd + 1;
 }
+#endif
 
 /* 0x10021510 */
 /* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
@@ -534,12 +735,14 @@ int BrGbiClipCodes(const float *pVert)
  * made combined transform matrix outright, replacing whatever the matrix
  * commands had built up. */
 /* port-only body; Glide match is src/core/generated/0x10023900.c */
+#ifndef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
                                const void *pSrc)
 {
     memcpy(&pSt->mtx.combined, pSrc, 16 * sizeof(float));
     return pCmd + 1;
 }
+#endif
 
 /* 0x10024150  G_MOVEMEM.
  *
@@ -552,7 +755,47 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * lights, or the combined transform matrix, chosen by an index byte. Indexes
  * outside the known set are ignored. The port clamps a light copy to the
  * light array, which the original did not. */
-/* @implements 0x10024150 d3d BrGbiMoveMem */
+/* @implements 0x10023810 glide BrGbiMoveMem */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
+{
+    unsigned w0  = pCmd->w0;
+    unsigned idx = (w0 >> 16) & 0xFFu;
+    unsigned len;
+    unsigned slot;
+
+    switch (idx) {
+    case 0x80:
+        return BrGbiCall10024260(pCmd);
+    case 0x82:
+        DAT_105ce2d8 = (int)pCmd->w1;
+        return pCmd + 1;
+    case 0x84:
+        DAT_105ce2dc = (int)pCmd->w1;
+        return pCmd + 1;
+    case 0x86:
+    case 0x88:
+    case 0x8A:
+    case 0x8C:
+    case 0x8E:
+    case 0x90:
+    case 0x92:
+    case 0x94:
+        /* idx extract is shr/and on a copy of w0 (esi stays w0 until
+         * memcpy reuses it as the source pointer).  Length is w0's low
+         * 16; dest is 0x105CCC78 + ((idx-0x86)>>1)*16. */
+        len  = w0 & 0xFFFFu;
+        slot = ((idx - 0x86u) >> 1) << 4;
+        memcpy(DAT_105ccc78 + slot, (void *)(uintptr_t)pCmd->w1, len);
+        DAT_105d17d0 = 0;
+        return pCmd + 1;
+    case 0x9E:
+        return BrGbiMoveMemMatrix(pCmd);
+    default:
+        return pCmd + 1;
+    }
+}
+#else
 BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
 {
     uint32_t idx = (pCmd->w0 >> 16) & 0xFFu;
@@ -590,6 +833,7 @@ BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
         return pCmd + 1;
     }
 }
+#endif
 
 /* 0x100242F0  G_MOVEWORD.
  *
@@ -602,7 +846,47 @@ BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
  * data. Only two pokes are recognised: setting how many lights are active,
  * and rewriting the colour or the direction bytes of one particular light.
  * Everything else is skipped. */
-/* @implements 0x100242F0 d3d BrGbiMoveWord */
+/* @implements 0x100239C0 glide BrGbiMoveWord */
+#ifdef BR_MATCHING_BUILD
+BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd)
+{
+    unsigned w0  = pCmd->w0;
+    int      sel = ((int)w0 << 24) >> 24;
+    unsigned off;
+    unsigned slot;
+
+    switch (sel) {
+    case 2:
+        DAT_105ccfd0 = (int)((pCmd->w1 >> 5) & 0xFu);
+        return pCmd + 1;
+    case 8:
+        return pCmd + 1;
+    case 0xA:
+        off = (w0 >> 8) & 0xFFFFu;
+        /* test al,0xf is on `off` BEFORE the scale.  Scale is `shr 5; shl 4`
+         * in each arm, not the combined `(off>>1)&~0xf`. */
+        if ((off & 0xFu) == 0) {
+            slot = off >> 5;
+            slot <<= 4;
+            DAT_105ccc78[slot]     = (char)(pCmd->w1 >> 24);
+            DAT_105ccc78[slot + 1] = (char)(pCmd->w1 >> 16);
+            DAT_105ccc78[slot + 2] = (char)(pCmd->w1 >> 8);
+        } else {
+            slot = off >> 5;
+            slot <<= 4;
+            DAT_105ccc78[slot + 4] = (char)(pCmd->w1 >> 24);
+            DAT_105ccc78[slot + 5] = (char)(pCmd->w1 >> 16);
+            DAT_105ccc78[slot + 6] = (char)(pCmd->w1 >> 8);
+        }
+        DAT_105d17d0 = 0;
+        return pCmd + 1;
+    case 0xE:
+        return pCmd + 1;
+    default:
+        return pCmd + 1;
+    }
+}
+#else
 BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     int      sel = (int8_t)(pCmd->w0 & 0xFFu);
@@ -642,6 +926,7 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
     pSt->mtx.f5180 = 0;
     return pCmd + 1;
 }
+#endif
 
 /* 0x10024A90 */
 /* WHAT IT DOES: the drawing-command reader itself. It reads the command's
@@ -1055,9 +1340,11 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * Textures have to be powers of two, so this is how an odd width or height
  * gets rounded up. Anything above 128 is capped, and anything of 1 or less
  * gives zero. */
-/* @implements 0x10027C00 d3d BrGbiSizeShift */
+/* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
+    int r;
+
     if (n <= 1)    return 0;
     if (n <= 2)    return 1;
     if (n <= 4)    return 2;
@@ -1065,8 +1352,14 @@ int BrGbiSizeShift(int n)
     if (n <= 0x10) return 4;
     if (n <= 0x20) return 5;
     if (n <= 0x40) return 6;
-    if (n <= 0x80) return 7;
-    return 8;
+    /* Last pair is one ret: cmp 0x80; mov 7; jle; mov 8.
+     * Adjacent `return 7; return 8` lowers to setg+add (n in eax).
+     * A named r gives the branchy form but n sits in ecx (eax-specific
+     * `cmp eax,imm32` is 1 byte shorter). */
+    r = 7;
+    if (n > 0x80)
+        r = 8;
+    return r;
 }
 
 /* 0x10028C70 */
@@ -1810,7 +2103,38 @@ void BrSwapVec3Array(void *pv, int count)
  * entry count is re-read from the header on every pass of the loop, exactly
  * as the original does, so swapping it can change how many entries get
  * processed. */
-/* @implements 0x1002BC90 d3d BrRcaSwapMesh */
+/* @implements 0x10018D50 glide BrRcaSwapMesh */
+#ifdef BR_MATCHING_BUILD
+void BrRcaSwapMesh(void *pv)
+{
+    uint8_t *p = (uint8_t *)pv;
+    int      i;
+    uint32_t v;
+    uint8_t *e;
+
+    if (p == NULL)
+        return;
+
+    *(uint16_t *)(p + 2) = (uint16_t)(p[3] | (p[2] << 8));
+    v = (((((uint32_t)p[4] << 8) | p[5]) << 8) | p[6]) << 8 | p[7];
+    *(uint32_t *)(p + 4) = v;
+    if (*(unsigned short *)(p + 2) <= 0)
+        return;
+
+    e = p + 0xA;
+    i = 0;
+    do {
+        v = (((((uint32_t)e[-2] << 8) | e[-1]) << 8) | e[0]) << 8 | e[1];
+        *(uint32_t *)(e - 2) = v;
+        v = (((((uint32_t)e[2] << 8) | e[3]) << 8) | e[4]) << 8 | e[5];
+        *(uint32_t *)(e + 2) = v;
+        v = (((((uint32_t)e[6] << 8) | e[7]) << 8) | e[8]) << 8 | e[9];
+        *(uint32_t *)(e + 6) = v;
+        e += 0xC;
+        i += 1;
+    } while (i < (int)*(unsigned short *)(p + 2));
+}
+#else
 void BrRcaSwapMesh(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -1831,6 +2155,7 @@ void BrRcaSwapMesh(void *pv)
         br16_swap_u32_at(e + 8);
     }
 }
+#endif
 
 int32_t  g_brSegN64Base;   /* 0x104B16E4 */
 int32_t  g_brSegHostBase;  /* 0x104B16E0 */
