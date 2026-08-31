@@ -13,22 +13,6 @@
  * Texture size codecs
  * ========================================================================== */
 
-/* The ladder both halves of 0x100251A0 spell out longhand. */
-static int BrTexShiftLadder(int *pShift, int n)
-{
-    if (n <=   1) { *pShift = 8; return 1; }
-    if (n <=   2) { *pShift = 7; return 1; }
-    if (n <=   4) { *pShift = 6; return 1; }
-    if (n <=   8) { *pShift = 5; return 1; }
-    if (n <=  16) { *pShift = 4; return 1; }
-    if (n <=  32) { *pShift = 3; return 1; }
-    if (n <=  64) { *pShift = 2; return 1; }
-    if (n <= 128) { *pShift = 1; return 1; }
-    if (n <= 256) { *pShift = 0; return 1; }
-    *pShift = 0;
-    return 0;
-}
-
 /* 0x100251A0 */
 /* WHAT IT DOES: picks the size code for a texture from its width and height:
  * it takes whichever is larger and works out which power of two it fits in,
@@ -37,12 +21,33 @@ static int BrTexShiftLadder(int *pShift, int n)
 /* @implements 0x100251A0 d3d BrTexShiftFromSize */
 int BrTexShiftFromSize(int *pShift, int a, int b)
 {
-    /* The original duplicates the ladder rather than taking a max, but the
-     * two copies are byte-for-byte the same decision tree. */
+    /* orig is two textually identical signed ladders (`cmp; jg`), one on `a`
+     * when a > b and one on `b` otherwise -- not a shared helper. A factored
+     * `BrTexShiftLadder` is two `call`s and 42 B against orig 430. */
     if (a > b) {
-        return BrTexShiftLadder(pShift, a);
+        if (a <=   1) { *pShift = 8; return 1; }
+        if (a <=   2) { *pShift = 7; return 1; }
+        if (a <=   4) { *pShift = 6; return 1; }
+        if (a <=   8) { *pShift = 5; return 1; }
+        if (a <=  16) { *pShift = 4; return 1; }
+        if (a <=  32) { *pShift = 3; return 1; }
+        if (a <=  64) { *pShift = 2; return 1; }
+        if (a <= 128) { *pShift = 1; return 1; }
+        if (a <= 256) { *pShift = 0; return 1; }
+        *pShift = 0;
+        return 0;
     }
-    return BrTexShiftLadder(pShift, b);
+    if (b <=   1) { *pShift = 8; return 1; }
+    if (b <=   2) { *pShift = 7; return 1; }
+    if (b <=   4) { *pShift = 6; return 1; }
+    if (b <=   8) { *pShift = 5; return 1; }
+    if (b <=  16) { *pShift = 4; return 1; }
+    if (b <=  32) { *pShift = 3; return 1; }
+    if (b <=  64) { *pShift = 2; return 1; }
+    if (b <= 128) { *pShift = 1; return 1; }
+    if (b <= 256) { *pShift = 0; return 1; }
+    *pShift = 0;
+    return 0;
 }
 
 /* 0x10028200 */
