@@ -815,6 +815,73 @@ void BrTrackFixupList60(void *pvHdr)
 /* @implements 0x10038450 d3d BrTexCopyRecords */
 void BrTexCopyRecords(void *pvTable, int cRecords)
 {
+#ifdef BR_MATCHING_BUILD
+    /* orig: ebx=-8; lea eax,[table+8]; sub ebx,table; ebp=n; then
+     * [eax+0x18] flags and [pTexFlags+ebx+eax+0x20] for the parallel
+     * array. ebx stays loop-invariant. */
+    uint8_t *pTable;
+    uint8_t *pWalk;
+    int32_t  adj;
+    int      n;
+
+    if (cRecords <= 0)
+        return;
+
+    pTable = (uint8_t *)pvTable;
+    adj    = -8;
+    pWalk  = pTable + 8;
+    adj   -= (int32_t)(uint32_t)pTable;
+    n      = cRecords;
+    do {
+        uint8_t  *pDst = *(uint8_t **)(void *)(pWalk - 8);
+        uint32_t  uFlags;
+        uint8_t  *pDesc;
+        uint32_t  cb;
+
+        if (pDst == 0)
+            goto next;
+
+        uFlags = *(uint32_t *)(void *)(pWalk + 0x18);
+        if ((uFlags & 0x00100000u) == 0)
+            goto next;
+
+        pDesc = *(uint8_t **)(void *)pWalk;
+        if (*(uint16_t *)(void *)(pDesc + 2) != 2)
+            goto next;
+        if (*(int32_t *)(void *)(pDesc + 8) != -1)
+            goto next;
+
+        cb = uFlags & 0x0003FFFFu;
+        if (cb == 0)
+            goto next;
+
+        memcpy(pDst, g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x0C),
+               cb);
+
+        pDst = *(uint8_t **)(void *)(pWalk - 4);
+        if (pDst == 0)
+            goto next;
+
+        {
+            char    *pFlags;
+            uint32_t uSel;
+            uint32_t cbPal;
+
+            pDesc  = *(uint8_t **)(void *)pWalk;
+            pFlags = (char *)g_BrLoad.pTexFlags;
+            pFlags += adj;
+            uSel    = *(uint32_t *)(void *)(pFlags + (int32_t)(uint32_t)pWalk
+                                            + 0x20);
+            uSel   &= 0x0F000000u;
+            cbPal   = (uSel == 0x01000000u) ? 0x20u : 0x200u;
+            memcpy(pDst,
+                   g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x10),
+                   cbPal);
+        }
+    next:
+        pWalk += 0x24;
+    } while (--n);
+#else
     uint8_t *pTable = (uint8_t *)pvTable;
     int i;
 
@@ -885,6 +952,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
             memcpy(pDst, g_BrLoad.pTexBase + off, cbPal);
         }
     }
+#endif
 }
 
 /* ==========================================================================
