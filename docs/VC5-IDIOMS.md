@@ -119,6 +119,11 @@ the caller AND flipped a helper to match for free.
   into edx (`mov edx,[esp+4]`) and then `push edx`. `f(this, param_1,
   param_1, …)` keeps ecx=this, four stack args, no edx setup. Proven
   0x1003AF30 (42 B, MATCH /O2).
+  **Vtbl call `push 1; mov ecx,this; mov edx,[ecx]; call [edx+0x18]`:** pass
+  `pThis->pVtbl` as the edx slot so edx IS the vtable, and keep `pGame->pSub`
+  inline so `push 1` precedes the ecx load. After the call, a named temp
+  `p = DAT_src; DAT_dst = p;` is `a1`/`a3`; `DAT_dst = DAT_src; return 0;`
+  hoists `xor eax,eax` and copies through ecx. Proven 0x1003D4F0 (30 B).
 - **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
   { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the
@@ -431,6 +436,16 @@ the caller AND flipped a helper to match for free.
   direct DAT_ externs (the six-member DirectPlay send family, BrHookTakeA/B,
   BrDlCmdFogColour, BrScratchRingDrain). Port-safety indirections (ops
   tables, sink callbacks, factored range-checks) are the same class.
+- **A state-pointer argument that the original never loads is absolute
+  globals.** Orig `xor eax,eax; mov ecx,1; mov [DAT],eax` / `mov [DAT],ecx`
+  (plus `c7 05` for a 2 and a pointer imm) is ten stores to named externs
+  and reads nothing off the stack. The port's `pState->field = K` emits
+  `[ecx+off]` and misses the whole body. Spell the matching twin as
+  `DAT_x = 0/1/2; DAT_ptr = DAT_obj;` in source order. Proven 0x10037660
+  (66 B, MATCH /O2). Same family: `int v = K; word_g = (int16_t)v;
+  dword_g = v;` is `mov eax,K; mov word [DAT],ax; mov [DAT2],eax; ret`
+  (0x100376B0 / 0x100376E0, 17 B bodies after the 16-byte link-stage
+  `jmp +0x0b` / 11-nop preamble in config/preambles.csv).
 - **Stride-0x978 global struct array is `slots[i].field`, not `imul`.**
   `slots[i]` of a 0x978-byte struct compiles to `lea ecx,[eax+eax*4];
   lea ecx,[ecx+ecx*4]; lea eax,[eax+ecx*4]; lea esi,[eax+eax*2];
