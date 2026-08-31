@@ -27,6 +27,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* KERNEL32 IAT used verbatim by BrOpt3A00 (0x1003CF50) / BrOpt3810. */
+__declspec(dllimport) void *__stdcall GlobalHandle(void *);
+__declspec(dllimport) int   __stdcall GlobalUnlock(void *);
+__declspec(dllimport) void *__stdcall GlobalFree(void *);
+#endif
+
 /* ==========================================================================
  * Storage
  * ========================================================================== */
@@ -858,9 +865,6 @@ int BrOpt3A00(void)
     int              fAllReady;
     BrSlot          *pSlot;
     typedef long (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
-    __declspec(dllimport) void *__stdcall GlobalHandle(void *);
-    __declspec(dllimport) int   __stdcall GlobalUnlock(void *);
-    __declspec(dllimport) void *__stdcall GlobalFree(void *);
 
     pDesc = NULL;
     BrSub1003D0B0(g_brP277B40, &pDesc);
@@ -868,12 +872,20 @@ int BrOpt3A00(void)
         return 1;
 
     if (pDesc->dwCurrentPlayers <= 1) {
+        /* orig does Unlock/Free HERE and returns -- not a jump to the
+         * shared tail (that tail is only the players>1 arms). */
         strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TOOFEW));
         BrSub1003D210(g_brP680584, g_brPA9D008, 1);
         strcpy(g_aBrA9DD28, g_aBr39B720);
+        GlobalUnlock(GlobalHandle(pDesc));
+        GlobalFree(GlobalHandle(pDesc));
+        return 1;
     } else if (g_brAA2884 != 0) {
         fAllReady = 1;
-        for (pSlot = g_aBrAA2538; pSlot < g_aBrAA2538 + BR_SLOT_COUNT; pSlot++) {
+        /* orig `cmp eax, &g_aBrAA2538[8]; jl` -- signed pointer compare. */
+        for (pSlot = g_aBrAA2538;
+             (int)pSlot < (int)(g_aBrAA2538 + BR_SLOT_COUNT);
+             pSlot++) {
             if (pSlot->a != 0)
                 continue;
             if (pSlot->id != BR_SLOT_EMPTY) {
