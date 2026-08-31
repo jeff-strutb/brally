@@ -67,10 +67,11 @@ BrVec3d *BrVec3dNormalise(BrVec3d *pV)
 /* @implements 0x10030670 d3d BrVec3dCross */
 void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
 {
-    double x = pA->y * pB->z - pA->z * pB->y;
-    double y = pA->z * pB->x - pA->x * pB->z;
-    double z = pA->x * pB->y - pA->y * pB->x;
-    pOut->x = x; pOut->y = y; pOut->z = z;
+    /* Orig fstp's each component as it is computed; named temps add
+     * integer copies and bloat 65 B to 91 B. */
+    pOut->x = pA->y * pB->z - pA->z * pB->y;
+    pOut->y = pA->z * pB->x - pA->x * pB->z;
+    pOut->z = pA->x * pB->y - pA->y * pB->x;
 }
 
 signed char BrPackNormalByte(double v)
