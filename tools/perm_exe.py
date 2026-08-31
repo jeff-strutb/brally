@@ -25,9 +25,27 @@ def main():
     ap.add_argument('--iters', type=int, default=200000)
     ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--sfx', default=None)
+    ap.add_argument('--objective', default='bytes')
     a = ap.parse_args()
     permute._WHOLE_FILE = True
     permute._WORKER_SFX = a.sfx if a.sfx else ('_ex%d' % a.seed)
+
+    if a.objective == 'region':
+        import regioncount
+        _orig_score = permute.score_src
+        def _region_score(src, func_name, orig_bytes, opts, tag):
+            # compile via original path to get (nd,opt,rb,relocs); replace nd with region count
+            nd, opt, rb, relocs = _orig_score(src, func_name, orig_bytes, opts, tag)
+            if rb is None:
+                return (None, opt, rb, relocs)
+            rc = regioncount.region_count(orig_bytes, rb, relocs)
+            if rc == 0:
+                # regions aligned; fall back to true byte-diff so match == byte-exact
+                import match_sweep
+                _, bd, _ = match_sweep.score(orig_bytes, rb, relocs)
+                return (bd, opt, rb, relocs)
+            return (rc, opt, rb, relocs)
+        permute.score_src = _region_score
     va = '0x%08X' % int(a.va, 16)
     orig = open(os.path.join(ROOT, 'build', 'match',
                 'orig_%s' % a.exe, va + '.bin'), 'rb').read()
