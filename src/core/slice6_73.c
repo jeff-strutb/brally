@@ -1224,7 +1224,14 @@ int32_t BrSub1003D030(void *pBlob)
     if (g_br73.apJoinBlob == NULL) {
         return 0;
     }
+#ifdef BR_MATCHING_BUILD
+    /* Orig `mov eax,[eax+ecx*8+0x1de48]`: the pointer at 0x10AA29D4 is a
+     * base, not a pointer-to-pointer table.  Each slot is 8 bytes. */
+    pSrc = *(void *const *)((const char *)g_br73.apJoinBlob
+                            + 0x1DE48 + (size_t)g_br73.nAA2880 * 8);
+#else
     pSrc = g_br73.apJoinBlob[g_br73.nAA2880];
+#endif
     if (pSrc == NULL) {
         return 0;
     }
