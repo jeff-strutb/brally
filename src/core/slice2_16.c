@@ -28,6 +28,9 @@
 #define BrGbiMoveMem            BrGbiMoveMem_port
 #define BrGbiMoveWord           BrGbiMoveWord_port
 #define BrGbiMoveMemMatrix      BrGbiMoveMemMatrix_port
+/* Fade sprite: orig is (pRecs, alpha); rectIdx / otherModeH / cursor are
+ * standalone globals, not a BrFadeState *. */
+#define BrFadeDrawSprite        BrFadeDrawSprite_port
 #endif
 #include "slice2_16.h"
 #ifdef BR_MATCHING_BUILD
@@ -48,6 +51,8 @@
 #undef BrGbiMoveMem
 #undef BrGbiMoveWord
 #undef BrGbiMoveMemMatrix
+#undef BrFadeDrawSprite
+void BrFadeDrawSprite(const uint32_t *pRecs, float alpha);
 /* Bodies live in br_gbitexscan.c; TexScanRun still calls them. */
 void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd);
 void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
@@ -78,6 +83,9 @@ extern int DAT_105ce2d8;   /* lookat 0x82  */
 extern int DAT_105ce2dc;   /* lookat 0x84  */
 extern char DAT_105ccc78[]; /* lights      */
 extern int DAT_105ccfd0;   /* numLights    */
+extern BrGfxWords *DAT_106e7710;  /* DL write cursor */
+extern int         DAT_106ec798;  /* fade rectIdx    */
+extern int         DAT_106e7718;  /* otherModeH      */
 #endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
@@ -1625,6 +1633,81 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
  * tenths opaque. The rectangle it covers comes from a table of screen
  * regions. */
 /* @implements 0x1002AF10 d3d BrFadeDrawSprite */
+#ifdef BR_MATCHING_BUILD
+/* orig: cdecl (pRecs, alpha); cursor DAT_106e7710, rectIdx DAT_106ec798,
+ * otherModeH DAT_106e7718. Combine is BrRdpSetCombineLERP(DAT++, 17 args)
+ * with 0x3EB/0x3E8 immediates hoisted across the preceding emits.
+ * (int)(alpha * 255.0f) is __ftol, not br16_ftol(double). */
+void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
+{
+    BrGfxWords     *p;
+    const uint32_t *pRec;
+    uint32_t        lo, hi;
+    int             idx;
+
+    if (!(alpha >= 0.1f))
+        return;
+    if (alpha > 0.7f)
+        alpha = 0.7f;
+
+    p = DAT_106e7710++;
+    p->w0 = 0xE7000000u;
+    p->w1 = 0;
+
+    p = DAT_106e7710++;
+    p->w0 = 0xBA001402u;
+    p->w1 = 0;
+
+    p = DAT_106e7710++;
+    p->w0 = 0xB900031Du;
+    p->w1 = 0x00504340u;
+
+    BrRdpSetCombineLERP(DAT_106e7710++,
+                        0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3EB);
+
+    p = DAT_106e7710++;
+    p->w0 = 0xFA000000u;
+    p->w1 = (uint32_t)(int)(alpha * 255.0f) | 0xFFFFFF00u;
+
+    p = DAT_106e7710++;
+    p->w0 = 0xBA000602u;
+    p->w1 = 0xC0u;
+
+    p = DAT_106e7710++;
+    idx = DAT_106ec798;
+    pRec = pRecs + idx * BR_FADE_RECT_DWORDS;
+    /* orig load order: [+0xC] esi, [+4] edi, [+8] ebx, then [+0] via
+     * lea-base — ebx is why the prologue is push edi/esi/ebx. */
+    lo = pRec[3];
+    hi = pRec[1];
+    {
+        uint32_t c, a;
+        c = pRec[2];
+        a = pRec[0];
+        lo = (lo + hi) & 0xFFFu;
+        hi = ((c + a) << 12) & 0xFFF000u;
+        p->w0 = 0xE1000000u | hi | lo;
+        p->w1 = ((a & 0xFFFu) << 12) | (pRec[1] & 0xFFFu);
+    }
+
+    BrRdpSetCombineLERP(DAT_106e7710++,
+                        0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3E8,
+                        0, 0, 0, 0x3E8);
+
+    p = DAT_106e7710++;
+    p->w0 = 0xE7000000u;
+    p->w1 = 0;
+
+    p = DAT_106e7710++;
+    p->w0 = 0xBA000602u;
+    p->w1 = (uint32_t)DAT_106e7718;
+}
+#else
 void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
 {
     BrGfxWords     *p;
@@ -1684,6 +1767,7 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
     p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
     p = br16_fade_alloc(pSt); p->w0 = 0xBA000602u; p->w1 = pSt->otherModeH;
 }
+#endif
 
 /* 0x1002B130 */
 /* WHAT IT DOES: aims the screen wipe at a new position, to be reached over
