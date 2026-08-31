@@ -143,13 +143,30 @@ int32_t BrAppStateRun(void)
  * picture is "loading.img"; the game shows it while the next stage sets
  * itself up. */
 /* @implements 0x1001CDD0 glide BrAppStateLoading */
+#ifdef BR_MATCHING_BUILD
+/* Orig loads these four globals directly (mov eax,[0x10B71A54] ...), not
+ * through the port's accessor thunks. */
+extern int32_t DAT_10b71a48;
+extern int32_t DAT_10b71a4c;
+extern int32_t DAT_10b71a50;
+extern int32_t DAT_10b71a54;
+#endif
+
 int32_t BrAppStateLoading(void)
 {
+#ifdef BR_MATCHING_BUILD
+    BrBootFrontier_10063970(3,
+                            DAT_10b71a48,
+                            DAT_10b71a4c,
+                            DAT_10b71a50,
+                            DAT_10b71a54);
+#else
     BrBootFrontier_10063970(3,
                             BrBootGlobal_B71A48(),
                             BrBootGlobal_B71A4C(),
                             BrBootGlobal_B71A50(),
                             BrBootGlobal_B71A54());
+#endif
     BrBootFrontier_1006C990("loading.img", 0);   /* 0x100A9924 */
     BrBootFrontier_100628B0();
 
