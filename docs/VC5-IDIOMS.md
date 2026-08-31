@@ -886,6 +886,17 @@ the caller AND flipped a helper to match for free.
   block matches in shape but drains slots mirrored, permute the SETUP
   ORDER of the spilled temps, not the consuming statements. Proven
   0x100215C0.
+- **`(t = r) * mem` copies a live x87 value: `fld st; fmul [mem]`.**
+  A settled local `r * pV->x` loads the component (`fld [mem]; fmul st`)
+  and leftover r is `fstp st`-discarded.  Copying r into a FRESH named
+  temp as part of the product keeps the scalar on the fld side for every
+  term.  First product is Div's `(r = 1.0f/s) * mem`; each later product
+  is `(rN = r) * mem`.  In-place `*=` / named-r temps / `s = 1.0f/s`
+  all canonicalize to the load-components form.  Proven 0x100343F0
+  (BrVec3DivBy, 45 B MATCH /O2).  Same shape as orig ScaleBy's 3x
+  `fld [s]` — the copies are `fld st` when r is a just-computed st
+  value rather than a memory parameter.
+
 - **A divider-pipeline interleave means PRE-DIVIDED TEMPS in the source.**
   Orig starting two fdivs ahead of a second constant-divide pair
   (fdiv/fdiv ... fdiv/fdiv interleaved with /Op round-trips) is not
@@ -1015,6 +1026,27 @@ the caller AND flipped a helper to match for free.
   `if (n > 0) { do ... while (--n); } return c;` shares one `ret` via `jle`;
   `if (n <= 0) return 0;` duplicates the epilogue (`jg` + extra `ret`).
   Proven 0x100057E0 (BrEntityCountActive, 33 B MATCH /O2).
+
+- **Port-only NULL guards are extra early-outs.** Orig starts
+  `mov esi,[esp+8]; cmp word [esi+0x12],18` with no `test esi,esi`.
+  `if (!p) return NULL;` emits an extra test/jne/xor/pops/ret. Keep the
+  guard under `#ifndef BR_MATCHING_BUILD`. Proven 0x10001240
+  (BrSurfFromBitmap, 75 B MATCH /O2).
+
+- **GBI tex-scan OtherMode H/0E take pCmd only; fields are globals.**
+  Orig `mov eax,[esp+4]; mov eax,[eax+4]` then `mov [0x10697a44],imm`
+  (and H's `push ecx; call 0E; add esp,4` — one arg). The port's
+  `pSt->f5553DC` is `[R+disp]` plus a wasted first-arg load. Matching
+  twin: 1-arg `const BrGfxWords *pCmd`, store `DAT_10697a44` /
+  `DAT_106b7ab0`. Hide the 2-arg header proto in the .c (no header
+  edit). Proven 0x100297C0 (47 B) and 0x10029780 (55 B) MATCH /O2.
+
+- **Uninitialised `push ecx` slot live across a call is `volatile int`.**
+  Orig saves a global to `[esp]` only on the `-1` arm, restores after the
+  call; `int saved = g;` plus `if (g==0) return;` drops the slot (callee-
+  saved or nothing) and duplicates `ret`. Matching: `volatile int saved;`
+  (no init), `if (g != 0) { ... }` so one `je` to the shared pop/ret.
+  Proven 0x10019840 (BrS17DrawGated, 71 B MATCH /O2).
 
 ## Cost model (measured, 2026-08-22 timed test)
 

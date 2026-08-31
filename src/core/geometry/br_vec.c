@@ -168,19 +168,17 @@ void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
     pOut->z = pV->z * r;
 }
 
+/* @implements 0x100343F0 glide BrVec3DivBy */
 /* @implements 0x1003AD70 d3d BrVec3DivBy */
 void BrVec3DivBy(BrVec3 *pV, float s)
 {
-    float r = 1.0f / s;
-    /* NOT MATCHING.  The original duplicates the reciprocal on the x87 stack
-     * (`fld st(0); fld st(1)`) and multiplies each copy by a component held as
-     * a memory operand; ours loads all three components first.  Tried and
-     * rejected: consuming the division inline as BrVec3Div does, and explicit
-     * `pV->x = r * pV->x` products instead of `*=`.  Neither moves it, so the
-     * in-place form is doing something the out-of-place BrVec3Div does not. */
-    pV->x *= r;
-    pV->y *= r;
-    pV->z *= r;
+    /* Each product copies the live reciprocal into a FRESH named temp:
+     * `(t = r) * mem` emits `fld st; fmul [mem]`.  Without the copies the
+     * components take the fld side and leftover r is fstp-discarded. */
+    float r, r2, r3;
+    pV->x = (r = 1.0f / s) * pV->x;
+    pV->y = (r2 = r) * pV->y;
+    pV->z = (r3 = r) * pV->z;
 }
 
 /* 0.5f constant lives at 0x1008F638. */
