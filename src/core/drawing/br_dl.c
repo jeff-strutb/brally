@@ -1776,7 +1776,7 @@ static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
  * drawing is not taking its colour from a texture or from vertex shading.
  * The four channels are kept on a 0-to-255 scale, unlike the environment
  * colour below. */
-/* @implements 0x1001EA80 glide br_dl_prim */
+/* port-only body; Glide match is src/core/generated/0x1001EA80.c */
 static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
 {
     uint32_t v = br_dl_w(p + 4);
