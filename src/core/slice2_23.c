@@ -625,13 +625,22 @@ int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: slides a menu row sideways to a position worked out from
  * one of the settings, so the row's marker sits at the place that setting
  * corresponds to. */
+/* @implements 0x10037F40 glide BrUiFn1003E920 */
 /* @implements 0x1003E920 d3d BrUiFn1003E920 */
 int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig: lea 11*g+0x3D, fild, fstp [pObj+0x3c]. BrUiStF is an extern CALL. */
+    int32_t v = g_i0AC65C * 11 + 0x3D;
+    (void)pG;
+    *(float *)(pObj + BR_UI_OFF_F3C) = (float)v;
+    return 1;
+#else
     /* lea ecx,[eax+eax*4] ; lea edx,[eax+ecx*2+0x3D]  ->  11*a + 61 */
     int32_t v = pG->g0AC65C * 11 + 0x3D;
     BrUiStF(pObj, BR_UI_OFF_F3C, (float)v);
     return 1;
+#endif
 }
 
 int32_t BrUiFn1003EA40(BrUiObj *pObj, BrUiGlobals *pG)
@@ -742,19 +751,39 @@ int32_t BrUiPoll1003EC30(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: the same, storing into the setting that tracks which entry
  * of a per-player table is current. */
+/* @implements 0x10038150 glide BrUiPoll1003EB60 */
 /* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
 int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA28AC);
+    if (r >= 0)
+        g_iAA28AC = r;
+    return 1;
+#else
     (void)br23_poll_store(pObj, &pG->gAA28AC);
     return 1;
+#endif
 }
 
 /* WHAT IT DOES: the same, storing into a different setting again. */
+/* @implements 0x10038180 glide BrUiPoll1003EB90 */
 /* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
 int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    if (r >= 0)
+        g_iAA2880 = r;
+    return 1;
+#else
     (void)br23_poll_store(pObj, &pG->gAA2880);
     return 1;
+#endif
 }
 
 /* WHAT IT DOES: asks the list which entry the player has moved to and then
@@ -800,11 +829,21 @@ int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: the same ask-and-remember, storing into yet another
  * setting. */
+/* @implements 0x100382A0 glide BrUiPoll1003EC80 */
 /* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
 int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2840);
+    if (r >= 0)
+        g_iAA2840 = r;
+    return 1;
+#else
     (void)br23_poll_store(pObj, &pG->gAA2840);
     return 1;
+#endif
 }
 
 int32_t BrUiPoll1003ED10(BrUiObj *pObj, BrUiGlobals *pG)
@@ -815,11 +854,21 @@ int32_t BrUiPoll1003ED10(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: the same ask-and-remember, storing into yet another
  * setting. */
+/* @implements 0x10038320 glide BrUiPoll1003EDF0 */
 /* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
 int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2A30);
+    if (r >= 0)
+        g_iAA2A30 = r;
+    return 1;
+#else
     (void)br23_poll_store(pObj, &pG->gAA2A30);
     return 1;
+#endif
 }
 
 int32_t BrUiPoll1003EE20(BrUiObj *pObj, BrUiGlobals *pG)
