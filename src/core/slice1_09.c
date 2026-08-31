@@ -416,27 +416,42 @@ void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
  * here is deliberate, because the original writes each result component out
  * before starting the next, which is visible if the caller passes the same
  * point as both input and output. */
+/* @implements 0x1006DA20 glide BrMat4TransformPoint */
 /* @implements 0x100747C0 d3d BrMat4TransformPoint */
 void BrMat4TransformPoint(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
-    pOut->x = 0.0f;
-    pOut->x = pV->x * pM->m[0][0] + pOut->x;
-    pOut->x = pV->y * pM->m[1][0] + pOut->x;
-    pOut->x = pV->z * pM->m[2][0] + pOut->x;
+    /* Orig is two counted loops (ebp=3 outer, esi=3 inner), not unrolled
+     * products: `mov [eax],0`; inner `fld [v]; fmul [m]; add m,0x10; add v,4;
+     * dec esi; fadd [eax]; fstp [eax]`.  `sub edi,eax` is pM-pOut so the
+     * column pointer is `lea r,[edi+eax]` as eax walks the output.
+     *
+     * WALL: exact size, REGNORM 0+0, 7-byte ecx/edx swap of the two inner
+     * pointers (orig edx=v ecx=m; we get ecx=v edx=m).  Solo TU same.
+     * Register-allocation class -- do not grind. */
+    float *o = (float *)pOut;
+    const float *m = (const float *)pM;
+    const float *v;
+    const float *col;
+    int i, j;
 
-    pOut->y = 0.0f;
-    pOut->y = pV->x * pM->m[0][1] + pOut->y;
-    pOut->y = pV->y * pM->m[1][1] + pOut->y;
-    pOut->y = pV->z * pM->m[2][1] + pOut->y;
-
-    pOut->z = 0.0f;
-    pOut->z = pV->x * pM->m[0][2] + pOut->z;
-    pOut->z = pV->y * pM->m[1][2] + pOut->z;
-    pOut->z = pV->z * pM->m[2][2] + pOut->z;
-
-    pOut->x = pM->m[3][0] + pOut->x;
-    pOut->y = pM->m[3][1] + pOut->y;
-    pOut->z = pM->m[3][2] + pOut->z;
+    for (i = 0; i < 3; i++) {
+        float vv;
+        *o = 0.0f;
+        v = (const float *)pV;
+        col = m;
+        for (j = 0; j < 3; j++) {
+            /* Name the vector so it is the fld operand (`fld [v]; fmul [m]`). */
+            vv = *v;
+            *o += vv * *col;
+            v++;
+            col += 4;
+        }
+        o++;
+        m++;
+    }
+    pOut->x += pM->m[3][0];
+    pOut->y += pM->m[3][1];
+    pOut->z += pM->m[3][2];
 }
 
 /* ================================================================== */
