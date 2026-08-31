@@ -48,7 +48,13 @@
  * integration because slice3_33 implements the same addresses with a different
  * signature (it adds a ctx parameter as a documented DEVIATION). The one-arg
  * hook form used here matches the ORIGINAL calling convention. */
+#ifdef BR_MATCHING_BUILD
+#define BrSub10047360 BrSub10047360_port
+#endif
 #include "slice3_31.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrSub10047360
+#endif
 #include "br_phaseact.h"   /* the one activate body -- see br_phaseact.h */
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 #include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
@@ -115,6 +121,22 @@ extern BrPhase_ *g_brAA2998;  /* 0x10AA2998  = g_pExt->pAA2998         */
 extern BrPhase_ *g_brPhaseAA2904; /* 0x10AA2904 = BR_PHASE_CUR's dword  */
 extern int32_t  g_brAA2A48;   /* 0x10AA2A48  ring write index          */
 extern int32_t  g_aBrA9E150[];/* 0x10A9E150  the ring itself           */
+extern BrPhase *g_brAA2934;
+extern BrPhase *g_brAA2938;
+extern BrPhase *g_brAA293C;
+extern BrPhase *g_brAA2908;
+extern BrPhase *g_brAA2974;
+extern BrPhase *g_brAA296C;
+extern int32_t  g_brAA26F0;
+extern uint8_t  g_brAA26F4;
+extern uint8_t  g_aBrAA26F6[];
+extern uint8_t  g_aBrAA270E[];
+extern uint8_t  g_aBrAA2740[];
+extern int32_t  g_brAA28C4;
+extern int32_t  g_brAA28B0;
+extern int32_t  g_brAA28B4;
+extern int32_t  g_brAA284C;
+extern BrObjAA2E80 *g_brAA2E80;
 
 #  define BR31_AA28F0   g_brAA28F0
 #  define BR31_AA28F4   g_brAA28F4
@@ -165,6 +187,10 @@ typedef struct {
 typedef struct {
     void *(BR_THISCALL1 *f00)(BrPhase *pThis, const void *pVtbl, int32_t n);
 } Br31PhaseVtblMatch;
+typedef struct {
+    void *pad[7];
+    void (BR_THISCALL1 *f1C)(BrPhase *pThis);
+} Br31PhaseVtblF1C;
 #endif
 
 /* ==========================================================================
@@ -836,6 +862,34 @@ int32_t BrPhaseLeave_10046F60(void *pEntity)
 /* @implements 0x10046FD0 d3d BrPhaseLeave_10046FD0 */
 int32_t BrPhaseLeave_10046FD0(void *pEntity)
 {
+#ifdef BR_MATCHING_BUILD
+    BrPhase *p;
+    BrGameObj *pObj;
+
+    p = g_brAA2934;
+    if (p != 0) {
+        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
+        g_brAA2934 = 0;
+    }
+    p = g_brAA2938;
+    if (p != 0) {
+        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
+        g_brAA2938 = 0;
+    }
+    p = g_brAA293C;
+    if (p != 0) {
+        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
+        g_brAA293C = 0;
+    }
+    pObj = (BrGameObj *)pEntity;
+    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
+    p = (BrPhase *)g_brPhaseAA2904;
+    if (p != 0)
+        (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
+    g_brAA2974 = 0;
+    g_brPhaseAA2904 = (BrPhase_ *)g_brAA2908;
+    return 0;
+#else
     Br31DestroyPhase(&g_pExt->pAA2934);
     Br31DestroyPhase(&g_pExt->pAA2938);
     Br31DestroyPhase(&g_pExt->pAA293C);
@@ -845,6 +899,7 @@ int32_t BrPhaseLeave_10046FD0(void *pEntity)
     g_pExt->pAA2974  = NULL;
     BR_PHASE_CUR = g_pBase->pAA2908;
     return 0;
+#endif
 }
 
 /* 0x10047120 */
@@ -854,6 +909,24 @@ int32_t BrPhaseLeave_10046FD0(void *pEntity)
 /* @implements 0x10047120 d3d BrPhaseLeave_10047120 */
 int32_t BrPhaseLeave_10047120(void *pEntity)
 {
+#ifdef BR_MATCHING_BUILD
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+    BrPhase *p;
+
+    BrExt_10045C90(pEntity);
+    if (g_brAA26F0 > 0 && g_brAA26F4 == 0 && g_brAA26F5 == 0) {
+        memset(g_aBrAA26F6, 0, 24);
+        memset(g_aBrAA270E, 0, 48);
+        memset(g_aBrAA2740, 0, 96);
+    }
+    g_brAA28C4 = 0;
+    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
+    p = g_brAA296C;
+    if (p != 0)
+        (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
+    g_brAA296C = 0;
+    return 0;
+#else
     BrGameObj *pObj = (BrGameObj *)pEntity;
 
     BrExt_10045C90(pEntity);
@@ -868,6 +941,7 @@ int32_t BrPhaseLeave_10047120(void *pEntity)
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA296C);   /* pAA2904 is NOT touched */
     return 0;
+#endif
 }
 
 /* 0x100471B0 */
@@ -902,6 +976,37 @@ int32_t BrPhaseLeave_100471B0(void *pEntity)
 /* @implements 0x10047290 d3d BrPhaseLeave_10047290 */
 int32_t BrPhaseLeave_10047290(void *pEntity)
 {
+#ifdef BR_MATCHING_BUILD
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+    BrPhase *p;
+
+    BrExt_1005FBC0(1);
+    p = g_brAA2934;
+    if (p != 0) {
+        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
+        g_brAA2934 = 0;
+    }
+    p = g_brAA2938;
+    if (p != 0) {
+        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
+        g_brAA2938 = 0;
+    }
+    if (g_brAA28B0 != 0) {
+        BrExt_10043260(pEntity);
+        g_brAA28B0 = 0;
+    } else if (g_brAA28B4 != 0) {
+        BrExt_10043330(pEntity);
+        g_brAA28B4 = 0;
+    } else {
+        BrExt_10045C90(pEntity);
+    }
+    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
+    p = g_brAA293C;
+    if (p != 0)
+        (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
+    g_brAA293C = 0;
+    return 0;
+#else
     BrGameObj *pObj = (BrGameObj *)pEntity;
 
     BrExt_1005FBC0(1);
@@ -921,6 +1026,7 @@ int32_t BrPhaseLeave_10047290(void *pEntity)
     pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
     Br31NotifyAndClear(&g_pExt->pAA293C);
     return 0;
+#endif
 }
 
 /* ==========================================================================
@@ -1038,6 +1144,68 @@ static const unsigned char g_aJump10047470[0x33] = {
  * the mouse is over the row it jumps straight to yellow instead and the cycle
  * is skipped. Rows that are disabled or hidden are left entirely alone. */
 /* @implements 0x10047360 d3d BrSub10047360 */
+#ifdef BR_MATCHING_BUILD
+typedef struct BrGoM47360 {
+    unsigned char pad00[0x1c];
+    unsigned int flags;
+    unsigned char pad20[0x2b64 - 0x20];
+    unsigned char state;
+    unsigned char pad2b65[0x3850 - 0x2b65];
+    unsigned int f3850;
+    unsigned char pad3854[0x1e20c - 0x3854];
+    short count;
+} BrGoM47360;
+
+int BrSub10047360(BrGoM47360 *p)
+{
+    unsigned int flags;
+
+    flags = p->flags;
+    if (flags & 0x10)
+        return 0;
+    if (flags & 0x01000000)
+        return 0;
+    if (p->f3850 & 0x01000000)
+        return 0;
+    if (g_brAA284C) {
+        BrObjAA2E80 *q = g_brAA2E80;
+        if (q->f2C || q->f30 || q->f34 || q->f38) {
+            p->state = 4;
+            return 1;
+        }
+    }
+    if ((flags & 0x100) == 0)
+        return 1;
+    p->count++;
+    switch (p->count) {
+    case 2:
+        flags &= ~0x100u;
+        p->state = 0;
+        p->flags = flags;
+        return 1;
+    case 3:
+        flags &= ~0x100u;
+        p->state = 1;
+        p->flags = flags;
+        return 1;
+    case 4:
+        flags &= ~0x100u;
+        p->state = 2;
+        p->flags = flags;
+        return 1;
+    case 52:
+        flags &= ~0x100u;
+        p->state = 4;
+        p->flags = flags;
+        return 1;
+    default:
+        flags &= ~0x100u;
+        p->count = 2;
+        p->flags = flags;
+        return 1;
+    }
+}
+#else
 void BrSub10047360(BrGameObj *p)
 {
     uint32_t uFlags;
@@ -1088,6 +1256,7 @@ void BrSub10047360(BrGameObj *p)
 
     Br31St32(p, BR_GAMEOBJ_OFF_FLAGS, uFlags);      /* original: returns 1 */
 }
+#endif
 
 /* 0x100474B0 */
 /* WHAT IT DOES: the once-a-frame step for a menu row -- it just runs the
