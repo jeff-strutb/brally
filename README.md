@@ -26,12 +26,12 @@ DLLs over one shared core: `BRGlide.dll` (3dfx Glide, the mature target and the
 reference for renderer code) and `BRD3D.dll` (Direct3D, which statically links
 ~100 KB of CRT that has to be identified and fenced off).
 
-## Status (2026-08-27)
+## Status (2026-08-31)
 
 The matching pipeline is live end to end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes extracted
 from the original binary. Half of the game DLL's `.text` is transcribed into C,
-and **599 functions now reproduce the original bytes exactly** — driven by a
+and **706 functions now reproduce the original bytes exactly** — driven by a
 growing dictionary of proven compiler idioms (`docs/VC5-IDIOMS.md`), a
 Ghidra-assisted batch pipeline whose `--refine` hill-climb encodes those idioms
 as automatic source transforms, and an auto-filer (`tools/autofile.py`) that
@@ -63,10 +63,10 @@ exception-handling functions (20% of the DLL `.text`) that push a
 `__CxxFrameHandler` frame were previously fenced as "unreachable from C." A
 `.cpp`/`cl /GX` harness (`tools/cpp_score.py`) now reproduces one byte-exact
 and — critically — verifies all four pieces including the unwind tables in
-`.xdata`/`.rdata` that the normal `.text` comparison cannot see. The harness now has **36 C++ functions matched byte-exact on all four
-pieces (15,832 B, including one 8,349-byte function — the largest single match
+`.xdata`/`.rdata` that the normal `.text` comparison cannot see. The harness now has **42 C++ functions matched byte-exact on all four
+pieces (17,164 B, including one 8,349-byte function — the largest single match
 in the project)**, now filed into `src/core/cpp/` and counted (via
-`tools/cpp_sweep.py`) in the 701-function grand total.
+`tools/cpp_sweep.py`) in the 851-function grand total.
 The clean wins are small-to-mid C++ functions and function families sharing
 one `.cpp` pattern; large C++ bodies land their exception *frame* but their
 *body* hits the same register-coloring ceiling as plain C, so those are
@@ -95,15 +95,15 @@ The per-frame race render is the last major rendering gate.
 
 | Aspect | Measure | |
 |---|---|---|
-| **TOTAL byte-exact (all binaries, C + C++)** | **741 functions · 76,136 bytes** — verify with `python3 tools/total.py` | |
+| **TOTAL byte-exact (all binaries, C + C++)** | **851 functions · 89,509 bytes** — verify with `python3 tools/total.py` | |
 | Assembled image (DLL) | every matched claim laid into the real DLL: **0 differing bytes** — `python3 tools/image_build.py` | `████████████████████` |
-| Transcribed into C (DLL) | 246,530 / 480,853 bytes of `.text` · 1,140 / 2,818 mapped functions | `██████████░░░░░░░░░░` 51% |
-| **Byte-exact under MSVC 5.0 (DLL)** | 599 of 1,178 transcribed functions · 48,994 bytes | `██████████░░░░░░░░░░` 51% |
-| Byte-exact, of all DLL `.text` | 48,994 / 480,853 bytes | `██░░░░░░░░░░░░░░░░░░` 10% |
+| Transcribed into C (DLL) | 256,462 / 480,853 bytes of `.text` · 1,154 / 2,818 mapped functions | `██████████░░░░░░░░░░` 53% |
+| **Byte-exact under MSVC 5.0 (DLL)** | 706 of 1,154 transcribed functions · 62,113 bytes | `████████████░░░░░░░░` 61% |
+| Byte-exact, of all DLL `.text` (C + C++ EH) | 79,277 / 480,853 bytes | `███░░░░░░░░░░░░░░░░░` 16% |
 | **BRally.exe (launcher)** | **24 / 24 user functions · 2,831 B — game code COMPLETE** | `████████████████████` 100% |
-| SetVideo.exe (user region) | 40 matched · 4,890 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 47% |
+| SetVideo.exe (user region) | 44 matched · 4,919 B of 10,448 B (rest is static CRT) | `█████████░░░░░░░░░░░` 47% |
 | BossRally.exe (user region) | 35 matched · 2,482 B of 3,008 B (rest is static CRT) | `████████████████░░░░` 81% |
-| C++ EH class (tree-resident) | 39 functions · 16,910 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 41% of C++ code |
+| C++ EH class (tree-resident) | 42 functions · 17,164 B byte-exact on all four pieces (incl. the 8,349 B 0x10056260 — the largest match in the project), filed in `src/core/cpp/` | `████████░░░░░░░░░░░░` 43% of C++ code |
 | Port milestones | 3 of 7 done (boot, front end, in-screen navigation); 3 partial | `████████░░░░░░░░░░░░` 43% |
 | Port source build | compiles clean (all `src/core` + `src/exe` + `src/core/cpp`) | `████████████████████` |
 | Port test suite | **136 / 136 green** | `████████████████████` 100% |
