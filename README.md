@@ -127,8 +127,8 @@ above (only completed matches are recorded for them).
 | Area | Byte-exact (T4) | Notes | |
 |---|---|---|---|
 | **BRally.exe** (launcher) | 24 / 24 user functions · 2,831 B | game code COMPLETE | `████████████████████` 100% |
-| BossRally.exe (user region) | 35 · 2,482 B of 3,008 B | rest is static CRT | `████████████████░░░░` 81% |
-| SetVideo.exe (user region) | 44 · 4,919 B of 10,448 B | rest is static CRT | `█████████░░░░░░░░░░░` 47% |
+| **BossRally.exe** (intro shim) | 28 / 28 game functions · 2,431 B | game code COMPLETE; static CRT is linked, not decompiled | `████████████████████` 100% |
+| SetVideo.exe (config util) | 38 / 39 game functions · 5,084 / 7,226 B | only WinMain (one function) remains; static CRT linked | `██████████████░░░░░░` 70% |
 | C++ EH class (in game DLL) | 42 · 17,164 B | of ~98; incl. the 8,349 B largest match in the project | `████████░░░░░░░░░░░░` 43% |
 
 ### Whole-project totals

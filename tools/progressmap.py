@@ -26,6 +26,21 @@ FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompile
 CRT_START = {"brally": 0x401BC0, "setvideo": 0x402D20, "bossrally": 0x401BC0}
 
 
+def _fenced_exe():
+    """Interleaved static-CRT functions that sit BELOW an EXE's CRT boundary
+    (linked library code physically laid out inside the game-code VA range).
+    They are reproduced by linking the CRT, not decompiled — same category as
+    the DLL's config/fenced.csv — so they must not count as unfinished game
+    code. Returns {(exe, va): True}."""
+    out = {}
+    p = os.path.join(ROOT, "config", "fenced_exe.csv")
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[(r["exe"], int(r["va"], 16))] = True
+    return out
+
+
 def _match_set(path):
     """VAs from a total.py manifest (build/match/<path>), or empty."""
     p = os.path.join(ROOT, "build", "match", path)
@@ -84,6 +99,7 @@ def load():
     exe_hit = {}
     for r in _exe_rows():
         exe_hit.setdefault(r[0], {})[int(r[1], 16)] = int(r[2] or 0)
+    fenced_exe = _fenced_exe()
     for exe in ("brally", "setvideo", "bossrally"):
         fmap = os.path.join(ROOT, "config", "functions_%s.csv" % exe)
         if not os.path.exists(fmap):
@@ -96,7 +112,7 @@ def load():
                     continue
                 if va in hits:
                     st = "match"
-                elif va >= CRT_START.get(exe, 1 << 30):
+                elif va >= CRT_START.get(exe, 1 << 30) or (exe, va) in fenced_exe:
                     st = "fenced"   # linked CRT, not a decomp target
                 else:
                     st = "todo"
