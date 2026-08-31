@@ -115,8 +115,8 @@ void          BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v);
 /* Four consecutive floats at +0x00/+0x04/+0x08/+0x0C. One caller's failure
  * path writes 1.0f to element 0 and 0.0f to the other three, which is a
  * quaternion identity, but which element is the scalar is not established --
- * so the fields are positional. Normalisation is symmetric anyway. */
-typedef struct BrVec4 { float f00, f04, f08, f0C; } BrVec4;
+ * so the fields are positional. Normalisation is symmetric anyway.
+ * BrVec4 is typedef'd in br_vec.h. */
 
 /* 0x10074250  normalise a BrVec3 IN PLACE (no output parameter).
  *

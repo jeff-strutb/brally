@@ -896,6 +896,18 @@ the caller AND flipped a helper to match for free.
   (BrVec3DivBy, 45 B MATCH /O2).  Same shape as orig ScaleBy's 3x
   `fld [s]` — the copies are `fld st` when r is a just-computed st
   value rather than a memory parameter.
+- **After a call, `p * k` (k named) homes k (`fst` + `fld [slot]`);
+  later products still need `(t = k) * mem`.**  All-copy-assign skips
+  the home; `p *= k` loads every component.  Proven 0x1006D4B0
+  (BrVec3Normalise, 113 B) and 0x1006D410 (BrVec4Normalise, 148 B).
+- **That scale-out is TU-sensitive.**  The same source in br_vec.c
+  (with Cross/Dot/Scale) compiles `pV->x * k` as three `fld st` copies.
+  Own TU — the adjacent 0x1006D410/0x1006D4B0 pair — matches.  Do not
+  merge Normalise into the 0x100343xx vector cluster.
+- **A 4-term sum must be left-to-right with no extra parens**
+  (`y*y + z*z + w*w + x*x`) so the last load hoists into the previous
+  add (`fld x; fxch; faddp st(3); fmul [x]`).  `(y*y + z*z) + w*w + x*x`
+  adds w² before loading x (+2 B).  Proven 0x1006D410.
 
 - **A divider-pipeline interleave means PRE-DIVIDED TEMPS in the source.**
   Orig starting two fdivs ahead of a second constant-divide pair
