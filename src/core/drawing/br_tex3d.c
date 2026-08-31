@@ -80,8 +80,9 @@ static int32_t br_tex3d_find(const BrTex3d *pTex, const BrTex3dRec *pProbe)
  * and reports the slot it went into, growing the table in blocks of 256 when
  * it fills up. The slot number it gives back is the number that gets written
  * into the drawing list in place of the texture-load commands. */
-/* @implements 0x10027A10 glide br_tex3d_append */
-static int32_t br_tex3d_append(BrTex3d *pTex, const BrTex3dRec *pRec)
+/* Host-side grow+copy.  Matching 0x10027A10 is the global `br_tex3d_append`
+ * in the BR_MATCHING_BUILD block (grow+inc only, no record copy). */
+static int32_t br_tex3d_host_append(BrTex3d *pTex, const BrTex3dRec *pRec)
 {
     if (pTex->cRec >= pTex->cRecMax) {
         uint32_t n = pTex->cRecMax + 0x100u;    /* grown 0x100 at a time */
@@ -182,7 +183,7 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
     }
     if (rec.cLods > 1)
         pTex->cMultiLod++;
-    return br_tex3d_append(pTex, &rec);
+    return br_tex3d_host_append(pTex, &rec);
 }
 
 /* ==================================================================== */
@@ -224,8 +225,8 @@ static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
  * skip this many commands", so the several commands the N64 needed to load a
  * texture become one on the PC. This is the point where an N64 drawing list
  * is rewritten into a PC one. */
-/* @implements 0x10028B50 glide br_tex3d_seam */
-static void br_tex3d_seam(BrTex3d *pTex, uint8_t *p,
+/* Host-side seam.  Matching 0x10028B50 is the global `br_tex3d_seam`. */
+static void br_tex3d_host_seam(BrTex3d *pTex, uint8_t *p,
                           uint8_t **ppStart, uint8_t **ppEnd)
 {
     int32_t id;
@@ -296,7 +297,7 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
         case 0x04:                                  /* G_VTX              */
         case 0xB1:                                  /* G_TRI2             */
         case 0xBF:                                  /* G_TRI1             */
-            br_tex3d_seam(pTex, p, &pStart, &pEnd);
+            br_tex3d_host_seam(pTex, p, &pStart, &pEnd);
             break;
 
         case 0xFD:                                  /* 0x10029420 SETTIMG */
@@ -1170,13 +1171,18 @@ void BrTex3dDownloadAt(unsigned int param_1,int param_2)
 {
   int iVar1;
 
-  if ((param_1 < (unsigned int)DAT_105d17ec) &&
-     (iVar1 = param_1 * 0xd8, (&DAT_10661844)[param_1 * 0x36] != 0)) {
-    *(int *)(&DAT_10661914 + iVar1) = param_2;
-    *(int *)(&DAT_10661854 + iVar1) = param_2;
-    grTexDownloadMipMap(*(int *)(&DAT_10661884 + iVar1),
-                        *(int *)(&DAT_1066188c + iVar1),
-                        *(int *)(&DAT_10661888 + iVar1),&DAT_10661904 + iVar1);
+  /* Scaled BYTE offset in eax, every field as `[eax+global]` -- not an
+   * int-index into DAT_10661844 (that forms a pointer, `mov [R]`). */
+  if (param_1 < (unsigned int)DAT_105d17ec) {
+    iVar1 = (int)(param_1 * 0xd8);
+    if (*(int *)((char *)&DAT_10661844 + iVar1) != 0) {
+      *(int *)((char *)&DAT_10661914 + iVar1) = param_2;
+      *(int *)((char *)&DAT_10661854 + iVar1) = param_2;
+      grTexDownloadMipMap(*(int *)((char *)&DAT_10661884 + iVar1),
+                          *(int *)((char *)&DAT_1066188c + iVar1),
+                          *(int *)((char *)&DAT_10661888 + iVar1),
+                          (char *)&DAT_10661904 + iVar1);
+    }
   }
   return;
 }
@@ -1740,6 +1746,67 @@ void FUN_100298c0(int param_1,int param_2,int param_3)
   uVar1 = FUN_10027b60(&r);
   FUN_10027710(&r, uVar1);
   DAT_118ed1b4 = z;
+  return;
+}
+
+extern unsigned int DAT_10697a58;
+extern unsigned int DAT_10697a5c;
+extern char s_AppendTexture__atdb_100a9e6c[];
+void *BrChkRealloc(void *, unsigned int, int);
+
+extern int DAT_105e17fc;
+extern int DAT_106b7a9c;
+extern int DAT_10697a64;
+extern int DAT_105d17f8;
+int FUN_10028BB0(int *);
+
+/* WHAT IT DOES: grow the 0x2B4-stride texture table by 256 slots through
+ * BrChkRealloc when full, then post-increment the live count and return
+ * the old index. */
+/* @implements 0x10027A10 glide br_tex3d_append */
+
+int br_tex3d_append(void)
+
+{
+  unsigned int max;
+  unsigned int nmax;
+
+  /* max loaded first (ecx), count compared in eax (`cmp eax,ecx; jb`).
+   * Grow uses a separate nmax so max does not steal eax for `add eax,0x100`. */
+  max = DAT_10697a5c;
+  if (DAT_10697a58 >= max) {
+    nmax = max + 0x100;
+    DAT_10697a5c = nmax;
+    DAT_106b7aa0 = (int)BrChkRealloc((void *)DAT_106b7aa0, nmax * 0x2b4,
+                                     (int)s_AppendTexture__atdb_100a9e6c);
+  }
+  DAT_10697a58++;
+  return (int)DAT_10697a58 - 1;
+}
+
+/* WHAT IT DOES: close a texture-setup run: record the end pointer if still
+ * unset, register the texture, and plant a 0xDC command over the run start. */
+/* @implements 0x10028B50 glide br_tex3d_seam */
+
+void br_tex3d_seam(int p)
+
+{
+  int id;
+  int *start;
+
+  if (DAT_105e17fc == 0) {
+    return;
+  }
+  if (DAT_106b7a9c == 0) {
+    DAT_106b7a9c = p;
+  }
+  id = FUN_10028BB0(&DAT_105d17f8);
+  if (id != -1) {
+    start = (int *)DAT_10697a64;
+    *start = (id & 0xffffff) | 0xdc000000;
+    start[1] = (DAT_106b7a9c - DAT_10697a64) >> 3;
+  }
+  DAT_105e17fc = 0;
   return;
 }
 
