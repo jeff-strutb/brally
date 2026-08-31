@@ -1,0 +1,4 @@
+exe,va,size,name,reason
+bossrally,0x00401A50,254,strncpy,MSVC5 static-CRT strncpy (word-at-a-time nul scan; 0x7efefeff magic) linked below the CRT boundary; reproduced by linking, not decompiled
+bossrally,0x00401B50,23,_fpmath,MSVC5 CRT float-init; calls _initp_misc_cfltcvt chain; reproduced by linking
+bossrally,0x00401B80,56,_initp_misc_cfltcvt,MSVC5 CRT _cfltcvt_tab pointer-table init (5 CRT fn pointers); byte content is CRT addresses, only reproducible by linking the CRT

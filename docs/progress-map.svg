@@ -616,7 +616,7 @@
 <rect x="586.8" y="253.4" width="30.3" height="24.6" fill="#6e5494"><title>CRT_sub_00406210  0x00406210  304B  [EXE: bossrally.exe]</title></rect>
 <rect x="617.7" y="86.5" width="27.2" height="27.2" fill="#6e5494"><title>_GetStringType  0x00405630  301B  [EXE: bossrally.exe]</title></rect>
 <rect x="645.5" y="86.5" width="23.5" height="27.2" fill="#3fb950"><title>DoMainLoop  0x00401230  261B  [EXE: bossrally.exe]</title></rect>
-<rect x="669.5" y="86.5" width="22.8" height="27.2" fill="#c8ccd2"><title>strncpy  0x00401A50  254B  [EXE: bossrally.exe]</title></rect>
+<rect x="669.5" y="86.5" width="22.8" height="27.2" fill="#6e5494"><title>strncpy  0x00401A50  254B  [EXE: bossrally.exe]</title></rect>
 <rect x="693.0" y="86.5" width="22.6" height="27.2" fill="#6e5494"><title>CRT_sub_00404100  0x00404100  252B  [EXE: bossrally.exe]</title></rect>
 <rect x="716.2" y="86.5" width="22.4" height="27.2" fill="#6e5494"><title>CRT_sub_00402320  0x00402320  249B  [EXE: bossrally.exe]</title></rect>
 <rect x="739.2" y="86.5" width="22.2" height="27.2" fill="#6e5494"><title>WinMainCRTStartup  0x00401BC0  247B  [EXE: bossrally.exe]</title></rect>
@@ -699,7 +699,7 @@
 <rect x="721.7" y="182.4" width="11.9" height="11.5" fill="#6e5494"><title>CRT_sub_00403ED0  0x00403ED0  59B  [EXE: bossrally.exe]</title></rect>
 <rect x="734.2" y="182.4" width="11.9" height="11.5" fill="#6e5494"><title>CRT_sub_00406B06  0x00406B06  59B  [EXE: bossrally.exe]</title></rect>
 <rect x="746.7" y="182.4" width="11.7" height="11.5" fill="#6e5494"><title>CRT_sub_004028C0  0x004028C0  58B  [EXE: bossrally.exe]</title></rect>
-<rect x="758.9" y="182.4" width="11.3" height="11.5" fill="#c8ccd2"><title>_initp_misc_cfltcvt  0x00401B80  56B  [EXE: bossrally.exe]</title></rect>
+<rect x="758.9" y="182.4" width="11.3" height="11.5" fill="#6e5494"><title>_initp_misc_cfltcvt  0x00401B80  56B  [EXE: bossrally.exe]</title></rect>
 <rect x="770.8" y="182.4" width="11.3" height="11.5" fill="#6e5494"><title>_nh_malloc  0x00403820  56B  [EXE: bossrally.exe]</title></rect>
 <rect x="782.7" y="182.4" width="11.3" height="11.5" fill="#6e5494"><title>CRT_sub_004046A0  0x004046A0  56B  [EXE: bossrally.exe]</title></rect>
 <rect x="794.5" y="182.4" width="11.3" height="11.5" fill="#6e5494"><title>CRT_sub_004046E0  0x004046E0  56B  [EXE: bossrally.exe]</title></rect>
@@ -765,7 +765,7 @@
 <rect x="761.0" y="256.1" width="7.6" height="6.9" fill="#6e5494"><title>CRT_sub_00404BDF  0x00404BDF  24B  [EXE: bossrally.exe]</title></rect>
 <rect x="761.0" y="263.6" width="7.6" height="6.9" fill="#6e5494"><title>CRT_sub_00405C26  0x00405C26  24B  [EXE: bossrally.exe]</title></rect>
 <rect x="761.0" y="271.1" width="7.6" height="6.9" fill="#6e5494"><title>CRT_sub_00405F66  0x00405F66  24B  [EXE: bossrally.exe]</title></rect>
-<rect x="769.2" y="241.2" width="7.2" height="7.0" fill="#c8ccd2"><title>_fpmath  0x00401B50  23B  [EXE: bossrally.exe]</title></rect>
+<rect x="769.2" y="241.2" width="7.2" height="7.0" fill="#6e5494"><title>_fpmath  0x00401B50  23B  [EXE: bossrally.exe]</title></rect>
 <rect x="777.0" y="241.2" width="7.2" height="7.0" fill="#6e5494"><title>CRT_sub_00405F4F  0x00405F4F  23B  [EXE: bossrally.exe]</title></rect>
 <rect x="784.8" y="241.2" width="6.8" height="7.0" fill="#6e5494"><title>CRT_sub_00404C05  0x00404C05  22B  [EXE: bossrally.exe]</title></rect>
 <rect x="792.2" y="241.2" width="6.5" height="7.0" fill="#3fb950"><title>SpawnWait  0x00401A30  21B  [EXE: bossrally.exe]</title></rect>
@@ -937,7 +937,7 @@
 <rect x="973.4" y="110.9" width="23.9" height="30.5" fill="#d29922"><title>BrOptObjCtor  0x10041B60  309B  224 diff bytes  [core/slice6_73]</title></rect>
 <rect x="997.9" y="110.9" width="22.3" height="30.5" fill="#d29922"><title>BrSub1003E680  0x10037C90  289B  133 diff bytes  [core/slice6_73]</title></rect>
 <rect x="973.4" y="142.0" width="19.1" height="20.1" fill="#3fb950"><title>FUN_10055a40  0x10055A40  165B  [core/slice6_73]</title></rect>
-<rect x="973.4" y="162.7" width="19.1" height="17.5" fill="#d29922"><title>BrExt_100424D0  0x1003BA30  144B  89 diff bytes  [core/slice6_73]</title></rect>
+<rect x="973.4" y="162.7" width="19.1" height="17.5" fill="#d29922"><title>BrExt_100424D0  0x1003BA30  144B  37 diff bytes  [core/slice6_73]</title></rect>
 <rect x="993.1" y="142.0" width="14.2" height="16.1" fill="#3fb950"><title>BrNetPeerMutexInit  0x1006A4D0  100B  [core/slice6_73]</title></rect>
 <rect x="1008.0" y="142.0" width="12.3" height="16.1" fill="#3fb950"><title>FUN_1005a420  0x1005A420  87B  [core/slice6_73]</title></rect>
 <rect x="993.1" y="158.7" width="15.8" height="11.3" fill="#3fb950"><title>BrNetPeerMsgCancel  0x1006A3F0  79B  [core/slice6_73]</title></rect>
@@ -1691,7 +1691,7 @@
 <rect x="1006.5" y="267.8" width="27.5" height="27.6" fill="#3fb950"><title>FUN_100275c0  0x100275C0  333B  [core/slice2_17]</title></rect>
 <rect x="1006.5" y="296.0" width="27.5" height="26.1" fill="#3fb950"><title>BrTexSizeShift  0x1002A9F7  315B  [core/slice2_17]</title></rect>
 <rect x="1034.6" y="232.5" width="27.8" height="25.6" fill="#d29922"><title>BrCarStateRestore  0x1001C890  312B  221 diff bytes  [core/slice2_17]</title></rect>
-<rect x="1062.9" y="232.5" width="22.2" height="25.6" fill="#d29922"><title>BrCarTableAdd  0x1001C6A0  251B  154 diff bytes  [core/slice2_17]</title></rect>
+<rect x="1062.9" y="232.5" width="22.2" height="25.6" fill="#d29922"><title>BrCarTableAdd  0x1001C6A0  251B  186 diff bytes  [core/slice2_17]</title></rect>
 <rect x="1085.8" y="232.5" width="17.4" height="25.6" fill="#3fb950"><title>FUN_1001dfb0  0x1001DFB0  198B  [core/slice2_17]</title></rect>
 <rect x="1034.6" y="258.7" width="18.9" height="22.1" fill="#3fb950"><title>BrLightDirsFromLookAt  0x1002A4D0  186B  [core/slice2_17]</title></rect>
 <rect x="1034.6" y="281.5" width="18.9" height="21.8" fill="#3fb950"><title>FUN_10028420  0x10028420  183B  [core/slice2_17]</title></rect>
