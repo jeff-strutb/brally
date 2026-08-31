@@ -156,10 +156,11 @@ float BrFixUnpackS6Q7Neg(int32_t v)
     int32_t       s;
 
     if (b & 0x20) {
-        s = (signed char)(unsigned char)(b | 0xC0u);
-        return (float)(s * -0.0078125f);
+        b |= 0xC0u;
+    } else {
+        b &= 0x3Fu;
     }
-    s = (signed char)(unsigned char)(b & 0x3Fu);
+    s = (signed char)b;
     return (float)(s * -0.0078125f);
 }
 
