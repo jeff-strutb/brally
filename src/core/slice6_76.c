@@ -207,7 +207,7 @@ void *BrX10069530(void)
 /* WHAT IT DOES: switches the force-feedback effects off and releases the wheel,
  * as part of shutting down. The work is slice1_10.c's; this just supplies the
  * one force-feedback object the game has. */
-/* @implements 0x10079550 d3d BrExt_10079550 */
+/* port-only body; Glide match is src/core/generated/0x10072840.c */
 #ifdef BR_MATCHING_BUILD
 /* Literal: the original works on the force-feedback globals directly (the
  * port factors this as slice1_10.c's BrFfbShutdown over a struct).  Same
