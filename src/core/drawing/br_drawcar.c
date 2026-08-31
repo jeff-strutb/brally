@@ -5,7 +5,15 @@
  * functions here are classed `shared` in config/shared.csv, so the D3D
  * twins (0x1000C6E0 and 0x1000CBE0) are the same code under other numbers.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header is (const void *, void *).  Original is a 4x4 int copy
+ * (`mov ebp,[ecx+eax]` / `mov [eax],ebp`, not fld/fstp). */
+#define BrGuMtxStore BrGuMtxStore_port
+#endif
 #include "br_drawcar.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrGuMtxStore
+#endif
 #include "slice1_05.h"   /* BrGfxWords, BrRdpSetCombineLERP, BrMat4Mul   */
 #include "slice2_15.h"   /* g_4B16A0 / g_4B16AC scene accumulators       */
 #include "slice2_17.h"   /* BrGfxEmitTexCmd, BrS17GetState               */
@@ -162,6 +170,15 @@ void BrGuMtxHookNop(const BrMat4 *pM)
 /* WHAT IT DOES: copies one transform into a slot the graphics list will
  * point at, so the list keeps its own snapshot of where a thing was. */
 /* @implements 0x10029E50 glide BrGuMtxStore */
+#ifdef BR_MATCHING_BUILD
+void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4])
+{
+    int i, j;
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            pDst[i][j] = pSrc[i][j];
+}
+#else
 void BrGuMtxStore(const void *pSrc, void *pDst)
 {
     const uint32_t *s = (const uint32_t *)pSrc;
@@ -170,6 +187,7 @@ void BrGuMtxStore(const void *pSrc, void *pDst)
     for (i = 0; i < 16; ++i)
         d[i] = s[i];
 }
+#endif
 
 /* A pooled matrix, as the display list must name it.  The pool itself is
  * already transcribed under its D3D address in slice5_62.c; this is the
