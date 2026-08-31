@@ -481,6 +481,30 @@ static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
  * number -- comes out pointing straight along the third axis rather than
  * staying zero. The lighting setup relies on that. */
 /* @implements 0x100344D0 glide br_dl_normalise */
+#ifdef BR_MATCHING_BUILD
+extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
+static void br_dl_normalise(BrVec3 *pV)
+{
+    /* Same locals as BrVec3Normalise: x on x87, y/z integer-homed.
+     * Scale-out: pV->x * k is a memory operand; y/z copy-assign k.
+     * Zero arm is the else so scale is fall-through (orig jne-to-zeros). */
+    float x = pV->x;
+    float y = pV->y;
+    float z = pV->z;
+    float len;
+    len = BrSqrtF(y * y + z * z + x * x);
+    if (len != 0.0f) {
+        len = 1.0f / len;
+        pV->x = len * pV->x;
+        pV->y = len * pV->y;
+        pV->z = len * pV->z;
+    } else {
+        pV->x = 0.0f;
+        pV->y = 0.0f;
+        pV->z = 1.0f;
+    }
+}
+#else
 static void br_dl_normalise(BrVec3 *pV)
 {
     float len = (float)sqrt((double)(pV->y * pV->y + pV->z * pV->z +
@@ -496,6 +520,7 @@ static void br_dl_normalise(BrVec3 *pV)
     pV->y = len * pV->y;
     pV->z = len * pV->z;
 }
+#endif
 
 /* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
  * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
@@ -992,11 +1017,43 @@ static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
  * borrows from, putting every one of them back on the free list ready for
  * the next frame. */
 /* @implements 0x10023B10 glide br_dl_clip_reset */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10b73530;
+extern int DAT_10b73534;
+extern int DAT_10b7352c;
+extern int DAT_105cda00;
+extern int DAT_105ccfe8;
+extern int DAT_100a9a50;
+extern int DAT_105d17d4;
+static void br_dl_clip_reset(BrDl *pDl)
+{
+    int a;
+    int c;
+
+    (void)pDl;
+    DAT_10b73530 = 0x10023b70;
+    DAT_10b73534 = 0x10023aa0;
+    DAT_10b7352c = 0x10008d60;
+    /* xor ecx; mov eax, pool-hi -- c=0 must precede the address load. */
+    c = 0;
+    a = 0x105cd9c8;
+    do {
+        *(int *)a = c;
+        c = a;
+        a -= 0x28;
+    } while (a >= 0x105ccff0);
+    DAT_105cda00 = c;
+    DAT_105ccfe8 = 0;
+    DAT_100a9a50 = 1;
+    DAT_105d17d4 = 0;
+}
+#else
 static void br_dl_clip_reset(BrDl *pDl)
 {
     (void)pDl;
     BrClipPoolInit(s_aClipPool, BR_DL_CLIP_POOL);
 }
+#endif
 
 /* The seven planes in 0x1001EE70's CALL order. */
 typedef void (*BrDlClipPlaneFn)(BrClipList *);
@@ -1500,6 +1557,63 @@ static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p, int fFrac)
     return p + 8;
 }
 
+#ifdef BR_MATCHING_BUILD
+extern int DAT_105d17bc;
+extern int DAT_105ccfe0;
+extern int DAT_105d17b8;
+extern int DAT_105d17c0;
+void __stdcall grClipWindow(int, int, int, int);
+
+/* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  Integer fields. */
+/* WHAT IT DOES: sets the clipping window -- the region of the screen
+ * anything drawn afterwards is confined to -- from whole-pixel corners,
+ * flipping the vertical axis because the game's display list counts down the
+ * screen and the renderer counts up. */
+/* @implements 0x1001EBC0 glide br_dl_scissorE2 */
+static const uint8_t *br_dl_scissorE2(const uint8_t *p)
+{
+    int H, ulx, uly, lrx, lry, maxY, minY;
+
+    H = DAT_100a7518;
+    ulx = (int)((*(const unsigned *)p >> 12) & 0xFFFu);
+    DAT_105d17bc = ulx;
+    uly = (int)(*(const unsigned *)p & 0xFFFu);
+    maxY = H - uly;
+    DAT_105ccfe0 = maxY;
+    lrx = (int)((*(const unsigned *)(p + 4) >> 12) & 0xFFFu);
+    DAT_105d17b8 = lrx;
+    lry = (int)(*(const unsigned *)(p + 4) & 0xFFFu);
+    minY = H - lry;
+    DAT_105d17c0 = minY;
+    grClipWindow(ulx, minY, lrx, maxY);
+    return p + 8;
+}
+
+/* 0x1001EB50 -- opcode 0xED, 103 bytes.  10.2 fields. */
+/* WHAT IT DOES: the same clipping-window setter for the quarter-pixel form
+ * of the command. These really are two separate routines in the original,
+ * and routing both through one decode quietly divides one form's corners by
+ * four. */
+/* @implements 0x1001EB50 glide br_dl_scissorED */
+static const uint8_t *br_dl_scissorED(const uint8_t *p)
+{
+    int H, ulx, uly, lrx, lry, maxY, minY;
+
+    H = DAT_100a7518;
+    ulx = (int)((*(const unsigned *)p >> 14) & 0x3FFu);
+    DAT_105d17bc = ulx;
+    uly = (int)((*(const unsigned *)p >> 2) & 0x3FFu);
+    maxY = H - uly;
+    DAT_105ccfe0 = maxY;
+    lrx = (int)((*(const unsigned *)(p + 4) >> 14) & 0x3FFu);
+    DAT_105d17b8 = lrx;
+    lry = (int)((*(const unsigned *)(p + 4) >> 2) & 0x3FFu);
+    minY = H - lry;
+    DAT_105d17c0 = minY;
+    grClipWindow(ulx, minY, lrx, maxY);
+    return p + 8;
+}
+#else
 /* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  Integer fields. */
 /* WHAT IT DOES: sets the clipping window -- the region of the screen
  * anything drawn afterwards is confined to -- from whole-pixel corners,
@@ -1517,6 +1631,7 @@ static const uint8_t *br_dl_scissorE2(BrDl *pDl, const uint8_t *p)
 /* @implements 0x1001EB50 glide br_dl_scissorED */
 static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
 { return br_dl_scissor(pDl, p, 1); }
+#endif
 
 /* ---- 0xF2 G_SETTILESIZE  (0x1001EC30, SHARED) -----------------------
  * The D3D twin is 0x1001CF30, which slice2_16.c ports as BrGbiSetTileSize
@@ -1581,25 +1696,21 @@ extern unsigned char DAT_105ce208;
 /* @implements 0x1001E9F0 glide br_dl_fillcolour */
 static const uint8_t *br_dl_fillcolour(const uint8_t *p)
 {
-    unsigned w1;
-    unsigned char a, b;
+    unsigned w;
 
-    w1 = *(const unsigned *)(p + 4);
-    a = (unsigned char)(w1 >> 8);
-    b = (unsigned char)(w1 >> 13);
-    DAT_105ccd40 = (unsigned char)(a ^ ((a ^ b) & 7));
+    w = *(const unsigned *)(p + 4);
+    DAT_105ccd40 = (unsigned char)(((w >> 8) & 0xF8) | ((w >> 13) & 7));
+    w = *(const unsigned *)(p + 4);
+    DAT_105ccfd8 = (unsigned char)(((w >> 3) & 0xF8) | ((w >> 8) & 7));
 
-    w1 = *(const unsigned *)(p + 4);
-    a = (unsigned char)(w1 >> 3);
-    b = (unsigned char)(w1 >> 8);
-    DAT_105ccfd8 = (unsigned char)(a ^ ((a ^ b) & 7));
+    {
+        unsigned char c = (unsigned char)(*(const unsigned char *)(p + 4) & 0xFE);
+        unsigned char d = (unsigned char)((*(const unsigned *)(p + 4) >> 3) & 7);
+        DAT_105d17a0 = (unsigned char)((unsigned char)(c << 2) | d);
+    }
 
-    a = (unsigned char)(*(const unsigned char *)(p + 4) & 0xFE);
-    b = (unsigned char)((*(const unsigned *)(p + 4) >> 3) & 7);
-    DAT_105d17a0 = (unsigned char)((unsigned char)(a << 2) | b);
-
-    w1 = *(const unsigned *)(p + 4);
-    DAT_105ce208 = (unsigned char)(0 - (int)(w1 & 1));
+    w = *(const unsigned *)(p + 4);
+    DAT_105ce208 = (unsigned char)((w & 1) ? 0xFFu : 0);
     return p + 8;
 }
 
@@ -1774,13 +1885,18 @@ static void br_dl_build_table(void)
     s_aTable[0xDF] = br_dl_setDF;
 #ifdef BR_MATCHING_BUILD
     s_aTable[0xE1] = (BrDlHandler)br_dl_fillE1;
+    s_aTable[0xE2] = (BrDlHandler)br_dl_scissorE2;
 #else
     s_aTable[0xE1] = br_dl_fillE1;
-#endif
     s_aTable[0xE2] = br_dl_scissorE2;    /* 0x1001EBC0 -- integer */
+#endif
     s_aTable[0xE3] = br_dl_texE3;
     s_aTable[0xE4] = br_dl_texE4;
+#ifdef BR_MATCHING_BUILD
+    s_aTable[0xED] = (BrDlHandler)br_dl_scissorED;
+#else
     s_aTable[0xED] = br_dl_scissorED;    /* 0x1001EB50 -- 10.2    */
+#endif
     s_aTable[0xF2] = br_dl_settilesize;
 #ifdef BR_MATCHING_BUILD
     s_aTable[0xF6] = (BrDlHandler)br_dl_fillF6;
