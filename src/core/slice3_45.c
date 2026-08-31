@@ -812,7 +812,7 @@ uint8_t BrInputJustPressed(int32_t action)
  * which Windows requires again every time the game comes back to the
  * foreground. It reports whether it succeeded, and says "no" harmlessly if
  * there is no such device. */
-/* @implements 0x100773D0 d3d BrDiAcquire */
+/* port-only body; Glide match is src/core/generated/0x100706B0.c */
 int32_t BrDiAcquire(void)
 {
     BrDiObj *pDev = g_brFfb.pDevice;
