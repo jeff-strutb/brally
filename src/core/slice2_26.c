@@ -24,16 +24,48 @@
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
 #ifdef BR_MATCHING_BUILD
-/* Header prototype threads pCtx; the original is one-arg cdecl. */
-#define BrPhaseHook_100450C0 BrPhaseHook_100450C0_port
+/* Header prototypes thread pCtx; the original leave/hook/dispatch
+ * functions are one-arg cdecl (entity or click arg). */
+#define BrPhaseHook_100450C0     BrPhaseHook_100450C0_port
+#define BrPhaseLeave_10044B40    BrPhaseLeave_10044B40_port
+#define BrPhaseLeave_10044C70    BrPhaseLeave_10044C70_port
+#define BrPhaseLeave_10044DE0    BrPhaseLeave_10044DE0_port
+#define BrPhaseLeave_10044F00    BrPhaseLeave_10044F00_port
+#define BrPhaseHook_10045050     BrPhaseHook_10045050_port
+#define BrPhaseHook_10045090     BrPhaseHook_10045090_port
+#define BrPhaseDispatch_100450F0 BrPhaseDispatch_100450F0_port
 #endif
 #include "slice2_26.h"
 #ifdef BR_MATCHING_BUILD
+#include "br_match.h"
 #undef BrPhaseHook_100450C0
-extern int32_t  g_br0AA010;   /* 0x100AA010 */
-extern BrPhase *g_brAA29B0;   /* 0x10AA29B0 */
+#undef BrPhaseLeave_10044B40
+#undef BrPhaseLeave_10044C70
+#undef BrPhaseLeave_10044DE0
+#undef BrPhaseLeave_10044F00
+#undef BrPhaseHook_10045050
+#undef BrPhaseHook_10045090
+#undef BrPhaseDispatch_100450F0
+extern int32_t  g_br0AA010;        /* 0x100AA010 */
+extern int32_t  g_br0AC304;        /* 0x100ABAA4 */
+extern BrPhase *g_brPhaseAA2904;   /* 0x10AA2904 current phase */
+extern BrPhase *g_brAA2908;
+extern BrPhase *g_brAA2940;
+extern BrPhase *g_brAA295C;
+extern BrPhase *g_brAA2964;
+extern BrPhase *g_brAA2968;
+extern BrPhase *g_brAA29B0;        /* 0x10AA29B0 */
+extern BrPhase *g_brAA29B4;
+extern BrPhase *g_brAA29F4;
+extern int32_t  g_brAA298C;
+extern int32_t  g_brAA29E8;
 #define BR26_AA29B0  g_brAA29B0
 #define BR26_0AA010  g_br0AA010
+typedef void (BR_THISCALL1 *Br26F1C)(BrEntSub *);
+/* Slot 0 thiscall with one stack arg: edx must be a LIVE value (the
+ * vtbl) so the site is `push 1; call [edx]`, not `xor edx,edx` and not
+ * `mov eax,1; push eax` from a struct temp. */
+typedef void *(__fastcall *Br26F00)(BrPhase *, const BrPhaseVtbl *, int32_t);
 #else
 #define BR26_AA29B0  (pCtx->pAA29B0)
 #define BR26_0AA010  (pCtx->n0AA010)
@@ -267,6 +299,27 @@ int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
  * for other code to reach, and returns to a remembered screen. Unlike its
  * neighbours it does not close the session. */
 /* @implements 0x10044B40 d3d BrPhaseLeave_10044B40 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseLeave_10044B40(void *pEntity)
+{
+    BrEntSub *pSub;
+    BrPhase  *pNotify;
+
+    pSub = *(BrEntSub **)(void *)((unsigned char *)pEntity + BR_ENTITY_OFF_SUB);
+    ((Br26F1C)pSub->pVtbl->f1C)(pSub);
+
+    pNotify = g_brPhaseAA2904;
+    if (pNotify != NULL)
+        ((Br26F00)pNotify->pVtbl->f00)(pNotify, pNotify->pVtbl, 1);
+
+    /* `dst = src` then the zeros: orig loads src into ecx before the
+     * two stores, then writes ecx into current. Named temp → a1/a3. */
+    g_brPhaseAA2904 = g_brAA2940;
+    g_brAA298C = 0;
+    g_brAA29E8 = 0;
+    return 0;
+}
+#else
 int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
 {
     BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
@@ -276,11 +329,30 @@ int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
     BR_PHASE_CUR = pCtx->pAA2940;
     return 0;
 }
+#endif
 
 /* WHAT IT DOES: leaves a screen and returns the player all the way to the root
  * menu rather than to whatever opened it, forgetting one remembered screen on
  * the way. */
 /* @implements 0x10044C70 d3d BrPhaseLeave_10044C70 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseLeave_10044C70(void *pEntity)
+{
+    BrEntSub *pSub;
+    BrPhase  *pNotify;
+
+    pSub = *(BrEntSub **)(void *)((unsigned char *)pEntity + BR_ENTITY_OFF_SUB);
+    ((Br26F1C)pSub->pVtbl->f1C)(pSub);
+
+    pNotify = g_brPhaseAA2904;
+    if (pNotify != NULL)
+        ((Br26F00)pNotify->pVtbl->f00)(pNotify, pNotify->pVtbl, 1);
+
+    g_brPhaseAA2904 = g_brAA2908;
+    g_brAA295C = NULL;
+    return 0;
+}
+#else
 int BrPhaseLeave_10044C70(BrPhaseCtx *pCtx, void *pEntity)
 {
     BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
@@ -289,6 +361,7 @@ int BrPhaseLeave_10044C70(BrPhaseCtx *pCtx, void *pEntity)
     BR_PHASE_CUR = pCtx->pAA2908;
     return 0;
 }
+#endif
 
 int BrPhaseLeave_10044CB0(BrPhaseCtx *pCtx, void *pEntity)
 {
@@ -303,6 +376,24 @@ int BrPhaseLeave_10044CB0(BrPhaseCtx *pCtx, void *pEntity)
 /* WHAT IT DOES: leaves a screen, forgets it, and returns to a remembered
  * parent screen. The plainest member of the leave family. */
 /* @implements 0x10044DE0 d3d BrPhaseLeave_10044DE0 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseLeave_10044DE0(void *pEntity)
+{
+    BrEntSub *pSub;
+    BrPhase  *pNotify;
+
+    pSub = *(BrEntSub **)(void *)((unsigned char *)pEntity + BR_ENTITY_OFF_SUB);
+    ((Br26F1C)pSub->pVtbl->f1C)(pSub);
+
+    pNotify = g_brPhaseAA2904;
+    if (pNotify != NULL)
+        ((Br26F00)pNotify->pVtbl->f00)(pNotify, pNotify->pVtbl, 1);
+
+    g_brPhaseAA2904 = g_brAA295C;
+    g_brAA2964 = NULL;
+    return 0;
+}
+#else
 int BrPhaseLeave_10044DE0(BrPhaseCtx *pCtx, void *pEntity)
 {
     BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
@@ -311,12 +402,33 @@ int BrPhaseLeave_10044DE0(BrPhaseCtx *pCtx, void *pEntity)
     BR_PHASE_CUR = pCtx->pAA295C;
     return 0;
 }
+#endif
 
 /* WHAT IT DOES: leaves a screen -- and it is the one member of the family that
  * notifies the screen being closed rather than the one currently showing, which
  * matters when the two differ. It then forgets that screen, returns to a
  * remembered parent, and puts the menus into a particular mode. */
 /* @implements 0x10044F00 d3d BrPhaseLeave_10044F00 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseLeave_10044F00(void *pEntity)
+{
+    BrEntSub *pSub;
+    BrPhase  *pNotify;
+
+    pSub = *(BrEntSub **)(void *)((unsigned char *)pEntity + BR_ENTITY_OFF_SUB);
+    ((Br26F1C)pSub->pVtbl->f1C)(pSub);
+
+    /* Notifies pAA2968 -- the phase being dropped -- not the current one. */
+    pNotify = g_brAA2968;
+    if (pNotify != NULL)
+        ((Br26F00)pNotify->pVtbl->f00)(pNotify, pNotify->pVtbl, 1);
+
+    g_brPhaseAA2904 = g_brAA295C;
+    g_brAA2968 = NULL;
+    g_br0AA010 = 2;
+    return 0;
+}
+#else
 int BrPhaseLeave_10044F00(BrPhaseCtx *pCtx, void *pEntity)
 {
     /* Notifies pAA2968 -- the phase being dropped -- not pAA2904. */
@@ -327,6 +439,7 @@ int BrPhaseLeave_10044F00(BrPhaseCtx *pCtx, void *pEntity)
     pCtx->n0AA010 = 2;
     return 0;
 }
+#endif
 
 /* ==========================================================================
  * The remaining activate routines
@@ -493,6 +606,19 @@ int BrPhaseActivate_100456B0(BrPhaseCtx *pCtx)
  * built, so it catches the row the new screen just published rather than a
  * stale one. */
 /* @implements 0x10045050 d3d BrPhaseHook_10045050 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseHook_10045050(void *pArg)
+{
+    /* Orig is one-arg cdecl; it pushes that arg at Activate_45110, which
+     * ignores it. */
+    g_br0AC304 = 0;
+    (void)BrPhaseActivate_10045110((BrPhaseCtx *)pArg);
+    g_br0AC304 = 1;
+    g_brAA29B4->pfnHook = BrExt_10046CD0;
+    g_br0AA010 = 0;
+    return 1;
+}
+#else
 int BrPhaseHook_10045050(BrPhaseCtx *pCtx, void *pArg)
 {
     /* The original pushes pArg at 0x10045110, which ignores it (both are
@@ -509,11 +635,21 @@ int BrPhaseHook_10045050(BrPhaseCtx *pCtx, void *pArg)
     pCtx->n0AA010 = 0;
     return 1;
 }
+#endif
 
 /* WHAT IT DOES: opens a screen and then wires its Back row to the routine that
  * returns the player to the previous screen. Same pattern as its neighbour
  * above, without the flag juggling. */
 /* @implements 0x10045090 d3d BrPhaseHook_10045090 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseHook_10045090(void *pArg)
+{
+    BrExt_10045C90(pArg);
+    g_brAA29B0->pfnHook = BrExt_10046DC0;
+    g_br0AA010 = 0;
+    return 1;
+}
+#else
 int BrPhaseHook_10045090(BrPhaseCtx *pCtx, void *pArg)
 {
     BrExt_10045C90(pArg);
@@ -522,6 +658,7 @@ int BrPhaseHook_10045090(BrPhaseCtx *pCtx, void *pArg)
     pCtx->n0AA010 = 0;
     return 1;
 }
+#endif
 
 /* WHAT IT DOES: the same as the routine above -- open a screen, wire its Back
  * row -- with one extra preparation call in front of it. That call is a
@@ -547,9 +684,18 @@ int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
  * their default mode. Unlike the three routines above it reports failure rather
  * than success, on every path. */
 /* @implements 0x100450F0 d3d BrPhaseDispatch_100450F0 */
+#ifdef BR_MATCHING_BUILD
+int BrPhaseDispatch_100450F0(void *pArg)
+{
+    g_brAA29F4->pfnHook(pArg);
+    g_br0AA010 = 0;
+    return 0;
+}
+#else
 int BrPhaseDispatch_100450F0(BrPhaseCtx *pCtx, void *pArg)
 {
     pCtx->pAA29F4->pfnHook(pArg);
     pCtx->n0AA010 = 0;
     return 0;   /* GOTCHA: 0, unlike its three neighbours */
 }
+#endif
