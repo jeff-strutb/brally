@@ -1029,11 +1029,23 @@ int BrS17RegisterAtExit(void)
 /* @implements 0x1002C2D0 d3d BrS17DrawGated */
 void BrS17DrawGated(void)
 {
-    /* DEVIATION: the original's local is an uninitialised `push ecx` slot.
-     * It is only ever read when the callee flips 0x106909B0 to -1 without
-     * it having been -1 beforehand, in which case the original writes
-     * garbage. Seeding from the current value keeps the port deterministic
-     * and makes that path a no-op instead of a corruption. */
+#ifdef BR_MATCHING_BUILD
+    /* Orig `push ecx` slot: uninitialised, spilled across the call
+     * (`mov [esp],eax` / `mov edx,[esp]`), shared ret via `je`. */
+    volatile int saved;
+
+    if (g_s17.f6909B0 != 0) {
+        if (g_s17.f6909B0 == -1) {
+            saved = g_s17.f6C2CFC;
+            g_s17.f6C2CFC = 0;
+        }
+        BrX1003563A(g_s17.f680944);
+        if (g_s17.f6909B0 == -1)
+            g_s17.f6C2CFC = saved;
+    }
+#else
+    /* DEVIATION: seed the slot so a -1 flip by the callee is a no-op
+     * rather than restoring garbage. */
     int saved = g_s17.f6C2CFC;
 
     if (g_s17.f6909B0 == 0)
@@ -1048,6 +1060,7 @@ void BrS17DrawGated(void)
 
     if (g_s17.f6909B0 == -1)
         g_s17.f6C2CFC = saved;
+#endif
 }
 
 /* 0x1002C320 */
