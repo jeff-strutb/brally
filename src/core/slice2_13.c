@@ -16,10 +16,13 @@
 #ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is __stdcall. */
 #define BrFileWriteChecked BrFileWriteChecked_cdecl
+#define BrDPlayThreadProc  BrDPlayThreadProc_cdecl_hdr
 #endif
 #include "slice2_13.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrFileWriteChecked
+#undef BrDPlayThreadProc
+uint32_t __stdcall BrDPlayThreadProc(void *pvCtx);
 #endif
 #include "slice1_03.h"   /* BrAppMsg, BrAppMsgDispatch (= 0x1000BEA0) */
 
@@ -172,6 +175,47 @@ BrDPlayState *BrDPlayGetState(void)
     return &g_BrDPlay;
 }
 
+#ifdef BR_MATCHING_BUILD
+/* DirectPlay's Win32 imports are stdcall IAT calls (FF 15). The portable
+ * BrDPlayOs function-pointer table is cdecl and cannot emit that sequence. */
+__declspec(dllimport) void *__stdcall GlobalAlloc(unsigned uFlags, unsigned dwBytes);
+__declspec(dllimport) void *__stdcall GlobalLock(void *hMem);
+__declspec(dllimport) void *__stdcall GlobalHandle(void *pMem);
+__declspec(dllimport) int   __stdcall GlobalUnlock(void *hMem);
+__declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
+__declspec(dllimport) void  __stdcall InitializeCriticalSection(void *pCs);
+__declspec(dllimport) void  __stdcall DeleteCriticalSection(void *pCs);
+__declspec(dllimport) void *__stdcall CreateEventA(void *pSa, int fManual,
+                                                   int fInit, const char *psz);
+__declspec(dllimport) void *__stdcall CreateThread(void *pSa, unsigned cbStack,
+    unsigned long (__stdcall *pfnStart)(void *), void *pvArg,
+    unsigned uFlags, unsigned long *pid);
+__declspec(dllimport) unsigned long __stdcall WaitForMultipleObjects(
+    unsigned long n, void *const *ah, int fWaitAll, unsigned long ms);
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(
+    void *h, unsigned long ms);
+__declspec(dllimport) int  __stdcall CloseHandle(void *h);
+__declspec(dllimport) int  __stdcall SetEvent(void *h);
+__declspec(dllimport) void __stdcall ExitThread(unsigned long code);
+
+/* 0x10273310 -- the original's CRITICAL_SECTION. */
+static int g_BrDPlayCrit[6];
+
+/* COM vtable slots are stdcall; slice2_13.h's BrDPlay4Vtbl is cdecl. */
+typedef struct BrDPlay4VtblStd {
+    void *aSlots00[2];
+    int32_t (__stdcall *Release)(BrDPlay4Obj *pThis);
+    void *aSlots03[1];
+    int32_t (__stdcall *Close)(BrDPlay4Obj *pThis);
+    void *aSlots05[4];
+    int32_t (__stdcall *DestroyPlayer)(BrDPlay4Obj *pThis, uint32_t idPlayer);
+    void *aSlots10[15];
+    int32_t (__stdcall *Receive)(BrDPlay4Obj *pThis, uint32_t *pidFrom,
+                                 uint32_t *pidTo, uint32_t dwFlags,
+                                 void *pvData, uint32_t *pcbData);
+} BrDPlay4VtblStd;
+#endif
+
 /* -- 0x1000C000 ---------------------------------------------------------- */
 
 /* WHAT IT DOES: reacts to the housekeeping messages the networking layer sends
@@ -180,7 +224,7 @@ BrDPlayState *BrDPlayGetState(void)
  * message type that is handed straight on elsewhere. Everything else is
  * ignored. The leaving case is skipped entirely while the lobby log is
  * running, because the logging path does that clean-up instead. */
-/* @implements 0x1000C000 d3d BrDPlaySysMsgDispatch */
+/* @implements 0x10009530 glide BrDPlaySysMsgDispatch */
 void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
                            uint32_t cbData, uint32_t idFrom, uint32_t idTo)
 {
@@ -189,22 +233,32 @@ void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
     (void)cbData;
     (void)idFrom;
 
-    if (dwType > 0x21u) {
-        /* The retail jump table sends every index here except 0x107 back to
-         * the function's `ret`; see slice2_13.h. */
-        if (dwType == 0x107u)
-            BrSub100360F0(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, idTo);
+    /* Empty DPSYS_* labels (same `ret` as default) keep the two-level jump
+     * table 0x31..0x107. Folding them collapses it to a range check.
+     * `return` (not `break`) so each label is its own group. */
+    switch (dwType) {
+    case 3:                         /* DPSYS_CREATEPLAYERORGROUP */
+        return;
+    case 5:                         /* DPSYS_DESTROYPLAYERORGROUP */
+        if (g_BrDPlay.fLog == 0) {
+            BrSub10071480(pMsg->f08);
+            BrSub10005FE0(pMsg->f08);
+        }
+        return;
+    case 0x21:                      /* DPSYS_DELETEPLAYERFROMGROUP */
+        return;
+    case 0x31:                      /* DPSYS_SESSIONLOST */
+        return;
+    case 0x101:                     /* DPSYS_HOST */
+        return;
+    case 0x102:                     /* DPSYS_SETPLAYERORGROUPDATA */
+        return;
+    case 0x103:                     /* DPSYS_SETPLAYERORGROUPNAME */
+        return;
+    case 0x107:                     /* DPSYS_CHAT */
+        BrSub100360F0(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, idTo);
         return;
     }
-
-    if (dwType != 5u)
-        return;
-
-    if (g_BrDPlay.fLog != 0)
-        return;
-
-    BrSub10071480(pMsg->f08);
-    BrSub10005FE0(pMsg->f08);
 }
 
 /* -- 0x1000C170 ---------------------------------------------------------- */
@@ -297,7 +351,58 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
  * whenever a message turns out to be bigger than the buffer it has, and sends
  * each one to the right place: messages from the session itself go to the
  * housekeeping handler, messages from another player go to the game. */
-/* @implements 0x1000C350 d3d BrDPlayPump */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10009880 glide BrDPlayPump */
+int32_t BrDPlayPump(BrDPlayCtx *pCtx)
+{
+    void    *pvBuf = NULL;
+    uint32_t cbBuf = 0;    /* zeroed ONCE -- see the GOTCHA in the header */
+    uint32_t idFrom;
+    uint32_t idTo;
+    int32_t  hr;
+
+    for (;;) {
+        BrDPlay4Obj     *pDP   = pCtx->pDP;
+        BrDPlay4VtblStd *pVtbl = (BrDPlay4VtblStd *)pDP->pVtbl;
+
+        idFrom = 0;
+        idTo   = 0;
+        hr = pVtbl->Receive(pDP, &idFrom, &idTo, 1u, pvBuf, &cbBuf);
+
+        if (hr == BR_DP_E_BUFFERTOOSMALL) {
+            if (pvBuf != NULL) {
+                GlobalUnlock(GlobalHandle(pvBuf));
+                GlobalFree(GlobalHandle(pvBuf));
+            }
+            pvBuf = GlobalLock(GlobalAlloc(0x42u, cbBuf));
+            if (pvBuf == NULL)
+                hr = BR_DP_E_OUTOFMEMORY;
+            if (hr == BR_DP_E_BUFFERTOOSMALL)
+                continue;
+        }
+
+        if (hr >= 0) {
+            if (cbBuf >= 4u) {
+                if (idFrom == 0u)
+                    BrDPlaySysMsgLog(pCtx, (const BrDPlaySysMsg *)pvBuf,
+                                     cbBuf, 0u, idTo);
+                else
+                    BrSub1000BAF0(pCtx, pvBuf, cbBuf, idFrom, idTo);
+            }
+        }
+        if (hr < 0)
+            break;
+    }
+
+    if (pvBuf != NULL) {
+        GlobalUnlock(GlobalHandle(pvBuf));
+        GlobalFree(GlobalHandle(pvBuf));
+    }
+
+    return 0;
+}
+#else
+/* @implements 0x10009880 glide BrDPlayPump */
 int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 {
     void    *pvBuf  = NULL;
@@ -343,6 +448,7 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 
     return 0;
 }
+#endif
 
 /* -- 0x1000C440 ---------------------------------------------------------- */
 
@@ -350,7 +456,26 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
  * It sleeps until either something arrives from the network or the game asks it
  * to stop; on traffic it empties the mailbox and goes back to sleep, and on the
  * stop request it ends the thread. */
-/* @implements 0x1000C440 d3d BrDPlayThreadProc */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10009970 glide BrDPlayThreadProc */
+uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
+{
+    BrDPlayCtx *pCtx  = (BrDPlayCtx *)pvCtx;
+    void       *hQuit = g_BrDPlay.hQuit;
+    void       *ah[2];
+
+    ah[0] = pCtx->hRecvEvent;
+    ah[1] = hQuit;
+    if (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u) {
+        do {
+            BrDPlayPump(pCtx);
+        } while (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u);
+    }
+    ExitThread(0u);
+    return 0;
+}
+#else
+/* @implements 0x10009970 glide BrDPlayThreadProc */
 uint32_t BrDPlayThreadProc(void *pvCtx)
 {
     BrDPlayCtx *pCtx = (BrDPlayCtx *)pvCtx;
@@ -368,6 +493,7 @@ uint32_t BrDPlayThreadProc(void *pvCtx)
     g_BrDPlay.os.pfnExitThread(0u);
     return 0;   /* unreachable in the original */
 }
+#endif
 
 /* -- 0x1000C510 ---------------------------------------------------------- */
 
@@ -376,7 +502,51 @@ uint32_t BrDPlayThreadProc(void *pvCtx)
  * player from the session, and lets go of everything the session was holding.
  * It is also the failure path for start-up, so it copes with any of those
  * pieces never having existed. */
-/* @implements 0x1000C510 d3d BrDPlayShutdown */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10009A40 glide BrDPlayShutdown */
+int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
+{
+    /* The critical section really does go first -- see the GOTCHA. */
+    if (g_BrDPlay.fCritInit != 0) {
+        DeleteCriticalSection(g_BrDPlayCrit);
+        g_BrDPlay.fCritInit = 0;
+    }
+
+    if (g_BrDPlay.hThread != NULL) {
+        SetEvent(g_BrDPlay.hQuit);
+        WaitForSingleObject(g_BrDPlay.hThread, 0xffffffffu);
+        CloseHandle(g_BrDPlay.hThread);
+        g_BrDPlay.hThread = NULL;
+    }
+
+    if (g_BrDPlay.hQuit != NULL) {
+        CloseHandle(g_BrDPlay.hQuit);
+        g_BrDPlay.hQuit = NULL;
+    }
+
+    if (pCtx != NULL) {
+        if (pCtx->pDP != NULL) {
+            if (pCtx->idPlayer != 0u) {
+                ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->DestroyPlayer(
+                    pCtx->pDP, pCtx->idPlayer);
+                pCtx->idPlayer = 0u;
+            }
+            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Close(pCtx->pDP);
+            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Release(pCtx->pDP);
+            pCtx->pDP = NULL;
+        }
+    }
+    /* Re-test: a nested `if (pCtx != NULL && ...)` inside the block above
+     * is deleted as dead. A sibling if keeps the second cmp/je. */
+    if (pCtx != NULL && pCtx->hRecvEvent != NULL) {
+        CloseHandle(pCtx->hRecvEvent);
+        pCtx->hRecvEvent = NULL;
+    }
+
+    return 0;
+}
+#else
+/* @implements 0x10009A40 glide BrDPlayShutdown */
 int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 {
     BrDPlayState *pSt = &g_BrDPlay;
@@ -420,6 +590,7 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 
     return 0;
 }
+#endif
 
 /* -- 0x1000C5D0 ---------------------------------------------------------- */
 
@@ -427,7 +598,36 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
  * creates the signals the receiving side waits on, and starts the background
  * thread that will collect incoming traffic. If any step fails it undoes the
  * lot and reports that it ran out of memory. */
-/* @implements 0x1000C5D0 d3d BrDPlayStartup */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10009B00 glide BrDPlayStartup */
+int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
+{
+    if (g_BrDPlay.fCritInit == 0) {
+        InitializeCriticalSection(g_BrDPlayCrit);
+        g_BrDPlay.fCritInit = 1;
+    }
+
+    pCtx->pDP        = 0;
+    pCtx->hRecvEvent = 0;
+    pCtx->idPlayer   = 0;
+    pCtx->f0C        = 0;
+    pCtx->f10        = 0;
+    pCtx->hRecvEvent = CreateEventA(0, 0, 0, 0);
+    if (pCtx->hRecvEvent != NULL) {
+        g_BrDPlay.hQuit = CreateEventA(0, 0, 0, 0);
+        if (g_BrDPlay.hQuit != NULL) {
+            g_BrDPlay.hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx,
+                                             0, &g_BrDPlay.idThread);
+            if (g_BrDPlay.hThread != NULL)
+                return 0;
+        }
+    }
+
+    BrDPlayShutdown(pCtx);
+    return BR_DP_E_OUTOFMEMORY;
+}
+#else
+/* @implements 0x10009B00 glide BrDPlayStartup */
 int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 {
     BrDPlayState *pSt = &g_BrDPlay;
@@ -457,6 +657,7 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
     BrDPlayShutdown(pCtx);
     return BR_DP_E_OUTOFMEMORY;
 }
+#endif
 
 /* -- 0x1000C670 ---------------------------------------------------------- */
 
@@ -597,7 +798,7 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
  * that fall outside, and puts a new corner exactly where the outline crosses
  * the edge. Calling it four times -- once per side -- is how a triangle gets
  * cut down to what actually fits on screen. */
-/* @implements 0x100109A0 d3d BrPolyClipPlane */
+/* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 {
     BrLerpNode *pPrev    = pList->pHead;
@@ -611,26 +812,30 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
             BrLerpNode *pNext = pCur->pNext;
             float dCur  = pfnDist((const BrScrPt *)(const void *)pCur->pData);
             float dPrev = pfnDist((const BrScrPt *)(const void *)pPrev->pData);
-            int   fCurIn  = (dCur  >= 0.0f);   /* NaN counts as OUTSIDE */
-            int   fPrevIn = (dPrev >= 0.0f);
 
-            if (fCurIn && fPrevIn) {
+            /* Nested on the x87 C0 flags; int temps materialize 0/1. */
+            if (dCur >= 0.0f) {
+                if (dPrev >= 0.0f) {
                 pOut = pCur;
-            } else if (fCurIn) {
+            } else {
                 /* entering: splice in the crossing, keep pCur */
                 float       t    = dPrev / (dPrev - dCur);
                 BrLerpNode *pNew = BrLerpNodeAlloc(pPrev, pCur, t);
 
+#ifndef BR_MATCHING_BUILD
                 /* DEVIATION: the original never tests the allocation and
-                 * writes through a null node when the pool is empty. The
-                 * count still moves, exactly as the original moves it. */
+                 * writes through a null node when the pool is empty. */
                 if (pNew != NULL) {
+#endif
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
+#ifndef BR_MATCHING_BUILD
                 }
+#endif
                 pList->cVerts = pList->cVerts + 1;
                 pOut = pCur;
-            } else if (fPrevIn) {
+                }
+            } else if (dPrev >= 0.0f) {
                 /* leaving: drop pCur, splice in the crossing in its place */
                 float       t;
                 BrLerpNode *pNew;
@@ -643,11 +848,15 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
                 pRecycle    = pCur;
 
                 pNew = BrLerpNodeAlloc(pCur, pPrev, t);
-                if (pNew != NULL) {   /* DEVIATION: as above */
+#ifndef BR_MATCHING_BUILD
+                if (pNew != NULL) {
+#endif
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
                     pOut        = pNew;
+#ifndef BR_MATCHING_BUILD
                 }
+#endif
                 /* count unchanged: one out, one in */
             } else {
                 /* wholly outside: drop pCur */
@@ -673,12 +882,18 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 
     {
         /* The chain is walked one node ahead, because the free-list push
-         * overwrites the node's link. */
-        BrLerpNode *p     = pRecycle;
+         * overwrites the node's link. Inlined: a call to BrPolyPoolFree
+         * cannot emit the hoisted free-head load. */
+        BrLerpNode *p      = pRecycle;
         BrLerpNode *pNextR = (p != NULL) ? p->pNext : NULL;
 
         while (p != NULL) {
-            BrPolyPoolFree(p);
+            BrLerpNode *pHead = g_pBrLerpFree;
+
+            if (p >= &g_aBrPolyPool[0] && p < &g_aBrPolyPool[BR_POLY_POOL_NODES]) {
+                p->pNext      = pHead;
+                g_pBrLerpFree = p;
+            }
             p = pNextR;
             if (p != NULL)
                 pNextR = p->pNext;
