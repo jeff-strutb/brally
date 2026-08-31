@@ -108,11 +108,9 @@ extern int DAT_10ac5d7c;
 extern int DAT_100abce0[];
 extern int DAT_10b7153c;
 int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
-{
-    int v;
-
-    if (DAT_10ac6734) {
-        v = DAT_10ac5d7c + 1;
+{int v;  int s5;
+if (DAT_10ac6734) {
+        s5 = DAT_10ac5d7c; v = s5 + 1;
         DAT_10ac5d7c = v;
         if (v > 1) {
             DAT_10ac5d7c = 0;
@@ -125,11 +123,7 @@ int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
         if (v < 0) {
             DAT_10ac5d7c = 1;
         }
-    }
-    v = DAT_10ac5d7c;
-    DAT_10b7153c = DAT_100abce0[v];
-    return 1;
-}
+    }v = DAT_10ac5d7c;DAT_10b7153c = DAT_100abce0[v];return 1;}
 #else
 int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
 {
