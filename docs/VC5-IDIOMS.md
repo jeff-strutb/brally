@@ -971,6 +971,30 @@ the caller AND flipped a helper to match for free.
   only-if-better (`misscode` in `refine_function`, one candidate in
   `_refine_candidates`). Proven MATCH 0x1006FFC0 (425 B /O2).
 
+- **Post-increment, not `i + 1`.** Orig `mov al,[eax+ecx]; inc ecx; mov [pos],ecx`
+  is `return p[i++]`. Writing `i = pos; pos = i + 1; return p[i]` emits
+  `lea ecx,[ecx+1]` (+2 bytes). Proven 0x1006CE00 (BrBitStreamReadU8, 23 B
+  MATCH /O2).
+
+- **`operator delete` is a local E8, CRT `free` is FF 15.** Adjacent fields
+  can still split: fclose the FILE via IAT, `BrOperatorDelete` the buffer
+  (0x1007DE40). Header already said this; spelling `free()` was the whole
+  1-shape miss. Proven 0x10008B50 (BrKeyCacheReset, 80 B MATCH /O2).
+
+- **Ghidra drops a `base + k*8 + disp32` scale.** Orig
+  `mov eax,[ptr]; mov ecx,[idx]; mov eax,[eax+ecx*8+0x1de48]` is an 8-byte
+  record array at offset 0x1DE48 of the pointed-to object, not
+  `ptr[idx]` (scale 4, no disp — 4 bytes short). Matching twin:
+  `*(void **)((char *)ptr + 0x1DE48 + idx * 8)`. Proven 0x100366C0
+  (BrSub1003D030, 55 B MATCH /O2).
+
+- **Global table walk takes no args.** Orig `mov edx,[count]; mov ecx,offset
+  recs; test edx,edx; jle ret` then `cmp dword [ecx],0; ... add ecx,stride;
+  dec edx; jne`. Parameters are a port convenience (`mov r,[esp+N]`). Also:
+  `if (n > 0) { do ... while (--n); } return c;` shares one `ret` via `jle`;
+  `if (n <= 0) return 0;` duplicates the epilogue (`jg` + extra `ret`).
+  Proven 0x100057E0 (BrEntityCountActive, 33 B MATCH /O2).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
