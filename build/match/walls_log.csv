@@ -15,3 +15,155 @@ va,name,file,kind,regnorm,bytes,n64,note,updated
 0x100239C0,BrGbiMoveWord,src/core/slice2_16.c,structural-unconfirmed,23+5,187/225,no C twin (tgrally is ROMs only),off scale shr5/shl4 vs combined (off>>1)&~0xf; case 8/0xE unique default slots,2026-08-31
 0x10018D50,BrRcaSwapMesh,src/core/slice2_16.c,coloring,0+0,180/180,no C twin (tgrally is ROMs only),Horner BE dwords match; residue push-edi vs test order and store/load interleave,2026-08-31
 0x10018B60,BrRcaFixupRecord,src/core/slice2_16.c,coloring,0+0,493/492,no C twin (tgrally is ROMs only),REGNORM 0+0 whole-fn; FIRSTDIV=+0xb byte-reg of first pair-swap,2026-08-31
+0x1001FA30,BrDlCmdTri2,src/core/drawing/br_dlcmd.c,too-big,0+167,696/69,n/a,recomp is 69 B stub; orig 696 B triangle clip. Skip >400 B.,2026-08-31
+0x10021A20,BrDlCmdVtx,src/core/drawing/br_dlcmd.c,too-big,260+63,584/1092,n/a,584 B plus documented bare fistp wall (VC5-IDIOMS BrDlCmdVtx).,2026-08-31
+0x1001EC30,BrDlsTileSizeDecode,src/core/drawing/br_dlshared.c,coloring,1+1,178/178,no C twin (tgrally is ROMs only),4 sign-folds to globals + two sar-2 spans insn-exact; esi/edi swap of p vs ult (push-edi before vs after the pointer load).,2026-08-31
+0x10021570,BrDlsTileRectE4,src/core/drawing/br_dlshared.c,coloring,18+13,79/75,no C twin (tgrally is ROMs only),same 5-arg FUN_100215c0 walk as E3; orig saves lry in ebx then [esi-0xc] w1; /O2 CSEs both words before add esi,0x10 and drops ebx.,2026-08-31
+0x1000A110,BrCarDrawVehicle,src/core/drawing/br_drawcar.c,too-big,67+277,7577/6490,n/a,7577 B vehicle DL emitter. Skip >400 B.,2026-08-31
+0x1000BEB0,BrCarDrawBody,src/core/drawing/br_drawcar.c,too-big,30+36,1576/1482,n/a,1576 B body emitter. Skip >400 B.,2026-08-31
+0x10015B10,BrTextEmitString,src/core/drawing/br_font.c,too-big,340+494,3050/1953,n/a,3050 B string emitter. Skip >400 B.,2026-08-31
+0x10016980,BrFontMeasure,src/core/drawing/br_font.c,coloring,4+4,198/197,no C twin (tgrally is ROMs only),2-arg globals re-deref *psz is 79/79 insns; residue ebx/ebp of total vs table, add edi,edi vs shl edi,1, cmp al,0x25 vs cmp cl,al. Cached char causes +18 B walking-pointer SR.,2026-08-31
+0x1000EAF0,BrSceneDlBuild,src/core/drawing/br_scenedl.c,x87-schedule,60+56,9354/9370,n/a,documented 0x1000EAF0 wall (rule 11a); ~15-insn float residue mapped in VC5-IDIOMS.,2026-08-31
+0x10040420,BrPhaseLeave_10046FD0,src/core/slice3_31.c,coloring,0+0,119/117,no twin (PC menu),slot0 thiscall is call [eax] vs matching __fastcall edx-slot call [edx]; tail A1 vs 8B0D. Structure is abs-globals+f1C/f00. Leave.,2026-08-31
+0x100407B0,BrSub10047360,src/core/slice3_31.c,structural-unconfirmed,40+3,251/323,no twin (PC menu),switch(count) two-level table is right; p in ecx vs eax, jump tables inflate COFF symbol. Direct overlay + per-arm flags&=~0x100. Leave.,2026-08-31
+0x10040D80,BrUiDrawCode_10047930,src/core/slice3_32.c,structural-unconfirmed,32+5,79/135,no twin (PC UI),thiscall; missing mov ax,[eax+table] GOTCHA (high half of *24). memcpy wrappers in port. Leave.,2026-08-31
+0x10040DD0,BrUiDrawCodeRect_10047980,src/core/slice3_32.c,structural-unconfirmed,31+6,65/123,no twin (PC UI),thiscall+ret 4; orig mov ax then movsx ecx vs movsx eax. memcpy wrappers. Leave.,2026-08-31
+0x10040E60,BrUiStepCode_10047A10,src/core/slice3_32.c,coloring,0+0,68/68,no twin (PC UI),thiscall overlay size-matched; orig pop esi then mov eax,1 vs mov eax,1 then pop. Leave.,2026-08-31
+0x10041100,BrUiTweenBegin_10047CB0,src/core/slice3_32.c,coloring,0+0,48/48,no twin (PC UI),thiscall+ret 4 size-matched; edx hoist f44 vs orig f40 (store f34/f38 swap). Leave.,2026-08-31
+0x10041160,BrUiTweenReset_10047D10,src/core/slice3_32.c,coloring,0+0,30/30,no twin (PC UI),thiscall overlay size-matched; orig eax=1 early edx=copy vs eax=copy then eax=1. Leave.,2026-08-31
+0x10041180,BrUiTweenStep_10047D30,src/core/slice3_32.c,structural-unconfirmed,56+87,373/243,no twin (PC UI),thiscall inlined two-axis vs extracted memcpy helper. Not x87-schedule-only. Leave.,2026-08-31
+0x10062B10,BrCtrlCfgLoadDefaults,src/core/slice3_42.c,header-locked,11+29,103/51,no C twin (tgrally is ROMs only),thiscall ret 4 + inline dec/je dispatch; prototype in include/slice3_42.h is cdecl.,2026-08-31
+0x10062B80,BrCtrlCfgAssign,src/core/slice3_42.c,header-locked,12+22,169/127,no C twin (tgrally is ROMs only),thiscall ret 0x10 + 28-iter inner loop; header is cdecl.,2026-08-31
+0x10062C30,BrFn10069BC0,src/core/slice3_42.c,header-locked,8+24,98/44,no C twin (tgrally is ROMs only),thiscall ret 8 + unrolled 4-arm; also declared in slice2_23.h.,2026-08-31
+0x10062CA0,BrFn10069C30,src/core/slice3_42.c,header-locked,10+21,87/54,no C twin (tgrally is ROMs only),thiscall ret 8 + unrolled 4-arm with byte vs word loads.,2026-08-31
+0x10062D00,BrCtrlCfgInit,src/core/slice3_42.c,structural-unconfirmed,1+2,330/337,no C twin (tgrally is ROMs only),4x rep movsd copies match; f7C8 wants lea ecx then [ecx+n] eax-zero -- field stores fold and mov eax 9 steals eax.,2026-08-31
+0x10063A60,BrReplayRecord,src/core/slice3_42.c,coloring,5+3,103/105,no C twin (tgrally is ROMs only),pCar in edx vs esi from byte 1; esi only on slow path (shrink-wrap). Structure is the same control flow.,2026-08-31
+0x10063AD0,BrReplayAdvance,src/core/slice3_42.c,coloring,0+1,111/109,no C twin (tgrally is ROMs only),loop+8-or-1 match; tail is mov eax ecx; inc eax vs inc eax (cursor already in eax for a3 store).,2026-08-31
+0x10063B80,BrReplayApply,src/core/slice3_42.c,x87-schedule,10+10,282/282,no C twin (tgrally is ROMs only),early path matches (dword f78 xor-al pSlot+1); residue is fld state/fsub pos vs fld pos/fsubr state.,2026-08-31
+0x10063CC0,BrReplaySeek,src/core/slice3_42.c,coloring,11+11,215/205,no C twin (tgrally is ROMs only),orig xor-edi zero-reg + [eax+disp] walk + cmp/jge; indexed for-loop is test/jns and [R] pointer.,2026-08-31
+0x10064120,BrRbSolveAccel,src/core/slice3_42.c,coloring,0+0,238/238,no C twin (tgrally is ROMs only),add-order+no child locals size-match REGNORM 0; residue ecx/edx swap on accel z/x/y integer stores.,2026-08-31
+0x1001C890,BrCarStateRestore,src/core/slice2_17.c,structural-unconfirmed,55+31,312/397,no twin (points = %d absent from tgrally),orig uses DAT_ arrays at 0x10af2094 stride 0x2b68 not g_s17 pointers; matching-build not landed.,2026-08-31
+0x1001D1B0,BrScenePropsDraw,src/core/slice2_17.c,coloring,3+3,1768/1768,no twin (no unique debug string),two-pass walk size-matched; residue is esi vs edi for pList and inc-k before vs after count load. Pointer-walk rewrite did not dissolve it.,2026-08-31
+0x1002A050,BrMat4LookAt,src/core/slice2_17.c,too-big,25+13,427/472,libultra guLookAtF lineage,427 B x87 look-at; FIRSTDIV +0x2 fld/fxch. Skip per ~400 cap.,2026-08-31
+0x1002A200,BrLightDirsAndAngles,src/core/slice2_17.c,too-big,37+94,645/486,libultra+pack,645 B atan2/asin/__ftol; recomp 486. Skip per ~400 cap.,2026-08-31
+0x1002A590,BrMat4RotateAxis,src/core/slice2_17.c,x87-schedule,15+31,514/452,libultra guRotateF,starts fld/fcomp/fnstsw; 514 B. x87 operand selection not source-reachable.,2026-08-31
+0x1002A957,BrFloat12MaxAbs,src/core/slice2_17.c,x87-schedule,22+37,155/119,documented in VC5-IDIOMS.md,pointer-walk /Od-shaped vs /O2 register p/end; no C spelling is both /Od-shaped and fnstsw-latency-scheduled.,2026-08-31
+0x10027850,br_tex3d_shift,src/core/drawing/br_tex3d.c,too-big,15+101,441/59,n/a (PC Glide),host 1/2^n helper not the 441B original,2026-08-31
+0x10028BB0,BrTex3dRegister,src/core/drawing/br_tex3d.c,too-big,17+22,1755/1743,n/a (PC Glide),1755B registrar; skip,2026-08-31
+0x10027E10,BrTex3dMipChainLoad,src/core/drawing/br_tex3d.c,coloring,0+0,227/227,n/a (PC Glide),imul copies dimension (mov eax,ebx/ebp) vs aspect; commutative-mul already probed,2026-08-31
+0x100283C0,BrTex3dDownloadAt,src/core/drawing/br_tex3d.c,coloring,7+7,83/83,n/a (PC Glide),[eax+global] vs formed pointer; +0x48 load hoist already probed,2026-08-31
+0x10027A10,br_tex3d_append,src/core/drawing/br_tex3d.c,coloring,0+0,85/83,n/a (PC Glide),max in ecx+add ecx,0x100 vs eax short-form add; structure is grow+inc+BrChkRealloc,2026-08-31
+0x100011C0,BrSurfBlt24,src/core/drawing/br_surf.c,coloring,2+4,117/115,n/a (Win32 blit),three inc eax vs add eax,2 plus hoisted [eax+2]; byte/movzx shape is right,2026-08-31
+0x100014A0,BrSurfSetColourKey,src/core/drawing/br_surf.c,coloring,1+2,51/50,n/a (Win32 blit),/O2 distributes (x<<5|y)<<3 into shl 8; orig keeps shl 5 / or / shr al,3 / shl 3,2026-08-31
+0x10054550,BrSprFontGlyphA_1005B730,src/core/drawing/br_sprfont.c,coloring,0+0,112/113,n/a (PC sprite font),sheet in edx vs ecx after this dies; add eax,imm (05) vs add ecx,imm (81 c1) is the extra byte,2026-08-31
+0x10058540,BrSprFontRectInit_1005F800,src/core/drawing/br_sprfont.c,coloring,0+0,309/309,n/a (PC sprite font),inc/cmp hoist into last two stores; four pointer-walk loops otherwise insn-identical,2026-08-31
+0x1002ECEB,BrAnimUpdate,src/core/slice2_19.c,too-big,183+319,1357/872,no C twin (tgrally is ROMs only),1357 B FIRSTDIV+0 recomp much smaller.,2026-08-31
+0x1002F380,BrPadTranslate,src/core/slice2_19.c,coloring,3+2,690/690,no C twin (tgrally is ROMs only),documented 0x80 mask: orig test [eax+n],imm vs pooled mov cl,0x80; test [eax+n],cl.,2026-08-31
+0x1002F660,BrBitEdgeSplit,src/core/slice2_19.c,coloring,3+0,21/25,no C twin (tgrally is ROMs only),and dest on esi (~b) vs extra edi copy of a; b-first prefix matches.,2026-08-31
+0x10030270,BrModelLoad,src/core/slice2_19.c,header-locked,5+1,47/56,no C twin (tgrally is ROMs only),thiscall on POD object 0x10AC0810 (not pMgr); BrSub100088B0 ret 8; SegSetBases 2 stack args.,2026-08-31
+0x100302A0,BrModelSwap,src/core/slice2_19.c,too-big,149+285,1062/710,no C twin (tgrally is ROMs only),1062 B FIRSTDIV+2.,2026-08-31
+0x10030770,BrRcaFixup,src/core/slice2_20.c,coloring,0+0,1641/1647,no C twin (tgrally is ROMs only),REGNORM 0 whole-function ebx vs ebp; 1641 B.,2026-08-31
+0x100316D0,BrTrackFixupRec54,src/core/slice2_20.c,coloring,0+0,563/563,no C twin (tgrally is ROMs only),documented u16 window: orig loads low byte first VC5 highs first; three spellings identical.,2026-08-31
+0x10031B80,BrTrackHdrRead,src/core/slice2_20.c,too-big,28+397,1549/384,no C twin (tgrally is ROMs only),1549 B recomp 384 missing body.,2026-08-31
+0x10032880,BrCarWheelFx,src/core/slice2_21.c,too-big,78+61,1464/1536,no C twin (tgrally is ROMs only),1464 B FIRSTDIV+2.,2026-08-31
+0x100335A0,BrCarPfxSpawn,src/core/slice2_21.c,too-big,35+36,726/657,no C twin (tgrally is ROMs only),726 B FIRSTDIV+2.,2026-08-31
+0x10033880,BrPfxUpdateB0,src/core/slice2_21.c,x87-schedule,48+21,315/295,no C twin (tgrally is ROMs only),gap dominated by fxch/fmul/fld/fstp; extra word stores vs orig.,2026-08-31
+0x100540D0,BrSprFontPenStart_1005B2B0,src/core/drawing/br_sprfont.c,structural-unconfirmed,9+64,212/54,header says 0x100540D0 is the string walk,orig is thiscall Draw (glyph loop vtbl+18); tagged symbol is the 54 B PenStart helper.,2026-08-31
+0x100250D0,BrTex3dExpand,src/core/drawing/br_tex3d_expand.c,too-big,45+48,8480/8414,N64 GBI expand,8480 B. Skip per ~400 cap.,2026-08-31
+0x10029B50,BrTexInit,src/core/drawing/br_texinit.c,coloring,0+0,285/285,no N64 (Glide grTex),13 slots+stdcall max-min size-match REGNORM 0; xor esi vs xor edi for the zero/span pair.,2026-08-31
+0x1000CB20,BrViewBuffersRebase,src/core/drawing/br_textmode.c,coloring,1+1,96/96,no N64 (PC view buffers),documented 32000-product lea vs add; already probed.,2026-08-31
+0x1006D600,BrCpIntegrateVelocity,src/core/driving/br_carphys.c,x87-schedule,5+7,169/163,TGR rigid-body same 6 madds,inline float products; orig stacked fld/fxch vs sequential fstp. Structure confirmed.,2026-08-31
+0x10065980,BrCrContactKick,src/core/driving/br_collrespsolve.c,too-big,132+64,760/919,collision,760 B. Skip per ~400 cap.,2026-08-31
+0x10065C80,BrCrImpulseSolve,src/core/driving/br_collrespsolve.c,too-big,51+115,1448/1167,collision,1448 B. Skip per ~400 cap.,2026-08-31
+0x10067470,BrCrPlaneResolve,src/core/driving/br_collrespsolve.c,too-big,4+21,668/616,collision,668 B. Skip per ~400 cap.,2026-08-31
+0x10067710,BrCrRespWalk,src/core/driving/br_collrespsolve.c,too-big,37+146,1301/897,collision,1301 B. Skip per ~400 cap.,2026-08-31
+0x1006D1A0,BrStrResLoad,src/core/gamedata/br_strres.c,structural-unconfirmed,17+10,209/233,no twin (LoadLibraryA),orig IAT LoadLibrary/malloc/LoadString; port pOps + extra NULL guards.,2026-08-31
+0x10071F70,BrDiSetPropDword,src/core/slice3_45.c,coloring,1+1,67/67,n/a (Win32 DInput),stdcall vtbl SetProperty exact; dwObj store slot +8 vs +0xc,2026-08-31
+0x10072210,BrFfbUpdateSpring,src/core/slice3_45.c,structural-unconfirmed,60+60,391/391,n/a (Win32 DInput),17 extra calls vs inlined imul/sar; BrMulWrap helpers,2026-08-31
+0x100723D0,BrFfbEnumDevice,src/core/slice3_45.c,structural-unconfirmed,41+16,239/320,n/a (Win32 DInput),+81 B extra calls/guards,2026-08-31
+0x100724C0,BrFfbInit,src/core/slice3_45.c,too-big,28+20,434/476,n/a (Win32 DInput),434 B over ~400 skip,2026-08-31
+0x10072680,BrFfbSetup,src/core/slice3_45.c,too-big,13+9,440/449,n/a (Win32 DInput),440 B over ~400 skip,2026-08-31
+0x10029FE0,BrMat4Perspective7,src/core/slice4_50.c,x87-schedule,0+4,106/98,n/a (fptan),tan+Frustum inlined; residue is 4 fxch,2026-08-31
+0x100504A0,BrOptFn100575F0,src/core/slice6_71.c,too-big,61+211,1558/978,n/a (menu builder),1558 B skip,2026-08-31
+0x1001E380,BrSub_1001BE90,src/core/slice6_72.c,too-big,248+67,914/1342,n/a (render-state),914 B skip,2026-08-31
+0x100379B0,BrSub1003E3A0,src/core/slice6_72.c,structural-unconfirmed,71+48,362/448,n/a (options apply),env-pointer vs globals; extra bounds guards,2026-08-31
+0x100476E0,BrExt_1004E830,src/core/slice6_72.c,too-big,153+373,2679/1812,n/a (menu builder),2679 B skip,2026-08-31
+0x1004AEE0,BrExt_10052030,src/core/slice6_72.c,too-big,222+524,3862/2642,n/a (menu builder),3862 B skip,2026-08-31
+0x1004F8C0,BrOptFn10056A10,src/core/slice6_72.c,too-big,66+200,1498/981,n/a (menu builder),1498 B skip,2026-08-31
+0x10050AC0,BrOptFn10057C10,src/core/slice6_72.c,too-big,161+383,2701/1819,n/a (menu builder),2701 B skip,2026-08-31
+0x10052610,BrExt_10059760,src/core/slice6_72.c,too-big,46+156,1091/658,n/a (menu builder),1091 B skip,2026-08-31
+0x10037C90,BrSub1003E680,src/core/slice6_73.c,structural-unconfirmed,54+16,289/422,n/a (session reset),+133 B extra snprintf guards vs orig sprintf,2026-08-31
+0x1003BA30,BrExt_100424D0,src/core/slice6_73.c,coloring,0+0,144/144,n/a (PC menu),REGNORM 0; esi/edi pushed at prologue vs mid-strcpy,2026-08-31
+0x10018A50,BrSwapU16Array,src/core/geometry/br_bits.c,coloring,0+0,29/29,no C twin (tgrally is ROMs only),documented dh-then-dl vs dl-then-dh; same bag TU-local schedule.,2026-08-31
+0x1002F640,BrBitLatchTake,src/core/geometry/br_bits.c,coloring,0+0,31/31,no C twin (tgrally is ROMs only),documented EAX=mask before EDX=pending reversed; not fixable without asm.,2026-08-31
+0x10029EC0,BrMat4Frustum,src/core/geometry/br_mat.c,x87-schedule,0+1,288/286,no C twin (tgrally is ROMs only),printf-on-degen now matches; residue one fxch in the fadd/fdiv DAG.,2026-08-31
+0x1002A7A0,BrMat4Scale,src/core/geometry/br_mat.c,coloring,0+0,70/70,guScaleF is ident-then-diag (PC orig writes scales then zeros the rest),sy in ecx vs edx; sz load hoisted before sy store. Unroll+sx-fld done.,2026-08-31
+0x100349C0,BrVec3Project,src/core/geometry/br_mat.c,x87-schedule,0+1,165/163,no C twin (tgrally is ROMs only),documented fld st/fmul mem vs fld mem/fmul st; missing one fxch.,2026-08-31
+0x100342B0,BrVec3Cross,src/core/geometry/br_vec.c,x87-schedule,8+8,83/83,no C twin (tgrally is ROMs only),fld [R+I]/fmul [R] vs fld [R]/fmul [R+I]; commutative fmul canonicalised.,2026-08-31
+0x10034310,BrVec3Dot,src/core/geometry/br_vec.c,coloring,0+1,39/37,no C twin (tgrally is ROMs only),documented param-pointer eax/ecx swap; arithmetic already y+z+x.,2026-08-31
+0x10034360,BrVec3Scale,src/core/geometry/br_vec.c,x87-schedule,2+2,37/37,no C twin (tgrally is ROMs only),documented fld s/fmul x vs fld x/fmul s; VC5 canonicalises fmul.,2026-08-31
+0x10034390,BrVec3ScaleBy,src/core/geometry/br_vec.c,x87-schedule,6+9,43/37,no C twin (tgrally is ROMs only),orig fld s three times then fxch/fmul mem; recomp fld mem/fmul s.,2026-08-31
+0x100345F0,BrVec3AddTo,src/core/geometry/br_vec.c,x87-schedule,0+0,33/33,no C twin (tgrally is ROMs only),fld [pB]/fadd [pA] vs fld [pA]/fadd [pB]; mention order does not flip it.,2026-08-31
+0x10034660,BrVec3MulAdd,src/core/geometry/br_vec.c,x87-schedule,2+2,49/49,no C twin (tgrally is ROMs only),fld s/fmul [pB] vs fld [pB]/fmul s; s*pB+pA spelling unchanged.,2026-08-31
+0x100346A0,BrVec3MulAddTo,src/core/geometry/br_vec.c,x87-schedule,2+2,45/45,no C twin (tgrally is ROMs only),same fld s vs fld mem fmul commute as MulAdd.,2026-08-31
+0x10035310,BrSeg2SideTest,src/core/slice2_21.c,x87-schedule,16+52,176/77,N64 line-side is the same cross products,orig inlines fld/fmul/fcomp; port CALLs BrSeg2Cross. x87 residue not source-reachable.,2026-08-31
+0x10037E60,BrUiText1003E840,src/core/slice2_23.c,coloring,3+3,100/107,no N64 (PC UI),strcpy inlined; id select is push-imm vs mov-eax. Structure is the two-global test + strcpy + thiscall f04.,2026-08-31
+0x10037EF0,br23_num_common,src/core/slice2_23.c,coloring,1+1,73/73,no N64 (PC UI),size-exact; movsx ecx vs eax for _itoa arg (0fbe88 vs 0fbe80).,2026-08-31
+0x100380B0,BrUiNum1003EA90,src/core/slice2_23.c,coloring,1+1,74/74,no N64 (PC UI),same as num_common with word table; ecx vs eax.,2026-08-31
+0x100381D0,BrUiPoll1003EBE0,src/core/slice2_23.c,coloring,0+0,72/71,no N64 (PC UI),thiscall+lea*0x438 match; 1-byte gap mov edx,[g] vs mov eax,[g].,2026-08-31
+0x100386B0,BrUiFn1003F170,src/core/slice2_23.c,structural-unconfirmed,14+7,147/159,no N64 (PC UI),three strcpy + BrFn1003D210; not inlined this session.,2026-08-31
+0x1001DD00,BrVec3dCross,src/core/geometry/br_vecd.c,x87-schedule,8+8,65/65,libultra-style cross,size-match without temps; arg-reg edx/ecx/eax vs ecx/eax/edx and fmul operand order.,2026-08-31
+0x10005400,BrCdAudioTick,src/core/ghidra_batch.c,coloring,1+2,153/155,no N64 (Win32 mutex),WaitForSingleObject+counter; REGNORM 1+2.,2026-08-31
+0x10008AB0,BrPodOpen,src/core/ghidra_batch.c,coloring,1+2,148/150,no N64 (POD file),thiscall open; extra mov-imm vs push-imm on the 0x10 read.,2026-08-31
+0x10013F20,BrSndBankPickSlot,src/core/ghidra_batch.c,coloring,4+4,157/157,no N64 (PC audio),size-exact REGNORM 4+4.,2026-08-31
+0x10029CD0,BrEntGfxFreeAll,src/core/ghidra_batch.c,coloring,0+0,153/153,no N64 (PC heap),size-exact REGNORM 0; ebx=IAT free; SIB eax+esi vs esi+eax.,2026-08-31
+0x1002F282,BrSessionReinitVideo,src/core/ghidra_batch.c,structural-unconfirmed,7+8,142/140,no N64 (PC video),clock-pair gate + CloseHandle; not closed.,2026-08-31
+0x10036E50,BrDpCreateIface,src/core/ghidra_batch.c,coloring,1+1,158/158,no N64 (DirectPlay),size-exact; QI result jge-success vs jl-fail block order.,2026-08-31
+0x10038A80,BrMenuSetTrackLetter,src/core/ghidra_batch.c,coloring,1+2,156/159,no N64 (PC menu),switch on track sel; REGNORM 1+2.,2026-08-31
+0x1003FBE0,BrMenuResetTrackStr,src/core/ghidra_batch.c,coloring,2+1,158/160,no N64 (PC menu),REGNORM 2+1.,2026-08-31
+0x1006AFF0,BrNetWriteRaceOpts,src/core/ghidra_batch.c,structural-unconfirmed,16+0,144/213,no N64 (PC net),extra 16 stores; union-arg thiscall not matching.,2026-08-31
+0x1003AED0,BrUiCreditsAction_1003AED0,src/core/menus/br_uicredits.c,structural-unconfirmed,19+8,90/123,no N64 (PC UI),not closed this session.,2026-08-31
+0x100400E0,BrUiNavHook_10046C90,src/core/menus/br_uinav.c,header-locked,10+3,56/60,no N64 (PC UI),f00(1) is push-1 call [eax]; needs C++ virtual or header thiscall. NULL guards extra.,2026-08-31
+0x1003A140,BrMenuTime0C00,src/core/slice2_24.c,x87-schedule,9+93,360/109,no N64 (PC menu),helpers not inlined; same fcom/fcomp format block as Time1040,2026-08-31
+0x1003A2B0,BrMenuTime0D70,src/core/slice2_24.c,x87-schedule,9+93,360/109,no N64 (PC menu),twin of Time0C00 vs a second times table,2026-08-31
+0x1003A420,BrMenuTime0EE0,src/core/slice2_24.c,x87-schedule,9+93,341/110,no N64 (PC menu),slot-3 live time else table[i]; same format fcom wall,2026-08-31
+0x1003A580,BrMenuTime1040,src/core/slice2_24.c,x87-schedule,2+3,322/324,no N64 (PC menu),inlined vs live global; leftover fcomp+reload vs orig fcom+fstp,2026-08-31
+0x1003A6D0,BrMenuTime1180,src/core/slice2_24.c,x87-schedule,2+3,322/324,no N64 (PC menu),same as Time1040 vs gAA28CC,2026-08-31
+0x1003AB00,BrMenuText15A0,src/core/slice2_24.c,coloring,1+2,200/198,no N64 (PC menu),documented clamp sub/test/jge vs VC5 sub/jns,2026-08-31
+0x10028820,BrGbiTexScanRun,src/core/slice2_16.c,too-big,208+21,476/818,no twin (PC GBI collapse),pSt walker vs 1-arg globals; 476 orig skip,2026-08-31
+0x10029420,BrGbiTexScanSetImg,src/core/slice2_16.c,coloring,0+0,83/83,no twin (PC GBI collapse),ecx vs eax for state; xor edx,edx zero already in,2026-08-31
+0x10029480,BrGbiTexScanLoadTlut,src/core/slice2_16.c,coloring,0+0,109/109,no twin (PC GBI collapse),1-arg globals+inline memcpy size-match REGNORM 0,2026-08-31
+0x10029510,BrGbiTexScanLoadBlock,src/core/slice2_16.c,coloring,0+0,94/93,no twin (PC GBI collapse),unclamped memcpy to stage; 1B encoding residue,2026-08-31
+0x100296B0,BrGbiTexScanSetTileSize,src/core/slice2_16.c,coloring,0+0,91/91,no twin (PC GBI collapse),/O2 hoists state=6 above lrs store; comma/volatile no,2026-08-31
+0x10029710,BrGbiTexScanOtherModeL,src/core/slice2_16.c,coloring,4+11,107/76,no twin (PC GBI collapse),/O2 merges three mov[g],0;ret copies into je-common,2026-08-31
+0x1001C6A0,BrCarTableAdd,src/core/slice2_17.c,structural-unconfirmed,11+7,251/270,no C twin (tgrally ROMs only),DAT_ re-read+thiscall 76AE0 not enough; lea-stride residue,2026-08-31
+0x1001C810,BrCarStateSave,src/core/slice2_17.c,structural-unconfirmed,36+15,128/211,no C twin (tgrally ROMs only),g_s17 indexed vs DAT_ walk+rep movsd; twin of Restore wall,2026-08-31
+0x1003E090,BrPhaseLeave_10044B40,src/core/slice2_26.c,coloring,0+0,66/64,no N64 (PC phase),slot-0 f00 mov edx,[ecx]/call [edx] vs orig eax; a1/a3 copy vs ecx. C++ virtual is the proven fix,2026-08-31
+0x1003E1C0,BrPhaseLeave_10044C70,src/core/slice2_26.c,coloring,0+0,56/54,no N64 (PC phase),same slot-0 f00 edx vs eax as Leave 44B40,2026-08-31
+0x1003E330,BrPhaseLeave_10044DE0,src/core/slice2_26.c,coloring,0+0,56/54,no N64 (PC phase),same slot-0 f00 edx vs eax as Leave 44B40,2026-08-31
+0x1003E450,BrPhaseLeave_10044F00,src/core/slice2_26.c,coloring,0+0,66/64,no N64 (PC phase),same slot-0 f00 edx vs eax; notifies pAA2968 not current,2026-08-31
+0x1003E250,BrPhaseActivate_10044D00,src/core/slice2_26.c,structural-unconfirmed,n/a,221/48,no N64 (PC phase),C++ /GX new T SEH (push -1/handler/fs:[0]); not emitted from C,2026-08-31
+0x1003E4A0,BrPhaseActivate_10044F50,src/core/slice2_26.c,structural-unconfirmed,n/a,244/96,no N64 (PC phase),C++ /GX new T SEH plus three just-built callees,2026-08-31
+0x1003E660,BrPhaseActivate_10045110,src/core/slice2_26.c,structural-unconfirmed,n/a,201/32,no N64 (PC phase),C++ /GX new T SEH; 0-arg, slot pAA2914,2026-08-31
+0x1003E730,BrPhaseActivate_100451E0,src/core/slice2_26.c,structural-unconfirmed,n/a,214/48,no N64 (PC phase),C++ /GX new T SEH; BrExt_100419D0 prologue,2026-08-31
+0x1003E810,BrPhaseActivate_100452C0,src/core/slice2_26.c,structural-unconfirmed,n/a,201/32,no N64 (PC phase),C++ /GX new T SEH; slot pAA297C,2026-08-31
+0x10033BB0,BrPfxTick,src/core/slice2_21.c,structural-unconfirmed,66+30,219/259,no twin (PC particles),NULL-guard drop not enough; pPool vs DAT_ still +40B,2026-08-31
+0x10033D30,BrSpanAddLine,src/core/slice2_21.c,too-big,20+11,601/616,no twin (PC span grid),601 orig skip,2026-08-31
+0x10034010,BrSpanBuildHull,src/core/slice2_21.c,too-big,59+145,657/330,no twin (PC span grid),657 orig; port has bounds orig lacks,2026-08-31
+0x10034920,BrMat4TransformPoint4,src/core/slice2_21.c,x87-schedule,11+18,157/149,N64 not for x87,unrolled 4 stores; leftover fxch/fmul-st vs mem,2026-08-31
+0x10034A70,BrMtxXfmDir3,src/core/slice2_21.c,x87-schedule,8+15,115/105,N64 not for x87,unrolled 3; leftover fxch/fmul-st,2026-08-31
+0x10034B70,BrMtxInvert,src/core/slice2_21.c,too-big,48+55,696/658,N64 not for x87,696 orig skip,2026-08-31
+0x10034E30,BrAtan2,src/core/slice2_21.c,x87-schedule,2+7,393/379,N64 not for x87,fcom vs fcomp/fxch residue; 393B near cap,2026-08-31
+0x100350F0,BrSeg2Intersect,src/core/slice2_21.c,too-big,40+92,544/358,N64 not for x87,544 orig skip,2026-08-31
+0x10038CA0,BrUiText1003F760,src/core/slice2_23.c,structural-unconfirmed,4+2,136/144,no twin (PC UI),DAT_+inline strcpy close; Apply is 2-arg push0/push ebx not 3,2026-08-31
+0x1003F410,BrPhaseActivate_10045F70,src/core/slice3_31.c,structural-unconfirmed,n/a,293/80,no N64 (PC phase),C++ /GX new T SEH (push -1/handler/fs:[0]),2026-08-31
+0x1003F540,BrPhaseActivate_100460A0,src/core/slice3_31.c,structural-unconfirmed,n/a,201/32,no N64 (PC phase),C++ /GX new T SEH,2026-08-31
+0x1003F610,BrPhaseActivate_10046170,src/core/slice3_31.c,structural-unconfirmed,n/a,239/80,no N64 (PC phase),C++ /GX new T SEH plus music switch,2026-08-31
+0x1003F700,BrPhaseActivate_10046260,src/core/slice3_31.c,structural-unconfirmed,n/a,284/192,no N64 (PC phase),C++ /GX new T SEH plus just-built epilogue,2026-08-31
+0x1003F8A0,BrSub10046400,src/core/slice3_31.c,coloring,0+0,74/72,no N64 (PC phase),slot-0 f00 edx vs eax; matching-build globals REGNORM 0,2026-08-31
+0x1003FA00,BrPhaseLeave_10046560,src/core/slice3_31.c,coloring,0+0,61/59,no N64 (PC phase),same slot-0 f00 edx vs eax as the leave family,2026-08-31
+0x1003FB10,BrPhaseLeave_100466C0,src/core/slice3_31.c,structural-unconfirmed,n/a,76/3028,no N64 (PC phase),thiscall BrExt_1006A4A0 plus leave prologue not inlined,2026-08-31
+0x10040260,BrPhaseLeaveNamed_10046E10,src/core/slice3_31.c,structural-unconfirmed,n/a,146/128,no N64 (PC phase),two unbounded strcpy plus a different clear set,2026-08-31
+0x100403B0,BrPhaseLeave_10046F60,src/core/slice3_31.c,structural-unconfirmed,n/a,90/96,no N64 (PC phase),second f00 on pAA292C with cur=NULL in between,2026-08-31
+0x10041300,BrUiItemInit_10047EB0,src/core/slice3_32.c,structural-unconfirmed,6+1,247/263,no N64 (PC UI),thiscall ret 0x10; extra push ecx frame slot, REGNORM 6+1,2026-08-31
+0x1003CD60,BrOpt3810,src/core/slice2_25.c,coloring,2+4,490/483,no twin (PC lobby),C matching-build: goto-tail leave_host DAT_10ac5c5c thiscall slot6/f1C IAT. C++ probe build/cpp_work/0x1003CD60.cpp is 490/490 with 2 diffs: leave_host mov eax vs ecx [esp+0x10]; push. Rec6A4A0::go thiscall has no edx. Named temp / n / C-style f1C on leave did not flip eax. See idioms_new/3cd60.md,2026-08-31

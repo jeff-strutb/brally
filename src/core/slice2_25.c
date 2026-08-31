@@ -763,6 +763,111 @@ int BrOpt37D0(BrGameObj *pGame)
  * closes the lobby and plays a sound. Most of the function is the several
  * different ways of leaving. */
 /* @implements 0x10043810 d3d BrOpt3810 */
+#ifdef BR_MATCHING_BUILD
+int BrOpt3810(BrGameObj *pGame)
+{
+    /* orig: no frame, no ebp; xor ebx,ebx. leave_host is a far je, not an
+     * inlined else — `if (AA2894==0) goto check; if (A9D000!=0) goto psub;
+     * goto leave_host`. pfnSlot6 thiscall +1 stack; f1C thiscall no arg;
+     * KERNEL32 IAT. g_brPAA2904 is (*g_ppBrPhaseCur); orig stores 0x10ac5c5c
+     * (DAT_10ac5c5c). C++ probe build/cpp_work/0x1003CD60.cpp is 2 diffs
+     * (leave_host mov eax vs ecx [esp+0x10]); Rec6A4A0::go is thiscall
+     * without edx. C __fastcall 6A4A0 still loads edx. */
+    typedef void (__fastcall *Slot6)(BrGameSub *pThis, void *edx_slot, int arg);
+    typedef void (__fastcall *F1C)(BrOptObj *pThis, void *edx_vtbl);
+    typedef void (__fastcall *Fn6A4A0)(void *pThis, void *edx_live, void *pArg);
+    extern BrOptObj *DAT_10ac5c5c;
+    BrGameSub       *pSub;
+    BrOptObj        *pObj;
+    BrDPSessionDesc *pDesc;
+    BrSlot          *pSlot;
+    int              i;
+
+    if (g_brAA2894 == 0)
+        goto check;
+    if (g_brA9D000 != 0)
+        goto psub;
+    goto leave_host;
+
+psub:
+    pSub = pGame->pSub;
+    pSub->f68 = 0;
+    pSub = pGame->pSub;
+    ((Slot6)pSub->pVtbl->pfnSlot6)(pSub, pSub->pVtbl, 0);
+    BrSub10038F30(0);
+
+check:
+    if (g_brAA2890 != 0) {
+        BrSub10046400(pGame);
+        pObj = g_brPAA2950;
+        if (pObj != NULL) {
+            ((F1C)pObj->pVtbl->f1C)(pObj, pObj->pVtbl);
+            g_brPAA2950 = NULL;
+        }
+        BrOptOpen294C(NULL);
+        BrOptOpen2950B(NULL);
+        BrOptOpen2954(NULL);
+        g_brAA2890 = 0;
+        return 0;
+    }
+
+    if (g_brAA2884 != 0) {
+        pDesc = NULL;
+        if (g_brP277B40 != NULL)
+            BrSub1003D0B0(g_brP277B40, &pDesc);
+
+        if (pDesc != NULL) {
+            i = 0;
+            for (pSlot = g_aBrAA2538;
+                 (int)pSlot < (int)(g_aBrAA2538 + BR_SLOT_COUNT);
+                 pSlot++) {
+                if (pSlot->id == g_brPA9D008->f08) {
+                    pSlot->a = (pDesc->dwCurrentPlayers > 1);
+                    break;
+                }
+                i++;
+            }
+        }
+        if (pDesc != NULL) {
+            GlobalUnlock(GlobalHandle(pDesc));
+            GlobalFree(GlobalHandle(pDesc));
+        }
+    }
+
+    if (g_brAA288C != 0) {
+        BrSub1003E310();
+        ((Fn6A4A0)BrSub1006A4A0)(g_aBrB4DF30, g_aBrB4FBE8, g_aBrB4FBE8);
+        pSub = pGame->pSub;
+        pSub->f68 = 0;
+        pSub = pGame->pSub;
+        ((Slot6)pSub->pVtbl->pfnSlot6)(pSub, pSub->pVtbl, 0);
+        g_brAA285C = 0;
+        BrSub10072AF0(2, 0x200020);
+        g_brAA2854 = 2;
+        return 0;
+    }
+    return 1;
+
+leave_host:
+    BrSub10046400(pGame);
+    pObj = g_brPAA2950;
+    if (pObj != NULL) {
+        ((F1C)pObj->pVtbl->f1C)(pObj, pObj->pVtbl);
+        g_brPAA2950 = NULL;
+    }
+    DAT_10ac5c5c = g_brPAA2948;
+    BrSub1003BF60();
+    g_brAA2898 = 1;
+    if (g_brAA287C == 0 || g_brAA287C == 1)
+        BrSub1003C020();
+    if (g_brAA287C == 2 || g_brAA287C == 3) {
+        if (g_brPAA29D8 != NULL)
+            g_brPAA29D8->f1C &= ~0x10;
+    }
+    g_brAA2894 = 0;
+    return 0;
+}
+#else
 int BrOpt3810(BrGameObj *pGame)
 {
     BrGameSub       *pSub;
@@ -846,6 +951,7 @@ int BrOpt3810(BrGameObj *pGame)
     g_brAA2854 = 2;
     return 0;
 }
+#endif
 
 /* 0x10043A00. GOTCHA: the DirectPlay pointer is NOT null-checked before
  * 0x1003D0B0 is called with it -- unlike every other use in this packet. */
