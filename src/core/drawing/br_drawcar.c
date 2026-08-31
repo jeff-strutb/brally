@@ -1151,9 +1151,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBC00240Au, colourB);
         put(0xBA000C02u, BrG_6C0258);
         {
-            uint32_t underDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff);
-            if (underDL != 0)
-                put(0x06000000u, underDL);
+            if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff) != 0)
+                put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff));
         }
 
         /* 0xB0C6 -- shared tile setup (still inside suppress guard). */
@@ -1230,9 +1229,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(0xF50001F0u, 0x06000000u);
             put(0xF5000100u, 0x05000000u);
             {
-                uint32_t glassDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff);
-                if (glassDL != 0)
-                    put(0x06000000u, glassDL);
+                if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff) != 0)
+                    put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff));
             }
         }
     }
@@ -1259,9 +1257,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xF50001F0u, 0x06000000u);
     put(0xF5000100u, 0x05000000u);
     {
-        uint32_t detailDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff);
-        if (detailDL != 0)
-            put(0x06000000u, detailDL);
+        if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff) != 0)
+            put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff));
     }
 
     /* 0xB685-0xB925 -- reflection pass. */
@@ -1299,10 +1296,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(w0, w1);
         }
         {
-            uint32_t refDL = *(const uint32_t *)(
-                (const unsigned char *)BrG_6C3308 + lodOff + 0x803C);
-            if (refDL != 0)
-                put(0x06000000u, refDL);
+            if (*(const uint32_t *)(
+                    (const unsigned char *)BrG_6C3308 + lodOff + 0x803C) != 0)
+                put(0x06000000u, *(const uint32_t *)(
+                    (const unsigned char *)BrG_6C3308 + lodOff + 0x803C));
         }
         put(0xBA000602u, BrG_6C0688);
     }
@@ -1383,18 +1380,16 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
     {
-        uint32_t bodyDL2 = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8028 + lodOff);
-        if (bodyDL2 != 0)
-            put(0x06000000u, bodyDL2);
+        if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8028 + lodOff) != 0)
+            put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8028 + lodOff));
     }
 
     /* 0xBCBF -- reflection DL at model + lodOff + 0x803C (conditional). */
     {
-        uint32_t refDL = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x803C + lodOff);
-        if (refDL != 0 &&
+        if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x803C + lodOff) != 0 &&
             (g_BrDrawSuppress != 0 ||
              *(const int32_t *)(car + BR_CAR_OFF_I29B4) != 0))
-            put(0x06000000u, refDL);
+            put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x803C + lodOff));
     }
 
     /* 0xBD1A -- pop the model matrix, clear geom, restore light colours. */
