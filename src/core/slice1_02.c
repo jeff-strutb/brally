@@ -737,7 +737,7 @@ int BrNetReset(BrNetState *pNet)
 
 /* 0x10004A10 */
 /* WHAT IT DOES: reads a player slot's status word under that slot's lock. */
-/* @implements 0x10004A10 d3d BrNetSlotGetF02C */
+/* port-only body; Glide match is src/core/generated/0x10004D80.c */
 int32_t BrNetSlotGetF02C(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *p = &pNet->aSlots[slot];
