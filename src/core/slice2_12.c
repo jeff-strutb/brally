@@ -834,7 +834,7 @@ int32_t BrNetSlotGetF974(BrNetState *pNet, int32_t slot)
 /* 0x10006090 */
 /* WHAT IT DOES: raises a networking flag under its lock. What the flag
  * signals is not established here. */
-/* @implements 0x10006090 d3d BrNetSetF10220DD0 */
+/* port-only body; Glide match is src/core/generated/0x10006400.c */
 void BrNetSetF10220DD0(BrNetState *pNet)
 {
     BrNetMutexLock(pNet->h1022131C);
