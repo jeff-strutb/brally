@@ -27,7 +27,28 @@ extern void BrAppMsg107(void *pv1, const void *pData, uint32_t cbData,
 /* WHAT IT DOES: sends a block of data to every other player in the network
  * game, through the networking library, taking the lock around the call. The
  * send is marked as guaranteed delivery. */
+/* @implements 0x10009A00 glide BrDPlayRawSend */
 /* @implements 0x1000C4D0 d3d BrDPlayRawSend */
+#ifdef BR_MATCHING_BUILD
+/* Orig is 6-arg: EnterCS, stdcall Send at vtbl+0x68 with this pushed,
+ * LeaveCS.  BrComCallLocked68 is a helper CALL (33 B vs 64 B). */
+extern int DAT_10273310;
+__declspec(dllimport) void __stdcall EnterCriticalSection(void *);
+__declspec(dllimport) void __stdcall LeaveCriticalSection(void *);
+typedef int (__stdcall *BrDpSend6)(void *, uint32_t, uint32_t, uint32_t,
+                                   void *, uint32_t);
+static int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
+                          uint32_t flags, void *pData, uint32_t cbData)
+{
+    BrDpSend6 send;
+    int r;
+    EnterCriticalSection(&DAT_10273310);
+    send = *(BrDpSend6 *)(*(unsigned char **)pIface + 0x68);
+    r = send(pIface, idFrom, idTo, flags, pData, cbData);
+    LeaveCriticalSection(&DAT_10273310);
+    return r;
+}
+#else
 static int BrDPlayRawSend(void *pIface, uint32_t idFrom,
                           const void *pData, uint32_t cbData)
 {
@@ -38,6 +59,7 @@ static int BrDPlayRawSend(void *pIface, uint32_t idFrom,
                              (void *)(uintptr_t)(const void *)pData,
                              BR_ARG(cbData));
 }
+#endif
 
 /* ==========================================================================
  * 1. 0x1003BD50
@@ -194,8 +216,13 @@ int BrDPlaySendPair(const BrDPlayLink *pLink, int32_t fGate,
 
     aPayload[0] = tag;
     aPayload[1] = value;
+#ifdef BR_MATCHING_BUILD
+    return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
+                          (uint32_t)sizeof aPayload);
+#else
     return BrDPlayRawSend(pLink->pIface, pLink->f08, aPayload,
                           (uint32_t)sizeof aPayload);
+#endif
 }
 
 int BrDPlaySendTag2(const BrDPlayLink *pLink, int32_t fGate, uint32_t value)
@@ -253,8 +280,13 @@ int BrDPlaySendTag8(const BrDPlayLink *pLink, uint32_t a, uint32_t b)
         BrAppMsg107((void *)(uintptr_t)(const void *)pLink, aPayload,
                     (uint32_t)sizeof aPayload, pLink->f08, 1);
 
+#ifdef BR_MATCHING_BUILD
+    return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
+                          (uint32_t)sizeof aPayload);
+#else
     return BrDPlayRawSend(pLink->pIface, pLink->f08, aPayload,
                           (uint32_t)sizeof aPayload);
+#endif
 }
 
 /* ==========================================================================
