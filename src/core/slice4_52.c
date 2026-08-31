@@ -247,7 +247,7 @@ void BrSub1005F530(void)
  * corrupted or foreign file can be spotted on load, then the season block
  * itself, five loose settings, and a trailing block. If any of the large writes
  * fails it gives up quietly, leaving a half-written file behind. */
-/* @implements 0x100709A0 d3d BrMenuSub100709A0 */
+/* port-only body; Glide match is src/core/generated/0x10069930.c */
 void BrMenuSub100709A0(void)
 {
     unsigned long sum;

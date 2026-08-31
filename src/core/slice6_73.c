@@ -1007,7 +1007,7 @@ static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
  * between "being edited" and "not", and on the way in it puts the existing
  * name aside and blanks the record so the player types into an empty box.
  * The put-aside copy is what the cancel half below puts back. */
-/* @implements 0x10041A00 d3d BrExt_10041A00 */
+/* port-only body; Glide match is src/core/generated/0x1003AF60.c */
 int32_t BrExt_10041A00(void *pArg)
 {
     unsigned char *pRec;
