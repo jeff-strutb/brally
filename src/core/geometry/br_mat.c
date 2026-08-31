@@ -12,6 +12,7 @@
 
 #include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 
 /* @implements 0x10074720 d3d BrMat4MulVec3 */
 void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
@@ -145,10 +146,15 @@ int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
     float dx, dy, dz;
 
     /* The guards are exact equality compares, in this order. A degenerate
-     * frustum leaves the matrix untouched and reports failure; the original
-     * prints a diagnostic and returns without writing. */
-    if (l == r || t == b || n == f)
+     * frustum leaves the matrix untouched; orig `push str; call [__imp_printf];
+     * add esp,4; ret` so eax is printf's return, not a literal 1. */
+    if (l == r || t == b || n == f) {
+#ifdef BR_MATCHING_BUILD
+        return printf("Error: guFrustumF(): unable to compute matrix\n");
+#else
         return 1;
+#endif
+    }
 
     dx = r - l;
     dy = t - b;
@@ -201,12 +207,22 @@ int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
 /* @implements 0x100310F0 d3d BrMat4Scale */
 void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz)
 {
-    int i, k;
-    for (i = 0; i < 4; i++)
-        for (k = 0; k < 4; k++)
-            pM->m[i][k] = 0.0f;
+    /* orig flds sx and integer-moves sy/sz. Mention sx first so it takes
+     * the fld/fstp; sy then sz are the integer copies. */
     pM->m[0][0] = sx;
     pM->m[1][1] = sy;
     pM->m[2][2] = sz;
+    pM->m[0][1] = 0.0f;
+    pM->m[0][2] = 0.0f;
+    pM->m[0][3] = 0.0f;
+    pM->m[1][0] = 0.0f;
+    pM->m[1][2] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][0] = 0.0f;
+    pM->m[2][1] = 0.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[3][0] = 0.0f;
+    pM->m[3][1] = 0.0f;
+    pM->m[3][2] = 0.0f;
     pM->m[3][3] = 1.0f;
 }
