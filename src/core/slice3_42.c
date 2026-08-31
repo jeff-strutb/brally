@@ -202,10 +202,10 @@ static int BrCtrlProfileIndex(int32_t sel)
 /* @implements 0x10069C90 d3d BrCtrlCfgInit */
 void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
 {
-    int i;
-
-    for (i = 0; i < BR_CTRL_PROFILES; ++i)
-        pThis->profile[i] = g_BrCtrlDefaults[i];
+    pThis->profile[0] = g_BrCtrlDefaults[0];
+    pThis->profile[1] = g_BrCtrlDefaults[1];
+    pThis->profile[2] = g_BrCtrlDefaults[2];
+    pThis->profile[3] = g_BrCtrlDefaults[3];
 
     pThis->active  = 0;
     pThis->pActive = &pThis->profile[0];
@@ -220,7 +220,13 @@ void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
     pThis->f7BC = 0x1E0;
     pThis->f7C0 = 0x10;
     pThis->f7C4 = 0;
-    memset(pThis->f7C8, 0, sizeof pThis->f7C8);
+    /* orig lea ecx,[this+0x7c8] then four `mov [ecx+n],eax` (the stosd zero),
+     * with the 0x7b8 immediates filling the lea delay slot. Field stores
+     * fold to [this+disp] and let `mov eax,9` steal eax. */
+    pThis->f7C8[0] = 0;
+    pThis->f7C8[1] = 0;
+    pThis->f7C8[2] = 0;
+    pThis->f7C8[3] = 0;
 
     pThis->f7D8 = 9;
     pThis->f7DC = 9;
@@ -462,10 +468,8 @@ void BrReplayReset(void)
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {
-    BrCarState state;
-    int32_t    iPlayer;
-    int32_t    frame;
-    uint32_t   slot;
+    int32_t iPlayer;
+    int32_t frame;
 
     iPlayer = BR_CAR_I32(pCar, BR_S42_CAR_OFF_INDEX);
 
@@ -478,11 +482,16 @@ void BrReplayRecord(void *pCar)
     if (frame >= (int32_t)BR_REPLAY_FRAMES)
         return;
 
-    /* `shl eax,0x10; add eax,ecx` -- a flat index, not [player][frame]. */
-    slot = ((uint32_t)iPlayer << 16) + (uint32_t)frame;
-
-    BrCarRecordToState(&state, pCar);
-    BrCarStatePack(&g_BrReplayBuf[slot].rec, &state);
+    /* orig pushes esi only on this path (`lea esi,[eax*8+g_BrReplayBuf]`
+     * must survive RecordToState). Nested so the 0xa0 state is the slow
+     * path's frame, not a prologue that also saves esi. */
+    {
+        BrCarState state;
+        BrCarRecordToState(&state, pCar);
+        BrCarStatePack(
+            &g_BrReplayBuf[((uint32_t)iPlayer << 16) + (uint32_t)frame].rec,
+            &state);
+    }
 }
 
 /* 0x1006AB20 */
@@ -493,25 +502,42 @@ void BrReplayRecord(void *pCar)
 /* @implements 0x1006AB20 d3d BrReplayAdvance */
 void BrReplayAdvance(void)
 {
-    int n, i;
+    int n;
+    int32_t *p;
+    int32_t left;
 
     if (g_BrReplayOn == 0)
         return;
     if (g_BrX06909B4 != 0)
         return;
 
-    n = BrReplayActiveCount();
-    for (i = 0; i < n; ++i) {
-        if (g_BrReplayCount[i] < (int32_t)BR_REPLAY_FRAMES)
-            g_BrReplayCount[i]++;
+    /* Same open-coded 8-or-1 as Reset: orig `mov ecx,8; cmp esi,2; je;
+     * cmp esi,4; jne; mov ecx,1` then `test ecx,ecx / jle`. A helper call
+     * is the extra `call` in the bag. */
+    n = 8;
+    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
+        n = 1;
+
+    /* orig `test ecx,ecx; jle` THEN `mov eax,&count; mov edx,ecx`. Setup
+     * must sit inside the taken arm so it does not hoist above the jle. */
+    if (n > 0) {
+        p = g_BrReplayCount;
+        left = n;
+        do {
+            if (*p < (int32_t)BR_REPLAY_FRAMES)
+                ++*p;
+            ++p;
+        } while (--left);
     }
 
     if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4) {
-        /* 0x10B502EC is g_BrReplayCount[1] and 0x11750314 is
-         * g_BrReplayCursor[1]; both indices are hard-coded in the original. */
-        const int32_t limit = g_BrReplayCount[1] - 1;
-        if (g_BrReplayCursor[1] < limit)
-            g_BrReplayCursor[1] = g_BrReplayCursor[1] + 1;
+        /* orig: eax=count[1], ecx=cursor[1], `dec eax; cmp ecx,eax; jge;
+         * mov eax,ecx; inc eax; store`. Reuse the count register as the
+         * store source so the copy is `mov eax,ecx` not `inc` in place. */
+        int32_t a = g_BrReplayCount[1];
+        int32_t b = g_BrReplayCursor[1];
+        if (b < --a)
+            g_BrReplayCursor[1] = ++b;
     }
 }
 
@@ -538,37 +564,39 @@ void BrReplayRewind(void)
 /* @implements 0x1006ABD0 d3d BrReplayApply */
 void BrReplayApply(void *pCar, int32_t iPlayer)
 {
-    BrCarState state;
-    uint32_t   slot;
-    int32_t    cursor;
+    BrCarState    state;
+    BrReplaySlot *pSlot;
+    unsigned char z;
 
-    cursor = g_BrReplayCursor[iPlayer];
-    slot   = ((uint32_t)iPlayer << 16) + (uint32_t)cursor;
+    pSlot = &g_BrReplayBuf[((uint32_t)iPlayer << 16)
+                           + (uint32_t)g_BrReplayCursor[iPlayer]];
 
-    BrCarStateUnpack(&state, &g_BrReplayBuf[slot].rec);
+    BrCarStateUnpack(&state, &pSlot->rec);
 
-    /* BrCarStateUnpack leaves f78 alone (slice2_12.h says so); the original
-     * seeds it from the car's own +0x0FF4 before applying the state. */
-    state.f78 = BR_CAR_F32(pCar, BR_S42_CAR_OFF_F0FF4);
+    /* orig `mov edx,[car+0xFF4]; mov [state.f78],edx` -- dword copy, not
+     * fld/fstp. Unpack leaves f78 alone. */
+    *(int32_t *)&state.f78 = BR_CAR_I32(pCar, BR_S42_CAR_OFF_F0FF4);
     BrCarRecordFromState(pCar, &state);
 
     if (g_BrX06909E0 == 2) {
-        /* Nine bytes, in the original's order.  Note 0x364/0x365 are skipped
-         * and 0x36C is written third. */
-        BR_CAR_U8(pCar, 0x362) = 0;
-        BR_CAR_U8(pCar, 0x363) = 0;
-        BR_CAR_U8(pCar, 0x36C) = 0;
-        BR_CAR_U8(pCar, 0x366) = 0;
-        BR_CAR_U8(pCar, 0x367) = 0;
-        BR_CAR_U8(pCar, 0x368) = 0;
-        BR_CAR_U8(pCar, 0x369) = 0;
-        BR_CAR_U8(pCar, 0x36A) = 0;
-        BR_CAR_U8(pCar, 0x36B) = 0;
+        /* orig `xor al,al` then nine `mov [esi+off],al`. 0x364/0x365 skipped;
+         * 0x36C is written third. */
+        z = 0;
+        BR_CAR_U8(pCar, 0x362) = z;
+        BR_CAR_U8(pCar, 0x363) = z;
+        BR_CAR_U8(pCar, 0x36C) = z;
+        BR_CAR_U8(pCar, 0x366) = z;
+        BR_CAR_U8(pCar, 0x367) = z;
+        BR_CAR_U8(pCar, 0x368) = z;
+        BR_CAR_U8(pCar, 0x369) = z;
+        BR_CAR_U8(pCar, 0x36A) = z;
+        BR_CAR_U8(pCar, 0x36B) = z;
     }
 
-    if (cursor < g_BrReplayCount[iPlayer] - 2) {
-        /* The next slot, unpacked over the SAME buffer. */
-        BrCarStateUnpack(&state, &g_BrReplayBuf[slot + 1].rec);
+    /* orig reloads both cursor and count from [iPlayer*4+disp], then
+     * `add ebx,0x18` for the next slot rather than rebuilding the index. */
+    if (g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 2) {
+        BrCarStateUnpack(&state, &pSlot[1].rec);
 
         BR_CAR_F32(pCar, BR_S42_CAR_OFF_VEL + 0) =
             (state.f10 - BR_CAR_F32(pCar, BR_S42_CAR_OFF_POS + 0)) * BR_K_0008FAA8;
@@ -794,10 +822,6 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
 void BrRbSolveAccel(BrRbBodyFull *pB)
 {
     BrVec3 t, u, w;
-    BrRbBodyFull *c0 = pB->child[0];
-    BrRbBodyFull *c1 = pB->child[1];
-    BrRbBodyFull *c2 = pB->child[2];
-    BrRbBodyFull *c3 = pB->child[3];
 
     BrMat4MulVec3(&t, &pB->m, &pB->accel);
 
@@ -807,11 +831,14 @@ void BrRbSolveAccel(BrRbBodyFull *pB)
     pB->accel.x = t.x;
     pB->accel.y = t.y;
 
-    /* The two summation orders genuinely differ -- x starts at child[2] and
-     * y starts at child[3].  And Z never sees the children at all. */
-    t.x = ((((c2->accel.x + c1->accel.x) + c0->accel.x) + c3->accel.x) + t.x)
+    /* orig x: fld child[3], fadd [2],[1],[0], fadd t.x.  y: fld child[0],
+     * fadd [1],[2],[3], fadd t.y.  Z never sees the children.  Named child
+     * locals spill six extra stack movs. */
+    t.x = ((((pB->child[3]->accel.x + pB->child[2]->accel.x)
+             + pB->child[1]->accel.x) + pB->child[0]->accel.x) + t.x)
           / pB->mass;
-    t.y = ((((c3->accel.y + c0->accel.y) + c1->accel.y) + c2->accel.y) + t.y)
+    t.y = ((((pB->child[0]->accel.y + pB->child[1]->accel.y)
+             + pB->child[2]->accel.y) + pB->child[3]->accel.y) + t.y)
           / pB->mass;
     t.z = t.z / pB->mass;
 
@@ -831,8 +858,6 @@ void BrRbSolveAccel(BrRbBodyFull *pB)
 /* @implements 0x1006B260 d3d BrRbAccumAll */
 void BrRbAccumAll(BrRbBodyFull *pB)
 {
-    int k;
-
     pB->accel.x = 0.0f;
     pB->accel.y = 0.0f;
     pB->accel.z = 0.0f;
@@ -840,16 +865,27 @@ void BrRbAccumAll(BrRbBodyFull *pB)
     pB->angAccel.y = 0.0f;
     pB->angAccel.z = 0.0f;
 
-    for (k = 0; k < 4; ++k) {
-        /* Only accel; the children's angAccel is left as it was. */
-        pB->child[k]->accel.x = 0.0f;
-        pB->child[k]->accel.y = 0.0f;
-        pB->child[k]->accel.z = 0.0f;
-    }
+    /* orig reloads pB->child[k] for every store (`mov r,[esi+off]; mov
+     * [r+0xfc],eax`) and unrolls both the zeros and the four child-force
+     * calls. A counted loop is the extra dec/jne in the bag. */
+    pB->child[0]->accel.x = 0.0f;
+    pB->child[0]->accel.y = 0.0f;
+    pB->child[0]->accel.z = 0.0f;
+    pB->child[1]->accel.x = 0.0f;
+    pB->child[1]->accel.y = 0.0f;
+    pB->child[1]->accel.z = 0.0f;
+    pB->child[2]->accel.x = 0.0f;
+    pB->child[2]->accel.y = 0.0f;
+    pB->child[2]->accel.z = 0.0f;
+    pB->child[3]->accel.x = 0.0f;
+    pB->child[3]->accel.y = 0.0f;
+    pB->child[3]->accel.z = 0.0f;
 
     BrRbAccumOwnForces(pB);
-    for (k = 0; k < 4; ++k)
-        BrRbAccumChildForces(pB, pB->child[k]);
+    BrRbAccumChildForces(pB, pB->child[0]);
+    BrRbAccumChildForces(pB, pB->child[1]);
+    BrRbAccumChildForces(pB, pB->child[2]);
+    BrRbAccumChildForces(pB, pB->child[3]);
     BrRbSolveAccel(pB);
 }
 
