@@ -117,6 +117,14 @@ the caller AND flipped a helper to match for free.
   ceiling took 3–10 min each; crossing it needs a type/shape insight (as
   byte-width returns were for BrCarStatePack) or does not happen.
 
+- **Unrolled thiscall search: vtbl[1] builds a stack key, then 16
+  dword compares.** Signature is `__fastcall(this, live_edx, arg)` /
+  `ret 4`; pass `pArg` as the edx slot so the vtbl call is
+  `push &key; push arg; mov ecx,this; call [vtbl+4]` with no
+  `xor edx,edx`. The bound is unsigned (`test n; jbe` / `cmp i,n; jb`).
+  A nested 16-iter loop stays a loop. Proven 0x10008850 BrKeyCacheFind
+  (213 B, MATCH /O2).
+
 - **thiscall with stack args = `__fastcall(this, int _edx_unused, args...)`.**
   Same ECX `this`, same stack layout, same `ret N`; an unused EDX slot costs
   no bytes. Generalizes BR_THISCALL1. Proven on BrBoundsFits_10058CC0 and
