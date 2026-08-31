@@ -11,23 +11,26 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-08-25, fourth pass): 2,338/2,328 instructions, 9,360 vs
- * 9,354 bytes, 18 divergence regions slot-masked (33 raw; the gap is the
- * slot-layout cascade).  The old "fadd-deferral wall" is BROKEN: the
- * store-side/load-side declaration forms control VC5's alias proof, and
- * the row block's operand roles, product order, and store deferral are
- * all spelling-reachable (see the 0x1000EAF0 entries in VC5-IDIOMS.md,
- * fourth-pass section, for the operand-kind ladder and the per-product
- * pair-shape rules).  The row transforms now match the original for the
- * first 8 of ~24 ops per row; the scale block's 8+4 batch split is
- * reproduced by the __inline per-row helpers.  REMAINING WALLS:
+ * STATE (2026-08-30, fifth pass): 2,332/2,328 instructions, 9,370 vs
+ * 9,354 bytes, 18 divergence regions slot-masked.  Trail distance check
+ * now matches orig's `fst`-home / dual-fcomp DAG (comma-in-if both
+ * sqlens; `&&` of the raw products was fstp-st + recompute).  The only
+ * `fchs` in the function is already `fld fMax; fld fMin; fchs; fxch;
+ * fcompp` -- no remaining abs/negate site.  REGNORM 60+56 (was 66+64).
+ * REMAINING WALLS:
  *   1. per-row: D-product's fld wants exactly ONE hoist notch (orig:
  *      fld V4; fxch3; faddp2 -- ours: fxch2; faddp1 first).  Hoisting is
  *      binary by operand kind (aggressive or none); no probed spelling
  *      gives one notch.
- *   2. scale block: one fld leaks across the 8|4 batch boundary.
- *   3. frame is 8 bytes smaller than orig (sub esp 0xd4 vs 0xdc) plus
- *      the slot cascade; likely downstream of walls 1-2.
+ *   2. scale block: 5|7 preload split vs orig 8|4 (one fld leak, greedy
+ *      refill after first fstp).  Nested-scope k copies, global-symbol
+ *      helpers, volatile dest barrier, counted loops: no improvement.
+ *   3. frame 8 bytes smaller (sub esp 0xd4 vs 0xdc).  Extra live floats
+ *      grow it to 0xdc but inflate the DAG; the gap is orig's remaining
+ *      ox/oy `fst` homes, not a pad local.
+ *   4. trail ox/oy: orig preloads pW.x/pW.y onto x87 before fsqrt via
+ *      the BrGroundProbeZ arg pointer and `fst`-homes ox/oy.  Named px/py
+ *      temps integer-home instead.
  * @implements stays live for the sweep; rule 2 forbids claiming a match
  * until the diff is clean.
  */
@@ -699,12 +702,21 @@ no_mark:
                                         float ey1 = DAT_10273690[slot + ring * 500].y1 - y1;
                                         float ex2 = DAT_10273690[slot + ring * 500].x2 - x2;
                                         float ey2 = DAT_10273690[slot + ring * 500].y2 - y2;
-                                        if (ey1 * ey1 + ex1 * ex1 < DAT_10077258 &&
-                                            ey2 * ey2 + ex2 * ex2 < DAT_10077258) {
+                                        /* Comma-in-if computes both sqlens before
+                                         * either fcomp, so VC5 `fst`-homes them
+                                         * (same dest-once class as in-place fchs).
+                                         * `&&` of the raw products short-circuits
+                                         * the second pair to fstp-st + recompute. */
+                                        {
+                                        float d1, d2;
+                                        if (d1 = ex1 * ex1 + ey1 * ey1,
+                                            d2 = ex2 * ex2 + ey2 * ey2,
+                                            d1 < DAT_10077258 && d2 < DAT_10077258) {
                                             if (h1 < 0) {
                                                 h1 = 499;
                                             }
                                             DAT_1035faf0[ring] = h1;
+                                        }
                                         }
                                     }
                                 }
