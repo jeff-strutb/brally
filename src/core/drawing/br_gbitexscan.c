@@ -9,7 +9,17 @@
  * through instead so the state is reachable without absolute addresses, which
  * is why every function here carries both arms.
  */
+#ifdef BR_MATCHING_BUILD
+/* Header still has the port (pSt, pCmd) shape; orig takes pCmd only. */
+#define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
+#define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
+#endif
 #include "slice2_16.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrGbiTexScanOtherModeH
+#undef BrGbiTexScanOtherModeH0E
+void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
+#endif
 #include "br_dlshared.h"
 
 #include <string.h>
@@ -138,5 +148,69 @@ void BrGbiTexScanTileSync(BrGbiTexScan *pSt)
 {
     if (pSt->state == 3 || pSt->state == 7)
         pSt->state = 4;
+}
+#endif
+
+/* 0x1002A210  G_SETOTHERMODE_H */
+/* WHAT IT DOES: during the texture-load hunt, sorts a render-mode change
+ * into texture filtering vs one other on/off setting. */
+/* @implements 0x1002A210 d3d BrGbiTexScanOtherModeH */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_106b7ab0;   /* 0x1057544C / f5544C */
+void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd)
+{
+    uint32_t sel = pCmd->w0 & 0xFF00u;
+
+    if (sel == 0x0E00u) {
+        BrGbiTexScanOtherModeH0E(pCmd);
+        return;
+    }
+    if (sel == 0x1100u)
+        DAT_106b7ab0 = (pCmd->w1 == 0x40000u) ? 1 : 0;
+}
+#else
+void BrGbiTexScanOtherModeH(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
+{
+    uint32_t sel = pCmd->w0 & 0xFF00u;
+
+    if (sel == 0x0E00u) {
+        BrGbiTexScanOtherModeH0E(pSt, pCmd);
+        return;
+    }
+    if (sel == 0x1100u)
+        pSt->f5544C = (pCmd->w1 == 0x40000u) ? 1 : 0;
+}
+#endif
+
+/* 0x1002A250  the 0x0E arm of the above. */
+/* WHAT IT DOES: records which of two filtering choices is in force. A zero
+ * is ignored rather than treated as a third choice. */
+/* @implements 0x1002A250 d3d BrGbiTexScanOtherModeH0E */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10697a44;   /* 0x105553DC / f5553DC */
+void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd)
+{
+    uint32_t v = pCmd->w1;
+
+    if (v == 0)
+        return;
+    if (v == 0x8000u) {
+        DAT_10697a44 = 0;
+        return;
+    }
+    if (v == 0xC000u)
+        DAT_10697a44 = 3;
+}
+#else
+void BrGbiTexScanOtherModeH0E(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
+{
+    uint32_t v = pCmd->w1;
+
+    if (v == 0)
+        return;
+    if (v == 0x8000u)
+        pSt->f5553DC = 0;
+    else if (v == 0xC000u)
+        pSt->f5553DC = 3;
 }
 #endif
