@@ -234,18 +234,18 @@ FILE **BrChkFReadOpen(const char *pPath)
  * back. Because it restores the position, callers can measure a file they
  * are part-way through reading, and several do. Nothing checks for failure:
  * a failed measurement simply comes back as -1. */
-/* @implements 0x10002F90 d3d BrChkFileSize */
+/* @implements 0x100032D0 glide BrChkFileSize */
 int BrChkFileSize(FILE **ppFile)
 {
-    BrChkFile *pf = ChkFromPun(ppFile);
-    long       pos;
-    long       size;
+    long pos;
+    long size;
 
-    pos = ftell(pf->pFile);
-    fseek(pf->pFile, 0, SEEK_END);
-    size = ftell(pf->pFile);
-    fseek(pf->pFile, pos, SEEK_SET);
-
+    /* Orig re-derefs *ppFile at each CRT call (mov r,[esi]) and CSEs the
+     * two IAT slots into edi/ebp. Caching FILE *f = *ppFile folds those. */
+    pos = ftell(*ppFile);
+    fseek(*ppFile, 0, SEEK_END);
+    size = ftell(*ppFile);
+    fseek(*ppFile, pos, SEEK_SET);
     return (int)size;
 }
 
