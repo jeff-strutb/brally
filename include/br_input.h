@@ -215,11 +215,17 @@ enum {
  * WM_ACTIVATE runs the gate update). So "handled" and "default" are not
  * exclusive and a single BrLResult cannot express the function. This pair can.
  * ------------------------------------------------------------------ */
+#ifdef BR_MATCHING_BUILD
+/* Original returns LRESULT in EAX. A struct return adds a hidden pointer
+ * argument and wrecks the prologue (`ret 0x10` / bare `ret`). */
+typedef int32_t BrWndResult;
+#else
 typedef struct BrWndResult {
     int       fCallDefault;  /* non-zero: caller must call DefWindowProc with
                               * the SAME four arguments and return its result */
     BrLResult lResult;       /* the value to return when fCallDefault == 0 */
 } BrWndResult;
+#endif
 
 /* ------------------------------------------------------------------ *
  * The platform calls the window procedure makes. A host fills these in; a
@@ -351,8 +357,13 @@ void BrWndSetModeResult(int32_t iResult);
  * ------------------------------------------------------------------ */
 
 /* 0x100194C0. __stdcall in the original; four arguments, callee-cleaned. */
+#ifdef BR_MATCHING_BUILD
+BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg,
+                      BrWParam wParam, BrLParam lParam);
+#else
 BrWndResult BrWndProc(void *hWnd, uint32_t uMsg,
                       BrWParam wParam, BrLParam lParam);
+#endif
 
 /* 0x10070370 -- WM_ACTIVATE. __cdecl, ONE argument (wParam). Sets all three
  * of the main loop's gates and returns nothing. */
