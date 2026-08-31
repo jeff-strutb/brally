@@ -117,6 +117,23 @@ the caller AND flipped a helper to match for free.
   ceiling took 3–10 min each; crossing it needs a type/shape insight (as
   byte-width returns were for BrCarStatePack) or does not happen.
 
+- **POD writer Add (0x10008BE0, 158 B, MATCH /O2):** thiscall on a
+  stream at `this+4`; file/count/dir are globals not struct fields.
+  `&dir[g_count]; g_count++` is `lea 19n; inc eax; mov [count],eax;
+  lea esi, [edx*4+dir]`. MakeName is thiscall / ret 8 with TWO struct
+  args so edx stays the 19n scale. `off = ftell(g); pEnt->offData = off`
+  (named local, not a compound assign) lets b08/b09 loads hoist into
+  the `add esp,4` delay slot. Write is `__fastcall(stream, live_pvData,
+  file, data, cb)`. `unsigned char` b08/b09; always Write, no `cb==0`
+  guard; `_strupr` IAT; fatal-printf string has no `\n`.
+- **POD writer Open/Close residue (REGNORM 0+0):** Open's `g_file = f;
+  fseek(f, 0x10, 0)` emits `mov [g],eax` *before* the three fseek
+  pushes; orig stores after them (6 diffs). Seven spellings (assign-as
+  arg, comma origin/offset, fseek-then-store, no-local) all eager-store
+  under /O1 /O2 /Os. Close's second Write has FILE* in ecx vs edx and
+  `mov ecx,this` before vs after the pushes (9 diffs). Same schedule
+  class as Open.
+
 - **Unrolled thiscall search: vtbl[1] builds a stack key, then 16
   dword compares.** Signature is `__fastcall(this, live_edx, arg)` /
   `ret 4`; pass `pArg` as the edx slot so the vtbl call is

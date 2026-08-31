@@ -5,6 +5,10 @@
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
 #define BrKeyCacheFind  BrKeyCacheFind_cdecl_hdr
+#define BrPodWriteOpen  BrPodWriteOpen_cdecl_hdr
+#define BrPodWriteAdd   BrPodWriteAdd_cdecl_hdr
+#define BrPodWriteClose BrPodWriteClose_cdecl_hdr
+#define BrPodWriterMakeName BrPodWriterMakeName_cdecl_hdr
 /* Orig takes no args: it walks DAT_10af2110 / DAT_100b2f04 directly. */
 #define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* The two 16-bit quantisers return `short` in the original: their results
@@ -23,6 +27,10 @@
 #ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset
 #undef BrKeyCacheFind
+#undef BrPodWriteOpen
+#undef BrPodWriteAdd
+#undef BrPodWriteClose
+#undef BrPodWriterMakeName
 #undef BrEntityCountActive
 #undef BrFixPackS16Q15Neg
 #undef BrFixPackS16Q7
@@ -40,6 +48,29 @@ extern void BrOperatorDelete(void *p);
 extern void __fastcall BrBitStreamWriteBitsT(BrBitStream *pBs, int _edx_unused,
                                              int32_t value, int32_t nBits);
 #define BrBitStreamWriteBits(bs, v, n) BrBitStreamWriteBitsT((bs), 0, (v), (n))
+
+/* POD writer helpers: thiscall on the stream at this+4.  Struct-typed
+ * stack args so they do not claim edx (BR_THISCALL stack-arg idiom). */
+typedef struct { const char *p; } BrPodStr;
+typedef struct { char *p; }       BrPodDst;
+typedef struct { FILE *f; }       BrPodFileArg;
+typedef struct { const void *p; } BrPodBuf;
+typedef struct { unsigned n; }    BrPodCb;
+extern FILE *__fastcall BrPodStreamOpen(void *pStream, int _edx,
+                                        const char *pszPath);
+extern void __fastcall BrPodWriterMakeName(void *pStream, BrPodStr src,
+                                           BrPodDst dst);
+extern void __fastcall BrFileWriteCheckedT(void *pStream, int _edx,
+                                           FILE *pFile, const void *pv,
+                                           unsigned cb);
+extern void __fastcall BrFileWriteCheckedS(void *pStream, BrPodFileArg f,
+                                           BrPodBuf b, BrPodCb n);
+extern void BrLogFatalPrintf(const char *pFmt, ...);
+__declspec(dllimport) char *_strupr(char *);
+
+FILE             *g_BrPodFile;
+uint32_t          g_BrPodCount;
+BrPodWriteEntry   g_BrPodDir[BR_POD_WRITER_MAX];
 #endif
 
 #include <math.h>
@@ -1107,7 +1138,20 @@ void BR_THISCALL1 BrKeyCacheReset(BrKeyCache *pCache)
  * for its data files. It opens the file, leaves room at the front for a
  * header it can only fill in at the end, and clears the directory it will
  * build up as members are added. */
-/* @implements 0x100089C0 d3d BrPodWriteOpen */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10008BA0 glide BrPodWriteOpen */
+int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
+{
+    FILE *pFile = BrPodStreamOpen((char *)pThis + 4, _edx, pszPath);
+
+    g_BrPodFile = pFile;
+    fseek(pFile, 0x10, 0);
+    memset(g_BrPodDir, 0, sizeof g_BrPodDir);
+    g_BrPodCount = 0;
+    return 0;
+}
+#else
+/* @implements 0x10008BA0 glide BrPodWriteOpen */
 int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
 {
     /* DEVIATION: the original opens through the stream object at +4
@@ -1126,6 +1170,7 @@ int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
     pW->cEntries = 0;
     return 0;
 }
+#endif
 
 /* 0x10008A00 */
 /* WHAT IT DOES: adds one member file to the archive being written: notes
@@ -1133,7 +1178,45 @@ int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
  * (uppercased) and size in the directory. An over-long name is complained
  * about and then used anyway, and the directory is capped here, which the
  * original did not do. */
-/* @implements 0x10008A00 d3d BrPodWriteAdd */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10008BE0 glide BrPodWriteAdd */
+void __fastcall BrPodWriteAdd(void *pThis, int _edx, const char *pszName,
+                              const void *pvData, uint32_t cbData,
+                              unsigned char b08, unsigned char b09)
+{
+    BrPodWriteEntry *pEnt;
+    void            *pStream;
+
+    pEnt = &g_BrPodDir[g_BrPodCount];
+    pStream = (char *)pThis + 4;
+    g_BrPodCount++;
+    pEnt->offData = 0;
+
+    {
+        BrPodStr src;
+        BrPodDst dst;
+        src.p = pszName;
+        dst.p = pEnt->szName;
+        BrPodWriterMakeName(pStream, src, dst);
+    }
+
+    if (strlen(pEnt->szName) > 0x40)
+        BrLogFatalPrintf("Add: Name is too long to be a pod name.");
+
+    _strupr(pEnt->szName);
+
+    {
+        uint32_t off = (uint32_t)ftell(g_BrPodFile);
+        pEnt->offData = off;
+        pEnt->b08     = b08;
+        pEnt->cbData  = cbData;
+        pEnt->b09     = b09;
+    }
+
+    BrFileWriteCheckedT(pStream, (int)pvData, g_BrPodFile, pvData, cbData);
+}
+#else
+/* @implements 0x10008BE0 glide BrPodWriteAdd */
 void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
                    const void *pvData, uint32_t cbData,
                    uint8_t b08, uint8_t b09)
@@ -1179,12 +1262,38 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
     if (cbData != 0)
         fwrite(pvData, 1, (size_t)cbData, pW->pFile);   /* 0x10008C90 */
 }
+#endif
 
 /* 0x10008AA0 */
 /* WHAT IT DOES: finishes the archive: writes the directory of members at the
  * end, rewinds to the front to fill in the header with the magic word,
  * member count and directory position, and closes the file. */
-/* @implements 0x10008AA0 d3d BrPodWriteClose */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x10008C80 glide BrPodWriteClose */
+void __fastcall BrPodWriteClose(void *pThis)
+{
+    uint32_t offDir;
+    uint32_t cbDir;
+    char     aHdr[16];
+
+    /* `mov esi, ecx` must survive ftell; this+4 is added AFTER the call. */
+    offDir = (uint32_t)ftell(g_BrPodFile);
+    pThis  = (char *)pThis + 4;
+    cbDir  = g_BrPodCount * (uint32_t)sizeof(BrPodWriteEntry);
+    BrFileWriteCheckedT(pThis, (int)cbDir, g_BrPodFile, g_BrPodDir, cbDir);
+
+    aHdr[0] = 'P';
+    aHdr[1] = 'O';
+    aHdr[2] = 'D';
+    *(uint32_t *)(aHdr + 4)  = BR_POD_WRITER_MAGIC_EXTRA;
+    *(uint32_t *)(aHdr + 8)  = g_BrPodCount;
+    *(uint32_t *)(aHdr + 12) = offDir;
+    fseek(g_BrPodFile, 0, 0);
+    BrFileWriteCheckedT(pThis, (int)g_BrPodFile, g_BrPodFile, aHdr, 16);
+    fclose(g_BrPodFile);
+}
+#else
+/* @implements 0x10008C80 glide BrPodWriteClose */
 void BrPodWriteClose(BrPodWriter *pW)
 {
     uint8_t  aRec[BR_POD_DIR_STRIDE];
@@ -1225,6 +1334,7 @@ void BrPodWriteClose(BrPodWriter *pW)
     fclose(pW->pFile);                  /* 0x1007CD50 */
     pW->pFile = NULL;
 }
+#endif
 
 #ifdef BR_MATCHING_BUILD
 __declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
