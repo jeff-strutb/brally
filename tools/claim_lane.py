@@ -21,7 +21,7 @@ def save(rows):
 def lock():
     os.makedirs(os.path.dirname(CLAIMS),exist_ok=True)
     lk=open(CLAIMS+'.lock','w'); fcntl.flock(lk,fcntl.LOCK_EX); return lk
-def claim(n):
+def claim(n,big=False):
     n=int(n); lk=lock()
     try:
         now=time.time(); dr=diffs(); dvas={r['va'] for r in dr}; keep=[]; held=set()
@@ -34,7 +34,13 @@ def claim(n):
         # wall). When present, hand out best-first; the held-set already keeps
         # parallel lanes disjoint. Without it, fall back to rotation.
         rank_csv=os.path.join(ROOT,'build','match','triage_rank.csv')
-        if os.path.exists(rank_csv):
+        if big:
+            # --big: hand out the LARGEST still-diff functions (by original
+            # bytes). The giants carry dossiers/ordering rules -- see the
+            # "Large functions" section of docs/STRUCTURAL-PLAYBOOK.md.
+            pool.sort(key=lambda r:-int(r.get('orig_size') or 0))
+            pick=pool[:n]
+        elif os.path.exists(rank_csv):
             with open(rank_csv) as f:
                 score={r['va'].lower():int(r['score']) for r in csv.DictReader(f)}
             pool.sort(key=lambda r:score.get(r['va'].lower(),50000))
@@ -58,5 +64,7 @@ def release(tok,walls):
     finally: fcntl.flock(lk,fcntl.LOCK_UN)
 if __name__=='__main__':
     cmd=sys.argv[1] if len(sys.argv)>1 else 'claim'
-    if cmd=='claim': claim(sys.argv[2] if len(sys.argv)>2 else 12)
+    if cmd=='claim':
+        rest=[a for a in sys.argv[2:] if a!='--big']
+        claim(rest[0] if rest else 12, big='--big' in sys.argv)
     elif cmd=='release': release(sys.argv[2], sys.argv[3:])
