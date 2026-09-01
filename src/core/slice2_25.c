@@ -177,7 +177,9 @@ static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
  * validity filtering. `*pv` is the option, [0..max] inclusive. Returns the
  * resulting value. Note the original always writes the global back on the
  * edited paths and never writes it when neither input is set. */
-static int32_t BrOptCycle(int32_t *pv, int32_t max)
+/* The original INLINES this body in every cycler (the 93-99 B siblings are
+ * each three times the size of the un-inlined port build). */
+static __inline int32_t BrOptCycle(int32_t *pv, int32_t max)
 {
     int32_t v;
 
@@ -187,7 +189,11 @@ static int32_t BrOptCycle(int32_t *pv, int32_t max)
         if (v > max)
             *pv = 0;
     } else if (g_brAA33D0 != 0) {
-        v = *pv - 1;
+        /* load / --v / store, NOT `v = *pv - 1`: that spelling emits
+         * lea/test/jge where the original has dec/jns (the store between
+         * them leaves flags intact). */
+        v = *pv;
+        --v;
         *pv = v;
         if (v < 0)
             *pv = max;
