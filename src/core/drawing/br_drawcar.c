@@ -873,21 +873,27 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         pack1 = BrG_6C65BC;
         colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack0) << 8
                    | pack1) << 8);
-    } else if (flag290C != 0) {
-        uint8_t t80 = (uint8_t)((g_BrDrawByte80 * 4) / 5);
-        colourA = 0;
-        pack0 = (uint8_t)((BrG_6C0960 * 4) / 5);
-        pack1 = (uint8_t)((BrG_6C65BC * 4) / 5);
-        colourB = ((((uint32_t)t80 << 8 | pack0) << 8 | pack1) << 8);
     } else {
-        pack0 = BrG_6C335C;
-        pack1 = BrG_6C0968;
-        colourA = ((((uint32_t)(uint8_t)BrG_6C1580 << 8 | pack0) << 8
-                   | pack1) << 8);
-        pack0 = BrG_6C0960;
-        pack1 = BrG_6C65BC;
-        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack0) << 8
-                   | pack1) << 8);
+        /* arms 2 (dim *4/5) and 3 (plain) share colourB's Horner tail --
+         * the original merges them at 0x427, spilling pack0/pack1 to the
+         * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
+         * at the common pack.  Factor the final statement out to reproduce it. */
+        uint8_t topB;
+        if (flag290C != 0) {
+            topB  = (uint8_t)((g_BrDrawByte80 * 4) / 5);
+            colourA = 0;
+            pack0 = (uint8_t)((BrG_6C0960 * 4) / 5);
+            pack1 = (uint8_t)((BrG_6C65BC * 4) / 5);
+        } else {
+            pack0 = BrG_6C335C;
+            pack1 = BrG_6C0968;
+            colourA = ((((uint32_t)(uint8_t)BrG_6C1580 << 8 | pack0) << 8
+                       | pack1) << 8);
+            topB  = g_BrDrawByte80;
+            pack0 = BrG_6C0960;
+            pack1 = BrG_6C65BC;
+        }
+        colourB = ((((uint32_t)topB << 8 | pack0) << 8 | pack1) << 8);
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
