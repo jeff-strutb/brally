@@ -472,7 +472,8 @@ typedef int (__fastcall *BrVtFn8A70)(int *pThis, BrVt8A70Arg arg);
  * transforms the argument, slot +0x24 consumes the result.  ECX
  * copy-propagation: the first call reuses the entry ECX, only the second
  * reloads `this`. */
-/* @implements 0x10008A70 glide BrVt8A70CallPair */
+/* Glide match is src/core/cpp/0x10008A70.cpp (true C++ thiscall; the
+ * push-before-ecx order is unreachable from the C fastcall twin). */
 void __fastcall BrVt8A70CallPair(int *pThis, BrVt8A70Arg param_2)
 {
     int *vt;
