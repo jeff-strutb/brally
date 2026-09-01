@@ -56,7 +56,17 @@
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
 #endif
+#ifdef BR_MATCHING_BUILD
+/* The entity setters are thiscall with three stack floats; hide the
+ * port's cdecl prototypes so the twins can carry the fastcall shape. */
+#define BrEntSetVel    BrEntSetVel_port
+#define BrEntSetAngVel BrEntSetAngVel_port
 #include "slice3_45.h"
+#undef BrEntSetVel
+#undef BrEntSetAngVel
+#else
+#include "slice3_45.h"
+#endif
 #ifdef BR_MATCHING_BUILD
 #undef BrEntSetPos
 #endif
@@ -377,6 +387,29 @@ void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
  * travelling, writing it into all four places the game keeps that figure so
  * they agree. Nothing else about the object is disturbed. */
 /* @implements 0x100767A0 d3d BrEntSetVel */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrEntSetVel(BrEnt *pE, int _edx_unused, float x, float y,
+                            float z)
+{
+    (void)_edx_unused;
+
+    pE->st.vel.x = x;
+    pE->st.vel.y = y;
+    pE->st.vel.z = z;
+
+    pE->stB.vel.x = x;
+    pE->stB.vel.y = y;
+    pE->stB.vel.z = z;
+
+    pE->stA.vel.x = x;
+    pE->stA.vel.y = y;
+    pE->stA.vel.z = z;
+
+    pE->f1024[0] = x;
+    pE->f1024[1] = y;
+    pE->f1024[2] = z;
+}
+#else
 void BrEntSetVel(BrEnt *pE, float x, float y, float z)
 {
     pE->st.vel.x = x;
@@ -395,6 +428,7 @@ void BrEntSetVel(BrEnt *pE, float x, float y, float z)
     pE->f1024[1] = y;
     pE->f1024[2] = z;
 }
+#endif
 
 /* 0x10076820 */
 /* WHAT IT DOES: turns an object by three angles about its three axes. It
@@ -440,6 +474,25 @@ void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
 /* WHAT IT DOES: tells an object how fast it is spinning, writing it into all
  * three places the game keeps that figure so they agree. */
 /* @implements 0x100769A0 d3d BrEntSetAngVel */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrEntSetAngVel(BrEnt *pE, int _edx_unused, float x, float y,
+                               float z)
+{
+    (void)_edx_unused;
+
+    pE->st.angVel.x = x;
+    pE->st.angVel.y = y;
+    pE->st.angVel.z = z;
+
+    pE->stB.angVel.x = x;
+    pE->stB.angVel.y = y;
+    pE->stB.angVel.z = z;
+
+    pE->stA.angVel.x = x;
+    pE->stA.angVel.y = y;
+    pE->stA.angVel.z = z;
+}
+#else
 void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
 {
     pE->st.angVel.x = x;
@@ -454,6 +507,7 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
     pE->stA.angVel.y = y;
     pE->stA.angVel.z = z;
 }
+#endif
 
 /* 0x10076A00 */
 /* WHAT IT DOES: pushes the paint colour a car has been given down into the
@@ -529,7 +583,11 @@ void BrEntReset(BrEnt *pE)
     BrMat4SetLastColumn(&pE->matC0);
     BrMat4SetLastColumn(&pE->mat100);
 
+#ifdef BR_MATCHING_BUILD
+    BrEntSetVel(pE, 0, 0.0f, 0.0f, 0.0f);
+#else
     BrEntSetVel(pE, 0.0f, 0.0f, 0.0f);
+#endif
 
     pE->fF8C  = 0;
     pE->fF90  = 0;
