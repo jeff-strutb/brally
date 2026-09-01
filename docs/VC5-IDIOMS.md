@@ -1303,3 +1303,31 @@ parked-wall kind newly retryable (no new idiom landed).
   `shared/prefix` census pool (22 rows / 13.9 KB) likely contains more of
   this thiscall-fork class; triage those against the C++ workstream, not
   the coloring queue.
+
+- **Fixed-address global array folded as a displacement ≠ pointer variable.**
+  Orig `movsx ecx, byte [ecx + edx*2 + 0x100A5C78]` / `mov [ecx*4 + 0x100A5C58]`
+  folds the link address as the array BASE — that symbol is DATA at a pinned
+  address, not a pointer var to load first (a `const T *g` decl emits an extra
+  `mov reg,[addr]`). Reproduce with `((const T *)&g_sym)[i]` under
+  BR_MATCHING_BUILD (the pinned var's ADDRESS is the base). Re-derive the
+  `*2`/`*4` operand from the SIB byte — the port had the scale on the wrong
+  index (a real bug). Proven BrCarDrawVehicle DC-texture lookup.
+- **Cross-TU stub getter = a spurious `call` the orig lacks.** The port routed a
+  flag through `BrBootGlobal_ABAA0()` (a `return 0;` stub in another TU); at /O2
+  it can't inline across TUs so it stays a `call`. Orig reads the real global
+  directly (`cmp dword [0x100abaa0], ebp`). Use the actual global (`g_AC300`).
+  Pairs with the port-safety null-check removal (orig calls the hook
+  unconditionally; no `test/jz` guards `call [ptr]`) and reading a call arg AT
+  the call site rather than a hoisted local. Proven BrCarDrawVehicle 0xB176.
+- **CORRECTION — hoisting disjoint block vectors to distinct frame locals DOES
+  grow the frame.** Two block-scope `BrVec3 tmp` in separate `{}` merged to
+  `sub esp,0x40`; hoisting them to TWO NAMED function-scope vectors grew the
+  frame to the orig's `sub esp,0x4c` and made the prologue byte-exact. The
+  earlier "MSVC overlays disjoint lifetimes regardless" reading was wrong — it
+  depends on the hoist form (two named function-scope vars, not one shared).
+  Proven BrCarDrawVehicle.
+- **Region count decouples from byte distance late in a function.** Removing a
+  branch (a port-safety null-check) RAISED the divergence region count 36→38
+  while REGNORM fell 9 (register-blind multiset is the truth). Rank residue by
+  REGNORM, never region/diff count — the count re-segments on any structural
+  edit. Proven BrCarDrawVehicle.
