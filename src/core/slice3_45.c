@@ -870,7 +870,7 @@ long BrDiSetPropRange(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
     r.lMin         = lMin;
     r.lMax         = lMax;
 
-    return BrDiDev(pDev)->pfnSetProperty(pDev, prop, &r);
+    return BR_DI_SETPROP(pDev, prop, &r);
 }
 
 /* 0x10078C80 */
@@ -882,15 +882,12 @@ long BrDiSetPropDword(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
                       uint32_t dwHow, uint32_t dwData)
 {
     BrDiPropDword d;
-    uint32_t data, obj, how;
 
-    /* Orig loads dwData, dwObj, dwHow (edx/eax/ecx) then stores data, obj, how. */
-    data = dwData;
-    obj  = dwObj;
-    how  = dwHow;
-    d.dwData = data;
-    d.dwObj  = obj;
-    d.dwHow  = how;
+    /* Assignment order = the original's store order: data, obj, how, then
+     * the two header constants (which the scheduler sinks past the pushes). */
+    d.dwObj  = dwObj;
+    d.dwHow  = dwHow;
+    d.dwData = dwData;
     d.dwSize       = 0x14u;
     d.dwHeaderSize = 0x10u;
 
