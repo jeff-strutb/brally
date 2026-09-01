@@ -41,6 +41,7 @@ extern int32_t g_6C161C;
 #include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
 #include "br_appstart.h"  /* g_brCfgGameMode                             */
 #include "br_bootfrontier.h" /* BrBootGlobal_ABAA0                       */
+#include "br_objlife.h"      /* g_AC300 (0x100ABAA0 mode-change flag)    */
 #include "slice3_41.h"   /* BrPool16Alloc, BrPool32Alloc                 */
 #include "br_vec.h"      /* BrVec3Dist, BrVec3MulAdd, the glow cluster   */
 
@@ -1188,12 +1189,14 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         uint8_t iTex = *(const uint8_t *)((const unsigned char *)BrG_6C3308 + 0x811B);
         const unsigned char *pTexRecs =
             *(const unsigned char *const *)((const unsigned char *)BrG_6C3308 + 0x8014);
+        /* Orig reads the 0x100ABAA0 mode-change flag DIRECTLY (cmp dword
+         * [0x100abaa0],ebp); the port routed it through the BrBootGlobal_ABAA0
+         * stub, which cannot inline across TUs at /O2.  g_AC300 is that flag. */
         if (*(const uint32_t *)(pTexRecs + (uint32_t)iTex * 36 + 4) != 0 &&
-            BrBootGlobal_ABAA0() == 0) {
+            g_AC300 == 0) {
             float fe68 = *(const float *)(car + BR_CAR_OFF_F0E68);
             uint32_t auxFlags =
                 *(const uint32_t *)(*(void *const *)(car + BR_CAR_OFF_U29C0));
-            uint32_t dlBase = *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80);
             uint32_t dlSel;
             if (auxFlags & 0xC0000u) {
                 dlSel = !(fe68 >= 0.0f)
@@ -1204,8 +1207,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
                     ? *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8C)
                     : *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x84);
             }
+            /* Orig calls the hook UNCONDITIONALLY and reads dlBase (model+0x80)
+             * at the call site, not hoisted -- the null-check was a port-safety
+             * addition the original never had. */
+#ifdef BR_MATCHING_BUILD
+            g_BrDrawModelDlHook(
+                *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), dlSel);
+#else
             if (g_BrDrawModelDlHook)
-                g_BrDrawModelDlHook(dlBase, dlSel);
+                g_BrDrawModelDlHook(
+                    *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), dlSel);
+#endif
         }
     }
 
