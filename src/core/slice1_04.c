@@ -99,7 +99,8 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
     case 5:  *pA = 8;     break;
     case 6:  *pA = 4;     break;
     case 7:  *pA = 2;     break;
-    default: *pA = 1;     break;   /* case 8 and everything out of range */
+    case 8:  *pA = 1;     break;   /* explicit: keeps the 9-entry table */
+    default: *pA = 1;     break;
     }
 
     /* Second jump table: 7 entries at 0x10028844. Out of range simply
@@ -110,9 +111,9 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
     case 1:  *pB = *pA / 4; break;
     case 2:  *pB = *pA / 2; break;
     case 3:  *pB = *pA;     break;
-    case 4:  *pB = *pA; *pA = *pA / 2; break;
-    case 5:  *pB = *pA; *pA = *pA / 4; break;
-    case 6:  *pB = *pA; *pA = *pA / 8; break;
+    case 4:  { int v = *pA; *pB = v; *pA = v / 2; } break;
+    case 5:  { int v = *pA; *pB = v; *pA = v / 4; } break;
+    case 6:  { int v = *pA; *pB = v; *pA = v / 8; } break;
     default: break;
     }
 }
