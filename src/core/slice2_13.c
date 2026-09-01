@@ -95,6 +95,37 @@ FILE *BrFileOpenWrite(const char *pszPath)
  * fatal printf at 0x10008EC0 with the READ string -- the fwrite one too. */
 extern void BrLogFatalPrintf(const char *pFmt, ...);
 
+/* The checked-open twins fatal-report with strerror; the errno read is
+ * the CRT's _errno() CALL through the import table (FF 15), not a
+ * variable load. */
+_CRTIMP int *__cdecl _errno(void);
+
+/* @implements 0x10008DC0 glide BrFileCreateChecked */
+FILE *__stdcall BrFileCreateChecked(char *pszPath)
+{
+    FILE *pFile;
+
+    pFile = fopen(pszPath, "wb");
+    if (pFile == 0) {
+        BrLogFatalPrintf("Error opening %s: %s", pszPath,
+                         strerror(*_errno()));
+    }
+    return pFile;
+}
+
+/* @implements 0x10008E10 glide BrFileOpenChecked */
+FILE *__stdcall BrFileOpenChecked(char *pszPath)
+{
+    FILE *pFile;
+
+    pFile = fopen(pszPath, "rb");
+    if (pFile == 0) {
+        BrLogFatalPrintf("Error opening %s: %s", pszPath,
+                         strerror(*_errno()));
+    }
+    return pFile;
+}
+
 /* @implements 0x10008E60 glide BrFileReadChecked */
 void __stdcall BrFileReadChecked(FILE *pFile, void *pvData, unsigned int cbData)
 {
