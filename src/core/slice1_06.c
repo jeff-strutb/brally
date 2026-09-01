@@ -32,9 +32,11 @@
  * array out); hide the header's port prototype behind a rename so the
  * matching twin can define the real symbol -- the slice5_63.c caller keeps
  * the port signature (cdecl, extra args harmless at run time). */
-#define BrOptSave BrOptSave_hdr
+#define BrOptSave   BrOptSave_hdr
+#define BrOptAvailB BrOptAvailB_hdr
 #include "slice1_06.h"
 #undef BrOptSave
+#undef BrOptAvailB
 #else
 #include "slice1_06.h"
 #endif
@@ -545,6 +547,74 @@ int32_t BrOptAvailA(const BrOptCaps *pCaps, uint32_t n)
  * and one number is remapped to a different one entirely. Its sibling above
  * answers the same question for the other family of options. */
 /* @implements 0x1003F320 d3d BrOptAvailB */
+#ifdef BR_MATCHING_BUILD
+/* One argument; every input is a loose global (fAlt and maskPair are each
+ * loaded ONCE and live in registers across the whole function).  Raw
+ * `1u << idx` (x86 masks the count in hardware; BR06_BIT's explicit &31
+ * emits four real ANDs).
+ * RESIDUE (1+1 regnorm, T3a-encoding): the FIRST `idx -= 16` emits
+ * add ecx,-0x10 where the original has sub ecx,0x10 -- the same
+ * context-dependent add/sub fork proven on BrHudDraw and BrOptCycleTrack;
+ * `idx = idx - 16` identical.  The
+ * mode-0 arm splits on fAlt FIRST and duplicates the idx-fixup and
+ * fLowAlways test into both sub-arms -- the shared-logic form is 45 bytes
+ * short. */
+extern int32_t g_br6EE1DC_fRebaseB;      /* 0x10AC5C4C */
+extern int32_t g_br6EE184_fAlt;          /* 0x10AC5BF4 */
+extern int32_t g_br6EE0C8_maskPair;      /* 0x10AC5B38 */
+extern int32_t g_br0A9360_mode;          /* 0x100A9360 */
+extern int32_t g_br6EE1D8_fLowAlways;    /* 0x10AC5C48 */
+extern int32_t g_br6EDE80_maskB;         /* 0x10AC58F0 */
+extern int32_t g_brAAB88_maskB6;         /* 0x100AAB88 */
+extern int32_t g_brAF3CE4_nAlwaysB;      /* 0x10AF3CE4 */
+extern int16_t g_brAAB84_maskBDef;       /* 0x100AAB84 */
+
+int32_t BrOptAvailB(uint32_t n)
+{
+    int32_t idx = (int32_t)n;
+
+    if (g_br6EE1DC_fRebaseB != 0 && idx > 15)
+        idx -= 16;
+    if (g_br6EE184_fAlt != 0 && idx > 15
+        && (g_br6EE0C8_maskPair & 0x8000) != 0)
+        idx -= 16;
+
+    if (g_br0A9360_mode == 0) {
+        if (g_br6EE184_fAlt != 0) {
+            if (idx == 15)
+                idx = 11;
+            if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+                return 1;
+            /* `and esi,0xFFFF` -- the LOW half of the same dword */
+            return (int32_t)((1u << idx)
+                             & ((uint32_t)g_br6EE0C8_maskPair & 0xFFFFu));
+        }
+        if (idx == 15)
+            idx = 11;
+        if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+            return 1;
+        return (int32_t)((1u << idx) & (uint32_t)g_br6EDE80_maskB);
+    }
+
+    if (g_br0A9360_mode == 6) {
+        if (idx == 15)
+            idx = 7;            /* 7 here, 11 everywhere else */
+        if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+            return 1;
+        return (int32_t)((1u << idx) & (uint32_t)g_brAAB88_maskB6);
+    }
+
+    if (g_br0A9360_mode == 2 && idx == g_brAF3CE4_nAlwaysB)
+        return 1;
+
+    if (idx == 15)
+        idx = 11;
+    if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+        return 1;
+    /* movsx: SIGN-extended, unlike the zero-extended masks above. */
+    return (int32_t)((1u << idx) & (uint32_t)(int32_t)g_brAAB84_maskBDef);
+}
+#else
 int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
 {
     int32_t idx = (int32_t)n;
@@ -595,6 +665,7 @@ int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
      * zero-extended masks above. */
     return (int32_t)(BR06_BIT(idx) & (uint32_t)(int32_t)pCaps->maskBDefault);
 }
+#endif
 
 /* ==========================================================================
  * 0x1005CB90
