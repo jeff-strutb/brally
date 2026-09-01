@@ -1,43 +1,28 @@
 /* @implements 0x10041CC0 glide BrPhaseDtor_10048870
  * @cpp_kind dtor
- * @cpp_symbol ??1Ph48870@@UAE@XZ
+ * @cpp_symbol ??1Phase32@@QAE@XZ
  *
- * Virtual destructor, no EH frame (members are plain pointers): vptr
- * reset, then two guarded slot-0 `f00(1)` releases on the Phase members
- * at +0xC0/+0xC4, each zeroed after. The +0xC0 member read is hoisted
- * above the vptr store by the scheduler.
+ * 63 B. Plain (non-deleting) dtor: vtbl reset to 0x100776C8, then
+ * `delete` of the two owned members at +0xC0/+0xC4 (slot-0 scalar-deleting
+ * vcalls with flag 1), each pointer zeroed after. No EH frame.
  */
-#ifdef BR_MATCHING_BUILD
-#define _CRTIMP __declspec(dllimport)
-#endif
-
-class Phase {
+class PhaseMember {
 public:
-    virtual void *f00(int);
+    virtual ~PhaseMember();
 };
 
-class Ph48870 {
+class Phase32 {
 public:
-    virtual ~Ph48870();
+    virtual ~Phase32();
     char pad[0xBC];
-    Phase *fC0;
-    Phase *fC4;
+    PhaseMember *pC0;   /* +0xC0 */
+    PhaseMember *pC4;   /* +0xC4 */
 };
 
-typedef char chk_c0[(unsigned)&((Ph48870 *)0)->fC0 == 0xC0 ? 1 : -1];
-typedef char chk_c4[(unsigned)&((Ph48870 *)0)->fC4 == 0xC4 ? 1 : -1];
-
-Ph48870::~Ph48870()
+Phase32::~Phase32()
 {
-    Phase *p;
-    Phase *q;
-
-    p = fC0;
-    if (p != 0)
-        p->f00(1);
-    fC0 = 0;
-    q = fC4;
-    if (q != 0)
-        q->f00(1);
-    fC4 = 0;
+    delete pC0;
+    pC0 = 0;
+    delete pC4;
+    pC4 = 0;
 }
