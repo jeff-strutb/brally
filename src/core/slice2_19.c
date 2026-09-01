@@ -159,8 +159,15 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
 {
     float a, b;
 
+#ifdef BR_MATCHING_BUILD
+    /* Braced: /Od otherwise peepholes `a = ...; b = a * ...` into one x87
+     * chain (fst keeps a on the stack); the original stores and reloads. */
+    { a = BrSub10002240(a2) * a3; }
+    { b = a * a5 / a4; }
+#else
     a = BrSub10002240(a2) * a3;
     b = a * a5 / a4;
+#endif
     if (g_BrCamMode == 2)
         b = b / g_BrK08F514;
 
@@ -203,6 +210,37 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
  * Anything nearer than a fixed close distance, or further than the caller's
  * limit, is cut off. */
 /* @implements 0x10033E83 d3d BrCamMatrixSetup */
+#ifdef BR_MATCHING_BUILD
+/* /Od: no locals at all -- the fovy chain is inline in the call (a named
+ * local would cost a frame slot); pool alloc and matrix store direct. */
+extern BrMat4 *BrSub_10069490(void);            /* glide 0x10062500 */
+extern void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4]);
+
+void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
+                      float a4, float a5)
+{
+    BrMat4LookAt(&g_BrViewMat,
+                 pCam->eye.x, pCam->eye.y, pCam->eye.z,
+                 pCam->eye.x + pCam->fwd.x,
+                 pCam->eye.y + pCam->fwd.y,
+                 pCam->eye.z + pCam->fwd.z,
+                 pCam->up.x, pCam->up.y, pCam->up.z);
+
+    g_BrCamFar  = a3;
+    g_BrCamNear = 0.8f;   /* the literal 0x3F4CCCCD */
+
+    /* ((a2 * K518) * (a5 / a4)) * K51C -- note a5/a4 here but a4/a5 as the
+     * aspect. Both are in the original. */
+    BrMat4Perspective7(&g_BrProjMat, &g_BrPerspNorm,
+                       a2 * g_BrK08F518 * (a5 / a4) * g_BrK08F51C,
+                       a4 / a5, g_BrCamNear, g_BrCamFar, 1.0f);
+
+    BrMat4Mul(&g_BrViewMat, &g_BrProjMat, &g_BrCurMat);
+
+    g_BrMtxSlot = BrSub_10069490();
+    BrGuMtxStore((const int (*)[4])&g_BrCurMat, (int (*)[4])g_BrMtxSlot);
+}
+#else
 void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
                       float a4, float a5)
 {
@@ -232,6 +270,7 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
     g_BrMtxSlot = BrPoolAlloc(g_BrPool);
     BrMat4Copy(&g_BrCurMat, (BrMat4 *)g_BrMtxSlot);   /* source first */
 }
+#endif
 
 /* 0x10033F7E  Both parameters are dead; see the header. */
 /* WHAT IT DOES: sets up a fixed camera looking straight at a flat scene at a
@@ -242,10 +281,7 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
 #ifdef BR_MATCHING_BUILD
 /* /Od TU: literal param self-assigns, the take-2 emit inlined per block
  * (own [ebp-N] slot each, globals re-read), the 0-arg pool alloc and the
- * matrix store called directly. */
-extern BrMat4 *BrSub_10069490(void);            /* glide 0x10062500 */
-extern void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4]);
-
+ * matrix store called directly. Externs shared with BrCamMatrixSetup. */
 void BrCamMatrixSetupFixed(float a1, float a2)
 {
     a1 = a1;
