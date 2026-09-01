@@ -725,12 +725,18 @@ void BrHudDraw(BrHudView *aViews, int a2)
 /* @implements 0x10018070 d3d BrSceneUsePlainClear */
 int BrSceneUsePlainClear(void)
 {
-    if (g_scene.f6C661C != 0) return 1;
-    if (g_scene.f6C6620 != 0) return 1;
-    if (g_scene.f6C6624 != 0) return 1;
-    if (g_scene.f6C7C98 == 0) return 1;   /* note the inverted sense */
-    if (g_scene.f0B4050 == 2) return 1;
-    return 0;
+    if (g_scene.f6C661C == 0) {
+        if (g_scene.f6C6620 == 0) {
+            if (g_scene.f6C6624 == 0) {
+                if (g_scene.f6C7C98 != 0) {
+                    if (g_scene.f0B4050 != 2) {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 /* =====================================================================
