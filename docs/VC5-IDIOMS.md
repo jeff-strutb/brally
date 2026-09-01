@@ -1554,3 +1554,13 @@ parked-wall kind newly retryable (no new idiom landed).
   0x1005A480 (7 diffs): counter/pointer esi↔edi rotation — init order, decl
   order, calltemp all no-ops. 0x10054070 (4 diffs, C++ TU in tree): delta
   scratch ecx↔edx rotation. All register-blind gap 0 — do not re-probe.
+- **Early-out resource protocol bodies: `do { ... break; ... } while (0)`,
+  not structured nesting (2026-09-01, 0x10036810 BrComGetAlloc).** A
+  call/alloc/call/cleanup function whose failure paths all funnel into one
+  shared cleanup keeps its body CONTIGUOUS only under the do-while(0)+break
+  spelling; if-nesting and goto flattenings let the flow optimizer thread
+  the jumps and move an arm past the cleanup (2 bytes short, wrong block
+  order).  do-while(0) restored the exact 142-B size and the OOM arm's
+  `jmp` in one step.  Unreached from source here: which arm goes inline --
+  the original keeps the OOM arm inline jumping over the second call;
+  VC5 always outlines one of the two (1+1 je/jne residue).
