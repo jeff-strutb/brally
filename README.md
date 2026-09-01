@@ -56,7 +56,7 @@ instructions, only the register choices differ.
 |---|---|--:|--:|
 | T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 361 | 195,388 |
 | T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 382 | 184,227 |
-| T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | — | — |
+| T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 13 proven¹ | (within T2) |
 | T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 47 | 7,793 |
 | **T4** | **Done** — matches the original exactly, byte for byte | **739** | **66,395** |
 
@@ -66,15 +66,21 @@ assembly is only the reference each draft is checked against. "Not started"
 (T1) means that draft hasn't been turned into real project code yet, not that
 no C exists.
 
-Only **T1, T3a, and T4 are counted automatically.** The T2/T3b split isn't
-computed yet: separating "logic still wrong" (T2) from "works but built
-differently" (T3b) means confirming the behavior is actually correct. That is
-decidable — run the rebuilt function and the original on the same inputs and
-compare results and side effects — but that differential harness isn't wired up
-for arbitrary functions here, so for now T3b is confirmed by hand and still
-counts inside T2's 382. T3a is strong static evidence (the instructions match),
-which is not the same as a runtime equivalence proof. Counts wobble by a few
-functions between runs as the split is re-measured.
+Only **T1, T3a, and T4 are counted automatically** by the tier tool. T3a is
+strong static evidence (the instructions match), which is not the same as a
+runtime equivalence proof.
+
+¹ **T3b is measured by a differential oracle** (`tools/t3b_verify.py`): it runs
+both the original bytes and the recompiled bytes through the same interpreter on
+identical random inputs and compares the return value and memory side effects.
+Same output across many inputs ⇒ behaviorally equivalent (T3b). It is
+conservative — it only judges functions it can fully contain (plain-cdecl
+scalar/pointer args, no globals, no external calls), and reports everything else
+as unclassified rather than guess. First sweep of the 382 T2 functions: **13
+proven T3b, 3 found to genuinely differ from the original (real T2), 411 out of
+reach.** So T3b's true size is ≥13 and grows as the oracle is extended to
+register calling-conventions and global-reading functions. The 13 still count
+inside T2's 382 until the tier tool consumes the oracle's manifest.
 
 **Executables** (game code; static CRT is linked, not decompiled):
 
