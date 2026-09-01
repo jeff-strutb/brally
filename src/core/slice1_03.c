@@ -425,6 +425,49 @@ BrAppMsgHooks *BrAppMsgGetHooks(void)
  * everything else simply returns. Two of the five arguments are passed by
  * every caller and never read. */
 /* @implements 0x1000BEA0 d3d BrAppMsgDispatch */
+#ifdef BR_MATCHING_BUILD
+/* The original really is the wide switch: empty DPSYS_* labels (same `ret`
+ * as default, `return` not `break` so each keeps its own jump-table group)
+ * preserve the compare chain for ids <= 0x21 and the two-level table for
+ * 0x31..0x107 -- the proven 0x10009530 sibling shape. The gate is the real
+ * global (glide 0x100ABAA0) read directly, and both live cases call their
+ * handlers unconditionally -- no hook-pointer guards, no NULL guard. */
+extern int32_t DAT_100abaa0;
+extern void BrSub10003580(void *pv1, int32_t f0C, int32_t f10,
+                          int32_t f08, void *pv5);      /* glide 0x100038F0 */
+extern void BrSub10005FE0(uint32_t idPlayer);           /* glide 0x10006350 */
+
+void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
+                      void *pv5)
+{
+    uint32_t id = (uint32_t)pMsg->id;    /* `ja`: the switch is unsigned */
+
+    (void)pv3;    /* pushed by every caller, never read by the original */
+    (void)pv4;
+
+    switch (id) {
+    case 3u:
+        return;
+    case 5u:
+        if (DAT_100abaa0 == 0)
+            BrSub10005FE0((uint32_t)pMsg->f08);
+        return;
+    case 0x21:
+        return;
+    case 0x31:
+        return;
+    case 0x101:
+        return;
+    case 0x102:
+        return;
+    case 0x103:
+        return;
+    case 0x107:
+        BrSub10003580(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, pv5);
+        return;
+    }
+}
+#else
 void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
                       void *pv5)
 {
@@ -455,6 +498,7 @@ void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
     if (g_appMsg.pfnMsg5 != NULL)
         g_appMsg.pfnMsg5(pMsg->f08);
 }
+#endif
 
 static BrComHolder  *g_pComHolder;      /* 0x10A9D008 */
 static BrComLockHooks g_comLock;
