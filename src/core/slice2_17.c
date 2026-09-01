@@ -1984,4 +1984,26 @@ void FUN_100281c0(void)
   return;
 }
 
+
+extern double _DAT_10077488;
+extern double _DAT_10077490;
+
+/* @implements 0x1002A490 glide FUN_1002a490 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_1002a490(double param_1)
+
+{
+  int iVar1;
+  
+  iVar1 = (int)floor(_DAT_10077490 - param_1 * _DAT_10077488);
+  if (iVar1 < -0x80) {
+    iVar1 = -0x80;
+  }
+  if (0x7f < iVar1) {
+    iVar1 = 0x7f;
+  }
+  return iVar1;
+}
+
 #endif /* BR_MATCHING_BUILD */
