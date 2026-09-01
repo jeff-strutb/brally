@@ -58,6 +58,13 @@ def matched_vas_all_reports():
             with open(p) as f:
                 out |= {r['va'].lower() for r in csv.DictReader(f)
                         if r.get('status') == 'match'}
+    # Fenced VAs (CRT helpers, EH funclets/fragments, thunks) are not
+    # hand-C targets either — without this the residue kept offering
+    # __alldiv and catch-funclet fragments as long/frame-class work.
+    p = os.path.join(ROOT, 'config', 'fenced.csv')
+    if os.path.exists(p):
+        with open(p) as f:
+            out |= {r['va'].lower() for r in csv.DictReader(f)}
     return out
 
 
