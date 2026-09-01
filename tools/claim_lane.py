@@ -29,8 +29,20 @@ def claim(n):
             if c['status']=='parked' and c['va'] in dvas: keep.append(c); held.add(c['va'])
             elif c['status']=='claimed' and (now-float(c['ts']))<STALE and c['va'] in dvas: keep.append(c); held.add(c['va'])
         pool=[r for r in dr if r['va'] not in held]
-        offset=(len([c for c in keep if c['status']=='claimed'])*n)%max(len(pool),1)
-        pick=(pool[offset:]+pool[:offset])[:n]; tok=uuid.uuid4().hex[:8]
+        # Ranked lanes: tools/fnmatch/triage.py publishes triage_rank.csv
+        # (lower score = better target: SHAPE < mixed < missing-code < coloring
+        # wall). When present, hand out best-first; the held-set already keeps
+        # parallel lanes disjoint. Without it, fall back to rotation.
+        rank_csv=os.path.join(ROOT,'build','match','triage_rank.csv')
+        if os.path.exists(rank_csv):
+            with open(rank_csv) as f:
+                score={r['va'].lower():int(r['score']) for r in csv.DictReader(f)}
+            pool.sort(key=lambda r:score.get(r['va'].lower(),50000))
+            pick=pool[:n]
+        else:
+            offset=(len([c for c in keep if c['status']=='claimed'])*n)%max(len(pool),1)
+            pick=(pool[offset:]+pool[:offset])[:n]
+        tok=uuid.uuid4().hex[:8]
         for r in pick: keep.append({'va':r['va'],'name':r['name'],'file':r['file'],'token':tok,'ts':str(now),'status':'claimed'})
         save(keep); print('TOKEN',tok)
         for r in pick: print(r['va'],r['name'],r['file'])
