@@ -1635,3 +1635,22 @@ parked-wall kind newly retryable (no new idiom landed).
   paced-counter global spills and grows an ebp frame; DIRECT GLOBAL
   REREADS CSE into ax with no spill (0x10041940, the existing
   direct-global-reread idiom applied to word globals).
+
+- **Float copies the orig emits as integer movs while a call result rides
+  st0 = spell them as dword puns (0x1006F720 BrEntSetHeading, 2026-09-01,
+  byte-count exact).**  Under /O2 a plain `pDst->f = localFloat;` run of
+  copies gets BATCHED onto the FPU (fld/fld/fld + fxch + fstp each) the
+  moment any other float value is pending (a deferred call result, a
+  nearby fld/fmul); no statement-order permutation, volatile pin, or /Op
+  breaks the batch without breaking something else (/Op also spills the
+  call results the orig stores direct).  `*(uint32_t *)&dst = *(uint32_t
+  *)&src;` reproduces the original's mov-reg pair copies exactly and
+  collapsed 241 masked diffs to 25 in one step (multiset 0+0).  Same
+  function proved two siblings: a `x3 = x2 = x1 = f(h)` chained
+  assignment is the orig's fst/fst/fstp triple store, and struct fields
+  re-read AFTER an intervening call must be read (and fanned out) as
+  dword puns too, or VC5 constant-propagates the zeros it just stored and
+  the orig's reloads vanish.  Remaining 25-diff residue on 0x1006F720 is
+  ONE scheduling fork: the orig defers the pending sin-result fstp past
+  the first three integer stores; every probed source pops it at call
+  return.  Parked.
