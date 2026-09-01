@@ -1061,15 +1061,14 @@ void    BrGlNavKeyLeft(void);       /* 0x10002C70 */
 void    BrGlNavKeyRight(void);      /* 0x10002CB0 */
 void    BrGlNavTail(void);          /* 0x10059060 */
 
-/* NOT CLAIMED (@implements withheld): 4 regions remain, all ONE coupled
- * coloring question -- the original births 1 in ebx (at the any-pressed
- * arms) and 0 in edi (at the key checks) and extracts b0 into al so b1
- * can take `mov cl,ch` in place; ours lands the same values in swapped
- * homes (and a shr-copy extract).  Reacquire loop (rotated while,
- * duplicated condition), dword+byte button loads, batch masks, edge
- * machines: all byte-shape exact.  Permuter bait (first_live/recompute
- * class). */
-/* @implements-pending 0x10059410 glide BrGlNavPoll */
+/* TAG LIVE WITH DIFFS (drawcar convention): 3 regions / ~10 insns of
+ * coupled coloring remain -- the -1 materialization (`or edx,-1` vs
+ * folded 0xffff; a shared int local still folds), the eax/ecx flag-home
+ * swap, the cl/al 0x80 swap, and one fresh `xor eax,eax`.  Everything
+ * structural is byte-shape exact: rotated-while reacquire loop with
+ * duplicated condition, dword+byte button loads with batch masks, edge
+ * machines, tail hook.  Permuter bait (first_live/recompute class). */
+/* @implements 0x10059410 glide BrGlNavPoll */
 void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
 {
     uint8_t aState[0x10];
@@ -1124,7 +1123,7 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
         uint8_t  b2 = aState[0xE];
         uint8_t  b3 = aState[0xF];
         uint8_t  b0 = (uint8_t)bw;
-        uint8_t  b1 = (uint8_t)(bw >> 8);
+        uint8_t  b1 = ((uint8_t *)&bw)[1];
         b0 &= 0x80;
         b1 &= 0x80;
         b2 &= 0x80;
@@ -1142,10 +1141,12 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     if (BrGlNavKey5F40 != 0)
         BrGlNavKeyRight();
 
+    {
+    int32_t step = -1;   /* one -1, shared by both backward-step stores */
     if (BrGlNavT6708 != 0) {
         if (BrGlNavKey66B0 & 0x80) {
             BrGlNavF66F8 = 1;
-            BrGlNavStepAB7C = (uint16_t)-1;
+            BrGlNavStepAB7C = (uint16_t)step;
             BrGlNavAccum6710 = 0;
         }
         if (BrGlNavKey66B8 & 0x80) {
@@ -1158,7 +1159,7 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
         int32_t f;
         if (BrGlNavK610C != 0) {
             f = 1;
-            BrGlNavStepAB7C = (uint16_t)-1;
+            BrGlNavStepAB7C = (uint16_t)step;
             BrGlNavAccum6710 = 0;
         } else {
             f = BrGlNavF6700;
@@ -1178,6 +1179,7 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
             pNav->iIdle4C = 0;
             BrGlNavT6708 = 0;
         }
+    }
     }
     if (BrGlNavT6708 != 0) {
         if (BrGlNavF66F8 != 0) {
