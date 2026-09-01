@@ -17,6 +17,7 @@
 #define BrGbiTexScanLoadBlock    BrGbiTexScanLoadBlock_port
 #define BrGbiSolidTexBuild       BrGbiSolidTexBuild_port
 #define BrGbiBlit                BrGbiBlit_port
+#define BrRcaFixupArray          BrRcaFixupArray_port
 /* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
  * state pointer.  Same rename so the matching bodies can use that shape. */
 #define BrGbiClearGeometryMode  BrGbiClearGeometryMode_port
@@ -43,6 +44,7 @@
 #undef BrGbiTexScanLoadBlock
 #undef BrGbiSolidTexBuild
 #undef BrGbiBlit
+#undef BrRcaFixupArray
 #undef BrGbiClearGeometryMode
 #undef BrGbiSetGeometryMode
 #undef BrGbiDList
@@ -2497,6 +2499,20 @@ void BrRcaFixupRecord(void *pRec)
 /* WHAT IT DOES: runs the record preparation above over a whole array of
  * records from an .rca data file. */
 /* @implements 0x1002BA80 d3d BrRcaFixupArray */
+#ifdef BR_MATCHING_BUILD
+/* Original: 2 args (no ctx); count is read and tested before pv, whose
+ * load sits inside the guard (its arg slot stays live that long). */
+void BrRcaFixupArray(void *pv, int count)
+{
+    if (count > 0) {
+        uint8_t *p = (uint8_t *)pv;
+        do {
+            BrRcaFixupRecord(p);
+            p += BR_RCA_REC_SIZE;
+        } while (--count != 0);
+    }
+}
+#else
 void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -2509,3 +2525,4 @@ void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
         p += BR_RCA_REC_SIZE;
     }
 }
+#endif
