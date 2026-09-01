@@ -1112,8 +1112,15 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x039A0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x20);
     put(0x039C0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30);
 
-    /* 0xAD77 -- TLUT palette load. */
+    /* 0xAD77 -- TLUT palette load.  Orig stores DL word1 as an address-of-symbol
+     * immediate (mov [eax+4], OFFSET g_BrDrawTexBlob), not the pointer's runtime
+     * value.  &g_BrDrawTexBlob reproduces that store form for the matching build;
+     * the port keeps the value-read semantics. */
+#ifdef BR_MATCHING_BUILD
+    put(0xFD100000u, (uint32_t)(uintptr_t)&g_BrDrawTexBlob);
+#else
     put(0xFD100000u, (uint32_t)(uintptr_t)g_BrDrawTexBlob);
+#endif
     put(0xE8000000u, 0);
     put(0xF50001E0u, 0x07000000u);
     put(0xE6000000u, 0);
