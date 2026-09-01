@@ -1277,6 +1277,12 @@ def _refine_candidates(src):
     _new, _ok = transform_calltemp(src)
     if _ok and _new != src:
         yield ('calltemp', _new)
+    # (f) discarded float call + bare `ftol()` -> `(int)CALL(...)`.
+    #     Proven MATCH 0x1002A490 (floor clamp); ~50 work files carry the
+    #     artifact.
+    _new, _ok = transform_ftolfuse(src)
+    if _ok and _new != src:
+        yield ('ftolfuse', _new)
     # (z) single-assignment scale temp -> inline `X * K` at uses (SIB
     #     base/index pairing). Proven MATCH 0x1006E130.
     _new, _ok = transform_scaletemp(src)
@@ -1786,6 +1792,53 @@ def transform_zerohoist(src, k=1):
     if not hoisted:
         return src, False
     return src[:m.start()] + ''.join(hoisted) + src[m.start():m.end()] + tail, True
+
+
+_FTOLFUSE_CALL_RE = re.compile(
+    r'^(\s*)([A-Za-z_]\w*\s*\([^;]*\));\s*\n'
+    r'\s*(\w+)\s*=\s*ftol\s*\(\s*\);\s*\n', re.M)
+_FTOLFUSE_ASSIGN_RE = re.compile(
+    r'^(\s*)([a-z]{1,2}Var\d+|local_\w+|dVar\d+|fVar\d+)\s*=\s*([^;]+);\s*\n'
+    r'\s*(\w+)\s*=\s*ftol\s*\(\s*\);\s*\n', re.M)
+
+
+def transform_ftolfuse(src):
+    """Fuse Ghidra's discarded-float-call + bare `ftol()` artifact.
+
+    `floor(EXPR); iVar = ftol();` is really `iVar = (int)floor(EXPR);` —
+    the decompiler splits the x87 result from the __ftol call because the
+    conversion has no source operand.  Also handles the assignment shape
+    `dVar1 = EXPR; iVar = ftol();` -> `iVar = (int)(EXPR);` when the float
+    temp has no other use.  Proven MATCH 0x1002A490 (floor clamp).
+    """
+    out, changed = src, False
+    while True:
+        m = _FTOLFUSE_CALL_RE.search(out)
+        if not m:
+            break
+        out = (out[:m.start()] + '%s%s = (int)%s;\n'
+               % (m.group(1), m.group(3), m.group(2)) + out[m.end():])
+        changed = True
+    pos = 0
+    while True:
+        m = _FTOLFUSE_ASSIGN_RE.search(out, pos)
+        if not m:
+            break
+        temp = m.group(2)
+        rest = out[:m.start()] + out[m.end():]
+        # the float temp must have no use outside this pair (decl aside)
+        uses = [u for u in re.finditer(r'\b%s\b' % re.escape(temp), rest)
+                if not re.search(r'(?:float|double)\s+%s\s*;'
+                                 % re.escape(temp),
+                                 rest[max(0, u.start() - 40):u.end()])]
+        if uses:
+            pos = m.end()
+            continue
+        out = (out[:m.start()] + '%s%s = (int)(%s);\n'
+               % (m.group(1), m.group(4), m.group(3)) + out[m.end():])
+        changed = True
+        pos = m.start()
+    return (out, changed) if changed else (src, False)
 
 
 _SCALETEMP_RE = re.compile(
