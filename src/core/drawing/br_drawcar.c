@@ -746,11 +746,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    char     pack[4];   /* SIGNED, stores volatile-punned, reads `& 0xFF`:
-                         * the mask is semantically required on signed char,
-                         * which is what makes VC5 emit the original's
-                         * dword-read + and 0xff of the byte slot instead of
-                         * narrowing/forwarding the load */
+    uint8_t  pack0, pack1;  /* separate scalar byte locals (0x1001E380's
+                             * proven form): the dword-read + and 0xff in
+                             * the bytes is VC5's own widening of a plain
+                             * uint8_t local */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
@@ -867,38 +866,25 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
                    | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
                    | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
-        *(volatile char *)&pack[0] = BrG_6C0960;
-        *(volatile char *)&pack[1] = BrG_6C65BC;
-        colourB = ((pack[0] & 0xFF))
-                | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
-        colourB <<= 8;
-        colourB |= (pack[1] & 0xFF);
-        colourB <<= 8;
+        pack0 = BrG_6C0960;
+        pack1 = BrG_6C65BC;
+        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack0) << 8
+                   | pack1) << 8);
     } else if (flag290C != 0) {
         uint8_t t80 = (uint8_t)((g_BrDrawByte80 * 4) / 5);
         colourA = 0;
-        *(volatile char *)&pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
-        *(volatile char *)&pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
-        colourB = ((pack[0] & 0xFF))
-                | (uint32_t)t80 << 8;
-        colourB <<= 8;
-        colourB |= (pack[1] & 0xFF);
-        colourB <<= 8;
+        pack0 = (uint8_t)((BrG_6C0960 * 4) / 5);
+        pack1 = (uint8_t)((BrG_6C65BC * 4) / 5);
+        colourB = ((((uint32_t)t80 << 8 | pack0) << 8 | pack1) << 8);
     } else {
-        *(volatile char *)&pack[0] = BrG_6C335C;
-        *(volatile char *)&pack[1] = BrG_6C0968;
-        colourA = ((pack[0] & 0xFF))
-                | (uint32_t)(uint8_t)BrG_6C1580 << 8;
-        colourA <<= 8;
-        colourA |= (pack[1] & 0xFF);
-        colourA <<= 8;
-        *(volatile char *)&pack[0] = BrG_6C0960;
-        *(volatile char *)&pack[1] = BrG_6C65BC;
-        colourB = ((pack[0] & 0xFF))
-                | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
-        colourB <<= 8;
-        colourB |= (pack[1] & 0xFF);
-        colourB <<= 8;
+        pack0 = BrG_6C335C;
+        pack1 = BrG_6C0968;
+        colourA = ((((uint32_t)(uint8_t)BrG_6C1580 << 8 | pack0) << 8
+                   | pack1) << 8);
+        pack0 = BrG_6C0960;
+        pack1 = BrG_6C65BC;
+        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack0) << 8
+                   | pack1) << 8);
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
