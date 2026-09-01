@@ -1270,3 +1270,23 @@ parked-wall kind newly retryable (no new idiom landed).
   with no MIPS oracle. It DOES re-read icar from car+0x140 per movemem —
   independent confirmation of the recompute-per-site idiom in the shared
   lineage.
+
+- **The byte-slot idiom, CRACKED (BrGlRectFill 0x1001E380, byte-exact,
+  2026-08-31).** The `mov byte [esp+S],r ... mov R,dword [esp+S]; and
+  R,0xff` pattern is PLAIN SEPARATE uint8_t LOCALS — no array, no
+  volatile, no source-level `& 0xFF`: the dword-read+mask IS VC5's
+  widening of a byte local whose source register died before the read
+  (calls in between, or scheduler kills).  When the stored register
+  survives to the read, VC5 store-forwards instead (`mov dl,al`) and
+  deletes the store — that is BrCarDrawVehicle's remaining pack residue:
+  spelling proven right, register-death timing not yet reproduced.
+  Related, proven in the same function: (a) a fresh Glide-side
+  transcription beats grinding a mispaired twin (the report row scored
+  the D3D body against Glide bytes — 824 diffs of pure phantom); (b)
+  /O2 /Op serializes every fild through ONE scratch slot and was
+  REQUIRED for this TU (under plain /O2 the filds batch with fxch);
+  (c) vertex fan-out is vertex-major source with inline (float) casts —
+  CSE homes each converted value in an integer register and float
+  fan-out copies become integer movs; (d) an argument clamped through a
+  temp (`t1 = x1; if (t1 < min) x1 = min;`) stays memory-homed, its
+  register never updated.
