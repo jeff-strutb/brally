@@ -109,7 +109,12 @@ def parse_signature(name):
         rettype, params = m.group(1), m.group(2).strip()
         if re.search(r'__fastcall|__thiscall|__stdcall|BR_THISCALL|BR_FASTCALL', rettype):
             return None                                # register convention: skip
-        ret = 'float' if ('float' in rettype or 'double' in rettype) and '*' not in rettype else 'int'
+        if rettype.split() and rettype.split()[-1] == 'void':
+            ret = 'void'                               # no return value: compare side effects only
+        elif ('float' in rettype or 'double' in rettype) and '*' not in rettype:
+            ret = 'float'
+        else:
+            ret = 'int'
         kinds = []
         if params and params != 'void':
             for p in params.split(','):
@@ -202,6 +207,8 @@ def verify(va, name, orig_bytes, recomp_bytes, seeds, sig):
             a = Mo.st[0] if Mo.st else 0.0
             b = Mr.st[0] if Mr.st else 0.0
             same = (a == b) or (a != a and b != b)
+        elif ret == 'void':
+            same = True                 # no return value; eax is scratch
         else:
             same = (Mo.R['eax'] == Mr.R['eax'])
         same = same and (_snapshot(mo, bo) == _snapshot(mr, br))   # side effects
