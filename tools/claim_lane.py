@@ -9,7 +9,16 @@ REPORT=os.path.join(ROOT,'build','match','report.csv')
 CLAIMS=os.path.join(ROOT,'build','match','lane_claims.csv')
 STALE=90*60; FIELDS=['va','name','file','token','ts','status']
 def diffs():
-    with open(REPORT) as f: return [r for r in csv.DictReader(f) if r.get('status')=='diff']
+    with open(REPORT) as f: rows=[r for r in csv.DictReader(f) if r.get('status')=='diff']
+    # Functions matched in the C++ / EXE workstreams still sit as status=diff
+    # in report.csv; drop them so lanes never re-hand a matched function.
+    done=set()
+    for alt in ('report_cpp.csv','report_exe.csv'):
+        p=os.path.join(os.path.dirname(REPORT),alt)
+        if os.path.exists(p):
+            with open(p) as f:
+                done.update((r.get('va') or '').lower() for r in csv.DictReader(f) if r.get('status')=='match')
+    return [r for r in rows if r['va'].lower() not in done]
 def load():
     if not os.path.exists(CLAIMS): return []
     with open(CLAIMS) as f: return list(csv.DictReader(f))
