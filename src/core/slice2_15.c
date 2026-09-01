@@ -615,6 +615,8 @@ void BrHudDrawSplitList(const BrHudView *aViews)
  * messages, and the speed with its unit. Speed is shown in miles or kilometres
  * per hour depending on the player's setting, and a negative speed is shown as
  * zero. */
+extern const char *BrStrGet(int id);   /* slice4_52.c, Glide 0x1006D280 */
+
 /* @implements 0x10017D90 d3d BrHudDraw */
 void BrHudDraw(BrHudView *aViews, int a2)
 {
@@ -623,13 +625,19 @@ void BrHudDraw(BrHudView *aViews, int a2)
     float speed;
     int32_t x, y;
 
-    pView = &aViews[g_screen.iView];
+    /* speed FIRST: assigning it while the aViews arg slot is still unread
+     * keeps VC5 from parking speed in the dead arg slot -- the original
+     * gives it a real `push ecx` frame slot. */
     speed = g_hud.pRace->f1030;
+    pView = &aViews[g_screen.iView];
 
     BrSub_1003289F(0, pView->y, g_screen.cx, pView->h);
 
-    /* 10017DCF: negative (and NaN) speeds are pinned to zero. */
-    if (!(speed >= (float)kF340))
+    /* 10017DCF: negative (and NaN) speeds are pinned to zero.  Bare kF340:
+     * the original is `fld dword [speed]; fcomp qword [kF340]` -- speed on
+     * the fld side, the double constant as the fcomp operand.  A (float)
+     * cast on kF340 flips the pair. */
+    if (!(speed >= kF340))
         speed = 0.0f;
 
     BrHudDrawDial(aViews);
@@ -641,15 +649,17 @@ void BrHudDraw(BrHudView *aViews, int a2)
     BrSub_10019290();
 
     /* f0ADF60 selects miles: the number is scaled by 0.6213712 and the unit
-     * string id changes from 0xEC to 0xEB. */
-    {
-        double shown = (g_hud.f0ADF60 != 0)
-                     ? (double)speed * (double)kF348
-                     : (double)speed;
-        /* DEVIATION: sprintf -> snprintf. "%%yw" is a text-markup escape that
-         * BrTextDraw consumes, not a printf directive. */
-        snprintf(g_hud.szText, sizeof g_hud.szText, "%%yw%.0f", shown);
-    }
+     * string id changes from 0xEC to 0xEB.  TWO sprintf calls, not a
+     * ternary: the compiler tail-merges them from `sub esp,8` on, leaving
+     * each arm its own fld head (`fld;fmul;jmp` / `fld`) -- a ternary (or a
+     * temp) head-merges the fld and loses the jmp.  sprintf itself (not
+     * snprintf): the original calls the /MD CRT import, and the extra size
+     * argument reshapes the whole push sequence.  "%%yw" is a text-markup
+     * escape BrTextDraw consumes, not a printf directive. */
+    if (g_hud.f0ADF60 != 0)
+        sprintf(g_hud.szText, "%%yw%.0f", speed * kF348);
+    else
+        sprintf(g_hud.szText, "%%yw%.0f", speed);
 
     pView = &aViews[g_screen.iView];
     x = g_screen.cx - 0x10;
@@ -665,18 +675,33 @@ void BrHudDraw(BrHudView *aViews, int a2)
     y -= pSpr->e5;
 
     BrSub_100192F0(0x14);
-    y -= 3;
-    if (g_hud.f0ADF60 == 0)
-        x -= 3;
-    BrTextDraw(g_hud.szText, x, y);
+
+    /* 10015433: `y -= 3` sits in BOTH arms (hoisting it above the if merges
+     * the two into one pre-branch sub, -2 insns), and the km arm passes
+     * `x - 3` as an EXPRESSION (`lea ecx,[esi-3]`) without touching x.
+     * RESIDUE (2+2 regnorm, T3a-encoding): the original spells these two
+     * mutations `add r,-3` where we emit `sub r,3` -- same length, same op.
+     * Probed and failed: `+= -3`, `y = y - 3`, in-arg `y -= 3`, unsigned
+     * x/y, hoisted common statement (regresses).  The RAW gap is the
+     * esi/edi rotation downstream of the same two bytes. */
+    if (g_hud.f0ADF60 != 0) {
+        y -= 3;
+        BrTextDraw(g_hud.szText, x, y);
+    } else {
+        y -= 3;
+        BrTextDraw(g_hud.szText, x - 3, y);
+    }
 
     BrSub_100192F0(0x0F);
     BrSub_10019280();
-    {
-        unsigned uStr = 0xECu;
-        if (g_hud.f0ADF60 != 0)
-            uStr = 0xEBu;
-        BrTextDraw((const char *)BrHandleLookup(g_hud.apStrings, uStr), x, y);
+
+    /* 10015462: the unit string comes from BrStrGet (the one-argument
+     * bounds-checked table lookup), and only the km arm mutates x. */
+    if (g_hud.f0ADF60 != 0) {
+        BrTextDraw(BrStrGet(0xEB), x, y);
+    } else {
+        x -= 3;
+        BrTextDraw(BrStrGet(0xEC), x, y);
     }
 }
 
