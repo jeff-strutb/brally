@@ -22,7 +22,13 @@
 #define BrTextBoxMeasureA  BrTextBoxMeasureA_cdecl
 #define BrTextBoxMeasureB  BrTextBoxMeasureB_cdecl
 #endif
+#ifdef BR_MATCHING_BUILD
+#define BrTextBoxInit BrTextBoxInit_port
 #include "slice3_39.h"
+#undef BrTextBoxInit
+#else
+#include "slice3_39.h"
+#endif
 #ifdef BR_MATCHING_BUILD
 #undef BrTextBoxDeleteDtor
 #undef BrTextBoxMeasureA
@@ -449,6 +455,30 @@ int32_t   g_BrAA3398[7];              /* 0x10AA3398 */
  * since the allocator does not zero either, a brand-new box has junk in
  * those fields until something fills them in. */
 /* @implements 0x1005B050 d3d BrTextBoxInit */
+#ifdef BR_MATCHING_BUILD
+/* thiscall ctor: vtbl immediate, memset of the 0x400 buffer at +9, field
+ * zeroes through the memset's zero register, returns this. */
+extern int DAT_100776f0;
+
+BrTextBox *__fastcall BrTextBoxInit(BrTextBox *pBox)
+{
+    char *p = (char *)pBox;
+
+    *(void **)p = (void *)&DAT_100776f0;
+    memset(p + 9, 0, 0x400);
+    *(int *)(p + 0x418) = 0;
+    *(int *)(p + 0x414) = 0;
+    *(int *)(p + 0x410) = 0;
+    *(short *)(p + 0x40C) = 0;
+    *(short *)(p + 0x40A) = 0;
+    *(short *)(p + 0x41C) = 0;
+    *(int *)(p + 0x420) = 0;
+    *(int *)(p + 4) = 0;
+    *(unsigned char *)(p + 8) = 1;
+    return pBox;
+}
+#else
+/* @implements 0x1005B050 d3d BrTextBoxInit */
 BrTextBox *BrTextBoxInit(BrTextBox *pBox)
 {
     /* The vtable store comes FIRST, before the buffer clear -- the clear
@@ -470,6 +500,7 @@ BrTextBox *BrTextBoxInit(BrTextBox *pBox)
     /* left / f428 / right / f430 / f434 are deliberately NOT touched. */
     return pBox;
 }
+#endif
 
 /* =====================================================================
  * 0x1005B0A0 -- scalar deleting destructor
