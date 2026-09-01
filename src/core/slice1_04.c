@@ -123,6 +123,36 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
  * extra mode flag. Most combinations fall through to the same general
  * format; only a couple of specific pairings get a format of their own. */
 /* @implements 0x10027B90 d3d BrTexFormatCode */
+#ifdef BR_MATCHING_BUILD
+/* The original keeps two SEMANTICALLY REDUNDANT `if (b == 2) return 11;`
+ * early-outs (each a cmp/je straight into the shared return-11 tail) and a
+ * dead read of b in the a == 2 arm (`mov eax,[esp+8]` immediately
+ * overwritten). Both are source-level; folding them drops 5 compares. */
+int BrTexFormatCode(int a, int b, int c)
+{
+    if (a == 0) {
+        if (b == 2)
+            return 11;
+        if (b == 4) {
+            /* `dec/neg/sbb eax,eax` yields 0 for c == 1 and -1 otherwise;
+             * `and al,0xF7` then turns -1 into -9, and +11 gives 11 or 2. */
+            return (c == 1) ? 11 : 2;
+        }
+    } else if (a == 1) {
+        if (b == 2)
+            return 11;
+        if (b == 3) {
+            /* same idiom, masked with 0xF8 and biased by 12 */
+            return (c == 1) ? 12 : 4;
+        }
+        if (b == 4)
+            return 2;
+    } else if (a == 2) {
+        (void)*(volatile int *)&b;      /* the dead load */
+    }
+    return 11;
+}
+#else
 int BrTexFormatCode(int a, int b, int c)
 {
     if (a == 0) {
@@ -147,6 +177,7 @@ int BrTexFormatCode(int a, int b, int c)
      * not a missing case. Everything here returns 11. */
     return 11;
 }
+#endif
 
 /* ==========================================================================
  * Record table search -- 0x10028630
