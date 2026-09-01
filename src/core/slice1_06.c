@@ -254,26 +254,47 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 
     /* cb is uninitialised: the original reuses pObj's stack slot as the size
      * out-param and never stores 0 into it. */
-    hr = pfn(pObj, pParam, NULL, &cb);
-    if (hr == BR_COM_E_BUFFERTOOSMALL) {
+    /* Layout matches the source order -- [call1][alloc][OOM, jmp cleanup]
+     * [call2, jge success][cleanup][success].  The OOM arm ends in an
+     * explicit `goto cleanup` and the second call is the FALLTHROUGH
+     * continuation, not an else arm (an if/else makes VC5 move the call2
+     * block out-of-line past the cleanup); the success block lives after
+     * the cleanup via its own label. */
+    /* do-while(0) with break, NOT structured if-nesting: the loop body
+     * stays contiguous, which is what recovers the original's size and its
+     * OOM-arm `jmp` over the second call.
+     * RESIDUE (1+1 regnorm, 53 masked B, T3a-layout): the original lays the
+     * OOM arm INLINE (test;jne over it, `mov esi,OOM; jmp cleanup`) with
+     * the second call after; every probed spelling (nested if/else, three
+     * goto flattenings, else-arm, mixed break/goto) makes VC5 thread the
+     * jump and move one arm out-of-line -- one je-vs-jne with the OOM arm
+     * at the end. */
+    do {
+        hr = pfn(pObj, pParam, NULL, &cb);
+        if (hr != BR_COM_E_BUFFERTOOSMALL)
+            break;
         /* GMEM_MOVEABLE|GMEM_ZEROINIT == 0x42. */
         pv = GlobalLock(GlobalAlloc(0x42u, cb));
         if (pv == NULL) {
             hr = BR_COM_E_OUTOFMEMORY;
-        } else {
-            hr = pfn(pObj, pParam, pv, &cb);
-            if (hr >= 0) {
-                *ppvOut = pv;
-                return 0;   /* the original discards hr here */
-            }
+            goto cleanup;
         }
-    }
+        hr = pfn(pObj, pParam, pv, &cb);
+        if (hr >= 0)
+            goto success;
+    } while (0);
+
+cleanup:
 
     if (pv != NULL) {
         GlobalUnlock(GlobalHandle(pv));
         GlobalFree(GlobalHandle(pv));
     }
     return hr;
+
+success:
+    *ppvOut = pv;
+    return 0;       /* the original discards hr here */
 }
 #else
 /* WHAT IT DOES: the same two-step fetch, using calloc instead of a
