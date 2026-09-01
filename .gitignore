@@ -49,7 +49,9 @@ work/
 *.img
 *.xm
 tools/msvc5/
+tools/msvc42/
 tools/wine/
+reference/msvc/_extract/
 
 # Scratch files -- anything named temp*
 temp*
