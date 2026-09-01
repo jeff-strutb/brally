@@ -718,4 +718,29 @@ int BrNop6E590(void)
   return;
 }
 
+
+typedef int (*funcptr)();
+extern funcptr DAT_118ed1d8;
+int BrTex3dRecSet278();
+
+/* @implements 0x1006E130 glide FUN_1006e130 */
+/* auto-filed from ghidra --refine; transforms: ge0 scaletemp */
+
+void FUN_1006e130(int param_1,int param_2,int param_3)
+
+{
+  int iVar2;
+  
+  if (((param_1 >= 0)) && (param_1 < 8)) {
+    iVar2 = *(int *)(param_3 + param_1 * 4);
+    if (iVar2 < 3) {
+      iVar2 = iVar2 + 1;
+      *(int *)(param_3 + (param_1 * 4)) = iVar2;
+      BrTex3dRecSet278(*(int *)(param_2 + (param_1 * 4)),iVar2);
+      (*DAT_118ed1d8)(*(int *)(param_2 + (param_1 * 4)));
+    }
+  }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
