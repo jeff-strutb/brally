@@ -1265,6 +1265,19 @@ the caller AND flipped a helper to match for free.
   homed in esi before the switch) hoists with the plain param spelling once
   the tail is shared. Proven 0x100168C0 BrTextDraw (180 B, MATCH /O2).
 
+- **Bit-stream readers: compute the value into a block temp BEFORE the
+  cursor store** (`{ v = pack; pBs->readByte = i + N; return v; }`) — the
+  value-first order is what keeps the pack register live across the store.
+  A big-endian s32 read seeds its Horner chain with a SIGNED char load
+  (`movsx` does the sign semantics; an unsigned<<24 spelling is a
+  different shape). OPEN WALL (register-byte widen): the originals widen
+  later bytes in DIRTY regs (`mov dl; and edx,0xff` after register death)
+  and sometimes load byte pairs high-first; VC5 zero-widens (`xor` + mov,
+  low-first) from every probed spelling — |-order, +, byte temps,
+  |=-accumulate, u16 temps, signed-char+mask, sum-read-before-bind. The
+  register analogue of the byte-slot wall; 4-15 B residue per reader.
+  Proven 0x1006CE20/0x1006CE50/0x1006CE80 (structure), 2026-09-01.
+
 - **div/mod-by-constant pairs: `%` next to `/` emits ONE idiv; the magic-imul
   shape means the source derived the remainder itself — and a compound `-=`
   picks the neg-form.** `q = n / 100; r = n % 100;` compiles to `cdq; idiv`
