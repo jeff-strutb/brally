@@ -648,6 +648,158 @@ void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
         BrFixupAt(h + s_aFixup[i]);
 }
 
+
+#ifdef BR_MATCHING_BUILD
+/* 0x10018D20-region helper the original calls 19 times at the tail --
+ * the pointer fixup the port names BrFixupAt. */
+extern void BrGlFixupAt(uint8_t *p);
+
+/* 0x10031B80 -- the GLIDE build of the track-header reader.  Same
+ * semantic map as the port body above, but the original's shape: the
+ * scalar swaps UNROLLED with two byte temps, +0x40..+0x4F and the ten
+ * 0x14-stride rows as real loops, and NINETEEN pointer locals (one per
+ * fixup site) handed to the fixup helper at the tail in list order. */
+/* @implements 0x10031B80 glide BrGlTrackHdrRead */
+void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
+{
+    uint8_t *h = (uint8_t *)pvHdr;
+    uint8_t *p0C, *p14, *p1C, *p20, *p24, *p50, *p54, *p58, *p5C, *p60, *p68, *p6C, *p70, *p74, *p78, *p84, *p8C, *p90, *p94;
+    uint8_t *q;
+    uint8_t  t, u;
+    int      i;
+
+    BrChkFRead(h, 1, 0x230, ppFile);
+
+    *(uint32_t *)(h + 0x00) =
+        (((h[0x01] | (uint32_t)h[0] << 8) << 8 | h[0x02]) << 8) | h[0x03];
+    *(uint32_t *)(h + 0x04) =
+        (((h[0x05] | (uint32_t)h[0x04] << 8) << 8 | h[0x06]) << 8) | h[0x07];
+    *(uint32_t *)(h + 0x08) =
+        (((h[0x09] | (uint32_t)h[0x08] << 8) << 8 | h[0x0A]) << 8) | h[0x0B];
+    p0C = h + 0x0C;
+    t = *p0C; u = h[0x0F]; h[0x0F] = t; *p0C = u;
+    t = h[0x0D]; u = h[0x0E]; h[0x0E] = t; h[0x0D] = u;
+    *(uint32_t *)(h + 0x10) =
+        (((h[0x11] | (uint32_t)h[0x10] << 8) << 8 | h[0x12]) << 8) | h[0x13];
+    p14 = h + 0x14;
+    t = *p14; u = h[0x17]; h[0x17] = t; *p14 = u;
+    t = h[0x15]; u = h[0x16]; h[0x16] = t; h[0x15] = u;
+    *(uint32_t *)(h + 0x18) =
+        (((h[0x19] | (uint32_t)h[0x18] << 8) << 8 | h[0x1A]) << 8) | h[0x1B];
+    p1C = h + 0x1C;
+    t = *p1C; u = h[0x1F]; h[0x1F] = t; *p1C = u;
+    t = h[0x1D]; u = h[0x1E]; h[0x1E] = t; h[0x1D] = u;
+    p20 = h + 0x20;
+    t = *p20; u = h[0x23]; h[0x23] = t; *p20 = u;
+    t = h[0x21]; u = h[0x22]; h[0x22] = t; h[0x21] = u;
+    p24 = h + 0x24;
+    t = *p24; u = h[0x27]; h[0x27] = t; *p24 = u;
+    t = h[0x25]; u = h[0x26]; h[0x26] = t; h[0x25] = u;
+    t = h[0x28]; u = h[0x2B]; h[0x2B] = t; h[0x28] = u;
+    t = h[0x29]; u = h[0x2A]; h[0x2A] = t; h[0x29] = u;
+    t = h[0x2C]; u = h[0x2F]; h[0x2F] = t; h[0x2C] = u;
+    t = h[0x2D]; u = h[0x2E]; h[0x2E] = t; h[0x2D] = u;
+    t = h[0x30]; u = h[0x33]; h[0x33] = t; h[0x30] = u;
+    t = h[0x31]; u = h[0x32]; h[0x32] = t; h[0x31] = u;
+    t = h[0x34]; u = h[0x37]; h[0x37] = t; h[0x34] = u;
+    t = h[0x35]; u = h[0x36]; h[0x36] = t; h[0x35] = u;
+    t = h[0x38]; u = h[0x3B]; h[0x3B] = t; h[0x38] = u;
+    t = h[0x39]; u = h[0x3A]; h[0x3A] = t; h[0x39] = u;
+    t = h[0x3C]; u = h[0x3F]; h[0x3F] = t; h[0x3C] = u;
+    t = h[0x3D]; u = h[0x3E]; h[0x3E] = t; h[0x3D] = u;
+    q = h + 0x40;
+    for (i = 4; i > 0; --i) {
+        t = q[0]; u = q[3]; q[3] = t; q[0] = u;
+        t = q[1]; u = q[2]; q[2] = t; q[1] = u;
+        q += 4;
+    }
+    p50 = h + 0x50;
+    t = *p50; u = h[0x53]; h[0x53] = t; *p50 = u;
+    t = h[0x51]; u = h[0x52]; h[0x52] = t; h[0x51] = u;
+    p54 = h + 0x54;
+    t = *p54; u = h[0x57]; h[0x57] = t; *p54 = u;
+    t = h[0x55]; u = h[0x56]; h[0x56] = t; h[0x55] = u;
+    p58 = h + 0x58;
+    t = *p58; u = h[0x5B]; h[0x5B] = t; *p58 = u;
+    t = h[0x59]; u = h[0x5A]; h[0x5A] = t; h[0x59] = u;
+    p5C = h + 0x5C;
+    t = *p5C; u = h[0x5F]; h[0x5F] = t; *p5C = u;
+    t = h[0x5D]; u = h[0x5E]; h[0x5E] = t; h[0x5D] = u;
+    p60 = h + 0x60;
+    t = *p60; u = h[0x63]; h[0x63] = t; *p60 = u;
+    t = h[0x61]; u = h[0x62]; h[0x62] = t; h[0x61] = u;
+    *(uint32_t *)(h + 0x64) =
+        (((h[0x65] | (uint32_t)h[0x64] << 8) << 8 | h[0x66]) << 8) | h[0x67];
+    p68 = h + 0x68;
+    t = *p68; u = h[0x6B]; h[0x6B] = t; *p68 = u;
+    t = h[0x69]; u = h[0x6A]; h[0x6A] = t; h[0x69] = u;
+    p6C = h + 0x6C;
+    t = *p6C; u = h[0x6F]; h[0x6F] = t; *p6C = u;
+    t = h[0x6D]; u = h[0x6E]; h[0x6E] = t; h[0x6D] = u;
+    p70 = h + 0x70;
+    t = *p70; u = h[0x73]; h[0x73] = t; *p70 = u;
+    t = h[0x71]; u = h[0x72]; h[0x72] = t; h[0x71] = u;
+    p74 = h + 0x74;
+    t = *p74; u = h[0x77]; h[0x77] = t; *p74 = u;
+    t = h[0x75]; u = h[0x76]; h[0x76] = t; h[0x75] = u;
+    p78 = h + 0x78;
+    t = *p78; u = h[0x7B]; h[0x7B] = t; *p78 = u;
+    t = h[0x79]; u = h[0x7A]; h[0x7A] = t; h[0x79] = u;
+    *(uint32_t *)(h + 0x7C) =
+        (((h[0x7D] | (uint32_t)h[0x7C] << 8) << 8 | h[0x7E]) << 8) | h[0x7F];
+    /* +0x80 untouched -- the one skipped dword. */
+    p84 = h + 0x84;
+    t = *p84; u = h[0x87]; h[0x87] = t; *p84 = u;
+    t = h[0x85]; u = h[0x86]; h[0x86] = t; h[0x85] = u;
+    *(uint32_t *)(h + 0x88) =
+        (((h[0x89] | (uint32_t)h[0x88] << 8) << 8 | h[0x8A]) << 8) | h[0x8B];
+    p8C = h + 0x8C;
+    t = *p8C; u = h[0x8F]; h[0x8F] = t; *p8C = u;
+    t = h[0x8D]; u = h[0x8E]; h[0x8E] = t; h[0x8D] = u;
+    p90 = h + 0x90;
+    t = *p90; u = h[0x93]; h[0x93] = t; *p90 = u;
+    t = h[0x91]; u = h[0x92]; h[0x92] = t; h[0x91] = u;
+    p94 = h + 0x94;
+    t = *p94; u = h[0x97]; h[0x97] = t; *p94 = u;
+    t = h[0x95]; u = h[0x96]; h[0x96] = t; h[0x95] = u;
+    q = h + 0x98;
+    for (i = 10; i > 0; --i) {
+        t = q[0x00]; u = q[0x03]; q[0x03] = t; q[0x00] = u;
+        t = q[0x01]; u = q[0x02]; q[0x02] = t; q[0x01] = u;
+        t = q[0x04]; u = q[0x07]; q[0x07] = t; q[0x04] = u;
+        t = q[0x05]; u = q[0x06]; q[0x06] = t; q[0x05] = u;
+        t = q[0x08]; u = q[0x0B]; q[0x0B] = t; q[0x08] = u;
+        t = q[0x09]; u = q[0x0A]; q[0x0A] = t; q[0x09] = u;
+        t = q[0x0C]; u = q[0x0F]; q[0x0F] = t; q[0x0C] = u;
+        t = q[0x0D]; u = q[0x0E]; q[0x0E] = t; q[0x0D] = u;
+        t = q[0x10]; u = q[0x13]; q[0x13] = t; q[0x10] = u;
+        t = q[0x11]; u = q[0x12]; q[0x12] = t; q[0x11] = u;
+        q += 0x14;
+    }
+    *(uint32_t *)(h + 0x160) =
+        ((((uint32_t)h[0x160] << 8 | h[0x161]) << 8 | h[0x162]) << 8) | h[0x163];
+    BrGlFixupAt(p0C);
+    BrGlFixupAt(p14);
+    BrGlFixupAt(p1C);
+    BrGlFixupAt(p20);
+    BrGlFixupAt(p24);
+    BrGlFixupAt(p50);
+    BrGlFixupAt(p54);
+    BrGlFixupAt(p58);
+    BrGlFixupAt(p5C);
+    BrGlFixupAt(p60);
+    BrGlFixupAt(p68);
+    BrGlFixupAt(p6C);
+    BrGlFixupAt(p70);
+    BrGlFixupAt(p74);
+    BrGlFixupAt(p78);
+    BrGlFixupAt(p84);
+    BrGlFixupAt(p8C);
+    BrGlFixupAt(p90);
+    BrGlFixupAt(p94);
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* ==========================================================================
  * 0x10038380 / 0x10038410 / 0x100382A0 / 0x10038250 -- geometry
  * ========================================================================== */
