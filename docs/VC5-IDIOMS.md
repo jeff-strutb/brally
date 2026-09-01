@@ -1265,6 +1265,19 @@ the caller AND flipped a helper to match for free.
   homed in esi before the switch) hoists with the plain param spelling once
   the tail is shared. Proven 0x100168C0 BrTextDraw (180 B, MATCH /O2).
 
+- **Both-memory fmul operand roles follow extern DECLARATION ORDER: the
+  LATER-declared symbol takes the fld side.** Source operand order, decl
+  form (scalar/array/defined-in-TU), symbol NAME, and use count are all
+  irrelevant (each probed on 0x10016BE0); swapping the two extern LINES
+  flips the roles. `extern float K; extern float dt;` puts dt on fld for
+  `dt * K`. **TRAP: reloc-masked scoring calls a role-swapped pair
+  byte-exact** — the two loads have identical shapes and the swapped
+  addresses live in masked reloc slots; only tools/image_build.py catches
+  it (this happened live: a "byte-exact" claim carried 3 wrong image
+  bytes). After any both-memory float product lands, check the reloc
+  ORDER in the .obj against the original's operand addresses. Proven
+  0x10016BE0 BrWeatherStepLightning (174 B, image-clean MATCH /O2).
+
 - **Bit-stream readers: compute the value into a block temp BEFORE the
   cursor store** (`{ v = pack; pBs->readByte = i + N; return v; }`) — the
   value-first order is what keeps the pack register live across the store.

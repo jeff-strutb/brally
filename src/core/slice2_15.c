@@ -963,7 +963,10 @@ void BrWeatherStepWind(void)
 #ifdef BR_MATCHING_BUILD
 extern int    DAT_100a718c;
 extern float  DAT_104add3c;
-extern float  DAT_106e9d8c, DAT_1007731c;
+/* DECLARATION ORDER IS LOAD-BEARING: in a both-memory fmul, the
+ * LATER-declared symbol takes the fld side. 31c first so dt gets fld. */
+extern float  DAT_1007731c;
+extern float  DAT_106e9d8c;
 extern double DAT_10077320;
 extern float  DAT_104abb60, DAT_104abb64;
 extern int    DAT_104abb68, DAT_106eed10;
