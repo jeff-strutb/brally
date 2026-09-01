@@ -28,8 +28,16 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
+/* The original BrOptSave takes no arguments (loose globals in, packed
+ * array out); hide the header's port prototype behind a rename so the
+ * matching twin can define the real symbol -- the slice5_63.c caller keeps
+ * the port signature (cdecl, extra args harmless at run time). */
+#define BrOptSave BrOptSave_hdr
 #include "slice1_06.h"
+#undef BrOptSave
+#else
+#include "slice1_06.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -451,6 +459,31 @@ void BrErrShow(const BrErrHost *pHost, int32_t idx)
  * places and are interleaved in a fixed order that is neither array's order --
  * the shuffle is the whole content of the function. */
 /* @implements 0x1003E310 d3d BrOptSave */
+#ifdef BR_MATCHING_BUILD
+/* Twelve loose globals into the packed scratch array, in this exact source
+ * order -- the three-ahead load/store interleave is the scheduler's. */
+extern int32_t g_br0AC648, g_br0AC64C, g_br0AC650, g_br0AC654, g_br0AC658,
+               g_br0AC65C;                    /* slice2_25.c */
+extern int32_t g_brAA2A00, g_brAA2A08, g_brAA2A0C, g_brAA2A18;
+extern int32_t g_brAA2A10, g_brAA2A14;       /* slice6_70.c */
+extern int32_t g_aBrB4E710[BR_OPT_SCRATCH_COUNT];   /* slice5_63.c */
+
+void BrOptSave(void)
+{
+    g_aBrB4E710[0]  = g_br0AC648;
+    g_aBrB4E710[1]  = g_brAA2A00;
+    g_aBrB4E710[2]  = g_brAA2A08;
+    g_aBrB4E710[3]  = g_br0AC64C;
+    g_aBrB4E710[4]  = g_br0AC650;
+    g_aBrB4E710[5]  = g_br0AC654;
+    g_aBrB4E710[6]  = g_brAA2A0C;
+    g_aBrB4E710[7]  = g_br0AC658;
+    g_aBrB4E710[8]  = g_brAA2A10;
+    g_aBrB4E710[9]  = g_brAA2A14;
+    g_aBrB4E710[10] = g_br0AC65C;
+    g_aBrB4E710[11] = g_brAA2A18;
+}
+#else
 void BrOptSave(BrOptScratch *pDst, const BrOptState *pSrc)
 {
     pDst->a[0]  = pSrc->aCfg[0];   /* 0x100AC648 -> 0x10B4E710 */
@@ -466,6 +499,7 @@ void BrOptSave(BrOptScratch *pDst, const BrOptState *pSrc)
     pDst->a[10] = pSrc->aCfg[5];   /* 0x100AC65C -> 0x10B4E738 */
     pDst->a[11] = pSrc->aSel[6];   /* 0x10AA2A18 -> 0x10B4E73C */
 }
+#endif
 
 /* ==========================================================================
  * 0x1003F2B0
