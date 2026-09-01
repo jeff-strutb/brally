@@ -35,6 +35,33 @@ void BrBaseDirResetForTest(void)
  * drive, which is why a badly installed copy goes looking in c:\TRACKS
  * rather than beside the executable. */
 /* @implements 0x10063860 glide BrBaseDirInit */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#pragma intrinsic(strlen, strcpy, strcat)
+void BrBaseDirInit(void)
+{
+    HKEY  hKey;
+    DWORD cbData;
+
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, BR_BASEDIR_REGKEY, 0,
+                      KEY_READ, &hKey) == ERROR_SUCCESS) {
+        LONG r;
+        cbData = BR_BASEDIR_MAX;
+        r = RegQueryValueExA(hKey, BR_BASEDIR_REGVAL, NULL, NULL,
+                             (LPBYTE)s_szBase, &cbData);
+        RegCloseKey(hKey);          /* closed before the query result is tested */
+        if (r == ERROR_SUCCESS) {
+            if (s_szBase[strlen(s_szBase) - 1] != BR_BASEDIR_SEP)
+                strcat(s_szBase, "\\");
+            return;
+        }
+    }
+    {
+        const char *fb = BR_BASEDIR_FALLBACK;
+        strcpy(s_szBase, fb);
+    }
+}
+#else
 void BrBaseDirInit(void)
 {
     size_t len;
@@ -82,3 +109,4 @@ void BrBaseDirInit(void)
         s_szBase[len + 1] = 0;
     }
 }
+#endif
