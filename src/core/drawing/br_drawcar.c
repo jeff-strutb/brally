@@ -1373,8 +1373,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     /* 0xBB70 -- DC texture: indexed lookup via car+0x2714 and g_BrDrawRefIndex. */
     {
         int32_t idx2714 = *(const int32_t *)(car + BR_CAR_OFF_I2714);
-        int8_t tblIdx = g_BrDrawRefTbl[idx2714 * 2 + g_BrDrawRefIndex];
+        /* Orig: movsx ecx, byte[idx2714 + refIndex*2 + 0x100A5C78] then
+         * [tblIdx*4 + 0x100A5C58].  Both symbols are the array DATA at a
+         * fixed link address (folded as a displacement), not pointer vars,
+         * so &g_-cast to the pinned base.  The *2 scales refIndex. */
+#ifdef BR_MATCHING_BUILD
+        int8_t tblIdx = ((const int8_t *)&g_BrDrawRefTbl)[idx2714 + g_BrDrawRefIndex * 2];
+        uint32_t texVal = ((const uint32_t *)&g_BrDrawRefColors)[tblIdx];
+#else
+        int8_t tblIdx = g_BrDrawRefTbl[idx2714 + g_BrDrawRefIndex * 2];
         uint32_t texVal = g_BrDrawRefColors[tblIdx];
+#endif
         put((texVal & 0x00FFFFFFu) | 0xDC000000u, 1);
     }
 
