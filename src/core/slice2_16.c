@@ -16,6 +16,7 @@
 #define BrGbiTexScanLoadTlut     BrGbiTexScanLoadTlut_port
 #define BrGbiTexScanLoadBlock    BrGbiTexScanLoadBlock_port
 #define BrGbiSolidTexBuild       BrGbiSolidTexBuild_port
+#define BrGbiBlit                BrGbiBlit_port
 /* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
  * state pointer.  Same rename so the matching bodies can use that shape. */
 #define BrGbiClearGeometryMode  BrGbiClearGeometryMode_port
@@ -41,6 +42,7 @@
 #undef BrGbiTexScanLoadTlut
 #undef BrGbiTexScanLoadBlock
 #undef BrGbiSolidTexBuild
+#undef BrGbiBlit
 #undef BrGbiClearGeometryMode
 #undef BrGbiSetGeometryMode
 #undef BrGbiDList
@@ -1457,6 +1459,24 @@ int BrGbiTexelsPerWord(int siz)
  * one row of the texture occupies, given the width rounded up to a power of
  * two and the pixel size. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
+#ifdef BR_MATCHING_BUILD
+/* The original takes 14 args and calls through the import-pointer global
+ * at 0x118ED1C4 (the slot before BrGbiTexCreate's 0x118ED1C8); the port's
+ * pfn parameter is a port convenience. */
+extern BrGbiBlitFn g_pfn18ED1C4;    /* 0x118ED1C4 */
+
+void BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
+               uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
+               uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
+               uintptr_t a13, uintptr_t a14)
+{
+    int32_t   rounded = (int32_t)(1 << BrGbiSizeShift((int)a3));
+    int32_t   pitch   = (rounded / BrGbiTexelsPerWord((int)a5)) * 8;
+
+    g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
+                 a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
+}
+#else
 void BrGbiBlit(BrGbiBlitFn pfn,
                uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
                uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
@@ -1469,6 +1489,7 @@ void BrGbiBlit(BrGbiBlitFn pfn,
     pfn(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
         a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
 }
+#endif
 
 /* 0x1002A280 */
 /* WHAT IT DOES: builds the backend's version of a texture from a record the
