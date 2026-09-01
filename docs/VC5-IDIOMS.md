@@ -1218,6 +1218,29 @@ the caller AND flipped a helper to match for free.
   `0 - (w & 1)` (that is `neg` with no sbb). Proven 0x1001E9F0
   br_dl_fillcolour, 110 B, MATCH /O2.
 
+- **The strength reducer folds a global array base into the walking IV only
+  when every in-loop access shares ONE symbol.** A stride-12 search over
+  three interleaved pinned columns (0x105B16F0/F4/F8): spelling the two
+  compares off their own symbols keeps a zero-based byte IV (`xor eax,eax`;
+  `cmp [eax+sym]`, 6-byte encodings). Spelling BOTH off the middle symbol
+  (`(char *)&DAT_f4 + i*12 - 4` and `+ i*12`) folds base+i*12 into the IV:
+  preheader `mov eax, offset f4` placed AFTER the entry test (a hand-written
+  pointer init hoists ABOVE it — keep the loop indexed so the reducer owns
+  the IV), compares `[eax-4]`/`[eax]`, and the found-arm's read of the third
+  column recomputes from the index (`lea; [eax*4+f8]`). Writes to such
+  columns are byte-offset stores with n*12 materialised once (`lea; shl`)
+  and each column's own symbol as displacement — the `((T*)&g)[n].field`
+  struct spelling emits scaled `[eax*4+base]` instead (+6 B). Proven
+  0x10018E10 BrVtxCacheResolve + 0x10018FC0 BrVtxCacheInsert (MATCH /O2).
+- **A record loop that reads the rest of the record at negative offsets
+  advanced its pointer at the TOP.** `mov ecx,[arg]; movsx [ecx]; add
+  ecx,0x10; movsx [ecx-0xe]…` is source `v = *(short *)p; p += 0x10;` then
+  `p - 0x0E` etc. — spelling the advance at the bottom with positive
+  offsets biases the IV differently. The fild int-temp lives in a DEAD ARG
+  SLOT, which requires the pointer init to sit INSIDE the count guard
+  (block scope) so the arg slot dies at the right time. Proven 0x10018EF0
+  BrVtxExpand (REGNORM 21→0; residue: whole-function ecx/edx rotation).
+
 - **Per-arm duplicated switch tails come from ONE shared tail after the
   switch — VC5 tail-DUPLICATES the join; per-arm copies in source get
   cross-jump MERGED instead.** Orig: three byte-identical `store y; push;
