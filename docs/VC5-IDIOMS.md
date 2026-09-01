@@ -1465,3 +1465,14 @@ parked-wall kind newly retryable (no new idiom landed).
   chase the original's pipelining FAILS (live-range extension changes the
   frame); that 2-site/4-fxch pipelining depth is scheduler-internal
   residue.
+- **10.2 fixed-point rect packing must be transcribed, never simplified
+  (2026-09-01, 0x10013FD0 BrGfxDrawTexRect).** The F3D-style `*4` /
+  `& 0x3FFC` / `| 0x38C000` / `>> 2` / `<< 12` coordinate dance is
+  value-preserving for integer coords, and the port had folded it to
+  plain masks -- 25 bytes of missing code that looked like a "mixed"
+  wall. VC5 emits every step, including the command byte riding through
+  as `0x38C000` (`>>2 <<12` = 0xE3000000) and the redundant
+  `(y<<2)>>2 & 0xFFF` (it reorders the AND first but keeps the dead
+  shifts). Also proven here: `((w*4-2)&0xFFF)<<12` folds to
+  `shl 14 / sub 0x2000 / and 0xFFF000` on its own -- the literal
+  `w*0x4000-0x2000` spelling is not needed and changes nothing.

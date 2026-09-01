@@ -171,16 +171,27 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
      * extents less half a texel. */
     p = BrGfxAlloc();
     p->w0 = 0xF2002002u;
-    p->w1 = (((uint32_t)((w * 4) - 2) & 0xFFFu) << 12)
-          |  ((uint32_t)((h * 4) - 2) & 0xFFFu);
+    p->w1 = ((uint32_t)((h * 4) - 2) & 0xFFFu)
+          | ((uint32_t)(w * 0x4000 - 0x2000) & 0xFFF000u);
 
-    /* 10016B02: the rect. The original multiplies each coordinate by 4, masks,
-     * then shifts right by 2 again -- a no-op, so these fields are integers. */
+    /* 10016B02: the rect.  The *4 / mask / >>2 fixed-point (10.2) dance is
+     * value-preserving but NOT byte-preserving: VC5 emits every step
+     * (shl 2 / and / [or] / sar 2 / shl 12), so it must be transcribed, not
+     * simplified.  The command byte rides along as 0x38C000, which the
+     * >>2 << 12 turns into 0xE3000000.  x is spelled `* 4` (lea), y is
+     * spelled `<< 2` (shl) -- the original mixes them.
+     * RESIDUE (0+1 regnorm, T3a): the original composes the tile word in
+     * the h-term's register and copies (x+w)*4 aside (`mov edi,edx`)
+     * because it reloads y into edx; ours frees eax and skips the copy --
+     * one whole-register rotation, 5 bytes short.  Probed and failed:
+     * h-first OR order, Ghidra-literal `w*0x4000-0x2000` w-term (both
+     * canonicalize back). */
     p = BrGfxAlloc();
-    p->w0 = 0xE3000000u
-          | (((uint32_t)(x + w) & 0xFFFu) << 12)
-          | ((uint32_t)(y + h) & 0xFFFu);
-    p->w1 = (((uint32_t)x & 0xFFFu) << 12) | ((uint32_t)y & 0xFFFu);
+    p->w0 = (uint32_t)((int32_t)(((uint32_t)((x + w) * 4) & 0x3FFCu)
+                                 | 0x38C000u) >> 2) << 12
+          | ((uint32_t)((y + h) * 4 >> 2) & 0xFFFu);
+    p->w1 = (((uint32_t)(x * 4 >> 2) & 0xFFFu) << 12)
+          | ((uint32_t)((y << 2) >> 2) & 0xFFFu);
 }
 
 /* =====================================================================
