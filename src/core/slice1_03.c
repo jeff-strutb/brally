@@ -75,12 +75,14 @@ BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
     if (pOut != NULL)
         g_pClipFree = pOut->pNext;
 
-    /* DEVIATION: the original does the pop guarded (`test eax,eax / je`) but
-     * then stores through eax unconditionally, so an exhausted free list is
-     * a NULL dereference. Returning NULL instead; every caller in this file
-     * checks and skips the insertion. */
+    /* DEVIATION (port only): the original does the pop guarded
+     * (`test eax,eax / je`) but then stores through eax unconditionally, so
+     * an exhausted free list is a NULL dereference. The port returns NULL
+     * instead; every caller in this file checks and skips the insertion. */
+#ifndef BR_MATCHING_BUILD
     if (pOut == NULL)
         return NULL;
+#endif
 
     /* +0x00 is deliberately not written -- it still holds the free-list
      * link, and each caller overwrites it right after this returns. */
