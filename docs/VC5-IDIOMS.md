@@ -1527,3 +1527,19 @@ parked-wall kind newly retryable (no new idiom landed).
   orig bytes picks the statement order. Proven 0x100703D0 (also needed
   Ghidra's bogus `double` retyped int — watch for size-luck baselines where
   a wrong type happens to give a same-length encoding).
+- **3D pinned array: the row LOAD and the row POINTER use different index
+  decompositions — transcribe both, don't unify.** 0x10059FE0: the first
+  read is the flat byte-offset form
+  `*(int *)((char *)&BASE2 + (b + a*0x1e) * 0x28)` (lea chain ends in
+  `[edx*8+disp]`), the second is a ROW-POINTER
+  `((int *)((char *)&BASE + a*1200 + b*40))[c]` (`shl eax,4` + 
+  `lea edx,[eax+ecx*8+disp]` + `[edx+eax*4]`). Unifying them into one
+  `[a*300+b*10+c]` spelling cross-CSEs the chains and misses. Ghidra's
+  mixed spelling was RIGHT except for int-pointer scaling — add the
+  `(char *)` cast, not a rewrite. MATCH /O2.
+- **2-diff scattered class: two register-pairing walls PARKED (2026-09-01).**
+  0x100283C0 (4 diffs): one arg load slides above two stores — struct-array
+  and one-symbol respellings score worse; scheduler slide, multiset 0.
+  0x1005A480 (7 diffs): counter/pointer esi↔edi rotation — init order, decl
+  order, calltemp all no-ops. 0x10054070 (4 diffs, C++ TU in tree): delta
+  scratch ecx↔edx rotation. All register-blind gap 0 — do not re-probe.
