@@ -329,6 +329,11 @@ the caller AND flipped a helper to match for free.
   Ghidra's temp form was 48 B, the 55-byte "short" was the three extra
   push-pairs + jmps).
 
+- **/Od fuses `a = X; b = a * Y;` through the x87 stack (`fst [a]` keeps
+  the value); BRACING the statements (`{ a = X; } { b = a * Y; }`) forces
+  the original's full store + reload (`fstp [a]; fld [a]`).** volatile does
+  NOT block this peephole; a `*(float *)&a` read also blocks it. Proven
+  0x1002D362 BrCamFrustumBuild (466 B, MATCH /Od).
 - **/Od local slot order:** plain function-scope locals get slots in DECL
   order (-4, -8, -0xC...), but a local declared INSIDE a nested block is
   allocated AFTER every function-scope local, regardless of textual position.
