@@ -1654,3 +1654,20 @@ parked-wall kind newly retryable (no new idiom landed).
   ONE scheduling fork: the orig defers the pending sin-result fstp past
   the first three integer stores; every probed source pops it at call
   return.  Parked.
+
+- **Long-class harvest (2026-09-01):** (1) `call A; jmp B` at a function
+  start = a TAIL-CALL WRAPPER (`{A(); B();}` — VC5 turns a trailing call
+  into jmp) that the map merged with the jump target; split the map row
+  (0x1005A6A0/0x1005A6B0, both MATCH after the split; corpus scanned,
+  no other instance). (2) Ghidra artifacts now transforms: discarded
+  float call + bare `ftol()` (`ftolfuse`), walker-rewind strcpy
+  explosion (`walkerstrcpy`), dead COM-failure re-zero (`deadnull`).
+  (3) `extern int s_*` vs `extern char s_*[]` still the top single fix
+  (0x100356B0). (4) Ghidra `iVar = X + carry` pairs = a 64-bit
+  `__int64` add (`add/adc`) — spell via an __int64 LOCAL temp
+  (direct global `+=` interleaves load/add/store per half); 0x10071F00
+  parked at 3 diffs (high half ecx vs edx, all spellings/flags probed).
+  (5) VC5 SORTS adjacent literal global stores BY VALUE (all -1s, then
+  0s); an orig that alternates -1/0 stores with a second zero register
+  is NOT literal-store source — unsolved on 0x10013E80 (52 diffs,
+  memset-expansion and named-local probes failed; do not repeat them).
