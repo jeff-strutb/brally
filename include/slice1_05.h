@@ -423,6 +423,12 @@ typedef struct BrEnt {
     BrEntRec     *f158;      /* &pRecs[f154] */
 } BrEnt;
 
-void BrEntInit(BrEnt *pEnt, BrEnt *pBase, BrEntRec *pRecs);
+/* Glide storage: pad blocks at 0x106ED708 (stride 0x15C), records at
+ * 0x106ED630 (stride 6).  The original passes only the entity -- in ECX,
+ * one register arg == __fastcall exactly (see thiscall-via-fastcall). */
+extern BrEnt    g_aBrEnts[];      /* 0x106ED708 */
+extern BrEntRec g_aBrEntRecs[];   /* 0x106ED630 */
+
+void __fastcall BrEntInit(BrEnt *pEnt);
 
 #endif /* SLICE1_05_H */
