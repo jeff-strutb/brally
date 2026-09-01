@@ -86,6 +86,18 @@ static int32_t BrSext24(uint32_t v)
 /* @implements 0x100066E0 d3d BrFixPackU24Q13 */
 int32_t BrFixPackU24Q13(float v)
 {
+#ifdef BR_MATCHING_BUILD
+    /* The scale and bias are FLOAT constants (single-precision fmul/fsubr);
+     * the clamp stays in ST(0), and the final `(int32_t)` is the plain cast
+     * VC5 tail-jumps to __ftol -- the same form as BrFixPackS24Q1. */
+    double d = BrFloor(0.5f - v * -8192.0f);
+
+    if (!(d >= 0.0))
+        d = 0.0;
+    if (d > 16777215.0)
+        d = 16777215.0;
+    return (int32_t)d;
+#else
     double d = BrFloor(0.5 - (double)v * -8192.0);
 
     if (!(d >= 0.0))
@@ -93,6 +105,7 @@ int32_t BrFixPackU24Q13(float v)
     if (d > 16777215.0)
         d = 16777215.0;
     return BrFtol(d);
+#endif
 }
 
 /* 0x10006730.  0x1008F100 = -2.0f. Clamp is on the INTEGER, after __ftol, and
