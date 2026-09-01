@@ -746,10 +746,11 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    uint8_t  pack[4];   /* read back int-punned: `*(int32_t*)&pack[n] & 0xFF`
-                         * is what VC5 compiles to the original's dword-read
-                         * of the byte slot (a plain byte read gets store-
-                         * forwarded and the stores vanish) */
+    char     pack[4];   /* SIGNED, stores volatile-punned, reads `& 0xFF`:
+                         * the mask is semantically required on signed char,
+                         * which is what makes VC5 emit the original's
+                         * dword-read + and 0xff of the byte slot instead of
+                         * narrowing/forwarding the load */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
@@ -866,37 +867,37 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
                    | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
                    | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
-        pack[0] = BrG_6C0960;
-        pack[1] = BrG_6C65BC;
-        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+        *(volatile char *)&pack[0] = BrG_6C0960;
+        *(volatile char *)&pack[1] = BrG_6C65BC;
+        colourB = ((pack[0] & 0xFF))
                 | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
         colourB <<= 8;
-        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB |= (pack[1] & 0xFF);
         colourB <<= 8;
     } else if (flag290C != 0) {
         uint8_t t80 = (uint8_t)((g_BrDrawByte80 * 4) / 5);
         colourA = 0;
-        pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
-        pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
-        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+        *(volatile char *)&pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
+        *(volatile char *)&pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
+        colourB = ((pack[0] & 0xFF))
                 | (uint32_t)t80 << 8;
         colourB <<= 8;
-        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB |= (pack[1] & 0xFF);
         colourB <<= 8;
     } else {
-        pack[0] = BrG_6C335C;
-        pack[1] = BrG_6C0968;
-        colourA = (*(const int32_t *)&pack[0] & 0xFF)
+        *(volatile char *)&pack[0] = BrG_6C335C;
+        *(volatile char *)&pack[1] = BrG_6C0968;
+        colourA = ((pack[0] & 0xFF))
                 | (uint32_t)(uint8_t)BrG_6C1580 << 8;
         colourA <<= 8;
-        colourA |= *(const int32_t *)&pack[1] & 0xFF;
+        colourA |= (pack[1] & 0xFF);
         colourA <<= 8;
-        pack[0] = BrG_6C0960;
-        pack[1] = BrG_6C65BC;
-        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+        *(volatile char *)&pack[0] = BrG_6C0960;
+        *(volatile char *)&pack[1] = BrG_6C65BC;
+        colourB = ((pack[0] & 0xFF))
                 | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
         colourB <<= 8;
-        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB |= (pack[1] & 0xFF);
         colourB <<= 8;
     }
 
