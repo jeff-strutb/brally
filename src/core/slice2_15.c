@@ -723,6 +723,28 @@ void BrHudDraw(BrHudView *aViews, int a2)
  * rather than the sky. Five separate conditions each force the flat fill --
  * among them having no sky picture loaded at all. */
 /* @implements 0x10018070 d3d BrSceneUsePlainClear */
+#ifdef BR_MATCHING_BUILD
+/* Loose globals, goto-shared return-1 tail with the last test inverted
+ * (the fade-family shape). */
+extern int DAT_106ed6ac, DAT_106ed6b0, DAT_106ed6b4;
+extern int DAT_106eed28, DAT_100b3858;
+
+int BrSceneUsePlainClear(void)
+{
+    if (DAT_106ed6ac != 0)
+        goto yes;
+    if (DAT_106ed6b0 != 0)
+        goto yes;
+    if (DAT_106ed6b4 != 0)
+        goto yes;
+    if (DAT_106eed28 == 0)
+        goto yes;
+    if (DAT_100b3858 != 2)
+        return 0;
+yes:
+    return 1;
+}
+#else
 int BrSceneUsePlainClear(void)
 {
     if (g_scene.f6C661C == 0) {
@@ -738,6 +760,7 @@ int BrSceneUsePlainClear(void)
     }
     return 1;
 }
+#endif
 
 /* =====================================================================
  * 0x10017F60

@@ -409,6 +409,29 @@ int BrPhaseActivate_10045900(void)
  * block behind it, wires the new screen's Back row so the player can get out,
  * and puts the menus back in their default mode. */
 /* @implements 0x10045AA0 d3d BrPhaseHook_10045AA0 */
+#ifdef BR_MATCHING_BUILD
+/* Loose globals and direct callees; the next-hook function address is
+ * stored as an immediate. */
+extern int   DAT_100a9360;
+extern void *DAT_10af2094;
+extern char *DAT_10ac5d08;
+extern void BrSub10037C90(void);            /* glide 0x10037C90 */
+extern int  BrSub1003F130(void *pArg);      /* glide 0x1003F130 (C++ activate) */
+extern void BrSub10037B20(void);            /* glide 0x10037B20 */
+extern int  BrUiHook89_10046CD0(void *);    /* glide 0x100401C0 */
+
+int BrPhaseHook_10045AA0(void *pArg)
+{
+    DAT_100a9360 = 0;
+    BrSub10037C90();
+    DAT_10af2094 = 0;
+    BrSub1003F130(pArg);
+    *(void **)(DAT_10ac5d08 + 8) = (void *)BrUiHook89_10046CD0;
+    DAT_100a9360 = 0;
+    BrSub10037B20();
+    return 1;
+}
+#else
 int BrPhaseHook_10045AA0(void *pArg)
 {
     g_pBase->n0AA010 = 0;
@@ -420,6 +443,7 @@ int BrPhaseHook_10045AA0(void *pArg)
     BrExt_1003E510();
     return 1;
 }
+#endif
 
 /* 0x10045AF0 */
 /* WHAT IT DOES: brings up the "load championship season" screen, building it
