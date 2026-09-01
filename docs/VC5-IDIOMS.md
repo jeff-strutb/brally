@@ -1273,6 +1273,17 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **`errno` in a /MD matching TU is the CRT `_errno()` CALL (FF 15),
+  never a variable load.** Spell it `*_errno()` with
+  `_CRTIMP int *__cdecl _errno(void);` — the plain errno macro (or an
+  undeclared `_errno`) compiles to a variable load or an E8 near call
+  and shifts every byte after it. The wrap now auto-declares it.
+  Also proven on the same pair: a drifted refine draft's whole-function
+  register rotation dissolved on clean retranscription (rotation is a
+  symptom), and reloc-masked STRING operands must be verified against
+  the DLL data section before naming — the "rb"/"wb" twins were
+  swapped relative to their VA order. Proven 0x10008DC0
+  BrFileCreateChecked / 0x10008E10 BrFileOpenChecked (67 B, /O2).
 - **Bounds-checked container methods (`cmp reg,[this+0x10]; jb` +
   warn printf, thiscall `ret N`) are one C++ class — write real
   members, not fastcall tricks.** The Tbl8900 family
