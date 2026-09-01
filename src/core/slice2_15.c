@@ -960,6 +960,38 @@ void BrWeatherStepWind(void)
  * travelling outward at the speed of sound, and once that has gone far enough
  * it starts watching for the next strike. */
 /* @implements 0x10019620 d3d BrWeatherStepLightning */
+#ifdef BR_MATCHING_BUILD
+extern int    DAT_100a718c;
+extern float  DAT_104add3c;
+extern float  DAT_106e9d8c, DAT_1007731c;
+extern double DAT_10077320;
+extern float  DAT_104abb60, DAT_104abb64;
+extern int    DAT_104abb68, DAT_106eed10;
+
+void BrWeatherStepLightning(void)
+{
+    int n = DAT_100a718c;
+
+    if (n >= 0) {
+        DAT_104add3c = DAT_104add3c - DAT_106e9d8c * DAT_1007731c;
+        if (n > 0) {
+            DAT_100a718c = n - 1;
+            return;
+        }
+        if (DAT_104add3c > DAT_10077320)
+            DAT_100a718c = -1;
+        return;
+    }
+
+    if ((int)(BrRandom() & 0xFFFF) < 0x80) {
+        DAT_104add3c = 0;
+        DAT_100a718c = 3;
+        DAT_104abb60 = (float)(BrRandom() & 0x7FF);
+        DAT_104abb64 = (float)(BrRandom() & 0x7FF);
+        DAT_104abb68 = DAT_106eed10;
+    }
+}
+#else
 void BrWeatherStepLightning(void)
 {
     if (g_weather.lightning < 0) {
@@ -987,6 +1019,7 @@ void BrWeatherStepLightning(void)
     if ((double)g_weather.thunderDist > kF370)
         g_weather.lightning = -1;
 }
+#endif
 
 /* =====================================================================
  * 0x100196D0
