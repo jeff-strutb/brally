@@ -462,36 +462,48 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
 void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
 {
     BrMat4 tmp;
-    BrMat4 *pDst;
-    int aliased, i, j;
+    int i, j;
 
     if (pA == NULL || pB == NULL)
         return;
     /* pOut is deliberately NOT checked -- see the header. */
 
-    aliased = (pOut == pA || pOut == pB);
-    pDst = aliased ? &tmp : pOut;
+    /* TWO separate loop nests, not one nest with a flag: the original
+     * branches once (both compares jump into the scratch path, the direct
+     * path is the fallthrough) and each path carries its own rolled 4x4
+     * loops with a different summation order. */
+    /* Each element is ONE expression (a named `s` accumulator costs
+     * fadd-without-pop + a discard at the loop tail).  The written pair
+     * order is REVERSED from the evaluated one, and the two nests' pair
+     * spellings are COUPLED through the optimizer -- all four combinations
+     * measured; this one is the minimum.
+     * RESIDUE (2+2 regnorm, 24 masked B, T3a): hoisted-operand-load order
+     * inside the aliased nest (which b-row load is hoisted first) --
+     * identical op counts, operand-source only; the playbook's documented
+     * scheduling wall class. */
+    if (pA != pOut && pB != pOut) {
+        for (i = 0; i < 4; ++i) {
+            for (j = 0; j < 4; ++j) {
+                /* 0x100306FD evaluates ((a2*b2 + a3*b3) + a0*b0) + a1*b1 */
+                pOut->m[i][j] = (pA->m[i][3] * pB->m[3][j]
+                                 + pA->m[i][2] * pB->m[2][j]
+                                 + pA->m[i][0] * pB->m[0][j])
+                                + pA->m[i][1] * pB->m[1][j];
+            }
+        }
+        return;
+    }
 
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
-            float s;
-            if (aliased) {
-                /* 0x10030753: ((a3*b3 + a1*b1) + a0*b0) + a2*b2 */
-                s = pA->m[i][3] * pB->m[3][j] + pA->m[i][1] * pB->m[1][j];
-                s = s + pA->m[i][0] * pB->m[0][j];
-                s = s + pA->m[i][2] * pB->m[2][j];
-            } else {
-                /* 0x100306FD: ((a2*b2 + a3*b3) + a0*b0) + a1*b1 */
-                s = pA->m[i][2] * pB->m[2][j] + pA->m[i][3] * pB->m[3][j];
-                s = s + pA->m[i][0] * pB->m[0][j];
-                s = s + pA->m[i][1] * pB->m[1][j];
-            }
-            pDst->m[i][j] = s;
+            /* 0x10030753 evaluates ((a3*b3 + a1*b1) + a0*b0) + a2*b2 */
+            tmp.m[i][j] = (pA->m[i][1] * pB->m[1][j]
+                           + pA->m[i][3] * pB->m[3][j]
+                           + pA->m[i][0] * pB->m[0][j])
+                          + pA->m[i][2] * pB->m[2][j];
         }
     }
-
-    if (aliased)
-        *pOut = tmp;            /* `rep movsd` of 16 dwords in the original */
+    *pOut = tmp;                /* `rep movsd` of 16 dwords in the original */
 }
 
 /* 0x10031140 */
