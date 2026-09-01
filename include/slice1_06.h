@@ -99,24 +99,26 @@ typedef struct BrKeyEnt {
     uint32_t f0C;    /* +0x0C -- never read by this routine      */
 } BrKeyEnt;
 
-typedef struct BrKeyTable {
-    BrKeyEnt *aEnts;   /* 0x106C7E7C */
-    int32_t   count;   /* 0x10A99778 */
-    uint32_t  bias;    /* 0x10A9977C */
-} BrKeyTable;
+#define BR_KEYTABLE_MAX 64   /* capacity not proven; storage upper bound */
+
+/* The Glide binary embeds the table INLINE at 0x106EEF0C (the base is
+ * folded into the addressing); count is 0x10AC0808 and bias 0x10AC080C.
+ * The old BrKeyTable pointer model came from a misread of the D3D twin. */
+extern BrKeyEnt g_aBrKeyEnts[BR_KEYTABLE_MAX];  /* 0x106EEF0C */
+extern int32_t  g_brKeyCount;                   /* 0x10AC0808 */
+extern uint32_t g_brKeyBias;                    /* 0x10AC080C */
 
 /* 0x10037930. Looks for `bias + key` among the first `count` entries.
  *
  * GOTCHA 1: the query is BIASED -- the original adds the global at
- * 0x10A9977C to the caller's key before comparing. Passing a raw table key
+ * 0x10AC080C to the caller's key before comparing. Passing a raw table key
  * finds nothing unless bias is 0.
  * GOTCHA 2: the scan runs BACKWARDS from count-1 to 0, so with duplicate
  * keys the LAST matching entry wins.
  * Returns 1 and fills the two out-params on a hit, 0 otherwise (leaving them
  * untouched).
  * count <= 0 returns 0 without touching the table. */
-int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
-                   uint32_t *pA, uint32_t *pB);
+int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB);
 
 /* ==========================================================================
  * 0x1003B940 -- point-in-triangle

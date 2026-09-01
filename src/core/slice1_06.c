@@ -163,19 +163,27 @@ int BrDevRecMatch(uint32_t value)
  * values filed against it, reporting whether it found anything. The key is
  * shifted by the table's own offset first, and the search runs from the end
  * backwards, so where a key appears twice the later entry wins. */
+BrKeyEnt g_aBrKeyEnts[BR_KEYTABLE_MAX];  /* 0x106EEF0C */
+int32_t  g_brKeyCount;                   /* 0x10AC0808 */
+uint32_t g_brKeyBias;                    /* 0x10AC080C */
+
 /* @implements 0x10037930 d3d BrKeyTableFind */
-int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
-                   uint32_t *pA, uint32_t *pB)
+int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 {
-    uint32_t want = key + pTable->bias;
-    int32_t  i    = pTable->count - 1;
+    uint32_t want = key + g_brKeyBias;
+    int32_t  i    = g_brKeyCount - 1;
+
+    /* RESIDUE (1+1 regnorm, T3a): the key loads into a different register
+     * from the first instruction (FIRSTDIV +0x1), which turns the bias
+     * `add edx,eax` into a lea; destructive `key +=` spelling identical.
+     * Same first-load coloring class as BrPendListAdd. */
 
     /* `dec eax / test eax,eax / jl` -- count == 0 leaves i == -1 and the
      * whole loop is skipped. */
     while (i >= 0) {
-        if (pTable->aEnts[i].key == want) {
-            *pA = pTable->aEnts[i].a;
-            *pB = pTable->aEnts[i].b;
+        if (want == g_aBrKeyEnts[i].key) {
+            *pA = g_aBrKeyEnts[i].a;
+            *pB = g_aBrKeyEnts[i].b;
             return 1;
         }
         i--;
