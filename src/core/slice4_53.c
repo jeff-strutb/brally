@@ -13,7 +13,13 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #endif
+#ifdef BR_MATCHING_BUILD
+#define BrCarSub9020 BrCarSub9020_port2
 #include "slice4_53.h"
+#undef BrCarSub9020
+#else
+#include "slice4_53.h"
+#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include <math.h>
@@ -25,7 +31,13 @@
 #include "slice2_18.h"      /* BrGfx2C210, BrGfx31227 declarations        */
 #include "slice2_19.h"      /* BrSub10002240, BrSub100088B0, BrSub10037740 */
 #include "slice2_20.h"      /* BrPoolEmit, BrRcaLoadCar                   */
+#ifdef BR_MATCHING_BUILD
+#define BrCarSub9020 BrCarSub9020_port
 #include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
+#undef BrCarSub9020
+#else
+#include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
+#endif
 #include "slice2_22.h"      /* BrDPlayLink, BrDPlaySendTag4               */
 #include "slice2_24.h"      /* BrStringById, BrMenuSub10044B90, ...       */
 
@@ -301,10 +313,95 @@ void BrGfx31227(void)
  * free list and starts a new particle at the car with a velocity based on
  * how the car is moving. If the pool is empty nothing is spawned. */
 /* @implements 0x10039020 d3d BrCarSub9020 */
+#ifdef BR_MATCHING_BUILD
+/* The original is the full particle-spawn body the port folded into
+ * BrPoolEmit: timer accumulate + threshold, free-slot word shuffle,
+ * velocity build via the vec helpers, and the slot's colour/life fields
+ * from the divided distance.
+ * RESIDUE (parked, REGNORM 13+13): the operand-kind wall -- orig puts the
+ * e24 field on the fld side of its products (ours ranks the extern consts
+ * higher; scalar/array-element/bound-pointer spellings all canonicalize
+ * back), orig fcom-before-fstp on the threshold store (assignment-in-
+ * condition folds to fst+fcomp), and the esi/edi this-rotation downstream
+ * of both. The 0x1000EAF0 per-product kind-ladder probing is the known
+ * path if this is ever revisited. */
+extern float DAT_1007752c[], DAT_10077530[], DAT_10077534[], DAT_10077538[];
+extern float DAT_1007753c[], DAT_10077540[], DAT_10077544[], DAT_10077548[];
+extern float DAT_1007754c[], DAT_10077550[], DAT_10077554[];
+extern float DAT_106e9d8c[];
+extern int   DAT_10ac0c38;
+extern unsigned short DAT_10ac0c40;
+extern char  DAT_10ac0c48;      /* slot vec A column   */
+extern char  DAT_10ac0c54;      /* slot vec B column   */
+extern char  DAT_10ac0c60;      /* slot float column   */
+extern char  DAT_10ac0c64;      /* slot word column    */
+extern char  DAT_10ac0c66;      /* slot byte column    */
+extern char  DAT_10ac0c67;      /* slot byte column    */
+extern int   BrRandom(void);
+extern void  BrSub10034560(void *pDst, void *pA, void *pB);
+extern void  BrSub10034660(void *pDst, void *pA, void *pB, float s);
+extern float BrSub100347F0(void *p);
+
+void __fastcall BrCarSub9020(struct BrCar *pCar)
+{
+    char *p = (char *)pCar;
+    float *pe24;
+    float local[3];
+    float acc, f2, t, g;
+    unsigned int idx;
+    int off;
+    unsigned short w40old, wslot;
+
+    pe24 = (float *)(p + 0xE24);
+    acc = ((float)(BrRandom() & 0x1FFF) * DAT_1007752c[0]
+           - *pe24 * DAT_10077530[0]
+           - DAT_10077534[0]) * DAT_106e9d8c[0]
+          + *(float *)(p + 0x105C);
+
+    if ((*(float *)(p + 0x105C) = acc) > DAT_10077538[0]) {
+        idx = (unsigned int)DAT_10ac0c38 & 0xFFFFu;
+        if (idx != 0) {
+            f2  = *pe24 * DAT_1007753c[0];
+            off = (int)idx << 5;
+            *(int *)(p + 0x105C) = 0;
+
+            w40old = DAT_10ac0c40;
+            wslot  = *(unsigned short *)(&DAT_10ac0c64 + off);
+            DAT_10ac0c40 = (unsigned short)idx;
+            *(unsigned short *)&DAT_10ac0c38 = wslot;
+            *(unsigned short *)(&DAT_10ac0c64 + off) = w40old;
+
+            BrVec3Scale((BrVec3 *)(void *)(&DAT_10ac0c54 + off),
+                        (const BrVec3 *)(const void *)p,
+                        DAT_10077540[0] - f2);
+            BrSub10034560(local, p + 0xF0, p);
+            BrSub10034660(local, local, p + 0x20, 0.2f);
+            BrSub10034660(local, local, p + 0x10, 0.2f);
+
+            g = (float)(BrRandom() & 0xFFFF) * DAT_10077544[0];
+            BrSub10034560(&DAT_10ac0c48 + off, p + 0x1060, local);
+            BrSub10034660(&DAT_10ac0c48 + off, local,
+                          &DAT_10ac0c48 + off, g * g);
+
+            *(int *)(p + 0x1060) = ((int *)local)[0];
+            *(int *)(p + 0x1064) = ((int *)local)[1];
+            *(int *)(p + 0x1068) = ((int *)local)[2];
+
+            t = f2 * DAT_10077548[0] - DAT_10077534[0];
+            *(float *)(&DAT_10ac0c60 + off) = t * DAT_1007754c[0];
+            *(char *)(&DAT_10ac0c66 + off) =
+                (char)(int)(DAT_10077550[0] / (BrSub100347F0(p + 0x1024) + t)
+                            * DAT_10077554[0]);
+            *(unsigned char *)(&DAT_10ac0c67 + off) = 0xFF;
+        }
+    }
+}
+#else
 void BrCarSub9020(struct BrCar *pCar)
 {
     BrPoolEmit(pCar);
 }
+#endif
 
 /* 0x10037740 */
 /* WHAT IT DOES: loads one car's model and data out of the game's .rca
