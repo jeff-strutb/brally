@@ -668,8 +668,7 @@ int BrRet1_10035B87(void);
  * DEVIATION (D4): both indexed tables are arguments. In the original they
  * are 0x100C12A0 (stride 0x15F88) and 0x106C6558 (stride 4), and `i` is not
  * bounds-checked. */
-void BrCarSlotLoad(unsigned char *aCars, void **aCarPtr, int i,
-                   void *pArg, int flag);
+void BrCarSlotLoad(int i, void *pArg, int flag);
 
 extern void *g_BrLogArg;    /* 0x106C2CF0 */
 
