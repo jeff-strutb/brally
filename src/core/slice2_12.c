@@ -755,7 +755,7 @@ uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
  * stacks of free numbers, locking it first so another thread cannot take the
  * same one. A negative index means the stack is empty, and the caller gets
  * -1. Note the top entry sits at the index itself, not one below it. */
-/* @implements 0x10005D40 d3d BrNetStackPop */
+/* port-only body; Glide match is src/core/generated/0x100060B0.c */
 int32_t BrNetStackPop(void *hMutex, int32_t *paStack, int32_t *piTop)
 {
     int32_t v;
@@ -790,7 +790,7 @@ int32_t BrNetGetA102212D0(BrNetState *pNet, int32_t i)
 /* WHAT IT DOES: reads four small pieces of one player's network slot at
  * once, under that slot's lock: one number returned directly, and three
  * bytes handed back through pointers. */
-/* @implements 0x10005DE0 d3d BrNetSlotGetF030 */
+/* port-only body; Glide match is src/core/generated/0x10006150.c */
 int32_t BrNetSlotGetF030(BrNetState *pNet, int32_t slot,
                          uint8_t *pb34, uint8_t *pb35, uint8_t *pb36)
 {
@@ -837,7 +837,7 @@ void BrNetSlotSetName(BrNetState *pNet, int32_t slot, const char *pszName)
  * locks the slot and then calls another routine that locks the same slot
  * again -- harmless on Windows, but a deadlock if the lock is replaced with
  * a non-recursive one. */
-/* @implements 0x10005F40 d3d BrNetSlotGetF02CBiased */
+/* port-only body; Glide match is src/core/generated/0x100062B0.c */
 int32_t BrNetSlotGetF02CBiased(BrNetState *pNet, int32_t slot)
 {
     BrNetSlot *pSlot = &pNet->aSlots[slot];
