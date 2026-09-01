@@ -1411,3 +1411,24 @@ parked-wall kind newly retryable (no new idiom landed).
   while REGNORM fell 9 (register-blind multiset is the truth). Rank residue by
   REGNORM, never region/diff count — the count re-segments on any structural
   edit. Proven BrCarDrawVehicle.
+
+- **Phase-leave family: guarded/tailed vcall variants are ONE stampable
+  grammar (2026-09-01).** 0x1003CD20 (guarded slot-6 vcall) and 0x1003FBE0
+  (double-strcpy tail) both landed byte-exact FIRST COMPILE from the
+  0x1003D4A0-style C++ TU skeleton — GameObj +0x2AE8 pSub, natural
+  statement order. Two scheduling facts fall out for free, do not fight
+  them: (1) the vcall's `push 0` hoists ABOVE a preceding member store
+  (`pSub->f68 = 0; pSub->s6(0);` emits push first); (2) zero stores
+  written before a strcpy get scheduled INTO the intrinsic's
+  strlen/copy latency slots (`xor esi,esi` from the g_cur null-compare is
+  reused as the store source). Spell the source naturally; the scheduler
+  does the interleaving.
+- **Reloc-masked twin stamping (tools/gen_cpptwin.py, 2026-09-01).** UI/phase
+  C++ functions ship the same machine code repeatedly, differing only in
+  DIR32 slots (the seven 158-B 0x1003FBE0 siblings differ in ONE byte —
+  the phase-source global). After hand-proving one member, run
+  `python3 tools/gen_cpptwin.py` — it compares every unmatched orig bin
+  against every matched C++ TU with base-reloc + external-rel32 masking and
+  stamps renamed TUs for structural twins (+6 byte-exact on first run).
+  Both gates hold: the scorer masks relocs, image_build backfills slots
+  from the original's bytes. Re-run it after ANY new C++ TU lands.
