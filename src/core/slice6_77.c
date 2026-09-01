@@ -52,6 +52,46 @@ void BrSub100586A0(void)
  * settings the player had, selecting the matching device record on the way
  * back. */
 /* @implements 0x100795D0 d3d BrFfbReprobe */
+#ifdef BR_MATCHING_BUILD
+/* The restore chain is a real switch: each arm stores its record ADDRESS
+ * as an immediate and restores the exclusive flag itself (arms in memory
+ * order default,3,2,1; case 1 restores the flag before the pointer). */
+extern void BrExt_10079550(void);   /* glide 0x10072840, 0 args */
+
+void BrFfbReprobe(void)
+{
+    int32_t nSavedMode = g_brB4E1D0;   /* esi */
+    int32_t nSavedExcl = g_brB4E1E0;   /* edi */
+
+    g_brB4E1D0 = 2;
+    g_brB4E1D4 = g_aBrB4DF30[2];
+    g_brB4E1E0 = 1;
+
+    (void)BrFfbInit();
+    BrExt_10079550();
+
+    g_brB4E1D0 = nSavedMode;
+
+    switch (nSavedMode) {
+    default:
+        g_brB4E1D4 = g_aBrB4DF30[0];
+        g_brB4E1E0 = nSavedExcl;
+        return;
+    case 3:
+        g_brB4E1D4 = g_aBrB4DF30[3];
+        g_brB4E1E0 = nSavedExcl;
+        return;
+    case 2:
+        g_brB4E1D4 = g_aBrB4DF30[2];
+        g_brB4E1E0 = nSavedExcl;
+        return;
+    case 1:
+        g_brB4E1E0 = nSavedExcl;
+        g_brB4E1D4 = g_aBrB4DF30[1];
+        return;
+    }
+}
+#else
 void BrFfbReprobe(void)
 {
     int32_t nSavedMode = g_brB4E1D0;   /* esi */
@@ -86,6 +126,7 @@ void BrFfbReprobe(void)
 
     g_brB4E1E0 = nSavedExcl;
 }
+#endif
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
