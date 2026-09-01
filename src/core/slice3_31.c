@@ -418,7 +418,7 @@ extern char *DAT_10ac5d08;
 extern void BrSub10037C90(void);            /* glide 0x10037C90 */
 extern int  BrSub1003F130(void *pArg);      /* glide 0x1003F130 (C++ activate) */
 extern void BrSub10037B20(void);            /* glide 0x10037B20 */
-extern int  BrUiHook89_10046CD0(void *);    /* glide 0x100401C0 */
+extern int  BrOpt6D70(void *);              /* glide 0x100401C0 */
 
 int BrPhaseHook_10045AA0(void *pArg)
 {
@@ -426,7 +426,7 @@ int BrPhaseHook_10045AA0(void *pArg)
     BrSub10037C90();
     DAT_10af2094 = 0;
     BrSub1003F130(pArg);
-    *(void **)(DAT_10ac5d08 + 8) = (void *)BrUiHook89_10046CD0;
+    *(void **)(DAT_10ac5d08 + 8) = (void *)BrOpt6D70;
     DAT_100a9360 = 0;
     BrSub10037B20();
     return 1;
