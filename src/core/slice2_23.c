@@ -1304,6 +1304,10 @@ int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
  * strlen+memcpy decomposition changes the copy shape (3+2). */
 extern int32_t BrUiApply_10038380(void *pObj, int32_t index);
 
+/* RESIDUE (parked, 18 B x3, REGNORM 1+1): orig schedules the vtbl load
+ * into the strcpy expansion (before shr/rep); ours lands it after the
+ * movsb. Hoisting it in source (statement or comma-in-arg) rotates the
+ * whole body instead. Scheduler-internal. */
 #define BR23_TEXT_TABLE_BODY(valueg, tableg)                             \
     const char *s;                                                       \
     char *dst;                                                           \
