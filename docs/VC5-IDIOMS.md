@@ -1232,6 +1232,11 @@ the caller AND flipped a helper to match for free.
   and each column's own symbol as displacement — the `((T*)&g)[n].field`
   struct spelling emits scaled `[eax*4+base]` instead (+6 B). Proven
   0x10018E10 BrVtxCacheResolve + 0x10018FC0 BrVtxCacheInsert (MATCH /O2).
+  **When the stride divides by a SIB scale (0x978 = 303*8), even the
+  byte-offset spelling canonicalizes back to `[r*8+disp]` — a NAMED
+  `int off = i * 0x978;` variable forces the one-time shl materialisation**
+  (5 uses; inline arithmetic stays scaled at any use count). Proven
+  0x10006150 BrNetSlotGetF030 (96 B, MATCH /O2).
 - **A record loop that reads the rest of the record at negative offsets
   advanced its pointer at the TOP.** `mov ecx,[arg]; movsx [ecx]; add
   ecx,0x10; movsx [ecx-0xe]…` is source `v = *(short *)p; p += 0x10;` then
