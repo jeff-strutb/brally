@@ -119,6 +119,7 @@ def main():
     print('%-24s %-11s %6s %5s %6s %7s %7s %6s  %s' %
           ('symbol', 'va', 'origB', 'cmpl', 'insnD', 'rawgap', 'reggap',
            'struct', 'verdict'))
+    ranks = []
     for m in out:
         # completeness first: a recomp far SMALLER than the original is the
         # known missing-code class (a factored helper the original inlined),
@@ -126,16 +127,31 @@ def main():
         c = 100.0 * m['ri'] / m['oi'] if m['oi'] else 0.0
         if c < 80:
             v = 'MISSING CODE (%.0f%% complete)' % c
+            score = 100000 + m['reg']
         elif m['pct'] < 15:
             v = 'coloring wall - real'
+            score = 1000000 + m['reg']          # park-tier: claimed last
         elif m['pct'] < 70:
             v = 'mixed'
+            score = 10000 + m['reg']
         else:
             v = 'SHAPE - best targets'
+            score = m['reg']                    # small real work first
+        ranks.append((m['va'], score, v))
         print('%-24s %-11s %6d %4.0f%% %+6d %7d %7d %5.0f%%  %s' %
               (m['sym'][:24], m['va'], m['ob'], c, m['ri'] - m['oi'],
                m['raw'], m['reg'], m['pct'], v))
     print('\n%d functions measured' % len(out))
+    if not want:
+        # publish the lane-priority ranking for tools/claim_lane.py: lower
+        # score = claim first (SHAPE < mixed < missing-code < coloring wall).
+        rank_csv = os.path.join(ROOT, 'build', 'match', 'triage_rank.csv')
+        with open(rank_csv, 'w', newline='') as f:
+            w = csv.writer(f)
+            w.writerow(['va', 'score', 'verdict'])
+            for va, score, v in ranks:
+                w.writerow([va, score, v])
+        print('lane ranking -> %s' % os.path.relpath(rank_csv, ROOT))
     return 0
 
 

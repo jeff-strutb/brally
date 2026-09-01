@@ -86,12 +86,16 @@ touching them, or you will re-run probes already proven dead:
 
 Multiple workers coordinate through the claim ledger, not by guessing:
 
-    python3 tools/claim_lane.py claim 5        # prints a TOKEN + 5 unclaimed diff fns
+    python3 tools/fnmatch/triage.py            # refresh the lane ranking first
+    python3 tools/claim_lane.py claim 5        # TOKEN + the 5 BEST unclaimed targets
     python3 tools/claim_lane.py release <TOKEN> [wallVA ...]   # park walls, free the rest
 
-Claims go stale after 90 min, matched functions drop out automatically. Work
-only functions in your lane; park true walls via release so they are never
-re-handed.
+Lanes are RANKED: triage.py publishes `build/match/triage_rank.csv` and claim
+hands out best-first (SHAPE targets, then mixed, then missing-code; coloring
+walls last). Refresh the ranking at session start — it goes stale as matches
+land. Claims go stale after 90 min, matched functions drop out automatically.
+Work only functions in your lane; park true walls via release so they are
+never re-handed.
 
 ## The loop (one function)
 
