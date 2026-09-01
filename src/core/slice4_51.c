@@ -743,4 +743,20 @@ unknown:
   return DAT_10ac3070;
 }
 
+
+extern int DAT_10ac40a8;
+
+/* @implements 0x100367C0 glide FUN_100367c0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_100367c0(char *param_1)
+
+{
+  if (strlen((char *)&DAT_10ac40a8) > 1) {
+    strcpy(param_1, (char *)&DAT_10ac40a8);
+  }
+  *(int *)(param_1 + 0xc8) = 0;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
