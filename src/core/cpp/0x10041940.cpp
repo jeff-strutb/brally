@@ -4,9 +4,11 @@
  *
  * 64 B frameless thiscall — the Adv() the 0x10041980 Frame twin calls.
  * The limit word is read into a register var FIRST (dx, zero-extended
- * with and 0xffff at the compare), the paced counter global second;
- * wrap-to-0 vs clamp-to-lim-1 both store the global through the shared
- * word store (cross-jumped), then w346 latches the result.
+ * with and 0xffff at the compare); the paced counter is DIRECT REREADS
+ * of the global (a short local spills and grows a frame — the
+ * direct-global-reread idiom), CSEd into ax across the branches;
+ * wrap-to-0 vs clamp-to-lim-1 share the cross-jumped word store, then
+ * w346 latches the forwarded value.
  */
 class Phase32F {
 public:
@@ -23,17 +25,13 @@ extern unsigned short DAT_10ac5bc4;
 int Phase32F::Adv()
 {
     unsigned short lim;
-    short v;
 
     lim = w344;
-    v = (short)DAT_10ac5bc4;
-    if (v >= lim) {
-        v = 0;
-        DAT_10ac5bc4 = v;
-    } else if (v < 0) {
-        v = (short)(lim - 1);
-        DAT_10ac5bc4 = v;
+    if ((short)DAT_10ac5bc4 >= lim) {
+        DAT_10ac5bc4 = 0;
+    } else if ((short)DAT_10ac5bc4 < 0) {
+        DAT_10ac5bc4 = (unsigned short)(lim - 1);
     }
-    w346 = v;
+    w346 = (short)DAT_10ac5bc4;
     return 1;
 }
