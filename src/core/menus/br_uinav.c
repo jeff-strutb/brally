@@ -998,3 +998,245 @@ int BrUiNavSelection(const BrUiNav *pNav)
 {
     return (int)(int16_t)pNav->pG->wAA286C;
 }
+
+/* ====================================================================== *
+ * 0x10059410 -- the GLIDE mouse poller (939 B).  thiscall on the nav
+ * record (this in ecx, one never-read stack arg, callee-pops), reached
+ * through the fastcall shim.  DirectInput device at this+0x50: Acquire /
+ * GetDeviceState(0x10) with the DIERR_INPUTLOST (0x8007001E) reacquire
+ * loop, the device pointer re-read from the record at every use.  Then
+ * axis accumulate+clamp, button bits & 0x80, the timeout/page-flip
+ * bookkeeping, per-button edge machines, and the common tail hook
+ * (g_..5DD8 = this; 0x10059060).
+ * ====================================================================== */
+#ifdef BR_MATCHING_BUILD
+
+typedef struct BrDInVtbl_ {
+    int (__stdcall *f00[7])(void *);
+    int (__stdcall *pfnAcquire)(void *);                      /* +0x1C */
+    int (__stdcall *f20)(void *);
+    int (__stdcall *pfnGetDeviceState)(void *, int, void *);  /* +0x24 */
+} BrDInVtbl_;
+typedef struct BrDInDev_ { BrDInVtbl_ *pVtbl; } BrDInDev_;
+
+typedef struct BrGlNavRec {
+    int32_t   x, y, z;            /* +0x00 +0x04 +0x08 */
+    int32_t   xPrev, yPrev, zPrev;/* +0x0C +0x10 +0x14 */
+    uint8_t   pad18[0xC];         /* +0x18 */
+    uint8_t   ab[4];              /* +0x24 button bits (&0x80) */
+    uint8_t   abPrev[4];          /* +0x28 */
+    int32_t   aHeld[4];           /* +0x2C */
+    int32_t   aClick[4];          /* +0x3C */
+    int32_t   iIdle4C;            /* +0x4C */
+    BrDInDev_ *pDev;              /* +0x50 */
+} BrGlNavRec;
+
+extern int32_t  BrGlNavOff5B9C;     /* 0x10AC5B9C  poll disable          */
+extern int32_t  BrGlNavTick670C;    /* 0x10AC670C  last poll time        */
+extern int32_t  BrGlNavAccum6710;   /* 0x10AC6710  idle accumulator      */
+extern int32_t  BrGlNavT6708;       /* 0x10AC6708  timeout latch         */
+extern int32_t  BrGlNavMaxX;        /* 0x10AC6718                        */
+extern int32_t  BrGlNavMaxY;        /* 0x10AC6714                        */
+extern int32_t  BrGlNavKey5F3C;     /* 0x10AC5F3C                        */
+extern int32_t  BrGlNavKey5F40;     /* 0x10AC5F40                        */
+extern uint8_t  BrGlNavKey66B0;     /* 0x10AC66B0                        */
+extern uint8_t  BrGlNavKey66B8;     /* 0x10AC66B8                        */
+extern int32_t  BrGlNavF66F8;       /* 0x10AC66F8                        */
+extern int32_t  BrGlNavF66FC;       /* 0x10AC66FC                        */
+extern int32_t  BrGlNavF6700;       /* 0x10AC6700                        */
+extern int32_t  BrGlNavF6704;       /* 0x10AC6704                        */
+extern int32_t  BrGlNavK610C;       /* 0x10AC610C                        */
+extern int32_t  BrGlNavK6114;       /* 0x10AC6114                        */
+extern uint16_t BrGlNavStepAB7C;    /* 0x100AAB7C                        */
+extern uint16_t BrGlNavCur5BC4;     /* 0x10AC5BC4                        */
+extern int32_t  BrGlNavLast6748;    /* 0x10AC6748  last-activity time    */
+extern int32_t  BrGlNavEdge6720;    /* 0x10AC6720                        */
+extern int32_t  BrGlNavEdge6724;    /* 0x10AC6724                        */
+extern int32_t  BrGlNavEdge6728;    /* 0x10AC6728                        */
+extern int32_t  BrGlNavEdge672C;    /* 0x10AC672C                        */
+extern void    *BrGlNavThis5DD8;    /* 0x10AC5DD8                        */
+
+int32_t BrGlNavTimeNow(void);       /* 0x1006E280 */
+void    BrGlNavKeyLeft(void);       /* 0x10002C70 */
+void    BrGlNavKeyRight(void);      /* 0x10002CB0 */
+void    BrGlNavTail(void);          /* 0x10059060 */
+
+/* NOT CLAIMED (@implements withheld): 6 regions / ~37 B remain -- the
+ * extra frame dword, the button bytes read as one dword + ch/cl extract
+ * (orig merges aState[0xC..0xF] loads), and loop-layout bytes in the
+ * reacquire do-while.  Structure verified against the bytes end to end. */
+/* @implements-pending 0x10059410 glide BrGlNavPoll */
+void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
+{
+    uint8_t aState[0x10];
+    int32_t t;
+    BrDInDev_ *pDev;
+
+    (void)_edx_unused;
+    (void)_unused;
+
+    if (BrGlNavOff5B9C != 0)
+        return;
+
+    t = BrGlNavTimeNow();
+    BrGlNavAccum6710 += t - BrGlNavTick670C;
+    BrGlNavTick670C = t;
+    if (BrGlNavAccum6710 > 0x78)
+        BrGlNavT6708 = 1;
+
+    if (pNav->pDev == 0)
+        return;
+
+    pDev = pNav->pDev;
+    pDev->pVtbl->pfnAcquire(pDev);
+    pDev = pNav->pDev;
+    if (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) == (int32_t)0x8007001E) {
+        do {
+            pDev = pNav->pDev;
+            if (pDev->pVtbl->pfnAcquire(pDev) < 0)
+                break;
+            pDev = pNav->pDev;
+            pDev->pVtbl->pfnAcquire(pDev);
+            pDev = pNav->pDev;
+        } while (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) ==
+                 (int32_t)0x8007001E);
+    }
+
+    pNav->x += *(int32_t *)&aState[0];
+    pNav->y += *(int32_t *)&aState[4];
+    pNav->z += *(int32_t *)&aState[8];
+    if (pNav->x < 0)
+        pNav->x = 0;
+    else if (pNav->x >= BrGlNavMaxX)
+        pNav->x = BrGlNavMaxX;
+    if (pNav->y < 0)
+        pNav->y = 0;
+    else if (pNav->y >= BrGlNavMaxY)
+        pNav->y = BrGlNavMaxY;
+
+    pNav->ab[0] = aState[0xC] & 0x80;
+    pNav->ab[1] = aState[0xD] & 0x80;
+    pNav->ab[2] = aState[0xE] & 0x80;
+    pNav->ab[3] = aState[0xF] & 0x80;
+    if (pNav->ab[0] != 0 || pNav->ab[1] != 0 ||
+        pNav->ab[2] != 0 || pNav->ab[3] != 0)
+        pNav->iIdle4C = 1;
+
+    if (BrGlNavKey5F3C != 0)
+        BrGlNavKeyLeft();
+    if (BrGlNavKey5F40 != 0)
+        BrGlNavKeyRight();
+
+    if (BrGlNavT6708 != 0) {
+        if (BrGlNavKey66B0 & 0x80) {
+            BrGlNavF66F8 = 1;
+            BrGlNavStepAB7C = (uint16_t)-1;
+            BrGlNavAccum6710 = 0;
+        }
+        if (BrGlNavKey66B8 & 0x80) {
+            BrGlNavF66FC = 1;
+            BrGlNavStepAB7C = 1;
+            BrGlNavAccum6710 = 0;
+        }
+    }
+    if (BrGlNavK610C != 0) {
+        BrGlNavStepAB7C = (uint16_t)-1;
+        BrGlNavAccum6710 = 0;
+        if (1) { /* the K610C arm also forces the "pressed" path below */
+            pNav->ab[0] = 1;
+            pNav->iIdle4C = 0;
+            BrGlNavT6708 = 0;
+        }
+    } else if (BrGlNavF6700 != 0) {
+        pNav->ab[0] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavT6708 = 0;
+    }
+    if (BrGlNavK6114 != 0) {
+        BrGlNavF6704 = 1;
+        BrGlNavStepAB7C = 1;
+        BrGlNavAccum6710 = 0;
+    }
+    if (BrGlNavF6704 != 0) {
+        pNav->ab[1] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavT6708 = 0;
+    }
+    if (BrGlNavT6708 != 0) {
+        if (BrGlNavF66F8 != 0) {
+            --BrGlNavCur5BC4;
+            BrGlNavT6708 = 0;
+        }
+        if (BrGlNavF66FC != 0) {
+            ++BrGlNavCur5BC4;
+            BrGlNavT6708 = 0;
+        }
+    }
+    BrGlNavF6704 = 0;
+    BrGlNavF6700 = 0;
+    BrGlNavF66FC = 0;
+    BrGlNavF66F8 = 0;
+
+    if (pNav->x != pNav->xPrev || pNav->y != pNav->yPrev ||
+        pNav->ab[0] != pNav->abPrev[0] || pNav->ab[1] != pNav->abPrev[1] ||
+        pNav->ab[2] != pNav->abPrev[2] || pNav->ab[3] != pNav->abPrev[3])
+        BrGlNavLast6748 = BrGlNavTimeNow();
+
+    pNav->xPrev = pNav->x;
+    pNav->yPrev = pNav->y;
+    pNav->abPrev[0] = pNav->ab[0];
+    pNav->abPrev[1] = pNav->ab[1];
+    pNav->abPrev[2] = pNav->ab[2];
+    pNav->abPrev[3] = pNav->ab[3];
+
+    BrGlNavEdge6720 = 0;
+    BrGlNavEdge6724 = 0;
+    BrGlNavEdge6728 = 0;
+    BrGlNavEdge672C = 0;
+
+    if (pNav->ab[0] != 0 && pNav->aHeld[0] == 0) {
+        pNav->aHeld[0] = 1;
+    } else if (pNav->ab[0] == 0 && pNav->aHeld[0] != 0) {
+        pNav->aHeld[0] = 0;
+        pNav->aClick[0] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavEdge6720 = 1;
+    } else {
+        pNav->aClick[0] = 0;
+    }
+    if (pNav->ab[1] != 0 && pNav->aHeld[1] == 0) {
+        pNav->aHeld[1] = 1;
+    } else if (pNav->ab[1] == 0 && pNav->aHeld[1] != 0) {
+        pNav->aHeld[1] = 0;
+        pNav->aClick[1] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavEdge6724 = 1;
+    } else {
+        pNav->aClick[1] = 0;
+    }
+    if (pNav->ab[2] != 0 && pNav->aHeld[2] == 0) {
+        pNav->aHeld[2] = 1;
+    } else if (pNav->ab[2] == 0 && pNav->aHeld[2] != 0) {
+        pNav->aHeld[2] = 0;
+        pNav->aClick[2] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavEdge6728 = 1;
+    } else {
+        pNav->aClick[2] = 0;
+    }
+    if (pNav->ab[3] != 0 && pNav->aHeld[3] == 0) {
+        pNav->aHeld[3] = 1;
+    } else if (pNav->ab[3] == 0 && pNav->aHeld[3] != 0) {
+        pNav->aHeld[3] = 0;
+        pNav->aClick[3] = 1;
+        pNav->iIdle4C = 0;
+        BrGlNavEdge672C = 1;
+    } else {
+        pNav->aClick[3] = 0;
+    }
+
+    BrGlNavThis5DD8 = pNav;
+    BrGlNavTail();
+}
+
+#endif /* BR_MATCHING_BUILD */
