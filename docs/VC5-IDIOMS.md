@@ -1432,3 +1432,12 @@ parked-wall kind newly retryable (no new idiom landed).
   stamps renamed TUs for structural twins (+6 byte-exact on first run).
   Both gates hold: the scorer masks relocs, image_build backfills slots
   from the original's bytes. Re-run it after ANY new C++ TU lands.
+- **Shared `return 1` after if/else tail-duplicates with the pop FIRST.**
+  Orig `pop esi; mov eax,1; ret` = ONE source `return 1;` after the
+  if/else, tail-duplicated into each path AFTER that path's register
+  restore. Spelling explicit `return 1;` inside each branch emits
+  `mov eax,1; pop esi; ret` (mov first) — 4-diff miss. The dual is the
+  branch-with-own-return shape (both sites `mov eax,1; ret`, no pop
+  between): there the source really has per-branch returns. Read the
+  pop/mov order at each return site to pick the spelling. Proven
+  0x10040E60 StepCode.
