@@ -358,6 +358,29 @@ void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
  * hundredths and putting the number fifteen pixels below its label. The
  * number goes out before the label. */
 /* @implements 0x100171F0 d3d BrHudDrawTimeEntry */
+#ifdef BR_MATCHING_BUILD
+/* The original inlines the whole of BrFormatTime: the minute/second/hundredth
+ * split (magic divides by 100 and 60) and an UNBOUNDED sprintf into the
+ * 32-byte stack buffer, with the prefix passed raw -- no NULL guard. */
+void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
+                        float fSeconds, int x, int y)
+{
+    char sz[32];      /* the original's local buffer is exactly 0x20 */
+    int  total   = (int)(fSeconds * 100.0f);
+    int  whole   = total / 100;
+    int  minutes;
+
+    total  -= whole * 100;      /* total is now the hundredths */
+    minutes = whole / 60;
+    whole  -= minutes * 60;     /* whole is now the seconds */
+
+    sprintf(sz, "%s%d:%02d.%02d", pszPrefix, minutes, whole, total);
+
+    /* the time line goes out first, 15 pixels below the label */
+    BrTextDraw(sz, x, y + 15);
+    BrTextDraw(pszLabel, x, y);
+}
+#else
 void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
                         float fSeconds, int x, int y)
 {
@@ -369,6 +392,7 @@ void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
     BrTextDraw(sz, x, y + 15);
     BrTextDraw(pszLabel, x, y);
 }
+#endif
 
 /* =====================================================================
  * 3. Glue
