@@ -1593,3 +1593,23 @@ parked-wall kind newly retryable (no new idiom landed).
   `jmp` in one step.  Unreached from source here: which arm goes inline --
   the original keeps the OOM arm inline jumping over the second call;
   VC5 always outlines one of the two (1+1 je/jne residue).
+- **/Od TUs (2026-09-01, slice2_19 trio).** Three rules proven on
+  0x1002EBD1/0x1002EC36/0x1002EB03: (1) `if (cond) return;` emits a
+  jcc/jmp PAIR; the original's single `jcc`-to-epilogue comes from NESTED
+  `if (!cond) { ... }` with no early return.  (2) 16-bit flag updates must
+  be COMPOUND word ops end to end (`pT->flags |= orBits;
+  pT->flags &= (uint16_t)clearBits;` gives `or ax, word [ebp+S]`); the
+  value-cast spelling widens through eax with masks (+2 insns).  (3) /Od
+  LOCAL HOMES ARE KEYED BY AN INTERNAL NAME HASH, not declaration order --
+  renaming locals shuffles their [ebp-N] slots.  Probe empirically
+  (compile + read the first store per slot); single-letter sets hit
+  quickly (a/y/z/b matched a 5-local frame on try #11).  Also: /Od
+  recomputes every expression -- transcribe repeated subexpressions
+  literally, never introduce caching locals.
+- **Direct 3-stack-arg thiscall (no vcall) is one insn from C
+  (2026-09-01, 0x1002EB03).** `push b; push g; push r; mov ecx,this;
+  call F` with callee-clean ret 0xC: the __fastcall trick must
+  materialise its dummy edx (`xor edx,edx`), leaving a 2-byte insertion
+  that shifts everything after.  True C++ TU territory
+  (cxx-thiscall-wall); everything else in the function can still be
+  brought exact around it.

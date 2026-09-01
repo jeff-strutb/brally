@@ -591,6 +591,41 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
  * it was chosen, so what comes back is close to but not exactly what went
  * in. */
 /* @implements 0x10035452 d3d BrCarGfxReadColour */
+#ifdef BR_MATCHING_BUILD
+/* True __thiscall with THREE stack args and no edx setup -- unreachable
+ * exactly from C (the fastcall trick must materialise a dummy edx).  The
+ * declaration below costs ONE extra `xor edx,edx`-class insn at the call;
+ * everything else is /Od-literal: pw[0] is RE-READ for every term (no `c`
+ * local), and the locals are declared in the original's home order
+ * (pSlot, b, r, g, pw -> -4,-8,-0xc,-0x10,-0x14). */
+extern void __fastcall BrRgbSinkSet3(BrRgbSink *pSink, int unused_edx,
+                                     int r, int g, int b);
+
+void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
+{
+    /* /Od homes locals by an internal NAME hash, not declaration order --
+     * these single-letter names (a=slot, y=r, z=g, b=b, pw) are the set
+     * that reproduces the original's frame layout
+     * (slot=-4, b=-8, r=-0xc, g=-0x10, pw=-0x14); probed empirically. */
+    const BrGfxSlot *a;
+    int b, y, z;
+    const uint16_t  *pw;
+
+    a  = &pCar->pSlots[pCar->aSlotIdx[2]];
+    pw = a->pWords;
+
+    /* Nested ifs, no early returns: /Od emits ONE je-to-epilogue per
+     * guard; `if (...) return;` costs a jne/jmp pair. */
+    if (pw != NULL) {
+        if (((a->f20 >> 24) & 0xFu) == 1u) {
+            y = ((pw[0] >> 8) & 0xF8) | ((pw[0] >> 13) & 7);
+            z = ((pw[0] >> 3) & 0xF8) | ((pw[0] >>  8) & 7);
+            b = ((pw[0] << 2) & 0xF8) | ((pw[0] >>  3) & 7);
+            BrRgbSinkSet3(pSink, 0, y, z, b);
+        }
+    }
+}
+#else
 void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
 {
     const BrGfxSlot *pSlot = &pCar->pSlots[pCar->aSlotIdx[2]];
@@ -608,18 +643,9 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
     g = ((c >> 3) & 0xF8) | ((c >>  8) & 7);
     b = ((c << 2) & 0xF8) | ((c >>  3) & 7);
 
-#ifdef BR_MATCHING_BUILD
-    {
-        BrRgbSinkSetArgs a;
-        a.r = r;
-        a.g = g;
-        a.b = b;
-        BrRgbSinkSet(pSink, a);
-    }
-#else
     BrRgbSinkSet(pSink, r, g, b);
-#endif
 }
+#endif
 
 /* ================================================================== */
 /* 4. Keyframe vertex animation                                       */
@@ -634,17 +660,21 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
 void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
 {
     int32_t i, n;
+    BrAnimTrack *pT;
 
-    clearBits = ~clearBits;          /* the original's `not eax`, 32-bit */
+    clearBits = ~clearBits;          /* the original's `not eax`, 32-bit,
+                                      * in the arg slot */
 
-    if (pSet->pList == NULL)
-        return;
-
-    n = pSet->pList->n;
-    for (i = 0; i < n; i++) {
-        BrAnimTrack *pT = pSet->pList->a[i];
-        pT->flags = (uint16_t)(pT->flags | orBits);
-        pT->flags = (uint16_t)(pT->flags & (uint16_t)clearBits);
+    /* Nested if (single je-to-epilogue), compound |=/&= (word ops end to
+     * end: `or ax, word [ebp+0xc]` / `and ax, word [ebp+0x10]` -- the
+     * value-cast spellings widen through eax with masks). */
+    if (pSet->pList != NULL) {
+        n = pSet->pList->n;
+        for (i = 0; i < n; i++) {
+            pT = pSet->pList->a[i];
+            pT->flags |= orBits;
+            pT->flags &= (uint16_t)clearBits;
+        }
     }
 }
 
