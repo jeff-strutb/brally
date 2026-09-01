@@ -1283,6 +1283,11 @@ def _refine_candidates(src):
     _new, _ok = transform_calltemp(src)
     if _ok and _new != src:
         yield ('calltemp', _new)
+    # (h) dead re-zero after the COM failure-hr assignment.
+    #     Proven with 0x100356B0.
+    _new, _ok = transform_deadnull(src)
+    if _ok and _new != src:
+        yield ('deadnull', _new)
     # (g) walker-rewind strcpy explosion -> strcpy(dst, src).
     #     Proven MATCH 0x100367C0; ~23 work files.
     _new, _ok = transform_walkerstrcpy(src)
@@ -1852,6 +1857,24 @@ def transform_walkerstrcpy(src):
         out = out[:m.start()] + repl + out[m.end():]
         changed = True
     return (out, changed) if changed else (src, False)
+
+
+_DEADNULL_RE = re.compile(
+    r'(?P<keep>^\s*\w+ = -0x7ff8fff2;\s*\n)'
+    r'^\s*\w+ = (?:\([A-Za-z_]\w*\s*\*?\))?0x?0?;\s*\n', re.M)
+
+
+def transform_deadnull(src):
+    """Drop Ghidra's dead re-zero on the COM out-of-memory failure path.
+
+    `if ((g = CreateEventA(...)) == 0) hr = E_OUTOFMEMORY;` comes back as
+    `g = CALL(); if (g != 0) return; hr = -0x7ff8fff2; g = (HANDLE)0x0;` —
+    the trailing store re-writes the zero already stored from eax and has
+    no encoding in the original. Proven MATCH 0x100356B0 (with the
+    `extern char s_*[]` string-address fix); 6 files carry the shape.
+    """
+    new, n = _DEADNULL_RE.subn(lambda m: m.group('keep'), src)
+    return (new, True) if n else (src, False)
 
 
 _FTOLFUSE_CALL_RE = re.compile(
