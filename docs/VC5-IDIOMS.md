@@ -1446,3 +1446,22 @@ parked-wall kind newly retryable (no new idiom landed).
   between): there the source really has per-branch returns. Read the
   pop/mov order at each return site to pick the spelling. Proven
   0x10040E60 StepCode.
+- **Trig product chains: route every cos/sin through ONE reused float temp
+  (`t = (float)cos(ang); v.x = ...(t * r + fx)`), never inline
+  `cos(ang) * r` (2026-09-01, 0x100140B0 BrHudDrawDial).** Inline trig
+  products emit `fld [r]`/`fld st` + `fmulp` pairs (the multiplier gets
+  loaded); the reused-temp form keeps the trig value on the stack and the
+  radius on the fmul side — `fmul [esp+S]` for a slot-homed radius,
+  non-popping `fmul st(N)` for one living deep on the x87 stack. The temp
+  also yields the original's lone `fst [slot]` rounding store at the first
+  use (reusing the temp's existing home). One probe took the function
+  18+13 → 1+5 regnorm. Companion facts proven in the same function:
+  a coordinate converted once and re-added each vertex is a STATEMENT
+  local placed just before the block (`fx = (float)x;` → fild sunk into
+  first use, fstp-homed, later adds read the slot); a second coordinate
+  whose fild sits inside the SECOND vertex is an int local with a CSE'd
+  INLINE cast (`(float)dy`) — the statement form hoists its fild too
+  early. Hoisting the next-angle assignment above the previous store to
+  chase the original's pipelining FAILS (live-range extension changes the
+  frame); that 2-site/4-fxch pipelining depth is scheduler-internal
+  residue.
