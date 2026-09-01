@@ -1273,6 +1273,17 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **Bounds-checked container methods (`cmp reg,[this+0x10]; jb` +
+  warn printf, thiscall `ret N`) are one C++ class — write real
+  members, not fastcall tricks.** The Tbl8900 family
+  (0x10008930..0x10008A30, five methods, all byte-exact as C++ TUs):
+  vtbl read before arg pushes, vtbl CACHED in a callee-saved reg
+  across consecutive self-vcalls, and `lea ecx,[this+4]` = thiscall
+  on an embedded member object. Second entry-field read via
+  `[ptr+4]` after a call means the source CSEd `Ent *e = &items[i]`
+  into a pointer temp (recomputing `items[i].f4` re-derives the
+  index: +12 B, 32 diffs on 0x10008990). Layout: count +0x10,
+  items +0x18 (76 B entries), FILE* +0x1C.
 - **Vtbl load scheduled INSIDE a strcpy intrinsic = C++ member call,
   not reachable from C.** `lea edx,[dest]; mov eax,ecx; mov esi,edi;
   mov edi,edx; mov edx,[obj]; shr ecx,2; rep movsd` — the object's
