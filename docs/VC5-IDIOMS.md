@@ -1622,3 +1622,16 @@ parked-wall kind newly retryable (no new idiom landed).
   that shifts everything after.  True C++ TU territory
   (cxx-thiscall-wall); everything else in the function can still be
   brought exact around it.
+- **Timer-accumulate store forwarding: t-less compound spelling forces
+  the re-read (2026-09-01, 0x100414F0 BrUiTickSteps).** For
+  `accum += now - last; last = now;` followed by a branch comparing
+  `accum`: the t-less spelling reloads `accum` from memory in the branch
+  (`mov ecx,[esi+disp]`, the original's shape) and the scheduler emits
+  the `last` store FIRST.  Introducing a delta temp
+  (`t = now - last; last = now; accum += t;`) makes VC5 FORWARD the
+  stored value across the branch instead (`mov ecx,edx`, 2 bytes) — one
+  fork, 147-diff cascade through the whole tail (register rotation +
+  store-order swaps downstream).  Same family: a short local for a
+  paced-counter global spills and grows an ebp frame; DIRECT GLOBAL
+  REREADS CSE into ax with no spill (0x10041940, the existing
+  direct-global-reread idiom applied to word globals).
