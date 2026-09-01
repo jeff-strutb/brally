@@ -239,6 +239,46 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
  * and issues the drawing commands that put that transform in force. The two
  * values it is passed are never looked at. */
 /* @implements 0x10033F7E d3d BrCamMatrixSetupFixed */
+#ifdef BR_MATCHING_BUILD
+/* /Od TU: literal param self-assigns, the take-2 emit inlined per block
+ * (own [ebp-N] slot each, globals re-read), the 0-arg pool alloc and the
+ * matrix store called directly. */
+extern BrMat4 *BrSub_10069490(void);            /* glide 0x10062500 */
+extern void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4]);
+
+void BrCamMatrixSetupFixed(float a1, float a2)
+{
+    a1 = a1;
+    a2 = a2;
+
+    BrMat4LookAt(&g_BrViewMat,
+                 512.0f, 384.0f, 1000.0f,
+                 512.0f, 384.0f,    0.0f,
+                   0.0f,   1.0f,    0.0f);
+
+    BrMat4Perspective7(&g_BrProjMatFixed, &g_BrPerspNorm,
+                       45.0f, 1.3333334f, 10.0f, 2000.0f, 1.0f);
+
+    BrMat4Mul(&g_BrViewMat, &g_BrProjMatFixed, &g_BrCurMat);
+
+    {
+        uint32_t *p_ = g_BrGfxPtr;
+        g_BrGfxPtr += 2;
+        p_[0] = 0xBC00000Eu;
+        p_[1] = g_BrPerspNorm;
+    }
+
+    g_BrMtxSlot = BrSub_10069490();
+    BrGuMtxStore((const int (*)[4])&g_BrCurMat, (int (*)[4])g_BrMtxSlot);
+
+    {
+        uint32_t *p_ = g_BrGfxPtr;
+        g_BrGfxPtr += 2;
+        p_[0] = 0x01030040u;
+        p_[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
+    }
+}
+#else
 void BrCamMatrixSetupFixed(float a1, float a2)
 {
     uint32_t *pCmd;
@@ -267,6 +307,7 @@ void BrCamMatrixSetupFixed(float a1, float a2)
     pCmd[0] = 0x01030040u;
     pCmd[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
 }
+#endif
 
 /* 0x1003407D */
 /* WHAT IT DOES: sets up flat drawing with no perspective at all, mapping a
