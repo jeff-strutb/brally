@@ -146,17 +146,25 @@ typedef struct BrCar {
  * Race / session block (0x106C2CF8 points at it)
  * ===================================================================== */
 
-/* Logical, not byte-exact: the original offsets are in the comments. The gaps
- * between them are large and their contents unknown, so padding them out would
- * be noise. */
+/* Byte-exact under MSVC5 (32-bit): every field sits at its original offset,
+ * padded with byte arrays. (On a 64-bit port build the pointers push the
+ * later offsets out; nothing depends on the absolute values there.) */
 typedef struct BrRace {
+    uint8_t     a0000[0x0E24];
     float       f0E24;      /* +0x0E24 -- added to a 0..0x7F jitter */
+    uint8_t     a0E28[0x0E68 - 0x0E28];
     float       f0E68;      /* +0x0E68 */
+    uint8_t     a0E6C[0x0E70 - 0x0E6C];
     int32_t     f0E70;      /* +0x0E70 */
+    uint8_t     a0E74[0x0FA8 - 0x0E74];
     int32_t     cSplits;    /* +0x0FA8 */
+    uint8_t     a0FAC[0x0FB4 - 0x0FAC];
     const float *aSplits;   /* +0x0FB4, stride 4 (in the original, inline) */
+    uint8_t     a0FB8[0x0FFC - 0x0FB8];
     const char  *psz0FFC;   /* +0x0FFC */
+    uint8_t     a1000[0x1004 - 0x1000];
     const char  *psz1004;   /* +0x1004 */
+    uint8_t     a1008[0x1030 - 0x1008];
     float       f1030;      /* +0x1030 -- the speed shown by BrHudDraw */
 } BrRace;
 
