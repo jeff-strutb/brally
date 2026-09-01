@@ -610,3 +610,14 @@ va,size,class,reason
 0x1007662B,10,eh_dispatch,C++ EH catch dispatch stub; emitted by parent TU
 0x10076640,11,eh_funclet,C++ EH catch/cleanup funclet; emitted by parent TU try/catch
 0x1007664B,10,eh_dispatch,C++ EH catch dispatch stub; emitted by parent TU
+0x10074610,104,crt_helper,__aulldiv compiler intrinsic; emitted by cl, reproduced at link
+0x10074680,52,crt_helper,__allmul compiler intrinsic; emitted by cl, reproduced at link
+0x100748B0,170,crt_helper,__alldiv compiler intrinsic; emitted by cl, reproduced at link
+0x10074A30,173,crt_helper,_DllMainCRTStartup entry; CRT startup, reproduced at link
+0x10074739,23,eh_funclet,no prologue; parent-frame [ebp-0x1c] read + call 0x10074770; catch funclet
+0x10074878,20,eh_funclet,no prologue; parent-frame [ebp-0x20] read + call 0x10074770; catch funclet
+0x10074750,19,eh_funclet,EH epilogue fragment (fs:[0] unwind + ret 0x10); not a function
+0x1007488C,19,eh_funclet,EH epilogue fragment (fs:[0] unwind + ret 0x14); not a function
+0x100747BD,29,eh_funclet,EH epilogue fragment (esp restore + fs:[0] unwind); not a function
+0x10075030,27,eh_funclet,no prologue; parent-frame [ebp-0x10] read; throw-site funclet
+0x10075060,27,eh_funclet,no prologue; parent-frame [ebp-0x10] read; throw-site funclet
