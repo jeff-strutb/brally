@@ -153,8 +153,15 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
     BrBitStreamAlignRead(pBs);
     i = pBs->readByte;
     p = pBs->pBuf + i;
-    pBs->readByte = i + 2;
-    return ((unsigned int)p[0] << 8) | (unsigned int)p[1];
+    {
+        /* RESIDUE (4 B): orig loads DH (p[0]) before DL (p[1]); VC5 emits
+         * the low byte first from every probed spelling (|-order, +,
+         * byte temps, |=-accumulate, u16 temp). Value-before-cursor-store
+         * via this block temp is what the original does prove. */
+        unsigned int v = ((unsigned int)p[0] << 8) | (unsigned int)p[1];
+        pBs->readByte = i + 2;
+        return v;
+    }
 }
 
 /* 0x10073C10  big-endian u24, zero-extended. */
@@ -168,10 +175,16 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
     BrBitStreamAlignRead(pBs);
     i = pBs->readByte;
     p = pBs->pBuf + i;
-    pBs->readByte = i + 3;
-    return ((unsigned int)p[0] << 16)
-         | ((unsigned int)p[1] << 8)
-         |  (unsigned int)p[2];
+    {
+        /* RESIDUE (15 B tail): orig loads p[2] into AL over the dying
+         * pointer reg (mov al; and eax,0xff) before the cursor store; VC5
+         * sinks the load after the store into a fresh zeroed reg from
+         * every probed spelling (inline, |=, pre-store uchar temp spills). */
+        unsigned int v = (((unsigned int)p[0] << 8)
+                          | (unsigned int)p[1]) << 8;
+        pBs->readByte = i + 3;
+        return v | p[2];
+    }
 }
 
 /* 0x10073C40  big-endian 32-bit.
@@ -187,17 +200,22 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {
     const unsigned char *p;
-    unsigned int v;
-    int i;
+    int i, v;
     BrBitStreamAlignRead(pBs);
     i = pBs->readByte;
+    /* p[1] is read through the two-part sum BEFORE p is bound (the
+     * lea-late idiom); the chain seeds from a SIGNED char read of p[0]. */
+    /* RESIDUE (12 B): orig reads p[1] through the unbound two-part sum,
+     * binds p with a late lea, and widens p[1..3] in dirty regs
+     * (mov dl / and 0xff); VC5 binds p first and zero-widens (xor + mov)
+     * from every probed spelling -- the register-byte analogue of the
+     * byte-slot wall. The signed-char Horner seed IS proven right. */
+    v = pBs->pBuf[i + 1];
     p = pBs->pBuf + i;
+    v |= (int)*(const signed char *)p << 8;
+    v = ((v << 8) | p[2]) << 8;
     pBs->readByte = i + 4;
-    v = ((unsigned int)p[0] << 24)
-      | ((unsigned int)p[1] << 16)
-      | ((unsigned int)p[2] << 8)
-      |  (unsigned int)p[3];
-    return (int)v;
+    return v | p[3];
 }
 
 /* 0x10073C90  __thiscall, ret 4.
