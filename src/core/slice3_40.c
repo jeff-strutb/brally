@@ -801,4 +801,39 @@ int FUN_10059fe0(int param_1,int param_2,int param_3)
   return ((int *)((char *)&DAT_100ad7d8 + param_1 * 1200 + param_2 * 40))[param_3];
 }
 
+extern int DAT_10ac67b0;
+__declspec(dllimport) void __cdecl free(void *);
+void FUN_1005a420(void);
+void FUN_1005a6b0(void);
+
+/* @implements 0x1005A6A0 glide FUN_1005a6a0 */
+/* Tail-call wrapper: `call A; jmp B` -- VC5 /O2 turns the trailing call
+ * into a jmp. The map had this merged with the 45-byte loop at
+ * 0x1005A6B0 as one 61-byte function; split 2026-09-01. */
+
+void FUN_1005a6a0(void)
+{
+  FUN_1005a420();
+  FUN_1005a6b0();
+}
+
+/* @implements 0x1005A6B0 glide FUN_1005a6b0 */
+/* Frees and zeroes the three pointer slots at DAT_10ac67b0..bc; the
+ * dllimport free is hoisted into edi across the loop. */
+
+void FUN_1005a6b0(void)
+{
+  int *puVar1;
+
+  puVar1 = &DAT_10ac67b0;
+  do {
+    if (*puVar1 != 0) {
+      free((void *)*puVar1);
+      *puVar1 = 0;
+    }
+    puVar1 = puVar1 + 1;
+  } while ((int)puVar1 < 0x10ac67bc);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
