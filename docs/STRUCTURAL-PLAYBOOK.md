@@ -157,10 +157,15 @@ function before hand-filing.
   consult the N64 twin (below) early.
 - Low struct% (`coloring wall - real`): T3a territory. Confirm with the T3b
   oracle if reachable, record the residue note, PARK, move on. Do not grind.
-- **Class awareness:** before starting, check whether your target's divergence
-  class (`--residue` groups: short / long / frame / scattered) has siblings.
-  If you solve one and see a mechanical pattern, STOP and write up the
-  transform instead of hand-solving the siblings (rule 7).
+- **Class awareness — symptom vs cause.** The `--residue` groups (short /
+  long / frame / scattered) are SYMPTOM classes: members share how the diff
+  looks, not what caused it, and transforms minted from one member have
+  historically swept ~0 siblings (re-confirmed 2026-09-01: full re-batch 0/258).
+  Real families are CAUSE groups found by screening ORIGINAL BYTES for a shared
+  construct — e.g. the C++ vcall/twin lode (~25 byte-exact in one session,
+  `tools/gen_cpptwin.py` stamps siblings after each new TU), thiscall twins,
+  /Od twins, globals-form siblings. Mint a transform only after you have SEEN
+  the same cause twice (rule 7); otherwise just bank the hand-solve.
 
 ## Diff decision tree — what `fn.py --detail regnorm` is telling you
 
