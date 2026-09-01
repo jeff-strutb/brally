@@ -977,14 +977,12 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         atOffset = 0.0f;
         eyeScale = 0.0f;
 
-        if (pCam[12] == pCarF[12] &&
-            pCam[13] == pCarF[13] &&
-            pCam[14] != pCarF[14]) {
-            eyeScale = 0.1f;
-        } else if (pCam[12] == pCarF[12] &&
-                   pCam[13] == pCarF[13] &&
-                   pCam[14] == pCarF[14]) {
-            atOffset = 1.0f;
+        /* x/y compared ONCE; z picks the arm (orig 0x61c-0x655). */
+        if (pCam[12] == pCarF[12] && pCam[13] == pCarF[13]) {
+            if (pCam[14] != pCarF[14])
+                eyeScale = 0.1f;
+            else
+                atOffset = 1.0f;
         }
 
         eyeX = pCam[0];
@@ -1035,8 +1033,12 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         dst[0x11] = (uint8_t)(int32_t)(pPlayer[1] * -120.0f);
         dst[0x12] = (uint8_t)(int32_t)(pPlayer[2] * -120.0f);
         put(0xBC000002u, 0x80000040u);
-        put(0x03860010u, (uint32_t)(uintptr_t)&dst[8]);
-        put(0x03880010u, (uint32_t)(uintptr_t)dst);
+        /* Both payloads recompute icar*24 from car+0x140 -- the original
+         * does NOT reuse dst here (lea edx,[ecx+ecx*2]; lea [edx*8+base]). */
+        put(0x03860010u, (uint32_t)(uintptr_t)
+            &g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 8]);
+        put(0x03880010u, (uint32_t)(uintptr_t)
+            &g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24]);
     }
 
     /* 0xA9CE -- post-lights header: sync, two-cycle, geom mode. */
