@@ -537,6 +537,12 @@ typedef int (*funcptr)();
 
 /* Forward declarations for unknown functions/globals */
 """ % va_hex
+    # Ghidra spells the errno read as `_errno()` + deref; without a
+    # dllimport declaration that compiles to an E8 near call while the
+    # original is FF 15 through the IAT (proven 0x10008DC0/0x10008E10,
+    # BrFileCreateChecked/BrFileOpenChecked).
+    if re.search(r'\b_errno\s*\(', func_c):
+        header += "_CRTIMP int *__cdecl _errno(void);\n"
 
     # Extract any FUN_ calls that weren't resolved — but skip the function
     # being defined (its name appears in the body as the definition itself)
