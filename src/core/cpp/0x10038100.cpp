@@ -1,51 +1,41 @@
 /* @implements 0x10038100 glide BrUiHook85_1003EB10
  * @cpp_kind method
- * @cpp_symbol ?BrUiHook85_1003EB10@@YAHPAVGameObj@@@Z
+ * @cpp_symbol ?Hook@Ui85@@YAHPAVGameObj85@@@Z
  *
- * Two vcalls (slot 8 then slot 9) on the embedded +0x3838 object with the
- * vtbl CSE'd into edi across both — C++ frontend caching, plus the
- * clamp-through-global pattern: negative result reloads the global,
- * non-negative writes it back. 0x10038250 is a byte-identical twin. No EH.
+ * 74 B cdecl(pObj), returns 1. Embedded member object at +0x3838: slot-8
+ * vcall with the cached value, clamp/reload, gated slot-9 vcall; the
+ * member vtbl is CSE'd across both calls.
  */
-#ifdef BR_MATCHING_BUILD
-#define _CRTIMP __declspec(dllimport)
-#endif
-
-class Sel {
+class Emb3838 {
 public:
-    virtual void t0();
-    virtual void t1();
-    virtual void t2();
-    virtual void t3();
-    virtual void t4();
-    virtual void t5();
-    virtual void t6();
-    virtual void t7();
-    virtual int t8(int);
-    virtual void t9(int);
+    virtual void s0(); virtual void s1(); virtual void s2();
+    virtual void s3(); virtual void s4(); virtual void s5();
+    virtual void s6(); virtual void s7();
+    virtual int  s8(int);       /* +0x20 */
+    virtual void s9(int);       /* +0x24 */
 };
 
-class GameObj {
+class GameObj85 {
 public:
     char pad[0x3838];
-    Sel sel;
+    Emb3838 m3838;              /* embedded at +0x3838 */
 };
 
-typedef char chk_sel[(unsigned)&((GameObj *)0)->sel == 0x3838 ? 1 : -1];
+extern "C" {
+extern int DAT_100aab94;
+extern int DAT_10ac5c30;
+}
 
-int g_AB94;
-int g_5C30;
-
-int BrUiHook85_1003EB10(GameObj *pGame)
+int Hook(GameObj85 *pObj)
 {
-    int r;
+    int r = pObj->m3838.s8(DAT_100aab94);
 
-    r = pGame->sel.t8(g_AB94);
     if (r >= 0)
-        g_AB94 = r;
+        DAT_100aab94 = r;
     else
-        r = g_AB94;
-    if (g_5C30 != 0 && r >= 0)
-        pGame->sel.t9(r);
+        r = DAT_100aab94;
+
+    if (DAT_10ac5c30 != 0 && r >= 0)
+        pObj->m3838.s9(r);
     return 1;
 }
