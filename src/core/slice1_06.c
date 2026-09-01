@@ -34,7 +34,15 @@
  * the port signature (cdecl, extra args harmless at run time). */
 #define BrOptSave   BrOptSave_hdr
 #define BrOptAvailB BrOptAvailB_hdr
+#ifdef BR_MATCHING_BUILD
+/* The original BrNameListInit is a thiscall ctor with no stack args (vtbl
+ * and fill string are fixed); hide the port's 3-arg prototype. */
+#define BrNameListInit BrNameListInit_port
 #include "slice1_06.h"
+#undef BrNameListInit
+#else
+#include "slice1_06.h"
+#endif
 #undef BrOptSave
 #undef BrOptAvailB
 #else
@@ -683,6 +691,32 @@ int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
  * starting text into every one of them, so an unused slot reads as something
  * rather than as blank. */
 /* @implements 0x1005CB90 d3d BrNameListInit */
+#ifdef BR_MATCHING_BUILD
+/* thiscall ctor, no stack args: vtbl (0x10077750) stored, the whole slot
+ * array zeroed once, then 100 inline strcpy()s of the fixed name string
+ * (0x10396F08) with the dest walking 0x104. Returns this. */
+extern char DAT_10396f08[];
+extern int  DAT_10077750;
+
+BrNameList *__fastcall BrNameListInit(BrNameList *pThis, int _edx_unused)
+{
+    char *d = (char *)pThis->asz;
+    int   n;
+
+    (void)_edx_unused;
+    pThis->pVtbl = (const void *)&DAT_10077750;
+    memset(d, 0, sizeof(pThis->asz));
+
+    n = BR_NAMELIST_COUNT;
+    do {
+        strcpy(d, DAT_10396f08);
+        d += BR_NAMELIST_STRIDE;
+    } while (--n != 0);
+
+    return pThis;
+}
+#else
+/* @implements 0x1005CB90 d3d BrNameListInit */
 BrNameList *BrNameListInit(BrNameList *pThis, const void *pVtbl,
                            const char *pszFill)
 {
@@ -708,6 +742,7 @@ BrNameList *BrNameListInit(BrNameList *pThis, const void *pVtbl,
 
     return pThis;
 }
+#endif
 
 /* ==========================================================================
  * 0x1005D440 (partial)
