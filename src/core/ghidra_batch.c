@@ -623,6 +623,26 @@ unsigned char *BrDlCmdTri1Flat(unsigned char *p)
     }
 }
 
+/* WHAT IT DOES: draws two flat-shaded z-buffered triangles from one
+ * command, vertex bytes 0..2 then 4..6. */
+/* @implements 0x10020CF0 glide BrDlCmdTri2FlatZ */
+unsigned char *BrDlCmdTri2FlatZ(unsigned char *p)
+{
+    FUN_1001ff60(p[2], p[1], p[0]);
+    FUN_1001ff60(p[6], p[5], p[4]);
+    return p + 8;
+}
+
+/* WHAT IT DOES: draws two flat-shaded triangles with the z-buffer off,
+ * vertex bytes 0..2 then 4..6. */
+/* @implements 0x10020D30 glide BrDlCmdTri2Flat */
+unsigned char *BrDlCmdTri2Flat(unsigned char *p)
+{
+    FUN_10020460(p[2], p[1], p[0]);
+    FUN_10020460(p[6], p[5], p[4]);
+    return p + 8;
+}
+
 extern int DAT_10ac5c50;
 extern int DAT_100a9360;
 extern int DAT_10ac5bf4;
