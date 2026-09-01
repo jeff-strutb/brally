@@ -314,7 +314,8 @@ void BrHudDrawDial(BrHudView *aViews)
     {
         float A  = pSpr->fF0;
         float  ang;
-        float fy = (float)(g_screen.cy - y);
+        float fx;
+        int32_t dy = g_screen.cy - y;
 
         /* 10016F22: NaN takes the "no interpolation" path. */
         if (t > kF300) {
@@ -326,22 +327,47 @@ void BrHudDrawDial(BrHudView *aViews)
         /* The tip pair uses the 15/20 radius; the base pair uses 5/7. The
          * original loses the tip radius (its stack slot is reused) and reaches
          * for the deep x87 copy of the base radius instead -- these two really
-         * are different numbers. */
+         * are different numbers.
+         *
+         * Every trig result goes through the reused temp `t` -- that is what
+         * keeps the scalar on the x87 stack and the tip/base on the fmul
+         * side (`fmul [esp+S]` / `fmul st(N)`); inline cos()*tip emits
+         * fld+fmulp pairs instead.  `fx` is a statement local (converted
+         * once, memory-homed, adds read the slot); `dy` stays an int and is
+         * converted by the CSE'd inline cast at its first use inside v[0].y,
+         * matching the original's sunk fild/fstp.
+         *
+         * RESIDUE (~4 insns, T3a): at the v[1].x and v[2].x transitions the
+         * original computes the next angle (`fld st(0); fsub k`) BEFORE
+         * storing the previous y and juggles with 2 fxch each; we store
+         * first, no fxch.  Probed and failed: hoisting the ang assignment
+         * above the v[k].y statement (extends ang's live range, changes the
+         * frame, 9+2), fresh per-vertex angle variables (no change).
+         * Scheduler-internal pipelining depth. */
+        fx = (float)x;
         ang = A - kF324;
-        pQuad->v[0].x = (float)(int16_t)(int32_t)(cos(ang) * tip  + (float)x);
-        pQuad->v[0].y = (float)(int16_t)(int32_t)(sin(ang) * tip  + fy);
+        t = (float)cos(ang);
+        pQuad->v[0].x = (float)(int16_t)(int32_t)(t * tip  + fx);
+        t = (float)sin(ang);
+        pQuad->v[0].y = (float)(int16_t)(int32_t)(t * tip  + (float)dy);
         pQuad->v[0].z = 0.0f;
         ang = A - kF328;
-        pQuad->v[1].x = (float)(int16_t)(int32_t)(cos(ang) * tip  + (float)x);
-        pQuad->v[1].y = (float)(int16_t)(int32_t)(sin(ang) * tip  + fy);
+        t = (float)cos(ang);
+        pQuad->v[1].x = (float)(int16_t)(int32_t)(t * tip  + fx);
+        t = (float)sin(ang);
+        pQuad->v[1].y = (float)(int16_t)(int32_t)(t * tip  + (float)dy);
         pQuad->v[1].z = 0.0f;
         ang = A - kF32C;
-        pQuad->v[2].x = (float)(int16_t)(int32_t)(cos(ang) * base + (float)x);
-        pQuad->v[2].y = (float)(int16_t)(int32_t)(sin(ang) * base + fy);
+        t = (float)cos(ang);
+        pQuad->v[2].x = (float)(int16_t)(int32_t)(t * base + fx);
+        t = (float)sin(ang);
+        pQuad->v[2].y = (float)(int16_t)(int32_t)(t * base + (float)dy);
         pQuad->v[2].z = 0.0f;
         ang = A - kF330;
-        pQuad->v[3].x = (float)(int16_t)(int32_t)(cos(ang) * base + (float)x);
-        pQuad->v[3].y = (float)(int16_t)(int32_t)(sin(ang) * base + fy);
+        t = (float)cos(ang);
+        pQuad->v[3].x = (float)(int16_t)(int32_t)(t * base + fx);
+        t = (float)sin(ang);
+        pQuad->v[3].y = (float)(int16_t)(int32_t)(t * base + (float)dy);
         pQuad->v[3].z = 0.0f;
     }
 
