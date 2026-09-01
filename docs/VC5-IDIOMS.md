@@ -1212,6 +1212,19 @@ the caller AND flipped a helper to match for free.
   `0 - (w & 1)` (that is `neg` with no sbb). Proven 0x1001E9F0
   br_dl_fillcolour, 110 B, MATCH /O2.
 
+- **div/mod-by-constant pairs: `%` next to `/` emits ONE idiv; the magic-imul
+  shape means the source derived the remainder itself — and a compound `-=`
+  picks the neg-form.** `q = n / 100; r = n % 100;` compiles to `cdq; idiv`
+  (one divide serves both). Orig magic-imul for the divide plus a mul-back for
+  the remainder = source spelled the mul-back: `n -= q * 100` (compound, result
+  stays in n's register) emits the NEGATED product folded into a lea-ADD
+  (`neg; shl 2; sub` = −5q, `lea` ×5, `lea esi,[esi+edx*4]`), while
+  `r = n - q * 100` (fresh variable) emits the positive chain + `sub`. The
+  second pair (`whole -= minutes * 60`) updates in place as plain `sub ecx`.
+  A named quotient local forces `mov ecx,edx; sar ecx,5` (copy first);
+  shifting edx in place means no named quotient. Proven 0x10014760
+  BrHudDrawTimeEntry (160 B, MATCH /O2).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
