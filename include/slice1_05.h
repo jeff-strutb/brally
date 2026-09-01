@@ -393,11 +393,11 @@ typedef struct BrPeer {
  * different things, and 0 is reachable ONLY through the id == 1 shortcut.
  * A caller that treats 0 as "not found" is wrong.
  *
- * DEVIATION: the original takes and releases each record's mutex around
- * every probe (WaitForSingleObject / ReleaseMutex). Those calls do not
- * affect the value returned and are dropped here; a threaded port has to put
- * equivalent locking back. */
-int BrPeerFind(const BrPeer *aPeers, uint32_t id);
+ * The original takes and releases each record's mutex around every probe
+ * (WaitForSingleObject / ReleaseMutex); the matching build reproduces that,
+ * the port variant still drops it (single-threaded). */
+extern BrPeer g_aBrPeers[BR_PEER_COUNT];   /* Glide 0x117A9B88 */
+int BrPeerFind(uint32_t id);
 
 /* 0x10035FE0  thiscall. Reset three fields of a 348-byte record and cache
  * its own array index plus a pointer into a parallel 6-byte-record array.

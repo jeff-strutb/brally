@@ -751,8 +751,19 @@ uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
  * given player. If that player is not there yet it gives back the first free
  * slot instead, so the same call both looks up and allocates; if the table is
  * full it reports failure. The local player is always slot zero. */
+BrPeer g_aBrPeers[BR_PEER_COUNT];   /* Glide 0x117A9B88; loop 1 starts at [1] */
+
+#ifdef BR_MATCHING_BUILD
+/* The original probes every record under that record's own Win32 mutex:
+ * WaitForSingleObject(h, INFINITE), read f04/f2C, ReleaseMutex(h) -- through
+ * the import table (the Wait import is CSEd into ebp, Release stays a
+ * memory call).  Each probe's verdict is computed between the reads and the
+ * release, then tested after it. */
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
 /* @implements 0x10036030 d3d BrPeerFind */
-int BrPeerFind(const BrPeer *aPeers, uint32_t id)
+int BrPeerFind(uint32_t id)
 {
     int i;
 
@@ -760,18 +771,63 @@ int BrPeerFind(const BrPeer *aPeers, uint32_t id)
         return 0;
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        if ((aPeers[i].f2C & BR_PEER_STATE_MASK) != 0u &&
-            aPeers[i].f04 == id)
+        const BrPeer *p = &g_aBrPeers[i];
+        uint32_t idv, st;
+
+        WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
+        idv = p->f04;
+        st  = p->f2C;
+        ReleaseMutex((void *)(uintptr_t)p->hMutex);
+
+        if ((st & BR_PEER_STATE_MASK) >= 1u && idv == id)
             return i;
     }
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        if ((aPeers[i].f2C & BR_PEER_STATE_MASK) == 0u)
+        const BrPeer *p = &g_aBrPeers[i];
+        uint32_t st;
+
+        WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
+        /* Dword load, byte-width AND (`and bl,0x3f`), then the neg/sbb/inc
+         * boolean OVERWRITES st in the same register (dword sbb), crossing
+         * the Release call; the byte cast in the if gives the original's
+         * `test bl,bl`.
+         * RESIDUE (1+0 regnorm, +1 insn): the original births the load in
+         * ebx and computes in place; ours computes in eax and copies to
+         * ebx before the call.  Probed and failed: uint8_t st (byte load),
+         * split byte local (extra byte move), separate int bFree (same). */
+        st = p->f2C;
+        st = (uint32_t)(((uint8_t)st & BR_PEER_STATE_MASK) == 0u);
+        ReleaseMutex((void *)(uintptr_t)p->hMutex);
+
+        if ((uint8_t)st)
             return i;
     }
 
     return -1;
 }
+#else
+int BrPeerFind(uint32_t id)
+{
+    int i;
+
+    if (id == 1)
+        return 0;
+
+    for (i = 1; i < BR_PEER_COUNT; ++i) {
+        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) != 0u &&
+            g_aBrPeers[i].f04 == id)
+            return i;
+    }
+
+    for (i = 1; i < BR_PEER_COUNT; ++i) {
+        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) == 0u)
+            return i;
+    }
+
+    return -1;
+}
+#endif
 
 /* 0x10035FE0 */
 /* WHAT IT DOES: prepares one entity for use -- clears its state, works out its
