@@ -358,6 +358,49 @@ void BrSub10038F30(int code)
  * pressing Escape, which quits the game. This is what a fatal message looks
  * like from the inside. */
 /* @implements 0x10008CF0 d3d BrLogPrint */
+#ifdef BR_MATCHING_BUILD
+/* Original: direct calls and globals, no host struct. The 0x8000 DL
+ * buffer is a plain local (chkstk probe); Escape spin via the IAT. */
+extern int  DAT_100a7514;               /* screen width */
+extern int *DAT_106e7710;               /* DL write cursor */
+extern void (*DAT_10b73530)(void *);    /* submit hook */
+__declspec(dllimport) short __stdcall GetAsyncKeyState(int vk);
+__declspec(dllimport) void  __stdcall Sleep(unsigned long ms);
+extern void BrClearFlag_AB504(void);
+extern void BrTextFlag358Clear(void);
+extern void BrSet_10019270(void);
+extern int  BrSetGlobal_ABB30(int v);
+extern void BrTextDraw(const char *psz, int x, int y);
+extern void BrSub100325B0(int code);    /* glide 0x100325B0, never returns */
+
+void BrLogPrint(const void *p)
+{
+    int aDl[0x2000];
+
+    BrClearFlag_AB504();
+    DAT_106e7710 = aDl;
+    BrTextFlag358Clear();
+    BrSet_10019270();
+    BrSetGlobal_ABB30(0x14);
+
+    BrTextDraw((const char *)p, DAT_100a7514 / 2, 0xDC);
+
+    {
+        int *p_ = DAT_106e7710;
+        DAT_106e7710 = DAT_106e7710 + 2;
+        p_[0] = (int)0xB8000000;          /* G_ENDDL */
+        p_[1] = 0;
+    }
+    DAT_10b73530(aDl);
+
+    for (;;) {
+        if (GetAsyncKeyState(0x1B) != 0)
+            BrSub100325B0(1);
+        Sleep(1);
+    }
+}
+#else
+/* @implements 0x10008CF0 d3d BrLogPrint */
 void BrLogPrint(const void *p)
 {
     const BrLogHost *pH = g_pBrLogHost;
@@ -394,6 +437,7 @@ void BrLogPrint(const void *p)
         pH->pfnSleep(1);
     }
 }
+#endif
 
 #ifdef BR_MATCHING_BUILD
 /* ==========================================================================
