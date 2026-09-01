@@ -45,14 +45,36 @@ The assembled DLL image diffs to **0 bytes** over every matched claim.
 
 **Game DLL by tier** (`python3 tools/tiers.py`) — hand-C target 1,529 functions:
 
-| Tier | State | Fns | `.text` B |
-|---|---|--:|--:|
-| T1 | still asm (no hand-C yet) | 358 | 191,970 |
-| T2 | decomp'd, real diffs remain | 385 | 187,645 |
-| T3 | codegen-only diff (same instructions; register/scheduling) | 47 | 7,793 |
-| **T4** | **byte-exact** | **739** | **66,395** |
+The tiers track how close each function's rebuilt code is to the original, from
+not-started to exact. Two boundaries matter: **T1→T2** is a machine-made rough
+draft on the side vs. real code built into the project; and inside "it works,"
+**T3b** behaves like the original but is built differently (so it compiles to
+different instructions), while **T3a** is down to the last cosmetic gap — same
+instructions, only the register choices differ.
 
-T3 is a static proxy ("done bar codegen"), not a runtime proof.
+| Tier | Meaning | Fns | `.text` B |
+|---|---|--:|--:|
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 361 | 195,388 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 382 | 184,227 |
+| T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | — | — |
+| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 47 | 7,793 |
+| **T4** | **Done** — matches the original exactly, byte for byte | **739** | **66,395** |
+
+**Every tier — T1 included — already has at least a rough C draft from the
+decompiler.** No one is reading raw assembly from a blank slate; the original
+assembly is only the reference each draft is checked against. "Not started"
+(T1) means that draft hasn't been turned into real project code yet, not that
+no C exists.
+
+Only **T1, T3a, and T4 are counted automatically.** The T2/T3b split isn't
+computed yet: separating "logic still wrong" (T2) from "works but built
+differently" (T3b) means confirming the behavior is actually correct. That is
+decidable — run the rebuilt function and the original on the same inputs and
+compare results and side effects — but that differential harness isn't wired up
+for arbitrary functions here, so for now T3b is confirmed by hand and still
+counts inside T2's 382. T3a is strong static evidence (the instructions match),
+which is not the same as a runtime equivalence proof. Counts wobble by a few
+functions between runs as the split is re-measured.
 
 **Executables** (game code; static CRT is linked, not decompiled):
 

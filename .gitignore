@@ -2,6 +2,7 @@
 build/
 *.o
 *.dSYM/
+.DS_Store
 
 # Python tooling environment
 .venv/

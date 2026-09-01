@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """Four-tier coverage for BRGlide.dll -- where every hand-C function stands.
 
-    T1  still asm       no hand-written C in the tree yet (only raw decompiler
-                        output). The real transcription has not started.
-    T2  decomp'd (C)    transcribed C exists but still has real STRUCTURAL
-                        differences from the original -- missing/extra/changed
-                        instructions. Logic not yet proven equivalent.
+    The tiers track how close each function's rebuilt code is to the original.
+    The T1->T2 step is the confusing one: it is the difference between a
+    machine-made rough draft sitting off to the side (T1) and real code we have
+    actually built into the project (T2).
+
+    T1  not started     no real code in the project yet. A machine rough-draft
+                        exists off to the side as a starting point, but nobody
+                        has turned it into real project code.
+    T2  in progress     real code is in the project, but it still differs from
+                        the original in real ways (missing/extra/changed
+                        instructions) -- the logic is not yet a match.
     T3  codegen-only    transcribed C that compiled to the SAME instructions as
         difference      the original -- identical register-blind multiset, same
                         count -- differing only in register allocation and
@@ -103,16 +109,19 @@ def main():
     print(f"  BRGlide.dll hand-C target: {n_target} functions"
           f"   ({sum(target.values())} B of .text)")
     print("  " + "-" * 56)
-    print(f"  T1  still asm (no hand-C yet)   {n_t1:5d} fns   {b_t1:8d} B")
-    print(f"  T2  decomp'd, real diffs        {len(t2):5d} fns   {b_t2:8d} B")
-    print(f"  T3  codegen-only diff (est.)    {len(t3):5d} fns   {b_t3:8d} B")
-    print(f"  T4  byte-exact                  {len(match):5d} fns   {b_t4:8d} B")
+    print(f"  T1  not started (C draft only)  {n_t1:5d} fns   {b_t1:8d} B")
+    print(f"  T2  in progress (real diffs)    {len(t2):5d} fns   {b_t2:8d} B")
+    print(f"  T3a codegen-only (regs differ)  {len(t3):5d} fns   {b_t3:8d} B")
+    print(f"  T4  done (byte-exact)           {len(match):5d} fns   {b_t4:8d} B")
     print("  " + "-" * 56)
-    print(f"      transcribed (T2+T3+T4)      {n_tr:5d} fns")
-    print(f"      done or done-bar-codegen    {len(match)+len(t3):5d} fns"
-          f"   (T3+T4)")
+    print(f"      in the project (T2+T3a+T4)  {n_tr:5d} fns")
+    print(f"      done or done-bar-registers  {len(match)+len(t3):5d} fns"
+          f"   (T3a+T4)")
     print("=" * 60)
-    print(f"  T3 rule: size {COMPLETE_LO}-{COMPLETE_HI}% complete AND register-"
+    print("  Every T1 function already has a C draft off to the side; T1 = that")
+    print("  draft is not yet real project code. T3b (works but built")
+    print("  differently) is not auto-split -- it still counts inside T2.")
+    print(f"  T3a rule: size {COMPLETE_LO}-{COMPLETE_HI}% complete AND register-"
           f"blind gap <= {REG_GAP_MAX} or {REG_FRAC_MAX*100:.0f}% of insns.")
     print("  fenced (linker/EH-reproduced) sits outside this table; see")
     print("  config/fenced.csv / tools/coverage.py.")
