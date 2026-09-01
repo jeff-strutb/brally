@@ -16,6 +16,7 @@
 #undef BrVtxExpand
 #undef BrVtxCacheInsert
 #undef BrVtxCacheResolve
+#undef BrSelLookup
 #else
 #include "slice1_05.h"
 #include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
@@ -533,6 +534,50 @@ void BrPtrListAdd(BrPtrList *pList, void *pv)
  * direction rule. The second number is looked up fresh so the rotation cannot
  * affect it. What the table describes is not established here. */
 /* @implements 0x1002F460 d3d BrSelLookup */
+#ifdef BR_MATCHING_BUILD
+/* Original: no parameters. The input record comes through a pointer
+ * global, the table is two interleaved pinned byte columns (0x100B3028 /
+ * 0x100B3029), and the results are globals. A shared unsigned-char temp
+ * carries first the table byte (edx, copied into the int a) and then the
+ * flag byte (dl reloaded without re-zeroing). */
+typedef struct BrSelInM {
+    unsigned char f00;
+    unsigned char pad[3];
+    unsigned char f04;
+    unsigned char f05;
+} BrSelInM;
+
+extern BrSelInM     *DAT_10af2094;
+extern unsigned char DAT_100b3028[];
+extern unsigned char DAT_100b3029[];
+extern int           DAT_100b3014;
+extern int           DAT_104b15e8;
+
+void BrSelLookup(void)
+{
+    BrSelInM *p = DAT_10af2094;
+    int idx = p->f04 * 12 + p->f05;
+    unsigned char t;
+    int a;
+
+    t = DAT_100b3028[idx * 2];
+    a = t;
+    DAT_100b3014 = a;
+
+    t = p->f00;
+    if (t & 1) {
+        if (a < 6)
+            a += 6;
+        else
+            a -= 6;
+        DAT_100b3014 = a;
+    }
+
+    /* recomputed, so the fold above cannot leak into the second lookup */
+    idx = p->f04 * 12 + p->f05;
+    DAT_104b15e8 = DAT_100b3029[idx * 2];
+}
+#else
 void BrSelLookup(const BrSelInput *pIn, const unsigned char (*aTable)[2],
                  int *pOutA, int *pOutB)
 {
@@ -551,6 +596,7 @@ void BrSelLookup(const BrSelInput *pIn, const unsigned char (*aTable)[2],
     idx = (int)pIn->f04 * 12 + (int)pIn->f05;
     *pOutB = (int)aTable[idx][1];
 }
+#endif
 
 /* 0x10034C32 */
 void BrHookNopA(void)
