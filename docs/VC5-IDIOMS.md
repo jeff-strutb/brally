@@ -1252,3 +1252,21 @@ parked-wall kind newly retryable (no new idiom landed).
   mapped); the Dir0 else-arm fld/fld/mov/fstp/mov/fstp hybrid copy; the
   0x40-vs-0x4c frame. VC4.2 cross-check on this TU is NEGATIVE: all four
   byte-exact-under-5.0 functions shrink/restructure under tools/msvc42.
+
+- **Probes ruled out on the 0x1000A110 residue (2026-08-31, all
+  byte-verified dead):** (a) VC5 does NOT fold `(w>>8)&0xFF` into a
+  byte-offset dword read — it mask-algebras (`and reg,0xff00` + shifts)
+  and the odd-address dword reads at [esp+0x31]/[esp+0x32] therefore ARE
+  reads of packed byte-array members, not offset views of a dword local.
+  (b) A `volatile const float *` read and a `(float)(double)` round-trip
+  both still compile a float field copy to integer movs — the Dir0
+  fld/fld/mov/fstp/mov/fstp hybrid remains unreached (also probed:
+  pointer-aliased reads, signed-char masks, volatile int puns — the last
+  forces dword width but blows a register). (c) The N64 twin
+  (TGR ROM fn at 0x80232ed4, found by scanning lui/ori pairs for the DL
+  command words — G_MTX 106/103, movemem, the BC-moveword quad) is a
+  LEANER ancestor: its colour movewords write constants, so the 3-arm
+  colour pack, the *4/5 dim arm, and the Dir0/Dir1 block are PC-era code
+  with no MIPS oracle. It DOES re-read icar from car+0x140 per movemem —
+  independent confirmation of the recompute-per-site idiom in the shared
+  lineage.
