@@ -774,11 +774,15 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     if (*(car + BR_CAR_OFF_KIND) == 2) {
         g_BrDrawFogAlpha =
             (int32_t)(*(const float *)(car + BR_CAR_OFF_ALPHA) * 255.0f);
-        put(0xF8000000u,
-            ((uint32_t)BrG_6C0260 << 24) |
-            ((uint32_t)BrG_6C1614 << 16) |
-            ((uint32_t)BrG_6C0200 << 8)  |
-            ((uint32_t)g_BrDrawFogAlpha & 0xFFu));
+        {
+            /* Alpha term is masked FIRST (orig reloads the global it just
+             * stored, before the third colour byte's load). */
+            uint32_t fa = (uint32_t)g_BrDrawFogAlpha & 0xFFu;
+            put(0xF8000000u,
+                ((((uint32_t)(uint8_t)BrG_6C0260 << 8
+                 | (uint8_t)BrG_6C1614) << 8
+                 | (uint8_t)BrG_6C0200) << 8) | fa);
+        }
     }
 
     /* 0xA1F1 -- flag290C gate from track records. */
@@ -1326,12 +1330,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xE7000000u, 0);
     put(0xBA001402u, 0x00100000u);
 
-    {
-        uint32_t geomVal = 0x00040000u;
-        if (g_BrDrawReflectFlag != 0)
-            geomVal |= 0x00080000u;
-        put(0xB7000000u, geomVal);
-    }
+    /* Orig is the branchless neg/sbb ternary, not an if/or. */
+    put(0xB7000000u,
+        (g_BrDrawReflectFlag != 0 ? 0x00080000u : 0u) | 0x00040000u);
 
     put(0xBB000001u, 0x08001000u);
     put(0xBA000C02u, BrG_6C0258);
@@ -1342,25 +1343,27 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO,
         TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO);
 
-    /* 0xBA18 -- 3-arm FB colour (G_SETENVCOLOR). */
-    {
-        uint32_t fbVal;
-        uint32_t rgb = ((uint32_t)BrG_6C0260 << 24) |
-                       ((uint32_t)BrG_6C1614 << 16) |
-                       ((uint32_t)BrG_6C0200 << 8);
-
-        if (BrG_6C6618 != 0) {
-            if (specMem != 0) {
-                uint32_t a = ((uint32_t)g_BrDrawByte78 >> 3) - 0x21;
-                fbVal = rgb | (a & 0xFFu);
-            } else {
-                uint32_t a = ((uint32_t)g_BrDrawByte78 >> 1) + 0x7F;
-                fbVal = rgb | (a & 0xFFu);
-            }
-        } else {
-            fbVal = rgb | 0xFFu;
-        }
-        put(0xFB000000u, fbVal);
+    /* 0xBA18 -- 3-arm FB colour (G_SETENVCOLOR).  The put() is INSIDE each
+     * arm (three full copies of the Horner pack in the bytes); the inner
+     * gate is flag290C ([esp+0x18] in the original), NOT specMem. */
+    if (BrG_6C6618 != 0) {
+        if (flag290C != 0)
+            put(0xFB000000u,
+                ((((uint32_t)(uint8_t)BrG_6C0260 << 8
+                 | (uint8_t)BrG_6C1614) << 8
+                 | (uint8_t)BrG_6C0200) << 8)
+                 | ((((uint32_t)g_BrDrawByte78 >> 3) - 0x21) & 0xFFu));
+        else
+            put(0xFB000000u,
+                ((((uint32_t)(uint8_t)BrG_6C0260 << 8
+                 | (uint8_t)BrG_6C1614) << 8
+                 | (uint8_t)BrG_6C0200) << 8)
+                 | ((((uint32_t)g_BrDrawByte78 >> 1) + 0x7Fu) & 0xFFu));
+    } else {
+        put(0xFB000000u,
+            ((((uint32_t)(uint8_t)BrG_6C0260 << 8
+             | (uint8_t)BrG_6C1614) << 8
+             | (uint8_t)BrG_6C0200) << 8) | 0xFFu);
     }
 
     put(0xB900031Du, 0);
