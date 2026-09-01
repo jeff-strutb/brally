@@ -186,27 +186,30 @@ int BrKeyTableFind(const BrKeyTable *pTable, uint32_t key,
 int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
                        const BrVec3 *pC, const BrVec3 *pRef)
 {
-    BrVec3 edge, toPt, n;
+    /* SIX distinct Vec3 locals (frame 0x48), not three reused ones: a
+     * fresh edge per test, a shared n, and two point-deltas.  Reusing
+     * edge/toPt shrinks the frame to 0x24 and shifts every slot. */
+    BrVec3 n, toPtB, edge1, edge2, edge3, toPtA;
 
     /* Edge A->B, paired with pPt - pB. */
-    BrVec3Sub(&edge, pB, pA);
-    BrVec3Sub(&toPt, pPt, pB);
-    BrVec3Cross(&n, &edge, &toPt);
+    BrVec3Sub(&edge1, pB, pA);
+    BrVec3Sub(&toPtB, pPt, pB);
+    BrVec3Cross(&n, &edge1, &toPtB);
     if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
         return 0;
     }
 
-    /* Edge B->C, paired with the same pPt - pB the original kept live. */
-    BrVec3Sub(&edge, pC, pB);
-    BrVec3Cross(&n, &edge, &toPt);
+    /* Edge B->C, paired with the same pPt - pB kept live. */
+    BrVec3Sub(&edge2, pC, pB);
+    BrVec3Cross(&n, &edge2, &toPtB);
     if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
         return 0;
     }
 
     /* Edge C->A, paired with pPt - pA. */
-    BrVec3Sub(&edge, pA, pC);
-    BrVec3Sub(&toPt, pPt, pA);
-    BrVec3Cross(&n, &edge, &toPt);
+    BrVec3Sub(&edge3, pA, pC);
+    BrVec3Sub(&toPtA, pPt, pA);
+    BrVec3Cross(&n, &edge3, &toPtA);
     if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
         return 0;
     }
