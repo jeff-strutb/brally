@@ -17,6 +17,12 @@
 #define BrGbiTexScanLoadBlock    BrGbiTexScanLoadBlock_port
 #define BrGbiSolidTexBuild       BrGbiSolidTexBuild_port
 #define BrGbiBlit                BrGbiBlit_port
+#define BrFadeSetTarget          BrFadeSetTarget_port
+#define BrFadeSetTargetA         BrFadeSetTargetA_port
+#define BrFadeSetTargetB         BrFadeSetTargetB_port
+#define BrFadeIsClosing          BrFadeIsClosing_port
+#define BrFadeIsSettled          BrFadeIsSettled_port
+#define BrFadeIsShut             BrFadeIsShut_port
 #define BrRcaFixupArray          BrRcaFixupArray_port
 /* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
  * state pointer.  Same rename so the matching bodies can use that shape. */
@@ -44,6 +50,12 @@
 #undef BrGbiTexScanLoadBlock
 #undef BrGbiSolidTexBuild
 #undef BrGbiBlit
+#undef BrFadeSetTarget
+#undef BrFadeSetTargetA
+#undef BrFadeSetTargetB
+#undef BrFadeIsClosing
+#undef BrFadeIsSettled
+#undef BrFadeIsShut
 #undef BrRcaFixupArray
 #undef BrGbiClearGeometryMode
 #undef BrGbiSetGeometryMode
@@ -1812,6 +1824,7 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
  * reverses when it lands rather than restarting. Note the time is a duration
  * and is divided into, so asking for zero time gives an infinite speed. */
 /* @implements 0x1002B130 d3d BrFadeSetTarget */
+#ifndef BR_MATCHING_BUILD
 void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 {
     pSt->kick = 1;
@@ -1854,6 +1867,7 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
     pSt->target = to;
     pSt->rate   = -1.0f / over;               /* 0x1008F430 == -1.0f */
 }
+#endif
 
 /* 0x1002B1C0 */
 /* WHAT IT DOES: aims one of the two independent brightness ramps at a new
@@ -1861,6 +1875,7 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
  * side of the target it is currently on. As with the wipe, a zero duration
  * gives an infinite rate. */
 /* @implements 0x1002B1C0 d3d BrFadeSetTargetA */
+#ifndef BR_MATCHING_BUILD
 void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 {
     pSt->kickA = 1;
@@ -1886,11 +1901,13 @@ void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
     else
         pSt->rateA = -1.0f / over;
 }
+#endif
 
 /* 0x1002B220 */
 /* WHAT IT DOES: the same as the ramp above, for the second of the two
  * independent brightness ramps. */
 /* @implements 0x1002B220 d3d BrFadeSetTargetB */
+#ifndef BR_MATCHING_BUILD
 void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 {
     pSt->kickB = 1;
@@ -1903,11 +1920,95 @@ void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
     else
         pSt->rateB = -1.0f / over;
 }
+#endif
 
 /* 0x1002B2A0 */
 /* WHAT IT DOES: reports whether the screen transition is on its way closed
  * -- either currently moving backward, or flagged to reverse when it lands. */
+#ifdef BR_MATCHING_BUILD
+/* The fade originals read the loose globals directly: value 0x104B16C0,
+ * target 0x104B16B8, rate 0x104B16BC, bounce 0x104B16D8, the A/B channel
+ * rates 0x104B16C8/C4, latch flags 0x104B16CC/D0/D4, and the A/B pair
+ * shadows at 0x100A75xx. Constants: 0x10077370 = 0.0f, 0x10077380 /
+ * 0x10077390 = the +/- rate numerators, 0x10077388 a double threshold. */
+extern float  DAT_104b16b8, DAT_104b16bc, DAT_104b16c0;
+extern float  DAT_104b16c4, DAT_104b16c8;
+extern int    DAT_104b16cc, DAT_104b16d0, DAT_104b16d4, DAT_104b16d8;
+extern float  DAT_100a7500, DAT_100a7504, DAT_100a7508, DAT_100a750c;
+extern float  DAT_10077370, DAT_10077380, DAT_10077390;
+extern double DAT_10077388;
+
+void BrFadeSetTarget(float v, float dur)
+{
+    DAT_104b16cc = 1;
+    if (!(v < DAT_104b16c0) && v != DAT_10077370) {
+        DAT_104b16b8 = v;
+        DAT_104b16bc = DAT_10077380 / dur;
+        return;
+    }
+    if (DAT_104b16c0 != DAT_10077380 && DAT_104b16bc > DAT_10077388) {
+        DAT_104b16d8 = 1;
+        return;
+    }
+    DAT_104b16b8 = v;
+    DAT_104b16bc = DAT_10077390 / dur;
+}
+
+void BrFadeSetTargetA(float v, float dur)
+{
+    DAT_104b16d4 = 1;
+    DAT_100a7508 = v;
+    if (v - DAT_100a750c < DAT_10077370 || v == DAT_10077370)
+        DAT_104b16c8 = DAT_10077390 / dur;
+    else
+        DAT_104b16c8 = DAT_10077380 / dur;
+}
+
+void BrFadeSetTargetB(float v, float dur)
+{
+    DAT_104b16d0 = 1;
+    DAT_100a7500 = v;
+    if (v - DAT_100a7504 < DAT_10077370 || v == DAT_10077370)
+        DAT_104b16c4 = DAT_10077390 / dur;
+    else
+        DAT_104b16c4 = DAT_10077380 / dur;
+}
+
+int BrFadeIsClosing(void)
+{
+    if (!(DAT_104b16bc >= DAT_10077370))
+        goto yes;
+    if (DAT_104b16d8 == 0)
+        return 0;
+yes:
+    return 1;
+}
+
+int BrFadeIsSettled(void)
+{
+    if (DAT_104b16c0 != DAT_104b16b8)
+        goto no;
+    if (DAT_104b16d8 == 0)
+        return 1;
+no:
+    return 0;
+}
+
+int BrFadeIsShut(void)
+{
+    if (DAT_104b16bc >= DAT_10077370)
+        goto no;
+    if (DAT_104b16c0 != DAT_10077370)
+        goto no;
+    if (DAT_104b16d8 == 0)
+        return 1;
+no:
+    return 0;
+}
+#endif
+
 /* @implements 0x1002B2A0 d3d BrFadeIsClosing */
+#ifndef BR_MATCHING_BUILD
 int BrFadeIsClosing(const BrFadeState *pSt)
 {
     /* 0x1002B2AE `test ah,1 / jne 0x1002B2BF`, and 0x1002B2BF is
@@ -1917,12 +2018,14 @@ int BrFadeIsClosing(const BrFadeState *pSt)
         return 1;
     return (pSt->bounce != 0) ? 1 : 0;
 }
+#endif
 
 /* 0x1002B2D0 */
 /* WHAT IT DOES: reports whether the screen transition has finished moving
  * and has no reversal pending, which is how the game knows it can proceed to
  * whatever the transition was covering. */
 /* @implements 0x1002B2D0 d3d BrFadeIsSettled */
+#ifndef BR_MATCHING_BUILD
 int BrFadeIsSettled(const BrFadeState *pSt)
 {
     /* 0x1002B2DE `test ah,0x40 / je 0x1002B2F2`, and 0x1002B2F2 is
@@ -1934,11 +2037,13 @@ int BrFadeIsSettled(const BrFadeState *pSt)
         return 0;
     return (pSt->bounce != 0) ? 0 : 1;
 }
+#endif
 
 /* 0x1002B300 */
 /* WHAT IT DOES: reports whether the screen transition is fully closed:
  * moving backward, arrived at zero, and with no reversal pending. */
 /* @implements 0x1002B300 d3d BrFadeIsShut */
+#ifndef BR_MATCHING_BUILD
 int BrFadeIsShut(const BrFadeState *pSt)
 {
     /* BOTH tests leave by `je 0x1002B335`, which is `xor eax,eax / ret`.
@@ -1958,6 +2063,7 @@ int BrFadeIsShut(const BrFadeState *pSt)
         return 0;
     return (pSt->bounce != 0) ? 0 : 1;
 }
+#endif
 
 /* The 0xE1 command both bar-emitting arms build. */
 static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
