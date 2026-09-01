@@ -672,6 +672,88 @@ void BrPfxUpdateB0(BrPfxPool *pPool, const BrPfxEnv *pEnv)
  * dropped either when it fades out or when it is falling fast enough to have
  * clearly gone. */
 /* @implements 0x1003A340 d3d BrPfxUpdateB4AC */
+#ifdef BR_MATCHING_BUILD
+/* No parameters: dt, drift, the record array (0x10AC0C48, 32-byte
+ * records, 1-based) and the three list heads are globals; the free is
+ * INLINED against the free-head 0x10AC0C38. */
+extern float    g_fPfxDt;        /* 0x106E9D8C */
+extern float    g_vPfxDriftX;    /* 0x104ADD40 */
+extern float    g_vPfxDriftY;    /* 0x104ADD44 */
+extern float    g_vPfxDriftZ;    /* 0x104ADD48 */
+extern BrPfxRec g_aPfxRec[];     /* 0x10AC0C48 */
+extern int32_t g_iPfxHeadB4;     /* 0x10AC0C44 -- read as a DWORD and
+                                  * masked; the head is the low word */
+extern int32_t g_iPfxHeadAC;     /* 0x10AC0C3C */
+extern uint16_t g_iPfxFree;     /* 0x10AC0C38 */
+extern const float kPfx0_7;      /* 0x100775D4  0.7   */
+extern const float kPfx19_62;    /* 0x100775D8  19.62 */
+extern const float kPfx102;      /* 0x100775DC  102.0 */
+extern const float kPfxRecip;    /* 0x100775C4  1/65280 */
+extern const float kPfxNeg0_8;   /* 0x100775C8  -0.8  */
+extern const float kPfxCell;     /* 0x100775D0  0.03125 */
+extern const float kPfxNeg30;    /* 0x100775E0  -30.0 */
+
+/* RESIDUE (13+6 regnorm, T3a-float): the original carries k, scale and
+ * the dt-products on the x87 stack across the whole double loop (fmul
+ * st(3)/fld st(3), one fstp st(0) at exit); this build spills scale and k
+ * to [esp] slots around the __ftol call.  The raw (int32_t) cast (not the
+ * BrFtolTrunc helper) and dword head reads were required steps; the
+ * remaining carry discipline is the documented float-DAG scheduling
+ * class. */
+void BrPfxUpdateB4AC(void)
+{
+    float k = g_fPfxDt * kPfx0_7;
+    int pass;
+
+    for (pass = 0; pass < 2; pass++) {
+        uint16_t *piLink;
+        unsigned iRec;
+        int iNext;
+
+        /* Per-arm value+address assignments (each arm loads its own head
+         * and stores its address as an immediate); a ternary + *piLink
+         * re-reads the head through the stored pointer. */
+        if (pass != 0) {
+            iRec   = (unsigned)g_iPfxHeadAC & 0xFFFFu;
+            piLink = (uint16_t *)&g_iPfxHeadAC;
+        } else {
+            iRec   = (unsigned)g_iPfxHeadB4 & 0xFFFFu;
+            piLink = (uint16_t *)&g_iPfxHeadB4;
+        }
+
+        while (iRec != 0) {
+            BrPfxRec *p = &g_aPfxRec[iRec];
+            float scale;
+
+            iNext = p->iNext;
+            p->age = k + p->age;
+            scale = (float)((int)p->f1F * (int)p->f1E) * kPfxRecip;
+
+            p->pos.x = (p->vel.x * scale) * g_fPfxDt + g_vPfxDriftX + p->pos.x;
+            p->pos.y = (p->vel.y * scale) * g_fPfxDt + g_vPfxDriftY + p->pos.y;
+            p->pos.z = (scale * p->vel.z - kPfxNeg0_8) * g_fPfxDt + g_vPfxDriftZ
+                     + p->pos.z;
+
+            p->vel.z = p->vel.z - g_fPfxDt * kPfx19_62;
+
+            /* Raw (int32_t) cast -> the __ftol CALL, which VC5 knows
+             * preserves the x87 stack; a real helper call would force k
+             * and the carried dt-products into memory slots. */
+            p->f1E = (uint8_t)(int32_t)(kPfx102 / p->age);
+
+            if (scale < kPfxCell || p->vel.z < kPfxNeg30) {
+                *piLink = p->iNext;
+                p->iNext = g_iPfxFree;
+                g_iPfxFree = (uint16_t)iRec;
+            } else {
+                piLink = &p->iNext;
+            }
+
+            iRec = iNext;
+        }
+    }
+}
+#else
 void BrPfxUpdateB4AC(BrPfxPool *pPool, const BrPfxEnv *pEnv)
 {
     float k = pEnv->dt * 0.699999988079071f;   /* 0x1008F60C */
@@ -709,6 +791,7 @@ void BrPfxUpdateB4AC(BrPfxPool *pPool, const BrPfxEnv *pEnv)
         }
     }
 }
+#endif
 
 /* --------------------------------------------------------------------------
  * 6. Car-driven effects
