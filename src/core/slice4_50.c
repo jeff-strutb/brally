@@ -5,6 +5,10 @@
  * name encodes, and carries that address in its comment.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -367,6 +371,71 @@ void BrSub1003C150(void)
  * unless something else changed it. As with hosting, the failure message it
  * builds is discarded rather than shown. */
 /* @implements 0x1003C260 d3d BrSub1003C260 */
+#ifdef BR_MATCHING_BUILD
+/* Direct globals/callees; the 29D4 deref is unguarded as in the original;
+ * the retry hook is a direct call; one shared return-1 tail. */
+extern int   DAT_10273328;
+extern int   DAT_10ac5d30;
+extern char *DAT_10ac5d2c;
+extern int   DAT_10ac4090;
+extern int   DAT_10ac4098;
+extern int   DAT_10226a48;
+extern char  DAT_100aa5b0[];        /* "Could not join session ..." */
+extern int   BrSub1003D030(void *pJoin);
+extern int   BrSub1003C740(int hDp, void *pJoin, char *pszName, int a4);
+extern int   BrSub100385E0(char *pszName);      /* glide 0x100385E0 */
+extern void  BrSub100355F0(void);
+extern void  BrSub100356B0(void);
+extern void  BrSub10005B10(int v);
+extern void  BrSub1003CE80(void);
+__declspec(dllimport) int __stdcall GetUserNameA(char *, unsigned long *);
+
+int BrSub1003C260(void)
+{
+    unsigned long cbName;
+    unsigned char aJoin[0x10];
+    char          szName[0x320];
+    char          szMsg[0x400];
+    int           hr;
+
+    if (DAT_10273328 == 0)
+        return 0;
+
+    if (DAT_10ac5d30 == 0)
+        return 1;
+    if (*(unsigned short *)(DAT_10ac5d2c + 0x1E164) <= 0u)
+        return 1;
+
+    if (DAT_10ac4090 == 0) {
+        hr = BrSub1003D030(aJoin);
+        if (hr >= 0) {
+            memset(szName, 0, sizeof(szName));
+            cbName = 0xC8;
+            GetUserNameA(szName, &cbName);
+
+            hr = BrSub1003C740(DAT_10273328, aJoin, szName, DAT_10ac4098);
+            if (hr == (int)0x88770820) {
+                if (BrSub100385E0(szName) == 0)
+                    return 0;
+                hr = BrSub1003C740(DAT_10273328, aJoin, szName,
+                                   DAT_10ac4098);
+            }
+        }
+        if (hr < 0) {
+            BrSub100355F0();
+            BrSub100356B0();
+            sprintf(szMsg, DAT_100aa5b0, hr);
+            return 0;
+        }
+    }
+
+    DAT_10226a48 = 1;
+    BrSub10005B10(1);
+    BrSub1003CE80();
+    return 1;
+}
+#else
+/* @implements 0x1003C260 d3d BrSub1003C260 */
 int BrSub1003C260(void)
 {
     unsigned char aJoin[BR50_DPJOIN_SIZE];
@@ -425,6 +494,7 @@ int BrSub1003C260(void)
     BrSub1003CE80();
     return 1;
 }
+#endif
 
 /* ==========================================================================
  * 8. Millisecond clock
