@@ -26,12 +26,14 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. **877 functions reproduce the original bytes exactly (90,919 B).**
+original binary. **885 functions reproduce the original bytes exactly (94,008 B).**
 The assembled DLL image diffs to **0 bytes** over every matched claim.
 
-- **Game DLL (`BRGlide.dll`)** — 731 functions byte-exact, 47.8% of the hand-C
-  target by count. The ceiling is register-allocation ("coloring") walls, where
-  the C is structurally correct but the compiler assigns registers differently.
+- **Game DLL (`BRGlide.dll`)** — 739 functions byte-exact, 48.3% of the hand-C
+  target by count. Most of what remains is structural, not "coloring": 385
+  functions still carry real, non-codegen diffs (wrong or missing code), while
+  only a 47-function tail is down to pure register-allocation/scheduling
+  differences with the instructions already correct.
 - **C++ exception-handling class** — 42 functions byte-exact on all four pieces
   (incl. unwind tables), 17,164 B.
 - **Executables** — BRally.exe and BossRally.exe are **game-code complete**;
@@ -45,10 +47,10 @@ The assembled DLL image diffs to **0 bytes** over every matched claim.
 
 | Tier | State | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | still asm (no hand-C yet) | 364 | 197,111 |
-| T2 | decomp'd, real diffs remain | 388 | 185,733 |
-| T3 | codegen-only diff (same instructions; register/scheduling) | 46 | 7,653 |
-| **T4** | **byte-exact** | **731** | **63,306** |
+| T1 | still asm (no hand-C yet) | 358 | 191,970 |
+| T2 | decomp'd, real diffs remain | 385 | 187,645 |
+| T3 | codegen-only diff (same instructions; register/scheduling) | 47 | 7,793 |
+| **T4** | **byte-exact** | **739** | **66,395** |
 
 T3 is a static proxy ("done bar codegen"), not a runtime proof.
 
@@ -56,11 +58,11 @@ T3 is a static proxy ("done bar codegen"), not a runtime proof.
 
 | Binary | Game code | |
 |---|---|---|
-| BRally.exe (launcher) | 24 / 24 fns · 2,831 B | 100% |
-| BossRally.exe (intro) | 28 / 28 fns · 2,431 B | 100% |
-| SetVideo.exe (config) | 38 / 39 fns · 5,084 B | 70% (WinMain left) |
+| BRally.exe (launcher) | 28 fns · 2,860 B | game code complete |
+| BossRally.exe (intro) | 35 fns · 2,482 B | game code complete |
+| SetVideo.exe (config) | 41 fns · 5,107 B | WinMain left |
 
-**Totals** — 877 byte-exact functions / 90,919 B (`python3 tools/total.py`);
+**Totals** — 885 byte-exact functions / 94,008 B (`python3 tools/total.py`);
 DLL image assembles to 0 differing bytes (`python3 tools/image_build.py`); port
 tests 136/136.
 
