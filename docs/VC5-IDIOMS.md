@@ -1487,3 +1487,21 @@ parked-wall kind newly retryable (no new idiom landed).
   shifts). Also proven here: `((w*4-2)&0xFFF)<<12` folds to
   `shl 14 / sub 0x2000 / and 0xFFF000` on its own -- the literal
   `w*0x4000-0x2000` spelling is not needed and changes nothing.
+- **Option-cycler family (2026-09-01, 0x1003C080..0x1003C3D0): factored
+  helpers must be `static __inline`, and the down-step is
+  load / `--v` / store.** The original inlines both the up/down cycle body
+  and the announce tail (3-arg send + intrinsic strcpy) in every cycler;
+  the port's called helpers left the whole family scored "missing code at
+  ~30%".  `v = *pv - 1` emits lea/test/jge -- the split
+  `v = *pv; --v; *pv = v;` gives the original's dec / store / jns (flags
+  survive the store).  BrSprintf-style wrappers likewise: the original
+  calls sprintf through the /MD import.  TWO residue classes proven
+  context-dependent here, do not spelling-probe them again: (1) the
+  cycled-global reload goes to eax (A1 short form) in the original but the
+  return-1 constant's precoloring pushes ours to ecx -- macro form,
+  direct-global tails, named temps all identical; (2) `x -= K` emits
+  sub-vs-add-neg by surrounding allocator state, not spelling (BrHudDraw's
+  original wants add for -3, BrOptCycleTrack's wants sub for -0x10).
+  Track adds a third: 0 and 0x1F get CSEd into ebx/edi here where the
+  original rematerialises per site (xor eax,eax / mov eax,0x1f); bare-if
+  gates and shifted compare constants do not flip it.
