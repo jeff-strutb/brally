@@ -746,12 +746,14 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    uint8_t  pack[4];
+    uint8_t  pack[4];   /* read back int-punned: `*(int32_t*)&pack[n] & 0xFF`
+                         * is what VC5 compiles to the original's dword-read
+                         * of the byte slot (a plain byte read gets store-
+                         * forwarded and the stores vanish) */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
     BrMat4  *pSlot;
-    uint8_t  bKind;
 
     /* 0xA11B -- six guard tests.  Orig compares against ebp (zero-reg). */
     if (*(void **)(car + BR_CAR_OFF_GUARD) == 0) return;
@@ -767,10 +769,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         (const BrVec3 *)(car + BR_CAR_OFF_POS),
         (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
 
-    bKind = *(car + BR_CAR_OFF_KIND);
-
-    /* 0xA198 -- fog (class 2 only). */
-    if (bKind == 2) {
+    /* 0xA198 -- fog (class 2 only).  Orig never caches +0x29AF; read it
+     * fresh at every site (5 reads in the original). */
+    if (*(car + BR_CAR_OFF_KIND) == 2) {
         g_BrDrawFogAlpha =
             (int32_t)(*(const float *)(car + BR_CAR_OFF_ALPHA) * 255.0f);
         put(0xF8000000u,
@@ -784,8 +785,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     *(int32_t *)(car + BR_CAR_OFF_I2714) = 0;
     if (*(void *const *)(car + BR_CAR_OFF_P294C) != 0) {
         uint32_t k = *(const uint16_t *)(car + BR_CAR_OFF_U290C);
-        const unsigned char *flags = (const unsigned char *)g_BrDrawTrackFlags;
-        if (flags[k * 84 + 0x4C] & 0x10) {
+        /* Read the flags global inline -- a hoisted pointer local occupies
+         * edx and rotates the whole function's register assignment. */
+        if (((const unsigned char *)g_BrDrawTrackFlags)[k * 84 + 0x4C] & 0x10) {
             flag290C = 1;
             *(int32_t *)(car + BR_CAR_OFF_I2714) = 1;
         }
@@ -852,34 +854,50 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     g_BrDrawClass[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = lodBias;
 
     /* 0xA393 -- three-arm light colour computation. */
+    /* Colours are packed HORNER-style -- (((top<<8 | p0) << 8 | p1) << 8) --
+     * never as independent <<24|<<16|<<8 terms.  The middle/low components
+     * of colourB go through the byte locals pack[0]/pack[1] in ALL three
+     * arms (arms 2 and 3 tail-merge from `mov eax,[esp+0x31]` on).  Arm 1's
+     * colourA nests the ftol results directly: dh/dl take the first two
+     * as (uint8_t) casts, the third is spelled `& 0xFF`. */
     if (BrG_6C661C != 0) {
         float div = dist * 0.1f;
         if (!(div >= 1.0f)) div = 1.0f;
-        {
-            uint32_t r = (uint32_t)(int32_t)((float)(int32_t)BrG_6C1580 / div);
-            uint32_t g = (uint32_t)(int32_t)((float)(int32_t)BrG_6C335C / div);
-            uint32_t b = (uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div);
-            colourA = ((r & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8);
-        }
-        colourB = ((uint32_t)g_BrDrawByte80 << 24) |
-                  ((uint32_t)BrG_6C0960 << 16) |
-                  ((uint32_t)BrG_6C65BC << 8);
+        colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
+                   | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
+                   | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
+        pack[0] = BrG_6C0960;
+        pack[1] = BrG_6C65BC;
+        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+                | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
+        colourB <<= 8;
+        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB <<= 8;
     } else if (flag290C != 0) {
+        uint8_t t80 = (uint8_t)((g_BrDrawByte80 * 4) / 5);
         colourA = 0;
-        colourB = ((uint32_t)((int32_t)(g_BrDrawByte80 * 4) / 5) << 24) |
-                  ((uint32_t)((int32_t)(BrG_6C0960   * 4) / 5) << 16) |
-                  ((uint32_t)((int32_t)(BrG_6C65BC   * 4) / 5) << 8);
+        pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
+        pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
+        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+                | (uint32_t)t80 << 8;
+        colourB <<= 8;
+        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB <<= 8;
     } else {
         pack[0] = BrG_6C335C;
         pack[1] = BrG_6C0968;
-        colourA = ((uint32_t)BrG_6C1580 << 24) |
-                  ((uint32_t)pack[0] << 16) |
-                  ((uint32_t)pack[1] << 8);
+        colourA = (*(const int32_t *)&pack[0] & 0xFF)
+                | (uint32_t)(uint8_t)BrG_6C1580 << 8;
+        colourA <<= 8;
+        colourA |= *(const int32_t *)&pack[1] & 0xFF;
+        colourA <<= 8;
         pack[0] = BrG_6C0960;
         pack[1] = BrG_6C65BC;
-        colourB = ((uint32_t)g_BrDrawByte80 << 24) |
-                  ((uint32_t)pack[0] << 16) |
-                  ((uint32_t)pack[1] << 8);
+        colourB = (*(const int32_t *)&pack[0] & 0xFF)
+                | (uint32_t)(uint8_t)g_BrDrawByte80 << 8;
+        colourB <<= 8;
+        colourB |= *(const int32_t *)&pack[1] & 0xFF;
+        colourB <<= 8;
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
@@ -1025,7 +1043,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     /* 0xAA25 -- BrG_6C6618 branch: set geom + render mode. */
     if (BrG_6C6618 != 0) {
         put(0xB7000000u, 0x00010000u);
-        if (bKind != 2)
+        if (*(car + BR_CAR_OFF_KIND) != 2)
             g_BrDrawRenderMode = 0xC8000000u;
         else
             g_BrDrawRenderMode = 0x0C080000u;
@@ -1048,7 +1066,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xAADE -- render mode base selection. */
-    if (bKind == 2) {
+    if (*(car + BR_CAR_OFF_KIND) == 2) {
         g_BrDrawModeBase = 0x011049D8u;
         put(0xFA000000u, ((uint32_t)g_BrDrawFogAlpha & 0xFF));
         if (g_brCfgGameMode == 2) {
