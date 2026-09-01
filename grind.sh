@@ -26,6 +26,9 @@ case "${1:-start}" in
   --stop)
     pkill -f 'tools/perm_fleet.py' 2>/dev/null && echo "stopped permuter fleet" || echo "permuter fleet not running"
     pkill -f 'tools/ai_loop.py'    2>/dev/null && echo "stopped ai loop"       || echo "ai loop not running"
+    # ai.sh boots an Ollama server whose model runner holds tens of GB of RAM;
+    # a stop should release that too.
+    pkill -f 'ollama' 2>/dev/null && echo "stopped ollama (RAM released)" || echo "ollama not running"
     ;;
   --status)
     echo "=== processes ==="
