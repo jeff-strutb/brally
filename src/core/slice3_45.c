@@ -310,7 +310,19 @@ void BrEntSetPos(BrEnt *pE, float x, float y, float z)
 /* @implements 0x100764C0 d3d BrEntSetHeading */
 #ifdef BR_MATCHING_BUILD
 /* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
- * wrappers, as in BrEntSetOrientation below. */
+ * wrappers, as in BrEntSetOrientation below.
+ *
+ * RESIDUE (glide 0x1006F720, 25 masked byte-diffs, multiset 0+0): one
+ * scheduling fork only.  The original emits the c/s/0 stores BEFORE
+ * popping the pending sin result (`fstp [esi+0x14]` after the three
+ * movs); every probed spelling here pops it right at the call return.
+ * Probed and dead: statement-order permutations of the m11/h statements,
+ * a volatile-pinned m11 store, direct-call-in-statement (moves the call),
+ * qw reads after the chain (drags the tail onto the FPU).  Everything
+ * else is byte-exact: the dword-pun copies below reproduce the
+ * original's integer-mov float copies (fld/fstp batching otherwise),
+ * the z triple-store is a chained assignment (fst/fst/fstp), and qw/qx/
+ * qy reload as dword puns after the second half-angle call. */
 extern float BrSinF(float a);      /* glide 0x10002560 */
 extern float BrCosF(float a);      /* glide 0x100023E0 */
 
@@ -321,40 +333,36 @@ void __fastcall BrEntSetHeading(BrEnt *pE, float a)
     float b  = a - kBrNegHalfPi;   /* a + pi/2, to the float's precision */
     float cb = BrCosF(b);
     float sb = BrSinF(b);
-    float h  = a * kBrHalf;
-    float qw, qx, qy, qz;
+    float h;
+    uint32_t qw, qx, qy;
 
-    pE->mat0.m[0][0] = c;
-    pE->mat0.m[0][1] = s;
+    *(uint32_t *)&pE->mat0.m[0][0] = *(uint32_t *)&c;
+    *(uint32_t *)&pE->mat0.m[0][1] = *(uint32_t *)&s;
     pE->mat0.m[0][2] = 0.0f;
     pE->mat0.m[1][1] = sb;
-    pE->mat0.m[1][0] = cb;
+    h = a * kBrHalf;
+    *(uint32_t *)&pE->mat0.m[1][0] = *(uint32_t *)&cb;
     pE->mat0.m[1][2] = 0.0f;
     pE->mat0.m[2][0] = 0.0f;
     pE->mat0.m[2][1] = 0.0f;
     pE->mat0.m[2][2] = 1.0f;
 
-    pE->st.quat.f00 = cosf(h);
+    pE->st.quat.f00 = BrCosF(h);
     pE->st.quat.f04 = 0.0f;
     pE->st.quat.f08 = 0.0f;
 
-    /* The original reloads w/x/y from memory here, BEFORE computing z, and
-     * writes z to all three copies with fst/fst/fstp. Preserved. */
-    qw = pE->st.quat.f00;
-    qx = pE->st.quat.f04;
-    qy = pE->st.quat.f08;
-    qz = sinf(h);
+    pE->stA.quat.f0C = pE->stB.quat.f0C = pE->st.quat.f0C = BrSinF(h);
 
-    pE->st.quat.f0C  = qz;
-    pE->stB.quat.f0C = qz;
-    pE->stA.quat.f0C = qz;
+    qw = *(uint32_t *)&pE->st.quat.f00;
+    qx = *(uint32_t *)&pE->st.quat.f04;
+    qy = *(uint32_t *)&pE->st.quat.f08;
 
-    pE->stB.quat.f00 = qw;
-    pE->stA.quat.f00 = qw;
-    pE->stB.quat.f04 = qx;
-    pE->stB.quat.f08 = qy;
-    pE->stA.quat.f04 = qx;
-    pE->stA.quat.f08 = qy;
+    *(uint32_t *)&pE->stB.quat.f00 = qw;
+    *(uint32_t *)&pE->stA.quat.f00 = qw;
+    *(uint32_t *)&pE->stB.quat.f04 = qx;
+    *(uint32_t *)&pE->stB.quat.f08 = qy;
+    *(uint32_t *)&pE->stA.quat.f04 = qx;
+    *(uint32_t *)&pE->stA.quat.f08 = qy;
 
     BrRbBuildMatrix(&pE->matrix, &pE->st);
 }
