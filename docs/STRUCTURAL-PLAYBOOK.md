@@ -46,6 +46,36 @@ Hard rules (from CLAUDE.md — do not violate):
    the class. Never hand-grind function #2 of a class a generator could sweep.
    (This is where automation has actually moved the count — e.g. the
    calling-convention and string-array generators — not brute-force mutation.)
+8. **No AI attribution anywhere.** No `Co-Authored-By` trailers, no AI or
+   developer names in commits, comments, files, or branches. Commit messages
+   describe the change only.
+
+## Before you start: two screens that save whole sessions
+
+- **EH screen.** If the original's prologue is `push -1 … fs:[0]` (a C++/SEH
+  exception frame), the function is UNREACHABLE from C — it belongs to the
+  separate C++ EH workstream. Check the first bytes of
+  `build/match/orig/<VA>.bin` before accepting a target; skip and note it.
+- **Compile-variant check.** The sweep proves each TU under one of FOUR flag
+  sets: `/O2`, `/Od`, `/O2 /Oy-`, `/O2 /Op`. Look up your function's row in
+  `build/match/report.csv` (the `opt` column: O2/Od/O2y/O2p) FIRST. The fast scorer
+  `fn.py` compiles `/O2` only — on an `/Od`, `/Oy-`, or `/Op` TU its diff is
+  partly phantom. For those, trust the one-file sweep
+  (`python3 tools/match_sweep.py <file.c>`, ~12s) as the scoreboard and use
+  fn.py output only qualitatively. (`/O2 /Op` matters on float-heavy TUs:
+  without it MSVC5 defers float stores and the multiset gap is huge for a
+  source that is actually correct.)
+
+## Parallel work: claim a lane
+
+Multiple workers coordinate through the claim ledger, not by guessing:
+
+    python3 tools/claim_lane.py claim 5        # prints a TOKEN + 5 unclaimed diff fns
+    python3 tools/claim_lane.py release <TOKEN> [wallVA ...]   # park walls, free the rest
+
+Claims go stale after 90 min, matched functions drop out automatically. Work
+only functions in your lane; park true walls via release so they are never
+re-handed.
 
 ## The loop (one function)
 
@@ -74,6 +104,27 @@ Hard rules (from CLAUDE.md — do not violate):
     git add -p && git commit -m "<VA> <Name>: <what the source defect was>"
 
 Never full-sweep for ordinary work; `fn.py` and the one-file sweep are enough.
+
+## T1→T2: bringing a not-started function into the tree
+
+Every T1 function already has a machine draft and reference bytes — nobody
+reads raw asm from scratch:
+
+- draft C: `build/ghidra_decomp/<VA>.c` (refined candidates, when the batch
+  produced one: `build/ghidra_work/<VA>.refined.c`)
+- original bytes: `build/match/orig/<VA>.bin`
+- name/size/module hints: `config/functions_glide.csv`
+
+Procedure: start from the draft, rewrite it into real C (fix Ghidra-isms —
+see the Ghidra entries in `docs/VC5-IDIOMS.md`; >2 artifact classes in a
+region means retranscribe that region fresh from the original asm, don't
+patch artifact-by-artifact). Place the function in the module that owns its
+neighbors (`git grep` nearby VAs), give it an `@implements <VA> glide <Name>`
+comment, and run the one-file sweep — the sweep discovers new `@implements`
+tags on its own; no registration step. From there it is a normal T2 target
+for the loop above. `tools/autofile.py` automates exactly this for refined
+candidates that already score byte-exact — check it hasn't already got your
+function before hand-filing.
 
 ## Target selection — rank by register-blind gap, NEVER raw diff count
 
@@ -143,6 +194,14 @@ ORACLE for structure; useless for register allocation.
   lever left" — that claim has been wrong every time it was made here.
 - Saw the same defect twice in one class → stop hand-solving, mint the
   transform (rule 7).
+
+## The final gate
+
+Per-function matches are necessary, not sufficient: `python3
+tools/image_build.py` assembles the real DLL from every matched claim and
+diffs the image (currently 0 differing bytes). Run it at the end of a session
+that landed matches — an image regression means a claim is wrong even though
+its function-level diff is clean.
 
 ## Reporting back
 
