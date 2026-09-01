@@ -11,12 +11,17 @@
 #define BrVtxExpand       BrVtxExpand_hdr
 #define BrVtxCacheInsert  BrVtxCacheInsert_hdr
 #define BrVtxCacheResolve BrVtxCacheResolve_hdr
+#define BrSelLookup       BrSelLookup_hdr
+#define BrPtrListAdd      BrPtrListAdd_hdr
+#define BrF3DVtxFixup     BrF3DVtxFixup_hdr
 #include "slice1_05.h"
 #include "br_gamestep.h"
 #undef BrVtxExpand
 #undef BrVtxCacheInsert
 #undef BrVtxCacheResolve
 #undef BrSelLookup
+#undef BrPtrListAdd
+#undef BrF3DVtxFixup
 #else
 #include "slice1_05.h"
 #include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
@@ -288,6 +293,24 @@ void BrVtxCacheResolve(BrVtxCache *pCache, void **ppVerts, int count)
  * address into somewhere that actually exists in this process, and reports how
  * many vertices the instruction loads. */
 /* @implements 0x1002C150 d3d BrF3DVtxFixup */
+#ifdef BR_MATCHING_BUILD
+/* Original: 1 arg, void. The segment base is the global, the fixup callee
+ * is the 1-arg BrSegPtrFixup, and the vertex count is not returned -- it
+ * goes straight into BrVtxCacheResolve(&w1, count). */
+extern int32_t g_brSegN64Base;      /* 0x104B16E4 */
+
+void BrF3DVtxFixup(BrGfxWords *pCmd)
+{
+    uint32_t base = (uint32_t)g_brSegN64Base;
+
+    /* base ^ ((base ^ w1) & 0x00FFFFFF): take the low 24 bits from w1 and
+     * the top 8 from the segment base. */
+    pCmd->w1 = base ^ ((base ^ pCmd->w1) & 0x00FFFFFFu);
+
+    BrSegPtrFixup(&pCmd->w1);
+    BrVtxCacheResolve((void **)&pCmd->w1, (int)((pCmd->w0 >> 10) & 0x3Fu));
+}
+#else
 unsigned BrF3DVtxFixup(const BrSegMap *pMap, BrGfxWords *pCmd)
 {
     uint32_t base = pMap->n64Base;
@@ -300,6 +323,7 @@ unsigned BrF3DVtxFixup(const BrSegMap *pMap, BrGfxWords *pCmd)
 
     return (unsigned)((pCmd->w0 >> 10) & 0x3Fu);
 }
+#endif
 
 /* 0x1002C190 */
 /* WHAT IT DOES: repairs a draw-one-triangle instruction in the console drawing
@@ -515,6 +539,22 @@ void BrCursorPairSet(BrCursorPair *pPair, void *pv)
 /* WHAT IT DOES: appends one more entry to a fixed-length list. Once the list
  * is full further entries are dropped without a word and without an error. */
 /* @implements 0x1002C1F0 d3d BrPtrListAdd */
+#ifdef BR_MATCHING_BUILD
+/* Original: 1 arg; count and array are pinned globals (0x105B76F0 /
+ * 0x105B76F8), scaled-index store. */
+extern int   DAT_105b76f0;
+extern void *DAT_105b76f8[];
+
+void BrPtrListAdd(void *pv)
+{
+    int n = DAT_105b76f0;
+
+    if (n < 0x800) {
+        DAT_105b76f8[n] = pv;       /* silently dropped when full */
+        DAT_105b76f0 = n + 1;
+    }
+}
+#else
 void BrPtrListAdd(BrPtrList *pList, void *pv)
 {
     int n = pList->n;
@@ -525,6 +565,7 @@ void BrPtrListAdd(BrPtrList *pList, void *pv)
     pList->ap[n] = pv;
     pList->n = n + 1;
 }
+#endif
 
 /* 0x1002F460 */
 /* WHAT IT DOES: purpose unclear. Observably it reads a pair of numbers out of
