@@ -1,8 +1,25 @@
 /* slice1_05.c -- Boss Rally (BRD3D.dll), a later pass, 0x1002B280..0x100360F0.
  * See slice1_05.h for the per-function notes and gotchas. */
 
+#ifdef BR_MATCHING_BUILD
+/* The originals of the vtx-cache cluster take no BrVtxCache parameter --
+ * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
+ * arities. Hide the header's port prototypes behind renames so the
+ * matching twins can define the real symbols with the original
+ * signatures; other TUs keep calling with the port signatures (cdecl, so
+ * the extra leading argument is harmless at run time). */
+#define BrVtxExpand       BrVtxExpand_hdr
+#define BrVtxCacheInsert  BrVtxCacheInsert_hdr
+#define BrVtxCacheResolve BrVtxCacheResolve_hdr
+#include "slice1_05.h"
+#include "br_gamestep.h"
+#undef BrVtxExpand
+#undef BrVtxCacheInsert
+#undef BrVtxCacheResolve
+#else
 #include "slice1_05.h"
 #include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
+#endif
 
 #include <stddef.h>
 
@@ -80,6 +97,43 @@ void BrVtxSwap(void *pVerts, int count)
  * works with, appending them to a running buffer. It hands back where in that
  * buffer the batch started. */
 /* @implements 0x1002BE30 d3d BrVtxExpand */
+#ifdef BR_MATCHING_BUILD
+/* Original: 2 args, state in globals. Each conversion is a direct
+ * short/char load with an inline (float) cast -- one shared int home
+ * slot, fild, fstp. Cursor and vertex count are re-read from the globals
+ * at the loop tail (the fstps could alias them). */
+extern float *DAT_100a751c;     /* output cursor       */
+extern int    DAT_105b96f8;     /* running vertex count */
+extern float  DAT_100773a0;     /* normal scale, 1/128  */
+
+float *BrVtxExpand(const void *pVerts, int count)
+{
+    float *pStart = DAT_100a751c;
+    const char *p;
+
+    if (count > 0) {
+        p = (const char *)pVerts;
+        do {
+            float *o = DAT_100a751c;
+            o[0] = (float)*(const short *)p;
+            p += 0x10;      /* advanced HERE in the original; the rest of
+                             * the record is read back at negative offsets */
+            o[1] = (float)*(const short *)(p - 0x0E);
+            o[2] = (float)*(const short *)(p - 0x0C);
+            /* offset 0x06 (the Vtx flag) is skipped */
+            o[3] = (float)*(const short *)(p - 0x08);
+            o[4] = (float)*(const short *)(p - 0x06);
+            o[5] = (float)*(const signed char *)(p - 4) * DAT_100773a0;
+            o[6] = (float)*(const signed char *)(p - 3) * DAT_100773a0;
+            o[7] = (float)*(const signed char *)(p - 2) * DAT_100773a0;
+
+            DAT_100a751c = DAT_100a751c + 8;
+            DAT_105b96f8 = DAT_105b96f8 + 1;
+        } while (--count != 0);
+    }
+    return pStart;
+}
+#else
 float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
 {
     const unsigned char *p = (const unsigned char *)pVerts;
@@ -114,6 +168,7 @@ float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
 
     return pStart;
 }
+#endif
 
 /* 0x1002BF00 */
 /* WHAT IT DOES: notes that a particular batch of vertices has already been
@@ -122,6 +177,29 @@ float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
  * silently not remembered -- they still work, they just get converted again
  * every time. */
 /* @implements 0x1002BF00 d3d BrVtxCacheInsert */
+#ifdef BR_MATCHING_BUILD
+/* Original: 3 args; the entry table is a pinned global array at
+ * 0x105B16F0 (base folded as a displacement), count at 0x105B76F4,
+ * capacity 0x800. */
+extern int  DAT_105b76f4;       /* nEntries */
+extern void *DAT_105b16f0;      /* entry[0].pSrc  -- three interleaved   */
+extern int   DAT_105b16f4;      /* entry[0].count -- pinned columns,     */
+extern void *DAT_105b16f8;      /* entry[0].pOut  -- stride 12           */
+
+void BrVtxCacheInsert(void *pSrc, int count, float *pOut)
+{
+    int n = DAT_105b76f4;
+
+    if (n < 0x800) {
+        /* byte-offset spelling: n*12 materialised once (lea/shl), each
+         * column's own symbol as the displacement */
+        *(void **)((char *)&DAT_105b16f0 + n * 12) = pSrc;
+        *(int *)  ((char *)&DAT_105b16f4 + n * 12) = count;
+        *(void **)((char *)&DAT_105b16f8 + n * 12) = pOut;
+        DAT_105b76f4 = n + 1;
+    }
+}
+#else
 void BrVtxCacheInsert(BrVtxCache *pCache, void *pSrc, int count, float *pOut)
 {
     int n = pCache->nEntries;
@@ -134,6 +212,7 @@ void BrVtxCacheInsert(BrVtxCache *pCache, void *pSrc, int count, float *pOut)
     pCache->aEntries[n].pOut  = pOut;
     pCache->nEntries = n + 1;
 }
+#endif
 
 /* 0x1002BD50 */
 /* WHAT IT DOES: hands back the PC-ready version of a batch of the game's N64
@@ -142,6 +221,36 @@ void BrVtxCacheInsert(BrVtxCache *pCache, void *pSrc, int count, float *pOut)
  * next time. This is the seam where console geometry becomes something the PC
  * can draw. */
 /* @implements 0x1002BD50 d3d BrVtxCacheResolve */
+#ifdef BR_MATCHING_BUILD
+/* Original: 2 args, table in the same pinned globals. *ppVerts is
+ * RE-READ before the expand and insert calls (recompute-per-site). */
+void BrVtxCacheResolve(void **ppVerts, int count)
+{
+    void *pSrc = *ppVerts;
+    const char *q;
+    float *pOut;
+    int n, i;
+
+    if (pSrc == NULL)
+        return;
+    if (count == 0)                 /* not `count <= 0` */
+        return;
+
+    n = DAT_105b76f4;
+    for (i = 0; i < n; ++i) {
+        if (*(void **)((char *)&DAT_105b16f4 + i * 12 - 4) == pSrc &&
+            *(int *)((char *)&DAT_105b16f4 + i * 12) == count) {
+            *ppVerts = *(void **)((char *)&DAT_105b16f8 + i * 12);
+            return;
+        }
+    }
+
+    BrVtxSwap(pSrc, count);
+    pOut = BrVtxExpand(*ppVerts, count);
+    BrVtxCacheInsert(*ppVerts, count, pOut);
+    *ppVerts = pOut;
+}
+#else
 void BrVtxCacheResolve(BrVtxCache *pCache, void **ppVerts, int count)
 {
     void *pSrc = *ppVerts;
@@ -166,6 +275,7 @@ void BrVtxCacheResolve(BrVtxCache *pCache, void **ppVerts, int count)
     BrVtxCacheInsert(pCache, pSrc, count, pOut);
     *ppVerts = pOut;
 }
+#endif
 
 /* ================================================================== */
 /* 2. F3DEX display-list patching                                     */

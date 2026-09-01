@@ -86,6 +86,10 @@ FUN_10027fb0,0x10027FB0,9,1,"named global, no address recorded",0x1006C790 0x100
 FUN_10028200,0x10028200,4,1,"named global, no address recorded",0x10027710
 FUN_100283c0,0x100283C0,4,1,"named global, no address recorded",0x10027710
 FUN_10028BB0,0x10028BB0,2,1,"named global, no address recorded",0x10028B50
+$L441,0x10029390,1,0,"named global, no address recorded",0x10029290
+$L458,0x10029390,1,0,"named global, no address recorded",0x10029290
+$L442,0x100293B4,1,0,"named global, no address recorded",0x10029290
+$L459,0x100293B4,1,0,"named global, no address recorded",0x10029290
 BrPackNormalByte,0x1002A490,12,1,"named global, no address recorded",0x1002A4D0
 FUN_1002a8d7,0x1002A8D7,1,0,"named global, no address recorded",0x1002B997
 BrFogFactorAtPoint,0x1002B3F0,2,1,"named global, no address recorded",0x10009FC0
@@ -814,8 +818,12 @@ g_4B16AC,0x104B16AC,2,1,"named global, no address recorded",0x10017F60
 g_brSegHostBase,0x104B16E0,4,1,"named global, no address recorded",0x100189E0 0x10018A10
 g_brSegN64Base,0x104B16E4,4,1,"named global, no address recorded",0x100189E0 0x10018A10
 g_br675540,0x105B16E8,2,1,"named global, no address recorded",0x10018A40
+DAT_105b16f0,0x105B16F0,2,1,"named global, no address recorded",0x10018FC0
+DAT_105b16f4,0x105B16F4,4,1,"named global, no address recorded",0x10018E10 0x10018FC0
+DAT_105b16f8,0x105B16F8,4,1,"named global, no address recorded",0x10018E10 0x10018FC0
 g_br67B548,0x105B76F0,2,1,"named global, no address recorded",0x10019000
 g_brRca67B548,0x105B76F0,3,1,"named global, no address recorded",0x10018A30
+DAT_105b76f4,0x105B76F4,6,1,"named global, no address recorded",0x10018E10 0x10018FC0
 g_brRca67B54C,0x105B76F4,3,1,"named global, no address recorded",0x10018A30
 g_br67B550,0x105B76F8,2,1,"named global, no address recorded",0x10019000
 g_67D550,0x105B96F8,3,1,"named global, no address recorded",0x100189C0
