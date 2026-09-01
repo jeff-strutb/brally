@@ -1,6 +1,6 @@
 /* @implements 0x100325B0 glide BrExt_10038F30
  * @cpp_kind method
- * @cpp_symbol ?BrExt_10038F30@@YAXH@Z
+ * @cpp_symbol BrExt_10038F30
  *
  * The shutdown sequence: free cdecl, one int arg handed to exit() at the
  * end. One vcall (`mov eax,[ecx]; call [eax+0x18]`, one pushed 0, callee
