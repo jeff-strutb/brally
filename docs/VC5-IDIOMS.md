@@ -1291,6 +1291,15 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **Repeated global reads: do NOT invent a local.** Orig reloading
+  `[g_cur]` at every use (even twice in three instructions for the
+  f68 store + vcall) means the source read the GLOBAL each time —
+  VC5 CSEs adjacent reads into ecx/eax on its own, while a `p =
+  g_cur;` local claims a callee-saved register (+1 push, whole-body
+  rotation). Same function: an early-`return` arm places its body
+  INLINE; the original's arm-at-the-end layout is an if/else. Proven
+  0x1001CE20 BrAppStateSetMode (348 B C++ TU, /O2) with both vcall
+  scratch arms (EAX/EDX) from plain member calls.
 - **Two-case sparse `switch` emits its compare chain ASCENDING with
   bodies in source case order; if/else-if lays the first body inline.**
   Orig `cmp eax,0x113; je far-body; cmp eax,0x501; jne end; <501 body>`
