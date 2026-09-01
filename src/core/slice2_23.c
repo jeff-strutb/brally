@@ -1292,10 +1292,46 @@ int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
  * names indexed by that option's current value. Which option it is was not
  * established. */
 /* @implements 0x1003F7F0 d3d BrUiText1003F7F0 */
+#ifdef BR_MATCHING_BUILD
+/* THE TABLE-TEXT FAMILY TEMPLATE: loose value + id-table globals,
+ * BrStrGet, inline strcpy into pObj+0x2B65, the EDX-pattern vcall on the
+ * embedded item at +0x2B5C (slot 1), then the 2-arg apply call (glide
+ * 0x10038380, static in slice8_85.c -- the extern's address is learned
+ * from these functions' own matches).
+ * RESIDUE per member (1+1, ~18 masked B, T3a-sched): the original's vtbl
+ * load sits INSIDE the strcpy intrinsic's expansion (between the strlen
+ * and the rep movs); before-strcpy source positions spill (+10 B) and
+ * strlen+memcpy decomposition changes the copy shape (3+2). */
+extern int32_t BrUiApply_10038380(void *pObj, int32_t index);
+
+#define BR23_TEXT_TABLE_BODY(valueg, tableg)                             \
+    const char *s;                                                       \
+    char *dst;                                                           \
+    void *pItem;                                                         \
+    void **vtbl;                                                         \
+    (void)pG;                                                            \
+    s   = BrStrGet((tableg)[(valueg)]);                                  \
+    dst = (char *)(pObj + 0x2B65);                                       \
+    strcpy(dst, s);                                                      \
+    vtbl  = *(void ***)(pObj + 0x2B5C);                                  \
+    pItem = pObj + 0x2B5C;                                               \
+    ((BrUiThis0)vtbl[1])(pItem);                                         \
+    (void)BrUiApply_10038380(pObj, 0);                                   \
+    return 1
+
+extern int32_t g_br0AC64C;                 /* glide 0x100ABDEC */
+extern const int32_t g_tABAE8[];           /* glide 0x100ABAE8 */
+
+int32_t BrUiText1003F7F0(BrUiObj *pObj, BrUiGlobals *pG)
+{
+    BR23_TEXT_TABLE_BODY(g_br0AC64C, g_tABAE8);
+}
+#else
 int32_t BrUiText1003F7F0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC348[pG->g0AC64C]);
 }
+#endif
 
 int32_t BrUiText1003F860(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1328,10 +1364,20 @@ int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: sets the caption of another option row from its own table
  * of names. Which option it is was not established. */
 /* @implements 0x1003F990 d3d BrUiText1003F990 */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_br0AC650;                 /* glide 0x100ABDF0 */
+extern const int32_t g_tABAF8[];           /* glide 0x100ABAF8 */
+
+int32_t BrUiText1003F990(BrUiObj *pObj, BrUiGlobals *pG)
+{
+    BR23_TEXT_TABLE_BODY(g_br0AC650, g_tABAF8);
+}
+#else
 int32_t BrUiText1003F990(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC358[pG->g0AC650]);
 }
+#endif
 
 int32_t BrUiText1003FA00(BrUiObj *pObj, BrUiGlobals *pG)
 {
@@ -1385,10 +1431,20 @@ int32_t BrUiText1003FA00(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: sets the caption of the row that names the play mode the
  * player has chosen. */
 /* @implements 0x1003FC40 d3d BrUiText1003FC40 */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_brAA287C;                 /* glide 0x10AC5BD4 */
+extern const int32_t g_tABB90[];           /* glide 0x100ABB90 */
+
+int32_t BrUiText1003FC40(BrUiObj *pObj, BrUiGlobals *pG)
+{
+    BR23_TEXT_TABLE_BODY(g_brAA287C, g_tABB90);
+}
+#else
 int32_t BrUiText1003FC40(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC3F0[pG->gAA287C]);
 }
+#endif
 
 /* WHAT IT DOES: sets the caption of the force-feedback row -- it names the
  * current setting, but only when a force-feedback device was actually found;
