@@ -1,95 +1,114 @@
-/* @implements 0x100325B0 glide BrExt8F30
+/* @implements 0x100325B0 glide BrExt_10038F30
  * @cpp_kind method
- * @cpp_symbol ?BrExt8F30@@YAXH@Z
+ * @cpp_symbol ?BrExt_10038F30@@YAXH@Z
  *
- * App shutdown chain (D3D twin 0x10038F30). One slot-6 vcall on the
- * current phase (guarded by two globals), then a fixed teardown call
- * sequence with three guarded function-pointer globals, one static-
- * object thiscall (`mov ecx,imm; call M`), two imports at the tail —
- * the last one takes this function's only argument.
+ * The shutdown sequence: free cdecl, one int arg handed to exit() at the
+ * end. One vcall (`mov eax,[ecx]; call [eax+0x18]`, one pushed 0, callee
+ * pops) on the current phase; the phase pointer is cached for the test and
+ * the +0x68 clear, then RE-READ from the global for the call's receiver.
+ * BrKeyCacheReset is thiscall on the g_AC0810 object (`mov ecx,imm`).
+ * CoUninitialize and exit are /MD imports (FF 15). No EH (no new).
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
+#include <windows.h>
+#include <objbase.h>
+#include <stdlib.h>
+
+typedef int (*funcptr)();
 
 class Phase {
 public:
-    virtual void v0();
-    virtual void v1();
-    virtual void v2();
-    virtual void v3();
-    virtual void v4();
-    virtual void v5();
-    virtual void v6(int);
-    int pad[0x19];
+    virtual void s0();
+    virtual void s1();
+    virtual void s2();
+    virtual void s3();
+    virtual void s4();
+    virtual void s5();
+    virtual void f18(void *);
+    char pad[0x68 - 4];
     int f68;
 };
 
-typedef char chk_f68[(unsigned)&((Phase *)0)->f68 == 0x68 ? 1 : -1];
-
-class Obj0810 {
+class KeyCache {
 public:
-    void Close8B50();
+    void Reset();
 };
 
 extern "C" {
-Phase *g_cur;
-int g_active;
-void (*g_fpVid)(void);
-void (*g_fpNet)(void);
-void (*g_fpSnd)(void);
-int g_replayOn;
-int g_podOpen;
-void Fn19A10(void);
-void Fn13F00(void);
-void Fn72840(void);
-void Fn71EB0(void);
-void Fn720A0(void);
-void Fn6C6A0(void);
-void Fn5F50(int);
-void Fn35660(void);
-void Fn355F0(void);
-void Fn3030(void);
-void Fn8D60(void);
-void Fn5A6A0(void);
-void Fn17F10(void);
-void Fn6D2A0(void);
+extern Phase  *g_brPhaseAA2904;   /* 0x10AC5C5C */
+extern int     g_AC300;           /* 0x100ABAA0 */
+extern funcptr DAT_10b7352c;
+extern int     DAT_10226a48;
+extern int     g_brCdEnabled;     /* 0x1007B074 */
+extern funcptr DAT_118ed1e8;
+extern funcptr DAT_106b7abc;
+
+int BrRaceDriverReset();          /* 0x10019A10 */
+int BrClearFlag_AB504();          /* 0x10013F00 */
+int BrExt_10079550();             /* 0x10072840 */
+int BrDiKeyboardShutdown();       /* 0x10071EB0 */
+int FUN_100720a0();
+int FUN_1006c6a0();
+int FUN_10005f50(int);
+int FUN_10035660();
+int BrExt_1003BF60();             /* 0x100355F0 */
+int FUN_10003030();
+int BrPodNop();                   /* 0x10008D60 */
+int FUN_1005a6a0();
+int BrFadeRelease();              /* 0x10017F10 */
+int BrStrResFree();               /* 0x1006D2A0 */
 }
 
-extern Obj0810 g_obj0810;
+extern KeyCache g_AC0810;
 
-_CRTIMP void __cdecl ImpTail0(void);
-_CRTIMP void __cdecl ImpTail1(int);
-
-void BrExt8F30(int a1)
+extern "C" void BrExt_10038F30(int a)
 {
-    if (g_cur != 0 && g_active != 0) {
-        g_cur->f68 = 0;
-        g_cur->v6(0);
+    Phase *p = g_brPhaseAA2904;
+
+    if (p != 0 && g_AC300 != 0) {
+        p->f68 = 0;
+        g_brPhaseAA2904->f18(0);
     }
-    Fn19A10();
-    Fn13F00();
-    if (g_fpVid != 0)
-        g_fpVid();
-    Fn72840();
-    Fn71EB0();
-    Fn720A0();
-    Fn6C6A0();
-    if (g_replayOn != 0)
-        Fn5F50(1);
-    Fn35660();
-    Fn355F0();
-    if (g_podOpen != 0)
-        Fn3030();
-    Fn8D60();
-    if (g_fpNet != 0)
-        g_fpNet();
-    if (g_fpSnd != 0)
-        g_fpSnd();
-    Fn5A6A0();
-    g_obj0810.Close8B50();
-    Fn17F10();
-    Fn6D2A0();
-    ImpTail0();
-    ImpTail1(a1);
+
+    BrRaceDriverReset();
+    BrClearFlag_AB504();
+
+    if (DAT_10b7352c != 0) {
+        (*DAT_10b7352c)();
+    }
+
+    BrExt_10079550();
+    BrDiKeyboardShutdown();
+    FUN_100720a0();
+    FUN_1006c6a0();
+
+    if (DAT_10226a48 != 0) {
+        FUN_10005f50(1);
+    }
+
+    FUN_10035660();
+    BrExt_1003BF60();
+
+    if (g_brCdEnabled != 0) {
+        FUN_10003030();
+    }
+
+    BrPodNop();
+
+    if (DAT_118ed1e8 != 0) {
+        (*DAT_118ed1e8)();
+    }
+    if (DAT_106b7abc != 0) {
+        (*DAT_106b7abc)();
+    }
+
+    FUN_1005a6a0();
+    g_AC0810.Reset();
+    BrFadeRelease();
+    BrStrResFree();
+    CoUninitialize();
+
+    exit(a);
 }
