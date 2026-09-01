@@ -406,4 +406,121 @@ void BrGlideFlipWait(void)
   return;
 }
 
+void __stdcall grAlphaBlendFunction(int, int, int, int);
+void __stdcall grAlphaTestFunction(int);
+void __stdcall grAlphaCombine(int, int, int, int, int);
+void __stdcall grColorCombine(int, int, int, int, int);
+void __stdcall grDepthBufferFunction(int);
+void __stdcall grDepthMask(int);
+void __stdcall grClipWindow(int, int, int, int);
+void __stdcall grCullMode(int);
+void __stdcall grDrawTriangle(const void *, const void *, const void *);
+void __stdcall grBufferClear(uint32_t, uint32_t, uint32_t);
+
+/* The live Glide scissor/window state 0x1001E380 clamps against and
+ * restores on exit.  Written by the scissor handlers (0xE2/0xED). */
+extern int32_t  BrGlClipMinX;   /* 0x105D17BC */
+extern int32_t  BrGlClipMinY;   /* 0x105D17C0 */
+extern int32_t  BrGlClipMaxX;   /* 0x105D17B8 */
+extern int32_t  BrGlClipMaxY;   /* 0x105CCFE0 */
+/* 0xFC's latched combine words -- the magic pair below means "flat prim
+ * colour", selecting the float prim channels over the RGBA5551 fill bytes. */
+extern uint32_t BrGlCombineW0;  /* 0x105D17AC */
+extern uint32_t BrGlCombineW1;  /* 0x105D17B0 */
+extern float    BrGlPrimR;      /* 0x105D17A4, 0..255 (NOT 0..1) */
+extern float    BrGlPrimG;      /* 0x105D17B4 */
+extern float    BrGlPrimB;      /* 0x105CE2D0 */
+extern float    BrGlPrimA;      /* 0x105CD9F0 */
+extern uint8_t  BrGlFillR;      /* 0x105CCD40, 0xF7's unpacked fill bytes */
+extern uint8_t  BrGlFillG;      /* 0x105CCFD8 */
+extern uint8_t  BrGlFillB;      /* 0x105D17A0 */
+extern uint8_t  BrGlFillA;      /* 0x105CE208 */
+extern uint32_t BrGlRectMode;   /* 0x105CE2D4, 0x504340 = triangle path */
+
+/* glide2.h GrVertex, 0x3C bytes.  Only x, y, r, g, b, a, oow are written. */
+typedef struct {
+    float x, y;        /* +0x00, +0x04 */
+    float z;           /* +0x08 (unwritten) */
+    float r, g, b;     /* +0x0C, +0x10, +0x14 */
+    float ooz;         /* +0x18 (unwritten) */
+    float a;           /* +0x1C */
+    float oow;         /* +0x20, always 1.0f */
+    float tmuvtx[6];   /* +0x24 (unwritten) */
+} BrGrVertex;
+
+/* 0x1001E380 -- the 914-byte rectangle emitter (opcodes 0xE1/0xF6 land
+ * here).  Clamp the corners into the live window, pick the colour source
+ * by the latched combine words, then either draw two triangles (mode
+ * 0x504340) or clip+grBufferClear.  Colour bytes are four SEPARATE
+ * uint8_t locals -- the dword-read + and 0xff widening in the bytes is
+ * VC5's normal codegen for reading them back, not a source-level mask. */
+/* @implements 0x1001E380 glide BrGlRectFill */
+void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+{
+    uint8_t bR, bG, bB, bA;
+    BrGrVertex vB, vA, vC, vD;
+
+    /* x1's clamp reads through a temp -- x1 itself stays memory-homed
+     * (orig: cmp via scratch ecx, slot-only store, every later use
+     * re-reads the slot). */
+    {
+        int32_t t1 = x1;
+        if (t1 < BrGlClipMinX) x1 = BrGlClipMinX;
+    }
+    if (y1 < BrGlClipMinY) y1 = BrGlClipMinY;
+    if (x2 > BrGlClipMaxX) x2 = BrGlClipMaxX;
+    if (y2 > BrGlClipMaxY) y2 = BrGlClipMaxY;
+
+    if (BrGlCombineW0 == 0xFCFFFFFFu && BrGlCombineW1 == 0xFFFDF6FBu) {
+        bR = (uint8_t)(int32_t)BrGlPrimR;
+        bG = (uint8_t)(int32_t)BrGlPrimG;
+        bB = (uint8_t)(int32_t)BrGlPrimB;
+        bA = (uint8_t)(int32_t)BrGlPrimA;
+    } else {
+        bR = BrGlFillR;
+        bG = BrGlFillG;
+        bB = BrGlFillB;
+        bA = BrGlFillA;
+    }
+
+    if (BrGlRectMode == 0x504340) {
+        /* Vertex-major in C, B, A, D order with the conversions written
+         * inline -- CSE gives each converted value one integer-register
+         * home, and /Op serializes each fild through the one scratch
+         * slot. */
+        vC.x = (float)x1;  vC.y = (float)y2;  vC.oow = 1.0f;
+        vC.r = (float)bR;  vC.g = (float)bG;
+        vC.b = (float)bB;  vC.a = (float)bA;
+        vB.x = (float)x2;  vB.y = (float)y2;  vB.oow = 1.0f;
+        vB.r = (float)bR;  vB.g = (float)bG;
+        vB.b = (float)bB;  vB.a = (float)bA;
+        vA.x = (float)x1;  vA.y = (float)y1;  vA.oow = 1.0f;
+        vA.r = (float)bR;  vA.g = (float)bG;
+        vA.b = (float)bB;  vA.a = (float)bA;
+        vD.x = (float)x2;  vD.y = (float)y1;  vD.oow = 1.0f;
+        vD.r = (float)bR;  vD.g = (float)bG;
+        vD.b = (float)bB;  vD.a = (float)bA;
+
+        grAlphaBlendFunction(1, 5, 4, 0);
+        grAlphaTestFunction(7);
+        grAlphaCombine(1, 0, 0, 2, 0);
+        grColorCombine(1, 0, 0, 2, 0);
+        grDepthBufferFunction(7);
+        grDepthMask(0);
+        grClipWindow(x1, y1, x2, y2);
+        grCullMode(0);
+        grDrawTriangle(&vA, &vB, &vC);
+        grDrawTriangle(&vA, &vD, &vB);
+        grClipWindow(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
+        grCullMode(0);
+        grAlphaCombine(3, 8, 1, 1, 0);
+        return;
+    }
+
+    grClipWindow(x1, y1, x2, y2);
+    grBufferClear(((((uint32_t)bR << 8 | bG) << 8 | bB) << 8) | bA,
+                  0, 0xFFFF);
+    grClipWindow(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
+}
+
 #endif /* BR_MATCHING_BUILD */
