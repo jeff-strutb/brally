@@ -62,10 +62,12 @@
 #define BrEntSetVel         BrEntSetVel_port
 #define BrEntSetAngVel      BrEntSetAngVel_port
 #define BrEntSetOrientation BrEntSetOrientation_port
+#define BrEntSetHeading     BrEntSetHeading_port
 #include "slice3_45.h"
 #undef BrEntSetVel
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
+#undef BrEntSetHeading
 #else
 #include "slice3_45.h"
 #endif
@@ -306,6 +308,57 @@ void BrEntSetPos(BrEnt *pE, float x, float y, float z)
  * vertical, not tip or roll. It writes the new facing into every copy of the
  * object's state the physics keeps, so nothing is left pointing the old way. */
 /* @implements 0x100764C0 d3d BrEntSetHeading */
+#ifdef BR_MATCHING_BUILD
+/* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
+ * wrappers, as in BrEntSetOrientation below. */
+extern float BrSinF(float a);      /* glide 0x10002560 */
+extern float BrCosF(float a);      /* glide 0x100023E0 */
+
+void __fastcall BrEntSetHeading(BrEnt *pE, float a)
+{
+    float c  = BrCosF(a);
+    float s  = BrSinF(a);
+    float b  = a - kBrNegHalfPi;   /* a + pi/2, to the float's precision */
+    float cb = BrCosF(b);
+    float sb = BrSinF(b);
+    float h  = a * kBrHalf;
+    float qw, qx, qy, qz;
+
+    pE->mat0.m[0][0] = c;
+    pE->mat0.m[0][1] = s;
+    pE->mat0.m[0][2] = 0.0f;
+    pE->mat0.m[1][1] = sb;
+    pE->mat0.m[1][0] = cb;
+    pE->mat0.m[1][2] = 0.0f;
+    pE->mat0.m[2][0] = 0.0f;
+    pE->mat0.m[2][1] = 0.0f;
+    pE->mat0.m[2][2] = 1.0f;
+
+    pE->st.quat.f00 = cosf(h);
+    pE->st.quat.f04 = 0.0f;
+    pE->st.quat.f08 = 0.0f;
+
+    /* The original reloads w/x/y from memory here, BEFORE computing z, and
+     * writes z to all three copies with fst/fst/fstp. Preserved. */
+    qw = pE->st.quat.f00;
+    qx = pE->st.quat.f04;
+    qy = pE->st.quat.f08;
+    qz = sinf(h);
+
+    pE->st.quat.f0C  = qz;
+    pE->stB.quat.f0C = qz;
+    pE->stA.quat.f0C = qz;
+
+    pE->stB.quat.f00 = qw;
+    pE->stA.quat.f00 = qw;
+    pE->stB.quat.f04 = qx;
+    pE->stB.quat.f08 = qy;
+    pE->stA.quat.f04 = qx;
+    pE->stA.quat.f08 = qy;
+
+    BrRbBuildMatrix(&pE->matrix, &pE->st);
+}
+#else
 void BrEntSetHeading(BrEnt *pE, float a)
 {
     float c  = cosf(a);
@@ -350,6 +403,7 @@ void BrEntSetHeading(BrEnt *pE, float a)
 
     BrRbBuildMatrix(&pE->matrix, &pE->st);
 }
+#endif
 
 /* Shared tail of 0x10076700 and 0x10076820: mirror st.quat into stB then
  * stA. Written out in the originals; identical instruction sequence in both. */
