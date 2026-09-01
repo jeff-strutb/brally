@@ -284,6 +284,47 @@ void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
  * recognise leaves the horizontal position at whatever the previous call
  * used. */
 /* @implements 0x10019300 d3d BrTextDraw */
+#ifdef BR_MATCHING_BUILD
+/* The original: DL-emit macro (no pGfx guard), switch on the signed-char
+ * align global (arms in source order 2,1,0,default; case 0 stores x and
+ * falls into default's y store), direct calls to the measurer and emitter
+ * with the original's arities -- the 2-arg header protos are hidden by
+ * these local ones. */
+extern int *DAT_106e7710;
+extern signed char DAT_104abb44;   /* align: movsx  */
+extern int DAT_104abb28;           /* pen x         */
+extern int DAT_104abb2c;           /* pen y         */
+extern int DAT_104abb30;           /* scale         */
+extern int32_t BrFontMeasure(const char *psz, int32_t scale);
+extern void BrTextEmitString(const char *psz);
+
+void BrTextDraw(const char *psz, int x, int y)
+{
+    const char *s = psz;    /* homed in esi before the switch */
+    int *p_;
+
+    { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2;
+      *p_ = 0xb6000000; p_[1] = 1; }
+
+    switch ((int)DAT_104abb44) {
+    case 2:
+        DAT_104abb28 = x - (BrFontMeasure(s, DAT_104abb30) >> 1);
+        break;
+    case 1:
+        DAT_104abb28 = x - BrFontMeasure(s, DAT_104abb30);
+        break;
+    case 0:
+        DAT_104abb28 = x;
+        break;
+    }
+    /* One shared tail: VC5 DUPLICATES it into each arm (three full copies
+     * in the bytes). Spelling the copies per-arm in source gets them
+     * cross-jump MERGED instead -- the duplication is only reachable from
+     * the single-tail form. */
+    DAT_104abb2c = y;
+    BrTextEmitString(s);
+}
+#else
 void BrTextDraw(const char *psz, int x, int y)
 {
     int w;
@@ -330,6 +371,7 @@ void BrTextDraw(const char *psz, int x, int y)
     if (g_text.pfnDrawString != NULL)
         g_text.pfnDrawString(psz);
 }
+#endif
 
 void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
                   float fSeconds)
