@@ -1271,6 +1271,19 @@ def _refine_candidates(src):
     _new, _n = _gcf.transform_countfold(src)
     if _n and _new != src:
         yield ('countfold', _new)
+    # (x) single-use call temp -> nested call (frees the temp's callee-saved
+    #     home; fixes the hoisted-import-pointer register rotation).
+    #     Proven MATCH 0x1006C6A0.
+    _new, _ok = transform_calltemp(src)
+    if _ok and _new != src:
+        yield ('calltemp', _new)
+    # (y) zero store written before the memset group in source, sunk below
+    #     it by the scheduler (C7-05 literal form vs A3 eax-reuse).
+    #     Proven MATCH 0x100703D0. k=1 and k=2 variants.
+    for _k in (1, 2):
+        _new, _ok = transform_zerohoist(src, _k)
+        if _ok and _new != src:
+            yield ('zerohoist%d' % _k, _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
     # (w) signed -> unsigned char pointer: a byte read through Ghidra's
@@ -1692,6 +1705,82 @@ def _rewrite_sharedtail(src):
                   % (ind, out, new_rhs, ind, last.group(3)))
     src = src[:last.start()] + tail_block + src[last.end():]
     return src, labels
+
+
+_CALLTEMP_ASSIGN_RE = re.compile(
+    r'^(\s*)([a-z]{1,2}Var\d+)\s*=\s*([A-Za-z_][A-Za-z0-9_]*\s*\(.*\));\s*$')
+
+
+def transform_calltemp(src):
+    """Collapse a Ghidra single-use call temp into a nested call.
+
+    `pvVar1 = F(x); G(pvVar1);` -> `G(F(x));` when the very next line uses
+    the temp exactly once and the temp's next mention after that line (if
+    any) is a reassignment.  Named temps force VC5 to allocate the call
+    result a callee-saved home, which rotates the hoisted-pointer registers
+    (2-diff class); the nested spelling frees it. Proven MATCH 0x1006C6A0
+    (GlobalUnlock(GlobalHandle(p)) x4).
+    """
+    lines = src.split('\n')
+    changed = False
+    i = 0
+    while i < len(lines) - 1:
+        m = _CALLTEMP_ASSIGN_RE.match(lines[i])
+        if m:
+            temp, callexpr = m.group(2), m.group(3)
+            nxt = lines[i + 1]
+            tok = re.compile(r'\b%s\b' % re.escape(temp))
+            if len(tok.findall(nxt)) == 1 and '=' not in nxt.split('(')[0]:
+                # next mention below must be a reassignment (or nothing)
+                ok = True
+                for later in lines[i + 2:]:
+                    if tok.search(later):
+                        ok = bool(re.match(r'\s*%s\s*=[^=]' %
+                                           re.escape(temp), later))
+                        break
+                if ok:
+                    lines[i + 1] = tok.sub(callexpr, nxt)
+                    del lines[i]
+                    changed = True
+                    continue
+        i += 1
+    return ('\n'.join(lines), changed) if changed else (src, False)
+
+
+_ZEROFILL_LOOP_RE = re.compile(
+    r'^(?:\s*[a-z]{1,2}Var\d+\s*=\s*&?DAT_\w+;\n'
+    r'\s*for\s*\([^)]*\)\s*\{\n'
+    r'\s*\*[a-z]{1,2}Var\d+\s*=\s*0;\n'
+    r'\s*[a-z]{1,2}Var\d+\s*=\s*[a-z]{1,2}Var\d+\s*\+\s*1;\n'
+    r'\s*\}\n'
+    r'|\s*memset\s*\(&?DAT_\w+\s*,\s*0\s*,[^;]*\);\n)+', re.M)
+
+
+def transform_zerohoist(src, k=1):
+    """Hoist the first k `DAT_x = 0;` lines that follow a zero-fill group
+    (Ghidra stosd loops or memset calls) to just above the group.
+
+    In source order the store sits BEFORE the memsets (where eax is not
+    zero, forcing the 10-byte `C7 05` literal form) and VC5's scheduler
+    sinks it below the intrinsics; written after the memsets it reuses the
+    intrinsic's zeroed eax as a 5-byte `A3` store.  The C7-vs-A3 split in
+    the orig picks the spelling. Proven MATCH 0x100703D0.
+    """
+    m = _ZEROFILL_LOOP_RE.search(src)
+    if not m:
+        return src, False
+    tail = src[m.end():]
+    hoisted = []
+    zre = re.compile(r'^\s*DAT_\w+\s*=\s*0;\n')
+    while len(hoisted) < k:
+        zm = zre.match(tail)
+        if not zm:
+            break
+        hoisted.append(zm.group(0))
+        tail = tail[zm.end():]
+    if not hoisted:
+        return src, False
+    return src[:m.start()] + ''.join(hoisted) + src[m.start():m.end()] + tail, True
 
 
 def transform_misscode(src, orig=None):
