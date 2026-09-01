@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
-# grind.sh -- one command to run the brute-force COLORING work.
+# grind.sh -- launcher for the background mutation loops (permuter + local LLM).
 #
-# Coloring/scheduling walls (identical instruction multiset, different register
-# allocation or float operand order) are NOT hand-solvable by reading asm -- no
-# source edit reaches them. They are solved by compute: mutate semantically
-# equivalent C, compile under real MSVC 5.0 (Wine), keep only byte-exact hits.
-# Zero API tokens. This launches both engines and leaves them running.
+# HONEST FRAMING (2026-09-01): these loops are a LOTTERY TICKET, not a lane.
+# The deterministic permuter is 0-for-95 on the near-miss frontier, and the
+# project's own verdict (commit 5a4a338) is that register-allocation coloring
+# walls are NOT source-permutable -- no C spelling flips them. Do not run this
+# expecting to close the coloring tail; park coloring walls as honest residue.
+#
+# What these loops CAN occasionally catch is a small STRUCTURAL near-miss the
+# generators don't cover yet. Free (no API tokens), so running them idle
+# overnight costs nothing -- just don't mistake them for progress machinery.
+# The real levers are the structural playbook (docs/STRUCTURAL-PLAYBOOK.md),
+# generator minting, and the T3b oracle (tools/t3b_verify.py).
 #
 #   ./grind.sh              # start permuter fleet + local-LLM loop, in background
 #   ./grind.sh --status     # show what's running and recent matches
 #   ./grind.sh --stop       # stop both
-#
-# Structural functions (wrong/missing CODE) are a DIFFERENT job -- those are for
-# an AI following docs/STRUCTURAL-PLAYBOOK.md, not for this script.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -34,6 +37,8 @@ case "${1:-start}" in
     grep -i 'MATCH\|byte-exact\|committed' "$AI_LOG" 2>/dev/null | tail -10 || echo "(no log yet)"
     ;;
   start|"")
+    echo "NOTE: lottery-ticket odds -- permuter is 0/95 lifetime on the frontier."
+    echo "Real levers: docs/STRUCTURAL-PLAYBOOK.md + generators + tools/t3b_verify.py"
     if pgrep -f 'tools/perm_fleet.py' >/dev/null; then
       echo "permuter fleet already running (./grind.sh --stop to restart)"
     else
