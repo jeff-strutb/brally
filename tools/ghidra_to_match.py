@@ -46,6 +46,21 @@ LEARNINGS_CSV = os.path.join(ROOT, 'build', 'ghidra_learnings.csv')
 GLOBALS_CSV = os.path.join(ROOT, 'config', 'globals_learned.csv')
 WIDTHS_CSV = os.path.join(ROOT, 'build', 'orig_global_widths.csv')
 
+def matched_vas_all_reports():
+    """Every matched VA across the three report CSVs (C, C++ EH, EXE).
+    The C++/EXE reports are NOT in report.csv; filtering residue against
+    report.csv alone re-hands functions already matched as C++ TUs
+    (0x1003D4A0/0x1003D510 sat in the scattered class for days)."""
+    out = set()
+    for name in ('report.csv', 'report_cpp.csv', 'report_exe.csv'):
+        p = os.path.join(ROOT, 'build', 'match', name)
+        if os.path.exists(p):
+            with open(p) as f:
+                out |= {r['va'].lower() for r in csv.DictReader(f)
+                        if r.get('status') == 'match'}
+    return out
+
+
 def load_widths():
     """Ground-truth global types derived from the ORIGINAL bytes
     (tools/orig_widths.py): addr -> C type string ('' = address-only)."""
@@ -1956,13 +1971,11 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     # Learnings rows go stale when a function lands in the tree by hand:
     # never re-climb a VA report.csv already calls matched (19 such rows
     # burned compiles in the first wide run). --va overrides for testing.
-    tree_matched = set()
+    tree_matched = matched_vas_all_reports()
     report_rows = []
     if os.path.exists(REPORT_CSV):
         with open(REPORT_CSV) as f:
             report_rows = list(csv.DictReader(f))
-            tree_matched = {r['va'].lower() for r in report_rows
-                            if r['status'] == 'match'}
     # Wrap call-shape VAs that never entered learnings. wrap_for_compile
     # skips anything already in report.csv (DIFF tags included), so the
     # seed never saw them. 0x10017F10 BrFadeRelease wraps 0-diff as-is;
@@ -2106,11 +2119,7 @@ def print_residue():
     # Stale learnings rows for functions the tree already matched by hand
     # poisoned a hand-off once (0x10008F90 was recommended as a target a day
     # after it was committed) — filter them out of the report.
-    tree_matched = set()
-    if os.path.exists(REPORT_CSV):
-        with open(REPORT_CSV) as f:
-            tree_matched = {r['va'].lower() for r in csv.DictReader(f)
-                            if r['status'] == 'match'}
+    tree_matched = matched_vas_all_reports()
     att = [r for r in rows if r.get('divergence')
            and r['divergence'] not in ('', 'match')
            and r['va'].lower() not in tree_matched]

@@ -164,6 +164,12 @@ the caller AND flipped a helper to match for free.
   the later pointer copy (`DAT_dst = DAT_src`) keeps ecx. Proven
   0x1003D4A0 / 0x1003D510 / 0x1003DA10. Non-EH C++ TUs (no `new`) have
   no FuncInfo on either side — that is a 4/4 vacuous sidecar, not a miss.
+  **Generatored 2026-09-01:** the whole phase-leave family (33 corpus
+  members starting `8b442404 8b88e82a0000 8b11 ff521c`) is stamped by
+  `tools/gen_phaseleave.py` from this skeleton — 28 members matched 4/4
+  first try, +1 hand-filed variant (0x1003E450, its own head slot).
+  Only 0x1003FB10 (thiscall helper tail) and 0x100403B0 (second vcall
+  on another object) leave the grammar.
 - **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
   { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the
