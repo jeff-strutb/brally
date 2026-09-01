@@ -1268,6 +1268,17 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **Vtbl load scheduled INSIDE a strcpy intrinsic = C++ member call,
+  not reachable from C.** `lea edx,[dest]; mov eax,ecx; mov esi,edi;
+  mov edi,edx; mov edx,[obj]; shr ecx,2; rep movsd` — the object's
+  vtable read sits between the intrinsic's setup and its rep, where
+  edx dies. The C fastcall spelling emits the load AFTER the copy
+  (18 diffs, pure placement); a C temp read before strcpy hoists to a
+  callee-saved reg (+1 push, frame class). A real C++ `obj.i1()` after
+  `strcpy(obj_text, s)` reproduces the interleave exactly. Family
+  marker: `short-4` (the missing `lea ecx` this-setup). Generatored as
+  tools/gen_uitext.py (masked-skeleton corpus scan). Proven MATCH
+  0x10038D30 + 7 clones (100 B, /O2, 2026-09-01).
 - **Ghidra types byte pointers SIGNED — retype `char *param` to
   `unsigned char *` when the original widens with `xor r,r; mov r8`.**
   A byte read through `char *` compiles to `movsx`; the original's
