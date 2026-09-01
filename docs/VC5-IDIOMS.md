@@ -1212,6 +1212,20 @@ the caller AND flipped a helper to match for free.
   `0 - (w & 1)` (that is `neg` with no sbb). Proven 0x1001E9F0
   br_dl_fillcolour, 110 B, MATCH /O2.
 
+- **Per-arm duplicated switch tails come from ONE shared tail after the
+  switch — VC5 tail-DUPLICATES the join; per-arm copies in source get
+  cross-jump MERGED instead.** Orig: three byte-identical `store y; push;
+  call emitter; add esp,4; pop esi; ret` tails, one per arm, with one arm
+  storing x and falling into the default-target copy. Spelling the copies
+  per arm compiles to ONE tail plus `jmp` into it (22 B short) — `return`
+  vs `break`, else-if vs switch, named temps, /O1, /Og-, /Oa, /Ow, /Gy,
+  VC4.2 all fail to unmerge it. The matching source is `switch { case 2:
+  g_x = x - (f() >> 1); break; case 1: g_x = x - f(); break; case 0:
+  g_x = x; break; } g_y = y; emit(s);` — the duplication is only reachable
+  from the single-tail form. Also: a param used by every arm (`s = psz`
+  homed in esi before the switch) hoists with the plain param spelling once
+  the tail is shared. Proven 0x100168C0 BrTextDraw (180 B, MATCH /O2).
+
 - **div/mod-by-constant pairs: `%` next to `/` emits ONE idiv; the magic-imul
   shape means the source derived the remainder itself — and a compound `-=`
   picks the neg-form.** `q = n / 100; r = n % 100;` compiles to `cdq; idiv`
