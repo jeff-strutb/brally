@@ -1505,3 +1505,25 @@ parked-wall kind newly retryable (no new idiom landed).
   Track adds a third: 0 and 0x1F get CSEd into ebx/edi here where the
   original rematerialises per site (xor eax,eax / mov eax,0x1f); bare-if
   gates and shifted compare constants do not flip it.
+
+- **Ghidra's named temps are an ALLOCATION HAZARD — three proven forms
+  (2026-09-01, the 2-diff scattered class).** A temp Ghidra names gets its
+  own callee-saved home; the original CSE'd the expression, so registers
+  pair differently and the diff is 2 modrm/SIB bytes. (1) Single-use CALL
+  temp: `pv = GlobalHandle(p); GlobalUnlock(pv);` → spell NESTED
+  `GlobalUnlock(GlobalHandle(p))` — fixes the hoisted-import-pointer
+  edi/esi pairing (proven 0x1006C6A0). (2) SCALE temp: `i4 = i * 4;
+  *(int*)(p + i4)` → repeat `p + i * 4` at each use — fixes SIB base/index
+  (`8b 04 37` vs `8b 04 3e`, proven 0x1006E130). (3) The dual from the C++
+  session: named temps are sometimes REQUIRED (retranscribe rule) — the
+  scorer decides. All three are refine transforms now: `calltemp`,
+  `scaletemp` in tools/ghidra_to_match.py.
+- **`C7 05 <g> 00000000` amid `A3` zero stores = the store sits ABOVE the
+  memset group in source.** After a rep-stosd/memset intrinsic eax is a
+  known zero and VC5 spells later `g = 0` stores as 5-byte `A3` reuses; a
+  10-byte literal-form zero right after the intrinsics means the source
+  wrote it BEFORE the memsets (eax not zero there) and the scheduler SANK
+  it below them. Transform `zerohoist` (k=1,2). The C7-vs-A3 split in the
+  orig bytes picks the statement order. Proven 0x100703D0 (also needed
+  Ghidra's bogus `double` retyped int — watch for size-luck baselines where
+  a wrong type happens to give a same-length encoding).
