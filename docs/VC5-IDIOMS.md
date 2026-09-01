@@ -1290,3 +1290,16 @@ parked-wall kind newly retryable (no new idiom landed).
   fan-out copies become integer movs; (d) an argument clamped through a
   temp (`t1 = x1; if (t1 < min) x1 = min;`) stays memory-homed, its
   register never updated.
+
+- **`shared/prefix` twins can hide a CONVENTION fork, not missing code
+  (BrCarStateEncode 0x10006510, 2026-08-31).** REGNORM 33+0 — every Glide
+  instruction present, 33 extra `xor edx,edx` — because the D3D build's
+  bit-writer consumes an edx dummy (fastcall-shim shape, and the matched
+  D3D twin 0x100061A0 PROVES those xors are real on that side) while the
+  Glide build calls a TRUE C++ thiscall writer (ecx + two callee-popped
+  stack args), which VC5 C cannot spell (see the BrPhaseLeave EAX-pattern
+  wall).  Int args cannot be struct-coerced (C2115), an 8-byte pair arg
+  pushes from memory not reg/imm — probed.  Classification: the
+  `shared/prefix` census pool (22 rows / 13.9 KB) likely contains more of
+  this thiscall-fork class; triage those against the C++ workstream, not
+  the coloring queue.
