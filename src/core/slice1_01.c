@@ -73,11 +73,8 @@ unsigned long BrAdler32(unsigned long adler, const unsigned char *pBuf,
  * settings use into the 0-10000 scale Windows CD audio wants. A volume of
  * exactly 256 comes out as silence rather than full, because only the low
  * byte is looked at. */
-/* @implements 0x10002A20 d3d BrCdVolumeScale */
-int BrCdVolumeScale(int vol)
-{
-    return (10000 * (vol & 0xFF)) / 255;
-}
+/* BrCdVolumeScale moved below the CD-globals declarations (it references the
+ * three CD-enable guards and the g_575454 backend pointer). */
 
 /* ---------------------------------------------------------------------------
  * 0x10002DE0 -- 64x64 u16 grid sample.
@@ -214,9 +211,16 @@ uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
  * than the obvious way, and the result is not quite even -- one tick value
  * repeats once every tenth of a second. */
 /* @implements 0x10003460 d3d BrTicks30FromMs */
+/* The declared elapsedMs argument is vestigial: the original reads the clock
+ * itself (BrGetTimerState) and subtracts the run's start tick (DAT_1021c908),
+ * so the parameter is ignored and generates no code. */
+extern int BrGetTimerState(void);
+extern int DAT_1021c908;
 uint32_t BrTicks30FromMs(uint32_t elapsedMs)
 {
-    return 3u * (elapsedMs / 100u) + (elapsedMs % 100u) / 33u;
+    uint32_t elapsed = (uint32_t)BrGetTimerState() - (uint32_t)DAT_1021c908;
+    (void)elapsedMs;
+    return 3u * (elapsed / 100u) + (elapsed % 100u) / 33u;
 }
 
 /* ---------------------------------------------------------------------------
@@ -363,8 +367,10 @@ void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
 
 #ifdef _MSC_VER
 typedef int (__stdcall *BrEarShutdownChannelFn)(int);
+typedef int (__stdcall *BrCdVolumeSetFn)(int, int);
 #else
 typedef int (*BrEarShutdownChannelFn)(int);
+typedef int (*BrCdVolumeSetFn)(int, int);
 #endif
 
 #ifdef BR_MATCHING_BUILD
@@ -375,6 +381,7 @@ extern int g_220C40;
 extern int g_220CD8;
 extern int g_0940A8;
 extern BrEarShutdownChannelFn g_575470;
+extern BrCdVolumeSetFn g_575454;
 __declspec(dllimport) unsigned long __stdcall mciSendCommandA(
     unsigned long id, unsigned long msg,
     unsigned long flags, unsigned long param);
@@ -386,6 +393,7 @@ int g_220C40;
 int g_220CD8;
 int g_0940A8;
 BrEarShutdownChannelFn g_575470;
+BrCdVolumeSetFn g_575454;
 #endif
 
 /* WHAT IT DOES: closes the EAR music channel if one is actually running. */
@@ -402,6 +410,28 @@ int BrCdMaybeClose(void)
 #else
                 (void)h;
                 return 1;
+#endif
+            }
+        }
+    }
+    return 1;
+}
+
+/* WHAT IT DOES: converts a music volume from the 0-255 scale the game's own
+ * settings use into the 0-10000 scale Windows CD audio wants, then hands it to
+ * the backend -- but only when disc music is actually active (the same three
+ * guards as BrCdMaybeClose). A volume of exactly 256 comes out as silence
+ * rather than full, because only the low byte is looked at. */
+/* @implements 0x10002A20 d3d BrCdVolumeScale */
+int BrCdVolumeScale(int vol)
+{
+    if (g_0940A4 != 0) {
+        if (g_220CD0 != 0) {
+            if (g_220C3C != 0) {
+#ifdef BR_MATCHING_BUILD
+                g_575454(g_0940A8, (10000 * (vol & 0xFF)) / 255);
+#else
+                (void)vol;
 #endif
             }
         }
