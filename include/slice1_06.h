@@ -70,11 +70,23 @@ typedef struct BrDevRec {
 #define BR_DEVREC_TYPE_MASK  0x0F000000u
 #define BR_DEVREC_TYPE_MATCH 0x01000000u
 
+/* The context block 0x106EECCC points at: the record array pointer lives at
+ * +0x8014 and the 12-byte index table at +0x8110.  Only the two fields this
+ * packet touches are modelled; the pads keep their true offsets. */
+typedef struct BrDevCtx {
+    uint8_t   a0000[0x8014];
+    BrDevRec *pRecs;                        /* +0x8014 */
+    uint8_t   a8018[0x8110 - 0x8018];
+    uint8_t   abIndex[BR_DEVREC_SLOTS];     /* +0x8110 */
+} BrDevCtx;
+
+extern BrDevCtx *g_brP6EECCC;               /* 0x106EECCC */
+
 /* Returns 1 if any of the 12 indexed records has f04 == value, a non-zero
  * f04, and bits 24..27 of f20 equal to 1; else 0. Scans forward, stops at
- * the first hit. */
-int BrDevRecMatch(const BrDevRec *aRecs, const uint8_t *abIndex,
-                  uint32_t value);
+ * the first hit.  The records and index come from g_brP6EECCC -- the
+ * original takes only the value. */
+int BrDevRecMatch(uint32_t value);
 
 /* ==========================================================================
  * 0x10037930 -- keyed lookup table
