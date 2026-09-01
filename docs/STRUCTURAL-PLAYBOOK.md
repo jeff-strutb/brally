@@ -66,7 +66,23 @@ Hard rules (from CLAUDE.md — do not violate):
   without it MSVC5 defers float stores and the multiset gap is huge for a
   source that is actually correct.)
 
-## Parallel work: claim a lane
+## Large functions
+
+Size is no barrier — the loop is the same, ground section by section against
+the FIRST divergence (nothing after a broken region is meaningful until it is
+fixed). Win the prologue/frame first; the 40-min timebox applies per region,
+not per function. BUT the three giants carry history you MUST read before
+touching them, or you will re-run probes already proven dead:
+
+- **0x1000EAF0** (9,354 B, ~18 regions left): read the file header of
+  `src/core/drawing/br_scenedl.c` and its entries in `docs/VC5-IDIOMS.md`
+  first — 60+ failed probe variants are mapped there. `tools/divergence.py`
+  is its comparator.
+- **0x100250D0 BrTex3dExpand** (8,480 B): size wall solved; shape residue
+  only. Read its idiom entries before probing.
+- **0x10019A70** (11,223 B, the largest): LAST among big targets, gated on
+  131 callee signatures. One original function = one C function; never split
+  it into multiple TUs to make it tractable.
 
 Multiple workers coordinate through the claim ledger, not by guessing:
 
