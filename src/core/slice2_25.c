@@ -24,6 +24,7 @@
 #endif
 #include "slice2_25.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -112,7 +113,9 @@ static const char g_szBrGrfExt[]     = ".grf";         /* 0x100AD334 */
  * copy 0x1039B720 over it. 0x1039B720 lies past the end of the DLL's
  * initialised data (see slice1_06.h), so at load time it is an empty string
  * and this is effectively "clear the buffer" -- but only effectively. */
-static void BrOptFlushMessage(void)
+/* The original INLINES this in every announcing cycler: the 3-arg send,
+ * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
+static __inline void BrOptFlushMessage(void)
 {
     BrSub1003D210(g_brP680584, g_brPA9D008, 1);
     strcpy(g_aBrA9DD28, g_aBr39B720);        /* DEVIATION: rep movsb */
@@ -315,53 +318,66 @@ int BrOptCycleTrack(void)
     int32_t v, vStart, iName;
 
     if (g_brAA33D4 != 0) {
-        v = g_br0AC654 + 1;
+        v = g_br0AC654;
+        ++v;
         g_br0AC654 = v;
         if (v > BR_OPT_TRACK_MAX) {
             v = 0;
-            g_br0AC654 = 0;
+            g_br0AC654 = v;
         }
         vStart = v;
+        /* Exit asymmetry: the full-circle exit USES v as it stands (no
+         * reload); only the found exits re-read the global.  The two
+         * reload statements cross-jump to one block at 1003C136. */
         if (BrSub1003F320(v) == 0) {
             for (;;) {
-                v = g_br0AC654 + 1;
+                v = g_br0AC654;
+                ++v;
                 g_br0AC654 = v;
                 if (v > BR_OPT_TRACK_MAX) {
                     v = 0;
-                    g_br0AC654 = 0;
+                    g_br0AC654 = v;
                 }
                 /* Unlike 0x10042EE0's loop, the wrap path here still runs
                  * the full-circle test. */
                 if (v == vStart)
                     break;
-                if (BrSub1003F320(v) != 0)
+                if (BrSub1003F320(v) != 0) {
+                    v = g_br0AC654;
                     break;
+                }
             }
+        } else {
+            v = g_br0AC654;
         }
-        v = g_br0AC654;
     } else if (g_brAA33D0 != 0) {
-        v = g_br0AC654 - 1;
+        v = g_br0AC654;
+        --v;
         g_br0AC654 = v;
         if (v < 0) {
             v = BR_OPT_TRACK_MAX;
-            g_br0AC654 = BR_OPT_TRACK_MAX;
+            g_br0AC654 = v;
         }
         vStart = v;
         if (BrSub1003F320(v) == 0) {
             for (;;) {
-                v = g_br0AC654 - 1;
+                v = g_br0AC654;
+                --v;
                 g_br0AC654 = v;
                 if (v < 0) {
                     v = BR_OPT_TRACK_MAX;
-                    g_br0AC654 = BR_OPT_TRACK_MAX;
+                    g_br0AC654 = v;
                 }
                 if (v == vStart)
                     break;
-                if (BrSub1003F320(v) != 0)
+                if (BrSub1003F320(v) != 0) {
+                    v = g_br0AC654;
                     break;
+                }
             }
+        } else {
+            v = g_br0AC654;
         }
-        v = g_br0AC654;
     } else {
         v = g_br0AC654;
     }
@@ -370,12 +386,23 @@ int BrOptCycleTrack(void)
 
     if (g_brP277B40 != NULL) {
         /* 32 tracks, 16 names: indices 0x10..0x1F reuse the first sixteen
-         * name strings. */
+         * name strings.
+         * RESIDUE (13+10 regnorm, T3a): the original materialises 0 and
+         * 0x1F per use site (xor eax,eax / mov eax,0x1f); this build CSEs
+         * them into ebx/edi (adding push ebx), turns gate tests into
+         * cmp-vs-ebx and emits add eax,-0x10 for the `-= 0x10` where the
+         * original has sub.  Probed and failed: store-through-v wrap
+         * spellings, bare `if (g)` gates, `>= MAX+1` compares, found-exit
+         * reload restructure (cross-jumped back).  The add/sub choice is
+         * proven context-dependent (BrHudDraw's original picks the OTHER
+         * encoding for the same construct). */
         iName = v;
         if (iName > 0xF)
             iName -= 0x10;
-        BrSprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TRACK),
-                  BrStrGet((int)g_aBrAC368[iName]));
+        /* sprintf itself through the /MD import, not the BrSprintf
+         * wrapper -- the original's `call dword ptr [sprintf]`. */
+        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TRACK),
+                BrStrGet((int)g_aBrAC368[iName]));
         BrOptFlushMessage();
     }
     return 1;
