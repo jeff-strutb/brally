@@ -1277,6 +1277,11 @@ def _refine_candidates(src):
     _new, _ok = transform_calltemp(src)
     if _ok and _new != src:
         yield ('calltemp', _new)
+    # (z) single-assignment scale temp -> inline `X * K` at uses (SIB
+    #     base/index pairing). Proven MATCH 0x1006E130.
+    _new, _ok = transform_scaletemp(src)
+    if _ok and _new != src:
+        yield ('scaletemp', _new)
     # (y) zero store written before the memset group in source, sunk below
     #     it by the scheduler (C7-05 literal form vs A3 eax-reuse).
     #     Proven MATCH 0x100703D0. k=1 and k=2 variants.
@@ -1781,6 +1786,37 @@ def transform_zerohoist(src, k=1):
     if not hoisted:
         return src, False
     return src[:m.start()] + ''.join(hoisted) + src[m.start():m.end()] + tail, True
+
+
+_SCALETEMP_RE = re.compile(
+    r'^\s*([a-z]{1,2}Var\d+)\s*=\s*'
+    r'((?:\w+|\([^()]*\))\s*(?:\*|<<)\s*(?:0x[0-9a-fA-F]+|\d+));\s*\n', re.M)
+
+
+def transform_scaletemp(src):
+    """Inline a single-assignment `iVarN = X * K` scale temp at its uses.
+
+    Ghidra names the scaled index; the named temp gets its own callee-saved
+    home and flips the SIB base/index pairing against the original's CSE'd
+    form (2-diff class: `8b 04 37` vs `8b 04 3e`). Deleting the temp and
+    repeating `X * K` lets VC5's own CSE pick the original allocation.
+    Proven MATCH 0x1006E130.
+    """
+    out, changed = src, False
+    for m in list(_SCALETEMP_RE.finditer(src)):
+        temp, expr = m.group(1), m.group(2)
+        tok = re.compile(r'\b%s\b' % re.escape(temp))
+        # single assignment only: no other `temp =` anywhere
+        assigns = re.findall(r'\b%s\s*=[^=]' % re.escape(temp), src)
+        if len(assigns) != 1:
+            continue
+        body = out.replace(m.group(0), '')
+        # drop the temp's own declaration BEFORE substituting uses
+        body = re.sub(r'^\s*(?:unsigned\s+)?(?:int|uint|long)\s+%s\s*;\s*\n'
+                      % re.escape(temp), '', body, count=1, flags=re.M)
+        body = tok.sub('(%s)' % expr, body)
+        out, changed = body, True
+    return (out, changed) if changed else (src, False)
 
 
 def transform_misscode(src, orig=None):
