@@ -754,6 +754,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
     BrMat4  *pSlot;
+    BrVec3   dirTmp;
+    BrVec3   glassTmp;
 
     /* 0xA11B -- six guard tests.  Orig compares against ebp (zero-reg). */
     if (*(void **)(car + BR_CAR_OFF_GUARD) == 0) return;
@@ -912,18 +914,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     g_BrDrawDir1.y = g_BrDrawDir0.y;
 
     {
-        BrVec3 tmp;
         float  len;
-        BrVec3Sub(&tmp,
+        BrVec3Sub(&dirTmp,
             (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30),
             (const BrVec3 *)(car + BR_CAR_OFF_POS));
-        len = BrVec3Length(&tmp);
+        len = BrVec3Length(&dirTmp);
         if (len == 0.0f)
-            BrVec3Negate(&tmp, (const BrVec3 *)BrG_6C6490);
+            BrVec3Negate(&dirTmp, (const BrVec3 *)BrG_6C6490);
         else
-            BrVec3DivBy(&tmp, len);
+            BrVec3DivBy(&dirTmp, len);
 
-        BrVec3Midpoint(&g_BrDrawDir1, &tmp, &g_BrDrawDir1);
+        BrVec3Midpoint(&g_BrDrawDir1, &dirTmp, &g_BrDrawDir1);
 
         len = BrVec3Length(&g_BrDrawDir1);
         if (len == 0.0f) {
@@ -1203,7 +1204,6 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xB1F8 -- glass prep: setup tiles + dot test. */
     {
-        BrVec3 tmp;
         float  dot;
         put(0xBA001001u, 0x00010000u);
         put(0xBB000001u, 0xFFFFFFFFu);
@@ -1211,11 +1211,11 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xF50001F0u, 0x06000000u);
         put(0xF5000100u, 0x05000000u);
 
-        BrVec3Sub(&tmp,
+        BrVec3Sub(&glassTmp,
             (const BrVec3 *)(car + BR_CAR_OFF_POS),
             (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30));
         dot = BrVec3Dot(
-            (const BrVec3 *)(car + BR_CAR_OFF_ROW2), &tmp);
+            (const BrVec3 *)(car + BR_CAR_OFF_ROW2), &glassTmp);
 
         if (dot > 0.0) {
             /* 0xB2CB -- glass pass. */
