@@ -1061,10 +1061,14 @@ void    BrGlNavKeyLeft(void);       /* 0x10002C70 */
 void    BrGlNavKeyRight(void);      /* 0x10002CB0 */
 void    BrGlNavTail(void);          /* 0x10059060 */
 
-/* NOT CLAIMED (@implements withheld): 6 regions / ~37 B remain -- the
- * extra frame dword, the button bytes read as one dword + ch/cl extract
- * (orig merges aState[0xC..0xF] loads), and loop-layout bytes in the
- * reacquire do-while.  Structure verified against the bytes end to end. */
+/* NOT CLAIMED (@implements withheld): 4 regions remain, all ONE coupled
+ * coloring question -- the original births 1 in ebx (at the any-pressed
+ * arms) and 0 in edi (at the key checks) and extracts b0 into al so b1
+ * can take `mov cl,ch` in place; ours lands the same values in swapped
+ * homes (and a shr-copy extract).  Reacquire loop (rotated while,
+ * duplicated condition), dword+byte button loads, batch masks, edge
+ * machines: all byte-shape exact.  Permuter bait (first_live/recompute
+ * class). */
 /* @implements-pending 0x10059410 glide BrGlNavPoll */
 void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
 {
@@ -1090,16 +1094,14 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     pDev = pNav->pDev;
     pDev->pVtbl->pfnAcquire(pDev);
     pDev = pNav->pDev;
-    if (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) == (int32_t)0x8007001E) {
-        do {
-            pDev = pNav->pDev;
-            if (pDev->pVtbl->pfnAcquire(pDev) < 0)
-                break;
-            pDev = pNav->pDev;
-            pDev->pVtbl->pfnAcquire(pDev);
-            pDev = pNav->pDev;
-        } while (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) ==
-                 (int32_t)0x8007001E);
+    while (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) ==
+           (int32_t)0x8007001E) {
+        pDev = pNav->pDev;
+        if (pDev->pVtbl->pfnAcquire(pDev) < 0)
+            break;
+        pDev = pNav->pDev;
+        pDev->pVtbl->pfnAcquire(pDev);
+        pDev = pNav->pDev;
     }
 
     pNav->x += *(int32_t *)&aState[0];
@@ -1114,13 +1116,26 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     else if (pNav->y >= BrGlNavMaxY)
         pNav->y = BrGlNavMaxY;
 
-    pNav->ab[0] = aState[0xC] & 0x80;
-    pNav->ab[1] = aState[0xD] & 0x80;
-    pNav->ab[2] = aState[0xE] & 0x80;
-    pNav->ab[3] = aState[0xF] & 0x80;
-    if (pNav->ab[0] != 0 || pNav->ab[1] != 0 ||
-        pNav->ab[2] != 0 || pNav->ab[3] != 0)
-        pNav->iIdle4C = 1;
+    {
+        /* Buttons 0/1 come out of ONE dword read (cl/ch extraction);
+         * 2/3 are plain byte loads; the any-pressed test reads the same
+         * masked locals the stores used. */
+        uint32_t bw = *(uint32_t *)&aState[0xC];
+        uint8_t  b2 = aState[0xE];
+        uint8_t  b3 = aState[0xF];
+        uint8_t  b0 = (uint8_t)bw;
+        uint8_t  b1 = (uint8_t)(bw >> 8);
+        b0 &= 0x80;
+        b1 &= 0x80;
+        b2 &= 0x80;
+        b3 &= 0x80;
+        pNav->ab[0] = b0;
+        pNav->ab[1] = b1;
+        pNav->ab[2] = b2;
+        pNav->ab[3] = b3;
+        if (b0 != 0 || b1 != 0 || b2 != 0 || b3 != 0)
+            pNav->iIdle4C = 1;
+    }
 
     if (BrGlNavKey5F3C != 0)
         BrGlNavKeyLeft();
@@ -1139,28 +1154,30 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
             BrGlNavAccum6710 = 0;
         }
     }
-    if (BrGlNavK610C != 0) {
-        BrGlNavStepAB7C = (uint16_t)-1;
-        BrGlNavAccum6710 = 0;
-        if (1) { /* the K610C arm also forces the "pressed" path below */
+    {
+        int32_t f;
+        if (BrGlNavK610C != 0) {
+            f = 1;
+            BrGlNavStepAB7C = (uint16_t)-1;
+            BrGlNavAccum6710 = 0;
+        } else {
+            f = BrGlNavF6700;
+        }
+        if (BrGlNavK6114 != 0) {
+            BrGlNavF6704 = 1;
+            BrGlNavStepAB7C = 1;
+            BrGlNavAccum6710 = 0;
+        }
+        if (f != 0) {
             pNav->ab[0] = 1;
             pNav->iIdle4C = 0;
             BrGlNavT6708 = 0;
         }
-    } else if (BrGlNavF6700 != 0) {
-        pNav->ab[0] = 1;
-        pNav->iIdle4C = 0;
-        BrGlNavT6708 = 0;
-    }
-    if (BrGlNavK6114 != 0) {
-        BrGlNavF6704 = 1;
-        BrGlNavStepAB7C = 1;
-        BrGlNavAccum6710 = 0;
-    }
-    if (BrGlNavF6704 != 0) {
-        pNav->ab[1] = 1;
-        pNav->iIdle4C = 0;
-        BrGlNavT6708 = 0;
+        if (BrGlNavF6704 != 0) {
+            pNav->ab[1] = 1;
+            pNav->iIdle4C = 0;
+            BrGlNavT6708 = 0;
+        }
     }
     if (BrGlNavT6708 != 0) {
         if (BrGlNavF66F8 != 0) {
