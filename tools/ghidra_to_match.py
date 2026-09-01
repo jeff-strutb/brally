@@ -1283,6 +1283,11 @@ def _refine_candidates(src):
     _new, _ok = transform_calltemp(src)
     if _ok and _new != src:
         yield ('calltemp', _new)
+    # (g) walker-rewind strcpy explosion -> strcpy(dst, src).
+    #     Proven MATCH 0x100367C0; ~23 work files.
+    _new, _ok = transform_walkerstrcpy(src)
+    if _ok and _new != src:
+        yield ('walkerstrcpy', _new)
     # (f) discarded float call + bare `ftol()` -> `(int)CALL(...)`.
     #     Proven MATCH 0x1002A490 (floor clamp); ~50 work files carry the
     #     artifact.
@@ -1798,6 +1803,55 @@ def transform_zerohoist(src, k=1):
     if not hoisted:
         return src, False
     return src[:m.start()] + ''.join(hoisted) + src[m.start():m.end()] + tail, True
+
+
+_V = r'[a-z]{1,2}Var\d+'
+_WALKER_STRCPY_RE = re.compile(
+    r'(?P<len>' + _V + r') = 0xffffffff;\s*\n'
+    r'\s*(?P<pw>' + _V + r') = (?P<src>[^;]+);\s*\n'
+    r'\s*do \{\s*\n'
+    r'\s*(?P<pe>' + _V + r') = (?P=pw);\s*\n'
+    r'\s*if \((?P=len) == 0\) break;\s*\n'
+    r'\s*(?P=len) = (?P=len) - 1;\s*\n'
+    r'\s*(?P=pe) = (?P=pw) \+ 1;\s*\n'
+    r'\s*(?P<ch>' + _V + r') = \*(?P=pw);\s*\n'
+    r'\s*(?P=pw) = (?P=pe);\s*\n'
+    r"\s*\} while \((?P=ch) != '\\0'\);\s*\n"
+    r'\s*(?P=len) = ~(?P=len);\s*\n'
+    r'\s*(?P=pw) = (?P=pe) \+ -(?P=len);\s*\n'
+    r'\s*(?P=pe) = (?P<dst>[^;]+);\s*\n'
+    r'\s*for \((?P<c2>' + _V + r') = (?P=len) >> 2; (?P=c2) != 0; (?P=c2) = (?P=c2) - 1\) \{\s*\n'
+    r'\s*\*\(int \*\)(?P=pe) = \*\(int \*\)(?P=pw);\s*\n'
+    r'\s*(?P=pw) = (?P=pw) \+ 4;\s*\n'
+    r'\s*(?P=pe) = (?P=pe) \+ 4;\s*\n'
+    r'\s*\}\s*\n'
+    r'\s*for \((?P=len) = (?P=len) & 3; (?P=len) != 0; (?P=len) = (?P=len) - 1\) \{\s*\n'
+    r'\s*\*(?P=pe) = \*(?P=pw);\s*\n'
+    r'\s*(?P=pw) = (?P=pw) \+ 1;\s*\n'
+    r'\s*(?P=pe) = (?P=pe) \+ 1;\s*\n'
+    r'\s*\}\s*\n')
+
+
+def transform_walkerstrcpy(src):
+    """Ghidra's walker-rewind strcpy explosion -> `strcpy(dst, src)`.
+
+    The exploded shape gen_fresh's strarr matcher misses: an inline
+    strlen walker (0xffffffff countdown), `len = ~len`, pointer rewind
+    `p = end + -len`, then the `>>2` dword loop and `&3` byte-tail loop.
+    Proven MATCH 0x100367C0 (strlen-guarded copy). ~23 work files carry
+    the shape.
+    """
+    out, changed = src, False
+    while True:
+        m = _WALKER_STRCPY_RE.search(out)
+        if not m:
+            break
+        ind = re.match(r'\s*', out[:m.start()].rsplit('\n', 1)[-1]).group(0)
+        repl = 'strcpy(%s, %s);\n' % (m.group('dst').strip(),
+                                      m.group('src').strip())
+        out = out[:m.start()] + repl + out[m.end():]
+        changed = True
+    return (out, changed) if changed else (src, False)
 
 
 _FTOLFUSE_CALL_RE = re.compile(
