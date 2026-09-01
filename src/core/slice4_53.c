@@ -168,6 +168,72 @@ static const BrCfgField g_aBrCfgFields[] = {
 #define BR_CFG_FIELD_COUNT \
     ((int)(sizeof g_aBrCfgFields / sizeof g_aBrCfgFields[0]))
 
+#ifdef BR_MATCHING_BUILD
+/* ------------------------------------------------------------------
+ * 0x100634B0 -- the GLIDE build of the config writer.  thiscall
+ * (this in ecx, path on the stack, callee-pops), reached through the
+ * proven __fastcall(this, _edx_unused, ...) shim.  Unlike the port
+ * body below, the original is UNROLLED: 32 separate checked fwrites,
+ * every failure jumping to one shared fclose/return-0.  The magic is
+ * written as strlen(global) of a string the file also owns (repne
+ * scasb intrinsic), the version dword straight from its global. */
+extern char BrGlCfgMagic[];        /* 0x100B4C20  "RCfg" */
+extern unsigned char BrGlCfgVersion[4]; /* 0x10077A2C  02 00 00 00 */
+
+/* @implements 0x100634B0 glide BrGlCfgSave */
+int __fastcall BrGlCfgSave(void *pThis, int _edx_unused, const char *pszPath)
+{
+    unsigned char *pBase = (unsigned char *)pThis;
+    FILE          *pFile;
+
+    (void)_edx_unused;
+    pFile = fopen(pszPath, "wb");
+    if (pFile == NULL)
+        return 0;
+
+    if (fwrite(BrGlCfgMagic, strlen(BrGlCfgMagic), 1, pFile) != 1) goto fail;
+    if (fwrite(BrGlCfgVersion, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x2A8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x2AC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x2B0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x2B4, 0x104, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x3B8, 0x400, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7B8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7BC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7C0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7C4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7C8, 0x10, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7D8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7DC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7E0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7E4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7E8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7EC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7F0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7F4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7F8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x7FC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x800, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x804, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x808, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x80C, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x810, 0x20, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x830, 0x40, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x870, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x2A0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase, 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x0A8, 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x150, 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(pBase + 0x1F8, 0xA8, 1, pFile) != 1) goto fail;
+
+    fclose(pFile);
+    return 1;
+fail:
+    fclose(pFile);
+    return 0;
+}
+#endif /* BR_MATCHING_BUILD */
+
 int BrCfgSave1006A4A0(void *pThis, const char *pszPath)
 {
     /* 0x1008FA64 holds these four bytes; emitted byte-wise so the file is
