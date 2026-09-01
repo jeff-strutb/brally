@@ -667,4 +667,64 @@ void BrGlGbiCall(uint32_t w1)
     grAlphaTestFunction(7);
 }
 
+void __stdcall grGlideInit(void);
+int  __stdcall grSstQueryHardware(void *);
+void __stdcall grSstSelect(int);
+
+void BrGl_1001DD70(void);
+void BrGl_1001DD80(int32_t w, int32_t h);
+
+extern void   *BrGlFlipHook;        /* 0x106B7AB8 -> 0x1001DD50 */
+extern void   *BrGlFlipHook2;       /* 0x106B7ABC -> 0x1001DD70 */
+extern uint8_t BrGlHwConfig[1];     /* 0x105CCBD8, grSstQueryHardware out */
+extern int32_t BrGlHwType;          /* 0x105CCBDC */
+extern int32_t BrGlHwParamA;        /* 0x105CCBD0 */
+extern int32_t BrGlHwParamB;        /* 0x105CCC6C */
+extern int32_t BrGlHwCfgE0;         /* 0x105CCBE0 */
+extern int32_t BrGlHwCfgE4;         /* 0x105CCBE4 */
+extern int32_t BrGlHwCfgE8;         /* 0x105CCBE8 */
+extern int32_t BrGlHwCfgEC;         /* 0x105CCBEC */
+extern int32_t BrGlScreenW;         /* 0x100A7514 */
+extern int32_t BrGlScreenH;         /* 0x100A7518 */
+
+/* 0x1001E080 -- Glide bring-up: install the flip hooks, init Glide, probe
+ * the SST, derive two hardware parameters by board type, then hand the
+ * screen size to 0x1001DD80.  (Renderer slot; the D3D twin 0x1001BAE0 in
+ * br_objlife.c is DIFFERENT CODE.)
+ *
+ * NOT CLAIMED (@implements withheld): ONE residue region of 3 bytes --
+ * the early exit is `jne +1; ret` (inline ret duplication) in the
+ * original vs a near `je` to the shared tail ret here.  All 40 other
+ * instructions match.  Probed and dead: early-return vs nested-if vs
+ * else-return vs explicit trailing return, /O2 vs /O2 /Op vs /Oy-.
+ * Ideal permuter bait (tiny function, single branch-shape diff). */
+void BrGlInstall(void)
+{
+    BrGlFlipHook  = (void *)BrGlideFlipWait;
+    BrGlFlipHook2 = (void *)BrGl_1001DD70;
+    grGlideInit();
+    if (grSstQueryHardware(BrGlHwConfig) == 0)
+        return;
+    grSstSelect(0);
+    switch (BrGlHwType) {
+    default:
+        BrGlHwParamA = 1;
+        BrGlHwParamB = 2;
+        break;
+    case 1:
+        BrGlHwParamA = BrGlHwCfgE4;
+        BrGlHwParamB = BrGlHwCfgE0;
+        break;
+    case 0:
+    case 3:
+        BrGlHwParamA = BrGlHwCfgE8;
+        BrGlHwParamB = BrGlHwCfgE0;
+        if (BrGlHwCfgEC != 0)
+            BrGlHwParamB = BrGlHwCfgE0 + BrGlHwCfgE0;
+        break;
+    }
+    BrGl_1001DD80(BrGlScreenW, BrGlScreenH);
+    return;
+}
+
 #endif /* BR_MATCHING_BUILD */
