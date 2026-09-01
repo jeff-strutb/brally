@@ -1291,6 +1291,17 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **Two-case sparse `switch` emits its compare chain ASCENDING with
+  bodies in source case order; if/else-if lays the first body inline.**
+  Orig `cmp eax,0x113; je far-body; cmp eax,0x501; jne end; <501 body>`
+  with the 0x113 body at the END is `switch (msg) { case 0x501: ...;
+  case 0x113: ...; }` — the if/else-if spelling emits `jne` and the
+  0x113 body FIRST (79 diffs of pure layout). Same function: the
+  five-arg Sel vcall reaches the eax-vtbl shape through a `Sel *s =
+  &p->sel;` temp (direct `p->sel.s4(...)` loads the vtbl into edx
+  before the lea), and a one-arg stdcall IMPORT called twice CSEs
+  into edi on its own. Proven 0x10035A30 BrWmAppHook35A30 (134 B)
+  and sibling 0x10036130 (103 B), both /O2 C++ TUs.
 - **`errno` in a /MD matching TU is the CRT `_errno()` CALL (FF 15),
   never a variable load.** Spell it `*_errno()` with
   `_CRTIMP int *__cdecl _errno(void);` — the plain errno macro (or an
