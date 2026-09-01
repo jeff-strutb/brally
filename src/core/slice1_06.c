@@ -77,7 +77,11 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 
     if (n < BR_PENDLIST_MAX) {
         p->apItems[n] = pList;
-        /* Reload 0x106C7C3C before incrementing -- the original does. */
+        /* Reload 0x106C7C3C before incrementing -- the original does.
+         * RESIDUE (0+0 regnorm, T3a): pure eax/ecx rotation from the first
+         * instruction -- the original loads the ctx into ecx (6-byte form)
+         * and the count into eax; every spelling probed (direct derefs, CSE
+         * count, cached p) loads ctx into eax.  30 masked diff bytes. */
         g_brPendCtx->count++;
     } else {
         g_brPendDropped++;
