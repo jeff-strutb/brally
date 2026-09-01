@@ -472,33 +472,36 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
 float BrHudGapSeconds(const BrCar *aCars, int iCar)
 {
     int32_t best = 0xFF;              /* 10017CE8 */
-    double  f    = (double)kF300;     /* 10017CD9 */
-    double  v;
+    float   f    = kF300;             /* 10017CD9 */
+    float   v;
     int     i;
 
     for (i = 0; i < g_hud.cCars; ++i) {
         if (best > aCars[i].f0FF8) {
             best = aCars[i].f0FF8;
-            f = (double)aCars[i].f0FF4 - (double)aCars[iCar].f0FF4;
+            f = aCars[i].f0FF4 - aCars[iCar].f0FF4;
         }
     }
 
-    /* 10017D26: `fcom 0 / test ah,0x40` -- C3 covers equal AND unordered, so a
-     * NaN returns here too. Written as !(f != 0) so NaN takes this branch. */
-    if (!(f != 0.0))
-        return (float)f;
+    /* 10017D26: `fcom kF300 / test ah,0x40` -- C3 covers equal AND unordered,
+     * so a NaN f (or v) takes the equal path. All-float spellings: the
+     * original compares `fcom dword ptr` against the float globals and keeps
+     * f and v on the x87 stack. The nesting (returns falling out the bottom,
+     * not early-outs) is what places both sentinel blocks out-of-line after
+     * the division tail, sharing the final epilogue. */
+    if (f != kF300) {
+        v = aCars[iCar].f1030 * kF338;
 
-    v = (double)aCars[iCar].f1030 * (double)kF338;
+        if (v != kF300) {
+            /* Asymmetric: v is raised to 25.0f but never lowered. */
+            if (v < kF33C)
+                v = kF33C;
 
-    /* 10017D52: again C3, so a NaN v yields the 1000.0f sentinel. */
-    if (!(v != 0.0))
-        return kF304;
-
-    /* Asymmetric: v is raised to 25.0f but never lowered. */
-    if (v < (double)kF33C)
-        v = (double)kF33C;
-
-    return (float)(f / v);
+            return f / v;
+        }
+        return kF304;   /* NaN/zero v yields the 1000.0f sentinel */
+    }
+    return f;
 }
 
 /* =====================================================================
