@@ -118,14 +118,15 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
  * particular kind, and already holding the value being asked about. It reads
  * like a "is this already taken?" test for input-device assignments, but
  * nothing in this packet confirms that, so treat the purpose as unconfirmed. */
+BrDevCtx *g_brP6EECCC;                      /* 0x106EECCC */
+
 /* @implements 0x10037070 d3d BrDevRecMatch */
-int BrDevRecMatch(const BrDevRec *aRecs, const uint8_t *abIndex,
-                  uint32_t value)
+int BrDevRecMatch(uint32_t value)
 {
     int32_t i;
 
     for (i = 0; i < BR_DEVREC_SLOTS; i++) {
-        const BrDevRec *pRec = &aRecs[abIndex[i]];
+        const BrDevRec *pRec = &g_brP6EECCC->pRecs[g_brP6EECCC->abIndex[i]];
 
         if (pRec->f04 == 0u) {
             continue;
