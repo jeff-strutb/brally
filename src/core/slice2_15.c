@@ -643,9 +643,12 @@ void BrHudDraw(BrHudView *aViews, int a2)
 
     BrSub_100192F0(0x0F);
     BrSub_10019280();
-    BrTextDraw((const char *)BrHandleLookup(g_hud.apStrings,
-                                            (g_hud.f0ADF60 != 0) ? 0xEBu : 0xECu),
-               x, y);
+    {
+        unsigned uStr = 0xECu;
+        if (g_hud.f0ADF60 != 0)
+            uStr = 0xEBu;
+        BrTextDraw((const char *)BrHandleLookup(g_hud.apStrings, uStr), x, y);
+    }
 }
 
 /* =====================================================================
