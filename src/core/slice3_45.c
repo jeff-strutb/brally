@@ -59,11 +59,13 @@
 #ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
-#define BrEntSetVel    BrEntSetVel_port
-#define BrEntSetAngVel BrEntSetAngVel_port
+#define BrEntSetVel         BrEntSetVel_port
+#define BrEntSetAngVel      BrEntSetAngVel_port
+#define BrEntSetOrientation BrEntSetOrientation_port
 #include "slice3_45.h"
 #undef BrEntSetVel
 #undef BrEntSetAngVel
+#undef BrEntSetOrientation
 #else
 #include "slice3_45.h"
 #endif
@@ -436,6 +438,62 @@ void BrEntSetVel(BrEnt *pE, float x, float y, float z)
  * replacing it, and unlike the other setters here it leaves the object's
  * drawing transform stale until something else rebuilds it. */
 /* @implements 0x10076820 d3d BrEntSetOrientation */
+#ifdef BR_MATCHING_BUILD
+/* thiscall + three stack floats; sin/cos are the float-arg tree wrappers
+ * (sin FIRST per axis), quat built fresh each axis with immediate zeros. */
+extern float BrSinF(float a);      /* glide 0x10002560 */
+extern float BrCosF(float a);      /* glide 0x100023E0 */
+
+void __fastcall BrEntSetOrientation(BrEnt *pE, int _edx_unused,
+                                    float a1, float a2, float a3)
+{
+    float h1 = a1 * kBrHalf;
+    float h2 = a2 * kBrHalf;
+    float h3 = a3 * kBrHalf;
+    BrVec4 q;
+
+    (void)_edx_unused;
+
+    {
+        float sn = BrSinF(h1);
+        q.f00 = BrCosF(h1);
+        q.f04 = 0.0f;
+        q.f08 = 0.0f;
+        q.f0C = sn;
+    }
+    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+
+    {
+        float sn = BrSinF(h2);
+        q.f00 = BrCosF(h2);
+        q.f04 = 0.0f;
+        q.f08 = sn;
+        q.f0C = 0.0f;
+    }
+    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+
+    {
+        float sn = BrSinF(h3);
+        q.f00 = BrCosF(h3);
+        q.f04 = sn;
+        q.f08 = 0.0f;
+        q.f0C = 0.0f;
+    }
+    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+
+    BrVec4Normalise(&pE->st.quat);
+
+    pE->stB.quat.f00 = pE->st.quat.f00;
+    pE->stB.quat.f04 = pE->st.quat.f04;
+    pE->stB.quat.f08 = pE->st.quat.f08;
+    pE->stB.quat.f0C = pE->st.quat.f0C;
+    pE->stA.quat.f00 = pE->st.quat.f00;
+    pE->stA.quat.f04 = pE->st.quat.f04;
+    pE->stA.quat.f08 = pE->st.quat.f08;
+    pE->stA.quat.f0C = pE->st.quat.f0C;
+}
+#else
+/* @implements 0x10076820 d3d BrEntSetOrientation */
 void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
 {
     /* All three half-angles are formed up front, before any call. */
@@ -469,6 +527,7 @@ void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
     BrEntMirrorQuat(pE);
     /* No BrRbBuildMatrix here -- see the header. */
 }
+#endif
 
 /* 0x100769A0 */
 /* WHAT IT DOES: tells an object how fast it is spinning, writing it into all
