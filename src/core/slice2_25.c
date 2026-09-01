@@ -660,6 +660,64 @@ int BrOptOpen2998(BrGameObj *pUnused)
  * stepping down does too. The result also selects which of four control
  * layouts is the active one. */
 /* @implements 0x10043400 d3d BrOptCycleAA2A0C */
+#ifdef BR_MATCHING_BUILD
+/* Per-arm switch tail (record addresses as immediates); the up-arm's
+ * skip jumps INTO the down-arm's store (cross-block goto).
+ * RESIDUE (parked, REGNORM 1+2, 4 B short): VC5 hoists the g_brAA2A0C
+ * load above the first branch (orig loads it per arm; volatile on either
+ * side does not pin it). */
+int BrOptCycleAA2A0C(void)
+{
+    int32_t v;
+
+    if (g_brAA33D4 != 0) {
+        v = g_brAA2A0C + 1;
+        g_brAA2A0C = v;
+        if (v >= BR_OPT_AA2A0C_MAX + 1) {
+            v = 0;
+            g_brAA2A0C = v;
+        }
+        if (v == 1) {
+            v = 2;
+            goto storev;
+        }
+    } else {
+        v = g_brAA2A0C;
+        if (g_brAA33D0 != 0) {
+            v = v - 1;
+            g_brAA2A0C = v;
+            if (v < 0) {
+                v = BR_OPT_AA2A0C_MAX;
+                g_brAA2A0C = v;
+            }
+            if (v == 1) {
+                v = 0;
+storev:
+                g_brAA2A0C = v;
+            }
+        }
+    }
+
+    g_brB4E728 = v;
+    v = g_aBrAC520[v];
+    g_brB4E1D0 = v;
+
+    switch (v) {
+    default:
+        g_brB4E1D4 = g_aBrB4DF30[0];
+        return 1;
+    case 3:
+        g_brB4E1D4 = g_aBrB4DF30[3];
+        return 1;
+    case 2:
+        g_brB4E1D4 = g_aBrB4DF30[2];
+        return 1;
+    case 1:
+        g_brB4E1D4 = g_aBrB4DF30[1];
+        return 1;
+    }
+}
+#else
 int BrOptCycleAA2A0C(void)
 {
     int32_t v;
@@ -703,6 +761,7 @@ int BrOptCycleAA2A0C(void)
         g_brB4E1D4 = g_aBrB4DF30[0];
     return 1;
 }
+#endif
 
 /* ==========================================================================
  * 0x10043590, 0x100435F0, 0x10043650, 0x100436B0 -- two-state cyclers
