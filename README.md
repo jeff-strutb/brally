@@ -39,32 +39,6 @@ The assembled DLL image diffs to **0 bytes** over every matched claim.
 - **macOS/Metal port** — the same source boots, renders the front end and retail
   car geometry, runs physics + collision; test suite **136/136 green**.
 
-## The compiler: MSVC 5.0, with one confirmed exception
-
-`BRGlide.dll` is overwhelmingly **Microsoft Visual C++ 5.0** — 850+ functions
-reproduce its bytes exactly, which is proof, not assumption. All matching work
-defaults to it (`tools/msvc5`, run under Wine).
-
-One function contradicts that, and it is worth recording because it pins down a
-second compiler in the shipped image. The network car-state encoder
-(`0x10006510`) emits a code sequence that MSVC 5.0 **cannot** produce: it pushes
-a call's later argument *before* evaluating an earlier one while simultaneously
-narrowing a shift to 16-bit width. Those two behaviours are mutually exclusive
-under 5.0 — and, as tested exhaustively, under VS97 SP3 and VC6 as well (18
-source spellings × 3 front ends). **Visual C++ 4.2** (`cl 10.20.6166`, June
-1996) produces all of it in one shot, including the clean `thiscall` and the
-x87 flag tests. So at least one object in the DLL — legacy networking/bitstream
-code — was compiled with 4.2 and linked into an otherwise-5.0 binary.
-
-This is *not* a project-wide compiler change. A bulk re-check under 4.2
-(`tools/vc42_probe.py`, against `tools/msvc42`) produced **zero** new byte-exact
-matches and instead *broke* dozens of functions that are exact under 5.0 (audio,
-input, the fixed-point quantisers). 4.2 is staged and available for the specific
-TUs that need it; 5.0 remains the reference for everything else. How we know
-which is which: compile the translation unit under both and diff the
-already-known-exact functions — the compiler that keeps them exact is the right
-one for that TU.
-
 ## Progress Report
 
 **Game DLL by tier** (`python3 tools/tiers.py`) — hand-C target 1,529 functions:
