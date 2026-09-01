@@ -1251,6 +1251,21 @@ def _refine_candidates(src):
         yield ('countfold', _new)
     head_end = src.find('\n\n', src.find('Forward declarations'))
     head, body = src[:head_end], src[head_end:]
+    # (w) signed -> unsigned char pointer: a byte read through Ghidra's
+    #     `char *` widens with movsx; the original's `xor r,r; mov r8,[..]`
+    #     (default promotion to an unprototyped callee — the char-window
+    #     entry in docs/VC5-IDIOMS.md) needs UNSIGNED char. Ghidra types
+    #     byte pointers signed by default, so byte-indexed params come
+    #     back movsx-shaped. One candidate per declared identifier plus an
+    #     all-at-once fold. Proven MATCH 0x10020CF0 / 0x10020D30.
+    _UCP_RE = re.compile(r'(?<!unsigned )\bchar(\s*\*+\s*)(\w+)([,)\[;])')
+    ucp = list(_UCP_RE.finditer(body))
+    if len(ucp) > 1:
+        yield ('ucharall', head + _UCP_RE.sub(r'unsigned char\1\2\3', body))
+    for m in ucp:
+        nb = (body[:m.start()] + 'unsigned char%s%s%s'
+              % (m.group(1), m.group(2), m.group(3)) + body[m.end():])
+        yield ('uchar:%s' % m.group(2)[:16], head + nb)
     # (a) retype one extern global
     for m in re.finditer(r'^extern (char|unsigned char|short|unsigned short|'
                          r'unsigned int|int|float|double) (\w+);$', head, re.M):

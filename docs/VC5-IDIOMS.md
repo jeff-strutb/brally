@@ -1239,6 +1239,19 @@ the caller AND flipped a helper to match for free.
   shifting edx in place means no named quotient. Proven 0x10014760
   BrHudDrawTimeEntry (160 B, MATCH /O2).
 
+- **Ghidra types byte pointers SIGNED — retype `char *param` to
+  `unsigned char *` when the original widens with `xor r,r; mov r8`.**
+  A byte read through `char *` compiles to `movsx`; the original's
+  `xor eax,eax; mov al,[esi]` shape (default promotion at the call
+  site — see the char-window entry above) requires UNSIGNED char.
+  One-token fix, whole-function diff dissolves (47 diffs → 0 on a
+  61 B function). Ghidra emits `char *` for every byte pointer it
+  cannot prove unsigned, so this recurs across the residue (61
+  unmatched work files carry retypeable `char *` decls, 2026-09-01
+  screen). Automated as refine candidate `uchar:`/`ucharall` in
+  `tools/ghidra_to_match.py`. Proven MATCH 0x10020CF0
+  BrDlCmdTri2FlatZ / 0x10020D30 BrDlCmdTri2Flat (61 B, /O2).
+
 ## Cost model (measured, 2026-08-22 timed test)
 
 Size is not the cost driver — code shape is. 738 B of int/call-heavy code
