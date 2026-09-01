@@ -1308,7 +1308,6 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         !(BrG_6C661C != 0 && (void *)car == BrG_6C2CF8) &&
         g_BrDrawSuppress == 0 &&
         *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
-        uint32_t tex;
         put(0xE7000000u, 0);
         put(0xBA001402u, 0);
         put(0xB7000000u, 0x00040000u);
@@ -1323,8 +1322,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xB900031Du, 4);
         put(0xE8000000u, 0);
         put(0xBA000E02u, 0);
-        tex = BrG_6C661C != 0 ? g_BrDrawReflectTexA : g_BrDrawReflectTexB;
-        put((tex & 0x00FFFFFFu) | 0xDC000000u, 1);
+        /* Inline the ternary into the put arg so the tex select evaluates
+         * AFTER the put macro's slot-pointer bump (orig alloc-first order). */
+        put(((BrG_6C661C != 0 ? g_BrDrawReflectTexA : g_BrDrawReflectTexB)
+             & 0x00FFFFFFu) | 0xDC000000u, 1);
         put(0xBA000602u, 0xC0u);
         {
             uint32_t s = (uint32_t)pSkyAng->s0;
