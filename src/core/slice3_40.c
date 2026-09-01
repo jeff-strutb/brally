@@ -786,4 +786,19 @@ void BrUiSelBDec(void)
   return;
 }
 
+
+extern int DAT_100ad7d8;
+extern char DAT_100ad7e8;
+extern int DAT_100b22d8;
+
+/* @implements 0x10059FE0 glide FUN_10059fe0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_10059fe0(int param_1,int param_2,int param_3)
+
+{
+  DAT_100b22d8 = *(int *)((char *)&DAT_100ad7e8 + (param_2 + param_1 * 0x1e) * 0x28);
+  return ((int *)((char *)&DAT_100ad7d8 + param_1 * 1200 + param_2 * 40))[param_3];
+}
+
 #endif /* BR_MATCHING_BUILD */
