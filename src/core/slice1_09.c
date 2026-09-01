@@ -15,6 +15,7 @@
 #define BrBitStreamWriteU24  BrBitStreamWriteU24_cdecl
 #define BrBitStreamWriteU32  BrBitStreamWriteU32_cdecl
 #define BrEntitySetIndex     BrEntitySetIndex_cdecl
+#define BrEntityBindAux      BrEntityBindAux_cdecl
 #endif
 #include "slice1_09.h"
 #ifdef BR_MATCHING_BUILD
@@ -24,6 +25,7 @@
 #undef BrBitStreamWriteU24
 #undef BrBitStreamWriteU32
 #undef BrEntitySetIndex
+#undef BrEntityBindAux
 #endif
 
 #include <math.h>
@@ -466,6 +468,17 @@ void BrMat4TransformPoint(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
  * down the diagonal, zeroes everywhere else -- so whatever it is applied to
  * comes through unchanged. */
 /* @implements 0x100307D0 d3d BrMat4IdentityLocal */
+#ifdef BR_MATCHING_BUILD
+/* The original is fully unrolled: sixteen sequential stores, 1.0f and 0.0f
+ * hoisted into edx/ecx as integer patterns. */
+static void BrMat4IdentityLocal(BrMat4 *pM)
+{
+    pM->m[0][0] = 1.0f; pM->m[0][1] = 0.0f; pM->m[0][2] = 0.0f; pM->m[0][3] = 0.0f;
+    pM->m[1][0] = 0.0f; pM->m[1][1] = 1.0f; pM->m[1][2] = 0.0f; pM->m[1][3] = 0.0f;
+    pM->m[2][0] = 0.0f; pM->m[2][1] = 0.0f; pM->m[2][2] = 1.0f; pM->m[2][3] = 0.0f;
+    pM->m[3][0] = 0.0f; pM->m[3][1] = 0.0f; pM->m[3][2] = 0.0f; pM->m[3][3] = 1.0f;
+}
+#else
 static void BrMat4IdentityLocal(BrMat4 *pM)
 {
     int r, c;
@@ -473,6 +486,7 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
         for (c = 0; c < 4; ++c)
             pM->m[r][c] = (r == c) ? 1.0f : 0.0f;
 }
+#endif
 
 /* 0x10076AE0  __thiscall, ret 4. `cmp eax,0x10 / jl` -- signed. */
 /* WHAT IT DOES: records which of two banks of sixteen an object belongs to.
@@ -481,8 +495,12 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
 #ifdef BR_MATCHING_BUILD
 /* thiscall, one stack arg.  Size-exact (50) but encoding-walled:
- * original `sub eax, 0x10`, VC5 `add eax, -0x10`.  `i - 16` and `i -= 16`
- * both emitted the add form. */
+ * original `sub eax, 0x10`, VC5 `add eax, -0x10`.  `i - 16`, `i -= 16`,
+ * unsigned subtract, and inline-in-store all emit the add form under
+ * every VC5 flag probed (/O1 /O2 /Os /Ox /G3 /G5, C and C++ front ends).
+ * VC4.2 DOES emit `sub eax,0x10` -- but schedules it AFTER the bank
+ * store for every probed source order, where the original subs first.
+ * Neither compiler reproduces both; parked. */
 typedef struct { int n; } BrEntityIndexArg;
 void __fastcall BrEntitySetIndex(void *pEntity, BrEntityIndexArg index)
 {
@@ -532,6 +550,23 @@ void BrEntitySetIndex(void *pEntity, int index)
  * sits and stepping the same distance into the other one, and then resets
  * the object's transform matrix to no transform. */
 /* @implements 0x10076C90 d3d BrEntityBindAux */
+#ifdef BR_MATCHING_BUILD
+/* thiscall, no stack args. Both array bases are pinned globals; the index
+ * is a signed magic-divide by the 0x2B68 entity stride. */
+extern char DAT_10af1208;   /* entity[0] */
+extern char DAT_106ed708;   /* aux[0], stride 348 */
+
+void __fastcall BrEntityBindAux(void *pThis, int _edx_unused)
+{
+    char *p  = (char *)pThis;
+    int  idx = (int)((p - &DAT_10af1208) / BR_ENTITY_STRIDE);
+
+    (void)_edx_unused;
+    *(void **)(p + BR_ENTITY_OFF_AUX) =
+        &DAT_106ed708 + idx * BR_ENTITY_AUX_STRIDE;
+    BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
+}
+#else
 void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
                      void *pAuxArrayBase)
 {
@@ -544,6 +579,7 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
     *ppAux = pAux + idx * BR_ENTITY_AUX_STRIDE;
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
 }
+#endif
 
 /* ================================================================== */
 /* Misc                                                                */
