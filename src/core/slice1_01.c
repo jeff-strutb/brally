@@ -249,8 +249,16 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
  * some but not all of the data arrived, is treated as the file being damaged
  * and kills the game with a message. */
 /* @implements 0x100030E0 d3d BrFChkFRead */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+#endif
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
+#ifdef BR_MATCHING_BUILD
+    /* The original formats the failure message into a 0x400-byte stack buffer
+     * (allocated in the prologue) and ships it to OutputDebugStringA. */
+    char buf[0x400];
+#endif
     uint32_t wanted = (uint32_t)size * (uint32_t)count;
     size_t   got;
 
@@ -267,10 +275,18 @@ int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
         return 1;
     }
 
+#ifdef BR_MATCHING_BUILD
+    wsprintfA(buf,
+              "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
+              (int)wanted, (int)((uint32_t)got * (uint32_t)size));
+    OutputDebugStringA(buf);
+    exit(1);
+#else
     fprintf(stderr,
             "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
             (int)wanted, (int)((uint32_t)got * (uint32_t)size));
     exit(1);
+#endif
 
     return 1;   /* the original falls through to the `mov eax,1` tail */
 }
