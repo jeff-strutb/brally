@@ -25,6 +25,33 @@ static int br05_s16le(const unsigned char *p)
  * so each of the six 16-bit fields in a vertex has its two bytes exchanged; the
  * colour or normal bytes at the end need no swapping and are left alone. */
 /* @implements 0x1002BDD0 d3d BrVtxSwap */
+#ifdef BR_MATCHING_BUILD
+/* The original swaps each 16-bit field as a word store of a byte pack
+ * (`xor edx,edx; mov dh/dl; mov [..],dx`), unrolled over the six fields.
+ * The first two fields pack high-byte-first, the last four low-byte-first
+ * -- a source operand-order fossil, preserved.
+ * RESIDUE (parked): VC5 anchors the walked pointer at +2 (`add eax,2`
+ * preheader, stores at -2..+8) from EVERY probed spelling -- pointer walk,
+ * ((u16*)p)[k] scaled stores, short-pointer walk, indexed i*16 base,
+ * do-while, statement reorder, union temp (spills), /O1 /Os /Op /Og-.
+ * The original anchors at +0. One extra insn, +3 B, REGNORM 4+3; the
+ * field-0 load-order flip is downstream of the same bias. */
+void BrVtxSwap(void *pVerts, int count)
+{
+    unsigned char *p = (unsigned char *)pVerts;
+    int i;
+
+    for (i = 0; i < count; ++i) {
+        ((unsigned short *)p)[0] = (unsigned short)((p[0] << 8) | p[1]);
+        ((unsigned short *)p)[1] = (unsigned short)((p[2] << 8) | p[3]);
+        ((unsigned short *)p)[2] = (unsigned short)(p[5] | (p[4] << 8));
+        ((unsigned short *)p)[3] = (unsigned short)(p[7] | (p[6] << 8));
+        ((unsigned short *)p)[4] = (unsigned short)(p[9] | (p[8] << 8));
+        ((unsigned short *)p)[5] = (unsigned short)(p[11] | (p[10] << 8));
+        p += BR_VTX_SRC_SIZE;
+    }
+}
+#else
 void BrVtxSwap(void *pVerts, int count)
 {
     unsigned char *p = (unsigned char *)pVerts;
@@ -45,6 +72,7 @@ void BrVtxSwap(void *pVerts, int count)
         p += BR_VTX_SRC_SIZE;
     }
 }
+#endif
 
 /* 0x1002BE30 */
 /* WHAT IT DOES: unpacks a batch of the game's compact N64 vertices into the
