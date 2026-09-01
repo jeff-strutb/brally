@@ -774,15 +774,11 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     if (*(car + BR_CAR_OFF_KIND) == 2) {
         g_BrDrawFogAlpha =
             (int32_t)(*(const float *)(car + BR_CAR_OFF_ALPHA) * 255.0f);
-        {
-            /* Alpha term is masked FIRST (orig reloads the global it just
-             * stored, before the third colour byte's load). */
-            uint32_t fa = (uint32_t)g_BrDrawFogAlpha & 0xFFu;
-            put(0xF8000000u,
-                ((((uint32_t)(uint8_t)BrG_6C0260 << 8
-                 | (uint8_t)BrG_6C1614) << 8
-                 | (uint8_t)BrG_6C0200) << 8) | fa);
-        }
+        put(0xF8000000u,
+            ((((uint32_t)(uint8_t)BrG_6C0260 << 8
+             | (uint8_t)BrG_6C1614) << 8
+             | (uint8_t)BrG_6C0200) << 8)
+             | ((uint32_t)g_BrDrawFogAlpha & 0xFFu));
     }
 
     /* 0xA1F1 -- flag290C gate from track records. */
@@ -1142,7 +1138,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
     /* lea eax,[eax+eax*4]; shl eax,3  — not imul 40. */
-    lodOff = (uint32_t)((lodBias + lodBias * 4) << 3);
+    /* lodOff is NOT computed here -- the 0x8038 and 0x8030 sites inline
+     * (lodBias+lodBias*4)<<3, and only the 0x8024 site assigns lodOff
+     * (orig 0x153d stores it to the dead pCar arg slot). */
 
     if (g_BrDrawSuppress == 0 &&
         *(const int32_t *)(car + BR_CAR_OFF_I29B4) == 0) {
@@ -1175,8 +1173,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBC00240Au, colourB);
         put(0xBA000C02u, BrG_6C0258);
         {
-            if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff) != 0)
-                put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 + lodOff));
+            if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 +
+                    (uint32_t)((lodBias + lodBias * 4) << 3)) != 0)
+                put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 +
+                    (uint32_t)((lodBias + lodBias * 4) << 3)));
         }
 
         /* 0xB0C6 -- shared tile setup (still inside suppress guard). */
@@ -1253,8 +1253,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(0xF50001F0u, 0x06000000u);
             put(0xF5000100u, 0x05000000u);
             {
-                if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff) != 0)
-                    put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 + lodOff));
+                if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 +
+                        (uint32_t)((lodBias + lodBias * 4) << 3)) != 0)
+                    put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 +
+                        (uint32_t)((lodBias + lodBias * 4) << 3)));
             }
         }
     }
@@ -1281,6 +1283,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xF50001F0u, 0x06000000u);
     put(0xF5000100u, 0x05000000u);
     {
+        lodOff = (uint32_t)((lodBias + lodBias * 4) << 3);
         if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff) != 0)
             put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff));
     }
