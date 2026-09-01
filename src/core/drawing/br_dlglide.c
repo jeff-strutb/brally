@@ -523,4 +523,148 @@ void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
     grClipWindow(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
 }
 
+void __stdcall grAlphaTestReferenceValue(int);
+void __stdcall grDepthBufferFunction(int);
+
+/* Glide-side blend/test shadow state.  The four blend shadows mirror the
+ * grAlphaBlendFunction argument order exactly. */
+extern uint32_t BrGlAtestFuncShadow;   /* 0x105CCC70 */
+extern uint32_t BrGlBlendLatch;        /* 0x105D17D4 */
+extern uint32_t BrGlBlendSrcRGB;       /* 0x105D17A8 */
+extern uint32_t BrGlBlendDstRGB;       /* 0x105D1758 */
+extern uint32_t BrGlBlendSrcA;         /* 0x105CCFD4 */
+extern uint32_t BrGlBlendDstA;         /* 0x105CCFE4 */
+extern uint32_t BrGlDepthFuncShadow;   /* 0x105CE2E0 */
+
+/* 0x10021270 -- the Glide render-mode dispatcher (BrGbiCall slot; the D3D
+ * twin 0x10020FA0 in slice5_60.c is a dirty-bit state machine, DIFFERENT
+ * CODE).  766 bytes, an if/else chain on the mode word driving the
+ * grAlphaTest/AlphaCombine/AlphaBlend/DepthBuffer state directly. */
+/* @implements 0x10021270 glide BrGlGbiCall */
+void BrGlGbiCall(uint32_t w1)
+{
+    grDepthMask(1);
+
+    if (w1 == 0x00504F50u) {
+        grAlphaTestReferenceValue(8);
+        BrGlAtestFuncShadow = 6;
+        grAlphaTestFunction(6);
+        if (BrGlBlendLatch == 0) {
+            grAlphaCombine(3, 8, 1, 1, 0);
+            BrGlBlendSrcRGB = 1;
+            BrGlBlendDstRGB = 5;
+            BrGlBlendSrcA   = 4;
+            BrGlBlendDstA   = 0;
+            grAlphaBlendFunction(1, 5, 4, 0);
+        }
+        BrGlDepthFuncShadow = 2;
+        grDepthBufferFunction(2);
+        return;
+    }
+    if (w1 == 4u) {
+        grAlphaTestReferenceValue(8);
+        BrGlAtestFuncShadow = 6;
+        grAlphaTestFunction(6);
+        if (BrGlBlendLatch == 0) {
+            grAlphaCombine(3, 8, 1, 1, 0);
+            BrGlBlendSrcRGB = 1;
+            BrGlBlendDstRGB = 4;
+            BrGlBlendSrcA   = 4;
+            BrGlBlendDstA   = 0;
+            grAlphaBlendFunction(1, 4, 4, 0);
+        }
+        BrGlDepthFuncShadow = 2;
+        grDepthBufferFunction(2);
+        return;
+    }
+    if (w1 == 0x0C184240u) {
+        grAlphaTestReferenceValue(0x80);
+        BrGlAtestFuncShadow = 6;
+        grAlphaTestFunction(6);
+        return;
+    }
+    if (w1 == 0x00504240u) {
+        grAlphaTestReferenceValue(8);
+        BrGlAtestFuncShadow = 6;
+        grAlphaTestFunction(6);
+        if (BrGlBlendLatch == 0) {
+            grAlphaCombine(3, 8, 1, 1, 0);
+            BrGlBlendSrcRGB = 1;
+            BrGlBlendDstRGB = 5;
+            BrGlBlendSrcA   = 4;
+            BrGlBlendDstA   = 0;
+            grAlphaBlendFunction(1, 5, 4, 0);
+        }
+        return;
+    }
+    if (w1 == 3u) {
+        BrGlBlendLatch = 0;
+        return;
+    }
+    if (w1 == 1u) {
+        BrGlDepthFuncShadow = 3;
+        grDepthBufferFunction(3);
+        grDepthMask(0);
+        return;
+    }
+    if (w1 == 0u) {
+        BrGlDepthFuncShadow = 1;
+        grDepthBufferFunction(1);
+        return;
+    }
+    if (w1 == 2u) {
+        grAlphaCombine(3, 4, 1, 2, 0);
+        BrGlBlendSrcRGB = 1;
+        BrGlBlendDstRGB = 4;
+        BrGlBlendSrcA   = 4;
+        BrGlBlendDstA   = 0;
+        grAlphaBlendFunction(1, 4, 4, 0);
+        grDepthMask(0);
+        BrGlBlendLatch = 1;
+        return;
+    }
+    if (w1 == 0x0D1849D8u) {
+        grAlphaCombine(3, 4, 1, 2, 0);
+        BrGlBlendSrcRGB = 1;
+        BrGlBlendDstRGB = 5;
+        BrGlBlendSrcA   = 4;
+        BrGlBlendDstA   = 0;
+        grAlphaBlendFunction(1, 5, 4, 0);
+        grDepthMask(0);
+        BrGlBlendLatch = 1;
+        return;
+    }
+    if (w1 & 0x1800u) {
+        if (w1 & 0x10000u) {
+            grAlphaTestReferenceValue(0x80);
+            BrGlAtestFuncShadow = 6;
+            grAlphaTestFunction(6);
+            return;
+        }
+        grAlphaTestReferenceValue(1);
+        BrGlAtestFuncShadow = 6;
+        grAlphaTestFunction(6);
+        if (BrGlBlendLatch == 0) {
+            grAlphaCombine(3, 8, 1, 1, 0);
+            BrGlBlendSrcRGB = 1;
+            BrGlBlendDstRGB = 5;
+            BrGlBlendSrcA   = 4;
+            BrGlBlendDstA   = 0;
+            grAlphaBlendFunction(1, 5, 4, 0);
+        }
+        grDepthMask(0);
+        return;
+    }
+    if (BrGlBlendLatch == 0) {
+        grAlphaCombine(3, 8, 1, 1, 0);
+        BrGlBlendSrcRGB = 4;
+        BrGlBlendDstRGB = 0;
+        BrGlBlendSrcA   = 4;
+        BrGlBlendDstA   = 0;
+        grAlphaBlendFunction(4, 0, 4, 0);
+    }
+    BrGlAtestFuncShadow = 7;
+    grAlphaTestFunction(7);
+}
+
 #endif /* BR_MATCHING_BUILD */
