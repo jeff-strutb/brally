@@ -1021,17 +1021,23 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0x03860010u, (uint32_t)(uintptr_t)&BrG_0AA868);
         put(0x03880010u, (uint32_t)(uintptr_t)&BrG_0AA860);
     } else {
-        int32_t i = *(int32_t *)(car + BR_CAR_OFF_ICAR);
-        unsigned char *dst = g_BrDrawLights + ((i + i * 2) << 3);
-        const float   *pPlayer = (const float *)BrG_6C2CF8;
+        /* icar is RE-READ from car+0x140 for the copy and for EVERY byte
+         * store (bases 0x102733b0/b1/b2 fold the +0x10/11/12); only the
+         * player pointer is cached (esi). */
+        const float *pPlayer = (const float *)BrG_6C2CF8;
 #ifdef BR_MATCHING_BUILD
-        memcpy(dst, (const void *)&BrG_0AA860, 24);
+        memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
+               (const void *)&BrG_0AA860, 24);
 #else
-        memcpy(dst, (const void *)BrG_0AA860, 24);
+        memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
+               (const void *)BrG_0AA860, 24);
 #endif
-        dst[0x10] = (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
-        dst[0x11] = (uint8_t)(int32_t)(pPlayer[1] * -120.0f);
-        dst[0x12] = (uint8_t)(int32_t)(pPlayer[2] * -120.0f);
+        g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x10] =
+            (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
+        g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x11] =
+            (uint8_t)(int32_t)(pPlayer[1] * -120.0f);
+        g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x12] =
+            (uint8_t)(int32_t)(pPlayer[2] * -120.0f);
         put(0xBC000002u, 0x80000040u);
         /* Both payloads recompute icar*24 from car+0x140 -- the original
          * does NOT reuse dst here (lea edx,[ecx+ecx*2]; lea [edx*8+base]). */
@@ -1057,19 +1063,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         g_BrDrawRenderMode = 0x0C080000u;
     }
 
-    /* 0xAA83 -- culling: set (B7) and clear (B6), difficulty-swapped. */
-    {
-        uint32_t cullSet, cullClr;
-        if (g_brRaceBeginDifficulty != BrG_6C1174) {
-            cullSet = 0x00001000u;
-            cullClr = 0x00002000u;
-        } else {
-            cullSet = 0x00002000u;
-            cullClr = 0x00001000u;
-        }
-        put(0xB7000000u, cullSet);
-        put(0xB6000000u, cullClr);
-    }
+    /* 0xAA83 -- culling: set (B7) and clear (B6), difficulty-swapped.
+     * Each value is an inline xor + neg/sbb ternary, recomputed per put
+     * (both globals re-read for the second emit). */
+    put(0xB7000000u,
+        ((g_brRaceBeginDifficulty ^ BrG_6C1174) ? 0x00001000u : 0x00002000u));
+    put(0xB6000000u,
+        ((g_brRaceBeginDifficulty ^ BrG_6C1174) ? 0x00002000u : 0x00001000u));
 
     /* 0xAADE -- render mode base selection. */
     if (*(car + BR_CAR_OFF_KIND) == 2) {
