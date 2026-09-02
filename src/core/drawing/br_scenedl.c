@@ -59,9 +59,17 @@
  *      0x20 and 0x24; dx overlays 0x28 (orig 0x18); the drain counter
  *      c2/dCar overlays 0x30 (orig 0x28).  Not lowest-free-slot, not
  *      LIFO/FIFO of freed slots; packer order still unknown.
- *   7. drain loop: dead-block placement (orig sinks `pA[dw]=0` to the
- *      loop end; ours duplicates it at the first goto) and the dring*4
- *      byte-offset IV vs orig's per-car `shl edx,4` recompute.
+ *   7. drain loop (T3a now): the orig's block layout (both `goto dead`
+ *      sites as forward `je` to ONE block after the fl==0 arm) comes from
+ *      the FIRST test nested (`if (dh != tail) {...} else { pA[dw] = 0; }`)
+ *      -- the goto form makes VC5 place the dead block after the second
+ *      test and invert it; the orig's `shl edx,4` init of the inner ring
+ *      IV comes from a BYTE-offset IV (`dCar << 4`, `+= 4`, `*(int *)
+ *      ((char *)cursor + off)`; `dCar * 4` mints an outer dCar*16 IV,
+ *      `<< 2` gives lea;lea).  Both forms are structurally right but each
+ *      flips the global allocation elsewhere (0x894 esi=0xfffa/0xffff
+ *      constant choice, post-loop edx/ecx roles, row-vs-dw in ebx), so
+ *      the tree keeps the goto/`*4` form that scores best.
  * @implements stays live for the sweep; rule 2 forbids claiming a match
  * until the diff is clean.
  */
