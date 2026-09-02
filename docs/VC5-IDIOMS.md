@@ -714,6 +714,42 @@ the caller AND flipped a helper to match for free.
   volatile dest barrier, counted loops, comma D-preload, /Op, volatile
   frame pad, nTotal-hoist, pPos-shared probe arg -- none dropped a
   region.  Extra live floats grow the frame to 0xdc but inflate the DAG.
+  SIXTH-PASS (2026-09-01): trail-quad block CLOSED on the x87 side and the
+  8-byte frame delta with it (prologue now exact).  Four proven levers:
+  * **A struct-typed pointer var with many uses makes the FIRST float def
+    through it an integer bit-copy home** (`mov edx,[eax+ecx+0x50]; mov
+    [slot],edx`, every later use reloads the slot: `fld [slot]; fmul
+    [slot]; fld [slot]`), and the SECOND def a plain `fld` kept on x87
+    (`fld st(1)` dup).  Swapping the def order swaps the roles.  The same
+    loads written as arithmetic derefs (`*(float *)(wb + pCar + 0x50)`),
+    through a 2-use pointer (substituted), or through a float* with index
+    derefs all give `fld; fst [slot]` instead -- and the extra x87 value
+    was the whole frame delta.
+  * **Repeated expressions, not named temps, for values used twice as
+    both stack and memory operands.**  `x1 = p->x - (dx/len)*K; x2 =
+    (dx/len)*K + p->x` CSEs `(dx/len)*K` into a temp that is `fst`-homed
+    and KEPT on the stack (x2 = `fadd [eax]` with the temp on top, x1 =
+    `fsub [temp]` with px on top; px/py loaded ONCE).  A named `ox` is
+    `fstp`'d and every consumer reloads it, forcing px/py to be loaded
+    twice; statement order does not change that.
+  * **`dx*dx + dy*dy` product order is source order** (first product is
+    `fmul [slot]` on the reloaded dx, second `fmul st(3)` on the x87 dy).
+  * **A global cursor read only inside a conditional arm is bound inside
+    it** (`pT = DAT_1035f7d8` inside `if (param_2)`) -- outside, the load
+    is hoisted above the test and the test becomes `mov eax,[ebp+0xc];
+    cmp eax,ebx` instead of the original's `cmp [ebp+0xc],ebx`.
+  Open in the same block: the wheel-pointer ADDRESS form.  Orig computes
+  `iw*0x40 + param_4 + negCar0` into eax (param_4 first) and keeps pCar as
+  the index register, `lea edi,[eax+ecx]` only after the dx reload.  A
+  single-use `wb` is forward-substituted and all four terms merge into one
+  register; any second source-level use of `wb` restores the 3+1 split
+  (the two-part loads through the pointer var fold to [eax+ecx+disp] even
+  before the lea) -- but no second use that is invisible in the original
+  bytes has been found (arg, py, px, vy, z via the sum all show up or
+  spill across the call).  Dead: add-order permutations, negCar0 renames /
+  types / scopes / LICM, param_4 renames, two-step wb or pW defs,
+  pointer-difference car base (cancelled), index-based `param_4 +
+  iCar*0x2b68` (second IV), byte-offset `ring*4` (still folded).
 - **A probe is only evidence if the compile actually ran.** match_sweep
   compiles NOTHING when the file has no `@implements` tag — it returns
   before the compiler is invoked and every diff silently reuses the stale
