@@ -26,16 +26,16 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. **1,033 functions reproduce the original bytes exactly (113,017 B).**
+original binary. **1,040 functions reproduce the original bytes exactly (122,663 B).**
 The assembled DLL image diffs to **0 bytes** over every matched claim.
 
-- **Game DLL (`BRGlide.dll`)** — 802 functions byte-exact, 52.8% of the hand-C
-  target by count. Most of what remains is structural, not "coloring": 331
+- **Game DLL (`BRGlide.dll`)** — 805 functions byte-exact, 53.0% of the hand-C
+  target by count. Most of what remains is structural, not "coloring": 326
   functions still carry real, non-codegen diffs (wrong or missing code), while
-  only a 49-function tail is down to pure register-allocation/scheduling
+  only a 50-function tail is down to pure register-allocation/scheduling
   differences with the instructions already correct.
-- **C++ class (vtables, EH frames)** — 127 functions byte-exact on all four
-  pieces (incl. unwind tables), 28,189 B.
+- **C++ class (vtables, EH frames)** — 131 functions byte-exact on all four
+  pieces (incl. unwind tables), 37,426 B.
 - **Executables** — BRally.exe and BossRally.exe are **game-code complete**;
   SetVideo.exe has one function left (WinMain).
 - **macOS/Metal port** — the same source boots, renders the front end and retail
@@ -43,7 +43,7 @@ The assembled DLL image diffs to **0 bytes** over every matched claim.
 
 ## Progress Report
 
-**Game DLL by tier** (`python3 tools/tiers.py`) — hand-C target 1,519 functions:
+**Game DLL by tier** (`.venv/bin/python3 tools/tiers.py`) — hand-C target 1,519 functions:
 
 The tiers track how close each function's rebuilt code is to the original, from
 not-started to exact. Two boundaries matter: **T1→T2** is a machine-made rough
@@ -54,11 +54,11 @@ instructions, only the register choices differ.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 337 | 191,845 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 331 | 178,046 |
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 338 | 200,325 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 326 | 168,946 |
 | T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
-| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 49 | 8,870 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **802** | **74,379** |
+| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 50 | 9,081 |
+| **T4** | **Done** — matches the original exactly, byte for byte | **805** | **74,788** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
 decompiler.** No one is reading raw assembly from a blank slate; the original
@@ -77,11 +77,21 @@ Same output across many inputs ⇒ behaviorally equivalent (T3b). It is
 conservative — it only judges functions it can fully contain (plain-cdecl
 scalar/pointer args, no globals, no external calls), and reports everything else
 as unclassified rather than guess. Current sweep of the T2 pile: **15 proven
-T3b, 0 behavioral differences open, 369 out of reach** (the first sweep's 3
+T3b, 0 behavioral differences open, 358 out of reach** (the first sweep's 3
 real-differ finds have since been fixed). So T3b's true size is ≥15 and grows
 as the oracle is extended to register calling-conventions and global-reading
-functions. The 15 still count inside T2's 331 until the tier tool consumes the
+functions. The 15 still count inside T2's 326 until the tier tool consumes the
 oracle's manifest.
+
+**C++ classes** (vtables + EH frames; 4-piece matching via `tools/cpp_sweep.py`):
+
+| Pieces | Meaning | Fns | `.text` B |
+|---|---|--:|--:|
+| **4/4** | All four pieces byte-exact (code + unwind + scope + funcinfo) | **131** | **37,426** |
+| 3/4 | One piece still differs | 4 | 5,114 |
+
+95 additional candidates identified by `tools/cpp_screen.py` (43 strong EH-frame,
+52 weak thiscall-pattern).
 
 **Executables** (game code; static CRT is linked, not decompiled):
 
@@ -91,7 +101,7 @@ oracle's manifest.
 | BossRally.exe (intro) | 35 fns · 2,482 B | game code complete |
 | SetVideo.exe (config) | 41 fns · 5,107 B | WinMain left |
 
-**Totals** — 1,033 byte-exact functions / 113,017 B (`python3 tools/total.py`);
+**Totals** — 1,040 byte-exact functions / 122,663 B (`python3 tools/total.py`);
 DLL image assembles to 0 differing bytes (`python3 tools/image_build.py`); port
 tests 136/136.
 
