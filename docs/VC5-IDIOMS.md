@@ -1684,3 +1684,16 @@ parked-wall kind newly retryable (no new idiom landed).
   0s); an orig that alternates -1/0 stores with a second zero register
   is NOT literal-store source — unsolved on 0x10013E80 (52 diffs,
   memset-expansion and named-local probes failed; do not repeat them).
+- **/GX menu-builder trio (2026-09-01, 0x100425E0 BrUiRootEnter, 2659 B
+  byte-exact).** Proven on the EH-frame `new`-ladder class: (1) a
+  null-check that emits `sete al / test al` is a CHAR bool computed
+  AFTER the slot store (`a18[w14] = p; char bad = (p == 0); if (bad)`);
+  an int bool copy-props back to a plain jne. (2) A short temp for
+  `w14 + 1` allocates to AX — the original's DX comes from spelling it
+  INLINE at the store (`p->w2AB6[0] = (short)(cont->w14 + 1);`), which
+  also keeps the 16-bit `inc dx`. (3) Emitted order load-w14 / inc-w2AB4
+  / store-w2AB6 comes from SOURCE order w2AB6-store FIRST, w2AB4-inc
+  second — the scheduler sinks the store past the RMW inc (same
+  store-reorder freedom as the 0x100414F0 f1C/f3850 pair). Each `new`
+  is its own EH state; states/FuncInfo/unwind actions all fall out of
+  plain `p = new BrCtl;` under /GX (cpp_score verifies all four pieces).
