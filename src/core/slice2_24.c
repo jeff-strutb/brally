@@ -443,8 +443,14 @@ int32_t BrMenuCap0730(BrMenuItem *pItem)
     } else {
         i = g_menu.g0AC648;
     }
-    /* Keep `i` live across the store so the word load uses cx, not ax
-     * (which would clobber the index). */
+    /* RESIDUE (glide 0x10039C70, 13 masked byte-diffs, T3a): the original
+     * loads the word into CX with pItem in EDX and `mov eax,1` scheduled
+     * into the load/store gap; every probed spelling here loads into AX
+     * (pItem in ECX, eax freed by the load).  Probed and dead: an early
+     * return-value temp, a uint16 temp, a dword-pun store, and an
+     * __inline set-caption helper (the inliner dissolves it).  The arms
+     * and everything up to +0x4A are byte-exact.  Pure register pairing;
+     * parked. */
     pItem->f1E20C = (int16_t)k_AC550[i];
     return 1;
 }
@@ -483,14 +489,21 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
         return -2;
 
     if (g_menu.g0AA010 == 0) {
+        /* Unlike 0x10039C70, the original HOISTS the *3 above the branch
+         * (one movsx+lea shared by both arms); only the loads duplicate.
+         * RESIDUE (glide 0x10039D20, 41 masked diffs, T3a): size and
+         * instruction shape are exact; the whole tail rotates eax<->ecx
+         * behind one head fork (orig reads the selector byte into al
+         * BEFORE the movsx, we movsx first into eax).  Probed and dead:
+         * per-arm duplicated e3 (+2 insns, arms allocate differently),
+         * shared movsx with per-arm *3 (+4B), a selector byte temp.
+         * Pure allocation; parked. */
+        int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+        e3 = e3 + e3 * 2;
         if (g_menu.gAA28A8 != 0) {
-            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
-            e3 = e3 + e3 * 2;
             i = *((const uint8_t *)g_brStages
                   + 0x11 + 2 * (g_menu.gAA28AC + (uint32_t)e3 * 4u));
         } else {
-            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
-            e3 = e3 + e3 * 2;
             i = *((const uint8_t *)g_brStages
                   + 0x11 + 2 * (g_menu.gAA28A4 + (uint32_t)e3 * 4u));
         }
