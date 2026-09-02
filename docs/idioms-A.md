@@ -250,6 +250,34 @@ orig's, which perturbs displacement bytes throughout — high leverage, not a
 | −3    | `imul R, R` — orig folds nothing from memory into `imul` |
 | −4/+3 | `mov word [R−I], W` vs `mov word [R], W` — store scheduling, downstream |
 
+## Session 4 (2026-09-01, in-session, no agents)
+
+Masked divergence regions (`tools/divergence.py --mask-slots`) 49 -> 32,
+insns 2406 -> 2415, bytes 8416 -> 8464 (orig 8480). Commits d6b63e2, 354c0e5,
+9b3f109 and the bank after them.
+
+- **IDX4 width is the reused `param_9`** (orig homes it in the dead arg slot
+  [esp+0x9c] and reloads every bound from there). The old "-3 insns / +16 B"
+  negative was measured on a different body; post-transform it closes five
+  regions. The same rename on the CI8 arm breaks the frame.
+- **The doubling ternary had REGRESSED to if-form at all 18 sites.** IDX4 pair
+  alone closes the IDX4 tail; once the CI4 loops are in for-init form the CI4
+  and next-arm pairs also land; any further pair flips the global allocation
+  (+28 insns, tile pointer ebx -> ebp). Measured per pair and in eight
+  combinations.
+- **Row-body group loops are `for (ctr = 0; ctr < width;) {...}` with the zero
+  as the for-INIT in EACH arm.** VC5 hoists the identical inits above the mask
+  test (`xor eax,eax` ... `mov [slot],eax`) and the inverted guard keeps the
+  variable (`cmp ebx,eax; jle`). Every other spelling (zero before the branch,
+  `while`, `for (; cond;)`, top-break, counter-vs-width guards) folds the guard
+  to `test ebx,ebx`. Closed the CI4 arm. In CI8 the same form still folds for
+  an int local and for a pointer local; as `param_9` it flips the allocation.
+- Open, first to last: +0x2b sink load order (ebp=cbOut before esi=pOut; not
+  source order, not declaration order); 0x6ee CI8 row head zero; 0x846+ blend
+  arms (byte temps land in [esp+0x7c] vs our [esp+0x9c] -- the dead-param-slot
+  packing order; same lifetime-driven packer as 0x1000EAF0, see VC5-IDIOMS
+  sixth-pass entry).
+
 ## N64 twin: none
 
 TGR N64 has no BrTex3dExpand ancestor (PC-side TMEM-replacement code, no
