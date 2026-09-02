@@ -1,50 +1,49 @@
 /* @implements 0x1003CD20 glide BrOpt37D0
  * @cpp_kind method
- * @cpp_symbol ?BrOpt37D0@@YAHPAVGameObj@@@Z
+ * @cpp_symbol BrOpt37D0
  *
- * Double-guarded slot-6 vcall: two global gates, a member zero-store on
- * the embedded sub-object, the one-arg virtual thiscall
- * (`mov ecx,[eax+2AE8]; mov edx,[ecx]; call [edx+0x18]` with the arg
- * push hoisted above the store), then a one-arg cdecl helper. No EH.
+ * Free cdecl (GameObj*): when both gates are set, clears the pSub phase's
+ * +0x68 flag (pSub at +0x2AE8, RE-READ for the call receiver exactly as
+ * the original does), fires its +0x18 vcall with a pushed 0 (EDX
+ * pattern, arg pushed before the receiver loads), then hands 0 to the
+ * shutdown sequence 0x100325B0.  Always returns 1.  No EH (no new).
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
 
-class GameSub {
+class BrPhaseCD {
 public:
-    virtual void s0();
-    virtual void s1();
-    virtual void s2();
-    virtual void s3();
-    virtual void s4();
-    virtual void s5();
-    virtual void s6(int);
-    virtual void s7();
-    char padA[0x64];
-    int f68;
+    virtual int s0();
+    virtual int s1();
+    virtual int s2();
+    virtual int s3();
+    virtual int s4();
+    virtual int s5();
+    virtual int f18(void *);   /* +0x18 */
+
+    char pad04[0x68 - 4];
+    int  f68;
 };
 
-class GameObj {
-public:
-    char pad[0x2AE8];
-    GameSub *pSub;
+struct BrGameObjCD {
+    char        pad00[0x2AE8];
+    BrPhaseCD  *pSub;          /* +0x2AE8 */
 };
 
-typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
-typedef char chk_f68[(unsigned)&((GameSub *)0)->f68 == 0x68 ? 1 : -1];
+extern "C" {
+extern int DAT_10ac5bec;
+extern int DAT_10ac4090;
 
-int g_5BEC;
-int g_4090;
+int BrExt_10038F30(int a);     /* 0x100325B0 */
 
-void Fn25B0(int);
-
-int BrOpt37D0(GameObj *pGame)
+int BrOpt37D0(BrGameObjCD *pObj)
 {
-    if (g_5BEC != 0 && g_4090 != 0) {
-        pGame->pSub->f68 = 0;
-        pGame->pSub->s6(0);
-        Fn25B0(0);
+    if (DAT_10ac5bec != 0 && DAT_10ac4090 != 0) {
+        pObj->pSub->f68 = 0;
+        pObj->pSub->f18(0);
+        BrExt_10038F30(0);
     }
     return 1;
+}
 }
