@@ -13,7 +13,13 @@
  * had regressed to if-form at all 18 sites; restoring it at the IDX4 pair
  * alone closes the whole IDX4 tail (0x206-0x343).  Restoring ANY second
  * pair flips the global allocation (+28 insns, tile pointer ebx->ebp):
- * measured per pair and in five combinations, do not re-run. */
+ * measured per pair and in five combinations, do not re-run.
+ * Row-body group loops are `for (ctr = 0; ctr < width;) {...}` with the zero
+ * as the for-INIT in each arm (mask and plain): VC5 hoists the identical
+ * inits above the mask test (`xor eax,eax` ... `mov [slot],eax`) and the
+ * inverted loop guard keeps the variable (`cmp ebx,eax; jle`).  A zero
+ * assigned before the branch, a `while`, a `for (; cond;)` or a top-break
+ * all constant-fold the guard to `test ebx,ebx`.  This closed the CI4 arm. */
 #ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
@@ -216,10 +222,8 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
           if (0 < iVar15) {
             do {
               param_9 = (int)param_4;
-              param_1 = (unsigned short *)0x0;
               if ((local_44 & param_22) != 0) {
-                if (0 < iVar17) {
-                  do {
+                for (param_1 = (unsigned short *)0x0; (int)param_1 < iVar17;) {
                     param_9 = param_9 + 4;
                     for (local_38 = 0; (int)local_38 < 4; local_38 = local_38 + 1) {
                       if ((int)param_1 >= iVar17) break;
@@ -263,11 +267,10 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                       param_1 = (unsigned short *)((int)param_1 + 1);
                     }
                     param_9 = param_9 + 4;
-                  } while ((int)param_1 < iVar17);
                 }
               }
-              else if (0 < iVar17) {
-                do {
+              else {
+                for (param_1 = (unsigned short *)0x0; (int)param_1 < iVar17;) {
                   bCI4a = *(unsigned char *)param_9;
                   pal = *(unsigned short *)(param_5 + (unsigned int)(bCI4a >> 4) * 2);
                   uVar4 = FUN_100271f0(pal);
@@ -287,7 +290,7 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                   }
                   param_9 = param_9 + 1;
                   param_1 = (unsigned short *)((int)param_1 + 1);
-                } while ((int)param_1 < iVar17);
+                }
               }
               if ((param_7 != 0) && (iVar16 = 0, puVar9 = puVar21 + -1, 0 < iVar17)) {
                 do {
