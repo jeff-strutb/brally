@@ -8,7 +8,12 @@
  * 2026-09-01: the IDX4 arm's width is the reused `param_9` (orig homes it in
  * the dead param_9 arg slot [esp+0x9c] and reloads every bound from there);
  * that closed the five 0xae-0x1ee regions.  The same rename on the CI8 arm
- * breaks the frame -- measured, do not apply there. */
+ * breaks the frame -- measured, do not apply there.  The copy-back
+ * preamble's doubling ternary `(param_7 != 0) ? w * 2 : w` (idioms-A.md)
+ * had regressed to if-form at all 18 sites; restoring it at the IDX4 pair
+ * alone closes the whole IDX4 tail (0x206-0x343).  Restoring ANY second
+ * pair flips the global allocation (+28 insns, tile pointer ebx->ebp):
+ * measured per pair and in five combinations, do not re-run. */
 #ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
@@ -181,16 +186,10 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
           }
           if ((param_8 != 0) && (puVar9 = puVar21, param_1 = (unsigned short *)0x0, 0 < iVar15)) {
             do {
-              iVar16 = param_9 * 2;
-              if (param_7 == 0) {
-                iVar16 = param_9;
-              }
+              iVar16 = (param_7 != 0) ? param_9 * 2 : param_9;
               puVar9 = puVar9 + iVar16 * -2;
               puVar2 = puVar9;
-              iVar16 = param_9 * 2;
-              if (param_7 == 0) {
-                iVar16 = param_9;
-              }
+              iVar16 = (param_7 != 0) ? param_9 * 2 : param_9;
               for (; 0 < iVar16; iVar16 = iVar16 + -1) {
                 iVar22 = iVar22 + 2;
                 *puVar21 = *puVar2;
