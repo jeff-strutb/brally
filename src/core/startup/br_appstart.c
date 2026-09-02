@@ -129,7 +129,7 @@ void BrAppStartSetHost(const BrAppStartHost *pHost)
  * brings that copy's window to the front instead of starting a second one.
  * Whether it restores the window depends on whether the other copy owns the
  * foreground and whether it is minimised. */
-/* @implements 0x10007E80 glide BrAppCheckPreviousApp */
+#ifndef BR_MATCHING_BUILD
 int32_t BrAppCheckPreviousApp(void)
 {
     const BrAppStartHost *pH = g_pBrAppStartHost;
@@ -179,6 +179,7 @@ int32_t BrAppCheckPreviousApp(void)
     }
     return 0;                           /* 0x10007EF5: xor eax,eax */
 }
+#endif /* !BR_MATCHING_BUILD -- matching twin in the windows.h block below */
 
 /* ==========================================================================
  * 0x10007F10 -- the machine probe.  See br_appstart.h for the ESP trace that
@@ -659,6 +660,36 @@ int BrMemoryQuery(void)
   GlobalMemoryStatus(&local_20);
   DAT_10226e78 = local_20.dwTotalPhys;
   return;
+}
+
+/* WHAT IT DOES: single-instance guard -- see the port version above.  The
+ * original calls USER32 straight through the import table; the /MD import
+ * pointers for GetWindowThreadProcessId and IsIconic are CSEd into edi
+ * across their repeated calls, which /O2 does on its own. */
+/* @implements 0x10007E80 glide BrAppCheckPreviousApp */
+int32_t BrAppCheckPreviousApp(void)
+{
+    HWND hWnd = FindWindowA(BR_APP_WNDCLASS, BR_APP_WNDTITLE);
+
+    if (hWnd != NULL) {
+        HWND hFg = GetForegroundWindow();
+
+        if (GetWindowThreadProcessId(hWnd, NULL)
+                != GetWindowThreadProcessId(hFg, NULL)
+            || IsIconic(hWnd)) {
+
+            hWnd = GetLastActivePopup(hWnd);
+            if (IsIconic(hWnd)) {
+                ShowWindow(hWnd, BR_APP_SW_RESTORE);
+            }
+            BringWindowToTop(hWnd);
+            SetForegroundWindow(hWnd);
+        }
+
+        OutputDebugStringA(BR_APP_PREVAPP_MSG);
+        return 0;
+    }
+    return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */
