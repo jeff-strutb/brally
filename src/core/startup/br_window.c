@@ -203,6 +203,51 @@ int BrWindowCreate(const BrWindowOps *pOps)
  * and quits. A counter makes it run once only -- and it is never
  * decremented, so a second call does nothing at all. */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
+#ifdef BR_MATCHING_BUILD
+#include <stdlib.h>
+extern int32_t DAT_100a74fc;                 /* 0x100A74FC, the DLL selector */
+int   FUN_10017910(int32_t sel);             /* loads the EAR DLL, 0 = fail */
+char *FUN_1006d280(int id);                  /* string table */
+/* The resolved _EAR_DLL_* entry points -- all __stdcall. */
+extern int (__stdcall *DAT_104b1658)(int);       /* AAA_Validate@4   */
+extern int (__stdcall *DAT_104b1634)(void *);    /* AssignHwnd@4     */
+extern int (__stdcall *DAT_104b1668)(int);       /* InitializeEar@4  */
+extern int (__stdcall *DAT_104b166c)(void);      /* GetLastError@0   */
+extern int (__stdcall *DAT_104b1650)(void);      /* ShowLastError@0  */
+
+/* RESIDUE (11 masked diffs, T3a): esi/edi/ebx role rotation only --
+ * orig homes hWnd in esi, MessageBoxA in edi, exit in ebx; we get the
+ * same shape with the homes rotated (a local copy of hWnd dissolves).
+ * Size, instruction shape and the shrink-wrapped guard are exact. */
+int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
+{
+    (void)pOps;
+
+    if (++s_cEarStartupCalls != 1)
+        return 1;
+
+    if (FUN_10017910(DAT_100a74fc) == 0) {
+        MessageBoxA((HWND)hWnd, FUN_1006d280(0xFE), FUN_1006d280(0xFD), 0x10);
+        exit(1);
+        /* VC5 has no noreturn: the original falls through into the
+         * validate call, and so does this. */
+    }
+
+    DAT_104b1658(0x9BE9C9);
+    DAT_104b1634(hWnd);
+    if (DAT_104b1668(0) == 0) {
+        if (DAT_104b166c() == 3) {
+            MessageBoxA((HWND)hWnd, FUN_1006d280(0x12E), FUN_1006d280(0xFD),
+                        0x10);
+            exit(1);
+        } else {
+            DAT_104b1650();
+            exit(1);
+        }
+    }
+    return 1;
+}
+#else
 int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
 {
     int32_t iErr;
@@ -294,3 +339,4 @@ int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
         g_brWndPlatform.pfnExit(1);
     return 1;                                 /* 0x10017EFC */
 }
+#endif /* BR_MATCHING_BUILD */
