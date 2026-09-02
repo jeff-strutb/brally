@@ -801,16 +801,19 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xA23D -- LOD computation. */
     if (g_brRaceBeginNTexSet == 2) {
-        if      (!(dist >= 40.0f))  lod = 0;
-        else if (!(dist >= 80.0f))  lod = 1;
-        else                        lod = 2;
+        if (!(dist >= 40.0f)) {
+            lod = 0;
+        } else {
+            lod = 1;
+            if (dist >= 80.0f) lod = 2;
+        }
         if (lod < g_BrDrawLodFloor)
             lod = g_BrDrawLodFloor;
     } else {
         lod = g_BrDrawLodFloor;
     }
-    lodBias += lod;
-    if (lodBias > 2) lodBias = 2;
+    lod += lodBias;
+    if (lod > 2) lod = 2;
 
     /* 0xA295 -- near-distance flag. */
     distNear = !(dist >= 100.0f);
@@ -854,7 +857,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA386 -- record LOD class for this car. */
-    g_BrDrawClass[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = lodBias;
+    g_BrDrawClass[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = lod;
 
     /* 0xA393 -- three-arm light colour computation. */
     /* Colours are packed HORNER-style -- (((top<<8 | p0) << 8 | p1) << 8) --
@@ -1141,7 +1144,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
     /* lea eax,[eax+eax*4]; shl eax,3  — not imul 40. */
     /* lodOff is NOT computed here -- the 0x8038 and 0x8030 sites inline
-     * (lodBias+lodBias*4)<<3, and only the 0x8024 site assigns lodOff
+     * (lod+lod*4)<<3, and only the 0x8024 site assigns lodOff
      * (orig 0x153d stores it to the dead pCar arg slot). */
 
     if (g_BrDrawSuppress == 0 &&
@@ -1176,9 +1179,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBA000C02u, BrG_6C0258);
         {
             if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 +
-                    (uint32_t)((lodBias + lodBias * 4) << 3)) != 0)
+                    (uint32_t)((lod + lod * 4) << 3)) != 0)
                 put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8038 +
-                    (uint32_t)((lodBias + lodBias * 4) << 3)));
+                    (uint32_t)((lod + lod * 4) << 3)));
         }
 
         /* 0xB0C6 -- shared tile setup (still inside suppress guard). */
@@ -1266,9 +1269,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             put(0xF5000100u, 0x05000000u);
             {
                 if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 +
-                        (uint32_t)((lodBias + lodBias * 4) << 3)) != 0)
+                        (uint32_t)((lod + lod * 4) << 3)) != 0)
                     put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8030 +
-                        (uint32_t)((lodBias + lodBias * 4) << 3)));
+                        (uint32_t)((lod + lod * 4) << 3)));
             }
         }
     }
@@ -1295,7 +1298,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xF50001F0u, 0x06000000u);
     put(0xF5000100u, 0x05000000u);
     {
-        lodOff = (uint32_t)((lodBias + lodBias * 4) << 3);
+        lodOff = (uint32_t)((lod + lod * 4) << 3);
         if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff) != 0)
             put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8024 + lodOff));
     }
