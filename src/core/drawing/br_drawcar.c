@@ -750,7 +750,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     uint8_t  pack0, pack1;  /* separate scalar byte locals (0x1001E380's
                              * proven form): the dword-read + and 0xff in
                              * the bytes is VC5's own widening of a plain
-                             * uint8_t local */
+                             * uint8_t local.  Slot map 2026-09-01: orig
+                             * homes them at [esp+0x31]/[esp+0x32], i.e.
+                             * overlaid on the upper bytes of pLights' dead
+                             * dword 0x30; ours land in two fresh dwords
+                             * (0x10/0x14) -- byte-granular packing not yet
+                             * reproduced; frame 0x48 vs orig 0x4c is that
+                             * plus the removed eyeX union slot. */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
@@ -973,19 +979,16 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
         /* x/y compared ONCE; z picks the arm (orig 0x61c-0x655). */
         if (pCam[12] == pCarF[12] && pCam[13] == pCarF[13]) {
-            if (pCam[14] != pCarF[14])
-                eyeScale = 0.1f;
-            else
+            if (pCam[14] == pCarF[14])
                 atOffset = 1.0f;
+            else
+                eyeScale = 0.1f;
         }
 
         eyeX = pCam[0];
         eyeY = pCam[1];
-        if (eyeX == 0.0f && eyeY == 0.0f) {
-            union { uint32_t u; float f; } fix;
-            fix.u = 0x38D1B717u;
-            eyeX = fix.f;
-        }
+        if (eyeX == 0.0f && eyeY == 0.0f)
+            eyeX = 0.0001f;
 
         BrLightDirsFromLookAt(&g_BrDrawCombined, pLights,
             eyeX, eyeY, 0.0f,
@@ -1018,7 +1021,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         /* icar is RE-READ from car+0x140 for the copy and for EVERY byte
          * store (bases 0x102733b0/b1/b2 fold the +0x10/11/12); only the
          * player pointer is cached (esi). */
-        const float *pPlayer = (const float *)BrG_6C2CF8;
+        const float *pPlayer;
 #ifdef BR_MATCHING_BUILD
         memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
                (const void *)&BrG_0AA860, 24);
@@ -1026,6 +1029,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
                (const void *)BrG_0AA860, 24);
 #endif
+        pPlayer = (const float *)BrG_6C2CF8;
         g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x10] =
             (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
         g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x11] =
