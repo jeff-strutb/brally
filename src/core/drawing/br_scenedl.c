@@ -12,7 +12,13 @@
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
  * STATE (2026-09-01, sixth pass): 2,323/2,328 instructions, 9,344 vs
- * 9,354 bytes, 20 divergence regions slot-masked (29 raw).  CLOSED this
+ * 9,354 bytes, 20 divergence regions slot-masked (26 raw).  Slot map now
+ * matches orig for scale/fMin/fMax/i (0x10/0x14/0x18/0x1c): the clamp
+ * factor is written back into `scale` (orig stores it to scale's slot),
+ * and the active[]-init loop has its own block-scoped counter (a shared
+ * function-scoped iCar sat in one slot for both loops; orig packs the
+ * second counter into bTexLoaded's dead slot).  /O2 slot packing ignores
+ * names, declaration order and scope -- it is lifetime-driven only.  CLOSED this
  * pass: the 8-byte frame delta (prologue now exact, `sub esp,0xdc`), the
  * whole trail-quad x87 stream, and the `cmp [ebp+0xc],ebx` param_2 test.
  * The trail block is a struct-typed wheel pointer (BrWheelRec): the FIRST
@@ -49,8 +55,10 @@
  *   5. loop entry (0xad4): orig keeps cHead/base in ecx/eax across the
  *      param_2 join (else-arm reloads them after the call) and compares
  *      i from memory; ours reloads them in the pre-header.
- *   6. slot permutation: frame size now matches but i/iCar/dx/fMax slots
- *      are assigned in a different order (i at 0x18 vs orig 0x1c).
+ *   6. slot permutation (residual): bSolo/iCar vs pDst swapped between
+ *      0x20 and 0x24; dx overlays 0x28 (orig 0x18); the drain counter
+ *      c2/dCar overlays 0x30 (orig 0x28).  Not lowest-free-slot, not
+ *      LIFO/FIFO of freed slots; packer order still unknown.
  *   7. drain loop: dead-block placement (orig sinks `pA[dw]=0` to the
  *      loop end; ours duplicates it at the first goto) and the dring*4
  *      byte-offset IV vs orig's per-car `shl edx,4` recompute.
@@ -533,26 +541,26 @@ draw:
                                      (double)OUTM(14), (double)OUTM(15));
                         }
                         if (fMax > -fMin) {
-                            fMin = DAT_10077248 / fMax;
+                            scale = DAT_10077248 / fMax;
                         } else {
-                            fMin = DAT_1007724c / fMin;
+                            scale = DAT_1007724c / fMin;
                         }
-                        OUTM(0) = fMin * OUTM(0);
-                        OUTM(1) = fMin * OUTM(1);
-                        OUTM(2) = fMin * OUTM(2);
-                        OUTM(3) = fMin * OUTM(3);
-                        OUTM(4) = fMin * OUTM(4);
-                        OUTM(5) = fMin * OUTM(5);
-                        OUTM(6) = fMin * OUTM(6);
-                        OUTM(7) = fMin * OUTM(7);
-                        OUTM(8) = fMin * OUTM(8);
-                        OUTM(9) = fMin * OUTM(9);
-                        OUTM(10) = fMin * OUTM(10);
-                        OUTM(11) = fMin * OUTM(11);
-                        OUTM(12) = fMin * OUTM(12);
-                        OUTM(13) = fMin * OUTM(13);
-                        OUTM(14) = fMin * OUTM(14);
-                        OUTM(15) = fMin * OUTM(15);
+                        OUTM(0) = scale * OUTM(0);
+                        OUTM(1) = scale * OUTM(1);
+                        OUTM(2) = scale * OUTM(2);
+                        OUTM(3) = scale * OUTM(3);
+                        OUTM(4) = scale * OUTM(4);
+                        OUTM(5) = scale * OUTM(5);
+                        OUTM(6) = scale * OUTM(6);
+                        OUTM(7) = scale * OUTM(7);
+                        OUTM(8) = scale * OUTM(8);
+                        OUTM(9) = scale * OUTM(9);
+                        OUTM(10) = scale * OUTM(10);
+                        OUTM(11) = scale * OUTM(11);
+                        OUTM(12) = scale * OUTM(12);
+                        OUTM(13) = scale * OUTM(13);
+                        OUTM(14) = scale * OUTM(14);
+                        OUTM(15) = scale * OUTM(15);
                     }
                     BrGuMtxStore((float *)0x106e78f0, pM);
                     EMIT(0x39e0010, pM);
@@ -809,12 +817,13 @@ no_mark:
             int again;
             TEMIT(0xb6000000, 0x3000);
             TEMIT((DAT_118ec98c & 0xffffff) | 0xdc000000, 1);
-            iCar = 0;
+            {
+            int c2 = 0;
             if (0 < DAT_100b2f04) {
                 uint8_t *pA = active;
                 do {
                     iWheel = 0;
-                    ring = iCar * 4;
+                    ring = c2 * 4;
                     do {
                         head = DAT_1035faf0[ring];
                         slot = head - 1;
@@ -826,9 +835,10 @@ no_mark:
                         iWheel = iWheel + 1;
                         ring = ring + 1;
                     } while (iWheel < 4);
-                    iCar = iCar + 1;
+                    c2 = c2 + 1;
                     pA = pA + 4;
-                } while (iCar < DAT_100b2f04);
+                } while (c2 < DAT_100b2f04);
+            }
             }
             do {
                 int dCar, dw, dring;
