@@ -11,12 +11,17 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-08-30, fifth pass): 2,332/2,328 instructions, 9,370 vs
- * 9,354 bytes, 18 divergence regions slot-masked.  Trail distance check
- * now matches orig's `fst`-home / dual-fcomp DAG (comma-in-if both
- * sqlens; `&&` of the raw products was fstp-st + recompute).  The only
- * `fchs` in the function is already `fld fMax; fld fMin; fchs; fxch;
- * fcompp` -- no remaining abs/negate site.  REGNORM 60+56 (was 66+64).
+ * STATE (2026-09-01, sixth pass): 2,323/2,328 instructions, 9,344 vs
+ * 9,354 bytes, 20 divergence regions slot-masked (29 raw).  CLOSED this
+ * pass: the 8-byte frame delta (prologue now exact, `sub esp,0xdc`), the
+ * whole trail-quad x87 stream, and the `cmp [ebp+0xc],ebx` param_2 test.
+ * The trail block is a struct-typed wheel pointer (BrWheelRec): the FIRST
+ * float def through a multi-use pointer var is an integer bit-copy home
+ * (`mov edx,[..]; mov [slot],edx`, every later use reloads the slot), the
+ * second is fld'd and kept on x87; ox/oy are repeated expressions (CSE
+ * temps: `fst`-homed and kept on the stack, px/py loaded once), not named
+ * locals (named temps are fstp'd and force px/py double loads); the sum is
+ * `dx*dx + dy*dy`; pT is bound inside `if (param_2)`.
  * REMAINING WALLS:
  *   1. per-row: D-product's fld wants exactly ONE hoist notch (orig:
  *      fld V4; fxch3; faddp2 -- ours: fxch2; faddp1 first).  Hoisting is
@@ -25,12 +30,30 @@
  *   2. scale block: 5|7 preload split vs orig 8|4 (one fld leak, greedy
  *      refill after first fstp).  Nested-scope k copies, global-symbol
  *      helpers, volatile dest barrier, counted loops: no improvement.
- *   3. frame 8 bytes smaller (sub esp 0xd4 vs 0xdc).  Extra live floats
- *      grow it to 0xdc but inflate the DAG; the gap is orig's remaining
- *      ox/oy `fst` homes, not a pad local.
- *   4. trail ox/oy: orig preloads pW.x/pW.y onto x87 before fsqrt via
- *      the BrGroundProbeZ arg pointer and `fst`-homes ox/oy.  Named px/py
- *      temps integer-home instead.
+ *   3. wheel-pointer address form: orig computes `iw*0x40 + param_4 +
+ *      negCar0` into eax (param_4 added FIRST) and keeps pCar as the index
+ *      register ([eax+ecx+disp] loads, `lea edi,[eax+ecx]` after the dx
+ *      reload).  A single-use `wb` is forward-substituted and the 4-term
+ *      sum merges into one register (esi); any second source use of `wb`
+ *      restores the 3+1 split.  The BrGroundProbeZ arg spelled through
+ *      `wb + pCar + 0x70` is that placeholder second use (orig: `lea
+ *      eax,[edi+0x70]` from pW).  Probed and dead: add-order permutations,
+ *      negCar0 renames/types/scopes/LICM, param_4 renames, two-step wb or
+ *      pW defs, pointer-difference car base (VC5 cancels it), index-based
+ *      `param_4 + iCar*0x2b68` (VC5 mints a second IV; cls block breaks),
+ *      py/px/z/vy via the two-part sum (uses after the call spill).
+ *   4. `ring*4` CSE: orig materializes `lea edx,[ecx*4]` and addresses
+ *      both ring arrays as [edx+base] (edx live through the tail, so pDst
+ *      is memory-homed and ebx is scratch); ours folds [ecx*4+base].
+ *      Byte-offset spellings still fold.
+ *   5. loop entry (0xad4): orig keeps cHead/base in ecx/eax across the
+ *      param_2 join (else-arm reloads them after the call) and compares
+ *      i from memory; ours reloads them in the pre-header.
+ *   6. slot permutation: frame size now matches but i/iCar/dx/fMax slots
+ *      are assigned in a different order (i at 0x18 vs orig 0x1c).
+ *   7. drain loop: dead-block placement (orig sinks `pA[dw]=0` to the
+ *      loop end; ours duplicates it at the first goto) and the dring*4
+ *      byte-offset IV vs orig's per-car `shl edx,4` recompute.
  * @implements stays live for the sweep; rule 2 forbids claiming a match
  * until the diff is clean.
  */
@@ -176,6 +199,15 @@ static __inline void BrRowScale4(float *d, float *sr, float k)
     d[3] = k * sr[3];
 }
 
+/* The per-wheel trail record, viewed from the car base + iw*0x40: velocity
+ * at +0x50 and the contact point at +0x70.  A struct-typed pointer is what
+ * makes VC5 bit-copy the first float def and fld the second. */
+typedef struct BrWheelRec {
+    char  pad[0x50];
+    float vx, vy;
+    char  pad2[0x18];
+    float x, y, z;
+} BrWheelRec;
 /* The trail ring: 500 segments per wheel, 4 wheels per car. */
 typedef struct BrTrailSeg {
     float    x1;                    /* 0x10273690 */
@@ -589,8 +621,8 @@ draw:
             i = i + 1;
         } while (i < DAT_1035fb8c);
     }
-    pT = DAT_1035f7d8;
     if (param_2 != 0) {
+        pT = DAT_1035f7d8;
         EMIT(0x6000000, pT);
         TEMIT(0x1060040, DAT_100a9ec0);
         TEMIT((DAT_1184c470 & 0xffffff) | 0xdc000000, 1);
@@ -668,18 +700,15 @@ no_mark:
                             float dx, dy, len, ox, oy, x1, x2, y1, y2, z;
                             int iw = DAT_100a5d98[iWheel];
                             int wb = iw * 0x40 + param_4 + negCar0;
-                            float *pW;
-                            dx = *(float *)(wb + (int)pCar + 0x50);
-                            dy = *(float *)(wb + (int)pCar + 0x54);
-                            pW = (float *)(wb + (int)pCar);
-                            len = (float)sqrt(dy * dy + dx * dx);
-                            ox = (dx / len) * DAT_10077250;
-                            oy = (dy / len) * DAT_10077250;
-                            x1 = pW[0x1c] - ox;
-                            x2 = ox + pW[0x1c];
-                            y1 = pW[0x1d] - oy;
-                            y2 = oy + pW[0x1d];
-                            z = (pW[0x1e] - BrGroundProbeZ(pW + 0x1c)) -
+                            BrWheelRec *pW = (BrWheelRec *)(wb + (int)pCar);
+                            dx = pW->vx;
+                            dy = pW->vy;
+                            len = (float)sqrt(dx * dx + dy * dy);
+                            x1 = pW->x - (dx / len) * DAT_10077250;
+                            x2 = (dx / len) * DAT_10077250 + pW->x;
+                            y1 = pW->y - (dy / len) * DAT_10077250;
+                            y2 = (dy / len) * DAT_10077250 + pW->y;
+                            z = (pW->z - BrGroundProbeZ((float *)(wb + (int)pCar + 0x70))) -
                                 DAT_10077254;
                             ring = iWheel + iCar * 4;
                             if (DAT_1035faf0[ring] != DAT_1035f750[ring]) {
