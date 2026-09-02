@@ -121,7 +121,38 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
  * learn about the game's window class and then to create the window itself,
  * and reports whether one came back. It does not remember the window: the
  * window's own message handler does that when it is told the window exists. */
+#ifdef BR_MATCHING_BUILD
+#include <windows.h>
+
 /* @implements 0x10019670 glide BrWindowCreate */
+int BrWindowCreate(const BrWindowOps *pOps)
+{
+    WNDCLASSA wc;
+    void     *hInst = g_brhInstance;
+    HWND      hWnd;
+
+    (void)pOps;
+
+    g_brhInstance2 = hInst;
+
+    wc.style         = 3;
+    wc.lpfnWndProc   = (WNDPROC)BrWndProc;
+    wc.cbClsExtra    = 0;
+    wc.cbWndExtra    = 0;
+    wc.hInstance     = (HINSTANCE)hInst;
+    wc.hIcon         = LoadIconA((HINSTANCE)hInst, (LPCSTR)0x65);
+    wc.hCursor       = LoadCursorA(NULL, (LPCSTR)0x7F00);
+    wc.hbrBackground = (HBRUSH)GetStockObject(4);
+    wc.lpszMenuName  = "BossRally";
+    wc.lpszClassName = "BossRally";
+    RegisterClassA(&wc);
+
+    hWnd = CreateWindowExA(0x40000, "BossRally", "Boss Rally", 0x80C20000u,
+                           0, 0, g_brAppModeW, g_brAppModeH,
+                           NULL, NULL, (HINSTANCE)g_brhInstance, NULL);
+    return hWnd != NULL;
+}
+#else
 int BrWindowCreate(const BrWindowOps *pOps)
 {
     BrWindowDesc desc;
@@ -151,6 +182,7 @@ int BrWindowCreate(const BrWindowOps *pOps)
     /* 0x1001971E: xor ecx,ecx / test eax,eax / setne cl / mov eax,ecx. */
     return (hWnd != NULL) ? 1 : 0;
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== *
  * 0x10017E30 -- the mode-2 (EAR) startup. 211 bytes, __cdecl, one argument.
