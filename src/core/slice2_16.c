@@ -2271,6 +2271,12 @@ void BrFadeTick(void)
         g_brFadeKick = 0;
     }
 
+    /* RESIDUE (glide 0x100186E0, 4 masked diffs, T3a): the original homes
+     * Pos in esi / Pos2 in edi (loads esi-first, stores PosHist-first);
+     * every probed spelling gets one axis wrong -- statement swap flips
+     * the load regs (8 diffs), a Pos temp survives the aliasing Hist
+     * store but binds edi (6), a Pos2 temp either dissolves (4) or flips
+     * the store order (6).  Size/shape exact; register pairing only. */
     g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
     g_brFadePosHist[g_brFadeParity]  = g_brFadePos;
     g_brFadeB4 = 0;
