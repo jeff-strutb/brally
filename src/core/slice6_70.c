@@ -338,6 +338,13 @@ void BrExt_1003C150(void)
  * separately. Note it takes its horizontal position from the first view
  * rather than from the view being drawn, which is the original's own
  * asymmetry. */
+/* RESIDUE (25 masked diffs, T3a, REGNORM 0+0 -- instruction shapes are
+ * identical after register normalisation). Both suffix-x expressions
+ * associate their three terms differently from the original: it pairs the
+ * SPILLED local first (`mov edx,[esp+0x14]; add edx,ebx`), we pair the two
+ * registers. DO NOT RE-PROBE the term order -- all six permutations of
+ * `w + nudge + x + 3` compile byte-identically; VC5 reassociates integer
+ * sums freely, so the pairing is the allocator's, not the source's. */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
 #ifdef BR_MATCHING_BUILD
 /* Orig reads cViews / iView / the race object / the suppress flag as
