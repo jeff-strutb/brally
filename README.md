@@ -33,8 +33,8 @@ claims and diffs to **0 bytes**, with 0 overlapping address claims.
 - **Game DLL (`BRGlide.dll`)** — 1,014 functions byte-exact, 158,234 B, **32.9% of
   its 480,853 B `.text`**. Of those, 842 are C (55.4% of the hand-C target by
   count) and 172 are C++. Most of what remains is structural, not "coloring":
-  183 functions still carry real, non-codegen diffs (wrong or missing code),
-  while only a 35-function tail is down to pure register-allocation/scheduling
+  181 functions still carry real, non-codegen diffs (wrong or missing code),
+  while only a 36-function tail is down to pure register-allocation/scheduling
   differences with the instructions already correct.
 - **C++ class (vtables, EH frames)** — a separate lane, because these functions
   are unreachable from C at all; screened for before a function is ranked as a
@@ -50,8 +50,10 @@ claims and diffs to **0 bytes**, with 0 overlapping address claims.
 
 ## Progress Report
 
-**Game DLL by tier** (`.venv/bin/python3 tools/tiers.py`) — hand-C target 1,519
-functions (453,140 B of `.text`):
+**The C lane by tier** (`.venv/bin/python3 tools/tiers.py`) — 1,348 functions,
+377,801 B of `.text`. That is the 1,519-function hand-C target less the 171 the
+C++ lane owns; **this table is C only**, and the C++ lane has its own below.
+Nothing is counted in both.
 
 The tiers track how close each function's rebuilt code is to the original, from
 not-started to exact. Two boundaries matter: **T1→T2** is a machine-made rough
@@ -62,12 +64,11 @@ instructions, only the register choices differ.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 288 | 174,816 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 183 | 111,820 |
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 289 | 176,365 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 181 | 109,982 |
 | T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
-| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 35 | 9,008 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **1,013** | **157,496** |
-| | *of which the C++ lane (broken out below)* | *171* | *75,339* |
+| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 36 | 9,297 |
+| **T4** | **Done** — matches the original exactly, byte for byte | **842** | **82,157** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
 decompiler.** No one is reading raw assembly from a blank slate; the original
@@ -79,13 +80,15 @@ Only **T1, T3a, and T4 are counted automatically** by the tier tool. T3a is
 strong static evidence (the instructions match), which is not the same as a
 runtime equivalence proof.
 
-**This table now covers the whole DLL, C and C++ together.** T4 is 1,013: 842
-matched as C, plus the 171 the C++ lane owns. Earlier snapshots showed a much
-larger T1 and a much smaller T4, and the difference was a **counting bug, not
-progress**: converting a function to the C++ lane REMOVES its row from the C
-report, and the tier tool read that absence as "not started". So T1 climbed
-every time a C++ match landed. Fixed in `tiers.py`; the tool now reads both
-reports, and T1 fell 459 → 288 the moment it did.
+`tiers.py` prints T4 as a combined 1,013 over the full 1,519 target, with the
+C++ lane called out beneath it; the table above subtracts that lane to stay
+C-only, so its T4 is 1,013 − 171 = 842 and its target 1,519 − 171 = 1,348.
+
+Earlier snapshots showed a much larger T1 and a much smaller T4, and the
+difference was a **counting bug, not progress**: converting a function to the
+C++ lane REMOVES its row from the C report, and the tier tool read that absence
+as "not started", so T1 climbed every time a C++ match landed. Fixed in
+`tiers.py`; T1 fell 459 → 289 the moment it did.
 
 The T3b footnote below still counts inside T2, and the numbers in this section
 move daily; regenerate rather than trust them.
@@ -103,38 +106,42 @@ current T2 set, so 15 is a floor, not a live count; T3b grows as the oracle is
 extended to register calling-conventions and global-reading functions. The 15
 still count inside T2 until the tier tool consumes the oracle's manifest.
 
-**The C++ lane, broken out** (vtables + EH frames; `tools/cpp_sweep.py`) — same
-tiers, so the two read alike. This is a **view inside the table above, not an
-addition to it**: its T4 is that table's C++ line, and its T1 sits inside that
-table's T1/T2. A C++ function is scored on **four pieces**, not one: its code,
-and the three tables the compiler emits alongside it to unwind the stack when an
-exception passes through (unwind, scope, funcinfo). Done means all four.
+**The C++ lane by tier** (vtables + EH frames; `tools/cpp_sweep.py`) — same tiers,
+so the two tables read alike. **This one is C++ only**; add it to the C table
+above for the DLL total. A C++ function is scored on **four pieces**, not one:
+its code, and the three tables the compiler emits alongside it to unwind the
+stack when an exception passes through (unwind, scope, funcinfo). Done means all
+four.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
 | T1 | **Not started** — screened as C++-only, no source written yet | 22 | 33,220 |
-| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 20 | 10,900 |
+| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 21 | 12,146 |
 | T3a | **Works, near-identical** — code byte-exact, one table still differs | 0 | 0 |
 | **T4** | **Done** — all four pieces byte-exact | **172** | **76,077** |
 
-Two differences from the C table, both real:
+Three differences from the C table, all real:
 
-- **T1 here is a lower bound, not a census.** The C table's 1,519 is a fixed
-  target derived from the function map; there is no equivalent count of "every
-  C++ function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised
-  in the *current* unmatched residue — 22 strong of 176 screened, and the residue
-  shrinks as matches land. A further 50 screened weak (fastcall-representable)
-  are deliberately excluded: those are reachable from C and belong to the C lane.
-  T1 falling is therefore progress, not scope loss: this lane is being drained
-  faster than the screen finds new members.
+- **T1 here is a lower bound, not a census.** The C table has a fixed target
+  derived from the function map; there is no equivalent count of "every C++
+  function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised in
+  the *current* unmatched residue — 22 strong of 176 screened. A further 50
+  screened weak (fastcall-representable) are deliberately excluded: those are
+  reachable from C and belong to the C lane. T1 falling is therefore progress,
+  not scope loss: this lane is being drained faster than the screen finds new
+  members.
 - **T3a is empty for a reason.** Every unfinished row here is unfinished in its
   *code*; the exception tables come out right first. So nothing currently sits in
   the "instructions right, only registers differ" tier.
+- **T1 is the one figure that is not yet disjoint from the C table.** A function
+  screened as C++ but not yet written still has its row in the C report, so those
+  22 also sit in the C table's T1/T2 until they are converted. T2, T3a and T4
+  here are exclusively C++.
 
-The C++ figures here (172 / 76,077 B) are read straight from `report_cpp.csv`;
-the table above shows 171 / 75,339 B because `tiers.py` ran moments earlier and
-sizes each function from the function map rather than the extracted bytes. Both
-are right; do not add them together or split the difference.
+`tiers.py`, run against the same tree, sizes the done lane at 171 / 75,339 B
+rather than 172 / 76,077 B: it ran moments earlier, and it takes each function's
+size from the function map instead of the extracted bytes. Both are right at
+their own strictness; don't average them.
 
 Screening for this class *before* ranking a function as a C target is now part of
 triage — 41 rows / 37,677 B that C cannot reach had previously been ranked as
