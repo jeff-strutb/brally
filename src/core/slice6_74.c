@@ -287,7 +287,11 @@ void BrStub8B80_5i(int32_t a0, int32_t a1, int32_t a2, int32_t a3, int32_t a4)
  * values are squeezed together without regard for byte boundaries. This is
  * only a second name for a routine that already exists elsewhere in the tree;
  * it decides nothing itself. */
-/* @implements 0x10073C90 d3d BrBitReaderRead */
+/* NOT tagged: 0x10073C90's body is BrBitStreamReadBits in slice1_09.c, which
+ * carries the @implements.  This is the second NAME the image gives that
+ * address, and as a thunk it compiles to a 32-byte call that can never
+ * reproduce the 133-byte original -- exactly the trap recorded on BrVec3Len
+ * below, which had left this address permanently unmatchable. */
 uint32_t BrBitReaderRead(struct BrBitReader *pReader, unsigned nBits)
 {
     return (uint32_t)BrBitStreamReadBits((BrBitStream *)pReader, (int)nBits);
