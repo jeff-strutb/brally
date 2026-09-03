@@ -30,6 +30,9 @@
  *     (`int32_t n = g_brRaceNGate; n += pDrv->f4C; pDrv->f4C = n;`)
  *   - re-reading the field into the `gate` local first and adding that
  *   - the nested-if guard instead of the `&&` conjunction kept below
+ *   - a named local as the add's second operand, assigned inside the
+ *     conjunction (`(gate = pDrv->f4C) < 0`) so it is not the lvalue's own
+ *     re-read -- the hypothesis that VC5 was recognising an accumulate
  * And WORSE (2,543 bytes): putting `pDrv->f44 += 1;` before the add -- the
  * intervening store kills the divisor CSE and VC5 re-loads the global.
  *
