@@ -1550,14 +1550,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(((BrG_6C661C != 0 ? g_BrDrawReflectTexA : g_BrDrawReflectTexB)
              & 0x00FFFFFFu) | 0xDC000000u, 1);
         put(0xBA000602u, 0xC0u);
-        {
-            uint32_t s = (uint32_t)pSkyAng->s0;
-            uint32_t t = (uint32_t)pSkyAng->t0;
-            uint32_t w0 = (((s & 0xFFFu) | 0xFFFF2000u) << 12) | (t & 0xFFFu);
-            uint32_t w1 = ((((s + 0xFCu) << 12) & 0x00FFF000u) |
-                           ((t + 0xFCu) & 0xFFFu));
-            put(w0, w1);
-        }
+        /* Orig RE-READS both fields for the second word (`mov edx,[eax];
+         * mov eax,[eax+4]` at 0x1798), so they are NOT named locals here --
+         * naming them spills the pair and the assembled word to slots. */
+        put(((((uint32_t)pSkyAng->s0 & 0xFFFu) | 0xFFFF2000u) << 12) |
+            ((uint32_t)pSkyAng->t0 & 0xFFFu),
+            (((((uint32_t)pSkyAng->s0 + 0xFCu) << 12) & 0x00FFF000u) |
+             (((uint32_t)pSkyAng->t0 + 0xFCu) & 0xFFFu)));
         {
             if (*(const uint32_t *)(
                     (const unsigned char *)BrG_6C3308 + lodOff + 0x803C) != 0)
