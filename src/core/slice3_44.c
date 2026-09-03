@@ -90,7 +90,14 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
              * reading above -- they compute a DIFFERENT association, so the
              * lower byte count is not the more faithful source.  Also ruled
              * out: direct pA->m[]/pB->m[] instead of the a/b pointer locals,
-             * `b[j+6]` index spelling, and /Oy- /Op /Od (33, 19, 80). */
+             * `b[j+6]` index spelling, and /Oy- /Op /Od (33, 19, 80).
+             * DEAD 2026-09-03: naming the three products as float temps so
+             * the a2/b2 row is the LAST address reference while the sum
+             * keeps the (C+A)+B association -- the one combination the six
+             * term-order probes could not express, because there the anchor
+             * and the association move together. VC5 keeps the a1/b1 anchor
+             * anyway; 19 -> 28 with the multiset gap unchanged. The anchor
+             * is not chosen from the source's reference order. */
             pOut->m[3 * i + j] = (a[3 * i + 2] * b[6 + j]
                                   + a[3 * i + 0] * b[j])
                                  + a[3 * i + 1] * b[3 + j];
