@@ -420,6 +420,29 @@ typedef struct BrTextList {
      * already exists in this header for exactly this situation. */
     BrTextWord f1C;                /* +0x0001C  (float) pStyle->left  */
     BrTextWord f20;                /* +0x00020  (float) pStyle->top   */
+
+    /* +0x24 and +0x28 were MISSING, and their absence pulled every field from
+     * aItems onward eight bytes forward: `offsetof(BrTextList, aItems)` came
+     * out 0x24 instead of the 0x2C this header has always documented,
+     * `sizeof(BrTextList)` 0x1A9CC instead of 0x1A9D4, and inside the control
+     * that put w1E20C at +0x1E204 -- so a store the original writes to
+     * ctl+0x1E20C was compiled against ctl+0x1E204 (caught on 0x10037F70).
+     *
+     * The arithmetic that pins them is already stated three ways in this tree
+     * and none of it was ever in doubt: aItems is documented at +0x2C here,
+     * 0x2C + 100 * 0x438 == 0x1A60C (the item-count assertion), and br_ui.h's
+     * ADJ-7 pins 0x3838 + 0x2C + 0x434 == 0x3C98.  br_ui.h's assertions did
+     * not catch it because every one of them is arithmetic over CONSTANTS
+     * rather than over `sizeof`/`offsetof`, and BR_UI_ASSERT expands to
+     * nothing on _MSC_VER < 1200 -- i.e. it is disabled in the very build that
+     * matters.  See the sizeof/offsetof assertions added at the bottom.
+     *
+     * Nothing in the tree names or reads these two dwords yet (control
+     * +0x385C / +0x3860), so they stay anonymous rather than being given a
+     * guessed meaning. */
+    uint32_t   f24;                /* +0x00024  no reader or writer found yet */
+    uint32_t   f28;                /* +0x00028  no reader or writer found yet */
+
     BrTextBox  aItems[BR_TEXTLIST_ITEMS];   /* +0x0002C */
     BrTextBlob aBlobs[BR_TEXTLIST_ITEMS];   /* +0x1A60C */
     int16_t    count;              /* +0x1A92C */
@@ -488,6 +511,23 @@ typedef struct BrTextList {
      * +0x1E204 (br_ui.h ADJ-6). */
     BrTextWord f1A99C[14];         /* +0x1A99C..+0x1A9D0 */
 } BrTextList;
+
+/* These assert the LAYOUT, not the arithmetic.  br_ui.h's BR_UI_ASSERT block
+ * checks that the documented offsets are self-consistent -- `0x2C + 100 *
+ * 0x438 == 0x1A60C` and so on -- which every one of them did while the struct
+ * itself was eight bytes short, because none of them mentions `sizeof` or
+ * `offsetof` and the macro expands to nothing under MSVC 5.0 anyway.  These do
+ * mention them, and they compile under MSVC 5.0 (verified).  The `sizeof(void
+ * *) != 4` disjunct is what keeps them honest on LP64, where the header's
+ * offsets are documented not to hold. */
+typedef char BR_TL_ASSERT_items_at_2C
+    [(sizeof(void *) != 4 || offsetof(BrTextList, aItems) == 0x2Cu) ? 1 : -1];
+typedef char BR_TL_ASSERT_blobs_at_1A60C
+    [(sizeof(void *) != 4 || offsetof(BrTextList, aBlobs) == 0x1A60Cu) ? 1 : -1];
+typedef char BR_TL_ASSERT_count_at_1A92C
+    [(sizeof(void *) != 4 || offsetof(BrTextList, count) == 0x1A92Cu) ? 1 : -1];
+typedef char BR_TL_ASSERT_size_is_1A9D4
+    [(sizeof(void *) != 4 || sizeof(BrTextList) == 0x1A9D4u) ? 1 : -1];
 
 extern const BrTextListVtbl *g_pBrTextListVtbl;   /* stands in for 0x1008F758 */
 
