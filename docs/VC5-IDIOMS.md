@@ -1916,3 +1916,29 @@ is the lead already open for 0x1000EAF0.
   the leftmost target in the chain is stored LAST. Diff signature:
   EXTRA `mov [R], R` / `mov R, [R]` against MISSING `fld [R]` /
   `fst [R]` / `fstp [R - I]`.
+
+## Cross-jumping: our cl merges identical error tails, the original does not
+*(proven 2026-09-03 on 0x10059350, the DirectInput device bring-up)*
+
+Three `if (hr < 0) { Report(hWnd, hr, ErrLine(N)); return 0; }` blocks. The
+first two compile to byte-identical instruction sequences (only the pushed
+line number and the call displacement differ). The original emits three
+separate copies; our cl tail-merges the first into the second —
+`jge +7 / push 0xAC / jmp` landing on the second block's `call` — and the
+function comes out 21 bytes short with every other byte identical.
+
+Not reachable from the source: separate `hr` locals per step change
+nothing, and neither do /Gy, /Gf, /Op, /Oy, /Ot, /Ob0, /Ox /Ob0 /Gy, or
+/Og /Oi /Ot /Oy /Ob1. Rewriting the chain in nested `if (hr >= 0)` form
+does suppress the merge, but at the cost of moving the success return
+inline and reordering the error blocks — the original's layout is the flat
+early-return one, so that is not the answer either.
+
+**How to recognise it:** recomp shorter than orig by exactly one error
+tail, first divergence at a `jge`/`jl` whose displacement is far too
+small, and a stray `jmp` where the original has a full block. If a
+function is otherwise byte-identical and this is the residue, park it.
+
+This is the third emitter-level residue found in one session, and the
+strongest: the other two are orderings inside an expansion, this is a
+whole optimisation our cl performs and the original's did not.
