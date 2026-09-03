@@ -1053,7 +1053,15 @@ extern int32_t  BrGlNavF6700;       /* 0x10AC6700                        */
 extern int32_t  BrGlNavF6704;       /* 0x10AC6704                        */
 extern int32_t  BrGlNavK610C;       /* 0x10AC610C                        */
 extern int32_t  BrGlNavK6114;       /* 0x10AC6114                        */
-extern uint16_t BrGlNavStepAB7C;    /* 0x100AAB7C                        */
+/* SIGNED, and that is load-bearing: the two backward-step stores put -1 in
+ * here, and VC5 materialises the constant differently depending on the
+ * global's signedness. Declared `uint16_t` it emits `mov edx, 0xffff`
+ * (5 bytes, the value already narrowed); declared `int16_t` it emits
+ * `or edx, 0xffffffff` (3 bytes, a full-width -1 that the `mov word` store
+ * then truncates) -- which is what the original does. Neither an explicit
+ * `(uint16_t)` cast, a shared `int32_t step = -1` local, nor a literal -1
+ * at each store moves it; only the DESTINATION's signedness does. */
+extern int16_t  BrGlNavStepAB7C;    /* 0x100AAB7C                        */
 extern uint16_t BrGlNavCur5BC4;     /* 0x10AC5BC4                        */
 extern int32_t  BrGlNavLast6748;    /* 0x10AC6748  last-activity time    */
 extern int32_t  BrGlNavEdge6720;    /* 0x10AC6720                        */
@@ -1159,12 +1167,10 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     if (BrGlNavKey5F40 != 0)
         BrGlNavKeyRight();
 
-    {
-    int32_t step = -1;   /* one -1, shared by both backward-step stores */
     if (BrGlNavT6708 != 0) {
         if (BrGlNavKey66B0 & 0x80) {
             BrGlNavF66F8 = 1;
-            BrGlNavStepAB7C = (uint16_t)step;
+            BrGlNavStepAB7C = -1;
             BrGlNavAccum6710 = 0;
         }
         if (BrGlNavKey66B8 & 0x80) {
@@ -1177,7 +1183,7 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
         int32_t f;
         if (BrGlNavK610C != 0) {
             f = 1;
-            BrGlNavStepAB7C = (uint16_t)step;
+            BrGlNavStepAB7C = -1;
             BrGlNavAccum6710 = 0;
         } else {
             f = BrGlNavF6700;
@@ -1197,7 +1203,6 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
             pNav->iIdle4C = 0;
             BrGlNavT6708 = 0;
         }
-    }
     }
     if (BrGlNavT6708 != 0) {
         if (BrGlNavF66F8 != 0) {
