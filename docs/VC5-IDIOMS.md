@@ -2074,14 +2074,34 @@ whole-body 4-byte displacement shift with this signature as an allocator
 park, not a structural miss — the diff count is large and meaningless.
 - **MSVC 5.0 REJECTS `__thiscall` in C -- `error C4234: '__thiscall'
   keyword reserved for future use`** (verified 2026-09-03 on a bare
-  two-line TU). So a multi-argument thiscall is unreachable from C by
-  every route, not just by the `__fastcall` substitution br_match.h
-  already rules out: it cannot be spelled on a function POINTER either,
-  which is what a vtable send needs. Diff signature, and it is exact --
-  EXTRA `push R` and `add esp, I` once per send, MISSING one `mov ecx,
-  <this>` per send, nothing else. When that is the whole residue the
-  function is a C++-twin candidate (see the vcall-lode note), not
-  something to keep probing in C.
+  two-line TU). **The wall is the CALL side, not the definition side,
+  and the two must not be confused.**
+  - DEFINING a multi-argument thiscall callee is FINE:
+    `void __fastcall F(T *pThis, int _edx_unused, <stack args>)` puts
+    `this` in ecx and every remaining argument on the stack, and the
+    callee simply ignores edx -- nobody has to materialise it. That is
+    how this tree's entity setters are spelled, and 0x1006F970
+    BrEntSetMatrix (`mov ebx,ecx` / `[esp+4]` / `ret 4`) fell byte-exact
+    on the first compile with it. br_match.h's warning that BR_THISCALL1
+    "does NOT generalise" is about call sites; do not read it as saying
+    these functions cannot be matched.
+  - CALLING one is unreachable: the caller would have to load edx, and
+    `__thiscall` cannot be spelled on a function POINTER, which is what
+    a vtable send needs. Diff signature, and it is exact -- EXTRA
+    `push R` and `add esp, I` once per send, MISSING one `mov ecx,
+    <this>` per send, nothing else. When that is the whole residue the
+    function is a C++-twin candidate (see the vcall-lode note), not
+    something to keep probing in C.
+- **VC5 inlines NO static helper at /O2 -- three confirmations.** Any
+  `static` function the original had in line comes back as a real `call`
+  with a full argument push sequence, whatever its size: an eight-dword
+  struct-field mirror (BrEntMirrorQuat, in 0x1006F970), a five-argument
+  vtable send (below), and the wrapper/body splits already recorded
+  above. Either write the body out at the call site or make the helper a
+  MACRO; there is no third option, and `__inline` is not one (see the
+  macro-vs-inline entry). Diff signature: EXTRA `call I` + `push R` runs
+  + `add esp, I`, MISSING the instructions the helper's body would have
+  contributed.
 - **A static helper that wraps a vtable send is never inlined -- make it
   a MACRO.** VC5 turned `static void Send(fn, obj, a, b, c) { if (fn)
   fn(obj, a, b, c); }` into a real `call` per send, with the object
