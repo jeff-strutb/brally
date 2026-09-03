@@ -59,11 +59,13 @@
 #ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
+#define BrEntSetMatrix      BrEntSetMatrix_port
 #define BrEntSetVel         BrEntSetVel_port
 #define BrEntSetAngVel      BrEntSetAngVel_port
 #define BrEntSetOrientation BrEntSetOrientation_port
 #define BrEntSetHeading     BrEntSetHeading_port
 #include "slice3_45.h"
+#undef BrEntSetMatrix
 #undef BrEntSetVel
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
@@ -435,6 +437,34 @@ static void BrEntMirrorQuat(BrEnt *pE)
  * object is, only which way it is turned, so the rebuilt transform ends up
  * with the new rotation but the old position. */
 /* @implements 0x10076700 d3d BrEntSetMatrix */
+/* Thiscall with ONE stack argument (`mov ebx,ecx` then `[esp+4]`, `ret 4`),
+ * spelled the way the rest of this file's entity setters are.  The
+ * quaternion mirror is written out here rather than calling
+ * BrEntMirrorQuat: VC5 does not inline the static helper, and the original
+ * has the eight dword copies in line. */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrEntSetMatrix(BrEnt *pE, int _edx_unused, const BrMat4 *pSrc)
+{
+    (void)_edx_unused;
+
+    /* `rep movsd` of 16 dwords. */
+    memcpy(&pE->mat0, pSrc, sizeof(BrMat4));
+
+    BrSub100765E0(pSrc, &pE->st.quat);
+
+    pE->stB.quat.f00 = pE->st.quat.f00;
+    pE->stB.quat.f04 = pE->st.quat.f04;
+    pE->stB.quat.f08 = pE->st.quat.f08;
+    pE->stB.quat.f0C = pE->st.quat.f0C;
+
+    pE->stA.quat.f00 = pE->st.quat.f00;
+    pE->stA.quat.f04 = pE->st.quat.f04;
+    pE->stA.quat.f08 = pE->st.quat.f08;
+    pE->stA.quat.f0C = pE->st.quat.f0C;
+
+    BrRbBuildMatrix(&pE->matrix, &pE->st);
+}
+#else
 void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
 {
     /* `rep movsd` of 16 dwords. */
@@ -445,6 +475,7 @@ void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
 
     BrRbBuildMatrix(&pE->matrix, &pE->st);
 }
+#endif
 
 /* 0x100767A0 */
 /* WHAT IT DOES: tells an object how fast and in which direction it is
