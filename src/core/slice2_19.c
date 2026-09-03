@@ -369,6 +369,53 @@ void BrCamMatrixSetupFixed(float a1, float a2)
  * away entirely, so nothing drawn this way can be in front of or behind
  * anything else. */
 /* @implements 0x1003407D d3d BrCamMatrixSetupOrtho */
+#ifdef BR_MATCHING_BUILD
+/* Same /Od TU and same four idioms as BrCamMatrixSetupFixed above -- literal
+ * param self-assigns, the take-2 emit inlined per block with its own [ebp-N]
+ * slot and the cursor re-read, the 0-arg pool alloc, and the matrix store
+ * called directly. Every other function between 0x1002C0F3 and 0x1002E13B is
+ * already byte-exact under /Od; this one was written in the /O2 shape, which
+ * is the whole 19-instruction gap. */
+void BrCamMatrixSetupOrtho(float w, float h)
+{
+    w = w;
+    h = h;
+
+    g_BrCurMat.m[0][0] = g_BrK08F514 / w;
+    g_BrCurMat.m[0][1] = 0.0f;
+    g_BrCurMat.m[0][2] = 0.0f;
+    g_BrCurMat.m[0][3] = 0.0f;
+    g_BrCurMat.m[1][0] = 0.0f;
+    g_BrCurMat.m[1][1] = g_BrK08F514 / h;
+    g_BrCurMat.m[1][2] = 0.0f;
+    g_BrCurMat.m[1][3] = 0.0f;
+    g_BrCurMat.m[2][0] = 0.0f;
+    g_BrCurMat.m[2][1] = 0.0f;
+    g_BrCurMat.m[2][2] = 0.0f;   /* explicit; z is discarded, not passed on */
+    g_BrCurMat.m[2][3] = 0.0f;
+    g_BrCurMat.m[3][0] = -1.0f;
+    g_BrCurMat.m[3][1] = -1.0f;
+    g_BrCurMat.m[3][2] = 0.0f;
+    g_BrCurMat.m[3][3] = 1.0f;
+
+    {
+        uint32_t *p_ = g_BrGfxPtr;
+        g_BrGfxPtr += 2;
+        p_[0] = 0xBC00000Eu;
+        p_[1] = g_BrPerspNorm;
+    }
+
+    g_BrMtxSlot = BrSub_10069490();
+    BrGuMtxStore((const int (*)[4])&g_BrCurMat, (int (*)[4])g_BrMtxSlot);
+
+    {
+        uint32_t *p_ = g_BrGfxPtr;
+        g_BrGfxPtr += 2;
+        p_[0] = 0x01030040u;
+        p_[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
+    }
+}
+#else
 void BrCamMatrixSetupOrtho(float w, float h)
 {
     uint32_t *pCmd;
@@ -401,6 +448,7 @@ void BrCamMatrixSetupOrtho(float w, float h)
     pCmd[0] = 0x01030040u;
     pCmd[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
 }
+#endif
 
 /* ================================================================== */
 /* 2. Display-list segment fixup                                      */
