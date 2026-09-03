@@ -271,7 +271,7 @@ int BrUiDrawIndex_100479D0(const BrScrGlobals *pG, int32_t code,
 /* WHAT IT DOES: advances an animated menu element to its next frame -- swaps
  * in that frame's picture and hands the element the frame's data. An element
  * that is not animated is simply redrawn as it stands. */
-/* @implements 0x10047A10 d3d BrUiStepCode_10047A10 */
+/* port-only body; Glide match is src/core/cpp/0x10040E60.cpp */
 #ifdef BR_MATCHING_BUILD
 typedef struct BrUiMVtbl {
     void *f00, *f04, *f08, *f0C, *f10, *f14;
@@ -332,7 +332,7 @@ int BrUiStepCode_10047A10(BrUiObj *pObj)
 /* WHAT IT DOES: starts a menu element sliding to a new place. It remembers
  * where the element is now and works out how far it must travel per step to
  * arrive in the number of steps asked for. */
-/* @implements 0x10047CB0 d3d BrUiTweenBegin_10047CB0 */
+/* port-only body; Glide match is src/core/cpp/0x10041100.cpp */
 #ifdef BR_MATCHING_BUILD
 typedef struct BrUiTwBegin {
     unsigned char pad00[0x30];
@@ -418,7 +418,7 @@ float BrUiTweenCurve_10047CE0(const BrUiObj *pObj, int32_t n)
 
 /* WHAT IT DOES: snaps a sliding element back to where it started and sets it
  * moving again from there. */
-/* @implements 0x10047D10 d3d BrUiTweenReset_10047D10 */
+/* port-only body; Glide match is src/core/cpp/0x10041160.cpp */
 #ifdef BR_MATCHING_BUILD
 typedef struct BrUiTwReset {
     unsigned char pad00[0x30];
@@ -537,7 +537,7 @@ int BrUiTweenStep_10047D30(BrUiObj *pObj)
  * came back so the page can position everything around it. Every measurement it
  * saves is re-read after the layout call, because laying out can move the row.
  * There is no limit on the text it copies in. */
-/* @implements 0x10047EB0 d3d BrUiItemInit_10047EB0 */
+/* port-only body; Glide match is src/core/cpp/0x10041300.cpp */
 void BrUiItemInit_10047EB0(BrUiObj *pObj, const char *psz, uint32_t nFlags,
                            uint8_t bKind, const int32_t *pSrc)
 {
@@ -643,7 +643,7 @@ void BrUiInit_10047FB0(BrUiObj *pObj, BrPhaseFull *pPhase,
  * flags it either passes the choice to the row's text object -- which is how a
  * typing field takes the keystroke -- ignores it entirely, or asks the row's own
  * handler and reports whether that handler was happy. */
-/* @implements 0x10048010 d3d BrUiEnter_10048010 */
+/* port-only body; Glide match is src/core/cpp/0x10041460.cpp */
 int BrUiEnter_10048010(BrUiObj *pObj)
 {
     uint32_t f;
@@ -670,7 +670,7 @@ int BrUiEnter_10048010(BrUiObj *pObj)
  * exclusive attention -- a name being typed in, for instance -- so the rest of
  * the frame knows to keep out of the way. If the row asking is itself that row,
  * the answer is no and the shared flag is deliberately left as it was. */
-/* @implements 0x10048060 d3d BrUiCheckOther_10048060 */
+/* port-only body; Glide match is src/core/cpp/0x100414B0.cpp */
 int BrUiCheckOther_10048060(BrScrGlobals *pG, const BrUiObj *pObj)
 {
     BrUiObj *pOther = pG->pAA29C0;
@@ -697,7 +697,7 @@ int BrUiCheckOther_10048060(BrScrGlobals *pG, const BrUiObj *pObj)
  * ticks over every sixty milliseconds. Either way it raises the flag that tells
  * the drawing code to move to the next picture, which is what makes the
  * highlighted row pulse. A frame given a duration of zero never elapses. */
-/* @implements 0x100480A0 d3d BrUiTickSteps_100480A0 */
+/* port-only body; Glide match is src/core/cpp/0x100414F0.cpp */
 int BrUiTickSteps_100480A0(BrUiObj *pObj)
 {
     int32_t nNow, nDelta;
@@ -763,7 +763,7 @@ static BrUiObj *BrScrChild(BrUiObj *pObj, int32_t i)
  * -- playing the appropriate click sound first, unless the action is one of two
  * particular ones -- and afterwards ticks any child elements the row owns. If
  * the player is not on it, the element falls back to its resting picture. */
-/* @implements 0x10048180 d3d BrUiFrame_10048180 */
+/* port-only body; Glide match is src/core/cpp/0x100415D0.cpp */
 int BrUiFrame_10048180(BrScrGlobals *pG, BrUiObj *pObj)
 {
     const BrScrUiVtbl *pV;
@@ -960,7 +960,7 @@ void *BrUiPageDelete_100484C0(BrUiPage *pThis, int32_t nFlags)
  * moving past the last row lands on the first and moving above the first lands
  * on the last. When the highlight is already in range it records it on the page
  * without writing the shared position back. */
-/* @implements 0x100484F0 d3d BrUiPageSelect_100484F0 */
+/* port-only body; Glide match is src/core/cpp/0x10041940.cpp */
 int BrUiPageSelect_100484F0(BrScrGlobals *pG, BrUiPage *pThis)
 {
     uint32_t nMod = (uint32_t)pThis->f344;          /* zero-extended */
@@ -987,7 +987,7 @@ int BrUiPageSelect_100484F0(BrScrGlobals *pG, BrUiPage *pThis)
  * a heading. Rows that own children get those ticked too, and moving the
  * highlight onto a new row resets which page of the screen is showing. Any row
  * that reports failure abandons the rest of the page. */
-/* @implements 0x10048530 d3d BrUiPageFrame_10048530 */
+/* port-only body; Glide match is src/core/cpp/0x10041980.cpp */
 int BrUiPageFrame_10048530(BrScrGlobals *pG, BrUiPage *pThis)
 {
     int32_t i;
@@ -1110,7 +1110,7 @@ void *BrPhaseDelete_10048850(BrPhaseFull *pThis, int32_t nFlags)
 /* WHAT IT DOES: tidies a menu screen up by letting go of the two list objects
  * it owns -- the file list and the graphics list a screen may have been given
  * -- and pointing it back at its base behaviours. */
-/* @implements 0x10048870 d3d BrPhaseDtor_10048870 */
+/* port-only body; Glide match is src/core/cpp/0x10041CC0.cpp */
 void BrPhaseDtor_10048870(BrPhaseFull *pThis)
 {
     BrScrRef *pRef;
