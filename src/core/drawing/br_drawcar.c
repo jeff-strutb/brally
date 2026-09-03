@@ -819,6 +819,39 @@ static void wheel_call(unsigned char *car)
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
+ * SESSION 9 (2026-09-03) -- RE-RANKING, no movement (25 masked / 33 raw,
+ * 1,831 vs 1,843 insns, 7,537 vs 7,577 bytes; unchanged from session 8).
+ * ‼ REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
+ * three-float light-direction copy that opens it at orig+0x4cf (that block
+ * is 34 bytes in both builds); it accrues in the stretch BEFORE it.  Split
+ * the 0x3c0..0x4cf window by block and it reads:
+ *     arm 2 tail   orig 0x3c0-0x3ca vs ours 0x39b-0x3a5     0
+ *     ARM 3        orig 0x3ca-0x427 vs ours 0x3a5-0x3ea   -24
+ *     shared tail  orig 0x427-0x4cf vs ours 0x3ea-0x48c    -6
+ * So arm 3 carries four fifths of region 6, and with region 5's -37 (arm 1)
+ * the two colour arms are 61 of this function's 40-byte deficit.  Grind
+ * arm 3, not the float copy -- the T3a note on the copy stands, it is just
+ * not where the bytes are.
+ * WHAT ARM 3 ACTUALLY DIFFERS BY, read instruction for instruction: the
+ * original materialises BOTH byte locals into their slots before colourA
+ * and reads both back with the dword-load + `and 0xff` widening
+ * (`mov [esp+0x31],dl; mov [esp+0x32],cl; mov ecx,[esp+0x32]; mov dh,al;
+ * mov eax,[esp+0x31]; and ecx,0xff; and eax,0xff; or edx,eax`), then does
+ * it a SECOND time for colourB.  We home only one of the two and let VC5
+ * forward the other from its register, so the `top << 8 | pack0` merge
+ * collapses into two byte-lane moves (`mov dh,al; mov dl,al`) instead of
+ * `mov dh,al; or edx,<widened>`.  That single forwarded copy is the whole
+ * -24: it is the same currency as the WORKLIST rows above (orig's 4 extra
+ * `and R,0xff` / 4 extra `or R,R` / 2 extra `shl R,8` / 3 extra
+ * `mov byte [esp+S],B`), so those rows are ONE defect at ONE site, not a
+ * family spread over the function.
+ * SESSION 9 PROBE, DEAD, do not re-run: spelling arm 3's colourA pack terms
+ * with an explicit widening -- `(pack0 & 0xFFu)` / `(pack1 & 0xFFu)` -- is
+ * BYTE-IDENTICAL.  VC5 folds a redundant `& 0xFF` on an already-uint8_t
+ * operand before it chooses the byte lane, so the widening cannot be
+ * requested from the source at this site; what decides it is whether the
+ * value is still live in a register, i.e. the same forwarding question.
+ *
  * WHERE THE 15 MISSING INSTRUCTIONS ARE (2026-09-03, session 7).  The
  * biggest single gap is region 4/5: orig runs 0x327..0x3c0 where we run
  * 0x327..0x39b, 37 bytes short in one block.  Read the two streams and the
