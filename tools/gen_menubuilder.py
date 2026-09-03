@@ -408,7 +408,11 @@ def emit(va, name, stmts, externs, size):
            ' * layouts and the three family levers come from the hand-solved\n'
            ' * 0x100425E0 / 0x10048160 (char bool after the slot store, raw\n'
            ' * float pushes for simple lvalues, w14-then-w344 tails).\n'
-           ' */\n' % (va, name, name, size))
+           ' */\n'
+           '#ifdef BR_MATCHING_BUILD\n'
+           '#define _CRTIMP __declspec(dllimport)\n'
+           '#include <string.h>\n'
+           '#endif\n\n' % (va, name, name, size))
 
     return (hdr + classes + 'typedef int (*CtlFn)(BrCtl *);\n\nextern "C" {\n'
             + '\n'.join(ext)
