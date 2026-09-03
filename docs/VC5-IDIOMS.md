@@ -1942,3 +1942,31 @@ function is otherwise byte-identical and this is the residue, park it.
 This is the third emitter-level residue found in one session, and the
 strongest: the other two are orderings inside an expansion, this is a
 whole optimisation our cl performs and the original's did not.
+
+## Byte stores push narrowing UP the expression — dam it with locals
+*(proven 2026-09-03 on 0x1006D0B0, the bit-stream bit writer)*
+
+When the destination of a compound expression is a single byte, VC5 pushes
+the truncation back up the tree as far as it legally can (through `|`,
+`&`, and `<<`, but not `>>`), and every mask it reaches gets built in 8-bit
+registers — `mov bl,1 / shl bl,cl / dec bl` instead of
+`mov ebx,1 / shl ebx,cl / dec ebx`. Which masks narrow is a source
+decision, and it moves 30+ diffs at a time.
+
+Three dams, each independently load-bearing on that function:
+
+1. **One cast, outermost.** `*p = (unsigned char)((f << sh) | (*p & keep))`
+   — an inner `(unsigned char)` on the field lets the narrowing reach the
+   field mask.
+2. **The byte pointer in its own local.** Writing `pBuf[byteIdx]` on both
+   sides of the statement lets VC5 re-associate
+   `(value & (mask << nbits)) >> nbits` into `(value >> nbits) & mask`,
+   which changes which mask is live and narrows it.
+3. **Each mask that stays 32-bit in the original gets its own
+   `unsigned int` local.** An assignment to a wider local is a barrier the
+   narrowing does not cross; inline, it keeps going.
+
+Counter-pressure: locals are not free. A fourth live local in that loop
+made VC5 set up an ebp frame, and the original is frameless with ebp as a
+general register and a single spill slot. Add dams one at a time and watch
+the prologue.
