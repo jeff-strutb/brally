@@ -171,4 +171,16 @@ while ia < len(A) and ib < len(B):
         break
 
 print(f"\ntotal divergence regions from offset {start_at:#x}: {ndiv}")
-print(f"orig insns: {len(A)}  recomp insns: {len(B)}  orig bytes {len(orig)} recomp {len(recomp)}")
+# The COFF function extent is padded to a 16-byte boundary, so the recompile
+# ends in up to 15 alignment nops that the extracted original does not have.
+# Counting them made three different dossiers record "instruction counts are
+# EQUAL" for functions that were actually 6 and 15 instructions SHORT --
+# report the real code length.
+npad = 0
+while npad < len(B) and B[len(B) - 1 - npad][5] in ('nop', 'int3'):
+    npad += 1
+nB = len(B) - npad
+print(f"orig insns: {len(A)}  recomp insns: {nB}"
+      + (f" (+{npad} pad)" if npad else "")
+      + f"  orig bytes {len(orig)} recomp {len(recomp) - npad}"
+      + (f" (+{npad} pad)" if npad else ""))
