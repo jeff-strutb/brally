@@ -96,6 +96,29 @@ def main():
 
     if args and args[0] == '--list':
         pick = args[1].upper() if len(args) > 1 else 'T1'
+        if pick == 'T1':
+            # T1 is the ONLY tier claim_lane and triage cannot see: it is the
+            # set with no @implements tag at all, so it never reaches
+            # report.csv.  It is also the biggest.  Listed largest-first with
+            # the machine draft's path, because that draft is where the
+            # T1->T2 step in docs/STRUCTURAL-PLAYBOOK.md starts.
+            tagged = set(r['va'].upper() for r in match + diff)
+            rows = [(sz, va) for va, sz in target.items()
+                    if va.upper() not in tagged]
+            rows.sort(reverse=True)
+            for sz, va in rows:
+                draft = os.path.join(ROOT, 'build', 'ghidra_decomp',
+                                     '%s.c' % va.lower())
+                refined = os.path.join(ROOT, 'build', 'ghidra_work',
+                                       '%s.refined.c' % va.lower())
+                if os.path.exists(refined):
+                    d = os.path.relpath(refined, ROOT)
+                elif os.path.exists(draft):
+                    d = os.path.relpath(draft, ROOT)
+                else:
+                    d = 'NO DRAFT'
+                print('%s %7d  %s' % (va, sz, d))
+            return 0
         if pick == 'T3':
             for r, m in sorted(t3, key=lambda x: int(x[0]['orig_size'])):
                 print(r['va'], r['orig_size'], r['name'], 'reggap', m['reg'])
