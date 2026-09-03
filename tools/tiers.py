@@ -121,7 +121,14 @@ def main():
             # report.csv.  It is also the biggest.  Listed largest-first with
             # the machine draft's path, because that draft is where the
             # T1->T2 step in docs/STRUCTURAL-PLAYBOOK.md starts.
-            tagged = set(r['va'].upper() for r in match + diff)
+            # ...and NOT the C++ EH workstream's byte-exact rows.  They carry
+            # no @implements tag either, so `tagged` alone leaves them in the
+            # list: on 2026-09-03 the T1 work list printed 460 rows while the
+            # summary counted 289, and the extra 171 were already byte-exact
+            # in report_cpp.csv (a whole 66-byte BrOpt* family among them).
+            # A finished function offered as the next target is worse than a
+            # wrong count -- it costs a session, not a number.
+            tagged = set(r['va'].upper() for r in match + diff) | cpp_done
             rows = [(sz, va) for va, sz in target.items()
                     if va.upper() not in tagged]
             rows.sort(reverse=True)
