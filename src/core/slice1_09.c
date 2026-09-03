@@ -268,6 +268,20 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 /* @implements 0x10073C90 d3d BrBitStreamReadBits */
 #ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamReadArg;
+/* RESIDUE (12 regnorm, +20 bytes): the original is frameless with ONE stack
+ * local -- `push ecx` for the dead `consumed` counter -- and keeps the
+ * accumulator in eax for the whole loop. Ours allocates TWO slots because it
+ * builds the mask in eax (`mov eax,1; shl; dec; shl`), which evicts the
+ * accumulator; the original builds it in ebp and reads the buffer byte
+ * through ecx. Everything else now lines up: the else-arm is the original's
+ * single `xor <shift>,<shift>`, the buffer byte is read signed, and the
+ * bits-available value shares the take register.
+ *
+ * Probed and dead: swapping the mask and byteIndex statements; folding the
+ * AND into the mask variable (`mask &= byte; v = mask >> shift`); and all
+ * five sweep variants (/O2 wins). The remaining SIB shape --
+ * `[byteIndex + pBuf]` where the original has `[pBuf + byteIndex]` -- is the
+ * known emitter residue, see docs/VC5-IDIOMS.md. */
 unsigned int __fastcall BrBitStreamReadBits(BrBitStream *pBs,
                                             BrBitStreamReadArg nBits)
 {
@@ -278,22 +292,31 @@ unsigned int __fastcall BrBitStreamReadBits(BrBitStream *pBs,
         return 0;
 
     do {
-        int avail = 8 - pBs->readBit;
-        int take, shift;
+        /* ONE variable, not an `avail` and a `take`: the original's
+         * else-arm is the single `xor edi,edi` at 0x1006CEFA, which only
+         * works because the bits-available value is already sitting in the
+         * take register. Two variables cost a copy and a register, and the
+         * register is what pushes the accumulator out of eax into a second
+         * stack slot. */
+        int take = 8 - pBs->readBit;
+        int shift;
         int byteIndex;
         unsigned int mask, v;
 
-        if (avail > nBits.n) {
+        if (take > nBits.n) {
+            shift = take - nBits.n;
             take  = nBits.n;
-            shift = avail - nBits.n;
         } else {
-            take  = avail;
             shift = 0;
         }
 
-        byteIndex = pBs->readByte;
         mask = ((1u << take) - 1u) << shift;
-        v    = (mask & (unsigned int)pBs->pBuf[byteIndex]) >> shift;
+        byteIndex = pBs->readByte;
+        /* `movsx ecx, byte ptr [ecx+ebx]` at 0x1006CF10: the buffer byte is
+         * read SIGNED. slice1_09.h types pBuf unsigned (right for every other
+         * accessor), so the sign is applied here rather than in the header. */
+        v    = (mask & (unsigned int)((const signed char *)pBs->pBuf)[byteIndex])
+               >> shift;
 
         pBs->readBit += take;
         acc = (acc << take) | v;
