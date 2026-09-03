@@ -3760,3 +3760,23 @@ the port needs the guarantee on other targets, put the casts behind
 **Screen** (source-side, one grep over the residue): a `diff` row whose body
 contains `double <name> = (double)`. It is a narrow class — two rows at the
 time of writing — so read the two and move on rather than building a tool.
+
+## The redundant-parenthesis axis has a boundary: redundant CASTS are inert
+*(measured 2026-09-03 on 0x1000A110, alongside the paren entries above)*
+
+A redundant outer parenthesis changes VC5's x87 schedule. A redundant *cast*
+does not: dropping `(uint8_t)` from `(uint8_t)SOME_UINT8_GLOBAL` at six sites
+is BYTE-IDENTICAL. So the paren finding is about how the parser hands VC5 an
+expression TREE, not about redundant syntax in general — do not generalise it
+into "add redundant casts and see".
+
+Two practical consequences:
+- Leave redundant casts alone as well, but for the opposite reason: they cost
+  nothing and tidying them is churn with no upside.
+- When the paren axis is on the table, the screen the second sighting
+  established is worth checking first: **register-blind gap already 0, with
+  the divergence purely in x87 ordering.** On a function whose register-blind
+  gap is still large, the parens move the schedule around without closing
+  anything — measured six ways on 0x1000EAF0's rows, where every variant
+  either broke the batching that spelling had just won or left the gap
+  unchanged.
