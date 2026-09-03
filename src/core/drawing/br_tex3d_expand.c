@@ -88,6 +88,35 @@
  * that channel through `param_9` (the established reuse idiom in this TU)
  * changes nothing measurable -- 32 masked / 44 raw / 2,408 insns and an
  * identical delta map.
+ * 2026-09-03 (session 9): the TU now carries its `@implements` tag, so it
+ * has a `report.csv` row and `tools/fnmatch/fn.py 0x100250D0` scores it in
+ * ~6 s.  Until now this function had NO row and NO tag: the sweep compiled
+ * nothing for it and every measurement had to be a hand-rolled `cl.exe`
+ * line, which is why the state notes above drift in what they quote.  The
+ * tag is a work marker, not a claim -- the row reads `diff` and MATCH is
+ * unchanged at 820/1148.  Re-measured on it: 8,461 vs 8,480 bytes, 2,408 vs
+ * 2,407 instructions, 32 masked / 44 raw regions -- session 8's state
+ * exactly.
+ * Session 9 finding, so nobody grinds the wrong block: REGION 18's -33 IS
+ * NOT A DEFECT.  It is the +38 that regions 14-17 (0xe96-0xf43) accumulated
+ * being handed back; region 18 itself is a one-instruction scheduling notch
+ * -- `inc edi` emitted right after `mov al,[ecx]` where the original sinks
+ * it four instructions later, everything else in the block identical.  With
+ * regions 3/5/9/11 unreliable (session 8) and r15 probed dead, the whole
+ * reliable defect mass is r14-r17.
+ * Session 9 re-framing of the register-blind residue (40 missing / 41 extra,
+ * `tools/msetdiff.py`): it is ONE cause, not the six families the old
+ * "Remaining shape gap" table in docs/idioms-A.md lists.  The original keeps
+ * these values in registers and folds their memory reads into the
+ * arithmetic -- `imul R,[esp+S]` x3, `add R,[esp+S]`, `lea R,[R+R]` x6,
+ * reg-reg `cmp` x4 / `mov` x5 / `xor` x3 / `inc` x3 / `sub` x2 -- while we
+ * spill and reload around them: `mov R,[esp+S]` x8, `mov [esp+S],R` x7,
+ * `mov [esp+S],0` x3, `imul R,R` x3.  The byte-vs-dword nibble rows and the
+ * `movzx W,byte [esp+S]` / `mov byte [esp+S],B` rows are the same story in
+ * the byte slots.  So do not open these as separate levers; they move
+ * together or not at all, and the open mechanism is the one the last line
+ * of docs/idioms-A.md names (orig homes the widened inten BEFORE its first
+ * product, we multiply from the register and home after).
  * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
  * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
  * at once.  Session 4 measured this per pair and in eight combinations;
@@ -124,6 +153,7 @@
 
 unsigned int FUN_100271f0(unsigned short);
 
+/* @implements 0x100250D0 glide BrTex3dExpand */
 void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char *param_4,int param_5,int param_6,
                  int param_7,int param_8,int param_9,int param_10,int param_11,unsigned char param_12,
                  int param_13,unsigned char param_14,unsigned char param_15,unsigned char param_16,unsigned char param_17,unsigned char param_18,
