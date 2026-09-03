@@ -11,12 +11,26 @@ likely one original .c file. We cluster on that, then compute:
     written against already-decompiled dependencies.
 
 Writes config/modules.csv and config/workorder.csv.
+
+Runs against BRGlide.dll (rule 0). It pointed at BRD3D.dll until 2026-09-03,
+which also crashed it: config/shared.csv has no plain `va` column, it has
+`d3d_va` and `glide_va`.  Both are fixed here; `BR_REF` still overrides.
 """
 import sys, os, csv, struct, collections
 sys.path.insert(0, os.path.dirname(__file__))
 import pe as pelib
 
-DLL = 'orig/BRD3D.dll'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DLL = os.environ.get('BR_REF', os.path.join(ROOT, 'orig', 'BRGlide.dll'))
+# Glide's own function map, to match the Glide binary above. functions.csv is
+# the D3D-keyed map: pairing it with these bytes disassembles the wrong bytes
+# at a right-looking address, which is the exact failure rule 0 describes.
+FUNCS = os.environ.get('BR_MAP', os.path.join(ROOT, 'config',
+                                              'functions_glide.csv'))
+
+
+def _p(*a):
+    return os.path.join(ROOT, *a)
 
 
 def call_graph(text, text_va, funcs):
@@ -40,19 +54,26 @@ def call_graph(text, text_va, funcs):
 def main():
     p = pelib.load(DLL)
     text, text_va = p.text()
-    funcs = [(int(r['va'], 16), int(r['size'])) for r in csv.DictReader(open('config/functions.csv'))]
+    funcs = [(int(r['va'], 16), int(r['size']))
+             for r in csv.DictReader(open(FUNCS))]
     funcs.sort()
     sizes = dict(funcs)
     order = [va for va, _ in funcs]
     index = {va: i for i, va in enumerate(order)}
 
+    # shared.csv is keyed d3d_va -> glide_va; we are in GLIDE space here, so
+    # class is looked up by the glide column.
     cls = {}
-    if os.path.exists('config/shared.csv'):
-        for r in csv.DictReader(open('config/shared.csv')):
-            cls[int(r['va'], 16)] = r['class']
+    sh = _p('config', 'shared.csv')
+    if os.path.exists(sh):
+        for r in csv.DictReader(open(sh)):
+            g = (r.get('glide_va') or '').strip()
+            if g:
+                cls[int(g, 16)] = r.get('class', '')
     names = {}
-    if os.path.exists('config/names.csv'):
-        for r in csv.DictReader(open('config/names.csv')):
+    nm = _p('config', 'names.csv')
+    if os.path.exists(nm):
+        for r in csv.DictReader(open(nm)):
             names[int(r['va'], 16)] = r['name']
 
     g = call_graph(text, text_va, funcs)
@@ -107,7 +128,7 @@ def main():
         remaining -= set(ready)
     cyclic = sorted(remaining)
 
-    with open('config/modules.csv', 'w', newline='') as fh:
+    with open(_p('config','modules.csv'), 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['module', 'start', 'end', 'functions', 'bytes', 'shared', 'names'])
         for i, m in enumerate(mods):
@@ -117,7 +138,7 @@ def main():
             w.writerow([i, '0x%08X' % m[0], '0x%08X' % m[-1], len(m), nb, ns,
                         '|'.join(nm)])
 
-    with open('config/workorder.csv', 'w', newline='') as fh:
+    with open(_p('config','workorder.csv'), 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['rank', 'va', 'size', 'class', 'depth', 'callees', 'callers', 'name'])
         for i, va in enumerate(out + cyclic):

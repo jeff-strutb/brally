@@ -95,10 +95,43 @@ yes/no, the first word is yes or no. This is a hard rule, not a style note.
 Wine and MSVC 5.0 are staged inside the tree by `setup.sh`. **Never install to
 the host.**
 
-## 6. File each function into its named module as you match it.
+## 6. A function is not done until it says WHAT IT DOES and lives in its module.
 
-The `sliceN_MM.c` files are unfiled address batches. Move each function to its
-real module when you match it. Never a big-bang reorg later.
+Byte-exactness is proved by the sweep. **Purpose is proved by nobody** — it
+exists only in the head of whoever matched the function, and it is gone the
+moment they stop working. Re-deriving it later costs a full re-trace, without
+the context the first pass had. So a match carries two things beyond its bytes:
+
+**a. A `WHAT IT DOES:` comment, directly above the `@implements` tag.** Plain
+English, what the function is *for* — not what the codegen does, not a restated
+signature. It is written when the function is matched, never "later".
+
+```c
+/* WHAT IT DOES: pick which stored lap-time the next time-caption reads:
+ * 0, 1 or 2 index a times array; 3 means "use the live time instead".
+ * Always reports success.  The four bodies differ only in the value. */
+/* @implements 0x1003A820 glide BrMenuSetAA28D0_0 */
+```
+
+**b. A recorded module, and the code sitting in it.** `sliceN_MM.c` files are
+address batches, not architecture. The module for every matched function is
+recorded once in `config/filing.csv` (`tools/filing.py`) and the code is moved
+there by `tools/refile.py`, which sweep-verifies both files. Never add a new
+`sliceN_MM.c`. Never a big-bang reorg later.
+
+**The gate, and it is not optional:**
+
+```bash
+python3 tools/fileaudit.py        # exit 1 on a stranded, misplaced or undescribed match
+```
+
+It fails on any *increase* in undocumented or unfiled functions, so both
+backlogs can only fall. Lower the baselines in that file as you drain them.
+
+**This rule had no gate until 2026-09-03, and both halves drifted badly**: 570
+of 845 matched C functions were stranded in address batches, and 196 carried no
+description at all. That is the cost of a rule nothing checks — do not let a
+number in that tool go up.
 
 ## 7. Commit every verified match immediately.
 
