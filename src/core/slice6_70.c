@@ -344,7 +344,24 @@ void BrExt_1003C150(void)
  * standalone globals (no BrScreenGet / BrHudGetEnv), sprintf via the IAT
  * (CSE'd into ebp), and `switch (pos - 0)` with the zero live in ebx so
  * 3rd-place leaves nudge at 0. Position is a field at +0xFF8 of the same
- * object as cSplits, not a NULL-checked pointer. */
+ * object as cSplits, not a NULL-checked pointer.
+ *
+ * RESIDUE 25 bytes, T3a, FIRSTDIV +0x220. Size, instruction count and the
+ * register-blind multiset are exact (664/664, REGNORM 0+0) and every register
+ * holds the same value as the original's; the whole gap is HOW THE THREE-TERM
+ * SUM IN EACH BrTextDraw x-argument IS ASSOCIATED, at the two sites below.
+ * The original pairs the two non-x terms first and folds x with the +3 into
+ * the lea:
+ *     add edx,ebx            ; w + nudge          (edx = w, reloaded)
+ *     lea eax,[edx+esi+3]    ; + x + 3            (esi = x)
+ * and, in the other arm, `add edx,edi` (the /3 quotient + w) then
+ * `lea ecx,[edx+esi+3]`. The recompile pairs nudge with x instead
+ * (`add ebx,esi` / `lea eax,[ebx+edx+3]`), which is the same value by a
+ * different grouping. VC5 reassociates the chain unconditionally, so the
+ * SOURCE CANNOT REACH IT: probed and dead, do not re-run -- writing the pair
+ * first (already the case at both sites), hoisting `w + nudge` into a named
+ * int temp, and the in-place `w += nudge;` form that makes w the natural
+ * destination. All three are byte-identical to what is here. */
 typedef struct Br70Race {
     char    _a[0xFA8];
     int32_t cSplits;
