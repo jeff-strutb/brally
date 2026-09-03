@@ -103,10 +103,25 @@ def measure(va, sym, objs):
 def main():
     want = set(a.lower() for a in sys.argv[1:])
     rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
+    # A function already byte-exact in the C++ or EXE workstream still sits as
+    # status=diff here -- 95 of them as of 2026-09-03 -- so ranking report.csv
+    # alone both inflates the denominator and hands closers work that is
+    # already done. claim_lane.py has always filtered these; the ranking it
+    # reads did not. (These C rows are superseded twins and want untagging.)
+    done = set()
+    for alt in ('report_cpp.csv', 'report_exe.csv'):
+        p = os.path.join(ROOT, 'build', 'match', alt)
+        if not os.path.exists(p):
+            continue
+        with open(p) as f:
+            done.update((r.get('va') or '').lower()
+                        for r in csv.DictReader(f) if r.get('status') == 'match')
     rows = []
     with open(rep) as f:
         for r in csv.DictReader(f):
             if r.get('status') != 'diff':
+                continue
+            if r['va'].lower() in done:
                 continue
             if want and r['va'].lower() not in want and r['name'].lower() not in want:
                 continue
