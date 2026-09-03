@@ -612,17 +612,20 @@ BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd)
 {
     int sel = ((int)pCmd->w0 << 16) >> 24;
 
-    /* sar ZF => je sel0 (laid out last).  cmp 3 => je sel3 (before sel0).
-     * Default is the fall-through between the two tests and the arms. */
-    if (sel == 0)
-        goto sel0;
-    if (sel == 3)
-        goto sel3;
-    return pCmd + 1;
-sel3:
-    return BrGbiSet4C1694(pCmd);
-sel0:
-    return BrGbiCall100243D0(pCmd);
+    /* A SWITCH, not a chain of `if (sel == k) return f(pCmd);`. Both read the
+     * same and both emit `je`, but the switch puts the default's `lea eax,
+     * [ecx+8]; ret` between the tests and the two call arms, which is the
+     * original's layout; the if-chain inlines each arm at its test and needs
+     * a `jne` over it. The goto-and-labels spelling this replaced got the
+     * arms to the bottom but not the default into the middle. */
+    switch (sel) {
+    case 0:
+        return BrGbiCall100243D0(pCmd);
+    case 3:
+        return BrGbiSet4C1694(pCmd);
+    default:
+        return pCmd + 1;
+    }
 }
 #else
 BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
