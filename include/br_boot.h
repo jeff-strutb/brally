@@ -215,7 +215,16 @@ typedef struct BrRallyMainOps {
 #define BR_APP_STR_DX_CAPTION 0x126
 #define BR_APP_STR_DX_TEXT    0x128
 
+/* The original takes the four WinMain arguments and calls its platform
+ * directly; the ops table above is the PORT's shape, and it is exactly what
+ * blocked the match (every direct `call rel32` became `call [ops+N]`). The
+ * matching arm below is the original's signature. */
+#ifdef BR_MATCHING_BUILD
+int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
+                    const char *pszCmdLine, int32_t nCmdShow);
+#else
 int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps);
+#endif
 
 /* The four values RallyMain stashed, for the window creation and ShowWindow. */
 const BrBootArgs *BrAppArgs(void);
