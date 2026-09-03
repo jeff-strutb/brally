@@ -407,20 +407,35 @@ void BrDlRebaseWord(uint32_t *pWord, uint32_t lo, uint32_t hi, uint32_t base)
  * points and its textures live -- so that they point at where the data
  * actually is in memory. It stops at the command that ends the list. */
 /* @implements 0x10035089 d3d BrDlRebase */
+/* THREE things are load-bearing here, all visible only at /Od.
+ *
+ * (1) The null test is a WRAPPING if, not an early return: `if (p) { ... }`
+ *     emits the single inverted `je end` the original has, while
+ *     `if (!p) return;` emits `jne over / jmp end`.
+ * (2) The step belongs in the for's THIRD clause.  `for (;; pDl += 2)` puts
+ *     the increment at the TOP of the loop with a `jmp` over it on the first
+ *     pass, which is 1002E744..1002E74C; writing `pDl += 2;` as the last
+ *     statement of the body puts it at the bottom instead.
+ * (3) It is a SWITCH on the EXPRESSION.  The original's compare chain runs
+ *     4, 0xB8, 0xFD -- ASCENDING, with 4 and 0xFD sharing a target -- which
+ *     an if/else chain cannot produce (it would test 4, 0xFD, 0xB8 in source
+ *     order).  Switching on a NAMED local costs a second frame slot, because
+ *     VC5 copies the value into its own switch temp; switching on the
+ *     expression makes that temp the function's only local and restores the
+ *     `push ecx` prologue. */
 void BrDlRebase(uint32_t *pDl, uint32_t lo, uint32_t hi, uint32_t base)
 {
-    if (pDl == NULL)
-        return;
-
-    for (;;) {
-        uint32_t op = (pDl[0] >> 24) & 0xFFu;
-
-        if (op == 0x04u || op == 0xFDu)          /* G_VTX, G_SETTIMG */
-            BrDlRebaseWord(&pDl[1], lo, hi, base);
-        else if (op == 0xB8u)                    /* G_ENDDL          */
-            return;
-
-        pDl += 2;
+    if (pDl != NULL) {
+        for (;; pDl += 2) {
+            switch ((pDl[0] >> 24) & 0xFFu) {
+            case 0x04u:                          /* G_VTX     */
+            case 0xFDu:                          /* G_SETTIMG */
+                BrDlRebaseWord(&pDl[1], lo, hi, base);
+                break;
+            case 0xB8u:                          /* G_ENDDL   */
+                return;
+            }
+        }
     }
 }
 
