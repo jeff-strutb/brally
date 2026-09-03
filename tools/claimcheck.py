@@ -296,6 +296,34 @@ def main():
           "%d address not a function start" % (ok, len(flagged), len(nobody),
                                                len(unknown)))
     print()
+
+    # TWO NAMES ON ONE GLIDE ADDRESS.  A d3d tag resolves through
+    # config/shared.csv onto a Glide VA, so a port body and a real
+    # transcription can both claim it without either looking wrong on its own
+    # line.  Found three times in three days -- 0x1001E080, 0x10059410 and
+    # 0x10031B80 -- and every time the SHORTER body was a fragment or a
+    # port-only stub that also poisoned the size-based screens: 0x10031B80 was
+    # ranked second on the whole factored-helper board at "-1165 bytes short"
+    # while the function it names is size-exact.  image_build.py catches this
+    # too, but only once BOTH rows match, which is far too late.
+    dup = {}
+    rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
+    if os.path.exists(rep):
+        for r in csv.DictReader(open(rep)):
+            if r.get('orig_size'):
+                dup.setdefault(r['va'].upper(), []).append(r)
+        dup = {va: rs for va, rs in dup.items() if len(rs) > 1}
+    if dup:
+        print("‼ TWO NAMES CLAIMING ONE ADDRESS (%d). Untag the one that is a"
+              % len(dup))
+        print("  fragment or a port-only body -- see the note in this file.")
+        for va, rs in sorted(dup.items()):
+            print("  %-12s orig %6s" % (va, rs[0].get('orig_size')))
+            for r in sorted(rs, key=lambda x: -int(x.get('recomp_size') or 0)):
+                print("      %-34s recomp %6s  diffs %-6s %s"
+                      % (r['name'], r.get('recomp_size'), r.get('diffs'),
+                         r['file']))
+        print()
     print("FLAGGED -- the original delegates, the port calls nothing. This is a")
     print("smell, not a verdict: an original whose callees were all inlined into")
     print("the port trips it honestly. Read the bytes before concluding.")
