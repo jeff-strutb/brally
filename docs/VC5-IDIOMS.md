@@ -2754,3 +2754,47 @@ And one frame fact: **two uses of a vector may be ONE stack slot.** 0x100642F0
 writes its sums back into the slot the transform wrote, so it has two 12-byte
 locals and not three; a separate `sum` variable is a third slot and shifts
 every displacement. Count the distinct slots in the original first.
+
+## An accumulated local is not the same expression as a sum
+
+Proven on 0x10054730 (`BrHudLayoutInit`, tail, 13 diffs in one edit).
+
+Two locals hold clamped viewport extents; the epilogue offsets two
+just-computed ints by them and stores all four fields. Written as sums,
+
+    i1a98c = (int)f1a9ac;
+    i1a990 = (int)f1a9b0;
+    i1a994 = dx + i1a98c;      /* WRONG */
+    i1a998 = dy + i1a990;
+
+VC5 stores `i1a990` as soon as `_ftol` returns, which kills eax, so both
+adds accumulate into the *other* operand and the store order comes out
+`i1a990, i1a994, i1a998`:
+
+    mov [esi+0x1A990],eax ; add ebp,edi ; add eax,ebx
+    mov [esi+0x1A994],ebp ; mov [esi+0x1A998],eax
+
+Written as accumulations onto the locals,
+
+    dx += i1a98c;
+    dy += i1a990;
+    i1a994 = dx;
+    i1a998 = dy;
+
+the extents stay live as the destinations, so the adds land the original's
+way round and the `i1a990` store SINKS past both of them:
+
+    add edi,ebp ; add ebx,eax
+    mov [esi+0x1A994],edi ; mov [esi+0x1A990],eax ; mov [esi+0x1A998],ebx
+
+**The tell:** an `add r,r'` whose destination is a value that was live
+*before* the statement (a local, a loop bound, a saved extent) rather than
+the value the statement just produced. Then the source accumulated into
+it. Swapping the operands of the sum does NOT reproduce this — VC5
+canonicalises commutative adds, so `a + b` and `b + a` compile identically
+(checked on four sites in this function). Only the assignment form moves
+it.
+
+Corollary, same function: a `lea r,[base+index]` for a two-register sum
+picks its base by allocation, not by source operand order. Neither
+spelling, nor a read-modify-write, flips it. That one is T3a — park it.
