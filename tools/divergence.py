@@ -16,6 +16,16 @@ Usage:
 separates stack-slot-layout noise from real divergence: run both and the
 difference between the two counts is the layout cascade.
 
+--deltas replaces the per-region listing with one line per region giving how
+far the recompile has drifted behind (negative) or ahead of the original by
+that point, and how much of the drift the PRECEDING stretch added.  That
+per-region CHANGE is the triage number a region count cannot give: on
+0x1000EAF0 it says at a glance that one block loses 56 bytes and the next
+gains 58 back (the x87 scale-block batching), and that another single block
+loses 15 (the ring-index addressing form) -- while the other eighteen
+regions move only a few bytes each.  Start a stalled function here: grind
+the block with the largest |change|, not the first region in the list.
+
 Built and proven on 0x1000EAF0 (br_scenedl.c), 2026-08-24.
 """
 import sys, os
@@ -134,7 +144,10 @@ while ia < len(A) and A[ia][0] < start_at:
 while ib < len(B) and B[ib][0] < start_at:
     ib += 1
 
+DELTAS = '--deltas' in sys.argv
+
 ndiv = 0
+prev_delta = 0
 first_shown = False
 while ia < len(A) and ib < len(B):
     if ieq(A[ia], B[ib]):
@@ -143,14 +156,25 @@ while ia < len(A) and ib < len(B):
     ndiv += 1
     show = nctx if ndiv <= 1 else 6
     lo = max(0, ia - 2)
-    print(f"=== divergence #{ndiv} at orig+{A[ia][0]:#x} recomp+{B[ib][0]:#x} ===")
-    for k in range(lo, ia):
-        print(f"  = {A[k][0]:6x}  {A[k][3]}")
-    for k in range(ia, min(ia + show, len(A))):
-        print(f"  O {A[k][0]:6x}  {A[k][3]}")
-    print("  --")
-    for k in range(ib, min(ib + show, len(B))):
-        print(f"  R {B[k][0]:6x}  {B[k][3]}")
+    if DELTAS:
+        # How far the recompile has drifted BEHIND (negative) or AHEAD of the
+        # original by this point, and how much of that drift the preceding
+        # stretch added.  The per-region CHANGE is the triage number: it says
+        # which single block is losing or gaining the bytes, which the region
+        # count alone cannot.
+        delta = B[ib][0] - A[ia][0]
+        print(f"region {ndiv:2d}  orig+{A[ia][0]:#07x}  recomp+{B[ib][0]:#07x}"
+              f"   delta={delta:+d}  (change {delta - prev_delta:+d})")
+        prev_delta = delta
+    else:
+        print(f"=== divergence #{ndiv} at orig+{A[ia][0]:#x} recomp+{B[ib][0]:#x} ===")
+        for k in range(lo, ia):
+            print(f"  = {A[k][0]:6x}  {A[k][3]}")
+        for k in range(ia, min(ia + show, len(A))):
+            print(f"  O {A[k][0]:6x}  {A[k][3]}")
+        print("  --")
+        for k in range(ib, min(ib + show, len(B))):
+            print(f"  R {B[k][0]:6x}  {B[k][3]}")
     # resync: find next place where 6 consecutive normalized insns match,
     # minimizing da+db so we stay tight
     found = False
