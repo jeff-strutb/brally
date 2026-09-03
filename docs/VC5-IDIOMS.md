@@ -1119,6 +1119,27 @@ the caller AND flipped a helper to match for free.
   neutral or worse. Sweep the associations per row rather than assuming the
   formula is written uniformly — the 64-build sweep there took the function
   from 208 B / 74 insns to exact 206 / 73 and the residue from 26 to 21.
+- **`fild qword` with a zeroed high dword is `(float)(unsigned)`; `fild dword`
+  is signed.** A one-instruction read of the source's signedness, and it is
+  also why the top byte of a packed colour is extracted with a bare `>> 24`
+  and no `& 0xFF` — the mask is redundant only when the value is unsigned, so
+  its absence in the original tells you the same thing twice. Proven
+  0x1001E930.
+- **A `fstp dword [slot]; fld dword [slot]` round-trip straight after a
+  conversion is /Op ROUNDING, not a named source temp.** Under `/O2 /Op` MSVC5
+  rounds to float on every assignment, which produces the store/reload for
+  free; adding a `float t =` to try to reproduce it makes things worse (0
+  diffs without the temp against 119 with it, same function, same flags).
+  Diagnostic pair worth internalising: a MISSING `fstp [esp+S]` / `fld [esp+S]`
+  pair with no EXTRA counterpart usually means you are compiling the wrong
+  VARIANT, not writing the wrong source.
+- **‼ A report.csv row's `opt` column can simply be WRONG, and it will cost
+  you the function.** 0x1001E930 was recorded `O2y`; at /O2 /Oy- the best
+  source form is 105 diffs and at /O2 it is 85, but at **/O2 /Op it is
+  byte-exact**. The sweep picks per function from what it has tried, so a row
+  whose structure you believe is right but which will not close is a reason to
+  compile it under all four variants by hand before concluding anything about
+  the source. This is the fifth-variant problem in a different dress.
 - **‼ PROCESS: judge a change at the TU's OWN compile variant, and against
   the right parent.** Two ways a before/after measurement lies, both hit in
   one session. (1) `fn.py` compiles /O2 only; on an /Od, /Oy- or /Op TU its
