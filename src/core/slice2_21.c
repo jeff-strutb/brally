@@ -725,7 +725,8 @@ static void BrPfxFree(BrPfxPool *pPool, uint16_t *piLink, uint16_t iRec)
  * its own velocity, is carried by the ambient drift, rises slightly, and fades
  * as it ages. Once a particle has faded past a threshold it is returned to the
  * pool and disappears. These ones do not fall -- they have no gravity. */
-/* @implements 0x1003A200 d3d BrPfxUpdateB0 */
+/* port-only body; Glide match is src/core/generated/0x10033880.c
+ * (the original takes no arguments and reaches the pool through globals). */
 void BrPfxUpdateB0(BrPfxPool *pPool, const BrPfxEnv *pEnv)
 {
     float k = pEnv->dt * 0.3f;      /* 0x1008F5C4 */
@@ -762,7 +763,8 @@ void BrPfxUpdateB0(BrPfxPool *pPool, const BrPfxEnv *pEnv)
  * gravity is taken off their vertical speed each frame -- and a particle is
  * dropped either when it fades out or when it is falling fast enough to have
  * clearly gone. */
-/* @implements 0x1003A340 d3d BrPfxUpdateB4AC */
+/* port-only body; the Glide transcription is
+ * src/core/generated/0x100339C0.c (same globals-parameter class). */
 #ifdef BR_MATCHING_BUILD
 /* No parameters: dt, drift, the record array (0x10AC0C48, 32-byte
  * records, 1-based) and the three list heads are globals; the free is
