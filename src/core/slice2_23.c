@@ -1462,7 +1462,7 @@ int32_t BrUiText1003FCB0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: sets the caption of another option row from its own table
  * of names. Which option it is was not established. */
-/* @implements 0x1003FD30 d3d BrUiText1003FD30 */
+/* port-only body; Glide match is src/core/cpp/0x10039270.cpp */
 int32_t BrUiText1003FD30(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC418[pG->gAA2A28]);
@@ -1475,7 +1475,7 @@ int32_t BrUiText1003FDA0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: sets the caption of another option row from its own table
  * of names. Which option it is was not established. */
-/* @implements 0x1003FE10 d3d BrUiText1003FE10 */
+/* port-only body; Glide match is src/core/cpp/0x10039350.cpp */
 int32_t BrUiText1003FE10(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC410[pG->gAA2A24]);
@@ -1511,7 +1511,7 @@ int32_t BrUiText1003FE80(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: sets the caption of another option row from its own table
  * of names. Which option it is was not established. */
-/* @implements 0x1003FFD0 d3d BrUiText1003FFD0 */
+/* port-only body; Glide match is src/core/cpp/0x10039510.cpp */
 int32_t BrUiText1003FFD0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_text_id(pObj, pG, pG->tAC3E0[pG->gAA2A0C]);
