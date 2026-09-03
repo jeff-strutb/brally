@@ -54,9 +54,9 @@ def arg(tok):
     m = re.match(r'^\*\(int \*\)\(iVar\d+ \+ (0x33[8c])\)$', tok)
     if m:
         return 'cont->f%s' % m.group(1)[2:].upper()
-    m = re.match(r'^\*\(float \*\)\(iVar\d+ \+ 0x33c\) - _(DAT_[0-9a-f]+)$', tok)
+    m = re.match(r'^\*\(float \*\)\(iVar\d+ \+ (0x33[8c])\) - _(DAT_[0-9a-f]+)$', tok)
     if m:
-        return 'cont->f33C - %s' % m.group(1)
+        return 'cont->f%s - %s' % (m.group(1)[2:].upper(), m.group(2))
     if tok == '0':
         return '0'
     if tok == '0xffffffff':
@@ -221,10 +221,24 @@ def parse(va):
         if m:
             externs.add(m.group(1))
             stmts.append(('raw', '%s();' % m.group(1))); continue
-        m = re.match(r'^(g_\w+) = piVar\d+;$', l)
+        m = re.match(r'^((?:g_|DAT_)\w+) = piVar\d+;$', l)
         if m:
             externs.add('*' + m.group(1))
             stmts.append(('raw', '%s = p;' % m.group(1))); continue
+        m = re.match(r'^(g_\w+) = (\d+|0x[0-9a-f]+);$', l)
+        if m:
+            externs.add('#' + m.group(1))
+            stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
+        m = re.match(r'^(g_\w+) = (g_\w+|DAT_\w+);$', l)
+        if m:
+            externs.add('#' + m.group(1)); externs.add('#' + m.group(2))
+            stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
+        m = re.match(r'^\*\(funcptr \*\)\(iVar\d+ \+ (4|8|0xc)\) = (\w+);$', l)
+        if m:
+            externs.add(m.group(2))
+            fld = {'4': 'pfnA', '8': 'pfnB', '0xc': 'pfnC'}[m.group(1)]
+            stmts.append(('raw', 'cont->%s = (int (*)(void))%s;'
+                          % (fld, m.group(2)))); continue
 
         sys.exit('gen_menubuilder: unrecognised draft line -- read the asm for\n'
                  'this one instead of trusting the draft:\n    %s' % l)
