@@ -359,14 +359,16 @@ BrGfxWords *BrGbiDList(BrGfxWords *pCmd)
          * then stores anyway, so slot 9 is written and reported both.
          * Orig calls exit() through the IAT, not a local helper.
          * `inc eax` not `lea ecx,[eax+1]`: increment the loaded counter. */
-        n = DAT_105ccfe8;
-        n++;
+        /* Every use reads the COUNTER GLOBAL, and only the guard's `+ 1` is
+         * named. Caching it in a local (`n = g; n++; ... n = g;`) makes VC5
+         * hold the loaded value across the guard -- `lea ecx,[eax+1]` where
+         * the original destroys it with `inc eax` and reloads after the
+         * exit call, which the call forces anyway. */
+        n = DAT_105ccfe8 + 1;
         if (n == 10)
             exit(1);
-        n = DAT_105ccfe8;
-        DAT_105ce2e8[n] = (int)(pCmd + 1);
-        n++;
-        DAT_105ccfe8 = n;
+        DAT_105ce2e8[DAT_105ccfe8] = (int)(pCmd + 1);
+        DAT_105ccfe8 = DAT_105ccfe8 + 1;
     }
     return (BrGfxWords *)(uintptr_t)pCmd->w1;
 }
