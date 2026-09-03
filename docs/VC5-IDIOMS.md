@@ -2325,3 +2325,45 @@ frame 4 bytes smaller -> you typed a float local as int.** The reverse
 pairing means the opposite. Check this before assuming a dword-pun
 spelling is needed: here the pun was wrong and honest float typing was
 right, even though every instruction involved is an integer `mov`.
+
+## The port's ops/host-hook table is a CAUSE class, worth a screen
+*(proven 2026-09-03 on 0x1001CC00 BrRallyMain -- byte-exact first compile --
+and 0x1001D8A0 BrDxDetect -- 826 diffs to 19)*
+
+Several early modules were written with a dependency-injection seam: a
+`BrXxxOps` / `BrXxxHost` struct of function pointers plus a `pUser`/`pCtx`
+handed to every callee, and often a null-check preamble in front of it. The
+original calls its platform DIRECTLY, so every one of those becomes
+`call dword ptr [ops+N]` with an extra argument pushed, and the function
+cannot match no matter what else is right. On BrRallyMain that alone was the
+entire 116-instruction register-blind gap.
+
+**Screen for it, don't discover it per function:**
+
+    awk -F, 'NR>1 && $4=="diff" {print $1}' build/match/report.csv | sort -u |
+      while read f; do n=$(grep -c 'p\(Ops\|H\|Host\)->pfn' "$f"); \
+      [ "$n" -gt 3 ] && echo "$n $f"; done | sort -rn
+
+As of 2026-09-03 that names nine files; br_boot.c and br_dxver.c are done,
+and br_uiboot.c (23), br_window.c (16), br_mainloop.c (6), br_strres.c (6),
+br_texinit.c (5), slice4_52.c (32) and slice1_06.c (4) are open.
+
+**The fix is mechanical, and it does NOT touch the port arm:**
+
+1. `#ifdef BR_MATCHING_BUILD` a second definition with the ORIGINAL's
+   signature; the existing one becomes the `#else`. Guard the prototype in
+   the header the same way -- that is the only header edit needed.
+2. Declare the callees LOCALLY inside the matching arm rather than including
+   their headers, because those headers carry the port's ops signatures too.
+   Reloc-masking means the names are free; the SHAPE is what must be right.
+3. Win32 imports need `__declspec(dllimport) <ret> __stdcall` to produce
+   `call dword ptr [__imp__...]`; a plain extern gives a linker thunk
+   (`call rel32`) instead. The convention is already used in slice1_01.c.
+4. COM sends want a padded vtable struct so the member offsets land where
+   the original's `call [ecx+N]` says. Only name the slots you send to; fill
+   the gaps with `void *apfnXX[n]` and check the arithmetic.
+5. A `__thiscall` callee with stack arguments is spelled `__fastcall` with
+   EVERY stack argument in a one-member struct -- see the entry above.
+
+Cost on the two done so far: about 40 minutes each, one of them byte-exact
+on the first compile.
