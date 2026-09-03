@@ -462,6 +462,17 @@ extern void BrSub10002760(void);
 extern void BrSub100325B0(int32_t a);
 extern void BrSub10002830(void);
 
+/* RESIDUE (+17 bytes, +10 insns, 11+1 register-blind): ours emits the
+ * DefWindowProcA tail THREE times where the original emits it twice. The
+ * original places the shared copy immediately after case 2, which case 2
+ * falls into and which the dispatch default and the 0x3B9 arm both jump
+ * BACK to (`jne 0x100195ac`); ours puts default's own copy at the end and
+ * reaches it with a `je` around it. DEAD PROBES, none of which moved the
+ * placement: putting `default:` (with the label and the return on it)
+ * textually between case 2 and case 6 so case 2 falls through, and leaving
+ * `default: goto defwnd;` with the label after the switch. VC5 orders the
+ * arms itself and places default last regardless of source position; this
+ * is block layout, not source shape. */
 /* @implements 0x100194C0 glide BrWndProc */
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
@@ -505,8 +516,13 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         PostQuitMessage(0);
         goto defwnd;
     case 6:
+        /* `goto defwnd`, NOT its own `return DefWindowProcA(...)`. VC5
+         * tail-duplicates the shared block here either way, but written
+         * inline the front end has already folded uMsg to the constant and
+         * emits `push 6`; reached by the goto it copies the generic block
+         * and emits `push esi`, which is what the original has. */
         BrOnActivate(wParam);
-        return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+        goto defwnd;
     case 0x1C:
         return BrOnActivateApp(hWnd, wParam, lParam);
     case 0x20:
