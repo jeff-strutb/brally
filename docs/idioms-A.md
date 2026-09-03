@@ -278,6 +278,62 @@ insns 2406 -> 2415, bytes 8416 -> 8464 (orig 8480). Commits d6b63e2, 354c0e5,
   packing order; same lifetime-driven packer as 0x1000EAF0, see VC5-IDIOMS
   sixth-pass entry).
 
+## Session 5 (2026-09-03) — five negatives, no movement (32 masked / 45 raw)
+
+State re-measured unchanged from session 4: 32 masked regions, 45 raw,
+2415 insns vs 2407, 8464 B vs 8480. All 32 regions sit between +0x2b and
++0x15b8; the trailing ~2.7 KB (0x15b8-0x2120) is already byte-exact.
+
+**Mapping recomp offsets to source lines: use `/FAcs`.** One compile of the
+TU with `/FAcs /Fa<name>.cod` emits an assembly listing with the source line
+interleaved and the same function-relative offsets `divergence.py` prints, so
+a region address becomes a source line by `grep`. Do this FIRST on any region
+whose owning statement is not obvious — it is one compile and it removes all
+guessing about which of the nine near-identical arms a region belongs to.
+
+MEASURED NEGATIVES this session — all byte-identical to base unless noted,
+**do not re-run**:
+
+- **`&` operand order in the mask tests** (region 2, orig+0x6ee, source line
+  348): `(local_3c & param_22)` -> `(param_22 & local_3c)`. Byte-identical.
+  The `test` instruction's rm/reg roles come from register assignment, not
+  from source operand order; VC5 canonicalises commutative integer operands.
+  The real cause at +0x6ee is that ours loads param_22 into eax before
+  param_4, which occupies the register orig uses for the `xor eax,eax` zero
+  of `local_54` (orig: `mov edx,param_4; xor eax,eax; ...; mov edx,param_22;
+  test ecx,edx; mov [local_54],eax`; ours emits the 8-byte immediate store
+  `mov dword ptr [local_54],0` instead because eax is busy).
+- **`|` operand order in the nibble merge** (region 5, orig+0x8c1, line 375):
+  `bVar11 << 4 | bVar11 & 0xf` -> `bVar11 & 0xf | bVar11 << 4`, tried at the
+  one site, at all three blend sites, and at all five `bVar11` merge sites.
+  Byte-identical every time. Orig does `mov dl,al; and al,0xf; shl dl,4;
+  or dl,al` (the AND stays on the ORIGINAL register, the copy gets the
+  shift); ours does `shl al,4; and dl,0xf`. Which subexpression keeps the
+  original register is not source-order-selectable.
+- **Sink order at +0x2b** (region 1): swapping `cbMax = param_2; puVar21 =
+  param_1;` to the other order is byte-identical. Ours emits the two loads in
+  ASCENDING slot order ([esp+0x7c] then [esp+0x80]); orig emits descending.
+  Confirms the session-4 note "not source order, not declaration order".
+  The same load-order reversal recurs at the group-loop guards (region 8,
+  orig+0x9f8: orig loads the bound then the counter, ours the counter then
+  the bound) — one mechanism, not two.
+- **The named "next concrete lever" (widened `uVar19 = bI4inten` in ONE blend
+  body, line 375) now BREAKS THE FRAME.** Post-session-4 it is a regression,
+  not the +5-insn cost measured in session 3: masked regions 32 -> 41, bytes
+  8464 -> 8688, and the first divergence collapses from +0x2b to +0x0 (the
+  prologue's `sub esp,N`). Raw regions read 18 (down from 45) only because a
+  broken frame changes the resync alignment — do not read that as progress.
+  **Strike this lever from the worklist**; the session-3 measurement does not
+  survive the session-4 tree.
+
+Still open, in address order: +0x2b sink load order; +0x6ee CI8 row-head zero
+(a register-availability consequence of the load order above, not an
+independent defect); +0x846-0x15b8 the blend arms, where orig's frame has the
+two byte slots 0x12/0x13 we render as one dword and orig homes the widened
+inten BEFORE its first product (`mov [esp+0x38],edx; imul edx,[esp+0x2c]`
+with the delta in memory) where ours multiplies from the register and homes
+after.
+
 ## N64 twin: none
 
 TGR N64 has no BrTex3dExpand ancestor (PC-side TMEM-replacement code, no
