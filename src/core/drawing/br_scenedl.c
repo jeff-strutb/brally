@@ -36,6 +36,44 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * ELEVENTH PASS (2026-09-03) closed no region but SETTLED both remaining
+ * "shape" walls by reading the original harder, and it retires the framing
+ * the tenth pass left behind:
+ *   ‼ WALL 4 IS PER-ARM IN THE ORIGINAL, and that is the whole story.
+ *   Grep the original for the two ring globals and the split is flat:
+ *     if-arm  0x1c96..0x1e63 -- `lea edx,[ecx*4]` materialised once, then
+ *             EIGHT `[edx + 0x1035faf0]` / `[edx + 0x1035f750]` sites
+ *     else-arm 0x1e75..0x1f08 -- FIVE sites, all folded `[ecx*4 + abs]`,
+ *             i.e. byte-identical to what we already emit
+ *   The original therefore spells the two arms the SAME way and VC5 picked
+ *   different addressing per arm on local pressure.  The dossier's "separate
+ *   `rb2 = ring * 4`, 17 uses" probe was converting BOTH arms, which cannot
+ *   be right at any spelling.  Re-probed this pass on the IF-ARM ALONE
+ *   (`rbo = ring * 4` declared with the other locals, all eight if-arm sites
+ *   through `*(int *)((char *)base + rbo)`, else-arm untouched): still folds
+ *   to `mov eax,[ecx*4]`, and costs 5 bytes elsewhere (-16 -> -21, 2322 ->
+ *   2321 insns).  DEAD -- do not re-run either half.
+ *   ‼ THREE OF THE SIX MISSING INSTRUCTIONS ARE DOWNSTREAM OF WALL 4, not
+ *   independent defects.  With edx pinned to ring*4 the original is a
+ *   register short across the h1 test, so it memory-homes `pDst` in BOTH
+ *   arms (`mov [esp+0x20],ebx` at 0x1cba and 0x1cc5) and reloads it at
+ *   0x1d00 (`mov edi,[esp+0x20]`) to form `slot`.  We keep pDst in edi and
+ *   emit none of the three.  Those are exactly the msetdiff rows
+ *   `mov dword ptr [esp+S], R` x2 and `mov R, dword ptr [esp+S]` x1 -- so do
+ *   NOT hunt them as a separate missing-store defect.  Region 20's -13 bytes
+ *   is this same spill, not the `[edx+A]` encodings (ours are one byte
+ *   LARGER per site: 7-byte SIB vs the original's 6-byte base+disp32).
+ *   ‼ WALL 2 IS NOT THE HELPER BOUNDARY.  The tenth pass recorded that the
+ *   original's 8|4 batching "is exactly that call boundary".  It is not:
+ *   replacing BrRowScale8+BrRowScale4 with twelve flat `OUTM(k) = scale *
+ *   VIEWS(k)` statements emits the IDENTICAL five-deep preload (five
+ *   `fld [esp+0x10]`, `fxch st(4)`, ...), so the split is 5|7 with or
+ *   without the helpers and grouping does not address it.  Also ruled out
+ *   this pass: an x87 stack leak.  Simulating depth over both streams shows
+ *   both enter the block at depth 0 (the preceding `fstp` of OUTM(15)
+ *   drains), so the 5-vs-8 preload is a scheduler constant with the same
+ *   pipeline shape (3 in flight, fxch/fmul/fstp identical modulo the depth
+ *   offset), not a pressure difference we can create.  DEAD.
  * TENTH PASS (2026-09-03) added `divergence.py --deltas`, and it re-ranks
  * this function's twenty regions once and for all.  Byte drift per region:
  *   r4  (0xf2a, scale block)   -56, and r5 gives +58 straight back
