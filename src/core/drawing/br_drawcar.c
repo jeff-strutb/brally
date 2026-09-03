@@ -786,6 +786,29 @@ static void wheel_call(unsigned char *car)
  * same currency as the 0x31/0x32 byte-slot gap in the frame census above --
  * likely one defect, not two.
  *
+ * SESSION 8 (2026-09-03): TWO OF THE FIFTEEN ARE BANKED, region 30 -> 29,
+ * 1,828 -> 1,831 instructions, 56 -> 48 bytes short.  `--deltas` says this
+ * function's drift is honest (no SUSPECT resyncs) and concentrated in two
+ * blocks: region 5 -37 (the colour-arm cross-jump below) and region 6 -30;
+ * every other region moves 0..5 bytes except region 21's +15.
+ * A whole-function PUSH CENSUS is what found the closed one, and it is a
+ * cheap triage worth repeating on any emit-heavy function: group the pushes
+ * by the call that consumes them and compare the counts per call.  Orig and
+ * ours had the same 34 call groups and identical register-push totals, and
+ * exactly ONE group differed -- the model-DL hook, orig 4 pushes to our 2.
+ * The fix is the branch-selected-emit lever again: the CALL belongs inside
+ * each of the four arms, not one call on a selected `dlSel`.  Written that
+ * way the block is instruction-for-instruction and register-for-register the
+ * original, first arm's private `push eax; push ecx; jmp` included.
+ * ‼ STILL OPEN from the same census, and NOT the same defect: the literal
+ * pushes do not balance -- orig pushes `0x3e9` 21 times to our 20 and
+ * `0x3f4` twice to our once, while we push the zero register (ebp) twice
+ * more than orig.  Register-push totals are equal, so somewhere two emit
+ * arguments that should be those two DL tokens are being passed as 0.  That
+ * is a constant defect of the ring-wrap kind (invisible to divergence.py,
+ * which wildcards imm32) and it is worth finding: re-run the census after
+ * any change here.
+ *
  * WHERE THE 15 MISSING INSTRUCTIONS ARE (2026-09-03, session 7).  The
  * biggest single gap is region 4/5: orig runs 0x327..0x3c0 where we run
  * 0x327..0x39b, 37 bytes short in one block.  Read the two streams and the
@@ -1315,27 +1338,37 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             float fe68 = *(const float *)(car + BR_CAR_OFF_F0E68);
             uint32_t auxFlags =
                 *(const uint32_t *)(*(void *const *)(car + BR_CAR_OFF_U29C0));
-            uint32_t dlSel;
-            if (auxFlags & 0xC0000u) {
-                dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x90)
-                    : *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x88);
-            } else {
-                dlSel = !(fe68 >= 0.0f)
-                    ? *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8C)
-                    : *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x84);
-            }
-            /* Orig calls the hook UNCONDITIONALLY and reads dlBase (model+0x80)
+            /* The CALL lives inside each of the four arms -- there is no
+             * `dlSel` variable.  That is what puts the whole two-argument
+             * setup in the first arm (`mov eax,[ecx+0x90]; mov ecx,[ecx+0x80];
+             * push eax; push ecx; jmp`) and lets VC5 cross-jump only the other
+             * three, which is exactly the original's block layout; selecting
+             * into one variable and calling once gives a single shared push
+             * pair and loses two instructions.  Same lever as the branch-
+             * selected DL emits (docs/VC5-IDIOMS.md).
+             * Orig calls the hook UNCONDITIONALLY and reads dlBase (model+0x80)
              * at the call site, not hoisted -- the null-check was a port-safety
              * addition the original never had. */
 #ifdef BR_MATCHING_BUILD
-            g_BrDrawModelDlHook(
-                *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), dlSel);
+#define BR_DLHOOK(sel) g_BrDrawModelDlHook( \
+                *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), (sel))
 #else
-            if (g_BrDrawModelDlHook)
-                g_BrDrawModelDlHook(
-                    *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), dlSel);
+#define BR_DLHOOK(sel) do { if (g_BrDrawModelDlHook) g_BrDrawModelDlHook( \
+                *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), (sel)); \
+            } while (0)
 #endif
+            if (auxFlags & 0xC0000u) {
+                if (!(fe68 >= 0.0f))
+                    BR_DLHOOK(*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x90));
+                else
+                    BR_DLHOOK(*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x88));
+            } else {
+                if (!(fe68 >= 0.0f))
+                    BR_DLHOOK(*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x8C));
+                else
+                    BR_DLHOOK(*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x84));
+            }
+#undef BR_DLHOOK
         }
     }
 
