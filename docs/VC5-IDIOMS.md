@@ -3112,9 +3112,21 @@ lane.** Ranked list, EH rows excluded:
         if r['status']!='diff' or not os.path.exists(r['file']) or eh(r['va']): continue
         o=int(r['orig_size']); c=int(r['recomp_size'] or 0)
         if o<150 or c==0 or c/o>0.85: continue
+        # Do NOT hand-match in C what the C++ lane already owns: a row with a
+        # src/core/cpp/<VA>.cpp is a solved-twice duplicate (see
+        # tools/cpp_twin_retire.py), and its C tag is dead weight on this
+        # screen. 4 rows / 1,782 B were exactly this on 2026-09-03.
+        if os.path.exists('src/core/cpp/%s.cpp'%r['va']): continue
         if re.search(r'^static\s', open(r['file']).read(), re.M):
             print('%5d short  %-30s %s  %s'%(o-c,r['name'],r['va'],r['file']))
     PY
+
+**Two screens to run before taking a row off this list**, both learned the
+hard way: the EH test above (a `64 A1 ... 6A FF` prologue is C++, not C), and
+the C++-duplicate test in the snippet. And check the row's TWIN: 0x1003A2B0
+has no `.cpp` of its own but is instruction-for-instruction the same function
+as 0x1003A140, which does — matching one in C while the other goes to C++ is
+work done twice and the C tag gets retired anyway.
 
 As of 2026-09-03, with the corrected EH test: **27 rows, 9,085 bytes short.**
 Worst are BrRaceGateStep (-1962), BrTextEmitString (-1162) and
