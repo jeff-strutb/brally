@@ -1130,6 +1130,10 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * into a staging buffer so the texture cache can be offered them later. It
  * records the size the command asked for even though the copy itself is
  * clamped to the buffer, which the original was not. */
+/* RESIDUE (46 masked diffs, T3a, REGNORM 0+0, one byte SHORT): the two
+ * command words are homed in each other's registers, and ours puts the
+ * one that gets the short `and eax,imm32` encoding on the other side.
+ * Every instruction is the original's. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
 #ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
