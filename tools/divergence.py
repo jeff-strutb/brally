@@ -163,8 +163,7 @@ while ia < len(A) and ib < len(B):
         # which single block is losing or gaining the bytes, which the region
         # count alone cannot.
         delta = B[ib][0] - A[ia][0]
-        print(f"region {ndiv:2d}  orig+{A[ia][0]:#07x}  recomp+{B[ib][0]:#07x}"
-              f"   delta={delta:+d}  (change {delta - prev_delta:+d})")
+        pending_delta = (ndiv, A[ia][0], B[ib][0], delta, delta - prev_delta)
         prev_delta = delta
     else:
         print(f"=== divergence #{ndiv} at orig+{A[ia][0]:#x} recomp+{B[ib][0]:#x} ===")
@@ -188,9 +187,26 @@ while ia < len(A) and ib < len(B):
                 break
         if best: break
     if best:
+        # A resync that skips very different numbers of instructions on the
+        # two sides has probably locked onto the WRONG copy of a repeated
+        # arm -- these functions are full of near-identical blocks, and the
+        # six-instruction key is not unique.  The drift it reports is then
+        # an artefact, usually visible as a large change immediately undone
+        # by a near-equal opposite one.  Say so rather than let it be read
+        # as a real block.
+        skew = abs(best[0] - best[1])
+        if DELTAS:
+            n, oa, rb, d, ch = pending_delta
+            warn = f"  <-- SUSPECT: resync skew {best[0]}/{best[1]} insns" if skew > 20 else ""
+            print(f"region {n:2d}  orig+{oa:#07x}  recomp+{rb:#07x}"
+                  f"   delta={d:+d}  (change {ch:+d}){warn}")
         ia += best[0]; ib += best[1]
         found = True
     if not found:
+        if DELTAS:
+            n, oa, rb, d, ch = pending_delta
+            print(f"region {n:2d}  orig+{oa:#07x}  recomp+{rb:#07x}"
+                  f"   delta={d:+d}  (change {ch:+d})")
         print(f"  ... lost sync at orig+{A[ia][0]:#x}")
         break
 
