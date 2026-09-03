@@ -2479,3 +2479,52 @@ Pair this with "do not cache what the original re-reads": both say the same
 thing from opposite sides. **Load placement is VC5's decision, not the
 source's.** Only name a value when the ORIGINAL keeps it in a register
 across something that would otherwise clobber it.
+
+## Screen the ORIGINAL bytes before believing the report's size column
+*(three distinct bookkeeping faults found 2026-09-03, all in one pass)*
+
+`report.csv` scores whatever C function carries the `@implements` tag against
+the original at that address. Nothing checks that the pairing is sane, so a
+wrong tag reads as an enormous, attractive gap. Three failure modes, each with
+its own one-line screen:
+
+**1. FALSE TWIN in `config/shared.csv`.** A `d3d` tag resolves to a Glide
+address through shared.csv, and the pairing can simply be wrong. Found on
+0x1001BAE0/0x1001E080: the D3D function is 26 bytes (two pointer stores and
+`mov eax,1`), the Glide one is 173 bytes of 3dfx bring-up. Same renderer slot,
+different code. **Screen: disassemble BOTH binaries at BOTH addresses and
+compare sizes** — `BR_REF=orig/BRD3D.dll python3 tools/dumpasm.py <d3dVA>`.
+Equal sizes means a real twin; wildly unequal means the pairing is false and
+the tag should be `@d3donly`.
+
+**2. THE TAG IS ON THE FORWARDER.** The tree sometimes has two C definitions
+for one address: a short alias and the real body somewhere else. When the tag
+sits on the alias, the report scores 32 bytes against 363 and the real
+transcription is invisible to triage. Found on 0x100695D0. **Screen: any
+tagged-diff row whose recomp is under a quarter of the original —
+`awk -F, 'NR>1&&$4=="diff"&&$7>0&&$6>200&&$7/$6<0.25' build/match/report.csv`.**
+Move the tag to the body; leave the alias untagged.
+
+**3. …BUT SOMETIMES THE IMAGE REALLY DOES HOLD TWO COPIES.** Same screen, the
+opposite conclusion: 0x1003CDA0 is 212 bytes in BOTH binaries and the "owner"
+elsewhere in the tree is the same code again — two copies the linker did not
+fold, not a forwarder and an owner. Writing the body out at this address, with
+the DirectPlay vtable send and the KERNEL32 imports the original uses instead
+of the port's struct of function pointers, was byte-exact on the first
+compile. The distinction between (2) and (3) is decided by the ORIGINAL's size
+at the address, never by the tree's own comments.
+
+## The EH screen belongs in triage, not in your head
+*(added to tools/fnmatch/triage.py 2026-09-03)*
+
+`push -1 / push <handler> / mov eax,fs:[0]` is MSVC's `__try` prologue and no
+C source emits it. The playbook has always said to check it by hand before
+accepting a target; nobody did, and **41 tagged-diff rows / 37,677 bytes were
+sitting in the ranking**, most of them reading `MISSING CODE (2% complete)`
+because the port stands them in with a forwarder — which is exactly the
+profile of an easy win. Twelve of them are one 201-byte family.
+
+`triage.py` now reads the first two bytes of `build/match/orig/<VA>.bin` and
+ranks any `6A FF` as `C++ EH FRAME - not reachable from C`, below the coloring
+walls, so `claim_lane.py` hands them out last. They belong to the C++ EH
+workstream ([[cxx-eh-frame-wall]]), not to the C lane.
