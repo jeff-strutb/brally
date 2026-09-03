@@ -2855,3 +2855,29 @@ and slice2_17.c (43, 8) worst.
   0x1006D850 `pSrc->vel.x * dt` and `dt * pSrc->vel.x` compile to
   byte-identical output, so VC5 canonicalises that case and the order is not
   source-reachable. Check which side is a local before spending probes.
+
+## `x <<= k` fuses with a preceding right shift; `x = x * (1<<k)` does not
+
+Proven on 0x100239C0 (`BrGbiMoveWord`, 187 B, byte-exact — it was the whole
+residue, two bytes in each of two arms).
+
+    slot = off >> 5;
+    slot <<= 4;                 /* WRONG: shr eax,1 ; and eax,0x7FFFFFF0 */
+    slot = slot * 16;           /* RIGHT: shr eax,5 ; shl eax,4          */
+
+VC5's peephole rewrites an unsigned `>> a` followed by `<< b` (a > b) into
+one `shr a-b` plus a mask, because both are shifts on the same value. Write
+the scale as a MULTIPLY and the peephole does not fire — the two operations
+stay as the original emits them. The values are identical, so no test tells
+them apart; only the bytes do.
+
+**The tell:** the original has an adjacent `shr r,a` / `shl r,b` pair
+(`C1 E8 aa C1 E0 bb`) where ours has `shr r,a-b` and an `and r,imm32`.
+Whenever a shifted index is then scaled to an element size, try the
+multiply spelling first — a scale to an element size is what the source
+almost always said.
+
+**Not the lever:** indexing a 16-byte element type (`arr[slot].b[0]`) is
+much worse — it hoists the scale out of the if/else arms and rewrites the
+prologue (75 -> 101 diffs). Nor do `(off >> 5) << 4` as one expression, or
+`off / 32u` for the shift, change anything.
