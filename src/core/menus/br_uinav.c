@@ -944,7 +944,6 @@ static void      NavV_phase1C(BrPhase_ *p)
     BrUiNavPhaseRelease_10048AA0(g_pBrUiNav, p);
 }
 
-/* @n64 0x80211194 located */
 void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
 {
     pVtbl->f04 = NavV_f04;
@@ -1002,6 +1001,7 @@ void BrUiNavSetActivate(BrUiNav *pNav, int fDown)
     pNav->pActive->a5 = fDown ? 1 : 0;
 }
 
+/* @n64 0x8026B9F0 located */
 int BrUiNavSelection(const BrUiNav *pNav)
 {
     return (int)(int16_t)pNav->pG->wAA286C;

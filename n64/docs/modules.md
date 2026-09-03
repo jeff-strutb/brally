@@ -14,21 +14,21 @@ not prove; they are never counted as confirmed.
 
 | module | what it is | fns | bytes | of .text | confirmed | byte-exact |
 |---|---|---:|---:|---:|---:|---:|
-| `(unidentified)` | — | 659 | 440,496 | 96.31% | 0 | 0 |
-| `unfiled` | located, but its PC twin still lives in an unfiled address batch (a sliceN file) rather than a named module | 111 | 9,092 | 1.99% | 111 | 10 |
-| `geometry` | vector, matrix and quaternion math | 37 | 4,636 | 1.01% | 24 | 8 |
-| `startup` | boot, init and the main loop | 30 | 1,172 | 0.26% | 16 | 0 |
-| `audio` | music and sound-effect mixing, sequencing, output | 13 | 576 | 0.13% | 13 | 2 |
-| `drawing` | display-list building, sprites, fonts, image blitting | 12 | 528 | 0.12% | 12 | 1 |
-| `racing` | race state machine, laps, gates, timing, results | 8 | 360 | 0.08% | 8 | 0 |
-| `gamedata` | save files, config, string resources, CRT helpers | 5 | 168 | 0.04% | 5 | 1 |
-| `menus` | front-end menu pages, navigation, UI widgets | 4 | 156 | 0.03% | 4 | 0 |
-| `driving` | car physics, collision, surfaces, AI drivers | 2 | 128 | 0.03% | 2 | 0 |
-| `controls` | controller input and control-name mapping | 1 | 40 | 0.01% | 1 | 0 |
-| `settings` | video/audio settings and their persistence | 1 | 40 | 0.01% | 1 | 0 |
+| `(unidentified)` | — | 623 | 437,048 | 95.55% | 0 | 0 |
+| `unfiled` | located, but its PC twin still lives in an unfiled address batch (a sliceN file) rather than a named module | 132 | 10,660 | 2.33% | 132 | 10 |
+| `geometry` | vector, matrix and quaternion math | 38 | 4,700 | 1.03% | 25 | 9 |
+| `audio` | music and sound-effect mixing, sequencing, output | 22 | 1,492 | 0.33% | 14 | 2 |
+| `racing` | race state machine, laps, gates, timing, results | 16 | 1,348 | 0.29% | 13 | 0 |
+| `drawing` | display-list building, sprites, fonts, image blitting | 15 | 848 | 0.19% | 15 | 1 |
+| `startup` | boot, init and the main loop | 18 | 564 | 0.12% | 10 | 0 |
+| `driving` | car physics, collision, surfaces, AI drivers | 5 | 224 | 0.05% | 5 | 0 |
+| `settings` | video/audio settings and their persistence | 3 | 176 | 0.04% | 3 | 0 |
+| `gamedata` | save files, config, string resources, CRT helpers | 5 | 152 | 0.03% | 5 | 1 |
+| `menus` | front-end menu pages, navigation, UI widgets | 4 | 92 | 0.02% | 4 | 0 |
+| `controls` | controller input and control-name mapping | 2 | 88 | 0.02% | 2 | 0 |
 
-**Confirmed into a module: 197 functions, 13,440 bytes (2.94% of .text).**
-**Byte-exact: 22 functions, 964 bytes (0.21% of .text).**
+**Confirmed into a module: 228 functions, 15,792 bytes (3.45% of .text).**
+**Byte-exact: 23 functions, 1,016 bytes (0.22% of .text).**
 
 ## Byte-exact functions
 
@@ -47,11 +47,12 @@ not prove; they are never counted as confirmed.
 | `802245D4` | 28 | `unfiled` | `BrVec3Copy` |
 | `80224808` | 52 | `geometry` | `BrVec3Sub` |
 | `8022483C` | 52 | `geometry` | `BrVec3SubFrom` |
+| `80224894` | 52 | `geometry` | `BrVec3Add` |
 | `802248C8` | 52 | `geometry` | `BrVec3AddTo` |
 | `80224990` | 68 | `geometry` | `BrVec3MulAddTo` |
 | `80224A1C` | 24 | `geometry` | `BrVec3Zero` |
 | `80226D7C` | 32 | `gamedata` | `BrOperatorDelete` |
-| `802288B4` | 32 | `unfiled` | `BrScreenSizeInit` |
+| `802288B4` | 32 | `unfiled` | `BrThunk11D10` |
 | `8022B3C4` | 32 | `audio` | `BrSfxSrcBeep` |
 | `8022B3E4` | 32 | `audio` | `BrSfxSrcBeep2` |
 | `80258DB0` | 84 | `unfiled` | `BrMat3Skew` |

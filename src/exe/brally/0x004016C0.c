@@ -2,6 +2,7 @@
  * SetCommentChar. Byte store of a char argument. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x004016C0 brally.exe SetCommentChar */
+/* @n64 0x8022F4EC located */
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>

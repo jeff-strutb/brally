@@ -1351,7 +1351,6 @@ void BrS17DrawGated(void)
  * was profiled on a debug machine. The whole thing is skipped while one
  * suppression flag is raised. */
 /* @d3donly 0x1002C320 BrS17DrawFrame -- glide twin 0x10019890 claimed by br_racebegin.c:BrRaceHudFrame */
-/* @n64 0x802003E4 located */
 void BrS17DrawFrame(void)
 {
     if (g_s17.f6909B4 != 0)
@@ -1369,7 +1368,6 @@ void BrS17DrawFrame(void)
  * value alongside it, and installs the routine that will run for it. Which mode
  * that is -- what the player would see -- was not established here. */
 /* @d3donly 0x1002C390 BrS17SetMode4 -- glide twin 0x10019900 claimed by br_racebegin.c:BrRaceEnterOutro */
-/* @n64 0x8020068C located */
 void BrS17SetMode4(void)
 {
     g_s17.f0AA010 = 4;
@@ -1546,7 +1544,6 @@ void BrRenderCountersReset(void)
 /* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
  * what the routine below does and nothing else. */
 /* @implements 0x1002A932 glide BrScreenSizeInit */
-/* @n64 0x802288B4 exact */
 void BrScreenSizeInit(void)
 {
     BrScreenSizeApply();

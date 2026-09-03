@@ -224,6 +224,7 @@ void BrPodSetName(void *pThis, const char *pszName)
 #ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: identity function — returns its argument unchanged (fastcall). */
 /* @implements 0x10008D50 glide BrPodIdentity */
+/* @n64 0x80268560 located */
 
 int __fastcall BrPodIdentity(int param_1)
 

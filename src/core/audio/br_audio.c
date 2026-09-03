@@ -111,7 +111,7 @@ void BrAudioSetEnabled(BrAudio *pAudio, int enabled)
         release_handle(pAudio);
 }
 
-/* @n64 0x8026B930 located */
+/* @n64 0x8026DBB0 located */
 int BrAudioIsEnabled(const BrAudio *pAudio)
 {
     return (pAudio != NULL && pAudio->enabled) ? 1 : 0;
@@ -257,7 +257,6 @@ int BrAudioPlayTrack(BrAudio *pAudio, int iTrack)
     return start_current(pAudio);
 }
 
-/* @n64 0x8021C718 located */
 void BrAudioStop(BrAudio *pAudio)
 {
     if (pAudio == NULL)
@@ -463,7 +462,7 @@ void BrAudioSetPan(BrAudio *pAudio, int pan)
         b->pfnSetPan(b->pUser, pAudio->handle, pAudio->pan);
 }
 
-/* @n64 0x80234FDC located */
+/* @n64 0x8026B930 located */
 int BrAudioGetPan(const BrAudio *pAudio)
 {
     return (pAudio != NULL) ? pAudio->pan : BR_AUDIO_PAN_CENTRE;

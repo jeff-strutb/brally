@@ -297,6 +297,7 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
  * and issues the drawing commands that put that transform in force. The two
  * values it is passed are never looked at. */
 /* @implements 0x10033F7E d3d BrCamMatrixSetupFixed */
+/* @n64 0x8021B458 located */
 #ifdef BR_MATCHING_BUILD
 /* /Od TU: literal param self-assigns, the take-2 emit inlined per block
  * (own [ebp-N] slot each, globals re-read), the 0-arg pool alloc and the
@@ -554,7 +555,6 @@ static uint16_t BrSwapHalf(uint16_t v)
 /* WHAT IT DOES: stores a colour as three separate red, green and blue
  * amounts, keeping only the bottom byte of each. */
 /* @implements 0x10035CA0 d3d BrRgbSinkSet */
-/* @n64 0x8022F4F8 located */
 #ifdef BR_MATCHING_BUILD
 /* Second argument is a struct so it is not register-eligible: __fastcall
  * then puts `this` in ecx and the three ints on the stack, i.e. thiscall. */
@@ -693,6 +693,7 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
  * it was chosen, so what comes back is close to but not exactly what went
  * in. */
 /* @implements 0x10035452 d3d BrCarGfxReadColour */
+/* @n64 0x8021D2A0 located */
 #ifdef BR_MATCHING_BUILD
 /* True __thiscall with THREE stack args and no edx setup. That IS reachable:
  * declare every stack argument as a ONE-MEMBER STRUCT, which is never
@@ -1482,6 +1483,7 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2)
  * ceiling -- the shape of a damage or wear meter, though what this particular
  * table records was not established. */
 /* @implements 0x100347BA d3d BrAccumAddClamp */
+/* @n64 0x8021BE28 located */
 /* NO TABLE POINTER.  The original indexes a FIXED-ADDRESS array --
  * `fld dword ptr [eax*4 + 0x106EC4F8]`, an absolute base with no register --
  * and reads only two arguments, i at [ebp+8] and amt at [ebp+0xc].  The

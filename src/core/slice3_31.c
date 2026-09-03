@@ -743,6 +743,7 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
  * force feedback off -- so this is the exit from a screen that had it
  * running. */
 /* port-only body; Glide match is src/core/cpp/0x1003FA00.cpp */
+/* @n64 0x80264B20 located */
 int32_t BrPhaseLeave_10046560(void *pEntity)
 {
 #ifdef BR_MATCHING_BUILD

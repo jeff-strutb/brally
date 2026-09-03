@@ -1255,7 +1255,6 @@ void BrWeatherStepParticles(void)
  * chosen by number, plus two fixed globals, to another routine and does nothing
  * else. What that routine does with them is not established here. */
 /* @d3donly 0x1001A4B0 BrForward1001A4B0 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
-/* @n64 0x8021187C located */
 void BrForward1001A4B0(int i)
 {
     BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,
@@ -1331,6 +1330,7 @@ static void BrCmdUnpackColor(uint32_t w1, float *pa, float *pb,
     *pd = (float)((double)(float)(int32_t)( w1        & 0xFFu) * (double)kF3C0);
 }
 
+/* @n64 0x8026C5C0 located */
 const BrGfxCmd *BrCmdSetColorA(const BrGfxCmd *pCmd)
 {
     BrCmdUnpackColor(pCmd->w1, &g_regs.f4BBF04, &g_regs.f4C0BAC,
@@ -1438,6 +1438,7 @@ extern float _DAT_104abb24;
 extern float kF300_S_S537;
 
 /* @implements 0x10014CB0 glide FUN_10014cb0 */
+/* @n64 0x8021F1A4 located */
 /* auto-filed from ghidra --refine; transforms: kF300_S_S537:float */
 
 void FUN_10014cb0(void)

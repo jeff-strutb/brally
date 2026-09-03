@@ -426,7 +426,6 @@ int32_t BrUiHook87_1003EF90(BrUiCtl_ *pCtl)
  * yet, so the pointer is genuinely NULL here and the original's fault would be
  * a harness crash rather than reproduced behaviour. When the owner lands, this
  * guard should go. */
-/* @n64 0x8025C27C located */
 int32_t BrUiHook87_1003F020(BrUiCtl_ *pCtl)
 {
     /* No apply and no copy -- the bit-4 clear alone, and only when the string

@@ -422,6 +422,7 @@ int BrRaceDifficultyApply(int param_1)
  * their pad blocks (base 0x106ED708, stride 0x15C), running 0x1005C560 on each entity and
  * BrEntInit on each pad block. Pointer compare is SIGNED (jl). */
 /* @implements 0x10062870 glide BrEntSlotsReset */
+/* @n64 0x80200154 located */
 
 void BrEntSlotsReset(void)
 

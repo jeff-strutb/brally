@@ -593,6 +593,7 @@ const uint8_t *BrDlCmdFillColour(BrDlCmd *pS, const uint8_t *p)
  * is passed straight to the graphics card and this build keeps no copy of it
  * of its own. */
 /* @implements 0x1001EA60 glide BrDlCmdFogColour */
+/* @n64 0x8023DF00 located */
 #ifdef BR_MATCHING_BUILD
 /* Literal: one stdcall into the driver with the raw dword at p+4. */
 void __stdcall grFogColorValue(int);

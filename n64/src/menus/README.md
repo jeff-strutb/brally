@@ -1,6 +1,6 @@
 # menus — front-end menu pages, navigation, UI widgets
 
-Confirmed in the Top Gear Rally ROM: **4 functions, 156 bytes (0.03% of the 457,392-byte `.text`)**, of which **0 are byte-exact**.
+Confirmed in the Top Gear Rally ROM: **4 functions, 92 bytes (0.02% of the 457,392-byte `.text`)**, of which **0 are byte-exact**.
 
 The source that produced these is shared with the PC decomp and lives in:
 

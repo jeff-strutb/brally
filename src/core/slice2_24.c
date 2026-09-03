@@ -602,6 +602,7 @@ int32_t BrMenuCap0950(BrMenuItem *pItem)
 /* WHAT IT DOES: put a caption from another small table on this row --
  * only the low 16 bits of each table entry are the wording id. */
 /* @implements 0x10040990 d3d BrMenuCap0990 */
+/* @n64 0x8025F10C located */
 int32_t BrMenuCap0990(BrMenuItem *pItem)
 {
     /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
@@ -693,7 +694,6 @@ int32_t BrMenuClearAA28A8(void)
 /* WHAT IT DOES: use the backup caption column from now on.  Always
  * reports success. */
 /* @implements 0x10037ED0 glide BrMenuSetAA28A8 */
-/* @n64 0x8022F4EC located */
 int32_t BrMenuSetAA28A8(void)
 {
     g_menu.gAA28A8 = 1;

@@ -755,6 +755,7 @@ void BrViewportSetFull(int32_t x, int32_t y, int32_t w, int32_t h,
 /* 0x10032DF2  BrViewportReEmit                                       */
 /* ------------------------------------------------------------------ */
 
+/* @n64 0x80219F04 located */
 void BrViewportReEmit(void)
 {
     BrVpRec *pVp = &BrG_6C1788[BrG_6C6654 & 0x1F];

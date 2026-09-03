@@ -11,7 +11,9 @@ void BrExt_10072B30(void *, int, int);
 void BrExt_10072A90(void *, int, int, int);
 void BrExt_10002660(void *p) { (void)p; }
 void BrExt_100025F0(void *p) { (void)p; }
+/* @n64 0x8021CD24 located */
 void BrExt_10072B30(void *a, int b, int c) { (void)a; (void)b; (void)c; }
+/* @n64 0x802607DC located */
 void BrExt_10072A90(void *a, int b, int c, int d)
 { (void)a; (void)b; (void)c; (void)d; }
 #else
@@ -25,7 +27,6 @@ void BrExt_10072A90(void *a, int b, int c, int d);
 /* WHAT IT DOES: send one command to the live music path: Windows CD
  * audio if that mode is on, otherwise the in-process EAR mixer. */
 /* @implements 0x100025C0 d3d BrDispatch_100025C0 */
-/* @n64 0x8020072C located */
 void BrDispatch_100025C0(void *p)
 {
     if (g_0940A4 == 1)
@@ -37,6 +38,7 @@ void BrDispatch_100025C0(void *p)
 /* WHAT IT DOES: write a value into a sound table, packing the row index
  * as 2*index. */
 /* @implements 0x10072B80 d3d BrWrap_10072B80 */
+/* @n64 0x80242880 located */
 void BrWrap_10072B80(void *a, int b, int c)
 {
     BrExt_10072B30(a, b + b, c);

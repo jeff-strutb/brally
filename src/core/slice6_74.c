@@ -184,6 +184,7 @@ void BrBitStreamWriteBits(BrBitStream *pBs, int32_t value, int32_t nBits)
  * wait, and it is not a stub, so porting it would remove nothing.
  * ========================================================================== */
 
+/* @n64 0x802559BC located */
 void BrBitStreamResetRead(void *pBs)
 {
     BrBitStream *p = (BrBitStream *)pBs;

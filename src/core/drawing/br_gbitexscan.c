@@ -138,6 +138,7 @@ void BrGbiTexScanPipeSync(BrGbiTexScan *pSt)
  * when the expected tile-wait command shows up after a pixel or palette
  * load. */
 /* @implements 0x1002A020 d3d BrGbiTexScanTileSync */
+/* @n64 0x8026B860 located */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanTileSync(void)
 {

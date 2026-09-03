@@ -88,6 +88,7 @@ int32_t   BrPathWalkIndex;              /* 0x10ACD490 */
 /* WHAT IT DOES: packs up this car's current state and sends it to the other
  * players. Whether the send succeeded is thrown away. */
 /* @implements 0x100609E0 d3d BrCarNetSendState */
+/* @n64 0x80261058 located */
 void BrCarNetSendState(BrCar *pCar)
 {
     BrCarState state;   /* the original's 0xA0-byte stack buffer */
@@ -710,7 +711,6 @@ void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
  * car's record, so these are 0-to-255 colour components; what the tint is
  * used for there is not established here. */
 /* @implements 0x10061460 d3d BrImgTintSetScale */
-/* @n64 0x8025BBA4 located */
 void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
 {
     BrImgTintState.scaleR = r;   /* 0x10AA3440 */

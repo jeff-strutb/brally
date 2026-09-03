@@ -179,6 +179,7 @@ int BrSortCellCompare(const void *pA, const void *pB)
 
 BrRasterState g_BrRaster;
 
+/* @n64 0x8025F15C located */
 void BrRasterSelect(const BrRasterHdr *pHdr)
 {
     /* Store order follows the original: 0x71C, 0x714, 0x710, 0x718. */
@@ -546,6 +547,7 @@ int FUN_1006e590();
 
 /* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x10011D10 glide BrThunk11D10 */
+/* @n64 0x802288B4 exact */
 
 int BrThunk11D10(void)
 

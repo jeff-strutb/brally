@@ -86,6 +86,7 @@ static float BrCrSign(float v)
 /* The frame, and the correction to 0x1006DDD0                           */
 /* ==================================================================== */
 
+/* @n64 0x80229530 located */
 BrMat4 *BrCollRespFrameMat(BrCollRespFrame *pF)
 {
     /* 0x10067C9A/0x10067C9E: `lea ecx,[esp+0x10]` and `lea edx,[esp+0x1c]`
@@ -743,6 +744,7 @@ extern BrCollRespNode *g_pBrCrCursor;           /* 0x11778844 */
  * refusals, because a port that silently wrote past the array would be a
  * worse bug than the one it models. */
 /* @implements 0x10066230 glide BrCrListPush */
+/* @n64 0x8025C24C located */
 void BrCrListPush(const BrCollPlane *pPlane)
 {
     BrCollRespNode *pN = g_pBrCrCursor++;

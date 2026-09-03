@@ -80,7 +80,7 @@ void BrPathBaseName(const char *pszPath, char *pszDst)
     memcpy(pszDst, p, strlen(p) + 1);
 }
 
-/* @n64 0x80200154 located */
+/* @n64 0x8021A9B4 located */
 FILE *BrFileOpenWrite(const char *pszPath)
 {
     FILE *pFile = fopen(pszPath, "wb");
@@ -815,6 +815,7 @@ static int BrPolyInPool(const BrLerpNode *p)
     return p >= &g_aBrPolyPool[0] && p < &g_aBrPolyPool[BR_POLY_POOL_NODES];
 }
 
+/* @n64 0x8026BA70 located */
 void BrPolyPoolFree(BrLerpNode *pNode)
 {
     if (!BrPolyInPool(pNode))
@@ -1070,7 +1071,7 @@ BrGfxCounters *BrGfxGetCounters(void)
     return &g_BrGfxCounters;
 }
 
-/* @n64 0x8026C5C0 located */
+/* @n64 0x80269410 located */
 void BrGfxClearCounters(void)
 {
     memset(g_BrGfxCounters.a364308, 0, sizeof(g_BrGfxCounters.a364308));

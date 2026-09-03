@@ -1,6 +1,6 @@
 # geometry — vector, matrix and quaternion math
 
-Confirmed in the Top Gear Rally ROM: **24 functions, 1,756 bytes (0.38% of the 457,392-byte `.text`)**, of which **8 are byte-exact**.
+Confirmed in the Top Gear Rally ROM: **25 functions, 1,820 bytes (0.40% of the 457,392-byte `.text`)**, of which **9 are byte-exact**.
 
 A further 13 function(s) in this address range are `inferred` — unlocated, but bracketed by confirmed members of this module. Not counted as confirmed.
 

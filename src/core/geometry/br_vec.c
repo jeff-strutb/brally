@@ -154,7 +154,7 @@ void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
 /* WHAT IT DOES: add two vectors into a third. Used both for combining
  * directions and for offsetting a position by a displacement. */
 /* @implements 0x1003AF40 d3d BrVec3Add */
-/* @n64 0x80224894 located */
+/* @n64 0x80224894 exact */
 void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = pB->x + pA->x;
@@ -365,6 +365,7 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
  * point it names. Used everywhere a speed or a reach has to come out of an
  * (x, y, z) triple. */
 /* @implements 0x1003B170 d3d BrVec3Length */
+/* @n64 0x80224B08 located */
 #ifdef BR_MATCHING_BUILD
 float BrVec3Length(const BrVec3 *pV)
 {

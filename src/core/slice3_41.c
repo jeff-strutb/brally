@@ -571,6 +571,7 @@ int BrModelSlotApply(int param_1,int param_2)
 
 /* WHAT IT DOES: initialize the engine-sound bank for a car: set the bank, init the source, play silent. */
 /* @implements 0x100612D0 glide BrSfxCarBankInit */
+/* @n64 0x80206830 located */
 
 int BrSfxCarBankInit(int param_1,int param_2)
 

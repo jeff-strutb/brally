@@ -183,6 +183,24 @@ def exact(body, relocs, cand):
 
 
 # --------------------------------------------------------------------- main
+# The release ROM was not built at one optimisation level any more than the PC
+# release was (the PC sweep tries /O2 and /Od per file and takes the better).
+# Each variant is compiled and every function keeps whichever variant places it
+# best, so a file mixing hot and cold code is not forced into one choice.
+_OPTS = [('-O2',), ('-O1',), ('-O3',), ('-O0',), ('-O2', '-mips1'),
+         ('-O1', '-mips1')]
+
+# BR_MATCHING_BUILD gates 741 blocks across src/: the byte-matched bodies sit
+# inside it, the port's cleaner bodies outside.  NEITHER setting dominates, so
+# it is an axis rather than a constant.  The matching bodies are deliberately
+# contorted to reproduce VC5's quirks, which fits IDO WORSE -- forcing the
+# define on cost 8 byte-exact functions.  But some files have no body outside
+# the guard at all and compile to an empty object without it.  So try both and
+# let each function keep whichever spelling places it best.
+VARIANTS = [o + d for o in _OPTS
+            for d in ((), ('-DBR_MATCHING_BUILD=1',))]
+
+
 def compile_file(cfile, cc=CC, extra=()):
     o = tempfile.NamedTemporaryFile(suffix='.o', delete=False).name
     p = subprocess.run([cc] + CFLAGS + list(extra) + INC + ['-o', o, cfile],
@@ -195,12 +213,35 @@ def compile_file(cfile, cc=CC, extra=()):
     return fns, None
 
 
+def compile_variants(cfile, cc=CC, variants=VARIANTS):
+    """-> ({fn: [(variant, body, relocs)]}, first error or None)."""
+    out, err = collections.defaultdict(list), None
+    for v in variants:
+        # -mips2/-O2 already sit in CFLAGS; a variant overrides by appending,
+        # since IDO takes the last occurrence of a flag.
+        fns, e = compile_file(cfile, cc, extra=v)
+        if fns is None:
+            err = err or e
+            continue
+        for name, (body, relocs) in fns.items():
+            out[name].append((' '.join(v), body, relocs))
+    # Distinguish "the compiler rejected it" from "it compiled to nothing".
+    # Conflating the two once hid a missing -D for six sweeps: 111 files were
+    # reported as compile failures while they were really compiling to empty
+    # objects, and the decompiled bodies never reached the search at all.
+    if out:
+        return out, None
+    return None, (err or ['compiled, but the object defines no functions'])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('files', nargs='*')
     ap.add_argument('--all', action='store_true', help='every .c under src/core')
     ap.add_argument('--csv')
     ap.add_argument('--ido53', action='store_true')
+    ap.add_argument('--opt', help='force one variant, e.g. "-O2"; default '
+                                  'tries every entry in VARIANTS')
     ap.add_argument('--tol', type=int, default=6,
                     help='max opcode-multiset distance to report as SHAPE')
     args = ap.parse_args()
@@ -220,23 +261,37 @@ def main():
     rows, nfail, ncomp, nfn = [], 0, 0, 0
     cand = []           # (row index, [(dist, va, is_exact)]) for 1:1 assignment
     for cf in files:
-        fns, err = compile_file(cf, CC53 if args.ido53 else CC)
+        variants = [tuple(args.opt.split())] if args.opt else VARIANTS
+        fns, err = compile_variants(cf, CC53 if args.ido53 else CC, variants)
         if fns is None:
             nfail += 1
             rows.append(dict(file=os.path.relpath(cf, ROOT), fn='', status='CCFAIL',
-                             insns=0, n64_va='', dist='', note=err[0][:90] if err else ''))
+                             insns=0, n64_va='', dist='', note=err[0][:90] if err else '',
+                             opt=''))
             continue
         ncomp += 1
-        for name, (body, relocs) in sorted(fns.items()):
-            body = trim(body)
-            n = len(words(body))
-            if n < 4:
+        for name, builds in sorted(fns.items()):
+            # Every variant of this function competes; it keeps the one that
+            # places it best (byte-exact beats near, near beats far).
+            best = None
+            for opt, body, relocs in builds:
+                body = trim(body)
+                n = len(words(body))
+                if n < 4:
+                    continue
+                hits = [(d, v, exact(body, relocs, b))
+                        for d, v, b in rom.search(body, topn=6)]
+                if not hits:
+                    continue
+                key = (0 if any(h[2] for h in hits) else 1, hits[0][0])
+                if best is None or key < best[0]:
+                    best = (key, opt, n, hits)
+            if best is None:
                 continue
             nfn += 1
-            hits = [(d, v, exact(body, relocs, b))
-                    for d, v, b in rom.search(body, topn=6)]
+            _, opt, n, hits = best
             rows.append(dict(file=os.path.relpath(cf, ROOT), fn=name, status='MISS',
-                             insns=n, n64_va='', dist='', note=''))
+                             insns=n, n64_va='', dist='', note='', opt=opt))
             cand.append((len(rows) - 1, hits))
 
     # ---- 1:1 assignment.  Two source functions that differ only in whether
@@ -266,7 +321,7 @@ def main():
         os.makedirs(os.path.dirname(args.csv), exist_ok=True)
         with open(args.csv, 'w', newline='') as f:
             w = csv.DictWriter(f, ['file', 'fn', 'status', 'insns', 'n64_va',
-                                   'dist', 'note'])
+                                   'dist', 'opt', 'note'])
             w.writeheader()
             w.writerows(rows)
 

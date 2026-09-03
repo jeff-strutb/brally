@@ -21,6 +21,7 @@ void BrBaseDirSetHost(BrBaseDirReadFn pfnRead, void *pUser)
 
 const char *BrBaseDir(void) { return s_szBase; }
 
+/* @n64 0x802005FC located */
 void BrBaseDirResetForTest(void)
 {
     memset(s_szBase, 0, sizeof s_szBase);

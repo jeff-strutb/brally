@@ -427,6 +427,7 @@ typedef struct BrUiTwReset {
     int twactive;
 } BrUiTwReset;
 
+/* @n64 0x8022445C located */
 int BR_THISCALL1 BrUiTweenReset_10047D10(BrUiTwReset *p)
 {
     p->f3c = p->f30;
@@ -1418,6 +1419,7 @@ extern funcptr PTR_FUN_100776c0;
 
 /* WHAT IT DOES: vtable constructor: install the function-pointer table at PTR_FUN_100776C0 (fastcall). */
 /* @implements 0x10041930 glide BrVtInit41930 */
+/* @n64 0x8021C6E4 located */
 
 int __fastcall BrVtInit41930(int *param_1)
 

@@ -259,6 +259,7 @@ static BrDriverCar *car_at(int32_t i)
  * All three colour submissions go to a routine that is empty in this build,
  * so what the shipped game gets out of them is the two calls between them. */
 /* @implements 0x10019890 glide BrRaceHudFrame */
+/* @n64 0x802003E4 located */
 #ifdef BR_MATCHING_BUILD
 /* Orig always calls 0x10008D60 with five args (add esp,0x14) even though
  * the callee is a bare ret; omitting the call is a port-only fold. */
@@ -303,7 +304,7 @@ void BrRaceHudFrame(void)
  * the race step -- which is the same routine that runs an ordinary race, so
  * the ending plays through the race machinery rather than beside it. */
 /* @implements 0x10019900 glide BrRaceEnterOutro */
-/* @n64 0x802005FC located */
+/* @n64 0x8020068C located */
 #ifdef BR_MATCHING_BUILD
 void BrRaceEnterOutro(void)
 {
@@ -337,6 +338,7 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * reads the starts back -- so all that can honestly be said is that this is
  * where their timings come from. */
 /* @implements 0x10019930 glide BrRaceCueLayout */
+/* @n64 0x802006C8 located */
 #ifdef BR_MATCHING_BUILD
 void BrRaceCueLayout(void)
 {
@@ -401,6 +403,7 @@ void BrRaceCueLayout(void)
 
 /* WHAT IT DOES: moves every cue in the list one step earlier. */
 /* @implements 0x10019980 glide BrRaceCueRewind */
+/* @n64 0x8020072C located */
 #ifdef BR_MATCHING_BUILD
 void BrRaceCueRewind(void)
 {
@@ -513,6 +516,7 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
 /* WHAT IT DOES: gives every driver in the field the same reset, one after the
  * other. */
 /* @implements 0x10019A10 glide BrRaceDriverReset */
+/* @n64 0x8021735C located */
 #ifdef BR_MATCHING_BUILD
 /* Orig is `mov edi, 0x10AF07F8` — the drivers ARE that address, not a
  * pointer stored there.  Slot +0x00 is 1-arg thiscall. */

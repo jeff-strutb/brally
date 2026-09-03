@@ -264,6 +264,7 @@ BrTextState *BrTextGetState(void)
 /* WHAT IT DOES: sets the two sets of three colour values that text is drawn
  * with, and raises the flag that says a colour has been chosen. */
 /* @implements 0x100192A0 d3d BrTextSetColors */
+/* @n64 0x8022F530 located */
 void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
 {
     g_text.f0A74A8 = a1;
@@ -400,6 +401,7 @@ void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
  * hundredths and putting the number fifteen pixels below its label. The
  * number goes out before the label. */
 /* @implements 0x100171F0 d3d BrHudDrawTimeEntry */
+/* @n64 0x80238714 located */
 #ifdef BR_MATCHING_BUILD
 /* The original inlines the whole of BrFormatTime: the minute/second/hundredth
  * split (magic divides by 100 and 60) and an UNBOUNDED sprintf into the

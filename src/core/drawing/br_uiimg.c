@@ -229,7 +229,7 @@ static void BrUiImgCopyPath(char *pszDst, size_t cbDst, const char *pszSrc)
     pszDst[cb - 1u] = '\0';
 }
 
-/* @n64 0x80264B20 located */
+/* @n64 0x80264AD0 located */
 void BrUiImgSavePathsInit(char *pszSeason, size_t cbSeason,
                           char *pszGhost,  size_t cbGhost)
 {

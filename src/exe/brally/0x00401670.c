@@ -2,6 +2,7 @@
  * PushInclude: gIncludeStack[gIncludeDepth++] = f. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x00401670 brally.exe PushInclude */
+/* @n64 0x80255D20 located */
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>

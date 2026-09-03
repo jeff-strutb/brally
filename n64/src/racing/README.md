@@ -1,6 +1,8 @@
 # racing — race state machine, laps, gates, timing, results
 
-Confirmed in the Top Gear Rally ROM: **8 functions, 360 bytes (0.08% of the 457,392-byte `.text`)**, of which **0 are byte-exact**.
+Confirmed in the Top Gear Rally ROM: **13 functions, 788 bytes (0.17% of the 457,392-byte `.text`)**, of which **0 are byte-exact**.
+
+A further 3 function(s) in this address range are `inferred` — unlocated, but bracketed by confirmed members of this module. Not counted as confirmed.
 
 The source that produced these is shared with the PC decomp and lives in:
 

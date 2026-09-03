@@ -2,6 +2,7 @@
  * FreeINI: FreeObjList(p->list); free(p). */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x004012A0 brally.exe FreeINI */
+/* @n64 0x8021DDFC located */
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
