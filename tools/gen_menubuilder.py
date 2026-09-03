@@ -86,7 +86,8 @@ def split_args(s):
     return out
 
 
-PFN = {1: 'pfn04', 2: 'pfn08', 3: 'pfn0C', 4: 'pfn10', 5: 'pfn14'}
+PFN = {1: 'pfn04', 2: 'pfn08', 3: 'pfn0C', 4: 'pfn10', 5: 'pfn14',
+       6: 'pfn18'}
 
 
 def parse(va):
@@ -235,6 +236,8 @@ def parse(va):
         if m:
             slot = int(m.group(1))
             if slot not in PFN:
+                if PARTIAL[0]:
+                    stmts.append(('raw', '@@UNHANDLED@@ %s' % l)); continue
                 sys.exit('unknown pfn slot %d in: %s' % (slot, l))
             externs.add(m.group(2))
             stmts.append(('raw', 'p->%s = (CtlFn)%s;' % (PFN[slot], m.group(2))))
