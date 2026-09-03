@@ -574,15 +574,35 @@ void BrHudDrawSplitLine(const char *pszPrefix, int rank, float fSeconds,
     char szBuf[0x20];                 /* the original's stack buffer */
     int32_t total, hundredths, minutes, seconds;
 
+#ifdef BR_MATCHING_BUILD
+    /* 0x10015550..0x1001555E: `fld dword [esp+0xC]; fmul dword [kF334];
+     * call __ftol`. A FLOAT multiply and the CRT helper -- the BrFtol
+     * wrapper takes a double, so it pushes eight bytes and calls itself. */
+    total      = (int32_t)(fSeconds * kF334);
+#else
     total      = BrFtol((double)fSeconds * (double)kF334);
+#endif
+    /* RESIDUE (2 regnorm, -4 bytes, emitter-level): both builds factor
+     * 100 the same way (x5 lea, x5 lea, x4), but the original NEGATES the
+     * quotient first -- mov/neg/shl/sub/lea/lea giving -100q, then folds
+     * the add into `lea esi,[esi + edx*4]`. Ours builds +100q and
+     * subtracts, which is two instructions shorter. Probed and dead:
+     * `total %% 100` (our cl emits a real idiv and stops CSEing the
+     * quotient -- worse), `100 * (total/100)`, `(total/100) * -100`,
+     * `total + -100 * (total/100)`, and an explicitly negated quotient
+     * `(-(total/100)) * 100`. All four multiply spellings canonicalise to
+     * the same +100q form. The seconds below use that same +form in the
+     * original, so it is the hundredths that are the odd one out. */
     hundredths = total - (total / 100) * 100;   /* signed, truncating */
     total     /= 100;
     minutes    = total / 60;
     seconds    = total - minutes * 60;
 
-    /* DEVIATION: sprintf -> snprintf, same buffer size as the original. */
-    snprintf(szBuf, sizeof szBuf, "%s%d. %d:%02d.%02d",
-             pszPrefix, rank, minutes, seconds, hundredths);
+    /* sprintf, not snprintf: the original calls the /MD CRT import and the
+     * extra size argument is a whole push. The buffer is the original's own
+     * 0x20 and the widest result fits. */
+    sprintf(szBuf, "%s%d. %d:%02d.%02d",
+            pszPrefix, rank, minutes, seconds, hundredths);
 
     BrTextDraw(szBuf, x, y);
 }
