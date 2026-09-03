@@ -2390,3 +2390,43 @@ inside the catalogue lookup and again for the descriptor because the
 original recomputes it after the intervening call. **Read the original: if
 the load is there twice, write it twice.** VC5 will not re-materialise a
 cached local, and it will not spill a re-read.
+
+## `/Od /Op` is a FIFTH compile variant, and it was missing from the sweep
+*(proven 2026-09-03 on 0x1002BF50, the scissor emitter -- 242 diffs to 0)*
+
+`/O2 /Op` was added in 2026-08 because MSVC 5.0 without `/Op` keeps an
+int->float conversion in the x87 register, and with it every such conversion
+rounds through a float32 stack slot:
+
+    fild dword ptr [ebp+8]
+    fstp dword ptr [ebp-0xC]      ; <- the round-to-float32 the flag adds
+    fld  dword ptr [ebp-0xC]
+    fmul dword ptr [scale]
+    call __ftol
+
+**The same blind spot exists one optimisation level down and nobody had
+looked.** A DEBUG (`/Od`) translation unit that does float arithmetic needs
+`/Od /Op`, and under plain `/Od` it reads as a large gap for a source that is
+already exactly right — here four conversion groups and 16 bytes of frame,
+i.e. `sub esp,0x10` against the original's `sub esp,0x20`. `tools/match_sweep.py`
+now carries `Odp` in `VARIANTS`.
+
+**Consequence worth acting on: every `/Od` TU with an int->float cast in it
+was invisible to every sweep before 2026-09-03.** A full re-sweep is the way
+to harvest that; the per-function `opt` column already names the ten rows
+whose current best is `Od` and still `diff`.
+
+### Two companion rules the same function pinned
+
+- **A function's TU is fixed by ADDRESS, not by subject.** 0x1002BF50 sat in
+  slice5_62.c (an `/O2` file) and could never match there. 0x1002BF4B is five
+  bytes long and ends exactly at 0x1002BF50, so the function belongs to
+  slice2_18.c's `/Od` unit. Before calling a function a wall, check which TU
+  its NEIGHBOURING ADDRESSES are filed in and what `opt` that file won.
+- **/Od slot depth: function-scope locals get the shallowest slots, inner-block
+  ones go deeper, and DECLARATION ORDER DOES NOTHING.** Two `T *` locals
+  declared either way both came out with the second at `ebp-4`. Putting the
+  first user in function scope and the second inside its own `{ }` block is
+  what lands `ebp-4` / `ebp-8` in the original's order. Compiler temps
+  (an int subexpression stored so it can be `fild`ed) then fill the slots
+  below in FIRST-USE order, interleaved with nothing else.
