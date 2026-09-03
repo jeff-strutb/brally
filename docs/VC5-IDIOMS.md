@@ -3801,3 +3801,31 @@ signedness moves it** -- so when a pinned negative constant comes out as the
 zero-extended value rather than `or reg,-1`, fix the GLOBAL's declared type,
 do not permute the assignment. The same reasoning should apply to 8-bit
 destinations; untested there.
+
+## A self-prototype changes the x87 schedule of a float-returning leaf
+
+Proven on 0x10065950 BrCrPlaneDist (41 B, `n.p + d`), 2026-09-03, while
+filing it out of T1. The definition is byte-exact when the translation unit
+contains no prior declaration of the function; adding the obvious prototype
+to the module header — a bare
+
+    float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint);
+
+before the definition, nothing else changed — makes MSVC5 emit one extra
+`fxch st(1)` and takes the body 41 -> 43 bytes, 16 -> 17 instructions
+(register-blind gap 1+0). Isolated both ways twice; the prototype alone does
+it, the comment above it is irrelevant.
+
+So: **when a small float function is right in every other respect and the
+residue is one stray `fxch`, delete its prototype from the header and
+recompile before probing anything about the expression.** A prototype in some
+OTHER translation unit is harmless — only a prior declaration in the DEFINING
+TU moves the schedule — so a function matched this way can still be called
+across TUs; declare it at the point of use there.
+
+Mechanism not established (both forms are external-linkage, and the
+definition's own parameter list is a prototype either way), so treat this as a
+measured behaviour, not a rule with a known cause. Untested on: functions
+returning int, functions with no x87 in them, and `static` definitions.
+Worth a screen: any C file where a float-returning leaf sits at a
+one-instruction `fxch` gap AND its header declares it.
