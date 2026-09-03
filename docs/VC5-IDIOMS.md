@@ -3780,3 +3780,24 @@ Two practical consequences:
   anything — measured six ways on 0x1000EAF0's rows, where every variant
   either broke the batching that spelling had just won or left the gap
   unchanged.
+
+## A negative constant stored to a NARROW global: the destination's signedness picks the encoding
+
+Proven on 0x10059410 BrGlNavPoll, where it was worth 14 diffs and closed the
+register-blind gap from 1+2 to 0+1. Storing -1 into a 16-bit global:
+
+    extern uint16_t g;  g = -1;   ->  mov edx, 0xffff        (5 bytes)
+    extern int16_t  g;  g = -1;   ->  or  edx, 0xffffffff    (3 bytes)
+
+Both then store `mov word ptr [g], dx`. With the UNSIGNED destination VC5
+narrows the constant before it ever reaches a register; with the SIGNED one
+it materialises a full-width -1 and lets the narrow store truncate, which
+also lets it use the short `or reg,-1` form.
+
+DEAD, all leaving the `mov edx, 0xffff`: an explicit `(uint16_t)-1` cast, a
+shared `int32_t step = -1;` local feeding both stores, a literal `-1` at each
+store, and wrapping the region in its own scope. **Only the destination's
+signedness moves it** -- so when a pinned negative constant comes out as the
+zero-extended value rather than `or reg,-1`, fix the GLOBAL's declared type,
+do not permute the assignment. The same reasoning should apply to 8-bit
+destinations; untested there.
