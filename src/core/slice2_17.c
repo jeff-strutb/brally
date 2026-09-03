@@ -1211,6 +1211,10 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
 #endif
 
 /* 0x1002C210 */
+/* WHAT IT DOES: switch to the other of two buffer banks and wipe it ready for
+ * use -- double buffering. It resets three channels to a default state, flips
+ * the bank index, timestamps the new bank, then clears its buffer in 0x800-byte
+ * steps. */
 /* @implements 0x1002C210 d3d BrS17BankFlip */
 #ifdef BR_MATCHING_BUILD
 /* Literal layout: the header triple and the byte banks are FIXED arrays at
@@ -1520,6 +1524,9 @@ int BrScratchRingNull(int a0, int a1)
 }
 
 /* 0x10031227 */
+/* WHAT IT DOES: zero the renderer's per-frame tallies -- eight counters in
+ * three groups, cleared as chains (a=0; b=a; c=b) exactly as the original
+ * does. Called at the top of a frame so each frame's totals start clean. */
 /* @implements 0x10031227 d3d BrRenderCountersReset */
 void BrRenderCountersReset(void)
 {
@@ -1682,9 +1689,26 @@ void BrNop_1002AB94(void)
 }
 
 
+/* ==========================================================================
+ * Screen-size fan-out: 0x1001E1E0 - 0x1001E2B0
+ *
+ * WHAT THEY DO (as a family): six one-line routines that push the current
+ * screen size out to the six places that keep their own copy of it. Three
+ * take the size itself, three take HALF of it as a float -- that is the
+ * screen CENTRE, which is what the projection and HUD code actually wants.
+ * They are called when the resolution is chosen or changed, so nothing has to
+ * read the live size on every frame.
+ *
+ * These are also the six functions that carry a 16-byte link-stage preamble
+ * (jmp +0x0b, then nops) recorded in config/preambles.csv -- see
+ * tools/image_build.py, which has to lay that preamble down verbatim or the
+ * whole function reads as differing.
+ * ========================================================================== */
+
 extern int DAT_105ccfe0;
 extern int g_BrFpsScreenH;
 
+/* WHAT IT DOES: copy the screen HEIGHT to the consumer at 0x105CCFE0. */
 /* @implements 0x1001E200 glide THUNK_1001E200 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1699,6 +1723,7 @@ void THUNK_1001E200(void)
 extern int DAT_105d17b8;
 extern int g_BrFpsScreenW;
 
+/* WHAT IT DOES: copy the screen WIDTH to the consumer at 0x105D17B8. */
 /* @implements 0x1001E1E0 glide THUNK_1001E1E0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1713,6 +1738,8 @@ void THUNK_1001E1E0(void)
 extern float _DAT_105ccd48;
 extern int g_BrFpsScreenW;
 
+/* WHAT IT DOES: half the screen width, as a float -- the horizontal
+ * centre -- for the consumer at 0x105CCD48. */
 /* @implements 0x1001E220 glide THUNK_1001E220 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1727,6 +1754,8 @@ void THUNK_1001E220(void)
 extern float _DAT_105ccfdc;
 extern int g_BrFpsScreenH;
 
+/* WHAT IT DOES: half the screen height, as a float -- the vertical
+ * centre -- for the consumer at 0x105CCFDC. */
 /* @implements 0x1001E250 glide THUNK_1001E250 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1741,6 +1770,8 @@ void THUNK_1001E250(void)
 extern float _DAT_105cd9f8;
 extern int g_BrFpsScreenW;
 
+/* WHAT IT DOES: the horizontal centre again, for a SECOND consumer at
+ * 0x105CD9F8. Two subsystems keep their own copy. */
 /* @implements 0x1001E280 glide THUNK_1001E280 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1755,6 +1786,8 @@ void THUNK_1001E280(void)
 extern float _DAT_105cd9fc;
 extern int g_BrFpsScreenH;
 
+/* WHAT IT DOES: the vertical centre again, for the same second consumer
+ * pair, at 0x105CD9FC. */
 /* @implements 0x1001E2B0 glide THUNK_1001E2B0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
