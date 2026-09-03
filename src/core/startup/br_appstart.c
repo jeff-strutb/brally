@@ -596,6 +596,7 @@ void BrAppCfgParseCmdLine(const char *pszCmdLine)
     }
 }
 
+/* @n64 0x8021DDFC located */
 void BrAppCfgParse(const char *pszCmdLine)
 {
     BrAppCfgParseIni();

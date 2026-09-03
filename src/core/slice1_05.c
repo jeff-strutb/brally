@@ -849,6 +849,7 @@ BrEnt    g_aBrEnts[16];      /* 0x106ED708 */
 BrEntRec g_aBrEntRecs[16];   /* 0x106ED630 */
 
 /* @implements 0x10035FE0 d3d BrEntInit */
+/* @n64 0x80255B54 located */
 void __fastcall BrEntInit(BrEnt *pEnt)
 {
     long idx;

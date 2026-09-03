@@ -241,6 +241,7 @@ void BrDlInit(BrDl *pDl, int32_t cxScreen, int32_t cyScreen)
         BR_DL_COLOUR_MAX;
 }
 
+/* @n64 0x802244A8 located */
 void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
                      float scaleY, float transY)
 {

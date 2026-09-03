@@ -80,6 +80,7 @@ void BrPathBaseName(const char *pszPath, char *pszDst)
     memcpy(pszDst, p, strlen(p) + 1);
 }
 
+/* @n64 0x80200154 located */
 FILE *BrFileOpenWrite(const char *pszPath)
 {
     FILE *pFile = fopen(pszPath, "wb");
@@ -812,6 +813,7 @@ void BrPolyPoolFree(BrLerpNode *pNode)
     g_pBrLerpFree = pNode;
 }
 
+/* @n64 0x80223470 located */
 float BrPolyDistMaxX(const BrScrPt *pPt)
 {
     return BR_POLY_CLIP_MAX - pPt->f0C;
@@ -1057,6 +1059,7 @@ BrGfxCounters *BrGfxGetCounters(void)
     return &g_BrGfxCounters;
 }
 
+/* @n64 0x8026C5C0 located */
 void BrGfxClearCounters(void)
 {
     memset(g_BrGfxCounters.a364308, 0, sizeof(g_BrGfxCounters.a364308));

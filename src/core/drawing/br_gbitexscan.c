@@ -78,6 +78,7 @@ void BrGbiTexScanFlush(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * Later ends are ignored so the run keeps its original extent. */
 /* @d3donly 0x10029E60 BrGbiTexScanMark -- glide twin 0x100293D0 claimed by br_tex3d.c:br_tex3d_end */
 #ifdef BR_MATCHING_BUILD
+/* @n64 0x8026C040 located */
 void BrGbiTexScanMark(BrGfxWords *pCmd)
 {
     if (g_brTexScanRunEnd == NULL)

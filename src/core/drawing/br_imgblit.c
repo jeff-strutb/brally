@@ -308,6 +308,7 @@ void BrImgBlitFullScreen(const char *pszName, uint32_t uAdler,
     }
 }
 
+/* @n64 0x8021EA0C located */
 int32_t BrImgBlitSkipped(BrImgBlitStep step)
 {
     if (step < 0 || step >= BR_IMGBLIT_NSTEPS) {
@@ -316,6 +317,7 @@ int32_t BrImgBlitSkipped(BrImgBlitStep step)
     return s_aSkipped[step];
 }
 
+/* @n64 0x80265410 located */
 void BrImgBlitResetForTest(void)
 {
     int i;

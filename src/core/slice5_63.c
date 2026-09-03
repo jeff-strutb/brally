@@ -628,6 +628,7 @@ static void Br63CapsGather(BrOptCaps *pCaps)
 }
 
 /* 0x1003F320 */
+/* @n64 0x80261058 located */
 int BrSub1003F320(int index)
 {
     BrOptCaps caps;

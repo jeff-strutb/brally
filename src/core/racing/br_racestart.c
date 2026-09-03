@@ -87,6 +87,7 @@ static void put_u16le(unsigned char *pb, int32_t off, uint32_t v)
 /* WHAT IT DOES: sets one race global to a fixed value. What that value
  * controls is not established here. */
 /* @implements 0x1002F6C0 glide BrRaceSub1002F6C0 */
+/* @n64 0x80242940 located */
 void BrRaceSub1002F6C0(void)
 {
     g_brRace6EECC8 = BR_RACESTART_6EECC8_VALUE;
@@ -121,6 +122,7 @@ static void BrRaceNullStep(void)
  * operation in the original, and the routine that calls it repeats both a
  * moment later. */
 /* @implements 0x10062850 glide BrRaceEntrantCountSet */
+/* @n64 0x80210F4C located */
 void BrRaceEntrantCountSet(int32_t n, BrGameStepFn pfnNullStep)
 {
     (void)pfnNullStep;

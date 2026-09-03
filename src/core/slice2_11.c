@@ -314,6 +314,7 @@ BrCamFrame *BrCarActiveCam2(void *pCar)
            (p + *(const uint32_t *)(const void *)(p + BR_CAR_OFF_ACTIVECAM2));
 }
 
+/* @n64 0x80221108 located */
 void BrCamFrameInitD(void *pCar)
 {
     unsigned char *p        = (unsigned char *)pCar;
@@ -410,6 +411,7 @@ uint32_t BrGrid64Fetch(int i, int j)
 /* 0x10002F40 -- pop from a u16 ring                                  */
 /* ================================================================== */
 
+/* @n64 0x8021EA90 located */
 uint16_t BrU16QueuePop(void *pQ)
 {
     uint16_t *q = (uint16_t *)pQ;

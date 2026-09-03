@@ -776,6 +776,7 @@ void BrGfxNopB(void) { }
 /* 0x10033780 / 0x100337AE / 0x100337E9  HUD text                     */
 /* ------------------------------------------------------------------ */
 
+/* @n64 0x8021A920 located */
 void BrHudTextBegin(void)
 {
     if (BrG_6C56E8 == 0) {
@@ -785,6 +786,7 @@ void BrHudTextBegin(void)
     }
 }
 
+/* @n64 0x8021A964 located */
 void BrHudTextEnd(void)
 {
     BrHudTextBegin();

@@ -263,6 +263,7 @@ void BrMenuSub10044E20(int32_t n)
  * the choices the player has made so far so the new screen sees them. Which
  * screen this is was not established either. */
 /* port-only body; Glide match is src/core/cpp/0x1003D140.cpp */
+/* @n64 0x80206830 located */
 void BrSub10043BF0(BrGameObj *p)
 {
     (void)p;                        /* the original reads no argument */

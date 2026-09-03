@@ -332,11 +332,13 @@ static const uint8_t *br_dlgl_scissor(BrDlGl *pGl, const uint8_t *p,
 
 /* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  The scissor with plain 12-bit
  * integer fields: (w >> 12) & 0xFFF and w & 0xFFF. */
+/* @n64 0x80219A1C located */
 const uint8_t *BrDlGlScissorInt(BrDlGl *pGl, const uint8_t *p)
 { return br_dlgl_scissor(pGl, p, 0); }
 
 /* 0x1001EB50 -- opcode 0xED, 103 bytes.  The scissor with 10.2 fields:
  * (w >> 14) & 0x3FF and (w >> 2) & 0x3FF. */
+/* @n64 0x80219A3C located */
 const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p)
 { return br_dlgl_scissor(pGl, p, 1); }
 

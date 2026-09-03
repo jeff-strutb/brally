@@ -149,6 +149,7 @@ void BrDPlaySpFreeAll(BrDPlaySp *aTable)
     }
 }
 
+/* @n64 0x80226070 located */
 int BrDPlaySpSelectedGuid(BrDPlaySp *aTable, uint32_t idxSel,
                           uint8_t **ppGuid)
 {
@@ -246,6 +247,7 @@ int BrDPlaySendTag3(const BrDPlayLink *pLink, int32_t fGate)
     return BrDPlaySendPair(pLink, fGate, BR_DPLAY_TAG3, 0u);
 }
 
+/* @n64 0x8026C654 located */
 int BrDPlaySendTag6(const BrDPlayLink *pLink, uint32_t value)
 {
     /* No gate test -- that is the whole difference from the four above. */

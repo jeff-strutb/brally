@@ -303,6 +303,7 @@ void BrRaceHudFrame(void)
  * the race step -- which is the same routine that runs an ordinary race, so
  * the ending plays through the race machinery rather than beside it. */
 /* @implements 0x10019900 glide BrRaceEnterOutro */
+/* @n64 0x802005FC located */
 #ifdef BR_MATCHING_BUILD
 void BrRaceEnterOutro(void)
 {

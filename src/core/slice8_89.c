@@ -117,6 +117,7 @@ static int32_t Br89Activate(BrPhase_ **ppSlot, BrPhaseEnterFn_ pfnEnter)
  * ACTIVATE
  * ========================================================================== */
 
+/* @n64 0x8022AF64 located */
 int32_t BrUiHook89Activate_10045110(void)
 {
     return Br89Activate(&g_brHook89.pAA2914,
@@ -127,6 +128,7 @@ int32_t BrUiHook89Activate_10045110(void)
  * The two BrUi72Hooks slots
  * ========================================================================== */
 
+/* @n64 0x80211150 located */
 int32_t BrUiHook89_10044D00(BrUiCtl_ *pCtl)
 {
     /* The argument is NEVER read. Every `[esp+4]` in the original is the SEH

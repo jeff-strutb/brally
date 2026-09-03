@@ -804,6 +804,7 @@ int BrSceneUsePlainClear(void)
  * 0x1002AEF0 (shared, same 21 bytes) but its body sits in a run the D3D dump
  * folded into padding, so it is not the transcription source. */
 /* @implements 0x10017F60 glide BrSceneAccumReset */
+/* @n64 0x802237B4 located */
 void BrSceneAccumReset(void)
 {
     g_4B16AC = 0.0f;
@@ -946,6 +947,7 @@ void BrSceneSetupFrame(const BrHudView *aViews)
  * is filled with 512 particles; the handful of spare slots past that are left
  * as they were. */
 /* @implements 0x10019490 d3d BrWeatherRandomiseParticles */
+/* @n64 0x80239CF0 located */
 void BrWeatherRandomiseParticles(void)
 {
     int layer, i;
@@ -1253,6 +1255,7 @@ void BrWeatherStepParticles(void)
  * chosen by number, plus two fixed globals, to another routine and does nothing
  * else. What that routine does with them is not established here. */
 /* @d3donly 0x1001A4B0 BrForward1001A4B0 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
+/* @n64 0x8021187C located */
 void BrForward1001A4B0(int i)
 {
     BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,

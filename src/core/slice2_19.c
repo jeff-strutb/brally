@@ -148,6 +148,7 @@ void *g_BrLogArg;
 /* WHAT IT DOES: copies a point or direction from one place to another. Note
  * the destination is the first argument, not the second. */
 /* @implements 0x10035C70 d3d BrVec3Copy */
+/* @n64 0x802245D4 exact */
 void BrVec3Copy(BrVec3 *pDst, const BrVec3 *pSrc)
 {
     pDst->x = pSrc->x;
@@ -227,6 +228,7 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
  * Anything nearer than a fixed close distance, or further than the caller's
  * limit, is cut off. */
 /* @implements 0x10033E83 d3d BrCamMatrixSetup */
+/* @n64 0x8021B2F8 located */
 #ifdef BR_MATCHING_BUILD
 /* /Od: no locals at all -- the fovy chain is inline in the call (a named
  * local would cost a frame slot); pool alloc and matrix store direct. */
@@ -459,6 +461,7 @@ void BrCamMatrixSetupOrtho(float w, float h)
  * where the data used to live, shifting it to where it now sits -- and leaves
  * it alone if it points outside the block being moved. */
 /* @implements 0x10035060 d3d BrDlRebaseWord */
+/* @n64 0x8021D070 exact */
 void BrDlRebaseWord(uint32_t *pWord, uint32_t lo, uint32_t hi, uint32_t base)
 {
     if (*pWord >= lo && *pWord < hi)
@@ -471,6 +474,7 @@ void BrDlRebaseWord(uint32_t *pWord, uint32_t lo, uint32_t hi, uint32_t base)
  * points and its textures live -- so that they point at where the data
  * actually is in memory. It stops at the command that ends the list. */
 /* @implements 0x10035089 d3d BrDlRebase */
+/* @n64 0x8021D098 located */
 /* THREE things are load-bearing here, all visible only at /Od.
  *
  * (1) The null test is a WRAPPING if, not an early return: `if (p) { ... }`
@@ -550,6 +554,7 @@ static uint16_t BrSwapHalf(uint16_t v)
 /* WHAT IT DOES: stores a colour as three separate red, green and blue
  * amounts, keeping only the bottom byte of each. */
 /* @implements 0x10035CA0 d3d BrRgbSinkSet */
+/* @n64 0x8022F4F8 located */
 #ifdef BR_MATCHING_BUILD
 /* Second argument is a struct so it is not register-eligible: __fastcall
  * then puts `this` in ecx and the three ints on the stack, i.e. thiscall. */
@@ -781,10 +786,13 @@ void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
 }
 
 /* @implements 0x1002ECAC glide BrAnimSetOnce */
+/* @n64 0x8021D7E0 exact */
 void BrAnimSetOnce(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 0, 3); }
 /* @implements 0x1002ECC1 glide BrAnimSetLoop */
+/* @n64 0x8021D804 exact */
 void BrAnimSetLoop(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 1, 2); }
 /* @implements 0x1002ECD6 glide BrAnimSetPingPong */
+/* @n64 0x8021D828 exact */
 void BrAnimSetPingPong(BrAnimSet *pSet) { BrAnimFlagsApply(pSet, 3, 0); }
 
 /* 0x1007C8A0 __ftol -- truncate toward zero, low dword before any clamp.
@@ -1166,6 +1174,7 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
  * frame" and "still held from last frame", which is how the game tells a tap
  * from a hold. */
 /* @implements 0x10035FC0 d3d BrBitEdgeSplit */
+/* @n64 0x80255934 located */
 /* Both members are loaded into registers up front, b BEFORE a
  * (`mov edx,[ecx+4]; mov eax,[ecx]`), so both are locals and b is declared
  * first; the earlier spelling re-dereferenced pPair->b twice and cost 11
@@ -1548,6 +1557,7 @@ void BrLogEmit(void *ignored)
  * because elsewhere in the tree this same address is reached under the name
  * "BrFatal" -- it is not fatal, it only logs. */
 /* @implements 0x10035BBA d3d BrLogSet */
+/* @n64 0x8021E1F4 located */
 void BrLogSet(void *p)
 {
     g_BrLogArg = p;

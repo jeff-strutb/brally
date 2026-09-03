@@ -33,6 +33,7 @@ void BrTex3dInit(BrTex3d *pTex)
     memset(pTex, 0, sizeof(*pTex));
 }
 
+/* @n64 0x8025D018 located */
 void BrTex3dFree(BrTex3d *pTex)
 {
     if (pTex == NULL)

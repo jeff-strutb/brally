@@ -236,6 +236,7 @@ void BrExt_10008B80(void)
 {
 }
 
+/* @n64 0x80219A5C exact */
 void BrStub10008B80(intptr_t a0, ...)
 {
     (void)a0;

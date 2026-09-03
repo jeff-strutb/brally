@@ -27,8 +27,24 @@ step, with no anchor and no hand work.
 | `tools/n64match.py` | compile PC source with IDO, search `.text`, score `EXACT`/`SHAPE` |
 | `tools/cover.py` | coverage against the real denominator |
 | `tools/pair.py` | string-anchored pairing — a cross-check, not the bridge |
+| `tools/manifest.py` | file every located function into its architectural module |
 | `include/` | libc + Win32 **type shims** for the cross-compile |
+| `config/functions_tgr.csv` | every function in `.text`: what it is, its module, its status |
+| `src/<area>/` | architectural areas, mirroring `src/core/` |
+| `docs/modules.md` | the architectural map, generated, with denominators |
 | `docs/menu-analysis.md` | ROM layout, compiler identification, menu system |
+
+`config/functions_tgr.csv` and everything under `docs/modules.md` and `src/`
+is **generated** by `tools/manifest.py` — do not hand-edit it. A function's
+module is inherited from the PC source file it matched, so it is evidence
+rather than guesswork; unlocated functions bracketed on both sides by one
+module are marked `inferred` and never counted as confirmed.
+
+`src/` is mostly empty on purpose. The shared engine is one source and it
+lives in `src/core/`; copying it here would create a second thing to keep in
+sync. What belongs in `src/` is **N64-only platform code** — RSP display-list
+building, the audio driver, OS glue — which has no PC twin. That is most of
+the 96.31% of `.text` still unidentified.
 
 The ROMs live in `reference/tgrally/` with the other reference binaries.
 Build output goes to `build/n64/` (gitignored, like `build/match/`).

@@ -377,6 +377,7 @@ void BrSegSetFlag(uint32_t v)
  * reads to pick between two different drawing commands. What visual
  * difference that makes is not established here. */
 /* @implements 0x10016800 glide BrSub_10019240 */
+/* @n64 0x8022F520 located */
 void BrSub_10019240(void)
 {
     g_br4B0360 = 1u;

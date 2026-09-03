@@ -175,6 +175,7 @@ int BrTrackFieldValid(const BrTrack *pTrack, unsigned off, uint32_t cbNeed)
 }
 
 uint32_t BrTrackVertexCount(const BrTrack *p)  { return BrTrackHdrU32(p, BR_TRK_H_CVERTICES); }
+/* @n64 0x80225350 located */
 uint32_t BrTrackFaceCount(const BrTrack *p)    { return BrTrackHdrU32(p, BR_TRK_H_CFACES); }
 uint32_t BrTrackSectionCount(const BrTrack *p) { return BrTrackHdrU32(p, BR_TRK_H_CSECTIONS); }
 uint32_t BrTrackInstanceCount(const BrTrack *p){ return BrTrackHdrU32(p, BR_TRK_H_CINSTANCES); }

@@ -179,6 +179,7 @@ int BrSfxVoiceIndex(int group, int slot)
     return group * BR_SFX_ROW_DWORDS + slot;
 }
 
+/* @n64 0x80260B98 located */
 int BrSfxCarChannel(int iCar)
 {
     int ch;

@@ -123,6 +123,7 @@ int BrRandom(void)
  * and register again. It only clears the first 64 entries of each table, not
  * all of them. */
 /* @implements 0x1005FF30 d3d BrMenuSub1005FF30 */
+/* @n64 0x8021E5C4 located */
 void BrMenuSub1005FF30(void)
 {
     /* Three inlined `rep stosd` of 0x40 dwords.  BrTables64Clear is the same

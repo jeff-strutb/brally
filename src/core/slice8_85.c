@@ -361,6 +361,7 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
  * depending on which of the two volume rows the player last touched -- the
  * highlight that shows which row the cursor is on. */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
+/* @n64 0x802649C0 located */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
 {
     /* Note the inversion relative to the usual "flag set -> higher value".

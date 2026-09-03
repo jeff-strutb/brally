@@ -23,6 +23,7 @@ int BrIsAnyActive(const BrActiveFlags *p)
  * total including whatever is pending. The count is read before the flag is
  * examined, so a set flag adds exactly one. */
 /* @implements 0x1006D180 glide BrCountedTotal */
+/* @n64 0x80257A80 located */
 /* The count load sits BETWEEN the flag test and its jump because both return
  * paths need it: spelled as two returns, VC5 hoists the common load there and
  * reuses EAX for flag then count. The temp-and-increment form put the flag in

@@ -263,6 +263,7 @@ static void scan(void)
     s_pszWhy = "the extracted asset root, labelled from the disc it came off";
 }
 
+/* @n64 0x8021C6F0 located */
 int BrVolumeCount(void)
 {
     scan();

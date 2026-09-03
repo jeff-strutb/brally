@@ -339,6 +339,7 @@ int BrChkFileExists(const char *pPath)
  * none, naming what it was trying to make room for so the player sees which
  * part of the loading failed. Asking for nothing quietly gets nothing back. */
 /* port-only body; Glide match is src/core/generated/0x100036F0.c */
+/* @n64 0x8021A9B4 located */
 void *BrChkAlloc(size_t size, const char *pWhat)
 {
     void *pMem;
