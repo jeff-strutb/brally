@@ -3246,3 +3246,45 @@ That framing is worth reaching for early, because it says immediately that no
 source spelling reaches it: the source names all three the same way in both.
 What it does NOT rule out is a change that alters the pressure, which is why
 these verdicts go stale when the frame moves (see the staleness entry above).
+
+## Inlining a helper by hand: use a MACRO, and pun the float stores
+*(proven 2026-09-03 on the two triangle handlers, 0x1001ECF0 and 0x1001FA30 —
+337 and 627 bytes short, down to 49 and 56)*
+
+When the factored-helper screen sends you to spell a body out, two mechanics
+decide whether it lands:
+
+- **A macro, not another `static`.** A `static` you introduce is a call again.
+  Take the loop/temp variable as a macro PARAMETER rather than declaring it
+  inside the macro's own `do { }`: one function-scope local shared by all the
+  expansions is what gets a stack slot, and a fresh one per expansion stays in
+  a register. The original here uses ONE slot at `[esp+0x10]` for all six
+  products across three vertices.
+- **Pun the float stores.** The original writes each product once and copies
+  it to both destinations with integer movs
+  (`fstp dword [esp+0x10]; mov edi,[esp+0x10]; mov [v+0x30],edi;
+  mov [v+0x24],edi`). Plain float assignments make VC5 emit `fst`/`fstp`
+  straight to the two fields and the temp never gets a slot at all. Spelled
+
+      #define PUN(dst, src) (*(uint32_t*)(void*)&(dst) = \
+                             *(const uint32_t*)(const void*)&(src))
+
+  this was worth **25 register-blind shapes** on one function. Same rule for a
+  plain float-to-float field copy: `mov edi,[v+0x20]` then two integer stores
+  is a pun, not two `fld`/`fstp` pairs.
+
+### What the port adds that the original never had
+
+The same four every time, and all four are visible as EXTRA instructions:
+counters (`pS->cTriIn++`), a bound check on an index the original indexes raw,
+a null test before a sink call the original makes directly, and a state
+pointer parameter for globals that are absolute. Strip all four in the
+matching arm.
+
+### Residue to expect afterwards, and not to grind
+
+The original tends to keep the **scaled byte offset** in a register and
+re-form `base + offset` at each access (`lea eax,[ecx + 0x105CE318]`), where a
+pointer local keeps the pointer. Writing the body in INDEX form
+(`pool[i].field`, no pointer locals) gets the instruction count right but
+costs ~90 bytes of SIB addressing — measured, worse overall. Park it.
