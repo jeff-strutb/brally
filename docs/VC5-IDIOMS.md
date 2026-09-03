@@ -3212,3 +3212,37 @@ value a lifetime the original never gave it:
 body assigns a global into a local and later stores a local back into that
 same global. Spelling the reads and the update in place is a one-line edit
 per site.
+
+## Measure ONE change at a time, or the verdict lands on the wrong construct
+*(re-proven 2026-09-03 on 0x1000EAF0; the same trap as the bundled probes
+below, and it has now cost two dossiers a wrong entry)*
+
+A probe that changes three things and scores worse tells you the BUNDLE is
+worse. It does not tell you which of the three, and writing the bundle's cost
+against one of them buries a construct that is actually fine.
+
+The case: a dossier entry blamed `slot = head - 1; if (slot < 0)` for a
+`dec`/`jns` against `lea`/`test`/`jge` difference, on the strength of a probe
+that had also reversed a guard and sunk an assignment. Re-measured alone, the
+two spellings are BYTE-IDENTICAL — VC5 canonicalises them — so the region cost
+belonged entirely to the other two changes, and a correct construct had been
+carrying the blame for four passes.
+
+**When a bundled probe scores badly, re-run its members singly before writing
+any of them into a dead list** — or write the entry against the bundle, named
+as a bundle, so the next session knows what was actually measured.
+
+## Read a register wall as a "which N of M fit" question
+*(0x1000EAF0's join, 2026-09-03)*
+
+When the original and the recompile both spill, but different things, stop
+looking for a spelling and count the registers. At one join the original keeps
+two loop values live across the merge and therefore has to read the loop
+counter from memory at the guard (`cmp [slot],reg`); we keep the counter in a
+register and reload the two values after the merge. Three values, two
+registers — both builds pick two, and they pick differently.
+
+That framing is worth reaching for early, because it says immediately that no
+source spelling reaches it: the source names all three the same way in both.
+What it does NOT rule out is a change that alters the pressure, which is why
+these verdicts go stale when the frame moves (see the staleness entry above).
