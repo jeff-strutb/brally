@@ -14,6 +14,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
+/* WHAT IT DOES: rotate a direction by a matrix -- the top-left 3x3 only, so
+ * the matrix's translation is IGNORED and this moves directions, not points.
+ * Turning a car-local direction into a world one is the everyday use. */
 /* @implements 0x10074720 d3d BrMat4MulVec3 */
 void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 {
@@ -28,6 +31,10 @@ void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
     }
 }
 
+/* WHAT IT DOES: the inverse of BrMat4MulVec3 for a rotation matrix -- rotate
+ * a direction by the matrix's TRANSPOSE, which takes a world direction back
+ * into the object's own frame. Only an inverse while the matrix is a pure
+ * rotation; a scaled one gives the wrong answer. */
 /* @implements 0x10074770 d3d BrMat4MulVec3Transposed */
 /* NOT MATCHING, and not for a reason source order can fix.  All 67 bytes line
  * up except which side of the inner commutative multiply becomes the memory

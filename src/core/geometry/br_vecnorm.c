@@ -11,6 +11,11 @@
 extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
 #endif
 
+/* WHAT IT DOES: shrink or stretch a vector IN PLACE so it is exactly one unit
+ * long, keeping the direction. That is what turns an arbitrary difference
+ * between two points into a pure "which way", which is what the lighting,
+ * steering and collision code want. A zero-length vector divides by zero here,
+ * exactly as the original does -- callers are expected not to pass one. */
 /* @implements 0x1006D4B0 glide BrVec3Normalise */
 /* @implements 0x10074250 d3d BrVec3Normalise */
 /* @n64 0x802581CC located */
@@ -33,6 +38,9 @@ void BrVec3Normalise(BrVec3 *pV)
     pV->z = (k3 = k) * pV->z;
 }
 
+/* WHAT IT DOES: the four-component version of BrVec3Normalise -- all four
+ * components count towards the length, so this is a plain 4D normalise and
+ * NOT a perspective divide. */
 /* @implements 0x1006D410 glide BrVec4Normalise */
 /* @implements 0x100741B0 d3d BrVec4Normalise */
 /* @n64 0x8025813C located */
