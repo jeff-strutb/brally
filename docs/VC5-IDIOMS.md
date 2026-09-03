@@ -3731,3 +3731,32 @@ unhandled lines in a scaffold. It is one cause; undo the typing when the
 draft is parsed rather than teaching the patterns about the casts.
 `tools/gen_menubuilder.py` does this now and its entry-point regex accepts
 any scalar spelling of the parameter.
+
+## Do not hoist a float parameter into a `double` local — read it where it is used
+
+Proven twice in one session: 0x100199A0 `BrRaceCarCtlOutro` (byte-exact) and
+0x1002A050 `BrMat4LookAt` (+45 bytes and register-blind 25+13 down to -4 and
+4+6 from this one change).
+
+A port naturally writes
+
+    double ex = (double)xEye, ey = (double)yEye, ez = (double)zEye;   /* WRONG */
+    ...
+    pM->m[3][0] = (float)(-(ex * x.x) - ey * x.y - ez * x.z);
+
+because it wants the arithmetic pinned at double. VC5 gives each of those
+locals a home and materialises it up front — three `fld dword` / `fstp qword`
+pairs and 0x18 more frame — where the original reads the float parameter
+straight from its incoming slot at the point of use (`fld dword [esp+0x5c]`
+inside the multiply chain). Read the parameter where it is used.
+
+The same trap one level down: `(double)a - (double)b` on two float operands
+costs fourteen bytes and six x87 slots against plain `a - b`, which emits the
+original's `fld dword; fsub dword`. On the x87 the two are the SAME value —
+the subtraction happens in 80 bits and lands in a double either way — so if
+the port needs the guarantee on other targets, put the casts behind
+`#else` and give the matching build the plain form.
+
+**Screen** (source-side, one grep over the residue): a `diff` row whose body
+contains `double <name> = (double)`. It is a narrow class — two rows at the
+time of writing — so read the two and move on rather than building a tool.
