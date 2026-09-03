@@ -1078,12 +1078,21 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
     if (g_brTexScanState != 1)
         return;
 
-    src = (uint8_t *)g_brTexScanTimgAddr;
-    ds = (int32_t)(pCmd->w1 & 0xFFFu) - (int32_t)(pCmd->w0 & 0xFFFu);
+    /* dt BEFORE ds: the original shifts w0 before w1 in each pair, which only
+     * comes out of computing the shifted difference first (19 -> 4 diffs).
+     * RESIDUE 4: inside `ds` the original still copies and masks w0's half
+     * before w1's, and nothing in the source moves that -- a w0 temp, and a
+     * negated subtraction, both leave it. */
     dt = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
          (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
+    ds = (int32_t)(pCmd->w1 & 0xFFFu) - (int32_t)(pCmd->w0 & 0xFFFu);
     len = (uint32_t)((ds + 1) * (dt + 1)) << 1;
 
+    /* The source pointer is read HERE, not at the top: the original loads the
+     * destination global first and the timg pointer only when the length is
+     * done, and that order is what puts the copy's src/dst in the original's
+     * registers. */
+    src = (uint8_t *)g_brTexScanTimgAddr;
     g_brTexScanSrcSeen = (uint32_t)src;
     memcpy(DAT_100a9e58, src, len);
     g_brTexScanState = 7;
