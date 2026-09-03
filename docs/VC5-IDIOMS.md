@@ -1119,6 +1119,18 @@ the caller AND flipped a helper to match for free.
   neutral or worse. Sweep the associations per row rather than assuming the
   formula is written uniformly — the 64-build sweep there took the function
   from 208 B / 74 insns to exact 206 / 73 and the residue from 26 to 21.
+- **‼ PROCESS: judge a change at the TU's OWN compile variant, and against
+  the right parent.** Two ways a before/after measurement lies, both hit in
+  one session. (1) `fn.py` compiles /O2 only; on an /Od, /Oy- or /Op TU its
+  numbers are partly phantom, so a gain measured there may not exist. Look up
+  the row's `opt` first and re-measure with those flags before claiming
+  anything. (2) When another session is committing to the same branch,
+  `HEAD~1` is NOT your commit's parent — diff against `<yourcommit>^` or you
+  will compare a version against itself and read "no change" for a change
+  that worked. On 0x10015630 the honest numbers at /O2 /Op were a
+  register-blind gap of 77 -> 44 while the RAW BYTE DIFF WENT THE WRONG WAY
+  (819 -> 821) and size went from 38 short to 7 short: rank by the
+  register-blind multiset, never by size or diff count.
 - **‼ PROCESS: a residue note's parity claim is only worth what it was
   measured at.** The note on 0x1006D530 asserted "instruction stream, count
   and size are exact (RAW and REGNORM multiset gap 0+0)"; rebuilding that
