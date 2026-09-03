@@ -454,6 +454,13 @@ int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
 /* @implements 0x100457E0 d3d BrUiHook84_100457E0 */
 int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
 {
+#ifdef BR_MATCHING_BUILD
+    /* Orig pushes the unused pCtl, then stores +0x08 unguarded -- the same
+     * pair of defects as 0x100457C0 above. */
+    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_10045BC0)(pCtl);
+    g_br73.pAA29F4->pfn08 = BrUiHook84_10046870;
+    return 1;
+#else
     BrUiCtl_ *pBack;
 
     (void)pCtl;
@@ -463,6 +470,7 @@ int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
     if (pBack != NULL)                  /* DEVIATION: guarded */
         pBack->pfn08 = BrUiHook84_10046870;
     return 1;
+#endif
 }
 
 int32_t BrUiHook84_100471B0(BrUiCtl_ *pCtl)
