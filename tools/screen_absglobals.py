@@ -35,14 +35,19 @@ for r in rows:
     if not ins or len(ins) > 120:
         continue
     # Capstone prints small displacements in DECIMAL, so an [esp + 4] param
-    # read is invisible to a hex-only pattern -- that bug let every function
-    # that does read its argument through the screen.  Params are loaded
-    # early, so only the head of the function is inspected; a later [esp + N]
-    # is a local slot, not an argument.
-    stackargs = sum(1 for i in ins[:15]
-                    if i.mnemonic == 'mov'
-                    and re.search(r'\[esp(?: \+ (?:0x[0-9a-f]+|\d+))?\]', i.op_str)
-                    and not i.op_str.startswith('dword'))
+    # read is invisible to a hex-only pattern -- that bug once let every
+    # function that does read its argument through the screen.
+    #
+    # The whole body is scanned, not just the head: 0x10058900 reads its one
+    # argument forty instructions in, well past any prologue window, and
+    # slipped through when only the first fifteen were inspected.  Scanning
+    # everything also rejects functions that merely have esp-relative LOCALS,
+    # which costs a few true members -- acceptable, because the class this
+    # screens for touches the stack not at all.
+    stackargs = sum(1 for i in ins
+                    if i.mnemonic in ('mov', 'movsx', 'movzx', 'lea')
+                    and re.search(r'\[(?:esp|ebp)(?: \+ (?:0x[0-9a-f]+|\d+))?\]', i.op_str)
+                    and not i.op_str.startswith(('dword', 'word', 'byte')))
     absops = sum(1 for i in ins if re.search(r'\[0x[0-9a-f]{7,8}\]', i.op_str))
     if stackargs or absops < 2:
         continue
