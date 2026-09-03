@@ -11,6 +11,7 @@
 #include "br_gamestep.h"   /* 0x1002E324 was ALREADY ported -- see below */
 
 #include <stddef.h>
+#include <string.h>   /* the inlined strcpy/strcat at 0x1001CCB5 */
 
 /* ------------------------------------------------------------------ *
  * The globals this module owns.
@@ -328,6 +329,115 @@ const BrBootArgs *BrAppArgs(void) { return &s_args; }
  *
  * 0x1001CC00 -- see br_boot.h for the instruction-level listing. */
 /* @implements 0x1001CC00 glide BrRallyMain */
+#ifdef BR_MATCHING_BUILD
+/* The original calls its platform DIRECTLY -- six `call rel32`, three
+ * `call dword ptr [IAT]` and two inlined string intrinsics. The port's ops
+ * table turns every one of those into `call dword ptr [ops+N]`, which is the
+ * whole 116-instruction shape gap this arm removes. Nothing else differs:
+ * the control flow below is the same one the port arm expresses.
+ *
+ * The callees are declared here rather than pulled in from their own headers
+ * because those headers give them the PORT's ops-table signatures. What the
+ * original's bytes need is the original's: no arguments, direct calls. */
+extern const char *BrStrGet(int32_t id);                 /* 0x1006D280 */
+extern void        BrDxDetect(int32_t *pVer, int32_t *pPlat);  /* 0x1001D8A0 */
+extern int32_t     BrAppCheckPreviousApp(void);          /* 0x10007E80 */
+extern void        BrMemoryQuery(void);                  /* 0x10007F10 */
+extern void        BrBaseDirInit(void);                  /* 0x10063860 */
+extern void        BrStrResLoad(void);                   /* 0x1006D1A0 */
+extern void        BrCmdLineParse(const char *psz);      /* 0x10007F40 */
+extern int32_t     BrWindowCreate(void);                 /* 0x10019670 */
+extern void        BrDesktopSetup(void);                 /* 0x10009C00 */
+extern int32_t     BrUiBootPreLoopGate(void);            /* 0x10056260 */
+extern void        BrMainLoopRun(void);                  /* 0x10019730 */
+
+/* 0x10063060 is __thiscall with one stack argument, which MSVC 5.0 cannot
+ * spell in C (`error C4234`). The reachable form is __fastcall with every
+ * stack argument wrapped in a one-member struct: structs are never
+ * register-eligible, so ecx takes `this`, edx is left alone and the callee
+ * pops its own argument. See docs/VC5-IDIOMS.md, "CALLING one is ALSO
+ * reachable". */
+typedef struct BrCfgPathArg { const char *psz; } BrCfgPathArg;
+extern void __fastcall BrCfgReadFileT(void *pThis, BrCfgPathArg path);
+
+/* 0x10B71290 -- g_BrCtrlCfg, index 0 of the four config objects.
+ * 0x10B72F48 -- the config path this function builds.
+ * 0x10B73540 -- the base directory 0x10063860 read out of the registry. */
+extern uint8_t DAT_10b71290[];
+extern char    DAT_10b72f48[];
+extern char    DAT_10b73540[];
+
+/* The three imports the original calls through the IAT. dllimport is what
+ * produces `call dword ptr [__imp__...]` rather than a linker thunk. */
+__declspec(dllimport) int32_t __stdcall CoInitialize(void *pvReserved);
+__declspec(dllimport) void    __stdcall CoUninitialize(void);
+__declspec(dllimport) int     __stdcall MessageBoxA(void *hWnd,
+                                                    const char *pszText,
+                                                    const char *pszCaption,
+                                                    unsigned int uType);
+
+int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
+                    const char *pszCmdLine, int32_t nCmdShow)
+{
+    int32_t dxVersion;
+    int32_t dxPlatform;
+    BrCfgPathArg path;
+
+    g_brAppExitCode = 0;                       /* 0x1001CC03 */
+
+    /* 0x1001CC11..0x1001CC19. Failure jumps STRAIGHT to the CoUninitialize
+     * tail, skipping even the argument stores -- hence the wrapped body
+     * rather than an early return. */
+    if (CoInitialize(NULL) >= 0) {
+        s_args.hInstance     = hInstance;      /* 0x1001CC2F */
+        s_args.hPrevInstance = hPrevInstance;  /* 0x1001CC34 */
+        s_args.pszCmdLine    = pszCmdLine;     /* 0x1001CC44 */
+        s_args.nCmdShow      = nCmdShow;       /* 0x1001CC4A */
+
+        BrDxDetect(&dxVersion, &dxPlatform);   /* 0x1001CC50 */
+
+        /* 0x1001CC5C is `jae`, i.e. UNSIGNED -- load-bearing, see br_boot.h. */
+        if ((uint32_t)dxVersion < (uint32_t)BR_APP_MIN_DXVERSION) {
+            /* 0x1001CC63. Pushes are uType, caption, text, hWnd, so the TEXT
+             * is 0x128 and the CAPTION is 0x126. */
+            MessageBoxA(NULL, BrStrGet(BR_APP_STR_DX_TEXT),
+                        BrStrGet(BR_APP_STR_DX_CAPTION), 0x10);
+            return 0;                          /* 0x1001CC89 xor eax,eax */
+        }
+
+        /* 0x1001CC91. Returns WITHOUT CoUninitialize -- the original really
+         * does leak the apartment on this one path, and eax is already zero
+         * from the test, so there is no `xor` here. */
+        if (BrAppCheckPreviousApp() == 0) {
+            return 0;
+        }
+
+        BrMemoryQuery();                       /* 0x1001CCA0 */
+        BrBaseDirInit();                       /* 0x1001CCA5 */
+        BrStrResLoad();                        /* 0x1001CCAA */
+        BrCmdLineParse(pszCmdLine);            /* 0x1001CCAF, arg3 in esi */
+
+        /* 0x1001CCB5..0x1001CD0D -- MSVC's inlined strcpy then strcat:
+         * `or ecx,-1; repne scasb; not ecx; sub edi,ecx; shr ecx,2;
+         * rep movsd; and ecx,3; rep movsb` twice over. */
+        strcpy(DAT_10b72f48, DAT_10b73540);
+        strcat(DAT_10b72f48, "BossRally.cfg");
+
+        path.psz = DAT_10b72f48;
+        BrCfgReadFileT(DAT_10b71290, path);    /* 0x1001CD12 */
+
+        if (BrWindowCreate() != 0) {           /* 0x1001CD17 */
+            BrDesktopSetup();                  /* 0x1001CD20 */
+            if (BrUiBootPreLoopGate() != 0) {  /* 0x1001CD25 */
+                BrMainLoopRun();               /* 0x1001CD2E */
+            }
+        }
+    }
+
+    CoUninitialize();                          /* 0x1001CD33 */
+    return g_brAppExitCode;                    /* 0x1001CD39 */
+}
+#else
 int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
 {
     int32_t dxVersion;
@@ -393,3 +503,4 @@ int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
     pOps->pfnCoUninitialize(pOps->pUser);      /* 0x1001CD33 */
     return g_brAppExitCode;                    /* 0x1001CD39 */
 }
+#endif
