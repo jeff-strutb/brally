@@ -2959,3 +2959,30 @@ original is evidence of source that does not cache, not of a missed CSE.**
 from 38 bytes short to 53 short — the three wrong instructions had been
 padding a real deficit elsewhere — while the register-blind multiset went
 64+75 to 52+66. Size alone would have called a correct fix a regression.
+
+## A `static void (void)` helper with TWO call sites is not inlined either
+*(proven 2026-09-03 on 0x10037B20 BrSub1003E510, 137 bytes short -> byte-exact)*
+
+The struct-returning rule above is the hard case, but the soft one costs just
+as much: MSVC 5.0 also declines to inline a plain `static void f(void)` once it
+has more than one caller. Two selection sweeps factored out that way left the
+function at 47 instructions against the original's 99. Spell the body out at
+the call site that needs it under `BR_MATCHING_BUILD` and leave the helper for
+its other caller — the same split the ops-table recipe uses.
+
+**Rule of thumb for the whole MISSING-CODE class: before hunting for source
+the port never had, grep the file for a `static` the original does not call.**
+
+### Two indexing facts from the same function
+
+- **A loop that probes a global keeps probing the GLOBAL, not the saved
+  start.** `start = g_x; if (Probe(g_x) == 0)` compiles to one load into eax, a
+  push of eax, and `mov esi,eax` for the start — the copy IS the local.
+  Writing `Probe(start)` loses that copy and the whole prologue shifts.
+  Happened twice in one function.
+- **A doubled table index needs its OWN local.** Written inline as
+  `tbl[i*2]` and `tbl[i*2+1]`, VC5 folds the ×2 into the SIB scale
+  (`[eax*2 + base]`); the original materialises it once with `shl eax,1` and
+  then indexes `[eax+base]` and `[eax+base+1]`. Same family as the
+  `x <<= k` entry above: **when the original has an explicit shift and you
+  have a scale factor, give the shifted value a name.**
