@@ -369,6 +369,32 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 }
 
 /* ------------------------------------------------------------------ *
+ * 0x10065950 -- signed distance of a point from a contact plane.
+ *
+ * Fourteen call sites, all in the OBB walk (0x10066D70, 0x10068070,
+ * 0x100682C0), and every one of them pushes the plane record, the plane's
+ * own +0x0C field as the constant, and the address of a point:
+ * `push esi / push [esi+0xc] / push &pt / call`.  So the first argument is
+ * the plane normal at +0x00..+0x08 of that record and the second is its
+ * plane constant, passed by value because the caller already has it loaded.
+ *
+ * THE TERM ORDER IS y, z, x -- read off the two faddps, not guessed.  The
+ * x87 stack at the first `faddp st(1)` is [py*ny (ST1), pz*nz (ST0)], and
+ * `faddp st(1)` is ST(1) += ST(0), so that sum is (y + z); the second sees
+ * [that (ST1), nx*px (ST0)] and makes ((y + z) + x).  The plane constant is
+ * last, as a plain `fadd dword ptr [esp+8]`.  Float addition is not
+ * associative, so this is the source order and not a scheduling artefact --
+ * writing the conventional x, y, z sum pairs the wrong two products.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: says which side of a plane a point is on, and how far --
+ * positive in front of the plane, negative behind it. */
+/* @implements 0x10065950 glide BrCrPlaneDist */
+float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
+{
+    return pPoint->y * pN->y + pPoint->z * pN->z + pPoint->x * pN->x + planeD;
+}
+
+/* ------------------------------------------------------------------ *
  * 0x10065980 -- the contact "kick" (see the header).
  *
  * The linear part is a plain restitution reflection: remove 1.05x the velocity
