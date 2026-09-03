@@ -1073,7 +1073,19 @@ void    BrGlNavTail(void);          /* 0x10059060 */
  * swap, the cl/al 0x80 swap, and one fresh `xor eax,eax`.  Everything
  * structural is byte-shape exact: rotated-while reacquire loop with
  * duplicated condition, dword+byte button loads with batch masks, edge
- * machines, tail hook.  Permuter bait (first_live/recompute class). */
+ * machines, tail hook.  Permuter bait (first_live/recompute class).
+ *
+ * Measured 2026-09-03: 939 vs 945 bytes, 298 vs 297 instructions, REGNORM
+ * 1+2 -- recomp EXTRA is one `mov R,I`, MISSING is one `xor R,R` and one
+ * `or R,I`.  The whole size gap is the two bytes at +0x158, where the
+ * original has `or edx,0xffffffff` and we get `mov edx,0xffff`: VC5 proves
+ * that only `dx` is ever read (both uses are `mov word ptr [g],dx`) and
+ * NARROWS the constant, where the original keeps a full 32-bit -1.  FOUR
+ * MORE DEAD SPELLINGS, all byte-identical to what is here, do not re-run:
+ * dropping the `(uint16_t)` cast on the store, declaring `step` as
+ * `int16_t`, declaring it `uint32_t 0xFFFFFFFFu`, and double-casting
+ * `(uint16_t)(int16_t)step`.  The value has no 32-bit use in the ORIGINAL
+ * either, so this is not reachable by giving it one. */
 /* @implements 0x10059410 glide BrGlNavPoll */
 void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
 {
