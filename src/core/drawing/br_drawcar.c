@@ -1145,21 +1145,29 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
     } else {
-        /* Orig: fld z, fld y, mov x, fstp y, mov x, fstp z — two components
-         * through the x87, one as an integer mov, interleaved.  NOT REACHABLE
-         * BY COPY SPELLING (measured 2026-09-03, five variants, all
-         * byte-identical to what is here: whole-struct assignment; a dword
-         * pun on x with y/z left as float assignments; that same pun with
-         * the three statements in two other orders; and named float temps
-         * for y/z, which is the only one that changes anything and costs
-         * five instructions).  VC5 canonicalises every spelling of a 3-float
-         * copy into 3 loads + 3 stores in integer registers.  The original's
-         * mixed form needs the two floats to be x87-live at this point,
-         * which is an allocator state, not a source construct — treat this
-         * region as T3a until the frame (region 1) is solved. */
-        g_BrDrawDir0.z = BrG_6C0670.z;
-        g_BrDrawDir0.y = BrG_6C0670.y;
+        /* ‼ SOLVED 2026-09-03, and exactly as the old note predicted: "treat
+         * this region as T3a UNTIL THE FRAME IS SOLVED".  The frame is solved
+         * now (see the header's session-11 entry), and the sixth copy
+         * spelling lands byte-exact where five had failed against the wrong
+         * frame.  This block is instruction-for-instruction the original:
+         *     fld z; fld y; mov x; fstp y; mov x; fstp z
+         * Two rules make it work.  BOTH floats need a named temp, so their
+         * live ranges overlap and VC5 keeps them on the x87 stack; and the
+         * INTEGER member must be stored FIRST, because a temp whose load and
+         * store are adjacent gets copy-propagated into an integer move (that
+         * is what happened to y when its store came before x's, leaving one
+         * fld/fstp instead of two).  x is spelled inline for the same reason
+         * in reverse: it is the one that SHOULD be an integer move.
+         * GENERAL LESSON, worth more than the region: a dead verdict measured
+         * against a wrong frame is STALE.  Re-test every allocation-sensitive
+         * "measured, do not re-run" note in a function after its frame
+         * changes -- this one had five spellings on it. */
+        {
+        float fz = BrG_6C0670.z, fy = BrG_6C0670.y;
         g_BrDrawDir0.x = BrG_6C0670.x;
+        g_BrDrawDir0.y = fy;
+        g_BrDrawDir0.z = fz;
+        }
     }
     BrVec3NormaliseGuard(&g_BrDrawDir0);
 
