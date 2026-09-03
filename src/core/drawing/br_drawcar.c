@@ -819,6 +819,40 @@ static void wheel_call(unsigned char *car)
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
+ * SESSION 10 (2026-09-03) -- ARM 3 MOVES.  Its colourA top component now
+ * goes through its OWN uint8_t local (`topA = BrG_6C1580;` assigned with
+ * pack0/pack1, third of the three, then `(uint32_t)topA << 8` in the pack)
+ * instead of being nested inline as `(uint32_t)(uint8_t)BrG_6C1580`.  Inline,
+ * VC5 loads it straight into the high lane (`mov dh,byte ptr [mem]`); named,
+ * it loads to a byte register first and then `mov dh,cl`, which is what the
+ * original does (`mov al,[106e8610]` at 0x3d6, `mov dh,al` at 0x3e9) and it
+ * also lets all three byte loads issue together the way the original
+ * schedules them.  Reloc-masked byte diff 4,658 -> 4,539; instructions
+ * 1,831 -> 1,832 (12 short -> 11); bytes 7,537 -> 7,539 (40 short -> 38);
+ * region 6's change -30 -> -28; masked regions FLAT at 25, frame intact
+ * (first divergence still +0x2).  ‼ GENERALISE THIS BEFORE ANYTHING ELSE
+ * HERE: the Horner packs' TOP component wants a named byte local wherever
+ * the original loads it to a byte register before the lane move -- check
+ * each pack site against the bytes, one at a time.
+ * SESSION 10 PROBES, DEAD, do not re-run:
+ *   - the same named-top-local applied to ARM 1's colourB (`top1 =
+ *     g_BrDrawByte80`) looks better on size (38 -> 34 bytes short, 11 -> 9
+ *     instructions) and is a REGRESSION: reloc-masked byte diff 4,539 ->
+ *     4,716 and region 4's first divergence moves 27 bytes earlier,
+ *     orig+0x327 -> orig+0x30c.  That is the identical signature the
+ *     session-7 packA0/packA1 probe left, so it is one wall: ANY change
+ *     inside arm 1's colourB pack un-merges the cross-jumped tail early.
+ *     Judge arm 1 by the first-divergence address, never by size.
+ *   - giving arm 3's colourA its own byte locals (packA0/packA1, distinct
+ *     from the pack0/pack1 that colourB reuses) is BYTE-IDENTICAL: VC5
+ *     coalesces them back onto the same slots, so the two-slot question is
+ *     not decided by how many variables the source declares.
+ * What is LEFT in arm 3, and it is one instruction pair: the original homes
+ * BOTH byte locals before colourA and reads both back widened (`mov
+ * [esp+0x31],dl; mov [esp+0x32],cl` ... `mov eax,[esp+0x31]; and eax,0xff;
+ * or edx,eax`), while we still let pack0 forward from its register and spell
+ * that term `mov dl,al`.  Only pack1 goes through a slot here.
+ *
  * SESSION 9 (2026-09-03) -- RE-RANKING, no movement (25 masked / 33 raw,
  * 1,831 vs 1,843 insns, 7,537 vs 7,577 bytes; unchanged from session 8).
  * ‼ REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
@@ -1047,7 +1081,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * the original merges them at 0x427, spilling pack0/pack1 to the
          * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
          * at the common pack.  Factor the final statement out to reproduce it. */
-        uint8_t topB;
+        uint8_t topB, topA;
         if (flag290C != 0) {
             topB  = (uint8_t)((g_BrDrawByte80 * 4) / 5);
             colourA = 0;
@@ -1056,7 +1090,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         } else {
             pack0 = BrG_6C335C;
             pack1 = BrG_6C0968;
-            colourA = ((((uint32_t)(uint8_t)BrG_6C1580 << 8 | pack0) << 8
+            topA  = BrG_6C1580;
+            colourA = ((((uint32_t)topA << 8 | pack0) << 8
                        | pack1) << 8);
             topB  = g_BrDrawByte80;
             pack0 = BrG_6C0960;
