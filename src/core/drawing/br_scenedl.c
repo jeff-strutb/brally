@@ -11,9 +11,19 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-09-03, ninth pass): 2,328/2,328 instructions -- EQUAL --
- * 9,344 vs 9,354 bytes, 3,727 reloc-masked differing bytes, 20 divergence
- * regions slot-masked (28 raw).  Unchanged from the eighth pass.
+ * STATE (2026-09-03, ninth pass): 2,322 vs 2,328 instructions -- SIX
+ * SHORT -- 9,338 vs 9,354 bytes, 20 divergence regions slot-masked (28
+ * raw).  Region and byte counts unchanged from the eighth pass.
+ * ‼ RETRACTED, and it matters: the eighth pass recorded "2,328/2,328
+ * instructions -- EQUAL".  That was `divergence.py` counting the COFF
+ * function extent's 16-byte alignment padding -- six trailing nops the
+ * extracted original does not have -- as code.  The tool is fixed
+ * (commit a00add5); the real gap is SIX MISSING INSTRUCTIONS.  So the
+ * eighth pass's "the instruction count is now exactly equal" is not
+ * evidence that nothing is missing, and neither is any earlier statement
+ * of the same shape in this file.  Wall 3's `lea R,[R + 0x70]` /
+ * `fld [R + R + 0x54]` pairs and wall 1's fld hoist are where the
+ * multiset says the six sit.
  * NINTH PASS found NO further constant defect.  The eighth pass's advice to
  * re-run the register-blind multiset was followed and `tools/msetdiff.py`
  * had to be fixed first (branch targets and reloc addends were compared

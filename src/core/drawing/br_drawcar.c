@@ -754,9 +754,17 @@ static void wheel_call(unsigned char *car)
  * So orig's frame is LARGER while writing FEWER dwords -- the gap is not a
  * variable we are missing, it is that orig's packer left a hole and packed
  * two bytes into an existing dword where ours packs densely and spends a
- * whole dword.  Chasing "which value are we not homing" is the wrong
- * question; instruction counts are equal (1843 = 1843), so no value is
- * missing.
+ * whole dword.
+ * ‼ RETRACTED 2026-09-03 (session 7), and the retraction re-opens region 1.
+ * The census closed with "chasing 'which value are we not homing' is the
+ * wrong question; instruction counts are equal (1843 = 1843), so no value
+ * is missing."  THE COUNTS WERE NEVER EQUAL.  `divergence.py` was counting
+ * the COFF function extent's 16-byte alignment padding -- FIFTEEN trailing
+ * nops -- as recompiled code.  The tool is fixed (commit a00add5) and the
+ * honest figure is 1,828 vs 1,843: this build is FIFTEEN INSTRUCTIONS AND
+ * 56 BYTES SHORT.  Something IS missing, and the 4-byte frame gap is
+ * consistent with it rather than a pure packing curiosity.  Do not quote
+ * the equality again.
  * MEASURED, do not re-run: declaring pack0/pack1 block-scoped inside the
  * colour if/else (their whole live range) is byte-identical -- it does not
  * move them out of the arg slots into byte slots.
@@ -777,6 +785,30 @@ static void wheel_call(unsigned char *car)
  * `shl R,8` / `or`.  `topB` is the first candidate to check.  This is the
  * same currency as the 0x31/0x32 byte-slot gap in the frame census above --
  * likely one defect, not two.
+ *
+ * WHERE THE 15 MISSING INSTRUCTIONS ARE (2026-09-03, session 7).  The
+ * biggest single gap is region 4/5: orig runs 0x327..0x3c0 where we run
+ * 0x327..0x39b, 37 bytes short in one block.  Read the two streams and the
+ * cause is plain -- THE ORIGINAL GIVES ARM 1 ITS OWN COPY OF THE colourB
+ * PACK and we cross-jump arm 1 into the arm-2/3 shared tail.  Orig arm 1
+ * runs its own 0x327-0x358 (`mov dl,[6C65BC]; mov [esp+0x32],dl; xor ecx,
+ * ecx; mov edx,[esp+0x31]; mov ch,al; mov eax,[esp+0x32]; and/or/shl...`)
+ * and only then `jmp 0x446`; ours emits four instructions and jumps
+ * straight into the tail that arms 2 and 3 share.  The reason the original
+ * does NOT merge them is that its arm-1 copy interleaves the leftover x87
+ * pop (`fstp st(0)` at 0x356, near the END of the pack) while ours
+ * schedules the pop before the jump, which makes the two tails
+ * byte-identical and lets VC5 cross-jump all three arms instead of two.
+ * That is the same cross-jumping-of-identical-tails emitter residue the
+ * C++ lane hit; it is NOT the byte-slot spelling, which is already right.
+ * MEASURED DEAD, do not re-run: giving arm 1 its own block-scoped
+ * `packA0`/`packA1` byte locals so the tails read different slots.  It
+ * does un-merge part of the pack -- +3 real instructions, and the two
+ * `shl R,8` and the `mov B,B` drop out of the multiset -- but it moves
+ * region 4's FIRST divergence 27 bytes EARLIER (orig+0x327 -> orig+0x30c)
+ * for no region-count change, so it is a net regression.  (Judge this
+ * region by the first-divergence address, not the region count: the count
+ * stayed 30/37 through both the good and the bad half of that probe.)
  *
  * Regions 2 and 3 (orig+0x2c8 / +0x2f0) are ONE defect: in colourA's
  * Horner pack the first ftol result goes to the HIGH byte in orig
