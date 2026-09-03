@@ -11,6 +11,43 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼ NINETEENTH PASS (2026-09-03) -- MEASURED STATE, and a full residue
+ * accounting that says this function is DONE as a source problem.
+ *   Measured: 2,322 vs 2,328 instructions (SIX short), 9,339 vs 9,354
+ *   bytes (-15), 19 regions slot-masked / 28 raw, register-blind multiset
+ *   39 missing / 33 extra, fn.py REGNORM 48+54.
+ *   ‼ EVERY ONE of those 39+33 multiset rows maps to a wall already
+ *   catalogued below -- this was checked row by row, not assumed:
+ *     wall 4 (ring*4 CSE)  4 `mov R,[R+A]` / 3 `mov [R+A],R` / 1 `lea
+ *                          R,[R*K]` / 1 `cmp R,[R*K+A]`, plus the 3
+ *                          pDst-spill rows that the eleventh pass proved
+ *                          are downstream of it  = 12 rows, and it is the
+ *                          largest single wall left (~13 B, region 19).
+ *     walls 1/2 (x87)      4 `fld [A]` / 4 `fmul [R+0x38]` (the term-3
+ *                          operand-ranking flip) + the fxch/faddp spread.
+ *     wall 3               `lea R,[R+R+0x70]`, `mov R,[R+0x50]`.
+ *     wall 6 (slot packer) regions 1, 2, 4, 5, 6, 7 are a PURE two-way
+ *                          swap of slots 0x20/0x24 (bSolo+idx vs pDst) --
+ *                          zero byte delta each, wrong displacement byte.
+ *     walls 9a/9b          the `dec`/`lea-1` and `mov R,6` rows, both
+ *                          already recorded dead.
+ *   There is NO missing-code row left: the six missing instructions are
+ *   3x wall 4's spill + walls 1/3's schedule.  So the remaining work is
+ *   register allocation and x87 scheduling, which is T3a by the
+ *   playbook's own decision tree.  Anyone opening this file again should
+ *   read that sentence first and pick a different function unless they
+ *   have a NEW lever for wall 4 or wall 6 specifically.
+ * NINETEENTH-PASS PROBE, DEAD -- do not re-run.  The row block's THREE
+ * OBJECT POINTER LOCALS (`pTw`/`pTy`/`pPos`, used only by the four row
+ * statements) deleted and every term spelled directly off pObj
+ * (`pObj[0xc]`, `pObj[0xf]`, `pObj[0xe]`, `pObj[0xd]` -- the same four
+ * displacements the original emits off esi).  This was the obvious
+ * untried counterpart to the sixteenth pass's coefficient-symbol fix, on
+ * the theory that the term-3 flip is an operand-KIND ranking: it is much
+ * worse, REGNORM 48+54 -> 72+83, bytes -15 -> -25, instructions -6 -> -11.
+ * VC5 CSEs harder without the pointer locals and loses five more
+ * instructions.  The pointer spelling is load-bearing; keep it.
+ *
  * STATE (2026-09-03, ninth pass): 2,322 vs 2,328 instructions -- SIX
  * SHORT -- 9,338 vs 9,354 bytes, 20 divergence regions slot-masked (28
  * raw).  Region and byte counts unchanged from the eighth pass.
