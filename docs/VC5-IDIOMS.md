@@ -3188,6 +3188,24 @@ scoped macros and two hooks made direct took the register-blind gap from
 149+285 to 60+137 and the size from 352 short to 240 short, with no sibling in
 the 49-function TU disturbed.
 
+### A 2-byte reversal is a halfword COMPOSE, not two byte stores
+
+An in-place byte swap written the obvious way —
+`t = p[0]; p[0] = p[1]; p[1] = t;` — emits two byte stores, and MSVC5 will
+NOT merge them into a 16-bit store however you arrange the temps (both the
+single-temp and the load-both-bytes-first forms were measured byte-identical).
+The original loads the two bytes straight into the low and high halves of one
+register and writes the pair once, so the source composes the halfword:
+
+    #define BrRev2(pv) (*(uint16_t *)(void *)(pv) = (uint16_t)( \
+        ((uint16_t)((unsigned char *)(pv))[0] << 8) | (uint16_t)((unsigned char *)(pv))[1] ))
+
+VC5 turns the `<< 8` / `|` into `mov cl,[p+1]; mov ch,[p]` with no shift at
+all. **Tell: count `mov word ptr` stores in the original — one per swap site
+means the compose form, and byte stores in your recompile against word stores
+in the original is this and nothing else.** Worth 22 register-blind shapes on
+0x100302A0 (35+36 -> 13+23), where the original has exactly seven such stores.
+
 ### The same disease at BYTE and HALFWORD granularity
 
 The accessor sub-case below is usually spotted as a struct pointer, but the
