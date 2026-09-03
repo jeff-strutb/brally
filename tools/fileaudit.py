@@ -84,14 +84,28 @@ def describes(path, va, dva, _cache={}):
             break
     if idx is None:
         return None                      # no tag at all: a different defect
+    # Walk up through the attached comment block. Preprocessor lines are
+    # stepped over, not treated as the end of it: a function whose matching
+    # body is guarded writes the description above the `#ifdef`, and the tag
+    # sits inside -- counting that as undescribed reports a comment that is
+    # plainly there. The same guard means one description can cover both the
+    # matching and the port body, which is correct: they are one function.
     k = idx - 1
+    seen_code = False
     while k >= 0:
         s = lines[k].strip()
-        if not (s.startswith('*') or s.startswith('/*') or s.endswith('*/')):
-            break
-        if 'WHAT IT DOES' in s:
-            return True
-        k -= 1
+        if not s or s.startswith('#'):
+            k -= 1
+            continue
+        if s.startswith('*') or s.startswith('/*') or s.endswith('*/'):
+            if 'WHAT IT DOES' in s:
+                return True
+            k -= 1
+            continue
+        if not seen_code and s.startswith('@'):
+            k -= 1
+            continue
+        break
     return False
 
 
