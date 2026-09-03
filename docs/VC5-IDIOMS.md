@@ -2798,3 +2798,39 @@ it.
 Corollary, same function: a `lea r,[base+index]` for a two-register sum
 picks its base by allocation, not by source operand order. Neither
 spelling, nor a read-modify-write, flips it. That one is T3a — park it.
+
+## `(double)` modelling is a D3D-era artefact — the Glide binary is FLOAT
+*(confirmed three times: BrRbBuildMatrix's own note, 0x1006D850
+BrRbIntegrateState -55 bytes to -11, and the velocity trio in slice3_42.c)*
+
+Several float-heavy functions are written with every operand cast to `double`
+and a spill map arguing the intermediates "must not round". That model was
+read off **BRD3D.dll**, and it is wrong for the reference binary. On x87 the
+arithmetic is 80-bit either way until it is stored, so the C type only decides
+the SPILL WIDTH — and the tell is unambiguous:
+
+**If the original never emits `fstp qword ptr [esp+N]`, the temporaries are
+`float`.** A `double` model spills eight bytes at a time and cannot match.
+
+Screen for the class — diff-bearing files with heavy `(double)` modelling:
+
+    for f in $(awk -F, 'NR>1&&$4=="diff"{print $1}' build/match/report.csv | sort -u); do
+      n=$(grep -c '(double)' "$f" 2>/dev/null); [ "$n" -ge 6 ] && echo "$n $f"; done | sort -rn
+
+As of 2026-09-03 that names twelve files, slice2_15.c (63 casts, 7 diff rows)
+and slice2_17.c (43, 8) worst.
+
+### Two boundary conditions, both learned the hard way
+
+- **A `(float)` cast on an already-float expression is a NO-OP** and will not
+  produce the original's store-and-reload. Only a NAMED float local does, and
+  only when register pressure actually forces the spill — which means the
+  products have to be computed BEFORE the adds that consume them. One
+  statement at a time, each product is consumed immediately and nothing
+  spills at all.
+- **The `fld a; fmul [b]` operand-order lever has a limit.** It works when one
+  operand is a LOCAL: writing the local first is worth 12 instructions on the
+  velocity trio. It does NOT work when both operands are memory — on
+  0x1006D850 `pSrc->vel.x * dt` and `dt * pSrc->vel.x` compile to
+  byte-identical output, so VC5 canonicalises that case and the order is not
+  source-reachable. Check which side is a local before spending probes.
