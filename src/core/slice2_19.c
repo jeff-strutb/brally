@@ -1272,8 +1272,8 @@ static uint16_t BrLd16(const void *pv)
 #define BrRev4(pv) do { unsigned char t_; \
     t_ = ((unsigned char *)(pv))[0]; ((unsigned char *)(pv))[0] = ((unsigned char *)(pv))[3]; ((unsigned char *)(pv))[3] = t_; \
     t_ = ((unsigned char *)(pv))[1]; ((unsigned char *)(pv))[1] = ((unsigned char *)(pv))[2]; ((unsigned char *)(pv))[2] = t_; } while (0)
-#define BrRev2(pv) do { unsigned char t_ = ((unsigned char *)(pv))[0]; \
-    ((unsigned char *)(pv))[0] = ((unsigned char *)(pv))[1]; ((unsigned char *)(pv))[1] = t_; } while (0)
+#define BrRev2(pv) (*(uint16_t *)(void *)(pv) = (uint16_t)( \
+    ((uint16_t)((unsigned char *)(pv))[0] << 8) | (uint16_t)((unsigned char *)(pv))[1] ))
 #define BrRdBe32(pv) do { uint32_t v_ = \
       ((uint32_t)((unsigned char *)(pv))[0] << 24) | ((uint32_t)((unsigned char *)(pv))[1] << 16) \
     | ((uint32_t)((unsigned char *)(pv))[2] << 8)  | (uint32_t)((unsigned char *)(pv))[3]; \
