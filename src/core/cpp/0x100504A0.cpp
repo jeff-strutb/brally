@@ -1,8 +1,8 @@
-/* @implements 0x1004f8c0 glide BrOptFn10056A10
+/* @implements 0x100504a0 glide BrOptFn100575F0
  * @cpp_kind free
- * @cpp_symbol ?BrOptFn10056A10@@YAHPAVGameUi@@@Z
+ * @cpp_symbol ?BrOptFn100575F0@@YAHPAVGameUi@@@Z
  *
- * 1498 B cdecl EH-frame menu-page builder. Emitted by
+ * 1558 B cdecl EH-frame menu-page builder. Emitted by
  * tools/gen_menubuilder.py from the Ghidra draft; the class
  * layouts and the three family levers come from the hand-solved
  * 0x100425E0 / 0x10048160 (char bool after the slot store, raw
@@ -67,22 +67,22 @@ public:
 
 typedef char chk_sel3838[sizeof(Sel3838) == 0x18 ? 1 : -1];
 
-class SlotTable04F8C0 {
+class SlotTable0504A0 {
 public:
     virtual void s0();
     virtual void s1(char *pszPattern);   /* +0x04 */
     char aRecs[26000];                   /* +0x04, 0x104-byte records */
 };
 
-class Root04F8C0 {
+class Root0504A0 {
 public:
     char            pad000[0xC0];
-    SlotTable04F8C0 *pTable;         /* +0xC0 */
-    SlotTable04F8C0 *pTableC4;       /* +0xC4 */
+    SlotTable0504A0 *pTable;         /* +0xC0 */
+    SlotTable0504A0 *pTableC4;       /* +0xC4 */
 };
 
 
-class Page04F8C0 {
+class Page0504A0 {
 public:
     virtual void v0();
     int (*pfnA)(void);              /* +0x04 */
@@ -98,7 +98,7 @@ public:
     GameUi *f340;                   /* +0x340 */
     short w344;                     /* +0x344 */
     short w346;                     /* +0x346 */
-    Page04F8C0();
+    Page0504A0();
 };
 
 class BrCtl {
@@ -150,47 +150,49 @@ public:
     char pad[0x10];
     unsigned short w10;             /* +0x10 */
     short w12;                      /* +0x12 */
-    Page04F8C0 *a14[22];              /* +0x14 */
+    Page0504A0 *a14[22];              /* +0x14 */
     int a6C[1];                     /* +0x6C */
 };
 
-typedef char chk_page04F8C0[sizeof(Page04F8C0) == 0x348 ? 1 : -1];
-typedef char chk_ctl04F8C0[sizeof(BrCtl) == 0x1E214 ? 1 : -1];
+typedef char chk_page0504A0[sizeof(Page0504A0) == 0x348 ? 1 : -1];
+typedef char chk_ctl0504A0[sizeof(BrCtl) == 0x1E214 ? 1 : -1];
 typedef char chk_sel_off[(unsigned)&((BrCtl *)0)->m3838 == 0x3838 ? 1 : -1];
 typedef char chk_f1e1f4[(unsigned)&((BrCtl *)0)->f1E1F4 == 0x1E1F4 ? 1 : -1];
-typedef char chk_w1e20c04F8C0[(unsigned)&((BrCtl *)0)->w1E20C == 0x1E20C ? 1 : -1];
-typedef char chk_a6c04F8C0[(unsigned)&((GameUi *)0)->a6C == 0x6C ? 1 : -1];
-typedef char chk_tbl04F8C0[(unsigned)&((Root04F8C0 *)0)->pTable == 0xC0 ? 1 : -1];
+typedef char chk_w1e20c0504A0[(unsigned)&((BrCtl *)0)->w1E20C == 0x1E20C ? 1 : -1];
+typedef char chk_a6c0504A0[(unsigned)&((GameUi *)0)->a6C == 0x6C ? 1 : -1];
+typedef char chk_tbl0504A0[(unsigned)&((Root0504A0 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 
 extern "C" {
-BrCtl *DAT_10ac5d40;
-int BrCarNameCommit();
-int BrOpt3F50();
-int BrPhaseLeave_10044B40();
+extern char DAT_10ac40a8;
+BrCtl *DAT_10ac5d14;
+int BrOpt44C0();
+int BrOptOpen2950B();
 int BrSub10047360();
-int BrUiFn1003F020();
-int BrUiHook85_10042AC0();
+int BrSub100586A0();
+int BrToggleOnce_C050();
+int BrUiFn1003F210();
+int BrUiFn1003F280();
 extern char  DAT_100aabe8;
 extern char  DAT_100aaca8;
 extern char  DAT_10396f08;
-extern char  DAT_10ac3e80;
 extern float DAT_10077658;
 extern float DAT_1007765c;
 char *BrStrGet(int);
 void FUN_100378c0(int);
 }
 
-int BrOptFn10056A10(GameUi *parent)
+int BrOptFn100575F0(GameUi *parent)
 {
-    Page04F8C0 *cont;
+    Page0504A0 *cont;
     BrCtl     *p;
     char       bad;
 
     parent->w12 = 0;
+    BrSub100586A0();
     parent->a6C[parent->w10] = 1;
-    cont = new Page04F8C0;
+    cont = new Page0504A0;
     parent->a14[parent->w10] = cont;
     bad = (cont == 0);
     if (bad)
@@ -198,7 +200,7 @@ int BrOptFn10056A10(GameUi *parent)
     parent->w10 += 1;
     cont->f340 = parent;
     cont->f10 = 0;
-    cont->f338 = 190.0f;
+    cont->f338 = 195.0f;
     cont->f33C = 130.0f;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -214,7 +216,7 @@ int BrOptFn10056A10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 10.0f, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 3;
-    p->s34(BrStrGet(0x5d), 1, 1, &DAT_100aaca8);
+    p->s34(BrStrGet(0x62), 1, 1, &DAT_100aaca8);
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -223,8 +225,9 @@ int BrOptFn10056A10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 0x34;
-    p->s34(BrStrGet(0x5e), 1, 4, &DAT_100aabe8);
+    p->s34(BrStrGet(99), 1, 4, &DAT_100aabe8);
     cont->w14 += 1;
+    cont->w344 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
     bad = (p == 0);
@@ -238,17 +241,20 @@ int BrOptFn10056A10(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 174.0f, 0x200001, 2, 5, 1, -1);
-    p->pfn08 = (CtlFn)BrUiHook85_10042AC0;
-    p->pfn04 = (CtlFn)BrCarNameCommit;
-    p->pfn10 = (CtlFn)BrUiFn1003F020;
+    p->pfn08 = (CtlFn)BrToggleOnce_C050;
+    p->pfn04 = (CtlFn)BrUiFn1003F210;
+    p->pfn10 = (CtlFn)BrUiFn1003F280;
     p->w1E20C = 3;
     p->s34(&DAT_10396f08, 1, 1, &DAT_100aabe8);
-    strcpy(p->m2B5C.szName, &DAT_10ac3e80);
+    if (strlen(&DAT_10ac40a8) <= 1)
+        strcpy(p->m2B5C.szName, BrStrGet(0xC1));
+    else
+        strcpy(p->m2B5C.szName, &DAT_10ac40a8);
     p->m2B5C.s1();
-    p->f050 = 0x9b;
-    p->m2B5C.a424[0] = 0x9b;
-    p->f058 = 0x15b;
-    p->m2B5C.a424[2] = 0x15b;
+    p->f050 = 0xc5;
+    p->m2B5C.a424[0] = 0xc5;
+    p->f058 = 0x135;
+    p->m2B5C.a424[2] = 0x135;
     p->f054 = 0xac;
     p->m2B5C.a424[1] = 0xac;
     p->f05C = 0xbc;
@@ -261,12 +267,12 @@ int BrOptFn10056A10(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102011, 2, 5, 1, -1);
+    p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrOpt3F50;
-    p->w1E20C = 2;
-    p->s34(BrStrGet(0x1e), 1, 0, &DAT_100aabe8);
-    DAT_10ac5d40 = p;
+    p->pfn08 = (CtlFn)BrOptOpen2950B;
+    p->w1E20C = 3;
+    p->s34(BrStrGet(0x1e), 1, 1, &DAT_100aabe8);
+    DAT_10ac5d14 = p;
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -276,7 +282,7 @@ int BrOptFn10056A10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseLeave_10044B40;
+    p->pfn08 = (CtlFn)BrOpt44C0;
     p->w1E20C = 3;
     p->s34(BrStrGet(0xc), 1, 1, &DAT_100aabe8);
     cont->w14 += 1;

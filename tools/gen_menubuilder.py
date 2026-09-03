@@ -49,8 +49,8 @@ def f32(hexlit):
 def arg(tok):
     """Render one s38 argument the way the family's matched TUs spell it."""
     tok = tok.strip()
-    if tok in ('param_1', 'unaff_retaddr'):
-        return 'parent'
+    if tok in ('param_1', 'unaff_retaddr') or re.match(r'^uVar\d+$', tok):
+        return 'parent'     # s38's first argument is always the parent
     m = re.match(r'^\*\(int \*\)\(iVar\d+ \+ (0x33[8c])\)$', tok)
     if m:
         return 'cont->f%s' % m.group(1)[2:].upper()
@@ -139,8 +139,45 @@ def parse(va):
         r'^sVar\d+ = \*\(short \*\)\(iVar\d+ \+ 0x14\);$\n'
         r'^\*\(short \*\)\(piVar\d+ \+ 0xaad\) = \(short\)piVar\d+\[0xaad\] \+ 1;$\n'
         r'^\*\(short \*\)\(\(int\)piVar\d+ \+ 0x2ab6\) = sVar\d+ \+ 1;$', re.M)
+    # The inline STRCPY into the item label. Ghidra unrolls MSVC's
+    # `repne scasb` + `rep movs` expansion into two loops; it is one
+    # `strcpy(p->m2B5C.szName, src)` in the source. The item's vptr is read
+    # in the middle of it and used straight after for the relayout vcall.
+    cpy = re.compile(
+        r'^uVar(\d+) = 0xffffffff;$\n'
+        r'(?:^pcVar\d+ = \(char \*\)&(DAT_\w+);$\n)?'
+        r'^do \{$\n(?:^.*$\n)*?^\} while \(cVar\d+ != .\\0.\);$\n'
+        r'^uVar\1 = ~uVar\1;$\n'
+        r'^iVar(\d+) = piVar\d+\[0xad7\];$\n'
+        r'^pcVar\d+ = pcVar\d+ \+ -uVar\1;$\n'
+        r'^pcVar\d+ = \(char \*\)\(\(int\)piVar\d+ \+ 0x2b65\);$\n'
+        r'^for \(uVar\d+ = uVar\1 >> 2;.*$\n(?:^.*$\n)*?^\}$\n'
+        r'^for \(uVar\1 = uVar\1 & 3;.*$\n(?:^.*$\n)*?^\}$\n', re.M)
+
+    def _cpy(m):
+        src = m.group(2)
+        return ('@@LABELCPY %s\n' % (src if src else '?'))
+
+    # The item RECT, written to the control's own +0x50 copy and to the
+    # item's a424, then the measured width.
+    rect = re.compile(
+        r'^piVar(\d+)\[0x14\] = (0x[0-9a-f]+);$\n'
+        r'^piVar\1\[0xbe0\] = \2;$\n'
+        r'^piVar\1\[0x16\] = (0x[0-9a-f]+);$\n'
+        r'^piVar\1\[0xbe2\] = \3;$\n'
+        r'^piVar\1\[0x15\] = (0x[0-9a-f]+);$\n'
+        r'^piVar\1\[0xbe1\] = \4;$\n'
+        r'^piVar\1\[0x17\] = (0x[0-9a-f]+);$\n'
+        r'^piVar\1\[0xbe3\] = \5;$\n'
+        r'^\*\(short \*\)\(piVar\1 \+ 0xbde\) = '
+        r'\(\(short\)piVar\1\[0xbe2\] - \(short\)piVar\1\[0xbe0\]\) \+ -0x10;$',
+        re.M)
+
     blob = '\n'.join(joined)
     blob = sub.sub('@@SUBLINK', blob)
+    blob = cpy.sub(_cpy, blob)
+    blob = rect.sub(lambda m: '@@RECT %s %s %s %s'
+                    % (m.group(2), m.group(4), m.group(3), m.group(5)), blob)
     m = fill.search(blob)
     while m:
         blob = blob[:m.start()] + ('@@FILL %s %s %s %s'
@@ -151,6 +188,27 @@ def parse(va):
     joined = blob.split('\n')
 
     for l in joined:
+        if l.startswith('@@LABELCPY'):
+            src = l.split()[1]
+            if src == '?':
+                if not PARTIAL[0]:
+                    sys.exit('label strcpy with a computed source -- fill by hand')
+                stmts.append(('raw', '@@UNHANDLED@@ strcpy source is computed'))
+            else:
+                externs.add(src)
+                stmts.append(('raw', 'strcpy(p->m2B5C.szName, &%s);' % src))
+            continue
+        if l.startswith('@@RECT '):
+            _, x0, y0, x1, y1 = l.split()
+            stmts.append(('raw',
+                'p->f050 = %s;\n    p->m2B5C.a424[0] = %s;\n'
+                '    p->f058 = %s;\n    p->m2B5C.a424[2] = %s;\n'
+                '    p->f054 = %s;\n    p->m2B5C.a424[1] = %s;\n'
+                '    p->f05C = %s;\n    p->m2B5C.a424[3] = %s;\n'
+                '    p->m2B5C.w41C = (short)(p->m2B5C.a424[2] - '
+                'p->m2B5C.a424[0]) - 0x10;'
+                % (x0, x0, x1, x1, y0, y0, y1, y1)))
+            continue
         if l == '@@SUBLINK':
             stmts.append(('raw', 'p->w2AB6[0] = (short)(cont->w14 + 1);'))
             stmts.append(('raw', 'p->w2AB4 += 1;'))
@@ -282,6 +340,8 @@ def parse(va):
         if m:
             externs.add('#' + m.group(1))
             stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
+        if re.match(r'^\(\*\*\(funcptr \*\)\(iVar\d+ \+ 4\)\)\(\);$', l):
+            stmts.append(('raw', 'p->m2B5C.s1();')); continue
         m = re.match(r'^piVar\d+\[0xe0f\] = \(int\)(\w+);$', l)
         if m:
             externs.add(m.group(1))
