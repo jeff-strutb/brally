@@ -689,14 +689,19 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
  * in. */
 /* @implements 0x10035452 d3d BrCarGfxReadColour */
 #ifdef BR_MATCHING_BUILD
-/* True __thiscall with THREE stack args and no edx setup -- unreachable
- * exactly from C (the fastcall trick must materialise a dummy edx).  The
- * declaration below costs ONE extra `xor edx,edx`-class insn at the call;
- * everything else is /Od-literal: pw[0] is RE-READ for every term (no `c`
+/* True __thiscall with THREE stack args and no edx setup. That IS reachable:
+ * declare every stack argument as a ONE-MEMBER STRUCT, which is never
+ * register-eligible, so ecx takes `this`, edx is left alone and no dummy has
+ * to be materialised. (The `int unused_edx` spelling used here before cost an
+ * `xor edx,edx` at the call and pushed the guard's `jne` from short to near.)
+ * See docs/VC5-IDIOMS.md, "CALLING one is ALSO reachable".
+ *
+ * Everything else is /Od-literal: pw[0] is RE-READ for every term (no `c`
  * local), and the locals are declared in the original's home order
  * (pSlot, b, r, g, pw -> -4,-8,-0xc,-0x10,-0x14). */
-extern void __fastcall BrRgbSinkSet3(BrRgbSink *pSink, int unused_edx,
-                                     int r, int g, int b);
+typedef struct BrRgbArg { int v; } BrRgbArg;
+extern void __fastcall BrRgbSinkSet3(BrRgbSink *pSink,
+                                     BrRgbArg r, BrRgbArg g, BrRgbArg b);
 
 void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
 {
@@ -705,7 +710,7 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
      * that reproduces the original's frame layout
      * (slot=-4, b=-8, r=-0xc, g=-0x10, pw=-0x14); probed empirically. */
     const BrGfxSlot *a;
-    int b, y, z;
+    BrRgbArg b, y, z;          /* the three struct args ARE the three locals */
     const uint16_t  *pw;
 
     a  = &pCar->pSlots[pCar->aSlotIdx[2]];
@@ -715,10 +720,10 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
      * guard; `if (...) return;` costs a jne/jmp pair. */
     if (pw != NULL) {
         if (((a->f20 >> 24) & 0xFu) == 1u) {
-            y = ((pw[0] >> 8) & 0xF8) | ((pw[0] >> 13) & 7);
-            z = ((pw[0] >> 3) & 0xF8) | ((pw[0] >>  8) & 7);
-            b = ((pw[0] << 2) & 0xF8) | ((pw[0] >>  3) & 7);
-            BrRgbSinkSet3(pSink, 0, y, z, b);
+            y.v = ((pw[0] >> 8) & 0xF8) | ((pw[0] >> 13) & 7);
+            z.v = ((pw[0] >> 3) & 0xF8) | ((pw[0] >>  8) & 7);
+            b.v = ((pw[0] << 2) & 0xF8) | ((pw[0] >>  3) & 7);
+            BrRgbSinkSet3(pSink, y, z, b);
         }
     }
 }
