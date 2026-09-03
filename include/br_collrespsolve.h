@@ -113,13 +113,18 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
                     int dampFlag, int spinFlag, BrCrEffect *pEffect);
 
-/* 0x10065950 -- signed distance of pPoint from the plane (pN, planeD).
- *
- * The plane constant is a separate argument because every caller already has
- * it loaded out of the plane record's +0x0C.  The sum is ordered y, z, x and
- * then the constant; see the .c for why that is the source order and not a
- * scheduling artefact. */
-float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint);
+/* 0x10065950 BrCrPlaneDist -- signed distance of a point from a plane -- is
+ * DELIBERATELY NOT DECLARED HERE.  A prototype visible to its own translation
+ * unit costs the match: MSVC5 emits one extra `fxch st(1)` in the body (41 ->
+ * 43 bytes) when the definition is preceded by a declaration of itself, and
+ * the byte-exact form is the one compiled with no prior declaration.  It is
+ * file-local in practice -- the original's fourteen call sites are all inside
+ * the OBB walk, which lives in the same module.  Declare it at the point of
+ * use in any OTHER translation unit that needs it (a prototype elsewhere does
+ * not affect the defining TU's codegen); see the note over the definition in
+ * br_collrespsolve.c. */
+
+
 
 /* 0x10067710 -- the response walker (see the .c).  Walks the broad phase's
  * candidate list g_pBrCollRespList and resolves each surviving contact.

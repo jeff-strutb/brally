@@ -385,6 +385,14 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
  * last, as a plain `fadd dword ptr [esp+8]`.  Float addition is not
  * associative, so this is the source order and not a scheduling artefact --
  * writing the conventional x, y, z sum pairs the wrong two products.
+ *
+ * ‼ NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
+ * not preceded by a declaration of itself: putting the obvious prototype in
+ * br_collrespsolve.h adds one `fxch st(1)` and takes it 41 -> 43 bytes.
+ * Isolated and re-measured both ways (the bare prototype alone does it, with
+ * or without the comment above it).  A prototype in some OTHER translation
+ * unit is harmless -- it is a prior declaration in the DEFINING TU that moves
+ * the schedule.  Do not "tidy" this into the header.
  * ------------------------------------------------------------------ */
 /* WHAT IT DOES: says which side of a plane a point is on, and how far --
  * positive in front of the plane, negative behind it. */
