@@ -658,7 +658,23 @@ extern void BrGlFixupAt(uint8_t *p);
  * semantic map as the port body above, but the original's shape: the
  * scalar swaps UNROLLED with two byte temps, +0x40..+0x4F and the ten
  * 0x14-stride rows as real loops, and NINETEEN pointer locals (one per
- * fixup site) handed to the fixup helper at the tail in list order. */
+ * fixup site) handed to the fixup helper at the tail in list order.
+ *
+ * PARKED at 231 diffs with the SIZE and the instruction multiset both
+ * exact (1549/1549, 495/495, zero extra, zero missing) -- everything left
+ * is ordering. One pattern, repeated at every big-endian dword load past
+ * the first: the original loads the low half of `cx` before the high half
+ * (`mov cl,[esi+5]` then `mov ch,[esi+4]`), ours does the reverse. The
+ * first block, right after the read call, schedules differently in the
+ * original too and matches.
+ *
+ * DEAD PROBES (2026-09-03), all leaving 231 unchanged -- VC5 canonicalises
+ * the expression before scheduling, so do NOT re-spell it:
+ *   - swapping the `|` operands so the shifted byte is on the left;
+ *   - dropping the redundant `(uint32_t)` cast;
+ *   - the four-statement accumulator form (`v = h[n]; v = (v<<8)|h[n+1];`).
+ * A fresh idea is needed for the cl/ch pairing order, not another
+ * spelling. */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
