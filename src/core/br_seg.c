@@ -39,6 +39,16 @@ extern int32_t g_brSegN64Base;   /* 0x104B16E4 */
 extern int32_t g_brSegHostBase;  /* 0x104B16E0 */
 void BrRcaResetCounts(void);
 
+/* WHAT IT DOES: point the address translator at a freshly loaded block of
+ * game data. The disc still holds N64-format data full of N64 addresses, so
+ * every pointer read out of it has to be rebased onto where the block
+ * actually landed in memory; these two bases are what that rebasing uses.
+ * Also resets the fixup counters for the new block.
+ *
+ * GOTCHA: the original takes TWO arguments and this signature has three. The
+ * first two globals are filled from pMap and n64Base -- i.e. shifted one
+ * along -- because the port's extra pMap parameter occupies the first slot.
+ * The names read wrong on purpose; the bytes are what they are. */
 /* @implements 0x10018A10 glide BrSegSetBases */
 void BrSegSetBases(BrSegMap *pMap, uint32_t n64Base, uint32_t hostBase)
 {

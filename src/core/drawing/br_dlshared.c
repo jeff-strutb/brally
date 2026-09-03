@@ -126,6 +126,10 @@ unsigned char *BrDlsTileRectE4(unsigned char *p)
 }
 
 /* 0xE3 -- integer corners scaled <<2, 8-byte command. */
+/* WHAT IT DOES: unpack the display-list command that draws a textured
+ * rectangle whose corners are given as WHOLE pixels, scaling them up to the
+ * quarter-pixel units the renderer works in, and hand the result to the
+ * rectangle drawer. The quarter-pixel twin is BrDlsTileRectE4. */
 /* @implements 0x100219D0 glide BrDlsTileRectE3 */
 unsigned char *BrDlsTileRectE3(unsigned char *p)
 {

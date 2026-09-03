@@ -733,6 +733,15 @@ void BrCollRespListReset(void)
  * port's index -- and it has no bound, which the header explains is safe. */
 extern BrCollRespNode *g_pBrCrCursor;           /* 0x11778844 */
 
+/* WHAT IT DOES: remember one more surface the car is currently touching, by
+ * pushing it onto the front of this frame's contact list. The collision
+ * response then walks that list to work out which way to push the car.
+ *
+ * The original allocates by bumping a cursor with NO bound check. That is
+ * safe rather than lucky: a cell holds at most 150 contacts and the pool is
+ * 200 nodes. The port's copy below enforces the bound anyway and counts
+ * refusals, because a port that silently wrote past the array would be a
+ * worse bug than the one it models. */
 /* @implements 0x10066230 glide BrCrListPush */
 void BrCrListPush(const BrCollPlane *pPlane)
 {
