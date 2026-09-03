@@ -1,59 +1,79 @@
 /* @implements 0x10038E10 glide BrUiText1003F8D0
- * @cpp_kind method
- * @cpp_symbol BrUiText1003F8D0
+ * @cpp_kind free
+ * @cpp_symbol ?BrUiText1003F8D0@@YAHPAVObj38E10@@@Z
  *
- * Free cdecl (ctl): refills the control's text box.  When 0x10AC5BA8 is
- * set the text comes from string-table entry 0xAF (FUN_1006d280) and the
- * +0x2B64 kind byte is 4 or 1 by g_AC4648[g_iAA2840] (fixed-address array
- * folded as a displacement); otherwise the literal at 0x100ACAD8 is used
- * and the kind byte is left alone.  Both arms are the VC5 INTRINSIC
- * strcpy (repne scasb + rep movsd/movsb) into name[] at box+9.  Then the
- * box's +4 vcall (EDX pattern) and Br85ItemApply(ctl, 0).  No EH.
+ * cdecl, one arg, `ret`, 100 B. Put the catalogue string the +0x5D80
+ * selector points at into the owner's +0x2B5C item label, relayout through
+ * the +0x04 vcall and apply. Returns 1.
+ *
+ * Same 0x438 item record as 0x10041300. One of three identical siblings
+ * (0x10038E10 / 0x10039350 / 0x10039510) differing only in the selector
+ * global and the index table.
+ *
+ * The port body in slice2_23.c reaches its globals through a BrUiGlobals*
+ * second parameter; the original is cdecl with ONE argument and direct
+ * global addresses. Same split as the 0x10038650 sibling.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
+#endif
 
-class BrBox85 {
+class Item38E10 {
 public:
-    virtual int b0();
-    virtual int b1();          /* +0x04 */
+    virtual void  s0();
+    virtual void  s1();         /* +0x04 relayout */
+    virtual void  s2();
+    virtual void  s3();
+    virtual void  s4();
+    virtual void  s5();
+    virtual void  s6();
+    virtual void  s7();
+    virtual void  s8();
+    virtual void  s9();
+    virtual float s10();
+    virtual void  s11();
 
-    char pad04[8 - 4];
-    char kind;                 /* +0x08 -> ctl+0x2B64 */
-    char name[1];              /* +0x09 -> ctl+0x2B65 */
+    int   f004;
+    char  b008;
+    char  szName[0x401];        /* +0x009 */
 };
 
-struct BrCtl85 {
-    char pad00[0x2B5C];
-    class BrBox85 box;         /* +0x2B5C */
+typedef char chk_name38E10[(unsigned)&((Item38E10 *)0)->szName == 9 ? 1 : -1];
+
+class Obj38E10 {
+public:
+    char       pad000[0x2B5C];
+    Item38E10 m2B5C;          /* +0x2B5C */
 };
+
+typedef char chk_item38E10[(unsigned)&((Obj38E10 *)0)->m2B5C == 0x2B5C ? 1 : -1];
 
 extern "C" {
-extern int  DAT_10ac5ba8;
-extern int  g_iAA2840;         /* 0x10AC5B98 */
-extern int  DAT_10ac4648[];    /* 0x10AC4648 */
-extern char DAT_100acad8[];    /* the fallback text */
+int  g_brFlag5BA8;              /* 0x10AC5BA8 */
+int  g_brSel5B98;               /* 0x10AC5B98 */
+int  g_brTbl4648[];             /* 0x10AC4648 */
+char g_szBr0ACAD8[];            /* 0x100ACAD8 */
 
-char *FUN_1006d280(int id);
-int   Br85ItemApply(struct BrCtl85 *pCtl, short index);
+char *BrStrByIndex(int idx);                    /* 0x1006D280 */
+void  BrItemApply_10038380(void *pObj, int a);  /* 0x10038380 */
+}
 
-int BrUiText1003F8D0(BrCtl85 *pCtl)
+int BrUiText1003F8D0(Obj38E10 *pObj)
 {
-    if (DAT_10ac5ba8 != 0) {
-        strcpy(pCtl->box.name, FUN_1006d280(0xAF));
-        if (DAT_10ac4648[g_iAA2840] != 0) {
-            pCtl->box.kind = 4;
-        } else {
-            pCtl->box.kind = 1;
-        }
+    if (g_brFlag5BA8 != 0) {
+        strcpy(pObj->m2B5C.szName, BrStrByIndex(0xAF));
+
+        if (g_brTbl4648[g_brSel5B98] != 0)
+            pObj->m2B5C.b008 = 4;
+        else
+            pObj->m2B5C.b008 = 1;
     } else {
-        strcpy(pCtl->box.name, DAT_100acad8);
+        strcpy(pObj->m2B5C.szName, g_szBr0ACAD8);
     }
 
-    pCtl->box.b1();
-    Br85ItemApply(pCtl, 0);
+    pObj->m2B5C.s1();
+    BrItemApply_10038380(pObj, 0);
+
     return 1;
-}
 }
