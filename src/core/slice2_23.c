@@ -1100,7 +1100,7 @@ int32_t BrUiFn1003F110(BrUiObj *pObj, BrUiGlobals *pG)
  * replaces both the store and the row's own caption with whatever that
  * routine left behind -- so the player sees the text the game decided on
  * rather than what they typed. */
-/* @implements 0x1003F170 d3d BrUiFn1003F170 */
+/* port-only body; Glide match is src/core/generated/0x100386B0.c */
 int32_t BrUiFn1003F170(BrUiObj *pObj, BrUiGlobals *pG)
 {
     char *pText = BrUiItemText(pObj, 0);
