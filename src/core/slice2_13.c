@@ -101,6 +101,10 @@ extern void BrLogFatalPrintf(const char *pFmt, ...);
  * variable load. */
 _CRTIMP int *__cdecl _errno(void);
 
+/* WHAT IT DOES: open a file for WRITING, and abort the game with a message
+ * naming the file and the C-library reason if it cannot be created. The
+ * "Checked" family exists so callers never test a return value: anything that
+ * fails here is a broken install or a full disk, not a recoverable case. */
 /* @implements 0x10008DC0 glide BrFileCreateChecked */
 FILE *__stdcall BrFileCreateChecked(char *pszPath)
 {
@@ -114,6 +118,8 @@ FILE *__stdcall BrFileCreateChecked(char *pszPath)
     return pFile;
 }
 
+/* WHAT IT DOES: the read-only twin of BrFileCreateChecked -- open an existing
+ * file for READING, or abort naming the file and the reason. */
 /* @implements 0x10008E10 glide BrFileOpenChecked */
 FILE *__stdcall BrFileOpenChecked(char *pszPath)
 {
@@ -127,6 +133,8 @@ FILE *__stdcall BrFileOpenChecked(char *pszPath)
     return pFile;
 }
 
+/* WHAT IT DOES: read exactly cbData bytes, aborting if the file was short.
+ * A truncated read means corrupt game data, so there is nothing to recover. */
 /* @implements 0x10008E60 glide BrFileReadChecked */
 void __stdcall BrFileReadChecked(FILE *pFile, void *pvData, unsigned int cbData)
 {
@@ -135,6 +143,9 @@ void __stdcall BrFileReadChecked(FILE *pFile, void *pvData, unsigned int cbData)
     }
 }
 
+/* WHAT IT DOES: write exactly cbData bytes, aborting if the write was short.
+ * Its failure message says "File read failure" -- that typo is in the shipped
+ * game and is reproduced deliberately; do not fix it. */
 /* @implements 0x10008E90 glide BrFileWriteChecked */
 void __stdcall BrFileWriteChecked(FILE *pFile, const void *pvData,
                                   unsigned int cbData)

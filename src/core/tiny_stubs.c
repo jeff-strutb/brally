@@ -42,19 +42,31 @@ extern double BrSub1001DC40(int x);                   /* returns in st0      */
 void BR_THISCALL1 BrSub100087C0(int **p);
 
 /* ==================== thiscall tail-forwarders ==================== */
+/* WHAT IT DOES: tear-down entry point for the one global object at
+ * g_AC0810 -- a no-argument wrapper the game can hand to a shutdown list,
+ * forwarding to the real routine with that object's address baked in. */
 /* @implements 0x10032500 glide BrSub10032500 */
 void BrSub10032500(void){ BrSub10008760(&g_AC0810); }
+/* WHAT IT DOES: the construction half for the same g_AC0810 object, again as
+ * a no-argument wrapper. Pairs with BrSub10032500 above. */
 /* @implements 0x10032520 glide BrSub10032520 */
 void BrSub10032520(void){ BrSub100087C0((int **)&g_AC0810); }
+/* WHAT IT DOES: the same fixed-object wrapper shape for g_B71290. */
 /* @implements 0x10062AF0 glide BrSub10062AF0 */
 void BrSub10062AF0(void){ BrSub10008D60(&g_B71290); }
 
 /* ==================== remaining one-offs ==================== */
 /* fastcall ctor: write a vtable/const, advance ecx, tail-call */
+/* WHAT IT DOES: construct an object in place -- writes its method table
+ * pointer into the first field, then hands the rest of the object to the
+ * routine that initialises it. The C++ constructor of a small class, as the
+ * compiler emitted it. */
 /* @implements 0x100087C0 glide BrSub100087C0 */
 void BR_THISCALL1 BrSub100087C0(int **p){ *p = (int *)0x10077150; BrSub10008D60(p + 1); }
 
 /* sqrt of a call result: the split temporaries make VC5 emit fsqrt before the
  * cdecl stack cleanup, matching the original's instruction order. */
+/* WHAT IT DOES: square root of whatever the helper at 0x1001DC40 computes
+ * for x, narrowed to float. */
 /* @implements 0x1001DC80 glide BrSub1001DC80 */
 float BrSub1001DC80(int x){ double d = BrSub1001DC40(x); float r = (float)sqrt(d); return r; }

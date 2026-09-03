@@ -785,12 +785,24 @@ void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
     }
 }
 
+/* The three playback modes a caller actually asks for. Each is one call to
+ * BrAnimFlagsApply above with a fixed (set, clear) pair over bits 0 and 1:
+ * bit 0 = repeat, bit 1 = reverse on the way back. */
+
+/* WHAT IT DOES: play every animation in the set through ONCE and stop at the
+ * end. Clears both the repeat and the bounce-back bits. */
 /* @implements 0x1002ECAC glide BrAnimSetOnce */
 /* @n64 0x8021D7E0 exact */
 void BrAnimSetOnce(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 0, 3); }
+
+/* WHAT IT DOES: play every animation in the set on repeat, restarting from the
+ * beginning each time round. Sets repeat, clears bounce-back. */
 /* @implements 0x1002ECC1 glide BrAnimSetLoop */
 /* @n64 0x8021D804 exact */
 void BrAnimSetLoop(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 1, 2); }
+
+/* WHAT IT DOES: play every animation in the set back and forth for ever --
+ * forwards to the end, then backwards to the start. Sets both bits. */
 /* @implements 0x1002ECD6 glide BrAnimSetPingPong */
 /* @n64 0x8021D828 exact */
 void BrAnimSetPingPong(BrAnimSet *pSet) { BrAnimFlagsApply(pSet, 3, 0); }
