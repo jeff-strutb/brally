@@ -35,7 +35,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRAFTS = os.path.join(ROOT, 'build', 'ghidra_work')
 CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
-REFERENCE = os.path.join(CPP_DIR, '0x10048160.cpp')      # class block source
+REFERENCE = os.path.join(CPP_DIR, '0x10048F10.cpp')      # widest class block
 
 
 def f32(hexlit):
@@ -86,7 +86,7 @@ def split_args(s):
     return out
 
 
-PFN = {1: 'pfn04', 2: 'pfn08', 3: 'pfn0C', 5: 'pfn14'}
+PFN = {1: 'pfn04', 2: 'pfn08', 3: 'pfn0C', 4: 'pfn10', 5: 'pfn14'}
 
 
 def parse(va):
@@ -128,6 +128,10 @@ def parse(va):
             continue
         if re.match(r'^if \((piVar\d+|iVar\d+) == (\(int \*\))?(0x0|0)\)', l) or \
            l == 'FUN_100378c0(4);':
+            continue
+        # Ghidra materialises the /GX state number as a local before the
+        # epilogue restores fs:[0]; it is not a statement in the source.
+        if re.match(r'^uVar\d+ = \d+;$', l):
             continue
 
         m = re.match(r'^\*\(short \*\)\(param_1 \+ 0x12\) = 0;$', l)
@@ -196,6 +200,27 @@ def parse(va):
         m = re.match(r'^\*\(short \*\)\(iVar\d+ \+ 0x344\) = .*\+ 1;$', l)
         if m:
             stmts.append(('raw', 'cont->w344 += 1;')); continue
+        m = re.match(r'^\(\*\*\(funcptr \*\)\(piVar\d+\[0xe0e\] \+ 0x14\)\)'
+                     r'\((.*)\);$', l)
+        if m:
+            a = split_args(m.group(1))
+            for t in a:
+                for d in re.findall(r'&(DAT_\w+)', t):
+                    externs.add(d)
+            a = [t.strip().replace('&', '&').replace('0xffffffff', '-1')
+                 for t in a]
+            stmts.append(('raw', 'p->m3838.s5(%s);' % ', '.join(a))); continue
+        m = re.match(r'^(DAT_10a\w+) = (\d+|0x[0-9a-f]+);$', l)
+        if m:
+            externs.add('#' + m.group(1))
+            stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
+        m = re.match(r'^piVar\d+\[0x787d\] = 1;$', l)
+        if m:
+            stmts.append(('raw', 'p->f1E1F4 = 1;')); continue
+        m = re.match(r'^((?:BrSub|FUN_|Br)\w+)\(\);$', l)
+        if m:
+            externs.add(m.group(1))
+            stmts.append(('raw', '%s();' % m.group(1))); continue
         m = re.match(r'^(g_\w+) = piVar\d+;$', l)
         if m:
             externs.add('*' + m.group(1))
@@ -224,7 +249,7 @@ def emit(va, name, stmts, externs, size):
     sfx = va[4:].upper()
     ref = open(REFERENCE).read()
     classes = ref[ref.index('class GameUi;'):ref.index('typedef int (*CtlFn)')]
-    classes = classes.replace('Page48160', 'Page' + sfx).replace('48160', sfx)
+    classes = classes.replace('Page48F10', 'Page' + sfx).replace('48F10', sfx)
 
     out, pending = [], None
     for kind, payload in stmts:
@@ -246,6 +271,8 @@ def emit(va, name, stmts, externs, size):
     for e in sorted(externs):
         if e.startswith('*'):
             ext.append('BrCtl *%s;' % e[1:])
+        elif e.startswith('#'):
+            ext.append('int %s;' % e[1:])
         elif e.startswith('DAT_'):
             ext.append('extern char  %s;' % e)
         elif e.startswith('_DAT_'):
