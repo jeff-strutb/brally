@@ -1807,6 +1807,15 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
     pE1  = br16_fade_alloc(pSt);
     pRec = pRecs + (size_t)pSt->rectIdx * BR_FADE_RECT_DWORDS;
 
+    /* RESIDUE, and it is the whole function: TWO bytes, at 1002B0BA/1002B0BE
+     * (glide 0x10017F80 + 0x137).  The original loads pRec[3] into esi and
+     * pRec[1] into edi before `add esi, edi`; the recompile pairs them the
+     * other way round.  Size, instruction count and both multisets are exact
+     * (RAW and REGNORM 0+0), so this is register pairing, nothing else.
+     * Probed and ruled out, do not re-run: swapping the two addends, naming
+     * each operand as a block-scoped temp, splitting the mask into a separate
+     * statement, and computing hi before lo -- all four are byte-identical to
+     * what is here. T3a. */
     lo = (pRec[3] + pRec[1]) & 0xFFFu;
     hi = ((pRec[2] + pRec[0]) << 12) & 0xFFF000u;
     pE1->w0 = 0xE1000000u | hi | lo;
