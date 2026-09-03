@@ -3102,8 +3102,12 @@ lane.** Ranked list, EH rows excluded:
     python3 - <<'PY'
     import csv,re,os
     def eh(va):
-        try: return open('build/match/orig/%s.bin'%va,'rb').read(2)==b'\x6a\xff'
+        # An EH prologue does NOT always lead with `push -1`: VC5 often emits
+        # `mov eax,fs:[0]` first, so testing only byte 0 for 6A FF lets those
+        # through. Look for both markers anywhere in the first 12 bytes.
+        try: h = open('build/match/orig/%s.bin'%va,'rb').read(12)
         except IOError: return False
+        return b'\x6a\xff' in h and b'\x64\xa1\x00\x00\x00\x00' in h
     for r in csv.DictReader(open('build/match/report.csv')):
         if r['status']!='diff' or not os.path.exists(r['file']) or eh(r['va']): continue
         o=int(r['orig_size']); c=int(r['recomp_size'] or 0)
@@ -3112,8 +3116,12 @@ lane.** Ranked list, EH rows excluded:
             print('%5d short  %-30s %s  %s'%(o-c,r['name'],r['va'],r['file']))
     PY
 
-As of 2026-09-03: 32 rows, 13,463 bytes. Worst are BrRaceGateStep (-1962),
-BrOptFn100558A0 (-1357) and BrTextEmitString (-1162).
+As of 2026-09-03, with the corrected EH test: **27 rows, 9,085 bytes short.**
+Worst are BrRaceGateStep (-1962), BrTextEmitString (-1162) and
+br_dl_light_setup (-587). The earlier "32 rows / 13,463 bytes" used the
+byte-0-only EH test above and therefore counted C++ EH rows it claimed to
+exclude — 0x10046E70 (-962) and 0x1004ABE0 (-280) are both `64 A1 ... 6A FF`
+frames, unreachable from C. Two more rows have since been matched.
 
 **The recipe is always the same and it does not touch the port arm:** spell the
 helper's body out at the call site under `#ifdef BR_MATCHING_BUILD`, leave the
