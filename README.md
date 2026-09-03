@@ -26,18 +26,19 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-03: **1,075 functions reproduce the original
-bytes exactly (128,357 B).** The whole DLL image is then reassembled from those
+original binary. Snapshot of 2026-09-03: **1,078 functions reproduce the original
+bytes exactly (130,448 B).** The whole DLL image is then reassembled from those
 claims and diffs to **0 bytes**, with 0 overlapping address claims.
 
-- **Game DLL (`BRGlide.dll`)** — 822 C functions byte-exact (77,726 B), 54.1% of
-  the hand-C target by count. Most of what remains is structural, not "coloring":
-  212 functions still carry real, non-codegen diffs (wrong or missing code),
+- **Game DLL (`BRGlide.dll`)** — 974 functions byte-exact, 119,999 B, **25.0% of
+  its 480,853 B `.text`**. Of those, 823 are C (54.2% of the hand-C target by
+  count) and 151 are C++. Most of what remains is structural, not "coloring":
+  211 functions still carry real, non-codegen diffs (wrong or missing code),
   while only a 40-function tail is down to pure register-allocation/scheduling
   differences with the instructions already correct.
-- **C++ class (vtables, EH frames)** — 149 functions byte-exact on all four
-  pieces (incl. unwind tables), 40,182 B. This class is unreachable from C at
-  all, and is now screened for before a function is ranked as a C target.
+- **C++ class (vtables, EH frames)** — a separate lane, because these functions
+  are unreachable from C at all; screened for before a function is ranked as a
+  C target.
 - **Executables** — BRally.exe and BossRally.exe are **game-code complete**;
   SetVideo.exe has one function left (WinMain). 104 functions, 10,449 B.
 - **macOS/Metal port** — the same source boots, renders the front end and retail
@@ -62,10 +63,10 @@ instructions, only the register choices differ.
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
 | T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 445 | 229,355 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 212 | 137,664 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 211 | 136,796 |
 | T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
 | T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 40 | 8,395 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **822** | **77,726** |
+| **T4** | **Done** — matches the original exactly, byte for byte | **823** | **78,594** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
 decompiler.** No one is reading raw assembly from a blank slate; the original
@@ -98,17 +99,34 @@ current T2 set, so 15 is a floor, not a live count; T3b grows as the oracle is
 extended to register calling-conventions and global-reading functions. The 15
 still count inside T2 until the tier tool consumes the oracle's manifest.
 
-**C++ classes** (vtables + EH frames; 4-piece matching via `tools/cpp_sweep.py`):
+**C++ classes by tier** (vtables + EH frames; `tools/cpp_sweep.py`) — same tiers
+as above, so the two lanes read alike. A C++ function is scored on **four
+pieces**, not one: its code, and the three tables the compiler emits alongside it
+to unwind the stack when an exception passes through (unwind, scope, funcinfo).
+Done means all four.
 
-| Pieces | Meaning | Fns | `.text` B |
+| Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| **4/4** | All four pieces byte-exact (code + unwind + scope + funcinfo) | **149** | **40,182** |
-| 3/4 | One piece still differs | 17 | — |
+| T1 | **Not started** — screened as C++-only, no source written yet | 36 | 54,538 |
+| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 18 | 8,829 |
+| T3a | **Works, near-identical** — code byte-exact, one table still differs | 0 | 0 |
+| **T4** | **Done** — all four pieces byte-exact | **151** | **41,405** |
 
-88 further candidates from `tools/cpp_screen.py` of 193 screened: 38 strong
-(C++ TU lane) and 50 weak (fastcall-representable). Screening for this class
-*before* ranking a function as a C target is now part of triage — 41 rows /
-37,677 B that C cannot reach had previously been ranked as prime C targets.
+Two differences from the C table, both real:
+
+- **T1 here is a lower bound, not a census.** The C table's 1,519 is a fixed
+  target derived from the function map; there is no equivalent count of "every
+  C++ function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised
+  in the *current* unmatched residue — 36 strong of 190 screened, and the residue
+  shrinks as C matches land. A further 50 screened weak (fastcall-representable)
+  are deliberately excluded: those are reachable from C and belong to the C lane.
+- **T3a is empty for a reason.** Every unfinished row here is unfinished in its
+  *code*; the exception tables come out right first. So nothing currently sits in
+  the "instructions right, only registers differ" tier.
+
+Screening for this class *before* ranking a function as a C target is now part of
+triage — 41 rows / 37,677 B that C cannot reach had previously been ranked as
+prime C targets.
 
 **Executables** (game code; static CRT is linked, not decompiled):
 
@@ -118,8 +136,9 @@ still count inside T2 until the tier tool consumes the oracle's manifest.
 | BossRally.exe (intro) | 35 fns · 2,482 B | game code complete |
 | SetVideo.exe (config) | 41 fns · 5,107 B | WinMain left |
 
-**Totals** — 1,075 byte-exact functions / 128,357 B (`python3 tools/total.py`):
-971 in `BRGlide.dll` (117,908 B) and 104 across the three EXEs (10,449 B).
+**Totals** — 1,078 byte-exact functions / 130,448 B (`python3 tools/total.py`):
+974 in `BRGlide.dll` (119,999 B, 25.0% of its `.text`) and 104 across the three
+EXEs (10,449 B).
 
 **The image gate** (`python3 tools/image_build.py`) is the deliverable check, and
 the one a per-function diff cannot perform. Each function is diffed alone, so a
@@ -129,9 +148,9 @@ wrong size. The gate refuses collisions rather than resolving them, lays every
 claim into one image at the address it claims, uses the original's own bytes for
 everything not yet decompiled, and diffs the result against the retail DLL.
 
-    placed into the image            : 971 functions, 118,052 bytes (24.55% of .text)
-        C     822 fns    77,870 B  (888 B of that filled from the reference, 1.1%)
-        C++   149 fns    40,182 B  (7,356 B of that filled from the reference, 18.3%)
+    placed into the image            : 974 functions, 120,143 bytes (24.99% of .text)
+        C     823 fns    78,738 B  (888 B of that filled from the reference, 1.1%)
+        C++   151 fns    41,405 B  (7,448 B of that filled from the reference, 18.0%)
     overlapping address claims       : 0
     ASSEMBLED IMAGE vs ORIGINAL      : 0 differing bytes
 
@@ -140,7 +159,7 @@ address would be caught; none do. Read the reference-filled column as a
 discount on the evidence, not on the match: those are relocation slots whose
 target has no address in any surveyed map (per-file statics, and the C++ lane's
 mangled symbols), so the reference image's own dword is used. Such a slot cannot
-fail the diff — the C lane is 1.1% reference-filled, the C++ lane 18.3%, and
+fail the diff — the C lane is 1.1% reference-filled, the C++ lane 18.0%, and
 resolving the latter through real addresses is open work.
 
 Port test suite does not currently build — see Status Summary.

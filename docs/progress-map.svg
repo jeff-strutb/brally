@@ -1660,7 +1660,7 @@
 <rect x="1278.0" y="15.5" width="63.8" height="60.0" fill="#3fb950"><title>BrDlBorderEmit  0x1002C50E  1585B  [core/slice2_19]</title></rect>
 <rect x="1342.4" y="15.5" width="54.5" height="60.0" fill="#d29922"><title>BrAnimUpdate  0x1002ECEB  1357B  741 diff bytes  [core/slice2_19]</title></rect>
 <rect x="1397.5" y="15.5" width="42.5" height="60.0" fill="#d29922"><title>BrModelSwap  0x100302A0  1062B  500 diff bytes  [core/slice2_19]</title></rect>
-<rect x="1278.0" y="76.1" width="35.8" height="58.1" fill="#d29922"><title>BrCarGfxSetColour  0x1002E79F  868B  527 diff bytes  [core/slice2_19]</title></rect>
+<rect x="1278.0" y="76.1" width="35.8" height="58.1" fill="#3fb950"><title>BrCarGfxSetColour  0x1002E79F  868B  [core/slice2_19]</title></rect>
 <rect x="1278.0" y="134.8" width="35.8" height="46.1" fill="#d29922"><title>BrPadTranslate  0x1002F380  690B  10 diff bytes  [core/slice2_19]</title></rect>
 <rect x="1314.4" y="76.1" width="36.6" height="40.9" fill="#3fb950"><title>FUN_1002dec3  0x1002DEC3  627B  [core/slice2_19]</title></rect>
 <rect x="1314.4" y="117.5" width="36.6" height="32.6" fill="#3fb950"><title>BrDlRectCmdEmit  0x1002C0F3  502B  [core/slice2_19]</title></rect>
@@ -1707,7 +1707,7 @@
 <rect x="1435.7" y="176.5" width="4.3" height="1.9" fill="#3fb950"><title>BrNop_1002E2E3  0x1002E2E3  5B  [core/slice2_19]</title></rect>
 <rect x="1435.7" y="179.0" width="4.3" height="1.9" fill="#3fb950"><title>BrNop_1002EBCC  0x1002EBCC  5B  [core/slice2_19]</title></rect>
 <text x="1445.1" y="10.5" font-size="10" fill="#8b949e">br_drawcar</text>
-<rect x="1443.6" y="15.5" width="154.3" height="119.7" fill="#d29922"><title>BrCarDrawVehicle  0x1000A110  7577B  4673 diff bytes  [core/drawing/br_drawcar]</title></rect>
+<rect x="1443.6" y="15.5" width="154.3" height="119.7" fill="#d29922"><title>BrCarDrawVehicle  0x1000A110  7577B  4552 diff bytes  [core/drawing/br_drawcar]</title></rect>
 <rect x="1443.6" y="135.8" width="84.1" height="45.2" fill="#d29922"><title>BrCarDrawBody  0x1000BEB0  1576B  1020 diff bytes  [core/drawing/br_drawcar]</title></rect>
 <rect x="1528.3" y="135.8" width="49.5" height="45.2" fill="#3fb950"><title>BrCarDrawWheels  0x10009C10  932B  [core/drawing/br_drawcar]</title></rect>
 <rect x="1578.4" y="135.8" width="19.5" height="38.8" fill="#3fb950"><title>BrCarVisibilityUpdate  0x10009FC0  322B  [core/drawing/br_drawcar]</title></rect>
@@ -1725,7 +1725,7 @@
 <rect x="1018.4" y="335.1" width="11.8" height="11.4" fill="#3fb950"><title>BrSub10071510  0x1006A480  61B  [core/slice6_72]</title></rect>
 <rect x="1030.8" y="335.1" width="0.6" height="11.4" fill="#3fb950"><title>FUN_10074ae6  0x10074AE6  6B  [core/slice6_72]</title></rect>
 <text x="870.8" y="359.1" font-size="10" fill="#8b949e">br_scenedl</text>
-<rect x="869.3" y="364.1" width="162.1" height="138.3" fill="#d29922"><title>BrSceneDlBuild  0x1000EAF0  9354B  4733 diff bytes  [core/drawing/br_scenedl]</title></rect>
+<rect x="869.3" y="364.1" width="162.1" height="138.3" fill="#d29922"><title>BrSceneDlBuild  0x1000EAF0  9354B  4677 diff bytes  [core/drawing/br_scenedl]</title></rect>
 <text x="870.8" y="515.0" font-size="10" fill="#8b949e">br_tex3d_expand</text>
 <rect x="869.3" y="520.0" width="162.1" height="123.8" fill="#d29922"><title>BrTex3dExpand  0x100250D0  8480B  6371 diff bytes  [core/drawing/br_tex3d_expand]</title></rect>
 <text x="870.8" y="656.4" font-size="10" fill="#8b949e">slice8_86</text>
@@ -2786,4 +2786,4 @@
 <rect x="1593.0" y="891.8" width="3.5" height="1.6" fill="#3fb950"><title>BrCountedTotal  0x1006D180  12B  [core/settings/br_state]</title></rect>
 <rect x="1597.1" y="891.8" width="0.8" height="1.6" fill="#3fb950"><title>BrStateGetField10  0x1006D190  4B  [core/settings/br_state]</title></rect>
 <rect x="1593.0" y="897.0" width="4.9" height="0.9" fill="#3fb950"><title>BrObjClear  0x1006CDC0  14B  [core/gamedata/br_obj]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1075 &#183; T3 codegen-only 40 &#183; 128,501/521,214 bytes exact (24.7%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1076 &#183; T3 codegen-only 40 &#183; 129,369/521,214 bytes exact (24.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
