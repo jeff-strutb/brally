@@ -139,7 +139,29 @@ static void Br85ListAck(BrTextList *pList, int32_t v)
  * DEVIATION, unchanged from before: the original calls the slot with no null
  * check at all.  The guard here answers an unwired vtable by doing nothing,
  * which is the only safe reading on a host where a null call is not a trap. */
-typedef void (*Br85MsgFn)(BrUiCtl_ *pThis, int32_t msg, int32_t a, int32_t b);
+/* thiscall: `this` in ecx, three stack arguments, callee-clean.  __fastcall
+ * would claim edx for the second argument, so each stack argument is a
+ * one-int STRUCT -- structs are never register-eligible, so ecx takes pThis
+ * and edx is left alone, which is exactly thiscall.  Same trick slice1_09.c
+ * uses on its thiscall bodies, applied here to a function POINTER: an
+ * earlier note in this file called a multi-argument thiscall CALL SITE
+ * unreachable from C, and that was wrong.
+ *
+ * ALL THREE stack arguments must be structs, not just the second.  MSVC
+ * keeps assigning registers PAST an ineligible argument, so
+ * (pThis, struct, int, int) hands edx to the third argument and costs two
+ * more bytes than making every one of them a struct.
+ *
+ * The cost of the trick, and it is the whole remaining residue: a struct
+ * argument is always materialised through a register, so a CONSTANT message
+ * comes out `mov ecx,0x74; push ecx` where the original has `push 0x74` --
+ * two bytes per constant stack argument.  Initialising the struct in its
+ * declaration rather than by assignment makes no difference (probed).  The
+ * convention itself is now exact: `mov ecx,<this>`, three pushes, `call`,
+ * and no caller-side `add esp`. */
+typedef struct { int32_t v; } Br85Arg;
+typedef void (__fastcall *Br85MsgFn)(BrUiCtl_ *pThis, Br85Arg msg,
+                                     Br85Arg a, Br85Arg b);
 
 /* MACROS, not static functions, and WITHOUT the null guards.
  *
@@ -153,8 +175,13 @@ typedef void (*Br85MsgFn)(BrUiCtl_ *pThis, int32_t msg, int32_t a, int32_t b);
  * DEVIATION REVERSED: the guards were port-safety additions -- the original
  * calls the slot with no null check on either the vtable or the pointer.  A
  * null vtable here now faults exactly as the original does. */
-#define Br85MsgSlot(pCtl)  ((pCtl)->pVtbl->f14)
-#define Br85Msg(pfn, pCtl, msg, x, y)  ((pfn)((pCtl), (msg), (x), (y)))
+#define Br85MsgSlot(pCtl)  ((Br85MsgFn)(pCtl)->pVtbl->f14)
+#define Br85Msg(pfn, pCtl, msg, x, y)                                        \
+    do {                                                                     \
+        Br85Arg br85_m, br85_x, br85_y;                                      \
+        br85_m.v = (msg); br85_x.v = (x); br85_y.v = (y);                    \
+        (pfn)((pCtl), br85_m, br85_x, br85_y);                               \
+    } while (0)
 
 /* CONFLICT 2: text-box vtable +0x14 returns an int whose LOW BYTE is tested
  * SIGNED.  slice3_39.h types the slot `void (*)(BrTextBox *)`. */
