@@ -10,6 +10,37 @@
  */
 class GameUi;
 class BrCtl;
+class Sel3838;
+
+class Sel3838 {
+public:
+    virtual void s0();
+    virtual void s1();
+    virtual void s2();
+    virtual void s3();
+    virtual void s4(char *psz, int, int, void *, int);   /* +0x10 add item */
+    virtual void s5(int, void *, int, int, int);         /* +0x14 configure */
+
+    int (*pfn04)(void);             /* +0x04 */
+    char pad08[0x14 - 8];
+    int   f14;                      /* +0x14 */
+};
+
+typedef char chk_sel3838[sizeof(Sel3838) == 0x18 ? 1 : -1];
+
+class SlotTable043050 {
+public:
+    virtual void s0();
+    virtual void s1(char *pszPattern);   /* +0x04 */
+    char aRecs[26000];                   /* +0x04, 0x104-byte records */
+};
+
+class Root043050 {
+public:
+    char            pad000[0xC0];
+    SlotTable043050 *pTable;         /* +0xC0 */
+};
+
 
 class Page043050 {
 public:
@@ -51,10 +82,16 @@ public:
     int (*pfn04)(BrCtl *);          /* +0x04 */
     int (*pfn08)(BrCtl *);          /* +0x08 */
     int (*pfn0C)(BrCtl *);          /* +0x0C */
-    char pad10[0x2AA4];             /* +0x10 */
+    int (*pfn10)(BrCtl *);          /* +0x10 */
+    int (*pfn14)(BrCtl *);          /* +0x14 */
+    char pad18[0x2AB4 - 0x18];      /* +0x18 */
     short w2AB4;                    /* +0x2AB4 */
     short w2AB6[0x19];              /* +0x2AB6 */
-    char pad2AE8[0x1B724];          /* +0x2AE8 */
+    char pad2AE8[0x3838 - 0x2AE8];  /* +0x2AE8 */
+    Sel3838 m3838;                  /* +0x3838 */
+    char pad3850[0x1E1F4 - 0x3850]; /* +0x3850 */
+    int f1E1F4;                     /* +0x1E1F4 */
+    char pad1E1F8[0x1E20C - 0x1E1F8];
     unsigned short w1E20C;          /* +0x1E20C */
     char pad1E20E[6];               /* +0x1E20E */
     BrCtl();
@@ -71,9 +108,11 @@ public:
 
 typedef char chk_page043050[sizeof(Page043050) == 0x348 ? 1 : -1];
 typedef char chk_ctl043050[sizeof(BrCtl) == 0x1E214 ? 1 : -1];
+typedef char chk_sel_off[(unsigned)&((BrCtl *)0)->m3838 == 0x3838 ? 1 : -1];
+typedef char chk_f1e1f4[(unsigned)&((BrCtl *)0)->f1E1F4 == 0x1E1F4 ? 1 : -1];
 typedef char chk_w1e20c043050[(unsigned)&((BrCtl *)0)->w1E20C == 0x1E20C ? 1 : -1];
 typedef char chk_a6c043050[(unsigned)&((GameUi *)0)->a6C == 0x6C ? 1 : -1];
-
+typedef char chk_tbl043050[(unsigned)&((Root043050 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 
