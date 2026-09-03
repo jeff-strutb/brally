@@ -819,6 +819,27 @@ static void wheel_call(unsigned char *car)
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
+ * SESSION 13 (2026-09-03) -- ARM 1 GETS ITS OWN PACK ARRAY, and this
+ * REVERSES the session-12 decision to leave it out.  Scorecard, all
+ * alignment-free (DIFFS is a positional compare and the sizes differ, so it
+ * is not usable here -- see the idiom file):
+ *     instruction gap  13 short -> 10 short   (a quarter of what remains)
+ *     byte gap         47 short -> 38 short
+ *     msetdiff rows    27 -> 28               (one worse)
+ *     masked regions   24 -> 24               (flat)
+ *     region 3's first divergence 0x327 -> 0x30c
+ * Session 12 declined this on the last line alone.  That was wrong twice
+ * over: the first-divergence rule was formed for a probe that gained NO
+ * instructions, and the 27 bytes here are a TWO-INSTRUCTION SCHEDULE SWAP of
+ * code both builds emit (`mov cl,[..]; and eax,0xff` against `and eax,0xff;
+ * mov cl,[..]`), not new divergent code.  Read the region before believing
+ * its address.
+ * What it buys structurally: arm 1 now homes a byte and reads it back
+ * widened (`mov byte [esp+0x3d],cl` ... `mov eax,[esp+0x3d]`) exactly as the
+ * original does at [esp+0x31] -- the shape it lacked while it was
+ * cross-jumped into the shared tail.  Still one byte slot short of the
+ * original's two.
+ *
  * SESSION 12 (2026-09-03) -- THE LIGHT-DIRECTION COPY IS BYTE-EXACT, and it
  * proves a rule this file should have applied a session earlier: ‼ A DEAD
  * VERDICT MEASURED AGAINST A WRONG FRAME IS STALE.  That copy carried five
@@ -1138,10 +1159,19 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
                    | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
                    | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
-        pack[0] = BrG_6C0960;
-        pack[1] = BrG_6C65BC;
-        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack[0]) << 8
-                   | pack[1]) << 8);
+        {
+        /* Arm 1's pack is its OWN two-byte array, not the one arms 2 and 3
+         * share.  The original gives this arm a private copy of the colourB
+         * pack; sharing `pack` let VC5 cross-jump arm 1 into the arm-2/3
+         * tail, which is three instructions the original emits and we did
+         * not.  With the array split, arm 1 homes a byte and reads it back
+         * widened the way the original does. */
+        uint8_t packA[2];
+        packA[0] = BrG_6C0960;
+        packA[1] = BrG_6C65BC;
+        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | packA[0]) << 8
+                   | packA[1]) << 8);
+        }
     } else {
         /* arms 2 (dim *4/5) and 3 (plain) share colourB's Horner tail --
          * the original merges them at 0x427, spilling pack[0]/pack[1] to the
