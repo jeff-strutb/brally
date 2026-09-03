@@ -3653,3 +3653,40 @@ loads the other factor first, that is allocation, not source.
 `float *p = DAT_ARR; ... p[k]` and `DAT_ARR[k]` are byte-identical (measured
 three ways on the same rows). The pointer local is neither the problem nor the
 fix; it is the CAST that differs.
+
+## A third shape of "MISSING CODE": the port kept only the TAIL
+*(0x1001FD70 BrDlVtxRoutine, 269 bytes short -> 6; found by claimcheck.py,
+not by the size screens)*
+
+Distinct from the factored helper and from deleted tracing: here the port
+transcribed the last third of a function and changed its shape while doing so.
+The original **installs into dispatch slots and returns void**; the port made
+it **return the value** and dropped everything before the selection — three
+state blocks that XOR the new mode against the PREVIOUS one and drive a
+hardware setter off each group of changed bits.
+
+**`python3 tools/claimcheck.py` finds this class and the size screens do
+not** — it flags "the original delegates, the port calls nothing", and all
+three missing calls showed up there. Run it at session start; it also now
+reports two names claiming one address.
+
+Three details worth carrying:
+
+- **A `x_new ^ x_old` guard re-reads the mode after every block**, because the
+  setter it calls can change it. Write the reload out; it is three
+  instructions each and they are in the original.
+- **"Assign then conditionally override" is a real source shape.** The
+  original stores one routine unconditionally and replaces it in the next
+  breath (`mov slot,A; test bit; jne skip; mov slot,B`). An if/else does not
+  produce it.
+- **A value-returning port helper built on top of a void original has to be
+  `#ifndef BR_MATCHING_BUILD`'d out**, or the matching arm will not compile.
+
+### And the duplicate-claim fault this session hit twice more
+
+0x10031B80 and 0x10059410 each had a port body and a real transcription on the
+same Glide VA, because a `d3d` tag resolves through `config/shared.csv`. The
+short row poisons every size-based screen — 0x10031B80 ranked SECOND on the
+whole factored-helper board at "-1165 bytes short" while the function it names
+is size-exact. `claimcheck.py` now flags it directly; **fragments, thunks and
+port-only bodies must not carry `@implements`.**
