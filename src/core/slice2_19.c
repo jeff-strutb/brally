@@ -1063,12 +1063,28 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
  * frame" and "still held from last frame", which is how the game tells a tap
  * from a hold. */
 /* @implements 0x10035FC0 d3d BrBitEdgeSplit */
+/* Both members are loaded into registers up front, b BEFORE a
+ * (`mov edx,[ecx+4]; mov eax,[ecx]`), so both are locals and b is declared
+ * first; the earlier spelling re-dereferenced pPair->b twice and cost 11
+ * bytes.
+ *
+ * RESIDUE 4 bytes, 25 against 21: the original ANDs into its copy of ~b
+ * (`mov esi,edx; not esi; and esi,eax`, three registers), while VC5
+ * canonicalises `~b & a` to put the plain operand on the left and so copies
+ * a as well (`mov esi,edx; mov edi,eax; not esi; and edi,esi`), paying a
+ * push/pop of edi.  Probed and ruled out, do not re-run: `a & ~b`, naming
+ * `~b` as a local, compounding it (`nb &= a`), hoisting both results into
+ * temps before the stores, and re-dereferencing one member.  Writing the
+ * b-store FIRST does come out 21 bytes exactly -- but it swaps which store
+ * leads, and the original stores [ecx] first, so that is a lower byte count
+ * for a less faithful source, not a match. T3a. */
 void BR_THISCALL1 BrBitEdgeSplit(BrBitPair *pPair)
 {
+    uint32_t b = pPair->b;
     uint32_t a = pPair->a;
 
-    pPair->a = ~pPair->b & a;
-    pPair->b = a &  pPair->b;
+    pPair->a = ~b & a;
+    pPair->b = a & b;
 }
 
 /* ================================================================== */
