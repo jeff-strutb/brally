@@ -823,20 +823,38 @@ static int BrAnimLerp8(int lo, int hi, int frac)
  * they were set up. Several of the stopping cases end up interpolating
  * between a pose and itself, which divides by zero -- harmless because the
  * result is then multiplied by no difference at all, and preserved. */
+/* PROGRESS NOTE (2026-09-03): this is an /Od function and was written in the
+ * /O2 idiom; it was parked as a wall, wrongly -- the park predates the
+ * "diff stranded in an /Od run" screen in docs/VC5-IDIOMS.md. Two source
+ * facts fixed so far and the first 0x19 bytes now match exactly under /Od:
+ * the guard is a WRAPPED body, not an early return, and there is NO pList
+ * local -- the original re-derefs pSet->pList at every use.
+ *
+ * WHAT IS LEFT is slot homing: `sub esp,0x60` against the original's 0x64,
+ * so one local short, and the ones that exist are in the wrong slots (the
+ * original puts the count at ebp-0x2c and the loop counter at ebp-8).  /Od
+ * homes locals by an internal NAME hash rather than declaration order -- see
+ * BrCarGfxReadColour below, where the single-letter names were found
+ * empirically -- so this needs a naming pass over ~24 locals and is its own
+ * session. Do NOT re-park it as a coloring wall; it is not one. */
 /* @implements 0x1003563A d3d BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *pSet)
 {
-    BrAnimList *pList;
     int32_t i, n;
 
-    if (pSet->pList == NULL)
-        return;
+    /* Wrapped, not an early return: the original's guard is a single near
+     * `je` to the epilogue (0x1002ECF8 -> 0x1002F230), where `return` emits a
+     * short branch over a jump. Same lever as BrCarGfxSetColour.
+     *
+     * NO pList local: the original re-derefs pSet->pList at every use, which
+     * is what /Od does with a member expression. Caching it costs a slot and
+     * shifts every displacement. */
+    if (pSet->pList != NULL) {
 
-    pList = pSet->pList;
-    n = pList->n;
+    n = pSet->pList->n;
 
     for (i = 0; i < n; i++) {
-        BrAnimTrack     *pT = pList->a[i];
+        BrAnimTrack     *pT = pSet->pList->a[i];
         const BrAnimKey *pLo;
         const BrAnimKey *pHi;
         const int16_t   *pS16;
@@ -968,6 +986,7 @@ void BrAnimUpdate(BrAnimSet *pSet)
             pS8  += 3;
             pE8  += 3;
         }
+    }
     }
 }
 
