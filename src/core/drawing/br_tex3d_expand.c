@@ -117,6 +117,39 @@
  * together or not at all, and the open mechanism is the one the last line
  * of docs/idioms-A.md names (orig homes the widened inten BEFORE its first
  * product, we multiply from the register and home after).
+ * 2026-09-03 (session 10): r14's +15 IS THE ALPHA CHANNEL'S PRODUCT TEMP,
+ * and the mechanism is now fully read off the bytes.  `/FAcs` puts the block
+ * at source lines 568-575, the THIRD blend body's first half.  All four
+ * channels are `(intensity * delta) / 255 + base`, and MSVC's divide-by-255
+ * is `imul <magic>` followed by `add edx,<the product again>` -- so the
+ * product has to SURVIVE the `imul`, which clobbers edx:eax.  The original
+ * and this build agree exactly on channels R, G and B: each copies the
+ * intensity (`mov edx,ecx; imul edx,[delta]`), homes the product in a reused
+ * param arg slot (0x9c, 0x9c, 0x7c -- ours picks the same three) and adds it
+ * back from there.  They differ ONLY on alpha, and by one register choice:
+ *   orig  0xe2c  `imul ecx,[esp+0x44]`  -- computes alpha's product ONE
+ *                CHANNEL EARLY, in place, killing the intensity at its last
+ *                use, so the product sits in ecx, `imul ecx` at 0xe57 leaves
+ *                it there and `add edx,ecx` needs no slot at all
+ *   ours  0xe51  `mov edx,[iVar20]; imul edx,ecx; mov [esp+0x68],edx; imul
+ *                edx; mov eax,[esp+0x68]; add edx,eax`
+ * That is three extra instructions and a FOURTH temp slot (0x68) the
+ * original never spends.  Everything else in r14 is identical.
+ * SESSION 10 PROBES, BOTH DEAD, do not re-run -- VC5 canonicalises harder
+ * than this file's earlier notes assumed:
+ *   (a) commuting the products in that body (`iVar16 * uVar19` etc., all
+ *       eight sites in both halves) is BYTE-IDENTICAL.  Multiplication
+ *       operand order does NOT pick the `imul` destination -- add `*` to the
+ *       session-5 list of commutative operators VC5 canonicalises, which had
+ *       only `&` and `|` on it.
+ *   (b) hoisting alpha's product into a named temp above the chB statement
+ *       (`uPrA = uVar19 * iVar20;`, with `uVar8`/`iVar20` moved up with it,
+ *       i.e. literally the original's schedule written into the source) is
+ *       BYTE-IDENTICAL too -- VC5 sinks the temp straight back to its use.
+ * So the alpha slot is not reachable by scheduling the source; what decides
+ * it is that the original lets the intensity DIE into alpha's product and we
+ * keep it live.  Treat r14 as T3a unless a spelling is found that ends the
+ * intensity's live range at that multiply.
  * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
  * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
  * at once.  Session 4 measured this per pair and in eight combinations;
