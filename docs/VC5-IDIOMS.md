@@ -1108,6 +1108,23 @@ the caller AND flipped a helper to match for free.
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
   the scaled form, VC5 picks the accumulator itself. T3a — park it.
+- **Let VC5 build the induction variables: SUBSCRIPTS, not hand-rolled
+  cursors.** In a nested loop that walks two arrays at different strides,
+  writing the cursors out by hand (`col = m; v = pV;` … `col += 4; v++;`)
+  gets the instruction stream exactly right and then binds the registers
+  wrong — VC5 gives ecx to the cursor initialised by a register copy and edx
+  to the lea-derived one, and emits the lea as `[base=output, index=delta]`.
+  The original has the opposite pairing and `[base=delta, index=output]`.
+  Dead levers, do not re-run: swapping the two initialisations (worse),
+  swapping their declarations (no change), block-scoping both inside the
+  outer loop (better, still short). What works is deleting the cursors and
+  writing the plain subscripts (`pv[j] * pM->m[j][i]`): strength reduction
+  then creates the two pointers in VC5's own order and the register pairing
+  falls out. Proven 0x1006DA20 BrMat4TransformPoint (7 diffs → byte-exact).
+  Semantics are preserved because a subscript off the parameter re-reads the
+  live array every outer pass, exactly as re-initialising the cursor did —
+  which matters when the output aliases the input. SUSPECTED CLASS: any
+  matched-size, REGNORM-0 loop whose C uses hand-written walking pointers.
 - **The integer twin of the `fchs` rule: a conditional BUMP is an
   alternative ASSIGNMENT, and that is what frees the tested register.**
   `pos = p->b; if (p->a) pos++;` pre-loads `b` and only then tests `a`, so
