@@ -98,8 +98,20 @@ def resolve(sym, fnmap, glmap, learned=True):
     `learned=False` is what reloc_learn.py's validation pass uses: asking
     whether a learned address reproduces a KNOWN one has to consult only the
     known maps, or the learned value would be checked against itself.
+
+    A '$'-prefixed name is a COMPILER-LOCAL label ('$L459', the C++ EH handler
+    thunk and its funclets in .text$x). The number is a per-TU counter, so the
+    same name means a different address in every object -- it can never be
+    keyed globally, however many objects agree on it, because agreement across
+    objects is precisely what it does not have. Answering for one turned
+    0x10053590's `push OFFSET __ehhandler` into 0x100293B4 (a label of the same
+    number learned from 0x10029290's TU) and put 3 wrong bytes in the image on
+    a function whose own sweep row reads 4/4. Refusing here sends the site down
+    the reference-fill path, which is what an unnameable slot is for.
     """
     global _LEARNED
+    if sym.lstrip('_').startswith('$'):
+        return None
     s = sym.lstrip('_')
     if s in fnmap:
         return fnmap[s]

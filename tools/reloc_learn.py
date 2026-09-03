@@ -87,6 +87,14 @@ def learn_from(path, fnmap, glmap):
             tsym = byidx.get(si)
             if not tsym:
                 continue
+            # '$L459' and friends are per-TU compiler labels (the C++ EH
+            # handler thunk and its funclets in .text$x). The number is a
+            # counter that restarts in every object, so a learned address for
+            # one is a fact about ONE TU wearing a name every other TU also
+            # uses. GUARD 1 cannot catch it -- a label seen in a single object
+            # "agrees" with itself. Never learn one.
+            if tsym['name'].lstrip('_').startswith('$'):
+                continue
             addend = struct.unpack_from('<i', code, off)[0]
             slot = struct.unpack_from('<I', orig, off)[0]
             if rt == REL_DIR32:
