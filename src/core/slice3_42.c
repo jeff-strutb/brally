@@ -1044,12 +1044,44 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
  * body -- how fast is this body moving at the place where that one is
  * attached. */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
+#ifdef BR_MATCHING_BUILD
+/* Same inlining and the same three float facts as BrRbVelAtPoint above --
+ * BrS42VelAt returns a BrVec3 and so is never inlined; the velocity copy is
+ * field-wise; the products put the rotated point first and stay float.
+ *
+ * RESIDUE (23 regnorm, -33 bytes): the same x87 scheduling as
+ * BrRbVelAtPoint -- the original holds all six products on the stack at once
+ * and interleaves the three terms through them; ours evaluates in sequence.
+ * Was 138 bytes short before the helper came inline. */
+void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
+                        const BrRbBodyFull *pAt)
+{
+    BrVec3 r;
+    BrVec3 p = pAt->f78;
+    float cx, cy, cz;
+
+    BrMat4MulVec3Transposed(&r, &pB->m, &p);
+
+    pOut->x = pB->vel.x;
+    pOut->y = pB->vel.y;
+    pOut->z = pB->vel.z;
+
+    cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
+    cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
+    cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
+
+    pOut->x = cx + pOut->x;
+    pOut->y = cy + pOut->y;
+    pOut->z = cz + pOut->z;
+}
+#else
 void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
                         const BrRbBodyFull *pAt)
 {
     BrVec3 p = pAt->f78;
     *pOut = BrS42VelAt(pOut, pB, &p);
 }
+#endif
 
 /* 0x1006B340 */
 /* WHAT IT DOES: the same again, except the attachment point is flattened --
@@ -1057,6 +1089,49 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
  * world rather than against the body. The caller must not pass the same
  * storage in twice, because the answer slot is used as scratch on the way. */
 /* @implements 0x1006B340 d3d BrRbVelAtBodyPointXY */
+#ifdef BR_MATCHING_BUILD
+/* Same inlining and the same three float facts, except the sum goes to a
+ * stack BrVec3 rather than into *pOut, because the closing matrix multiply
+ * reads it. BrS42VelAt's banner records that this one has no `fst` at all. */
+void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
+                          const BrRbBodyFull *pAt)
+{
+    /* TWO stack vectors, `sub esp,0x18`, not three: the sums go back into
+     * `r` -- the original's closing `fstp` triple targets the very slot the
+     * transform wrote -- and there is no separate sum variable.
+     *
+     * RESIDUE (6 regnorm, +10 bytes): the two vectors are SWAPPED in the
+     * frame. The original puts the transform's INPUT at the deeper slot
+     * (E-0x18) and its output at E-0xC; ours does the reverse, and every
+     * displacement follows. Every instruction is otherwise in place, 72
+     * against 73. Probed and dead: swapping the declarations, and renaming
+     * both locals twice -- the /Od name-hash homing recorded in
+     * BrCarGfxReadColour does not apply at /O2. */
+    BrVec3 p;
+    BrVec3 r;
+    float cx, cy, cz;
+
+    p.x = pAt->f78.x;
+    p.y = pAt->f78.y;
+    p.z = 0.0f;                 /* the original stores a literal 0 dword */
+
+    BrMat4MulVec3Transposed(&r, &pB->m, &p);
+
+    pOut->x = pB->vel.x;
+    pOut->y = pB->vel.y;
+    pOut->z = pB->vel.z;
+
+    cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
+    cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
+    cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
+
+    r.x = cx + pOut->x;
+    r.y = cy + pOut->y;
+    r.z = cz + pOut->z;
+
+    BrMat4MulVec3(pOut, &pB->m, &r);
+}
+#else
 void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
                           const BrRbBodyFull *pAt)
 {
@@ -1069,6 +1144,7 @@ void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
     sum = BrS42VelAt(pOut, pB, &p);
     BrMat4MulVec3(pOut, &pB->m, &sum);
 }
+#endif
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
