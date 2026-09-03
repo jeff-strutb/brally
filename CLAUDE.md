@@ -161,7 +161,7 @@ exist but their name columns are empty — maps were generated, never worked.
 | binary | why |
 |---|---|
 | `BRD3D.dll` | Direct3D twin of the game. Reference/cross-check only — see rule 0. Its `.text` is ~100 KB larger than Glide's *because it statically links the CRT*: it imports no `MSVCRT.dll` at all, while `BRGlide.dll` imports 57 CRT functions dynamically. Matching D3D means matching Microsoft's CRT as a side effect. This is the evidence for rule 0, not just a preference. |
-| `Boot.exe` | CD autorun / installer front-end. Runs `setup.exe`, DirectX Setup, DXMEDIA, `setvideo.exe`. Imports COMCTL32, SHELL32, WINSPOOL, comdlg32 — a Windows dialog app. Its 96 KB is the largest EXE and is **not game code**. |
+| `Boot.exe` | CD autorun / installer front-end. Runs `setup.exe`, DirectX Setup, DXMEDIA, `setvideo.exe`. Imports COMCTL32, SHELL32, WINSPOOL, comdlg32 — a Windows dialog app. Its 96 KB is the largest EXE and is **not game code**. **Re-confirmed 2026-09-03, and the reason is stronger than "not game code": it statically links MFC 4.2** (`AfxWnd42s`, `AFX_MODULE_STATE`, `Microsoft Visual C++ Runtime Library` in `.rsrc`; it imports neither `MFC42.dll` nor `MSVCRT.dll`). Decompiling it means decompiling Microsoft's MFC — the same trap as `BRD3D.dll`'s static CRT under rule 0, and MFC is far bigger. Its own logic is small: 1,453 functions in `.text`, and the code that actually launches anything (registry read, `setup.exe`/`brally.exe`/`setvideo.exe`/DirectX spawn) is **3 functions / 745 B** in the first 3 KB. Nothing here is shared with the game. |
 | `REMOVE.EXE` | Uninstaller stub; spawns `IASINST.EXE`. |
 | `SETUP.EXE`, `_ISDEL.EXE`, `_SETUP.DLL` | 16-bit NE binaries, InstallShield. Not PE32, not game code. |
 
