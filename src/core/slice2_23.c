@@ -874,7 +874,7 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
  * looks up a pointer for that entry out of a table hung off the menu
  * object. There is no range check, and on the no-answer path the index used
  * can still be negative. */
-/* @implements 0x1003EBE0 d3d BrUiPoll1003EBE0 */
+/* port-only body; Glide match is src/core/cpp/0x100381D0.cpp */
 int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
 #ifdef BR_MATCHING_BUILD
@@ -1453,7 +1453,7 @@ int32_t BrUiText1003FC40(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: sets the caption of the force-feedback row -- it names the
  * current setting, but only when a force-feedback device was actually found;
  * otherwise it shows a fixed piece of text instead. */
-/* @implements 0x1003FCB0 d3d BrUiText1003FCB0 */
+/* port-only body; Glide match is src/core/cpp/0x100391F0.cpp */
 int32_t BrUiText1003FCB0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t id = (pG->g18ABDBC != 0) ? pG->tAC400[pG->gAA2A1C] : 0x74;
