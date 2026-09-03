@@ -17,8 +17,23 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
+# A VA already byte-exact in the C++ or EXE workstream is NOT an open target,
+# however its C-side row reads: 0x100414B0 sat at the top of this list while
+# src/core/cpp/0x100414B0.cpp had already matched it exactly.  Those C rows are
+# superseded twins that should be untagged, not re-solved.
+done = set()
+for name in ('report_cpp.csv', 'report_exe.csv'):
+    fp = os.path.join(ROOT, 'build/match', name)
+    if not os.path.exists(fp):
+        continue
+    for r in csv.DictReader(open(fp)):
+        va = (r.get('va') or '').strip()
+        if va and r.get('status') == 'match':
+            done.add(va.lower())
+
 rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'build/match/report.csv')))
-        if r.get('status') == 'diff' and r.get('va')]
+        if r.get('status') == 'diff' and r.get('va')
+        and r['va'].lower() not in done]
 srccache = {}
 out = []
 for r in rows:
