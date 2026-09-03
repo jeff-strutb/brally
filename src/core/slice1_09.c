@@ -554,29 +554,28 @@ void BrMat4TransformPoint(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
      * dec esi; fadd [eax]; fstp [eax]`.  `sub edi,eax` is pM-pOut so the
      * column pointer is `lea r,[edi+eax]` as eax walks the output.
      *
-     * WALL: exact size, REGNORM 0+0, 7-byte ecx/edx swap of the two inner
-     * pointers (orig edx=v ecx=m; we get ecx=v edx=m).  Solo TU same.
-     * Register-allocation class -- do not grind. */
-    float *o = (float *)pOut;
-    const float *m = (const float *)pM;
-    const float *v;
-    const float *col;
+     * INDEXED, NOT CURSORS.  Hand-rolled walking pointers (`col = m; v = pV;`
+     * bumped by `col += 4; v++`) reproduce this exactly to 7 bytes and then
+     * stop: VC5 binds the copy-from-register cursor to ecx and the lea-derived
+     * one to edx, where the original has them the other way round, and the lea
+     * comes out `[eax+edi]` instead of `[edi+eax]`.  Swapping the assignment
+     * order, swapping the declaration order and block-scoping the pair inside
+     * the outer loop all fail (9 / 7 / 5 diffs) -- a previous note here called
+     * this a register-allocation wall and told the reader not to grind it, and
+     * that was WRONG.  Letting the compiler build both induction variables
+     * itself, from plain `pv[j]` and `pM->m[j][i]` subscripts, is byte-exact:
+     * the two cursors then come into existence in the order VC5 wants them
+     * and pick up ecx/edx accordingly.  Semantics are unchanged -- `pv[j]`
+     * re-reads the live vector every outer pass, exactly as the reloaded
+     * cursor did, which is what keeps the aliasing case above honest. */
+    float       *o  = (float *)pOut;
+    const float *pv = (const float *)pV;
     int i, j;
 
     for (i = 0; i < 3; i++) {
-        float vv;
-        *o = 0.0f;
-        v = (const float *)pV;
-        col = m;
-        for (j = 0; j < 3; j++) {
-            /* Name the vector so it is the fld operand (`fld [v]; fmul [m]`). */
-            vv = *v;
-            *o += vv * *col;
-            v++;
-            col += 4;
-        }
-        o++;
-        m++;
+        o[i] = 0.0f;
+        for (j = 0; j < 3; j++)
+            o[i] += pv[j] * pM->m[j][i];
     }
     pOut->x += pM->m[3][0];
     pOut->y += pM->m[3][1];
