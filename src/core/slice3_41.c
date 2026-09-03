@@ -455,6 +455,12 @@ void *BrPool16Alloc(void)
 /* Glide 0x100625A0 == D3D 0x10069530 (shared.csv pair).  Tagged on the Glide
  * side -- the reference build, and the address 0x1000A110's specular pass
  * calls -- so claimcheck audits the body against it. */
+/* WHAT IT DOES: hand out the next free 32-byte scratch block for this frame,
+ * from a small per-frame bank that is thrown away wholesale rather than freed
+ * item by item. Past the twentieth request every caller gets the SAME overflow
+ * block -- the original does not fail, it just stops giving out distinct
+ * memory, and callers are expected never to ask that often. BrPool16Alloc is
+ * the same template with 16-byte slots. */
 /* @implements 0x100625A0 glide BrPool32Alloc */
 /* Same template as BrPool16Alloc, with 32-byte slots (`shl eax,5`) and its own
  * counter and two bases; see the note there for the `= ++c` requirement. */
