@@ -380,7 +380,14 @@ int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
      * reading the global into a local first, `!g` versus `g == 0`, the
      * inverted preset (0x69 then conditionally 0x68), `int16_t`/`int` for c,
      * a goto instead of the if, and both chained-store orders -- all seven
-     * preset variants compile to byte-identical output. T3a. */
+     * preset variants compile to byte-identical output. T3a.
+     *
+     * WHY IT IS A BYTE LONGER, which is the whole of the size gap: VC5 emits
+     * the one-byte-shorter `A1` moffs load for a global ONLY when the
+     * destination is EAX.  Here `c` has taken eax, so the global has to use
+     * the 6-byte `8B 0D` form.  So the lever, if one exists, is anything that
+     * stops `c` claiming eax -- not anything about the branch shape, which is
+     * already exactly right.  Every attempt above changed the branch. */
     uint16_t c = 0x68;
 
     if (g_br0AB3D8 == 0)
