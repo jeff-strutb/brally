@@ -3357,3 +3357,36 @@ format strings while explaining that only the branch was kept ("the original
 builds that predicate into a register purely to print it"). So the missing
 bytes are not a helper to find — they are output that was deliberately
 dropped, and putting them back is transcription, not discovery.
+
+## The "photo" control block (menu-builder family) — SOLVED 2026-09-03
+
+Proven byte-exact on 0x1004ABE0 (760 B, first compile). Three parts, and
+each part's shape is source, not schedule:
+
+1. **A pair of parallel arrays walked by ONE index, in two ranges.** The
+   original opens each loop with two `lea`s of the *starting element* and a
+   `dec`-counted trip count, which reads like a hand-written pointer walk.
+   It is not: the source is an ordinary indexed `for`, and the two loops are
+   contiguous (`0..14` then `15..23`) because only the stored short changes
+   (0x50 -> 0x51). VC5 strength-reduces both induction variables and folds
+   `&arr[15]` into the second loop's `lea`. Write the indexed form.
+
+2. **A rect built from `__ftol` conversions, stored +0x54, +0x50, +0x58,
+   +0x5C.** The y field is written FIRST. That is the source order, not a
+   schedule — transcribing it as 50/54/58/5C rotates the whole block. Where
+   the same float feeds two fields, the original converts it TWICE (four
+   `__ftol` calls, no int temps) unless the integer is also needed by a
+   later control, in which case it is a real local (0x1004AEE0 keeps `xi`
+   in `ebx` across three pages).
+
+3. `cmp r,ebx` versus `test r,r` on the new-object null-checks inside one
+   function is the pinned zero register DYING, not two source shapes. In
+   0x1004ABE0 `ebx` holds zero for the first two entries and is clobbered by
+   the +0x34 vcall's vtable load before the third. Do not split the source.
+
+STILL PARKED: 0x1004AEE0's photo1 tail (34 diffs). With the above applied
+the ONLY divergence in 3862 bytes is a ten-instruction window where the
+original computes both derived ints (`lea`, `add`) before its three stores
+and sinks the `fstp` past `f2968`, while ours interleaves and sinks the
+`+0x58` store instead. Identical multiset, T3a. Photos 2 and 3, and every
+other byte, are exact.
