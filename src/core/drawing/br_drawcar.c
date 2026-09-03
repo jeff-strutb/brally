@@ -1154,9 +1154,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
             pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
         } else {
+            /* topA FIRST: with it last, VC5 issued only two byte loads and
+             * took the third straight into the lane (`mov dh,byte ptr[mem]`).
+             * Assigned first, all three globals load up front into three byte
+             * registers, which is the original's shape (`mov dl`/`mov cl`/
+             * `mov al` at 0x3ca-0x3d6) and the precondition for the second
+             * slot store.  Raw divergence rows 50+63 -> 48+61; the
+             * register-blind multiset is unchanged at 20/7, so this is a
+             * shape alignment, not a closure. */
+            topA  = BrG_6C1580;
             pack[0] = BrG_6C335C;
             pack[1] = BrG_6C0968;
-            topA  = BrG_6C1580;
             colourA = ((((uint32_t)topA << 8 | pack[0]) << 8
                        | pack[1]) << 8);
             topB  = g_BrDrawByte80;
