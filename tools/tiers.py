@@ -70,6 +70,24 @@ def main():
             continue
         (match if r['status'] == 'match' else diff).append(r)
 
+    # A function byte-exact in the C++ EH workstream is NOT in report.csv --
+    # converting a C row to a C++ one REMOVES it from that file.  Counted by
+    # subtraction alone it then reappears as T1 "not started", so T1 CLIMBED
+    # every time the C++ lane converted a row (171 fns / 75,339 B on
+    # 2026-09-03, and T1 rose 454 -> 460 across one day while work was being
+    # finished).  They are T4.  EXE matches live in another image and share no
+    # addresses with this target, so they stay out of this table.
+    cpp_done = set()
+    cpp = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    if os.path.exists(cpp):
+        seen = set(r['va'].upper() for r in match + diff)
+        for r in csv.DictReader(open(cpp)):
+            if r.get('status') != 'match':
+                continue
+            va = (r.get('va') or '').upper()
+            if va in target and va not in seen:
+                cpp_done.add(va)
+
     objs = _objs()
     t3, t2 = [], []
     for r in diff:
@@ -86,10 +104,11 @@ def main():
             w.writerow([r['va'], r['orig_size']])
 
     n_target = len(target)
-    n_tr = len(match) + len(diff)          # transcribed = has @implements
+    n_tr = len(match) + len(diff) + len(cpp_done)   # transcribed somewhere
     n_t1 = n_target - n_tr
     def by(rows): return sum(int(x['orig_size']) for x in rows)
-    b_t4, b_diff = by(match), by(diff)
+    b_t4 = by(match) + sum(target[va] for va in cpp_done)
+    b_diff = by(diff)
     b_t3 = sum(int(r['orig_size']) for r, _ in t3)
     b_t2 = b_diff - b_t3
     b_t1 = sum(target[va] for va in target) - (b_t4 + b_diff)
@@ -135,10 +154,15 @@ def main():
     print(f"  T1  not started (C draft only)  {n_t1:5d} fns   {b_t1:8d} B")
     print(f"  T2  in progress (real diffs)    {len(t2):5d} fns   {b_t2:8d} B")
     print(f"  T3a codegen-only (regs differ)  {len(t3):5d} fns   {b_t3:8d} B")
-    print(f"  T4  done (byte-exact)           {len(match):5d} fns   {b_t4:8d} B")
+    print(f"  T4  done (byte-exact)           {len(match) + len(cpp_done):5d} fns"
+          f"   {b_t4:8d} B")
+    if cpp_done:
+        print(f"      of which C++ EH workstream  {len(cpp_done):5d} fns"
+              f"   {sum(target[va] for va in cpp_done):8d} B"
+              f"   (not carried in report.csv)")
     print("  " + "-" * 56)
     print(f"      in the project (T2+T3a+T4)  {n_tr:5d} fns")
-    print(f"      done or done-bar-registers  {len(match)+len(t3):5d} fns"
+    print(f"      done or done-bar-registers  {len(match)+len(cpp_done)+len(t3):5d} fns"
           f"   (T3a+T4)")
     print("=" * 60)
     print("  Every T1 function already has a C draft off to the side; T1 = that")
