@@ -1108,6 +1108,26 @@ the caller AND flipped a helper to match for free.
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
   the scaled form, VC5 picks the accumulator itself. T3a — park it.
+- **In a three-term x87 row, WHICH term is subtracted decides the `fxch`
+  count.** `a + b - c` and `a - c + b` are the same value but not the same
+  code: they build the operand stack in different orders, and the wrong one
+  costs a surplus `fxch`, i.e. one extra instruction and two bytes. Swapping
+  the two ADDENDS changes nothing (VC5 canonicalises commutative adds — see
+  the entries above); moving the SUBTRAHEND is the lever. Rows of the same
+  formula need not agree: in 0x1006D530 BrRbQuatDerivative only the third of
+  four rows takes the subtract-second form, and forcing it on the others is
+  neutral or worse. Sweep the associations per row rather than assuming the
+  formula is written uniformly — the 64-build sweep there took the function
+  from 208 B / 74 insns to exact 206 / 73 and the residue from 26 to 21.
+- **‼ PROCESS: a residue note's parity claim is only worth what it was
+  measured at.** The note on 0x1006D530 asserted "instruction stream, count
+  and size are exact (RAW and REGNORM multiset gap 0+0)"; rebuilding that
+  note's own commit showed 208/206 bytes, 74/73 instructions and REGNORM 1+0
+  — there was a surplus instruction the whole time, and the claim of parity is
+  precisely what would stop the next reader from looking. Before trusting any
+  "exact except for allocation" note, spend the 12 seconds to re-measure it.
+  Three "unreachable"/"do not grind" notes and now one false parity claim have
+  been overturned in this tree; treat every such note as a lead, not a verdict.
 - **`sub reg, imm` vs `add reg, -imm` is NOT an operator choice, and it is a
   compiler tell.** MSVC 5.0 canonicalises a STRAIGHT-LINE constant subtraction
   to `add reg, -K`, always. Measured directly, not inferred: `x - 16`,
