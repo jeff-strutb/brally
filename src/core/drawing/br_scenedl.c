@@ -56,6 +56,14 @@
  *   fmul [esi+0x38]`).  That is worth taking: it swaps a wall that six
  *   passes of probes could not move for a localised operand-order defect,
  *   and it moves the region count and the byte count the right way.
+ *   MEASURED SEVENTEENTH PASS, do not re-run: the ROW TERM ORDER is not the
+ *   lever for the leftover term-3 flip either.  Six permutations measured
+ *   (1234, 2134, 1324, 3124, 1243, 2143); all keep the 8|4 batching and all
+ *   leave the flip, the best being 1243/2143 at one register-blind row
+ *   better (48+53 against 48+54) which is not worth reordering the natural
+ *   reading for.  With factor order canonicalised and term order inert, the
+ *   flip is an operand-ranking decision, not a spelling: T3 is the one term
+ *   whose two operands VC5 ranks the other way round.
  *   MEASURED, do not re-run: the full 4-term spelling mask.  Only SSSS gives
  *   8|4; every mixed mask gives 6|6 (SSLS, LSSS, SSSL) and the old LSLS
  *   gives 5|7.  And the term-3 flip is NOT source-selectable -- swapping the
