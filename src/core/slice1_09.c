@@ -380,9 +380,19 @@ unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
 /* @implements 0x10073D40 d3d BrBitStreamAtEnd */
 int BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs)
 {
-    int pos = pBs->readByte;
+    /* NOT `pos = readByte; if (readBit) pos++`. That pre-loads readByte and
+     * only then tests readBit, so both fields are live at once and the tested
+     * value needs its own register (`mov edx,[ecx]; mov eax,[ecx+4]; test
+     * edx,edx`). The original loads readBit into eax, tests it, and REUSES eax
+     * for readByte -- readBit dies at the test -- which only happens when the
+     * step is an alternative ASSIGNMENT rather than an in-place bump. The
+     * plain ternary `(readBit != 0) ? readByte + 1 : readByte` is byte-exact
+     * too; the if/else is kept for the port's sake. */
+    int pos;
     if (pBs->readBit != 0)
-        pos++;
+        pos = pBs->readByte + 1;
+    else
+        pos = pBs->readByte;
     return pos >= pBs->writeByte ? 1 : 0;
 }
 

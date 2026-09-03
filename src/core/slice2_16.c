@@ -1728,8 +1728,18 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
         p = DAT_106e7710++;
         idx = DAT_106ec798;
         pr = (const BrFadeRect *)recs + idx;
-        /* /O2 canonicalizes y1+y0 to load y0 first; orig loads +0xC then +4.
-         * Volatile access order blew the scaled [edx+eax*8] form. */
+        /* RESIDUE, T3a, 2 bytes, DO NOT RE-PROBE. /O2 canonicalizes y1+y0 to
+         * load y0 first; orig loads +0xC then +4, so its accumulator is y1 and
+         * ours is y0 -- FIRSTDIV +0x13a, DIFFS 2, RAW and REGNORM both 0+0.
+         * Dead probes, all four byte-identical to what is here: swapping which
+         * field goes into which temp; dropping `d` (`s = pr->y1; s += pr->y0`);
+         * the whole w0 as one expression with no temps; leading the `|` chain
+         * with the y-term instead of the constant. Volatile access order blew
+         * the scaled [edx+eax*8] form. The x1+x0 pair below matches the
+         * original and differs only in reaching its second operand base-only,
+         * which is what makes this allocation and not source -- see the
+         * "INTEGER adds of two fields of the SAME struct" entry in
+         * docs/VC5-IDIOMS.md. */
         s = pr->y1;
         d = pr->y0;
         b = pr->x1;
