@@ -701,7 +701,14 @@ typedef struct BrFadeState {
 int BrFadeRelease(BrFadeState *pSt);
 
 /* 0x1002AEC0  pos = srcC0; f5754FC = srcC4. The function begins with a
- * `jmp` over eleven nops -- a patch pad, reproduced only as this comment. */
+ * `jmp` over eleven nops -- a link-stage pad, recorded in
+ * config/preambles.csv rather than spelled in source.
+ *
+ * PORT-ONLY SIGNATURE.  The original takes no argument and addresses all four
+ * values absolutely; srcC0/srcC4 are the grSstWinOpen screen width and
+ * height, which is why they are not near the rest of the wipe state.  The
+ * byte-exact Glide body is src/core/generated/0x10017F30.c, the same split
+ * BrFadeRelease uses. */
 void BrFadeLatch(BrFadeState *pSt);
 
 /* 0x1002AF10  Emit the sprite pass for one rectangle record.

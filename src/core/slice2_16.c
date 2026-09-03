@@ -1642,7 +1642,9 @@ int BrFadeRelease(BrFadeState *pSt)
 /* 0x1002AEC0 */
 /* WHAT IT DOES: resets the screen-transition wipe to its starting position
  * by copying two stored values into the live ones. */
-/* @implements 0x1002AEC0 d3d BrFadeLatch */
+/* port-only body; Glide match is src/core/generated/0x10017F30.c -- the
+ * original takes no argument and addresses all four values absolutely, so the
+ * BrFadeState view below cannot reproduce it.  Same split as BrFadeRelease. */
 void BrFadeLatch(BrFadeState *pSt)
 {
     pSt->pos      = pSt->srcC0;
