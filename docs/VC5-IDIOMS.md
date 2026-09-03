@@ -3535,3 +3535,47 @@ caller when you do, because that changes their code too.
 and `memcpy` ARE expanded inline under /O2 (that is /Oi, which /O2 implies),
 which is why the original shows `repne scasb` / `rep movs` for those and a
 real `call` for `strncpy` or `_stricmp`, which are not intrinsics.
+
+## ‼ fn.py's DIFFS is POSITIONAL — a size shift upstream inflates or halves it
+*(measured 2026-09-03 on 0x1000EAF0; this qualifies several earlier
+comparisons in these dossiers, mine included)*
+
+`fn.py`'s `DIFFS` compares byte *i* of the original against byte *i* of the
+recompile, with relocation slots masked and NO alignment. So any size
+difference before a stretch shifts that whole stretch and makes almost every
+byte in it mismatch — and removing the shift makes almost all of them "match"
+at once, whether or not the code got closer.
+
+The case: a row-expression variant took DIFFS from 4,669 to 2,490 — a 47%
+drop that looks like a breakthrough. It was two bytes. The 2-byte size change
+moved a ~4,600-byte tail from delta −2 to delta 0, and ~2,200 spuriously
+mismatching bytes became spuriously matching ones. The variant recovered two
+bytes and one instruction, nothing more.
+
+**Rules:**
+- Compare DIFFS only between builds whose total size is the SAME. Otherwise it
+  measures alignment, not correctness.
+- When the size moves, rank by `msetdiff.py` rows, the instruction gap, and
+  the masked region map — all three are alignment-free.
+- A DIFFS swing much larger than the byte-count change is the signature of a
+  shift, not of a fix. Check `divergence.py --deltas` for a long run of
+  regions whose delta all moved by the same small amount.
+
+## A redundant outer parenthesis is NOT a no-op in a float expression
+*(isolated A/B on 0x1000EAF0, 2026-09-03)*
+
+Wrapping four already-parenthesised float expressions in one more pair of
+outer parentheses — changing nothing else, not even the association — moves
+the x87 schedule: the scale block's preload goes 5|7 → 4|8, the recompile
+grows three bytes, and the register-blind gap goes 40+46 → 41+47.
+
+So parentheses reach VC5's scheduler, not just its parser. Two consequences:
+- **Never "tidy" redundant parentheses in a matching TU.** They are load-
+  bearing, and the diff will move under you.
+- **They are a probe axis of their own.** When an x87 schedule is one notch
+  off and no association helps, try the same association with and without an
+  outer pair before calling it a wall.
+
+Also settled on that function while measuring this: the ORIGINAL's four-term
+row is LEFT-associated — its first `faddp st(2)` adds terms 1 and 2 — so a
+right-associated variant is the wrong source no matter how it scores.
