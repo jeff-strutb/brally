@@ -2430,3 +2430,30 @@ whose current best is `Od` and still `diff`.
   what lands `ebp-4` / `ebp-8` in the original's order. Compiler temps
   (an int subexpression stored so it can be `fild`ed) then fill the slots
   below in FIRST-USE order, interleaved with nothing else.
+- **Recover a call's argument list from the push stream instead of guessing
+  it -- and check the ORDER, because nothing else does (0x1000A110,
+  2026-09-03).** cdecl pushes right-to-left, so within one call the Nth push
+  is argument (nargs + 1 - N) and the last push is argument 1; a push of the
+  function's zero register is a literal 0 in the source. That is enough to
+  read a sixteen-token combiner call straight out of the original's bytes
+  with no guessing. Two of BrCarDrawVehicle's thirty-four calls had the
+  right tokens in the wrong slots, passing TK_ZERO where the original passes
+  TK_TEXEL0 and 0x3F4 -- so the display list the function emitted was
+  WRONG, not merely differently compiled. Fixing both closed four
+  divergence regions. **Neither existing comparator can see this**:
+  `divergence.py` wildcards imm32 when it normalises, and a multiset
+  comparison passes a permutation. `tools/pushcensus.py` is the check; run
+  it on any function that builds a display list before believing a region
+  map. (Run on the other two giants it is clean, 14 of 14 groups each, so
+  the technique does not just find noise.)
+- **A call inside a branch belongs INSIDE EACH ARM, not after a selected
+  variable (0x1000A110 model-DL hook, 2026-09-03).** Four arms selecting a
+  display-list pointer into one local and calling once emits a single shared
+  push pair; the original writes the call in each arm, which gives the first
+  arm its own private `mov`/`push`/`push`/`jmp` and lets VC5 cross-jump only
+  the three whose bytes are identical. Written that way the block is
+  instruction-for-instruction and register-for-register the original. This
+  is the same lever as the branch-selected DL emits above, and the way to
+  FIND it is a per-call push count: the same 34 call groups on both sides
+  with identical register-push totals and exactly one group short two
+  pushes.
