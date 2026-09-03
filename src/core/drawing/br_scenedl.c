@@ -65,11 +65,19 @@
  *   fixing the scale: byte diff 4,669 -> 4,742, masked regions 20 -> 22, and
  *   the row block itself picks up two SUSPECT resyncs (-190 drift at 0xe7c).
  *   Either half alone is worse still (pV3 only: 4,929; pV1 only: 5,020, and
- *   both give a 4|8 split).  The likely reason the rows break is that
- *   `pV3`/`pV1` become unused and three pointer locals drop out of the
- *   allocation at once.  NEXT LEVER, and it is a real one: find the row
- *   spelling that keeps the original's operand kinds without deleting those
- *   locals' other uses.  Do NOT re-run the three ruled-out causes above.
+ *   both give a 4|8 split).  ALSO PROBED AND WORSE, so do not re-run: the
+ *   same rewrite with the now-dead `pV3`/`pV1` declarations DELETED, which
+ *   was the obvious explanation for the row regression -- 5,027, worse
+ *   still, so the dead locals are not the cause and the row block simply
+ *   prefers the pointer spelling.  (`pView` must stay either way: the
+ *   logger reads it through VIEW(k).)
+ *   NEXT LEVER, and it is a real one: the ORIGINAL reads all four view terms
+ *   absolutely (`fld [0x106e9a48]`, `fld [0x106e9a6c]`) and its pObj terms
+ *   register-relative (`fmul [esi+0x34]`), so the operand KINDS are settled
+ *   -- what is not settled is a row spelling that carries those kinds
+ *   without costing the rows more than the scale block gains.  Do NOT re-run
+ *   the ruled-out causes above (helper boundary, array identity, extern vs
+ *   defined, dead-local removal).
  *
  * THIRTEENTH PASS (2026-09-03) re-tested this file's dead list under the
  * staleness rule that fell out of 0x1000A110 ("a dead verdict measured
