@@ -1270,7 +1270,7 @@ static int br23_is_solo(const BrUiGlobals *pG)
  * name up by track number, wrapping numbers above fifteen back down by
  * sixteen -- a wrap, not a clamp, so the second sixteen tracks reuse the
  * first sixteen names. */
-/* @implements 0x1003F760 d3d BrUiText1003F760 */
+/* port-only body; Glide match is src/core/cpp/0x10038CA0.cpp */
 int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t id;
