@@ -11,8 +11,25 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-09-01, sixth pass): 2,323/2,328 instructions, 9,344 vs
- * 9,354 bytes, 20 divergence regions slot-masked (26 raw).  Slot map now
+ * STATE (2026-09-03, seventh pass): 2,324/2,328 instructions, 9,344 vs
+ * 9,354 bytes, 19 divergence regions slot-masked (27 raw).  CLOSED this
+ * pass: BOTH drain loops converted to BYTE-offset induction variables
+ * together (`c2 << 4` / `dCar << 4`, `+= 4`, every ring read and write
+ * spelled `*(int *)((char *)base + off)`).  This is the form wall 7 below
+ * had recorded as rejected -- the earlier measurement applied it to the
+ * SECOND loop only, and one loop alone genuinely does flip the allocation
+ * (first loop alone: +7 insns, 27 raw; second alone: the effects wall 7
+ * lists).  Applied to both at once it closes the `mov edi,1` sink at
+ * 0x189c outright and shrinks the two drain pre-header regions (0x1f59 ->
+ * 0x1f66, 0x2006 -> 0x2016; ours now emits orig's `shl edx,4` dring init).
+ * GENERAL LESSON, worth more than the region: a strength-reduction
+ * spelling has to be applied to EVERY loop that shares the induction
+ * pattern before it is measured.  VC5 picks one IV strategy per region;
+ * a half-converted pair leaves it straddling both and scores worse than
+ * either consistent form.  Re-test any "structurally right but flips the
+ * allocation" verdict in this file the same way before trusting it.
+ *
+ * Sixth pass (2026-09-01): 20 regions.  Slot map now
  * matches orig for scale/fMin/fMax/i (0x10/0x14/0x18/0x1c): the clamp
  * factor is written back into `scale` (orig stores it to scale's slot),
  * and the active[]-init loop has its own block-scoped counter (a shared
@@ -83,10 +100,12 @@
  *      test and invert it; the orig's `shl edx,4` init of the inner ring
  *      IV comes from a BYTE-offset IV (`dCar << 4`, `+= 4`, `*(int *)
  *      ((char *)cursor + off)`; `dCar * 4` mints an outer dCar*16 IV,
- *      `<< 2` gives lea;lea).  Both forms are structurally right but each
- *      flips the global allocation elsewhere (0x894 esi=0xfffa/0xffff
- *      constant choice, post-loop edx/ecx roles, row-vs-dw in ebx), so
- *      the tree keeps the goto/`*4` form that scores best.
+ *      `<< 2` gives lea;lea).  SUPERSEDED 2026-09-03 for the IV half: the
+ *      byte-offset form IS in the tree now and gains a region, because it
+ *      is applied to BOTH drain loops at once (see STATE above).  The
+ *      "flips the global allocation" finding stands only for converting
+ *      one loop of the pair.  The goto-vs-nested-if half of this wall is
+ *      untouched and still open.
  * @implements stays live for the sweep; rule 2 forbids claiming a match
  * until the diff is clean.
  */
@@ -846,19 +865,20 @@ no_mark:
             int c2 = 0;
             if (0 < DAT_100b2f04) {
                 uint8_t *pA = active;
+                int rb;
                 do {
                     iWheel = 0;
-                    ring = c2 * 4;
+                    rb = c2 << 4;
                     do {
-                        head = DAT_1035faf0[ring];
+                        head = *(int *)((char *)DAT_1035faf0 + rb);
                         slot = head - 1;
                         if (slot < 0) {
                             slot = 499;
                         }
-                        cursor[ring] = slot;
-                        pA[iWheel] = head != DAT_1035f750[ring];
+                        *(int *)((char *)cursor + rb) = slot;
+                        pA[iWheel] = head != *(int *)((char *)DAT_1035f750 + rb);
                         iWheel = iWheel + 1;
-                        ring = ring + 1;
+                        rb = rb + 4;
                     } while (iWheel < 4);
                     c2 = c2 + 1;
                     pA = pA + 4;
@@ -874,13 +894,13 @@ no_mark:
                     uint8_t *pA = active;
                     do {
                         int row = rowBase;
-                        dring = dCar * 4;
+                        dring = dCar << 4;
                         dw = 0;
                         do {
                             if (pA[dw] != '\0') {
                                 int dh, ds;
-                                dh = cursor[dring];
-                                if (dh == DAT_1035f750[dring]) goto dead;
+                                dh = *(int *)((char *)cursor + dring);
+                                if (dh == *(int *)((char *)DAT_1035f750 + dring)) goto dead;
                                 {
                                     ds = dh - 1;
                                     if (ds < 0) {
@@ -889,7 +909,7 @@ no_mark:
                                     {
                                     uint32_t fl = DAT_10273690[dh + row].flags & 0x8000000;
                                     if (fl == 0x8000000) {
-                                        if (ds == DAT_1035f750[dring]) goto dead;
+                                        if (ds == *(int *)((char *)DAT_1035f750 + dring)) goto dead;
                                         if ((DAT_10273690[ds + row].flags & 0x8000000) ==
                                             0x8000000 &&
                                             ((DAT_10386ca8[DAT_10273690[dh + row].flags &
@@ -939,10 +959,10 @@ no_mark:
                                             TEMIT(0xb1000103, 0x302);
                                         }
                                         again = 1;
-                                        cursor[dring] = ds;
+                                        *(int *)((char *)cursor + dring) = ds;
                                     } else if (fl == 0) {
                                         again = 1;
-                                        cursor[dring] = ds;
+                                        *(int *)((char *)cursor + dring) = ds;
                                     }
                                     }
                                 }
@@ -953,7 +973,7 @@ next:;
                             }
                             dw = dw + 1;
                             row = row + 500;
-                            dring = dring + 1;
+                            dring = dring + 4;
                         } while (dw < 4);
                         dCar = dCar + 1;
                         rowBase = rowBase + 2000;
