@@ -1836,6 +1836,44 @@ static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
  * down to a 0-to-1 range as it is stored, which is a real difference between
  * the two commands and not an oversight. */
 /* @implements 0x1001E930 glide br_dl_env */
+#ifdef BR_MATCHING_BUILD
+/* FOUR FACTS, all read off 0x1001E930, and together they are the whole 183
+ * bytes (this landed byte-exact at /O2 /Op -- see the note on the variant
+ * below, the report row's O2y was simply the wrong guess):
+ *
+ *  1. ONE ARGUMENT.  `mov eax,[esp+0xC]` after `sub esp,8` is arg1, and every
+ *     read is `[eax+4]`; there is no BrDl parameter.  The four destinations
+ *     are SEPARATE ABSOLUTE GLOBALS and they are not even contiguous
+ *     (0x105CCD44 / 0x105CD9F4 / 0x105CCCF8 / 0x105CCC74), so `pDl->env[]`
+ *     was never an array -- the accessor sub-case of the factored-helper
+ *     screen.  The dispatch table therefore holds a one-argument function
+ *     here, which is why the install below needs a cast in this arm.
+ *  2. THE DWORD IS READ RAW, not through br_dl_w.  MSVC5 will not inline
+ *     br_dl_w (more than one caller), so it emitted a `call` the original
+ *     does not have.  Spell the load out: `*(const uint32_t *)(p + 4)`.
+ *  3. IT IS RE-READ FOR EVERY COMPONENT.  The original has four separate
+ *     `mov edx,[eax+4]`; hoisting it into a `v` local costs three of them.
+ *  4. THE CONVERSION IS UNSIGNED.  `fild qword ptr [esp]` with the high dword
+ *     zeroed is `(float)(unsigned)`; a `(int32_t)` cast gives `fild dword`
+ *     and is wrong.  Note the top component has NO mask -- `>> 24` alone,
+ *     which is only correct because the value is unsigned.
+ *
+ * DEAD PROBE, do not re-run: naming the conversion in a `float t` to try to
+ * reproduce the `fstp [esp+0xC]; fld [esp+0xC]` round-trip.  That round-trip
+ * is /Op's round-to-float on assignment, not a source temp -- at /O2 /Op the
+ * form WITHOUT the temp is byte-exact and the form with it is 119 diffs. */
+extern float DAT_105ccd44, DAT_105cd9f4, DAT_105cccf8, DAT_105ccc74;
+static const uint8_t *br_dl_env(const uint8_t *p)
+{
+    const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
+
+    DAT_105ccd44 = (float)(*(const uint32_t *)(p + 4) >> 24) * k;
+    DAT_105cd9f4 = (float)((*(const uint32_t *)(p + 4) >> 16) & 0xFFu) * k;
+    DAT_105cccf8 = (float)((*(const uint32_t *)(p + 4) >> 8) & 0xFFu) * k;
+    DAT_105ccc74 = (float)(*(const uint32_t *)(p + 4) & 0xFFu) * k;
+    return p + 8;
+}
+#else
 static const uint8_t *br_dl_env(BrDl *pDl, const uint8_t *p)
 {
     uint32_t v = br_dl_w(p + 4);
@@ -1847,6 +1885,7 @@ static const uint8_t *br_dl_env(BrDl *pDl, const uint8_t *p)
     pDl->env[3] = (float)(int32_t)(v & 0xFFu) * k;
     return p + 8;
 }
+#endif
 
 /* ---- 0xFC G_SETCOMBINE  (0x1001E770 SHARED -> 0x1001E7A0 Glide-only)  */
 
@@ -1949,7 +1988,12 @@ static void br_dl_build_table(void)
 #endif
     s_aTable[0xF8] = br_dl_fogcolour;
     s_aTable[0xFA] = br_dl_prim;
+#ifdef BR_MATCHING_BUILD
+    /* one-argument in this arm -- see the note on br_dl_env */
+    s_aTable[0xFB] = (void *)br_dl_env;
+#else
     s_aTable[0xFB] = br_dl_env;
+#endif
     s_aTable[0xFC] = br_dl_combine;
     s_fTableReady = 1;
 }
