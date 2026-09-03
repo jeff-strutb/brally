@@ -70,7 +70,7 @@ void BrPhaseEnterPlaceholder_1004B430(void *pSelf)
 }
 
 /* WHAT IT DOES: the same glue for a third menu screen. */
-/* @implements 0x1004BDC0 d3d BrPhaseEnterPlaceholder_1004BDC0 */
+/* port-only body; Glide match is src/core/cpp/0x100451F0.cpp */
 void BrPhaseEnterPlaceholder_1004BDC0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
@@ -79,7 +79,7 @@ void BrPhaseEnterPlaceholder_1004BDC0(void *pSelf)
 }
 
 /* WHAT IT DOES: the same glue for a fourth menu screen. */
-/* @implements 0x1004C4A0 d3d BrPhaseEnterPlaceholder_1004C4A0 */
+/* port-only body; Glide match is src/core/cpp/0x100458D0.cpp */
 void BrPhaseEnterPlaceholder_1004C4A0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
