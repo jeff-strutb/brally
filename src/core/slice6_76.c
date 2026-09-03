@@ -176,7 +176,12 @@ void BrExt_1003E310(void)
 /* WHAT IT DOES: writes the game's settings out. This is only the name other
  * modules call it by -- the actual writing lives in slice4_53.c, and this
  * hands both arguments straight through. */
-/* @implements 0x1006A4A0 d3d BrExt_1006A4A0 */
+/* NOT tagged: the body is BrGlCfgSave in slice4_53.c, which carries the
+ * @implements and matches byte-for-byte.  This is the second NAME the image
+ * gives that address, and as a thunk it compiles to a 32-byte call that can
+ * never reproduce the 930-byte original -- the BrVec3Len trap in
+ * slice6_74.c, which had one address in the measured set twice with one of
+ * the pair permanently unmatchable. */
 void BrExt_1006A4A0(void *pThis, void *pArg)
 {
     BrSub1006A4A0(pThis, pArg);
