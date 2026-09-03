@@ -348,7 +348,11 @@ static int32_t BrScissorPack(int32_t v)
  * the far edges, so a rectangle entirely off-screen still emits a zero-size
  * one rather than being dropped, and an optional doubling is applied
  * afterwards and can push it back outside. */
-/* @implements 0x1003289F d3d BrSub_1003289F */
+/* MOVED for matching. 0x1002BF50 is /Od and belongs to slice2_18.c's
+ * translation unit (0x1002BF4B ends exactly at it); the byte-matched
+ * transcription lives there and carries the @implements tag. This arm is the
+ * port's, and it stays because the port build has no slice2_18 matching arm. */
+#ifndef BR_MATCHING_BUILD
 void BrSub_1003289F(int a, int b, int c, int d)
 {
     BrScissorClamp *p = &s_scissor;
@@ -397,6 +401,7 @@ void BrSub_1003289F(int a, int b, int c, int d)
     pCmd[1] = (((uint32_t)BrScissorPack(a + c) & 0xFFFu) << 12)
             | ((uint32_t)BrScissorPack(b + d) & 0xFFFu);
 }
+#endif /* !BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 6. 0x10069490 -- adapter over br_pool.c                              */

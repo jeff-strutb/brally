@@ -1086,4 +1086,74 @@ void BrFrameBeginDl(int *param_1,int param_2)
   return;
 }
 
+/* WHAT IT DOES: sets the clipping rectangle for everything drawn after it --
+ * how split-screen halves and mirror insets are kept from spilling over each
+ * other. The rectangle is trimmed to the screen bounds first (only the SIZE is
+ * trimmed at the far edges, so a fully off-screen rectangle still emits a
+ * zero-size one rather than being dropped), then doubled if the hi-res flag is
+ * set, which can push it back outside.
+ *
+ * 0x1002BF50 -- /Od, and it belongs to THIS translation unit: 0x1002BF4B
+ * (BrNop_1002BF4B, 5 bytes) ends exactly at 0x1002BF50. It was transcribed in
+ * slice5_62.c, an /O2 file, where the unoptimised frame could never match; the
+ * body is the same, only the home and the reload-everything spelling differ.
+ *
+ * The four float round-trips are the original's own: `fild [arg]` into a
+ * float32 temp, `fld` it back, `fmul` the 0x100774B4 scale, then __ftol. That
+ * is an explicit `(float)` cast in the source, and it is lossy above 2^24, so
+ * it is kept rather than folded into a direct fild-and-scale. */
+/* @implements 0x1002BF50 glide BrSub_1003289F */
+
+extern int   DAT_104b16b0;   /* minimum X */
+extern int   DAT_104b16a8;   /* maximum X */
+extern int   DAT_104b16b4;   /* minimum Y */
+extern int   DAT_104b16a4;   /* maximum Y */
+extern int   DAT_106ed674;   /* hi-res: double every coordinate */
+extern float DAT_100774b4;   /* the fixed-point scale */
+
+void BrSub_1003289F(int param_1,int param_2,int param_3,int param_4)
+
+{
+  BrDlCmd *piVar1;
+
+  if (param_1 < DAT_104b16b0) {
+    param_3 = param_3 - (DAT_104b16b0 - param_1);
+    param_1 = DAT_104b16b0;
+  }
+  if (param_1 + param_3 > DAT_104b16a8) {
+    param_3 = DAT_104b16a8 - param_1;
+  }
+  if (param_3 < 0) {
+    param_3 = 0;
+  }
+  if (param_2 < DAT_104b16b4) {
+    param_4 = param_4 - (DAT_104b16b4 - param_2);
+    param_2 = DAT_104b16b4;
+  }
+  if (param_2 + param_4 > DAT_104b16a4) {
+    param_4 = DAT_104b16a4 - param_2;
+  }
+  if (param_4 < 0) {
+    param_4 = 0;
+  }
+  if (DAT_106ed674 != 0) {
+    param_1 = param_1 * 2;
+    param_2 = param_2 * 2;
+    param_3 = param_3 * 2;
+    param_4 = param_4 * 2;
+  }
+  piVar1 = DAT_106e7710++;
+  piVar1->op = 0xe7000000;
+  piVar1->arg = 0;
+  {
+    BrDlCmd *piVar2 = DAT_106e7710++;
+    piVar2->op = (((int)((float)param_1 * DAT_100774b4) & 0xfff) << 12)
+               | 0xe2000000
+               | ((int)((float)param_2 * DAT_100774b4) & 0xfff);
+    piVar2->arg = (((int)((float)(param_1 + param_3) * DAT_100774b4) & 0xfff) << 12)
+                | ((int)((float)(param_2 + param_4) * DAT_100774b4) & 0xfff);
+  }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
