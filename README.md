@@ -26,15 +26,15 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-03: **1,078 functions reproduce the original
-bytes exactly (130,448 B).** The whole DLL image is then reassembled from those
+original binary. Snapshot of 2026-09-03: **1,113 functions reproduce the original
+bytes exactly (165,791 B).** The whole DLL image is then reassembled from those
 claims and diffs to **0 bytes**, with 0 overlapping address claims.
 
-- **Game DLL (`BRGlide.dll`)** — 974 functions byte-exact, 119,999 B, **25.0% of
-  its 480,853 B `.text`**. Of those, 823 are C (54.2% of the hand-C target by
-  count) and 151 are C++. Most of what remains is structural, not "coloring":
-  211 functions still carry real, non-codegen diffs (wrong or missing code),
-  while only a 40-function tail is down to pure register-allocation/scheduling
+- **Game DLL (`BRGlide.dll`)** — 1,009 functions byte-exact, 155,342 B, **32.3% of
+  its 480,853 B `.text`**. Of those, 839 are C (55.2% of the hand-C target by
+  count) and 170 are C++. Most of what remains is structural, not "coloring":
+  187 functions still carry real, non-codegen diffs (wrong or missing code),
+  while only a 34-function tail is down to pure register-allocation/scheduling
   differences with the instructions already correct.
 - **C++ class (vtables, EH frames)** — a separate lane, because these functions
   are unreachable from C at all; screened for before a function is ranked as a
@@ -62,11 +62,11 @@ instructions, only the register choices differ.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 445 | 229,355 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 211 | 136,796 |
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 459 | 250,944 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 187 | 113,713 |
 | T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
-| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 40 | 8,395 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **823** | **78,594** |
+| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 34 | 7,459 |
+| **T4** | **Done** — matches the original exactly, byte for byte | **839** | **81,024** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
 decompiler.** No one is reading raw assembly from a blank slate; the original
@@ -107,19 +107,21 @@ Done means all four.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — screened as C++-only, no source written yet | 36 | 54,538 |
-| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 18 | 8,829 |
+| T1 | **Not started** — screened as C++-only, no source written yet | 24 | 34,979 |
+| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 19 | 9,447 |
 | T3a | **Works, near-identical** — code byte-exact, one table still differs | 0 | 0 |
-| **T4** | **Done** — all four pieces byte-exact | **151** | **41,405** |
+| **T4** | **Done** — all four pieces byte-exact | **170** | **74,318** |
 
 Two differences from the C table, both real:
 
 - **T1 here is a lower bound, not a census.** The C table's 1,519 is a fixed
   target derived from the function map; there is no equivalent count of "every
   C++ function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised
-  in the *current* unmatched residue — 36 strong of 190 screened, and the residue
+  in the *current* unmatched residue — 24 strong of 178 screened, and the residue
   shrinks as C matches land. A further 50 screened weak (fastcall-representable)
   are deliberately excluded: those are reachable from C and belong to the C lane.
+  T1 falling is therefore progress, not scope loss: this lane is being drained
+  faster than the screen finds new members.
 - **T3a is empty for a reason.** Every unfinished row here is unfinished in its
   *code*; the exception tables come out right first. So nothing currently sits in
   the "instructions right, only registers differ" tier.
@@ -136,8 +138,8 @@ prime C targets.
 | BossRally.exe (intro) | 35 fns · 2,482 B | game code complete |
 | SetVideo.exe (config) | 41 fns · 5,107 B | WinMain left |
 
-**Totals** — 1,078 byte-exact functions / 130,448 B (`python3 tools/total.py`):
-974 in `BRGlide.dll` (119,999 B, 25.0% of its `.text`) and 104 across the three
+**Totals** — 1,113 byte-exact functions / 165,791 B (`python3 tools/total.py`):
+1,009 in `BRGlide.dll` (155,342 B, 32.3% of its `.text`) and 104 across the three
 EXEs (10,449 B).
 
 **The image gate** (`python3 tools/image_build.py`) is the deliverable check, and
@@ -148,9 +150,9 @@ wrong size. The gate refuses collisions rather than resolving them, lays every
 claim into one image at the address it claims, uses the original's own bytes for
 everything not yet decompiled, and diffs the result against the retail DLL.
 
-    placed into the image            : 974 functions, 120,143 bytes (24.99% of .text)
-        C     823 fns    78,738 B  (888 B of that filled from the reference, 1.1%)
-        C++   151 fns    41,405 B  (7,448 B of that filled from the reference, 18.0%)
+    placed into the image            : 1009 functions, 155,486 bytes (32.34% of .text)
+        C     839 fns    81,168 B  (1,488 B of that filled from the reference, 1.8%)
+        C++   170 fns    74,318 B  (10,152 B of that filled from the reference, 13.7%)
     overlapping address claims       : 0
     ASSEMBLED IMAGE vs ORIGINAL      : 0 differing bytes
 
@@ -159,7 +161,7 @@ address would be caught; none do. Read the reference-filled column as a
 discount on the evidence, not on the match: those are relocation slots whose
 target has no address in any surveyed map (per-file statics, and the C++ lane's
 mangled symbols), so the reference image's own dword is used. Such a slot cannot
-fail the diff — the C lane is 1.1% reference-filled, the C++ lane 18.0%, and
+fail the diff — the C lane is 1.8% reference-filled, the C++ lane 13.7%, and
 resolving the latter through real addresses is open work.
 
 Port test suite does not currently build — see Status Summary.
