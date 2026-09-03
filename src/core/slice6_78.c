@@ -171,6 +171,43 @@ void BrErrorf(const char *pszFmt, ...)
  * file will not open the game writes an error line to a log on the C drive,
  * echoes it, and quits outright -- there is no recovery path here. */
 /* @implements 0x10002FE0 d3d BrChkFReadOpen */
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) void __stdcall OutputDebugStringA(const char *psz);
+
+FILE **BrChkFReadOpen(const char *pPath)
+{
+    char       szMsg[0x400];
+    BrChkFile *pf;
+
+    pf = (BrChkFile *)BrChkAlloc(sizeof(BrChkFile), "CHK_FReadOpen():pfil");
+    pf->pszName = (char *)BrChkAlloc(strlen(pPath) + 1u,
+                                     "CHK_FReadOpen():szName");
+    strcpy(pf->pszName, pPath);
+
+    if (BrChkVerbose != 0) {
+        sprintf(szMsg, "CHK_FReadOpen(%s)\n", pf->pszName);
+        OutputDebugStringA(szMsg);
+    }
+
+    pf->pFile = fopen(pf->pszName, "rb");
+
+    if (pf->pFile == NULL) {
+        FILE *pLog = fopen("c:\\RallyError.txt", "w");
+
+        sprintf(szMsg, "CHK_FReadOpen(): error opening file %s.\n",
+                pf->pszName);
+        fprintf(pLog, szMsg);
+        OutputDebugStringA(szMsg);
+        fclose(pLog);
+        exit(1);
+    }
+
+    /* The pun is written out here, not through ChkToPun: a plain `static`
+     * helper is not auto-inlined under /O2 (that needs /Ob2), and the
+     * original's tail is one `mov eax,ebx`. */
+    return (FILE **)(void *)pf;
+}
+#else
 FILE **BrChkFReadOpen(const char *pPath)
 {
     BrChkFile *pf;
@@ -220,6 +257,7 @@ FILE **BrChkFReadOpen(const char *pPath)
 
     return ChkToPun(pf);
 }
+#endif
 
 /* 0x10002F90  CHK_FileSize.
  *
