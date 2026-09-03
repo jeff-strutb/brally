@@ -1903,8 +1903,8 @@ leads are (a) a construct that forces the text base into a register as a
 genuine pointer value without changing any other byte, or (b) the
 compiler-build lead already open for 0x1000EAF0.
 
-## Inline `memset` expansion: the setup order is fixed
-*(proven 2026-09-03 on 0x1006FCE0)*
+## Inline `memset` setup order — a scheduling residue, not a fixed table
+*(2026-09-03, 0x1006FCE0 and 0x100087D0; CORRECTED same day by 0x1003AB00)*
 
 Our cl expands a constant-size zeroing `memset` as
 `mov ecx,N / xor eax,eax / lea edi,dst / rep stosd`. The original emits
@@ -1923,10 +1923,18 @@ the same directional difference:
     orig    mov ecx,0x40 / lea edi,dst / sub ecx,esi / xor eax,eax
     recomp  mov ecx,0x40 / xor eax,eax / sub ecx,esi / lea edi,dst
 
-The rule in both shapes: **the original materialises the destination
-pointer before the fill value; our cl does the reverse.** Two different
-expansions moving the same way is what makes this an expansion-table
-difference rather than a scheduling accident at the call site.
+In both of those the original materialised the destination pointer before
+the fill value and ours did the reverse.
+
+**CORRECTION — that is not a fixed rule.** 0x1003AB00 has the original
+emitting `mov ecx,8 / xor eax,eax` ABOVE the register saves and the
+`lea edi` after them (edi is not free until `push edi` has run) — i.e. the
+count-and-value-first order, which is exactly what our cl produces there,
+and that function matches on this point. So the setup order is scheduled
+against what else is happening around the call, not fixed by the
+expansion. Treat 0x1006FCE0 and 0x100087D0 as an unexplained scheduling
+residue in that surrounding code, not as evidence of a different expansion
+table, and do not cite them as compiler-build evidence.
 
 Together with the SIB base/index entry above, that is two emitter-level
 residues in one session that no source form reaches. Both are consistent
@@ -2032,6 +2040,15 @@ merge. Three source shapes, three different code shapes:
 Generalise: when the original merges arms on a single address-forming
 instruction, push the whole address expression INTO the arms and let the
 tail-merge factor it. Do not factor it yourself into shared locals.
+
+**Confirmed a second time, on a CALL, in 0x10037E60.** The original picks
+one of two catalogue indices and calls one string helper:
+`push 0x51 / jmp / push 0x0C / call`. Passing the choice as a ternary
+argument (`f(cond ? A : B)`) materialises the index into eax and pushes
+once — wrong. Writing it as an if/else with the CALL duplicated in both
+arms is right: VC5 tail-merges the call and each arm keeps its own
+`push imm`. Same lever, whether what merges is a `lea` or a `call`: put
+the whole expression in the arms.
 
 ## A pinned zero register costs a frame dword — recognise it, don't grind it
 *(observed 2026-09-03 on 0x10054E20)*
