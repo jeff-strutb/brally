@@ -2261,3 +2261,39 @@ it moved this one from 205 to 0.
   this way on 2026-09-03). The same trap in reverse: a tag sitting on a
   FRAGMENT of a larger original, e.g. 0x1005B2B0, where the twelve-line
   function tagged was the first thirty bytes of a 212-byte routine.
+- **The recompile's 16-byte alignment padding is not code, and counting
+  it fabricated "the instruction counts are EQUAL" on two giants
+  (2026-09-03).** A COFF function extent is padded to a 16-byte boundary,
+  so the object ends in up to fifteen trailing `nop`s that the extracted
+  original does not have. `divergence.py` counted them, and three
+  dossiers then quoted an equality that never held: 0x1000EAF0 is 2,322
+  vs 2,328 (six short) and 0x1000A110 is 1,828 vs 1,843 (fifteen short,
+  56 bytes short), while only 0x100250D0 was genuinely at parity. The
+  0x1000A110 frame census had reasoned *from* the false equality that no
+  value was missing and that the frame gap was a packing curiosity.
+  Both tools now strip the padding. **An instruction-count equality is a
+  load-bearing claim -- it is what licenses "the residue is shape, not
+  missing code" -- so never quote one that has not been padding-corrected,
+  and re-check any older claim of the same shape before building on it.**
+- **`msetdiff.py` needs the reloc ADDEND normalised or every reloc'd
+  instruction pairs as both MISSING and EXTRA.** The linked original
+  prints `push 0x106e9a38` / `[esi + 0x1035faf0]` / `[esi + <sym>+4]`;
+  the object prints `push 0`, `[esi]`, `[esi + 4]`, because the field
+  holds the addend and capstone renders a zero displacement as none at
+  all. Untreated, this reported two "we pass 0 where the original passes
+  a pointer" defects on 0x1000EAF0 that were nothing of the kind, and
+  buried the real rows under 39 of noise (76 -> 37 once fixed, plus
+  branch/call rel32 targets, which rotate wholesale whenever an earlier
+  region changes size). **Check the reloc list before acting on any bare
+  `push 0` or zero-displacement row.**
+- **VC5 cross-jumps N arms when their tails are byte-identical, and an
+  x87 pop's position decides it (0x1000A110 colour arms).** The original
+  gives arm 1 its own copy of the colourB pack and shares one tail
+  between arms 2 and 3; our build shares one tail across all three and is
+  37 bytes short in that block. The only difference is where the leftover
+  `fstp st(0)` lands -- inside arm 1's pack in the original, before the
+  jump in ours -- which makes our three tails identical and merges them.
+  Same emitter-level residue as the C++ lane's identical error tails: no
+  source spelling of the arms reaches it, and giving arm 1 its own byte
+  locals un-merges part of the pack but moves the first divergence 27
+  bytes earlier.
