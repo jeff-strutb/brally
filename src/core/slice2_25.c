@@ -677,7 +677,7 @@ int BrOptCycleAA2A00(void)
 
 /* WHAT IT DOES: opens one of the menu screens, building it the first time
  * and reusing it afterwards. Which screen this is was not established. */
-/* @implements 0x10043260 d3d BrOptOpen296C */
+/* port-only body; Glide match is src/core/cpp/0x1003C7B0.cpp */
 int BrOptOpen296C(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -846,7 +846,7 @@ int BrOptCycleAA2A24(void)
 /* WHAT IT DOES: leaves the current menu screen: it tells the screen to
  * close, resets a couple of race settings in single-player, saves the
  * settings block and returns to the caller with "stop here". */
-/* @implements 0x10043760 d3d BrOpt3760 */
+/* port-only body; Glide match is src/core/cpp/0x1003CCB0.cpp */
 int BrOpt3760(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -880,7 +880,7 @@ int BrOpt37B0(void)
 /* WHAT IT DOES: backs out of a network screen when the connection has gone
  * away -- it closes the screen and tears the session down. If the
  * connection is still up it does nothing at all. */
-/* @implements 0x100437D0 d3d BrOpt37D0 */
+/* port-only body; Glide match is src/core/cpp/0x1003CD20.cpp */
 int BrOpt37D0(BrGameObj *pGame)
 {
     BrGameSub *pSub;
@@ -901,7 +901,7 @@ int BrOpt37D0(BrGameObj *pGame)
  * connected player whether anybody else is present, and on the way out
  * closes the lobby and plays a sound. Most of the function is the several
  * different ways of leaving. */
-/* @implements 0x10043810 d3d BrOpt3810 */
+/* port-only body; Glide match is src/core/cpp/0x1003CD60.cpp */
 #ifdef BR_MATCHING_BUILD
 int BrOpt3810(BrGameObj *pGame)
 {
@@ -1204,7 +1204,7 @@ int BrOpt3A00(void)
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* @implements 0x10043CD0 d3d BrOptOpen2940 */
+/* port-only body; Glide match is src/core/cpp/0x1003D220.cpp */
 int BrOptOpen2940(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -1225,7 +1225,7 @@ int BrOptOpen298C(BrGameObj *pUnused)
  * after finding an existing one -- so it also starts the network connection
  * attempt on every call, not just the first, provided the game is in a mode
  * that wants one. */
-/* @implements 0x10043E70 d3d BrOptOpen2948 */
+/* port-only body; Glide match is src/core/cpp/0x1003D3C0.cpp */
 int BrOptOpen2948(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -1337,7 +1337,7 @@ int BrOpt40B0(BrGameObj *pGame) { g_brAA287C = 2; BrSub10047360(pGame); return 1
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* @implements 0x100440D0 d3d BrOptOpen294C */
+/* port-only body; Glide match is src/core/cpp/0x1003D620.cpp */
 int BrOptOpen294C(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -1459,7 +1459,7 @@ int BrOptOpen2950A(BrGameObj *pUnused)
 /* WHAT IT DOES: the hosting counterpart: marks this machine as the host and
  * opens the same lobby screen, with the host's own set of controls attached
  * to it. */
-/* @implements 0x100443E0 d3d BrOptOpen2950B */
+/* port-only body; Glide match is src/core/cpp/0x1003D930.cpp */
 int BrOptOpen2950B(BrGameObj *pUnused)
 {
     (void)pUnused;
@@ -1547,7 +1547,7 @@ int BrOptCycleAA2A18(void)
 /* WHAT IT DOES: opens the screen the game shows once a network race is
  * agreed on, switches the game into that mode, and, if this machine is the
  * host, starts hosting the session at that point. */
-/* @implements 0x100446D0 d3d BrOptOpen2954 */
+/* port-only body; Glide match is src/core/cpp/0x1003DC20.cpp */
 int BrOptOpen2954(BrGameObj *pUnused)
 {
     (void)pUnused;

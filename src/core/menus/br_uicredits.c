@@ -55,7 +55,7 @@ int BrUiCreditsCtxComplete(const BrUiCreditsCtx *pCtx)
 /* ==========================================================================
  * 0x1003AED0
  * ========================================================================== */
-/* @implements 0x1003AED0 glide BrUiCreditsAction_1003AED0 */
+/* port-only body; Glide match is src/core/cpp/0x1003AED0.cpp */
 int32_t BrUiCreditsAction_1003AED0(BrUiCtl_ *pCtl)
 {
     BrUiCreditsCtx *pCtx = &g_brUiCredits;

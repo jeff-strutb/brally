@@ -500,7 +500,7 @@ extern int DAT_10ac5c84;
 
 /* WHAT IT DOES: shuts down the current menu object, clears the track-name
  * working buffers to the default string and restores the previous object. */
-/* @implements 0x1003FBE0 glide BrMenuResetTrackStr */
+/* port-only body; Glide match is src/core/cpp/0x1003FBE0.cpp */
 void BrMenuResetTrackStr(int param_1)
 {
     BrObj *obj;

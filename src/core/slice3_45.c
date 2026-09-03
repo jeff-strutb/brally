@@ -708,7 +708,7 @@ void BrEntSetRecord(BrEnt *pE, int32_t idx)
  * after which it lets go of the record. One of the six sub-transforms is
  * skipped where the other five are done, which looks like a bug in the
  * original and is preserved. */
-/* @implements 0x10076B20 d3d BrEntReset */
+/* port-only body; Glide match is src/core/cpp/0x1006FD90.cpp */
 void BrEntReset(BrEnt *pE)
 {
     const unsigned char *rec;

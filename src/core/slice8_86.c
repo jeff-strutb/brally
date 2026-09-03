@@ -52,7 +52,7 @@ int g_iBrCdFirstTrack86 = BR86_CD_FIRST_MUSIC_TRACK;
  * it -- laying out its rows of labels and selectable controls. This is only
  * the glue that hands the screen off to the builder that does the work; a
  * host that has not supplied the surrounding menu state gets nothing built. */
-/* @implements 0x1004A580 d3d BrPhaseEnterPlaceholder_1004A580 */
+/* port-only body; Glide match is src/core/cpp/0x100439B0.cpp */
 void BrPhaseEnterPlaceholder_1004A580(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)

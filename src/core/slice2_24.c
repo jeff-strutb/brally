@@ -932,7 +932,7 @@ int32_t BrMenuTime0D70(BrMenuItem *pItem)
 
 /* WHAT IT DOES: put a lap time onto this row from a chosen slot -- 0, 1
  * or 2 index a table; 3 means the live time instead. */
-/* @implements 0x10040EE0 d3d BrMenuTime0EE0 */
+/* port-only body; Glide match is src/core/cpp/0x1003A420.cpp */
 int32_t BrMenuTime0EE0(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
@@ -976,7 +976,7 @@ BrMenuFillLapTime(char *pszOut, float fTime)
 }
 
 /* WHAT IT DOES: format one stored lap time onto this row as m:ss.hh. */
-/* @implements 0x10041040 d3d BrMenuTime1040 */
+/* port-only body; Glide match is src/core/cpp/0x1003A580.cpp */
 int32_t BrMenuTime1040(BrMenuItem *pItem)
 {
     char    sz[32];
@@ -1020,7 +1020,7 @@ int32_t BrMenuTime1040(BrMenuItem *pItem)
 }
 
 /* WHAT IT DOES: format a second stored lap time onto this row as m:ss.hh. */
-/* @implements 0x10041180 d3d BrMenuTime1180 */
+/* port-only body; Glide match is src/core/cpp/0x1003A6D0.cpp */
 int32_t BrMenuTime1180(BrMenuItem *pItem)
 {
     char    sz[32];

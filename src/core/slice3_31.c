@@ -339,7 +339,7 @@ static void Br31NotifyAndClear(BrPhase **ppSlot)
 /* WHAT IT DOES: an adapter, nothing more. Menu rows can only call a routine
  * that takes one argument, so this supplies the shared context that the real
  * leave routine needs alongside it. */
-/* @implements 0x10044CB0 d3d Br31Thunk_10044CB0 */
+/* port-only body; Glide match is src/core/cpp/0x1003E200.cpp */
 static int32_t Br31Thunk_10044CB0(void *pEntity)
 {
     (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
@@ -389,7 +389,7 @@ BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
 /* WHAT IT DOES: brings up a screen that needs the game CD in the drive. It
  * checks for the disc first, and if it is not there it puts up the "please
  * insert Boss Rally CD" message and refuses to open the screen at all. */
-/* @implements 0x10045900 d3d BrPhaseActivate_10045900 */
+/* port-only body; Glide match is src/core/cpp/0x1003ED90.cpp */
 int BrPhaseActivate_10045900(void)
 {
     int fBuilt;
@@ -448,7 +448,7 @@ int BrPhaseHook_10045AA0(void *pArg)
 /* 0x10045AF0 */
 /* WHAT IT DOES: brings up the "load championship season" screen, building it
  * the first time and just making it current thereafter. */
-/* @implements 0x10045AF0 d3d BrPhaseActivate_10045AF0 */
+/* port-only body; Glide match is src/core/cpp/0x1003EF90.cpp */
 int BrPhaseActivate_10045AF0(void)
 {
     int fBuilt;
@@ -458,7 +458,7 @@ int BrPhaseActivate_10045AF0(void)
 /* 0x10045BC0 */
 /* WHAT IT DOES: brings up the screen the season-save button leads to,
  * building it the first time. */
-/* @implements 0x10045BC0 d3d BrPhaseActivate_10045BC0 */
+/* port-only body; Glide match is src/core/cpp/0x1003F060.cpp */
 int BrPhaseActivate_10045BC0(void)
 {
     int fBuilt;
@@ -472,7 +472,7 @@ int BrPhaseActivate_10045BC0(void)
  * builds the "are you sure you want to exit the season?" confirmation behind it
  * so it is ready when the player asks to leave. If the screen was already open
  * the confirmation is not rebuilt. It ignores the argument it is handed. */
-/* @implements 0x10045C90 d3d BrExt_10045C90 */
+/* port-only body; Glide match is src/core/cpp/0x1003F130.cpp */
 void BrExt_10045C90(void *p)
 {
     int fBuilt;
@@ -490,7 +490,7 @@ void BrExt_10045C90(void *p)
 /* 0x10045DC0 */
 /* WHAT IT DOES: brings up the season-progress screen, copying the current
  * round number into the slot that screen reads from first. */
-/* @implements 0x10045DC0 d3d BrPhaseActivate_10045DC0 */
+/* port-only body; Glide match is src/core/cpp/0x1003F260.cpp */
 int BrPhaseActivate_10045DC0(void)
 {
     int fBuilt;
@@ -503,7 +503,7 @@ int BrPhaseActivate_10045DC0(void)
 /* 0x10045EA0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if it is not
  * already there. Which screen it is was not established here. */
-/* @implements 0x10045EA0 d3d BrPhaseActivate_10045EA0 */
+/* port-only body; Glide match is src/core/cpp/0x1003F340.cpp */
 int BrPhaseActivate_10045EA0(void)
 {
     int fBuilt;
@@ -515,7 +515,7 @@ int BrPhaseActivate_10045EA0(void)
  * for the first time, also builds a second screen behind it -- the same
  * two-at-once pattern used for a screen and its confirmation. Which pair these
  * are was not established here. */
-/* @implements 0x10045F70 d3d BrPhaseActivate_10045F70 */
+/* port-only body; Glide match is src/core/cpp/0x1003F410.cpp */
 int BrPhaseActivate_10045F70(void)
 {
     int fBuilt;
@@ -531,7 +531,7 @@ int BrPhaseActivate_10045F70(void)
 /* 0x100460A0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if needed.
  * Which screen it is was not established here. */
-/* @implements 0x100460A0 d3d BrPhaseActivate_100460A0 */
+/* port-only body; Glide match is src/core/cpp/0x1003F540.cpp */
 int BrPhaseActivate_100460A0(void)
 {
     int fBuilt;
@@ -542,7 +542,7 @@ int BrPhaseActivate_100460A0(void)
 /* WHAT IT DOES: brings up a menu screen and switches the background music over
  * to a different track as it does so -- and it does that switch every time,
  * including when the screen was already open. */
-/* @implements 0x10046170 d3d BrPhaseActivate_10046170 */
+/* port-only body; Glide match is src/core/cpp/0x1003F610.cpp */
 int BrPhaseActivate_10046170(void)
 {
     int fBuilt;
@@ -559,7 +559,7 @@ int BrPhaseActivate_10046170(void)
  * resetting a good deal of shared state on the way: the menu mode, the season
  * block, a marker byte and two guard flags. The three final set-up steps and
  * the wiring of its exit row happen only when the screen has to be built. */
-/* @implements 0x10046260 d3d BrPhaseActivate_10046260 */
+/* port-only body; Glide match is src/core/cpp/0x1003F700.cpp */
 int BrPhaseActivate_10046260(void)
 {
     int fBuilt;
@@ -650,7 +650,7 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* 0x10046400 -- pre-declared by slice2_25.h. */
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
  * that went with it, and hands the player back to a remembered screen. */
-/* @implements 0x10046400 d3d BrSub10046400 */
+/* port-only body; Glide match is src/core/cpp/0x1003F8A0.cpp */
 int32_t BrSub10046400(BrGameObj *p)
 {
 #ifdef BR_MATCHING_BUILD
@@ -738,7 +738,7 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
 /* WHAT IT DOES: leaves a screen and, on the way out, switches the wheel's
  * force feedback off -- so this is the exit from a screen that had it
  * running. */
-/* @implements 0x10046560 d3d BrPhaseLeave_10046560 */
+/* port-only body; Glide match is src/core/cpp/0x1003FA00.cpp */
 int32_t BrPhaseLeave_10046560(void *pEntity)
 {
 #ifdef BR_MATCHING_BUILD
@@ -770,7 +770,7 @@ int32_t BrPhaseLeave_10046560(void *pEntity)
 /* 0x100466C0 */
 /* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
  * goes, so changes made on it survive. */
-/* @implements 0x100466C0 d3d BrPhaseLeave_100466C0 */
+/* port-only body; Glide match is src/core/cpp/0x1003FB10.cpp */
 int32_t BrPhaseLeave_100466C0(void *pEntity)
 {
     BrPhase *pNext;
@@ -820,7 +820,7 @@ BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
  * shared working copy -- but it clears a different, smaller set of state than
  * the seven other name-resetting exits do, so it is not simply another one of
  * them. */
-/* @implements 0x10046E10 d3d BrPhaseLeaveNamed_10046E10 */
+/* port-only body; Glide match is src/core/cpp/0x10040260.cpp */
 int32_t BrPhaseLeaveNamed_10046E10(void *pEntity)
 {
     BrPhase *pNext;
@@ -900,7 +900,7 @@ int32_t BrPhaseGoto_10047050(void) { BR31_GOTO_CUR = BR31_GOTO_293C; return 0; }
  * the confirmation screen that was sitting behind it. It briefly leaves no
  * screen current at all, which the release runs inside -- so anything that
  * release does sees no current screen. */
-/* @implements 0x10046F60 d3d BrPhaseLeave_10046F60 */
+/* port-only body; Glide match is src/core/cpp/0x100403B0.cpp */
 int32_t BrPhaseLeave_10046F60(void *pEntity)
 {
     BrPhase *pSaved;

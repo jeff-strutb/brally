@@ -228,7 +228,7 @@ int32_t BrUiHook84_10046E10(BrUiCtl_ *pCtl)
  * to find, and makes the screen remembered as the one to return to current.
  * This one is not wired in when a screen is built -- it is poked onto a Back
  * row at the moment that screen is opened. */
-/* @implements 0x10046DC0 d3d BrUiHook84_10046DC0 */
+/* port-only body; Glide match is src/core/cpp/0x10040210.cpp */
 int32_t BrUiHook84_10046DC0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -246,7 +246,7 @@ int32_t BrUiHook84_10046DC0(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: the Back row of the game-options screen -- the one with skid
  * marks, specular lighting and car shadow on it. Picking it closes the options
  * pages and returns the player to the menu that opened them. */
-/* @implements 0x10046710 d3d BrUiHook84_10046710 */
+/* port-only body; Glide match is src/core/cpp/0x1003FB60.cpp */
 int32_t BrUiHook84_10046710(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -260,7 +260,7 @@ int32_t BrUiHook84_10046710(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: the Back row of the season-progress screen. It closes that
  * screen down and returns the player to the menu they came in from. */
-/* @implements 0x10047060 d3d BrUiHook84_10047060 */
+/* port-only body; Glide match is src/core/cpp/0x100404B0.cpp */
 int32_t BrUiHook84_10047060(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -276,7 +276,7 @@ int32_t BrUiHook84_10047060(BrUiCtl_ *pCtl)
  * progress buttons. It is wired onto that screen's Back row at the moment the
  * screen is opened, and picking it closes the screen and returns the player to
  * the one that opened it. */
-/* @implements 0x10046830 d3d BrUiHook84_10046830 */
+/* port-only body; Glide match is src/core/cpp/0x1003FC80.cpp */
 int32_t BrUiHook84_10046830(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -293,7 +293,7 @@ int32_t BrUiHook84_10046830(BrUiCtl_ *pCtl)
  * are reset from the shared scratch text and the remembered selection is
  * cleared -- so leaving through this row abandons an edit rather than keeping
  * it. */
-/* @implements 0x10046870 d3d BrUiHook84_10046870 */
+/* port-only body; Glide match is src/core/cpp/0x1003FCC0.cpp */
 int32_t BrUiHook84_10046870(BrUiCtl_ *pCtl)
 {
     Br84LeavePrologue(pCtl);

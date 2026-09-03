@@ -117,7 +117,7 @@ void BrExt_1003BF60(void)
  * race session -- and then hands the given code to the C library's exit. The
  * order is the whole content of the function; several of the steps are only
  * taken if the matching subsystem was ever started. */
-/* @implements 0x10038F30 d3d BrExt_10038F30 */
+/* port-only body; Glide match is src/core/cpp/0x100325B0.cpp */
 void BrExt_10038F30(int32_t a)
 {
     const BrS71Env *pEnv = g_brS71Env;

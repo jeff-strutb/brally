@@ -93,7 +93,7 @@ int BrUiBootOpsComplete(const BrUiBootOps *pOps)
  * screen and publishes it. It reports whether the game is fit to continue.
  * Note the picture-path setup's result is deliberately ignored, so a failure
  * there does not stop the game. */
-/* @implements 0x10056260 glide BrUiBootPreLoopGate */
+/* port-only body; Glide match is src/core/cpp/0x10056260.cpp */
 int32_t BrUiBootPreLoopGate(const BrUiBootOps *pOps)
 {
     BrUiImgAlloc  alloc;

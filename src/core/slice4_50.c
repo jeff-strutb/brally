@@ -246,7 +246,7 @@ static void BrOptInstall(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
  * is showing. It also copies two settings into place before doing anything
  * else, on every call and not just the first. Which screen this is was not
  * established. */
-/* @implements 0x10044E20 d3d BrMenuSub10044E20 */
+/* port-only body; Glide match is src/core/cpp/0x1003E370.cpp */
 void BrMenuSub10044E20(int32_t n)
 {
     (void)n;                        /* the original reads no argument */
@@ -262,7 +262,7 @@ void BrMenuSub10044E20(int32_t n)
 /* WHAT IT DOES: opens a different menu screen the same way, first committing
  * the choices the player has made so far so the new screen sees them. Which
  * screen this is was not established either. */
-/* @implements 0x10043BF0 d3d BrSub10043BF0 */
+/* port-only body; Glide match is src/core/cpp/0x1003D140.cpp */
 void BrSub10043BF0(BrGameObj *p)
 {
     (void)p;                        /* the original reads no argument */
