@@ -334,7 +334,7 @@ int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
 /* WHAT IT DOES: leaves a screen and returns the player all the way to the root
  * menu rather than to whatever opened it, forgetting one remembered screen on
  * the way. */
-/* @implements 0x10044C70 d3d BrPhaseLeave_10044C70 */
+/* port-only body; Glide match is src/core/cpp/0x1003E1C0.cpp */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseLeave_10044C70(void *pEntity)
 {
@@ -375,7 +375,7 @@ int BrPhaseLeave_10044CB0(BrPhaseCtx *pCtx, void *pEntity)
 
 /* WHAT IT DOES: leaves a screen, forgets it, and returns to a remembered
  * parent screen. The plainest member of the leave family. */
-/* @implements 0x10044DE0 d3d BrPhaseLeave_10044DE0 */
+/* port-only body; Glide match is src/core/cpp/0x1003E330.cpp */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseLeave_10044DE0(void *pEntity)
 {
