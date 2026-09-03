@@ -1733,3 +1733,30 @@ parked-wall kind newly retryable (no new idiom landed).
   store-reorder freedom as the 0x100414F0 f1C/f3850 pair). Each `new`
   is its own EH state; states/FuncInfo/unwind actions all fall out of
   plain `p = new BrCtl;` under /GX (cpp_score verifies all four pieces).
+- **`fst` (not `fstp`) of a float local does NOT mean the source was
+  double** (2026-09-03, 0x1006D530 BrRbQuatDerivative, 171 -> 23 diffs).
+  At `/O2` (no `/Op`) VC5 is free to store a float local to its slot and
+  keep the still-live unrounded value in st, spending it once before
+  reloading the slot for every later use. Reading that asymmetry as a
+  mixed float/double source and typing the local `double` with per-use
+  casts produces a `fmul qword` / `fld qword` chain and blows the size
+  (206 -> 262 B here). **Falsify it by COUNTING**: sum the `fld`s of each
+  slot plus its kept register copies and check the total against the
+  number of times the value appears in the expressions. If they agree,
+  the local is a plain `float`. A `fmul dword [const]` scale is a `0.5f`
+  literal, never `0.5`.
+- **An aggregate local blocks dead-parameter-slot packing.** Same
+  function: three scalar `float hx, hy, hz;` let VC5 pack the third into
+  the dead incoming-parameter slot (`sub esp, 8`, third local at
+  [esp+0xc]) per the "PACKS ORDINARY LOCALS INTO DEAD PARAMETER SLOTS"
+  entry above. Declaring them as ONE aggregate -- `BrVec3 h;` or
+  `float h[3];`, which compile identically -- allocates the object whole
+  and restores `sub esp, 0xc` with the slots in declaration order. So
+  `sub esp, <exactly N locals * 4>` next to a parameter that dies at the
+  first instruction is evidence the source used an aggregate.
+- **VC5 canonicalises commutative x87 addend order.** `a*b + c*d` and
+  `c*d + a*b` compile to BYTE-IDENTICAL code; which product is scheduled
+  first is the allocator's choice, not the source's. Do not spend probes
+  permuting the terms of a sum to chase an `fxch` index. (Subtraction and
+  the association of a 3-term row still matter: `((t1+t2)-t3)` is faddp
+  then fsubp, `t1+(t2-t3)` is the reverse.)
