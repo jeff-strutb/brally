@@ -944,7 +944,18 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
     } else {
-        /* Orig: fld z, fld y, mov x, fstp y, mov x, fstp z — not a struct copy. */
+        /* Orig: fld z, fld y, mov x, fstp y, mov x, fstp z — two components
+         * through the x87, one as an integer mov, interleaved.  NOT REACHABLE
+         * BY COPY SPELLING (measured 2026-09-03, five variants, all
+         * byte-identical to what is here: whole-struct assignment; a dword
+         * pun on x with y/z left as float assignments; that same pun with
+         * the three statements in two other orders; and named float temps
+         * for y/z, which is the only one that changes anything and costs
+         * five instructions).  VC5 canonicalises every spelling of a 3-float
+         * copy into 3 loads + 3 stores in integer registers.  The original's
+         * mixed form needs the two floats to be x87-live at this point,
+         * which is an allocator state, not a source construct — treat this
+         * region as T3a until the frame (region 1) is solved. */
         g_BrDrawDir0.z = BrG_6C0670.z;
         g_BrDrawDir0.y = BrG_6C0670.y;
         g_BrDrawDir0.x = BrG_6C0670.x;
