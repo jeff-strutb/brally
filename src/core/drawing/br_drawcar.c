@@ -743,6 +743,24 @@ static void wheel_call(unsigned char *car)
  * inferring it -- displacement histograms cannot be compared across two
  * builds whose frame sizes differ, and that is how the pack0/pack1 claim
  * corrected below went wrong.
+ * FRAME CENSUS 2026-09-03 (region 1, the 0x48-vs-0x4c gap).  Counting the
+ * stack slots each build actually WRITES, rather than comparing raw
+ * displacements (which cannot line up across two different frame sizes):
+ *   orig   11 local dwords (0x10..0x30, 0x38, 0x3c) + the two packed BYTE
+ *          slots 0x31/0x32 inside the 0x30 dword + 2 arg slots (0x60,0x64),
+ *          and a 4-BYTE HOLE at 0x34 that it never writes;
+ *   ours   12 local dwords, 0x10..0x3c contiguous and dense, no byte slots,
+ *          + 2 arg slots (0x5c,0x60).
+ * So orig's frame is LARGER while writing FEWER dwords -- the gap is not a
+ * variable we are missing, it is that orig's packer left a hole and packed
+ * two bytes into an existing dword where ours packs densely and spends a
+ * whole dword.  Chasing "which value are we not homing" is the wrong
+ * question; instruction counts are equal (1843 = 1843), so no value is
+ * missing.
+ * MEASURED, do not re-run: declaring pack0/pack1 block-scoped inside the
+ * colour if/else (their whole live range) is byte-identical -- it does not
+ * move them out of the arg slots into byte slots.
+ *
  * Regions 2 and 3 (orig+0x2c8 / +0x2f0) are ONE defect: in colourA's
  * Horner pack the first ftol result goes to the HIGH byte in orig
  * (`xor edx,edx; mov dh,al` ... `mov dl,al`) and to the LOW byte in ours
