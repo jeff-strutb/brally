@@ -896,17 +896,22 @@ BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd)
         return pCmd + 1;
     case 0xA:
         off = (w0 >> 8) & 0xFFFFu;
-        /* test al,0xf is on `off` BEFORE the scale.  Scale is `shr 5; shl 4`
-         * in each arm, not the combined `(off>>1)&~0xf`. */
+        /* test al,0xf is on `off` BEFORE the scale.  The scale is a
+         * MULTIPLY, not a shift: `slot <<= 4` lets VC5 fold the pair into
+         * `shr 1; and 0x7FFFFFF0`, while `slot = slot * 16` leaves the
+         * original's `shr 5; shl 4`.  Same value, and the only two bytes
+         * that were wrong.  Indexing a 16-byte element type instead
+         * (`arr[slot].b[0]`) is much worse -- it hoists the scale out of
+         * the arms.  Do not re-probe those. */
         if ((off & 0xFu) == 0) {
             slot = off >> 5;
-            slot <<= 4;
+            slot = slot * 16;
             DAT_105ccc78[slot]     = (char)(pCmd->w1 >> 24);
             DAT_105ccc78[slot + 1] = (char)(pCmd->w1 >> 16);
             DAT_105ccc78[slot + 2] = (char)(pCmd->w1 >> 8);
         } else {
             slot = off >> 5;
-            slot <<= 4;
+            slot = slot * 16;
             DAT_105ccc78[slot + 4] = (char)(pCmd->w1 >> 24);
             DAT_105ccc78[slot + 5] = (char)(pCmd->w1 >> 16);
             DAT_105ccc78[slot + 6] = (char)(pCmd->w1 >> 8);
