@@ -39,6 +39,27 @@
  * way (all three together).  Found with tools/msetdiff.py, which had to be
  * fixed first (see its header): the branch-target and reloc-addend noise
  * was hiding the two-store residue.
+ * Same session, the nibble-merge question is now SETTLED.  The clean
+ * multiset leaves exactly one 32-bit nibble merge (`and edx,0xf0; and
+ * ecx,0xff; shr ecx,4` at 0xda6) against the original's all-8-bit
+ * `and dl,0xf0; shr cl,4; or cl,dl`; the other two blend bodies already
+ * emit `and al,240` and are right.  Map it with `/FAcs`: the odd one out is
+ * the THIRD blend body, the only one that routes the intensity through the
+ * widened `uVar19 = (unsigned int)bI4inten` temp -- and that temp is
+ * REQUIRED, which is the other face of the session-5 note.  Two probes,
+ * both dead, do not re-run:
+ *   (a) spelling the two merges in that body through plain uint8_t
+ *       intermediates (`b8 = bVar11; b8 &= 0xf0; bI4inten = bVar11;
+ *       bI4inten >>= 4; bI4inten |= b8;`, and the `<<4 | &0xf` twin the
+ *       same way) is BYTE-IDENTICAL at the site -- VC5 canonicalises it
+ *       straight back to the dword form.  32 masked / 44 raw, insns
+ *       2411 -> 2410, and the multiset is unchanged row for row.
+ *   (b) dropping `uVar19` from that body so it reads like bodies 1 and 2
+ *       (inline `(unsigned int)bI4inten` in all four channels) costs
+ *       +15 insns and 32 -> 39 masked regions.  Its raw count falls 44 ->
+ *       12, which is again the alignment artefact, not progress.
+ * So the byte-vs-dword merge is downstream of the temp, not a separate
+ * lever: it cannot be fixed at this site without giving the temp up.
  * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
  * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
  * at once.  Session 4 measured this per pair and in eight combinations;
