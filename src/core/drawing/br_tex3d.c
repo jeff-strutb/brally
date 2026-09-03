@@ -1185,7 +1185,18 @@ void BrTex3dDownloadAt(unsigned int param_1,int param_2)
   int iVar1;
 
   /* Scaled BYTE offset in eax, every field as `[eax+global]` -- not an
-   * int-index into DAT_10661844 (that forms a pointer, `mov [R]`). */
+   * int-index into DAT_10661844 (that forms a pointer, `mov [R]`).
+   *
+   * RESIDUE 4 bytes, T3a, FIRSTDIV +0x25, and it is pure SCHEDULING.  The
+   * original emits store, store, then the arg-3 load; VC5 hoists that load
+   * into the first slot (load, store, store) and every other byte of the
+   * function -- including all four pushes and both leas -- is identical.
+   * Probed and DEAD, all three byte-identical to what is here: swapping the
+   * two stores, chaining them (`*a = *b = param_2`), and naming the arg-3
+   * read in a local assigned after the stores.  The schedule does not depend
+   * on source order at all.  Do NOT reach for a struct-pointer form to force
+   * it -- that changes the addressing to `mov [R]`, which the note above
+   * already rules out. */
   if (param_1 < (unsigned int)DAT_105d17ec) {
     iVar1 = (int)(param_1 * 0xd8);
     if (*(int *)((char *)&DAT_10661844 + iVar1) != 0) {
