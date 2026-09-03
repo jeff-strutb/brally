@@ -94,8 +94,16 @@ def load_orig(orig_path, va):
 # the original compiled this way can NEVER match under /O2 alone, so it was
 # invisible to every sweep before 2026-08-28.  Found on 0x100215C0, which goes
 # from a large multiset gap under /O2 to a single surplus fxch under /O2 /Op.
+# Odp = /Od with precise floating point, and it is the SAME blind spot as O2p
+# one optimisation level down: a debug TU that does float arithmetic has the
+# round-to-float idiom too, and under plain /Od it never appears, so the whole
+# TU reads as a large gap for a source that is exactly right.  Found 2026-09-03
+# on 0x1002BF50 (the scissor emitter): four `fild; fstp dword [t]; fld dword
+# [t]; fmul` groups and 16 bytes of frame that /Od alone cannot produce, and
+# with the flag it is byte-exact.  Every /Od TU with an int->float cast in it
+# was invisible to the sweep before this.
 VARIANTS = [('O2', '/O2'), ('Od', '/Od'), ('O2y', '/O2 /Oy-'),
-            ('O2p', '/O2 /Op')]
+            ('O2p', '/O2 /Op'), ('Odp', '/Od /Op')]
 
 FIELDS = ['file', 'va', 'name', 'status', 'opt', 'orig_size', 'recomp_size',
           'diffs']
