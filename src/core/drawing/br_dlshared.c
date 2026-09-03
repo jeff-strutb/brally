@@ -42,6 +42,20 @@ extern int DAT_118ec988;
 extern int DAT_1186c958;
 extern int DAT_118ed1ac;
 
+/* RESIDUE 16 bytes, T3a, FIRSTDIV +0x1.  Size and instruction count are exact
+ * (178/178, 45/45) and the register-blind gap is 1+1 -- the single surviving
+ * shape is the parameter load, `mov esi,[esp+8]` (orig, between the two
+ * pushes) against `mov edi,[esp+0xc]` (ours, after both).  The whole diff is
+ * one esi<->edi swap: VC5 needs exactly two callee-saved registers here, for
+ * `p` and for `ult`, and the original gives esi to `p` where we give it to
+ * `ult`; uls/lrs/lrt land in edx/eax/ecx either way and every other byte is
+ * identical.  Probed and DEAD, do not re-run: reading through an `unsigned *`
+ * cursor and returning `(unsigned char *)(w + 2)`; reversing the declaration
+ * order of uls/ult/lrs/lrt; copying the parameter into a local pointer
+ * declared ahead of the ints (VC5 coalesces it back onto p).  Also ruled out
+ * -- and it makes things worse, 50 diffs and +2 instructions -- reloading the
+ * two globals for the final differences instead of keeping uls/ult live: they
+ * really are locals live to the end, as the original has them. */
 unsigned char *BrDlsTileSizeDecode(unsigned char *p)
 {
     int uls, ult, lrs, lrt;
