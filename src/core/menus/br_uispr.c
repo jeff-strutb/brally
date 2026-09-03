@@ -402,7 +402,10 @@ int32_t BrUiCtlSpriteDown(const BrUiCtl_ *pCtl)
  * and bottom edges move.  Nothing clamps a negative x or y, so the original
  * blits above and to the left of its surface.  This port reproduces the
  * arithmetic and leaves the caller to decide what to do about it. */
-/* @implements 0x10001320 glide BrUiSprClip */
+/* port-only body: this is only the GEOMETRY half of 0x10001320.  The
+ * original is one function that also computes both surface pointers and
+ * dispatches to the keyed or plain blit; the Glide match is
+ * src/core/generated/0x10001320.c. */
 int BrUiSprClip(int32_t x, int32_t y, const int32_t *pRect,
                 int32_t cx, int32_t cy, int32_t *pw, int32_t *ph)
 {
