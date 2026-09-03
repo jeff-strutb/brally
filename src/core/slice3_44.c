@@ -227,9 +227,14 @@ void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
 
     for (i = 0; i < 3; ++i) {
         for (j = 0; j < 3; ++j) {
-            /* store order is transposed-first, straight-second */
-            pTransposed->m[i + 3 * j] = pSrc->m[i][j];
-            pStraight->m[3 * i + j]   = pSrc->m[i][j];
+            /* ONE chained assignment, not two statements.  The original loads
+             * the source element once and spends it twice -- `fld [ecx]`,
+             * `fst [edx]` (transposed, kept), `fstp [eax-4]` (straight) -- and
+             * that fst/fstp pair is what a chain compiles to.  Two separate
+             * assignments from the same expression let VC5 copy through
+             * integer registers instead, which costs three extra
+             * instructions. */
+            pStraight->m[3 * i + j] = pTransposed->m[i + 3 * j] = pSrc->m[i][j];
         }
     }
 }
