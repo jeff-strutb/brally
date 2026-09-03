@@ -2706,3 +2706,38 @@ size (4 bytes closer, 2 instructions) and was a regression — the reloc-masked
 byte diff rose 177 and the region's FIRST DIVERGENCE moved 27 bytes earlier,
 un-merging a cross-jumped tail. Judge a cross-jump region by its
 first-divergence address; size and region count both lie there.
+
+## A helper that RETURNS A STRUCT never inlines — spell it out
+*(proven 2026-09-03 on 0x100644C0, 0x100643E0 and 0x100642F0, the rigid-body
+velocity trio: 137 / 138 / 122 bytes short, all three from one helper)*
+
+MSVC 5.0 will not inline a function returning a struct by value, whatever the
+optimisation level. A port that factors a shared body into
+`static BrVec3 Helper(...)` therefore emits a `call` the original does not
+have, and the whole family reads as `MISSING CODE (40% complete)`. **Check for
+this before treating a low completeness score as source discovery: if the
+callers differ only in where their input comes from, look for a struct-returning
+static.** The fix is to write the body out per caller under
+`BR_MATCHING_BUILD` and leave the shared helper for the port arm.
+
+Three float facts fell out of doing it, each worth checking on any x87 target:
+
+- **Product operand ORDER decides `fmul mem` vs `fld` + `fmulp`.** The original
+  computes `fmul dword ptr [esi+0xA8]`, so the OTHER operand was already on the
+  x87 stack — i.e. the source writes that one FIRST. `angVel.y * r.z` loads
+  both and multiplies register-to-register; `r.z * angVel.y` is the original.
+  Worth 12 instructions here.
+- **`double` intermediates spill as `fstp qword ptr [esp+N]`.** If the original
+  never spills a qword, the temporaries are `float`, not `double` — even where
+  a comment argues the intermediate "must not round". On x87 the arithmetic is
+  80-bit either way until it is stored, so the C type only decides the spill
+  width.
+- **`*pDst = pSrc->field` copies through a `lea` base pointer** and costs a
+  callee-saved register; the original's three loads at their own displacements
+  off the object are FIELD-WISE assignment. The extra register shows up as a
+  surplus `push edi` in the prologue.
+
+And one frame fact: **two uses of a vector may be ONE stack slot.** 0x100642F0
+writes its sums back into the slot the transform wrote, so it has two 12-byte
+locals and not three; a separate `sum` variable is a third slot and shifts
+every displacement. Count the distinct slots in the original first.
