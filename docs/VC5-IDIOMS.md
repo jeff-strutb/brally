@@ -2161,3 +2161,36 @@ park, not a structural miss — the diff count is large and meaningless.
   out longhand makes the read a widening one and adds a
   `xor edx,edx` + `mov dx,...` pair the original does not have. Proven
   0x1002DB0B.
+
+## x87 chains: one NAMED float local per intermediate
+*(proven 2026-09-03 on 0x1003A580, a float-heavy 322 B function matched to 0)*
+
+The float class has a reputation here as unreachable scheduling. It is
+not, when the chain is a straight-line sequence of conversions and
+products. The rule is mechanical: **every value the original keeps on the
+x87 stack or homes to a slot corresponds to a named float local in the
+source.** Write one local per intermediate and the stack discipline falls
+out; leave them inline and VC5 re-associates and spills.
+
+Measured on the same function, same everything else:
+
+    five int locals, conversions inline          205 diffs
+    + name the two int-to-float conversions      155 diffs
+    + name the product that is used once more      0 diffs  (byte-exact)
+
+What each naming buys, and what to look for in the original:
+
+- `fld st(0)` (duplicate) means a converted value is read by two later
+  statements — name the conversion.
+- `fst` **without** a pop into a slot means a value is read several times
+  later — name it; VC5 homes it and reloads with `fld [slot]`.
+- `fsubr st(1)` — an operation against a copy still on the stack — means
+  both operands are named values, not one named and one inline subtree.
+- Spills the original does not have, and `fld [const]; fmul st(1)` where
+  the original has `fmul [const]`, are the signature of an UNNAMED
+  intermediate: VC5 chose the other association.
+
+This does not repeal the float wall for genuinely tangled DAGs (the
+0x1000EAF0 / BrVec3Project class), but before calling a float function a
+coloring wall, write its chain out as named locals first — it is cheap and
+it moved this one from 205 to 0.
