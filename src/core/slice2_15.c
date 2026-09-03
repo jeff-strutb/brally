@@ -829,12 +829,18 @@ void BrSceneSetupFrame(const BrHudView *aViews)
 
         pView = &aViews[g_screen.iView];
 
-        /* 1001814B: `test al,1` -- the flat fill brightens on ODD lightning
+        /* SHIFT, NOT DIVIDE.  The original ends each of the three brightened
+         * components with a bare `sar reg,2`; a signed `/ 4` makes MSVC emit
+         * the round-toward-zero correction (`cdq; and edx,3; add; sub`) --
+         * three `cdq`s, and 11 of the register-blind gap.  Same value for the
+         * non-negative inputs these always have.
+         *
+         * 1001814B: `test al,1` -- the flat fill brightens on ODD lightning
          * counts only, and only while the counter is still positive. */
         if (g_scene.f0A79CC > 0 && (g_scene.f0A79CC & 1) != 0) {
-            c0 = (((int32_t)g_scene.c6C0200 + 0x55) * 3) / 4;
-            c1 = ((int32_t)g_scene.c6C1614 * 3 + 0xF8) / 4;
-            c2 = (((int32_t)g_scene.c6C0260 + 0x50) * 3) / 4;
+            c0 = (((int32_t)g_scene.c6C0200 + 0x55) * 3) >> 2;
+            c1 = ((int32_t)g_scene.c6C1614 * 3 + 0xF8) >> 2;
+            c2 = (((int32_t)g_scene.c6C0260 + 0x50) * 3) >> 2;
         } else {
             c0 = g_scene.c6C0200;
             c1 = g_scene.c6C1614;
@@ -855,19 +861,28 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrGfxEmit(0xE7000000u, 0u);
     BrGfxEmit(0xBA001402u, 0u);
 
-    /* Both branches emit the SAME 0x1002F900 block; only the trailing
-     * 0xFB env-colour command is conditional. */
-    p = BrGfxAlloc();
-    BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
-                      0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
-
+    /* THE 0x1002F900 BLOCK IS WRITTEN OUT IN BOTH ARMS, not hoisted above the
+     * if.  Behaviourally the two are the same -- which is what the old note
+     * here said, and why it was hoisted -- but the original calls the 17-arg
+     * emitter TWICE (two `add esp,0x44` sites, at +0x213 and +0x288) and a
+     * hoisted call can only ever be one of them.  That single missing call
+     * was 46 bytes and half the register-blind gap (REGNORM 35+40 -> 35+18).
+     * Tell for this class: count `call`s and stack adjusts in the original
+     * before trusting a "both branches do X" comment. */
     if (g_scene.f6C6618 != 0) {
+        p = BrGfxAlloc();
+        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
         p = BrGfxAlloc();
         p->w0 = 0xFB000000u;
         p->w1 = ((uint32_t)g_scene.c6C0260 << 24)
               | ((uint32_t)g_scene.c6C1614 << 16)
               | ((uint32_t)g_scene.c6C0200 << 8)
               |  (uint32_t)g_scene.c690BE8;
+    } else {
+        p = BrGfxAlloc();
+        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
     }
 
     BrGfxEmit(0xB900031Du, 0x0F0A4200u);
