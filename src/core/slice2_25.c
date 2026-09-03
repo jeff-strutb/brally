@@ -612,13 +612,33 @@ int BrOptCycleBD3E0(void)
 /* @implements 0x10043180 d3d BrOptCycleAA2A00 */
 int BrOptCycleAA2A00(void)
 {
-    int32_t iVal = g_aBrAC4C0[BrOptCycle(&g_brAA2A00, BR_OPT_AA2A00_MAX)];
+    /* The gate pointer is read into a local BEFORE the store, which is what
+     * hoists `mov <gate>; test` above the table lookup the way the original
+     * has it (0x1003C6DB..0x1003C724). Written inline, the test lands after
+     * the lookup instead.
+     * RESIDUE (2 regnorm, +1 byte, T3a): the original pairs the INDEX with
+     * eax -- so the index load is the one-byte-shorter `a1` moffs form and
+     * the table load writes its own base register -- and the gate with ecx.
+     * This build pairs them the other way round. Every instruction is in the
+     * original's order; only the two register names differ. Probed and dead:
+     * declaring the gate first (hoists its load to the top, worse), the
+     * gate tested inline with no local, and re-reading g_br22B350 for the
+     * string index instead of keeping the value. */
+    BrDPlay *pGate;
+    int32_t  v;
 
-    g_br22B350 = iVal;
-    if (g_brP277B40 != NULL) {
-        /* again indexed by the table VALUE */
-        BrSprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A00),
-                  BrStrGet((int)g_aBrAC3B0[iVal]));
+    v = BrOptCycle(&g_brAA2A00, BR_OPT_AA2A00_MAX);
+    pGate = g_brP277B40;
+    g_br22B350 = g_aBrAC4C0[v];
+    if (pGate != NULL) {
+        /* Indexed by the table VALUE, and re-read from the global rather
+         * than kept in a local: VC5 CSEs the reload back into eax, which is
+         * what puts the `a1` moffs form on the index load and hoists the
+         * gate's own load above the table lookup. */
+        /* sprintf through the /MD import, not the BrSprintf wrapper --
+         * the original's `call dword ptr [sprintf]`, as 0x10042A70 above. */
+        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A00),
+                BrStrGet((int)g_aBrAC3B0[g_br22B350]));
         BrOptFlushMessage();
     }
     return 1;
