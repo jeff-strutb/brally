@@ -1108,6 +1108,19 @@ the caller AND flipped a helper to match for free.
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
   the scaled form, VC5 picks the accumulator itself. T3a — park it.
+- **Repeated constant stores are a LEADING GROUP, and the group runs
+  DESCENDING.** A function that writes the same constant into several fields
+  of a struct writes them all up front, not interleaved in field order. VC5
+  materialises the constant in one register; interleaving the stores keeps
+  that register live across the whole body, which costs a callee-saved
+  register and grows the function by a `push`/`pop` pair. Grouped, the
+  constant dies before the next parameter is loaded and its register is
+  REUSED for that parameter — the same "dies early, register reused" shape as
+  the conditional-bump entry below. Order within the group matters and is
+  DESCENDING by offset: `m[8]; m[4]; m[0]` is byte-exact where `m[0]; m[4];
+  m[8]` is 7 bytes off. Proven 0x1006DC30 BrMat3Skew (51 diffs and +2 bytes →
+  byte-exact). SCREEN: recomp EXTRA of exactly `push R` + `pop R` with the
+  original shorter is this class, not a frame problem.
 - **Let VC5 build the induction variables: SUBSCRIPTS, not hand-rolled
   cursors.** In a nested loop that walks two arrays at different strides,
   writing the cursors out by hand (`col = m; v = pV;` … `col += 4; v++;`)
