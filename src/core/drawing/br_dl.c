@@ -1888,6 +1888,10 @@ extern unsigned char DAT_105ccfd8;
 extern unsigned char DAT_105d17a0;
 extern unsigned char DAT_105ce208;
 
+/* WHAT IT DOES: sets the colour the next solid rectangle will be painted in.
+ * The display list carries it as one packed 16-bit value; this unpacks it into
+ * the separate red, green, blue and alpha bytes the renderer holds, widening
+ * each 5-bit channel to 8 bits by copying its top bits into the low ones. */
 /* @implements 0x1001E9F0 glide br_dl_fillcolour */
 static const uint8_t *br_dl_fillcolour(const uint8_t *p)
 {

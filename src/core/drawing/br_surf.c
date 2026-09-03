@@ -36,6 +36,9 @@
  * on that path, so nothing observes it, but the order is preserved because
  * there is no reason to depart from it.
  * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: allocate an off-screen picture of cx by cy pixels, two bytes
+ * per pixel, and hand back the header describing it. Returns NULL if either
+ * allocation fails, having freed the header rather than leaking it. */
 /* @implements 0x10001130 glide BrSurfNew */
 BrSurf *BrSurfNew(int32_t cx, int32_t cy)
 {
@@ -59,6 +62,9 @@ BrSurf *BrSurfNew(int32_t cx, int32_t cy)
 /* ----------------------------------------------------------------------
  * 0x10001190 -- free it
  * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: release a picture made by BrSurfNew, pixels first then the
+ * header. Safe to call with NULL, and safe if the pixels were never
+ * allocated. */
 /* @implements 0x10001190 glide BrSurfFree */
 void BrSurfFree(BrSurf *pSurf)
 {
