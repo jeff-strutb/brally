@@ -98,7 +98,7 @@ public:
     int (*pfn04)(BrCtl *);          /* +0x04 */
     int (*pfn08)(BrCtl *);          /* +0x08 */
     int (*pfn0C)(BrCtl *);          /* +0x0C */
-    char pad10[4];                  /* +0x10 */
+    int (*pfn10)(BrCtl *);          /* +0x10 */
     int (*pfn14)(BrCtl *);          /* +0x14 */
     char pad18[0x2AB4 - 0x18];      /* +0x18 */
     short w2AB4;                    /* +0x2AB4 */
