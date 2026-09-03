@@ -851,7 +851,9 @@ char *BrNetSlotName(BrNetState *pNet, int32_t slot)
  * list, clears the slot's status, and announces "<name> left the game" to
  * the other players. The announcement really does begin with a literal
  * percent-fifteen, which is a colour code in the game's message text. */
-/* @implements 0x10005FE0 d3d BrNetDropMatching */
+/* port-only body; Glide match is src/core/generated/0x10006350.c -- the
+ * original takes only the key and reaches every slot through the globals,
+ * which this signature cannot express. */
 void BrNetDropMatching(BrNetState *pNet, int32_t key)
 {
     char    szMsg[0x400];       /* the original's stack buffer, same size */
