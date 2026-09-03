@@ -1237,9 +1237,13 @@ void BrGbiTexScanSetTileSize(const BrGfxWords *pCmd)
     g_brTexScanTiles[tile].uls = (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
     g_brTexScanTiles[tile].ult = (int32_t)(pCmd->w0 & 0xFFFu);
     g_brTexScanTiles[tile].lrs = (int32_t)((pCmd->w1 >> 12) & 0xFFFu);
-    /* Volatile so /O2 cannot hoist state=6 above the lrs store. */
-    *(volatile int32_t *)&g_brTexScanState = 6;
     g_brTexScanTiles[tile].lrt = (int32_t)(pCmd->w1 & 0xFFFu);
+    /* LAST in the source, though the bytes put it between the lrs and lrt
+     * stores: VC5 sinks the global store one tile store, so writing it
+     * where the bytes show it lands one store too EARLY.  The `volatile`
+     * that used to pin it here did not help -- /O2 reorders the ordinary
+     * stores around a volatile one just the same. */
+    g_brTexScanState = 6;
 }
 #else
 void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
