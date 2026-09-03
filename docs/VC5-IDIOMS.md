@@ -2004,3 +2004,26 @@ merge. Three source shapes, three different code shapes:
 Generalise: when the original merges arms on a single address-forming
 instruction, push the whole address expression INTO the arms and let the
 tail-merge factor it. Do not factor it yourself into shared locals.
+
+## A pinned zero register costs a frame dword — recognise it, don't grind it
+*(observed 2026-09-03 on 0x10054E20)*
+
+A function with two separate "clear a dozen fields to 0" blocks and a loop
+between them. The original materialises 0 in ebx for the first block, lets
+it die, uses ebx as the LOOP COUNTER through the loop (so the loop's zero
+tests are `test ecx,ecx`), then re-zeroes it with a fresh `xor ebx,ebx`
+before the second block. Our cl keeps one zero live in ebx across the
+whole function, so the counter has nowhere to live, spills, and the
+prologue grows from `push ecx` (one dword) to `sub esp,8`.
+
+**Signature:** prologue is `sub esp,N+4` where the original has `push ecx`
+/ `sub esp,N`; every subsequent stack displacement is off by 4; and inside
+the loop the original compares with `test r,r` where the recomp has
+`cmp r,ebx`. That last pair is the tell — it says which side is holding a
+constant in a register.
+
+Not reached by: a separate local for the tail block's index, scoping the
+pointers into their blocks, rewriting the loop with explicit induction
+pointers (worse), or /O2 /Op, /Ox, /O2 /Ot, /O2 /Gy, /O2 /Ob0. Treat a
+whole-body 4-byte displacement shift with this signature as an allocator
+park, not a structural miss — the diff count is large and meaningless.
