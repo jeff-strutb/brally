@@ -21,6 +21,7 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include <stdio.h>
 #endif
 #include <string.h>
 
@@ -765,21 +766,44 @@ void BrExt_1005FBC0(int32_t a)
     g_br09435C = g_brAA27F0;
 
     /* `dec/je` three times: 1, 2, 3 select records 1, 2, 3 and EVERYTHING
-     * else -- including 0 -- selects record 0. */
+     * else -- including 0 -- selects record 0. A SWITCH, not an if-else-if
+     * chain: the chain compares (`cmp eax,1`) and puts the default last,
+     * the switch decrements and puts the default FIRST, which is the
+     * original's layout.
+     *
+     * RESIDUE (five instructions): VC5 merges the two adjacent byte reads of
+     * g_aBrAA26F4 into one dword load and takes byte 1 out of `ah`, where the
+     * original loads each byte separately. Nothing inside this function
+     * changes that -- it would need the two bytes to be separate globals. */
     v = g_brAA27F8;
-    if (v == 1) {
+    switch (v) {
+    case 1:
         g_brB4E1D4 = &g_aBrB4DF30[1];
-    } else if (v == 2) {
+        break;
+    case 2:
         g_brB4E1D4 = &g_aBrB4DF30[2];
-    } else if (v == 3) {
+        break;
+    case 3:
         g_brB4E1D4 = &g_aBrB4DF30[3];
-    } else {
+        break;
+    default:
         g_brB4E1D4 = &g_aBrB4DF30[0];
+        break;
     }
 
     /* Both counters are printed PLUS ONE. */
+#ifdef BR_MATCHING_BUILD
+    /* THIS site calls MSVCRT's imported sprintf (0x118F0570), not the
+     * in-DLL BrSprintf at 0x1007C830 -- two calls, so VC5 caches the import
+     * pointer in esi and issues `call esi` twice. And the format is the
+     * literal, not the `g_pszBr0A73C4` pointer variable: the original pushes
+     * the string's address as an immediate, which a pointer read cannot be. */
+    sprintf(g_aBrAA2518, "%d", g_brAA28A0 + 1);
+    sprintf(g_aBrA9D618, "%d", g_brAA28A4 + 1);
+#else
     BrSprintf(g_aBrAA2518, g_pszBr0A73C4, g_brAA28A0 + 1);
     BrSprintf(g_aBrA9D618, g_pszBr0A73C4, g_brAA28A4 + 1);
+#endif
 
     g_brAA28AC = g_brAA28A4;
 
