@@ -400,12 +400,17 @@ BrGfxWords *BrGbiEndDList(void)
 {
     int n = DAT_105ccfe8;
 
-    if (n == 0)
-        goto empty;
-    n -= 1;
-    DAT_105ccfe8 = n;
-    return (BrGfxWords *)DAT_105ce2e8[n];
-empty:
+    /* WRAPPING IF, not an early-exit goto.  With `if (n == 0) goto empty;`
+     * the zero-return becomes the FALL-THROUGH block, and VC5 -- which knows
+     * eax is zero on that edge, having just tested it -- drops the `xor
+     * eax,eax` entirely and returns whatever is in eax (26 -> 24 bytes).  The
+     * original materialises the zero, so its return-0 is a SEPARATE trailing
+     * block reached by `je`, which is what a wrapping if produces. */
+    if (n != 0) {
+        n -= 1;
+        DAT_105ccfe8 = n;
+        return (BrGfxWords *)DAT_105ce2e8[n];
+    }
     return (BrGfxWords *)0;
 }
 #else
