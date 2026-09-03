@@ -36,6 +36,47 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * TENTH PASS (2026-09-03) added `divergence.py --deltas`, and it re-ranks
+ * this function's twenty regions once and for all.  Byte drift per region:
+ *   r4  (0xf2a, scale block)   -56, and r5 gives +58 straight back
+ *   r13 (0x1dc7, trail append) -15
+ *   r20 (0x23ec, tail fixup)   -10   r18 +9   r17 -8   r6/r7 +-7
+ *   everything else moves 0..4 bytes.
+ * So SIXTEEN of the twenty regions are worth a few bytes each and only two
+ * blocks carry the shape: the x87 batching of the scale block (wall 2) and
+ * the ring-index addressing form (wall 4). Grind those or none.
+ *   r4/r5, read fresh: the source is already `BrRowScale8` then
+ *   `BrRowScale4` and the original's 8|4 batching is exactly that call
+ *   boundary -- orig tops the x87 stack up to EIGHT `fld [esp+0x10]` before
+ *   the first fmul and starts the 4-group with a fresh four, while we start
+ *   multiplying at five and then refill with SEVEN, merging the tail of the
+ *   8-group with the whole 4-group into one batch.  Both do 12 loads for 12
+ *   multiplies; only the batching differs, and the operand order is already
+ *   right (`k * sr[i]`, i.e. `fld k; fmul mem`, confirmed against the
+ *   bytes).  Nothing above the helper is source-visible: this is the x87
+ *   scheduler choosing its refill point.
+ *   r13, read fresh: the block is instruction-for-instruction ours, and the
+ *   whole 15 bytes is wall 4 -- orig's `mov [edx + 0x1035faf0], eax` (byte
+ *   offset in a register, absolute base as displacement) against our
+ *   `mov [ecx*4], eax`, repeated across the block.
+ * TENTH-PASS PROBES, DEAD -- do not re-run:
+ *   (c) tail fixup (r20): a temp for the SUM (`vis = cHead + base;
+ *       DAT_102e0ca0 = vis - DAT_102e0ca0;`) is BYTE-IDENTICAL to the
+ *       parenthesised one-liner.  The dossier had only ever probed a temp
+ *       for the GLOBAL; both are canonicalised, so the association really
+ *       is not source-selectable here.  Entry 6b stands.
+ *   (d) ‼ the seventh pass's drain-loop lever does NOT generalise to the
+ *       trail-append loop.  Converting that loop's two FLAT ring arrays
+ *       (7 + 10 sites, both arms together) to a byte-offset induction
+ *       variable -- `rt = iCar << 4` at loop entry, `rt += 4` per wheel,
+ *       every access `*(int *)((char *)base + rt)`, `ring` kept for the
+ *       `ring * 500` record term, i.e. exactly the spelling that gained a
+ *       region in the drain loops -- explodes it: 20 -> 64 masked regions,
+ *       +11 instructions.  The drain loops' induction variable IS the loop
+ *       counter; here `ring` is recomputed from two enclosing counters, so
+ *       a byte-offset IV is a THIRD induction variable rather than a
+ *       restatement of an existing one, and VC5 rebuilds the whole region
+ *       around it.  Wall 4 stays open and this spelling is now closed.
  * NINTH-PASS PROBES, DEAD -- do not re-run:
  *   (a) 0x1e8d, else-arm of the trail append (`slot = head - 1`): orig
  *       emits `mov edi,edx; dec edi; jns` where we emit `lea edi,[eax-1];
