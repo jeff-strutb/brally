@@ -1042,10 +1042,7 @@ static float BrPadClamp(float v)
  * the x/y clamps compare the RELOADED member while steer's compares the
  * unrounded register (hence the local for steer only).
  *
- * NOT MATCHING by 10 bytes in one window: VC5 here pools the 0x80 mode-byte
- * mask into cl (mov cl,0x80; test [eax+n],cl) where the original repeats the
- * immediate (test byte [eax+n],0x80).  &&, !-form, and split-statement
- * spellings all pool; duplicated arms make it worse.  Allocator residue. */
+ * The two mode-byte probes are 16-bit masks; see the comment on them. */
 /* @implements 0x1002F380 glide BrPadTranslate */
 void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
 {
@@ -1084,7 +1081,15 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
         if (pPad->buttons & BR_PAD_L) pPad->buttons |= BR_PAD_L_ALT;
         if (pPad->buttons & BR_PAD_R) pPad->buttons |= BR_PAD_R_ALT;
 
-        if (!(g_BrPadModeBytes[1] & 0x80u) && !(g_BrPadModeBytes[7] & 0x80u)) {
+        /* Both probes are 16-BIT masks, not byte masks. Spelled as
+         * `g_BrPadModeBytes[1] & 0x80` the two 0x80s are one constant in
+         * the source, and VC5 pools them into `mov cl,0x80` + two
+         * `test byte [eax+n],cl`. Spelled as `& 0x8000` on the halfword,
+         * the narrowing to `test byte [eax+n],0x80` happens per
+         * instruction, late, and there is nothing left to pool. */
+        if (!(*(const unsigned short *)(const void *)g_BrPadModeBytes & 0x8000u)
+            && !(*(const unsigned short *)(const void *)(g_BrPadModeBytes + 6)
+                 & 0x8000u)) {
             uint32_t a = pPad->buttons;
             if (a & BR_PAD_DLEFT) {
                 if (!(a & BR_PAD_DRIGHT))
