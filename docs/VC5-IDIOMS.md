@@ -1874,3 +1874,21 @@ recover from 178 bytes of asm, or the compiler patch level differs here.
 leads are (a) a construct that forces the text base into a register as a
 genuine pointer value without changing any other byte, or (b) the
 compiler-build lead already open for 0x1000EAF0.
+
+## Inline `memset` expansion: the setup order is fixed
+*(proven 2026-09-03 on 0x1006FCE0)*
+
+Our cl expands a constant-size zeroing `memset` as
+`mov ecx,N / xor eax,eax / lea edi,dst / rep stosd`. The original emits
+`lea edi,dst / mov ecx,N / xor eax,eax / rep stosd` — same instructions,
+dest computed first. Nothing at the call site moves it: the destination
+spelling (array name, `&a[0]`, a hoisted `char *`, a pointer local
+declared at the top of the function), the destination type (`int[8]`,
+`unsigned char[32]`, a nested struct with `sizeof`), and eleven flag sets
+all leave the recomp order unchanged. If a function is otherwise exact
+and its only residue is those three instructions, it is this — park it.
+
+Together with the SIB base/index entry above, that is two emitter-level
+residues in one session that no source form reaches. Both are consistent
+with a compiler patch level slightly different from the staged one, which
+is the lead already open for 0x1000EAF0.
