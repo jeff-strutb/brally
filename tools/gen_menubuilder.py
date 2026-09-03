@@ -98,7 +98,20 @@ def parse(va):
         sys.exit('no draft for %s' % va)
     text = open(path).read()
 
-    m = re.search(r'^(\w+) (\w+)\((?:int param_1|void)\)\s*$', text, re.M)
+    # When Ghidra mis-types the parent pointer as a float (0x10044860), every
+    # use of it picks up an `(int)` cast and the +0x340 store comes out as
+    # `*(float *)`. That is one cause with five symptoms, all in the standard
+    # prologue, so undo the typing here rather than teaching five patterns
+    # about it.
+    text = text.replace('(int)param_1', 'param_1')
+    text = re.sub(r'\*\(float \*\)\((iVar\d+) \+ 0x340\) = param_1;',
+                  r'*(int *)(\1 + 0x340) = param_1;', text)
+
+    # Ghidra sometimes mis-types the parent pointer -- 0x10044860's draft
+    # declares it `float param_1` -- so accept any scalar spelling of the
+    # single parameter, not just `int`.
+    m = re.search(r'^(\w+) (\w+)\((?:(?:int|float|uint|undefined4|void \*)'
+                  r' \*?param_1|void)\)\s*$', text, re.M)
     if not m:
         sys.exit('draft has no recognisable entry point')
     name = m.group(2)
