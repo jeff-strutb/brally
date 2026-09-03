@@ -59,16 +59,31 @@ def disasm(va, cap=400):
     return '\n'.join(out)
 
 
+def regnorm_gap(out):
+    """(extra, missing) register-blind multiset gap from a --detail run, or None.
+
+    This is the number the whole project ranks by: how many instruction SHAPES
+    differ after normalizing away register choice. gap 0 with diffs > 0 = a pure
+    register-allocation wall (T3a) -- no C spelling flips it, so don't grind it.
+    """
+    m = re.search(r'REGNORM (\d+)\+(\d+)', out)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
 def fn_score(va, detail=False):
-    args = [PY, FN, va] + (['--detail', 'regnorm', '40'] if detail else [])
+    # always compute --detail: the register-blind gap is how we rank progress
+    # and detect T3a walls; the raw DIFFS count alone is register noise.
+    args = [PY, FN, va, '--detail', 'regnorm', '40']
     out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True).stdout
     if 'COMPILE FAILED' in out:
         return {'ok': False, 'out': out}
     m = re.search(r'DIFFS=(\d+)', out)
     if not m:
         return {'ok': False, 'out': out}
+    gap = regnorm_gap(out)
     return {'ok': True, 'byte_exact': 'BYTE-EXACT' in out,
-            'diffs': int(m.group(1)), 'out': out}
+            'diffs': int(m.group(1)), 'out': out,
+            'gap': gap, 'gapsum': (gap[0] + gap[1]) if gap else None}
 
 
 def brace_match(lines, start):
@@ -123,20 +138,37 @@ def locate_fn(path, name):
     return None
 
 
-IDIOMS = ''   # phrasebook digest, loaded from docs/VC5-IDIOMS.md in main()
+IDIOMS = ''     # phrasebook digest, loaded from docs/VC5-IDIOMS.md in main()
+PLAYBOOK = ''   # matching-method digest, loaded from docs/STRUCTURAL-PLAYBOOK.md
 
 
-def propose(model, name, cur, disa, detail, temperature):
+def propose(model, name, cur, disa, detail, temperature, history=None):
     sys_msg = SYS_PROMPT
+    if PLAYBOOK:
+        sys_msg += ('\n\nMATCHING METHOD (the project playbook -- follow this):\n'
+                    + PLAYBOOK)
     if IDIOMS:
         sys_msg += ('\n\nPROVEN MSVC 5.0 SOURCE->BYTES IDIOMS (a phrasebook built by '
                     'this project -- use these construct/byte mappings when they apply):\n'
                     + IDIOMS)
+    # Feed back the last failed attempt + its divergence so the model REFINES
+    # instead of re-guessing blind. This is the single biggest lever the old
+    # loop lacked: each iteration was independent, so temperature was its only
+    # source of variation.
+    hist = ''
+    if history:
+        prev_src, prev_detail = history
+        hist = (f"\n\nYOUR PREVIOUS ATTEMPT compiled but was NOT byte-exact. It was:\n"
+                f"```c\n{prev_src}\n```\n"
+                f"and it left this register-blind divergence:\n{prev_detail}\n"
+                f"Analyze WHY that divergence remained and change your approach; "
+                f"do not repeat the same source.\n")
     user = (f"FUNCTION: {name}\n\nCURRENT C SOURCE:\n```c\n{cur}\n```\n\n"
             f"TARGET x86 DISASSEMBLY (MSVC 5.0 /O2, addresses at base 0):\n```\n{disa}\n```\n\n"
             f"HOW THE CURRENT BYTES DIFFER (register-blind shape multiset; "
             f"'+ N ...' = recomp emits N shapes the target does not; "
-            f"'- N ...' = target has N the recomp lacks):\n{detail}\n\n"
+            f"'- N ...' = target has N the recomp lacks):\n{detail}\n"
+            f"{hist}\n"
             f"Return the revised C function in one ```c block.")
     body = json.dumps({'model': model, 'stream': False,
                        'messages': [{'role': 'system', 'content': sys_msg},
@@ -185,10 +217,25 @@ def save_idiom(va, name, before, after):
         pass
 
 
-def work_function(a, va, name, rel, path, best, size):
-    """Run up to --iters LLM attempts on one function. Returns True if it landed."""
-    print(f'=== {va} {name} [{rel}]  {size} B  baseline DIFFS={best} ===')
+def work_function(a, va, name, rel, path, base, size):
+    """Run up to --iters LLM attempts on one function. Returns True if it landed.
+
+    Progress is tracked by the register-blind gap (gapsum), not raw DIFFS: raw
+    diffs move with register rotation that no source change controls, so ranking
+    by them chases noise. A proposal is kept as the working baseline only when it
+    shrinks the gap; byte-exact (diffs 0) always wins.
+    """
+    best_gap = base.get('gapsum')
+    print(f'=== {va} {name} [{rel}]  {size} B  baseline DIFFS={base["diffs"]} '
+          f'gap={best_gap} ===')
+    # T3a screen: gap already 0 but not byte-exact => pure register-allocation
+    # wall. The project has proven (permuter 0/95, refine 0/258) no C spelling
+    # flips these. Don't spend a single iteration; park it.
+    if best_gap == 0:
+        print(f'  gap=0 (T3a register-allocation wall) -- no source change wins; skip\n')
+        return False
     got = False
+    history = None
     for it in range(a.iters):
         lines = open(path).read().split('\n')
         loc = locate_fn(path, name)
@@ -196,11 +243,11 @@ def work_function(a, va, name, rel, path, best, size):
             break
         s, e = loc
         cur = '\n'.join(lines[s:e + 1])
-        detail = fn_score(va, detail=True)['out']
+        detail = fn_score(va)['out']
         temp = TEMPS[it % len(TEMPS)]
         print(f'  iter{it}: querying model (temp {temp}) + compiling (~30-90s)...')
         try:
-            prop = propose(a.model, name, cur, disasm(va), detail, temp)
+            prop = propose(a.model, name, cur, disasm(va), detail, temp, history)
         except Exception as ex:
             print(f'  iter{it}: LLM error: {ex}')
             break
@@ -218,11 +265,19 @@ def work_function(a, va, name, rel, path, best, size):
             save_idiom(va, name, cur, prop)
             print(f'  iter{it}: *** BYTE-EXACT *** committed')
             got = True; break
-        if sc['diffs'] < best:
-            print(f'  iter{it}: DIFFS {best} -> {sc["diffs"]} (kept as working baseline)')
-            best = sc['diffs']
+        gap = sc.get('gapsum')
+        # remember this attempt + its divergence for the next iteration's prompt
+        history = (prop, sc['out'])
+        if gap is not None and best_gap is not None and gap < best_gap:
+            print(f'  iter{it}: gap {best_gap} -> {gap} (DIFFS={sc["diffs"]}; kept as baseline)')
+            best_gap = gap
+            if gap == 0:
+                # structure now matches; only register choice remains. Nothing
+                # more the model can do -- stop and revert to clean.
+                print(f'  iter{it}: gap hit 0 (structure matched; residual is T3a). Parking.')
+                break
         else:
-            print(f'  iter{it}: DIFFS {sc["diffs"]} >= {best}, revert')
+            print(f'  iter{it}: gap {gap} >= {best_gap} (DIFFS={sc["diffs"]}), revert')
             sh('git', 'checkout', '--', rel)
     if not got:
         sh('git', 'checkout', '--', rel)   # discard non-exact edits; tree stays clean
@@ -274,7 +329,7 @@ def one_pass(a):
             mark(va, 'skip-compile'); continue
         if base.get('byte_exact'):
             mark(va, 'already-match'); continue
-        got = work_function(a, va, name, rel, path, base['diffs'], int(r['orig_size']))
+        got = work_function(a, va, name, rel, path, base, int(r['orig_size']))
         worked += 1; landed += 1 if got else 0
         mark(va, 'landed' if got else 'failed')
     return worked, landed, len(cands)
@@ -293,7 +348,14 @@ def main():
                     help='also re-attempt functions the ledger already marked failed')
     a = ap.parse_args()
 
-    global IDIOMS
+    global IDIOMS, PLAYBOOK
+    try:
+        # the method/tier-ladder spec: teaches the model to reshape toward the
+        # target's instructions rather than just guess spellings.
+        PLAYBOOK = open(os.path.join(ROOT, 'docs', 'STRUCTURAL-PLAYBOOK.md')).read()
+        print(f'loaded {len(PLAYBOOK)} chars of the structural playbook into the prompt')
+    except OSError:
+        print('note: docs/STRUCTURAL-PLAYBOOK.md not found; running without the method spec')
     try:
         doc = open(os.path.join(ROOT, 'docs', 'VC5-IDIOMS.md')).read()
         # Idioms are appended over time, so keep the foundational ones (head) AND

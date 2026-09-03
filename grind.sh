@@ -51,7 +51,7 @@ case "${1:-start}" in
     if pgrep -f 'tools/ai_loop.py' >/dev/null; then
       echo "ai loop already running"
     else
-      nohup ./ai.sh --forever --max-fns 12 > "$AI_LOG" 2>&1 &
+      AI_MODEL=deepseek-r1:70b nohup ./ai.sh --forever --max-fns 12 > "$AI_LOG" 2>&1 &
       echo "ai loop -> $AI_LOG (PID $!)"
     fi
     echo "Both commit byte-exact results as they land. ./grind.sh --status to watch."

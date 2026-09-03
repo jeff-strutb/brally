@@ -2567,7 +2567,7 @@ statements and the recompile picks 5|7 — with the SAME pipeline shape, merely
 offset by the depth. Ruled out as causes: the helper-call boundary (replacing
 the two `__inline` row helpers with twelve flat statements emits the identical
 five-deep preload), and an x87 stack leak (simulating depth over both streams
-shows both enter the block at 0. Grouping does not address it; treat the
+shows both enter the block at depth 0). Grouping does not address it; treat the
 depth as a scheduler constant.
 
 **Byte lane vs widened `or` when packing a colour.** `(top << 8 | b)` compiles
