@@ -2287,7 +2287,21 @@ void BrFadeTick(void)
      * every probed spelling gets one axis wrong -- statement swap flips
      * the load regs (8 diffs), a Pos temp survives the aliasing Hist
      * store but binds edi (6), a Pos2 temp either dissolves (4) or flips
-     * the store order (6).  Size/shape exact; register pairing only. */
+     * the store order (6).
+     *
+     * CORRECTION (2026-09-03): "register pairing only" was wrong. Two of
+     * the four diffs are a SHAPE difference -- the original relocates both
+     * stores against ONE base and gives the second a literal +8:
+     *     mov [eax*4 + 0x104B1698], esi     ; PosHist  = Pos2Hist + 8
+     *     mov [eax*4 + 0x104B1690], edi
+     * so in the original these are ONE array of four ints at 0x104B1690,
+     * not the two arrays declared above. Reproducing that by indexing
+     * Pos2Hist past its end does fix the displacement (2 shape diffs -> 1)
+     * but perturbs an earlier READ of the same arrays and ends up worse
+     * (4 diffs -> 15/18). The real fix is to declare one array here and
+     * give the two names views of it, which means touching slice2_16.h --
+     * a serialised header edit, so it is left for a session that owns
+     * that header. */
     g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
     g_brFadePosHist[g_brFadeParity]  = g_brFadePos;
     g_brFadeB4 = 0;
