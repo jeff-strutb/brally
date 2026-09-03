@@ -113,6 +113,14 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
                     int dampFlag, int spinFlag, BrCrEffect *pEffect);
 
+/* 0x10065950 -- signed distance of pPoint from the plane (pN, planeD).
+ *
+ * The plane constant is a separate argument because every caller already has
+ * it loaded out of the plane record's +0x0C.  The sum is ordered y, z, x and
+ * then the constant; see the .c for why that is the source order and not a
+ * scheduling artefact. */
+float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint);
+
 /* 0x10067710 -- the response walker (see the .c).  Walks the broad phase's
  * candidate list g_pBrCollRespList and resolves each surviving contact.
  *
