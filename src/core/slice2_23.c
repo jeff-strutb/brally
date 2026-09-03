@@ -1608,7 +1608,7 @@ int32_t BrUiText100400E0(BrUiObj *pObj, BrUiGlobals *pG,
  * anything never counts as clashing. Note it clears each row's mark as it
  * reaches that row, so a mark set while examining an earlier row survives
  * but one set while examining a later row is wiped. */
-/* @implements 0x10040330 d3d BrCfgFindConflicts */
+/* port-only body; Glide match is src/core/cpp/0x10039870.cpp */
 int32_t BrCfgFindConflicts(BrUiGlobals *pG, int32_t kind, void *pB4DF30)
 {
     /* Records whose key is one of these are never taken as the `j` of a

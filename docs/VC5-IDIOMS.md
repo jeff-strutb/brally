@@ -2367,3 +2367,26 @@ br_texinit.c (5), slice4_52.c (32) and slice1_06.c (4) are open.
 
 Cost on the two done so far: about 40 minutes each, one of them byte-exact
 on the first compile.
+
+## Do not cache what the original re-reads
+*(proven 2026-09-03 on 0x10039870, 201 diffs to 0; second sighting)*
+
+An array element or global read twice in a row -- once per argument of two
+adjacent calls, or once in a test and again in a call -- is a value the
+original reads TWICE. Caching it in a local is the obvious "clean" thing to
+write and it is wrong twice over: it costs a spill slot (`sub esp,N+4`
+against the original's `sub esp,N`) and it rotates the loop's registers, so
+the diff looks like an allocator wall when it is a source decision.
+
+    aI = obj.GetA(kind, tbl[i].key);     /* right: two reads */
+    bI = obj.GetB(kind, tbl[i].key);
+
+    key = tbl[i].key;                    /* wrong: one read, one spill */
+    aI  = obj.GetA(kind, key);
+    bI  = obj.GetB(kind, key);
+
+Same shape as 0x10038F40, where the arm's index expression appears once
+inside the catalogue lookup and again for the descriptor because the
+original recomputes it after the intervening call. **Read the original: if
+the load is there twice, write it twice.** VC5 will not re-materialise a
+cached local, and it will not spill a re-read.
