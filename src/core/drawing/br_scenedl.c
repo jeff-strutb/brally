@@ -36,6 +36,41 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * FOURTEENTH PASS (2026-09-03) ‼ RETRACTS THE ELEVENTH PASS'S WALL-2
+ * VERDICT.  That pass wrote "the 5-vs-8 preload is a scheduler constant, not
+ * a pressure difference we can create".  IT IS NOT A CONSTANT.  Two facts,
+ * both measured this pass:
+ *   1. THIS FUNCTION ALREADY EMITS AN 8-PRELOAD, at the SECOND scale site
+ *      (0x1300, `OUTM(k) = scale * OUTM(k)` x16), where it matches the
+ *      original instruction for instruction.  So the compiler is willing.
+ *   2. The first site's batch is FIXED AT 5 regardless of how many
+ *      statements it contains -- measured at N = 10,11,12,13,14,15,16, the
+ *      first run is 5 every time and only the second grows (5,5 / 5,6 / 5,7
+ *      / 5,8 / 5,8 / 5,8 / 5,8).  So it is not a batch-size rule; something
+ *      at that SITE costs three x87 slots.
+ *   Ruled out as the cause: the helper boundary (flat 12 statements give the
+ *   same 5), array identity (the same 12 written IN PLACE against one array
+ *   still give 5), and extern-vs-defined storage for the two matrices
+ *   (defining them here, output matrix first in address order as the stale
+ *   comment above the declarations describes, changes nothing).
+ *   ‼ WHAT IT IS: the preceding OUTM(12..15) row block -- i.e. WALL 1.  Move
+ *   the scale statements ABOVE those four rows and the first batch goes
+ *   5 -> 7.  Spell all four row terms as absolute literals (pV3[k] and
+ *   pV1[k] rewritten as `*(float *)(0x106e9a68 + 4k)` / `(0x106e9a48 + 4k)`,
+ *   matching the two terms that already read that way) and the first batch
+ *   goes to EIGHT, at 0xea4, exactly as the original.
+ *   SO WALL 2 IS DOWNSTREAM OF WALL 1, not an independent wall.  Fix the row
+ *   block's operand kinds and the preload follows.
+ *   That spelling is NOT in the tree, because it wrecks the rows while
+ *   fixing the scale: byte diff 4,669 -> 4,742, masked regions 20 -> 22, and
+ *   the row block itself picks up two SUSPECT resyncs (-190 drift at 0xe7c).
+ *   Either half alone is worse still (pV3 only: 4,929; pV1 only: 5,020, and
+ *   both give a 4|8 split).  The likely reason the rows break is that
+ *   `pV3`/`pV1` become unused and three pointer locals drop out of the
+ *   allocation at once.  NEXT LEVER, and it is a real one: find the row
+ *   spelling that keeps the original's operand kinds without deleting those
+ *   locals' other uses.  Do NOT re-run the three ruled-out causes above.
+ *
  * THIRTEENTH PASS (2026-09-03) re-tested this file's dead list under the
  * staleness rule that fell out of 0x1000A110 ("a dead verdict measured
  * against a wrong frame -- or any other changed allocation input -- is
