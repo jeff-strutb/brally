@@ -72,10 +72,28 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 
     for (i = 0; i < 3; ++i) {
         for (j = 0; j < 3; ++j) {
-            /* x87 order: (a1*b1j + a0*b0j) + a2*b2j */
-            pOut->m[3 * i + j] = (a[3 * i + 1] * b[3 + j]
+            /* x87 order, read off the two faddps at 1006DD55 and 1006DD60:
+             * `faddp st(1)` is ST(1) += ST(0), so the accumulator is the
+             * FIRST-written term.  Stack at 1006DD55 is [A, C, B], giving
+             * C + A; at 1006DD60 it is [B, C+A], giving (C+A) + B.  The sum
+             * is therefore (a2*b2j + a0*b0j) + a1*b1j -- the middle row is
+             * the LAST term.
+             *
+             * RESIDUE 19 bytes, all in the two `lea`s and the two operands
+             * that hang off them.  VC5 anchors each strength-reduced IV on
+             * the LAST array reference in the expression: with a1/b1j last it
+             * picks `lea ecx,[eax+4]` / `lea eax,[edi+0xc]` (offsets -4/0/+4),
+             * where the original anchors on the a2/b2j row (`[eax+8]` /
+             * `[edi+0x18]`, offsets -0x18/-0xc/0).  All six term orders were
+             * probed: the three that end in the a2 term (ABC, BAC) score 17
+             * and get the anchors right, but they contradict the faddp
+             * reading above -- they compute a DIFFERENT association, so the
+             * lower byte count is not the more faithful source.  Also ruled
+             * out: direct pA->m[]/pB->m[] instead of the a/b pointer locals,
+             * `b[j+6]` index spelling, and /Oy- /Op /Od (33, 19, 80). */
+            pOut->m[3 * i + j] = (a[3 * i + 2] * b[6 + j]
                                   + a[3 * i + 0] * b[j])
-                                 + a[3 * i + 2] * b[6 + j];
+                                 + a[3 * i + 1] * b[3 + j];
         }
     }
 }
