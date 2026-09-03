@@ -991,11 +991,53 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * travelling, because a spinning body drags its edges along faster than its
  * middle. The spot is given directly. */
 /* @implements 0x1006B510 d3d BrRbVelAtPoint */
+#ifdef BR_MATCHING_BUILD
+/* BrS42VelAt RETURNS A BrVec3, so MSVC will not inline it and the original
+ * has no call there -- the whole 137-byte gap is one factored helper. The
+ * body is spelled out here; the spill map in BrS42VelAt's banner above is
+ * what says the six products and three differences stay in x87 registers.
+ *
+ * RESIDUE (22 regnorm, -32 bytes, x87 SCHEDULING): the original loads all
+ * SIX r components onto the x87 stack up front and interleaves the three
+ * cross terms through them -- 16 `fxch` and one `fst` that is never reloaded.
+ * Ours evaluates the three in sequence. Probed and dead: assigning the three
+ * sums straight into *pOut with no temps (worse, -40). Was 137 bytes short
+ * and 43 regnorm before the helper came inline. */
+void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
+{
+    BrVec3 p = *pPoint;
+    BrVec3 r;
+    float cx, cy, cz;
+
+    BrMat4MulVec3Transposed(&r, &pB->m, &p);
+
+    /* FIELD-WISE, not `*pOut = pB->vel`: the struct assignment copies through
+     * a `lea` base pointer and costs edi, where the original loads each
+     * component at its own displacement off the body. */
+    pOut->x = pB->vel.x;
+    pOut->y = pB->vel.y;
+    pOut->z = pB->vel.z;
+
+    /* r FIRST, angVel as the memory operand: the original's products are
+     * `fmul dword ptr [esi+0xA0..A8]` against an r component already on the
+     * x87 stack. Written the other way round it loads both and uses fmulp.
+     * And FLOAT, not double -- double temps spill as `fstp qword [esp]`,
+     * and the original never spills a qword. */
+    cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
+    cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
+    cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
+
+    pOut->x = cx + pOut->x;
+    pOut->y = cy + pOut->y;
+    pOut->z = cz + pOut->z;
+}
+#else
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
     BrVec3 p = *pPoint;         /* the original copies it to a stack slot */
     *pOut = BrS42VelAt(pOut, pB, &p);
 }
+#endif
 
 /* 0x1006B430 */
 /* WHAT IT DOES: the same question, but about the spot belonging to another
