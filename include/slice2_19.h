@@ -646,7 +646,12 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2);
  *
  * DEVIATION (D4): the table is an argument. The original hardcodes
  * 0x106C5468 and does not bounds-check `i`. */
-void BrAccumAddClamp(float *aTable, int i, float amt);
+/* The accumulator array 0x106C5468 (glide 0x106EC4F8).  Indexed absolutely by
+ * 0x100347BA -- there is no table pointer.  Left INCOMPLETE: no caller in the
+ * tree pins the element count, and a guessed bound would read as established. */
+extern float g_Br6C5468[];
+
+void BrAccumAddClamp(int i, float amt);
 
 /* 0x10035041  f04 = 0; f08 = v. The struct is not otherwise identified. */
 typedef struct BrPairSlot { uint32_t f00, f04, f08; } BrPairSlot;

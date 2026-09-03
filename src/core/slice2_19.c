@@ -1236,15 +1236,22 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2)
  * ceiling -- the shape of a damage or wear meter, though what this particular
  * table records was not established. */
 /* @implements 0x100347BA d3d BrAccumAddClamp */
-void BrAccumAddClamp(float *aTable, int i, float amt)
+/* NO TABLE POINTER.  The original indexes a FIXED-ADDRESS array --
+ * `fld dword ptr [eax*4 + 0x106EC4F8]`, an absolute base with no register --
+ * and reads only two arguments, i at [ebp+8] and amt at [ebp+0xc].  The
+ * `float *aTable` first parameter never existed; see tools/screen_absglobals.py
+ * for the rest of this class.  The element count is not established: nothing
+ * in the tree calls this yet, so the array stays incomplete rather than
+ * carrying a guessed bound. */
+void BrAccumAddClamp(int i, float amt)
 {
     if (amt > g_BrK08F520)
         amt = 2.5f;
 
-    aTable[i] = aTable[i] + amt;
+    g_Br6C5468[i] = g_Br6C5468[i] + amt;
 
-    if (aTable[i] > g_BrK08F524)
-        aTable[i] = 5.0f;
+    if (g_Br6C5468[i] > g_BrK08F524)
+        g_Br6C5468[i] = 5.0f;
 }
 
 /* 0x10035041 */
