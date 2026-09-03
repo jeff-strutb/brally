@@ -3308,3 +3308,52 @@ re-form `base + offset` at each access (`lea eax,[ecx + 0x105CE318]`), where a
 pointer local keeps the pointer. Writing the body in INDEX form
 (`pool[i].field`, no pointer locals) gets the instruction count right but
 costs ~90 bytes of SIB addressing — measured, worse overall. Park it.
+
+## Two more shapes of "MISSING CODE" that are not source discovery
+*(both found 2026-09-03 while working the factored-helper screen)*
+
+### 1. The port's loop over a static table is UNROLLED in the original
+*(0x10034010 BrSpanBuildHull: 327 bytes short -> 7, regnorm 59+145 -> 12+9)*
+
+    static const unsigned char aEdge[12][2] = { {0,1},{0,2}, ... };
+    for (i = 0; i < 12; i++) AddLine(pVol, pt[aEdge[i][0]], ...);
+
+compiles to a loop; the original has **twelve separate `call` sites** with the
+operands as absolute globals. A table-driven loop in the port against a much
+larger original is the tell — and it usually travels with the accessor
+sub-case, because once the loop is gone the parameters go too. This function
+takes NO arguments at all in the original.
+
+Also worth reproducing there: the two inner scans are UNBOUNDED
+(`inc edx; jmp` / `dec ecx; jmp`), so an uncovered column walks off both ends
+of a 64-entry array. That is the original's behaviour, not a port bug to fix.
+
+### 2. The port DELETED the original's debug tracing
+*(0x1005FF00 BrRaceGateStep is -1962 bytes; 0x10067710 BrCrRespWalk is -549)*
+
+Screen the ORIGINAL for calls to the trace sink — a printf-style function
+taking a format-string pointer and varargs:
+
+    # short diff rows whose ORIGINAL calls 0x10008D60
+    python3 - <<'PY'
+    import csv,os,re
+    for r in csv.DictReader(open('build/match/report.csv')):
+        if r['status']!='diff': continue
+        o=int(r['orig_size'] or 0); c=int(r['recomp_size'] or 0)
+        if o<200 or c==0 or c/o>0.85: continue
+        p='build/match/orig/%s.bin'%r['va']
+        if not os.path.exists(p): continue
+        b=open(p,'rb').read(); va=int(r['va'],16); n=0
+        for m in re.finditer(b'\xe8', b):
+            i=m.start()
+            if i+5<=len(b) and va+i+5+int.from_bytes(b[i+1:i+5],'little',signed=True)==0x10008D60:
+                n+=1
+        if n: print('%2d trace calls  -%5d  %-28s %s'%(n,o-c,r['name'],r['va']))
+    PY
+
+Two rows, 2,511 bytes between them. BrRaceGateStep alone has **12 trace calls,
+10 `BrStrGet` lookups and 4 `sprintf`s**, and the port's own comments quote the
+format strings while explaining that only the branch was kept ("the original
+builds that predicate into a register purely to print it"). So the missing
+bytes are not a helper to find — they are output that was deliberately
+dropped, and putting them back is transcription, not discovery.
