@@ -177,6 +177,9 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
 /* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
+    int key;
+    unsigned char b;
+
 #ifndef BR_MATCHING_BUILD
     /* Port-only: orig loads pSurf after packing (`mov eax,[esp+4]; mov [eax+0xc],cx`). */
     if (!pSurf) return;
@@ -194,19 +197,38 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
      * bit 16 and up and the store is 16 bits wide, so they never appear --
      * and only the wide mask reproduces `and ecx,0xfff8`.
      *
-     * RESIDUE (21 masked diffs, 3 bytes short): blue.  The original narrows
-     * to the byte lane first -- `shr eax,0x10 / shr al,3 / and eax,0x1f` --
-     * and ours does the shift in one `shr eax,0x13`.  Same value.
-     * DO NOT RE-PROBE: every char-typed spelling of the blue term (cast in
-     * place, an `unsigned char` local, that local shifted in place, with and
-     * without the `& 0x1F`, and with the dword `colorref >> 16` hoisted to
-     * its own local) gets the byte shift but then pays for it with a
-     * `movzx ax,al` widening, which is worse -- 33 or 34 diffs against 21.
-     * A uint32_t accumulator for the whole pack is worse again (45): the
-     * 16-bit destination is what makes VC5 factor the shared shift at all. */
-    pSurf->key = (uint16_t)(((((colorref & 0xFFFFu) >> 3) << 8
-                              | ((colorref >> 8) & 0xFCu)) << 3)
-                            | ((colorref >> 19) & 0x1Fu));
+     * Blue is a BYTE-SLOT local, and the split into two statements is what
+     * buys it.  The original narrows to the byte lane -- `shr eax,0x10 /
+     * shr al,3 / and eax,0x1f` -- and the only spelling that reproduces the
+     * `shr al,3` without spilling is: the red/green half assigned to `key`
+     * FIRST, then `b` loaded and shifted IN PLACE, then consumed by the very
+     * next statement.  `b` has to die into the store: any statement between
+     * `b >>= 3` and the use (an `int` widening copy, a `key |= b`) makes VC5
+     * spill it to the frame -- +10 bytes and a `mov byte ptr [esp+I],B`.
+     *
+     * RESIDUE (size-exact 51/51, 16/16 instructions, register-blind gap 1):
+     * ONE widening form.  Orig widens the byte with `and eax,0x1f` (a
+     * range-known mask -- the byte-slot dword widening); we emit
+     * `movzx cx,cl`, because the 16-bit destination narrows the OR to word
+     * ops.  The accumulator/blue register homes are also swapped (orig
+     * accumulates in ecx and puts blue in eax; we do the reverse), which is
+     * allocation, not shape.
+     * DO NOT RE-PROBE, all measured at this frame: `& 0x1F` on the char at
+     * the use (mask is dropped, movzx stays); the mask inside the char cast;
+     * OR operand order reversed; an `int blue = b;` widening copy (spills);
+     * `key |= b;` as its own statement (spills); an `unsigned char` local
+     * declared and computed BEFORE the red/green half (spills, +10 bytes);
+     * the whole pack in one expression with the cast in place (`and
+     * ecx,0xff` before a dword shift -- the cast materialises eagerly);
+     * a plain `(colorref >> 19) & 0x1F` (one `shr eax,0x13`, 3 bytes short,
+     * which is where this function sat before).  A uint32_t accumulator for
+     * the whole pack is worse again (45 diffs). */
+    key = (((((colorref & 0xFFFFu) >> 3) << 8)
+            | ((colorref >> 8) & 0xFCu)) << 3);
+    b = (unsigned char)(colorref >> 16);
+    b >>= 3;
+
+    pSurf->key = (uint16_t)(key | (b & 0x1F));
 }
 
 /* ----------------------------------------------------------------------
