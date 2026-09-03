@@ -73,9 +73,15 @@ def main():
             of = frame_of(open(ob, 'rb').read())
             if of is None:
                 continue
-            # the sweep's per-variant obj dirs, newest flag set first
+            # ‼ Use the row's OWN flag variant.  fn.py's obj_fnbase and the
+            # sweep's obj_O2 are /O2 only; scoring an /Od or /O2 /Oy- row
+            # against them compares two different compiles and invents a
+            # frame gap.  (Caught on 0x1002ECEB, an O2y row, which read as a
+            # 76-byte gap against the wrong object.)
             rf = None
-            for tag in ('fnbase', 'O2', 'O2p', 'O2y', 'Od'):
+            OPTDIR = {'O2': 'O2', 'Od': 'Od', 'O2y': 'O2y', 'O2p': 'O2p'}
+            tag = OPTDIR.get(r.get('opt', 'O2'), 'O2')
+            for tag in (['fnbase', tag] if tag == 'O2' else [tag]):
                 p = os.path.join(ROOT, 'build', 'match', 'obj_' + tag,
                                  os.path.splitext(os.path.basename(r['file']))[0] + '.obj')
                 if not os.path.exists(p):
