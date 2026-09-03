@@ -36,6 +36,39 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * FIFTEENTH PASS (2026-09-03) -- no region closed, two measurement facts
+ * that change how this file must be read, and one new probe axis.
+ *   ‼ THE ORIGINAL'S FOUR-TERM ROW IS LEFT-ASSOCIATED, which the source
+ *   already is.  Read it off the bytes rather than guessing: at 0xda7
+ *   `faddp st(2)` folds terms 1 and 2 together first (st0 holds T1, st2
+ *   holds T2 at that point), so `(((T1 + T2) + T3) + T4)` is right and any
+ *   right-associated variant is the WRONG SOURCE however it scores.
+ *   ‼ AND ONE OF THEM SCORES SPECTACULARLY, WHICH IS THE TRAP: the fully
+ *   right-associated form `T1 + (T2 + (T3 + T4))` reads DIFFS 4,669 ->
+ *   2,490.  That is not a 47% improvement, it is TWO BYTES.  fn.py's DIFFS
+ *   is a POSITIONAL byte compare with no alignment, and those two bytes
+ *   moved the whole 0x11d3-0x23ec tail from delta -2 to delta 0, flipping
+ *   ~2,200 spuriously-mismatching bytes to spuriously-matching ones.  It
+ *   recovered two bytes and one instruction and nothing else.  **Compare
+ *   DIFFS only between builds of the SAME size; when the size moves, rank by
+ *   msetdiff rows, the instruction gap and the masked region map.**
+ *   NEW PROBE AXIS, isolated A/B and real: a REDUNDANT OUTER PARENTHESIS
+ *   PAIR around the four row expressions -- nothing else changed, same
+ *   association -- moves the scale preload 5|7 -> 4|8, grows the recompile
+ *   three bytes and takes the register-blind gap 40+46 -> 41+47.  So
+ *   parentheses reach VC5's scheduler, not just its parser.  Do NOT tidy the
+ *   parentheses in this file, and when an x87 schedule is one notch off try
+ *   the same association with and without an outer pair.
+ *   MEASURED THIS PASS, all four row associations, no outer parens:
+ *     left `((T1+T2)+T3)+T4` = the tree, 4,669 / 5|7 / -18 B  (baseline)
+ *     `(T1+T2)+(T3+T4)`                4,695 / 5|7
+ *     `T1+(T2+(T3+T4))`                2,490 / 5|7 / -16 B  (SEE TRAP ABOVE)
+ *     `(T1+T3)+(T2+T4)`                4,778 / 5|7
+ *   None reaches the original's 8-preload; the association is not the lever.
+ *   Also measured: the row block's peak x87 depth is 6 here against the
+ *   original's 8 (both enter the scale block at depth 0), which is the same
+ *   fact as wall 1's missing hoist notch stated as a number.
+ *
  * FOURTEENTH PASS (2026-09-03) ‼ RETRACTS THE ELEVENTH PASS'S WALL-2
  * VERDICT.  That pass wrote "the 5-vs-8 preload is a scheduler constant, not
  * a pressure difference we can create".  IT IS NOT A CONSTANT.  Two facts,
