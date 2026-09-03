@@ -3442,3 +3442,13 @@ that go dead when the terms are rewritten.
 
 **The general lesson is the diagnosis order, not the fix.** Before writing
 "the compiler will not do X", find a site in the same binary where it does.
+
+## `jb` vs `jl` on a loop bound: the cursor is an int, not a pointer
+
+Proven on 0x10045EF0 (selector fill loop), where it was the function's ONLY
+diff. VC5 emits an UNSIGNED `jb` for a pointer/pointer comparison and a
+SIGNED `jl` when the operands are ints. So a `jl` closing a table walk means
+the source compared the cursor as an integer -- `(int)pe < (int)(tab + N)`,
+or an int cursor stepped by the element size -- even though every use of the
+cursor inside the loop is a pointer dereference. One byte, and it is
+readable straight off the branch opcode: 0x72 unsigned, 0x7C signed.
