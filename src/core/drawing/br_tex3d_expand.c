@@ -48,6 +48,17 @@
  *         280+279, with the region count and the lost-sync gap both
  *         unchanged at 31 / 0x15b8.  It shuffles the allocation without
  *         fixing the block; net worse on size.  Rejected.
+ *     (c) `iVar5` split in two.  `tools/slotcensus.py` shows the original
+ *         writes [esp+0x30] ONCE (at 0x4b, `lea edx,[eax+ebx]` = the tile
+ *         record `iVar10 * 0x40 + param_11`) and reads it EIGHT times as
+ *         `[eax+8]`, while our build writes its equivalent slot four
+ *         times -- because Ghidra recycled `iVar5` as the scratch counter
+ *         of all five copy-back loops (lines 567, 754, 987, 1109, 1303) on
+ *         top of its job as that record pointer.  Giving the scratch its
+ *         own `iSpan` at ALL FIVE sites at once is BYTE-IDENTICAL: VC5
+ *         already splits the reused local into independent webs.  The
+ *         recycling is still worth undoing for readability if this file is
+ *         ever cleaned up, but it is not a matching lever.
  *
  * The insn-3 "coloring wall" is BROKEN (for-loop with a raw-parameter bound);
  * the store-idiom wall is BROKEN too (Ghidra folded orig's two separate
