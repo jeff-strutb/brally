@@ -16,6 +16,19 @@ Usage:
 separates stack-slot-layout noise from real divergence: run both and the
 difference between the two counts is the layout cascade.
 
+--key N sets how many consecutive matching instructions count as a resync
+(default 6).  ‼ SIX IS TOO SHORT FOR A FUNCTION BUILT FROM REPEATED ARMS.
+The key has to be longer than the longest sequence that repeats, or a resync
+lands on the WRONG copy and every delta after it is fiction.  Measured
+2026-09-03 on 0x100250D0 (twelve near-identical channel arms, all ending in
+the same divide-by-255 fixup): at key 6 it reports 32 regions with FOUR
+flagged SUSPECT (skews 74/53, 12/34, 26/135, 115/20); at key 10 it reports
+TWENTY with one, and the fictional "+393 bytes in one block" is gone.  The
+default stays 6 so that every region count quoted in the dossiers keeps its
+meaning -- but on any function with repeated arms, read it at --key 10 and
+SAY WHICH KEY the number came from.  Going further (14) is too coarse: the
+resync starts skipping whole arms and swallows real regions.
+
 --deltas replaces the per-region listing with one line per region giving how
 far the recompile has drifted behind (negative) or ahead of the original by
 that point, and how much of the drift the PRECEDING stretch added.  That
@@ -145,6 +158,7 @@ while ib < len(B) and B[ib][0] < start_at:
     ib += 1
 
 DELTAS = '--deltas' in sys.argv
+KEY = int(sys.argv[sys.argv.index('--key') + 1]) if '--key' in sys.argv else 6
 
 ndiv = 0
 prev_delta = 0
@@ -178,11 +192,20 @@ while ia < len(A) and ib < len(B):
     # minimizing da+db so we stay tight
     found = False
     best = None
+    # The key length and the order candidates are tried both decide whether a
+    # resync lands on the RIGHT copy of a repeated arm.  Two rules:
+    #   * longer key = more unique.  `--key N` raises it; 6 is the historical
+    #     default and every region count quoted in the dossiers assumes it.
+    #   * within one total displacement, try the BALANCED splits first.  The
+    #     old loop ran da from 0 upward, so it preferred the most lopsided
+    #     split available at that total -- exactly the shape that locks onto
+    #     the wrong copy (skews like 26/135 and 115/20).
     for tot in range(1, 400):
-        for da in range(0, tot + 1):
+        cands = sorted(range(0, tot + 1), key=lambda d: (abs(d - (tot - d)), d))
+        for da in cands:
             db = tot - da
-            if ia + da + 6 <= len(An) and ib + db + 6 <= len(Bn) and \
-               all(ieq(A[ia+da+k], B[ib+db+k]) for k in range(6)):
+            if ia + da + KEY <= len(An) and ib + db + KEY <= len(Bn) and \
+               all(ieq(A[ia+da+k], B[ib+db+k]) for k in range(KEY)):
                 best = (da, db)
                 break
         if best: break
@@ -210,7 +233,8 @@ while ia < len(A) and ib < len(B):
         print(f"  ... lost sync at orig+{A[ia][0]:#x}")
         break
 
-print(f"\ntotal divergence regions from offset {start_at:#x}: {ndiv}")
+print(f"\ntotal divergence regions from offset {start_at:#x}: {ndiv}"
+      f"  (resync key {KEY} insns)")
 # The COFF function extent is padded to a 16-byte boundary, so the recompile
 # ends in up to 15 alignment nops that the extracted original does not have.
 # Counting them made three different dossiers record "instruction counts are
