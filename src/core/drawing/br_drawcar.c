@@ -734,6 +734,27 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
+ * STATE 2026-09-03: 30 slot-masked divergence regions, 37 raw; 1843 vs
+ * 1843 instructions (EQUAL -- no missing or extra code anywhere), 7536 vs
+ * 7577 bytes.  The whole residue is encoding/allocation.  Region 1 is the
+ * frame itself (`sub esp,0x48` vs orig `0x4c`); close that first, every
+ * later region's displacements move with it.  Read the recomp's frame map
+ * from a `/FAcs` listing (recipe in docs/VC5-IDIOMS.md) rather than
+ * inferring it -- displacement histograms cannot be compared across two
+ * builds whose frame sizes differ, and that is how the pack0/pack1 claim
+ * corrected below went wrong.
+ * Regions 2 and 3 (orig+0x2c8 / +0x2f0) are ONE defect: in colourA's
+ * Horner pack the first ftol result goes to the HIGH byte in orig
+ * (`xor edx,edx; mov dh,al` ... `mov dl,al`) and to the LOW byte in ours
+ * (`mov dl,al` ... `mov dh,al`).  MEASURED DEAD, do not re-run: swapping
+ * the `|` operands, adding the missing `(uint32_t)` cast to the low term,
+ * splitting the top component into its own statement, hoisting it into a
+ * block-scoped temp, and swapping the two globals' high/low roles -- all
+ * five are byte-identical to the current form.  The byte lane follows
+ * VC5's evaluation order (simpler subtree first), which no commutative or
+ * statement-level spelling reaches; see the canonicalisation entry in
+ * docs/VC5-IDIOMS.md.
+ *
  * Frame: `sub esp, 0x4c; push ebx; mov ebx, pCar; push ebp; xor ebp,ebp`.
  * ebp is the zero register (154 uses: `push ebp` for TK_ZERO / put w1=0).
  * Arg slots are reused: lodBias at [esp+0x64] becomes lod, then a command
@@ -750,13 +771,19 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     uint8_t  pack0, pack1;  /* separate scalar byte locals (0x1001E380's
                              * proven form): the dword-read + and 0xff in
                              * the bytes is VC5's own widening of a plain
-                             * uint8_t local.  Slot map 2026-09-01: orig
-                             * homes them at [esp+0x31]/[esp+0x32], i.e.
-                             * overlaid on the upper bytes of pLights' dead
-                             * dword 0x30; ours land in two fresh dwords
-                             * (0x10/0x14) -- byte-granular packing not yet
-                             * reproduced; frame 0x48 vs orig 0x4c is that
-                             * plus the removed eyeX union slot. */
+                             * uint8_t local.  Slot map: orig homes them at
+                             * [esp+0x31]/[esp+0x32], i.e. overlaid on the
+                             * upper bytes of pLights' dead dword 0x30.
+                             * CORRECTION 2026-09-03: they do NOT land in
+                             * "two fresh dwords (0x10/0x14)" here -- the
+                             * /FAcs equate table reads `_pack0$ = 8,
+                             * _pack1$ = 12`, i.e. already in the reused ARG
+                             * slots, shared with lodOff/len/pCam/eyeY.
+                             * So the 4-byte frame gap (0x48 vs orig 0x4c)
+                             * is NOT these two; it is one dword slot in the
+                             * locals area that orig keeps live and we do
+                             * not, and instruction counts are EQUAL
+                             * (1843 = 1843), so it is allocation, not code. */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
