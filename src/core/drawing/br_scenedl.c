@@ -68,7 +68,20 @@
  *   4. `ring*4` CSE: orig materializes `lea edx,[ecx*4]` and addresses
  *      both ring arrays as [edx+base] (edx live through the tail, so pDst
  *      is memory-homed and ebx is scratch); ours folds [ecx*4+base].
- *      Byte-offset spellings still fold.
+ *      Byte-offset spellings still fold.  2026-09-03 refinement: orig keeps
+ *      BOTH values live -- the int index in ecx (it is still needed for the
+ *      `ring * 500` record term, `lea ecx,[ecx+ecx*4]` at 0x1dd7) and the
+ *      byte offset in edx.  That rules out the single-variable form: making
+ *      `ring` itself the byte offset (`(iWheel + iCar*4) * 4`) is
+ *      SEMANTICALLY WRONG here, because `ring * 500` then scales four times
+ *      over -- it emits a closer `shl ecx,2` only by breaking the record
+ *      index, so ignore that shape.  The correct two-variable form (a
+ *      separate `rb2 = ring * 4` used only for the two flat arrays, 17 uses)
+ *      is byte-identical to the plain index: VC5 forward-substitutes it
+ *      because `ring` is itself an affine expression it can re-fold into a
+ *      scale-4 addressing mode.  Both `* 4` and `<< 2` measured.  To reach
+ *      orig the scaled index has to be un-foldable at its uses; no spelling
+ *      found yet.
  *   5. loop entry (0xad4): orig keeps cHead/base in ecx/eax across the
  *      param_2 join (else-arm reloads them after the call) and compares
  *      i from memory; ours reloads them in the pre-header.
