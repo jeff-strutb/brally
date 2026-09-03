@@ -40,8 +40,15 @@ ORIG_DLL = os.environ.get('BR_REF',
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 
 
-def compiled_functions(objs, fnmap, glmap):
-    """Yield (va, name, filled_bytes, n_unresolved) for every function we build."""
+def compiled_functions(objs, fnmap, glmap, only=None):
+    """Yield (va, name, filled_bytes, n_unresolved) for every function we build.
+
+    `only` is a {raw COFF symbol name -> va} map. When given, symbols are
+    placed by that map alone and the C undecorator is not consulted -- the
+    C++ lane's symbols are MSVC-mangled ('?Name@@YAH...@Z'), which the
+    cdecl/stdcall/fastcall undecoration below would mince into a name that
+    is in no map.  Its addresses come from report_cpp.csv, not from fnmap.
+    """
     for path in objs:
         try:
             d, secs, syms, relocs = parse(path)
@@ -52,11 +59,16 @@ def compiled_functions(objs, fnmap, glmap):
             sec = secs.get(sy['sec'])
             if sy['sec'] <= 0 or not sec or not sec['name'].startswith('.text'):
                 continue
-            # Undecorate: cdecl '_f', stdcall '_f@12', fastcall '@f@12'.
-            name = sy['name'].lstrip('_@').split('@')[0]
-            if name not in fnmap:
-                continue
-            va = fnmap[name]
+            if only is not None:
+                if sy['name'] not in only:
+                    continue
+                name, va = sy['name'], only[sy['name']]
+            else:
+                # Undecorate: cdecl '_f', stdcall '_f@12', fastcall '@f@12'.
+                name = sy['name'].lstrip('_@').split('@')[0]
+                if name not in fnmap:
+                    continue
+                va = fnmap[name]
             ob = os.path.join(ORIG_DIR, '0x%08X.bin' % va)
             if not os.path.exists(ob):
                 continue
@@ -109,6 +121,93 @@ def compiled_functions(objs, fnmap, glmap):
             yield va, name, pre + bytes(code), unres, fromref
 
 
+def cpp_claims():
+    """(obj_path, {mangled symbol: va}, {va: name}) for every 4/4 C++ match.
+
+    The C++ lane is scored by tools/cpp_sweep.py into report_cpp.csv and never
+    reaches report.csv, so before this it was the one body of verified work the
+    image gate could not see: 149 functions inside this same DLL whose bytes
+    were checked one at a time but whose ADDRESSES were never laid down beside
+    the C claims.  Placement and overlap are exactly what this tool exists to
+    check, so it has to place them too.
+
+    Only 4/4 rows count -- a 3/4 row's .text may well be right, but 'match' on
+    this lane means all four pieces, and the image gate does not get to use a
+    looser bar than the sweep that produced the row.
+    """
+    import csv
+    import cpp_score
+    report = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    if not os.path.exists(report):
+        return []
+    tags = [_opt_tag(o) for o in cpp_score.DEFAULT_OPTS]
+    out = []
+    for r in csv.DictReader(open(report)):
+        if r.get('status') != 'match' or r.get('pieces') != '4/4':
+            continue
+        va = int(r['va'], 16)
+        src = os.path.join(ROOT, r['file'])
+        base = os.path.splitext(os.path.basename(r['file']))[0]
+        # cpp_sweep tags each obj with the INDEX into DEFAULT_OPTS it was built
+        # at; the report records only the opt's short tag, so map back.
+        try:
+            i = tags.index(r['opt'])
+        except ValueError:
+            continue
+        obj = os.path.join(cpp_score.OBJ_DIR,
+                           '%s_sweep_%08X_%d.obj' % (base, va, i))
+        if not os.path.exists(obj):
+            continue
+        _impl, sym, kind = cpp_score.parse_implements_name(src, va)
+        raw = _raw_symbol(obj, sym, kind)
+        if raw is None:
+            continue
+        out.append((obj, {raw: va}, r['name'] or sym or raw))
+    return out
+
+
+def _raw_symbol(obj, sym, kind):
+    """The RAW COFF symbol cpp_sweep scored, for this obj.
+
+    The @cpp_symbol tag is not always the literal COFF name: a cdecl one is
+    written without its leading underscore, and cpp_sweep resolves the rest
+    through cpp_score.find_symbol (class name -> ??1Foo@@..., prefer=kind).
+    parse_coff_code's keys are a mix of raw and undecorated, so ask it which
+    symbol was scored and then map that answer back to the raw name the COFF
+    parser here will see.  Placing anything else would place a function the
+    sweep never scored.
+    """
+    import cpp_score
+    import match_diff
+    try:
+        d, secs, syms, _relocs = parse(obj)
+    except Exception:
+        return None
+    raws = [s['name'] for s in syms
+            if s['sec'] > 0 and secs.get(s['sec'], {}).get(
+                'name', '').startswith('.text')]
+    if sym in raws:
+        return sym
+    try:
+        key = cpp_score.find_symbol(cpp_score.parse_coff_code(obj), sym,
+                                    prefer=kind or 'dtor')
+    except Exception:
+        key = None
+    if key is None:
+        return None
+    if key in raws:
+        return key
+    for n in raws:
+        if match_diff.undecorate(n) == key:
+            return n
+    return None
+
+
+def _opt_tag(opt):
+    import cpp_sweep
+    return cpp_sweep._opt_tag(opt)
+
+
 def main():
     out = None
     if '--out' in sys.argv:
@@ -151,15 +250,38 @@ def main():
         for va, name, code, unres, fromref in compiled_functions(
                 [obj], fnmap, glmap):
             if byname.get(name) == va:
-                best[va] = (name, code, unres, fromref)
+                best[va] = (name, code, unres, fromref, 'C')
+    n_c = len(best)
+
+    # The C++ lane, placed beside the C so a cross-lane address collision is
+    # visible.  Same reloc filling, same collision refusal, same diff.
+    n_cpp = 0
+    for obj, symmap, dispname in cpp_claims():
+        for va, _sym, code, unres, fromref in compiled_functions(
+                [obj], fnmap, glmap, only=symmap):
+            names_at.setdefault(va, set()).add(dispname)
+            best[va] = (dispname, code, unres, fromref, 'C++')
+            n_cpp += 1
 
     usable = {va: v for va, v in best.items() if v[2] == 0}
     blocked = len(best) - len(usable)
     n_fromref_fns = sum(1 for v in usable.values() if v[3])
     n_fromref_slots = sum(v[3] for v in usable.values())
 
+    # How much of each lane is OURS vs taken from the reference image. A slot
+    # filled from the reference cannot fail the diff, so it is not evidence --
+    # quoting the image's byte total without this split overstates the C++
+    # lane, whose mangled symbols resolve through no surveyed map.
+    lane = {}
+    for _va, (_n, c, _u, fr, ln) in usable.items():
+        d = lane.setdefault(ln, [0, 0, 0])
+        d[0] += 1
+        d[1] += len(c)
+        d[2] += fr * 4
+
     # GLOBAL CHECK 1 -- overlapping claims. Per-function diffing cannot see it.
-    spans = sorted((va, va + len(c), n) for va, (n, c, _, _) in usable.items())
+    spans = sorted((va, va + len(c), n)
+                   for va, (n, c, _u, _f, _l) in usable.items())
     overlaps = [(a, b) for a, b in zip(spans, spans[1:]) if a[1] > b[0]]
 
     # GLOBAL CHECK 2 -- two DIFFERENT functions claiming one address. The same
@@ -169,7 +291,8 @@ def main():
     conflicting = [(va, sorted(ns)) for va, ns in sorted(names_at.items())
                    if len(ns) > 1 and va in usable]
 
-    print(f"functions compiled and addressed : {len(best)}")
+    print(f"functions compiled and addressed : {len(best)}"
+          f"  ({n_c} C + {n_cpp} C++)")
     print(f"  every relocation resolved      : {len(usable)}")
     print(f"    of those, {n_fromref_fns} functions fill {n_fromref_slots} "
           f"static/local slots from the reference image")
@@ -190,7 +313,7 @@ def main():
     placed = bytes_placed = 0
     outside = 0
     diffs = []
-    for va, (name, code, _, _) in sorted(usable.items()):
+    for va, (name, code, _u, _f, _l) in sorted(usable.items()):
         off = va - base - trva
         if off < 0 or off + len(code) > tvsize:
             outside += 1
@@ -208,6 +331,13 @@ def main():
 
     print(f"\nplaced into the image            : {placed} functions, "
           f"{bytes_placed:,} bytes ({100*bytes_placed/tvsize:.2f}% of .text)")
+    for ln in ('C', 'C++'):
+        if ln not in lane:
+            continue
+        n, b, rb = lane[ln]
+        print(f"    {ln:<4} {n:4} fns  {b:8,} B  "
+              f"({rb:,} B of that filled from the reference"
+              f", {100*rb/b:.1f}%)")
     print(f"  landed outside .text           : {outside}")
     print(f"functions differing from original: {len(diffs)}")
     for va, name, nd, sz in sorted(diffs, key=lambda x: -x[2])[:10]:
