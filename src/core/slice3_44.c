@@ -483,6 +483,59 @@ void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
  * body. Speed and spin are carried across unchanged, since the previous step
  * already updated them. */
 /* @implements 0x100745F0 d3d BrRbIntegrateState */
+#ifdef BR_MATCHING_BUILD
+/* FLOAT, not double. The double model here was written for the D3D twin's
+ * codegen -- BrRbBuildMatrix below records the same correction -- and the
+ * GLIDE original never spills a qword: every product is
+ * `fld dword [esp+dt]; fmul dword ptr [esi+N]`, i.e. dt reloaded fresh as a
+ * float with the member as the memory operand. The three that ARE spilled
+ * (`fstp dword [esp+N]` then reloaded) round to float once more, which the
+ * explicit casts below reproduce; the spill map in the port arm records
+ * which, read off each instruction. */
+void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
+{
+    /* All three products FIRST, then the adds: the original loads dt three
+     * times over and holds the products live, which is what forces the
+     * spills. A `(float)` cast on an already-float expression is a no-op and
+     * changes nothing; only the register pressure does.
+     *
+     * RESIDUE (57 regnorm, -11 bytes, 86 instructions against 85): six of
+     * the seven products come out `fld <member>; fmul dt` where the original
+     * has `fld dt; fmul <member>`, and ours holds a base pointer in ebx
+     * where the original spills to four stack slots. The operand order is
+     * NOT source-reachable here -- `pSrc->vel.x * dt` and `dt * pSrc->vel.x`
+     * compile to byte-identical output, so VC5 canonicalises a float
+     * multiply of two MEMORY operands. It IS reachable when one side is a
+     * local: see the rigid-body velocity trio in slice3_42.c, where the same
+     * flip was worth 12 instructions. Was -55 bytes and 66 instructions
+     * under the old double model. */
+    float px, py, pz;
+    float q0, q1, q2, q3;
+
+    px = dt * pSrc->vel.x;
+    py = dt * pSrc->vel.y;
+    pz = dt * pSrc->vel.z;
+    pDst->pos.x = pSrc->pos.x + px;
+    pDst->pos.y = pSrc->pos.y + py;
+    pDst->pos.z = pSrc->pos.z + pz;
+
+    pDst->vel = pSrc->vel;
+
+    q0 = dt * pSrc->qDot.f00;
+    q1 = dt * pSrc->qDot.f04;
+    q2 = dt * pSrc->qDot.f08;
+    q3 = dt * pSrc->qDot.f0C;
+    pDst->quat.f00 = pSrc->quat.f00 + q0;
+    pDst->quat.f04 = pSrc->quat.f04 + q1;
+    pDst->quat.f08 = pSrc->quat.f08 + q2;
+    pDst->quat.f0C = pSrc->quat.f0C + q3;
+
+    BrVec4Normalise(&pDst->quat);
+
+    pDst->angVel = pSrc->angVel;
+    pDst->qDot   = pSrc->qDot;
+}
+#else
 void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 {
     /* SPILL MAP.  Seven products; three are spilled and reloaded, four are
@@ -537,6 +590,7 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
     pDst->angVel = pSrc->angVel;
     pDst->qDot   = pSrc->qDot;
 }
+#endif
 
 /* 0x1006D6B0 */
 /* WHAT IT DOES: builds the transform matrix that places a body in the world,
