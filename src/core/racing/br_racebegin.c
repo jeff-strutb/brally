@@ -441,6 +441,35 @@ void BrRaceCueRewind(void)
  * so the car is steered by whatever is behind that, and this only keeps the
  * speed readout honest. */
 /* @implements 0x100199A0 glide BrRaceCarCtlOutro */
+#ifdef BR_MATCHING_BUILD
+extern float BrSqrtF(float x);                  /* 0x10002570 */
+extern void BR_THISCALL1 BrCarCtlChain_1006F170(BrDriverCar *pCar);
+
+void BrRaceCarCtlOutro(BrDriverCar *pCar)
+{
+    /* No null guard, and no hook table: the original tests +0x730 straight
+     * away and calls both bodies directly. The two components that are
+     * SQUARED are float locals -- VC5 copies each through an integer
+     * register into its own stack slot and then does `fld m; fmul m` -- while
+     * the third is read from the member twice and squared on the x87 stack,
+     * so it is not a local.
+     *
+     * The parentheses round the first two products are NOT redundant to the
+     * compiler: without them VC5 schedules the z square SECOND instead of
+     * last and the function comes out 22 bytes different with an identical
+     * instruction multiset. Declaration order decides which of the two
+     * copies lands in ecx. */
+    if (pCar->f730 != 0) {
+        float x = pCar->f1E8.x;
+        float y = pCar->f1E8.y;
+
+        pCar->f1030 = BrSqrtF((x * x + y * y) + pCar->f1E8.z * pCar->f1E8.z)
+                      * BR_RACEBEGIN_MPS_TO_MPH;
+    }
+
+    BrCarCtlChain_1006F170(pCar);
+}
+#else
 void BrRaceCarCtlOutro(BrDriverCar *pCar)
 {
     if (pCar == NULL)
@@ -474,6 +503,7 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
     if (OP(BR_RB_1006F170, pfn1006F170))              /* 0x10019A02 */
         g_brRaceBeginOps.pfn1006F170(pCar);
 }
+#endif
 
 /* ==========================================================================
  * 0x10019A10 / 0x10019A40
