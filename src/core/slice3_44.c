@@ -309,55 +309,56 @@ void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
 /* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
-    /* SPILL MAP, traced instruction by instruction.  The scale is 0x1008FC4C
-     * == 3F000000 == 0.5f.  The three halved components go to stack slots
-     * [esp], [esp+4], [esp+8] -- but NOT the same way, and that is the whole
-     * subtlety of this function:
+    /* SPILL MAP, traced instruction by instruction against the Glide original
+     * 0x1006D530.  The scale is a float constant (3F000000 == 0.5f), loaded
+     * as `fmul dword`, so the three halved rates are plain `float` locals in
+     * 12 bytes of frame -- `sub esp, 0xc`, homed at [esp], [esp+4], [esp+8].
      *
-     *   100742EE  fstp dword [esp]     hx: stored AND POPPED, so the only
-     *                                  copy left anywhere is the rounded one.
-     *   10074306  fst  dword [esp+4]   hy: stored and KEPT.  st0 still holds
-     *   10074314  fst  dword [esp+8]   hz: the unrounded 53-bit product.
+     * An earlier reading took the fst/fstp asymmetry at 1006D54E (hx: stored
+     * AND popped) versus 1006D566 / 1006D574 (hy, hz: stored and KEPT) for a
+     * mixed float/double source, and typed the halves `double` with per-use
+     * casts.  That is a misreading of the register allocator.  Without /Op,
+     * VC5 is free to keep a just-stored value in st and spend it once before
+     * reloading the slot; each of hx, hy and hz is used exactly four times
+     * here (twelve products in total), and the counts come out right with all
+     * three plain floats: hx = four `fld [esp]`, hy = three `fld [esp+4]`
+     * plus the kept register, hz = three `fld [esp+8]` plus the kept one.
+     * The double spelling is what forced the `fmul qword` chain.
      *
-     * `fst` is not `fstp`.  Each of hy and hz therefore has TWO live values
-     * after its store -- the rounded one in memory and the unrounded one in
-     * the register -- and the original uses the register copy exactly ONCE
-     * before it is consumed, then reloads the rounded slot for everything
-     * else:
+     * The quaternion components are read straight out of the struct
+     * (both-memory `fmul dword [eax+0x18..0x24]`), not through named locals.
+     * The four results are `fstp dword` at 1006D5EA..1006D5F7, in field
+     * order, so each expression rounds to float exactly once, at the store.
      *
-     *   10074323  fmul [eax+0x20]   the kept hy, times quat.y  -> qDot.f00
-     *   1007433E  fmul [eax+0x1c]   the kept hz, times quat.x  -> qDot.f08
+     * The halves are ONE AGGREGATE, not three scalars.  With three separate
+     * `float` locals VC5 packs the third into the dead `pS` parameter slot
+     * (`sub esp, 8`, hz at [esp+0xc] -- the idiom at VC5-IDIOMS "PACKS
+     * ORDINARY LOCALS INTO DEAD PARAMETER SLOTS"); an aggregate is allocated
+     * whole and restores `sub esp, 0xc` with the slots in declaration order.
+     * BrVec3 and float[3] compile identically here; BrVec3 reads better.
      *
-     * Every other use comes from `fld [esp+N]` and is rounded.  So of the
-     * twelve products below, ten take a float-rounded half-rate and two do
-     * not.  Writing all three as `float` (which this did) rounds two products
-     * the original leaves alone; writing all three as `double` would round
-     * ten it does not.  Neither is right, and the asymmetry is not visible
-     * from the C -- only from the fst/fstp distinction in the bytes.
-     *
-     * The four results are `fstp dword` at 1007438A..10074397, so each
-     * expression rounds to float exactly once, at the store. */
-    const double hxU = (double)pS->angVel.x * 0.5;
-    const float  hx  = (float)hxU;              /* 100742EE fstp -- popped */
+     * RESIDUE (23 bytes, do not re-probe these): every remaining differing
+     * byte is the ModRM of an `fxch`/`faddp`/`fsubp` st(i) index, plus four
+     * `fmul` displacements that swap in compensating pairs.  Instruction
+     * stream, count and size are exact (RAW and REGNORM multiset gap 0+0);
+     * the x87 stack holds the same eight values in a different permutation
+     * from 1006D58A on.  Probed and ruled out: swapping the two product terms
+     * of any row (VC5 canonicalises commutative x87 addends -- byte-identical
+     * output), `float[3]` vs `BrVec3`, and `/O2 /Op` (214 bytes, 134 diffs --
+     * strictly worse, this TU is /O2).  T3a. */
+    BrVec3 h;
 
-    const double hyU = (double)pS->angVel.y * 0.5;
-    const float  hy  = (float)hyU;              /* 10074306 fst  -- kept   */
+    h.x = pS->angVel.x * 0.5f;
+    h.y = pS->angVel.y * 0.5f;
+    h.z = pS->angVel.z * 0.5f;
 
-    const double hzU = (double)pS->angVel.z * 0.5;
-    const float  hz  = (float)hzU;              /* 10074314 fst  -- kept   */
-
-    const double w = (double)pS->quat.f00;
-    const double x = (double)pS->quat.f04;
-    const double y = (double)pS->quat.f08;
-    const double z = (double)pS->quat.f0C;
-
-    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first.  hyU and hzU appear
-     * once each, in the two positions named above; every other term uses the
-     * rounded hx/hy/hz. */
-    pS->qDot.f00 = (float)(((-((double)hx * x)) - hyU * y) - (double)hz * z);
-    pS->qDot.f04 = (float)(((double)hy * z + (double)hx * w) - (double)hz * y);
-    pS->qDot.f08 = (float)((hzU * x + (double)hy * w) - (double)hx * z);
-    pS->qDot.f0C = (float)(((double)hx * y + (double)hz * w) - (double)hy * x);
+    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first.  The leading `fchs`
+     * at 1006D588 is the unary minus on the first product only: the row is
+     * `-hx*x - hy*y - hz*z`, evaluated left to right. */
+    pS->qDot.f00 = -h.x * pS->quat.f04 - h.y * pS->quat.f08 - h.z * pS->quat.f0C;
+    pS->qDot.f04 = h.y * pS->quat.f0C + h.x * pS->quat.f00 - h.z * pS->quat.f08;
+    pS->qDot.f08 = h.z * pS->quat.f04 + h.y * pS->quat.f00 - h.x * pS->quat.f0C;
+    pS->qDot.f0C = h.x * pS->quat.f08 + h.z * pS->quat.f00 - h.y * pS->quat.f04;
 }
 
 /* 0x100743A0 */
