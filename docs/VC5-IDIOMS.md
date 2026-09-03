@@ -2106,13 +2106,28 @@ park, not a structural miss — the diff count is large and meaningless.
     on the first compile with it. br_match.h's warning that BR_THISCALL1
     "does NOT generalise" is about call sites; do not read it as saying
     these functions cannot be matched.
-  - CALLING one is unreachable: the caller would have to load edx, and
-    `__thiscall` cannot be spelled on a function POINTER, which is what
-    a vtable send needs. Diff signature, and it is exact -- EXTRA
-    `push R` and `add esp, I` once per send, MISSING one `mov ecx,
-    <this>` per send, nothing else. When that is the whole residue the
-    function is a C++-twin candidate (see the vcall-lode note), not
-    something to keep probing in C.
+  - CALLING one is ALSO reachable -- **this entry said otherwise
+    earlier on 2026-09-03 and was wrong.** Declare the callee (or the
+    function POINTER, which is what a vtable send needs) `__fastcall`
+    with EVERY stack argument as a one-member STRUCT: structs are never
+    register-eligible, so ecx takes `this`, edx is left alone, and the
+    callee cleans its own stack. Proven on 0x10030270 BrModelLoad
+    (byte-exact) and on slice8_85.c's vtable sends, where the call went
+    from `push <this>` + `add esp,0x10` to `mov ecx,<this>` + three
+    pushes + `call` with no caller-side cleanup.
+    - ALL the stack arguments must be structs, not just the second.
+      MSVC keeps assigning registers PAST an ineligible argument, so
+      `(pThis, struct, int, int)` hands edx to the third argument.
+    - The cost: a struct argument is always materialised through a
+      register, so a CONSTANT argument comes out `mov ecx,K; push ecx`
+      where a plain int would be `push K` -- two bytes each.
+      Initialising the struct in its declaration instead of by
+      assignment does not help (probed). When a function's whole residue
+      is that materialisation, the convention is right and the rest is
+      the trick's own overhead.
+    - Diff signature of getting the convention WRONG (plain cdecl):
+      EXTRA `push R` and `add esp, I` once per send, MISSING one
+      `mov ecx, <this>` per send.
 - **VC5 inlines NO static helper at /O2 -- three confirmations.** Any
   `static` function the original had in line comes back as a real `call`
   with a full argument push sequence, whatever its size: an eight-dword
