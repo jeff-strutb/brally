@@ -834,6 +834,15 @@ static void wheel_call(unsigned char *car)
  * code both builds emit (`mov cl,[..]; and eax,0xff` against `and eax,0xff;
  * mov cl,[..]`), not new divergent code.  Read the region before believing
  * its address.
+ * SESSION 13 PROBE, DEAD, do not re-run: routing the shared pack through a
+ * pointer local (`uint8_t *pp = pack;` and `pp[k]` at every use, to make the
+ * array address-taken and force both elements to memory) is BYTE-IDENTICAL.
+ * VC5 sees through the alias, so escape analysis is not the lever for the
+ * one byte per arm that still forwards from a register.
+ * WHAT IS LEFT, and it is now ONE defect stated exactly: each of the three
+ * colour arms homes ONE pack byte where the original homes TWO.  That is the
+ * whole `and R,0xff` x4 / `or R,R` x4 / `mov byte [esp+S],B` x3 residue,
+ * against our `mov B,B` lane moves -- three sites, one cause.
  * SAME SESSION, the arm-1 top local (`top1 = g_BrDrawByte80`) also lands now
  * -- it was measured DEAD in session 12 against the pre-split allocation and
  * is positive against this one, which is the staleness rule paying out for
