@@ -678,7 +678,16 @@ float BrDlColourScale(const BrDl *pDl);
  * ZBUFFER|SHADING_SMOOTH -- while the geometry mode word is still zero and
  * this function therefore answers 0x10023110.  Both are unlit and both take
  * the same code path here, so nothing observable differs; the addresses do. */
+/* The original takes no arguments, returns nothing and INSTALLS: it reads the
+ * geometry mode out of a global, drives three Glide state setters off the bits
+ * that changed since last call, and writes the chosen vertex routine and the
+ * two triangle handlers into their dispatch slots. The port's
+ * value-returning form is a fragment of the tail. */
+#ifdef BR_MATCHING_BUILD
+void BrDlVtxRoutine(void);
+#else
 uint32_t BrDlVtxRoutine(const BrDl *pDl);
+#endif
 
 /* Non-zero when BrDlVtxRoutine's answer is one of the five that light. */
 int BrDlIsLit(const BrDl *pDl);

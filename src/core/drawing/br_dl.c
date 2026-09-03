@@ -735,6 +735,136 @@ static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
  * force. The port reports the original's address rather than installing a
  * function, so the choice stays checkable. */
 /* @implements 0x1001FD70 glide BrDlVtxRoutine */
+#ifdef BR_MATCHING_BUILD
+/* The port kept only the tail of this function -- the routine SELECTION --
+ * and turned it into a value-returning query. The original takes no
+ * arguments, returns nothing, and does three more things first:
+ *
+ *  - it reads the geometry mode from a global (0x105D17C8) and XORs it
+ *    against the PREVIOUS mode (0x105D17CC) three separate times, driving a
+ *    Glide state setter off each group of changed bits. Each block re-reads
+ *    the mode afterwards, because the setter may change it.
+ *  - it INSTALLS the chosen vertex routine into the dispatch slot at
+ *    0x100A9A68 rather than returning it,
+ *  - and it installs a pair of triangle handlers into 0x100A9D54 /
+ *    0x100A9D1C, chosen by bit 0x200, on every one of the four exits.
+ *
+ * That is 53 of the 80 instructions and all three of the calls
+ * tools/claimcheck.py flagged as "orig calls 3, port 0".
+ *
+ * RESIDUE (6+6 regnorm, -6 bytes, 80 instructions against 80): the original
+ * loads the OLD mode first and xors the new one INTO it
+ * (`mov ecx,[old]; mov eax,[new]; xor ecx,eax`), leaving the new mode alive
+ * in eax; ours loads the new mode first and needs a copy before the xor. Two
+ * of the three blocks then inherit the pairing, and one setter call has its
+ * store scheduled after the push instead of before.
+ * PROBED DEAD: flipping the xor operands (`geo ^ g_brDlGeoOld`) is
+ * byte-identical -- VC5 canonicalises it. */
+extern uint32_t g_brDlGeoNew;    /* 0x105D17C8  the mode being applied  */
+extern uint32_t g_brDlGeoOld;    /* 0x105D17CC  the mode last applied   */
+extern int32_t  g_brDlCullMode;  /* 0x105D17D8 */
+extern int32_t  g_brDlDepthFn;   /* 0x105CE2E0 */
+extern int32_t  g_brDlFogSel;    /* 0x105CDA04  picks the decal lighter */
+extern void    *g_pBrDlVtxSlot;  /* 0x100A9A68 */
+extern void    *g_pBrDlTri1Slot; /* 0x100A9D54 */
+extern void    *g_pBrDlTri2Slot; /* 0x100A9D1C */
+
+void __stdcall BrGlSetCullMode(int32_t m);   /* 0x10072A02 */
+void __stdcall BrGlSetCullSide(int32_t m);   /* 0x100729B4 */
+void __stdcall BrGlSetDepthFn(int32_t m);    /* 0x100729C6 */
+
+/* The eight routines the two slots select between. */
+extern void BrDlVtxLitDecal(void);   /* 0x100221D0 */
+extern void BrDlVtxLit(void);        /* 0x10021C70 */
+extern void BrDlVtxPlain(void);      /* 0x10021A20 */
+extern void BrDlVtxGenLin(void);     /* 0x10022BF0 */
+extern void BrDlVtxGen(void);        /* 0x10022600 */
+extern void BrDlVtxNoZLit(void);     /* 0x10023360 */
+extern void BrDlVtxNoZ(void);        /* 0x10023110 */
+extern void BrDlTri1Z(void);         /* 0x1001ECF0 */
+extern void BrDlTri2Z(void);         /* 0x1001FA30 */
+extern void BrDlTri1ZFlat(void);     /* 0x1001FEF0 */
+extern void BrDlTri2ZFlat(void);     /* 0x10020CF0 */
+extern void BrDlTri1NoZ(void);       /* 0x10020900 */
+extern void BrDlTri2NoZ(void);       /* 0x10020D70 */
+extern void BrDlTri1NoZFlat(void);   /* 0x100203F0 */
+extern void BrDlTri2NoZFlat(void);   /* 0x10020D30 */
+
+void BrDlVtxRoutine(void)
+{
+    uint32_t geo = g_brDlGeoNew;
+
+    /* 0x1001FD7B: the cull-enable bit. */
+    if (((geo ^ g_brDlGeoOld) & 0x10000u) != 0) {
+        BrGlSetCullMode((geo & 0x10000u) ? 2 : 0);
+        geo = g_brDlGeoNew;
+    }
+
+    /* 0x1001FDA2: `test dh,0x30`, i.e. the two cull-side bits. The zero is
+     * stored BEFORE the tests and the answer stored again after. */
+    if (((geo ^ g_brDlGeoOld) & 0x3000u) != 0) {
+        int32_t m = 0;
+
+        g_brDlCullMode = m;
+        if ((geo & 0x1000u) != 0) {
+            m = 2;
+        } else if ((geo & 0x2000u) != 0) {
+            m = 1;
+        }
+        g_brDlCullMode = m;
+        BrGlSetCullSide(m);
+        geo = g_brDlGeoNew;
+    }
+
+    /* 0x1001FDDE: the Z-buffer bit; the depth function goes to a global as
+     * well as to the setter. */
+    if (((geo ^ g_brDlGeoOld) & 1u) != 0) {
+        if ((geo & 1u) != 0) {
+            g_brDlDepthFn = 1;
+            BrGlSetDepthFn(1);
+        } else {
+            g_brDlDepthFn = 7;
+            BrGlSetDepthFn(7);
+        }
+        geo = g_brDlGeoNew;
+    }
+
+    /* ---- 0x1001FE0D: install, do not return ------------------------- */
+    if ((geo & 1u) != 0) {
+        if ((geo & 0x20000u) != 0) {
+            g_pBrDlVtxSlot = g_brDlFogSel ? (void *)BrDlVtxLitDecal
+                                          : (void *)BrDlVtxLit;
+        } else {
+            g_pBrDlVtxSlot = (void *)BrDlVtxPlain;
+        }
+        if ((geo & 0x40000u) != 0) {
+            /* Assigned then overridden -- the original stores the LIN
+             * routine unconditionally and replaces it. */
+            g_pBrDlVtxSlot = (void *)BrDlVtxGenLin;
+            if ((geo & 0x80000u) == 0)
+                g_pBrDlVtxSlot = (void *)BrDlVtxGen;
+        }
+        if ((geo & 0x200u) != 0) {
+            g_pBrDlTri1Slot = (void *)BrDlTri1Z;
+            g_pBrDlTri2Slot = (void *)BrDlTri2Z;
+        } else {
+            g_pBrDlTri1Slot = (void *)BrDlTri1ZFlat;
+            g_pBrDlTri2Slot = (void *)BrDlTri2ZFlat;
+        }
+    } else {
+        g_pBrDlVtxSlot = (void *)BrDlVtxNoZLit;
+        if ((geo & 0x20000u) == 0)
+            g_pBrDlVtxSlot = (void *)BrDlVtxNoZ;
+        if ((geo & 0x200u) != 0) {
+            g_pBrDlTri1Slot = (void *)BrDlTri1NoZ;
+            g_pBrDlTri2Slot = (void *)BrDlTri2NoZ;
+        } else {
+            g_pBrDlTri1Slot = (void *)BrDlTri1NoZFlat;
+            g_pBrDlTri2Slot = (void *)BrDlTri2NoZFlat;
+        }
+    }
+}
+#else
 uint32_t BrDlVtxRoutine(const BrDl *pDl)
 {
     uint32_t geo = pDl->geoMode;
@@ -755,12 +885,17 @@ uint32_t BrDlVtxRoutine(const BrDl *pDl)
     }
     return vtx;
 }
+#endif
 
+/* Port-only: it asks BrDlVtxRoutine for a VALUE, and the original's form
+ * installs rather than returns. Nothing in the matching build calls it. */
+#ifndef BR_MATCHING_BUILD
 int BrDlIsLit(const BrDl *pDl)
 {
     uint32_t v = BrDlVtxRoutine(pDl);
     return (v != 0x10021A20u && v != 0x10023110u);
 }
+#endif
 
 float BrDlColourScale(const BrDl *pDl)
 {
