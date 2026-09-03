@@ -59,10 +59,13 @@ for r in rows:
     # everything also rejects functions that merely have esp-relative LOCALS,
     # which costs a few true members -- acceptable, because the class this
     # screens for touches the stack not at all.
+    # x87 argument reads count too: a `float` parameter arrives as
+    # `fld dword ptr [esp + N]`, which no integer-mov pattern sees.
     stackargs = sum(1 for i in ins
-                    if i.mnemonic in ('mov', 'movsx', 'movzx', 'lea')
-                    and re.search(r'\[(?:esp|ebp)(?: \+ (?:0x[0-9a-f]+|\d+))?\]', i.op_str)
-                    and not i.op_str.startswith(('dword', 'word', 'byte')))
+                    if (i.mnemonic in ('mov', 'movsx', 'movzx', 'lea')
+                        and not i.op_str.startswith(('dword', 'word', 'byte'))
+                        or i.mnemonic in ('fld', 'fild'))
+                    and re.search(r'\[(?:esp|ebp)(?: \+ (?:0x[0-9a-f]+|\d+))?\]', i.op_str))
     absops = sum(1 for i in ins if re.search(r'\[0x[0-9a-f]{7,8}\]', i.op_str))
     if stackargs or absops < 2:
         continue
@@ -72,7 +75,13 @@ for r in rows:
         srccache[f] = open(fp).read() if os.path.exists(fp) else ''
     m = re.search(r'^[A-Za-z_].*\b' + re.escape(r['name']) + r'\s*\(([^)]*)\)',
                   srccache[f], re.M)
-    params = (m.group(1).strip() if m else '?')
+    if m is None:
+        continue
+    # A register-argument function reads nothing off the stack BY DESIGN, so
+    # it looks exactly like this class and is not it (0x10008AB0 BrPodOpen).
+    if re.search(r'__fastcall|BR_THISCALL', m.group(0)):
+        continue
+    params = m.group(1).strip()
     if params in ('void', '') or params == '?':
         continue
     # The class is a param the C body USES (emitting [reg+disp]) where the
