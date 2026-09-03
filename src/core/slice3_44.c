@@ -106,15 +106,22 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 /* @implements 0x100749D0 d3d BrMat3Skew */
 void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
 {
+    /* The three diagonal zeros are written FIRST, and in DESCENDING order --
+     * `xor ecx,ecx; [eax+0x20]; [eax+0x10]; [eax]` -- not interleaved in index
+     * order with the rest. Interleaved, the zero register has to stay live
+     * across the whole body, so VC5 spills into esi and the function grows a
+     * push/pop pair (59 -> 61 bytes). Grouped, the zero dies before pV is
+     * loaded and ecx is reused for pV, which is what the original does.
+     * Ascending order for the group is 7 bytes off; descending is exact. */
+    pOut->m[8] =  0.0f;
+    pOut->m[4] =  0.0f;
     pOut->m[0] =  0.0f;
     pOut->m[1] = -pV->z;
     pOut->m[2] =  pV->y;
     pOut->m[3] =  pV->z;
-    pOut->m[4] =  0.0f;
     pOut->m[5] = -pV->x;
     pOut->m[6] = -pV->y;
     pOut->m[7] =  pV->x;
-    pOut->m[8] =  0.0f;
 }
 
 /* WHAT IT DOES: solves the 3x3 system pM * x = pV for x by Cramer's rule and
