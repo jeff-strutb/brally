@@ -3452,3 +3452,32 @@ the source compared the cursor as an integer -- `(int)pe < (int)(tab + N)`,
 or an int cursor stepped by the element size -- even though every use of the
 cursor inside the loop is a pointer dereference. One byte, and it is
 readable straight off the branch opcode: 0x72 unsigned, 0x7C signed.
+
+## A repeated byte immediate gets pooled; write the mask at the field's real width
+
+Proven on 0x1002F380 (`BrPadTranslate`, 690 B, byte-exact — it was the
+whole residue, and the previous note there had already recorded four dead
+spellings).
+
+Two probes of the same bit in two bytes of one block:
+
+    if (!(pBytes[1] & 0x80) && !(pBytes[7] & 0x80))     /* WRONG */
+        -> mov cl,0x80 ; test byte [eax+1],cl ; test byte [eax+7],cl
+
+    if (!(*(unsigned short *)pBytes       & 0x8000)     /* RIGHT */
+        && !(*(unsigned short *)(pBytes+6) & 0x8000))
+        -> test byte [eax+1],0x80 ; test byte [eax+7],0x80
+
+Both forms test the same bits. The difference is WHEN the immediate 0x80
+exists. Written as a byte mask it is one constant in the source, and VC5's
+constant pooling hoists it into a register the moment it is used twice.
+Written as the halfword mask the field really is, each `test` is narrowed
+to `test byte …,0x80` late, per instruction, and there is no shared
+constant to pool.
+
+**The tell:** `mov r8,imm` immediately before two or more `test`/`and`
+byte operations that the original writes with the immediate inline. Widen
+the source mask to the natural width of the member being tested; do not
+try to break the pooling with `&&` vs nested `if`, the `!` form, split
+statements, or duplicated arms — all four were tried on this function and
+all four pool.
