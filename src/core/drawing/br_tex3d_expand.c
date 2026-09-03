@@ -21,7 +21,27 @@
  * do not restore it.  Commutative operand order (`&` in the mask tests,
  * `|` in the nibble merges) is canonicalised by VC5 and byte-neutral at
  * every site.  Map a region address to its source line with one `/FAcs`
- * compile before probing anything here. */
+ * compile before probing anything here.
+ * 2026-09-03 (session 6): the three channel-pack sites now advance the
+ * output pointer BEFORE the store and write through `puVar21[-1]`, which
+ * is how orig spells them (`mov word ptr [esi-2],dx` with the `add esi,2`
+ * already retired).  Pre-biased word stores 9 -> 10 of orig's 12, insns
+ * 2415 -> 2413 (orig 2407), raw regions 45 -> 44; masked regions still 32,
+ * so this is a shape gain, not a closure.  One site alone does nothing --
+ * all three together, or not at all.
+ * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
+ * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
+ * at once.  Session 4 measured this per pair and in eight combinations;
+ * the all-at-once case is now measured too and is WORSE, not better --
+ * it breaks the byte-exact 0x2b-0x6ee prefix (new divergences at 0x91,
+ * 0x132, 0x188, 0x1e6, ...) and costs +25 insns.  Its raw-region count
+ * falls 45 -> 25, which is an ALIGNMENT ARTEFACT of the broken prefix,
+ * not progress -- read masked regions and the first-divergence address
+ * together before believing a raw-count drop.  (The "apply a spelling to
+ * every sibling site before judging it" lesson that gained a region in
+ * br_scenedl.c does NOT generalise here: there the siblings shared one
+ * induction variable strategy, here each pair is independently allocated.)
+ */
 #ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
@@ -374,9 +394,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     iVar20 = (param_17 & 0xff) - uVar8;
                     chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
@@ -413,9 +433,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     iVar20 = (param_17 & 0xff) - uVar8;
                     chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
@@ -457,9 +477,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     iVar20 = (param_17 & 0xff) - uVar8;
                     chA = (unsigned char)((int)((int)(uVar19 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
