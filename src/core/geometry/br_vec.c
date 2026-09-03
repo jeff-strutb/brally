@@ -61,6 +61,12 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x1003AF70 d3d BrVec3AddTo */
+/* SAME FP SCHEDULING WALL as BrVec3Scale below, 6 diffs: the original loads
+ * pB first for ALL THREE components (`fld [ecx+n]; fadd [eax+n]`); we get
+ * that for y and z but the x component comes out reversed, because the
+ * parameter VC5 loads into a register first is the one it puts on the `fld`
+ * side. Writing the first component (or all three) as `pA->x = pB->x + pA->x`
+ * does not move it -- VC5 canonicalises the commutative FADD. */
 void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x += pB->x;
