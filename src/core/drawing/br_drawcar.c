@@ -252,6 +252,9 @@ static BrMat4 *mtx_alloc(uint32_t *pAddr)
 #define BR_WHEEL_MDL(off) \
     (*(const uint32_t *)((const unsigned char *)BrG_6C3308 + (off)))
 
+/* WHAT IT DOES: draw a car's four wheels, each with its own matrix so it can
+ * steer and spin independently of the body. Called once per car per frame,
+ * right after the body. */
 /* @implements 0x10009C10 glide BrCarDrawWheels */
 void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
 {
@@ -446,6 +449,14 @@ uint32_t g_BrCarLightSlot[BR_CAR_MAX];  /* 0x10273600 */
 #define BR_CAR_SPAN(x, y) BrSpanTestPoint(&g_BrFrameHull, (x), (y))
 #endif
 
+/* WHAT IT DOES: decide, once per car per frame, whether that car will be
+ * drawn at all and in which pass -- solid, see-through, or not at all -- and
+ * work out how much fog sits over it. A car is visible if its position (or,
+ * in some modes, a point six units to its side) falls inside the visible
+ * hull. The player's own car is never culled by that test; instead it drops
+ * to the see-through pass when the active camera is one of its own two
+ * mounts, which is what stops the bodywork filling the screen in the
+ * bumper views. */
 /* @implements 0x10009FC0 glide BrCarVisibilityUpdate */
 void BrCarVisibilityUpdate(void *pCar)
 {
@@ -1061,6 +1072,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
                              * go back to scalars to tidy the spelling. */
     uint32_t lodOff;
     uint32_t specMem = 0;
+    /* ‼ FUNCTION-SCOPE ON PURPOSE.  The SECOND specular MOVEMEM pair (0xBC3F)
+     * points at the SECOND pool allocation, not the third -- read off the
+     * original's slots: [esp+0x2c] takes 0x10062550's result (pSkyAng, read
+     * once at 0x1772), [esp+0x30] the FIRST 0x100625A0 (read at 0x690 for the
+     * light calls AND at 0x1b1c for this pair) and [esp+0x28] the SECOND
+     * 0x100625A0 (read only at 0xc78, the FIRST pair).  Spelling both pairs
+     * `specMem` emitted the wrong address in the display list AND made VC5
+     * CSE the shared `specMem + 0x10` into a slot (`lea R,[R+0x10]`,
+     * `mov [esp+S],R` ... `mov R,[esp+S]`) where the original recomputes it
+     * destructively at each site (`add edx,0x10` at 0xd38 and 0x1b59). */
+    BrLightPair *pLights;
     BrSkyAngles *pSkyAng = 0;
     BrMat4  *pSlot;
     BrVec3   dirTmp;
@@ -1297,7 +1319,6 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * Orig: 0x10062500 (discarded), 0x10062550 → pSkyAng,
      * two 0x100625A0 → pLights then specMem. */
     {
-        BrLightPair   *pLights;
         float          eyeX, eyeY, atOffset, eyeScale;
         const float   *pCam = (const float *)BrG_6C6490;
         const float   *pCarF = (const float *)car;
@@ -1785,8 +1806,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     put(0xE7000000u, 0);
-    put(0x03840010u, specMem);
-    put(0x03820010u, specMem + 0x10u);
+    /* 0xBC3F -- the SECOND specular MOVEMEM pair, and it is pLights, NOT
+     * specMem; see the declaration comment. */
+    put(0x03840010u, (uint32_t)(uintptr_t)pLights);
+    put(0x03820010u, (uint32_t)(uintptr_t)pLights + 0x10u);
 
     /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
     {

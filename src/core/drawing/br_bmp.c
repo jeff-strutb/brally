@@ -150,6 +150,10 @@ __declspec(dllimport) void *__stdcall LoadImageA(void *, const char *,
 __declspec(dllimport) int __stdcall GetObjectA(void *, int, void *);
 __declspec(dllimport) int __stdcall DeleteObject(void *);
 
+/* WHAT IT DOES: load a .BMP -- first as a resource baked into the executable,
+ * then falling back to a file on disc -- and convert it into the renderer's
+ * own 16-bit picture format. Returns NULL if it is missing or is not a
+ * 24-bit bitmap. This is how the loading screens and menu art get in. */
 /* @implements 0x10001290 glide BrBmpLoadSurface */
 BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 {
@@ -204,6 +208,10 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 #ifdef BR_MATCHING_BUILD
 void *BrBmpToRgba32(int param_1);
 
+/* WHAT IT DOES: load a .BMP from disc and hand back raw 32-bit RGBA pixels
+ * rather than a renderer surface -- the form the texture uploader wants.
+ * Only 24-bit bitmaps are accepted; anything else is rejected. The width and
+ * height out-parameters are accepted and IGNORED, exactly as in the original. */
 /* @implements 0x1005A210 glide BrBmpLoadRgba */
 uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
 {

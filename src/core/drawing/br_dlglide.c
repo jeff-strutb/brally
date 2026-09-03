@@ -456,6 +456,10 @@ typedef struct {
  * 0x504340) or clip+grBufferClear.  Colour bytes are four SEPARATE
  * uint8_t locals -- the dword-read + and 0xff widening in the bytes is
  * VC5's normal codegen for reading them back, not a source-level mask. */
+/* WHAT IT DOES: paint one solid-colour rectangle through Glide, in the
+ * current fill colour. Clips the corners to the active scissor box first,
+ * then hands the hardware two triangles making up the rectangle. This is what
+ * the display list's fill commands end up calling. */
 /* @implements 0x1001E380 glide BrGlRectFill */
 void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
@@ -542,6 +546,11 @@ extern uint32_t BrGlDepthFuncShadow;   /* 0x105CE2E0 */
  * twin 0x10020FA0 in slice5_60.c is a dirty-bit state machine, DIFFERENT
  * CODE).  766 bytes, an if/else chain on the mode word driving the
  * grAlphaTest/AlphaCombine/AlphaBlend/DepthBuffer state directly. */
+/* WHAT IT DOES: translate one N64 render-mode word into the equivalent Glide
+ * hardware state -- alpha test, alpha combine, blending and depth buffering.
+ * The game still speaks the N64's display-list language, so every mode change
+ * has to be mapped onto the 3dfx card here. A long if/else chain over the
+ * known mode words, matching the original's shape. */
 /* @implements 0x10021270 glide BrGlGbiCall */
 void BrGlGbiCall(uint32_t w1)
 {
