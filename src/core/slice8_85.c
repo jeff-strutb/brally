@@ -141,18 +141,20 @@ static void Br85ListAck(BrTextList *pList, int32_t v)
  * which is the only safe reading on a host where a null call is not a trap. */
 typedef void (*Br85MsgFn)(BrUiCtl_ *pThis, int32_t msg, int32_t a, int32_t b);
 
-static Br85MsgFn Br85MsgSlot(const BrUiCtl_ *pCtl)
-{
-    return (pCtl->pVtbl != NULL) ? pCtl->pVtbl->f14 : NULL;
-}
-
-static void Br85Msg(Br85MsgFn pfn, BrUiCtl_ *pCtl, int32_t msg,
-                    int32_t x, int32_t y)
-{
-    if (pfn != NULL) {
-        pfn(pCtl, msg, x, y);
-    }
-}
+/* MACROS, not static functions, and WITHOUT the null guards.
+ *
+ * VC5 does not inline these as functions: each send became a real `call` with
+ * the control pushed as a fourth argument and a caller-side `add esp, 0x10`,
+ * where the original fetches the slot with `mov eax,[ebx] / mov eax,[eax+14]`
+ * and calls it in place.  As macros, the fetch and the three sends land
+ * exactly where the original has them (the 0x1003E9E0 hook goes 110 -> 96
+ * bytes against 92, the 0x1003E7A0 hook 200 -> 182 against 148).
+ *
+ * DEVIATION REVERSED: the guards were port-safety additions -- the original
+ * calls the slot with no null check on either the vtable or the pointer.  A
+ * null vtable here now faults exactly as the original does. */
+#define Br85MsgSlot(pCtl)  ((pCtl)->pVtbl->f14)
+#define Br85Msg(pfn, pCtl, msg, x, y)  ((pfn)((pCtl), (msg), (x), (y)))
 
 /* CONFLICT 2: text-box vtable +0x14 returns an int whose LOW BYTE is tested
  * SIGNED.  slice3_39.h types the slot `void (*)(BrTextBox *)`. */
@@ -334,8 +336,28 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
 {
-    /* Note the inversion relative to the usual "flag set -> higher value". */
-    uint16_t c = (g_br0AB3D8 != 0) ? (uint16_t)0x68 : (uint16_t)0x69;
+    /* Note the inversion relative to the usual "flag set -> higher value".
+     *
+     * NOT a ternary.  `c ? K1 : K2` over two constants compiles to the
+     * branchless neg/sbb/add sequence (see the VC5-IDIOMS two-constant-ternary
+     * entry); the original BRANCHES -- `mov ecx,0x68; test eax,eax; jne end;
+     * mov ecx,0x69` -- which is the shape of a preset followed by a
+     * conditional overwrite.
+     *
+     * RESIDUE 32 bytes, and 44 against the original's 43.  Every differing
+     * byte is one register swap: the original puts the global in EAX (so the
+     * load is the one-byte-shorter `A1` moffs form) and the constant in ECX,
+     * and the recompile does the reverse.  The instruction sequence is
+     * otherwise identical.  Probed and ruled out, do not re-run: if/else with
+     * either arm order (both collapse back to the branchless form, 36 B),
+     * reading the global into a local first, `!g` versus `g == 0`, the
+     * inverted preset (0x69 then conditionally 0x68), `int16_t`/`int` for c,
+     * a goto instead of the if, and both chained-store orders -- all seven
+     * preset variants compile to byte-identical output. T3a. */
+    uint16_t c = 0x68;
+
+    if (g_br0AB3D8 == 0)
+        c = 0x69;
 
     pCtl->aStepId[0] = c;      /* +0x2A40, a WORD store */
     pCtl->w1E20C     = c;      /* +0x1E20C, a WORD store */
