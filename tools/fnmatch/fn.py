@@ -118,8 +118,15 @@ def main():
     print('%s %s  [%s]' % (va, name, r['file']))
     print('  BYTES orig=%d recomp=%d (%+d)   INSNS orig=%d recomp=%d (%+d)'
           % (len(orig), len(rc), len(rc) - len(orig), oi, ri, ri - oi))
-    print('  FIRSTDIV=+0x%x  DIFFS=%d (reloc-masked)  RAW %d+%d  REGNORM %d+%d%s'
-          % (fd, ndiff, res['raw'][0], res['raw'][1], res['regnorm'][0],
+    # ‼ DIFFS is a POSITIONAL compare -- byte i against byte i, relocs masked,
+    # no alignment.  Any size difference shifts everything after it, so the
+    # number is dominated by that shift and is NOT comparable across builds of
+    # different sizes.  (Measured on 0x1000EAF0: a two-byte change read as a
+    # 47% DIFFS drop, because a 4,600-byte tail moved from delta -2 to 0.)
+    # Say so, rather than let it be read as a distance-to-exact.
+    skew = '' if len(rc) == len(orig) else '  <-- SIZE DIFFERS: positional, compare only same-size builds'
+    print('  FIRSTDIV=+0x%x  DIFFS=%d (reloc-masked)%s  RAW %d+%d  REGNORM %d+%d%s'
+          % (fd, ndiff, skew, res['raw'][0], res['raw'][1], res['regnorm'][0],
              res['regnorm'][1], '   *** BYTE-EXACT ***' if ident else ''))
     if a.detail is not None:
         m = a.detail[0] if a.detail else 'regnorm'
