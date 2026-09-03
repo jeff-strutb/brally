@@ -1654,7 +1654,7 @@
 <text x="1439.8" y="10.5" font-size="10" fill="#8b949e">slice2_19</text>
 <rect x="1438.3" y="15.5" width="62.8" height="61.0" fill="#3fb950"><title>BrDlBorderEmit  0x1002C50E  1585B  [core/slice2_19]</title></rect>
 <rect x="1501.7" y="15.5" width="53.7" height="61.0" fill="#d29922"><title>BrAnimUpdate  0x1002ECEB  1357B  763 diff bytes  [core/slice2_19]</title></rect>
-<rect x="1556.0" y="15.5" width="41.9" height="61.0" fill="#d29922"><title>BrModelSwap  0x100302A0  1062B  945 diff bytes  [core/slice2_19]</title></rect>
+<rect x="1556.0" y="15.5" width="41.9" height="61.0" fill="#d29922"><title>BrModelSwap  0x100302A0  1062B  719 diff bytes  [core/slice2_19]</title></rect>
 <rect x="1438.3" y="77.1" width="49.6" height="42.0" fill="#3fb950"><title>BrCarGfxSetColour  0x1002E79F  868B  [core/slice2_19]</title></rect>
 <rect x="1438.3" y="119.7" width="49.6" height="33.3" fill="#3fb950"><title>BrPadTranslate  0x1002F380  690B  [core/slice2_19]</title></rect>
 <rect x="1438.3" y="153.5" width="49.6" height="30.2" fill="#3fb950"><title>FUN_1002dec3  0x1002DEC3  627B  [core/slice2_19]</title></rect>
@@ -1709,7 +1709,7 @@
 <rect x="1013.4" y="335.6" width="5.7" height="17.5" fill="#3fb950"><title>BrGuMtxStore  0x10029E50  47B  [core/drawing/br_drawcar]</title></rect>
 <rect x="1013.4" y="353.7" width="5.7" height="1.3" fill="#3fb950"><title>BrGuMtxHookNop  0x1002A9F2  5B  [core/drawing/br_drawcar]</title></rect>
 <text x="855.5" y="367.6" font-size="10" fill="#8b949e">br_scenedl</text>
-<rect x="854.0" y="372.6" width="165.1" height="135.6" fill="#d29922"><title>BrSceneDlBuild  0x1000EAF0  9354B  4677 diff bytes  [core/drawing/br_scenedl]</title></rect>
+<rect x="854.0" y="372.6" width="165.1" height="135.6" fill="#d29922"><title>BrSceneDlBuild  0x1000EAF0  9354B  4748 diff bytes  [core/drawing/br_scenedl]</title></rect>
 <text x="855.5" y="520.7" font-size="10" fill="#8b949e">br_tex3d_expand</text>
 <rect x="854.0" y="525.7" width="165.1" height="121.3" fill="#d29922"><title>BrTex3dExpand  0x100250D0  8480B  6371 diff bytes  [core/drawing/br_tex3d_expand]</title></rect>
 <text x="855.5" y="659.6" font-size="10" fill="#8b949e">slice6_73</text>
@@ -1939,7 +1939,7 @@
 <rect x="1485.6" y="408.1" width="5.1" height="3.4" fill="#3fb950"><title>BrX1002C2C0  0x10019830  10B  [core/slice8_86]</title></rect>
 <text x="1495.7" y="315.7" font-size="10" fill="#8b949e">slice2_20</text>
 <rect x="1494.2" y="320.7" width="78.5" height="46.4" fill="#58a6ff"><title>BrRcaFixup  0x10030770  1641B  [core/slice2_20]</title></rect>
-<rect x="1494.2" y="367.7" width="78.5" height="43.8" fill="#58a6ff"><title>BrTrackHdrRead  0x10031B80  1549B  [core/slice2_20]</title></rect>
+<rect x="1494.2" y="367.7" width="78.5" height="43.8" fill="#58a6ff"><title>BrGlTrackHdrRead  0x10031B80  1549B  [core/slice2_20]</title></rect>
 <rect x="1573.3" y="320.7" width="24.6" height="49.9" fill="#58a6ff"><title>BrTrackFixupRec54  0x100316D0  563B  [core/slice2_20]</title></rect>
 <rect x="1573.3" y="371.3" width="24.6" height="16.3" fill="#3fb950"><title>BrTexCopyRecords  0x10031AC0  188B  [core/slice2_20]</title></rect>
 <rect x="1573.3" y="388.1" width="12.6" height="12.4" fill="#3fb950"><title>BrTrackFixupSegList  0x10031910  76B  [core/slice2_20]</title></rect>
@@ -1987,7 +1987,7 @@
 <text x="1024.2" y="733.1" font-size="10" fill="#8b949e">br_dl</text>
 <rect x="1022.7" y="738.1" width="48.1" height="44.9" fill="#d29922"><title>br_dl_light_setup  0x10021C70  1019B  399 diff bytes  [core/drawing/br_dl]</title></rect>
 <rect x="1022.7" y="783.6" width="48.1" height="26.5" fill="#d29922"><title>br_dl_clip_emit  0x1001EE70  607B  246 diff bytes  [core/drawing/br_dl]</title></rect>
-<rect x="1071.5" y="738.1" width="29.1" height="26.6" fill="#d29922"><title>BrDlVtxRoutine  0x1001FD70  371B  107 diff bytes  [core/drawing/br_dl]</title></rect>
+<rect x="1071.5" y="738.1" width="29.1" height="26.6" fill="#d29922"><title>BrDlVtxRoutine  0x1001FD70  371B  187 diff bytes  [core/drawing/br_dl]</title></rect>
 <rect x="1101.2" y="738.1" width="23.5" height="26.6" fill="#d29922"><title>br_dl_light_vertex  0x10022AC0  301B  196 diff bytes  [core/drawing/br_dl]</title></rect>
 <rect x="1071.5" y="765.2" width="16.3" height="23.0" fill="#3fb950"><title>br_dl_env  0x1001E930  183B  [core/drawing/br_dl]</title></rect>
 <rect x="1071.5" y="788.8" width="16.3" height="21.3" fill="#d29922"><title>br_dl_project  0x10022070  170B  135 diff bytes  [core/drawing/br_dl]</title></rect>
@@ -2460,7 +2460,7 @@
 <rect x="1541.1" y="605.9" width="7.3" height="8.6" fill="#3fb950"><title>BrSub10071B60  0x1006AAD0  30B  [core/geometry/br_vec]</title></rect>
 <rect x="1541.1" y="615.1" width="7.3" height="4.0" fill="#3fb950"><title>BrVec3Zero  0x10034710  15B  [core/geometry/br_vec]</title></rect>
 <rect x="1552.1" y="573.9" width="31.2" height="23.1" fill="#3fb950"><title>BrSub_10017290  0x10014800  310B  [core/slice5_63]</title></rect>
-<rect x="1552.1" y="597.6" width="31.2" height="21.5" fill="#d29922"><title>BrExt_1005FBC0  0x10058900  289B  128 diff bytes  [core/slice5_63]</title></rect>
+<rect x="1552.1" y="597.6" width="31.2" height="21.5" fill="#58a6ff"><title>BrExt_1005FBC0  0x10058900  289B  [core/slice5_63]</title></rect>
 <rect x="1583.9" y="573.9" width="14.0" height="19.7" fill="#3fb950"><title>BrCdPlayClamped  0x10002B20  122B  [core/slice5_63]</title></rect>
 <rect x="1583.9" y="594.3" width="14.0" height="9.2" fill="#3fb950"><title>BrBoundsFits_10058CC0  0x10058CC0  59B  [core/slice5_63]</title></rect>
 <rect x="1583.9" y="604.1" width="6.7" height="11.7" fill="#3fb950"><title>BrCdTrackPlay  0x10002AF0  37B  [core/slice5_63]</title></rect>
@@ -2778,4 +2778,4 @@
 <rect x="1591.8" y="893.0" width="1.6" height="3.5" fill="#3fb950"><title>BrCountedTotal  0x1006D180  12B  [core/settings/br_state]</title></rect>
 <rect x="1591.8" y="897.1" width="1.6" height="0.8" fill="#3fb950"><title>BrStateGetField10  0x1006D190  4B  [core/settings/br_state]</title></rect>
 <rect x="1597.0" y="893.0" width="0.9" height="4.9" fill="#3fb950"><title>BrObjClear  0x1006CDC0  14B  [core/gamedata/br_obj]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1118 &#183; T3 codegen-only 35 &#183; 168,827/521,214 bytes exact (32.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1118 &#183; T3 codegen-only 36 &#183; 168,827/521,214 bytes exact (32.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
