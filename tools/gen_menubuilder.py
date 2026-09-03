@@ -145,7 +145,7 @@ def parse(va):
     # in the middle of it and used straight after for the relayout vcall.
     cpy = re.compile(
         r'^uVar(\d+) = 0xffffffff;$\n'
-        r'(?:^pcVar\d+ = \(char \*\)&(DAT_\w+);$\n)?'
+        r'(?:^pcVar\d+ = (?:\(char \*\))?&(DAT_\w+);$\n)?'
         r'^do \{$\n(?:^.*$\n)*?^\} while \(cVar\d+ != .\\0.\);$\n'
         r'^uVar\1 = ~uVar\1;$\n'
         r'^iVar(\d+) = piVar\d+\[0xad7\];$\n'
