@@ -743,7 +743,7 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     t = *p74; u = h[0x77]; h[0x77] = t; *p74 = u;
     t = h[0x75]; u = h[0x76]; h[0x76] = t; h[0x75] = u;
     p78 = h + 0x78;
-    t = *p78; u = h[0x7B]; h[0x7B] = t; *p78 = u;
+    t = h[0x78]; u = h[0x7B]; h[0x7B] = t; *p78 = u;
     t = h[0x79]; u = h[0x7A]; h[0x7A] = t; h[0x79] = u;
     *(uint32_t *)(h + 0x7C) =
         (((h[0x7D] | (uint32_t)h[0x7C] << 8) << 8 | h[0x7E]) << 8) | h[0x7F];
