@@ -56,6 +56,21 @@
  *   fmul [esi+0x38]`).  That is worth taking: it swaps a wall that six
  *   passes of probes could not move for a localised operand-order defect,
  *   and it moves the region count and the byte count the right way.
+ *   MEASURED EIGHTEENTH PASS, do not re-run, both under the staleness rule
+ *   (this function's allocation moved when the coefficients became symbols,
+ *   so its dead list was fair game again):
+ *     - the REDUNDANT-PARENTHESIS axis on the row terms.  Six variants
+ *       (parens around term 3, term 4, 3+4, 1+3, all four, and one outer
+ *       pair): none improves the register-blind gap below 48+54, and most
+ *       BREAK the 8|4 batching the symbol spelling had just won -- paren=3
+ *       and paren=4 give 6|6, paren=34 gives 5|7, paren=13 gives 5|7.  The
+ *       current no-paren form is the best of the seven.  The axis pays where
+ *       the register-blind gap is already 0; here it is 102 rows.
+ *     - WALL 4's byte-offset spelling, re-tested against the new
+ *       allocation: `rbo = ring * 4` with all eight if-arm sites through
+ *       `*(int *)((char *)base + rbo)` is BYTE-IDENTICAL to the plain index,
+ *       exactly as in the eleventh pass.  The verdict HOLDS; wall 4 is not
+ *       stale.
  *   MEASURED SEVENTEENTH PASS, do not re-run: the ROW TERM ORDER is not the
  *   lever for the leftover term-3 flip either.  Six permutations measured
  *   (1234, 2134, 1324, 3124, 1243, 2143); all keep the 8|4 batching and all

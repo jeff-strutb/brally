@@ -834,6 +834,12 @@ static void wheel_call(unsigned char *car)
  * code both builds emit (`mov cl,[..]; and eax,0xff` against `and eax,0xff;
  * mov cl,[..]`), not new divergent code.  Read the region before believing
  * its address.
+ * SESSION 14 PROBES, DEAD, do not re-run: the pack array's SIZE is inert
+ * (`pack[3]` and `pack[4]` are byte-identical to `pack[2]`, so the storage
+ * class matters and the extent does not), and dropping the redundant
+ * `(uint8_t)` casts from the six already-uint8_t globals in the other colour
+ * packs is byte-identical too -- unlike a redundant PARENTHESIS, a redundant
+ * cast is a true no-op.
  * SESSION 13 PROBE, DEAD, do not re-run: routing the shared pack through a
  * pointer local (`uint8_t *pp = pack;` and `pp[k]` at every use, to make the
  * array address-taken and force both elements to memory) is BYTE-IDENTICAL.
