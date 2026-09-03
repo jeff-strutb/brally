@@ -487,7 +487,24 @@ static void br_dl_normalise(BrVec3 *pV)
 {
     /* Same locals as BrVec3Normalise: x on x87, y/z integer-homed.
      * Scale-out: pV->x * k is a memory operand; y/z copy-assign k.
-     * Zero arm is the else so scale is fall-through (orig jne-to-zeros). */
+     * Zero arm is the else so scale is fall-through (orig jne-to-zeros).
+     *
+     * RESIDUE 49 bytes, 4 over / 2 instructions over, RAW 3+1.  The front
+     * half and the zero arm are exact; the whole gap is ONE EXTRA x87 STACK
+     * SLOT in the scale-out.  After the `fdivr` the original makes three
+     * copies of the reciprocal and multiplies each by a MEMORY operand
+     * (`fld st(0); fld st(1); fxch st(1); fmul [esi]; ... fmul [esi+4]; ...
+     * fmul [esi+8]`); we load pV->x into st first (`fld [esi]`) and do that
+     * one product register-to-register, which leaves a fourth value to
+     * `fstp st(0)` at the end.  Only the X term differs -- y and z already
+     * use the memory fmul.
+     * Probed and DEAD, all three byte-identical to what is here: `pV->x *=
+     * len` compound assignment, `pV->x * len` operand order, and keeping the
+     * dead `x` local alive past the branch.  COMPILE VARIANT CHECKED, this
+     * one is genuinely /O2: /O2 49 diffs, /O2 /Op 128, /O2 /Oy- 117, /Od 122.
+     * Next lead, untried: the `float x` local is what makes VC5 treat the X
+     * term differently from y/z -- but it is load-bearing for the length
+     * computation above, so changing it means re-proving that half. */
     float x = pV->x;
     float y = pV->y;
     float z = pV->z;
