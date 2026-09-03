@@ -1318,9 +1318,14 @@ void BrModelSwap(void *pImage)
             BrRdBe32(PITEM + 0x0C);        /* item->k */
             BrRev2  (PITEM + 0x10);
             BrRev2  (PITEM + 0x12);
-            BrRdBe32(PITEM + 0x14);
-            BrRdBe32(PITEM + 0x18);
-            BrRdBe32(PITEM + 0x1C);
+            /* These three are plain in-place byte reversals, not the
+             * compose-and-store form: the original has exactly three
+             * shl/or composes (block->n, item->m at +0x00 and item->k at
+             * +0x0C) and six shl total, where the compose spelling here
+             * gave twelve. */
+            BrRev4(PITEM + 0x14);
+            BrRev4(PITEM + 0x18);
+            BrRev4(PITEM + 0x1C);
 
             /* The leaf count is likewise re-read from the item every pass;
              * the original's `if (k <= 0) skip` guard is the same test. */
