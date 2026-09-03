@@ -1255,15 +1255,15 @@ static uint16_t BrLd16(const void *pv)
  * caller, so every BrRev/BrLd here was a `call` the original does not have.
  * Scoped to BrModelSwap with #undef below so the other users of these
  * helpers keep whatever shape they already match with. */
-#define BrRev4(pv) do { unsigned char *p_ = (unsigned char *)(pv); unsigned char t_; \
-    t_ = p_[0]; p_[0] = p_[3]; p_[3] = t_; \
-    t_ = p_[1]; p_[1] = p_[2]; p_[2] = t_; } while (0)
-#define BrRev2(pv) do { unsigned char *p_ = (unsigned char *)(pv); \
-    unsigned char t_ = p_[0]; p_[0] = p_[1]; p_[1] = t_; } while (0)
-#define BrRdBe32(pv) do { unsigned char *p_ = (unsigned char *)(pv); \
-    uint32_t v_ = ((uint32_t)p_[0] << 24) | ((uint32_t)p_[1] << 16) \
-                | ((uint32_t)p_[2] << 8) | (uint32_t)p_[3]; \
-    *(uint32_t *)(void *)p_ = v_; } while (0)
+#define BrRev4(pv) do { unsigned char t_; \
+    t_ = ((unsigned char *)(pv))[0]; ((unsigned char *)(pv))[0] = ((unsigned char *)(pv))[3]; ((unsigned char *)(pv))[3] = t_; \
+    t_ = ((unsigned char *)(pv))[1]; ((unsigned char *)(pv))[1] = ((unsigned char *)(pv))[2]; ((unsigned char *)(pv))[2] = t_; } while (0)
+#define BrRev2(pv) do { unsigned char t_ = ((unsigned char *)(pv))[0]; \
+    ((unsigned char *)(pv))[0] = ((unsigned char *)(pv))[1]; ((unsigned char *)(pv))[1] = t_; } while (0)
+#define BrRdBe32(pv) do { uint32_t v_ = \
+      ((uint32_t)((unsigned char *)(pv))[0] << 24) | ((uint32_t)((unsigned char *)(pv))[1] << 16) \
+    | ((uint32_t)((unsigned char *)(pv))[2] << 8)  | (uint32_t)((unsigned char *)(pv))[3]; \
+    *(uint32_t *)(void *)(pv) = v_; } while (0)
 #define BrLd32(pv) (*(const uint32_t *)(const void *)(pv))
 #define BrLd16(pv) (*(const uint16_t *)(const void *)(pv))
 /* DIRECT calls, not indirect: the original has nine `call rel32` and one
@@ -1286,66 +1286,66 @@ void BrModelSwap(void *pImage)
     /* GOTCHA: tested BEFORE the byte reversal. Only works because zero is a
      * palindrome. */
     if (BrLd32(pHdr + 4) != 0) {
-        unsigned char *pBlock;
         int32_t iItem;
+#define PBLOCK (*(unsigned char **)(void *)(pHdr + 4))
+#define PSLOT  (PBLOCK + 4 + 4 * (size_t)iItem)
+#define PITEM  (*(unsigned char **)(void *)PSLOT)
 
         BrRev4(pHdr + 4);
         g_BrModelFixup((uint32_t *)(pHdr + 4));
-        pBlock = (unsigned char *)g_BrModelDeref(BrLd32(pHdr + 4));
 
-        BrRdBe32(pBlock);                  /* block->n */
+        BrRdBe32(PBLOCK);                  /* block->n */
 
         /* The original re-reads the count from the block on every pass. */
-        for (iItem = 0; iItem < (int32_t)BrLd32(pBlock); iItem++) {
-            unsigned char *pSlot = pBlock + 4 + 4 * (size_t)iItem;
-            unsigned char *pItem;
+        for (iItem = 0; iItem < (int32_t)BrLd32(PBLOCK); iItem++) {
             int32_t iLeaf;
             size_t off;
 
-            BrRev4(pSlot);
-            g_BrModelFixup((uint32_t *)pSlot);
-            pItem = (unsigned char *)g_BrModelDeref(BrLd32(pSlot));
+            BrRev4(PSLOT);
+            g_BrModelFixup((uint32_t *)PSLOT);
 
-            BrRdBe32(pItem + 0x00);        /* item->m */
-            BrRev4  (pItem + 0x04);
-            g_BrModelFixup((uint32_t *)(pItem + 0x04));
+            BrRdBe32(PITEM + 0x00);        /* item->m */
+            BrRev4  (PITEM + 0x04);
+            g_BrModelFixup((uint32_t *)(PITEM + 0x04));
 
             /* The vertex-cache resolve is handed the SLOT, not the value. */
-            BrModelVtxResolve((uint32_t *)(pItem + 0x04),
-                              (int)BrLd32(pItem + 0x00));
+            BrModelVtxResolve((uint32_t *)(PITEM + 0x04),
+                              (int)BrLd32(PITEM + 0x00));
 
-            BrRev4(pItem + 0x08);
-            g_BrModelFixup((uint32_t *)(pItem + 0x08));
+            BrRev4(PITEM + 0x08);
+            g_BrModelFixup((uint32_t *)(PITEM + 0x08));
 
-            BrRdBe32(pItem + 0x0C);        /* item->k */
-            BrRev2  (pItem + 0x10);
-            BrRev2  (pItem + 0x12);
-            BrRdBe32(pItem + 0x14);
-            BrRdBe32(pItem + 0x18);
-            BrRdBe32(pItem + 0x1C);
+            BrRdBe32(PITEM + 0x0C);        /* item->k */
+            BrRev2  (PITEM + 0x10);
+            BrRev2  (PITEM + 0x12);
+            BrRdBe32(PITEM + 0x14);
+            BrRdBe32(PITEM + 0x18);
+            BrRdBe32(PITEM + 0x1C);
 
             /* The leaf count is likewise re-read from the item every pass;
              * the original's `if (k <= 0) skip` guard is the same test. */
             off = 0x20;
             for (iLeaf = 0;
-                 iLeaf < (int32_t)BrLd32(pItem + 0x0C);
+                 iLeaf < (int32_t)BrLd32(PITEM + 0x0C);
                  iLeaf++, off += 4) {
-                unsigned char *pLeaf;
                 int32_t nHalf, j;
+#define PLEAF (*(unsigned char **)(void *)(PITEM + off))
 
-                BrRev4(pItem + off);
-                g_BrModelFixup((uint32_t *)(pItem + off));
-                pLeaf = (unsigned char *)g_BrModelDeref(BrLd32(pItem + off));
-
-                BrRev4(pLeaf + 0);
+                BrRev4(PITEM + off);
+                g_BrModelFixup((uint32_t *)(PITEM + off));
+                BrRev4(PLEAF + 0);
 
                 /* GOTCHA: the halfword count comes from the ITEM's first
                  * dword, not the leaf's. */
-                nHalf = 3 * (int32_t)BrLd32(pItem + 0x00);
+                nHalf = 3 * (int32_t)BrLd32(PITEM + 0x00);
                 for (j = 0; j < nHalf; j++)
-                    BrRev2(pLeaf + 4 + 2 * (size_t)j);
+                    BrRev2(PLEAF + 4 + 2 * (size_t)j);
+#undef PLEAF
             }
         }
+#undef PITEM
+#undef PSLOT
+#undef PBLOCK
     }
 
     /* ---- the record array at +0x08, stride 0x14 ----
