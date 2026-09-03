@@ -288,7 +288,10 @@ typedef struct BrDlOwner {
 
 extern int32_t     g_Br0B380C;      /* 0x100B380C  a mode selector        */
 extern int32_t     g_Br6C666C;      /* 0x106C666C                         */
-extern const void *g_BrDlTableA;    /* 0x100AA8D8  arg 2 of 0x100341B3    */
+/* 0x100AA8D8 is the TABLE ITSELF, not a pointer to it: 0x1003445A pushes the
+ * address as an immediate (`push 0x100AA068` in Glide space) rather than
+ * loading a pointer variable.  Left incomplete -- nothing pins its length. */
+extern const unsigned char g_BrDlTableA[];   /* 0x100AA8D8  arg 2 of 0x100341B3 */
 
 /* 0x1003445A
  *   g_Br6C666C = 0

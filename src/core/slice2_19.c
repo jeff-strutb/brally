@@ -93,7 +93,8 @@ BrPool   *g_BrPool;
 
 int32_t     g_Br0B380C;
 int32_t     g_Br6C666C;
-const void *g_BrDlTableA;
+/* g_BrDlTableA is an incomplete extern array (see slice2_19.h): the object
+ * at 0x100AA8D8 is the table, so there is nothing to define here. */
 
 int32_t g_BrCarCount;
 void  (*g_BrGfxSubmit)(uint32_t dl);
@@ -432,20 +433,27 @@ void BrDlRebase(uint32_t *pDl, uint32_t lo, uint32_t hi, uint32_t base)
 /* @implements 0x1003445A d3d BrDlOwnerFixup */
 void BrDlOwnerFixup(BrDlOwner *pOwner)
 {
+    /* A TERNARY, not an if/else.  At /Od the ternary's value lands in a
+     * compiler temp at [ebp-8] and is then copied into `want` at [ebp-4],
+     * which is where the original's `sub esp, 8` -- two dwords for one named
+     * local -- comes from.  An if/else writes `want` directly and needs only
+     * four bytes of frame. */
     int32_t want;
 
     g_Br6C666C = 0;
 
-    if (g_Br0B380C == 2 || g_Br0B380C == 8)
-        want = 0;
-    else
-        want = 1;
+    want = (g_Br0B380C == 2 || g_Br0B380C == 8) ? 0 : 1;
 
     if ((pOwner->flags & 4u) == 0)
         g_Br6C666C = want;
 
+    /* Compound `|=`, not a read-modify-write through a widening cast: the
+     * original reads the halfword straight into cx and ors the low byte
+     * (`mov cx,[eax+0x4c]; or cl,8`).  Spelling it as
+     * `flags = (uint16_t)(flags | 8u)` adds the `xor edx,edx` zero-extension
+     * the original does not have. */
     if (BrSub100341B3(pOwner->pDl, g_BrDlTableA))
-        pOwner->flags = (uint16_t)(pOwner->flags | 8u);
+        pOwner->flags |= 8u;
 }
 
 /* ================================================================== */
