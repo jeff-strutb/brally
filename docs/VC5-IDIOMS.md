@@ -750,6 +750,27 @@ the caller AND flipped a helper to match for free.
   types / scopes / LICM, param_4 renames, two-step wb or pW defs,
   pointer-difference car base (cancelled), index-based `param_4 +
   iCar*0x2b68` (second IV), byte-offset `ring*4` (still folded).
+- **‼ `divergence.py`'s region count is BLIND to immediate-operand defects.
+  Screen every stalled function with `tools/msetdiff.py` before grinding it
+  further.** divergence.py normalises to "mnemonic + operand SHAPE with
+  imm32 wildcarded" (its own `norm`), which is right for aligning streams
+  but means a wrong CONSTANT scores as a match forever. Proven 2026-09-03 on
+  0x1000EAF0: the ring-wrap test is `if (head >= 500)`, not `if (499 < head)`
+  — orig emits `cmp X,0x1f4; jl`, we emitted `cmp X,0x1f3; jle`, at four
+  sites, and the region count had called all four MATCHING through eight
+  passes of grinding. The two spellings are semantically identical, so
+  nothing behavioural could have caught it either; only the bytes say which
+  constant the original source wrote. Fixing it took the reloc-masked byte
+  diff 3,855 -> 3,727 and the instruction count to exactly 2,328 = 2,328.
+  `tools/msetdiff.py` keeps small immediates while normalising registers,
+  esp displacements and relocs, then diffs the multisets — what survives is
+  a real constant defect or genuinely absent code.
+  **Corollary on metrics:** that fix RAISED the masked region count 19 -> 20
+  (it re-opened an unrelated sink), so region count alone would have
+  rejected a correct transcription. On any change touching a constant, rank
+  by reloc-masked differing bytes and by instruction count, not by regions.
+  The signature to watch for: a region count that will not move while the
+  instruction count stays off.
 - **A spelling must be measured on EVERY site that shares the allocator
   decision it targets — and on no more than those.** Proven 2026-09-03 by
   moving 0x1000EAF0 20 -> 19 masked regions on a lever its own dossier had
