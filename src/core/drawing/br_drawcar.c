@@ -800,14 +800,24 @@ static void wheel_call(unsigned char *car)
  * each of the four arms, not one call on a selected `dlSel`.  Written that
  * way the block is instruction-for-instruction and register-for-register the
  * original, first arm's private `push eax; push ecx; jmp` included.
- * ‼ STILL OPEN from the same census, and NOT the same defect: the literal
- * pushes do not balance -- orig pushes `0x3e9` 21 times to our 20 and
- * `0x3f4` twice to our once, while we push the zero register (ebp) twice
- * more than orig.  Register-push totals are equal, so somewhere two emit
- * arguments that should be those two DL tokens are being passed as 0.  That
- * is a constant defect of the ring-wrap kind (invisible to divergence.py,
- * which wildcards imm32) and it is worth finding: re-run the census after
- * any change here.
+ * SAME SESSION, the census then paid again -- and this is the reusable
+ * lesson.  Comparing each call's argument SEQUENCE (not just its multiset)
+ * found TWO combiner calls whose sixteen tokens sat in the wrong slots.
+ * The original's argument list is recoverable from the bytes with no
+ * guessing at all: cdecl pushes right-to-left, so the Nth push is argument
+ * (nargs + 1 - N), and `push ebp` is TK_ZERO because ebp is this function's
+ * zero register.  Decoded that way the two calls read
+ *   0xBA22: ZERO,ZERO,ZERO,TEXEL1_A / ZERO,ZERO,ZERO,TEXEL0  (twice)
+ *   0xBA9A: TEXEL0,SHADE,0x3F4,SHADE / ZERO,ZERO,ZERO,TEXEL0 (twice)
+ * -- both regular, and the second is an actual lerp between shade and
+ * texel, which is what the function's name says it does.  The old spellings
+ * had the right tokens in the wrong positions and passed TK_ZERO where the
+ * original passes TEXEL0 and 0x3F4, so the emitted display list was wrong,
+ * not merely differently compiled.  Four more regions: 29 -> 25 masked,
+ * 33 raw, and 48 -> 40 bytes short.  All 34 call groups now agree token for
+ * token.  ‼ Neither tool could see this: divergence.py wildcards imm32, and
+ * a multiset comparison passes a permutation.  On any emit-heavy function,
+ * run the sequence census before believing a region map.
  *
  * WHERE THE 15 MISSING INSTRUCTIONS ARE (2026-09-03, session 7).  The
  * biggest single gap is region 4/5: orig runs 0x327..0x3c0 where we run
@@ -1460,8 +1470,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBA000C02u, BrG_6C0258);
         put(0xFA000000u, 0xFFFFCCFFu);
         BrRdpSetCombineLERP(put_slot(),
-            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_ZERO,
-            TK_TEXEL1_A, TK_ZERO, TK_ZERO,     TK_TEXEL0,
+            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL1_A,
+            TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL0,
             TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL1_A,
             TK_ZERO,     TK_ZERO, TK_ZERO,     TK_TEXEL0);
         put(0xB900031Du, 4);
@@ -1500,11 +1510,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xBB000001u, 0x08001000u);
     put(0xBA000C02u, BrG_6C0258);
 
+    /* Argument ORDER read back out of the original's push stream, not
+     * guessed: each row is (A - B) * C + D, so this one really is a LERP
+     * between shade and texel by 0x3F4, twice.  The old spelling had the
+     * same tokens in the wrong slots and passed TK_ZERO where the original
+     * passes TK_TEXEL0 and 0x3F4 -- invisible to divergence.py, which
+     * wildcards imm32. */
     BrRdpSetCombineLERP(put_slot(),
-        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO,
-        0x3F4,       TK_ZERO, TK_SHADE,     TK_ZERO,
-        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO,
-        TK_TEXEL0,   TK_ZERO, TK_SHADE,     TK_ZERO);
+        TK_TEXEL0,   TK_SHADE, 0x3F4,   TK_SHADE,
+        TK_ZERO,     TK_ZERO,  TK_ZERO, TK_TEXEL0,
+        TK_TEXEL0,   TK_SHADE, 0x3F4,   TK_SHADE,
+        TK_ZERO,     TK_ZERO,  TK_ZERO, TK_TEXEL0);
 
     /* 0xBA18 -- 3-arm FB colour (G_SETENVCOLOR).  The put() is INSIDE each
      * arm (three full copies of the Horner pack in the bytes); the inner
