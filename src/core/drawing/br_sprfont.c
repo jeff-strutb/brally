@@ -382,6 +382,39 @@ static int BrSprGlyphClassify(char c)
 /* WHAT IT DOES: decides where the first letter of a line of text goes. Normally
  * that is just the text box's own left edge, but a box marked as centred is
  * asked to work out its centred starting point instead. */
+/* THE TAG IS ON THE WRONG BODY -- read this before touching 0x1005B2B0.
+ *
+ * 0x1005B2B0 (glide 0x100540D0) is 212 bytes, and config/shared.csv pairs the
+ * two by BODY, not by slot, so both really are that size.  What lives there is
+ * the whole DRAW routine: the pen-start below is its first thirty bytes,
+ * inlined, and the rest is the character loop.  The twelve-line function this
+ * tag sits on is a fragment of it, which is why the row reads 64 bytes against
+ * 212.  BrSprFontDraw_1005B2B0 further down is the body that belongs here, and
+ * it is untagged.
+ *
+ * What the bytes say about the real body, so the next pass does not re-derive
+ * it:
+ *   - Thiscall, `this` in ecx, NO stack arguments, returns void.  The blit
+ *     function and context BrSprFontDraw_1005B2B0 takes are port inventions;
+ *     the original dispatches through the box's own vtable.
+ *   - Two frame dwords (`sub esp, 8`): the running pen x at [esp+0xc] after
+ *     the three pushes, and an int temp at [esp+0x10] that only exists to
+ *     carry the advance into `fild`.
+ *   - The glyph draw is `call dword ptr [edx+0x18]` with FOUR stack arguments
+ *     (glyph, x, y, (int8)f08) and this in ecx, and the +0x420 tail is
+ *     `call dword ptr [edx+0x24]` with two (x, y).  slice3_39.h types both
+ *     slots `void (*)(BrTextBox *)` because their arity was unknown; a LOCAL
+ *     __fastcall view of the vtable with struct-typed stack arguments is how
+ *     to reach them without touching that shared header (see the thiscall
+ *     entry in docs/VC5-IDIOMS.md -- this is now known to work through a
+ *     function pointer).
+ *   - BrSprGlyphClassify is INLINED (VC5 inlines no static helper), and the
+ *     index arithmetic is 16-bit: `movsx cx, al` then `sub ecx, 0x20`.
+ *   - THE METRIC TABLE IS NOT g_BrGlyphFontA.  It is at 0x100ABE84 with a
+ *     TWELVE-byte stride (`lea esi,[eax+eax*2]; shl esi,2`), advance at +0
+ *     and sprite at +4 -- while slice3_39.h's BrGlyphMetric is eight bytes at
+ *     0x100AC6E4.  A third table, or a wider one; it needs its own type
+ *     before this body can be written. */
 /* @implements 0x1005B2B0 d3d BrSprFontPenStart_1005B2B0 */
 float BrSprFontPenStart_1005B2B0(BrTextBox *pBox)
 {
