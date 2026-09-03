@@ -36,6 +36,42 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * TWELFTH PASS (2026-09-03) MOVED WALL 3 for the first time in six passes.
+ * The wheel record's +0x70 field is now reached through its own pointer,
+ * `float *pP = (float *)(wb + (int)pCar + 0x70)`, which is the SAME
+ * expression the BrGroundProbeZ argument already used -- so VC5 CSEs the
+ * two and addresses x as `[eax]` where it used to spell `[edi+0x70]`, and
+ * the argument push reuses the register instead of computing a second sum.
+ * Both x reads (x1 and x2) go through `pP[0]`; y and z stay `pW->y` /
+ * `pW->z`, which is what the original does (`fld [eax]` / `fadd [eax]` for
+ * x, `[edi+0x74]` for y, `[edi+0x78]` for z).
+ *   Scoreboard, and read all of it before judging: reloc-masked byte diff
+ *   4,727 -> 4,669; register-blind multiset 37 missing/31 extra -> 35/29;
+ *   fn.py RAW 120+126 -> 108+114, REGNORM 41+47 -> 40+46.  Masked regions
+ *   are FLAT at 20 (0x1c5f and 0x1c90 closed, 0x1fc8 opened) and the
+ *   recompile is 2 bytes SMALLER than before (-16 -> -18).  Wall 3's rows
+ *   `fld [R]`, `fadd [R]`, `fld [R + R + 0x54]` are gone from the multiset;
+ *   what is left of it is one pair, `lea R,[R + 0x70]` (orig) against
+ *   `lea R,[R + R + 0x70]` (ours), plus a new `mov R,[R + R + 0x50]` vs
+ *   `mov R,[R + 0x50]` -- the original defers `lea edi,[eax+ecx]` until
+ *   AFTER the vx/vy reads and we now materialise it before them.
+ * TWELFTH-PASS PROBES, DEAD -- do not re-run.  Both are the same finding:
+ *   (e) the probe argument spelled `&pW->x` (inline), and
+ *   (f) `wb` deleted outright, `pW` defined by the whole four-term sum with
+ *       `pP = &pW->x`
+ *   each FLIP THE FRAME, not merely the address split: first divergence
+ *   collapses +0x2b -> +0x15 (`push edi` moves ahead of the `cmp` and the
+ *   `mov edi,1` sink re-opens) and the reloc-masked byte diff explodes to
+ *   6,475 / 6,639.  (f) lands at -1 byte / +1 instruction, which looks like
+ *   parity and is not: the whole allocation is different.  ‼ So the entry
+ *   below is stronger than it reads -- it is not just that a single-use
+ *   `wb` merges the four-term sum, it is that ANY spelling which makes the
+ *   wheel pointer one sum rewrites the prologue.  Keep `wb` and keep it
+ *   used twice.
+ *   (g) sinking `pP` into a nested block after the sqrt is BYTE-IDENTICAL
+ *       to declaring it with the other locals -- /O2 slot and materialisation
+ *       order ignore scope, as the sixth-pass entry already says.
+ *
  * ELEVENTH PASS (2026-09-03) closed no region but SETTLED both remaining
  * "shape" walls by reading the original harder, and it retires the framing
  * the tenth pass left behind:
@@ -919,14 +955,15 @@ no_mark:
                             int iw = DAT_100a5d98[iWheel];
                             int wb = iw * 0x40 + param_4 + negCar0;
                             BrWheelRec *pW = (BrWheelRec *)(wb + (int)pCar);
+                            float *pP = (float *)(wb + (int)pCar + 0x70);
                             dx = pW->vx;
                             dy = pW->vy;
                             len = (float)sqrt(dx * dx + dy * dy);
-                            x1 = pW->x - (dx / len) * DAT_10077250;
-                            x2 = (dx / len) * DAT_10077250 + pW->x;
+                            x1 = pP[0] - (dx / len) * DAT_10077250;
+                            x2 = (dx / len) * DAT_10077250 + pP[0];
                             y1 = pW->y - (dy / len) * DAT_10077250;
                             y2 = (dy / len) * DAT_10077250 + pW->y;
-                            z = (pW->z - BrGroundProbeZ((float *)(wb + (int)pCar + 0x70))) -
+                            z = (pW->z - BrGroundProbeZ(pP)) -
                                 DAT_10077254;
                             ring = iWheel + iCar * 4;
                             if (DAT_1035faf0[ring] != DAT_1035f750[ring]) {
