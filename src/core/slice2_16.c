@@ -2062,6 +2062,13 @@ no:
 }
 #endif
 
+/* WHAT IT DOES: reports whether the screen transition is currently heading
+ * TOWARDS covering the screen -- fading down rather than up -- or is set to
+ * bounce back and do so. Callers use it to hold off on anything that would be
+ * hidden a moment later.
+ *
+ * The negated comparison is load-bearing: an unordered (NaN) rate answers
+ * yes, matching the original's `test ah,1` on the compare flags. */
 /* @implements 0x1002B2A0 d3d BrFadeIsClosing */
 #ifndef BR_MATCHING_BUILD
 int BrFadeIsClosing(const BrFadeState *pSt)
@@ -2567,6 +2574,11 @@ uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
  * image.  br_ai.c's static br_ai_reloc also claims this VA with a
  * by-value shape -- that claim is stale and should be retired when br_ai
  * is next touched. */
+/* WHAT IT DOES: rewrite one pointer inside freshly loaded N64-format data so
+ * it points at where the block actually landed in memory. A null stays null,
+ * and anything pointing BELOW the block's own base is not a real pointer at
+ * all and is zeroed rather than rebased into nonsense. The bases come from
+ * BrSegSetBases. */
 /* @implements 0x100189E0 glide BrSegPtrFixup */
 void BrSegPtrFixup(uint32_t *p)
 {

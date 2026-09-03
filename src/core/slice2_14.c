@@ -462,6 +462,9 @@ float    g_BrFpsValueB;                 /* glide 0x100A64B4 */
 int32_t  g_BrFpsScreenW;                /* glide 0x100A7514 */
 int32_t  g_BrFpsScreenH;                /* glide 0x100A7518 */
 
+/* WHAT IT DOES: build the on-screen performance readout -- averages several
+ * running sample tables and formats them into a line of text. The debug
+ * frame-rate display. Does nothing at all if the readout is switched off. */
 /* @implements 0x10011EA0 glide BrFpsReadout */
 void BrFpsReadout(void)
 {

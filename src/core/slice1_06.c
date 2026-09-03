@@ -208,6 +208,11 @@ int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
  * accepting condition and an unordered compare (NaN) sets C0 and rejects. */
 #define BR06_TRI_EPS 0.0f
 
+/* WHAT IT DOES: test whether a point lies inside a triangle, given a
+ * reference direction that says which side of the triangle counts as the
+ * front. Walks the three edges and requires the point to be on the inward
+ * side of every one. Used by the collision grid to decide whether a wheel is
+ * over a given piece of track surface. */
 /* @implements 0x1003B940 d3d BrTriContainsPoint */
 /* @n64 0x8022591C located */
 int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,

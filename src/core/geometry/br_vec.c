@@ -157,9 +157,9 @@ void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
 /* @n64 0x80224894 located */
 void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
-    pOut->x = pA->x + pB->x;
-    pOut->y = pA->y + pB->y;
-    pOut->z = pA->z + pB->z;
+    pOut->x = pB->x + pA->x;
+    pOut->y = pB->y + pA->y;
+    pOut->z = pB->z + pA->z;
 }
 
 /* WHAT IT DOES: subtract one vector from another IN PLACE -- pA becomes

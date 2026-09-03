@@ -130,7 +130,10 @@ void        (*g_pfnBrRaceAiControl)(BrDriverCar *);
  * how a car that has no physics of its own -- an entrant the player never
  * sees driving -- is moved round the circuit. If it runs out of line it leaves
  * the answer untouched rather than reporting an error. */
-/* @implements 0x1005ECF0 glide BrRacePathAdvance */
+/* port-only body; Glide match is src/core/generated/0x1005ECF0.c
+ * (the original walks relocated node POINTERS and reads the fields in place;
+ * the BrAiNodeAt/BrAiPoint_ bounds-checked accessors below are a port
+ * addition, as is the local BrVec3 the two lerps write into). */
 void BrRacePathAdvance(uint32_t offNode, uint32_t index,
                        float ratio, float dist)
 {
