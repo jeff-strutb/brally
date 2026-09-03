@@ -115,13 +115,49 @@ def parse(va):
         joined.append(l)
         i += 1
 
+    # Collapse the known dropdown FILL LOOP into one marker. It is the same
+    # six lines in every member that has it (verified byte-exact first in
+    # 0x10048F10): walk the save table's 0x104-byte records from +4 and add
+    # each one's name through the selector's +0x10 slot. The record address
+    # is null-tested even though it cannot be null -- that is the original's.
+    fill = re.compile(
+        r'^iVar(\d+) = 0;$\n'
+        r'^do \{$\n'
+        r'^iVar(\d+) = \*\(int \*\)\(DAT_10ac5c60 \+ (0xc[04])\) \+ 4 \+ iVar\1;$\n'
+        r'^if \(iVar\2 != 0\) \{$\n'
+        r'^\(\*\*\(funcptr \*\)\(piVar\d+\[0xe0e\] \+ 0x10\)\)'
+        r'\(iVar\2,0,1,&(DAT_\w+),0\);$\n'
+        r'^\}$\n'
+        r'^iVar\1 = iVar\1 \+ 0x104;$\n'
+        r'^\} while \(iVar\1 < (\d+)\);$', re.M)
+    blob = '\n'.join(joined)
+    m = fill.search(blob)
+    while m:
+        blob = blob[:m.start()] + ('@@FILL %s %s %s'
+                                   % (m.group(3), m.group(4), m.group(5))) \
+               + blob[m.end():]
+        m = fill.search(blob)
+    joined = blob.split('\n')
+
     for l in joined:
+        if l.startswith('@@FILL '):
+            _, fld, dat, end = l.split()
+            externs.add(dat); externs.add('@Root')
+            fld = 'pTable' if fld == '0xc0' else 'pTableC4'
+            stmts.append(('raw',
+                '{\n        int off = 0;\n\n        do {\n'
+                '            char *psz = &g_brRoot5C60->%s->aRecs[off];\n\n'
+                '            if (psz != 0)\n'
+                '                p->m3838.s4(psz, 0, 1, &%s, 0);\n'
+                '            off += 0x104;\n'
+                '        } while (off < %s);\n    }' % (fld, dat, end)))
+            continue
         if not l or l in ('{', '}', 'else {') or l.startswith('//'):
             continue
         if re.match(r'^(void|int|short|char|funcptr|undefined|unsigned|'
                     r'\w+ \*?[a-z]\w*;)', l) and l.endswith(';') and '=' not in l:
             continue
-        if re.match(r'^(uStack_c|iStack_c|local_4|puStack_8|\*unaff_FS_OFFSET|'
+        if re.match(r'^(\w*Stack_\w+|local_\d+|\*unaff_FS_OFFSET|'
                     r'pvVar\d+ = operator_new|if \(pvVar\d+|piVar\d+ = \(int \*\)'
                     r'(0x0|FUN_10040b10\(\))|iVar\d+ = (0|BrUiPageCtor_10048470\(\)|'
                     r'\*piVar\d+)|return 1)', l):
@@ -134,20 +170,30 @@ def parse(va):
         if re.match(r'^uVar\d+ = \d+;$', l):
             continue
 
-        m = re.match(r'^\*\(short \*\)\(param_1 \+ 0x12\) = 0;$', l)
+        if re.match(r'^iVar\d+ = DAT_10ac5c60;$', l):
+            continue          # the root-object pointer, re-read at the vcall
+        m = re.match(r'^\(\*\*\(funcptr \*\)\(\*\*\(int \*\*\)\(iVar\d+ \+ '
+                     r'(0xc[04])\) \+ 4\)\)\((\w+)\);$', l)
+        if m:
+            fld = 'pTable' if m.group(1) == '0xc0' else 'pTableC4'
+            externs.add('$' + m.group(2))
+            stmts.append(('raw', 'g_brRoot5C60->%s->s1(&%s);' % (fld, m.group(2))))
+            externs.add('@Root')
+            continue
+        m = re.match(r'^\*\(short \*\)\((?:param_1|unaff_retaddr) \+ 0x12\) = 0;$', l)
         if m:
             stmts.append(('raw', 'parent->w12 = 0;')); continue
-        m = re.match(r'^\*\(int \*\)\(param_1 \+ 0x6c \+ .*\) = ([01]);$', l)
+        m = re.match(r'^\*\(int \*\)\((?:param_1|unaff_retaddr) \+ 0x6c \+ .*\) = ([01]);$', l)
         if m:
             stmts.append(('raw', 'parent->a6C[parent->w10] = %s;' % m.group(1)))
             continue
-        m = re.match(r'^\*\(int \*\)\(param_1 \+ 0x14 \+ .*\) = iVar\d+;$', l)
+        m = re.match(r'^\*\(int \*\)\((?:param_1|unaff_retaddr) \+ 0x14 \+ .*\) = iVar\d+;$', l)
         if m:
             stmts.append(('newpage', None)); continue
-        m = re.match(r'^\*\(short \*\)\(param_1 \+ 0x10\) = .*\+ 1;$', l)
+        m = re.match(r'^\*\(short \*\)\((?:param_1|unaff_retaddr) \+ 0x10\) = .*\+ 1;$', l)
         if m:
             stmts.append(('raw', 'parent->w10 += 1;')); continue
-        m = re.match(r'^\*\(int \*\)\(iVar\d+ \+ 0x340\) = param_1;$', l)
+        m = re.match(r'^\*\(int \*\)\(iVar\d+ \+ 0x340\) = (?:param_1|unaff_retaddr);$', l)
         if m:
             stmts.append(('raw', 'cont->f340 = parent;')); continue
         m = re.match(r'^\*\(int \*\)\(iVar\d+ \+ 0x10\) = 0;$', l)
@@ -214,6 +260,16 @@ def parse(va):
         if m:
             externs.add('#' + m.group(1))
             stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
+        m = re.match(r'^piVar\d+\[0xe0f\] = \(int\)(\w+);$', l)
+        if m:
+            externs.add(m.group(1))
+            stmts.append(('raw', 'p->m3838.pfn04 = (int (*)(void))%s;'
+                          % m.group(1))); continue
+        m = re.match(r'^piVar\d+\[0xe13\] = \(int\)(\w+);$', l)
+        if m:
+            externs.add(m.group(1))
+            stmts.append(('raw', 'p->m3838.f14 = (int)%s;' % m.group(1)))
+            continue
         m = re.match(r'^piVar\d+\[0x787d\] = 1;$', l)
         if m:
             stmts.append(('raw', 'p->f1E1F4 = 1;')); continue
@@ -259,8 +315,12 @@ PAGE = ('    cont = new Page%s;\n'
         '        FUN_100378c0(4);\n')
 
 
+SFX = ['']
+
+
 def emit(va, name, stmts, externs, size):
     sfx = va[4:].upper()
+    SFX[0] = sfx
     ref = open(REFERENCE).read()
     classes = ref[ref.index('class GameUi;'):ref.index('typedef int (*CtlFn)')]
     classes = classes.replace('Page48F10', 'Page' + sfx).replace('48F10', sfx)
@@ -287,6 +347,10 @@ def emit(va, name, stmts, externs, size):
             ext.append('BrCtl *%s;' % e[1:])
         elif e.startswith('#'):
             ext.append('int %s;' % e[1:])
+        elif e.startswith('$'):
+            ext.append('extern char %s;' % e[1:])
+        elif e == '@Root':
+            ext.append('Root%s *g_brRoot5C60;   /* 0x10AC5C60 */' % SFX[0])
         elif e.startswith('DAT_'):
             ext.append('extern char  %s;' % e)
         elif e.startswith('_DAT_'):
