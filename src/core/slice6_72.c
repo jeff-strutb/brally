@@ -1346,7 +1346,7 @@ void BrExt_10052030(BrPhase_ *pPhase)
 /* WHAT IT DOES: builds the time-attack menu -- the time-attack banner, then
  * New Race, Load Race and Back. The gap between Load Race and Back is five rows
  * wide, so the Back row sits well clear of the other two. */
-/* @implements 0x10059760 d3d BrExt_10059760 */
+/* port-only body; Glide match is src/core/cpp/0x10052610.cpp */
 void BrExt_10059760(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;

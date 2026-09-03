@@ -165,7 +165,7 @@ static void BrUiPagesRow(BrUiCtl_ *pCtl, BrUiPage_ *pScr, BrPhase_ *pPhase,
 /* WHAT IT DOES: puts up the "are you sure you want to leave the game?"
  * screen -- the heading "Quit Game" over two choices, "Yes, Quit" and
  * "Back" -- so that quitting always takes a second press rather than one. */
-/* @implements 0x10043050 glide BrUiQuitEnter_10043050 */
+/* port-only body; Glide match is src/core/cpp/0x10043050.cpp */
 void BrUiQuitEnter_10043050(BrPhase_ *pPhase)
 {
     const BrUiPagesHooks *pH;

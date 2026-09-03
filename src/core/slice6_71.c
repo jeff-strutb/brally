@@ -269,7 +269,7 @@ static void Br71PlaceRoot(BrUiCtl_ *pCtl, BrPhase_ *pPhase)
 /* WHAT IT DOES: puts up the "are you sure you want to exit the season?"
  * confirmation screen -- the question as a heading, then a Yes row and a No
  * row for the player to choose between. */
-/* @implements 0x10049F40 d3d BrExt_10049F40 */
+/* port-only body; Glide match is src/core/cpp/0x10043370.cpp */
 void BrExt_10049F40(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
