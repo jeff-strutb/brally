@@ -276,7 +276,7 @@ BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
  * into the mode that screen belongs to first. There is no logic here beyond
  * the layout; the whole content of the function is the coordinates and the
  * captions. Which screen it is was not established. */
-/* @implements 0x100558A0 d3d BrOptFn100558A0 */
+/* port-only body; Glide match is src/core/cpp/0x1004E750.cpp */
 void BrOptFn100558A0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;

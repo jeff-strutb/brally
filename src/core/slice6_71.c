@@ -613,7 +613,7 @@ void BrExt_1004F700(BrPhase_ *pSelf)
  * already in use -- or with "My Game" if that name is a single character or
  * empty, since one character counts as no name here -- and finishes with
  * Continue and Back. */
-/* @implements 0x100575F0 d3d BrOptFn100575F0 */
+/* port-only body; Glide match is src/core/cpp/0x100504A0.cpp */
 void BrOptFn100575F0(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;
