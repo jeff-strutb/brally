@@ -41,6 +41,14 @@
  * every sibling site before judging it" lesson that gained a region in
  * br_scenedl.c does NOT generalise here: there the siblings shared one
  * induction variable strategy, here each pair is independently allocated.)
+ * Same session, second negative: converting ALL SEVEN remaining row loops
+ * from `ctr = 0; if (0 < w) { do {...} while (ctr < w); }` to the for-init
+ * form `for (ctr = 0; ctr < w;) {...}` at once is BYTE-IDENTICAL -- 32
+ * masked / 44 raw / 2413 insns, unchanged.  (Two arms already use the
+ * for-init form; the other seven now measured, together, as a set.)  So
+ * the session-4 note that this form "closed the CI4 arm" describes a
+ * different lever than the loop shape itself; VC5 canonicalises the
+ * guarded-do-while and the for-init spellings of a counted row loop.
  */
 #ifdef BR_MATCHING_BUILD
 
