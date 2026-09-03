@@ -376,10 +376,13 @@ void BrRbQuatDerivative(BrRbState *pS)
      * `fmul` displacements that swap in compensating pairs.  Instruction
      * stream, count and size are exact (RAW and REGNORM multiset gap 0+0);
      * the x87 stack holds the same eight values in a different permutation
-     * from 1006D58A on.  Probed and ruled out: swapping the two product terms
-     * of any row (VC5 canonicalises commutative x87 addends -- byte-identical
-     * output), `float[3]` vs `BrVec3`, and `/O2 /Op` (214 bytes, 134 diffs --
-     * strictly worse, this TU is /O2).  T3a. */
+     * from 1006D58A on.  Probed and ruled out, do NOT re-run: swapping the
+     * two product terms of a row -- all seven combinations of the three
+     * swappable rows give the SAME 26 diffs / 208 bytes, worse than the 23
+     * here; all five non-identity orderings of the three h assignments (49,
+     * 75, 89, 165 and 176 diffs -- x, y, z is the best by a wide margin);
+     * `float[3]` vs `BrVec3` (byte-identical); and `/O2 /Op` (214 bytes, 134
+     * diffs -- strictly worse, this TU is /O2).  T3a. */
     BrVec3 h;
 
     h.x = pS->angVel.x * 0.5f;
