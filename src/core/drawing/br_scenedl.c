@@ -11,9 +11,40 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-09-03, eighth pass): 2,328/2,328 instructions -- EQUAL --
+ * STATE (2026-09-03, ninth pass): 2,328/2,328 instructions -- EQUAL --
  * 9,344 vs 9,354 bytes, 3,727 reloc-masked differing bytes, 20 divergence
- * regions slot-masked (28 raw).
+ * regions slot-masked (28 raw).  Unchanged from the eighth pass.
+ * NINTH PASS found NO further constant defect.  The eighth pass's advice to
+ * re-run the register-blind multiset was followed and `tools/msetdiff.py`
+ * had to be fixed first (branch targets and reloc addends were compared
+ * literally, so every reloc'd instruction paired as MISSING+EXTRA; 76 rows
+ * of noise down to 37 real).  ‼ Two rows that looked like real defects --
+ * `push A` vs `push 0` at 0xab (BrFloat12MaxAbs(DAT_106e9a38)) and at
+ * 0x12c1 (the logger's format string DAT_100a5db4) -- are ARTEFACTS: both
+ * sites carry a relocation and are already correct.  Do not "fix" them.
+ * What the clean multiset leaves is 37 rows and all of them are already
+ * mapped below: the fxch/faddp spread is walls 1 and 2, the four
+ * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
+ * `fld [R + R + 0x54]` are wall 3.
+ * NINTH-PASS PROBES, DEAD -- do not re-run:
+ *   (a) 0x1e8d, else-arm of the trail append (`slot = head - 1`): orig
+ *       emits `mov edi,edx; dec edi; jns` where we emit `lea edi,[eax-1];
+ *       test edi,edi; jge` -- one decision, since `dec` sets SF and `lea`
+ *       does not.  Probed together with reversing the guard to
+ *       `if (DAT_1035f750[ring] != DAT_1035faf0[ring])` (orig loads f750
+ *       FIRST, we load faf0 first) and sinking `head =` inside it, spelled
+ *       `slot = head; if (--slot < 0)`: 20 -> 21 masked regions and the
+ *       instruction count leaves EQUAL (2,329), because the copy-then-dec
+ *       does not appear and instead the later `head = head + 1` flips from
+ *       orig's `lea R,[R+1]` to `inc R`.  The lea/dec choice here is
+ *       downstream of the allocation, not source-selectable at this site.
+ *   (b) 0xb21/0xb28 (loop pre-header of the object walk): orig hoists the
+ *       combiner constants into registers across the param_2 join -- one
+ *       arm sets `esi,0xfffa` and `edi,1`, and `mov edx,6` is scheduled
+ *       after the `cmp` at 0xb37 -- while we materialise `mov edx,6` in
+ *       BOTH arms and never home the 1.  Same cause as wall 5 (the join at
+ *       0xad4 keeping cHead/base in registers); it is one register-
+ *       allocation decision, not four EMIT() spellings.
  * EIGHTH PASS: the ring-wrap test is `if (head >= 500)`, not `if (499 <
  * head)`.  Four sites; orig emits `cmp X,0x1f4; jl` and we were emitting
  * `cmp X,0x1f3; jle`.  Both spellings are semantically identical, so this
