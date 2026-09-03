@@ -1579,7 +1579,7 @@ void BrExt_1005A6E0(BrPhase_ *pPhase)
  * setting looks like, and a Back row. It re-checks for a force-feedback device
  * on the spot, right after placing the heading, and greys the force-feedback
  * row out if there is not one. */
-/* @implements 0x1004E830 d3d BrExt_1004E830 */
+/* port-only body; Glide match is src/core/cpp/0x100476E0.cpp */
 void BrExt_1004E830(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;

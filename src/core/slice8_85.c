@@ -202,7 +202,7 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
  * control is already flagged as needing to close), takes the box out of edit
  * mode and runs the control's own "something changed" handler. A box that was
  * not being edited in the first place is simply refreshed and left alone. */
-/* @implements 0x1003EE50 d3d Br85ItemApply */
+/* port-only body; Glide match is src/core/cpp/0x10038380.cpp */
 static int32_t Br85ItemApply(BrUiCtl_ *pCtl, int16_t index)
 {
     BrTextBox           *pBox = &pCtl->aText[index];
@@ -438,7 +438,7 @@ int32_t BrUiHook85_10040930(BrUiCtl_ *pCtl)
  * remembers the answer as the current selection. If the list declines to
  * answer, the previous selection stands. When a name is being edited it also
  * tells the list that the selection has been taken. */
-/* @implements 0x1003EB10 d3d BrUiHook85_1003EB10 */
+/* port-only body; Glide match is src/core/cpp/0x10038100.cpp */
 int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
 {
     BrTextList *pList = &pCtl->list;
@@ -472,7 +472,7 @@ int32_t BrUiHook85_1003ED10(BrUiCtl_ *pCtl)
  * where the cursor is, treating anything outside the twelve as "nowhere", and
  * takes back whatever row the list reports. Note the range check is applied
  * only to what it sends, never to what it stores. */
-/* @implements 0x1003EE20 d3d BrUiHook85_1003EE20 */
+/* port-only body; Glide match is src/core/cpp/0x10038350.cpp */
 int32_t BrUiHook85_1003EE20(BrUiCtl_ *pCtl)
 {
     int32_t n = g_br73.nAA2A34;

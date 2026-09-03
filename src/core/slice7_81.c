@@ -313,7 +313,7 @@ int32_t BrUiHook81_100450F0(BrUiCtl_ *pCtl)
  * one screen singleton, and makes a previously remembered screen current
  * again. That last one is read before the forgetting, which matters if the
  * two happen to be the same. */
-/* @implements 0x100463C0 d3d BrUiHook81_100463C0 */
+/* port-only body; Glide match is src/core/cpp/0x1003F860.cpp */
 int32_t BrUiHook81_100463C0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -340,7 +340,7 @@ int32_t BrUiHook81_10046620(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: the back handler for one particular screen: releases that
  * screen's pages, forgets it, and returns to whichever screen was remembered
  * as the one behind it. */
-/* @implements 0x10046AD0 d3d BrUiHook81_10046AD0 */
+/* port-only body; Glide match is src/core/cpp/0x1003FF20.cpp */
 int32_t BrUiHook81_10046AD0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -357,7 +357,7 @@ int32_t BrUiHook81_10046AD0(BrUiCtl_ *pCtl)
  * entry state and copies the shared edit buffer into two places. Unlike the
  * plain leave routines, this one reads the screen it is returning to after
  * doing all that rather than before. */
-/* @implements 0x10046B10 d3d BrUiHook81_10046B10 */
+/* port-only body; Glide match is src/core/cpp/0x1003FF60.cpp */
 int32_t BrUiHook81_10046B10(BrUiCtl_ *pCtl)
 {
     Br81LeavePrologue(pCtl);
@@ -371,7 +371,7 @@ int32_t BrUiHook81_10046B10(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: the back handler for the screen that was built as a pair: it
  * releases the pages, forgets both halves of the pair and the control that
  * pointed at them, and returns to the screen behind. */
-/* @implements 0x10046D70 d3d BrUiHook81_10046D70 */
+/* port-only body; Glide match is src/core/cpp/0x100401C0.cpp */
 int32_t BrUiHook81_10046D70(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;
@@ -387,7 +387,7 @@ int32_t BrUiHook81_10046D70(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: the twin of the other name-entry back handler: same release,
  * same name-entry reset, but it returns to a different remembered screen. */
-/* @implements 0x10046EB0 d3d BrUiHook81_10046EB0 */
+/* port-only body; Glide match is src/core/cpp/0x10040300.cpp */
 int32_t BrUiHook81_10046EB0(BrUiCtl_ *pCtl)
 {
     Br81LeavePrologue(pCtl);
@@ -398,7 +398,7 @@ int32_t BrUiHook81_10046EB0(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: a plain back handler: release the pages, forget one screen
  * singleton, and return to the screen remembered behind it. */
-/* @implements 0x100470E0 d3d BrUiHook81_100470E0 */
+/* port-only body; Glide match is src/core/cpp/0x10040530.cpp */
 int32_t BrUiHook81_100470E0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;

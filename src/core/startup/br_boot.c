@@ -210,7 +210,7 @@ int32_t BrAppStateLoading(void)
  * ready. On a first run there is no choice recorded, so it picks 640x480. If
  * the player has changed the mode it tears the old display down and rebuilds
  * -- which also resets the sound, because that goes with the device. */
-/* @implements 0x1001CE20 glide BrAppStateSetMode */
+/* port-only body; Glide match is src/core/cpp/0x1001CE20.cpp */
 int32_t BrAppStateSetMode(void)
 {
     const int32_t hDevice = BrBootGlobal_AC5C5C();

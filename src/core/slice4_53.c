@@ -505,7 +505,7 @@ void BrSlice4SetPhaseCtx(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: switches the game into one particular menu phase. It is a
  * thin forwarder to the phase machinery, and it ignores the argument it is
  * passed because the original took none. */
-/* @implements 0x10044B90 d3d BrMenuSub10044B90 */
+/* port-only body; Glide match is src/core/cpp/0x1003E0E0.cpp */
 void BrMenuSub10044B90(int32_t n)
 {
     (void)n;                            /* the original takes no argument */
@@ -518,7 +518,7 @@ void BrMenuSub10044B90(int32_t n)
 /* WHAT IT DOES: leaves the current phase for another particular one, on
  * behalf of the given world object. One of a pair of near-identical leave
  * routines that differ in which flags they touch on the way out. */
-/* @implements 0x10044A30 d3d BrOptFn10044A30 */
+/* port-only body; Glide match is src/core/cpp/0x1003DF80.cpp */
 /* RETURN VALUE: 0. 0x10044A30 ends `xor eax, eax` at 0x10044AD6, and the
  * +0x08 slot this is stored into is TESTED by 0x10048180 -- see br_phase.h. */
 int32_t BrOptFn10044A30(void *pEntity)

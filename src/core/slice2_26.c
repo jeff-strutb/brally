@@ -155,7 +155,7 @@ static int32_t BrPhaseLeaveMode(BrPhaseCtx *pCtx)
  * then opens the options in either the hosting or the joining form, builds the
  * screen if it is not already there, and puts the menus into multiplayer mode.
  * If the screen cannot be built it gives up before any of that last part. */
-/* @implements 0x100447D0 d3d BrPhaseActivate_100447D0 */
+/* port-only body; Glide match is src/core/cpp/0x1003DD20.cpp */
 int BrPhaseActivate_100447D0(BrPhaseCtx *pCtx)
 {
     pCtx->nA9CFFC = 1;
@@ -222,7 +222,7 @@ int BrPhaseActivate_100447D0(BrPhaseCtx *pCtx)
  * back to a remembered screen. On the way out it re-checks what mode the game
  * is in, because closing the session can change it, and clears the flag a
  * second time for two of those modes. */
-/* @implements 0x10044970 d3d BrPhaseLeave_10044970 */
+/* port-only body; Glide match is src/core/cpp/0x1003DEC0.cpp */
 int BrPhaseLeave_10044970(BrPhaseCtx *pCtx, void *pEntity)
 {
     int32_t mode;
@@ -279,7 +279,7 @@ int BrPhaseLeave_10044A30(BrPhaseCtx *pCtx, void *pEntity)
  * neighbours do -- five separate remembered screens, entities and counters are
  * cleared -- then closes the session and returns to a remembered screen. This
  * is the leave that unwinds the most state. */
-/* @implements 0x10044AE0 d3d BrPhaseLeave_10044AE0 */
+/* port-only body; Glide match is src/core/cpp/0x1003E030.cpp */
 int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
 {
     BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
@@ -298,7 +298,7 @@ int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
 /* WHAT IT DOES: leaves a screen, forgetting the two controls it had published
  * for other code to reach, and returns to a remembered screen. Unlike its
  * neighbours it does not close the session. */
-/* @implements 0x10044B40 d3d BrPhaseLeave_10044B40 */
+/* port-only body; Glide match is src/core/cpp/0x1003E090.cpp */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseLeave_10044B40(void *pEntity)
 {
@@ -408,7 +408,7 @@ int BrPhaseLeave_10044DE0(BrPhaseCtx *pCtx, void *pEntity)
  * notifies the screen being closed rather than the one currently showing, which
  * matters when the two differ. It then forgets that screen, returns to a
  * remembered parent, and puts the menus into a particular mode. */
-/* @implements 0x10044F00 d3d BrPhaseLeave_10044F00 */
+/* port-only body; Glide match is src/core/cpp/0x1003E450.cpp */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseLeave_10044F00(void *pEntity)
 {
@@ -456,7 +456,7 @@ int BrPhaseActivate_10044B90(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings one particular menu screen up, clearing two counters
  * first so it starts from a known state, and builds the screen if it does not
  * already exist. Which screen it is was not established here. */
-/* @implements 0x10044D00 d3d BrPhaseActivate_10044D00 */
+/* port-only body; Glide match is src/core/cpp/0x1003E250.cpp */
 int BrPhaseActivate_10044D00(BrPhaseCtx *pCtx)
 {
     pCtx->nAA28C8 = 0;
@@ -483,7 +483,7 @@ int BrPhaseActivate_10044E20(BrPhaseCtx *pCtx)
  * further set-up calls happen only when the screen has to be built -- coming
  * back to an already-built screen skips them. Which screen it is was not
  * established here. */
-/* @implements 0x10044F50 d3d BrPhaseActivate_10044F50 */
+/* port-only body; Glide match is src/core/cpp/0x1003E4A0.cpp */
 int BrPhaseActivate_10044F50(BrPhaseCtx *pCtx)
 {
     BrActResult r;
@@ -507,7 +507,7 @@ int BrPhaseActivate_10044F50(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings one particular menu screen up, building it if it does
  * not already exist. Which screen it is was not established here; the screen
  * builder behind it is not transcribed in this tree. */
-/* @implements 0x10045110 d3d BrPhaseActivate_10045110 */
+/* port-only body; Glide match is src/core/cpp/0x1003E660.cpp */
 int BrPhaseActivate_10045110(BrPhaseCtx *pCtx)
 {
     return (BrPhaseActivateSlot(pCtx, &pCtx->pAA2914, BrPhaseEnterPlaceholder_1004A580) !=
@@ -517,7 +517,7 @@ int BrPhaseActivate_10045110(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings up the options menu -- this is what the Options button
  * on the season-progress screen reaches -- after clearing the shared text
  * buffer, and builds it if it is not already there. */
-/* @implements 0x100451E0 d3d BrPhaseActivate_100451E0 */
+/* port-only body; Glide match is src/core/cpp/0x1003E730.cpp */
 int BrPhaseActivate_100451E0(BrPhaseCtx *pCtx)
 {
     BrExt_100419D0(pCtx->p0AD300);
@@ -529,7 +529,7 @@ int BrPhaseActivate_100451E0(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings one particular menu screen up, building it if needed.
  * Which screen it is was not established here; its builder is not transcribed
  * in this tree. */
-/* @implements 0x100452C0 d3d BrPhaseActivate_100452C0 */
+/* port-only body; Glide match is src/core/cpp/0x1003E810.cpp */
 int BrPhaseActivate_100452C0(BrPhaseCtx *pCtx)
 {
     return (BrPhaseActivateSlot(pCtx, &pCtx->pAA297C, BrPhaseEnterPlaceholder_1004C4A0) !=
@@ -539,7 +539,7 @@ int BrPhaseActivate_100452C0(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings one particular menu screen up, building it if needed.
  * Which screen it is was not established here -- the builder behind it is one
  * of the ones still untranscribed. */
-/* @implements 0x10045390 d3d BrPhaseActivate_10045390 */
+/* port-only body; Glide match is src/core/cpp/0x1003E8E0.cpp */
 int BrPhaseActivate_10045390(BrPhaseCtx *pCtx)
 {
     return (BrPhaseActivateSlot(pCtx, &pCtx->pAA2980, BrExt_1004D1F0) !=
@@ -550,7 +550,7 @@ int BrPhaseActivate_10045390(BrPhaseCtx *pCtx)
  * step -- on both the freshly-built and the already-built path, unlike most of
  * this family, which is the only thing distinguishing it. Which screen it is
  * was not established here. */
-/* @implements 0x10045460 d3d BrPhaseActivate_10045460 */
+/* port-only body; Glide match is src/core/cpp/0x1003E9B0.cpp */
 int BrPhaseActivate_10045460(BrPhaseCtx *pCtx)
 {
     if (BrPhaseActivateSlot(pCtx, &pCtx->pAA2990, BrExt_1004D640) ==
@@ -579,7 +579,7 @@ int BrPhaseActivate_10045520(BrPhaseCtx *pCtx)
 
 /* WHAT IT DOES: brings up the car-selection screen, building it if it is not
  * already there. */
-/* @implements 0x100455E0 d3d BrPhaseActivate_100455E0 */
+/* port-only body; Glide match is src/core/cpp/0x1003EA70.cpp */
 int BrPhaseActivate_100455E0(BrPhaseCtx *pCtx)
 {
     return (BrPhaseActivateSlot(pCtx, &pCtx->pAA2984, BrExt_1004DFC0) !=
@@ -589,7 +589,7 @@ int BrPhaseActivate_100455E0(BrPhaseCtx *pCtx)
 /* WHAT IT DOES: brings up the game-options screen -- force feedback, skid
  * marks, specular lighting and car shadow -- building it if it is not already
  * there. */
-/* @implements 0x100456B0 d3d BrPhaseActivate_100456B0 */
+/* port-only body; Glide match is src/core/cpp/0x1003EB40.cpp */
 int BrPhaseActivate_100456B0(BrPhaseCtx *pCtx)
 {
     return (BrPhaseActivateSlot(pCtx, &pCtx->pAA2988, BrExt_1004E830) !=

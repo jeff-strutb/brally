@@ -186,7 +186,7 @@ static void BrUiRootHilite(BrUiCtl_ *pCtl, BrUiPage_ *pScr, BrPhase_ *pPhase,
 /* ==========================================================================
  * 0x100425E0
  * ========================================================================== */
-/* @implements 0x100425E0 glide BrUiRootEnter_100425E0 */
+/* port-only body; Glide match is src/core/cpp/0x100425E0.cpp */
 void BrUiRootEnter_100425E0(BrPhase_ *pPhase)
 {
     const BrUiRootHooks *pH;
