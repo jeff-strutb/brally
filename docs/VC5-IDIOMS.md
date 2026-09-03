@@ -1892,3 +1892,15 @@ Together with the SIB base/index entry above, that is two emitter-level
 residues in one session that no source form reaches. Both are consistent
 with a compiler patch level slightly different from the staged one, which
 is the lead already open for 0x1000EAF0.
+- **A chained assignment is `fld` + `fst` + `fstp`; two separate
+  assignments from the same expression are integer copies.**
+  `a = b = pSrc->m[i][j];` loads the source once and spends it twice --
+  `fld [src]`, `fst [b]` (stored and kept), `fstp [a]` -- which is
+  exactly what orig 0x1006DC70 BrMat4ToMat3Both does. Writing it as two
+  statements (`b = pSrc->m[i][j]; a = pSrc->m[i][j];`) lets VC5 CSE the
+  load into an integer register and copy with `mov`, costing three extra
+  instructions. The generalisation of the `x3=x2=x1=f()` triple-store
+  entry: N stores from one chain are N-1 `fst`s and a closing `fstp`, and
+  the leftmost target in the chain is stored LAST. Diff signature:
+  EXTRA `mov [R], R` / `mov R, [R]` against MISSING `fld [R]` /
+  `fst [R]` / `fstp [R - I]`.
