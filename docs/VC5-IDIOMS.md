@@ -750,6 +750,48 @@ the caller AND flipped a helper to match for free.
   types / scopes / LICM, param_4 renames, two-step wb or pW defs,
   pointer-difference car base (cancelled), index-based `param_4 +
   iCar*0x2b68` (second IV), byte-offset `ring*4` (still folded).
+- **VC5 CANONICALISES COMMUTATIVE OPERAND ORDER AND STATEMENT SPLITS. Stop
+  probing them.** Proven 2026-09-03 by twelve byte-identical probes across
+  all three giants (0x1000EAF0, 0x100250D0, 0x1000A110). None of these
+  changes a single byte:
+  * swapping the operands of `&`, `|` or `+` (`(a & b)` vs `(b & a)`,
+    `x << 8 | y` vs `y | x << 8`);
+  * reversing a relational test's operands (`a >= b` vs `b <= a`) — this is
+    NOT the same lever as the wall-1 `iVar10 < param_10` rule, which changes
+    which side is the loop INDUCTION variable, not just the operand order;
+  * splitting one expression into two statements, or hoisting a subterm into
+    a named temp (function-scoped or block-scoped) when the temp is
+    single-def/single-use in a pure-expression context — VC5 re-fuses it;
+  * reordering two adjacent independent assignments (`a = p; b = q;`).
+  What these spellings CANNOT reach, and what people keep mistaking them for:
+  which subexpression is EVALUATED first (VC5 orders by subtree cost, so the
+  simpler operand's calls and loads are emitted first), which operand lands
+  in the `r/m` vs the `reg` field of a `test`/`cmp` (that follows register
+  assignment), and which byte lane a value lands in (`mov dh,al` vs
+  `mov dl,al`). Those are downstream of allocation. To move them you must
+  change the operand-KIND ladder or the register pressure (see the
+  0x1000EAF0 fourth-pass entry), not the spelling. A named temp DOES still
+  work where it changes the def/use graph — a value used twice, a float
+  homed to a slot, a bound reloaded from memory; those are different levers.
+- **`/FAcs` is the offset-to-source-line map AND the recomp's complete frame
+  map — use it before probing anything in a multi-KB function.** One compile:
+
+      sh tools/wine.sh tools/msvc5/bin/cl.exe /nologo /O2 /W3 /I include \
+        /I tools/msvc5-compat /I tools/msvc5/include /DBR_MATCHING_BUILD /c \
+        /FAcs "/Fa<out>.cod" "/Fo<throwaway>.obj" <file.c>
+
+  The listing's offsets are the same function-relative offsets
+  `divergence.py` prints, so `grep '^  00<off>' <out>.cod` turns a divergence
+  address into the exact source line — no more guessing which of nine
+  near-identical arms a region belongs to. Just above `_<Name> PROC NEAR` the
+  listing prints every local's frame offset as `_name$ = <signed offset>`,
+  including compiler-generated scope suffixes (`_eyeX$2612 = -60`). That
+  table is the recomp side of the slot-map work three dossiers are grinding
+  on; read it instead of inferring slots from displacement histograms, which
+  cannot be compared across two builds whose frame sizes differ. It also
+  catches stale claims: br_drawcar.c's header asserted pack0/pack1 landed in
+  "two fresh dwords (0x10/0x14)" when the equate table shows
+  `_pack0$ = 8, _pack1$ = 12` — they were already in the reused ARG slots.
 - **A probe is only evidence if the compile actually ran.** match_sweep
   compiles NOTHING when the file has no `@implements` tag — it returns
   before the compiler is invoked and every diff silently reuses the stale
