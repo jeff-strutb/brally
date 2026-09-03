@@ -1097,6 +1097,27 @@ void    BrGlNavTail(void);          /* 0x10059060 */
  * `(uint16_t)(int16_t)step`.  The value has no 32-bit use in the ORIGINAL
  * either, so this is not reachable by giving it one. */
 /* @implements 0x10059410 glide BrGlNavPoll */
+/* RESIDUE, measured 2026-09-03: 943 B / 297 insns against 939 / 298, and the
+ * register-blind gap is 0+1 -- ONE missing `xor R,R`.  divergence.py (key 8)
+ * finds exactly THREE regions and all three are the same cause: a localised
+ * EAX <-> ECX rotation across 0x153..0x2B9.
+ *
+ *   +0x153  orig `mov eax,[BrGlNavT6708]`   ours `mov ecx,[...]`   (+1 B:
+ *           the A1 accumulator form is one byte shorter than 8B 0D)
+ *   +0x19F  orig `mov ecx,ebx` / `mov ecx,[BrGlNavF6700]` for `f`;
+ *           ours puts `f` in eax                                   (+1 B)
+ *   +0x29F  orig emits a FRESH `xor eax,eax` and stores eax into the four
+ *           BrGlNavEdge globals (A3 form, 5 B each); ours reuses the pinned
+ *           zero already in edi (89 3D form, 6 B each)             (+4-2 B)
+ *
+ * So the whole +4 is the accumulator encoding, and the missing `xor` is the
+ * EFFECT of the rotation, not its cause: the original had eax free at 0x29F
+ * because it kept `f` and the T6708 load in ecx.  Every store in that block
+ * is already a literal 0 in the source.
+ *
+ * DEAD PROBE: wrapping the `f` block differently (extra scope, a dummy
+ * static to defeat the block merge) leaves it at 943/297/0+1.  A fix has to
+ * change which value VC5 puts in eax at 0x153, not the zero stores. */
 void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
 {
     uint8_t aState[0x10];
