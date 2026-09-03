@@ -3603,3 +3603,35 @@ So parentheses reach VC5's scheduler, not just its parser. Two consequences:
 Also settled on that function while measuring this: the ORIGINAL's four-term
 row is LEFT-associated — its first `faddp st(2)` adds terms 1 and 2 — so a
 right-associated variant is the wrong source no matter how it scores.
+
+## A raw-address cast and a symbol reference are NOT the same operand to VC5
+*(0x1000EAF0, 2026-09-03 — this closed a wall that had stood nine passes)*
+
+`*(float *)(0x106e9a38 + 4*k)` and `DAT_106e9a38[k]` name the same location and
+assemble to the same instruction, but they reach the code generator as
+different things: the cast is a **compile-time constant**, the symbol is a
+**relocation**. VC5 schedules around them differently, so mixing the two
+spellings inside one expression produces a schedule that neither pure form
+gives.
+
+The case: a four-term matrix row transcribed with two terms as raw-address
+casts and two through pointer locals. That mix held an x87 preload at 5 for
+nine passes. Written with all four as array symbols — which is what the
+original's source must have had, since real source names its variables — the
+following block emits the original's batching exactly.
+
+**So treat a raw-address cast as a transcription placeholder, not a finding.**
+When a decompiled expression mixes hex-address casts with named references,
+make it uniform before concluding anything about the schedule. Measured on
+that row: only all-symbol reproduces the original; every mixed mask lands
+somewhere else, and the all-cast form lands somewhere else again.
+
+Related, and settled at the same time: **VC5 canonicalises x87 multiply
+operand order** just as it does the integer one. Swapping the factors of any
+term, or of several, is byte-identical every time — so when the original
+loads the other factor first, that is allocation, not source.
+
+## Corollary: a pointer local to an array is free
+`float *p = DAT_ARR; ... p[k]` and `DAT_ARR[k]` are byte-identical (measured
+three ways on the same rows). The pointer local is neither the problem nor the
+fix; it is the CAST that differs.
