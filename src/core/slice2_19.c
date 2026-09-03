@@ -1251,7 +1251,21 @@ static uint16_t BrLd16(const void *pv)
  * and all. Each finished piece is then handed to the renderer. */
 /* @implements 0x10036C00 d3d BrModelSwap */
 #ifdef BR_MATCHING_BUILD
-/* MACROS, not statics -- MSVC5 will not inline a static with more than one
+/* RESIDUE 1062 vs 1054 bytes, 371 vs 370 instructions, register-blind 35+36
+ * (from 149+285 when this was first opened).  What is LEFT is one thing: the
+ * original MERGES ADJACENT BYTE STORES INTO 16-BIT STORES.  Its prologue
+ * loads all four header bytes (al,cl,ah,ch) and then writes
+ * `mov word ptr [ebp+2],ax` / `mov word ptr [ebp],cx`, i.e. two BrRev2 calls
+ * scheduled together; we emit the byte stores separately, which is 13 extra
+ * `mov byte ptr [R+I],B` against 7 missing word stores.  PROBED AND DEAD, do
+ * not re-run: loading both bytes into two temps before storing either
+ * (byte-identical), and doing that through a `p_` pointer temp -- that one
+ * lowers RAW 136+137 -> 124+127 but costs size (8 short -> 19) and an
+ * instruction, so it is not an improvement by the ranking rule.  Also dead:
+ * giving the leaf loop's doubled subscript its own local stepped by 2
+ * (no change to the register-blind gap).
+ *
+ * MACROS, not statics -- MSVC5 will not inline a static with more than one
  * caller, so every BrRev/BrLd here was a `call` the original does not have.
  * Scoped to BrModelSwap with #undef below so the other users of these
  * helpers keep whatever shape they already match with. */
