@@ -224,7 +224,12 @@ def parse(va):
         m = re.match(r'^\(\*\*\(funcptr \*\)\((?:\*piVar\d+|iVar\d+) \+ 0x38\)\)'
                      r'\((.*)\);$', l)
         if m:
-            a = [arg(t) for t in split_args(m.group(1))]
+            try:
+                a = [arg(t) for t in split_args(m.group(1))]
+            except ValueError:
+                if not PARTIAL[0]:
+                    raise
+                stmts.append(('raw', '@@UNHANDLED@@ %s' % l)); continue
             stmts.append(('raw', 'p->s38(%s);' % ', '.join(a))); continue
         m = re.match(r'^piVar\d+\[(\d)\] = \(int\)(\w+);$', l)
         if m:
@@ -310,6 +315,12 @@ def parse(va):
             stmts.append(('raw', 'cont->%s = (int (*)(void))%s;'
                           % (fld, m.group(2)))); continue
 
+        if PARTIAL[0]:
+            # Emit a marker that CANNOT compile, so a half-generated file can
+            # never be mistaken for a finished one. Fill each in by hand from
+            # the asm, then score.
+            stmts.append(('raw', '@@UNHANDLED@@ %s' % l))
+            continue
         sys.exit('gen_menubuilder: unrecognised draft line -- read the asm for\n'
                  'this one instead of trusting the draft:\n    %s' % l)
 
@@ -329,6 +340,7 @@ PAGE = ('    cont = new Page%s;\n'
         '        FUN_100378c0(4);\n')
 
 
+PARTIAL = [False]
 SFX = ['']
 
 
@@ -349,8 +361,11 @@ def emit(va, name, stmts, externs, size):
             pending = payload
         elif kind == 'flush_s34':
             if pending is None:
-                sys.exit('s34 call with no preceding BrStrGet')
-            out.append('    %s\n' % pending)
+                if not PARTIAL[0]:
+                    sys.exit('s34 call with no preceding BrStrGet')
+                out.append('    @@UNHANDLED@@ s34 with no BrStrGet\n')
+            else:
+                out.append('    %s\n' % pending)
             pending = None
         else:
             out.append('    %s\n' % payload)
@@ -405,7 +420,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('va')
     ap.add_argument('--write', action='store_true')
+    ap.add_argument('--partial', action='store_true',
+                    help='scaffold: mark unrecognised lines with a\n                          deliberately uncompilable @@UNHANDLED@@ so\n                          they must be filled in by hand')
     args = ap.parse_args()
+    PARTIAL[0] = args.partial
 
     va = args.va.lower()
     if not va.startswith('0x'):
