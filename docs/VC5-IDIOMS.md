@@ -3775,6 +3775,28 @@ member and adds the disp8 stack slot). Contrast the SUBTRACTION case, which
 is not commutative and does follow the source. Do not spend probes
 permuting a float sum.
 
+**2026-09-03 — the canonicalisation covers a WHOLE FLAT SUM-OF-PRODUCTS, not
+just one add.** Measured on 0x100349C0 BrVec3Project (a 4x4 projection: three
+dot products plus a w row, 165 B, entirely x87). Eleven spellings of the same
+expression tree all compile to BYTE-IDENTICAL code — same 163 bytes, same 69
+instructions, same single-`fxch` residue:
+
+  - term order in the chain: `m03*vx + m13*vy + m23*vz + m33`,
+    `m33 + m03*vx + …`, `m10*vy + m20*vz + m00*vx`, `m00*vx + m10*vy + m20*vz`
+  - operand order inside each product: `m[0][0]*vx` vs `vx*m[0][0]`
+  - the outer scale: `(...) * r` vs `r * (...)`
+  - naming one numerator in a local (`rx = …; pOut->x = rx * r;`)
+  - inlining `w` into the reciprocal, or reordering the two declarations
+  - accessing the matrix through a `const float (*m)[4]` local vs `pM->m[i][k]`
+
+Only two things moved the code at all: **GROUPING** (an explicit right-leaning
+paren pair, `a + (b + c)`, is a different tree and does change the schedule —
+it scored worse here), and **dropping the `vx/vy/vz` locals**, which lets VC5
+re-CSE the loads and emits 8 fewer instructions. So the rule to carry: term
+order and per-product operand order across a flat `+` chain are ONE
+canonical form to VC5; parenthesised grouping is not. Never probe the former;
+the latter is a legitimate axis.
+
 **BUT THE ORDER IS RECOVERABLE — FROM THE N64 TWIN, NOT FROM THE PC BYTES.**
 "Not source-reachable" means the PC bytes cannot tell you which way it was
 written; it does NOT mean the information is lost. IDO does **not**
