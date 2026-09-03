@@ -3390,3 +3390,34 @@ original computes both derived ints (`lea`, `add`) before its three stores
 and sinks the `fstp` past `f2968`, while ours interleaves and sinks the
 `+0x58` store instead. Identical multiset, T3a. Photos 2 and 3, and every
 other byte, are exact.
+
+## An x87 preload depth is not a constant — it is set by the block before it
+*(0x1000EAF0, 2026-09-03; this RETRACTS an earlier entry of mine that called
+the same number a scheduler constant)*
+
+For a run of `d[i] = k * s[i]`, VC5 preloads N copies of `k` and then runs a
+fixed three-deep fxch/fmul/fstp pipeline. When N does not match the original,
+do NOT conclude the compiler is unwilling. Three checks, in this order:
+
+1. **Look for another site in the same function.** If any site emits the
+   original's depth, the compiler is willing and the difference is contextual.
+   (Here a second scale block already emitted the original's 8.)
+2. **Vary the statement count.** If the first batch is the same number for
+   every N — measured 10 through 16, always 5 — it is not a batch-size rule,
+   and something at that site is costing x87 slots.
+3. **Move the block earlier.** If the depth changes when the block is hoisted
+   above its predecessor, the predecessor sets it.
+
+Here the predecessor was a row block whose four products mix operand KINDS:
+two spelled as absolute literals, two through pointer locals. Spelling all
+four absolutely — which is what the original does — takes the preload from 5
+to the original's 8. **So two "independent walls" in that dossier were one:
+the preload is downstream of the row block's operand kinds.**
+
+Ruled out as causes of the depth, so nobody re-runs them: the inline-helper
+boundary, whether source and destination are the same array (in-place still
+gives 5), extern-vs-defined storage for the arrays, and removing the locals
+that go dead when the terms are rewritten.
+
+**The general lesson is the diagnosis order, not the fix.** Before writing
+"the compiler will not do X", find a site in the same binary where it does.
