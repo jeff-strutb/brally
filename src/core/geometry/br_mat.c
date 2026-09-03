@@ -79,11 +79,12 @@ void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
  *     translation row m[3][0..2] is NOT added to the x/y/z numerators; only
  *     m[3][3] is added to w.  That is what the original computes -- it assumes a
  *     pure projection matrix -- so it is reproduced verbatim, not "fixed".
- *  2. The summation GROUPING differs between components because MSVC scheduled
- *     the first column around the divide: x groups (m10*vy + m20*vz) + m00*vx,
- *     while y and z group (m0k*vx + m1k*vy) + m2k*vz, and w groups
- *     (m13*vy + m03*vx) + m23*vz + m33.  Float add is not associative, so these
- *     orders are preserved exactly.
+ *  2. The x column's products are ISSUED in a different order from y and z
+ *     (x: m10*vy, m20*vz, then m00*vx from memory; y/z: m0k*vx, m1k*vy,
+ *     m2k*vz).  That is MSVC scheduling the first column around the divide,
+ *     NOT a source difference -- all three rows are written the same way here,
+ *     and every reordering of a flat float sum compiles identically (see the
+ *     dead-probe list below).  Do not read source grouping off this asm.
  *  3. The divisor g_0775F0 is 1.0f (same constant br_dl.c divides by), and the
  *     original forms it as `fdivr` (1.0 / w), so the reciprocal is taken once
  *     and then multiplied in -- reproduced as `1.0 / w`.
@@ -97,17 +98,35 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
     float w = m[0][3] * vx + m[1][3] * vy + m[2][3] * vz + m[3][3];
     float r = 1.0f / w;                /* g_0775F0 == 1.0f, taken via fdivr */
 
-    /* NOT MATCHING -- 30 bytes in the 0x28-0x4F scheduling window, and it is
-     * the documented float-cluster wall: the original computes vx*m[0][0] as
-     * `fld st(5); fmul dword [eax]` (x dup'd, matrix from memory) where VC5
-     * here emits `fld dword [eax]; fmul st(5)`.  Same instruction multiset,
-     * same 165 real bytes, opposite operand selection.  Source operand order
-     * is canonicalised away (V2 vs V9 scratch experiment, 2026-08-22):
-     * swapping to vx*m[0][0] restructures the whole function and lands
-     * farther (121 diffs).  This float-typed, flat-sum form is the closest
-     * spelling found: first 0x28 bytes and everything from +0x50 on are
-     * byte-identical (old double-typed form: 99 diffs; this: 30). */
-    pOut->x = (m[1][0] * vy + m[2][0] * vz + m[0][0] * vx) * r;
+    /* PARKED T3a, re-measured 2026-09-03.  Residue is ONE instruction:
+     * recomp 163 B / 69 insns vs orig 165 B / 70, register-blind multiset
+     * difference = a single `fxch`.  Divergence starts at +0x8 -- the x87
+     * preload block picks a different five values (orig vx, vy, m03, m13, vz;
+     * recomp vy, vz, m23, vx, m13) and every later `fxch` follows from that.
+     *
+     * ‼ THE OLD NOTE HERE WAS STALE AND IS RETRACTED.  It claimed a 30-byte
+     * residue confined to 0x28-0x4F with "the first 0x28 bytes and everything
+     * from +0x50 byte-identical", and that swapping the x-row operand order
+     * cost 121 diffs.  None of that reproduces: the function diverges at +0x8
+     * in EVERY spelling, and the spellings are indistinguishable because VC5
+     * canonicalises a whole flat float sum-of-products (see docs/VC5-IDIOMS.md,
+     * "canonicalises commutative FLOAT addition").
+     *
+     * DEAD PROBES -- all eleven give byte-identical output, do not re-run:
+     *   w chain order: m03*vx-first, m33-first, vector-operand-first
+     *   x row order:   m00-first, m10-first, vx*m00 form
+     *   outer scale:   (...)*r and r*(...)
+     *   temps:         named x numerator; w inlined into the reciprocal;
+     *                  declaration order of the vector and matrix locals
+     *   access form:   `const float (*m)[4]` local vs `pM->m[i][k]`;
+     *                  `float *o = &pOut->x` output cursor
+     *   the self-prototype in br_mat.h hidden at the include
+     * WORSE, measured: right-leaning grouping `a + (b + c)` (125); dividing
+     * by w three times instead of one reciprocal (-6 B, regnorm 4+9); hoisting
+     * the numerators into locals (+68 B); reversing the three stores (+34 B);
+     * dropping the vx/vy/vz locals (-10 B / -8 insns -- VC5 re-CSEs the loads);
+     * double-typed intermediates (regnorm 1+2). */
+    pOut->x = (m[0][0] * vx + m[1][0] * vy + m[2][0] * vz) * r;
     pOut->y = (m[0][1] * vx + m[1][1] * vy + m[2][1] * vz) * r;
     pOut->z = (m[0][2] * vx + m[1][2] * vy + m[2][2] * vz) * r;
 }
