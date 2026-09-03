@@ -11,8 +11,27 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * STATE (2026-09-03, seventh pass): 2,324/2,328 instructions, 9,344 vs
- * 9,354 bytes, 19 divergence regions slot-masked (27 raw).  CLOSED this
+ * STATE (2026-09-03, eighth pass): 2,328/2,328 instructions -- EQUAL --
+ * 9,344 vs 9,354 bytes, 3,727 reloc-masked differing bytes, 20 divergence
+ * regions slot-masked (28 raw).
+ * EIGHTH PASS: the ring-wrap test is `if (head >= 500)`, not `if (499 <
+ * head)`.  Four sites; orig emits `cmp X,0x1f4; jl` and we were emitting
+ * `cmp X,0x1f3; jle`.  Both spellings are semantically identical, so this
+ * is a transcription defect in the CONSTANT, and it dropped the true byte
+ * diff 3,855 -> 3,727 and brought the instruction count to exactly equal.
+ * ‼ READ THIS BEFORE TRUSTING THE REGION COUNT: `divergence.py` compares
+ * "mnemonic + operand SHAPE with imm32 wildcarded" (see its `norm`), so it
+ * is BLIND to immediate-operand defects -- all four of these sites scored
+ * as matching for eight passes.  The region count went UP here (19 -> 20)
+ * while the function got 128 bytes closer, because fixing the constant
+ * re-opened the 0x189c `mov edi,1` sink that the seventh pass had closed.
+ * Region count is a proxy; on any change that touches a constant, check
+ * the reloc-masked byte diff and the instruction count too.  A periodic
+ * register-blind instruction-multiset diff (normalise registers and
+ * reloc'd addresses, keep small immediates) is what surfaced this and is
+ * worth re-running on any long-stalled function.
+ *
+ * Seventh pass: 19 regions, 2,324 instructions.  CLOSED that
  * pass: BOTH drain loops converted to BYTE-offset induction variables
  * together (`c2 << 4` / `dCar << 4`, `+= 4`, every ring read and write
  * spelled `*(int *)((char *)base + off)`).  This is the form wall 7 below
@@ -839,13 +858,13 @@ no_mark:
                             DAT_10273690[head + ring * 500].flags =
                                 *(uint16_t *)(pCar + -0x24) | 0x8000000;
                             head = head + 1;
-                            if (499 < head) {
+                            if (head >= 500) {
                                 head = 0;
                             }
                             DAT_1035faf0[ring] = head;
                             if (head == DAT_1035f750[ring]) {
                                 head = DAT_1035f750[ring] + 1;
-                                if (499 < head) {
+                                if (head >= 500) {
                                     head = 0;
                                 }
                                 DAT_1035f750[ring] = head;
@@ -863,13 +882,13 @@ no_mark:
                                     DAT_10273690[ring * 500 + head].flags =
                                         DAT_10273690[ring * 500 + head].flags & 0xf7ffffff;
                                     head = head + 1;
-                                    if (499 < head) {
+                                    if (head >= 500) {
                                         head = 0;
                                     }
                                     DAT_1035faf0[ring] = head;
                                     if (head == DAT_1035f750[ring]) {
                                         head = DAT_1035f750[ring] + 1;
-                                        if (499 < head) {
+                                        if (head >= 500) {
                                             head = 0;
                                         }
                                         DAT_1035f750[ring] = head;
