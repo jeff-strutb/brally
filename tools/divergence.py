@@ -29,6 +29,20 @@ meaning -- but on any function with repeated arms, read it at --key 10 and
 SAY WHICH KEY the number came from.  Going further (14) is too coarse: the
 resync starts skipping whole arms and swallows real regions.
 
+‼ AND A SUSPECT RESYNC POISONS THE TWO REGIONS AFTER IT, not just its own
+line.  `change` is a difference of two deltas, so once a resync lands on the
+wrong copy the next region's delta is wrong and the two `change` values
+computed from it are fiction.  Both are now labelled.  Do not grind a block
+whose change carries either warning.
+
+VERIFY A BIG CHANGE BEFORE GRINDING IT.  Pick an instruction that occurs once
+per unit of work and count it over the WHOLE function in both streams -- on
+0x100250D0 the divide-by-255 magic constant (33 in each) and the one-operand
+`imul` (24 in each) prove no channel is missing, which is what showed a -73
+"missing block" to be an anchor artefact after two sessions had believed it.
+An equal census plus an honest instruction total means the residue is
+allocation, wherever the region map points.
+
 --deltas replaces the per-region listing with one line per region giving how
 far the recompile has drifted behind (negative) or ahead of the original by
 that point, and how much of the drift the PRECEDING stretch added.  That
@@ -221,8 +235,22 @@ while ia < len(A) and ib < len(B):
         if DELTAS:
             n, oa, rb, d, ch = pending_delta
             warn = f"  <-- SUSPECT: resync skew {best[0]}/{best[1]} insns" if skew > 20 else ""
+            # A region that FOLLOWS a suspect resync is measured from a bad
+            # anchor, so its own change is fiction too even when its own
+            # resync is clean.  Say so: this trap cost a session, which
+            # believed a -73 that a whole-function instruction census then
+            # showed could not exist.
+            if not warn and globals().get('suspect_carry', 0) > 0:
+                warn = "  <-- change unreliable: a preceding resync was SUSPECT"
             print(f"region {n:2d}  orig+{oa:#07x}  recomp+{rb:#07x}"
                   f"   delta={d:+d}  (change {ch:+d}){warn}")
+        # A bad resync corrupts the DELTA at the next region, and `change`
+        # is a difference of two deltas -- so the two regions after it are
+        # both fiction, not just one.
+        if skew > 20:
+            globals()['suspect_carry'] = 2
+        else:
+            globals()['suspect_carry'] = max(0, globals().get('suspect_carry', 0) - 1)
         ia += best[0]; ib += best[1]
         found = True
     if not found:
