@@ -1147,7 +1147,7 @@ int BR_THISCALL1 BrPhaseFn_100488B0(BrPhaseFull *pThis)
  * mode -- and moves the mouse pointer element to wherever the mouse now is. It
  * does that with the root screen temporarily made current and then puts the
  * real one back. */
-/* @implements 0x100488C0 d3d BrPhaseTick_100488C0 */
+/* port-only body; Glide match is src/core/cpp/0x10041D10.cpp */
 int BrPhaseTick_100488C0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     int fReTrack = 0;
@@ -1214,7 +1214,7 @@ static void BrScrPhaseBail(BrScrGlobals *pG, BrPhaseFull *pThis,
  * gives every page of the screen its turn. If the screen has been asked to
  * close, either before it starts or by the time it finishes, it saves the
  * settings out and tells the screen to shut down rather than carrying on. */
-/* @implements 0x100489A0 d3d BrPhaseRun_100489A0 */
+/* port-only body; Glide match is src/core/cpp/0x10041DD0.cpp */
 int BrPhaseRun_100489A0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     const BrPhaseFullVtbl *pV;
@@ -1263,7 +1263,7 @@ int BrPhaseRun_100489A0(BrScrGlobals *pG, BrPhaseFull *pThis)
 /* WHAT IT DOES: throws a screen away entirely -- every row of every page, then
  * the pages themselves -- and puts the menu highlight back to the top. This is
  * what runs when the player leaves a screen. */
-/* @implements 0x10048AA0 d3d BrPhaseReleasePages_10048AA0 */
+/* port-only body; Glide match is src/core/cpp/0x10041ED0.cpp */
 void BrPhaseReleasePages_10048AA0(BrScrGlobals *pG, BrPhaseFull *pThis)
 {
     int32_t i;
@@ -1313,7 +1313,7 @@ static int BrScrDropPhase(BrPhaseFull **ppSlot)
  * associated state as they empty. One slot appears twice in the list, so it is
  * dropped and then dropped again. When called with no argument it also releases
  * the root screen and the shared picture list. */
-/* @implements 0x10048B20 d3d BrPhaseShutdown_10048B20 */
+/* port-only body; Glide match is src/core/cpp/0x10041F50.cpp */
 void BrPhaseShutdown_10048B20(BrScrGlobals *pG, void *pArg)
 {
     uint32_t nEnd;
