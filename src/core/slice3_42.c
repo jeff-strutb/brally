@@ -49,6 +49,7 @@ typedef struct { int32_t v; } BrCtrlProfileArg;
  * 1. 0x100695D0
  * ===================================================================== */
 
+/* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {
     const float w = pSrc->f00;      /* the SCALAR -- see the header */
