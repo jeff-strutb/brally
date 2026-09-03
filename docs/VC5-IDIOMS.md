@@ -2457,3 +2457,25 @@ whose current best is `Od` and still `diff`.
   FIND it is a per-call push count: the same 34 call groups on both sides
   with identical register-push totals and exactly one group short two
   pushes.
+
+## Do not name a temp to "preserve" an observed load order
+*(proven 2026-09-03 on 0x100400E0; the mirror of the re-read entry above)*
+
+The original loads a global, stores 0 to a DIFFERENT global, then stores
+the loaded value:
+
+    mov ecx, [g_root]
+    mov dword ptr [g_pending], 0
+    mov [g_current], ecx
+
+It is tempting to reproduce that with a temp (`p = g_root; g_pending = 0;
+g_current = p;`) and the port body did exactly that. It is wrong: VC5
+hoists the load above the unrelated store on its own, and naming the value
+takes it out of eax, losing the one-byte-shorter `a1`/`a3` accumulator
+encodings — 10 diffs on a 56-byte function. Write the two statements
+plainly in either order and it matches.
+
+Pair this with "do not cache what the original re-reads": both say the same
+thing from opposite sides. **Load placement is VC5's decision, not the
+source's.** Only name a value when the ORIGINAL keeps it in a register
+across something that would otherwise clobber it.
