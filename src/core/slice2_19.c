@@ -1250,6 +1250,29 @@ static uint16_t BrLd16(const void *pv)
  * corrected to where the data now sits -- header, geometry, animation frames
  * and all. Each finished piece is then handed to the renderer. */
 /* @implements 0x10036C00 d3d BrModelSwap */
+#ifdef BR_MATCHING_BUILD
+/* MACROS, not statics -- MSVC5 will not inline a static with more than one
+ * caller, so every BrRev/BrLd here was a `call` the original does not have.
+ * Scoped to BrModelSwap with #undef below so the other users of these
+ * helpers keep whatever shape they already match with. */
+#define BrRev4(pv) do { unsigned char *p_ = (unsigned char *)(pv); unsigned char t_; \
+    t_ = p_[0]; p_[0] = p_[3]; p_[3] = t_; \
+    t_ = p_[1]; p_[1] = p_[2]; p_[2] = t_; } while (0)
+#define BrRev2(pv) do { unsigned char *p_ = (unsigned char *)(pv); \
+    unsigned char t_ = p_[0]; p_[0] = p_[1]; p_[1] = t_; } while (0)
+#define BrRdBe32(pv) do { unsigned char *p_ = (unsigned char *)(pv); \
+    uint32_t v_ = ((uint32_t)p_[0] << 24) | ((uint32_t)p_[1] << 16) \
+                | ((uint32_t)p_[2] << 8) | (uint32_t)p_[3]; \
+    *(uint32_t *)(void *)p_ = v_; } while (0)
+#define BrLd32(pv) (*(const uint32_t *)(const void *)(pv))
+#define BrLd16(pv) (*(const uint16_t *)(const void *)(pv))
+/* DIRECT calls, not indirect: the original has nine `call rel32` and one
+ * `call [mem]`; the two fixup/deref hooks are ordinary functions here. */
+void  BrModelFixupDirect(uint32_t *pSlot);
+void *BrModelDerefDirect(uint32_t slot);
+#define g_BrModelFixup BrModelFixupDirect
+#define g_BrModelDeref BrModelDerefDirect
+#endif
 void BrModelSwap(void *pImage)
 {
     unsigned char *pHdr = (unsigned char *)pImage;
@@ -1350,6 +1373,15 @@ void BrModelSwap(void *pImage)
         g_BrGfxSubmitB(BrLd32(pRec));
     }
 }
+#ifdef BR_MATCHING_BUILD
+#undef BrRev4
+#undef BrRev2
+#undef BrRdBe32
+#undef BrLd32
+#undef BrLd16
+#undef g_BrModelFixup
+#undef g_BrModelDeref
+#endif
 
 /* 0x10036BD0 */
 /* WHAT IT DOES: loads a model from disk and makes it ready to draw -- reads
