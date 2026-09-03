@@ -240,6 +240,12 @@ extern int32_t BrSetVideoMode(int32_t w, int32_t h);
 extern char *BrStrId(int32_t id);
 extern void BrSub10019A40(void);
 
+/* WHAT IT DOES: handle the window losing or gaining focus -- alt-tab, or the
+ * player clicking away. On losing focus it releases the things another
+ * application must be allowed to take (input devices, sound, the 3dfx
+ * hardware) and remembers that it did; on regaining it, it takes them back.
+ * Getting this wrong is what leaves a full-screen game holding the display
+ * after the player has switched away. */
 /* @implements 0x10019350 glide BrOnActivateApp */
 BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
 {

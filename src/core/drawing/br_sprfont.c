@@ -264,6 +264,10 @@ int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
     return 1;
 }
 
+/* WHAT IT DOES: draw one character of the SECOND sprite font at the given
+ * screen position, looking its rectangle up in that font's table. The A/B
+ * pair are two different typefaces, not two sizes of one. Always reports
+ * success. */
 /* @implements 0x100545C0 glide BrSprFontGlyphB_1005B7A0 */
 int BR_STDCALL BrSprFontGlyphB_1005B7A0(short iGlyph, float x, float y,
                                        int unused)
