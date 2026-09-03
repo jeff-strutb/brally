@@ -39,6 +39,13 @@
  * way (all three together).  Found with tools/msetdiff.py, which had to be
  * fixed first (see its header): the branch-target and reloc-addend noise
  * was hiding the two-store residue.
+ * ‼ Every instruction count above (2415 / 2413 / 2411 against 2407) counted
+ * this TU's 16-byte alignment padding as code; `divergence.py` is fixed
+ * (commit a00add5) and the honest figure is 2,408 vs the original's 2,407,
+ * i.e. ONE instruction over, not four.  This function is at instruction
+ * parity and its residue is genuinely shape, exactly as the file title
+ * says -- unlike its two sibling giants, whose "counts are equal" claims
+ * were padding artefacts hiding 6 and 15 missing instructions.
  * Same session, the nibble-merge question is now SETTLED.  The clean
  * multiset leaves exactly one 32-bit nibble merge (`and edx,0xf0; and
  * ecx,0xff; shr ecx,4` at 0xda6) against the original's all-8-bit
