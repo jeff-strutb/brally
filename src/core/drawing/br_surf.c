@@ -177,28 +177,36 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
 /* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
-    uint32_t ecx, edx, eax;
-
 #ifndef BR_MATCHING_BUILD
     /* Port-only: orig loads pSurf after packing (`mov eax,[esp+4]; mov [eax+0xc],cx`). */
     if (!pSurf) return;
 #endif
 
-    ecx = colorref;
-    edx = colorref;
-    eax = colorref;
-    ecx &= 0xFFF8u;
-    edx >>= 8;
-    ecx <<= 5;
-    edx &= 0xFCu;
-    eax >>= 16;
-    ecx |= edx;
-    eax = (unsigned char)eax >> 3;
-    ecx <<= 3;
-    eax &= 0x1Fu;
-    ecx |= eax;
-
-    pSurf->key = (uint16_t)ecx;
+    /* 0x00BBGGRR -> 565 with red in the high bits.  The red and green terms
+     * share a `<< 3`, and the source says so: the whole point of writing the
+     * pack factored is that the shared shift is where the original's
+     * `shl ecx,5 ... shl ecx,3` pair comes from.  Writing the two terms in
+     * their natural finished positions instead (`(r >> 3) << 11`,
+     * `(g >> 2) << 5`) makes VC5 emit one `shl 8` and a pre-shifted green
+     * mask, and nothing recovers the pair.
+     *
+     * The red mask is 0xFFFF, not 0xFF: the green bits it drags in land at
+     * bit 16 and up and the store is 16 bits wide, so they never appear --
+     * and only the wide mask reproduces `and ecx,0xfff8`.
+     *
+     * RESIDUE (21 masked diffs, 3 bytes short): blue.  The original narrows
+     * to the byte lane first -- `shr eax,0x10 / shr al,3 / and eax,0x1f` --
+     * and ours does the shift in one `shr eax,0x13`.  Same value.
+     * DO NOT RE-PROBE: every char-typed spelling of the blue term (cast in
+     * place, an `unsigned char` local, that local shifted in place, with and
+     * without the `& 0x1F`, and with the dword `colorref >> 16` hoisted to
+     * its own local) gets the byte shift but then pays for it with a
+     * `movzx ax,al` widening, which is worse -- 33 or 34 diffs against 21.
+     * A uint32_t accumulator for the whole pack is worse again (45): the
+     * 16-bit destination is what makes VC5 factor the shared shift at all. */
+    pSurf->key = (uint16_t)(((((colorref & 0xFFFFu) >> 3) << 8
+                              | ((colorref >> 8) & 0xFCu)) << 3)
+                            | ((colorref >> 19) & 0x1Fu));
 }
 
 /* ----------------------------------------------------------------------
