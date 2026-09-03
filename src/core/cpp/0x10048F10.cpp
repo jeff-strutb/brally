@@ -27,6 +27,40 @@
 class GameUi;
 class BrCtl;
 class Sel3838;
+class Item2B5C;
+
+class Item2B5C {
+public:
+    virtual void  s0();
+    virtual void  s1();         /* +0x04 relayout */
+    virtual void  s2();
+    virtual void  s3();
+    virtual void  s4();
+    virtual void  s5();
+    virtual void  s6();
+    virtual void  s7();
+    virtual void  s8();
+    virtual void  s9();
+    virtual float s10();
+    virtual void  s11();
+
+    int   f004;
+    char  b008;
+    char  szName[0x401];        /* +0x009 */
+    short w40A;
+    short w40C;
+    short pad40E;
+    int   f410;
+    int   f414;
+    int   f418;
+    short w41C;                 /* +0x41C */
+    short pad41E;
+    int   f420;
+    int   a424[4];              /* +0x424 */
+    int   f434;
+};
+
+typedef char chk_item2B5C[sizeof(Item2B5C) == 0x438 ? 1 : -1];
 
 class Sel3838 {
 public:
@@ -102,10 +136,17 @@ public:
     int (*pfn10)(BrCtl *);          /* +0x10 */
     int (*pfn14)(BrCtl *);          /* +0x14 */
     int (*pfn18)(BrCtl *);          /* +0x18 */
-    char pad1C[0x2AB4 - 0x1C];      /* +0x1C */
+    char pad1C[0x50 - 0x1C];        /* +0x1C */
+    int  f050;                      /* +0x050 */
+    int  f054;
+    int  f058;
+    int  f05C;
+    char pad60[0x2AB4 - 0x60];      /* +0x060 */
     short w2AB4;                    /* +0x2AB4 */
     short w2AB6[0x19];              /* +0x2AB6 */
-    char pad2AE8[0x3838 - 0x2AE8];  /* +0x2AE8 */
+    char pad2AE8[0x2B5C - 0x2AE8];  /* +0x2AE8 */
+    Item2B5C m2B5C;                 /* +0x2B5C -- the 0x438 item record */
+    char pad2F94[0x3838 - 0x2F94];  /* +0x2F94 */
     Sel3838 m3838;                  /* +0x3838 */
     char pad3850[0x1E1F4 - 0x3850]; /* +0x3850 */
     int f1E1F4;                     /* +0x1E1F4 */
