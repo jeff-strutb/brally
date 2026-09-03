@@ -183,16 +183,49 @@ def slice_map(report_rows):
     return spans
 
 
+def module_destination(va):
+    """The module file config/filing.csv records for `va`, if any.
+
+    Rule 6: a matched function belongs in its module, not in an address batch.
+    This tool used to place EVERY new match by address (pick_slice below), so
+    the batches grew with every unattended run -- 570 of 845 matched functions
+    were stranded there by 2026-09-03. Consulting the recorded decision first
+    is what stops that: if someone has said what the function is, the code goes
+    straight there and never enters the backlog.
+    """
+    p = os.path.join(ROOT, 'config', 'filing.csv')
+    if not os.path.exists(p):
+        return None
+    key = '0x%08x' % va
+    with open(p) as f:
+        for r in csv.DictReader(f):
+            if r['glide_va'].lower() == key and r.get('module'):
+                sys.path.insert(0, os.path.join(ROOT, 'tools'))
+                import refile
+                dst = refile.dest_file(r['module'], r.get('name') or '')
+                # Only an EXISTING module file: minting one from a tool that
+                # cannot see what the function is for produces br_nop.c-shaped
+                # names, which src/core/README.md rules out.
+                return dst if os.path.exists(os.path.join(ROOT, dst)) else None
+    return None
+
+
 def pick_slice(spans, va):
-    """Slice files ranked best-first: bracketing (narrowest span first),
-    then nearest-below, then nearest-above."""
+    """Destination files ranked best-first: the recorded module file if there
+    is one, then bracketing slices (narrowest span first), then nearest-below,
+    then nearest-above.
+
+    The slice fallback is a BACKLOG, not a destination. Anything that lands
+    there is reported by tools/fileaudit.py until it is filed properly.
+    """
     inside = sorted((f for f, (lo, hi) in spans.items() if lo <= va <= hi),
                     key=lambda f: spans[f][1] - spans[f][0])
     below = sorted((f for f, (lo, hi) in spans.items() if hi < va),
                    key=lambda f: -spans[f][1])
     rest = sorted((f for f in spans if f not in inside and f not in below),
                   key=lambda f: spans[f][0])
-    return inside + below + rest
+    mod = module_destination(va)
+    return ([mod] if mod else []) + inside + below + rest
 
 
 def run_sweep(relfile):
