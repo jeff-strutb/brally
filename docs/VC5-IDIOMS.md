@@ -3991,3 +3991,79 @@ Cost/benefit: the hand-walk is ten minutes on a small function and it
 replaces the six-to-N probe cycles that a term-order search costs, each of
 which needs a compile. Do it first on any leaf whose body is a dot product,
 a weighted sum, or an accumulate-then-offset.
+
+## ‼ MEASUREMENT TRAP: `divergence.py` used to STOP at a lost sync and still print a total
+
+Proven 2026-09-03 on 0x100250D0 (BrTex3dExpand), fixed in commit b72676b.
+
+The resync search only looked 400 instructions ahead.  When one block diverged
+harder than that the walk **stopped**, printed `... lost sync at orig+X`, and
+then printed a region total anyway.  Twelve sessions of that function's
+dossier quoted region maps that covered orig `0x0..0x15b8` and had never
+compared the remaining 2,920 bytes — 34% of the function, and the stretch that
+holds its largest reliable per-block drift (-50 at 0x1a4c).
+
+The tool now re-anchors with a global KEY-gram index, labels the regions after
+a re-anchor as unreliable, and prints
+
+    ‼ N lost-sync gap(s): B orig bytes (P% of the function) were NEVER COMPARED
+
+**Read that line before quoting any region count.**  Real numbers for that
+function after the fix: 31 regions at `--key 10` (was 20), 52 at `--key 6`
+(was 32).  Two rules fall out:
+
+- A gram index must mask exactly what the byte comparator ignores.  Keeping
+  branch TARGETS in the gram key made the re-anchor overshoot by 1,177 bytes,
+  because a ten-instruction window in this code almost always contains a jcc
+  whose target differs between the obj and the image.
+- A stretch that *stays* uncompared is a diagnosis, not a tooling gap: it means
+  there is no run of KEY consecutive matching instructions in it.
+
+## The STACK-SLOT CENSUS: the only screen that catches "one variable doing two values' jobs"
+
+Proven 2026-09-03 on 0x1000A110 (BrCarDrawVehicle); tool is
+`tools/slotcensus.py`.
+
+For every value the original homes in a stack slot, list **every read of that
+slot** and check the source names the same variable at each one.  On
+0x1000A110 two display-list appends were both spelled `specMem`; the original
+reads two *different* slots there:
+
+    [esp+0x2c]  0x10062550's result   read once  at 0x1772        = pSkyAng
+    [esp+0x30]  1st 0x100625A0        read at 0x690 AND 0x1b1c    = pLights
+    [esp+0x28]  2nd 0x100625A0        read once  at 0xc78         = specMem
+
+so the second MOVEMEM pair emits **pLights**, and spelling it `specMem` put the
+wrong pointer in the display list — a behaviour bug, not a codegen one.
+
+Nothing else in the tree can see this: `divergence.py` sees `mov [eax+4],R` in
+both streams, `msetdiff.py` compares shapes and both sites share one, and the
+push census sees no pushes.  Run the slot census on any function that
+allocates or caches more than one pointer.
+
+Side effect worth knowing: the duplicate spelling also let VC5 **CSE** the now
+shared `specMem + 0x10` into a slot (`lea R,[R+0x10]`, `mov [esp+S],R` …
+`mov R,[esp+S]`) where the original recomputes it destructively at each site
+(`add edx,0x10`).  Fixing the value fixed the CSE for free.
+
+## VARIABLE IDENTITY IS INERT — VC5 splits live ranges itself
+
+Three measurements, all BYTE-IDENTICAL, all 2026-09-03.  Stop retranscribing
+Ghidra's variable recycling in the hope of moving an allocation:
+
+- **A reused parameter as a loop counter** (`param_1` cast to int and
+  incremented) against a fresh `int` local of the same width — 0x100250D0,
+  the `param_6 == 3` IA blend arm.  Unchanged REGNORM, byte count and
+  instruction count; only the slot NUMBER moved.
+- **A Ghidra-recycled temp given its own name** — 0x100250D0's `iVar5` is the
+  loop-invariant tile-record pointer *and* the scratch counter of all five
+  copy-back loops.  Splitting the scratch into its own `iSpan` at all five
+  sites is byte-identical: VC5 already builds separate webs.
+- **A local copy or a destructive update does not break a CSE** — 0x1000A110,
+  `t = x; put(t); t += 0x10; put(t)` and `x += 0x10;` at the last use both
+  produce exactly the bytes of `x` and `x + 0x10`.  VC5 value-numbers
+  `x + c`, `t = x; t += c` and `x += c` to the same value.
+
+The corollary is the useful part: **when the slot census shows two source uses
+of one variable where the original reads two slots, the defect is the VALUE,
+not the name.**  Renaming pays nothing; emitting the right value pays.
