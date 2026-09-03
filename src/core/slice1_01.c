@@ -252,6 +252,12 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
 #endif
+/* RESIDUE (8 masked diffs, T3a, REGNORM 0+0): the original homes `size` in
+ * ebx and `count` in edi; this build homes them the other way round, which
+ * flips the two `push`es and the `imul` operands. Every instruction is the
+ * original's. Writing the product `count * size` instead of `size * count`
+ * changes nothing -- VC5 canonicalises the multiply the same way it does a
+ * commutative add. */
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
 #ifdef BR_MATCHING_BUILD
