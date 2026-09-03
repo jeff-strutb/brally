@@ -580,6 +580,11 @@ void BrRgbSinkSet(BrRgbSink *pSink, int r, int g, int b)
 /* @implements 0x100350EE d3d BrCarGfxSetColour */
 void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
 {
+    /* FIVE locals, `sub esp,0x14`. The tail's word pointer is its OWN
+     * variable in the original -- ebp-4, and the most-used slot in the
+     * function -- not the loop's `pw` reused. Sharing one costs a slot and
+     * shifts every displacement in the function. */
+    uint16_t  *pwTail;
     int32_t   i;
     BrGfxSlot *pSlot;
     uint16_t  *pw;
@@ -592,82 +597,87 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
 
         pSlot = &pCar->pSlots[pCar->aSlotIdx[i]];
         pw    = pSlot->pWords;
-        if (pw == NULL)
-            continue;
-        if (((pSlot->f20 >> 24) & 0xFu) != 1u)
-            continue;
+        /* Nested, not two `continue`s: the original's tests are two near
+         * `je`/`jne` straight to the loop increment (0x1002E7FB and
+         * 0x1002E810), and the early-exit spelling emits a short branch over
+         * a jump instead. */
+        if (pw != NULL && ((pSlot->f20 >> 24) & 0xFu) == 1u) {
+            /* GOTCHA: the alpha bit is taken from pw[i], the results land in
+             * pw[0] and pw[1]. Faithful.
+             *
+             * The byte swap is INLINE here. BrSwapHalf is a real call at /Od
+             * and the original has none; the `and 0xffff` before each shift
+             * is the uint16_t read, and the `sar` is the promotion to int. */
+            v = (uint16_t)((pw[i] & 1u)
+                           | ((uint32_t)r << 11)
+                           | ((uint32_t)g << 6)
+                           | ((uint32_t)b << 1));
+            pw[0] = (uint16_t)(((v << 8) & 0xFF00) | ((v >> 8) & 0xFF));
 
-        /* GOTCHA: the alpha bit is taken from pw[i], the results land in
-         * pw[0] and pw[1]. Faithful. */
-        v = (uint16_t)((pw[i] & 1u)
-                       | ((uint32_t)r << 11)
-                       | ((uint32_t)g << 6)
-                       | ((uint32_t)b << 1));
-        pw[0] = BrSwapHalf(v);
-
-        v = (uint16_t)((pw[i] & 1u)
-                       | (((uint32_t)r & 0x1Eu) << 10)
-                       | (((uint32_t)g & 0x1Eu) << 5)
-                       | ((uint32_t)b & 0x1Eu));
-        pw[1] = BrSwapHalf(v);
+            v = (uint16_t)((pw[i] & 1u)
+                           | (((uint32_t)r & 0x1Eu) << 10)
+                           | (((uint32_t)g & 0x1Eu) << 5)
+                           | ((uint32_t)b & 0x1Eu));
+            pw[1] = (uint16_t)(((v << 8) & 0xFF00) | ((v >> 8) & 0xFF));
+        }
     }
 
     for (i = 0; i < pCar->cDl; i++)
         g_BrGfxSubmit(pCar->aDl[i]);
 
-    pw = pCar->pSlots[pCar->aSlotIdx[11]].pWords;
-    if (pw == NULL)
-        return;
-    if (g_Br0AC300 != 0)
-        return;
-
-    if (pCar->aDlExtra[0] != 0) {
-        if (g_Br6C661C != 0 || g_Br6C6624 != 0) {
-            pw[15] = 0x0070u;   /* +0x1E */
-            pw[10] = 0x8290u;   /* +0x14 */
-        } else {
-            pw[15] = 0x0190u;
-            pw[10] = 0x01A0u;
+    pwTail = pCar->pSlots[pCar->aSlotIdx[11]].pWords;
+    /* Wrapped, not two early returns: the original's tests are near `je` and
+     * `jne` straight to the function's own `mov esp,ebp` (0x1002EAFF), and
+     * the return spelling emits a short branch over a jump instead. */
+    if (pwTail != NULL && g_Br0AC300 == 0) {
+        if (pCar->aDlExtra[0] != 0) {
+            if (g_Br6C661C != 0 || g_Br6C6624 != 0) {
+                pwTail[15] = 0x0070u;   /* +0x1E */
+                pwTail[10] = 0x8290u;   /* +0x14 */
+            } else {
+                pwTail[15] = 0x0190u;
+                pwTail[10] = 0x01A0u;
+            }
+            pwTail[14] = 0x0190u;       /* +0x1C */
+            pwTail[13] = pwTail[15];        /* +0x1A <- +0x1E */
+            pwTail[9]  = 0x01A0u;       /* +0x12 */
+            pwTail[8]  = pwTail[10];        /* +0x10 <- +0x14 */
+            pwTail[12] = 0x8179u;       /* +0x18 */
+            pwTail[7]  = 0x4192u;       /* +0x0E */
+            pwTail[11] = 0x6BADu;       /* +0x16 */
+            pwTail[6]  = 0x31C6u;       /* +0x0C */
+            g_BrGfxSubmit(pCar->aDlExtra[0]);
         }
-        pw[14] = 0x0190u;       /* +0x1C */
-        pw[13] = pw[15];        /* +0x1A <- +0x1E */
-        pw[9]  = 0x01A0u;       /* +0x12 */
-        pw[8]  = pw[10];        /* +0x10 <- +0x14 */
-        pw[12] = 0x8179u;       /* +0x18 */
-        pw[7]  = 0x4192u;       /* +0x0E */
-        pw[11] = 0x6BADu;       /* +0x16 */
-        pw[6]  = 0x31C6u;       /* +0x0C */
-        g_BrGfxSubmit(pCar->aDlExtra[0]);
-    }
 
-    if (pCar->aDlExtra[1] != 0) {
-        pw[14] = 0x00C0u;
-        pw[13] = pw[14];        /* +0x1A <- +0x1C, unlike block 1 */
-        pw[9]  = 0x04F9u;
-        pw[8]  = pw[9];         /* +0x10 <- +0x12, unlike block 1 */
-        pw[11] = 0x6BADu;
-        pw[6]  = 0x31C6u;
-        g_BrGfxSubmit(pCar->aDlExtra[1]);
-    }
+        if (pCar->aDlExtra[1] != 0) {
+            pwTail[14] = 0x00C0u;
+            pwTail[13] = pwTail[14];        /* +0x1A <- +0x1C, unlike block 1 */
+            pwTail[9]  = 0x04F9u;
+            pwTail[8]  = pwTail[9];         /* +0x10 <- +0x12, unlike block 1 */
+            pwTail[11] = 0x6BADu;
+            pwTail[6]  = 0x31C6u;
+            g_BrGfxSubmit(pCar->aDlExtra[1]);
+        }
 
-    if (pCar->aDlExtra[2] != 0) {
-        pw[14] = 0x0190u;
-        pw[13] = pw[15];        /* +0x1A <- +0x1E */
-        pw[9]  = 0x01A0u;
-        pw[8]  = pw[10];        /* +0x10 <- +0x14 */
-        pw[11] = 0x38E7u;
-        pw[6]  = 0xFEFFu;
-        g_BrGfxSubmit(pCar->aDlExtra[2]);
-    }
+        if (pCar->aDlExtra[2] != 0) {
+            pwTail[14] = 0x0190u;
+            pwTail[13] = pwTail[15];        /* +0x1A <- +0x1E */
+            pwTail[9]  = 0x01A0u;
+            pwTail[8]  = pwTail[10];        /* +0x10 <- +0x14 */
+            pwTail[11] = 0x38E7u;
+            pwTail[6]  = 0xFEFFu;
+            g_BrGfxSubmit(pCar->aDlExtra[2]);
+        }
 
-    if (pCar->aDlExtra[3] != 0) {
-        pw[14] = 0x00C0u;
-        pw[13] = pw[14];
-        pw[9]  = 0x04F9u;
-        pw[8]  = pw[9];
-        pw[11] = 0x38E7u;
-        pw[6]  = 0xFEFFu;
+        if (pCar->aDlExtra[3] != 0) {
+            pwTail[14] = 0x00C0u;
+            pwTail[13] = pwTail[14];
+            pwTail[9]  = 0x04F9u;
+            pwTail[8]  = pwTail[9];
+            pwTail[11] = 0x38E7u;
+            pwTail[6]  = 0xFEFFu;
         g_BrGfxSubmit(pCar->aDlExtra[3]);
+        }
     }
 }
 
