@@ -387,7 +387,9 @@ glide_va,name,module,basis,file
 0x10032510,BrAtexit_10038EA0,startup,filed,src/core/startup/br_objlife.c
 0x10032520,BrSub10032520,,,src/core/tiny_stubs.c
 0x10032680,BrInit220B20,,,src/core/slice2_20.c
+0x10033880,BrPfxUpdateB0,,,src/core/generated/0x10033880.c
 0x10033B50,BrPfxReset,,,src/core/slice2_21.c
+0x10033BB0,BrPfxTick,,,src/core/generated/0x10033BB0.c
 0x10033C90,BrPfxSaveState,,,src/core/generated/0x10033C90.c
 0x10033CE0,BrSpanExtend,,,src/core/slice2_21.c
 0x10033F90,BrSpanContains,,,src/core/slice2_21.c

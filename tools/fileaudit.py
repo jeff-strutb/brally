@@ -53,7 +53,7 @@ from filing import (FILING, is_slice, load_report, module_of,  # noqa: E402
 BASELINE = 62
 # Functions without a WHAT IT DOES: comment when the check was introduced.
 # The gate refuses any increase, so this can only fall.
-DESC_BASELINE = 196
+DESC_BASELINE = 132
 
 
 def shared_map():
