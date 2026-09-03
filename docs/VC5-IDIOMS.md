@@ -3702,3 +3702,32 @@ short row poisons every size-based screen — 0x10031B80 ranked SECOND on the
 whole factored-helper board at "-1165 bytes short" while the function it names
 is size-exact. `claimcheck.py` now flags it directly; **fragments, thunks and
 port-only bodies must not carry `@implements`.**
+
+## VC5 canonicalises commutative FLOAT addition — operand order is not source-reachable
+
+Measured on 0x10044860, where four `fld`/`fadd` pairs are the function's only
+instruction-level divergence. For `local + member` VC5 always emits
+`fld <member>; fadd <local>`, and the original emits the reverse. Three
+spellings produce BYTE-IDENTICAL output:
+
+  - `fy + cont->f33C`
+  - `cont->f33C + fy`
+  - `ay = fy + cont->f33C;` then passing `ay`
+
+Declaring the local first among the locals does not move it either. So a
+float `a + b` whose operand order is wrong is NOT a spelling problem: the
+front end normalises before scheduling, and the choice of which operand
+becomes the `fld` is made from the addressing modes (it loads the disp32
+member and adds the disp8 stack slot). Contrast the SUBTRACTION case, which
+is not commutative and does follow the source. Do not spend probes
+permuting a float sum.
+
+## Ghidra mis-typing the parent pointer: one cause, five symptoms
+
+When Ghidra types a builder's single pointer parameter as `float param_1`
+(0x10044860), every use of it picks up an `(int)` cast and the `+0x340`
+store comes out as `*(float *)`. That looks like five unrelated
+unhandled lines in a scaffold. It is one cause; undo the typing when the
+draft is parsed rather than teaching the patterns about the casts.
+`tools/gen_menubuilder.py` does this now and its entry-point regex accepts
+any scalar spelling of the parameter.
