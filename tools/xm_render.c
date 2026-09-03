@@ -810,6 +810,7 @@ typedef struct {
 typedef struct {
     long   frames;
     long   loop_start_frame;
+    long   restart_frame;   /* frame the restart order position begins at */
     long   clipped;
     double peak;            /* pre-gain, so pass 1 can size the gain */
 } RenderStats;
@@ -854,6 +855,7 @@ static void render(XmPlayer *pl, const RenderCfg *cfg, FILE *out, double gain,
 
     memset(st, 0, sizeof(*st));
     st->loop_start_frame = -1;
+    st->restart_frame = -1;
 
     if (out == NULL || total_frames <= 0 || fade_frames <= 0)
         fade_start = -1;
@@ -871,6 +873,14 @@ static void render(XmPlayer *pl, const RenderCfg *cfg, FILE *out, double gain,
         if (pl->tick == 0) {
             const XmPattern *pat;
             int pidx = m->order[pl->order_index];
+            /* Frame at which the module's restart position is first entered.
+             * A single-pass render ends where the song ends, so a player that
+             * wants to loop the file has to jump BACK to here -- and for four
+             * of the six ROM modules that is a point partway in, not zero.
+             * Without this the rip cannot be looped correctly at all. */
+            if (pass == 0 && st->restart_frame < 0 && pl->row == 0 &&
+                pl->order_index == m->restart_position)
+                st->restart_frame = st->frames;
             if (pidx >= m->num_patterns) {
                 /* An order slot past the end of the pattern table is a legal
                  * "skip this slot" marker rather than an error. */
@@ -1097,6 +1107,7 @@ int main(int argc, char **argv)
            "\"order_length\":%d,\"restart\":%d,\"frequency\":\"%s\","
            "\"speed\":%d,\"bpm\":%d,\"rate\":%d,\"passes\":%d,"
            "\"frames\":%ld,\"seconds\":%.3f,\"loop_start_frame\":%ld,"
+           "\"restart_frame\":%ld,"
            "\"raw_peak\":%.4f,\"gain\":%.6f,\"clipped_samples\":%ld,"
            "\"unhandled_effects\":[",
            m->name, m->channels, m->num_patterns, m->num_instr,
@@ -1104,7 +1115,8 @@ int main(int argc, char **argv)
            m->linear_freq ? "linear" : "amiga",
            m->default_speed, m->default_bpm, cfg.rate, cfg.passes,
            final_st.frames, (double)final_st.frames / cfg.rate,
-           final_st.loop_start_frame, measure.peak, gain, final_st.clipped);
+           final_st.loop_start_frame, final_st.restart_frame,
+           measure.peak, gain, final_st.clipped);
     {
         int first = 1;
         for (i = 0; i < 64; i++) {
