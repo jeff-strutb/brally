@@ -100,6 +100,26 @@ def measure(va, sym, objs):
                 rx=res['regnorm'][0], rm=res['regnorm'][1])
 
 
+_EH_CACHE = {}
+
+
+def _has_eh_frame(va):
+    """True when the ORIGINAL bytes open with an SEH/C++ exception frame.
+
+    `push -1` (6A FF) is the first instruction of MSVC's __try prologue, and
+    it is unreachable from C source -- see the EH screen in
+    docs/STRUCTURAL-PLAYBOOK.md and the cxx-eh-frame-wall note.
+    """
+    if va not in _EH_CACHE:
+        p = os.path.join(ROOT, 'build', 'match', 'orig', '%s.bin' % va)
+        try:
+            with open(p, 'rb') as f:
+                _EH_CACHE[va] = f.read(2) == b'\x6a\xff'
+        except IOError:
+            _EH_CACHE[va] = False
+    return _EH_CACHE[va]
+
+
 def main():
     want = set(a.lower() for a in sys.argv[1:])
     rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
@@ -140,7 +160,17 @@ def main():
         # known missing-code class (a factored helper the original inlined),
         # not a shape problem -- see the inlined-helper-match-class note.
         c = 100.0 * m['ri'] / m['oi'] if m['oi'] else 0.0
-        if c < 80:
+        if _has_eh_frame(m['va']):
+            # The original opens `push -1 / push <handler> / fs:[0]`: a C++ or
+            # SEH exception frame, which C cannot emit at all.  These belong to
+            # the separate C++ EH workstream, and without this test they read
+            # as the most attractive rows on the board -- 41 of them, 37,677
+            # bytes as of 2026-09-03, most showing up as
+            # "MISSING CODE (2% complete)" because the port stands them in
+            # with a forwarder.  Park-tier, below even the coloring walls.
+            v = 'C++ EH FRAME - not reachable from C'
+            score = 2000000 + m['reg']
+        elif c < 80:
             v = 'MISSING CODE (%.0f%% complete)' % c
             score = 100000 + m['reg']
         elif m['pct'] < 15:
