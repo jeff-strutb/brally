@@ -247,13 +247,24 @@ void BrMat4LookAt(BrMat4 *pM,
 {
     BrVec3d z, y, x;
     double d;
-    double ex = (double)xEye, ey = (double)yEye, ez = (double)zEye;
 
-    /* z = normalise(eye - at). Both operands are floats so the difference
-     * is exact in double, matching `fld dword; fsub dword`. */
+    /* z = normalise(eye - at). The original is `fld dword; fsub dword`: the
+     * x87 subtracts the two floats in 80 bits and the result is stored to a
+     * double, so the difference is EXACT. Under VC5 the plain float form is
+     * what emits that pair -- casting both operands to double first costs
+     * fourteen bytes and six extra x87 slots -- but on a target without the
+     * 80-bit stack `xEye - xAt` would round to float, so the port keeps the
+     * casts and only the matching build drops them. Same value either way on
+     * the original hardware. */
+#ifdef BR_MATCHING_BUILD
+    z.x = xEye - xAt;
+    z.y = yEye - yAt;
+    z.z = zEye - zAt;
+#else
     z.x = (double)xEye - (double)xAt;
     z.y = (double)yEye - (double)yAt;
     z.z = (double)zEye - (double)zAt;
+#endif
     BrVec3dNormalise(&z);
 
     /* y = normalise(up - dot(up, z) * z). Note the dot's argument order:
@@ -276,10 +287,23 @@ void BrMat4LookAt(BrMat4 *pM,
     pM->m[0][3] = 0.0f;       pM->m[1][3] = 0.0f;       pM->m[2][3] = 0.0f;
 
     /* Translation row: -dot(eye, axis), summed left to right with the
-     * first term negated, exactly as the fchs/fsubp chain does it. */
-    pM->m[3][0] = (float)((-(ex * x.x) - ey * x.y) - ez * x.z);
-    pM->m[3][1] = (float)((-(ex * y.x) - ey * y.y) - ez * y.z);
-    pM->m[3][2] = (float)((-(ex * z.x) - ey * z.y) - ez * z.z);
+     * first term negated, exactly as the fchs/fsubp chain does it. The eye
+     * components are read from the PARAMETERS here, not from double locals
+     * hoisted at the top: naming them costs three extra `fld dword` /
+     * `fstp qword` pairs and eighteen bytes of frame.
+     *
+     * RESIDUE (register-blind gap 4+6, four bytes short): from the cross
+     * call onward the original schedules all three translation rows and all
+     * nine axis stores as ONE interleaved block -- nine values pipelined
+     * through the x87 stack, `fstp [eax]`, `fstp [eax+0x10]`, `fstp
+     * [eax+0x20]` landing between the translation's `fsubp`s. Ours computes
+     * each row to completion first. The instruction multiset is all but
+     * identical; the order is not. Statement order, flattening the sums,
+     * an extra parenthesis pair and negating the whole dot instead of its
+     * first term all leave it (210 / 206 / 185 diffs against 202). */
+    pM->m[3][0] = (float)((-(xEye * x.x) - yEye * x.y) - zEye * x.z);
+    pM->m[3][1] = (float)((-(xEye * y.x) - yEye * y.y) - zEye * y.z);
+    pM->m[3][2] = (float)((-(xEye * z.x) - yEye * z.y) - zEye * z.z);
     pM->m[3][3] = 1.0f;
 }
 
