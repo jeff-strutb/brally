@@ -3797,6 +3797,26 @@ order and per-product operand order across a flat `+` chain are ONE
 canonical form to VC5; parenthesised grouping is not. Never probe the former;
 the latter is a legitimate axis.
 
+**2026-09-03 — A REDUNDANT *LEFT* GROUPING PAREN IS THE LEVER, and it is
+worth a whole function.** Measured on 0x10033880 BrPfxUpdateB0 (315 B), where
+the three position updates are `prod*dt + drift + pos`. Written flat, VC5
+emitted `fadd drift; fadd pos` on the X axis (the original's order) but
+`fadd pos; fadd drift` on Y and Z — the SAME source form, two different
+orders, so the canonical order is decided at the x87 depth the adds are met
+at, not by the source. Permuting the summands changed nothing, as the rule
+above predicts. Adding the redundant, tree-preserving left paren —
+
+    pos.y = ((vel.y * scale) * dt + drift.y) + pos.y;
+
+— put all three in the original's order and took the function from 4 diffs to
+BYTE-EXACT. Note this is not the right-leaning `a + (b + c)` regrouping of the
+BrVec3Project note, which is a different tree and scored worse: this pair
+encloses exactly what the default left-associative parse already groups, and
+is a pure no-op to the language. So the axis to probe, once a float sum's
+operand order is the last divergence, is **left-grouping parens around the
+already-implicit left group** — one probe, and it is free. It reproduced on
+the sibling 0x100339C0 for all three axes at once.
+
 **BUT THE ORDER IS RECOVERABLE — FROM THE N64 TWIN, NOT FROM THE PC BYTES.**
 "Not source-reachable" means the PC bytes cannot tell you which way it was
 written; it does NOT mean the information is lost. IDO does **not**
@@ -4067,3 +4087,30 @@ Ghidra's variable recycling in the hope of moving an allocation:
 The corollary is the useful part: **when the slot census shows two source uses
 of one variable where the original reads two slots, the defect is the VALUE,
 not the name.**  Renaming pays nothing; emitting the right value pays.
+
+
+## Respell the index chain in every statement — never hoist the record pointer
+
+Proven on 0x10033880 BrPfxUpdateB0 / 0x100339C0 BrPfxUpdateB4AC (particle
+step, 32-byte records indexed by a 1-based link id), and the same rule the
+slots class (0x10054A30) needed.
+
+The original reaches every field as `array_base[idx].field`, which VC5
+strength-reduces once into `esi = idx << 5` and then addresses each field as
+`[esi + &array + off]` — a disp32 that carries the array's absolute address.
+Hoisting the record into a pointer local —
+
+    PfxRec *p = &g_aPfxRec[iRec];   /* then p->age, p->pos.x, … */
+
+— collapses that into a single base register with small displacements, which
+is SHORTER and structurally different: on BrPfxUpdateB0 it cost 19 bytes and
+ten instructions (register-blind 48+21 versus 18+8) even though every
+statement was otherwise correct. Spell `g_aPfxRec[iRec].field` in full in
+every statement, however repetitive it looks.
+
+**Scorer note that goes with this shape:** a member at record offset 0 has a
+zero reloc addend, so the recomp disassembles as `[esi]` while the original,
+whose displacement is already resolved, reads `[esi+0x10AC0C48]`. That shows
+up in `fn.py --detail regnorm` as a phantom `fadd [R]` EXTRA against a
+`fadd [R+I]` MISSING. It is an artefact of the unlinked object, not a gap —
+check it against `tools/divergence.py` before chasing it.
