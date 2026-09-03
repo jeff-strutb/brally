@@ -2027,3 +2027,23 @@ pointers into their blocks, rewriting the loop with explicit induction
 pointers (worse), or /O2 /Op, /Ox, /O2 /Ot, /O2 /Gy, /O2 /Ob0. Treat a
 whole-body 4-byte displacement shift with this signature as an allocator
 park, not a structural miss — the diff count is large and meaningless.
+- **MSVC 5.0 REJECTS `__thiscall` in C -- `error C4234: '__thiscall'
+  keyword reserved for future use`** (verified 2026-09-03 on a bare
+  two-line TU). So a multi-argument thiscall is unreachable from C by
+  every route, not just by the `__fastcall` substitution br_match.h
+  already rules out: it cannot be spelled on a function POINTER either,
+  which is what a vtable send needs. Diff signature, and it is exact --
+  EXTRA `push R` and `add esp, I` once per send, MISSING one `mov ecx,
+  <this>` per send, nothing else. When that is the whole residue the
+  function is a C++-twin candidate (see the vcall-lode note), not
+  something to keep probing in C.
+- **A static helper that wraps a vtable send is never inlined -- make it
+  a MACRO.** VC5 turned `static void Send(fn, obj, a, b, c) { if (fn)
+  fn(obj, a, b, c); }` into a real `call` per send, with the object
+  pushed as an extra argument and a caller-side `add esp, 0x10`, where
+  the original fetches the slot (`mov eax,[ebx]; mov eax,[eax+0x14]`)
+  and calls it in place. As a macro the fetch and the sends land exactly
+  where the original has them (0x10038000: 110 -> 96 bytes against 92,
+  REGNORM gap 12+6 -> 4+2). Two things have to go together: the macro
+  AND the null guards -- a port-safety `if (fn != NULL)` or
+  `pVtbl != NULL ? ... : NULL` is a branch the original does not have.
