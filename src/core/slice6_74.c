@@ -460,7 +460,12 @@ void BrSub1003CDA0(void)
  * an existing routine -- and importantly not the other, similar-looking
  * matrix builder, which scales rather than normalises and is not
  * interchangeable with this one. */
-/* @implements 0x100695D0 d3d BrSub100695D0 */
+/* NOT tagged. 0x100695D0 is ONE function with ONE body, and slice3_42.c has
+ * it as BrMat4FromCarState; this is a C-level alias for the three call sites
+ * that reach it under the other spelling, not a second copy. Tagged
+ * @implements here until 2026-09-03, which scored this 32-byte forwarder
+ * against the 363-byte original and left the real body invisible to triage.
+ * (Contrast 0x1003CDA0 above, where the image really does hold two copies.) */
 void BrSub100695D0(void *pDst220, const struct BrCarState *pState)
 {
     BrMat4FromCarState((BrMat4 *)pDst220, pState);
