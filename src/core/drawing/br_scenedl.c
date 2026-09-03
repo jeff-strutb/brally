@@ -59,6 +59,23 @@
  *      0x20 and 0x24; dx overlays 0x28 (orig 0x18); the drain counter
  *      c2/dCar overlays 0x30 (orig 0x28).  Not lowest-free-slot, not
  *      LIFO/FIFO of freed slots; packer order still unknown.
+ *   6b. tail visible-count fixup (0x23ec): orig computes `(cHead + base)
+ *      - g` left-to-right with cHead RELOADED from its slot; ours
+ *      reassociates to `(base - g) + cHead` and rotates eax/ecx.  Same
+ *      instruction count either way.  Probed and dead: an explicit temp
+ *      (`t = g; if (t == 0x1000) t = cHead; g = cHead + base - t;`) --
+ *      byte-identical codegen to the global-store form, so VC5 canonicalizes
+ *      the two and the association is not source-selectable here.
+ *   6c. trail-arena guard (0x20f4): orig loads the cursor global first and
+ *      adds 0x80 to it first; ours loads the arena base first.  Reversing
+ *      the comparison (`(uint32_t *)(arena + 0x3e800) <= cursor + 0x20`)
+ *      gives byte-identical codegen -- VC5 canonicalizes relational operand
+ *      order before scheduling the loads.  Dead.
+ *   6d. the varargs logger's integer arg (0x11eb): `mov edx,[esp+0x104]`
+ *      (idx) is scheduled two 8-byte double-pushes LATER in orig than in
+ *      ours; same slot, same variable (displacements differ by exactly the
+ *      0x10 of the two pushes).  Pure scheduler notch inside a 50-argument
+ *      push stream -- no source construct addresses it.  T3a.
  *   7. drain loop (T3a now): the orig's block layout (both `goto dead`
  *      sites as forward `je` to ONE block after the fl==0 arm) comes from
  *      the FIRST test nested (`if (dh != tail) {...} else { pA[dw] = 0; }`)
