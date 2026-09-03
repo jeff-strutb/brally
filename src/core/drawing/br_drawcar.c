@@ -761,6 +761,23 @@ static void wheel_call(unsigned char *car)
  * colour if/else (their whole live range) is byte-identical -- it does not
  * move them out of the arg slots into byte slots.
  *
+ * WORKLIST 2026-09-03, from `tools/msetdiff.py` (register-blind instruction
+ * multiset, relocs masked, small immediates KEPT).  The region count cannot
+ * see any of this -- divergence.py wildcards imm32 -- and the two builds
+ * have EQUAL instruction counts, so these are byte-vs-dword storage choices,
+ * not missing code:
+ *   orig has 4 more `and R,0xff`, 4 more 32-bit `or R,R`, 2 more `shl R,8`
+ *   and 3 more `mov byte ptr [esp+S],B`;
+ *   ours has 4 more `mov dword ptr [esp+S],R` and 2 more `lea R,[R*K]`.
+ * Read together: three or four values that the original keeps as BYTE
+ * locals (stored to byte slots, read back with the dword-load + `and 0xff`
+ * widening that is VC5's own idiom for a `unsigned char` local) are DWORD
+ * locals here, and the colour packs in the else-arms are consequently built
+ * with byte-lane moves (`mov dh,al`) where orig builds them with explicit
+ * `shl R,8` / `or`.  `topB` is the first candidate to check.  This is the
+ * same currency as the 0x31/0x32 byte-slot gap in the frame census above --
+ * likely one defect, not two.
+ *
  * Regions 2 and 3 (orig+0x2c8 / +0x2f0) are ONE defect: in colourA's
  * Horner pack the first ftol result goes to the HIGH byte in orig
  * (`xor edx,edx; mov dh,al` ... `mov dl,al`) and to the LOW byte in ours
