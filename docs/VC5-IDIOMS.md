@@ -2642,3 +2642,36 @@ park predates this screen.**
 **/Od homes locals by an internal NAME hash, not declaration order** — already
 recorded in slice2_19.c's BrCarGfxReadColour and re-confirmed here. When the
 slot ORDER is wrong and the count is right, rename before restructuring.
+
+## Naming a byte temp: when it helps and when it costs
+*(proven 2026-09-03 on 0x1000A110 arm 3; read together with the "do not name a
+temp to preserve an observed load order" entry, which is about a different case)*
+
+In a shift/or pack — `(((top << 8 | b0) << 8 | b1) << 8)` — how the TOP
+component is spelled decides its encoding:
+
+    inline   `(uint32_t)(uint8_t)SOME_GLOBAL << 8`   ->  mov dh, byte ptr [mem]
+    named    `uint8_t topA = SOME_GLOBAL; ... topA`  ->  mov cl, byte ptr [mem]
+                                                          ...
+                                                         mov dh, cl
+
+The named form also lets the pack's byte loads issue together instead of being
+interleaved with the stores between them. Where the original shows the
+two-step (`mov al,[mem]` … `mov dh,al`), the source has a named `uint8_t`
+local; where it shows the direct load into the lane, it does not. Applying it
+to one pack site on 0x1000A110 took the reloc-masked byte diff 4,658 -> 4,539
+and recovered an instruction, with the region count and the frame unchanged.
+
+**This does NOT contradict the accumulator entry.** There, naming a temp for
+an int value that VC5 wants in the eax accumulator forms COSTS bytes, because
+the name pins the value into a general register and loses the short encodings.
+The two cases are told apart by what the original does with the value: a byte
+that reaches a lane through a register wants a name; an int that flows through
+eax does not. Decide per site from the bytes, never by analogy.
+
+**Corollary, learned the expensive way on the same function:** apply it one
+site at a time. The identical spelling on a neighbouring pack looked better on
+size (4 bytes closer, 2 instructions) and was a regression — the reloc-masked
+byte diff rose 177 and the region's FIRST DIVERGENCE moved 27 bytes earlier,
+un-merging a cross-jumped tail. Judge a cross-jump region by its
+first-divergence address; size and region count both lie there.
