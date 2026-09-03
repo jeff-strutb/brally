@@ -498,7 +498,7 @@ static int BrScrTweenAxis(BrUiObj *pObj, size_t offOn, size_t offDir,
  * once both have reached their destinations. An axis that was never set moving
  * counts as already arrived, and an axis that overshoots is pinned to its
  * target. */
-/* @implements 0x10047D30 d3d BrUiTweenStep_10047D30 */
+/* port-only body; Glide match is src/core/cpp/0x10041180.cpp */
 int BrUiTweenStep_10047D30(BrUiObj *pObj)
 {
     int32_t nNow, nDelta;
