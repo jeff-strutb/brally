@@ -54,6 +54,8 @@ float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
     return pA->y * pB->y + pA->z * pB->z + pB->x * pA->x;
 }
 
+/* WHAT IT DOES: subtract one vector from another into a third. The usual way
+ * to get the direction and distance FROM pB TO pA. */
 /* @implements 0x1003AEE0 d3d BrVec3Sub */
 /* @n64 0x80224808 exact */
 void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
@@ -125,6 +127,10 @@ void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
     pA->z += pB->z * s;
 }
 
+/* WHAT IT DOES: blend between two points. t=0 gives pB, t=1 gives pA -- note
+ * that order, it is the reverse of the usual lerp convention and follows from
+ * the original's `(a-b)*t + b` shape. Used for smoothing a value towards a
+ * target over several frames rather than snapping to it. */
 /* @implements 0x1003AFA0 d3d BrVec3Lerp */
 /* @n64 0x802248FC located */
 void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
@@ -134,6 +140,8 @@ void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
     pOut->z = (pA->z - pB->z) * t + pB->z;
 }
 
+/* WHAT IT DOES: flip a direction to point the opposite way, writing the
+ * result somewhere else and leaving the input alone. */
 /* @implements 0x1003ACC0 d3d BrVec3Negate */
 /* @n64 0x80224434 exact */
 void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
@@ -143,6 +151,8 @@ void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
     pOut->z = -pV->z;
 }
 
+/* WHAT IT DOES: add two vectors into a third. Used both for combining
+ * directions and for offsetting a position by a displacement. */
 /* @implements 0x1003AF40 d3d BrVec3Add */
 /* @n64 0x80224894 located */
 void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
@@ -152,6 +162,9 @@ void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = pA->z + pB->z;
 }
 
+/* WHAT IT DOES: subtract one vector from another IN PLACE -- pA becomes
+ * pA - pB. The out-of-place twin is BrVec3Sub; the pair exists because the
+ * caller usually has no use for the old value. */
 /* @implements 0x1003AF10 d3d BrVec3SubFrom */
 /* @n64 0x8022483C exact */
 void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
@@ -165,6 +178,9 @@ void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
  * multiplies each component -- one divide instead of three. Reproduced
  * faithfully because it is also observably different from three divides in
  * the low bits, and physics code may depend on that. */
+/* WHAT IT DOES: scale a vector down by a scalar into a separate output.
+ * Dividing once and multiplying three times is the ORIGINAL's arithmetic,
+ * not an optimisation added here -- see the note above on why that matters. */
 /* @implements 0x1003AD40 d3d BrVec3Div */
 /* @n64 0x8022455C located */
 void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
@@ -187,6 +203,8 @@ void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
     pOut->z = pV->z * r;
 }
 
+/* WHAT IT DOES: scale a vector down by a scalar IN PLACE. The in-place twin
+ * of BrVec3Div. */
 /* @implements 0x100343F0 glide BrVec3DivBy */
 /* @implements 0x1003AD70 d3d BrVec3DivBy */
 /* @n64 0x80224594 located */
@@ -202,6 +220,7 @@ void BrVec3DivBy(BrVec3 *pV, float s)
 }
 
 /* 0.5f constant lives at 0x1008F638. */
+/* WHAT IT DOES: the point exactly halfway between two points. */
 /* @implements 0x1003B050 d3d BrVec3Midpoint */
 /* @n64 0x802249D4 located */
 void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
@@ -221,6 +240,7 @@ void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     }
 }
 
+/* WHAT IT DOES: reset a vector to the origin (0,0,0). */
 /* @implements 0x10034710 glide BrVec3Zero */
 /* @n64 0x80224A1C exact */
 void BrVec3Zero(BrVec3 *pV)
@@ -237,6 +257,10 @@ void BrVec3Zero(BrVec3 *pV)
 /* The original spills dx and dy to stack scratch and multiplies them back in,
  * which is just how MSVC scheduled the x87 stack; the arithmetic is a plain
  * squared distance. */
+/* WHAT IT DOES: the SQUARED straight-line distance between two points.
+ * Cheaper than BrVec3Dist because it skips the square root, and that is
+ * enough whenever the caller only compares distances or tests a radius --
+ * which is most of the collision and proximity code. */
 /* @implements 0x1003B130 d3d BrVec3DistSq */
 /* @n64 0x80224ACC located */
 float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
