@@ -64,6 +64,7 @@ void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 /* WHAT IT DOES: combines two 3x3 rotations into one, so that applying the
  * result does the same as applying both in turn. */
 /* @implements 0x10074AC0 d3d BrMat3Mul */
+/* @n64 0x80258EF8 located */
 void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 {
     const float *a = pA->m;
@@ -111,6 +112,7 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
  * with the vector this was built from. The physics uses it to turn "a force
  * applied at this offset" into a twist. */
 /* @implements 0x100749D0 d3d BrMat3Skew */
+/* @n64 0x80258DB0 exact */
 void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
 {
     /* The three diagonal zeros are written FIRST, and in DESCENDING order --
@@ -224,6 +226,7 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 /* WHAT IT DOES: pulls the rotation part out of a full 4x4 transform,
  * dropping the translation and leaving a compact 3x3. */
 /* @implements 0x10074A90 d3d BrMat4ToMat3 */
+/* @n64 0x80258E64 located */
 void BrMat4ToMat3(BrMat3 *pOut, const BrMat4 *pSrc)
 {
     int i, j;
@@ -238,6 +241,7 @@ void BrMat4ToMat3(BrMat3 *pOut, const BrMat4 *pSrc)
  * for a pure rotation is the same as reversing it -- so this gives the
  * matrix that undoes the transform's rotation. */
 /* @implements 0x10074A50 d3d BrMat4ToMat3Transposed */
+/* @n64 0x80258EAC located */
 void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc)
 {
     int i, j;
@@ -252,6 +256,7 @@ void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc)
  * once flipped and once straight, because the physics needs both to move
  * quantities into the body's frame and back out again. */
 /* @implements 0x10074A10 d3d BrMat4ToMat3Both */
+/* @n64 0x80258E04 located */
 void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
                       const BrMat4 *pSrc)
 {
@@ -312,6 +317,7 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 /* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
  * perspective" values, undoing anything that had been left there. */
 /* @implements 0x10075340 d3d BrMat4SetLastColumn */
+/* @n64 0x8021EB30 exact */
 void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
 {
     pM->m[3][3] = 1.0f;

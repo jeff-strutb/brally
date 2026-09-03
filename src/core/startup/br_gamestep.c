@@ -45,6 +45,7 @@ void BrGameStepRegister(BrGameStepFn pfn, int id)
  * -- a yes/no check against the slot BrGameStepSet writes, used by code that
  * needs to know whether it is, say, in a race before acting. */
 /* @implements 0x1002E302 glide BrGameStepIs */
+/* @n64 0x8021C6D0 located */
 int BrGameStepIs(BrGameStepFn pfn)
 {
     return pfn == g_pfnStep;
@@ -56,6 +57,7 @@ int BrGameStepIs(BrGameStepFn pfn)
  * confined to this one line deliberately: it is the price of two modules
  * having modelled one dword under two C types, and putting it anywhere else
  * would spread it. */
+/* @n64 0x8026B720 located */
 int BrGameStepIsAddr(const void *pv)
 {
     return ((const void *)g_pfnStep == pv) ? 1 : 0;
@@ -68,6 +70,7 @@ int BrGameStepIsAddr(const void *pv)
  * window's message pump calls this over and over, and it is the single point
  * where the race, or the front end, gets its turn each frame. */
 /* @implements 0x1002E324 glide BrGameStepInvoke */
+/* @n64 0x8026B860 located */
 #ifdef BR_MATCHING_BUILD
 /* Orig: PUSH EBP / MOV EBP,ESP / CALL [g_pfnStep] / POP EBP / RET (11 B).
  * No NULL guard -- just calls through the pointer and returns whatever EAX is. */

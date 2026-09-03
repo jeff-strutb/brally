@@ -1273,6 +1273,7 @@ int32_t __stdcall BrFn10060210(void *pUnused)
     return 1;
 }
 
+/* @n64 0x8023FED8 located */
 void BrDevSlotReleaseIface(struct BrDevSlot *pSlot)
 {
     BrDevIface *pIface = (BrDevIface *)pSlot->pIface;

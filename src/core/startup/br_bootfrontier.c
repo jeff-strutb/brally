@@ -129,6 +129,7 @@ void BrBootFrontier_10063060(void)
     ++s_aHits[F_10063060];
     if (s_pfn10063060 != NULL) s_pfn10063060();
 }
+/* @n64 0x80254F40 located */
 void BrBootFrontier_10009C00(void) { ++s_aHits[F_10009C00]; }
 
 void BrBootFrontier_10007F40(const char *pszCmdLine)
@@ -156,10 +157,12 @@ void BrBootBuildConfigPath(void)
 }
 
 const char *BrBootConfigPath(void) { return s_szConfigPath; }
+/* @n64 0x80255018 located */
 void BrBootFrontier_10032530(void) { ++s_aHits[F_10032530]; }
 void BrBootFrontier_10058AF0(void) { ++s_aHits[F_10058AF0]; }
 void BrBootFrontier_100628B0(void) { ++s_aHits[F_100628B0]; }
 void BrBootFrontier_1006C460(void) { ++s_aHits[F_1006C460]; }
+/* @n64 0x80255030 located */
 void BrBootFrontier_10056260(void) { ++s_aHits[F_10056260]; }
 void BrBootFrontier_SetModeTail(void) { ++s_aHits[F_SETMODETAIL]; }
 

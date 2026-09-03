@@ -383,6 +383,7 @@ int32_t BrUiCtlSpriteUp(const BrUiCtl_ *pCtl)
     return (pCtl != NULL) ? (int32_t)(int16_t)pCtl->aStepId[0] : -1;
 }
 
+/* @n64 0x80229530 located */
 int32_t BrUiCtlSpriteDown(const BrUiCtl_ *pCtl)
 {
     return (pCtl != NULL) ? (int32_t)(int16_t)pCtl->aStepId[1] : -1;

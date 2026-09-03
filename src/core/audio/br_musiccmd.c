@@ -25,6 +25,7 @@ void BrExt_10072A90(void *a, int b, int c, int d);
 /* WHAT IT DOES: send one command to the live music path: Windows CD
  * audio if that mode is on, otherwise the in-process EAR mixer. */
 /* @implements 0x100025C0 d3d BrDispatch_100025C0 */
+/* @n64 0x8020072C located */
 void BrDispatch_100025C0(void *p)
 {
     if (g_0940A4 == 1)
@@ -50,6 +51,7 @@ void BrWrap_10072B10(void *a, int b, int c)
 
 /* WHAT IT DOES: the same table write, with the packed index forced to 1. */
 /* @implements 0x10072A70 d3d BrWrap_10072A70 */
+/* @n64 0x80240240 located */
 void BrWrap_10072A70(void *a, int b, int c)
 {
     BrExt_10072A90(a, 1, b, c);

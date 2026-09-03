@@ -340,6 +340,7 @@ void BrGfx60E00(void *p0)
  * what stops a loop in the tree from running away forever -- it is a scratch
  * bit, not a visibility flag. */
 /* @implements 0x10061660 d3d BrNodeMarkPass */
+/* @n64 0x80255BA0 located */
 void BrNodeMarkPass(BrNode *pNode)
 {
     while (pNode != NULL) {
@@ -364,6 +365,7 @@ void BrNodeMarkPass(BrNode *pNode)
 /* WHAT IT DOES: the exact reverse walk: it takes the visit mark off every
  * node the pass above stamped, leaving the tree ready to be walked again. */
 /* @implements 0x100616C0 d3d BrNodeClearMarkPass */
+/* @n64 0x80255C50 located */
 void BrNodeClearMarkPass(BrNode *pNode)
 {
     while (pNode != NULL) {
@@ -381,6 +383,7 @@ void BrNodeClearMarkPass(BrNode *pNode)
  * scene tree, so that the only lasting effect is whatever the first pass
  * changed on the way through. */
 /* @implements 0x10061700 d3d BrNodeRunMarkPass */
+/* @n64 0x80255CA0 located */
 void BrNodeRunMarkPass(void)
 {
     /* the root is re-read from the global between the two calls */
@@ -707,6 +710,7 @@ void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
  * car's record, so these are 0-to-255 colour components; what the tint is
  * used for there is not established here. */
 /* @implements 0x10061460 d3d BrImgTintSetScale */
+/* @n64 0x8025BBA4 located */
 void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
 {
     BrImgTintState.scaleR = r;   /* 0x10AA3440 */

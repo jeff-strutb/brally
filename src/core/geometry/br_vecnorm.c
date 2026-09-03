@@ -13,6 +13,7 @@ extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
 
 /* @implements 0x1006D4B0 glide BrVec3Normalise */
 /* @implements 0x10074250 d3d BrVec3Normalise */
+/* @n64 0x802581CC located */
 void BrVec3Normalise(BrVec3 *pV)
 {
     /* Length's three named locals (y,z integer-homed, x kept on x87) plus
@@ -34,6 +35,7 @@ void BrVec3Normalise(BrVec3 *pV)
 
 /* @implements 0x1006D410 glide BrVec4Normalise */
 /* @implements 0x100741B0 d3d BrVec4Normalise */
+/* @n64 0x8025813C located */
 void BrVec4Normalise(BrVec4 *pV)
 {
     /* z (f08) is the x87-resident square (like x in Vec3); y,w,x are

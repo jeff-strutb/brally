@@ -426,6 +426,7 @@ int32_t BrUiHook87_1003EF90(BrUiCtl_ *pCtl)
  * yet, so the pointer is genuinely NULL here and the original's fault would be
  * a harness crash rather than reproduced behaviour. When the owner lands, this
  * guard should go. */
+/* @n64 0x8025C27C located */
 int32_t BrUiHook87_1003F020(BrUiCtl_ *pCtl)
 {
     /* No apply and no copy -- the bit-4 clear alone, and only when the string
@@ -451,6 +452,7 @@ int32_t BrUiHook87_1003F210(BrUiCtl_ *pCtl)
     return 1;
 }
 
+/* @n64 0x8021C848 located */
 int32_t BrUiHook87_1003F280(BrUiCtl_ *pCtl)
 {
     Br87ClearBit4IfText(g_brS71.pAA29BC, pCtl->aText[0].sz);
@@ -544,6 +546,7 @@ int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
  * Caption hooks -- one table lookup each
  * ========================================================================== */
 
+/* @n64 0x8026E820 located */
 int32_t BrUiHook87_1003FC40(BrUiCtl_ *pCtl)
 {
     return Br87CaptionId(pCtl, Br87TableId(k_AC3F0, 4u, g_brAA287C));

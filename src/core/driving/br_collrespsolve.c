@@ -397,6 +397,7 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 /* WHAT IT DOES: says which side of a plane a point is on, and how far --
  * positive in front of the plane, negative behind it. */
 /* @implements 0x10065950 glide BrCrPlaneDist */
+/* @n64 0x8025B704 located */
 float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
 {
     return pPoint->y * pN->y + pPoint->z * pN->z + pPoint->x * pN->x + planeD;

@@ -273,6 +273,7 @@ BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
  * unpacked and sign-corrected here. Despite an earlier name of "set
  * scissor", this is the tile setter -- the real scissor commands are two
  * other, longer functions. */
+/* @n64 0x80267410 located */
 BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrDlsTileSize t;
@@ -431,6 +432,7 @@ BrMat4 *BrGbiMtxProj(BrGbiMtxState *pSt)
     return (BrMat4 *)(void *)&pSt->aWords[0];
 }
 
+/* @n64 0x80242810 located */
 BrMat4 *BrGbiMtxSlot(BrGbiMtxState *pSt, int index)
 {
     return (BrMat4 *)(void *)&pSt->aWords[BR_GBI_MTX_STACK_OFF + index * 16];
@@ -1676,6 +1678,7 @@ int BrFadeRelease(BrFadeState *pSt)
 /* port-only body; Glide match is src/core/generated/0x10017F30.c -- the
  * original takes no argument and addresses all four values absolutely, so the
  * BrFadeState view below cannot reproduce it.  Same split as BrFadeRelease. */
+/* @n64 0x8026B434 located */
 void BrFadeLatch(BrFadeState *pSt)
 {
     pSt->pos      = pSt->srcC0;

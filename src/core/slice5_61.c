@@ -73,6 +73,7 @@ static int32_t Br61Ld32(const void *pBase, size_t off)
 /* WHAT IT DOES: makes the next text drawn right-aligned, so it ends at the
  * position given rather than starting there. */
 /* @implements 0x10016850 glide BrSub_10019290 */
+/* @n64 0x8022F504 located */
 void BrSub_10019290(void)
 {
     g_br4B035C = 1;

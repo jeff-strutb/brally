@@ -158,6 +158,7 @@ void BrUiStPtr(BrUiObj *pObj, size_t off, void *p)
     memcpy(pObj + off, &p, sizeof(p));
 }
 
+/* @n64 0x80226048 located */
 BrUiObj *BrUiItem(BrUiObj *pObj, int32_t i)
 {
     /* Signed arithmetic throughout: the original's index is sign-extended

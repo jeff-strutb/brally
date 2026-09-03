@@ -49,6 +49,7 @@ int  BrSpanContains(int param_1, int param_2);
  * answers "straight up" rather than dividing by zero. */
 /* @implements 0x1003ADA0 d3d BrVec3Direction */
 /* @implements 0x10034420 glide BrVec3Direction */
+/* @n64 0x802245F0 located */
 void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
 {
     float dx = pTo->x - pFrom->x;
@@ -71,6 +72,7 @@ void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
 }
 
 /* 0x1003AE50 */
+/* @n64 0x80224760 located */
 void BrVec3NormaliseGuard(BrVec3 *pV)
 {
     /* The original spills y and z to the stack and squares them from there,
@@ -93,6 +95,7 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
 /* WHAT IT DOES: measures how long a vector is looking down from above, that
  * is, ignoring height. */
 /* @implements 0x1003B1C0 d3d BrVec3LenXY */
+/* @n64 0x80224B48 located */
 float BrVec3LenXY(const BrVec3 *pV)
 {
     return BrSqrtF(pV->y * pV->y + pV->x * pV->x);
@@ -103,6 +106,7 @@ float BrVec3LenXY(const BrVec3 *pV)
  * ignoring any difference in height -- which is what "how far apart are these
  * two cars on the track" means. */
 /* @implements 0x1003B0A0 d3d BrVec3DistXY */
+/* @n64 0x80224A34 located */
 float BrVec3DistXY(const BrVec3 *pA, const BrVec3 *pB)
 {
     float dx = pA->x - pB->x;

@@ -389,6 +389,7 @@ extern void     *g_BrMtxSlot;    /* 0x106C32D0 current projection pool slot     
 void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo);
 void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut);
 
+/* @n64 0x8020046C located */
 void BrModelLightsDraw(void)
 {
     BrNode   *pNode;

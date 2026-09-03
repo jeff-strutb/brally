@@ -12,6 +12,7 @@
 #include <math.h>
 
 /* @implements 0x1003AC30 d3d BrVec3Cross */
+/* @n64 0x8022439C located */
 void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     float x = pA->y * pB->z - pA->z * pB->y;
@@ -21,6 +22,7 @@ void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x1003AC90 d3d BrVec3Dot */
+/* @n64 0x80224404 located */
 /* PRECISION CAVEAT (Dot only; the four componentwise helpers below are exact --
  * one operation per store, one rounding, same as the original). Like
  * BrVec3Length above, the original forms this sum on the x87 stack (53-bit,
@@ -53,6 +55,7 @@ float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x1003AEE0 d3d BrVec3Sub */
+/* @n64 0x80224808 exact */
 void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = pA->x - pB->x;
@@ -61,6 +64,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x1003AF70 d3d BrVec3AddTo */
+/* @n64 0x802248C8 exact */
 /* SAME FP SCHEDULING WALL as BrVec3Scale below, 6 diffs: the original loads
  * pB first for ALL THREE components (`fld [ecx+n]; fadd [eax+n]`); we get
  * that for y and z but the x component comes out reversed, because the
@@ -76,6 +80,7 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
+/* @n64 0x802244FC exact */
 /* FP SCHEDULING WALL: orig emits FLD [esp+0xC](s) / FMUL [eax](pV->x) for
  * the x component, but FLD component / FMUL s for y and z.  VC5 canonicalises
  * commutative FMUL regardless of source operand order, so no source form
@@ -88,6 +93,7 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 }
 
 /* @implements 0x1003AD10 d3d BrVec3ScaleBy */
+/* @n64 0x80224528 located */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
 {
     pV->x *= s;
@@ -96,6 +102,7 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
 }
 
 /* @implements 0x1003AFE0 d3d BrVec3MulAdd */
+/* @n64 0x8022494C located */
 /* pOut = pA + pB*s.  The original scales the SECOND vector arg ([esp+0xc]) and
  * adds the first ([esp+8]); under cdecl that is pB and pA respectively, so the
  * argument order here matches.  One multiply then one add per component -- same
@@ -108,6 +115,7 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
 }
 
 /* @implements 0x1003B020 d3d BrVec3MulAddTo */
+/* @n64 0x80224990 exact */
 /* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add
  * commutes, so pA.x + pB.x*s is bit-identical -- one multiply, one add. */
 void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
@@ -118,6 +126,7 @@ void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
 }
 
 /* @implements 0x1003AFA0 d3d BrVec3Lerp */
+/* @n64 0x802248FC located */
 void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
 {
     pOut->x = (pA->x - pB->x) * t + pB->x;
@@ -126,6 +135,7 @@ void BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t)
 }
 
 /* @implements 0x1003ACC0 d3d BrVec3Negate */
+/* @n64 0x80224434 exact */
 void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
 {
     pOut->x = -pV->x;
@@ -134,6 +144,7 @@ void BrVec3Negate(BrVec3 *pOut, const BrVec3 *pV)
 }
 
 /* @implements 0x1003AF40 d3d BrVec3Add */
+/* @n64 0x80224894 located */
 void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     pOut->x = pA->x + pB->x;
@@ -142,6 +153,7 @@ void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x1003AF10 d3d BrVec3SubFrom */
+/* @n64 0x8022483C exact */
 void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x -= pB->x;
@@ -154,6 +166,7 @@ void BrVec3SubFrom(BrVec3 *pA, const BrVec3 *pB)
  * faithfully because it is also observably different from three divides in
  * the low bits, and physics code may depend on that. */
 /* @implements 0x1003AD40 d3d BrVec3Div */
+/* @n64 0x8022455C located */
 void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
     float r;
@@ -176,6 +189,7 @@ void BrVec3Div(BrVec3 *pOut, const BrVec3 *pV, float s)
 
 /* @implements 0x100343F0 glide BrVec3DivBy */
 /* @implements 0x1003AD70 d3d BrVec3DivBy */
+/* @n64 0x80224594 located */
 void BrVec3DivBy(BrVec3 *pV, float s)
 {
     /* Each product copies the live reciprocal into a FRESH named temp:
@@ -189,6 +203,7 @@ void BrVec3DivBy(BrVec3 *pV, float s)
 
 /* 0.5f constant lives at 0x1008F638. */
 /* @implements 0x1003B050 d3d BrVec3Midpoint */
+/* @n64 0x802249D4 located */
 void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     /* The GLIDE original fetches pB first for x but pA first for y and z.
@@ -207,6 +222,7 @@ void BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* @implements 0x10034710 glide BrVec3Zero */
+/* @n64 0x80224A1C exact */
 void BrVec3Zero(BrVec3 *pV)
 {
     /* Written back to front: the original stores z, then y, then x, and MSVC
@@ -222,6 +238,7 @@ void BrVec3Zero(BrVec3 *pV)
  * which is just how MSVC scheduled the x87 stack; the arithmetic is a plain
  * squared distance. */
 /* @implements 0x1003B130 d3d BrVec3DistSq */
+/* @n64 0x80224ACC located */
 float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 {
     float dx = pA->x - pB->x;
@@ -238,6 +255,7 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
 /* WHAT IT DOES: the straight-line distance between two points in 3D. One of
  * the most-used routines in the game -- how far a car is from anything. */
 /* @implements 0x1003B0E0 d3d BrVec3Dist */
+/* @n64 0x80224A78 located */
 /* The original does NOT call BrVec3DistSq and does NOT use an inline fsqrt: it
  * spells the three deltas out in its own body -- the same spill-and-multiply-
  * back sequence BrVec3DistSq compiles to -- and then tail-calls the fsqrt
@@ -352,6 +370,7 @@ float BrVec3Length(const BrVec3 *pV)
  * that offset is BrVec3.y.  `test ah,1` is C0, so unordered takes the true
  * side -- written `!(a >= b)`, never `a < b`. */
 /* @implements 0x10071B60 d3d BrSub10071B60 */
+/* @n64 0x80223850 located */
 int BrSub10071B60(const BrVec3 *pA, const BrVec3 *pB)
 {
     if (!(pA->y >= pB->y))

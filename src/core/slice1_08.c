@@ -204,6 +204,7 @@ int32_t BrSndVoiceApplyVolume(BrSndVoice *pVoice)
 /* 0x10072520 / 0x10072550  teardown                                   */
 /* ------------------------------------------------------------------ */
 
+/* @n64 0x8023DF4C located */
 int32_t BrSndVoiceRelease(BrSndVoice *pVoice)
 {
     BrDSBuffer *pBuf = pVoice->pBuf;
@@ -215,6 +216,7 @@ int32_t BrSndVoiceRelease(BrSndVoice *pVoice)
     return 0;
 }
 
+/* @n64 0x80258BDC located */
 int32_t BrSndVoiceStop(BrSndVoice *pVoice)
 {
     BrDSBuffer *pBuf;

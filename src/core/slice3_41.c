@@ -117,6 +117,7 @@ void BrRankAssign(BrDriver *pSlots, int32_t n)
  * works from. If the block turns out not to have been big enough it stops the
  * game with an error, but only after the overrun has already happened. */
 /* @implements 0x10067880 d3d BrVarSave */
+/* @n64 0x8022ADCC located */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 {
     uint8_t *pOut = (uint8_t *)pDst;
@@ -146,6 +147,7 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
  * restoring every variable in the list. It trusts the buffer completely --
  * there is no length given and no check made. */
 /* @implements 0x10067900 d3d BrVarLoad */
+/* @n64 0x8022AE70 located */
 void BrVarLoad(const BrVarBlock *pTable, const void *pSrc)
 {
     const uint8_t *pIn = (const uint8_t *)pSrc;
@@ -285,6 +287,7 @@ int32_t      g_BrSndAA3470 = -1;
  * whatever won last time -- that is how the game later notices a sound that
  * has stopped being offered at all. */
 /* @implements 0x10067DA0 d3d BrSndNearestInvalidate */
+/* @n64 0x8022B404 located */
 void BrSndNearestInvalidate(void)
 {
     g_BrSndNearest.metric = BR_SND_NEAREST_FAR;
@@ -299,6 +302,7 @@ void BrSndNearestInvalidate(void)
  * game changes scene, as opposed to the light per-frame clear above. One
  * field, the base pitch, is left as it was. */
 /* @implements 0x10067DC0 d3d BrSndNearestReset */
+/* @n64 0x8022B428 located */
 void BrSndNearestReset(void)
 {
     g_BrSndAA3470 = -1;
@@ -356,6 +360,7 @@ void BrSndNearestOffer(int32_t f8C, int32_t f84, int32_t f9C, float f98,
  * picking a stock one -- but only in two particular game modes; in every
  * other mode it offers nothing and returns having done nothing at all. */
 /* @implements 0x10068210 d3d BrSndNearestOfferDefault */
+/* @n64 0x8022BA10 located */
 void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
                               const BrMat4 *pListener)
 {

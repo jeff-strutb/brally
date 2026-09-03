@@ -161,6 +161,7 @@ void BrStrResFree(void)
      * 302 pointers aimed at the freed block. */
 }
 
+/* @n64 0x80255E64 located */
 void BrStrResResetForTest(void)
 {
     g_pBrStrResBlob = NULL;

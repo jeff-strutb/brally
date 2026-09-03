@@ -488,6 +488,7 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
  * sign, and never returns less than zero. */
 /* @implements 0x1002A957 glide BrFloat12MaxAbs */
 /* @implements 0x100312A7 d3d BrFloat12MaxAbs */
+/* @n64 0x80217420 located */
 float BrFloat12MaxAbs(const float *pv)
 {
     /* Orig is ebp-framed, six stack slots (hi/lo/zero/cursor/end/v), pointer
@@ -1346,6 +1347,7 @@ void BrS17DrawGated(void)
  * was profiled on a debug machine. The whole thing is skipped while one
  * suppression flag is raised. */
 /* @d3donly 0x1002C320 BrS17DrawFrame -- glide twin 0x10019890 claimed by br_racebegin.c:BrRaceHudFrame */
+/* @n64 0x802003E4 located */
 void BrS17DrawFrame(void)
 {
     if (g_s17.f6909B4 != 0)
@@ -1363,6 +1365,7 @@ void BrS17DrawFrame(void)
  * value alongside it, and installs the routine that will run for it. Which mode
  * that is -- what the player would see -- was not established here. */
 /* @d3donly 0x1002C390 BrS17SetMode4 -- glide twin 0x10019900 claimed by br_racebegin.c:BrRaceEnterOutro */
+/* @n64 0x8020068C located */
 void BrS17SetMode4(void)
 {
     g_s17.f0AA010 = 4;
@@ -1505,6 +1508,7 @@ void BrScratchRingDrain(void)
 /* WHAT IT DOES: nothing. It takes two arguments, ignores both, and always
  * answers zero -- a placeholder that fits where a real routine would go. */
 /* @implements 0x10031212 d3d BrScratchRingNull */
+/* @n64 0x802173B8 exact */
 int BrScratchRingNull(int a0, int a1)
 {
     /* The original really does store zero into both of its OWN argument
@@ -1535,6 +1539,7 @@ void BrRenderCountersReset(void)
 /* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
  * what the routine below does and nothing else. */
 /* @implements 0x1002A932 glide BrScreenSizeInit */
+/* @n64 0x802288B4 exact */
 void BrScreenSizeInit(void)
 {
     BrScreenSizeApply();
@@ -1566,6 +1571,7 @@ void BrTexNoOp(void)
  * fixed value regardless of the size asked about. */
 /* @implements 0x1002A9F7 glide BrTexSizeShift */
 /* @implements 0x10031347 d3d BrTexSizeShift */
+/* @n64 0x80217614 located */
 void BrTexSizeShift(int size, int *pOut1, int *pOut2)
 {
     /* Orig overwrites the size slot (`sub eax,1; mov [ebp+8],eax`) then

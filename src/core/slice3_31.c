@@ -65,6 +65,7 @@
  * 0x10008850 -- LoadPod(int, void *)
  * ========================================================================== */
 
+/* @n64 0x80260DB0 located */
 void *BrPodLoadInto(BrPod *pPod, int iEntry, void *pvBuffer)
 {
     /* The original reports "LoadPod: %i >= m_cNumPods" and then calls ReadPod
@@ -449,6 +450,7 @@ int BrPhaseHook_10045AA0(void *pArg)
 /* WHAT IT DOES: brings up the "load championship season" screen, building it
  * the first time and just making it current thereafter. */
 /* port-only body; Glide match is src/core/cpp/0x1003EF90.cpp */
+/* @n64 0x8021C814 located */
 int BrPhaseActivate_10045AF0(void)
 {
     int fBuilt;
@@ -543,6 +545,7 @@ int BrPhaseActivate_100460A0(void)
  * to a different track as it does so -- and it does that switch every time,
  * including when the screen was already open. */
 /* port-only body; Glide match is src/core/cpp/0x1003F610.cpp */
+/* @n64 0x80248F38 located */
 int BrPhaseActivate_10046170(void)
 {
     int fBuilt;
@@ -651,6 +654,7 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
  * that went with it, and hands the player back to a remembered screen. */
 /* port-only body; Glide match is src/core/cpp/0x1003F8A0.cpp */
+/* @n64 0x80264A60 located */
 int32_t BrSub10046400(BrGameObj *p)
 {
 #ifdef BR_MATCHING_BUILD
@@ -883,6 +887,7 @@ extern BrPhase_ *g_brPhaseAA293C;   /* 0x10AA293C -- g_pExt->pAA293C       */
 /* WHAT IT DOES: switches straight to one particular screen without closing
  * anything down first -- a jump, not a leave. */
 /* @implements 0x100403A0 glide BrPhaseGoto_10046F50 */
+/* @n64 0x802579F4 located */
 int32_t BrPhaseGoto_10046F50(void) { BR31_GOTO_CUR = BR31_GOTO_2974; return 0; }
 /* WHAT IT DOES: switches straight to a different particular screen, again with
  * no teardown. */

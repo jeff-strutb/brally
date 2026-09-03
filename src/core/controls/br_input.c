@@ -55,6 +55,7 @@ int32_t BrWndShadowGet(BrWndShadow which)
     return (which >= 0 && which < BR_SH_COUNT) ? s_aShadow[which] : 0;
 }
 
+/* @n64 0x8021E998 located */
 void BrWndShadowSet(BrWndShadow which, int32_t value)
 {
     if (which >= 0 && which < BR_SH_COUNT)

@@ -33,6 +33,7 @@ void BrExt_10069A80(void);
 void BrExt_10035585(void *, int, int);
 void BrExt_1001BAD0(void) {}
 void BrExt_10008B80(void) {}
+/* @n64 0x80242880 located */
 void BrExt_10067880(void *a, void *b, int n) { (void)a; (void)b; (void)n; }
 void BrExt_10067900(void *a, void *b) { (void)a; (void)b; }
 #ifdef _MSC_VER
@@ -51,6 +52,7 @@ void BrExt_1003DA90(void *a, void *b) { (void)a; (void)b; }
 void BrExt_1007E8B0(void (*p)(void)) { (void)p; }
 void BrExt_10038EB0(void) {}
 void BrExt_10069A80(void) {}
+/* @n64 0x8021CD24 located */
 void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
 #else
 uint32_t g_67D550, g_0A81C8, g_AC300, g_690A14;
@@ -131,6 +133,7 @@ void BrFlagInit_1002F690(void)
  * both binaries at both addresses. Tagged @implements here until 2026-09-03,
  * which put a 26-byte body against a 173-byte original in the report and had
  * two names claiming one address. */
+/* @n64 0x80200000 located */
 int BrInstall_1001BAE0(void)
 {
     g_690A24 = (uint32_t)(uintptr_t)&BrExt_1001BAD0;
@@ -177,6 +180,7 @@ void BrWrap_10067960(void *p)
 
 /* WHAT IT DOES: fill that per-object block (about 90 KB). */
 /* @implements 0x10067940 d3d BrWrap_10067940 */
+/* @n64 0x8022AED8 located */
 void BrWrap_10067940(void *p)
 {
     BrExt_10067880(&g_0B39B0, (char *)p + 0x7080, 0x15F88);
@@ -192,6 +196,7 @@ void BrWrap_10071610(void)
 
 /* WHAT IT DOES: construct that array of 16 objects in place. */
 /* @implements 0x100715E0 d3d BrWrap_100715E0 */
+/* @n64 0x80214A3C located */
 void BrWrap_100715E0(void)
 {
     BrExt_1007F680(&g_1826BD0, 0x214, 0x10, BrExt_10073B40, BrExt_10008B80);
@@ -233,6 +238,7 @@ void BrTableCopySlot_10024AB0(int dst, int src)
     *(uint32_t *)&p[dst] = *(uint32_t *)&p[src];
 }
 
+/* @n64 0x802412EC located */
 void BrTableSetField_10025800(int idx, uint32_t v)
 {
     struct Rec { char pad[696]; } *p = (struct Rec *)g_57543C;
@@ -241,6 +247,7 @@ void BrTableSetField_10025800(int idx, uint32_t v)
 
 /* WHAT IT DOES: set a one-shot "this path has already run" flag. */
 /* @implements 0x100378A0 d3d BrArm_100378A0 */
+/* @n64 0x8022F5D0 located */
 void BrArm_100378A0(void)
 {
     g_6C7C44 = 1;

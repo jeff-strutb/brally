@@ -50,6 +50,7 @@ void BrExt_10046BB0(void);
 /* WHAT IT DOES: the first play-mode button.  Records "mode 0" and opens
  * the next screen.  Always reports success. */
 /* @implements 0x10044010 d3d BrHook_10044010 */
+/* @n64 0x80200128 located */
 int BrHook_10044010(void *p)
 {
     g_AA287C = 0;

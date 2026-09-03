@@ -198,6 +198,7 @@ void BrUiOptSetEdit(BrActiveFlags *pFlags, int dir)
     }
 }
 
+/* @n64 0x8026BA20 located */
 void BrUiOptSetActivateOnly(BrActiveFlags *pFlags, int fDown)
 {
     /* 0x10AA2AF0.  The edit words are cleared so the two paths cannot be

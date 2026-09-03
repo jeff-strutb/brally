@@ -28,6 +28,7 @@ uint32_t g_cBrCollRespGathered;
 uint32_t g_cBrCollRespOverflow;
 uint32_t g_cBrCollRespResponded;
 
+/* @n64 0x8021C46C located */
 void BrCollRespCountersReset(void)
 {
     g_cBrCollRespTipKick    = 0u;

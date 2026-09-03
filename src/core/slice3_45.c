@@ -248,6 +248,7 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 /* ====================================================================== */
 
 /* @implements 0x10076420 d3d BrEntSetPos */
+/* @n64 0x8021FE04 located */
 #ifdef BR_MATCHING_BUILD
 /* Struct second arg is not register-eligible, so __fastcall is thiscall. */
 typedef struct { float x, y, z; } BrEntSetPosArgs;
@@ -437,6 +438,7 @@ static void BrEntMirrorQuat(BrEnt *pE)
  * object is, only which way it is turned, so the rebuilt transform ends up
  * with the new rotation but the old position. */
 /* @implements 0x10076700 d3d BrEntSetMatrix */
+/* @n64 0x80267470 located */
 /* Thiscall with ONE stack argument (`mov ebx,ecx` then `[esp+4]`, `ret 4`),
  * spelled the way the rest of this file's entity setters are.  The
  * quaternion mirror is written out here rather than calling
@@ -482,6 +484,7 @@ void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
  * travelling, writing it into all four places the game keeps that figure so
  * they agree. Nothing else about the object is disturbed. */
 /* @implements 0x100767A0 d3d BrEntSetVel */
+/* @n64 0x802201C8 located */
 #ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetVel(BrEnt *pE, int _edx_unused, float x, float y,
                             float z)
@@ -626,6 +629,7 @@ void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
 /* WHAT IT DOES: tells an object how fast it is spinning, writing it into all
  * three places the game keeps that figure so they agree. */
 /* @implements 0x100769A0 d3d BrEntSetAngVel */
+/* @n64 0x80220358 located */
 #ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetAngVel(BrEnt *pE, int _edx_unused, float x, float y,
                                float z)
@@ -668,6 +672,7 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
  * more coarsely than it was chosen -- so reading it back does not give the
  * same value. */
 /* @implements 0x10076A00 d3d BrEntRefreshColour */
+/* @n64 0x80220398 located */
 void __fastcall BrEntRefreshColour(BrEnt *pE)
 {
     BrCarGfxSetColour(pE->pRec, pE->r >> 3, pE->g >> 3, pE->b >> 3);
@@ -680,6 +685,7 @@ void __fastcall BrEntRefreshColour(BrEnt *pE)
  * repaints it in its own colour. The record number is not checked at all, so
  * an out-of-range one silently points at whatever memory follows the table. */
 /* @implements 0x10076A40 d3d BrEntSetRecord */
+/* @n64 0x802203F0 located */
 #ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx)
 #else

@@ -402,6 +402,7 @@ static const BrDSoundVtbl s_devVtbl = {
  * lifecycle
  * ---------------------------------------------------------------------- */
 
+/* @n64 0x80256228 located */
 BrMix *BrMixCreate(void)
 {
     BrMix *pMix = (BrMix *)calloc(1, sizeof(*pMix));

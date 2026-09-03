@@ -129,6 +129,7 @@ static void Br84NameResetFull(void)
     Br84CopyName(g_br73.szA9D618);
 }
 
+/* @n64 0x8022AF08 located */
 void BrUiHook84Reset(void)
 {
     memset(&g_brHook84, 0, sizeof(g_brHook84));
@@ -197,6 +198,7 @@ int32_t BrUiHook84_10046F60(BrUiCtl_ *pCtl)
     return 0;
 }
 
+/* @n64 0x80255988 located */
 int32_t BrUiHook84_10046FC0(BrUiCtl_ *pCtl)
 {
     /* Thirteen bytes, and not one of them touches the argument.  See the

@@ -20,6 +20,7 @@ int BrObjGetF10(const BrObjHeader *pObj)
     return pObj->f10;
 }
 
+/* @n64 0x802607DC located */
 void BrObjInitInline(BrObjInline *pObj)
 {
     pObj->f08 = 0;

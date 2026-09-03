@@ -209,6 +209,7 @@ int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 #define BR06_TRI_EPS 0.0f
 
 /* @implements 0x1003B940 d3d BrTriContainsPoint */
+/* @n64 0x8022591C located */
 int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
                        const BrVec3 *pC, const BrVec3 *pRef)
 {
@@ -936,6 +937,7 @@ int BrUiAssetPathsInit(char *apszOut[BR_UIASSET_COUNT])
     return 0;
 }
 
+/* @n64 0x8021735C located */
 void BrUiAssetPathsFree(char *apszOut[BR_UIASSET_COUNT])
 {
     int i;

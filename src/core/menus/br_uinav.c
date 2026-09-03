@@ -944,6 +944,7 @@ static void      NavV_phase1C(BrPhase_ *p)
     BrUiNavPhaseRelease_10048AA0(g_pBrUiNav, p);
 }
 
+/* @n64 0x80211194 located */
 void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
 {
     pVtbl->f04 = NavV_f04;
@@ -957,6 +958,7 @@ void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
      * them as the caller had them keeps an unported method a fault. */
 }
 
+/* @n64 0x8020AD50 located */
 void BrUiNavInstallPageVtbl(BrUiPageVtbl_ *pVtbl)
 {
     pVtbl->f04 = NavV_page04;

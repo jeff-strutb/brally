@@ -111,6 +111,7 @@ void BrAudioSetEnabled(BrAudio *pAudio, int enabled)
         release_handle(pAudio);
 }
 
+/* @n64 0x8026B930 located */
 int BrAudioIsEnabled(const BrAudio *pAudio)
 {
     return (pAudio != NULL && pAudio->enabled) ? 1 : 0;
@@ -152,6 +153,7 @@ void BrAudioClearTracks(BrAudio *pAudio)
     pAudio->iLastRandom = -1;
 }
 
+/* @n64 0x80220534 located */
 int BrAudioTrackCount(const BrAudio *pAudio)
 {
     return (pAudio != NULL) ? pAudio->cTracks : 0;
@@ -255,6 +257,7 @@ int BrAudioPlayTrack(BrAudio *pAudio, int iTrack)
     return start_current(pAudio);
 }
 
+/* @n64 0x8021C718 located */
 void BrAudioStop(BrAudio *pAudio)
 {
     if (pAudio == NULL)
@@ -423,6 +426,7 @@ void BrAudioSetVolume(BrAudio *pAudio, int volume)
         b->pfnSetVolume(b->pUser, pAudio->handle, volume);
 }
 
+/* @n64 0x8025C3B0 located */
 int BrAudioGetVolume(const BrAudio *pAudio)
 {
     return (pAudio != NULL) ? pAudio->volume : 0;
@@ -459,6 +463,7 @@ void BrAudioSetPan(BrAudio *pAudio, int pan)
         b->pfnSetPan(b->pUser, pAudio->handle, pAudio->pan);
 }
 
+/* @n64 0x80234FDC located */
 int BrAudioGetPan(const BrAudio *pAudio)
 {
     return (pAudio != NULL) ? pAudio->pan : BR_AUDIO_PAN_CENTRE;

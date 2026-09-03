@@ -589,6 +589,7 @@ void BrReplayAdvance(void)
  * position returns to its first recorded frame. The recording itself is
  * untouched. */
 /* @implements 0x1006ABB0 d3d BrReplayRewind */
+/* @n64 0x8025C24C located */
 void BrReplayRewind(void)
 {
     int i;
@@ -862,6 +863,7 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
  * up-and-down direction ignores them entirely, which looks like an oversight
  * in the original rather than an intention. */
 /* @implements 0x1006B170 d3d BrRbSolveAccel */
+/* @n64 0x8025980C located */
 void BrRbSolveAccel(BrRbBodyFull *pB)
 {
     BrVec3 t, u, w;
@@ -899,6 +901,7 @@ void BrRbSolveAccel(BrRbBodyFull *pB)
  * the step that decides how a car moves this frame. The attached bodies' spin
  * is deliberately not wiped, so theirs carries over from last frame. */
 /* @implements 0x1006B260 d3d BrRbAccumAll */
+/* @n64 0x8025993C located */
 void BrRbAccumAll(BrRbBodyFull *pB)
 {
     pB->accel.x = 0.0f;

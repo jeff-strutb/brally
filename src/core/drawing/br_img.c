@@ -132,6 +132,7 @@ int BrImgLoad(BrImage *pImg, const char *pszPath)
     return rc;
 }
 
+/* @n64 0x8021DE2C located */
 void BrImgFree(BrImage *pImg)
 {
     free(pImg->pixels);

@@ -229,6 +229,7 @@ static void BrUiImgCopyPath(char *pszDst, size_t cbDst, const char *pszSrc)
     pszDst[cb - 1u] = '\0';
 }
 
+/* @n64 0x80264B20 located */
 void BrUiImgSavePathsInit(char *pszSeason, size_t cbSeason,
                           char *pszGhost,  size_t cbGhost)
 {
@@ -239,6 +240,7 @@ void BrUiImgSavePathsInit(char *pszSeason, size_t cbSeason,
 
 /* ========================================================================== */
 
+/* @n64 0x80200108 exact */
 void BrUiImgResetForTest(void)
 {
     BrUiImgTableClear();

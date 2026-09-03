@@ -322,6 +322,7 @@ int BrSfxSrcPlaySilent(int ch, int group, int32_t f0C, int32_t loop)
     return BrSfxSrcStart(ch, group, f0C, loop, 0u);
 }
 
+/* @n64 0x8022B370 located */
 void BrSfxSrcTrigger(int iSrc)
 {
     const BrSfxSrcDef *pS;
@@ -347,13 +348,16 @@ void BrSfxSrcTrigger(int iSrc)
 /* WHAT IT DOES: plays the game's ordinary beep -- the one the countdown uses
  * for three, two and one. */
 /* @implements 0x10067D80 d3d BrSfxSrcBeep */
+/* @n64 0x8022B3C4 exact */
 void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* push 0x0D */
 /* WHAT IT DOES: plays the second of the game's two beeps -- the one used for
  * the "go" at the end of the race countdown, where the first three steps use
  * the ordinary beep. */
 /* @implements 0x10060E00 glide BrSfxSrcBeep2 */
+/* @n64 0x8022B3E4 exact */
 void BrSfxSrcBeep2(void) { BrSfxSrcTrigger(BR_SFXSRC_BEEP2); }   /* push 0x0E */
 
+/* @n64 0x80264E0C located */
 void BrSfxSrcRaceCountdown(int iStep)
 {
     /* 0x1001AD93 `cmp ecx,4` / 0x1001AD9C `jne`.  The counter has already

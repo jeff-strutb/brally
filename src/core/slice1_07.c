@@ -309,6 +309,7 @@ void BrRec10Get4(const BrRec10 *pTable, int32_t a, int32_t b,
 uint32_t BrG_B502E8;
 uint32_t BrG_B502EC;
 
+/* @n64 0x8021D6B8 located */
 uint32_t BrRec24TotalBytes(void)
 {
     return BrG_B502E8 * 24u;          /* lea eax,[eax+eax*2] ; shl eax,3 */

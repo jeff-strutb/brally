@@ -67,6 +67,7 @@ void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
 }
 
 /* @implements 0x100349C0 glide BrVec3Project */
+/* @n64 0x80225038 located */
 /* WHAT IT DOES: projects the point pV through the 4x4 matrix pM using the
  * row-vector convention (v' = v * M, no translation row -- see below) and then
  * divides all three components by the resulting w.  This is the vertex ->
@@ -124,6 +125,7 @@ void BrMat4Copy(const BrMat4 *pSrc, BrMat4 *pDst)
 
 /* 0x100307D0 -- stores 0x3F800000 (1.0f) on the diagonal and zero elsewhere,
  * fully unrolled in the original. */
+/* @n64 0x80260FD0 exact */
 void BrMat4Identity(BrMat4 *pM)
 {
     int i, k;

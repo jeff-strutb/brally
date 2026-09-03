@@ -110,6 +110,7 @@ void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
 /* WHAT IT DOES: skips forward a number of whole bytes in the stream,
  * rounding up to a byte boundary first. */
 /* @implements 0x10073BA0 d3d BrBitStreamSkipBytes */
+/* @n64 0x8023FF34 located */
 #ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamSkipArg;
 void __fastcall BrBitStreamSkipBytes(BrBitStream *pBs, BrBitStreamSkipArg n)
@@ -689,6 +690,7 @@ void BrEntitySetIndex(void *pEntity, int index)
  * sits and stepping the same distance into the other one, and then resets
  * the object's transform matrix to no transform. */
 /* @implements 0x10076C90 d3d BrEntityBindAux */
+/* @n64 0x802207A4 located */
 #ifdef BR_MATCHING_BUILD
 /* thiscall, no stack args. Both array bases are pinned globals; the index
  * is a signed magic-divide by the 0x2B68 entity stride. */

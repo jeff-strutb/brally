@@ -16,6 +16,7 @@ void *BrOperatorNew(uint32_t cb)
     return malloc((size_t)cb);
 }
 
+/* @n64 0x80226D7C exact */
 void BrOperatorDelete(void *p)
 {
     free(p);

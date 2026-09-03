@@ -28,6 +28,7 @@ void BrClear_10019250(void)
 /* WHAT IT DOES: centre the next string the HUD/menu text emitter draws.
  * 0 is left, 1 is right, 2 is centre -- this is the centre setter. */
 /* @implements 0x10016830 glide BrSet_10019270 */
+/* @n64 0x8022F4CC located */
 void BrSet_10019270(void)
 {
     g_4B035C = 2;
@@ -35,6 +36,7 @@ void BrSet_10019270(void)
 
 /* WHAT IT DOES: wipe two 128-byte scratch tables used by a later pass. */
 /* @implements 0x1000F620 d3d BrClearTables_1000F620 */
+/* @n64 0x80269410 located */
 void BrClearTables_1000F620(void)
 {
     memset(&g_364308, 0, 0x80);

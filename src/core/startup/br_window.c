@@ -40,6 +40,7 @@ int32_t BrWindowEarDllSelect(void)             { return s_iEarDllSelect; }
 void    BrWindowSetEarDllSelect(int32_t i)     { s_iEarDllSelect = i; }
 int32_t BrWindowEarStartupBodies(void)         { return s_cEarStartupBodies; }
 
+/* @n64 0x8022F530 located */
 void BrWindowResetForTest(void)
 {
     g_brhWnd            = NULL;

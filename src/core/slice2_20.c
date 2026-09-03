@@ -143,6 +143,7 @@ void BrSwap4(void *pv)
     t = p[1]; p[1] = p[2]; p[2] = t;
 }
 
+/* @n64 0x80252F50 located */
 void BrSwap2(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;

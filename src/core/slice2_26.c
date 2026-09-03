@@ -280,6 +280,7 @@ int BrPhaseLeave_10044A30(BrPhaseCtx *pCtx, void *pEntity)
  * cleared -- then closes the session and returns to a remembered screen. This
  * is the leave that unwinds the most state. */
 /* port-only body; Glide match is src/core/cpp/0x1003E030.cpp */
+/* @n64 0x80265440 located */
 int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
 {
     BrPhaseLeavePrologue(pEntity, &BR_PHASE_CUR);
@@ -300,6 +301,7 @@ int BrPhaseLeave_10044AE0(BrPhaseCtx *pCtx, void *pEntity)
  * neighbours it does not close the session. */
 /* port-only body; Glide match is src/core/cpp/0x1003E090.cpp */
 #ifdef BR_MATCHING_BUILD
+/* @n64 0x8026E7D0 located */
 int BrPhaseLeave_10044B40(void *pEntity)
 {
     BrEntSub *pSub;
@@ -336,6 +338,7 @@ int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
  * the way. */
 /* port-only body; Glide match is src/core/cpp/0x1003E1C0.cpp */
 #ifdef BR_MATCHING_BUILD
+/* @n64 0x80264AD0 located */
 int BrPhaseLeave_10044C70(void *pEntity)
 {
     BrEntSub *pSub;
@@ -410,6 +413,7 @@ int BrPhaseLeave_10044DE0(BrPhaseCtx *pCtx, void *pEntity)
  * remembered parent, and puts the menus into a particular mode. */
 /* port-only body; Glide match is src/core/cpp/0x1003E450.cpp */
 #ifdef BR_MATCHING_BUILD
+/* @n64 0x80260DD4 located */
 int BrPhaseLeave_10044F00(void *pEntity)
 {
     BrEntSub *pSub;
@@ -466,6 +470,7 @@ int BrPhaseActivate_10044D00(BrPhaseCtx *pCtx)
             BR_ACT_FAILED) ? 1 : 0;
 }
 
+/* @n64 0x8026BA70 located */
 int BrPhaseActivate_10044E20(BrPhaseCtx *pCtx)
 {
     /* GOTCHA: the sources cross over -- 0x10ACEE8C goes to 0x10AA28CC and
@@ -551,6 +556,7 @@ int BrPhaseActivate_10045390(BrPhaseCtx *pCtx)
  * this family, which is the only thing distinguishing it. Which screen it is
  * was not established here. */
 /* port-only body; Glide match is src/core/cpp/0x1003E9B0.cpp */
+/* @n64 0x80269460 located */
 int BrPhaseActivate_10045460(BrPhaseCtx *pCtx)
 {
     if (BrPhaseActivateSlot(pCtx, &pCtx->pAA2990, BrExt_1004D640) ==
@@ -566,6 +572,7 @@ int BrPhaseActivate_10045460(BrPhaseCtx *pCtx)
  * same extra step run whether the screen was just built or was already there.
  * Which screen it is was not established here. */
 /* @d3donly 0x10045520 BrPhaseActivate_10045520 -- glide twin 0x1003E9B0 COMDAT-folded onto BrPhaseActivate_10045460 */
+/* @n64 0x8026C610 located */
 int BrPhaseActivate_10045520(BrPhaseCtx *pCtx)
 {
     if (BrPhaseActivateSlot(pCtx, &pCtx->pAA2994, BrExt_1004DB00) ==
@@ -684,6 +691,7 @@ int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
  * their default mode. Unlike the three routines above it reports failure rather
  * than success, on every path. */
 /* @implements 0x100450F0 d3d BrPhaseDispatch_100450F0 */
+/* @n64 0x80241F88 located */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseDispatch_100450F0(void *pArg)
 {

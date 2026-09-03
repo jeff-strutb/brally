@@ -101,6 +101,7 @@ int BrAiNodeAt(const BrTrack *pTrack, uint32_t off, BrAiNode *pOut)
     return 0;
 }
 
+/* @n64 0x80220438 located */
 int BrAiRoot(const BrTrack *pTrack, BrAiNode *pOut)
 {
     return BrAiNodeAt(pTrack, BrTrackHdrU32(pTrack, BR_TRK_H_AIPATH), pOut);
@@ -338,6 +339,7 @@ float BrAiLineOffset(const BrAiPathFrame *pFrm, const BrVec3 *pPos,
     return BrVec3Dot(&pFrm->lateral, &d);       /* 0x1005DAB7              */
 }
 
+/* @n64 0x80260E78 located */
 float BrAiHeading(const BrMat4 *pFrame, const BrAiPathFrame *pFrm)
 {
     BrVec3 row;                                 /* row 0, copied not aliased */
@@ -645,6 +647,7 @@ float BrAiThrottleScale(BrAiThrottle act)
 
 /* --- 9. the recovery timers (0x1005DED6 .. 0x1005E04D) ------------------- */
 
+/* @n64 0x802607C0 located */
 void BrAiRecoveryReset(BrAiRecovery *pSt)
 {
     pSt->cHoldFwd = 0;                          /* 0x1005C83B */
@@ -784,6 +787,7 @@ float BrAiOvertakeOffset(const BrAiRival *paRivals, int cRivals, int iSelf,
 
 /* --- 11. the aim smoothing (0x1005D93D) --------------------------------- */
 
+/* @n64 0x802694A4 located */
 void BrAiAimSmooth(BrVec3 *pAim, const BrVec3 *pTarget)
 {
     BrVec3Lerp(pAim, pAim, pTarget, BR_AI_LEAD);

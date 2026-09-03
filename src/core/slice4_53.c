@@ -552,6 +552,7 @@ BrPlatSetTimerFn g_pfnBrPlatSetTimer = BrPlatSetTimerStub;
  * message that arrives has no callback attached, so it goes to the window's
  * normal message handling. */
 /* port-only body; Glide match is src/core/generated/0x100358C0.c */
+/* @n64 0x80200634 located */
 int BrTimerStart1003C230(void)
 {
     BrSub1003C020();

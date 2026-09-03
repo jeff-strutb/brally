@@ -23,6 +23,7 @@ int  BrExt_10075020(void);
 
 /* WHAT IT DOES: turn replay recording on. */
 /* @implements 0x1006AA90 d3d BrSet_1006AA90 */
+/* @n64 0x8021C6B8 located */
 void BrSet_1006AA90(void)
 {
     g_1750308 = 1;
