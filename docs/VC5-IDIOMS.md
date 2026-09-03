@@ -3036,3 +3036,42 @@ Two sub-tells in the same function:
   spelling reproduces the `shr al,3` and then pays a `movzx ax,al` widening
   inside the 16-bit expression — 33 diffs against 21 for the plain
   `(c >> 19) & 0x1F`. Take the shorter residue.
+
+## Screen the whole tree for frame-size mismatches
+*(`tools/framescreen.py`, added 2026-09-03 after the array fix above)*
+
+The array/scalar finding is a CLASS, not a one-off, so it now has a screen.
+`framescreen.py` reads the `sub esp, imm` out of every tagged-diff function's
+original bytes and out of its recompiled object, and ranks the disagreements:
+
+    ours SMALLER than the original  -> a scalar that should be an array, or a
+                                       local the original keeps live
+    ours LARGER                     -> a local the original does not spend, or
+                                       one we force to memory
+
+26 of the 69 diff rows with a readable prologue disagree. Take these before
+grinding regions in the same function: every stack displacement moves with the
+frame, so nothing downstream can line up until it matches.
+
+**The screen must use each row's own compile variant** (`report.csv`'s `opt`
+column). Scoring an `/Od` or `/O2 /Oy-` row against the `/O2` object compares
+two different compiles and invents a gap — 0x1002ECEB read as 76 bytes off
+that way, and it is not a frame defect at all.
+
+## A suspect resync poisons the regions AFTER it, not just its own line
+*(`divergence.py`, 2026-09-03 — this trap cost most of a session)*
+
+`change` is a difference of two deltas, so once a resync locks onto the wrong
+copy of a repeated arm, the NEXT region's delta is wrong and the two `change`
+values computed from it are fiction. Both are labelled now. A session read a
+"-73 byte block" out of exactly that position, wrote it into a dossier as the
+function's dominant defect, and it did not exist.
+
+**Verify any large change before grinding it.** Pick an instruction that occurs
+once per unit of work and count it across the WHOLE function in both streams.
+On 0x100250D0 the divide-by-255 magic constant appears 33 times in each and
+the one-operand `imul` 24 times in each — every channel is present, so a
+21-instruction "gap" in one window cannot be real. An equal census plus an
+honest instruction total (from `fn.py`, which counts the whole function and
+not the aligner's windows) means the residue is allocation, wherever the
+region map points.
