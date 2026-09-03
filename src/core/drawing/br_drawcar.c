@@ -741,7 +741,7 @@ static void wheel_call(unsigned char *car)
  * later region's displacements move with it.  Read the recomp's frame map
  * from a `/FAcs` listing (recipe in docs/VC5-IDIOMS.md) rather than
  * inferring it -- displacement histograms cannot be compared across two
- * builds whose frame sizes differ, and that is how the pack0/pack1 claim
+ * builds whose frame sizes differ, and that is how the pack[0]/pack[1] claim
  * corrected below went wrong.
  * FRAME CENSUS 2026-09-03 (region 1, the 0x48-vs-0x4c gap).  Counting the
  * stack slots each build actually WRITES, rather than comparing raw
@@ -765,7 +765,7 @@ static void wheel_call(unsigned char *car)
  * 56 BYTES SHORT.  Something IS missing, and the 4-byte frame gap is
  * consistent with it rather than a pure packing curiosity.  Do not quote
  * the equality again.
- * MEASURED, do not re-run: declaring pack0/pack1 block-scoped inside the
+ * MEASURED, do not re-run: declaring pack[0]/pack[1] block-scoped inside the
  * colour if/else (their whole live range) is byte-identical -- it does not
  * move them out of the arg slots into byte slots.
  *
@@ -819,9 +819,40 @@ static void wheel_call(unsigned char *car)
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
+ * SESSION 11 (2026-09-03) -- ‼ REGION 1, THE FRAME, IS CLOSED.  `sub esp,
+ * 0x4c` matches and the prologue is byte-exact instruction for instruction.
+ * The fix was one declaration: the two colour-pack byte locals are an ARRAY,
+ * `uint8_t pack[2]`, not two scalars.  VC5 never enregisters an array, so it
+ * spends a locals-area slot on it instead of tucking two scalars into the
+ * dead argument slots -- and that missing locals dword WAS the 0x48-vs-0x4c
+ * gap the frame census below spends its whole length hunting.  ‼ The census's
+ * closing claim ("chasing which value we are not homing is the wrong
+ * question") is now RETRACTED for the second time: it was the right question,
+ * and the answer was a storage class, not a value.  Masked regions 25 -> 23;
+ * `msetdiff.py` rows unchanged at 25/11 with the two `sub esp` / `add esp`
+ * rows retired in exchange for one float operand swap.  fn.py's RAW/REGNORM
+ * read 2 worse because every slot displacement moved; trust msetdiff and the
+ * masked region count here, not those.
+ * SAME SESSION, a second block closed: the sky texture-window command words.
+ * The original RE-READS `pSkyAng->s0` and `pSkyAng->t0` from the struct for
+ * the SECOND word (`mov edx,[eax]; mov eax,[eax+4]` at 0x1798) -- they are
+ * not named locals.  Caching them in `s`/`t` and assembling `w0`/`w1` before
+ * the put made VC5 spill the pair and the finished word to slots
+ * (`mov [esp+0x38],ecx; mov ecx,[esp+0x60]; mov edx,[esp+0x38]`).  Reading
+ * the fields inline in both words makes the block instruction-for-instruction
+ * the original and removes its 15-byte drift.  ‼ GENERALISE: a named local
+ * that CACHES A STRUCT FIELD is wrong wherever the original re-reads it --
+ * the same rule the frame note at the bottom of this header already states
+ * for car+0x140 and BrG_6C3308.  Check every cached field against the bytes.
+ * ‼ AND READ THE SIZE NUMBER CAREFULLY AFTER A FIX LIKE THAT: this one took
+ * the function from 38 bytes short to 53 short, because the spill it removed
+ * was three instructions of accidental padding against a real deficit
+ * elsewhere.  Bytes moved the wrong way while the multiset went 64+75 ->
+ * 52+66.  Rank by the register-blind multiset, never by size alone.
+ *
  * SESSION 10 (2026-09-03) -- ARM 3 MOVES.  Its colourA top component now
  * goes through its OWN uint8_t local (`topA = BrG_6C1580;` assigned with
- * pack0/pack1, third of the three, then `(uint32_t)topA << 8` in the pack)
+ * pack[0]/pack[1], third of the three, then `(uint32_t)topA << 8` in the pack)
  * instead of being nested inline as `(uint32_t)(uint8_t)BrG_6C1580`.  Inline,
  * VC5 loads it straight into the high lane (`mov dh,byte ptr [mem]`); named,
  * it loads to a byte register first and then `mov dh,cl`, which is what the
@@ -844,14 +875,14 @@ static void wheel_call(unsigned char *car)
  *     inside arm 1's colourB pack un-merges the cross-jumped tail early.
  *     Judge arm 1 by the first-divergence address, never by size.
  *   - giving arm 3's colourA its own byte locals (packA0/packA1, distinct
- *     from the pack0/pack1 that colourB reuses) is BYTE-IDENTICAL: VC5
+ *     from the pack[0]/pack[1] that colourB reuses) is BYTE-IDENTICAL: VC5
  *     coalesces them back onto the same slots, so the two-slot question is
  *     not decided by how many variables the source declares.
  * What is LEFT in arm 3, and it is one instruction pair: the original homes
  * BOTH byte locals before colourA and reads both back widened (`mov
  * [esp+0x31],dl; mov [esp+0x32],cl` ... `mov eax,[esp+0x31]; and eax,0xff;
- * or edx,eax`), while we still let pack0 forward from its register and spell
- * that term `mov dl,al`.  Only pack1 goes through a slot here.
+ * or edx,eax`), while we still let pack[0] forward from its register and spell
+ * that term `mov dl,al`.  Only pack[1] goes through a slot here.
  *
  * SESSION 9 (2026-09-03) -- RE-RANKING, no movement (25 masked / 33 raw,
  * 1,831 vs 1,843 insns, 7,537 vs 7,577 bytes; unchanged from session 8).
@@ -872,7 +903,7 @@ static void wheel_call(unsigned char *car)
  * (`mov [esp+0x31],dl; mov [esp+0x32],cl; mov ecx,[esp+0x32]; mov dh,al;
  * mov eax,[esp+0x31]; and ecx,0xff; and eax,0xff; or edx,eax`), then does
  * it a SECOND time for colourB.  We home only one of the two and let VC5
- * forward the other from its register, so the `top << 8 | pack0` merge
+ * forward the other from its register, so the `top << 8 | pack[0]` merge
  * collapses into two byte-lane moves (`mov dh,al; mov dl,al`) instead of
  * `mov dh,al; or edx,<widened>`.  That single forwarded copy is the whole
  * -24: it is the same currency as the WORKLIST rows above (orig's 4 extra
@@ -880,7 +911,7 @@ static void wheel_call(unsigned char *car)
  * `mov byte [esp+S],B`), so those rows are ONE defect at ONE site, not a
  * family spread over the function.
  * SESSION 9 PROBE, DEAD, do not re-run: spelling arm 3's colourA pack terms
- * with an explicit widening -- `(pack0 & 0xFFu)` / `(pack1 & 0xFFu)` -- is
+ * with an explicit widening -- `(pack[0] & 0xFFu)` / `(pack[1] & 0xFFu)` -- is
  * BYTE-IDENTICAL.  VC5 folds a redundant `& 0xFF` on an already-uint8_t
  * operand before it chooses the byte lane, so the widening cannot be
  * requested from the source at this site; what decides it is whether the
@@ -935,22 +966,24 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    uint8_t  pack0, pack1;  /* separate scalar byte locals (0x1001E380's
-                             * proven form): the dword-read + and 0xff in
-                             * the bytes is VC5's own widening of a plain
-                             * uint8_t local.  Slot map: orig homes them at
-                             * [esp+0x31]/[esp+0x32], i.e. overlaid on the
-                             * upper bytes of pLights' dead dword 0x30.
-                             * CORRECTION 2026-09-03: they do NOT land in
-                             * "two fresh dwords (0x10/0x14)" here -- the
-                             * /FAcs equate table reads `_pack0$ = 8,
-                             * _pack1$ = 12`, i.e. already in the reused ARG
-                             * slots, shared with lodOff/len/pCam/eyeY.
-                             * So the 4-byte frame gap (0x48 vs orig 0x4c)
-                             * is NOT these two; it is one dword slot in the
-                             * locals area that orig keeps live and we do
-                             * not, and instruction counts are EQUAL
-                             * (1843 = 1843), so it is allocation, not code. */
+    uint8_t  pack[2];  /* ‼ AN ARRAY, NOT TWO SCALARS -- THIS IS WHAT
+                             * CLOSES THE FRAME.  VC5 never enregisters an
+                             * array, so `pack` gets its own slot in the
+                             * LOCALS area instead of being packed into the
+                             * dead argument slots, and that is the
+                             * original's layout: byte slots 0x31/0x32
+                             * overlaid on the upper bytes of a dword.  It
+                             * takes `sub esp,0x48` to `sub esp,0x4c` and the
+                             * prologue is now BYTE EXACT against the
+                             * original, instruction for instruction.
+                             * Two scalars (`uint8_t pack0, pack1;`) was the
+                             * form here for eight sessions, and the /FAcs
+                             * equate table showed why it could never work:
+                             * `_pack0$ = 8, _pack1$ = 12` -- VC5 had put
+                             * them in the reused ARG slots and spent no
+                             * locals-area dword at all, which IS the 4-byte
+                             * frame gap the census below hunts for.  Do not
+                             * go back to scalars to tidy the spelling. */
     uint32_t lodOff;
     uint32_t specMem = 0;
     BrSkyAngles *pSkyAng = 0;
@@ -1072,32 +1105,32 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
                    | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
                    | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
-        pack0 = BrG_6C0960;
-        pack1 = BrG_6C65BC;
-        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack0) << 8
-                   | pack1) << 8);
+        pack[0] = BrG_6C0960;
+        pack[1] = BrG_6C65BC;
+        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | pack[0]) << 8
+                   | pack[1]) << 8);
     } else {
         /* arms 2 (dim *4/5) and 3 (plain) share colourB's Horner tail --
-         * the original merges them at 0x427, spilling pack0/pack1 to the
+         * the original merges them at 0x427, spilling pack[0]/pack[1] to the
          * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
          * at the common pack.  Factor the final statement out to reproduce it. */
         uint8_t topB, topA;
         if (flag290C != 0) {
             topB  = (uint8_t)((g_BrDrawByte80 * 4) / 5);
             colourA = 0;
-            pack0 = (uint8_t)((BrG_6C0960 * 4) / 5);
-            pack1 = (uint8_t)((BrG_6C65BC * 4) / 5);
+            pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
+            pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
         } else {
-            pack0 = BrG_6C335C;
-            pack1 = BrG_6C0968;
+            pack[0] = BrG_6C335C;
+            pack[1] = BrG_6C0968;
             topA  = BrG_6C1580;
-            colourA = ((((uint32_t)topA << 8 | pack0) << 8
-                       | pack1) << 8);
+            colourA = ((((uint32_t)topA << 8 | pack[0]) << 8
+                       | pack[1]) << 8);
             topB  = g_BrDrawByte80;
-            pack0 = BrG_6C0960;
-            pack1 = BrG_6C65BC;
+            pack[0] = BrG_6C0960;
+            pack[1] = BrG_6C65BC;
         }
-        colourB = ((((uint32_t)topB << 8 | pack0) << 8 | pack1) << 8);
+        colourB = ((((uint32_t)topB << 8 | pack[0]) << 8 | pack[1]) << 8);
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
