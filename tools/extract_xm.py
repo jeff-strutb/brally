@@ -46,13 +46,31 @@ the effect census had nothing to say about it. `tools/xm_oracle.py` is the check
 for that: it scores xm_render.c against libopenmpt, the replayer MilkyTracker and
 VLC use. Run it after touching xm_render.c.
 
+The export is 1:1
+-----------------
+This is a rip, not a production. It renders the order list ONCE, adds no fade,
+and invents no ending -- the module is the master and looping is the player's
+job, so the loop point goes in the manifest instead of being baked in. It used
+to render two passes and fade out over four seconds, which is a fabricated
+ending for music written to loop forever, and that was wrong: an export that
+makes a musical decision has destroyed the information needed to make a
+different one later. `tools/extract_cdaudio.py` is the standard here -- it
+copies sectors and decides nothing.
+
+The ONE unavoidable edit is a scale factor. The mix routinely sums past unity
+(peaks reach 2.938) and FLAC is integer PCM, so something has to bring it in
+range. It is kept as honest as an edit can be: ONE factor for all six tracks,
+exactly 1/peak of the loudest, recorded in the manifest so it can be undone
+exactly. It is uniform, so it changes no relationship between the tracks.
+
 Levels
 ------
-All six tracks are scaled by ONE gain, taken from the loudest module's peak, so
-that the loudness the composer wrote survives. XM has no module-level master
-volume -- the mix level is the composed level -- so normalising each track to its
-own peak would silently flatten six tracks into equal loudness. --per-track-gain
-restores the old behaviour if a consumer really wants it.
+That shared factor is why the loudness the composer wrote survives. XM has no
+module-level master volume -- the mix level IS the composed level -- so scaling
+each track to its own peak would silently flatten six deliberately unequal
+tracks. --per-track-gain restores that older behaviour for a consumer that
+really wants it; --headroom-db backs the whole set off full scale. Neither is
+the default, because both are opinions.
 """
 import argparse
 import hashlib
@@ -257,6 +275,19 @@ def encode_flac(raw_path, dst, rate, level):
     os.replace(tmp, dst)
 
 
+def sha256_file(path):
+    """Hash the rendered PCM, so a re-run can be shown to have changed nothing.
+
+    tools/extract_cdaudio.py records the same thing for the disc tracks; a rip
+    that cannot be checked is not much of a rip.
+    """
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_manifest(outdir):
     try:
         with open(os.path.join(outdir, MANIFEST_NAME), "r") as fh:
@@ -284,17 +315,20 @@ def main(argv=None):
                     help="re-render even if the output is already up to date")
     ap.add_argument("-q", "--quiet", action="store_true", help="only report errors")
     ap.add_argument("--rate", type=int, default=44100, help="sample rate (44100)")
-    ap.add_argument("--passes", type=int, default=2,
-                    help="times to play the order list before fading (2)")
-    ap.add_argument("--fade-ms", type=int, default=4000,
-                    help="fade-out length in ms (4000)")
+    ap.add_argument("--passes", type=int, default=1,
+                    help="times to play the order list (1 -- a faithful rip; "
+                         "raise it only to make a standalone listening copy)")
+    ap.add_argument("--fade-ms", type=int, default=0,
+                    help="fade-out length in ms (0 -- the module has no ending, "
+                         "and inventing one destroys the loop)")
     ap.add_argument("--keep-xm", action="store_true",
                     help="also write the unpacked .xm modules next to the audio")
     ap.add_argument("--compression-level", type=int, default=8,
                     choices=range(0, 13), metavar="0-12",
                     help="flac compression effort (default 8)")
-    ap.add_argument("--headroom-db", type=float, default=-1.0,
-                    help="peak the loudest track lands on, in dBFS (-1.0)")
+    ap.add_argument("--headroom-db", type=float, default=0.0,
+                    help="peak the loudest track lands on, in dBFS (0.0, i.e. "
+                         "scale by exactly 1/peak and nothing more)")
     ap.add_argument("--per-track-gain", action="store_true",
                     help="scale each track to its own peak instead of scaling "
                          "the whole set by one gain; this discards the relative "
@@ -381,6 +415,7 @@ def main(argv=None):
         raw_path = os.path.join(workdir, "xm_%06X.raw" % off)
         try:
             info = run_renderer(exe, xm_path, args, raw_path, gain)
+            pcm_sha = sha256_file(raw_path)
             encode_flac(raw_path, dst, args.rate, args.compression_level)
         finally:
             if os.path.exists(raw_path):
@@ -398,8 +433,10 @@ def main(argv=None):
                  "order_length": info["order_length"], "restart": info["restart"],
                  "seconds": round(secs, 3), "frames": info["frames"],
                  "loop_start_frame": info["loop_start_frame"],
+                 "restart_frame": info["restart_frame"],
                  "raw_peak": info["raw_peak"], "gain": info["gain"],
-                 "xm_sha256": hashlib.sha256(payload).hexdigest()}
+                 "xm_sha256": hashlib.sha256(payload).hexdigest(),
+                 "pcm_sha256": pcm_sha}
         entries.append(entry)
         done += 1
 

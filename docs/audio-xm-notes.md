@@ -108,6 +108,41 @@ Baseline medians over 0.25s windows, which any change must beat:
 Both are still worth fixing if this renderer is ever pointed at another module,
 but neither can move a number on *these* six.
 
+## The export is a rip, not a production
+
+**It decides nothing it does not have to.** `extract_cdaudio.py` sets the
+standard — it copies sectors, applies no gain and no fade, and records a
+`pcm_sha256` so a re-run can be shown to have changed nothing. The XM export now
+matches that: one pass of the order list, no fade, and a PCM hash per track.
+
+It used to render **two passes and fade out over four seconds**. That is a
+fabricated ending for music written to loop forever, and it was actively
+destructive: four of the six modules restart at an order position *partway into
+the song*, so the fade wrote over the loop and the export could not be looped
+correctly at all. The manifest now carries `restart_frame` — the frame the
+restart position begins at — which is the only thing that makes a one-pass rip
+loopable:
+
+| module | length | loops back to |
+|---|---|---|
+| `xm_0EBC00` | 176.6s | 0.0s |
+| `xm_113660` | 261.1s | **69.1s** |
+| `xm_12EAB0` | 210.6s | 7.0s |
+| `xm_149C80` | 207.4s | **23.0s** |
+| `xm_164B60` | 178.6s | 0.0s |
+| `xm_17FD10` | 217.6s | **32.0s** |
+
+`--passes` and `--fade-ms` still exist for making a standalone listening copy.
+They are not the default, because a listening copy is an opinion and a rip is
+not. The general rule this came from: **an export that makes a musical decision
+has destroyed the information needed to make a different one later.**
+
+The ONE unavoidable edit is a scale factor — the mix sums past unity (peaks
+reach 2.938) and FLAC is integer PCM, so something must bring it in range. It is
+kept as honest as an edit can be: one factor for all six, exactly `1/peak` of
+the loudest, recorded in the manifest so it inverts exactly, and uniform so it
+changes no relationship between the tracks.
+
 ## Levels
 
 All six take **one shared gain**, from the loudest module's peak.
@@ -117,12 +152,13 @@ sample volumes, the volume column, `Cxx` and envelopes, so the mix level *is*
 the composed level. Normalising each track to its own peak — which is what this
 did until now — flattens six deliberately unequal tracks into equal loudness.
 The measured peaks span 1.916 to 2.938, about 3.7 dB of real composed dynamic
-range; after the change only the loudest track lands at −1 dBFS and the others
-sit 2.9 to 4.7 dB below it.
+range; after the change only the loudest track lands at full scale and the
+others sit 1.9 to 3.7 dB below it, as written.
 
-`--per-track-gain` restores the old behaviour. `xm_render --measure` runs pass 1
-alone, which is what lets the extractor learn the whole set's peaks before it
-has to choose a gain.
+`--per-track-gain` restores the old behaviour and `--headroom-db` backs the set
+off full scale; neither is the default, because both are opinions.
+`xm_render --measure` runs pass 1 alone, which is what lets the extractor learn
+the whole set's peaks before it has to choose a gain.
 
 ## Host dependency
 

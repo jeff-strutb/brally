@@ -19,6 +19,14 @@ platform-abstraction seam: where the original build links Microsoft's CRT
 Mac's libc; where the original draws through Glide/Direct3D, a macOS build
 draws through Metal. Same slot in the design, different platform.
 
+## Music — an open decision, do not design around it silently
+
+No port plays music yet, deliberately. The intent is a player-facing choice
+between the PC soundtrack (the disc's CD audio) and the N64 one (tracker
+modules), and the user wants to settle *how* that is built with the findings in
+front of them. **Read `MUSIC-DECISION-PENDING.md` and ask before writing audio
+code.**
+
 ## macos/
 
 The macOS/Metal port. `metal/br_gfx_metal.m` is the graphics backend (the peer
