@@ -621,3 +621,17 @@ va,size,class,reason
 0x100747BD,29,eh_funclet,EH epilogue fragment (esp restore + fs:[0] unwind); not a function
 0x10075030,27,eh_funclet,no prologue; parent-frame [ebp-0x10] read; throw-site funclet
 0x10075060,27,eh_funclet,no prologue; parent-frame [ebp-0x10] read; throw-site funclet
+0x10074580,47,crt_helper,_chkstk stack probe; emitted by cl for large frames, reproduced at link
+0x10074560,6,import_thunk,single jmp dword ptr [0x118f0560]; IAT thunk
+0x10074572,6,import_thunk,single jmp dword ptr [0x118f04e4]; IAT thunk
+0x100748A0,6,import_thunk,single jmp dword ptr [0x118f0538]; IAT thunk
+0x10074AE0,6,import_thunk,single jmp dword ptr [0x118f04d8]; IAT thunk
+0x10074AEC,6,import_thunk,single jmp dword ptr [0x118f0544]; IAT thunk
+0x100747B0,13,eh_funclet,unwind funclet: reads [ebp-0x14] without establishing ebp; calls 0x100747E0
+0x10074F70,11,eh_funclet,unwind funclet: reads [ebp-0x10] without establishing ebp; calls 0x1007456C
+0x100751D0,11,eh_funclet,unwind funclet: reads [ebp+4] without establishing ebp; calls 0x1007456C
+0x10076420,11,eh_funclet,unwind funclet: reads [ebp+4] without establishing ebp; calls 0x1007456C
+0x100765E0,11,eh_funclet,unwind funclet: reads [ebp-0x10] without establishing ebp; calls 0x1007456C
+0x10074B70,11,eh_funclet,unwind funclet: lea ecx,[ebp-0x220] then jmp into 0x10008D60
+0x10074733,6,eh_funclet,mid-function fragment (odd address); restores edi/esi from the parent frame
+0x1007486F,9,eh_funclet,mid-function fragment (odd address); restores ebx/edi/esi from the parent frame
