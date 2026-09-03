@@ -780,7 +780,16 @@ void BrExt_1005FBC0(int32_t a)
      * the 0x10AA27E0 high half is its own 16-bit global, not a shift, and the
      * halfword base is a POINTER so VC5 folds the array address into the
      * lea's displacement instead of adding it separately.  Together: 71/71
-     * instructions and a register-blind gap of 0+0, from 5+4. */
+     * instructions and a register-blind gap of 0+0, from 5+4.
+     *
+     * WHAT IS LEFT is 288 bytes against 289 with RAW 15+15 and REGNORM 0+0 --
+     * the instruction multiset is IDENTICAL and only the schedule and the
+     * register naming differ, so the one-byte gap is an encoding-length
+     * difference from that naming (an accumulator form where the original
+     * uses a general register or the reverse).  The visible symptom is at the
+     * very top: the original stores the byte third (`al` load, block-base
+     * load, byte store) where we hoist a third dword load ahead of the store.
+     * T3a -- do not grind. */
     v = g_brAA27F8;
     switch (v) {
     case 1:

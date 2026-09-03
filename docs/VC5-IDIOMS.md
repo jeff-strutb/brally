@@ -3188,6 +3188,30 @@ scoped macros and two hooks made direct took the register-blind gap from
 149+285 to 60+137 and the size from 352 short to 240 short, with no sibling in
 the 49-function TU disturbed.
 
+### The same disease at BYTE and HALFWORD granularity
+
+The accessor sub-case below is usually spotted as a struct pointer, but the
+identical mistake hides inside a single global. Three forms, all proven on
+0x10058900 in one sitting (register-blind gap 5+4 -> 0+0, 71/71 instructions):
+
+- **Two adjacent bytes read as `arr[0]` / `arr[1]` are TWO SEPARATE GLOBALS.**
+  Spelled as one array VC5 merges them into a single dword load and takes the
+  second byte out of `ah`; the original emits two independent
+  `mov al,[g]` / `mov dl,[g+1]`. Tell: a MISSING `mov B, byte ptr [I]` pair
+  against an EXTRA `mov R, dword ptr [I]` plus a `mov B,B`.
+- **The high half of a dword is its own 16-bit global**, read
+  `mov dx, word ptr [addr+2]` after an `xor edx,edx`. A `(x >> 16) & 0xFFFF`
+  costs a `shr` and a register copy and never produces the `xor`. Tell: a
+  MISSING `mov W, word ptr [I]`.
+- **A base address must be INSIDE the address expression** so VC5 folds it
+  into the lea displacement (`lea eax,[eax*8+0x10ac5a66]`). Computing an int
+  offset and adding the array afterwards costs a second lea. Tell: an EXTRA
+  `lea R,[R]` with the original having one lea where you have two.
+
+The general rule these share: **when the original reads something at a
+narrower width or a different address than your C does, the source declared it
+that way — do not reach for a shift or a cast to bridge the difference.**
+
 ### The accessor sub-case: a struct that is really N standalone globals
 
 `BrScreenGet()->cx` / `BrHudGetEnv()->pszSplitPrefix` group four or five
