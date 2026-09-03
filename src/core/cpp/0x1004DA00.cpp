@@ -20,6 +20,14 @@
  * `f2968` and `w2A42` -- the one slot the 0x1004AEE0 dead list left
  * ambiguous -- makes it WORSE, 34 -> 59. Every placement is now covered.
  * Do not re-probe the fy-update position.
+ *
+ * DEAD PROBE 2: naming the two derived ints (`x2 = xi + 0x7f; y2 = yi +
+ * 0x21;`) BEFORE the three stores, which is literally the original's
+ * instruction order (lea, add, store 50/58/5C), also stays at 34. VC5 folds
+ * the temps back into the stores and re-schedules identically. The window
+ * gates FIVE functions -- 0x1004AEE0, 0x1004BE00, 0x1004DA00, 0x100498A0,
+ * 0x1004CBA0, 18,395 B -- so it is worth a fresh IDEA, but not another
+ * permutation of this statement list.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
