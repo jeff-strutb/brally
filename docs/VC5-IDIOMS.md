@@ -3508,3 +3508,30 @@ the source mask to the natural width of the member being tested; do not
 try to break the pooling with `&&` vs nested `if`, the `!` form, split
 statements, or duplicated arms — all four were tried on this function and
 all four pool.
+
+## A plain `static` helper is NOT auto-inlined under /O2 — write it out
+
+Proven on 0x10003320 (`BrChkFReadOpen`, 260 B: byte-exact the moment the
+one-line helper was spelled out; it was the last two instructions).
+
+    static FILE **ChkToPun(BrChkFile *pf) { return (FILE **)(void *)pf; }
+    ...
+    return ChkToPun(pf);        /* WRONG: push ebx / call / add esp,4 */
+    return (FILE **)(void *)pf; /* RIGHT: mov eax,ebx                 */
+
+/O2 implies /Ob1, which inlines only functions marked `inline` or
+`__inline`. A plain `static` one-liner — the shape a decomp naturally
+reaches for when the same pun, accessor or index calculation appears in
+several functions — is emitted as a real call, and the original has no call
+there at all.
+
+**The tell:** recomp is a few bytes longer than orig with one extra
+`push`/`call`/`add esp,N` group around a value the original just moves, and
+the call target is a tiny local function. Either write the body out at the
+matching call site, or mark the helper `__inline` — but check every other
+caller when you do, because that changes their code too.
+
+**Not the same thing** as the CRT intrinsics: `strcpy`, `strcat`, `strlen`
+and `memcpy` ARE expanded inline under /O2 (that is /Oi, which /O2 implies),
+which is why the original shows `repne scasb` / `rep movs` for those and a
+real `call` for `strncpy` or `_stricmp`, which are not intrinsics.
