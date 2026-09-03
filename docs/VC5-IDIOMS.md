@@ -1108,6 +1108,27 @@ the caller AND flipped a helper to match for free.
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
   the scaled form, VC5 picks the accumulator itself. T3a — park it.
+- **`sub reg, imm` vs `add reg, -imm` is NOT an operator choice, and it is a
+  compiler tell.** MSVC 5.0 canonicalises a STRAIGHT-LINE constant subtraction
+  to `add reg, -K`, always. Measured directly, not inferred: `x - 16`,
+  `x -= 16`, `x -= 0x10`, the subtraction inlined into the store, a
+  const-propagated `base`, an in-place bump on the parameter, and `-(16 - x)`
+  all emit `add`; so do `long`, `unsigned`, `short`, and BOTH pointer forms
+  (`p - 16`, `p - (char *)16`); and so do /O2, /O2 /Op, /O2 /Oy-, /O1 and /Ox.
+  **VC++ 4.2 emits `sub reg, K` for exactly the same source.** Do NOT use that
+  as a compiler fingerprint on its own, though — 11 of the tree's byte-exact
+  MSVC5 functions contain `sub r32, imm` (0x10019480, 0x10023B10, 0x1000C9C0,
+  0x1001D150, 0x1002F680, 0x1006FF00, 0x1002B997, 0x10031AC0, 0x10053EF0,
+  0x10053F80, 0x1006B400), so MSVC5 clearly reaches it by another route. The
+  two answer keys that were read: 0x10023B10 is a LOOP-CARRIED pointer
+  decrement (`p -= 0x28` as the loop step, `cmp`/`jge` back edge), and
+  0x10053EF0 is a SIXTEEN-BIT subtraction whose result stays live as `ax`
+  (`movsx ax,dl; sub eax,0x20; test ax,ax`). 0x1006FF00's is a pointer
+  difference feeding a divide. So when an original shows `sub reg, imm` where
+  your C has `add reg, -imm`, the lever is the VALUE'S TYPE OR LIFETIME — a
+  loop step, a narrower type, a difference that feeds further arithmetic —
+  never the spelling of the minus sign. OPEN: 0x1006FD50 BrEntitySetIndex is
+  2 bytes from exact on precisely this and fits none of the three keys.
 - **Repeated constant stores are a LEADING GROUP, and the group runs
   DESCENDING.** A function that writes the same constant into several fields
   of a struct writes them all up front, not interleaved in field order. VC5

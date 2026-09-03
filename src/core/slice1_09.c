@@ -628,6 +628,19 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
  * store for every probed source order, where the original subs first.
  * Neither compiler reproduces both; parked. */
 typedef struct { int n; } BrEntityIndexArg;
+/* RESIDUE 2 bytes, FIRSTDIV +0xa, and the whole of it is one instruction:
+ * the original has `sub eax,0x10` where we emit `add eax,-0x10`.  That is NOT
+ * a spelling choice -- MSVC5 canonicalises every straight-line constant
+ * subtraction to add-negative.  Probed and DEAD, do not re-run: `i = i - 16`,
+ * `i -= 0x10`, the subtraction inlined into the store, `i = index.n - 16`, a
+ * const-propagated `base` local, an in-place bump on the parameter member,
+ * and the compile variants /O2 /Op, /O2 /Oy-, /O1 and /Ox.  An isolated
+ * one-line probe confirms the rule for int, long, unsigned, short and both
+ * pointer spellings.  See the `sub reg, imm` entry in docs/VC5-IDIOMS.md: the
+ * three MSVC5 constructs known to keep a real `sub` are a loop-carried
+ * decrement, a 16-bit-typed subtraction whose result stays live narrow, and a
+ * pointer difference feeding further arithmetic -- this function fits none of
+ * them, so the answer is still open.  It is NOT the operator. */
 void __fastcall BrEntitySetIndex(void *pEntity, BrEntityIndexArg index)
 {
     int i = index.n;
