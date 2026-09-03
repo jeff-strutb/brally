@@ -117,8 +117,22 @@
  *      byte-offset form IS in the tree now and gains a region, because it
  *      is applied to BOTH drain loops at once (see STATE above).  The
  *      "flips the global allocation" finding stands only for converting
- *      one loop of the pair.  The goto-vs-nested-if half of this wall is
- *      untouched and still open.
+ *      one loop of the pair.  The goto-vs-nested-if half was RE-MEASURED
+ *      2026-09-03 after the IV half landed (the two had only ever been
+ *      measured jointly, so the verdict was stale) and it HOLDS: nesting
+ *      the first test costs nine regions, 19 -> 28, in both spellings --
+ *      the dossier's literal `if (dh != tail) {...} else { dead: pA[dw]=0; }`
+ *      and a fully structured form with one shared exit.  Do not re-run.
+ *      What actually places the block is SIZE, not the source construct:
+ *      the dead block is two instructions and the body is ~500, and VC5
+ *      lays the short successor down first (ours: `jne body` over an inline
+ *      dead block; orig: `je` forward from BOTH tests to one dead block
+ *      after the fl==0 arm).  Regions 16 and 18 are the two halves of that
+ *      one placement decision.
+ *      Region 15 (0x2016) is now a pure schedule permutation -- identical
+ *      seven-instruction multiset (2 loads, xor, shl, 3 stores), orig
+ *      orders it load/load/xor/store/shl/store/store and ours
+ *      load/load/shl/xor/store/store/store.  T3a.
  * @implements stays live for the sweep; rule 2 forbids claiming a match
  * until the diff is clean.
  */
