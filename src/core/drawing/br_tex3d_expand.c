@@ -29,6 +29,16 @@
  * 2415 -> 2413 (orig 2407), raw regions 45 -> 44; masked regions still 32,
  * so this is a shape gain, not a closure.  One site alone does nothing --
  * all three together, or not at all.
+ * 2026-09-03 (session 7): the OTHER half of each channel-pack pair is now
+ * pre-biased too, so all 12 of orig's word stores are `mov word ptr
+ * [esi-2],W` and the store family is GONE from the register-blind multiset.
+ * Insns 2413 -> 2411 (orig 2407), regions still 32 masked / 44 raw -- again
+ * a shape gain, not a closure.  Session 6 had converted only the first site
+ * of each pair; the second sites are the three `*puVar21 = (chA<<5|chR)<<5
+ * ...` at the ends of the IA4/IA8 blend bodies, and they behave the same
+ * way (all three together).  Found with tools/msetdiff.py, which had to be
+ * fixed first (see its header): the branch-target and reloc-addend noise
+ * was hiding the two-store residue.
  * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
  * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
  * at once.  Session 4 measured this per pair and in eight combinations;
@@ -414,9 +424,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
                     chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
@@ -453,9 +463,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
                     chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                        (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
@@ -498,9 +508,9 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     chB = (unsigned char)((int)((int)(uVar19 * iVar18) / 0xff + uVar7) >> 3);
                     chA = (unsigned char)((int)((int)(uVar19 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
-                    *puVar21 = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
-                                          (unsigned int)chG) << 5) | (unsigned int)chB);
                     puVar21 = puVar21 + 1;
+                    puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
+                                          (unsigned int)chG) << 5) | (unsigned int)chB);
                     if (iVar22 >= cbMax) {
                       return;
                     }
