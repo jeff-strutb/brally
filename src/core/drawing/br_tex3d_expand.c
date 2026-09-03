@@ -117,6 +117,34 @@
  * together or not at all, and the open mechanism is the one the last line
  * of docs/idioms-A.md names (orig homes the widened inten BEFORE its first
  * product, we multiply from the register and home after).
+ * 2026-09-03 (session 11): ‼ READ THIS FUNCTION AT `--key 10`.  THE REGION
+ * MAP EVERY NOTE BELOW QUOTES IS WRONG.  `divergence.py` resyncs on N
+ * consecutive matching instructions and N was 6, which is SHORTER than the
+ * sequences this function repeats -- twelve near-identical channel arms, all
+ * ending in the same divide-by-255 fixup.  The tool now takes `--key N` (and
+ * prefers balanced splits within one displacement, which was a second source
+ * of wrong locks).  Measured both ways on the same object:
+ *     --key 6   32 regions, FOUR flagged SUSPECT (74/53, 12/34, 26/135,
+ *               115/20) -- session 8 already knew these were fiction
+ *     --key 10  20 regions, ONE SUSPECT (region 2, at 0x6ee)
+ *     --key 14   4 regions -- too coarse, the resync starts swallowing arms
+ * So "32 masked regions", repeated in every note above, is twelve counting
+ * artefacts on top of twenty real ones.  The honest map, at key 10:
+ *     r3  (0x846)  -73  <- THE dominant block, and NOT suspect any more
+ *     r5  (0x9f8)  +58    r4 (0x966) +30    r10 (0xf4f) -23
+ *     r11 (0x111f) +23    r9 (0xe96) +15    r6 (0xcda) -21   r19 -11
+ *     everything else under 10
+ * ‼ That RETIRES the session-8/9 ranking outright: "r15 +36 and r18 -33 are
+ * the largest" was an artefact of the short key, and so was the framing that
+ * "the reliable defect mass is r14-r17".  Grind r3 first.
+ * r3 read at key 10 (orig 0x836-0x86c against ours 0x835-0x871): the block is
+ * instruction-for-instruction ours except TWO -- we home the channel delta at
+ * its definition (`mov [esp+0x44],eax`) where the original keeps it in a
+ * register across both halves of the blend body, and we split the divide's
+ * add-back (`mov eax,[slot]; add edx,eax`) where the original folds it
+ * (`add edx,[slot]`), the split being downstream of where the output
+ * counter's `add edi,2` lands.  Same currency as the session-9 re-framing
+ * below: the original holds these values in registers, we spill.
  * 2026-09-03 (session 10): r14's +15 IS THE ALPHA CHANNEL'S PRODUCT TEMP,
  * and the mechanism is now fully read off the bytes.  `/FAcs` puts the block
  * at source lines 568-575, the THIRD blend body's first half.  All four
