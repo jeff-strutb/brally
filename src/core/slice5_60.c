@@ -121,7 +121,15 @@ static void BrRsSet(BrGbiRectState *pSt, uint32_t *pDirty,
  * only the ones that actually changed, so that the flush afterwards sends
  * the minimum. Note the very first setting's previous value is read once at
  * the top and reused later, so two of the arms compare against a stale copy. */
-/* @implements 0x10020FA0 d3d BrGbiCall10020FA0 */
+/* NOT a Glide twin.  config/shared.csv pairs d3d 0x10020FA0 with glide
+ * 0x10021270, but the two are DIFFERENT CODE -- 0x10021270 is a direct
+ * render-mode dispatcher (byte-exact as BrGlGbiCall in
+ * src/core/drawing/br_dlglide.c), while this one is the dirty-bit state
+ * machine below.  Scoring this body against those bytes produced a
+ * permanent 615-byte "diff" for a function that is already done, and the
+ * lane ranking kept handing it out. */
+/* @d3donly 0x10020FA0 BrGbiCall10020FA0 -- glide 0x10021270 is a DIFFERENT
+ * function, matched as BrGlGbiCall in src/core/drawing/br_dlglide.c */
 void BrGbiCall10020FA0(uint32_t w1)
 {
     BrGbiRectState *pSt = BrGbiRectGetState();
