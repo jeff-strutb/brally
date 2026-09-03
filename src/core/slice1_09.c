@@ -676,7 +676,9 @@ void BrPairRingPush(BrPairRing *pRing, int a, int b)
 /* WHAT IT DOES: converts a time in milliseconds into the game's own clock,
  * which counts thirty ticks a second -- the N64's frame rate, kept in the PC
  * build. It also clears one other field of the timing record. */
-/* @implements 0x10075100 d3d BrTimeUpdate */
+/* port-only body; the Glide twin is src/core/generated/0x1006E360.c -- the
+ * original takes NO arguments: it calls 0x1006E280 for the millisecond count
+ * and writes three absolute globals, so neither parameter here exists. */
 void BrTimeUpdate(BrTimeState *pState, unsigned int ms)
 {
     pState->f12C   = 0;
