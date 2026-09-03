@@ -3622,6 +3622,18 @@ Also settled on that function while measuring this: the ORIGINAL's four-term
 row is LEFT-associated — its first `faddp st(2)` adds terms 1 and 2 — so a
 right-associated variant is the wrong source no matter how it scores.
 
+**Second sighting, and this one closed a function** *(0x100199A0
+`BrRaceCarCtlOutro`, same day)*. A three-term sum of squares
+`x*x + y*y + z*z` scheduled the THIRD square second; the same expression
+written `(x*x + y*y) + z*z` — identical association, one redundant pair —
+scheduled it last and took the function from 22 diffs to 2, then to
+byte-exact once the two float locals were declared in the order that puts
+the right one in ecx. Both sightings share a signature worth screening for:
+**size and instruction multiset already exact (register-blind gap 0), the
+divergence purely in x87 ordering.** On a float function in that state, try
+the parenthesis axis before anything else — it is one recompile, and every
+other axis in this class costs many.
+
 ## A raw-address cast and a symbol reference are NOT the same operand to VC5
 *(0x1000EAF0, 2026-09-03 — this closed a wall that had stood nine passes)*
 
