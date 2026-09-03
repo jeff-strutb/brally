@@ -5,8 +5,8 @@ source lineage built by IDO for MIPS, so a function we already own on the PC
 side can be compiled a second time and looked for in the ROM directly -- which
 pairs it and matches it in one step, with no anchor and no hand work.
 
-  .venv/bin/python tools/tgr/n64match.py src/core/geometry/br_vec.c
-  .venv/bin/python tools/tgr/n64match.py --all --csv build/n64_work/n64report.csv
+  .venv/bin/python n64/tools/n64match.py src/core/geometry/br_vec.c
+  .venv/bin/python n64/tools/n64match.py --all --csv build/n64/report.csv
 
 Scoring, weakest to strongest:
   SHAPE   the candidate's normalised-opcode multiset is within tolerance
@@ -17,13 +17,13 @@ targets, the lui/addiu-lo halves of an address, and %gp offsets.
 import sys, os, csv, struct, subprocess, collections, bisect, argparse, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(ROOT, 'tools'))
+sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
 os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 
 CC = os.path.join(ROOT, 'tools/ido/cc')
 CC53 = os.path.join(ROOT, 'tools/ido53/cc')
 INC = ['-I' + os.path.join(ROOT, 'include'),
-       '-I' + os.path.join(ROOT, 'tools/tgr/include')]
+       '-I' + os.path.join(ROOT, 'n64/include')]
 CFLAGS = ['-c', '-O2', '-mips2', '-non_shared', '-G', '0', '-w']
 # x86 calling-convention keywords are meaningless on MIPS and appear in headers
 # that never include <windows.h>, so they have to die on the command line.

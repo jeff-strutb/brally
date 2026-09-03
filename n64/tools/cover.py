@@ -4,12 +4,12 @@ Every number here carries its denominator: the ROM's own .text is
 0x001000-0x070AB0 = 457,392 bytes across 883 functions, and that is what a
 percentage is a percentage OF.
 
-  .venv/bin/python tools/tgr/cover.py [build/n64_work/n64report.csv]
+  .venv/bin/python n64/tools/cover.py [build/n64/report.csv]
 """
 import sys, os, csv, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(ROOT, 'tools'))
+sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
 os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 import n64rom  # noqa: E402
 
@@ -23,7 +23,7 @@ def sizes():
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        ROOT, 'build/n64_work/n64report.csv')
+        ROOT, 'build/n64/report.csv')
     sz = sizes()
     rows = list(csv.DictReader(open(path)))
     byst = collections.defaultdict(lambda: [0, 0])     # status -> [fns, bytes]

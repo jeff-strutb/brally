@@ -1,6 +1,6 @@
 """Top Gear Rally (N64, USA) ROM analyser.
 
-  TGR_ROM=<path to .z64> .venv/bin/python tools/n64rom.py <cmd>
+  TGR_ROM=<path to .z64> .venv/bin/python n64/tools/n64rom.py <cmd>
 
     stats                 segment/function summary
     func   <vram>         disassemble the function containing <vram>
@@ -17,7 +17,8 @@ Layout (verified): one resident segment, no overlays.
 import struct,collections,sys,json
 from capstone import *
 import os
-ROM=os.environ.get("TGR_ROM","testdata/Top Gear Rally (USA).z64")
+ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROM=os.environ.get("TGR_ROM",os.path.join(ROOT,"reference/tgrally/Top Gear Rally (USA).z64"))
 d=open(ROM,'rb').read(); n=len(d)
 BASE=0x80200000; ROMOFF=0x1000
 TEXT_S,TEXT_E=0x1000,0x70AB0
