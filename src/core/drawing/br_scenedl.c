@@ -36,6 +36,34 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * THIRTEENTH PASS (2026-09-03) re-tested this file's dead list under the
+ * staleness rule that fell out of 0x1000A110 ("a dead verdict measured
+ * against a wrong frame -- or any other changed allocation input -- is
+ * stale").  This function's allocation last moved with the twelfth pass's
+ * +0x70 pointer, so the pre-twelfth verdicts were fair game.  RESULT: both
+ * re-tests HOLD, and one of them is now a SHARPER verdict than before.
+ *   (a) re-measured ALONE rather than in the ninth pass's three-change
+ *       bundle: `slot = head; if (--slot < 0)` against `slot = head - 1;
+ *       if (slot < 0)` is BYTE-IDENTICAL.  So the `dec`/`jns` against
+ *       `lea`/`test`/`jge` difference is not this spelling at all -- VC5
+ *       canonicalises the two -- and the ninth pass's "20 -> 21 regions" was
+ *       the other two changes in that bundle.  Do not re-run either form.
+ *   (b)/wall 5 re-read at the bytes rather than probed blind: the join at
+ *       0xad4 is a THREE-VALUE choice, not a spelling.  The original keeps
+ *       cHead and base in registers across the param_2 join (its else-arm
+ *       reloads both from their slots BEFORE the merge) and therefore has to
+ *       read `i` from memory at the guard (`cmp [esp+0x1c],edx`); we keep
+ *       `i` in a register and reload cHead/base after the merge.  Two of the
+ *       three fit; the original picks the other two.  Probed this pass and
+ *       DEAD: expressing the join through the locals (`DAT_1035fb8c = cHead
+ *       + 1 + base; i = base;` instead of naming the globals three more
+ *       times) moves the reloc-masked byte diff by ONE, 4,669 -> 4,670.
+ *   Screens, both negative, do not repeat: this function's frame MATCHES
+ *   (`tools/framescreen.py` does not list it), and its `(double)` modelling
+ *   is real -- all 49 qword spills are `fstp qword ptr [esp]` varargs pushes,
+ *   matched exactly in both streams, with no `fld qword` anywhere -- so the
+ *   Glide-is-float lever does not apply here.
+ *
  * TWELFTH PASS (2026-09-03) MOVED WALL 3 for the first time in six passes.
  * The wheel record's +0x70 field is now reached through its own pointer,
  * `float *pP = (float *)(wb + (int)pCar + 0x70)`, which is the SAME
