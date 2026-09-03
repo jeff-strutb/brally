@@ -183,7 +183,7 @@ static void *BrScrItemThis(BrUiObj *pObj)
  * row's own position, taking the picture's shape and draw flags from the
  * shared picture table. A row whose picture number is negative draws
  * nothing. */
-/* @implements 0x10047930 d3d BrUiDrawCode_10047930 */
+/* port-only body; Glide match is src/core/cpp/0x10040D80.cpp */
 int BrUiDrawCode_10047930(const BrScrGlobals *pG, BrUiObj *pObj)
 {
     int16_t wCode = BrScrLd16(pObj, BR_UI_OFF_W1E20C);
@@ -214,7 +214,7 @@ int BrUiDrawCode_10047930(const BrScrGlobals *pG, BrUiObj *pObj)
  * rectangle the caller supplies instead of the table's own. It does NOT check
  * for a negative picture number first, so where the other one would draw
  * nothing this one reads outside the table. */
-/* @implements 0x10047980 d3d BrUiDrawCodeRect_10047980 */
+/* port-only body; Glide match is src/core/cpp/0x10040DD0.cpp */
 int BrUiDrawCodeRect_10047980(const BrScrGlobals *pG, BrUiObj *pObj,
                               const void *pRect)
 {
