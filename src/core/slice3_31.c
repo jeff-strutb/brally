@@ -922,7 +922,7 @@ int32_t BrPhaseLeave_10046F60(void *pEntity)
 /* WHAT IT DOES: leaves a screen and throws away three other screens with it,
  * then returns the player to the root menu. This is the exit that unwinds a
  * whole branch of the menus rather than one step. */
-/* @implements 0x10046FD0 d3d BrPhaseLeave_10046FD0 */
+/* port-only body; Glide match is src/core/cpp/0x10040420.cpp */
 int32_t BrPhaseLeave_10046FD0(void *pEntity)
 {
 #ifdef BR_MATCHING_BUILD
