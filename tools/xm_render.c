@@ -32,6 +32,47 @@
  *
  * Integers are decoded byte-wise from the file image, so the tool is
  * endian-agnostic and does not care about struct padding or alignment.
+ *
+ * Accuracy, and how it is measured
+ * --------------------------------
+ * The effect census above says which effects the modules USE. It says nothing
+ * about whether they are implemented correctly, and that is the failure mode a
+ * hand-written replayer really has: for a long time the Amiga branch of
+ * period_of_note() had the wrong octave divisor and two of the six modules
+ * played two octaves sharp, with a clean census the whole time.
+ *
+ * tools/xm_oracle.py is the check. It scores this file against libopenmpt --
+ * OpenMPT's replayer, validated against FastTracker II itself, and what
+ * MilkyTracker and VLC use -- as windowed correlation, so a wrong effect shows
+ * up as a few bad windows with a timestamp to read the rows at.
+ *
+ *     brew install libopenmpt
+ *     python3 tools/xm_oracle.py --per-channel <module.xm>
+ *
+ * Scores on the six ROM modules as of 2026-09-03 (median correlation over 0.25s
+ * windows), which is the baseline any change here has to beat:
+ *
+ *     xm_0EBC00 0.9903   xm_113660 0.9742   xm_12EAB0 0.9674
+ *     xm_149C80 0.9515   xm_164B60 0.9921   xm_17FD10 0.9525
+ *
+ * Known open, in the order worth attacking:
+ *
+ *   - Vibrato depth scaling is a guess. vibrato_offset is normalised as
+ *     2.0f*sine*depth/15 and then multiplied by the SAME 16.0f in both the
+ *     linear and the Amiga period domains, and one constant cannot be right in
+ *     two different unit systems. The two lowest-scoring modules are the two
+ *     Amiga ones, which is consistent with this.
+ *   - Amiga finetune is folded into the continuous note index and interpolated
+ *     between adjacent SEMITONE periods; FT2 interpolates within a finetune
+ *     table instead. Same suspects.
+ *   - Key-off on an instrument with no volume envelope: FT2 cuts the note, this
+ *     keeps it alive under the instrument fadeout. No module here uses note-off
+ *     (verified: changing the fadeout rate moves no score at all), so this is
+ *     latent rather than active.
+ *   - tick_envelope() tests the envelope loop before the sustain point; FT2
+ *     tests sustain first, so a sustain point at or past the loop end behaves
+ *     differently. No instrument in these six modules enables a volume envelope
+ *     at all, so this too is latent.
  */
 #include <math.h>
 #include <stdint.h>
@@ -162,7 +203,18 @@ typedef struct {
 
 /* ------------------------------------------------------------- frequency */
 
-/* Amiga period table: one octave, 12 semitones plus the wrap entry. */
+/* Amiga period table: one octave, 12 semitones plus the wrap entry.
+ *
+ * Entry 0 (1712) is the period of note index 48 -- the note whose frequency is
+ * the 8363 Hz reference, since 8363*1712/1712 == 8363. That fixes the octave
+ * divisor below: floor(48/12) == 4, so the table is unshifted at note 48 only
+ * when 4 is subtracted. Getting this constant wrong transposes the whole
+ * module, which is silent in the effect census -- the two Amiga-table modules
+ * played two octaves sharp until 2026-09-03. The invariant to test against is
+ * that period_of_note agrees with the linear table on frequency for every note:
+ *
+ *     8363 * 1712 / amiga(n)  ==  8363 * 2^((4608 - (7680 - n*64)) / 768)
+ */
 static const uint16_t amiga_period[13] = {
     1712, 1616, 1524, 1440, 1356, 1280, 1208, 1140, 1076, 1016, 960, 907, 856
 };
@@ -177,7 +229,7 @@ static float period_of_note(const XmModule *m, float note)
     {
         int    inote  = (int)floorf(note);
         int    a      = ((inote % 12) + 12) % 12;
-        int    octave = (int)floorf(note / 12.0f) - 2;
+        int    octave = (int)floorf(note / 12.0f) - 4;
         float  p1 = amiga_period[a], p2 = amiga_period[a + 1];
         if (octave > 0)      { p1 /= (float)(1u << octave);  p2 /= (float)(1u << octave); }
         else if (octave < 0) { p1 *= (float)(1u << -octave); p2 *= (float)(1u << -octave); }
@@ -954,7 +1006,7 @@ int main(int argc, char **argv)
     const char *in_path = NULL, *out_path = NULL;
     RenderCfg   cfg;
     double      headroom_db = -1.0, fixed_gain = 0.0;
-    int         i;
+    int         i, measure_only = 0;
 
     XmModule   *m;
     XmPlayer    pl;
@@ -978,15 +1030,17 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "--max-seconds") && i + 1 < argc) cfg.max_seconds = atof(argv[++i]);
         else if (!strcmp(a, "--headroom-db") && i + 1 < argc) headroom_db = atof(argv[++i]);
         else if (!strcmp(a, "--gain") && i + 1 < argc)        fixed_gain = atof(argv[++i]);
+        else if (!strcmp(a, "--measure"))                     measure_only = 1;
         else if (a[0] == '-' && a[1])
             die("unknown option %s", a);
         else if (!in_path)  in_path = a;
         else if (!out_path) out_path = a;
         else die("too many arguments");
     }
-    if (!in_path || !out_path)
+    if (!in_path || (!out_path && !measure_only))
         die("usage: xm_render [--rate N] [--passes N] [--fade-ms N]\n"
-            "                 [--headroom-db X] [--gain X] <in.xm> <out.raw>");
+            "                 [--headroom-db X] [--gain X] <in.xm> <out.raw>\n"
+            "       xm_render [options] --measure <in.xm>");
     if (cfg.rate < 8000 || cfg.rate > 192000) die("silly sample rate %d", cfg.rate);
     if (cfg.passes < 1) cfg.passes = 1;
     if (cfg.fade_ms < 0) cfg.fade_ms = 0;
@@ -1021,12 +1075,21 @@ int main(int argc, char **argv)
         gain = 1.0;
     }
 
-    fout = fopen(out_path, "wb");
-    if (!fout) die("cannot open %s for writing", out_path);
-    player_init(&pl, m, cfg.rate);
-    render(&pl, &cfg, fout, gain, measure.frames, &final_st);
-    if (fclose(fout) != 0)
-        die("error closing %s", out_path);
+    /* --measure stops here and reports pass 1. The caller needs this to pick one
+     * gain for a whole soundtrack: scaling each module to its own peak would
+     * throw away the relative loudness the composer wrote, which in XM lives
+     * entirely in the sample volumes, the volume column, Cxx and the envelopes
+     * -- there is no module-level master volume to read it off. */
+    if (measure_only) {
+        final_st = measure;
+    } else {
+        fout = fopen(out_path, "wb");
+        if (!fout) die("cannot open %s for writing", out_path);
+        player_init(&pl, m, cfg.rate);
+        render(&pl, &cfg, fout, gain, measure.frames, &final_st);
+        if (fclose(fout) != 0)
+            die("error closing %s", out_path);
+    }
 
     /* Report for the extractor's manifest. `unhandled_effects` being non-empty
      * means the render is NOT trustworthy; the caller checks it. */
