@@ -572,7 +572,7 @@ int32_t BrUiDraw1003E7A0(BrUiObj *pObj)
  * depending on the game mode -- the row reads differently in the plain
  * single-player case than in every other. Unlike almost every other caption
  * hook here it does not tell the row to re-measure itself afterwards. */
-/* @implements 0x1003E840 d3d BrUiText1003E840 */
+/* port-only body; Glide match is src/core/cpp/0x10037E60.cpp */
 int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
 {
 #ifdef BR_MATCHING_BUILD
@@ -612,7 +612,7 @@ int32_t BrUiText1003E840(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: writes a plain number into a menu row's caption and tells
  * the row to re-measure and redraw itself. This is the shared body behind
  * the two number rows below. */
-/* @implements 0x1003E8D0 d3d br23_num_common */
+/* port-only body; Glide match is src/core/cpp/0x10037EF0.cpp */
 #ifdef BR_MATCHING_BUILD
 static int32_t br23_num_common(BrUiObj *pObj)
 {
@@ -660,7 +660,7 @@ int32_t BrUiNum1003E8D0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: shows the number held in the second of the two per-entry
  * tables as a menu row's caption. */
-/* @implements 0x1003EA90 d3d BrUiNum1003EA90 */
+/* port-only body; Glide match is src/core/cpp/0x100380B0.cpp */
 int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
 {
 #ifdef BR_MATCHING_BUILD
@@ -1291,7 +1291,7 @@ int32_t BrUiText1003F760(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: sets the caption of one of the option rows from a table of
  * names indexed by that option's current value. Which option it is was not
  * established. */
-/* @implements 0x1003F7F0 d3d BrUiText1003F7F0 */
+/* port-only body; Glide match is src/core/cpp/0x10038D30.cpp */
 #ifdef BR_MATCHING_BUILD
 /* THE TABLE-TEXT FAMILY TEMPLATE: loose value + id-table globals,
  * BrStrGet, inline strcpy into pObj+0x2B65, the EDX-pattern vcall on the
@@ -1367,7 +1367,7 @@ int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: sets the caption of another option row from its own table
  * of names. Which option it is was not established. */
-/* @implements 0x1003F990 d3d BrUiText1003F990 */
+/* port-only body; Glide match is src/core/cpp/0x10038ED0.cpp */
 #ifdef BR_MATCHING_BUILD
 extern int32_t g_br0AC650;                 /* glide 0x100ABDF0 */
 extern const int32_t g_tABAF8[];           /* glide 0x100ABAF8 */
@@ -1434,7 +1434,7 @@ int32_t BrUiText1003FA00(BrUiObj *pObj, BrUiGlobals *pG)
 
 /* WHAT IT DOES: sets the caption of the row that names the play mode the
  * player has chosen. */
-/* @implements 0x1003FC40 d3d BrUiText1003FC40 */
+/* port-only body; Glide match is src/core/cpp/0x10039180.cpp */
 #ifdef BR_MATCHING_BUILD
 extern int32_t g_brAA287C;                 /* glide 0x10AC5BD4 */
 extern const int32_t g_tABB90[];           /* glide 0x100ABB90 */
