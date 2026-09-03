@@ -2986,3 +2986,24 @@ the port never had, grep the file for a `static` the original does not call.**
   then indexes `[eax+base]` and `[eax+base+1]`. Same family as the
   `x <<= k` entry above: **when the original has an explicit shift and you
   have a scale factor, give the shifted value a name.**
+
+## Conditional argument: put the whole CALL in each arm
+*(third sighting, settled on 0x10050AC0)*
+
+A caption whose catalogue id depends on a flag:
+
+    if (g != 0)  push 0x66
+    else         push 0x1E
+    call BrStrGet          <- one call, the arms merge on it
+
+Writing it as a shared variable (`id = g ? 0x66 : 0x1E; s34(BrStrGet(id)…)`)
+does NOT give that. VC5 turns the select branchless -- `neg eax / sbb eax,eax`
+and an and/add -- because the only difference between the arms is a value.
+Duplicate the whole call in both arms instead and VC5 tail-merges it,
+leaving each arm its own `push imm`.
+
+This is the same lever as the `lea` in 0x10055C50 and the catalogue call in
+0x10037E60, now seen a third time and on a two-way value: **whatever the
+arms have in common, let the tail-merge factor it -- never factor it
+yourself into a shared local.** Arm order still decides layout: the arm the
+original places as the fall-through is the `then`.
