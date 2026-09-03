@@ -404,14 +404,24 @@ static void Br72FillVert(BrD3DTLVertex *pV, float x, float y,
  *
  * The `d3d` tag below is therefore ACCURATE, not a defect -- it is the reason
  * a census of d3d-tagged claims surfaces this address, and the reason the
- * right response is a label rather than an edit. */
+ * right response is a label rather than an edit.
+ *
+ * That label is now applied.  Left as @implements, the sweep mapped this body
+ * onto glide 0x1001E380 through config/shared.csv and scored it against 914
+ * bytes it shares no code with, which put a FINISHED address (BrGlRectFill in
+ * src/core/drawing/br_dlglide.c, byte-exact) at the top of the lane ranking
+ * as the single best open target -- 914 B with a 315-instruction structural
+ * gap that no amount of work could ever close.  @d3donly says the same thing
+ * the paragraph above says, in the form the tooling reads. */
 /* WHAT IT DOES: paints a flat coloured rectangle over part of the screen. It
  * first pulls the corners back inside the visible area, works out the colour
  * from whichever of the two colour sources the renderer currently has live,
  * and then draws the box -- either as two triangles through the graphics card,
  * or, on a machine not running the Direct3D path, by handing the rectangle to
  * the software surface instead. */
-/* @implements 0x1001BE90 d3d BrSub_1001BE90 */
+/* @d3donly 0x1001BE90 BrSub_1001BE90 -- glide 0x1001E380 is a DIFFERENT
+ * implementation (glide2x direct, 914 B, similarity 0.118), matched as
+ * BrGlRectFill in src/core/drawing/br_dlglide.c */
 void BrSub_1001BE90(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
     Br72Env      *pE = g_pBr72Env;
