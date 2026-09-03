@@ -438,7 +438,7 @@ static void BrEntMirrorQuat(BrEnt *pE)
  * object is, only which way it is turned, so the rebuilt transform ends up
  * with the new rotation but the old position. */
 /* @implements 0x10076700 d3d BrEntSetMatrix */
-/* @n64 0x80267470 located */
+/* @n64 0x80220150 located */
 /* Thiscall with ONE stack argument (`mov ebx,ecx` then `[esp+4]`, `ret 4`),
  * spelled the way the rest of this file's entity setters are.  The
  * quaternion mirror is written out here rather than calling

@@ -1340,6 +1340,7 @@ size_t BrFontRasteriseDL(const BrFont *pFont,
  * holds well over 200 characters either way. */
 #define BR_FONT_DL_WORDS 4096
 
+/* @n64 0x802410E0 located */
 size_t BrFontDrawString(const BrFont *pFont, const char *psz,
                         int32_t scale, int32_t x, int32_t y,
                         uint8_t *pRgba, int32_t cx, int32_t cy)

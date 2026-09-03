@@ -70,7 +70,7 @@ int BrGameStepIsAddr(const void *pv)
  * window's message pump calls this over and over, and it is the single point
  * where the race, or the front end, gets its turn each frame. */
 /* @implements 0x1002E324 glide BrGameStepInvoke */
-/* @n64 0x8026B860 located */
+/* @n64 0x8021C6F0 located */
 #ifdef BR_MATCHING_BUILD
 /* Orig: PUSH EBP / MOV EBP,ESP / CALL [g_pfnStep] / POP EBP / RET (11 B).
  * No NULL guard -- just calls through the pointer and returns whatever EAX is. */

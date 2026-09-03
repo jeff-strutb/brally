@@ -2,6 +2,7 @@
  * IncludeStackEmpty: sete al after xor eax,eax. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x00401660 brally.exe IncludeStackEmpty */
+/* @n64 0x80268520 located */
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>

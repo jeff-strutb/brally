@@ -338,7 +338,6 @@ int BrPhaseLeave_10044B40(BrPhaseCtx *pCtx, void *pEntity)
  * the way. */
 /* port-only body; Glide match is src/core/cpp/0x1003E1C0.cpp */
 #ifdef BR_MATCHING_BUILD
-/* @n64 0x80264AD0 located */
 int BrPhaseLeave_10044C70(void *pEntity)
 {
     BrEntSub *pSub;
@@ -470,7 +469,6 @@ int BrPhaseActivate_10044D00(BrPhaseCtx *pCtx)
             BR_ACT_FAILED) ? 1 : 0;
 }
 
-/* @n64 0x8026BA70 located */
 int BrPhaseActivate_10044E20(BrPhaseCtx *pCtx)
 {
     /* GOTCHA: the sources cross over -- 0x10ACEE8C goes to 0x10AA28CC and
@@ -613,6 +611,7 @@ int BrPhaseActivate_100456B0(BrPhaseCtx *pCtx)
  * built, so it catches the row the new screen just published rather than a
  * stale one. */
 /* @implements 0x10045050 d3d BrPhaseHook_10045050 */
+/* @n64 0x80211194 located */
 #ifdef BR_MATCHING_BUILD
 int BrPhaseHook_10045050(void *pArg)
 {

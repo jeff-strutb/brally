@@ -2,6 +2,7 @@
  * PopInclude: return gIncludeStack[--gIncludeDepth]. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x00401690 brally.exe PopInclude */
+/* @n64 0x8021187C located */
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>

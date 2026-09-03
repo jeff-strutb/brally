@@ -137,7 +137,6 @@ static uint32_t *br83_ldflagsptr(const uint8_t *p)
 /* 0x100695A0 (Glide 0x10062610) -- matrix -> BrCarState                 */
 /* ==================================================================== */
 
-/* @n64 0x80260E30 located */
 void BrCarStateFromMatrix83(BrCarState *pDst, const BrMat4 *pMat)
 {
     /* Matrix FIRST: the wrapper receives (pDst, pMat) and forwards them the
@@ -409,6 +408,7 @@ int BrX10005DE0(void *pOwner, unsigned char *pb0,
                                  (uint8_t *)pb2);
 }
 
+/* @n64 0x8025C27C located */
 const char *BrX10005E70(void *pOwner)
 {
     int32_t slot;

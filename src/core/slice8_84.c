@@ -249,6 +249,7 @@ int32_t BrUiHook84_10046DC0(BrUiCtl_ *pCtl)
  * marks, specular lighting and car shadow on it. Picking it closes the options
  * pages and returns the player to the menu that opened them. */
 /* port-only body; Glide match is src/core/cpp/0x1003FB60.cpp */
+/* @n64 0x8020C408 located */
 int32_t BrUiHook84_10046710(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;

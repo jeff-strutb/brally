@@ -942,7 +942,6 @@ int BrUiAssetPathsInit(char *apszOut[BR_UIASSET_COUNT])
     return 0;
 }
 
-/* @n64 0x8021735C located */
 void BrUiAssetPathsFree(char *apszOut[BR_UIASSET_COUNT])
 {
     int i;

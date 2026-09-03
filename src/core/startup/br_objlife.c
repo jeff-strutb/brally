@@ -33,7 +33,6 @@ void BrExt_10069A80(void);
 void BrExt_10035585(void *, int, int);
 void BrExt_1001BAD0(void) {}
 void BrExt_10008B80(void) {}
-/* @n64 0x80242880 located */
 void BrExt_10067880(void *a, void *b, int n) { (void)a; (void)b; (void)n; }
 void BrExt_10067900(void *a, void *b) { (void)a; (void)b; }
 #ifdef _MSC_VER
@@ -52,7 +51,6 @@ void BrExt_1003DA90(void *a, void *b) { (void)a; (void)b; }
 void BrExt_1007E8B0(void (*p)(void)) { (void)p; }
 void BrExt_10038EB0(void) {}
 void BrExt_10069A80(void) {}
-/* @n64 0x8021CD24 located */
 void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
 #else
 uint32_t g_67D550, g_0A81C8, g_AC300, g_690A14;
@@ -238,7 +236,6 @@ void BrTableCopySlot_10024AB0(int dst, int src)
     *(uint32_t *)&p[dst] = *(uint32_t *)&p[src];
 }
 
-/* @n64 0x802412EC located */
 void BrTableSetField_10025800(int idx, uint32_t v)
 {
     struct Rec { char pad[696]; } *p = (struct Rec *)g_57543C;
@@ -247,7 +244,6 @@ void BrTableSetField_10025800(int idx, uint32_t v)
 
 /* WHAT IT DOES: set a one-shot "this path has already run" flag. */
 /* @implements 0x100378A0 d3d BrArm_100378A0 */
-/* @n64 0x8022F5D0 located */
 void BrArm_100378A0(void)
 {
     g_6C7C44 = 1;

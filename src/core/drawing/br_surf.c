@@ -270,6 +270,7 @@ void BrGlideLfbWrite(int *param_1)
 
 /* WHAT IT DOES: compute a predicted position from pos + vel*3 + accel*2 + offset (fastcall, via entity at ECX). */
 /* @implements 0x10001C90 glide BrVec3Predict */
+/* @n64 0x80221108 located */
 
 int __fastcall BrVec3Predict(int param_1)
 

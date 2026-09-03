@@ -250,6 +250,7 @@ void BrExt_1007AC00(void)
  * ========================================================================== */
 
 /* 0x10019260 */
+/* @n64 0x8022F514 located */
 void BrSub_10019260(void)
 {
     g_br4B0358 = 0;
@@ -628,7 +629,6 @@ static void Br63CapsGather(BrOptCaps *pCaps)
 }
 
 /* 0x1003F320 */
-/* @n64 0x80261058 located */
 int BrSub1003F320(int index)
 {
     BrOptCaps caps;

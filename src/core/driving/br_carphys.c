@@ -80,6 +80,7 @@ const char *BrCarPhysHoleName(int i)
 /* headers, which is not this module's to do.                              */
 /* ==================================================================== */
 
+/* @n64 0x80225EB8 located */
 BrRbState *BrCarPhysBodyState(BrRbBodyFull *pBody)
 {
     /* body+0x78..+0xBC: pos, vel, quat, angVel, qDot -- 68 bytes of float in

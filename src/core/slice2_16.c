@@ -273,7 +273,6 @@ BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
  * unpacked and sign-corrected here. Despite an earlier name of "set
  * scissor", this is the tile setter -- the real scissor commands are two
  * other, longer functions. */
-/* @n64 0x80267410 located */
 BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 {
     BrDlsTileSize t;

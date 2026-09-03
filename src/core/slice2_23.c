@@ -172,6 +172,7 @@ char *BrUiItemText(BrUiObj *pObj, int32_t i)
     return (char *)(BrUiItem(pObj, i) + BR_UI_ITEM_OFF_TEXT);
 }
 
+/* @n64 0x80220438 located */
 const BrUiWidgetVtbl *BrUiItemVtblOf(BrUiObj *pObj, int32_t i)
 {
     return (const BrUiWidgetVtbl *)BrUiLdPtr(BrUiItem(pObj, i),

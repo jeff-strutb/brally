@@ -20,6 +20,7 @@ uint32_t g_363F68[32];
 /* WHAT IT DOES: turn off a one-byte text-pass flag sitting next to the
  * alignment byte.  The next string is drawn without that special pass. */
 /* @implements 0x10016810 glide BrClear_10019250 */
+/* @n64 0x8022F4F8 located */
 void BrClear_10019250(void)
 {
     g_4B0360 = 0;
@@ -36,7 +37,6 @@ void BrSet_10019270(void)
 
 /* WHAT IT DOES: wipe two 128-byte scratch tables used by a later pass. */
 /* @implements 0x1000F620 d3d BrClearTables_1000F620 */
-/* @n64 0x80269410 located */
 void BrClearTables_1000F620(void)
 {
     memset(&g_364308, 0, 0x80);

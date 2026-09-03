@@ -210,7 +210,7 @@ void BrEnt35FC0(void *pThis)
  * destructor for a class with no owned memory compiles to -- there is nothing
  * to release. */
 /* @d3donly 0x1005B0C0 BrTextBoxDtor -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
-/* @n64 0x8021C6E4 located */
+/* @n64 0x80225ED8 located */
 void BR_THISCALL1 BrTextBoxDtor(BrTextBox *pBox)
 {
     /* The original is `mov dword ptr [ecx], 0x1008F728; ret` -- seven bytes.

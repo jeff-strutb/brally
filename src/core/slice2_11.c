@@ -314,7 +314,6 @@ BrCamFrame *BrCarActiveCam2(void *pCar)
            (p + *(const uint32_t *)(const void *)(p + BR_CAR_OFF_ACTIVECAM2));
 }
 
-/* @n64 0x80221108 located */
 void BrCamFrameInitD(void *pCar)
 {
     unsigned char *p        = (unsigned char *)pCar;

@@ -15,7 +15,7 @@ void BrMainLoopSetReady(int fReady1, int fReady2)
     s_fReady2 = (fReady2 != 0);
 }
 
-/* @n64 0x80225ED8 located */
+/* @n64 0x8022F5D0 located */
 void BrMainLoopSetSuspended(int fSuspended)
 {
     s_fSuspended = (fSuspended != 0);

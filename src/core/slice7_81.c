@@ -374,7 +374,6 @@ int32_t BrUiHook81_10046B10(BrUiCtl_ *pCtl)
  * releases the pages, forgets both halves of the pair and the control that
  * pointed at them, and returns to the screen behind. */
 /* port-only body; Glide match is src/core/cpp/0x100401C0.cpp */
-/* @n64 0x8020C408 located */
 int32_t BrUiHook81_10046D70(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pNext;

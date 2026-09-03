@@ -111,6 +111,7 @@ float BrSqrtF(float x)
 
 char *g_apBrStringTable[BR_STRING_ID_LIMIT];
 
+/* @n64 0x8026AC80 located */
 char *BrStringById(int32_t id)
 {
     /* Both comparisons are unsigned in the original, so this cast is the

@@ -65,6 +65,7 @@ static int BrDPlayRawSend(void *pIface, uint32_t idFrom,
  * 1. 0x1003BD50
  * ========================================================================== */
 
+/* @n64 0x80225EE4 located */
 uint32_t BrDPlayRandStep(uint32_t *pSeed)
 {
     uint32_t s = *pSeed;
@@ -149,7 +150,7 @@ void BrDPlaySpFreeAll(BrDPlaySp *aTable)
     }
 }
 
-/* @n64 0x80226070 located */
+/* @n64 0x802412EC located */
 int BrDPlaySpSelectedGuid(BrDPlaySp *aTable, uint32_t idxSel,
                           uint8_t **ppGuid)
 {

@@ -2,6 +2,7 @@
  * PopInclude: return gIncludeStack[--gIncludeDepth]. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x00401AF0 setvideo.exe PopInclude */
+/* @n64 0x80211934 located */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */
 #include <windows.h>

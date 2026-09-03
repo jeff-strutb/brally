@@ -175,6 +175,7 @@ int BrHookIsCurrent(const void *pfn)
  * seven values it is handed, a scale, is passed along and then never looked
  * at by anything. */
 /* @implements 0x10030930 d3d BrMat4Perspective7 */
+/* @n64 0x80260E30 located */
 int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
                        float fovyDegrees, float aspect,
                        float n, float f, float scale)
@@ -263,7 +264,6 @@ void BrMenuSub10044E20(int32_t n)
  * the choices the player has made so far so the new screen sees them. Which
  * screen this is was not established either. */
 /* port-only body; Glide match is src/core/cpp/0x1003D140.cpp */
-/* @n64 0x80206830 located */
 void BrSub10043BF0(BrGameObj *p)
 {
     (void)p;                        /* the original reads no argument */

@@ -282,6 +282,7 @@ BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis)
  * every part of the game asking "what did the player choose?" has something
  * to read before the settings file is loaded over the top. */
 /* @implements 0x10062AD0 glide BrCtrlCfgInitGlobal */
+/* @n64 0x8022AF64 located */
 BrCtrlCfg *BrCtrlCfgInitGlobal(void)
 {
     return BrCtrlCfgCtor(&g_BrCtrlCfg);
@@ -589,7 +590,6 @@ void BrReplayAdvance(void)
  * position returns to its first recorded frame. The recording itself is
  * untouched. */
 /* @implements 0x1006ABB0 d3d BrReplayRewind */
-/* @n64 0x8025C24C located */
 void BrReplayRewind(void)
 {
     int i;
@@ -1047,6 +1047,7 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
  * body -- how fast is this body moving at the place where that one is
  * attached. */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
+/* @n64 0x80267410 located */
 #ifdef BR_MATCHING_BUILD
 /* Same inlining and the same three float facts as BrRbVelAtPoint above --
  * BrS42VelAt returns a BrVec3 and so is never inlined; the velocity copy is
@@ -1176,6 +1177,7 @@ char * BrReplayGetBuf(void)
 
 /* WHAT IT DOES: return the byte size of the current replay (frame count * 0x18). */
 /* @implements 0x10063B50 glide BrReplayGetSize */
+/* @n64 0x80226070 located */
 
 int BrReplayGetSize(void)
 

@@ -117,7 +117,6 @@ static int32_t Br89Activate(BrPhase_ **ppSlot, BrPhaseEnterFn_ pfnEnter)
  * ACTIVATE
  * ========================================================================== */
 
-/* @n64 0x8022AF64 located */
 int32_t BrUiHook89Activate_10045110(void)
 {
     return Br89Activate(&g_brHook89.pAA2914,

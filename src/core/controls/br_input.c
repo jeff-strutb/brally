@@ -67,6 +67,7 @@ int32_t BrWndFrontierHits(BrWndFrontierId id)
     return (id >= 0 && id < BR_WF_COUNT) ? s_aFrontierHits[id] : 0;
 }
 
+/* @n64 0x8026CE20 located */
 const char *BrWndFrontierName(BrWndFrontierId id)
 {
     return (id >= 0 && id < BR_WF_COUNT) ? s_apszFrontier[id] : "";

@@ -697,6 +697,7 @@ void BrHookSetC(BrHooks *pH, void (*pfn)(void))
 /* WHAT IT DOES: runs one frame of whatever the game is currently doing --
  * the race, or the front end -- by calling the routine installed in the
  * single slot that names the current activity. */
+/* @n64 0x8021C718 located */
 void BrHookCallC(const BrHooks *pH)
 {
     (void)pH;

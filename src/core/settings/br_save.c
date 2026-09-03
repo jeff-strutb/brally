@@ -64,6 +64,7 @@ static void BrBrfWr32(unsigned char *p, uint32_t v)
  * kept rather than folded to a literal 1 because that is the fact the original
  * relies on, and BrAdler32 is where it is established.
  */
+/* @n64 0x8023DF4C located */
 uint32_t BrBrfChecksum(const unsigned char *pBlock, size_t cbBlock)
 {
     unsigned long seed;
