@@ -1092,6 +1092,22 @@ the caller AND flipped a helper to match for free.
   esi; `float *param_2; param_2[1]` keeps `[eax+4]`. Sequenced
   `t = p[-3]; *pc = (t + p[3] + *p) * K` preserves orig addend order
   (plain `p[-3]+p[3]` canonicalizes). Proven 0x10067470.
+- **INTEGER adds of two fields of the SAME struct canonicalize their load
+  order absolutely — there is no C spelling that flips them.** Unlike the
+  x87 case above, sequencing through named temps does NOT preserve source
+  order for a GP-register add. At 0x10017F80 (BrFadeDrawSprite) the original
+  emits `mov esi,[edx+eax*8+0xc]; mov edi,[edx+eax*8+4]; ... add esi,edi`
+  (accumulator = the +0xC field); every source form emits the pair the other
+  way round, for a residue of exactly 2 bytes with RAW and REGNORM both 0+0.
+  Probed and DEAD, do not re-run: (1) swapping which field goes into which
+  named temp, (2) dropping the second temp (`s = pr->y1; s += pr->y0`),
+  (3) the whole word as one expression with no temps at all, (4) reordering
+  the `|` chain so the y-term leads. Note the ASYMMETRY that proves this is
+  allocation and not source: the *other* addend pair in the same statement
+  (`x1 + x0`) matches the original exactly, and it differs only in that its
+  second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
+  than through the scaled `[edx+eax*8+disp]` form. When both operands share
+  the scaled form, VC5 picks the accumulator itself. T3a — park it.
 - **In-place x87 `fchs` is a ternary (or if/else that assigns both arms),
   not a reassignment.** `t = x; if (t < Z) t = -t` emits
   `fstp st(0); fld; fchs` — the dest already exists so the negate is a
@@ -2576,3 +2592,53 @@ to `mov dh,al; mov dl,bl` when both operands are live in registers and to
 from its slot. It follows liveness only: spelling the term `(b & 0xFFu)` on an
 already-`uint8_t` operand is BYTE-IDENTICAL, because VC5 folds the redundant
 mask before it chooses the lane. Proven at 0x1000A110 arm 3.
+
+## A diff row whose /Od NEIGHBOURS all match is mis-shaped, not blocked
+*(proven 2026-09-03 on 0x1002D72E and 0x1002E79F, both byte-exact after)*
+
+The compile variant is chosen PER FUNCTION, so a single `diff` sitting in a
+long run of `match ... Od` rows is not a hard target — it is a function
+written in the `/O2` idiom inside a `/Od` translation unit. Screen for it:
+
+    # diff rows whose byte-adjacent MATCHED neighbours are all /Od
+    python3 - <<'PY'
+    import csv, collections
+    rows=list(csv.DictReader(open('build/match/report.csv')))
+    f=collections.defaultdict(list)
+    for r in rows: f[r['file']].append((int(r['va'],16),r['status'],r['opt'],r['name']))
+    for k,l in f.items():
+        l.sort(key=lambda t:t[0])
+        for i,t in enumerate(l):
+            if t[1]!='diff': continue
+            nb=[l[j][2] for j in (i-1,i+1) if 0<=j<len(l) and l[j][1]=='match']
+            if nb and all(o=='Od' for o in nb) and t[2]!='Od':
+                print('%-32s 0x%08X %s'%(t[3],t[0],k))
+    PY
+
+As of 2026-09-03 it names four rows, all in slice2_19.c; two fell the same
+day. **Three of the remainder are PARKED as walls and should not be — the
+park predates this screen.**
+
+### The four /Od source facts these two pinned
+
+1. **A static helper is a REAL CALL at /Od.** If the original has no call
+   there, the expression is inline in the source. Its shape then tells you the
+   types: `and 0xffff` before each shift is a `uint16_t` read, and an
+   arithmetic `sar` for `>> 8` is the promotion to `int`.
+2. **Nested tests, not early exits.** `if (p == NULL) continue;` /
+   `if (x) return;` compile to a SHORT branch over a `jmp`; the original's
+   near `je`/`jne` straight to the loop increment or the epilogue is what
+   `if (p != NULL && x == 0) { ... }` produces. Same lever in both the loop
+   and the function tail.
+3. **Two uses of one pointer variable may be two variables.** The tail of
+   0x1002E79F re-derives a word pointer the loop also used; sharing one C
+   local cost a frame slot and shifted every displacement in the function.
+   Count the DISTINCT `[ebp-N]` slots in the original first — that is the
+   local count, and it is not negotiable.
+4. **Inline the take-2/emit per block.** Each open-coded
+   `p = cursor; cursor += 2;` gets its OWN frame slot and re-reads the global;
+   one shared helper collapses them.
+
+**/Od homes locals by an internal NAME hash, not declaration order** — already
+recorded in slice2_19.c's BrCarGfxReadColour and re-confirmed here. When the
+slot ORDER is wrong and the count is right, rename before restructuring.
