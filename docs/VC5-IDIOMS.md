@@ -2092,3 +2092,31 @@ park, not a structural miss — the diff count is large and meaningless.
   REGNORM gap 12+6 -> 4+2). Two things have to go together: the macro
   AND the null guards -- a port-safety `if (fn != NULL)` or
   `pVtbl != NULL ? ... : NULL` is a branch the original does not have.
+- **/Od tells a ternary from an if/else by the FRAME SIZE.** At /Od a
+  ternary assigned to a named local lands in a compiler temp first and
+  is then copied: `mov [ebp-8], 1 / jmp / mov [ebp-8], 0 / mov eax,
+  [ebp-8] / mov [ebp-4], eax`, so ONE named int local costs `sub esp, 8`
+  and carries a redundant slot-to-slot copy. An if/else writes the local
+  directly and needs only four bytes. So `sub esp, <4*(locals+1)>` plus a
+  copy between two adjacent slots is a ternary, every time. (At /O2 the
+  same distinction shows up the other way -- see the two-constant-ternary
+  entry, where the ternary is the BRANCHLESS neg/sbb form and the if/else
+  branches.) Proven 0x1002DB0B BrDlOwnerFixup.
+- **A table argument passed as `push <imm address>` means the symbol is
+  the OBJECT, not a pointer to it.** `push 0x100AA068` is the address of
+  an array; a `const void *g_Table;` variable would emit
+  `mov ecx,[g_Table]; push ecx`. Retype it as an incomplete extern array
+  (`extern const unsigned char g_Table[];`) and pass it bare -- and do
+  NOT invent an element count the tree cannot pin. This is the
+  argument-passing half of the "fixed-address global array folded as a
+  displacement" entry above; the indexed half looks like
+  `fld dword ptr [eax*4 + 0x106EC4F8]` with no base register, which
+  likewise means the `float *aTable` parameter never existed (proven
+  0x1002DE6B BrAccumAddClamp, 88 B byte-exact once the parameter was
+  deleted). `tools/screen_absglobals.py` ranks the rest of this class.
+- **`flags |= K` on a narrow field, never `flags = (T)(flags | K)`.**
+  The compound form reads the halfword straight into a 16-bit register
+  and ors the low byte (`mov cx,[eax+0x4c]; or cl,8`); writing the cast
+  out longhand makes the read a widening one and adds a
+  `xor edx,edx` + `mov dx,...` pair the original does not have. Proven
+  0x1002DB0B.
