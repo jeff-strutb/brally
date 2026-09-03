@@ -3125,3 +3125,32 @@ Two more facts from the same function, both cheap to check:
 - **A float argument moved with `mov`/`push` rather than `fld`/`fstp` is a
   DWORD PUN.** Declare the parameter `uint32_t` in the matching arm — the same
   four bytes reach the callee.
+
+## A dead verdict measured against a wrong frame is STALE
+*(proven 2026-09-03 on 0x1000A110, which closed a five-times-dead region the
+session after its frame was fixed)*
+
+Every "measured, do not re-run" note that turns on REGISTER ALLOCATION is
+conditional on the allocation it was measured under. Change a global input to
+that allocation — the frame size above all, but also a spill removed or a
+register freed — and the whole dead list has to be re-tested.
+
+The worked case: a three-float copy where the original puts two members
+through the x87 and one through an integer register. Five spellings had been
+measured byte-identical and the region was written off as T3a, with the note
+"treat this as T3a until the frame is solved". The frame was solved one
+session later, and the sixth spelling landed instruction-for-instruction.
+
+Two rules made that copy work, and both generalise:
+- **Both floats need a named temp**, so their live ranges overlap and VC5
+  keeps them on the x87 stack. One temp gets you one `fld`/`fstp` and an
+  integer move for the other.
+- **The integer member must be stored FIRST.** A temp whose load and store
+  are adjacent is copy-propagated into an integer move; putting the integer
+  store between the load and the store of its float neighbour is what keeps
+  the neighbour on the stack.
+
+Re-testing the rest of that function's dead list under the same rule found one
+more verdict had shifted — from clearly-bad to ambiguous — while two others
+held. **Expect a minority to flip: re-test them all, and record which held so
+the next session does not repeat the sweep.**
