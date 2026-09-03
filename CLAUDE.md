@@ -16,10 +16,23 @@ commits every MATCH; `--residue` groups the failures by divergence class.
 When a function is blocked on WHAT THE SOURCE SAYS (short/dense/frame
 classes: unknown structure, suspected inlined helper, recomp ≪ orig,
 ambiguous widths/signedness/arg order), **read its N64 twin first**: Top
-Gear Rally (`reference/tgrally/`) is the same source lineage, IDO MIPS is
-near-transparent, and 195 shared debug strings pair functions with
-certainty — see the `tgr-n64-viability` memory note. The N64 does NOT move
-register-allocation walls (scattered class) — don't burn time there.
+Gear Rally (`reference/tgrally/`) is the same source lineage and IDO MIPS is
+near-transparent — see the `tgr-n64-viability` memory note. The N64 tree is
+**`n64/`** (its own tools, shims and docs; it never touches the PC lanes).
+Pairing is NOT done by shared strings — only 7 are usable, and the old "195
+strings" claim overstates it ~30x. Run `n64/tools/n64match.py --all` once:
+it compiles our own C with IDO, finds each function in the ROM, and leaves
+the twin lookup in `build/n64/report.csv`.
+
+**The N64 is the ORACLE FOR COMMUTATIVE OPERAND ORDER.** IDO does not
+canonicalise commutative operands and VC5 does, so where a float sum's
+operand order is the last divergence, the MIPS states the original spelling
+outright — a lookup, not a probe. 43 of the 197 located functions differ
+from our C in exactly this way. See the `commutative FLOAT addition` entry
+in `docs/VC5-IDIOMS.md` for how to read it.
+
+The N64 does NOT move register-allocation walls (scattered class) — don't
+burn time there. It buys SOURCE truth, never CODEGEN truth.
 
 ## 0. BRGlide.dll is the reference binary. NOT BRD3D.dll.
 
@@ -188,3 +201,7 @@ project convention (SM64). See `ports/README.md`.
 - `tools/` — matching pipeline, auditors, the staged MSVC toolchain
 - `ports/macos/` — the macOS/Metal port: NEW platform code, not byte-matched,
   no `@implements`, invisible to the match tooling. Built by `build.sh`.
+- `n64/` — the Top Gear Rally (N64, 1997) decomp: a SECOND byte-matched
+  target, different image and different compiler (SGI IDO/MIPS). Its own
+  tools, cross-compile shims and docs; it reads `src/` and writes only
+  `build/n64/`, so it never touches a PC lane. See `n64/README.md`.

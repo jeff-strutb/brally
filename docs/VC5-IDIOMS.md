@@ -3722,6 +3722,35 @@ member and adds the disp8 stack slot). Contrast the SUBTRACTION case, which
 is not commutative and does follow the source. Do not spend probes
 permuting a float sum.
 
+**BUT THE ORDER IS RECOVERABLE — FROM THE N64 TWIN, NOT FROM THE PC BYTES.**
+"Not source-reachable" means the PC bytes cannot tell you which way it was
+written; it does NOT mean the information is lost. IDO does **not**
+canonicalise commutative operands, so Top Gear Rally (N64, 1997 — same source
+lineage) emits the two loads in the order the source names them. Where a
+function exists on both sides, the MIPS states the original spelling outright.
+
+Proven 2026-09-03 by the bulk cross-match (`n64/`, commit 1debdab): of 197
+functions located in the N64 ROM by compiling our own C with IDO, **43 sit at
+opcode-multiset distance 0** — structurally identical, diverging only in
+commutative operand order and register allocation. Two worked examples:
+
+  - vector add: our C loads a-then-b, the ROM loads b-then-a, per component.
+  - vector dot: the ROM sums the components in an order our transcription
+    guessed at. That guess was the PRECISION CAVEAT written into the top of
+    the vector-math file — an admitted unknown, now answered by reading the
+    twin.
+
+**How to use it.** When a float sum's operand order is the only divergence
+left, do not permute — look the function up in `build/n64/report.csv` (build
+it with `n64/tools/n64match.py --all`) and read its MIPS with
+`n64/tools/n64rom.py func <vram>`. If it is listed, the order is a lookup,
+not a probe.
+
+**Boundary — this buys SOURCE truth, never CODEGEN truth.** It resolves what
+was written. It does nothing for a VC5 register-allocation wall, and a
+function absent from the N64 build (PC-only, or the Glide/D3D submission
+layer) has no twin to consult. See the `tgr-n64-viability` memory note.
+
 ## Ghidra mis-typing the parent pointer: one cause, five symptoms
 
 When Ghidra types a builder's single pointer parameter as `float param_1`

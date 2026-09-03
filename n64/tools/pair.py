@@ -5,7 +5,7 @@ lineage; 195 string literals survive verbatim in both images.  A string
 referenced by exactly one function on each side pairs those two functions with
 no matching work at all.  That is the bridge this file builds.
 
-  .venv/bin/python tools/tgr/pair.py [--csv build/n64_work/pairs.csv]
+  .venv/bin/python n64/tools/pair.py [--csv build/n64/pairs.csv]
 
 Output columns: n64_va, pc_va, pc_name, n_anchors, anchor
   n_anchors  how many distinct shared strings support the pair
@@ -20,7 +20,7 @@ absolute immediate, so a raw little-endian scan of .text finds every one.
 import sys, os, csv, struct, collections, bisect, argparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(ROOT, 'tools'))
+sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
 os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 
 MIN_LEN = 6          # shorter runs pair by accident, not by lineage
@@ -87,7 +87,7 @@ def pc_strings(d, secs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--csv', default=os.path.join(ROOT, 'build/n64_work/pairs.csv'))
+    ap.add_argument('--csv', default=os.path.join(ROOT, 'build/n64/pairs.csv'))
     ap.add_argument('--dll', default=os.path.join(ROOT, 'orig/BRGlide.dll'))
     ap.add_argument('--min-len', type=int, default=MIN_LEN)
     args = ap.parse_args()
