@@ -930,7 +930,7 @@ void BrOptFn10056A10(BrPhase_ *pPhase)
  * you are, reading "Create Game" and "Quit to Lobby" for the host and
  * "Continue" and "Back" otherwise. Alongside the rows it places the track and
  * weather thumbnails, the lap count, a car picture and the chat readout. */
-/* @implements 0x10057C10 d3d BrOptFn10057C10 */
+/* port-only body; Glide match is src/core/cpp/0x10050AC0.cpp */
 void BrOptFn10057C10(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
