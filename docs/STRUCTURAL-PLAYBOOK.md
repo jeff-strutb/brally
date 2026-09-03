@@ -161,6 +161,29 @@ function before hand-filing.
   consult the N64 twin (below) early.
 - Low struct% (`coloring wall - real`): T3a territory. Confirm with the T3b
   oracle if reachable, record the residue note, PARK, move on. Do not grind.
+- **‼ Two screens before you take ANY target, both learned the hard way:**
+  1. **Does the C++ workstream already own it?** `ls src/core/cpp/<VA>.cpp`
+     and grep `build/match/report_cpp.csv`. Those functions carry no
+     `@implements` tag, so tools keyed on `report.csv` show them as untouched.
+     On 2026-09-03 `tiers.py --list T1` offered a nine-member 66-byte `BrOpt*`
+     family that reads exactly like a fresh cause group; every member was
+     already byte-exact. (The list is fixed now, but the habit is the
+     safeguard — a finished function offered as the next target costs a
+     session, not a number.)
+  2. **Is it a C function at all?** A bare `jmp dword ptr [IAT]`, a body that
+     reads `[ebp±N]` without establishing ebp, an odd (unaligned) address, or
+     a CRT helper such as `_chkstk` is linker/CRT output, not a decomp
+     target. Fourteen such rows sat in the hand-C target until 2026-09-03.
+     Add them to `config/fenced.csv` with the evidence rather than working
+     them.
+- **‼ The small-reggap TAGGED pool is worked out (2026-09-03).** `claim 20`
+  returns nothing, every SHAPE row at reggap <= 7 is parked, and un-parking
+  them mostly finds a thorough dead-probe note already in the file header —
+  several written the same week. Do not plan a lane on that pool. **T1 intake
+  is where the byte-exact count moves**: `python3 tools/tiers.py --list T1`,
+  274 functions, every one with a machine draft. A small self-contained leaf
+  taken from a draft can go byte-exact on the FIRST compile — one did this
+  session, in about the time a single parked function's probe cycle takes.
 - **Class awareness — symptom vs cause.** The `--residue` groups (short /
   long / frame / scattered) are SYMPTOM classes: members share how the diff
   looks, not what caused it, and transforms minted from one member have

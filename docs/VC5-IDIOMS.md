@@ -3845,12 +3845,22 @@ before the definition, nothing else changed — makes MSVC5 emit one extra
 (register-blind gap 1+0). Isolated both ways twice; the prototype alone does
 it, the comment above it is irrelevant.
 
-So: **when a small float function is right in every other respect and the
-residue is one stray `fxch`, delete its prototype from the header and
-recompile before probing anything about the expression.** A prototype in some
-OTHER translation unit is harmless — only a prior declaration in the DEFINING
-TU moves the schedule — so a function matched this way can still be called
-across TUs; declare it at the point of use there.
+So: **when a small float function is right in every other respect and we emit
+one `fxch` the original does NOT have, delete its prototype from the header
+and recompile before probing anything about the expression.** A prototype in
+some OTHER translation unit is harmless — only a prior declaration in the
+DEFINING TU moves the schedule — so a function matched this way can still be
+called across TUs; declare it at the point of use there.
+
+**‼ THE DIRECTION IS ONE-WAY. Read it before running the screen.** Prototype
+present = one MORE `fxch` than without. So this lever only helps a recomp
+with an EXTRA `fxch` (`fn.py --detail regnorm` prints it under
+`recomp EXTRA`). It does NOTHING for the far commoner case where the ORIGINAL
+has the extra `fxch` and we are MISSING it — there is no "second prototype"
+to add, and 0x100349C0 BrVec3Project (1 missing), 0x10016AA0
+BrWeatherStepWind (2 missing) and 0x100140B0 BrHudDrawDial (4 missing) are
+NOT candidates however much they look like one. Screening the missing side
+is wasted time.
 
 Mechanism not established (both forms are external-linkage, and the
 definition's own parameter list is a prototype either way), so treat this as a
@@ -3874,3 +3884,35 @@ base that was already correct. **Before acting on a `lea`/address multiset
 entry, check the two encodings' LENGTHS and look for a reloc at that
 displacement.** If the byte counts match and the size gap is fully explained
 by the other entries, the pair is an artefact.
+
+## Derive a float sum's TERM ORDER from the faddp chain BEFORE writing the C
+
+The technique that made 0x10065950 byte-exact on the first compile, and the
+one that would have saved the six term-order probes on 0x1006DD20 BrMat3Mul.
+Float addition does not reassociate, so VC5 cannot reorder a sum: whatever
+the faddp chain says, the source said. That makes the order READABLE, not
+guessable — and the natural, conventional order is frequently wrong.
+
+Procedure. Walk the x87 stack by hand from the first `fld`, tracking what is
+in ST(0..n) after every `fld` / `fxch` / `fmul`. At each `faddp st(1)` —
+which is ST(1) += ST(0), then pop — write down which two terms merged. The
+accumulator is ST(1), i.e. the term written EARLIER. The chain of merges is
+the C expression's left-association, read directly.
+
+Worked, on the plane-distance leaf: the stack at the first `faddp` was
+[py*ny in ST(1), pz*nz in ST(0)], so the first sum is (y + z), not the
+conventional (x + y); the second saw [(y+z), nx*px] giving ((y + z) + x), and
+the plane constant arrived last as a plain `fadd dword ptr [esp+8]`. The
+source is therefore `p->y*n->y + p->z*n->z + p->x*n->x + d`. Writing the
+obvious x, y, z sum pairs the wrong two products and cannot be recovered by
+any later probe.
+
+Two things this does NOT tell you, so do not read them off the same stream:
+the operand order WITHIN each product (VC5 canonicalises commutative FMUL —
+see that entry) and which register holds what. Only the ADD structure is
+source-reachable.
+
+Cost/benefit: the hand-walk is ten minutes on a small function and it
+replaces the six-to-N probe cycles that a term-order search costs, each of
+which needs a compile. Do it first on any leaf whose body is a dot product,
+a weighted sum, or an accumulate-then-offset.
