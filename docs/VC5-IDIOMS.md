@@ -2528,3 +2528,51 @@ profile of an easy win. Twelve of them are one 201-byte family.
 ranks any `6A FF` as `C++ EH FRAME - not reachable from C`, below the coloring
 walls, so `claim_lane.py` hands them out last. They belong to the C++ EH
 workstream ([[cxx-eh-frame-wall]]), not to the C lane.
+
+## Before hunting a spelling, check whether the ORIGINAL is inconsistent
+*(proven 2026-09-03 on 0x1000EAF0 wall 4; the same test applies anywhere)*
+
+A construct that the original renders TWO different ways in two arms of the
+same if/else is settled: it is a per-region allocation decision, and no source
+spelling reaches it, because both arms come from the same source text.
+
+The worked case: 0x1000EAF0 addresses two flat ring arrays by a common scaled
+index. Grep the original's own disassembly for the two globals and the split
+is flat — the if-arm materialises `lea edx,[ecx*4]` once and takes eight
+`[edx + 0x1035faf0]` / `[edx + 0x1035f750]` sites, while the else-arm folds
+all five of its sites as `[ecx*4 + abs]`, which is byte-identical to what the
+recompile already emits everywhere. Eight passes of dossier had this filed as
+one "`ring*4` CSE" wall to be solved by a byte-offset local, and the probe that
+was measured against it converted BOTH arms — which cannot be right at any
+spelling. **Run the grep before minting the probe:** one `grep` over a dump of
+the original for the addressing forms of the symbol in question costs nothing
+and can retire the whole lever.
+
+The corollary is about missing instructions. When the original pins a register
+this way it is a register short downstream, so it spills something the
+recompile keeps live — here it homes a variable in both arms of a test and
+reloads it (`mov [esp+0x20],ebx` x2, `mov edi,[esp+0x20]` x1), which are
+exactly three of the six rows `msetdiff.py` reports as MISSING. **Do not open
+a spill row as an independent missing-store defect until you have accounted
+for the allocation that causes it**; those three rows and the addressing wall
+move together or not at all.
+
+## Two x87/byte-lane choices that are NOT source-selectable
+*(measured 2026-09-03; both were live "next lever" entries before this)*
+
+**The preload depth of a repeated x87 operand.** For a run of `d[i] = k *
+sr[i]`, VC5 emits N copies of `fld k` and then a fixed three-deep
+fxch/fmul/fstp pipeline. On 0x1000EAF0 the original picks 8|4 for twelve
+statements and the recompile picks 5|7 — with the SAME pipeline shape, merely
+offset by the depth. Ruled out as causes: the helper-call boundary (replacing
+the two `__inline` row helpers with twelve flat statements emits the identical
+five-deep preload), and an x87 stack leak (simulating depth over both streams
+shows both enter the block at 0. Grouping does not address it; treat the
+depth as a scheduler constant.
+
+**Byte lane vs widened `or` when packing a colour.** `(top << 8 | b)` compiles
+to `mov dh,al; mov dl,bl` when both operands are live in registers and to
+`mov dh,al; or edx,<dword read + and 0xff>` when the byte local is read back
+from its slot. It follows liveness only: spelling the term `(b & 0xFFu)` on an
+already-`uint8_t` operand is BYTE-IDENTICAL, because VC5 folds the redundant
+mask before it chooses the lane. Proven at 0x1000A110 arm 3.
