@@ -2297,3 +2297,31 @@ it moved this one from 205 to 0.
   source spelling of the arms reaches it, and giving arm 1 its own byte
   locals un-merges part of the pack but moves the first divergence 27
   bytes earlier.
+
+## float-vs-int typing: the prologue tells you which
+*(proven 2026-09-03 on 0x10038F40 -- 425 diffs to 10 on this one change)*
+
+A value parked across a call and restored afterwards, moved in and out
+with plain `mov` and set from an immediate, looks exactly like an int:
+
+    mov edx, [esi+0x40]        ; park
+    mov [esp+0x10], edx
+    mov dword ptr [ebx+0x2f70], 43020000h    ; a constant
+    ...
+    mov eax, [esp+0x14]        ; restore
+    mov [ebx+0x2f70], eax
+
+It is not. VC5 moves FLOAT memory with GP registers and stores float
+constants as immediates, so float code in this shape has no x87 in it at
+all. The difference is only visible in the frame:
+
+- **int local** -> lives in a callee-saved register across the call, so
+  the prologue gains a push and the frame is 4 bytes SMALLER.
+- **float local** -> must be homed to a slot, so no extra push and the
+  frame is 4 bytes BIGGER.
+
+**TELL: recomp has one more callee-saved push than the original AND a
+frame 4 bytes smaller -> you typed a float local as int.** The reverse
+pairing means the opposite. Check this before assuming a dword-pun
+spelling is needed: here the pun was wrong and honest float typing was
+right, even though every instruction involved is an integer `mov`.
