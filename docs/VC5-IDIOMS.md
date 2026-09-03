@@ -3829,3 +3829,19 @@ measured behaviour, not a rule with a known cause. Untested on: functions
 returning int, functions with no x87 in them, and `static` definitions.
 Worth a screen: any C file where a float-returning leaf sits at a
 one-instruction `fxch` gap AND its header declares it.
+
+## MEASUREMENT TRAP: a reloc'd zero displacement shows as a phantom `lea` pair
+
+`fn.py --detail`'s register-blind multiset can report an extra
+`lea R,[R*I]` against a missing `lea R,[R*I + I]` that is not a real
+divergence. The cause: an addressing mode whose displacement is a
+RELOCATION reads as 0 in the object file, so the disassembler prints
+`[edx*8]` where the linked original prints `[edx*8 + 0x100bcdd0]`. Both are
+the same seven bytes and the reloc mask scores them equal.
+
+Seen on 0x100140B0 BrHudDrawDial, where it was the only multiset entry other
+than the real residue and would have sent a session hunting a missing array
+base that was already correct. **Before acting on a `lea`/address multiset
+entry, check the two encodings' LENGTHS and look for a reloc at that
+displacement.** If the byte counts match and the size gap is fully explained
+by the other entries, the pair is an artefact.
