@@ -13,7 +13,15 @@
  * had regressed to if-form at all 18 sites; restoring it at the IDX4 pair
  * alone closes the whole IDX4 tail (0x206-0x343).  Restoring ANY second
  * pair flips the global allocation (+28 insns, tile pointer ebx->ebp):
- * measured per pair and in five combinations, do not re-run. */
+ * measured per pair and in five combinations, do not re-run.
+ * 2026-09-03 (session 5, no movement -- 32 masked / 45 raw): five more
+ * negatives, recorded in docs/idioms-A.md "Session 5".  Headline: the old
+ * "next concrete lever" (a widened `uVar19 = bI4inten` temp in ONE blend
+ * body) now BREAKS the frame -- first divergence collapses +0x2b -> +0x0;
+ * do not restore it.  Commutative operand order (`&` in the mask tests,
+ * `|` in the nibble merges) is canonicalised by VC5 and byte-neutral at
+ * every site.  Map a region address to its source line with one `/FAcs`
+ * compile before probing anything here. */
 #ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
