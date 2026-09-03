@@ -326,7 +326,7 @@ void BrExt_10049F40(BrPhase_ *pSelf)
  * showing the "no advance" artwork, which flashes between its two frames on a
  * twenty-four step cycle of sixty milliseconds each, fifteen steps on the
  * first picture and nine on the second. */
-/* @implements 0x10051D30 d3d BrOptFn10051D30 */
+/* port-only body; Glide match is src/core/cpp/0x1004ABE0.cpp */
 void BrOptFn10051D30(BrPhase_ *pThis)
 {
     const BrS71Hooks *pH = g_brS71.pHooks;
