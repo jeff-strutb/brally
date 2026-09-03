@@ -1888,6 +1888,18 @@ declared at the top of the function), the destination type (`int[8]`,
 all leave the recomp order unchanged. If a function is otherwise exact
 and its only residue is those three instructions, it is this — park it.
 
+**Confirmed a second time on 0x100087D0, in the VARIABLE-length expansion**
+(the shr-2 / and-3 stosd+stosb pair), which is a different expansion with
+the same directional difference:
+
+    orig    mov ecx,0x40 / lea edi,dst / sub ecx,esi / xor eax,eax
+    recomp  mov ecx,0x40 / xor eax,eax / sub ecx,esi / lea edi,dst
+
+The rule in both shapes: **the original materialises the destination
+pointer before the fill value; our cl does the reverse.** Two different
+expansions moving the same way is what makes this an expansion-table
+difference rather than a scheduling accident at the call site.
+
 Together with the SIB base/index entry above, that is two emitter-level
 residues in one session that no source form reaches. Both are consistent
 with a compiler patch level slightly different from the staged one, which
