@@ -692,12 +692,23 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * screen size to 0x1001DD80.  (Renderer slot; the D3D twin 0x1001BAE0 in
  * br_objlife.c is DIFFERENT CODE.)
  *
- * NOT CLAIMED (@implements withheld): ONE residue region of 3 bytes --
- * the early exit is `jne +1; ret` (inline ret duplication) in the
- * original vs a near `je` to the shared tail ret here.  All 40 other
- * instructions match.  Probed and dead: early-return vs nested-if vs
- * else-return vs explicit trailing return, /O2 vs /O2 /Op vs /Oy-.
- * Ideal permuter bait (tiny function, single branch-shape diff). */
+ * ONE residue region of 3 bytes, and it is the documented CROSS-JUMPING
+ * class (see docs/VC5-IDIOMS.md): the function has no frame, so both exits
+ * are a bare `ret`, and our cl merges them -- a 6-byte near `je` to the
+ * tail -- where the original duplicated the ret and jumped over it with a
+ * 2-byte `jne`.  All 40 other instructions are byte-identical.
+ * Probed and dead: early-return vs nested-if vs else-return vs explicit
+ * trailing return; and all five sweep variants (/O2 wins at 66 diffs, so
+ * /Od, /Od /Op, /O2 /Op and /O2 /Oy- are worse).
+ *
+ * NOW TAGGED, 2026-09-03.  It was withheld, which left the function
+ * invisible to triage while a FALSE TWIN claimed the same address:
+ * br_objlife.c's BrInstall_1001BAE0 carried `@implements 0x1001BAE0 d3d`,
+ * and config/shared.csv maps that to Glide 0x1001E080.  The D3D function
+ * is 26 bytes of two pointer stores; this one is 173 bytes of 3dfx
+ * bring-up.  Same renderer slot, different code.  That tag is now
+ * @d3donly. */
+/* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {
     BrGlFlipHook  = (void *)BrGlideFlipWait;
