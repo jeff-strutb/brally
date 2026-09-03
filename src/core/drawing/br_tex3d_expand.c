@@ -136,15 +136,32 @@
  *     everything else under 10
  * ‼ That RETIRES the session-8/9 ranking outright: "r15 +36 and r18 -33 are
  * the largest" was an artefact of the short key, and so was the framing that
- * "the reliable defect mass is r14-r17".  Grind r3 first.
- * r3 read at key 10 (orig 0x836-0x86c against ours 0x835-0x871): the block is
- * instruction-for-instruction ours except TWO -- we home the channel delta at
- * its definition (`mov [esp+0x44],eax`) where the original keeps it in a
- * register across both halves of the blend body, and we split the divide's
- * add-back (`mov eax,[slot]; add edx,eax`) where the original folds it
- * (`add edx,[slot]`), the split being downstream of where the output
- * counter's `add edi,2` lands.  Same currency as the session-9 re-framing
- * below: the original holds these values in registers, we spill.
+ * "the reliable defect mass is r14-r17".
+ * ‼ CORRECTION, SAME DAY (session 12), and it retracts the line this note
+ * originally ended with ("grind r3 first"): r3's -73 IS ALSO FICTION.  r2 at
+ * 0x6ee resyncs with a 74/53 skew at EVERY key tried (10 through 14), and a
+ * bad resync corrupts the DELTA of the next region -- so r3's change, and
+ * r4's after it, are differences taken from a wrong anchor.  `divergence.py`
+ * now labels both ("change unreliable: a preceding resync was SUSPECT");
+ * before it did not, which is how a -73 got believed and written down here.
+ * PROOF that no block is missing, and the recipe worth reusing: count an
+ * instruction that occurs once per unit of work across the WHOLE function in
+ * both streams.  The divide-by-255 magic constant appears 33 times in the
+ * original and 33 times here; the one-operand `imul` 24 and 24.  Every
+ * channel divide is present, so the 21-instruction "gap" the 0x6ee-0x846
+ * window reports cannot exist.  With the instruction total at 2,408 vs 2,407
+ * that settles it: THE RESIDUE IS ALLOCATION, and the 0x6ee-0x846 stretch is
+ * unreadable from the region map at any key.
+ * The largest RELIABLE changes at key 10 are r5 (0x9f8) +58 and r6 (0xcda)
+ * -21; everything else is under 25.
+ * What the 0x6ee-0x846 window does show, read by hand rather than by delta:
+ * the original homes the widened intensity in a slot and multiplies from it
+ * at every channel (`imul R,[esp+0x38]`), while we keep it in a register and
+ * home it one instruction later -- and the original is INCONSISTENT about it
+ * within a single block (`imul ebx,[esp+0x38]` at 0x803 takes the register
+ * form with no home, `imul edx,[esp+0x38]` at 0x850 homes and adds back from
+ * memory).  By the session-11 triage rule that settles it as per-site
+ * allocation, not a spelling.
  * 2026-09-03 (session 10): r14's +15 IS THE ALPHA CHANNEL'S PRODUCT TEMP,
  * and the mechanism is now fully read off the bytes.  `/FAcs` puts the block
  * at source lines 568-575, the THIRD blend body's first half.  All four
