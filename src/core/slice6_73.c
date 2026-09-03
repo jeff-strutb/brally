@@ -422,7 +422,7 @@ void BrOptFn100558A0(BrPhase_ *pSelf)
 /* WHAT IT DOES: lays out another menu screen the same way -- a title, three
  * choices the player can move between, and two decorations. Which screen it
  * is was not established. */
-/* @implements 0x1004F2B0 d3d BrExt_1004F2B0 */
+/* port-only body; Glide match is src/core/cpp/0x10048160.cpp */
 void BrExt_1004F2B0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
@@ -680,7 +680,7 @@ void BrExt_1004DFC0(BrPhase_ *pSelf)
  * for every file matching the season save pattern so the player can pick one.
  * The second page is marked differently from the first, and the page cursor
  * is not rewound before it is built. */
-/* @implements 0x10050060 d3d BrExt_10050060 */
+/* port-only body; Glide match is src/core/cpp/0x10048F10.cpp */
 void BrExt_10050060(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
