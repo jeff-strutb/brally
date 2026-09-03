@@ -2695,6 +2695,16 @@ park predates this screen.**
    near `je`/`jne` straight to the loop increment or the epilogue is what
    `if (p != NULL && x == 0) { ... }` produces. Same lever in both the loop
    and the function tail.
+2b. **The tell for that lever on a RETURN: a materialised zero.** When the
+   guard's early return is written as a fall-through (`if (n == 0) goto
+   empty;` or `if (n == 0) return 0;` placed first), VC5 knows eax already
+   holds zero — it just tested it — and returns it WITHOUT emitting `xor
+   eax,eax`, which makes the function two bytes shorter than the original.
+   An original that DOES spell `xor eax,eax` before its `ret` is telling you
+   the zero-return is a separate TRAILING block reached by a `je`, i.e. the
+   source is a wrapping `if (n != 0) { … return v; } return 0;`. Diagnostic,
+   not guesswork: recomp shorter by exactly the missing `xor`, plus a `jne`
+   where the original has `je`. Proven 0x10021060 BrGbiEndDList.
 3. **Two uses of one pointer variable may be two variables.** The tail of
    0x1002E79F re-derives a word pointer the loop also used; sharing one C
    local cost a frame slot and shifted every displacement in the function.
