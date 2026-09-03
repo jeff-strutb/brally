@@ -3007,3 +3007,32 @@ This is the same lever as the `lea` in 0x10055C50 and the catalogue call in
 arms have in common, let the tail-merge factor it -- never factor it
 yourself into a shared local.** Arm order still decides layout: the arm the
 original places as the fall-through is the `then`.
+
+## A 16-bit destination makes VC5 factor a shared shift — write the source factored
+
+Proven on 0x100014A0 (`BrSurfSetColourKey`, 46 -> 21 diffs).
+
+A 565 pack whose terms are written in their finished positions,
+
+    key = (r >> 3) << 11 | (g >> 2) << 5 | (b >> 3);      /* WRONG */
+
+compiles to one `shl 8` for red and a pre-shifted green mask
+(`shr 5; and 0x7E0`). The original instead emits `shl ecx,5 … shl ecx,3` —
+the two terms are combined FIRST and the common `<< 3` applied to the pair.
+That only happens when the source itself is factored, and only when the
+destination is 16 bits wide (a `uint32_t` accumulator loses it again):
+
+    key = (uint16_t)((((c & 0xFFFF) >> 3) << 8 | ((c >> 8) & 0xFC)) << 3
+                     | ((c >> 19) & 0x1F));
+
+Two sub-tells in the same function:
+
+- **A mask wider than the field is information, not noise.** The red mask is
+  `0xFFFF`, not `0xFF`: the green bits it drags in land at bit 16 and up and
+  the store is 16 bits, so they never appear — but only the wide mask emits
+  `and ecx,0xFFF8`. Do not "correct" a mask that looks too wide.
+- **A byte-lane shift can cost more than it buys.** The original narrows the
+  blue term to AL (`shr eax,0x10; shr al,3; and eax,0x1F`). Every char-typed
+  spelling reproduces the `shr al,3` and then pays a `movzx ax,al` widening
+  inside the 16-bit expression — 33 diffs against 21 for the plain
+  `(c >> 19) & 0x1F`. Take the shorter residue.
