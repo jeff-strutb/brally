@@ -745,6 +745,55 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
+ * SESSION 15 (2026-09-03) -- ‼ A WRONG ADDRESS IN THE DISPLAY LIST, found
+ * by reading which STACK SLOT each pool allocation lands in.  Two regions
+ * closed and the residue is down to 17+14 multiset rows.
+ *   The second specular MOVEMEM pair (0xBC3F) was spelled `specMem` like
+ * the first (0xAE34).  It is not: the original's three pool results go to
+ * three different slots and are read at four places --
+ *     [esp+0x2c]  0x10062550 (16B)  -> read at 0x1772          = pSkyAng
+ *     [esp+0x30]  1st 0x100625A0    -> read at 0x690 AND 0x1b1c = pLights
+ *     [esp+0x28]  2nd 0x100625A0    -> read at 0xc78 only       = specMem
+ * so the SECOND pair points at pLights, the block the light calls also use.
+ * Emitting specMem there put the wrong pointer in the DL -- a behaviour bug,
+ * not a codegen one -- and it also made VC5 CSE the now-shared
+ * `specMem + 0x10` into a slot (`lea R,[R+0x10]`; `mov [esp+S],R` at 0xd27;
+ * `mov R,[esp+S]` at 0x1b31) where the original recomputes it destructively
+ * at each site (`add edx,0x10` at 0xd38 and 0x1b59).  With the two sites on
+ * different variables the CSE has nothing to share and both `add`s appear.
+ *   Scorecard: masked regions 24 -> 22, msetdiff 19+10 -> 17+14, REGNORM
+ * 25+34 -> 21+32, RAW 50+59 -> 45+56, first divergence unchanged at +0x17.
+ * ‼ SIZE MOVED THE WRONG WAY -- 36 short -> 42, instructions 9 short -> 11 --
+ * and that is the pattern session 11 already documented: removing an
+ * accidental spill exposes a real deficit elsewhere.  Rank by the multiset.
+ *   ‼ THE REUSABLE SCREEN, and it is cheap: for every value the original
+ * homes in a stack slot, list EVERY read of that slot and check the source
+ * uses the same variable at each one.  Two puts spelled with one variable
+ * where the original reads two different slots is invisible to
+ * divergence.py (both are `mov [eax+4],R`), invisible to msetdiff (same
+ * shapes), and invisible to the push census (no pushes).  Only the slot
+ * census sees it.  Run it on any function that allocates or caches more
+ * than one pointer.
+ * SESSION 15 PROBES, DEAD, do not re-run -- all three were attempts to
+ * break that CSE by respelling it, before the slot census showed the two
+ * sites are different variables:
+ *   (a) a block-local copy at each site (`spec1 = specMem; put(spec1);
+ *       spec1 += 0x10; put(spec1);` and the same at the second site):
+ *       BYTE-IDENTICAL.
+ *   (b) a destructive `specMem += 0x10u;` at the LAST site only (safe --
+ *       it is specMem's last use): BYTE-IDENTICAL.  ‼ IDIOM: VC5 value-
+ *       numbers `x + c`, `t = x; t += c` and `x += c` to the SAME value, so
+ *       a CSE cannot be broken by respelling the update.  The only thing
+ *       that breaks one is the operands genuinely differing.
+ *   (c) the pool block's cached `pCam` deleted and every use spelled
+ *       `((const float *)BrG_6C6490)[k]` (the session-11 "the original
+ *       re-reads what we cache" rule, applied here because orig re-reads
+ *       `[0x106ed520]` at 0x602): RAW improves 50+59 -> 43+55 but it BREAKS
+ *       THE FRAME -- first divergence collapses +0x17 -> +0x2 -- and costs
+ *       14 bytes and 3 instructions.  Applied to the two comparison lines
+ *       ALONE the frame holds but RAW goes 50+59 -> 53+62.  The rule does
+ *       not reach this site; pCam stays.
+ *
  * STATE 2026-09-03: 30 slot-masked divergence regions, 37 raw; 1843 vs
  * 1843 instructions (EQUAL -- no missing or extra code anywhere), 7536 vs
  * 7577 bytes.  The whole residue is encoding/allocation.  Region 1 is the
