@@ -834,6 +834,12 @@ static void wheel_call(unsigned char *car)
  * code both builds emit (`mov cl,[..]; and eax,0xff` against `and eax,0xff;
  * mov cl,[..]`), not new divergent code.  Read the region before believing
  * its address.
+ * SAME SESSION, the arm-1 top local (`top1 = g_BrDrawByte80`) also lands now
+ * -- it was measured DEAD in session 12 against the pre-split allocation and
+ * is positive against this one, which is the staleness rule paying out for
+ * the third time on this function: instruction gap 10 short -> 9, byte gap
+ * 38 -> 36, RAW 51+61 -> 50+59, regions flat at 24, msetdiff rows 28 -> 29.
+ * Arm 1's block is now the original's instruction kinds throughout.
  * What it buys structurally: arm 1 now homes a byte and reads it back
  * widened (`mov byte [esp+0x3d],cl` ... `mov eax,[esp+0x3d]`) exactly as the
  * original does at [esp+0x31] -- the shape it lacked while it was
@@ -1166,10 +1172,11 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * tail, which is three instructions the original emits and we did
          * not.  With the array split, arm 1 homes a byte and reads it back
          * widened the way the original does. */
-        uint8_t packA[2];
+        uint8_t packA[2], top1;
+        top1 = g_BrDrawByte80;
         packA[0] = BrG_6C0960;
         packA[1] = BrG_6C65BC;
-        colourB = ((((uint32_t)(uint8_t)g_BrDrawByte80 << 8 | packA[0]) << 8
+        colourB = ((((uint32_t)top1 << 8 | packA[0]) << 8
                    | packA[1]) << 8);
         }
     } else {
