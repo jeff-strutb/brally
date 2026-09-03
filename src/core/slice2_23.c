@@ -1347,7 +1347,7 @@ int32_t BrUiText1003F860(BrUiObj *pObj, BrUiGlobals *pG)
  * and marks the row differently if this particular binding clashes with
  * another; otherwise it shows a piece of text supplied elsewhere and leaves
  * the marking alone. */
-/* @implements 0x1003F8D0 d3d BrUiText1003F8D0 */
+/* port-only body; Glide match is src/core/cpp/0x10038E10.cpp */
 int32_t BrUiText1003F8D0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     if (pG->gAA2850 != 0) {
