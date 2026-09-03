@@ -593,7 +593,13 @@ void BrTrackLoadHandling(int iTrack)
  * counts and sizes get their bytes reversed, and every reference in it is
  * rebased onto real memory. One word in the middle is skipped entirely,
  * which is the only gap in the whole header and is in the original. */
-/* @implements 0x10038510 d3d BrTrackHdrRead */
+/* NOT TAGGED -- port-only body. config/shared.csv maps d3d 0x10038510 to
+ * Glide 0x10031B80, and BrGlTrackHdrRead below is the real transcription of
+ * that address (1552 bytes against 1549, instruction multiset exact). This
+ * body is the port's: helpers out of line and the swaps written as range
+ * loops, 384 bytes. Tagged @implements until 2026-09-03, which put two names
+ * on one address and made the factored-helper screen report a phantom
+ * "-1165 bytes short" for a function that is actually size-exact. */
 void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
     static const uint16_t s_aFixup[] = {
