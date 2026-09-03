@@ -571,9 +571,29 @@ int BrOptCycleCar(void)
 /* @implements 0x100430B0 d3d BrOptCycleBD3E0 */
 int BrOptCycleBD3E0(void)
 {
-    char    aNum[BR_OPT_TEXT_MAX];   /* the original's is 0x20 of stack */
-    int32_t v;
+    /* 0x20, not BR_OPT_TEXT_MAX: `sub esp,0x20` and `lea ecx,[esp+8]` with
+     * esp == E-0x28 put the scratch at E-0x20, and it is the whole frame.
+     * The value is 1..12, so three bytes are ever used. */
+    char      aNum[0x20];
+    BrDPlay  *pGate;
+    int32_t   v;
 
+    /* NOT `else if`: the original loads the value ONCE for both the
+     * decrement and the do-nothing exit (0x1003C62C sits between the down
+     * flag's `test` and its `je`), which is an `else { v = g; if (down) }`,
+     * not two arms each with their own load. This shape also merges the two
+     * wrap stores into the single `mov [g_0BD3E0],eax` the original has at
+     * 0x1003C643.
+     *
+     * RESIDUE (1 regnorm, +1 byte, T3a): with the load common to BOTH arms
+     * our cl hoists it above the first `je`, so eax is already busy and the
+     * down flag has to go to ecx -- `8b 0d` where the original has the
+     * one-byte-shorter `a1`. The original keeps two separate loads. The
+     * `else if` spelling DOES un-hoist it, but then the two wrap stores stop
+     * merging and the function is 5 bytes and one instruction over instead
+     * of one byte; probed both ways, this is the better of the two. Also
+     * probed dead: `v = g - 1` for the decrement (emits lea/test/jge for the
+     * original's dec/jns). */
     if (g_brAA33D4 != 0) {
         v = g_br0BD3E0 + 1;
         g_br0BD3E0 = v;
@@ -581,22 +601,29 @@ int BrOptCycleBD3E0(void)
             v = BR_OPT_BD3E0_MIN;        /* wraps to 1, NOT to 0 */
             g_br0BD3E0 = v;
         }
-    } else if (g_brAA33D0 != 0) {
-        v = g_br0BD3E0 - 1;
-        g_br0BD3E0 = v;
-        if (v < BR_OPT_BD3E0_MIN) {
-            v = BR_OPT_BD3E0_MAX;
-            g_br0BD3E0 = v;
-        }
     } else {
         v = g_br0BD3E0;
+        if (g_brAA33D0 != 0) {
+            /* load / --v / store, NOT `v = g - 1`: see BrOptCycle above. */
+            --v;
+            g_br0BD3E0 = v;
+            if (v < BR_OPT_BD3E0_MIN) {
+                v = BR_OPT_BD3E0_MAX;
+                g_br0BD3E0 = v;
+            }
+        }
     }
 
+    /* The gate read before the store, as in 0x10043180 below: that is what
+     * puts `mov ecx,[gate]` ahead of `mov [g_0AC658],eax` at 0x1003C648. */
+    pGate = g_brP277B40;
     g_br0AC658 = v;
 
-    if (g_brP277B40 != NULL) {
-        BrItoa(v, aNum, 10);
-        BrSprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_BD3E0), aNum);
+    if (pGate != NULL) {
+        /* _itoa and sprintf through the /MD imports, not the wrappers --
+         * the original's `call dword ptr [__imp__itoa]` / `[__imp_sprintf]`. */
+        _itoa(v, aNum, 10);
+        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_BD3E0), aNum);
         BrOptFlushMessage();
     }
     return 1;
