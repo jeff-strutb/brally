@@ -357,11 +357,101 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  * any of them is off the screen it is handed to the trimmer; otherwise its
  * texture coordinates are finished and it goes to the card. */
 /* @implements 0x1001ECF0 glide BrDlCmdTri1 */
+#ifdef BR_MATCHING_BUILD
+/* Everything the port factored out is INLINE in the original, and there is a
+ * lot of it: br_dlcmd_tri, br_dlcmd_finish_vtx three times over, and the state
+ * pointer itself. 113 instructions against 18.
+ *
+ *  - ONE argument. The vertex pool is the absolute global at 0x105CE318 with
+ *    a 0x68 stride (`lea` x2 then `shl 3`), so there is no BrDlCmd to pass.
+ *  - The two texture scales are absolute FLOAT globals (`fmul dword ptr
+ *    [0x118ED1A4]`), not fields, and not doubles.
+ *  - NO counters, NO bound check on the index bytes and NO null test before
+ *    either sink call -- all four are port additions. The reject arm is a
+ *    bare `jne` to the epilogue.
+ *  - Both sinks are direct calls.
+ *
+ * The AND/OR asymmetry is the original's and is preserved: the AND is formed
+ * from the second and third outcodes and only then tested against the first,
+ * while the OR is formed the other way round.
+ *
+ * RESIDUE, both handlers (Tri1: 108 insns against 113, -49 bytes, 8+13
+ * regnorm; Tri2: 202 against 199, -56, 33+30). Two allocator choices:
+ *   - the original keeps the SCALED BYTE OFFSET in a register and re-forms
+ *     `base + offset` at every access (`mov edi,[ecx+0x105CE338]`,
+ *     `lea eax,[ecx+0x105CE318]`), where this keeps the pointer;
+ *   - and it reads all three index bytes UP FRONT
+ *     (`xor ecx,ecx / xor eax,eax / mov cl,[esi+6] / mov al,[esi+4] /
+ *      xor edx,edx / mov dl,[esi+5]`) before scaling any of them, where this
+ *     interleaves each load with its own scaling.
+ * PROBED: writing the whole thing in INDEX form (`pool[i].field`, no pointer
+ * locals) gets the instruction count to 114 against 113 but costs 94 bytes of
+ * SIB addressing -- worse overall, do not re-run. Naming the three indices in
+ * the original's 6/4/5 read order moved 1 regnorm and is kept.
+ *
+ * Was -337 bytes and 18 instructions before the helpers came inline. */
+extern BrDlVtx g_aBrDlVtxPool[];    /* 0x105CE318, stride 0x68 */
+extern float   g_brDlTexScaleS;     /* 0x118ED1A4 */
+extern float   g_brDlTexScaleT;     /* 0x118ED1A8 */
+extern void    BrDlClipTri(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c);  /* 0x1001EE70 */
+extern void    BrDlDrawTri(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c);  /* 0x100729EA */
+
+/* DWORD-PUN stores. The original writes each value ONCE to the temp and
+ * then copies it to both TMUs with integer movs (`fstp dword [esp+0x10];
+ * mov edi,[esp+0x10]; mov [v+0x30],edi; mov [v+0x24],edi`), and the oow
+ * copy is integer movs too. Written as plain float assignments VC5 emits
+ * `fst`/`fstp` straight to the two fields and the temp never gets a slot. */
+#define BR_DL_PUN(dst, src)                                          \
+    (*(uint32_t *)(void *)&(dst) = *(const uint32_t *)(const void *)&(src))
+
+#define V(i) (*(i))
+
+#define BR_DLCMD_FINISH_VTX(i, u_)                                  \
+    do {                                                            \
+        BR_DL_PUN(V(i).tmu1[2], V(i).oow);                          \
+        BR_DL_PUN(V(i).tmu0[2], V(i).oow);                          \
+        (u_) = V(i).s * g_brDlTexScaleS * V(i).oow;                 \
+        BR_DL_PUN(V(i).tmu1[0], (u_));                              \
+        BR_DL_PUN(V(i).tmu0[0], (u_));                              \
+        (u_) = V(i).t * g_brDlTexScaleT * V(i).oow;                 \
+        BR_DL_PUN(V(i).tmu1[1], (u_));                              \
+        BR_DL_PUN(V(i).tmu0[1], (u_));                              \
+    } while (0)
+
+#define BR_DLCMD_TRI(ia, ib, ic, u_)                                    \
+    do {                                                                \
+        if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
+            if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
+                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+            } else {                                                     \
+                BR_DLCMD_FINISH_VTX(ia, u_);                             \
+                BR_DLCMD_FINISH_VTX(ib, u_);                             \
+                BR_DLCMD_FINISH_VTX(ic, u_);                             \
+                BrDlDrawTri(&V(ia), &V(ib), &V(ic));                     \
+            }                                                            \
+        }                                                                \
+    } while (0)
+
+const uint8_t *BrDlCmdTri1(const uint8_t *p)
+{
+    /* The three index bytes are read 6, 4, 5 -- the original's order, and it
+     * is not the argument order -- and each is scaled in its own register
+     * with an in-place `shl x,3`, so each needs its own named index. */
+    BrDlVtx *a = &g_aBrDlVtxPool[p[6]];
+    BrDlVtx *c = &g_aBrDlVtxPool[p[4]];
+    BrDlVtx *b = &g_aBrDlVtxPool[p[5]];
+    float    u;                 /* ONE slot, shared by all three vertices */
+
+    BR_DLCMD_TRI(a, b, c, u);
+    return p + 8;
+}
+#else
 const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
 {
     br_dlcmd_tri(pS, p[6], p[5], p[4]);
     return p + 8;
 }
+#endif
 
 /* 0x1001FA30 -- G_TRI2, opcode 0xB1.  696 bytes, Glide-only.
  *
@@ -378,12 +468,29 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * dropped, trimmed or drawn on its own, and whatever happens to the first the
  * second is still considered. */
 /* @implements 0x1001FA30 glide BrDlCmdTri2 */
+#ifdef BR_MATCHING_BUILD
+const uint8_t *BrDlCmdTri2(const uint8_t *p)
+{
+    BrDlVtx *a0 = &g_aBrDlVtxPool[p[2]];
+    BrDlVtx *c0 = &g_aBrDlVtxPool[p[0]];
+    BrDlVtx *b0 = &g_aBrDlVtxPool[p[1]];
+    BrDlVtx *a1 = &g_aBrDlVtxPool[p[6]];
+    BrDlVtx *c1 = &g_aBrDlVtxPool[p[4]];
+    BrDlVtx *b1 = &g_aBrDlVtxPool[p[5]];
+    float    u;
+
+    BR_DLCMD_TRI(a0, b0, c0, u);
+    BR_DLCMD_TRI(a1, b1, c1, u);
+    return p + 8;
+}
+#else
 const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p)
 {
     br_dlcmd_tri(pS, p[2], p[1], p[0]);
     br_dlcmd_tri(pS, p[6], p[5], p[4]);
     return p + 8;
 }
+#endif
 
 /* ====================================================================
  * 0x1001E320 -- G_FILLRECT, opcode 0xF6.  96 bytes; the body is shared with
@@ -634,8 +741,14 @@ BrDlCmdFn BrDlCmdLookup(unsigned op)
 {
     switch (op) {
     case 0x04: return BrDlCmdVtx;
+#ifdef BR_MATCHING_BUILD
+    /* One-argument in the matching arm; the table's type is the port's. */
+    case 0xB1: return (BrDlCmdFn)BrDlCmdTri2;
+    case 0xBF: return (BrDlCmdFn)BrDlCmdTri1;
+#else
     case 0xB1: return BrDlCmdTri2;
     case 0xBF: return BrDlCmdTri1;
+#endif
     case 0xF6: return BrDlCmdFillRect;
     case 0xF7: return BrDlCmdFillColour;
     case 0xF8: return BrDlCmdFogColour;

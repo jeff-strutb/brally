@@ -330,12 +330,22 @@ const uint8_t *BrDlCmdVtx(BrDlCmd *pS, const uint8_t *p);
  * command (the load-time pass 0x10019250 has already halved them).  Trivially
  * rejects, clips, or completes the three vertices' texture coordinates and
  * draws. */
+/* The original takes ONE argument: the vertex pool is an absolute global, so
+ * there is no state pointer. The BrDlCmd parameter is the PORT's. */
+#ifdef BR_MATCHING_BUILD
+const uint8_t *BrDlCmdTri1(const uint8_t *p);
+#else
 const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p);
+#endif
 
 /* 0xB1  0x1001FA30 -- G_TRI2.  Bytes 2,1,0 then bytes 6,5,4, each triangle
  * taking the same three-way decision independently: the first triangle being
  * rejected or clipped does NOT skip the second. */
+#ifdef BR_MATCHING_BUILD
+const uint8_t *BrDlCmdTri2(const uint8_t *p);
+#else
 const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p);
+#endif
 
 /* 0xF6  0x1001E320 -- G_FILLRECT with 10.2 fixed-point corners.  w0 is the
  * lower-right corner, w1 the upper-left; each word holds X in bits 23:12 and
