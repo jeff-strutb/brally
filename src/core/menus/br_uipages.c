@@ -224,7 +224,7 @@ void BrUiQuitEnter_10043050(BrPhase_ *pPhase)
  * different colour from the rest of the page, a box already filled in with
  * whatever name was saved last time (or the word "Player" if there is not one
  * yet), and "Continue" and "Back" underneath. */
-/* @implements 0x1004F290 glide BrUiMultiEnter_1004F290 */
+/* port-only body; Glide match is src/core/cpp/0x1004F290.cpp */
 void BrUiMultiEnter_1004F290(BrPhase_ *pPhase)
 {
     const BrUiPagesHooks *pH;

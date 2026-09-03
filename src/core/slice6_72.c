@@ -795,7 +795,7 @@ static BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
  * heading, a "Phone Number" caption, a typing field on its name-bar graphic
  * pre-filled with the number last used, and Continue and Back rows. It is the
  * only screen in the game laid out five pixels to the left of all the others. */
-/* @implements 0x10056A10 d3d BrOptFn10056A10 */
+/* port-only body; Glide match is src/core/cpp/0x1004F8C0.cpp */
 void BrOptFn10056A10(BrPhase_ *pPhase)
 {
     Br72Env           *pE = g_pBr72Env;
