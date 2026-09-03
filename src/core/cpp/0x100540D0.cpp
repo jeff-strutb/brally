@@ -32,7 +32,16 @@
  *   loop shape: bottom-read while, top-read for(;;)+break,
  *     while ((c = sz[i]) != 0), c = sz[++i]
  *   index temp: hoisted `char *psz = sz`, explicit `int j = i`
+ *   indirection: inline `char *Text() { return sz; }` accessor,
+ *     `char *self = (char *)this; self[i+9]`, `Text540D0 *p = this;
+ *     p->sz[i]`, pointer-to-array cast
+ *   declarations: sz[1]+pad instead of sz[0x407], `signed char sz[]`,
+ *     local declaration order permuted
  *   flags: /O2, /Ox, /O2 /Op (71), /O2 /Ob1, /O2 /Gy, /O1 (163), /Od, /O2 /Oy-
+ *
+ * See docs/VC5-IDIOMS.md "SIB base/index order" for the counter-evidence:
+ * our cl DOES emit base=pointer (0x1006D000, 0x10054390), but only when
+ * the base is a pointer VALUE in a register, never for `this`+const.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)

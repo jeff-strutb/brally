@@ -1760,3 +1760,41 @@ parked-wall kind newly retryable (no new idiom landed).
   permuting the terms of a sum to chase an `fxch` index. (Subtraction and
   the association of a 3-term row still matter: `((t1+t2)-t3)` is faddp
   then fsubp, `t1+(t2-t3)` is the reverse.)
+
+## SIB base/index order on `member_array[index]` — NOT source-reachable
+*(proven 2026-09-03 on 0x100540D0 / 0x10054280, the font-A/font-B glyph walks)*
+
+`mov al, [edi + eax + 9]` has two legal encodings. The original picks
+`8a 44 07 09` (SIB base=edi/`this`, index=eax/the index). Our staged cl
+emits `8a 44 38 09` — same instruction, same registers, same effective
+address, base and index swapped. **One byte, and nothing in the source
+moves it.** Twenty-one spellings across four orthogonal axes and eight
+flag sets were probed; the full list is in the header of
+`src/core/cpp/0x100540D0.cpp`. Everything canonicalizes: the address
+expression (`sz[i]`, `*(sz+i)`, `*(i+sz)`, `i[sz]`, `((char*)this)[i+9]`,
+`*((char*)this+i+9)`), the loop shape (bottom-read while, top-read
+`for(;;)`+break, read-in-condition, `sz[++i]`), the indirection (inline
+accessor returning `char*`, hoisted `char *self`, typed `Text540D0 *p =
+this`, pointer-to-array cast), and the declarations (array extent, element
+signedness, local order).
+
+**The counter-evidence that makes this precise** — our cl DOES emit
+base=pointer, so it is not a blanket emitter rule. A scan of 937
+byte-exact functions found 94 scale-1 two-register memory operands, 67 of
+them with base reg# > index reg#. The ones that reproduce base=pointer all
+share a shape: **the base is a pointer VALUE living in a register**, e.g.
+`pBs->pBuf[pBs->writeByte]` in 0x1006D000 (`mov [edi+ecx],dl`, edi=pBuf
+loaded from +0x10) and `((char*)param_1)[8 + strlen(...)]` in 0x10054390
+(base = the pointer parameter). When the base is instead `this` plus a
+constant member offset — a member array subscript — our cl always makes
+the *index* the SIB base.
+
+So the encoding is decided by whether the address root is a materialised
+pointer or a `this`+const symbol reference, and the original's root was
+the former in a context where ours is the latter. Either the shipped
+source reached that buffer through a pointer our reconstruction cannot
+recover from 178 bytes of asm, or the compiler patch level differs here.
+**Do not re-probe spellings.** If you want to move it, the only live
+leads are (a) a construct that forces the text base into a register as a
+genuine pointer value without changing any other byte, or (b) the
+compiler-build lead already open for 0x1000EAF0.
