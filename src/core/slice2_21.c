@@ -1175,7 +1175,9 @@ void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv, uint32_t *pSeed)
  * each car throw up new ones, and updates every car's wheel effects. In one
  * mode no new particles are spawned at all and only the wheels are
  * updated. */
-/* @implements 0x1003A530 d3d BrPfxTick */
+/* port-only body; Glide match is src/core/generated/0x10033BB0.c
+ * (the original takes NO arguments -- pool, modes, car count and car table
+ * are all globals; the aggregate parameters below are a port addition). */
 void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
                const BrCarFxEnv *pFxEnv, const BrPfxTickEnv *pTick,
                uint32_t *pSeed)
