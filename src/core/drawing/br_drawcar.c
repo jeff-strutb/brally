@@ -819,6 +819,39 @@ static void wheel_call(unsigned char *car)
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
+ * SESSION 12 (2026-09-03) -- THE LIGHT-DIRECTION COPY IS BYTE-EXACT, and it
+ * proves a rule this file should have applied a session earlier: ‼ A DEAD
+ * VERDICT MEASURED AGAINST A WRONG FRAME IS STALE.  That copy carried five
+ * measured-dead spellings and the note "treat this region as T3a UNTIL THE
+ * FRAME IS SOLVED"; the frame was solved last session, and the SIXTH spelling
+ * lands instruction-for-instruction (see the comment at the site for the two
+ * rules that make it work).  Masked regions 26 -> 24, instructions 14 short
+ * -> 13.  RE-TEST EVERY allocation-sensitive "do not re-run" note in a
+ * function after its frame -- or any other global allocation input -- moves.
+ * SESSION 12 RE-TESTS of this file's own dead list, done under that rule:
+ *   - arm 1's colourB through a named top local: STILL DEAD, and by the same
+ *     tell as before -- region 3's first divergence moves orig+0x327 ->
+ *     orig+0x30c and the reloc-masked byte diff rises 4,532 -> 4,680.
+ *   - arm 1's pack as its OWN two-byte array (`packA[2]`, the storage class
+ *     that closed the frame): AMBIGUOUS, and worth re-reading rather than
+ *     re-running.  Measured after the light-direction fix it takes the byte
+ *     diff 4,720 -> 4,562 and the instruction gap 13 short -> 10, recovering
+ *     one of the two missing `shl R,8` -- but it introduces a redundant
+ *     `mov B,B` and a slot reload, so `msetdiff` rows go 27 -> 28, the
+ *     register-blind gap 57 -> 58, and region 3's first divergence again
+ *     moves 27 bytes earlier.  NOT taken: it trades one real instruction for
+ *     two spurious ones and un-merges the cross-jump only partially.  Revisit
+ *     it only as part of attacking the byte-lane family, never on its own.
+ *     (Note it FLIPPED from clearly-bad to ambiguous when the frame and the
+ *     float copy landed -- more evidence for the staleness rule above.)
+ *   - arm 1's colourA top through a named `uint8_t` (the session-10 lever
+ *     that worked in arm 3): BYTE-IDENTICAL here.  Regions 2/3 stay
+ *     canonicalisation, not allocation.
+ * SESSION 12 SCREENS, both negative, so nobody re-runs them: this function's
+ * frame now MATCHES (`tools/framescreen.py` no longer lists it), and it has
+ * no `(double)` modelling and no qword spills, so the Glide-is-float lever
+ * does not apply here.
+ *
  * SESSION 11 (2026-09-03) -- ‼ REGION 1, THE FRAME, IS CLOSED.  `sub esp,
  * 0x4c` matches and the prologue is byte-exact instruction for instruction.
  * The fix was one declaration: the two colour-pack byte locals are an ARRAY,
