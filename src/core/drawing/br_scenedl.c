@@ -36,6 +36,33 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
+ * SIXTEENTH PASS (2026-09-03) ‼ WALL 2 IS CLOSED.  The scale block now emits
+ * the original's 8|4 batching, exactly, for the first time in nine passes.
+ * The lever was the row block's COEFFICIENT SPELLING, and the fix is the one
+ * the original's source must always have had: all four coefficients as
+ * ARRAY SYMBOLS (`DAT_106e9a38[k]`, `DAT_106e9a68[k]`, `DAT_106e9a58[k]`,
+ * `DAT_106e9a48[k]`), not the mixed transcription that was here -- terms 1
+ * and 3 as raw-address casts `*(float *)(0x106e9a38 + 4k)` and terms 2 and 4
+ * through pointer locals.  A raw-address cast is a compile-time CONSTANT and
+ * a symbol reference is a relocation; VC5 schedules the two differently, and
+ * the mixed form was a transcription artefact, not a discovery.
+ * Masked regions 20 -> 19, bytes 18 short -> 15, instructions unchanged at 6
+ * short, and `pV3`/`pV1` go away (removing them is byte-neutral; `pView`
+ * must stay, the logger reads it).
+ *   ‼ THE TRADE, stated honestly: the register-blind multiset goes 35/29 ->
+ *   39/33.  All eight of those rows are ONE defect at four sites -- under
+ *   the symbol spelling VC5 emits term 3 object-first (`fld [esi+0x38];
+ *   fmul [coef]`) where the original is coefficient-first (`fld [coef];
+ *   fmul [esi+0x38]`).  That is worth taking: it swaps a wall that six
+ *   passes of probes could not move for a localised operand-order defect,
+ *   and it moves the region count and the byte count the right way.
+ *   MEASURED, do not re-run: the full 4-term spelling mask.  Only SSSS gives
+ *   8|4; every mixed mask gives 6|6 (SSLS, LSSS, SSSL) and the old LSLS
+ *   gives 5|7.  And the term-3 flip is NOT source-selectable -- swapping the
+ *   factor order in the source at term 1, 2, 3, 4 or 3+4 is BYTE-IDENTICAL
+ *   every time, so VC5 canonicalises x87 multiply operand order exactly as
+ *   it does the integer one.
+ *
  * FIFTEENTH PASS (2026-09-03) -- no region closed, two measurement facts
  * that change how this file must be read, and one new probe axis.
  *   ‼ THE ORIGINAL'S FOUR-TERM ROW IS LEFT-ASSOCIATED, which the source
@@ -814,8 +841,6 @@ draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
                     float *pView = DAT_106e9a38;
-                    float *pV3 = DAT_106e9a68;
-                    float *pV1 = DAT_106e9a48;
                     float *pTw = pObj + 0xf;
                     float *pTy = pObj + 0xd;
                     float *pPos = pObj + 0xc;
@@ -823,10 +848,10 @@ draw:
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    OUTM(12) = (((*(float *)(0x106e9a38 + 0)) * pPos[0] + pV3[0] * pTw[0]) + (*(float *)(0x106e9a58 + 0)) * pPos[2]) + pV1[0] * pTy[0];
-                    OUTM(13) = (((*(float *)(0x106e9a38 + 4)) * pPos[0] + pV3[1] * pTw[0]) + (*(float *)(0x106e9a58 + 4)) * pPos[2]) + pV1[1] * pTy[0];
-                    OUTM(14) = (((*(float *)(0x106e9a38 + 8)) * pPos[0] + pV3[2] * pTw[0]) + (*(float *)(0x106e9a58 + 8)) * pPos[2]) + pV1[2] * pTy[0];
-                    OUTM(15) = (((*(float *)(0x106e9a38 + 12)) * pPos[0] + pV3[3] * pTw[0]) + (*(float *)(0x106e9a58 + 12)) * pPos[2]) + pV1[3] * pTy[0];
+                    OUTM(12) = ((DAT_106e9a38[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pPos[2]) + DAT_106e9a48[0] * pTy[0];
+                    OUTM(13) = ((DAT_106e9a38[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pPos[2]) + DAT_106e9a48[1] * pTy[0];
+                    OUTM(14) = ((DAT_106e9a38[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pPos[2]) + DAT_106e9a48[2] * pTy[0];
+                    OUTM(15) = ((DAT_106e9a38[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pPos[2]) + DAT_106e9a48[3] * pTy[0];
                     scale = *pObj;
                     BrRowScale8(DAT_106e78f0, DAT_106e9a38, scale);
                     BrRowScale4(DAT_106e78f0 + 8, DAT_106e9a58, scale);
