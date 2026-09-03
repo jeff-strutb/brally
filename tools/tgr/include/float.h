@@ -1,0 +1,7 @@
+#ifndef _FLOAT_H
+#define _FLOAT_H
+#define FLT_MAX 3.402823466e+38F
+#define FLT_MIN 1.175494351e-38F
+#define FLT_EPSILON 1.192092896e-07F
+#define DBL_MAX 1.7976931348623158e+308
+#endif
