@@ -2194,3 +2194,23 @@ This does not repeal the float wall for genuinely tangled DAGs (the
 0x1000EAF0 / BrVec3Project class), but before calling a float function a
 coloring wall, write its chain out as named locals first — it is cheap and
 it moved this one from 205 to 0.
+- **/Od loop-and-branch shapes, three levers proven together on
+  0x1002E73A BrDlRebase (101 B, byte-exact).**
+  (1) **A wrapping `if` is not an early return.** `if (p) { <rest> }`
+  emits ONE inverted jump to the epilogue (`cmp [ebp+8],0; je end`);
+  `if (!p) return;` emits the two-instruction `jne over / jmp end` the
+  /Od-goto entry above describes. When the original has the single `je`,
+  the source wrapped the body.
+  (2) **The step belongs in the `for`'s THIRD clause.** `for (;; p += 2)`
+  puts the increment at the TOP of the loop with a `jmp` over it on the
+  first pass -- a three-instruction block the back-edge lands on -- while
+  `p += 2;` as the body's last statement puts it at the bottom. The
+  jump-over is the signature.
+  (3) **SWITCH ON THE EXPRESSION, NOT A NAMED LOCAL.** A named switch
+  value costs a SECOND frame slot: VC5 copies the local into its own
+  switch temp and compares that (`mov eax,[ebp-4]; mov [ebp-8],eax; cmp
+  [ebp-8],K`). Switching on the expression makes that temp the
+  function's only local and restores a `push ecx` prologue. And read the
+  compare ORDER before choosing switch vs if/else -- a chain that runs
+  ASCENDING by case value, with two cases sharing a target, is a switch;
+  an if/else chain tests in SOURCE order (see the sparse-switch entry).
