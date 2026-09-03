@@ -296,14 +296,14 @@ BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd)
 {
-    unsigned cur = (unsigned)DAT_105d17c8;
-    unsigned w1;
-
-    DAT_105d17cc = (int)cur;
-    w1 = pCmd->w1;
-    w1 = ~w1;
-    cur &= w1;
-    DAT_105d17c8 = (int)cur;
+    /* The update is a compound assignment on the GLOBAL, not on a local copy
+     * of it. `cur = g; g2 = cur; cur &= ~w1; g = cur;` says the same thing and
+     * costs three bytes: VC5 accumulates into whichever register dies first,
+     * which for a local copy is the mask, so it emits `and ecx,eax` and an
+     * extra load. Reading the global once and updating it in place pins the
+     * accumulator to the global's own value -- `and eax,ecx`. */
+    DAT_105d17cc = DAT_105d17c8;
+    DAT_105d17c8 &= ~(int)pCmd->w1;
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
@@ -325,11 +325,10 @@ BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd)
 {
-    unsigned cur = (unsigned)DAT_105d17c8;
-
-    DAT_105d17cc = (int)cur;
-    cur |= pCmd->w1;
-    DAT_105d17c8 = (int)cur;
+    /* In place on the global -- see BrGbiClearGeometryMode above. Here it is
+     * also what folds the command word into the memory operand of the `or`. */
+    DAT_105d17cc = DAT_105d17c8;
+    DAT_105d17c8 |= (int)pCmd->w1;
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
