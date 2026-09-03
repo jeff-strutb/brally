@@ -340,7 +340,8 @@ def parse(va):
         if m:
             externs.add('#' + m.group(1))
             stmts.append(('raw', '%s = %s;' % (m.group(1), m.group(2)))); continue
-        if re.match(r'^\(\*\*\(funcptr \*\)\(iVar\d+ \+ 4\)\)\(\);$', l):
+        if re.match(r'^\(\*\*\(funcptr \*\)\((?:iVar\d+|piVar\d+\[0xad7\]) \+ 4\)\)'
+                    r'\(\);$', l):
             stmts.append(('raw', 'p->m2B5C.s1();')); continue
         m = re.match(r'^piVar\d+\[0xe0f\] = \(int\)(\w+);$', l)
         if m:
