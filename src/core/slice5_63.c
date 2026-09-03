@@ -753,14 +753,16 @@ void BrExt_1003E510(void)
  * whether it also totals up four numbers from a settings table at the end;
  * everything else happens either way. */
 /* @implements 0x1005FBC0 d3d BrExt_1005FBC0 */
+extern uint8_t  DAT_10ac5a4c, DAT_10ac5a4d;   /* 0x10AA26F4[0], [1] */
+extern uint16_t DAT_10ac5b3a;                /* high half of 0x10AA27E0 */
 void BrExt_1005FBC0(int32_t a)
 {
     int32_t v;
 
-    g_brAA28B8 = (int8_t)g_aBrAA26F4[0];
+    g_brAA28B8 = (int8_t)DAT_10ac5a4c;
     g_br094354 = g_brAA27EC;
     g_br094358 = g_brAA27F4;
-    g_brAA28A4 = (int32_t)g_aBrAA26F4[1];   /* movzx: byte 1, zero-extended */
+    g_brAA28A4 = (int32_t)DAT_10ac5a4d;     /* movzx: byte 1, zero-extended */
     g_brB4E1D0 = g_brAA27F8;
     g_brAA28A0 = g_aBrAA26F0[0];
     g_br09435C = g_brAA27F0;
@@ -771,10 +773,14 @@ void BrExt_1005FBC0(int32_t a)
      * the switch decrements and puts the default FIRST, which is the
      * original's layout.
      *
-     * RESIDUE (five instructions): VC5 merges the two adjacent byte reads of
-     * g_aBrAA26F4 into one dword load and takes byte 1 out of `ah`, where the
-     * original loads each byte separately. Nothing inside this function
-     * changes that -- it would need the two bytes to be separate globals. */
+     * SOLVED, and the old note here said how: the two bytes ARE separate
+     * globals.  Spelled as one array VC5 merged them into a single dword load
+     * and took byte 1 out of `ah`; as DAT_10ac5a4c / DAT_10ac5a4d it emits the
+     * original's two independent byte loads.  Same story twice more below --
+     * the 0x10AA27E0 high half is its own 16-bit global, not a shift, and the
+     * halfword base is a POINTER so VC5 folds the array address into the
+     * lea's displacement instead of adding it separately.  Together: 71/71
+     * instructions and a register-blind gap of 0+0, from 5+4. */
     v = g_brAA27F8;
     switch (v) {
     case 1:
@@ -810,8 +816,14 @@ void BrExt_1005FBC0(int32_t a)
     if (a != 0) {
         /* movsx: the index byte is SIGNED, so a byte >= 0x80 indexes
          * BACKWARDS off the front of the block. Faithfully reproduced. */
-        int32_t  base = (int32_t)g_brAA28B8 * BR63_AA270E_STRIDE
-                      + BR63_AA270E_OFF;
+        /* A POINTER, not an int offset: the original folds the block's
+         * address into the lea displacement (`lea eax,[eax*8+0x10ac5a66]`),
+         * which it can only do if the base is part of the address
+         * expression.  An int `base` added to the array afterwards costs a
+         * second lea. */
+        const unsigned char *pHw = (const unsigned char *)g_aBrAA26F0
+                                 + (int32_t)g_brAA28B8 * BR63_AA270E_STRIDE
+                                 + BR63_AA270E_OFF;
         uint32_t sum  = 0;
         int      i;
 
@@ -820,19 +832,19 @@ void BrExt_1005FBC0(int32_t a)
          * uint16_t * into an int32_t array would be misaligned. */
         for (i = 0; i < BR63_AA270E_TERMS; ++i) {
             uint16_t hw;
-            memcpy(&hw,
-                   (const unsigned char *)g_aBrAA26F0
-                       + base + i * (int)sizeof hw,
-                   sizeof hw);
+            memcpy(&hw, pHw + i * (int)sizeof hw, sizeof hw);
             sum += hw;
         }
         g_brAA28C4 = (int32_t)sum;
     }
 
     /* GOTCHA: 0x10AA2A10 takes the LOW half of the 0x10AA27E0 dword and
-     * 0x10AA2A14 the HIGH half; both are OR-ed IN, not assigned. */
+     * 0x10AA2A14 the HIGH half; both are OR-ed IN, not assigned.  The HIGH
+     * half is read as its OWN 16-bit global (`mov dx, word ptr [0x10ac5b3a]`,
+     * i.e. the dword's address + 2), not as a shift of the dword -- a `>> 16`
+     * costs a shr and a register copy and misses the `xor`. */
     g_brAA2A10 |= (int32_t)(g_brAA27E0 & 0xFFFFu);
-    g_brAA2A14 |= (int32_t)((g_brAA27E0 >> 16) & 0xFFFFu);
+    g_brAA2A14 |= (int32_t)DAT_10ac5b3a;
 }
 
 /* ==========================================================================
