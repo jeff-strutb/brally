@@ -243,7 +243,14 @@ int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y);
  *
  * The original takes the points from the six BrVec3s at 0x106C3310, stride
  * 0xC. */
+/* The original takes NO arguments: both the volume and the six points are
+ * absolute globals (0x10AC2C50.. and 0x106EA3A0), and the twelve edges are
+ * UNROLLED, not a loop over a table. */
+#ifdef BR_MATCHING_BUILD
+void BrSpanBuildHull(void);
+#else
 void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6]);
+#endif
 
 /* ==========================================================================
  * 5. Particle pool
