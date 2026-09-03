@@ -126,31 +126,45 @@ def parse(va):
         r'^iVar(\d+) = \*\(int \*\)\(DAT_10ac5c60 \+ (0xc[04])\) \+ 4 \+ iVar\1;$\n'
         r'^if \(iVar\2 != 0\) \{$\n'
         r'^\(\*\*\(funcptr \*\)\(piVar\d+\[0xe0e\] \+ 0x10\)\)'
-        r'\(iVar\2,0,1,&(DAT_\w+),0\);$\n'
+        r'\(iVar\2,0,1,&(DAT_\w+),([01])\);$\n'
         r'^\}$\n'
         r'^iVar\1 = iVar\1 \+ 0x104;$\n'
         r'^\} while \(iVar\1 < (\d+)\);$', re.M)
+    # The SUBLINK trio. The draft reads w14 into a temp, bumps w2AB4, then
+    # stores the temp + 1 -- but the matched siblings show the source is the
+    # inline expression stored FIRST and the w2AB4 bump second (a named
+    # short temp allocates to ax where the original uses dx).
+    sub = re.compile(
+        r'^sVar\d+ = \*\(short \*\)\(iVar\d+ \+ 0x14\);$\n'
+        r'^\*\(short \*\)\(piVar\d+ \+ 0xaad\) = \(short\)piVar\d+\[0xaad\] \+ 1;$\n'
+        r'^\*\(short \*\)\(\(int\)piVar\d+ \+ 0x2ab6\) = sVar\d+ \+ 1;$', re.M)
     blob = '\n'.join(joined)
+    blob = sub.sub('@@SUBLINK', blob)
     m = fill.search(blob)
     while m:
-        blob = blob[:m.start()] + ('@@FILL %s %s %s'
-                                   % (m.group(3), m.group(4), m.group(5))) \
+        blob = blob[:m.start()] + ('@@FILL %s %s %s %s'
+                                   % (m.group(3), m.group(4), m.group(6),
+                                      m.group(5))) \
                + blob[m.end():]
         m = fill.search(blob)
     joined = blob.split('\n')
 
     for l in joined:
+        if l == '@@SUBLINK':
+            stmts.append(('raw', 'p->w2AB6[0] = (short)(cont->w14 + 1);'))
+            stmts.append(('raw', 'p->w2AB4 += 1;'))
+            continue
         if l.startswith('@@FILL '):
-            _, fld, dat, end = l.split()
+            _, fld, dat, end, last = l.split()
             externs.add(dat); externs.add('@Root')
             fld = 'pTable' if fld == '0xc0' else 'pTableC4'
             stmts.append(('raw',
                 '{\n        int off = 0;\n\n        do {\n'
                 '            char *psz = &g_brRoot5C60->%s->aRecs[off];\n\n'
                 '            if (psz != 0)\n'
-                '                p->m3838.s4(psz, 0, 1, &%s, 0);\n'
+                '                p->m3838.s4(psz, 0, 1, &%s, %s);\n'
                 '            off += 0x104;\n'
-                '        } while (off < %s);\n    }' % (fld, dat, end)))
+                '        } while (off < %s);\n    }' % (fld, dat, last, end)))
             continue
         if not l or l in ('{', '}', 'else {') or l.startswith('//'):
             continue
