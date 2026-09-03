@@ -548,7 +548,7 @@ void __fastcall BrVt8A70CallPair(int *pThis, BrVt8A70Arg param_2)
  * every screen's rows are then laid out from. If there is no memory for it the
  * player gets a fatal error box. This is the opening move every screen builder
  * makes. */
-/* @implements 0x10051990 d3d BrUi51990ScreenNew */
+/* port-only body; Glide match is src/core/cpp/0x1004A840.cpp */
 static BrUiScreen *BrUi51990ScreenNew(const BrUi51990Ctx *pCtx,
                                       BrUiPhase *pPhase, float fY)
 {
