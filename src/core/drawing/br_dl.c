@@ -620,6 +620,48 @@ static void br_dl_light_setup(BrDl *pDl)
  * plus a share of the light's colour, capped at full brightness. Colours
  * here run 0 to 255, not 0 to 1. */
 /* @implements 0x10022AC0 glide br_dl_light_vertex */
+/* DOSSIER, read before touching this (transcribed instruction by instruction
+ * from 0x10022AC0; -79 bytes / REGNORM 31+45 as it stands).  Everything below
+ * is READ OFF THE ORIGINAL, not inferred:
+ *
+ *  - IT TAKES TWO ARGUMENTS, NOT THREE.  The frame is a bare `push ecx` (one
+ *    4-byte local, `t`, at [esp]); the args land at [esp+8] and [esp+0xC].
+ *    There is no pDl parameter -- `nLights` is the ABSOLUTE global
+ *    0x105CCFD0, tested straight out of memory in the first three
+ *    instructions.  This is the accessor sub-case of the factored-helper
+ *    screen, in its strongest form: the whole BrDl pointer is a port
+ *    invention here.
+ *  - ALL LIGHT DATA IS ABSOLUTE GLOBALS, three runs of three:
+ *      lightScale  0x105CE210 / 0x105CE214 / 0x105CE218
+ *      lightDir    0x105CE21C / 0x105CE220 / 0x105CE224
+ *      lightAmb    0x105CE228 / 0x105CE22C / 0x105CE230
+ *      the nLights==0 triple  0x105D17A4 / 0x105D17B4 / 0x105CE2D0
+ *    (note that last one is NOT a contiguous run -- it is the three
+ *    destinations of the 0xFA command, as the note below already says).
+ *  - THE THREE-COMPONENT LOOP IS FULLY UNROLLED.  Our `for (i = 0; i < 3;)`
+ *    is worth 2 `inc`/2 `jne` of EXTRA and costs the 3 `je` the original has.
+ *  - THE TWO EARLY ARMS COPY AS INTEGERS, not floats: `mov ecx,[global];
+ *    mov [eax+0x1C],ecx`.  Use the dword-pun macro (see the PUN entry in
+ *    docs/VC5-IDIOMS.md), not float assignment, or VC5 emits fld/fstp.
+ *  - THE CLAMP IS A PUNNED CONSTANT: `mov eax,0x437F0000` (255.0f as bits),
+ *    conditionally overwritten by `mov eax,[esp+8]`, then stored with an
+ *    integer `mov`.  The scratch v lives in the FIRST PARAMETER'S HOME SLOT
+ *    [esp+8] -- the dead-parameter-slot idiom.
+ *  - THE TWO COUNTERS (cVtxLitOff, cVtxLitAmbient) DO NOT EXIST in the
+ *    original.  Port additions; strip them in the matching arm.
+ *
+ * WHY THIS IS NOT DONE HERE: the argument TYPES are a scene-model question,
+ * not a local one.  arg1 is dereferenced at +0x14/+0x18/+0x1C and arg2 at
+ * +0x1C/+0x20/+0x24, so neither is the `float[3]` this port passes -- arg2 is
+ * `&pV->f40` (0x40 + 0x1C = 0x5C = n0, which the header's "nine floats from
+ * f40+4" note already describes), and arg1 is a record whose normal sits at
+ * +0x14 and is loaded with a plain `fld`, i.e. ALREADY FLOAT and not the
+ * byte-swapped display-list source our caller reads.  Fixing that means
+ * fixing the caller, and the caller here (br_dl_project, 0x10022070) is a
+ * mega-function: 170 bytes in the original against 8,022 in this tree, so it
+ * does not correspond 1:1 and cannot be adjusted in passing.  Settle the
+ * source-vertex record first (see the scene-entity model note), then this
+ * function is a transcription with no unknowns left. */
 static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 {
     float t;
