@@ -67,6 +67,27 @@
  *       12, which is again the alignment artefact, not progress.
  * So the byte-vs-dword merge is downstream of the temp, not a separate
  * lever: it cannot be fixed at this site without giving the temp up.
+ * 2026-09-03 (session 8): ‼ FOUR OF THE 32 REGIONS ARE NOT REAL.  Run
+ * `divergence.py --mask-slots --deltas` and read the SUSPECT markers before
+ * anything else here.  The aligner resyncs on six consecutive matching
+ * instructions, and in this function -- twelve near-identical arms, every
+ * one of them ending in the same `shr edx,0x1f; add eax,edx` divide-by-255
+ * fixup -- that key is not unique.  Four resyncs lock onto the wrong copy
+ * (skews 74/53, 12/34, 26/135, 115/20), and the drift they report is
+ * fiction: the headline "+393 bytes in one block" at region 9, which would
+ * otherwise look like this function's dominant defect, is an artefact that
+ * regions 10 and 11 hand straight back (-87, -327).  Regions 3, 5, 9 and 11
+ * and every delta between them are unreliable.  The honest picture from the
+ * clean stretch is that NO block carries more than ~36 bytes: r15 +36 and
+ * r18 -33 are the largest, everything else is under 15.  This is consistent
+ * with the instruction parity above -- the residue really is shape, spread
+ * thin, with no missing block to find.
+ * Session 8 probe, DEAD, do not re-run: r15 is the original homing a
+ * channel product in the reused param_9 arg slot (`mov [esp+0x9c],edx;
+ * imul edx; add edx,[esp+0x9c]`) where we keep it in a register.  Spelling
+ * that channel through `param_9` (the established reuse idiom in this TU)
+ * changes nothing measurable -- 32 masked / 44 raw / 2,408 insns and an
+ * identical delta map.
  * MEASURED NEGATIVE, do not re-run: converting ALL TEN remaining
  * `x = w*2; if (param_7 == 0) x = w;` doubling sites to the ternary form
  * at once.  Session 4 measured this per pair and in eight combinations;
