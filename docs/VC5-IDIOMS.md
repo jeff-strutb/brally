@@ -750,6 +750,34 @@ the caller AND flipped a helper to match for free.
   types / scopes / LICM, param_4 renames, two-step wb or pW defs,
   pointer-difference car base (cancelled), index-based `param_4 +
   iCar*0x2b68` (second IV), byte-offset `ring*4` (still folded).
+- **A spelling must be measured on EVERY site that shares the allocator
+  decision it targets — and on no more than those.** Proven 2026-09-03 by
+  moving 0x1000EAF0 20 -> 19 masked regions on a lever its own dossier had
+  recorded as REJECTED. The rejection was real but partial: byte-offset
+  induction variables (`c2 << 4`, `+= 4`, ring reads and writes spelled
+  `*(int *)((char *)base + off)`) had been measured on ONE of that
+  function's two drain loops. One loop alone genuinely IS worse (+7 insns);
+  both together gain a region and, as a side effect, close an unrelated
+  `mov edi,1` sink 22 KB earlier. VC5 commits to one induction-variable
+  strategy per region, so a half-converted pair leaves it straddling both
+  and scores worse than either consistent form. **Every "structurally right
+  but flips the global allocation" verdict in these dossiers is suspect
+  until it has been re-measured across the whole sibling set.**
+  The counter-case, measured the same day so this does not over-generalise:
+  on 0x100250D0, converting all ten remaining `x = w*2; if (c) x = w;`
+  doubling sites to the ternary form AT ONCE is clearly worse — it breaks a
+  1.7 KB byte-exact prefix and costs +25 insns. The difference is what the
+  sites share. Loops sharing one induction variable: convert together.
+  Independently allocated arms: one at a time. Ask which single allocator
+  decision the sites share before batching them; "they look alike" is not
+  the test (same trap as the symptom-vs-cause residue classes).
+- **A falling RAW region count can be an alignment artefact — never read it
+  alone.** That bad 0x100250D0 probe dropped raw regions 45 -> 25 while
+  breaking the byte-exact prefix: once the streams misalign, the resync
+  merges many small regions into few large ones. Always read the
+  slot-masked count AND the first-divergence address together, and treat a
+  first divergence that moves EARLIER as a regression whatever else
+  improved.
 - **VC5 CANONICALISES COMMUTATIVE OPERAND ORDER AND STATEMENT SPLITS. Stop
   probing them.** Proven 2026-09-03 by twelve byte-identical probes across
   all three giants (0x1000EAF0, 0x100250D0, 0x1000A110). None of these
