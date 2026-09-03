@@ -314,11 +314,11 @@ def parse(va):
         if m:
             stmts.append(('flush_s34', None)); continue
         m = re.match(r'^\(\*\*\(funcptr \*\)\(iVar\d+ \+ 0x34\)\)'
-                     r'\(&(DAT_\w+),1,(\d),&(DAT_\w+)\);$', l)
+                     r'\(&(\w+),(\d),(\d),&(\w+)\);$', l)
         if m:
-            externs.add(m.group(1)); externs.add(m.group(3))
-            stmts.append(('raw', 'p->s34(&%s, 1, %s, &%s);'
-                          % (m.group(1), m.group(2), m.group(3))))
+            externs.add(m.group(1)); externs.add(m.group(4))
+            stmts.append(('raw', 'p->s34(&%s, %s, %s, &%s);'
+                          % (m.group(1), m.group(2), m.group(3), m.group(4))))
             continue
         m = re.match(r'^\*\(short \*\)\(iVar\d+ \+ 0x14\) = .*\+ 1;$', l)
         if m:
@@ -353,6 +353,9 @@ def parse(va):
             externs.add(m.group(1))
             stmts.append(('raw', 'p->m3838.f14 = (int)%s;' % m.group(1)))
             continue
+        m = re.match(r'^piVar\d+\[0xbdf\] = (\d+);$', l)
+        if m:
+            stmts.append(('raw', 'p->m2B5C.f420 = %s;' % m.group(1))); continue
         m = re.match(r'^piVar\d+\[0x787d\] = 1;$', l)
         if m:
             stmts.append(('raw', 'p->f1E1F4 = 1;')); continue
@@ -444,7 +447,7 @@ def emit(va, name, stmts, externs, size):
             ext.append('extern char %s;' % e[1:])
         elif e == '@Root':
             ext.append('Root%s *g_brRoot5C60;   /* 0x10AC5C60 */' % SFX[0])
-        elif e.startswith('DAT_'):
+        elif e.startswith('DAT_') or e.startswith('g_a') or e.startswith('s_'):
             ext.append('extern char  %s;' % e)
         elif e.startswith('_DAT_'):
             ext.append('extern float %s;' % e[1:])
