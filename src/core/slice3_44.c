@@ -104,27 +104,56 @@ void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
  * an x87 emulation of 0x1006DE70 over random and structured inputs. */
 /* @implements 0x1006DE70 glide BrMat3Solve */
+/* FRAME (proven 2026-09-03, do not re-derive).  `sub esp, 0x10` is FOUR float
+ * slots -- d0, m2m7, m1m5, m2m4 -- in declaration order at [esp], [esp+4],
+ * [esp+8], [esp+0xc].  A FIFTH value, m[1]*m[8], lives in the dead pM
+ * parameter slot [esp+0x18] (fst at 1006DEAF, fld at 1006DEFF), alongside an
+ * anonymous m[4]*m[8] that occupies the same slot earlier (1006DE96 fstp /
+ * 1006DE9C fsub).  Two values sharing one slot means they are COMPILER CSE
+ * TEMPS, not named locals, so m[1]*m[8] is spelled inline at both its uses;
+ * naming it forces `sub esp, 0x14` and a fifth frame slot.  Inlining the
+ * other four instead is worse still (`sub esp, 0x14`, 435 B) -- they really
+ * are named locals.
+ *
+ * pV is NOT copied into three float locals: the original reads [ecx], [ecx+4]
+ * and [ecx+8] fifteen times, so v0/v1/v2 are macros over the parameter.
+ * Naming them costs two integer copy pairs and turns every use into an
+ * [esp+N] read.
+ *
+ * RESIDUE (347 bytes differ, 419 vs 417, instruction count -2; REGNORM
+ * multiset gap 18+20).  Ruled out, do not re-probe: swapping the operands of
+ * any both-memory `fmul` (VC5 canonicalises multiplication operand roles the
+ * same way it canonicalises commutative x87 addends -- byte-identical
+ * output), and naming m[4]*m[8] (411 B / 340 diffs but FIRSTDIV regresses to
+ * +0xd and the 1006DE9C memory `fsub` still does not appear).  What is still
+ * unexplained: (1) the original keeps `inv` in an x87 register from the
+ * 1006DF14 `fdivr` all the way to the closing `fstp st(0)`, spending it as
+ * three `fmul st(1)`; the recompile homes it in the dead parameter slot and
+ * contends there with the m[1]*m[8] temp.  (2) Six products whose operand
+ * roles are inverted (m[0] and pV->x land on the fmul side instead of the
+ * fld side).  Both look like allocator choices rather than source shape. */
 void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 {
-    const float *m  = pM->m;
-    const float  v0 = pV->x, v1 = pV->y, v2 = pV->z;
+    const float *m = pM->m;
+#define v0 pV->x
+#define v1 pV->y
+#define v2 pV->z
 
     /* --- shared sub-expressions, in the order the original spills them --- */
     const float d0    = m[7] * m[5] - m[4] * m[8];   /* cofactor of m[0] */
-    const float m1m8  = m[1] * m[8];
     const float m2m7  = m[2] * m[7];
     const float m1m5  = m[1] * m[5];
     const float m2m4  = m[2] * m[4];
 
     /* det is the NEGATED determinant -- the original expands with the signs
      * flipped and compensates by negating only pOut->y below. */
-    const float det = (((m1m8 * m[3] + m[0] * d0)
+    const float det = (((m[1] * m[8] * m[3] + m[0] * d0)
                         - m2m7 * m[3])
                        - m1m5 * m[6])
                       + m2m4 * m[6];
     const float inv = 1.0f / det;
 
-    const float n0 = (((v0 * d0 + m1m8 * v1)
+    const float n0 = (((v0 * d0 + m[1] * m[8] * v1)
                        - m2m7 * v1)
                       - m1m5 * v2)
                      + m2m4 * v2;
@@ -152,6 +181,9 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
     pOut->x =  n0 * inv;
     pOut->y = -(n1 * inv);   /* the sign flip that pairs with the negated det */
     pOut->z =  n2 * inv;
+#undef v0
+#undef v1
+#undef v2
 }
 
 /* 0x10074A90 */
