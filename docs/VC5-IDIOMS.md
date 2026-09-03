@@ -2891,3 +2891,51 @@ almost always said.
 much worse — it hoists the scale out of the if/else arms and rewrites the
 prologue (75 -> 101 diffs). Nor do `(off >> 5) << 4` as one expression, or
 `off / 32u` for the shift, change anything.
+
+## A frame that is 4 bytes short: look for a scalar that should be an ARRAY
+*(proven 2026-09-03 on 0x1000A110, which had carried a 0x48-vs-0x4c frame gap
+for eight sessions)*
+
+VC5 never enregisters an array, and it never tucks one into a dead argument
+slot either — an array always gets its own slot in the LOCALS area. Two
+`uint8_t` scalars, by contrast, are enregistered where possible and otherwise
+packed into whatever reused argument slots are free, costing the frame
+nothing. So a recompile whose frame is a few bytes SMALLER than the original's
+while writing the same values is the signature of a source that spells as
+scalars what the original spells as an array.
+
+The check costs one compile: `/FAcs` prints an equate table, and
+`_pack0$ = 8, _pack1$ = 12` says plainly that those two live in the argument
+slots and spend no locals-area dword. Changing the declaration to
+`uint8_t pack[2]` (a pure rename at every use) took `sub esp,0x48` to
+`sub esp,0x4c` and made the prologue byte-exact.
+
+**Do not judge this change by size or by fn.py's RAW/REGNORM.** Every slot
+displacement in the function moves when the frame does, so both read worse for
+a while; the masked region count and `msetdiff.py` are the honest scores.
+The frame is worth closing first anyway — nothing downstream of it can line up
+until it does.
+
+## A named local that caches a struct field is wrong if the original re-reads it
+*(proven 2026-09-03 on 0x1000A110's texture-window command words)*
+
+Writing
+
+    uint32_t s = p->s0, t = p->t0;
+    uint32_t w0 = f(s, t), w1 = g(s, t);
+    put(w0, w1);
+
+makes VC5 keep `s`, `t` and the finished `w0` alive across the store sequence
+and spill all three to slots (`mov [esp+0x38],ecx; mov ecx,[esp+0x60];
+mov edx,[esp+0x38]`). The original instead re-reads both fields for the second
+word (`mov edx,[eax]; mov eax,[eax+4]`), which is what the source looks like
+when the field accesses are written inline at each use. Inlining them made the
+block instruction-for-instruction identical and removed its 15-byte drift.
+
+Read the original's loads before deciding: **a repeated field load in the
+original is evidence of source that does not cache, not of a missed CSE.**
+
+**And watch which number you rank by.** Removing that spill took the function
+from 38 bytes short to 53 short — the three wrong instructions had been
+padding a real deficit elsewhere — while the register-blind multiset went
+64+75 to 52+66. Size alone would have called a correct fix a regression.
