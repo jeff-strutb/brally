@@ -878,7 +878,7 @@ int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl)
     return 1;
 }
 
-/* @implements 0x10046C90 d3d BrUiNavHook_10046C90 */
+/* port-only body; Glide match is src/core/cpp/0x100400E0.cpp */
 int32_t BrUiNavHook_10046C90(BrUiCtl_ *pCtl)
 {
     BrUiNav  *pNav = g_pBrUiNav;
