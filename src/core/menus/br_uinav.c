@@ -971,8 +971,14 @@ void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl)
 }
 
 /* 0x100603A0's two edges, and only those two. The step and the cursor are
- * written together because that function writes them together. */
-/* @implements 0x100603A0 d3d BrUiNavMove */
+ * written together because that function writes them together.
+ *
+ * NOT TAGGED. This is a FRAGMENT -- 48 bytes of a 939-byte function -- and
+ * config/shared.csv maps d3d 0x100603A0 to Glide 0x10059410, which is a true
+ * twin (939 bytes in both binaries) whose real transcription is BrGlNavPoll
+ * below. Tagged @implements until 2026-09-03, which put two names on one
+ * address and scored a 48-byte fragment against the whole function. Fragments
+ * and thunks must not carry @implements -- docs/VC5-IDIOMS.md. */
 void BrUiNavMove(BrUiNav *pNav, int dir)
 {
     if (dir < 0) {
