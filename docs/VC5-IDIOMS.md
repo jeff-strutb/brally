@@ -1108,6 +1108,20 @@ the caller AND flipped a helper to match for free.
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
   the scaled form, VC5 picks the accumulator itself. T3a — park it.
+- **The integer twin of the `fchs` rule: a conditional BUMP is an
+  alternative ASSIGNMENT, and that is what frees the tested register.**
+  `pos = p->b; if (p->a) pos++;` pre-loads `b` and only then tests `a`, so
+  both are live at once and the tested value needs a register of its own
+  (`mov edx,[ecx]; mov eax,[ecx+4]; test edx,edx`). Writing it as
+  `if (p->a) pos = p->b + 1; else pos = p->b;` — or the equivalent ternary,
+  which is byte-identical — makes `a` die at the test, so VC5 loads it into
+  the accumulator, tests it, and REUSES that register for `b`
+  (`mov eax,[ecx]; test eax,eax; mov eax,[ecx+4]`), with the `je` scheduled
+  after the second load because the flags survive a `mov`. Diagnostic: the
+  original loads the tested field and the used field into the SAME register.
+  Proven 0x1006CF80 BrBitStreamAtEnd (7 diffs → byte-exact, REGNORM was
+  already 0+0 — a pure RAW 2+2 residue that WAS reachable from source, so
+  do not read "REGNORM 0+0" as automatically T3a).
 - **In-place x87 `fchs` is a ternary (or if/else that assigns both arms),
   not a reassignment.** `t = x; if (t < Z) t = -t` emits
   `fstp st(0); fld; fchs` — the dest already exists so the negate is a
