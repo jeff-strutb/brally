@@ -1,4 +1,54 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
+ *
+ * ‼‼ 2026-09-03 (session 13) -- EVERY REGION MAP BELOW IS TRUNCATED.  Read
+ * this before any other note in this file.
+ *   `divergence.py` used to STOP at the first divergence it could not
+ * resync within 400 instructions and print a region total anyway.  On this
+ * function it lost sync at orig+0x15b8 EVERY TIME, at every key tried (6,
+ * 8, 10, 12, 14) -- so "32 masked regions", "20 regions at key 10", "r15
+ * +36 and r18 -33 are the largest", "no block carries more than ~36 bytes"
+ * and the whole session-8..12 ranking were all measured on orig
+ * 0x0..0x15b8 and NEVER SAW the last 2,920 bytes, 34% of the function.
+ *   The tool now re-anchors globally after a lost sync and prints the
+ * uncompared byte count (commit b72676b).  The honest map:
+ *     key 10:  31 regions (was 20), 1,093 bytes (12.9%) still uncompared
+ *     key  6:  52 regions (was 32),   243 bytes  (2.9%) still uncompared
+ *   The tail's own deltas, restarted at 0x1800, are LARGER than anything
+ * the prefix has: r2 (0x1a4c) -50, r4 (0x1c2c) -16, r6 (0x1ebc) +25, and
+ * seven zero-delta regions from 0x1ebc to 0x20a2 that are pure register
+ * choice around the FUN_100271f0 call (`mov dx`/`push edx` against our
+ * `mov cx`/`push ecx`).  So the -50 at 0x1a4c, not r15 or r3, is this
+ * function's largest single reliable block.
+ *   ‼ THE ONE STRETCH NOBODY HAS EVER READ is orig 0x15b8..0x19fd.  It is
+ * uncompared precisely because it holds no ten consecutive matching
+ * instructions -- that is a diagnosis, not a tooling gap.  /FAcs puts it at
+ * source lines 962-1056: the `param_6 == 3 && param_13 == one` IA blend
+ * arm.  Read by hand, the defect there is a COUNTER-REGISTER SWAP:
+ *     orig  keeps the OUTER row counter in ecx for the whole row loop
+ *           (`xor ecx,ecx` at 0x15b8, `test ecx,edx` for the mask test,
+ *           `inc ecx; cmp ecx,eax; mov [esp+0x34],ecx; jl 0x15ce` at
+ *           0x1a4c) and homes the INNER column counter in slot 0x7c,
+ *           reloading it (`mov eax,[esp+0x7c]` at 0x1612)
+ *     ours  does the exact opposite -- inner counter in ecx, outer counter
+ *           memory-only (`mov [esp+0x1c],0`, `test [esp+0x1c],edx`)
+ *   SESSION 13 PROBES ON THAT BLOCK, BOTH DEAD, do not re-run:
+ *     (a) the inner counter respelled as a fresh `int iCol` local instead
+ *         of the reused `param_1` pointer parameter with its casts (the
+ *         obvious Ghidra-ism to retranscribe): REGNORM 41+40 unchanged,
+ *         bytes -19 unchanged, insns +1 unchanged, DIFFS 6368 -> 6370
+ *         (slot renumbering only).  ‼ IDIOM, worth more than the probe: a
+ *         Ghidra "reused parameter as loop counter" is CODEGEN-NEUTRAL
+ *         against a fresh local of the same width.  Do not retranscribe
+ *         one hoping to move an allocation, here or anywhere.
+ *     (b) swapping the two counters' ROLES so the outer one is `param_1`
+ *         and the inner a fresh local -- which is how the OTHER arms in
+ *         this function are already written (lines 294-299, 1085-1089), so
+ *         it was the principled guess: REGNORM 41+40 -> 40+39 (one row
+ *         better each side) but bytes -19 -> -25 and RAW 276+275 ->
+ *         280+279, with the region count and the lost-sync gap both
+ *         unchanged at 31 / 0x15b8.  It shuffles the allocation without
+ *         fixing the block; net worse on size.  Rejected.
+ *
  * The insn-3 "coloring wall" is BROKEN (for-loop with a raw-parameter bound);
  * the store-idiom wall is BROKEN too (Ghidra folded orig's two separate
  * `count += 2` updates into one `+= 4` with a `count + 2 >= cbMax` guard --
