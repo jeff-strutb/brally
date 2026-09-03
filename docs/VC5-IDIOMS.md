@@ -3154,3 +3154,49 @@ Re-testing the rest of that function's dead list under the same rule found one
 more verdict had shifted — from clearly-bad to ambiguous — while two others
 held. **Expect a minority to flip: re-test them all, and record which held so
 the next session does not repeat the sweep.**
+
+## Read and update the GLOBAL; a local copy of it changes the allocation
+
+Proven three times in one pass, all byte-exact, all in `src/core/slice2_16.c`:
+0x1001FD40 `BrGbiClearGeometryMode` (8 diffs), 0x100211E0
+`BrGbiSetGeometryMode` (8), 0x10021020 `BrGbiDList` (28).
+
+A decompiled draft naturally says "load it, work on it, store it back":
+
+    cur = g_mode;            /* WRONG */
+    g_prev = cur;
+    cur &= ~pCmd->w1;
+    g_mode = cur;
+
+    n = g_count; n++;        /* WRONG */
+    if (n == 10) exit(1);
+    n = g_count;
+    g_stack[n] = p; n++; g_count = n;
+
+The original says it in place:
+
+    g_prev = g_mode;
+    g_mode &= ~(int)pCmd->w1;
+
+    if (g_count + 1 == 10) exit(1);
+    g_stack[g_count] = p;
+    g_count = g_count + 1;
+
+Two distinct costs, both from the same cause — the local gives the loaded
+value a lifetime the original never gave it:
+
+- **The accumulator flips.** VC5 accumulates into whichever operand dies
+  first. With a local copy that is the mask, so `and ecx,eax` and an extra
+  `mov ecx,[esi+4]`; updating the global in place pins it to the global's
+  own value, `and eax,ecx`, and folds the command word into the `or`'s
+  memory operand.
+- **An `inc` becomes a `lea`.** The local keeps the pre-increment value
+  live across a guard, so the guard's `+1` needs its own register
+  (`lea ecx,[eax+1]`) instead of destroying the load (`inc eax`). The
+  original reloads the global after the call — which the call forces
+  anyway, so the copy buys nothing.
+
+**Screen:** `tools/screen_globalcache.py` lists diff rows whose matching
+body assigns a global into a local and later stores a local back into that
+same global. Spelling the reads and the update in place is a one-line edit
+per site.
