@@ -2229,3 +2229,35 @@ it moved this one from 205 to 0.
   compare ORDER before choosing switch vs if/else -- a chain that runs
   ASCENDING by case value, with two cases sharing a target, is a switch;
   an if/else chain tests in SOURCE order (see the sparse-switch entry).
+- **A dispatch whose arms each name a CONSTANT index is a switch, not one
+  indexed assignment.** Orig 0x10062B10 has FOUR duplicated `rep movsd`
+  blocks, each with its own epilogue, a distinct source address and a
+  distinct destination displacement on the same stride. Computing the
+  index once (`p->profile[k] = defaults[k]`) emits index arithmetic and
+  one copy; the source is a `switch` whose every arm spells its index as
+  a literal, with the default arm first in code order. Byte-exact at 103
+  B once written that way. Same reading applies to any run of
+  near-identical blocks that differ only by a displacement: the
+  duplication IS the source, and folding it into arithmetic is the
+  defect.
+- **`shared.csv`'s `matched_by` column is evidence, and `slot` is the
+  weak grade.** A `d3d`-tagged body is scored against the GLIDE bytes
+  its address maps to. When that mapping is `slot` -- the two functions
+  merely occupy the same dispatch slot -- the two builds may share no
+  code at all, and several such rows say "DIFFERENT CODE" outright. The
+  symptom is a large permanent diff on a function that is often already
+  byte-exact under its Glide name, sitting near the top of the lane
+  ranking as the best available target. `@d3donly` is the label for it.
+  `tools/screen_slotpairs.py` lists them; each needs eyes, because slot
+  pairing is weak evidence and not proof of difference.
+- **A thunk must never carry the `@implements` for the body it calls.**
+  A second NAME for an address -- an adapter that forwards to the real
+  implementation elsewhere in the tree -- compiles to a ~32-byte call
+  that can never reproduce a body of hundreds of bytes, so tagging it
+  puts one address in the measured set twice and leaves one of the pair
+  permanently unmatchable. Move the tag to the body and leave the thunk
+  a comment naming where the match lives (the convention slice6_74.c's
+  BrVec3Len note established; 0x1006A4A0 and 0x10073C90 were both found
+  this way on 2026-09-03). The same trap in reverse: a tag sitting on a
+  FRAGMENT of a larger original, e.g. 0x1005B2B0, where the twelve-line
+  function tagged was the first thirty bytes of a 212-byte routine.
