@@ -122,10 +122,12 @@ void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
  *
  * RESIDUE (347 bytes differ, 419 vs 417, instruction count -2; REGNORM
  * multiset gap 18+20).  Ruled out, do not re-probe: swapping the operands of
- * any both-memory `fmul` (VC5 canonicalises multiplication operand roles the
- * same way it canonicalises commutative x87 addends -- byte-identical
- * output), and naming m[4]*m[8] (411 B / 340 diffs but FIRSTDIV regresses to
- * +0xd and the 1006DE9C memory `fsub` still does not appear).  What is still
+ * a both-memory `fmul` here (`m[5]*m[7]` for `m[7]*m[5]` -- byte-identical
+ * output in THIS function; note that the same swap on an ADDITION was the
+ * whole match in 0x1006DAD0, so operand order is worth probing elsewhere,
+ * just not on these multiplies), and naming m[4]*m[8] (411 B / 340 diffs but
+ * FIRSTDIV regresses to +0xd and the 1006DE9C memory `fsub` still does not
+ * appear).  What is still
  * unexplained: (1) the original keeps `inv` in an x87 register from the
  * 1006DF14 `fdivr` all the way to the closing `fstp st(0)`, spending it as
  * three `fmul st(1)`; the recompile homes it in the dead parameter slot and
@@ -594,38 +596,59 @@ void BrRbInitInertia(BrRbBody *pB)
     pB->f1D0 = 0.0f;
     pB->f1C8 = 0.5f;
 
-    for (i = 0; i < 3; ++i)
-        for (j = 0; j < 3; ++j)
-            pB->inertia.m[3 * i + j] = (i == j) ? 1.0f : 0.0f;
+    /* if/else, NOT a ternary: the original stores both arms as integer
+     * immediates (`mov dword [esi+ebx*4], 0x3f800000` / `, edi` with edi the
+     * zero register), which is the float-constant store VC5 emits for a plain
+     * literal assignment.  A ternary makes the value runtime-selected and
+     * costs an `fld` of each constant plus an `fstp`.  The index stays
+     * `3*i + j` -- the strength reducer folds inertia's 0x30 byte offset into
+     * the row IV, which is where the `mov ecx, 0xc` / `add ecx, 3` /
+     * `cmp ecx, 0x15` walk comes from. */
+    for (i = 0; i < 3; ++i) {
+        for (j = 0; j < 3; ++j) {
+            if (i == j)
+                pB->inertia.m[3 * i + j] = 1.0f;
+            else
+                pB->inertia.m[3 * i + j] = 0.0f;
+        }
+    }
 
     if (pB->mode >= 0 && pB->mode <= 1) {
-        /* SPILL MAP.  Three squares, and only TWO of them are rounded:
+        /* SPILL MAP (Glide 0x1006DB5E..0x1006DBE5).  Everything here is
+         * FLOAT: every fmul and fadd in the block is a `dword` operand.  An
+         * earlier reading took the fst/fstp asymmetry for a double source and
+         * typed the sides `double` with per-use casts; see the VC5-IDIOMS
+         * entry "`fst` (not `fstp`) of a float local does NOT mean the source
+         * was double" -- without /Op the scheduler keeps unrounded values in
+         * st freely, and the double spelling is what produced the `fmul qword`
+         * / `fdivr qword` chain.
          *
-         *   1007492D  fstp [esp+0x18]  z*z  reloaded 10074938 / 10074940
-         *   10074946  fstp [esp+0x18]  y*y  reloaded 1007494C / 10074952
-         *
-         * x*x is never stored -- it is produced at 10074927, duplicated with
-         * `fld st(2)` at 1007493E and consumed by two adds from the register.
-         * The two stores reuse the SAME slot, which is why z*z has to be
-         * reloaded (10074938) before y*y overwrites it.
-         *
-         * So the diagonal is not symmetric in its rounding: m[0] takes two
-         * rounded squares, and m[4] and m[8] each take one rounded and one
-         * unrounded. The multiply by mass (0x2C) and by 1/12 (0x1008FC54 ==
-         * 3DAAAAAB) stay in registers, so each entry rounds to float exactly
-         * once, at its `fstp` (1007497F / 10074982 / 10074985). */
-        const double x  = (double)pB->dim[0];
-        const double y  = (double)pB->dim[1];
-        const double z  = (double)pB->dim[2];
-        const double xx = x * x;                   /* never stored */
-        const float  yy = (float)(y * y);          /* 10074946 fstp */
-        const float  zz = (float)(z * z);          /* 1007492D fstp */
-        const double m  = (double)pB->mass;
-        const double k  = (double)BR_K_ONE_TWELFTH;
+         * The three edge lengths are three SCALAR float locals, copied out of
+         * dim[] with integer movs at 1006DB67/DB6F/DB73.  Only two get frame
+         * slots -- x at [esp+0xc], y at [esp+0x10], which is the whole
+         * `sub esp, 8` -- and z is packed into the dead pB parameter slot
+         * [esp+0x18].  The two squares that need memory (z*z, then y*y) reuse
+         * that same slot after z dies, so they are compiler CSE temps and the
+         * squares are spelled inline; x*x is never stored at all (duplicated
+         * with `fld st(2)` at 1006DB9E).  mass and the 1/12 constant are
+         * re-read per row, not cached. */
+        /* DECLARATION ORDER IS LOAD-BEARING: x must come LAST.  It decides
+         * which of the three lands in the dead parameter slot -- with x first
+         * VC5 never homes y at all (`fld [esi+0x24]` + `fmul st`), and with x
+         * in the middle the squares come out in the wrong order.  y before z
+         * or z before y are both byte-exact; this is the order the formula
+         * first mentions them in. */
+        float y = pB->dim[1];
+        float z = pB->dim[2];
+        float x = pB->dim[0];
 
-        pB->inertia.m[0] = (float)((((double)zz + (double)yy) * m) * k);
-        pB->inertia.m[4] = (float)(((xx + (double)zz) * m) * k);
-        pB->inertia.m[8] = (float)(((xx + (double)yy) * m) * k);
+        /* The addends of the FIRST row are load-bearing too: `y*y + z*z`, not
+         * `z*z + y*y`.  That one swap is the difference between byte-exact and
+         * 113 differing bytes -- it picks which square is computed first, and
+         * so which value the dead parameter slot is recycled for. */
+        pB->inertia.m[0] = (y * y + z * z) * pB->mass * BR_K_ONE_TWELFTH;
+        pB->inertia.m[4] = (x * x + z * z) * pB->mass * BR_K_ONE_TWELFTH;
+        pB->inertia.m[8] = (x * x + y * y) * pB->mass * BR_K_ONE_TWELFTH;
 
         BrGbiCall10075330(&pB->inertia);
     }
@@ -633,23 +656,16 @@ void BrRbInitInertia(BrRbBody *pB)
     if (pB->mode != 2) {
         /* only the diagonal -- see the header's gotcha.
          *
-         * `fld [0x1008FC48] (== 1.0f); fdiv dword ptr; fstp dword ptr` at
-         * 10074996..100749B7.  The DIVIDE happens at the register's 53-bit
-         * precision and only the result is narrowed, so this is written as a
-         * double divide narrowed once -- which is what the instructions do.
-         *
-         * It is written that way for faithfulness, NOT because it changes an
-         * answer: for this particular divide the double rounding is benign.
-         * Checked exhaustively rather than argued -- over all 8,388,608 float
-         * significands in [1,2), `(float)(1.0/(double)x)` and `1.0f/x` agree
-         * on every one, and scaling x by a power of two scales both results
-         * exactly, so that settles the whole normal range.  Reverting this
-         * line to `1.0f / m[i]` is therefore an equivalent mutation and no
-         * test can catch it; that is a property of the arithmetic, not a gap
-         * in the suite. */
-        pB->invInertia.m[0] = (float)(1.0 / (double)pB->inertia.m[0]);
-        pB->invInertia.m[4] = (float)(1.0 / (double)pB->inertia.m[4]);
-        pB->invInertia.m[8] = (float)(1.0 / (double)pB->inertia.m[8]);
+         * `fld [1.0f]; fdiv DWORD ptr [esi+0x30]; fstp dword ptr` at
+         * 1006DBF6..1006DC17.  A `fdiv dword` is a float divide, so this is
+         * `1.0f / x`, not a double divide narrowed once -- an earlier reading
+         * spelled it `(float)(1.0 / (double)x)` and got `fdivr qword`.  (The
+         * two agree numerically on every normal float, so no test could catch
+         * the difference; the bytes are the only evidence, and they say
+         * float.) */
+        pB->invInertia.m[0] = 1.0f / pB->inertia.m[0];
+        pB->invInertia.m[4] = 1.0f / pB->inertia.m[4];
+        pB->invInertia.m[8] = 1.0f / pB->inertia.m[8];
     }
 
     pB->f1D4 = 0.0f;
