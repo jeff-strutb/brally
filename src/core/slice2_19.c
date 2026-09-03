@@ -1251,19 +1251,23 @@ static uint16_t BrLd16(const void *pv)
  * and all. Each finished piece is then handed to the renderer. */
 /* @implements 0x10036C00 d3d BrModelSwap */
 #ifdef BR_MATCHING_BUILD
-/* RESIDUE 1062 vs 1054 bytes, 371 vs 370 instructions, register-blind 35+36
- * (from 149+285 when this was first opened).  What is LEFT is one thing: the
- * original MERGES ADJACENT BYTE STORES INTO 16-BIT STORES.  Its prologue
- * loads all four header bytes (al,cl,ah,ch) and then writes
- * `mov word ptr [ebp+2],ax` / `mov word ptr [ebp],cx`, i.e. two BrRev2 calls
- * scheduled together; we emit the byte stores separately, which is 13 extra
- * `mov byte ptr [R+I],B` against 7 missing word stores.  PROBED AND DEAD, do
- * not re-run: loading both bytes into two temps before storing either
- * (byte-identical), and doing that through a `p_` pointer temp -- that one
- * lowers RAW 136+137 -> 124+127 but costs size (8 short -> 19) and an
- * instruction, so it is not an improvement by the ranking rule.  Also dead:
- * giving the leaf loop's doubled subscript its own local stepped by 2
- * (no change to the register-blind gap).
+/* RESIDUE 1062 vs 1028 bytes, 371 vs 361 instructions, register-blind 13+23
+ * (from 149+285 when this was first opened -- see the git log for the four
+ * earlier steps).  The 2-byte reversal being a halfword COMPOSE AND ONE
+ * 16-BIT STORE, rather than two byte stores, was the last big one: the
+ * original has seven `mov word ptr` stores, exactly one per BrRev2 site.
+ *
+ * What is LEFT is scattered and small, and it is concentrated in the LEAF
+ * LOOP's index form: recomp EXTRA carries `mov B,[R+R-I]` and
+ * `mov word ptr [R+R-I],W` (negative displacements) plus a `shl`/`dec`/`jne`
+ * loop shape, against a MISSING `lea R,[R*I]`.  We are now ten instructions
+ * SHORT, so at least one site is being folded that the original spells out.
+ * PROBED AND DEAD, do not re-run: single-temp and load-both-first spellings
+ * of the byte swap (two byte stores never merge, however the temps are
+ * arranged); the same through a `p_` pointer temp (better RAW, worse size and
+ * instruction count); and giving the leaf loop's doubled subscript its own
+ * local stepped by 2 -- tried against BOTH baselines, and against this one it
+ * is clearly worse (register-blind 36 -> 49).
  *
  * MACROS, not statics -- MSVC5 will not inline a static with more than one
  * caller, so every BrRev/BrLd here was a `call` the original does not have.
