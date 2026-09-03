@@ -1796,12 +1796,46 @@ parked-wall kind newly retryable (no new idiom landed).
   and restores `sub esp, 0xc` with the slots in declaration order. So
   `sub esp, <exactly N locals * 4>` next to a parameter that dies at the
   first instruction is evidence the source used an aggregate.
-- **VC5 canonicalises commutative x87 addend order.** `a*b + c*d` and
-  `c*d + a*b` compile to BYTE-IDENTICAL code; which product is scheduled
-  first is the allocator's choice, not the source's. Do not spend probes
-  permuting the terms of a sum to chase an `fxch` index. (Subtraction and
-  the association of a 3-term row still matter: `((t1+t2)-t3)` is faddp
-  then fsubp, `t1+(t2-t3)` is the reverse.)
+- **Commutative x87 addend order is SOMETIMES a no-op and sometimes the
+  whole match — always probe it, never assume.** In 0x1006D530 swapping
+  `a*b + c*d` to `c*d + a*b` in any row was byte-identical (so is
+  swapping the operands of a both-memory `fmul` in 0x1006DE70). In
+  0x1006DAD0 the same kind of swap on the FIRST of three rows --
+  `(y*y + z*z)` for `(z*z + y*y)` -- was the difference between
+  byte-exact and 113 differing bytes: it picks which square is computed
+  first, and so which value the dead parameter slot gets recycled for.
+  Rule of thumb: the swap matters when the two addends compete for a
+  scarce home (a stack slot, the dead parameter slot), and not when both
+  live on the x87 stack anyway. It is 3-7 cheap compiles to settle;
+  settle it rather than reasoning about it. (Association of a 3-term row
+  is a separate, always-load-bearing question: `((t1+t2)-t3)` is faddp
+  then fsubp, `t1+(t2-t3)` the reverse.)
+- **`c ? K1f : K2f` is fld/fstp; `if (c) x = K1f; else x = K2f;` is two
+  integer-immediate stores.** VC5 stores a float LITERAL as
+  `mov dword ptr [mem], 0x3f800000` (and via the zero register for
+  0.0f), but a ternary makes the value runtime-selected and costs an
+  `fld` of each constant plus an `fstp`. Orig 0x1006DAD0's identity-matrix
+  fill is `mov dword [esi+ebx*4], 0x3f800000` / `, edi`, so the source is
+  an if/else with a literal in each arm, not `(i == j) ? 1.0f : 0.0f`.
+  The if/else form also lets the strength reducer fold the field's byte
+  offset into the row IV (`mov ecx, 0xc` / `add ecx, 3` / `cmp ecx, 0x15`
+  for a 3x3 at struct offset 0x30) -- the ternary blocks that too.
+- **Declaration order of scalar float locals picks which one is packed
+  into the dead parameter slot.** With N locals and fewer frame slots
+  than N, the choice of which overflows into the dead incoming-parameter
+  slot follows source declaration order, and getting it wrong can make
+  VC5 drop one local entirely (reading the field in place with
+  `fld [reg+disp]` + `fmul st` instead of homing it). On 0x1006DAD0 the
+  three edge lengths had to be declared with `x` LAST; `x` first cost the
+  `y` home, `x` in the middle reversed the squares. Only three orders
+  need trying, and the diff tells you immediately -- a MISSING
+  `mov R,[R+I]` + `mov [esp+S],R` pair with an EXTRA `fld [R+I]` is
+  exactly this.
+- **`fld [1.0f]; fdiv dword ptr [mem]` is `1.0f / x`, not a double
+  divide.** The operand width on the `fdiv` settles it; a
+  `(float)(1.0 / (double)x)` spelling emits `fdivr qword`. The two agree
+  numerically on every normal float, so no test can catch the difference
+  and the bytes are the only evidence.
 
 ## SIB base/index order on `member_array[index]` — NOT source-reachable
 *(proven 2026-09-03 on 0x100540D0 / 0x10054280, the font-A/font-B glyph walks)*
