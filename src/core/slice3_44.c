@@ -401,18 +401,31 @@ void BrRbQuatDerivative(BrRbState *pS)
      * whole and restores `sub esp, 0xc` with the slots in declaration order.
      * BrVec3 and float[3] compile identically here; BrVec3 reads better.
      *
-     * RESIDUE (23 bytes, do not re-probe these): every remaining differing
-     * byte is the ModRM of an `fxch`/`faddp`/`fsubp` st(i) index, plus four
-     * `fmul` displacements that swap in compensating pairs.  Instruction
-     * stream, count and size are exact (RAW and REGNORM multiset gap 0+0);
-     * the x87 stack holds the same eight values in a different permutation
-     * from 1006D58A on.  Probed and ruled out, do NOT re-run: swapping the
-     * two product terms of a row -- all seven combinations of the three
-     * swappable rows give the SAME 26 diffs / 208 bytes, worse than the 23
-     * here; all five non-identity orderings of the three h assignments (49,
-     * 75, 89, 165 and 176 diffs -- x, y, z is the best by a wide margin);
-     * `float[3]` vs `BrVec3` (byte-identical); and `/O2 /Op` (214 bytes, 134
-     * diffs -- strictly worse, this TU is /O2).  T3a. */
+     * ROW 3 SUBTRACTS SECOND, NOT LAST.  `h.z*f04 - h.x*f0C + h.y*f00`, not
+     * `h.z*f04 + h.y*f00 - h.x*f0C`.  Only row 3 takes this form; rows 2 and
+     * 4 keep the plus-then-minus shape, and their own alternatives change
+     * nothing (measured, all give the same score).
+     *
+     * ‼ CORRECTION.  An earlier version of this note claimed 23 bytes of
+     * residue with "instruction stream, count and size exact (RAW and REGNORM
+     * multiset gap 0+0)".  That was never true: measured at that note's own
+     * commit the function was 208 bytes against 206, 74 instructions against
+     * 73, with ONE SURPLUS `fxch` and REGNORM 1+0.  A claim of parity is what
+     * stops the next reader from working a function, so it has to be measured
+     * before it is written.  The subtract-second row above is what actually
+     * removes that `fxch`; the function is only NOW at 206/206, 73/73 and
+     * RAW/REGNORM 0+0, with 21 differing bytes.
+     *
+     * RESIDUE (21 bytes): every remaining differing byte is the ModRM of an
+     * `fxch`/`faddp`/`fsubp` st(i) index -- the x87 stack holds the same
+     * values in a different permutation from 1006D565 on.  Probed and ruled
+     * out, do NOT re-run: the full 4x4x4 sweep of per-row term orders and
+     * associations for rows 2/3/4 (64 builds, nothing beats 21, and the six
+     * that tie differ only in rows 2 and 4); all five non-identity orderings
+     * of the three h assignments RE-RUN against the corrected row 3 (50, 85,
+     * 90, 165 and 170 diffs -- x, y, z still wins); three re-associations of
+     * row 1 (30, 141 and 168); `float[3]` vs `BrVec3` (byte-identical); and
+     * `/O2 /Op` (214 bytes, 134 diffs -- strictly worse, this TU is /O2). */
     BrVec3 h;
 
     h.x = pS->angVel.x * 0.5f;
@@ -424,7 +437,7 @@ void BrRbQuatDerivative(BrRbState *pS)
      * `-hx*x - hy*y - hz*z`, evaluated left to right. */
     pS->qDot.f00 = -h.x * pS->quat.f04 - h.y * pS->quat.f08 - h.z * pS->quat.f0C;
     pS->qDot.f04 = h.y * pS->quat.f0C + h.x * pS->quat.f00 - h.z * pS->quat.f08;
-    pS->qDot.f08 = h.z * pS->quat.f04 + h.y * pS->quat.f00 - h.x * pS->quat.f0C;
+    pS->qDot.f08 = h.z * pS->quat.f04 - h.x * pS->quat.f0C + h.y * pS->quat.f00;
     pS->qDot.f0C = h.x * pS->quat.f08 + h.z * pS->quat.f00 - h.y * pS->quat.f04;
 }
 
