@@ -865,10 +865,27 @@ void BrSceneSetupFrame(const BrHudView *aViews)
      * if.  Behaviourally the two are the same -- which is what the old note
      * here said, and why it was hoisted -- but the original calls the 17-arg
      * emitter TWICE (two `add esp,0x44` sites, at +0x213 and +0x288) and a
-     * hoisted call can only ever be one of them.  That single missing call
-     * was 46 bytes and half the register-blind gap (REGNORM 35+40 -> 35+18).
-     * Tell for this class: count `call`s and stack adjusts in the original
-     * before trusting a "both branches do X" comment. */
+     * hoisted call can only ever be one of them.  Tell for this class: count
+     * `call`s and stack adjusts in the original before trusting a "both
+     * branches do X" comment -- the original has SEVEN calls and TWO
+     * `add esp,0x44`; the hoisted version had six and one.
+     *
+     * MEASURED AT THIS TU'S OWN VARIANT (/O2 /Op -- fn.py compiles /O2 only,
+     * so its numbers here are partly phantom): register-blind gap 37+40 ->
+     * 26+18 for this fix together with the shift below.  Note the raw byte
+     * diff moved the WRONG way, 819 -> 821, size went from 38 short to 7
+     * short, and the instruction count from 3 under to 8 over.  That is the
+     * documented pattern -- rank by the register-blind multiset, never by
+     * size -- but it does mean the two blocks are not yet shaped the way the
+     * original shares them.
+     *
+     * RESIDUE: recomp EXTRA is 4 dword global reads where the original
+     * byte-loads (it reads 0x106e7290 / 0x106e86a4 / 0x106e72f0 three times
+     * each and 0x106b7c78 once, always `xor r,r; mov rl,[g]`), plus a
+     * `mov R,R` / `mov B,B` / `and R,I` cluster -- the byte-slot idiom.  DEAD
+     * probe, do not re-run: nesting the 0xFB word's shifts so two bytes pack
+     * into one register before the shl pair -- VC5 canonicalises the `|`
+     * chain and it compiles byte-identical. */
     if (g_scene.f6C6618 != 0) {
         p = BrGfxAlloc();
         BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
