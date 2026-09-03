@@ -5,7 +5,12 @@ inside the ROM. This finds them, unpacks them, renders them to PCM and encodes
 the result.
 
     python tools/extract_xm.py "reference/tgrally/Top Gear Rally (USA).z64" \
-                               build/audio/music_n64
+                               testdata/music_xm
+
+testdata/music_xm is where this belongs: it is the directory setup.sh extracts
+into and therefore the one anything downstream reads. Writing anywhere else
+leaves a stale export in place and looks, from outside, like the run did
+nothing.
 
 Nothing here is committed and nothing is shipped -- see "Asset policy" in README.md.
 The output is regenerated on each machine from that machine's own ROM.
@@ -33,6 +38,21 @@ rendering; this script compiles it on demand. See the comment at the top of that
 file for exactly which XM features are implemented and how that set was derived
 from these six modules. If the renderer reports an effect it does not implement,
 this script fails loudly rather than writing audio that is quietly wrong.
+
+That check catches a MISSING effect. It cannot catch an effect implemented
+wrongly, which is the failure mode a hand-written replayer actually has -- an
+Amiga-table octave error made two of these six tracks play two octaves sharp and
+the effect census had nothing to say about it. `tools/xm_oracle.py` is the check
+for that: it scores xm_render.c against libopenmpt, the replayer MilkyTracker and
+VLC use. Run it after touching xm_render.c.
+
+Levels
+------
+All six tracks are scaled by ONE gain, taken from the loudest module's peak, so
+that the loudness the composer wrote survives. XM has no module-level master
+volume -- the mix level is the composed level -- so normalising each track to its
+own peak would silently flatten six tracks into equal loudness. --per-track-gain
+restores the old behaviour if a consumer really wants it.
 """
 import argparse
 import hashlib
@@ -175,9 +195,15 @@ def have_ffmpeg():
     return True
 
 
-def render_module(exe, xm_path, raw_path, args):
+def run_renderer(exe, xm_path, args, raw_path=None, gain=None):
+    """Render (or, with raw_path None, only measure). Returns the renderer's JSON."""
     cmd = [exe, "--rate", str(args.rate), "--passes", str(args.passes),
-           "--fade-ms", str(args.fade_ms), xm_path, raw_path]
+           "--fade-ms", str(args.fade_ms)]
+    if gain is not None:
+        cmd += ["--gain", "%.9f" % gain]
+    else:
+        cmd += ["--headroom-db", str(args.headroom_db)]
+    cmd += ([xm_path, raw_path] if raw_path else ["--measure", xm_path])
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise Fail("renderer failed on %s:\n%s"
@@ -193,6 +219,26 @@ def render_module(exe, xm_path, raw_path, args):
                    "tools/xm_render.c before trusting this track."
                    % (os.path.basename(xm_path), info["unhandled_effects"]))
     return info
+
+
+def shared_gain(exe, xm_paths, args, say):
+    """One gain for the whole soundtrack, from the loudest module's peak.
+
+    Scaling each module to its own peak would equalise six tracks the composer
+    did not write as equally loud -- XM carries no module-level master volume,
+    so the mix level IS the composed level and the only honest thing to do is
+    scale them all by the same number. --per-track-gain opts out.
+    """
+    peaks = {}
+    for p in xm_paths:
+        peaks[p] = run_renderer(exe, p, args)["raw_peak"]
+    top = max(peaks.values()) if peaks else 0.0
+    if top <= 0.0:
+        return 1.0, peaks
+    g = 10.0 ** (args.headroom_db / 20.0) / top
+    say("shared gain %.6f (loudest module peaks at %.3f; spread %.3f..%.3f)"
+        % (g, top, min(peaks.values()), top))
+    return g, peaks
 
 
 def encode_flac(raw_path, dst, rate, level):
@@ -224,6 +270,7 @@ def settings_fingerprint(rom_sha, args):
     h.update(rom_sha.encode())
     h.update(b"|%d|%d|%d|%d" % (args.rate, args.passes, args.fade_ms,
                                 args.compression_level))
+    h.update(b"|%.4f|%d" % (args.headroom_db, args.per_track_gain))
     return h.hexdigest()
 
 
@@ -246,6 +293,12 @@ def main(argv=None):
     ap.add_argument("--compression-level", type=int, default=8,
                     choices=range(0, 13), metavar="0-12",
                     help="flac compression effort (default 8)")
+    ap.add_argument("--headroom-db", type=float, default=-1.0,
+                    help="peak the loudest track lands on, in dBFS (-1.0)")
+    ap.add_argument("--per-track-gain", action="store_true",
+                    help="scale each track to its own peak instead of scaling "
+                         "the whole set by one gain; this discards the relative "
+                         "loudness the modules were written with")
     args = ap.parse_args(argv)
 
     def say(msg):
@@ -290,13 +343,33 @@ def main(argv=None):
     exe = build_renderer(os.path.dirname(os.path.abspath(__file__)), workdir,
                          args.quiet)
 
+    # Unpack every module up front: the shared gain is a property of the whole
+    # set, so it cannot be decided one track at a time.
+    xm_dir = args.outdir if args.keep_xm else workdir
+    xm_paths = {}
+    for off, payload in modules:
+        xm_paths[off] = os.path.join(xm_dir, "xm_%06X.xm" % off)
+        with open(xm_paths[off], "wb") as fh:
+            fh.write(payload)
+
+    todo = [off for off, _ in modules
+            if not (fresh
+                    and os.path.exists(os.path.join(args.outdir, "xm_%06X.flac" % off))
+                    and os.path.getsize(os.path.join(args.outdir, "xm_%06X.flac" % off)) > 0
+                    and any(e.get("file") == "xm_%06X.flac" % off
+                            for e in (prev or {}).get("tracks", [])))]
+
+    gain = None
+    if todo and not args.per_track_gain:
+        gain, _peaks = shared_gain(exe, [xm_paths[o] for o, _ in modules], args, say)
+
     entries = []
     done = skipped = 0
     for off, payload in modules:
         name = "xm_%06X.flac" % off
         dst = os.path.join(args.outdir, name)
 
-        if fresh and os.path.exists(dst) and os.path.getsize(dst) > 0:
+        if off not in todo:
             entry = next((e for e in prev.get("tracks", [])
                           if e.get("file") == name), None)
             if entry is not None:
@@ -304,19 +377,14 @@ def main(argv=None):
                 skipped += 1
                 continue
 
-        xm_path = os.path.join(args.keep_xm and args.outdir or workdir,
-                               "xm_%06X.xm" % off)
-        with open(xm_path, "wb") as fh:
-            fh.write(payload)
+        xm_path = xm_paths[off]
         raw_path = os.path.join(workdir, "xm_%06X.raw" % off)
         try:
-            info = render_module(exe, xm_path, raw_path, args)
+            info = run_renderer(exe, xm_path, args, raw_path, gain)
             encode_flac(raw_path, dst, args.rate, args.compression_level)
         finally:
             if os.path.exists(raw_path):
                 os.remove(raw_path)
-            if not args.keep_xm and os.path.exists(xm_path):
-                os.remove(xm_path)
 
         secs = info["seconds"]
         say("  %s  %2d:%05.2f  %2dch %-6s  %6.1f MB  %s"
@@ -335,11 +403,18 @@ def main(argv=None):
         entries.append(entry)
         done += 1
 
+    if not args.keep_xm:
+        for path in xm_paths.values():
+            if os.path.exists(path):
+                os.remove(path)
+
     with open(os.path.join(args.outdir, MANIFEST_NAME), "w") as fh:
         json.dump({"fingerprint": fingerprint, "rom_sha256": rom_sha,
                    "rom_title": rom_title(rom), "sample_rate": args.rate,
                    "channels": 2, "passes": args.passes,
-                   "fade_ms": args.fade_ms, "tracks": entries},
+                   "fade_ms": args.fade_ms, "headroom_db": args.headroom_db,
+                   "gain_mode": "per-track" if args.per_track_gain else "shared",
+                   "shared_gain": gain, "tracks": entries},
                   fh, indent=2, sort_keys=True)
         fh.write("\n")
 
