@@ -54,78 +54,78 @@
 <rect x="355.2" y="303.8" width="5.2" height="3.4" fill="#c8ccd2"><title>(unnamed)  0x1005E690  9B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="355.2" y="307.8" width="5.2" height="1.6" fill="#c8ccd2"><title>(unnamed)  0x10059F00  5B  [unfiled 0x1005xxxx]</title></rect>
 <text x="3.0" y="322.0" font-size="10" fill="#8b949e">(C++ EH)</text>
-<rect x="1.5" y="327.0" width="107.6" height="199.1" fill="#3fb950"><title>BrUiBootPreLoopGate  0x10056260  8349B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="1.5" y="526.7" width="107.6" height="89.0" fill="#3fb950"><title>BrPhaseEnterPlaceholder_1004A580  0x100439B0  3746B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="109.7" y="327.0" width="95.5" height="71.6" fill="#3fb950"><title>BrExt_1004E830  0x100476E0  2679B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="205.8" y="327.0" width="94.8" height="71.6" fill="#3fb950"><title>BrUiRootEnter_100425E0  0x100425E0  2659B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="1.5" y="327.0" width="107.6" height="199.1" fill="#3fb950"><title>(unnamed)  0x10056260  8349B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="1.5" y="526.7" width="107.6" height="89.0" fill="#3fb950"><title>(unnamed)  0x100439B0  3746B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="109.7" y="327.0" width="95.5" height="71.6" fill="#3fb950"><title>(unnamed)  0x100476E0  2679B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="205.8" y="327.0" width="94.8" height="71.6" fill="#3fb950"><title>(unnamed)  0x100425E0  2659B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="301.1" y="327.0" width="59.2" height="71.6" fill="#3fb950"><title>(unnamed)  0x10041F50  1668B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="109.7" y="399.2" width="37.3" height="49.8" fill="#3fb950"><title>BrUiFrame_10048180  0x100415D0  738B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="109.7" y="449.6" width="37.3" height="32.8" fill="#3fb950"><title>BrOpt3810  0x1003CD60  490B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="109.7" y="449.6" width="37.3" height="32.8" fill="#3fb950"><title>(unnamed)  0x1003CD60  490B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="109.7" y="483.0" width="37.3" height="31.3" fill="#3fb950"><title>(unnamed)  0x10041980  468B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="109.7" y="514.9" width="37.3" height="27.2" fill="#3fb950"><title>BrPhaseActivate_100447D0  0x1003DD20  407B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="109.7" y="542.7" width="37.3" height="24.5" fill="#3fb950"><title>BrEntReset  0x1006FD90  368B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="109.7" y="514.9" width="37.3" height="27.2" fill="#3fb950"><title>(unnamed)  0x1003DD20  407B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="109.7" y="542.7" width="37.3" height="24.5" fill="#3fb950"><title>(unnamed)  0x1006FD90  368B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="109.7" y="567.8" width="37.3" height="24.1" fill="#3fb950"><title>(unnamed)  0x10004AD0  362B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="109.7" y="592.6" width="37.3" height="23.2" fill="#3fb950"><title>BrAppStateSetMode  0x1001CE20  348B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="147.6" y="399.2" width="29.2" height="29.0" fill="#3fb950"><title>BrMenuTime0EE0  0x1003A420  341B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="177.4" y="399.2" width="27.5" height="29.0" fill="#3fb950"><title>BrMenuTime1040  0x1003A580  322B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="205.6" y="399.2" width="27.5" height="29.0" fill="#3fb950"><title>BrMenuTime1180  0x1003A6D0  322B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="147.6" y="399.2" width="29.2" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003A420  341B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="177.4" y="399.2" width="27.5" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003A580  322B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="205.6" y="399.2" width="27.5" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003A6D0  322B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="233.7" y="399.2" width="26.4" height="29.0" fill="#3fb950"><title>(unnamed)  0x10004900  309B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="260.7" y="399.2" width="25.0" height="29.0" fill="#3fb950"><title>BrExt_10045C90  0x1003F130  293B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="286.3" y="399.2" width="25.0" height="29.0" fill="#3fb950"><title>BrPhaseActivate_10045F70  0x1003F410  293B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="311.9" y="399.2" width="24.2" height="29.0" fill="#3fb950"><title>BrPhaseActivate_10046260  0x1003F700  284B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="260.7" y="399.2" width="25.0" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003F130  293B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="286.3" y="399.2" width="25.0" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003F410  293B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="311.9" y="399.2" width="24.2" height="29.0" fill="#3fb950"><title>(unnamed)  0x1003F700  284B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="336.7" y="399.2" width="23.6" height="29.0" fill="#3fb950"><title>(unnamed)  0x10039870  277B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="147.6" y="428.8" width="23.2" height="27.1" fill="#3fb950"><title>BrOptOpen2954  0x1003DC20  254B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="147.6" y="428.8" width="23.2" height="27.1" fill="#3fb950"><title>(unnamed)  0x1003DC20  254B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="147.6" y="456.4" width="23.2" height="26.5" fill="#3fb950"><title>(unnamed)  0x10041DD0  249B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="147.6" y="483.6" width="23.2" height="26.3" fill="#3fb950"><title>(unnamed)  0x10041300  247B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="147.6" y="510.5" width="23.2" height="26.1" fill="#3fb950"><title>(unnamed)  0x1003A910  245B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="147.6" y="537.1" width="23.2" height="26.0" fill="#3fb950"><title>BrPhaseActivate_10044F50  0x1003E4A0  244B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="147.6" y="563.7" width="23.2" height="26.0" fill="#3fb950"><title>BrPhaseActivate_10045900  0x1003ED90  244B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="147.6" y="590.3" width="23.2" height="25.4" fill="#3fb950"><title>BrPhaseActivate_10046170  0x1003F610  239B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="428.8" width="23.5" height="23.3" fill="#3fb950"><title>BrMenuSub10044E20  0x1003E370  223B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="452.7" width="23.5" height="23.2" fill="#3fb950"><title>BrOptOpen2950B  0x1003D930  222B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="476.5" width="23.5" height="23.1" fill="#3fb950"><title>BrPhaseActivate_10044D00  0x1003E250  221B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="500.2" width="23.5" height="22.9" fill="#3fb950"><title>BrSub10043BF0  0x1003D140  219B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="147.6" y="537.1" width="23.2" height="26.0" fill="#3fb950"><title>(unnamed)  0x1003E4A0  244B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="147.6" y="563.7" width="23.2" height="26.0" fill="#3fb950"><title>(unnamed)  0x1003ED90  244B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="147.6" y="590.3" width="23.2" height="25.4" fill="#3fb950"><title>(unnamed)  0x1003F610  239B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="428.8" width="23.5" height="23.3" fill="#3fb950"><title>(unnamed)  0x1003E370  223B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="452.7" width="23.5" height="23.2" fill="#3fb950"><title>(unnamed)  0x1003D930  222B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="476.5" width="23.5" height="23.1" fill="#3fb950"><title>(unnamed)  0x1003E250  221B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="500.2" width="23.5" height="22.9" fill="#3fb950"><title>(unnamed)  0x1003D140  219B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="171.4" y="523.7" width="23.5" height="22.8" fill="#3fb950"><title>(unnamed)  0x100414F0  218B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="547.1" width="23.5" height="22.6" fill="#3fb950"><title>BrOptOpen2948  0x1003D3C0  216B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="547.1" width="23.5" height="22.6" fill="#3fb950"><title>(unnamed)  0x1003D3C0  216B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="171.4" y="570.3" width="23.5" height="22.5" fill="#3fb950"><title>(unnamed)  0x10058D40  215B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="171.4" y="593.3" width="23.5" height="22.4" fill="#3fb950"><title>BrMenuSub10044B90  0x1003E0E0  214B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="428.8" width="23.9" height="22.0" fill="#3fb950"><title>BrPhaseActivate_100451E0  0x1003E730  214B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="171.4" y="593.3" width="23.5" height="22.4" fill="#3fb950"><title>(unnamed)  0x1003E0E0  214B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="428.8" width="23.9" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003E730  214B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="220.0" y="428.8" width="23.8" height="22.0" fill="#3fb950"><title>(unnamed)  0x10071FC0  213B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="244.5" y="428.8" width="23.7" height="22.0" fill="#3fb950"><title>BrPhaseActivate_10045DC0  0x1003F260  212B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="268.8" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>BrOptOpen296C  0x1003C7B0  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="291.8" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>BrExt_10043330  0x1003C880  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="244.5" y="428.8" width="23.7" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003F260  212B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="268.8" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003C7B0  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="291.8" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003C880  201B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="314.9" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003CA10  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="337.9" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>BrOptOpen2940  0x1003D220  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="337.9" y="428.8" width="22.4" height="22.0" fill="#3fb950"><title>(unnamed)  0x1003D220  201B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="195.5" y="451.4" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003D2F0  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="474.9" width="21.5" height="23.0" fill="#3fb950"><title>BrOptOpen294C  0x1003D620  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="498.5" width="21.5" height="23.0" fill="#3fb950"><title>BrPhaseActivate_10045110  0x1003E660  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="522.0" width="21.5" height="23.0" fill="#3fb950"><title>BrPhaseActivate_100452C0  0x1003E810  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="545.6" width="21.5" height="23.0" fill="#3fb950"><title>BrPhaseActivate_10045390  0x1003E8E0  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="569.2" width="21.5" height="23.0" fill="#3fb950"><title>BrPhaseActivate_100455E0  0x1003EA70  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="195.5" y="592.7" width="21.5" height="23.0" fill="#3fb950"><title>BrPhaseActivate_100456B0  0x1003EB40  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="217.6" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>BrPhaseActivate_10045AF0  0x1003EF90  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="241.9" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>BrPhaseActivate_10045BC0  0x1003F060  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="266.3" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>BrPhaseActivate_10045EA0  0x1003F340  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="290.6" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>BrPhaseActivate_100460A0  0x1003F540  201B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="314.9" y="451.4" width="23.1" height="20.8" fill="#3fb950"><title>BrExt_10038F30  0x100325B0  196B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="338.7" y="451.4" width="21.7" height="20.8" fill="#3fb950"><title>BrPhaseActivate_10045460  0x1003E9B0  184B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="474.9" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003D620  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="498.5" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003E660  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="522.0" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003E810  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="545.6" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003E8E0  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="569.2" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003EA70  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="195.5" y="592.7" width="21.5" height="23.0" fill="#3fb950"><title>(unnamed)  0x1003EB40  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="217.6" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>(unnamed)  0x1003EF90  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="241.9" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>(unnamed)  0x1003F060  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="266.3" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>(unnamed)  0x1003F340  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="290.6" y="451.4" width="23.7" height="20.8" fill="#3fb950"><title>(unnamed)  0x1003F540  201B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="314.9" y="451.4" width="23.1" height="20.8" fill="#3fb950"><title>BrExt8F30  0x100325B0  196B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="338.7" y="451.4" width="21.7" height="20.8" fill="#3fb950"><title>(unnamed)  0x1003E9B0  184B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="217.6" y="472.7" width="21.4" height="20.5" fill="#3fb950"><title>(unnamed)  0x10038E10  180B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="239.6" y="472.7" width="21.2" height="20.5" fill="#3fb950"><title>BrPhaseLeave_10044970  0x1003DEC0  178B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="261.4" y="472.7" width="20.2" height="20.5" fill="#3fb950"><title>BrOptFn10044A30  0x1003DF80  170B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="239.6" y="472.7" width="21.2" height="20.5" fill="#3fb950"><title>(unnamed)  0x1003DEC0  178B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="261.4" y="472.7" width="20.2" height="20.5" fill="#3fb950"><title>(unnamed)  0x1003DF80  170B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="282.2" y="472.7" width="19.8" height="20.5" fill="#3fb950"><title>(unnamed)  0x10004C80  167B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="302.7" y="472.7" width="19.0" height="20.5" fill="#3fb950"><title>(unnamed)  0x10041D10  160B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="322.3" y="472.7" width="18.7" height="20.5" fill="#3fb950"><title>BrMenuResetTrackStr  0x1003FBE0  158B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="341.6" y="472.7" width="18.7" height="20.5" fill="#3fb950"><title>BrUiHook84_10046870  0x1003FCC0  158B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="322.3" y="472.7" width="18.7" height="20.5" fill="#3fb950"><title>(unnamed)  0x1003FBE0  158B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="341.6" y="472.7" width="18.7" height="20.5" fill="#3fb950"><title>(unnamed)  0x1003FCC0  158B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="217.6" y="493.9" width="19.3" height="19.9" fill="#3fb950"><title>(unnamed)  0x1003FDA0  158B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="217.6" y="514.4" width="19.3" height="19.9" fill="#3fb950"><title>(unnamed)  0x1003FE80  158B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="217.6" y="534.9" width="19.3" height="19.9" fill="#3fb950"><title>BrUiHook81_10046B10  0x1003FF60  158B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="217.6" y="534.9" width="19.3" height="19.9" fill="#3fb950"><title>(unnamed)  0x1003FF60  158B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="217.6" y="555.4" width="19.3" height="19.9" fill="#3fb950"><title>(unnamed)  0x10040040  158B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="217.6" y="575.9" width="19.3" height="19.9" fill="#3fb950"><title>BrUiHook81_10046EB0  0x10040300  158B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="217.6" y="596.4" width="19.3" height="19.3" fill="#3fb950"><title>Br85ItemApply  0x10038380  153B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="237.5" y="493.9" width="17.8" height="19.9" fill="#3fb950"><title>BrPhaseLeaveNamed_10046E10  0x10040260  146B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="217.6" y="575.9" width="19.3" height="19.9" fill="#3fb950"><title>(unnamed)  0x10040300  158B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="217.6" y="596.4" width="19.3" height="19.3" fill="#3fb950"><title>(unnamed)  0x10038380  153B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="237.5" y="493.9" width="17.8" height="19.9" fill="#3fb950"><title>(unnamed)  0x10040260  146B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="237.5" y="514.4" width="17.8" height="18.3" fill="#3fb950"><title>BrWmAppHook35A30  0x10035A30  134B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="237.5" y="533.3" width="17.8" height="16.6" fill="#3fb950"><title>BrOpt44C0  0x1003DA10  122B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="237.5" y="550.4" width="17.8" height="16.1" fill="#3fb950"><title>BrPhaseLeave_10046FD0  0x10040420  119B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="237.5" y="550.4" width="17.8" height="16.1" fill="#3fb950"><title>(unnamed)  0x10040420  119B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="237.5" y="567.2" width="17.8" height="16.1" fill="#3fb950"><title>(unnamed)  0x10041ED0  119B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="237.5" y="583.9" width="17.8" height="15.9" fill="#3fb950"><title>(unnamed)  0x10055330  117B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="237.5" y="600.4" width="17.8" height="15.3" fill="#3fb950"><title>(unnamed)  0x100391F0  113B  [core/cpp/(C++ EH)]</title></rect>
@@ -140,19 +140,19 @@
 <rect x="271.8" y="511.2" width="15.3" height="15.7" fill="#3fb950"><title>BrUiText3FE10  0x10039350  100B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="287.6" y="511.2" width="15.3" height="15.7" fill="#3fb950"><title>BrUiText3FFD0  0x10039510  100B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="303.5" y="511.2" width="14.8" height="15.7" fill="#3fb950"><title>BrCtl  0x10040D10  97B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="318.9" y="511.2" width="13.7" height="15.7" fill="#3fb950"><title>BrUiCreditsAction_1003AED0  0x1003AED0  90B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="333.2" y="511.2" width="13.7" height="15.7" fill="#3fb950"><title>BrPhaseLeave_10046F60  0x100403B0  90B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="347.5" y="511.2" width="12.9" height="15.7" fill="#3fb950"><title>BrPhaseLeave_10044AE0  0x1003E030  85B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="318.9" y="511.2" width="13.7" height="15.7" fill="#3fb950"><title>(unnamed)  0x1003AED0  90B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="333.2" y="511.2" width="13.7" height="15.7" fill="#3fb950"><title>(unnamed)  0x100403B0  90B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="347.5" y="511.2" width="12.9" height="15.7" fill="#3fb950"><title>(unnamed)  0x1003E030  85B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="255.9" y="527.5" width="13.0" height="15.3" fill="#3fb950"><title>(unnamed)  0x10008990  84B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="255.9" y="543.4" width="13.0" height="14.4" fill="#3fb950"><title>(unnamed)  0x10040D80  79B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="255.9" y="558.4" width="13.0" height="14.0" fill="#3fb950"><title>BrOpt3760  0x1003CCB0  77B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="255.9" y="573.0" width="13.0" height="13.8" fill="#3fb950"><title>BrPhaseLeave_100466C0  0x1003FB10  76B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="255.9" y="587.5" width="13.0" height="13.8" fill="#3fb950"><title>BrUiHook81_10046D70  0x100401C0  76B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="255.9" y="601.9" width="13.0" height="13.8" fill="#3fb950"><title>BrUiHook84_10046DC0  0x10040210  76B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="255.9" y="558.4" width="13.0" height="14.0" fill="#3fb950"><title>(unnamed)  0x1003CCB0  77B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="255.9" y="573.0" width="13.0" height="13.8" fill="#3fb950"><title>(unnamed)  0x1003FB10  76B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="255.9" y="587.5" width="13.0" height="13.8" fill="#3fb950"><title>BrOpt6D70  0x100401C0  76B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="255.9" y="601.9" width="13.0" height="13.8" fill="#3fb950"><title>BrOpt6DC0  0x10040210  76B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="269.5" y="527.5" width="12.2" height="14.3" fill="#3fb950"><title>(unnamed)  0x100380B0  74B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="269.5" y="542.4" width="12.2" height="14.3" fill="#3fb950"><title>BrUiHook85_1003EB10  0x10038100  74B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="269.5" y="542.4" width="12.2" height="14.3" fill="#3fb950"><title>(unnamed)  0x10038100  74B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="269.5" y="557.3" width="12.2" height="14.3" fill="#3fb950"><title>(unnamed)  0x10038250  74B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="269.5" y="572.2" width="12.2" height="14.3" fill="#3fb950"><title>BrSub10046400  0x1003F8A0  74B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="269.5" y="572.2" width="12.2" height="14.3" fill="#3fb950"><title>(unnamed)  0x1003F8A0  74B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="269.5" y="587.1" width="12.2" height="14.1" fill="#3fb950"><title>(unnamed)  0x10037EF0  73B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="269.5" y="601.8" width="12.2" height="13.9" fill="#3fb950"><title>(unnamed)  0x100381D0  72B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="282.4" y="527.5" width="13.0" height="12.7" fill="#3fb950"><title>(unnamed)  0x10041460  70B  [core/cpp/(C++ EH)]</title></rect>
@@ -160,42 +160,42 @@
 <rect x="309.3" y="527.5" width="12.5" height="12.7" fill="#3fb950"><title>(unnamed)  0x1003CC60  67B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="322.3" y="527.5" width="12.3" height="12.7" fill="#3fb950"><title>BrOpt3F50  0x1003D4A0  66B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="335.2" y="527.5" width="12.3" height="12.7" fill="#3fb950"><title>BrOpt3FC0  0x1003D510  66B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="348.1" y="527.5" width="12.3" height="12.7" fill="#3fb950"><title>BrPhaseLeave_10044B40  0x1003E090  66B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="282.4" y="540.8" width="13.0" height="12.0" fill="#3fb950"><title>Br31Thunk_10044CB0  0x1003E200  66B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="282.4" y="553.3" width="13.0" height="12.0" fill="#3fb950"><title>BrPhaseLeave_10044F00  0x1003E450  66B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="348.1" y="527.5" width="12.3" height="12.7" fill="#3fb950"><title>BrOpt4B40  0x1003E090  66B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="282.4" y="540.8" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt4CB0  0x1003E200  66B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="282.4" y="553.3" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt4F00  0x1003E450  66B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="282.4" y="565.9" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt6450  0x1003F8F0  66B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="282.4" y="578.5" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt6670  0x1003FAC0  66B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="282.4" y="591.1" width="13.0" height="12.0" fill="#3fb950"><title>BrUiHook89_10046CD0  0x10040120  66B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="282.4" y="591.1" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt6CD0  0x10040120  66B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="282.4" y="603.7" width="13.0" height="12.0" fill="#3fb950"><title>BrOpt6D20  0x10040170  66B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="295.9" y="540.8" width="12.6" height="12.1" fill="#3fb950"><title>(unnamed)  0x10040DD0  65B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="309.1" y="540.8" width="12.4" height="12.1" fill="#3fb950"><title>(unnamed)  0x100089F0  64B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="322.1" y="540.8" width="12.4" height="12.1" fill="#3fb950"><title>BrOpt37D0  0x1003CD20  64B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="322.1" y="540.8" width="12.4" height="12.1" fill="#3fb950"><title>(unnamed)  0x1003CD20  64B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="335.2" y="540.8" width="12.4" height="12.1" fill="#3fb950"><title>(unnamed)  0x10041940  64B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="348.2" y="540.8" width="12.2" height="12.1" fill="#3fb950"><title>(unnamed)  0x10041CC0  63B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="295.9" y="553.5" width="11.1" height="12.8" fill="#3fb950"><title>BrPhaseLeave_10046560  0x1003FA00  61B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="295.9" y="566.9" width="11.1" height="11.7" fill="#3fb950"><title>BrPhaseLeave_10044C70  0x1003E1C0  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="295.9" y="579.3" width="11.1" height="11.7" fill="#3fb950"><title>BrPhaseLeave_10044DE0  0x1003E330  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="295.9" y="591.6" width="11.1" height="11.7" fill="#3fb950"><title>BrUiHook81_100463C0  0x1003F860  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="295.9" y="553.5" width="11.1" height="12.8" fill="#3fb950"><title>BrOpt6560  0x1003FA00  61B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="295.9" y="566.9" width="11.1" height="11.7" fill="#3fb950"><title>BrOpt4C70  0x1003E1C0  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="295.9" y="579.3" width="11.1" height="11.7" fill="#3fb950"><title>BrOpt4DE0  0x1003E330  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="295.9" y="591.6" width="11.1" height="11.7" fill="#3fb950"><title>BrOpt63C0  0x1003F860  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="295.9" y="604.0" width="11.1" height="11.7" fill="#3fb950"><title>BrOpt64A0  0x1003F940  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="307.7" y="553.5" width="12.7" height="10.3" fill="#3fb950"><title>BrOpt64E0  0x1003F980  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="321.0" y="553.5" width="12.7" height="10.3" fill="#3fb950"><title>BrOpt6520  0x1003F9C0  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="334.3" y="553.5" width="12.7" height="10.3" fill="#3fb950"><title>BrOpt65A0  0x1003FA40  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="347.6" y="553.5" width="12.7" height="10.3" fill="#3fb950"><title>BrOpt65E0  0x1003FA80  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="307.7" y="564.4" width="10.6" height="12.4" fill="#3fb950"><title>BrUiHook84_10046710  0x1003FB60  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="307.7" y="564.4" width="10.6" height="12.4" fill="#3fb950"><title>BrOpt6710  0x1003FB60  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="307.7" y="577.4" width="10.6" height="12.4" fill="#3fb950"><title>BrOpt6750  0x1003FBA0  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="307.7" y="590.3" width="10.6" height="12.4" fill="#3fb950"><title>BrUiHook84_10046830  0x1003FC80  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="307.7" y="590.3" width="10.6" height="12.4" fill="#3fb950"><title>BrOpt6830  0x1003FC80  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="307.7" y="603.3" width="10.6" height="12.4" fill="#3fb950"><title>BrOpt6910  0x1003FD60  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="318.8" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrOpt69F0  0x1003FE40  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="329.4" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrUiHook81_10046AD0  0x1003FF20  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="329.4" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrOpt6AD0  0x1003FF20  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="339.9" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrOpt6BB0  0x10040000  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="350.4" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrUiNavHook_10046C90  0x100400E0  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="318.8" y="578.1" width="10.8" height="12.1" fill="#3fb950"><title>BrUiHook84_10047060  0x100404B0  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="350.4" y="564.4" width="9.9" height="13.2" fill="#3fb950"><title>BrOpt6C90  0x100400E0  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="318.8" y="578.1" width="10.8" height="12.1" fill="#3fb950"><title>BrOpt7060  0x100404B0  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="318.8" y="590.9" width="10.8" height="12.1" fill="#3fb950"><title>BrOpt70A0  0x100404F0  56B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="318.8" y="603.6" width="10.8" height="12.1" fill="#3fb950"><title>BrUiHook81_100470E0  0x10040530  56B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="318.8" y="603.6" width="10.8" height="12.1" fill="#3fb950"><title>BrOpt70E0  0x10040530  56B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="330.2" y="578.1" width="10.0" height="12.4" fill="#3fb950"><title>(unnamed)  0x10058D00  53B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="340.8" y="578.1" width="9.8" height="12.4" fill="#3fb950"><title>(unnamed)  0x100414B0  52B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="351.2" y="578.1" width="9.2" height="12.4" fill="#3fb950"><title>(unnamed)  0x10008A30  49B  [core/cpp/(C++ EH)]</title></rect>
-<rect x="330.2" y="591.1" width="9.3" height="12.0" fill="#3fb950"><title>BrUiHook85_1003EE20  0x10038350  48B  [core/cpp/(C++ EH)]</title></rect>
+<rect x="330.2" y="591.1" width="9.3" height="12.0" fill="#3fb950"><title>(unnamed)  0x10038350  48B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="330.2" y="603.7" width="9.3" height="12.0" fill="#3fb950"><title>(unnamed)  0x10041100  48B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="340.1" y="591.1" width="10.8" height="9.6" fill="#3fb950"><title>(unnamed)  0x10008960  45B  [core/cpp/(C++ EH)]</title></rect>
 <rect x="351.5" y="591.1" width="8.8" height="9.6" fill="#3fb950"><title>(unnamed)  0x10008930  37B  [core/cpp/(C++ EH)]</title></rect>
@@ -1668,7 +1668,7 @@
 <rect x="1351.6" y="76.1" width="32.8" height="32.0" fill="#3fb950"><title>BrDlScreenRectEmit  0x1002C2E9  442B  [core/slice2_19]</title></rect>
 <rect x="1385.0" y="76.1" width="31.4" height="32.0" fill="#3fb950"><title>BrEntGfxRebindAll  0x1002DB88  424B  [core/slice2_19]</title></rect>
 <rect x="1417.0" y="76.1" width="23.0" height="32.0" fill="#3fb950"><title>FUN_1002e5b9  0x1002E5B9  313B  [core/slice2_19]</title></rect>
-<rect x="1351.6" y="108.7" width="27.0" height="27.1" fill="#d29922"><title>BrCamMatrixSetupOrtho  0x1002D72E  310B  96 diff bytes  [core/slice2_19]</title></rect>
+<rect x="1351.6" y="108.7" width="27.0" height="27.1" fill="#3fb950"><title>BrCamMatrixSetupOrtho  0x1002D72E  310B  [core/slice2_19]</title></rect>
 <rect x="1351.6" y="136.3" width="27.0" height="22.2" fill="#3fb950"><title>BrCamMatrixSetupFixed  0x1002D62F  255B  [core/slice2_19]</title></rect>
 <rect x="1351.6" y="159.1" width="27.0" height="21.8" fill="#3fb950"><title>BrCamMatrixSetup  0x1002D534  251B  [core/slice2_19]</title></rect>
 <rect x="1379.1" y="108.7" width="27.2" height="17.2" fill="#d29922"><title>BrCarGfxReadColour  0x1002EB03  201B  118 diff bytes  [core/slice2_19]</title></rect>
@@ -2310,7 +2310,7 @@
 <rect x="1317.1" y="560.2" width="15.3" height="15.4" fill="#3fb950"><title>BrAppMsgDispatch  0x100093D0  101B  [core/slice1_03]</title></rect>
 <rect x="1333.0" y="560.2" width="11.8" height="13.4" fill="#3fb950"><title>BrTextSetColors  0x10016860  69B  [core/slice1_03]</title></rect>
 <rect x="1333.0" y="574.1" width="11.8" height="1.4" fill="#3fb950"><title>BrSetGlobal_ABB30  0x100168B0  10B  [core/slice1_03]</title></rect>
-<rect x="1348.4" y="514.9" width="37.9" height="60.7" fill="#d29922"><title>BrGlNavPoll  0x10059410  939B  404 diff bytes  [core/menus/br_uinav]</title></rect>
+<rect x="1348.4" y="514.9" width="37.9" height="60.7" fill="#d29922"><title>BrUiNavMove  0x10059410  939B  47 diff bytes  [core/menus/br_uinav]</title></rect>
 <rect x="1387.0" y="514.9" width="23.5" height="60.7" fill="#d29922"><title>BrUiNavCtlHit_10047A60  0x10040EB0  587B  398 diff bytes  [core/menus/br_uinav]</title></rect>
 <rect x="1414.0" y="514.9" width="37.2" height="60.7" fill="#d29922"><title>BrUi51990ScreenNew  0x1004A840  923B  140 diff bytes  [core/slice4_52]</title></rect>
 <rect x="1451.9" y="514.9" width="23.3" height="16.1" fill="#3fb950"><title>BrLogPrint  0x10008EF0  159B  [core/slice4_52]</title></rect>
@@ -2659,7 +2659,7 @@
 <rect x="1529.7" y="742.2" width="22.5" height="21.6" fill="#3fb950"><title>BrSaveSlotNameSet_10055C50  0x10055C50  238B  [core/generated/0x10055C50]</title></rect>
 <rect x="1555.7" y="742.2" width="19.6" height="21.6" fill="#3fb950"><title>BrBaseDirInit  0x10063860  212B  [core/settings/br_basedir]</title></rect>
 <rect x="1578.9" y="742.2" width="19.0" height="21.6" fill="#d29922"><title>BrUiSprClip  0x10001320  206B  120 diff bytes  [core/menus/br_uispr]</title></rect>
-<rect x="1444.0" y="767.5" width="19.8" height="20.6" fill="#d29922"><title>BrMainLoopRun  0x10019730  205B  117 diff bytes  [core/startup/br_mainloop]</title></rect>
+<rect x="1444.0" y="767.5" width="19.8" height="20.6" fill="#3fb950"><title>BrMainLoopRun  0x10019730  205B  [core/startup/br_mainloop]</title></rect>
 <rect x="1444.0" y="791.7" width="19.8" height="9.9" fill="#3fb950"><title>BrRaceDifficultySet  0x100627B0  102B  [core/racing/br_racestart]</title></rect>
 <rect x="1444.0" y="802.2" width="9.3" height="9.8" fill="#3fb950"><title>BrEntSlotsReset  0x10062870  49B  [core/racing/br_racestart]</title></rect>
 <rect x="1454.0" y="802.2" width="7.7" height="5.2" fill="#3fb950"><title>BrRaceEntrantCountSet  0x10062850  23B  [core/racing/br_racestart]</title></rect>
@@ -2786,4 +2786,4 @@
 <rect x="1593.0" y="891.8" width="3.5" height="1.6" fill="#3fb950"><title>BrCountedTotal  0x1006D180  12B  [core/settings/br_state]</title></rect>
 <rect x="1597.1" y="891.8" width="0.8" height="1.6" fill="#3fb950"><title>BrStateGetField10  0x1006D190  4B  [core/settings/br_state]</title></rect>
 <rect x="1593.0" y="897.0" width="4.9" height="0.9" fill="#3fb950"><title>BrObjClear  0x1006CDC0  14B  [core/gamedata/br_obj]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1073 &#183; T3 codegen-only 40 &#183; 127,986/521,214 bytes exact (24.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1075 &#183; T3 codegen-only 40 &#183; 128,501/521,214 bytes exact (24.7%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
