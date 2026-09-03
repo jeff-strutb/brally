@@ -9,6 +9,7 @@
  * args.  Hide those prototypes so the matching bodies can use __fastcall
  * plus a struct-typed second argument (never register-eligible, so forced
  * onto the stack).  Same split as thiscall; do not redefine BR_THISCALL. */
+#define BrBitStreamReadBits  BrBitStreamReadBits_cdecl
 #define BrBitStreamInit      BrBitStreamInit_cdecl
 #define BrBitStreamSkipBytes BrBitStreamSkipBytes_cdecl
 #define BrBitStreamWriteU8   BrBitStreamWriteU8_cdecl
@@ -19,6 +20,7 @@
 #endif
 #include "slice1_09.h"
 #ifdef BR_MATCHING_BUILD
+#undef BrBitStreamReadBits
 #undef BrBitStreamInit
 #undef BrBitStreamSkipBytes
 #undef BrBitStreamWriteU8
@@ -235,6 +237,79 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
  * (nBits & 31) and return garbage after a single round; in C that is
  * undefined, so this function simply must not be called with nBits < 0.
  * nBits > 32 loses the high bits in both versions. */
+/* The tag lives HERE, not on slice6_74.c's BrBitReaderRead, which is the
+ * second NAME this address carries.  That body is a 32-byte thunk into this
+ * one and can never reproduce the 133-byte original -- the same trap
+ * slice6_74.c's own BrVec3Len note records, and it had put the address in the
+ * measured set as permanently unmatchable.
+ *
+ * Thiscall: `mov esi,ecx` captures pBs and the bit count arrives at [esp+4]
+ * (`ret 4`).  Spelled with the struct-typed second argument this file already
+ * uses for its other thiscall bodies, so nBits cannot claim edx.  The loop
+ * counter IS the argument slot -- 1006CF41 reads [esp+0x18], subtracts and
+ * writes back, which is the incoming argument, not a copy -- so `nBits.n` is
+ * decremented in place rather than copied into a `remaining` local.
+ *
+ * The running total the earlier reading called "a dead store, omitted" is
+ * back: the original keeps it in its one stack local (the `push ecx`
+ * prologue, [esp+4] before the inner pushes and [esp+0x10] after), zeroes it
+ * before the early-out test, and accumulates into it every round.  VC5 keeps
+ * a plain `int` for it; no volatile is needed.
+ *
+ * RESIDUE 128 bytes, 156 against 133.  The frame is one dword too big:
+ * the original's single local IS the counter and `acc` lives in eax for the
+ * whole function, while the recompile spills `acc` to a second slot
+ * (`sub esp, 8`, acc at [esp+0x10]) and duplicates the early-out epilogue
+ * instead of jumping to the shared tail.  Probed and ruled out: `volatile`
+ * on the counter (identical output), and folding the mask temp into the
+ * value expression to cut register pressure (also identical).  The loop body
+ * needs reshaping against the original register by register; this is a
+ * workable target now rather than an unmatchable one. */
+/* @implements 0x10073C90 d3d BrBitStreamReadBits */
+#ifdef BR_MATCHING_BUILD
+typedef struct { int n; } BrBitStreamReadArg;
+unsigned int __fastcall BrBitStreamReadBits(BrBitStream *pBs,
+                                            BrBitStreamReadArg nBits)
+{
+    unsigned int acc = 0;
+    int consumed = 0;
+
+    if (nBits.n == 0)
+        return 0;
+
+    do {
+        int avail = 8 - pBs->readBit;
+        int take, shift;
+        int byteIndex;
+        unsigned int mask, v;
+
+        if (avail > nBits.n) {
+            take  = nBits.n;
+            shift = avail - nBits.n;
+        } else {
+            take  = avail;
+            shift = 0;
+        }
+
+        byteIndex = pBs->readByte;
+        mask = ((1u << take) - 1u) << shift;
+        v    = (mask & (unsigned int)pBs->pBuf[byteIndex]) >> shift;
+
+        pBs->readBit += take;
+        acc = (acc << take) | v;
+
+        if (pBs->readBit >= 8) {
+            pBs->readBit  = 0;
+            pBs->readByte = byteIndex + 1;
+        }
+
+        consumed += take;
+        nBits.n -= take;
+    } while (nBits.n != 0);
+
+    return acc;
+}
+#else
 unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
 {
     unsigned int acc = 0;
@@ -274,6 +349,7 @@ unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
 
     return acc;
 }
+#endif
 
 /* 0x10073D40  __thiscall, no stack args. Signed compare (setge). */
 /* WHAT IT DOES: reports whether the reader has caught up with the end of the
