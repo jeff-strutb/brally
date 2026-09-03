@@ -3161,6 +3161,33 @@ helper's body out at the call site under `#ifdef BR_MATCHING_BUILD`, leave the
 `static` in place for its other callers, and put the port's version in the
 `#else`. Two of these landed byte-exact the same day.
 
+### Scoping the inline-out: macros, and `#undef` after the function
+
+Two mechanics make the recipe safe on a file where the helper has many users:
+
+- **A macro, never a new `static`.** Replacing one factored `static` with
+  another is still a call. Write the body as a `do { ... } while (0)` macro
+  with its temp declared INSIDE the block, so each expansion gets its own
+  (a single function-scope temp shared by every expansion is what earns a
+  stack slot). Value-returning helpers become plain expression macros.
+- **`#define` immediately before the function and `#undef` immediately
+  after.** The helper's other callers then keep whatever shape they already
+  match with, and — the trap — the macro must be defined AFTER the `static`
+  definitions, or the definition line itself gets macro-expanded into
+  garbage. Scoped this way the change cannot regress a sibling; verify with
+  the one-file sweep, which reports every function in the TU.
+
+- **While you are there, check the CALL FORM.** `call dword ptr [mem]` in the
+  recompile against `call rel32` in the original means a port hook declared as
+  a function POINTER that the original calls directly; re-declare it as an
+  ordinary function in the matching arm. Count both forms in the original
+  first — it is a one-line census and it is unambiguous.
+
+Proven together on 0x100302A0 BrModelSwap: five byte-swap helpers inlined as
+scoped macros and two hooks made direct took the register-blind gap from
+149+285 to 60+137 and the size from 352 short to 240 short, with no sibling in
+the 49-function TU disturbed.
+
 ### The accessor sub-case: a struct that is really N standalone globals
 
 `BrScreenGet()->cx` / `BrHudGetEnv()->pszSplitPrefix` group four or five
