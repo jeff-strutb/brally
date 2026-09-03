@@ -1970,3 +1970,37 @@ Counter-pressure: locals are not free. A fourth live local in that loop
 made VC5 set up an ebp frame, and the original is frameless with ebp as a
 general register and a single spill slot. Add dams one at a time and watch
 the prologue.
+
+## `strlen` of a literal folds; of an extern array it scans
+*(proven 2026-09-03 on 0x10055C50)*
+
+`strcpy(buf, pKey + strlen("RallySeason"))` compiles to a `lea` — VC5
+constant-folds `strlen` of a string literal outright, and the inline scan
+disappears. The original expands the scan (`or ecx,-1 / xor eax,eax /
+repne scasb / not ecx / dec ecx`) over the string itself, which means the
+prefix was NOT a literal the compiler could see through. Spelling the
+prefixes as `extern char s_Name_<va>[];` — the convention slice6_73.c
+already uses — restores the scan. Cost of getting it wrong: 37 bytes and
+two whole scans, i.e. a diff that looks structural and is one declaration.
+
+## Where an address is FORMED decides whether the trailing offset folds
+*(same function)*
+
+Two branches each pick a table, index it, and hand the result to a common
+`strcpy`. The original computes one `lea [tbl + idx*4 + 4]` after the arms
+merge. Three source shapes, three different code shapes:
+
+- table pointer and index as two locals, indexed at the use → VC5 hoists
+  the index scaling (`mov/shl 6/add`, the `*65` for a 0x104 record) out of
+  the arms; that sequence goes missing from both arms (3 insns).
+- a record POINTER in the arms, `->field` at the use → the arms end with
+  `lea [tbl + n*4]` and the field's `+4` becomes its own `lea [R+4]` at
+  the use (2 extra, 1 missing).
+- **each arm produces the FINAL `char *`** (`pRec = tbl[atoi(s)].szName`)
+  → both arms end with an identical `lea [tbl + n65*4 + 4]`, VC5
+  tail-merges that one instruction, and the `*65` stays duplicated in the
+  arms exactly as the original has it. Byte-exact.
+
+Generalise: when the original merges arms on a single address-forming
+instruction, push the whole address expression INTO the arms and let the
+tail-merge factor it. Do not factor it yourself into shared locals.
