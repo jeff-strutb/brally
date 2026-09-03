@@ -3075,3 +3075,53 @@ the one-operand `imul` 24 times in each — every channel is present, so a
 honest instruction total (from `fn.py`, which counts the whole function and
 not the aligner's windows) means the residue is allocation, wherever the
 region map points.
+
+## The FACTORED-HELPER screen: 32 rows, 13,463 bytes short
+*(the class behind 0x10037B20, 0x10014800, the velocity trio and
+BrCarGfxSetColour — four separate sessions arrived at it independently)*
+
+MSVC 5.0 declines to inline a `static` once it has more than one caller, and
+will never inline one that returns a struct by value. Every port helper that
+factors a shared body — or wraps a group of globals behind an accessor —
+therefore emits a `call` the original does not have, and the function reads as
+`MISSING CODE`. **This is the single largest source-level class left in the C
+lane.** Ranked list, EH rows excluded:
+
+    python3 - <<'PY'
+    import csv,re,os
+    def eh(va):
+        try: return open('build/match/orig/%s.bin'%va,'rb').read(2)==b'\x6a\xff'
+        except IOError: return False
+    for r in csv.DictReader(open('build/match/report.csv')):
+        if r['status']!='diff' or not os.path.exists(r['file']) or eh(r['va']): continue
+        o=int(r['orig_size']); c=int(r['recomp_size'] or 0)
+        if o<150 or c==0 or c/o>0.85: continue
+        if re.search(r'^static\s', open(r['file']).read(), re.M):
+            print('%5d short  %-30s %s  %s'%(o-c,r['name'],r['va'],r['file']))
+    PY
+
+As of 2026-09-03: 32 rows, 13,463 bytes. Worst are BrRaceGateStep (-1962),
+BrOptFn100558A0 (-1357) and BrTextEmitString (-1162).
+
+**The recipe is always the same and it does not touch the port arm:** spell the
+helper's body out at the call site under `#ifdef BR_MATCHING_BUILD`, leave the
+`static` in place for its other callers, and put the port's version in the
+`#else`. Two of these landed byte-exact the same day.
+
+### The accessor sub-case: a struct that is really N standalone globals
+
+`BrScreenGet()->cx` / `BrHudGetEnv()->pszSplitPrefix` group four or five
+SEPARATE absolute globals behind one struct pointer. The original loads each
+absolutely (`mov eax, dword ptr [0x100A7514]`), so the port form costs a base
+register AND a call. slice5_61.c, slice6_70.c and now slice5_63.c all carry the
+same correction; the giveaway in the diff is **`mov R,[R+I]` where the original
+has `mov R,[I]`**, several times over.
+
+Two more facts from the same function, both cheap to check:
+
+- **An array whose ADDRESS is pushed is an array, not a pointer.**
+  `push 0x100A6B80` is `char buf[]`; a `char *` global would be
+  `mov eax,[0x100A6B80]; push eax`.
+- **A float argument moved with `mov`/`push` rather than `fld`/`fstp` is a
+  DWORD PUN.** Declare the parameter `uint32_t` in the matching arm — the same
+  four bytes reach the callee.
