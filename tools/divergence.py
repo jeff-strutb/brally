@@ -177,6 +177,69 @@ KEY = int(sys.argv[sys.argv.index('--key') + 1]) if '--key' in sys.argv else 6
 ndiv = 0
 prev_delta = 0
 first_shown = False
+
+# ------------------------------------------------------------------
+# Lost-sync RE-ANCHOR.
+#
+# ‼ The bounded resync above only looks 400 instructions ahead.  When one
+# block diverges harder than that the walk used to STOP -- printing "lost
+# sync" and a region total that silently covered only the prefix.  That is
+# a measurement trap of exactly the kind this tool exists to kill: on
+# 0x100250D0 every dossier figure ("20 regions at key 10", "no block over
+# 25 bytes") was measured on orig 0x0..0x15b8 and never saw the remaining
+# 2,920 bytes -- 34% of the function -- which turned out to hold that
+# function's largest reliable single-block change (-50 at 0x1a4c).
+#
+# So on a lost sync we now re-anchor GLOBALLY: index every KEY-gram of the
+# recompile, walk the original forward until one of its grams occurs at or
+# after the current recomp position, and resume there.  The skipped stretch
+# is reported as UNCOMPARED (it is not a region -- nobody has looked at it)
+# and the running byte total is printed at the end.  Deltas restart from
+# the new anchor, so the first region after a re-anchor carries a warning
+# the same way one after a SUSPECT resync does.
+import re as _re_g
+
+
+def gkey(e, is_recomp):
+    # Must mask exactly what ieq() ignores, or the index finds no anchor at
+    # all: branch TARGETS differ between the obj and the image, and a
+    # ten-instruction window in this code almost always contains a jcc, so
+    # a gram that keeps targets never matches.  (Measured: with targets kept
+    # the re-anchor overshot 0x15b8 -> 0x1e96, 2,270 bytes; masked, it lands
+    # at 0x1800 and 726 bytes stay uncompared.)
+    mn = e[5]
+    if mn == 'call' or mn.startswith('j'):
+        return mn + ' <T>'
+    t = norm(e, is_recomp)
+    if MASK_SLOTS:
+        t = _re_g.sub(r'\[esp \+ (0x[0-9a-f]+|\d+)\]', '[esp+S]', t)
+    return t
+
+
+_gram_index = None
+
+
+def reanchor(ia, ib):
+    """Earliest (ia', ib') at or after (ia, ib) where KEY grams agree."""
+    global _gram_index
+    if _gram_index is None:
+        _gram_index = {}
+        for j in range(len(B) - KEY + 1):
+            g = tuple(gkey(B[j + k], True) for k in range(KEY))
+            _gram_index.setdefault(g, []).append(j)
+    for i in range(ia, len(A) - KEY + 1):
+        g = tuple(gkey(A[i + k], False) for k in range(KEY))
+        cands = [j for j in _gram_index.get(g, ()) if j >= ib]
+        if cands:
+            # prefer the candidate that keeps the two walks in step
+            j = min(cands, key=lambda j: abs((i - ia) - (j - ib)))
+            return i, j
+    return None
+
+
+lost_bytes = 0
+lost_gaps = 0
+reanchor_carry = 0
 while ia < len(A) and ib < len(B):
     if ieq(A[ia], B[ib]):
         ia += 1; ib += 1
@@ -242,6 +305,9 @@ while ia < len(A) and ib < len(B):
             # showed could not exist.
             if not warn and globals().get('suspect_carry', 0) > 0:
                 warn = "  <-- change unreliable: a preceding resync was SUSPECT"
+            if not warn and reanchor_carry > 0:
+                warn = "  <-- change unreliable: measured from a lost-sync re-anchor"
+            reanchor_carry = max(0, reanchor_carry - 1)
             print(f"region {n:2d}  orig+{oa:#07x}  recomp+{rb:#07x}"
                   f"   delta={d:+d}  (change {ch:+d}){warn}")
         # A bad resync corrupts the DELTA at the next region, and `change`
@@ -258,11 +324,34 @@ while ia < len(A) and ib < len(B):
             n, oa, rb, d, ch = pending_delta
             print(f"region {n:2d}  orig+{oa:#07x}  recomp+{rb:#07x}"
                   f"   delta={d:+d}  (change {ch:+d})")
-        print(f"  ... lost sync at orig+{A[ia][0]:#x}")
-        break
+        anchor = reanchor(ia, ib)
+        if anchor is None:
+            print(f"  ... lost sync at orig+{A[ia][0]:#x} -- NO re-anchor found;"
+                  f" orig 0x{A[ia][0]:x}..0x{len(orig):x} was NEVER COMPARED")
+            lost_bytes += len(orig) - A[ia][0]
+            lost_gaps += 1
+            break
+        ja, jb = anchor
+        gap_o = A[ja][0] - A[ia][0]
+        print(f"  ... lost sync at orig+{A[ia][0]:#x} -- RE-ANCHORED at "
+              f"orig+{A[ja][0]:#x}/recomp+{B[jb][0]:#x} "
+              f"(skipped {ja - ia} orig / {jb - ib} recomp insns, "
+              f"{gap_o} orig bytes UNCOMPARED)")
+        lost_bytes += gap_o
+        lost_gaps += 1
+        ia, ib = ja, jb
+        prev_delta = B[ib][0] - A[ia][0]
+        reanchor_carry = 2
+        globals()['suspect_carry'] = 0
+        continue
 
 print(f"\ntotal divergence regions from offset {start_at:#x}: {ndiv}"
       f"  (resync key {KEY} insns)")
+if lost_gaps:
+    pct = 100.0 * lost_bytes / max(1, len(orig))
+    print(f"‼ {lost_gaps} lost-sync gap(s): {lost_bytes} orig bytes "
+          f"({pct:.1f}% of the function) were NEVER COMPARED -- the region "
+          f"count above does not cover them.")
 # The COFF function extent is padded to a 16-byte boundary, so the recompile
 # ends in up to 15 alignment nops that the extracted original does not have.
 # Counting them made three different dossiers record "instruction counts are

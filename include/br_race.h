@@ -57,9 +57,13 @@
  *
  * WHAT IS NOT IN THIS MODULE, AND WHY
  *
- * 0x1005FF00 also does four things this port leaves out. None of them feeds
- * back into the lap state; each is named here so the omission is a decision
- * and not a silence.
+ * 0x1005FF00 also does four things THE PORT ARM leaves out. None of them
+ * feeds back into the lap state; each is named here so the omission is a
+ * decision and not a silence.
+ *
+ * As of 2026-09-03 the MATCHING arm (BR_MATCHING_BUILD) has all four, and
+ * that is what took the function from 581 bytes to the original's 2,538.
+ * The list below therefore describes the port arm only.
  *
  *   1. Ten debug printf calls (Glide 0x10008D60). Pure output. Their format
  *      strings are the best documentation in the binary and are quoted at the
@@ -174,6 +178,76 @@ void BrRaceStoreToCar(BrDriver *pDrv);
  * `pRules->nFinished` is READ AND WRITTEN: it is the shared "who finished
  * next" counter, and it is incremented for every driver that reaches the
  * flag, whether or not that driver has a car. */
+#ifndef BR_MATCHING_BUILD
 int BrRaceGateStep(BrRaceRules *pRules, BrDriver *pDrv);
+#endif
+
+/* ==========================================================================
+ * THE MATCHING ARM'S VIEW OF THE SAME STATE
+ *
+ * The original takes ONE argument, in ecx (`mov ebp, ecx` at 0x1005FF05, and
+ * `ret` with no immediate at 0x100608E9), so it is a one-argument thiscall --
+ * BR_THISCALL1.  Everything BrRaceRules gathers is a SEPARATE ABSOLUTE
+ * GLOBAL in the original: 0x1005FF00 reads 0x106EEE38 with
+ * `mov ecx, dword ptr [0x106EEE38]`, not through any base register, and it
+ * re-reads it four times inside one block.  A struct pointer costs a base
+ * register and cannot produce that, which is the accessor sub-case
+ * docs/VC5-IDIOMS.md records.  The port arm keeps BrRaceRules; this arm
+ * spells the globals out.
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+
+#include "br_match.h"    /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+
+/* 0x106EED48 holds a POINTER (`mov eax,[0x106EED48]; test eax,eax;
+ * fld [eax+0x64]`), so the lap length is a FIELD of the object, not a
+ * standalone float.  br_ai.h pins the pointer as track header +0x70. */
+typedef struct BrRaceLapRec {
+    uint8_t _pad00[0x64];
+    float   fLapLength;                 /* +0x64 */
+} BrRaceLapRec;
+
+/* 0x10AF2094 -> the two per-track record tables, both indexed by the chosen
+ * track (0x100B3014).  Best lap at +0xB0, best total at +0x10C. */
+typedef struct BrRaceRecords {
+    uint8_t _pad000[0xB0];
+    float   aBestLap[(0x10C - 0xB0) / 4];   /* +0x0B0 */
+    float   aBestTotal[1];                  /* +0x10C */
+} BrRaceRecords;
+
+/* 0x100BCAB0[track] -- the difficulty/award object.  Only its float array at
+ * +0x2C is read here, with a computed index. */
+typedef struct BrRaceDiffRec {
+    uint8_t _pad00[0x2C];
+    float   aAward[1];                  /* +0x2C */
+} BrRaceDiffRec;
+
+extern int32_t        g_brRaceNGate;        /* 0x106EEE38                   */
+extern const BrRaceGate g_aBrRaceGate[];    /* 0x106EED70, stride 0x14      */
+extern BrRaceLapRec  *g_pBrRaceLapRec;      /* 0x106EED48                   */
+extern int32_t        g_brRaceNLap;         /* 0x100BCBE8                   */
+extern int32_t        g_brRaceMode;         /* 0x100A9360                   */
+extern int32_t        g_brRaceNFinished;    /* 0x118EE588                   */
+extern int32_t        g_brRaceNEntrant;     /* 0x100B3858                   */
+extern int32_t        g_brRaceNCar;         /* 0x100B2F04                   */
+extern int32_t        g_brRaceReplay;       /* 0x105CCB88                   */
+extern int32_t        g_brCfgChosenTrack;   /* 0x100B3014                   */
+extern int32_t        g_brCarPhysWeather;   /* 0x104B15E8                   */
+extern int32_t        g_brRaceDiffRow;      /* 0x10AF206C                   */
+extern BrRaceRecords *g_pBrRaceRecords;     /* 0x10AF2094                   */
+extern BrRaceDiffRec *g_apBrRaceDiff[];     /* 0x100BCAB0                   */
+extern const int32_t  g_aBrRacePlaceMsg[];  /* 0x100B3168 -- 0x10D, 0x10E.. */
+
+/* The two record arrays are ARRAYS in the original, not pointers: every
+ * access in 0x1005FF00 is absolute (`fld dword ptr [0x10AF21FC]` is
+ * 0x10AF1208 + 0xFF4, i.e. g_aBrRaceCar[0].fFF4).  br_racestep.h's
+ * g_pBrRaceCar / g_pBrRaceDriver are the port's pointer view of the same
+ * storage and are deliberately NOT reused here. */
+extern BrDriverCar    g_aBrRaceCar[];       /* 0x10AF1208, stride 0x2B68    */
+extern BrDriver       g_aBrRaceDriver[];    /* 0x10AF07F8, stride 0x80      */
+
+void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv);
+
+#endif /* BR_MATCHING_BUILD */
 
 #endif /* BR_RACE_H */

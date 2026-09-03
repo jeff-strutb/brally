@@ -3448,6 +3448,59 @@ builds that predicate into a register purely to print it"). So the missing
 bytes are not a helper to find — they are output that was deliberately
 dropped, and putting them back is transcription, not discovery.
 
+### 2a. Restoring deleted tracing: what it costs, and five rules it proves
+*(0x1005FF00 BrRaceGateStep, 2026-09-03: -1,957 bytes / regnorm 13+530 ->
+SIZE AND INSTRUCTION COUNT EXACT at 2,538 B / 720 insns, 2 differing bytes)*
+
+The screen above was right that this is transcription, not discovery -- the
+whole 1,957 bytes went back in one sitting. Five things had to be spelled the
+original's way, and each is reusable:
+
+1. **The struct really was N absolute globals.** The original is
+   `__fastcall`/one-argument-thiscall (`mov ebp,ecx`, bare `ret`), and the
+   port's `BrRaceRules *` gathered SIX standalone globals. Tell beyond the
+   usual `mov R,[R+I]` vs `mov R,[I]`: the original re-reads 0x106EEE38 from
+   memory FOUR times inside one basic block. No base register produces that.
+
+2. **`x == 0.0f` IS the `fcomp` / `test ah,0x40` / `jne` idiom.** The long,
+   NaN-correct form `!(x < 0) && !(x > 0)` -- right for a port, and what this
+   module's port arm still uses -- costs a SECOND `fcom` + `fnstsw` + `test`
+   + branch at every site. Seven sites here, 28 extra instructions. Polarity
+   matters too: `x != 0.0f` puts the equal case at the branch TARGET
+   (`jne <else>`), `x == 0.0f` at the fallthrough. Read which side the
+   original falls into.
+
+3. **Compare against the ARRAY ELEMENT, not a local copy of it.** Hoisting
+   `float fRec = g_pRecords->aBestLap[track];` turns the original's
+   `fcomp dword ptr [ecx+edx*4+0xb0]` into `fcomp dword ptr [esp+N]`. VC5
+   CSEs the two base loads on its own; the local only costs a slot.
+
+4. **A three-field vector copy is THREE ASSIGNMENTS, not a struct
+   assignment.** `pDrv->f00 = pCar->pos;` on a 12-byte struct makes VC5 take
+   the address of both sides (`lea eax,[ebx+0x30]` plus a base register for
+   the destination) and walk them; the original alternates eax/ecx/edx
+   through six independent dword moves. Tell: an EXTRA `lea R,[R+I]` pair at
+   the head of a copy run.
+
+5. **`if (c) x = a; else x = b;` is not `x = a; if (c) x = b;`.** The
+   self-assigning form keeps one register live across the join and costs a
+   `mov R,R` in each arm. The ARM ORDER is visible as well: the original's
+   `jge <positive arm>` means the source tested `< 0` FIRST, with the
+   positive arm in the `else`.
+
+Where CRT calls are involved, two more: declare `sprintf` with
+`__declspec(dllimport)` (the original reaches it as
+`call dword ptr [0x118F0570]`; `<stdio.h>` without the attribute emits a
+direct `call rel32` -- four wrong call sites), and let `strcpy`/`strlen` come
+from `<string.h>` so /O2's intrinsics inline them into the original's
+`repne scasb` + `rep movsd` + `rep movsb`.
+
+**PARKED at 2 bytes, and the dead list is in the file header of
+`src/core/racing/br_race.c`** -- one `add ecx,eax` vs `add eax,ecx` where both
+registers hold the same values and both die immediately. Six commutative
+spellings and both statement orders are proven dead, and all four sweep
+variants bottom out at the same 2 diffs.
+
 ## The "photo" control block (menu-builder family) — SOLVED 2026-09-03
 
 Proven byte-exact on 0x1004ABE0 (760 B, first compile). Three parts, and

@@ -174,13 +174,21 @@ typedef struct BrDriverCar {
     float    tBest;                         /* +0xFE4 */
     int32_t  lapBest;                       /* +0xFE8 */
     float    tFinal;                        /* +0xFEC */
-    uint8_t  _padFF0[0xFF4 - 0xFF0];
+    float    fFF0;                          /* +0xFF0 */
     float    fFF4;                          /* +0xFF4 */
     int32_t  fFF8;                          /* +0xFF8 */
+    /* +0xFFC and +0x1004 hold CHARACTER POINTERS -- either a string-table
+     * result out of BrStrGet or the address of one of the record's own two
+     * text buffers.  They keep their int32 type because 0x1001A644 zeroes
+     * them as integers; 0x1005FF00 casts at each store, which on a 32-bit
+     * build is free. */
     int32_t  fFFC;                          /* +0xFFC */
-    uint8_t  _pad1000[0x1004 - 0x1000];
+    float    f1000;                         /* +0x1000 */
     int32_t  f1004;                         /* +0x1004 */
-    uint8_t  _pad1008[0x1024 - 0x1008];
+    float    f1008;                         /* +0x1008 */
+    /* The HUD banner buffer -- "FINAL LAP", "LAP 3", "1st".  0x1005FF00
+     * sprintf()s into it and points +0xFFC at it. */
+    char     sz100C[0x1024 - 0x100C];       /* +0x100C */
     BrVec3   f1024;                         /* +0x1024 */
     float    f1030;                         /* +0x1030 */
     float    f1034;                         /* +0x1034 */
@@ -196,7 +204,11 @@ typedef struct BrDriverCar {
     uint32_t f29C0Ctl;
     float    f29C0Steer;
     uint8_t  b29C024;
-    uint8_t  _padTail[0x2B68 - 0x29CD];
+    uint8_t  _padTail[0x2ABC - 0x29CD];
+    /* +0x2ABC: the banner's SECOND buffer.  0x1005FF00's standings pass
+     * copies +0x100C into it and repoints +0xFFC, so the text survives the
+     * next sprintf into +0x100C. */
+    char     sz2ABC[0x2B68 - 0x2ABC];       /* +0x2ABC */
 } BrDriverCar;
 
 /* Compile-time proof, in the project's usual idiom.  A wrong padding is a
@@ -232,8 +244,13 @@ BR_DC_AT(lapBest,    0xFE8);
 BR_DC_AT(tFinal,     0xFEC);
 BR_DC_AT(fFF4,       0xFF4);
 BR_DC_AT(fFF8,       0xFF8);
+BR_DC_AT(fFF0,       0xFF0);
 BR_DC_AT(fFFC,       0xFFC);
+BR_DC_AT(f1000,     0x1000);
 BR_DC_AT(f1004,     0x1004);
+BR_DC_AT(f1008,     0x1008);
+BR_DC_AT(sz100C,    0x100C);
+BR_DC_AT(sz2ABC,    0x2ABC);
 BR_DC_AT(f1024,     0x1024);
 BR_DC_AT(f1030,     0x1030);
 BR_DC_AT(f1034,     0x1034);
