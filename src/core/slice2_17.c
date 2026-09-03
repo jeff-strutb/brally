@@ -730,6 +730,16 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
  * course. It sets the lighting up from a fixed overhead direction, configures
  * how the objects are shaded and depth-tested, and then walks the list drawing
  * each one. */
+/* RESIDUE (12 masked diffs, T3a, instruction count and body length exact --
+ * the +8 the scorer reports is trailing alignment nops). Two sites, one
+ * cause: where the reloaded `pList` lives. The original homes it in the
+ * induction register at the pass head (`mov esi,[esp+0x1C]` then
+ * `add esi,0xC`) and in a SCRATCH register at the loop foot (`mov edx,
+ * [esp+0x1C]`); ours picks edi both times, so the head reads
+ * `lea esi,[edi+0xC]` and the foot swaps `inc eax` with the count load.
+ * DO NOT RE-PROBE: an explicit induction pointer (`it` hoisted out of the
+ * inner loop, stepped in the third clause) is far worse -- 746 diffs,
+ * REGNORM 14+12, +13 bytes. */
 /* @implements 0x1002FB20 d3d BrScenePropsDraw */
 void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
 {
