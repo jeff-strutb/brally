@@ -354,7 +354,16 @@ void BrHudDrawDial(BrHudView *aViews)
          * first, no fxch.  Probed and failed: hoisting the ang assignment
          * above the v[k].y statement (extends ang's live range, changes the
          * frame, 9+2), fresh per-vertex angle variables (no change).
-         * Scheduler-internal pipelining depth. */
+         * Scheduler-internal pipelining depth.
+         *
+         * CONFIRMED 2026-09-03 that this is the WHOLE residue: the four
+         * missing `fxch` are exactly the -8 bytes and -4 instructions, and
+         * nothing else in 1703 B differs. fn.py also reports an extra
+         * `lea R,[R*I]` against a missing `lea R,[R*I + I]` -- that pair is
+         * a PHANTOM. It is the `lea edi,[edx*8 + <global>]` at 0x10014109,
+         * whose displacement is a reloc and therefore reads 0 in the .obj;
+         * both encodings are the same seven bytes and mask equal. Do not
+         * chase it. */
         fx = (float)x;
         ang = A - kF324;
         t = (float)cos(ang);
