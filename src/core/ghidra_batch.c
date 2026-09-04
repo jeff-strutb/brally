@@ -198,6 +198,11 @@ int BrNetWriteTagC0(void *pThis, unsigned char kind, unsigned int a,
     return 0;
 }
 
+/* WHAT IT DOES: appends the race-options field to an outgoing network packet
+ * -- a tag byte, then the handful of settings every player has to agree on
+ * before a race can start. Like its sibling above it writes nothing and
+ * reports failure when the packet has no room for the whole field, so a
+ * half-written option block can never go out. */
 /* @implements 0x1006AFF0 glide BrNetWriteRaceOpts */
 int BrNetWriteRaceOpts(void *pThis, unsigned char kind)
 {
