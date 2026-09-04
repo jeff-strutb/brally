@@ -387,62 +387,6 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 #endif
 
 /* ==========================================================================
- * 0x1003E1D0
- * ========================================================================== */
-
-/* WHAT IT DOES: wipes a pair of scratch buffers back to zeros, pointing each
- * at its own built-in storage first if it has not been given anywhere else to
- * live. What the buffers hold is not established here. */
-#ifdef BR_MATCHING_BUILD
-uint32_t *g_brPairA;                         /* 0x10ACED34 */
-uint32_t *g_brPairB;                         /* 0x10AD189C */
-uint32_t  g_brPairStaticA[BR_PAIRBUF_DWORDS]; /* 0x10AF9890 */
-uint32_t  g_brPairStaticB[BR_PAIRBUF_DWORDS]; /* 0x10AF99DC */
-
-/* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
- * each at its own built-in storage first if it has nowhere else to live. */
-/* @implements 0x1003E1D0 d3d BrPairBufReset */
-int BrPairBufReset(BrPairBuf *pBuf)
-{
-    uint32_t *p;
-
-    p = g_brPairA;
-    if (p == NULL) {
-        p = g_brPairStaticA;
-        g_brPairA = p;
-    }
-    memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
-
-    p = g_brPairB;
-    if (p == NULL) {
-        p = g_brPairStaticB;
-        g_brPairB = p;
-    }
-    memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
-
-    return 1;
-}
-#else
-/* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
- * each at its own built-in storage first if it has nowhere else to live. */
-/* port-only variant of BrPairBufReset (matching build uses the #ifdef branch above) */
-int BrPairBufReset(BrPairBuf *pBuf)
-{
-    if (pBuf->pA == NULL) {
-        pBuf->pA = pBuf->aStaticA;
-    }
-    memset(pBuf->pA, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
-
-    if (pBuf->pB == NULL) {
-        pBuf->pB = pBuf->aStaticB;
-    }
-    memset(pBuf->pB, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
-
-    return 1;
-}
-#endif
-
-/* ==========================================================================
  * 0x1003E260
  * ========================================================================== */
 
