@@ -750,4 +750,27 @@ void BrPadPackButtons(unsigned char *out)
     }
 }
 
+extern int * DAT_10ac66e8;
+extern int * DAT_10ac6720;
+extern int * DAT_10ac6730;
+
+/* WHAT IT DOES: update the button-latch state: detect new presses by comparing current vs previous frame. */
+/* @implements 0x10059060 glide BrInputLatchUpdate */
+
+int BrInputLatchUpdate(void)
+
+{
+  int iVar1;
+  
+  iVar1 = 0;
+  do {
+    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
+    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
+    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) =
+         *(unsigned int *)((int)&DAT_10ac6730 + iVar1) & *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
+    iVar1 = iVar1 + 4;
+  } while (iVar1 < 0x10);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
