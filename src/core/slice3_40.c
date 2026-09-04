@@ -768,33 +768,6 @@ int BrThunk5C440(void)
   return;
 }
 
-/* WHAT IT DOES: step selection index A up (clamped at 9) and latch its byte from the
- * 4-stride table at 0x100AD770 into 0x100BB2E0. */
-/* @implements 0x10059DC0 glide BrUiSelAInc */
-
-void BrUiSelAInc(void)
-
-{
-  if (g_brB4E70C < 9) {
-    g_brB4E70C = g_brB4E70C + 1;
-  }
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
-  return;
-}
-
-/* WHAT IT DOES: step selection index A down (clamped at 0) and latch its byte. */
-/* @implements 0x10059DE0 glide BrUiSelADec */
-
-void BrUiSelADec(void)
-
-{
-  if (0 < g_brB4E70C) {
-    g_brB4E70C = g_brB4E70C + -1;
-  }
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
-  return;
-}
-
 /* Declared here with a BYTE parameter, which is not how slice1_01.c defines
  * it. The call below pushes eax with the index's upper three bytes still in
  * it -- VC5 only leaves a stack argument dirty when the callee's parameter is
