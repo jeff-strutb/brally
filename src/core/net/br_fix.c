@@ -133,4 +133,15 @@ float BrFixUnpackS16Q7(int32_t v)
     return (float)((int16_t)v * 0.0078125f);
 }
 
+
+
+/* 0x100073A0.  Scale 0x1008F140 = 0.00390625f (= 1/256). */
+/* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
+ * 1/256 resolution. */
+/* @implements 0x100073A0 d3d BrFixUnpackS16Q8 */
+float BrFixUnpackS16Q8(int32_t v)
+{
+    return (float)((int16_t)v * 0.00390625f);
+}
+
 #endif /* BR_MATCHING_BUILD */
