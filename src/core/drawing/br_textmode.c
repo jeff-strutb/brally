@@ -103,4 +103,15 @@ void BrViewBuffersRebase(void)
   DAT_1035f7dc = 0x102e1710 + DAT_106ed67c * 0x3e800;
   return;
 }
+extern uint8_t g_br4B0358;
+
+/* 0x10019260, 12 call sites. */
+/* WHAT IT DOES: clears one of the text drawing flags. A wrapper onto the
+ * body that lives with the rest of the text code. */
+/* @implements 0x10016820 glide BrTextFlag358Clear */
+void BrTextFlag358Clear(void)
+{
+    g_br4B0358 = 0;
+}
+
 #endif /* BR_MATCHING_BUILD */

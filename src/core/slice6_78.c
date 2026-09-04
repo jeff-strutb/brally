@@ -423,14 +423,6 @@ void BrTextSetSize(int size)
     g_br4B0348 = size;
 }
 
-/* 0x10019260, 12 call sites. */
-/* WHAT IT DOES: clears one of the text drawing flags. A wrapper onto the
- * body that lives with the rest of the text code. */
-/* @implements 0x10016820 glide BrTextFlag358Clear */
-void BrTextFlag358Clear(void)
-{
-    g_br4B0358 = 0;
-}
 
 /* 0x10019270, 9 call sites. */
 void BrTextAlignCentre(void)
