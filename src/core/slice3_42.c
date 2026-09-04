@@ -1270,16 +1270,5 @@ int BrReplayGetSize(void)
 
 extern unsigned int DAT_10b7364c;
 
-/* WHAT IT DOES: store how many 0x18-byte replay records fit in a byte count
- * (the inverse of BrReplayGetSize's count * 0x18). */
-/* @implements 0x10063DB0 glide BrReplayCountFromBytes */
-
-unsigned int BrReplayCountFromBytes(unsigned int cb)
-
-{
-  /* mov eax,edx; shr eax,4 -- the quotient is copied into EAX because the
-   * assignment's value is also RETURNED. */
-  return DAT_10b7364c = cb / 0x18;
-}
 
 #endif /* BR_MATCHING_BUILD */
