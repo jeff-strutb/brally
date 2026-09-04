@@ -668,59 +668,49 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * bound check, the zeroed sscanf slots, the stop-at-NUL step -- are all
  * absent here, because the original does not have them.
  *
- * STATE: 3,027 of 3,050 code bytes, 744 of 751 instructions, 8 divergence
- * regions.  (Read those numbers off the code up to the `ret`, NOT off
- * fn.py's BYTES/INSNS: VC5 puts this function's four SWITCH TABLES -- two
- * byte maps and two jump tables, 254 bytes -- inside its COMDAT section, so
- * the recompiled symbol runs 232 bytes and ~110 disassembled-as-code
- * "instructions" long.  The scorer trims the recomp to the original's length
- * before comparing, so the tables are harmless to a MATCH; they only poison
- * the size and count readouts.)
+ * STATE (2026-09-04): 751 of 751 instructions, every divergence.py region
+ * delta 0 at key 10, whole-function register-blind multiset 6+6, sweep row
+ * 420 positional diff bytes (was 2,294).  Compare the /O2 object: the
+ * original has NO frame pointer (ebp is penX), so the /Oy- row the report
+ * used to prefer was the wrong variant.  (fn.py's BYTES/INSNS still include
+ * the four switch tables VC5 keeps in the COMDAT; read the code up to the
+ * `ret`.)
  *
- * ================= RESIDUE: ONE ALLOCATION CHOICE =========================
+ * ================= RESIDUE: SLOT ASSIGNMENT, ONE PROMOTION ===============
  *
- * Every one of the eight regions traces to a single decision: we pin `scale`
- * to EBX, the original leaves EBX as a scratch that carries pOff, cell and
- * stride around their uses and keeps `scale` in a stack slot.  That costs the
- * original one more slot (`sub esp,0x2c` against our 0x28) and therefore
- * shifts EVERY stack displacement in the function, and it is why our glyph
- * block reaches `imul r,[esp+S]` / `idiv [esp+S]` where the original loads
- * into a register first -- which is also the whole 7-instruction shortfall.
+ * The frame is now the original's 0x2c and the allocation matches: pOff in
+ * ebx with a home at +0x38, scale memory-homed, penX in ebp.  What is left:
  *
- * THE N64 TWIN IS 0x8022E4E0 in Top Gear Rally, and it does not move this.
- * (Found without an anchor: this function shares no string with the ROM, so
- * it was paired by screening every `lui` immediate in .text for the display
- * list constants it builds -- 0xB900, 0xBA00, 0xF510, 0xF568, 0xE700, 0x0C18.
- * That function has all six; nothing else has more than four.) It confirms
- * the three globals and the (30*scale)/40, the `scale < 25` selection, the
- * 20/40 cell, the two ramps as address constants, and that `bottom` is a
- * real local -- and it CORRECTED one line: the hi-res block doubles all
- * three from the LOCALS (`sll $s5,1` and friends), not from the globals.
- * It cannot speak to x86 register choice, and its body is 4,076 bytes with a
- * genuinely different coordinate packing, so it is a structure oracle only.
+ *   1. Five locals sit in the wrong slots.  Original: scale +0x10, b +0x14,
+ *      r +0x18, top +0x1c, p +0x20, and `g` packed into the dead parameter
+ *      slot (+0x40).  Ours: g +0x10, b +0x14, scale +0x18, r +0x1c,
+ *      top +0x20, and `p` in the parameter slot.  +0x24..+0x38 agree.
+ *      Function-scope DECLARATION order is inert (three orders, including
+ *      the original's slot order, byte-identical).
+ *   2. In the glyph block the original promotes `stride` into ebx for the
+ *      window address (`mov ebx,[stride] / imul ebx,edx / add ebx,[vaBlock]`)
+ *      and loads `cell` only after the DC put; ours promotes `vaBlock`
+ *      (`imul ecx,[stride]` early, `mov ebx,[vaBlock] / add ecx,ebx`).  The
+ *      four spellings of `vaBlock + stride * cls` (either order, with and
+ *      without the cast) are byte-identical, as are declaring stride before
+ *      vaBlock and assigning it first in the arms (+12 diffs).
+ *   3. The clamp arm keeps `top` in esi across both clamps (`lea eax,[esi*4]`);
+ *      ours reloads it, a consequence of 2.
  *
  * DEAD PROBES -- do not re-run:
- *   - declaring `pOff` first / `scale` last (VC5 does not order by
- *     declaration here)
- *   - `register` on pOff (ignored under /O2)
- *   - computing `top` from the local `scale` rather than the global (the
- *     global form is kept: marginally better, 208+91 -> 207+90 raw)
- *   - laying the declarations out in the original's own slot order, read off
- *     its displacements (pOff +0x38 ... scale +0x10). Byte-for-byte no
- *     change, which retires "declaration order sets the frame" for this
- *     function.
+ *   - declaring `pOff` first / `scale` last; `register` on pOff
+ *   - laying the declarations out in the original's slot order (twice: with
+ *     scale in ebx and again with the frame right)
+ *   - swapping the `|` operands of the second E3 word (canonicalised)
+ *   - the four spellings of the window address, and the stride/vaBlock
+ *     declaration and assignment orders (above)
  *
- * The slot census is worth keeping, because it says how close this is. Every
- * displacement's USE COUNT already agrees:
- *
- *     orig  0x10:8 0x14:7 0x18:5 0x1c:6 0x20:4 0x24:4 0x28:3 0x2c:3
- *           0x30:3 0x34:3 0x38:3 0x40:8
- *     ours  0x10:7 0x14:7 0x18:5 0x1c:6 0x20:4 0x24:4 0x28:3 0x2c:3
- *           0x30:3 0x34:3        0x3c:7
- *
- * -- one missing three-use slot (pOff, which the original pins to EBX and
- * reloads across the back edge) and `p`/`g` trading homes with the dead
- * parameter's slot as a consequence.
+ * The N64 twin is 0x8022E4E0 in Top Gear Rally (paired by the six display
+ * list constants it builds -- 0xB900, 0xBA00, 0xF510, 0xF568, 0xE700,
+ * 0x0C18); it confirms the three globals, (30*scale)/40, the `scale < 25`
+ * selection, the 20/40 cell and the two ramps.  It is a structure oracle
+ * only: its coordinate packing is different and it cannot speak to x86
+ * allocation.
  * ==========================================================================
  *
  * SOLVED, and each is now an entry in docs/VC5-IDIOMS.md:
@@ -728,7 +718,20 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  *   - the eight-byte append as a macro at all 43 sites
  *   - the colour codes as two SWITCHES, not three hand-written tables
  *   - the hi-res doubling read off the GLOBALS, not off the locals
+ *     (`lea ebp,[edi+edi]` off the still-live load; the N64's local form
+ *     is IDO copy-propagation, not the source)
  *   - the combine call as TWO CALLS with the slot taken inside each arm
+ *   - the guard sums written INLINE at all four sites (`penX + drawW`,
+ *     `top + scale`): global CSE carries them into the pass arm, the clamp
+ *     arm recomputes them because they are only partially available there.
+ *     A named local hoists them above the guard.
+ *   - a NAMED `adv = w - 1` right after `w`: it holds edi across the glyph
+ *     block, and that extra callee-saved demand is what flips the allocator
+ *     from scale-in-ebx to pOff-in-ebx -- the whole 0x28 -> 0x2c frame.
+ *   - the escape arms as the ELSE of the "%%" test, each ending in
+ *     `goto next`: arms that never rejoin go out of line past the `ret`;
+ *     a `goto` to a label placed after `return` is laid out INLINE.
+ *   - `do { } while (*p != '\0')` with the increments before the test.
  * ========================================================================== */
 
 /* 0x106E7710, the display-list cursor.  slice2_18's object under the Glide
@@ -810,9 +813,9 @@ extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
-    /* Declaration order does NOT set the frame here -- laying these out in
-     * the original's slot order (pOff at +0x38 down to scale at +0x10)
-     * changed nothing at all.  See the residue note above. */
+    /* Declaration order does NOT set the slots here -- laying these out in
+     * the original's slot order changed nothing, with either frame.  See
+     * the residue note above. */
     const int32_t *pOff;
     struct BrGfxWords *pCombine;
     const char    *p, *q;
@@ -823,17 +826,15 @@ void BrTextEmitString(const char *psz)
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
     top   = g_brFontY - (30 * g_brFontScale) / 40;  /* 0x10015B23 */
-    /* All three doubled from the LOCALS.  The N64 twin (0x8022E4E0, which
-     * carries the same three globals and the same (30*scale)/40) is
-     * unambiguous here -- `sll $s5,1 / sll $t6,$fp,1 / sll $t7,$s7,1` off
-     * the already-assigned locals, not off the globals.  The original's
-     * `lea ecx,[esi+esi]` is not evidence for the global form: it is what
-     * `scale <<= 1` compiles to when `scale`'s home is a stack SLOT and its
-     * value happens to be live in esi. */
+    /* scale and penX doubled from the GLOBALS, top from the local.  penX is
+     * in ebp in both builds and the original writes `mov edi,[x] / mov
+     * ebp,edi` then `lea ebp,[edi+edi]` -- the global's load kept alive for
+     * a second read -- where `penX <<= 1` is `shl ebp,1`.  The N64 twin's
+     * `sll` off the locals is IDO's copy propagation, not the source. */
     if (g_brFontHiRes != 0) {                       /* 0x10015B4F */
         top   <<= 1;
-        scale <<= 1;
-        penX  <<= 1;
+        scale = g_brFontScale * 2;
+        penX  = g_brFontX * 2;
     }
 
     if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
@@ -919,107 +920,28 @@ void BrTextEmitString(const char *psz)
          * both.  Set INSIDE the emptiness test -- the original computes it
          * after the `je` to the epilogue. */
         q = psz + 2;
-        for (;;) {
+        do {
             if (*p != ' ') {                        /* 0x10015F63 */
                 /* ONE chain, not two `*p == '%'` tests: not a percent, or a
                  * percent at the end of the string, both fall straight into
-                 * the glyph. */
+                 * the glyph.  The escape arms are the ELSE of the "%%" test
+                 * and every one of them ends in `goto next`, which is what
+                 * puts them OUT OF LINE past the epilogue (0x10016256 follows
+                 * the `ret` at 0x10016255): the "%%" arm falls into the
+                 * glyph, the arms that never rejoin are deferred to the end. */
                 if (*p == '%' && p[1] != '\0') {
-                    if (p[1] != '%')
-                        goto escape;                /* 0x10016256 */
-                    ++p;                            /* "%%": swallow one */
-                    ++q;
-                }
-            glyph:
-                {
-                    signed char sc = (signed char)*p;
-
-                    /* Signed compares, so 0x80..0xFF are outside. */
-                    if (sc >= BR_FONT_CLASS_LO && sc <= BR_FONT_CLASS_HI) {
-                        int32_t  cls = g_aBrFontClass[sc - BR_FONT_CLASS_LO];
-                        int32_t  w   = pOff[cls + 1] - pOff[cls] + 1;
-                        int32_t  drawW, rightEdge, bottom;
-
-                        /* ONE texture per size, re-aimed at this class's
-                         * window by the 0xDD in front of the 0xDC. */
-                        put(0xDD000000u | (hPage & 0x00FFFFFFu),
-                            vaBlock + stride * (uint32_t)cls);
-                        put(0xDC000000u | (hPage & 0x00FFFFFFu), 1u);
-                        put(0xDE000000u, 0x3F800000u);   /*  1.0f */
-                        put(0xDF000000u, 0xBF800000u);   /* -1.0f */
-
-                        /* SETTILESIZE, tile 0, 10.2: uls = ult = 0.5,
-                         * lrs = w - 0.5, lrt = cell - 0.5. */
-                        put(0xF2002002u,
-                            ((((uint32_t)w << 14) - 0x2000u) & 0x00FFF000u)
-                                | ((uint32_t)(cell * 4 - 2) & 0xFFFu));
-
-                        drawW     = (scale * w) / cell;
-                        rightEdge = penX + drawW;
-                        bottom    = top + scale;
-
-                        if (penX >= 0 && rightEdge <= 0x140 &&
-                            top >= 0 && bottom <= 0xF0) {
-                            put(0xE3000000u | (BR_F12(rightEdge) << 12)
-                                            | BR_F12(bottom),
-                                (BR_F12(penX) << 12) | BR_F12(top));
-                        } else {
-                            /* The SAME rectangle with every corner clamped at
-                             * zero and ONLY at zero -- past the right or the
-                             * bottom edge it still goes out unchanged, so this
-                             * is not a scissor. */
-                            int32_t cr = BR_CLAMP16(rightEdge);
-                            int32_t cb = BR_CLAMP16(bottom);
-
-                            put(0xE3000000u
-                                    | ((uint32_t)(cr & 0xFFF) << 12)
-                                    | (uint32_t)(cb & 0xFFF),
-                                ((uint32_t)(BR_CLAMP16(penX) & 0xFFF) << 12)
-                                    | (uint32_t)(BR_CLAMP16(top) & 0xFFF));
-                        }
-
-                        /* The pen advances by ONE LESS than the tile width --
-                         * the quantity the width routine sums. */
-                        penX += (scale * (w - 1)) / cell;
-                    }
-                }
-            } else {
-                /* (14 * scale) / 40, PLUS ONE.  The width routine computes the
-                 * same quotient and does not add the one, so a string with
-                 * spaces measures narrower than it draws. */
-                penX += (14 * scale) / 40 + 1;      /* 0x100161C3 */
-            }
-
-        next:
-            if (p[1] == '\0')                       /* 0x100161E5 */
-                break;
-            ++p;
-            ++q;
-        }
-    }
-
-    put(0xE7000000u, 0u);                           /* 0x100161FC */
-    put(0xBA001301u, 0x00080000u);
-    put(0xBA001402u, 0u);
-    return;
-
-    /* ---- the escape blocks -------------------------------------------
-     * OUT OF LINE, past the epilogue and the `ret`, which is where the
-     * original puts them (0x10016256 follows 0x10016255 `ret`).  Written
-     * after the return so VC5 lays them out there rather than in front of
-     * the glyph. */
-escape:
-            if (p[1] == 'i') {                      /* 0x10016256 */
-                ++p;
-                ++q;
-                goto next;
-            }
-            if (p[1] == 'n') {
-                ++p;
-                ++q;
-                goto next;
-            }
-            if (p[1] == 'x') {                      /* 0x10016269 */
+                    if (p[1] == '%') {
+                        ++p;                        /* "%%": swallow one */
+                        ++q;
+                    } else if (p[1] == 'i') {       /* 0x10016256 */
+                        ++p;
+                        ++q;
+                        goto next;
+                    } else if (p[1] == 'n') {
+                        ++p;
+                        ++q;
+                        goto next;
+                    } else if (p[1] == 'x') {       /* 0x10016269 */
                 /* Six hex digits out of `q`, the character after "%x".  A
                  * short or malformed field leaves these slots holding
                  * whatever was in them. */
@@ -1041,11 +963,8 @@ escape:
                 p += 7;
                 q += 7;
                 put(0xFB000000u, BR_PACK(r, g, b));
-                goto next;
-            }
-            if (*q == '\0')                         /* 0x10016367 */
-                goto glyph;   /* one letter left: draw the '%' instead */
-
+                        goto next;
+                    } else if (*q != '\0') {        /* 0x10016367 */
             put(0xE7000000u, 0u);
 
             /* The first letter sets the primitive colour, the second the
@@ -1079,9 +998,79 @@ escape:
             case '5': put(0xFB000000u, 0x808080FFu); break;
             case '0': put(0xFB000000u, 0x000000FFu); break;
             }
-    p += 2;
-    q += 2;
-    goto next;
+                        p += 2;
+                        q += 2;
+                        goto next;
+                    }
+                    /* one letter left: draw the '%' instead */
+                }
+                {
+                    signed char sc = (signed char)*p;
+
+                    /* Signed compares, so 0x80..0xFF are outside. */
+                    if (sc >= BR_FONT_CLASS_LO && sc <= BR_FONT_CLASS_HI) {
+                        int32_t  cls = g_aBrFontClass[sc - BR_FONT_CLASS_LO];
+                        int32_t  w   = pOff[cls + 1] - pOff[cls] + 1;
+                        int32_t  adv = w - 1;
+                        int32_t  drawW;
+
+                        /* ONE texture per size, re-aimed at this class's
+                         * window by the 0xDD in front of the 0xDC. */
+                        put(0xDD000000u | (hPage & 0x00FFFFFFu),
+                            vaBlock + stride * (uint32_t)cls);
+                        put(0xDC000000u | (hPage & 0x00FFFFFFu), 1u);
+                        put(0xDE000000u, 0x3F800000u);   /*  1.0f */
+                        put(0xDF000000u, 0xBF800000u);   /* -1.0f */
+
+                        /* SETTILESIZE, tile 0, 10.2: uls = ult = 0.5,
+                         * lrs = w - 0.5, lrt = cell - 0.5. */
+                        put(0xF2002002u,
+                            ((((uint32_t)w << 14) - 0x2000u) & 0x00FFF000u)
+                                | ((uint32_t)(cell * 4 - 2) & 0xFFFu));
+
+                        drawW     = (scale * w) / cell;
+
+                        if (penX >= 0 && penX + drawW <= 0x140 &&
+                            top >= 0 && top + scale <= 0xF0) {
+                            put(0xE3000000u | (BR_F12(penX + drawW) << 12)
+                                            | BR_F12(top + scale),
+                                (BR_F12(penX) << 12) | BR_F12(top));
+                        } else {
+                            /* The SAME rectangle with every corner clamped at
+                             * zero and ONLY at zero -- past the right or the
+                             * bottom edge it still goes out unchanged, so this
+                             * is not a scissor. */
+                            int32_t cr = BR_CLAMP16(penX + drawW);
+                            int32_t cb = BR_CLAMP16(top + scale);
+
+                            put(0xE3000000u
+                                    | ((uint32_t)(cr & 0xFFF) << 12)
+                                    | (uint32_t)(cb & 0xFFF),
+                                ((uint32_t)(BR_CLAMP16(penX) & 0xFFF) << 12)
+                                    | (uint32_t)(BR_CLAMP16(top) & 0xFFF));
+                        }
+
+                        /* The pen advances by ONE LESS than the tile width --
+                         * the quantity the width routine sums. */
+                        penX += (scale * adv) / cell;
+                    }
+                }
+            } else {
+                /* (14 * scale) / 40, PLUS ONE.  The width routine computes the
+                 * same quotient and does not add the one, so a string with
+                 * spaces measures narrower than it draws. */
+                penX += (14 * scale) / 40 + 1;      /* 0x100161C3 */
+            }
+
+        next:
+            ++p;                                    /* 0x100161E5 */
+            ++q;
+        } while (*p != '\0');
+    }
+
+    put(0xE7000000u, 0u);                           /* 0x100161FC */
+    put(0xBA001301u, 0x00080000u);
+    put(0xBA001402u, 0u);
 }
 
 #undef put
