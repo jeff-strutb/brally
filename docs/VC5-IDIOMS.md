@@ -4727,3 +4727,36 @@ NOTHING. The difference is what the merged blocks produce: a RETURN VALUE
 there, a STORE TO A GLOBAL in a `void` function here. Four shapes plus a
 `switch` were probed on that one and all merge. Until a second void case falls,
 reach for this lever when the merged arms set a return value.
+
+## thiscall with 3+ arguments: wrap EVERY argument after `this`, not just one
+
+The `__fastcall`-plus-struct trick for reaching thiscall from C was recorded as
+"a struct-typed SECOND parameter is never register-eligible, so it is forced
+back onto the stack". That is true and it is not sufficient. **`__fastcall`
+SKIPS a struct when it hands out ecx and edx — it does not stop handing them
+out.** With three arguments, a wrapper on the second one just lets the THIRD
+take edx, and the function cleans 4 bytes where thiscall cleans 8.
+
+Proven on 0x10069BC0 BrFn10069BC0 (98 B) and its sibling 0x10069C30 (87 B).
+With one wrapper the function was register-blind exact and still 16 bytes
+short: the four per-arm reloads `mov edx,[esp+8]` had become a single register.
+Wrapping both arguments made both functions byte-exact.
+
+    typedef struct { int32_t  v; } KindArg;
+    typedef struct { uint32_t v; } KeyArg;
+    int32_t BR_THISCALL1 f(void *pThis, KindArg kind, KeyArg key);
+
+`include/br_match.h` carries the corrected rule. **Screened afterwards: every
+other `BR_THISCALL1` definition in the tree takes one argument (exact) or two
+with the wrapper already on the second (correct), so there is no third case to
+sweep.** A lever, not a class.
+
+**The same two functions carry the other half of the lesson: WRITE EVERY ARM
+OUT IN FULL.** The port had factored the profile choice into a helper returning
+an index; the original writes four arms, each folding its own literal into the
+ROW index of one flat table — `(key + 28*k) * 3` — rather than indexing a
+profile and then a row. Factoring collapses four arms into one indexed load and
+loses half the function. Note also that VC5 cross-jumps the tails of arms 2 and
+3 in 0x10069C30 by itself (arm 3 ends in a `jmp` into arm 2) while leaving arm
+1 its own copy: that is the compiler's layout, not a difference in spelling, so
+do not try to reproduce it from the source side.
