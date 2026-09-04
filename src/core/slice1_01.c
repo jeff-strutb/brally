@@ -629,6 +629,11 @@ int BrCdTrackRandom(void)
   return iVar1;
 }
 
+/* WHAT IT DOES: ask for a CD track to start playing. It records the wanted
+ * track and raises the pending flag, then -- only if a disc is actually in the
+ * drive and the window is up -- posts the message that makes the audio thread
+ * act on it. With no disc the request is remembered but nothing is posted, so
+ * it takes effect when the drive next reports media. Always reports success. */
 /* @implements 0x10002BA0 glide BrCdTrackRequest */
 
 int BrCdTrackRequest(int param_1)
