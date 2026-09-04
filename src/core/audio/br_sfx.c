@@ -10,7 +10,10 @@
  *   0x1006B530 (0x100725C0)  bind group's slot to a channel, copy base rate
  *   0x1006B5F0 (0x10072680)  32.32 ratio -> SetFrequency
  *   0x1006B880 (0x10072910)  start + Hz -> 32.32 ratio
- *   0x1006B6C0 (0x10072750)  float Hz -> SetFrequency
+ *   0x1006B6C0 (0x10072750)  float level -> paired-slot SetVolume (this said
+ *                            "float Hz -> SetFrequency"; matching the whole
+ *                            routine showed its tail reaches the VOLUME
+ *                            setter -- see BrSndSetVolumePairF, slice6_77.c)
  *   0x10061470 (0x10068400)  the per-frame car sound driver -- only its
  *                            engine PITCH arithmetic is here (three fragments,
  *                            addresses on each function); the rest of that
@@ -304,11 +307,12 @@ static int64_t br_ftol64(double v)
  *   1006B6D2  lea ecx,[eax+eax]        ; a2 * 2
  *   1006B6D7  call 0x1006B6E0          ; f(a1, a2*2, ftol(a3))
  *
- * -- and this helper is the second instruction of it.  0x1006B6C0 has NO
- * implementation in this tree: 0x1006B6E0 (voice = BrSndVoices[a1*18 + a2],
- * then 0x1006B670, which writes voice+0x0C and calls 0x1006B420) is unported
- * too, so there is nothing to attach the address to and it is left unclaimed
- * rather than re-hung on the nearest plausible symbol. */
+ * -- and this helper is the second instruction of it.
+ *
+ * UPDATED 2026-09-03: all thirty-two bytes are now matched, as
+ * BrSndSetVolumePairF in slice6_77.c beside the FUN_1006b6e0 it tail-calls.
+ * The address is claimed there, not here; this helper is still only the
+ * truncation and carries no @implements. */
 static uint32_t br_ftol32(double v)
 {
     return (uint32_t)((uint64_t)br_ftol64(v) & 0xFFFFFFFFu);

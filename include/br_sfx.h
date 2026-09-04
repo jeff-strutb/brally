@@ -260,9 +260,14 @@ uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate);
  *
  * so the real routine is `f(a1, a2 * 2, ftol(a3))`, where 0x1006B6E0 looks up
  * BrSndVoices[a1*18 + a2] behind the usual three gates and hands it to
- * 0x1006B670 (store voice+0x0C, then 0x1006B420).  None of that tail is
- * ported, so the ADDRESS is unclaimed and this declaration is the truncation
- * arithmetic only.  Do not put an @implements on it. */
+ * 0x1006B670 (store voice+0x0C, then 0x1006B420).
+ *
+ * UPDATED 2026-09-03: the whole routine IS now byte-exact, as
+ * BrSndSetVolumePairF in slice6_77.c, sitting next to the FUN_1006b6e0 it
+ * tail-calls -- and the tail turns out to reach BrSndBufSetVolume, so
+ * "absolute frequency" above describes the caller, not this. The address is
+ * claimed there. This declaration remains the truncation arithmetic only;
+ * do not put an @implements on it. */
 uint32_t BrSfxHzFromFloat(float hz);
 
 /* ------------------------------------------------------- the engine curve */
