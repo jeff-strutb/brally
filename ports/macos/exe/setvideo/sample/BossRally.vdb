@@ -1,0 +1,75 @@
+; BossRally.vdb — SAMPLE device database.
+;
+; HAND-WRITTEN FOR THE macOS PORT DEMO. This is NOT the data file that
+; shipped with Boss Rally; that file is not in this repository. The format is
+; reconstructed from what the byte-matched reader accepts:
+;
+;   - a line starting with '[' opens a section, and the whole bracketed
+;     string is the section name written back as Card=
+;   - "[v:" names appear in the vendor drop-down, "[c:" in the chipset one
+;   - Key=Value lines belong to the section above them
+;   - ';' starts a comment while an .ini/.vdb is being read (ReadINI swaps
+;     the comment character from '#' to ';' for the duration)
+;   - Use=[Some Section] redirects to another section (FollowUse)
+;   - #include "file" pulls in another list file (ReadListLine)
+
+[Generic Direct3D]
+Driver=D3D
+D3DAlphaCompare=1
+D3DAlwaysSquareTextures=0
+D3DClearZBuffer=1
+D3DDrawCarShadow=1
+D3DWaitCanFlip=0
+D3DWaitFlipDone=0
+D3DInvSrcAlpha=1
+
+[Generic Glide]
+Driver=Glide
+GlideResolution=640x480
+GlideTripleBuffer=1
+GlideMipMapping=1
+
+[v:3Dfx Interactive]
+Use=[Generic Glide]
+
+[v:NVIDIA]
+Use=[Generic Direct3D]
+
+[v:Matrox]
+Driver=D3D
+D3DAlphaCompare=0
+D3DAlwaysSquareTextures=0
+D3DClearZBuffer=1
+D3DDrawCarShadow=0
+D3DWaitCanFlip=1
+D3DWaitFlipDone=1
+D3DInvSrcAlpha=1
+
+[c:Voodoo Graphics]
+Driver=Glide
+GlideResolution=512x384
+GlideTripleBuffer=0
+GlideMipMapping=1
+
+[c:Voodoo2]
+Use=[Generic Glide]
+
+[c:Riva TNT]
+Driver=D3D
+D3DAlphaCompare=1
+D3DAlwaysSquareTextures=0
+D3DClearZBuffer=0
+D3DDrawCarShadow=1
+D3DWaitCanFlip=0
+D3DWaitFlipDone=0
+D3DInvSrcAlpha=1
+
+[c:Rage Pro]
+Driver=D3D
+D3DAlphaCompare=0
+D3DAlwaysSquareTextures=1
+D3DClearZBuffer=1
+D3DDrawCarShadow=0
+D3DWaitCanFlip=0
+D3DWaitFlipDone=1
+D3DInvSrcAlpha=0
