@@ -1752,37 +1752,6 @@ void BrSub_1002F242(void)
   return;
 }
 
-/* WHAT IT DOES: never-returning service loop: two (compiled-out) trace calls, then forever:
- * stub-true on the 0x106ED650 block, a trace, stub-true on the 0x106EA430 block. */
-/* @implements 0x1002DD30 glide BrIdleLoop_1002DD30 */
-
-void BrIdleLoop_1002DD30(void)
-
-{
-  BrPodNop(&DAT_106ed650,&DAT_106e79d0,1);
-  BrPodNop(4,&DAT_106ed650,DAT_106e7738);
-  for (;;) {
-    BrStubTrue(&DAT_106ed650,0,1);
-    BrPodNop(1,0,0,0,0xff);
-    BrStubTrue(&DAT_106ea430,DAT_106e7738,1);
-  }
-}
-
-/* WHAT IT DOES: same shape as BrIdleLoop_1002DD30 over the 0x106ECB48 / 0x106EA410 blocks. */
-/* @implements 0x1002DD9A glide BrIdleLoop_1002DD9A */
-
-void BrIdleLoop_1002DD9A(void)
-
-{
-  BrPodNop(&DAT_106ecb48,&DAT_106ea388,1);
-  BrPodNop(9,&DAT_106ecb48,DAT_106e7738);
-  for (;;) {
-    BrStubTrue(&DAT_106ecb48,0,1);
-    BrPodNop(2,0,0,0,0xff);
-    BrStubTrue(&DAT_106ea410,DAT_106e7738,1);
-  }
-}
-
 
 /* WHAT IT DOES: run the per-pad input step: 0x1002CE5F once, then for each pad block
  * (base 0x106ED708, stride 0x15C, count 1 in this build) translate the raw pad state and
