@@ -245,6 +245,31 @@ Further reading: [ARCHITECTURE.md](ARCHITECTURE.md), [CONVENTIONS.md](CONVENTION
   from the retail disc. Needs (you supply; none tracked in git): `reference/msvc/VCPP-5.00.iso`,
   the Boss Rally disc (`reference/brally/BossRally.BIN` + `.cue`), optionally the
   Top Gear Rally ROM, plus Rosetta 2 on Apple Silicon.
+
+### Reference data (you supply; none tracked in git)
+
+These are the exact dumps the match counts were produced against — `setup.sh`
+checks the MD5s and warns if a different image is in `reference/`.  Without
+them the tree still builds and the suites that need retail data skip with a
+reason, but the matching pipeline cannot run and no byte-exact claim can be
+verified.
+
+```
+reference/msvc/VCPP-5.00.iso                  Visual C++ 5.0 disc image
+reference/brally/BossRally.BIN                retail PC disc
+    MD5  31c64f9b1e09788c2dfc384b44af8f6c     616,572,096 bytes (MODE1/2352)
+reference/brally/BossRally.cue                cue sheet (data + 12 audio tracks)
+    MD5  a48a4a5860558177c3041afee57e03c9     622 bytes
+reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional)
+    MD5  6f7030284b6bc84a49e07da864526b52     8,388,608 bytes (big-endian, NGRE)
+```
+
+Rosetta 2 is required on Apple Silicon (the Wine build is x86_64). `setup.sh`
+pulls `BRD3D.dll`, `BRGlide.dll` and the other game binaries out of the BIN
+into `orig/` — do not copy them by hand. Assets are extracted from the same
+images and never committed or redistributed; without them the tree still
+builds and the suites that need retail data skip with a reason.
+
 - **`sh build_match.sh`** — compiles with the original compiler and diffs; each
   function reports MATCH or DIFF with the first divergence. `tools/pe_patch.py`
   patches matches back into the DLL for drop-in testing.
