@@ -1472,26 +1472,6 @@ int BrTrackFixupAllRec54(int param_1)
   return;
 }
 
-/* WHAT IT DOES: walk an array of Vec3s in a track struct and byte-swap each one. */
-/* @implements 0x10031A80 glide BrTrackSwapAllVec3 */
-
-int BrTrackSwapAllVec3(int param_1)
-
-{
-  int iVar1;
-  int iVar2;
-  
-  iVar1 = *(int *)(param_1 + 0x84);
-  iVar2 = 0;
-  if (0 < *(int *)(param_1 + 0x88)) {
-    do {
-      BrSwapVec3(iVar1);
-      iVar1 = iVar1 + 0xc;
-      iVar2 = iVar2 + 1;
-    } while (iVar2 < *(int *)(param_1 + 0x88));
-  }
-  return;
-}
 
 /* 0x10031960 -- swaps and fixes one record's three segment pointers. */
 int BrTrackFixupSegRec();
