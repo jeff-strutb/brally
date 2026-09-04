@@ -3370,6 +3370,35 @@ more verdict had shifted — from clearly-bad to ambiguous — while two others
 held. **Expect a minority to flip: re-test them all, and record which held so
 the next session does not repeat the sweep.**
 
+## A Ghidra-named multi-use temp is an allocation candidate; a repeated expression is not — and the polarity is per-function
+
+Proven 2026-09-04 on the two hardest functions in the tree, in OPPOSITE
+directions, which is what makes the rule usable rather than a coin-flip.
+
+Ghidra names every CSE'd value it sees (`ring`, `h1`, `lo0`, `iVar16` …). A
+named multi-use local and the bare expression it was folded from are NOT
+equivalent to VC5's allocator: the named local is a value with a home and a
+spill priority, the repeated expression is re-derived at each use and competes
+for nothing.
+
+- **Inlining it can CLOSE a region** — `0x1000EAF0`, the trail-append block's
+  `ring`. Spelling its 32 uses `(iWheel + iCar * 4)` left wall 4's addressing
+  byte-identical but moved the enclosing object loop's `mov edi,1` hoist onto
+  the back-edge/exit path where the original puts it (region 0x189c closed,
+  commit 49dba5b). `ring` is a PER-ITERATION CSE; naming it gave it a priority
+  that perturbed a neighbouring hoist.
+- **Inlining it can DESTROY the match** — `0x100250D0`, the three I4 blend
+  bodies' eight channel base/delta temps. Spelling them
+  `(param_N & 0xff)` / `((param_M & 0xff) - (param_N & 0xff))` went 18
+  instructions SHORT (2,408 → 2,389) and 40+41 → 47+29 rows (commit 657b904).
+  These temps are LOOP-INVARIANT; the named locals ARE the hoist the original
+  has, and inlining them denies VC5 the thing to hoist.
+
+**The discriminator is whether the value is loop-invariant (keep the name) or
+a per-iteration recomputation (try inlining it).** Either way it is a real
+lever on an otherwise-mapped wall, and it is found by reading which locals are
+Ghidra-isms, not by permuting spellings.
+
 ## Read and update the GLOBAL; a local copy of it changes the allocation
 
 Proven three times in one pass, all byte-exact, all in `src/core/slice2_16.c`:
