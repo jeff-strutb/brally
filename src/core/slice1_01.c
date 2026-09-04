@@ -716,35 +716,6 @@ int BrCdTrackRequest(int param_1)
   return 1;
 }
 
-/* WHAT IT DOES: open the CD-music layer: refcount g_brCdPlaying, and on the first open
- * seed rand from the tick source, reset track state, start the EAR window path, and run
- * the device probe (0x10002580). */
-/* @implements 0x10002910 glide BrCdStartup */
-
-int BrCdStartup(int param_1)
-
-{
-  unsigned int _Seed;
-  int uVar1;
-  
-  if (g_brCdEnabled == 0) {
-    return 1;
-  }
-  g_brCdPlaying = g_brCdPlaying + 1;
-  if (g_brCdPlaying != 1) {
-    return 1;
-  }
-  _Seed = BrSub10075020();
-  srand(_Seed);
-  g_brCdTrackCur = 2;
-  g_brCdTrackFirst = 0;
-  g_brCdTrackLast = 0;
-  BrWindowEarStartup(param_1);
-  g_brCdMediaOk = 0;
-  DAT_1021c778 = 0;
-  uVar1 = FUN_10002580();
-  return uVar1;
-}
 
 /* WHAT IT DOES: apply a new CD-music enable byte: turning it on while a track is pending
  * resumes playback; turning it off (or already-on) with a pending track pauses MCI.
