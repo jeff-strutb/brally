@@ -773,6 +773,7 @@ glide_va,name,module,basis,file
 0x1006BF90,BrSndVoiceBufIsPlaying,audio,filed,src/core/audio/br_sfx.c
 0x1006BFD0,BrSndBankClear,audio,filed,src/core/audio/br_sfx.c
 0x1006BFF0,BrSndBankSetCar,audio,filed,src/core/audio/br_sfx.c
+0x1006C460,BrSndBankFree,audio,neighbour,src/core/slice6_76.c
 0x1006C6A0,FUN_1006c6a0,drawing,neighbour-1,src/core/generated/0x1006C6A0.c
 0x1006C750,BrFontTexCreate,drawing,filed,src/core/drawing/br_font.c
 0x1006C790,BrFontRegisterPages,drawing,filed,src/core/drawing/br_font.c

@@ -703,6 +703,55 @@ void BrSndVoiceApplyVolume(int param_1)
   return;
 }
 
+/* br_musiccmd.c -- 0x1006BB60 and 0x1006BB90, the two list walkers. */
+extern int BrSndBufStopAll(int param_1);
+extern int BrSndBufFreeAll(int param_1);
+
+/* 0x1184C2A8, the DirectSound object the two walkers hang their list off;
+ * 0x1184C260, the live group count 0x1006C290 stores; 0x100B55F8, the voice
+ * table, 0x12 dwords per group row (see br_sfx.h). */
+extern int DAT_1184c2a8;
+extern int DAT_1184c260;
+extern int DAT_100b55f8[];
+
+void *memset(void *, int, size_t);
+
+/* WHAT IT DOES: tear the sound bank down -- stop every buffer on the device's
+ * list, free the memory behind them, then zero the per-group voice rows (the
+ * first 15 dwords of each 0x12-dword row, for as many groups as are loaded)
+ * and the 15-slot bank voice array.  The device itself is left open, so a
+ * reload can refill the same tables.  Sound disabled is a silent success. */
+/* @implements 0x1006C460 glide BrSndBankFree */
+
+int BrSndBankFree(void)
+
+{
+  int *pRow;
+  int  cGroups;
+
+  if (BrSndG0B5DE8 == 0) {
+    return 1;
+  }
+  if (BrSndPDS == 0) {
+    return 1;
+  }
+  if (BrSndG18290FC == 0) {
+    return 1;
+  }
+  BrSndBufStopAll((int)&DAT_1184c2a8);
+  BrSndBufFreeAll((int)&DAT_1184c2a8);
+  cGroups = DAT_1184c260;
+  if (0 < cGroups) {
+    pRow = DAT_100b55f8;
+    do {
+      memset(pRow, 0, 60);
+      pRow = pRow + 0x12;
+    } while (--cGroups != 0);
+  }
+  memset(g_aBrSndBankVoice, 0, sizeof(g_aBrSndBankVoice));
+  return 1;
+}
+
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
  * drive its DirectSound buffer to DSBVOLUME_MIN (vtable +0x3c) and recentre
  * the pan (vtable +0x40).  The buffers keep playing; only their output is
