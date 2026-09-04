@@ -681,12 +681,16 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * The frame is now the original's 0x2c and the allocation matches: pOff in
  * ebx with a home at +0x38, scale memory-homed, penX in ebp.  What is left:
  *
- *   1. Five locals sit in the wrong slots.  Original: scale +0x10, b +0x14,
- *      r +0x18, top +0x1c, p +0x20, and `g` packed into the dead parameter
- *      slot (+0x40).  Ours: g +0x10, b +0x14, scale +0x18, r +0x1c,
- *      top +0x20, and `p` in the parameter slot.  +0x24..+0x38 agree.
- *      Function-scope DECLARATION order is inert (three orders, including
- *      the original's slot order, byte-identical).
+ *   1. Two locals sit in the wrong slots: the original has scale +0x10 and
+ *      b +0x14, ours b +0x10 and scale +0x14.  Every other slot now agrees
+ *      (r +0x18, top +0x1c, p +0x20, q +0x24, ... pOff +0x38, `g` packed
+ *      into the dead parameter slot +0x40) -- that came from SCOPING `g`
+ *      inside the %x arm, see the comment there.  Function-scope
+ *      DECLARATION order is inert (three orders, including the original's
+ *      slot order, byte-identical), and so is the order inside the inner
+ *      declaration (all six).  Scoping b inside as well changes nothing;
+ *      scoping r inside flips the colour pack to g-first and the switch
+ *      index to ecx (+750 B), so r is function-scope in the original.
  *   2. In the glyph block the original promotes `stride` into ebx for the
  *      window address (`mov ebx,[stride] / imul ebx,edx / add ebx,[vaBlock]`)
  *      and loads `cell` only after the DC put; ours promotes `vaBlock`
@@ -704,6 +708,8 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  *   - swapping the `|` operands of the second E3 word (canonicalised)
  *   - the four spellings of the window address, and the stride/vaBlock
  *     declaration and assignment orders (above)
+ *   - the eight r/g/b scopings: all three inner (1163 B), any split with r
+ *     inner (1163-1168 B), g inner alone or with b (411 B, kept)
  *
  * The N64 twin is 0x8022E4E0 in Top Gear Rally (paired by the six display
  * list constants it builds -- 0xB900, 0xBA00, 0xF510, 0xF568, 0xE700,
@@ -821,7 +827,7 @@ void BrTextEmitString(const char *psz)
     const char    *p, *q;
     uint32_t       hRampA, hRampB, hPage, vaBlock, stride;
     int32_t        penX, top, cell, scale;
-    uint32_t       r, g, b;
+    uint32_t       r, b;        /* `g` is scoped INSIDE the %x arm */
 
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
@@ -942,6 +948,13 @@ void BrTextEmitString(const char *psz)
                         ++q;
                         goto next;
                     } else if (p[1] == 'x') {       /* 0x10016269 */
+                        /* Block-scoped, and ONLY this one: under /O2 a
+                         * block-scoped local is homed AFTER the function-
+                         * scope ones, which is what packs `g` into the dead
+                         * parameter slot (+0x40) and shifts r/top/p up into
+                         * +0x18/+0x1c/+0x20.  Scoping `r` here too flips
+                         * the pack's accumulator to g-first (+750 B). */
+                        uint32_t g;
                 /* Six hex digits out of `q`, the character after "%x".  A
                  * short or malformed field leaves these slots holding
                  * whatever was in them. */
