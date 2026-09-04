@@ -32,6 +32,7 @@ glide_va,name,module,basis,file
 0x10002E20,BrCdMciPause,,,src/core/slice1_01.c
 0x10002E80,BrCdTrackResume,,,src/core/slice1_01.c
 0x10003230,BrU16CursorNext,,,src/core/slice1_01.c
+0x10003280,BrU16QueuePop,,,src/core/slice2_11.c
 0x100032D0,BrChkFileSize,,,src/core/slice6_78.c
 0x10003320,BrChkFReadOpen,,,src/core/slice6_78.c
 0x100034C0,BrChkFRead,,,src/core/generated/0x100034C0.c
@@ -536,6 +537,7 @@ glide_va,name,module,basis,file
 0x1003D4F0,BrOpt3FA0,gamedata,neighbour,src/core/slice2_25.c
 0x1003D580,BrUiHook85_10044030,gamedata,neighbour,src/core/slice8_85.c
 0x1003D5A0,BrUiHook85_10044050,gamedata,neighbour,src/core/slice8_85.c
+0x1003D5C0,BrUiHook85_10044070,gamedata,neighbour,src/core/slice8_85.c
 0x1003D5E0,BrUiHook85_10044090,gamedata,neighbour,src/core/slice8_85.c
 0x1003D600,BrUiHook85_100440B0,gamedata,neighbour,src/core/slice8_85.c
 0x1003D6F0,BrOpt41A0,gamedata,neighbour,src/core/slice2_25.c
