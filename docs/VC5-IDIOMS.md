@@ -4996,3 +4996,34 @@ spec = importlib.util.spec_from_file_location('ef', 'tools/extract_funcs.py')
 base, secs, _ = m.read_pe_sections('orig/BRGlide.dll')
 off = m.va_to_fileoff(va, base, secs)      # then slice `size` bytes
 ```
+
+## The leading-operand paren: `((a) + b) + c` picks which side is `fld`ed
+
+Proven twice on 2026-09-03, once as a lever that cost more than it won and
+once as a clean two-byte match, so record it as a REAL tool and not a
+curiosity.
+
+When a float sum's only residue is which operand became the `fld` and which
+the memory operand of the `fadd`, permuting the summands is inert — VC5
+canonicalises a flat float sum, and that is true of a plain two-term add of
+two struct fields as well as of a sum of products. **A redundant parenthesis
+round the FIRST operand is not inert.** It makes that operand the one loaded:
+
+    t = (aV[2] + aV[1]) + aV[0];      ->  fld [ecx+4] ; fadd [ecx+8]
+    t = ((aV[2]) + aV[1]) + aV[0];    ->  fld [ecx+8] ; fadd [ecx+4]   (original)
+
+That single character took `0x100664F0 BrCrCorner` byte-exact.
+
+**The cost, and when not to reach for it.** On `0x1001F2B0` (a clip plane)
+the same paren flipped the pair to the original's order at both call sites —
+and sank the second site's `fadd` four instructions down the schedule, taking
+the function from 4 diff bytes to 53 with the instruction multiset still
+exact. So: it reliably moves the pair, and it can move the SCHEDULE too. Use
+it where the divergence is the pair alone and the surrounding block already
+lines up; measure the whole function afterwards, not just the pair.
+
+**And a warning the same function delivered:** `BrCrCorner` was carrying
+`match, 0 diffs` in `report.csv` while the assembled image differed by these
+two bytes. The row was stale — the file had not been re-swept after a change
+elsewhere. `tools/image_build.py` is the only thing that catches that; a
+green report row is not evidence on its own.
