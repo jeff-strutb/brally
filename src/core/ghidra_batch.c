@@ -128,9 +128,11 @@ void BrSessionReinitVideo(void)
 
 typedef union { unsigned char b; unsigned int u; } BrU8Arg;
 typedef union { unsigned short w; unsigned int u; } BrU16Arg;
+typedef union { unsigned int u; } BrU24Arg;   /* same 4-byte stack slot */
 int __fastcall FUN_1006d180(void *);
 void __fastcall FUN_1006cfa0(void *, BrU8Arg);
 void __fastcall FUN_1006cfc0(void *, BrU16Arg);
+void __fastcall FUN_1006d000(void *, BrU24Arg);
 extern unsigned char DAT_1021cdf8;
 extern unsigned char DAT_100b3014;
 extern unsigned char DAT_10226e80;
@@ -141,6 +143,61 @@ extern unsigned char DAT_10226a3c;
 
 /* WHAT IT DOES: writes one race-options record into a net bitstream, but
  * only if nine more bytes still fit in the 256-byte buffer. */
+/* WHAT IT DOES: appends one tagged field to an outgoing network packet -- a
+ * tag byte carrying the field kind in its low bits, then a three-byte number
+ * and a two-byte one. If the packet has no room for those six bytes it writes
+ * nothing and reports failure, so the send thread can close the packet and
+ * start another. Its sibling below writes the race-options field the same way
+ * under a different tag. */
+/* @implements 0x1006AFA0 glide BrNetWriteTagC0 */
+/* RESIDUE: 2 instructions / 8 bytes, and the cause is a construct C cannot
+ * spell. Everything else is exact (RAW and REGNORM 2+0, the two rows below).
+ *
+ * The original passes the tag byte as `mov al,[esp+0xc]; or al,0xc0; push eax`
+ * -- eax pushed with its upper three bytes still holding the size check's
+ * result. MSVC only leaves a stack argument dirty like that when the CALLEE'S
+ * PARAMETER IS A BYTE TYPE, and a byte parameter is register-eligible, so
+ * under __fastcall it takes edx instead of the stack. There is no C spelling
+ * that puts a char-typed argument on the stack of a thiscall: every wrapper
+ * homes the partial write first.
+ *
+ * PROBED AND DEAD, do not re-run: a 1-byte struct, a 4-byte union written
+ * through its char member, and a 4-byte struct with three explicit pad bytes
+ * -- all three emit the same `mov [slot],al; mov ecx,[slot]; push ecx`.
+ *
+ * The two reachable halves ARE fixed and are worth keeping: the guard is
+ * written positively (`if (room) { ...; return 1; } return 0;`) so the two
+ * exits land the original's way round, and the 16-bit argument is passed as a
+ * FULL DWORD through the union's `.u` member because the original loads the
+ * whole parameter slot -- a partial `.w` write homes the union and costs two
+ * more instructions.
+ *
+ * ‼ This routes to the C++ TU lane. BrNetWriteRaceOpts below makes EIGHT of
+ * these byte-writer calls and is at 81 diffs, so it inherits the same wall
+ * eight times over; do not grind it in C either. */
+int BrNetWriteTagC0(void *pThis, unsigned char kind, unsigned int a,
+                    unsigned int b)
+{
+    BrU8Arg  t;
+    BrU24Arg u;
+    BrU16Arg w;
+
+    if (FUN_1006d180(pThis) + 6 <= 0x100) {
+        t.b = (unsigned char)(kind | 0xc0);
+        FUN_1006cfa0(pThis, t);
+        u.u = a;
+        FUN_1006d000(pThis, u);
+        /* `.u`, not `.w`: the original loads the whole dword out of the
+         * parameter slot (`mov edx,[esp+0x14]`) and pushes it. A partial
+         * write to `.w` makes MSVC home the union first, which is two extra
+         * instructions. */
+        w.u = b;
+        FUN_1006cfc0(pThis, w);
+        return 1;
+    }
+    return 0;
+}
+
 /* @implements 0x1006AFF0 glide BrNetWriteRaceOpts */
 int BrNetWriteRaceOpts(void *pThis, unsigned char kind)
 {
