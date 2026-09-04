@@ -1,5 +1,31 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * 2026-09-03 (session 15): the SIBLING-ASYMMETRY SCREEN run over this
+ * function -- twelve near-identical channel arms is the ideal substrate for
+ * it -- and all three leads it produced are DEAD.  Recorded so the screen
+ * does not re-fire on them:
+ *   (a) ONE of the three IA blend bodies spelled its channel product
+ *       intensity-first (`uVar14 * ((param_14 & 0xff) - (param_18 & 0xff))`)
+ *       where the other two spell it delta-first.  Making all three match is
+ *       BYTE-IDENTICAL, so it is APPLIED -- not because it gains anything,
+ *       but so the next screen does not stop here.  ‼ This EXTENDS the
+ *       session-10 `*`-canonicalisation entry to a case it did not cover:
+ *       that one commuted two named VARIABLES, this one commutes a variable
+ *       against an inline SUBEXPRESSION, and VC5 canonicalises that too.
+ *       Unlike the x87 operand-KIND ranking proved on 0x1000EAF0 the same
+ *       day, integer multiply operand order carries no information at all.
+ *   (b) alpha's COEFFICIENT PAIR hoisted above the chB statement at the
+ *       first blend body -- the untried counterpart of the session-10 probe,
+ *       which hoisted alpha's PRODUCT and was sunk straight back.  This one
+ *       is not inert but it is not a win: bytes 19 short -> 17 and raw
+ *       276+275 -> 275+274, against a register-blind multiset 41+40 -> 42+41.
+ *       Rejected on the primary metric.
+ *   (c) ALL FOUR coefficient pairs hoisted to the top of the body, i.e. full
+ *       symmetry with the R channel (whose pair already sits there).  Clearly
+ *       worse: 45+41, +10 bytes, +4 instructions.  The interleaving of the
+ *       G/B/A pairs with their channels is the original's shape and the R
+ *       channel is the one that is genuinely different.  Do not "tidy" it.
+ *
  * 2026-09-03 (session 14): the 0x15b8..0x19fd stretch is now READ, both
  * streams side by side, and the session-13 diagnosis needs one correction.
  * The counter-register swap is real, but the compare that goes with it is
@@ -1120,11 +1146,11 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     loIA8 = (unsigned int)bIA8a & 0xf;
                     uVar14 = ((unsigned int)bIA8a & 0xf0) | ((unsigned int)bIA8a >> 4);
                     *puVar21 = (unsigned short)((((loIA8) << 4 |
-                                        (uVar14 * ((param_14 & 0xff) - (param_18 & 0xff))) / 0xff +
+                                        (((param_14 & 0xff) - (param_18 & 0xff)) * uVar14) / 0xff +
                                         (param_18 & 0xff) >> 4) << 4 |
-                                       (uVar14 * ((param_15 & 0xff) - (param_19 & 0xff))) / 0xff +
+                                       (((param_15 & 0xff) - (param_19 & 0xff)) * uVar14) / 0xff +
                                        (param_19 & 0xff) >> 4) << 4) |
-                              (unsigned short)((uVar14 * ((param_16 & 0xff) - (param_20 & 0xff))) / 0xff +
+                              (unsigned short)((((param_16 & 0xff) - (param_20 & 0xff)) * uVar14) / 0xff +
                                        (param_20 & 0xff) >> 4);
                     puVar21 = puVar21 + 1;
                     if (iVar22 >= cbMax) {
