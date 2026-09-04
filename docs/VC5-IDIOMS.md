@@ -5201,3 +5201,66 @@ place, or a failed experiment costs the whole tree.
 Two things this did NOT test, both narrow: the SP3 **linker** (irrelevant to
 per-function matching, which works on `.obj`, but it could matter to the image
 build), and the C++ front end on the one TU that only VC4.2 reproduces.
+
+## An `&&` guard chain SHRINK-WRAPS the callee-saved saves; separate early returns do not
+
+Proven byte-exact on 0x1006BD70 `BrSndBankMute` (90 B), 2026-09-03.
+
+The function is a three-condition "is sound usable" gate followed by a loop
+over the voice bank.  Written the way every sibling in `slice6_76.c` is
+written — one `&&` chain wrapping the body —
+
+```c
+if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    ppVoice = g_aBrSndBankVoice;
+    do { ... } while (...);
+}
+return 1;
+```
+
+the whole loop lives in a nested block, and VC5 **shrink-wraps** the
+callee-saved registers into that block: `push edi / push esi` land AFTER the
+third test, and `pop esi / pop edi` before the merge.  Written as three
+sequential early returns —
+
+```c
+if (BrSndG0B5DE8   == 0) { return 1; }
+if (BrSndPDS       == 0) { return 1; }
+if (BrSndG18290FC  == 0) { return 1; }
+ppVoice = g_aBrSndBankVoice;
+do { ... } while (...);
+return 1;
+```
+
+the loop is at the function's top level, so the saves go in the PROLOGUE and
+are scheduled into the first block, interleaved with the first test:
+
+```asm
+mov  eax, [BrSndG0B5DE8]
+push esi                     ; <-- prologue save, scheduled between
+test eax, eax
+push edi                     ; <-- the load and its branch
+je   exit
+...
+exit:
+pop  edi
+mov  eax, 1
+pop  esi
+ret
+```
+
+Both spellings have the SAME control-flow graph and the same `je` polarity —
+`divergence.py` and the regnorm multiset both scored the body identical.  The
+only divergence was where the two push/pop pairs sat, worth 6 bytes.
+
+**The screen:** a diff whose entire residue is `push R` / `pop R` appearing in
+the wrong basic block, on a function that begins with a multi-condition guard.
+Do not go looking at the loop; move the guard.  This is the same axis as
+"An early-return guard and an `if (ok) { … }` wrapper differ in which side is
+the FALL-THROUGH" above, but the tell is different: there the polarity moved,
+here the polarity is already right and only the save placement is wrong.
+
+**Boundary:** it only shows on a function that actually uses callee-saved
+registers inside the guard.  Every other `&&`-chained sound gate in
+`slice6_76.c` (`BrSndVoiceIsPlaying`, `BrSndBufSetVolume`, …) is byte-exact as
+an `&&` chain because it needs no saves — do not rewrite those.
