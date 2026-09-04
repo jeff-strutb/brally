@@ -2474,4 +2474,73 @@ void BrDlRectCmdEmit(int param_1,int param_2,int param_3,int param_4,int param_5
   return;
 }
 
+extern int DAT_100a7514;
+extern int DAT_100a7518;
+extern int DAT_106ed6e4;
+extern int DAT_106e8204;
+extern int DAT_106ed674;
+extern char DAT_106e8818;
+extern char DAT_106e881a;
+extern char DAT_106e881c;
+extern char DAT_106e881e;
+extern char DAT_106e8820;
+extern char DAT_106e8822;
+extern char DAT_106e8824;
+extern char DAT_106e8826;
+extern int *DAT_106e7710;
+extern int _DAT_106ed368;
+extern int _DAT_106ed648;
+int FUN_1002bf50();
+
+
+/* WHAT IT DOES: emit the full-screen rect: optionally emit an 0xE7000000 (pipe sync)
+ * command and call 0x1002BF50 first, then fill the next ring slot with the doubled
+ * screen size / half-size-times-4 rect and emit command 0x03800010 for it. The dead
+ * parameter-doubling block under [0x106ED674] is the original's. */
+/* @implements 0x1002C2E9 glide BrDlScreenRectEmit */
+
+void BrDlScreenRectEmit(int param_1,int param_2,int param_3,int param_4,int param_5)
+{
+  int *puVar2;
+  int *puVar1;
+  int local_10;
+  
+  DAT_106ed6e4 = DAT_106ed6e4 + 1 & 0x1f;
+  if (param_5 != 0) {
+    puVar2 = DAT_106e7710;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar2 = 0xe7000000;
+    puVar2[1] = 0;
+    if (param_3 < 0) {
+      local_10 = -param_3;
+    }
+    else {
+      local_10 = param_3;
+    }
+    FUN_1002bf50(param_1,param_2,local_10,param_4);
+  }
+  if (DAT_106ed674 != 0) {
+    param_1 = param_1 << 1;
+    param_2 = param_2 << 1;
+    param_3 = param_3 << 1;
+    param_4 = param_4 << 1;
+  }
+  DAT_106e8204 = 0;
+  *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7514 << 1);
+  *(short *)(&DAT_106e881a + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7518 << 1);
+  *(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e881e + DAT_106ed6e4 * 0x10) = 0;
+  *(short *)(&DAT_106e8820 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7514 / 2 << 2);
+  *(short *)(&DAT_106e8822 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7518 / 2 << 2);
+  *(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e8826 + DAT_106ed6e4 * 0x10) = 0;
+  puVar1 = DAT_106e7710;
+  DAT_106e7710 = DAT_106e7710 + 2;
+  *puVar1 = 0x3800010;
+  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
+  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
+  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
