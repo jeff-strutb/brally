@@ -131,9 +131,12 @@ signature. It is written when the function is matched, never "later".
 
 **b. A recorded module, and the code sitting in it.** `sliceN_MM.c` files are
 address batches, not architecture. The module for every matched function is
-recorded once in `config/filing.csv` (`tools/filing.py`) and the code is moved
-there by `tools/refile.py`, which sweep-verifies both files. Never add a new
-`sliceN_MM.c`. Never a big-bang reorg later.
+recorded once in `config/filing.csv` (`tools/filing.py`). **Move the code by
+hand**, one function or one connected group at a time, and prove each move
+with a single-file sweep of both files before committing it. There was an
+automated mover; it was deleted 2026-09-03 because relocating byte-exact code
+changes what the compiler sees and a script cannot judge the result. Never add
+a new `sliceN_MM.c`. Never a big-bang reorg later.
 
 **This rule is ENFORCED. Two things run, and neither is optional:**
 

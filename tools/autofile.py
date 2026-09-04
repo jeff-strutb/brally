@@ -183,6 +183,25 @@ def slice_map(report_rows):
     return spans
 
 
+def _module_file(module, name):
+    """An EXISTING file in `module` whose basename matches the function's
+    Br<Word> prefix. Only existing files: minting one from a tool that cannot
+    see what the function is for produces technique-named files (br_nop.c,
+    br_misc.c), which src/core/README.md rules out."""
+    m = re.match(r'Br([A-Za-z][a-z0-9]*)', name or '')
+    stem = 'br_' + (m.group(1).lower() if m else 'misc')
+    folder = os.path.join(ROOT, 'src', 'core', module)
+    if not os.path.isdir(folder):
+        return None
+    for f in sorted(os.listdir(folder)):
+        if f == stem + '.c':
+            return 'src/core/%s/%s' % (module, f)
+    for f in sorted(os.listdir(folder)):
+        if f.endswith('.c') and f[:-2].startswith(stem):
+            return 'src/core/%s/%s' % (module, f)
+    return None
+
+
 def module_destination(va):
     """The module file config/filing.csv records for `va`, if any.
 
@@ -200,9 +219,7 @@ def module_destination(va):
     with open(p) as f:
         for r in csv.DictReader(f):
             if r['glide_va'].lower() == key and r.get('module'):
-                sys.path.insert(0, os.path.join(ROOT, 'tools'))
-                import refile
-                dst = refile.dest_file(r['module'], r.get('name') or '')
+                dst = _module_file(r['module'], r.get('name') or '')
                 # Only an EXISTING module file: minting one from a tool that
                 # cannot see what the function is for produces br_nop.c-shaped
                 # names, which src/core/README.md rules out.
