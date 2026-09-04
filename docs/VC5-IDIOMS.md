@@ -5485,3 +5485,56 @@ filters returns **0 candidates in 0 files, binary-wide**.  Do not re-run it as a
 lane; re-run it only after a batch of NEW d3d-lane matches, which can refill it.
 The 12: `0x10036040` (slice6_70.c), `0x10008D20` (br_pod.c), and the ten
 `BrFixUnpack*` codecs `0x100075C0`-`0x10007730` (net/br_fix.c).
+
+## Pointer form vs index form is decided by WHAT THE INDEX IS, and it can be a SPLIT
+
+Two functions in `br_dlcmd.c` do the same work over the same global array
+(`g_aBrDlVtxPool`, 0x105CE318, stride 0x68) and want OPPOSITE spellings. The
+deciding fact is not the array and not the field access — it is whether the
+subscript is cheap to re-evaluate.
+
+- **`BrDlCmdTri1` (0x1001ECF0) indexes with a COMMAND BYTE** — `pool[p[6]]`.
+  The byte has to be re-read and re-scaled at every access, so index form pays
+  for SIB addressing: the recorded probe lost **94 bytes**. Pointer locals win.
+- **`BrDlTriFlatZ` (0x1001FF60) indexes with an int PARAMETER.** VC5 scales it
+  **once** (`lea`, `lea`, `shl R,3`) into a register and then reaches every
+  field as `[reg + 0x105CE318+off]`. Index form wins; pointer form loses the
+  three `shl R,3` and 18 `mov R,[R+A]`.
+
+**‼ AND THE ANSWER CAN BE BOTH, IN ONE FUNCTION.** 0x1001FF60's best spelling
+is a SPLIT, and the split follows the ORIGINAL SOURCE'S FUNCTION BOUNDARY: the
+finish-texture block is an inlined helper whose first parameter is a
+`BrDlVtx *`, so its eight WRITES and the `oow` it multiplies by go through a
+`lea`d pointer (`[eax+0x38]`), while `s` and `t` — which reach that helper as
+its SECOND parameter, a clip node at vertex+0x40 — stay folded into the scaled
+index (`fld [ebx+0x105CE368]`). Measured, one-file sweep, same target:
+
+    all-pointer form                416 B vs 558, regnorm 47+45
+    all-index form                  688 B vs 558, regnorm 36+25
+    index + pointer finish-stores   592 B vs 558, regnorm 12+8
+
+**How to read this on any function:** count the `shl R,K` in the original. A
+scaled index kept in a register across the body is index form; its absence
+with `lea R,[R*K + A]` instead is pointer form. A function that shows BOTH a
+live scaled index AND a `lea`d pointer with short displacements is an inlined
+helper boundary — find the helper (here the out-of-line twin
+`BrDlVtxFinishTex` 0x1001FCF0 is right there, already byte-exact) and let its
+parameter list tell you which accesses take the pointer.
+
+**Two corollaries, both measured on the same function:**
+
+- **A two-store flat copy needs ONE NAMED TEMP.** Written as two stores both
+  reading the source (`PUN(b.r, a.r); PUN(c.r, a.r);`) VC5 **reloads** the
+  source for the second — it cannot prove the first store did not alias it —
+  costing 6 `mov R,[R+A]`. The original loads once into a register and stores
+  twice; one reused temp reproduces it exactly.
+- **CSE DOES NOT REACH ACROSS AN EARLY RETURN.** Three outcodes tested first
+  as an AND and then as an OR, spelled as repeated `V(i).outcode`, are loaded
+  **twice** — 3 extra loads. The original keeps all three in registers across
+  the branch. Name them, in the original's read order.
+
+**‼ AND fn.py DISAGREED WITH THE SWEEP HERE.** On this row fn.py reported
+597 B / 151 insns where the sweep built 592, and it did not move when the last
+two edits did. fn.py compiles `/O2` only and the sweep picked `/O2` and `/O2p`
+for this row on different runs. When the two disagree, **report.csv is the
+scoreboard** and fn.py's regnorm is qualitative only.
