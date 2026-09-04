@@ -832,14 +832,11 @@ size_t BrTex3dSrcBytes(const BrTex3d *pTex, uint32_t id)
     return (size_t)pR->tile.tmem * 8u + pitch * (size_t)(texH - 1) + row;
 }
 
-/* 0x10027850, the two floats at record +0x2AC/+0x2B0, divided by Glide's
- * 256-unit texture-coordinate space so the result multiplies a raw N64 Vtx
- * texture coordinate straight into [0,1].  See br_tex3d.h. */
-/* WHAT IT DOES: turns a texture-coordinate shift code into the multiplier it
- * stands for -- a halving for each of the first ten codes, and a doubling
- * for each step of the remainder. This is how a texture ends up sampled at
- * the right scale. */
-/* @implements 0x10027850 glide br_tex3d_shift */
+/* Port-side helper: the shift-code multiplier that 0x10027850
+ * (BrTex3dRecInstall, below) computes inline for the two floats at record
+ * +0x2AC/+0x2B0.  It turns a texture-coordinate shift code into the
+ * multiplier it stands for -- a halving for each of the first ten codes, and
+ * a doubling for each step of the remainder.  See br_tex3d.h. */
 static float br_tex3d_shift(int32_t shift)
 {
     float f = 1.0f;
@@ -986,7 +983,8 @@ int FUN_10027710();
 int FUN_10023d70();
 int FUN_10028200(int, unsigned char, int, int, int, int, int, int, int, int, int, int, int, int, int);
 int FUN_100283c0();
-int FUN_10027850();
+int BrTex3dRecInstall(int *pReq, int hTex);
+int br_tex3d_append(void);
 void FUN_1006ff50(char *);
 typedef struct BrTexReq272 {
     unsigned int fTmu2;         /* 0x000 */
@@ -1286,9 +1284,55 @@ int FUN_10027710(int *param_1,int *param_2)
                            piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
     }
     FUN_100283c0(iVar2,puVar3,0);
-    iVar2 = FUN_10027850(piVar1,iVar2);
+    iVar2 = BrTex3dRecInstall(piVar1,iVar2);
   }
   return iVar2;
+}
+
+/* WHAT IT DOES: file a finished texture in the 0x2B4-stride table: take a
+ * fresh slot, copy the whole request record in after the Glide handle, and
+ * work out the two texture-coordinate scale factors at +0x2AC/+0x2B0 --
+ * 1/32 of a texel, over the power-of-two width or height, times Glide's
+ * 256-unit coordinate space, then halved or doubled per the current mip
+ * level's shift code.  Returns the slot index. */
+/* @implements 0x10027850 glide BrTex3dRecInstall */
+int BrTex3dRecInstall(int *pReq, int hTex)
+{
+  int      idx;
+  unsigned int shift;
+  float    f;
+
+  idx = br_tex3d_append();
+  memcpy((void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), pReq, 0xaa * 4);
+  *(int *)(DAT_106b7aa0 + idx * 0x2b4) = hTex;
+  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) = 1.0f;
+  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) = 1.0f;
+  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) *= 1.0f / 32.0f;
+  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) *= 1.0f / 32.0f;
+  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) /= (float)*(int *)(DAT_106b7aa0 + 0x44 + idx * 0x2b4);
+  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) /= (float)*(int *)(DAT_106b7aa0 + 0x48 + idx * 0x2b4);
+  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) *= 256.0f;
+  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) *= 256.0f;
+
+  shift = pReq[pReq[0x16] * 0x10 + 0x22];
+  if (shift != 0) {
+    float *p = (float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4);
+    if (shift <= 10)
+      f = (float)(0x400 >> shift) * (1.0f / 1024.0f);
+    else
+      f = (float)(1 << (0x10 - shift));
+    *p = f * *p;
+  }
+  shift = pReq[pReq[0x16] * 0x10 + 0x23];
+  if (shift != 0) {
+    float *p = (float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4);
+    if (shift <= 10)
+      f = (float)(0x400 >> shift) * (1.0f / 1024.0f);
+    else
+      f = (float)(1 << (0x10 - shift));
+    *p = f * *p;
+  }
+  return idx;
 }
 
 /* WHAT IT DOES: build a texture-creation request on the stack -- the 0x2A8-byte record

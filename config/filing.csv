@@ -286,6 +286,7 @@ glide_va,name,module,basis,file
 0x100272F0,BrTex3dCreate,drawing,filed,src/core/drawing/br_tex3d.c
 0x100275C0,FUN_100275c0,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10027710,FUN_10027710,drawing,filed,src/core/drawing/br_tex3d.c
+0x10027850,BrTex3dRecInstall,drawing,filed,src/core/drawing/br_tex3d.c
 0x10027F80,BrGbiTexelsPerWord,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10027FB0,BrTex3dCreateBlank,drawing,filed,src/core/drawing/br_tex3d.c
 0x100281C0,FUN_100281c0,drawing,neighbour,src/core/drawing/br_glidestate.c
