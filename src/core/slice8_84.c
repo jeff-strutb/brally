@@ -426,56 +426,6 @@ int32_t BrUiHook84_100450C0(BrUiCtl_ *pCtl)
     return Br84WireBackRow();
 }
 
-/* WHAT IT DOES: the Options button on the season-progress screen -- one of the
- * three picture buttons down its right-hand side. It opens the options screen
- * and wires that screen's Back row so the player comes back here when done. */
-/* @implements 0x100457C0 d3d BrUiHook84_100457C0 */
-int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig pushes the unused pCtl, then stores +0x08 unguarded. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_100451E0)(pCtl);
-    g_br73.pAA29C8->pfn08 = BrUiHook84_10046830;
-    return 1;
-#else
-    BrUiCtl_ *pBack;
-
-    (void)pCtl;                         /* pushed, ignored by the callee */
-    (void)BrUiHook81Activate_100451E0();
-
-    pBack = g_br73.pAA29C8;             /* 0x10AA29C8 -- a CONTROL */
-    if (pBack != NULL)                  /* DEVIATION: guarded */
-        pBack->pfn08 = BrUiHook84_10046830;
-    return 1;
-#endif
-}
-
-/* WHAT IT DOES: the Save button on the season-progress screen. It opens the
- * save-season screen and wires that screen's Back row to the variant that also
- * throws away the name being typed -- which is why backing out of a save
- * abandons the edit rather than keeping it. */
-/* @implements 0x100457E0 d3d BrUiHook84_100457E0 */
-int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig pushes the unused pCtl, then stores +0x08 unguarded -- the same
-     * pair of defects as 0x100457C0 above. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_10045BC0)(pCtl);
-    g_br73.pAA29F4->pfn08 = BrUiHook84_10046870;
-    return 1;
-#else
-    BrUiCtl_ *pBack;
-
-    (void)pCtl;
-    (void)BrUiHook81Activate_10045BC0();
-
-    pBack = g_br73.pAA29F4;             /* 0x10AA29F4 -- a CONTROL */
-    if (pBack != NULL)                  /* DEVIATION: guarded */
-        pBack->pfn08 = BrUiHook84_10046870;
-    return 1;
-#endif
-}
-
 int32_t BrUiHook84_100471B0(BrUiCtl_ *pCtl)
 {
     BrPhase_ *pOwner;
