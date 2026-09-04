@@ -73,4 +73,26 @@ float BrFixUnpackU8Range(int32_t v)
     return 400.0f - (v & 0xFF) * -120.63491821289062f;
 }
 
+
+
+/* 0x100072E0.  A chain of byte compares, not a table lookup: anything above 2
+ * falls through to 255. Constants 0x1008F0C8 = 0.0f, 0x1008F12C = 170.0f,
+ * 0x1008F130 = 212.0f, 0x1008F134 = 255.0f. */
+/* WHAT IT DOES: turns a 2-bit code back into one of four fixed values: 0,
+ * 170, 212 or 255. It is written as a chain of comparisons rather than a
+ * table, so any code above 2 gives the top value. */
+/* @implements 0x100072E0 d3d BrFixUnpackLevel */
+float BrFixUnpackLevel(int32_t v)
+{
+    unsigned char b = (unsigned char)v;
+
+    if (b == 0)
+        return 0.0f;
+    if (b == 1)
+        return 170.0f;
+    if (b == 2)
+        return 212.0f;
+    return 255.0f;
+}
+
 #endif /* BR_MATCHING_BUILD */
