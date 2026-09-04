@@ -11,6 +11,44 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼‼ TWENTY-FIRST PASS (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS
+ * HEADER IS INFLATED.  `fn.py` and `triage.py` did not mask reloc'd operands
+ * (only `msetdiff.py` did), so every absolutely-addressed instruction was
+ * counted TWICE, once MISSING and once EXTRA.  Fixed 2026-09-03.
+ *   THIS FUNCTION'S HONEST RESIDUE IS 17+21 = 38 ROWS, not the 41+45 = 86
+ *   the twentieth pass quotes -- and the older figures (48+54, 35+29, 40+46
+ *   ...) are inflated by the same artefact in the same way.  Read the trend
+ *   in them, never the absolute value, and re-measure before comparing this
+ *   function to any other.
+ *   ‼ AND THE HONEST MAP RE-RANKS THE WALLS.  All 38 rows still map to walls
+ *   already catalogued below, but the proportions are different:
+ *     wall 4 (ring addressing)  8 rows -- EXTRA `mov R,[R*K+A]` x4,
+ *                               `mov [R*K+A],R` x3, `cmp R,[R*K+A]` x1
+ *                               against orig's `[R + A]` forms
+ *     its pDst spill            4 rows (`mov [esp+S],R` x2, `mov R,[esp+S]`,
+ *                               `cmp [esp+S],R`) -- downstream, per pass 11
+ *     wall 3 + the dec/lea      ~8 rows of lea/add/dec/branch
+ *     wall 5 (the join)         `mov R,R` x2 / `cmp R,R`
+ *     wall 1 leftover           ONE `fxch st(I)` -- the completion-order
+ *                               notch, i.e. the row block is now within one
+ *                               instruction of the original
+ *   So WALL 4 AND ITS SPILL ARE A THIRD OF EVERYTHING LEFT (12 of 38) and
+ *   are unambiguously the thing to beat here.  Nothing else is worth
+ *   opening first.
+ * TWENTY-FIRST-PASS PROBE, DEAD -- do not re-run.  Wall 4 attacked with the
+ * one byte-offset form the dossier had NOT tried: not a parallel `rb2 =
+ * ring*4` (byte-identical, VC5 forward-substitutes it) but a byte offset
+ * that the record term is DERIVED FROM, so VC5 cannot fold it away --
+ * `rbT = (iWheel + iCar*4) * 4; ring = rbT >> 2;` with both flat arrays
+ * read as `*(int *)((char *)base + rbT)` and all sixteen `ring * 500` sites
+ * rewritten `rbT * 125` (exact: ring*500 == (ring*4)*125).  The theory was
+ * right that this makes the offset unfoldable and WRONG about the cost: VC5
+ * rebuilds the whole region's induction structure around it.  Register-blind
+ * 17+21 -> 33+45, bytes -14 -> -57, instructions -4 -> -12.  ‼ Note the trap
+ * in its FIRSTDIV, which reads +0x2b -> +0xad5 -- a prefix 2,700 bytes
+ * longer, on a change that doubles the real gap.  First-divergence is not a
+ * progress measure on this function.
+ *
  * ‼ TWENTIETH PASS (2026-09-03) -- WALL 1's TERM-3 FLIP IS CLOSED, and the
  * nineteenth pass's "done as a source problem" verdict is RETRACTED for it.
  * The lever was a POINTER-INDEX ASYMMETRY nobody had looked at, because
