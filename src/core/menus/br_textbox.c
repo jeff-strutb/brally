@@ -1,12 +1,12 @@
 /* br_textbox.c -- menus: the text box, one line of on-screen text with its own
- * position and size. Constructor, deleting destructor, the font-A measurer,
- * and the two tiny stubs that sit with them.
+ * position and size. Constructor, deleting destructor, both measurers (font A
+ * and font B), and the two tiny stubs that sit with them.
  *
  * Filed out of slice3_39.c, whose preamble it keeps verbatim below so the
  * compiler's view of these bodies is unchanged.  BrTextBoxMeasureB is the
- * font-B twin and is filed to drawing/, so it stayed behind with the shared
- * BrGlyphMetric12 view and BrGlyphClassify; both are duplicated here (a
- * typedef, an extern and a file-static -- no definition is shared).
+ * font-B twin of BrTextBoxMeasureA and is filed to menus/ with it, so the
+ * BrGlyphMetric12 view and the BrGlyphClassify file-static they share are
+ * defined here once and used by both.
  *
  * The original banner follows.
  *
@@ -143,7 +143,7 @@ BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
 #endif
 
 /* =====================================================================
- * 0x1005B0D0 -- measure sz[] (font A)
+ * 0x1005B0D0 / 0x1005B160 -- measure sz[]
  * ===================================================================== */
 
 #ifdef BR_MATCHING_BUILD
@@ -156,6 +156,8 @@ typedef struct BrGlyphMetric12 {
     uint16_t s4, s6, s8, sA;
 } BrGlyphMetric12;
 extern BrGlyphMetric12 g_BrGlyphFontA12[];   /* 0x100ABE84 (glide) */
+
+extern BrGlyphMetric12 g_BrGlyphFontB12[];   /* 0x100AC2FC (glide) */
 
 /* WHAT IT DOES: walks sz[] adding up glyph advances from font A, growing the
  * seeded height to the tallest glyph seen; a control byte stops the walk.
@@ -197,6 +199,48 @@ LAB_spaceA:
             width = width + adv;
             if (maxH < h) {
                 maxH = h;
+            }
+        }
+        i = i + 1;
+        c = pBox->sz[i];
+    }
+}
+
+/* WHAT IT DOES: like A but font B supplies the metrics (advance - 4) while
+ * font A's sentinels still gate the glyph path -- the same cross-font gate
+ * the port documents.  Both sentinel tests compare memory directly against
+ * -1, which VC5 registerises (`or ebp,-1; cmp [mem],bp`). */
+/* @implements 0x10053F80 glide BrTextBoxMeasureB */
+void BR_THISCALL1 BrTextBoxMeasureB(BrTextBox *pBox)
+{
+    char    c;
+    int16_t k;
+    int16_t width;
+    int16_t maxH;
+    int16_t i;
+
+    width = 0;
+    i     = 0;
+    maxH  = pBox->height;
+    c     = pBox->sz[0];
+    for (;;) {
+        if (c == '\0' ||
+            (((k = (int16_t)((int16_t)c - 0x20)), k < 0 || k > 0x7F) &&
+             c != ' ')) {
+            pBox->height = maxH;
+            pBox->width  = width;
+            return;
+        }
+        if (c < '!' || c > '~' ||
+            (int16_t)g_BrGlyphFontA12[k].advance == -1 ||
+            (int16_t)g_BrGlyphFontA12[k].height == -1) {
+            if (c == ' ') {
+                width = width + BR_GLYPH_SPACE_ADVANCE;
+            }
+        } else {
+            width = width + (int16_t)(g_BrGlyphFontB12[k].advance - 4);
+            if (maxH < (int16_t)g_BrGlyphFontB12[k].height) {
+                maxH = (int16_t)g_BrGlyphFontB12[k].height;
             }
         }
         i = i + 1;
@@ -258,6 +302,47 @@ void BrTextBoxMeasureA(BrTextBox *pBox)
         ++i;
         /* movsx eax, di -- the index is truncated to 16 bits and
          * sign-extended.  Harmless for a 0x400-byte buffer. */
+        c = pBox->sz[(int16_t)i];
+    }
+
+    pBox->height = (int16_t)maxH;
+    pBox->width  = (int16_t)width;
+}
+
+void BrTextBoxMeasureB(BrTextBox *pBox)
+{
+    uint16_t width = 0;
+    uint16_t maxH  = (uint16_t)pBox->height;
+    int      i     = 0;
+    char     c     = pBox->sz[0];
+
+    while (c != '\0') {
+        int cls = BrGlyphClassify(c);
+        int hit = 0;
+
+        if (cls < 0) {
+            break;
+        }
+        if (cls > 0) {
+            unsigned idx = (unsigned)((unsigned char)c - BR_GLYPH_FIRST);
+            /* GOTCHA: the sentinel test reads FONT A, the metrics read
+             * FONT B.  Not a transcription slip -- see the header. */
+            const BrGlyphMetric *pGate = &g_BrGlyphFontA[idx];
+            const BrGlyphMetric *pG    = &g_BrGlyphFontB[idx];
+
+            if (pGate->advance != BR_GLYPH_NONE && pGate->height != BR_GLYPH_NONE) {
+                width = (uint16_t)(width + (uint16_t)(pG->advance - 4u));
+                if ((int16_t)maxH < (int16_t)pG->height) {
+                    maxH = pG->height;
+                }
+                hit = 1;
+            }
+        }
+        if (!hit && c == 0x20) {
+            width = (uint16_t)(width + BR_GLYPH_SPACE_ADVANCE);
+        }
+
+        ++i;
         c = pBox->sz[(int16_t)i];
     }
 
