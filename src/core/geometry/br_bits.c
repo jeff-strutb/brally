@@ -60,7 +60,13 @@ void BrSwapVec3(void *pv)
  * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it.
  * Word-compose `lo=p[1]; hi=p[0]; *(u16*)p = lo|(hi<<8)` is the orig shape
  * (xor edx; mov dl/dh; mov [eax],dx). Remaining 4B is dh-then-dl vs
- * dl-then-dh -- same bag, TU-local schedule, do not grind. */
+ * dl-then-dh -- same bag, TU-local schedule, do not grind.  DEAD probes
+ * 2026-09-03, all still 4: writing the compose as `(hi << 8) | lo`
+ * (VC5 canonicalises `|` operand order), swapping the two local
+ * assignments to hi-then-lo, dropping the locals for one direct
+ * `(p[0] << 8) | p[1]` expression, and a two-lane union written low lane
+ * first (that one costs a stack slot: 42 B, 5+3).  VC5 always fills the
+ * HIGH half of the word register first for this compose. */
 /* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
  * Boss Rally's data files came from the N64 and store their numbers the other
  * way round from a PC, so they have to be turned around after loading. Asking
