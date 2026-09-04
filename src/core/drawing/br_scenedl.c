@@ -11,6 +11,59 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼ TWENTIETH PASS (2026-09-03) -- WALL 1's TERM-3 FLIP IS CLOSED, and the
+ * nineteenth pass's "done as a source problem" verdict is RETRACTED for it.
+ * The lever was a POINTER-INDEX ASYMMETRY nobody had looked at, because
+ * every pass had been probing the coefficient side.  Terms 1, 2 and 4 read
+ * their object factor as `ptr[0]` off a dedicated pointer local; term 3
+ * alone read `pPos[2]` -- the SAME pointer as term 1, at a NON-ZERO index.
+ * VC5 ranks a `ptr[0]` operand and a `ptr[k!=0]` operand differently when it
+ * decides which of a multiply's two memory operands gets the `fld` and which
+ * gets the memory `fmul`, so term 3 alone came out object-first
+ * (`fld [esi+0x38]; fmul [coef]`) where the original is coefficient-first.
+ * A FOURTH pointer local, `float *pTz = pObj + 0xe`, with term 3 spelled
+ * `pTz[0]`, makes all four terms symmetric and all four come out
+ * coefficient-first, exactly as the original.
+ *   Measured: register-blind multiset 48+54 -> 41+45 (SIXTEEN rows, the
+ *   whole `4 fld [I]` / `4 fmul [R+I]` / `4 fmul [I]` / `3 fld [R+I]` block
+ *   the nineteenth pass had catalogued as walls 1/2), instructions 6 short
+ *   -> 4 short, bytes -15 -> -14, fn.py RAW 117+123 -> 109+113.
+ *   ‼ MASKED REGIONS GO 19 -> 21 AND THAT IS NOT A REGRESSION -- read the
+ *   eighth pass's warning above.  The two new regions are 0xe58 (the fourth
+ *   row statement, now a small order-only region like its three siblings --
+ *   all four sit at a flat delta +2 instead of the old +7/-3/-3 swings) and
+ *   0x189c, the `mov edi,1` sink that re-opens on ANY allocation change in
+ *   this function and has done so twice before.  Every other metric moves
+ *   the right way.
+ *   WHAT IS LEFT of the row block is COMPLETION ORDER only: orig finishes
+ *   T2 before T1 (`fld C1; fld C2; fmul [esi+0x3c]` then `fld C3; fxch st(2);
+ *   fmul [esi+0x30]`) and defers `fld C4` until after T3's fmul; we finish
+ *   T1 first and hoist C4.  Same instruction multiset, four regions of two
+ *   bytes each.
+ * TWENTIETH-PASS PROBES, DEAD -- do not re-run.  Both were re-measured
+ * under the staleness rule because the pTz fix moved the allocation, so the
+ * seventeenth and eighteenth passes' verdicts on them were fair game:
+ *   - TERM ORDER, three permutations (2134, 2314, 2341) chosen because the
+ *     original COMPLETES the terms in order 2,1,3,4.  All three are
+ *     BYTE-IDENTICAL to 1234.  This re-confirms the flat-float-sum
+ *     canonicalisation for the fourth time in this file: only GROUPING
+ *     reaches the scheduler, never summand order.
+ *   - GROUPING, six forms.  `(T1+T2)+(T3+T4)` = 40+45 / -16 B;
+ *     `T1+((T2+T3)+T4)` = 41+45 / -14 B (identical to no-grouping);
+ *     `((T1+T2)+T3)+(T4)` and `((T1+T2)+(T3))+T4` = 42+45 / -9 B;
+ *     `(((T1)+T2)+T3)+T4` = 40+47 / -20 B; and a REDUNDANT OUTER PAIR
+ *     `(((T1+T2)+T3)+T4)` = 43+45 / -7 B / -2 insns, with a second and third
+ *     nested pair inert beyond the first.
+ *     ‼ THE OUTER PAIR IS THE TRAP AND IT IS WHY IT IS NOT IN THE TREE.  It
+ *     is the best BYTE and INSTRUCTION result this function has ever read
+ *     (-7 B, only two instructions short) and it is WORSE: it re-opens the
+ *     scale block at 0xf2a as a -18-byte region with +20 straight back at
+ *     0x11d3, i.e. it breaks the 8|4 batching the sixteenth pass won, and
+ *     the recovered "instructions" are the scale block's extra loads.  22
+ *     regions, REGNORM 43+45.  The eighteenth pass's warning that parens
+ *     break the batching HOLDS at the new allocation; do not take a paren
+ *     form in this file on a byte or instruction count alone.
+ *
  * ‼ NINETEENTH PASS (2026-09-03) -- MEASURED STATE, and a full residue
  * accounting that says this function is DONE as a source problem.
  *   Measured: 2,322 vs 2,328 instructions (SIX short), 9,339 vs 9,354
@@ -904,14 +957,15 @@ draw:
                     float *pTw = pObj + 0xf;
                     float *pTy = pObj + 0xd;
                     float *pPos = pObj + 0xc;
+                    float *pTz = pObj + 0xe;
                     if (!bTexLoaded) {
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    OUTM(12) = ((DAT_106e9a38[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pPos[2]) + DAT_106e9a48[0] * pTy[0];
-                    OUTM(13) = ((DAT_106e9a38[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pPos[2]) + DAT_106e9a48[1] * pTy[0];
-                    OUTM(14) = ((DAT_106e9a38[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pPos[2]) + DAT_106e9a48[2] * pTy[0];
-                    OUTM(15) = ((DAT_106e9a38[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pPos[2]) + DAT_106e9a48[3] * pTy[0];
+                    OUTM(12) = ((DAT_106e9a38[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pTz[0]) + DAT_106e9a48[0] * pTy[0];
+                    OUTM(13) = ((DAT_106e9a38[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pTz[0]) + DAT_106e9a48[1] * pTy[0];
+                    OUTM(14) = ((DAT_106e9a38[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pTz[0]) + DAT_106e9a48[2] * pTy[0];
+                    OUTM(15) = ((DAT_106e9a38[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pTz[0]) + DAT_106e9a48[3] * pTy[0];
                     scale = *pObj;
                     BrRowScale8(DAT_106e78f0, DAT_106e9a38, scale);
                     BrRowScale4(DAT_106e78f0 + 8, DAT_106e9a58, scale);
