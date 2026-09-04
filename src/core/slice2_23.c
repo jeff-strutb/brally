@@ -690,27 +690,6 @@ int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E920 / 0x1003EA40
  * ========================================================================== */
 
-/* WHAT IT DOES: slides a menu row sideways to a position worked out from
- * one of the settings, so the row's marker sits at the place that setting
- * corresponds to. */
-/* @implements 0x10037F40 glide BrUiFn1003E920 */
-/* @implements 0x1003E920 d3d BrUiFn1003E920 */
-int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig: lea 11*g+0x3D, fild, fstp [pObj+0x3c]. BrUiStF is an extern CALL. */
-    int32_t v = g_i0AC65C * 11 + 0x3D;
-    (void)pG;
-    *(float *)(pObj + BR_UI_OFF_F3C) = (float)v;
-    return 1;
-#else
-    /* lea ecx,[eax+eax*4] ; lea edx,[eax+ecx*2+0x3D]  ->  11*a + 61 */
-    int32_t v = pG->g0AC65C * 11 + 0x3D;
-    BrUiStF(pObj, BR_UI_OFF_F3C, (float)v);
-    return 1;
-#endif
-}
-
 int32_t BrUiFn1003EA40(BrUiObj *pObj, BrUiGlobals *pG)
 {
     uint32_t n = (pG->g0AB3D8 != 0) ? pG->gB4E708 : pG->gB4E70C;
