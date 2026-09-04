@@ -491,20 +491,49 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
 /* @n64 0x80217420 located */
 float BrFloat12MaxAbs(const float *pv)
 {
-    /* Orig is ebp-framed, six stack slots (hi/lo/zero/cursor/end/v), pointer
-     * walk (`jae` vs end = pv+12), integer-copied v, `lo = -lo` as fstp+fld,
-     * ternary flds.  /Od is the closest variant (+6 B: return temp, p++ before
-     * fld, fst not fstp).  /O2 /Oy- keeps p/end in registers. */
-    float hi = 0.0f;
-    float lo = 0.0f;
-    float zero = 0.0f;
-    const float *p = pv;
-    const float *end = pv + 12;
+    /* This TU compiles /Od /Op, so fn.py's /O2 numbers are phantom here -- use
+     * a direct /Od /Op compile to score it.
+     *
+     * The INSTRUCTION STREAM is now exact: same 55 instructions in the same
+     * order, frame 0x18, six slots. Two source shapes got it there from 48
+     * differing bytes to 23, and both are reusable /Od facts:
+     *
+     *  1. The cursor step is `(v = *p++)` INSIDE the condition, not `v = *p;
+     *     p++;` as two statements. MSVC /Od defers the postfix increment until
+     *     after the comparison's operand is consumed, so the original's
+     *     `p += 4` sits BETWEEN the `fcomp/fnstsw` and the `test ah,1`. Two
+     *     separate statements put it before the `fld` and cost six bytes.
+     *  2. The tail is `if (lo > hi) return lo; return hi;`, not a ternary. The
+     *     ternary allocates a seventh slot for the result (frame 0x1C) and
+     *     the original has six.
+     *
+     * PARKED at 23 bytes, and every one of them is a STACK SLOT NUMBER -- the
+     * six locals are permuted against the original:
+     *     orig  -4 hi   -8 end   -0xC p    -0x10 zero  -0x14 v   -0x18 lo
+     *     ours  -4 ?    -8 ?     -0xC lo   -0x10 zero  -0x14 hi  -0x18 v
+     *
+     * ‼ DECLARATION ORDER IS INERT UNDER /Od. Seven different orders of these
+     * six locals were compiled and every one produced byte-identical output;
+     * do not probe another. SCOPE IS NOT INERT: moving `v` into the while body
+     * (as below) moved three slots and is what put `zero` on -0x10. That is
+     * the only knob found so far and it is worth one more session -- the
+     * remaining question is what puts a FLOAT on -4 ahead of the two pointers,
+     * which no arrangement tried so far does. */
+    float hi;
+    float lo;
+    float zero;
+    const float *p;
+    const float *end;
+
+    hi = 0.0f;
+    lo = 0.0f;
+    zero = 0.0f;
+    p = pv;
+    end = pv + 12;
 
     while (p < end) {
-        float v = *p;
-        p++;
-        if (v < zero) {
+        float v;
+        if ((v = *p++) < zero) {
             if (lo > v)
                 lo = v;
         } else {
@@ -513,7 +542,9 @@ float BrFloat12MaxAbs(const float *pv)
         }
     }
     lo = -lo;
-    return (lo > hi) ? lo : hi;
+    if (lo > hi)
+        return lo;
+    return hi;
 }
 
 /* ================================================================== */
