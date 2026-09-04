@@ -1385,24 +1385,6 @@ int __fastcall BrVtInit53EE0(int *param_1)
   return;
 }
 
-/* WHAT IT DOES: update the button-latch state: detect new presses by comparing current vs previous frame. */
-/* @implements 0x10059060 glide BrInputLatchUpdate */
-
-int BrInputLatchUpdate(void)
-
-{
-  int iVar1;
-  
-  iVar1 = 0;
-  do {
-    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
-    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
-    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) =
-         *(unsigned int *)((int)&DAT_10ac6730 + iVar1) & *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
-    iVar1 = iVar1 + 4;
-  } while (iVar1 < 0x10);
-  return;
-}
 
 /* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (BrObj54710Dtor), then
  * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
