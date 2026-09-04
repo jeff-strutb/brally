@@ -5382,3 +5382,50 @@ That is the same axis as the `x = a; if (c) x = b;` versus true-if/else entry
 proved on 0x1000EAF0 the same day, arriving from the other direction — and it
 had never been connected to the byte-lane wall, because nobody could see the
 two sites together.
+
+## Two locals both starting at 0: the one that lives in MEMORY must be zeroed FIRST
+
+Proven byte-exact on 0x1006B970 `BrSndVoiceBufStart`, 2026-09-03.  The whole
+function was already identical except one instruction.
+
+The function has two zero-initialised locals: a loop flag VC5 enregisters
+(edi) and a `status` word that must have an address because it is passed by
+pointer to `IDirectSoundBuffer::GetStatus`, so it lives in the stack slot the
+`push ecx` prologue reserves.  Written flag-first:
+
+```c
+bLoop  = 0;
+status = 0;
+```
+
+VC5 zeroes edi, notices edi already holds the value the slot needs, and CSEs
+the constant into the store:
+
+```asm
+xor  edi, edi
+mov  eax, dword ptr [esi + 0x18]
+mov  dword ptr [esp + 8], edi        ; <-- reuses the register
+```
+
+Written slot-first — `status = 0; bLoop = 0;` — the store is emitted before
+edi is known to be zero, and stays an immediate, which is what the original
+has:
+
+```asm
+xor  edi, edi
+mov  eax, dword ptr [esi + 0x18]
+mov  dword ptr [esp + 8], 0          ; c7 44 24 08 00 00 00 00
+```
+
+Note the SCHEDULE does not move — both spellings put the store in the same
+slot, after the field load.  Only the operand kind changes.  So the tell is a
+`mov [esp+S], R` where the original has `mov [esp+S], I` and the register
+provably holds that same constant: **swap the two initialisers**, do not go
+looking at the body.
+
+**Boundary, and it is not a contradiction of the `/Od` entry above** ("`/Od`:
+declaration ORDER is inert"): that entry is about `/Od` and about the order of
+DECLARATIONS.  This is `/O2` and the order of the assignment STATEMENTS, and
+it only bites when one local is address-taken (so it is memory) and the other
+is not (so it is a register).  Two register locals, or two memory locals, show
+nothing.
