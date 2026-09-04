@@ -1183,6 +1183,15 @@ void BR_THISCALL1 BrKeyCacheReset(BrKeyCache *pCache)
  * header it can only fill in at the end, and clears the directory it will
  * build up as members are added. */
 #ifdef BR_MATCHING_BUILD
+/* RESIDUE 6 masked bytes, RAW 0+0 / REGNORM 0+0 -- every instruction the
+ * original has, one of them in a different PLACE.  The original sinks
+ * `mov [g_BrPodFile],eax` past the three fseek argument pushes, into the
+ * gap between the last push and the `call`; we emit it before the pushes.
+ * DEAD 2026-09-03, do not re-run: assigning the global AFTER the fseek
+ * (VC5 then parks the handle in esi across the call -- 33 diffs, an extra
+ * push/pop pair) and dropping the local so the global is both the
+ * assignment target and the fseek argument (identical 6).  Store
+ * placement inside a call sequence is not source-reachable here. */
 /* @implements 0x10008BA0 glide BrPodWriteOpen */
 int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
 {
