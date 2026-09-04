@@ -724,99 +724,13 @@ void BrDiKeyboardShutdown(void)
     g_pBr18ABDD0 = NULL;
 }
 
-/* 0x10078C30 */
-/* WHAT IT DOES: tells Windows what range of numbers one axis of a controller
- * should report -- how far left and right count as full deflection. A small
- * convenience wrapper around the awkward Windows call; the game uses it to
- * scale the wheel and stick into the range it wants. */
-/* @implements 0x10078C30 d3d BrDiSetPropRange */
-long BrDiSetPropRange(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
-                      uint32_t dwHow, int32_t lMin, int32_t lMax)
-{
-    BrDiPropRange r;
-
-    r.dwSize       = 0x18u;
-    r.dwHeaderSize = 0x10u;
-    r.dwObj        = dwObj;
-    r.dwHow        = dwHow;
-    r.lMin         = lMin;
-    r.lMax         = lMax;
-
-    return BR_DI_SETPROP(pDev, prop, &r);
-}
-
-/* 0x10078C80 */
-/* WHAT IT DOES: the same, for controller settings that are a single number
- * rather than a range -- the dead zone and the wheel's self-centring are the
- * two the game sets this way. */
-/* @implements 0x10078C80 d3d BrDiSetPropDword */
-long BrDiSetPropDword(BrDiObj *pDev, uint32_t prop, uint32_t dwObj,
-                      uint32_t dwHow, uint32_t dwData)
-{
-    BrDiPropDword d;
-
-    /* Assignment order = the original's store order: data, obj, how, then
-     * the two header constants (which the scheduler sinks past the pushes). */
-    d.dwObj  = dwObj;
-    d.dwHow  = dwHow;
-    d.dwData = dwData;
-    d.dwSize       = 0x14u;
-    d.dwHeaderSize = 0x10u;
-
-    return BR_DI_SETPROP(pDev, prop, &d);
-}
-
-/* 0x10078ED0 */
-/* WHAT IT DOES: actually delivers the shake -- it hands the wheel the length
- * and direction that were chosen above and tells it to start, which is what
- * the player feels on a bump or a collision. */
-/* @implements 0x10078ED0 d3d BrFfbCommitDuration */
-void BrFfbCommitDuration(void)
-{
-    BrDiObj *pEff;
-
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
-        return;
-    }
-    if (g_brB4E1E0 == 0) {
-        return;
-    }
-    if (g_br18ABDBC == 0) {
-        return;
-    }
-    if (g_brFlag6909E0 != 0) {
-        return;
-    }
-    g_brDiEffSquare.dwDuration = (uint32_t)g_br0BD438;
-
-    pEff = g_brFfb.pEffectSquare;
-    if (pEff == NULL) {
-        return;
-    }
-    /* 0x20000041 = DIEP_DURATION | DIEP_DIRECTION | DIEP_START */
-    BR_DI_SETPARAMS(pEff, &g_brDiEffSquare, 0x20000041u);
-}
-
-/* 0x100790B0 */
-/* WHAT IT DOES: sets how hard a force-feedback wheel pulls back towards
- * centre -- the weight of the steering the player feels -- and sends the new
- * strength to the wheel at once. Unusually for this group it does not first
- * check that force feedback is enabled. */
-/* @implements 0x100790B0 d3d BrFfbSetSpringCoeff */
-void BrFfbSetSpringCoeff(int32_t coeff)
-{
-    BrDiObj *pEff;
-
-    g_brDiSpringCond[0].lPositiveCoefficient = coeff;
-    g_brDiSpringCond[0].lNegativeCoefficient = coeff;
-
-    pEff = g_brFfb.pEffectSpring;
-    if (pEff == NULL) {
-        return;
-    }
-    /* 0x100 = DIEP_TYPESPECIFICPARAMS */
-    BR_DI_SETPARAMS(pEff, &g_brDiEffSpring, 0x100u);
-}
+/* 0x10078C30 BrDiSetPropRange, 0x10078C80 BrDiSetPropDword,
+ * 0x10078ED0 BrFfbCommitDuration and 0x100790B0 BrFfbSetSpringCoeff moved to
+ * src/core/controls/br_dicmd.c. They were the only users of BR_DI_SETPROP and
+ * BR_DI_SETPARAMS above; the macros are left here so this file's preamble is
+ * unchanged. The globals they read stay defined here, and slice3_45.h
+ * declares all four for the callers that remain (BrFfbUpdateSpring below
+ * calls BrFfbSetSpringCoeff). */
 
 /* 0x10078F20 */
 /* WHAT IT DOES: eases the weight of the steering up or down a step at a time
