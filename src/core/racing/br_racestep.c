@@ -8,7 +8,16 @@
 #include <stddef.h>
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* br_racestep.h declares this cdecl; the original is thiscall with the driver
+ * in ecx and no stack argument, which BR_THISCALL1 reproduces exactly. Hide
+ * the prototype so the matching definition is not a C2373 redefinition. */
+#define BrRaceDriverAnim BrRaceDriverAnim_cdecl
+#endif
 #include "br_racestep.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrRaceDriverAnim
+#endif
 #include "br_gamestep.h"
 
 /* ==========================================================================
@@ -482,6 +491,40 @@ void BrRaceDriverStep(BrDriver *pDrv)
  * 0x100623A0 -- a pure hole, transcribed for its control flow only
  * ========================================================================== */
 
+#ifdef BR_MATCHING_BUILD
+/* The car field the network gate passes as the slot index. +0x144 falls inside
+ * BrDriverCar's `_pad144`, and slice3_41.h is a shared header, so it is read
+ * through an offset here rather than by widening the struct. */
+#define BR_RSA_SLOT(c)  (*(const int32_t *)(const void *)((const uint8_t *)(c) + 0x144))
+
+/* 0x1005ACE0 and 0x10001CF0 -- both thiscall with the car as their only
+ * argument, so BR_THISCALL1 is exact for them. Neither is ported. */
+void BR_THISCALL1 BrSub1005ACE0(BrDriverCar *pCar);
+void BR_THISCALL1 BrSub10001CF0(BrDriverCar *pCar);
+int32_t BrCarPredictRemote(void *pCar, int32_t slot);   /* 0x10059D30 */
+
+/* WHAT IT DOES: runs one driver's car animation for the frame. A driver with
+ * no car does nothing. In a network race the car is animated only if the
+ * prediction step says this slot is live -- for the local player's own car,
+ * and for a slot whose prediction was suppressed, it is skipped entirely.
+ * Off the network every car animates. */
+/* @implements 0x100623A0 glide BrRaceDriverAnim */
+void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
+{
+    /* pDrv->pCar is respelled at each use rather than hoisted: the original
+     * re-reads [esi+0x60] before each of the two calls, which is what a call
+     * clobbering eax forces, and a hoisted local changes the reload. */
+    if (pDrv->pCar != NULL) {                         /* 0x100623A8 */
+        if (g_brRaceNet != 0) {
+            if (BrCarPredictRemote(pDrv->pCar,
+                                   BR_RSA_SLOT(pDrv->pCar)) == 0)
+                return;                               /* 0x100623BC */
+        }
+        BrSub1005ACE0(pDrv->pCar);                    /* 0x100623CB */
+        BrSub10001CF0(pDrv->pCar);                    /* 0x100623D3 */
+    }
+}
+#else
 void BrRaceDriverAnim(BrDriver *pDrv)
 {
     BrDriverCar *pCar = pDrv->pCar;
@@ -497,6 +540,7 @@ void BrRaceDriverAnim(BrDriver *pDrv)
     /* 0x100623CB / 0x100623D3: 0x1005ACE0 and 0x10001CF0. */
     BR_RS_HOLE(BR_RS_HOLE_ANIM, pfnAnim, pCar);
 }
+#endif
 
 /* ==========================================================================
  * 0x100623E0 -- one driver, part two.  The car entrant's gate step.
