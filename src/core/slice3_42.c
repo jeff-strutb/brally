@@ -272,34 +272,6 @@ void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
     pThis->f870 = 1;
 }
 
-/* 0x10069A90 */
-/* WHAT IT DOES: brings a settings block into existence with everything at its
- * default, and hands it back. It is the constructor; all the work is the
- * defaulting above. */
-/* The original is __thiscall: `this` arrives in ecx and nothing is pushed.
- * BR_THISCALL1 spells that as __fastcall, which for a single pointer argument
- * is the same convention byte for byte -- and that is what lets 0x10069A60
- * below tail-jump straight into it.  BrCtrlCfgInit must carry the convention
- * too, otherwise the inner call here compiles as a cdecl push/add-esp pair
- * where the original passes in the register. */
-/* @implements 0x10062B00 glide BrCtrlCfgCtor */
-BrCtrlCfg *BR_THISCALL1 BrCtrlCfgCtor(BrCtrlCfg *pThis)
-{
-    BrCtrlCfgInit(pThis);
-    return pThis;
-}
-
-/* 0x10069A60 */
-/* WHAT IT DOES: sets up the one settings block the whole game shares, so
- * every part of the game asking "what did the player choose?" has something
- * to read before the settings file is loaded over the top. */
-/* @implements 0x10062AD0 glide BrCtrlCfgInitGlobal */
-/* @n64 0x8022AF64 located */
-BrCtrlCfg *BrCtrlCfgInitGlobal(void)
-{
-    return BrCtrlCfgCtor(&g_BrCtrlCfg);
-}
-
 /* 0x10069DE0 */
 BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
 {
@@ -347,48 +319,6 @@ BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
     return pThis;
 }
 
-/* 0x10069AA0 */
-/* WHAT IT DOES: throws away the player's edits to one control layout and puts
- * that layout back to the shipped bindings. Only layouts 1, 2 and 3 can be
- * named; every other number, including nonsense, resets the first layout. */
-/* @implements 0x10069AA0 d3d BrCtrlCfgLoadDefaults */
-/* A SWITCH with a constant index in every arm, not one indexed assignment.
- * The original has FOUR fully duplicated `rep movsd` blocks, each with its
- * own epilogue: a distinct source address (stride 0xA8) and a distinct
- * destination displacement (0, 0xA8, 0x150, 0x1F8).  Computing the index
- * once and assigning `profile[k]` produces index arithmetic instead, and
- * loses the whole shape.  The dispatch is `dec eax; je` three times --
- * a switch compare chain on 1, 2, 3 with everything else, including 0,
- * falling to the default arm.
- *
- * Thiscall: pThis in ecx, the profile number at [esp+4], `ret 4`. */
-#ifdef BR_MATCHING_BUILD
-void __fastcall BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis,
-                                      BrCtrlProfileArg profile)
-{
-    switch (profile.v) {
-    case 1:
-        pThis->profile[1] = g_BrCtrlDefaults[1];
-        break;
-    case 2:
-        pThis->profile[2] = g_BrCtrlDefaults[2];
-        break;
-    case 3:
-        pThis->profile[3] = g_BrCtrlDefaults[3];
-        break;
-    default:
-        pThis->profile[0] = g_BrCtrlDefaults[0];
-        break;
-    }
-}
-#else
-void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile)
-{
-    const int k = BrCtrlProfileIndex(profile);
-    pThis->profile[k] = g_BrCtrlDefaults[k];
-}
-#endif
-
 /* 0x10069B10 */
 /* WHAT IT DOES: binds one game action -- steer left, brake, look behind -- to
  * a key, button or stick axis the player has just pressed on the redefine
@@ -428,102 +358,6 @@ void BrCtrlCfgAssign(BrCtrlCfg *pThis, int32_t profile, int32_t action,
         }
     }
 }
-
-/* 0x10069BC0 -- name fixed by the XSLICE declaration in slice2_23.h. */
-/* WHAT IT DOES: says what KIND of thing an action is bound to -- keyboard,
- * joystick button or joystick axis -- for one action of one control layout,
- * which is how the redefine screen knows which sort of label to draw. */
-/* @implements 0x10069BC0 d3d BrFn10069BC0 */
-#ifdef BR_MATCHING_BUILD
-/* thiscall: the config is in ecx and both selectors are on the stack, so the
- * `kind` argument is struct-wrapped to keep __fastcall out of edx -- the same
- * trick BrCtrlCfgLoadDefaults uses above.
- *
- * The four arms are written out IN FULL, and that is the whole shape of this
- * function. Factoring the profile choice into a helper (the portable body
- * below does exactly that) collapses them into one indexed load and loses
- * half the function. The original also folds the profile into the ROW index
- * before scaling -- `(key + 28*k) * 3` over one flat table -- rather than
- * indexing a profile and then a row, which is why each arm adds its own
- * literal to `key`. */
-int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, BrCtrlKindArg kind,
-                                  BrCtrlKeyArg key)
-{
-    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
-
-    switch (kind.v) {
-    case 1:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x1C][0] & 0xFF00u);
-    case 2:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x38][0] & 0xFF00u);
-    case 3:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x54][0] & 0xFF00u);
-    }
-    return (int32_t)(pCfg->profile[0].e[key.v][0] & 0xFF00u);
-}
-#else
-int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
-{
-    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
-    const int        k    = BrCtrlProfileIndex(kind);
-
-    return (int32_t)(pCfg->profile[k].e[key][0] & 0xFF00u);
-}
-#endif
-
-/* 0x10069C30 -- name fixed by the XSLICE declaration in slice2_23.h. */
-/* WHAT IT DOES: says WHICH key, button or axis an action is bound to, as a
- * bare number, paired with the kind reported above. The two answers are not
- * symmetric -- for the keyboard layout it never looks at the axis case at
- * all -- so a caller has to know the kind before the number means anything. */
-/* @implements 0x10069C30 d3d BrFn10069C30 */
-#ifdef BR_MATCHING_BUILD
-/* Same thiscall shape and the same written-out arms as BrFn10069BC0 above:
- * both stack arguments struct-wrapped, and each arm folds its own literal
- * into the flat row index rather than picking a profile first.
- *
- * The 0x8000 test exists ONLY on the 1/2/3 arms. The fall-through arm reads a
- * plain byte with `mov al,[..]` and never looks at the high half, which is why
- * it is written as a byte-typed read rather than as the shared expression with
- * the test skipped. VC5 cross-jumps the tails of arms 2 and 3 by itself (arm 3
- * ends in a `jmp` into arm 2) and leaves arm 1 with its own copy -- that is
- * the compiler's layout, not a difference in how the three are spelled. */
-uint8_t BR_THISCALL1 BrFn10069C30(void *pThis, BrCtrlKindArg kind,
-                                  BrCtrlKeyArg key)
-{
-    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
-
-    switch (kind.v) {
-    case 1: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x1C][0];
-        if (v >= 0x8000u) return (uint8_t)(v >> 8);
-        return (uint8_t)v;
-    }
-    case 2: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x38][0];
-        if (v >= 0x8000u) return (uint8_t)(v >> 8);
-        return (uint8_t)v;
-    }
-    case 3: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x54][0];
-        if (v >= 0x8000u) return (uint8_t)(v >> 8);
-        return (uint8_t)v;
-    }
-    }
-    return (uint8_t)pCfg->profile[0].e[key.v][0];
-}
-#else
-uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key)
-{
-    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
-    const int        k    = BrCtrlProfileIndex(kind);
-    const uint16_t   v    = pCfg->profile[k].e[key][0];
-
-    if (k != 0 && v >= 0x8000u)
-        return (uint8_t)(v >> 8);
-    return (uint8_t)v;
-}
-#endif
 
 /* =====================================================================
  * 3. Replay recorder
