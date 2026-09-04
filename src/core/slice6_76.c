@@ -752,6 +752,33 @@ int BrSndBankFree(void)
   return 1;
 }
 
+/* 0x1184C1E8 -- each channel's base rate; br_sfxsrc.h owns the model. */
+extern double g_aBrSfxChanRate[];
+
+/* WHAT IT DOES: bind one of a group's voices to a playback channel.  Copies
+ * the group row's 8-byte base rate into the channel's rate slot, silences
+ * whatever the channel was already holding, then stores the new voice.
+ * Returns whether the channel ended up holding a voice -- and, as everywhere
+ * else on this path, a silent 1 when sound is not up. */
+/* @implements 0x1006B530 glide BrSndChanBind */
+
+int BrSndChanBind(int iGroup, int iSlot)
+
+{
+  int pVoice;
+
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    g_aBrSfxChanRate[iSlot] = ((double *)DAT_100b55f8)[iGroup * 9 + 8];
+    if (g_aBrSndBankVoice[iSlot] != 0) {
+      BrX10072580(iSlot);
+    }
+    pVoice = DAT_100b55f8[iGroup * 0x12 + iSlot];
+    g_aBrSndBankVoice[iSlot] = (void *)pVoice;
+    return pVoice != 0;
+  }
+  return 1;
+}
+
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
  * drive its DirectSound buffer to DSBVOLUME_MIN (vtable +0x3c) and recentre
  * the pan (vtable +0x40).  The buffers keep playing; only their output is
