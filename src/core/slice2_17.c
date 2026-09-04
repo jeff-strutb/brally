@@ -2,6 +2,36 @@
  *
  * See slice2_17.h for the per-function notes. General remarks:
  *
+ * ‼ TEN MATCHED FUNCTIONS HERE ARE STRANDED ON `g_s17`, AND THE AUDIT WILL
+ *   KEEP COUNTING THEM. That is recorded, not overlooked. This file is an
+ *   address BATCH spanning several original TUs -- 0x10019xxx, 0x1001Cxxx
+ *   and 0x1002Axxx are not contiguous -- so `g_s17` is a decomp-invented
+ *   aggregate, not an original file-static, and 136 references reach it from
+ *   72 functions. The file is also not module-homogeneous (drawing, racing,
+ *   startup, plus matrix and lighting helpers), so neither the whole-file
+ *   move that worked for slice2_24/3_31/8_85/2_15 nor the whole-section move
+ *   that worked for slice8_86 is available.
+ *
+ *   SIX read g_s17 in the MATCHING arm and cannot move at any spelling:
+ *   BrS17DrawGated, BrRenderCountersReset, BrScreenSizeApply, BrGfxEmitTexCmd,
+ *   BrGfxClearScreen, BrGfxFillRect. (The middle two have no #else arm at
+ *   all -- one body, both builds.)
+ *
+ *   FOUR are clean in the matching arm and touch it only in the PORT arm:
+ *   BrScratchRingAlloc, BrScratchRingDrain, BrS17BankFlip, BrCarTableRemove.
+ *   `BrS17GetState()` is non-static and already reaches this state from
+ *   drawing/br_drawcar.c, so the port arm could route through it -- but that
+ *   is EDITING a port body, not relocating one, and nothing in the pipeline
+ *   validates it (the sweep compiles only the matching arm; portcheck.py
+ *   compiles without linking or running). The first two are plain field
+ *   accesses and would go mechanically; the other two would not, because
+ *   `s17_car` is `g_s17.pCars + i * BR_CAR_STRIDE` -- state-bound, so it
+ *   cannot be duplicated the way a stateless macro could.
+ *
+ *   The real fix is to split g_s17 along the original TU boundaries, which
+ *   is a header change (BrS17State lives in include/slice2_17.h) and so is
+ *   serialised work, not a refile.
+ *
  * - Every FPU sequence in this file was traced through the x87 stack
  *   instruction by instruction (these routines are full of fxch). Where the
  *   original sums three or four products the summation ORDER is preserved
