@@ -274,3 +274,40 @@ void BrSndNearestOfferDefault(int32_t f8C, const BrVec3 *pPos,
     if (f84 != -1)
         BrSndNearestOffer(f8C, f84, f9C, BR_SND_DEFAULT_HZ, pPos, pListener);
 }
+
+/* 0x100611F0 (D3D 0x10068180) -- the track-keyed sibling of the one above. */
+extern int32_t g_brCfgChosenTrack;    /* 0x100B3014, br_appstart.h */
+
+/* 0x46ABE000, the doubled base frequency the two loud tracks use. */
+#define BR_SND_DOUBLE_HZ   22000.0f
+
+/* WHAT IT DOES: offers a stock ambient sound keyed on which track is being
+ * driven: two tracks get it pitched an octave up, two get it at the base
+ * pitch, and every other track gets nothing at all.  Unlike the mode-keyed
+ * sibling it uses set index 0 and the full 0xFF volume scale. */
+/* @implements 0x100611F0 glide BrSndNearestOfferTrack */
+void BrSndNearestOfferTrack(int32_t f8C, const BrVec3 *pPos,
+                            const BrMat4 *pListener)
+{
+    int32_t f84 = -1;
+    float   f98 = BR_SND_DEFAULT_HZ;
+    int32_t f9C = 0x80;
+
+    switch (g_brCfgChosenTrack) {
+    case 2:
+    case 8:
+        f84 = 0;
+        f98 = BR_SND_DOUBLE_HZ;
+        f9C = 0xFF;
+        break;
+    case 4:
+    case 10:
+        f84 = 0;
+        f98 = BR_SND_DEFAULT_HZ;
+        f9C = 0xFF;
+        break;
+    }
+
+    if (f84 != -1)
+        BrSndNearestOffer(f8C, f84, f9C, f98, pPos, pListener);
+}
