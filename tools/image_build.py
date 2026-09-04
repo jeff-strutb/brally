@@ -28,6 +28,31 @@ so it can be inspected -- but it is written to `<name>.FAILED` and the run
 exits 1.  Never read "it produced files" as "the claims hold"; read the exit
 code.
 
+**THE GATE BUILDS WHAT IT GRADES.**  Both lanes compile their own objects,
+cached against the source AND the headers, and the sweep's object is reused
+only when it can be PROVEN current.  This is not tidiness: the DLL lane used
+to read whatever `.obj` happened to be lying in `build/match/obj_<opt>/` with
+no freshness test, so an object left over from an older version of a file
+placed bytes the current tree would not produce while the run printed "0
+differing bytes / every claim holds".  A missing object was caught; a stale
+one was not.  That was the one way this tool could lie, and it is closed.
+
+**THREE OUTCOMES, NOT TWO.**  Exit 0 = every claim holds.  Exit 1 splits into
+two findings that call for opposite actions and must never be conflated:
+
+    FAILED        a claim is WRONG -- differing bytes, an overlap, two names
+                  at one address, a claim outside .text, or a symbol the
+                  object does not contain (a stale report row, a rename, a
+                  bad VA).  This is a decomp defect.  Chase it.
+    INCONCLUSIVE  a claimed function would not COMPILE, so it was never
+                  graded.  Every claim that did build holds.  This says
+                  nothing about the claims -- fix the source, or wait for
+                  whoever is mid-edit, and re-run.
+
+Exit 2 = the tree was edited while the run was grading it.  The verdict then
+describes no single state of the tree in either direction; re-run when the
+tree is still and record nothing from the racing run.
+
 **What "working binary" means here, exactly.**  Because unclaimed bytes come
 from the original, a GREEN run emits a file that is byte-identical to the
 original -- it runs because the original runs, not because our C is proven to
@@ -53,7 +78,7 @@ Usage:
     python3 tools/image_build.py --only BRGlide.dll
     python3 tools/image_build.py --out-dir /tmp/drop
     python3 tools/image_build.py --no-write          # gate only, emit nothing
-    python3 tools/image_build.py --recompile         # ignore cached EXE objs
+    python3 tools/image_build.py --recompile         # ignore every cached obj
     python3 tools/image_build.py --out build/x.dll   # legacy: DLL to one path
 """
 import csv
@@ -261,8 +286,92 @@ def _opt_tag(opt):
 
 # ---------------------------------------------------------------- DLL lane
 
+# report.csv's `opt` column is match_sweep's short tag; cl.exe needs the real
+# flags. Kept in sync with match_sweep.VARIANTS rather than duplicated -- an
+# added variant must not silently fall back to /O2 here and grade a function
+# against a build it never matched under.
+def _dll_opt_flags(tag):
+    import match_sweep
+    for t, flags in match_sweep.VARIANTS:
+        if t == tag:
+            return flags
+    return None
 
-def collect_dll():
+
+_DEPS_MTIME = None
+
+
+def _deps_mtime():
+    """Newest mtime among the headers every TU compiles against.
+
+    An object newer than its .c can still be stale: a header edit reaches
+    dozens of files and changes their codegen without touching one .c. Folding
+    the headers into the freshness test costs a rebuild only when a header has
+    actually moved -- the same rebuild the sweep would pay -- and closes the
+    hole where the gate grades yesterday's bytes.
+    """
+    global _DEPS_MTIME
+    if _DEPS_MTIME is None:
+        newest = 0.0
+        for d in (os.path.join(ROOT, 'include'),
+                  os.path.join(ROOT, 'tools', 'msvc5-compat')):
+            for dirpath, _dirs, files in os.walk(d):
+                for fn in files:
+                    if fn.endswith(('.h', '.inc')):
+                        try:
+                            newest = max(newest, os.path.getmtime(
+                                os.path.join(dirpath, fn)))
+                        except OSError:
+                            pass
+        _DEPS_MTIME = newest
+    return _DEPS_MTIME
+
+
+def _fresh(obj, src):
+    """Is `obj` newer than both its source and the newest header?"""
+    try:
+        t = os.path.getmtime(obj)
+    except OSError:
+        return False
+    return t >= os.path.getmtime(src) and t >= _deps_mtime()
+
+
+def _compile_dll_obj(rel_src, tag, recompile=False):
+    """The object for one DLL TU at the opt its match was scored under.
+
+    (obj_path, err, source) -- source is 'sweep' when match_sweep's own object
+    was still fresh, 'gate' when this tool had to build it.
+
+    ‼ THIS USED TO READ THE SWEEP'S OBJECT WITH NO FRESHNESS TEST AT ALL, and
+    that is the one way a hard gate can lie: an object left over from an older
+    version of the file places bytes the current tree would not produce, while
+    the run prints "0 differing bytes / every claim holds". Missing objects
+    were caught (they surfaced as unplaced rows); STALE ones were not. The
+    gate now builds what it grades, exactly as the EXE lane already did, and
+    only reuses the sweep's object when it can prove it current.
+    """
+    src = os.path.join(ROOT, rel_src)
+    if not os.path.exists(src):
+        return None, 'source missing', None
+    flags = _dll_opt_flags(tag)
+    if flags is None:
+        return None, 'unknown opt tag %r' % tag, None
+    base = os.path.splitext(os.path.basename(src))[0]
+    swept = os.path.join(ROOT, 'build', 'match', 'obj_' + tag, base + '.obj')
+    if not recompile and _fresh(swept, src):
+        return swept, None, 'sweep'
+    own_tag = 'img_dll_' + tag
+    own = os.path.join(ROOT, 'build', 'match', 'obj_' + own_tag, base + '.obj')
+    if not recompile and _fresh(own, src):
+        return own, None, 'gate'
+    import match_sweep
+    got, errs = match_sweep.compile_variant(src, own_tag, flags)
+    if got is None:
+        return None, '; '.join(errs) or 'compile failed', None
+    return got, None, 'gate'
+
+
+def collect_dll(recompile=False, progress=None):
     """{va: (name, code, unres, fromref, lane)} plus the bookkeeping the gate
     needs: the names claiming each address, and the rows we FAILED to build."""
     fnmap, glmap = load_maps()
@@ -288,14 +397,21 @@ def collect_dll():
     for va, r in claimed.items():
         if not r.get('opt'):
             continue
-        obj = os.path.join(ROOT, 'build', 'match', 'obj_' + r['opt'],
-                           os.path.basename(r['file'])[:-2] + '.obj')
-        want.setdefault(obj, []).append((va, r['name']))
+        want.setdefault((r['file'], r['opt']), []).append((va, r['name']))
 
     best = {}
-    for obj, wanted in want.items():
-        if not os.path.exists(obj):
+    unbuildable = []
+    reused = built = 0
+    for i, ((rel_src, tag), wanted) in enumerate(sorted(want.items())):
+        if progress:
+            progress(i + 1, len(want), rel_src)
+        obj, err, how = _compile_dll_obj(rel_src, tag, recompile)
+        if obj is None:
+            for va, name in wanted:
+                unbuildable.append((va, name, '%s: %s' % (rel_src, err)))
             continue
+        reused += how == 'sweep'
+        built += how == 'gate'
         byname = {n: va for va, n in wanted}
         for va, name, code, unres, fromref in compiled_functions(
                 [obj], fnmap, glmap):
@@ -314,8 +430,17 @@ def collect_dll():
     # was strict these dropped out silently, and a run that placed less work
     # than the report claims still printed "0 differing bytes" -- the one way
     # this tool can lie. Named here, and fatal in main().
-    unplaced = [(va, r['name'], r['file'])
-                for va, r in sorted(claimed.items()) if va not in best]
+    #
+    # Two different things, kept apart because they call for opposite actions:
+    # `unbuildable` means the TREE does not currently compile (fix the source,
+    # or wait for whoever is mid-edit); `unplaced` means it compiled and the
+    # claimed symbol is NOT IN the object, which is a real bookkeeping defect
+    # -- a stale report row, a renamed function, a wrong VA. Reporting both as
+    # "the tree's claims do not hold" sent a session chasing a phantom.
+    bad = set(va for va, _n, _w in unbuildable)
+    unplaced = [(va, r['name'], r['file'] + ': symbol not in obj')
+                for va, r in sorted(claimed.items())
+                if va not in best and va not in bad]
     cpp_rows = sum(1 for r in csv.DictReader(open(
         os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')))
         if r.get('status') == 'match' and r.get('pieces') == '4/4') \
@@ -324,7 +449,10 @@ def collect_dll():
     n_cpp = sum(1 for v in best.values() if v[4] == 'C++')
     for _ in range(cpp_rows - n_cpp):
         unplaced.append((0, '(C++ 4/4 row)', 'report_cpp.csv'))
-    return best, names_at, unplaced
+    if reused or built:
+        print('  objects: %d reused from the sweep, %d rebuilt by the gate'
+              % (reused, built))
+    return best, names_at, unplaced, unbuildable
 
 
 # ---------------------------------------------------------------- EXE lanes
@@ -392,7 +520,7 @@ def collect_exe(exe, recompile=False, progress=None):
         fnmap.setdefault(r['name'].lstrip('_@').split('@')[0], va)
     origdir = os.path.join(ROOT, 'build', 'match', 'orig_%s' % exe)
 
-    best, names_at, unplaced = {}, {}, []
+    best, names_at, unplaced, unbuildable = {}, {}, [], []
     for i, r in enumerate(rows):
         va = int(r['va'], 16)
         names_at.setdefault(va, set()).add(r['name'])
@@ -400,7 +528,7 @@ def collect_exe(exe, recompile=False, progress=None):
             progress(i + 1, len(rows), r['file'])
         obj, err = _compile_exe_obj(r['file'], r['opt'], exe, recompile)
         if obj is None:
-            unplaced.append((va, r['name'], '%s: %s' % (r['file'], err)))
+            unbuildable.append((va, r['name'], '%s: %s' % (r['file'], err)))
             continue
         hit = False
         for gva, _name, code, unres, fromref in compiled_functions(
@@ -411,15 +539,15 @@ def collect_exe(exe, recompile=False, progress=None):
             hit = True
         if not hit:
             unplaced.append((va, r['name'], r['file'] + ': symbol not in obj'))
-    return best, names_at, unplaced
+    return best, names_at, unplaced, unbuildable
 
 
 # ---------------------------------------------------------------- assembly
 
 
-def assemble(orig_path, best, names_at, unplaced, label):
+def assemble(orig_path, best, names_at, unplaced, label, unbuildable=()):
     """Lay every claim into the original image; print the report; return
-    (image_bytes, ok)."""
+    (image_bytes, verdict) where verdict is 'ok', 'claims' or 'build'."""
     usable = {va: v for va, v in best.items() if v[2] == 0}
     blocked = len(best) - len(usable)
     n_fromref_fns = sum(1 for v in usable.values() if v[3])
@@ -462,7 +590,10 @@ def assemble(orig_path, best, names_at, unplaced, label):
     print(f"    of those, {n_fromref_fns} functions fill {n_fromref_slots} "
           f"static/local slots from the reference image")
     print(f"  blocked on an unknown address  : {blocked}")
-    print(f"  claimed but NOT built/placed   : {len(unplaced)}")
+    print(f"  claimed but the TREE WON'T BUILD: {len(unbuildable)}")
+    for va, name, why in list(unbuildable)[:10]:
+        print(f"    {va:#010x} {name}: {why}")
+    print(f"  claimed but NOT placed         : {len(unplaced)}")
     for va, name, why in unplaced[:10]:
         print(f"    {va:#010x} {name}: {why}")
     print(f"\noverlapping address claims       : {len(overlaps)}")
@@ -512,13 +643,27 @@ def assemble(orig_path, best, names_at, unplaced, label):
         print(f"    {va:#x} {name}: {nd}/{sz} bytes")
 
     print(f"\nASSEMBLED IMAGE vs ORIGINAL: {delta} differing bytes")
-    ok = not (delta or overlaps or conflicting or outside or unplaced or
-              blocked)
-    if ok:
-        print("  -> every claim holds at image level.")
-    else:
+    # Two non-passes, and they are NOT the same finding. A claim that is wrong
+    # is a decomp defect; a tree that will not compile is a state problem that
+    # says nothing about the claims. Both still exit non-zero -- a run that
+    # graded less than the report claims must never read as a pass -- but the
+    # message has to name which, or it sends the reader after the wrong bug.
+    claims_bad = bool(delta or overlaps or conflicting or outside or unplaced
+                      or blocked)
+    if claims_bad:
+        verdict = 'claims'
         print("  -> FAILED: the tree's claims do not hold at image level.")
-    return bytes(img), ok
+    elif unbuildable:
+        verdict = 'build'
+        print(f"  -> INCONCLUSIVE: {len(unbuildable)} claimed function(s) "
+              "could not be compiled, so they were never graded.")
+        print("     Every claim that DID build holds. Fix the source (or wait "
+              "for whoever is mid-edit) and re-run;")
+        print("     this is not evidence of a wrong claim.")
+    else:
+        verdict = 'ok'
+        print("  -> every claim holds at image level.")
+    return bytes(img), verdict
 
 
 def _show(path):
@@ -527,6 +672,41 @@ def _show(path):
     absolute path it came from."""
     rel = os.path.relpath(path, ROOT)
     return path if rel.startswith('..') else rel
+
+
+def _source_stamp():
+    """{path: mtime} for every file a run's verdict depends on.
+
+    Compared before and after the run: if any of them moved, the tree was
+    edited WHILE it was being graded and the verdict describes no single state
+    of the tree. That is not a hypothetical -- a refiling job rewriting src/
+    produced three different failure sets in twenty minutes, each of which read
+    as a hard FAIL. A racing run must say so rather than accuse the tree.
+    """
+    out = {}
+    for d in (os.path.join(ROOT, 'src'), os.path.join(ROOT, 'include')):
+        for dirpath, _dirs, files in os.walk(d):
+            for fn in files:
+                if fn.endswith(('.c', '.cpp', '.h', '.inc')):
+                    p = os.path.join(dirpath, fn)
+                    try:
+                        out[p] = os.path.getmtime(p)
+                    except OSError:
+                        pass
+    for name in ('report.csv', 'report_cpp.csv', 'report_exe.csv'):
+        p = os.path.join(ROOT, 'build', 'match', name)
+        try:
+            out[p] = os.path.getmtime(p)
+        except OSError:
+            pass
+    return out
+
+
+def _raced(before, after):
+    """The files that appeared, vanished or changed between two stamps."""
+    moved = [p for p, t in after.items() if before.get(p) != t]
+    moved += [p for p in before if p not in after]
+    return sorted(set(moved))
 
 
 def emit(img, ok, out_path, no_write):
@@ -565,12 +745,19 @@ def main():
                      % (only, ', '.join(['BRGlide.dll']
                                         + list(EXE_FILES.values()))))
 
+    before = _source_stamp()
     results = []
     for i, tgt in enumerate(targets):
         if i:
             print()
         if tgt == 'BRGlide.dll':
-            best, names_at, unplaced = collect_dll()
+            def dprog(n, total, f):
+                sys.stderr.write('\r  building BRGlide %d/%d %-40s'
+                                 % (n, total, os.path.basename(f)))
+                sys.stderr.flush()
+            best, names_at, unplaced, unbuildable = collect_dll(recompile,
+                                                                dprog)
+            sys.stderr.write('\r' + ' ' * 70 + '\r')
             orig_path = ORIG_DLL
         else:
             exe = [k for k, v in EXE_FILES.items() if v == tgt][0]
@@ -579,22 +766,48 @@ def main():
                 sys.stderr.write('\r  building %s %d/%d %-40s'
                                  % (_e, n, total, os.path.basename(f)))
                 sys.stderr.flush()
-            best, names_at, unplaced = collect_exe(exe, recompile, prog)
+            best, names_at, unplaced, unbuildable = collect_exe(
+                exe, recompile, prog)
             sys.stderr.write('\r' + ' ' * 70 + '\r')
             orig_path = os.path.join(ROOT, 'orig', tgt)
-        img, ok = assemble(orig_path, best, names_at, unplaced, tgt)
+        img, verdict = assemble(orig_path, best, names_at, unplaced, tgt,
+                                unbuildable)
         dest = legacy_out if (legacy_out and tgt == 'BRGlide.dll') \
             else os.path.join(out_dir, tgt)
-        emit(img, ok, dest, no_write)
-        results.append((tgt, ok))
+        emit(img, verdict == 'ok', dest, no_write)
+        results.append((tgt, verdict))
+
+    raced = _raced(before, _source_stamp())
 
     print()
     print('=' * 68)
-    for tgt, ok in results:
-        print('  %-14s %s' % (tgt, 'OK' if ok else 'FAILED'))
-    bad = [t for t, ok in results if not ok]
-    if bad:
-        print('\nIMAGE GATE FAILED: ' + ', '.join(bad))
+    WORD = {'ok': 'OK', 'claims': 'FAILED', 'build': 'INCONCLUSIVE (build)'}
+    for tgt, verdict in results:
+        print('  %-14s %s' % (tgt, WORD[verdict]))
+    if raced:
+        # Printed before the verdict line so it is read first: a racing run's
+        # verdict is about no single state of the tree, in EITHER direction.
+        print('\n‼ THE TREE CHANGED WHILE THIS RUN WAS GRADING IT '
+              '(%d file(s)):' % len(raced))
+        for p in raced[:8]:
+            print('    %s' % _show(p))
+        if len(raced) > 8:
+            print('    ... and %d more' % (len(raced) - 8))
+        print('  This verdict describes no single state of the tree. Re-run '
+              'when the tree is still;')
+        print('  do NOT record either a pass or a failure from this run.')
+        sys.exit(2)
+    failed = [t for t, v in results if v == 'claims']
+    unbuilt = [t for t, v in results if v == 'build']
+    if failed:
+        print('\nIMAGE GATE FAILED: ' + ', '.join(failed))
+        sys.exit(1)
+    if unbuilt:
+        print('\nIMAGE GATE INCONCLUSIVE: ' + ', '.join(unbuilt)
+              + ' -- claimed functions that would not compile were never '
+                'graded.')
+        print('Every claim that built holds. This is a tree-state problem, '
+              'not a wrong claim.')
         sys.exit(1)
     if not no_write and not legacy_out:
         # BRD3D.dll is out of scope (rule 0) but the launcher will load it if
