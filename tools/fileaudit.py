@@ -214,7 +214,8 @@ def main():
             print('  Write what it is for now, while you still know. Nobody')
             print('  else can recover it without re-tracing the whole function.')
         if stranded:
-            print('  Move the assigned ones with tools/refile.py.')
+            print('  Move the assigned ones BY HAND, verifying each with a')
+            print('  single-file sweep of both files. There is no mover tool.')
         if unrecorded:
             print('  Record the rest with tools/filing.py.')
         return 1
