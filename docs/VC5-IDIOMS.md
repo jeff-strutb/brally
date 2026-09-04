@@ -5331,3 +5331,54 @@ element TYPE in your C is narrower than the one the original used.**  The
 8-byte copy itself is still two dword `mov`s, so do not read the pair as
 evidence of an `int[]`: VC5 copies a `double` between memory locations with
 integer moves when nothing does arithmetic on it.
+
+## Ask the solved corpus, don't invent a spelling — `tools/corpus.py`
+*(built 2026-09-03; 1,036 byte-exact functions / 50,870 instructions indexed)*
+
+This file exists because inventing spellings does not work — the permuter went
+0/95 and the refine batch 0/258. What *does* work is the advice already
+written above: **before writing "the compiler will not do X", find a site in
+the same binary doing it.** That was a hand operation, one site at a time.
+It is now a query.
+
+    .venv/bin/python tools/corpus.py build                     # after any batch of matches
+    .venv/bin/python tools/corpus.py find --from 0x1000A110 --at 0x3ca --len 12
+    .venv/bin/python tools/corpus.py find --pattern 'mov R, dword ptr [esp+S]; and R, 0xff'
+    .venv/bin/python tools/corpus.py show --va 0x1001E380 --at 0xc7 --len 20
+
+`find` takes a pattern either literally or straight out of a function's
+**original** bytes at an offset `divergence.py` gave you, and reports every
+byte-exact function containing that run. `--source N` (or `show`) resolves a
+hit back to real C through the compiler's own `/FAcs` listing — not an
+inference, the compiler's own statement-to-offset mapping. Because a corpus
+member is byte-exact by definition, the original's offsets are ours.
+
+**A MISS IS A RESULT.** When `find` reports that no corpus member contains the
+run, that is not a dead end — it says the construct is not proven anywhere in
+1,036 solved functions, so there is no spelling to copy and the site needs
+source truth, not another permutation. When the full pattern misses, the tool
+falls back to the longest run that *does* appear and prints the boundary; the
+instructions past that boundary are the actual open question.
+
+**It compounds.** Every new match anywhere in the tree makes the index better
+at the functions that are stuck. Re-run `build` after any batch.
+
+‼ It indexes ORIGINAL bytes, never recompiled ones — a diffing function would
+poison the corpus with spellings that are wrong.
+
+### First finding, and it is a real one
+
+The byte-lane defect that has held 0x1000A110's colour arms for ~10 sessions
+(orig homes both byte locals and reads them back widened, `mov R,[esp+S]; and
+R,0xff; or R,R`; we forward one out of a register as `mov dl,al`) —
+**that widening run does not exist anywhere in the solved corpus.** Neither
+does `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff`. The closest proven
+relative is `BrGlRectFill` (0x1001E380, byte-exact), which emits the two-
+instruction widening four times, and its source says what causes it: **four
+`uint8_t` locals assigned on BOTH ARMS of an if/else and read after the join**
+get memory homes and come back widened at every later use.
+
+That is the same axis as the `x = a; if (c) x = b;` versus true-if/else entry
+proved on 0x1000EAF0 the same day, arriving from the other direction — and it
+had never been connected to the byte-lane wall, because nobody could see the
+two sites together.
