@@ -1303,6 +1303,16 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  * of slots rather than one cell per square, so a car driving across the map
  * recycles them as it goes. */
 /* @implements 0x1006F720 d3d BrCollGridCellAcquire */
+#ifdef BR_MATCHING_BUILD
+/* The original does NOT call a helper for float->int here: a plain `(int)f`
+ * compiles to `fld f` / `call __ftol`, with the value arriving on the x87
+ * stack, where a declared `int32_t BrFtolTrunc(float)` pushes it on the C
+ * stack and adds esp back afterwards -- two pushes and two `add esp,4` this
+ * function does not have.  Scoped to this one function with the #undef below;
+ * the four other users in this file keep the portable helper, which exists
+ * because a plain cast saturates rather than wrapping on non-x86. */
+#define BrFtolTrunc(f) ((int32_t)(f))
+#endif
 short BrCollGridCellAcquire(float x, float y)
 {
     int32_t      ix, iy;
@@ -1320,10 +1330,8 @@ short BrCollGridCellAcquire(float x, float y)
     /* `__ftol / cdq / and edx,0x1F / add / sar 5` -- a divide by 32 that
      * truncates toward zero, then the y half is scaled by 64 to make a
      * 64-column key. */
-    ix = BrFtolTrunc(x);
-    ix = (ix + ((ix < 0) ? 31 : 0)) >> 5;
-    iy = BrFtolTrunc(y);
-    iy = ((iy + ((iy < 0) ? 31 : 0)) >> 5) << 6;
+    ix = BrFtolTrunc(x) / 32;
+    iy = (BrFtolTrunc(y) / 32) << 6;
     key = (int16_t)(ix + iy);
 
     /* GOTCHA, and it is a real defect: the stored key is compared
@@ -1347,9 +1355,13 @@ short BrCollGridCellAcquire(float x, float y)
     g_aBrCollGridKey[iVictim]   = key;
     g_aBrCollGridStamp[iVictim] = g_brCollGridClock;
 
+#ifndef BR_MATCHING_BUILD
+    /* DEVIATION (memory safety): the original dereferences the grid base
+     * unconditionally -- it has no `test/je` here. */
     if (g_pBrCollGrid == NULL) {
         return (short)iVictim;
     }
+#endif
     /* 75 * best << 6 == 4800 * best == BR_COLL_CELL_PLANES records. */
     pCell = g_pBrCollGrid + (size_t)iVictim * BR_COLL_CELL_PLANES;
 
@@ -1367,7 +1379,7 @@ short BrCollGridCellAcquire(float x, float y)
         while ((tri = BrU16CursorNext(g_pBrTriTable, &cur)) != 0) {
             BrCollPlane *p = &pCell[n];
             uint32_t     u = (uint32_t)tri;
-            BrVec3       a, b, nrm;
+            BrVec3       a, b;
 
             /* three u16 vertex indices on an 8-byte stride */
             p->pV0 = &g_pBrCollVerts[g_pBrCollTriIdx[4u * u + 0u]];
@@ -1385,18 +1397,20 @@ short BrCollGridCellAcquire(float x, float y)
 
             /* the plain cross product (V1-V0) x (V2-V0); traced through every
              * fxch, no operand order is guessed */
-            nrm.x = a.y * b.z - a.z * b.y;
-            nrm.y = a.z * b.x - a.x * b.z;
-            nrm.z = a.x * b.y - a.y * b.x;
+            p->nx = a.y * b.z - a.z * b.y;
+            p->ny = a.z * b.x - a.x * b.z;
+            p->nz = a.x * b.y - a.y * b.x;
 
-            /* 0x10074250 == slice1_09.h's BrVec3Normalise, which the original
-             * calls on the record itself.  DEVIATION (LP64): BrCollPlane's
-             * first three floats are not a BrVec3 in the port, so the vector
-             * round-trips through a local.  Note BrVec3Normalise has NO
-             * zero-length guard, by design -- a degenerate triangle stores
-             * NaNs here exactly as it does in the original. */
-            BrVec3Normalise(&nrm);
-            p->nx = nrm.x; p->ny = nrm.y; p->nz = nrm.z;
+            /* 0x10074250 == slice1_09.h's BrVec3Normalise, called ON THE
+             * RECORD, which is what the original does: nx/ny/nz are the
+             * record's leading three floats and therefore already a BrVec3.
+             * Routing them through a local instead cost 5 pushes, 5 stack
+             * stores, 4 reloads and the whole fstp/fld/fxch cluster, and it
+             * turned the `d` term's `fmul [reg+disp]` into `fmul [esp+n]`.
+             * BrVec3Normalise has NO zero-length guard, by design -- a
+             * degenerate triangle stores NaNs here exactly as the original
+             * does. */
+            BrVec3Normalise((BrVec3 *)(void *)p);
 
             /* d = -((nx*V0.x + V0.y*ny) + V0.z*nz).  The association is the
              * original's: the x and y terms are summed first. */
@@ -1404,24 +1418,33 @@ short BrCollGridCellAcquire(float x, float y)
                      + p->pV0->z * p->nz);
 
             ++n;
+#ifndef BR_MATCHING_BUILD
             /* DEVIATION (memory safety): the original has no bound here and
              * will run past the cell's 150 records if the row is longer.
              * The port stops at the cell size. */
             if (n >= BR_COLL_CELL_PLANES) {
                 break;
             }
+#endif
         }
     }
 
-    if (g_pBrCollGridCount != NULL) {
+    {
         /* DEVIATION: slice2_11.h types this `const uint16_t *` because its
          * own use only reads.  The original WRITES it here.  See CONFLICT 5
          * in slice6_73.h; the const should be dropped at integration. */
         uint16_t *pCount = (uint16_t *)(size_t)g_pBrCollGridCount;
-        pCount[iVictim] = n;
+#ifndef BR_MATCHING_BUILD
+        /* DEVIATION (memory safety): the original has no null test here. */
+        if (pCount != NULL)
+#endif
+            pCount[iVictim] = n;
     }
     return (short)iVictim;
 }
+#ifdef BR_MATCHING_BUILD
+#undef BrFtolTrunc
+#endif
 
 #ifdef BR_MATCHING_BUILD
 extern int32_t g_brAA287C;
