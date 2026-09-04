@@ -1273,23 +1273,45 @@ static uint16_t BrLd16(const void *pv)
  * and all. Each finished piece is then handed to the renderer. */
 /* @implements 0x10036C00 d3d BrModelSwap */
 #ifdef BR_MATCHING_BUILD
-/* RESIDUE 1062 vs 1028 bytes, 371 vs 361 instructions, register-blind 13+23
- * (from 149+285 when this was first opened -- see the git log for the four
- * earlier steps).  The 2-byte reversal being a halfword COMPOSE AND ONE
- * 16-BIT STORE, rather than two byte stores, was the last big one: the
- * original has seven `mov word ptr` stores, exactly one per BrRev2 site.
+/* RESIDUE 1062 vs 1053 bytes, 371 vs 368 instructions, register-blind 8+11
+ * (from 149+285 when this was first opened, and 13+23 before the leaf-loop
+ * step below -- see the git log).  The 2-byte reversal being a halfword
+ * COMPOSE AND ONE 16-BIT STORE, rather than two byte stores, was one big one:
+ * the original has seven `mov word ptr` stores, exactly one per BrRev2 site.
  *
- * What is LEFT is scattered and small, and it is concentrated in the LEAF
- * LOOP's index form: recomp EXTRA carries `mov B,[R+R-I]` and
- * `mov word ptr [R+R-I],W` (negative displacements) plus a `shl`/`dec`/`jne`
- * loop shape, against a MISSING `lea R,[R*I]`.  We are now ten instructions
- * SHORT, so at least one site is being folded that the original spells out.
+ * The other was the LEAF LOOP's bound.  Hoisting `3 * item->m` into an
+ * `nHalf` local turned the loop into a count-DOWN (`dec`/`jne`) walking a
+ * negative displacement, and freed a register so `j` never spilled.  The
+ * original RE-READS the bound every pass -- it reloads PITEM from the slot,
+ * loads item->m, `lea edx,[edx+edx*2]` and compares -- which is what puts `j`
+ * in the THIRD stack slot and makes the frame `sub esp,0xc` rather than 8.
+ * Spelling the bound in the for-condition closed the frame, the loop rotation
+ * and the whole body: the leaf loop is now instruction-for-instruction exact.
+ *
+ * WHAT IS LEFT, all measured against this baseline:
+ *  - 2 insns in the RECORD loop's guard.  The original walks that loop on a
+ *    pointer biased +2 (`lea esi,[ebp+0xa]`) and rematerialises pRec each
+ *    pass (`mov eax,[esi-2]` / `lea edi,[esi-2]` / `test eax,eax`), where we
+ *    fold to `cmp dword ptr [esi],0`.  It then uses edi for offsets 0..3 and
+ *    the two tail reloads, esi for 4..0x13.
+ *  - 1 insn: the fixup argument, orig `mov ecx,edi` + `add ecx,edx` against
+ *    our `mov ecx,[esi]` + `add ecx,edi`.  A register copy.
+ *  - the `off = 0x20` init: orig emits `mov ebx,0x20` in the leaf loop's
+ *    PREHEADER (after the `k <= 0` guard), we emit it before.  Same count.
+ *  - BrRev4's two stores per pair come out in the opposite order at 2 of the
+ *    sites -- and the sites disagree with each other, so it is scheduling.
+ *  - ~30 instructions differ only as `[edi+eax]` vs `[eax+edi]` (SIB base and
+ *    index exchanged).  Register-blind-invisible, byte-visible.
  * PROBED AND DEAD, do not re-run: single-temp and load-both-first spellings
  * of the byte swap (two byte stores never merge, however the temps are
  * arranged); the same through a `p_` pointer temp (better RAW, worse size and
- * instruction count); and giving the leaf loop's doubled subscript its own
- * local stepped by 2 -- tried against BOTH baselines, and against this one it
- * is clearly worse (register-blind 36 -> 49).
+ * instruction count); giving the leaf loop's doubled subscript its own local
+ * stepped by 2 (register-blind 36 -> 49); the high-byte-down spelling of
+ * BrRev4 (`t=p[3]; p[3]=p[0]; p[0]=t;` -- fixes the head site, 8+11 -> 16+21
+ * overall); flipping BrRev2's `|` operands, `off` moved into the for-init,
+ * writing PSLOT offset-first as `4 + 4*iItem + PBLOCK`, and giving the record
+ * loop its own `unsigned char *p = pRec` with the guard through a local --
+ * all four are INERT, VC5 canonicalises them to the identical bytes.
  *
  * MACROS, not statics -- MSVC5 will not inline a static with more than one
  * caller, so every BrRev/BrLd here was a `call` the original does not have.
@@ -1319,9 +1341,11 @@ void BrModelSwap(void *pImage)
     unsigned char *pRec;
     uint32_t iRec;
 
-    /* Header +0x00 and +0x02: two independent big-endian halfwords. */
-    BrRev2(pHdr + 0);
+    /* Header +0x00 and +0x02: two independent big-endian halfwords, and the
+     * original does the SECOND one first -- its word store to +2 precedes the
+     * one to +0. */
     BrRev2(pHdr + 2);
+    BrRev2(pHdr + 0);
 
     /* GOTCHA: tested BEFORE the byte reversal. Only works because zero is a
      * palindrome. */
@@ -1373,7 +1397,7 @@ void BrModelSwap(void *pImage)
             for (iLeaf = 0;
                  iLeaf < (int32_t)BrLd32(PITEM + 0x0C);
                  iLeaf++, off += 4) {
-                int32_t nHalf, j;
+                int32_t j;
 #define PLEAF (*(unsigned char **)(void *)(PITEM + off))
 
                 BrRev4(PITEM + off);
@@ -1381,9 +1405,9 @@ void BrModelSwap(void *pImage)
                 BrRev4(PLEAF + 0);
 
                 /* GOTCHA: the halfword count comes from the ITEM's first
-                 * dword, not the leaf's. */
-                nHalf = 3 * (int32_t)BrLd32(PITEM + 0x00);
-                for (j = 0; j < nHalf; j++)
+                 * dword, not the leaf's -- and it is re-read on every pass,
+                 * like every other count in this function. */
+                for (j = 0; j < 3 * (int32_t)BrLd32(PITEM + 0x00); j++)
                     BrRev2(PLEAF + 4 + 2 * (size_t)j);
 #undef PLEAF
             }
