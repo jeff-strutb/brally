@@ -687,6 +687,18 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * block reaches `imul r,[esp+S]` / `idiv [esp+S]` where the original loads
  * into a register first -- which is also the whole 7-instruction shortfall.
  *
+ * THE N64 TWIN IS 0x8022E4E0 in Top Gear Rally, and it does not move this.
+ * (Found without an anchor: this function shares no string with the ROM, so
+ * it was paired by screening every `lui` immediate in .text for the display
+ * list constants it builds -- 0xB900, 0xBA00, 0xF510, 0xF568, 0xE700, 0x0C18.
+ * That function has all six; nothing else has more than four.) It confirms
+ * the three globals and the (30*scale)/40, the `scale < 25` selection, the
+ * 20/40 cell, the two ramps as address constants, and that `bottom` is a
+ * real local -- and it CORRECTED one line: the hi-res block doubles all
+ * three from the LOCALS (`sll $s5,1` and friends), not from the globals.
+ * It cannot speak to x86 register choice, and its body is 4,076 bytes with a
+ * genuinely different coordinate packing, so it is a structure oracle only.
+ *
  * DEAD PROBES -- do not re-run:
  *   - declaring `pOff` first / `scale` last (VC5 does not order by
  *     declaration here)
@@ -811,15 +823,17 @@ void BrTextEmitString(const char *psz)
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
     top   = g_brFontY - (30 * g_brFontScale) / 40;  /* 0x10015B23 */
-    /* The doubled scale and pen come off the GLOBALS' loads, not off the
-     * locals: `lea ecx,[esi+esi]` / `lea ebp,[edi+edi]` against the
-     * `shl ebx,1` a `scale <<= 1` produces.  Keeping the two loads live
-     * across the branch is also what costs `scale` its register and gives
-     * ebx to pOff -- the whole frame follows from these two lines. */
+    /* All three doubled from the LOCALS.  The N64 twin (0x8022E4E0, which
+     * carries the same three globals and the same (30*scale)/40) is
+     * unambiguous here -- `sll $s5,1 / sll $t6,$fp,1 / sll $t7,$s7,1` off
+     * the already-assigned locals, not off the globals.  The original's
+     * `lea ecx,[esi+esi]` is not evidence for the global form: it is what
+     * `scale <<= 1` compiles to when `scale`'s home is a stack SLOT and its
+     * value happens to be live in esi. */
     if (g_brFontHiRes != 0) {                       /* 0x10015B4F */
-        top  <<= 1;
-        scale = g_brFontScale * 2;
-        penX  = g_brFontX * 2;
+        top   <<= 1;
+        scale <<= 1;
+        penX  <<= 1;
     }
 
     if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
