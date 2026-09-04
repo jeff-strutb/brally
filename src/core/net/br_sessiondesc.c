@@ -14,6 +14,10 @@
 
 #include "slice6_74.h"
 
+/* slice6_72.h -- 0x1003CDA0.  The port arm's only callee; carried from
+ * slice6_74.c's cross-slice declaration block. */
+extern void BrExt_1003CDA0(void);
+
 /* 0x1003CDA0.  slice5_62.h already recorded this collision in writing --
  * "BrExt_1003CDA0 in slice2_26.h and BrSub1003CDA0 in slice2_25.h, same
  * `void (void)` shape, two names" -- and slice6_72.c owns the body. 8 call
