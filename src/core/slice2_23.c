@@ -1456,4 +1456,5 @@ extern int g_brPhaseAA2904;
 
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif#endif /* BR_MATCHING_BUILD */
+#endif
+#endif /* BR_MATCHING_BUILD */
