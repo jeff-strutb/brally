@@ -41,4 +41,22 @@ void BrCarClampPosZ(float *pv)
         *pv = 256.0f;
 }
 
+
+
+/* 0x100058D0. The low test is `test ah,1` (C0: less, or unordered), so NaN
+ * lands on the low bound; the high test is `test ah,0x41` inverted, i.e.
+ * strictly greater, which NaN never satisfies. */
+/* WHAT IT DOES: keeps one component of a car's facing direction inside the
+ * range -1 to 1, in case a network prediction or a bad packet pushed it
+ * outside. Note the low bound also catches a value that is not a number at
+ * all, while the high bound does not, so nonsense comes out as -1. */
+/* @implements 0x100058D0 d3d BrCarClampUnit */
+void BrCarClampUnit(float *pv)
+{
+    if (!(*pv >= -1.0f))
+        *pv = -1.0f;
+    if (*pv > 1.0f)
+        *pv = 1.0f;
+}
+
 #endif /* BR_MATCHING_BUILD */
