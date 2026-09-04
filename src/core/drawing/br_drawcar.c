@@ -921,6 +921,33 @@ static void wheel_call(unsigned char *car)
  * cross-jumped into the shared tail.  Still one byte slot short of the
  * original's two.
  *
+ * ‼‼ SESSION 15b (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS HEADER
+ * IS INFLATED, AND THIS FUNCTION IS THE ONE THAT EXPOSED IT.  `fn.py` and
+ * `triage.py` did not mask reloc'd operands (only `msetdiff.py` did), so
+ * every absolutely-addressed instruction was counted TWICE.  Fixed
+ * 2026-09-03; see the note in tools/fnmatch/fn.py.
+ *   Found by reading the dominant family rather than trusting it: REGNORM
+ *   reported `mov R,[R*I]` x8 EXTRA against `mov R,[R*I+I]` x8 MISSING, and
+ *   disassembling both streams side by side shows FOURTEEN scaled-index
+ *   instructions that are IDENTICAL, at IDENTICAL offsets -- the original
+ *   carries the array base in the displacement, our object carries it in a
+ *   relocation with the addend in the displacement.
+ *   ‼ THIS FUNCTION'S HONEST RESIDUE IS 5+13 = 18 ROWS, not 20+28 = 48.
+ *   Twenty-eight of the forty-eight were noise, and the whole map is:
+ *     the pack byte-lane defect   `and R,I` x3, `or R,R` x3,
+ *                                 `mov byte [esp+S],B` x3, `xor R,R`
+ *                                 + EXTRA `mov B,B`, `mov B,[esp+S]`,
+ *                                 `mov [esp+S],R`  = 13 rows, and this is
+ *                                 the arms-2/3 defect below, frame-blocked
+ *     a float operand swap        orig `fld [esp+S]` + `fadd [R+I]`,
+ *                                 ours `fld [R+I]` + `fadd [esp+S]` -- TWO
+ *                                 instructions, sources exchanged
+ *     one `mov R,[A]`             a single reload
+ *   So this function is 18 rows and two defects from shape-exact, and the
+ *   SECOND ONE IS NEW AND SMALL: a float sum reading its two operands from
+ *   the other sources.  That is the commutative-operand class the N64 twin
+ *   is the oracle for (see CLAUDE.md); nobody has looked at it here.
+ *
  * SESSION 15 (2026-09-03) -- the session-14 fix does NOT transfer to arms
  * 2/3, and the reason is worth more than the probes: ‼ THE ARM-2/3 SHARED
  * TAIL HAS THE SAME DEFECT AND IT IS BLOCKED BY THE FRAME.
