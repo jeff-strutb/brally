@@ -134,9 +134,17 @@ int BrTimerStart(void)
 
 /* ---- from slice8_86.c ------------------------------------------------
  * Section 10 of that batch: the 30 Hz tick stepper and the four statics
- * only it used.  Its neighbours 0x1006E4A0 / 0x10019830 could NOT come
- * with it -- they read slice8_86.c's file-static g_br86HasPerf, which the
- * rest of that batch still uses.
+ * only it used.
+ *
+ * CORRECTION.  This note used to say the neighbours 0x1006E4A0 / 0x10019830
+ * could not follow because they read a file-static g_br86HasPerf "which the
+ * rest of that batch still uses".  That was wrong: only section 8 of the
+ * batch ever touched that flag.  The whole of section 8 -- the flag, its
+ * single writer and its readers -- has since moved to br_frametimer.c
+ * together, so nothing was duplicated.  It is a separate file rather than
+ * this one because slice8_86.h's header chain will not compile alongside
+ * the four batches aggregated here (BrDPlayVtbl redefinition, and a
+ * timeEndPeriod whose return type disagrees with windows.h's).
  * --------------------------------------------------------------------- */
 
 #ifdef BR_MATCHING_BUILD
