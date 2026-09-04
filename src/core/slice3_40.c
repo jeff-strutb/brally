@@ -221,12 +221,19 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
     if (BrG_6909B4 != 0) {
         return 1;
     }
-    if (!BrNetSlotPredictOrig(&state, slot)) {
-        return 0;
+    /* The LAST test is written in POSITIVE form -- `if (ok) { work; return 1; }
+     * then `return 0;` -- and that is not cosmetic. Written as the guard
+     * `if (!ok) return 0;` VC5 tail-merges the two `return 1`s above into one
+     * shared exit and the function comes out 28 bytes short. In this form all
+     * four exits are emitted in full, as the original has them. See
+     * docs/VC5-IDIOMS.md, "the last test's polarity decides whether VC5
+     * tail-merges the earlier returns". */
+    if (BrNetSlotPredictOrig(&state, slot)) {
+        BrCarApplyState(pCar, &state);
+        BrCarBuildMatrices(pCar);
+        return 1;
     }
-    BrCarApplyState(pCar, &state);
-    BrCarBuildMatrices(pCar);
-    return 1;
+    return 0;
 }
 
 /* ==================================================================== */
