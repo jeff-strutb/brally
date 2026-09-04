@@ -1,4 +1,17 @@
-/* slice2_15.c -- pass-15 packet, 0x10016A60-0x1001CCA0. See slice2_15.h.
+/* br_hudscene.c -- drawing: the in-race overlay, the per-frame scene setup
+ * and the weather steppers. Was slice2_15.c (pass-15 packet,
+ * 0x10016A60-0x1001CCA0); see slice2_15.h, which stays in include/ because
+ * seven other translation units include it.
+ *
+ * RESPONSIBILITY: drawing/ -- turn geometry and images into pixels.
+ *
+ * MOVED WHOLE, deliberately. Every one of its fourteen functions is drawing,
+ * and they share the file-statics g_hud / g_screen / g_scene / g_weather and
+ * the kF* constant table. Splitting the seven byte-exact ones out from the
+ * seven still-diffing ones would have put that state in two translation
+ * units -- two copies of one state block, invisible to the sweep and wrong
+ * at run time. So the file moved intact, the way slice2_24, slice3_31 and
+ * slice8_85 moved into menus/.
  *
  * ---------------------------------------------------------------------------
  * FLOAT CONSTANTS
