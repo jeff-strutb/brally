@@ -247,68 +247,6 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 /* 1. Entity state setters                                                 */
 /* ====================================================================== */
 
-/* WHAT IT DOES: move an entity to a position, writing the same three
- * coordinates into all the places the entity keeps them -- its matrix, its
- * cached position and two more copies. They are kept in step here rather
- * than derived, so all of them must be written. */
-/* @implements 0x10076420 d3d BrEntSetPos */
-/* @n64 0x8021FE04 located */
-#ifdef BR_MATCHING_BUILD
-/* Struct second arg is not register-eligible, so __fastcall is thiscall. */
-typedef struct { float x, y, z; } BrEntSetPosArgs;
-void BR_THISCALL1 BrEntSetPos(BrEnt *pE, BrEntSetPosArgs a)
-{
-    /* Store order is the original's: mat0.m[3], f26C8, st, stB, stA. */
-    pE->mat0.m[3][0] = a.x;
-    pE->mat0.m[3][1] = a.y;
-    pE->mat0.m[3][2] = a.z;
-
-    pE->f26C8[0] = a.x;
-    pE->f26C8[1] = a.y;
-    pE->f26C8[2] = a.z;
-
-    pE->st.pos.x = a.x;
-    pE->st.pos.y = a.y;
-    pE->st.pos.z = a.z;
-
-    pE->stB.pos.x = a.x;
-    pE->stB.pos.y = a.y;
-    pE->stB.pos.z = a.z;
-
-    pE->stA.pos.x = a.x;
-    pE->stA.pos.y = a.y;
-    pE->stA.pos.z = a.z;
-
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
-}
-#else
-void BrEntSetPos(BrEnt *pE, float x, float y, float z)
-{
-    /* Store order is the original's: mat0.m[3], f26C8, st, stB, stA. */
-    pE->mat0.m[3][0] = x;
-    pE->mat0.m[3][1] = y;
-    pE->mat0.m[3][2] = z;
-
-    pE->f26C8[0] = x;
-    pE->f26C8[1] = y;
-    pE->f26C8[2] = z;
-
-    pE->st.pos.x = x;
-    pE->st.pos.y = y;
-    pE->st.pos.z = z;
-
-    pE->stB.pos.x = x;
-    pE->stB.pos.y = y;
-    pE->stB.pos.z = z;
-
-    pE->stA.pos.x = x;
-    pE->stA.pos.y = y;
-    pE->stA.pos.z = z;
-
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
-}
-#endif
-
 /* 0x100764C0 */
 /* WHAT IT DOES: points a car (or other object in the world) in a given
  * compass direction, keeping it upright -- it can only turn about the
