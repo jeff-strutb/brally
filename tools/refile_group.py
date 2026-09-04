@@ -40,6 +40,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import autofile                                          # noqa: E402
 import refile                                            # noqa: E402
+from refile import ANCHOR                                # noqa: E402
 from filing import FILING, is_slice                      # noqa: E402
 
 
@@ -105,6 +106,35 @@ def static_block(tu, sym):
     return None
 
 
+def seed_module_file(path, module, slc, tu):
+    """Create a module file carrying the source slice's preamble.
+
+    Everything above the first @implements tag is the compiler's view of that
+    translation unit -- the #includes, the #ifdef BR_MATCHING_BUILD block, the
+    typedefs and struct definitions the matched bodies were compiled against.
+    Copy it verbatim, then open a matching-build section for the functions to
+    land in. Unused declarations are harmless; a MISSING one changes codegen or
+    breaks the compile, and a changed struct layout silently breaks the match.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    m = re.search(r'/\*[^*]*@implements', tu)
+    pre = tu[:m.start()] if m else ''
+    # Drop a trailing '#endif' that closed the slice's own matching section --
+    # we re-open one below and would otherwise unbalance the file.
+    pre = re.sub(r'#endif[^\n]*\n\s*$', '', pre)
+    with open(path, 'w') as f:
+        f.write('/* %s -- %s.\n'
+                ' *\n'
+                ' * Filed out of %s. The preamble below is that file\'s,\n'
+                ' * copied verbatim: these bodies are byte-exact only under the\n'
+                ' * view the compiler had of them -- same includes, same\n'
+                ' * typedefs, same struct layouts. Do not trim it without\n'
+                ' * re-sweeping.\n'
+                ' */\n%s\n#ifdef BR_MATCHING_BUILD\n\n%s\n'
+                % (os.path.basename(path), module, os.path.basename(slc),
+                   pre, ANCHOR))
+
+
 def move_group(slc, grp, body, dry, defer=None):
     """Move one group. With `defer` (a {dest: snapshot} dict) the edits are
     written and the VERIFY IS SKIPPED, so a caller can move every group in a
@@ -168,7 +198,13 @@ def move_group(slc, grp, body, dry, defer=None):
     if defer is not None and dst not in defer:
         defer[dst] = dst_before          # None means "did not exist"
     if not dst_existed:
-        refile.new_module_file(dpath, module, names[0])
+        # Seed a NEW module file from the SLICE'S OWN preamble, not a minimal
+        # stub. A byte-exact function is only byte-exact under the view the
+        # compiler had of it: the same includes, typedefs and struct layouts,
+        # and the same optimisation variant. A fresh file with just <stdint.h>
+        # gives it none of that, so every move into a new file failed its
+        # verify -- which is what stalled this tool, not the filing.
+        seed_module_file(dpath, module, slc, tu)
 
     blocks, decls = [], []
     for s in statics:

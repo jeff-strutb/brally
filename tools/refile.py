@@ -127,6 +127,15 @@ def tag_block(tu, name, va):
     i = len(lines) - 1
     while i >= 0 and not lines[i].strip():
         i -= 1
+    # Skip declaration lines sitting between the tag and the definition, but
+    # do NOT take them: they are usually shared with the functions staying
+    # behind, and removing them regressed every sibling in the slice. The
+    # destination gets its own copies from autofile.extract's harvest.
+    while i >= 0 and lines[i].strip().endswith(';') \
+            and not lines[i].strip().startswith('#'):
+        i -= 1
+    while i >= 0 and not lines[i].strip():
+        i -= 1
     end = i + 1
     while i >= 0:
         s = lines[i].strip()
