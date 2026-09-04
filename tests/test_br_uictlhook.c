@@ -1,4 +1,5 @@
-/* test_slice8_85.c -- the control hooks the six slice6_73.c builders install.
+/* test_br_uictlhook.c -- the control hooks the six slice6_73.c builders
+ * install. Tests menus/br_uictlhook.c, which was slice8_85.c.
  *
  * WHAT THIS TEST IS FOR
  *

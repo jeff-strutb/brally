@@ -1,4 +1,5 @@
-/* test_slice2_15.c -- behaviour tests for the pass-15 packet.
+/* test_br_hudscene.c -- behaviour tests for drawing/br_hudscene.c, which
+ * was the slice2_15.c pass-15 packet until it moved whole.
  *
  * These assert properties the ORIGINAL has (round-trips, clamps, sentinels,
  * bit-splice identities, state-machine transitions), not the shape of this
