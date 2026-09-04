@@ -846,22 +846,6 @@ int FUN_1006c880();
 int FUN_1006c8b0();
 
 
-/* WHAT IT DOES: create all font and UI textures and register font pages. */
-/* @implements 0x1006E030 glide BrFontTexInitAll */
-
-int BrFontTexInitAll(void)
-
-{
-  FUN_1006c750();
-  BrFontRegisterPages();
-  FUN_1006c800();
-  BrSub10073980();
-  BrSub100739B0();
-  FUN_1006c880();
-  FUN_1006c8b0();
-  return;
-}
-
 /* WHAT IT DOES: no-op — the shared target of multiple thunks. */
 /* @implements 0x1006E590 glide BrNop6E590 */
 
