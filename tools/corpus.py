@@ -149,11 +149,16 @@ def build_index(verbose=True):
     return out
 
 
+FN_NAME = {}
+
+
 def load_index():
     if not os.path.exists(INDEX):
         sys.exit('no index -- run: .venv/bin/python tools/corpus.py build')
     with open(INDEX) as f:
-        return json.load(f)['fns']
+        fns = json.load(f)['fns']
+    FN_NAME.update({e['va'].lower(): e['name'] for e in fns})
+    return fns
 
 
 # ----------------------------------------------------------------- query ---
@@ -225,12 +230,12 @@ def cod_lines(src, va, at, length):
     import tempfile
     tmp = tempfile.mkdtemp(prefix='corpus_cod_')
     try:
-        return _cod_lines(tmp, src, at, length)
+        return _cod_lines(tmp, src, va, at, length)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def _cod_lines(tmp, src, at, length):
+def _cod_lines(tmp, src, va, at, length):
     rel_src = os.path.relpath(os.path.join(ROOT, src), ROOT)
     rel_tmp = os.path.relpath(tmp, ROOT)
     cmd = ['sh', WINE, os.path.join(MSVC_DIR, 'bin', 'cl.exe'), '/nologo',
@@ -250,9 +255,25 @@ def _cod_lines(tmp, src, at, length):
         return ['(no .cod listing produced)']
     with open(cod, errors='replace') as f:
         lines = f.read().split('\n')
-    # A /FAcs listing carries `; NNN  : <source>` markers and assembly rows
-    # that start with a hex offset.  Walk to the offset and report the source
-    # marker that most recently preceded it.
+    # ‼ OFFSETS RESTART AT 0 FOR EVERY FUNCTION (each is its own COMDAT), so
+    # the scan MUST be scoped to this function's PROC..ENDP block.  Without
+    # that, every hit in a multi-function file resolves against whichever
+    # function happens to sit at that offset -- which reads as plausible
+    # source and is pure fiction.
+    nm = FN_NAME.get(va.lower(), '')
+    if nm:
+        pat = re.compile(r'^[_@]?%s(@\d+)?\s+PROC' % re.escape(nm))
+        end = re.compile(r'^[_@]?%s(@\d+)?\s+ENDP' % re.escape(nm))
+        lo = hi = None
+        for k, ln in enumerate(lines):
+            if lo is None and pat.match(ln):
+                lo = k
+            elif lo is not None and end.match(ln):
+                hi = k
+                break
+        if lo is None:
+            return ['(%s not found in the listing -- wrong TU?)' % nm]
+        lines = lines[lo:hi or len(lines)]
     want_lo, want_hi = at, at + max(length * 4, 16)
     out, cur = [], None
     for ln in lines:
