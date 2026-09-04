@@ -30,6 +30,7 @@
 #define BrF3DVtxFixup     BrF3DVtxFixup_hdr
 #include "slice1_05.h"
 #include "br_gamestep.h"
+#include "slice2_16.h"    /* g_brRca67B548/54C, for 0x10018A30 */
 #undef BrVtxExpand
 #undef BrVtxCacheInsert
 #undef BrVtxCacheResolve
@@ -38,6 +39,7 @@
 #else
 #include "slice1_05.h"
 #include "br_gamestep.h"
+#include "slice2_16.h"
 #endif
 
 #include <stddef.h>
@@ -398,5 +400,24 @@ void BrPtrListAdd(BrPtrList *pList, void *pv)
 
     pList->ap[n] = pv;
     pList->n = n + 1;
+}
+#endif
+
+/* 0x1002B9C0 */
+/* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
+ * batch of loaded geometry starts from nothing. */
+/* @implements 0x1002B9C0 d3d BrRcaResetCounts */
+/* @implements 0x10018A30 glide BrRcaResetCounts */
+#ifdef BR_MATCHING_BUILD
+void BrRcaResetCounts(void)
+{
+    g_brRca67B54C = 0;
+    g_brRca67B548 = 0;
+}
+#else
+void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
+{
+    pCache->nEntries = 0;
+    pList->n = 0;
 }
 #endif
