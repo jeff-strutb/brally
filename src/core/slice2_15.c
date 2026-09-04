@@ -792,26 +792,6 @@ int BrSceneUsePlainClear(void)
 #endif
 
 /* =====================================================================
- * 0x10017F60
- * ===================================================================== */
-/* WHAT IT DOES: clears the two per-frame scene accumulators (g_4B16A0 and
- * g_4B16AC) back to zero.  The per-frame race render calls it once at the very
- * top of the frame -- right after BrSceneSetupFrame lays the background and just
- * before BrSpanBuildHull -- so the geometry pass (0x1000BEB0) accumulates into a
- * clean slate every frame.  Body is exactly two stores of 0.0f and a return.
- *
- * SOURCE: transcribed from the Glide build (asm/10010000.asm).  The D3D twin is
- * 0x1002AEF0 (shared, same 21 bytes) but its body sits in a run the D3D dump
- * folded into padding, so it is not the transcription source. */
-/* @implements 0x10017F60 glide BrSceneAccumReset */
-/* @n64 0x802237B4 located */
-void BrSceneAccumReset(void)
-{
-    g_4B16AC = 0.0f;
-    g_4B16A0 = 0.0f;
-}
-
-/* =====================================================================
  * 0x100180B0
  * ===================================================================== */
 /* WHAT IT DOES: lays down the background before anything else in the frame is
@@ -1381,18 +1361,8 @@ const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-extern int DAT_104ab4f0;
 extern int DAT_104ab504;
 
-
-/* WHAT IT DOES: return the value of a global flag at 0x104AB4F0. */
-/* @implements 0x10013FC0 glide BrGetFlag_AB4F0 */
-
-int BrGetFlag_AB4F0(void)
-
-{
-  return DAT_104ab4f0;
-}
 
 extern int DAT_100a5eb0;
 extern int DAT_100a5ebc;
