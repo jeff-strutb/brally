@@ -9,7 +9,14 @@
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #endif
+#ifdef BR_MATCHING_BUILD
+/* Header prototype carries a context pointer the original never takes. */
+#define BrRcaFixupArray          BrRcaFixupArray_port
+#endif
 #include "slice2_16.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrRcaFixupArray
+#endif
 
 /* DO NOT REMOVE: nothing here calls anything from <stdlib.h>, but the
  * intrinsic declarations it brings in are what put BrSwapU16x4's four byte
@@ -105,3 +112,36 @@ void BrSegPtrFixup(uint32_t *p)
     }
     *p = (uint32_t)(g_brSegHostBase - g_brSegN64Base) + *p;
 }
+
+/* 0x1002BA80 */
+/* WHAT IT DOES: runs the record preparation above over a whole array of
+ * records from an .rca data file. */
+/* @implements 0x1002BA80 d3d BrRcaFixupArray */
+/* @implements 0x10018B40 glide BrRcaFixupArray */
+#ifdef BR_MATCHING_BUILD
+/* Original: 2 args (no ctx); count is read and tested before pv, whose
+ * load sits inside the guard (its arg slot stays live that long). */
+void BrRcaFixupArray(void *pv, int count)
+{
+    if (count > 0) {
+        uint8_t *p = (uint8_t *)pv;
+        do {
+            BrRcaFixupRecord(p);
+            p += BR_RCA_REC_SIZE;
+        } while (--count != 0);
+    }
+}
+#else
+void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
+{
+    uint8_t *p = (uint8_t *)pv;
+    int      i;
+
+    if (count <= 0)
+        return;
+    for (i = 0; i < count; ++i) {
+        BrRcaFixupRecord(p);
+        p += BR_RCA_REC_SIZE;
+    }
+}
+#endif
