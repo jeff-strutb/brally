@@ -237,30 +237,8 @@ void BrZeroRegions(BrZeroRegion *pList)
 }
 #endif
 
-/* The two per-car controller entry points. Both are the same nine bytes --
- * `mov ecx,[esp+4]` then a `jmp` -- which is what VC5 emits for a cdecl
- * one-liner that tail-calls a thiscall function: the argument moves into ecx
- * and the frame is never built. Their bodies (0x1005D770 and 0x1005C8B0) are
- * not ported. */
-void BR_THISCALL1 BrCtlHumanBody(BrCar *pCar);   /* 0x1005C8B0 */
-void BR_THISCALL1 BrCtlAiBody(BrCar *pCar);      /* 0x1005D770 */
-
-/* WHAT IT DOES: drive one car from the player's controls for this frame. This
- * is the routine installed in a car's controller slot when a human is at the
- * wheel; its AI counterpart is directly below. */
-/* @implements 0x1005D050 glide BrCtlHuman */
-void BrCtlHuman(BrCar *pCar)
-{
-    BrCtlHumanBody(pCar);
-}
-
-/* WHAT IT DOES: drive one car from the computer opponent's logic for this
- * frame -- the routine every slot without a human in it gets. */
-/* @implements 0x1005E690 glide BrCtlAi */
-void BrCtlAi(BrCar *pCar)
-{
-    BrCtlAiBody(pCar);
-}
+/* The two per-car controller entry points, 0x1005D050 BrCtlHuman and
+ * 0x1005E690 BrCtlAi, are filed in src/core/driving/br_ctlstep.c. */
 
 /* ==================================================================== */
 /* 6. Path walking                                                      */
