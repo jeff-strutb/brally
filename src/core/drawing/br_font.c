@@ -667,6 +667,40 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * The DEVIATIONs the port arm documents -- the cursor bound check, the class
  * bound check, the zeroed sscanf slots, the stop-at-NUL step -- are all
  * absent here, because the original does not have them.
+ *
+ * STATE: 3,027 of 3,050 code bytes, 744 of 751 instructions, 8 divergence
+ * regions.  (Read those numbers off the code up to the `ret`, NOT off
+ * fn.py's BYTES/INSNS: VC5 puts this function's four SWITCH TABLES -- two
+ * byte maps and two jump tables, 254 bytes -- inside its COMDAT section, so
+ * the recompiled symbol runs 232 bytes and ~110 disassembled-as-code
+ * "instructions" long.  The scorer trims the recomp to the original's length
+ * before comparing, so the tables are harmless to a MATCH; they only poison
+ * the size and count readouts.)
+ *
+ * ================= RESIDUE: ONE ALLOCATION CHOICE =========================
+ *
+ * Every one of the eight regions traces to a single decision: we pin `scale`
+ * to EBX, the original leaves EBX as a scratch that carries pOff, cell and
+ * stride around their uses and keeps `scale` in a stack slot.  That costs the
+ * original one more slot (`sub esp,0x2c` against our 0x28) and therefore
+ * shifts EVERY stack displacement in the function, and it is why our glyph
+ * block reaches `imul r,[esp+S]` / `idiv [esp+S]` where the original loads
+ * into a register first -- which is also the whole 7-instruction shortfall.
+ *
+ * DEAD PROBES -- do not re-run:
+ *   - declaring `pOff` first / `scale` last (VC5 does not order by
+ *     declaration here)
+ *   - `register` on pOff (ignored under /O2)
+ *   - computing `top` from the local `scale` rather than the global (the
+ *     global form is kept: marginally better, 208+91 -> 207+90 raw)
+ * ==========================================================================
+ *
+ * SOLVED, and each is now an entry in docs/VC5-IDIOMS.md:
+ *   - the fourteen globals, and the ONE stack argument
+ *   - the eight-byte append as a macro at all 43 sites
+ *   - the colour codes as two SWITCHES, not three hand-written tables
+ *   - the hi-res doubling read off the GLOBALS, not off the locals
+ *   - the combine call as TWO CALLS with the slot taken inside each arm
  * ========================================================================== */
 
 /* 0x106E7710, the display-list cursor.  slice2_18's object under the Glide
@@ -687,6 +721,12 @@ extern uint32_t *BrG_6C0680;
  * already moved.  It has to be a NAMED TEMP -- a comma expression that
  * subtracts the step back off costs an `add eax,-8` the original does not
  * have. */
+
+/* The combine command's slot, taken as an argument expression so the cursor
+ * advance is duplicated into both arms of the ramp test. */
+#define BR_PUT_SLOT()                                                    \
+    (pCombine = (struct BrGfxWords *)BrG_6C0680,                         \
+     BrG_6C0680 += 2, pCombine)
 
 /* The colour packer, inlined at four sites.  The FIRST component is not
  * masked, so a value above 255 bleeds upward and is shifted out. */
@@ -752,7 +792,7 @@ void BrTextEmitString(const char *psz)
 
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
-    top   = g_brFontY - (30 * scale) / 40;          /* 0x10015B23 */
+    top   = g_brFontY - (30 * g_brFontScale) / 40;  /* 0x10015B23 */
     /* The doubled scale and pen come off the GLOBALS' loads, not off the
      * locals: `lea ecx,[esi+esi]` / `lea ebp,[edi+edi]` against the
      * `shl ebx,1` a `scale <<= 1` produces.  Keeping the two loads live
@@ -785,14 +825,28 @@ void BrTextEmitString(const char *psz)
     put(0xE7000000u, 0u);                           /* 0x10015BD9 */
     put(0xBA001402u, 0x00100000u);
 
-    /* Only b1 depends on the ramp selection. */
-    pCombine = (struct BrGfxWords *)BrG_6C0680;
-    BrG_6C0680 += 2;
-    BrRdpSetCombineLERP(pCombine,                   /* 0x10015C87 */
-                        1003, 1005, 1002, 1005,
-                        0,    0,    0,    1001,
-                        1000, (g_brFontAltRamp != 0) ? 1001 : 0, 1002, 0,
-                        0,    0,    0,    1002);
+    /* Only b1 depends on the ramp selection -- but it is TWO CALLS, not one
+     * with a ternary: `? 1001 : 0` is a value VC5 makes branchlessly
+     * (`neg al / sbb eax,eax / and eax,0x3e9`), and the original branches and
+     * duplicates the seven pushes from the end down to b1, cross-jumping the
+     * rest. */
+    /* The slot is taken INSIDE each arm, as the call's first argument -- and
+     * because cdecl evaluates right to left, its `add eax,8` / `mov [cur],eax`
+     * land between the pushes.  Hoisting it above the `if` lets VC5 hoist the
+     * six common pushes with it and cross-jump the arms down to one. */
+    if (g_brFontAltRamp != 0) {
+        BrRdpSetCombineLERP(BR_PUT_SLOT(),          /* 0x10015C87 */
+                            1003, 1005, 1002, 1005,
+                            0,    0,    0,    1001,
+                            1000, 1001, 1002, 0,
+                            0,    0,    0,    1002);
+    } else {
+        BrRdpSetCombineLERP(BR_PUT_SLOT(),
+                            1003, 1005, 1002, 1005,
+                            0,    0,    0,    1001,
+                            1000, 0,    1002, 0,
+                            0,    0,    0,    1002);
+    }
 
     put(0xB900031Du, 0x0C184240u);                  /* 0x10015CA2 */
     put(0xBA000C02u, g_brFont6E72E8);
@@ -996,6 +1050,7 @@ escape:
 }
 
 #undef put
+#undef BR_PUT_SLOT
 #undef BR_PACK
 #undef BR_F12
 #undef BR_CLAMP16
