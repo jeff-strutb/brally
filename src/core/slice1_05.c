@@ -530,12 +530,26 @@ void *g_brCursor575518;   /* 0x10575518 */
 
 void BrCursorPairSet(void *pv)
 {
-    /* CLOSE, NOT MATCHING -- 16 bytes against the original's 18.  The one
-     * argument and the two absolute stores are now right; the original also
-     * keeps a second live copy (`mov ecx, eax`) and stores one register to
-     * each global, where MSVC here reuses eax for both.  A chained assignment
-     * (a = b = pv) does not produce the copy either -- register-allocation
-     * class, not source shape. */
+    /* CLOSE, NOT MATCHING -- 15 bytes / 4 instructions against the original's
+     * 18 / 5.  The one argument and the two absolute stores are right; the
+     * whole residue is that the original keeps a second live copy:
+     *
+     *     8b c8            mov ecx, eax
+     *     a3 <g1>          mov [g1], eax      (accumulator form, 5 bytes)
+     *     89 0d <g2>       mov [g2], ecx      (6 bytes)
+     *
+     * against our `a3 <g1>` / `a3 <g2>`.  Note the original's encoding is
+     * strictly WORSE -- one more instruction and one more byte -- so VC5 is
+     * not choosing it for size; it is holding two live ranges where we have
+     * one.  See the accumulator-encoding entry in docs/VC5-IDIOMS.md.
+     *
+     * PROBED AND DEAD, do not re-run -- ALL of these compile to the identical
+     * 15 bytes: chained assignment (a = b = pv); either store order; a `void
+     * *p = pv` local feeding one or both stores; and reading the first global
+     * BACK for the second store (`g2 = g1;`), in both orders -- VC5 forwards
+     * the store and folds the load away.  Register-allocation class; the
+     * `VARIABLE IDENTITY IS INERT` entry says VC5 splits live ranges itself,
+     * which is the same statement from the other side. */
     g_brCursor575510 = pv;
     g_brCursor575518 = pv;
 }
