@@ -317,6 +317,57 @@ int BrCdResume(void)
   return BrCdResumeMsg();
 }
 
+#ifdef BR_MATCHING_BUILD
+/* The third member of the same map defect.  config/functions_glide.csv
+ * carried 0x10002F70 as ONE 180-byte row; it is the same dispatcher shape as
+ * pause/resume above -- 14 bytes + 18 alignment nops (32), then the
+ * message-transport body at 0x10002F90 (47 bytes + nops, 64) and the MCI
+ * body at 0x10002FD0 (84), each reached only by the dispatcher's tail jump.
+ * Split 2026-09-04 into 32 + 64 + 84 and re-extracted.
+ *
+ * 0x104B1628 is the message-transport CLEAR-channel entry (the pause/resume
+ * twins use 0x104B162C with a command); its result is normalised with
+ * `neg/sbb/inc`, which is what `== 0` compiles to. */
+extern int (__stdcall *DAT_104b1628)(int, int);     /* 0x104B1628 */
+
+/* WHAT IT DOES: tell the CD drive to stop the music outright, and report
+ * whether it agreed (the transport answers 0 on success).  With the disc
+ * missing or nothing playing there is nothing to do and it reports success. */
+/* @implements 0x10002F90 glide BrCdStopMsg */
+static int BrCdStopMsg(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b1628)(g_br0940A8,0) == 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: stop the game's own music-file playback through MCI.  If the
+ * stop command is refused it closes the device instead and reports failure. */
+/* @implements 0x10002FD0 glide BrCdMciStop */
+static int BrCdMciStop(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    if (mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0)) {
+      mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: stop the music.  If the game is playing its own music files
+ * it goes through MCI; otherwise it tells the CD drive. */
+/* @implements 0x10002F70 glide BrCdStop */
+int BrCdStop(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdMciStop();
+  }
+  return BrCdStopMsg();
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* WHAT IT DOES: play the next CD track, clamping to the last track. */
 /* @implements 0x10002CB0 glide BrCdTrackNext */
 
