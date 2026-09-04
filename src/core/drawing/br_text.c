@@ -251,3 +251,32 @@ void BrSub_10019290(void)
 {
     g_br4B035C = 1;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#include <stdio.h>
+#endif
+#include <string.h>
+
+#ifdef BR_MATCHING_BUILD
+#define BrExt_1007AC00 BrExt_1007AC00_decl
+#endif
+#include "slice5_63.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrExt_1007AC00
+#endif
+
+#include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
+#include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
+#include "slice2_25.h"   /* option globals, BrOptObj, BrStrGet, lookup tables */
+
+
+/* 0x10019280 */
+/* WHAT IT DOES: switches text drawing back to left-aligned, so writing that
+ * follows starts at the position given rather than being centred on it. */
+/* @implements 0x10016840 glide BrSub_10019280 */
+void BrSub_10019280(void)
+{
+    g_br4B035C = 0;
+}
