@@ -538,6 +538,8 @@ extern unsigned int DAT_11849ea8;
 extern unsigned int DAT_1184c070;
 extern int g_brP277B40;
 int BrDelta_100713A0();
+/* Body in src/core/racing/br_secondtick.c; the starter below spawns it. */
+void BrSecondTickLoop(void);
 #include <windows.h>
 extern int DAT_11849e60;
 extern int DAT_1184c078;
@@ -594,29 +596,6 @@ void BrSndVoiceApplyVolume(int param_1)
   return;
 }
 
-/* WHAT IT DOES: a 1 Hz service loop that never returns: read the elapsed-ms counter; if the
- * next second has not arrived, Sleep until it does, otherwise run the five once-a-second
- * steps and advance the deadline by 1000 ms. Both globals are unsigned (jb). */
-/* @implements 0x1006A5F0 glide BrSecondTickLoop */
-
-void BrSecondTickLoop(void)
-
-{
-  do {
-    while( 1 ) {
-      DAT_1184c070 = BrDelta_100713A0();
-      if (DAT_1184c070 < DAT_11849ea8) break;
-      FUN_1006a650();
-      FUN_1006a7e0();
-      FUN_1006aaf0();
-      FUN_1006ab80();
-      FUN_1006b0e0(&g_brP277B40);
-      DAT_11849ea8 = DAT_11849ea8 + 1000;
-    }
-    Sleep(DAT_11849ea8 - DAT_1184c070);
-  } while( 1 );
-}
-
 /* WHAT IT DOES: start the once-a-second service: create its wake event and spawn
  * BrSecondTickLoop on its own thread, arming the first 1000 ms deadline. */
 /* @implements 0x1006A5A0 glide BrSecondTickStart */
@@ -638,46 +617,6 @@ extern double _DAT_10077c40;
 extern int BrG_6C7CB8;
 int BrStrGet(int);
 float BrVec3Dot(int, int);
-
-/* WHAT IT DOES: check whether a car has come to rest facing the wrong way
- * and, if so, put the 'wrong way' warning on screen and count it. Only
- * applies while the car is below a speed threshold and not already flagged. */
-/* @implements 0x1006EB00 glide FUN_1006eb00 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void __fastcall FUN_1006eb00(int param_1)
-
-{
-  int iVar1;
-  int iVar2;
-  
-  if (BrG_6C7CB8 != 0) {
-    if ((*(int *)(param_1 + 0xfa8) < DAT_100bcbe8) && (*(int *)(param_1 + 0xf7c) == 0) &&
-        ((double)BrVec3Dot(param_1 + 0xf94, param_1) < _DAT_10077c40)) {
-      iVar1 = BrStrGet(0xf3);
-      iVar2 = *(int *)(param_1 + 0x29b8) + 1;
-      *(int *)(param_1 + 0x29b8) = iVar2;
-      if ((iVar2 > 0x1f) && ((iVar2 & 0x10) == 0x10)) {
-        if (*(int *)(param_1 + 0xffc) != 0) {
-          return;
-        }
-        *(int *)(param_1 + 0xffc) = iVar1;
-        *(int *)(param_1 + 0x1004) = 0;
-        *(int *)(param_1 + 0x1000) = 0x3e800000;
-        return;
-      }
-      if (*(int *)(param_1 + 0xffc) != iVar1) {
-        return;
-      }
-      *(int *)(param_1 + 0x1004) = 0;
-      *(int *)(param_1 + 0xffc) = 0;
-      return;
-    }
-    *(int *)(param_1 + 0x29b8) = 0;
-  }
-  return;
-}
-
 
 extern float _DAT_10077a78;
 int BrRbVelAtBodyPointXY();

@@ -1298,42 +1298,6 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2)
 /* 7. Odds and ends                                                   */
 /* ================================================================== */
 
-/* 0x100347BA */
-/* WHAT IT DOES: adds to one entry of a running total, refusing to add more
- * than a fixed amount at once and refusing to let the total exceed a fixed
- * ceiling -- the shape of a damage or wear meter, though what this particular
- * table records was not established. */
-/* @implements 0x100347BA d3d BrAccumAddClamp */
-/* @n64 0x8021BE28 located */
-/* NO TABLE POINTER.  The original indexes a FIXED-ADDRESS array --
- * `fld dword ptr [eax*4 + 0x106EC4F8]`, an absolute base with no register --
- * and reads only two arguments, i at [ebp+8] and amt at [ebp+0xc].  The
- * `float *aTable` first parameter never existed; see tools/screen_absglobals.py
- * for the rest of this class.  The element count is not established: nothing
- * in the tree calls this yet, so the array stays incomplete rather than
- * carrying a guessed bound. */
-void BrAccumAddClamp(int i, float amt)
-{
-    if (amt > g_BrK08F520)
-        amt = 2.5f;
-
-    g_Br6C5468[i] = g_Br6C5468[i] + amt;
-
-    if (g_Br6C5468[i] > g_BrK08F524)
-        g_Br6C5468[i] = 5.0f;
-}
-
-/* 0x10035041 */
-/* WHAT IT DOES: clears one field of a two-field record and sets the other to
- * the value given. What the record is for was not established, so nothing
- * beyond that can honestly be said. */
-/* @implements 0x10035041 d3d BrPairSlotReset */
-void BrPairSlotReset(BrPairSlot *p, uint32_t v)
-{
-    p->f04 = 0;
-    p->f08 = v;
-}
-
 /* 0x10035059 */
 /* WHAT IT DOES: always answers "no". It exists to be installed where the game
  * needs a handler that declines everything; what it is installed as was not
@@ -1530,37 +1494,6 @@ void BrNop_1002EBCC(void)
   return;
 }
 
-/* WHAT IT DOES: never-returning service loop: two (compiled-out) trace calls, then forever:
- * stub-true on the 0x106ED650 block, a trace, stub-true on the 0x106EA430 block. */
-/* @implements 0x1002DD30 glide BrIdleLoop_1002DD30 */
-
-void BrIdleLoop_1002DD30(void)
-
-{
-  BrPodNop(&DAT_106ed650,&DAT_106e79d0,1);
-  BrPodNop(4,&DAT_106ed650,DAT_106e7738);
-  for (;;) {
-    BrStubTrue(&DAT_106ed650,0,1);
-    BrPodNop(1,0,0,0,0xff);
-    BrStubTrue(&DAT_106ea430,DAT_106e7738,1);
-  }
-}
-
-/* WHAT IT DOES: same shape as BrIdleLoop_1002DD30 over the 0x106ECB48 / 0x106EA410 blocks. */
-/* @implements 0x1002DD9A glide BrIdleLoop_1002DD9A */
-
-void BrIdleLoop_1002DD9A(void)
-
-{
-  BrPodNop(&DAT_106ecb48,&DAT_106ea388,1);
-  BrPodNop(9,&DAT_106ecb48,DAT_106e7738);
-  for (;;) {
-    BrStubTrue(&DAT_106ecb48,0,1);
-    BrPodNop(2,0,0,0,0xff);
-    BrStubTrue(&DAT_106ea410,DAT_106e7738,1);
-  }
-}
-
 
 extern int DAT_106ec740;
 extern int DAT_106ec744;
@@ -1603,68 +1536,6 @@ extern int _DAT_106ec770;
 int BrPodNop();
 int BrStubFalse();
 int BrStubTrue();
-
-/* WHAT IT DOES: set up the model and animation pools for a scene from the
- * loaded data block, wiring the fixed table pointers before anything reads
- * them. */
-/* @implements 0x1002DEC3 glide FUN_1002dec3 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void FUN_1002dec3(void)
-
-{
-  struct {
-    int result;
-    char buf[24];
-    unsigned int flags;
-    int idx;
-    char tmp[4];
-  } local_28;
-
-  DAT_106e79d4 = &DAT_106b80a8;
-  BrPodNop(&DAT_106ed570,&DAT_106ec6c0,0x20);
-  BrPodNop(&DAT_106ea430,&DAT_106ec794,1);
-  BrPodNop(4,&DAT_106ea430,DAT_106e7738);
-  BrPodNop(&DAT_106ea410,&DAT_106e869c,1);
-  BrPodNop(9,&DAT_106ea410,DAT_106e7738);
-  BrPodNop(&DAT_106ed5d0,&DAT_106ea1a0,1);
-  BrPodNop(&DAT_106ed5d0,DAT_106e7738,1);
-  BrPodNop(&DAT_106b7ac8,10,BrIdleLoop_1002DD30,DAT_10b25794,&DAT_106ed368,0x3c);
-  BrPodNop(&DAT_106b7ac8);
-  BrPodNop(&DAT_106ed370,0xb,BrIdleLoop_1002DD9A,DAT_10b25794,&DAT_106e8200,0x3c);
-  BrPodNop(&DAT_106ed370);
-  _DAT_106ec770 = 0x47371b00;
-  BrPodNop(local_28.buf,local_28.tmp,1);
-  BrPodNop(5,local_28.buf,1);
-  BrStubTrue(local_28.buf,&local_28.flags,&DAT_106e79b8);
-  BrPodNop(&DAT_106b8090,&DAT_106ea358,1);
-  BrPodNop(5,&DAT_106b8090,0);
-  for (local_28.idx = 0; local_28.idx < 4; local_28.idx = local_28.idx + 1) {
-    (&DAT_106e7730)[local_28.idx] = 0;
-    if (((int)(local_28.flags & 0xff) >> local_28.idx & 1) != 0) {
-      if (((&DAT_106e79bb)[local_28.idx * 4] & 8) == 0) {
-        if ((*(unsigned short *)(&DAT_106e79b8 + local_28.idx * 4) & 4) != 0) {
-          if (((&DAT_106e79ba)[local_28.idx * 4] & 1) != 0) {
-            local_28.result = BrStubFalse(&DAT_106b8090,&DAT_106ec508 + local_28.idx * 0x68,local_28.idx);
-            if (local_28.result != 0) {
-              if (local_28.result > 9) {
-                if (local_28.result > 0xb) goto next;
-                if (BrStubFalse(&DAT_106b8090,&DAT_106ec508 + local_28.idx * 0x68,local_28.idx) == 0) {
-                  (&DAT_106e7730)[local_28.idx] = 1;
-                  BrStubFalse(&DAT_106ec508 + local_28.idx * 0x68);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-next:
-    ;
-  }
-  DAT_106ed6e0 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  return;
-}
 
 
 void FUN_100746b4(void *d, void *s, unsigned n);
