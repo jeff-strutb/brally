@@ -723,52 +723,6 @@ void BrHookNopB(void)
 {
 }
 
-/* 0x10034C88 */
-/* WHAT IT DOES: purpose unclear. Observably it raises one flag and hands back
- * the value of a counter, ignoring the pointer it is passed -- the routine the
- * original called with it does not read it either. */
-/* @implements 0x10034C88 d3d BrHookTakeA */
-#ifdef BR_MATCHING_BUILD
-/* Literal form: 3-arg call into 0x10030F40 (which ignores its arguments and
- * just raises the one-shot flag), then return the destination global.  The
- * copy therefore never happens in practice; the shape is the original's. */
-int FUN_10030f40();
-extern uint32_t DAT_106e79c8;
-uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
-{
-    FUN_10030f40(&DAT_106e79c8, (char *)pH + 4, 4);
-    return DAT_106e79c8;
-}
-#else
-uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
-{
-    (void)pSrc;                 /* the callee 0x100378A0 ignores it */
-    pH->f7C44 = 1;
-    return pH->g0938;
-}
-#endif
-
-/* 0x10034CA8 */
-/* WHAT IT DOES: the twin of the routine above -- same raised flag, same
- * ignored argument, but it returns a different counter. Purpose equally
- * unclear. */
-/* @implements 0x10034CA8 d3d BrHookTakeB */
-#ifdef BR_MATCHING_BUILD
-extern uint32_t DAT_106ea390;
-uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
-{
-    FUN_10030f40(&DAT_106ea390, pH, 4);
-    return DAT_106ea390;
-}
-#else
-uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
-{
-    (void)pSrc;
-    pH->f7C44 = 1;
-    return pH->g3300;
-}
-#endif
-
 /* ================================================================== */
 /* 6. Peer table                                                      */
 /* ================================================================== */
