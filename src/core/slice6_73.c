@@ -1062,52 +1062,6 @@ int32_t BrExt_10041A00(void *pArg)
     return 1;
 }
 
-/* WHAT IT DOES: cancels a name edit, putting the name that was set aside back
- * on the record and clearing the edit box. It looks at the flag the commit
- * half above set but writes into a DIFFERENT array of records than that half
- * read from -- an asymmetry that is the original's, not a slip here. */
-/* @implements 0x1003BA30 glide BrExt_100424D0 */
-int32_t BrExt_100424D0(void *pArg)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig pushes esi/edi only on the strcpy path (after the two early
-     * returns), so do not keep named locals that force a prologue save. */
-    *(int32_t *)(*(char **)((char *)pArg + 0x2ae8) + 0x70) = 0;
-    g_br73.nAA28EC = 0;
-    if (g_brAA28D8 != 0 && g_aBrA9D078 != 0) {
-        strcpy((char *)g_brPAA29D0 + g_br0AB3F4 * (int32_t)BR61_REC29D0_STRIDE
-               + (int32_t)BR61_REC29D0_OFF_NAME, g_aBrA9D078);
-        strcpy(g_aBrA9D078, g_aBr39B720);
-    }
-    return 1;
-#else
-    unsigned char *pRec;
-    char          *pszName;
-
-    if (g_br73.pfnClearSub70 != NULL) {     /* see BrExt_10041A00 */
-        g_br73.pfnClearSub70(pArg);
-    }
-
-    g_br73.nAA28EC = 0;
-
-    if (g_brAA28D8 == 0) {
-        return 1;
-    }
-    /* the original tests the ADDRESS 0x10A9D078 against zero here; it is a
-     * literal, so the branch is dead.  Kept as an always-true condition. */
-
-    if (g_brPAA29D0 == NULL) {
-        return 1;
-    }
-    pRec    = Br73Rec(g_brPAA29D0, g_br0AB3F4);
-    pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
-
-    strcpy(pszName, g_aBrA9D078);
-    strcpy(g_aBrA9D078, g_aBr39B720);
-    return 1;
-#endif
-}
-
 /* ==========================================================================
  * 0x1003E680 -- the "new session" global reset
  * ========================================================================== */
