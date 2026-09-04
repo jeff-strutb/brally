@@ -49,7 +49,7 @@ glide_va,name,module,basis,file
 0x100038A0,FUN_100038a0,net,description,src/core/slice4_53.c
 0x10004A40,BrCountedNetSend,net,neighbour-1,src/core/ghidra_batch.c
 0x10004C40,BrNetPktStamp,net,manual,src/core/slice1_02.c
-0x10004D30,BrPalFetch,net,neighbour-1,src/core/slice1_02.c
+0x10004D30,BrPalFetch,drawing,manual,src/core/slice1_02.c
 0x10004D80,BrNetSlotGetF02C,net,neighbour-1,src/core/generated/0x10004D80.c
 0x10004DC0,BrNetSlotSetF02C,net,description,src/core/slice1_02.c
 0x10004F20,BrNetLockSet22AAA8,net,description,src/core/slice1_02.c
@@ -58,7 +58,7 @@ glide_va,name,module,basis,file
 0x10005140,BrNetTrySend,net,neighbour-1,src/core/ghidra_batch.c
 0x100054A0,FUN_100054a0,net,neighbour-1,src/core/slice1_02.c
 0x10005760,BrNetSendFlush,net,description,src/core/slice4_50.c
-0x100057E0,BrEntityCountActive,net,neighbour-1,src/core/slice2_12.c
+0x100057E0,BrEntityCountActive,scene,manual,src/core/slice2_12.c
 0x10005C40,BrCarClampUnit,net,description,src/core/net/br_car.c
 0x10005C40,BrCarClampUnit,net,description,src/core/slice2_12.c
 0x10005C70,BrCarClampPosXY,net,description,src/core/net/br_car.c
@@ -464,9 +464,9 @@ glide_va,name,module,basis,file
 0x100371F0,FUN_100371f0,net,description,src/core/slice4_51.c
 0x10037260,BrNetErrMsgBox,net,neighbour-1,src/core/br_netmsg.c
 0x100372B0,FUN_100372b0,net,description,src/core/slice4_51.c
-0x10037660,BrUiFn1003DFC0,net,neighbour-1,src/core/slice2_23.c
-0x100376B0,BrUiFn1003E010,net,description,src/core/slice2_23.c
-0x100376E0,BrUiFn1003E040,net,manual,src/core/slice2_23.c
+0x10037660,BrUiFn1003DFC0,menus,manual,src/core/slice2_23.c
+0x100376B0,BrUiFn1003E010,menus,manual,src/core/slice2_23.c
+0x100376E0,BrUiFn1003E040,menus,manual,src/core/slice2_23.c
 0x10037710,BrFn1003E070,controls,description,src/core/slice4_51.c
 0x10037720,BrInputAnyActive,net,description,src/core/net/br_input.c
 0x10037780,BrInputOrPlaybackActive,audio,neighbour-1,src/core/audio/br_input.c
@@ -644,7 +644,7 @@ glide_va,name,module,basis,file
 0x10059280,BrFn10060210,drawing,manual,src/core/slice3_39.c
 0x100592D0,BrSub10060260,menus,manual,src/core/slice4_52.c
 0x100592F0,FUN_100592f0,controls,neighbour-1,src/core/generated/0x100592F0.c
-0x100597C0,BrSub10060750,net,neighbour-1,src/core/slice3_39.c
+0x100597C0,BrSub10060750,controls,manual,src/core/slice3_39.c
 0x100597F0,FUN_100597f0,net,neighbour-1,src/core/generated/0x100597F0.c
 0x10059A50,BrCarNetSendState,net,description,src/core/slice3_40.c
 0x10059D30,BrCarPredictRemote,net,description,src/core/slice3_40.c
