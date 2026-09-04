@@ -145,17 +145,51 @@ python3 tools/install_hooks.py    # once per clone; setup.sh does it for you
 python3 tools/fileaudit.py        # exit 1 on a stranded, misplaced or undescribed function
 ```
 
-1. **A pre-commit hook refuses the commit.** Adding an `@implements` without a
-   `WHAT IT DOES:` comment in the same commit, or adding a new
-   `sliceN_MM.c`, is rejected outright. It judges only the diff you are
-   committing, never the backlog, so it cannot block unrelated work — which is
-   why it will still be here next month. `--no-verify` bypasses it; if you use
-   it on a decompiled function you are choosing to leave the next person a
+1. **A pre-commit hook refuses the commit.** Three things are rejected
+   outright: an `@implements` added without a `WHAT IT DOES:` comment in the
+   same commit; a new `sliceN_MM.c`; and — since 2026-09-04 — **a new
+   `@implements` VA added to an EXISTING `sliceN_MM.c`.** That third one is
+   the hole the whole backlog came through: refusing to let anyone CREATE an
+   address batch never stopped anyone dropping a new match INTO one, which is
+   precisely what `autofile.py` did by address, unattended. **A match is BORN
+   in its module now.** It compares by VA against HEAD, so re-spelling a
+   function the batch already holds — the normal way a wall falls — is
+   untouched. It judges only the diff you are committing, never the backlog,
+   so it cannot block unrelated work. `--no-verify` bypasses it; if you use it
+   on a decompiled function you are choosing to leave the next person a
    function nobody can explain.
 2. **`fileaudit.py` audits the whole tree** across all three lanes (C, C++,
    EXE). Description baseline is **0** — every tagged function must carry one,
-   and it fails outright on a new one that does not. The filing baselines only
-   ever come down; lower them in that file as you drain them.
+   and it fails outright on a new one that does not. Address batches: **58**.
+   Stranded matched functions: **11**. All three are RATCHETS — lower them in
+   that file as you drain them, never raise one. The stranded baseline exists
+   because the check used to fail unconditionally while any backlog remained,
+   and a check that always fails is a check nobody runs; that is how this rule
+   went unenforced for months.
+3. **`portcheck.py` catches what the sweep structurally cannot.**
+   `match_sweep.py` only ever compiles `/DBR_MATCHING_BUILD`, so a `#else`
+   port arm calling something whose declaration did not travel is an implicit
+   declaration and an undefined symbol — a link failure with a clean `n/n
+   match` either side. Run `python3 tools/portcheck.py --baseline main` after
+   any refile (`--map <newfile>=<origin slice>`, `--ignore snprintf`). Its
+   first tree-wide run found five real defects the sweep had passed, one of
+   them a file that would not compile at all — which no sweep could ever
+   report, because **the sweep compiles NOTHING for a file with no
+   `@implements` tag.**
+
+**The backlog is cleared: 570 -> 11 (2026-09-03/04).** The 11 that remain are
+recorded, not forgotten — ten are stranded on `g_s17` in `slice2_17.c`, one is
+byte-exact only inside `slice2_16.c`'s translation unit, and both files carry a
+header note saying what was tried and what it cost. Read those before
+attempting either again.
+
+‼ **Moving byte-exact code CAN CHANGE IT.** A function's surroundings decide
+its codegen, not only its text — three independent sightings, one of them a
+single byte, are in `docs/VC5-IDIOMS.md` under "the surrounding TU decides
+commutative operand order". Carry the source file's ENTIRE preamble verbatim;
+never trim an include because it looks unused. Sweep both files after every
+move and keep it only if the moved function still matches and nothing left
+behind regressed.
 
 **This rule had no gate until 2026-09-03, and both halves drifted badly**: 570
 of 845 matched C functions were stranded in address batches, and 196 carried no

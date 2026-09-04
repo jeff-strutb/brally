@@ -26,13 +26,21 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-03: **1,136 functions reproduce the original
-bytes exactly (176,104 B).** Every image is then reassembled from those claims and
+original binary. Snapshot of 2026-09-04: **1,161 functions reproduce the original
+bytes exactly (179,727 B).** Every image is then reassembled from those claims and
 diffs to **0 bytes**, with 0 overlapping address claims — all four in-scope
 binaries pass.
 
-- **Game DLL (`BRGlide.dll`)** — 1,031 functions byte-exact, 163,511 B, **34.0% of
-  its 480,853 B `.text`**. Of those, 857 are C and 174 are C++. Most of what
+**Every byte-exact function now lives in the module that owns what it does.**
+Until 2026-09-03 two thirds of the matched C code sat in `sliceN_MM.c` address
+batches — 570 functions at the worst, 516 when the clear-out started. It is 11
+now, each one recorded in its file's header with what was tried and why it
+cannot move (ten share one state block; one is byte-exact only inside its own
+translation unit). Both halves of rule 6 are gated, and the gates are
+ratchets — see **Keeping it that way** below.
+
+- **Game DLL (`BRGlide.dll`)** — 1,056 functions byte-exact, 167,278 B, **34.8% of
+  its 480,853 B `.text`**. Of those, 882 are C and 174 are C++. Most of what
   remains is structural, not "coloring": 174 functions still carry real,
   non-codegen diffs (wrong or missing code), while only a 42-function tail is
   down to pure register-allocation/scheduling differences with the instructions
@@ -48,10 +56,10 @@ binaries pass.
   is statically-linked MSVC 5.0 CRT (SetVideo 27,888 B, BossRally 20,075 B,
   BRally 495 B), reproduced by linking rather than decompiled — the same call
   as `BRD3D.dll` under rule 0.
-- **Documentation** — **every byte-exact function says what it does**: 1,136 of
-  1,136 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
+- **Documentation** — **every byte-exact function says what it does**: 1,161 of
+  1,161 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
   `tools/fileaudit.py` fails the build if one lands without. The looser sets are
-  covered too — all 1,379 *tagged* functions (byte-exact or still diffing) are
+  covered too — all 1,395 *tagged* functions (byte-exact or still diffing) are
   described. Untagged port-side code is not: ~415 function definitions in files
   with no `@implements` tag remain undescribed, none of them byte-exact.
 - **macOS/Metal port** — the same source boots, renders the front end and retail
@@ -210,6 +218,57 @@ filled means byte-exact.
 
 Regenerate: `python3 tools/match_sweep.py [file.c]` (merges into
 `build/match/report.csv`); `python3 tools/progressmap.py --svg docs/progress-map.svg`.
+
+## Keeping it that way
+
+Rule 6 says a function is not done until it says what it does and lives in its
+module. Both halves are now gated, and every gate below exists because the
+thing it catches actually happened.
+
+**A new match must be BORN in its module.** `tools/precommit_rule6.py` (the
+pre-commit hook, installed by `tools/install_hooks.py`) refuses a commit that
+
+  * adds an `@implements` with no `WHAT IT DOES:` comment beside it, or
+  * creates a new `sliceN_MM.c`, or
+  * **adds a new `@implements` VA to an existing `sliceN_MM.c`.**
+
+The third is the one that matters and it was missing until 2026-09-04.
+Refusing to let anyone *create* an address batch never stopped anyone dropping
+a new match *into* one — which is exactly what the old `autofile.py` did, by
+address, unattended. That is where all 570 stranded functions came from. It
+compares by VA against the last commit, so re-spelling a function the batch
+already holds (the normal way a wall falls) is untouched; only a VA the file
+did not have before is rejected.
+
+**The audit is a ratchet, not a wish.** `python3 tools/fileaudit.py` checks all
+three lanes and exits 1 when a number goes UP: undescribed functions (baseline
+0), address batches (58), stranded matched functions (11). It used to fail
+unconditionally while any backlog existed — and a check that always fails is a
+check people stop running, which is how the rule went unenforced for months.
+Lower a baseline as you drain it; never raise one.
+
+**A green sweep is not proof a move is safe.** `match_sweep.py` only ever
+compiles `/DBR_MATCHING_BUILD`, so a `#else` port arm calling something whose
+declaration did not travel with it is an implicit declaration (C89: a warning)
+and an undefined symbol in the object — a link failure with a clean `n/n
+match` either side of it. `python3 tools/portcheck.py --baseline main` compiles
+the other configuration and reads the symbol table. On its first tree-wide run
+it found five real defects the sweep had passed, including a file that would
+not compile at all. Run it after any refile, with `--map <newfile>=<origin>`
+for a file you created and `--ignore snprintf`.
+
+**The sweep compiles NOTHING for a file with no `@implements` tag.** So an
+emptied batch file can stop compiling and no sweep will ever say so. The
+tree-wide `portcheck.py` run is what covers those; that is how the broken one
+above was found.
+
+**Moving byte-exact code can change it.** A function's surroundings decide its
+codegen, not just its text — see the "surrounding TU decides commutative
+operand order" entry in `docs/VC5-IDIOMS.md`. Carry the source file's ENTIRE
+preamble verbatim; do not trim an include because it looks unused. Sweep both
+files after every move and keep the move only if the moved function still
+matches and nothing left behind regressed.
+
 
 ## Architecture
 

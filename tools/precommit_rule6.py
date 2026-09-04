@@ -72,8 +72,22 @@ def described(lines, idx):
     return False
 
 
+def tag_vas_at_head(rel):
+    """The @implements VAs this file had in the last commit."""
+    r = subprocess.run(['git', 'show', 'HEAD:' + rel],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        return set()
+    return set(m.group(1).upper() for m in TAG.finditer(r.stdout))
+
+
+def tag_vas_now(path):
+    with open(path, encoding='utf-8', errors='replace') as f:
+        return set(m.group(1).upper() for m in TAG.finditer(f.read()))
+
+
 def main():
-    bad, batches = [], []
+    bad, batches, filed_into_batch = [], [], []
     for rel in staged_files():
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
@@ -83,6 +97,18 @@ def main():
                                  cwd=ROOT, capture_output=True)
             if was.returncode != 0:
                 batches.append(rel)
+            else:
+                # THE GAP THAT MADE THE BACKLOG. Refusing a NEW sliceN_MM.c
+                # never stopped anyone dropping a new match into an EXISTING
+                # one, which is exactly what tools/autofile.py did by address
+                # -- 570 byte-exact functions stranded that way, and clearing
+                # them cost a whole session. A match must be BORN in its
+                # module. Compared by VA against HEAD so that re-spelling a
+                # function already in the batch (the normal way a wall falls)
+                # is untouched: only a VA the file did not have before is a
+                # new match being filed into an address batch.
+                for va in tag_vas_now(path) - tag_vas_at_head(rel):
+                    filed_into_batch.append((rel, va))
         lines = open(path, encoding='utf-8', errors='replace').read().split('\n')
         add = added_lines(rel)
         for i, l in enumerate(lines):
@@ -91,7 +117,7 @@ def main():
             if not described(lines, i):
                 bad.append((rel, i + 1, TAG.search(l).group(1)))
 
-    if not bad and not batches:
+    if not bad and not batches and not filed_into_batch:
         return 0
 
     print('\nRULE 6 (CLAUDE.md): a decompiled function is not done until it')
@@ -100,6 +126,8 @@ def main():
         print('  NO DESCRIPTION  %s:%d  %s' % (rel, ln, va))
     for rel in batches:
         print('  NEW ADDRESS BATCH  %s -- never add a sliceN_MM.c' % rel)
+    for rel, va in filed_into_batch:
+        print('  NEW MATCH IN A BATCH  %s  %s -- file it in its module' % (rel, va))
     if bad:
         print('\nAdd a WHAT IT DOES: comment by the @implements tag. Plain')
         print('English, what the function is FOR -- not what the codegen does:')
@@ -108,9 +136,15 @@ def main():
         print('  /* @implements 0x10008E60 glide BrFileReadChecked */\n')
         print('Write it now, while you still know. Nobody else can recover it')
         print('without re-tracing the whole function.')
-    if batches:
+    if batches or filed_into_batch:
         print('\nFile the function into a responsibility folder instead.')
         print('See src/core/README.md and tools/filing.py.')
+    if filed_into_batch:
+        print('\nA sliceN_MM.c is an address batch, not a module. Put the')
+        print('function in the folder that owns what it DOES, with the')
+        print('include set it needs, and sweep both files before committing.')
+        print('Re-spelling a function the batch already had is fine -- this')
+        print('fires only on a VA the file did not have in the last commit.')
     print('\n(--no-verify bypasses this; tools/fileaudit.py will still see it.)')
     return 1
 
