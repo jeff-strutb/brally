@@ -538,27 +538,8 @@ void BrSub1003C230(void)
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
-extern int DAT_10ac306c;
-extern int DAT_10ac408c;
-int FUN_100356b0();
-int FUN_10036300();
 
-/* WHAT IT DOES: start the 1-second Windows timer and enable the timer tick state machine. */
-/* @implements 0x10035870 glide BrTimerStart */
-
-int BrTimerStart(void)
-
-{
-  FUN_100356b0();
-  DAT_10ac306c = SetTimer(g_brP680584,1,1000,(TIMERPROC)0x0);
-  DAT_10ac408c = 1;
-  if (g_brPAA29D4 != 0) {
-    FUN_10036300(g_brP277B40);
-  }
-  return 1;
-}
-
-
+/* 0x10035870 BrTimerStart now lives in src/core/startup/br_timer.c. */
 
 extern float _DAT_10077000;
 

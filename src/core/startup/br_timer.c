@@ -99,3 +99,35 @@ int32_t BrSub10075020(void)
     return BrPerfToMs(now) - g_br18AB130;
 }
 #endif
+
+/* ---- from slice4_53.c ------------------------------------------------
+ * That batch reached the three window/DirectPlay globals through
+ * slice4_53.h, with BrCarSub9020 renamed out of the way; kept verbatim.
+ * --------------------------------------------------------------------- */
+#ifdef BR_MATCHING_BUILD
+#define BrCarSub9020 BrCarSub9020_port2
+#include "slice4_53.h"
+#undef BrCarSub9020
+#include <windows.h>
+
+extern int DAT_10ac306c;
+extern int DAT_10ac408c;
+int FUN_100356b0();
+int FUN_10036300();
+
+/* WHAT IT DOES: start the 1-second Windows timer and enable the timer tick state machine. */
+/* @implements 0x10035870 glide BrTimerStart */
+
+int BrTimerStart(void)
+
+{
+  FUN_100356b0();
+  DAT_10ac306c = SetTimer(g_brP680584,1,1000,(TIMERPROC)0x0);
+  DAT_10ac408c = 1;
+  if (g_brPAA29D4 != 0) {
+    FUN_10036300(g_brP277B40);
+  }
+  return 1;
+}
+
+#endif /* BR_MATCHING_BUILD */
