@@ -495,4 +495,23 @@ int BrSndBankClear(void)
   return;
 }
 
+void BrSndBankSetCar(int, int);
+extern int DAT_100b32b0;
+extern int DAT_100b32bc;
+extern int DAT_100b32c0;
+int FUN_1006c010();
+
+/* WHAT IT DOES: initialize the engine-sound bank for a car: set the bank, init the source, play silent. */
+/* @implements 0x100612D0 glide BrSfxCarBankInit */
+/* @n64 0x80206830 located */
+
+int BrSfxCarBankInit(int param_1,int param_2)
+
+{
+  BrSndBankSetCar(param_1,param_2);
+  FUN_1006c010(param_1);
+  BrSfxSrcPlaySilent(param_1 * 2,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
