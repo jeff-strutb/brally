@@ -19,6 +19,10 @@
 typedef void (__fastcall *PDtor)(void *);
 void __stdcall FUN_10074770(void *ptr, unsigned size, int count, PDtor dtor);
 
+/* WHAT IT DOES: destroy an array of objects, BACK to front, calling each
+ * element's destructor. If one throws, the compiler's cleanup helper
+ * finishes destroying the rest. Compiler-generated array teardown, not game
+ * code. */
 /* @implements 0x100746C0 glide FUN_100746c0 */
 void __stdcall
 FUN_100746c0(void *ptr, unsigned size, int count, PDtor dtor)

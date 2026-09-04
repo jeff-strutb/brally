@@ -27,6 +27,8 @@ extern int DAT_1021ce4c;
 
 
 
+/* WHAT IT DOES: raise a shared network flag under its mutex. Paired with
+ * BrNetClearF10220DD0. */
 /* @implements 0x10006400 glide BrNetSetF10220DD0 */
 void BrNetSetF10220DD0(void)
 

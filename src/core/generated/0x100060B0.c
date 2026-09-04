@@ -11,6 +11,9 @@ extern int DAT_1021c8c0[];  /* the stack itself */
 
 /* One shared unlock/return tail in source; VC5 duplicates it into both
  * arms (each gets its own ReleaseMutex + ret). */
+/* WHAT IT DOES: pop the next free network slot index off a shared stack,
+ * returning -1 when none are left. Locked, because the receive thread also
+ * takes slots. */
 /* @implements 0x100060B0 glide BrNetStackPop */
 int BrNetStackPop(void)
 {

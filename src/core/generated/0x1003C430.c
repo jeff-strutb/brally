@@ -41,6 +41,10 @@ int BrStrGet(int id);
 
 
 
+/* WHAT IT DOES: step the menu highlight to the next selectable entry,
+ * wrapping round at the end of the page and skipping anything not currently
+ * selectable. The extra three entries when a mode flag is set are the rows
+ * that only exist in that mode. */
 /* @implements 0x1003C430 glide FUN_1003c430 */
 int FUN_1003c430(void)
 

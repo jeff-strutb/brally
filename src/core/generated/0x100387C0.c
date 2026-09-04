@@ -26,6 +26,8 @@ extern int DAT_10ac5d14;
 
 
 
+/* WHAT IT DOES: the flag-only partner of BrUiFn1003F210 -- clears the same
+ * 0x10AC5D14 page bit when the field is non-empty, and copies nothing. */
 /* @implements 0x100387C0 glide BrUiFn1003F280 */
 int BrUiFn1003F280(int param_1)
 

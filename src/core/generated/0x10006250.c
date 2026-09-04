@@ -27,6 +27,8 @@ extern char DAT_1021d3c8;
 
 
 
+/* WHAT IT DOES: write a network player's name into its slot, under that
+ * slot's mutex. The read side is BrNetSlotName. */
 /* @implements 0x10006250 glide BrNetSlotSetName */
 void BrNetSlotSetName(int param_1,char *param_2)
 

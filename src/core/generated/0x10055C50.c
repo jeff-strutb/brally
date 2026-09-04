@@ -57,6 +57,10 @@ extern BrRoot55C50 *g_brRootPhase;      /* 0x10AC5C60 */
 extern char s_RallySeason_100acb00[];   /* "RallySeason" */
 extern char s_TimeAttack_100acb14[];    /* "TimeAttack"  */
 
+/* WHAT IT DOES: store a player-entered name into the right saved-game slot.
+ * The slot number is parsed out of the END of the key string, and which
+ * table it indexes -- season or time attack -- depends on the current mode.
+ * Always reports success. */
 /* @implements 0x10055C50 glide BrSaveSlotNameSet_10055C50 */
 int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
 {

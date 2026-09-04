@@ -32,6 +32,9 @@ int BrGlobalFreeAll();
 
 typedef int (__stdcall *CC_std_1)(int);
 
+/* WHAT IT DOES: final multiplayer teardown at exit: closes the session,
+ * frees every global allocation, logs the DirectPlay interface's remaining
+ * reference count for leak-hunting, and releases the last interface. */
 /* @implements 0x10035660 glide FUN_10035660 */
 void FUN_10035660(void)
 

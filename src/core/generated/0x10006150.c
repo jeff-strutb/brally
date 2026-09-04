@@ -7,6 +7,9 @@
 
 extern int DAT_1021ce58;    /* slot[0].hMutex; slot stride 0x978 (0x25E ints) */
 
+/* WHAT IT DOES: read one network slot's state word plus three of its status
+ * bytes in a single locked operation, so the caller sees a consistent
+ * snapshot rather than four separately-locked reads that could disagree. */
 /* @implements 0x10006150 glide BrNetSlotGetF030 */
 int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
                      unsigned char *pb36)

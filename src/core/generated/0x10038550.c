@@ -26,6 +26,8 @@ extern int DAT_10ac5d40;
 
 
 
+/* WHAT IT DOES: same flag-only text-field callback as BrUiFn1003EF60, acting
+ * on a different page's enable bit (0x10AC5D40). */
 /* @implements 0x10038550 glide BrUiFn1003F020 */
 int BrUiFn1003F020(int param_1)
 

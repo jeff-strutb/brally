@@ -28,6 +28,9 @@ typedef int (__stdcall *CC_std_1)(int);
 
 
 
+/* WHAT IT DOES: drop one user of the keyboard system and release the
+ * DirectInput device when the last one goes. Clamps its own counter at zero,
+ * so an unmatched release is ignored rather than driving the count negative. */
 /* @implements 0x10071EB0 glide BrDiKeyboardShutdown */
 void BrDiKeyboardShutdown(void)
 

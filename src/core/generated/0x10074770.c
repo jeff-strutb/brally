@@ -16,6 +16,10 @@
 typedef void (__fastcall *PDtor)(void *);
 int __cdecl FUN_100747e0(struct _EXCEPTION_POINTERS *);
 
+/* WHAT IT DOES: destroy the remaining elements of an array while an
+ * exception is already unwinding, swallowing any further exception --
+ * because throwing during cleanup would terminate. The partner of the array
+ * destructor above. */
 /* @implements 0x10074770 glide FUN_10074770 */
 void __stdcall
 FUN_10074770(void *ptr, unsigned size, int count, PDtor dtor)

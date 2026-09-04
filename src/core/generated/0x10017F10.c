@@ -27,6 +27,10 @@ extern int DAT_104b1688;
 
 
 
+/* WHAT IT DOES: drop one user of the screen-fade system and, when the last
+ * one goes, run the registered teardown callback. Reference counting, so
+ * several callers can use the fade without one of them tearing it down under
+ * another. Always reports success. */
 /* @implements 0x10017F10 glide BrFadeRelease */
 int BrFadeRelease(void)
 

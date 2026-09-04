@@ -27,6 +27,9 @@ extern funcptr PTR_FUN_100776c0;
 
 
 
+/* WHAT IT DOES: construct a menu page object in place -- installs its method
+ * table and clears every field, including the 800-byte entry array. The
+ * compiler-emitted constructor for the page class. */
 /* @implements 0x100418C0 glide BrUiPageCtor_10048470 */
 int * __fastcall BrUiPageCtor_10048470(int *param_1)
 

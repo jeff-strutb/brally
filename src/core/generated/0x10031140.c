@@ -30,6 +30,9 @@ extern int PTR_s_desert_trk_100b78c0;
 
 
 
+/* WHAT IT DOES: load the handling data for one track, by taking that track's
+ * file name from the track table, swapping its extension for the handling
+ * one, and passing the result to the loader. */
 /* @implements 0x10031140 glide BrTrackLoadHandling */
 void BrTrackLoadHandling(int param_1)
 

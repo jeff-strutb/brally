@@ -28,6 +28,11 @@ int Br85ItemApply();
 
 
 
+/* WHAT IT DOES: commit what the player typed into a menu text field. One of
+ * a family of near-identical callbacks: each applies the item, then copies
+ * the typed string into ITS OWN destination global if it changed, and clears
+ * an enable bit on a related page once the field is non-empty. This one
+ * backs the setting at 0x10B71648. */
 /* @implements 0x10038420 glide BrUiFn1003EEF0 */
 int BrUiFn1003EEF0(int param_1)
 

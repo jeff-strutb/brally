@@ -28,6 +28,10 @@ extern int g_br86HasPerf_S_S1437;
 
 
 
+/* WHAT IT DOES: restart a stopwatch from now. Uses the high-resolution
+ * performance counter when the machine has one and a coarser millisecond
+ * clock when it does not, writing to a different pair of fields in each case
+ * -- so the two halves of this record are alternatives, not both live. */
 /* @implements 0x1006E3F0 glide br86_timer_restart */
 void __fastcall br86_timer_restart(int *param_1)
 

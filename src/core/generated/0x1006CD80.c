@@ -3,6 +3,9 @@
  * offset 0x10 (= p+0x14), returns this. */
 #ifdef BR_MATCHING_BUILD
 
+/* WHAT IT DOES: construct a small list object in place: clears its four
+ * fields and points its head pointer at its own embedded storage, so an
+ * empty list still has somewhere to write. */
 /* @implements 0x1006CD80 glide FUN_1006cd80 */
 int *__fastcall FUN_1006cd80(int *p)
 {

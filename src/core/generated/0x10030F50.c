@@ -32,6 +32,11 @@ int BrLogPrint();
 
 
 
+/* WHAT IT DOES: read a whole file into a caller-supplied buffer: warns to
+ * the log if it is missing, opens it, reads either the requested number of
+ * bytes or the entire file when a negative length is passed, and closes it.
+ * Every step uses the abort-on-failure file helpers, so a real failure ends
+ * the game rather than returning. */
 /* @implements 0x10030F50 glide BrFileReadInto */
 void BrFileReadInto(int param_1,int param_2,int param_3)
 

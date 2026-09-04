@@ -29,6 +29,10 @@ int BrStrGet(int);
 
 
 
+/* WHAT IT DOES: show one of the game's numbered error messages in a Windows
+ * message box, looking the text up in the string table so it appears in the
+ * player's language, and quitting the game afterwards if that error is
+ * marked fatal. */
 /* @implements 0x100378C0 glide FUN_100378c0 */
 void FUN_100378c0(int param_1)
 

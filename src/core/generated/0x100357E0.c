@@ -33,6 +33,10 @@ int BrSub10071550();
 
 
 
+/* WHAT IT DOES: host a new multiplayer session -- builds the session
+ * description, asks DirectPlay to create it, and on success marks the game
+ * as hosting and starts the networking mutexes. On failure it formats a
+ * message and returns without starting anything. */
 /* @implements 0x100357E0 glide BrSub1003C150 */
 void BrSub1003C150(void)
 

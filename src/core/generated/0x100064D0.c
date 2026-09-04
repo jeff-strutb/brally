@@ -29,6 +29,9 @@ int BrTicks30FromMs();
 
 
 
+/* WHAT IT DOES: check whether a network timeout has expired and, if so, set
+ * the flag that tells the rest of the game to give up waiting. Called from
+ * the polling loop. */
 /* @implements 0x100064D0 glide BrNetCheckDeadline */
 void BrNetCheckDeadline(void)
 

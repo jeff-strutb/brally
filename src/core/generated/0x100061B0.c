@@ -27,6 +27,8 @@ extern int DAT_10226a58;
 
 
 
+/* WHAT IT DOES: read one entry from a shared network table under the table's
+ * own mutex. */
 /* @implements 0x100061B0 glide BrNetGetA102212D0 */
 int BrNetGetA102212D0(int param_1)
 

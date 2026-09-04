@@ -29,6 +29,9 @@ extern int g_brP680584;
 
 
 
+/* WHAT IT DOES: start the once-a-second Windows timer that drives
+ * multiplayer housekeeping, and flag that it is running. Always reports
+ * success. */
 /* @implements 0x100358C0 glide BrTimerStart1003C230 */
 int BrTimerStart1003C230(void)
 

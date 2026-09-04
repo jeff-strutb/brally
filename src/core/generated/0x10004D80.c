@@ -27,6 +27,9 @@ extern int DAT_1021ce84;
 
 
 
+/* WHAT IT DOES: read one field out of a network player slot under that
+ * slot's mutex. The slots are shared with the receive thread, so every read
+ * is locked. */
 /* @implements 0x10004D80 glide BrNetSlotGetF02C */
 int BrNetSlotGetF02C(int param_1)
 

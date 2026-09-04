@@ -26,6 +26,9 @@ extern char s_CHK_AllocateMemory____Out_of_mem_1007b1e8[];
 
 
 
+/* WHAT IT DOES: allocate memory or abort the game, reporting the caller's id
+ * in the out-of-memory message. A zero-byte request returns null rather than
+ * aborting. */
 /* @implements 0x100036F0 glide BrChkAlloc */
 void * BrChkAlloc(unsigned int param_1,int param_2)
 

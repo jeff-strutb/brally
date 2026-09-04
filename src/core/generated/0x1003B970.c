@@ -30,6 +30,8 @@ extern int g_i0AB3F4;
 
 
 
+/* WHAT IT DOES: the same in-place rename toggle as BrExt_10041A00, acting on
+ * the list at 0x10AC5D28 instead. */
 /* @implements 0x1003B970 glide BrExt_10042410 */
 int BrExt_10042410(int param_1)
 

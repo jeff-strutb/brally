@@ -27,6 +27,8 @@ int Br85ItemApply();
 
 
 
+/* WHAT IT DOES: text-field commit for the setting at 0x10B71AC0, otherwise
+ * identical to Br85TextReadBack. */
 /* @implements 0x100385F0 glide BrUiHook85_1003F0B0 */
 int BrUiHook85_1003F0B0(int param_1)
 

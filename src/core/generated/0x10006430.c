@@ -27,6 +27,8 @@ extern int DAT_1021ce4c;
 
 
 
+/* WHAT IT DOES: clear the flag BrNetSetF10220DD0 raises, under the same
+ * mutex. */
 /* @implements 0x10006430 glide BrNetClearF10220DD0 */
 void BrNetClearF10220DD0(void)
 
