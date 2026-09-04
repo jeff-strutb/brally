@@ -490,7 +490,7 @@ static void br_dl_normalise(BrVec3 *pV)
      * Scale-out: pV->x * k is a memory operand; y/z copy-assign k.
      * Zero arm is the else so scale is fall-through (orig jne-to-zeros).
      *
-     * RESIDUE 49 bytes, 4 over / 2 instructions over, RAW 3+1.  The front
+     * WAS 49 bytes, 4 over / 2 instructions over, RAW 3+1.  The front
      * half and the zero arm are exact; the whole gap is ONE EXTRA x87 STACK
      * SLOT in the scale-out.  After the `fdivr` the original makes three
      * copies of the reciprocal and multiplies each by a MEMORY operand
@@ -499,23 +499,34 @@ static void br_dl_normalise(BrVec3 *pV)
      * one product register-to-register, which leaves a fourth value to
      * `fstp st(0)` at the end.  Only the X term differs -- y and z already
      * use the memory fmul.
-     * Probed and DEAD, all three byte-identical to what is here: `pV->x *=
-     * len` compound assignment, `pV->x * len` operand order, and keeping the
-     * dead `x` local alive past the branch.  COMPILE VARIANT CHECKED, this
-     * one is genuinely /O2: /O2 49 diffs, /O2 /Op 128, /O2 /Oy- 117, /Od 122.
-     * Next lead, untried: the `float x` local is what makes VC5 treat the X
-     * term differently from y/z -- but it is load-bearing for the length
-     * computation above, so changing it means re-proving that half. */
+     * Probed and DEAD, all three byte-identical to the old spelling: `pV->x
+     * *= len` compound assignment, `pV->x * len` operand order, and keeping
+     * the dead `x` local alive past the branch.  COMPILE VARIANT CHECKED,
+     * this one is genuinely /O2: /O2 49 diffs, /O2 /Op 128, /O2 /Oy- 117,
+     * /Od 122.
+     *
+     * CLOSED 2026-09-04 -- it was the `ptr[0]` ranking (docs/VC5-IDIOMS.md):
+     * `pV->x` is an offset-0 operand and VC5 ranks that above the register
+     * copy of the reciprocal, so it `fld`s the field and multiplies by
+     * st(i); y and z at +4/+8 lose that ranking and become memory operands
+     * like the original's.  The scale-out reads the vector through a
+     * pointer displaced PAST THE END (`q = (float *)pV + 3`, indices -3..
+     * -1) so no term is index 0; VC5 folds the displacement back and the
+     * bytes are identical.  It must stay MULTI-USE: displacing only the x
+     * read is 4 B short (0+2), `+1`/`+2` (which leave y or z at index 0)
+     * are 46/52 diffs.  Declared up here or assigned after the divide is
+     * the same bytes. */
     float x = pV->x;
     float y = pV->y;
     float z = pV->z;
     float len;
+    float *q = (float *)pV + 3;
     len = BrSqrtF(y * y + z * z + x * x);
     if (len != 0.0f) {
         len = 1.0f / len;
-        pV->x = len * pV->x;
-        pV->y = len * pV->y;
-        pV->z = len * pV->z;
+        q[-3] = len * q[-3];
+        q[-2] = len * q[-2];
+        q[-1] = len * q[-1];
     } else {
         pV->x = 0.0f;
         pV->y = 0.0f;

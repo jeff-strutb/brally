@@ -5925,3 +5925,37 @@ registers; the first sign test is an if/else with the `< 0` arm first and
 the later ones `sgn = -1; if (!(x < 0)) sgn = 1` (VC5 reuses `or ecx,-1`);
 a `short` counter incremented in a loop is dword arithmetic with `cmp word
 ptr` at the test.
+
+## Demoting a `ptr[0]` operand: read the record through a pointer displaced PAST THE END
+
+The `ptr[0]` vs `ptr[k!=0]` entry above says VC5 ranks an offset-0 memory
+operand highest when it picks which side of a float multiply gets the
+`fld`, and that the lever is to ADD a pointer local. That entry promoted a
+term. This is the other direction, proven byte-exact on `0x100344D0
+br_dl_normalise` (141 B), which had sat at 49 diffs / +4 B with the note
+"only the X term differs".
+
+The scale-out multiplies three fields by a reciprocal held on the x87
+stack. The original `fld`s three copies of the reciprocal and multiplies
+each by MEMORY (`fmul [esi]`, `fmul [esi+4]`, `fmul [esi+8]`). Ours did
+that for y and z but for x it loaded the FIELD (`fld [esi]`) and multiplied
+register-to-register, leaving a fourth stack value to `fstp st(0)` at the
+end -- because `pV->x` is offset 0 and outranks the register copy, while
+`pV->y`/`pV->z` do not. No spelling of the x statement moves it
+(compound assignment, operand order, keeping the earlier `x` local alive).
+
+**The lever:** make every field a NON-ZERO index off one multi-use pointer:
+
+    float *q = (float *)pV + 3;        /* one past the end */
+    q[-3] = len * q[-3];
+    q[-2] = len * q[-2];
+    q[-1] = len * q[-1];
+
+VC5 folds the displacement back into `[esi]`, `[esi+4]`, `[esi+8]` and the
+function is byte-identical. Riders: (1) the pointer must be MULTI-USE --
+displacing only the x read forward-substitutes and is 4 B SHORT (0+2);
+(2) `+1` and `+2` leave y or z at index 0 and are no better (46 / 52);
+(3) where the pointer is declared (with the locals, or assigned after the
+divide) is inert. The screen: one term of a parallel set compiled as
+`fld [R]` / `fmul st(i)` while its siblings are `fld st(i)` / `fmul [R+k]`
+-- look for the operand at displacement 0.
