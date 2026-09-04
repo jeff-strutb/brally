@@ -30,11 +30,13 @@
  * register-eligible, so it cannot claim edx). */
 #define BrCtrlCfgLoadDefaults BrCtrlCfgLoadDefaults_cdecl
 #define BrFn10069BC0          BrFn10069BC0_cdecl
+#define BrFn10069C30          BrFn10069C30_cdecl
 #endif
 #include "slice3_42.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCtrlCfgLoadDefaults
 #undef BrFn10069BC0
+#undef BrFn10069C30
 typedef struct { int32_t v; } BrCtrlProfileArg;
 /* BOTH stack arguments are struct-wrapped. __fastcall skips a struct when it
  * hands out ecx/edx, so wrapping only the FIRST of them lets the SECOND take
@@ -475,19 +477,53 @@ int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
  * symmetric -- for the keyboard layout it never looks at the axis case at
  * all -- so a caller has to know the kind before the number means anything. */
 /* @implements 0x10069C30 d3d BrFn10069C30 */
+#ifdef BR_MATCHING_BUILD
+/* Same thiscall shape and the same written-out arms as BrFn10069BC0 above:
+ * both stack arguments struct-wrapped, and each arm folds its own literal
+ * into the flat row index rather than picking a profile first.
+ *
+ * The 0x8000 test exists ONLY on the 1/2/3 arms. The fall-through arm reads a
+ * plain byte with `mov al,[..]` and never looks at the high half, which is why
+ * it is written as a byte-typed read rather than as the shared expression with
+ * the test skipped. VC5 cross-jumps the tails of arms 2 and 3 by itself (arm 3
+ * ends in a `jmp` into arm 2) and leaves arm 1 with its own copy -- that is
+ * the compiler's layout, not a difference in how the three are spelled. */
+uint8_t BR_THISCALL1 BrFn10069C30(void *pThis, BrCtrlKindArg kind,
+                                  BrCtrlKeyArg key)
+{
+    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
+
+    switch (kind.v) {
+    case 1: {
+        const uint16_t v = pCfg->profile[0].e[key.v + 0x1C][0];
+        if (v >= 0x8000u) return (uint8_t)(v >> 8);
+        return (uint8_t)v;
+    }
+    case 2: {
+        const uint16_t v = pCfg->profile[0].e[key.v + 0x38][0];
+        if (v >= 0x8000u) return (uint8_t)(v >> 8);
+        return (uint8_t)v;
+    }
+    case 3: {
+        const uint16_t v = pCfg->profile[0].e[key.v + 0x54][0];
+        if (v >= 0x8000u) return (uint8_t)(v >> 8);
+        return (uint8_t)v;
+    }
+    }
+    return (uint8_t)pCfg->profile[0].e[key.v][0];
+}
+#else
 uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
     const int        k    = BrCtrlProfileIndex(kind);
     const uint16_t   v    = pCfg->profile[k].e[key][0];
 
-    /* The 0x8000 test exists ONLY on the 1/2/3 arms; the fall-through arm
-     * reads a plain byte with `mov al,[..]` and never looks at the high
-     * half. */
     if (k != 0 && v >= 0x8000u)
         return (uint8_t)(v >> 8);
     return (uint8_t)v;
 }
+#endif
 
 /* =====================================================================
  * 3. Replay recorder
