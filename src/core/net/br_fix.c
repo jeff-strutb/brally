@@ -95,4 +95,16 @@ float BrFixUnpackLevel(int32_t v)
     return 255.0f;
 }
 
+
+
+/* 0x10007310.  Scale 0x1008F138 = 0.0001220703125f (= 1/8192).
+ * `fild qword` over {v, 0} -- the value is UNSIGNED. */
+/* WHAT IT DOES: turns a packed whole number back into a position coordinate
+ * by scaling it down. The packed value is treated as unsigned. */
+/* @implements 0x10007310 d3d BrFixUnpackU32Q13 */
+float BrFixUnpackU32Q13(uint32_t v)
+{
+    return (float)(v * 0.0001220703125f);
+}
+
 #endif /* BR_MATCHING_BUILD */
