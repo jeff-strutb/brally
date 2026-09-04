@@ -1,3 +1,5 @@
+/* WHAT IT DOES: delete a save slot -- blanks its name and clears its fields
+ * so the slot reads as empty. */
 /* @implements 0x10054E20 glide BrSaveSlotDelete_10054E20
  * @cpp_kind method
  * @cpp_symbol ?Delete@Slots54E20@@QAEHH@Z

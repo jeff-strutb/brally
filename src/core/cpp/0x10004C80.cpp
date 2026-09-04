@@ -1,3 +1,5 @@
+/* WHAT IT DOES: build and send the small acknowledgement packet -- a tag
+ * byte carrying a sequence number in its low bits, plus one value. */
 /* @implements 0x10004C80 glide Fn04C80
  * @cpp_kind method
  * @cpp_symbol ?Fn04C80@@YAHPAX0@Z

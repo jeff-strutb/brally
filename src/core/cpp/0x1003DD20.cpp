@@ -1,3 +1,6 @@
+/* WHAT IT DOES: populate the session list -- asks the host for its
+ * description if this machine is hosting, otherwise fills the list from what
+ * the browser found. */
 /* @implements 0x1003DD20 glide Fn3DD20
  * @cpp_kind method
  * @cpp_symbol ?Fn3DD20@@YAHXZ

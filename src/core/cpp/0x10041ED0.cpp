@@ -1,3 +1,5 @@
+/* WHAT IT DOES: release every control on every page this phase owns -- 200
+ * slots per page, cleared and nulled. */
 /* @implements 0x10041ED0 glide BrPhaseReleasePages_10048AA0
  * @cpp_kind method
  * @cpp_symbol ?ReleasePages@Phase32P@@QAEXXZ

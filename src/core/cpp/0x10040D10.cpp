@@ -1,3 +1,5 @@
+/* WHAT IT DOES: construct a menu control in place -- the compiler-emitted
+ * constructor for the control class, clearing its boxes and list. */
 /* @implements 0x10040D10 glide BrCtl
  * @cpp_kind dtor
  * @cpp_symbol ??1BrCtl@@UAE@XZ

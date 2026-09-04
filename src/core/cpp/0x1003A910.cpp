@@ -1,3 +1,6 @@
+/* WHAT IT DOES: build the title line for the current stage -- its number,
+ * then the stage's name from the string table, chosen by a switch over which
+ * stage it is. */
 /* @implements 0x1003A910 glide BrItemSetTitle_1003A910
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetTitle_1003A910@@YAHPAVObj3A910@@@Z

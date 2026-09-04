@@ -1,3 +1,5 @@
+/* WHAT IT DOES: attach an already-allocated buffer to an archive entry, so
+ * the entry knows where its data lives. */
 /* @implements 0x10008A30 glide M8A30
  * @cpp_kind method
  * @cpp_symbol ?M8A30@Tbl8900@@QAEHIH@Z

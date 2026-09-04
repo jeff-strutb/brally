@@ -1,3 +1,6 @@
+/* WHAT IT DOES: apply one row of a menu to the screen: lay it out, and when
+ * it is being edited also handle the caret and the text the player is
+ * typing. The shared workhorse behind the label hooks around it. */
 /* @implements 0x10038380 glide Br85ItemApply
  * @cpp_kind method
  * @cpp_symbol Br85ItemApply

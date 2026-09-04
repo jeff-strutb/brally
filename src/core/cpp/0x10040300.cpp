@@ -1,3 +1,8 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, and this one also restores the track name buffer from its saved
+ * copy, so backing out undoes any edit the player made. */
 /* @implements 0x10040300 glide BrUiHook81_10046EB0
  * @cpp_kind method
  * @cpp_symbol ?BrUiHook81_10046EB0@@YAHPAVGameObj@@@Z

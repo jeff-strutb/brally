@@ -1,3 +1,6 @@
+/* WHAT IT DOES: handle the private window messages the multiplayer layer
+ * posts to itself -- each case selects the affected slot and runs the
+ * matching update. */
 /* @implements 0x10035A30 glide BrWmAppHook35A30
  * @cpp_kind method
  * @cpp_symbol ?BrWmAppHook35A30@@YGHHHHH@Z

@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page, refresh the navigation bar and re-enter the
+ * parent page. */
 /* @implements 0x1003CC60 glide BrOpt3710
  * @cpp_kind method
  * @cpp_symbol ?BrOpt3710@@YAHPAVGameObj@@@Z

@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page and go back, setting the return mode first
+ * so the parent knows where the player came from. */
 /* @implements 0x1003CCB0 glide BrOpt3760
  * @cpp_kind method
  * @cpp_symbol ?BrOpt3760@@YAHPAVGameObj@@@Z

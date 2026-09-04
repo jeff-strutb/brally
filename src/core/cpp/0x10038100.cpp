@@ -1,3 +1,6 @@
+/* WHAT IT DOES: keep this page's highlighted row in step with the stored
+ * selection: ask the selector where the highlight has moved to, remember it
+ * if it moved, and scroll the list to it. */
 /* @implements 0x10038100 glide BrUiHook85_1003EB10
  * @cpp_kind method
  * @cpp_symbol ?Hook@Ui85@@YAHPAVGameObj85@@@Z

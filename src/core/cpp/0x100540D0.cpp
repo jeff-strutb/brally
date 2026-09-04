@@ -1,3 +1,7 @@
+/* WHAT IT DOES: draw a string in the sprite font: walks the characters,
+ * turns each into a glyph index by subtracting the space character, and
+ * advances the pen. Starts from either a computed or a stored pen position
+ * depending on a flag. */
 /* @implements 0x100540D0 glide BrSprFontDraw_1005B2B0
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text540D0@@QAEXXZ

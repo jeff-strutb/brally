@@ -1,3 +1,5 @@
+/* WHAT IT DOES: set a menu item's label to one of two strings depending on a
+ * pair of mode flags, then tell the item to re-lay itself out. */
 /* @implements 0x10037E60 glide BrItemSetLabelState_10037E60
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetLabelState_10037E60@@YAHPAVObj37E60@@@Z

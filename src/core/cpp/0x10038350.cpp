@@ -1,3 +1,6 @@
+/* WHAT IT DOES: highlight-sync for a page whose valid rows are 0 to 11 --
+ * anything outside that range is treated as 'nothing selected' rather than
+ * clamped. */
 /* @implements 0x10038350 glide BrUiHook85_1003EE20
  * @cpp_kind method
  * @cpp_symbol ?BrUiHook85_1003EE20@@YAHPAVGameObj@@@Z

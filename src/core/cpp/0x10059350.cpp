@@ -1,3 +1,5 @@
+/* WHAT IT DOES: create the DirectInput device, reporting the failure through
+ * the error dialog with the line it came from if it cannot. */
 /* @implements 0x10059350 glide BrDInputDeviceCreate_10059350
  * @cpp_kind method
  * @cpp_symbol ?CreateDevice@Input59350@@QAEHPAX@Z

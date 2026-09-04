@@ -1,3 +1,5 @@
+/* WHAT IT DOES: look a value up and pass the result straight to the handler
+ * for it -- a two-step lookup written as one call. */
 /* @implements 0x10008A70 glide BrVt8A70CallPair
  * @cpp_kind method
  * @cpp_symbol ?CallPair@Vt8A70@@QAEXH@Z

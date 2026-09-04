@@ -1,3 +1,5 @@
+/* WHAT IT DOES: set a menu item's label to a number from a table of 16-bit
+ * values, indexed by the currently selected row, then re-lay and refresh it. */
 /* @implements 0x100380B0 glide BrItemSetNumWord_100380B0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetNumWord_100380B0@@YAHPAVObj380B0@@@Z

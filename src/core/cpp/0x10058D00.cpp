@@ -1,3 +1,5 @@
+/* WHAT IT DOES: insert a node into the bounds tree, walking down until a
+ * parent that can contain it is found and appending there. */
 /* @implements 0x10058D00 glide BrBoundsInsert_10058D00
  * @cpp_kind method
  * @cpp_symbol ?Insert@BoundsNode@@QAEXPAV1@@Z

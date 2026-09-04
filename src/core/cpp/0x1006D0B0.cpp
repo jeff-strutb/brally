@@ -1,3 +1,6 @@
+/* WHAT IT DOES: write a number into a packed bit stream n bits at a time,
+ * splitting across byte boundaries as needed. The write side of the bit
+ * stream reader. */
 /* @implements 0x1006D0B0 glide BrBitStreamWriteBits_1006D0B0
  * @cpp_kind method
  * @cpp_symbol ?WriteBits@BitStream6D0B0@@QAEXII@Z

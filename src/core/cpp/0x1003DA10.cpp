@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page, return to the parent, and clear a flag bit
+ * on a related object so the option it guarded becomes available again. */
 /* @implements 0x1003DA10 glide BrOpt44C0
  * @cpp_kind method
  * @cpp_symbol ?BrOpt44C0@@YAHPAVGameObj@@@Z

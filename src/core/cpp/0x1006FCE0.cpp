@@ -1,3 +1,5 @@
+/* WHAT IT DOES: set a car up in one race slot: applies its paint scheme,
+ * loads its model, resets its state and binds it to the slot. */
 /* @implements 0x1006FCE0 glide BrCarSlotSetup_1006FCE0
  * @cpp_kind method
  * @cpp_symbol ?SlotSetup@Car6FCE0@@QAEXHH@Z

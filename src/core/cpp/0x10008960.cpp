@@ -1,3 +1,5 @@
+/* WHAT IT DOES: return the size of the entry at an index, aborting if the
+ * index is out of range. */
 /* @implements 0x10008960 glide M8960
  * @cpp_kind method
  * @cpp_symbol ?M8960@Tbl8900@@QAEHI@Z

@@ -1,3 +1,6 @@
+/* WHAT IT DOES: advance the page's timed step sequence -- accumulates real
+ * elapsed time and moves to the next step once this one's duration has
+ * passed. */
 /* @implements 0x100414F0 glide BrUiTickSteps_100480A0
  * @cpp_kind method
  * @cpp_symbol ?TickSteps@UiPage@@QAEHXZ

@@ -1,3 +1,7 @@
+/* WHAT IT DOES: pack a car's full physics state into the compact form sent
+ * over the network -- each float narrowed to the fewest bits that still
+ * describe it, and a bitmask saying which of them are non-zero so the
+ * receiver knows what was sent. */
 /* @implements 0x10006510 glide BrCarStateEncode
  * @cpp_symbol _BrCarStateEncode
  *

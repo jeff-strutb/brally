@@ -1,3 +1,5 @@
+/* WHAT IT DOES: scroll a slot list by one step, wrapping at the ends and
+ * reporting both whether it wrapped and whether anything moved. */
 /* @implements 0x100553B0 glide BrSlotScrollStep_100553B0
  * @cpp_kind method
  * @cpp_symbol ?Step@Ctl553B0@@QAEHPAH@Z

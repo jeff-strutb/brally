@@ -1,3 +1,6 @@
+/* WHAT IT DOES: leave this page only when a session is actually live --
+ * otherwise it does nothing, so the button is inert until there is something
+ * to leave. */
 /* @implements 0x1003CD20 glide BrOpt37D0
  * @cpp_kind method
  * @cpp_symbol BrOpt37D0

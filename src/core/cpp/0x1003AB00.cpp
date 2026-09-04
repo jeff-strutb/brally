@@ -1,3 +1,5 @@
+/* WHAT IT DOES: show how many are left -- the entry's allowance minus what
+ * has been used -- in this item's label. */
 /* @implements 0x1003AB00 glide BrItemSetRemaining_1003AB00
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetRemaining_1003AB00@@YAHPAVObj3AB00@@@Z

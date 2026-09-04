@@ -1,3 +1,7 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen,
+ * and it saves the current selection first so the page can be returned to. */
 /* @implements 0x1004be00 glide FUN_1004be00
  * @cpp_kind free
  * @cpp_symbol ?FUN_1004be00@@YAHPAVGameUi@@@Z

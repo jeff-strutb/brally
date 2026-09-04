@@ -1,3 +1,5 @@
+/* WHAT IT DOES: draw the code-entry row currently selected, using that row's
+ * stored rectangle and colour. Draws nothing when no row is selected. */
 /* @implements 0x10040D80 glide BrUiDrawCode_10047930
  * @cpp_kind method
  * @cpp_symbol ?Draw@Draw40D80@@QAEHXZ

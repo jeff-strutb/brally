@@ -1,3 +1,5 @@
+/* WHAT IT DOES: highlight-sync for another page, with its own stored index
+ * and its own scroll-to call. */
 /* @implements 0x10038250 glide FUN_10038250
  * @cpp_kind method
  * @cpp_symbol ?FUN_10038250@@YAHPAVGameObj@@@Z

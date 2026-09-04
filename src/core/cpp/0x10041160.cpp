@@ -1,3 +1,5 @@
+/* WHAT IT DOES: cancel an animated move and snap the item back to where it
+ * began. */
 /* @implements 0x10041160 glide BrUiTweenReset_10047D10
  * @cpp_kind method
  * @cpp_symbol ?Reset@Tween41160@@QAEHXZ

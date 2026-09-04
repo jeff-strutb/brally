@@ -1,3 +1,5 @@
+/* WHAT IT DOES: enter a menu page, taking the shortcut path when the page is
+ * flagged as already prepared rather than laying it out again. */
 /* @implements 0x10041460 glide BrUiEnter_10048010
  * @cpp_kind method
  * @cpp_symbol ?Enter@BrPhase41E@@QAEHXZ

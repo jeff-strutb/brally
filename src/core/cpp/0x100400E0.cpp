@@ -1,3 +1,7 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, returning all the way to the root page rather than one level up. */
 /* @implements 0x100400E0 glide BrUiNavHook_10046C90
  * @cpp_kind free
  * @cpp_symbol ?BrUiNavHook_10046C90@@YAHPAVCtl400E0@@@Z

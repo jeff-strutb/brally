@@ -1,3 +1,5 @@
+/* WHAT IT DOES: set this item's caption from its own table by its own
+ * selection index, then lay it out. */
 /* @implements 0x10039270 glide BrUiText1003FD30
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003FD30@@YAHPAVObj39270@@@Z

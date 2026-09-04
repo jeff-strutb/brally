@@ -1,3 +1,6 @@
+/* WHAT IT DOES: advance the cheat-code entry one character: picks up the
+ * next symbol, moves to its slot, and ends the sequence when there are no
+ * more. */
 /* @implements 0x10040E60 glide BrUiStepCode_10047A10
  * @cpp_kind method
  * @cpp_symbol ?StepCode@Ui47A10@@QAEHXZ

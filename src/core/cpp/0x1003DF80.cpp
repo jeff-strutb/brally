@@ -1,3 +1,8 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, and this one also tears a live session down first if one is
+ * running. */
 /* @implements 0x1003DF80 glide BrOptFn10044A30
  * @cpp_kind method
  * @cpp_symbol ?Leave@Opt3DF80@@YAHPAVGameObj3DF80@@@Z

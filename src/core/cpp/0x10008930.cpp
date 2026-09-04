@@ -1,3 +1,6 @@
+/* WHAT IT DOES: look one entry up in the archive's table of contents by key,
+ * aborting with a message if it is not there. The callers treat a missing
+ * entry as unrecoverable. */
 /* @implements 0x10008930 glide M8930
  * @cpp_kind method
  * @cpp_symbol ?M8930@Tbl8900@@QAEHH@Z

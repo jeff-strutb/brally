@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page if a session is live, and otherwise open the
+ * session-browser page instead of doing nothing. */
 /* @implements 0x1003CD60 glide BrOpt3810
  * @cpp_kind method
  * @cpp_symbol ?BrOpt3810@@YAHPAVGameObj@@@Z

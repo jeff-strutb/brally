@@ -1,3 +1,5 @@
+/* WHAT IT DOES: choose this item's caption from a table when a mode flag is
+ * set, and a fixed fallback string when it is not. */
 /* @implements 0x100391F0 glide BrUiText1003FCB0
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003FCB0@@YAHPAVObj391F0@@@Z

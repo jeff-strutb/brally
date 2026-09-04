@@ -1,3 +1,5 @@
+/* WHAT IT DOES: release the input object this navigation controller holds,
+ * if it still holds one. */
 /* @implements 0x10059320 glide BrNavRelease_10059320
  * @cpp_kind method
  * @cpp_symbol ?Release@Nav59320@@QAEXXZ

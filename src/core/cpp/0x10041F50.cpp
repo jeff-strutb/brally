@@ -1,3 +1,5 @@
+/* WHAT IT DOES: shut a phase down, waiting up to a mode-dependent deadline
+ * for outstanding work to finish before releasing anything. */
 /* @implements 0x10041F50 glide BrPhaseShutdown_10048B20
  * @cpp_kind method
  * @cpp_symbol ?BrPhaseShutdown_10048B20@@YGXH@Z

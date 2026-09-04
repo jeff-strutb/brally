@@ -1,3 +1,6 @@
+/* WHAT IT DOES: handle a DirectPlay callback for one player record, ignoring
+ * the notifications flagged as uninteresting and otherwise updating that
+ * player's slot. */
 /* @implements 0x10036130 glide BrWmHook36130
  * @cpp_kind method
  * @cpp_symbol ?BrWmHook36130@@YGHHHPAURec36130@@IH@Z

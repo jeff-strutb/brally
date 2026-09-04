@@ -1,3 +1,5 @@
+/* WHAT IT DOES: read one archive entry into the caller's buffer -- seeks to
+ * its offset and reads its recorded length. */
 /* @implements 0x10008990 glide M8990
  * @cpp_kind method
  * @cpp_symbol ?M8990@Tbl8900@@QAEXIPAX@Z

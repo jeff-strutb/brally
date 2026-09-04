@@ -1,3 +1,6 @@
+/* WHAT IT DOES: work out the total for the selected entry and put it in this
+ * item's label; shows a fixed placeholder string when the mode has no total
+ * to show. */
 /* @implements 0x1003AA10 glide BrItemSetTotal_1003AA10
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetTotal_1003AA10@@YAHPAVObj3AA10@@@Z

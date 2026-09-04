@@ -1,3 +1,5 @@
+/* WHAT IT DOES: run one frame of a page: its two optional callbacks, the
+ * selection wrap, then every child page in turn. */
 /* @implements 0x10041980 glide BrUiPageFrame_10048530
  * @cpp_kind method
  * @cpp_symbol ?Frame@Phase32F@@QAEHXZ

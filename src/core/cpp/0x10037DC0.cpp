@@ -1,3 +1,5 @@
+/* WHAT IT DOES: draw a menu item's frame by tiling three sprites: a left
+ * cap, as many middle pieces as the item is wide, and a right cap. */
 /* @implements 0x10037DC0 glide BrUiHook85_1003E7A0
  * @cpp_kind method
  * @cpp_symbol ?BrUiHook85_1003E7A0@@YAHPAVGameObj@@@Z

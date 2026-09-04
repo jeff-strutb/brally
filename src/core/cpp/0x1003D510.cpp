@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page and return to its parent, clearing two state
+ * flags on the way out. */
 /* @implements 0x1003D510 glide BrOpt3FC0
  * @cpp_kind method
  * @cpp_symbol ?BrOpt3FC0@@YAHPAVGameObj@@@Z

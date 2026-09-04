@@ -1,3 +1,5 @@
+/* WHAT IT DOES: the same build-and-send for a larger event, with ten fields
+ * rather than six. */
 /* @implements 0x10004AD0 glide BrNetSend4AD0
  * @cpp_kind method
  * @cpp_symbol ?BrNetSend4AD0@@YAHPAXHHEEEHPADHE@Z

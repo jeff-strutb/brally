@@ -1,3 +1,6 @@
+/* WHAT IT DOES: prepare the front end before its main loop starts: clears
+ * the image table and the load counters so the first page starts from a
+ * known state. */
 /* @implements 0x10056260 glide BrUiBootPreLoopGate
  * @cpp_kind method
  * @cpp_symbol ?BrUiBootPreLoopGate@@YAHXZ

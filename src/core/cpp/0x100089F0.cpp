@@ -1,3 +1,5 @@
+/* WHAT IT DOES: allocate a buffer the size of one archive entry, remember it
+ * against that entry, and return it. */
 /* @implements 0x100089F0 glide M89F0
  * @cpp_kind method
  * @cpp_symbol ?M89F0@Tbl8900@@QAEHI@Z

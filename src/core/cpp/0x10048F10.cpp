@@ -1,3 +1,8 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen,
+ * and it loads the season data file before laying out, so the page can show
+ * what is in it. */
 /* @implements 0x10048F10 glide BrExt_10050060
  * @cpp_kind free
  * @cpp_symbol ?BrExt_10050060@@YAHPAVGameUi@@@Z

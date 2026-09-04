@@ -1,3 +1,7 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, and it tears down two side panels before the page itself. */
 /* @implements 0x10040420 glide BrPhaseLeave_10046FD0
  * @cpp_kind free
  * @cpp_symbol ?BrPhaseLeave_10046FD0@@YAHPAVCtl40420@@@Z

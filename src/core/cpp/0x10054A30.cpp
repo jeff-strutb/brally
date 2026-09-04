@@ -1,3 +1,5 @@
+/* WHAT IT DOES: add a row to a slot list, refusing once the list is full
+ * (100 rows) and refusing a null name. Returns whether the row was added. */
 /* @implements 0x10054A30 glide BrSlotAdd_10054A30
  * @cpp_kind method
  * @cpp_symbol ?Add@Slots54A30@@QAEHPBDHDPBHH@Z

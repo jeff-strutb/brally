@@ -1,3 +1,6 @@
+/* WHAT IT DOES: test whether the mouse is inside a rectangle, with an extra
+ * condition for controls flagged as needing it. The hit test behind mouse-
+ * driven menus. */
 /* @implements 0x10055330 glide BrUiHitTest_10055330
  * @cpp_kind method
  * @cpp_symbol ?HitTest@Ui55330@@QAEHPAURect55330@@@Z

@@ -1,3 +1,6 @@
+/* WHAT IT DOES: check whether a DIFFERENT page is already the active one and
+ * flag the clash if so, which is what stops two pages both thinking they
+ * have the focus. */
 /* @implements 0x100414B0 glide BrUiCheckOther_10048060
  * @cpp_kind method
  * @cpp_symbol ?CheckOther@UiPage@@QAEHXZ

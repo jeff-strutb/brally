@@ -1,3 +1,5 @@
+/* WHAT IT DOES: destroy a page object, releasing the two sub-objects it
+ * owns. The compiler-emitted destructor. */
 /* @implements 0x10041CC0 glide BrPhaseDtor_10048870
  * @cpp_kind dtor
  * @cpp_symbol ??1Phase32@@QAE@XZ
