@@ -235,19 +235,22 @@ int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
 /* @implements 0x100310F0 d3d BrMat4Scale */
 void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz)
 {
-    /* orig flds sx and integer-moves sy/sz. Mention sx first so it takes
-     * the fld/fstp; sy then sz are the integer copies. */
+    /* orig flds sx and integer-moves sy/sz.  Written ROW BY ROW, exactly
+     * like BrMat4Translate below: the zero stores that separate sy from sz
+     * in the source are what make VC5 load sz into the SAME register it
+     * just freed storing sy, instead of hoisting both loads into two
+     * registers.  Grouping the diagonal first costs those two bytes. */
     pM->m[0][0] = sx;
-    pM->m[1][1] = sy;
-    pM->m[2][2] = sz;
     pM->m[0][1] = 0.0f;
     pM->m[0][2] = 0.0f;
     pM->m[0][3] = 0.0f;
     pM->m[1][0] = 0.0f;
+    pM->m[1][1] = sy;
     pM->m[1][2] = 0.0f;
     pM->m[1][3] = 0.0f;
     pM->m[2][0] = 0.0f;
     pM->m[2][1] = 0.0f;
+    pM->m[2][2] = sz;
     pM->m[2][3] = 0.0f;
     pM->m[3][0] = 0.0f;
     pM->m[3][1] = 0.0f;
