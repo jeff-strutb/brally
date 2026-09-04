@@ -3901,6 +3901,19 @@ fmul [coef]`). Giving term 3 its own pointer local (`float *pTz = pObj + 0xe`)
 so it reads `pTz[0]` flipped it to coefficient-first. Sixteen register-blind
 multiset rows, two instructions and one byte, on a one-line change.
 
+‼ **IT NEEDS A MULTI-USE POINTER, and that limit was measured the same day.**
+On 0x1000A110 a float sum read its two operands from the other sources
+(`fld [esp+S]; fadd [ebx+0x30]` in the original, the reverse in ours) and the
+struct term was `ptr[12]` — apparently the identical set-up. Giving it its own
+`ptr[0]` is BYTE-IDENTICAL there, because that pointer is SINGLE-USE and VC5
+forward-substitutes the constant offset straight back into `[ebx+0x30]`; there
+is nothing left to rank. The lever only exists where the pointer already
+survives to the use, as the three row pointers on 0x1000EAF0 do. A fresh
+single-use pointer is inert — the same fact the "a pointer local to an array
+is free" entry states from the other side. (Also measured there: swapping the
+summands of a TWO-term float sum is canonicalised exactly like the four-term
+ones.)
+
 **The screen, and it is cheap: when several parallel terms compile the same
 way and ONE does not, compare how the odd term SPELLS its operands, not what
 they are.** Symmetric terms want symmetric spellings; a term reached at a

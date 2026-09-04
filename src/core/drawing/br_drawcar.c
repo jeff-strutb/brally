@@ -948,6 +948,28 @@ static void wheel_call(unsigned char *car)
  *   the other sources.  That is the commutative-operand class the N64 twin
  *   is the oracle for (see CLAUDE.md); nobody has looked at it here.
  *
+ * SESSION 15b PROBES on that float operand swap, BOTH DEAD -- do not
+ * re-run.  The site is the second light call's `pCarF[12] + eyeScale`
+ * argument (orig 0x6df `fld [esp+0x4c]; fadd [ebx+0x30]`, ours `fld
+ * [ebx+0x30]; fadd [esp+0x58]`): the original flds the STACK LOCAL and adds
+ * the struct field, we do the reverse.
+ *   (a) swapping the summands in the source (`eyeScale + pCarF[12]`):
+ *       BYTE-IDENTICAL.  A two-term float sum is canonicalised exactly like
+ *       the four-term ones -- summand order carries nothing.
+ *   (b) `pCarF[12]` reached as `ptr[0]` off its own pointer
+ *       (`pCarP = (const float *)car + 12`), i.e. THE SAME LEVER THAT CLOSED
+ *       0x1000EAF0's term-3 flip the same day: BYTE-IDENTICAL here.
+ *       ‼ AND THAT QUALIFIES THE IDIOM, which is worth more than the probe.
+ *       On 0x1000EAF0 the pointer locals were MULTI-USE and already lived in
+ *       registers, so `ptr[0]` against `ptr[2]` really was two different
+ *       addressing expressions.  Here `pCarP` is single-use and VC5 forward-
+ *       substitutes the constant offset straight back into `[ebx+0x30]`, so
+ *       there is nothing left to rank.  The operand-KIND lever needs the
+ *       pointer to survive to the use; a fresh single-use pointer is inert
+ *       (which the "a pointer local to an array is free" entry already says,
+ *       from the other direction).
+ *   So this swap is allocation at a 20-argument push stream, not spelling.
+ *
  * SESSION 15 (2026-09-03) -- the session-14 fix does NOT transfer to arms
  * 2/3, and the reason is worth more than the probes: ‼ THE ARM-2/3 SHARED
  * TAIL HAS THE SAME DEFECT AND IT IS BLOCKED BY THE FRAME.
