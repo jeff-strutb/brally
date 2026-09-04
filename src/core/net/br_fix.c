@@ -10,6 +10,8 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include <stdint.h>
+#include <math.h>
+#include <string.h>
 
 #ifdef BR_MATCHING_BUILD
 
@@ -166,3 +168,125 @@ float BrFixUnpackS8Q3(int32_t v)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+/* =====================================================================
+ * The packers: the wire side of the same codecs.
+ * ===================================================================== */
+
+/* 0x1007DB00 is MSVC's `floor`: it forces the x87 control word to the value at
+ * 0x100BD8E0 (0x173F -- RC = 01, round toward -infinity), runs `frndint`, and
+ * restores. Verified rather than assumed, because with RC = 11 the same code
+ * would be `trunc` and every rounding here would change. */
+#define BrFloor(d) floor(d)
+
+/* 0x1007C8A0 is MSVC's __ftol: set RC to chop, `fistp qword`, return the LOW
+ * dword of the 64-bit result.
+ *
+ * DEVIATION: a plain `(int32_t)d` is undefined in C once d leaves int32 range,
+ * and the original is well-defined there -- x87 stores the "integer
+ * indefinite" 0x8000000000000000 when the value does not fit in 64 bits, whose
+ * low dword is 0, and simply truncates the high dword away otherwise. Both are
+ * reproduced explicitly so the clamps downstream see what they saw before. */
+/* WHAT IT DOES: the compiler's own float-to-integer conversion, transcribed
+ * because the game's rounding depends on exactly how it behaves at the
+ * edges. It chops toward zero and keeps only the bottom half of the result,
+ * and a value too big to convert at all comes out as zero rather than as
+ * garbage. */
+/* @d3donly 0x1007C8A0 BrFtol -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
+static int32_t BrFtol(double d)
+{
+    int64_t  wide;
+    uint32_t lo;
+    int32_t  out;
+
+    if (!(d >= -9223372036854775808.0) || !(d < 9223372036854775808.0))
+        return 0;                       /* indefinite -> low dword is zero */
+
+    wide = (int64_t)d;                  /* truncates toward zero, like chop */
+    lo   = (uint32_t)((uint64_t)wide & 0xFFFFFFFFu);
+    memcpy(&out, &lo, sizeof out);      /* reinterpret, do not convert */
+    return out;
+}
+
+/* 0x100066E0.  Constants: 0x1008F0EC = -8192.0f, 0x1008F0D0 = 0.5f,
+ * 0x1008F0F0 = 0.0 (double), 0x1008F0F8 = 16777215.0 (double).
+ *
+ * The clamp happens on the FLOAT, before __ftol, so the int conversion can
+ * never overflow here. The low guard is written as "C0 set", which x87 also
+ * sets for unordered, so a NaN input lands on 0 -- kept via !(d >= 0.0). */
+/* WHAT IT DOES: packs a position coordinate into a 24-bit whole number for
+ * the network, rounding to nearest with halves going up and pinning the
+ * result inside what 24 bits can hold. The pinning happens before the
+ * conversion, so it can never overflow. */
+/* @implements 0x100066E0 d3d BrFixPackU24Q13 */
+int32_t BrFixPackU24Q13(float v)
+{
+#ifdef BR_MATCHING_BUILD
+    /* The scale and bias are FLOAT constants (single-precision fmul/fsubr);
+     * the clamp stays in ST(0), and the final `(int32_t)` is the plain cast
+     * VC5 tail-jumps to __ftol -- the same form as BrFixPackS24Q1. */
+    double d = BrFloor(0.5f - v * -8192.0f);
+
+    if (!(d >= 0.0))
+        d = 0.0;
+    if (d > 16777215.0)
+        d = 16777215.0;
+    return (int32_t)d;
+#else
+    double d = BrFloor(0.5 - (double)v * -8192.0);
+
+    if (!(d >= 0.0))
+        d = 0.0;
+    if (d > 16777215.0)
+        d = 16777215.0;
+    return BrFtol(d);
+#endif
+}
+
+/* 0x10006730.  0x1008F100 = -2.0f. Clamp is on the INTEGER, after __ftol, and
+ * with signed compares (jge/jle). */
+/* WHAT IT DOES: packs a signed value at half-unit resolution into 24 bits
+ * for the network, pinned to that range. */
+/* @implements 0x10006730 d3d BrFixPackS24Q1 */
+int32_t BrFixPackS24Q1(float v)
+{
+#ifdef BR_MATCHING_BUILD
+    /* The original leaves the scaled value in ST(0) and `call __ftol`, and a
+     * plain cast is the only form VC5 compiles to that. */
+    int32_t r = (int32_t)BrFloor(0.5f - v * -2.0f);
+#else
+    /* Host: the cast is undefined once the scaled value leaves int32, and
+     * ARM64 saturates where __ftol wraps. The clamp below is applied to the
+     * INTEGER, so it sees the wrapped value -- go through BrFtol to keep it. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -2.0f));
+#endif
+
+    if (r < -8388608)
+        r = -8388608;
+    if (r > 8388607)
+        r = 8388607;
+    return r;
+}
+
+/* 0x10006770.  0x1008F104 = -128.0f. Clamp is on the integer, as above. */
+/* WHAT IT DOES: packs a signed height into 16 bits at 1/128 resolution for
+ * the network, pinned to that range. */
+/* @implements 0x10006770 d3d BrFixPackS16Q7 */
+int32_t BrFixPackS16Q7(float v)
+{
+#ifdef BR_MATCHING_BUILD
+    /* As BrFixPackS24Q1 above: plain cast so VC5 emits `call __ftol`. */
+    int32_t r = (int32_t)BrFloor(0.5f - v * -128.0f);
+#else
+    /* Host: __ftol's low-dword wrap, which the integer clamp below relies on.
+     * 1.0e9 scales to ~1.28e11 -- fits in int64, so it wraps NEGATIVE and
+     * clamps to -32768 rather than saturating to +32767. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -128.0f));
+#endif
+
+    if (r < -32768)
+        r = -32768;
+    if (r > 32767)
+        r = 32767;
+    return r;
+}
