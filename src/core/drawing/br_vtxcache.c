@@ -10,6 +10,11 @@
  * fixups in the original and comes with them.
  *
  * See slice1_05.h for the per-function notes and gotchas.
+ *
+ * ‼ br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
+ * include.  Nothing here calls into it, but without it 0x10019210 loses its
+ * match (12 differing bytes, and the best variant slides from /O2 to
+ * /O2 /Oy-).  br_rdpmode.c carries the same warning for the same reason.
  */
 #ifdef BR_MATCHING_BUILD
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
