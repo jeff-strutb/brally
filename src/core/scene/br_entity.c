@@ -1,21 +1,28 @@
 /* br_entity.c -- the world's objects and where they sit.
  *
  * RESPONSIBILITY: what is in the world and where -- setting an entity up,
- * linking it to its record in the parallel table, and moving it.
+ * linking it to its record in the parallel table, counting the ones in use,
+ * and rebinding their graphics handles.
  *
  * Moved here out of the address batches under src/core/; the bodies are the
  * text that was matched there, unchanged.
  */
+#include <string.h>
+
 #include "slice1_05.h"
 #ifdef BR_MATCHING_BUILD
+/* Orig takes no args: it walks DAT_10af2110 / DAT_100b2f04 directly. */
+#define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* slice1_09.h declares this cdecl; the original is thiscall with no stack
  * args.  Hide that prototype so the matching body can use __fastcall --
  * the same split src/core/slice1_09.c made while this lived there. */
 #define BrEntityBindAux      BrEntityBindAux_cdecl
 #endif
 #include "slice1_09.h"   /* BR_ENTITY_* offsets and strides, BrMat4 */
+#include "slice2_12.h"   /* the BrEntityCountActive prototype */
 #ifdef BR_MATCHING_BUILD
 #undef BrEntityBindAux
+#undef BrEntityCountActive
 #endif
 
 /* 0x10035FE0 */
@@ -117,6 +124,59 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
 
     *ppAux = pAux + idx * BR_ENTITY_AUX_STRIDE;
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
+}
+#endif
+
+/* 0x10005470.  BR_ENTITY_STRIDE (0x2B68) comes from slice1_09.h.
+ *
+ * NOTE: the base here is 0x10ACEDB0, which is NOT the 0x10ACDEA8 that pass
+ * 09's entity helpers use -- the two differ by 0xF08, not by a whole number of
+ * records. Either this walks a different array or it starts 0xF08 into the
+ * record; the stride and the "first dword non-zero" test are all this code
+ * establishes, so the base stays a parameter. */
+/* WHAT IT DOES: counts how many entries in a table of cars or other world
+ * objects are in use, by checking each record's first word for a non-zero
+ * value. */
+/* @implements 0x10005470 d3d BrEntityCountActive */
+#ifdef BR_MATCHING_BUILD
+/* Orig: `mov edx,[DAT_100b2f04]; mov ecx, offset DAT_10af2110` then a
+ * countdown do-while.  Parameters are a port convenience. */
+extern int32_t DAT_100b2f04;
+extern unsigned char DAT_10af2110[];
+uint32_t BrEntityCountActive(void)
+{
+    int32_t n = DAT_100b2f04;
+    uint32_t c = 0;
+    unsigned char *p;
+
+    /* Orig `test edx,edx; jle ret` — skip the countdown, do not early-return
+     * (that duplicates `ret`). */
+    if (n > 0) {
+        p = DAT_10af2110;
+        do {
+            if (*(int32_t *)p != 0)
+                ++c;
+            p += BR_ENTITY_STRIDE;
+            --n;
+        } while (n != 0);
+    }
+    return c;
+}
+#else
+uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
+{
+    const unsigned char *p = (const unsigned char *)pvRecords;
+    uint32_t             n = 0;
+    int32_t              i;
+
+    for (i = 0; i < cRecords; ++i) {
+        uint32_t first;
+        memcpy(&first, p, sizeof first);        /* byte order is irrelevant */
+        if (first != 0)
+            ++n;
+        p += BR_ENTITY_STRIDE;
+    }
+    return n;
 }
 #endif
 
