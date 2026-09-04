@@ -753,6 +753,7 @@ glide_va,name,module,basis,file
 0x1006B490,BrSndVoiceBufRelease,audio,description,src/core/slice6_76.c
 0x1006B4C0,BrSndVoiceBufStop,audio,description,src/core/slice6_76.c
 0x1006B4F0,BrX10072580,audio,description,src/core/slice6_76.c
+0x1006B530,BrSndChanBind,audio,neighbour,src/core/slice6_76.c
 0x1006B5B0,BrSndVoiceSetPan,audio,neighbour-1,src/core/ghidra_batch.c
 0x1006B670,BrSndBufSetVolume,audio,description,src/core/slice6_76.c
 0x1006B6C0,BrSndSetVolumePairF,audio,description,src/core/slice6_77.c
