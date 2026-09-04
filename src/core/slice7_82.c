@@ -258,37 +258,6 @@ int BrDlIsRegistered(const void *pv)
     return 0;
 }
 
-/* 0x10058700 / Glide 0x100515B0, 72 bytes.
- *
- * The original's loop bound is the address 0x10AA2598, reached from
- * 0x10AA2538 in steps of 12 -- eight records, which is br_slots.h's
- * BR_SLOT_COUNT.  The match key is the record's FIRST dword (the id) against
- * the UI object's +0x08.
- */
-/* WHAT IT DOES: flips one player slot's flag on or off and reports the new
- * value, finding the slot by matching an identifier against the one the
- * current object carries. Nothing happens, and it answers no, if there is no
- * such slot. */
-/* @implements 0x10058700 d3d BrSub10058700 */
-int BrSub10058700(void)
-{
-    int i;
-
-    if (g_brPA9D008 == NULL) {
-        return 0;
-    }
-
-    for (i = 0; i < BR_SLOT_COUNT; ++i) {
-        if (g_aBrAA2538[i].id == g_brPA9D008->f08) {
-            /* `sete cl` on the OLD value, store, then re-read for the
-             * return -- the original really does load it back. */
-            g_aBrAA2538[i].a = (g_aBrAA2538[i].a == 0) ? 1 : 0;
-            return g_aBrAA2538[i].a;
-        }
-    }
-    return 0;
-}
-
 /* 0x1003C520 / Glide 0x10035BB0, 46 bytes. */
 
 int32_t (*g_pfnBrCoCreateDPlay)(void **ppOut) = NULL;
