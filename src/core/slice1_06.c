@@ -300,7 +300,21 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
      * the second call after; every probed spelling (nested if/else, three
      * goto flattenings, else-arm, mixed break/goto) makes VC5 thread the
      * jump and move one arm out-of-line -- one je-vs-jne with the OOM arm
-     * at the end. */
+     * at the end.
+     * 2026-09-03, and this narrows it to a genuine either/or: writing the
+     * body as a PLAIN if/else (OOM the then-arm, the second call the else
+     * arm, no do-while) DOES fix the polarity -- VC5 then emits the
+     * original's `test edi,edi / jne <call2>` with the OOM arm falling
+     * through.  But it will not also emit the original's `jmp cleanup`: it
+     * places the join (cleanup) immediately after the OOM arm to save those
+     * two bytes and sinks the call2 block past it, so the success test
+     * flips from the original's `jge <success>` to `jl <cleanup>`.  Result
+     * 140/142 B, regnorm 1+2 -- strictly worse than the do-while's
+     * size-exact 1+1, so the do-while spelling stands.  The two residues are
+     * mutually exclusive under VC5's join placement; DEAD, do not re-run:
+     * plain if/else with an early `return 0`, the same with `goto success`,
+     * if/else + `goto cleanup` in the OOM arm, and the literal transcription
+     * `if (pv != NULL) goto call2;` (which VC5 inverts back to `je`, 2+3). */
     do {
         hr = pfn(pObj, pParam, NULL, &cb);
         if (hr != BR_COM_E_BUFFERTOOSMALL)
