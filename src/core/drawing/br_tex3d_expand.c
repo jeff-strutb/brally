@@ -1,5 +1,18 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * ‼ 2026-09-04: the "named temp vs repeated expression" lever that moved
+ * 0x1000EAF0's allocation the same day (inlining a Ghidra-named multi-use
+ * local changes what is an allocation CANDIDATE) is DEAD HERE, do not
+ * re-run: the eight channel base/delta temps of the three I4 blend bodies
+ * (`lo0`/`uVar6`/`uVar7`/`uVar8`, `iVar16`/`iVar13`/`iVar18`/`iVar20`)
+ * spelled inline as `(param_N & 0xff)` / `((param_M & 0xff) - (param_N &
+ * 0xff))` at every use, exactly as the IA8 arm already spells its own.
+ * VC5 does NOT hoist the inline forms the way it hoists the named
+ * assignments: 2,408 -> 2,389 instructions (18 SHORT of the original),
+ * 8,461 -> 8,412 bytes, register-blind 40+41 -> 47+29, 38 regions at key
+ * 10 with a new 262-byte skew.  On this function the Ghidra temps are
+ * load-bearing: they are the loop-invariant hoist the original has.
+ *
  * ‼ 2026-09-03 (session 16): THE 0x15b8..0x19fd STRETCH IS NOW MEASURED, not
  * just read.  Session 14 read it by eye and called it T3a; that verdict was
  * right but it never said how much is there, so every later ranking had to
