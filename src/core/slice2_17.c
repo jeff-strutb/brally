@@ -1174,51 +1174,6 @@ void BrCarStateRestore(void)
 /* 5. small global glue                                               */
 /* ================================================================== */
 
-/* 0x1002BF40 */
-/* WHAT IT DOES: asks whether something is already in a list. A null thing is
- * reported as present without the list being looked at, which is how callers
- * get "nothing to do" for free. */
-/* @implements 0x1002BF40 d3d BrPtrListContains */
-#ifdef BR_MATCHING_BUILD
-/* The original takes only pv and reads the list at two absolute addresses
- * (count 0x1067B548, array 0x1067B550).  The port passes the list in. */
-extern int   g_br67B548;
-extern void *g_br67B550[];
-
-int BrPtrListContains(const void *pv)
-{
-    int i;
-    int n;
-
-    if (pv == NULL)
-        return 1;                    /* NULL short-circuits to "present" */
-
-    n = g_br67B548;
-    for (i = 0; i < n; ++i)
-        if (g_br67B550[i] == pv)
-            return 1;
-
-    return 0;
-}
-#else
-int BrPtrListContains(const BrPtrList *pList, const void *pv)
-{
-    int i;
-
-    if (pv == NULL)
-        return 1;                    /* NULL short-circuits to "present" */
-
-    if (pList->n <= 0)
-        return 0;
-
-    for (i = 0; i < pList->n; ++i)
-        if (pList->ap[i] == pv)
-            return 1;
-
-    return 0;
-}
-#endif
-
 /* 0x1002C210 */
 /* WHAT IT DOES: switch to the other of two buffer banks and wipe it ready for
  * use -- double buffering. It resets three channels to a default state, flips
