@@ -403,33 +403,6 @@ void BrNodeRunMarkPass(void)
 /* 5. Car per-frame / per-race init                                     */
 /* ==================================================================== */
 
-/* 0x10061BE0 */
-/* WHAT IT DOES: rebuilds the four transform matrices that place a car and
- * its parts in the world, from the physics state of each. Called after
- * anything moves the car -- the physics step, or a network update. */
-/* @implements 0x10061BE0 d3d BrCarBuildMatrices */
-/* @implements 0x1005AC60 glide BrCarBuildMatrices */
-void BrCarBuildMatrices(BrCar *pCar)
-{
-    uint8_t *pSub;
-
-    BrSub1006F4A0(CAR_AT(pCar, 0x164));
-
-    /* Orig unrolls the four sub-object pointers at +0x168..+0x174. */
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 0);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 1);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 2);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 3);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-}
-
 /* 0x100633E0 */
 /* WHAT IT DOES: zeroes each block of memory in a list of address-and-size
  * pairs, stopping at the first entry with no address. A block of size zero
@@ -757,17 +730,6 @@ extern unsigned char DAT_100ad798;
 extern unsigned char DAT_100bb2e0;
 extern unsigned char DAT_100bb2e8;
 int FUN_1006e590();
-
-/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
-/* @implements 0x1005C440 glide BrThunk5C440 */
-
-int BrThunk5C440(void)
-
-{
-  FUN_1006e590();
-  return;
-}
-
 /* WHAT IT DOES: step selection index A up (clamped at 9) and latch its byte from the
  * 4-stride table at 0x100AD770 into 0x100BB2E0. */
 /* @implements 0x10059DC0 glide BrUiSelAInc */
