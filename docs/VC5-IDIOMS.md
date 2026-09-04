@@ -2840,11 +2840,29 @@ instructions; converting the twelve doubling sites in 0x100250D0 costs 36 rows
 and twenty-nine instructions. Those originals genuinely *do* spell an assign
 plus a fix-up — they emit the compare and branch with no home anywhere.
 
-**So the screen is: does the ORIGINAL home the value on both edges?** If it
-writes a slot in each arm and reloads at the use, the source is an if/else. If
-it keeps the value in a register across the test, the source is
-assign-then-override, and converting it will cost you. Read the bytes at the
-site; there is nothing to sweep.
+‼‼ **AND THE CASE THAT MOTIVATED THIS ENTRY WAS ITSELF WRONG — read this
+before using the idiom.** The 0x1000EAF0 site above was converted to an
+if/else on the strength of the original homing the value on both edges, and it
+improved *every* number: three instructions, six bytes, one register-blind
+row. Then the original was actually disassembled at the site, and it is
+`mov ebx,eax; test ebx,ebx; jge; mov ebx,0x1f3` — **assign-then-override**. The
+if/else INVERTS the arms (a fall-through constant with `jl`, against the
+original's `jge` over the constant), so it could never converge. The two homes
+were register pressure from an unrelated wall, not the source shape. Reverted.
+
+**So the screen is NOT "does the original home the value".** Homes are
+allocation and can come from anywhere. The screen is the **ARM ORDER at the
+branch**:
+
+    jge over `mov x,CONST`        ->  x = a; if (x < 0) x = CONST;
+    CONST up front, `jl` to skip  ->  if (c) x = CONST; else x = a;
+
+**Check the arm order against the original's branch before accepting any
+control-flow change, and never on the totals alone** — a spelling can improve
+every number this project measures and still be provably not the source.
+(Related: the value TESTED matters as documentation even when it is
+byte-identical — the original tests the assigned variable, not the temp it was
+assigned from.)
 
 ## Naming a byte temp: when it helps and when it costs
 *(proven 2026-09-03 on 0x1000A110 arm 3; read together with the "do not name a
