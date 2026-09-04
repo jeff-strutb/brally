@@ -90,4 +90,8 @@ int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
  * +0x14, +0x28 and a hardcoded 1.0f (0x3F800000) on +0x3C. */
 void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz);
 
+/* 0x1002A7F0  build a translation matrix: identity with (dx, dy, dz) in the
+ * bottom row at +0x30, +0x34, +0x38 and 1.0f on the diagonal. */
+void BrMat4Translate(BrMat4 *pM, float dx, float dy, float dz);
+
 #endif /* BR_MAT_H */

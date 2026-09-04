@@ -254,3 +254,27 @@ void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz)
     pM->m[3][2] = 0.0f;
     pM->m[3][3] = 1.0f;
 }
+
+/* WHAT IT DOES: builds a move matrix -- applying it shifts a point by
+ * (dx, dy, dz) and leaves its orientation alone.  The identity with the
+ * offsets written into the bottom row; the twin of BrMat4Scale above. */
+/* @implements 0x1002A7F0 glide BrMat4Translate */
+void BrMat4Translate(BrMat4 *pM, float dx, float dy, float dz)
+{
+    pM->m[0][0] = 1.0f;
+    pM->m[0][1] = 0.0f;
+    pM->m[0][2] = 0.0f;
+    pM->m[0][3] = 0.0f;
+    pM->m[1][0] = 0.0f;
+    pM->m[1][1] = 1.0f;
+    pM->m[1][2] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][0] = 0.0f;
+    pM->m[2][1] = 0.0f;
+    pM->m[2][2] = 1.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[3][0] = dx;
+    pM->m[3][1] = dy;
+    pM->m[3][2] = dz;
+    pM->m[3][3] = 1.0f;
+}
