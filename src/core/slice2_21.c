@@ -397,26 +397,6 @@ void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
     }
 }
 
-/* 0x1003A950 */
-/* WHAT IT DOES: asks whether a point falls inside the covered area, by
- * dropping it into the coarse grid and checking that cell. */
-/* @implements 0x1003A950 d3d BrSpanTestPoint */
-/* @implements 0x10033FD0 glide BrSpanTestPoint */
-#ifdef BR_MATCHING_BUILD
-int BrSpanTestPoint(float x, float y)
-{
-    /* Right-to-left: y ftol first, its eax is pushed, then x ftol, Contains. */
-    return BrSpanContains(BrFtolArg(x * K_CELL_RECIP),
-                          BrFtolArg(y * K_CELL_RECIP));
-}
-#else
-int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
-{
-    return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
-                                   BrFtolArg(y * K_CELL_RECIP));
-}
-#endif
-
 /* 0x1003A990 */
 /* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a
  * top point, a bottom point and a four-corner ring between them -- by wiping the
