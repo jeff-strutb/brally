@@ -175,19 +175,6 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 #undef v2
 }
 
-/* 0x10075340 */
-/* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
- * perspective" values, undoing anything that had been left there. */
-/* @implements 0x10075340 d3d BrMat4SetLastColumn */
-/* @n64 0x8021EB30 exact */
-void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
-{
-    pM->m[3][3] = 1.0f;
-    pM->m[2][3] = 0.0f;
-    pM->m[1][3] = 0.0f;
-    pM->m[0][3] = 0.0f;
-}
-
 /* 0x10074B70 */
 void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
                                  const BrMat4 *pS)
