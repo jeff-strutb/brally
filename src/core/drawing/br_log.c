@@ -8,7 +8,9 @@
  * the dead end itself: it shuts the picture down, draws one centred line on
  * a blank screen and then spins until Escape quits the game.
  *
- * slice4_52.c's preamble comes with it, below its own section.
+ * slice4_52.c's preamble comes with it, below its own section, and
+ * slice6_72.c's with 0x1006FF50 -- the de-duplicating accumulator that
+ * builds the running message buffer.
  *
  * slice2_19.c's preamble is carried over verbatim.  An include set that
  * looks redundant has already been shown elsewhere in this module to move
@@ -180,3 +182,34 @@ void BrLogPrint(const void *p)
     }
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <string.h>
+
+#include "slice6_72.h"
+
+
+#ifdef BR_MATCHING_BUILD
+
+extern char DAT_100acad8[];
+extern char DAT_118ee590[];
+
+/* WHAT IT DOES: append a string to a running log buffer, but only if it is
+ * not already in there -- a crude de-duplicating accumulator, so a message
+ * repeated every frame appears once. Adds a separator after each new entry. */
+/* @implements 0x1006FF50 glide FUN_1006ff50 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_1006ff50(char *param_1)
+
+{
+  if (strstr(DAT_118ee590, param_1) == 0) {
+    strcat(DAT_118ee590, param_1);
+    strcat(DAT_118ee590, DAT_100acad8);
+  }
+}
+
+#endif /* BR_MATCHING_BUILD */
