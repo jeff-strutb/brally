@@ -6,7 +6,7 @@ br_seg
 br_vec
 slice1_05 slice1_03
 br_tex3d slice1_04
-br_trkscene br_track slice2_17 br_vecd
+br_trkscene gamedata_br_track slice2_17 br_vecd
 br_bits
 br_dlshared
 br_gamestep
