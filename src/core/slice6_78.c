@@ -255,39 +255,9 @@ int32_t g_br18A9878;
 int32_t g_br18AA098;
 void   *g_br18AA0A0;
 
-/* WHAT IT DOES: creates the unnamed pair-ring mutex and empties the ring. */
-/* @implements 0x10074F20 d3d BrMutexCreateAA0A0 */
-void *BrMutexCreateAA0A0(void)
-{
-    void *h;
-
-    g_br18A9878 = 0;
-    g_br18AA098 = 0;
-#ifdef BR_MATCHING_BUILD
-    h = CreateMutexA(0, 0, 0);
-#else
-    h = NULL;
-#endif
-    g_br18AA0A0 = h;
-    return h;
-}
-
-/* WHAT IT DOES: closes that mutex and empties the ring again. */
-/* @implements 0x10074F40 d3d BrMutexCloseAA0A0 */
-void BrMutexCloseAA0A0(void)
-{
-    void *h;
-
-    h = g_br18AA0A0;
-    g_br18A9878 = 0;
-    g_br18AA098 = 0;
-#ifdef BR_MATCHING_BUILD
-    (void)CloseHandle(h);
-#else
-    (void)h;
-#endif
-    g_br18AA0A0 = NULL;
-}
+/* 0x10074F20 BrMutexCreateAA0A0 and 0x10074F40 BrMutexCloseAA0A0 now live
+ * in src/core/startup/br_ringmutex.c; the three globals they share with the
+ * ring readers below stay defined here. */
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
