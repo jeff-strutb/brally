@@ -1256,14 +1256,6 @@ int BrCtrlCfgBoot(void)
   return;
 }
 
-/* WHAT IT DOES: return a pointer to the primary replay data buffer. */
-/* @implements 0x10063B40 glide BrReplayGetBuf */
-
-char * BrReplayGetBuf(void)
-
-{
-  return &DAT_10b73668;
-}
 
 /* WHAT IT DOES: return the byte size of the current replay (frame count * 0x18). */
 /* @implements 0x10063B50 glide BrReplayGetSize */
