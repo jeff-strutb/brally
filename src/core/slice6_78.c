@@ -324,26 +324,6 @@ void BrChkFClose(FILE **ppFile)
  * 6. The CD track query
  * ========================================================================== */
 
-/* 0x10002490 */
-/* WHAT IT DOES: reports which CD audio track is playing, or zero if there is
- * none -- CD music is off, nothing is playing, or the disc is not readable
- * all give zero. */
-/* @implements 0x10002490 d3d BrCdTrackGetEar */
-int BrCdTrackGetEar(void)
-{
-    /* Two success tests share one fail-out (`je` to `xor eax,eax / ret`).
-     * Early `return 0` inverts the branches. */
-    if (g_brCdEnabled != 0) {
-        if (g_brCdPlaying != 0) {
-            /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
-             * g_brCdMediaOk and ANDed with the track, not a branch.  The
-             * track is loaded either way. */
-            return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
-        }
-    }
-    return 0;
-}
-
 /* 0x10002910.  Both arms are tail jumps; the dispatcher adds nothing. */
 int BrCdTrackGet(void)
 {
@@ -509,15 +489,6 @@ extern funcptr DAT_118ed1d0;
 __declspec(dllimport) int __stdcall WaitForSingleObject(void *hHandle, unsigned int dwMilliseconds);
 __declspec(dllimport) int __stdcall ReleaseMutex(void *hMutex);
 extern int DAT_1021c788;
-
-/* WHAT IT DOES: return the value of the global at 0x1021C788. */
-/* @implements 0x100027A0 glide BrGetGlobal_1C788 */
-
-int BrGetGlobal_1C788(void)
-
-{
-  return DAT_1021c788;
-}
 
 /* WHAT IT DOES: under the queue mutex, append an (id, addr) pair to the 256-entry
  * texture re-download ring at 0x118EC998, wrapping the write index at 0x100. */
