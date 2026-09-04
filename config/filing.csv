@@ -68,7 +68,7 @@ glide_va,name,module,basis,file
 0x10006060,BrNetSlotGetF004,startup,neighbour-1,src/core/generated/0x10006060.c
 0x100060A0,BrGetGlobal_94294,startup,neighbour-1,src/core/slice2_12.c
 0x100060B0,BrNetStackPop,startup,neighbour-1,src/core/generated/0x100060B0.c
-0x10006100,BrNetStackPop221288,startup,description,src/core/slice2_12.c
+0x10006100,BrNetStackPop221288,net,manual,src/core/slice2_12.c
 0x10006150,BrNetSlotGetF030,startup,neighbour-1,src/core/generated/0x10006150.c
 0x100061B0,BrNetGetA102212D0,startup,neighbour-1,src/core/generated/0x100061B0.c
 0x100061E0,BrNetSlotName,startup,neighbour-1,src/core/generated/0x100061E0.c
@@ -227,7 +227,7 @@ glide_va,name,module,basis,file
 0x1001DCD0,BrVec3dDot,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DD50,BrGlideFlipWait,drawing,filed,src/core/drawing/br_dlglide.c
 0x1001DD80,BrGlideResOpen,startup,filed,src/core/startup/br_objlife.c
-0x1001DFB0,FUN_1001dfb0,startup,neighbour,src/core/slice2_17.c
+0x1001DFB0,FUN_1001dfb0,drawing,manual,src/core/slice2_17.c
 0x1001E130,BrGlideResSet,startup,filed,src/core/startup/br_objlife.c
 0x1001E1E0,THUNK_1001E1E0,drawing,description,src/core/slice2_17.c
 0x1001E200,THUNK_1001E200,drawing,description,src/core/slice2_17.c
