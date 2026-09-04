@@ -20,4 +20,24 @@ int BrGetGlobal_94294(void)
   return g_br094294;
 }
 
+/* ---- from slice2_18.c ---------------------------------------------- */
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002CB3F glide BrNop_1002CB3F */
+
+void BrNop_1002CB3F(void)
+
+{
+  return;
+}
+
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002CB44 glide BrNop_1002CB44 */
+
+void BrNop_1002CB44(void)
+
+{
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
