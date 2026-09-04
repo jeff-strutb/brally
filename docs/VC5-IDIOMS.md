@@ -5224,3 +5224,110 @@ calls 19/19, because relocations are not masked.
 Two things this did NOT test, both narrow: the SP3 **linker** (irrelevant to
 per-function matching, which works on `.obj`, but it could matter to the image
 build), and the C++ front end on the one TU that only VC4.2 reproduces.
+
+## An `&&` guard chain SHRINK-WRAPS the callee-saved saves; separate early returns do not
+
+Proven byte-exact on 0x1006BD70 `BrSndBankMute` (90 B), 2026-09-03.
+
+The function is a three-condition "is sound usable" gate followed by a loop
+over the voice bank.  Written the way every sibling in `slice6_76.c` is
+written — one `&&` chain wrapping the body —
+
+```c
+if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    ppVoice = g_aBrSndBankVoice;
+    do { ... } while (...);
+}
+return 1;
+```
+
+the whole loop lives in a nested block, and VC5 **shrink-wraps** the
+callee-saved registers into that block: `push edi / push esi` land AFTER the
+third test, and `pop esi / pop edi` before the merge.  Written as three
+sequential early returns —
+
+```c
+if (BrSndG0B5DE8   == 0) { return 1; }
+if (BrSndPDS       == 0) { return 1; }
+if (BrSndG18290FC  == 0) { return 1; }
+ppVoice = g_aBrSndBankVoice;
+do { ... } while (...);
+return 1;
+```
+
+the loop is at the function's top level, so the saves go in the PROLOGUE and
+are scheduled into the first block, interleaved with the first test:
+
+```asm
+mov  eax, [BrSndG0B5DE8]
+push esi                     ; <-- prologue save, scheduled between
+test eax, eax
+push edi                     ; <-- the load and its branch
+je   exit
+...
+exit:
+pop  edi
+mov  eax, 1
+pop  esi
+ret
+```
+
+Both spellings have the SAME control-flow graph and the same `je` polarity —
+`divergence.py` and the regnorm multiset both scored the body identical.  The
+only divergence was where the two push/pop pairs sat, worth 6 bytes.
+
+**The screen:** a diff whose entire residue is `push R` / `pop R` appearing in
+the wrong basic block, on a function that begins with a multi-condition guard.
+Do not go looking at the loop; move the guard.  This is the same axis as
+"An early-return guard and an `if (ok) { … }` wrapper differ in which side is
+the FALL-THROUGH" above, but the tell is different: there the polarity moved,
+here the polarity is already right and only the save placement is wrong.
+
+**Boundary:** it only shows on a function that actually uses callee-saved
+registers inside the guard.  Every other `&&`-chained sound gate in
+`slice6_76.c` (`BrSndVoiceIsPlaying`, `BrSndBufSetVolume`, …) is byte-exact as
+an `&&` chain because it needs no saves — do not rewrite those.
+
+**‼ AND THE CHOICE IS DECIDED BY THE RETURN VALUES, NOT BY TASTE.** Proven the
+same day on 0x1006B530 `BrSndChanBind`, which has the identical three-condition
+gate and went the OTHER way:
+
+| guard returns | body returns | write it as |
+|---|---|---|
+| the same constant the tail returns | same | three sequential early returns — 0x1006BD70 |
+| a constant the body does NOT return (`return 1` vs `return pVoice != 0`) | different | one `&&` chain wrapping the body — 0x1006B530 |
+
+When the two agree, VC5 merges the guard exit into the tail on its own, so the
+early-return spelling costs nothing and gets the prologue saves right.  When
+they disagree the guard needs its own exit block, and the early-return
+spelling makes VC5 TAIL-DUPLICATE it — three separate `mov eax,1 / pop / pop /
+ret` copies instead of the original's one shared `je` target, +32 bytes on
+0x1006B530.  The `&&` chain emits exactly one.  Check the original for a
+single shared exit before choosing.
+
+## `[R*8 + K]` addressing means the SOURCE indexes an 8-BYTE-element array
+
+Also from 0x1006B530.  The original copies a group row's base rate:
+
+```asm
+lea eax, [edi + edi*8]                    ; group * 9
+mov ecx, dword ptr [eax*8 + 0x100b5638]   ; + 0x40, no shift instruction
+```
+
+Spelled over the table's `int[]` view — `DAT_100b55f8[iGroup * 0x12 + 0x10]`,
+which is the same address — VC5 cannot fold the `*4` and the row stride into
+one scale, so it materialises the byte offset:
+
+```asm
+lea eax, [edi + edi*8]
+shl eax, 3                                ; <-- the tell
+mov ecx, dword ptr [eax + 0x40]
+```
+
+Index the row as what it is instead — `((double *)DAT_100b55f8)[iGroup*9 + 8]`
+— and the `*8` goes back into the addressing mode.  **An explicit `shl R,3`
+(or `shl R,2`) next to a `lea` that already built the row index means the
+element TYPE in your C is narrower than the one the original used.**  The
+8-byte copy itself is still two dword `mov`s, so do not read the pair as
+evidence of an `int[]`: VC5 copies a `double` between memory locations with
+integer moves when nothing does arithmetic on it.
