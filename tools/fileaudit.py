@@ -50,7 +50,11 @@ from filing import (FILING, is_slice, load_report, module_of,  # noqa: E402
 
 # The batches that existed when the gate was introduced. The gate refuses any
 # slice file not on this list, so the count can fall and never rise.
-BASELINE = 62
+# 62 -> 58 on 2026-09-03: slice2_24.c, slice3_31.c and slice8_85.c moved whole
+# into menus/, and slice2_15.c into drawing/br_hudscene.c. Each was entirely
+# one module's code held together by file-statics that a split would have
+# duplicated, so the file moved intact rather than being taken apart.
+BASELINE = 58
 # Functions without a WHAT IT DOES: comment. 0 = every tagged function in
 # every lane must carry one; the next match without a description FAILS.
 DESC_BASELINE = 0
