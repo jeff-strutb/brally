@@ -594,7 +594,7 @@ glide_va,name,module,basis,file
 0x100409C0,BrMenuOpt409C0,menus,filed,src/core/menus/br_menuact.c
 0x100409F0,BrMenuOpt409F0,menus,filed,src/core/menus/br_menuact.c
 0x10040A20,BrPhaseTick_100475F0,menus,description,src/core/slice3_31.c
-0x10040A40,BrPhaseKeyPush_10047610,controls,description,src/core/slice3_31.c
+0x10040A40,BrPhaseKeyPush_10047610,menus,manual,src/core/slice3_31.c
 0x10040AF0,BrPhaseTick_100474B0,menus,description,src/core/slice3_31.c
 0x10040CF0,BrObj40CF0DeleteDtor,menus,neighbour-1,src/core/menus/br_obj40.c
 0x10040E20,BrUiDrawIndex_100479D0,menus,description,src/core/slice3_32.c
@@ -708,7 +708,7 @@ glide_va,name,module,basis,file
 0x10062AE0,BrAtexit_10069A70,startup,filed,src/core/startup/br_objlife.c
 0x10062AF0,BrSub10062AF0,settings,neighbour-1,src/core/tiny_stubs.c
 0x10062B00,BrCtrlCfgCtor,settings,description,src/core/slice3_42.c
-0x10062B10,BrCtrlCfgLoadDefaults,menus,description,src/core/slice3_42.c
+0x10062B10,BrCtrlCfgLoadDefaults,settings,manual,src/core/slice3_42.c
 0x10062C30,BrFn10069BC0,controls,description,src/core/slice3_42.c
 0x10062CA0,BrFn10069C30,controls,description,src/core/slice3_42.c
 0x100634B0,BrGlCfgSave,drawing,prefix,src/core/slice4_53.c
