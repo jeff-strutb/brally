@@ -4823,3 +4823,52 @@ variable identity and renaming are inert.
 `while` body it is used in moved three of the six slots. That is the only knob
 found for /Od slot numbering so far, and it is where to start when an
 /Od function is instruction-exact and differs only in `[ebp-N]` displacements.
+
+## Seven copies of one body: the clip-plane family, and what it settled
+
+`0x1001F0D0 / F2B0 / F3F0 / F530 / F670 / F7B0 / F8F0` are seven separate
+functions in the original — six of 311 bytes and one of 303 — and diffing the
+extracted originals against EACH OTHER showed they differ in 6 or 8 bytes, all
+of them either a field displacement in the plane-distance `fld`/`fadd` pair or
+a byte of the two `call rel32` displacements. That diff, not any reading of
+the code, is what proved they are one body, and it is the cheapest screen
+there is for a suspected family: **byte-diff the siblings before writing a
+line of C.**
+
+Five went byte-exact from one macro. Three facts did it, each worth naming:
+
+1. **A macro, not a function pointer.** The port had factored the body into
+   one routine taking a distance callback. That emits a `call [reg]` the
+   original does not have. `#define BR_CLIP_PLANE(NAME, DIST)` expanded seven
+   times, with `DIST` itself a macro, is the recipe (see also "Inlining a
+   helper by hand: use a MACRO"). A macro passed as a macro argument and
+   invoked as `DIST(pCur)` expands correctly on rescan.
+
+2. **A cross-jumped store is a STATEMENT-ORDER question.** The original's
+   `+1` and `-1` arms both end at one shared `mov [ebx+4],eax`, reached by a
+   `jmp` from the first. Ours emitted the store twice — one extra instruction
+   in an otherwise exact 120. The fix was to make the two arms *end with the
+   same statement*: the `+1` arm had `pList->cVerts = pList->cVerts + 1;`
+   followed by `pOutPrev = pCur;`, and moving the `pOutPrev` assignment ABOVE
+   the count update let VC5 tail-merge the store. **cl cross-jumps two arms
+   only when the shared statement is last in both.**
+
+3. **Initialiser order decides which of two free instructions fills the slot
+   before a branch.** The prologue's last four instructions were the right
+   four in the wrong order: we spilled the loop counter and then set a
+   pointer, the original did it the other way. Nothing but the order of the
+   five initialising statements moves this. Writing them as
+   `pPrev; pCur; pOutPrev; i; pDead` matched; `pPrev; i; pDead; pCur; pOutPrev`
+   and `…; pOutPrev; pCur` did not. Eight bytes, on five functions at once.
+
+**And one negative result that CONFIRMS an existing entry.** The siblings
+disagree with each other about which side of the plane sum is `fld`ed —
+BOTTOM leads with `y`, LEFT leads with `w`. That looks exactly like a record
+of inconsistent hand-written source, and it is not: swapping the operands of
+the `+` in the C is byte-inert for all three PLUS planes, and our own NEAR
+expansion emits the two orders at its two sites from ONE macro. The choice is
+per-site scheduling. A redundant paren round the first operand
+(`((v)->f18) + (v)->f04`) is the only thing that moves it — it flips the pair
+to the original's order at both sites — but it sinks the second site's `fadd`
+four instructions later and costs far more than it wins. Recorded as a lever
+that exists and points the wrong way, not as a spelling to keep trying.
