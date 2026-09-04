@@ -2,6 +2,8 @@
  * BindSection: copy section index onto the INI cursor, return the INI.
  * Re-deref p->pini for the return (do not reuse the loaded pointer). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: attach a section index to a settings-file cursor and hand
+ * the cursor back, so subsequent reads come from that section. */
 /* @implements 0x00401200 brally.exe BindSection */
 
 #define _CRTIMP __declspec(dllimport)

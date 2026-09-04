@@ -1,6 +1,8 @@
 /* DlgProc: symptoms dialog. switch(msg)/switch(LOWORD); last command
  * case 0x3EA (Back) EndDialog(-1) falls through to return 0. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: the settings tool's main dialog procedure -- routes every
+ * message for the window the player actually sees. */
 /* @implements 0x00401C70 setvideo.exe DlgProc */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

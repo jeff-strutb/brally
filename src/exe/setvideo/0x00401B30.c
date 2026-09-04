@@ -2,6 +2,9 @@
  * GetInstallDir: HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory.
  * Fallback "c:\\"; append '\\' if the value has none. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: look the game's install directory up in the registry,
+ * falling back to the drive root, and make sure it ends in a backslash so
+ * paths can be appended. */
 /* @implements 0x00401B30 setvideo.exe GetInstallDir */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

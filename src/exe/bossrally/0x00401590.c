@@ -1,5 +1,7 @@
 /* 0x00401590 SetFullScreen */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: switch the video window to full screen, which is how the
+ * intro is presented. */
 /* @implements 0x00401590 bossrally.exe SetFullScreen */
 
 #include <windows.h>

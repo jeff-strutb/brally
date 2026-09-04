@@ -2,6 +2,9 @@
  * GetInstallDir: HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory.
  * Fallback "c:\\"; append '\\' if the value has none. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: look the game's install directory up in the registry,
+ * falling back to the drive root if it is not there, and make sure it ends
+ * in a backslash so paths can be appended. */
 /* @implements 0x004016D0 brally.exe GetInstallDir */
 
 #define _CRTIMP __declspec(dllimport)
