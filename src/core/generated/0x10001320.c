@@ -55,6 +55,8 @@
  */
 #ifdef BR_MATCHING_BUILD
 
+#include <string.h>
+
 typedef struct SpSurf {
     unsigned short *p;              /* +0x00 */
     int             w;              /* +0x04 */
@@ -62,10 +64,10 @@ typedef struct SpSurf {
     unsigned short  key;            /* +0x0C */
 } SpSurf;
 
-void FUN_100013f0(unsigned short *pDst, int dstPitch, int w, int h,
-                  unsigned short *pSrc, int srcPitch);
-void FUN_10001440(unsigned short *pDst, int dstPitch, int w, int h,
-                  unsigned short *pSrc, int srcPitch, unsigned short key);
+void BrUiSprBlitRows(unsigned short *pDst, int dstPitch, int w, int h,
+                     unsigned short *pSrc, int srcPitch);
+void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
+                      unsigned short *pSrc, int srcPitch, unsigned short key);
 
 /* WHAT IT DOES: copy a rectangle of pixels from one off-screen picture to
  * another at a given position. The blitter behind the front end's sprites. */
@@ -105,9 +107,55 @@ void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
     srcPitch = pSrc->w * 2;
 
     if ((flags & 1) != 0)                                /* 0x100013AA */
-        FUN_10001440(pd, dstPitch, w, h, ps, srcPitch, pSrc->key);
+        BrUiSprBlitKeyed(pd, dstPitch, w, h, ps, srcPitch, pSrc->key);
     else
-        FUN_100013f0(pd, dstPitch, w, h, ps, srcPitch);
+        BrUiSprBlitRows(pd, dstPitch, w, h, ps, srcPitch);
+}
+
+/* WHAT IT DOES: the plain sprite copy -- moves h rows of w 16-bit pixels
+ * from one surface to another, every pixel, no transparency.  Each row is
+ * one inline memcpy of w * 2 bytes (the `rep movsd` / `rep movsb` pair);
+ * both pitches are in BYTES. */
+/* @implements 0x100013F0 glide BrUiSprBlitRows */
+void BrUiSprBlitRows(unsigned short *pDst, int dstPitch, int w, int h,
+                     unsigned short *pSrc, int srcPitch)
+{
+    for (; h != 0; --h) {
+        memcpy(pDst, pSrc, w * 2);
+        pDst = (unsigned short *)((char *)pDst + dstPitch);
+        pSrc = (unsigned short *)((char *)pSrc + srcPitch);
+    }
+}
+
+/* WHAT IT DOES: the transparent sprite copy -- the same row walk as
+ * BrUiSprBlitRows, but a source pixel equal to the colour key is skipped so
+ * the destination shows through.  Both pitches are in BYTES. */
+/* @implements 0x10001440 glide BrUiSprBlitKeyed */
+void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
+                      unsigned short *pSrc, int srcPitch, unsigned short key)
+{
+    unsigned short *ps;
+    unsigned short *pd;
+    int n;
+
+    for (; h != 0; --h) {
+        /* 10001458: the source pointer is copied BEFORE the width test
+         * (`mov eax,esi` sits between `test ebp,ebp` and its `je`); the
+         * destination and the count are set up inside the guard. */
+        ps = pSrc;
+        if (w != 0) {
+            pd = pDst;
+            n = w;
+            do {
+                if (*ps != key)
+                    *pd = *ps;
+                ++ps;
+                ++pd;
+            } while (--n != 0);
+        }
+        pDst = (unsigned short *)((char *)pDst + dstPitch);
+        pSrc = (unsigned short *)((char *)pSrc + srcPitch);
+    }
 }
 
 #endif /* BR_MATCHING_BUILD */
