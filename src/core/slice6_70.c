@@ -687,6 +687,7 @@ typedef struct BrC9B0Vtbl {
  * re-read before every row because the call is allowed to replace it. */
 #ifdef BR_MATCHING_BUILD
 /* @implements 0x1003C9B0 d3d BrSub1003C9B0 */
+/* @implements 0x10036040 glide BrSub1003C9B0 */
 #endif
 void BrSub1003C9B0(void)
 {
