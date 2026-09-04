@@ -144,18 +144,6 @@ void *g_BrLogArg;
 /* 1. Camera / matrix set-up                                          */
 /* ================================================================== */
 
-/* 0x10035C70  DESTINATION FIRST -- see the header. */
-/* WHAT IT DOES: copies a point or direction from one place to another. Note
- * the destination is the first argument, not the second. */
-/* @implements 0x10035C70 d3d BrVec3Copy */
-/* @n64 0x802245D4 exact */
-void BrVec3Copy(BrVec3 *pDst, const BrVec3 *pSrc)
-{
-    pDst->x = pSrc->x;
-    pDst->y = pSrc->y;
-    pDst->z = pSrc->z;
-}
-
 /* Both display-list emitters below inline this in the original: take the
  * write cursor, advance it by 8 bytes, and fill the two words. */
 static uint32_t *BrGfxTake2(void)

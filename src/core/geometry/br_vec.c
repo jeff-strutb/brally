@@ -8,8 +8,21 @@
  * with a or b is therefore safe, exactly as in the original.
  */
 #include "br_vec.h"
+#include "slice2_19.h"   /* the BrVec3Copy prototype, moved here from slice2_19.c */
 
 #include <math.h>
+
+/* 0x10035C70  DESTINATION FIRST -- see the header. */
+/* WHAT IT DOES: copies a point or direction from one place to another. Note
+ * the destination is the first argument, not the second. */
+/* @implements 0x10035C70 d3d BrVec3Copy */
+/* @n64 0x802245D4 exact */
+void BrVec3Copy(BrVec3 *pDst, const BrVec3 *pSrc)
+{
+    pDst->x = pSrc->x;
+    pDst->y = pSrc->y;
+    pDst->z = pSrc->z;
+}
 
 /* WHAT IT DOES: the cross product -- the direction perpendicular to two
  * others, which is how surface normals and sideways axes are built. Uses
