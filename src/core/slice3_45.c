@@ -669,48 +669,6 @@ void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
 }
 #endif
 
-/* 0x10076A00 */
-/* WHAT IT DOES: pushes the paint colour a car has been given down into the
- * artwork the renderer actually uses, which is how the player's chosen colour
- * reaches the screen. The colour loses precision on the way -- it is stored
- * more coarsely than it was chosen -- so reading it back does not give the
- * same value. */
-/* @implements 0x10076A00 d3d BrEntRefreshColour */
-/* @n64 0x80220398 located */
-void __fastcall BrEntRefreshColour(BrEnt *pE)
-{
-    BrCarGfxSetColour(pE->pRec, pE->r >> 3, pE->g >> 3, pE->b >> 3);
-    BrSub10062C50(pE);
-}
-
-/* 0x10076A40 */
-/* WHAT IT DOES: attaches one of the sixteen car artwork records to this
- * object -- which model and textures it is drawn with -- and immediately
- * repaints it in its own colour. The record number is not checked at all, so
- * an out-of-range one silently points at whatever memory follows the table. */
-/* @implements 0x10076A40 d3d BrEntSetRecord */
-/* @n64 0x802203F0 located */
-#ifdef BR_MATCHING_BUILD
-void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx)
-#else
-void BrEntSetRecord(BrEnt *pE, int32_t idx)
-#endif
-{
-    /* The original's exact shift/add chain, in uint32_t so it wraps the same
-     * way: ((((idx*11) << 6) - idx) << 4) + idx, times 8 == idx * 89992. */
-    uint32_t t = (uint32_t)idx;
-    uint32_t d = t + t * 4u;      /* lea edx,[eax+eax*4] */
-    d = t + d * 2u;               /* lea edx,[eax+edx*2] */
-    d <<= 6;
-    d -= t;
-    d <<= 4;
-    d += t;
-    d *= 8u;                      /* lea eax,[edx*8 + 0x100C12A0] */
-
-    pE->pRec = (BrCarGfx *)(void *)(g_aBrC12A0 + d);
-    BrEntRefreshColour(pE);
-}
-
 /* 0x10076B20 */
 /* WHAT IT DOES: returns a car to a clean state -- straightens out all its
  * internal transforms, stops it dead, and copies the handling constants for
