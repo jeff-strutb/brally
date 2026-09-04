@@ -186,7 +186,7 @@ glide_va,name,module,basis,file
 0x10018A90,BrSwapU16x4,gamedata,description,src/core/slice2_16.c
 0x10018AD0,BrSwapVec3Array,gamedata,description,src/core/slice2_16.c
 0x10018AF0,BrSwapVec3,geometry,filed,src/core/geometry/br_bits.c
-0x10018B40,BrRcaFixupArray,geometry,neighbour-1,src/core/slice2_16.c
+0x10018B40,BrRcaFixupArray,gamedata,manual,src/core/slice2_16.c
 0x10018E10,BrVtxCacheResolve,drawing,neighbour-1,src/core/slice1_05.c
 0x10018FC0,BrVtxCacheInsert,drawing,description,src/core/slice1_05.c
 0x10019000,BrPtrListContains,drawing,neighbour-1,src/core/slice2_17.c
@@ -309,7 +309,7 @@ glide_va,name,module,basis,file
 0x10029B10,BrTexChooseLevel,drawing,filed,src/core/drawing/br_texinit.c
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/slice2_16.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
-0x10029E80,BrMat4IdentityLocal,geometry,prefix,src/core/slice1_09.c
+0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/slice1_09.c
 0x1002A490,FUN_1002a490,drawing,neighbour-1,src/core/slice2_17.c
 0x1002A4D0,BrLightDirsFromLookAt,drawing,description,src/core/slice2_17.c
 0x1002A7A0,BrMat4Scale,geometry,filed,src/core/geometry/br_mat.c
@@ -382,10 +382,10 @@ glide_va,name,module,basis,file
 0x1002ECD6,BrAnimSetPingPong,drawing,neighbour-1,src/core/slice2_19.c
 0x1002F238,BrRet1_1002F238,controls,neighbour-1,src/core/slice2_19.c
 0x1002F242,BrSub_1002F242,controls,neighbour-1,src/core/slice2_19.c
-0x1002F258,BrLogEmit,controls,neighbour-1,src/core/slice2_19.c
-0x1002F26B,BrLogSet,controls,neighbour-1,src/core/slice2_19.c
-0x1002F310,BrVec3Copy,controls,neighbour-1,src/core/slice2_19.c
-0x1002F340,BrRgbSinkSet,controls,neighbour-1,src/core/slice2_19.c
+0x1002F258,BrLogEmit,drawing,manual,src/core/slice2_19.c
+0x1002F26B,BrLogSet,drawing,manual,src/core/slice2_19.c
+0x1002F310,BrVec3Copy,geometry,manual,src/core/slice2_19.c
+0x1002F340,BrRgbSinkSet,drawing,manual,src/core/slice2_19.c
 0x1002F380,BrPadTranslate,controls,description,src/core/slice2_19.c
 0x1002F680,BrEntInit,scene,description,src/core/slice1_05.c
 0x1002F6C0,BrRaceSub1002F6C0,racing,filed,src/core/racing/br_racestart.c
@@ -466,7 +466,7 @@ glide_va,name,module,basis,file
 0x100372B0,FUN_100372b0,net,description,src/core/slice4_51.c
 0x10037660,BrUiFn1003DFC0,net,neighbour-1,src/core/slice2_23.c
 0x100376B0,BrUiFn1003E010,net,description,src/core/slice2_23.c
-0x100376E0,BrUiFn1003E040,controls,neighbour-1,src/core/slice2_23.c
+0x100376E0,BrUiFn1003E040,net,manual,src/core/slice2_23.c
 0x10037710,BrFn1003E070,controls,description,src/core/slice4_51.c
 0x10037720,BrInputAnyActive,net,description,src/core/net/br_input.c
 0x10037780,BrInputOrPlaybackActive,audio,neighbour-1,src/core/audio/br_input.c
@@ -640,9 +640,9 @@ glide_va,name,module,basis,file
 0x10059020,BrDikPollAndEdge,controls,description,src/core/slice3_39.c
 0x10059040,BrFn1005FFD0,controls,neighbour-1,src/core/slice3_39.c
 0x10059060,BrInputLatchUpdate,controls,description,src/core/controls/br_input.c
-0x100590A0,BrMsgBoxAA,controls,neighbour-1,src/core/slice3_39.c
-0x10059280,BrFn10060210,controls,neighbour-1,src/core/slice3_39.c
-0x100592D0,BrSub10060260,controls,neighbour-1,src/core/slice4_52.c
+0x100590A0,BrMsgBoxAA,startup,manual,src/core/slice3_39.c
+0x10059280,BrFn10060210,drawing,manual,src/core/slice3_39.c
+0x100592D0,BrSub10060260,menus,manual,src/core/slice4_52.c
 0x100592F0,FUN_100592f0,controls,neighbour-1,src/core/generated/0x100592F0.c
 0x100597C0,BrSub10060750,net,neighbour-1,src/core/slice3_39.c
 0x100597F0,FUN_100597f0,net,neighbour-1,src/core/generated/0x100597F0.c
@@ -690,7 +690,7 @@ glide_va,name,module,basis,file
 0x10060EC0,BrSndNearestOffer,audio,neighbour,src/core/slice3_41.c
 0x10061280,BrSndNearestOfferDefault,audio,neighbour,src/core/slice3_41.c
 0x100612D0,BrSfxCarBankInit,audio,filed,src/core/audio/br_sfx.c
-0x10061310,FUN_10061310,controls,description,src/core/slice6_77.c
+0x10061310,FUN_10061310,audio,manual,src/core/slice6_77.c
 0x10061430,BrRaceCarPre,racing,filed,src/core/racing/br_racestep.c
 0x10061440,BrSndTableClear,racing,filed,src/core/racing/br_racestep.c
 0x100623A0,BrRaceDriverAnim,racing,filed,src/core/racing/br_racestep.c
@@ -848,7 +848,7 @@ glide_va,name,module,basis,file
 0x1006FC70,BrEntRefreshColour,drawing,description,src/core/slice3_45.c
 0x1006FCB0,BrEntSetRecord,drawing,neighbour-1,src/core/slice3_45.c
 0x1006FF00,BrEntityBindAux,scene,description,src/core/slice1_09.c
-0x1006FF50,FUN_1006ff50,scene,neighbour-1,src/core/slice6_72.c
+0x1006FF50,FUN_1006ff50,drawing,manual,src/core/slice6_72.c
 0x1006FFC0,FUN_1006ffc0,scene,neighbour-1,src/core/generated/0x1006FFC0.c
 0x10070170,BrWaveSeekData,controls,filed,src/core/controls/br_input.c
 0x10070370,BrOnActivate,controls,filed,src/core/controls/br_input.c
