@@ -4790,3 +4790,36 @@ loses half the function. Note also that VC5 cross-jumps the tails of arms 2 and
 3 in 0x10069C30 by itself (arm 3 ends in a `jmp` into arm 2) while leaving arm
 1 its own copy: that is the compiler's layout, not a difference in spelling, so
 do not try to reproduce it from the source side.
+
+## /Od: declaration ORDER is inert, but SCOPE is not — and two literal shapes
+
+Three findings from 0x1002A957 BrFloat12MaxAbs (155 B, /Od /Op), all reusable
+on any unoptimised TU.
+
+**1. `(v = *p++)` inside a condition, not two statements.** MSVC /Od defers a
+postfix increment until the comparison's operand has been consumed, so
+
+    if ((v = *p++) < zero)
+
+emits `v = *p` / `fld` / `fcomp` / `fnstsw` / `p += 4` / `test` — the increment
+lands BETWEEN the compare and the branch, which is exactly what the original
+does and looks impossible until you know it. Written as `v = *p; p++;` the
+increment moves ahead of the `fld` and costs six bytes. **Whenever an /Od
+function steps a cursor in the middle of a float comparison, that is a postfix
+increment in the condition, not a reordering you have to explain away.**
+
+**2. A ternary return allocates an extra stack slot.** `return (a > b) ? a : b;`
+gives the /Od frame a result temporary; `if (a > b) return a; return b;` does
+not. Frame size is the tell — count the original's slots against `sub esp, N`
+before assuming the arithmetic is wrong.
+
+**3. Local DECLARATION ORDER IS INERT under /Od. Do not probe it.** Seven
+different orders of the same six locals were compiled and every one produced
+byte-identical output — MSVC 5.0 does not lay slots out in source order and
+does not care what that order is. This is the /Od twin of the general rule that
+variable identity and renaming are inert.
+
+**But SCOPE is not inert.** Moving one local from function scope into the
+`while` body it is used in moved three of the six slots. That is the only knob
+found for /Od slot numbering so far, and it is where to start when an
+/Od function is instruction-exact and differs only in `[ebp-N]` displacements.
