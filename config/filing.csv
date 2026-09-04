@@ -48,6 +48,7 @@ glide_va,name,module,basis,file
 0x100037D0,BrTicks30FromMs,startup,description,src/core/slice1_01.c
 0x100038A0,FUN_100038a0,net,description,src/core/slice4_53.c
 0x10004A40,BrCountedNetSend,net,neighbour-1,src/core/ghidra_batch.c
+0x10004C40,BrNetPktStamp,,,src/core/slice1_02.c
 0x10004D30,BrPalFetch,net,neighbour-1,src/core/slice1_02.c
 0x10004D80,BrNetSlotGetF02C,net,neighbour-1,src/core/generated/0x10004D80.c
 0x10004DC0,BrNetSlotSetF02C,net,description,src/core/slice1_02.c
@@ -102,7 +103,7 @@ glide_va,name,module,basis,file
 0x10007E80,BrAppCheckPreviousApp,startup,filed,src/core/startup/br_appstart.c
 0x10007F10,BrMemoryQuery,startup,filed,src/core/startup/br_appstart.c
 0x10007F40,FUN_10007f40,startup,neighbour-1,src/core/generated/0x10007F40.c
-0x100087A0,BrObj87A0DeleteDtor,gamedata,neighbour-1,src/core/slice2_12.c
+0x100087A0,BrObj87A0DeleteDtor,gamedata,neighbour-1,src/core/gamedata/br_obj87.c
 0x100087C0,BrSub100087C0,gamedata,neighbour-1,src/core/tiny_stubs.c
 0x10008850,BrKeyCacheFind,gamedata,neighbour-1,src/core/slice2_12.c
 0x10008B50,BrKeyCacheReset,gamedata,description,src/core/slice2_12.c
@@ -172,7 +173,6 @@ glide_va,name,module,basis,file
 0x10018290,BrFadeSetTargetB,drawing,neighbour-1,src/core/slice2_16.c
 0x10018310,BrFadeIsClosing,drawing,description,src/core/slice2_16.c
 0x10018340,BrFadeIsSettled,drawing,description,src/core/slice2_16.c
-0x10018370,BrFadeIsShut,drawing,description,src/core/slice2_16.c
 0x10018990,BrFtolArg,geometry,description,src/core/slice6_74.c
 0x100189A0,BrCopy8Words,gamedata,description,src/core/slice2_16.c
 0x100189C0,BrFlagInit_1002B950,startup,filed,src/core/startup/br_objlife.c
