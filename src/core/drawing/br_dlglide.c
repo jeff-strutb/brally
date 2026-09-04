@@ -719,6 +719,9 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * is 26 bytes of two pointer stores; this one is 173 bytes of 3dfx
  * bring-up.  Same renderer slot, different code.  That tag is now
  * @d3donly. */
+/* WHAT IT DOES: bring the 3dfx card up: installs the frame-flip hooks,
+ * initialises Glide, and returns without opening a window if no Voodoo
+ * hardware is present -- which is how the game discovers it must fall back. */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {

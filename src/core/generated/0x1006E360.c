@@ -52,6 +52,9 @@ extern unsigned int DAT_118ee24c;
  * before the zero and after the tick, dropping the `ms` local and re-reading
  * the global at all three uses, and /Oy- /Op /Ox /Og-/Ot (all 68/45) plus
  * /Od (84/54) and /O1 (61/43).  T3a. */
+/* WHAT IT DOES: sample the clock and update the frame timing -- how long the
+ * last frame took and the running total. Called once per frame, and
+ * everything time-based reads what it leaves behind. */
 /* @implements 0x1006E360 glide BrTimeUpdate */
 void BrTimeUpdate(void)
 

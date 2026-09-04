@@ -67,6 +67,8 @@ void FUN_100013f0(unsigned short *pDst, int dstPitch, int w, int h,
 void FUN_10001440(unsigned short *pDst, int dstPitch, int w, int h,
                   unsigned short *pSrc, int srcPitch, unsigned short key);
 
+/* WHAT IT DOES: copy a rectangle of pixels from one off-screen picture to
+ * another at a given position. The blitter behind the front end's sprites. */
 /* @implements 0x10001320 glide BrUiSprBlit */
 void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
                  const int *pRect, int flags)

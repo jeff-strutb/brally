@@ -111,6 +111,11 @@ void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
 void FUN_100215c0(int, int, int, int, int);
 
 /* 0xE4 -- 10.2 corners, 24-byte command (texrect + two extra words). */
+/* WHAT IT DOES: unpack the display-list command that draws a textured
+ * rectangle whose corners are already in QUARTER-pixel units, and hand them
+ * to the rectangle drawer. It consumes 0x18 bytes, not 8, because the
+ * texture coordinates follow the command. The whole-pixel twin is
+ * BrDlsTileRectE3. */
 /* @implements 0x10021570 glide BrDlsTileRectE4 */
 unsigned char *BrDlsTileRectE4(unsigned char *p)
 {

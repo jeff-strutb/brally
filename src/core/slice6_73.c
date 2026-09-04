@@ -1298,6 +1298,10 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  * 0x1006F720 -- load the collision-grid cell containing (x, y)
  * ========================================================================== */
 
+/* WHAT IT DOES: get the collision-grid cell covering a point, reusing the
+ * least recently used slot when the cache is full. The grid is a fixed set
+ * of slots rather than one cell per square, so a car driving across the map
+ * recycles them as it goes. */
 /* @implements 0x1006F720 d3d BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {

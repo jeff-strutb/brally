@@ -116,22 +116,24 @@ def describes(path, va, dva, _cache={}):
     # sits inside -- counting that as undescribed reports a comment that is
     # plainly there. The same guard means one description can cover both the
     # matching and the port body, which is correct: they are one function.
-    k = idx - 1
-    seen_code = False
-    while k >= 0:
-        s = lines[k].strip()
-        if not s or s.startswith('#'):
-            k -= 1
-            continue
-        if s.startswith('*') or s.startswith('/*') or s.endswith('*/'):
-            if 'WHAT IT DOES' in s:
-                return True
-            k -= 1
-            continue
-        if not seen_code and s.startswith('@'):
-            k -= 1
-            continue
-        break
+    # Scan the comment block attached to the tag in BOTH directions. Several
+    # functions carry the description on the far side of their @n64 or codegen
+    # lines; the rule is that the function carries a description, not that it
+    # sits on a particular side of the tag, and moving working comments to
+    # satisfy a scanner would be churn for nothing.
+    for step in (-1, +1):
+        k = idx + step
+        while 0 <= k < len(lines):
+            s = lines[k].strip()
+            if not s or s.startswith('#'):
+                k += step
+                continue
+            if s.startswith('*') or s.startswith('/*') or s.endswith('*/'):
+                if 'WHAT IT DOES' in s:
+                    return True
+                k += step
+                continue
+            break
     return False
 
 
