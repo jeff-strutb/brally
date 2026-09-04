@@ -1,4 +1,4 @@
-/* br_model.c -- drawing.
+/* br_model.c -- drawing: model records.
  *
  * Filed out of the address batches: these functions were
  * matched first and grouped by what they are afterwards.
@@ -57,3 +57,76 @@ int BrModelSlotApply(int param_1,int param_2)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
+ * ret 0xC; hide that prototype so the definition can take the struct-arg
+ * __fastcall shape that reproduces it. */
+#define BrRgbSinkSet BrRgbSinkSet_hdr
+#endif
+#ifdef BR_MATCHING_BUILD
+/* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
+ * originals do not have.  Hide those prototypes so BrModelLoad can call them
+ * with the shapes the bytes show. */
+#define BrSub100088B0 BrSub100088B0_cdecl
+#define BrSegSetBases BrSegSetBases_cdecl
+#endif
+#include "slice2_19.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrSub100088B0
+#undef BrSegSetBases
+typedef struct { void *p; } BrModelLoadArg;
+extern int g_brModelMgr;                        /* 0x10AC0810 */
+void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
+                                BrModelLoadArg b);
+void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
+#endif
+#ifdef BR_MATCHING_BUILD
+#undef BrRgbSinkSet
+#endif
+
+#include <string.h>
+
+/* WHAT IT DOES: loads a model from disk and makes it ready to draw -- reads
+ * the file in, tells the address fixer where it landed, and runs the
+ * byte-order and address correction over it. */
+/* @implements 0x10036BD0 d3d BrModelLoad */
+/* TWO arguments, not three, and the first callee is a thiscall.  The original
+ * reads [esp+4] and [esp+8] only; the `pMgr` parameter is really the constant
+ * 0x10AC0810 loaded into ecx (`mov ecx, 0x10ac0810`), so the loader is a
+ * thiscall member on a fixed object.  Its two stack arguments are spelled as
+ * one-pointer STRUCTS so neither can claim edx -- the convention slice1_09.c
+ * already uses -- which is what makes a multi-argument thiscall reachable
+ * from a CALL site at all.
+ *
+ * BrSegSetBases likewise takes two arguments here, not three: the original
+ * pushes 0 and the loaded block and nothing else.  br_seg.c's matching body
+ * already records that its third parameter is the port's own pMap slot, so
+ * this call site simply declares the two-argument shape. */
+#ifdef BR_MATCHING_BUILD
+void *BrModelLoad(void *a1, void *a2)
+{
+    BrModelLoadArg x, y;
+    void *p;
+
+    x.p = a2;
+    y.p = a1;
+    p = BrSub100088B0(&g_brModelMgr, x, y);
+
+    BrSegSetBases(0, (uint32_t)(uintptr_t)p);
+    BrModelSwap(p);
+    return p;
+}
+#else
+void *BrModelLoad(void *pMgr, void *a1, void *a2)
+{
+    void *p;
+
+    /* GOTCHA: a2 is pushed last, so it is the callee's FIRST argument. */
+    p = BrSub100088B0(pMgr, a2, a1);
+
+    BrSegSetBases(g_BrSegMap, 0, (uint32_t)(uintptr_t)p);
+    BrModelSwap(p);
+    return p;
+}
+#endif

@@ -395,45 +395,7 @@ void BrNetMutexUnlock(void *hMutex)
     (void)hMutex;
 }
 
-/* ==========================================================================
- * 7. 0x10073AC0 -- backend texture constructor wrapper
- *
- * Fourteen constant arguments through the cdecl function pointer at
- * 0x118AA0B0 (the same constructor BrGbiTexCreate / 0x1002A280 uses), then
- * the handle in eax is stored at 0x100A6498.  Neighbours 0x10073950 and
- * 0x100739E0 are the same shape with different source/size/format.
- *
- * C argument order (last push is first arg): source 0x118AA8F8, aux
- * 0x118AA0D8, width 0x20, height 0x80, fmt 0, siz 2, then eight zeros.
- * fmt/siz (0, 2) is the RGBA16 pair BrGbiTexCreate selects for flag 0x1.
- * ========================================================================== */
-
 #ifdef BR_MATCHING_BUILD
-
-/* 0x118AA8F8 -- source texel block; the original pushes the ADDRESS. */
-extern uint8_t g_18AA8F8[];
-/* 0x118AA0D8 -- second constructor argument; likewise an address. */
-extern uint8_t g_18AA0D8[];
-/* 0x118AA0B0 -- backend texture constructor. */
-extern void *(*g_18AA0B0)(void *pSrc, void *pA2,
-                          uint32_t w, uint32_t h,
-                          uint32_t fmt, uint32_t siz,
-                          uint32_t a7, uint32_t a8,
-                          uint32_t a9, uint32_t a10,
-                          uint32_t a11, uint32_t a12,
-                          uint32_t a13, uint32_t a14);
-/* 0x100A6498 -- resulting texture handle. */
-extern void *g_0A6498;
-
-/* WHAT IT DOES: asks the graphics backend to turn a fixed 32-by-128 block of
- * pixels already in memory into a texture, and stores the handle it returns. */
-/* @implements 0x10073AC0 d3d BrSub10073AC0 */
-void BrSub10073AC0(void)
-{
-    g_0A6498 = g_18AA0B0(g_18AA8F8, g_18AA0D8,
-                         0x20u, 0x80u, 0u, 2u,
-                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-}
 
 extern int DAT_11778808;
 extern int DAT_11778820;
