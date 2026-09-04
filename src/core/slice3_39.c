@@ -1208,22 +1208,6 @@ void BrMenuSub1005FFF0(void)
     }
 }
 
-/* WHAT IT DOES: reports which key was newly pressed this frame, taking the
- * first one it finds, or -1 if none were. This is how a "press any key"
- * prompt is answered. */
-/* @implements 0x1005FFD0 d3d BrFn1005FFD0 */
-int32_t BrFn1005FFD0(void)
-{
-    int32_t i;
-
-    for (i = 0; i < BR_DIK_COUNT; ++i) {
-        if (g_BrDikEdge[i] != 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 #ifdef BR_MATCHING_BUILD
 __declspec(dllimport) int __stdcall MessageBoxA(void *hWnd, const char *pText,
                                                 const char *pCaption,
@@ -1238,18 +1222,6 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
     MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
 }
 #endif
-
-/* WHAT IT DOES: read the keyboard and, if that succeeded, work out which
- * keys changed since last time. The per-frame input poll; a failed read
- * leaves the previous state alone rather than reporting everything as
- * released. */
-/* @implements 0x10059020 glide BrDikPollAndEdge */
-void BrDikPollAndEdge(void)
-{
-    if (BrDikGetDeviceState(g_BrDikState) >= 0) {
-        BrMenuSub1005FF60();
-    }
-}
 
 /* =====================================================================
  * 0x10060210 / 0x100602B0 / 0x10060780 -- small utilities
