@@ -426,12 +426,33 @@ void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
  * byte first. */
 /* @implements 0x1006CFC0 glide BrBitStreamWriteU16 */
 #ifdef BR_MATCHING_BUILD
-/* thiscall, ret 4; the argument is a SHORT (`mov ax,[esp+0xc]`). */
+/* thiscall, ret 4; the argument is a SHORT (`mov ax,[esp+0xc]`).
+ *
+ * BYTE-EXACT.  Same two-byte residue as WriteU32 and the same cause -- the
+ * first store's `mov edx,[esi+0x10]` / `mov edi,[esi+0xc]` pair came out
+ * swapped -- but this one needs BOTH halves named, not just the pointer:
+ * WriteU32's `pb` local alone leaves it at 2 diffs, and `pb` plus `w` closes
+ * it.  The difference between the two is the argument width: WriteU32 already
+ * has a full-register `x` local for the value, WriteU16 takes the byte
+ * straight out of `ah`, so there is one less live value to order around.
+ *
+ * PROBED AND DEAD, do not re-run (all at 52 B / 21 insns / 2 diffs unless
+ * noted): `*(pBs->writeByte + pBs->pBuf)`; `*(pBs->pBuf + pBs->writeByte)`;
+ * a `unsigned short x = v.v` local; naming `pb` for BOTH stores instead of
+ * the first.  And WORSE: a `unsigned int x = v.v` local, with or without
+ * `pb`, widens the argument load and costs 8 bytes (60 B, 23 insns) -- the
+ * original's `mov ax,` is a WORD load and an int local destroys it; a
+ * `unsigned char hi` value local costs 3 (55 B). */
 typedef struct { unsigned short v; } BrBitStreamWordArg;
 void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
 {
+    unsigned char *pb;
+    int            w;
+
     BrBitStreamAlignWrite(pBs);
-    pBs->pBuf[pBs->writeByte] = (unsigned char)(v.v >> 8);
+    pb = pBs->pBuf;
+    w  = pBs->writeByte;
+    pb[w] = (unsigned char)(v.v >> 8);
     pBs->writeByte++;
     pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
     pBs->writeByte++;
@@ -504,12 +525,21 @@ void BrObjResetMsgHdr(BrBitStream *pBs)
  * byte first. */
 /* @implements 0x10073E10 d3d BrBitStreamWriteU32 */
 #ifdef BR_MATCHING_BUILD
-/* thiscall.  Size-exact (88) but the same edx/edi swap as WriteU24. */
+/* thiscall.  BYTE-EXACT.  The last two bytes were the FIRST store's two
+ * address loads coming out in the wrong order: the original loads pBuf into
+ * edx and writeByte into edi, VC5 the reverse.  Naming pBuf in a local that is
+ * assigned AFTER the align call and used for that one store flips the pair.
+ * Every later store keeps the plain `pBs->pBuf[pBs->writeByte]` form, which is
+ * index-first and already matched -- so the local goes on the FIRST store
+ * only.  See the WriteU16 note for the rest of the rule. */
 void __fastcall BrBitStreamWriteU32(BrBitStream *pBs, BrBitStreamByteArg v)
 {
-    unsigned int x = v.v;
+    unsigned int   x = v.v;
+    unsigned char *pb;
+
     BrBitStreamAlignWrite(pBs);
-    pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 24);
+    pb = pBs->pBuf;
+    pb[pBs->writeByte] = (unsigned char)(x >> 24);
     pBs->writeByte++;
     pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 16);
     pBs->writeByte++;
