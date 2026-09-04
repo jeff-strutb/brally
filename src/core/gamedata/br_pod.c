@@ -205,6 +205,7 @@ void *BrPodLoad(BrPod *pPod, int iEntry, uint32_t *pcbOut)
  * sits 32 bytes from the start. A missing name is ignored and the object is
  * left as it was. There is no length cap. */
 /* @implements 0x10008B40 d3d BrPodSetName */
+/* @implements 0x10008D20 glide BrPodSetName */
 #ifdef BR_MATCHING_BUILD
 typedef struct { const char *psz; } BrPodSetNameArg;
 void BR_THISCALL1 BrPodSetName(void *pThis, BrPodSetNameArg a)
