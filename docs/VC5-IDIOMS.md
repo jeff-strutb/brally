@@ -5027,3 +5027,43 @@ lines up; measure the whole function afterwards, not just the pair.
 two bytes. The row was stale — the file had not been re-swept after a change
 elsewhere. `tools/image_build.py` is the only thing that catches that; a
 green report row is not evidence on its own.
+
+## A CHAR argument on a thiscall's stack is not reachable from C — route it to .cpp
+
+**Tell.** The original passes a byte argument as
+
+    mov al, byte ptr [esp+N]
+    or  al, 0xC0
+    push eax                      ; upper three bytes still hold the LAST value
+
+— a dirty `push eax` with no zero-extension and no store. MSVC only leaves a
+stack argument dirty when the **callee's parameter is a byte type**. But a byte
+parameter is register-eligible, so `__fastcall` — the only way C reaches
+thiscall in this tree — hands it edx instead of the stack, and the call shape
+is wrong.
+
+**Every C wrapper homes the partial write first.** Probed on 0x1006AFA0 and all
+three emit `mov [slot],al; mov ecx,[slot]; push ecx`:
+
+    typedef struct { unsigned char b; } A;                       /* 1 byte   */
+    typedef union  { unsigned char b; unsigned int u; } A;        /* 4 bytes  */
+    typedef struct { unsigned char b, p1, p2, p3; } A;            /* padded   */
+
+Writing the union's **dword** member instead does avoid the homing — but then
+the value is an `int`, so MSVC zero-extends the char and emits `mov eax` /
+`or eax,imm32` where the original has `mov al` / `or al,imm8`. There is no
+spelling that gets both.
+
+**So: a thiscall whose stack argument is a CHAR is a C++ TU, not a C one.**
+Screen for it before assigning such a function to the C lane — the tell is a
+`push eax` immediately after an 8-bit operation on `al`, with no `movzx`,
+`and eax,0xff` or `xor eax,eax` anywhere near it. 0x1006AFA0 sits at exactly
+two instructions from exact because of one such argument, and 0x1006AFF0
+BrNetWriteRaceOpts makes eight of these calls.
+
+**The same function's two reachable halves are worth remembering:** the size
+guard is written POSITIVELY (`if (room) { …; return 1; } return 0;`) so the two
+exits land the original's way round — see the tail-merging entry above — and a
+16-bit argument the original loads as a whole dword must be passed through the
+wrapper's dword member, because a partial write to the 16-bit member homes the
+union and costs two instructions of its own.
