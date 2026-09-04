@@ -1973,4 +1973,18 @@ int BrFontTexCreatePair(void)
   return;
 }
 
+extern int DAT_100b84a8;
+extern int DAT_1184c480;
+extern funcptr g_pfn18AA0B0;
+
+/* WHAT IT DOES: create a flat (no mip, no wrap) font texture via the registered callback. */
+/* @implements 0x1006C880 glide BrFontTexCreateFlat */
+
+int BrFontTexCreateFlat(void)
+
+{
+  DAT_1184c480 = (*g_pfn18AA0B0)(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
