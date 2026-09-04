@@ -779,6 +779,36 @@ int BrSndChanBind(int iGroup, int iSlot)
   return 1;
 }
 
+/* 0x1184C080 stride 24 -- br_sfxsrc.h's "applied" channel array; only its
+ * +0x08 ratio field is touched here, so it is indexed as int64 elements,
+ * three per channel.  0x10077C00 is the ratio-to-hertz scale constant. */
+extern int64_t DAT_1184c088[];
+extern double  DAT_10077c00;
+
+int BrSndBufSetVolume(int param_1, int param_2);
+
+/* WHAT IT DOES: push a channel's 32.32 pitch ratio at its voice.  The ratio
+ * is scaled by the channel's base rate and the fixed-point constant to give
+ * a frequency in hertz, which goes to the DirectSound buffer; only if that
+ * succeeds is the ratio recorded as the one actually applied, so the record
+ * never claims a pitch the device refused.  Sound down is a silent 1. */
+/* @implements 0x1006B5F0 glide BrSndChanSetRatio */
+
+int BrSndChanSetRatio(int iSlot, int64_t ratio)
+
+{
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    if (BrSndBufSetVolume((int)g_aBrSndBankVoice[iSlot],
+                          (unsigned int)((double)ratio * g_aBrSfxChanRate[iSlot]
+                                         * DAT_10077c00)) != 0) {
+      DAT_1184c088[iSlot * 3] = ratio;
+      return 1;
+    }
+    return 0;
+  }
+  return 1;
+}
+
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
  * drive its DirectSound buffer to DSBVOLUME_MIN (vtable +0x3c) and recentre
  * the pan (vtable +0x40).  The buffers keep playing; only their output is
