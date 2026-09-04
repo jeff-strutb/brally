@@ -5067,3 +5067,51 @@ exits land the original's way round — see the tail-merging entry above — and
 16-bit argument the original loads as a whole dword must be passed through the
 wrapper's dword member, because a partial write to the 16-bit member homes the
 union and costs two instructions of its own.
+
+## Loop-invariant statement POSITION is inert; only relative order reaches the hoisted block
+*(proven 2026-09-03 on 0x100250D0 BrTex3dExpand)*
+
+Four channel coefficient pairs (`lo = param & 0xff; delta = (other & 0xff) -
+lo;`) sit inside a `do { … } while` whose body they do not depend on. VC5
+hoists all four into the loop preheader. **Where each pair is written inside
+the body therefore changes nothing**: sinking the R pair below the intensity
+statements so all four read pair-then-channel is BYTE-IDENTICAL — same region
+count, same instruction and byte totals, same allocation, same loop-rotation
+`jmp`.
+
+What *does* reach the preheader is the pairs' order **relative to each
+other**, which is why the two earlier probes at this site (hoisting alpha's
+pair above a channel; hoisting all four to the top) were not inert but were
+still rejected on the multiset.
+
+**So: before moving a statement to change an allocation, ask whether the value
+is loop-invariant. If it is, you are editing text the emitter has already
+moved.** To change what the preheader looks like you have to change *what is
+invariant*, not where it is written.
+
+## A byte-offset LOOP-CARRIED IV does not reach `lea R,[R*4]`; it rebuilds the loop
+*(proven 2026-09-03 on 0x1000EAF0's wall 4, after three expression-form probes)*
+
+The original materialises `lea edx,[ecx*4]` once and addresses two adjacent
+flat arrays as `[edx+A]` / `[edx+B]`, keeping the index in ecx as well (it
+still needs `ring * 500`). Every attempt to spell that byte offset as an
+**expression** — a parallel `rb = ring*4`, `*(int *)((char *)base + rb)`,
+`rbW = iWheel*4 + iCar*16`, `rbT = (iWheel+iCar*4)*4` with `ring = rbT>>2` —
+either forward-substitutes back into `[ecx*4+A]` (byte-identical) or explodes.
+
+The one shape left was a genuine **induction variable** (`rb = iCar << 4`
+before the loop, `rb += 4` at the bottom), because that construct *is* what
+produced the original's shape in the same file's drain loops. It is the worst
+result of the four: 30 → 65 divergence regions, instructions 4 short → 11
+over, and a 782-byte stretch that lost sync entirely.
+
+**Rule: a second induction value in a loop that already has one makes VC5
+rebuild the whole region's induction structure.** The drain loops it worked in
+have exactly one counter and no record term; this loop has `ring` feeding
+`ring * 500` as well. Where the original CSEs a scaled index, the cause is not
+the spelling of the index — look for a lever outside the addressing.
+
+‼ And note the scoreboard: this probe took the byte deficit from −14 to −3 and
+the instruction count to near parity while doubling the real gap. **Bytes and
+instruction counts are not progress measures on a function with a lost-sync
+gap.**
