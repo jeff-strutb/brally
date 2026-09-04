@@ -245,6 +245,7 @@ glide_va,name,module,basis,file
 0x1001E930,br_dl_env,drawing,filed,src/core/drawing/br_dl.c
 0x1001E9F0,br_dl_fillcolour,drawing,filed,src/core/drawing/br_dl.c
 0x1001EA60,BrDlCmdFogColour,drawing,filed,src/core/drawing/br_dlcmd.c
+0x1001ECF0,BrDlCmdTri1,drawing,filed,src/core/drawing/br_dlcmd.c
 0x1001EA80,br_dl_prim,drawing,neighbour,src/core/generated/0x1001EA80.c
 0x1001EB10,BrGbiSet0A79E8,drawing,neighbour,src/core/drawing/br_gbi.c
 0x1001EB30,BrGbiSet4C5174,drawing,neighbour,src/core/drawing/br_gbi.c
