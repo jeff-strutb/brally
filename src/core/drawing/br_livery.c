@@ -91,6 +91,55 @@ void FUN_1005a6b0(void)
 }
 
 
+/* ‼ MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
+ * 0x1005A480 as one 91-byte function.  It is two: a 5-byte `jmp 1005A490`
+ * plus eleven alignment nops (16 bytes, MSVC emits the padding inside the
+ * first function), then the 75-byte loader at the 16-aligned address that
+ * nothing CALLS -- only the jump reaches it, so the map builder never saw an
+ * entry.  Same class as 0x10002EB0/F10 in slice1_01.c.  Split to
+ * 0x1005A480/16 + 0x1005A490/75 and both bins re-extracted.  The wrapper is
+ * byte-exact.  The loader is PARKED at 7 diffs, register-blind 0+0: the
+ * original keeps the counter in esi and the slot pointer in edi, VC5 gives
+ * us the reverse.  Dead (2026-09-01 on the merged row, re-run 2026-09-04
+ * on the split one): declaration order, init order, `buf` first, `++i` in
+ * the argument, `*p++`, `register` on either, a symbolic end pointer
+ * (1+1), `while` and `for` over p (+9 B), `for` over i with `[i-1]` (5+5)
+ * or `[i]`+`i+1` (1+1, 72 B).  Do not re-probe. */
+
+__declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
+extern char s_Paint_damage_d_bmp_100b2e58[];
+int BrBmpLoadRgba(char *);
+
+/* WHAT IT DOES: load the three damage-decal bitmaps (Paint\damage1.bmp ..
+ * damage3.bmp) into the three shared livery slots that FUN_1005a6b0 frees.
+ * The dllimport sprintf is hoisted into ebx across the loop. */
+/* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
+void BrLiveryLoadDamageBmps(void)
+{
+  int i;
+  int *p;
+  char buf[0x400];
+
+  i = 0;
+  p = &DAT_10ac67b0;
+  do {
+    i = i + 1;
+    sprintf(buf, s_Paint_damage_d_bmp_100b2e58, i);
+    *p = BrBmpLoadRgba(buf);
+    p = p + 1;
+  } while ((int)p < 0x10ac67bc);
+}
+
+/* WHAT IT DOES: the public entry that loads the damage decals -- it does
+ * nothing but hand off to the loader above.  A `jmp`, since VC5 /O2 turns a
+ * trailing call into a tail jump; the 16-byte row is that jump plus padding. */
+/* @implements 0x1005A480 glide BrLiveryLoadDamage */
+void BrLiveryLoadDamage(void)
+{
+  BrLiveryLoadDamageBmps();
+}
+
+
 extern int DAT_100ad7d8;
 
 /* WHAT IT DOES: free every loaded car-livery bitmap -- walks the whole
