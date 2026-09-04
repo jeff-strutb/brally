@@ -2543,4 +2543,32 @@ void BrDlScreenRectEmit(int param_1,int param_2,int param_3,int param_4,int para
   return;
 }
 
+extern int DAT_106ed6e4;
+extern char DAT_106e8818;
+extern char DAT_106e881c;
+extern char DAT_106e8824;
+extern int *DAT_106e7710;
+extern int _DAT_106ed368;
+extern int _DAT_106ed648;
+
+
+/* WHAT IT DOES: emit display-list command 0x03800010 for the CURRENT rect-ring slot
+ * (without advancing the ring) and publish its two 0x1FF fields -- the shared tail of
+ * BrDlRectCmdEmit/BrDlScreenRectEmit as its own function. */
+/* @implements 0x1002C4A3 glide BrDlRectCmdFlush */
+
+void BrDlRectCmdFlush(void)
+
+{
+  int *puVar1;
+  
+  puVar1 = DAT_106e7710;
+  DAT_106e7710 = DAT_106e7710 + 2;
+  *puVar1 = 0x3800010;
+  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
+  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
+  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
