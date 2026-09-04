@@ -5853,3 +5853,26 @@ above them — before writing T3a.** It is 24 compiles at 6 s each.
 The faithful spelling, once the flip is found, is whatever natural order lands
 on the right bucket; here it is the four pointers in FIELD order (`pObj +
 0xc/0xd/0xe/0xf`), which is also the reading a human would write.
+
+## With int index locals the byte READ order is not the source order — VC5 swaps the first two
+*(proven byte-exact 2026-09-04 on 0x1001ECF0 BrDlCmdTri1; the pointer form in the same file did NOT do this)*
+
+The original reads the three command bytes 6, 4, 5 into ecx, eax, edx
+(`xor ecx,ecx / mov cl,[esi+6] / ...`). As pointer locals
+(`BrDlVtx *a = &pool[p[6]]; *c = &pool[p[4]]; *b = &pool[p[5]];`) the
+source order IS the read order. As int locals — the form the rest of the
+function needs, so every access re-forms `[reg + 0x105CE318 + off]` —
+`ia = p[6]; ic = p[4]; ib = p[5];` reads 4, 6, 5 and
+`ic = p[4]; ia = p[6]; ib = p[5];` reads the original's 6, 4, 5. Ten diff
+bytes, one region, register-blind 0+0, closed by swapping two lines.
+
+Riders, all measured on that function: `float u` declared BEFORE the ints
+is what lands them in ecx/eax/edx (declared after: 380 B and a `mov R,R`
+copy); the declaration order of the ints is inert (only their assignment
+order moves the reads); naming the three outcodes in locals — the lever
+that closed BrDlTriFlatZ — is WORSE here (377 B, three instructions short,
+5+8), because here the outcodes are single-use inside one expression;
+re-associating the `&` and permuting the `|` are byte-identical.
+**Screen:** one region at the top of the function where the byte loads
+come out in a different order with identical instruction counts — swap
+the first two assignments before anything else.
