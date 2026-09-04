@@ -133,3 +133,147 @@ int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
     return 1;
 #endif
 }
+
+/* ==========================================================================
+ * The poll family
+ *
+ * br23_sel_offer / br23_poll_store are copied from slice2_23.c verbatim:
+ * they are the port bodies' helpers and the slice still needs its own.
+ * ========================================================================== */
+
+/* `sel->f20(sel, v)` on the nested widget at +0x3838. */
+static int32_t br23_sel_offer(BrUiObj *pObj, int32_t v)
+{
+    BrUiObj              *pSel = pObj + BR_UI_OFF_SEL;
+    const BrUiWidgetVtbl *pVt  = (const BrUiWidgetVtbl *)
+                                     BrUiLdPtr(pObj, BR_UI_OFF_SEL);
+    return pVt->f20(pSel, v);
+}
+
+/* The bare "offer the global, keep the answer if it is not negative" body
+ * shared by 0x1003EAE0 / 0x1003EB60 / 0x1003EB90 / 0x1003EC80 / 0x1003ED10 /
+ * 0x1003EDF0. Returns the value the original leaves in eax. */
+static int32_t br23_poll_store(BrUiObj *pObj, int32_t *pVal)
+{
+    int32_t r = br23_sel_offer(pObj, *pVal);
+    if (r >= 0) {
+        *pVal = r;
+    }
+    return r;
+}
+
+/* WHAT IT DOES: asks the row's list which entry the player has moved to and
+ * remembers it as the current selection, leaving the selection alone if the
+ * list has no answer. Several near-identical hooks follow, differing only
+ * in which setting they store into. */
+/* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
+int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_i0AB3F4);
+    if (r >= 0) {
+        g_i0AB3F4 = r;
+    }
+#else
+    (void)br23_poll_store(pObj, &pG->g0AB3F4);
+#endif
+    return 1;
+}
+
+/* WHAT IT DOES: asks the list which entry the player has moved to and then
+ * throws the answer away -- there is no store-back at all, so this hook only
+ * has whatever effect the asking itself has. */
+/* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
+int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    /* The answer is thrown away -- there is no store-back here. */
+    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    (void)r;
+#else
+    (void)br23_sel_offer(pObj, pG->gAA2880);
+#endif
+    return 1;
+}
+
+/* WHAT IT DOES: the same ask-and-remember, storing into yet another
+ * setting. */
+/* @implements 0x100382A0 glide BrUiPoll1003EC80 */
+/* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
+int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2840);
+    if (r >= 0)
+        g_iAA2840 = r;
+    return 1;
+#else
+    (void)br23_poll_store(pObj, &pG->gAA2840);
+    return 1;
+#endif
+}
+
+/* WHAT IT DOES: the same ask-and-remember, storing into yet another
+ * setting. */
+/* @implements 0x10038320 glide BrUiPoll1003EDF0 */
+/* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
+int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2A30);
+    if (r >= 0)
+        g_iAA2A30 = r;
+    return 1;
+#else
+    (void)br23_poll_store(pObj, &pG->gAA2A30);
+    return 1;
+#endif
+}
+
+int FUN_1003fac0(int);
+extern int DAT_10ac5d44;
+extern int DAT_10ac5d88;
+extern int DAT_10b71a48;
+extern int DAT_10b71a4c;
+extern int DAT_10b71a50;
+extern int DAT_10b71a54;
+extern int _DAT_10ac5bbc;
+
+/* WHAT IT DOES: read the four corner values of the currently selected table
+ * row, following the row pointer stored for that index. The accessor the
+ * menu drawing uses to lay a row out. */
+/* @implements 0x100382D0 glide FUN_100382d0 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_100382d0(int param_1)
+
+{
+  int *puVar1;
+  int a;
+  int b;
+  int c;
+  int d;
+  int idx;
+
+  idx = DAT_10ac5d88;
+  puVar1 = *(int **)(DAT_10ac5d44 + 0x1de48 + idx * 8);
+  b = puVar1[1];
+  c = puVar1[2];
+  d = puVar1[3];
+  a = *puVar1;
+  _DAT_10ac5bbc = idx;
+  DAT_10b71a48 = a;
+  DAT_10b71a4c = b;
+  DAT_10b71a50 = c;
+  DAT_10b71a54 = d;
+  FUN_1003fac0(param_1);
+  return 0;
+}
