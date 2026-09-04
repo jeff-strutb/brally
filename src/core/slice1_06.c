@@ -199,55 +199,7 @@ int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
     return 0;
 }
 
-/* ==========================================================================
- * 0x1003B940
- * ========================================================================== */
-
-/* The threshold is the float at 0x1008F62C, which is 0.0f. The original
- * compares with `fcomp` and then tests C0 alone, so "not less than" is the
- * accepting condition and an unordered compare (NaN) sets C0 and rejects. */
-#define BR06_TRI_EPS 0.0f
-
-/* WHAT IT DOES: test whether a point lies inside a triangle, given a
- * reference direction that says which side of the triangle counts as the
- * front. Walks the three edges and requires the point to be on the inward
- * side of every one. Used by the collision grid to decide whether a wheel is
- * over a given piece of track surface. */
-/* @implements 0x1003B940 d3d BrTriContainsPoint */
-/* @n64 0x8022591C located */
-int BrTriContainsPoint(const BrVec3 *pPt, const BrVec3 *pA, const BrVec3 *pB,
-                       const BrVec3 *pC, const BrVec3 *pRef)
-{
-    /* SIX distinct Vec3 locals (frame 0x48), not three reused ones: a
-     * fresh edge per test, a shared n, and two point-deltas.  Reusing
-     * edge/toPt shrinks the frame to 0x24 and shifts every slot. */
-    BrVec3 n, toPtB, edge1, edge2, edge3, toPtA;
-
-    /* Edge A->B, paired with pPt - pB. */
-    BrVec3Sub(&edge1, pB, pA);
-    BrVec3Sub(&toPtB, pPt, pB);
-    BrVec3Cross(&n, &edge1, &toPtB);
-    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
-        return 0;
-    }
-
-    /* Edge B->C, paired with the same pPt - pB kept live. */
-    BrVec3Sub(&edge2, pC, pB);
-    BrVec3Cross(&n, &edge2, &toPtB);
-    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
-        return 0;
-    }
-
-    /* Edge C->A, paired with pPt - pA. */
-    BrVec3Sub(&edge3, pA, pC);
-    BrVec3Sub(&toPtA, pPt, pA);
-    BrVec3Cross(&n, &edge3, &toPtA);
-    if (!(BrVec3Dot(&n, pRef) >= BR06_TRI_EPS)) {
-        return 0;
-    }
-
-    return 1;
-}
+/* 0x1003B940 BrTriContainsPoint moved to src/core/geometry/br_tri.c. */
 
 /* ==========================================================================
  * 0x1003D180
