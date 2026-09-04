@@ -1078,9 +1078,24 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * RESIDUE (22 regnorm, -32 bytes, x87 SCHEDULING): the original loads all
  * SIX r components onto the x87 stack up front and interleaves the three
  * cross terms through them -- 16 `fxch` and one `fst` that is never reloaded.
- * Ours evaluates the three in sequence. Probed and dead: assigning the three
- * sums straight into *pOut with no temps (worse, -40). Was 137 bytes short
- * and 43 regnorm before the helper came inline. */
+ * Ours evaluates the three in sequence. Was 137 bytes short and 43 regnorm
+ * before the helper came inline.
+ *
+ * DEAD PROBES, do not re-run:
+ *  - assigning the three sums straight into *pOut with no temps (worse, -40);
+ *  - reordering the three cross terms AND the three adds to y, z, x, which is
+ *    the order the original's `fsubp`s complete in and the order its six
+ *    `fld`s pair up in -- 5+22 regnorm becomes 7+24, slightly WORSE
+ *    (2026-09-03).
+ *
+ * ‼ AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
+ * are hoisted above the `add esp,0xC` that cleans the call's three arguments:
+ * once esp moves, every `[esp+N]` displacement for `r` changes, so MSVC loads
+ * all six uses of r BEFORE adjusting the stack and then shuffles them with 16
+ * `fxch` -- plus one `fld st(2)` duplicate and one dead `fst`. That is a
+ * consequence of where the CALL's cleanup sits, not of how the arithmetic is
+ * spelled, which is why every term ordering leaves it unchanged. A source
+ * lever here would have to move the stack cleanup, not the expressions. */
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
     BrVec3 p = *pPoint;
