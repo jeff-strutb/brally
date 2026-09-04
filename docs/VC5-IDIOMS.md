@@ -4940,3 +4940,16 @@ a temp removes a term from it.
 which product the original computes first, then name THAT product. Do not
 work through the permutations and groupings first — on this function that was
 thirteen probes and none of them moved a byte.
+
+**THE BOUNDARY: it needs a SUM to lift out of.** 0x10034360 BrVec3Scale has
+the same shape of residue -- a sibling asymmetry in which operand of a float
+multiply gets the `fld`, with the original giving the zero-offset operand to
+the `fmul` on the x component and to the `fld` on y and z -- and the temp does
+NOTHING there, because each component is a lone two-operand product with no
+sum around it. Six spellings, all identical at 37 bytes / 12 instructions / 5
+diffs: the x product written scalar-first, all three written scalar-first, a
+temp for the x product with either operand order, a temp for the scalar, and a
+`const float *p = &pV->x` element pointer. So: **a lone commutative float
+multiply really is canonicalised and out of reach from source (the existing
+BrVec3 notes stand); it is only inside a flat SUM that naming a term buys you
+the evaluation order.**
