@@ -523,6 +523,120 @@ const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p)
 }
 #endif
 
+#ifdef BR_MATCHING_BUILD
+/* ====================================================================
+ * 0x1001FF60 -- the FLAT-shaded triangle emitter, z-buffered.
+ *
+ * The same shape as BR_DLCMD_TRI above, with three differences, and they are
+ * the whole function:
+ *
+ *  - it takes three vertex INDICES as ordinary int arguments, not a command
+ *    pointer, so the four G_TRI*_FLAT handlers (0x1001FEF0, 0x100203F0,
+ *    0x10020CF0, 0x10020D30) can share it after permuting the bytes
+ *    themselves.  The arguments are read BACKWARDS -- `[esp+0xc]` first.
+ *  - the clip arm calls its own six-argument helper, not BrDlClipTri: the
+ *    trimmer has to be told the flat colour separately, because the vertex it
+ *    would otherwise read it from is the one being overwritten.
+ *  - the flat shading itself, which is why the function exists.
+ *
+ * THE COLOUR SAVE/RESTORE IS NOT A PORT ADDITION.  The vertex pool is shared
+ * and b and c are still referenced by later commands in the same display
+ * list, so their own r/g/b must come back after the draw.  Six dword locals
+ * hold them and VC5 puts THREE OF THEM IN THE INCOMING ARGUMENT SLOTS -- the
+ * frame is `sub esp,0xc`, three dwords only, because the three parameters are
+ * dead the moment they have been scaled, and the float temp `u` shares the
+ * arg-3 slot with the first of them.  The frame is already exactly right; do
+ * not add a seventh local to "make room".
+ *
+ * ADDRESSING, and it is genuinely a SPLIT -- measured, three ways:
+ *   - all-pointer form (`BrDlVtx *a = &pool[i]`):  +2 insns but -105 bytes,
+ *     regnorm 47+45.  Loses the three `shl R,3` and 18 `mov R,[R+A]`.
+ *   - all-index form (`pool[i].field` throughout): +11 insns, +119 bytes,
+ *     regnorm 36+25.  Wins the `shl`s, loses 18 `mov [R+I],R` on the stores.
+ *   - the split below: +4 insns, regnorm 12+8.
+ * This is the OPPOSITE of what BrDlCmdTri1 needs, and the reason is the index
+ * itself: there it is a command BYTE, so `pool[p[6]]` re-reads it at every
+ * access and pays for SIB; here it is an int PARAMETER, so VC5 scales it once
+ * into a register and reaches every field as `[reg + 0x105CE318+off]`. */
+#undef V
+#define V(i) g_aBrDlVtxPool[i]
+
+/* ONE POINTER, AND ONLY FOR THE STORES.  The finish block is the inlined
+ * BrDlVtxFinishTex, whose first parameter is a BrDlVtx*, so its eight WRITES
+ * and the `oow` it multiplies by go through a `lea`d pointer (`[eax+0x38]`),
+ * while `s` and `t` -- which reach it as the SECOND parameter, a clip node at
+ * vertex+0x40 -- stay folded into the scaled index (`fld [ebx+0x105CE368]`). */
+#define BR_DLCMD_FINISH_VTX_I(i, u_)                                \
+    do {                                                            \
+        BrDlVtx *pv_ = &V(i);                                       \
+        BR_DL_PUN(pv_->tmu1[2], V(i).oow);                          \
+        BR_DL_PUN(pv_->tmu0[2], V(i).oow);                          \
+        (u_) = V(i).s * g_brDlTexScaleS * pv_->oow;                 \
+        BR_DL_PUN(pv_->tmu1[0], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[0], (u_));                              \
+        (u_) = V(i).t * g_brDlTexScaleT * pv_->oow;                 \
+        BR_DL_PUN(pv_->tmu1[1], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[1], (u_));                              \
+    } while (0)
+
+extern void BrDlClipTriFlatZ(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c,
+                             float n0, float n1, float n2);  /* 0x10020190 */
+
+/* WHAT IT DOES: draws one flat-shaded triangle, z-buffered, from three
+ * vertex-pool indices. It is dropped if all three corners are off the same
+ * edge of the screen, handed to the trimmer if any one of them is off screen,
+ * and otherwise all three corners are forced to the FIRST corner's colour --
+ * which is what makes it flat -- and it goes to the card. The other two
+ * corners' own colours are put back afterwards, because the vertex pool is
+ * shared and later commands still expect to find them there. */
+/* @implements 0x1001FF60 glide BrDlTriFlatZ */
+void BrDlTriFlatZ(int i0, int i1, int i2)
+{
+    float    u;
+    uint32_t br, bg, bb;
+    uint32_t cr, cg, cb;
+
+    if ((V(i2).outcode & (V(i0).outcode & V(i1).outcode)) != 0) {
+        return;
+    }
+    if ((V(i0).outcode | V(i1).outcode | V(i2).outcode) != 0) {
+        BrDlClipTriFlatZ(&V(i0), &V(i1), &V(i2),
+                         V(i0).n0, V(i0).n1, V(i0).n2);
+        return;
+    }
+
+    BR_DLCMD_FINISH_VTX_I(i0, u);
+    BR_DLCMD_FINISH_VTX_I(i1, u);
+    BR_DLCMD_FINISH_VTX_I(i2, u);
+
+    BR_DL_PUN(br, V(i1).r);
+    BR_DL_PUN(bg, V(i1).g);
+    BR_DL_PUN(bb, V(i1).b);
+    BR_DL_PUN(cr, V(i2).r);
+    BR_DL_PUN(cg, V(i2).g);
+    BR_DL_PUN(cb, V(i2).b);
+
+    BR_DL_PUN(V(i1).r, V(i0).r);
+    BR_DL_PUN(V(i2).r, V(i0).r);
+    BR_DL_PUN(V(i1).g, V(i0).g);
+    BR_DL_PUN(V(i2).g, V(i0).g);
+    BR_DL_PUN(V(i1).b, V(i0).b);
+    BR_DL_PUN(V(i2).b, V(i0).b);
+
+    BrDlDrawTri(&V(i0), &V(i1), &V(i2));
+
+    BR_DL_PUN(V(i1).r, br);
+    BR_DL_PUN(V(i1).g, bg);
+    BR_DL_PUN(V(i1).b, bb);
+    BR_DL_PUN(V(i2).r, cr);
+    BR_DL_PUN(V(i2).g, cg);
+    BR_DL_PUN(V(i2).b, cb);
+}
+
+#undef V
+#define V(i) (*(i))
+#endif
+
 /* ====================================================================
  * 0x1001E320 -- G_FILLRECT, opcode 0xF6.  96 bytes; the body is shared with
  * the D3D build, where the same code sits at 0x1001BE30.
