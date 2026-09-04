@@ -604,6 +604,31 @@ int BrCdTrackNextWrap(void)
 
 /* WHAT IT DOES: request CD track `param_1`: mark music pending, record the track, and if the
  * disc is readable and the player window is live, post it message 0x3B9 (play, 1). */
+/* WHAT IT DOES: choose a CD music track at random, from track 3 up to the
+ * last one on the disc. If the disc has more than six tracks it keeps drawing
+ * until it gets one that is not the track already playing, so the music
+ * actually changes; on a shorter disc it takes whatever it drew, repeat or
+ * not. The clamps are the original's and do not depend on rand() behaving.
+ * The one caller is BrRaceStep. */
+/* @implements 0x10002C00 glide BrCdTrackRandom */
+
+int BrCdTrackRandom(void)
+
+{
+  int iVar1;
+
+  do {
+    iVar1 = rand() * (g_brCdTrackLast - 5) / 0x8000 + 3;
+    if (iVar1 < 3) {
+      iVar1 = 3;
+    }
+    if (iVar1 > g_brCdTrackLast) {
+      iVar1 = g_brCdTrackLast;
+    }
+  } while ((g_brCdTrackLast > 6) && (iVar1 == g_brCdTrackCur));
+  return iVar1;
+}
+
 /* @implements 0x10002BA0 glide BrCdTrackRequest */
 
 int BrCdTrackRequest(int param_1)
