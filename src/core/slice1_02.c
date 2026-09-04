@@ -157,15 +157,6 @@ int32_t BrFixPackS16Q7(float v)
 }
 
 
-/* 0x100073C0.  Scale 0x1008F144 = 0.125f. */
-/* WHAT IT DOES: turns a packed signed byte back into a float at 1/8
- * resolution. */
-/* @implements 0x100073C0 d3d BrFixUnpackS8Q3 */
-float BrFixUnpackS8Q3(int32_t v)
-{
-    return (float)((int8_t)v * 0.125f);
-}
-
 /* =====================================================================
  * 2. Car-state packet
  * ===================================================================== */
