@@ -33,6 +33,19 @@
  *   this function it reports every slot renumbering as a prologue
  *   regression.  CHECK THE PROLOGUE ITSELF, or divergence.py --mask-slots,
  *   before believing a FIRSTDIV drop here.
+ *   ‼ AND IT IS SITE-SPECIFIC -- MEASURED, do not re-run either sweep.  The
+ *   obvious next move was to convert every other assign-then-override in
+ *   this file, and it is badly wrong: all EIGHT ring-wrap sites (`slot`,
+ *   `head`, `ds` -- 0x1335/0x1374/0x1380/0x1390/0x1398/0x1404/0x1434/0x1465)
+ *   converted together go 37 -> 60 rows and +12 instructions.  Those the
+ *   original really does spell as an assign plus a fix-up: it emits
+ *   `cmp X,0x1f4; jl` with no home at all.  The same sweep over the twelve
+ *   doubling sites in br_tex3d_expand.c (0x100250D0) is worse still, 81 ->
+ *   117 rows and +29 instructions.
+ *   ‼ SO THE RULE IS: convert an assign-then-override ONLY where the bytes
+ *   show the ORIGINAL HOMING the value on both edges.  If the original keeps
+ *   it in a register, the assign-then-override IS the right source.  Read
+ *   the site before converting it; there is no sweepable class here.
  *   ‼ GENERALISE: `x = a; if (c) x = b;` and `if (c) x = b; else x = a;` are
  *   NOT the same to VC5.  The first is one definition and a fix-up and stays
  *   in a register; the second is two definitions on two edges and gets a

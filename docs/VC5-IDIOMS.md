@@ -2816,6 +2816,36 @@ divergence 28 bytes earlier and improves bytes, instructions, the raw gap and
 the register-blind gap all at once. A first-divergence tell is only evidence
 when the other axes agree with it.
 
+## `x = a; if (c) x = b;` and `if (c) x = b; else x = a;` are NOT the same to VC5
+*(proven 2026-09-03 on 0x1000EAF0, where it recovered three instructions and
+took the function from four short to one)*
+
+Semantically identical, and they allocate differently:
+
+    x = a; if (c) x = b;          ONE definition plus a conditional fix-up.
+                                  VC5 keeps x in a register.
+    if (c) x = b; else x = a;     TWO definitions on two edges.  VC5 gives x
+                                  a stack home, writes it on BOTH arms, and
+                                  reloads it at the use.
+
+The case: a ring slot written as `pDst = h1; if (h1 < 0) pDst = 0x1f3;` stayed
+in `edi` and emitted none of the three spill instructions the original has
+(`mov [esp+0x20],ebx` in each arm, `mov edi,[esp+0x20]` at the use). Written as
+a true if/else the homes appear.
+
+‼ **It is a per-site reading, NOT a sweepable class**, and the two sweeps that
+prove it are worth more than the fix. Converting all eight sibling ring-wrap
+sites in the same function together costs 23 register-blind rows and twelve
+instructions; converting the twelve doubling sites in 0x100250D0 costs 36 rows
+and twenty-nine instructions. Those originals genuinely *do* spell an assign
+plus a fix-up — they emit the compare and branch with no home anywhere.
+
+**So the screen is: does the ORIGINAL home the value on both edges?** If it
+writes a slot in each arm and reloads at the use, the source is an if/else. If
+it keeps the value in a register across the test, the source is
+assign-then-override, and converting it will cost you. Read the bytes at the
+site; there is nothing to sweep.
+
 ## Naming a byte temp: when it helps and when it costs
 *(proven 2026-09-03 on 0x1000A110 arm 3; read together with the "do not name a
 temp to preserve an observed load order" entry, which is about a different case)*
