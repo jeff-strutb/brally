@@ -9,6 +9,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "br_mat.h"
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 #include <math.h>
 #include <stddef.h>
@@ -313,4 +314,17 @@ void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
         }
     }
     *pOut = t;
+}
+
+/* 0x10075340 */
+/* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
+ * perspective" values, undoing anything that had been left there. */
+/* @implements 0x10075340 d3d BrMat4SetLastColumn */
+/* @n64 0x8021EB30 exact */
+void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
+{
+    pM->m[3][3] = 1.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[0][3] = 0.0f;
 }
