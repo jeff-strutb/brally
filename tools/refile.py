@@ -110,6 +110,74 @@ def new_module_file(path, module, name):
                 '%s\n' % (stem, module, ANCHOR))
 
 
+def tag_block(tu, name, va):
+    """The comment block that belongs to `name` -- its @implements tag, its
+    WHAT IT DOES: description and any codegen notes -- as text ending in a
+    newline, or None if no tag for this function is above it.
+
+    Anchored on the DEFINITION, not on the first tag matching the VA: a file
+    can carry the same address in a `@d3donly` note or in a sibling's residue
+    comment, and moving the wrong block would strip a different function's
+    documentation.
+    """
+    span = autofile.find_function(tu, name)
+    if span is None:
+        return None
+    lines = tu[:span[0]].split('\n')
+    i = len(lines) - 1
+    while i >= 0 and not lines[i].strip():
+        i -= 1
+    end = i + 1
+    while i >= 0:
+        s = lines[i].strip()
+        if s.startswith(('*', '/*')) or s.endswith('*/') or not s:
+            i -= 1
+            continue
+        break
+    blk = [l for l in lines[i + 1:end]]
+    if not any('@implements' in l for l in blk):
+        return None
+    return '\n'.join(blk) + '\n'
+
+
+def strip_tag_block(tu, name, va):
+    """`tu` with the function's comment block removed, so the tag does not
+    stay behind in the source file claiming a function that has left."""
+    blk = tag_block(tu, name, va)
+    if not blk:
+        return tu
+    at = tu.rfind(blk, 0, autofile.find_function(tu, name)[0] + 1)
+    return tu[:at] + tu[at + len(blk):] if at >= 0 else tu
+
+
+STATIC_DEF = re.compile(
+    r'^static\s+(?:const\s+)?[\w][\w\s]*?[\*\s]\s*\**(\w+)\s*(?:\[[^\]]*\])?\s*(?:=|;)',
+    re.M)
+
+
+def shared_statics(tu, body, name):
+    """File-local statics this function reads that OTHER functions here use too.
+
+    A file-scope `static` is private to its translation unit, so a function
+    touching one cannot leave the file alone: take the static and the siblings
+    break, leave it and the moved function will not compile. This is a property
+    of the code, not a defect in the mover -- the correct unit of movement is
+    the whole group that shares the static, which is what the ORIGINAL
+    translation unit was. Reported so the group can be moved deliberately
+    rather than the move failing with a bare compile error.
+    """
+    out = []
+    for m in STATIC_DEF.finditer(tu):
+        sym = m.group(1)
+        if not re.search(r'\b%s\b' % re.escape(sym), body):
+            continue
+        # used anywhere outside this function's own text?
+        rest = tu.replace(body, '')
+        if re.search(r'\b%s\b' % re.escape(sym), rest):
+            out.append(sym)
+    return out
+
+
 def git(*a):
     return subprocess.run(['git'] + list(a), cwd=ROOT,
                           capture_output=True, text=True)
@@ -142,7 +210,9 @@ def move_one(rec, size, dry, filed):
         # decision; the recorded module wins.
         dst = dest_file(module, name)
     stem = os.path.basename(dst)[:-2]
-    if not os.path.exists(os.path.join(ROOT, dst)) and stem in TECHNIQUE_STEMS:
+    base = re.sub(r'[0-9a-f]+$', '', stem).rstrip('_') or stem
+    if not os.path.exists(os.path.join(ROOT, dst)) and (
+            stem in TECHNIQUE_STEMS or base in TECHNIQUE_STEMS):
         print('   NEEDS A DECISION %s %-28s (would mint %s)'
               % (va, name, os.path.basename(dst)))
         return False
@@ -156,6 +226,23 @@ def move_one(rec, size, dry, filed):
     if decls is None:
         print('   SKIP %s %s: %s' % (va, name, body))
         return False
+
+    # autofile.extract() starts at the SIGNATURE -- it walks back only as far
+    # as the previous ';', '}' or '*/'. That drops the comment block above the
+    # function, and with it the @implements tag and the WHAT IT DOES: line.
+    # A function moved without its tag arrives invisible: the sweep produces no
+    # row for it in its new file, the verify below sees no match, and the move
+    # is reverted as a failure when nothing was actually wrong. Carry the block.
+    header = tag_block(tu, name, va)
+    if header is None:
+        print('   SKIP %s %s: no @implements block found above it' % (va, name))
+        return False
+    sh = shared_statics(tu, body, name)
+    if sh:
+        print('   SHARES A FILE-LOCAL STATIC %s %-24s (%s) -- move its group'
+              % (va, name, ', '.join(sh[:3])))
+        return False
+    body = header + body
 
     before_src = status_of(src)
     src_before_text = tu
@@ -177,8 +264,12 @@ def move_one(rec, size, dry, filed):
     open(dpath, 'w').write(dtu[:at] + block + dtu[at:])
     # Remove from the slice only after the destination is written, so a crash
     # duplicates a function (caught by the sweep) rather than losing it.
-    span = autofile.find_function(src_before_text, name)
-    open(spath, 'w').write(src_before_text[:span[0]] + src_before_text[span[1]:])
+    # Remove the body AND its comment block: a tag left behind would claim a
+    # function that is no longer in the file, and the next sweep would score
+    # the wrong source against that address.
+    cut = strip_tag_block(src_before_text, name, va)
+    span = autofile.find_function(cut, name)
+    open(spath, 'w').write(cut[:span[0]] + cut[span[1]:])
 
     ok = sweep(dst) and sweep(src)
     after_dst = status_of(dst)
