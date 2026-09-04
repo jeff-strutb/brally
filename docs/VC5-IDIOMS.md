@@ -5876,3 +5876,52 @@ re-associating the `&` and permuting the `|` are byte-identical.
 **Screen:** one region at the top of the function where the byte loads
 come out in a different order with identical instruction counts — swap
 the first two assignments before anything else.
+
+## Block LAYOUT: an arm that never rejoins is deferred past the epilogue; a `goto` to a label after `return` is laid inline
+*(proven 2026-09-04 on 0x10015B10 BrTextEmitString, 2,294 -> 411 diff bytes, frame and 722-byte escape chain)*
+
+The original's escape-sequence chain sits AFTER the function's `ret`, reached
+by a forward `jne` from the `%` test. Writing it as `goto escape;` with the
+label placed after the `return` does NOT reproduce that: VC5 lays the target
+INLINE with the branch inverted. What does: make the chain the ELSE arm of
+the `%%` test, with every path in it ending in `goto next` (or `continue`)
+-- an arm none of whose paths rejoin is deferred past the epilogue. Tell: a
+block of code at the END of the original, entered only by a forward
+conditional, whose exits all jump back into the loop.
+
+Riders from the same function, each measured: (1) **a named temp that holds
+a callee-saved register across a block flips which long-lived variable gets
+the last callee-saved register** -- `adv = w - 1` named right after `w`
+(the original's early `lea edi,[ecx-1]`) is what put the scale in ebx and
+closed a "one allocation choice" wall plus a frame one slot short; the tell
+is an early `lea R,[R-1]` the original computes at the top and we compute at
+the use. (2) **Guard sums inline**: `if (penX + drawW > right)` at every
+site; global CSE carries the sum into the pass arm only and the clamp arm
+recomputes -- a named `rightEdge` hoists it above the guard. (3) Under /O2
+**block SCOPE, not declaration order, decides slot assignment**: a
+block-scoped local is homed after the function-scope ones, which is how one
+packs into the dead parameter slot. (4) `do { ... } while (*p != '\0')` with
+the increments before the test, not `for(;;)` + mid-step `break`. (5)
+Integer `|` and `*` operand order is canonicalised (inert), like the float
+rules. (6) **Check report.csv's `opt` column against the original's ebp
+use**: a function using ebp as a general register is plain /O2, whatever
+the sweep picked for the old port body.
+
+## The whole module's signatures can be the port's abstraction — transcribe the callee list first
+*(0x10067710 BrCrRespWalk, 752 -> 1296 of 1301 B, regnorm 183 -> 14, 2026-09-04)*
+
+The port had `BrCrRespWalk` taking nine arguments; the original takes
+`(body, pMatBox)` and reads everything off the body block, and its two
+callees are `0x10065C80(body, pNormal, pRelDir, flag, restOffset)` and
+`0x10065980(body, pNormal, dampFlag, spinFlag)`. With a shared header you
+cannot edit in parallel, `#define` the header's prototype to a spare name
+around the include under BR_MATCHING_BUILD and call the port-signature
+callees through a cast of the function designator -- VC5 still emits a
+direct `call rel32` with the right push count. Riders: a push-out delta
+that is a NAMED BrVec3 gives the three homed slots and `fld st(0)` dups;
+`pos = pos - dp` is `fld pos ; fsub [slot]` where `pos -= dp` is `fsubr`; a
+three-float copy with no arithmetic is three DWORD moves through integer
+registers; the first sign test is an if/else with the `< 0` arm first and
+the later ones `sgn = -1; if (!(x < 0)) sgn = 1` (VC5 reuses `or ecx,-1`);
+a `short` counter incremented in a loop is dword arithmetic with `cmp word
+ptr` at the test.
