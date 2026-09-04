@@ -703,6 +703,42 @@ void BrSndVoiceApplyVolume(int param_1)
   return;
 }
 
+/* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
+ * drive its DirectSound buffer to DSBVOLUME_MIN (vtable +0x3c) and recentre
+ * the pan (vtable +0x40).  The buffers keep playing; only their output is
+ * killed, so a later volume/pan restore resumes them mid-sound.  Empty slots
+ * are skipped and the sound-disabled case is a silent success. */
+/* @implements 0x1006BD70 glide BrSndBankMute */
+
+int BrSndBankMute(void)
+
+{
+  void **ppVoice;
+  int    pVoice;
+
+  if (BrSndG0B5DE8 == 0) {
+    return 1;
+  }
+  if (BrSndPDS == 0) {
+    return 1;
+  }
+  if (BrSndG18290FC == 0) {
+    return 1;
+  }
+  ppVoice = g_aBrSndBankVoice;
+  do {
+    pVoice = (int)*ppVoice;
+    if (pVoice != 0) {
+      (*(dsbuf_fn2 *)(**(int **)(pVoice + 0x9c) + 0x3c))
+        (*(int *)(pVoice + 0x9c), -10000);
+      (*(dsbuf_fn2 *)(**(int **)(pVoice + 0x9c) + 0x40))
+        (*(int *)(pVoice + 0x9c), 0);
+    }
+    ppVoice = ppVoice + 1;
+  } while ((int)ppVoice < (int)&g_aBrSndBankVoice[BR_SND_BANK_VOICES]);
+  return 1;
+}
+
 /* WHAT IT DOES: set the volume on a DirectSound buffer and commit the change. */
 /* @implements 0x1006B670 glide BrSndBufSetVolume */
 
