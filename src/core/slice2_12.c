@@ -1409,14 +1409,6 @@ int operator_delete();
 int __fastcall FUN_100087c0(void *pThis);
 extern int g_br094294;
 
-/* WHAT IT DOES: return the value of the global at g_br094294. */
-/* @implements 0x100060A0 glide BrGetGlobal_94294 */
-
-int BrGetGlobal_94294(void)
-
-{
-  return g_br094294;
-}
-
+/* 0x100060A0 BrGetGlobal_94294 now lives in src/core/startup/br_stubs.c. */
 
 #endif /* BR_MATCHING_BUILD */
