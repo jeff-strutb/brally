@@ -986,29 +986,7 @@ int BrRet0_10035059(void) { return 0; }
 int BrRet1_10035B87(void) { return 1; }
 
 
-/* 0x10035BA7  The parameter is never read. */
-/* WHAT IT DOES: writes out whatever message was last handed to the routine
- * below. It ignores the argument it is given and reads the stored one
- * instead. */
-/* @implements 0x10035BA7 d3d BrLogEmit */
-void BrLogEmit(void *ignored)
-{
-    (void)ignored;
-    BrLogPrint(g_BrLogArg);
-}
-
 /* 0x10035BBA */
-/* WHAT IT DOES: records a message and writes it out at once. Worth knowing
- * because elsewhere in the tree this same address is reached under the name
- * "BrFatal" -- it is not fatal, it only logs. */
-/* @implements 0x10035BBA d3d BrLogSet */
-/* @n64 0x8021E1F4 located */
-void BrLogSet(void *p)
-{
-    g_BrLogArg = p;
-    BrLogEmit(NULL);
-}
-
 /* ==================================================================
  * NOTES ON THE SKIPPED FUNCTIONS -- recorded so the analysis is not lost.
  * ==================================================================
