@@ -1216,6 +1216,12 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  *    has the extra `jmp`/reload pair around the victim update that we lack.
  *    Note we do not even use edi in the loop -- a free register and it still
  *    spills, so this is a hoisting decision, not pressure.
+ *    PROBED AND DEAD 2026-09-04, the TYPING of the compare: reading the
+ *    array through a `(uint16_t *)` cast with the plain promotion
+ *    `== key` (no explicit casts), the same with `stored` kept as a
+ *    uint32_t local, both byte-identical (613 / 193); dropping the `key`
+ *    local and writing `(int16_t)(ix + iy)` inline at the compare and the
+ *    store is WORSE (616 / 194).  The widening hoist is not a cast question.
  *  - THE CLOCK IS NOT INCREMENTED IN PLACE. Original `inc dword ptr [g]`;
  *    we emit load / inc / store with the load scheduled above the pushes and
  *    the store below the first __ftol call. Both re-read the global later, so
