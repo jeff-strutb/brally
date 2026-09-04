@@ -1267,14 +1267,6 @@ int BrReplayGetSize(void)
   return g_BrReplayCount[0] * 0x18;
 }
 
-/* WHAT IT DOES: return a pointer to the secondary replay data buffer. */
-/* @implements 0x10063DA0 glide BrReplayGetBuf2 */
-
-char * BrReplayGetBuf2(void)
-
-{
-  return &DAT_10cf3668;
-}
 
 extern unsigned int DAT_10b7364c;
 
