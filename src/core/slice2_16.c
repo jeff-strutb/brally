@@ -2355,25 +2355,6 @@ void BrFadeTick(void)
 }
 
 
-/* 0x1002B9C0 */
-/* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
- * batch of loaded geometry starts from nothing. */
-/* @implements 0x1002B9C0 d3d BrRcaResetCounts */
-/* @implements 0x10018A30 glide BrRcaResetCounts */
-#ifdef BR_MATCHING_BUILD
-void BrRcaResetCounts(void)
-{
-    g_brRca67B54C = 0;
-    g_brRca67B548 = 0;
-}
-#else
-void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
-{
-    pCache->nEntries = 0;
-    pList->n = 0;
-}
-#endif
-
 /* 0x1002B9E0 has moved to br_bits.c, which carries both builds' addresses:
  * br_track.c had transcribed the same function as `swap_u16_run` under
  * BRGlide's 0x10018A50.  br_bits is a leaf both can link. */
