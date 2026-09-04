@@ -56,18 +56,59 @@ def compile_file(src, tag):
     return obj, []
 
 
-def norm(t, m):
+BRANCH = re.compile(r'^(j[a-z]+|call|loop[a-z]*)$')
+
+
+def norm(t, m, relocd=False):
+    """‼ RELOC'D OPERANDS MUST BE MASKED, and until 2026-09-03 this did not
+    do it -- only tools/msetdiff.py did, and the two disagreed by 2.5x.
+
+    An unlinked .obj holds the ADDEND in the reloc'd field and the symbol in
+    the relocation, so capstone prints `[edx*4]` or `[ecx*8 + 0x10]`, while
+    the LINKED original prints the whole absolute, `[edx*4 + 0x102735b0]`.
+    Without masking, the two never pair and EVERY absolutely-addressed
+    instruction is counted twice, once MISSING and once EXTRA.
+
+    Measured on 0x1000A110 the day this was fixed: REGNORM read 20+28 = 48
+    rows, of which 28 were this artefact -- fourteen instructions that are
+    IDENTICAL in the two streams, at identical offsets.  The honest gap is
+    13+5.  Every REGNORM/RAW figure quoted in a dossier before that date is
+    inflated on any function that indexes a global array, and rankings made
+    between such functions are not comparable.  Logic mirrors msetdiff.norm;
+    keep the two in step.
+    """
+    if BRANCH.match(t.split(' ', 1)[0]) and re.fullmatch(
+            r'0x[0-9a-f]+', t.split(' ', 1)[1] if ' ' in t else ''):
+        return t.split(' ', 1)[0] + ' T'
     t = re.sub(r'esp [+-] 0x[0-9a-f]+', 'esp+S', t)
-    t = re.sub(r'0x[0-9a-f]+', 'I', t); t = re.sub(r'\b\d+\b', 'I', t)
+    t = re.sub(r'\*(1|2|4|8)\b', '*K', t)
     if m != 'raw':
         t = re.sub(R32, 'R', t); t = re.sub(R16, 'W', t); t = re.sub(R8, 'B', t)
+    if relocd or re.search(r'0x1[0-9a-f]{7}', t):
+        t = re.sub(r'0x[0-9a-f]+', 'A', t)
+        t = re.sub(r'\[(\d+)\]', '[A]', t)
+        t = re.sub(r'\[([A-Za-z]+\*K) \+ \d+\]', r'[\1 + A]', t)
+        if 'A' not in t:
+            if re.search(r',\s*0$', t):
+                t = re.sub(r',\s*0$', ', A', t)
+            elif '[' not in t and re.search(r'\s0$', t):
+                # `push <symbol>`: the obj holds the addend (0) in the reloc'd
+                # field, the linked original holds the absolute.
+                t = re.sub(r'\s0$', ' A', t)
+            elif '[' in t:
+                def _abs(mo):
+                    inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', mo.group(1))
+                    return '[' + inner + ' + A]'
+                t = re.sub(r'\[([^]]*)\]', _abs, t, count=1)
+    t = re.sub(r'0x[0-9a-f]+', 'I', t); t = re.sub(r'\b\d+\b', 'I', t)
     return t
 
 
-def bag(code, m):
+def bag(code, m, relocs=frozenset()):
     c = Counter()
     for i in md.disasm(code, 0):
-        c[norm('%s %s' % (i.mnemonic, i.op_str), m)] += 1
+        rd = any(o in relocs for o in range(i.address, i.address + i.size))
+        c[norm('%s %s' % (i.mnemonic, i.op_str), m, rd)] += 1
     return c
 
 
@@ -112,7 +153,7 @@ def main():
     oi = len(list(md.disasm(orig, 0))); ri = len(list(md.disasm(rc, 0)))
     res = {}
     for m in ('raw', 'regnorm'):
-        O, R = bag(orig, m), bag(rc, m)
+        O, R = bag(orig, m), bag(rc, m, relocs)
         res[m] = (sum((R - O).values()), sum((O - R).values()))
     ident = (len(rc) >= len(orig) and ndiff == 0)
     print('%s %s  [%s]' % (va, name, r['file']))
@@ -131,7 +172,7 @@ def main():
     if a.detail is not None:
         m = a.detail[0] if a.detail else 'regnorm'
         n = int(a.detail[1]) if len(a.detail) > 1 else 25
-        O, R = bag(orig, m), bag(rc, m)
+        O, R = bag(orig, m), bag(rc, m, relocs)
         print('  --- recomp EXTRA ---')
         for k, v in (R - O).most_common(n): print('   +%3d  %s' % (v, k))
         print('  --- recomp MISSING ---')

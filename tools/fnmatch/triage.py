@@ -44,18 +44,53 @@ R16 = r'\b(ax|bx|cx|dx|si|di|bp)\b'
 R8  = r'\b(al|bl|cl|dl|ah|bh|ch|dh)\b'
 
 
-def _norm(t, m):
+# ‼ RELOC'D OPERANDS MUST BE MASKED.  Until 2026-09-03 this file (and
+# tools/fnmatch/fn.py) did not, while tools/msetdiff.py did, so the reggap
+# this tool RANKS EVERY LANE BY was inflated on any function that touches a
+# global absolutely.  An unlinked .obj keeps the ADDEND in the reloc'd field
+# and the symbol in the relocation -- capstone prints `[edx*4]` or `push 0` --
+# while the LINKED original prints the whole absolute.  Unmasked, the two
+# never pair and every such instruction counts twice, once MISSING and once
+# EXTRA.  Measured the day it was fixed: 0x1000A110's reggap fell 48 -> 18
+# and 0x1000EAF0's 86 -> 38, while 0x100250D0 (which indexes no global array)
+# did not move at all -- so the error is NOT a uniform scale factor and every
+# reggap COMPARISON BETWEEN functions made before that date is unsafe,
+# including the parked/SHAPE verdicts below.  Keep this in step with
+# msetdiff.norm and fn.norm.
+BRANCH = re.compile(r'^(j[a-z]+|call|loop[a-z]*)$')
+
+
+def _norm(t, m, relocd=False):
+    if BRANCH.match(t.split(' ', 1)[0]) and re.fullmatch(
+            r'0x[0-9a-f]+', t.split(' ', 1)[1] if ' ' in t else ''):
+        return t.split(' ', 1)[0] + ' T'
     t = re.sub(r'esp [+-] 0x[0-9a-f]+', 'esp+S', t)
-    t = re.sub(r'0x[0-9a-f]+', 'I', t); t = re.sub(r'\b\d+\b', 'I', t)
+    t = re.sub(r'\*(1|2|4|8)\b', '*K', t)
     if m != 'raw':
         t = re.sub(R32, 'R', t); t = re.sub(R16, 'W', t); t = re.sub(R8, 'B', t)
+    if relocd or re.search(r'0x1[0-9a-f]{7}', t):
+        t = re.sub(r'0x[0-9a-f]+', 'A', t)
+        t = re.sub(r'\[(\d+)\]', '[A]', t)
+        t = re.sub(r'\[([A-Za-z]+\*K) \+ \d+\]', r'[\1 + A]', t)
+        if 'A' not in t:
+            if re.search(r',\s*0$', t):
+                t = re.sub(r',\s*0$', ', A', t)
+            elif '[' not in t and re.search(r'\s0$', t):
+                t = re.sub(r'\s0$', ' A', t)
+            elif '[' in t:
+                def _abs(mo):
+                    inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', mo.group(1))
+                    return '[' + inner + ' + A]'
+                t = re.sub(r'\[([^]]*)\]', _abs, t, count=1)
+    t = re.sub(r'0x[0-9a-f]+', 'I', t); t = re.sub(r'\b\d+\b', 'I', t)
     return t
 
 
-def _bag(code, m):
+def _bag(code, m, relocs=frozenset()):
     c = Counter()
     for i in md.disasm(code, 0):
-        c[_norm('%s %s' % (i.mnemonic, i.op_str), m)] += 1
+        rd = any(o in relocs for o in range(i.address, i.address + i.size))
+        c[_norm('%s %s' % (i.mnemonic, i.op_str), m, rd)] += 1
     return c
 
 
@@ -80,7 +115,7 @@ def _objs():
             except Exception:
                 continue
             for sym, v in t.items():
-                out.setdefault(sym, _strip_pad(v[0]))
+                out.setdefault(sym, (_strip_pad(v[0]), set(v[1])))
     return out
 
 
@@ -88,11 +123,11 @@ def measure(va, sym, objs):
     ob = os.path.join(ROOT, 'build', 'match', 'orig', va + '.bin')
     if not os.path.exists(ob) or sym not in objs:
         return None
-    orig = open(ob, 'rb').read(); rc = objs[sym]
+    orig = open(ob, 'rb').read(); rc, rel = objs[sym]
     oi = len(list(md.disasm(orig, 0))); ri = len(list(md.disasm(rc, 0)))
     res = {}
     for m in ('raw', 'regnorm'):
-        O, R = _bag(orig, m), _bag(rc, m)
+        O, R = _bag(orig, m), _bag(rc, m, rel)
         res[m] = (sum((R - O).values()), sum((O - R).values()))
     raw, reg = sum(res['raw']), sum(res['regnorm'])
     return dict(va=va, sym=sym, ob=len(orig), rb=len(rc), oi=oi, ri=ri,
