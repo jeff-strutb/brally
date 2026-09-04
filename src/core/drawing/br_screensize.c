@@ -140,3 +140,52 @@ void THUNK_1001E2B0(void)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <string.h>
+
+#include "slice1_07.h"   /* BrDevSlot -- see the note in slice3_39.h */
+#ifdef BR_MATCHING_BUILD
+/* Header prototype is cdecl; matching needs thiscall.  Rename the cdecl
+ * declaration so the definition below can wear a different convention. */
+#define BrTextBoxDeleteDtor BrTextBoxDeleteDtor_cdecl
+#define BrTextBoxMeasureA  BrTextBoxMeasureA_cdecl
+#define BrTextBoxMeasureB  BrTextBoxMeasureB_cdecl
+#endif
+#ifdef BR_MATCHING_BUILD
+#define BrTextBoxInit BrTextBoxInit_port
+#include "slice3_39.h"
+#undef BrTextBoxInit
+#else
+#include "slice3_39.h"
+#endif
+#ifdef BR_MATCHING_BUILD
+#undef BrTextBoxDeleteDtor
+#undef BrTextBoxMeasureA
+#undef BrTextBoxMeasureB
+#endif
+
+/* WHAT IT DOES: records the screen's width and height and works out its
+ * centre point, then clears seven other numbers. Its argument is never
+ * looked at. */
+/* @implements 0x10060210 d3d BrFn10060210 */
+int32_t __stdcall BrFn10060210(void *pUnused)
+{
+    int i;
+
+    (void)pUnused;   /* never read by the original */
+
+    g_BrAA33B8 = g_Br0A81C0;
+    g_pBrAA2E80->x = g_Br0A81C0 / 2;   /* cdq/sub/sar: toward zero */
+
+    g_BrAA33B4 = g_Br0A81C4;
+    g_pBrAA2E80->y = g_Br0A81C4 / 2;
+
+    for (i = 0; i < 7; ++i) {
+        g_BrAA3398[i] = 0;
+    }
+    return 1;
+}
