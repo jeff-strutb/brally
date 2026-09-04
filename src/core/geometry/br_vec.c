@@ -117,6 +117,15 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
  * the x component, but FLD component / FMUL s for y and z.  VC5 canonicalises
  * commutative FMUL regardless of source operand order, so no source form
  * changes the FLD operand for x.  5 diffs remain. */
+/* SIX MORE DEAD PROBES, 2026-09-03, all identical at 37 B / 12 insns / 5 diffs:
+ * the x product written scalar-first; all three written scalar-first; the x
+ * product through a named temp with either operand order; a named temp for the
+ * scalar itself; and a `const float *p = &pV->x` element pointer. These were
+ * run because a NAMED TEMP had just broken the sum-of-products canonicaliser
+ * on 0x10060C30 BrSndPan -- it does not carry over, and the reason is the
+ * boundary now recorded in docs/VC5-IDIOMS.md: the temp lever needs a flat SUM
+ * to lift a term OUT of. Each component here is a lone two-operand multiply,
+ * and a lone commutative fmul is genuinely out of reach from source. */
 /* N64 CANNOT SETTLE THIS ONE -- a negative result, recorded so it is not
  * mistaken for a gap. The twin at 0x802244FC is byte-exact, but BOTH
  * `pV->x * s` and `s * pV->x` produce those same bytes under IDO, because the
