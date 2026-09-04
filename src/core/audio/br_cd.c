@@ -120,6 +120,36 @@ int BrCdMciPause(void)
 }
 #endif
 
+/* ==========================================================================
+ * The CD track query
+ * ========================================================================== */
+
+/* br_data.c / slice2_11.h -- the CD module's globals. */
+extern int g_brCdEnabled;     /* 0x100940A4, ships as 2 */
+extern int g_brCdPlaying;     /* 0x10220CD0 */
+extern int g_brCdTrackCur;    /* 0x10220CD4 */
+extern int g_brCdMediaOk;     /* 0x10220C3C */
+
+/* 0x10002490 */
+/* WHAT IT DOES: reports which CD audio track is playing, or zero if there is
+ * none -- CD music is off, nothing is playing, or the disc is not readable
+ * all give zero. */
+/* @implements 0x10002490 d3d BrCdTrackGetEar */
+int BrCdTrackGetEar(void)
+{
+    /* Two success tests share one fail-out (`je` to `xor eax,eax / ret`).
+     * Early `return 0` inverts the branches. */
+    if (g_brCdEnabled != 0) {
+        if (g_brCdPlaying != 0) {
+            /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
+             * g_brCdMediaOk and ANDed with the track, not a branch.  The
+             * track is loaded either way. */
+            return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
+        }
+    }
+    return 0;
+}
+
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
 int FUN_10002580();
@@ -551,6 +581,18 @@ int FUN_10002830(void)
     return FUN_10002870(DAT_1021c77c,(unsigned char)g_brCdTrackCur) == 0;
   }
   return 1;
+}
+
+
+extern int DAT_1021c788;
+
+/* WHAT IT DOES: return the value of the global at 0x1021C788. */
+/* @implements 0x100027A0 glide BrGetGlobal_1C788 */
+
+int BrGetGlobal_1C788(void)
+
+{
+  return DAT_1021c788;
 }
 
 #endif /* BR_MATCHING_BUILD */
