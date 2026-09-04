@@ -693,6 +693,22 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  *   - `register` on pOff (ignored under /O2)
  *   - computing `top` from the local `scale` rather than the global (the
  *     global form is kept: marginally better, 208+91 -> 207+90 raw)
+ *   - laying the declarations out in the original's own slot order, read off
+ *     its displacements (pOff +0x38 ... scale +0x10). Byte-for-byte no
+ *     change, which retires "declaration order sets the frame" for this
+ *     function.
+ *
+ * The slot census is worth keeping, because it says how close this is. Every
+ * displacement's USE COUNT already agrees:
+ *
+ *     orig  0x10:8 0x14:7 0x18:5 0x1c:6 0x20:4 0x24:4 0x28:3 0x2c:3
+ *           0x30:3 0x34:3 0x38:3 0x40:8
+ *     ours  0x10:7 0x14:7 0x18:5 0x1c:6 0x20:4 0x24:4 0x28:3 0x2c:3
+ *           0x30:3 0x34:3        0x3c:7
+ *
+ * -- one missing three-use slot (pOff, which the original pins to EBX and
+ * reloads across the back edge) and `p`/`g` trading homes with the dead
+ * parameter's slot as a consequence.
  * ==========================================================================
  *
  * SOLVED, and each is now an entry in docs/VC5-IDIOMS.md:
@@ -782,13 +798,15 @@ extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
+    /* Declaration order does NOT set the frame here -- laying these out in
+     * the original's slot order (pOff at +0x38 down to scale at +0x10)
+     * changed nothing at all.  See the residue note above. */
     const int32_t *pOff;
     struct BrGfxWords *pCombine;
     const char    *p, *q;
     uint32_t       hRampA, hRampB, hPage, vaBlock, stride;
-    int32_t        penX, top, cell;
+    int32_t        penX, top, cell, scale;
     uint32_t       r, g, b;
-    int32_t        scale;
 
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
@@ -879,7 +897,10 @@ void BrTextEmitString(const char *psz)
 
     p = psz;                                        /* 0x10015F42 */
 
-    if (*p != '\0') {
+    /* The emptiness test reads the PARAMETER, not `p` (`mov cl,[eax]` with
+     * eax still holding psz), which is what keeps psz live past `p = psz`
+     * and stops VC5 giving `p` the parameter's own stack slot. */
+    if (*psz != '\0') {
         /* `q` is two characters ahead throughout; the escape paths step
          * both.  Set INSIDE the emptiness test -- the original computes it
          * after the `je` to the epilogue. */
