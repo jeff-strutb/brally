@@ -4678,3 +4678,52 @@ usually shared. If `je`/`jne` polarity is your last divergence and the target
 is far, you have the wrapper. Do **not** deduce "the source has one common
 tail" from this — two separate `return` statements are what produce the two
 separate stub blocks; a single `goto done;` label would produce only one.
+
+## The LAST test's polarity decides whether VC5 tail-merges the earlier returns
+
+**Symptom.** A function with several early returns of the same value comes out
+short by a whole epilogue or two, and `fn.py --detail regnorm` reports MISSING
+`ret` / `pop` / `add esp` / `mov R,I` in matched pairs with an EXTRA `je`/`jne`
+per merged arm. The original emits every exit in full; VC5 folds the identical
+ones into one shared block and branches to it.
+
+**Lever, proven byte-exact on 0x10060CC0 BrCarPredictRemote (129 B, was 28 B
+and nine instructions short).** Write the LAST test POSITIVELY, with the
+success work inside it and the failure value as the fall-through:
+
+    /* merges the two earlier `return 1`s into one exit */
+    if (!predict(&state, slot)) return 0;
+    apply(pCar, &state);
+    build(pCar);
+    return 1;
+
+    /* all four exits emitted in full -- byte-exact */
+    if (predict(&state, slot)) {
+        apply(pCar, &state);
+        build(pCar);
+        return 1;
+    }
+    return 0;
+
+Nothing else about the function changes. The guard form and the positive form
+are the same program; only the final block's polarity differs, and that decides
+the layout of every exit above it.
+
+**Ruled out mechanically before finding it, so do not re-run these.** No VC5
+flag set reaches the un-merged shape from the guard form: /O2, /O1, /Ox,
+/O2 /Op, /O2 /Oy-, an explicit /Ot /Og /Oi /Oy /Ob1 /Gs and /Os /Og all give
+the merged 2-exit output. Neither does `goto` to distinct per-arm labels,
+returning distinct constant expressions that fold to the same value, a struct
+local instead of a char array, an `&&`-joined guard, a flat `else if` chain, or
+any of three nesting depths. VC++ 4.2 /O2 DOES produce the four exits from the
+guard form -- and at exactly the original's size -- but it regresses fifteen
+other functions in the same file, so it is not the answer for a whole TU. It is
+a useful oracle for the SHAPE, not a compiler choice.
+
+**Boundary — it is value-return-specific so far.** 0x1002A1A0
+BrGbiTexScanOtherModeL has the identical symptom (three identical
+`mov [g],0; ret` blocks merged into one, 31 B short) and the flip moves
+NOTHING. The difference is what the merged blocks produce: a RETURN VALUE
+there, a STORE TO A GLOBAL in a `void` function here. Four shapes plus a
+`switch` were probed on that one and all merge. Until a second void case falls,
+reach for this lever when the merged arms set a return value.

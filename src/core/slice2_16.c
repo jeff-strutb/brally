@@ -1310,10 +1310,27 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
      *     folds it to an immediate as long as the merge stands.
      * Nothing written in C stops the merge, because the three blocks really
      * are byte-identical -- that is exactly what cross-jumping looks for.
-     * The next idea has to be a MECHANISM: a compile variant for this TU
-     * (this file is proven at /O2, but these handlers may have come from a
-     * different original TU), or a compiler patch level. Not another
-     * permutation. */
+     * NARROWED 2026-09-03, second pass. The merge is NOT a flag: a standalone
+     * harness of this exact shape gives 2 exits / 80 B under /O2, /O1, /Ox,
+     * /O2 /Op, /O2 /Oy-, an explicit /Ot /Og /Oi /Oy /Ob1 /Gs and /Os /Og
+     * alike. Four source shapes were probed in that harness and ALL give the
+     * same 2 exits / 80 B: early-return per arm; the negated tail
+     * (`v == 0 || no bits`) instead of the positive one; the fully nested
+     * `if (v != K) { … }` chain; and a `switch` over the three constants.
+     *
+     * ‼ AND THE LEVER THAT SOLVES THE SAME SYMPTOM ELSEWHERE DOES NOT WORK
+     * HERE. 0x10060CC0 BrCarPredictRemote had exactly this defect -- VC5
+     * merging identical exits -- and writing its LAST test in positive form
+     * (`if (ok) { work; return 1; }` then `return 0;`) split all four exits
+     * apart and made it byte-exact. Applying the same flip here moves
+     * nothing. The difference is what the merged blocks produce: there they
+     * set a RETURN VALUE, here they STORE TO A GLOBAL and the function is
+     * void. Treat the polarity lever as value-return-specific until a second
+     * void case says otherwise.
+     *
+     * So the next idea has to be a mechanism outside these axes -- a compiler
+     * patch level, or evidence that these handlers came from an original TU
+     * built differently. Not another permutation. */
     if (v == 0x504F50u) {
         g_brTexScan575414 = 0;
         return;
