@@ -1922,4 +1922,16 @@ int BrFontFreeAndExit(void)
   return 0;
 }
 
+extern int DAT_118ed1a0;
+
+/* WHAT IT DOES: store the render-destination pointer for the font subsystem. */
+/* @implements 0x1006E020 glide BrFontSetRenderDst */
+
+int BrFontSetRenderDst(int param_1)
+
+{
+  DAT_118ed1a0 = param_1;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */

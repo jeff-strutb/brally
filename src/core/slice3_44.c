@@ -845,15 +845,6 @@ int FUN_1006c800();
 int FUN_1006c880();
 int FUN_1006c8b0();
 
-/* WHAT IT DOES: store the render-destination pointer for the font subsystem. */
-/* @implements 0x1006E020 glide BrFontSetRenderDst */
-
-int BrFontSetRenderDst(int param_1)
-
-{
-  DAT_118ed1a0 = param_1;
-  return;
-}
 
 /* WHAT IT DOES: create all font and UI textures and register font pages. */
 /* @implements 0x1006E030 glide BrFontTexInitAll */
