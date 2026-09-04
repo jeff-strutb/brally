@@ -168,6 +168,13 @@ int BrTexFormatCode(int a, int b, int c)
 #include <stdio.h>
 #include <string.h>
 
+/* Carried from slice2_17.c, where this declaration lives in a local
+ * cross-slice block rather than in any header. Without it the error path
+ * below calls it implicitly (C4013) and leaves an undefined external -- a
+ * link failure match_sweep.py cannot see, because it only compiles the
+ * matching configuration. Found by tools/portcheck.py. */
+extern void  BrX10035BBA(const char *psz);
+
 /* 0x10031347 */
 /* WHAT IT DOES: works out how many bits are needed to count up to a given
  * texture dimension -- which is what the hardware wants instead of the size

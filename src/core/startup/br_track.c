@@ -18,6 +18,34 @@
 extern void BrSub10035BD1(void);
 /* XSLICE 0x10220B20 */ extern uint32_t g_a220B20[0x46];
 
+/* Private copies of three stateless readers from slice2_20.c, which keeps its
+ * own -- they are `static` there, so the definitions could not travel, and
+ * without them the port arms below call them implicitly (C4013) and leave
+ * undefined externals: a link failure match_sweep.py cannot see, because it
+ * only compiles the matching configuration. Found by tools/portcheck.py.
+ * Duplicating these is safe for the reason BrFtol is duplicated in
+ * slice1_02.c and slice2_12.c: they hold no state, so two copies cannot
+ * drift. */
+static uint32_t BrRd32(const void *pv)
+{
+    uint32_t v;
+    memcpy(&v, pv, sizeof v);
+    return v;
+}
+
+static uint16_t BrRd16(const void *pv)
+{
+    uint16_t v;
+    memcpy(&v, pv, sizeof v);
+    return v;
+}
+
+/* The dword at pv, already rebased, as a host pointer. */
+static void *BrPtrAt(const void *pv)
+{
+    return BrLoadResolve(BrRd32(pv));
+}
+
 #ifdef BR_MATCHING_BUILD
 
 extern void BrSegPtrFixup(uint32_t *p);
