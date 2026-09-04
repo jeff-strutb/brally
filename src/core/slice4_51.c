@@ -440,6 +440,9 @@ int BrInputOrPlaybackActive(void)
 int FUN_100038f0();
 int BrDPlayRawSend();
 
+/* WHAT IT DOES: send one small fixed command message -- a three-word packet
+ * with a fixed command code and two arguments -- to a player, and only if
+ * that player's channel is actually up. */
 /* @implements 0x100371F0 glide FUN_100371f0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -469,6 +472,10 @@ extern char DAT_10ac4db0[];
 extern int g_brAA288C;
 int BrDPlayRawSend(int, int, int, int, void *, unsigned int);
 
+/* WHAT IT DOES: send a message to one network player, taking care of the
+ * global memory handle DirectPlay wants and freeing it afterwards. Refuses
+ * and reports failure when there is no target or the network layer is
+ * shutting down. */
 /* @implements 0x100368A0 glide FUN_100368a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -530,6 +537,9 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
 
 extern char DAT_10ac3070[];
 
+/* WHAT IT DOES: turn a DirectPlay error code into its printable name for the
+ * log. A long comparison chain, and it returns a generic unknown string for
+ * anything it does not recognise. */
 /* @implements 0x100372B0 glide FUN_100372b0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -746,6 +756,9 @@ unknown:
 
 extern int DAT_10ac40a8;
 
+/* WHAT IT DOES: fill in the session description used when hosting -- copies
+ * the player's chosen session name in, if they set one longer than a single
+ * character, and clears the trailing field. */
 /* @implements 0x100367C0 glide FUN_100367c0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

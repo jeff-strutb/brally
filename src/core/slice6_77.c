@@ -205,6 +205,10 @@ typedef int (__cdecl *BrOnExitFn)(void);
 __declspec(dllimport) BrOnExitFn __cdecl _onexit(BrOnExitFn pfn);
 BrOnExitFn __cdecl __dllonexit(BrOnExitFn pfn, int *ppEnd, int *ppStart);
 
+/* WHAT IT DOES: register a function to run at exit. Picks between the
+ * executable's exit list and the DLL's own, depending on whether this module
+ * has its own list -- the CRT's atexit machinery, not game code. BrCrtAtExit
+ * is the thin wrapper over it. */
 /* @implements 0x100745B0 glide BrCrtOnExit */
 
 BrOnExitFn BrCrtOnExit(BrOnExitFn pfn)
@@ -247,6 +251,9 @@ int BrSfxSrcPlaySilent();
 int BrSndBankClear();
 int BrSndBankSetCar();
 
+/* WHAT IT DOES: bring force feedback up if the settings ask for it, and
+ * record the outcome back into the setting so a failure downgrades it rather
+ * than retrying every time. */
 /* @implements 0x10061310 glide FUN_10061310 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -311,6 +318,8 @@ extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
 
+/* WHAT IT DOES: the same bank-and-slot lookup, setting a sound's panning
+ * rather than its volume. */
 /* @implements 0x1006BAA0 glide FUN_1006baa0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -330,6 +339,10 @@ extern int BrSndG18290FC;
 extern int BrSndPDS;
 int BrSndBufSetVolume(int, int);
 
+/* WHAT IT DOES: set the volume of one sound in a two-dimensional bank-and-
+ * slot table. Reports success without doing anything when the sound system
+ * is not running, so callers need no guard of their own -- the same shape as
+ * its two siblings below. */
 /* @implements 0x1006B6E0 glide FUN_1006b6e0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -349,6 +362,10 @@ extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
 
+/* WHAT IT DOES: the same bank-and-slot lookup, stopping a sound. GOTCHA: its
+ * table stride is DIFFERENT from its two siblings -- the second index is
+ * doubled -- so this addresses a pair of handles per slot where they address
+ * one. */
 /* @implements 0x1006BB10 glide FUN_1006bb10 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

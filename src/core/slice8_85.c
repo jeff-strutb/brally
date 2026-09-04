@@ -910,6 +910,10 @@ _CRTIMP char *__cdecl _getcwd(char *, int);
 _CRTIMP int __cdecl _chdrive(int);
 _CRTIMP int __cdecl _chdir(const char *);
 
+/* WHAT IT DOES: hunt for the game CD by walking every drive letter from C
+ * upwards, trying each in turn and restoring the original drive and
+ * directory before returning. This is how the game finds its disc when it
+ * was not started from it. */
 /* @implements 0x1003EE90 glide FUN_1003ee90 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -952,6 +956,9 @@ extern int DAT_10ac6734;
 extern int g_br0AB3D8;
 extern int g_brB4E708;
 
+/* WHAT IT DOES: step one menu option forward through its ten settings,
+ * wrapping back to the first, and refresh the page when it wraps. The
+ * partner that steps backward is at 0x1003C2B0. */
 /* @implements 0x1003C240 glide FUN_1003c240 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -989,6 +996,8 @@ extern int DAT_10ac6734;
 extern int g_br0AB3D8;
 extern int g_brB4E70C;
 
+/* WHAT IT DOES: step the same ten-position menu option the other way,
+ * wrapping and refreshing to match 0x1003C240. */
 /* @implements 0x1003C2B0 glide FUN_1003c2b0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1026,6 +1035,10 @@ extern int DAT_10ac6730;
 extern int DAT_10ac6734;
 extern int DAT_10b71540;
 
+/* WHAT IT DOES: flip one two-state menu option -- left and right both toggle
+ * it, because with only two settings forward and backward are the same move.
+ * One of three near-identical toggles differing only in which setting they
+ * own. */
 /* @implements 0x1003CAE0 glide FUN_1003cae0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1057,6 +1070,8 @@ extern int DAT_10ac6730;
 extern int DAT_10ac6734;
 extern int DAT_10b71538;
 
+/* WHAT IT DOES: the same two-state menu toggle for the setting at
+ * 0x10AC5D78. */
 /* @implements 0x1003CBA0 glide FUN_1003cba0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1088,6 +1103,8 @@ extern int DAT_10ac6730;
 extern int DAT_10ac6734;
 extern int DAT_10b71b00;
 
+/* WHAT IT DOES: the same two-state menu toggle for the setting at
+ * 0x10AC5D80. */
 /* @implements 0x1003CB40 glide FUN_1003cb40 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
