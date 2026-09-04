@@ -1,5 +1,49 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * ‼ 2026-09-03 (session 16): THE 0x15b8..0x19fd STRETCH IS NOW MEASURED, not
+ * just read.  Session 14 read it by eye and called it T3a; that verdict was
+ * right but it never said how much is there, so every later ranking had to
+ * treat 12.9% of the function as an unknown.  A WINDOWED register-blind
+ * multiset (msetdiff's norm over orig 0x15b8..0x19fd against recomp
+ * 0x15b4..0x19ce -- divergence.py cannot reach it because the block holds no
+ * ten consecutive matching instructions) gives the honest account:
+ *     274 orig insns vs 270 ours -- FOUR short, i.e. the whole -47 byte
+ *     delta the tail carries is born here and nowhere else.
+ *     MISSING 11: `mov R,[esp+S]` x7, `cmp R,R` x2, `xor R,R`,
+ *                 `imul R,[esp+S]`
+ *     EXTRA    7: `mov [esp+S],R` x2, `mov [esp+S],0`, `test R,R`,
+ *                 `test [esp+S],R`, `imul R,R`, `jmp T`
+ *   TEN of those eleven rows are exactly session 14's counter-register swap
+ *   stated as numbers -- orig reloads counters and bounds from slots and
+ *   multiplies from memory, we keep them in registers and home more.  That
+ *   half is allocation and stays parked.
+ *   ‼ THE ELEVENTH IS NOT: we emit an EXTRA `jmp` at 0x1909, and it is a
+ *   LOOP-ROTATION ARTEFACT.  Our inner loop's back-edge target is a reload
+ *   (`0x190b mov edx,[esp+0x68]`) one instruction above the real head at
+ *   0x190f, so VC5 jumps past it on entry; the original's head at 0x192f is
+ *   fallen into.  The reload exists because our first channel's delta stays
+ *   in edx for FOURTEEN instructions before it is homed (computed 0x18c2,
+ *   stored 0x18fb) while the original homes each channel's coefficient and
+ *   delta together, four instructions after computing them (0x18e1/0x18ec).
+ *   The cause is the SETUP BLOCK's interleaving: ours issues three channel
+ *   loads up front ([0xc0],[0xb0],[0xc4]) and finishes the channels out of
+ *   order; the original does one channel at a time.  Session 15's (b) and
+ *   (c) both moved coefficient pairs and were rejected on the multiset --
+ *   NEITHER tried making each channel's pair a self-contained statement pair
+ *   so the loads cannot interleave.  It is the only non-allocation row in
+ *   12.9% of the function.
+ *   ‼ AND THE OBVIOUS SPELLING OF IT IS DEAD, do not re-run: sinking the R
+ *   pair (`lo0` / `iVar16`) below the intensity statements so all four
+ *   channels read pair-then-channel is BYTE-IDENTICAL -- same 61 regions at
+ *   key 6, same 2,408 insns / 8,461 bytes, same 1,093-byte gap, REGNORM
+ *   unchanged, and the `jmp 0x1909` still there with the same reload behind
+ *   it.  ‼ IDIOM: the four pairs are LOOP-INVARIANT and VC5 hoists them, so
+ *   their position INSIDE the loop body is inert -- only their order
+ *   relative to each other reaches the hoisted block.  Any further attempt
+ *   here has to change what is invariant, not where it is written.
+ *   ‼ AND THE HEADER'S "REGNORM 41+40" IS STALE: re-measured this session it
+ *   is 40+41.  Re-measure before comparing to any figure below.
+ *
  * 2026-09-03 (session 15): the SIBLING-ASYMMETRY SCREEN run over this
  * function -- twelve near-identical channel arms is the ideal substrate for
  * it -- and all three leads it produced are DEAD.  Recorded so the screen
