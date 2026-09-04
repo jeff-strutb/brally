@@ -47,4 +47,15 @@ float BrFixUnpackS16Q15Neg(int32_t v)
     return (float)((int16_t)v * -0.000030517578125f);
 }
 
+
+
+/* 0x100072A0.  Scale 0x1008F124 = 1.41015625f (= 361/256). */
+/* WHAT IT DOES: turns a byte back into an angle in degrees, using a scale
+ * chosen so the byte covers a full circle. */
+/* @implements 0x100072A0 d3d BrFixUnpackU8Angle */
+float BrFixUnpackU8Angle(int32_t v)
+{
+    return (float)((v & 0xFF) * 1.41015625f);
+}
+
 #endif /* BR_MATCHING_BUILD */

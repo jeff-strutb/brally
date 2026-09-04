@@ -157,15 +157,6 @@ int32_t BrFixPackS16Q7(float v)
 }
 
 
-/* 0x100072A0.  Scale 0x1008F124 = 1.41015625f (= 361/256). */
-/* WHAT IT DOES: turns a byte back into an angle in degrees, using a scale
- * chosen so the byte covers a full circle. */
-/* @implements 0x100072A0 d3d BrFixUnpackU8Angle */
-float BrFixUnpackU8Angle(int32_t v)
-{
-    return (float)((v & 0xFF) * 1.41015625f);
-}
-
 /* 0x100072C0.  0x1008F128 = -120.63491821289062f, 0x1008F0DC = 400.0f, and
  * the original's `fsubr` makes that 400 - (v * -120.63...), i.e. a rising
  * ramp. 63 * 120.63491821289062 is 7600 to float precision, so with the 6-bit
