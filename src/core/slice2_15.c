@@ -1437,6 +1437,9 @@ extern float DAT_106e9d8c;
 extern float _DAT_104abb24;
 extern float kF300_S_S537;
 
+/* WHAT IT DOES: fade a level down by one step per call and, once it reaches
+ * the floor, snap it to zero and drop the pointer that was driving it. The
+ * tail end of a fade-out. */
 /* @implements 0x10014CB0 glide FUN_10014cb0 */
 /* @n64 0x8021F1A4 located */
 /* auto-filed from ghidra --refine; transforms: kF300_S_S537:float */

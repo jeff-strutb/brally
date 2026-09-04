@@ -20,13 +20,19 @@
  * fewer args: RegisterPages is void(void); Measure is (psz, scale). */
 #define BrFontRegisterPages BrFontRegisterPages_Portable
 #define BrFontMeasure BrFontMeasure_Portable
+#define BrTextEmitString BrTextEmitString_Portable
 #endif
 #include "br_font.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrFontRegisterPages
 #undef BrFontMeasure
+#undef BrTextEmitString
 void BrFontRegisterPages(void);
 int32_t BrFontMeasure(const char *psz, int32_t scale);
+/* The original takes ONE stack argument and reads its state out of fourteen
+ * absolute globals -- br_font.h's BrTextEmit is the port's gathering of them
+ * and is the accessor sub-case docs/VC5-IDIOMS.md records. */
+void BrTextEmitString(const char *psz);
 #endif
 
 #include <stdio.h>
@@ -640,6 +646,352 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * Glide line was missing for the same reason BrFontMeasure's was -- see the
  * note there -- which left the reference build's emitter unclaimed while the
  * D3D one was claimed, in a file whose whole point is that it does both. */
+#ifdef BR_MATCHING_BUILD
+
+/* ==========================================================================
+ * THE MATCHING ARM -- 0x10015B10, the Glide emitter
+ *
+ * The port arm below gathers fourteen absolute globals behind a BrTextEmit
+ * pointer and routes every command through a helper.  The original does
+ * neither: it takes ONE stack argument (the string), reads each global at its
+ * own address, and inlines the eight-byte append at all 43 sites.  Both of
+ * those are cause classes docs/VC5-IDIOMS.md names, and between them they are
+ * the whole 1,097-byte shortfall.
+ *
+ * The colour codes are a pair of SWITCHES, not a table lookup: the original
+ * carries a compiler-built byte map and jump table just past the function
+ * (0x10016730 / 0x100166FC and 0x100167B0 / 0x1001677C), which is what the
+ * port's s_aColourCase / s_aPrimColour / s_aEnvColour arrays are a hand
+ * transcription of.  Written back as switches so VC5 rebuilds them.
+ *
+ * The DEVIATIONs the port arm documents -- the cursor bound check, the class
+ * bound check, the zeroed sscanf slots, the stop-at-NUL step -- are all
+ * absent here, because the original does not have them.
+ * ========================================================================== */
+
+/* 0x106E7710, the display-list cursor.  slice2_18's object under the Glide
+ * build's number; a second model of it would be the aliased-storage bug. */
+extern uint32_t *BrG_6C0680;
+
+/* The eight-byte append, inlined at every site as the same five instructions.
+ * A MACRO for the reason br_drawcar.c records: MSVC 5.0 will not inline a
+ * static with more than one caller, and 43 calls is 43 too many. */
+#define put(w0_, w1_)                                                    \
+    do { uint32_t *p_ = BrG_6C0680;                                      \
+         BrG_6C0680 += 2;                                                \
+         p_[0] = (w0_);                                                  \
+         p_[1] = (w1_); } while (0)
+
+/* The combine command's slot: the original advances the cursor and hands the
+ * builder the OLD slot, so a caller reading the cursor mid-flight sees it
+ * already moved.  It has to be a NAMED TEMP -- a comma expression that
+ * subtracts the step back off costs an `add eax,-8` the original does not
+ * have. */
+
+/* The colour packer, inlined at four sites.  The FIRST component is not
+ * masked, so a value above 255 bleeds upward and is shifted out. */
+#define BR_PACK(r_, g_, b_)                                              \
+    (((((((uint32_t)(r_) << 8) | ((uint32_t)(g_) & 0xFFu)) << 8)         \
+        | ((uint32_t)(b_) & 0xFFu)) << 8) | 0xFFu)
+
+/* A screen coordinate as the original writes it: the shift pair only clears
+ * bits 30 and 31 and the mask makes it a no-op, but it is in the bytes at
+ * every one of the eight field sites and eliding it was what made the port
+ * arm's rectangles shorter than the original's. */
+#define BR_F12(v)     ((uint32_t)(((v) << 2) >> 2) & 0xFFFu)
+
+/* The same shift pair, then a SIGNED 16-BIT test: a coordinate whose low word
+ * is negative or zero collapses to 0, one whose low word is positive survives
+ * sign-extended.  So 0x10000 clamps to 0, not to 0x10000. */
+#define BR_CLAMP16(v)                                                    \
+    (((int16_t)(((v) << 2) >> 2) > 0)                                    \
+        ? (int32_t)(int16_t)(((v) << 2) >> 2) : 0)
+
+extern int32_t      g_brFontX;              /* 0x104ABB28 */
+extern int32_t      g_brFontY;              /* 0x104ABB2C */
+extern int32_t      g_brFontScale;          /* 0x104ABB30 */
+extern int32_t      g_brFontHiRes;          /* 0x106ED674 */
+extern char         g_brFontAltColour;      /* 0x104ABB40, a BYTE            */
+extern char         g_brFontAltRamp;        /* 0x104ABB48, a BYTE            */
+extern int32_t      g_brFontUserColour;     /* 0x104ABB4C, a DWORD           */
+extern int32_t      g_brFontPrimR;          /* 0x104ABB50 */
+extern int32_t      g_brFontPrimG;          /* 0x104ABB54 */
+extern int32_t      g_brFontPrimB;          /* 0x104ABB58 */
+extern int32_t      g_brFontEnvR;           /* 0x100A6C68 */
+extern int32_t      g_brFontEnvG;           /* 0x100A6C6C */
+extern int32_t      g_brFontEnvB;           /* 0x100A6C70 */
+extern uint32_t     g_brFont6E72E8;         /* 0x106E72E8, the 0xBA000C02    */
+extern uint32_t     g_brFontTexSmall;       /* 0x1184C46C */
+extern uint32_t     g_brFontTexLarge;       /* 0x1184C47C */
+extern const int32_t      g_aBrFontOffLarge[];   /* 0x100A5978 */
+extern const int32_t      g_aBrFontOffSmall[];   /* 0x100A5A58 */
+extern const signed char  g_aBrFontClass[];      /* 0x100A5918, [c - 0x21]   */
+/* The four ramp blocks and the two glyph blocks are referenced by ADDRESS --
+ * `mov reg, OFFSET`, never a load -- so they are arrays, not pointers. */
+extern uint8_t      g_aBrFontRampLargeA[];  /* 0x100A6C78 */
+extern uint8_t      g_aBrFontRampLargeB[];  /* 0x100A6DB8 */
+extern uint8_t      g_aBrFontRampSmallA[];  /* 0x100A6EF8 */
+extern uint8_t      g_aBrFontRampSmallB[];  /* 0x100A7038 */
+extern uint8_t      g_aBrFontBlockLarge[];  /* 0x1007B618 */
+extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
+
+/* @implements 0x10015B10 glide BrTextEmitString */
+void BrTextEmitString(const char *psz)
+{
+    struct BrGfxWords *pCombine;
+    const int32_t *pOff;
+    const char    *p, *q;
+    uint32_t       hRampA, hRampB, hPage, vaBlock, stride;
+    int32_t        scale, penX, top, cell;
+    uint32_t       r, g, b;
+
+    scale = g_brFontScale;                          /* 0x10015B16 */
+    penX  = g_brFontX;                              /* 0x10015B1D */
+    top   = g_brFontY - (30 * scale) / 40;          /* 0x10015B23 */
+    if (g_brFontHiRes != 0) {                       /* 0x10015B4F */
+        top   <<= 1;
+        scale <<= 1;
+        penX  <<= 1;
+    }
+
+    if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
+        cell    = BR_FONT_SMALL_CELL;
+        pOff    = g_aBrFontOffSmall;
+        hRampA  = (uint32_t)g_aBrFontRampSmallA;
+        hRampB  = (uint32_t)g_aBrFontRampSmallB;
+        hPage   = g_brFontTexSmall;
+        vaBlock = (uint32_t)g_aBrFontBlockSmall;
+        stride  = 0x280u;
+    } else {
+        cell    = BR_FONT_LARGE_CELL;
+        pOff    = g_aBrFontOffLarge;
+        hRampA  = (uint32_t)g_aBrFontRampLargeA;
+        hRampB  = (uint32_t)g_aBrFontRampLargeB;
+        hPage   = g_brFontTexLarge;
+        vaBlock = (uint32_t)g_aBrFontBlockLarge;
+        stride  = 0xA00u;
+    }
+
+    put(0xE7000000u, 0u);                           /* 0x10015BD9 */
+    put(0xBA001402u, 0x00100000u);
+
+    /* Only b1 depends on the ramp selection. */
+    pCombine = (struct BrGfxWords *)BrG_6C0680;
+    BrG_6C0680 += 2;
+    BrRdpSetCombineLERP(pCombine,                   /* 0x10015C87 */
+                        1003, 1005, 1002, 1005,
+                        0,    0,    0,    1001,
+                        1000, (g_brFontAltRamp != 0) ? 1001 : 0, 1002, 0,
+                        0,    0,    0,    1002);
+
+    put(0xB900031Du, 0x0C184240u);                  /* 0x10015CA2 */
+    put(0xBA000C02u, g_brFont6E72E8);
+    put(0xBA000E02u, 0u);
+    put(0xBA001301u, 0u);
+    put(0xBA001001u, 0u);
+    put(0xBB000001u, 0xFFFFFFFFu);
+    put(0xE8000000u, 0u);
+    put(0xE6000000u, 0u);
+    put(0xE7000000u, 0u);
+
+    /* The shading ramp: SETTILE(load tile 7) / SETTIMG / LOADBLOCK /
+     * SETTILE(render tile 1) / SETTILESIZE. */
+    put(0xF51001B0u, 0x07000000u);                  /* 0x10015D9A */
+    put(0xFD100000u, (g_brFontAltRamp != 0) ? hRampB : hRampA);
+    put(0xF3000000u, 0x0713F000u);
+    put(0xF56803B0u, 0x01098030u);
+    put(0xF2002002u, 0x0101E09Eu);
+
+    if (g_brFontUserColour != 0) {                  /* 0x10015E29 */
+        put(0xFB000000u, BR_PACK(g_brFontEnvR, g_brFontEnvG, g_brFontEnvB));
+        put(0xFA00FFFFu, BR_PACK(g_brFontPrimR, g_brFontPrimG, g_brFontPrimB));
+    } else if (g_brFontAltColour != 0) {            /* 0x10015EC7 */
+        put(0xFB000000u, 0xFF7F00FFu);
+        put(0xFA00FFFFu, 0xFFFF7FFFu);
+    } else {
+        put(0xFB000000u, 0xC80000FFu);
+        put(0xFA00FFFFu, 0xE6E600FFu);
+    }
+
+    p = psz;                                        /* 0x10015F42 */
+
+    if (*p != '\0') {
+        /* `q` is two characters ahead throughout; the escape paths step
+         * both.  Set INSIDE the emptiness test -- the original computes it
+         * after the `je` to the epilogue. */
+        q = psz + 2;
+        for (;;) {
+            if (*p != ' ') {                        /* 0x10015F63 */
+                /* ONE chain, not two `*p == '%'` tests: not a percent, or a
+                 * percent at the end of the string, both fall straight into
+                 * the glyph. */
+                if (*p == '%' && p[1] != '\0') {
+                    if (p[1] != '%')
+                        goto escape;                /* 0x10016256 */
+                    ++p;                            /* "%%": swallow one */
+                    ++q;
+                }
+            glyph:
+                {
+                    signed char sc = (signed char)*p;
+
+                    /* Signed compares, so 0x80..0xFF are outside. */
+                    if (sc >= BR_FONT_CLASS_LO && sc <= BR_FONT_CLASS_HI) {
+                        int32_t  cls = g_aBrFontClass[sc - BR_FONT_CLASS_LO];
+                        int32_t  w   = pOff[cls + 1] - pOff[cls] + 1;
+                        int32_t  drawW, rightEdge, bottom;
+
+                        /* ONE texture per size, re-aimed at this class's
+                         * window by the 0xDD in front of the 0xDC. */
+                        put(0xDD000000u | (hPage & 0x00FFFFFFu),
+                            vaBlock + stride * (uint32_t)cls);
+                        put(0xDC000000u | (hPage & 0x00FFFFFFu), 1u);
+                        put(0xDE000000u, 0x3F800000u);   /*  1.0f */
+                        put(0xDF000000u, 0xBF800000u);   /* -1.0f */
+
+                        /* SETTILESIZE, tile 0, 10.2: uls = ult = 0.5,
+                         * lrs = w - 0.5, lrt = cell - 0.5. */
+                        put(0xF2002002u,
+                            ((((uint32_t)w << 14) - 0x2000u) & 0x00FFF000u)
+                                | ((uint32_t)(cell * 4 - 2) & 0xFFFu));
+
+                        drawW     = (scale * w) / cell;
+                        rightEdge = penX + drawW;
+                        bottom    = top + scale;
+
+                        if (penX >= 0 && rightEdge <= 0x140 &&
+                            top >= 0 && bottom <= 0xF0) {
+                            put(0xE3000000u | (BR_F12(rightEdge) << 12)
+                                            | BR_F12(bottom),
+                                (BR_F12(penX) << 12) | BR_F12(top));
+                        } else {
+                            /* The SAME rectangle with every corner clamped at
+                             * zero and ONLY at zero -- past the right or the
+                             * bottom edge it still goes out unchanged, so this
+                             * is not a scissor. */
+                            int32_t cr = BR_CLAMP16(rightEdge);
+                            int32_t cb = BR_CLAMP16(bottom);
+
+                            put(0xE3000000u
+                                    | ((uint32_t)(cr & 0xFFF) << 12)
+                                    | (uint32_t)(cb & 0xFFF),
+                                ((uint32_t)(BR_CLAMP16(penX) & 0xFFF) << 12)
+                                    | (uint32_t)(BR_CLAMP16(top) & 0xFFF));
+                        }
+
+                        /* The pen advances by ONE LESS than the tile width --
+                         * the quantity the width routine sums. */
+                        penX += (scale * (w - 1)) / cell;
+                    }
+                }
+            } else {
+                /* (14 * scale) / 40, PLUS ONE.  The width routine computes the
+                 * same quotient and does not add the one, so a string with
+                 * spaces measures narrower than it draws. */
+                penX += (14 * scale) / 40 + 1;      /* 0x100161C3 */
+            }
+
+        next:
+            if (p[1] == '\0')                       /* 0x100161E5 */
+                break;
+            ++p;
+            ++q;
+        }
+    }
+
+    put(0xE7000000u, 0u);                           /* 0x100161FC */
+    put(0xBA001301u, 0x00080000u);
+    put(0xBA001402u, 0u);
+    return;
+
+    /* ---- the escape blocks -------------------------------------------
+     * OUT OF LINE, past the epilogue and the `ret`, which is where the
+     * original puts them (0x10016256 follows 0x10016255 `ret`).  Written
+     * after the return so VC5 lays them out there rather than in front of
+     * the glyph. */
+escape:
+            if (p[1] == 'i') {                      /* 0x10016256 */
+                ++p;
+                ++q;
+                goto next;
+            }
+            if (p[1] == 'n') {
+                ++p;
+                ++q;
+                goto next;
+            }
+            if (p[1] == 'x') {                      /* 0x10016269 */
+                /* Six hex digits out of `q`, the character after "%x".  A
+                 * short or malformed field leaves these slots holding
+                 * whatever was in them. */
+                sscanf(q, "%02x%02x%02x", &r, &g, &b);
+                put(0xFA00FFFFu, BR_PACK(r, g, b));
+
+                /* The same triple brightened by 0x80 and saturated at 0xFF
+                 * becomes the other end of the gradient, so "%xRRGGBB" sets
+                 * both ends from one value. */
+                r += 0x80u;
+                g += 0x80u;
+                b += 0x80u;
+                if (r > 0xFFu) r = 0xFFu;
+                if (g > 0xFFu) g = 0xFFu;
+                if (b > 0xFFu) b = 0xFFu;
+
+                /* Seven characters, unconditionally -- which walks off the end
+                 * of a truncated "%x" field. */
+                p += 7;
+                q += 7;
+                put(0xFB000000u, BR_PACK(r, g, b));
+                goto next;
+            }
+            if (*q == '\0')                         /* 0x10016367 */
+                goto glyph;   /* one letter left: draw the '%' instead */
+
+            put(0xE7000000u, 0u);
+
+            /* The first letter sets the primitive colour, the second the
+             * environment colour -- the two ends of the gradient.  An
+             * unrecognised letter changes neither and still eats both. */
+            switch (p[1]) {                         /* 0x1001639C */
+            case 'r': put(0xFA00FFFFu, 0xBE0000FFu); break;
+            case 'o': put(0xFA00FFFFu, 0xCD5F00FFu); break;
+            case 'O': put(0xFA00FFFFu, 0xFF7800FFu); break;
+            case 'y': put(0xFA00FFFFu, 0xFFF500FFu); break;
+            case 'Y': put(0xFA00FFFFu, 0xFFFA80FFu); break;
+            case 'g': put(0xFA00FFFFu, 0x009600FFu); break;
+            case 'b': put(0xFA00FFFFu, 0x0000C8FFu); break;
+            case 'p': put(0xFA00FFFFu, 0xC800C8FFu); break;
+            case '1':
+            case 'w': put(0xFA00FFFFu, 0xFFFFFFFFu); break;
+            case '5': put(0xFA00FFFFu, 0x808080FFu); break;
+            case '0': put(0xFA00FFFFu, 0x000000FFu); break;
+            }
+            switch (*q) {                           /* 0x1001652A */
+            case 'r': put(0xFB000000u, 0xC80000FFu); break;
+            case 'o': put(0xFB000000u, 0xCD5F00FFu); break;
+            case 'O': put(0xFB000000u, 0xFF7800FFu); break;
+            case 'y': put(0xFB000000u, 0xD2BE00FFu); break;
+            case 'Y': put(0xFB000000u, 0xD2C869FFu); break;
+            case 'g': put(0xFB000000u, 0x009600FFu); break;
+            case 'b': put(0xFB000000u, 0x0000C8FFu); break;
+            case 'p': put(0xFB000000u, 0xC800C8FFu); break;
+            case '1':
+            case 'w': put(0xFB000000u, 0xFFFFFFFFu); break;
+            case '5': put(0xFB000000u, 0x808080FFu); break;
+            case '0': put(0xFB000000u, 0x000000FFu); break;
+            }
+    p += 2;
+    q += 2;
+    goto next;
+}
+
+#undef put
+#undef BR_PACK
+#undef BR_F12
+#undef BR_CLAMP16
+
+#else  /* --------------------- the port arm ----------------------------- */
+
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 {
@@ -936,6 +1288,8 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
     br_emit(pSt, 0xBA001301u, 0x00080000u);
     br_emit(pSt, 0xBA001402u, 0x00000000u);
 }
+
+#endif /* BR_MATCHING_BUILD */
 
 /* 0x100193C0 (D3D) and 0x10016980 (Glide).
  *

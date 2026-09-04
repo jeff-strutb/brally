@@ -490,6 +490,9 @@ void *BrPool32Alloc(void)
  * MOV [BrG_B01C48],EAX / MOV [BrG_B01C44],EAX / RET (18 bytes, 3 relocs).
  * Order: a0, a8, a4 -- the 64-byte counter first, then 16, then 32.
  * D3D 0x10069580 clears a pool object instead; not byte-identical. */
+/* WHAT IT DOES: throw away everything handed out of the three frame-scratch
+ * pools, which is how they are emptied -- nothing is freed individually, the
+ * counts simply go back to zero and the space is reused next frame. */
 /* @implements 0x100625F0 glide BrGfx69580 */
 #ifdef BR_MATCHING_BUILD
 extern int32_t BrG_B01C40;      /* 0x10B24FA0  64-byte bank counter */

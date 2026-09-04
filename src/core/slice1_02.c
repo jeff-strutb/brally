@@ -653,6 +653,9 @@ extern int FUN_1006ba60(int a, int b);
 extern unsigned char *DAT_104abb20;
 extern int DAT_104abb24;
 
+/* WHAT IT DOES: release the pending input one-shot under the message mutex
+ * -- silences its sound, frees the slot, and restores the default message
+ * table and level if one was armed. */
 /* @implements 0x10006460 glide FUN_10006460 */
 /* Mutex-guarded release of one input one-shot: stop the pending sound and
  * reset its slot, and if the arm flag is set restore the default table
@@ -1047,6 +1050,10 @@ int FUN_100051c0(float *, float *);
 int FUN_10005330(void);
 int BrNetSendFlush(void);
 
+/* WHAT IT DOES: decide whether an incoming car-state update is fresh enough
+ * to accept: a new enough one is copied into the shared record and applied,
+ * an older one is counted as a miss and only allowed to nudge a couple of
+ * values before being dropped. The network's stale-packet filter. */
 /* @implements 0x100054A0 glide FUN_100054a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

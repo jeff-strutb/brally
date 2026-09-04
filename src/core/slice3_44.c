@@ -885,6 +885,9 @@ typedef int (*funcptr)();
 extern funcptr DAT_118ed1d8;
 int BrTex3dRecSet278();
 
+/* WHAT IT DOES: bump one of eight texture slots up a detail level, to a
+ * maximum of three, and tell the texture system about the new level. Ignores
+ * an out-of-range slot. */
 /* @implements 0x1006E130 glide FUN_1006e130 */
 /* auto-filed from ghidra --refine; transforms: ge0 scaletemp */
 

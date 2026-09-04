@@ -1082,6 +1082,10 @@ finish:
 typedef void (__fastcall *BrKeyBuildFn)(BrKeyCache *pThis, int _edx,
                                         void *pArg, int32_t *pKey);
 
+/* WHAT IT DOES: look up a cached entry by asking the cache's own key-
+ * building function to turn the argument into a key, then scanning the
+ * entries for a match. The cache is a plain linear scan, so it is sized for
+ * tens of entries and not thousands. */
 /* @implements 0x10008850 glide BrKeyCacheFind */
 int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, int _edx, void *pArg)
 {

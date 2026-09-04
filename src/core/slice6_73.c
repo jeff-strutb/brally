@@ -1267,6 +1267,8 @@ int32_t BrSub1003D030(void *pBlob)
 extern void BrSub10071560(void);
 extern void BrSub10071630(void);
 
+/* WHAT IT DOES: run the two-step networking start-up in order and report
+ * success. A sequencing wrapper, nothing more. */
 /* @implements 0x1006A4C0 glide BrSub10071550 */
 int32_t BrSub10071550(void)
 {
@@ -1530,6 +1532,9 @@ extern char DAT_1007b600[];
 extern int g_brPhaseAA2904;
 extern char s_seasondesc_dat_100acb4c[];
 
+/* WHAT IT DOES: write every season description out to one file, 100 bytes
+ * per entry, aborting through the error reporter if the file cannot be
+ * opened or a write comes up short. */
 /* @implements 0x10055A40 glide FUN_10055a40 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1568,6 +1573,9 @@ int __stdcall FUN_10055a40(int _pad_0)
 
 extern int DAT_100ad7d8;
 
+/* WHAT IT DOES: free every loaded car-livery bitmap -- walks the whole
+ * table, releasing each allocation and clearing the slot so it is not freed
+ * twice. */
 /* @implements 0x1005A420 glide FUN_1005a420 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1612,6 +1620,9 @@ extern char DAT_100acaf8[];
 extern int g_brPhaseAA2904;
 extern char s_RallySeason_100acb00[];
 
+/* WHAT IT DOES: load one numbered season's description from its own file,
+ * upper-case it, and store it in the season table. A missing file is
+ * silently ignored, so an absent season simply keeps its previous text. */
 /* @implements 0x10055AF0 glide FUN_10055af0 */
 /* auto-filed from ghidra --refine; transforms: stringops */
 

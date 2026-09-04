@@ -247,6 +247,10 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 /* 1. Entity state setters                                                 */
 /* ====================================================================== */
 
+/* WHAT IT DOES: move an entity to a position, writing the same three
+ * coordinates into all the places the entity keeps them -- its matrix, its
+ * cached position and two more copies. They are kept in step here rather
+ * than derived, so all of them must be written. */
 /* @implements 0x10076420 d3d BrEntSetPos */
 /* @n64 0x8021FE04 located */
 #ifdef BR_MATCHING_BUILD

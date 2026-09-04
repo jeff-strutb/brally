@@ -1633,6 +1633,10 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
 extern int DAT_100a7518;
 void FUN_1001e380(int, int, int, int);
 
+/* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
+ * QUARTER-pixel units, flipping the vertical coordinates because the display
+ * list counts rows from the bottom and the screen counts from the top. The
+ * whole-pixel twin is br_dl_fillE1. */
 /* @implements 0x1001E320 glide br_dl_fillF6 */
 static const uint8_t *br_dl_fillF6(const uint8_t *p)
 {
@@ -1650,6 +1654,9 @@ static const uint8_t *br_dl_fillF6(const uint8_t *p)
     return p + 8;
 }
 
+/* WHAT IT DOES: draws a solid-colour rectangle whose corners were given as
+ * whole pixels. Unlike its quarter-pixel twin br_dl_fillF6 these corners are
+ * SIGNED, so a corner off the left of the screen really is negative. */
 /* @implements 0x1001E720 glide br_dl_fillE1 */
 static const uint8_t *br_dl_fillE1(const uint8_t *p)
 {

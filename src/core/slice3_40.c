@@ -795,6 +795,9 @@ extern int DAT_100ad7d8;
 extern char DAT_100ad7e8;
 extern int DAT_100b22d8;
 
+/* WHAT IT DOES: look up one field of one car livery entry, and leave that
+ * entry's identifier in a global on the way past -- so the caller gets a
+ * value AND the table remembers which row it came from. */
 /* @implements 0x10059FE0 glide FUN_10059fe0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -810,6 +813,9 @@ __declspec(dllimport) void __cdecl free(void *);
 void FUN_1005a420(void);
 void FUN_1005a6b0(void);
 
+/* WHAT IT DOES: release everything the car-livery system holds: the bitmaps
+ * first, then the three shared buffers. The single call site for shutting
+ * that subsystem down. */
 /* @implements 0x1005A6A0 glide FUN_1005a6a0 */
 /* Tail-call wrapper: `call A; jmp B` -- VC5 /O2 turns the trailing call
  * into a jmp. The map had this merged with the 45-byte loop at
@@ -821,6 +827,8 @@ void FUN_1005a6a0(void)
   FUN_1005a6b0();
 }
 
+/* WHAT IT DOES: free the three shared livery buffers and null the slots, so
+ * a second call is harmless. */
 /* @implements 0x1005A6B0 glide FUN_1005a6b0 */
 /* Frees and zeroes the three pointer slots at DAT_10ac67b0..bc; the
  * dllimport free is hoisted into edi across the loop. */

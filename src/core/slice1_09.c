@@ -932,6 +932,10 @@ extern int DAT_1184c074;
 extern int g_aBr178FEF8;
 extern int g_aBrPeer71;
 
+/* WHAT IT DOES: the networking worker thread's wait loop: blocks until
+ * either the quit event or a peer's mutex is signalled, exits the thread on
+ * quit, and otherwise checks each peer's state and bails out of the scan as
+ * soon as one is not ready. */
 /* @implements 0x1006A650 glide FUN_1006a650 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

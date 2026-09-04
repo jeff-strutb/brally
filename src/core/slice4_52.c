@@ -180,6 +180,9 @@ typedef struct { void *p; } BrSub603A0Arg;
 typedef void(__fastcall *BrSub603A0ThisCall)(void *pThis, BrSub603A0Arg arg);
 #endif
 
+/* WHAT IT DOES: hand the main window over to the UI root object. GOTCHA: the
+ * declared parameter has no counterpart in the original and is DISCARDED --
+ * both operands come from globals. */
 /* @implements 0x10060260 d3d BrSub10060260 */
 void BrSub10060260(void *pThis)
 {
