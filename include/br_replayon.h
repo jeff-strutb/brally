@@ -15,8 +15,11 @@ uint32_t BrGet_1006AAA0(void);
 void     BrMode_1006A990(uint32_t nPlayers);
 /* 0x1003BD40  plant the race RNG seed. */
 void     BrStore_1003BD40(uint32_t seed);
-/* 0x10078C10  advance the 64-bit "now" counter by a fixed slice. */
-void     BrTickAdd_10078C10(void);
+/* 0x10078C10 (glide 0x10071F00)  advance the 64-bit "now" counter by a
+ * fixed slice and return it.  The counter is returned WHOLE, in edx:eax --
+ * that 64-bit return is what pins the original's register pair; callers
+ * that want a millisecond-ish number just take the low half. */
+int64_t  BrTickAdd_10078C10(void);
 /* 0x100713A0  current counter minus the value stored at race start. */
 int      BrDelta_100713A0(void);
 

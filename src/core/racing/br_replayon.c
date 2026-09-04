@@ -6,6 +6,7 @@
 extern uint32_t g_1750308, g_B502E4;
 extern uint32_t g_690A20, g_B501C8, g_0B8C94;
 extern uint32_t g_A9BFD0, g_18ABDE0, g_18ABDE4, g_178FEE8;
+extern int64_t  g_18ABDE0_64;    /* the same storage as g_18ABDE0/g_18ABDE4 */
 void BrExt_10024460(void);
 void BrExt_1002A640(void);
 int  BrExt_10075020(void);
@@ -16,6 +17,7 @@ int  BrExt_10075020(void) { return 0; }
 uint32_t g_1750308, g_B502E4;
 uint32_t g_690A20, g_B501C8, g_0B8C94;
 uint32_t g_A9BFD0, g_18ABDE0, g_18ABDE4, g_178FEE8;
+int64_t g_18ABDE0_64;
 void BrExt_10024460(void);
 void BrExt_1002A640(void);
 int  BrExt_10075020(void);
@@ -57,16 +59,31 @@ void BrStore_1003BD40(uint32_t v)
 }
 
 /* WHAT IT DOES: advance the engine's 64-bit "now" counter by a fixed
- * slice (1,562,500 ticks). */
-void BrTickAdd_10078C10(void)
+ * slice (1,562,500 ticks).  It is the game's whole notion of time: a
+ * deterministic fake clock, not a reading of the machine's, so the n-th
+ * call always yields the same value.  The low half doubles as the return
+ * value, which is why callers can subtract two of these and rely on the
+ * 32-bit wrap. */
+/* Three source facts, each worth one instruction:
+ *  1. The counter is ONE 64-bit variable, not two dwords.  `+= K` on it is
+ *     what emits `add eax,K / adc edx,0`; a lo/hi pair with an explicit
+ *     carry test gives `sbb`/`setb` instead.
+ *  2. It is read into a LOCAL first.  Updating the global in place makes
+ *     VC5 do lo (load, add, store) then hi (load, adc, store) in one
+ *     register; the original loads BOTH halves before either store, which
+ *     is what a local copy expresses.  Two bytes, since the second load
+ *     then cannot use the 5-byte accumulator form.
+ *  3. It RETURNS the whole 64-bit value.  That is the only thing that
+ *     pins the pair to edx:eax -- returning nothing (or just the low
+ *     half) leaves VC5 free to pick ecx for the high word, which it does. */
+/* @implements 0x10071F00 glide BrTickAdd_10078C10 */
+int64_t BrTickAdd_10078C10(void)
 {
-    uint32_t lo = g_18ABDE0;
-    uint32_t hi = g_18ABDE4;
+    int64_t t = g_18ABDE0_64;
 
-    lo += 0x17D784u;
-    hi += (lo < 0x17D784u) ? 1u : 0u;
-    g_18ABDE0 = lo;
-    g_18ABDE4 = hi;
+    t += 0x17D784;
+    g_18ABDE0_64 = t;
+    return t;
 }
 
 /* WHAT IT DOES: how long has this been running?  Current counter minus
