@@ -319,48 +319,6 @@ BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
     return pThis;
 }
 
-/* 0x10069AA0 */
-/* WHAT IT DOES: throws away the player's edits to one control layout and puts
- * that layout back to the shipped bindings. Only layouts 1, 2 and 3 can be
- * named; every other number, including nonsense, resets the first layout. */
-/* @implements 0x10069AA0 d3d BrCtrlCfgLoadDefaults */
-/* A SWITCH with a constant index in every arm, not one indexed assignment.
- * The original has FOUR fully duplicated `rep movsd` blocks, each with its
- * own epilogue: a distinct source address (stride 0xA8) and a distinct
- * destination displacement (0, 0xA8, 0x150, 0x1F8).  Computing the index
- * once and assigning `profile[k]` produces index arithmetic instead, and
- * loses the whole shape.  The dispatch is `dec eax; je` three times --
- * a switch compare chain on 1, 2, 3 with everything else, including 0,
- * falling to the default arm.
- *
- * Thiscall: pThis in ecx, the profile number at [esp+4], `ret 4`. */
-#ifdef BR_MATCHING_BUILD
-void __fastcall BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis,
-                                      BrCtrlProfileArg profile)
-{
-    switch (profile.v) {
-    case 1:
-        pThis->profile[1] = g_BrCtrlDefaults[1];
-        break;
-    case 2:
-        pThis->profile[2] = g_BrCtrlDefaults[2];
-        break;
-    case 3:
-        pThis->profile[3] = g_BrCtrlDefaults[3];
-        break;
-    default:
-        pThis->profile[0] = g_BrCtrlDefaults[0];
-        break;
-    }
-}
-#else
-void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile)
-{
-    const int k = BrCtrlProfileIndex(profile);
-    pThis->profile[k] = g_BrCtrlDefaults[k];
-}
-#endif
-
 /* 0x10069B10 */
 /* WHAT IT DOES: binds one game action -- steer left, brake, look behind -- to
  * a key, button or stick axis the player has just pressed on the redefine
