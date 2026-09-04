@@ -32,10 +32,10 @@ glide_va,name,module,basis,file
 0x10002DC0,BrCdEnableApply,audio,description,src/core/slice1_01.c
 0x10002E20,BrCdMciPause,audio,description,src/core/slice1_01.c
 0x10002E80,BrCdTrackResume,audio,description,src/core/slice1_01.c
-0x10002EB0,BrCdPause,,,src/core/slice1_01.c
-0x10002ED0,BrCdPauseMsg,,,src/core/slice1_01.c
-0x10002F10,BrCdResume,,,src/core/slice1_01.c
-0x10002F30,BrCdResumeMsg,,,src/core/slice1_01.c
+0x10002EB0,BrCdPause,audio,manual,src/core/slice1_01.c
+0x10002ED0,BrCdPauseMsg,audio,manual,src/core/slice1_01.c
+0x10002F10,BrCdResume,audio,manual,src/core/slice1_01.c
+0x10002F30,BrCdResumeMsg,audio,manual,src/core/slice1_01.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/slice1_01.c
 0x10003280,BrU16QueuePop,gamedata,description,src/core/slice2_11.c
 0x100032D0,BrChkFileSize,gamedata,description,src/core/slice6_78.c
@@ -59,8 +59,8 @@ glide_va,name,module,basis,file
 0x10005760,BrNetSendFlush,net,description,src/core/slice4_50.c
 0x100057E0,BrEntityCountActive,net,neighbour-1,src/core/slice2_12.c
 0x10005C40,BrCarClampUnit,net,description,src/core/slice2_12.c
-0x10005C70,BrCarClampPosXY,net,description,src/core/slice2_12.c
-0x10005CA0,BrCarClampPosZ,net,description,src/core/slice2_12.c
+0x10005C70,BrCarClampPosXY,net,description,src/core/net/br_car.c
+0x10005CA0,BrCarClampPosZ,net,description,src/core/net/br_car.c
 0x10005CD0,BrNetReset,net,description,src/core/slice1_02.c
 0x10005E80,BrNetMutexInit,net,description,src/core/slice1_02.c
 0x10006060,BrNetSlotGetF004,startup,neighbour-1,src/core/generated/0x10006060.c
