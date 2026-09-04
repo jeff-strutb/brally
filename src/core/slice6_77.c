@@ -338,6 +338,20 @@ extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
 int BrSndBufSetVolume(int, int);
+int FUN_1006b6e0(int, int, int);
+
+/* WHAT IT DOES: set a sound's volume from a float, for the banks whose slots
+ * hold a PAIR of handles -- it doubles the slot index and truncates the level
+ * to an integer before handing both to FUN_1006b6e0 below. The doubling is
+ * the same stride FUN_1006bb10 uses; the single-handle callers reach
+ * FUN_1006b6e0 directly. */
+/* @implements 0x1006B6C0 glide BrSndSetVolumePairF */
+
+int BrSndSetVolumePairF(int param_1,int param_2,float param_3)
+
+{
+  return FUN_1006b6e0(param_1,param_2 * 2,(int)param_3);
+}
 
 /* WHAT IT DOES: set the volume of one sound in a two-dimensional bank-and-
  * slot table. Reports success without doing anything when the sound system
