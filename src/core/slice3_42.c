@@ -29,11 +29,19 @@
  * __fastcall shape with a struct-typed second argument (never
  * register-eligible, so it cannot claim edx). */
 #define BrCtrlCfgLoadDefaults BrCtrlCfgLoadDefaults_cdecl
+#define BrFn10069BC0          BrFn10069BC0_cdecl
 #endif
 #include "slice3_42.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCtrlCfgLoadDefaults
+#undef BrFn10069BC0
 typedef struct { int32_t v; } BrCtrlProfileArg;
+/* BOTH stack arguments are struct-wrapped. __fastcall skips a struct when it
+ * hands out ecx/edx, so wrapping only the FIRST of them lets the SECOND take
+ * edx and the function cleans 4 bytes instead of 8. Wrapping both leaves ecx
+ * for `this` and puts the pair on the stack, which is thiscall exactly. */
+typedef struct { int32_t v; } BrCtrlKindArg;
+typedef struct { uint32_t v; } BrCtrlKeyArg;
 #endif
 
 /* =====================================================================
@@ -424,6 +432,34 @@ void BrCtrlCfgAssign(BrCtrlCfg *pThis, int32_t profile, int32_t action,
  * joystick button or joystick axis -- for one action of one control layout,
  * which is how the redefine screen knows which sort of label to draw. */
 /* @implements 0x10069BC0 d3d BrFn10069BC0 */
+#ifdef BR_MATCHING_BUILD
+/* thiscall: the config is in ecx and both selectors are on the stack, so the
+ * `kind` argument is struct-wrapped to keep __fastcall out of edx -- the same
+ * trick BrCtrlCfgLoadDefaults uses above.
+ *
+ * The four arms are written out IN FULL, and that is the whole shape of this
+ * function. Factoring the profile choice into a helper (the portable body
+ * below does exactly that) collapses them into one indexed load and loses
+ * half the function. The original also folds the profile into the ROW index
+ * before scaling -- `(key + 28*k) * 3` over one flat table -- rather than
+ * indexing a profile and then a row, which is why each arm adds its own
+ * literal to `key`. */
+int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, BrCtrlKindArg kind,
+                                  BrCtrlKeyArg key)
+{
+    const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
+
+    switch (kind.v) {
+    case 1:
+        return (int32_t)(pCfg->profile[0].e[key.v + 0x1C][0] & 0xFF00u);
+    case 2:
+        return (int32_t)(pCfg->profile[0].e[key.v + 0x38][0] & 0xFF00u);
+    case 3:
+        return (int32_t)(pCfg->profile[0].e[key.v + 0x54][0] & 0xFF00u);
+    }
+    return (int32_t)(pCfg->profile[0].e[key.v][0] & 0xFF00u);
+}
+#else
 int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
@@ -431,6 +467,7 @@ int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 
     return (int32_t)(pCfg->profile[k].e[key][0] & 0xFF00u);
 }
+#endif
 
 /* 0x10069C30 -- name fixed by the XSLICE declaration in slice2_23.h. */
 /* WHAT IT DOES: says WHICH key, button or axis an action is bound to, as a
