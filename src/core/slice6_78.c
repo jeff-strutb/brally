@@ -362,26 +362,7 @@ int BrCdTrackGet(void)
  * 7. Single-store functions
  * ========================================================================== */
 
-/* 0x1002B9D0 */
-/* WHAT IT DOES: sets a single global flag. Worth knowing: the same storage
- * is what the .rca loader reads to decide whether to do its copying at all,
- * so anything that clears this switches that copying off. */
-/* @implements 0x10018A40 glide BrSegSetFlag */
-void BrSegSetFlag(uint32_t v)
-{
-    g_br675540 = (int32_t)v;
-}
 
-/* 0x10019240 -- `mov byte [0x104B0360], 1` */
-/* WHAT IT DOES: raises a one-byte flag that the text glyph drawing code
- * reads to pick between two different drawing commands. What visual
- * difference that makes is not established here. */
-/* @implements 0x10016800 glide BrSub_10019240 */
-/* @n64 0x8022F520 located */
-void BrSub_10019240(void)
-{
-    g_br4B0360 = 1u;
-}
 
 /* 0x10019250 -- `mov byte [0x104B0360], 0` */
 void BrSub_10019250(void)
@@ -519,42 +500,6 @@ int BrGetGlobal_1C788(void)
   return DAT_1021c788;
 }
 
-/* WHAT IT DOES: under the queue mutex, append an (id, addr) pair to the 256-entry
- * texture re-download ring at 0x118EC998, wrapping the write index at 0x100. */
-/* @implements 0x1006E1D0 glide BrTexQueuePush */
 
-void BrTexQueuePush(int param_1,int param_2)
-
-{
-  WaitForSingleObject(g_br18AA0A0,0xffffffff);
-  *(int *)(&DAT_118ec998 + g_br18A9878 * 8) = param_1;
-  *(int *)(&DAT_118ec99c + g_br18A9878 * 8) = param_2;
-  g_br18A9878 = g_br18A9878 + 1;
-  if (g_br18A9878 >= 0x100) {
-    g_br18A9878 = 0;
-  }
-  ReleaseMutex(g_br18AA0A0);
-  return;
-}
-
-/* WHAT IT DOES: under the queue mutex, if the ring is non-empty pop one (id, addr) pair
- * and re-download that texture through hook slot [0x118ED1D0], wrapping the read index. */
-/* @implements 0x1006E220 glide BrTexQueuePop */
-
-void BrTexQueuePop(void)
-
-{
-  WaitForSingleObject(g_br18AA0A0,0xffffffff);
-  if (g_br18AA098 != g_br18A9878) {
-    (*DAT_118ed1d0)(*(int *)(&DAT_118ec998 + g_br18AA098 * 8),
-                    *(int *)(&DAT_118ec99c + g_br18AA098 * 8));
-    g_br18AA098 = g_br18AA098 + 1;
-    if (g_br18AA098 >= 0x100) {
-      g_br18AA098 = 0;
-    }
-  }
-  ReleaseMutex(g_br18AA0A0);
-  return;
-}
 
 #endif /* BR_MATCHING_BUILD */
