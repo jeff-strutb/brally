@@ -8,10 +8,30 @@
  * process, and 0x1002DB0B is the per-model entry point that drives them.
  * The stub at 0x1002E70A is contiguous with them in the original.
  *
+ * 0x10018A40 came from slice6_78.c: it sets the one flag the .rca loader
+ * reads to decide whether to do its copying at all, which is the same
+ * load-time fixup pass.
+ *
  * slice2_19.c's preamble is carried over verbatim.  An include set that
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <stdarg.h>
+#include "br_path.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "slice6_78.h"
+
+
+
 #ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
@@ -128,4 +148,14 @@ void BrDlOwnerFixup(BrDlOwner *pOwner)
      * the original does not have. */
     if (BrSub100341B3(pOwner->pDl, g_BrDlTableA))
         pOwner->flags |= 8u;
+}
+
+/* 0x1002B9D0 */
+/* WHAT IT DOES: sets a single global flag. Worth knowing: the same storage
+ * is what the .rca loader reads to decide whether to do its copying at all,
+ * so anything that clears this switches that copying off. */
+/* @implements 0x10018A40 glide BrSegSetFlag */
+void BrSegSetFlag(uint32_t v)
+{
+    g_br675540 = (int32_t)v;
 }

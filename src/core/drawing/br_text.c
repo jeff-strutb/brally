@@ -280,3 +280,29 @@ void BrSub_10019280(void)
 {
     g_br4B035C = 0;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <stdarg.h>
+#include "br_path.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "slice6_78.h"
+
+
+/* 0x10019240 -- `mov byte [0x104B0360], 1` */
+/* WHAT IT DOES: raises a one-byte flag that the text glyph drawing code
+ * reads to pick between two different drawing commands. What visual
+ * difference that makes is not established here. */
+/* @implements 0x10016800 glide BrSub_10019240 */
+/* @n64 0x8022F520 located */
+void BrSub_10019240(void)
+{
+    g_br4B0360 = 1u;
+}
