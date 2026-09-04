@@ -602,26 +602,6 @@ void __fastcall FUN_10001bb0(int *param_1,int _edx_unused,int *param_2)
 }
 
 
-extern char DAT_1021c9b0[];
-extern int DAT_10226a38;
-extern HANDLE DAT_10226a54;
-
-/* WHAT IT DOES: post a message string for the networking layer to pick up,
- * under the message mutex, and raise the flag that says one is waiting. */
-/* @implements 0x100038A0 glide FUN_100038a0 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void FUN_100038a0(char *param_1)
-
-{
-  WaitForSingleObject(DAT_10226a54, 0xffffffff);
-  strcpy(DAT_1021c9b0, param_1);
-  DAT_10226a38 = 1;
-  ReleaseMutex(DAT_10226a54);
-  return;
-}
-
-
 extern int DAT_100aa044;
 extern int DAT_105ccb88;
 extern float _DAT_10077000;
