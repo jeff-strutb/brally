@@ -73,6 +73,25 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
  * parameter VC5 loads into a register first is the one it puts on the `fld`
  * side. Writing the first component (or all three) as `pA->x = pB->x + pA->x`
  * does not move it -- VC5 canonicalises the commutative FADD. */
+/* N64 CONFIRMS THE WALL, AND PROMOTES IT FROM INFERENCE TO PROOF. The above
+ * was reached by probing source forms and finding none that moved the bytes,
+ * which cannot distinguish "our spelling is right" from "we have not found the
+ * right spelling". The N64 twin settles it: IDO does NOT canonicalise
+ * commutative operands (verified directly -- `a->x + b->x` loads a1 then a2,
+ * `b->x + a->x` loads a2 then a1), so its bytes record the original's source
+ * order. This function is byte-exact against the ROM at 0x802248C8 AS WRITTEN,
+ * and the swapped spelling `pA->x = pB->x + pA->x` is NOT exact there.
+ *
+ * So the source below is the original's own spelling, and the PC residue is
+ * purely VC5's choice of which operand to load into a register first. It is a
+ * codegen wall, not a missing source form. DO NOT SPEND MORE PROBES ON
+ * OPERAND ORDER HERE.
+ *
+ * One axis the oracle cannot settle: `pA->x += pB->x` and
+ * `pA->x = pA->x + pB->x` are byte-identical under IDO too, so the compound
+ * form is unproven either way -- it just does not matter to either target.
+ * Method: n64/tools/n64match.py; see the commutative-addition entry in
+ * docs/VC5-IDIOMS.md. */
 void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x += pB->x;
@@ -87,6 +106,14 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
  * the x component, but FLD component / FMUL s for y and z.  VC5 canonicalises
  * commutative FMUL regardless of source operand order, so no source form
  * changes the FLD operand for x.  5 diffs remain. */
+/* N64 CANNOT SETTLE THIS ONE -- a negative result, recorded so it is not
+ * mistaken for a gap. The twin at 0x802244FC is byte-exact, but BOTH
+ * `pV->x * s` and `s * pV->x` produce those same bytes under IDO, because the
+ * scalar arrives already in a register and only the vector component is
+ * loaded. So unlike BrVec3AddTo and BrVec3MulAddTo below, the oracle is blind
+ * to the operand order here and the original spelling stays unknown. That does
+ * not weaken the note above: the VC5 residue is still a codegen wall, it is
+ * just not independently confirmed for this function. */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
     pOut->x = pV->x * s;
@@ -120,6 +147,12 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
 /* @n64 0x80224990 exact */
 /* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add
  * commutes, so pA.x + pB.x*s is bit-identical -- one multiply, one add. */
+/* N64 CONFIRMS THE MULTIPLY'S OPERAND ORDER. The twin at 0x80224990 is
+ * byte-exact as written, and `s * pB->x` is NOT exact there -- IDO does not
+ * canonicalise commutative operands, so its bytes record the original's own
+ * spelling. `pB->x * s` is therefore the original, not merely a form that
+ * happens to work. Contrast BrVec3Scale above, where both spellings give the
+ * same MIPS and the oracle proves nothing. Method: n64/tools/n64match.py. */
 void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
 {
     pA->x += pB->x * s;
