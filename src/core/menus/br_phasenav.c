@@ -1,4 +1,17 @@
-/* slice3_31.c -- another module's packet of BRD3D.dll.
+/* br_phasenav.c -- menus: moving between front-end screens. The activate and
+ * hook installers, the plain jumps, the leave routines, name entry and its
+ * clear, the six mode callbacks and the per-frame ticks.
+ *
+ * This is the whole of the former slice3_31.c, moved rather than split. Every
+ * function in the packet reaches the same two file-static context pointers
+ * (g_pBase / g_pExt, DEVIATION 1 below) that BrPhase31SetCtx installs, so
+ * splitting it would have meant two copies of that state and two definitions
+ * of the setter. One of the 19, BrSub10047360, does not match yet; it is the
+ * menu row pulse and belongs here too.
+ *
+ * Original banner follows.
+ *
+ * slice3_31.c -- another module's packet of BRD3D.dll.
  *
  * See slice3_31.h for what this module is and how it relates to slice2_25 /
  * slice2_26. Everything below is a straight transcription of the annotated
