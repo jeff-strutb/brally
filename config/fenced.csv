@@ -635,3 +635,11 @@ va,size,class,reason
 0x10074B70,11,eh_funclet,unwind funclet: lea ecx,[ebp-0x220] then jmp into 0x10008D60
 0x10074733,6,eh_funclet,mid-function fragment (odd address); restores edi/esi from the parent frame
 0x1007486F,9,eh_funclet,mid-function fragment (odd address); restores ebx/edi/esi from the parent frame
+0x1007296C,6,import_thunk,"ff 25 [0x118F06DC] -- jmp through the import table; linker output, reproduced at link"
+0x10072996,6,import_thunk,"ff 25 [0x118F06F4] -- jmp through the import table; linker output, reproduced at link"
+0x100729D2,6,import_thunk,"ff 25 [0x118F06E8] -- jmp through the import table; linker output, reproduced at link"
+0x100729EA,6,import_thunk,"ff 25 [0x118F06D8] -- jmp through the import table; linker output, reproduced at link"
+0x100729F6,6,import_thunk,"ff 25 [0x118F06D0] -- jmp through the import table; linker output, reproduced at link"
+0x100729FC,6,import_thunk,"ff 25 [0x118F06CC] -- jmp through the import table; linker output, reproduced at link"
+0x10073704,3,data_table,"NOT CODE. 0x100736E0..0x10073720+ is a table of 16-byte records, each 'd8 86 07 10 cN 00 00 00 0c cN 00 80 00 00 00 00' with only the two cN bytes changing. The map read two mid-record byte pairs as 'ret 0' and 'ret 0x8000'; a function that pops 32KB of arguments is the tell"
+0x10073709,3,data_table,"NOT CODE. Same 16-byte record table as 0x10073704 -- see that row"
