@@ -219,9 +219,19 @@ void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
      * pan is measured along. */
     BrVec3Sub(&d, pSrcPos, (const BrVec3 *)(const void *)&pListener->m[3][0]);
 
-    /* Orig first fmul is m[1][1]*d.y (fld m10; fld m11; fmul dy). */
-    proj = pListener->m[1][1] * d.y + pListener->m[1][0] * d.x
-         + pListener->m[1][2] * d.z;
+    /* The original's first fmul is m[1][1]*d.y (`fld m10; fld m11; fmul dy`),
+     * and NAMING THAT ONE PRODUCT is the only thing that produces it.  VC5
+     * canonicalises a flat three-term sum of products, so every permutation
+     * and every grouping of the three terms compiles to the same bytes -- with
+     * the x term's fmul first.  Pulling the y term out into a temp takes it
+     * out of the flat sum, so it is evaluated on its own and lands first; the
+     * remaining two terms canonicalise as before.  See the sum-of-products
+     * entries in docs/VC5-IDIOMS.md. */
+    {
+        float ty = pListener->m[1][1] * d.y;
+
+        proj = ty + pListener->m[1][0] * d.x + pListener->m[1][2] * d.z;
+    }
 
     /* First branch falls through only on a strict >, second only on C0
      * (less-than OR unordered) -- so a NaN projection ends up at -10. */
