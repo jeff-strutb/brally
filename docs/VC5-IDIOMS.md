@@ -4413,3 +4413,35 @@ RETURN-TYPE question, not a colouring wall.** `edx:eax` is the only pair a
 64-bit return can use; any other pairing means the source returned something
 narrower — or nothing — and the value is being kept live for a store only.
 Check the return type before recording a 64-bit function as T3a.
+
+## Matrix builders are written ROW BY ROW — grouping by value costs registers
+
+Two 4x4 builders, `0x1002A7A0 BrMat4Scale` and `0x1002A7F0 BrMat4Translate`,
+both went byte-exact from the same single fact: the original source assigns
+all sixteen elements **in address order**, one row after another, mixing the
+interesting values in where they fall —
+
+    m[0][0] = sx;  m[0][1] = 0;  m[0][2] = 0;  m[0][3] = 0;
+    m[1][0] = 0;   m[1][1] = sy; m[1][2] = 0;  m[1][3] = 0;
+    …
+
+— not grouped by what the value is (`the diagonal first, then all the
+zeros`), which is how a human writing a decompiled draft naturally spells it
+and how `BrMat4Scale` was spelled here for months.
+
+The output is NOT simply the source order — VC5 reorders the stores freely
+and emits the nine or twelve zero stores as a block off one `xor`ed register
+either way. What the source order fixes is **register pressure**: with the
+zero stores separating `sy` from `sz`, VC5 loads `sz` into the register it
+has just freed storing `sy` (`mov edx,[esp+0xc] … mov [eax+0x14],edx / mov
+edx,[esp+0x10]`). Grouped diagonal-first, both parameters are live at once
+and it hoists them into two registers — same 22 instructions, same 70 bytes,
+two diff bytes, register-blind gap 0. That reads exactly like a T3a colouring
+residue and is not one.
+
+**The tell:** on a struct-filling function whose only residue is which
+register a parameter lands in, with regnorm 0+0 and the instruction count
+already exact, re-spell the assignments in ADDRESS ORDER before recording it
+as a colouring wall. The same applies to any initialiser that writes a
+fixed-layout record — the original's authors wrote fields in declaration
+order.
