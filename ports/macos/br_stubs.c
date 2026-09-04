@@ -1,4 +1,4 @@
-/* br_stubs.c -- GENERATED. One stub per not-yet-ported function.
+/* br_stubs.c -- one stub per not-yet-ported function.
  *
  * Purpose: make the game LINK before the core is finished, so it can be RUN.
  * A stub that is never called costs nothing; a stub that IS called tells us
@@ -13,7 +13,10 @@
  * will see garbage rather than 0. Stubs that matter get reported below, so a
  * float-returning gap shows up as a hit and gets ported rather than trusted.
  *
- * Regenerate with tools/genstubs.py. Do not hand-edit.
+ * THIS FILE IS HAND-MAINTAINED. It used to say "GENERATED -- regenerate with
+ * tools/genstubs.py. Do not hand-edit."; that generator does not exist in the
+ * tree (and the per-stub comments below, which carry real findings, could not
+ * have survived a regeneration anyway). Edit it directly.
  */
 #include <stdio.h>
 #include <string.h>
@@ -67,11 +70,36 @@ static long br_stub(const char *name)
     return 0;
 }
 
-/* Called at exit: the boot path's actual demand, most-wanted first. */
+/* Called at exit: the boot path's actual demand, most-wanted first.
+ *
+ * BR_STUB_GATE=1 turns this from a report into a GATE: the process exits 1 if
+ * the run reached any stub at all. That is the macOS peer of what
+ * tools/image_build.py does for the Win9x lane -- image_build exits 1 when a
+ * claimed match cannot be placed, and this exits 1 when a claimed-complete
+ * boot path is in fact standing on a stub.
+ *
+ * The two gates measure DIFFERENT things and neither substitutes for the
+ * other. image_build proves PLACEMENT: our bytes sit at the claimed address
+ * and the assembled file equals the original -- but 66% of that file is the
+ * original's own bytes, so it says nothing about whether our code runs. This
+ * proves REACHABILITY: every function the run actually entered was real
+ * ported code, not a stub returning 0. A green image and a green stub gate
+ * together are still not "the game works"; they are "placed right" and
+ * "nothing faked it".
+ *
+ * Default (unset) stays a plain report, so exploratory runs are unaffected --
+ * a gate that breaks ordinary use gets switched off and stops gating.
+ * BR_STUB_ABORT=1 remains the fail-fast variant: it dies at the FIRST hit,
+ * with the stack still live, which is what you want when you need to see WHO
+ * called the stub rather than merely that it was called. */
 void BrStubReport(void)
 {
-    int i, j;
-    if (!g_nHit) { printf("stubs: none reached -- everything the run touched is ported\n"); return; }
+    int i, j, gate;
+    gate = getenv("BR_STUB_GATE") ? atoi(getenv("BR_STUB_GATE")) : 0;
+    if (!g_nHit) {
+        printf("stubs: none reached -- everything the run touched is ported\n");
+        return;
+    }
     printf("\nstubs reached: %d distinct\n", g_nHit);
     for (i = 0; i < g_nHit; i++) {
         int best = i;
@@ -80,6 +108,13 @@ void BrStubReport(void)
           g_hit[i] = g_hit[best]; g_cnt[i] = g_cnt[best];
           g_hit[best] = tn; g_cnt[best] = tc; }
         printf("  %6u  %s\n", g_cnt[i], g_hit[i]);
+    }
+    if (gate) {
+        fprintf(stderr,
+                "\nSTUB GATE: FAILED -- %d stub%s reached; the run did not "
+                "execute ported code all the way through.\n",
+                g_nHit, g_nHit == 1 ? " was" : "s were");
+        exit(1);
     }
 }
 
