@@ -1038,21 +1038,5 @@ int __fastcall BrBoundsFits_10058CC0(int param_1,int _edx_unused,int *param_2)
 
 void BrOperatorDelete(void *p);
 
-/* WHAT IT DOES: thiscall recursive teardown of the +0x10 chain: free the
- * child's own chain first, delete the child, clear the link. */
-/* @implements 0x10058C90 glide BrChainFreeRec_10058C90 */
-
-void __fastcall BrChainFreeRec_10058C90(int param_1)
-{
-  int pvVar1;
-
-  pvVar1 = *(int *)(param_1 + 0x10);
-  if (pvVar1 != 0) {
-    BrChainFreeRec_10058C90(pvVar1);
-    BrOperatorDelete((void *)pvVar1);
-    *(int *)(param_1 + 0x10) = 0;
-  }
-  return;
-}
 
 #endif /* BR_MATCHING_BUILD */
