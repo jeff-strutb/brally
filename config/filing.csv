@@ -694,10 +694,10 @@ glide_va,name,module,basis,file
 0x10061430,BrRaceCarPre,racing,filed,src/core/racing/br_racestep.c
 0x10061440,BrSndTableClear,racing,filed,src/core/racing/br_racestep.c
 0x100623A0,BrRaceDriverAnim,racing,filed,src/core/racing/br_racestep.c
-0x10062500,BrSub_10069490,racing,neighbour,src/core/slice5_62.c
-0x10062550,BrPool16Alloc,racing,neighbour,src/core/slice3_41.c
-0x100625A0,BrPool32Alloc,racing,neighbour,src/core/slice3_41.c
-0x100625F0,BrGfx69580,racing,neighbour,src/core/slice3_41.c
+0x10062500,BrSub_10069490,gamedata,manual,src/core/slice5_62.c
+0x10062550,BrPool16Alloc,gamedata,manual,src/core/slice3_41.c
+0x100625A0,BrPool32Alloc,gamedata,manual,src/core/slice3_41.c
+0x100625F0,BrGfx69580,gamedata,manual,src/core/slice3_41.c
 0x10062610,BrRacePosCopy,racing,neighbour,src/core/slice3_41.c
 0x100627B0,BrRaceDifficultySet,racing,filed,src/core/racing/br_racestart.c
 0x10062830,BrRaceDifficultyApply,racing,filed,src/core/racing/br_racestart.c
@@ -802,7 +802,7 @@ glide_va,name,module,basis,file
 0x1006CFC0,BrBitStreamWriteU16,gamedata,description,src/core/slice1_09.c
 0x1006D000,BrBitStreamWriteU24,gamedata,description,src/core/slice1_09.c
 0x1006D050,BrBitStreamWriteU32,gamedata,description,src/core/slice1_09.c
-0x1006D160,BrBitStreamAlignWrite,settings,neighbour-1,src/core/slice1_09.c
+0x1006D160,BrBitStreamAlignWrite,gamedata,manual,src/core/slice1_09.c
 0x1006D180,BrCountedTotal,settings,filed,src/core/settings/br_state.c
 0x1006D190,BrStateGetField10,settings,filed,src/core/settings/br_state.c
 0x1006D280,BrStrGet,menus,description,src/core/slice4_52.c
