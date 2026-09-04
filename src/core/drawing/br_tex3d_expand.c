@@ -1,5 +1,37 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * 2026-09-03 (session 14): the 0x15b8..0x19fd stretch is now READ, both
+ * streams side by side, and the session-13 diagnosis needs one correction.
+ * The counter-register swap is real, but the compare that goes with it is
+ * NOT a source lever:
+ *     orig  15d5 `xor eax,eax` (inner = 0), 15e7 homes it, then
+ *           15f1 `cmp ebx,eax` -- the bound against the just-zeroed counter
+ *     ours  15da `xor ecx,ecx`, 15e7 homes it, then
+ *           15f1 `test ebx,ebx` -- the zero constant-folded away
+ *   PROBED AND INERT, do not re-run: spelling that guard as
+ *   `if ((int)param_1 < iVar17)` instead of `if (0 < iVar17)` at line 1035,
+ *   which is literally what the original's `cmp` reads.  BYTE-IDENTICAL --
+ *   VC5 constant-propagates the counter's zero into the guard and emits
+ *   `test` either way, so orig's `cmp` is a peephole consequence of having
+ *   the zero already in a register for the home, not evidence about the
+ *   source.  The only real difference across the whole preheader is WHICH
+ *   counter got the register: orig has the outer row counter in ecx and
+ *   reloads the inner one and its bound from slots at the 4-step loop head
+ *   (0x1612/0x1616); we keep the inner one in ecx and the bound in ebx and
+ *   need no reloads.  With session 13's probes (a) and (b) both dead, that
+ *   stretch is T3a like the rest of this function.
+ * Same session, REGION 5 (0x9f8, +58 and the largest RELIABLE change on the
+ * key-10 map) read for the first time -- it had only ever been a delta.  It
+ * is ONE extra instruction and one schedule notch, not a block:
+ *     ours hoists `mov dword ptr [esp+0x20],0` -- the 4-step counter's
+ *     init -- to the ROW LOOP HEAD at 0x9f8, where the original does not
+ *     have it at all; and the loop guard loads its two operands the other
+ *     way round (orig loads the BOUND then the counter and emits
+ *     `cmp counter,bound`; we load the counter then the bound).
+ *   So the +58 is drift the block hands back, not 58 bytes of missing code,
+ *   which is consistent with this function's instruction parity.  Nobody
+ *   should open r5 expecting a block.
+ *
  * ‼‼ 2026-09-03 (session 13) -- EVERY REGION MAP BELOW IS TRUNCATED.  Read
  * this before any other note in this file.
  *   `divergence.py` used to STOP at the first divergence it could not
