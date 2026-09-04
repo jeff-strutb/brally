@@ -66,4 +66,22 @@ int BrRacePosIconSet(int param_1)
   return 1;
 }
 
+extern int DAT_100abdf4;
+extern int DAT_10ac5c40;
+extern int DAT_10ac5cbc;
+extern int g_brPhaseAA2904;
+
+/* WHAT IT DOES: look up the race-position HUD icon from a table, returning -2 if the phase has not changed. */
+/* @implements 0x10038C60 glide BrRaceIconLookup */
+
+int BrRaceIconLookup(int param_1)
+
+{
+  if ((g_brPhaseAA2904 == DAT_10ac5cbc) && (DAT_10ac5c40 == 0)) {
+    return 0xfffffffe;
+  }
+  *(short *)(param_1 + 0x1e20c) = *(short *)(DAT_100abdf4 * 4 + 0x100abd48);
+  return 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
