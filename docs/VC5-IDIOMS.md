@@ -4890,3 +4890,53 @@ per-site scheduling. A redundant paren round the first operand
 to the original's order at both sites — but it sinks the second site's `fadd`
 four instructions later and costs far more than it wins. Recorded as a lever
 that exists and points the wrong way, not as a spelling to keep trying.
+
+## The flat sum-of-products canonicaliser: a NAMED TEMP beats it, grouping does not
+
+This REFINES the "VC5 canonicalises commutative FLOAT addition" and
+"redundant LEFT grouping paren" entries above, and corrects them on one point:
+for a three-term dot product, **grouping does nothing and a named temp is the
+whole lever.**
+
+0x10060C30 BrSndPan ends in a projection
+
+    proj = m[1][1]*d.y + m[1][0]*d.x + m[1][2]*d.z;
+
+which came out size-exact, instruction-exact and register-blind 0+0 at FOUR
+differing bytes. The entire residue was term ORDER: the original emits the y
+term's `fmul` first (`fld m10 / fld m11 / fmul dy`), we emitted the x term's.
+The `fxch`/`faddp` dance around it was already identical.
+
+**Everything that did NOT move it** — all at the same 380 bytes / 114
+instructions, and all but two at the same 4 diffs:
+
+- all six flat permutations of the three terms (x,y,z / y,x,z / z,y,x, …)
+- `(X+Y)+Z`, `(Y+Z)+X`, `(X+Z)+Y`, `(Z+Y)+X` — every LEFT grouping
+- `X+(Y+Z)`, `Z+(X+Y)` — two right groupings; `Y+(X+Z)` and `(X+Z)+Y` were
+  WORSE at 6
+- writing the vector factor first in one product or in all three
+- a `const float *r = &m[1][0]` row pointer, in four term orders: this one
+  BREAKS the function (-8 bytes, -4 instructions) — the original recomputes
+  the row address per term, so a row pointer is the wrong source shape here
+  even though it reads better
+
+**What did it, and it is byte-exact:**
+
+    {
+        float ty = pListener->m[1][1] * d.y;
+
+        proj = ty + pListener->m[1][0] * d.x + pListener->m[1][2] * d.z;
+    }
+
+**Why:** the canonicaliser works on a FLAT sum. Naming one product lifts it
+out of that sum, so it is evaluated on its own — and therefore first — while
+the two terms that remain canonicalise exactly as before. The temp is not
+"identity" (the `VARIABLE IDENTITY IS INERT` entry still holds for a value
+already in the sum); it changes the SHAPE of the expression tree in the one
+way parentheses cannot, because parentheses re-associate within the sum while
+a temp removes a term from it.
+
+**How to use it:** when a float sum's term order is the last divergence, read
+which product the original computes first, then name THAT product. Do not
+work through the permutations and groupings first — on this function that was
+thirteen probes and none of them moved a byte.
