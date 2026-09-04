@@ -133,10 +133,14 @@ def build():
         key = '0x%08x' % va
         name = r.get('name') or ''
         old = prev.get(key)
-        # A recorded hand decision always wins; nothing here overwrites it.
-        if old and old.get('basis') == 'manual' and old.get('module'):
+        # ANY recorded decision wins. This used to preserve only basis=manual
+        # and recompute everything else, which silently threw away the
+        # description-derived and neighbour-derived assignments the moment the
+        # tool was re-run -- the decision is supposed to be made ONCE.
+        if old and old.get('module'):
             out.append({'glide_va': '0x%08X' % va, 'name': name,
-                        'module': old['module'], 'basis': 'manual',
+                        'module': old['module'],
+                        'basis': old.get('basis') or 'recorded',
                         'file': r['file']})
             continue
         m = module_of(r['file'])

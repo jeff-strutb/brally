@@ -20,8 +20,18 @@ technique it uses or the layer it sits in.
     menus/      the front end: pages, controls, navigation
     controls/   reading what the player is doing
     audio/      sound and music
+    net/        multiplayer: sessions, peers, and the wire format a car's
+                state is squeezed into. The pack/unpack helpers live here
+                and not in geometry/ even though they read like arithmetic --
+                their responsibility is the PROTOCOL, and filing them by
+                their maths would scatter one wire format across three
+                folders.
     gfx/        the HOST Metal backend. Not game code, and named for what it
                 is rather than filed with drawing/
+
+`net/` was added 2026-09-03. Multiplayer was the one subsystem with no
+responsibility folder: its ~84 functions sat in address batches with nowhere
+to go, so "file everything" was impossible until it existed.
 
 ## Why not `math`, `physics`, `platform`, `render`?
 
