@@ -114,27 +114,6 @@ int BrRandom(void)
 #endif
 
 /* ==========================================================================
- * 0x1005FF30  BrMenuSub1005FF30
- * ========================================================================== */
-
-/* WHAT IT DOES: forgets everything the game currently believes about the
- * keyboard -- which keys are held, which were just pressed, and what was held
- * last frame -- so that keys still down when a screen changes do not carry over
- * and register again. It only clears the first 64 entries of each table, not
- * all of them. */
-/* @implements 0x1005FF30 d3d BrMenuSub1005FF30 */
-/* @n64 0x8021E5C4 located */
-void BrMenuSub1005FF30(void)
-{
-    /* Three inlined `rep stosd` of 0x40 dwords.  BrTables64Clear is the same
-     * body as a callee; the original does not call it.  The size is a dword
-     * count, not an element count of the two 256-entry int32 arrays. */
-    memset(g_BrDikState, 0, BR_TABLE64_COUNT * sizeof(uint32_t));
-    memset(g_BrDikEdge,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
-    memset(g_BrDikPrev,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
-}
-
-/* ==========================================================================
  * 0x10048470  BrUiScreenCtor
  * ========================================================================== */
 
