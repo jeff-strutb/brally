@@ -81,42 +81,6 @@ int BrTexAspectFromSize(int *pCode, int a, int b)
     return 0;
 }
 
-/* 0x10028720 */
-/* WHAT IT DOES: the reverse of the size coding: given a size code and an
- * aspect code, works back out the texture's width and height. An aspect code
- * it does not recognise leaves the height as the caller had it. */
-/* @implements 0x10028720 d3d BrTexSizeFromShiftAspect */
-void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
-{
-    /* First jump table: 9 entries at 0x10028820, indices 0..8, plus a
-     * default that lands on the same code as index 8. */
-    switch (shift) {
-    case 0:  *pA = 0x100; break;
-    case 1:  *pA = 0x80;  break;
-    case 2:  *pA = 0x40;  break;
-    case 3:  *pA = 0x20;  break;
-    case 4:  *pA = 0x10;  break;
-    case 5:  *pA = 8;     break;
-    case 6:  *pA = 4;     break;
-    case 7:  *pA = 2;     break;
-    case 8:  *pA = 1;     break;   /* explicit: keeps the 9-entry table */
-    default: *pA = 1;     break;
-    }
-
-    /* Second jump table: 7 entries at 0x10028844. Out of range simply
-     * returns, leaving *pB untouched. Divisions are `cdq`-corrected shifts,
-     * i.e. truncation toward zero, matching C's / operator. */
-    switch (aspect) {
-    case 0:  *pB = *pA / 8; break;
-    case 1:  *pB = *pA / 4; break;
-    case 2:  *pB = *pA / 2; break;
-    case 3:  *pB = *pA;     break;
-    case 4:  { int v = *pA; *pB = v; *pA = v / 2; } break;
-    case 5:  { int v = *pA; *pB = v; *pA = v / 4; } break;
-    case 6:  { int v = *pA; *pB = v; *pA = v / 8; } break;
-    default: break;
-    }
-}
 
 /* 0x10027B90 */
 /* WHAT IT DOES: decides which of the backend's pixel formats a texture
