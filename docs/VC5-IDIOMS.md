@@ -2771,6 +2771,51 @@ park predates this screen.**
 recorded in slice2_19.c's BrCarGfxReadColour and re-confirmed here. When the
 slot ORDER is wrong and the count is right, rename before restructuring.
 
+## The byte-lane move vs the widened `or`: it is decided by WHERE the value is assigned, not how it is spelled
+*(proven 2026-09-03 on 0x1000A110 arm 1, which had stood four sessions and
+carried five measured-dead spellings)*
+
+The same pack, `(((top << 8 | b0) << 8 | b1) << 8)`, compiles two ways:
+
+    lane form      mov dl, cl                     (b0 forwarded from a live
+                                                    byte register)
+    widened form   mov byte ptr [esp+0x31], cl    (b0 homed …)
+                   mov edx, dword ptr [esp+0x31]  (… and reloaded as a dword)
+                   and edx, 0xff
+                   or  ecx, edx
+
+The widened form is four instructions where the lane form is one, so wherever
+the original takes it the recompile reads several instructions short. **No
+spelling of the pack expression reaches this.** Measured dead on that arm:
+explicit `(b0 & 0xFFu)` widening, a named `uint8_t` for the top component,
+giving the arm its own private array, swapping the `|` operands, and
+reordering the three assignments among themselves.
+
+**What decides it is whether the value is still live in a register at the
+merge, and that is set by WHERE IT IS ASSIGNED relative to the surrounding
+statement.** In the case above the original's schedule says it outright: it
+loads `b0` and homes it *inside the preceding statement's tail*, before that
+statement's own result is merged. Moving the two `b0`/`b1` assignments ABOVE
+the preceding statement — so their live ranges span it — makes VC5 spend the
+byte slots on them and read them back widened. That one move took the function
+from 11 instructions short to 8 and 42 bytes short to 31; `top`, whose load
+the original places *after* that statement, has to stay after it (hoisting all
+three is one multiset row better and eight raw rows worse).
+
+**So read the original's SCHEDULE, not its arithmetic, when a pack is short.**
+Where a byte load and its home sit inside the previous statement's
+instructions, that assignment is above that statement in the source. This is
+the same currency as the byte-slot idiom (`mov byte [slot]` + dword load +
+`and 0xff` = a widening after register death) — this entry says how to cause
+the death.
+
+**And it retires a heuristic:** this arm's dossier had ruled that ANY change
+inside it which moved the first-divergence address earlier was a regression,
+because every probe that did so also lost on size. This change moves the first
+divergence 28 bytes earlier and improves bytes, instructions, the raw gap and
+the register-blind gap all at once. A first-divergence tell is only evidence
+when the other axes agree with it.
+
 ## Naming a byte temp: when it helps and when it costs
 *(proven 2026-09-03 on 0x1000A110 arm 3; read together with the "do not name a
 temp to preserve an observed load order" entry, which is about a different case)*

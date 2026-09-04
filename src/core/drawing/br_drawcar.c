@@ -921,6 +921,48 @@ static void wheel_call(unsigned char *car)
  * cross-jumped into the shared tail.  Still one byte slot short of the
  * original's two.
  *
+ * SESSION 14 (2026-09-03) -- ‼ ARM 1 NO LONGER CROSS-JUMPS, and the wall
+ * that held it for four sessions was not inside the pack at all: it was
+ * WHERE THE PACK IS FILLED.  Read the original's schedule rather than its
+ * arithmetic and it says so outright -- `mov cl,[6C0960]` at 0x30c and
+ * `mov byte [esp+0x31],cl` at 0x317 both sit INSIDE colourA's tail, between
+ * the third ftol's return and its merge; top1 loads at 0x31d; packA[1] only
+ * at 0x327.  So in the source the two pack bytes are assigned BEFORE the
+ * colourA statement and top1 after it.  Written that way their live ranges
+ * span colourA, VC5 spends the byte slots on them, and the reads come back
+ * as the widened dword form (`mov edx,[esp+0x31]; and edx,0xff; or ecx,edx`)
+ * instead of forwarding a live byte register into a lane (`mov dl,cl`).
+ * That lane move was this arm's entire deficit.
+ *   Measured: register-blind multiset 21+32 -> 20+28, instructions 11 short
+ *   -> 8, bytes 42 short -> 31, fn.py RAW 45+56 -> 42+50.  Arm 1 now emits
+ *   its own `or ecx,edx; shl ecx,8; ...; mov edi,ecx` inline and jumps with
+ *   the tail unmerged, which is the shape the session-7 note said was
+ *   missing.
+ *   ‼ AND IT COSTS SOMETHING, stated plainly: masked regions 22 -> 24 and
+ *   arm 1's first divergence moves 0x30c -> 0x2f0, which is the exact
+ *   "un-merged early" signature the session-10 and session-12 notes below
+ *   use as their REGRESSION TELL.  That heuristic is now RETIRED for this
+ *   arm -- it was minted when every probe moved the first divergence AND
+ *   lost on every other axis; here all four quantitative measures improve
+ *   together.  What opened at 0x2f0 is colourA's SECOND component flipping
+ *   byte lanes (`mov dh,al` where orig has `mov dl,al`), the same
+ *   canonicalisation the regions-2/3 note calls unreachable, now landing on
+ *   the other side because the hoisted pack changed the pressure.
+ * SESSION 14 PROBES, DEAD, do not re-run:
+ *   - hoisting top1 above colourA as well (all three assignments first):
+ *     one multiset row better (19+28) and eight raw rows worse (47+56),
+ *     bytes -33 against -31.  The two-and-one split is what the bytes say
+ *     and it is the better trade.
+ *   - packA[0] alone hoisted, top1 and packA[1] after: 20+32, i.e. it
+ *     recovers none of the four `or R,R` rows.  BOTH elements have to be
+ *     live across colourA.
+ *   - reordering the three assignments without hoisting any of them
+ *     (packA[0] first instead of top1 first, the session-10 lever): same
+ *     size, same instruction count, RAW one row worse.  Order alone does
+ *     nothing here; it is the position relative to colourA that matters.
+ *   - a named `uint8_t` for colourA's SECOND component, to pull its lane
+ *     back: BYTE-IDENTICAL, exactly as the regions-2/3 note predicts.
+ *
  * SESSION 12 (2026-09-03) -- THE LIGHT-DIRECTION COPY IS BYTE-EXACT, and it
  * proves a rule this file should have applied a session earlier: ‼ A DEAD
  * VERDICT MEASURED AGAINST A WRONG FRAME IS STALE.  That copy carried five
@@ -1250,24 +1292,28 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * as (uint8_t) casts, the third is spelled `& 0xFF`. */
     if (BrG_6C661C != 0) {
         float div = dist * 0.1f;
+        uint8_t packA[2]; uint8_t top1;
         if (!(div >= 1.0f)) div = 1.0f;
+        /* ‼ THE TWO PACK BYTES ARE FILLED BEFORE colourA, top1 AFTER IT.
+         * That is read straight off the bytes: the original loads
+         * packA[0] at 0x30c and HOMES it at 0x317 -- both inside colourA's
+         * tail, before the third ftol result is merged -- loads top1 at
+         * 0x31d, and only reaches packA[1] at 0x327.  Filling the array
+         * first makes its two elements live across colourA, so VC5 spends
+         * the byte slots on them and reads them back widened (`mov
+         * edx,[esp+0x31]; and edx,0xff; or ecx,edx`) instead of forwarding
+         * packA[0] out of a live byte register into a lane (`mov dl,cl`).
+         * The lane move was the whole of this arm's deficit.  With top1
+         * hoisted as well the byte count reads two better and the raw
+         * divergence eight worse; this split is the original's. */
+        packA[0] = BrG_6C0960;
+        packA[1] = BrG_6C65BC;
         colourA = ((((uint32_t)(uint8_t)(int32_t)((float)(int32_t)BrG_6C1580 / div) << 8
                    | (uint8_t)(int32_t)((float)(int32_t)BrG_6C335C / div)) << 8
                    | ((uint32_t)(int32_t)((float)(int32_t)BrG_6C0968 / div) & 0xFF)) << 8);
-        {
-        /* Arm 1's pack is its OWN two-byte array, not the one arms 2 and 3
-         * share.  The original gives this arm a private copy of the colourB
-         * pack; sharing `pack` let VC5 cross-jump arm 1 into the arm-2/3
-         * tail, which is three instructions the original emits and we did
-         * not.  With the array split, arm 1 homes a byte and reads it back
-         * widened the way the original does. */
-        uint8_t packA[2], top1;
         top1 = g_BrDrawByte80;
-        packA[0] = BrG_6C0960;
-        packA[1] = BrG_6C65BC;
         colourB = ((((uint32_t)top1 << 8 | packA[0]) << 8
                    | packA[1]) << 8);
-        }
     } else {
         /* arms 2 (dim *4/5) and 3 (plain) share colourB's Horner tail --
          * the original merges them at 0x427, spilling pack[0]/pack[1] to the
