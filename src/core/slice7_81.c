@@ -242,58 +242,6 @@ int32_t BrUiHook81_10045AA0(BrUiCtl_ *pCtl)
     return 1;
 }
 
-/* WHAT IT DOES: the handler on a menu row that opens one particular screen:
- * it builds that screen if it does not exist yet, makes it current, runs its
- * builder, and then wires the new screen's back row so it knows how to get
- * out again. The argument -- the row that was chosen -- is pushed and then
- * never looked at. */
-/* @implements 0x100458A0 d3d BrUiHook81_100458A0 */
-int32_t BrUiHook81_100458A0(BrUiCtl_ *pCtl)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig pushes the unused pCtl, then stores +0x08 unguarded. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_10045BC0)(pCtl);
-    g_br73.pAA29F4->pfn08 = BrUiHook81_10046B10;
-    return 1;
-#else
-    BrUiCtl_ *pBack;
-
-    (void)pCtl;                       /* pushed, ignored by the callee */
-    (void)BrUiHook81Activate_10045BC0();
-
-    pBack = g_br73.pAA29F4;           /* 0x10AA29F4 -- a CONTROL */
-    if (pBack != NULL)                /* DEVIATION: guarded */
-        pBack->pfn08 = BrUiHook81_10046B10;
-    return 1;
-#endif
-}
-
-/* WHAT IT DOES: the same open-a-screen handler for a different screen. It
- * nudges one shared string first, builds and enters the screen, and wires
- * that screen's back row to the matching leave routine. Note the screen this
- * one opens is not transcribed anywhere in this tree yet, so following it
- * today lands on an empty screen. */
-/* @implements 0x10045880 d3d BrUiHook81_10045880 */
-int32_t BrUiHook81_10045880(BrUiCtl_ *pCtl)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig pushes the unused pCtl, then stores +0x08 unguarded. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_100451E0)(pCtl);
-    g_br73.pAA29C8->pfn08 = BrUiHook81_10046AD0;
-    return 1;
-#else
-    BrUiCtl_ *pBack;
-
-    (void)pCtl;
-    (void)BrUiHook81Activate_100451E0();
-
-    pBack = g_br73.pAA29C8;           /* 0x10AA29C8 -- a CONTROL */
-    if (pBack != NULL)                /* DEVIATION: guarded */
-        pBack->pfn08 = BrUiHook81_10046AD0;
-    return 1;
-#endif
-}
-
 int32_t BrUiHook81_100450F0(BrUiCtl_ *pCtl)
 {
     BrUiCtl_ *pOther = g_br73.pAA29F4;
