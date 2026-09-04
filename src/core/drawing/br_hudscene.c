@@ -281,8 +281,14 @@ void BrHudDrawDial(BrHudView *aViews)
 
             /* 100142A2-100142DA: every operand is a dword -- float, not
              * double -- and __ftol takes the value off the x87 stack. */
-            iFrame = (int32_t)(((float)v + g_hud.pRace->f0E24 - kF304)
-                               * kF308 * (float)(pSpr->ea + 1) - kF30C);
+            /* 100141F2: the outer paren pins the PRODUCT order -- the frame
+             * scalar is multiplied by kF308 first, then by (ea + 1).  Without
+             * it VC5 canonicalises the chain and multiplies by (ea + 1)
+             * first, loading it before the kF304 subtract (38 diff bytes,
+             * size-exact).  A named temp for the first product is the same
+             * bytes; naming (ea + 1) instead is inert. */
+            iFrame = (int32_t)((((float)v + g_hud.pRace->f0E24 - kF304)
+                               * kF308) * (float)(pSpr->ea + 1) - kF30C);
 
             if (iFrame < 0)         iFrame = 0;
             else if (iFrame > 0xF)  iFrame = 0xF;
@@ -339,6 +345,7 @@ void BrHudDrawDial(BrHudView *aViews)
         float A  = pSpr->fF0;
         float  ang;
         float fx;
+        int16_t iy;
         int32_t dy = g_screen.cy - y;
 
         /* 10016F22: NaN takes the "no interpolation" path. */
@@ -361,37 +368,43 @@ void BrHudDrawDial(BrHudView *aViews)
          * converted by the CSE'd inline cast at its first use inside v[0].y,
          * matching the original's sunk fild/fstp.
          *
-         * RESIDUE (~4 insns, T3a): at the v[1].x and v[2].x transitions the
-         * original computes the next angle (`fld st(0); fsub k`) BEFORE
-         * storing the previous y and juggles with 2 fxch each; we store
-         * first, no fxch.  Probed and failed: hoisting the ang assignment
-         * above the v[k].y statement (extends ang's live range, changes the
-         * frame, 9+2), fresh per-vertex angle variables (no change).
-         * Scheduler-internal pipelining depth.
+         * 10014452 / 100144A1 (v[0].y and v[1].y): the original computes
+         * the NEXT angle (`fld st(0); fsub k`) and its cosine BEFORE it
+         * converts and stores the previous y, juggling with 2 fxch each.
+         * That is SOURCE ORDER, not the scheduler: the narrowed result is
+         * held in an int temp (`iy`) and the y store is written AFTER the
+         * next `t = cos(ang)`.  v[2].y is NOT deferred -- the original
+         * stores it before the last angle (which consumes A in place), and
+         * deferring it too costs one region back at 100144EC.  Was a
+         * "T3a scheduler" note for four sessions (4 fxch / -8 B / -4 insns);
+         * hoisting `ang` itself above the y statement is what failed (9+2),
+         * because it moves the ftol as well as the store.  Dead and inert:
+         * z-store placement (before y, after y, all four hoisted), the
+         * assignment-in-argument `cos(ang = A - k)`, a `double` ang, an
+         * int32 temp (same bytes as int16), and inline `cos(A - k)` (much
+         * worse, 9+14: the subtract is no longer CSE'd across cos and sin).
          *
-         * CONFIRMED 2026-09-03 that this is the WHOLE residue: the four
-         * missing `fxch` are exactly the -8 bytes and -4 instructions, and
-         * nothing else in 1703 B differs. fn.py also reports an extra
-         * `lea R,[R*I]` against a missing `lea R,[R*I + I]` -- that pair is
-         * a PHANTOM. It is the `lea edi,[edx*8 + <global>]` at 0x10014109,
-         * whose displacement is a reloc and therefore reads 0 in the .obj;
-         * both encodings are the same seven bytes and mask equal. Do not
-         * chase it. */
+         * fn.py's extra `lea R,[R*I]` against a missing `lea R,[R*I + I]`
+         * is a PHANTOM: the `lea edi,[edx*8 + <global>]` at 0x10014109 has
+         * a reloc displacement that reads 0 in the .obj; the encodings are
+         * the same seven bytes and mask equal. */
         fx = (float)x;
         ang = A - kF324;
         t = (float)cos(ang);
         pQuad->v[0].x = (float)(int16_t)(int32_t)(t * tip  + fx);
         t = (float)sin(ang);
-        pQuad->v[0].y = (float)(int16_t)(int32_t)(t * tip  + (float)dy);
-        pQuad->v[0].z = 0.0f;
+        iy = (int16_t)(int32_t)(t * tip  + (float)dy);
         ang = A - kF328;
         t = (float)cos(ang);
+        pQuad->v[0].y = (float)iy;
+        pQuad->v[0].z = 0.0f;
         pQuad->v[1].x = (float)(int16_t)(int32_t)(t * tip  + fx);
         t = (float)sin(ang);
-        pQuad->v[1].y = (float)(int16_t)(int32_t)(t * tip  + (float)dy);
-        pQuad->v[1].z = 0.0f;
+        iy = (int16_t)(int32_t)(t * tip  + (float)dy);
         ang = A - kF32C;
         t = (float)cos(ang);
+        pQuad->v[1].y = (float)iy;
+        pQuad->v[1].z = 0.0f;
         pQuad->v[2].x = (float)(int16_t)(int32_t)(t * base + fx);
         t = (float)sin(ang);
         pQuad->v[2].y = (float)(int16_t)(int32_t)(t * base + (float)dy);

@@ -5673,3 +5673,59 @@ not relocating them, and nothing in the pipeline validates it. Two of the
 port-arm four are plain field accesses and would go mechanically; the other
 two would not, because `s17_car` is `g_s17.pCars + i * BR_CAR_STRIDE` —
 state-bound, so it cannot be duplicated the way a stateless macro could.
+
+## A store scheduled AFTER the next statement's x87 work is SOURCE ORDER, not the scheduler
+
+`0x100140B0 BrHudDrawDial` (1,703 B) sat four sessions on a note reading
+"scheduler-internal pipelining depth, T3a": four missing `fxch`, -8 bytes,
+-4 instructions, register-blind 0+4. The original, at each of the first two
+vertex transitions, computes the NEXT angle and its cosine before it converts
+and stores the previous y:
+
+    call __ftol            ; y of v[k]
+    fld st(0) ; fsub [k]   ; ang for v[k+1]      <- BEFORE the y store
+    movsx edx, ax
+    fld st(0) ; fcos
+    mov [esp+S], edx
+    fild [esp+S] ; fxch ; fmul tip ; fxch ; fstp [esi+4]   <- y of v[k] stored here
+
+VC5 does not move a store across a following statement's `fsub`/`fcos` on
+its own. What it DOES do is exactly what the source says, and the source
+held the narrowed value in an int temp and wrote the store later:
+
+    iy  = (int16_t)(int32_t)(t * tip + (float)dy);
+    ang = A - kF328;
+    t   = (float)cos(ang);
+    pQuad->v[0].y = (float)iy;
+    pQuad->v[0].z = 0.0f;
+
+**The screen:** a `movsx r,ax` immediately after `call __ftol`, with its
+`mov [slot],r` / `fild [slot]` / `fstp [dest]` sitting several x87
+instructions LATER, and the intervening instructions belonging to the next
+statement. Look at what is between the `movsx` and the `fild`: if it is the
+next statement's arithmetic, the source stored through a temp after that
+statement. The x→y transitions in the same function look similar but are
+NOT this (the `fsin` there is on an angle already on the stack, and VC5
+does interleave that one on its own) — which is why the y→x ones stood out.
+
+**Riders, all measured:** (1) It is per site. v[2].y is stored BEFORE the
+last angle in the original (which consumes `A` in place, `fsub` with no
+`fld st(0)`), and deferring it too costs a region back. (2) The int temp's
+width is inert (`int16_t` and `int32_t` give the same bytes — the movsx is
+the cast inside the expression either way). (3) What FAILED before, and
+why: hoisting `ang = A - k` above the whole y statement moves the ftol as
+well as the store (9+2). The lever is to move only the STORE. (4) Inert:
+the z-store's position (before the y, after it, or all four hoisted to the
+top), `cos(ang = A - k)`, `double ang`.
+
+### And the leading paren pins a PRODUCT chain too
+
+Same function, last region: `((float)v + f - k) * kF308 * (float)(ea + 1)`
+came out multiplied by `(ea + 1)` FIRST (the `fild` of `ea + 1` hoisted
+above the `fsub k`, then `fmulp`, then `fmul kF308`). VC5 canonicalises a
+product chain the way it canonicalises a flat sum. `(((float)v + f - k) *
+kF308) * (float)(ea + 1)` — one redundant paren round the first product —
+gives the original's `fsub k ; fild ; fxch ; fmul kF308 ; fxch ; fmulp`.
+A named temp for the first product is the same bytes; naming `(ea + 1)`
+(int or float), or writing `(ea + 1)` unconverted, is inert. Extends the
+`((a) + b) + c` entry above from sums to products.
