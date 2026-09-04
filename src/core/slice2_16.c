@@ -1,5 +1,18 @@
 /* slice2_16.c -- Boss Rally (BRD3D.dll), a later pass, 0x1001CD60..0x1002BC90.
- * See slice2_16.h for the per-function notes and gotchas. */
+ * See slice2_16.h for the per-function notes and gotchas.
+ *
+ * ‼ 0x10017F80 BrFadeDrawSprite IS BYTE-EXACT ONLY IN THIS TU. Do not refile
+ * it without expecting to re-win it. Tried 2026-09-03: a new file carrying
+ * this file's ENTIRE preamble verbatim -- every include, every rename
+ * #define, nothing trimmed -- still came out 17 diff bytes, 544 against 529.
+ * Reverted; it matches here. This is the surrounding-TU effect, and it is the
+ * only case in the refiling job where carrying the whole preamble was not
+ * enough: what is missing is the rest of the file's declarations, not its
+ * includes. See the "surrounding TU decides commutative operand order" entry
+ * in docs/VC5-IDIOMS.md. It is filed `drawing` in config/filing.csv and the
+ * audit counts it stranded; that is a known, recorded cost, not an oversight.
+ * Do NOT append it to drawing/br_fade.c -- that file was filed out of
+ * slice2_15.c and carries a different batch's preamble. */
 
 #ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
