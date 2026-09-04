@@ -158,9 +158,21 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
     p = pBs->pBuf + i;
     {
         /* RESIDUE (4 B): orig loads DH (p[0]) before DL (p[1]); VC5 emits
-         * the low byte first from every probed spelling (|-order, +,
-         * byte temps, |=-accumulate, u16 temp). Value-before-cursor-store
-         * via this block temp is what the original does prove. */
+         * the low byte first from every probed spelling. Value-before-cursor-
+         * store via this block temp is what the original does prove.
+         *
+         * PROBED AND DEAD, do not re-run. Earlier: |-order, +, byte temps,
+         * |=-accumulate, u16 temp. Added after WriteU16/WriteU32 fell to a
+         * named-local lever (see their notes) -- it does NOT carry over here,
+         * because this function already names both halves:
+         *   inert (33 B / 14 insns / 4 diffs, unchanged): seeding the
+         *     accumulate from the LOW byte instead of the high; casting
+         *     outside the `|` instead of on each operand; splitting the
+         *     shift-or into its own statement after a plain `v = p[0]`;
+         *     spelling the loads `*p` / `*(p+1)` rather than p[0] / p[1].
+         *   worse: `p[0] * 256u + p[1]` (+7 B, +4 insns -- the multiply is
+         *     NOT folded to a shift here); a `unsigned short` value temp
+         *     (+5 B, the narrowing costs a movzx). */
         unsigned int v = ((unsigned int)p[0] << 8) | (unsigned int)p[1];
         pBs->readByte = i + 2;
         return v;
