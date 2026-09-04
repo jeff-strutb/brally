@@ -14,6 +14,12 @@
  * separate translation units and is a duplicate-declaration error once they
  * share one.  They are unified below and every function is byte-exact
  * against the original with the unified spelling.
+ *
+ * 0x118AA0B0 also has a SECOND name in this tree, `g_pfn18AA0B0`, used by
+ * br_font.c and slice2_16.c; its only definition was the one in the
+ * 0x10073B00 batch and it is kept here, so the two names for one address
+ * now sit side by side rather than in separate translation units.  Merging
+ * them is a rename across four files and is not part of a refile.
  */
 #include <stdint.h>
 
@@ -78,6 +84,44 @@ void BrSub10073AC0(void)
     g_0A6498 = g_18AA0B0(g_18AA8F8, g_18AA0D8,
                          0x20u, 0x80u, 0u, 2u,
                          0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+}
+
+/* ==========================================================================
+ * 7. 0x10073B00 -- create the 32x128 backend texture and keep the handle
+ * ==========================================================================
+ *
+ * Twin of 0x10073AC0: same fourteen-argument call through the backend
+ * texture constructor at 0x118AA0B0 (slice2_16.h's BrGbiTexCreateFn), same
+ * 0x20 x 0x80 / fmt 0 / siz 2, but this one writes the returned handle to
+ * BOTH 0x100A64A0 and 0x100A649C.  Store order is load-bearing: 0x100A64A0
+ * first.  The two pointer arguments are the ADDRESSES of the globals, not
+ * their contents -- `push imm32` of each VA, not `push dword ptr [VA]`.
+ *
+ * Matching-only: the constructor pointer and the two source objects have no
+ * owner in the port tree, and inventing a size for the pixel buffers would
+ * be a second view of storage this packet does not own. */
+typedef void *(*BrTexCreateFn10073B00)(void *pSrc, void *pArg2,
+                                       int w, int h, int fmt, int siz,
+                                       int a7, int a8, int a9, int a10,
+                                       int a11, int a12, int a13, int a14);
+
+BrTexCreateFn10073B00 g_pfn18AA0B0; /* 0x118AA0B0 */
+char                  g_18AA0F8;    /* 0x118AA0F8 */
+char                  g_18AB0F8;    /* 0x118AB0F8 */
+void                 *g_0A64A0;     /* 0x100A64A0 */
+void                 *g_0A649C;     /* 0x100A649C */
+
+/* WHAT IT DOES: asks the graphics backend to turn one of the game's pixel
+ * buffers into a 32-by-128 texture and then remembers the handle in two
+ * slots so later readers of either slot see the same texture. */
+/* @implements 0x10073B00 d3d BrSub10073B00 */
+void BrSub10073B00(void)
+{
+    /* Chained so eax is stored twice without a reload. */
+    g_0A649C = g_0A64A0 = g_pfn18AA0B0(&g_18AA0F8, &g_18AB0F8,
+                                       0x20, 0x80, 0, 2,
+                                       0, 0, 0, 0,
+                                       0, 0, 0, 0);
 }
 
 #endif /* BR_MATCHING_BUILD */
