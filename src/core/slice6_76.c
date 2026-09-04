@@ -660,6 +660,49 @@ void BrSndVoiceApplyFreq(int param_1)
   return;
 }
 
+/* WHAT IT DOES: push the voice's stored volume to DirectSound
+ * (IDirectSoundBuffer::SetVolume, vtable +0x3c).  The stored level is scaled
+ * by the global master level 0..255 and mapped onto DirectSound's
+ * hundredths-of-a-decibel scale by (level - 400) * 10.  A master level of 0
+ * short-circuits to DSBVOLUME_MIN (-10000) rather than computing silence.
+ *
+ * RESIDUE (T3a, parked): 84 vs 79 bytes, regnorm 3+1.  The arithmetic, the
+ * unsigned /255 reciprocal, the branch polarity and both call sites are
+ * already identical; the whole gap is allocation:
+ *   - orig loads the parameter ONCE into ecx above `test al,al`; we load it
+ *     per arm (+4 B), which costs a second callee-saved register (push/pop
+ *     edi, +2 B) because the vtable fetch lands before `sub edx,0x190`
+ *     instead of after it, while orig reuses edx for the vtable;
+ *   - orig `mov eax,0xffffd8f0 / push eax`, we `push 0xffffd8f0` (-1 B).
+ * DO NOT RE-RUN THESE -- six spellings, all BYTE-IDENTICAL output:
+ *   (1) `dsbuf_fn2 fn = ...` assigned before the call, sibling style;
+ *   (2) the call written inline with no local at all;
+ *   (3) a `static __inline` two-arg helper called from both arms;
+ *   (4) `int vol;` declared above the if and assigned in both arms;
+ *   (5) a named `pBuf` local assigned AFTER the value (the "name the
+ *       pointer" lever) with the call through `*pBuf`;
+ *   (6) the multiply written master-first instead of level-first.
+ * The next lever has to come from outside the statement spelling. */
+/* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
+
+void BrSndVoiceApplyVolume(int param_1)
+
+{
+  int       vol;
+  dsbuf_fn2 fn;
+
+  if (BrSndMasterVolume != 0) {
+    vol = ((*(unsigned int *)(param_1 + 0x14) * BrSndMasterVolume) / 0xff - 400) * 10;
+    fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
+    fn(*(int *)(param_1 + 0x9c), vol);
+    return;
+  }
+  vol = -10000;
+  fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
+  fn(*(int *)(param_1 + 0x9c), vol);
+  return;
+}
+
 /* WHAT IT DOES: set the volume on a DirectSound buffer and commit the change. */
 /* @implements 0x1006B670 glide BrSndBufSetVolume */
 
