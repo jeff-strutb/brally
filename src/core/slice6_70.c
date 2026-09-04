@@ -680,45 +680,6 @@ typedef struct BrC9B0Vtbl {
 } BrC9B0Vtbl;
 #endif
 
-/* WHAT IT DOES: walks every row of one particular on-screen list -- the one
- * the global 0x10AA29E4 currently points at -- and asks the nested list
- * object at +0x3838 to do whatever its vtable slot +0x2C does for that row's
- * index. A missing pointer or a zero row-count is a no-op. The pointer is
- * re-read before every row because the call is allowed to replace it. */
-#ifdef BR_MATCHING_BUILD
-/* @implements 0x1003C9B0 d3d BrSub1003C9B0 */
-/* @implements 0x10036040 glide BrSub1003C9B0 */
-#endif
-void BrSub1003C9B0(void)
-{
-    uint8_t  *pObj;
-    unsigned  i;
-    unsigned  n;
-
-    pObj = g_brPAA29E4;
-    if (pObj == NULL) {
-        return;
-    }
-    n = *(uint16_t *)(pObj + 0x1E164);
-    for (i = 0; i < n; i++) {
-        uint8_t *pSub;
-#ifdef BR_MATCHING_BUILD
-        BrC9B0Arg a;
-#endif
-        pObj = g_brPAA29E4;
-        pSub = pObj + 0x3838;
-#ifdef BR_MATCHING_BUILD
-        a.i = (int)i;
-        (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
-#else
-        {
-            void **pVtbl = *(void ***)pSub;
-            ((void (*)(void *, unsigned))pVtbl[11])(pSub, i);
-        }
-#endif
-    }
-}
-
 /* WHAT IT DOES: the same walk as BrSub1003C9B0, over the list object at
  * 0x10AA29D4 instead of 0x10AA29E4. */
 #ifdef BR_MATCHING_BUILD
