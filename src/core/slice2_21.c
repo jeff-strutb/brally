@@ -43,34 +43,6 @@ int  BrSpanContains(int param_1, int param_2);
  * 1. Float geometry leaves
  * -------------------------------------------------------------------------- */
 
-/* 0x1003ADA0 */
-/* WHAT IT DOES: works out which way one point lies from another as a unit
- * direction. Two points in exactly the same place have no direction, so it
- * answers "straight up" rather than dividing by zero. */
-/* @implements 0x1003ADA0 d3d BrVec3Direction */
-/* @implements 0x10034420 glide BrVec3Direction */
-/* @n64 0x802245F0 located */
-void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
-{
-    float dx = pTo->x - pFrom->x;
-    float dy = pTo->y - pFrom->y;
-    float dz = pTo->z - pFrom->z;
-    float len = BrSqrtF(dx * dx + dy * dy + dz * dz);
-
-    /* Orig: `test ah,0x40; jne zeros` so normalize is the fall-through.
-     * `if (len == 0) { zeros; return; }` emits `je normalize` instead. */
-    if (len != K_0) {
-        len = K_1 / len;            /* fdivr: 1.0 / len, computed once */
-        pOut->x = len * dx;
-        pOut->y = len * dy;
-        pOut->z = len * dz;
-        return;
-    }
-    pOut->x = 0.0f;
-    pOut->y = 0.0f;
-    pOut->z = 1.0f;
-}
-
 /* 0x1003AE50 */
 /* @n64 0x80224760 located */
 void BrVec3NormaliseGuard(BrVec3 *pV)
@@ -89,29 +61,6 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
     pV->x = len * pV->x;
     pV->y = len * pV->y;
     pV->z = len * pV->z;
-}
-
-/* 0x1003B1C0 */
-/* WHAT IT DOES: measures how long a vector is looking down from above, that
- * is, ignoring height. */
-/* @implements 0x1003B1C0 d3d BrVec3LenXY */
-/* @n64 0x80224B48 located */
-float BrVec3LenXY(const BrVec3 *pV)
-{
-    return BrSqrtF(pV->y * pV->y + pV->x * pV->x);
-}
-
-/* 0x1003B0A0 */
-/* WHAT IT DOES: measures the distance between two points as seen from above,
- * ignoring any difference in height -- which is what "how far apart are these
- * two cars on the track" means. */
-/* @implements 0x1003B0A0 d3d BrVec3DistXY */
-/* @n64 0x80224A34 located */
-float BrVec3DistXY(const BrVec3 *pA, const BrVec3 *pB)
-{
-    float dx = pA->x - pB->x;
-    float dy = pA->y - pB->y;
-    return BrSqrtF(dx * dx + dy * dy);
 }
 
 /* 0x1003B7B0 */
@@ -209,28 +158,6 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
     pOut->x = pM->m[0][0] * pV->x + pM->m[1][0] * pV->y + pM->m[2][0] * pV->z;
     pOut->y = pM->m[0][1] * pV->x + pM->m[1][1] * pV->y + pM->m[2][1] * pV->z;
     pOut->z = pM->m[0][2] * pV->x + pM->m[1][2] * pV->y + pM->m[2][2] * pV->z;
-}
-
-/* 0x1003B470 */
-/* WHAT IT DOES: combines two transforms into one. It builds the answer in a
- * scratch copy first, so it is safe to write the result back over either of the
- * things being multiplied. */
-/* @implements 0x1003B470 d3d BrMtxMul */
-void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
-{
-    BrMat4 t;   /* the original's 64-byte stack temp: aliasing is safe */
-    int i, j, k;
-
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            /* Store 0 then reload: the original is `mov dword [esi],0; fld [esi]`,
-             * not `fld` of a 0.0f constant. */
-            t.m[i][j] = 0.0f;
-            for (k = 0; k < 4; k++)
-                t.m[i][j] = t.m[i][j] + pA->m[i][k] * pB->m[k][j];
-        }
-    }
-    *pOut = t;
 }
 
 /* 0x1003B4F0 */
@@ -469,26 +396,6 @@ void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
         }
     }
 }
-
-/* 0x1003A950 */
-/* WHAT IT DOES: asks whether a point falls inside the covered area, by
- * dropping it into the coarse grid and checking that cell. */
-/* @implements 0x1003A950 d3d BrSpanTestPoint */
-/* @implements 0x10033FD0 glide BrSpanTestPoint */
-#ifdef BR_MATCHING_BUILD
-int BrSpanTestPoint(float x, float y)
-{
-    /* Right-to-left: y ftol first, its eax is pushed, then x ftol, Contains. */
-    return BrSpanContains(BrFtolArg(x * K_CELL_RECIP),
-                          BrFtolArg(y * K_CELL_RECIP));
-}
-#else
-int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
-{
-    return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
-                                   BrFtolArg(y * K_CELL_RECIP));
-}
-#endif
 
 /* 0x1003A990 */
 /* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a

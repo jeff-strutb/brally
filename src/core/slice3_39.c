@@ -768,28 +768,6 @@ float BrTextBoxCentreX(BrTextBox *pBox)
 }
 
 /* =====================================================================
- * 0x1005B540 -- character map lookup
- * ===================================================================== */
-
-/* WHAT IT DOES: translates a typed key into the character it should produce,
- * by walking a table until it finds a match and taking the first one. Keys
- * that are not in the table produce nothing -- and a handful of keys, Tab
- * among them, produce something only because the walk runs off the end of the
- * real table and keeps going through the data that happens to follow it. */
-/* @implements 0x1005B540 d3d BrCharMapLookup */
-uint8_t BrCharMapLookup(int32_t code)
-{
-    uint32_t i;
-
-    for (i = 0; i < BR_CHARMAP_COUNT; ++i) {
-        if (g_BrCharMap[i].code == (uint32_t)code) {
-            return (uint8_t)g_BrCharMap[i].ch;
-        }
-    }
-    return 0;
-}
-
-/* =====================================================================
  * 0x1005B7F0 / 0x1005B8D0 / 0x1005B8F0 -- BrTextList lifetime
  * ===================================================================== */
 
@@ -1208,22 +1186,6 @@ void BrMenuSub1005FFF0(void)
     }
 }
 
-/* WHAT IT DOES: reports which key was newly pressed this frame, taking the
- * first one it finds, or -1 if none were. This is how a "press any key"
- * prompt is answered. */
-/* @implements 0x1005FFD0 d3d BrFn1005FFD0 */
-int32_t BrFn1005FFD0(void)
-{
-    int32_t i;
-
-    for (i = 0; i < BR_DIK_COUNT; ++i) {
-        if (g_BrDikEdge[i] != 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 #ifdef BR_MATCHING_BUILD
 __declspec(dllimport) int __stdcall MessageBoxA(void *hWnd, const char *pText,
                                                 const char *pCaption,
@@ -1238,18 +1200,6 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
     MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
 }
 #endif
-
-/* WHAT IT DOES: read the keyboard and, if that succeeded, work out which
- * keys changed since last time. The per-frame input poll; a failed read
- * leaves the previous state alone rather than reporting everything as
- * released. */
-/* @implements 0x10059020 glide BrDikPollAndEdge */
-void BrDikPollAndEdge(void)
-{
-    if (BrDikGetDeviceState(g_BrDikState) >= 0) {
-        BrMenuSub1005FF60();
-    }
-}
 
 /* =====================================================================
  * 0x10060210 / 0x100602B0 / 0x10060780 -- small utilities
@@ -1303,55 +1253,6 @@ void BrMemFill(void *pDst, uint32_t count, int32_t value)
  * 0x10060750 -- poke the slot's device
  * ===================================================================== */
 
-/* WHAT IT DOES: if this slot still holds a device, and the current screen is
- * actually up, it asks that device to do one of two things. Which one is
- * picked by a global flag. The extra argument it is handed is never looked
- * at. */
-#ifdef BR_MATCHING_BUILD
-/* Original is 2-arg thiscall: `this` in ecx, one unread stack dword, `ret 4`.
- * BR_THISCALL1 (= __fastcall) would put that dword in edx; a struct is never
- * register-eligible, so it is forced back onto the stack.
- * COM methods on the iface are stdcall (`push eax; call [vtbl+n]`): the
- * header's cdecl pointers would emit `add esp, 4` after each call. */
-typedef struct { uint32_t v; } BrSub10060750Arg;
-typedef struct {
-    char pad[0x1C];
-    void (__stdcall *pfn1C)(void *pThis);
-    void (__stdcall *pfn20)(void *pThis);
-} BrSub10060750Vtbl;
-typedef struct {
-    BrSub10060750Vtbl *pVtbl;
-} BrSub10060750Iface;
-typedef struct {
-    uint32_t _00, _04, _08, f0C;
-} BrSub10060750Phase;
-extern BrSub10060750Phase *g_brPhaseAA2904;   /* 0x10AA2904 */
-extern uint32_t            g_BrAA33E0;        /* 0x10AA33E0 */
-
-/* WHAT IT DOES: tell a device slot's object to show or hide itself,
- * depending on whether the current screen is live and a related flag. */
-/* @implements 0x10060750 d3d BrSub10060750 */
-void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
-{
-    BrSub10060750Iface *pIface = (BrSub10060750Iface *)pSlot->pIface;
-    uint32_t            live;
-    uint32_t            flag;
-
-    (void)unused;
-
-    if (pIface != NULL) {
-        live = g_brPhaseAA2904->f0C;
-        if (live != 0) {
-            flag = g_BrAA33E0;
-            if (flag != 0) {
-                pIface->pVtbl->pfn20(pIface);
-            } else {
-                pIface->pVtbl->pfn1C(pIface);
-            }
-        }
-    }
-}
-#endif
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD

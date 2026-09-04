@@ -669,63 +669,6 @@ void BrCarStateUnpack(BrCarState *pDst, const BrCarPacked *pSrc)
     pDst->f9C = (b[0x08] & 4u) ? BrK08F0CC : 0.0f;
 }
 
-/* =====================================================================
- * 5. Player table accessors
- * ===================================================================== */
-
-/* 0x10005470.  BR_ENTITY_STRIDE (0x2B68) comes from slice1_09.h.
- *
- * NOTE: the base here is 0x10ACEDB0, which is NOT the 0x10ACDEA8 that pass
- * 09's entity helpers use -- the two differ by 0xF08, not by a whole number of
- * records. Either this walks a different array or it starts 0xF08 into the
- * record; the stride and the "first dword non-zero" test are all this code
- * establishes, so the base stays a parameter. */
-/* WHAT IT DOES: counts how many entries in a table of cars or other world
- * objects are in use, by checking each record's first word for a non-zero
- * value. */
-/* @implements 0x10005470 d3d BrEntityCountActive */
-#ifdef BR_MATCHING_BUILD
-/* Orig: `mov edx,[DAT_100b2f04]; mov ecx, offset DAT_10af2110` then a
- * countdown do-while.  Parameters are a port convenience. */
-extern int32_t DAT_100b2f04;
-extern unsigned char DAT_10af2110[];
-uint32_t BrEntityCountActive(void)
-{
-    int32_t n = DAT_100b2f04;
-    uint32_t c = 0;
-    unsigned char *p;
-
-    /* Orig `test edx,edx; jle ret` — skip the countdown, do not early-return
-     * (that duplicates `ret`). */
-    if (n > 0) {
-        p = DAT_10af2110;
-        do {
-            if (*(int32_t *)p != 0)
-                ++c;
-            p += BR_ENTITY_STRIDE;
-            --n;
-        } while (n != 0);
-    }
-    return c;
-}
-#else
-uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
-{
-    const unsigned char *p = (const unsigned char *)pvRecords;
-    uint32_t             n = 0;
-    int32_t              i;
-
-    for (i = 0; i < cRecords; ++i) {
-        uint32_t first;
-        memcpy(&first, p, sizeof first);        /* byte order is irrelevant */
-        if (first != 0)
-            ++n;
-        p += BR_ENTITY_STRIDE;
-    }
-    return n;
-}
-#endif
-
 /* 0x10005D40, and 0x10005D90 over the other pair of globals. */
 /* WHAT IT DOES: takes the top entry off one of the networking code's small
  * stacks of free numbers, locking it first so another thread cannot take the
