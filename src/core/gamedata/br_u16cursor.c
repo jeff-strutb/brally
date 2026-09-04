@@ -9,6 +9,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice1_01.h"
+#include "slice2_11.h"   /* g_pBrU16QueueTable -- BrU16QueuePop's table */
 
 /* ---------------------------------------------------------------------------
  * 0x10002EF0 -- read one u16 through a cursor and advance it.
@@ -73,3 +74,42 @@ uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
     return pTable[pos];
 }
 #endif
+
+/* ================================================================== */
+/* 0x10002F40 -- pop from a u16 ring                                  */
+/* ================================================================== */
+
+/* WHAT IT DOES: take the next entry off a u16 queue -- read the head, step it
+ * on and count one off the remaining total. An empty queue answers zero, and
+ * so does a queue whose next entry happens to be zero, so a caller cannot
+ * tell those apart. The twin of BrU16CursorNext (0x10002EF0) in slice1_01.c,
+ * over a different table.
+ *
+ * The two halves are held in ONE 32-bit register between the read and the two
+ * stores, so a carry out of (head + 1) lands in the new count instead of
+ * being dropped. Unreachable below 64K entries; preserved either way.
+ *
+ * The count and head are u16 LOCALS, not u32: as u32 the zero-extension of
+ * the two loads moves and the guard inverts (56 diffs). Same shape as the
+ * sibling -- the success path is the `if` body and the zero is the fall-out,
+ * not an early return. */
+/* @implements 0x10003280 glide BrU16QueuePop */
+/* @n64 0x8021EA90 located */
+uint16_t BrU16QueuePop(void *pQ)
+{
+    uint16_t *q = (uint16_t *)pQ;
+    uint16_t  hi;
+    uint16_t  lo;
+    uint32_t  packed;
+
+    hi = q[1];
+    if (hi) {
+        lo = q[0];
+        packed = ((uint32_t)hi + 0xFFFFu) << 16 | ((uint32_t)lo + 1u);
+        q[0] = (uint16_t)packed;
+        q[1] = (uint16_t)(packed >> 16);
+        return g_pBrU16QueueTable[lo];
+    }
+    return 0;
+}
+
