@@ -105,11 +105,22 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
     float w = m[0][3] * vx + m[1][3] * vy + m[2][3] * vz + m[3][3];
     float r = 1.0f / w;                /* g_0775F0 == 1.0f, taken via fdivr */
 
-    /* PARKED T3a, re-measured 2026-09-03.  Residue is ONE instruction:
-     * recomp 163 B / 69 insns vs orig 165 B / 70, register-blind multiset
-     * difference = a single `fxch`.  Divergence starts at +0x8 -- the x87
-     * preload block picks a different five values (orig vx, vy, m03, m13, vz;
-     * recomp vy, vz, m23, vx, m13) and every later `fxch` follows from that.
+    /* PARKED T3a.  RE-MEASURED AGAIN 2026-09-03 (second pass, later in the
+     * day) and it is now BETTER than the line below claimed -- that line said
+     * "recomp 163 B / 69 insns vs orig 165 B / 70, one `fxch` apart", and the
+     * current tree is 165 B / 70 insns against 165 / 70 with a register-blind
+     * multiset difference of ZERO (RAW 0+0, REGNORM 0+0).  Every instruction
+     * the original has, in the same count, with 23 bytes differing.
+     *
+     * All 23 are x87 preload ORDER.  The original issues
+     *   vx, vy, m03, m13, vz, … m23   and this tree issues
+     *   vy, vz, m13, m23, vx, … m03
+     * -- the same six loads rotated by one -- and the `fmul st(N)` / `fld
+     * st(N)` indices that follow are forced by that rotation, not chosen.
+     * The source cannot reach it: VC5 canonicalises the whole flat float
+     * sum-of-products, so all eleven orderings below are byte-identical.
+     * Nothing left here is source-shaped.  Do not reopen without a NEW
+     * mechanism (a compiler flag or patch level), not another permutation.
      *
      * ‼ THE OLD NOTE HERE WAS STALE AND IS RETRACTED.  It claimed a 30-byte
      * residue confined to 0x28-0x4F with "the first 0x28 bytes and everything
