@@ -336,7 +336,41 @@ def _fresh(obj, src):
     return t >= os.path.getmtime(src) and t >= _deps_mtime()
 
 
-def _compile_dll_obj(rel_src, tag, recompile=False):
+def _ambiguous_basenames(claimed):
+    """Basenames that MORE THAN ONE claimed source file shares.
+
+    Object caches here are keyed by basename, so two source files with the
+    same one write to a single `<base>.obj` and the second overwrites the
+    first -- after which every symbol of the loser reads as "symbol not in
+    obj", which the gate reports as a wrong claim. It is not: it is the cache
+    colliding. Refiling into modules creates these (src/core/controls,
+    /net and /audio all grew a br_input.c), so the set is not static.
+
+    ‼ THE SWEEP'S OBJECT DIRECTORY HAS THE SAME COLLISION, so for these files
+    it cannot be trusted at all and the gate always builds its own.
+    """
+    seen, dup = {}, set()
+    for r in claimed.values():
+        f = r.get('file') or ''
+        if not f.endswith('.c'):
+            continue
+        b = os.path.basename(f)
+        if seen.setdefault(b, f) != f:
+            dup.add(b)
+    return dup
+
+
+def _own_tag(tag, rel_src):
+    """The gate's obj-dir tag for one TU: the opt, plus a digest of the
+    source's DIRECTORY. Two files in one directory cannot share a basename,
+    so this is collision-free without renaming anything."""
+    import hashlib
+    d = os.path.dirname(rel_src).replace('\\', '/')
+    h = hashlib.sha1(d.encode()).hexdigest()[:8]
+    return 'img_dll_%s_%s' % (tag, h)
+
+
+def _compile_dll_obj(rel_src, tag, recompile=False, ambiguous=()):
     """The object for one DLL TU at the opt its match was scored under.
 
     (obj_path, err, source) -- source is 'sweep' when match_sweep's own object
@@ -357,10 +391,14 @@ def _compile_dll_obj(rel_src, tag, recompile=False):
     if flags is None:
         return None, 'unknown opt tag %r' % tag, None
     base = os.path.splitext(os.path.basename(src))[0]
-    swept = os.path.join(ROOT, 'build', 'match', 'obj_' + tag, base + '.obj')
-    if not recompile and _fresh(swept, src):
-        return swept, None, 'sweep'
-    own_tag = 'img_dll_' + tag
+    # The sweep's object is only reusable when its basename is unambiguous --
+    # otherwise it belongs to whichever same-named file compiled last.
+    if os.path.basename(rel_src) not in ambiguous:
+        swept = os.path.join(ROOT, 'build', 'match', 'obj_' + tag,
+                             base + '.obj')
+        if not recompile and _fresh(swept, src):
+            return swept, None, 'sweep'
+    own_tag = _own_tag(tag, rel_src)
     own = os.path.join(ROOT, 'build', 'match', 'obj_' + own_tag, base + '.obj')
     if not recompile and _fresh(own, src):
         return own, None, 'gate'
@@ -402,10 +440,15 @@ def collect_dll(recompile=False, progress=None):
     best = {}
     unbuildable = []
     reused = built = 0
+    ambiguous = _ambiguous_basenames(claimed)
+    if ambiguous:
+        print('  %d basename(s) claimed by more than one source file '
+              '(%s) -- built separately'
+              % (len(ambiguous), ', '.join(sorted(ambiguous))))
     for i, ((rel_src, tag), wanted) in enumerate(sorted(want.items())):
         if progress:
             progress(i + 1, len(want), rel_src)
-        obj, err, how = _compile_dll_obj(rel_src, tag, recompile)
+        obj, err, how = _compile_dll_obj(rel_src, tag, recompile, ambiguous)
         if obj is None:
             for va, name in wanted:
                 unbuildable.append((va, name, '%s: %s' % (rel_src, err)))

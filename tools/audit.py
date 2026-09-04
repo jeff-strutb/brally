@@ -240,6 +240,24 @@ def check_e():
           all(ib._dll_opt_flags(t) == f for t, f in match_sweep.VARIANTS)
           and ib._dll_opt_flags('NOPE') is None)
 
+    # Object caches are keyed by basename. Two source files sharing one --
+    # refiling into modules gave src/core/{controls,net,audio} a br_input.c
+    # each -- collide on a single .obj, and the loser's every symbol reads as
+    # "symbol not in obj", which the gate reports as a WRONG CLAIM. It is the
+    # cache colliding. The gate must notice the ambiguity and build separately.
+    claimed = {'a': {'file': 'src/x/br_input.c'},
+               'b': {'file': 'src/y/br_input.c'},
+               'c': {'file': 'src/x/other.c'}}
+    amb = ib._ambiguous_basenames(claimed)
+    tags_differ = (ib._own_tag('O2', 'src/x/br_input.c')
+                   != ib._own_tag('O2', 'src/y/br_input.c'))
+    same_dir = (ib._own_tag('O2', 'src/x/br_input.c')
+                == ib._own_tag('O2', 'src/x/other.c'))
+    check('E5. a basename claimed by two source files is detected, '
+          'and their objects do not collide',
+          amb == {'br_input.c'} and tags_differ and same_dir,
+          f'ambiguous={sorted(amb)} differ={tags_differ} same_dir={same_dir}')
+
     import contextlib
     import io
     ref = os.path.join(ROOT, 'orig', 'SetVideo.exe')
