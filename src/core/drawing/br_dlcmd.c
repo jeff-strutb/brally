@@ -432,6 +432,37 @@ extern void    BrDlDrawTri(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c);  /* 0x100729EA *
         }                                                                \
     } while (0)
 
+/* The clip node br_dl.h describes, overlaid on a vertex at +0x40: a link and
+ * then cx cy cz s t. Only s and t are read here, and the callers hand over
+ * `(char *)v + 0x40` -- the vertex's OWN node -- so the two arguments are two
+ * views of one vertex. */
+typedef struct BrDlClipSt {
+    float aLink[4];          /* +0x00 next, +0x04..+0x0C  cx cy cz */
+    float s, t;              /* +0x10 +0x14                        */
+} BrDlClipSt;
+
+/* WHAT IT DOES: finish one vertex's texture coordinates before it is drawn.
+ * Both texture units get the same thing: s and t divided through by w -- which
+ * is what multiplying by the vertex's stored 1/w does -- and scaled by the
+ * bound texture's texel size, plus that 1/w itself as the third component so
+ * the rasteriser can interpolate perspective-correctly. This is the same work
+ * BR_DLCMD_FINISH_VTX above does inline; the original kept one out-of-line
+ * copy for the vertices whose s and t come from a clip node. */
+/* @implements 0x1001FCF0 glide BrDlVtxFinishTex */
+void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
+{
+    float u;
+
+    BR_DL_PUN(v->tmu1[2], v->oow);
+    BR_DL_PUN(v->tmu0[2], v->oow);
+    u = pSt->s * g_brDlTexScaleS * v->oow;
+    BR_DL_PUN(v->tmu1[0], u);
+    BR_DL_PUN(v->tmu0[0], u);
+    u = pSt->t * g_brDlTexScaleT * v->oow;
+    BR_DL_PUN(v->tmu1[1], u);
+    BR_DL_PUN(v->tmu0[1], u);
+}
+
 const uint8_t *BrDlCmdTri1(const uint8_t *p)
 {
     /* The three index bytes are read 6, 4, 5 -- the original's order, and it
