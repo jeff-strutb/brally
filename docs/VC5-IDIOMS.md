@@ -3501,6 +3501,59 @@ registers hold the same values and both die immediately. Six commutative
 spellings and both statement orders are proven dead, and all four sweep
 variants bottom out at the same 2 diffs.
 
+### 2b. The same class again, on the string emitter -- four more rules
+*(0x10015B10 BrTextEmitString, 2026-09-03: -1,097 bytes / regnorm 340+494 ->
+3,027 of 3,050 code bytes and 744 of 751 instructions, 8 divergence regions)*
+
+Same two causes as BrRaceGateStep -- a struct that is really N absolute
+globals (fourteen of them, and the original takes ONE stack argument), and a
+factored helper the original inlines (the eight-byte display-list append, at
+43 sites; reuse br_drawcar.c's `put` macro and its cursor). Four rules beyond
+those, all newly proven here:
+
+1. **A `cond ? K : 0` ARGUMENT is not a branch.** VC5 computes it with
+   `mov al,[flag] / neg al / sbb eax,eax / and eax,K` and pushes one value.
+   The original branched and DUPLICATED the argument pushes from the end of
+   the list down to the differing one, cross-jumping the rest. Write TWO
+   CALLS in an if/else, not one call with a ternary argument. Tell: a
+   `neg/sbb/and` triple against a MISSING run of `push I`.
+
+2. **Take the display-list slot as the call's FIRST ARGUMENT.** cdecl
+   evaluates right to left, so the first argument is evaluated LAST and its
+   cursor advance lands *between* the pushes -- which is what stops VC5
+   hoisting the common pushes out of the two arms and cross-jumping them down
+   to one. Hoisting the slot above the `if` merged six pushes that the
+   original duplicates. As an expression: `(p_ = cur, cur += 2, p_)` with a
+   named temp -- a bare `(cur += 2, cur - 2)` costs an `add eax,-8`.
+
+3. **`x <<= 1` and `x = <the global> * 2` are different bytes.** The first
+   gives `shl reg,1` on the local's register; the second gives
+   `lea reg,[r+r]` off the global's still-live load. The original's hi-res
+   block doubles the scale and the pen from the GLOBALS, and keeping those two
+   loads alive across the branch is part of what shapes the frame.
+
+4. **A colour/keycode chain is a SWITCH, not a lookup table.** The port had a
+   74-byte case map plus two 12-entry payload arrays; those are VC5's OWN
+   byte map and jump table, emitted just past the function. Written back as
+   two `switch` statements over the character, VC5 rebuilds both. Tell: a
+   MISSING `jmp dword ptr [R*I + I]` and a MISSING `mov B, byte ptr [R + I]`.
+
+**‼ MEASUREMENT TRAP, and it is new: SWITCH TABLES LAND INSIDE THE RECOMPILED
+SYMBOL.** Under /O2 each function is its own COMDAT section and its jump
+tables sit in it, so `parse_coff_obj` hands the scorer function + tables:
+here 254 bytes and ~110 disassembled-as-code "instructions" on top of the
+real body. The original's map size excludes them (0x10015B10 is 3050 bytes;
+its four tables live in the gap before the next entry at 0x10016800).
+`match_sweep` trims the recomp to the original's length before comparing, so
+this can never block a MATCH -- but **fn.py's BYTES and INSNS are unusable on
+a function with a switch**. Read the size and the count off the code up to
+the `ret` instead.
+
+PARKED at ONE ALLOCATION CHOICE: we pin `scale` to EBX, the original leaves
+EBX scratch and keeps `scale` in a stack slot, which costs it one more slot
+(`sub esp,0x2c` against 0x28) and shifts every stack displacement. Dead
+probes are listed in the file header.
+
 ## The "photo" control block (menu-builder family) — SOLVED 2026-09-03
 
 Proven byte-exact on 0x1004ABE0 (760 B, first compile). Three parts, and
