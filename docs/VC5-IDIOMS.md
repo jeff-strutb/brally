@@ -5429,3 +5429,59 @@ DECLARATIONS.  This is `/O2` and the order of the assignment STATEMENTS, and
 it only bites when one local is address-taken (so it is memory) and the other
 is not (so it is a register).  Two register locals, or two memory locals, show
 nothing.
+
+## A d3d-only `@implements` hides a free GLIDE match — and the class is now closed
+
+**+12 byte-exact in one pass, every one of them at 0 diffs on the FIRST sweep,
+with no C written.**  A body that BRGlide.dll and BRD3D.dll share is often
+already transcribed and already correct, but carries only its **d3d** tag.  The
+glide-keyed sweep never scores a d3d VA, so `report.csv` has no row for it, so
+`tiers.py` reports the glide twin as **T1 / not started**.  The function is
+finished; only the second tag is missing.
+
+The tree's established spelling is **two tags stacked on one body** (slice2_21.c,
+slice2_16.c, slice3_40.c all do this):
+
+```c
+/* @implements 0x1003C9B0 d3d   BrSub1003C9B0 */
+/* @implements 0x10036040 glide BrSub1003C9B0 */
+```
+
+**The screen** (join `config/shared.csv` on `d3d_va`):
+
+1. the glide VA has **no** `glide`-lane tag, **and**
+2. it has **no row in `report.csv`** — this filter is what makes the screen
+   honest, see the trap below — **and**
+3. a `d3d`-lane tag for its `d3d_va` exists in `src/`, **and**
+4. `functions_glide.csv`'s size for the glide VA **equals** `shared.csv`'s size.
+
+Then append the glide tag and one-file-sweep.  The sweep is the verdict, not
+the screen: a MATCH is scored against the real Glide bytes at that VA, so it is
+proof however the pairing was found, and a DIFF just means you revert the tag.
+
+**‼ Trap 1 — MATCH THE TAG'S LANE, NOT JUST THE NUMBER.**  The two binaries
+overlap in address space, so one number is usually a live VA in *both*.
+`0x10017F30` is d3d's twin of glide `0x100154A0` (163 B) **and**, separately, a
+real 163-B-map / 23-B-body glide function (`BrFadeLatch`, already byte-exact in
+`src/core/generated/0x10017F30.c`).  A screen keyed on the bare number reported
+22 candidates; requiring the tag to be in the **d3d lane** cut that to 12, and
+every one of the 12 was real.
+
+**‼ Trap 2 — `report.csv` IS ALREADY GLIDE-KEYED FOR MOST OF THESE.**  Dropping
+filter 2 gives **429** binary-wide "candidates", and the number is almost
+entirely fictitious: those functions are already scored under their glide VA
+(the sweep resolved the pairing itself) and adding the tag changes nothing.
+Tested on `slice2_16.c`: 25 tags added, `28/42 MATCH` before and `28/42` after —
+25 redundant comment lines and zero movement.  Reverted.  **A candidate count
+that does not exclude already-scored VAs is not a lead, it is noise.**
+
+**‼ Trap 3 — write the VA as `0x…`, never `0X…`.**  The tag parser requires the
+lowercase `x`.  25 tags written `0X1001EB10` were silently ignored: the sweep
+reported the same counts as before and nothing warned.  A tag that does not
+parse looks exactly like a tag that did not help.
+
+**STATUS: CLOSED (2026-09-03).**  After the 12 landed, the screen with all four
+filters returns **0 candidates in 0 files, binary-wide**.  Do not re-run it as a
+lane; re-run it only after a batch of NEW d3d-lane matches, which can refill it.
+The 12: `0x10036040` (slice6_70.c), `0x10008D20` (br_pod.c), and the ten
+`BrFixUnpack*` codecs `0x100075C0`-`0x10007730` (net/br_fix.c).
