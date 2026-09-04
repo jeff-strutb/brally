@@ -71,4 +71,31 @@ void BrUiSelADec(void)
   return;
 }
 
+/* WHAT IT DOES: step selection index B up (clamped at 9) and latch its byte from the
+ * 4-stride table at 0x100AD798 into 0x100BB2E8. */
+/* @implements 0x10059E30 glide BrUiSelBInc */
+
+void BrUiSelBInc(void)
+
+{
+  if (g_brB4E708 < 9) {
+    g_brB4E708 = g_brB4E708 + 1;
+  }
+  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  return;
+}
+
+/* WHAT IT DOES: step selection index B down (clamped at 0) and latch its byte. */
+/* @implements 0x10059E50 glide BrUiSelBDec */
+
+void BrUiSelBDec(void)
+
+{
+  if (0 < g_brB4E708) {
+    g_brB4E708 = g_brB4E708 + -1;
+  }
+  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
