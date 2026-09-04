@@ -160,28 +160,6 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
     pOut->z = pM->m[0][2] * pV->x + pM->m[1][2] * pV->y + pM->m[2][2] * pV->z;
 }
 
-/* 0x1003B470 */
-/* WHAT IT DOES: combines two transforms into one. It builds the answer in a
- * scratch copy first, so it is safe to write the result back over either of the
- * things being multiplied. */
-/* @implements 0x1003B470 d3d BrMtxMul */
-void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
-{
-    BrMat4 t;   /* the original's 64-byte stack temp: aliasing is safe */
-    int i, j, k;
-
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            /* Store 0 then reload: the original is `mov dword [esi],0; fld [esi]`,
-             * not `fld` of a 0.0f constant. */
-            t.m[i][j] = 0.0f;
-            for (k = 0; k < 4; k++)
-                t.m[i][j] = t.m[i][j] + pA->m[i][k] * pB->m[k][j];
-        }
-    }
-    *pOut = t;
-}
-
 /* 0x1003B4F0 */
 /* WHAT IT DOES: works out the transform that undoes a given one -- how to get
  * from world space back into an object's own space, for instance. A transform
