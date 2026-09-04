@@ -534,7 +534,11 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  *   (4) `int vol;` declared above the if and assigned in both arms;
  *   (5) a named `pBuf` local assigned AFTER the value (the "name the
  *       pointer" lever) with the call through `*pBuf`;
- *   (6) the multiply written master-first instead of level-first.
+ *   (6) the multiply written master-first instead of level-first;
+ *   (7) 2026-09-04: a struct-typed parameter (`level` at +0x14, `pBuf` at
+ *       +0x9c, fields instead of `param_1 + N` arithmetic) -- byte-identical
+ *       too, so the operand-kind lever that closed 0x1000EAF0's wheel
+ *       pointer does not reach a single-use parameter.
  * The next lever has to come from outside the statement spelling. */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
