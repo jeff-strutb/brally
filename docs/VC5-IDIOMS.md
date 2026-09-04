@@ -4313,3 +4313,45 @@ Ours re-uses the pinned zero already sitting in edi and pays 6 bytes a store.
 of those stores is already a literal `0` in the source, and rewriting them
 changes nothing. Related: the 0x100400E0 entry above, where a named temp moved
 a value out of eax and lost the same encodings.
+
+## Never hoist a LOOP BOUND either — the re-read is what shapes the whole loop
+
+The sibling of the "respell the index chain in every statement" entry above,
+and it costs more, because a hoisted bound changes four things at once rather
+than one addressing mode.
+
+0x100302A0 BrModelSwap's innermost loop reverses `3 * item->m` halfwords.
+Written with the count hoisted —
+
+    nHalf = 3 * (int32_t)BrLd32(PITEM + 0x00);
+    for (j = 0; j < nHalf; j++)
+        BrRev2(PLEAF + 4 + 2 * (size_t)j);
+
+— VC5 has a loop-invariant bound in a register, so it strength-reduces `j`
+away entirely and counts DOWN (`dec ecx` / `jne`), walks the data through a
+NEGATIVE displacement (`mov word ptr [eax+ebp-2], dx`) because the offset is
+bumped at the top instead of the bottom, and — having one register spare —
+never spills the counter, so the frame comes out `sub esp,8`.
+
+The original re-reads the bound on every pass: it reloads the item from its
+slot, loads `item->m`, `lea edx,[edx+edx*2]`, and compares. Putting the whole
+expression back in the for-condition —
+
+    for (j = 0; j < 3 * (int32_t)BrLd32(PITEM + 0x00); j++)
+
+— restores all four at once: the count-UP, the positive displacement, `j` in
+a stack slot, and `sub esp,0xc`. It took the function from register-blind
+13+23 to 8+11 and made the inner loop instruction-for-instruction exact.
+
+**The tell is the frame, not the loop.** `sub esp` one dword short with a
+count-down loop somewhere inside means a bound the source re-reads and the C
+hoisted; the register the hoist freed is the one the original spills the
+induction variable into. Every other count in this function is re-read too —
+when one loop in a function reads its bound fresh, assume they all do.
+
+Placement rider, same function: the original emits an induction variable's
+initialiser (`mov ebx,0x20`) in the loop PREHEADER, after the zero-trip
+guard, where a plain `off = 0x20;` statement before the `for` puts it before.
+Moving it into the for-init (`for (iLeaf = 0, off = 0x20; ...)`) does NOT
+move it — VC5 emits it where the statement sits. Unresolved; costs no
+instructions, only alignment.
