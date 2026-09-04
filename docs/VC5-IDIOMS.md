@@ -4953,3 +4953,46 @@ temp for the x product with either operand order, a temp for the scalar, and a
 multiply really is canonicalised and out of reach from source (the existing
 BrVec3 notes stand); it is only inside a flat SUM that naming a term buys you
 the evaluation order.**
+
+## A merged MAP ROW: `jmp` + nops to a 16-byte address is a function boundary
+
+`0x10002EB0` and `0x10002F10` were listed in `config/functions_glide.csv` as
+86 bytes each and could not be matched at any spelling, because each is really
+TWO functions:
+
+    10002EB0  cmp dword ptr [g_brCdEnabled],1
+    10002EB7  jne  10002EBE
+    10002EB9  jmp  10002E20      <- tail call to a MAPPED function
+    10002EBE  jmp  10002ED0      <- tail call, and the map had no row for it
+    10002EC3  13 x nop           <- aligning 10002ED0 to 16
+    10002ED0  54-byte body, its own ret
+
+The map merges a row like this whenever the second function is reached ONLY by
+a jump: nothing `call`s it, so the map builder never sees an entry point.
+Two C functions cannot compile to one symbol, so no source shape can ever
+match the merged row — the fix is to split the map (32 + 54 here) and
+re-extract `build/match/orig/`. Four byte-exact functions fell out of one
+config edit.
+
+**Two tells, and the second is the useful one:**
+
+1. An unconditional `jmp` followed by `nop` padding up to a 16-byte-aligned
+   address. MSVC emits that padding INSIDE the first function, so the
+   dispatcher's true size includes it (32 = 14 + 18 here).
+2. **A global the original re-reads across what looks like a plain branch.**
+   Written as one function, our C gave `mov eax,[g] / cmp eax,1` and then
+   re-used `eax` for the next test; the original has `cmp dword ptr [g],1`
+   and a fresh `mov eax,[g]` after the branch. That is not a "do not cache
+   what the original re-reads" case to grind at — two functions cannot share
+   a register, and the failed CSE is the boundary showing through. Whenever a
+   small function's only residues are (a) a hoisted global load and (b) a
+   size shortfall that is close to a multiple of 16, check the map row before
+   touching the C.
+
+Re-extraction of a few rows without a full sweep:
+
+```python
+spec = importlib.util.spec_from_file_location('ef', 'tools/extract_funcs.py')
+base, secs, _ = m.read_pe_sections('orig/BRGlide.dll')
+off = m.va_to_fileoff(va, base, secs)      # then slice `size` bytes
+```
