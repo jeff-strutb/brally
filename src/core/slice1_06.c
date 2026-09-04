@@ -489,57 +489,6 @@ void BrErrShow(const BrErrHost *pHost, int32_t idx)
 }
 
 /* ==========================================================================
- * 0x1003E310
- * ========================================================================== */
-
-/* WHAT IT DOES: takes a snapshot of twelve of the game's option settings into
- * one block, so they can be put back later. The values come from two separate
- * places and are interleaved in a fixed order that is neither array's order --
- * the shuffle is the whole content of the function. */
-/* @implements 0x1003E310 d3d BrOptSave */
-#ifdef BR_MATCHING_BUILD
-/* Twelve loose globals into the packed scratch array, in this exact source
- * order -- the three-ahead load/store interleave is the scheduler's. */
-extern int32_t g_br0AC648, g_br0AC64C, g_br0AC650, g_br0AC654, g_br0AC658,
-               g_br0AC65C;                    /* slice2_25.c */
-extern int32_t g_brAA2A00, g_brAA2A08, g_brAA2A0C, g_brAA2A18;
-extern int32_t g_brAA2A10, g_brAA2A14;       /* slice6_70.c */
-extern int32_t g_aBrB4E710[BR_OPT_SCRATCH_COUNT];   /* slice5_63.c */
-
-void BrOptSave(void)
-{
-    g_aBrB4E710[0]  = g_br0AC648;
-    g_aBrB4E710[1]  = g_brAA2A00;
-    g_aBrB4E710[2]  = g_brAA2A08;
-    g_aBrB4E710[3]  = g_br0AC64C;
-    g_aBrB4E710[4]  = g_br0AC650;
-    g_aBrB4E710[5]  = g_br0AC654;
-    g_aBrB4E710[6]  = g_brAA2A0C;
-    g_aBrB4E710[7]  = g_br0AC658;
-    g_aBrB4E710[8]  = g_brAA2A10;
-    g_aBrB4E710[9]  = g_brAA2A14;
-    g_aBrB4E710[10] = g_br0AC65C;
-    g_aBrB4E710[11] = g_brAA2A18;
-}
-#else
-void BrOptSave(BrOptScratch *pDst, const BrOptState *pSrc)
-{
-    pDst->a[0]  = pSrc->aCfg[0];   /* 0x100AC648 -> 0x10B4E710 */
-    pDst->a[1]  = pSrc->aSel[0];   /* 0x10AA2A00 -> 0x10B4E714 */
-    pDst->a[2]  = pSrc->aSel[2];   /* 0x10AA2A08 -> 0x10B4E718 */
-    pDst->a[3]  = pSrc->aCfg[1];   /* 0x100AC64C -> 0x10B4E71C */
-    pDst->a[4]  = pSrc->aCfg[2];   /* 0x100AC650 -> 0x10B4E720 */
-    pDst->a[5]  = pSrc->aCfg[3];   /* 0x100AC654 -> 0x10B4E724 */
-    pDst->a[6]  = pSrc->aSel[3];   /* 0x10AA2A0C -> 0x10B4E728 */
-    pDst->a[7]  = pSrc->aCfg[4];   /* 0x100AC658 -> 0x10B4E72C */
-    pDst->a[8]  = pSrc->aSel[4];   /* 0x10AA2A10 -> 0x10B4E730 */
-    pDst->a[9]  = pSrc->aSel[5];   /* 0x10AA2A14 -> 0x10B4E734 */
-    pDst->a[10] = pSrc->aCfg[5];   /* 0x100AC65C -> 0x10B4E738 */
-    pDst->a[11] = pSrc->aSel[6];   /* 0x10AA2A18 -> 0x10B4E73C */
-}
-#endif
-
-/* ==========================================================================
  * 0x1003F2B0
  * ========================================================================== */
 
