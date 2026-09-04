@@ -4617,6 +4617,18 @@ RETURN-TYPE question, not a colouring wall.** `edx:eax` is the only pair a
 narrower — or nothing — and the value is being kept live for a store only.
 Check the return type before recording a 64-bit function as T3a.
 
+- **Adjacent dword compares that reload the second high half into the
+  same register are one `__int64 !=`, not two ints.** Orig
+  `mov edx,[lo]; cmp edx,eax; jne; mov edx,[hi]; cmp edx,ecx` (8 B for
+  the high half) vs recomp `cmp [hi],ecx` (6 B) is the compiler folding
+  a second `int` compare to a mem operand. Locals, comma short-circuit,
+  goto and volatile all fold the same way. Spelling
+  `*(__int64 *)p != *(__int64 *)q` forces the reload; 0x1006BDD0 was 2 B
+  short until the pending/applied pitch fields (adjacent at +0x08/+0x0C
+  of the 0x18-stride channel) were compared as one 64-bit ratio, which
+  is also how BrSndChanSetRatio stores them. Proven 0x1006BDD0 (379 B,
+  MATCH /O2).
+
 ## Matrix builders are written ROW BY ROW — grouping by value costs registers
 
 Two 4x4 builders, `0x1002A7A0 BrMat4Scale` and `0x1002A7F0 BrMat4Translate`,
