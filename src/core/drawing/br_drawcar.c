@@ -948,6 +948,51 @@ static void wheel_call(unsigned char *car)
  *   the other sources.  That is the commutative-operand class the N64 twin
  *   is the oracle for (see CLAUDE.md); nobody has looked at it here.
  *
+ * ‼ SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
+ * QUERY (tools/corpus.py).  No closure, but the search space is now bounded
+ * by evidence instead of by guesswork, and that is worth more than the probe.
+ *   ‼ THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
+ *   byte-exact functions, NEITHER `mov R,[esp+S]; and R,0xff; or R,R` NOR
+ *   `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff` occurs even once.  Nor
+ *   does `mov byte [esp+S],B; xor R,R`.  So ~10 sessions of this file's
+ *   history were spent permuting spellings for a construct that no solved
+ *   function in the binary produces.  **Stop trying to reach it by spelling
+ *   the pack differently.**  What DOES exist, and is the whole proven
+ *   neighbourhood:
+ *       `and R,0xff; or R,R`   x2  0x1002E79F BrCarGfxSetColour (+0xbf,+0x11b)
+ *       `or R,R; and R,0xff`   x1  0x1001E380 BrGlRectFill (+0x34e)
+ *       `and R,0xff; shl R,8`  x2  0x1001E380 BrGlRectFill (+0x345,+0x350)
+ *       `mov R,[esp+S]; and R,0xff` x4  0x1001E380 BrGlRectFill
+ *       `xor R,R; mov B,B`     x4  incl. 0x10006F40 BrCarStatePack (+0x23d,+0x29d)
+ *   0x1001E380's source at the widening sites is FOUR `uint8_t` locals
+ *   assigned on BOTH ARMS of an if/else and read SIXTEEN times after the
+ *   join (four vertices x four channels).  That is the shape to reproduce:
+ *   the home comes from the LIVE-RANGE SHAPE -- multiple definition edges
+ *   and many uses surviving a join -- not from an explicit `& 0xFF`, which
+ *   is already proven inert here (session 9).
+ * SESSION 17 PROBE, DEAD -- do not re-run.  Arm 1's `packA[2]` replaced by
+ * the FUNCTION-SCOPE `pack[2]` that arms 2 and 3 use, so the array is
+ * defined on all three edges -- the minimal statement of the 0x1001E380
+ * shape, and the one combination the session-7/10 probes did NOT cover
+ * (they went the other way, giving arms MORE private locals).  BYTE-
+ * IDENTICAL: 34 regions, 1,835 insns, 7,546 B, multiset 13/5, all unchanged.
+ * ‼ IDIOM: array IDENTITY is inert when the live ranges do not overlap --
+ * VC5 gives a private array and a shared one the same slots and the same
+ * code.  The `packA[2]` note above is therefore free to revisit for
+ * readability but is not a lever either way.
+ *   WHAT IS LEFT HERE, honestly: arm 1 and arm 3 each read their two pack
+ *   bytes ONCE per colour, where 0x1001E380's locals are read four times
+ *   each.  If use COUNT rather than edge count is the discriminator, no
+ *   faithful spelling of this function can add uses, and the wall is real.
+ *   Test that claim before spending another session on the pack.
+ * ‼ TOOL CAVEAT, learned the hard way this session: `corpus.py show` maps a
+ * hit back through /FAcs and is RELIABLE ONLY when the resolved lines are
+ * checked against the actual source.  It resolved 0x1001E380 +0xc7
+ * correctly (the bR/bG/bB/bA block) and gave plausible-looking NONSENSE for
+ * +0x345 and for 0x1002E79F -- which is odd-addressed, i.e. suspect under
+ * the rule-2 screen anyway.  READ THE SOURCE THE TOOL POINTS AT; do not
+ * quote a listing line you have not opened.
+ *
  * ‼ SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
  * above was re-derived from scratch (region map + windowed multiset) without
  * reading the dossier first, and it reproduces EXACTLY: 34 raw regions, the
