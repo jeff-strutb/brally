@@ -12,6 +12,12 @@
 
 #include <math.h>
 
+/* WHAT IT DOES: the dot product in double precision -- how much two
+ * directions agree. Positive means roughly the same way, zero means at right
+ * angles, negative means opposing. The double-precision twin of BrVec3Dot,
+ * used by the camera/orientation code where the float version's last bits
+ * are not good enough. */
+/* @implements 0x10030640 d3d BrVec3dDot */
 double BrVec3dDot(const BrVec3d *pA, const BrVec3d *pB)
 {
     double zz = pB->z * pA->z;
