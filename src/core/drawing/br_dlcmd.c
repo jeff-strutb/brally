@@ -589,6 +589,42 @@ extern void BrDlClipTriFlatZ(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c,
  * which is what makes it flat -- and it goes to the card. The other two
  * corners' own colours are put back afterwards, because the vertex pool is
  * shared and later commands still expect to find them there. */
+/* RESIDUE, 2026-09-03 -- NOT A MATCH.  592 bytes against 558, 268 diffs,
+ * regnorm 5+1 at best.  Every structural element is verified: the frame
+ * (`sub esp,0xc`), the two-epilogue shape, the AND/OR asymmetry, the finish
+ * blocks, the flat copy and the save/restore all line up.  What is left is
+ * ~4 instructions and a stack-slot choice.
+ *
+ * THE LADDER, all measured by one-file sweep (report.csv `diffs`, and only
+ * the last three are comparable -- same recomp size, 592):
+ *     all-pointer form                  416 B, 358 diffs, regnorm 47+45
+ *     all-index form                    688 B, 240 diffs, regnorm 36+25
+ *     index + pointer finish-stores     592 B, 277 diffs, regnorm 12+8
+ *     + BR_DL_PUN on the colour copies  592 B, 282 diffs
+ *     + ONE reused temp for the copy    592 B, 277 diffs, regnorm 5+1
+ *     + the three outcodes named        592 B, 268 diffs   <-- current
+ *
+ * ‼ fn.py DISAGREES WITH THE SWEEP ON THIS FUNCTION -- it reports 597 B /
+ * 151 insns where the sweep builds 592, and it did not move when the last two
+ * edits did.  fn.py compiles /O2 only and the sweep has picked /O2 and /O2p
+ * for this row on different runs.  Score this one from report.csv ONLY; the
+ * fn.py regnorm above is qualitative.
+ *
+ * OPEN, in the order worth trying:
+ *   - the remaining `add esp,I` / `mov R,[esp+I]` pair says the clip arm's
+ *     6-argument call is spelled slightly wrong.  The three float arguments
+ *     are pushed with INTEGER `mov`/`push` in the original, not `fld`/`fstp`;
+ *     if a `float` prototype is what forces the x87 path, try three
+ *     `uint32_t` parameters and BR_DL_PUN at the call.  NOT YET PROBED --
+ *     the current prototype declares them `float` and was never varied.
+ *   - the callee 0x10020190 does not exist yet, so this compiles against a
+ *     bare extern; its real signature may change the call site.
+ *
+ * DEAD, do not re-run: all-pointer form and all-index form (both above);
+ * writing the flat copy as two PUNs both reading V(i0) (VC5 reloads the
+ * source, +6 `mov R,[R+A]`, it cannot prove the first store does not alias);
+ * leaving the outcodes as repeated `V(i).outcode` expressions (CSE does not
+ * reach across the early return, +3 loads). */
 /* @implements 0x1001FF60 glide BrDlTriFlatZ */
 void BrDlTriFlatZ(int i0, int i1, int i2)
 {
