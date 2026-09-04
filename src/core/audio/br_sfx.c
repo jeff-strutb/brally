@@ -26,6 +26,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "br_sfx.h"
+#include "br_match.h"    /* BR_STDCALL -- the COM calls below are stdcall */
 
 #include <string.h>
 
@@ -419,8 +420,24 @@ void BrSndBankSetCar(int iCar, int iName)
 extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
-int FUN_1006bf90();
 extern int g_aBrSndBankVoice;
+
+/* The DirectSound buffer behind a voice, seen through the only slot this
+ * file uses. The full interface lives in slice1_08.h, which cannot be
+ * included here: it types BrSndPDS as BrDSound* where this block needs the
+ * plain int the Ghidra bodies were transcribed against. */
+typedef struct BrSfxDSBuf BrSfxDSBuf;
+typedef struct BrSfxDSBufVtbl {
+    void   *aBefore[9];                                          /* +0x00 .. +0x20 */
+    int32_t (BR_STDCALL *GetStatus)(BrSfxDSBuf *, uint32_t *);   /* +0x24 */
+} BrSfxDSBufVtbl;
+struct BrSfxDSBuf { const BrSfxDSBufVtbl *pVtbl; };
+typedef struct BrSfxVoice {
+    char        aHead[0x9C];
+    BrSfxDSBuf *pBuf;                                /* +0x9C */
+} BrSfxVoice;
+
+int BrSndVoiceBufIsPlaying(BrSfxVoice *pVoice);
 
 /* WHAT IT DOES: return whether a sound voice is currently playing. */
 /* @implements 0x1006BF50 glide BrSndVoiceIsPlaying */
@@ -429,15 +446,31 @@ int BrSndVoiceIsPlaying(int param_1)
 
 {
   int uVar1;
-  
+
   if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
     if ((&g_aBrSndBankVoice)[param_1] != 0) {
-      uVar1 = FUN_1006bf90((&g_aBrSndBankVoice)[param_1]);
+      uVar1 = BrSndVoiceBufIsPlaying((BrSfxVoice *)(&g_aBrSndBankVoice)[param_1]);
       return uVar1;
     }
     return 0;
   }
   return 1;
+}
+
+/* WHAT IT DOES: ask DirectSound whether this voice's buffer is actually
+ * playing right now. BrSndVoiceIsPlaying above does the bookkeeping -- sound
+ * enabled, device up, slot occupied -- and this does the one device query.
+ * A failed query reads as "not playing" rather than propagating an error. */
+/* @implements 0x1006BF90 glide BrSndVoiceBufIsPlaying */
+
+int BrSndVoiceBufIsPlaying(BrSfxVoice *pVoice)
+{
+    uint32_t    status = 0;
+    BrSfxDSBuf *pBuf   = pVoice->pBuf;
+
+    if (pBuf->pVtbl->GetStatus(pBuf, &status) == 0)
+        return (status & 1) == 1;   /* DSBSTATUS_PLAYING */
+    return 0;
 }
 
 /* WHAT IT DOES: zero-initialize all entries in the sound-bank state arrays. */
