@@ -41,12 +41,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WINE = os.path.join(ROOT, 'tools', 'wine.sh')
 
 
+# BR_MSVC names the toolchain directory to compile with, relative to ROOT or
+# absolute; it defaults to the staged MSVC 5.0.  ‼ THIS EXISTS TO TEST WHICH
+# BUILD OF THE COMPILER SHIPPED THE GAME, which is an open question -- the
+# staged one is RTM (cl 11.00.7022) and VS97 SP3 has a different C2.EXE (the
+# code generator, 630,544 -> 660,240 bytes).  Point it at a parallel staging
+# dir; never overwrite tools/msvc5 in place, or a failed experiment costs the
+# whole tree.  The include path follows the same directory.
+MSVC_DIR = os.environ.get('BR_MSVC', os.path.join(ROOT, 'tools', 'msvc5'))
+if not os.path.isabs(MSVC_DIR):
+    MSVC_DIR = os.path.join(ROOT, MSVC_DIR)
+
+
 def find_cl():
-    for cand in (os.path.join(ROOT, 'tools', 'msvc5', 'bin', 'cl.exe'),
-                 os.path.join(ROOT, 'tools', 'msvc5', 'cl.exe')):
+    for cand in (os.path.join(MSVC_DIR, 'bin', 'cl.exe'),
+                 os.path.join(MSVC_DIR, 'cl.exe')):
         if os.path.exists(cand):
             return cand
-    sys.exit('cl.exe not found under tools/msvc5/ -- run: sh setup.sh')
+    sys.exit('cl.exe not found under %s -- run: sh setup.sh' % MSVC_DIR)
 
 
 CL = find_cl()
@@ -227,7 +239,8 @@ def compile_variant(src, tag, opt):
     # msvc5-compat supplies stdint.h/stdbool.h, which VC5 predates.  It is
     # tracked in git, unlike msvc5/include, which setup.sh re-extracts.
     cmd = ['sh', WINE, CL, '/nologo'] + opt.split() + ['/W3', '/I', 'include',
-           '/I', 'tools/msvc5-compat', '/I', 'tools/msvc5/include',
+           '/I', 'tools/msvc5-compat',
+           '/I', os.path.join(os.path.relpath(MSVC_DIR, ROOT), 'include'),
            '/DBR_MATCHING_BUILD', '/c', rel_src, '/Fo' + rel_obj]
     # Wine occasionally wedges on a prefix lock; a stuck cl.exe must not stall
     # the whole sweep, so cap it and report the file as a compile failure.

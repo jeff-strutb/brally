@@ -5165,3 +5165,39 @@ the spelling of the index — look for a lever outside the addressing.
 the instruction count to near parity while doubling the real gap. **Bytes and
 instruction counts are not progress measures on a function with a lost-sync
 gap.**
+
+## The compiler PATCH LEVEL is not the answer — VS97 SP3 tested and ruled out
+*(measured 2026-09-03; the lead cited at three separate stall sites is now CLOSED)*
+
+Three unrelated notes in this file reach for "a compiler patch level slightly
+different from the staged one" to explain scheduling residue that no source
+form moves, and CLAUDE.md rule 11a lists it as one of only two fresh leads on
+the largest function. It has now been tested and it is **wrong**.
+
+The staged toolchain is MSVC 5.0 **RTM**, `cl 11.00.7022`. VS97 SP3 ships a
+genuinely different code generator — `C2.EXE` grows 630,544 → 660,240 bytes,
+`C1.DLL` and `C1XX.DLL` differ too, all dated Nov 1997 against the RTM's
+Apr 1997. Both were staged side by side (`tools/msvc5sp3/`, from the SP3
+media already in `reference/msvc/sp3/`) and the same sources compiled with
+each at `/O2`:
+
+| target | RTM | SP3 |
+|---|---|---|
+| 61 already-byte-exact functions (4 files) | 61/61, 0 diff bytes | **61/61, 0 diff bytes** |
+| 0x100250D0 BrTex3dExpand | 2,408 insns / 8,461 B | **byte-for-byte identical** |
+| 0x1000A110 BrCarDrawVehicle | 34 regions, 1,835 insns | **byte-for-byte identical** |
+| 0x1000EAF0 scene DL builder | 30 regions, −14 B | 37 regions, −71 B (WORSE) |
+
+**The two builds are indistinguishable on 63 of the 64 functions tested, and
+on the one where they differ RTM is closer.** So the residue on the giants is
+not a toolchain artefact: it is in the source, or it is genuinely unreachable.
+Do not reach for the patch level again to explain a scheduling wall.
+
+Re-run it with `BR_MSVC=tools/msvc5sp3 …` — `tools/match_sweep.py` takes that
+env var for the toolchain directory (include path follows it). ‼ Stage any
+alternate compiler in a PARALLEL directory; never overwrite `tools/msvc5` in
+place, or a failed experiment costs the whole tree.
+
+Two things this did NOT test, both narrow: the SP3 **linker** (irrelevant to
+per-function matching, which works on `.obj`, but it could matter to the image
+build), and the C++ front end on the one TU that only VC4.2 reproduces.
