@@ -1,3 +1,5 @@
+/* test_br_menucb.c -- tests menus/br_menucb.c, which was slice2_24.c
+ * until it moved whole; its header keeps the old name. */
 #include "slice2_24.h"
 
 #include <stdio.h>

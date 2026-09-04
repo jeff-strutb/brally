@@ -1,4 +1,5 @@
-/* test_slice3_31.c -- behaviour and invariant tests for slice3_31.c.
+/* test_br_phasenav.c -- behaviour and invariant tests for
+ * menus/br_phasenav.c, which was slice3_31.c until it moved whole.
  *
  * Every stand-in for a cross-slice callee lives HERE and nowhere else, as the
  * contract requires. They are the minimum needed to observe behaviour: each
