@@ -94,7 +94,7 @@ extern BrClipVert *DAT_105cda00;
  *   [esp+0x10] dCur     [esp+0x18] pNext    dPrev lands in the dead
  *                                           incoming-argument slot
  * ------------------------------------------------------------------ */
-#define BR_CLIP_PLANE(NAME, DIST)                                             \
+#define BR_CLIP_PLANE(NAME, DIST_CUR, DIST_PREV)                              \
 void NAME(BrClipList *pList)                                                  \
 {                                                                             \
     BrClipVert *pPrev;                                                        \
@@ -115,8 +115,8 @@ void NAME(BrClipList *pList)                                                  \
                                                                               \
     if (i > 0) {                                                              \
         for (;;) {                                                            \
-            dCur  = DIST(pCur);                                               \
-            dPrev = DIST(pPrev);                                              \
+            dCur  = DIST_CUR(pCur);                                           \
+            dPrev = DIST_PREV(pPrev);                                         \
             pNext = pCur->pNext;                                              \
                                                                               \
             if (dCur >= 0.0f) {                                               \
@@ -187,36 +187,42 @@ void NAME(BrClipList *pList)                                                  \
 #define BRCLIP_Z_PLUS_W(v)   ((v)->f0C + (v)->f18)
 #define BRCLIP_W_MINUS_Z(v)  ((v)->f18 - (v)->f0C)
 
+/* Same value, but the redundant paren round the FIRST operand makes VC5 lead
+ * the pair with it (see docs/VC5-IDIOMS.md, "((a) + b) + c picks the fld
+ * operand").  Used at ONE site only, where the original's order differs. */
+#define BRCLIP_Z_PLUS_W_LEAD(v)   (((v)->f0C) + (v)->f18)
+#define BRCLIP_W_PLUS_X_LEAD(v)   (((v)->f18) + (v)->f04)
+
 /* WHAT IT DOES: cuts a polygon against the plane where w reaches zero --
  * the one behind the camera's eye -- dropping the corners on the wrong side
  * and adding new ones exactly on the plane. */
 /* @implements 0x1001F0D0 glide BrClipPlaneW */
-BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W)
+BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W, BRCLIP_W)
 
 /* WHAT IT DOES: cuts a polygon against the left edge of the screen. */
 /* @implements 0x1001F2B0 glide BrClipPlaneWPlusF04 */
-BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X)
+BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X, BRCLIP_W_PLUS_X)
 
 /* WHAT IT DOES: cuts a polygon against the right edge of the screen. */
 /* @implements 0x1001F3F0 glide BrClipPlaneWMinusF04 */
-BR_CLIP_PLANE(BrClipPlaneWMinusF04, BRCLIP_W_MINUS_X)
+BR_CLIP_PLANE(BrClipPlaneWMinusF04, BRCLIP_W_MINUS_X, BRCLIP_W_MINUS_X)
 
 /* WHAT IT DOES: cuts a polygon against the bottom edge of the screen. */
 /* @implements 0x1001F530 glide BrClipPlaneWPlusF08 */
-BR_CLIP_PLANE(BrClipPlaneWPlusF08, BRCLIP_Y_PLUS_W)
+BR_CLIP_PLANE(BrClipPlaneWPlusF08, BRCLIP_Y_PLUS_W, BRCLIP_Y_PLUS_W)
 
 /* WHAT IT DOES: cuts a polygon against the top edge of the screen. */
 /* @implements 0x1001F670 glide BrClipPlaneWMinusF08 */
-BR_CLIP_PLANE(BrClipPlaneWMinusF08, BRCLIP_W_MINUS_Y)
+BR_CLIP_PLANE(BrClipPlaneWMinusF08, BRCLIP_W_MINUS_Y, BRCLIP_W_MINUS_Y)
 
 /* WHAT IT DOES: cuts a polygon against the near plane -- the closest
  * distance the camera will draw anything at. */
 /* @implements 0x1001F7B0 glide BrClipPlaneWPlusF0C */
-BR_CLIP_PLANE(BrClipPlaneWPlusF0C, BRCLIP_Z_PLUS_W)
+BR_CLIP_PLANE(BrClipPlaneWPlusF0C, BRCLIP_Z_PLUS_W_LEAD, BRCLIP_Z_PLUS_W)
 
 /* WHAT IT DOES: cuts a polygon against the far plane -- the horizon beyond
  * which nothing is drawn. */
 /* @implements 0x1001F8F0 glide BrClipPlaneWMinusF0C */
-BR_CLIP_PLANE(BrClipPlaneWMinusF0C, BRCLIP_W_MINUS_Z)
+BR_CLIP_PLANE(BrClipPlaneWMinusF0C, BRCLIP_W_MINUS_Z, BRCLIP_W_MINUS_Z)
 
 #endif /* BR_MATCHING_BUILD */
