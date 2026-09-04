@@ -9,6 +9,7 @@
  */
 #include "br_vec.h"
 #include "slice2_19.h"   /* the BrVec3Copy prototype, moved here from slice2_19.c */
+#include "slice2_21.h"   /* BrSqrtF -- the three routines moved from slice2_21.c */
 
 #include <math.h>
 
@@ -474,4 +475,60 @@ int BrSub10071B60(const BrVec3 *pA, const BrVec3 *pB)
     if (!(pA->y >= pB->y))
         return 1;
     return 0;
+}
+
+/* .rdata constants carried over with the three routines below.
+ * K_0 == 0x1008F62C / 0x1008F59C, K_1 == 0x1008F628 / 0x1008F588. */
+#define K_0            0.0f
+#define K_1            1.0f
+
+/* 0x1003ADA0 */
+/* WHAT IT DOES: works out which way one point lies from another as a unit
+ * direction. Two points in exactly the same place have no direction, so it
+ * answers "straight up" rather than dividing by zero. */
+/* @implements 0x1003ADA0 d3d BrVec3Direction */
+/* @implements 0x10034420 glide BrVec3Direction */
+/* @n64 0x802245F0 located */
+void BrVec3Direction(BrVec3 *pOut, const BrVec3 *pFrom, const BrVec3 *pTo)
+{
+    float dx = pTo->x - pFrom->x;
+    float dy = pTo->y - pFrom->y;
+    float dz = pTo->z - pFrom->z;
+    float len = BrSqrtF(dx * dx + dy * dy + dz * dz);
+
+    /* Orig: `test ah,0x40; jne zeros` so normalize is the fall-through.
+     * `if (len == 0) { zeros; return; }` emits `je normalize` instead. */
+    if (len != K_0) {
+        len = K_1 / len;            /* fdivr: 1.0 / len, computed once */
+        pOut->x = len * dx;
+        pOut->y = len * dy;
+        pOut->z = len * dz;
+        return;
+    }
+    pOut->x = 0.0f;
+    pOut->y = 0.0f;
+    pOut->z = 1.0f;
+}
+
+/* 0x1003B1C0 */
+/* WHAT IT DOES: measures how long a vector is looking down from above, that
+ * is, ignoring height. */
+/* @implements 0x1003B1C0 d3d BrVec3LenXY */
+/* @n64 0x80224B48 located */
+float BrVec3LenXY(const BrVec3 *pV)
+{
+    return BrSqrtF(pV->y * pV->y + pV->x * pV->x);
+}
+
+/* 0x1003B0A0 */
+/* WHAT IT DOES: measures the distance between two points as seen from above,
+ * ignoring any difference in height -- which is what "how far apart are these
+ * two cars on the track" means. */
+/* @implements 0x1003B0A0 d3d BrVec3DistXY */
+/* @n64 0x80224A34 located */
+float BrVec3DistXY(const BrVec3 *pA, const BrVec3 *pB)
+{
+    float dx = pA->x - pB->x;
+    float dy = pA->y - pB->y;
+    return BrSqrtF(dx * dx + dy * dy);
 }
