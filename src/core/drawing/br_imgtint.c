@@ -40,3 +40,30 @@ void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
     BrImgTintState.scaleG = g;   /* 0x10AA3448 */
     BrImgTintState.scaleB = b;   /* 0x10AA345C */
 }
+
+/* 0x1005A280 */
+/* WHAT IT DOES: darkens an RGBA image through a second image of the same
+ * size, scaling each pixel's red, green and blue by the other image's first
+ * channel taken as a 0-to-255 fraction.  The alpha byte is left alone. */
+/* @implements 0x1005A280 glide BrImgMulByMask */
+void BrImgMulByMask(uint8_t *pPix, int32_t w, int32_t h, const uint8_t *pMask)
+{
+    unsigned int m;
+    uint8_t r, g, b;
+    int32_t n;
+
+    n = h * w;
+    if (n > 0) {
+        do {
+            m = *pMask;
+            r = (uint8_t)((m * pPix[0]) / 0xFF);
+            g = (uint8_t)((m * pPix[1]) / 0xFF);
+            b = (uint8_t)((m * pPix[2]) / 0xFF);
+            pPix[0] = r;
+            pPix[1] = g;
+            pPix[2] = b;
+            pPix  += 4;
+            pMask += 4;
+        } while (--n != 0);
+    }
+}
