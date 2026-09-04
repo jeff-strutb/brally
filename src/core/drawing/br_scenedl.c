@@ -11,6 +11,46 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * TWENTY-SECOND PASS (2026-09-03) -- three more wall-4 negatives, and one
+ * FACT ABOUT THE ORIGINAL'S DATA LAYOUT that is worth keeping whatever
+ * happens to the wall.
+ *   ‼ THE TWO RING ARRAYS ARE ADJACENT.  0x1035faf0 - 0x1035f750 = 0x3a0 =
+ *   232 ints exactly, so `DAT_1035faf0[ring]` IS `DAT_1035f750[232 + ring]`
+ *   and the original's `[edx + 0x1035faf0]` / `[edx + 0x1035f750]` pair is
+ *   ONE index register against TWO displacements into what may well be a
+ *   single object in the original source (a `[2][232]` table, tails first).
+ *   That is the natural explanation for the shared `lea edx,[ecx*4]` and it
+ *   is the first structural account of wall 4 anyone has had.
+ *   ‼ AND IT IS STILL NOT THE LEVER.  Spelling all seven head sites as
+ *   `DAT_1035f750[232 + ring]`, which hands VC5 exactly one array and one
+ *   induction value, LEAVES THE ADDRESSING FORM UNCHANGED -- the wall-4
+ *   family is still `[R*K + A]` x8 against the original's `[R + A]` x8, row
+ *   for row.  It does recover two instructions and six bytes elsewhere
+ *   (-14 -> -8 bytes, -4 -> -2 insns, frame intact at FIRSTDIV +0x2b) at the
+ *   cost of two register-blind rows (38 -> 40), which is not a trade worth
+ *   taking for a spelling that also asserts a layout claim inferred only
+ *   from adjacency.  NOT in the tree; re-probe it only together with
+ *   something that actually moves the addressing.
+ *   The other two, both DEAD, do not re-run:
+ *     - a byte offset computed by an ALGEBRAICALLY EQUAL but structurally
+ *       different expression, so VC5 cannot re-fold it from `ring`:
+ *       `rbW = iWheel * 4 + iCar * 16` (== ring*4) used ONLY for the two
+ *       flat arrays, with `ring` and all sixteen `ring * 500` sites left
+ *       alone -- i.e. the twenty-first pass's probe without its collateral.
+ *       Still a disaster: 38 -> 118 rows, FIRSTDIV +0x2b -> +0x12.
+ *     - the same thing declared BLOCK-SCOPED instead of function-scoped, to
+ *       see whether the cost was the locals slot.  BYTE-IDENTICAL to the
+ *       function-scoped form, which re-confirms the sixth pass's rule that
+ *       /O2 slot packing ignores scope entirely.  So the regression is the
+ *       re-associated offset itself, not the frame.
+ *   Wall 4 has now resisted: parallel `rb2 = ring*4`, `<<2`, a `(char*)base
+ *   + offset` cast, per-arm conversion, the drain-loop IV form, a
+ *   record-term-derived offset, a re-associated offset at two scopes, and
+ *   the one-array form.  Every one of them either folds back or rebuilds the
+ *   region.  ‼ Treat the ADDRESSING as downstream: the eleventh pass says
+ *   the original pins edx BECAUSE it has already spent pDst to memory.  Any
+ *   further attempt should go after THE pDst HOME, not the index.
+ *
  * ‼‼ TWENTY-FIRST PASS (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS
  * HEADER IS INFLATED.  `fn.py` and `triage.py` did not mask reloc'd operands
  * (only `msetdiff.py` did), so every absolutely-addressed instruction was
