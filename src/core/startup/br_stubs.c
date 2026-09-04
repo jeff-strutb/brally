@@ -92,4 +92,13 @@ void BrSet_106E8698(int param_1)
   return;
 }
 
+/* WHAT IT DOES: empty function (/Od frame, nothing else). */
+/* @implements 0x1002EBCC glide BrNop_1002EBCC */
+
+void BrNop_1002EBCC(void)
+
+{
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */

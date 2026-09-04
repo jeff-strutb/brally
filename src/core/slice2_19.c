@@ -1680,14 +1680,7 @@ int BrRet0_1002E70A(void)
   return 0;
 }
 
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002EBCC glide BrNop_1002EBCC */
-
-void BrNop_1002EBCC(void)
-
-{
-  return;
-}
+/* 0x1002EBCC BrNop_1002EBCC now lives in src/core/startup/br_stubs.c. */
 
 /* WHAT IT DOES: return 1. */
 /* @implements 0x1002F238 glide BrRet1_1002F238 */
