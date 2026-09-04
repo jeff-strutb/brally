@@ -58,4 +58,19 @@ float BrFixUnpackU8Angle(int32_t v)
     return (float)((v & 0xFF) * 1.41015625f);
 }
 
+
+
+/* 0x100072C0.  0x1008F128 = -120.63491821289062f, 0x1008F0DC = 400.0f, and
+ * the original's `fsubr` makes that 400 - (v * -120.63...), i.e. a rising
+ * ramp. 63 * 120.63491821289062 is 7600 to float precision, so with the 6-bit
+ * field its only caller passes, the range is [400, 8000]. */
+/* WHAT IT DOES: turns a 6-bit code back into a value between 400 and 8000,
+ * the inverse of the matching packer. What the quantity represents is not
+ * established here. */
+/* @implements 0x100072C0 d3d BrFixUnpackU8Range */
+float BrFixUnpackU8Range(int32_t v)
+{
+    return 400.0f - (v & 0xFF) * -120.63491821289062f;
+}
+
 #endif /* BR_MATCHING_BUILD */
