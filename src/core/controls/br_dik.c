@@ -118,3 +118,21 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
     return hr;
 #endif
 }
+
+/* WHAT IT DOES: translates a typed key into the character it should produce,
+ * by walking a table until it finds a match and taking the first one. Keys
+ * that are not in the table produce nothing -- and a handful of keys, Tab
+ * among them, produce something only because the walk runs off the end of the
+ * real table and keeps going through the data that happens to follow it. */
+/* @implements 0x1005B540 d3d BrCharMapLookup */
+uint8_t BrCharMapLookup(int32_t code)
+{
+    uint32_t i;
+
+    for (i = 0; i < BR_CHARMAP_COUNT; ++i) {
+        if (g_BrCharMap[i].code == (uint32_t)code) {
+            return (uint8_t)g_BrCharMap[i].ch;
+        }
+    }
+    return 0;
+}
