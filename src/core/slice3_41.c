@@ -52,23 +52,6 @@ typedef struct BrRankPair {
     int32_t idx;
 } BrRankPair;
 
-/* 0x10066620 */
-/* WHAT IT DOES: the "who is ahead" test used when the game sorts the field
- * into race order -- it compares two drivers' progress figures and says which
- * comes first. If either figure is not a real number the answer it gives is
- * "less than" rather than "equal", which is the original's behaviour and not
- * a tidy-up opportunity. */
-/* @implements 0x10066620 d3d BrRankCmpKey */
-/* @implements 0x1005F690 glide BrRankCmpKey */
-int BrRankCmpKey(const void *pA, const void *pB)
-{
-    /* Orig is `fld [ecx]; fcomp [edx]` twice -- no float locals. */
-    if (*(const float *)pA > *(const float *)pB)
-        return 1;
-    if (!(*(const float *)pA >= *(const float *)pB))
-        return -1;
-    return 0;
-}
 
 /* The g_22AF18 == 0 half of 0x10066510. */
 void BrRankAssign(BrDriver *pSlots, int32_t n)
