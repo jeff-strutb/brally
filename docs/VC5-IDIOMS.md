@@ -4262,6 +4262,28 @@ ten instructions (register-blind 48+21 versus 18+8) even though every
 statement was otherwise correct. Spell `g_aPfxRec[iRec].field` in full in
 every statement, however repetitive it looks.
 
+**Second cause, same rule — a hoist can also move a load ACROSS A GUARD.**
+Proven 2026-09-03 on 0x10031660 BrTrackSetF08FromMax (58 B). The array base
+lives behind a pointer field, `(*(unsigned short **)(p + 0x20))[i]`, and the
+loop that reads it is guarded by a count test. Hoisting the base —
+
+    unsigned short *puIdx = *(unsigned short **)(param_1 + 0x20);
+
+— is not just a different addressing mode: VC5 emits its load BEFORE the
+guard's `cmp/jle`, where the original loads it inside the guarded block. That
+is a 3-instruction reordering at the top of the function and it was the whole
+residue once the loop shape was right. Respell the dereference in both the
+compare and the assignment; VC5 then CSEs it exactly where the original has
+it. So the rule covers two distinct symptoms — addressing-mode collapse
+(above) and load placement relative to a guard (here).
+
+**And the loop it sat in is the other half of the same solve:** an ordinary
+indexed `for (i = 1; i < n; ++i)` over a contiguous range is what VC5
+strength-reduces into the original's pointer walk. Writing the walk by hand
+as a `do { p = p + 1; … } while (--k)` loses the pre-loop `add ecx,2` and
+flips the compare sense — 22 diffs' worth. Same finding as the photo control
+block's two strided loops; see that entry.
+
 **Scorer note that goes with this shape:** a member at record offset 0 has a
 zero reloc addend, so the recomp disassembles as `[esi]` while the original,
 whose displacement is already resolved, reads `[esi+0x10AC0C48]`. That shows
