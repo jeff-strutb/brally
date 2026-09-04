@@ -1015,28 +1015,6 @@ void BrMenuSub1005FFF0(void)
  * 0x10060210 / 0x100602B0 / 0x10060780 -- small utilities
  * ===================================================================== */
 
-/* WHAT IT DOES: records the screen's width and height and works out its
- * centre point, then clears seven other numbers. Its argument is never
- * looked at. */
-/* @implements 0x10060210 d3d BrFn10060210 */
-int32_t __stdcall BrFn10060210(void *pUnused)
-{
-    int i;
-
-    (void)pUnused;   /* never read by the original */
-
-    g_BrAA33B8 = g_Br0A81C0;
-    g_pBrAA2E80->x = g_Br0A81C0 / 2;   /* cdq/sub/sar: toward zero */
-
-    g_BrAA33B4 = g_Br0A81C4;
-    g_pBrAA2E80->y = g_Br0A81C4 / 2;
-
-    for (i = 0; i < 7; ++i) {
-        g_BrAA3398[i] = 0;
-    }
-    return 1;
-}
-
 /* @n64 0x8023FED8 located */
 void BrDevSlotReleaseIface(struct BrDevSlot *pSlot)
 {

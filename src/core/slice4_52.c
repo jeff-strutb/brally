@@ -44,25 +44,6 @@ const BrShutdownHost *g_pBrShutdownHost;
 const BrLogHost      *g_pBrLogHost;
 const BrUi51990Ctx   *g_pBrUi51990Ctx;
 
-/* ==========================================================================
- * 0x10010960 / 0x10010980  BrPolyDistX / BrPolyDistY
- * ========================================================================== */
-
-/* WHAT IT DOES: tells the shape-trimming code how far a corner lies from the
- * left edge of the screen -- which is just its horizontal position, so a
- * negative answer means the corner is off to the left. Its neighbour below does
- * the same for the top edge. */
-/* @implements 0x1000DEC0 glide BrPolyDistX */
-float BrPolyDistX(const struct BrScrPt *pPt)
-{
-    return ((const BrScrPt *)pPt)->f0C;
-}
-
-float BrPolyDistY(const struct BrScrPt *pPt)
-{
-    return ((const BrScrPt *)pPt)->f10;
-}
-
 /* 0x100353D0 / 0x1003BD50 BrRandom now lives in
  * src/core/startup/br_random.c. */
 
@@ -245,96 +226,6 @@ void BrSub10038F30(int code)
     pH->pfnExit(code);          /* 0x1007CC00 is exit(); does not return */
 }
 
-/* ==========================================================================
- * 0x10008CF0  BrLogPrint
- * ========================================================================== */
-
-/* WHAT IT DOES: the game's dead end. It shuts the current picture down, draws
- * one line of text centred on an otherwise blank screen, and then never
- * returns -- it sits spinning, and the only thing that gets the player out is
- * pressing Escape, which quits the game. This is what a fatal message looks
- * like from the inside. */
-/* @implements 0x10008CF0 d3d BrLogPrint */
-#ifdef BR_MATCHING_BUILD
-/* Original: direct calls and globals, no host struct. The 0x8000 DL
- * buffer is a plain local (chkstk probe); Escape spin via the IAT. */
-extern int  DAT_100a7514;               /* screen width */
-extern int *DAT_106e7710;               /* DL write cursor */
-extern void (*DAT_10b73530)(void *);    /* submit hook */
-__declspec(dllimport) short __stdcall GetAsyncKeyState(int vk);
-__declspec(dllimport) void  __stdcall Sleep(unsigned long ms);
-extern void BrClearFlag_AB504(void);
-extern void BrTextFlag358Clear(void);
-extern void BrSet_10019270(void);
-extern int  BrSetGlobal_ABB30(int v);
-extern void BrTextDraw(const char *psz, int x, int y);
-extern void BrSub100325B0(int code);    /* glide 0x100325B0, never returns */
-
-void BrLogPrint(const void *p)
-{
-    int aDl[0x2000];
-
-    BrClearFlag_AB504();
-    DAT_106e7710 = aDl;
-    BrTextFlag358Clear();
-    BrSet_10019270();
-    BrSetGlobal_ABB30(0x14);
-
-    BrTextDraw((const char *)p, DAT_100a7514 / 2, 0xDC);
-
-    {
-        int *p_ = DAT_106e7710;
-        DAT_106e7710 = DAT_106e7710 + 2;
-        p_[0] = (int)0xB8000000;          /* G_ENDDL */
-        p_[1] = 0;
-    }
-    DAT_10b73530(aDl);
-
-    for (;;) {
-        if (GetAsyncKeyState(0x1B) != 0)
-            BrSub100325B0(1);
-        Sleep(1);
-    }
-}
-#else
-/* @implements 0x10008CF0 d3d BrLogPrint */
-void BrLogPrint(const void *p)
-{
-    const BrLogHost *pH = g_pBrLogHost;
-    /* DEVIATION: `_alloca(0x8000)` in the original.  The function never
-     * returns, so a local has the same lifetime. */
-    uint32_t  aDl[BR_LOGPRINT_DL_BYTES / sizeof(uint32_t)];
-    uint32_t *pCur;
-
-    if (pH == NULL) {
-        return;   /* DEVIATION: unhosted */
-    }
-
-    pH->pfn10016990();
-    *pH->ppDlCursor = aDl;
-    pH->pfn10019260();
-    pH->pfn10019270();
-    pH->pfn100192F0(0x14);
-
-    /* `cdq / sub eax,edx / sar eax,1` -- a SIGNED halving, not `>> 1`. */
-    pH->pfnTextDraw((const char *)p, (int)(*pH->pnScreenW / 2),
-                    BR_LOGPRINT_TEXT_Y);
-
-    pCur = *pH->ppDlCursor;
-    *pH->ppDlCursor = pCur + 2;       /* `add ecx,8` -- eight BYTES */
-    pCur[0] = 0xB8000000u;            /* G_ENDDL */
-    pCur[1] = 0u;
-    pH->pfnSubmit(aDl);
-
-    for (;;) {
-        /* `test ax,ax` -- only the low 16 bits are consulted. */
-        if ((uint16_t)pH->pfnKeyAsync(BR_LOGPRINT_VK_ESCAPE) != 0) {
-            pH->pfnShutdown(1);
-        }
-        pH->pfnSleep(1);
-    }
-}
-#endif
 
 #ifdef BR_MATCHING_BUILD
 /* 0x10008EC0 BrLogFatalPrintf now lives in src/core/startup/br_fatal.c. */
@@ -507,37 +398,6 @@ void BrOptFn10051990(struct BrOptObj *pThis)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-extern int DAT_117a5f28;
-extern float _DAT_1007720c;
-int FUN_10069A80();
-int FUN_10069a80();
-
-/* WHAT IT DOES: return the float at offset +0x10 in a struct, cast to double. */
-/* @implements 0x1000DEE0 glide BrGetFieldFloat */
-
-double BrGetFieldFloat(int param_1)
-
-{
-  return (double)*(float *)(param_1 + 0x10);
-}
-
-/* WHAT IT DOES: return (constant at 0x1007720C) minus the float at +0xC, as double. */
-/* @implements 0x1000DED0 glide BrGetFieldFloatSubC */
-
-double BrGetFieldFloatSubC(int param_1)
-
-{
-  return (double)_DAT_1007720c - (double)*(float *)(param_1 + 0xc);
-}
-
-/* WHAT IT DOES: return (constant at 0x1007720C) minus the float at +0x10, as double. */
-/* @implements 0x1000DEF0 glide BrGetFieldFloatSub10 */
-
-double BrGetFieldFloatSub10(int param_1)
-
-{
-  return (double)_DAT_1007720c - (double)*(float *)(param_1 + 0x10);
-}
 
 
 

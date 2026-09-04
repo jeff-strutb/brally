@@ -184,65 +184,8 @@ void BrGfx60E00(void *p0)
 /* 4. The node 0x8000 mark / clear pass                                 */
 /* ==================================================================== */
 
-/* 0x10061660 */
-/* WHAT IT DOES: walks the whole scene tree and, for each node it has not
- * already visited, stamps a visit mark on it and then descends into it. The
- * visible effect is that one particular per-node byte is cleared, but only
- * in two specific game modes. The mark is set before descending, which is
- * what stops a loop in the tree from running away forever -- it is a scratch
- * bit, not a visibility flag. */
-/* @implements 0x10061660 d3d BrNodeMarkPass */
-/* @n64 0x80255BA0 located */
-void BrNodeMarkPass(BrNode *pNode)
-{
-    while (pNode != NULL) {
-        uint16_t flags = pNode->flags;
-
-        if (!(flags & BR_NODE_FLAG_MARK) && !(flags & BR_NODE_FLAG_SKIP)) {
-            uint8_t f11 = pNode->f11;
-
-            /* set the mark BEFORE recursing -- this is the cycle guard */
-            pNode->flags = (uint16_t)(pNode->flags | BR_NODE_FLAG_MARK);
-
-            if (f11 == 2 && (BrG_0B380C == 3 || BrG_0B380C == 9)) {
-                pNode->f11 = 0;
-            }
-            BrNodeMarkPass(pNode->f00);
-        }
-        pNode = pNode->f04;
-    }
-}
-
 /* 0x100616C0 */
-/* WHAT IT DOES: the exact reverse walk: it takes the visit mark off every
- * node the pass above stamped, leaving the tree ready to be walked again. */
-/* @implements 0x100616C0 d3d BrNodeClearMarkPass */
-/* @n64 0x80255C50 located */
-void BrNodeClearMarkPass(BrNode *pNode)
-{
-    while (pNode != NULL) {
-        if (pNode->flags & BR_NODE_FLAG_MARK) {
-            BrNode *pChild = pNode->f00;
-            pNode->flags = (uint16_t)(pNode->flags & 0x7FFFu);
-            BrNodeClearMarkPass(pChild);
-        }
-        pNode = pNode->f04;
-    }
-}
-
 /* 0x10061700 */
-/* WHAT IT DOES: runs the mark pass and then the unmark pass over the whole
- * scene tree, so that the only lasting effect is whatever the first pass
- * changed on the way through. */
-/* @implements 0x10061700 d3d BrNodeRunMarkPass */
-/* @n64 0x80255CA0 located */
-void BrNodeRunMarkPass(void)
-{
-    /* the root is re-read from the global between the two calls */
-    BrNodeMarkPass(BrG_6C7CB8);
-    BrNodeClearMarkPass(BrG_6C7CB8);
-}
-
 /* ==================================================================== */
 /* 5. Car per-frame / per-race init                                     */
 /* ==================================================================== */
@@ -454,19 +397,6 @@ void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
 /* 7. Image tint scale                                                  */
 /* ==================================================================== */
 
-/* 0x10061460 */
-/* WHAT IT DOES: sets the three colour multipliers that tint an image as it
- * is drawn. Its caller passes three consecutive bytes out of an opponent
- * car's record, so these are 0-to-255 colour components; what the tint is
- * used for there is not established here. */
-/* @implements 0x10061460 d3d BrImgTintSetScale */
-void BrImgTintSetScale(int32_t r, int32_t g, int32_t b)
-{
-    BrImgTintState.scaleR = r;   /* 0x10AA3440 */
-    BrImgTintState.scaleG = g;   /* 0x10AA3448 */
-    BrImgTintState.scaleB = b;   /* 0x10AA345C */
-}
-
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
 extern unsigned char DAT_100ad770;
@@ -475,61 +405,5 @@ extern unsigned char DAT_100bb2e0;
 extern unsigned char DAT_100bb2e8;
 int FUN_1006e590();
 
-extern int DAT_100ad7d8;
-extern char DAT_100ad7e8;
-extern int DAT_100b22d8;
-
-/* WHAT IT DOES: look up one field of one car livery entry, and leave that
- * entry's identifier in a global on the way past -- so the caller gets a
- * value AND the table remembers which row it came from. */
-/* @implements 0x10059FE0 glide FUN_10059fe0 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-int FUN_10059fe0(int param_1,int param_2,int param_3)
-
-{
-  DAT_100b22d8 = *(int *)((char *)&DAT_100ad7e8 + (param_2 + param_1 * 0x1e) * 0x28);
-  return ((int *)((char *)&DAT_100ad7d8 + param_1 * 1200 + param_2 * 40))[param_3];
-}
-
-extern int DAT_10ac67b0;
-__declspec(dllimport) void __cdecl free(void *);
-void FUN_1005a420(void);
-void FUN_1005a6b0(void);
-
-/* WHAT IT DOES: release everything the car-livery system holds: the bitmaps
- * first, then the three shared buffers. The single call site for shutting
- * that subsystem down. */
-/* @implements 0x1005A6A0 glide FUN_1005a6a0 */
-/* Tail-call wrapper: `call A; jmp B` -- VC5 /O2 turns the trailing call
- * into a jmp. The map had this merged with the 45-byte loop at
- * 0x1005A6B0 as one 61-byte function; split 2026-09-01. */
-
-void FUN_1005a6a0(void)
-{
-  FUN_1005a420();
-  FUN_1005a6b0();
-}
-
-/* WHAT IT DOES: free the three shared livery buffers and null the slots, so
- * a second call is harmless. */
-/* @implements 0x1005A6B0 glide FUN_1005a6b0 */
-/* Frees and zeroes the three pointer slots at DAT_10ac67b0..bc; the
- * dllimport free is hoisted into edi across the loop. */
-
-void FUN_1005a6b0(void)
-{
-  int *puVar1;
-
-  puVar1 = &DAT_10ac67b0;
-  do {
-    if (*puVar1 != 0) {
-      free((void *)*puVar1);
-      *puVar1 = 0;
-    }
-    puVar1 = puVar1 + 1;
-  } while ((int)puVar1 < 0x10ac67bc);
-  return;
-}
 
 #endif /* BR_MATCHING_BUILD */

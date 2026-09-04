@@ -489,21 +489,3 @@ void BrGfxClearCounters(void)
  *   across six fxch pairs and four __ftol calls; the contract's own warning
  *   about untraceable x87 operand order applies exactly. Skipped.
  */
-
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
-
-/* WHAT IT DOES: qsort comparator on the int16 at +2: 1 / 0 / -1, first argument compared
- * on the left (jle / setge). */
-/* @implements 0x1000E2F0 glide BrQsortCmpS2 */
-
-int BrQsortCmpS2(int param_1,int param_2)
-
-{
-  if (*(short *)(param_1 + 2) > *(short *)(param_2 + 2)) {
-    return 1;
-  }
-  return (*(short *)(param_1 + 2) >= *(short *)(param_2 + 2)) - 1;
-}
-
-#endif /* BR_MATCHING_BUILD */

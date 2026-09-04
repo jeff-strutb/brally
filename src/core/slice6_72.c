@@ -1613,22 +1613,5 @@ void BrExt_1004E830(BrPhase_ *pPhase)
 #ifdef BR_MATCHING_BUILD
 /* 0x10074AE6 FUN_10074ae6 now lives in src/core/startup/br_stubs.c. */
 
-extern char DAT_100acad8[];
-extern char DAT_118ee590[];
-
-/* WHAT IT DOES: append a string to a running log buffer, but only if it is
- * not already in there -- a crude de-duplicating accumulator, so a message
- * repeated every frame appears once. Adds a separator after each new entry. */
-/* @implements 0x1006FF50 glide FUN_1006ff50 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void FUN_1006ff50(char *param_1)
-
-{
-  if (strstr(DAT_118ee590, param_1) == 0) {
-    strcat(DAT_118ee590, param_1);
-    strcat(DAT_118ee590, DAT_100acad8);
-  }
-}
 
 #endif /* BR_MATCHING_BUILD */
