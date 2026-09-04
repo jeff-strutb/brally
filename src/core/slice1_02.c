@@ -157,16 +157,6 @@ int32_t BrFixPackS16Q7(float v)
 }
 
 
-/* 0x10007280.  Scale 0x1008F120 = -3.0517578125e-05f (= -1/32768). */
-/* WHAT IT DOES: unpacks one component of a car's facing direction from the
- * 16 bits it was sent in. The scale is negative, which cancels the negative
- * scale the packer used, so the value comes back unchanged. */
-/* @implements 0x10007280 d3d BrFixUnpackS16Q15Neg */
-float BrFixUnpackS16Q15Neg(int32_t v)
-{
-    return (float)((int16_t)v * -0.000030517578125f);
-}
-
 /* 0x100072A0.  Scale 0x1008F124 = 1.41015625f (= 361/256). */
 /* WHAT IT DOES: turns a byte back into an angle in degrees, using a scale
  * chosen so the byte covers a full circle. */
