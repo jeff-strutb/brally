@@ -887,50 +887,6 @@ void BrModelSwap(void *pImage)
 #endif
 
 /* 0x10036BD0 */
-/* WHAT IT DOES: loads a model from disk and makes it ready to draw -- reads
- * the file in, tells the address fixer where it landed, and runs the
- * byte-order and address correction over it. */
-/* @implements 0x10036BD0 d3d BrModelLoad */
-/* TWO arguments, not three, and the first callee is a thiscall.  The original
- * reads [esp+4] and [esp+8] only; the `pMgr` parameter is really the constant
- * 0x10AC0810 loaded into ecx (`mov ecx, 0x10ac0810`), so the loader is a
- * thiscall member on a fixed object.  Its two stack arguments are spelled as
- * one-pointer STRUCTS so neither can claim edx -- the convention slice1_09.c
- * already uses -- which is what makes a multi-argument thiscall reachable
- * from a CALL site at all.
- *
- * BrSegSetBases likewise takes two arguments here, not three: the original
- * pushes 0 and the loaded block and nothing else.  br_seg.c's matching body
- * already records that its third parameter is the port's own pMap slot, so
- * this call site simply declares the two-argument shape. */
-#ifdef BR_MATCHING_BUILD
-void *BrModelLoad(void *a1, void *a2)
-{
-    BrModelLoadArg x, y;
-    void *p;
-
-    x.p = a2;
-    y.p = a1;
-    p = BrSub100088B0(&g_brModelMgr, x, y);
-
-    BrSegSetBases(0, (uint32_t)(uintptr_t)p);
-    BrModelSwap(p);
-    return p;
-}
-#else
-void *BrModelLoad(void *pMgr, void *a1, void *a2)
-{
-    void *p;
-
-    /* GOTCHA: a2 is pushed last, so it is the callee's FIRST argument. */
-    p = BrSub100088B0(pMgr, a2, a1);
-
-    BrSegSetBases(g_BrSegMap, 0, (uint32_t)(uintptr_t)p);
-    BrModelSwap(p);
-    return p;
-}
-#endif
-
 /* ================================================================== */
 /* 7. Odds and ends                                                   */
 /* ================================================================== */
