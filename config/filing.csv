@@ -217,6 +217,7 @@ glide_va,name,module,basis,file
 0x1001DC40,BrVec3dLenSq,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DC80,BrSub1001DC80,geometry,neighbour,src/core/tiny_stubs.c
 0x1001DC90,BrVec3dNormalise,geometry,filed,src/core/geometry/br_vecd.c
+0x1001DCD0,BrVec3dDot,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DD50,BrGlideFlipWait,drawing,filed,src/core/drawing/br_dlglide.c
 0x1001DD80,BrGlideResOpen,startup,filed,src/core/startup/br_objlife.c
 0x1001DFB0,FUN_1001dfb0,startup,neighbour,src/core/slice2_17.c
@@ -746,6 +747,7 @@ glide_va,name,module,basis,file
 0x1006BB60,BrSndBufStopAll,audio,filed,src/core/audio/br_musiccmd.c
 0x1006BB90,BrSndBufFreeAll,audio,filed,src/core/audio/br_musiccmd.c
 0x1006BF50,BrSndVoiceIsPlaying,audio,filed,src/core/audio/br_sfx.c
+0x1006BF90,BrSndVoiceBufIsPlaying,audio,filed,src/core/audio/br_sfx.c
 0x1006BFD0,BrSndBankClear,audio,filed,src/core/audio/br_sfx.c
 0x1006BFF0,BrSndBankSetCar,audio,filed,src/core/audio/br_sfx.c
 0x1006C6A0,FUN_1006c6a0,,,src/core/generated/0x1006C6A0.c
