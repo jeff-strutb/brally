@@ -1806,21 +1806,6 @@ void BrIdleLoop_1002DD9A(void)
   }
 }
 
-/* WHAT IT DOES: never-returning loop over the 0x106EC6A8 / 0x106ED5D0 blocks, advancing the
- * 16-entry ring index at 0x106ED700 each pass. */
-/* @implements 0x1002DE04 glide BrIdleLoop_1002DE04 */
-
-void BrIdleLoop_1002DE04(void)
-
-{
-  BrPodNop(&DAT_106ec6a8,&DAT_106e9a30,1);
-  BrPodNop(&DAT_106ec6a8,DAT_106e7738,1);
-  for (;;) {
-    BrStubTrue(&DAT_106ec6a8,0,1);
-    BrStubTrue(&DAT_106ed5d0,DAT_106e7738,1);
-    DAT_106ed700 = DAT_106ed700 + 1 & 0xf;
-  }
-}
 
 /* WHAT IT DOES: run the per-pad input step: 0x1002CE5F once, then for each pad block
  * (base 0x106ED708, stride 0x15C, count 1 in this build) translate the raw pad state and
