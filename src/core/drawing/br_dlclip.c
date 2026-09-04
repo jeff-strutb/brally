@@ -26,36 +26,56 @@
  *     0x1001F8F0   d = w - z            311 B   FAR
  *     0x1001F530   d = y + w            311 B   BOTTOM
  *
- * ‼ RESIDUE, and the one thing that is NOT source-reachable here.  Five of
- * the seven are byte-exact.  The two PLUS planes below are 4 bytes (LEFT)
- * and 2 bytes (NEAR) short, and every one of those bytes is the field
- * displacement in an `fld`/`fadd` pair:
+ * ‼ RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
+ * still out, by 2 bytes, and both are the field displacement in ONE
+ * `fld`/`fadd` pair -- the dPrev site:
  *
- *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]   (both sites)
- *     NEAR   orig  fld [z] ; fadd [w]      ours  fld [w] ; fadd [z]   (first site
- *                                                only; the second matches)
+ *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]
+ *                                          (the dCur site now matches)
  *
- * WRITING THE ADD THE OTHER WAY ROUND DOES NOTHING -- `f18 + f04` and
- * `f04 + f18` compile to identical bytes, confirmed for all three PLUS
- * planes.  So the "VC5 canonicalises commutative float addition" entry in
- * docs/VC5-IDIOMS.md holds for a plain two-term add of two struct fields
- * as well, and the original's own inconsistency across siblings (BOTTOM
- * leads with y, LEFT leads with w) is NOT a record of how its source was
- * spelled.  It cannot be, because NEAR's two sites inside ONE of our
- * functions disagree with each other from a single macro expansion: the
- * choice is made per site, by the scheduler.
+ * ‼ THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
+ * earlier pass got wrong, and it cost NEAR several sessions.  The macro body
+ * evaluates the plane distance at TWO sites (dCur and dPrev), and the
+ * original's two sites do NOT agree with each other: NEAR leads with f0C at
+ * the dCur site and with f18 at the dPrev site.  With a single DIST
+ * parameter that is unrepresentable -- one expansion yields one spelling --
+ * so the old note concluded "the choice is made per site, by the scheduler"
+ * and parked it.  That inference was WRONG: the constraint was in OUR macro,
+ * not in the compiler.  BR_CLIP_PLANE now takes DIST_CUR and DIST_PREV, and
+ * NEAR went byte-exact immediately.  Generalise the habit, not the fix: when
+ * a hand-inlined macro body uses its parameter at more than one site, the
+ * sites are independent evidence and must be independently spellable before
+ * anything about them can be called unreachable.
  *
- * DEAD, do not re-run (all measured 2026-09-03, /O2 /Op):
+ * The lever that picks the leading operand is the redundant paren round the
+ * FIRST operand (`((v)->f18) + (v)->f04`; docs/VC5-IDIOMS.md, "((a) + b) + c
+ * picks the fld operand").  It has a COST: at the dPrev site it also sinks
+ * that site's `fadd` past four unrelated instructions.  So it is usable at
+ * the dCur site and not at the dPrev site -- which is exactly why NEAR (needs
+ * the flip at dCur only) fell and LEFT (needs it at BOTH) did not.
+ *
+ * DEAD, do not re-run (all /O2 /Op, one-file sweep; diff-byte counts are
+ * LEFT's):
  *   - swapping the operands of the `+` in either direction, on each of the
- *     three PLUS planes: byte-identical output;
- *   - a redundant paren round the FIRST operand, `((v)->f18) + (v)->f04`:
- *     this DOES flip the pair to the original's order at both sites -- and
- *     is the only thing found that moves it -- but it sinks the second
- *     site's `fadd` past four unrelated instructions, taking the function
- *     from 4 diff bytes to 53 with the instruction multiset still exact.
- *     A real lever pointing the wrong way; worth re-trying only alongside
- *     something that pins the schedule.
- *   - a redundant paren round BOTH operands: 53 / 54, no better.
+ *     three PLUS planes: byte-identical output.  The "VC5 canonicalises
+ *     commutative float addition" entry holds for a plain two-term add of
+ *     two struct fields.
+ *   - paren at the dPrev site only: 33.  Paren at BOTH sites: 31 (the old
+ *     note's "53" predates the macro split; the number moved, the verdict
+ *     did not).  Paren at the dCur site only: 2 -- best, and current.
+ *   - SWAPPING THE TWO DISTANCE STATEMENTS (dPrev computed before dCur) is
+ *     INERT: still 2, and NEAR stays byte-exact.  Statement order does not
+ *     pick the operand here; only the paren does.
+ *   - naming the leading operand instead of parenthesising it
+ *     (`(dLead = (v)->f18), dLead + (v)->f04`): 31, AND the extra float
+ *     local perturbs the shared frame enough to un-match two other planes
+ *     (6/7 -> 4/7).  The "name the product" lever needs a SUM OF PRODUCTS;
+ *     on a plain two-term add it does nothing and here it is destructive.
+ *
+ * WHAT WOULD MOVE LEFT: something that pins the schedule at the dPrev site,
+ * so the paren's flip can be taken there without the `fadd` sinking.  Do not
+ * re-probe the paren or the operand order on their own -- both are mapped
+ * above.
  *
  * Field meanings (established from the caller, 0x1001EE70; see slice1_03.h):
  *     f04 = x   f08 = y   f0C = z   f10 = s   f14 = t   f18 = w
@@ -201,7 +221,7 @@ BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W, BRCLIP_W)
 
 /* WHAT IT DOES: cuts a polygon against the left edge of the screen. */
 /* @implements 0x1001F2B0 glide BrClipPlaneWPlusF04 */
-BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X, BRCLIP_W_PLUS_X)
+BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X_LEAD, BRCLIP_W_PLUS_X)
 
 /* WHAT IT DOES: cuts a polygon against the right edge of the screen. */
 /* @implements 0x1001F3F0 glide BrClipPlaneWMinusF04 */
