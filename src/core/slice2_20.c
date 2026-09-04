@@ -1421,6 +1421,36 @@ void BrPoolEmit(void *pvThis)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: work out how many slots the track header's lookup table
+ * actually needs. It scans the u16 index array at +0x20 for the largest index
+ * anyone uses and stores one past it at +0x08 -- the table's used length.
+ * Entry 0 is deliberately skipped and the running maximum starts at 0, so the
+ * answer is at least 1 even when every index is zero. The entry count is the
+ * u16 sitting 0x2000 bytes into the blob at +0x24. See slice2_20.h. */
+/* The port twin of this is BrTrackF08FromMax higher up in this file; it reads
+ * through BrRd16/BrPtrAt so it works on a big-endian image on any host, which
+ * is exactly why it cannot reproduce these bytes. Same split as
+ * BrTrackFixupList60 / BrTrackFixupAllRec54. */
+/* @implements 0x10031660 glide BrTrackSetF08FromMax */
+
+void BrTrackSetF08FromMax(int param_1)
+
+{
+  int iMax;
+  int nEntry;
+  int i;
+
+  iMax = 0;
+  nEntry = *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000);
+  for (i = 1; i < nEntry; i = i + 1) {
+    if ((*(unsigned short **)(param_1 + 0x20))[i] > iMax) {
+      iMax = (*(unsigned short **)(param_1 + 0x20))[i];
+    }
+  }
+  *(int *)(param_1 + 8) = iMax + 1;
+  return;
+}
+
 /* WHAT IT DOES: walk an array of 0x54-byte track records and fixup each one. */
 /* @implements 0x100316A0 glide BrTrackFixupAllRec54 */
 

@@ -378,6 +378,7 @@ glide_va,name,module,basis,file
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c
 0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
 0x10031140,BrTrackLoadHandling,startup,neighbour,src/core/generated/0x10031140.c
+0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/slice2_20.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/slice2_20.c
 0x10031910,BrTrackFixupSegList,startup,neighbour,src/core/slice2_20.c
 0x10031A40,BrTrackSwapRec28,startup,neighbour,src/core/slice2_20.c
@@ -790,7 +791,7 @@ glide_va,name,module,basis,file
 0x1006DCB0,BrMat4ToMat3Transposed,geometry,prefix,src/core/slice3_44.c
 0x1006DCF0,BrMat4ToMat3,geometry,prefix,src/core/slice3_44.c
 0x1006DD80,BrMat3Sub,,,src/core/slice3_44.c
-0x1006E020,BrFontSetRenderDst,drawing,prefix,src/core/slice3_44.c
+0x1006E020,BrFontSetRenderDst,drawing,filed,src/core/drawing/br_font.c
 0x1006E030,BrFontTexInitAll,drawing,prefix,src/core/slice3_44.c
 0x1006E060,BrSub10074E00,,,src/core/slice3_44.c
 0x1006E080,BrSub10074E20,,,src/core/slice3_44.c
