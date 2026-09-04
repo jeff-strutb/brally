@@ -238,6 +238,43 @@ int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 #endif
 }
 
+/* WHAT IT DOES: the same, storing into the setting that tracks which entry
+ * of a per-player table is current. */
+/* @implements 0x10038150 glide BrUiPoll1003EB60 */
+/* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
+int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA28AC);
+    if (r >= 0)
+        g_iAA28AC = r;
+    return 1;
+#else
+    (void)br23_poll_store(pObj, &pG->gAA28AC);
+    return 1;
+#endif
+}
+
+/* WHAT IT DOES: the same, storing into a different setting again. */
+/* @implements 0x10038180 glide BrUiPoll1003EB90 */
+/* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
+int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
+{
+#ifdef BR_MATCHING_BUILD
+    int32_t r;
+    (void)pG;
+    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    if (r >= 0)
+        g_iAA2880 = r;
+    return 1;
+#else
+    (void)br23_poll_store(pObj, &pG->gAA2880);
+    return 1;
+#endif
+}
+
 int FUN_1003fac0(int);
 extern int DAT_10ac5d44;
 extern int DAT_10ac5d88;
