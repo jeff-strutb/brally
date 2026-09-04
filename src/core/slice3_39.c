@@ -1224,20 +1224,7 @@ int32_t BrFn1005FFD0(void)
     return -1;
 }
 
-#ifdef BR_MATCHING_BUILD
-__declspec(dllimport) int __stdcall MessageBoxA(void *hWnd, const char *pText,
-                                                const char *pCaption,
-                                                unsigned int uType);
-const char *BrStrGet(int id);
-
-/* WHAT IT DOES: MessageBox the given text with string-table entry 0xAA as
- * the caption; the middle argument is never read. */
-/* @implements 0x100590A0 glide BrMsgBoxAA */
-void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
-{
-    MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
-}
-#endif
+/* 0x100590A0 BrMsgBoxAA now lives in src/core/startup/br_fatal.c. */
 
 /* WHAT IT DOES: read the keyboard and, if that succeeded, work out which
  * keys changed since last time. The per-frame input poll; a failed read

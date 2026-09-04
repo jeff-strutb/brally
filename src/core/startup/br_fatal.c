@@ -1,7 +1,8 @@
-/* br_fatal.c -- startup: die with a formatted message.
+/* br_fatal.c -- startup: report a fatal condition and die.
  *
- * Filed out of the address batch slice4_52.c; slice3_33.h is the header that
- * batch reached BrOperatorNew through.
+ * Filed out of the address batches slice4_52.c (0x10008EC0) and slice3_39.c
+ * (0x100590A0); slice3_33.h is the header the first batch reached
+ * BrOperatorNew through, and the second declared its two callees itself.
  */
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -29,6 +30,22 @@ void BrLogFatalPrintf(const char *pFmt, ...)
     va_start(ap, pFmt);
     vsprintf(pBuf, pFmt, ap);
     exit(1);
+}
+
+
+/* ---- from slice3_39.c ---------------------------------------------- */
+
+__declspec(dllimport) int __stdcall MessageBoxA(void *hWnd, const char *pText,
+                                                const char *pCaption,
+                                                unsigned int uType);
+const char *BrStrGet(int id);
+
+/* WHAT IT DOES: MessageBox the given text with string-table entry 0xAA as
+ * the caption; the middle argument is never read. */
+/* @implements 0x100590A0 glide BrMsgBoxAA */
+void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
+{
+    MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
 }
 
 #endif /* BR_MATCHING_BUILD */
