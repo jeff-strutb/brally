@@ -948,6 +948,26 @@ static void wheel_call(unsigned char *car)
  *   the other sources.  That is the commutative-operand class the N64 twin
  *   is the oracle for (see CLAUDE.md); nobody has looked at it here.
  *
+ * ‼ SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
+ * above was re-derived from scratch (region map + windowed multiset) without
+ * reading the dossier first, and it reproduces EXACTLY: 34 raw regions, the
+ * 13+5 = 18 multiset rows row for row, the `fld [esp+0x4c]`/`fadd [ebx+0x30]`
+ * swap at the second light call, and the `mov eax,[0x106ed520]` reload.  Both
+ * of those are already dead (15b (a)/(b) and the pCam entry).  This dossier
+ * is CURRENT; trust it and do not re-derive it a third time.
+ *   ‼ WHAT IS STALE IS THE ONE NUMBER NOBODY RE-MEASURED: the STATE block
+ *   below says "1843 vs 1843 instructions (EQUAL -- no missing or extra code
+ *   anywhere)".  IT IS NOT EQUAL.  Measured this session: orig 1,843 vs ours
+ *   1,835 (+6 pad) -- EIGHT SHORT -- and 7,577 vs 7,546 bytes, not 7,536.
+ *   Eight short is exactly the multiset's own 13 MISSING - 5 EXTRA, so the
+ *   two measurements agree and the "EQUAL" line is simply out of date.  It
+ *   matters because "no missing or extra code anywhere" is the sentence that
+ *   licenses calling the rest allocation; the honest statement is that the
+ *   missing eight are the ten pack rows minus the three extra, i.e. all of
+ *   the deficit sits in the frame-blocked arm-2/3 pack and nowhere else.
+ *   (Same class as the instruction-count padding trap in docs/MEMORY.md: an
+ *   instruction total quoted from a previous session is not a measurement.)
+ *
  * SESSION 15b PROBES on that float operand swap, BOTH DEAD -- do not
  * re-run.  The site is the second light call's `pCarF[12] + eyeScale`
  * argument (orig 0x6df `fld [esp+0x4c]; fadd [ebx+0x30]`, ours `fld
