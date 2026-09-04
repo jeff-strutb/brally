@@ -5812,3 +5812,44 @@ site, re-spelling `idx * 0x2b4` at each use fixed every one; (4) a
 was the port's factored-out inline arithmetic — a `MISSING CODE (21%)`
 verdict on a tiny static is a MISFILED TAG, not a missing helper. Read the
 Ghidra draft of the VA before working the tagged body.
+
+## DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK — the symbol INDEX, not the name
+*(proven 2026-09-04 on 0x1000EAF0's row block, which had stood 25 passes as "T3a
+completion order"; masked regions 21 -> 18, no other axis moved)*
+
+Two comparable float products in one sum — same operand-kind pair, same
+association — are scheduled in an order that VC5 picks by a tie-break, and the
+tie-break is keyed on the **symbol index** of the pointer locals they read
+through. Nothing in the expression reaches it; the DECLARATION LIST does.
+
+The case: four rows of `C1*pPos[0] + C2*pTw[0] + C3*pTz[0] + C4*pTy[0]` where
+the original finishes T2 (`fmul [esi+0x3c]`) before T1 and ours finished T1
+first. All 24 permutations of the four pointer declarations were compiled:
+
+    pTw declared 1st or 2nd   ->  T1 first  (ours, 21 regions)
+    pTw declared 3rd or 4th   ->  T2 first  (the original, 18 regions)
+
+pPos's position is irrelevant, so it is not pairwise order. The same flip
+happens with the pointer order untouched when one FUNCTION-SCOPE local
+leaves the list (merged into another, or block-scoped) — i.e. it is the
+absolute index: `(index - k) mod 4` in {2,3} flips, {0,1} does not. A
+hash-bucket or index-pair ordering inside the scheduler.
+
+Measured INERT at the same site, do not re-run: the declaration order of the
+four coefficient EXTERN arrays (24/24 byte-identical); an unused extra local
+(it never gets an index); an extra unused function-scope int; renaming the
+local (names are not hashed — the sixth-pass "names are inert" holds).
+
+‼ **What this retracts.** "Declaration order is inert" was measured on /O2
+slot packing (true — moving `pDst` to the top of the list changes nothing) and
+on an enregistered temp at block vs function scope (true, it was never a slot
+or a tie-break candidate). It is NOT a general fact. Every "byte-identical"
+verdict in a dossier was taken at ONE symbol layout; a lever that reads as
+inert may be one index away from its flip. **When an x87 schedule is one
+notch off and every expression form is dead, permute the declaration order of
+the operands' locals — and if the operands are globals, add or remove a local
+above them — before writing T3a.** It is 24 compiles at 6 s each.
+
+The faithful spelling, once the flip is found, is whatever natural order lands
+on the right bucket; here it is the four pointers in FIELD order (`pObj +
+0xc/0xd/0xe/0xf`), which is also the reading a human would write.
