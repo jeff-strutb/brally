@@ -404,24 +404,6 @@ extern int DAT_10ac673c;
 int FUN_10037720();
 
 
-/* WHAT IT DOES: return 1 if live input or demo playback is active. */
-/* @implements 0x10037780 glide BrInputOrPlaybackActive */
-
-int BrInputOrPlaybackActive(void)
-
-{
-  int iVar1;
-  
-  iVar1 = BrFn1005FFD0();
-  if (iVar1 < 0) {
-    iVar1 = FUN_10037720();
-    if (iVar1 == 0) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 
 int FUN_100038f0();
 int BrDPlayRawSend();
