@@ -1,3 +1,6 @@
+/* WHAT IT DOES: find clashing control bindings: walks all 21 bindable
+ * actions and flags any that share a key with another, so the settings page
+ * can show the conflict rather than silently accepting it. */
 /* @implements 0x10039870 glide BrCfgFindConflicts
  * @cpp_kind free
  * @cpp_symbol ?BrCfgFindConflicts@@YAHH@Z

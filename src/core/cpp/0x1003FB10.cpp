@@ -1,3 +1,7 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, and it refreshes the navigation bar afterwards. */
 /* @implements 0x1003FB10 glide BrPhaseLeave_100466C0
  * @cpp_kind method
  * @cpp_symbol ?BrPhaseLeave_100466C0@@YAHPAVGameObj@@@Z

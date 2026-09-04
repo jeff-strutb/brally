@@ -1,3 +1,7 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen --
+ * the multiplayer entry page. */
 /* @implements 0x1004f290 glide BrUiMultiEnter_1004F290
  * @cpp_kind free
  * @cpp_symbol ?BrUiMultiEnter_1004F290@@YAHPAVGameUi@@@Z

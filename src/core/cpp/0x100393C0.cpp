@@ -1,3 +1,6 @@
+/* WHAT IT DOES: set the mode item's caption, and on the root page also nudge
+ * it up the screen -- the root layout has one line less above it, so the
+ * item moves rather than the page being laid out twice. */
 /* @implements 0x100393C0 glide BrItemSetModeLabel_100393C0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetModeLabel_100393C0@@YAHPAVObj393C0@@@Z

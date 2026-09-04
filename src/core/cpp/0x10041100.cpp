@@ -1,3 +1,6 @@
+/* WHAT IT DOES: begin an animated move: works out the per-step increment
+ * from the distance and the number of steps, and remembers where the item
+ * started. */
 /* @implements 0x10041100 glide BrUiTweenBegin_10047CB0
  * @cpp_kind method
  * @cpp_symbol ?Begin@Tween41100@@QAEHH@Z

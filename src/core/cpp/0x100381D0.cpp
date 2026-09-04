@@ -1,3 +1,5 @@
+/* WHAT IT DOES: the same highlight-sync as its siblings, and additionally
+ * caches the selected row's record where the rest of the page can read it. */
 /* @implements 0x100381D0 glide BrUiPoll1003EBE0
  * @cpp_kind free
  * @cpp_symbol ?BrUiPoll1003EBE0@@YAHPAVObj381D0@@@Z

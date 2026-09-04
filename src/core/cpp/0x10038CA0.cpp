@@ -1,3 +1,6 @@
+/* WHAT IT DOES: choose this item's caption -- a fixed string on the root
+ * page, otherwise one looked up from a table by the current selection, with
+ * a wrap at 16 entries. */
 /* @implements 0x10038CA0 glide BrUiText1003F760
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003F760@@YAHPAVObj38CA0@@@Z

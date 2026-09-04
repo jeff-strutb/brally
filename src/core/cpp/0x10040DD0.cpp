@@ -1,3 +1,5 @@
+/* WHAT IT DOES: draw the code-entry row into a caller-supplied rectangle
+ * rather than its own. */
 /* @implements 0x10040DD0 glide BrUiDrawCodeRect_10047980
  * @cpp_kind method
  * @cpp_symbol ?DrawRect@Draw40DD0@@QAEHPAX@Z

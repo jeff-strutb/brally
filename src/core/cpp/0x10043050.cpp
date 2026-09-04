@@ -1,3 +1,7 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen --
+ * the quit confirmation. */
 /* @implements 0x10043050 glide BrUiQuitEnter_10043050
  * @cpp_kind free
  * @cpp_symbol ?BrUiQuitEnter_10043050@@YAHPAVGameUi@@@Z

@@ -1,3 +1,6 @@
+/* WHAT IT DOES: tick a phase, deciding on this frame whether its periodic
+ * work is due -- every frame in one mode, and otherwise once every 120
+ * ticks. */
 /* @implements 0x10041D10 glide BrPhaseTick_100488C0
  * @cpp_kind method
  * @cpp_symbol ?Tick@Phase32T@@QAEHXZ

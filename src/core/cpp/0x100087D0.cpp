@@ -1,3 +1,6 @@
+/* WHAT IT DOES: reduce a file path to a clean 64-character name: take the
+ * basename, then normalise it. Aborts the game if the result would not fit,
+ * since a longer one would have overrun the buffer it is copied into. */
 /* @implements 0x100087D0 glide BrCleanupName_100087D0
  * @cpp_kind method
  * @cpp_symbol ?CleanupName@Name87D0@@QAEXPAD0@Z

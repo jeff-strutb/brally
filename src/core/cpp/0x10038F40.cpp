@@ -1,3 +1,5 @@
+/* WHAT IT DOES: build the caption for the pick item -- a fixed string on the
+ * root page, otherwise a name assembled from the current mode and selection. */
 /* @implements 0x10038F40 glide BrItemSetPickLabel_10038F40
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetPickLabel_10038F40@@YAHPAVObj38F40@@@Z

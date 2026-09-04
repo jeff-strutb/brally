@@ -1,3 +1,5 @@
+/* WHAT IT DOES: format a stored split time into this item's label, showing
+ * dashes instead when no time has been set yet. */
 /* @implements 0x1003A140 glide BrItemSetSplitTime_1003A140
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetSplitTime_1003A140@@YAHPAVObj3A140@@@Z

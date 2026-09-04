@@ -1,3 +1,5 @@
+/* WHAT IT DOES: format the best lap time into this item's label, showing
+ * dashes when none has been set. */
 /* @implements 0x1003A6D0 glide BrItemSetBestTime_1003A6D0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetBestTime_1003A6D0@@YAHPAVObj3A6D0@@@Z

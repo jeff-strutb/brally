@@ -1,3 +1,5 @@
+/* WHAT IT DOES: reset an entity to its starting state -- squares up its
+ * matrices and reinitialises each animation frame. */
 /* @implements 0x1006FD90 glide BrEntReset
  * @cpp_kind method
  * @cpp_symbol ?Reset@Ent6FD90@@QAEXXZ

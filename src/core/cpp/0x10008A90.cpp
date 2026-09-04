@@ -1,3 +1,4 @@
+/* WHAT IT DOES: the same lookup-then-handle pattern over two arguments. */
 /* @implements 0x10008A90 glide M8A90
  * @cpp_kind method
  * @cpp_symbol ?M8A90@Vt8A90@@QAEHHH@Z

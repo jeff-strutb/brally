@@ -1,3 +1,6 @@
+/* WHAT IT DOES: lay the heads-up display out for a given rectangle -- stores
+ * the corners and works out the offsets every HUD element is positioned
+ * from. */
 /* @implements 0x10054730 glide BrHudLayoutInit_10054730
  * @cpp_kind method
  * @cpp_symbol ?Layout@Hud54730@@QAEHHPAHFFF@Z

@@ -1,3 +1,9 @@
+/* WHAT IT DOES: open this menu page: create its object the first time it is
+ * asked for, run its enter routine and make it the current page. One of a
+ * family of near-identical page openers -- each owns its own page slot, and
+ * the page object is created ONCE and reused for the rest of the run, and
+ * this one copies two values into the page's inputs before opening, so the
+ * page starts on the caller's selection. */
 /* @implements 0x1003E370 glide Ctl3E370
  * @cpp_kind method
  * @cpp_symbol ?Activate@Ctl3E370@@QAEHXZ

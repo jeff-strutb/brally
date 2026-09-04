@@ -1,3 +1,5 @@
+/* WHAT IT DOES: wrap the page's selection index back into range, at both
+ * ends, so moving past the last entry lands on the first. */
 /* @implements 0x10041940 glide BrUiPageSelect_100484F0
  * @cpp_kind method
  * @cpp_symbol ?Adv@Phase32F@@QAEHXZ

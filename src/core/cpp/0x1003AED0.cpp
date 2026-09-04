@@ -1,3 +1,5 @@
+/* WHAT IT DOES: start the credits rolling: sets the mode that plays them and
+ * closes the page that launched them. */
 /* @implements 0x1003AED0 glide BrUiCreditsAction_1003AED0
  * @cpp_kind method
  * @cpp_symbol ?BrUiCreditsAction_1003AED0@@YAHPAVGameObj@@@Z

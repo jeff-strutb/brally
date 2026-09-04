@@ -1,3 +1,5 @@
+/* WHAT IT DOES: the same table-driven caption hook as its siblings, with its
+ * own table and index. */
 /* @implements 0x10038DA0 glide BrUiText3F860
  * @cpp_kind method
  * @cpp_symbol ?BrUiText3F860@@YAHPAVGameObj@@@Z

@@ -1,3 +1,6 @@
+/* WHAT IT DOES: choose the screen resolution for the current situation,
+ * writing it into the four places that cache width and height and recording
+ * which video mode was picked. */
 /* @implements 0x1001CE20 glide BrAppStateSetMode
  * @cpp_kind method
  * @cpp_symbol ?BrAppStateSetMode@@YAHXZ

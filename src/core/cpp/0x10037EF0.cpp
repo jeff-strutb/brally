@@ -1,3 +1,5 @@
+/* WHAT IT DOES: set a menu item's label to a number taken from the currently
+ * selected row, then re-lay and refresh it. */
 /* @implements 0x10037EF0 glide BrItemSetNumByte_10037EF0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetNumByte_10037EF0@@YAHPAVObj37EF0@@@Z

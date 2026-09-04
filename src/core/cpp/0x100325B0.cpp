@@ -1,3 +1,6 @@
+/* WHAT IT DOES: leave the current game phase -- resets the driver state,
+ * clears the flags, runs whatever teardown callback is installed, and
+ * releases the input devices. Called on the way out of a race. */
 /* @implements 0x100325B0 glide BrExt_10038F30
  * @cpp_kind method
  * @cpp_symbol BrExt_10038F30

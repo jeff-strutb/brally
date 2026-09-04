@@ -1,3 +1,6 @@
+/* WHAT IT DOES: set this item's caption from the string table by the current
+ * index, then lay it out. One of several identical hooks that differ only in
+ * which table and index they read. */
 /* @implements 0x10038D30 glide BrUiText3F7F0
  * @cpp_kind method
  * @cpp_symbol ?BrUiText3F7F0@@YAHPAVGameObj@@@Z

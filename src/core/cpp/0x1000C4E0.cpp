@@ -1,3 +1,7 @@
+/* WHAT IT DOES: draw the ripple effect -- works out which of the eight
+ * compass octants the given direction falls in, then emits the ring of
+ * vertices and the display-list commands for the ripple at that orientation
+ * and strength. */
 /* @implements 0x1000C4E0 glide BrRippleApply_1000C4E0
  * @cpp_kind method
  * @cpp_symbol ?Apply@Rip0C4E0@@QAEHPBMH@Z

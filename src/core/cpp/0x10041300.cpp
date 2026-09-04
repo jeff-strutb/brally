@@ -1,3 +1,6 @@
+/* WHAT IT DOES: initialise one menu item -- its label, its flags, its kind
+ * and its rectangle. The common setup every page builder calls for each
+ * control it adds. */
 /* @implements 0x10041300 glide BrItemInit_10041300
  * @cpp_kind method
  * @cpp_symbol ?Init@Obj41300@@QAEXPADHDPAH@Z

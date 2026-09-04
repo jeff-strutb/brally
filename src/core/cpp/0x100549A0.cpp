@@ -1,3 +1,5 @@
+/* WHAT IT DOES: poll one save slot: refresh it, and return without doing
+ * anything more if the slot is empty. */
 /* @implements 0x100549A0 glide BrSlotPoll_100549A0
  * @cpp_kind method
  * @cpp_symbol ?Poll@Slots549A0@@QAEHH@Z

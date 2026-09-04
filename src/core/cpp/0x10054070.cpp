@@ -1,3 +1,6 @@
+/* WHAT IT DOES: accumulate real elapsed time and fire the periodic update
+ * once enough has passed, so the effect runs at a fixed rate independent of
+ * frame rate. */
 /* @implements 0x10054070 glide BrUiTick_10054070
  * @cpp_kind method
  * @cpp_symbol ?Tick@Ui54070@@QAEXHH@Z

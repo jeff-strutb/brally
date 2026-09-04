@@ -1,3 +1,5 @@
+/* WHAT IT DOES: the same sprite-font string drawing for the SECOND typeface,
+ * which has its own glyph table. */
 /* @implements 0x10054280 glide BrSprFontDrawB_10054280
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text54280@@QAEXXZ

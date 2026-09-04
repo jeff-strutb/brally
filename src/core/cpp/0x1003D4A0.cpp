@@ -1,3 +1,5 @@
+/* WHAT IT DOES: leave this page and return to a specific parent, setting the
+ * mode that tells the parent what happened. */
 /* @implements 0x1003D4A0 glide BrOpt3F50
  * @cpp_kind method
  * @cpp_symbol ?BrOpt3F50@@YAHPAVGameObj@@@Z

@@ -1,3 +1,6 @@
+/* WHAT IT DOES: set this item's caption and its highlight state together: a
+ * flagged entry gets a different string and a different colour, so an
+ * unavailable option reads as unavailable. */
 /* @implements 0x10038E10 glide BrUiText1003F8D0
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003F8D0@@YAHPAVObj38E10@@@Z

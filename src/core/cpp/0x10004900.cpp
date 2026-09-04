@@ -1,3 +1,7 @@
+/* WHAT IT DOES: build and send one network packet describing a game event --
+ * fills a stack packet buffer with a tag and its fields, then hands it to
+ * the sender. The packet object's destructor is what releases the buffer,
+ * including if the send throws. */
 /* @implements 0x10004900 glide BrNetSend4900
  * @cpp_kind method
  * @cpp_symbol ?BrNetSend4900@@YAHPAXHHHHPADE@Z

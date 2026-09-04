@@ -1,3 +1,6 @@
+/* WHAT IT DOES: bring DirectInput up on the first caller only, showing a
+ * message box and failing if it is unavailable. Later callers just raise the
+ * use count. */
 /* @implements 0x10071FC0 glide Ctl71FC0
  * @cpp_kind method
  * @cpp_symbol ?Activate@Ctl71FC0@@QAEHXZ

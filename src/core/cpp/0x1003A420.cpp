@@ -1,3 +1,6 @@
+/* WHAT IT DOES: format the selected lap time into this item's label -- the
+ * live time for one particular selection, a stored one otherwise, and dashes
+ * when unset. */
 /* @implements 0x1003A420 glide BrItemSetSelTime_1003A420
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetSelTime_1003A420@@YAHPAVObj3A420@@@Z

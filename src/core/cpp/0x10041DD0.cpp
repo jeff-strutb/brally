@@ -1,3 +1,6 @@
+/* WHAT IT DOES: run the phase to completion: on the first pass it saves the
+ * control configuration and restarts, and afterwards it steps normally. This
+ * is what makes the settings page persist a change before acting on it. */
 /* @implements 0x10041DD0 glide BrPhaseRun_100489A0
  * @cpp_kind method
  * @cpp_symbol ?Run@BrPhase41@@QAEHXZ

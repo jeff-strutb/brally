@@ -1,3 +1,5 @@
+/* WHAT IT DOES: rebuild the bounds tree from scratch -- releases the
+ * existing one and re-inserts every entry from the width/height pairs. */
 /* @implements 0x10058D40 glide Ctl58D40
  * @cpp_kind method
  * @cpp_symbol ?Rebuild@Ctl58D40@@QAEXXZ

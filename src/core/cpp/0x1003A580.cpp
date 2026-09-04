@@ -1,3 +1,5 @@
+/* WHAT IT DOES: format the current lap time into this item's label, showing
+ * dashes when no lap has been completed. */
 /* @implements 0x1003A580 glide BrItemSetLapTime_1003A580
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetLapTime_1003A580@@YAHPAVObj3A580@@@Z

@@ -1,3 +1,7 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen,
+ * loading the time-attack data file and clearing the selection first. */
 /* @implements 0x10053590 glide FUN_10053590
  * @cpp_kind free
  * @cpp_symbol ?FUN_10053590@@YAHPAVGameUi@@@Z

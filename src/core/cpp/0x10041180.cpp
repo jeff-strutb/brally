@@ -1,3 +1,7 @@
+/* WHAT IT DOES: advance an animated move by however much real time has
+ * passed since the last frame, and report when it has arrived. Time-based
+ * rather than per-frame, so the animation runs at the same speed regardless
+ * of frame rate. */
 /* @implements 0x10041180 glide BrUiTweenStep_10047D30
  * @cpp_kind method
  * @cpp_symbol ?Step@Tween41180@@QAEHXZ
