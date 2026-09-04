@@ -242,54 +242,6 @@ static uint16_t BrSwapHalf(uint16_t v)
 /* ================================================================== */
 
 /* 0x10035585 */
-/* WHAT IT DOES: sets how every animation in a set behaves -- play once, loop,
- * or run back and forth -- by turning the relevant switches on and off across
- * all of them at once. The three wrappers just below are the three settings a
- * caller actually asks for. */
-/* @implements 0x10035585 d3d BrAnimFlagsApply */
-void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
-{
-    int32_t i, n;
-    BrAnimTrack *pT;
-
-    clearBits = ~clearBits;          /* the original's `not eax`, 32-bit,
-                                      * in the arg slot */
-
-    /* Nested if (single je-to-epilogue), compound |=/&= (word ops end to
-     * end: `or ax, word [ebp+0xc]` / `and ax, word [ebp+0x10]` -- the
-     * value-cast spellings widen through eax with masks). */
-    if (pSet->pList != NULL) {
-        n = pSet->pList->n;
-        for (i = 0; i < n; i++) {
-            pT = pSet->pList->a[i];
-            pT->flags |= orBits;
-            pT->flags &= (uint16_t)clearBits;
-        }
-    }
-}
-
-/* The three playback modes a caller actually asks for. Each is one call to
- * BrAnimFlagsApply above with a fixed (set, clear) pair over bits 0 and 1:
- * bit 0 = repeat, bit 1 = reverse on the way back. */
-
-/* WHAT IT DOES: play every animation in the set through ONCE and stop at the
- * end. Clears both the repeat and the bounce-back bits. */
-/* @implements 0x1002ECAC glide BrAnimSetOnce */
-/* @n64 0x8021D7E0 exact */
-void BrAnimSetOnce(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 0, 3); }
-
-/* WHAT IT DOES: play every animation in the set on repeat, restarting from the
- * beginning each time round. Sets repeat, clears bounce-back. */
-/* @implements 0x1002ECC1 glide BrAnimSetLoop */
-/* @n64 0x8021D804 exact */
-void BrAnimSetLoop(BrAnimSet *pSet)     { BrAnimFlagsApply(pSet, 1, 2); }
-
-/* WHAT IT DOES: play every animation in the set back and forth for ever --
- * forwards to the end, then backwards to the start. Sets both bits. */
-/* @implements 0x1002ECD6 glide BrAnimSetPingPong */
-/* @n64 0x8021D828 exact */
-void BrAnimSetPingPong(BrAnimSet *pSet) { BrAnimFlagsApply(pSet, 3, 0); }
-
 /* 0x1007C8A0 __ftol -- truncate toward zero, low dword before any clamp.
  *
  * DEVIATION: C's (int) cast is undefined for values outside int range and
@@ -1026,10 +978,6 @@ void BrPairSlotReset(BrPairSlot *p, uint32_t v)
 /* @d3donly 0x10035059 BrRet0_10035059 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 int BrRet0_10035059(void) { return 0; }
 /* 0x1003557B */
-/* WHAT IT DOES: always answers "yes"; the accepting counterpart of the
- * above. What it is installed as was not established. */
-/* @implements 0x1003557B d3d BrRet1_1003557B */
-int BrRet1_1003557B(void) { return 1; }
 /* 0x10035B87 */
 /* WHAT IT DOES: a second, separate routine that also always answers "yes".
  * Two identical bodies at different addresses, so callers of one are not
