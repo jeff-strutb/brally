@@ -11,6 +11,31 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼ TWENTY-FIFTH PASS (2026-09-03) -- WALL 4 IS NOW CLOSED AS A SPELLING
+ * PROBLEM.  Measured entry state: 30 raw regions, 2,324 vs 2,328 insns,
+ * 9,340 vs 9,354 bytes.  The one byte-offset shape the dossier had NOT
+ * tried was a LOOP-CARRIED INDUCTION VARIABLE -- every earlier probe (passes
+ * 11, 21, 22) spelled the offset as an EXPRESSION, which VC5 re-folds.  The
+ * IV form is the construct that WORKED in the drain loops (item 7), so it
+ * was the last plausible lever:
+ *     int rb;  ...  iWheel = 0; rb = iCar << 4;
+ *     ... all sixteen flat-array uses as
+ *         *(int *)((char *)DAT_1035faf0 + rb) / (... DAT_1035f750 + rb)
+ *     ... iWheel = iWheel + 1; rb = rb + 4;
+ *   with `ring` KEPT for the sixteen `ring * 500` record terms, i.e. exactly
+ *   the two-live-values shape the original has (ecx = ring, edx = ring*4).
+ *   DEAD, and worse than any previous wall-4 probe: 30 -> 65 regions, insns
+ *   -4 -> +11, and a LOST-SYNC GAP of 782 orig bytes (8.4%) that was never
+ *   compared at all.  Bytes read -14 -> -3 -- ‼ another instance of the pass-
+ *   24 trap, a byte total improving on a change that doubles the real gap.
+ *   ‼ THE VERDICT THIS BUYS: wall 4 is NOT reachable by respelling the
+ *   offset.  Expression forms fold; an IV form makes VC5 rebuild the loop's
+ *   whole induction structure (the same failure as passes 21 and 22, now
+ *   four probes deep in three different shapes).  Whatever puts `lea
+ *   edx,[ecx*4]` in the original is not the spelling of the index -- do not
+ *   open item 4 again without a lever from OUTSIDE the addressing, and read
+ *   the pass-24 note first: the pDst spill downstream of it is closed too.
+ *
  * ‼‼ TWENTY-FOURTH PASS (2026-09-03) -- THE TWENTY-THIRD PASS IS RETRACTED.
  * ITS if/else IS NOT THE ORIGINAL'S SOURCE, AND IT SCORED BETTER ANYWAY.
  * That is the whole lesson, and it is the exact trap rule 2 exists to stop.
