@@ -7,12 +7,29 @@
  * #define, nothing trimmed -- still came out 17 diff bytes, 544 against 529.
  * Reverted; it matches here. This is the surrounding-TU effect, and it is the
  * only case in the refiling job where carrying the whole preamble was not
- * enough: what is missing is the rest of the file's declarations, not its
- * includes. See the "surrounding TU decides commutative operand order" entry
- * in docs/VC5-IDIOMS.md. It is filed `drawing` in config/filing.csv and the
- * audit counts it stranded; that is a known, recorded cost, not an oversight.
- * Do NOT append it to drawing/br_fade.c -- that file was filed out of
- * slice2_15.c and carries a different batch's preamble. */
+ * enough.
+ *
+ * ‼ AND IT IS NOT A MISSING DECLARATION -- an earlier version of this note
+ * said so and was wrong. divergence.py: 143 insns against 143, 529 bytes
+ * against 529, no NEVER COMPARED gap, and exactly TWO regions, both the same
+ * phenomenon -- the ORDER OF A PAIR OF FIELD LOADS from one struct (at +0x137
+ * the original loads +0xC then +4; at +0x17c, +4 then +0). A missing
+ * declaration would change what the code does; this changes only which load
+ * of a pair goes first, and it is the field-load-order canonicalisation this
+ * function's own header already documents.
+ *
+ * THE LEVER IS `/Op`, and the TU is what makes it bite. Same source text:
+ *      slice2_16.c TU   /O2 = 2 diff, /O2p = 0 -- EXACT
+ *      fresh TU         /O2 = 17,     /O2p = 17
+ * So the surrounding-TU effect here is narrow and specific: it is what lets
+ * /Op collapse both pairs to the original's order. The include set is
+ * provably NOT the lever -- carrying it verbatim moved 15 -> 17, away from
+ * zero, not toward it. Appending to drawing/br_fade.c (which already carries
+ * this file's preamble) gives 15. Do not retry either.
+ *
+ * See the "surrounding TU decides commutative operand order" entry in
+ * docs/VC5-IDIOMS.md. It is filed `drawing` in config/filing.csv and the
+ * audit counts it stranded; that is a known, recorded cost, not an oversight. */
 
 #ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
