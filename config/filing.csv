@@ -32,6 +32,10 @@ glide_va,name,module,basis,file
 0x10002DC0,BrCdEnableApply,audio,description,src/core/slice1_01.c
 0x10002E20,BrCdMciPause,audio,description,src/core/slice1_01.c
 0x10002E80,BrCdTrackResume,audio,description,src/core/slice1_01.c
+0x10002EB0,BrCdPause,,,src/core/slice1_01.c
+0x10002ED0,BrCdPauseMsg,,,src/core/slice1_01.c
+0x10002F10,BrCdResume,,,src/core/slice1_01.c
+0x10002F30,BrCdResumeMsg,,,src/core/slice1_01.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/slice1_01.c
 0x10003280,BrU16QueuePop,gamedata,description,src/core/slice2_11.c
 0x100032D0,BrChkFileSize,gamedata,description,src/core/slice6_78.c
@@ -660,6 +664,8 @@ glide_va,name,module,basis,file
 0x1005A780,BrNodeRunMarkPass,drawing,neighbour-1,src/core/slice3_40.c
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/slice3_40.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/slice3_40.c
+0x1005D050,BrCtlHuman,,,src/core/slice3_40.c
+0x1005E690,BrCtlAi,,,src/core/slice3_40.c
 0x1005E6A0,BrCarInitTables,racing,description,src/core/slice3_40.c
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/slice3_40.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/slice3_41.c
