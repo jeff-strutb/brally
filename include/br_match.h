@@ -12,9 +12,18 @@
  *
  * It does NOT generalise. With two or more arguments, __fastcall claims edx
  * for the second one, whereas thiscall leaves it on the stack. Those still
- * need a per-call-site trick (a struct-typed second parameter is never
+ * need a per-call-site trick (a struct-typed parameter is never
  * register-eligible, so it is forced back onto the stack -- see
  * BrSub10060260 in src/core/slice4_52.c) or .cpp compilation.
+ *
+ * ‼ CORRECTED 2026-09-03: this used to say "a struct-typed SECOND parameter",
+ * and that is only enough when there are exactly two arguments. __fastcall
+ * SKIPS a struct when it hands out ecx and edx -- it does not stop there --
+ * so with three arguments a wrapper on the second one just lets the THIRD
+ * take edx, and the function cleans 4 bytes where thiscall cleans 8. Wrap
+ * EVERY argument after `this`. Found on 0x10069BC0 BrFn10069BC0, where the
+ * one-wrapper form was byte-exact in shape but 16 bytes short because the
+ * per-arm stack reloads of the third argument had turned into a register.
  *
  * BR_THISCALL therefore stays a no-op marker for the general multi-argument
  * case. Do not redefine it to __fastcall; that would silently mis-pass the
