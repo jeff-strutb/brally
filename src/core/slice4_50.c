@@ -168,13 +168,27 @@ int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
 #ifdef BR_MATCHING_BUILD
     /* pi/360 as a double so the half-angle multiply is `fmul qword`. fptan,
      * two fchs, eight-arg call (scale is pushed and unused by Frustum).
-     * Return is the perspNorm pointer, not Frustum's status. */
-    float ty, h, w;
+     * Return is the perspNorm pointer, not Frustum's status.
+     *
+     * `nh` is a NAMED local (2026-09-04): with `-h` inline in the call the
+     * function is 8 B and four `fxch` short -- VC5 pops fptan's 1.0 before
+     * the multiply and homes h in fovy's dead slot, where the original
+     * multiplies first, pops after, and homes h in n's slot.  Naming -h
+     * gives size- and instruction-exact output; naming -w as well is
+     * inert, naming -w alone is worse (15).
+     * RESIDUE, 9 diff bytes, register-blind 0+0, ONE region at +0x3b: the
+     * original stores w to its slot and loads its bits into ecx BEFORE
+     * `push eax` (h); ours pushes h first.  Dead: every order of the
+     * nh/nw statements and of the declarations, `aspect * h`, `w` spelled
+     * inline in the call, `h` spelled inline (worse, 21), a `double` ty,
+     * `n`/`f`/`scale` copied into locals, `n * tan(...)` with no ty. */
+    float ty, h, w, nh;
     ty = (float)tan((double)fovyDegrees * 0.0087266462599716477);
     h = n * ty;
     w = h * aspect;
+    nh = -h;
     ((int (*)(BrMat4 *, float, float, float, float, float, float, float))BrMat4Frustum)
-        (pM, -w, w, -h, h, n, f, scale);
+        (pM, -w, w, nh, h, n, f, scale);
     *pPerspNorm = 1;
     return (int)pPerspNorm;
 #else
