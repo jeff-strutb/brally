@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401EC0
  * ComboGetCurText: CB_GETCURSEL then CB_GETLBTEXT on item 0x3e9. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: read the text of whatever is currently selected in a drop-
+ * down. */
 /* @implements 0x00401EC0 setvideo.exe ComboGetCurText */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

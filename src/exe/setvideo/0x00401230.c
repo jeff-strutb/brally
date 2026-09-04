@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401230
  * CHK_FWriteOpen(path, mode). Same 8-byte wrapper as FReadOpen. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: open a file for writing and abort with a message if it
+ * cannot be created. */
 /* @implements 0x00401230 setvideo.exe CHK_FWriteOpen */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

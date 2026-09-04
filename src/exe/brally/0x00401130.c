@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401130
  * SetSubstituteDir: alloc 8-byte section cursor, strcmp-scan for name. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: point a section cursor at a named section of the loaded
+ * settings file, by scanning the section names for a match. */
 /* @implements 0x00401130 brally.exe SetSubstituteDir */
 
 #define _CRTIMP __declspec(dllimport)

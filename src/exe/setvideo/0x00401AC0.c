@@ -1,6 +1,7 @@
 /* Auto-generated from disassembly — 0x00401AC0
  * IncludeStackEmpty: sete al after xor eax,eax. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: report whether the include stack has anything on it. */
 /* @implements 0x00401AC0 setvideo.exe IncludeStackEmpty */
 /* @n64 0x80268530 located */
 

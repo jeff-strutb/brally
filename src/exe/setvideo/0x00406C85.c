@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00406C85
  * User _matherr stub (pushed to __setusermatherr). 3 bytes: xor eax,eax; ret. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: the maths error hook the CRT calls; it does nothing and
+ * reports the error unhandled. */
 /* @implements 0x00406C85 setvideo.exe _matherr */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

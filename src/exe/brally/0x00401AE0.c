@@ -4,6 +4,8 @@
  * do-while merges loop-exit `return 0` with the BindSection-fail xor
  * epilogue and emits `je fail; jmp loop` instead of orig `jne loop`. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: read one named value out of a section of the settings file,
+ * returning nothing if either the section or the key is absent. */
 /* @implements 0x00401AE0 brally.exe GetIniValue */
 
 #define _CRTIMP __declspec(dllimport)

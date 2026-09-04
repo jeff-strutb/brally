@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00405940
  * _setdefaultprecision: E8 to the local _controlfp IAT thunk (not FF 15). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: set the floating-point precision the program expects at
+ * start-up. */
 /* @implements 0x00405940 setvideo.exe _setdefaultprecision */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

@@ -1,6 +1,7 @@
 /* Auto-generated from disassembly — 0x00403140
  * CRT startup calls this (empty user init). 1 byte: ret. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: the user start-up hook the CRT calls; deliberately empty. */
 /* @implements 0x00403140 setvideo.exe CRT_empty */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

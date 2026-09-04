@@ -2,6 +2,8 @@
  * FreeObjList: free each rgsz[i], then rgsz, then rgi. n==0 returns
  * without freeing the arrays. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: free a parsed object list -- each string first, then the two
+ * arrays. An empty list frees nothing, not even the arrays. */
 /* @implements 0x00401000 setvideo.exe FreeObjList */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

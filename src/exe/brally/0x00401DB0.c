@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401DB0
  * _setdefaultprecision: E8 to the local _controlfp IAT thunk (not FF 15). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: set the floating-point precision the game expects at start-
+ * up. */
 /* @implements 0x00401DB0 brally.exe _setdefaultprecision */
 
 #define _CRTIMP __declspec(dllimport)

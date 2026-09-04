@@ -1,5 +1,6 @@
 /* 0x00401820 OnMediaPlay: IMediaControl::Run, state=3 */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: start or resume playback. */
 /* @implements 0x00401820 bossrally.exe OnMediaPlay */
 
 #include <windows.h>

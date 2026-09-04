@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004016A0
  * NextObj: advance INI cursor; stop on EOF or a '[' section header. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: step a settings-file cursor to the next entry, stopping at
+ * end of file or at the '[' that begins the next section. */
 /* @implements 0x004016A0 setvideo.exe NextObj */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

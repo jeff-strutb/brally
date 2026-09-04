@@ -2,6 +2,7 @@
  * IDOK: merged EndDialog after if (idx >= 0) keeps ok live so EndDialog
  * IAT is ebp and prologue keeps 4 callee-saved. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: handle the dialog built around the second drop-down. */
 /* @implements 0x00402260 setvideo.exe DlgProcComboB */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

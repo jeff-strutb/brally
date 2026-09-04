@@ -2,6 +2,9 @@
  * CHK_FReadOpen. 8-byte {FILE*, name} wrapper. Error path writes
  * c:\RallyError.txt then OutputDebugStringA + exit(1). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: open a file for reading and abort with a message if it is
+ * not there. The settings tool reads its lists this way so a missing file is
+ * loud, not silent. */
 /* @implements 0x00401050 setvideo.exe CHK_FReadOpen */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

@@ -1,5 +1,7 @@
 /* 0x00401430 IsPlayingOrPaused: state is Playing(3) or Paused(2) */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: report whether the video is currently playing or paused, as
+ * opposed to stopped. */
 /* @implements 0x00401430 bossrally.exe IsPlayingOrPaused */
 
 #include <windows.h>

@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004011D0
  * GetObj: current rgsz of a section cursor. Two-level deref. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: return the string list the section cursor is currently
+ * pointing at. */
 /* @implements 0x004011D0 brally.exe GetObj */
 
 #define _CRTIMP __declspec(dllimport)

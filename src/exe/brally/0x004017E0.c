@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004017E0
  * UnloadRallyMain: FreeLibrary + clear HMODULE; return 1 if already null. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: unload the renderer DLL and forget the handle. Reports
+ * success if there was nothing loaded. */
 /* @implements 0x004017E0 brally.exe UnloadRallyMain */
 
 #define _CRTIMP __declspec(dllimport)

@@ -3,6 +3,7 @@
  * by merging EndDialog after if (idx >= 0) { ok=1; index=idx; } else
  * index=saved — two EndDialog sites fold ok to push-imm and drop ebp. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: handle the dialog built around the first drop-down. */
 /* @implements 0x00402160 setvideo.exe DlgProcComboA */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

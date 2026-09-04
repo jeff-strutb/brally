@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004016B0
  * GetCommentChar. Default global is '#' (0x23 at 0x40308c). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: return the character that currently starts a comment.
+ * Defaults to '#'. */
 /* @implements 0x004016B0 brally.exe GetCommentChar */
 
 #define _CRTIMP __declspec(dllimport)

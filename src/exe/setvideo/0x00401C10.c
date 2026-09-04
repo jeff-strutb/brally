@@ -3,6 +3,7 @@
  * through to `return 0` — an explicit `return 0` there outlines it
  * with `je` + a 5-byte xor-ret (53 diffs). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: handle a simple OK/Cancel dialog's messages. */
 /* @implements 0x00401C10 setvideo.exe DlgProcOKCancel */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

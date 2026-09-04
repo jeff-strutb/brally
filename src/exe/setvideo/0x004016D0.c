@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004016D0
  * ReadINI: alloc 8-byte cursor, temporarily set comment char to ';'. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: open and parse a settings file into a cursor the other
+ * readers walk. Comments are ';' for the duration of this read. */
 /* @implements 0x004016D0 setvideo.exe ReadINI */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

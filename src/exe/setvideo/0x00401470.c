@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401470
  * CHK_AllocateMemory. size==0 returns without allocating (eax still 0). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: allocate memory, treating a zero-byte request as 'nothing to
+ * do' and returning null rather than calling the allocator. */
 /* @implements 0x00401470 setvideo.exe CHK_AllocateMemory */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

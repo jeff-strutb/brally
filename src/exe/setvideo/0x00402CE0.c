@@ -1,6 +1,8 @@
 /* GetSectionNameByIndex: FindFirst, FindNext idx times, GetObj, free.
  * Called as f(index, pini) — pini is the second arg. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: return the name of the section at a given position, which is
+ * how a drop-down selection maps back to a section. */
 /* @implements 0x00402CE0 setvideo.exe GetSectionNameByIndex */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

@@ -1,5 +1,6 @@
 /* 0x00401700 SetPlayerTitle: "Player" + " - " + file */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: set the player window's title bar text. */
 /* @implements 0x00401700 bossrally.exe SetPlayerTitle */
 /* @n64 0x80267470 located */
 

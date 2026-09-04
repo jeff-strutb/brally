@@ -1,5 +1,7 @@
 /* 0x004014B0 CreateGraph: CoCreate FilterGraph, GetEventHandle. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: build the DirectShow filter graph that will decode and
+ * display the video. */
 /* @implements 0x004014B0 bossrally.exe CreateGraph */
 
 #include <windows.h>

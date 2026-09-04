@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401370
  * CHK_FClose. fclose; on EOF debug+exit; then free name and wrapper. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: close a checked file and free the handle record and its copy
+ * of the name. */
 /* @implements 0x00401370 setvideo.exe CHK_FClose */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

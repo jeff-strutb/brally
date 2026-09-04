@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401DF0
  * IAT thunk: jmp [_except_handler3]. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: jump to the CRT's exception handler through the import
+ * table. A linker-generated thunk, not launcher code. */
 /* @implements 0x00401DF0 brally.exe thunk_except_handler3 */
 
 #define _CRTIMP __declspec(dllimport)

@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x004012C0
  * ReadList: two-pass (count, then fill rgsz/rgi). Opens "rt". */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: read a list file into memory in two passes: count the lines,
+ * then allocate and fill. Opened as text, so line endings are translated. */
 /* @implements 0x004012C0 brally.exe ReadList */
 
 #define _CRTIMP __declspec(dllimport)

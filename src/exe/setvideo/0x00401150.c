@@ -4,6 +4,8 @@
  * in place (no separate cursor) so the empty-input path reloads buf and the
  * count `n` stays in ebp (frameless). getc() inlines _cnt/_ptr/_filbuf. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: read one line into the caller's buffer, stripping the
+ * newline, and report whether a line was read at all. */
 /* @implements 0x00401150 setvideo.exe CHK_FGets */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

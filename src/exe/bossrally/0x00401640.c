@@ -1,5 +1,7 @@
 /* 0x00401640 DeleteContents: Release graph, clear event/state. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: tear the current clip down and release everything it was
+ * holding. */
 /* @implements 0x00401640 bossrally.exe DeleteContents */
 
 #include <windows.h>

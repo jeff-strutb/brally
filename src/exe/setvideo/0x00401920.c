@@ -2,6 +2,9 @@
  * ReadListLine: fgets with #include nesting and comment-char skip.
  * Returns the (possibly replaced) FILE*, or 0 on EOF of the include stack. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: read the next line of a list file, following #include
+ * directives into nested files and skipping comment lines. Returns the file
+ * it ended up reading from, or nothing once every include has run out. */
 /* @implements 0x00401920 setvideo.exe ReadListLine */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401AF0
  * PopInclude: return gIncludeStack[--gIncludeDepth]. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: pop the previous file off the include stack when an included
+ * file ends. */
 /* @implements 0x00401AF0 setvideo.exe PopInclude */
 /* @n64 0x80211934 located */
 

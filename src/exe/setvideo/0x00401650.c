@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401650
  * GetObj: current rgsz of a section cursor. Two-level deref. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: return the string list the section cursor is currently
+ * pointing at. */
 /* @implements 0x00401650 setvideo.exe GetObj */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

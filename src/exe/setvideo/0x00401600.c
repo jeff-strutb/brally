@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401600
  * CHK_FreeMemory: free wrapper, cdecl add esp,4. */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: free a block obtained from this program's allocator, so
+ * allocation and release stay paired. */
 /* @implements 0x00401600 setvideo.exe CHK_FreeMemory */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */

@@ -1,6 +1,8 @@
 /* Auto-generated from disassembly — 0x00401B10
  * GetCommentChar. Default global is '#' (0x23 at 0x40308c). */
 #ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: return the character that currently starts a comment.
+ * Defaults to '#'. */
 /* @implements 0x00401B10 setvideo.exe GetCommentChar */
 
 /* SetVideo.exe is /ML (static CRT): CRT calls are E8, not FF 15. */
