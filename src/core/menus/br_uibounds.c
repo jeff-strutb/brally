@@ -43,6 +43,15 @@
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
 
+/* XSLICE 0x1007A940 (Glide 0x10058E20 -- byte-identical, shared.csv `body`)
+ *
+ * Carried verbatim from slice5_63.c, where this declaration lives in a local
+ * cross-slice block rather than in any header. Without it the port arm below
+ * calls it implicitly (C4013) and leaves an undefined external -- a link
+ * failure match_sweep.py cannot see, because it only compiles the matching
+ * configuration. Found by tools/portcheck.py. */
+extern int BrSub1007A940(void);
+
 /* 0x10058F90 (Glide) / 0x1007AC00 (D3D)
  *
  * BUILD DIVERGENCE -- A WHOLE GUARD, and the port had the D3D one.

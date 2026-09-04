@@ -37,6 +37,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Carried verbatim from slice2_25.c, which keeps its own -- it is `static
+ * __inline` there, so the definition could not travel, and without it the
+ * calls below are implicit (C4013) and leave an undefined external: a link
+ * failure match_sweep.py cannot see, because it only compiles the matching
+ * configuration. Found by tools/portcheck.py. It holds no state of its own,
+ * so two copies cannot drift, the same reason BrFtol is duplicated in
+ * slice1_02.c and slice2_12.c.
+ *
+ * The original INLINES this in every announcing cycler: the 3-arg send,
+ * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
+static __inline void BrOptFlushMessage(void)
+{
+    BrSub1003D210(g_brP680584, g_brPA9D008, 1);
+    strcpy(g_aBrA9DD28, g_aBr39B720);        /* DEVIATION: rep movsb */
+}
+
 #ifdef BR_MATCHING_BUILD
 /* KERNEL32 IAT used verbatim by BrOpt3A00 (0x1003CF50) / BrOpt3810. */
 __declspec(dllimport) void *__stdcall GlobalHandle(void *);
