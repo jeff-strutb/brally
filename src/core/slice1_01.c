@@ -546,49 +546,89 @@ int BrCdTrackResume(void)
   return 1;
 }
 
-/* Message-based CD transport, used when the EAR software path is NOT the one
- * in charge: 0x104B162C is the transport entry point and the second argument
- * is the command (4 = pause, 0xC = resume).  Both wrappers normalise the
- * result to 0/1 with the original's `neg/sbb/neg`, which is what `!= 0`
- * compiles to. */
+/* ‼ MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
+ * lists 0x10002EB0 and 0x10002F10 as 86 bytes each.  They are not: each is a
+ * 14-byte DISPATCHER followed by 16-byte alignment padding and then a
+ * SEPARATE function that only the dispatcher reaches, by tail jump.
+ *
+ *     10002EB0  cmp dword ptr [g_brCdEnabled],1
+ *     10002EB7  jne  10002EBE
+ *     10002EB9  jmp  10002E20        <- tail call, a MAPPED function
+ *     10002EBE  jmp  10002ED0        <- tail call, NOT in the map
+ *     10002EC3  13 x nop             <- aligning 10002ED0 to 16
+ *     10002ED0  the message-transport body, 54 bytes, ending in its own ret
+ *
+ * 0x10002ED0 and 0x10002F30 are both 16-byte aligned, which is a function
+ * ENTRY, and the map had no row for either -- it merged each into the
+ * dispatcher above it because nothing CALLS them, only jumps.  Two C
+ * functions cannot be one symbol, so no spelling of a single 86-byte
+ * function could ever have matched.  FIXED 2026-09-03: config/functions_glide.csv
+ * now carries 0x10002EB0/32, 0x10002ED0/54, 0x10002F10/32, 0x10002F30/54 and
+ * build/match/orig/ was re-extracted for the four.  All four are byte-exact.
+ * The dispatcher's 32 bytes INCLUDE the 13 alignment nops, which MSVC emits
+ * inside the first function, not the second.
+ *
+ * ‼ THE TELL, and it generalises.  Written inline instead -- one function
+ * containing both arms -- VC5 hoists the `g_brCdEnabled` load into a
+ * register and turns the original's `cmp dword ptr [g],1` into
+ * `mov eax,[g] / cmp eax,1`, then re-uses eax for the second test where the
+ * original re-reads the global.  That CSE was a SYMPTOM of the wrong
+ * function boundary, not a defect of its own: two functions cannot share a
+ * register, so **a global that the original re-reads across what looks like
+ * a plain branch is evidence that the branch is a FUNCTION boundary.**
+ * Together with an unconditional `jmp` followed by nops up to a 16-byte
+ * address, that is the signature of a merged map row.
+ *
+ * 0x104B162C is the message-transport entry point and the second argument is
+ * the command (4 = pause, 0xC = resume).  Both bodies normalise the result to
+ * 0/1 with the original's `neg/sbb/neg`, which is what `!= 0` compiles to. */
 extern int g_br0940A8;                              /* 0x1007B078 */
 extern int (__stdcall *DAT_104b162c)(int, int);     /* 0x104B162C */
 
-/* WHAT IT DOES: stop the music where it is, so it can be picked up again from
- * the same place.  If the game is playing its own music files it hands the job
- * to that path; otherwise it tells the CD to pause, and reports whether the
- * drive accepted.  With nothing playing there is nothing to do and it reports
- * success. */
-/* @implements 0x10002EB0 glide BrCdPause */
-
-int BrCdPause(void)
-
+/* WHAT IT DOES: tell the CD drive to hold the music where it is, and report
+ * whether it agreed.  With the disc missing or nothing playing there is
+ * nothing to do and it reports success. */
+/* @implements 0x10002ED0 glide BrCdPauseMsg */
+static int BrCdPauseMsg(void)
 {
-  if (g_brCdEnabled == 1) {
-    BrCdMciPause();
-    return;
-  }
   if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
     return (*DAT_104b162c)(g_br0940A8,4) != 0;
   }
   return 1;
 }
 
-/* WHAT IT DOES: start the music again from wherever it was paused.  The twin
- * of BrCdPause above, differing only in the command it sends. */
-/* @implements 0x10002F10 glide BrCdResume */
-
-int BrCdResume(void)
-
+/* WHAT IT DOES: stop the music where it is, so it can be picked up again from
+ * the same place.  If the game is playing its own music files it hands the job
+ * to that path; otherwise it goes out to the CD drive. */
+/* @implements 0x10002EB0 glide BrCdPause */
+int BrCdPause(void)
 {
   if (g_brCdEnabled == 1) {
-    BrCdTrackResume();
-    return;
+    return BrCdMciPause();
   }
+  return BrCdPauseMsg();
+}
+
+/* WHAT IT DOES: tell the CD drive to start playing again from where it was
+ * paused, and report whether it agreed.  The twin of BrCdPauseMsg above,
+ * differing only in the command it sends. */
+/* @implements 0x10002F30 glide BrCdResumeMsg */
+static int BrCdResumeMsg(void)
+{
   if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
     return (*DAT_104b162c)(g_br0940A8,0xc) != 0;
   }
   return 1;
+}
+
+/* WHAT IT DOES: start the music again from wherever it was paused. */
+/* @implements 0x10002F10 glide BrCdResume */
+int BrCdResume(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdTrackResume();
+  }
+  return BrCdResumeMsg();
 }
 
 /* WHAT IT DOES: play the next CD track, clamping to the last track. */
