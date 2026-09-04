@@ -154,4 +154,22 @@ int BrSndBufFreeAll(int param_1)
   return 0;
 }
 
+extern int32_t  BrSndPlayGroup(int32_t group, uint32_t packed, int32_t loop);
+
+/* ==========================================================================
+ * 2. Sound
+ * ========================================================================== */
+
+/* 0x10072AF0 */
+/* WHAT IT DOES: plays a sound effect from one of the game's sound banks, in
+ * the simple case where the caller does not care about the result. A second
+ * name for a routine whose body lives in the sound module. */
+/* @implements 0x10072AF0 d3d BrSub10072AF0 */
+void BrSub10072AF0(int a, int b)
+{
+    /* BrSndPlayGroup(a, b, 0) == BrSndPlayEx(a, 1, b, 0). The two callers
+     * discard the result. */
+    (void)BrSndPlayGroup((int32_t)a, (uint32_t)b, 0);
+}
+
 #endif /* BR_MATCHING_BUILD */
