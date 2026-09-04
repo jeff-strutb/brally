@@ -6,10 +6,10 @@
  * non-Windows toolchain; nothing here is @implements-tagged and the match
  * tooling never sees it.
  *
- * Only the portable 29 of SetVideo's 42 functions are built against it. The
- * ten dialog/registry functions are not ported (there is no Win32 message
- * loop here and the .rsrc dialog templates were never extracted from the
- * original binary), so USER32/ADVAPI32 are declared, never defined.
+ * Thirty-eight of SetVideo's 42 functions build against it, WinMain and all
+ * five dialog procedures included. The user32 calls they make are declared
+ * here and implemented on AppKit in win32_dialog.m; the registry lookup and
+ * three CRT hooks are the only functions the port replaces outright.
  */
 #ifndef BR_PORT_WINDOWS_H
 #define BR_PORT_WINDOWS_H
@@ -37,6 +37,31 @@
  * same truth value the original tests. */
 #define _flag _flags & 0x20 ? 0x10 : 0
 
+/* MSVC opens the device database in text mode ("rt") and its CRT collapses
+ * each CRLF to a bare LF on the way through fgets. There is no text mode on
+ * BSD, and the retail BossRally.vdb is a DOS file, so without this every
+ * value keeps a trailing '\r' and — worse — every blank line arrives as the
+ * one-character string "\r" instead of "\n". ReadList only drops lines of
+ * one character, so those blanks become entries, and GetIniValue then finds
+ * a line with no '=' and exits: "Unable to parse  in section [...]".
+ *
+ * CHK_FGets needs no equivalent: it reads with getc and already folds CR and
+ * CRLF to LF itself. */
+static inline char *br_port_fgets(char *s, int n, FILE *f)
+{
+    size_t len;
+
+    if ((fgets)(s, n, f) == 0)
+        return 0;
+    len = strlen(s);
+    if (len >= 2 && s[len - 2] == '\r' && s[len - 1] == '\n') {
+        s[len - 2] = '\n';
+        s[len - 1] = 0;
+    }
+    return s;
+}
+#define fgets br_port_fgets
+
 /* --- ILP32 -> LP64 allocation sizes ------------------------------------- */
 
 /* The matched code sizes its own allocations for a 32-bit target and gets
@@ -58,7 +83,11 @@ static inline void *br_port_malloc(unsigned long n) { return (malloc)(2 * n); }
 
 /* --- Win32 types -------------------------------------------------------- */
 
+/* Objective-C already has a BOOL and it is not an int; the shim's own API
+ * below uses plain int so the C and ObjC halves agree on return width. */
+#ifndef __OBJC__
 typedef int                 BOOL;
+#endif
 typedef unsigned char       BYTE;
 typedef unsigned short      WORD;
 typedef unsigned int        DWORD;
@@ -76,10 +105,46 @@ typedef void               *HKEY;
 #define __stdcall
 #define MAKEINTRESOURCE(i) ((LPSTR)(unsigned long)(WORD)(i))
 
-/* --- The one Win32 call the portable functions actually make ------------ */
+/* --- Messages, ids and control messages the dialog procedures use ------- */
+
+#define WM_INITDIALOG   0x0110
+#define WM_COMMAND      0x0111
+
+#define IDOK            1
+#define IDCANCEL        2
+
+#define CB_ADDSTRING    0x0143
+#define CB_GETCURSEL    0x0147
+#define CB_SETCURSEL    0x014E
+#define CB_GETITEMDATA  0x0150
+#define CB_SETITEMDATA  0x0151
+
+#define DWL_USER        8       /* SetWindowLongA(hWnd, 8, lParam) */
+
+typedef int (*DLGPROC)(HWND, UINT, WPARAM, LPARAM);
+
+/* --- The Win32 surface, reimplemented on AppKit in win32_dialog.m ------- */
 
 /* Every CHK_* helper traces through OutputDebugStringA when gChkVerbose is
  * set. Routed to stderr. */
 void OutputDebugStringA(const char *s);
+
+/* This is the whole of Win32 that SetVideo.exe needs. The eleven calls below
+ * are implemented against AppKit so the original dialog procedures and
+ * WinMain run unmodified; nothing else from user32 is referenced anywhere in
+ * the binary's game code. */
+LPARAM SetWindowLongA(HWND hWnd, int index, LPARAM value);
+LPARAM GetWindowLongA(HWND hWnd, int index);
+LPARAM SendDlgItemMessageA(HWND hWnd, int id, UINT msg,
+                           WPARAM wParam, LPARAM lParam);
+HWND   GetDlgItem(HWND hWnd, int id);
+int    EndDialog(HWND hWnd, int result);
+int    CheckDlgButton(HWND hWnd, int id, UINT check);
+UINT   IsDlgButtonChecked(HWND hWnd, int id);
+int    CheckRadioButton(HWND hWnd, int first, int last, int check);
+int    DialogBoxParamA(HINSTANCE hInst, LPSTR templ, HWND parent,
+                       DLGPROC proc, LPARAM lParam);
+HWND   GetDesktopWindow(void);
+int    MessageBoxA(HWND hWnd, LPCSTR text, LPCSTR caption, UINT type);
 
 #endif /* BR_PORT_WINDOWS_H */
