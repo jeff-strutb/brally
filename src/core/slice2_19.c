@@ -1501,42 +1501,6 @@ void *BrModelLoad(void *pMgr, void *a1, void *a2)
 /* 7. Odds and ends                                                   */
 /* ================================================================== */
 
-/* 0x100347BA */
-/* WHAT IT DOES: adds to one entry of a running total, refusing to add more
- * than a fixed amount at once and refusing to let the total exceed a fixed
- * ceiling -- the shape of a damage or wear meter, though what this particular
- * table records was not established. */
-/* @implements 0x100347BA d3d BrAccumAddClamp */
-/* @n64 0x8021BE28 located */
-/* NO TABLE POINTER.  The original indexes a FIXED-ADDRESS array --
- * `fld dword ptr [eax*4 + 0x106EC4F8]`, an absolute base with no register --
- * and reads only two arguments, i at [ebp+8] and amt at [ebp+0xc].  The
- * `float *aTable` first parameter never existed; see tools/screen_absglobals.py
- * for the rest of this class.  The element count is not established: nothing
- * in the tree calls this yet, so the array stays incomplete rather than
- * carrying a guessed bound. */
-void BrAccumAddClamp(int i, float amt)
-{
-    if (amt > g_BrK08F520)
-        amt = 2.5f;
-
-    g_Br6C5468[i] = g_Br6C5468[i] + amt;
-
-    if (g_Br6C5468[i] > g_BrK08F524)
-        g_Br6C5468[i] = 5.0f;
-}
-
-/* 0x10035041 */
-/* WHAT IT DOES: clears one field of a two-field record and sets the other to
- * the value given. What the record is for was not established, so nothing
- * beyond that can honestly be said. */
-/* @implements 0x10035041 d3d BrPairSlotReset */
-void BrPairSlotReset(BrPairSlot *p, uint32_t v)
-{
-    p->f04 = 0;
-    p->f08 = v;
-}
-
 /* 0x10035059 */
 /* WHAT IT DOES: always answers "no". It exists to be installed where the game
  * needs a handler that declines everything; what it is installed as was not
