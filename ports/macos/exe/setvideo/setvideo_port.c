@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "setvideo_port.h"
 
@@ -50,10 +51,18 @@ char  gIniPath[0x400];
 INI  *gINI            = 0;
 int   gSectionCount   = 0;
 Sel   gSel            = { -1, -1, 0 };
+int   gPlusD          = 0;
 int   gD3DAlphaCompare   = 0;
 int   gD3DDrawCarShadow  = 0;
 int   gD3DInvSrcAlpha    = 0;
 int   gD3DClearZBuffer   = 0;
+
+/* DlgProcComboA and DlgProcComboB call ComboGetItemData; 0x00401EC0 is
+ * defined as ComboGetCurText. Same function, two names in the tree. */
+int ComboGetItemData(void *hWnd)
+{
+    return ComboGetCurText(hWnd);
+}
 
 /* CHK_FReadOpen's error path calls this with the FILE* first (cdecl). */
 int fputs_fp(FILE *fp, char *s)
@@ -73,19 +82,23 @@ void OutputDebugStringA(const char *s)
 /* Port-side replacements                                             */
 /* ------------------------------------------------------------------ */
 
-/* Replaces 0x00401B30. The original reads
+/* Replaces 0x00401B30, which reads
  * HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory and falls back to
- * "c:\". There is no registry here, so the directory is a command-line
- * option defaulting to the working directory. The trailing-separator fixup
- * is the same idea, with '/' for '\\'. */
-static void PortGetInstallDir(const char *dir)
+ * "c:\". There is no registry here, so the directory comes from --dir and
+ * defaults to the working directory. The trailing-separator fixup is the
+ * same idea, with '/' for '\\'.
+ *
+ * WinMain calls this with no arguments, exactly as the original did, so the
+ * chosen directory is parked in a global first. */
+static const char *gPortDir = ".";
+
+void GetInstallDir(void)
 {
-    size_t n;
+    const char *dir = gPortDir;
 
     if (dir == 0 || dir[0] == 0)
         dir = ".";
-    n = strlen(dir);
-    if (n >= sizeof(gInstallDir) - 2) {
+    if (strlen(dir) >= sizeof(gInstallDir) - 2) {
         fprintf(stderr, "setvideo: --dir path is too long.\n");
         exit(1);
     }
@@ -344,6 +357,7 @@ int main(int argc, char **argv)
     int         do_chip  = 0;
     int         do_show  = 0;
     int         do_sympt = 0;
+    int         gui_plus_d = 0;
     int         i;
     char        vdbpath[0x400];
     char       *name;
@@ -367,6 +381,7 @@ int main(int argc, char **argv)
             gD3DDrawCarShadow = atoi(argv[++i]);
         else if (strcmp(a, "--inv-src-alpha") == 0 && i + 1 < argc)
             gD3DInvSrcAlpha = atoi(argv[++i]);
+        else if (strcmp(a, "+d") == 0)                           gui_plus_d = 1;
         else if (strcmp(a, "-v") == 0)                           gChkVerbose = 1;
         else if (strcmp(a, "-h") == 0 || strcmp(a, "--help") == 0) {
             Usage();
@@ -378,14 +393,22 @@ int main(int argc, char **argv)
         }
     }
 
+    /* No command: run the wizard, which is what the original did. WinMain
+     * looks for BossRally.vdb in the working directory, so move there first
+     * and let it take over from the top. */
     if (!do_list && !do_vend && !do_chip && !do_show && !do_sympt && !setwhat) {
-        Usage();
-        return 0;
+        gPortDir = ".";
+        if (strcmp(dir, ".") != 0 && chdir(dir) != 0) {
+            fprintf(stderr, "setvideo: cannot enter %s\n", dir);
+            return 1;
+        }
+        return BrRunWizard(gui_plus_d ? "+d" : "");
     }
 
     /* WinMain's opening: locate the install directory, build the ini path,
      * refuse to run without the device database. */
-    PortGetInstallDir(dir);
+    gPortDir = dir;
+    GetInstallDir();
     strcpy(gIniPath, gInstallDir);
     strcat(gIniPath, "BossRally.ini");
 
@@ -429,7 +452,12 @@ int main(int argc, char **argv)
         WriteSymptoms();
         printf("Wrote %s (symptoms profile).\n", gIniPath);
     } else if (setwhat != 0) {
-        if (setwhat[0] >= '0' && setwhat[0] <= '9')
+        /* Card names in the retail database begin with digits ("3Dfx Voodoo
+         * Rush …"), so only an argument that is ENTIRELY digits is an
+         * ordinal. */
+        for (i = 0; setwhat[i] >= '0' && setwhat[i] <= '9'; i++)
+            ;
+        if (i > 0 && setwhat[i] == 0)
             idx = atoi(setwhat);
         else
             idx = IndexOfSection(setwhat);

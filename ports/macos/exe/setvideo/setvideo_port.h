@@ -92,9 +92,22 @@ extern char  gIniPath[];
 extern INI  *gINI;
 extern int   gSectionCount;
 extern Sel   gSel;
+extern int   gPlusD;
 extern int   gD3DAlphaCompare;
 extern int   gD3DDrawCarShadow;
 extern int   gD3DInvSrcAlpha;
 extern int   gD3DClearZBuffer;
+
+/* --- the wizard ---------------------------------------------------------
+ * The five dialog procedures and WinMain are compiled from the matched
+ * sources too; BrRunWizard (win32_dialog.m) stands up an NSApplication and
+ * hands control to the original WinMain. */
+int BrRunWizard(char *cmdline);
+
+/* config/functions_setvideo.csv names 0x00401EC0 ComboGetItemData, which is
+ * what DlgProcComboA and DlgProcComboB call; the decompiled source defines it
+ * as ComboGetCurText. Bridged in setvideo_port.c rather than renaming a
+ * matched function. */
+int ComboGetCurText(void *hWnd);
 
 #endif /* BR_PORT_SETVIDEO_H */
