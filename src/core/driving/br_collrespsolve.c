@@ -6,7 +6,17 @@
 #include <math.h>
 #include <string.h>
 
+/* The original 0x10067710 takes TWO arguments (the body block and the box
+ * matrix); the port's prototype in br_collrespsolve.h takes nine.  Under the
+ * matching build the header's prototype is declared under a spare name so the
+ * two-argument original can be defined here without touching include/. */
+#ifdef BR_MATCHING_BUILD
+#define BrCrRespWalk BrCrRespWalk_portproto
+#endif
 #include "br_collrespsolve.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrCrRespWalk
+#endif
 #include "br_collresp.h"   /* BrCrTest, BrCollRespNode/Plane, g_pBrCollRespList */
 #include "slice1_09.h"     /* BrMat4TransformPoint, BrVec3Normalise             */
 
@@ -532,10 +542,169 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * contacts that produced a response.
  * ------------------------------------------------------------------ */
 /* WHAT IT DOES: walk every surface the car is touching this frame and apply
- * each one's collision response in turn, accumulating the result. The top of
- * the collision solver -- one pass over the contact list built during the
- * collision test. */
+ * each one's collision response in turn. The top of the collision solver --
+ * one pass over the contact list built during the collision test.  Returns
+ * 1 if any contact produced a response, else 0, and keeps a per-body "frames
+ * with no contact" byte (body+0x200): bumped (saturating at 40) when nothing
+ * passed the exact test this pass, reset to 0 otherwise. */
 /* @implements 0x10067710 glide BrCrRespWalk */
+#ifdef BR_MATCHING_BUILD
+/* Matching arm, transcribed from the bytes.  The original is
+ * (body, pMatBox): every field the port passes separately is read off the
+ * body block (offsets below), and its two callees take the body too --
+ * 0x10065C80 is (body, pNormal, pRelDir, flag, restOffset) and 0x10065980 is
+ * (body, pNormal, dampFlag, spinFlag).  Their port definitions in this file
+ * keep the port signatures, so the calls go through a cast of the function
+ * designator, which VC5 still emits as a direct `call rel32`.
+ *
+ * State 2026-09-04: 1296/1301 B, 375/375 instructions, regnorm 7+7 under
+ * plain /O2 (the original is esp-framed: `sub esp,0x78`, ebp a general
+ * register -- NOT the /Oy- the old report row said).  Frame, prologue,
+ * loop shape, the mode-4 block, the sign tournament, the normal bank, both
+ * calls, the push-out, the quat copy and the +0x200 tail all line up.
+ * What the port had dropped: the debug-mode-4 kick path with its three
+ * trace calls (0x10008D60, a bare ret, still called with the string), the
+ * body-relative signature, the 0/1 return, and the +0x200 counter tail.
+ * Levers that landed: the push-out delta is a NAMED BrVec3 (three homed
+ * slots, `fld st(0)`/`fld st(1)` dups); `pos = pos - dp` not `pos -= dp`
+ * (orig fld pos; fsub [slot]); the quat copy is three DWORD copies
+ * (integer regs, hoisted loads), not float assignments; the first sign is
+ * an if/else (`< 0` arm first), the other two `sgn=-1; if (!(x<0)) sgn=1`.
+ * Remaining, all in one cause-group (register/slot allocation, 4 regions):
+ *  - slots: orig planeD@0x10 cnt@0x14 sgn@0x18 spin@0x1c; ours has
+ *    planeD/cnt one slot up.  Declaration order both ways: inert (7+7).
+ *  - `spin` is HOMED in the orig ([esp+0x1c], written via the edi that
+ *    also carries the constant 0/1); ours keeps spin in a register.  The
+ *    orig's `mov edi,0` (not xor) then `mov [modeFC],edi` says modeFC=0
+ *    and spin=0 share one constant register.
+ *  - the mode-4 else block sits OUT OF LINE after the epilogue in the orig
+ *    (three `je` to it, `jmp` back past `mov edi,1`); ours is inline with a
+ *    `jmp` from the then-arm.  goto-to-a-trailing-label form: worse (9+8).
+ *  - the e1/e2 subtractions: orig loads all six vertex components before
+ *    the first fsub; ours loads three.
+ * Dead: BF-offset spelling of next.pos in the delta (fsubp shape, 11+7);
+ * `pos -= dp` (fsubr x3); goto LAB_common out of the then-arm (extra jmp). */
+extern int   g_br0AA010;        /* 0x100A9360 -- the debug/game mode; 4 arms the kick path */
+extern float BrCrK_Flat;        /* 0x10077B88 0.999 */
+extern float BrCrK_Pushout;     /* 0x10077B8C 1.1 */
+extern const BrCollPlane *g_pBrCrCurPlane;   /* 0x1177819C */
+void BrExt_10008D60(const char *pszFmt, ...); /* 0x10008D60, a bare `ret` */
+
+typedef int (*BrCrImpulseSolveFn)(char *, const BrVec3 *, const BrCollPlane *, int, float);
+typedef int (*BrCrContactKickFn)(char *, const BrCollPlane *, int, int);
+#define BR_CR_IMPULSE(b, n, p, f, r) (((BrCrImpulseSolveFn)BrCrImpulseSolve)((b), (n), (p), (f), (r)))
+#define BR_CR_KICK(b, p, f, s)       (((BrCrContactKickFn)BrCrContactKick)((b), (p), (f), (s)))
+
+#define BR_CR_BF(off)  (*(float *)(pBody + (off)))
+#define BR_CR_BB(off)  (*(unsigned char *)(pBody + (off)))
+#define BR_CR_BD(off)  (*(uint32_t *)(pBody + (off)))
+#define BR_CR_NEXT     ((BrRbState *)(pBody + 0x158))
+#define BR_CR_ORIENT   ((BrMat4 *)(pBody + 0xbc))
+
+int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
+{
+    const BrCollRespNode *pNode;
+    const BrCollPlane *pP;
+    float  aV[9];
+    BrVec3 e1, e2, nrm, sign, dp;
+    float  planeD, pz, d;
+    int    ret = 0;
+    short  cnt = 0;
+    int    flag, spin, sgn, r;
+
+    for (pNode = g_pBrCollRespList; pNode != NULL; pNode = pNode->pNext) {
+        pP = pNode->pPlane;
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[0], pMatBox, pP->pV0);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[3], pMatBox, pP->pV1);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[6], pMatBox, pP->pV2);
+        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];
+        e1.x = aV[3] - aV[0]; e1.y = aV[4] - aV[1]; e1.z = aV[5] - aV[2];
+        nrm.x = e2.z * e1.y - e2.y * e1.z;
+        nrm.y = e2.x * e1.z - e2.z * e1.x;
+        nrm.z = e2.y * e1.x - e2.x * e1.y;
+        if (BrCrTest(aV, &nrm) == 0)
+            continue;
+        BrVec3Normalise(&nrm);
+        cnt++;
+        planeD = nrm.x * aV[0] + nrm.y * aV[1] + nrm.z * aV[2];
+        g_brCrPlane.modeFC = 0;
+        if (g_br0AA010 == 4) {
+            if (((nrm.x < BrCrK_Zero) ? -nrm.x : nrm.x) <= BrCrK_Flat
+                && ((nrm.y < BrCrK_Zero) ? -nrm.y : nrm.y) <= BrCrK_Flat
+                && ((nrm.z < BrCrK_Zero) ? -nrm.z : nrm.z) <= BrCrK_Flat) {
+                if (((planeD < BrCrK_Zero) ? -planeD : planeD) < BrCrK_Half) {
+                    BrExt_10008D60("Triangle Edge to CubeFace\n");
+                    spin = 0;
+                    g_brCrPlane.modeFC = 2;
+                }
+            } else {
+                g_brCrPlane.modeFC = 1;
+                BrExt_10008D60("Wank CT1 case\n");
+                spin = 1;
+            }
+        }
+        flag = 1;
+        BrExt_10008D60("Cube Edge to Triangle Face\n");
+
+        pz = planeD * nrm.z;
+        if (planeD * nrm.x < BrCrK_Zero)
+            sgn = -1;
+        else
+            sgn = 1;
+        sign.x = (float)sgn * BrCrK_Half;
+        sgn = -1;
+        if (!(planeD * nrm.y < BrCrK_Zero))
+            sgn = 1;
+        sign.y = (float)sgn * BrCrK_Half;
+        sgn = -1;
+        if (!(pz < BrCrK_Zero))
+            sgn = 1;
+        sign.z = (float)sgn * BrCrK_Half;
+
+        g_brCrPlane.normal.x = BR_CR_BF(0x1dc) * sign.x;
+        g_brCrPlane.normal.y = BR_CR_BF(0x1e0) * sign.y;
+        g_brCrPlane.normal.z = BR_CR_BF(0x1e4) * sign.z + BR_CR_BF(0x1e8);
+        g_pBrCrCurPlane = pP;
+        BrCrPlaneResolve((const BrVec3 *)pBody, &nrm, planeD, &sign, (const BrVec3 *)(void *)aV);
+
+        if (BR_CR_BF(0xe4) > BrCrK_Half)
+            flag = 0;
+        if (flag)
+            BrExt_10008D60("Resistive collision %10.3f\n", BR_CR_BF(0xe4));
+
+        if (g_brCrPlane.modeFC != 1)
+            r = BR_CR_IMPULSE(pBody, &g_brCrPlane.normal, g_pBrCrCurPlane, flag, 0.0f);
+        else
+            r = BR_CR_KICK(pBody, g_pBrCrCurPlane, flag, spin);
+        if (r == 0)
+            continue;
+
+        d = ((BR_CR_NEXT->pos.x - BR_CR_BF(0x114)) * pP->nx
+           + (BR_CR_NEXT->pos.y - BR_CR_BF(0x118)) * pP->ny
+           + (BR_CR_NEXT->pos.z - BR_CR_BF(0x11c)) * pP->nz) * BrCrK_Pushout;
+        ret = 1;
+        dp.x = d * pP->nx;
+        dp.y = d * pP->ny;
+        dp.z = d * pP->nz;
+        BR_CR_NEXT->pos.x = BR_CR_NEXT->pos.x - dp.x;
+        BR_CR_NEXT->pos.y = BR_CR_NEXT->pos.y - dp.y;
+        BR_CR_NEXT->pos.z = BR_CR_NEXT->pos.z - dp.z;
+        BR_CR_BD(0x170) = BR_CR_BD(0x12c);
+        BR_CR_BD(0x174) = BR_CR_BD(0x130);
+        BR_CR_BD(0x178) = BR_CR_BD(0x134);
+        BrRbQuatDerivative(BR_CR_NEXT);
+        BrRbBuildMatrix(BR_CR_ORIENT, BR_CR_NEXT);
+    }
+
+    if (cnt == 0) {
+        if (BR_CR_BB(0x200) < 0x28)
+            BR_CR_BB(0x200)++;
+    } else {
+        BR_CR_BB(0x200) = 0;
+    }
+    return ret;
+}
+#else
 int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
                  const float ext[4],
                  BrRbState *pNext, const BrVec3 *pSavePos, const BrVec3 *pQuatSrc,
@@ -606,3 +775,4 @@ int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
 
     return nResponded;
 }
+#endif /* BR_MATCHING_BUILD */
