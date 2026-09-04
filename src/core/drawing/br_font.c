@@ -1934,4 +1934,26 @@ int BrFontSetRenderDst(int param_1)
   return;
 }
 
+int FUN_1006c750();
+int FUN_1006c800();
+int FUN_1006c880();
+int FUN_1006c8b0();
+
+
+/* WHAT IT DOES: create all font and UI textures and register font pages. */
+/* @implements 0x1006E030 glide BrFontTexInitAll */
+
+int BrFontTexInitAll(void)
+
+{
+  FUN_1006c750();
+  BrFontRegisterPages();
+  FUN_1006c800();
+  BrSub10073980();
+  BrSub100739B0();
+  FUN_1006c880();
+  FUN_1006c8b0();
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
