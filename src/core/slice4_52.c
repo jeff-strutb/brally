@@ -45,26 +45,6 @@ const BrLogHost      *g_pBrLogHost;
 const BrUi51990Ctx   *g_pBrUi51990Ctx;
 
 /* ==========================================================================
- * 0x10074030  BrStrGet
- * ========================================================================== */
-
-/* WHAT IT DOES: fetches one of the game's pieces of on-screen wording by
- * number -- every menu caption, button label and message comes through here.
- * A number that is not in the table gives nothing back rather than an error. */
-/* @implements 0x10074030 d3d BrStrGet */
-const char *BrStrGet(int id)
-{
-    /* br_bits.h's BrHandleLookup IS this function with the table address
-     * turned into an argument; the original INLINES it here (byte shape:
-     * both range tests jump to one shared `return NULL`).  The range test
-     * is unsigned, which is what makes a negative id fall out as NULL. */
-    if ((uint32_t)id >= 1u && (uint32_t)id < (uint32_t)BR_STR_TABLE_COUNT) {
-        return (const char *)g_apBrStrTable[id];
-    }
-    return NULL;
-}
-
-/* ==========================================================================
  * 0x10010960 / 0x10010980  BrPolyDistX / BrPolyDistY
  * ========================================================================== */
 
