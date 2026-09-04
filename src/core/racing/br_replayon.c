@@ -121,4 +121,15 @@ int BrSetMode5(void)
   return;
 }
 
+extern int DAT_10b73668;
+
+/* WHAT IT DOES: return a pointer to the primary replay data buffer. */
+/* @implements 0x10063B40 glide BrReplayGetBuf */
+
+char * BrReplayGetBuf(void)
+
+{
+  return &DAT_10b73668;
+}
+
 #endif /* BR_MATCHING_BUILD */
