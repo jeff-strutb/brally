@@ -7,6 +7,9 @@
  */
 #ifdef BR_MATCHING_BUILD
 
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+
 /* ---- from slice2_12.c ---------------------------------------------- */
 
 extern int g_br094294;
@@ -99,6 +102,21 @@ void BrNop_1002EBCC(void)
 
 {
   return;
+}
+
+/* ---- from slice6_72.c ---------------------------------------------- */
+
+_CRTIMP void __cdecl _except_handler3(void);
+
+/* WHAT IT DOES: the compiler's structured-exception entry thunk -- it just
+ * tail-calls the CRT handler. Not game code. */
+/* @implements 0x10074AE6 glide FUN_10074ae6 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void
+FUN_10074ae6(void)
+{
+    _except_handler3();
 }
 
 #endif /* BR_MATCHING_BUILD */
