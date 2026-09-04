@@ -14,6 +14,11 @@ that nothing could contradict. A check that cannot fail is not a check.
   D  refcheck.py passes on a Glide-keyed corpus and fails on a D3D-keyed one.
      Rule 0's guard had only ever been seen failing, and a guard that cannot
      pass enforces nothing.
+  E  The image gate's own bookkeeping. C proves the diff is a real comparison;
+     it does not prove the gate compared the CURRENT tree, nor that it names
+     the right finding when it could not. A stale object used to be graded
+     silently, and every non-pass read as "the claims do not hold" even when
+     the real problem was a source file mid-edit.
 
 A, B and C need a learned-address map. When reloc_learn.py refuses to write one
 -- a legitimate state, not a broken tree -- they are SKIPPED and reported as
@@ -181,11 +186,97 @@ def check_d():
           p.returncode == 0, f'exit={p.returncode}')
 
 
+def check_e():
+    """The image gate's own bookkeeping: freshness, races, verdict taxonomy.
+
+    Check C proves the image DIFF is a real comparison. It does not prove the
+    gate compared the CURRENT tree, or that it says the right thing when it
+    could not. Both of those were wrong: the DLL lane read whatever object was
+    on disk with no freshness test (so a stale object could be graded and pass)
+    and every non-pass printed "the tree's claims do not hold", which sent a
+    session hunting a decomp defect that did not exist while a refiling job
+    rewrote src/ underneath the run.
+
+    Deterministic and cheap -- no compiling, no image assembly.
+    """
+    import tempfile
+    import time
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import image_build as ib
+    import match_sweep
+
+    d = tempfile.mkdtemp()
+    src, obj = os.path.join(d, 'a.c'), os.path.join(d, 'a.obj')
+    saved = ib._DEPS_MTIME
+    try:
+        ib._DEPS_MTIME = 0.0
+        open(src, 'w').write('x')
+        gone = not ib._fresh(obj, src)
+        open(obj, 'w').write('o')
+        os.utime(src, (100, 100))
+        os.utime(obj, (200, 200))
+        newer = ib._fresh(obj, src)
+        os.utime(src, (300, 300))
+        older = not ib._fresh(obj, src)
+        os.utime(src, (100, 100))
+        ib._DEPS_MTIME = 400.0
+        hdr = not ib._fresh(obj, src)
+        check('E1. a missing, older, or header-predating object is NOT fresh',
+              gone and newer and older and hdr,
+              f'missing={gone} newer={newer} older={older} header={hdr}')
+    finally:
+        ib._DEPS_MTIME = saved
+
+    b = {'/x': 1.0, '/y': 2.0}
+    check('E2. a tree edited mid-run is detected (changed/new/removed)',
+          ib._raced(b, dict(b)) == []
+          and ib._raced(b, {'/x': 9.0, '/y': 2.0}) == ['/x']
+          and ib._raced(b, dict(b, **{'/z': 3.0})) == ['/z']
+          and ib._raced(b, {'/x': 1.0}) == ['/y'])
+
+    # An unknown opt tag must not fall back to /O2 and grade a function
+    # against a build it never matched under.
+    check('E3. every sweep variant maps to real cl flags, unknown ones to None',
+          all(ib._dll_opt_flags(t) == f for t, f in match_sweep.VARIANTS)
+          and ib._dll_opt_flags('NOPE') is None)
+
+    import contextlib
+    import io
+    ref = os.path.join(ROOT, 'orig', 'SetVideo.exe')
+    if not os.path.exists(ref):
+        skip('E4. the gate names the right finding', 'orig/SetVideo.exe absent')
+        return
+    best, names_at, unplaced, unbuildable = ib.collect_exe('setvideo')
+    if unplaced or unbuildable or not best:
+        skip('E4. the gate names the right finding',
+             'setvideo lane is not currently clean')
+        return
+
+    def verdict(unpl, unb):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _img, v = ib.assemble(ref, best, names_at, unpl, 'audit', unb)
+        return v, buf.getvalue()
+
+    v_ok, _ = verdict([], [])
+    v_bld, o_bld = verdict([], [(0x401000, 'f', 'x.c: error C2065')])
+    v_clm, o_clm = verdict([(0x401000, 'f', 'x.c: symbol not in obj')], [])
+    v_both, _ = verdict([(0x401000, 'f', 's')], [(0x401000, 'f', 'b')])
+    check('E4. the gate names the right finding: '
+          'wrong claim vs tree that will not build',
+          v_ok == 'ok' and v_bld == 'build' and v_clm == 'claims'
+          and v_both == 'claims'
+          and 'INCONCLUSIVE' in o_bld and 'do not hold' not in o_bld
+          and 'do not hold' in o_clm,
+          f'ok={v_ok} unbuildable={v_bld} unplaced={v_clm} both={v_both}')
+
+
 def main():
     recover_stale()
     sect = section_lookup(os.path.join(ROOT, 'orig', 'BRGlide.dll'))
     checks_abc(sect)
     check_d()
+    check_e()
 
     print('\n' + '=' * 60)
     if SKIPPED:
