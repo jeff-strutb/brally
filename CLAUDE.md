@@ -119,19 +119,32 @@ recorded once in `config/filing.csv` (`tools/filing.py`) and the code is moved
 there by `tools/refile.py`, which sweep-verifies both files. Never add a new
 `sliceN_MM.c`. Never a big-bang reorg later.
 
-**The gate, and it is not optional:**
+**This rule is ENFORCED. Two things run, and neither is optional:**
 
 ```bash
-python3 tools/fileaudit.py        # exit 1 on a stranded, misplaced or undescribed match
+python3 tools/install_hooks.py    # once per clone; setup.sh does it for you
+python3 tools/fileaudit.py        # exit 1 on a stranded, misplaced or undescribed function
 ```
 
-It fails on any *increase* in undocumented or unfiled functions, so both
-backlogs can only fall. Lower the baselines in that file as you drain them.
+1. **A pre-commit hook refuses the commit.** Adding an `@implements` without a
+   `WHAT IT DOES:` comment in the same commit, or adding a new
+   `sliceN_MM.c`, is rejected outright. It judges only the diff you are
+   committing, never the backlog, so it cannot block unrelated work — which is
+   why it will still be here next month. `--no-verify` bypasses it; if you use
+   it on a decompiled function you are choosing to leave the next person a
+   function nobody can explain.
+2. **`fileaudit.py` audits the whole tree** across all three lanes (C, C++,
+   EXE). Description baseline is **0** — every tagged function must carry one,
+   and it fails outright on a new one that does not. The filing baselines only
+   ever come down; lower them in that file as you drain them.
 
 **This rule had no gate until 2026-09-03, and both halves drifted badly**: 570
 of 845 matched C functions were stranded in address batches, and 196 carried no
-description at all. That is the cost of a rule nothing checks — do not let a
-number in that tool go up.
+description at all. Worse, the first version of the check counted only matched
+C functions and reported "0 undescribed" while **329** were missing — two whole
+lanes were invisible to it. A rule nothing checks is a preference, and a check
+with the wrong denominator is a lie. Do not let a number in that tool go up,
+and do not quote a coverage figure without saying what it is a coverage *of*.
 
 ## 7. Commit every verified match immediately.
 
@@ -177,8 +190,13 @@ and last. See `docs/VC5-IDIOMS.md` (`and esp,-8`) and `include/br_racestep.h`.
 ## Before you start any session
 
 1. Run `python3 tools/refcheck.py` and believe the result.
-2. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
-3. Do not trust a coverage number in prose — including in `README.md`.
+2. Run `python3 tools/install_hooks.py` — one command, idempotent. Without it
+   rule 6's pre-commit hook is not wired up in your clone, because `.git/` is
+   not tracked.
+3. Run `python3 tools/fileaudit.py` and note where the backlogs stand, so you
+   can tell your own damage from what you inherited.
+4. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
+5. Do not trust a coverage number in prose — including in `README.md`.
    Query the tree.
 
 ## Scope — which shipped binaries are being decompiled

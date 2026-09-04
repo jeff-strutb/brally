@@ -1,0 +1,17 @@
+#!/bin/sh
+# Rule 6, enforced at the only place every match has to pass through.
+#
+# Rule 7 says commit every verified match immediately, so a commit is the
+# choke point: nothing lands in this tree without one. This hook refuses a
+# commit that breaks rule 6 in the code IT IS ADDING.
+#
+# It deliberately judges the STAGED DIFF, not the tree. Holding the existing
+# backlog against every commit would fail every commit anyone made, and a hook
+# that always fails is a hook that gets deleted within the hour. Judging only
+# what the commit adds means the rule binds from now on and the backlog drains
+# on its own schedule.
+#
+# Installed by tools/install_hooks.py (setup.sh runs it). Bypass with
+# `git commit --no-verify` only when you are committing something that is not
+# a decompiled function -- and expect tools/fileaudit.py to catch it later.
+exec python3 "$(git rev-parse --show-toplevel)/tools/precommit_rule6.py"

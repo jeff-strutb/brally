@@ -352,3 +352,7 @@ if [ -x "$WINE_BIN" ] && [ -n "$CL_FOUND" ]; then
 else
     echo "Not ready -- see above."
 fi
+
+# Rule 6 is enforced by a pre-commit hook. .git/ is not tracked, so the hook
+# has to be wired into each clone; this is idempotent and safe to re-run.
+python3 "$(dirname "$0")/tools/install_hooks.py" || true
