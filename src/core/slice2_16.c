@@ -2212,7 +2212,24 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * MACROS, not statics: MSVC5 does not inline a static with more than one
  * caller, so br16_fade_alloc (twelve sites) and br16_bar_w0 (three) would each
  * be a call the original does not have.  br16_ftol stays a call -- the
- * original really does call it twice. */
+ * original really does call it twice.
+ *
+ * RESIDUE 800 vs 803 bytes, 216 vs 222 instructions, register-blind 3+9
+ * (from 592 / 186 / 77+113 as a BrFadeState * body).  Two items, both walls:
+ *
+ *  - FOUR instructions in the `value == 0` arm's w1.  The original genuinely
+ *    computes `((0 << shift) & 0xFFF) << 12` -- `xor edx,edx / shl edx,cl /
+ *    and edx,0xfff / shl edx,0xc` -- four instructions to produce a zero it
+ *    already has.  PROBED AND DEAD, all three fold to a plain `mov [eax+4],0`
+ *    and none changes the instruction count: the shift written out with a
+ *    `0u` literal, with an `(uint32_t)0` cast, and through a zero-initialised
+ *    local.  VC5 folds a shift of a known zero, so whatever the original's
+ *    source had there, it was not a constant the compiler could see.
+ *  - TWO instructions in the three `!= 0` / `<` tests on globals: we emit
+ *    `cmp dword ptr [g], reg`, the original loads the global into a register
+ *    first and compares register to register.  Allocation; the prologue shows
+ *    the same thing (the original pushes ebx early and keeps its zero there,
+ *    we defer the push to first use and zero ebp instead). */
 extern int32_t     DAT_106e7714;      /* span   */
 extern int32_t     DAT_106e9a2c;      /* width  */
 extern int32_t     DAT_106ed674;      /* shift  */
