@@ -41,6 +41,21 @@ def _fenced_exe():
     return out
 
 
+def _diffs(m):
+    """The row's diff count, or -1 for "not in the report at all".
+
+    A `compile_error` row carries the COMPILER'S MESSAGE in this column, not a
+    number, so this must never int() blindly — one such row used to crash the
+    whole map. Treat any non-numeric value as "unknown, but tagged" (0)."""
+    if not m:
+        return -1
+    v = str(m.get("diffs") or "").strip()
+    try:
+        return int(v)
+    except ValueError:
+        return 0
+
+
 def _match_set(path):
     """VAs from a total.py manifest (build/match/<path>), or empty."""
     p = os.path.join(ROOT, "build", "match", path)
@@ -91,9 +106,7 @@ def load():
                 "file": ("src/core/cpp/(C++ EH)" if is_cpp
                          else (m and m["file"]) or ""),
                 "status": status,
-                "diffs": 0 if is_cpp
-                         else (int(m["diffs"]) if (m and str(m["diffs"]).strip())
-                               else 0 if m else -1),
+                "diffs": 0 if is_cpp else _diffs(m),
             })
     # The three in-scope EXEs as their own regions.
     exe_hit = {}

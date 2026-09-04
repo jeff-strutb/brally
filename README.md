@@ -26,25 +26,32 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-03: **1,125 functions reproduce the original
-bytes exactly (173,760 B).** The whole DLL image is then reassembled from those
-claims and diffs to **0 bytes**, with 0 overlapping address claims.
+original binary. Snapshot of 2026-09-03: **1,136 functions reproduce the original
+bytes exactly (176,104 B).** Every image is then reassembled from those claims and
+diffs to **0 bytes**, with 0 overlapping address claims — all four in-scope
+binaries pass.
 
-- **Game DLL (`BRGlide.dll`)** — 1,021 functions byte-exact, 163,311 B, **34.0% of
-  its 480,853 B `.text`**. Of those, 847 are C (63.5% of the C lane's 1,334-function
-  target) and 174 are C++. Most of what remains is structural, not "coloring":
-  176 functions still carry real, non-codegen diffs (wrong or missing code),
-  while only a 37-function tail is down to pure register-allocation/scheduling
-  differences with the instructions already correct.
+- **Game DLL (`BRGlide.dll`)** — 1,031 functions byte-exact, 163,511 B, **34.0% of
+  its 480,853 B `.text`**. Of those, 857 are C and 174 are C++. Most of what
+  remains is structural, not "coloring": 174 functions still carry real,
+  non-codegen diffs (wrong or missing code), while only a 42-function tail is
+  down to pure register-allocation/scheduling differences with the instructions
+  already correct.
 - **C++ class (vtables, EH frames)** — a separate lane, because these functions
   are unreachable from C at all; screened for before a function is ranked as a
   C target.
-- **Executables** — BRally.exe and BossRally.exe are **game-code complete**;
-  SetVideo.exe has one function left (WinMain). 104 functions, 10,449 B.
-- **Documentation** — **every byte-exact function says what it does**: 1,125 of
-  1,125 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
+- **Executables** — **all three in-scope EXEs are now game-code complete**:
+  BRally.exe (launcher), BossRally.exe (intro shim) and, as of 2026-09-03,
+  SetVideo.exe (display wizard) — its last function, a 2,144-byte `WinMain`,
+  had been the one hold-out. 105 functions, 12,593 B; every non-CRT map row in
+  all three is byte-exact and all three images diff to 0. What is left in them
+  is statically-linked MSVC 5.0 CRT (SetVideo 27,888 B, BossRally 20,075 B,
+  BRally 495 B), reproduced by linking rather than decompiled — the same call
+  as `BRD3D.dll` under rule 0.
+- **Documentation** — **every byte-exact function says what it does**: 1,136 of
+  1,136 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
   `tools/fileaudit.py` fails the build if one lands without. The looser sets are
-  covered too — all 1,363 *tagged* functions (byte-exact or still diffing) are
+  covered too — all 1,379 *tagged* functions (byte-exact or still diffing) are
   described. Untagged port-side code is not: ~415 function definitions in files
   with no `@implements` tag remain undescribed, none of them byte-exact.
 - **macOS/Metal port** — the same source boots, renders the front end and retail
@@ -156,15 +163,21 @@ prime C targets.
 
 **Executables** (game code; static CRT is linked, not decompiled):
 
-| Binary | Game code | |
-|---|---|---|
-| BRally.exe (launcher) | 28 fns · 2,860 B | game code complete |
-| BossRally.exe (intro) | 35 fns · 2,482 B | game code complete |
-| SetVideo.exe (config) | 41 fns · 5,107 B | WinMain left |
+| Binary | Game code | Fenced CRT | |
+|---|---|---|---|
+| BRally.exe (launcher) | 28 fns · 2,860 B | 495 B | game code complete |
+| BossRally.exe (intro) | 35 fns · 2,482 B | 20,075 B | game code complete |
+| SetVideo.exe (config) | 42 fns · 7,251 B | 27,888 B | game code complete |
 
-**Totals** — 1,125 byte-exact functions / 173,760 B (`python3 tools/total.py`):
-1,021 in `BRGlide.dll` (163,311 B, 34.0% of its `.text`) and 104 across the three
-EXEs (10,449 B).
+All three have **zero** unmatched non-CRT rows in their function maps, and each
+reassembles to 0 differing bytes. SetVideo was the last to close (2026-09-03):
+its 42 include 3 one-to-nineteen-byte CRT stubs, so the game span itself —
+`0x401000`–`0x402D20` — is 7,228 B of code plus 228 B of inter-function
+alignment, i.e. the whole 7,456-byte range.
+
+**Totals** — 1,136 byte-exact functions / 176,104 B (`python3 tools/total.py`):
+1,031 in `BRGlide.dll` (163,511 B, 34.0% of its `.text`) and 105 across the three
+EXEs (12,593 B).
 
 **The image gate** (`python3 tools/image_build.py`) is the deliverable check, and
 the one a per-function diff cannot perform. Each function is diffed alone, so a
@@ -174,9 +187,9 @@ wrong size. The gate refuses collisions rather than resolving them, lays every
 claim into one image at the address it claims, uses the original's own bytes for
 everything not yet decompiled, and diffs the result against the retail DLL.
 
-    placed into the image            : 1021 functions, 163,455 bytes (33.99% of .text)
-        C     847 fns    83,155 B  (1,548 B of that filled from the reference, 1.9%)
-        C++   174 fns    80,300 B  (10,624 B of that filled from the reference, 13.2%)
+    placed into the image            : 1028 functions, 163,511 bytes (34.00% of .text)
+        C     854 fns    83,211 B  (1,536 B of that filled from the reference, 1.8%)
+        C++   174 fns    80,300 B  (10,636 B of that filled from the reference, 13.2%)
     overlapping address claims       : 0
     ASSEMBLED IMAGE vs ORIGINAL      : 0 differing bytes
 
