@@ -4322,6 +4322,24 @@ compare and the assignment; VC5 then CSEs it exactly where the original has
 it. So the rule covers two distinct symptoms — addressing-mode collapse
 (above) and load placement relative to a guard (here).
 
+**Third symptom, same day, same rule: a hoist that must survive a CALL costs
+an extra `mov` and flips an `imul`.** 0x10002C00 BrCdTrackRandom (67 B) reads
+one global four times inside a retry loop, once as `(g - 5)` multiplied by
+`rand()`. Hoisting it —
+
+    iVar1 = rand();
+    iLast = g_brCdTrackLast;
+    iVar1 = iVar1 * (iLast - 5) / 0x8000 + 3;
+
+— forces the multiply's operands into the other registers (`mov edx,eax;
+lea eax,[ecx-5]; imul eax,edx` against the original's `lea edx,[ecx-5];
+imul eax,edx`), because the named local has to live across `rand()`. Swapping
+the source operand order does NOT fix it; only deleting the local does.
+Spelling `g_brCdTrackLast` in all four places is byte-exact, and VC5 still
+loads it exactly once. **So: when the last residue is one extra register move
+around a call or a guard, look for a hoisted local first.** Three separate
+functions this session, two causes apiece.
+
 **And the loop it sat in is the other half of the same solve:** an ordinary
 indexed `for (i = 1; i < n; ++i)` over a contiguous range is what VC5
 strength-reduces into the original's pointer walk. Writing the walk by hand
