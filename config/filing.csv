@@ -631,6 +631,7 @@ glide_va,name,module,basis,file
 0x10059A50,BrCarNetSendState,,,src/core/slice3_40.c
 0x10059DC0,BrUiSelAInc,,,src/core/slice3_40.c
 0x10059DE0,BrUiSelADec,,,src/core/slice3_40.c
+0x10059E00,BrUiVolumeApply,,,src/core/slice3_40.c
 0x10059E30,BrUiSelBInc,,,src/core/slice3_40.c
 0x10059E50,BrUiSelBDec,,,src/core/slice3_40.c
 0x10059E70,BrPadPackButtons,controls,filed,src/core/controls/br_input.c
@@ -827,6 +828,7 @@ glide_va,name,module,basis,file
 0x10070490,BrDikGetDeviceState,,,src/core/slice6_72.c
 0x100706B0,BrDiAcquire,,,src/core/generated/0x100706B0.c
 0x10071EB0,BrDiKeyboardShutdown,,,src/core/generated/0x10071EB0.c
+0x10071F00,BrTickAdd_10078C10,racing,filed,src/core/racing/br_replayon.c
 0x10071F20,BrDiSetPropRange,,,src/core/slice3_45.c
 0x10071F70,BrDiSetPropDword,,,src/core/slice3_45.c
 0x10072100,BrFfbSetDirection,,,src/core/slice3_45.c
