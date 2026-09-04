@@ -470,7 +470,7 @@ glide_va,name,module,basis,file
 0x10037710,BrFn1003E070,controls,description,src/core/slice4_51.c
 0x10037720,BrInputAnyActive,net,description,src/core/net/br_input.c
 0x10037780,BrInputOrPlaybackActive,audio,neighbour-1,src/core/audio/br_input.c
-0x100377A0,FUN_100377a0,audio,description,src/core/slice2_23.c
+0x100377A0,FUN_100377a0,settings,manual,src/core/slice2_23.c
 0x10037870,BrPairBufReset,drawing,description,src/core/slice1_06.c
 0x100378C0,FUN_100378c0,drawing,neighbour-1,src/core/generated/0x100378C0.c
 0x10037920,BrOptSave,menus,description,src/core/slice1_06.c
@@ -479,8 +479,8 @@ glide_va,name,module,basis,file
 0x10037EE0,BrMenuClearAA28A8,menus,prefix,src/core/slice2_24.c
 0x10037F40,BrUiFn1003E920,menus,description,src/core/slice2_23.c
 0x10038060,BrUiHook85_1003EA40,menus,description,src/core/slice8_85.c
-0x10038150,BrUiPoll1003EB60,audio,description,src/core/slice2_23.c
-0x10038180,BrUiPoll1003EB90,audio,neighbour-1,src/core/slice2_23.c
+0x10038150,BrUiPoll1003EB60,menus,manual,src/core/slice2_23.c
+0x10038180,BrUiPoll1003EB90,menus,manual,src/core/slice2_23.c
 0x100381B0,BrUiPoll1003EBC0,menus,description,src/core/slice2_23.c
 0x10038220,BrUiPoll1003EAE0,menus,description,src/core/slice2_23.c
 0x100382A0,BrUiPoll1003EC80,menus,neighbour-1,src/core/slice2_23.c
@@ -606,7 +606,7 @@ glide_va,name,module,basis,file
 0x10041CA0,BrPhaseDelete_10048850,menus,description,src/core/slice3_32.c
 0x10041D00,BrPhaseFn_100488B0,menus,neighbour-1,src/core/slice3_32.c
 0x10041DB0,BrMenuCallback41DB0,menus,prefix,src/core/slice3_32.c
-0x100476C0,BrUiHook85_1004E810,audio,description,src/core/slice8_85.c
+0x100476C0,BrUiHook85_1004E810,menus,manual,src/core/slice8_85.c
 0x10051550,BrSub100586A0,net,description,src/core/slice6_77.c
 0x10051580,BrSlotsFindById,gamedata,filed,src/core/gamedata/br_slots.c
 0x100515B0,BrSub10058700,net,description,src/core/slice7_82.c
@@ -650,7 +650,7 @@ glide_va,name,module,basis,file
 0x10059D30,BrCarPredictRemote,net,description,src/core/slice3_40.c
 0x10059DC0,BrUiSelAInc,menus,description,src/core/slice3_40.c
 0x10059DE0,BrUiSelADec,menus,description,src/core/slice3_40.c
-0x10059E00,BrUiVolumeApply,audio,description,src/core/slice3_40.c
+0x10059E00,BrUiVolumeApply,menus,manual,src/core/slice3_40.c
 0x10059E30,BrUiSelBInc,menus,description,src/core/slice3_40.c
 0x10059E50,BrUiSelBDec,menus,description,src/core/slice3_40.c
 0x10059E70,BrPadPackButtons,controls,filed,src/core/controls/br_input.c
