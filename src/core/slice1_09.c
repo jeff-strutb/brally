@@ -266,6 +266,9 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
  * value expression to cut register pressure (also identical).  The loop body
  * needs reshaping against the original register by register; this is a
  * workable target now rather than an unmatchable one. */
+/* WHAT IT DOES: pull the next n bits out of a packed bit stream and return
+ * them, advancing the read position. The primitive underneath every
+ * compressed format the game reads. */
 /* @implements 0x10073C90 d3d BrBitStreamReadBits */
 #ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamReadArg;

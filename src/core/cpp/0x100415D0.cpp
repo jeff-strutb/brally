@@ -1,3 +1,7 @@
+/* WHAT IT DOES: run one frame of a menu page: gives its pre-hook first
+ * refusal (which can end the page early with a sentinel), then updates the
+ * page's sub-mode and its controls. The per-frame step of the front end,
+ * once per page. */
 /* @implements 0x100415D0 glide BrUiFrame_10048180
  * @cpp_kind method
  * @cpp_symbol ?Frame@UiPage@@QAEHXZ

@@ -292,6 +292,10 @@
 
 unsigned int FUN_100271f0(unsigned short);
 
+/* WHAT IT DOES: expand one of the N64 texture formats into the 16-bit pixels
+ * the 3dfx card wants -- walks the source in its own bit layout and writes
+ * out a plain texture. The game ships N64-format art, so nothing can be
+ * drawn until this has run over it. */
 /* @implements 0x100250D0 glide BrTex3dExpand */
 void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char *param_4,int param_5,int param_6,
                  int param_7,int param_8,int param_9,int param_10,int param_11,unsigned char param_12,

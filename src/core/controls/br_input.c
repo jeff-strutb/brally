@@ -481,6 +481,10 @@ extern void BrSub10002830(void);
  * `default: goto defwnd;` with the label after the switch. VC5 orders the
  * arms itself and places default last regardless of source position; this
  * is block layout, not source shape. */
+/* WHAT IT DOES: the game window's message handler -- everything Windows
+ * sends the game arrives here and is routed: input, focus changes, painting,
+ * close. Gives a registered hook first refusal on each message before
+ * handling it. */
 /* @implements 0x100194C0 glide BrWndProc */
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {

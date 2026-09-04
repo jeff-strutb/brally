@@ -203,6 +203,9 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
     return BrNavPtIn(pRc->left, pRc->top, pRc->right, pRc->bottom, x, y);
 }
 
+/* WHAT IT DOES: test whether the mouse cursor is inside one menu control's
+ * hot rectangle and, if so, make that control the active one. The hit test
+ * behind mouse navigation of the front end. */
 /* @implements 0x10047A60 d3d BrUiNavCtlHit_10047A60 */
 #ifdef BR_MATCHING_BUILD
 /* Orig is thiscall (this = pCtl in ecx, `mov esi, ecx`) and reads the
@@ -1096,6 +1099,9 @@ void    BrGlNavTail(void);          /* 0x10059060 */
  * `int16_t`, declaring it `uint32_t 0xFFFFFFFFu`, and double-casting
  * `(uint16_t)(int16_t)step`.  The value has no 32-bit use in the ORIGINAL
  * either, so this is not reachable by giving it one. */
+/* WHAT IT DOES: poll the menu's navigation input once per frame -- reads the
+ * stick and buttons, moves the highlight, and fires the selected control's
+ * action. The front end's input step. */
 /* @implements 0x10059410 glide BrGlNavPoll */
 /* RESIDUE, measured 2026-09-03: 943 B / 297 insns against 939 / 298, and the
  * register-blind gap is 0+1 -- ONE missing `xor R,R`.  divergence.py (key 8)

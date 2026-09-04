@@ -735,23 +735,33 @@ extern uint8_t      g_aBrFontRampSmallB[];  /* 0x100A7038 */
 extern uint8_t      g_aBrFontBlockLarge[];  /* 0x1007B618 */
 extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
 
+/* WHAT IT DOES: draw a string of text into the display list -- walks the
+ * characters, looks each glyph's cell up in the font page, and emits the
+ * texture and rectangle commands to paint it at the current pen position,
+ * colour and scale. The engine's only text output path. */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
-    struct BrGfxWords *pCombine;
     const int32_t *pOff;
+    struct BrGfxWords *pCombine;
     const char    *p, *q;
     uint32_t       hRampA, hRampB, hPage, vaBlock, stride;
-    int32_t        scale, penX, top, cell;
+    int32_t        penX, top, cell;
     uint32_t       r, g, b;
+    int32_t        scale;
 
     scale = g_brFontScale;                          /* 0x10015B16 */
     penX  = g_brFontX;                              /* 0x10015B1D */
     top   = g_brFontY - (30 * scale) / 40;          /* 0x10015B23 */
+    /* The doubled scale and pen come off the GLOBALS' loads, not off the
+     * locals: `lea ecx,[esi+esi]` / `lea ebp,[edi+edi]` against the
+     * `shl ebx,1` a `scale <<= 1` produces.  Keeping the two loads live
+     * across the branch is also what costs `scale` its register and gives
+     * ebx to pOff -- the whole frame follows from these two lines. */
     if (g_brFontHiRes != 0) {                       /* 0x10015B4F */
-        top   <<= 1;
-        scale <<= 1;
-        penX  <<= 1;
+        top  <<= 1;
+        scale = g_brFontScale * 2;
+        penX  = g_brFontX * 2;
     }
 
     if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
@@ -1324,6 +1334,9 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * The D3D number stays with slice6_76.c.  Two bodies implement 0x100193C0 and
  * that is a real duplicate (br_font.h:547 records it); merging them is a
  * separate job and is not made better by moving a label. */
+/* WHAT IT DOES: measure how wide a string would be if drawn, by summing each
+ * character's advance at the given scale. Used to centre and right-align
+ * text without drawing it first. */
 /* @implements 0x10016980 glide BrFontMeasure */
 #ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;

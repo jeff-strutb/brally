@@ -271,6 +271,9 @@ static void *BrPtrAt(const void *pv)
  * writes the module globals directly. */
 extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
 
+/* WHAT IT DOES: rewrite every pointer inside a freshly loaded track file so
+ * it points into memory rather than at the N64 addresses stored on disc.
+ * Nothing in the file is usable until this has walked it. */
 /* @implements 0x100370D0 d3d BrRcaFixup */
 void BrRcaFixup(void *pvFile)
 {
@@ -682,6 +685,8 @@ extern void BrGlFixupAt(uint8_t *p);
  *   - the four-statement accumulator form (`v = h[n]; v = (v<<8)|h[n+1];`).
  * A fresh idea is needed for the cl/ch pairing order, not another
  * spelling. */
+/* WHAT IT DOES: read a track file's header and fill in the pointers to each
+ * of its sections. The map of what is where in the file, built once at load. */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {

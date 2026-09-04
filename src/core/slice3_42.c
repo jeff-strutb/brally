@@ -49,6 +49,8 @@ typedef struct { int32_t v; } BrCtrlProfileArg;
  * 1. 0x100695D0
  * ===================================================================== */
 
+/* WHAT IT DOES: turn a car's stored orientation quaternion into the 4x4
+ * matrix the renderer draws with. Called once per car per frame. */
 /* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {

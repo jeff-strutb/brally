@@ -424,6 +424,10 @@ float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
  * Verified against tools/x87emu.py over 6000 random cases (both flags, all
  * effect branches), worst relative error ~2e-6.  Golden vectors pin it.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: apply one collision impulse to a body: bounces the velocity
+ * off the surface and adds the spin the contact imparts. Returns without
+ * touching anything when the body is already moving AWAY from the surface,
+ * which is what stops a resting car being kicked every frame. */
 /* @implements 0x10065980 glide BrCrContactKick */
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
                     int dampFlag, int spinFlag, BrCrEffect *pEffect)
@@ -527,6 +531,10 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * pOrient/pNext are REBUILT on a resolved contact.  Returns the number of
  * contacts that produced a response.
  * ------------------------------------------------------------------ */
+/* WHAT IT DOES: walk every surface the car is touching this frame and apply
+ * each one's collision response in turn, accumulating the result. The top of
+ * the collision solver -- one pass over the contact list built during the
+ * collision test. */
 /* @implements 0x10067710 glide BrCrRespWalk */
 int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
                  const float ext[4],

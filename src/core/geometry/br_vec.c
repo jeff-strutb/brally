@@ -11,6 +11,9 @@
 
 #include <math.h>
 
+/* WHAT IT DOES: the cross product -- the direction perpendicular to two
+ * others, which is how surface normals and sideways axes are built. Uses
+ * temporaries so the output may safely be one of the inputs. */
 /* @implements 0x1003AC30 d3d BrVec3Cross */
 /* @n64 0x8022439C located */
 void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
@@ -21,6 +24,10 @@ void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->x = x; pOut->y = y; pOut->z = z;
 }
 
+/* WHAT IT DOES: the dot product -- how much two directions agree. Positive
+ * means roughly the same way, zero means at right angles, negative means
+ * opposing. The workhorse behind every angle and projection test in the
+ * game. */
 /* @implements 0x1003AC90 d3d BrVec3Dot */
 /* @n64 0x80224404 located */
 /* PRECISION CAVEAT (Dot only; the four componentwise helpers below are exact --
@@ -65,6 +72,8 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = pA->z - pB->z;
 }
 
+/* WHAT IT DOES: add one vector into another IN PLACE -- pA becomes pA + pB.
+ * The out-of-place twin is BrVec3Add. */
 /* @implements 0x1003AF70 d3d BrVec3AddTo */
 /* @n64 0x802248C8 exact */
 /* SAME FP SCHEDULING WALL as BrVec3Scale below, 6 diffs: the original loads
@@ -99,6 +108,8 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
     pA->z += pB->z;
 }
 
+/* WHAT IT DOES: scale a vector by a number into a separate output, leaving
+ * the input alone. */
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 /* @n64 0x802244FC exact */
@@ -121,6 +132,8 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
     pOut->z = pV->z * s;
 }
 
+/* WHAT IT DOES: scale a vector by a number IN PLACE. The in-place twin of
+ * BrVec3Scale. */
 /* @implements 0x1003AD10 d3d BrVec3ScaleBy */
 /* @n64 0x80224528 located */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
@@ -130,6 +143,9 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
     pV->z *= s;
 }
 
+/* WHAT IT DOES: scale one vector and add it to another, into a separate
+ * output: pOut = pA + pB*s. One multiply and one add per component, the
+ * everyday 'move this far in that direction' step. */
 /* @implements 0x1003AFE0 d3d BrVec3MulAdd */
 /* @n64 0x8022494C located */
 /* pOut = pA + pB*s.  The original scales the SECOND vector arg ([esp+0xc]) and
@@ -143,6 +159,8 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
     pOut->z = pA->z + pB->z * s;
 }
 
+/* WHAT IT DOES: the in-place form of BrVec3MulAdd -- pA += pB*s. This is
+ * what integrates a velocity into a position each frame. */
 /* @implements 0x1003B020 d3d BrVec3MulAddTo */
 /* @n64 0x80224990 exact */
 /* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add

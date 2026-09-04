@@ -66,6 +66,10 @@ extern int     g_brRacePathIndex;   /* 0x10AF07F0 */
 
 void BrVec3Lerp(RcVec3 *pOut, const RcVec3 *pA, const RcVec3 *pB, float t);
 
+/* WHAT IT DOES: move a car's marker along the racing line to the node it is
+ * nearest now, walking forward from where it was last frame. This is what
+ * keeps track of a car's progress round the lap, and it feeds both the
+ * position table and the AI. */
 /* @implements 0x1005ECF0 glide BrRacePathAdvance */
 /* @implements 0x1005ECF0 glide BrRacePathAdvance
  *

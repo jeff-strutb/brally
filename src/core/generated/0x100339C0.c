@@ -76,6 +76,9 @@ extern const float kPfx19_62;   /* 0x100775D8  19.62   */
 extern const float kPfx102;     /* 0x100775DC  102.0   */
 extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
 
+/* WHAT IT DOES: advance two more particle lists by a frame, in the same way
+ * BrPfxUpdateB0 handles its own -- ages, moves and fades each particle. The
+ * two passes are two separate lists sharing one loop. */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {

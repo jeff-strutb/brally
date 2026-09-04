@@ -775,6 +775,8 @@ BrPeer g_aBrPeers[BR_PEER_COUNT];   /* Glide 0x117A9B88; loop 1 starts at [1] */
 __declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
 __declspec(dllimport) int __stdcall ReleaseMutex(void *);
 
+/* WHAT IT DOES: find which peer slot a network id belongs to. Id 1 is always
+ * slot 0 -- the local player -- and everything else is a linear scan. */
 /* @implements 0x10036030 d3d BrPeerFind */
 int BrPeerFind(uint32_t id)
 {
