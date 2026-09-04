@@ -230,4 +230,20 @@ int BrMenuOpt40960(void)
   return;
 }
 
+extern int DAT_10ac5d98;
+extern int g_brAA2854;
+
+
+/* WHAT IT DOES: menu option handler: set flag 5D98, request redraw, mark dirty. */
+/* @implements 0x100409C0 glide BrMenuOpt409C0 */
+
+int BrMenuOpt409C0(void)
+
+{
+  DAT_10ac5d98 = 1;
+  BrSub10072AF0(2,0x200020);
+  g_brAA2854 = 2;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
