@@ -1,4 +1,19 @@
-# SetVideo.exe — notes (2026-08-27)
+# SetVideo.exe — notes (2026-08-27, COMPLETE 2026-09-03)
+
+> **STATUS: the game code in this binary is DONE.** All 42 user functions in
+> `0x401000`–`0x402D20` are byte-exact (7,228 B of code + 228 B of inter-
+> function alignment padding = the whole 7,456-byte span), and
+> `tools/image_build.py` assembles `SetVideo.exe` with **0 differing bytes**.
+> Everything at/above `0x402D20` is statically-linked MSVC 5.0 CRT (289 map
+> rows, 27,888 B) and is fenced by `CRT_START['setvideo']` in
+> `tools/progressmap.py` — reproduced by linking, not a decomp target, same
+> category as `BRD3D.dll`'s static CRT under rule 0. There are no interleaved
+> CRT functions below the boundary, so `config/fenced_exe.csv` needs no
+> SetVideo rows.
+>
+> The map used to split `WinMain` into 12 rows at non-prologue boundaries;
+> `config/functions_setvideo.csv` now carries the single 2,144-byte row
+> (2026-09-03), so the 11 phantom `WinMain_*` / `Write*INI*` entries are gone.
 
 SetVideo.exe is the renderer/display config utility (`orig/SetVideo.exe`,
 60,928 bytes). `.text` is **36,864** bytes at image base `0x400000` (CLAUDE.md
@@ -79,17 +94,22 @@ with the BRally C and a static-CRT header. Plus three CRT stubs.
 | 0x004023B0 | 205 | GetIniValue | **0** | BRally for-init latch, no `_CRTIMP` |
 | 0x00402CE0 | 64 | GetSectionNameByIndex | **0** | `f(idx, pini)` — FindFirst, FindNext idx times, GetObj, free |
 
-## SetVideo-only, identified, not 0 — walls, do not grind
+## The five former walls — ALL BYTE-EXACT
 
-| SV VA | size | name | diffs | class |
-|---|---:|---|---:|---|
-| 0x00401150 | 217 | CHK_FGets | **192** | getc `_cnt/_ptr/_filbuf` is right; `n<=0` is `test ebp,ebp; jle` to a tail that loads `buf` *after* the four pushes. Loading `buf` before `push edi` flips `jle`/`jg` and the ret-s merge with CR+EOF. Allocator-layout wall. |
-| 0x00401560 | 71 | FindFirstSection | **4** | edx vs ecx for pini. Rest byte-identical to SetSubstituteDir + `[0]=='['`. Coloring: no `name` arg, so pini lands in edx and `mov edx,[edx]` overwrites it with list. |
-| 0x004015B0 | 70 | FindNextSection | **3** | ecx vs edx for pini. Indexed `list->rgsz[i][0]` (`while (i < n)`). Pointer walk (`s = rgsz+i; do`) peels the first load (`+8`, 44 diffs). Same coloring class as FindFirst. |
-| 0x00402360 | 74 | FollowUse | **11** extra +16 | esi/edi (p vs use). Orig: pini ebx, p edi, use esi; `test esi,esi; jne` back to GetIniValue. `for(;;)`+break is the CFG; `do-while(use)` duplicates GetIniValue (+20 B). Decl swap / ini local stay 11/+16. Coloring. |
-| 0x00402480 | 2144 | WinMain | **644** / extra −16 | **one** function. Map size 930 is truncated mid-body. Orig bytes `build/match/orig_setvideo/0x00402480.bin` (2144). Prefix through Card= search is opcode-identical except 4 stack-slot bytes. Wizard half is coloring (`inc eax` vs `lea [ebx+1]`, psec/card vs vsave slots). See below. |
+Every function once listed here as a wall now matches. Kept for the levers,
+not as open work.
 
-WinMain is **one** function. Map-splits at non-prologue boundaries (do not match as C):
+| SV VA | size | name | what broke it |
+|---|---:|---|---|
+| 0x00401150 | 217 | CHK_FGets | Walk the `buf` **parameter** in place — no separate cursor. A `char *s = buf;` cursor makes MSVC5 hoist the load to the header; walking `buf` itself gives the preheader load + reload on the `n<=0` path that keeps `n` in ebp (frameless). |
+| 0x00401560 | 71 | FindFirstSection | edx/ecx coloring, resolved. |
+| 0x004015B0 | 70 | FindNextSection | Indexed `list->rgsz[i][0]` (`while (i < n)`), not a pointer walk — the walk peels the first load. |
+| 0x00402360 | 74 | FollowUse | `for(;;)` + break is the CFG; `do-while(use)` duplicates GetIniValue (+20 B). |
+| 0x00402480 | 2144 | WinMain | Three source defects, all in the wizard loop — see the section below. |
+
+WinMain is **one** function. The map used to split it at these non-prologue
+boundaries; those rows were removed from `config/functions_setvideo.csv` on
+2026-09-03, but the block map is still the right way to read the body:
 
 | SV VA | what |
 |---|---|
@@ -107,7 +127,37 @@ WinMain is **one** function. Map-splits at non-prologue boundaries (do not match
 
 Dialog templates: OK/Cancel `gPlusD ? 0x67 : 0x6c`; radio `gPlusD ? 0x68 : 0x6b`; symptoms `0x6a`; vendor `0x66`; chipset `0x69`. Radio Back (−1) returns to OK/Cancel; other Backs return to radio. First OK/Cancel cancel is `return 0` **without** FreeINI (`je 0x402BB6`).
 
-WinMain reconstruction (`build/setvideo_work/0x00402480.c`) is the function. Proven this pass:
+### WinMain — the three defects that closed it (2026-09-03, 644 → 0)
+
+The function is `src/exe/setvideo/0x00402480.c`. It stalled at 644 diffs /
+−16 B for a week on what read like a coloring wall. It was not: three source
+facts, each of which cascaded into the next.
+
+1. **The radio dialog's lParam is the loop-carried result.** One variable is
+   seeded once from `gSel.method` at `+0x39c`, then reassigned by every radio
+   `DialogBoxParamA` and passed back in as lParam on the next pass — every
+   `goto radio` back-edge lands at `+0x3a2`, *after* the seed, so the value
+   flowing in is the previous dialog's return. That is the whole reason for
+   the "dead" `mov ebx,eax; lea eax,[ebx+1]` at `+0x3bb`: `result` is not
+   dead, it is the next iteration's argument. Passing a fresh `gSel.method`
+   argument instead gives `inc eax` and 644 bytes of register cascade.
+   **Generalise: a `mov <callee-saved>,eax` that nothing downstream reads is
+   a loop-carried value, not dead code — look for a back-edge above it.**
+2. **The vendor/chipset arms compare `gSel.method`, not the `vsave`/`csave`
+   copy just taken.** Reading the copy lets VC5 hold that member in ebx and
+   spill the loop variable instead; comparing the global forces all three
+   `Sel` fields out to stack slots `0x18`/`0x1c`/`0x20` exactly as the
+   original has them (and `psec`/`card` then land at `0x30`/`0x34`). This one
+   change alone took 678 → 488 diffs and made the size exact.
+3. **The write blocks are `if (result != 0) { …; FreeINI(gINI); return 0; }`
+   followed by a second `FreeINI(gINI); return 0;`** — NOT an early-return
+   guard. The guard form (`if (result == 0) { FreeINI; return 0; } …writes`)
+   makes the exit the fall-through (`jne write`); the original branches away
+   to it (`je <outlined stub>`) and cross-jumps the seven exits so that
+   case 1's block at `+0x728` is the merge master, with stubs at `+0x745`
+   and `+0x832`. 488 → 0.
+
+Also proven this pass:
 
 - Nested `plus = strstr(lpCmdLine, "+d"); gPlusD = plus != 0;` → orig `xor ecx,ecx; test eax,eax; setne cl`. Bare `gPlusD = strstr(...) != 0` is `neg; sbb; neg`.
 - `char buf[0x400]` (same as CHK_FReadOpen) → `sub esp, 0x528`. `buf[0x3f0]` is 16 short: the 0x3f0 figure was `frame - buf_offset` forgetting the 4 register pushes. line at `+0x38`, buf at `+0x138`, lpCmdLine at `+0x544`.
@@ -152,7 +202,7 @@ Residue (do not grind): 4 slot bytes in the Card= block (orig psec at `[esp+0x34
 6. Title: `"Boss Rally Display Wizard"`. Registry dir is the same
    `HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory`.
 
-WinMain outline (structurally identified, not 0-diff): GetDesktopWindow →
+WinMain outline (byte-exact since 2026-09-03): GetDesktopWindow →
 GetInstallDir → strcpy/strcat `BossRally.ini` → `strstr(lpCmdLine, "+d")` →
 CHK_FileExists(`BossRally.vdb`) → MessageBox on miss → ReadINI / CountSections
 → FReadOpen+FGets parse of existing INI (four `D3D*` keys) → Card= vs VDB
@@ -166,21 +216,28 @@ WriteDefaultINI (`wt`): `CHK_FPutS("[Video]"); CHK_FPutS("\n");` then `Card` / `
 `Card=<section name>` then FollowUse/BindSection/NextObj lines of the VDB
 section.
 
-## Matching totals
+## Matching totals (2026-09-03 — game code COMPLETE)
 
-**37 / 342** functions at diffs=0 (**4,675 / 36,864** of `.text`, **12.7%**).
-No new 0-diff this pass — remaining user functions are walls.
+Every number below is a real denominator, per rule 4.
 
-Of user-region code (`0x401000`–`0x4038D0` = 10,448 B before CRT startup),
-the 0-diff set is **4,653 / 10,448 (44.5%** of that span) including
-`CRT_empty` (1 B at `0x403140`). Game user (`0x401000`–`0x402D20` = 7,456 B)
-is **4,652 / 7,456 (62.4%)**. Remaining game bytes: WinMain 2,144 + four
-walls 432 (CHK_FGets 217 / FindFirst 71 / FindNext 70 / FollowUse 74) +
-228 B alignment. Walls: table above (CHK_FGets / FindFirst / FindNext /
-FollowUse / WinMain).
+| what | count | bytes |
+|---|---:|---:|
+| **game code**, `0x401000`–`0x402D20` | **42 / 42 functions** | **7,228 / 7,228 B (100%)** |
+| …plus inter-function alignment padding in that span | — | 228 B (35 runs of 1–14 B) |
+| so the whole game span | — | **7,456 / 7,456 B** |
+| CRT stubs also matched, above the boundary | 3 | 23 B (`CRT_empty`, `_matherr`, `_setdefaultprecision`) |
+| **matched total in `.text`** | **42** | **7,251 / 36,864 B (19.7%)** |
+| fenced static CRT, `≥ 0x402D20` | 289 map rows | 27,888 B |
 
-The other **~26 KB** is statically-linked MSVC 5.0 CRT starting at `0x402D20`
-(~292 / 342 map rows). Fence, don't match — walls, not targets. Early CRT in
+`python3 tools/image_build.py` assembles `SetVideo.exe` from these 42 claims:
+**0 differing bytes**. The 42 count includes the 3 CRT stubs; the 39 game
+functions plus WinMain make up the 7,228 B.
+
+The other **~28 KB** is statically-linked MSVC 5.0 CRT starting at `0x402D20`
+(289 / 331 map rows). Fence, don't match — reproduced by linking, not a
+decomp target (`CRT_START['setvideo']` in `tools/progressmap.py`; no
+`config/fenced_exe.csv` rows are needed because nothing CRT sits *below* the
+boundary). Early CRT in
 the user-region span (`0x402D20`–`0x4038D0` = 2,992 B): `free` / `exit` /
 `fclose` / `fopen` / `sprintf` / `_filbuf` / `ungetc` / `fputs` / `malloc` /
 `printf` / `_chkstk` / `strchr` / `strncmp` / `fgets` / `strtol` (map-named
@@ -191,8 +248,9 @@ class as BRally). From `0x403A70` through `_stricmp` at `0x409DF0` is heap,
 stdio, locale, and math. Three tiny CRT stubs already match (`CRT_empty`,
 `_matherr`, `_setdefaultprecision`); the rest is Microsoft's, not game code.
 
-Winning TUs: `build/setvideo_work/0x<VA>.c`. Orig bytes:
-`build/match/orig_setvideo/`. 79 / 342 map rows have names.
+The matched TUs live in `src/exe/setvideo/0x<VA>.c` (the `build/setvideo_work/`
+copies are scratch and may lag). Orig bytes: `build/match/orig_setvideo/`.
+68 / 331 map rows have names.
 
 ## CRT-header rule (SetVideo)
 

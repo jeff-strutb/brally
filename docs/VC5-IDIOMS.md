@@ -4567,3 +4567,114 @@ the mirror residue (the original loads `dh` before `dl`) and already names both
 the pointer and the index; eleven spellings are now recorded dead in that
 function. Loads feeding two halves of ONE register are a different mechanism
 from two loads feeding an address.
+
+## A `mov <callee-saved>,eax` that nothing downstream reads is a LOOP-CARRIED value, not dead code
+
+`0x00402480 SetVideo WinMain` sat at 644 diffs for a week on what every note
+in the file called a coloring wall. The tell was three bytes:
+
+```
++03bb  8bd8        mov ebx, eax        ; ebx never read again
++03bd  8d4301      lea eax, [ebx + 1]  ; recomp: 40  inc eax
+```
+
+`grep ebx` over the whole 2,144-byte disassembly shows ebx written at `+0x3bb`
+and next written at `+0x6d3` with **no read in between** — so the copy looks
+gratuitous and the `lea` looks like a pessimisation of `inc`. It is neither.
+Two instructions earlier:
+
+```
++039c  8b1da8694100  mov ebx, [gSel.method]   ; SEEDED here, once
++03a2  a1c46b4100    mov eax, [gPlusD]        ; <- every back-edge lands HERE
++03a7  53            push ebx                 ; lParam
+```
+
+Every `goto`-back-edge in the function (`+0x3e6`, `+0x456`, `+0x4ca`) targets
+`+0x3a2`, i.e. **after** the seed. So the value pushed as lParam on pass 2 is
+the value `+0x3bb` stored — the previous call's return. The source is one
+variable doing both jobs:
+
+```c
+    method = gSel.method;             /* seed, once */
+radio:
+    if (gPlusD) method = DialogBoxParamA(hInst, MAKEINTRESOURCE(0x68),
+                                         hwnd, DlgProcRadio, method);
+    else        method = DialogBoxParamA(hInst, MAKEINTRESOURCE(0x6b),
+                                         hwnd, DlgProcRadio, method);
+    switch (method + 1) { ... }
+```
+
+Passing a fresh `gSel.method` as the argument instead collapses to `inc eax`
+and the freed callee-saved register then re-colours the remaining 600 bytes.
+
+**The screen, and it is cheap:** when a `mov <ebx|esi|edi>,eax` after a call
+has no reader, do not write it off as dead — find the labels that jump
+*backwards* past it and check whether one lands between the register's seed
+and its use. If it does, the variable is loop-carried and the source reuses
+one name for the argument and the result. `divergence.py` cannot see this;
+only reading the back-edge targets can.
+
+**Rider — the SECOND-ORDER lever: read the GLOBAL, not the copy you just
+took.** Once `method` owned ebx, the arms that snapshot the selection
+(`vsave = gSel;`) regressed: writing the guard as `if (vsave.method != 2)`
+lets VC5 keep that member in ebx and spill the loop variable to `[esp+0x10]`
+instead, duplicating the whole call into both template arms. Writing
+`if (gSel.method != 2)` — read the global, the copy is only a snapshot —
+forces all three struct fields out to stack slots `0x18`/`0x1c`/`0x20`, which
+is what the original has. 678 → 488 diffs and the size went exact. This is the
+mirror of "Read and update the GLOBAL; a local copy of it changes the
+allocation": whichever of the two the *comparison* names decides who wins the
+register.
+
+## An early-return guard and an `if (ok) { … }` wrapper differ in which side is the FALL-THROUGH
+
+Same function, the last 488 diffs. Three sites read:
+
+```
++04d1  0f845b030000   je 0x402cb2      ; orig: branch AWAY to an outlined stub
+```
+
+versus the recompile's
+
+```
++04d1  750c           jne 0x4df        ; fall through into the exit
++04d3  8b0d…          mov ecx, [gINI]
++04d9  51             push ecx
++04da  e953030000     jmp 0x832
+```
+
+Identical semantics, opposite layout. The guard spelling
+
+```c
+    if (result == 0) { FreeINI(gINI); return 0; }
+    fp = CHK_FWriteOpen(...);  /* …writes… */
+    FreeINI(gINI);
+    return 0;
+```
+
+makes the exit the fall-through. The original is the wrapper spelling, with the
+tail written out **twice**:
+
+```c
+    if (result != 0) {
+        fp = CHK_FWriteOpen(...);  /* …writes… */
+        CHK_FClose(fp);
+        FreeINI(gINI);
+        return 0;
+    }
+    FreeINI(gINI);
+    return 0;
+```
+
+which puts the writes on the fall-through and leaves the exit for VC5 to
+outline and cross-jump. In WinMain that let the seven `FreeINI(gINI); return 0;`
+sites merge with case 1's block at `+0x728` as the master and stubs at
+`+0x745` / `+0x832` — the exact original layout, 488 → **0**.
+
+**How to tell the two apart before editing:** look at where the conditional
+branch points. A guard's exit is a short block immediately after the branch; a
+wrapper's exit is a far target, usually near the end of the function and
+usually shared. If `je`/`jne` polarity is your last divergence and the target
+is far, you have the wrapper. Do **not** deduce "the source has one common
+tail" from this — two separate `return` statements are what produce the two
+separate stub blocks; a single `goto done;` label would produce only one.
