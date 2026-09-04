@@ -1303,6 +1303,33 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  * of slots rather than one cell per square, so a car driving across the map
  * recycles them as it goes. */
 /* @implements 0x1006F720 d3d BrCollGridCellAcquire */
+/* RESIDUE 613 vs 551 bytes, 193 vs 178 instructions, register-blind 28+13
+ * (from 699 / 222 / 61+17 -- see the git log for the four causes that closed).
+ * What is LEFT is register allocation plus a handful of extra global reloads,
+ * and the loop is already the original's shape (two walking pointers, an `i`
+ * in eax, and a pointer end-compare):
+ *
+ *  - THE KEY SPILLS. The original keeps the 16-bit key in `di` for the whole
+ *    function and RE-DOES `movsx edx,di` on every pass; VC5 hoists the widened
+ *    form out of the loop, which makes two long-lived values out of one and
+ *    costs two stack slots (`sub esp,0x18` against the original's 0x10). The
+ *    knock-on is the whole allocation: the original spills iVictim and keeps
+ *    `best` in ebx, we spill `best` and keep iVictim in ebp, so the original
+ *    has the extra `jmp`/reload pair around the victim update that we lack.
+ *    Note we do not even use edi in the loop -- a free register and it still
+ *    spills, so this is a hoisting decision, not pressure.
+ *  - THE CLOCK IS NOT INCREMENTED IN PLACE. Original `inc dword ptr [g]`;
+ *    we emit load / inc / store with the load scheduled above the pushes and
+ *    the store below the first __ftol call. Both re-read the global later, so
+ *    the whole difference is those three instructions.
+ *    PROBED AND DEAD, do not re-run -- all four compile to the identical 613
+ *    bytes / 193 instructions: `g_brCollGridClock += 1`, `= g_brCollGridClock
+ *    + 1`, the post-increment form, and moving the statement below the key
+ *    computation.
+ *  - six extra `mov reg,[global]` reloads in the triangle loop's address
+ *    arithmetic; the shape around them (`mov cx,[base+idx*8+4]`, `lea
+ *    [ecx+ecx*2]`, `lea [ebx+ecx*4]`) already matches instruction for
+ *    instruction, as does the entire cross-product/normalise block. */
 #ifdef BR_MATCHING_BUILD
 /* The original does NOT call a helper for float->int here: a plain `(int)f`
  * compiles to `fld f` / `call __ftol`, with the value arriving on the x87
