@@ -353,7 +353,14 @@ static unsigned BrCrCorner(const float aV[3], unsigned mask)
     float    t;
 
     if ((mask & 0x03u) != 0u) {
-        t = (aV[2] + aV[1]) + aV[0];
+        /* The redundant paren round aV[2] is NOT decoration: it is what
+         * makes VC5 `fld [ecx+8]` and `fadd [ecx+4]` instead of the other
+         * way round.  Permuting the summands does nothing (VC5 canonicalises
+         * a flat float sum); parenthesising the FIRST operand is the only
+         * thing that moves the pair.  Without it this function is 2 bytes
+         * out and, worse, reads `match` in report.csv while the image gate
+         * fails -- see docs/VC5-IDIOMS.md, "the leading-operand paren". */
+        t = ((aV[2]) + aV[1]) + aV[0];
         if ((mask & 0x01u) != 0u && !((double)t <= BR_CR_CORNER_HI)) {
             out |= 0x01u;
         } else if ((mask & 0x02u) != 0u && !((double)t >= BR_CR_CORNER_LO)) {
