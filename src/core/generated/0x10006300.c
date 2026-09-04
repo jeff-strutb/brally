@@ -27,6 +27,8 @@ extern int DAT_1021d7cc;
 
 
 
+/* WHAT IT DOES: read another per-slot counter under the slot's mutex,
+ * clamped so a negative stored value reads as zero. */
 /* @implements 0x10006300 glide BrNetSlotGetF974 */
 int BrNetSlotGetF974(int param_1)
 

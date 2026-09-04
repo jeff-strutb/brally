@@ -42,6 +42,10 @@ typedef int (__stdcall *CC_std_1)(int);
 
 
 
+/* WHAT IT DOES: bring the keyboard input system up, but only on the FIRST
+ * caller -- later callers just increment the count. Clears the key-state and
+ * key-mapping tables on that first call. BrDiKeyboardShutdown is the
+ * matching release. */
 /* @implements 0x100703D0 glide FUN_100703d0 */
 int FUN_100703d0(void)
 

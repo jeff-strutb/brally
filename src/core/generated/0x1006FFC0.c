@@ -30,6 +30,9 @@ typedef int (*funcptr)();
  * the first dword — /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
  * the dead pszFileName slot. Success returns the mmioAscend result, not
  * a fresh 0; cleanup nulls hmmio then stores it. */
+/* WHAT IT DOES: open a .WAV file and get it ready to read -- walks the RIFF
+ * chunks, checks it really is PCM audio, hands back the format description
+ * and leaves the file positioned at the start of the samples. */
 /* @implements 0x1006FFC0 glide FUN_1006ffc0 */
 MMRESULT FUN_1006ffc0(LPSTR param_1,int *param_2,int *param_3,LPMMCKINFO param_4)
 

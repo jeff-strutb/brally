@@ -30,6 +30,9 @@ typedef int (__stdcall *CC_std_1)(int);
 
 
 
+/* WHAT IT DOES: the same reference-counted release for the joystick/force-
+ * feedback devices -- frees both interfaces when the last user goes, and
+ * ignores an unmatched call. */
 /* @implements 0x10072840 glide BrExt_10079550 */
 void BrExt_10079550(void)
 

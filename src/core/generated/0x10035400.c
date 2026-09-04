@@ -50,6 +50,10 @@ extern char s_Could_not_create_DirectPlay_obje_100aa4d8[];
 
 typedef int (__stdcall *CC_std_5)(int, int, int, int, int);
 
+/* WHAT IT DOES: initialise the multiplayer subsystem from cold -- clears the
+ * session name and password buffers, zeroes every entry in the player table,
+ * and creates the DirectPlay object. Returns zero if DirectPlay is
+ * unavailable, which is how the game discovers multiplayer cannot run. */
 /* @implements 0x10035400 glide FUN_10035400 */
 int FUN_10035400(void)
 {

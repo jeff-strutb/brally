@@ -10,6 +10,9 @@ extern int           DAT_10ac5bf8;   /* dst dword */
 extern int           DAT_10ac5bfc;   /* dst dword (from byte) */
 extern unsigned char DAT_10ac5c10;   /* dst byte  */
 
+/* WHAT IT DOES: copy three menu values from their editing copies into their
+ * live ones -- the commit step when a player accepts a page rather than
+ * cancelling it. Always reports success. */
 /* @implements 0x10039F60 glide FUN_10039f60 */
 int FUN_10039f60(void)
 {

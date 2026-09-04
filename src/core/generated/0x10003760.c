@@ -26,6 +26,11 @@ extern char s_CHK_ReAllocateMemory____Out_of_m_1007b224[];
 
 
 
+/* WHAT IT DOES: grow or shrink an allocation or abort the game, reporting
+ * the caller's id. GOTCHA: it calls realloc BEFORE testing for a zero size,
+ * so a zero-size request still reallocates and then returns null, leaking
+ * whatever realloc handed back. That is the original's behaviour, reproduced
+ * deliberately. */
 /* @implements 0x10003760 glide BrChkRealloc */
 void * BrChkRealloc(void *param_1,unsigned int param_2,int param_3)
 

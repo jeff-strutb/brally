@@ -27,6 +27,9 @@ typedef int (__stdcall *CC_std_2)(int, int);
 
 
 
+/* WHAT IT DOES: release the COM interface a holder object is keeping alive,
+ * if it is still holding one, and forget it. Returns the reference count the
+ * release reported, or zero if there was nothing to release. */
 /* @implements 0x100099D0 glide BrComHolderRelease */
 int BrComHolderRelease(void)
 

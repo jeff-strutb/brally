@@ -2,6 +2,9 @@
  * fastcall: pointer in ecx, ten fields zeroed in source order, returns this. */
 #ifdef BR_MATCHING_BUILD
 
+/* WHAT IT DOES: zero one contiguous run of fields in a larger record,
+ * leaving everything before offset 0x2C untouched. A partial reset rather
+ * than a full construction. */
 /* @implements 0x100592F0 glide FUN_100592f0 */
 int *__fastcall FUN_100592f0(int *p)
 {

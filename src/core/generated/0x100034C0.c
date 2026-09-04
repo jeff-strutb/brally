@@ -27,6 +27,10 @@ int BrFChkFRead();
 
 
 
+/* WHAT IT DOES: read from a file and abort the whole game if the read comes
+ * up short, printing how many bytes it wanted to the debugger. The engine
+ * treats a short read as corrupt game data, so there is no recoverable case
+ * and no return value to test. */
 /* @implements 0x100034C0 glide BrChkFRead */
 int BrChkFRead(int param_1,int param_2,int param_3,int param_4)
 

@@ -79,6 +79,11 @@ extern int DAT_1021ce50;    /* bcar */
 extern int DAT_10226a40;    /* btire */
 extern int DAT_10226a3c;    /* bsuspension */
 
+/* WHAT IT DOES: read the game's settings file from the install directory and
+ * apply what it finds -- a plain line-by-line parse of KEY: VALUE entries
+ * covering network play, the chosen track and the rest of the persisted
+ * options. Silently does nothing if the file is absent, leaving the defaults
+ * in place. */
 /* @implements 0x10007F40 glide FUN_10007f40 */
 void FUN_10007f40(char *param_1)
 {

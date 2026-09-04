@@ -24,6 +24,10 @@ typedef int (*funcptr)();
 /* Forward declarations for unknown functions/globals */
 typedef int (__stdcall *COM3)(void *this, void *buf, unsigned int *size);
 
+/* WHAT IT DOES: call a DirectPlay method that reports how big its answer is
+ * before it will give it -- ask with no buffer, take the 'buffer too small'
+ * reply as the size, allocate exactly that much, and ask again. The standard
+ * two-call pattern, wrapped so callers do not repeat it. */
 /* @implements 0x10036740 glide FUN_10036740 */
 int FUN_10036740(void *param_1, void **param_2)
 

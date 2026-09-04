@@ -41,6 +41,10 @@ typedef int (__stdcall *CC_std_3)(int, int, int);
 
 
 
+/* WHAT IT DOES: connect to a chosen network transport -- tears down whatever
+ * was running, asks the user's selection for its service provider, creates a
+ * fresh DirectPlay object and initialises it on that provider. This is the
+ * step between picking 'TCP/IP' or 'modem' and being able to see sessions. */
 /* @implements 0x100356B0 glide FUN_100356b0 */
 void FUN_100356b0(void)
 

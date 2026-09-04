@@ -30,6 +30,10 @@ extern int g_i0AB3F4;
 
 
 
+/* WHAT IT DOES: toggle a per-entry flag in the current list row and swap the
+ * row's name with a saved one: turning it on stashes the existing name and
+ * blanks the field, so the player can type a replacement. The undo half of
+ * an in-place rename. */
 /* @implements 0x1003AF60 glide BrExt_10041A00 */
 int BrExt_10041A00(int param_1)
 

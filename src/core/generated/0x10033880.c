@@ -64,6 +64,10 @@ extern const float kPfxNeg0_8;  /* 0x100775C8  -0.8    */
 extern const float kPfx5_7375;  /* 0x100775CC  5.7375  */
 extern const float kPfxCell;    /* 0x100775D0  0.03125 */
 
+/* WHAT IT DOES: advance one whole list of particles by a frame: ages each
+ * one, moves it by its own velocity plus the global drift, applies a
+ * downward pull, and fades its size. This is the per-frame physics for dust,
+ * smoke and spray. */
 /* @implements 0x10033880 glide BrPfxUpdateB0 */
 void BrPfxUpdateB0(void)
 {

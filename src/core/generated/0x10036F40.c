@@ -30,6 +30,9 @@ int BrSub1003D850();
 typedef int (__stdcall *COM4)(void *this, int a, void *b, int *c);
 typedef int (__stdcall *COM5)(void *this, void *cb, void *buf, int n, int cookie);
 
+/* WHAT IT DOES: the same ask-then-allocate-then-ask-again dance for a
+ * different DirectPlay method -- one that takes an extra argument and
+ * returns a variable-sized result. */
 /* @implements 0x10036F40 glide FUN_10036f40 */
 int FUN_10036f40(int param_1, void *param_2)
 

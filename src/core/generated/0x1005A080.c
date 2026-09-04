@@ -32,6 +32,10 @@ extern int DAT_10ac67c8;
 extern char s_Paint__s_100b2e4c[];
 int BrBmpLoadRgba(char *);
 
+/* WHAT IT DOES: load the paint-scheme bitmaps for one car -- walks that
+ * car's thirty livery entries and, for any that names a file it has not
+ * loaded yet, reads the bitmap in as raw pixels. Skips entries whose file is
+ * missing. */
 /* @implements 0x1005A080 glide FUN_1005a080 */
 void FUN_1005a080(int param_1, int param_2)
 {

@@ -43,6 +43,10 @@ void __fastcall BrCarSub9020(void *pCar);
 void __fastcall BrCarWheelFx(void *pCar);
 void __fastcall BrCarPfxSpawn(void *pCar);
 
+/* WHAT IT DOES: run the particle system for one frame -- initialises it on
+ * the very first call, then updates whichever particle lists the current
+ * mode uses and gives every active car a chance to throw up its own wheel
+ * effects. */
 /* @implements 0x10033BB0 glide BrPfxTick */
 void BrPfxTick(void)
 {

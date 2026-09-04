@@ -20,6 +20,9 @@ typedef void (__fastcall *PDtor)(void *);
 typedef void (__fastcall *PCtor)(void *);
 void __stdcall FUN_10074770(void *ptr, unsigned size, int count, PDtor dtor);
 
+/* WHAT IT DOES: construct an array of objects front to back and, if any
+ * constructor throws, destroy the ones already built before letting the
+ * exception out. Compiler-generated array construction. */
 /* @implements 0x10074800 glide FUN_10074800 */
 void __stdcall
 FUN_10074800(void *ptr, unsigned size, int count, PCtor ctor, PDtor dtor)

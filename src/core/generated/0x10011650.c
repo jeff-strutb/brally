@@ -44,6 +44,10 @@ void FUN_10011300(void *, unsigned, int, int, int);
     p_->arg = (a);                                                             \
   }
 
+/* WHAT IT DOES: set up the fixed rendering state for one scene: emits the
+ * display-list preamble, installs the standard viewport, and loads a hard-
+ * coded axis-swapping matrix that converts the game's coordinate convention
+ * into the renderer's. */
 /* @implements 0x10011650 glide FUN_10011650 */
 void FUN_10011650(void *param_1)
 {

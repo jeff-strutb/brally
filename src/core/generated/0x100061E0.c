@@ -28,6 +28,9 @@ extern char DAT_10226628[];
 
 
 
+/* WHAT IT DOES: copy a network player's name out of its slot into one SHARED
+ * static buffer and return that buffer. Not re-entrant and not safe to hold:
+ * the next caller overwrites it. That is the original's design. */
 /* @implements 0x100061E0 glide BrNetSlotName */
 int * BrNetSlotName(int param_1)
 

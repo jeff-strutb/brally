@@ -26,6 +26,9 @@ extern float DAT_105d1760;
 
 
 
+/* WHAT IT DOES: handle the display-list command that loads a matrix, by
+ * copying its 64 bytes from wherever the list points into the renderer's
+ * current-matrix slot. Returns the pointer to the next command. */
 /* @implements 0x10023900 glide BrGbiMoveMemMatrix */
 int BrGbiMoveMemMatrix(int param_1)
 

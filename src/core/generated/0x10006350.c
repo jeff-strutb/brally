@@ -40,6 +40,9 @@ int  BrNetSlotGetF02C(int slot);
 void BrNetSlotSetF02C(int slot, int value);
 void BrNetAnnounce(const char *psz);
 
+/* WHAT IT DOES: drop every network player matching a key -- returns their
+ * slot to the free stack, clears their flags, and announces that they left
+ * the game. This is what runs when a player disconnects or is kicked. */
 /* @implements 0x10006350 glide BrNetDropMatching */
 void BrNetDropMatching(int key)
 {

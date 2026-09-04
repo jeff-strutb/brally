@@ -35,6 +35,10 @@ int BrSub1003D950();
 
 typedef int (__stdcall *CC_std_5)(int, int, int, int, int);
 
+/* WHAT IT DOES: join an existing multiplayer session: leaves any current
+ * one, clears the local player table, and passes the request to DirectPlay.
+ * Returns the DirectPlay result, or a generic failure code when no
+ * DirectPlay object exists. */
 /* @implements 0x100361A0 glide FUN_100361a0 */
 int FUN_100361a0(int param_1,int param_2,int param_3,int param_4)
 

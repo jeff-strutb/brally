@@ -27,6 +27,8 @@ extern char DAT_1021ce5c;
 
 
 
+/* WHAT IT DOES: read a different field out of a network player slot, under
+ * the same per-slot mutex. */
 /* @implements 0x10006060 glide BrNetSlotGetF004 */
 int BrNetSlotGetF004(int param_1)
 

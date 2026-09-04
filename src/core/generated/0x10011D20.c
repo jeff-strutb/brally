@@ -46,6 +46,11 @@ extern BrDlCmd *DAT_106e7710;
 
 
 
+/* WHAT IT DOES: build the camera matrix for the current view by pointing it
+ * from the camera's position at its target, squaring up the three axes with
+ * two cross products so they are mutually perpendicular, then pulling the
+ * eye slightly back along its own forward axis. Does nothing if there is no
+ * active camera. */
 /* @implements 0x10011D20 glide FUN_10011d20 */
 void FUN_10011d20(void)
 

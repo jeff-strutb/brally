@@ -30,6 +30,9 @@ extern int DAT_10ac0c48;
 
 
 
+/* WHAT IT DOES: copy the entire particle system state into a caller's buffer
+ * -- four header values and the whole 8 KB record pool. Used to snapshot
+ * particles so they survive something that would otherwise reset them. */
 /* @implements 0x10033C90 glide BrPfxSaveState */
 void BrPfxSaveState(short *param_1)
 

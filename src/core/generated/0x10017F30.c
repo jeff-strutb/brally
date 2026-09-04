@@ -43,6 +43,9 @@ extern int DAT_104b16a8;
  *
  * The 16-byte `jmp +0x0b` / 11-nop link-stage preamble in front of the body
  * is in config/preambles.csv and is never spelled here. */
+/* WHAT IT DOES: snapshot the current screen width and height into the fade
+ * system's own copies, so a fade in progress keeps using the size it started
+ * with even if the mode changes underneath it. */
 /* @implements 0x10017F30 glide BrFadeLatch */
 void BrFadeLatch(void)
 

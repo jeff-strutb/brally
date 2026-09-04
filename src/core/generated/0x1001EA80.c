@@ -32,6 +32,10 @@ void __stdcall grConstantColorValue(int);
 
 
 
+/* WHAT IT DOES: handle the display-list command that sets the primitive
+ * colour. Unpacks the packed 32-bit value into four separate float channels
+ * the renderer keeps, and hands the packed form straight to the 3dfx
+ * constant-colour register. Returns the pointer to the next command. */
 /* @implements 0x1001EA80 glide br_dl_prim */
 int br_dl_prim(int param_1)
 

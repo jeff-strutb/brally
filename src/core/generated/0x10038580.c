@@ -27,6 +27,9 @@ int Br85ItemApply();
 
 
 
+/* WHAT IT DOES: text-field commit for the setting at 0x10B71AA0 -- applies
+ * the item and copies the typed string over if it differs, case-
+ * insensitively. No page flag. */
 /* @implements 0x10038580 glide Br85TextReadBack */
 int Br85TextReadBack(int param_1)
 

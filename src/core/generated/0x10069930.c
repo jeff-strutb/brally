@@ -36,6 +36,10 @@ extern int g_pBrMenuACED34;
 
 
 
+/* WHAT IT DOES: write the saved-game file out: builds a checksum over the
+ * save block, then writes the magic number and the block to disc. Returns
+ * false without writing if the file cannot be opened or any write comes up
+ * short. */
 /* @implements 0x10069930 glide BrMenuSub100709A0 */
 char BrMenuSub100709A0(void)
 

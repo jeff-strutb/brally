@@ -36,6 +36,10 @@ int BrSub100586A0();
 
 
 
+/* WHAT IT DOES: shut a multiplayer session down: stops the periodic timer,
+ * stops the sound thread if it was started, tears the session down, and
+ * clears the flags that say a session is live. Leaves the local car record
+ * alone in the two modes where it is still needed. */
 /* @implements 0x100355F0 glide BrExt_1003BF60 */
 void BrExt_1003BF60(void)
 

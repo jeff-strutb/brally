@@ -28,6 +28,9 @@ extern char s_CHK_FClose__s__1007b1c4[];
 
 
 
+/* WHAT IT DOES: close a checked file handle and free both the handle record
+ * and the copy of its name, aborting if the close itself fails. Optionally
+ * logs the name on the way out when file tracing is switched on. */
 /* @implements 0x100035E0 glide BrChkFClose */
 void BrChkFClose(int *param_1)
 

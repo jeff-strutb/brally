@@ -27,6 +27,10 @@ typedef int (__stdcall *CC_std_1)(int);
 
 
 
+/* WHAT IT DOES: take exclusive control of the input device back from Windows
+ * -- what has to happen after the game regains focus before it can read the
+ * device again. Reports whether it succeeded, and false if there is no
+ * device. */
 /* @implements 0x100706B0 glide BrDiAcquire */
 int BrDiAcquire(void)
 

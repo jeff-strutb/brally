@@ -26,6 +26,9 @@ extern int DAT_10ac5d00;
 
 
 
+/* WHAT IT DOES: the flag-only member of that text-field family: it clears
+ * the enable bit on its page when the field is non-empty and copies nothing.
+ * Always reports success. */
 /* @implements 0x10038490 glide BrUiFn1003EF60 */
 int BrUiFn1003EF60(int param_1)
 

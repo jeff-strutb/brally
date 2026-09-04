@@ -42,6 +42,11 @@ int FUN_1006ba60(int a, int b);
 
 
 
+/* WHAT IT DOES: pick which of several alternative actions a control
+ * triggers, by testing the mode flags in order and dispatching the first one
+ * that is set -- sending the matching network message and recording which
+ * was chosen. A chain of mutually exclusive menu buttons sharing one
+ * handler. */
 /* @implements 0x10054390 glide FUN_10054390 */
 char __fastcall FUN_10054390(int *param_1)
 

@@ -28,6 +28,8 @@ int Br85ItemApply();
 
 
 
+/* WHAT IT DOES: text-field commit for the setting at 0x10AC40A8, and it also
+ * clears the enable bit on the 0x10AC5D14 page when the field is non-empty. */
 /* @implements 0x10038750 glide BrUiFn1003F210 */
 int BrUiFn1003F210(int param_1)
 

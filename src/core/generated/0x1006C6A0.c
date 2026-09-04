@@ -32,6 +32,10 @@ typedef int (__stdcall *CC_std_1)(int);
 
 
 
+/* WHAT IT DOES: drop one user of the sound system and, when the last one
+ * goes, actually shut DirectSound down -- stops the mixer, releases the
+ * primary buffer and the device. Reference counted so one subsystem
+ * releasing sound does not silence another that still wants it. */
 /* @implements 0x1006C6A0 glide FUN_1006c6a0 */
 int FUN_1006c6a0(void)
 
