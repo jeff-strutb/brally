@@ -194,34 +194,9 @@ uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
     return pTable[pos];
 }
 #endif
-
-/* ---------------------------------------------------------------------------
- * 0x10003460 -- milliseconds to 30 Hz ticks.
- *
- * The original divides by 100 twice: once with a real `div` whose quotient is
- * thrown away (only the remainder is wanted) and once with the unsigned magic
- * 0x51EB851F >> 5. The second magic, 0x3E0F83E1 >> 3, is division by 33.
- *
- * DEVIATION: the original read the current tick from 0x118AB118 through
- * 0x100750F0 and subtracted the origin at 0x10220DD8. The subtraction is the
- * caller's job here.
- */
-/* WHAT IT DOES: converts a stretch of real time into the game's own clock,
- * which runs at thirty ticks a second. It does the sum its own way rather
- * than the obvious way, and the result is not quite even -- one tick value
- * repeats once every tenth of a second. */
-/* @implements 0x10003460 d3d BrTicks30FromMs */
-/* The declared elapsedMs argument is vestigial: the original reads the clock
- * itself (BrGetTimerState) and subtracts the run's start tick (DAT_1021c908),
- * so the parameter is ignored and generates no code. */
 extern int BrGetTimerState(void);
 extern int DAT_1021c908;
-uint32_t BrTicks30FromMs(uint32_t elapsedMs)
-{
-    uint32_t elapsed = (uint32_t)BrGetTimerState() - (uint32_t)DAT_1021c908;
-    (void)elapsedMs;
-    return 3u * (elapsed / 100u) + (elapsed % 100u) / 33u;
-}
+
 
 /* ---------------------------------------------------------------------------
  * The CHK_* wrappers.
