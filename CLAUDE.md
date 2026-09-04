@@ -7,6 +7,22 @@ construct→codegen mappings. Infer the source from the bytes; never permute
 spellings by trial and error. Add every newly proven idiom to that file:
 each idiom is solved once, and this is how per-function cost drops.
 
+**And ASK THE SOLVED CORPUS before inventing a spelling — `tools/corpus.py`.**
+Every byte-exact function is a proof that "this C produced these bytes", spills
+and slot layout included; 1,036 of them are indexed. Hand it a pattern from the
+original bytes at an offset `divergence.py` gave you and it names every solved
+function that emits the same run, then resolves it back to real C through the
+compiler's own `/FAcs` listing:
+
+```bash
+.venv/bin/python tools/corpus.py build                 # after any batch of matches
+.venv/bin/python tools/corpus.py find --from <VA> --at <off> --len 12 --source
+```
+
+‼ **A MISS IS A RESULT**: it means the construct is not proven anywhere in the
+tree, so there is no spelling to copy and the site needs source truth rather
+than another permutation.
+
 **The matching cadence (established 2026-08-25):** machine batch → hand-solve
 one representative per failure class → mint a generator → re-batch. Never
 hand-match what a generator could sweep. The wide batch is
