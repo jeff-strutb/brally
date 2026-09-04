@@ -1311,28 +1311,8 @@ void BrS17BankFlip(void)
 }
 #endif
 
-/* 0x1002C2A0 */
-/* WHAT IT DOES: lets go of one particular long-lived object. What that object
- * is was not established here. */
-/* @implements 0x1002C2A0 d3d BrS17Release */
-void BrS17Release(void)
-{
-    /* `mov ecx, 0x106806B0 / jmp 0x100751D0`. The operand is an IMMEDIATE --
-     * the ADDRESS of the frame-timer object, not a pointer loaded out of a
-     * field -- so the object itself is named here and its address taken.
-     * Routing this through g_s17.pThis6806B0 costs a `mov eax, [mem]` the
-     * original does not have. */
-    BrX100751D0(g_br6806B0);
-}
-
-/* 0x1002C2B0 */
-/* WHAT IT DOES: books a tidy-up routine to run automatically when the program
- * exits, and reports whether the booking was accepted. */
-/* @implements 0x10019820 glide BrS17RegisterAtExit */
-int BrS17RegisterAtExit(void)
-{
-    return BrXAtExit(BrX1002C2C0);
-}
+/* 0x1002C2A0 BrS17Release, 0x1002C2B0 BrS17RegisterAtExit and
+ * 0x10019800 BrS17Init now live in src/core/startup/br_s17life.c. */
 
 /* 0x1002C2D0 */
 /* WHAT IT DOES: draws the scene, but only if drawing is switched on at all.
@@ -1687,17 +1667,6 @@ void BrSub1007C7F0(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-/* WHAT IT DOES: release the S17 subsystem and register its atexit handler. */
-/* @implements 0x10019800 glide BrS17Init */
-
-int BrS17Init(void)
-
-{
-  BrS17Release();
-  BrS17RegisterAtExit();
-  return;
-}
-
 /* WHAT IT DOES: empty function (/Od frame, nothing else). */
 /* @implements 0x1002AB8F glide BrNop_1002AB8F */
 
