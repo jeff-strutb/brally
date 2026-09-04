@@ -984,156 +984,7 @@ void BrTrackFixupList60(void *pvHdr)
         BrTrackFixupRec54(p);
 }
 
-/* ==========================================================================
- * 0x10038450  BrTexCopyRecords
- * ========================================================================== */
-
-/* WHAT IT DOES: copies the actual texture pixels and colour palettes out of
- * the loaded track image and into the places the texture records point at,
- * for those records that ask for it. Records that fail any of half a dozen
- * checks are quietly skipped. */
-/* @implements 0x10038450 d3d BrTexCopyRecords */
-void BrTexCopyRecords(void *pvTable, int cRecords)
-{
-#ifdef BR_MATCHING_BUILD
-    /* orig: ebx=-8; lea eax,[table+8]; sub ebx,table; ebp=n; then
-     * [eax+0x18] flags and [pTexFlags+ebx+eax+0x20] for the parallel
-     * array. ebx stays loop-invariant. */
-    uint8_t *pTable;
-    uint8_t *pWalk;
-    int32_t  adj;
-    int      n;
-
-    if (cRecords <= 0)
-        return;
-
-    pTable = (uint8_t *)pvTable;
-    adj    = -8;
-    pWalk  = pTable + 8;
-    adj   -= (int32_t)(uint32_t)pTable;
-    n      = cRecords;
-    do {
-        uint8_t  *pDst = *(uint8_t **)(void *)(pWalk - 8);
-        uint32_t  uFlags;
-        uint8_t  *pDesc;
-        uint32_t  cb;
-
-        if (pDst == 0)
-            goto next;
-
-        uFlags = *(uint32_t *)(void *)(pWalk + 0x18);
-        if ((uFlags & 0x00100000u) == 0)
-            goto next;
-
-        pDesc = *(uint8_t **)(void *)pWalk;
-        if (*(uint16_t *)(void *)(pDesc + 2) != 2)
-            goto next;
-        if (*(int32_t *)(void *)(pDesc + 8) != -1)
-            goto next;
-
-        cb = uFlags & 0x0003FFFFu;
-        if (cb == 0)
-            goto next;
-
-        memcpy(pDst, g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x0C),
-               cb);
-
-        pDst = *(uint8_t **)(void *)(pWalk - 4);
-        if (pDst == 0)
-            goto next;
-
-        {
-            char    *pFlags;
-            uint32_t uSel;
-            uint32_t cbPal;
-
-            pDesc  = *(uint8_t **)(void *)pWalk;
-            pFlags = (char *)g_BrLoad.pTexFlags;
-            pFlags += adj;
-            uSel    = *(uint32_t *)(void *)(pFlags + (int32_t)(uint32_t)pWalk
-                                            + 0x20);
-            uSel   &= 0x0F000000u;
-            cbPal   = (uSel == 0x01000000u) ? 0x20u : 0x200u;
-            memcpy(pDst,
-                   g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x10),
-                   cbPal);
-        }
-    next:
-        pWalk += 0x24;
-    } while (--n);
-#else
-    uint8_t *pTable = (uint8_t *)pvTable;
-    int i;
-
-    if (cRecords <= 0)
-        return;
-
-    for (i = 0; i < cRecords; ++i) {
-        uint8_t *pRec = pTable + (size_t)i * 0x24;
-        uint8_t *pDst;
-        uint8_t *pDesc;
-        uint8_t *pSrc;
-        uint32_t uFlags;
-        uint32_t cb;
-
-        pDst = (uint8_t *)BrPtrAt(pRec + 0x00);
-        if (pDst == NULL)
-            continue;
-
-        uFlags = BrRd32(pRec + 0x20);
-        if ((uFlags & 0x00100000u) == 0)
-            continue;
-
-        pDesc = (uint8_t *)BrPtrAt(pRec + 0x08);
-        if (pDesc == NULL)
-            continue;
-        if (BrRd16(pDesc + 0x02) != 2)
-            continue;
-        if ((int32_t)BrRd32(pDesc + 0x08) != -1)
-            continue;
-
-        cb = uFlags & 0x0003FFFFu;
-        if (cb == 0)
-            continue;
-
-        /* DEVIATION: the sources are byte offsets into the texture image and
-         * the original adds them to a raw global base with no check.  The
-         * port refuses a copy that would run past the declared image. */
-        pSrc = g_BrLoad.pTexBase;
-        if (pSrc == NULL)
-            continue;
-        {
-            uint32_t off = BrRd32(pDesc + 0x0C);
-            if ((size_t)off > g_BrLoad.cbTexBase
-             || (size_t)cb  > g_BrLoad.cbTexBase - off)
-                continue;
-            memcpy(pDst, pSrc + off, cb);
-        }
-
-        pDst = (uint8_t *)BrPtrAt(pRec + 0x04);
-        if (pDst == NULL)
-            continue;
-
-        {
-            uint32_t uSel;
-            uint32_t cbPal;
-            uint32_t off = BrRd32(pDesc + 0x10);
-
-            if (g_BrLoad.pTexFlags == NULL)
-                continue;
-            /* Parallel array, same index and stride, field +0x20. */
-            uSel = BrRd32(g_BrLoad.pTexFlags + (size_t)i * 0x24 + 0x20);
-            uSel &= 0x0F000000u;
-            cbPal = (uSel == 0x01000000u) ? 0x20u : 0x200u;
-
-            if ((size_t)off > g_BrLoad.cbTexBase
-             || (size_t)cbPal > g_BrLoad.cbTexBase - off)
-                continue;
-            memcpy(pDst, g_BrLoad.pTexBase + off, cbPal);
-        }
-    }
-#endif
-}
+/* 0x10038450 BrTexCopyRecords now lives in src/core/startup/br_track.c. */
 
 /* ==========================================================================
  * 0x10037FA0 / 0x10037E10 -- track fixup
@@ -1298,19 +1149,7 @@ void BrTrackFixupCmds(void *pvHdr)
     }
 }
 
-/* ==========================================================================
- * 0x10039000  BrInit220B20
- * ========================================================================== */
-
-/* WHAT IT DOES: clears a block of state, plants an 8 in its first slot, and
- * calls on to further setup. What the block holds is not established here. */
-/* @implements 0x10039000 d3d BrInit220B20 */
-void BrInit220B20(void)
-{
-    memset(g_a220B20, 0, sizeof(uint32_t) * 0x46);
-    g_a220B20[0] = 8;
-    BrSub10035BD1();
-}
+/* 0x10039000 BrInit220B20 now lives in src/core/startup/br_track.c. */
 
 /* ==========================================================================
  * 0x10039020  BrPoolEmit
@@ -1421,57 +1260,8 @@ void BrPoolEmit(void *pvThis)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-/* WHAT IT DOES: work out how many slots the track header's lookup table
- * actually needs. It scans the u16 index array at +0x20 for the largest index
- * anyone uses and stores one past it at +0x08 -- the table's used length.
- * Entry 0 is deliberately skipped and the running maximum starts at 0, so the
- * answer is at least 1 even when every index is zero. The entry count is the
- * u16 sitting 0x2000 bytes into the blob at +0x24. See slice2_20.h. */
-/* The port twin of this is BrTrackF08FromMax higher up in this file; it reads
- * through BrRd16/BrPtrAt so it works on a big-endian image on any host, which
- * is exactly why it cannot reproduce these bytes. Same split as
- * BrTrackFixupList60 / BrTrackFixupAllRec54. */
-/* @implements 0x10031660 glide BrTrackSetF08FromMax */
-
-void BrTrackSetF08FromMax(int param_1)
-
-{
-  int iMax;
-  int nEntry;
-  int i;
-
-  iMax = 0;
-  nEntry = *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000);
-  for (i = 1; i < nEntry; i = i + 1) {
-    if ((*(unsigned short **)(param_1 + 0x20))[i] > iMax) {
-      iMax = (*(unsigned short **)(param_1 + 0x20))[i];
-    }
-  }
-  *(int *)(param_1 + 8) = iMax + 1;
-  return;
-}
-
-/* WHAT IT DOES: walk an array of 0x54-byte track records and fixup each one. */
-/* @implements 0x100316A0 glide BrTrackFixupAllRec54 */
-
-int BrTrackFixupAllRec54(int param_1)
-
-{
-  int iVar1;
-  int iVar2;
-  
-  iVar1 = *(int *)(param_1 + 0x60);
-  iVar2 = 0;
-  if (0 < *(int *)(param_1 + 100)) {
-    do {
-      BrTrackFixupRec54(iVar1);
-      iVar1 = iVar1 + 0x54;
-      iVar2 = iVar2 + 1;
-    } while (iVar2 < *(int *)(param_1 + 100));
-  }
-  return;
-}
-
+/* 0x10031660 BrTrackSetF08FromMax and 0x100316A0 BrTrackFixupAllRec54 now
+ * live in src/core/startup/br_track.c. */
 
 /* 0x10031960 -- swaps and fixes one record's three segment pointers. */
 int BrTrackFixupSegRec();
