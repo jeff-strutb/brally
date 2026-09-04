@@ -555,30 +555,6 @@ static int BrReplayActiveCount(void)
     return 8;
 }
 
-/* 0x1006AA50 */
-/* WHAT IT DOES: throws away any recording in progress and switches recording
- * off, so the next race starts with an empty replay. How many cars it clears
- * depends on the game mode -- one in the two single-car modes, eight
- * otherwise. */
-/* @implements 0x1006AA50 d3d BrReplayReset */
-void BrReplayReset(void)
-{
-    int n;
-    int i;
-
-    /* Open-coded: two callers keep BrReplayActiveCount from inlining. */
-    n = 8;
-    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
-        n = 1;
-
-    /* The `test ecx,ecx / jle` guard is dead (n is 1 or 8) but is kept as the
-     * loop bound so the shape matches. */
-    for (i = 0; i < n; ++i)
-        g_BrReplayCount[i] = 0;
-
-    g_BrReplayOn = 0;
-}
-
 /* 0x1006AAB0 */
 /* WHAT IT DOES: writes down where one car is and which way it is facing, into
  * that car's slot for the current replay frame. It does nothing if recording
@@ -660,18 +636,6 @@ void BrReplayAdvance(void)
     }
 }
 
-/* 0x1006ABB0 */
-/* WHAT IT DOES: sends the replay back to the start -- every car's playback
- * position returns to its first recorded frame. The recording itself is
- * untouched. */
-/* @implements 0x1006ABB0 d3d BrReplayRewind */
-void BrReplayRewind(void)
-{
-    int i;
-    for (i = 0; i < BR_REPLAY_PLAYERS; ++i)
-        g_BrReplayCursor[i] = 0;
-}
-
 /* 0x1006ABD0 */
 /* WHAT IT DOES: puts a car where the recording says it was, for the frame the
  * replay is currently showing. It also fakes the car's speed by looking ahead
@@ -724,15 +688,6 @@ void BrReplayApply(void *pCar, int32_t iPlayer)
         BR_CAR_F32(pCar, BR_S42_CAR_OFF_VEL + 8) =
             (state.f18 - BR_CAR_F32(pCar, BR_S42_CAR_OFF_POS + 8)) * BR_K_0008FAA8;
     }
-}
-
-/* 0x1006ACF0 */
-/* WHAT IT DOES: the same as the above, for a car that already knows its own
- * number -- it looks the number up on the car rather than being told it. */
-/* @implements 0x1006ACF0 d3d BrReplayApplyCar */
-void BrReplayApplyCar(void *pCar)
-{
-    BrReplayApply(pCar, BR_CAR_I32(pCar, BR_S42_CAR_OFF_INDEX));
 }
 
 /* 0x1006AD10 */
@@ -1256,16 +1211,6 @@ int BrCtrlCfgBoot(void)
   return;
 }
 
-
-/* WHAT IT DOES: return the byte size of the current replay (frame count * 0x18). */
-/* @implements 0x10063B50 glide BrReplayGetSize */
-/* @n64 0x80226070 located */
-
-int BrReplayGetSize(void)
-
-{
-  return g_BrReplayCount[0] * 0x18;
-}
 
 
 extern unsigned int DAT_10b7364c;
