@@ -1,3 +1,38 @@
+/* ‼ TWENTY-SEVENTH PASS (2026-09-04) -- THE GHIDRA-NAMED TEMP `ring` IS
+ * GONE from the trail-append block: every one of its 32 uses is spelled as
+ * the expression `(iWheel + iCar * 4)`.  VC5 CSEs it into ecx exactly as
+ * before (wall 4's addressing is untouched, both arms byte-identical), but
+ * a multi-use NAMED local is an allocation candidate with a home and a
+ * priority where a CSE temp is not, and removing it moved the OBJECT loop's
+ * hoisted constant: `mov edi,1` now sits on the back-edge and the exit path
+ * exactly as the original places it (0xb26 / 0x18a8), instead of inside the
+ * loop tail.  Region 0x189c closed.  Masked regions 18 -> 17, bytes -14 ->
+ * -9, instructions 4 short -> 3, register-blind (msetdiff) 24+20 -> 23+20;
+ * the only multiset row that moved is the `mov R,1` MISSING.  No control
+ * flow changed -- the loop tail was checked instruction-for-instruction.
+ *   ‼ IT IS A LEVER CLASS, not a one-off: Ghidra names every CSE'd value
+ *   (`ring`, `h1`, `slot`, `fl`, `row`, `dring` ...) and VC5 treats a named
+ *   multi-use local differently from a repeated expression.  Measured this
+ *   pass on top of it, all DEAD, do not re-run:
+ *     - `fl` inlined at both tests: byte-identical (single-use, VC5 already
+ *       CSEs it).
+ *     - init loop `active[iWheel + c2*4]` / `[c2*4 + iWheel]` flat and 2-D
+ *       (`active[8][4]`), VC5 minting the pA/rb IVs itself: byte-identical
+ *       to the explicit IVs, so the SIB base/index swap at 0x1fc8 is NOT
+ *       operand order and the strength reduction is not the lever.
+ *     - drain loop respelled the same way (row/rowBase/dring/pA all as
+ *       affine subscripts, either operand order): reads -2 B / 1 insn short
+ *       and is the pass-24 trap -- it breaks the trail x87 stream (msetdiff
+ *       43 -> 55 rows) and leaves dw/row's register choice unchanged.
+ *     - the nested-if drain form re-tested under the new allocation: +3 B,
+ *       21 regions, 24+21 rows.  Still dead.
+ *     - `firstVis` dropped in favour of `nTotal - base + 1`, `nTotal + 1 -
+ *       base`, `nTotal + (1 - base)`: all three byte-identical to each other
+ *       and break the object loop (25 regions).  VC5 does not hoist the
+ *       invariant, so firstVis is a REAL source variable.
+ *     - `pP = &pW->x` with dx read through the two-part sum: flips the
+ *       frame (region at +0x6), 33+29 rows.
+ */
 /* br_scenedl.c -- 0x1000EAF0, the frame's scene display-list builder.
  *
  * 9,354 bytes -- the second-largest function in BRGlide.dll after the race
@@ -992,7 +1027,6 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
     uint16_t *pDst;
     int      iCar;
     int      iWheel;
-    int      ring;
     int      head;
     int      slot;
     uint32_t *pT;
@@ -1459,9 +1493,8 @@ no_mark:
                             y2 = (dy / len) * DAT_10077250 + pW->y;
                             z = (pW->z - BrGroundProbeZ(pP)) -
                                 DAT_10077254;
-                            ring = iWheel + iCar * 4;
-                            if (DAT_1035faf0[ring] != DAT_1035f750[ring]) {
-                                int h1 = DAT_1035faf0[ring] - 1;
+                            if (DAT_1035faf0[(iWheel + iCar * 4)] != DAT_1035f750[(iWheel + iCar * 4)]) {
+                                int h1 = DAT_1035faf0[(iWheel + iCar * 4)] - 1;
                                 /* ‼ ASSIGN-THEN-OVERRIDE, AND THE TEST IS ON
                                  * pDst, NOT h1 -- read straight off the bytes
                                  * at 0x1cb2: `mov ebx,eax` (pDst = h1), then
@@ -1477,20 +1510,20 @@ no_mark:
                                 if ((int)pDst < 0) {
                                     pDst = (uint16_t *)0x1f3;
                                 }
-                                if (pDst != (uint16_t *)DAT_1035f750[ring] &&
-                                    (DAT_10273690[(int)pDst + ring * 500].flags & 0x8000000) ==
+                                if (pDst != (uint16_t *)DAT_1035f750[(iWheel + iCar * 4)] &&
+                                    (DAT_10273690[(int)pDst + (iWheel + iCar * 4) * 500].flags & 0x8000000) ==
                                     0x8000000) {
                                     slot = (int)pDst - 1;
                                     if (slot < 0) {
                                         slot = 499;
                                     }
-                                    if (slot != DAT_1035f750[ring] &&
-                                        (DAT_10273690[slot + ring * 500].flags & 0x8000000) ==
+                                    if (slot != DAT_1035f750[(iWheel + iCar * 4)] &&
+                                        (DAT_10273690[slot + (iWheel + iCar * 4) * 500].flags & 0x8000000) ==
                                         0x8000000) {
-                                        float ex1 = DAT_10273690[slot + ring * 500].x1 - x1;
-                                        float ey1 = DAT_10273690[slot + ring * 500].y1 - y1;
-                                        float ex2 = DAT_10273690[slot + ring * 500].x2 - x2;
-                                        float ey2 = DAT_10273690[slot + ring * 500].y2 - y2;
+                                        float ex1 = DAT_10273690[slot + (iWheel + iCar * 4) * 500].x1 - x1;
+                                        float ey1 = DAT_10273690[slot + (iWheel + iCar * 4) * 500].y1 - y1;
+                                        float ex2 = DAT_10273690[slot + (iWheel + iCar * 4) * 500].x2 - x2;
+                                        float ey2 = DAT_10273690[slot + (iWheel + iCar * 4) * 500].y2 - y2;
                                         /* Comma-in-if computes both sqlens before
                                          * either fcomp, so VC5 `fst`-homes them
                                          * (same dest-once class as in-place fchs).
@@ -1504,56 +1537,55 @@ no_mark:
                                             if (h1 < 0) {
                                                 h1 = 499;
                                             }
-                                            DAT_1035faf0[ring] = h1;
+                                            DAT_1035faf0[(iWheel + iCar * 4)] = h1;
                                         }
                                         }
                                     }
                                 }
                             }
-                            head = DAT_1035faf0[ring];
-                            DAT_10273690[head + ring * 500].x1 = x1;
-                            DAT_10273690[head + ring * 500].x2 = x2;
-                            DAT_10273690[head + ring * 500].y1 = y1;
-                            DAT_10273690[head + ring * 500].y2 = y2;
-                            DAT_10273690[head + ring * 500].z1 = z;
-                            DAT_10273690[head + ring * 500].z2 = z;
-                            DAT_10273690[head + ring * 500].flags =
+                            head = DAT_1035faf0[(iWheel + iCar * 4)];
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].x1 = x1;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].x2 = x2;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].y1 = y1;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].y2 = y2;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].z1 = z;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].z2 = z;
+                            DAT_10273690[head + (iWheel + iCar * 4) * 500].flags =
                                 *(uint16_t *)(pCar + -0x24) | 0x8000000;
                             head = head + 1;
                             if (head >= 500) {
                                 head = 0;
                             }
-                            DAT_1035faf0[ring] = head;
-                            if (head == DAT_1035f750[ring]) {
-                                head = DAT_1035f750[ring] + 1;
+                            DAT_1035faf0[(iWheel + iCar * 4)] = head;
+                            if (head == DAT_1035f750[(iWheel + iCar * 4)]) {
+                                head = DAT_1035f750[(iWheel + iCar * 4)] + 1;
                                 if (head >= 500) {
                                     head = 0;
                                 }
-                                DAT_1035f750[ring] = head;
+                                DAT_1035f750[(iWheel + iCar * 4)] = head;
                             }
                         } else {
-                            ring = iWheel + iCar * 4;
-                            head = DAT_1035faf0[ring];
-                            if (DAT_1035f750[ring] != head) {
+                            head = DAT_1035faf0[(iWheel + iCar * 4)];
+                            if (DAT_1035f750[(iWheel + iCar * 4)] != head) {
                                 slot = head - 1;
                                 if (slot < 0) {
                                     slot = 499;
                                 }
-                                if ((DAT_10273690[slot + ring * 500].flags & 0x8000000) ==
+                                if ((DAT_10273690[slot + (iWheel + iCar * 4) * 500].flags & 0x8000000) ==
                                     0x8000000) {
-                                    DAT_10273690[ring * 500 + head].flags =
-                                        DAT_10273690[ring * 500 + head].flags & 0xf7ffffff;
+                                    DAT_10273690[(iWheel + iCar * 4) * 500 + head].flags =
+                                        DAT_10273690[(iWheel + iCar * 4) * 500 + head].flags & 0xf7ffffff;
                                     head = head + 1;
                                     if (head >= 500) {
                                         head = 0;
                                     }
-                                    DAT_1035faf0[ring] = head;
-                                    if (head == DAT_1035f750[ring]) {
-                                        head = DAT_1035f750[ring] + 1;
+                                    DAT_1035faf0[(iWheel + iCar * 4)] = head;
+                                    if (head == DAT_1035f750[(iWheel + iCar * 4)]) {
+                                        head = DAT_1035f750[(iWheel + iCar * 4)] + 1;
                                         if (head >= 500) {
                                             head = 0;
                                         }
-                                        DAT_1035f750[ring] = head;
+                                        DAT_1035f750[(iWheel + iCar * 4)] = head;
                                     }
                                 }
                             }
