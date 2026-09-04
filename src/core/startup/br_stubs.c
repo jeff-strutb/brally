@@ -120,3 +120,63 @@ FUN_10074ae6(void)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+/* ---- from slice2_17.c ------------------------------------------------
+ * Two members of that batch's 0x1002A840..0x1002A957 run -- one original
+ * translation unit by every sign (the addresses are contiguous and the
+ * whole run matches at /Od while the rest of the batch matches at /O2).
+ *
+ * Only these two came across.  Their four neighbours in the same run --
+ * 0x1002A840 BrScratchRingAlloc, 0x1002A894 BrScratchRingDrain,
+ * 0x1002A8D7 BrRenderCountersReset and 0x1002A93C BrScreenSizeApply --
+ * all reach slice2_17.c's file-static g_s17, which is a decomp-invented
+ * aggregate with 136 references across 72 functions in that batch and so
+ * cannot travel.  These two touch no file-static in either build arm:
+ * BrScratchRingNull reads only its own parameters, and BrScreenSizeInit
+ * only calls its neighbour through slice2_17.h's declaration.
+ *
+ * The batch's preamble is carried verbatim, per this file's convention.
+ * --------------------------------------------------------------------- */
+
+#ifdef BR_MATCHING_BUILD
+/* slice2_17.h prototypes a list pointer the original never takes. */
+#define BrPtrListContains BrPtrListContains_port
+#endif
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include "slice2_17.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrPtrListContains
+#endif
+
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+
+/* 0x10031212 -- DEVIATION: the original zeroes its own two argument slots
+ * on the caller's stack. C parameters are by value, so the stores are not
+ * observable and are omitted; the return value is what callers use. */
+/* WHAT IT DOES: nothing. It takes two arguments, ignores both, and always
+ * answers zero -- a placeholder that fits where a real routine would go. */
+/* @implements 0x10031212 d3d BrScratchRingNull */
+/* @n64 0x802173B8 exact */
+int BrScratchRingNull(int a0, int a1)
+{
+    /* The original really does store zero into both of its OWN argument
+     * slots (a1 first) before returning 0 -- kept for the byte match; C
+     * parameters are by value so nothing observable changes. */
+    a1 = 0;
+    a0 = 0;
+    return 0;
+}
+
+/* 0x10031282 */
+/* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
+ * what the routine below does and nothing else. */
+/* @implements 0x1002A932 glide BrScreenSizeInit */
+void BrScreenSizeInit(void)
+{
+    BrScreenSizeApply();
+}

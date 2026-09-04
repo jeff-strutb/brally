@@ -1448,22 +1448,7 @@ void BrScratchRingDrain(void)
 }
 #endif
 
-/* 0x10031212 -- DEVIATION: the original zeroes its own two argument slots
- * on the caller's stack. C parameters are by value, so the stores are not
- * observable and are omitted; the return value is what callers use. */
-/* WHAT IT DOES: nothing. It takes two arguments, ignores both, and always
- * answers zero -- a placeholder that fits where a real routine would go. */
-/* @implements 0x10031212 d3d BrScratchRingNull */
-/* @n64 0x802173B8 exact */
-int BrScratchRingNull(int a0, int a1)
-{
-    /* The original really does store zero into both of its OWN argument
-     * slots (a1 first) before returning 0 -- kept for the byte match; C
-     * parameters are by value so nothing observable changes. */
-    a1 = 0;
-    a0 = 0;
-    return 0;
-}
+/* 0x10031212 BrScratchRingNull is filed in src/core/startup/br_stubs.c. */
 
 /* 0x10031227 */
 /* WHAT IT DOES: zero the renderer's per-frame tallies -- eight counters in
@@ -1484,14 +1469,8 @@ void BrRenderCountersReset(void)
     g_s17.f6C069C = g_s17.f6C06A4;
 }
 
-/* 0x10031282 */
-/* WHAT IT DOES: sets the screen dimensions up at start-up, by doing exactly
- * what the routine below does and nothing else. */
-/* @implements 0x1002A932 glide BrScreenSizeInit */
-void BrScreenSizeInit(void)
-{
-    BrScreenSizeApply();
-}
+/* 0x10031282 BrScreenSizeInit is filed in src/core/startup/br_stubs.c;
+ * BrScreenSizeApply below stays here, on g_s17. */
 
 /* 0x1003128C */
 /* WHAT IT DOES: sets the game's working screen size back to the build's
