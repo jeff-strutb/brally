@@ -768,29 +768,6 @@ int BrThunk5C440(void)
   return;
 }
 
-/* Declared here with a BYTE parameter, which is not how slice1_01.c defines
- * it. The call below pushes eax with the index's upper three bytes still in
- * it -- VC5 only leaves a stack argument dirty when the callee's parameter is
- * a byte type. The definition at 0x10002D30 reads the whole slot and hands it
- * straight on, so both spellings agree on the only byte that is ever read. */
-extern int BrCdVolumeSet(unsigned char v);
-
-/* WHAT IT DOES: push both volume selections where the audio code reads them --
- * selection A becomes the music volume (and is applied to the CD/mixer right
- * away), selection B becomes the sound-effect master volume, which the SFX
- * code picks up from the global on its own. This is the "commit" for the two
- * sliders BrUiSelAInc/Dec and BrUiSelBInc/Dec move. */
-/* @implements 0x10059E00 glide BrUiVolumeApply */
-
-void BrUiVolumeApply(void)
-
-{
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
-  BrCdVolumeSet(DAT_100bb2e0);
-  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
-  return;
-}
-
 
 extern int DAT_100ad7d8;
 extern char DAT_100ad7e8;
