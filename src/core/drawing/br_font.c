@@ -1956,4 +1956,21 @@ int BrFontTexInitAll(void)
   return;
 }
 
+extern int DAT_104af5c8;
+extern int DAT_104b05c8;
+extern int _DAT_1184c460;
+extern int _DAT_1184c464;
+extern funcptr g_pfn18AA0B0;
+
+/* WHAT IT DOES: create a pair of tileable font textures for the UI. */
+/* @implements 0x1006C8B0 glide BrFontTexCreatePair */
+
+int BrFontTexCreatePair(void)
+
+{
+  _DAT_1184c460 = (*g_pfn18AA0B0)(&DAT_104af5c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  _DAT_1184c464 = (*g_pfn18AA0B0)(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */

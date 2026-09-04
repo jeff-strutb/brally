@@ -907,16 +907,6 @@ int BrFontTexCreateFlat(void)
   return;
 }
 
-/* WHAT IT DOES: create a pair of tileable font textures for the UI. */
-/* @implements 0x1006C8B0 glide BrFontTexCreatePair */
-
-int BrFontTexCreatePair(void)
-
-{
-  _DAT_1184c460 = (*g_pfn18AA0B0)(&DAT_104af5c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
-  _DAT_1184c464 = (*g_pfn18AA0B0)(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
-  return;
-}
 
 /* WHAT IT DOES: return the current timer subsystem state. */
 /* @implements 0x1006E350 glide BrGetTimerState */
