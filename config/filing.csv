@@ -761,6 +761,7 @@ glide_va,name,module,basis,file
 0x1006B6E0,FUN_1006b6e0,audio,description,src/core/slice6_77.c
 0x1006B730,BrSndVoiceSetFreq,audio,filed,src/core/audio/br_sfxsrc.c
 0x1006B950,BrSndBufSetPan,audio,filed,src/core/audio/br_musiccmd.c
+0x1006B970,BrSndVoiceBufStart,audio,neighbour,src/core/slice6_76.c
 0x1006B9E0,BrWrap_10072A70,audio,filed,src/core/audio/br_musiccmd.c
 0x1006BA00,BrSndVoiceConfigure,audio,filed,src/core/audio/br_musiccmd.c
 0x1006BA60,BrSub10072AF0,audio,filed,src/core/audio/br_musiccmd.c
