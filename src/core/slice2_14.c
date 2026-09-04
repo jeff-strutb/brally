@@ -545,16 +545,6 @@ void BrFpsReadout(void)
 #ifdef BR_MATCHING_BUILD
 int FUN_1006e590();
 
-/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
-/* @implements 0x10011D10 glide BrThunk11D10 */
-/* @n64 0x802288B4 exact */
-
-int BrThunk11D10(void)
-
-{
-  FUN_1006e590();
-  return;
-}
 
 extern short DAT_10396ef8;
 extern short DAT_10396efc;
