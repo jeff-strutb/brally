@@ -231,6 +231,7 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
  * this packet reads it back -- so treat the effect on the picture as
  * unknown. */
 /* @implements 0x1001CD60 d3d BrGbiSet0A79E8 */
+/* @implements 0x1001EB10 glide BrGbiSet0A79E8 */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd)
 {
@@ -250,6 +251,7 @@ BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
  * command's payload in a graphics setting and moves on. As with its
  * neighbour, what the setting is used for is not established. */
 /* @implements 0x1001CD80 d3d BrGbiSet4C5174 */
+/* @implements 0x1001EB30 glide BrGbiSet4C5174 */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet4C5174(BrGfxWords *pCmd)
 {
@@ -589,6 +591,7 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
  * in a graphics setting and then passes that same value to another routine
  * which acts on it. What the setting means is not established here. */
 /* @implements 0x10020F80 d3d BrGbiSet4C1694 */
+/* @implements 0x10021250 glide BrGbiSet4C1694 */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd)
 {
@@ -987,6 +990,7 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
  * reports there is nothing left. This one loop is what draws every frame of
  * the game. */
 /* @implements 0x10024A90 d3d BrGbiRun */
+/* @implements 0x10023C90 glide BrGbiRun */
 #ifdef BR_MATCHING_BUILD
 /* Original is cdecl, one argument: the table is the global at 0x100A79F0
  * and the opcode is byte 3 of the command in host order. */
@@ -1035,6 +1039,7 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * size of the image a load is about to read from, and -- if a run was not
  * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
+/* @implements 0x10029420 glide BrGbiTexScanSetImg */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
 {
@@ -1077,6 +1082,7 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * the source image into the palette buffer. The number of bytes comes
  * straight from the command and is not checked, here or in the original. */
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
+/* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 #ifdef BR_MATCHING_BUILD
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
 void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
@@ -1140,6 +1146,7 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * one that gets the short `and eax,imm32` encoding on the other side.
  * Every instruction is the original's. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
+/* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
 #ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
 extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
@@ -1251,6 +1258,7 @@ void BrGbiTexScanSetTile(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
 /* WHAT IT DOES: during the texture-load hunt, records which rectangle of the
  * image one of the eight texture slots covers. */
 /* @implements 0x1002A140 d3d BrGbiTexScanSetTileSize */
+/* @implements 0x100296B0 glide BrGbiTexScanSetTileSize */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetTileSize(const BrGfxWords *pCmd)
 {
@@ -1288,6 +1296,7 @@ void BrGbiTexScanSetTileSize(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * needs special handling. A handful of specific blend settings, and anything
  * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
+/* @implements 0x10029710 glide BrGbiTexScanOtherModeL */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
 {
@@ -1400,6 +1409,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * renderer. Along the way it also picks up the colours, texture slots and
  * render modes in force. It stops at the end-of-list command. */
 /* @implements 0x100290E0 d3d BrGbiTexScanRun */
+/* @implements 0x10028820 glide BrGbiTexScanRun */
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
     if (pCmd == NULL)
@@ -1528,6 +1538,7 @@ int BrGbiSizeShift(int n)
  * word for a given pixel-size code: 16 for the smallest, then 8, then 4, and
  * 2 for anything else. */
 /* @implements 0x10028C70 d3d BrGbiTexelsPerWord */
+/* @implements 0x10027F80 glide BrGbiTexelsPerWord */
 int BrGbiTexelsPerWord(int siz)
 {
     switch (siz) {
@@ -1544,6 +1555,7 @@ int BrGbiTexelsPerWord(int siz)
  * one row of the texture occupies, given the width rounded up to a power of
  * two and the pixel size. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
+/* @implements 0x10027F00 glide BrGbiBlit */
 #ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
  * at 0x118ED1C4 (the slot before BrGbiTexCreate's 0x118ED1C8); the port's
@@ -1742,6 +1754,7 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
  * tenths opaque. The rectangle it covers comes from a table of screen
  * regions. */
 /* @implements 0x1002AF10 d3d BrFadeDrawSprite */
+/* @implements 0x10017F80 glide BrFadeDrawSprite */
 #ifdef BR_MATCHING_BUILD
 /* orig: cdecl (pRecs, alpha); cursor DAT_106e7710, rectIdx DAT_106ec798,
  * otherModeH DAT_106e7718. Combine is BrRdpSetCombineLERP(DAT++, 17 args)
@@ -1925,6 +1938,7 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
  * reverses when it lands rather than restarting. Note the time is a duration
  * and is divided into, so asking for zero time gives an infinite speed. */
 /* @implements 0x1002B130 d3d BrFadeSetTarget */
+/* @implements 0x100181A0 glide BrFadeSetTarget */
 #ifndef BR_MATCHING_BUILD
 void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
 {
@@ -1976,6 +1990,7 @@ void BrFadeSetTarget(BrFadeState *pSt, float to, float over)
  * side of the target it is currently on. As with the wipe, a zero duration
  * gives an infinite rate. */
 /* @implements 0x1002B1C0 d3d BrFadeSetTargetA */
+/* @implements 0x10018230 glide BrFadeSetTargetA */
 #ifndef BR_MATCHING_BUILD
 void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 {
@@ -2008,6 +2023,7 @@ void BrFadeSetTargetA(BrFadeState *pSt, float to, float over)
 /* WHAT IT DOES: the same as the ramp above, for the second of the two
  * independent brightness ramps. */
 /* @implements 0x1002B220 d3d BrFadeSetTargetB */
+/* @implements 0x10018290 glide BrFadeSetTargetB */
 #ifndef BR_MATCHING_BUILD
 void BrFadeSetTargetB(BrFadeState *pSt, float to, float over)
 {
@@ -2116,6 +2132,7 @@ no:
  * The negated comparison is load-bearing: an unordered (NaN) rate answers
  * yes, matching the original's `test ah,1` on the compare flags. */
 /* @implements 0x1002B2A0 d3d BrFadeIsClosing */
+/* @implements 0x10018310 glide BrFadeIsClosing */
 #ifndef BR_MATCHING_BUILD
 int BrFadeIsClosing(const BrFadeState *pSt)
 {
@@ -2133,6 +2150,7 @@ int BrFadeIsClosing(const BrFadeState *pSt)
  * and has no reversal pending, which is how the game knows it can proceed to
  * whatever the transition was covering. */
 /* @implements 0x1002B2D0 d3d BrFadeIsSettled */
+/* @implements 0x10018340 glide BrFadeIsSettled */
 #ifndef BR_MATCHING_BUILD
 int BrFadeIsSettled(const BrFadeState *pSt)
 {
@@ -2151,6 +2169,7 @@ int BrFadeIsSettled(const BrFadeState *pSt)
 /* WHAT IT DOES: reports whether the screen transition is fully closed:
  * moving backward, arrived at zero, and with no reversal pending. */
 /* @implements 0x1002B300 d3d BrFadeIsShut */
+/* @implements 0x10018370 glide BrFadeIsShut */
 #ifndef BR_MATCHING_BUILD
 int BrFadeIsShut(const BrFadeState *pSt)
 {
@@ -2192,6 +2211,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * a limited number of frames' worth of bars once the wipe has run out of
  * travel. */
 /* @implements 0x1002B340 d3d BrFadeDrawBars */
+/* @implements 0x100183B0 glide BrFadeDrawBars */
 #ifdef BR_MATCHING_BUILD
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
  * as BrFadeDrawSprite above does, and its very first instruction is
@@ -2600,6 +2620,7 @@ void BrFadeTick(void)
 /* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
  * batch of loaded geometry starts from nothing. */
 /* @implements 0x1002B9C0 d3d BrRcaResetCounts */
+/* @implements 0x10018A30 glide BrRcaResetCounts */
 #ifdef BR_MATCHING_BUILD
 void BrRcaResetCounts(void)
 {
@@ -2622,6 +2643,7 @@ void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 /* WHAT IT DOES: flips the byte order of the four 16-bit values in one eight-
  * byte record of N64-ordered data. */
 /* @implements 0x1002BA20 d3d BrSwapU16x4 */
+/* @implements 0x10018A90 glide BrSwapU16x4 */
 void BrSwapU16x4(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -2640,6 +2662,7 @@ void BrSwapU16x4(void *pv)
 /* WHAT IT DOES: flips the byte order of a whole array of those four-value
  * records. */
 /* @implements 0x1002BA00 d3d BrSwapU16x4Array */
+/* @implements 0x10018A70 glide BrSwapU16x4Array */
 void BrSwapU16x4Array(void *pv, int count)
 {
     uint8_t *p;
@@ -2662,6 +2685,7 @@ void BrSwapU16x4Array(void *pv, int count)
 /* WHAT IT DOES: flips the byte order of a whole array of 3D vectors read out
  * of an N64-ordered data file. */
 /* @implements 0x1002BA60 d3d BrSwapVec3Array */
+/* @implements 0x10018AD0 glide BrSwapVec3Array */
 void BrSwapVec3Array(void *pv, int count)
 {
     uint8_t *p;
@@ -2866,6 +2890,7 @@ void BrRcaFixupRecord(void *pRec)
 /* WHAT IT DOES: runs the record preparation above over a whole array of
  * records from an .rca data file. */
 /* @implements 0x1002BA80 d3d BrRcaFixupArray */
+/* @implements 0x10018B40 glide BrRcaFixupArray */
 #ifdef BR_MATCHING_BUILD
 /* Original: 2 args (no ctx); count is read and tested before pv, whose
  * load sits inside the guard (its arg slot stays live that long). */
