@@ -11,6 +11,66 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼‼ TWENTY-SIXTH PASS (2026-09-04) -- A LEVER FROM OUTSIDE THE ADDRESSING,
+ * AND IT IS THE ONE EVERY DOSSIER ENTRY BELOW CALLED INERT: DECLARATION
+ * ORDER.  Masked regions 21 -> 18 (raw 30 -> 27), bytes/insns/multiset
+ * unchanged, by declaring the row block's four pointer locals in FIELD
+ * order (pPos, pTy, pTz, pTw) instead of (pTw, pTy, pPos, pTz).
+ *   WHAT WAS MEASURED (scratch harness, 6 s/probe, every probe a fresh
+ *   compile):
+ *   - all 24 permutations of {pTw,pTy,pPos,pTz}: EXACTLY TWO outcomes.
+ *     pTw declared 1st or 2nd -> the row block finishes T1 before T2
+ *     (`fmul [esi+0x30]` first, our old shape, 21 regions).  pTw declared
+ *     3rd or 4th -> T2 before T1 (`fmul [esi+0x3c]` first), the original's
+ *     order at ALL FOUR rows, 18 regions.  pPos's position is irrelevant.
+ *   - the same flip happens with the pointer order UNTOUCHED when iWheel
+ *     leaves the function-scope declaration list (merged into `i`, or
+ *     block-scoped): so it is not pairwise order, it is the symbol's
+ *     absolute INDEX -- (index - base) mod 4 in {2,3} flips, {0,1} does
+ *     not.  A hash-bucket / index-pair tie-break in the x87 scheduler.
+ *   - INERT, do not re-run: the declaration order of the four coefficient
+ *     EXTERNS (24/24 identical); an unused extra local (dropped before it
+ *     gets an index); an unused extra function-scope int; renaming iWheel.
+ *   WHAT IS LEFT in the row block after this: ONE notch per row -- orig
+ *   `fxch st(2); fmul [esi+0x38]; fld C4; fxch st(3); faddp st(2)` against
+ *   ours `fld C4; fxch st(3); fmul [esi+0x38]; fxch st(1); faddp st(2)`,
+ *   i.e. the C4 hoist (wall 1's last item), still the `fxch st(2)` /
+ *   `faddp st(1)` multiset rows.  It did NOT move under any of the 24
+ *   permutations or the extern order; it may still move under a symbol-
+ *   index change elsewhere (see the declsweep results in the next pass).
+ *   ‼ CONSEQUENCE FOR EVERY DEAD LIST IN THIS HEADER: "declaration order is
+ *   inert" was measured on slot packing (sixth pass) and on one
+ *   enregistered temp (twenty-second pass), and it is TRUE there -- P3 in
+ *   this pass moved pDst's declaration to the top of the list and the slot
+ *   map did not move by a byte.  It is FALSE for x87 scheduling tie-breaks,
+ *   and probably for any other tie-break keyed on symbol index.  Any
+ *   "spelling X is byte-identical" verdict below was measured at ONE symbol
+ *   layout; a lever that reads as inert may be sitting one index away from
+ *   its flip.  When a schedule is one notch off and every expression form
+ *   is dead, permute the declaration order of the operands' locals before
+ *   calling it T3a.
+ *   ALSO MEASURED, for the slot map (wall 6), and worth keeping:
+ *   - the ORIGINAL's slot map, read off the bytes with the pushes
+ *     accounted for: 0x10 scale/x2/ds, 0x14 fMin/pCar/slot, 0x18 fMax/dx,
+ *     0x1c i/iWheel/again, 0x20 pDst/copy-counter/h1-pDst/len/ex-temps,
+ *     0x24 bSolo/idx/iCar, 0x28 bTexLoaded/ey2/c2/dCar, 0x2c nTotal/x1,
+ *     0x30 firstVis/y2, 0x34 cHead, 0x38 pM/y1, 0x3c base, 0x40 h1,
+ *     0x44 negCar0.  OURS differs in exactly two decisions: pDst and
+ *     bSolo/iCar are swapped (0x24/0x20), and iWheel takes fMax's dead
+ *     slot 0x18 instead of i's 0x1c -- which is why dx lands at 0x28
+ *     instead of 0x18 and x1 at 0x1c instead of 0x2c.  Everything else in
+ *     wall 6 cascades from those two.
+ *   - `iWheel` and `i` as ONE variable: iWheel's uses vanish from the
+ *     function-scope list and the packer re-ranks -- i -> 0x18, bSolo/iCar
+ *     -> 0x1c, pDst -> 0x20, fMax -> 0x24; bytes -14 -> -9, insns -4 -> -3,
+ *     raw regions 30 -> 37.  Not the original's map either; NOT in the tree.
+ *   - iWheel BLOCK-SCOPED (two declarations): slot map unchanged (still
+ *     0x18), but it flips the row block exactly like the pointer order
+ *     (that is how the index effect was found).  NOT in the tree; the
+ *     pointer order is the faithful spelling of the same flip.
+ *   - pDst declared before bSolo: byte-identical.  The packer's order is
+ *     not declaration order; the bSolo/pDst swap needs a different lever.
+ *
  * ‼ TWENTY-FIFTH PASS (2026-09-03) -- WALL 4 IS NOW CLOSED AS A SPELLING
  * PROBLEM.  Measured entry state: 30 raw regions, 2,324 vs 2,328 insns,
  * 9,340 vs 9,354 bytes.  The one byte-offset shape the dossier had NOT
@@ -1135,11 +1195,20 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
+                    /* ‼ DECLARATION ORDER IS LOAD-BEARING (26th pass): the
+                     * four row pointers are declared in FIELD order, pTw
+                     * LAST.  With pTw first or second the row block
+                     * finishes T1 before T2 (`fmul [esi+0x30]` first);
+                     * declared third or fourth it finishes T2 first, which
+                     * is the original's order at all four rows.  Measured
+                     * over all 24 permutations: exactly two outcomes, keyed
+                     * on pTw's position alone.  The symbol INDEX is an x87
+                     * scheduler tie-break -- see docs/VC5-IDIOMS.md. */
                     float *pView = DAT_106e9a38;
-                    float *pTw = pObj + 0xf;
-                    float *pTy = pObj + 0xd;
                     float *pPos = pObj + 0xc;
+                    float *pTy = pObj + 0xd;
                     float *pTz = pObj + 0xe;
+                    float *pTw = pObj + 0xf;
                     if (!bTexLoaded) {
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
