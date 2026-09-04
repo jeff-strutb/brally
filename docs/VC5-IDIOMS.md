@@ -4114,3 +4114,48 @@ whose displacement is already resolved, reads `[esi+0x10AC0C48]`. That shows
 up in `fn.py --detail regnorm` as a phantom `fadd [R]` EXTRA against a
 `fadd [R+I]` MISSING. It is an artefact of the unlinked object, not a gap —
 check it against `tools/divergence.py` before chasing it.
+
+## Hoist a subexpression that BOTH arms of a branch need — the one place naming pays
+
+This is the exception to "do not name a temp" (the entries above), and the
+boundary between them is sharp:
+
+  - a value read ONCE, or read again after an intervening call, must be
+    written out as many times as the original reads it. Naming it costs a
+    spill slot and rotates the loop registers.
+  - a value used by BOTH arms of a branch must be computed ONCE, ABOVE the
+    branch, in a named local. Spelling it inline in each arm makes VC5
+    compute it twice — it does NOT sink the common code back out.
+
+Proven on 0x10001320 (the sprite blit dispatcher, 206 B). The original clips
+the rectangle, then computes the destination pointer, the source pointer and
+both byte pitches, and only THEN tests the colour-key flag and dispatches to
+one of two blit routines. Written with those four expressions inline in each
+call arm the recompile is 239 B / 95 insns (reggap 18+8) with four duplicated
+`lea r,[r+r]`, two duplicated `lea r,[r+r*2]`, a duplicated `imul` and a
+duplicated pointer load. Hoisting them into four named locals above the `if`
+is 206 B / 85 insns, SIZE AND INSTRUCTION EXACT, reggap 0 — a one-edit change
+worth 33 bytes.
+
+The tell in the original's bytes: the shared computation sits BEFORE the
+`test`/`je` that selects the arm, not inside either successor block. Read
+where the flag test is and everything above it belongs to one hoisted block.
+
+## The absolute-store ACCUMULATOR ENCODING is worth 1 byte per store
+
+`mov [imm32], eax` assembles as `a3 imm32` (5 bytes); the same store from any
+other register is `89 /r imm32` (6). Likewise `mov eax,[imm32]` is `a1` (5)
+against `8b 0d` (6). So when a function ends up a handful of bytes long with a
+register-blind gap of 0, count its absolute loads and stores: an eax↔ecx
+rotation across a run of global accesses costs exactly one byte each and
+nothing else.
+
+Measured on 0x10059410 BrGlNavPoll: +4 bytes, reggap 0+1, THREE divergence
+regions and all three are one rotation. The original keeps a timeout-latch
+load and a short-lived flag in ecx, which leaves eax free, so it emits a fresh
+`xor eax,eax` and stores eax into four consecutive globals in the `a3` form.
+Ours re-uses the pinned zero already sitting in edi and pays 6 bytes a store.
+**The missing `xor` is the EFFECT of the rotation, not its cause** — every one
+of those stores is already a literal `0` in the source, and rewriting them
+changes nothing. Related: the 0x100400E0 entry above, where a named temp moved
+a value out of eax and lost the same encodings.
