@@ -11,6 +11,12 @@
  * The glyphs themselves are br_font.c; this file is the layer above it --
  * which colours to use, what scale, where the pen goes, and the one HUD
  * caption that formats a time before handing it over.
+ *
+ * The alignment and flag setters below arrived from three different address
+ * batches (slice5_61.c, slice5_63.c, slice6_78.c); their preambles come with
+ * them, since an include set that looks redundant has already been shown
+ * elsewhere in this module to move VC5's register allocation (see
+ * br_rdpmode.c).
  */
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -218,3 +224,30 @@ int BrSetGlobal_ABB30(int param_1)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include "slice5_61.h"
+
+#include <string.h>
+
+#include "slice1_03.h"   /* BrTextState / BrTextGetState, BR_TEXT_ALIGN_* */
+#include "slice5_63.h"   /* g_br4B035C -- raw text-align global */
+#include "slice2_15.h"   /* BrRdpRegs / BrRdpGetRegs -- 0x104BBF08 etc.   */
+#include "slice2_25.h"   /* the option globals, index tables and callees   */
+
+
+/* ==========================================================================
+ * 0x10019290  text alignment := 1
+ * ========================================================================== */
+
+/* WHAT IT DOES: makes the next text drawn right-aligned, so it ends at the
+ * position given rather than starting there. */
+/* @implements 0x10016850 glide BrSub_10019290 */
+/* @n64 0x8022F504 located */
+void BrSub_10019290(void)
+{
+    g_br4B035C = 1;
+}
