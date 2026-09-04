@@ -1893,7 +1893,15 @@ void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
      * Probed and ruled out, do not re-run: swapping the two addends, naming
      * each operand as a block-scoped temp, splitting the mask into a separate
      * statement, and computing hi before lo -- all four are byte-identical to
-     * what is here. T3a. */
+     * what is here. T3a.
+     *
+     * Two more dead, 2026-09-03, both from levers proven elsewhere this week:
+     * naming ONLY the addend that must load first (the "name the pointer"
+     * lever that flipped a store's load order on 0x1006CFC0), and moving the
+     * w1 store ahead of the w0 computation so pRec[1]'s other use comes
+     * first. Both byte-identical. VC5 canonicalises the operand order of an
+     * INTEGER sum the same way it does a float one, so the register pairing
+     * is not reachable by rewriting this expression. Six probes now. */
     lo = (pRec[3] + pRec[1]) & 0xFFFu;
     hi = ((pRec[2] + pRec[0]) << 12) & 0xFFF000u;
     pE1->w0 = 0xE1000000u | hi | lo;
