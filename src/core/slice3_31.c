@@ -1455,17 +1455,6 @@ extern int DAT_10ac5c54;
 extern int DAT_10ac5d98;
 extern int g_brAA2854;
 
-/* WHAT IT DOES: menu option handler: set flag 5C50, request redraw, mark dirty. */
-/* @implements 0x10040930 glide BrMenuOpt40930 */
-
-int BrMenuOpt40930(void)
-
-{
-  DAT_10ac5c50 = 1;
-  BrSub10072AF0(2,0x200020);
-  g_brAA2854 = 2;
-  return;
-}
 
 /* WHAT IT DOES: menu option handler: set flag 5C54, request redraw, mark dirty. */
 /* @implements 0x10040960 glide BrMenuOpt40960 */
