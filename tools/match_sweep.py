@@ -23,6 +23,7 @@ Usage:
     python3 tools/match_sweep.py --summary       # re-print last report
     python3 tools/match_sweep.py --force         # ignore the cache
 """
+import concurrent.futures as cf
 import csv
 import hashlib
 import io
@@ -280,17 +281,27 @@ def sweep_file(src, cache=None, fkey=None):
         if hit and hit.get('key') == fkey and have_objs:
             return [dict(r) for r in hit['rows']]
 
+    # The variants are INDEPENDENT compiles of the same file at different
+    # optimisation settings, each writing its own obj_<tag>/<base>.obj, so
+    # nothing is shared between them and they can run at once. Serially they
+    # were 4-5 cl.exe invocations under Wine back to back, which is most of
+    # what a single-file sweep costs -- and a single-file sweep is the inner
+    # loop of every match, every refile and every verify in this tree.
     objs = {}
     errors = {}
-    for tag, opt in VARIANTS:
-        obj, err = compile_variant(src, tag, opt)
-        if obj:
-            try:
-                objs[tag] = parse_coff_obj(obj)
-            except Exception as e:              # malformed obj -- treat as fail
-                errors[tag] = [str(e)]
-        else:
-            errors[tag] = err
+    with cf.ThreadPoolExecutor(max_workers=len(VARIANTS)) as ex:
+        futs = {ex.submit(compile_variant, src, tag, opt): tag
+                for tag, opt in VARIANTS}
+        for fu in cf.as_completed(futs):
+            tag = futs[fu]
+            obj, err = fu.result()
+            if obj:
+                try:
+                    objs[tag] = parse_coff_obj(obj)
+                except Exception as e:          # malformed obj -- treat as fail
+                    errors[tag] = [str(e)]
+            else:
+                errors[tag] = err
 
     rows = []
     for va, name in implements:
@@ -370,9 +381,11 @@ def main():
     # anything starting with '--' and treat whatever was left as the file list,
     # so a typo -- or `--help` -- left zero arguments and silently launched the
     # 20-minute whole-tree run. Three subagents tripped that in one session.
-    args, force = [], False
+    args, force, jobs = [], False, 4
     for a in sys.argv[1:]:
-        if not a.startswith('--'):
+        if a.startswith('-j'):
+            jobs = int(a[2:] or 4)
+        elif not a.startswith('--'):
             args.append(a)
         elif a == '--summary':
             with open(REPORT) as f:
@@ -392,22 +405,33 @@ def main():
     cache = {} if force else load_cache()
 
     all_rows = []
-    for i, src in enumerate(srcs, 1):
+
+    def one(src):
         fkey = file_key(src, hdigest)
         rel = os.path.relpath(src, ROOT)
         cached = (not force and cache.get(rel, {}).get('key') == fkey)
         rows = sweep_file(src, cache=None if force else cache, fkey=fkey)
-        cache[rel] = {'key': fkey, 'rows': rows}
-        all_rows.extend(rows)
-        m = sum(1 for r in rows if r['status'] == 'match')
-        # A build that will not compile must never look like a build that
-        # compiled and matched nothing.
-        broke = [r for r in rows if r['status'] == 'compile_error']
-        note = '  !! COMPILE ERROR: %s' % broke[0]['diffs'][:70] if broke else ''
-        if not note and cached:
-            note = '  (cached)'
-        print('[%3d/%3d] %-40s %d/%d%s' % (i, len(srcs), rel,
-                                           m, len(rows), note), flush=True)
+        return src, rel, fkey, rows, cached
+
+    done = 0
+    # Files are independent too -- each compiles its own TU into its own obj.
+    # Default is modest because every worker runs `jobs` cl.exe processes of
+    # its own; -j is here for the whole-tree sweep and for callers that hand
+    # in several files at once.
+    with cf.ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
+        for src, rel, fkey, rows, cached in ex.map(one, srcs):
+            done += 1
+            cache[rel] = {'key': fkey, 'rows': rows}
+            all_rows.extend(rows)
+            m = sum(1 for r in rows if r['status'] == 'match')
+            # A build that will not compile must never look like a build that
+            # compiled and matched nothing.
+            broke = [r for r in rows if r['status'] == 'compile_error']
+            note = '  !! COMPILE ERROR: %s' % broke[0]['diffs'][:70] if broke else ''
+            if not note and cached:
+                note = '  (cached)'
+            print('[%3d/%3d] %-40s %d/%d%s' % (done, len(srcs), rel,
+                                               m, len(rows), note), flush=True)
 
     # EVERY run writes back, single-file runs included. Discarding the rows of
     # a one-file run is what used to make report.csv drift until only a full
