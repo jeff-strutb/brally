@@ -16,22 +16,12 @@
 
 /* ---- constants ---------------------------------------------------- */
 
-/* 0x1008FC54.  1.0f/12.0f rounds to the same 0x3DAAAAAB, but the value is
- * spelled out so a future reader does not have to re-derive it. */
-#define BR_K_ONE_TWELFTH  0.0833333358168602f
-/* the 0x1C0 immediate 0x3E322D0E */
-#define BR_K_1C0          0.174f
-
 /* ---- cross-slice --------------------------------------------------- */
 
 /* XSLICE 0x10008B80 */
 /* A bare `ret` in this build (see CONTRACT).  Name and prototype copied from
  * slice2_18.h so integration can wire it mechanically. */
 extern void BrStub8B80_1p(const void *p0);
-
-/* XSLICE 0x10075330 */
-/* Name copied from slice2_16.h. */
-extern void BrGbiCall10075330(void *pv);
 
 /* BrVec4Normalise (0x100741B0) and BrMat4MulVec3Transposed (0x10074770) come
  * in through slice1_09.h / br_mat.h. */
@@ -646,108 +636,7 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
     BrStub8B80_1p(pM);
 }
 
-/* 0x10074870 */
-/* WHAT IT DOES: sets a body up for physics: clears its accumulated forces,
- * plants a few fixed constants, and computes how hard it is to spin about
- * each axis. For the two box-shaped modes that comes from the standard
- * solid-box formula using the body's size and mass; other modes are left
- * with the placeholder value of one, which is worth knowing because it means
- * an unrecognised mode gets unit resistance rather than an error. */
-/* @implements 0x10074870 d3d BrRbInitInertia */
-void BrRbInitInertia(BrRbBody *pB)
-{
-    int i, j;
-
-    pB->f00 = 0.0f;
-    pB->f04 = 0.0f;
-    pB->f08 = 0.0f;
-    pB->f0C = 0.0f;
-    pB->f10 = 0.0f;
-    pB->f14 = 0.0f;
-
-    pB->f1B4 = 0.0f;
-    pB->f19C = 0.0f;
-    pB->f1C4 = 0.0f;
-    pB->f1C0 = BR_K_1C0;
-    pB->f1CC = 0.0f;
-    pB->f1D0 = 0.0f;
-    pB->f1C8 = 0.5f;
-
-    /* if/else, NOT a ternary: the original stores both arms as integer
-     * immediates (`mov dword [esi+ebx*4], 0x3f800000` / `, edi` with edi the
-     * zero register), which is the float-constant store VC5 emits for a plain
-     * literal assignment.  A ternary makes the value runtime-selected and
-     * costs an `fld` of each constant plus an `fstp`.  The index stays
-     * `3*i + j` -- the strength reducer folds inertia's 0x30 byte offset into
-     * the row IV, which is where the `mov ecx, 0xc` / `add ecx, 3` /
-     * `cmp ecx, 0x15` walk comes from. */
-    for (i = 0; i < 3; ++i) {
-        for (j = 0; j < 3; ++j) {
-            if (i == j)
-                pB->inertia.m[3 * i + j] = 1.0f;
-            else
-                pB->inertia.m[3 * i + j] = 0.0f;
-        }
-    }
-
-    if (pB->mode >= 0 && pB->mode <= 1) {
-        /* SPILL MAP (Glide 0x1006DB5E..0x1006DBE5).  Everything here is
-         * FLOAT: every fmul and fadd in the block is a `dword` operand.  An
-         * earlier reading took the fst/fstp asymmetry for a double source and
-         * typed the sides `double` with per-use casts; see the VC5-IDIOMS
-         * entry "`fst` (not `fstp`) of a float local does NOT mean the source
-         * was double" -- without /Op the scheduler keeps unrounded values in
-         * st freely, and the double spelling is what produced the `fmul qword`
-         * / `fdivr qword` chain.
-         *
-         * The three edge lengths are three SCALAR float locals, copied out of
-         * dim[] with integer movs at 1006DB67/DB6F/DB73.  Only two get frame
-         * slots -- x at [esp+0xc], y at [esp+0x10], which is the whole
-         * `sub esp, 8` -- and z is packed into the dead pB parameter slot
-         * [esp+0x18].  The two squares that need memory (z*z, then y*y) reuse
-         * that same slot after z dies, so they are compiler CSE temps and the
-         * squares are spelled inline; x*x is never stored at all (duplicated
-         * with `fld st(2)` at 1006DB9E).  mass and the 1/12 constant are
-         * re-read per row, not cached. */
-        /* DECLARATION ORDER IS LOAD-BEARING: x must come LAST.  It decides
-         * which of the three lands in the dead parameter slot -- with x first
-         * VC5 never homes y at all (`fld [esi+0x24]` + `fmul st`), and with x
-         * in the middle the squares come out in the wrong order.  y before z
-         * or z before y are both byte-exact; this is the order the formula
-         * first mentions them in. */
-        float y = pB->dim[1];
-        float z = pB->dim[2];
-        float x = pB->dim[0];
-
-        /* The addends of the FIRST row are load-bearing too: `y*y + z*z`, not
-         * `z*z + y*y`.  That one swap is the difference between byte-exact and
-         * 113 differing bytes -- it picks which square is computed first, and
-         * so which value the dead parameter slot is recycled for. */
-        pB->inertia.m[0] = (y * y + z * z) * pB->mass * BR_K_ONE_TWELFTH;
-        pB->inertia.m[4] = (x * x + z * z) * pB->mass * BR_K_ONE_TWELFTH;
-        pB->inertia.m[8] = (x * x + y * y) * pB->mass * BR_K_ONE_TWELFTH;
-
-        BrGbiCall10075330(&pB->inertia);
-    }
-
-    if (pB->mode != 2) {
-        /* only the diagonal -- see the header's gotcha.
-         *
-         * `fld [1.0f]; fdiv DWORD ptr [esi+0x30]; fstp dword ptr` at
-         * 1006DBF6..1006DC17.  A `fdiv dword` is a float divide, so this is
-         * `1.0f / x`, not a double divide narrowed once -- an earlier reading
-         * spelled it `(float)(1.0 / (double)x)` and got `fdivr qword`.  (The
-         * two agree numerically on every normal float, so no test could catch
-         * the difference; the bytes are the only evidence, and they say
-         * float.) */
-        pB->invInertia.m[0] = 1.0f / pB->inertia.m[0];
-        pB->invInertia.m[4] = 1.0f / pB->inertia.m[4];
-        pB->invInertia.m[8] = 1.0f / pB->inertia.m[8];
-    }
-
-    pB->f1D4 = 0.0f;
-    pB->f1D8 = 0.0f;
-}
+/* 0x10074870 BrRbInitInertia now lives in src/core/driving/br_rbinertia.c. */
 
 
 /* 0x11829850 */
