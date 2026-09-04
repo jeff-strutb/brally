@@ -1456,18 +1456,6 @@ extern int DAT_10ac5d98;
 extern int g_brAA2854;
 
 
-/* WHAT IT DOES: menu option handler: set flag 5C4C, request redraw, mark dirty. */
-/* @implements 0x100409F0 glide BrMenuOpt409F0 */
-
-int BrMenuOpt409F0(void)
-
-{
-  DAT_10ac5c4c = 1;
-  BrSub10072AF0(2,0x200020);
-  g_brAA2854 = 2;
-  return;
-}
-
 /* WHAT IT DOES: activate the 0x10045BC0 phase, then install code pointer 0x10040040 into
  * slot +8 of the object at [g_AA29F4]. Returns 1. */
 /* @implements 0x1003ED70 glide BrPhaseActivate_1003ED70 */
