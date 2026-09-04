@@ -46,4 +46,26 @@ int BrTrackFixupSegList(int param_1)
   return;
 }
 
+
+
+/* WHAT IT DOES: byte-swap a 0x28-byte record: three Vec3s then one dword. */
+/* @implements 0x10031A40 glide BrTrackSwapRec28 */
+
+int BrTrackSwapRec28(int param_1)
+
+{
+  char uVar1;
+
+  BrSwapVec3(param_1);
+  BrSwapVec3(param_1 + 0xc);
+  BrSwapVec3(param_1 + 0x18);
+  uVar1 = *(char *)(param_1 + 0x27);
+  *(char *)(param_1 + 0x27) = *(char *)(param_1 + 0x24);
+  *(char *)(param_1 + 0x24) = uVar1;
+  uVar1 = *(char *)(param_1 + 0x26);
+  *(char *)(param_1 + 0x26) = *(char *)(param_1 + 0x25);
+  *(char *)(param_1 + 0x25) = uVar1;
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
