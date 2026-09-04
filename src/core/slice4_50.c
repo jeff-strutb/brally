@@ -260,60 +260,6 @@ void BrSub10043BF0(BrGameObj *p)
 }
 
 /* ==========================================================================
- * 6. Network
- * ========================================================================== */
-
-/* 0x100053F0 */
-/* WHAT IT DOES: sends a status message out to the other machines in a network
- * game, but only once every player expected has actually turned up -- it
- * compares the number of cars in play against the number of players connected
- * and stays quiet if they disagree. */
-/* @implements 0x100053F0 d3d BrNetSendFlush */
-void BrNetSendFlush(void)
-{
-    uint32_t cActive;
-    uint32_t flag;
-
-    /* Orig: WaitForSingleObject(h, INFINITE); reload h; load flag; ReleaseMutex(h). */
-#ifdef BR_MATCHING_BUILD
-    WaitForSingleObject(g_brH221324, 0xffffffffu);
-    flag = (uint32_t)g_br22AAA8;
-    ReleaseMutex(g_brH221324);
-    if (flag == 0) {
-        return;
-    }
-#else
-    BrNetMutexLock(g_brH221324);
-    BrNetMutexUnlock(g_brH221324);
-
-    if (g_br22AAA8 == 0) {
-        return;
-    }
-#endif
-
-#ifdef BR_MATCHING_BUILD
-    cActive = BrEntityCountActive();
-#else
-    cActive = BrEntityCountActive(g_brPACEDB0, g_br0B36FC);
-#endif
-    if (cActive != BrDPlayGetCurrentPlayers()) {
-        return;
-    }
-
-    /* Orig pushes the ADDRESS of g_brP277B40 and of g_brPB4E2E8 (offset,
-     * not the pointer those globals hold). */
-#ifdef BR_MATCHING_BUILD
-    BrNetSend4760(&g_brP277B40, g_br094294, g_br22B34C,
-                  g_brAD0854[0], g_brAD0854[1], g_brAD0854[2],
-                  g_br277B48, (char *)&g_brPB4E2E8, 3, 0);
-#else
-    BrNetSend4760(&g_brP277B40, g_br094294, g_br22B34C,
-                  g_brAD0854[0], g_brAD0854[1], g_brAD0854[2],
-                  g_br277B48, g_brPB4E2E8, 3, 0);
-#endif
-}
-
-/* ==========================================================================
  * 7. DirectPlay host / join / send
  * ========================================================================== */
 
