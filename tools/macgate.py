@@ -114,13 +114,25 @@ def main():
         r = sh(["./build.sh"])
         if r.returncode != 0:
             failed = True
-            tail = [ln for ln in (r.stdout + r.stderr).splitlines()
-                    if "error:" in ln or "Undefined" in ln or "ld:" in ln]
+            out = (r.stdout + r.stderr).splitlines()
+            keep = [ln for ln in out
+                    if "error:" in ln or "Undefined" in ln or "ld:" in ln
+                    or ln.strip().startswith('"_')
+                    or "referenced from" in ln or ln.startswith("      _")]
             print("FAIL: build.sh exited %d" % r.returncode)
-            for ln in tail[-15:]:
+            for ln in keep[-25:]:
                 print("  " + ln)
-        else:
-            print("ok: build.sh linked build/brally")
+            # STOP HERE. An earlier version fell through to stage 3 and ran
+            # whatever build/brally happened to be lying around -- which was a
+            # week-old binary -- then printed "no stub reached". A gate that
+            # reports on a stale artifact after the build failed is worse than
+            # no gate: it is a false green, which is the exact failure this
+            # project spends its time guarding against elsewhere.
+            rule("VERDICT")
+            print("  macOS lane: FAILED at LINK.")
+            print("  Stage 3 SKIPPED -- not run against a stale binary.")
+            return 1
+        print("ok: build.sh linked build/brally")
     elif args.compile_only:
         rule("1. COMPILE -- every core TU, independently")
         total, bad = compile_survey()

@@ -94,7 +94,11 @@ void BrCarClampPosZ(float *pv);
 /* 0x100065A0  clamp(floor(0.5 - 128*v), -32, 31)      inverse of 0x10007250 */
 int8_t BrFixPackS6Q7Neg(float v);
 /* 0x100065E0  clamp(floor(0.5 - 32768*v), -32768, 32767)  inv. of 0x10007280 */
-int32_t BrFixPackS16Q15Neg(float v);
+/* int16_t, not int32_t: the definition has always returned int16_t and the
+ * clamp above is exactly int16_t's range, so this line was simply wrong. It
+ * went unnoticed because NOTHING outside slice2_12.c calls this -- MSVC 5.0
+ * accepted the mismatch, and clang rejects it, which is how it surfaced. */
+int16_t BrFixPackS16Q15Neg(float v);
 /* 0x10006620  clamp(floor(0.5 + v*256/361), 0, 255)   inverse of 0x100072A0.
  * The scale really is float(256/361) = 0.7091412544250488, the reciprocal of
  * another module's 1.41015625, so degrees round-trip through a byte. */

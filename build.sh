@@ -32,10 +32,52 @@ FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCo
 #   src/core/audio/      sound and music
 #   src/core/            <- still named after an ADDRESS BATCH
 #
-# The object name is the BASENAME, so a module's folder can change without
-# touching any build.d/*.deps file.
+# The object name is the module's PATH under src/core with '/' turned into
+# '_' -- gamedata/br_track.c becomes gamedata_br_track.o.
+#
+# It used to be the bare BASENAME, and that silently broke the moment two
+# modules held the same filename: the second compile overwrote the first's
+# object and the first module's symbols vanished from every link that wanted
+# them. It happened for real. Filing work (rule 6) put a br_track.c in both
+# gamedata/ and startup/; the startup one is entirely inside
+# #ifdef BR_MATCHING_BUILD, so for the port it compiles to an EMPTY object,
+# which then replaced the real track module and took the AI test link down
+# with an undefined-symbol error pointing at neither file. Filing moves files
+# by design, so this collision was going to keep happening.
+#
+# build.d/*.deps files still name modules by basename -- objname_find below
+# resolves one to its object, and REFUSES to guess when two could match.
+objname() { printf '%s' "$1" | sed 's#^src/core/##; s#\.c$##; s#/#_#g'; }
+
+# Resolve a basename (as written in a .deps file) to exactly one object.
+# Prints nothing if there is no match; aborts if there is more than one,
+# because silently picking one is the bug this scheme exists to remove.
+objfind() {
+    _hits=""
+    for _o in build/core/*.o; do
+        [ -f "$_o" ] || continue
+        _b=$(basename "$_o" .o)
+        case "$_b" in
+            "$1"|*_"$1") _hits="$_hits $_o";;
+        esac
+    done
+    _n=0
+    for _h in $_hits; do _n=$((_n+1)); done
+    if [ "$_n" -gt 1 ]; then
+        echo "build.sh: '$1' is ambiguous -- matches:$_hits" >&2
+        echo "build.sh: name it by path in the .deps file to disambiguate" >&2
+        exit 1
+    fi
+    printf '%s' "$_hits" | tr -d ' '
+}
+
+# Core objects live in their own directory, wiped each run. Keeping them apart
+# from the test/port objects means the host link can just take ALL of them
+# instead of excluding by filename pattern, and wiping means a renamed or
+# deleted module cannot leave an object behind that still satisfies a link.
+rm -rf build/core && mkdir -p build/core
 for src in $(find src/core -name '*.c' | sort); do
-    clang $CFLAGS -c "$src" -o "build/$(basename "$src" .c).o"
+    clang $CFLAGS -c "$src" -o "build/core/$(objname "$src").o"
 done
 clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
@@ -47,15 +89,15 @@ for t in tests/test_*.c; do
     clang $CFLAGS -c "$t" -o "build/$tname.o"
 
     objs="build/$tname.o"
-    if [ -f "build/$mod.o" ]; then
-        objs="$objs build/$mod.o"
-    elif [ -f "build/br_$mod.o" ]; then
-        objs="$objs build/br_$mod.o"
-    fi
+    modobj=$(objfind "$mod")
+    [ -z "$modobj" ] && modobj=$(objfind "br_$mod")
+    [ -n "$modobj" ] && objs="$objs $modobj"
     if [ -f "build.d/$tname.deps" ]; then
         for d in $(cat "build.d/$tname.deps"); do
-            case " $objs " in *" build/$d.o "*) continue;; esac
-            [ -f "build/$d.o" ] && objs="$objs build/$d.o"
+            depobj=$(objfind "$d")
+            [ -z "$depobj" ] && continue
+            case " $objs " in *" $depobj "*) continue;; esac
+            objs="$objs $depobj"
         done
     fi
     if [ "$tname" = "test_gfx" ]; then
@@ -69,8 +111,10 @@ done
 clang $CFLAGS -c tools/brview.c -o build/brview.o
 bvobjs="build/brview.o"
 for d in $(cat build.d/brview.deps); do
-    case " $bvobjs " in *" build/$d.o "*) continue;; esac
-    [ -f "build/$d.o" ] && bvobjs="$bvobjs build/$d.o"
+    depobj=$(objfind "$d")
+    [ -z "$depobj" ] && continue
+    case " $bvobjs " in *" $depobj "*) continue;; esac
+    bvobjs="$bvobjs $depobj"
 done
 clang $bvobjs build/br_gfx_metal.o -lm $FW -o build/brview
 
@@ -91,14 +135,18 @@ for w in ports/macos/br_wire*.c; do
 done
 clang $CFLAGS -c ports/macos/br_stubs.c -o build/br_stubs.o
 clang $CFLAGS -Itests -c tests/test_data.c -o build/test_data.o
-clang build/br_data.o build/test_data.o -lm -o build/test_data
+clang "$(objfind br_data)" build/test_data.o -lm -o build/test_data
 clang $CFLAGS -c ports/macos/brally.c      -o build/brally.o
 clang $CFLAGS -c ports/macos/brally_main.c -o build/brally_main.o
 
+# Every core object, minus the three that get rebuilt with -DBR_HOST_LINK just
+# below. This used to glob all of build/ and exclude the test/port objects by
+# filename pattern; now that core objects have their own directory the list is
+# simply "all of them", and a new port file can never again land in the host
+# link by failing to match an exclusion.
 HOSTOBJS=""
-for o in build/*.o; do
+for o in build/core/*.o; do
   case "$o" in
-    *test_*|*brview*|*br_gfx_metal*|*brally.o|*brally_main.o|*br_stubs.o|*br_wire7*.o) continue;;
     */slice3_32.o|*/slice6_71.o|*/slice6_73.o) continue;;
   esac
   HOSTOBJS="$HOSTOBJS $o"
