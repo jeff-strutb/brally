@@ -122,4 +122,15 @@ float BrFixUnpackS24Q1(uint32_t v)
     return (float)((x & 0xFFFFFF) * 0.5f);
 }
 
+
+
+/* 0x10007380.  Scale 0x1008F13C = 0.0078125f (= 1/128). */
+/* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
+ * 1/128 resolution -- the car's height, among other things. */
+/* @implements 0x10007380 d3d BrFixUnpackS16Q7 */
+float BrFixUnpackS16Q7(int32_t v)
+{
+    return (float)((int16_t)v * 0.0078125f);
+}
+
 #endif /* BR_MATCHING_BUILD */

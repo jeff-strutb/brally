@@ -157,15 +157,6 @@ int32_t BrFixPackS16Q7(float v)
 }
 
 
-/* 0x10007380.  Scale 0x1008F13C = 0.0078125f (= 1/128). */
-/* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
- * 1/128 resolution -- the car's height, among other things. */
-/* @implements 0x10007380 d3d BrFixUnpackS16Q7 */
-float BrFixUnpackS16Q7(int32_t v)
-{
-    return (float)((int16_t)v * 0.0078125f);
-}
-
 /* 0x100073A0.  Scale 0x1008F140 = 0.00390625f (= 1/256). */
 /* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
  * 1/256 resolution. */
