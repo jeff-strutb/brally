@@ -11,6 +11,35 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼ TWENTY-THIRD PASS (2026-09-03) -- WALL 4's DOWNSTREAM SPILL IS MOSTLY
+ * CLOSED, and the lever was the ONE place nobody had looked: not the index,
+ * the pDst DEFINITION.  The eleventh pass had already worked out that three
+ * of the missing instructions are the original memory-homing pDst in BOTH
+ * arms of the `h1 < 0` test and reloading it to form `slot`; nobody had then
+ * gone and looked at how the source WRITES pDst.  It was
+ * `pDst = h1; if (h1 < 0) pDst = 0x1f3;` -- an assign-then-override, which
+ * gives VC5 one definition plus a conditional fix-up and lets it keep the
+ * value in edi.  Written as a TRUE if/else with BOTH arms assigning, the
+ * homes appear.
+ *   Measured: instructions 4 short -> ONE short, bytes -14 -> -8,
+ *   register-blind 17+21 -> 18+19 (38 -> 37 rows), and of the four
+ *   pDst-spill rows the eleventh pass catalogued, `mov R,[esp+S]` is gone
+ *   and one of the two `mov [esp+S],R` with it.
+ *   ‼ ITS fn.py FIRSTDIV READS +0x2b -> +0x1b AND THE FRAME IS FINE.  The
+ *   prologue is instruction-for-instruction identical (`sub esp,0xdc` and
+ *   all), the ALIGNED first divergence is still 0xad4, and what moved is two
+ *   slot displacements (0x28/0x24 against our 0x2c/0x20) -- wall 6, which
+ *   carries zero byte delta.  fn.py's FIRSTDIV does not mask slots, so on
+ *   this function it reports every slot renumbering as a prologue
+ *   regression.  CHECK THE PROLOGUE ITSELF, or divergence.py --mask-slots,
+ *   before believing a FIRSTDIV drop here.
+ *   ‼ GENERALISE: `x = a; if (c) x = b;` and `if (c) x = b; else x = a;` are
+ *   NOT the same to VC5.  The first is one definition and a fix-up and stays
+ *   in a register; the second is two definitions on two edges and gets a
+ *   home.  Where the original spills a value assigned on both arms of a
+ *   test, write the if/else.  Check every assign-then-override in this file
+ *   and the other giants against the bytes.
+ *
  * TWENTY-SECOND PASS (2026-09-03) -- three more wall-4 negatives, and one
  * FACT ABOUT THE ORIGINAL'S DATA LAYOUT that is worth keeping whatever
  * happens to the wall.
@@ -1289,9 +1318,16 @@ no_mark:
                             ring = iWheel + iCar * 4;
                             if (DAT_1035faf0[ring] != DAT_1035f750[ring]) {
                                 int h1 = DAT_1035faf0[ring] - 1;
-                                pDst = (uint16_t *)h1;
+                                /* ‼ A TRUE if/else, both arms assigning -- NOT
+                                 * `pDst = h1;` then an overriding `if`.  The
+                                 * original homes pDst in BOTH arms and reloads
+                                 * it to form `slot`; the assign-then-override
+                                 * form lets VC5 keep it in edi and emit none of
+                                 * that.  Worth three instructions. */
                                 if (h1 < 0) {
                                     pDst = (uint16_t *)0x1f3;
+                                } else {
+                                    pDst = (uint16_t *)h1;
                                 }
                                 if (pDst != (uint16_t *)DAT_1035f750[ring] &&
                                     (DAT_10273690[(int)pDst + ring * 500].flags & 0x8000000) ==
