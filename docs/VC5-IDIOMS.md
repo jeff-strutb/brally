@@ -4508,3 +4508,49 @@ already exact, re-spell the assignments in ADDRESS ORDER before recording it
 as a colouring wall. The same applies to any initialiser that writes a
 fixed-layout record — the original's authors wrote fields in declaration
 order.
+
+## Two address loads in the wrong order: name the POINTER for that one store
+
+A store spelled `p->buf[p->idx] = v` needs two loads, and VC5 picks the order.
+Left to itself it loads the INDEX first. When the original loads the BUFFER
+first, the fix is a named local for the buffer pointer, assigned in the
+statement before and used for that store only:
+
+    unsigned char *pb;
+    ...
+    pb = pBs->pBuf;                 /* after the call, not before */
+    pb[pBs->writeByte] = (unsigned char)(x >> 24);
+
+Proven on 0x1006D050 BrBitStreamWriteU32 (2 bytes -> byte-exact). Both loads
+are the same length, so this costs nothing in size or instruction count — the
+whole residue is two displacement bytes, `[esi+0x10]` and `[esi+0xc]` trading
+places. It is invisible to the register-blind multiset (0+0) and shows only as
+a raw byte diff.
+
+**Two riders, both learned the hard way on the sibling functions.**
+
+**Rider 1 — it is per-STORE, not per-function.** In these writers only the
+FIRST store comes out buffer-first; every later one is index-first and already
+matched from the plain subscript. Naming `pb` for all of them puts it back to
+2 diffs. Write the local for the one store that needs it and leave the rest
+alone.
+
+**Rider 2 — a narrow argument needs the INDEX named as well.** 0x1006CFC0
+BrBitStreamWriteU16 takes a `short` (`mov ax,[esp+0xc]`) and pulls its high
+byte straight out of `ah`, so there is no full-register value local competing
+for the schedule; `pb` alone leaves it at 2 diffs and `pb` plus an `int w =
+pBs->writeByte` closes it. WriteU32 already has a full-width `x` local for the
+value and needs only `pb`. **Do NOT reach for a widening local to fix this** —
+`unsigned int x = v.v` on the u16 destroys the `mov ax,` word load and costs 8
+bytes.
+
+Screen for the class by looking at the siblings: 0x1006CFA0 WriteU8 and
+0x1006D000 WriteU24 were already byte-exact with the plain subscript, so the
+original itself is inconsistent between neighbours — which is the tell that the
+order is a source-spelling choice and not allocation.
+
+**It does NOT generalise to the read side.** 0x1006CE20 BrBitStreamReadU16 has
+the mirror residue (the original loads `dh` before `dl`) and already names both
+the pointer and the index; eleven spellings are now recorded dead in that
+function. Loads feeding two halves of ONE register are a different mechanism
+from two loads feeding an address.
