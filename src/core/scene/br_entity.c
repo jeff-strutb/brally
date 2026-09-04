@@ -119,3 +119,68 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
 }
 #endif
+
+/* ---- moved out of src/core/slice2_19.c's ghidra-matched tail ---------- */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_106ed6fc;
+extern int DAT_100b2f04;
+extern unsigned char DAT_10af3bb7;
+extern char DAT_10af3bcc;
+extern int DAT_100aa128;
+extern int DAT_100aa1e8;
+extern int DAT_100aa068;
+#ifndef BR_FUNCPTR_DEFINED
+#define BR_FUNCPTR_DEFINED
+typedef int (*funcptr)();
+#endif
+extern funcptr DAT_10b73534;
+int FUN_1002d864();
+
+/* WHAT IT DOES: for every entity slot (stride 0x2B68), for each of its 3 banks, rebind
+ * the 10 primary and 3 secondary handles at +0x8018/+0x80BC of the entity's data block
+ * through 0x1002D864 -- against one of two tables picked by the type byte at +0x3BB7 --
+ * then fire the hook at 0x10B73534. The bank counter is DECLARED INSIDE the outer loop
+ * (that block scoping is what gives it the last /Od stack slot). */
+/* @implements 0x1002DB88 glide BrEntGfxRebindAll */
+
+void BrEntGfxRebindAll(void)
+
+{
+  int local_8;
+  int local_c;
+  
+  DAT_106ed6fc = 0;
+  for (local_8 = 0; local_8 < DAT_100b2f04; local_8 = local_8 + 1) {
+    int local_10;
+    for (local_10 = 0; local_10 < 3; local_10 = local_10 + 1) {
+      if ((&DAT_10af3bb7)[local_8 * 0x2b68] == 2) {
+        for (local_c = 0; local_c < 10; local_c = local_c + 1) {
+          FUN_1002d864(*(int *)
+                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+                        local_c * 4),&DAT_100aa128);
+        }
+        for (local_c = 0; local_c < 3; local_c = local_c + 1) {
+          FUN_1002d864(*(int *)
+                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+                        local_c * 4),&DAT_100aa1e8);
+        }
+      }
+      else {
+        for (local_c = 0; local_c < 10; local_c = local_c + 1) {
+          FUN_1002d864(*(int *)
+                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+                        local_c * 4),&DAT_100aa068);
+        }
+        for (local_c = 0; local_c < 3; local_c = local_c + 1) {
+          FUN_1002d864(*(int *)
+                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+                        local_c * 4),&DAT_100aa068);
+        }
+      }
+    }
+  }
+  (*DAT_10b73534)();
+  return;
+}
+
+#endif /* BR_MATCHING_BUILD */
