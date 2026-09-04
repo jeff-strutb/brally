@@ -1,3 +1,8 @@
+/* WHAT IT DOES: build one menu page: creates the page container, adds every
+ * control on it in turn, and reports failure if any of them could not be
+ * made. One of a family of page builders, each laying out its own screen,
+ * positioning its controls from a running vertical coordinate rather than a
+ * fixed table. */
 /* @implements 0x10044860 glide BrPhaseEnterPlaceholder_1004B430
  * @cpp_kind free
  * @cpp_symbol ?BrPhaseEnterPlaceholder_1004B430@@YAHPAVGameUi@@@Z
