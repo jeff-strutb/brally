@@ -2233,7 +2233,11 @@ int BrFadeIsShut(void);               /* orig: no argument, reads globals */
 void BrFadeDrawBars(void)
 {
     BrGfxWords *p;
-    int32_t     dead;
+    /* The original's dead store really is a store: it keeps the aPos2 read
+     * in a stack slot nothing reads.  VC5 deletes a plain local here, so the
+     * slot is modelled with `volatile` -- a codegen device, not a claim about
+     * the original's source. */
+    volatile int32_t dead;
 
     /* ONE fcomp: the original is `fcomp 1.0f / fnstsw / test ah,0x40 / jne`,
      * which is exactly what VC5 emits for a plain `==` on floats -- C3 set,
@@ -2254,16 +2258,15 @@ void BrFadeDrawBars(void)
     p = BR16_ALLOC();
     p->w0 = 0xE2000000u;
     {
-        /* `fild` straight into `call __ftol`: a round trip the original's
-         * source left in, so this is just the shifted integer.  It has to be a
-         * CAST, not a call to a helper taking a double -- a helper pushes the
-         * double on the C stack (sub esp / fstp qword / add esp), where the
-         * cast lets VC5 emit the call with the value already on the x87
-         * stack. */
-        uint32_t x = (uint32_t)(int32_t)(double)(DAT_106e9a2c << DAT_106ed674)
-                     & 0xFFFu;
-        uint32_t y = (uint32_t)(int32_t)(double)(DAT_106e7714 << DAT_106ed674)
-                     & 0xFFFu;
+        /* `fild` straight into `call __ftol` -- a round trip the original's
+         * source left in, so this is just the shifted integer.  It must go
+         * through a named double: a helper taking a double PUSHES it on the C
+         * stack (sub esp / fstp qword / add esp), and a bare
+         * `(int)(double)intexpr` is folded away entirely. */
+        double   dx = (double)(DAT_106e9a2c << DAT_106ed674);
+        double   dy = (double)(DAT_106e7714 << DAT_106ed674);
+        uint32_t x  = (uint32_t)(int32_t)dx & 0xFFFu;
+        uint32_t y  = (uint32_t)(int32_t)dy & 0xFFFu;
         p->w1 = x | (y << 12);
     }
 
@@ -2307,7 +2310,6 @@ void BrFadeDrawBars(void)
     }
 
     p = BR16_ALLOC(); p->w1 = 0; p->w0 = 0xE7000000u;
-    (void)dead;
 }
 #undef BR16_ALLOC
 #undef BR16_BAR_W0
