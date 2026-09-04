@@ -4355,3 +4355,39 @@ guard, where a plain `off = 0x20;` statement before the `for` puts it before.
 Moving it into the for-init (`for (iLeaf = 0, off = 0x20; ...)`) does NOT
 move it — VC5 emits it where the statement sits. Unresolved; costs no
 instructions, only alignment.
+
+## A 64-bit counter: three separable facts, one instruction each
+
+`0x10071F00 BrTickAdd_10078C10` (31 B, 7 instructions) is a whole function
+made of one statement, and matching it needed three independent source facts.
+The original:
+
+    mov eax,[g_lo] / mov edx,[g_hi] / add eax,0x17D784 / adc edx,0
+    mov [g_lo],eax / mov [g_hi],edx / ret
+
+1. **One 64-bit variable, not a lo/hi pair.** `g += K` on an `int64_t` is
+   what emits `add`+`adc`. The hand-carried spelling the port had —
+   `lo += K; hi += (lo < K) ? 1 : 0;` — gives `sbb`/`setb` and a different
+   instruction count. Whenever the original has `adc r,0` immediately after
+   an `add r,imm` on two adjacent globals, the source variable is ONE
+   64-bit object; declare it as such even when the rest of the tree names
+   the two halves separately (keep the halves as aliases if other functions
+   read them).
+2. **Read into a LOCAL before updating.** `g += K;` in place makes VC5
+   finish the low half (load, add, store) before it touches the high half,
+   reusing the same register — and the second load then gets the 5-byte
+   accumulator form, so the function is 2 bytes SHORT. `int64_t t = g;
+   t += K; g = t;` loads both halves before either store, which is the
+   original's order and its size.
+3. **The return type pins the register PAIR.** With the above, everything
+   matched except `ecx` where the original has `edx` — regnorm 0+0, raw 3+3,
+   which reads exactly like a T3a colouring residue and is not one. VC5 is
+   only forced onto `edx:eax` when the function RETURNS the 64-bit value.
+   Declaring it `int64_t` (the callers here take the low half as an `int`,
+   which is why Ghidra typed the function `void`) turned it byte-exact.
+
+Generalising (3): **a raw register difference on a 64-bit value is a
+RETURN-TYPE question, not a colouring wall.** `edx:eax` is the only pair a
+64-bit return can use; any other pairing means the source returned something
+narrower — or nothing — and the value is being kept live for a store only.
+Check the return type before recording a 64-bit function as T3a.
