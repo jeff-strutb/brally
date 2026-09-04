@@ -444,24 +444,7 @@ void BrLogPrint(const void *p)
 #endif
 
 #ifdef BR_MATCHING_BUILD
-/* ==========================================================================
- * 0x10008EC0 (glide)  BrLogFatalPrintf
- * ========================================================================== */
-
-/* WHAT IT DOES: formats a fatal message into a fresh 0x400-byte buffer and
- * exits with code 1.  The buffer is never printed or freed -- the original
- * really does allocate, format, and die. */
-/* @implements 0x10008EC0 glide BrLogFatalPrintf */
-void BrLogFatalPrintf(const char *pFmt, ...)
-{
-    va_list ap;
-    char   *pBuf;
-
-    pBuf = (char *)BrOperatorNew(0x400);
-    va_start(ap, pFmt);
-    vsprintf(pBuf, pFmt, ap);
-    exit(1);
-}
+/* 0x10008EC0 BrLogFatalPrintf now lives in src/core/startup/br_fatal.c. */
 
 /* ==========================================================================
  * 0x10008A70 (glide)  BrVt8A70CallPair
