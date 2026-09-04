@@ -107,4 +107,19 @@ float BrFixUnpackU32Q13(uint32_t v)
     return (float)(v * 0.0001220703125f);
 }
 
+
+
+/* 0x10007340.  Scale 0x1008F0D0 = 0.5f; sign bit is bit 23. */
+/* WHAT IT DOES: turns a packed 24-bit signed value back into a float at
+ * half-unit resolution. */
+/* @implements 0x10007340 d3d BrFixUnpackS24Q1 */
+float BrFixUnpackS24Q1(uint32_t v)
+{
+    int32_t x = (int32_t)v;
+
+    if (x & 0x800000)
+        return (float)((x | ~0xFFFFFF) * 0.5f);
+    return (float)((x & 0xFFFFFF) * 0.5f);
+}
+
 #endif /* BR_MATCHING_BUILD */
