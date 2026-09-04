@@ -27,4 +27,18 @@ void BrCarClampPosXY(float *pv)
         *pv = 2048.0f;
 }
 
+
+
+/* 0x10005930 */
+/* WHAT IT DOES: keeps a car's height inside -256 to 256, the range the
+ * game's position encoding can represent. */
+/* @implements 0x10005930 d3d BrCarClampPosZ */
+void BrCarClampPosZ(float *pv)
+{
+    if (!(*pv >= -256.0f))
+        *pv = -256.0f;
+    if (*pv > 256.0f)
+        *pv = 256.0f;
+}
+
 #endif /* BR_MATCHING_BUILD */
