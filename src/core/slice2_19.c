@@ -1886,25 +1886,6 @@ void BrEntGfxRebindAll(void)
 }
 
 
-/* WHAT IT DOES: emit display-list command 0x03800010 for the CURRENT rect-ring slot
- * (without advancing the ring) and publish its two 0x1FF fields -- the shared tail of
- * BrDlRectCmdEmit/BrDlScreenRectEmit as its own function. */
-/* @implements 0x1002C4A3 glide BrDlRectCmdFlush */
-
-void BrDlRectCmdFlush(void)
-
-{
-  int *puVar1;
-  
-  puVar1 = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
-  *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
-  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
-  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
-  return;
-}
-
 /* WHAT IT DOES: once per frame, open the pad sampling window: on the first call set the
  * in-progress flag, zero the u16 latch at 0x100B5598 and trace the 0x106B8090 block. */
 /* @implements 0x1002CE31 glide BrPadFrameInit */
