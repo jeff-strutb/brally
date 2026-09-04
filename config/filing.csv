@@ -749,6 +749,7 @@ glide_va,name,module,basis,file
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/slice6_76.c
 0x1006B400,BrSndVoiceApplyPan,audio,description,src/core/slice6_76.c
 0x1006B420,BrSndVoiceApplyFreq,audio,description,src/core/slice6_76.c
+0x1006B440,BrSndVoiceApplyVolume,audio,neighbour,src/core/slice6_76.c
 0x1006B490,BrSndVoiceBufRelease,audio,description,src/core/slice6_76.c
 0x1006B4C0,BrSndVoiceBufStop,audio,description,src/core/slice6_76.c
 0x1006B4F0,BrX10072580,audio,description,src/core/slice6_76.c
