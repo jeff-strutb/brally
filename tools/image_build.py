@@ -337,7 +337,20 @@ def _fresh(obj, src):
 
 
 def _ambiguous_basenames(claimed):
-    """Basenames that MORE THAN ONE claimed source file shares.
+    """Basenames shared by more than one source file the SWEEP may compile.
+
+    ‼ This used to consider only CLAIMED files, and that missed the case that
+    actually bites: a claimed file colliding with an UNCLAIMED one. The sweep
+    compiles both into the same basename-keyed object, the unclaimed one wins
+    if it sorts later, and every symbol of the claimed file then reads
+    "symbol not in obj" -- reported as a wrong claim when the tree is fine.
+    menus/br_race.c lost to racing/br_race.c exactly this way; the latter's
+    only function diffs, so it is never claimed and was invisible here. The
+    gate failed on it deterministically, before and after the 2026-09-03
+    refiling job, and the failure was misread twice as a parallel-session
+    race. Widened to every .c under src/, which is the namespace the sweep's
+    object directory is actually keyed on. Over-inclusion is free: the gate
+    just builds its own object for one more file.
 
     Object caches here are keyed by basename, so two source files with the
     same one write to a single `<base>.obj` and the second overwrites the
@@ -350,13 +363,19 @@ def _ambiguous_basenames(claimed):
     it cannot be trusted at all and the gate always builds its own.
     """
     seen, dup = {}, set()
-    for r in claimed.values():
-        f = r.get('file') or ''
+
+    def note(f):
         if not f.endswith('.c'):
-            continue
+            return
         b = os.path.basename(f)
         if seen.setdefault(b, f) != f:
             dup.add(b)
+
+    for r in claimed.values():
+        note(r.get('file') or '')
+    for root, _dirs, files in os.walk(os.path.join(ROOT, 'src')):
+        for fn in files:
+            note(os.path.relpath(os.path.join(root, fn), ROOT).replace('\\', '/'))
     return dup
 
 
