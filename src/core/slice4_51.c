@@ -76,20 +76,6 @@ int32_t BrSub1003D0B0(struct BrDPlay4Obj *pObjIn, void **ppvOut)
 }
 
 /* =====================================================================
- * 0x1003E070 -- `call 0x1005FF60` / `jmp 0x1005FFF0`
- * ===================================================================== */
-
-/* WHAT IT DOES: refreshes both sets of input edges for this frame --
- * keyboard keys and controller buttons -- so the menus can tell a fresh
- * press from a held one. */
-/* @implements 0x1003E070 d3d BrFn1003E070 */
-void BrFn1003E070(void)
-{
-    BrMenuSub1005FF60();
-    BrMenuSub1005FFF0();
-}
-
-/* =====================================================================
  * 0x10021560 -- the tile-rectangle sink
  * ===================================================================== */
 

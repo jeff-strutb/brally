@@ -9,6 +9,7 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "br_mat.h"
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 #include <math.h>
 #include <stddef.h>
@@ -291,4 +292,39 @@ void BrMat4Translate(BrMat4 *pM, float dx, float dy, float dz)
     pM->m[3][1] = dy;
     pM->m[3][2] = dz;
     pM->m[3][3] = 1.0f;
+}
+
+/* 0x1003B470 */
+/* WHAT IT DOES: combines two transforms into one. It builds the answer in a
+ * scratch copy first, so it is safe to write the result back over either of the
+ * things being multiplied. */
+/* @implements 0x1003B470 d3d BrMtxMul */
+void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
+{
+    BrMat4 t;   /* the original's 64-byte stack temp: aliasing is safe */
+    int i, j, k;
+
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            /* Store 0 then reload: the original is `mov dword [esi],0; fld [esi]`,
+             * not `fld` of a 0.0f constant. */
+            t.m[i][j] = 0.0f;
+            for (k = 0; k < 4; k++)
+                t.m[i][j] = t.m[i][j] + pA->m[i][k] * pB->m[k][j];
+        }
+    }
+    *pOut = t;
+}
+
+/* 0x10075340 */
+/* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
+ * perspective" values, undoing anything that had been left there. */
+/* @implements 0x10075340 d3d BrMat4SetLastColumn */
+/* @n64 0x8021EB30 exact */
+void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
+{
+    pM->m[3][3] = 1.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[0][3] = 0.0f;
 }

@@ -322,21 +322,6 @@ float BrVec3Len(const BrVec3 *pV)
     return BrVec3Length(pV);
 }
 
-/* 0x1002B920.  Verified by disassembly rather than taken on trust: the entire
- * body is `fld dword [esp+4]` then `jmp 0x1007C8A0`, nine bytes, so this is
- * __ftol reached through a stack argument instead of the x87 stack and is
- * behaviourally identical to br_crt.h's BrFtolTrunc. Out-of-range therefore
- * gives 0, per br_crt.c and CONVENTIONS (and NOT 0x80000000, per br_crt.h's
- * mistaken comment). 12 call sites. */
-/* WHAT IT DOES: turns a fractional number into a whole one by throwing away
- * the fraction. Another second name for an existing routine; a number too big
- * to fit comes back as zero. */
-/* @implements 0x1002B920 d3d BrFtolArg */
-int32_t BrFtolArg(float f)
-{
-    return (int32_t)f;
-}
-
 /* 0x10072AF0.  slice1_08.c already transcribes this address as
  * BrSndPlaySimple(group, packed) -> BrSndPlayGroup(group, packed, 0), which
  * the disassembly confirms exactly: `push 0 / push arg2 / push arg1 / call
