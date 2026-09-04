@@ -35,6 +35,37 @@ __declspec(dllimport) int   __stdcall GlobalUnlock(void *);
 __declspec(dllimport) void *__stdcall GlobalFree(void *);
 #endif
 
+#ifndef _MSC_VER
+/* _itoa is Microsoft's, and the port's clang has no such function. Supply it
+ * here rather than rewrite the call site: that call site is matched source and
+ * the original really does `call dword ptr [__imp__itoa]`, so changing it
+ * would trade a port problem for a matching problem.
+ *
+ * Radix 10 is the only one this module reaches, but a base-10-only stub named
+ * `_itoa` would answer wrongly and silently for any other radix a later port
+ * lands on -- so this is the whole function. MSVC's semantics: the sign is
+ * only honoured for radix 10; every other radix reads the value as unsigned. */
+static char *_itoa(int value, char *buf, int radix)
+{
+    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+    char tmp[36];
+    int i = 0, j = 0, neg = 0;
+    unsigned u;
+
+    if (radix < 2 || radix > 36) { buf[0] = '\0'; return buf; }
+
+    if (value < 0 && radix == 10) { neg = 1; u = (unsigned)(-(long)value); }
+    else                          { u = (unsigned)value; }
+
+    do { tmp[i++] = digits[u % (unsigned)radix]; u /= (unsigned)radix; } while (u);
+    if (neg) tmp[i++] = '-';
+
+    while (i > 0) buf[j++] = tmp[--i];
+    buf[j] = '\0';
+    return buf;
+}
+#endif
+
 /* ==========================================================================
  * Storage
  * ========================================================================== */
