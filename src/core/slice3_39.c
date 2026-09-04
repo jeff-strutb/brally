@@ -934,39 +934,8 @@ extern int * DAT_10ac6730;
 extern funcptr PTR_FUN_100776F0;
 extern funcptr PTR_FUN_100776f0;
 
-/* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (BrObj54710Dtor), then
- * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
- * unused EDX slot (BR_THISCALL1 idiom). */
-/* @implements 0x100546F0 glide BrObj546F0DeleteDtor */
-
-void * __fastcall BrObj546F0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
-{
-  BrObj54710Dtor(param_1);
-  if ((param_2 & 1) != 0) {
-    operator_delete(param_1);
-  }
-  return param_1;
-}
-
-/* WHAT IT DOES: C++ destructor body for the 0x10077720-vtable object: reset the vtable, then
- * run the CRT vector-destructor iterator (0x100746C0) over the 100 x 0x438-byte elements at
- * +0x2C with BrVtInit53EE0 as the element destructor. thiscall spelled as BR_THISCALL1. */
-/* @implements 0x10054710 glide BrObj54710Dtor */
-
-int __fastcall BrObj54710Dtor(void *param_1)
-
-{
-  *(int *)param_1 = (int)&PTR_FUN_10077720;
-  FUN_100746c0((int)param_1 + 0x2c,0x438,100,(int)BrVtInit53EE0);
-  return;
-}
-
-/* WHAT IT DOES: stdcall stub taking three words and returning 0. */
-/* @implements 0x10054600 glide BrRet0Std3_10054600 */
-
-int __stdcall BrRet0Std3_10054600(int _pad_0,int _pad_1,int _pad_2)
-{
-  return 0;
-}
+/* 0x100546F0 BrObj546F0DeleteDtor, 0x10054710 BrObj54710Dtor and
+ * 0x10054600 BrRet0Std3_10054600 now live in src/core/menus/br_textlist.c.
+ * The declarations above are kept verbatim so this slice compiles as it did. */
 
 #endif /* BR_MATCHING_BUILD */
