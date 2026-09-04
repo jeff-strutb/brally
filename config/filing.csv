@@ -146,6 +146,7 @@ glide_va,name,module,basis,file
 0x10013140,BrHudTextListDraw,drawing,filed,src/core/drawing/br_hud.c
 0x10013F00,BrClearFlag_AB504,drawing,filed,src/core/drawing/br_clear.c
 0x10013FC0,BrGetFlag_AB4F0,drawing,neighbour,src/core/drawing/br_clear.c
+0x100140B0,BrHudDrawDial,drawing,filed,src/core/drawing/br_hudscene.c
 0x10014760,BrHudDrawTimeEntry,drawing,neighbour,src/core/drawing/br_text.c
 0x10014800,BrSub_10017290,drawing,neighbour,src/core/drawing/br_hudtimes.c
 0x10014C00,BrHudDrawViewCentreText,drawing,neighbour,src/core/drawing/br_hudscene.c
