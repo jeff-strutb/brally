@@ -941,15 +941,7 @@ extern funcptr g_pfn18AA0B0;
 
 
 
-/* WHAT IT DOES: return the current timer subsystem state. */
-/* @implements 0x1006E350 glide BrGetTimerState */
-
-int BrGetTimerState(void)
-
-{
-  return g_br18AB118_S_S1499;
-}
-
+/* 0x1006E350 BrGetTimerState now lives in src/core/startup/br_timer.c. */
 
 extern int DAT_117b3250;
 extern int DAT_11849e60;
