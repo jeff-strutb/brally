@@ -98,6 +98,11 @@ BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
     return pOut;
 }
 
+#ifndef BR_MATCHING_BUILD
+/* The matching build gets the original's SEVEN separate 311-byte functions
+ * from src/core/drawing/br_dlclip.c (one macro, seven instantiations); the
+ * shared-body-plus-function-pointer form below is the port only, because the
+ * indirect call it emits is not in the original. */
 typedef float (*BrClipDistFn)(const BrClipVert *pV);
 
 /* The body shared by 0x1001D810 / 0x1001D9F0 / 0x1001DB30 / 0x1001DC70.
@@ -248,6 +253,7 @@ void BrClipPlaneWPlusF08(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPl
 void BrClipPlaneWMinusF08(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF08); }
 void BrClipPlaneWPlusF0C(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF0C); }
 void BrClipPlaneWMinusF0C(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF0C); }
+#endif /* !BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 2. Text / HUD
