@@ -39,6 +39,8 @@
 /* Fade sprite: orig is (pRecs, alpha); rectIdx / otherModeH / cursor are
  * standalone globals, not a BrFadeState *. */
 #define BrFadeDrawSprite        BrFadeDrawSprite_port
+/* Fade bars: orig takes NO argument at all -- eleven standalone globals. */
+#define BrFadeDrawBars          BrFadeDrawBars_port
 #endif
 #include "slice2_16.h"
 #ifdef BR_MATCHING_BUILD
@@ -69,6 +71,8 @@
 #undef BrGbiMoveMemMatrix
 #undef BrFadeDrawSprite
 void BrFadeDrawSprite(const uint32_t *pRecs, float alpha);
+#undef BrFadeDrawBars
+void BrFadeDrawBars(void);
 /* Bodies live in br_gbitexscan.c; TexScanRun still calls them. */
 void BrGbiTexScanOtherModeH(const BrGfxWords *pCmd);
 void BrGbiTexScanOtherModeH0E(const BrGfxWords *pCmd);
@@ -2188,6 +2192,126 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * a limited number of frames' worth of bars once the wipe has run out of
  * travel. */
 /* @implements 0x1002B340 d3d BrFadeDrawBars */
+#ifdef BR_MATCHING_BUILD
+/* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
+ * as BrFadeDrawSprite above does, and its very first instruction is
+ * `fld [0x104b16c0]` (the fade value).  The port's BrFadeState * costs a
+ * field load per access and, worse, turns every display-list allocation into
+ * a `call br16_fade_alloc` -- the original has FIVE calls in total (two to
+ * the 17-argument combine emitter, two to __ftol and one to BrFadeIsShut),
+ * where the port arm has twenty-one.
+ *
+ * The eleven globals were read out of the original's own operands and matched
+ * to the port's fields through the two address bases this file already
+ * establishes (BrFadeDrawSprite's cursor, and BrFadeSetTarget's wipe block):
+ *   0x106e7710 pCmd     0x106e7714 span     0x106e9a2c width
+ *   0x106ed674 shift    0x106ed67c parity   0x104b1698 aPos2[2]
+ *   0x104b16a8 pos      0x104b16b0 pos2     0x104b16c0 value
+ *   0x100a7510 bars
+ *
+ * MACROS, not statics: MSVC5 does not inline a static with more than one
+ * caller, so br16_fade_alloc (twelve sites) and br16_bar_w0 (three) would each
+ * be a call the original does not have.  br16_ftol stays a call -- the
+ * original really does call it twice. */
+extern int32_t     DAT_106e7714;      /* span   */
+extern int32_t     DAT_106e9a2c;      /* width  */
+extern int32_t     DAT_106ed674;      /* shift  */
+extern int32_t     DAT_106ed67c;      /* parity */
+extern int32_t     DAT_104b1698[2];   /* aPos2, indexed by parity */
+extern int32_t     DAT_104b16a8;      /* pos    */
+extern int32_t     DAT_104b16b0;      /* pos2   */
+extern float       DAT_104b16c0;      /* value  */
+extern int32_t     DAT_100a7510;      /* bars   */
+int BrFadeIsShut(void);               /* orig: no argument, reads globals */
+
+#define BR16_ALLOC()  (DAT_106e7710++)
+#define BR16_BAR_W0(top_, width_, shift_)                                  \
+    (0xE1000000u                                                           \
+     | ((((((uint32_t)(top_) << (shift_)) + 0xFFFFFu)) << 12) & 0xFFF000u)  \
+     | (((((uint32_t)(width_) << (shift_))) - 1u) & 0xFFFu))
+
+void BrFadeDrawBars(void)
+{
+    BrGfxWords *p;
+    int32_t     dead;
+
+    /* ONE fcomp: the original is `fcomp 1.0f / fnstsw / test ah,0x40 / jne`,
+     * which is exactly what VC5 emits for a plain `==` on floats -- C3 set,
+     * i.e. equal OR unordered, so a NaN value returns here too.  The
+     * BR16_FEQU macro spells that out as `!(a < b || a > b)` and costs a
+     * SECOND fcomp; it is the right model for the reader and the wrong one
+     * for the bytes. */
+    if (DAT_104b16c0 == 1.0f)
+        return;
+
+    p = BR16_ALLOC(); p->w0 = 0xE7000000u; p->w1 = 0;
+    p = BR16_ALLOC(); p->w0 = 0xBA001402u; p->w1 = 0;
+    p = BR16_ALLOC(); p->w0 = 0xB900031Du; p->w1 = 0x0F0A4000u;
+    BrRdpSetCombineLERP(BR16_ALLOC(),
+                        0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB,
+                        0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB);
+
+    p = BR16_ALLOC();
+    p->w0 = 0xE2000000u;
+    {
+        /* `fild` straight into `call __ftol`: a round trip the original's
+         * source left in, so this is just the shifted integer.  It has to be a
+         * CAST, not a call to a helper taking a double -- a helper pushes the
+         * double on the C stack (sub esp / fstp qword / add esp), where the
+         * cast lets VC5 emit the call with the value already on the x87
+         * stack. */
+        uint32_t x = (uint32_t)(int32_t)(double)(DAT_106e9a2c << DAT_106ed674)
+                     & 0xFFFu;
+        uint32_t y = (uint32_t)(int32_t)(double)(DAT_106e7714 << DAT_106ed674)
+                     & 0xFFFu;
+        p->w1 = x | (y << 12);
+    }
+
+    p = BR16_ALLOC(); p->w0 = 0xFA00FFFFu; p->w1 = 0;
+
+    if (DAT_104b16b0 != 0) {
+        /* Dead store in the original: the aPos2 entry for the INVERTED parity
+         * goes to a stack local nothing ever reads. */
+        dead = DAT_104b1698[DAT_106ed67c ^ 1];
+
+        if (BrFadeIsShut())
+            DAT_100a7510 = 3;
+
+        p = BR16_ALLOC();
+        p->w0 = 0xB900031Du; p->w1 = 0x00504340u;
+        BrRdpSetCombineLERP(BR16_ALLOC(),
+                            0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB,
+                            0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB);
+
+        p = BR16_ALLOC(); p->w0 = 0xFA000000u; p->w1 = 0xFFu;
+
+        p = BR16_ALLOC();
+        p->w1 = 0;
+        p->w0 = BR16_BAR_W0(DAT_104b16b0, DAT_106e9a2c, DAT_106ed674);
+    }
+
+    if (DAT_104b16a8 < DAT_106e7714) {
+        if (DAT_100a7510 != 0) {
+            p = BR16_ALLOC();
+            DAT_100a7510 -= 1;
+            p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
+            p->w1 = (uint32_t)(((uint32_t)DAT_104b16a8 << DAT_106ed674)
+                               & 0xFFFu) << 12;
+        }
+    } else if (DAT_104b16c0 == 0.0f && DAT_100a7510 != 0) {
+        p = BR16_ALLOC();
+        DAT_100a7510 -= 1;
+        p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
+        /* The original shifts a zero and masks it: always 0. */
+        p->w1 = 0;
+    }
+
+    p = BR16_ALLOC(); p->w1 = 0; p->w0 = 0xE7000000u;
+    (void)dead;
+}
+#undef BR16_ALLOC
+#undef BR16_BAR_W0
+#else
 void BrFadeDrawBars(BrFadeState *pSt)
 {
     BrGfxWords *p;
@@ -2264,6 +2388,7 @@ void BrFadeDrawBars(BrFadeState *pSt)
 
     p = br16_fade_alloc(pSt); p->w1 = 0; p->w0 = 0xE7000000u;
 }
+#endif
 
 /* One ramp step. Shared by the two ramp arms of 0x1002B670, which are
  * identical instruction for instruction: ramp A at 0x1002B7F2..0x1002B864 and
@@ -2451,18 +2576,6 @@ void BrFadeTick(void)
     g_brFadeOutB = (uint8_t)(int32_t)((double)g_brFadeCurB * 255.0);
 }
 
-/* ================================================================== */
-/* 4. .rca byte-swap and fixup helpers                                */
-/* ================================================================== */
-
-/* 0x1002B930 */
-/* WHAT IT DOES: copies thirty-two bytes from one place to another,
- * destination first. Used where the game moves a fixed-size record around. */
-/* @implements 0x1002B930 d3d BrCopy8Words */
-void BrCopy8Words(void *pDst, const void *pSrc)
-{
-    memcpy(pDst, pSrc, 8 * sizeof(uint32_t));
-}
 
 /* 0x1002B9C0 */
 /* WHAT IT DOES: empties the vertex cache and the pointer list, so the next
