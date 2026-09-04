@@ -921,6 +921,39 @@ static void wheel_call(unsigned char *car)
  * cross-jumped into the shared tail.  Still one byte slot short of the
  * original's two.
  *
+ * SESSION 15 (2026-09-03) -- the session-14 fix does NOT transfer to arms
+ * 2/3, and the reason is worth more than the probes: ‼ THE ARM-2/3 SHARED
+ * TAIL HAS THE SAME DEFECT AND IT IS BLOCKED BY THE FRAME.
+ *   Read at the bytes, arm 3 carries the lane defect TWICE.  Its colourA
+ *   (orig 0x3fa-0x40f) and its colourB (orig 0x411-0x444) both home BOTH
+ *   pack bytes and read both back widened (`mov eax,[esp+0x31]; mov
+ *   ecx,[esp+0x32]; and eax,0xff; and ecx,0xff; or edx,eax; or edx,ecx`),
+ *   where we home one and forward the other into a lane (`mov dl,cl`) --
+ *   character for character the arm-1 defect that session 14 closed.
+ *   ‼ WHY THE SAME FIX CANNOT BE USED: arm 1 could hoist its pack above
+ *   colourA because it has its OWN array.  Arms 2 and 3 share ONE array
+ *   between colourA and colourB -- colourA READS pack[0]/pack[1] before
+ *   colourB overwrites them -- so colourB's bytes cannot be assigned early
+ *   without a second array, and A SECOND ARRAY BREAKS THE FRAME.  Measured:
+ *   `uint8_t packB[2]` for colourB, filled at the top of both arms, moves
+ *   the first divergence 0x17 -> 0x2 (session 11's frame fix depends on
+ *   exactly one array costing exactly one locals dword) and reads -33 bytes
+ *   / -9 instructions against -31 / -8.  Register-blind 19+28 against 20+28
+ *   -- one row -- which is not worth the prologue.  DEAD; and note the rule
+ *   it gives: in this function any new aggregate local costs the frame, so
+ *   the storage-class lever that closed the frame cannot be reused.
+ * SESSION 15 PROBES, DEAD, do not re-run:
+ *   - `pack[1]` assigned before `pack[0]` in arm 3, matching the order the
+ *     original's two loads appear in (0x406 before 0x411): BYTE-IDENTICAL.
+ *     Order WITHIN a pack pair is canonicalised; only position relative to
+ *     an enclosing statement moves anything (that is the session-14 rule).
+ *   - `topB` assigned ABOVE arm 3's colourA statement, matching where the
+ *     original loads it (`mov al,[0x106b7c80]` at 0x3fc, inside colourA's
+ *     tail).  Frame intact and the register-blind gap one row better
+ *     (19+28), but it LOSES an instruction and two bytes while the function
+ *     is already eight instructions short -- the wrong direction on a
+ *     missing-code residue.  Not taken.
+ *
  * SESSION 14 (2026-09-03) -- ‼ ARM 1 NO LONGER CROSS-JUMPS, and the wall
  * that held it for four sessions was not inside the pack at all: it was
  * WHERE THE PACK IS FILLED.  Read the original's schedule rather than its
