@@ -90,4 +90,51 @@ int BrTrackSwapAllVec3(int param_1)
   return;
 }
 
+extern int DAT_11778808;
+extern int DAT_11778820;
+extern int DAT_11773690;
+extern int DAT_100b5170;
+extern int DAT_100b4c30;
+extern int DAT_100b4e70;
+extern int DAT_100b4f30;
+extern int DAT_100b4d50;
+extern int DAT_100b4ed0;
+extern int DAT_100b5050;
+
+/* WHAT IT DOES: configure track surface grip tables by surface type index. */
+/* @implements 0x10069530 glide BrTrackSurfaceSet */
+
+void BrTrackSurfaceSet(int param_1)
+
+{
+  switch(param_1) {
+  case 0:
+  case 1:
+  case 2:
+  case 3:
+  case 4:
+  case 6:
+  case 7:
+  case 8:
+  case 9:
+  case 10:
+  case 0xc:
+    DAT_11778808 = (int)&DAT_100b4c30;
+    DAT_11778820 = (int)&DAT_100b4e70;
+    DAT_11773690 = (int)&DAT_100b4f30;
+    DAT_100b5170 = 0x3f800000;
+    return;
+  case 5:
+  case 0xb:
+  case 0xd:
+  case 0xe:
+  default:
+    DAT_11778808 = (int)&DAT_100b4d50;
+    DAT_11778820 = (int)&DAT_100b4ed0;
+    DAT_11773690 = (int)&DAT_100b5050;
+    DAT_100b5170 = 0x3f666666;
+    return;
+  }
+}
+
 #endif /* BR_MATCHING_BUILD */
