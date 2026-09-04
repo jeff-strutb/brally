@@ -5166,101 +5166,61 @@ the instruction count to near parity while doubling the real gap. **Bytes and
 instruction counts are not progress measures on a function with a lost-sync
 gap.**
 
-## The compiler PATCH LEVEL is not the answer — VS97 SP3 tested and ruled out
-*(measured 2026-09-03; the lead cited at three separate stall sites is now CLOSED)*
+## Which compiler built the game: the full matrix, settled
+*(measured 2026-09-03 -- VC4.2, VC5 RTM, VC5 SP3 and VC6 scored against the
+same sources; the "compiler patch level?" lead cited at three stall sites and
+in CLAUDE.md rule 11a is CLOSED)*
 
 Three unrelated notes in this file reach for "a compiler patch level slightly
 different from the staged one" to explain scheduling residue that no source
-form moves, and CLAUDE.md rule 11a lists it as one of only two fresh leads on
-the largest function. It has now been tested and it is **wrong**.
+form moves. It has now been tested against every MSVC of the era and it is
+**wrong**.
 
-The staged toolchain is MSVC 5.0 **RTM**, `cl 11.00.7022`. VS97 SP3 ships a
-genuinely different code generator — `C2.EXE` grows 630,544 → 660,240 bytes,
-`C1.DLL` and `C1XX.DLL` differ too, all dated Nov 1997 against the RTM's
-Apr 1997. Both were staged side by side (`tools/msvc5sp3/`, from the SP3
-media already in `reference/msvc/sp3/`) and the same sources compiled with
-each at `/O2`:
+**The control set is what makes this an experiment**: 61 functions across four
+files that are byte-exact under the staged compiler. A candidate that cannot
+reproduce those is not a candidate, whatever it does on a hard function.
 
-| target | RTM | SP3 |
+| toolchain | control set (61 byte-exact fns) | diff bytes |
 |---|---|---|
-| 61 already-byte-exact functions (4 files) | 61/61, 0 diff bytes | **61/61, 0 diff bytes** |
-| 0x100250D0 BrTex3dExpand | 2,408 insns / 8,461 B | **byte-for-byte identical** |
-| 0x1000A110 BrCarDrawVehicle | 34 regions, 1,835 insns | **byte-for-byte identical** |
-| 0x1000EAF0 scene DL builder | 30 regions, −14 B | 37 regions, −71 B (WORSE) |
+| VC4.2 `10.20.6166` | 22 / 61 | 1,574 |
+| **VC5 RTM `11.00.7022`** (staged) | **61 / 61** | **0** |
+| **VC5 SP3** (`C2.EXE` 660,240 B) | **61 / 61** | **0** |
+| VC6 RTM `12.00.8168` | 45 / 61 | 919 |
 
-**The two builds are indistinguishable on 63 of the 64 functions tested, and
-on the one where they differ RTM is closer.** So the residue on the giants is
-not a toolchain artefact: it is in the source, or it is genuinely unreachable.
-Do not reach for the patch level again to explain a scheduling wall.
+**VC5 is the compiler, and the two VC5 builds are indistinguishable.** SP3
+ships a genuinely different code generator (`C2.EXE` 630,544 → 660,240 bytes,
+`C1.DLL`/`C1XX.DLL` differ, Nov 1997 against RTM's Apr 1997) — and it makes no
+difference:
 
-Re-run it with `BR_MSVC=tools/msvc5sp3 …` — `tools/match_sweep.py` takes that
-env var for the toolchain directory (include path follows it). ‼ Stage any
-alternate compiler in a PARALLEL directory; never overwrite `tools/msvc5` in
-place, or a failed experiment costs the whole tree.
+| giant | VC5 RTM | VC5 SP3 | VC6 |
+|---|---|---|---|
+| 0x100250D0 BrTex3dExpand | 61 regions, 2,408 insns | **identical to RTM** | 50 regions, but control fails |
+| 0x1000A110 BrCarDrawVehicle | 34 regions, 1,835 insns | **identical to RTM** | 47 regions, control fails |
+| 0x1000EAF0 scene DL builder | 30 regions, −14 B | 37 regions, −71 B (WORSE) | 35 regions, control fails |
+
+**So the giants' residue is in the source, or genuinely unreachable — it is not
+a toolchain artefact.** Do not reach for the patch level again.
+
+‼ **AND THE OBVIOUS MISREADING OF THIS TABLE IS THE LOST-SYNC TRAP.** Run
+plainly, VC4.2 reports **1 divergence region** on 0x100250D0 and 4 on
+0x1000EAF0 — better-looking than any number VC5 has ever produced. It is
+nothing: VC4.2's output is 352 instructions short, `divergence.py` loses sync
+at offset 0 and never re-anchors, and **100.0% of the function is never
+compared**. A wrong compiler produces the prettiest region count in this
+document. Always read the `NEVER COMPARED` line, and always score a compiler
+on a control set of known-exact functions, never on a hard one.
+
+Re-run any of this with `BR_MSVC=tools/msvc5sp3 …` — `tools/match_sweep.py`
+takes that env var for the toolchain directory (the include path follows it).
+‼ Stage an alternate compiler in a PARALLEL directory; never overwrite
+`tools/msvc5` in place, or a failed experiment costs the whole tree. The media
+for VC4.0/4.1/4.2, VC5, VS97 SP3 and VC6 is already in `reference/msvc/` —
+look there before sourcing anything.
+
+‼ **Scoring method**: use `match_sweep.score(orig, code, set(relocs))` with
+`load_orig(path, va)`. A raw byte compare reports 0/19 on a file the sweep
+calls 19/19, because relocations are not masked.
 
 Two things this did NOT test, both narrow: the SP3 **linker** (irrelevant to
 per-function matching, which works on `.obj`, but it could matter to the image
 build), and the C++ front end on the one TU that only VC4.2 reproduces.
-
-## An `&&` guard chain SHRINK-WRAPS the callee-saved saves; separate early returns do not
-
-Proven byte-exact on 0x1006BD70 `BrSndBankMute` (90 B), 2026-09-03.
-
-The function is a three-condition "is sound usable" gate followed by a loop
-over the voice bank.  Written the way every sibling in `slice6_76.c` is
-written — one `&&` chain wrapping the body —
-
-```c
-if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    ppVoice = g_aBrSndBankVoice;
-    do { ... } while (...);
-}
-return 1;
-```
-
-the whole loop lives in a nested block, and VC5 **shrink-wraps** the
-callee-saved registers into that block: `push edi / push esi` land AFTER the
-third test, and `pop esi / pop edi` before the merge.  Written as three
-sequential early returns —
-
-```c
-if (BrSndG0B5DE8   == 0) { return 1; }
-if (BrSndPDS       == 0) { return 1; }
-if (BrSndG18290FC  == 0) { return 1; }
-ppVoice = g_aBrSndBankVoice;
-do { ... } while (...);
-return 1;
-```
-
-the loop is at the function's top level, so the saves go in the PROLOGUE and
-are scheduled into the first block, interleaved with the first test:
-
-```asm
-mov  eax, [BrSndG0B5DE8]
-push esi                     ; <-- prologue save, scheduled between
-test eax, eax
-push edi                     ; <-- the load and its branch
-je   exit
-...
-exit:
-pop  edi
-mov  eax, 1
-pop  esi
-ret
-```
-
-Both spellings have the SAME control-flow graph and the same `je` polarity —
-`divergence.py` and the regnorm multiset both scored the body identical.  The
-only divergence was where the two push/pop pairs sat, worth 6 bytes.
-
-**The screen:** a diff whose entire residue is `push R` / `pop R` appearing in
-the wrong basic block, on a function that begins with a multi-condition guard.
-Do not go looking at the loop; move the guard.  This is the same axis as
-"An early-return guard and an `if (ok) { … }` wrapper differ in which side is
-the FALL-THROUGH" above, but the tell is different: there the polarity moved,
-here the polarity is already right and only the save placement is wrong.
-
-**Boundary:** it only shows on a function that actually uses callee-saved
-registers inside the guard.  Every other `&&`-chained sound gate in
-`slice6_76.c` (`BrSndVoiceIsPlaying`, `BrSndBufSetVolume`, …) is byte-exact as
-an `&&` chain because it needs no saves — do not rewrite those.
