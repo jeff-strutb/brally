@@ -631,11 +631,17 @@ void BrDlTriFlatZ(int i0, int i1, int i2)
     float    u;
     uint32_t br, bg, bb;
     uint32_t cr, cg, cb;
+    uint32_t t;
+    int32_t  oc0, oc1, oc2;
 
-    if ((V(i2).outcode & (V(i0).outcode & V(i1).outcode)) != 0) {
+    oc2 = V(i2).outcode;
+    oc1 = V(i1).outcode;
+    oc0 = V(i0).outcode;
+
+    if ((oc2 & (oc0 & oc1)) != 0) {
         return;
     }
-    if ((V(i0).outcode | V(i1).outcode | V(i2).outcode) != 0) {
+    if ((oc0 | oc1 | oc2) != 0) {
         BrDlClipTriFlatZ(&V(i0), &V(i1), &V(i2),
                          V(i0).n0, V(i0).n1, V(i0).n2);
         return;
@@ -652,12 +658,15 @@ void BrDlTriFlatZ(int i0, int i1, int i2)
     BR_DL_PUN(cg, V(i2).g);
     BR_DL_PUN(cb, V(i2).b);
 
-    BR_DL_PUN(V(i1).r, V(i0).r);
-    BR_DL_PUN(V(i2).r, V(i0).r);
-    BR_DL_PUN(V(i1).g, V(i0).g);
-    BR_DL_PUN(V(i2).g, V(i0).g);
-    BR_DL_PUN(V(i1).b, V(i0).b);
-    BR_DL_PUN(V(i2).b, V(i0).b);
+    BR_DL_PUN(t, V(i0).r);
+    BR_DL_PUN(V(i1).r, t);
+    BR_DL_PUN(V(i2).r, t);
+    BR_DL_PUN(t, V(i0).g);
+    BR_DL_PUN(V(i1).g, t);
+    BR_DL_PUN(V(i2).g, t);
+    BR_DL_PUN(t, V(i0).b);
+    BR_DL_PUN(V(i1).b, t);
+    BR_DL_PUN(V(i2).b, t);
 
     BrDlDrawTri(&V(i0), &V(i1), &V(i2));
 
