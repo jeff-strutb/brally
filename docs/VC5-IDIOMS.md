@@ -3837,6 +3837,42 @@ loads the other factor first, that is allocation, not source.
 three ways on the same rows). The pointer local is neither the problem nor the
 fix; it is the CAST that differs.
 
+## …but `ptr[0]` and `ptr[k!=0]` are NOT the same operand — it decides which side of an x87 multiply gets the `fld`
+*(0x1000EAF0, 2026-09-03; this closed the term-3 operand flip that four passes
+of coefficient-side probing could not move)*
+
+When BOTH factors of a float multiply are in memory, VC5 has to `fld` one and
+`fmul` the other, and it RANKS the two operands to decide which. That ranking
+is not settled by the source's factor order — that is canonicalised (entry
+above) — and it is not settled by symbol-vs-cast alone. **A zero index off a
+pointer local outranks a non-zero index off a pointer local.**
+
+The case: a four-term row `C1*pPos[0] + C2*pTw[0] + C3*pPos[2] + C4*pTy[0]`.
+Terms 1, 2 and 4 read their object factor as `ptr[0]` off a dedicated pointer
+local and all three came out coefficient-first (`fld [coef]; fmul [esi+d]`),
+matching the original. Term 3 alone read `pPos[2]` — the same pointer as term
+1, at a non-zero index — and came out object-first (`fld [esi+0x38];
+fmul [coef]`). Giving term 3 its own pointer local (`float *pTz = pObj + 0xe`)
+so it reads `pTz[0]` flipped it to coefficient-first. Sixteen register-blind
+multiset rows, two instructions and one byte, on a one-line change.
+
+**The screen, and it is cheap: when several parallel terms compile the same
+way and ONE does not, compare how the odd term SPELLS its operands, not what
+they are.** Symmetric terms want symmetric spellings; a term reached at a
+different index — or through a shared pointer where its siblings have their
+own — is the one VC5 will rank differently. The nineteenth pass of that file
+had probed the opposite direction (delete all the pointer locals, spell every
+term off the base) and it is much worse: VC5 CSEs harder and loses five more
+instructions. Add a pointer local, never remove one.
+
+Also proven on the same rows, and it qualifies the paren lever: **a redundant
+outer paren can give the best byte and instruction count a function has ever
+read and still be wrong.** `(((T1+T2)+T3)+T4)` took that function to −7 bytes
+and only two instructions short — its best ever — by breaking an x87 batching
+decision two blocks later and paying for it with loads that count as
+"recovered" instructions. Check the region map, not the totals, before taking
+a paren.
+
 ## A third shape of "MISSING CODE": the port kept only the TAIL
 *(0x1001FD70 BrDlVtxRoutine, 269 bytes short -> 6; found by claimcheck.py,
 not by the size screens)*
