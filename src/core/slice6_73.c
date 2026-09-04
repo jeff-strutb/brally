@@ -1625,49 +1625,6 @@ int __stdcall FUN_10055a40(int _pad_0)
 }
 
 
-extern int DAT_100ad7d8;
-
-/* WHAT IT DOES: free every loaded car-livery bitmap -- walks the whole
- * table, releasing each allocation and clearing the slot so it is not freed
- * twice. */
-/* @implements 0x1005A420 glide FUN_1005a420 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void FUN_1005a420(void)
-
-{
-  int *p;
-  int *row;
-  int *q;
-  int i;
-  int j;
-  void *mem;
-
-  p = &DAT_100ad7d8;
-  do {
-    row = p;
-    i = 0x1e;
-    do {
-      q = row;
-      j = 4;
-      do {
-        mem = (void *)*q;
-        if (mem != (void *)0x0) {
-          free(mem);
-          *q = 0;
-        }
-        q = q + 1;
-        j = j + -1;
-      } while (j != 0);
-      row = row + 10;
-      i = i + -1;
-    } while (i != 0);
-    p = row;
-  } while ((int)p < 0x100b22d8);
-  return;
-}
-
-
 int FUN_100378c0();
 extern char DAT_1007b0e0[];
 extern char DAT_100acaf8[];

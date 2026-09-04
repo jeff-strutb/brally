@@ -4,8 +4,9 @@
  *
  * Filed out of the address batches, which are not modules.  One lookup into
  * the livery table (which leaves the row it read in a global on the way
- * past), and the shutdown pair that releases the bitmaps and then the three
- * shared buffers.
+ * past), the shutdown pair that releases the bitmaps and then the three
+ * shared buffers, and 0x1005A420 -- the bitmap release itself, which came
+ * from a different batch.
  *
  * slice3_40.c's preamble is carried over verbatim.  An include set that
  * looks redundant has already been shown elsewhere in this module to move
@@ -86,6 +87,49 @@ void FUN_1005a6b0(void)
     }
     puVar1 = puVar1 + 1;
   } while ((int)puVar1 < 0x10ac67bc);
+  return;
+}
+
+
+extern int DAT_100ad7d8;
+
+/* WHAT IT DOES: free every loaded car-livery bitmap -- walks the whole
+ * table, releasing each allocation and clearing the slot so it is not freed
+ * twice. */
+/* @implements 0x1005A420 glide FUN_1005a420 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+void FUN_1005a420(void)
+
+{
+  int *p;
+  int *row;
+  int *q;
+  int i;
+  int j;
+  void *mem;
+
+  p = &DAT_100ad7d8;
+  do {
+    row = p;
+    i = 0x1e;
+    do {
+      q = row;
+      j = 4;
+      do {
+        mem = (void *)*q;
+        if (mem != (void *)0x0) {
+          free(mem);
+          *q = 0;
+        }
+        q = q + 1;
+        j = j + -1;
+      } while (j != 0);
+      row = row + 10;
+      i = i + -1;
+    } while (i != 0);
+    p = row;
+  } while ((int)p < 0x100b22d8);
   return;
 }
 
