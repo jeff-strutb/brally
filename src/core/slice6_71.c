@@ -405,7 +405,7 @@ void BrOptFn10051D30(BrPhase_ *pThis)
  * file on disk. It also puts the championship banner artwork up, and down the
  * right-hand side adds Year, Round and Season labels with value fields beside
  * them, which fill in as the player moves through the list. */
-/* @implements 0x1004F700 d3d BrExt_1004F700 */
+/* port-only body; Glide match is src/core/cpp/0x100485B0.cpp */
 void BrExt_1004F700(BrPhase_ *pSelf)
 {
     const BrS71Hooks *pH   = g_brS71.pHooks;

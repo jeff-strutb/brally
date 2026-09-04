@@ -89,7 +89,7 @@ void BrPhaseEnterPlaceholder_1004C4A0(void *pSelf)
 
 /* WHAT IT DOES: the same glue for a fifth menu screen -- the one whose rows
  * come out of the game's table of on-screen text. */
-/* @implements 0x1004CAC0 d3d BrOptFn1004CAC0 */
+/* port-only body; Glide match is src/core/cpp/0x10045EF0.cpp */
 void BrOptFn1004CAC0(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
