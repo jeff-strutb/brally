@@ -75,3 +75,84 @@ void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
             o[i] += pM->m[3 * i + k] * v[k];
     }
 }
+
+/* 0x100749D0 */
+/* WHAT IT DOES: builds the little 3x3 matrix that stands in for a cross
+ * product: multiplying a vector by it gives the same answer as crossing it
+ * with the vector this was built from. The physics uses it to turn "a force
+ * applied at this offset" into a twist. */
+/* @implements 0x100749D0 d3d BrMat3Skew */
+/* @n64 0x80258DB0 exact */
+void BrMat3Skew(BrMat3 *pOut, const BrVec3 *pV)
+{
+    /* The three diagonal zeros are written FIRST, and in DESCENDING order --
+     * `xor ecx,ecx; [eax+0x20]; [eax+0x10]; [eax]` -- not interleaved in index
+     * order with the rest. Interleaved, the zero register has to stay live
+     * across the whole body, so VC5 spills into esi and the function grows a
+     * push/pop pair (59 -> 61 bytes). Grouped, the zero dies before pV is
+     * loaded and ecx is reused for pV, which is what the original does.
+     * Ascending order for the group is 7 bytes off; descending is exact. */
+    pOut->m[8] =  0.0f;
+    pOut->m[4] =  0.0f;
+    pOut->m[0] =  0.0f;
+    pOut->m[1] = -pV->z;
+    pOut->m[2] =  pV->y;
+    pOut->m[3] =  pV->z;
+    pOut->m[5] = -pV->x;
+    pOut->m[6] = -pV->y;
+    pOut->m[7] =  pV->x;
+}
+
+/* 0x10074A90 */
+/* WHAT IT DOES: pulls the rotation part out of a full 4x4 transform,
+ * dropping the translation and leaving a compact 3x3. */
+/* @implements 0x10074A90 d3d BrMat4ToMat3 */
+/* @n64 0x80258E64 located */
+void BrMat4ToMat3(BrMat3 *pOut, const BrMat4 *pSrc)
+{
+    int i, j;
+
+    for (i = 0; i < 3; ++i)
+        for (j = 0; j < 3; ++j)
+            pOut->m[3 * i + j] = pSrc->m[i][j];
+}
+
+/* 0x10074A50 */
+/* WHAT IT DOES: the same extraction but flipped along the diagonal, which
+ * for a pure rotation is the same as reversing it -- so this gives the
+ * matrix that undoes the transform's rotation. */
+/* @implements 0x10074A50 d3d BrMat4ToMat3Transposed */
+/* @n64 0x80258EAC located */
+void BrMat4ToMat3Transposed(BrMat3 *pOut, const BrMat4 *pSrc)
+{
+    int i, j;
+
+    for (i = 0; i < 3; ++i)
+        for (j = 0; j < 3; ++j)
+            pOut->m[i + 3 * j] = pSrc->m[i][j];
+}
+
+/* 0x10074A10 */
+/* WHAT IT DOES: extracts the rotation part of a 4x4 transform twice at once,
+ * once flipped and once straight, because the physics needs both to move
+ * quantities into the body's frame and back out again. */
+/* @implements 0x10074A10 d3d BrMat4ToMat3Both */
+/* @n64 0x80258E04 located */
+void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
+                      const BrMat4 *pSrc)
+{
+    int i, j;
+
+    for (i = 0; i < 3; ++i) {
+        for (j = 0; j < 3; ++j) {
+            /* ONE chained assignment, not two statements.  The original loads
+             * the source element once and spends it twice -- `fld [ecx]`,
+             * `fst [edx]` (transposed, kept), `fstp [eax-4]` (straight) -- and
+             * that fst/fstp pair is what a chain compiles to.  Two separate
+             * assignments from the same expression let VC5 copy through
+             * integer registers instead, which costs three extra
+             * instructions. */
+            pStraight->m[3 * i + j] = pTransposed->m[i + 3 * j] = pSrc->m[i][j];
+        }
+    }
+}
