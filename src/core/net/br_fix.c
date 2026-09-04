@@ -21,6 +21,7 @@
  * sign-extending it by hand before scaling. This is the exact inverse of the
  * matching packer. */
 /* @implements 0x10007250 d3d BrFixUnpackS6Q7Neg */
+/* @implements 0x100075C0 glide BrFixUnpackS6Q7Neg */
 float BrFixUnpackS6Q7Neg(int32_t v)
 {
     unsigned char b = (unsigned char)v;
@@ -42,6 +43,7 @@ float BrFixUnpackS6Q7Neg(int32_t v)
  * 16 bits it was sent in. The scale is negative, which cancels the negative
  * scale the packer used, so the value comes back unchanged. */
 /* @implements 0x10007280 d3d BrFixUnpackS16Q15Neg */
+/* @implements 0x100075F0 glide BrFixUnpackS16Q15Neg */
 float BrFixUnpackS16Q15Neg(int32_t v)
 {
     return (float)((int16_t)v * -0.000030517578125f);
@@ -53,6 +55,7 @@ float BrFixUnpackS16Q15Neg(int32_t v)
 /* WHAT IT DOES: turns a byte back into an angle in degrees, using a scale
  * chosen so the byte covers a full circle. */
 /* @implements 0x100072A0 d3d BrFixUnpackU8Angle */
+/* @implements 0x10007610 glide BrFixUnpackU8Angle */
 float BrFixUnpackU8Angle(int32_t v)
 {
     return (float)((v & 0xFF) * 1.41015625f);
@@ -68,6 +71,7 @@ float BrFixUnpackU8Angle(int32_t v)
  * the inverse of the matching packer. What the quantity represents is not
  * established here. */
 /* @implements 0x100072C0 d3d BrFixUnpackU8Range */
+/* @implements 0x10007630 glide BrFixUnpackU8Range */
 float BrFixUnpackU8Range(int32_t v)
 {
     return 400.0f - (v & 0xFF) * -120.63491821289062f;
@@ -82,6 +86,7 @@ float BrFixUnpackU8Range(int32_t v)
  * 170, 212 or 255. It is written as a chain of comparisons rather than a
  * table, so any code above 2 gives the top value. */
 /* @implements 0x100072E0 d3d BrFixUnpackLevel */
+/* @implements 0x10007650 glide BrFixUnpackLevel */
 float BrFixUnpackLevel(int32_t v)
 {
     unsigned char b = (unsigned char)v;
@@ -102,6 +107,7 @@ float BrFixUnpackLevel(int32_t v)
 /* WHAT IT DOES: turns a packed whole number back into a position coordinate
  * by scaling it down. The packed value is treated as unsigned. */
 /* @implements 0x10007310 d3d BrFixUnpackU32Q13 */
+/* @implements 0x10007680 glide BrFixUnpackU32Q13 */
 float BrFixUnpackU32Q13(uint32_t v)
 {
     return (float)(v * 0.0001220703125f);
@@ -113,6 +119,7 @@ float BrFixUnpackU32Q13(uint32_t v)
 /* WHAT IT DOES: turns a packed 24-bit signed value back into a float at
  * half-unit resolution. */
 /* @implements 0x10007340 d3d BrFixUnpackS24Q1 */
+/* @implements 0x100076B0 glide BrFixUnpackS24Q1 */
 float BrFixUnpackS24Q1(uint32_t v)
 {
     int32_t x = (int32_t)v;
@@ -128,6 +135,7 @@ float BrFixUnpackS24Q1(uint32_t v)
 /* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
  * 1/128 resolution -- the car's height, among other things. */
 /* @implements 0x10007380 d3d BrFixUnpackS16Q7 */
+/* @implements 0x100076F0 glide BrFixUnpackS16Q7 */
 float BrFixUnpackS16Q7(int32_t v)
 {
     return (float)((int16_t)v * 0.0078125f);
@@ -139,6 +147,7 @@ float BrFixUnpackS16Q7(int32_t v)
 /* WHAT IT DOES: turns a packed 16-bit signed value back into a float at
  * 1/256 resolution. */
 /* @implements 0x100073A0 d3d BrFixUnpackS16Q8 */
+/* @implements 0x10007710 glide BrFixUnpackS16Q8 */
 float BrFixUnpackS16Q8(int32_t v)
 {
     return (float)((int16_t)v * 0.00390625f);
@@ -150,6 +159,7 @@ float BrFixUnpackS16Q8(int32_t v)
 /* WHAT IT DOES: turns a packed signed byte back into a float at 1/8
  * resolution. */
 /* @implements 0x100073C0 d3d BrFixUnpackS8Q3 */
+/* @implements 0x10007730 glide BrFixUnpackS8Q3 */
 float BrFixUnpackS8Q3(int32_t v)
 {
     return (float)((int8_t)v * 0.125f);
