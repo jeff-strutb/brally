@@ -26,15 +26,36 @@
  *     0x1001F8F0   d = w - z            311 B   FAR
  *     0x1001F530   d = y + w            311 B   BOTTOM
  *
- * ‼ THE OPERAND ORDER IS NOT UNIFORM AND IS NOT OURS TO TIDY.  The three
- * PLUS planes lead with different operands: LEFT is `fld w; fadd x` while
- * BOTTOM is `fld y; fadd w` and NEAR is `fld z; fadd w`.  Reading `fld` as
- * the LEFT operand and `fadd` as the right, the original source says
- * `w + x`, `y + w` and `z + w` -- inconsistent, exactly as hand-written code
- * is.  This is also a standing correction to the "VC5 canonicalises
- * commutative float addition" entry: that holds for a flat SUM OF PRODUCTS,
- * not for a plain two-term add of two struct fields, where these six
- * functions in one binary prove the source order survives.
+ * ‼ RESIDUE, and the one thing that is NOT source-reachable here.  Five of
+ * the seven are byte-exact.  The two PLUS planes below are 4 bytes (LEFT)
+ * and 2 bytes (NEAR) short, and every one of those bytes is the field
+ * displacement in an `fld`/`fadd` pair:
+ *
+ *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]   (both sites)
+ *     NEAR   orig  fld [z] ; fadd [w]      ours  fld [w] ; fadd [z]   (first site
+ *                                                only; the second matches)
+ *
+ * WRITING THE ADD THE OTHER WAY ROUND DOES NOTHING -- `f18 + f04` and
+ * `f04 + f18` compile to identical bytes, confirmed for all three PLUS
+ * planes.  So the "VC5 canonicalises commutative float addition" entry in
+ * docs/VC5-IDIOMS.md holds for a plain two-term add of two struct fields
+ * as well, and the original's own inconsistency across siblings (BOTTOM
+ * leads with y, LEFT leads with w) is NOT a record of how its source was
+ * spelled.  It cannot be, because NEAR's two sites inside ONE of our
+ * functions disagree with each other from a single macro expansion: the
+ * choice is made per site, by the scheduler.
+ *
+ * DEAD, do not re-run (all measured 2026-09-03, /O2 /Op):
+ *   - swapping the operands of the `+` in either direction, on each of the
+ *     three PLUS planes: byte-identical output;
+ *   - a redundant paren round the FIRST operand, `((v)->f18) + (v)->f04`:
+ *     this DOES flip the pair to the original's order at both sites -- and
+ *     is the only thing found that moves it -- but it sinks the second
+ *     site's `fadd` past four unrelated instructions, taking the function
+ *     from 4 diff bytes to 53 with the instruction multiset still exact.
+ *     A real lever pointing the wrong way; worth re-trying only alongside
+ *     something that pins the schedule.
+ *   - a redundant paren round BOTH operands: 53 / 54, no better.
  *
  * Field meanings (established from the caller, 0x1001EE70; see slice1_03.h):
  *     f04 = x   f08 = y   f0C = z   f10 = s   f14 = t   f18 = w
