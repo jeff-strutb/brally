@@ -352,11 +352,8 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  * arguments for the clipper are still pushed, and [esp+0x18] at 0x1001EE5D,
  * where they are not.  Same argument; the displacement alone does not say so.
  */
-/* WHAT IT DOES: draws one triangle from three corner points already loaded.
- * If all three are off the same side of the screen the triangle is dropped; if
- * any of them is off the screen it is handed to the trimmer; otherwise its
- * texture coordinates are finished and it goes to the card. */
-/* @implements 0x1001ECF0 glide BrDlCmdTri1 */
+/* The matching-build definition of 0x1001ECF0 sits below BrDlTriFlatZ, in
+ * the index-form block; the port body is at the #else. */
 #ifdef BR_MATCHING_BUILD
 /* Everything the port factored out is INLINE in the original, and there is a
  * lot of it: br_dlcmd_tri, br_dlcmd_finish_vtx three times over, and the state
@@ -375,8 +372,21 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  * from the second and third outcodes and only then tested against the first,
  * while the OR is formed the other way round.
  *
- * RESIDUE, both handlers (Tri1: 108 insns against 113, -49 bytes, 8+13
- * regnorm; Tri2: 202 against 199, -56, 33+30). Two allocator choices:
+ * Tri1 is BYTE-EXACT (2026-09-04) in the index form below BrDlTriFlatZ; the
+ * pointer form here is what Tri2 still uses.  Tri2 after the __stdcall draw
+ * fix: 624 B against 696, 527 diffs.  ‼ Tri2 in the SAME index form as Tri1
+ * (two BR_DLCMD_TRI_I instantiations, indices assigned a, b, c per triangle,
+ * with either shared or six distinct int locals) is WORSE: 743 B, +7 insns,
+ * regnorm 17+10, and the frame differs from the first byte -- the original
+ * `push ecx`es a u slot and then spills the first triangle's oc_a into the
+ * dead ARGUMENT slot ([esp+0x18]) and the AND result into the u slot, with
+ * `mov ebx,[esp+0xc]` holding p in ebx for the whole function; ours keeps p
+ * in ebp and never spills.  The lever is the register pressure of the FIRST
+ * triangle (why the original runs out of registers there), not the form.
+ *
+ * RESIDUE (pointer form, both handlers, before the index form): Tri1 108
+ * insns against 113, -49 bytes, 8+13 regnorm; Tri2 202 against 199, -56,
+ * 33+30. Two allocator choices:
  *   - the original keeps the SCALED BYTE OFFSET in a register and re-forms
  *     `base + offset` at every access (`mov edi,[ecx+0x105CE338]`,
  *     `lea eax,[ecx+0x105CE318]`), where this keeps the pointer;
@@ -467,19 +477,8 @@ void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
     BR_DL_PUN(v->tmu0[1], u);
 }
 
-const uint8_t *BrDlCmdTri1(const uint8_t *p)
-{
-    /* The three index bytes are read 6, 4, 5 -- the original's order, and it
-     * is not the argument order -- and each is scaled in its own register
-     * with an in-place `shl x,3`, so each needs its own named index. */
-    BrDlVtx *a = &g_aBrDlVtxPool[p[6]];
-    BrDlVtx *c = &g_aBrDlVtxPool[p[4]];
-    BrDlVtx *b = &g_aBrDlVtxPool[p[5]];
-    float    u;                 /* ONE slot, shared by all three vertices */
-
-    BR_DLCMD_TRI(a, b, c, u);
-    return p + 8;
-}
+/* The matching-build BrDlCmdTri1 is defined below BrDlTriFlatZ, in the
+ * index-form block it shares with it. */
 #else
 const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
 {
@@ -665,6 +664,56 @@ void BrDlTriFlatZ(int i0, int i1, int i2)
     BR_DL_PUN(V(i2).r, cr);
     BR_DL_PUN(V(i2).g, cg);
     BR_DL_PUN(V(i2).b, cb);
+}
+
+
+/* G_TRI1 in the same INDEX + pointer-finish form as BrDlTriFlatZ above.  The
+ * three command bytes become int indices, every outcode and clip-call access
+ * is `pool[i].field` off the scaled offset kept in a register (the original's
+ * `lea [reg+0x105CE318]` re-forming), and the finish stores go through the
+ * lea'd pointer with ONE oow load.  BYTE-EXACT 2026-09-04; the pointer form
+ * this replaced (`BrDlVtx *a = &pool[p[6]]`) was parked at 322 B / 258 diffs.
+ *
+ * ‼ THE INDEX READ ORDER IS NOT THE SOURCE ORDER.  The original reads the
+ * bytes 6, 4, 5 (ecx, eax, edx).  With int locals, `ia = p[6]; ic = p[4];
+ * ib = p[5];` compiles to reads 4, 6, 5 -- VC5 swaps the first two -- and
+ * `ic = p[4]; ia = p[6]; ib = p[5];` gives the original's 6, 4, 5.  With the
+ * old pointer locals the source order WAS the read order.  Also measured:
+ * `float u` declared before the ints is what puts the three in ecx/eax/edx
+ * (after them: 380 B, one `mov R,R` copy); the declaration order of the
+ * ints themselves is inert; naming the three outcodes in locals (the
+ * BrDlTriFlatZ lever) is WORSE here (377 B, -3 insns, regnorm 5+8);
+ * re-associating the `&` or permuting the `|` is byte-identical. */
+#define BR_DLCMD_TRI_I(ia, ib, ic, u_)                                  \
+    do {                                                                \
+        if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
+            if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
+                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+            } else {                                                     \
+                BR_DLCMD_FINISH_VTX_I(ia, u_);                           \
+                BR_DLCMD_FINISH_VTX_I(ib, u_);                           \
+                BR_DLCMD_FINISH_VTX_I(ic, u_);                           \
+                BrDlDrawTri(&V(ia), &V(ib), &V(ic));                     \
+            }                                                            \
+        }                                                                \
+    } while (0)
+
+/* WHAT IT DOES: the G_TRI1 display-list command -- draw one triangle from
+ * the three vertex-pool indices packed in the command's bytes 6, 5 and 4.
+ * It is dropped if all three corners are off the same screen edge, handed
+ * to the trimmer if any corner is off screen, and otherwise each corner's
+ * texture coordinates are finished and it goes to the card.  Returns the
+ * pointer to the next 8-byte command. */
+/* @implements 0x1001ECF0 glide BrDlCmdTri1 */
+const uint8_t *BrDlCmdTri1(const uint8_t *p)
+{
+    float u;                    /* ONE slot, shared by all three vertices */
+    int   ic = p[4];            /* source order 4, 6, 5 reads 6, 4, 5 */
+    int   ia = p[6];
+    int   ib = p[5];
+
+    BR_DLCMD_TRI_I(ia, ib, ic, u);
+    return p + 8;
 }
 
 #undef V
