@@ -105,7 +105,11 @@ def static_block(tu, sym):
     return None
 
 
-def move_group(slc, grp, body, dry):
+def move_group(slc, grp, body, dry, defer=None):
+    """Move one group. With `defer` (a {dest: snapshot} dict) the edits are
+    written and the VERIFY IS SKIPPED, so a caller can move every group in a
+    slice and then sweep each file once instead of once per group. The verify
+    itself is unchanged -- only how often it runs."""
     tu = open(os.path.join(ROOT, slc)).read()
     module = grp[0]['module']
     names = [r['name'] for r in grp]
@@ -161,6 +165,8 @@ def move_group(slc, grp, body, dry):
     src_before, dst_existed = tu, os.path.exists(dpath)
     dst_before = open(dpath).read() if dst_existed else None
     before_src = refile.status_of(slc)
+    if defer is not None and dst not in defer:
+        defer[dst] = dst_before          # None means "did not exist"
     if not dst_existed:
         refile.new_module_file(dpath, module, names[0])
 
@@ -210,6 +216,11 @@ def move_group(slc, grp, body, dry):
     open(dpath, 'w').write(dtu[:at] + add + dtu[at:])
     open(spath, 'w').write(cut)
 
+    if defer is not None:
+        for r in grp:
+            r['_dest'] = dst
+        return True
+
     refile.sweep(dst)
     refile.sweep(slc)
     ad, asrc = refile.status_of(dst), refile.status_of(slc)
@@ -249,6 +260,107 @@ def move_group(slc, grp, body, dry):
     return True
 
 
+def move_slice(slc, rows, dry):
+    """Move every qualifying group in one slice, then verify ONCE.
+
+    The per-group verify was this tool's entire cost: two full-file compiles
+    and diffs, ~25 s, for every group -- and there are hundreds. Deciding where
+    a function belongs takes no time at all; PROVING the move did not break the
+    byte match is what takes it, so the fix is to prove it once per file
+    instead of once per group.
+
+    The check is not weakened. After the writes, every moved function must
+    still be `match` in its new file and nothing left behind may regress -- the
+    same two conditions, asked once. What batching gives up is ISOLATION: a
+    failure does not say which group caused it, so the slice is restored whole
+    and retried one group at a time. Slices that are fine, which is most of
+    them, pay one sweep per file instead of one per group.
+    """
+    spath = os.path.join(ROOT, slc)
+    tu = open(spath).read()
+    comps, body = components(tu, rows)
+    plan = [g for g in comps
+            if len({r['module'] for r in g}) == 1 and g[0]['module']]
+    if not plan:
+        return 0
+    if dry:
+        for g in plan:
+            move_group(slc, g, body, True)
+        return len(plan)
+
+    before_src = refile.status_of(slc)
+    src_before = tu
+    snaps, moved = {}, []
+    for grp in plan:
+        if move_group(slc, grp, body, False, defer=snaps):
+            moved += grp
+            tu = open(spath).read()
+            comps, body = components(tu, rows)
+    if not moved:
+        return 0
+
+    files = sorted(snaps)
+    for f in files:
+        refile.sweep(f)
+    refile.sweep(slc)
+
+    ok = True
+    for r in moved:
+        st = refile.status_of(r['_dest'])
+        if st.get(r['glide_va'].lower()) != 'match':
+            ok = False
+            break
+    asrc = refile.status_of(slc)
+    movedv = {r['glide_va'].lower() for r in moved}
+    regress = [k for k, v in before_src.items()
+               if v == 'match' and k not in movedv and asrc.get(k) != 'match']
+
+    if ok and not regress:
+        refile.git('add', slc, *files)
+        refile.git('commit', '-q', '-m',
+                   '%s: file %d function%s into %d module file%s\n\n'
+                   'Moved as connected GROUPS -- functions that call each other '
+                   'or share a\nfile-local static cannot be separated, and that '
+                   'grouping is the\noriginal translation unit.\n\n%s\n\n'
+                   'Verified after the batch: every moved function still MATCHes '
+                   'in its new\nfile and nothing left behind regressed.'
+                   % (os.path.basename(slc), len(moved),
+                      '' if len(moved) == 1 else 's', len(files),
+                      '' if len(files) == 1 else 's',
+                      '\n'.join('  %s %-32s -> %s' % (r['glide_va'], r['name'],
+                                                      r['_dest']) for r in moved)))
+        print('   %-22s %3d fn -> %s' % (os.path.basename(slc), len(moved),
+                                         ', '.join(os.path.basename(f) for f in files)))
+        return len(moved)
+
+    open(spath, 'w').write(src_before)
+    for f, snap in snaps.items():
+        fp = os.path.join(ROOT, f)
+        if snap is None:
+            if os.path.exists(fp):
+                os.unlink(fp)
+        else:
+            open(fp, 'w').write(snap)
+    refile.sweep(slc)
+    for f in files:
+        if os.path.exists(os.path.join(ROOT, f)):
+            refile.sweep(f)
+    why = 'a moved function no longer matches' if not ok \
+        else '%d left behind regressed' % len(regress)
+    print('   %-22s BATCH FAILED (%s) -- restored, retrying per group'
+          % (os.path.basename(slc), why))
+    n = 0
+    tu = open(spath).read()
+    comps, body = components(tu, rows)
+    for grp in comps:
+        if len({r['module'] for r in grp}) == 1 and grp[0]['module']:
+            if move_group(slc, grp, body, False):
+                n += len(grp)
+                tu = open(spath).read()
+                comps2, body = components(tu, rows)
+    return n
+
+
 def main():
     dry = '--dry-run' in sys.argv
     lim = int(sys.argv[sys.argv.index('--limit') + 1]) if '--limit' in sys.argv else 10**9
@@ -263,20 +375,10 @@ def main():
     for slc in sorted(byslice):
         if only and slc != only:
             continue
-        tu = open(os.path.join(ROOT, slc)).read()
-        comps, body = components(tu, byslice[slc])
-        for grp in comps:
-            if done >= lim:
-                break
-            mods = {r['module'] for r in grp}
-            if len(mods) != 1 or not list(mods)[0]:
-                continue
-            if move_group(slc, grp, body, dry):
-                done += 1
-                if not dry:
-                    tu = open(os.path.join(ROOT, slc)).read()
-                    comps2, body = components(tu, byslice[slc])
-    print('\n%s %d group(s)' % ('would move' if dry else 'moved', done))
+        if done >= lim:
+            break
+        done += max(0, move_slice(slc, byslice[slc], dry))
+    print('\n%s %d function(s)' % ('would move' if dry else 'moved', done))
     if not dry:
         subprocess.run([sys.executable, os.path.join('tools', 'filing.py')],
                        cwd=ROOT)
