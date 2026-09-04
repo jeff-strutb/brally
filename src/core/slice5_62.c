@@ -404,45 +404,6 @@ void BrSub_1003289F(int a, int b, int c, int d)
 #endif /* !BR_MATCHING_BUILD */
 
 /* ==================================================================== */
-/* 6. 0x10069490 -- adapter over br_pool.c                              */
-/* ==================================================================== */
-
-BrPool g_brPool10069490;
-
-/* WHAT IT DOES: hands out one scratch transform from the frame pool, for a
- * caller that needs somewhere to build a position-and-facing that only has to
- * survive the rest of this frame. */
-/* @implements 0x10069490 d3d BrSub_10069490 */
-/* Third instance of the frame-bank template that slice3_41.c's BrPool16Alloc
- * and BrPool32Alloc carry -- the original hand-inlines the allocator into each
- * bank with that bank's constants folded, rather than calling a shared helper.
- * This one is the 64-byte bank: 256 usable, 257 slots per frame, and its own
- * counter and two bases.  The `= ++c` on the counter is required for the same
- * reason as there; `c + 1` costs a byte and moves a register. */
-#ifdef BR_MATCHING_BUILD
-extern int32_t BrG_6C65EC;      /* 0x106C65EC  frame parity               */
-extern int32_t BrG_B01C40;      /* 0x10B01C40  64-byte bank counter       */
-extern uint8_t BrG_AF9BC0[];    /* 0x10AF9BC0  64-byte bank base          */
-extern uint8_t BrG_AFDBC0[];    /* 0x10AFDBC0  64-byte bank overflow slot */
-BrMat4 *BrSub_10069490(void)
-{
-    int32_t c = BrG_B01C40;
-    if (c < 256) {
-        uint8_t *p = &BrG_AF9BC0[(BrG_6C65EC * 257 + c) * 64];
-        BrG_B01C40 = ++c;
-        return (BrMat4 *)p;
-    }
-    BrG_B01C40 = ++c;
-    return (BrMat4 *)&BrG_AFDBC0[BrG_6C65EC * 257 * 64];
-}
-#else
-BrMat4 *BrSub_10069490(void)
-{
-    return (BrMat4 *)BrPoolAlloc(&g_brPool10069490);
-}
-#endif
-
-/* ==================================================================== */
 /* 7. 0x10004FC0                                                        */
 /* ==================================================================== */
 
