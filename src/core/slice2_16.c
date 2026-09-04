@@ -1294,8 +1294,26 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
         return;
 
     v = pCmd->w1;
-    /* Orig is three separate `cmp; jne; mov [g],0; ret` blocks, then
-     * `xor ecx,ecx; cmp eax,ecx` sharing the zero for the last fail. */
+    /* PARKED 2026-09-03, and the residue is ONE compiler decision, not a
+     * source shape. Recomp 76 B / 22 insns against 107 / 29. The original
+     * emits the three `mov [g],0; ret` blocks IN FULL, each with its own
+     * `jne` skipping eleven bytes; VC5 cross-jumps ours into a single shared
+     * block. That accounts for 33 of the 31 missing bytes on its own, and the
+     * `xor ecx,ecx; cmp eax,ecx` / `mov [g],ecx` at the tail is a CONSEQUENCE
+     * of the non-merge (with four zero stores alive VC5 puts the zero in a
+     * register; with one it uses an immediate and `test`), not a second clue.
+     *
+     * DEAD PROBES, byte-identical output, do not re-run:
+     *   - early-return per arm (below) and the nested single-exit
+     *     if/else-if/else chain -- VC5 canonicalises the two.
+     *   - a named zero local shared by the last compare and its store; VC5
+     *     folds it to an immediate as long as the merge stands.
+     * Nothing written in C stops the merge, because the three blocks really
+     * are byte-identical -- that is exactly what cross-jumping looks for.
+     * The next idea has to be a MECHANISM: a compile variant for this TU
+     * (this file is proven at /O2, but these handlers may have come from a
+     * different original TU), or a compiler patch level. Not another
+     * permutation. */
     if (v == 0x504F50u) {
         g_brTexScan575414 = 0;
         return;
