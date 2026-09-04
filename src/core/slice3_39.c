@@ -1239,6 +1239,10 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
 }
 #endif
 
+/* WHAT IT DOES: read the keyboard and, if that succeeded, work out which
+ * keys changed since last time. The per-frame input poll; a failed read
+ * leaves the previous state alone rather than reporting everything as
+ * released. */
 /* @implements 0x10059020 glide BrDikPollAndEdge */
 void BrDikPollAndEdge(void)
 {

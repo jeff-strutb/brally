@@ -138,6 +138,10 @@ extern float   DAT_105cd9f8;
 extern float   DAT_105cd9fc;
 #endif
 
+/* WHAT IT DOES: handle the display-list command that sets the viewport:
+ * reads the packed scale and offset values, converts them to floats, and
+ * flips the vertical translate because the display list's Y axis runs the
+ * other way from the screen's. */
 /* @implements 0x10023920 glide BrGbiCall10024260 */
 BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
 {

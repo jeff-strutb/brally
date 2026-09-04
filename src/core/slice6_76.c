@@ -737,6 +737,9 @@ extern int BrG_6C7CB8;
 int BrStrGet(int);
 float BrVec3Dot(int, int);
 
+/* WHAT IT DOES: check whether a car has come to rest facing the wrong way
+ * and, if so, put the 'wrong way' warning on screen and count it. Only
+ * applies while the car is below a speed threshold and not already flagged. */
 /* @implements 0x1006EB00 glide FUN_1006eb00 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -777,6 +780,10 @@ void __fastcall FUN_1006eb00(int param_1)
 extern float _DAT_10077a78;
 int BrRbVelAtBodyPointXY();
 
+/* WHAT IT DOES: work out the contact velocity at each of a car's four wheels
+ * in turn and update that wheel from it. The per-wheel step of the driving
+ * model, with the four wheels unrolled into a switch because the original
+ * reads them from four separate fields. */
 /* @implements 0x10068600 glide FUN_10068600 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

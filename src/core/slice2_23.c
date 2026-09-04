@@ -1700,6 +1700,10 @@ extern char s_Boss_Rally_1007b384[];
 _CRTIMP int __cdecl _chdrive(int);
 _CRTIMP int __cdecl _chdir(const char *);
 
+/* WHAT IT DOES: check whether one drive letter is the Boss Rally CD -- it
+ * must be a CD-ROM, hold the expected directory, and carry the expected
+ * volume label. The per-drive test the CD hunt calls for each letter in
+ * turn. */
 /* @implements 0x100377A0 glide FUN_100377a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1734,6 +1738,9 @@ extern int DAT_10b71a50;
 extern int DAT_10b71a54;
 extern int _DAT_10ac5bbc;
 
+/* WHAT IT DOES: read the four corner values of the currently selected table
+ * row, following the row pointer stored for that index. The accessor the
+ * menu drawing uses to lay a row out. */
 /* @implements 0x100382D0 glide FUN_100382d0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

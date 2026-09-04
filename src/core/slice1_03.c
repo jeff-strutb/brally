@@ -632,6 +632,9 @@ extern int DAT_10396efc;
 int FUN_10011300(int, int, int, int, int);
 int FUN_10010fb0(int);
 
+/* WHAT IT DOES: emit the fixed run of display-list commands that puts the
+ * renderer into the standard drawing mode for a pass -- pipeline sync,
+ * render mode, blend colour and the colour-combiner setup, in that order. */
 /* @implements 0x100119C0 glide FUN_100119c0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

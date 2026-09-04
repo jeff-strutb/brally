@@ -55,6 +55,11 @@ extern int32_t g_br0AB3E8;
 extern int32_t g_br0AC654;
 #endif
 
+/* WHAT IT DOES: push the current difficulty setting out to the two globals
+ * the rest of the game reads, but only when it has actually changed. GOTCHA:
+ * any value above 4 falls through to the default, which writes the same pair
+ * as case 0 -- so an out-of-range difficulty silently behaves as the
+ * easiest. */
 /* @implements 0x1003DA90 glide BrSub10044540 */
 void BrSub10044540(void)
 {
@@ -240,6 +245,9 @@ typedef int32_t (__stdcall *BrDiAcquireFn)(BrDInputDev *);
 extern BrDInputDev *g_pBrDik18ABDD0;
 #endif
 
+/* WHAT IT DOES: read the whole keyboard state array from DirectInput in one
+ * go. Reports failure without touching the caller's buffer when there is no
+ * device. */
 /* @implements 0x10070490 glide BrDikGetDeviceState */
 int32_t BrDikGetDeviceState(uint8_t *pState)
 {
@@ -1802,6 +1810,8 @@ int32_t BrSub10071510(int32_t i)
 
 _CRTIMP void __cdecl _except_handler3(void);
 
+/* WHAT IT DOES: the compiler's structured-exception entry thunk -- it just
+ * tail-calls the CRT handler. Not game code. */
 /* @implements 0x10074AE6 glide FUN_10074ae6 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1815,6 +1825,9 @@ FUN_10074ae6(void)
 extern char DAT_100acad8[];
 extern char DAT_118ee590[];
 
+/* WHAT IT DOES: append a string to a running log buffer, but only if it is
+ * not already in there -- a crude de-duplicating accumulator, so a message
+ * repeated every frame appears once. Adds a separator after each new entry. */
 /* @implements 0x1006FF50 glide FUN_1006ff50 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

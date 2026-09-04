@@ -2117,6 +2117,9 @@ int BrPodNop();
 int BrStubFalse();
 int BrStubTrue();
 
+/* WHAT IT DOES: set up the model and animation pools for a scene from the
+ * loaded data block, wiring the fixed table pointers before anything reads
+ * them. */
 /* @implements 0x1002DEC3 glide FUN_1002dec3 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -2179,6 +2182,9 @@ next:
 
 void FUN_100746b4(void *d, void *s, unsigned n);
 
+/* WHAT IT DOES: copy a rectangular block of texture rows from source to
+ * destination, walking row by row with the caller's stride. The inner loop
+ * of the texture uploader. */
 /* @implements 0x1002E5B9 glide FUN_1002e5b9 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 

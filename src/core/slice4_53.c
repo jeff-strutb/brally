@@ -193,6 +193,10 @@ static const BrCfgField g_aBrCfgFields[] = {
 extern char BrGlCfgMagic[];        /* 0x100B4C20  "RCfg" */
 extern unsigned char BrGlCfgVersion[4]; /* 0x10077A2C  02 00 00 00 */
 
+/* WHAT IT DOES: write the Glide renderer's settings to a file -- a magic
+ * string, a version, then each setting in turn, bailing out on the first
+ * short write. Returns zero if it could not open or could not finish, so a
+ * half-written file is reported rather than trusted. */
 /* @implements 0x100634B0 glide BrGlCfgSave */
 int __fastcall BrGlCfgSave(void *pThis, int _edx_unused, const char *pszPath)
 {
@@ -608,6 +612,10 @@ double BrCosF(float param_1)
 
 extern float _DAT_10077000;
 
+/* WHAT IT DOES: work out the unit direction from one object to another,
+ * leaving the result in the caller's vector. GOTCHA: when the two are in
+ * exactly the same place the length is zero and the output is left UNCHANGED
+ * rather than zeroed -- the caller keeps whatever direction it had. */
 /* @implements 0x10001BB0 glide FUN_10001bb0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -648,6 +656,8 @@ extern char DAT_1021c9b0[];
 extern int DAT_10226a38;
 extern HANDLE DAT_10226a54;
 
+/* WHAT IT DOES: post a message string for the networking layer to pick up,
+ * under the message mutex, and raise the flag that says one is waiting. */
 /* @implements 0x100038A0 glide FUN_100038a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -679,6 +689,9 @@ void BrVec3Scale(void *, void *, float);
 void BrVec3ScaleBy(void *, float);
 void BrVec3Sub(void *, void *, void *);
 
+/* WHAT IT DOES: place the chase camera relative to the car -- pushes it back
+ * along the car's own forward axis and then up, using a different height in
+ * one of the game modes. Does nothing when the car has no camera attached. */
 /* @implements 0x100018F0 glide FUN_100018f0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
