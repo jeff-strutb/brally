@@ -809,6 +809,41 @@ int BrSndChanSetRatio(int iSlot, int64_t ratio)
   return 1;
 }
 
+typedef int (__stdcall *dsbuf_fn2i)(int, int);
+typedef int (__stdcall *dsbuf_fn4i)(int, int, int, int);
+
+/* WHAT IT DOES: start a voice's buffer.  If the buffer is already playing
+ * (GetStatus, vtable +0x24, reports DSBSTATUS_PLAYING) it is rewound instead
+ * -- SetCurrentPosition(0), vtable +0x34 -- so retriggering a live sound
+ * restarts it rather than layering a second Play on it.  Otherwise Play
+ * (vtable +0x30) runs, looping iff the voice's +0x18 flag is set, and the
+ * voice's "playing" flag at +0x1c is raised only when Play returns S_OK. */
+/* @implements 0x1006B970 glide BrSndVoiceBufStart */
+
+void BrSndVoiceBufStart(int param_1)
+
+{
+  unsigned int status;
+  int          bLoop;
+
+  status = 0;
+  bLoop  = 0;
+  if (*(int *)(param_1 + 0x18) != 0) {
+    bLoop = 1;
+  }
+  if (((*(dsbuf_fn2i *)(**(int **)(param_1 + 0x9c) + 0x24))
+         (*(int *)(param_1 + 0x9c), (int)&status) == 0) && ((status & 1) == 1)) {
+    (*(dsbuf_fn2i *)(**(int **)(param_1 + 0x9c) + 0x34))
+      (*(int *)(param_1 + 0x9c), 0);
+    return;
+  }
+  if ((*(dsbuf_fn4i *)(**(int **)(param_1 + 0x9c) + 0x30))
+        (*(int *)(param_1 + 0x9c), 0, 0, bLoop) == 0) {
+    *(int *)(param_1 + 0x1c) = 1;
+  }
+  return;
+}
+
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
  * drive its DirectSound buffer to DSBVOLUME_MIN (vtable +0x3c) and recentre
  * the pan (vtable +0x40).  The buffers keep playing; only their output is
