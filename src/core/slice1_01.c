@@ -689,6 +689,10 @@ extern char s_MCI_STATUS_returned__d_1007b07c[];
 extern char s_cdaudio_1007b094[];
 int BrSub10075020();
 
+/* WHAT IT DOES: open the CD audio device and start it playing, on the FIRST
+ * caller only -- later calls just raise the use count. Sets the device to
+ * track-and-frame time format so later seeks can name a track. This is how
+ * the in-game CD soundtrack starts. */
 /* @implements 0x10002980 glide FUN_10002980 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -744,6 +748,9 @@ extern int g_brCdEnabled;
 extern int g_brCdMediaOk;
 extern int g_brCdPlaying;
 
+/* WHAT IT DOES: ask the CD device what it is doing now and report its status
+ * back. Answers zero without asking whenever CD audio is off, the drive is
+ * empty, or nothing is playing. */
 /* @implements 0x100027E0 glide FUN_100027e0 */
 /* auto-filed from ghidra --refine; transforms: stackshred */
 
@@ -770,6 +777,8 @@ int FUN_100027e0(void)
 extern int g_220C40;
 extern int g_brCdTrackLast;
 
+/* WHAT IT DOES: tell the CD device to play from a given track through to the
+ * last one. Returns the raw MCI error code, so zero means it started. */
 /* @implements 0x10002870 glide FUN_10002870 */
 /* auto-filed from ghidra --refine; transforms: stackshred */
 
@@ -802,6 +811,9 @@ extern int g_brCdMediaOk;
 extern int g_brCdPlaying;
 extern int g_brCdTrackCur;
 
+/* WHAT IT DOES: stop CD playback, reporting success. Like its siblings it
+ * does nothing and claims success when CD audio is off or there is no disc,
+ * so callers do not have to check first. */
 /* @implements 0x10002830 glide FUN_10002830 */
 /* MCI "advance track" poll: true unless the CD is enabled, playing and the
  * media is ready, in which case forward the current track to 0x10002870 and

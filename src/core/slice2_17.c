@@ -1797,6 +1797,10 @@ void THUNK_1001E2B0(void)
 
 
 
+/* WHAT IT DOES: map a mode number onto which of two variants to use. GOTCHA:
+ * modes 11 and 12 and the default all return the same value, so only modes
+ * 2-4 are actually distinguished -- the explicit 11/12 case is dead in the
+ * shipped game. */
 /* @implements 0x10024DF0 glide FUN_10024df0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1825,6 +1829,10 @@ extern int BrG_6C6624;
 void __stdcall guFogGenerateLinear(int *table, float nearZ, float farZ);
 void __stdcall grFogTable(int *table);
 
+/* WHAT IT DOES: choose the fog distances for the current situation and hand
+ * them to the fog table generator. Three of the four cases share the same
+ * wide range and only the ordinary in-race case pulls the fog in close,
+ * which is why the branch chain looks redundant. */
 /* @implements 0x10023AA0 glide FUN_10023aa0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1851,6 +1859,11 @@ void FUN_10023aa0(void)
 
 
 
+/* WHAT IT DOES: work out which fixed aspect-ratio code a width-by-height
+ * pair corresponds to, by taking the ratio in eighths and matching it
+ * against the supported set. Returns whether it was an EXACT match; on a
+ * miss it still writes the nearest code, so the caller gets a usable answer
+ * plus the knowledge that it was approximated. */
 /* @implements 0x100275C0 glide FUN_100275c0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1939,6 +1952,10 @@ void __stdcall grConstantColorValue(int);
 void __stdcall grColorCombine(int, int, int, int, int);
 void __stdcall grTexCombine(int, int, int, int, int, int, int);
 
+/* WHAT IT DOES: put the 3dfx card into the game's standard drawing state for
+ * a frame -- scissor box to the full screen, depth buffering on and cleared,
+ * culling off, and the default alpha and colour combiners. Called once at
+ * the top of rendering so nothing inherits state from the previous frame. */
 /* @implements 0x1001DFB0 glide FUN_1001dfb0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -1996,6 +2013,10 @@ void __stdcall grTexFilterMode(int tmu, int min, int mag);
 void __stdcall grTexLodBiasValue(int tmu, float bias);
 void __stdcall grTexMipMapMode(int tmu, int mode, int lodBlend);
 
+/* WHAT IT DOES: bind one texture slot to the 3dfx card: sets its source,
+ * clamping, filtering and level-of-detail bias from the stored table entry.
+ * Silently does nothing if the index is past the high-water mark or the slot
+ * is empty. */
 /* @implements 0x10028420 glide FUN_10028420 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
@@ -2026,6 +2047,9 @@ extern int DAT_10661834;
 extern int DAT_10661844;
 int __stdcall grTexMinAddress(int);
 
+/* WHAT IT DOES: clear the whole texture table -- marks all 256 slots free
+ * and resets the high-water mark, so the next frame's textures start from an
+ * empty card. */
 /* @implements 0x100281C0 glide FUN_100281c0 */
 /* auto-filed from ghidra --refine; transforms: callconv */
 
@@ -2058,6 +2082,9 @@ void FUN_100281c0(void)
 extern double _DAT_10077488;
 extern double _DAT_10077490;
 
+/* WHAT IT DOES: convert a floating-point value into the signed byte the
+ * hardware wants, scaling and flipping it and then clamping into -128..127
+ * so an out-of-range input saturates rather than wrapping. */
 /* @implements 0x1002A490 glide FUN_1002a490 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
