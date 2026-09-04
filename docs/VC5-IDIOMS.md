@@ -5729,3 +5729,86 @@ gives the original's `fsub k ; fild ; fxch ; fmul kF308 ; fxch ; fmulp`.
 A named temp for the first product is the same bytes; naming `(ea + 1)`
 (int or float), or writing `(ea + 1)` unconverted, is inert. Extends the
 `((a) + b) + c` entry above from sums to products.
+
+## The accumulator of a commutative int chain follows the locals' DECLARATION order
+*(proven byte-exact 2026-09-04 on 0x1001FF60 BrDlTriFlatZ, the last 20 bytes)*
+
+Three outcodes are loaded in the order oc2, oc1, oc0 and then tested as
+`oc2 & (oc0 & oc1)` and `oc0 | oc1 | oc2`. The original copies oc0 into
+ebp for the `&` pair and tests oc2 against it; the `|` chain accumulates in
+oc0's register. Ours copied oc2 and tested oc0, and the `|` accumulated in
+oc2's register — a whole-block register rotation, register-blind 0+0, 20
+diff bytes. **Nothing in the expressions moves it**: `((oc0 & oc1) & oc2)`
+is byte-identical to `oc2 & (oc0 & oc1)` (VC5 canonicalises the chain).
+What moves it is the declaration: `int32_t oc0, oc1, oc2;` gives ours,
+`int32_t oc2, oc1, oc0;` gives the original. Declare the locals in the
+order the original READS them (here: the order the arguments are loaded,
+`[esp+0xc]` first) and the accumulator choice falls out.
+
+**The screen:** a rotation confined to the block where a commutative int
+chain is evaluated, with the copied register being the FIRST-loaded value
+in one stream and the LAST-loaded in the other. Try declaration order
+before any expression permutation.
+
+## No `add esp` after a `call` = the callee is __stdcall; an odd-address callee is an import thunk
+*(proven 2026-09-04 on 0x1001FF60; the same fact is in br_dltrim.c's header)*
+
+`call 0x100729EA` followed directly by the epilogue, where our build emits
+`add esp,0xc` after it: the callee cleans its own arguments. 0x100729EA is
+odd, and `config/fenced.csv` lists it as `ff 25 [IAT]` — the glide2x
+`grDrawTriangle` thunk, and Glide is `__stdcall`. Declare it so (and name
+it by its import so the image gate resolves `_grDrawTriangle@12` through
+`config/globals_learned.csv`). One `add esp` EXTRA in the multiset with
+nothing MISSING and the call target in fenced.csv is the whole diagnosis;
+it had been misread as "the clip arm's six-argument call is spelled wrong".
+
+## A pointer STORE beside an indexed READ of the same object forces a reload — load once into a temp
+*(proven 2026-09-04 on 0x1001FF60, +3 `mov R,[R+A]`, 592 -> 561 B)*
+
+    BrDlVtx *pv_ = &pool[i];
+    PUN(pv_->tmu1[2], pool[i].oow);     /* store through the pointer */
+    PUN(pv_->tmu0[2], pool[i].oow);     /* VC5 RELOADS oow: the store above
+                                           may alias it, and it cannot tell */
+
+The all-index form (`pool[i].tmu1[2] = pool[i].oow; pool[i].tmu0[2] =
+pool[i].oow;`, which the matched BR_DLCMD_FINISH_VTX uses) does NOT reload,
+because same-base-different-displacement is provably disjoint. As soon as
+the store side is a pointer and the load side an index, the second read
+comes back. The original loads once (`mov ecx,[ebx+A]`) and stores twice
+through the `lea`'d pointer: pun the value into a dword temp and store the
+temp. This is the mixed pointer/index split the file header already
+documents, seen from the alias side.
+
+## A pointer local established BEFORE an if/else keeps its base in a register across the arms
+*(proven byte-exact 2026-09-04 on 0x10027850 BrTex3dRecInstall, 441 B, first-pass transcription)*
+
+The original, twice:
+
+    test esi,esi ; je skip
+    mov  edi,[table]          ; <- base loaded BEFORE the compare
+    cmp  esi,0xa ; ja big
+    ... small arm ... ; jmp merge
+    ... big arm ...
+    merge: fmul [edi+edx+0x2ac] ; fstp [edi+edx+0x2ac]
+
+Written as `*(float *)(table + off) = f * *(float *)(table + off)` after the
+if/else, the base is loaded AFTER the arms merge (and the function is a
+callee-saved register short: no `push ebp`). Written as
+
+    float *p = (float *)(table + 0x2ac + idx * 0x2b4);   /* first thing in the block */
+    if (shift <= 10) f = ...; else f = ...;
+    *p = f * *p;
+
+the load lands before the compare, the pointer lives across the arms in
+edi/esi, and the extra register appears. Riders from the same function:
+(1) `cmp R,0xa ; ja` is unsigned `shift <= 10` with the small arm as the
+fall-through — `shift < 0xb` gives `cmp 0xb ; jae`; (2) VC5 tail-merges the
+S block's `fmul/fstp` into one exit but DUPLICATES the T block's because it
+ends in the epilogue — same source spelling for both blocks; (3) the
+`scaletemp` idiom held on all 22 table accesses at once: naming `off = idx
+* 0x2b4` swapped SIB base/index (`[edx+ecx+d]` for `[ecx+edx+d]`) at every
+site, re-spelling `idx * 0x2b4` at each use fixed every one; (4) a
+`static` helper of 64 B carrying the `@implements` tag of a 441 B original
+was the port's factored-out inline arithmetic — a `MISSING CODE (21%)`
+verdict on a tiny static is a MISFILED TAG, not a missing helper. Read the
+Ghidra draft of the VA before working the tagged body.
