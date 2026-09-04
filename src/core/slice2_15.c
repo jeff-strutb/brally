@@ -893,9 +893,21 @@ void BrSceneSetupFrame(const BrHudView *aViews)
      * byte-loads (it reads 0x106e7290 / 0x106e86a4 / 0x106e72f0 three times
      * each and 0x106b7c78 once, always `xor r,r; mov rl,[g]`), plus a
      * `mov R,R` / `mov B,B` / `and R,I` cluster -- the byte-slot idiom.  DEAD
-     * probe, do not re-run: nesting the 0xFB word's shifts so two bytes pack
-     * into one register before the shl pair -- VC5 canonicalises the `|`
-     * chain and it compiles byte-identical. */
+     * probes, do not re-run (all three measured at THIS TU's own /O2 /Op
+     * variant, baseline EXTRA=26 MISSING=18):
+     *  - nesting the 0xFB word's shifts so two bytes pack into one register
+     *    before the shl pair -- VC5 canonicalises the `|` chain and it
+     *    compiles byte-identical.
+     *  - separating the four colour bytes with 3-byte padding so VC5 cannot
+     *    fold two of them into one dword load (it folds c6C0200/c6C1614 and
+     *    picks the second out of `ch`).  WORSE: 39/27.  Alignment does not
+     *    buy the byte load -- at aligned offsets it dword-loads and masks.
+     *  - hoisting all four out of BrSceneEnv into standalone file-scope
+     *    `uint8_t` globals, so each is a one-byte object the compiler cannot
+     *    over-read.  ALSO WORSE: 36/24, and the missing byte loads go 6 -> 8.
+     * Both of the last two point the same way: the struct ADJACENCY is not
+     * what costs the byte loads -- the widening context is.  Whatever gets
+     * `xor r,r / mov rl,[g]` out of VC5 here, it is not the storage shape. */
     if (g_scene.f6C6618 != 0) {
         p = BrGfxAlloc();
         BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
