@@ -11,6 +11,9 @@
 #endif
 #include <stdint.h>
 
+#include "slice3_44.h"   /* BrMat3 / BrMat4 / BrVec3, for the routines moved
+                          * here out of src/core/slice3_44.c                */
+
 #ifdef BR_MATCHING_BUILD
 
 
@@ -52,3 +55,23 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+/* 0x10074830 */
+/* WHAT IT DOES: rotates a 3D vector by a 3x3 matrix. Used all through the
+ * car physics, where the same quantity has to be moved between the world's
+ * frame of reference and the car's own. */
+/* @implements 0x1006DA90 glide BrMat3MulVec3 */
+void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
+{
+    const float *v = &pV->x;
+    float *o = &pOut->x;
+    int i, k;
+
+    for (i = 0; i < 3; i++) {
+        /* the original zeroes the destination slot and then reloads it once
+         * per term, so every partial sum is rounded to float */
+        o[i] = 0.0f;
+        for (k = 0; k < 3; k++)
+            o[i] += pM->m[3 * i + k] * v[k];
+    }
+}
