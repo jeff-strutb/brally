@@ -874,19 +874,6 @@ int BrStubTrue(void)
 }
 
 
-/* WHAT IT DOES: on first call, toggle a boolean field at +0x2F7C; subsequent calls are no-ops (second instance). */
-/* @implements 0x1003C050 glide BrToggleOnce_C050 */
-
-int BrToggleOnce_C050(int param_1)
-
-{
-  if (g_brAA28D8 == 0) {
-    g_brAA28D8 = 1;
-    *(unsigned int *)(param_1 + 0x2f7c) = (unsigned int)(*(int *)(param_1 + 0x2f7c) == 0);
-  }
-  return 1;
-}
-
 
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
