@@ -155,6 +155,42 @@ def _has_eh_frame(va):
     return _EH_CACHE[va]
 
 
+def _cpp_owned():
+    """VAs the C++ workstream has a TU for but has NOT yet finished.
+
+    The `done` filter in main() drops C++ rows whose status is `match`.  That
+    leaves the more dangerous half: a function the C++ lane owns and is still
+    WORKING.  Those keep a status=diff row in report.csv, so the C ranking
+    scores them like fresh C work -- and because a half-built C twin is
+    usually structurally complete, they score WELL.  On 2026-09-03 that put
+    0x1003AB00 at reggap 3, the second-best row on the whole board, while
+    src/core/cpp/0x1003AB00.cpp already had it at 130 diff bytes; 0x100540D0
+    read "MISSING CODE (27% complete)" here while the C++ lane had it at ONE
+    diff byte.  Two lanes on one address is the duplicate-claim hazard
+    tools/claimcheck.py exists to catch, and the ranking was feeding it.
+
+    Presence of the TU is the ownership signal, not its status: the C++ lane
+    creates the file when it takes the function.
+    """
+    d = os.path.join(ROOT, 'src', 'core', 'cpp')
+    owned = {}
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return owned
+    for n in names:
+        if n.endswith('.cpp'):
+            owned[n[:-4].lower()] = None
+    p = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                va = (r.get('va') or '').lower()
+                if va in owned and r.get('status') == 'diff':
+                    owned[va] = r.get('diffs')
+    return owned
+
+
 def main():
     want = set(a.lower() for a in sys.argv[1:])
     rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
@@ -182,6 +218,7 @@ def main():
                 continue
             rows.append(r)
     objs = _objs()
+    cpp_owned = _cpp_owned()
     out = [m for m in (measure(r['va'], r['name'], objs) for r in rows) if m]
     # rank by structural gap among functions that are actually COMPLETE --
     # missing-code functions sort last, they are a different workstream.
@@ -195,7 +232,15 @@ def main():
         # known missing-code class (a factored helper the original inlined),
         # not a shape problem -- see the inlined-helper-match-class note.
         c = 100.0 * m['ri'] / m['oi'] if m['oi'] else 0.0
-        if _has_eh_frame(m['va']):
+        if m['va'].lower() in cpp_owned:
+            # Another lane is on this address.  Park-tier so claim_lane never
+            # hands it out, but still printed, with the C++ lane's own diff
+            # count, so a closer can see where the real work stands.
+            n = cpp_owned[m['va'].lower()]
+            v = ('C++ LANE OWNS THIS TU'
+                 + ('' if n is None else ' - it is at %s diff bytes' % n))
+            score = 3000000 + m['reg']
+        elif _has_eh_frame(m['va']):
             # The original opens `push -1 / push <handler> / fs:[0]`: a C++ or
             # SEH exception frame, which C cannot emit at all.  These belong to
             # the separate C++ EH workstream, and without this test they read
