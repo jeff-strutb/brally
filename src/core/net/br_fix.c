@@ -290,3 +290,128 @@ int32_t BrFixPackS16Q7(float v)
         r = 32767;
     return r;
 }
+
+/* .rdata constants BrFixPackLevel compares against, read out of the shipped
+ * DLL rather than inferred.  slice2_12.c keeps its own copies for the
+ * encoders that stayed behind; these are static, so both are private. */
+static const float BrK08F0CC =  128.0f;                  /* 0x1008F0CC */
+static const float BrK08F0E4 =  171.0f;                  /* 0x1008F0E4 */
+static const float BrK08F0E8 =  213.0f;                  /* 0x1008F0E8 */
+
+/* =====================================================================
+ * 2. Quantisers
+ * ===================================================================== */
+
+/* 0x100065A0.  0.5 - v*128, then clamp the INTEGER to [-32, 31]. */
+/* WHAT IT DOES: squashes a small signed fraction down to a 6-bit number so
+ * it fits in a network packet. Rounding is to the nearest, with halves going
+ * up, and the result is pinned inside what 6 bits can hold. The decoder on
+ * the other end undoes this exactly. */
+/* @implements 0x100065A0 d3d BrFixPackS6Q7Neg */
+int8_t BrFixPackS6Q7Neg(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - v * 128.0f);
+
+    if (n < -32)
+        n = -32;
+    if (n > 31)
+        n = 31;
+    return n;
+}
+
+/* 0x100065E0.  0.5 - v*32768, clamp to [-32768, 32767]. */
+/* WHAT IT DOES: squashes a signed fraction -- one component of a car's
+ * facing -- down to a 16-bit number for the network. Its opposite number in
+ * the decoder multiplies by a matching negative scale, so the two sign flips
+ * cancel and the value round-trips. */
+/* @implements 0x100065E0 d3d BrFixPackS16Q15Neg */
+int16_t BrFixPackS16Q15Neg(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - v * 32768.0f);
+
+    if (n < -32768)
+        n = -32768;
+    if (n > 32767)
+        n = 32767;
+    return n;
+}
+
+/* 0x10006620.  0.5 - v*(-256/361), clamp to [0, 255]. */
+/* WHAT IT DOES: turns an angle in degrees into a single byte for the
+ * network, using a scale chosen so a whole 360-degree circle just fills the
+ * byte and comes back the same on the other end. */
+/* @implements 0x10006620 d3d BrFixPackU8Angle */
+int32_t BrFixPackU8Angle(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - v * -0.7091412544250488f);
+
+    if (n < 0)
+        n = 0;
+    if (n > 255)
+        n = 255;
+    return n;
+}
+
+/* 0x10006660.  0.5 - (v - 400)*(-1/120.63491821), clamp to [0, 63]. */
+/* WHAT IT DOES: packs a value that lives between 400 and 8000 into 6 bits
+ * for the network by subtracting the base and scaling. What the quantity is
+ * is not established here; the range is all this code establishes. */
+/* @implements 0x10006660 d3d BrFixPackU8Range */
+int8_t BrFixPackU8Range(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - (v - 400.0f) * -0.008289474062621593f);
+
+    if (n < 0)
+        n = 0;
+    if (n > 63)
+        n = 63;
+    return n;
+}
+
+/* 0x100066A0.  Three float compares, no arithmetic; the result is returned in
+ * AL, so it is a byte in 0..3. Each test is `less, or unordered`. */
+/* WHAT IT DOES: sorts a value into one of four bands using three fixed
+ * thresholds, giving a 2-bit code for the network. The bands line up exactly
+ * with the four values the decoder produces, so the classification survives
+ * the round trip. What the quantity means is not established. */
+/* @implements 0x100066A0 d3d BrFixPackLevel */
+int8_t BrFixPackLevel(float v)
+{
+    if (!(v >= BrK08F0CC))              /* < 128.0f, or NaN */
+        return 0;
+    if (!(v >= BrK08F0E4))              /* < 171.0f */
+        return 1;
+    if (!(v >= BrK08F0E8))              /* < 213.0f */
+        return 2;
+    return 3;
+}
+
+/* 0x100067B0.  0.5 - v*(-256), clamp to [-32768, 32767]. */
+/* WHAT IT DOES: packs a signed value with an eighth-of-a-pixel-style scale
+ * of 256 into 16 bits for the network. */
+/* @implements 0x100067B0 d3d BrFixPackS16Q8 */
+int32_t BrFixPackS16Q8(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - v * -256.0f);
+
+    if (n < -32768)
+        n = -32768;
+    if (n > 32767)
+        n = 32767;
+    return n;
+}
+
+/* 0x100067F0.  0.5 - v*(-8), clamp to [-128, 127]. */
+/* WHAT IT DOES: packs a small signed value at a scale of 8 into a single
+ * signed byte for the network. */
+/* @implements 0x100067F0 d3d BrFixPackS8Q3 */
+int32_t BrFixPackS8Q3(float v)
+{
+    int32_t n = (int32_t)BrFloor(0.5f - v * -8.0f);
+
+    if (n < -128)
+        n = -128;
+    if (n > 127)
+        n = 127;
+    return n;
+}
