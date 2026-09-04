@@ -2,7 +2,20 @@
 """Register-blind INSTRUCTION-MULTISET diff between original bytes and a recompile.
 
     .venv/bin/python3 tools/msetdiff.py \
-        build/match/orig/<VA>.bin build/match/t3d/<v>.obj <SymbolName> [rows]
+        build/match/orig/<VA>.bin build/match/t3d/<v>.obj <SymbolName> [rows] \
+        [--orig-range LO-HI] [--recomp-range LO-HI]
+
+‼ THE RANGE FLAGS ARE HOW YOU SEE INSIDE A LOST-SYNC GAP.  divergence.py
+cannot compare a block that holds no `--key` consecutive matching
+instructions; on 0x100250D0 that hid 1,093 bytes (12.9%) behind one
+"NEVER COMPARED" line for five sessions.  A windowed multiset over the same
+two offsets reads it straight off: pass the ORIGINAL's offsets and the
+RECOMPILE's (they differ by the accumulated delta -- divergence.py's
+re-anchor line prints both).  The header line reports each side's
+instruction count and their difference, which is where a missing-code
+verdict actually comes from.  Proven 2026-09-03: orig 0x15b8-0x19fd against
+recomp 0x15b4-0x19ce gave 274 vs 270 insns and 11 MISSING / 7 EXTRA, ten of
+which were a known allocation swap and one an extra `jmp`.
 
 Complements tools/divergence.py rather than duplicating it.  divergence.py
 aligns the two streams and reports REGIONS, comparing "mnemonic + operand
@@ -68,7 +81,7 @@ def norm(i, relocd):
                     return '[' + inner + ' + A]'
                 s = re.sub(r'\[([^]]*)\]', _abs, s, count=1)
     return i.mnemonic + ' ' + s
-def load(p, sym):
+def load(p, sym, lo=0, hi=None):
     if p.endswith('.bin'):
         d, rel = open(p,'rb').read(), set()
     else:
@@ -79,13 +92,31 @@ def load(p, sym):
     # trailing inter-function alignment padding is not part of the function
     while ins and ins[-1].mnemonic in ('nop', 'int3'):
         ins.pop()
+    n = 0
     for i in ins:
+        if i.address < lo or (hi is not None and i.address >= hi):
+            continue
         rd = any(o in rel for o in range(i.address, i.address + i.size))
         c[norm(i, rd)] += 1
-    return c
+        n += 1
+    return c, n
+def _range(arg):
+    """`0x15b8-0x19fd` -> (0x15b8, 0x19fd); `0x15b8-` -> (0x15b8, None)."""
+    a, _, b = arg.partition('-')
+    return int(a, 0), (int(b, 0) if b else None)
 if __name__ == '__main__':
-    o = load(sys.argv[1], None); r = load(sys.argv[2], sys.argv[3])
+    argv = sys.argv[1:]
+    orng = rrng = (0, None)
+    if '--orig-range' in argv:
+        k = argv.index('--orig-range'); orng = _range(argv[k+1]); del argv[k:k+2]
+    if '--recomp-range' in argv:
+        k = argv.index('--recomp-range'); rrng = _range(argv[k+1]); del argv[k:k+2]
+    sys.argv = [sys.argv[0]] + argv
+    o, no = load(sys.argv[1], None, *orng)
+    r, nr = load(sys.argv[2], sys.argv[3], *rrng)
     n = int(sys.argv[4]) if len(sys.argv) > 4 else 18
+    if orng != (0, None) or rrng != (0, None):
+        print("windowed: orig %d insns, recomp %d insns (%+d)" % (no, nr, nr - no))
     miss, extra = o - r, r - o
     print("orig-only (MISSING), %d:" % sum(miss.values()))
     for k,v in miss.most_common(n): print("   %2d  %s" % (v,k))
