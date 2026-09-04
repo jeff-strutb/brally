@@ -172,7 +172,11 @@ Shared headers under `include/` reach dozens of files. Parallel work splits by
 mapped in `docs/VC5-IDIOMS.md` (the 0x1000EAF0 entries). Read the file
 header and those entries before touching it; re-running mapped probes is
 token waste. `tools/divergence.py` is the comparator. Fresh leads only:
-compiler patch level, unprobed pragmas. The sweep compiles NOTHING when a
+unprobed pragmas. ‼ **THE COMPILER PATCH LEVEL IS RULED OUT (2026-09-03)** —
+VS97 SP3's code generator was staged beside the RTM one and is byte-for-byte
+identical on 63 of the 64 functions tested, including two of the three
+giants; on 0x1000EAF0 it is WORSE. Do not reach for it again. See
+`docs/VC5-IDIOMS.md` and `BR_MSVC=` in `tools/match_sweep.py`. The sweep compiles NOTHING when a
 file has no `@implements` tag — a probe without a fresh compile proves
 nothing (this trap invalidated five conclusions once already).
 
