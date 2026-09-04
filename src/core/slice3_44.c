@@ -68,7 +68,17 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
              * term-order probes could not express, because there the anchor
              * and the association move together. VC5 keeps the a1/b1 anchor
              * anyway; 19 -> 28 with the multiset gap unchanged. The anchor
-             * is not chosen from the source's reference order. */
+             * is not chosen from the source's reference order.
+             * DEAD 2026-09-04, 39 more spellings: every term order x every
+             * factor order x a paren round the first product (32, ALL
+             * byte-identical -- the expression is fully canonicalised);
+             * walking pointers (`a += 3` per row, `++b` per column, `*o++`)
+             * are byte-identical too; pre-biased pointers (`pA->m + 2`,
+             * `pB->m + 6`, either or both) and 2-D `pA->m[3*i+2]`
+             * indexing are worse (60-75 diffs).  The original's anchor on
+             * row/column 2 is also what BOTH nests of BrMat4Mul get, so it
+             * is a property of VC5's strength reduction, not of the
+             * source.  Do not probe the expression again. */
             pOut->m[3 * i + j] = (a[3 * i + 2] * b[6 + j]
                                   + a[3 * i + 0] * b[j])
                                  + a[3 * i + 1] * b[3 + j];
