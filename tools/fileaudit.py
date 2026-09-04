@@ -51,9 +51,35 @@ from filing import (FILING, is_slice, load_report, module_of,  # noqa: E402
 # The batches that existed when the gate was introduced. The gate refuses any
 # slice file not on this list, so the count can fall and never rise.
 BASELINE = 62
-# Functions without a WHAT IT DOES: comment when the check was introduced.
-# The gate refuses any increase, so this can only fall.
+# Functions without a WHAT IT DOES: comment. 0 = every tagged function in
+# every lane must carry one; the next match without a description FAILS.
 DESC_BASELINE = 0
+
+# Every lane that holds decompiled functions. The description check ran over
+# report.csv's status=match rows ONLY until 2026-09-03, which reported "0
+# undescribed" while 329 were missing: the C lane's still-diffing rows are
+# decompiled code too, and the C++ and EXE lanes were not read at all. A
+# coverage number is only as honest as its denominator (rule 4).
+LANES = [
+    ('C', 'report.csv'),
+    ('C++', 'report_cpp.csv'),
+    ('EXE', 'report_exe.csv'),
+]
+
+
+def all_tagged():
+    """Every tagged row in every lane -- the true denominator."""
+    out = []
+    for lane, name in LANES:
+        p = os.path.join(ROOT, 'build', 'match', name)
+        if not os.path.exists(p):
+            continue
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                if r.get('va') and r.get('file'):
+                    r['lane'] = lane
+                    out.append(r)
+    return out
 
 
 def shared_map():
@@ -121,10 +147,12 @@ def main():
     g2d = shared_map()
     unrecorded, stranded, wrong, undocumented = [], [], [], []
     undecided = 0
-    for r in rows:
+    for r in all_tagged():
         gva = '0x%08x' % int(r['va'], 16)
         if describes(r['file'], gva, g2d.get(gva)) is False:
             undocumented.append(r)
+
+    for r in rows:
         key = '0x%08x' % int(r['va'], 16)
         e = rec.get(key)
         if e is None:
@@ -144,13 +172,21 @@ def main():
                     if f.startswith('slice') and f.endswith('.c'))
     grew = len(slices) - BASELINE
 
+    tagged = all_tagged()
+    bylane = collections.Counter(r['lane'] for r in undocumented)
+    print('tagged functions, ALL lanes: %d  (C %d, C++ %d, EXE %d)'
+          % (len(tagged),
+             sum(1 for r in tagged if r['lane'] == 'C'),
+             sum(1 for r in tagged if r['lane'] == 'C++'),
+             sum(1 for r in tagged if r['lane'] == 'EXE')))
     print('matched C functions        : %d' % len(rows))
     print('  undecided (a queue)      : %d' % undecided)
     print('  assigned but not moved   : %d' % len(stranded))
     print('  matched, never recorded  : %d' % len(unrecorded))
     print('  in the wrong module      : %d' % len(wrong))
-    print('  no WHAT IT DOES: comment : %d  (baseline %d)'
-          % (len(undocumented), DESC_BASELINE))
+    print('  no WHAT IT DOES: comment : %d  (baseline %d)   C %d / C++ %d / EXE %d'
+          % (len(undocumented), DESC_BASELINE,
+             bylane.get('C', 0), bylane.get('C++', 0), bylane.get('EXE', 0)))
     print('address batches remaining  : %d  (baseline %d)' % (len(slices), BASELINE))
 
     if show:
