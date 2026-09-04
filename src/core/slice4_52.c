@@ -45,26 +45,6 @@ const BrLogHost      *g_pBrLogHost;
 const BrUi51990Ctx   *g_pBrUi51990Ctx;
 
 /* ==========================================================================
- * 0x10074030  BrStrGet
- * ========================================================================== */
-
-/* WHAT IT DOES: fetches one of the game's pieces of on-screen wording by
- * number -- every menu caption, button label and message comes through here.
- * A number that is not in the table gives nothing back rather than an error. */
-/* @implements 0x10074030 d3d BrStrGet */
-const char *BrStrGet(int id)
-{
-    /* br_bits.h's BrHandleLookup IS this function with the table address
-     * turned into an argument; the original INLINES it here (byte shape:
-     * both range tests jump to one shared `return NULL`).  The range test
-     * is unsigned, which is what makes a negative id fall out as NULL. */
-    if ((uint32_t)id >= 1u && (uint32_t)id < (uint32_t)BR_STR_TABLE_COUNT) {
-        return (const char *)g_apBrStrTable[id];
-    }
-    return NULL;
-}
-
-/* ==========================================================================
  * 0x10010960 / 0x10010980  BrPolyDistX / BrPolyDistY
  * ========================================================================== */
 
@@ -85,27 +65,6 @@ float BrPolyDistY(const struct BrScrPt *pPt)
 
 /* 0x100353D0 / 0x1003BD50 BrRandom now lives in
  * src/core/startup/br_random.c. */
-
-/* ==========================================================================
- * 0x1005FF30  BrMenuSub1005FF30
- * ========================================================================== */
-
-/* WHAT IT DOES: forgets everything the game currently believes about the
- * keyboard -- which keys are held, which were just pressed, and what was held
- * last frame -- so that keys still down when a screen changes do not carry over
- * and register again. It only clears the first 64 entries of each table, not
- * all of them. */
-/* @implements 0x1005FF30 d3d BrMenuSub1005FF30 */
-/* @n64 0x8021E5C4 located */
-void BrMenuSub1005FF30(void)
-{
-    /* Three inlined `rep stosd` of 0x40 dwords.  BrTables64Clear is the same
-     * body as a callee; the original does not call it.  The size is a dword
-     * count, not an element count of the two 256-entry int32 arrays. */
-    memset(g_BrDikState, 0, BR_TABLE64_COUNT * sizeof(uint32_t));
-    memset(g_BrDikEdge,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
-    memset(g_BrDikPrev,  0, BR_TABLE64_COUNT * sizeof(uint32_t));
-}
 
 /* ==========================================================================
  * 0x10048470  BrUiScreenCtor
@@ -132,45 +91,6 @@ struct BrUiScreen *BrUiScreenCtor(struct BrUiScreen *pThis)
      * BrUiScreen begins at +0x10 and has none of them.  See the header. */
 
     return pThis;   /* the original returns `this` in eax */
-}
-
-/* ==========================================================================
- * 0x10060260  BrSub10060260
- * ========================================================================== */
-
-/* WHAT IT DOES: purpose unclear. Observably it ignores whatever it is handed
- * and calls one other routine with two fixed globals -- the input object and a
- * window handle -- so it exists to supply that pair rather than to do anything
- * itself. What the routine it calls is for is not established here. */
-/* 0x100603A0 is __thiscall in the original -- `this` in ecx, the one stack
- * argument cleaned by the callee (`ret 4`); see slice5_60.h.  VC5's C compiler
- * has no __thiscall keyword, but __fastcall places the first REGISTER-ELIGIBLE
- * argument in ecx, and a struct is never register-eligible, so a 4-byte struct
- * in second position is forced onto the stack.  That reproduces thiscall's
- * register/stack split and its callee-cleanup exactly. */
-#ifdef BR_MATCHING_BUILD
-typedef struct { void *p; } BrSub603A0Arg;
-typedef void(__fastcall *BrSub603A0ThisCall)(void *pThis, BrSub603A0Arg arg);
-#endif
-
-/* WHAT IT DOES: hand the main window over to the UI root object. GOTCHA: the
- * declared parameter has no counterpart in the original and is DISCARDED --
- * both operands come from globals. */
-/* @implements 0x10060260 d3d BrSub10060260 */
-void BrSub10060260(void *pThis)
-{
-    /* Both operands come from globals.  The declared parameter has no
-     * counterpart in the original and is discarded -- see the header. */
-    (void)pThis;
-#ifdef BR_MATCHING_BUILD
-    {
-        BrSub603A0Arg arg;
-        arg.p = g_brP680584;
-        ((BrSub603A0ThisCall)BrSub100603A0)((void *)g_pBrAA2E80, arg);
-    }
-#else
-    BrSub100603A0((void *)g_pBrAA2E80, g_brP680584);
-#endif
 }
 
 /* ==========================================================================

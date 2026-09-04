@@ -1,4 +1,15 @@
-/* slice8_85.c -- the control hooks the six slice6_73.c builders install.
+/* br_uictlhook.c -- menus: the control hooks the six screen builders install
+ * on their rows -- draw hooks, caption and code hooks, the list-selection
+ * hooks and the text read-back.
+ *
+ * This is the whole of the former slice8_85.c, moved rather than split: all
+ * eighteen tagged functions in the packet are menu row hooks, and they share
+ * eight file-static helpers. Three of the eighteen do not match yet -- the
+ * box frame and the two volume bars -- and they are menu draw hooks too.
+ *
+ * Original banner follows.
+ *
+ * slice8_85.c -- the control hooks the six slice6_73.c builders install.
  *
  * See slice8_85.h for what this module is, which builder line proves each
  * hook-to-slot pairing, which addresses are transcribed a second time and

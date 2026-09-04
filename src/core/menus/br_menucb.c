@@ -1,4 +1,15 @@
-/* slice2_24.c -- BRD3D.dll 0x10040450-0x10042740. See slice2_24.h. */
+/* br_menucb.c -- menus: the front end's per-row callbacks. Captions, values,
+ * lap-time text, the entry/exit hooks and the flag setters that the menu
+ * pages install on their rows.
+ *
+ * This is the whole of the former slice2_24.c, moved rather than split: all
+ * 35 of the packet's functions are menu callbacks, and they share one static
+ * module state (g_menu), the caption tables and the text/format helpers. Five
+ * of the 35 do not match yet; splitting the matched 30 out would have meant
+ * two copies of g_menu, which is a behaviour change, so the batch moved whole
+ * and the address range stopped being the file's identity.
+ *
+ * Original range: BRD3D.dll 0x10040450-0x10042740. See slice2_24.h. */
 
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */

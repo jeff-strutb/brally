@@ -422,97 +422,6 @@ const char *BrDPlayErrName(int32_t hr)
 }
 
 /* ==========================================================================
- * 0x1003DFC0
- * ========================================================================== */
-
-/* WHAT IT DOES: puts the whole game-setup block back to its starting values
- * -- no track, no opponents chosen, the first control layout selected --
- * which is what a fresh trip into the menus begins from. */
-/* @implements 0x1003DFC0 d3d BrUiFn1003DFC0 */
-#ifdef BR_MATCHING_BUILD
-/* Orig (Glide 0x10037660, 66 B) is ten stores to fixed globals and reads
- * nothing off the stack.  `xor eax,eax` / `mov ecx,1` feed the 0/1 stores;
- * 2 and the 0x10B4DF30 pointer are imm32.  The port's pState/pB4DF30
- * arguments are the matching-build's DAT_ symbols. */
-void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
-{
-    (void)pState;
-    (void)pB4DF30;
-    DAT_100b3014 = 0;
-    DAT_10226e80 = 0;
-    DAT_10226e7c = 0;
-    DAT_1007b324 = 1;
-    DAT_1007b32c = 2;
-    DAT_1007b328 = 1;
-    DAT_10b71530 = 0;
-    DAT_10b71534 = DAT_10b71290;
-    DAT_1007b320 = 1;
-}
-#else
-void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
-{
-    pState->g0B380C = 0;
-    pState->g22B350 = 0;
-    pState->g22B34C = 0;
-    pState->g094354 = 1;
-    pState->g09435C = 2;
-    pState->g094358 = 1;
-    pState->gB4E1D0 = 0;
-    pState->gB4E1D4 = pB4DF30;
-    pState->g094350 = 1;
-}
-#endif
-
-/* ==========================================================================
- * 0x1003E010 / 0x1003E040
- * ========================================================================== */
-
-/* WHAT IT DOES: stamps a fixed pair of values into two of the session
- * settings. What the values mean was not established; they are the same
- * pair the new-session reset writes, so this is a partial re-do of that
- * reset. */
-/* @implements 0x1003E010 d3d BrUiFn1003E010 */
-#ifdef BR_MATCHING_BUILD
-/* Orig materialises 0x102 in eax, stores ax as word then eax as dword.
- * Link-stage jmp+nop preamble is stripped by match_sweep. */
-void BrUiFn1003E010(BrUiGlobals *pG)
-{
-    int v;
-    (void)pG;
-    v = 0x102;
-    DAT_10ac5b38 = (int16_t)v;
-    DAT_10ac58f0 = v;
-}
-#else
-void BrUiFn1003E010(BrUiGlobals *pG)
-{
-    pG->gAA27E0 = (int16_t)0x0102;
-    pG->gAA2598 = 0x102;
-}
-#endif
-
-/* WHAT IT DOES: the companion of the above, stamping a different fixed pair
- * into two more session settings. Again the meaning of the values was not
- * established. */
-/* @implements 0x1003E040 d3d BrUiFn1003E040 */
-#ifdef BR_MATCHING_BUILD
-void BrUiFn1003E040(BrUiGlobals *pG)
-{
-    int v;
-    (void)pG;
-    v = 0x37;
-    DAT_10ac5b3a = (int16_t)v;
-    DAT_10ac40a0 = v;
-}
-#else
-void BrUiFn1003E040(BrUiGlobals *pG)
-{
-    pG->gAA27E2 = (int16_t)0x0037;
-    pG->gA9D010 = 0x37;
-}
-#endif
-
-/* ==========================================================================
  * 0x1003E0E0
  * ========================================================================== */
 
@@ -690,27 +599,6 @@ int32_t BrUiNum1003EA90(BrUiObj *pObj, BrUiGlobals *pG)
  * 0x1003E920 / 0x1003EA40
  * ========================================================================== */
 
-/* WHAT IT DOES: slides a menu row sideways to a position worked out from
- * one of the settings, so the row's marker sits at the place that setting
- * corresponds to. */
-/* @implements 0x10037F40 glide BrUiFn1003E920 */
-/* @implements 0x1003E920 d3d BrUiFn1003E920 */
-int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    /* Orig: lea 11*g+0x3D, fild, fstp [pObj+0x3c]. BrUiStF is an extern CALL. */
-    int32_t v = g_i0AC65C * 11 + 0x3D;
-    (void)pG;
-    *(float *)(pObj + BR_UI_OFF_F3C) = (float)v;
-    return 1;
-#else
-    /* lea ecx,[eax+eax*4] ; lea edx,[eax+ecx*2+0x3D]  ->  11*a + 61 */
-    int32_t v = pG->g0AC65C * 11 + 0x3D;
-    BrUiStF(pObj, BR_UI_OFF_F3C, (float)v);
-    return 1;
-#endif
-}
-
 int32_t BrUiFn1003EA40(BrUiObj *pObj, BrUiGlobals *pG)
 {
     uint32_t n = (pG->g0AB3D8 != 0) ? pG->gB4E708 : pG->gB4E70C;
@@ -770,26 +658,6 @@ int32_t BrUiDraw1003E9E0(BrUiObj *pObj, BrUiGlobals *pG)
  * The poll family
  * ========================================================================== */
 
-/* WHAT IT DOES: asks the row's list which entry the player has moved to and
- * remembers it as the current selection, leaving the selection alone if the
- * list has no answer. Several near-identical hooks follow, differing only
- * in which setting they store into. */
-/* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
-int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_i0AB3F4);
-    if (r >= 0) {
-        g_i0AB3F4 = r;
-    }
-#else
-    (void)br23_poll_store(pObj, &pG->g0AB3F4);
-#endif
-    return 1;
-}
-
 /* 0x1003EB10 and 0x1003EC30 are byte-for-byte the same routine emitted
  * twice; both are exported so the address map stays complete. */
 static int32_t br23_poll_commit(BrUiObj *pObj, BrUiGlobals *pG)
@@ -815,61 +683,6 @@ int32_t BrUiPoll1003EB10(BrUiObj *pObj, BrUiGlobals *pG)
 int32_t BrUiPoll1003EC30(BrUiObj *pObj, BrUiGlobals *pG)
 {
     return br23_poll_commit(pObj, pG);
-}
-
-/* WHAT IT DOES: the same, storing into the setting that tracks which entry
- * of a per-player table is current. */
-/* @implements 0x10038150 glide BrUiPoll1003EB60 */
-/* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
-int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA28AC);
-    if (r >= 0)
-        g_iAA28AC = r;
-    return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA28AC);
-    return 1;
-#endif
-}
-
-/* WHAT IT DOES: the same, storing into a different setting again. */
-/* @implements 0x10038180 glide BrUiPoll1003EB90 */
-/* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
-int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA2880);
-    if (r >= 0)
-        g_iAA2880 = r;
-    return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2880);
-    return 1;
-#endif
-}
-
-/* WHAT IT DOES: asks the list which entry the player has moved to and then
- * throws the answer away -- there is no store-back at all, so this hook only
- * has whatever effect the asking itself has. */
-/* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
-int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    /* The answer is thrown away -- there is no store-back here. */
-    BR23_SEL_OFFER(pObj, r, g_iAA2880);
-    (void)r;
-#else
-    (void)br23_sel_offer(pObj, pG->gAA2880);
-#endif
-    return 1;
 }
 
 /* WHAT IT DOES: asks the list for the current entry, remembers it, and then
@@ -909,48 +722,10 @@ int32_t BrUiPoll1003EBE0(BrUiObj *pObj, BrUiGlobals *pG)
 #endif
 }
 
-/* WHAT IT DOES: the same ask-and-remember, storing into yet another
- * setting. */
-/* @implements 0x100382A0 glide BrUiPoll1003EC80 */
-/* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
-int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA2840);
-    if (r >= 0)
-        g_iAA2840 = r;
-    return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2840);
-    return 1;
-#endif
-}
-
 int32_t BrUiPoll1003ED10(BrUiObj *pObj, BrUiGlobals *pG)
 {
     (void)br23_poll_store(pObj, &pG->gAA2A2C);
     return 1;
-}
-
-/* WHAT IT DOES: the same ask-and-remember, storing into yet another
- * setting. */
-/* @implements 0x10038320 glide BrUiPoll1003EDF0 */
-/* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
-int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
-{
-#ifdef BR_MATCHING_BUILD
-    int32_t r;
-    (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA2A30);
-    if (r >= 0)
-        g_iAA2A30 = r;
-    return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2A30);
-    return 1;
-#endif
 }
 
 int32_t BrUiPoll1003EE20(BrUiObj *pObj, BrUiGlobals *pG)
@@ -1681,45 +1456,4 @@ extern int g_brPhaseAA2904;
 
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
-int FUN_1003fac0(int);
-extern int DAT_10ac5d44;
-extern int DAT_10ac5d88;
-extern int DAT_10b71a48;
-extern int DAT_10b71a4c;
-extern int DAT_10b71a50;
-extern int DAT_10b71a54;
-extern int _DAT_10ac5bbc;
-
-/* WHAT IT DOES: read the four corner values of the currently selected table
- * row, following the row pointer stored for that index. The accessor the
- * menu drawing uses to lay a row out. */
-/* @implements 0x100382D0 glide FUN_100382d0 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-int FUN_100382d0(int param_1)
-
-{
-  int *puVar1;
-  int a;
-  int b;
-  int c;
-  int d;
-  int idx;
-
-  idx = DAT_10ac5d88;
-  puVar1 = *(int **)(DAT_10ac5d44 + 0x1de48 + idx * 8);
-  b = puVar1[1];
-  c = puVar1[2];
-  d = puVar1[3];
-  a = *puVar1;
-  _DAT_10ac5bbc = idx;
-  DAT_10b71a48 = a;
-  DAT_10b71a4c = b;
-  DAT_10b71a50 = c;
-  DAT_10b71a54 = d;
-  FUN_1003fac0(param_1);
-  return 0;
-}
-
-#endif /* BR_MATCHING_BUILD */
+#endif#endif /* BR_MATCHING_BUILD */

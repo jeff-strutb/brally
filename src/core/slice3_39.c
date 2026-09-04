@@ -446,96 +446,6 @@ BrPointI *g_pBrAA2E80 = NULL;         /* 0x10AA2E80 */
 int32_t   g_BrAA3398[7];              /* 0x10AA3398 */
 
 /* =====================================================================
- * 0x1005B050 -- BrTextBox constructor (thiscall)
- * ===================================================================== */
-
-/* WHAT IT DOES: sets up a fresh text box -- one line of on-screen text with
- * its own position and size. It clears the string and the measurements but
- * deliberately leaves the box's left and right edges as it found them, and
- * since the allocator does not zero either, a brand-new box has junk in
- * those fields until something fills them in. */
-/* @implements 0x1005B050 d3d BrTextBoxInit */
-#ifdef BR_MATCHING_BUILD
-/* thiscall ctor: vtbl immediate, memset of the 0x400 buffer at +9, field
- * zeroes through the memset's zero register, returns this. */
-extern int DAT_100776f0;
-
-BrTextBox *__fastcall BrTextBoxInit(BrTextBox *pBox)
-{
-    char *p = (char *)pBox;
-
-    *(void **)p = (void *)&DAT_100776f0;
-    memset(p + 9, 0, 0x400);
-    *(int *)(p + 0x418) = 0;
-    *(int *)(p + 0x414) = 0;
-    *(int *)(p + 0x410) = 0;
-    *(short *)(p + 0x40C) = 0;
-    *(short *)(p + 0x40A) = 0;
-    *(short *)(p + 0x41C) = 0;
-    *(int *)(p + 0x420) = 0;
-    *(int *)(p + 4) = 0;
-    *(unsigned char *)(p + 8) = 1;
-    return pBox;
-}
-#else
-/* @implements 0x1005B050 d3d BrTextBoxInit */
-BrTextBox *BrTextBoxInit(BrTextBox *pBox)
-{
-    /* The vtable store comes FIRST, before the buffer clear -- the clear
-     * starts at this+9 and so never touches it either way. */
-    pBox->pVtbl = g_pBrTextBoxVtbl;
-
-    memset(pBox->sz, 0, sizeof pBox->sz);
-
-    pBox->f418  = 0;
-    pBox->y     = 0.0f;
-    pBox->x     = 0.0f;
-    pBox->height = 0;
-    pBox->width  = 0;
-    pBox->f41C  = 0;
-    pBox->f420  = 0;
-    pBox->f04   = 0;
-    pBox->f08   = 1;
-
-    /* left / f428 / right / f430 / f434 are deliberately NOT touched. */
-    return pBox;
-}
-#endif
-
-/* =====================================================================
- * 0x1005B0A0 -- scalar deleting destructor
- * ===================================================================== */
-
-/* WHAT IT DOES: destroys a text box and, if asked, frees it too. It hands
- * the pointer back even when it has just freed it, which is what the
- * compiler's standard destructor does and is kept. */
-/* @implements 0x1005B0A0 d3d BrTextBoxDeleteDtor */
-#ifdef BR_MATCHING_BUILD
-/* Original is 2-arg thiscall: `this` in ecx, flags on the stack, `ret 4`.
- * BR_THISCALL1 (= __fastcall) would put flags in edx; a struct is never
- * register-eligible, so it is forced back onto the stack. */
-typedef struct { uint32_t v; } BrTextBoxDeleteFlags;
-BrTextBox *BR_THISCALL1 BrTextBoxDeleteDtor(BrTextBox *pBox, BrTextBoxDeleteFlags flags)
-{
-    BrTextBoxDtor(pBox);
-    if (flags.v & 1u) {
-        BrOperatorDelete(pBox);
-    }
-    return pBox;
-}
-#else
-BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
-{
-    BrTextBoxDtor(pBox);
-    if (flags & 1u) {
-        BrOperatorDelete(pBox);
-    }
-    /* Returns the (possibly freed) pointer, exactly as the original does. */
-    return pBox;
-}
-#endif
-
-/* =====================================================================
  * 0x1005B0D0 / 0x1005B160 -- measure sz[]
  * ===================================================================== */
 
@@ -549,53 +459,6 @@ typedef struct BrGlyphMetric12 {
     uint16_t s4, s6, s8, sA;
 } BrGlyphMetric12;
 extern BrGlyphMetric12 g_BrGlyphFontA12[];   /* 0x100ABE84 (glide) */
-
-/* WHAT IT DOES: walks sz[] adding up glyph advances from font A, growing the
- * seeded height to the tallest glyph seen; a control byte stops the walk.
- * The original is ONE loop -- the port's BrGlyphClassify split below is not
- * a matching twin, so the matching build carries the inlined shape. */
-/* @implements 0x10053EF0 glide BrTextBoxMeasureA */
-void BR_THISCALL1 BrTextBoxMeasureA(BrTextBox *pBox)
-{
-    char    c;
-    int16_t h;
-    int16_t k;
-    int16_t adv;
-    int16_t width;
-    int16_t maxH;
-    int16_t i;
-
-    c     = pBox->sz[0];
-    maxH  = pBox->height;
-    width = 0;
-    i     = 0;
-    for (;;) {
-        if (c == '\0' ||
-            (((k = (int16_t)((int16_t)c - 0x20)), k < 0 || k > 0x7F) &&
-             c != ' ')) {
-            pBox->height = maxH;
-            pBox->width  = width;
-            return;
-        }
-        if (c < '!' || c > '~') {
-LAB_spaceA:
-            if (c == ' ') {
-                width = width + BR_GLYPH_SPACE_ADVANCE;
-            }
-        } else {
-            adv = (int16_t)g_BrGlyphFontA12[k].advance;
-            if (adv == -1 ||
-                ((h = (int16_t)g_BrGlyphFontA12[k].height),
-                 (uint16_t)h == BR_GLYPH_NONE)) goto LAB_spaceA;
-            width = width + adv;
-            if (maxH < h) {
-                maxH = h;
-            }
-        }
-        i = i + 1;
-        c = pBox->sz[i];
-    }
-}
 
 extern BrGlyphMetric12 g_BrGlyphFontB12[];   /* 0x100AC2FC (glide) */
 
@@ -662,46 +525,6 @@ static int BrGlyphClassify(char c)
         return 0;
     }
     return 1;
-}
-
-void BrTextBoxMeasureA(BrTextBox *pBox)
-{
-    uint16_t width = 0;
-    /* Seeded from the field, never reset. */
-    uint16_t maxH  = (uint16_t)pBox->height;
-    int      i     = 0;
-    char     c     = pBox->sz[0];
-
-    while (c != '\0') {
-        int cls = BrGlyphClassify(c);
-        int hit = 0;
-
-        if (cls < 0) {
-            break;
-        }
-        if (cls > 0) {
-            const BrGlyphMetric *pG = &g_BrGlyphFontA[(unsigned char)c - BR_GLYPH_FIRST];
-
-            if (pG->advance != BR_GLYPH_NONE && pG->height != BR_GLYPH_NONE) {
-                width = (uint16_t)(width + pG->advance);
-                if ((int16_t)maxH < (int16_t)pG->height) {
-                    maxH = pG->height;
-                }
-                hit = 1;
-            }
-        }
-        if (!hit && c == 0x20) {
-            width = (uint16_t)(width + BR_GLYPH_SPACE_ADVANCE);
-        }
-
-        ++i;
-        /* movsx eax, di -- the index is truncated to 16 bits and
-         * sign-extended.  Harmless for a 0x400-byte buffer. */
-        c = pBox->sz[(int16_t)i];
-    }
-
-    pBox->height = (int16_t)maxH;
-    pBox->width  = (int16_t)width;
 }
 
 void BrTextBoxMeasureB(BrTextBox *pBox)
@@ -1245,6 +1068,9 @@ void BrMemFill(void *pDst, uint32_t count, int32_t value)
 #ifdef BR_MATCHING_BUILD
 int operator_delete();
 int __fastcall BrObj54710Dtor(void *pThis);
+/* Moved to src/core/menus/br_textbox.c; BrObj54710Dtor still takes its
+ * address as the vector destructor's element dtor. */
+int __fastcall BrVtInit53EE0(int *param_1);
 int __stdcall FUN_100746c0(int,int,int,int);
 typedef int (*funcptr)();
 extern funcptr PTR_FUN_10077720;
@@ -1253,26 +1079,6 @@ extern int * DAT_10ac6720;
 extern int * DAT_10ac6730;
 extern funcptr PTR_FUN_100776F0;
 extern funcptr PTR_FUN_100776f0;
-
-/* WHAT IT DOES: stub that always returns 0. */
-/* @implements 0x10053E60 glide BrStubFalse */
-
-int BrStubFalse(void)
-
-{
-  return 0;
-}
-
-/* WHAT IT DOES: vtable constructor: install the function-pointer table at PTR_FUN_100776F0 (fastcall). */
-/* @implements 0x10053EE0 glide BrVtInit53EE0 */
-
-int __fastcall BrVtInit53EE0(int *param_1)
-
-{
-  *param_1 = &PTR_FUN_100776f0;
-  return;
-}
-
 
 /* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (BrObj54710Dtor), then
  * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
