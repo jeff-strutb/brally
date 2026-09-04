@@ -3450,6 +3450,56 @@ source spelling reaches it: the source names all three the same way in both.
 What it does NOT rule out is a change that alters the pressure, which is why
 these verdicts go stale when the frame moves (see the staleness entry above).
 
+## A hand-inlining macro must be spellable PER USE SITE, not per instantiation
+
+Proven 2026-09-03 on the seven clip planes (`src/core/drawing/br_dlclip.c`).
+Cost of getting it wrong: NEAR (0x1001F7B0) sat parked for several sessions
+under a confident and completely wrong "not source-reachable" verdict.
+
+When you hand-inline a helper as a macro (previous entry), the macro body
+usually uses its parameter at MORE THAN ONE site.  `BR_CLIP_PLANE` evaluated
+the plane distance twice:
+
+    dCur  = DIST(pCur);
+    dPrev = DIST(pPrev);
+
+The original's two sites disagreed with each other: NEAR's dCur site leads
+its x87 pair with `f0C`, its dPrev site leads with `f18`.  One `DIST`
+parameter yields one spelling, so no argument could ever satisfy both — and
+the honest-looking inference from that is exactly the trap:
+
+> "Our two sites disagree with the original from a SINGLE macro expansion,
+> therefore the choice is made per site by the scheduler, therefore it is
+> not source-reachable."
+
+**That reasoning is invalid, and it will look sound every time.** The premise
+"a single expansion cannot produce two spellings" is a property of OUR macro,
+not of the compiler. Split the parameter — `BR_CLIP_PLANE(NAME, DIST_CUR,
+DIST_PREV)`, textually a no-op for every instantiation that passes the same
+argument twice — and each site becomes independently spellable. NEAR went
+byte-exact on the first sweep after the split; LEFT went 4 diff bytes to 2.
+
+The screen, and it is cheap:
+
+- Count the use sites of each macro parameter in a hand-inlined body.
+- If a parameter is used more than once and ANY residue lands inside one of
+  those expansions, split the parameter before you measure anything else.
+  Passing the same argument to both halves is byte-identical, so the split
+  costs one sweep to prove and cannot regress the siblings.
+- Only after each site is independently spellable is a "the scheduler chose
+  it" verdict on that site worth writing down.
+
+Corollary for the paren lever (`((a) + b) + c` picks the `fld` operand): it
+is not uniformly available. On this body it flips the pair at either site,
+but at the dPrev site it ALSO sinks that site's `fadd` past four unrelated
+instructions (33 diff bytes at that site alone, 31 at both). A lever with a
+site-dependent cost is only usable once the sites are separable — which is
+the same fix. Dead alongside it, measured: swapping the `+` operands is
+byte-identical; swapping the two distance STATEMENTS is inert; naming the
+leading operand costs an extra float local that perturbs the shared frame and
+un-matches two sibling instantiations (6/7 -> 4/7) — "name the product" needs
+a sum of products and does nothing on a plain two-term add.
+
 ## Inlining a helper by hand: use a MACRO, and pun the float stores
 *(proven 2026-09-03 on the two triangle handlers, 0x1001ECF0 and 0x1001FA30 —
 337 and 627 bytes short, down to 49 and 56)*
