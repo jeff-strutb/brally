@@ -420,4 +420,14 @@ int BrThunk6E580(void)
   return;
 }
 
+
+/* WHAT IT DOES: no-op — the shared target of multiple thunks. */
+/* @implements 0x1006E590 glide BrNop6E590 */
+
+int BrNop6E590(void)
+
+{
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */

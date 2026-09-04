@@ -786,16 +786,6 @@ int FUN_1006c880();
 int FUN_1006c8b0();
 
 
-/* WHAT IT DOES: no-op — the shared target of multiple thunks. */
-/* @implements 0x1006E590 glide BrNop6E590 */
-
-int BrNop6E590(void)
-
-{
-  return;
-}
-
-
 typedef int (*funcptr)();
 extern funcptr DAT_118ed1d8;
 int BrTex3dRecSet278();
