@@ -989,23 +989,8 @@ void BrNop_1002C509(void)
   return;
 }
 
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002CB3F glide BrNop_1002CB3F */
-
-void BrNop_1002CB3F(void)
-
-{
-  return;
-}
-
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002CB44 glide BrNop_1002CB44 */
-
-void BrNop_1002CB44(void)
-
-{
-  return;
-}
+/* 0x1002CB3F BrNop_1002CB3F and 0x1002CB44 BrNop_1002CB44 now live in
+ * src/core/startup/br_stubs.c. */
 
 /* WHAT IT DOES: build the frame-opening display list: reset the write pointer into this
  * frame's 96000-byte command buffer, then emit the fixed F3D-style preamble (segment,

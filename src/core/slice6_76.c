@@ -596,21 +596,8 @@ void BrSndVoiceApplyVolume(int param_1)
   return;
 }
 
-/* WHAT IT DOES: start the once-a-second service: create its wake event and spawn
- * BrSecondTickLoop on its own thread, arming the first 1000 ms deadline. */
-/* @implements 0x1006A5A0 glide BrSecondTickStart */
-
-void BrSecondTickStart(void)
-
-{
-  DAT_11849e60 = (int)CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
-  DAT_1184c07c = (int)CreateThread((LPSECURITY_ATTRIBUTES)0x0,0,(LPTHREAD_START_ROUTINE)BrSecondTickLoop,
-                              (LPVOID)0x0,0,(LPDWORD)&DAT_11849e64);
-  DAT_11849ea8 = 1000;
-  DAT_1184c078 = 1;
-  return;
-}
-
+/* 0x1006A5A0 BrSecondTickStart now lives in
+ * src/core/startup/br_secondtick.c. */
 
 extern int DAT_100bcbe8;
 extern double _DAT_10077c40;
@@ -618,64 +605,6 @@ extern int BrG_6C7CB8;
 int BrStrGet(int);
 float BrVec3Dot(int, int);
 
-extern float _DAT_10077a78;
-int BrRbVelAtBodyPointXY();
-
-/* WHAT IT DOES: work out the contact velocity at each of a car's four wheels
- * in turn and update that wheel from it. The per-wheel step of the driving
- * model, with the four wheels unrolled into a switch because the original
- * reads them from four separate fields. */
-/* @implements 0x10068600 glide FUN_10068600 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void FUN_10068600(int param_1)
-
-{
-  float fVar1;
-  int iVar2;
-  int i;
-  int *puVar4;
-  int zero;
-  float vel[3];
-  
-  zero = 0;
-  puVar4 = *(int **)(param_1 + 0x18);
-  i = 0;
-  do {
-    puVar4[3] = zero;
-    puVar4[2] = zero;
-    switch (i - zero) {
-    case 0:
-      BrRbVelAtBodyPointXY(vel, param_1, *(int *)(param_1 + 4));
-      iVar2 = *(int *)(param_1 + 4);
-      break;
-    case 1:
-      BrRbVelAtBodyPointXY(vel, param_1, *(int *)(param_1 + 8));
-      iVar2 = *(int *)(param_1 + 8);
-      break;
-    case 2:
-      BrRbVelAtBodyPointXY(vel, param_1, *(int *)(param_1 + 0xc));
-      iVar2 = *(int *)(param_1 + 0xc);
-      break;
-    default:
-      BrRbVelAtBodyPointXY(vel, param_1, *(int *)(param_1 + 0x10));
-      iVar2 = *(int *)(param_1 + 0x10);
-      break;
-    }
-    if (*(int *)(iVar2 + 0x1b4) == zero) {
-      fVar1 = _DAT_10077a78;
-    }
-    else if (vel[2] < _DAT_10077a78) {
-      fVar1 = _DAT_10077a78;
-    }
-    else {
-      fVar1 = *(float *)(param_1 + 0x1bc) * vel[2];
-    }
-    *(float *)(puVar4 + 4) = fVar1;
-    puVar4 = (int *)*puVar4;
-    i = i + 1;
-  } while (i < 4);
-  return;
-}
+/* 0x10068600 FUN_10068600 now lives in src/core/driving/br_wheelvel.c. */
 
 #endif /* BR_MATCHING_BUILD */

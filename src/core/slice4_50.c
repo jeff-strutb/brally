@@ -487,74 +487,8 @@ int BrSub1003C260(void)
  * ========================================================================== */
 
 /* (counter * 1000 + 500) / frequency, with _allmul / _alldiv semantics. */
-static int32_t BrPerfToMs(int64_t counter)
-{
-    if (g_br18AB120 == 0) {
-        return 0;               /* DEVIATION: the original divides by zero */
-    }
-    return (int32_t)((counter * 1000 + 500) / g_br18AB120);
-}
-
-/* 0x10075020 */
-/* WHAT IT DOES: tells the caller how many milliseconds have passed since the
- * game started. On its first call it works out how to read the machine's
- * high-resolution clock and notes the starting point; from then on it uses
- * that, falling back to the ordinary Windows clock on any machine where the
- * precise one is unavailable. */
-/* @implements 0x10075020 d3d BrSub10075020 */
-#ifdef BR_MATCHING_BUILD
-/* Direct IAT calls and globals; the ms conversion is inline __int64 math
- * ((t*1000+500)/freq via __allmul/__alldiv), truncated to int. The QPC
- * import pointer is CSE'd across both arms. */
-extern int     DAT_100bb2dc;
-extern __int64 DAT_118ee238;        /* frequency  */
-extern int     DAT_118ee240;        /* QPF result */
-extern int     DAT_118ee248;        /* baseline ms */
-__declspec(dllimport) int __stdcall QueryPerformanceCounter(__int64 *);
-__declspec(dllimport) int __stdcall QueryPerformanceFrequency(__int64 *);
-__declspec(dllimport) unsigned long __stdcall timeGetTime(void);
-
-int32_t BrSub10075020(void)
-{
-    __int64 t;
-
-    if (DAT_100bb2dc != 0) {
-        DAT_118ee240 = QueryPerformanceFrequency(&DAT_118ee238);
-        QueryPerformanceCounter(&t);
-        DAT_118ee248 = (int)((t * 1000 + 500) / DAT_118ee238);
-        DAT_100bb2dc = 0;
-    }
-    if (DAT_118ee240 != 0) {
-        if (QueryPerformanceCounter(&t) != 0)
-            return (int)((t * 1000 + 500) / DAT_118ee238) - DAT_118ee248;
-    }
-    return (int)timeGetTime();
-}
-#else
-/* @implements 0x10075020 d3d BrSub10075020 */
-int32_t BrSub10075020(void)
-{
-    int64_t now;
-
-    if (g_br0BBAD4 != 0) {
-        g_br18AB128 = BrPlatQueryPerfFreq(&g_br18AB120);
-        now = 0;
-        /* The original ignores this call's return value. */
-        (void)BrPlatQueryPerfCounter(&now);
-        g_br18AB130 = BrPerfToMs(now);
-        g_br0BBAD4  = 0;
-    }
-
-    if (g_br18AB128 == 0) {
-        return (int32_t)BrPlatTimeGetTime();
-    }
-    now = 0;
-    if (BrPlatQueryPerfCounter(&now) == 0) {
-        return (int32_t)BrPlatTimeGetTime();
-    }
-    return BrPerfToMs(now) - g_br18AB130;
-}
-#endif
+/* 0x10075020 BrSub10075020, with the static helper only it used, now lives
+ * in src/core/startup/br_timer.c. */
 
 /* ==========================================================================
  * 0x10004C20

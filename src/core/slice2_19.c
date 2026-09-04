@@ -1429,52 +1429,8 @@ extern int DAT_106e8698;
 extern int DAT_106ed5d0;
 int BrStubTrue();
 
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002E136 glide BrNop_1002E136 */
-
-void BrNop_1002E136(void)
-
-{
-  return;
-}
-
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002E2DE glide BrNop_1002E2DE */
-
-void BrNop_1002E2DE(void)
-
-{
-  return;
-}
-
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002E2E3 glide BrNop_1002E2E3 */
-
-void BrNop_1002E2E3(void)
-
-{
-  return;
-}
-
-/* WHAT IT DOES: store the argument into the global at 0x106E8A1C. */
-/* @implements 0x1002E2E8 glide BrSet_106E8A1C */
-
-void BrSet_106E8A1C(int param_1)
-
-{
-  DAT_106e8a1c = param_1;
-  return;
-}
-
-/* WHAT IT DOES: store the argument into the global at 0x106E8698. */
-/* @implements 0x1002E2F5 glide BrSet_106E8698 */
-
-void BrSet_106E8698(int param_1)
-
-{
-  DAT_106e8698 = param_1;
-  return;
-}
+/* 0x1002E136, 0x1002E2DE and 0x1002E2E3 (nops) and the two setters
+ * 0x1002E2E8 / 0x1002E2F5 now live in src/core/startup/br_stubs.c. */
 
 /* WHAT IT DOES: return 0. */
 /* @implements 0x1002E70A glide BrRet0_1002E70A */
@@ -1485,14 +1441,7 @@ int BrRet0_1002E70A(void)
   return 0;
 }
 
-/* WHAT IT DOES: empty function (/Od frame, nothing else). */
-/* @implements 0x1002EBCC glide BrNop_1002EBCC */
-
-void BrNop_1002EBCC(void)
-
-{
-  return;
-}
+/* 0x1002EBCC BrNop_1002EBCC now lives in src/core/startup/br_stubs.c. */
 
 
 extern int DAT_106ec740;
