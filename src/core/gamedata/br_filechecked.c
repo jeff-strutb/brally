@@ -1,4 +1,8 @@
-/* br_filechk.c -- gamedata: the "Checked" file helpers.
+/* br_filechecked.c -- gamedata: the BrFile*Checked helpers.
+ *
+ * Not to be confused with br_chkfile.c, which holds the CHK_* family over a
+ * named-file handle; these four are the plain __stdcall open/read/write pair
+ * that abort on failure.
  *
  * Open, read and write that abort the game with a message instead of
  * returning a failure, so callers of the game's own file readers never test a
