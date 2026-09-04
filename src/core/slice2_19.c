@@ -1555,29 +1555,6 @@ int BrRet1_1003557B(void) { return 1; }
 /* @d3donly 0x10035B87 BrRet1_10035B87 -- glide twin 0x1002EC2C COMDAT-folded onto BrRet1_1003557B */
 int BrRet1_10035B87(void) { return 1; }
 
-/* 0x10035520 */
-/* WHAT IT DOES: fills in one of the game's car slots. Beware the flag it is
- * given: a non-zero flag means DO NOT load, in which case it only writes a
- * note to the log; a zero flag is the one that actually loads the car. Either
- * way the slot ends up pointing at the caller's data. */
-/* @implements 0x10035520 d3d BrCarSlotLoad */
-/* Three args; the car-record table 0x100BCDD0 and the slot-pointer array
- * 0x106ED5E8 are globals, and the record address is recomputed for the
- * second call (/Od compiles each expression literally -- no pCar local). */
-extern const unsigned char g_hudSpriteTable[];   /* 0x100BCDD0 */
-void *g_apBr6ED5E8[16];                          /* 0x106ED5E8 */
-
-void BrCarSlotLoad(int i, void *pArg, int flag)
-{
-    /* GOTCHA: flag != 0 means "do not load", not "load". */
-    if (flag == 0)
-        BrSub10037740((unsigned char *)g_hudSpriteTable + i * 0x15F88, pArg);
-    else
-        BrLogPrint("LoadCar()");
-
-    BrSub1003551B((unsigned char *)g_hudSpriteTable + i * 0x15F88);
-    g_apBr6ED5E8[i] = pArg;
-}
 
 /* 0x10035BA7  The parameter is never read. */
 /* WHAT IT DOES: writes out whatever message was last handed to the routine
