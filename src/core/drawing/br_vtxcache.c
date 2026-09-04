@@ -31,6 +31,9 @@
 #include "slice1_05.h"
 #include "br_gamestep.h"
 #include "slice2_16.h"    /* g_brRca67B548/54C, for 0x10018A30 */
+#define BrPtrListContains BrPtrListContains_port
+#include "slice2_17.h"    /* BrPtrList, for 0x10019000 */
+#undef BrPtrListContains
 #undef BrVtxExpand
 #undef BrVtxCacheInsert
 #undef BrVtxCacheResolve
@@ -40,6 +43,7 @@
 #include "slice1_05.h"
 #include "br_gamestep.h"
 #include "slice2_16.h"
+#include "slice2_17.h"
 #endif
 
 #include <stddef.h>
@@ -419,5 +423,50 @@ void BrRcaResetCounts(BrVtxCache *pCache, BrPtrList *pList)
 {
     pCache->nEntries = 0;
     pList->n = 0;
+}
+#endif
+
+/* 0x1002BF40 */
+/* WHAT IT DOES: asks whether something is already in a list. A null thing is
+ * reported as present without the list being looked at, which is how callers
+ * get "nothing to do" for free. */
+/* @implements 0x1002BF40 d3d BrPtrListContains */
+#ifdef BR_MATCHING_BUILD
+/* The original takes only pv and reads the list at two absolute addresses
+ * (count 0x1067B548, array 0x1067B550).  The port passes the list in. */
+extern int   g_br67B548;
+extern void *g_br67B550[];
+
+int BrPtrListContains(const void *pv)
+{
+    int i;
+    int n;
+
+    if (pv == NULL)
+        return 1;                    /* NULL short-circuits to "present" */
+
+    n = g_br67B548;
+    for (i = 0; i < n; ++i)
+        if (g_br67B550[i] == pv)
+            return 1;
+
+    return 0;
+}
+#else
+int BrPtrListContains(const BrPtrList *pList, const void *pv)
+{
+    int i;
+
+    if (pv == NULL)
+        return 1;                    /* NULL short-circuits to "present" */
+
+    if (pList->n <= 0)
+        return 0;
+
+    for (i = 0; i < pList->n; ++i)
+        if (pList->ap[i] == pv)
+            return 1;
+
+    return 0;
 }
 #endif
