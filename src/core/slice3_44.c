@@ -40,26 +40,6 @@ extern void BrGbiCall10075330(void *pv);
 /* Packed 3x3                                                          */
 /* ================================================================== */
 
-/* 0x10074830 */
-/* WHAT IT DOES: rotates a 3D vector by a 3x3 matrix. Used all through the
- * car physics, where the same quantity has to be moved between the world's
- * frame of reference and the car's own. */
-/* @implements 0x1006DA90 glide BrMat3MulVec3 */
-void BrMat3MulVec3(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
-{
-    const float *v = &pV->x;
-    float *o = &pOut->x;
-    int i, k;
-
-    for (i = 0; i < 3; i++) {
-        /* the original zeroes the destination slot and then reloads it once
-         * per term, so every partial sum is rounded to float */
-        o[i] = 0.0f;
-        for (k = 0; k < 3; k++)
-            o[i] += pM->m[3 * i + k] * v[k];
-    }
-}
-
 /* 0x10074AC0 */
 /* WHAT IT DOES: combines two 3x3 rotations into one, so that applying the
  * result does the same as applying both in turn. */
