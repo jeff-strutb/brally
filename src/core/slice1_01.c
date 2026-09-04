@@ -516,24 +516,6 @@ int BrCdTrackGet(void)
   return;
 }
 
-/* WHAT IT DOES: play the previous CD track, clamping to the first track. */
-/* @implements 0x10002C70 glide BrCdTrackPrev */
-
-int BrCdTrackPrev(void)
-
-{
-  int iVar1;
-  
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
-    iVar1 = FUN_10002c50();
-    g_brCdTrackCur = iVar1 + -1;
-    if (iVar1 + -1 < g_brCdTrackFirst) {
-      g_brCdTrackCur = g_brCdTrackFirst;
-    }
-    BrCdTrackPlay(g_brCdTrackCur);
-  }
-  return 1;
-}
 
 /* WHAT IT DOES: set music volume — dispatches to EAR mixer or CD-audio path. */
 /* @implements 0x10002D30 glide BrCdVolumeSet */
@@ -560,6 +542,51 @@ int BrCdTrackResume(void)
   if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
     uVar1 = BrCdTrackPlay(g_brCdTrackCur);
     return uVar1;
+  }
+  return 1;
+}
+
+/* Message-based CD transport, used when the EAR software path is NOT the one
+ * in charge: 0x104B162C is the transport entry point and the second argument
+ * is the command (4 = pause, 0xC = resume).  Both wrappers normalise the
+ * result to 0/1 with the original's `neg/sbb/neg`, which is what `!= 0`
+ * compiles to. */
+extern int g_br0940A8;                              /* 0x1007B078 */
+extern int (__stdcall *DAT_104b162c)(int, int);     /* 0x104B162C */
+
+/* WHAT IT DOES: stop the music where it is, so it can be picked up again from
+ * the same place.  If the game is playing its own music files it hands the job
+ * to that path; otherwise it tells the CD to pause, and reports whether the
+ * drive accepted.  With nothing playing there is nothing to do and it reports
+ * success. */
+/* @implements 0x10002EB0 glide BrCdPause */
+
+int BrCdPause(void)
+
+{
+  if (g_brCdEnabled == 1) {
+    BrCdMciPause();
+    return;
+  }
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b162c)(g_br0940A8,4) != 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: start the music again from wherever it was paused.  The twin
+ * of BrCdPause above, differing only in the command it sends. */
+/* @implements 0x10002F10 glide BrCdResume */
+
+int BrCdResume(void)
+
+{
+  if (g_brCdEnabled == 1) {
+    BrCdTrackResume();
+    return;
+  }
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b162c)(g_br0940A8,0xc) != 0;
   }
   return 1;
 }
