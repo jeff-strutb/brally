@@ -5538,3 +5538,138 @@ parameter list tell you which accesses take the pointer.
 two edits did. fn.py compiles `/O2` only and the sweep picked `/O2` and `/O2p`
 for this row on different runs. When the two disagree, **report.csv is the
 scoreboard** and fn.py's regnorm is qualitative only.
+
+## The SURROUNDING TU decides commutative operand order — and it is the DECLARED INTRINSICS, not position
+
+Established 2026-09-03 during the refiling job, from three independent
+sightings in three different modules. The common shape: **a function moved
+into another file with its text byte-for-byte unchanged, and its codegen
+changed.** So a divergence is not always a spelling problem, and before
+grinding an operand order, ask what the translation unit around it declares.
+
+The three, weakest evidence to strongest:
+
+1. `BrSndChanSetRatio` (0x1006B5F0) moved verbatim and came out **62 diff
+   bytes**: VC5 reassociated `(double)ratio * chanRate * K` from `fild`-first
+   to `fld`-first. A minimal-TU probe matched, proving TU context rather than
+   source. Carrying the whole cross-module declaration block did NOT fix it;
+   moving the function ABOVE the file's `#include <windows.h>` did.
+
+2. `BrRbInitInertia` moved verbatim into a fresh ONE-FUNCTION file came out
+   with **exactly one differing byte** — `lea ebx,[eax+ecx]` where the
+   original has `[ecx+eax]`, the `3*i+j` index. Same text, same includes;
+   only the surrounding TU differed. Putting it in `br_carphys.c` instead
+   made it byte-exact. **This is the cheapest repro of the effect: one
+   instruction, one byte.** Use it, not the float case.
+
+3. `BrSwapU16x4` (0x10018A90) regressed to **7 diff bytes** in a new TU, and
+   `#include <stdlib.h>` ALONE fixed it. Without the intrinsic declarations
+   it brings in, the first pair of byte loads comes out `mov ch,[eax]` before
+   `mov cl,[eax+1]`, the reverse of the original. `<string.h>` does not do
+   it; function order in the file does not. There is a `DO NOT REMOVE` note
+   at that include in `gamedata/br_rcaswap.c`.
+
+**(3) names the mechanism and reframes (1).** What varies is not the
+function's POSITION in the file but WHICH INTRINSICS THE COMPILER HAS BEEN
+TOLD ABOUT at that point — `windows.h` drags in a large intrinsic set, so
+moving a function above it changes the declared set, which is the same lever
+as adding `<stdlib.h>`. Do not record the windows.h case as a
+position effect; it is an intrinsic-declaration effect seen from the side.
+
+**Practical consequences, all paid for in this job:**
+
+- **Carry the source file's ENTIRE preamble verbatim when you move code. Do
+  not trim an include because it looks unused.** `include/br_gamestep.h`
+  declares nothing either file calls — no includes, no pragmas, one enum
+  constant — yet dropping it from a destination un-matched 0x10019210 (12
+  diff bytes, best variant sliding /O2 -> /O2 /Oy-) and re-coloured
+  0x1001CF90 wholesale (same 448 bytes, 142 different). Measured both
+  directions, twice. The only thing it changes is the set of names in the
+  TU's symbol table.
+- Splitting a function into its own TU can WIN a match: 0x1002F380
+  BrPadTranslate and 0x100349C0 BrVec3Project both went DIFF -> byte-exact
+  that way. Refiling is not match-neutral in one direction only.
+- A move can PERTURB an already-diffing neighbour: inserting
+  `BrRbInitInertia` into `br_carphys.c` took `BrCpIntegrateVelocity` from
+  121 to 148 diff bytes. Prefer a new sibling file over one holding a
+  function somebody is grinding.
+- Put all include blocks at the TOP of a destination file; appending a
+  second batch's preamble after the first one's includes gives
+  `C2370: 'errno' : redefinition`.
+
+## A GREEN SWEEP IS NOT EVIDENCE THAT A MOVE IS SAFE — check the port arm too
+
+`match_sweep.py` only ever compiles `/DBR_MATCHING_BUILD`. A file's `#else`
+arm is therefore compiled by nothing the matching pipeline runs. So a port
+arm that calls something whose declaration did not travel compiles to a C89
+IMPLICIT DECLARATION (warning C4013, not an error) and leaves an UNDEFINED
+EXTERNAL in the object — a link failure, with a clean `n/n match` either side
+of it. `tools/portcheck.py` (2026-09-03) compiles the other configuration and
+reads the COFF symbol table, which is the only way to see it.
+
+Run it after every refile, with a baseline: `--baseline main`, plus
+`--map <newfile>=<the slice it came from>` for a file you created (a new file
+has no baseline, so inherited noise reappears as a finding) and
+`--ignore snprintf` (VC5 predates C99, so every snprintf call is a C4013 and
+always was). Without the baseline the real finding is buried.
+
+**Method note that cost a false positive:** do not byte-search the object for
+the symbol name — a file that legitimately defines it as its own static hits.
+Parse the symbol table and count only records with section 0, storage class
+2, value 0.
+
+It found five real defects on its first tree-wide run, all introduced by the
+refiling job and all passed by the sweep: four declarations left behind
+(`BrX10035BBA`, `BrSub1007A940`, `BrOptFlushMessage`, and
+`BrRd32`/`BrRd16`/`BrPtrAt`), and one file that **would not compile at all** —
+`slice2_23.c`, left one `#endif` short by a merge resolution. Nothing caught
+that one either, because every tagged function had left the file and the
+sweep compiles NOTHING for a file with no `@implements` tag. The tree-wide
+portcheck run doubles as the compile check for tagless batch files, which is
+otherwise a hole in the gate.
+
+## Duplicating a file-`static` is about STATE, not about the keyword
+
+When code moves out of a batch and its `#else` arm still calls a `static`
+helper the batch keeps, the move looks blocked. Whether it is depends on what
+the static IS:
+
+- **A stateless helper FUNCTION may be duplicated** into the destination TU,
+  with a comment saying why. Two copies cannot drift, because there is
+  nothing to drift. The tree's own precedent is `BrFtol`, duplicated verbatim
+  in `slice1_02.c` and `slice2_12.c` with exactly that comment. Applied to
+  `BrCtrlProfileIndex` (a five-line dispatch), to `BrDiDev`/`BrDiEff` (one-line
+  vtable casts) and to `BrRd32`/`BrRd16`/`BrPtrAt` (memcpy readers).
+- **A cached FLAG or a state block may NOT.** `g_br86HasPerf` is written once
+  behind a probe guard and read thereafter; a second TU's copy would sit at 0
+  forever and hand back a timer resolution nobody requested. The sweep emits
+  identical bytes either way, so nothing would have caught it. The answer
+  there was to move the whole section INCLUDING THE WRITER, so the flag
+  relocates instead of being copied.
+- Check the destination for a TYPE conflict before assuming the module file
+  is the home: `br_netstate.c` declares two globals `int` that the incoming
+  block has as `void *` (C2371), and `br_sfx.c` declares two functions
+  `void`/`int` against the mover's `int` — both forced a sibling file. This
+  is now the second most common reason a group needs its own file.
+
+**And when a whole batch file is one module's code held together by a state
+block, move the FILE.** slice2_24.c, slice3_31.c and slice8_85.c went to
+menus/ that way, and slice2_15.c to drawing/br_hudscene.c: fourteen functions,
+seven byte-exact and seven still diffing, sharing `g_hud`/`g_screen`/
+`g_scene`/`g_weather`. Splitting the matched ones out would have put one state
+block in two TUs. That is what took `address batches remaining` off its
+baseline for the first time, 62 -> 58.
+
+**The counter-case is `g_s17` in slice2_17.c, and it is genuinely blocked.**
+That batch spans several original TUs (0x10019xxx, 0x1001Cxxx, 0x1002Axxx are
+not contiguous), so `g_s17` is a decomp-invented aggregate, not an original
+file-static, and the file is not module-homogeneous — drawing, racing,
+startup and a set of matrix/lighting helpers. 136 references across 72
+functions. Ten functions are stranded on it: six read it in the MATCHING arm
+(3 to 24 references each), four only in the port arm. `BrS17GetState()` is
+non-static and already reaches the state from `drawing/br_drawcar.c`, so the
+port-arm four could be routed through it — but that is editing port bodies,
+not relocating them, and nothing in the pipeline validates it. Two of the
+port-arm four are plain field accesses and would go mechanically; the other
+two would not, because `s17_car` is `g_s17.pCars + i * BR_CAR_STRIDE` —
+state-bound, so it cannot be duplicated the way a stateless macro could.
