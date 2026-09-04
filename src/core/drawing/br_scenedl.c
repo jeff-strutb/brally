@@ -11,6 +11,43 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
+ * ‼‼ TWENTY-FOURTH PASS (2026-09-03) -- THE TWENTY-THIRD PASS IS RETRACTED.
+ * ITS if/else IS NOT THE ORIGINAL'S SOURCE, AND IT SCORED BETTER ANYWAY.
+ * That is the whole lesson, and it is the exact trap rule 2 exists to stop.
+ *   The twenty-third pass never read the original at the site; it inferred
+ *   the if/else from a downstream symptom (the two homes) and took the
+ *   scoreboard as confirmation.  Read at last, orig+0x1cb1 is unambiguous:
+ *       1cb1  dec  eax               h1 = head - 1
+ *       1cb2  mov  ebx, eax          pDst = h1        <- ASSIGN
+ *       1cb4  mov  [esp+0x40], eax   home h1
+ *       1cb8  test ebx, ebx          test pDst, NOT h1
+ *       1cba  mov  [esp+0x20], ebx   home pDst
+ *       1cbe  jge  0x1cc9
+ *       1cc0  mov  ebx, 0x1f3        pDst = 499       <- OVERRIDE
+ *       1cc5  mov  [esp+0x20], ebx   home pDst again
+ *   So it IS assign-then-override, the same shape the file already had, and
+ *   the same shape the `slot` site at 0x1d00 uses.  The if/else INVERTS the
+ *   arms -- ours emitted `mov edx,0x1f3` up front with `jl` and a fall-
+ *   through, where the original emits `jge` over a `mov ebx,0x1f3` -- so it
+ *   can never converge, whatever it scores.  Reverted.
+ *   ‼ AND IT SCORED BETTER: instructions 4 short -> 1, bytes -14 -> -8,
+ *   register-blind 38 -> 37 rows, EVERY axis.  A spelling can improve every
+ *   number this project measures and still be provably wrong.  **Before
+ *   accepting any control-flow change, check the ARM ORDER against the
+ *   original's branch, not just the totals.**
+ *   ONE THING KEPT, and it is the faithful reading: the test is on pDst, not
+ *   on h1.  Byte-identical (same value), but it is what the bytes test, so
+ *   it is what the source said.
+ *   ‼ AND THE REAL STORY AT THIS SITE IS NOW CLEAN: with the faithful
+ *   spelling our codegen matches the original's CONTROL SHAPE exactly
+ *   (`jge` over `mov 0x1f3`); the only thing missing is the two
+ *   `mov [esp+0x20],ebx` homes, and those are register pressure -- the
+ *   original has edx pinned to `ring*4` by wall 4 and is a register short.
+ *   The pDst home is DOWNSTREAM OF WALL 4 and is not source-selectable.
+ *   That closes the twenty-second pass's open question in the other
+ *   direction: do not go after the pDst home either.  Wall 4's `lea
+ *   edx,[ecx*4]` is the only thing here that is worth another idea.
+ *
  * ‼ TWENTY-THIRD PASS (2026-09-03) -- WALL 4's DOWNSTREAM SPILL IS MOSTLY
  * CLOSED, and the lever was the ONE place nobody had looked: not the index,
  * the pDst DEFINITION.  The eleventh pass had already worked out that three
@@ -1331,16 +1368,20 @@ no_mark:
                             ring = iWheel + iCar * 4;
                             if (DAT_1035faf0[ring] != DAT_1035f750[ring]) {
                                 int h1 = DAT_1035faf0[ring] - 1;
-                                /* ‼ A TRUE if/else, both arms assigning -- NOT
-                                 * `pDst = h1;` then an overriding `if`.  The
-                                 * original homes pDst in BOTH arms and reloads
-                                 * it to form `slot`; the assign-then-override
-                                 * form lets VC5 keep it in edi and emit none of
-                                 * that.  Worth three instructions. */
-                                if (h1 < 0) {
+                                /* ‼ ASSIGN-THEN-OVERRIDE, AND THE TEST IS ON
+                                 * pDst, NOT h1 -- read straight off the bytes
+                                 * at 0x1cb2: `mov ebx,eax` (pDst = h1), then
+                                 * `test ebx,ebx; jge; mov ebx,0x1f3`.  An
+                                 * if/else here INVERTS the arms and cannot
+                                 * converge, however well it scores.  (Testing
+                                 * h1 instead is byte-identical -- same value --
+                                 * but the bytes test pDst, so the source does.)
+                                 * The two `mov [esp+0x20],ebx` homes the
+                                 * original adds are register pressure from
+                                 * wall 4, not this spelling. */
+                                pDst = (uint16_t *)h1;
+                                if ((int)pDst < 0) {
                                     pDst = (uint16_t *)0x1f3;
-                                } else {
-                                    pDst = (uint16_t *)h1;
                                 }
                                 if (pDst != (uint16_t *)DAT_1035f750[ring] &&
                                     (DAT_10273690[(int)pDst + ring * 500].flags & 0x8000000) ==
