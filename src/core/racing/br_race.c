@@ -38,6 +38,17 @@
  *
  * All four sweep variants (/O2, /Od, /O2 /Oy-, /O2 /Op) bottom out at the
  * same 2 diffs, so this is not a flag. Fresh leads only.
+ *
+ * AND THE SOURCE IS CONFIRMED, so those spellings can stop being re-tried:
+ * the N64 twin is 0x8022A0E0 in Top Gear Rally (found by xref -- all four of
+ * this function's format strings are in the ROM byte-identical and all four
+ * point at it). It carries every structural element of this transcription in
+ * the same order: the six globals, the gate count re-read inside the
+ * `if (pCar)` block, the field-by-field vector copies, the floor-modulus arm
+ * order, the "Hmm" predicate with its five printf arguments, and
+ * `addu $t5, $s0, $s1` -- pDrv->f4C + nGates, in that operand order, at the
+ * very instruction pair the two bytes live in. This residue is allocation,
+ * not a source fork.
  * =========================================================================
  *
  * The original's debug format strings are transcribed verbatim in the
@@ -373,7 +384,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
             pDrv->f4C = pDrv->f4C + g_brRaceNGate;
             pDrv->f44 += 1;
             if (g_pBrRaceLapRec != NULL)           /* 0x100600A0 */
-                pDrv->f50 = g_pBrRaceLapRec->fLapLength + pDrv->f50;
+                pDrv->f50 += g_pBrRaceLapRec->fLapLength;
             BrExt_10008D60("lapping %d forward to -1\n", pDrv->f64);
         }
         pDrv->f4C -= 1;                         /* 0x100600C3, both arms */

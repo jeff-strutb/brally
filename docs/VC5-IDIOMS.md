@@ -3554,6 +3554,71 @@ EBX scratch and keeps `scale` in a stack slot, which costs it one more slot
 (`sub esp,0x2c` against 0x28) and shifts every stack displacement. Dead
 probes are listed in the file header.
 
+## The N64 twin as an oracle: two results, and a second way to pair
+*(2026-09-03, on the two functions above)*
+
+CLAUDE.md says the N64 does not move register-allocation walls. That held --
+but it settled two source questions the PC bytes could not, and it retired a
+park from "probably allocation" to "confirmed allocation".
+
+### A second anchor: SHARED MAGIC CONSTANTS, not just shared strings
+
+The recorded pairing method is the 195 shared debug strings. It found
+0x1005FF00's twin immediately -- every one of its format strings is in the
+ROM byte-identical, and all four xref to ONE function, 0x8022A0E0.
+
+It does NOT find a function with no strings. For those, screen the ROM's
+`.text` for `lui` immediates carrying the same MAGIC CONSTANTS the PC
+function builds. 0x10015B10 emits display-list words 0xB900031D, 0xBA001402,
+0xF51001B0, 0xF56803B0, 0xE7000000 and 0x0C184240; MIPS builds each as
+`lui/ori`, so scanning every `lui` immediate in `.text` and grouping by
+containing function put 0x8022E4E0 at the top with all six, and nothing else
+had more than four. One screen, no anchor needed:
+
+    # functions whose lui immediates cover the PC function's constants
+    for r in range(TEXT_S, TEXT_E, 4):
+        w = W(r)
+        if (w >> 26) == 15 and (w & 0xFFFF) in WANT:
+            hits[fstart(r2v(r))].add(w & 0xFFFF)
+
+### Result 1: VC5 canonicalises x87 ADD operand order, not only MULTIPLY
+
+The existing entry says VC5 canonicalises multiply. The N64 gives the true
+source for 0x1005FF00's progress fixup -- `add.s $f16, $f8, $f10` with the
+FIELD first, i.e. `pDrv->f50 += pLap->fLapLength` -- while the PC original
+emits `fld [lapLength]; fadd [f50]`, the reverse. Written both ways the PC
+bytes are IDENTICAL. So operand order is not a probe axis for x87 `+` either,
+and where the two disagree the N64 is the one telling you what the source
+said.
+
+### Result 2: a `lea r,[x+x]` does not mean the value came from a global
+
+0x10015B10's hi-res block emits `lea ecx,[esi+esi]` / `lea ebp,[edi+edi]`
+where esi/edi hold the globals' loads, which reads like
+`scale = g_scale * 2`. The N64 twin is unambiguous -- `sll $s5,1 / sll
+$t6,$fp,1 / sll $t7,$s7,1`, all three off the already-assigned LOCALS. The
+`lea` is simply what `scale <<= 1` compiles to when `scale`'s home is a stack
+SLOT and its value happens to be live in a register: load-modify-store cannot
+use `shl` in place. **Reading a `lea` as evidence about the source expression
+is backwards -- it is evidence about where the variable LIVES.**
+
+### And what it confirmed
+
+Every structural element of 0x1005FF00 -- the six globals, the gate count
+re-read inside the `if (pCar)` block, the field-by-field vector copies, the
+floor-modulus arm order, the "Hmm" predicate with its five printf arguments,
+`pDrv->f4C + nGates` in that operand order, the shared trailing `f4C -= 1` --
+appears in the N64 twin in the same order. That is what turns its two-byte
+residue from a suspected source fork into a confirmed allocation residue, and
+it is why the eight dead spellings in that file header can stop being
+re-tried.
+
+Caveat worth keeping: the emitter twin is 4,076 bytes against the PC's 3,050
+and its coordinate packing genuinely differs (`(v << 2) & 0xFFF` where the PC
+has `((v & 0xFFF) << 2) >> 2`). The 1997 and 1999 bodies are the same source
+lineage, not the same revision -- **use the twin for STRUCTURE and for which
+variable an expression names, never as a byte oracle.**
+
 ## The "photo" control block (menu-builder family) — SOLVED 2026-09-03
 
 Proven byte-exact on 0x1004ABE0 (760 B, first compile). Three parts, and
