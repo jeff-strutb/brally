@@ -1,6 +1,26 @@
 /* br_drawcar.c -- see br_drawcar.h.  The vehicle's display list, from
  * BRGlide.dll.
  *
+ * ‼ 2026-09-05 (parallel probe sweep) -- 0x1000A110's two residue defects
+ * each took one more measured-dead lever.  Do NOT re-run:
+ *   - THE FLOAT OPERAND SWAP (2nd light call arg pCarF[12] + eyeScale, orig
+ *     flds the stack local, ours the struct field): the N64 commutative-order
+ *     ORACLE is UNAVAILABLE here.  build/n64/report.csv has BrCarDrawVehicle
+ *     as status=MISS with an EMPTY n64_va -- no located Top Gear Rally twin
+ *     (pairs.csv / probe.csv have zero drawcar hits), so IDO/MIPS cannot state
+ *     which operand loads first.  Both C spellings that could flip it (summand
+ *     swap; ptr[0] off its own pointer) are already byte-identical under VC5.
+ *     No source truth reachable; leave the swap parked.
+ *   - THE BYTE-LANE PACK as TWO SCALAR uint8_t locals (pack0/pack1 instead of
+ *     pack[2]), assigned on both arms and read across the colourA/colourB join
+ *     to reproduce 0x1001E380's live-range shape WITHOUT a second array: INERT.
+ *     Frame HELD (FIRSTDIV +0x17, no collapse) but the scalars coalesced to a
+ *     byte-equivalent allocation -- msetdiff 13+5 unchanged, the widening rows
+ *     (and R,0xff / or R,R / mov byte [esp+S],B) all still MISSING.  So a
+ *     multi-edge scalar spelling is not the lever either; the home needs the
+ *     use-COUNT shape (0x1001E380 reads its locals 16x), which no faithful
+ *     spelling of this function can add.  The wall is real.
+ *
  * Read off the GLIDE build, which is this project's reference.  Both
  * functions here are classed `shared` in config/shared.csv, so the D3D
  * twins (0x1000C6E0 and 0x1000CBE0) are the same code under other numbers.
