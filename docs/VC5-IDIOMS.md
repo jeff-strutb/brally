@@ -6686,3 +6686,84 @@ plain source order. **Screen:** when a function's only residue is a vtable
 load one slot above a global store, build it as a `.cpp` before probing C.
 On this function the C++ build is byte-exact at that site and regresses the
 field-pointer site above — the two front ends are mutually exclusive on it.
+
+
+## A COMMITTED match can regress when its NEIGHBOURS are re-spelled -- and declaration order of the int index locals puts it back
+*(2026-09-05, br_collresp.c: 0x10066800 BrCollRespSegBox, 332 B, byte-exact at
+6faab8c, then `diff 73` with NO edit to its own text)*
+
+Rewriting the two functions on either side of it (0x10066260 and 0x10066610,
+same TU) flipped ONE instruction in SegBox's half-sum: `fxch st(1); faddp
+st(2)` became `fxch st(2); faddp st(1)` -- which of two comparable products
+the add completes into.  That is the symbol-INDEX tie-break (the
+"DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK" entry): the neighbours'
+new locals renumbered the TU and SegBox's own tie went the other way.
+
+What moved it back, and what did not, measured on the SAME tree:
+- swapping the two terms, the leading-operand paren, swapping the factors
+  inside each term: INERT (4 probes, all 330 B);
+- moving each of the five declaration lines to each other position (20
+  probes): exactly the FOUR orderings that put `int i, j, k;` ahead of
+  `int sgn[3];` are byte-exact; the sixteen others all keep the flip.
+
+Two rules from this:
+1. **After re-spelling any function, re-sweep the WHOLE file and read every
+   row**, not just the one you touched.  The sweep printed `4/7` both before
+   and after here -- one row went match->diff while another went diff->match,
+   and the total hid it.
+2. When a float-chain tie-break flips with no local cause, sweep the
+   declaration order of the INT locals that index the arrays in that chain
+   before touching the expression.
+
+## An accumulated local (`t = a; t += b;`) fixes a commutative flip that the leading-operand paren cannot
+*(2026-09-05, 0x10066260 BrCollRespBoxClassify, 644 B, byte-exact)*
+
+The first of six edge sums, `t = p[0] + p[1]`, came out `fld p[1]; fadd p[0]`
+once the function's RETURN was re-spelled as a ternary (see below) -- the
+other five sums were unaffected.  The leading-operand paren `(p[0]) + p[1]`,
+the written order, and the declaration order were all INERT (declsweep, 84
+probes).  `t = p[0]; t += p[1];` is byte-exact: an accumulation is a
+different expression to VC5 (the "accumulated local is not the same
+expression as a sum" entry), and here it is the only spelling that pins
+which operand is loaded.
+
+Same function, three more facts:
+- **`fcom qword [HI]` ... `fcomp qword [LO]` on ONE load is a named local
+  compared twice** (`t = p[0]; if (t > HI) ... else if (t < LO)`).  Written
+  on the array element directly, VC5 pops after the first compare and
+  reloads for the second (+5 B per component, x9).
+- **A `static` helper called three times per vertex was NOT inlined** --
+  the recomp was 3 `call`s and a double-aligned frame (`and esp,-8` from
+  the double arguments).  Write it out; "a plain static helper is not
+  auto-inlined under /O2" holds for this one too.
+- **`return (mask != 0u) ? 0 : -1` is `neg; sbb; neg; dec`; `(mask != 0u)
+  - 1` is `xor; test; setne; dec`.**  Same as the BrCrtAtExit entry; the
+  ternary is the branchless form.  Note it was THIS change that flipped the
+  sum above -- the tie-break moves with the function.
+
+## Which side of an x87 compare gets the `fld`, and the two `? 0 : 1` layouts
+*(2026-09-05, 0x10066610 BrCollRespPointInTri, 492 B, PARKED at 2 regions)*
+
+- `dom = (a > b) ? 0 : 1` lays out the 0 arm first (`jne L1; xor ecx,ecx;
+  jmp; L1: mov ecx,1`); the boolean `dom = (a <= b)` lays out the 1 arm
+  first.  `((a > b) ? 0 : 1) + 1` keeps the add as `lea ecx,[eax+1]`;
+  `(a > b) ? 1 : 2` loses it (`mov ecx,1 / mov ecx,2`).
+- A bool compare `X > p[u]` came out `fld X; fld p[u]; fcompp; test ah,1`
+  (two loads) when X is the loop's strength-reduced row pointer and
+  `fld X; fcomp p[u]; test ah,0x41` (one load) when X is the row pointer
+  recomputed each pass -- the SAME syntax.  Which occurrence of the twice-
+  read `p[u]` gets the load also moved with the loop's arm structure
+  (`continue` vs if/else).  Fourteen spellings dead; see the file header.
+
+## The half-sum in a compare: leave it INLINE (twice) and name only the value the original homes
+*(2026-09-05, 0x10066800 BrCollRespSegBox, 332 B, byte-exact)*
+
+`if (C * C > (S*0.5f) * (S*0.5f))` with S written out twice and CSE'd, and
+only `C` a named local (it is the one the original `fst`s into the dead
+pB arg slot and re-reads), is byte-exact.  Naming S, or h = S*0.5f, or both,
+in any statement order, puts the chain in the other association and 23 B
+short -- and ALSO flips which of the two 12-byte arrays sits at [esp+0xc].
+The "one NAMED float local per intermediate" entry is a rule for values the
+original KEEPS; a value it recomputes from the stack must stay unnamed.
+Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
+`test ah,0x41`; `C*C > h*h` puts h*h there with `test ah,1`.

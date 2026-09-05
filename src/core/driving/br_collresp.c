@@ -4,6 +4,16 @@
  *
  *   0x10066D70  1782 B   BrCollRespTipKick   the 1-or-2-wheel pitch kick
  *   0x1006DDD0   156 B   the overlapped call BrCollRespBuildBoxMatrix wraps
+ *   0x10066260   644 B   BrCollRespBoxClassify   byte-exact 2026-09-05
+ *   0x10066800   332 B   BrCollRespSegBox        byte-exact 2026-09-05
+ *   0x10066610   492 B   BrCollRespPointInTri    PARKED, 2 regions (see it)
+ *   0x10066950   322 B   BrCrExact               PARKED, 1 x87 chain (see it)
+ *
+ * ‼ THE FOUR ABOVE SHARE ONE TIE-BREAK.  Re-spelling any of them renumbers
+ * the TU's symbols and can flip a float-chain choice in another: SegBox
+ * went match -> diff with no edit to its text when its neighbours changed
+ * (fixed by its declaration order; note above it).  Re-sweep the whole
+ * file after touching any one and read EVERY row.
  *
  * See br_collresp.h for the contracts, for what 0x10067C30 really calls, and
  * for why the OBB half of the system is inert without the car data.
@@ -394,18 +404,47 @@ static unsigned BrCrCorner(const float aV[3], unsigned mask)
     return out;
 }
 
+/* WHAT IT DOES: the cheap three-stage test of a triangle (already in box
+ * space) against the car's unit collision cube: 1 if some vertex is inside
+ * it, 0 if one of the 26 face/edge/corner planes separates the triangle from
+ * it, and -1 when neither is provable and the exact test has to decide. */
+/* @implements 0x10066260 glide BrCollRespBoxClassify */
 int BrCollRespBoxClassify(const float aV[9])
 {
     unsigned mask;
     int      i;
 
     /* ---- stage 1, the six faces.  0x10066272..0x100662FD ------------- */
+    /* Written out per component rather than through BrCrSide: a static
+     * helper is never auto-inlined under /O2 (docs/VC5-IDIOMS.md), and the
+     * original's `fcom HI ... fcomp LO` pair is one load compared twice. */
     mask = 0xFFFFFFFFu;
     for (i = 0; i < 3; ++i) {
         const float *p = aV + i * 3;
-        unsigned     c = BrCrSide(p[0], BR_CR_FACE_HI, BR_CR_FACE_LO)
-                       | (BrCrSide(p[1], BR_CR_FACE_HI, BR_CR_FACE_LO) << 2)
-                       | (BrCrSide(p[2], BR_CR_FACE_HI, BR_CR_FACE_LO) << 4);
+        unsigned     c = 0u;
+        float        t;
+
+        /* Each component goes through the named `t`: that is what keeps
+         * the one load on the stack across both compares (`fcom HI` then
+         * `fcomp LO`, with `fstp st(0)` in the above-HI arm). */
+        t = p[0];
+        if (!((double)t <= BR_CR_FACE_HI)) {
+            c |= 0x01u;
+        } else if (!((double)t >= BR_CR_FACE_LO)) {
+            c |= 0x02u;
+        }
+        t = p[1];
+        if (!((double)t <= BR_CR_FACE_HI)) {
+            c |= 0x04u;
+        } else if (!((double)t >= BR_CR_FACE_LO)) {
+            c |= 0x08u;
+        }
+        t = p[2];
+        if (!((double)t <= BR_CR_FACE_HI)) {
+            c |= 0x10u;
+        } else if (!((double)t >= BR_CR_FACE_LO)) {
+            c |= 0x20u;
+        }
 
         /* 0x100662EE: a vertex inside every slab settles it. */
         if (c == 0u) {
@@ -426,9 +465,14 @@ int BrCollRespBoxClassify(const float aV[9])
         float        t;
 
         /* The six sums, in the original's order: x+y, x-y, x+z, x-z,
-         * y+z, y-z, each against +-1. */
+         * y+z, y-z, each against +-1.  The FIRST one is an accumulation,
+         * not a sum: `t = p[0] + p[1]` comes out `fld p[1]; fadd p[0]`
+         * once the return below is the ternary (the tie-break moves with
+         * the function), and neither the leading-operand paren nor the
+         * declaration order moves it back -- `t += p[1]` does. */
         if ((mask & 0x003u) != 0u) {
-            t = p[0] + p[1];
+            t = p[0];
+            t += p[1];
             if ((mask & 0x001u) != 0u && !((double)t <= BR_CR_EDGE_HI)) {
                 c |= 0x001u;
             } else if ((mask & 0x002u) != 0u
@@ -495,7 +539,7 @@ int BrCollRespBoxClassify(const float aV[9])
     }
 
     /* ---- stage 3, the eight corner planes.  0x100664B0..0x100664D9 --- */
-    mask = 0xFFu;                      /* `or eax,0xffffffff`, read as dl */
+    mask = 0xFFFFFFFFu;                /* `or eax,0xffffffff`, pushed whole */
     for (i = 0; i < 3; ++i) {
         mask = BrCrCorner(aV + i * 3, mask);
         if (mask == 0u) {
@@ -503,7 +547,7 @@ int BrCollRespBoxClassify(const float aV[9])
         }
     }
     /* 0x100664CE: `neg/sbb/neg/dec` -- 0 when the mask survived, -1 when
-     * it emptied. */
+     * it emptied.  The TERNARY: `(mask != 0u) - 1` is `setne`/`dec`. */
     return (mask != 0u) ? 0 : -1;
 }
 
@@ -524,11 +568,19 @@ int BrCollRespBoxClassify(const float aV[9])
 /* @implements 0x10066800 glide BrCollRespSegBox */
 int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
 {
+    /* DECLARATION ORDER IS LOAD-BEARING: i, j, k BEFORE the two arrays.
+     * This function was byte-exact with them last, then re-spelling the
+     * two neighbours above and below it (0x10066260 / 0x10066610) flipped
+     * ONE instruction here -- `fxch st(1); faddp st(2)` became
+     * `fxch st(2); faddp st(1)` in the half-sum -- with no edit to this
+     * text at all.  Of the 20 single-move orderings of these five lines,
+     * exactly the four that put `i, j, k` ahead of `sgn` restore it; no
+     * expression spelling (term swap, leading paren, factor swap) does. */
+    int          i, j, k;
     const float *a = &pA->x;
     const float *b = &pB->x;
     int          sgn[3];
     float        d[3];
-    int          i, j, k;
 
     d[0] = b[0] - a[0];
     d[1] = b[1] - a[1];
@@ -589,13 +641,33 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
 /* winding survives the projection.  The accumulator is a signed crossing */
 /* count, not a boolean, and the original returns it as-is.               */
 /* ==================================================================== */
+/* WHAT IT DOES: is the point P inside the triangle?  Both are projected
+ * onto the plane that drops the normal's largest axis (choosing the other
+ * two so the winding survives), and the three edges are crossing-counted
+ * against P; the signed count comes back as-is, non-zero meaning inside.
+ *
+ * PARKED 2026-09-05 at 482/492 B, 2 regions (+0xe5, +0x125): the two
+ * compares against the B row are `fld B[u]; fld p[u]; fcompp; test ah,1`
+ * in the original and `fld B[u]; fcomp p[u]; test ah,0x41` here, while the
+ * two against the A row (the strength-reduced pointer) match.  Everything
+ * else -- prologue, |n| loop, dom ternaries, u/v, `acc = 0` placement, the
+ * if/else arm order, the cross-product chain, the `<=` arm -- is exact.
+ * DEAD (all measured on this TU): `p < B` / `B > p` / `? 1 : 0` / `!(>=)`
+ * / `(int)` on either or both B compares; su as two statements; per-side
+ * named ints; su/sv at function scope; a named `s` for the fild; B's
+ * address computed inside the first compare (`(B = ...)[u]`); B as an
+ * int row index; `continue` vs if/else structure in four combinations.
+ * Which occurrence of the twice-read p[u] gets its own `fld` moves with
+ * the arm structure, so this is a scheduling residue, not a spelling. */
+/* @implements 0x10066610 glide BrCollRespPointInTri */
 int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
                          const BrVec3 *pP)
 {
     const float *n = &pN->x;
     const float *p = &pP->x;
     float        aAbs[3];
-    int          dom, u, v, i, acc = 0;
+    int          acc;
+    int          dom, u, v, i;
 
     /* 0x10066628: `fcomp 0.0f` + `test ah,1` + `fchs` -- a NaN is negated
      * rather than left alone, which is the x87 absolute value this tree
@@ -606,11 +678,15 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
 
     /* 0x10066644: the dominant axis, by the original's two-compare tree.
      * Each `test ah,0x41` + `jne` takes the SECOND arm for less, equal or
-     * unordered, so ties go to the later axis. */
+     * unordered, so ties go to the later axis.  The arms are TERNARIES on
+     * 0/1 -- the original materialises the value with the 0 arm first
+     * (`xor ecx,ecx; jmp`) and, in the second arm, adds one to it
+     * (`lea ecx,[eax+1]`).  Spelled as booleans (`aAbs[0] <= aAbs[1]`) the
+     * 1 arm comes first; spelled `? 1 : 2` the add disappears. */
     if (aAbs[0] > aAbs[2]) {
         dom = (aAbs[0] > aAbs[1]) ? 0 : 1;
     } else {
-        dom = (aAbs[1] > aAbs[2]) ? 1 : 2;
+        dom = ((aAbs[1] > aAbs[2]) ? 0 : 1) + 1;
     }
 
     /* 0x10066688: the sign of n at the dominant axis picks the handedness
@@ -623,46 +699,45 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
         v = (dom + 2) % 3;
     }
 
-    /* 0x100666DB: the three edges (v0,v1), (v1,v2), (v2,v0). */
+    /* 0x100666DB: the three edges (v0,v1), (v1,v2), (v2,v0).  `acc = 0`
+     * is a statement HERE, not an initialiser: the original zeroes it
+     * after u and v are formed, sharing the `xor eax,eax` with i. */
+    acc = 0;
     for (i = 0; i < 3; ++i) {
         const float *A = aV + i * 3;
         const float *B = aV + ((i + 1) % 3) * 3;
         int          su, sv;
 
         /* Each of these four is `fcompp` + `test ah,1`, i.e. 1 on
-         * strictly-less-or-unordered.  Written out four times because the
-         * third one has its operands in the other order (`fxch st(1)` at
-         * 0x10066754) and folding them would lose that. */
-        su = (p[u] < B[u] ? 1 : 0) - (p[u] < A[u] ? 1 : 0);
-        if (su == 0) {
-            continue;                  /* 0x10066728 */
-        }
+         * strictly-less-or-unordered.  Spelled `B > p` so that both
+         * operands are loaded and p lands in st(0); the fourth one is
+         * `p < A` -- the original's `fxch st(1)` at 0x10066754 says its
+         * operands were loaded the other way round. */
+        su = (B[u] > p[u]) - (A[u] > p[u]);
+        if (su != 0) {
+            sv = (B[v] > p[v]) - (p[v] < A[v]);
+            if (sv != 0) {
+                float eu = B[u] - A[u];
+                float ev = B[v] - A[v];
+                float pu = p[u] - A[u];
+                float pv = p[v] - A[v];
 
-        sv = (p[v] < B[v] ? 1 : 0) - (p[v] < A[v] ? 1 : 0);
-        if (sv == 0) {
-            /* 0x100667C3: the edge does not straddle in v, so the crossing
-             * is decided by which side of P it lies -- `test ah,0x41` +
-             * `je <skip>` counts it for less-or-equal-or-unordered. */
-            if (!(A[v] > p[v])) {
-                acc += su;
-            }
-            continue;
-        }
-
-        {
-            float eu = B[u] - A[u];
-            float ev = B[v] - A[v];
-            float pu = p[u] - A[u];
-            float pv = p[v] - A[v];
-            float s  = (float)su;
-
-            /* 0x100667A8: `fcompp` of (eu*pv)*s against (pu*ev)*s, then
-             * `test ah,1` + `jne <skip>` -- so the crossing counts on
-             * greater-or-equal, and a NaN skips.  The multiply order is
-             * the original's: the two products are formed first and only
-             * then scaled by s. */
-            if (!((eu * pv) * s < (pu * ev) * s)) {
-                acc += su;
+                /* 0x100667A8: `fcompp` of (eu*pv)*s against (pu*ev)*s, then
+                 * `test ah,1` + `jne <skip>` -- so the crossing counts on
+                 * greater-or-equal, and a NaN skips.  The multiply order is
+                 * the original's: the two products are formed first and
+                 * only then scaled by s. */
+                if (!((pu * ev) * su > (eu * pv) * su)) {
+                    acc += su;
+                }
+            } else {
+                /* 0x100667C3: the edge does not straddle in v, so the
+                 * crossing is decided by which side of P it lies --
+                 * `test ah,0x41` + `je <skip>` counts it for
+                 * less-or-equal-or-unordered. */
+                if (A[v] <= p[v]) {
+                    acc += su;
+                }
             }
         }
     }
@@ -672,6 +747,22 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
 /* ==================================================================== */
 /* 0x10066950 -- the exact test, for the classify's -1                   */
 /* ==================================================================== */
+/* WHAT IT DOES: the expensive answer when the cheap classify said -1: the
+ * triangle meets the unit cube if any edge passes through it, or else if
+ * the cube's diagonal that points along the normal pierces the triangle.
+ *
+ * PARKED 2026-09-05 at 326/322 B.  The residue is one x87 chain: the
+ * original spills BOTH (float)s[1] (into pN's dead arg slot) and
+ * (float)s[2] (a fourth frame dword, hence `sub esp,0x1c`) and keeps
+ * (float)s[0] on the stack to the end, loading s0, s1, v1, v2, n0, n1
+ * before the first multiply; ours loads s1, s0, v1, v2, n0, dups s0, and
+ * spills once (`sub esp,0x18`).  DEAD: num/den named (either, both, either
+ * order); every factor order of the three products; `(float)` casts on the
+ * quotient; named float sx/sy/sz for the conversions (324 B, closest) in
+ * all six declaration orders and with t before/after them; den or num
+ * named on top of that; P = s*t order.  The SegBox/PointInTri arms and the
+ * window test are exact. */
+/* @implements 0x10066950 glide BrCrExact */
 static int BrCrExact(const float aV[9], const BrVec3 *pN)
 {
     const float *n = &pN->x;
