@@ -301,7 +301,9 @@ extern char s__s_is_not_a_valid_POD_file_1007b5a0[];
 
 /* WHAT IT DOES: opens the POD named on the object, checks the three-byte
  * magic, allocates 76 bytes per directory entry and reads the directory. */
-/* @implements 0x10008AB0 glide BrPodOpen */
+/* port-only body; Glide match is src/core/cpp/0x10008AB0.cpp -- the header
+ * read pushes the constant 0x10 to a this-in-ecx member, which the C
+ * __fastcall-plus-wrapper spelling renders as `mov eax,0x10 / push eax`. */
 void __fastcall BrPodOpen(void *pThis)
 {
     void *pIo;
