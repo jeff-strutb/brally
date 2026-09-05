@@ -6830,3 +6830,38 @@ source-level pointer stepped in the for clause -- keeps esi == pP
 regions of that function; the trip counter (`mov ebx,count; dec ebx; jne`)
 and the entry guards (`test eax,eax; jle` forward, `dec eax; jl` backward)
 come out of the plain `i < count` / `i >= 0` index loops unchanged.
+
+- **A 12-byte vector copied into a record is three SCALAR copies, and a
+  `(T *)(p + K)` destination (or a struct assignment) forms the address
+  first.** 0x10002310 BrCamFrameInitB copies one BrVec3 into three places
+  in the car: the original is `mov edx,[edi]; mov [esi+0x2838],edx` x3 per
+  vector -- each float through a GP register straight to a displacement off
+  the car. A `BrVec3` struct assignment (through a pointer local, a
+  `(void *)` cast, or a member of a struct slice alike) emits `lea` of the
+  destination and stores through it: +3 lea, 8 B short. Member-wise
+  `car->camDPos.x = pPos->x` etc. is byte-exact. In the same function a
+  pointer local INITIALISED AT ITS DECLARATION is hoisted above the first
+  conditional (`lea edi,[esi+0x27b0]` before `cmp eax,5`, 32 shifted
+  bytes); assigning it after the selector stores puts it where the
+  original has it. And the selected frame is a bare conditional
+  expression -- keeping a `pB` pointer local for later reuse costs a
+  `mov eax,ecx`. Proven 2026-09-05.
+
+- **Two byte temps in a 4-byte swap: which one takes al is fixed by WHICH
+  byte is saved, not by naming.** 0x10031960 BrTrackFixupSegRec's first
+  swap reads, in the original, `al=p[3]; cl=p[0]; dl=p[1]; [0]=al; al=p[2];
+  [3]=cl; [2]=dl; [1]=al`. The decompiler's reading `t = p[0]; p[0] = p[3];
+  ... p[3] = t` puts the p[3] temp in cl and t in al (6 diff bytes), and no
+  declaration-order, naming or unsigned-char permutation moves it. The
+  sibling BrTrackFixupSegList's spelling `t = p[3]; p[3] = p[0]; p[0] = t;
+  t = p[2]; p[2] = p[1]; p[1] = t;` -- save the HIGH byte -- is byte-exact:
+  VC5 schedules the `[0]` store first either way, but the saved byte is
+  the one that gets eax. (The TU then matches under /O2 /Op, its two
+  siblings unaffected.) Proven 2026-09-05.
+
+- **Two hoisted register copies of address-taken arguments (PARKED,
+  0x10070280 BrWavLoad):** `pv = pVoice; ppFmt = ppFormat;` where both
+  arguments also have their addresses passed out; the original keeps the
+  format pointer in ebx and the voice in esi, VC5 the reverse, RAW 14+14
+  with REGNORM 0+0 and size-exact. Dead: declaration order, store order,
+  an allocation temp. Recorded in the file header.
