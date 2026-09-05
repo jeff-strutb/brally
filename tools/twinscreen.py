@@ -14,8 +14,20 @@ differing bytes.  Call displacements and absolute operands differ by
 construction, so a real twin still shows a few dozen: the useful threshold is
 "tens", not "zero".
 
-    .venv/bin/python tools/twinscreen.py            # every hit, closest first
-    .venv/bin/python tools/twinscreen.py --max 80   # only very close pairs
+    .venv/bin/python tools/twinscreen.py             # every hit, closest first
+    .venv/bin/python tools/twinscreen.py --max 80    # only very close pairs
+    .venv/bin/python tools/twinscreen.py --families  # unsolved groups
+
+‼ THE FAMILY LANE IS DRAINED, measured 2026-09-05.  --families finds ZERO
+unsolved same-size groups anywhere in BRGlide at a mutual distance of 150
+bytes or less, at any size from 60 bytes up; the five that appear at 300 are
+unrelated functions that happen to share a length.  The pair screen is down
+to six rows, all at 86 diffs or worse on ~100-byte bodies, i.e. also
+unrelated.  So "find another family" is no longer a lane -- the C++ vcall
+lode, the clip planes, the triangle emitters and the trimmers were the
+families this image had.  Re-run this after any batch of matches (a newly
+solved function can make its neighbours reachable), but do not plan a session
+on it.
 """
 import csv, os, re, sys, glob
 
@@ -69,6 +81,42 @@ for f in glob.glob(os.path.join(ORIG, '0x*.bin')):
     va = int(os.path.basename(f)[:10], 16)
     b = open(f, 'rb').read()
     bysize.setdefault(len(b), []).append((va, b))
+
+if '--families' in sys.argv:
+    # ‼ A CAUSE GROUP NEED NOT CONTAIN A MATCHED MEMBER.  The screen above only
+    # finds an unmatched function next to a SOLVED one; a family where nobody
+    # has solved anyone yet is invisible to it, and those are the ones worth
+    # the most -- solve one member by hand, instantiate the rest.  This mode
+    # clusters UNMATCHED, UNTAGGED originals against each other at equal size.
+    fam = []
+    for size, group in sorted(bysize.items()):
+        if size < minsize:
+            continue
+        pool = [(va, b) for va, b in group
+                if va not in tagged and va not in fenced]
+        if len(pool) < 2:
+            continue
+        used = set()
+        for i, (va, b) in enumerate(pool):
+            if va in used:
+                continue
+            members = [va]
+            for va2, b2 in pool[i + 1:]:
+                if va2 in used:
+                    continue
+                if sum(1 for x, y in zip(b, b2) if x != y) <= maxdiff:
+                    members.append(va2)
+                    used.add(va2)
+            if len(members) > 1:
+                used.add(va)
+                fam.append((len(members), size, members))
+    fam.sort(reverse=True)
+    for n, size, members in fam:
+        print('%2d members  %5d B   %s' % (n, size,
+              ' '.join('0x%08X' % v for v in members)))
+    print('\n%d unsolved same-size families (mutual diff <= %d, size >= %d).'
+          % (len(fam), maxdiff, minsize))
+    sys.exit(0)
 
 hits = []
 for size, group in bysize.items():
