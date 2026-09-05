@@ -234,4 +234,82 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
     return 1;
 }
 
+extern char s_AutoSave_brf_100acae8[];   /* "AutoSave.brf" */
+
+/* WHAT IT DOES: continues the auto-saved Rally Season.  Blanks the two
+ * season labels, looks for AutoSave.brf and silently does nothing when it
+ * is not there; otherwise the same load-and-publish sequence as picking a
+ * named season slot (see BrSaveBeginRallySeason above): record it as the
+ * season path, load it (error box 7 on failure), copy the option block into
+ * play, publish race number / entrant count / class, refresh the option
+ * globals, total the class's points, make the packed positions 1-based and
+ * print the two labels.  Returns nothing.
+ *
+ * PARKED 2026-09-05 at 536/536 B, 7 diff bytes, multiset 0: the original
+ * loads BOTH row dwords (`mov eax,[edi] / mov ecx,[edi+4]`) and the sprintf
+ * import before `inc edx` and the first store; ours stores the first dword
+ * before loading the second.  The identical tail text is byte-exact in
+ * BrSaveBeginRallySeason above, so the difference is this function's
+ * context (void, whole body nested under the fopen test), not the
+ * statement.  Dead: two int temps for the pair; an `int *` view of the row;
+ * indexed `*(int *)&DAT_10ac5a66[k*4]` loads (recomputes the row, -3
+ * insns); `if (fp == NULL) return;` instead of the nested block. */
+/* @implements 0x1003B130 glide BrSaveResumeAutoSave */
+void BrSaveResumeAutoSave(void)
+{
+    char  szPath[260];
+    int   nRace;
+    FILE *fp;
+    int  *p;
+    int   cnt;
+    int   k;
+    int   sum;
+    int   i;
+    unsigned short *pw;
+
+    DAT_100a9360 = 0;
+    BrSub1003E680();
+    DAT_105ccbc4 = 0;
+    strcpy(DAT_10ac5870, DAT_10396f08);
+    strcpy(DAT_10ac46a0, DAT_10396f08);
+    strcpy(szPath, s_AutoSave_brf_100acae8);
+    fp = fopen(szPath, DAT_100ac9c8);
+    if (fp != NULL) {
+        fclose(fp);
+        strcpy(DAT_117a6030, szPath);
+        if (BrSub10071130(4, 1) == 0)
+            FUN_100378c0(7);
+        p = DAT_10af2094;
+        memcpy(DAT_10ac5a48, p, 0x53 * 4);
+        DAT_10ac5c38 = 1;
+        nRace = p[0];
+        DAT_10ac5bf8 = nRace;
+        cnt = ((unsigned char *)p)[5];
+        DAT_10ac5c04 = cnt;
+        DAT_10ac5bfc = cnt;
+        DAT_10ac5c10 = ((char *)p)[4];
+        DAT_10ac5d60 = DAT_10af3cd8;
+        DAT_100abdec = DAT_10af3cdc;
+        DAT_100abdf0 = DAT_10af3ce0;
+        DAT_100abdf4 = DAT_10af3ce4;
+        DAT_100abdfc = DAT_10af3ce8;
+        DAT_10ac5bf4 = 1;
+        BrOptSave();
+        BrSub1003E510();
+        k = DAT_10ac5c10;
+        sum = 0;
+        pw = &DAT_10ac5a66[k * 4];
+        for (i = 0; i < 4; i++)
+            sum += pw[i];
+        DAT_10ac5c1c = sum;
+        DAT_10ac5a40 = DAT_10ac5a4e[k];
+        for (i = 0; i < DAT_10ac5bfc; i++)
+            ((char *)&DAT_10ac5a40)[i] += 1;
+        DAT_10ac40f8 = *(int *)pw;
+        DAT_10ac40fc = *(int *)(pw + 2);
+        sprintf(DAT_10ac5870, DAT_100a6b84, nRace + 1);
+        sprintf(DAT_10ac46a0, DAT_100a6b84, cnt + 1);
+    }
+}
+
 #endif /* BR_MATCHING_BUILD */

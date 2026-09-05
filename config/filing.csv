@@ -944,3 +944,5 @@ glide_va,name,module,basis,file
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
 0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
 0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
+0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
+0x1003BAC0,BrSaveNameCommitTimeAttack,menus,filed,src/core/menus/br_savename.c
