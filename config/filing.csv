@@ -757,6 +757,7 @@ glide_va,name,module,basis,file
 0x10065950,BrCrPlaneDist,driving,filed,src/core/driving/br_collrespsolve.c
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
 0x100664F0,BrCrCorner,driving,filed,src/core/driving/br_collresp.c
+0x10066800,BrCollRespSegBox,driving,filed,src/core/driving/br_collresp.c
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
 0x10068600,FUN_10068600,driving,description,src/core/driving/br_wheelvel.c
