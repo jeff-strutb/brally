@@ -211,4 +211,43 @@ int BrComCreateInstance(int *param_1)
   return;
 }
 
+/* 0x10035BE0 -- the teardown twin of BrComCreateInstance above.  0x10AC4098
+ * points at the session record whose first dword is the IDirectPlay object
+ * (0x10273328, g_brP277B40) and whose +8 is our DPID.  Every access re-reads
+ * the pointer global: the original reloads it after each COM call. */
+extern int *g_brSlot4098;   /* 0x10AC4098 -> the record at 0x10273328;
+                             * the earlier arm names the same slot
+                             * DAT_10ac4098 as a plain int */
+extern int  DAT_10ac4094;   /* 0x10AC4094 live-session counter */
+void BrSub1003D070(void);   /* 0x10036700 */
+typedef int (__stdcall *BrDpCall2)(void *pThis, int a);
+typedef int (__stdcall *BrDpCall1)(void *pThis);
+
+/* WHAT IT DOES: leaves the network game -- clears the lobby list, then, if a
+ * DirectPlay object exists, destroys our player (when we have one), closes
+ * the session, releases the object and forgets it.  Finally it clears the
+ * session pointer and counts one fewer live session.  Always returns 0. */
+/* @implements 0x10035BE0 glide BrDpShutdown */
+int BrDpShutdown(void)
+{
+  void *pObj;
+
+  BrSub1003D070();
+  pObj = (void *)g_brSlot4098[0];
+  if (pObj != 0) {
+    if (g_brSlot4098[2] != 0) {
+      (*(BrDpCall2 *)(*(char **)pObj + 0x24))(pObj, g_brSlot4098[2]);  /* DestroyPlayer */
+      g_brSlot4098[2] = 0;
+    }
+    pObj = (void *)g_brSlot4098[0];
+    (*(BrDpCall1 *)(*(char **)pObj + 0x10))(pObj);                     /* Close */
+    pObj = (void *)g_brSlot4098[0];
+    (*(BrDpCall1 *)(*(char **)pObj + 0x08))(pObj);                     /* Release */
+    g_brSlot4098[0] = 0;
+  }
+  g_brP277B40 = 0;
+  DAT_10ac4094 = DAT_10ac4094 - 1;
+  return 0;
+}
+
 #endif /* BR_MATCHING_BUILD */
