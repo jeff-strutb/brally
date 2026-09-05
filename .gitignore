@@ -59,3 +59,9 @@ temp*
 tools/ido/
 tools/ido53/
 tools/msvc5sp3/
+
+# MSVC incremental-build databases dropped into the repo root by cl.exe
+vc50.idb
+vc50.pdb
+*.idb
+*.pdb
