@@ -6305,3 +6305,45 @@ question is not the order of the stores but which OTHER statement belongs
 between them. (Companion to "matrix builders are written row by row in
 address order", which is about a builder whose rows are independent; here
 the rows share a dot product.)
+
+## A FLOAT local takes part in the integer prologue's declaration walk
+
+`0x10020900 BrDlCmdTri1NoZ`, 2026-09-05, byte-exact. The function reads three
+command bytes into three `int` locals and shares one `float` temp between the
+three vertex-finish blocks. VC5's prologue interleaves the three `xor r,r` /
+`mov r8,[esi+N]` pairs with the callee-save `push edi`, and the original puts
+the push AFTER the third `xor`:
+
+    xor ecx,ecx ; xor edx,edx ; mov cl,[esi+5] ; mov dl,[esi+6]
+    xor eax,eax ; push edi    ; mov al,[esi+4]
+
+Declaring the three indices `ic, ib, ia` (values 4, 5, 6) gets all three byte
+loads right but emits `push edi` one slot EARLY, ahead of the third `xor` --
+two bytes, one divergence region, everything else identical. Moving the float
+temp from the top of the declaration block to BETWEEN the first and second
+`int` fixes exactly those two bytes:
+
+    int   ic = p[4];
+    float u;              /* <- here, not above ic */
+    int   ib = p[5];
+    int   ia = p[6];
+
+A float local occupies no integer register, so it looks like it cannot touch
+an integer prologue; it does, because it is part of the same declaration walk
+that orders the homing. **When a prologue is 2 bytes out in the placement of a
+callee-save push and every load is already right, move the FLOAT declarations
+through the integer ones before concluding anything about the integers.**
+
+DEAD on the same site, do not re-run: a one-line `int ic = p[4], ib = p[5],
+ia = p[6];`; uninitialised declarations with the assignments separated (in
+three orders); a spare `int spare = 0;` after the three; `unsigned` instead of
+`int`; the float declared last (378 B, worse); all six permutations of the
+three indices with the float first (four give the right size, only `ic, ib,
+ia` gets every load right).
+
+Sibling fact from the same pass, and the reason the twin was cheap:
+`0x10020460 BrDlTriFlatNoZ` is `0x1001FF60` with two source changes only --
+the clip arm calls the no-Z trimmer, and the three indices are consumed
+i0, i2, i1 (declared in that order, which per the entry above picks the
+`&`/`|` accumulator). 37 differing bytes between the two originals, no other
+lever needed.
