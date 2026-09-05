@@ -6372,3 +6372,37 @@ clear at +0x20 in the same function is the same call, inlined as
 **Read a run of consecutive same-value stores through one base as a `memset`
 before reaching for pointer spellings** — the byte count tells you which: an
 inlined `memset` holds the base, open-coded stores do not.
+
+## A COM vcall: capture the vtable in a LOCAL to let a neighbouring store schedule into the call setup
+*(proven 2026-09-05 on 0x100720A0 BrDInputShutdown, 87 B, /O2)*
+
+The C-style COM call `p->lpVtbl->Fn(p, …)` compiles to three pieces —
+`mov ecx,[p]` (the vtable), `push p`, `call [ecx+K]` — and VC5 treats the
+whole expression as ONE unit that it will not let an unrelated store move
+into. So a store written BEFORE the call stays before all three pieces:
+
+    g_pRec = 0;                             /* mov [g_pRec],0   */
+    g_pDI->lpVtbl->Release(g_pDI);          /* mov ecx,[eax] / push eax / call */
+
+The original interleaves them — vtable load, push, **then** the store, then
+the call. **Splitting the vtable load out into a local is what reaches that
+schedule**, because the store then sits between two separate statements
+rather than in front of one expression:
+
+    vt = g_pDI->lpVtbl;                     /* mov ecx,[eax]    */
+    g_pRec = 0;                             /* push eax / mov [g_pRec],0 */
+    vt->Release(g_pDI);                     /* call [ecx+8]     */
+
+Byte-exact; the one-expression form is 8 diff bytes at identical size (87/87)
+and identical instruction count (25/25) — the tell that only a slot moved.
+Caching the interface pointer in a local as well (`pDI = g_pDI; vt = pDI->lpVtbl;`)
+is equally exact, so only the VTABLE capture is load-bearing.
+
+**Measured dead at this site, do not re-run:** the store written after the
+call, both null-outs written after the call, assigning the null through the
+record local first, and a `pRec = g_pDI` receiver temp — all 8, all at the
+same size. The lever is the vtable temp, nothing else.
+
+**Where else this applies:** every `pV->lpVtbl->Fn(pV, …)` site with a store
+or other independent statement adjacent to it — the DirectDraw, DirectInput
+and DirectPlay layers are full of them.
