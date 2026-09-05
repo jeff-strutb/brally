@@ -175,6 +175,7 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
     uint8_t  *pFlag;
     uint8_t   fl;
     float     sx, sy, len2, k;
+    float     vx, vz;
     float     m00, m01, m10, m11, m20, m21, m30, m31;
     uint8_t   clip[32];
 
@@ -259,19 +260,19 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
                 pObjBase = pObj - 0x9cc;
                 pDL += 2;
 
-                DAT_1035fb78.x = pObjBase[0];
-                DAT_1035fb78.y = pObjBase[1];
-                DAT_1035fb78.z = pObjBase[2];
+                DAT_1035fb78.x = *pObjBase;
+                DAT_1035fb78.y = pObj[-0x9cb];
+                DAT_1035fb78.z = pObj[-0x9ca];
                 if (DAT_1035fb78.x == DAT_100771f8 && DAT_1035fb78.y == DAT_100771f8) {
-                    DAT_1035fb78.x = pObjBase[8];
-                    DAT_1035fb78.y = pObjBase[9];
+                    DAT_1035fb78.x = pObj[-0x9c4];
+                    DAT_1035fb78.y = pObj[-0x9c3];
                 }
                 DAT_1035fb78.z = DAT_100771f8;
                 sx = FUN_10034840(&DAT_1035fb78);
                 if (sx < DAT_100771fc) {
                     sx = 0.5f;
                 }
-                len2 = FUN_10034840(pObjBase + 4);
+                len2 = FUN_10034840(&pObj[-0x9c8]);
                 if (len2 < DAT_100771fc) {
                     len2 = DAT_100771fc;
                 }
@@ -282,12 +283,12 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
 
                 memcpy(DAT_106e78f0, pRec, 0x40);
 
-                OUTM(12) = OUTM(12) - pObjBase[12];
+                OUTM(12) = OUTM(12) - pObj[-0x9c0];
                 SPRM(0)  = DAT_1035fb78.x * sx;
                 SPRM(4)  = -(-DAT_1035fb78.y * sx);
                 SPRM(8)  = 0.0f;
                 SPRM(12) = 512.0f;
-                OUTM(13) = OUTM(13) - pObjBase[13];
+                OUTM(13) = OUTM(13) - pObj[-0x9bf];
                 SPRM(1)  = -DAT_1035fb78.y * sy;
                 SPRM(5)  = DAT_1035fb78.x * sy;
                 SPRM(9)  = 0.0f;
@@ -364,8 +365,10 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
                         pFlag    = clip;
                         while (n != 0) {
                             BrCopy8Words(pVtx, (const void *)c2);
-                            pVtx[3] = m00 * pVtx[0] + m10 * pVtx[1] + m20 * pVtx[2] + m30;
-                            pVtx[4] = m01 * pVtx[0] + m11 * pVtx[1] + m21 * pVtx[2] + m31;
+                            vx = pVtx[0];
+                            vz = pVtx[2];
+                            pVtx[3] = m00 * vx + m10 * pVtx[1] + m20 * vz + m30;
+                            pVtx[4] = m01 * vx + m11 * pVtx[1] + m21 * vz + m31;
                             if (pVtx[3] < DAT_100771f8) {
                                 fl = 1;
                             } else if (pVtx[3] < DAT_1007720c) {
