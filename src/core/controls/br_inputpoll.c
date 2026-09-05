@@ -175,9 +175,9 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     int32_t        g;
     int32_t        div;
     int32_t        cur;
-    int32_t        prev;
+
     int32_t        now;
-    int32_t        dt;
+    uint32_t       dt;
     int32_t        df;
 
     if (g_brInputFrame < 0x7FFF)
@@ -230,11 +230,10 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         hr = g_pBrInDiRoot->pMouse->pVtbl->GetDeviceState(g_pBrInDiRoot->pMouse,
                                                           0x10u, &ms);
         if (hr == 0) {
-            prev = g_brInMousePrev;
             cur = g_brInMouseCur;
-            g_brInMouse[cur].ax = ms.lX + g_brInMouse[prev].ax;
-            g_brInMouse[cur].ay = ms.lY + g_brInMouse[prev].ax;
-            g_brInMouse[cur].az = ms.lZ + g_brInMouse[prev].ax;
+            g_brInMouse[cur].ax = ms.lX + g_brInMouse[g_brInMousePrev].ax;
+            g_brInMouse[cur].ay = ms.lY + g_brInMouse[g_brInMousePrev].ax;
+            g_brInMouse[cur].az = ms.lZ + g_brInMouse[g_brInMousePrev].ax;
             g = g_brMouseSens;
             if (g < 0)
                 g = 0;
