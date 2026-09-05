@@ -103,6 +103,70 @@ int BrTrackSwapRec28(int param_1)
   return;
 }
 
+/* WHAT IT DOES: byte-swaps and rebases one segment record in place: its
+ * four leading pointers (swap, then rebase through BrSegPtrFixup), its two
+ * big-endian 16-bit counts, the 0x28-byte record at +0x18, and then the
+ * array of those records from +0x40 -- one more of them than the first
+ * count says. */
+/* @implements 0x10031960 glide BrTrackFixupSegRec */
+
+int BrTrackFixupSegRec(int param_1)
+
+{
+  char uVar1;
+  int iVar4;
+
+  /* The first swap is spelled exactly as BrTrackFixupSegList's (save p[3],
+   * store p[0] over it, restore): VC5 schedules the p[0] store FIRST either
+   * way, but the decompiler's reading (save p[0], store p[3] over it) puts
+   * the two byte temps in the other registers -- 6 diff bytes, every
+   * declaration-order / naming permutation inert. */
+  uVar1 = *(char *)(param_1 + 3);
+  *(char *)(param_1 + 3) = *(char *)param_1;
+  *(char *)param_1 = uVar1;
+  uVar1 = *(char *)(param_1 + 2);
+  *(char *)(param_1 + 2) = *(char *)(param_1 + 1);
+  *(char *)(param_1 + 1) = uVar1;
+  BrSegPtrFixup((uint32_t *)param_1);
+  uVar1 = *(char *)(param_1 + 7);
+  *(char *)(param_1 + 7) = *(char *)(param_1 + 4);
+  *(char *)(param_1 + 4) = uVar1;
+  uVar1 = *(char *)(param_1 + 6);
+  *(char *)(param_1 + 6) = *(char *)(param_1 + 5);
+  *(char *)(param_1 + 5) = uVar1;
+  BrSegPtrFixup((uint32_t *)(param_1 + 4));
+  uVar1 = *(char *)(param_1 + 0xb);
+  *(char *)(param_1 + 0xb) = *(char *)(param_1 + 8);
+  *(char *)(param_1 + 8) = uVar1;
+  uVar1 = *(char *)(param_1 + 10);
+  *(char *)(param_1 + 10) = *(char *)(param_1 + 9);
+  *(char *)(param_1 + 9) = uVar1;
+  BrSegPtrFixup((uint32_t *)(param_1 + 8));
+  uVar1 = *(char *)(param_1 + 0xf);
+  *(char *)(param_1 + 0xf) = *(char *)(param_1 + 0xc);
+  *(char *)(param_1 + 0xc) = uVar1;
+  uVar1 = *(char *)(param_1 + 0xe);
+  *(char *)(param_1 + 0xe) = *(char *)(param_1 + 0xd);
+  *(char *)(param_1 + 0xd) = uVar1;
+  BrSegPtrFixup((uint32_t *)(param_1 + 0xc));
+  *(unsigned short *)(param_1 + 0x14) =
+      (unsigned short)(((unsigned int)*(unsigned char *)(param_1 + 0x14) << 8)
+                       | *(unsigned char *)(param_1 + 0x15));
+  *(unsigned short *)(param_1 + 0x16) =
+      (unsigned short)(((unsigned int)*(unsigned char *)(param_1 + 0x16) << 8)
+                       | *(unsigned char *)(param_1 + 0x17));
+  BrTrackSwapRec28(param_1 + 0x18);
+  /* The record address is an expression of the counter, not a pointer
+   * local: VC5 strength-reduces it into an induction temp that is set up
+   * INSIDE the loop guard (`push ebx; lea ebx,[esi+0x40]` after the `jb`)
+   * and pushed lazily; a named pointer is initialised before the test and
+   * takes the counter's register (4 shape diffs). */
+  for (iVar4 = 0; iVar4 <= *(unsigned short *)(param_1 + 0x14); iVar4++) {
+    BrTrackSwapRec28(param_1 + 0x40 + iVar4 * 0x28);
+  }
+  return;
+}
+
 
 /* WHAT IT DOES: walk an array of Vec3s in a track struct and byte-swap each one. */
 /* @implements 0x10031A80 glide BrTrackSwapAllVec3 */
