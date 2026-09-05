@@ -570,6 +570,14 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * (orig fld pos; fsub [slot]); the quat copy is three DWORD copies
  * (integer regs, hoisted loads), not float assignments; the first sign is
  * an if/else (`< 0` arm first), the other two `sgn=-1; if (!(x<0)) sgn=1`.
+ * Landed 2026-09-05: e1 is computed BEFORE e2 (the orig loads all of e1's
+ * minuends aV[3..5] before the first fsub, so region 1 was a pure statement-
+ * order artifact) -- register-blind multiset 17+17 -> 12+12.  What is left
+ * is the d/dp block (lines ~682-696): the orig loads pos.z,pos.y first and
+ * `fsub` the BF slots (pos-BF, natural minuend-first) while ours loads all
+ * three BF and `fsubr`s; plus the sum's faddp association and one
+ * fld-st-dup vs fmul-mem.  All FPU-stack scheduling of one expression, not
+ * source-permutable (blind term reordering forbidden); T3a.
  * Remaining, all in one cause-group (register/slot allocation, 4 regions):
  *  - slots: orig planeD@0x10 cnt@0x14 sgn@0x18 spin@0x1c; ours has
  *    planeD/cnt one slot up.  Declaration order both ways: inert (7+7).
@@ -580,8 +588,6 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  *  - the mode-4 else block sits OUT OF LINE after the epilogue in the orig
  *    (three `je` to it, `jmp` back past `mov edi,1`); ours is inline with a
  *    `jmp` from the then-arm.  goto-to-a-trailing-label form: worse (9+8).
- *  - the e1/e2 subtractions: orig loads all six vertex components before
- *    the first fsub; ours loads three.
  * Dead: BF-offset spelling of next.pos in the delta (fsubp shape, 11+7);
  * `pos -= dp` (fsubr x3); goto LAB_common out of the then-arm (extra jmp). */
 extern int   g_br0AA010;        /* 0x100A9360 -- the debug/game mode; 4 arms the kick path */
@@ -617,8 +623,8 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
         BrMat4TransformPoint((BrVec3 *)(void *)&aV[0], pMatBox, pP->pV0);
         BrMat4TransformPoint((BrVec3 *)(void *)&aV[3], pMatBox, pP->pV1);
         BrMat4TransformPoint((BrVec3 *)(void *)&aV[6], pMatBox, pP->pV2);
-        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];
         e1.x = aV[3] - aV[0]; e1.y = aV[4] - aV[1]; e1.z = aV[5] - aV[2];
+        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];
         nrm.x = e2.z * e1.y - e2.y * e1.z;
         nrm.y = e2.x * e1.z - e2.z * e1.x;
         nrm.z = e2.y * e1.x - e2.x * e1.y;
