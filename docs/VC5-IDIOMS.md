@@ -4937,6 +4937,15 @@ byte-exact on the first compile. Screen: a `push imm` immediately before a
     typedef struct { uint32_t v; } KeyArg;
     int32_t BR_THISCALL1 f(void *pThis, KindArg kind, KeyArg key);
 
+Confirmed again 2026-09-05 on **0x10039C00 BrCtrlCfgReloadPreset** (89 B), a
+FREE cdecl function (not a member): every switch arm is `push imm8; mov
+ecx,0x10B71290; call`. The C `__fastcall` struct-wrapper twin costs +31 B
+across the four arms; written in the C++ lane as `@cpp_kind free` calling a
+real thiscall member on a static object (`g_obj.LoadPreset(0)`), byte-exact
+on the first compile (`cpp_score.py`: 4/4 pieces, 0 diffs, no EH). So the
+screen ("push imm before mov ecx/call, no add esp") routes a FREE function to
+the C++ lane just as it does a member.
+
 `include/br_match.h` carries the corrected rule. **Screened afterwards: every
 other `BR_THISCALL1` definition in the tree takes one argument (exact) or two
 with the wrapper already on the second (correct), so there is no third case to
