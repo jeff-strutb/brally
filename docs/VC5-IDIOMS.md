@@ -6233,3 +6233,37 @@ inert) -- it needs comparable float products through pointer locals, or two
 named integer factors; and a spill can be LOAD-BEARING for a frame size (the
 pCam spill holds 0x4c where the original holds it with byte slots), so a
 frame that matches is not evidence the frame's contents match.
+
+## `0.0 - a*b` and `-(a*b)` are NOT the same to VC5: one keeps the negation in the sum chain
+
+`0x1002A050 BrMat4LookAt`, 2026-09-05. A translation row is
+`-(eye.x*ax.x) - eye.y*ax.y - eye.z*ax.z`. Spelled with a unary minus on
+the first product, VC5 emits the `fchs` as soon as that product exists,
+which costs two `fxch` and 4 bytes against the original. Spelled as a
+subtraction from a zero literal:
+
+    pM->m[3][k] = (float)(((0.0 - xEye * v.x) - yEye * v.y) - zEye * v.z);
+
+the negation becomes the first link of the same `fsubp` chain as the other
+two terms, and the function goes size- and instruction-exact. Both forms
+are the same value except for the sign of a zero result.
+
+**Not interchangeable with the other negation levers, which were measured
+on the same function and are all worse:** negating the eye operand
+(`-xEye * v.x`, 3+4), negating the whole dot product (`-(a+b+c)`, 12+8),
+and an extra paren pair around the first product (inert).
+
+### And the store block is written PER AXIS, not as one address-ordered run
+
+Same function. Nine axis stores followed by three translations is what the
+port had (register-blind 4+6). Rewriting the nine stores into pure address
+order — `m[0][0..3]`, `m[1][0..3]`, `m[2][0..3]`, which is literally the
+order the original's `fstp`s land in — is BYTE-IDENTICAL to the column-major
+form: VC5 canonicalises the store order of a block of independent stores.
+What moved it was the INTERLEAVE: each axis's translation, then that axis's
+three matrix stores, three times over. So when a matrix builder's stores
+already sit in the original's address order and nothing changes, the
+question is not the order of the stores but which OTHER statement belongs
+between them. (Companion to "matrix builders are written row by row in
+address order", which is about a builder whose rows are independent; here
+the rows share a dot product.)
