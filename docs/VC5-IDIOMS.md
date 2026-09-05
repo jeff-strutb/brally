@@ -6487,6 +6487,6 @@ call site.** The reverse tell is `xor eax,eax` immediately before the pops.
 Proven BrNetShutdown 0x10005F50 (264 B, /O2): that one lever was the entire
 diff — the rest of the transcription was byte-exact on the first compile.
 
-DEAD, do not re-run (both /O2, both give the epilogue form):
-`hr = Shutdown(&g); … return hr == 0;` (2 regions, one a 7-byte lost-sync tail);
-the same with `hr` declared as `unsigned int`.
+DEAD, do not re-run (/O2, gives the epilogue form):
+`hr = Shutdown(&g); … return hr == 0;` -- 2 regions, the second a 7-byte
+lost-sync tail; same 264-byte size, so size is no signal here.
