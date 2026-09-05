@@ -6055,3 +6055,39 @@ mask pointer's after the second multiply; the other order swapped them.
 Rider: three channel results stored together at the end are three
 temporaries (one spilled to a byte slot, `mov [esp+S],dl` / `mov al,[esp+S]`);
 storing each channel as it is computed is 9 bytes short.
+
+## Declaration order decides which of two LOCALS is `fld`ed in a sum -- and a hoist follows
+
+`0x10034E30 BrAtan2` (393 B) ended on one region: the direct return
+`acc + ang` came out `fld ang; fadd acc` where the original has `fld acc;
+fadd ang`, and because the other arm of the same `if` also begins with
+`fld ang`, VC5 HOISTED that load above the `test edi,edi` -- 2 B short,
+one instruction short, register-blind 1+2. Every expression-level lever
+was inert: redundant parens on either operand, `ang + acc`, `acc += ang`,
+a copy of acc, reading acc through a pointer, an inverted test, a ternary.
+
+**What moved it was the declaration order of the two locals.** With
+`float acc; float r; float ang, step;` VC5 loads ang first; with
+`float ang, step; float acc; float r;` it loads acc first, the two arms no
+longer share a leading load, nothing is hoisted, and the function is
+byte-exact. So for a two-term sum of two stack locals the one declared
+LATER is the `fld` operand. (The existing note that declaration order is
+inert under /Od stands; this is /O2, and the effect is on operand choice,
+not on slot layout -- the frame did not change.)
+
+**Screen:** a common `fld [esp+S]` hoisted above a branch whose two arms
+begin with the same local, where the original loads inside each arm. Look
+at the sum in the arm the original loads differently, and swap the
+declaration order of its two operands.
+
+Three more facts from the same function, each one region:
+- A rotation `(x, y) -> (y, -x)` is spelled through a copy of the OLD x
+  (`t = x; x = y; y = -t`), not of y: with `t = y` VC5 loads y before the
+  arm's other statement (the `acc` update) where the original updates acc,
+  then loads y, then negates.
+- `if ((r = f(...)) == K)` -- assignment inside the test -- is what
+  produces `fld st(0); fcomp [K]` (compare a copy, keep r); a separate
+  `r = f(...); if (r == K)` is a bare `fcom` and one instruction short.
+- Inside an arm that writes three things, the ORDER of the writes is
+  visible even when they are independent: `acc = K_PI; x = -x; y = -y`
+  matched; the four other orders were 4 B short or worse.
