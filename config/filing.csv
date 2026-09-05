@@ -909,3 +909,4 @@ glide_va,name,module,basis,file
 0x10039580,BrCtlNameFind,controls,manual,src/core/controls/br_ctlname.c
 0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
 0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
+0x10034870,BrVec3TransformDivW,geometry,manual,src/core/generated/0x10034870.c
