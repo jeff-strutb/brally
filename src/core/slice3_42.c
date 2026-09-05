@@ -511,7 +511,20 @@ void BrReplayApply(void *pCar, int32_t iPlayer)
     }
 
     /* orig reloads both cursor and count from [iPlayer*4+disp], then
-     * `add ebx,0x18` for the next slot rather than rebuilding the index. */
+     * `add ebx,0x18` for the next slot rather than rebuilding the index.
+     *
+     * RESIDUE (2026-09-04): 34 diff bytes, size- and instruction-exact,
+     * register-blind 6+6, ONE region at +0xbd: the original `fld`s the
+     * three state fields and subtracts the car fields from MEMORY
+     * (`fld [esp+S]; fsub [esi+0x1dc]`); VC5 gives us the reverse
+     * (`fld [esi+0x1dc]; fsubr [esp+S]`).  DEAD, all byte-identical: a
+     * paren round the state operand, named dx/dy/dz temps, a `BrCarState
+     * *ps = &state` pointer, `float *pf = &state.f10` with pf[0..2],
+     * copying the three fields to float locals first, `-car + state`.
+     * A past-the-end pointer over the car's position (`pc[-3..-1]`)
+     * flips the pair to 0+6 but drops 12 B and 6 instructions; a
+     * `pPos[0..2]` pointer the same.  Which side of a float SUBTRACT
+     * gets the fld is not source-selectable here. */
     if (g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 2) {
         BrCarStateUnpack(&state, &pSlot[1].rec);
 
