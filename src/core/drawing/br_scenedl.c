@@ -1633,7 +1633,13 @@ no_mark:
                 uint8_t *pA = active;
                 int rb;
                 do {
-                    iWheel = 0;
+                    /* ‼ OWN COUNTER: the active[]-init loop's index is a
+                     * block-scoped `iw2`, not the function-scope iWheel the
+                     * trail loop uses.  Sharing iWheel emitted the byte store
+                     * as `[edx+edi]`; the private counter lands the original's
+                     * `[edi+edx]` (region 0x1fc8 closes, byte-exact, no other
+                     * slot moves).  Measured, do not merge them again. */
+                    int iw2 = 0;
                     rb = c2 << 4;
                     do {
                         head = *(int *)((char *)DAT_1035faf0 + rb);
@@ -1642,10 +1648,10 @@ no_mark:
                             slot = 499;
                         }
                         *(int *)((char *)cursor + rb) = slot;
-                        pA[iWheel] = head != *(int *)((char *)DAT_1035f750 + rb);
-                        iWheel = iWheel + 1;
+                        pA[iw2] = head != *(int *)((char *)DAT_1035f750 + rb);
+                        iw2 = iw2 + 1;
                         rb = rb + 4;
-                    } while (iWheel < 4);
+                    } while (iw2 < 4);
                     c2 = c2 + 1;
                     pA = pA + 4;
                 } while (c2 < DAT_100b2f04);
