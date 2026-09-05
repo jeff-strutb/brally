@@ -850,6 +850,7 @@ glide_va,name,module,basis,file
 0x1006DCB0,BrMat4ToMat3Transposed,geometry,prefix,src/core/geometry/br_mat3.c
 0x1006DCF0,BrMat4ToMat3,geometry,prefix,src/core/geometry/br_mat3.c
 0x1006DD80,BrMat3Sub,geometry,description,src/core/geometry/br_mat3.c
+0x1006DDD0,BrMat4BuildScaledTransposed,geometry,description,src/core/geometry/br_mat3.c
 0x1006E020,BrFontSetRenderDst,drawing,filed,src/core/drawing/br_font.c
 0x1006E030,BrFontTexInitAll,drawing,filed,src/core/drawing/br_font.c
 0x1006E060,BrSub10074E00,drawing,neighbour-1,src/core/drawing/br_texdetail.c
