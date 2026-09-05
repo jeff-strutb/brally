@@ -6578,6 +6578,27 @@ across two extern calls (the slot disappears and one load goes away); it
 does not for an `extern`. Do not use it to fake a frame — it changes the
 instruction count.
 
+## A pointer reload that stays BELOW a strcpy tail means the copy's destination and the pointer are ONE object
+
+*(proven 2026-09-05 on 0x1003B350 BrSaveNameCommitRallySeason, 554 B)*
+
+`strcpy(g_szName, src); if (g_pHdr[4] == 0 && g_pHdr[5] == 0) …` — the
+original finishes the intrinsic (`and ecx,3 / rep movsb`) and only THEN loads
+`g_pHdr`. With `g_szName` and `g_pHdr` as two separate externs VC5 hoists the
+pointer load into the copy's tail (`mov edx,[g_pHdr]` between `rep movsd` and
+`and ecx,3`): distinct globals cannot alias, so the load is free to move.
+Wrapping the name alone in a struct does NOT stop it. Declaring the pointer
+and the name as members of ONE struct (`struct { int *pHdr; char
+pad[0x1C5C-4]; char szName[0x80]; }`, the addresses 0x10AF2094 and
+0x10AF3CF0 fixing the distance) makes the store into the object a possible
+write to the pointer, the reload stays below the `rep movsb`, and the
+function is byte-exact. **The tell:** a MASKED region that is only a global
+load moved across an intrinsic's last two instructions, with the multiset at
+0. **The lesson:** VC5's alias analysis is per OBJECT, so where the original
+refuses to move a load past a store the two symbols lived in the same object
+— declare them that way, naming only the members used and letting the
+addresses set the padding.
+
 ## The staged MSVCRT.LIB is a byte ORACLE for fencing — prove it, don't infer it
 
 `config/fenced.csv` decides that a range is linker/CRT output rather than a
