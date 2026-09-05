@@ -31,8 +31,61 @@
  *     0x80-byte joystick button wipe and the 0x1C mouse record wipe are the
  *     `rep stosd` intrinsic.
  *
- * RESIDUE MAP / DEAD PROBES: see the notes above the function; updated as
- * the rounds progress.
+ * STATE (2026-09-05): 4145/4145 B, 1185/1185 instructions, register-blind
+ * 0+0, ONE region of 2 bytes at orig+0x34.  Everything else in the function
+ * is byte-identical.  Two source facts closed the rest of the residue:
+ *
+ *   1. THE FRAME (0x118 -> 0x110).  The benchmark block converts an unsigned
+ *      divisor through an 8-byte temp (`mov [esp+0x14],ebx` zeroes the high
+ *      half, `fild`/`fidiv` read the low dword).  The original parks that
+ *      temp ON TOP OF the dead DIMOUSESTATE (esp+0x10); ours gave it its own
+ *      8 bytes while `ms` was a function-scope local.  Declaring `ms` INSIDE
+ *      the mouse block lets the slot be reused.  (The 2026-09-03 note that
+ *      /O2 slot packing "ignores scope" was measured on scalars; an
+ *      ADDRESS-TAKEN aggregate is different -- its block scope ends its
+ *      lifetime for the packer.)
+ *   2. THE MOUSE ACCUMULATE.  The original reads the previous record's `ax`
+ *      once by scaled index (`mov esi,[ecx*4+A]`), keeps the ADDRESS
+ *      (`lea eax,[ecx*4+A]`) and reads the two copy-pasted terms through it
+ *      (`add edx,[eax]`).  Written three times as `g_brInMouse[prev].ax`
+ *      VC5 forms the address once and reads through it all three times, and
+ *      hoists the three DIMOUSESTATE loads into esi/edi ahead of the index
+ *      arithmetic (+1 instruction, 3+2 register-blind).  A pointer to the
+ *      FIELD, `int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax`, used
+ *      for all three reads, is byte-exact: the C front end folds the first
+ *      `*pPrevAx` back into the direct load and keeps the pointer for the
+ *      rest.  A pointer to the RECORD (`pPrev->ax`) is size-exact but reads
+ *      `[eax+0xc]` (+1 insn); operand order, `int ms[4]`, and `ms` through
+ *      a pointer are all dead (see below).
+ *
+ * THE 2-BYTE RESIDUE, orig+0x34: keyboard arm, `mov edx,[ecx]` (vtable) then
+ * `mov [g_brInKeyCur],eax` in the original; we emit the store first.  VC5's
+ * C front end will not move a pointer deref above a store to a global (the
+ * whole binary has exactly THREE deref-then-global-store adjacencies and the
+ * other two, 0x1003BCA0 and 0x100382D0, are plain source order).  A source
+ * order that puts the read first needs a local, and every local floats to
+ * the top of the block instead.  DEAD, all measured (a8 = 2 B unless said):
+ *   - the store inside the argument, `g_brInKeys[g_brInKeyCur = ...]` (=)
+ *   - an `idx` local, stored then indexed (=)
+ *   - `g_brInKeyCur` file-static (=); `volatile` + idx local (micro: =)
+ *   - vtable field `const`, device pointer `const *`, `* const` (=, =, =)
+ *   - `#pragma optimize("a"|"w", on)`: -220 B, the function falls apart
+ *   - a device local assigned BEFORE the prev store: dev load hoists to +0x25
+ *     (5 diffs); assigned AFTER the prev store: identical to a8
+ *   - a VTABLE local, in any position (top, after idx, with/without a device
+ *     local, via a comma expression, via a `*volatile*` deref): the dev load
+ *     hoists to +0x21 and the vtable read to +0x30 (13-14 diffs)
+ *   - the prev store as an absolute deref to anchor the dev load: +1 insn
+ *   - the store target as a struct member / array element (micro: =)
+ *   - the whole TU compiled as C++ (COM struct with virtual __stdcall slots,
+ *     /O2 /GX /MD): THIS SITE IS BYTE-EXACT -- C1XX treats the vptr load
+ *     as non-aliasing -- but the mouse site above then regresses to the
+ *     plain-form shape under every C++ spelling tried (plain, field pointer,
+ *     record pointer, const pointer, reference, value+pointer, register,
+ *     function-scope, arithmetic/cast/flat-int pointer, ms via pointer).
+ *   ONE front end built the original.  Under C the residue is these 2
+ *   bytes; under C++ it is the mouse site (+1 insn, -3 B).  If the C++ lane
+ *   finds a C1XX spelling for the mouse accumulate, this file moves there.
  */
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -167,7 +220,6 @@ __declspec(dllimport) short __stdcall GetAsyncKeyState(int vk);
 /* @implements 0x100706D0 glide BrInputPoll */
 uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 {
-    BrInMouseState ms;
     char           buf[256];
     uint32_t       flags;
     int32_t        hr;
@@ -227,13 +279,15 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     g_brInMousePrev = g_brInMouseCur;
     g_brInMouseCur = (g_brInMouseCur - 1) & 1;
     if (g_pBrInDiRoot != 0 && g_pBrInDiRoot->pMouse != 0) {
+        BrInMouseState ms;
         hr = g_pBrInDiRoot->pMouse->pVtbl->GetDeviceState(g_pBrInDiRoot->pMouse,
                                                           0x10u, &ms);
         if (hr == 0) {
+            int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax;
             cur = g_brInMouseCur;
-            g_brInMouse[cur].ax = ms.lX + g_brInMouse[g_brInMousePrev].ax;
-            g_brInMouse[cur].ay = ms.lY + g_brInMouse[g_brInMousePrev].ax;
-            g_brInMouse[cur].az = ms.lZ + g_brInMouse[g_brInMousePrev].ax;
+            g_brInMouse[cur].ax = ms.lX + *pPrevAx;
+            g_brInMouse[cur].ay = ms.lY + *pPrevAx;
+            g_brInMouse[cur].az = ms.lZ + *pPrevAx;
             g = g_brMouseSens;
             if (g < 0)
                 g = 0;
