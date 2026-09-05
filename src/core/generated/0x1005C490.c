@@ -57,7 +57,13 @@ extern int DAT_10af3bb0;
  * `[edx+edi+base]` (shl 3 + sub, base folded into the load); ours folds
  * `edi+edx*8` into a lea and subtracts after. (3) The pos<count arm's
  * `movsx` lands in edx in the original, eax here -- probably a consequence
- * of (1). Layout is the lever; not found in ~30 minutes. */
+ * of (1). Layout is the lever; not found in ~30 minutes.
+ * 2026-09-05: the tree had regressed to the wrapper form (188 B, regnorm
+ * 3+11, 8 insns short); restored to the flat chain here (204 B, regnorm
+ * 3+3, 78/78 insns). Re-confirmed (2) is an addressing-mode fold, not
+ * source-permutable: an explicit `off = lvl*24 - count; base[off+pos]`
+ * temp still emits `lea [edi+edx*8]; sub` rather than `shl; sub;
+ * [edx+edi+base]`. The three sites are one layout wall; T3a. */
 /* WHAT IT DOES: choose which entity (car model) a race entrant drives, from
  * the difficulty level in the menu record. Entrants below the entrant count
  * take the level's first table index (single-player only); in modes 1 and
@@ -78,11 +84,14 @@ void __fastcall BrRaceCarPickIndex(unsigned char *pCar)
   cl = lvl;
   if (cl > 3) cl = 3;
   pos = *(int *)(pCar + 0x140);
-  if (pos >= DAT_100b3858) {
-    if (DAT_100a9360 == 1 || DAT_100a9360 == 6) {
-      *(int *)(pCar + 0x29a8) = DAT_10af3bb0;
-      return;
+  if (pos < DAT_100b3858) {
+    if (DAT_100a9360 == 0) {
+      arg.n = DAT_100b3024[lvl].aIdx[0];
+      BrEntitySetIndex(pCar, arg);
     }
+  } else if (DAT_100a9360 == 1 || DAT_100a9360 == 6) {
+    *(int *)(pCar + 0x29a8) = DAT_10af3bb0;
+  } else {
     m = DAT_100b3024[cl].mask;
     for (i = 0; i < 16; i++) {
       if (m & 1) break;
@@ -92,13 +101,10 @@ void __fastcall BrRaceCarPickIndex(unsigned char *pCar)
     if (pos > DAT_100b3858) {
       arg.n = i;
       BrEntitySetIndex(pCar, arg);
-      return;
+    } else {
+      arg.n = DAT_100b3024[lvl].aIdx[pos - DAT_100b3858];
+      BrEntitySetIndex(pCar, arg);
     }
-    arg.n = DAT_100b3024[lvl].aIdx[pos - DAT_100b3858];
-    BrEntitySetIndex(pCar, arg);
-  } else if (DAT_100a9360 == 0) {
-    arg.n = DAT_100b3024[lvl].aIdx[0];
-    BrEntitySetIndex(pCar, arg);
   }
 }
 
