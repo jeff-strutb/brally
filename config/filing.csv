@@ -49,6 +49,7 @@ glide_va,name,module,basis,file
 0x100032D0,BrChkFileSize,gamedata,description,src/core/gamedata/br_chkfile.c
 0x10003320,BrChkFReadOpen,gamedata,description,src/core/gamedata/br_chkfile.c
 0x100034C0,BrChkFRead,gamedata,neighbour-1,src/core/generated/0x100034C0.c
+0x10003530,BrChkFReadLine,startup,filed,src/core/startup/br_appstart.c
 0x100035E0,BrChkFClose,startup,neighbour-1,src/core/generated/0x100035E0.c
 0x10003680,BrChkFileExists,startup,neighbour-1,src/core/ghidra_batch.c
 0x100036F0,BrChkAlloc,startup,neighbour-1,src/core/generated/0x100036F0.c
@@ -166,6 +167,7 @@ glide_va,name,module,basis,file
 0x10014D00,BrHudDrawViewMessage,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x100151F0,BrHudFormatGapString,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x10015240,BrHudGapSeconds,drawing,neighbour,src/core/drawing/br_hudscene.c
+0x100154A0,BrHudDrawSplitTimes,drawing,filed,src/core/drawing/br_hudscene.c
 0x100155F0,BrSceneUsePlainClear,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x10016800,BrSub_10019240,drawing,neighbour,src/core/drawing/br_text.c
 0x10016810,BrClear_10019250,drawing,filed,src/core/drawing/br_textmode.c
@@ -349,6 +351,7 @@ glide_va,name,module,basis,file
 0x1002AB94,BrNop_1002AB94,drawing,neighbour,src/core/drawing/br_gfxrect.c
 0x1002AB99,BrGfxClearScreen,drawing,neighbour,src/core/slice2_17.c
 0x1002AD39,BrGfxFillRect,drawing,neighbour,src/core/slice2_17.c
+0x1002B3F0,BrPointDepthFrac,drawing,filed,src/core/drawing/br_pointdepth.c
 0x1002B997,BrFrameBeginDl,drawing,neighbour,src/core/drawing/br_framebegin.c
 0x1002BF24,BrFrameBeginRec,drawing,neighbour,src/core/drawing/br_framebegin.c
 0x1002BF37,BrFrameBeginHiRes,drawing,neighbour,src/core/drawing/br_framebegin.c
@@ -771,9 +774,7 @@ glide_va,name,module,basis,file
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
 0x10066260,BrCollRespBoxClassify,driving,filed,src/core/driving/br_collresp.c
 0x100664F0,BrCrCorner,driving,filed,src/core/driving/br_collresp.c
-0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
 0x10066800,BrCollRespSegBox,driving,filed,src/core/driving/br_collresp.c
-0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
 0x10068600,FUN_10068600,driving,description,src/core/driving/br_wheelvel.c
@@ -796,6 +797,7 @@ glide_va,name,module,basis,file
 0x1006A5F0,BrSecondTickLoop,racing,description,src/core/racing/br_secondtickloop.c
 0x1006A650,FUN_1006a650,net,description,src/core/net/br_peer.c
 0x1006AAD0,BrSub10071B60,geometry,filed,src/core/geometry/br_vec.c
+0x1006AAF0,BrNetPeerMsgReset,net,filed,src/core/net/br_peer.c
 0x1006AB60,BrObjResetMsgHdr,gamedata,description,src/core/gamedata/br_bitstream.c
 0x1006B1E0,BrSndThreadStop,audio,description,src/core/audio/br_sndvoice.c
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/audio/br_sndvoice.c
@@ -937,3 +939,5 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
+0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
+0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
