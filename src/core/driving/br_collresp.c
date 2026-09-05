@@ -8,6 +8,7 @@
  *   0x10066800   332 B   BrCollRespSegBox        byte-exact 2026-09-05
  *   0x10066610   492 B   BrCollRespPointInTri    PARKED, 2 regions (see it)
  *   0x10066950   322 B   BrCrExact               PARKED, 1 x87 chain (see it)
+ *   0x10066AD0   669 B   BrCollRespBroadPhase    byte-exact 2026-09-05
  *
  * ‼ THE FOUR ABOVE SHARE ONE TIE-BREAK.  Re-spelling any of them renumbers
  * the TU's symbols and can flip a float-chain choice in another: SegBox
@@ -901,6 +902,67 @@ static void BrCrListPush(const BrCollPlane *pPlane)
 
 int g_brCollRespWalkBack;               /* 0x11778848 */
 
+#ifdef BR_MATCHING_BUILD
+/* The original reads the grid and its per-cell counts as the two static
+ * arrays they are (0x10063DD0's reset names them the same way), takes the
+ * cell straight from BrCollGridCellAcquire with no sign check, and neither
+ * clamps the count nor counts anything but the gathered records.  The two
+ * walk arms are byte-identical 214-byte copies, so the body is one macro
+ * expanded in each; the port below keeps its single guarded loop. */
+extern BrCollPlane DAT_11773698[4][BR_COLL_CELL_PLANES];  /* the grid      */
+extern uint16_t    DAT_11778800[4];                        /* cell counts   */
+
+#define BR_CR_GATHER_ONE(pP)                                                \
+    do {                                                                    \
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[0], pMatBox, (pP)->pV0); \
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[3], pMatBox, (pP)->pV1); \
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[6], pMatBox, (pP)->pV2); \
+        e1.x = aV[3] - aV[0]; e1.y = aV[4] - aV[1]; e1.z = aV[5] - aV[2];   \
+        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];   \
+        nrm.x = e2.z * e1.y - e2.y * e1.z;                                  \
+        nrm.y = e2.x * e1.z - e2.z * e1.x;                                  \
+        nrm.z = e2.y * e1.x - e2.x * e1.y;                                  \
+        if (BrCrTest(aV, &nrm) != 0) {                                      \
+            BrCrListPush(pP);                                               \
+            ++n;                                                            \
+        }                                                                   \
+    } while (0)
+
+/* WHAT IT DOES: the broad phase of car-versus-track collision: fetch the
+ * grid cell under the car, transform every triangle record in it into the
+ * car's box space, and keep -- on this frame's contact list -- each one
+ * that touches the box.  Returns how many it kept.  A global picks whether
+ * the cell is walked backwards or forwards. */
+/* @implements 0x10066AD0 glide BrCollRespBroadPhase */
+int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
+{
+    float  aV[9];
+    BrVec3 nrm, e1, e2;
+    const BrCollPlane *pP;
+    short  cell;
+    int    count, i, n = 0;
+
+    cell  = BrCollGridCellAcquire(pBody->m.m[3][0], pBody->m.m[3][1]);
+    count = DAT_11778800[cell];
+    /* pP is the loop's OWN induction variable, stepped in the for clause.
+     * Recomputing it from the index inside the body (`pP = &grid[cell][i]`)
+     * makes VC5 bias its pointer register to the middle field (+0x14) and
+     * spend a `lea eax,[esi-0x14]` on every push -- 10 B, 6 regions. */
+    if (g_brCollRespWalkBack) {
+        pP = &DAT_11773698[cell][count - 1];
+        for (i = count - 1; i >= 0; --i, --pP) {
+            BR_CR_GATHER_ONE(pP);
+        }
+    } else {
+        pP = DAT_11773698[cell];
+        for (i = 0; i < count; ++i, ++pP) {
+            BR_CR_GATHER_ONE(pP);
+        }
+    }
+    return n;
+}
+#undef BR_CR_GATHER_ONE
+#else
 int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
 {
     short  cell;
@@ -963,3 +1025,4 @@ int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
     g_cBrCollRespGathered += (uint32_t)n;
     return n;
 }
+#endif /* BR_MATCHING_BUILD */
