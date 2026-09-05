@@ -6347,3 +6347,28 @@ the clip arm calls the no-Z trimmer, and the three indices are consumed
 i0, i2, i1 (declared in that order, which per the entry above picks the
 `&`/`|` accumulator). 37 differing bytes between the two originals, no other
 lever needed.
+
+## A short constant-size clear is a `memset`, and that is what KEEPS THE BASE IN A REGISTER
+
+`0x10008760 BrObj87Ctor`, 2026-09-05, byte-exact. The original clears four
+consecutive dwords at +8 through a held pointer:
+
+    lea ecx,[esi+8] ; mov [ecx],eax ; mov [ecx+4],eax ; mov [ecx+8],eax ; mov [ecx+0xc],eax
+
+Neither obvious C spelling reproduces it. Four plain stores
+(`*(int *)(p + 8) = 0;` …) fold every address back onto the object base and
+emit `mov [esi+8],eax` … (59 B against 61, 40 diffs). Naming the pointer
+(`int *q = (int *)(p + 8); q[0] = 0; …`) does NOT help either — 33 diffs, same
+folded form — because VC5 rematerialises a pointer that is only ever a
+constant offset from a live base. **The `ptr[0]` operand-kind lever needs a
+pointer the compiler cannot re-derive; a pure offset is not one.**
+
+`memset(p + 8, 0, 0x10)` is. VC5 inlines a small constant-size clear by
+computing the destination into a register once and storing through it, which
+is exactly the original's shape, and the function is byte-exact. The 1 KB
+clear at +0x20 in the same function is the same call, inlined as
+`mov ecx,0x100 / rep stosd`.
+
+**Read a run of consecutive same-value stores through one base as a `memset`
+before reaching for pointer spellings** — the byte count tells you which: an
+inlined `memset` holds the base, open-coded stores do not.
