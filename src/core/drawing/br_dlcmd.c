@@ -785,6 +785,60 @@ const uint8_t *BrDlCmdTri1(const uint8_t *p)
     return p + 8;
 }
 
+/* The same three-corner body as BR_DLCMD_TRI_I, with the no-Z trimmer in the
+ * clip arm.  Spelled as a second macro rather than a parameter because the
+ * original's clip arm is a direct `call rel32` to a different address, not an
+ * indirect call through anything. */
+extern void BrDlClipTriNoZ(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c);  /* 0x10020A80 */
+
+#define BR_DLCMD_TRI_I_NOZ(ia, ib, ic, u_)                              \
+    do {                                                                \
+        if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
+            if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
+                BrDlClipTriNoZ(&V(ia), &V(ib), &V(ic));                  \
+            } else {                                                     \
+                BR_DLCMD_FINISH_VTX_I(ia, u_);                           \
+                BR_DLCMD_FINISH_VTX_I(ib, u_);                           \
+                BR_DLCMD_FINISH_VTX_I(ic, u_);                           \
+                BrDlDrawTri(&V(ia), &V(ib), &V(ic));                     \
+            }                                                            \
+        }                                                                \
+    } while (0)
+
+/* 0x10020900 -- G_TRI1 with the depth buffer OFF.  The same 380-byte body as
+ * 0x1001ECF0 above, differing in 37 bytes that are entirely accounted for by
+ * two source facts: the clip arm calls the no-Z trimmer 0x10020A80, and the
+ * three command bytes are consumed 5, 6, 4 rather than 6, 4, 5.
+ *
+ * THE READ ORDER IS SET BY DECLARATION ORDER, AND THE FLOAT TEMP IS PART OF
+ * IT.  `int ic, ib, ia` (values 4, 5, 6) gets all three byte loads right but
+ * schedules `push edi` one slot early, ahead of the third `xor`; moving the
+ * shared float temp `u` from the top of the block to BETWEEN ic and ib fixes
+ * exactly that, and the function is byte-exact.  A float local costs no
+ * register, so it does not look like it should touch the integer prologue --
+ * but it takes part in the same declaration walk, and it is the only lever
+ * that moved those two bytes (spare int locals, `unsigned` indices, one-line
+ * declarations and separated assignments were all probed and are inert or
+ * worse).  See docs/VC5-IDIOMS.md, "a float local reorders the integer
+ * prologue". */
+/* WHAT IT DOES: the G_TRI1 display-list command with the depth buffer off --
+ * draw one triangle from the three vertex-pool indices in the command's
+ * bytes 6, 5 and 4.  Dropped if all three corners are off the same screen
+ * edge, handed to the no-Z trimmer if any corner is off screen, otherwise
+ * each corner's texture coordinates are finished and it goes to the card.
+ * Returns the pointer to the next 8-byte command. */
+/* @implements 0x10020900 glide BrDlCmdTri1NoZ */
+const uint8_t *BrDlCmdTri1NoZ(const uint8_t *p)
+{
+    int   ic = p[4];            /* source order 4, 5, 6 reads 5, 6, 4 */
+    float u;                    /* ONE slot, shared by all three vertices */
+    int   ib = p[5];
+    int   ia = p[6];
+
+    BR_DLCMD_TRI_I_NOZ(ia, ib, ic, u);
+    return p + 8;
+}
+
 #undef V
 #define V(i) (*(i))
 #endif
