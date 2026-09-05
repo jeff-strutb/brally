@@ -931,3 +931,6 @@ glide_va,name,module,basis,file
 0x1006E430,BrX100751D0,startup,manual,src/core/startup/br_frametimer.c
 0x1006D600,BrCpIntegrateVelocity,driving,manual,src/core/driving/br_carphys.c
 0x1005A630,BrImgRegionHasKey,drawing,manual,src/core/generated/0x1005A630.c
+
+0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
+0x1003BCA0,BrSaveProbeTimeAttack,menus,filed,src/core/menus/br_saveprobe.c
