@@ -311,10 +311,6 @@ void BrMat4LookAt(BrMat4 *pM,
     /* x = y cross z. BrVec3dCross puts the OUTPUT third (br_vecd.h). */
     BrVec3dCross(&y, &z, &x);
 
-    pM->m[0][0] = (float)x.x; pM->m[1][0] = (float)x.y; pM->m[2][0] = (float)x.z;
-    pM->m[0][1] = (float)y.x; pM->m[1][1] = (float)y.y; pM->m[2][1] = (float)y.z;
-    pM->m[0][2] = (float)z.x; pM->m[1][2] = (float)z.y; pM->m[2][2] = (float)z.z;
-    pM->m[0][3] = 0.0f;       pM->m[1][3] = 0.0f;       pM->m[2][3] = 0.0f;
 
     /* Translation row: -dot(eye, axis), summed left to right with the
      * first term negated, exactly as the fchs/fsubp chain does it. The eye
@@ -322,18 +318,37 @@ void BrMat4LookAt(BrMat4 *pM,
      * hoisted at the top: naming them costs three extra `fld dword` /
      * `fstp qword` pairs and eighteen bytes of frame.
      *
-     * RESIDUE (register-blind gap 4+6, four bytes short): from the cross
-     * call onward the original schedules all three translation rows and all
-     * nine axis stores as ONE interleaved block -- nine values pipelined
-     * through the x87 stack, `fstp [eax]`, `fstp [eax+0x10]`, `fstp
-     * [eax+0x20]` landing between the translation's `fsubp`s. Ours computes
-     * each row to completion first. The instruction multiset is all but
-     * identical; the order is not. Statement order, flattening the sums,
-     * an extra parenthesis pair and negating the whole dot instead of its
-     * first term all leave it (210 / 206 / 185 diffs against 202). */
-    pM->m[3][0] = (float)((-(xEye * x.x) - yEye * x.y) - zEye * x.z);
-    pM->m[3][1] = (float)((-(xEye * y.x) - yEye * y.y) - zEye * y.z);
-    pM->m[3][2] = (float)((-(xEye * z.x) - yEye * z.y) - zEye * z.z);
+     * TWO SOURCE FACTS, found 2026-09-05, that took this from 4+6 and four
+     * bytes short to SIZE- AND INSTRUCTION-EXACT at register-blind 0+0:
+     *  1. the block is written PER AXIS -- each column's translation, then
+     *     that column's three matrix stores -- not as nine stores followed
+     *     by three translations.  Pure address order over the whole block
+     *     is byte-identical to the old column-major form (202 diffs); it is
+     *     the interleave that matters, and the translation must come FIRST
+     *     within each axis (stores-first is 121, translation-first 141 but
+     *     at 0+0 and size-exact).
+     *  2. the leading negation is spelled `0.0 - a*b`, not `-(a*b)`.  The
+     *     subtract-from-zero keeps the negation as part of the sum chain;
+     *     `-(...)` emits the `fchs` early and costs two `fxch` and 4 bytes.
+     *     (`0.0 -` and `-(...)` differ only in the sign of a zero result,
+     *     which no consumer of a view matrix can observe.)
+     * RESIDUE, 141 diff bytes, register-blind 0+0, size-exact, TWO regions:
+     * the original interleaves the THREE columns' translation chains with
+     * each other -- `fmul` of the next column's term is emitted before the
+     * `fchs` of the previous column's first product -- where ours finishes
+     * one chain's negation first.  Same instructions, same count, different
+     * pipelining depth.  Dead: all three translations hoisted above the
+     * stores (0+5 / 0+3), nine named product temps (0+4), a named double
+     * temp per translation (0+2), negating the eye operand instead of the
+     * product (3+4), negating the whole dot (12+8), and reversing the
+     * m[k][3] zero stores (inert). */
+    pM->m[3][0] = (float)(((0.0 - xEye * x.x) - yEye * x.y) - zEye * x.z);
+    pM->m[0][0] = (float)x.x; pM->m[1][0] = (float)x.y; pM->m[2][0] = (float)x.z;
+    pM->m[3][1] = (float)(((0.0 - xEye * y.x) - yEye * y.y) - zEye * y.z);
+    pM->m[0][1] = (float)y.x; pM->m[1][1] = (float)y.y; pM->m[2][1] = (float)y.z;
+    pM->m[3][2] = (float)(((0.0 - xEye * z.x) - yEye * z.y) - zEye * z.z);
+    pM->m[0][2] = (float)z.x; pM->m[1][2] = (float)z.y; pM->m[2][2] = (float)z.z;
+    pM->m[0][3] = 0.0f;       pM->m[1][3] = 0.0f;       pM->m[2][3] = 0.0f;
     pM->m[3][3] = 1.0f;
 }
 
