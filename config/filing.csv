@@ -69,6 +69,7 @@ glide_va,name,module,basis,file
 0x10005CA0,BrCarClampPosZ,net,description,src/core/net/br_car.c
 0x10005CD0,BrNetReset,net,description,src/core/net/br_netstate.c
 0x10005E80,BrNetMutexInit,net,description,src/core/net/br_netstate.c
+0x10005F50,BrNetShutdown,net,description,src/core/net/br_netshutdown.c
 0x10006060,BrNetSlotGetF004,startup,neighbour-1,src/core/generated/0x10006060.c
 0x100060A0,BrGetGlobal_94294,startup,neighbour-1,src/core/startup/br_stubs.c
 0x100060B0,BrNetStackPop,startup,neighbour-1,src/core/generated/0x100060B0.c
