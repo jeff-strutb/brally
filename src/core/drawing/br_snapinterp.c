@@ -263,14 +263,23 @@ int32_t BrSnapInterpDraw(int32_t force)
 
                 /* The attached matrix records: rows blended, the last column
                  * rebuilt as 0,0,0,1, the trailing float blended. */
+#define LERPROW(k, r) \
+                { \
+                    float *o = OUTCAR.rec[k].m[r]; \
+                    float *a = TOCAR.rec[k].m[r]; \
+                    float *b = FROMCAR.rec[k].m[r]; \
+                    o[0] = (a[0] - b[0]) * t + b[0]; \
+                    o[1] = (a[1] - b[1]) * t + b[1]; \
+                    o[2] = (a[2] - b[2]) * t + b[2]; \
+                }
 #define LERPREC(k) \
-                LERP(rec[k].m[0][0]); LERP(rec[k].m[0][1]); LERP(rec[k].m[0][2]); \
+                LERPROW(k, 0); \
                 OUTCAR.rec[k].m[0][3] = 0.0f; \
-                LERP(rec[k].m[1][0]); LERP(rec[k].m[1][1]); LERP(rec[k].m[1][2]); \
+                LERPROW(k, 1); \
                 OUTCAR.rec[k].m[1][3] = 0.0f; \
-                LERP(rec[k].m[2][0]); LERP(rec[k].m[2][1]); LERP(rec[k].m[2][2]); \
+                LERPROW(k, 2); \
                 OUTCAR.rec[k].m[2][3] = 0.0f; \
-                LERP(rec[k].m[3][0]); LERP(rec[k].m[3][1]); LERP(rec[k].m[3][2]); \
+                LERPROW(k, 3); \
                 OUTCAR.rec[k].m[3][3] = 1.0f; \
                 LERP(rec[k].f40)
 
