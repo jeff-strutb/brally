@@ -108,6 +108,7 @@ glide_va,name,module,basis,file
 0x10007E80,BrAppCheckPreviousApp,startup,filed,src/core/startup/br_appstart.c
 0x10007F10,BrMemoryQuery,startup,filed,src/core/startup/br_appstart.c
 0x10007F40,FUN_10007f40,startup,neighbour-1,src/core/generated/0x10007F40.c
+0x10008760,BrObj87Ctor,gamedata,filed,src/core/gamedata/br_obj87.c
 0x100087A0,BrObj87A0DeleteDtor,gamedata,neighbour-1,src/core/gamedata/br_obj87.c
 0x100087C0,BrSub100087C0,gamedata,neighbour-1,src/core/tiny_stubs.c
 0x10008850,BrKeyCacheFind,gamedata,neighbour-1,src/core/gamedata/br_keycache.c
