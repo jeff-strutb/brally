@@ -6490,3 +6490,52 @@ diff — the rest of the transcription was byte-exact on the first compile.
 DEAD, do not re-run (/O2, gives the epilogue form):
 `hr = Shutdown(&g); … return hr == 0;` -- 2 regions, the second a 7-byte
 lost-sync tail; same 264-byte size, so size is no signal here.
+
+## The staged MSVCRT.LIB is a byte ORACLE for fencing — prove it, don't infer it
+
+`config/fenced.csv` decides that a range is linker/CRT output rather than a
+decomp target, and until now most of those rows were arguments from shape (a
+bare `ff 25 [IAT]`, a `_chkstk` probe, an EH funclet with no prologue). A shape
+argument is fine for a 6-byte thunk and useless for a 205-byte function that
+does malloc, calls and a loop, and looks exactly like game code.
+
+**The library is in the repo, so the argument can be a byte comparison
+instead.** `tools/msvc5/lib/MSVCRT.LIB` is a COFF archive; the first member is
+the linker symbol table, mapping every decorated name to the file offset of the
+member that defines it. Look the name up, parse that member as a COFF object,
+take the `.text` section the symbol points at, and diff it against
+`build/match/orig/<VA>.bin` with the section's own relocation table masked off.
+Every reloc is 4 bytes at the recorded offset and is a value the linker fills;
+everything else must be equal. **Zero non-reloc differences is proof, not a
+lead** — the shipped bytes are that library object, and nothing anybody writes
+in `src/` will ever be compared against them.
+
+Three things fall out of the archive that are worth reading even when the diff
+is not the question:
+
+- **The symbol table names the member, so siblings come for free.** A single
+  member holds every function from one `.obj`, so a name you already fenced
+  points at the ones you have not. `__CRT_INIT@12` and `__DllMainCRTStartup@12`
+  share member `/4351` (`dllcrt0.obj`); `_DllMainCRTStartup` was fenced long
+  ago on shape, and its neighbour was still sitting in the work queue.
+- **The library object is longer than the extracted original**, by the `90`
+  padding the linker inserts to align the next function. Compare `lib[:len(orig)]`
+  and check the tail is nothing but `90`; a size mismatch is not a mismatch.
+- **The reloc list is the callee list.** The masked positions are exactly the
+  globals and imports, so an unmasked byte anywhere is a real divergence and a
+  masked byte that differs is expected. On 0x10074960 all 18 differing positions
+  were reloc sites and all 187 remaining bytes were equal.
+
+The screen that gets you there in the first place is the entry point.
+`AddressOfEntryPoint` in the PE optional header is `_DllMainCRTStartup`, and
+anything reachable ONLY from it is CRT startup by construction. Scanning `.text`
+for `e8` displacements that land on the candidate answers that in one pass: if
+every caller is inside the fenced entry function, stop and go to the archive.
+
+Worked on 0x10074960 (205 B). Its body reads as `dllcrt0.c` once identified:
+`_adjust_fdiv` copied from MSVCRT's data import, `malloc(32 * sizeof(_PVFV))`
+for the DLL's own atexit table, one `_initterm` over the 18-slot `.CRT`
+initializer table the linker parked at the head of `.data`, `__proc_attached`
+refcounting, and a backwards walk of the atexit table on `DLL_PROCESS_DETACH`
+that re-reads the head global after every call. None of that is spellable from
+game source, and it never needed to be.
