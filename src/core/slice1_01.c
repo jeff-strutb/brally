@@ -61,61 +61,6 @@ unsigned long BrAdler32(unsigned long adler, const unsigned char *pBuf,
     return (s2 << 16) | s1;
 }
 
-/* ---------------------------------------------------------------------------
- * 0x10002DE0 -- 64x64 u16 grid sample.
- *
- * The four guards are `fcomp` against 0.0f (0x1008F09C) and 2048.0f
- * (0x1008F0A0), read back with fnstsw / `test ah,1`, i.e. the C0 bit, i.e.
- * "ST < operand". Order in the original is x>=0, x<2048, y>=0, y<2048; x is
- * the one loaded twice through [esp+8] once esi has been pushed.
- *
- * The scale is 0x1008F0A4 = 0.03125f = 1/32, exact in binary, so no rounding
- * question arises before the truncation. 0x1007C8A0 is __ftol (it sets the
- * x87 rounding field to 0xC00 = toward zero and does `fistp qword`).
- *
- * Only AL of each conversion is consumed (`movzx si, al` / `movzx ax, al`),
- * so a value of 256 or more would wrap -- unreachable given the 2048 guard,
- * but reproduced with the mask below rather than assumed away.
- *
- * DEVIATION: the grid base was the global at 0x106C7C6C; it is a parameter.
- */
-/* WHAT IT DOES: looks up a place in the world on a coarse 64-by-64 grid --
- * each square covering thirty-two world units, so the grid spans a square
- * region a couple of thousand units across -- and hands back both that
- * square's value and the difference to the square next along, so a caller can
- * blend between the two. WHAT THE GRID HOLDS IS NOT ESTABLISHED HERE. A
- * position outside the covered region answers zero, which is indistinguishable
- * from a square whose value genuinely is zero. */
-/* @implements 0x10002DE0 d3d BrGrid64Sample */
-uint32_t BrGrid64Sample(const uint16_t *pGrid, float x, float y)
-{
-    unsigned int col, row, idx;
-    uint32_t t0, t1, acc;
-
-    /* Written as negated comparisons so NaN takes the reject path, which is
-     * what the original does: fcomp with a NaN sets C0, and the first guard
-     * rejects on C0. */
-    if (!(x >= 0.0f))    { return 0u; }
-    if (!(x < 2048.0f))  { return 0u; }
-    if (!(y >= 0.0f))    { return 0u; }
-    if (!(y < 2048.0f))  { return 0u; }
-
-    col = (unsigned int)(long)(x * 0.03125f) & 0xFFu;
-    row = (unsigned int)(long)(y * 0.03125f) & 0xFFu;
-
-    /* esi holds row<<6 with the caller's leftover high bits still in it and
-     * eax holds __ftol's high bits; both are discarded by `and 0xffff`. */
-    idx = ((row << 6) + col) & 0xFFFFu;
-
-    t0 = pGrid[idx];
-    t1 = pGrid[(idx + 1u) & 0xFFFFu];
-
-    /* Literally `t1 + t0*65535`, shifted up 16 -- the low 16 bits of that sum
-     * are (t1 - t0) mod 65536, which is the per-cell step. */
-    acc = (uint32_t)((t1 + t0 * 65535u) << 16);
-    return acc | t0;
-}
-
 extern int BrGetTimerState(void);
 extern int DAT_1021c908;
 
