@@ -1,5 +1,54 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * ‼‼ 2026-09-05 (session 17): TWO COUPLED DECLARATION LEVERS LANDED --
+ * key-10 masked regions 31 -> 28 (same single 1,093-byte gap), register-
+ * blind 40+41 -> 37+33, and the FRAME'S FIRST DIVERGENCE +0x14 -> +0x24:
+ * iVar3 lands on the original's slot for the first time.  Bytes read 8,461
+ * -> 8,443 and instructions 2,408 -> 2,403 -- the WRONG way on both -- and
+ * that is the documented "removed accidental padding exposes a real
+ * deficit" pattern (sessions 11/15 of br_drawcar.c); rank by the masked map
+ * and the multiset, as this file's own notes say.
+ *   (1) `uVar19` is declared AFTER `iVar20`.  ‼ IDIOM: for a product of two
+ *   NAMED locals, VC5 makes the HIGHER-INDEXED symbol the `imul` DESTINATION
+ *   register and the lower-indexed one the memory operand.  The third I4
+ *   blend body multiplies the widened intensity by four hoisted deltas
+ *   (iVar16/iVar13/iVar18/iVar20) and the original has the intensity as the
+ *   destination at all four (`mov edx,ecx; imul edx,[delta]` x3, in-place
+ *   `imul ecx,[delta]` at alpha where the intensity dies).  With uVar19
+ *   declared before iVar20, alpha alone flipped to `mov edx,[iVar20]; imul
+ *   edx,ecx`, whose product cannot survive the one-operand `imul` -- THAT
+ *   was session 10's fourth temp slot [esp+0x68].  Every delta placed after
+ *   uVar19 costs exactly one flipped product (sweep: 47+50 / 46+47 / 42+43
+ *   / 40+41 / 37+33 as they move ahead of it one by one); iVar18's whole
+ *   37-position sweep is two-valued on the same boundary.  It is PAIRWISE
+ *   ORDER, not the mod-4 bucket seen on 0x1000EAF0's x87 rows.
+ *   (2) bodies 1 and 2 of the I4 blend arm each declare their OWN
+ *   `unsigned char` intensity (bI4i1 / bI4i2, block-scoped in the for).
+ *   The tree's `sub esp,0x68` was a COINCIDENCE: removing the alpha temp
+ *   alone drops the frame to 0x64, and the dword the original has instead is
+ *   a THIRD byte-intensity slot -- it homes one `unsigned char` inten PER
+ *   body (loop-frame 0x48/0x4c/0x50, two byte-writes + two dword-reads
+ *   each, the byte-slot widening idiom) where ours had one shared slot for
+ *   bodies 1/2 and none for body 3.  Split alone = frame 0x6c; move alone =
+ *   0x64; together = 0x68 with the original's slot count.  Function-scope
+ *   bI4i1/2/3 gives identical bytes (scope inert; the +2 index shift inert).
+ *   STILL OPEN in the same block: body 3 does NOT materialise its byte --
+ *   `uVar19 = (unsigned int)bI4inten` is the byte's only use, so VC5 folds
+ *   the merge into the dword form (region 0xea4: three instructions short
+ *   of orig's `mov cl,bl; and bl,0xf; shl cl,4; or cl,bl; mov byte [slot],
+ *   cl; mov ecx,[slot]; and ecx,0xff`) and homes bVar11 instead, which is
+ *   why our three byte slots are rotated (bVar11@0x48, inten1@0x4c,
+ *   inten2@0x50 against orig inten1/2/3).
+ *   DEAD on this layout, do not re-run: body 3 with its own block-scoped
+ *   byte inten (identical); body 3's merges as two byte statements
+ *   (identical); body 3 without uVar19 (+20 insns on the moved layout,
+ *   catastrophic on the split one: frame 0x60, 2,331 insns); comma-list
+ *   splitting (identical); bI4inten's own index (inert); iVar13/iVar16/
+ *   iVar18 anywhere after uVar19 (41+37) and iVar20 after it (frame 0x6c);
+ *   every single end-move of the other 29 locals and every front-move of the
+ *   other 30 (identical, except bVar11->front 39+35 and uVar19->front frame
+ *   0x6c); the pairs of neutral moves tried.  The tail's FUN_100271f0
+ *   register choice and the IA8 counters do NOT respond to any index move.
  * ‼ 2026-09-04: the "named temp vs repeated expression" lever that moved
  * 0x1000EAF0's allocation the same day (inlining a Ghidra-named multi-use
  * local changes what is an allocation CANDIDATE) is DEAD HERE, do not
@@ -442,8 +491,8 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
   int iVar16;
   int iVar17;
   int iVar18;
-  unsigned int uVar19;
   int iVar20;
+  unsigned int uVar19;
   unsigned short *puVar21;
   int iVar22;
   unsigned char *local_64;
@@ -733,21 +782,22 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                 do {
                   local_64 = local_64 + 4;
                   for (local_34 = 0; local_34 < 4; local_34 = local_34 + 1) {
+                    unsigned char bI4i1;
                     if (local_54 >= iVar17) break;
                     lo0 = param_18 & 0xff;
                     iVar16 = (param_14 & 0xff) - lo0;
                     bVar11 = *local_64;
-                    bI4inten = (unsigned char)(bVar11 >> 4 | bVar11 & 0xf0);
-                    chR = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar16) / 0xff + lo0) >> 3);
+                    bI4i1 = (unsigned char)(bVar11 >> 4 | bVar11 & 0xf0);
+                    chR = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar16) / 0xff + lo0) >> 3);
                     uVar6 = param_19 & 0xff;
                     iVar13 = (param_15 & 0xff) - uVar6;
-                    chG = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar13) / 0xff + uVar6) >> 3);
+                    chG = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar13) / 0xff + uVar6) >> 3);
                     uVar7 = param_20 & 0xff;
                     iVar18 = (param_16 & 0xff) - uVar7;
-                    chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
+                    chB = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar18) / 0xff + uVar7) >> 3);
                     uVar8 = param_21 & 0xff;
                     iVar20 = (param_17 & 0xff) - uVar8;
-                    chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
+                    chA = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
                     puVar21 = puVar21 + 1;
                     puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
@@ -755,11 +805,11 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     if (iVar22 >= cbMax) {
                       return;
                     }
-                    bI4inten = bVar11 << 4 | bVar11 & 0xf;
-                    chR = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar16) / 0xff + lo0) >> 3);
-                    chG = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar13) / 0xff + uVar6) >> 3);
-                    chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
-                    chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
+                    bI4i1 = bVar11 << 4 | bVar11 & 0xf;
+                    chR = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar16) / 0xff + lo0) >> 3);
+                    chG = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar13) / 0xff + uVar6) >> 3);
+                    chB = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar18) / 0xff + uVar7) >> 3);
+                    chA = (unsigned char)((int)((int)((unsigned int)bI4i1 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
                     puVar21 = puVar21 + 1;
                     puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
@@ -772,21 +822,22 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                   }
                   local_64 = local_64 + -8;
                   for (local_34 = 0; local_34 < 4; local_34 = local_34 + 1) {
+                    unsigned char bI4i2;
                     if (local_54 >= iVar17) break;
                     lo0 = param_18 & 0xff;
                     iVar16 = (param_14 & 0xff) - lo0;
                     bVar11 = *local_64;
-                    bI4inten = (unsigned char)(bVar11 >> 4 | bVar11 & 0xf0);
-                    chR = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar16) / 0xff + lo0) >> 3);
+                    bI4i2 = (unsigned char)(bVar11 >> 4 | bVar11 & 0xf0);
+                    chR = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar16) / 0xff + lo0) >> 3);
                     uVar6 = param_19 & 0xff;
                     iVar13 = (param_15 & 0xff) - uVar6;
-                    chG = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar13) / 0xff + uVar6) >> 3);
+                    chG = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar13) / 0xff + uVar6) >> 3);
                     uVar7 = param_20 & 0xff;
                     iVar18 = (param_16 & 0xff) - uVar7;
-                    chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
+                    chB = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar18) / 0xff + uVar7) >> 3);
                     uVar8 = param_21 & 0xff;
                     iVar20 = (param_17 & 0xff) - uVar8;
-                    chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
+                    chA = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
                     puVar21 = puVar21 + 1;
                     puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
@@ -794,11 +845,11 @@ void BrTex3dExpand(unsigned short *param_1,int param_2,int param_3,unsigned char
                     if (iVar22 >= cbMax) {
                       return;
                     }
-                    bI4inten = bVar11 << 4 | bVar11 & 0xf;
-                    chR = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar16) / 0xff + lo0) >> 3);
-                    chG = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar13) / 0xff + uVar6) >> 3);
-                    chB = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar18) / 0xff + uVar7) >> 3);
-                    chA = (unsigned char)((int)((int)((unsigned int)bI4inten * iVar20) / 0xff + uVar8) >> 7);
+                    bI4i2 = bVar11 << 4 | bVar11 & 0xf;
+                    chR = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar16) / 0xff + lo0) >> 3);
+                    chG = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar13) / 0xff + uVar6) >> 3);
+                    chB = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar18) / 0xff + uVar7) >> 3);
+                    chA = (unsigned char)((int)((int)((unsigned int)bI4i2 * iVar20) / 0xff + uVar8) >> 7);
                     iVar22 = iVar22 + 2;
                     puVar21 = puVar21 + 1;
                     puVar21[-1] = (unsigned short)(((((unsigned int)chA << 5 | (unsigned int)chR) << 5 |
