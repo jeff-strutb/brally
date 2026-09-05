@@ -82,3 +82,47 @@ int BrSub10058700(void)
     }
     return 0;
 }
+
+/* 0x10036080 (Glide), 123 bytes.
+ *
+ * The walk is a pointer stepped by 12 with a parallel int index, the bound
+ * being the address past the eighth record, compared SIGNED (`jl`) -- the
+ * same shape as 0x100586A0 above.  The free-slot index is kept in a CHAR
+ * (`or bl,0xff` / `test bl,bl` / `movsx`), and both arms of the final
+ * assignment write both flags.
+ */
+/* WHAT IT DOES: registers an id in the eight-entry player-slot table.  If the
+ * id is already there its `b` flag is set; otherwise the first free slot
+ * (id == -1) takes it, with `a` set when the id is 1 (the host), and `b`
+ * set.  A full table drops the id silently. */
+/* @implements 0x10036080 glide BrSlotMark */
+void BrSlotMark(int id)
+{
+    char    iFree = -1;
+    int     i = 0;
+    BrSlot *p;
+
+#ifdef BR_MATCHING_BUILD
+    for (p = g_aBrAA2538; (int)p < (int)&g_aBrAA2538[BR_SLOT_COUNT]; p++) {
+#else
+    for (p = g_aBrAA2538; p < &g_aBrAA2538[BR_SLOT_COUNT]; p++) {
+#endif
+        if (p->id == id) {
+            g_aBrAA2538[i].b = 1;
+            return;
+        }
+        if (p->id == -1 && iFree < 0)
+            iFree = (char)i;
+        i++;
+    }
+    if (iFree >= 0) {
+        g_aBrAA2538[iFree].id = id;
+        if (id == 1) {
+            g_aBrAA2538[iFree].a = 1;
+            g_aBrAA2538[iFree].b = 1;
+        } else {
+            g_aBrAA2538[iFree].a = 0;
+            g_aBrAA2538[iFree].b = 1;
+        }
+    }
+}
