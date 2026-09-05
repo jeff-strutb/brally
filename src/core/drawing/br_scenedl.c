@@ -977,7 +977,12 @@ extern float DAT_106e9a68[4];    /* view matrix row 3 */
 extern float DAT_106e78f0[16];   /* the output matrix */
 typedef struct BrObjXlat { float tx, ty, tz, tw; } BrObjXlat;
 #define OUTM(k)  (DAT_106e78f0[k])
-#define VIEW(k)  (pView[k])
+/* ‼ The logger reads the view matrix DIRECTLY and the row block reads
+ * term 1 through pView: that split closes the two logger argument
+ * regions (0x11d3/0x11eb).  A raw symbol and a pointer-local read
+ * are different operands to VC5; the original uses each where this
+ * does.  Measured -- do not collapse the two spellings into one. */
+#define VIEW(k)  (DAT_106e9a38[k])
 
 #define VIEWS(k) (DAT_106e9a38[k])   /* symbol spelling, scale block */
 
@@ -1273,10 +1278,10 @@ draw:
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    OUTM(12) = ((DAT_106e9a38[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pTz[0]) + DAT_106e9a48[0] * pTy[0];
-                    OUTM(13) = ((DAT_106e9a38[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pTz[0]) + DAT_106e9a48[1] * pTy[0];
-                    OUTM(14) = ((DAT_106e9a38[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pTz[0]) + DAT_106e9a48[2] * pTy[0];
-                    OUTM(15) = ((DAT_106e9a38[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pTz[0]) + DAT_106e9a48[3] * pTy[0];
+                    OUTM(12) = ((pView[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pTz[0]) + DAT_106e9a48[0] * pTy[0];
+                    OUTM(13) = ((pView[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pTz[0]) + DAT_106e9a48[1] * pTy[0];
+                    OUTM(14) = ((pView[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pTz[0]) + DAT_106e9a48[2] * pTy[0];
+                    OUTM(15) = ((pView[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pTz[0]) + DAT_106e9a48[3] * pTy[0];
                     scale = *pObj;
                     BrRowScale8(DAT_106e78f0, DAT_106e9a38, scale);
                     BrRowScale4(DAT_106e78f0 + 8, DAT_106e9a58, scale);
