@@ -6778,3 +6778,40 @@ The "one NAMED float local per intermediate" entry is a rule for values the
 original KEEPS; a value it recomputes from the stack must stay unnamed.
 Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
 `test ah,0x41`; `C*C > h*h` puts h*h there with `test ah,1`.
+
+- **Loop induction values: an EXPRESSION of the counter is the INDEX
+  register; a named local bumped each pass is the BASE.** 0x100154A0
+  BrHudDrawSplitTimes draws one line per split at `y0 + 15*i` from
+  `times[i]`. The original addresses are `mov ecx,[ecx+edi]` and
+  `lea ebx,[esi+ebx+0x25]` -- the race pointer and `sel` are the base, the
+  two per-line values the index. Spelled as named locals (`k += 4`,
+  `y += 15`) the SAME instructions come out with base and index swapped:
+  two SIB bytes, REGNORM 0+0, and neither operand order in the source nor
+  declaration order moves them (eight probes). Spelled
+  `((float *)(g + 0xFB4))[i]` and `sel + y + 37 + i * 15` inline in the
+  call, VC5 strength-reduces both into induction temps and a temp is always
+  the index: byte-exact. Same lever on 0x10031960: `p + 0x40 + i * 0x28` as
+  the call argument puts the record pointer's setup INSIDE the loop guard
+  (`push ebx; lea ebx,[esi+0x40]` after the `jb`) where a named pointer is
+  initialised before the test. Proven 2026-09-05.
+
+- **A parameter used as the cursor is registerised in the loop PREHEADER;
+  a `p = param` local is loaded above the pushes.** 0x10003530
+  BrChkFReadLine walks `pszDst` itself: `mov esi,[esp+0x14]` sits after the
+  two other preheader loads and is repeated on the no-room path
+  (0x100035CD) for the shared final `return`. The same function also pins
+  two layout rules: (1) the count exit of a `while (n < cbMax)` loop keeps
+  its own epilogue (bottom `jl` falling into `mov eax,esi; pop...; ret`),
+  where a `for (;;)` with an inner `if (n >= cbMax) return p;` folds that
+  return into the last one; (2) an arm written as the ELSE of
+  `if (c != EOF)` is laid out last and keeps its `*p = 0; return p + 1`
+  tail, where a leading `if (c == EOF) {...}` has that tail cross-jumped into
+  the LF arm's identical tail (11 bytes short). The port body was already
+  the right shape except for those three things. Proven 2026-09-05.
+
+- **/Od homes locals in DECLARATION order from the bottom of the frame
+  up.** 0x1002B3F0 BrPointDepthFrac (an /Od TU: `push ebp; mov ebp,esp`)
+  has `float f` at ebp-0x14 and `float v[4]` at ebp-0x10..-1, so `f` is
+  declared FIRST; the other order swaps the slots (9 diff bytes, nothing
+  else). The compiler temps for `(float)int_global` conversions land below
+  both (ebp-0x18, -0x1C). Proven 2026-09-05.
