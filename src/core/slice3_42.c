@@ -858,7 +858,17 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * `fxch` -- plus one `fld st(2)` duplicate and one dead `fst`. That is a
  * consequence of where the CALL's cleanup sits, not of how the arithmetic is
  * spelled, which is why every term ordering leaves it unchanged. A source
- * lever here would have to move the stack cleanup, not the expressions. */
+ * lever here would have to move the stack cleanup, not the expressions.
+ *
+ * ‼ CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
+ * cross-term statements x each of the two add orders (x,y,z and the
+ * original's completion order y,z,x) -- thirteen builds -- land between
+ * 4+23 and 5+24 register-blind, none better than the 5+22 here, and none
+ * closer than 32 bytes.  The original's six `fld`s read r.x, r.z, r.y,
+ * r.x, r.z, r.y, which is exactly the use order of `cy, cz, cx`; spelling
+ * that order changes nothing, which is the proof that the load block is
+ * emitted by the stack-cleanup hoist and not by the statement order.
+ * DO NOT PROBE TERM ORDER ON THIS FUNCTION AGAIN. */
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
     BrVec3 p = *pPoint;
