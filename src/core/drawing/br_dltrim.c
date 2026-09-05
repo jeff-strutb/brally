@@ -127,13 +127,24 @@ void NAME ARGS                                                              \
     pC->pNext = list.pHead = pA;                                            \
     list.cVerts = 3;                                                        \
                                                                             \
-    if (BR_TRIM_STEP(BrClipPlaneWPlusF0C)  &&                               \
-        BR_TRIM_STEP(BrClipPlaneWPlusF04)  &&                               \
-        BR_TRIM_STEP(BrClipPlaneWMinusF04) &&                               \
-        BR_TRIM_STEP(BrClipPlaneWMinusF08) &&                               \
-        BR_TRIM_STEP(BrClipPlaneWMinusF0C) &&                               \
-        BR_TRIM_STEP(BrClipPlaneWPlusF08)  &&                               \
-        BR_TRIM_STEP(BrClipPlaneW)) {                                       \
+    if (!BR_TRIM_STEP(BrClipPlaneWPlusF0C))  goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneWPlusF04))  goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneWMinusF04)) goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneWMinusF08)) goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneWMinusF0C)) goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneWPlusF08))  goto fail;                     \
+    if (!BR_TRIM_STEP(BrClipPlaneW)) {                                      \
+    fail:                                                                   \
+        for (n = list.cVerts; n > 0; n--) {                                 \
+            pN = list.pHead;                                                \
+            list.pHead = pN->pNext;                                         \
+            if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                     \
+                (unsigned long)pN <  BR_TRIM_POOL_HI) {                     \
+                pN->pNext = DAT_105cda00;                                   \
+                DAT_105cda00 = pN;                                          \
+            }                                                               \
+        }                                                                   \
+    } else {                                                                \
         pV = out;                                                           \
         for (i = 0; i < list.cVerts; i++, pV++) {                           \
             pN = list.pHead;                                                \
@@ -169,16 +180,6 @@ void NAME ARGS                                                              \
             return;                                                         \
         }                                                                   \
         grDrawPolygonVertexList(list.cVerts, out);                          \
-        return;                                                             \
-    }                                                                       \
-    for (n = list.cVerts; n > 0; n--) {                                     \
-        pN = list.pHead;                                                    \
-        list.pHead = pN->pNext;                                             \
-        if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                         \
-            (unsigned long)pN <  BR_TRIM_POOL_HI) {                         \
-            pN->pNext = DAT_105cda00;                                       \
-            DAT_105cda00 = pN;                                              \
-        }                                                                   \
     }                                                                       \
 }
 
@@ -190,42 +191,46 @@ void NAME ARGS                                                              \
 #define BR_TRIM_NO_LOCAL
 
 
-/* ‼ RESIDUE, 2026-09-05 -- NOT A MATCH, and it is ONE divergence region.
- * Under /O2 /Op both instantiations compile to 196 instructions against the
- * original's 196, and every instruction matches except where the compiler
- * PLACES two blocks:
+/* ‼ WHAT DECIDED THE LAYOUT, 2026-09-05 -- both instantiations byte-exact.
+ * The body was 196/196 instructions with every instruction right for a whole
+ * session; the only defect was where VC5 PUT two blocks:
  *
  *     original   [prologue][7 plane calls][GIVE-UP loop][EMIT loop][draws]
  *     ours       [prologue][7 plane calls][EMIT loop][draws][GIVE-UP loop]
  *
- * so the original's first six plane checks are SHORT `jl` (2 bytes) to a
- * give-up block sitting inline, and ours are NEAR `jl` (6 bytes) to one at
- * the end: 609 -> 633 bytes, +24, all of it in those six jumps.  The seventh
- * check is the tell: the original INVERTS it (`jge` forward to the emit
- * block) and falls through into give-up, and its give-up loop's `n <= 0`
- * exit jumps to the FUNCTION-END epilogue rather than to the epilogue copy
- * at +0xF6 -- both of which say the give-up code is not the last thing in
- * the source.
+ * so the original's first six plane checks are SHORT `jl` (2 bytes) into a
+ * give-up block sitting inline and ours were NEAR `jl` (6 bytes) to one at
+ * the end: +24 bytes, 609 -> 633, all of it in those six jumps.
  *
- * DEAD, all measured with build/probe/probe_tu.py (a scratch compile of a
- * copy, no tree writes) -- every one of these puts the give-up loop at the
- * END with near jumps, byte-for-byte identical output:
- *   - `if ((NEAR(),n<3) || ... ) { giveup; return; } emit...`
+ * THE LEVER: the give-up code must be the THEN arm of the LAST plane test,
+ * with the `fail:` label INSIDE that arm, and the six earlier tests reaching
+ * it by `goto fail`.  Written that way the compiler lays the failure arm
+ * first and the six early exits become short jumps into it.  Everything else
+ * about the shape is inert -- `< 3` versus `!(>= 3)`, `for (n = cVerts; n >
+ * 0; n--)` versus a while loop, the arm ending in `return;` with the emit
+ * code following versus the emit code in an `else`, and the step spelled out
+ * versus wrapped in BR_TRIM_STEP.
+ *
+ * ‼ AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
+ * fail: giveup }` -- same control-flow graph, same goto, label still inside
+ * an arm -- reverts exactly to the 633-byte defect.  The FAILURE arm has to
+ * be the one the compiler lays first.  See docs/VC5-IDIOMS.md, "a lone
+ * if (x) F else S is failure-first".
+ *
+ * DEAD, do not re-run (all /O2 /Op, all give the give-up block at the END
+ * with near jumps, byte-for-byte identical output):
+ *   - `if ((NEAR(),n<3) || ...) { giveup; return; } emit...`
  *   - the same with `{ giveup } else { emit }`
  *   - `if ((NEAR(),n>=3) && ...) { emit } else { giveup }`
  *   - `... && ...) goto emit; giveup; return; emit: ...`
  *   - `... && ...) { emit; return; } giveup`
- *   - per-step `if (n < 3) goto fail;` with explicit `fail:` / `emit:` labels
+ *   - per-step `if (n < 3) goto fail;` with the `fail:` label at FUNCTION
+ *     scope rather than inside the last test's arm
  *   - seven nested `if (n >= 3) {` with the emit block innermost
- * The emit body, the list build, the `__asm` snap, the colour stores, the
- * pool-free tests and both draw calls are already byte-identical; ONLY the
- * placement is open.  Do not re-probe the list build or the emit arithmetic.
  *
- * Sibling state: 0x10020A80 (shaded) is the same one region.  The two Z
- * variants, 0x10020190 and 0x1001EE70, are the same body again with the snap
- * going through the global 0x105CE310 instead of a stack slot and without the
- * 1/w flatten; they are not instantiated here until the placement falls,
- * because a fourth copy of one unsolved wall is not evidence of anything. */
+ * The two Z variants, 0x10020190 and 0x1001EE70, are this body again with the
+ * snap going through the global 0x105CE310 instead of a stack slot and
+ * without the 1/w flatten; they are not instantiated here yet. */
 /* WHAT IT DOES: trims one flat-coloured triangle against the screen edges
  * and the near/far planes with the depth buffer OFF, then draws whatever is
  * left as a Glide polygon.  The three colour arguments are the flat colour;
