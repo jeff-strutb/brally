@@ -1283,7 +1283,12 @@ static const BrDlClipPlaneFn s_apClipPlane[7] = {
  * through by depth for both texture units. This is why a triangle cut by the
  * edge of the screen keeps its shading -- the clipper carries the already-
  * lit colour across the cut, not the surface normal. */
-/* @implements 0x1001EE70 glide br_dl_clip_emit */
+/* NOT TAGGED: this is the PORT's per-vertex emitter, factored out of
+ * 0x1001EE70; the original has no such function.  The matching-build
+ * transcription of 0x1001EE70 is BrDlClipTriZ in br_dltrim.c, where the
+ * whole trimmer is one function as the original has it.  The tag used to sit
+ * here and scored 288 bytes against the original's 607, which is the port's
+ * factoring showing up as a permanent 246-diff row. */
 static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
 {
     float invW, sx, sy;
