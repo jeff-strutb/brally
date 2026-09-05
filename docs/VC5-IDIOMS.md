@@ -6173,3 +6173,39 @@ Both deltas are aggregates even though only `da` is visibly homed: with
 is 4 bytes short: look for a scalar that should be an ARRAY" -- here the
 tell is not the frame size alone but `fst` (not `fstp`) into slots that
 are never reloaded, at consecutive offsets, in field order.
+
+## Two named locals in a product: the HIGHER-indexed one is the `imul` destination
+*(proven 2026-09-05 on 0x100250D0 BrTex3dExpand; key-10 masked regions 31 -> 28,
+register-blind 81 -> 70 rows, and the frame's first divergence +0x14 -> +0x24)*
+
+For `a * b` with both factors NAMED locals that live in registers/slots, VC5's
+choice of which factor becomes the `imul` DESTINATION (`mov edx,a; imul edx,[b]`
+vs `mov edx,[b]; imul edx,a`) is the declaration order: the symbol declared
+LATER is the destination, the earlier one the memory operand. It is pairwise
+between the two factors -- moving either through every other position changes
+nothing until it crosses the other.
+
+Why it costs more than a register name: MSVC's divide-by-255 is `imul <magic>`
+followed by `add edx,<the product again>`, so the product must survive a
+one-operand `imul` that clobbers edx:eax. With the intensity as destination the
+original's alpha channel computes the product IN PLACE (`imul ecx,[delta]`,
+the intensity dying there) and needs no slot; with the delta as destination
+the product has to be homed and reloaded -- an extra temp dword that also
+changed the frame size. On 0x100250D0 the widened intensity `uVar19` had to be
+declared after all four channel deltas; the tree had it after three.
+
+**Screen:** any `mov R,[esp+S]; imul R,R` EXTRA against `mov R,R; imul R,[esp+S]`
+MISSING in msetdiff, where both factors are locals. Swap the two declarations.
+
+## One byte-slot local PER loop body, not one shared across bodies
+*(same function, same session; the two levers only land together)*
+
+Three near-identical blend bodies each widened a nibble intensity through ONE
+shared `unsigned char` local. The original spends a byte slot per body
+(0x48/0x4c/0x50, each written twice and read back widened twice). Declaring a
+distinct `unsigned char` in each body -- block-scoped in the `for`, or three
+function-scope names, identical bytes -- gives the slots. Done alone it ADDS a
+frame dword (0x6c); the `imul`-destination fix alone REMOVES one (0x64); together
+the frame is the original's 0x68 with the original's slot count. A frame that
+reads right can be two errors cancelling: read the /FAcs equate table, not
+`sub esp,N`.
