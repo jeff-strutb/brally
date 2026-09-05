@@ -6210,6 +6210,44 @@ the frame is the original's 0x68 with the original's slot count. A frame that
 reads right can be two errors cancelling: read the /FAcs equate table, not
 `sub esp,N`.
 
+## Fold a byte into its dword partial INSIDE each arm, so only the bytes cross the join
+*(proven 2026-09-05 on 0x1000A110's shared colourB pack, which had stood ~12
+sessions and ~300 recorded-dead compiles; this is the lever the entry below
+could not find)*
+
+A Horner colour pack `(((top << 8 | b0) << 8 | b1) << 8)` written AFTER an
+if/else, with `top`, `b0` and `b1` all assigned on both arms, makes VC5 carry
+`top` across the join in a register. That costs it a register at the join and
+it pays for it by forwarding one of the two bytes out of a live register into
+a lane (`mov dl,al`) instead of homing it and reading it back widened.
+
+The original said otherwise, and the bytes say it plainly: it emits
+`xor edx,edx; mov dh,<top>` at the END OF EACH ARM, before the join label. So
+the top byte never crosses the edge at all — only the two pack bytes do, and
+they cross in MEMORY. Spelled that way:
+
+```c
+uint32_t cbTop;                       /* the partial, assigned on both edges */
+if (c) { ...; b0 = ..; b1 = ..; cbTop = (uint32_t)top << 8; }
+else   { ...; b0 = ..; b1 = ..; cbTop = (uint32_t)top << 8; }
+colourB = (((cbTop | b0) << 8 | b1) << 8);
+```
+
+the join block becomes instruction-for-instruction the original: both bytes
+homed, both read back widened. Multiset 13+5 -> 9+5, instructions 8 short ->
+4, bytes 31 short -> 16, frame intact. (Masked regions rose 24 -> 29 — the
+documented artefact on this function; rank by the multiset.)
+
+‼ **IT IS A JOIN LEVER, NOT AN EXPRESSION LEVER — measured immediately after.**
+The identical partial applied to the two STRAIGHT-LINE pack sites in the same
+function (arm 1's colourB, arm 3's colourA) is BYTE-IDENTICAL, separately and
+together: with no edge to cross there is nothing for it to change, and VC5
+canonicalises `(part | b0)` straight back into the lane form. **Reach for this
+only where the value crosses a control-flow join.** The general question to ask
+at a join is not how the expression is spelled but WHICH VALUES HAVE TO BE LIVE
+ACROSS THE EDGE — fold everything you can into a partial in each arm, and the
+survivors get memory homes.
+
 ## Byte-slot widening is decided by USE COUNT after the join, not by spelling
 *(settled 2026-09-05 on 0x1000A110 by a diagnostic probe; closes the question
 the "byte-slot idiom, CRACKED" entry and the corpus-miss entry left open)*
