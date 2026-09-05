@@ -901,3 +901,5 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
+0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c
+0x1006E9E0,BrCarTickClocks,racing,manual,src/core/racing/br_cartick.c
