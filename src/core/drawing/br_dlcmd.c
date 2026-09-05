@@ -501,6 +501,31 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * uses for most of its geometry, since flat surfaces come in pairs. Each is
  * dropped, trimmed or drawn on its own, and whatever happens to the first the
  * second is still considered. */
+/* ‼ RESIDUE, 2026-09-05.  The body below is the POINTER form and is 624 B
+ * against the original's 696 with 527 diffs.  Two measurements now say what
+ * it needs, and both were made by scratch-compiling copies (build/probe/):
+ *
+ *  1. IT WANTS THE INDEX FORM, like its single-triangle sibling.  The
+ *     original scales each command byte into the pool and reaches fields as
+ *     `[reg + 0x105CE318+off]`; the pointer form loses that.  Rewritten as
+ *     two BR_DLCMD_TRI_I invocations with per-triangle block-scoped indices
+ *     (ia=p[2], ib=p[1], ic=p[0]; then p[6], p[5], p[4] -- the read order the
+ *     original uses), it goes to 743 B / 464 diffs / 206 insns against 199,
+ *     with only FOUR divergence regions: the prologue's register choice, the
+ *     two s/t loads still in pointer form, and one `fmul` pair whose operands
+ *     are the other way round (`fmul [texScale]` then `fmul [oow]` in the
+ *     original).  A working copy is build/probe/tri2_indexform_KEEP.c.
+ *
+ *  2. ‼ IT CANNOT LIVE IN THIS FILE.  Adding that body here as a third user
+ *     of BR_DLCMD_TRI_I UN-MATCHES BOTH of its siblings: 0x1001ECF0 goes from
+ *     byte-exact to 22 differing bytes and 0x10020900 to 258.  The surrounding
+ *     translation unit decides the codegen, so 0x1001FA30 needs its OWN .c
+ *     with the macros duplicated verbatim -- the same duplicated-LEAF pattern
+ *     br_dl.c and br_dlcmd.c already use for the quarter-pixel snap.
+ *
+ * So the next pass is: copy build/probe/tri2_indexform_KEEP.c to a new
+ * src/core/drawing/br_dltri2.c, move this tag to it, and work the four
+ * regions.  Do NOT re-try the pointer form and do NOT put it in this file. */
 /* @implements 0x1001FA30 glide BrDlCmdTri2 */
 #ifdef BR_MATCHING_BUILD
 const uint8_t *BrDlCmdTri2(const uint8_t *p)
