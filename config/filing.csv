@@ -764,6 +764,7 @@ glide_va,name,module,basis,file
 0x10069DC0,BrSub69DC0,racing,neighbour-1,src/core/racing/br_sub69.c
 0x1006A070,BrSetMode5,racing,filed,src/core/racing/br_replayon.c
 0x1006A310,BrDelta_100713A0,racing,filed,src/core/racing/br_replayon.c
+0x1006A330,FUN_1006a330,net,filed,src/core/net/br_peerreset.c
 0x1006A3F0,BrNetPeerMsgCancel,net,description,src/core/net/br_peer.c
 0x1006A440,BrSub100714D0,net,description,src/core/net/br_peerslot.c
 0x1006A480,BrSub10071510,net,neighbour-1,src/core/net/br_peerslot.c
