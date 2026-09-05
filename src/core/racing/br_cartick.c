@@ -8,7 +8,10 @@
  */
 #ifdef BR_MATCHING_BUILD
 
-extern float g_f6C2CFC;       /* 0x106E9D8C  frame dt, seconds           */
+extern volatile float g_f6C2CFC;  /* 0x106E9D8C  frame dt, seconds; VOLATILE:
+                                   * it is what makes VC5 load it FIRST
+                                   * (`fld dt; fadd member`) -- see the
+                                   * BrCarTickClocks note.                  */
 extern int   g_br0AA010;      /* 0x100A9360  race mode                   */
 extern int   BrG_6C7CB8;      /* 0x106EED48                              */
 int BrFtolTrunc(float f);     /* 0x10018990  int(f), a real cdecl callee */
@@ -35,7 +38,9 @@ void __fastcall BrCarTickClocks(int pCar)
         CAR_F(pCar, 0xfec) += g_f6C2CFC;
         CAR_F(pCar, 0xfb0) += g_f6C2CFC;
         if (g_br0AA010 == 1 || g_br0AA010 == 6) {
-            CAR_F(pCar, 0xff0) -= g_f6C2CFC;
+            /* Written out, not `-=`: on a volatile operand `-=` loads the
+             * volatile first and emits fsubr; this form keeps `fld x; fsub dt`. */
+            CAR_F(pCar, 0xff0) = CAR_F(pCar, 0xff0) - g_f6C2CFC;
             if (CAR_F(pCar, 0xff0) < 0.0f)
                 CAR_F(pCar, 0xff0) = 0.0f;
         }
@@ -50,14 +55,14 @@ void __fastcall BrCarTickClocks(int pCar)
 void __fastcall BrCarTickMessages(int pCar)
 {
     if (CAR_F(pCar, 0x1000) != 0.0f) {
-        CAR_F(pCar, 0x1000) -= g_f6C2CFC;
+        CAR_F(pCar, 0x1000) = CAR_F(pCar, 0x1000) - g_f6C2CFC;  /* not -=: volatile */
         if (CAR_F(pCar, 0x1000) <= 0.0f) {
             CAR_F(pCar, 0x1000) = 0.0f;
             CAR_I(pCar, 0xffc) = 0;
         }
     }
     else if (CAR_F(pCar, 0x1008) != 0.0f) {
-        CAR_F(pCar, 0x1008) -= g_f6C2CFC;
+        CAR_F(pCar, 0x1008) = CAR_F(pCar, 0x1008) - g_f6C2CFC;  /* not -=: volatile */
         if (CAR_F(pCar, 0x1008) <= 0.0f) {
             CAR_F(pCar, 0x1008) = 0.0f;
             CAR_I(pCar, 0x1004) = 0;
