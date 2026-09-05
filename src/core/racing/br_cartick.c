@@ -21,6 +21,7 @@ void __fastcall FUN_1006e5c0(int pCar);   /* 0x1006E5C0                  */
 #define CAR_I(p, off)  (*(int *)((p) + (off)))
 #define CAR_F(p, off)  (*(float *)((p) + (off)))
 #define CAR_B(p, off)  (*(unsigned char *)((p) + (off)))
+#define CAR_VF(p, off) *(volatile float *)((p) + (off))  /* NO outer parens: they cost 11 B */
 
 /* WHAT IT DOES: advance a car's clocks by one frame, unless its body is
  * flagged (bits 0-1 of +0x68 on the physics record) as not running.  In race
@@ -78,11 +79,13 @@ void __fastcall BrCarTickMessages(int pCar)
 void __fastcall BrCarTickGridCell(int pCar)
 {
     if (BrG_6C7CB8 != 0) {
-        float fx = CAR_F(pCar, 0x30) * 0.03125f;
-        float fy = CAR_F(pCar, 0x34) * 0.03125f;
-
-        CAR_B(pCar, 0x29bc) = (unsigned char)BrFtolTrunc(fx);
-        CAR_B(pCar, 0x29bd) = (unsigned char)BrFtolTrunc(fy);
+        /* Inline arguments, not two locals: a precomputed fy would have to
+         * live across the first call and VC5 spills it (+7 B).  The position
+         * reads are VOLATILE: that is what keeps `fld y; fmul k` together
+         * ahead of the first call's `add esp,4 / mov [cx],al` instead of
+         * letting the scheduler slot those two between them (11 diff B). */
+        CAR_B(pCar, 0x29bc) = (unsigned char)BrFtolTrunc(CAR_VF(pCar, 0x30) * 0.03125f);
+        CAR_B(pCar, 0x29bd) = (unsigned char)BrFtolTrunc(CAR_VF(pCar, 0x34) * 0.03125f);
         if (CAR_B(pCar, 0x29bc) >= 0x40)
             CAR_B(pCar, 0x29bc) = 0x3f;
         if (CAR_B(pCar, 0x29bd) >= 0x40)
