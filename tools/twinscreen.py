@@ -21,6 +21,7 @@ import csv, os, re, sys, glob
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
+REPORT_CPP = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
 ORIG = os.path.join(ROOT, 'build', 'match', 'orig')
 
 maxdiff = 200
@@ -39,8 +40,16 @@ if os.path.exists(fp):
     for m in re.finditer(r'0x([0-9A-Fa-f]{8})', open(fp).read()):
         fenced.add(int(m.group(1), 16))
 
+# ‼ BOTH LANES, or the screen lies.  The C++ EH lane carries ~200 finished
+# functions that no report.csv row mentions, and reading only report.csv
+# reports every one of them as fresh work -- which is exactly how the
+# nine-member BrOpt* family cost a session in 2026-09-03.  The first version
+# of this tool made the same mistake and offered an 18-member C++ family
+# (0x1003E1C0 and siblings) that had been byte-exact for days.
 matched, tagged = {}, set()
-for path, keyed in ((REPORT, True),):
+for path in (REPORT, REPORT_CPP):
+    if not os.path.exists(path):
+        continue
     with open(path, newline='') as fh:
         for row in csv.reader(fh):
             if len(row) < 4 or not row[1].startswith('0x'):
@@ -49,6 +58,10 @@ for path, keyed in ((REPORT, True),):
             tagged.add(va)
             if row[3] == 'match':
                 matched[va] = (row[2], row[0])
+
+# a function the C++ lane has a TU for is that lane's, matched or not
+for f in glob.glob(os.path.join(ROOT, 'src', 'core', 'cpp', '0x*.cpp')):
+    tagged.add(int(os.path.basename(f)[:10], 16))
 
 # every extracted original, keyed by exact size
 bysize = {}
