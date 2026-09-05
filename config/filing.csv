@@ -10,6 +10,7 @@ glide_va,name,module,basis,file
 0x10001BB0,FUN_10001bb0,drawing,neighbour,src/core/drawing/br_chasecam.c
 0x10001C90,BrVec3Predict,drawing,filed,src/core/drawing/br_surf.c
 0x100023E0,BrCosF,geometry,description,src/core/geometry/br_cos.c
+0x100023F0,BrTimeFormat,racing,filed,src/core/racing/br_timefmt.c
 0x10002560,BrSinF,geometry,description,src/core/geometry/br_sin.c
 0x10002570,BrSqrtF,geometry,description,src/core/geometry/br_sin.c
 0x10002760,BrCdMaybeClose,audio,description,src/core/audio/br_cd.c
@@ -41,6 +42,8 @@ glide_va,name,module,basis,file
 0x10002F70,BrCdStop,audio,filed,src/core/audio/br_cd.c
 0x10002F90,BrCdStopMsg,audio,filed,src/core/audio/br_cd.c
 0x10002FD0,BrCdMciStop,audio,filed,src/core/audio/br_cd.c
+0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
+0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/gamedata/br_u16cursor.c
 0x10003280,BrU16QueuePop,gamedata,description,src/core/gamedata/br_u16cursor.c
 0x100032D0,BrChkFileSize,gamedata,description,src/core/gamedata/br_chkfile.c
@@ -51,6 +54,7 @@ glide_va,name,module,basis,file
 0x100036F0,BrChkAlloc,startup,neighbour-1,src/core/generated/0x100036F0.c
 0x10003760,BrChkRealloc,startup,neighbour-1,src/core/generated/0x10003760.c
 0x100037D0,BrTicks30FromMs,startup,description,src/core/startup/br_ticks30.c
+0x10003810,BrNetPingSync,net,manual,src/core/generated/0x10003810.c
 0x100038A0,FUN_100038a0,net,description,src/core/net/br_netmsgpost.c
 0x10004A40,BrCountedNetSend,net,neighbour-1,src/core/ghidra_batch.c
 0x10004C40,BrNetPktStamp,net,manual,src/core/net/br_netpkt.c
@@ -143,6 +147,7 @@ glide_va,name,module,basis,file
 0x1000DED0,BrGetFieldFloatSubC,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEE0,BrGetFieldFloat,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEF0,BrGetFieldFloatSub10,drawing,neighbour,src/core/drawing/br_polydist.c
+0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
 0x1000E2F0,BrQsortCmpS2,drawing,neighbour,src/core/drawing/br_sortcmp.c
 0x10010F80,BrRecHdrLatch_10010F80,drawing,filed,src/core/drawing/br_rec.c
 0x10011650,FUN_10011650,drawing,neighbour,src/core/generated/0x10011650.c
@@ -423,6 +428,7 @@ glide_va,name,module,basis,file
 0x10032500,BrSub10032500,startup,neighbour,src/core/tiny_stubs.c
 0x10032510,BrAtexit_10038EA0,startup,filed,src/core/startup/br_objlife.c
 0x10032520,BrSub10032520,startup,neighbour-1,src/core/tiny_stubs.c
+0x10032530,BrBootColdInitRun,startup,filed,src/core/startup/br_bootinit.c
 0x10032680,BrInit220B20,startup,neighbour-1,src/core/startup/br_track.c
 0x10033880,BrPfxUpdateB0,gamedata,neighbour-1,src/core/generated/0x10033880.c
 0x10033B50,BrPfxReset,gamedata,description,src/core/gamedata/br_pfx.c
@@ -447,8 +453,10 @@ glide_va,name,module,basis,file
 0x100347B0,BrVec3DistSq,geometry,filed,src/core/geometry/br_vec.c
 0x100347F0,BrVec3Length,geometry,filed,src/core/geometry/br_vec.c
 0x10034840,BrVec3LenXY,geometry,description,src/core/geometry/br_vec.c
+0x10034870,BrVec3TransformDivW,geometry,manual,src/core/generated/0x10034870.c
 0x100349C0,BrVec3Project,geometry,filed,src/core/geometry/br_mat.c
 0x10034AF0,BrMtxMul,geometry,description,src/core/geometry/br_mat.c
+0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c
 0x10034FC0,BrTriContainsPoint,geometry,manual,src/core/geometry/br_tri.c
 0x100353C0,BrStore_1003BD40,racing,filed,src/core/racing/br_replayon.c
 0x100353D0,BrRandom,startup,description,src/core/startup/br_random.c
@@ -461,7 +469,9 @@ glide_va,name,module,basis,file
 0x100358C0,BrTimerStart1003C230,net,neighbour-1,src/core/generated/0x100358C0.c
 0x100358F0,BrSub1003C260,net,description,src/core/net/br_dplayjoin.c
 0x10035BB0,BrComCreateInstance,net,neighbour-1,src/core/net/br_dplayjoin.c
+0x10035BE0,BrDpShutdown,net,filed,src/core/net/br_dplayjoin.c
 0x10036040,BrSub1003C9B0,menus,manual,src/core/menus/br_uilistwalk.c
+0x10036080,BrSlotMark,net,manual,src/core/net/br_slottable.c
 0x10036100,BrSlotsResetIfBZero,gamedata,filed,src/core/gamedata/br_slots.c
 0x100361A0,FUN_100361a0,gamedata,neighbour-1,src/core/generated/0x100361A0.c
 0x10036430,BrSub1003CDA0,net,neighbour-1,src/core/net/br_sessiondesc.c
@@ -522,6 +532,7 @@ glide_va,name,module,basis,file
 0x10038B20,BrUiHook87_1003F5E0,menus,neighbour,src/core/menus/br_uicapcode.c
 0x10038BC0,BrUiHook87_1003F680,menus,neighbour,src/core/menus/br_uicapcode.c
 0x10038C60,BrRaceIconLookup,menus,filed,src/core/menus/br_race.c
+0x10039580,BrCtlNameFind,controls,manual,src/core/controls/br_ctlname.c
 0x10039BC0,BrMenuEnter,menus,neighbour,src/core/menus/br_menucb.c
 0x10039CE0,BrMenuCap07A0,menus,neighbour,src/core/menus/br_menucb.c
 0x10039DB0,BrMenuCap0870,menus,neighbour,src/core/menus/br_menucb.c
@@ -555,8 +566,10 @@ glide_va,name,module,basis,file
 0x1003AF60,BrExt_10041A00,menus,neighbour,src/core/generated/0x1003AF60.c
 0x1003B020,BrMenuCopyTrackName,menus,filed,src/core/menus/br_menuact.c
 0x1003B0B0,BrMenuAutoSaveName,menus,neighbour,src/core/menus/br_menucb.c
+0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
 0x1003B970,BrExt_10042410,menus,neighbour,src/core/generated/0x1003B970.c
 0x1003BA30,BrExt_100424D0,menus,neighbour,src/core/menus/br_uinameedit.c
+0x1003BCA0,BrSaveProbeTimeAttack,menus,filed,src/core/menus/br_saveprobe.c
 0x1003BFF0,BrToggleOnce_BFF0,menus,filed,src/core/menus/br_toggle.c
 0x1003C020,BrUiHook85_10042AC0,menus,neighbour,src/core/menus/br_uictlhook.c
 0x1003C050,BrToggleOnce_C050,menus,filed,src/core/menus/br_toggle.c
@@ -642,10 +655,7 @@ glide_va,name,module,basis,file
 0x10054600,BrRet0Std3_10054600,menus,manual,src/core/menus/br_textlist.c
 0x100546F0,BrObj546F0DeleteDtor,menus,manual,src/core/menus/br_textlist.c
 0x10054710,BrObj54710Dtor,menus,manual,src/core/menus/br_textlist.c
-0x10055090,BrUiSprDrawAt,menus,prefix,src/core/generated/0x10055090.c
 0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
-0x10055ED0,BrFileCountMatching,gamedata,neighbour-1,src/core/generated/0x10055ED0.c
-
 0x10055960,BrSub1005CB40,drawing,neighbour,src/core/drawing/br_namelist.c
 0x100559B0,BrNameListInit,drawing,neighbour,src/core/drawing/br_namelist.c
 0x10055A10,BrVt55A10DeleteDtor,drawing,neighbour,src/core/drawing/br_namelist.c
@@ -657,6 +667,7 @@ glide_va,name,module,basis,file
 0x10058300,BrFontTexFreeAll,drawing,filed,src/core/drawing/br_font.c
 0x10058360,BrFontFreeAndExit,drawing,filed,src/core/drawing/br_font.c
 0x10058380,BrSprFontDraw,drawing,neighbour-1,src/core/ghidra_batch.c
+0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
 0x10058C70,FUN_10058c70,menus,neighbour-1,src/core/generated/0x10058C70.c
 0x10058C90,BrChainFreeRec_10058C90,menus,neighbour-1,src/core/menus/br_chain.c
 0x10058CC0,BrBoundsFits_10058CC0,menus,neighbour-1,src/core/menus/br_uibounds.c
@@ -680,6 +691,7 @@ glide_va,name,module,basis,file
 0x10059E50,BrUiSelBDec,menus,description,src/core/menus/br_uislider.c
 0x10059E70,BrPadPackButtons,controls,filed,src/core/controls/br_input.c
 0x10059F10,BrBmpToRgba32,drawing,filed,src/core/drawing/br_bmp.c
+0x10059F70,BrBmpWiden24ToRgba,drawing,manual,src/core/generated/0x10059F70.c
 0x10059FE0,FUN_10059fe0,drawing,neighbour,src/core/drawing/br_livery.c
 0x1005A020,BrBmpRect4Get,drawing,filed,src/core/drawing/br_bmp.c
 0x1005A070,BrBmpGetHandle,drawing,filed,src/core/drawing/br_bmp.c
@@ -689,6 +701,7 @@ glide_va,name,module,basis,file
 0x1005A420,FUN_1005a420,drawing,description,src/core/drawing/br_livery.c
 0x1005A480,BrLiveryLoadDamage,drawing,filed,src/core/drawing/br_livery.c
 0x1005A4E0,BrImgTintSetScale,drawing,description,src/core/drawing/br_imgtint.c
+0x1005A630,BrImgRegionHasKey,drawing,manual,src/core/generated/0x1005A630.c
 0x1005A6A0,FUN_1005a6a0,drawing,description,src/core/drawing/br_livery.c
 0x1005A6B0,FUN_1005a6b0,drawing,description,src/core/drawing/br_livery.c
 0x1005A6E0,BrNodeMarkPass,drawing,description,src/core/drawing/br_nodepass.c
@@ -842,6 +855,7 @@ glide_va,name,module,basis,file
 0x1006D2A0,BrStrResFree,gamedata,filed,src/core/gamedata/br_strres.c
 0x1006D410,BrVec4Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D4B0,BrVec3Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
+0x1006D600,BrCpIntegrateVelocity,driving,manual,src/core/driving/br_carphys.c
 0x1006D940,BrX100746E0,geometry,filed,src/core/geometry/br_x100746.c
 0x1006D980,BrMat4MulVec3,geometry,filed,src/core/geometry/br_mat.c
 0x1006D9D0,BrMat4MulVec3Transposed,geometry,filed,src/core/geometry/br_mat.c
@@ -868,6 +882,7 @@ glide_va,name,module,basis,file
 0x1006E350,BrGetTimerState,startup,description,src/core/startup/br_timer.c
 0x1006E3B0,BrSub10075150,startup,description,src/core/startup/br_timer.c
 0x1006E3F0,br86_timer_restart,startup,neighbour-1,src/core/generated/0x1006E3F0.c
+0x1006E430,BrX100751D0,startup,manual,src/core/startup/br_frametimer.c
 0x1006E4A0,br86_timer_end_period,startup,description,src/core/startup/br_frametimer.c
 0x1006E4C0,BrSfxSrcStart,audio,filed,src/core/audio/br_sfxsrc.c
 0x1006E530,BrSfxSrcPlay,audio,filed,src/core/audio/br_sfxsrc.c
@@ -875,8 +890,10 @@ glide_va,name,module,basis,file
 0x1006E580,BrThunk6E580,audio,filed,src/core/audio/br_sfxsrc.c
 0x1006E590,BrNop6E590,audio,neighbour-1,src/core/audio/br_sfxsrc.c
 0x1006E5A0,BrMat4SetLastColumn,geometry,prefix,src/core/geometry/br_mat.c
+0x1006E9E0,BrCarTickClocks,racing,manual,src/core/racing/br_cartick.c
 0x1006EA70,BrCarTickMessages,racing,filed,src/core/racing/br_cartick.c
 0x1006EB00,FUN_1006eb00,racing,description,src/core/racing/br_wrongway.c
+0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
 0x1006F680,BrEntSetPos,scene,description,src/core/scene/br_entpos.c
 0x1006F970,BrEntSetMatrix,driving,neighbour-1,src/core/driving/br_entstate.c
 0x1006FA10,BrEntSetVel,driving,neighbour-1,src/core/driving/br_entstate.c
@@ -917,21 +934,3 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
-0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c
-0x1006E9E0,BrCarTickClocks,racing,manual,src/core/racing/br_cartick.c
-0x10036080,BrSlotMark,net,manual,src/core/net/br_slottable.c
-0x10003810,BrNetPingSync,net,manual,src/core/generated/0x10003810.c
-0x10039580,BrCtlNameFind,controls,manual,src/core/controls/br_ctlname.c
-0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
-0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
-0x10034870,BrVec3TransformDivW,geometry,manual,src/core/generated/0x10034870.c
-0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
-0x10059F70,BrBmpWiden24ToRgba,drawing,manual,src/core/generated/0x10059F70.c
-0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
-0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
-0x1006E430,BrX100751D0,startup,manual,src/core/startup/br_frametimer.c
-0x1006D600,BrCpIntegrateVelocity,driving,manual,src/core/driving/br_carphys.c
-0x1005A630,BrImgRegionHasKey,drawing,manual,src/core/generated/0x1005A630.c
-
-0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
-0x1003BCA0,BrSaveProbeTimeAttack,menus,filed,src/core/menus/br_saveprobe.c
