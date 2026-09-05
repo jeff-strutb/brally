@@ -773,4 +773,83 @@ int BrInputLatchUpdate(void)
   return;
 }
 
+
+/* 0x10AC61E0 -- the DirectInput record 0x10059350.cpp builds; its device
+ * pointer sits at +0x50.  Only the two vtable slots used here are named. */
+struct BrDIPollDev;
+
+typedef struct BrDIPollVtbl {
+    void *pad00[7];                                     /* +0x00..+0x18 */
+    int(__stdcall *Acquire)(struct BrDIPollDev *);      /* +0x1C */
+    void *pad20;                                        /* +0x20 */
+    int(__stdcall *GetDeviceState)(struct BrDIPollDev *,
+                                   unsigned int, void *);   /* +0x24 */
+} BrDIPollVtbl;
+
+typedef struct BrDIPollDev {
+    BrDIPollVtbl *lpVtbl;
+} BrDIPollDev;
+
+typedef struct BrDIPollRec {
+    char          pad00[0x50];
+    BrDIPollDev  *pDev;                                 /* +0x50 */
+} BrDIPollRec;
+
+extern BrDIPollRec *DAT_10ac61e0;
+
+/* WHAT IT DOES: read the four action buttons straight off the DirectInput
+ * device and report which one has just been pressed.  Clears the four
+ * current-state words, asks the device for its 16-byte state block,
+ * re-acquires it if it has been lost, sets a word for each button whose
+ * high bit is down, lets 0x10059060 turn those into new-press flags, and
+ * returns the index of the first button that flagged.  -1 when none did,
+ * and also when there is no device at all. */
+/* @implements 0x100705F0 glide BrInputPollPressed */
+int BrInputPollPressed(void)
+{
+    unsigned char abState[16];
+    BrDIPollDev *pDev;
+    int hr;
+    int i;
+
+    if (DAT_10ac61e0 == 0)
+        return -1;
+    if (DAT_10ac61e0->pDev == 0)
+        return -1;
+
+    ((int *)&DAT_10ac6720)[0] = 0;
+    ((int *)&DAT_10ac6720)[1] = 0;
+    ((int *)&DAT_10ac6720)[2] = 0;
+    ((int *)&DAT_10ac6720)[3] = 0;
+
+    /* Re-read the device: the four stores above may alias it as far as the
+     * compiler knows, so this is a second load, not the tested one. */
+    pDev = DAT_10ac61e0->pDev;
+    hr = pDev->lpVtbl->GetDeviceState(pDev, 0x10, abState);
+    if (hr != 0) {
+        /* 0x8007001E only -- any other failure is left alone. */
+        if (hr == 0x8007001E) {
+            pDev = DAT_10ac61e0->pDev;
+            pDev->lpVtbl->Acquire(pDev);
+        }
+    }
+
+    if ((abState[12] & 0x80) != 0)
+        ((int *)&DAT_10ac6720)[0] = 1;
+    if ((abState[13] & 0x80) != 0)
+        ((int *)&DAT_10ac6720)[1] = 1;
+    if ((abState[14] & 0x80) != 0)
+        ((int *)&DAT_10ac6720)[2] = 1;
+    if ((abState[15] & 0x80) != 0)
+        ((int *)&DAT_10ac6720)[3] = 1;
+
+    BrInputLatchUpdate();
+
+    for (i = 0; i < 4; i++) {
+        if (((int *)&DAT_10ac6730)[i] != 0)
+            return i;
+    }
+    return -1;
+}
+
 #endif /* BR_MATCHING_BUILD */
