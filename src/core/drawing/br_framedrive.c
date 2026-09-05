@@ -405,40 +405,45 @@ void BrFrameDraw(int iSlot)
                 BrTextDraw(BrStrGet(0xF0), DAT_106e7714 / 2, DAT_106e9a2c - 0x1E);
             else
                 BrTextDraw(BrStrGet(0xF1), DAT_106e7714 / 2, DAT_106e9a2c - 0x1E);
-        } else if (DAT_100aa024 != 0) {
-            if (DAT_100a9360 != 4) {
-                if (DAT_105ccb88 != 0) {
-                    BrTextFlag358Clear();
-                    BrSub_10019280();
-                    BrSetGlobal_ABB30(0xF);
-                    BrTextDraw(BrStrGet(0xF2), 0x1C, 0x20);
-                    if (DAT_100a9360 == 6)
-                        FUN_10014e00(aViews, pCars);
-                    BrSub_10019290();
-                    BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
-                               DAT_106e9a2c - 0x18);
-                } else if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x2808)) {
-                    /* The original's branch is `je` into the message arm, so
-                     * the HUD arm is the FALLTHROUGH: the test is `!=` and
-                     * this arm comes first in the source. */
-                    BrPodNop(0, 0xff, 0, 0, 0xff);
-                    BrDlScreenRectEmit(pV->x, pV->y, pV->w, pV->h, 1);
-                    BrHudDraw(aViews, pCars);
-                    FUN_10014e00(aViews, pCars);
-                    BrPodNop(0, 0, 0x82, 0, 0xff);
-                    if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x27C4))
-                        BrPodNop();
-                } else if ((*(uint8_t **)(DAT_106e9d88 + 0xF00))[0x68] & 2) {
-                    BrHudDrawViewMessage(aViews);
-                }
-            } else if (DAT_100aa024 != 0 && DAT_100a9360 == 4
-                       && g_brRaceBeginStage == 0) {
+        } else if (DAT_100aa024 != 0 && DAT_100a9360 != 4) {
+            if (DAT_105ccb88 != 0) {
                 BrTextFlag358Clear();
+                BrSub_10019280();
                 BrSetGlobal_ABB30(0xF);
+                BrTextDraw(BrStrGet(0xF2), 0x1C, 0x20);
+                if (DAT_100a9360 == 6)
+                    FUN_10014e00(aViews, pCars);
                 BrSub_10019290();
                 BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
                            DAT_106e9a2c - 0x18);
+            } else if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x2808)) {
+                /* The original's branch is `je` into the message arm, so
+                 * the HUD arm is the FALLTHROUGH: the test is `!=` and
+                 * this arm comes first in the source. */
+                BrPodNop(0, 0xff, 0, 0, 0xff);
+                BrDlScreenRectEmit(pV->x, pV->y, pV->w, pV->h, 1);
+                BrHudDraw(aViews, pCars);
+                FUN_10014e00(aViews, pCars);
+                BrPodNop(0, 0, 0x82, 0, 0xff);
+                if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x27C4))
+                    BrPodNop();
+            } else if ((*(uint8_t **)(DAT_106e9d88 + 0xF00))[0x68] & 2) {
+                BrHudDrawViewMessage(aViews);
             }
+        /* Both conditions are COMPOUND and both name the same two globals:
+         * that is what makes the original re-test them at the attract arm's
+         * head (`test ecx,ecx / je` and `cmp eax,4 / jne`) while still
+         * cross-jumping the shared BrSub_10019290/BrTextDraw tail.  Nesting
+         * this under a bare `if (DAT_100aa024 != 0)` lets VC5 fold both
+         * tests away; making it a separate statement keeps them but loses
+         * the cross-jump (three duplicated calls). */
+        } else if (DAT_100aa024 != 0 && DAT_100a9360 == 4
+                   && g_brRaceBeginStage == 0) {
+            BrTextFlag358Clear();
+            BrSetGlobal_ABB30(0xF);
+            BrSub_10019290();
+            BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
+                       DAT_106e9a2c - 0x18);
         }
         BrNop_1002C509(pV->x, pV->y, pV->w, pV->h);
         BrHudDrawViewCentreText(aViews);
