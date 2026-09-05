@@ -6209,3 +6209,27 @@ frame dword (0x6c); the `imul`-destination fix alone REMOVES one (0x64); togethe
 the frame is the original's 0x68 with the original's slot count. A frame that
 reads right can be two errors cancelling: read the /FAcs equate table, not
 `sub esp,N`.
+
+## Byte-slot widening is decided by USE COUNT after the join, not by spelling
+*(settled 2026-09-05 on 0x1000A110 by a diagnostic probe; closes the question
+the "byte-slot idiom, CRACKED" entry and the corpus-miss entry left open)*
+
+The `mov byte [esp+S],B … mov R,[esp+S]; and R,0xff; or R,R` widening of a
+`uint8_t` local appears when the byte is read MORE THAN ONCE after its
+defining join. Reading each of 0x1000A110's two pack bytes a second time
+after the colour if/else (an unfaithful, diagnostic edit) made VC5 home both
+and read both back widened -- three MISSING rows appeared on the spot. With
+one read per colour, VC5 keeps one byte live and forwards it as a lane move
+(`mov dl,cl`), and no spelling of the pack, the array, its scope, its index or
+its neighbours changes that (≈300 compiles, all byte-identical). The corpus
+neighbour that emits the run, 0x1001E380, reads its four byte locals sixteen
+times. **So when the original widens a byte the source reads once, the
+original's source read it more than once -- look for the missing use, not for
+a spelling.**
+
+Riders from the same session: the declaration-order tie-break is EXHAUSTED on
+0x1000A110 (every function-scope index, both comma lists, block scopes: all
+inert) -- it needs comparable float products through pointer locals, or two
+named integer factors; and a spill can be LOAD-BEARING for a frame size (the
+pCam spill holds 0x4c where the original holds it with byte slots), so a
+frame that matches is not evidence the frame's contents match.

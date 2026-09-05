@@ -765,6 +765,59 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
+ * ‼ SESSION 18 (2026-09-05) -- THE DECLARATION-ORDER LEVER IS EXHAUSTED HERE,
+ * AND THE PACK WALL IS EXPLAINED.  Four parallel probe lanes, ~300 fresh
+ * compiles through a scratch harness, every one byte-identical to HEAD
+ * (24 masked / 34 raw / 7,546 B / 1,835 insns / msetdiff 13+5 / sub esp,0x4c)
+ * unless noted.  Do not re-run any of it:
+ *   (a) SYMBOL INDEX: both comma lists split; each of the 15 function-scope
+ *       locals moved to EVERY other declaration index (210 reorderings); the
+ *       six sky-block locals permuted; arm 1's div/packA/top1 permuted;
+ *       arm 2/3's topB/topA split or swapped; the settile lo/hi/w0/w1
+ *       dependency-valid orders; flag290C, distNear, lod, colourA+colourB
+ *       block-scoped at their live ranges.  ALL INERT.  No mod-4 bucket and
+ *       no pairwise order reaches codegen here: the 0x1000EAF0 / 0x100250D0
+ *       lever needs comparable float products through pointer locals, or
+ *       two named factors of an integer product; this residue has neither.
+ *   (b) THE PACK WALL (arms 2/3, the 13 rows, the eight missing insns):
+ *       pack[2] at all five positions; colourB before colourA; a fresh
+ *       else-only replacement array (identity inert, frame intact because
+ *       it REPLACES rather than adds); pack[1] before pack[0]; topA after
+ *       both pack writes -- all inert.  topB loaded above colourA is the
+ *       session-15 trade re-confirmed under the honest msetdiff: one
+ *       spurious EXTRA `mov B,B` gone for one real instruction lost.
+ *       ‼ THE MECHANISM, settled by a DIAGNOSTIC (unfaithful) probe: reading
+ *       each pack byte a SECOND time after the join makes VC5 home both and
+ *       read both back widened -- MISSING 13 -> 10, the `and/or/mov byte`
+ *       rows appear.  USE COUNT after the join is the discriminator (the
+ *       0x1001E380 corpus neighbour reads its four byte locals sixteen
+ *       times); a faithful spelling reads each pack byte once per colour
+ *       and cannot reach it.  Session 17's open question is answered.
+ *   (c) THE 0x580-0x700 STRETCH (float operand swap at the second light
+ *       call, the pCam reload, regions 11/12) is ONE coupled allocation
+ *       wall with (b): our pCam spill into [esp+0x60] is LOAD-BEARING for
+ *       the 0x4c frame (the original's register-lived pCam with its two
+ *       reloads collapses ours to 0x48), and that spill owns the slot the
+ *       original gives atOffset, which cascades eyeScale to [esp+0x24]
+ *       (orig 0x1c) -- the ONLY difference between the matching
+ *       `pCarF[14]+atOffset` add and the diverging `pCarF[12]+eyeScale`
+ *       add.  The original holds 0x4c with the byte slots 0x31/0x32 plus a
+ *       hole at 0x34, i.e. the arms-2/3 pack layout.  Dead at the add:
+ *       parens in all four placements, a named sum temp, a multi-use
+ *       dedicated pointer (folds back to [ebx+0x30], car survives in ebx),
+ *       the four pool floats split/permuted/scoped (/FAcs: slots immovable).
+ *   (d) ARM 1 colourA's R/G ftol lane (regions 2/3/7): the original feeds
+ *       __ftol R, G, B in source order and we schedule G, R, B.  Register-
+ *       blind EQUAL (never a multiset row), T3a.  Dead: parens on any
+ *       operand (float-only lever), colourA/colourB and packA/top1 orders,
+ *       one or two added USED function-scope ints above the block, full
+ *       accumulator Horner / named byte temps / explicit shifts / two-
+ *       statement forms (forward-substituted back), a uint8_t[3] to force
+ *       sequential stores.  colourB-before-colourA reads 24 -> 22 masked
+ *       and is a DISGUISED REGRESSION (raw 34 unchanged, EXTRA 5 -> 7).
+ *   Honest state: 18 rows, two coupled defects, both needing the original's
+ *   byte-slot frame layout at once, and no faithful source reaches it.
+ *
  * SESSION 15 (2026-09-03) -- ‼ A WRONG ADDRESS IN THE DISPLAY LIST, found
  * by reading which STACK SLOT each pool allocation lands in.  Two regions
  * closed and the residue is down to 17+14 multiset rows.
