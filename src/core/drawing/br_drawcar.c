@@ -1,6 +1,29 @@
 /* br_drawcar.c -- see br_drawcar.h.  The vehicle's display list, from
  * BRGlide.dll.
  *
+ * ‼‼ 2026-09-05 -- THE BYTE-LANE WALL IS BROKEN AT THE SHARED colourB JOIN
+ * (see the cbTop comment at the site).  State: msetdiff 13+5 -> 9+5,
+ * instructions 8 short -> 4, bytes 31 short -> 16, REGNORM 5+13 -> 5+9,
+ * frame intact.  Masked regions 24 -> 29, the documented artefact here.
+ *   HOW IT WAS FOUND, and it is the reusable part: a WRITE/READ CENSUS of the
+ *   original's byte slots.  Slots 0x31/0x32 are each written FOUR times and
+ *   read THREE -- the writes at 0x3a6/0x3c0 (arm 2) have no read of their own
+ *   because arm 2 `jmp 0x427` INTO the read, which arm 3 falls through to.
+ *   That asymmetry is what identifies a shared join and says which values
+ *   have to be live across the edge.  Census the slots before theorising.
+ *   ‼ AND THE LEVER IS JOIN-ONLY -- MEASURED, do not re-run.  The identical
+ *   dword-partial applied to the two STRAIGHT-LINE pack sites (arm 1's
+ *   colourB, arm 3's colourA), separately AND together, is BYTE-IDENTICAL:
+ *   with no edge to cross there is nothing for it to change and VC5 folds
+ *   `(part | pack[0])` straight back into the lane form.
+ *   ‼ ALSO RE-TESTED UNDER THE NEW ALLOCATION (staleness rule) and the old
+ *   verdict HOLDS: arm 3's `topA` moved LAST, matching the original's load
+ *   order (pack, pack, top at 0x3ca-0x3d6), leaves the multiset unchanged at
+ *   9+5 and costs one raw row each side (41+45 -> 42+46).  topA stays first.
+ *   WHAT IS LEFT: 6 MISSING + 1 EXTRA of byte-lane at those two straight-line
+ *   sites (~300 recorded-dead compiles plus the four above), the float
+ *   operand swap (4 rows, no N64 oracle -- below), and the pCam reload.
+ *
  * ‼ 2026-09-05 (parallel probe sweep) -- 0x1000A110's two residue defects
  * each took one more measured-dead lever.  Do NOT re-run:
  *   - THE FLOAT OPERAND SWAP (2nd light call arg pCarF[12] + eyeScale, orig
