@@ -890,6 +890,7 @@ glide_va,name,module,basis,file
 0x10071F00,BrTickAdd_10078C10,racing,filed,src/core/racing/br_replayon.c
 0x10071F20,BrDiSetPropRange,controls,description,src/core/controls/br_dicmd.c
 0x10071F70,BrDiSetPropDword,controls,description,src/core/controls/br_dicmd.c
+0x100720A0,BrDInputShutdown,controls,description,src/core/controls/br_dishutdown.c
 0x10072100,BrFfbSetDirection,controls,description,src/core/controls/br_ffb.c
 0x10072140,BrFfbSetDurationLong,controls,description,src/core/controls/br_ffb.c
 0x10072180,BrFfbSetDurationShort,controls,neighbour-1,src/core/controls/br_ffb.c
