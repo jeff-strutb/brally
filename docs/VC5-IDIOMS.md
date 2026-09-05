@@ -6149,3 +6149,27 @@ here is the ORIGINAL's shape, so do not reach for the positive-form lever
 of the "LAST test's polarity" entry), and the table base is read from its
 global AT THE USE, after both `__ftol` calls; caching it in a local at
 entry makes VC5 hold it in edi across the calls (push edi, +5 B).
+
+## Consecutive `fst` homes for values kept on the x87 stack = an AGGREGATE local
+
+`0x1006D600 BrCpIntegrateVelocity` (169 B, byte-exact 2026-09-04). The
+original computes six products (three linear, three angular deltas) on the
+x87 stack and homes exactly three of them with `fst` (store AND keep) in
+three consecutive frame slots `[esp]`, `[esp+4]`, `[esp+8]` -- a
+`sub esp,0xc` frame for values it never reads back. Six named float
+locals do not reproduce that: VC5 gives three of them homes too, but packs
+all three into the dead `dt` parameter slot (no frame, 6 B short) and
+loads the operands in a rotated order. The homes are consecutive because
+the values are the fields of ONE struct local:
+
+    BrVec3 dv, da;
+    dv.x = pB->accel.x * dt;  ...  da.z = pB->angAccel.z * dt;
+    pS->vel.x = pS->vel.x + dv.x;  ...  pS->angVel.z = pS->angVel.z + da.z;
+
+Both deltas are aggregates even though only `da` is visibly homed: with
+`da` an aggregate and dx/dy/dz named scalars the function is 2 B off, with
+`da` alone and the linear products inline it is 14 B short, and a
+`float[3]` behaves like the single aggregate. Companion to "A frame that
+is 4 bytes short: look for a scalar that should be an ARRAY" -- here the
+tell is not the frame size alone but `fst` (not `fstp`) into slots that
+are never reloaded, at consecutive offsets, in field order.
