@@ -1022,7 +1022,11 @@ void BrWeatherStepWind(void)
      * WALL: orig then `fxch; fst [esp]; fxch; fst [esp]; fxch` (round BOTH
      * fcos/fsin results through the one slot) before the interleaved
      * gain/dt scale-out.  /O2 emits only the sin fst; /Op on the function
-     * also rounds the fild path (`fstp; fld`) which orig does not. */
+     * also rounds the fild path (`fstp; fld`) which orig does not.
+     * DEAD 2026-09-05: named `c`/`s` locals for the two trig results
+     * (byte-identical), a named `c` alone (24), reusing `a` for the cosine
+     * after the sine is taken (24), and a plain `a = windAngle` copy in
+     * place of the int pun (44, loses the integer copy). */
     {
         int ia = *(int *)&g_weather.windAngle;
         g_weather.windZ = 0.0f;
