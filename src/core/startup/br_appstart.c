@@ -13,6 +13,12 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+/* The port's BrChkFReadLine takes the FILE* itself; the original takes the
+ * CHK handle whose first dword is the FILE*.  In the matching build the
+ * header's prototype, the port body and its one caller in this file are
+ * renamed out of the way, and the byte-exact form at the end of the file
+ * takes the real name (the #undef is there). */
+#define BrChkFReadLine BrChkFReadLine_port
 #endif
 #include "br_appstart.h"
 
@@ -691,6 +697,82 @@ int32_t BrAppCheckPreviousApp(void)
         return 0;
     }
     return 1;
+}
+
+/* ==========================================================================
+ * 0x10003530 -- CHK_FReadLine, the byte-exact form.  The contract, the
+ * stack trace and the two preserved defects are in the port body above and
+ * in br_appstart.h; this differs from it only in taking the CHK handle and
+ * reading the FILE* out of it at every use, as the original does.
+ * ========================================================================== */
+#undef BrChkFReadLine
+/* The original imports `getc` and calls it (`mov ebp,[__imp__getc]`, hoisted
+ * out of the loop); <stdio.h>'s getc MACRO would inline the buffer poke and
+ * call _filbuf instead.  Only the macro is dropped -- the function prototype
+ * above it in the header stays. */
+#undef getc
+
+struct BrChkHandle { FILE *pFile; };
+
+/* WHAT IT DOES: reads one line of a CHK text file into the caller's buffer,
+ * with the game's own conventions: a line always ends with a newline and a
+ * NUL in the buffer, a carriage return counts as a newline and swallows the
+ * line feed that follows it, and at end-of-file with nothing read it
+ * returns NULL, which is how the caller's loop ends.  It returns a pointer
+ * just past what it wrote. */
+/* @implements 0x10003530 glide BrChkFReadLine */
+char *BrChkFReadLine(char *pszDst, int cbMax, struct BrChkHandle *pChk)
+{
+    int n = 0;
+    int c;
+
+    /* Three things the bytes pin down:
+     *  - the PARAMETER is the cursor.  A `p = pszDst` local hoists one load
+     *    above the pushes; the original registerises the argument in the
+     *    loop preheader and reloads it on the no-room path (0x100035CD).
+     *  - a `while (n < cbMax)` loop: top `jle`, bottom `jl`, the count exit
+     *    falling into its own `return`.  A `for(;;)` with an inner
+     *    `if (n >= cbMax) return` folds that exit into the final return.
+     *  - the CR arm BREAKS to the final `return`, which the no-room path
+     *    shares (one epilogue, 0x100035D1); every other exit returns from
+     *    where it stands, six four-pop epilogues in all.
+     *  - EOF is the ELSE arm of `if (c != EOF)`, laid out last (0x10003587).
+     *    As a leading `if (c == EOF)` its "store NUL, return +1" tail gets
+     *    cross-jumped into the LF arm's identical tail: 11 bytes short. */
+    while (n < cbMax) {
+        c = getc(pChk->pFile);
+
+        if (c != EOF) {
+            if (c == '\r') {
+                /* normalise to LF, then swallow a following LF or put back
+                 * whatever else came */
+                *pszDst++ = '\n';
+                *pszDst++ = '\0';
+                c = getc(pChk->pFile);
+                if (c != EOF && c != '\n') {
+                    ungetc(c, pChk->pFile);
+                    return pszDst;
+                }
+                break;
+            }
+
+            if (c == '\n') {
+                *pszDst++ = '\n';
+                *pszDst   = '\0';
+                return pszDst + 1;
+            }
+
+            *pszDst++ = (char)c;
+            n++;
+        } else {
+            if (n == 0) {
+                return NULL;
+            }
+            *pszDst = '\0';
+            return pszDst + 1;
+        }
+    }
+    return pszDst;
 }
 
 #endif /* BR_MATCHING_BUILD */
