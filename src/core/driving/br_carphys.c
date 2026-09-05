@@ -100,20 +100,29 @@ static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
 {
 #ifdef BR_MATCHING_BUILD
     /* Orig loads all six body floats onto the x87 stack, then fxch/fmul
-     * dt.  Named products first so the loads hoist together. */
+     * dt, and homes exactly THREE of the products -- the angular ones -- in
+     * three consecutive frame slots (`sub esp,0xc`; `fst [esp]`, `[esp+4]`,
+     * `[esp+8]`).  Consecutive homes for a set of values that are also
+     * kept on the x87 stack is an AGGREGATE local: the deltas are two
+     * BrVec3s.  Byte-exact 2026-09-04.  Six named float locals put the
+     * three homes in the dead dt slot instead (no frame, -6 B), inline
+     * products lose the load hoist entirely (-38 B), one aggregate plus
+     * three named scalars is 2 B off, one aggregate plus inline vel is
+     * -14 B, and a float[3] behaves like the single aggregate. */
     {
-        float dy  = pB->accel.y    * dt;
-        float dz  = pB->accel.z    * dt;
-        float dax = pB->angAccel.x * dt;
-        float day = pB->angAccel.y * dt;
-        float daz = pB->angAccel.z * dt;
-        float dx  = pB->accel.x    * dt;
-        pS->vel.y    = pS->vel.y    + dy;
-        pS->vel.z    = pS->vel.z    + dz;
-        pS->angVel.x = pS->angVel.x + dax;
-        pS->angVel.y = pS->angVel.y + day;
-        pS->angVel.z = pS->angVel.z + daz;
-        pS->vel.x    = pS->vel.x    + dx;
+        BrVec3 dv, da;
+        dv.x = pB->accel.x * dt;
+        dv.y = pB->accel.y * dt;
+        dv.z = pB->accel.z * dt;
+        da.x = pB->angAccel.x * dt;
+        da.y = pB->angAccel.y * dt;
+        da.z = pB->angAccel.z * dt;
+        pS->vel.x    = pS->vel.x + dv.x;
+        pS->vel.y    = pS->vel.y + dv.y;
+        pS->vel.z    = pS->vel.z + dv.z;
+        pS->angVel.x = pS->angVel.x + da.x;
+        pS->angVel.y = pS->angVel.y + da.y;
+        pS->angVel.z = pS->angVel.z + da.z;
     }
 #else
     BrRbBody tmp;
