@@ -6580,3 +6580,19 @@ initializer table the linker parked at the head of `.data`, `__proc_attached`
 refcounting, and a backwards walk of the atexit table on `DLL_PROCESS_DETACH`
 that re-reads the head global after every call. None of that is spellable from
 game source, and it never needed to be.
+
+- **Two hoisted import pointers in one loop: a dead-after-test result local
+  swaps which one gets ebx.** 0x1006AAF0 BrNetPeerMsgReset hoists
+  `ReleaseMutex` (ebx) and `WaitForMultipleObjects` (ebp) out of a 16-peer
+  loop. Spelled `wr = WaitForMultipleObjects(...); if (wr == 0) ExitThread(0);`
+  the two come out SWAPPED -- 2 diff bytes (`call ebp`/`call ebx`), every other
+  byte identical, REGNORM 0+0. Spelled `if (WaitForMultipleObjects(...) == 0)`
+  it is byte-exact. The named local is a register candidate even though it dies
+  at the test, and it shifts the tie-break between two equal-weight invariants.
+  ‼ PER-FUNCTION: the byte-exact sibling FUN_1006a650 in the same TU KEEPS its
+  `wr` local. DEAD on this function, do not re-run: swapping the two handle
+  stores (+1 B), swapping the two pointer increments (inert), swapping the
+  locals' declaration order (moves esi/edi instead), declaring the two imports
+  by hand in either order without <windows.h> (inert), a preceding dummy
+  function referencing either import first (inert), two scalar handles instead
+  of `h[2]` (-10 B), a `for` loop (+10 B). Proven 2026-09-05.
