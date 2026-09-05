@@ -29,7 +29,89 @@
  * -1.0f at 0x100778E4, -0.2f at 0x10077918, -0.5f at 0x10077904, -3.0f at
  * 0x100778F4).
  *
- * RESIDUE MAP / DEAD PROBES: see the end of this header as they accrue.
+ * THE PRODUCT IN RULE 4 IS A TREE, NOT A FLAT PRODUCT.  Each of the four
+ * correction arms is `(absOffset - limit) / absOffset * (heading * k)`.  The
+ * second factor MUST carry its own parentheses: spelled flat as
+ * `heading * k * ((absOffset - limit) / absOffset)` VC5 canonicalises the
+ * three-term product into one x87 accumulator and three memory-operand
+ * multiplies, which costs 8 `fxch` and 4 `fmulp` against the original and
+ * 24 bytes.  With the parentheses it evaluates the quotient and the scaled
+ * heading as two subtrees and combines them with `fxch`/`fmulp`, which is
+ * what the original does.  (regnorm 23+33 -> 20+18, size -28 -> -4.)
+ *
+ * ------------------------------------------------------------------------
+ * RESIDUE MAP  (2026-09-05, /O2, orig 3858 B / recomp 3854 B, -4;
+ *               INSNS 1080 vs 1082, +2; RAW 45+43, REGNORM 20+18;
+ *               44 divergence regions, NO lost-sync gap -- every byte of
+ *               the function is compared.)
+ *
+ * Most of the 44 regions are stack-SLOT numbering, which costs diff bytes
+ * but no size (every displacement is disp8 either way).  The scalar map is
+ *      orig  0x10 heading  0x14 absOffset  0x18 lat   0x1c mag
+ *            0x20 level    0x24 offset
+ *      ours  0x10 absOffset 0x14 heading   0x18 mag   0x1c level
+ *            0x20 lat      0x24 offset
+ * and the vector map differs only in that the original's `vEdge` sits at
+ * frame 0x84 where ours sits at 0x78.  Neither map follows declaration
+ * order on either side -- this is the allocator's spill assignment.
+ *
+ * The genuine (register-blind) residue is three allocation classes and one
+ * instruction-count gap:
+ *
+ *  R1  RULE 5's CONSTANT REGISTERS ARE THE OTHER WAY ROUND (12 bytes,
+ *      4 rows).  The original pins 0 in ebp (callee-saved, survives the
+ *      three BrVec3Dot calls) and materialises 1 as `mov r,1` immediates at
+ *      the three BR_AI_SIGN3 sites, then puts 1 in ecx once the calls are
+ *      behind it.  We pin 1 in ebp and 0 in ecx, so the three sign sites
+ *      become `mov r,ebp`.  SEMANTICS VERIFIED IDENTICAL arm by arm (all
+ *      four bias-store pairs write the same values); this is purely which
+ *      constant wins the callee-saved register.
+ *
+ *  R2  THE POSITIVE ARM OF RULE 7 DOES NOT PIN ebx=0 AT ITS HEAD.  The
+ *      NEGATIVE arm is byte-identical to the original, `xor ebx,ebx` /
+ *      `cmp eax,ebx` / `cmp [g_brAiBiasNeg],ebx` included; the positive arm
+ *      sinks the `xor ebx,ebx` to its first arithmetic use and tests both
+ *      globals with `mov eax,[g]` + `test eax,eax`.  One sibling spelled
+ *      differently by the allocator, not by the source: the two arms' C is
+ *      the same shape and the compare polarities already match.
+ *
+ *  R3  RULE 7's SHARED TAIL IS NOT CROSS-JUMPED (+2 instructions -- the
+ *      WHOLE instruction-count gap).  The original merges `fstp <lat slot>`
+ *      and `fstp st(0)` at the join and schedules `push edi` between them;
+ *      we emit both at the end of each arm.  See the dead probes below.
+ *
+ *  R4  singletons, all operand-source only: the first `vTarget` copy loads
+ *      .x through the full `[edx+eax*8+0x4c]` mode and leas afterwards
+ *      (we lea first and load through `[eax]`); `offset = add + offset`
+ *      before the fF48 store is `fst`/`fcomp`/`fld` in the original and
+ *      `fcom`/`fst` in ours; the ladder keeps TWO induction registers
+ *      (a byte offset plus a second pointer at &g_aBrAiScanB[level]) where
+ *      we keep one and derive the other with `lea ebp,[edi-0xc]` -- same
+ *      instruction count, same bytes; the ladder's back edge is `jl top`
+ *      in the original and `jge end` + `jmp top` in ours.
+ *
+ * DEAD PROBES -- DO NOT RE-RUN (all measured, all no-ops or worse):
+ *   - `for (iDrv = 0; iDrv < g_brRaceNDriver; iDrv++)` instead of the
+ *     `if (n > 0) { iDrv = 0; do {} while (); }`: does NOT hoist the
+ *     `xor edx,edx` above the loop guard the way the original does.
+ *     Same regnorm, size unchanged.
+ *   - hoisting `iDrv = 0;` to sit between `iBest = -1;` and `best = 90.0f;`
+ *     (which is where the original's `xor edx,edx` sits): still emitted
+ *     after the guard, and size got WORSE (-4 -> -8).
+ *   - `if (offset < 0.0f) pCar->fF48 = -offset; else pCar->fF48 = offset;`
+ *     instead of the ternary: byte-for-byte identical output.  The
+ *     original's extra `fld` reload is not reachable from this spelling.
+ *   - swapping the `heading` / `absOffset` declarations: /O2 stack-slot
+ *     assignment is INERT to declaration order here (slots did not move).
+ *   - factoring rule 7's two arms through a fresh `curve` temp and doing
+ *     `lat = curve;` once after the join, to force the shared store:
+ *     identical output, the temp is folded away.  R3 is not reachable by
+ *     naming the value.
+ *   - tools/corpus.py find --from 0x1005D770 --at 0x8f --len 12: MISS.
+ *     No solved function anywhere in the tree emits a run of 3+ of the
+ *     first-copy instructions, so there is no proven spelling to copy and
+ *     R4's first item needs source truth, not another permutation.
+ * ------------------------------------------------------------------------
  */
 #include <stdint.h>
 
