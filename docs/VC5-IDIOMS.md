@@ -6125,3 +6125,27 @@ Proven on all three functions of `src/core/racing/br_cartick.c` (2026-09-04).
   callee. Also: the macro form `(*(volatile float *)(p))` with an OUTER
   paren pair is NOT the same as `*(volatile float *)(p)` — the parens put
   the 11 bytes back (a redundant outer paren is not a no-op; see above).
+
+## `movzx si, al` is an `(unsigned char)` cast assigned to an `unsigned short` local
+
+`0x10003120 BrGrid64Sample` (170 B, byte-exact 2026-09-04). The original
+narrows each `__ftol` result to a byte and widens it into a 16-bit register
+(`movzx si, al`, `movzx ax, al`), then shifts and adds in the full 32-bit
+register with the caller's high bits still in it, and masks the index with
+`and 0xffff`. The port's `(unsigned)(long)v & 0xFF` into `unsigned int`
+locals is an `and` per value -- two instructions longer -- and never
+produces the 16-bit `movzx`. The source is:
+
+    unsigned short row, col, idx;
+    row = (unsigned char)(int)(y * scale);
+    col = (unsigned char)(int)(x * scale);
+    idx = (unsigned short)((row << 6) + col);      /* the `and 0xffff` */
+    t1  = grid[(unsigned short)(idx + 1)];         /* inc; and 0xffff */
+
+`idx` spelled `unsigned int` with `& 0xFFFF` is +12 B. Two companions in
+the same function: the four range guards are one `||` chain returning 0
+(four sequential early returns emit four exits, +16 B -- the merged exit
+here is the ORIGINAL's shape, so do not reach for the positive-form lever
+of the "LAST test's polarity" entry), and the table base is read from its
+global AT THE USE, after both `__ftol` calls; caching it in a local at
+entry makes VC5 hold it in edi across the calls (push edi, +5 B).
