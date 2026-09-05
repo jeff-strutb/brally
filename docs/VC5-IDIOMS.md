@@ -6815,3 +6815,18 @@ Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
   declared FIRST; the other order swaps the slots (9 diff bytes, nothing
   else). The compiler temps for `(float)int_global` conversions land below
   both (ebp-0x18, -0x1C). Proven 2026-09-05.
+
+## A pointer recomputed from an index inside the loop gets a BIASED register; a stepped pointer stays the record base
+*(2026-09-05, 0x10066AD0 BrCollRespBroadPhase, 669 B, byte-exact; two
+byte-identical walk arms from one macro body)*
+
+`for (i = 0; i < count; ++i) { pP = &grid[cell][i]; ... push pP ... }` --
+VC5 strength-reduces the address, but picks the bias for the induction
+register from the field loads (`[esi-4] / [esi] / [esi+4]` for +0x10/+0x14/
++0x18) and then needs `lea eax,[esi-0x14]; push eax` wherever the record
+pointer itself is passed.  `pP = grid[cell]; for (...; ++i, ++pP)` -- a
+source-level pointer stepped in the for clause -- keeps esi == pP
+(`[esi+0x10]`, `push esi`), which is the original.  Ten bytes and all six
+regions of that function; the trip counter (`mov ebx,count; dec ebx; jne`)
+and the entry guards (`test eax,eax; jle` forward, `dec eax; jl` backward)
+come out of the plain `i < count` / `i >= 0` index loops unchanged.
