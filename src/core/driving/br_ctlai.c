@@ -320,24 +320,24 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
                 if (heading > -0.05) {
                     g_brAiBiasPos = 0;
                     g_brAiBiasNeg = 1;
-                    mag = heading * -0.2f * ((absOffset - limit) / absOffset)
-                          - -0.03f;
+                    mag = (absOffset - limit) / absOffset
+                          * (heading * -0.2f) - -0.03f;
                 } else if (heading < -0.15) {
                     g_brAiBiasPos = 1;
                     g_brAiBiasNeg = 0;
-                    mag = heading * -0.3f * ((absOffset - limit) / absOffset)
-                          - -0.1f;
+                    mag = (absOffset - limit) / absOffset
+                          * (heading * -0.3f) - -0.1f;
                 }
             } else if (heading < 0.05) {
                 g_brAiBiasPos = 1;
                 g_brAiBiasNeg = 0;
-                mag = heading * 0.2f * ((absOffset - limit) / absOffset)
-                      - -0.03f;
+                mag = (absOffset - limit) / absOffset
+                      * (heading * 0.2f) - -0.03f;
             } else if (heading > 0.15) {
                 g_brAiBiasPos = 0;
                 g_brAiBiasNeg = 1;
-                mag = heading * 0.3f * ((absOffset - limit) / absOffset)
-                      - -0.1f;
+                mag = (absOffset - limit) / absOffset
+                      * (heading * 0.3f) - -0.1f;
             }
         } else if (BrVec3Length(&pCar->vel) > 10.0f) {
             /* 5. the in-corridor arbitration */
