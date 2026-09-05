@@ -1,3 +1,29 @@
+/* ‼ TWENTY-EIGHTH PASS (2026-09-05) -- THREE MORE WALL-3/4 LEVERS DEAD
+ * (parallel probe sweep, all measured against the 27th-pass baseline
+ * 23+20 msetdiff rows / 17 masked / -9 B).  Do NOT re-run:
+ *   - WALL 4 as a TRUE 2-D array: `#define RING2 ((int(*)[232])DAT_1035f750)`
+ *     with faf0[k] -> RING2[1][k] and f750[k] -> RING2[0][k] at all 17
+ *     trail-append + drain sites (the arrays are adjacent, 0x3a0 = 232 ints).
+ *     The [2][232] subscript does NOT strength-reduce ring into one scaled
+ *     edx shared across two displacements; it WORSENS pressure and the drain
+ *     `>>2` reintroduces shifts the byte-offset form avoided.  43 -> 51 rows,
+ *     bytes -9 -> +1.  This joins the flat-one-array probe (17/22) as dead:
+ *     handing VC5 the two arrays as one object does not reach the original's
+ *     lea edx,[ecx*4] pairing at any spelling.
+ *   - WALL 3 velocity reads through the TWO-PART SUM before binding pW
+ *     (`dx = *(float*)(wb+pCar+0x50); dy = ...+0x54;` with `pP = &pW->x`):
+ *     does NOT defer the combined lea -- it materialises the base earlier and
+ *     RELOADS it.  43 -> 61 rows, FIRSTDIV +0x2b -> +0x8.  (The brief's
+ *     dx-before-declaration order is illegal C89 anyway; declarations-first
+ *     is the only compilable form and it regresses.)  pP=&pW->x alone was
+ *     already inert; the two-part-sum reads make it worse.
+ *   - The `mov edx,6` / `mov esi,0xfffa` tile-mode ELSE-arm constants hoisted
+ *     into named locals (`nz`/`mm`) used in both the pre-loop and in-loop EMIT
+ *     blocks: catastrophic, 43 -> 195 rows, -216 bytes.  VC5 keeps nz/mm live
+ *     across the whole object walk -- the DO-NOT-HOIST-A-LOCAL trap.  The
+ *     duplicated `mov edx,6` is register allocation at the param_2 join
+ *     (wall 5), not a source-hoistable constant.
+ */
 /* ‼ TWENTY-SEVENTH PASS (2026-09-04) -- THE GHIDRA-NAMED TEMP `ring` IS
  * GONE from the trail-append block: every one of its 32 uses is spelled as
  * the expression `(iWheel + iCar * 4)`.  VC5 CSEs it into ecx exactly as
