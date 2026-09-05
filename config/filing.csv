@@ -257,6 +257,7 @@ glide_va,name,module,basis,file
 0x1001EB50,br_dl_scissorED,drawing,filed,src/core/drawing/br_dl.c
 0x1001EBC0,br_dl_scissorE2,drawing,filed,src/core/drawing/br_dl.c
 0x1001ECF0,BrDlCmdTri1,drawing,filed,src/core/drawing/br_dlcmd.c
+0x1001EE70,BrDlClipTriZ,drawing,filed,src/core/drawing/br_dltrim.c
 0x1001F0D0,BrClipPlaneW,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001F200,BrClipLerpVert,drawing,neighbour,src/core/drawing/br_dlclip.c
 0x1001F3F0,BrClipPlaneWMinusF04,drawing,filed,src/core/drawing/br_dlclip.c

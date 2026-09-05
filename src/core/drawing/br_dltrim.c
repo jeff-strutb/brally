@@ -262,4 +262,13 @@ BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
              BR_TRIM_COLDECL_FLAT, BR_TRIM_COLLOAD_FLAT, BR_TRIM_Z_KEEP,
              DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 
+/* WHAT IT DOES: trims one Gouraud-coloured triangle against the screen edges
+ * and the near/far planes with the depth buffer ON, carrying each corner's
+ * own colour across the cut, then draws whatever is left as a Glide polygon
+ * with each corner keeping its own 1/w. */
+/* @implements 0x1001EE70 glide BrDlClipTriZ */
+BR_TRIM_BODY(BrDlClipTriZ, BR_TRIM_ARGS_VTX,
+             BR_TRIM_COLDECL_VTX, BR_TRIM_COLLOAD_VTX, BR_TRIM_Z_KEEP,
+             DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
+
 #endif /* BR_MATCHING_BUILD */
