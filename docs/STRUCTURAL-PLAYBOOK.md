@@ -79,7 +79,8 @@ touching them, or you will re-run probes already proven dead:
   first — 60+ failed probe variants are mapped there. `tools/divergence.py`
   is its comparator.
 - **0x100250D0 BrTex3dExpand** (8,480 B): size wall solved; shape residue
-  only. Read its idiom entries before probing.
+  only. Read its idiom entries before probing. ‼ Read it at `--key 10`: it has
+  twelve near-identical channel arms and key 6 resyncs on the wrong copy.
 - **0x10019A70** (11,223 B, the largest): LAST among big targets, gated on
   131 callee signatures. One original function = one C function; never split
   it into multiple TUs to make it tractable.
@@ -114,6 +115,26 @@ never re-handed.
     python3 tools/fnmatch/fn.py <VA> --make w1     # copy the .c to a variant
     python3 tools/fnmatch/fn.py <VA> --var w1 --detail regnorm 30
 
+    # 3a. ON A BIG FUNCTION use tools/probe.py instead: ONE compile, ~6s, and
+    #     EVERY measure printed together — bytes/instructions, both prologues
+    #     side by side, the masked AND raw divergence maps with --deltas and
+    #     their lost-sync lines, the register-blind multiset, and the /FAcs
+    #     equate table (each local's frame slot). Reading these one at a time
+    #     is how sessions have gone wrong: a byte count that improved while a
+    #     lost-sync gap opened, a FIRSTDIV "regression" that was a slot
+    #     renumbering. Read them together or not at all.
+    cp <file.c> /tmp/v1.c        # never probe the tree file itself
+    .venv/bin/python tools/probe.py /tmp/v1.c v1 --va <VA> --sym <Name> [--key 10] [--full]
+
+    # 3aa. When a schedule or an allocation is one notch off and every
+    #      expression form in the dossier is dead, sweep the DECLARATION ORDER
+    #      before writing T3a. It is a real VC5 tie-break in two mechanisms:
+    #      the symbol's absolute INDEX decides an x87 completion order between
+    #      comparable float products read through pointer locals, and the
+    #      LATER-declared of two named factors becomes the `imul` destination.
+    #      Both proven byte-for-byte 2026-09-04/05; see docs/VC5-IDIOMS.md.
+    .venv/bin/python tools/declsweep.py <base.c> <VA> <Name> <tag> --mode all
+
     # 3b. When the shape gap is closed but bytes still differ, check behavior:
     python3 tools/t3b_verify.py <VA>     # EQUIVALENT / DIFF / UNCLASSIFIED
     #    DIFF on a shape-matched function = you introduced (or found) a real
@@ -123,7 +144,10 @@ never re-handed.
     #    Confirm with a one-file sweep (~12s), then commit.
     git add -p && git commit -m "<VA> <Name>: <what the source defect was>"
 
-Never full-sweep for ordinary work; `fn.py` and the one-file sweep are enough.
+Never full-sweep for ordinary work; `probe.py`, `fn.py` and the one-file sweep
+are enough. **On a giant, `probe.py` is the instrument and the sweep is the
+scoreboard** — run the sweep once, at the end, to confirm what you are about to
+commit.
 
 ## T1→T2: bringing a not-started function into the tree
 
