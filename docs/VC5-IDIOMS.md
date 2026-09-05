@@ -537,6 +537,26 @@ the caller AND flipped a helper to match for free.
   handle as a reload. WaitForSingleObject must be the dllimport stdcall
   (`push -1; FF 15`) — a cdecl wrapper is `E8` + `add esp` and was the
   entire 4-byte miss. Proven BrNetSlotSetF02C 0x10004DC0 (60 B).
+- **A raw-offset transcription and real struct indexing can agree on every
+  byte count and still schedule differently — the tell is a HOISTED RELOAD.**
+  Ghidra's `*(int *)((int)&DAT_sym + i)` form (one extern per field address,
+  `i` an unknown byte offset) and the honest `arr[i].field` form both emit the
+  same instructions here, but the raw form lets VC5 treat the second read of
+  the mutex handle as an available expression and schedule it at the TOP of
+  the post-call block: `mov ecx,[m]; store; push ecx; store; store; store;
+  call ReleaseMutex`. With `arr[i].field` over a declared struct array the
+  reload stays at its use — `store x5; mov ecx,[m]; push ecx; call` — which is
+  what the original does. Distinct extern symbols plus an unknown offset are
+  evidently *more* freely reorderable to VC5 than named members of one
+  aggregate, which is the opposite of the intuition. So when a draft is
+  already size- and instruction-exact and the only residue is one load+push
+  sitting early, **stop permuting and declare the struct.** Proven
+  0x1006A330 (177 B, MATCH /O2, first compile of the struct form); the record
+  is 0x96C bytes with `HANDLE` at +0, and the outer table is `rec[16]` while
+  the inner is `rec[16][16]` walked as `[j][i]`, which is what produces
+  `lea esi,[edi+base]` / `add esi,0x96C0`. Dead probes: the raw-offset form
+  (1 region, 177/177 B); the same with the handle cached in a local `HANDLE`
+  (3 regions, 178 B — VC5 spends a `push ecx` frame slot on the local).
 - **`&extern_var != NULL` is not folded.** A `mov edx, offset DAT; test edx,edx;
   je` before a strcpy that uses that same address is a real source-level
   `if (p != 0)` / `if (&buf != 0)` on an extern object. VC5 /O2 does NOT
