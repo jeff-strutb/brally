@@ -75,6 +75,12 @@ typedef struct BrAiProfile {
     int32_t  f74;                /* +0x74  row into the difficulty table   */
 } BrAiProfile;
 
+/* The waypoint cursor's two fields are one-member structs so that the
+ * corridor scan can take them by value as stack arguments (see BR_AI_SCAN
+ * below); every other read goes through the member. */
+typedef struct { uint32_t v; }       BrAiIdxArg;
+typedef struct { BrAiPathNode *p; }  BrAiNodeArg;
+
 typedef struct BrAiCar {
     BrVec3   fwd;   float f0C;   /* +0x00  frame row 0                     */
     BrVec3   right; float f1C;   /* +0x10  frame row 1                     */
@@ -106,8 +112,8 @@ typedef struct BrAiCar {
     uint8_t  aF5C[0xF78 - 0xF5C];
     int32_t  fF78;               /* +0xF78                                 */
     uint8_t  aF7C[0xF8C - 0xF7C];
-    BrAiPathNode *pNode;         /* +0xF8C the waypoint cursor: node       */
-    uint32_t iPt;                /* +0xF90                       ... point */
+    BrAiNodeArg pNode;           /* +0xF8C the waypoint cursor: node       */
+    BrAiIdxArg  iPt;             /* +0xF90                       ... point */
     uint8_t  aF94[0xFF4 - 0xF94];
     float    progress;           /* +0xFF4 cumulative distance             */
     uint8_t  aFF8[0x1024 - 0xFF8];
@@ -161,17 +167,15 @@ void BrVec3NormaliseGuard(BrVec3 *pV);        /* 0x100344D0                */
  * register-eligible -- a float for the constant (pushed as an immediate),
  * one-member structs for the two loads -- which leaves edx alone and has
  * the callee clean its own 12 bytes, exactly as thiscall does. */
-typedef struct { uint32_t v; }       BrAiIdxArg;
-typedef struct { BrAiPathNode *p; }  BrAiNodeArg;
 uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a, BrAiIdxArg idx,
                                      BrAiNodeArg node);   /* 0x1005D060 */
 #define BR_AI_SCAN(pCar, a, idx, node) \
-    BrAiScanCorridor((pCar), (float)(a), *(BrAiIdxArg *)&(idx), \
-                     *(BrAiNodeArg *)&(node))
+    BrAiScanCorridor((pCar), (float)(a), (idx), (node))
 #else
 uint32_t BrAiScanCorridor(BrAiCar *pCar, int32_t a, uint32_t idx,
                           BrAiPathNode *pNode);
-#define BR_AI_SCAN(pCar, a, idx, node) BrAiScanCorridor((pCar), (a), (idx), (node))
+#define BR_AI_SCAN(pCar, a, idx, node) \
+    BrAiScanCorridor((pCar), (a), (idx).v, (node).p)
 #endif
 void BR_THISCALL1 BrVec3Predict(BrAiCar *pCar);            /* 0x10001C90 */
 void BR_THISCALL1 BrCtlAiLineStep(BrAiCar *pCar);          /* 0x1005D3C0 */
@@ -199,6 +203,8 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 {
     BrAiPathNode *pNode;
     uint32_t i;
+    BrAiIdxArg  idx;             /* the cursor as the scan receives it     */
+    BrAiNodeArg node;
     float    t;
     BrVec3   vTarget;            /* the waypoint the cursor lands on       */
     float    velFwd;             /* dot(velocity, row 0)                   */
@@ -236,10 +242,12 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 
         /* The lookahead and the cursor walk (br_ai.h, BrAiLookahead /
          * BrAiAdvanceTarget). */
-        pNode = pCar->pNode;
-        i = pCar->iPt;
+        pNode = pCar->pNode.p;
+        i = pCar->iPt.v;
         t = 20.0f - BrVec3Length(&pCar->vel) * -3.0f;
-        vTarget = pCar->pNode->aPt[pCar->iPt].centre;
+        idx = pCar->iPt;
+        node = pCar->pNode;
+        vTarget = node.p->aPt[idx.v].centre;
         if (t > 80.0f)
             t = 80.0f;
         do {
@@ -255,7 +263,7 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
         vTarget = pNode->aPt[i].centre;
 
         /* The corridor scan, and its own aim suggestion. */
-        if (BR_AI_SCAN(pCar, 0, pCar->iPt, pCar->pNode) != 0) {
+        if (BR_AI_SCAN(pCar, 0, idx, node) != 0) {
             BrVec3Midpoint(&g_brAiScanAim, &g_brAiScanAim, &g_brAiScanPt);
             if (pCar->aim.x == 0.0f && pCar->aim.y == 0.0f
                 && pCar->aim.z == 0.0f)
@@ -278,17 +286,17 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
         pCar->pCtl->flags |= 0x10000;
 
         /* 1. the path frame at the target */
-        BrVec3Direction(&pCar->tangent, &pCar->pNode->aPt[pCar->iPt].centre,
-                        &pCar->pNode->aPt[pCar->iPt + 1].centre);
-        BrVec3Sub(&pCar->lateral, &pCar->pNode->aPt[pCar->iPt].left,
-                  &pCar->pNode->aPt[pCar->iPt].right);
+        BrVec3Direction(&pCar->tangent, &pCar->pNode.p->aPt[pCar->iPt.v].centre,
+                        &pCar->pNode.p->aPt[pCar->iPt.v + 1].centre);
+        BrVec3Sub(&pCar->lateral, &pCar->pNode.p->aPt[pCar->iPt.v].left,
+                  &pCar->pNode.p->aPt[pCar->iPt.v].right);
         BrVec3Cross(&pCar->pathUp, &pCar->tangent, &pCar->lateral);
         BrVec3NormaliseGuard(&pCar->pathUp);
         BrVec3Cross(&pCar->lateral, &pCar->pathUp, &pCar->tangent);
         BrVec3NormaliseGuard(&pCar->lateral);
 
         /* 2. the signed line offset, and the heading term */
-        BrVec3Sub(&pCar->d, &pCar->pos, &pCar->pNode->aPt[pCar->iPt].centre);
+        BrVec3Sub(&pCar->d, &pCar->pos, &pCar->pNode.p->aPt[pCar->iPt.v].centre);
         BrVec3MulAddTo(&pCar->d, &pCar->vel, 0.4f);
         offset = BrVec3Dot(&pCar->lateral, &pCar->d);
         mag = 0.0f;
@@ -301,8 +309,8 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
             absOffset = offset;
 
         /* 3. the corridor */
-        BrVec3Sub(&vEdge, &pCar->pNode->aPt[pCar->iPt].left,
-                  &pCar->pNode->aPt[pCar->iPt].centre);
+        BrVec3Sub(&vEdge, &pCar->pNode.p->aPt[pCar->iPt.v].left,
+                  &pCar->pNode.p->aPt[pCar->iPt.v].centre);
         halfWidth = BrVec3Dot(&pCar->lateral, &vEdge);
         limit = (halfWidth > 5.0f) ? halfWidth - 3.0f : halfWidth * 0.4f;
 
