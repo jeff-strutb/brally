@@ -441,6 +441,18 @@ the caller AND flipped a helper to match for free.
   sinking past the early-out) and rotates the whole register allocation.
   Proven BrTex3dRegister: deleting one redundant `return id` moved all four
   pushes below the early-out and aligned 57 more instructions.
+  **Second sighting 2026-09-05, 0x1003B580 BrSaveProbeRallySeason**: the
+  tail `if (missing) call(); else store = 1; return 1;` has TWO full
+  epilogues in the bytes, one per arm. Spelled with `return 1` inside the
+  `if` arm the body still matched instruction for instruction, but
+  edi/esi/ebp were pushed in the prologue instead of sinking past the
+  `if (n < 0) return 0` guard (+3 pops on the 0 path, +3 B). The if/else
+  with ONE `return 1` sank them and was byte-exact. Its twin 0x1003BCA0
+  has no early-out and is byte-exact under BOTH spellings — so the tell
+  only shows when there is an early-out to sink past. `tools/corpus.py
+  find --at 0xc` on the guard bytes named the solved BrRaceDriverReset
+  (`i = 0; if (n <= 0) return; p = …; do {…}`) as the same push-placement
+  shape, which is what pointed here.
 - **Stack slots are per-VARIABLE; register webs are identity-blind.** /O2
   gives each user variable one stack slot for its whole life (disjoint
   lifetimes inside one variable share it; separate variables never do),
@@ -2193,6 +2205,15 @@ prefix was NOT a literal the compiler could see through. Spelling the
 prefixes as `extern char s_Name_<va>[];` — the convention slice6_73.c
 already uses — restores the scan. Cost of getting it wrong: 37 bytes and
 two whole scans, i.e. a diff that looks structural and is one declaration.
+
+**The same holds for the `strcpy`/`strcat` intrinsics** (2026-09-05,
+0x1003BCA0 / 0x1003B580): `strcpy(buf, "TimeAttack")` compiles to unrolled
+`mov` pairs (dword/word/byte loads from the literal, stores to the frame),
+and `strcat(buf, ".grf")` loses its source scan. The original's
+`repne scasb / not / sub / rep movsd / rep movsb` on every piece means each
+was an `extern char s_Name_<va>[]`. The tell in `fn.py`: EXTRA `mov R,[A]`
++ `mov [esp+S],R` pairs summing to the literal's length, MISSING one
+scan+copy group per literal.
 
 ## Where an address is FORMED decides whether the trailing offset folds
 *(same function)*
