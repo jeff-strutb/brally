@@ -586,6 +586,8 @@ const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p)
 
 extern void BrDlClipTriFlatZ(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c,
                              float n0, float n1, float n2);  /* 0x10020190 */
+extern void BrDlClipTriFlatNoZ(BrDlVtx *a, BrDlVtx *b, BrDlVtx *c,
+                               float n0, float n1, float n2);  /* 0x10020690 */
 
 /* WHAT IT DOES: draws one flat-shaded triangle, z-buffered, from three
  * vertex-pool indices. It is dropped if all three corners are off the same
@@ -632,6 +634,73 @@ void BrDlTriFlatZ(int i0, int i1, int i2)
     if ((oc0 | oc1 | oc2) != 0) {
         BrDlClipTriFlatZ(&V(i0), &V(i1), &V(i2),
                          V(i0).n0, V(i0).n1, V(i0).n2);
+        return;
+    }
+
+    BR_DLCMD_FINISH_VTX_I(i0, u);
+    BR_DLCMD_FINISH_VTX_I(i1, u);
+    BR_DLCMD_FINISH_VTX_I(i2, u);
+
+    BR_DL_PUN(br, V(i1).r);
+    BR_DL_PUN(bg, V(i1).g);
+    BR_DL_PUN(bb, V(i1).b);
+    BR_DL_PUN(cr, V(i2).r);
+    BR_DL_PUN(cg, V(i2).g);
+    BR_DL_PUN(cb, V(i2).b);
+
+    BR_DL_PUN(t, V(i0).r);
+    BR_DL_PUN(V(i1).r, t);
+    BR_DL_PUN(V(i2).r, t);
+    BR_DL_PUN(t, V(i0).g);
+    BR_DL_PUN(V(i1).g, t);
+    BR_DL_PUN(V(i2).g, t);
+    BR_DL_PUN(t, V(i0).b);
+    BR_DL_PUN(V(i1).b, t);
+    BR_DL_PUN(V(i2).b, t);
+
+    BrDlDrawTri(&V(i0), &V(i1), &V(i2));
+
+    BR_DL_PUN(V(i1).r, br);
+    BR_DL_PUN(V(i1).g, bg);
+    BR_DL_PUN(V(i1).b, bb);
+    BR_DL_PUN(V(i2).r, cr);
+    BR_DL_PUN(V(i2).g, cg);
+    BR_DL_PUN(V(i2).b, cb);
+}
+
+/* 0x10020460 -- the same emitter with the depth buffer OFF.  Byte-for-byte
+ * the body above except for two source facts, both read off the 37 bytes in
+ * which the two originals differ: the indices are consumed i0, i2, i1
+ * (`[esp+4]` is loaded first, where 0x1001FF60 loads `[esp+0xc]` first),
+ * which also moves the dead-argument-slot temps down by 8; and the clip arm
+ * calls the no-Z trimmer 0x10020690.  The outcode locals are declared in
+ * the read order, as above, which is what picks oc1 as the `&`/`|`
+ * accumulator and oc0 as the tested operand. */
+/* WHAT IT DOES: draws one flat-shaded triangle with the depth buffer off,
+ * from three vertex-pool indices.  Dropped if all three corners are off the
+ * same edge of the screen, handed to the no-Z trimmer if any one of them is
+ * off screen, otherwise all three corners take the FIRST corner's colour and
+ * it goes to the card; the other two corners' own colours are restored
+ * afterwards because later commands still read them from the shared pool. */
+/* @implements 0x10020460 glide BrDlTriFlatNoZ */
+void BrDlTriFlatNoZ(int i0, int i1, int i2)
+{
+    float    u;
+    uint32_t br, bg, bb;
+    uint32_t cr, cg, cb;
+    uint32_t t;
+    int32_t  oc0, oc2, oc1;    /* declaration order picks the accumulator */
+
+    oc0 = V(i0).outcode;
+    oc2 = V(i2).outcode;
+    oc1 = V(i1).outcode;
+
+    if ((oc0 & (oc1 & oc2)) != 0) {
+        return;
+    }
+    if ((oc1 | oc2 | oc0) != 0) {
+        BrDlClipTriFlatNoZ(&V(i0), &V(i1), &V(i2),
+                           V(i0).n0, V(i0).n1, V(i0).n2);
         return;
     }
 
