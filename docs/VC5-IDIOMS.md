@@ -6532,6 +6532,41 @@ DEAD, do not re-run (/O2, gives the epilogue form):
 `hr = Shutdown(&g); … return hr == 0;` -- 2 regions, the second a 7-byte
 lost-sync tail; same 264-byte size, so size is no signal here.
 
+## /O2 FRAME LAYOUT: arrays top-down by size, spilled scalars underneath — and block-scoped locals SHARE a slot
+
+*(measured 2026-09-05 on 0x1003B6D0 BrSaveBeginRallySeason, 20 probes, all
+in src/core/menus/br_savebegin.c's header)*
+
+Three facts about where a local lands in a `sub esp,N` frame:
+
+1. **Address-taken arrays are laid out from the TOP of the frame, largest
+   highest**, independent of declaration order: `char szNum[4]` + `char
+   szPath[260]` give szPath at F+0x14 and szNum at F+0x10 whether szPath is
+   declared first or second.
+2. **A scalar that is a register candidate but gets spilled goes BELOW every
+   array**, and nothing about it moves it: `int`, `int[1]`, `char[4]` read
+   through `(int *)`, `short[2]`, a one-member `union`/`struct`, declared
+   before/after/between the arrays, block-scoped, zero-initialised,
+   assigned earlier — twenty variants, always the bottom slot. VC5
+   scalarises the 1-element aggregates, so they are in the same class.
+   (Two spilled scalars: the one first used LATER is lower.)
+3. **Block-scoped locals with disjoint scopes SHARE one slot.** Moving the
+   itoa scratch into `{ char szNum[4]; ... }` put `szNum$455` and the
+   function-scope spilled `int` at the SAME ebp offset and shrank the
+   frame by 4. This refines the older entry above ("separate variables
+   never share"): that holds for function-scope locals only.
+
+**Use:** when the frame is the right SIZE but one 4-byte slot sits in the
+wrong place relative to an array, compare classes first. A slot ABOVE a
+4-byte array cannot be a spilled scalar of any spelling — the original's
+object there was address-taken/aggregate and allocated before the array.
+The RallySeason function is parked on exactly that question.
+
+Related measurement: VC5 DOES common-subexpression a `static` global read
+across two extern calls (the slot disappears and one load goes away); it
+does not for an `extern`. Do not use it to fake a frame — it changes the
+instruction count.
+
 ## The staged MSVCRT.LIB is a byte ORACLE for fencing — prove it, don't infer it
 
 `config/fenced.csv` decides that a range is linker/CRT output rather than a
