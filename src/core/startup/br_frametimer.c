@@ -33,7 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef BR_MATCHING_BUILD
+/* slice8_86.h declares BrX100751D0 cdecl for the port; the Glide twin below
+ * is thiscall (the caller 0x10019810 loads ecx), so the header's name is
+ * diverted for this build only. */
+#define BrX100751D0 BrX100751D0_port
+#endif
 #include "slice8_86.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrX100751D0
+#endif
 #include "slice7_82.h"   /* BrGlobalHandle/Unlock/Free, BrPlat* clocks */
 #include "br_match.h"    /* BR_THISCALL1 */
 
@@ -87,6 +96,11 @@ static void br86_st32(void *p, size_t off, int32_t v)
  * time and when the next frame is due. It uses the machine's precise timer
  * where there is one and the ordinary Windows clock otherwise. */
 /* port-only body; Glide match is src/core/generated/0x1006E3F0.c */
+#ifdef BR_MATCHING_BUILD
+/* 0x1006E3F0 is matched in src/core/generated/0x1006E3F0.c; BrX100751D0's
+ * `mov ecx,esi / call` needs that symbol, not a local copy. */
+extern void BR_THISCALL1 br86_timer_restart(void *pThis);
+#else
 static void br86_timer_restart(void *pThis)
 {
     if (g_br86HasPerf) {
@@ -100,7 +114,35 @@ static void br86_timer_restart(void *pThis)
         br86_st32(pThis, BR86_TMR_DUE_MS, br86_ld32(pThis, BR86_TMR_PERIOD_MS));
     }
 }
+#endif
 
+/* WHAT IT DOES: set the frame clock up for a 30 Hz tick. The first call
+ * asks Windows whether a high-resolution counter exists and remembers the
+ * answer; with one, the period is counter-frequency / 30 ticks, without one
+ * it asks for 1 ms timer resolution and uses a 33 ms period. Either way the
+ * clock is then started, and the timer object is handed back. */
+/* @implements 0x1006E430 glide BrX100751D0 */
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) int __stdcall QueryPerformanceFrequency(__int64 *pFreq);
+__declspec(dllimport) unsigned int __stdcall timeBeginPeriod(unsigned int uPeriod);
+void * BR_THISCALL1 BrX100751D0(void *pThis)
+{
+    if (g_br86Probed == 0) {
+        g_br86HasPerf = QueryPerformanceFrequency(&g_br86PerfFreq);
+        g_br86Probed  = 1;
+    }
+    if (g_br86HasPerf) {
+        /* `push 0 / push 0x1e / call __alldiv` -- a 64-bit divide by the
+         * LITERAL 30, i.e. a 30 Hz tick. */
+        *(__int64 *)pThis = g_br86PerfFreq / 30;
+    } else {
+        timeBeginPeriod(1);
+        *(int *)((char *)pThis + BR86_TMR_PERIOD_MS) = 0x21;   /* 33 ms */
+    }
+    br86_timer_restart(pThis);
+    return pThis;
+}
+#else
 void BrX100751D0(void *pThis)
 {
     if (pThis == NULL) {
@@ -127,6 +169,7 @@ void BrX100751D0(void *pThis)
     /* The original returns `this`; slice2_17.c's declaration is void and the
      * one call site discards it. */
 }
+#endif
 
 /* 0x10075240 -- the teardown 0x1002C2C0 tail-calls into. */
 /* WHAT IT DOES: gives back the finer timer resolution the game asked Windows
