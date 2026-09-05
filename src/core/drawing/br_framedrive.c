@@ -208,6 +208,7 @@ void BrFrameDraw(int iSlot)
     uint8_t   *pCars, *pHdr, *pCar;
     BrHudView *aViews, *pV;
     BrCamObj  *pCamSave;
+    const char *psz;
     int        off, i, k, n, x, y;
     int        wMir, hMir, xMir, yMir;
 
@@ -275,7 +276,7 @@ void BrFrameDraw(int iSlot)
                 if (pCar != 0 && CAR_KIND(pCar) != 2)
                     BrCarDrawVehicle(pCar, 0);
             }
-            BrPodNop(0, 0, 0x80, 0x80, 0xff);
+            BrPodNop(0, 0x80, 0x80, 0, 0xff);
             BrNop6E590(aViews);
             FUN_10011650(aViews);
         }
@@ -291,7 +292,7 @@ void BrFrameDraw(int iSlot)
                 if (pCar != 0 && CAR_KIND(pCar) != 2)
                     BrCarDrawVehicle(pCar, 0);
             }
-            BrPodNop(0, 0, 0x80, 0x80, 0xff);
+            BrPodNop(0, 0x80, 0x80, 0, 0xff);
             BrNop6E590(aViews);
             FUN_10011650(aViews);
         }
@@ -307,7 +308,7 @@ void BrFrameDraw(int iSlot)
             if (pCar != 0 && CAR_KIND(pCar) == 2)
                 BrCarDrawVehicle(pCar, 0);
         }
-        BrPodNop(0, 0, 0x80, 0x80, 0xff);
+        BrPodNop(0, 0x80, 0x80, 0, 0xff);
         FUN_100119c0(aViews, pHdr);
         BrPodNop(0, 0, 0xff, 0xff, 0xff);
         BrEnvEmit();
@@ -358,7 +359,7 @@ void BrFrameDraw(int iSlot)
                     if (pCar != 0 && CAR_KIND(pCar) != 2)
                         BrCarDrawVehicle(pCar, 0);
                 }
-                BrPodNop(0, 0, 0x80, 0x80, 0xff);
+                BrPodNop(0, 0x80, 0x80, 0, 0xff);
                 BrNop6E590(aViews);
                 FUN_10011650(aViews);
             }
@@ -416,10 +417,10 @@ void BrFrameDraw(int iSlot)
                     BrSub_10019290();
                     BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
                                DAT_106e9a2c - 0x18);
-                } else if (DAT_106ed520 == (BrCamObj *)(DAT_106e9d88 + 0x2808)) {
-                    if ((*(uint8_t **)(DAT_106e9d88 + 0xF00))[0x68] & 2)
-                        BrHudDrawViewMessage(aViews);
-                } else {
+                } else if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x2808)) {
+                    /* The original's branch is `je` into the message arm, so
+                     * the HUD arm is the FALLTHROUGH: the test is `!=` and
+                     * this arm comes first in the source. */
                     BrPodNop(0, 0xff, 0, 0, 0xff);
                     BrDlScreenRectEmit(pV->x, pV->y, pV->w, pV->h, 1);
                     BrHudDraw(aViews, pCars);
@@ -427,6 +428,8 @@ void BrFrameDraw(int iSlot)
                     BrPodNop(0, 0, 0x82, 0, 0xff);
                     if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x27C4))
                         BrPodNop();
+                } else if ((*(uint8_t **)(DAT_106e9d88 + 0xF00))[0x68] & 2) {
+                    BrHudDrawViewMessage(aViews);
                 }
             } else if (DAT_100aa024 != 0 && DAT_100a9360 == 4
                        && g_brRaceBeginStage == 0) {
@@ -457,14 +460,16 @@ void BrFrameDraw(int iSlot)
         BrTextDraw(BrStrGet(0xF6), x, y);
         y += 0x28;
         if (DAT_105bc8dc == 0)
-            BrTextDraw(BrStrGet(0xF7), x, y);
+            psz = BrStrGet(0xF7);
         else
-            BrTextDraw(BrStrGet(0xF8), x, y);
+            psz = BrStrGet(0xF8);
+        BrTextDraw(psz, x, y);
         y += 0x14;
         if (DAT_105bc8dc == 1)
-            BrTextDraw(BrStrGet(0xF9), x, y);
+            psz = BrStrGet(0xF9);
         else
-            BrTextDraw(BrStrGet(0xFA), x, y);
+            psz = BrStrGet(0xFA);
+        BrTextDraw(psz, x, y);
     } else if (DAT_105ccb5c != 0) {
         x = (aViews->w >> 1) + aViews->x;
         BrPodNop(0x3EA8F5C3);
@@ -475,15 +480,17 @@ void BrFrameDraw(int iSlot)
         y = (DAT_106e9a2c * 5) / 11;
         BrSetGlobal_ABB30(0x14);
         if (DAT_105bc8dc == 0)
-            BrTextDraw(BrStrGet(0xFB), x, y);
+            psz = BrStrGet(0xFB);
         else
-            BrTextDraw(BrStrGet(0xFC), x, y);
+            psz = BrStrGet(0xFC);
+        BrTextDraw(psz, x, y);
         y += 0x14;
         if (g_brRaceNet == 0) {
             if (DAT_105bc8dc == 1)
-                BrTextDraw(BrStrGet(0xFF), x, y);
+                psz = BrStrGet(0xFF);
             else
-                BrTextDraw(BrStrGet(0x100), x, y);
+                psz = BrStrGet(0x100);
+            BrTextDraw(psz, x, y);
         }
         y += 0x14;
         sprintf(DAT_10396f28, BrStrGet(0x101),
@@ -496,20 +503,22 @@ void BrFrameDraw(int iSlot)
         y += 0x14;
         if (DAT_100a9360 == 0) {
             if (DAT_105bc8dc == 4)
-                BrTextDraw(BrStrGet(0x103), x, y);
+                psz = BrStrGet(0x103);
             else
-                BrTextDraw(BrStrGet(0x104), x, y);
+                psz = BrStrGet(0x104);
         } else {
             if (DAT_105bc8dc == 4)
-                BrTextDraw(BrStrGet(0x105), x, y);
+                psz = BrStrGet(0x105);
             else
-                BrTextDraw(BrStrGet(0x106), x, y);
+                psz = BrStrGet(0x106);
         }
+        BrTextDraw(psz, x, y);
         y += 0x14;
         if (DAT_105bc8dc == 5)
-            BrTextDraw(BrStrGet(0x107), x, y);
+            psz = BrStrGet(0x107);
         else
-            BrTextDraw(BrStrGet(0x108), x, y);
+            psz = BrStrGet(0x108);
+        BrTextDraw(psz, x, y);
     }
 
     /* Attract mode: the text list, or a credits page once its timer runs. */
