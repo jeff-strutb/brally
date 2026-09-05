@@ -1540,11 +1540,22 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
          * at the common pack.  Factor the final statement out to reproduce it. */
         uint8_t topB, topA;
+        /* ‼ THE TOP BYTE IS FOLDED INTO A DWORD PARTIAL INSIDE EACH ARM, not
+         * at the shared statement.  Read straight off the bytes: the original
+         * emits `xor edx,edx; mov dh,<top>` at 0x3c6 (arm 2, just before its
+         * `jmp 0x427`) and at 0x425 (arm 3, just before it falls through) --
+         * BOTH before the join label.  So the top byte never crosses the join;
+         * only the two pack bytes do, and they cross in MEMORY.  Spelled with
+         * `topB` crossing instead, VC5 keeps the top in a register across the
+         * join, which costs it a register and pushes one pack byte back into a
+         * lane move (`mov dl,al`) instead of a homed+widened read. */
+        uint32_t cbTop;
         if (flag290C != 0) {
             topB  = (uint8_t)((g_BrDrawByte80 * 4) / 5);
             colourA = 0;
             pack[0] = (uint8_t)((BrG_6C0960 * 4) / 5);
             pack[1] = (uint8_t)((BrG_6C65BC * 4) / 5);
+            cbTop = (uint32_t)topB << 8;
         } else {
             /* topA FIRST: with it last, VC5 issued only two byte loads and
              * took the third straight into the lane (`mov dh,byte ptr[mem]`).
@@ -1562,8 +1573,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             topB  = g_BrDrawByte80;
             pack[0] = BrG_6C0960;
             pack[1] = BrG_6C65BC;
+            cbTop = (uint32_t)topB << 8;
         }
-        colourB = ((((uint32_t)topB << 8 | pack[0]) << 8 | pack[1]) << 8);
+        colourB = (((cbTop | pack[0]) << 8 | pack[1]) << 8);
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
