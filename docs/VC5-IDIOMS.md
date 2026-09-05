@@ -4922,6 +4922,17 @@ With one wrapper the function was register-blind exact and still 16 bytes
 short: the four per-arm reloads `mov edx,[esp+8]` had become a single register.
 Wrapping both arguments made both functions byte-exact.
 
+**Boundary (2026-09-05, 0x10008AB0 BrPodOpen): a CONSTANT argument cannot go
+through the wrapper.** `push 0x10` to a this-in-ecx callee is what the
+original emits; the wrapper spelling `len.n = 0x10; f(this, a, b, len)` builds
+the struct in a register first — `mov eax,0x10 / push eax`, one instruction
+and two bytes off — and leaving it a plain `int` hands it to edx. The corpus
+has no solved C site pushing an immediate to a this-in-ecx callee (`corpus.py
+find --at 0x17` on that function: 3 of 6 explained). Route such a call site to
+the C++ lane: written as a member call (`io.Read(pFile, magic, 0x10)`) it was
+byte-exact on the first compile. Screen: a `push imm` immediately before a
+`mov ecx,R / call` with no `add esp` after the call.
+
     typedef struct { int32_t  v; } KindArg;
     typedef struct { uint32_t v; } KeyArg;
     int32_t BR_THISCALL1 f(void *pThis, KindArg kind, KeyArg key);
