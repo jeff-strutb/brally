@@ -517,15 +517,18 @@ int BrCollRespBoxClassify(const float aV[9])
 /* cube's half-extent as the FLOAT 0.5 at 0x10077AC8 -- not the double    */
 /* the slab test uses.                                                   */
 /* ==================================================================== */
+/* WHAT IT DOES: does the line segment from A to B pass through the car's
+ * collision box (the unit cube, in box space)?  It rejects quickly if the
+ * segment lies wholly beyond one of the six faces, then tests the three
+ * edge-direction cross products; returns 1 when the segment intersects. */
+/* @implements 0x10066800 glide BrCollRespSegBox */
 int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
 {
     const float *a = &pA->x;
     const float *b = &pB->x;
-    float        d[3];
     int          sgn[3];
-    int          i;
-    static const int aJ[3] = { 1, 2, 0 };
-    static const int aK[3] = { 2, 0, 1 };
+    float        d[3];
+    int          i, j, k;
 
     d[0] = b[0] - a[0];
     d[1] = b[1] - a[1];
@@ -539,27 +542,39 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
 
     /* 0x10066871: the slabs.  Both compares are against DOUBLES. */
     for (i = 0; i < 3; ++i) {
-        float s = (float)sgn[i];
-
-        if (!((double)(a[i] * s) <= BR_CR_FACE_HI)) {
+        if (!((double)(a[i] * sgn[i]) <= BR_CR_FACE_HI)) {
             return 0;
         }
-        if (!((double)(b[i] * s) >= BR_CR_FACE_LO)) {
+        if (!((double)(b[i] * sgn[i]) >= BR_CR_FACE_LO)) {
             return 0;
         }
     }
 
-    /* 0x100668AF: the three axis pairs (1,2), (2,0), (0,1). */
+    /* 0x100668AF: the three axis pairs (1,2), (2,0), (0,1) -- the original
+     * forms j and k with `idiv` each pass (`esi` is i+2 strength-reduced),
+     * so they are computed modulo 3, not read from a table. */
     for (i = 0; i < 3; ++i) {
-        int   j = aJ[i];
-        int   k = aK[i];
-        float S = (float)sgn[k] * d[j] + (float)sgn[j] * d[k];
-        float C = a[j] * d[k] - a[k] * d[j];
-        float h = S * BR_CR_HALF;
+        float C;
+
+        j = (i + 1) % 3;
+        k = (i + 2) % 3;
+        C = a[j] * d[k] - a[k] * d[j];
 
         /* 0x10066919: `fcompp` of h*h against C*C, then `test ah,1` --
-         * REJECT on less-or-unordered, i.e. keep only h*h >= C*C. */
-        if (h * h < C * C || !(h * h == h * h) || !(C * C == C * C)) {
+         * REJECT on less-or-unordered, i.e. keep only h*h >= C*C.
+         *
+         * SPELLING IS LOAD-BEARING.  Only C is a named local: it is the
+         * value the original `fst`s into the dead pB arg slot and re-reads
+         * for C*C.  The half-sum h is written out TWICE and CSE'd -- naming
+         * it (`S`, `h`, either or both, any statement order) puts the
+         * chain in the other association, 23 B short, and ALSO flips the
+         * sgn/d slot order.  And the compare is `C*C > h*h`, which is what
+         * puts h*h in st(0) for the `test ah,1`.  The slab loop above
+         * multiplies by sgn[i] IN PLACE for the same reason: a named
+         * `float s = sgn[i]` turns `fld a; fmul st(1)` into
+         * `fld st(0); fmul [a]`. */
+        if (C * C > ((sgn[k] * d[j] + sgn[j] * d[k]) * BR_CR_HALF)
+                    * ((sgn[k] * d[j] + sgn[j] * d[k]) * BR_CR_HALF)) {
             return 0;
         }
     }
@@ -660,9 +675,9 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
 static int BrCrExact(const float aV[9], const BrVec3 *pN)
 {
     const float *n = &pN->x;
-    float        s[3];
+    int          s[3];
     BrVec3       P;
-    float        num, den, t;
+    float        t;
     int          i;
 
     /* 0x1006695E: the three edges, each against the cube. */
@@ -674,28 +689,27 @@ static int BrCrExact(const float aV[9], const BrVec3 *pN)
         }
     }
 
-    /* 0x1006699E: sign(n) per component, as +-1 INTS that are then
-     * `fild`ed back -- so the value really is +-1.0f and not the raw
-     * component.  `test ah,1` + `je` gives +1 for not-less-not-unordered. */
+    /* 0x1006699E: sign(n) per component, as +-1 INTS (`mov [ecx],eax`)
+     * that are then `fild`ed back where they are used.  `test ah,1` + `je`
+     * gives +1 for not-less-not-unordered. */
     for (i = 0; i < 3; ++i) {
-        s[i] = !(n[i] >= BR_CR_ZERO_F) ? -1.0f : 1.0f;
+        s[i] = !(n[i] >= BR_CR_ZERO_F) ? -1 : 1;
     }
 
     /* 0x100669C0..0x10066A0E: t = dot(n, v0) / dot(n, s), with the
-     * numerator associated ((v0.y*n.y + v0.z*n.z) + v0.x*n.x) and the
+     * numerator associated ((v0.y*n.y + v0.z*n.z) + n.x*v0.x) and the
      * denominator ((n.x*s.x + n.y*s.y) + n.z*s.z).  Division by a zero
      * denominator yields an infinity, which the window test below then
      * rejects -- the original has no guard and needs none. */
-    num = (aV[1] * n[1] + aV[2] * n[2]) + aV[0] * n[0];
-    den = (n[0] * s[0] + n[1] * s[1]) + n[2] * s[2];
-    t   = num / den;
+    t = ((aV[1] * n[1] + aV[2] * n[2]) + n[0] * aV[0])
+      / ((n[0] * s[0] + n[1] * s[1]) + n[2] * s[2]);
 
-    /* 0x10066A1A..0x10066A35: (t + 0.5) * (t - 0.5) against a DOUBLE zero,
+    /* 0x10066A1A..0x10066A35: (t + 0.5) * (t - 0.5), both subtractions
+     * against the DOUBLE +-0.5 (`fsub qword`), against a DOUBLE zero,
      * `test ah,0x41` + `jne <continue>` -- so it continues on
      * less-or-equal-or-unordered, i.e. |t| <= 0.5 keeps going and a NaN
      * keeps going too. */
-    if (!((double)((t - (float)BR_CR_FACE_LO) * (t - (float)BR_CR_FACE_HI))
-          <= BR_CR_ZERO_D)) {
+    if (!((t - BR_CR_FACE_LO) * (t - BR_CR_FACE_HI) <= BR_CR_ZERO_D)) {
         return 0;
     }
 
