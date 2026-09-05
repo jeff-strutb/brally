@@ -251,3 +251,57 @@ const BrCfgTables *BrCtlNameTables(void)
     };
     return &T;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* ==========================================================================
+ * 0x10039580 -- the reader (D3D 0x10040040, BrCfgLookupIndex in slice2_23.c)
+ *
+ * The original hardcodes the three table addresses and their end addresses
+ * and carries FOUR copies of the same walk, one per `kind` arm; the compare
+ * against the end address is signed (`jl`).  In BRGlide.dll kind 1 is the
+ * MOUSE table (0x10B71B08) and kinds 2 and 3 are both the JOYSTICK table
+ * (0x10B71C70) -- read straight off the jump table.
+ * ========================================================================== */
+
+/* WHAT IT DOES: finds the row whose key matches in the keyboard (0), mouse
+ * (1) or joystick (2 and 3) name table and returns its index; 0 when the key
+ * is not there or the kind is out of range. */
+/* @implements 0x10039580 glide BrCtlNameFind */
+int BrCtlNameFind(int kind, int key)
+{
+    int i;
+    const BrCfgRec *p;
+
+    switch (kind) {
+    case 0:
+        i = 0;
+        for (p = g_aBrCtlNameKey; (int)p < (int)&g_aBrCtlNameKey[BR_CTLNAME_KEY_COUNT]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 1:
+        i = 0;
+        for (p = g_aBrCtlNameMouse; (int)p < (int)&g_aBrCtlNameMouse[BR_CTLNAME_MOUSE_COUNT]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 2:
+        i = 0;
+        for (p = g_aBrCtlNameJoy; (int)p < (int)&g_aBrCtlNameJoy[BR_CTLNAME_JOY_COUNT]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 3:
+        i = 0;
+        for (p = g_aBrCtlNameJoy; (int)p < (int)&g_aBrCtlNameJoy[BR_CTLNAME_JOY_COUNT]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    }
+    return 0;
+}
+#endif /* BR_MATCHING_BUILD */
