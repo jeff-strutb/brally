@@ -6091,3 +6091,37 @@ Three more facts from the same function, each one region:
 - Inside an arm that writes three things, the ORDER of the writes is
   visible even when they are independent: `acc = K_PI; x = -x; y = -y`
   matched; the four other orders were 4 B short or worse.
+
+## `volatile` picks the `fld` operand, turns `-=` into `fsubr`, and stops slot-filling
+
+Proven on all three functions of `src/core/racing/br_cartick.c` (2026-09-04).
+
+- **`member += g` with `volatile float g` is `fld g; fadd member; fstp member`.**
+  Plain `float g` gives `fld member; fadd g`, and every summand-order,
+  grouping, unary-plus, cast, struct-vs-computed-address, array-global and
+  struct-member-global spelling is inert (0x1006E9E0, 15 dead probes). The
+  screen is exact: the byte run `d9 05 <abs> d8 8x <disp32>` (`fld [abs];
+  fadd [reg+disp32]`) occurs ONCE in all of BRGlide.dll, in 0x1006E9E0 — a
+  plain `+=` never produces it. When two arms of a branch both begin with
+  such an add, VC5 hoists the single `fld g` above the compare
+  (`mov edx,[mode]; fld g; cmp edx,eax; jne`) — the same hoist the BrAtan2
+  entry above describes for two locals. A `float dt = g;` local is NOT it:
+  used twice it stays in st and is added with `fadd st(1)` + a discarding
+  `fstp st(0)`; used three or more times it is homed through eax to a slot.
+- **`x -= v` on a volatile v is `fld v; fsubr x`.** Write `x = x - v` for
+  the original's `fld x; fsub v` (0x1006E9E0 countdown, and both slots of
+  0x1006EA70 which REGRESSED 0 -> 12 diffs the moment the global went
+  volatile until its two `-=` were written out). The global at 0x106E9D8C
+  (frame dt) is volatile in the original source.
+- **A volatile read is not pulled apart from its consumer by the scheduler.**
+  `call; fld [esi+0x34]; fmul k; add esp,4; mov [esi+0x29bc],al` is
+  `BrFtolTrunc(*(volatile float *)&car->y * K)`; with a plain read VC5
+  slots the call cleanup and the byte store between the `fld` and the
+  `fmul` (11 diff B, regnorm 0+0, same size — reads exactly like a
+  scheduling wall). Dead probes: `k * y`, extra parens on either side,
+  `/ 32.0f` (folded to the same multiply), a named `float` constant, a
+  `double` constant, a `float fy` local before or between the stores,
+  `int ix` / `unsigned char cx` temps, a comma-joined pair, a byte-returning
+  callee. Also: the macro form `(*(volatile float *)(p))` with an OUTER
+  paren pair is NOT the same as `*(volatile float *)(p)` — the parens put
+  the 11 bytes back (a redundant outer paren is not a no-op; see above).
