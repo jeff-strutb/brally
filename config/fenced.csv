@@ -643,3 +643,4 @@ va,size,class,reason
 0x100729FC,6,import_thunk,"ff 25 [0x118F06CC] -- jmp through the import table; linker output, reproduced at link"
 0x10073704,3,data_table,"NOT CODE. 0x100736E0..0x10073720+ is a table of 16-byte records, each 'd8 86 07 10 cN 00 00 00 0c cN 00 80 00 00 00 00' with only the two cN bytes changing. The map read two mid-record byte pairs as 'ret 0' and 'ret 0x8000'; a function that pops 32KB of arguments is the tell"
 0x10073709,3,data_table,"NOT CODE. Same 16-byte record table as 0x10073704 -- see that row"
+0x10074960,205,crt_helper,_CRT_INIT@12 from MSVCRT.LIB dllcrt0.obj (member /4351; same obj as the fenced 0x10074A30 _DllMainCRTStartup); lib .text byte-identical to the original -- 0 non-reloc diffs over all 205 B with 18 reloc sites the linker fills; sole callers are 3 sites inside 0x10074A30; reproduced at link
