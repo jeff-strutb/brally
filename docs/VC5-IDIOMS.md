@@ -6406,3 +6406,50 @@ same size. The lever is the vtable temp, nothing else.
 **Where else this applies:** every `pV->lpVtbl->Fn(pV, …)` site with a store
 or other independent statement adjacent to it — the DirectDraw, DirectInput
 and DirectPlay layers are full of them.
+
+## A multi-step guard chain: the give-up arm must be the LAST test's THEN arm, with the label INSIDE it
+
+`0x10020690` / `0x10020A80` / `0x10020190` / `0x1001EE70`, the four
+clipped-triangle trimmers, 2026-09-05 -- all four byte-exact, and for a whole
+session the only defect in any of them was BLOCK PLACEMENT.
+
+The shape is seven calls, each followed by "is the polygon still a polygon?",
+then either a give-up loop that hands the borrowed nodes back or an emit loop
+that draws. The original lays the give-up loop INLINE, between the chain and
+the emit block, so its first six checks are 2-byte `jl` into it and the
+seventh is INVERTED (`jge` forward over it to the emit block). Every natural C
+spelling instead defers the give-up loop to the end of the function and makes
+all seven checks 6-byte near jumps: +24 bytes, and nothing else wrong.
+
+**The spelling that reproduces it:**
+
+    if (!STEP(plane1)) goto fail;
+    …six of these…
+    if (!STEP(plane7)) {
+    fail:
+        …give-up loop…
+    } else {
+        …emit…
+    }
+
+The `fail:` label must be INSIDE the last test's then-arm; the earlier tests
+reach it by `goto`. Written that way the compiler lays the failure arm first
+and threads the six early exits into it as short jumps.
+
+**Inert once that holds** (all byte-identical): `< 3` versus `!(>= 3)`;
+`for (n = c; n > 0; n--)` versus a while loop; the arm ending in `return;`
+with the emit code following at function scope versus the emit code in an
+`else`; the step spelled out versus wrapped in a comma macro.
+
+**‼ ARM ORDER IS THE WHOLE THING.** `if (c >= 3) { emit } else { fail:
+giveup }` -- same control-flow graph, same `goto`, label still inside an arm
+-- reverts exactly to the deferred-block defect. The FAILURE arm has to be the
+one the compiler lays first. This is the "lone `if (x) F else S` is
+failure-first" entry holding on a seven-term chain.
+
+DEAD, do not re-run (all `/O2 /Op`, all give the deferred block):
+`(A(),n<3) || …` with `{ giveup; return; } emit`; the same with `{ giveup }
+else { emit }`; `(A(),n>=3) && …` with `{ emit } else { giveup }`; `… &&
+…) goto emit; giveup; return; emit:`; `… && …) { emit; return; } giveup`;
+per-step `goto fail` with `fail:` at FUNCTION scope instead of inside the last
+arm; seven nested `if (n >= 3) {` with the emit block innermost.
