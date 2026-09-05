@@ -187,6 +187,8 @@ void NAME ARGS                                                              \
                              float cr, float cg, float cb)
 #define BR_TRIM_ARGS_VTX    (BrDlVtx *a, BrDlVtx *b, BrDlVtx *c)
 #define BR_TRIM_LOCAL_SNAP  int l;
+#define BR_TRIM_GLOBAL_SNAP
+#define BR_TRIM_GLOBAL_INIT
 #define BR_TRIM_LOCAL_INIT  l = 0;
 #define BR_TRIM_NO_LOCAL
 
@@ -249,5 +251,15 @@ BR_TRIM_BODY(BrDlClipTriFlatNoZ, BR_TRIM_ARGS_FLAT,
 BR_TRIM_BODY(BrDlClipTriNoZ, BR_TRIM_ARGS_VTX,
              BR_TRIM_COLDECL_VTX, BR_TRIM_COLLOAD_VTX, BR_TRIM_Z_FLATTEN,
              l, BR_TRIM_LOCAL_SNAP, BR_TRIM_LOCAL_INIT, tmp)
+
+/* WHAT IT DOES: trims one flat-coloured triangle against the screen edges
+ * and the near/far planes with the depth buffer ON, then draws whatever is
+ * left as a Glide polygon.  The three colour arguments are the flat colour;
+ * each surviving corner keeps its own 1/w, so the card interpolates the
+ * texture perspective-correctly. */
+/* @implements 0x10020190 glide BrDlClipTriFlatZ */
+BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
+             BR_TRIM_COLDECL_FLAT, BR_TRIM_COLLOAD_FLAT, BR_TRIM_Z_KEEP,
+             DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 
 #endif /* BR_MATCHING_BUILD */
