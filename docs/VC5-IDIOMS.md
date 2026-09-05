@@ -6596,3 +6596,58 @@ game source, and it never needed to be.
   by hand in either order without <windows.h> (inert), a preceding dummy
   function referencing either import first (inert), two scalar handles instead
   of `h[2]` (-10 B), a `for` loop (+10 B). Proven 2026-09-05.
+
+## An ADDRESS-TAKEN aggregate's block scope ends its slot's life — a later temp can reuse it
+*(proven 2026-09-05 on 0x100706D0 BrInputPoll, frame 0x118 -> 0x110, first divergence +0x7 -> +0x34)*
+
+The "/O2 slot packing ignores scope" note (2026-09-03) was measured on
+scalars, and for scalars it holds. An aggregate whose address is passed to a
+call is different: at function scope its slot is live to the end of the
+function, and a compiler temp created later (here the 8-byte zero-extension
+temp for an unsigned `fidiv` divisor) gets its own dwords. Declared inside the
+block that uses it, the aggregate's slot is free afterwards and the temp is
+packed on top of it — which is what the original does (`mov [esp+0x14],ebx`
+zeroing the high half lands in the dead DIMOUSESTATE). **Screen:** a frame
+`sub esp,N` that is 4 or 8 too large, a struct/array local passed by address
+early in the function, and an x87 conversion or other compiler temp later.
+Move the aggregate into its block before anything else.
+
+## A pointer to a FIELD splits the first read from the kept address; a pointer to the RECORD does not
+*(proven byte-exact 2026-09-05 on 0x100706D0, the mouse accumulate; 3+2 register-blind -> 0+0)*
+
+Three statements read the same field of the same indexed record (a copy-paste
+bug in the original: all three read `.ax`). The original loads it once by
+scaled index into a register, keeps the address in another (`lea`), and reads
+the next two through that address as `add R,[R]` memory operands:
+
+    int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax;
+    g_brInMouse[cur].ax = ms.lX + *pPrevAx;
+    g_brInMouse[cur].ay = ms.lY + *pPrevAx;
+    g_brInMouse[cur].az = ms.lZ + *pPrevAx;
+
+Written out three times, VC5 CSEs the address and reads through it ALL three
+times, and — because the first read is no longer a direct load — hoists the
+three stack-slot operands (`ms.lX/lY/lZ`) into registers ahead of the index
+arithmetic: +1 instruction, and the `add` operands swap roles. A pointer to
+the record (`pPrev->ax`) is size-exact but every read is `[eax+0xc]`. Dead on
+this site: swapping the `+` operands (integer `+` is canonicalised too), the
+struct as an `int[4]`, the struct read through a pointer, the first read
+written out with the other two through the pointer. **Front-end rider:** the
+C++ front end (C1XX) folds the field pointer away and gives the plain-form
+bytes for every spelling tried — this construct is only reachable from C.
+
+## The vptr load hoists over a global store under C++, never under C
+*(measured 2026-09-05 on 0x100706D0, the keyboard arm, 2 bytes: orig `mov edx,[ecx]` then `mov [g],eax`)*
+
+A COM vtable read scheduled ABOVE a store to a global in the same block is
+C1XX output: the C++ front end treats the vptr load as non-aliasing and the
+list scheduler puts it at the AGI-safe slot after the device load. Compiled as
+C the same call sits after the store every time — statics, `const`, `volatile`,
+an index local, the store inside the argument, and the no-alias pragmas (which
+wreck the function) are all dead, and every spelling that reads the vtable
+into a local floats the read to the top of the block instead. A whole-binary
+census finds exactly three deref-then-global-store adjacencies, two of them
+plain source order. **Screen:** when a function's only residue is a vtable
+load one slot above a global store, build it as a `.cpp` before probing C.
+On this function the C++ build is byte-exact at that site and regresses the
+field-pointer site above — the two front ends are mutually exclusive on it.
