@@ -6000,3 +6000,58 @@ displacing only the x read forward-substitutes and is 4 B SHORT (0+2);
 divide) is inert. The screen: one term of a parallel set compiled as
 `fld [R]` / `fmul st(i)` while its siblings are `fld st(i)` / `fmul [R+k]`
 -- look for the operand at displacement 0.
+
+## Block LAYOUT: a lone `if (x) F else S` is failure-first with `je S`; every `||`/`&&` chain is success-first — earlier failures reach that arm by a `goto` INTO it
+*(proven 2026-09-04 on 0x1006BC10 BrSndVoiceLoad, 352 B, byte-exact; nine
+shapes measured on a scratch probe TU under the sweep's own cl flags)*
+
+Tell: the cleanup block sits BEFORE the success block, the earlier failure
+tests (`je F` on the NULL check, `jne F` on each call result) jump forward
+into it, and the LAST test is `je S` -- jump on success -- with F falling
+through.
+
+Measured under /O2: a single-term `if (f() != 0) {F} else {S}` gives
+`je S; F...; S...` (then-arm first). A two- or four-term `||` chain with
+F-then/S-else, the `&&` inverse with S-then/F-else, `goto fail` to a label
+after the success return, `if (a && b && c) goto ok`, F ending in its own
+return, F sharing the final return, and arm-size asymmetry either way ALL
+lay S first with every test `jne F`. Two identical inlined cleanup copies
+(inner then-arm + outer else) do merge into one block with the right
+polarity, but VC5 threads the `cmp p,0 ; je` NULL edge past the guard to
+the epilogue, and on a real cleanup the copies differ in cached-import
+registers and never merge. The shape that reproduces the original:
+
+    if (p == NULL)        goto fail;
+    ...init, strcpy...
+    if (read(...)  != 0)  goto fail;
+    if (create(p)  != 0)  goto fail;
+    if (append(p)  != 0) {
+    fail:
+        if (p != NULL) { ...release, GlobalFree...; p = NULL; }
+    } else {
+        ...success...
+    }
+    return p;
+
+-- the label INSIDE the failure arm. Riders: (1) the failure arm's exit is
+the shared `return p` after the if/else (`xor ebx,ebx; mov eax,ebx` plus a
+copied epilogue); `return NULL` inside the arm gives `xor eax,eax`. (2) A
+nested `if (q != NULL) x = f(); else x = 0;` stores the zero as an
+IMMEDIATE only when the zero arm is the jump target; written as
+`if (q == NULL) x = 0; else ...` the zero arm is the fall-through and VC5
+stores the known-zero register instead. (3) An inlined static helper is
+inert for the init block -- plain statements between two `goto fail` tests
+compile to the same bytes.
+
+## Consecutive pointer increments are scheduled in SOURCE ORDER
+*(proven 2026-09-04 on 0x1005A280 BrImgMulByMask, 121 B, byte-exact; the
+last 3 diff bytes were this alone)*
+
+In a loop advancing two pointers, VC5 hoists each `p += 4` into the first
+free slot after that pointer's last old-value use and rewrites the later
+reads as `[R-3]`, `[R-2]`; the slots are handed out in statement order.
+`pPix += 4; pMask += 4;` put the pixel pointer's add in the early slot, the
+mask pointer's after the second multiply; the other order swapped them.
+Rider: three channel results stored together at the end are three
+temporaries (one spilled to a byte slot, `mov [esp+S],dl` / `mov al,[esp+S]`);
+storing each channel as it is computed is 9 bytes short.
