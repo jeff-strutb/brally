@@ -9,6 +9,11 @@
  * and the addresses, not proved, and the file says so rather than renaming
  * anything on the strength of it.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: rand() below is an FF 15 [IAT] call. */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <stdlib.h>
 #include "slice3_44.h"
 
 /* 0x11829850 */
@@ -65,6 +70,42 @@ void FUN_1006e130(int param_1,int param_2,int param_3)
     }
   }
   return;
+}
+
+/* WHAT IT DOES: bump the detail level of one of a slot's neighbours at
+ * random. Given slot i (0..7), collect i, i-1 and i+1 (wrapping round the
+ * eight) wherever the level is still below 3, and if any qualify hand one
+ * of them, chosen by rand(), to 0x1006E130 above. Out-of-range i does
+ * nothing. */
+/* @implements 0x1006E0A0 glide BrTexDetailBumpNeighbour */
+void BrTexDetailBumpNeighbour(int i, int pTex, int pLevels)
+{
+    int cand[3];
+    int n;
+    int j;
+    int k;
+
+    if (i >= 0 && i < 8) {
+        n = 0;
+        if (*(int *)(pLevels + i * 4) < 3)
+            cand[n++] = i;
+        j = i - 1;
+        if (j < 0)
+            j += 8;
+        if (*(int *)(pLevels + j * 4) < 3)
+            cand[n++] = j;
+        j = i + 1;
+        if (j >= 8)
+            j -= 8;
+        if (*(int *)(pLevels + j * 4) < 3)
+            cand[n++] = j;
+        if (n != 0) {
+            /* rand() is called BEFORE any argument is pushed: the pick is a
+             * local, not an in-argument expression. */
+            k = rand() * n / 0x8000;
+            FUN_1006e130(cand[k], pTex, pLevels);
+        }
+    }
 }
 
 #endif /* BR_MATCHING_BUILD */
