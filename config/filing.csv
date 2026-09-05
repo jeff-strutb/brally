@@ -850,6 +850,7 @@ glide_va,name,module,basis,file
 0x1006E030,BrFontTexInitAll,drawing,filed,src/core/drawing/br_font.c
 0x1006E060,BrSub10074E00,drawing,neighbour-1,src/core/drawing/br_texdetail.c
 0x1006E080,BrSub10074E20,drawing,neighbour-1,src/core/drawing/br_texdetail.c
+0x1006E0A0,BrTexDetailBumpNeighbour,drawing,description,src/core/drawing/br_texdetail.c
 0x1006E130,FUN_1006e130,drawing,description,src/core/drawing/br_texdetail.c
 0x1006E180,BrMutexCreateAA0A0,startup,description,src/core/startup/br_ringmutex.c
 0x1006E1A0,BrMutexCloseAA0A0,startup,description,src/core/startup/br_ringmutex.c
