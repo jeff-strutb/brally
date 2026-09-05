@@ -456,9 +456,15 @@ void BrFrameDraw(int iSlot)
         BrSetGlobal_ABB30(0x14);
         BrTextDraw(BrStrGet(0xF6), x, y);
         y += 0x28;
-        BrTextDraw(BrStrGet(DAT_105bc8dc == 0 ? 0xF7 : 0xF8), x, y);
+        if (DAT_105bc8dc == 0)
+            BrTextDraw(BrStrGet(0xF7), x, y);
+        else
+            BrTextDraw(BrStrGet(0xF8), x, y);
         y += 0x14;
-        BrTextDraw(BrStrGet(DAT_105bc8dc == 1 ? 0xF9 : 0xFA), x, y);
+        if (DAT_105bc8dc == 1)
+            BrTextDraw(BrStrGet(0xF9), x, y);
+        else
+            BrTextDraw(BrStrGet(0xFA), x, y);
     } else if (DAT_105ccb5c != 0) {
         x = (aViews->w >> 1) + aViews->x;
         BrPodNop(0x3EA8F5C3);
@@ -468,10 +474,17 @@ void BrFrameDraw(int iSlot)
         BrTextDraw(BrStrGet(0xF5), x, (DAT_106e9a2c * 5) / 16);
         y = (DAT_106e9a2c * 5) / 11;
         BrSetGlobal_ABB30(0x14);
-        BrTextDraw(BrStrGet(DAT_105bc8dc == 0 ? 0xFB : 0xFC), x, y);
+        if (DAT_105bc8dc == 0)
+            BrTextDraw(BrStrGet(0xFB), x, y);
+        else
+            BrTextDraw(BrStrGet(0xFC), x, y);
         y += 0x14;
-        if (g_brRaceNet == 0)
-            BrTextDraw(BrStrGet(DAT_105bc8dc == 1 ? 0xFF : 0x100), x, y);
+        if (g_brRaceNet == 0) {
+            if (DAT_105bc8dc == 1)
+                BrTextDraw(BrStrGet(0xFF), x, y);
+            else
+                BrTextDraw(BrStrGet(0x100), x, y);
+        }
         y += 0x14;
         sprintf(DAT_10396f28, BrStrGet(0x101),
                 DAT_105bc8dc == 2 ? DAT_100a6b64 : DAT_100a6b60, g_brB4E70C);
@@ -481,12 +494,22 @@ void BrFrameDraw(int iSlot)
                 DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, g_brB4E708);
         BrTextDraw(DAT_10396f28, x, y);
         y += 0x14;
-        if (DAT_100a9360 == 0)
-            BrTextDraw(BrStrGet(DAT_105bc8dc == 4 ? 0x103 : 0x104), x, y);
-        else
-            BrTextDraw(BrStrGet(DAT_105bc8dc == 4 ? 0x105 : 0x106), x, y);
+        if (DAT_100a9360 == 0) {
+            if (DAT_105bc8dc == 4)
+                BrTextDraw(BrStrGet(0x103), x, y);
+            else
+                BrTextDraw(BrStrGet(0x104), x, y);
+        } else {
+            if (DAT_105bc8dc == 4)
+                BrTextDraw(BrStrGet(0x105), x, y);
+            else
+                BrTextDraw(BrStrGet(0x106), x, y);
+        }
         y += 0x14;
-        BrTextDraw(BrStrGet(DAT_105bc8dc == 5 ? 0x107 : 0x108), x, y);
+        if (DAT_105bc8dc == 5)
+            BrTextDraw(BrStrGet(0x107), x, y);
+        else
+            BrTextDraw(BrStrGet(0x108), x, y);
     }
 
     /* Attract mode: the text list, or a credits page once its timer runs. */
