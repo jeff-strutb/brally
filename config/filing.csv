@@ -914,3 +914,4 @@ glide_va,name,module,basis,file
 0x10059F70,BrBmpWiden24ToRgba,drawing,manual,src/core/generated/0x10059F70.c
 0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
 0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
+0x1006E430,BrX100751D0,startup,manual,src/core/startup/br_frametimer.c
