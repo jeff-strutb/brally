@@ -9,6 +9,7 @@ glide_va,name,module,basis,file
 0x100018F0,FUN_100018f0,drawing,neighbour,src/core/drawing/br_chasecam.c
 0x10001BB0,FUN_10001bb0,drawing,neighbour,src/core/drawing/br_chasecam.c
 0x10001C90,BrVec3Predict,drawing,filed,src/core/drawing/br_surf.c
+0x10002310,BrCamFrameInitB,drawing,filed,src/core/drawing/br_camframe.c
 0x100023E0,BrCosF,geometry,description,src/core/geometry/br_cos.c
 0x100023F0,BrTimeFormat,racing,filed,src/core/racing/br_timefmt.c
 0x10002560,BrSinF,geometry,description,src/core/geometry/br_sin.c
@@ -424,6 +425,7 @@ glide_va,name,module,basis,file
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/startup/br_track.c
 0x10031910,BrTrackFixupSegList,startup,filed,src/core/startup/br_track.c
+0x10031960,BrTrackFixupSegRec,startup,filed,src/core/startup/br_track.c
 0x10031A40,BrTrackSwapRec28,startup,filed,src/core/startup/br_track.c
 0x10031A80,BrTrackSwapAllVec3,startup,filed,src/core/startup/br_track.c
 0x10031AC0,BrTexCopyRecords,startup,neighbour,src/core/startup/br_track.c
