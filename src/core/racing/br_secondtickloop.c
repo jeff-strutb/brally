@@ -11,7 +11,7 @@
 #ifdef BR_MATCHING_BUILD
 int FUN_1006a650();
 int FUN_1006a7e0();
-int FUN_1006aaf0();
+void BrNetPeerMsgReset(void);   /* 0x1006AAF0, br_peer.c */
 int FUN_1006ab80();
 int FUN_1006b0e0();
 extern unsigned int DAT_11849ea8;
@@ -34,7 +34,7 @@ void BrSecondTickLoop(void)
       if (DAT_1184c070 < DAT_11849ea8) break;
       FUN_1006a650();
       FUN_1006a7e0();
-      FUN_1006aaf0();
+      BrNetPeerMsgReset();
       FUN_1006ab80();
       FUN_1006b0e0(&g_brP277B40);
       DAT_11849ea8 = DAT_11849ea8 + 1000;
