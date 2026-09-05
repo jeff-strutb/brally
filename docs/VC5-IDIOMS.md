@@ -6453,3 +6453,40 @@ else { emit }`; `(A(),n>=3) && …` with `{ emit } else { giveup }`; `… &&
 …) goto emit; giveup; return; emit:`; `… && …) { emit; return; } giveup`;
 per-step `goto fail` with `fail:` at FUNCTION scope instead of inside the last
 arm; seven nested `if (n >= 3) {` with the emit block innermost.
+
+## `ok = (Call() == 0);` and `return raw == 0;` are different code
+
+A cleanup function that returns "did the shutdown succeed" has one call whose
+result is compared to zero, and a long tail of unrelated work between that call
+and the `return`. WHERE the `== 0` is written decides where VC5 evaluates it.
+
+Comparing at the RETURN keeps the raw result in the callee-saved register and
+spends the epilogue on the boolean:
+
+    hr = Shutdown(&g);          xor eax, eax
+    …tail…                      pop edi
+    return hr == 0;             cmp ebp, ebx      <- boolean built at the end
+                                sete al
+
+Comparing at the CALL SITE materialises the boolean immediately, into the same
+callee-saved register, and leaves the epilogue a bare move:
+
+    ok = (Shutdown(&g) == 0);   neg  ebp          <- ebp = -hr
+    …tail…                      sbb  ebp, ebp     <- -1 if hr != 0
+    return ok;                  inc  ebp          <- ebp = (hr == 0)
+                                …tail…
+                                mov  eax, ebp
+
+The neg/sbb/inc borrow trick is the same one the /Od ternary and `x ? 0 : -1`
+entries above describe; what is new is that on an `int` return it is reached by
+placing the comparison, not by spelling the comparison differently. So: **if the
+original computes a 0/1 right after a call and carries it through unrelated code
+in a callee-saved register, the source stored the comparison in a local at the
+call site.** The reverse tell is `xor eax,eax` immediately before the pops.
+
+Proven BrNetShutdown 0x10005F50 (264 B, /O2): that one lever was the entire
+diff — the rest of the transcription was byte-exact on the first compile.
+
+DEAD, do not re-run (both /O2, both give the epilogue form):
+`hr = Shutdown(&g); … return hr == 0;` (2 regions, one a 7-byte lost-sync tail);
+the same with `hr` declared as `unsigned int`.
