@@ -202,4 +202,48 @@ int32_t BrSub10071550(void)
     return 1;
 }
 
+/* ==========================================================================
+ * 0x1006AAF0
+ * ========================================================================== */
+
+/* 0x11849F30: sixteen outgoing message streams, 0x214 bytes apart, one per
+ * peer; the loop ends at the address just past the last (0x1184C070). */
+extern int g_1826BD0;
+struct BrBitStream;
+void BrObjResetMsgHdr(struct BrBitStream *pBs);    /* 0x1006AB60 */
+
+/* WHAT IT DOES: the once-a-second reset of every peer's outgoing message:
+ * for each of the sixteen peers it waits for that peer's mutex (or the
+ * subsystem's quit event, on which the worker thread exits), empties the
+ * peer's message stream and writes the fresh header, then hands the mutex
+ * back.
+ *
+ * The wait result is tested INLINE, not through a named local.  With a
+ * `DWORD wr` the two hoisted import pointers come out swapped (ebx/ebp,
+ * 2 diff bytes, everything else identical): the dead-after-test local is
+ * still an allocation candidate and shifts the tie-break between them.
+ * FUN_1006a650 above keeps its `wr` because that is what matches THERE;
+ * the polarity is per-function -- see docs/VC5-IDIOMS.md. */
+/* @implements 0x1006AAF0 glide BrNetPeerMsgReset */
+void BrNetPeerMsgReset(void)
+{
+  int *pPeer;
+  unsigned char *pMsg;
+  HANDLE h[2];
+
+  pPeer = &g_aBrPeer71;
+  pMsg = (unsigned char *)&g_1826BD0;
+  do {
+    h[0] = (HANDLE)DAT_11849e60;
+    h[1] = (HANDLE)*pPeer;
+    if (WaitForMultipleObjects(2, h, 0, 0xffffffff) == 0) {
+      ExitThread(0);
+    }
+    BrObjResetMsgHdr((struct BrBitStream *)pMsg);
+    ReleaseMutex((HANDLE)*pPeer);
+    pMsg = pMsg + 0x214;
+    pPeer = pPeer + 0x25b;
+  } while ((int)pMsg < 0x1184c070);
+}
+
 #endif /* BR_MATCHING_BUILD */
