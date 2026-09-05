@@ -911,3 +911,4 @@ glide_va,name,module,basis,file
 0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
 0x10034870,BrVec3TransformDivW,geometry,manual,src/core/generated/0x10034870.c
 0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
+0x10059F70,BrBmpWiden24ToRgba,drawing,manual,src/core/generated/0x10059F70.c
