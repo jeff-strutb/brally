@@ -147,8 +147,6 @@ int32_t BrSnapInterpDraw(int32_t force)
     BrSnapMtx *pA;
     BrSnapMtx *pB;
     BrSnapMtx *p;
-    BrSnapDrv *pSrc;
-    BrSnapDrv *pDst;
 
     if (g_brSnapCur >= 0 && g_brSnapPrev >= 0) {
         if (g_brSnapTo >= 0) {
@@ -205,15 +203,13 @@ int32_t BrSnapInterpDraw(int32_t force)
 
             /* Driver records: copied, with the car pointer re-targeted. */
             n = g_brRaceNDriver;
-            pSrc = g_aBrSnap[g_brSnapFrom].drv;
-            pDst = g_aBrSnap[BR_SNAP_BLEND].drv;
             for (j = 0; j < n; j++) {
-                *pDst = *pSrc;
-                if (pSrc->pCar != NULL) {
-                    pDst->pCar = &g_aBrSnap[BR_SNAP_BLEND].car[pSrc->pCar - g_aBrSnap[g_brSnapFrom].car];
+                g_aBrSnap[BR_SNAP_BLEND].drv[j] = g_aBrSnap[g_brSnapFrom].drv[j];
+                if (g_aBrSnap[g_brSnapFrom].drv[j].pCar != NULL) {
+                    g_aBrSnap[BR_SNAP_BLEND].drv[j].pCar =
+                        &g_aBrSnap[BR_SNAP_BLEND].car[g_aBrSnap[g_brSnapFrom].drv[j].pCar
+                                                      - g_aBrSnap[g_brSnapFrom].car];
                 }
-                pSrc++;
-                pDst++;
             }
 
             /* Car records: copied, pointers re-targeted, matrices blended. */
