@@ -973,7 +973,21 @@ void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
      * displacement follows. Every instruction is otherwise in place, 72
      * against 73. Probed and dead: swapping the declarations, and renaming
      * both locals twice -- the /Od name-hash homing recorded in
-     * BrCarGfxReadColour does not apply at /O2. */
+     * BrCarGfxReadColour does not apply at /O2.
+     *
+     * MORE DEAD, 2026-09-05, all scored with an /O2 /Op compile (fn.py's
+     * /O2-only diff is phantom on this TU): four declaration orders
+     * including the floats first and between the vectors (all byte-
+     * identical, 146); reading BOTH vectors out of ONE `BrVec3 v[2]` or an
+     * anonymous struct, which is what the original's 12-byte slot spacing
+     * looks like -- v[0] as the transform input gets 141, v[1] as the input
+     * gets 146, so the array DOES reach the layout question but does not
+     * settle it; and re-reading `pB->vel.z` (142) or all three vel
+     * components (143) at the sum instead of reading `*pOut` back, which is
+     * what the original's `fadd st(3)` against a duplicated `fld st(1)`
+     * hints at.  Nothing has beaten 141 and everything is still 4 bytes
+     * short.  The next idea has to explain the ONE duplicated x87 copy of
+     * vel.z, not the slot order. */
     BrVec3 p;
     BrVec3 r;
     float cx, cy, cz;
