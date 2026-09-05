@@ -426,6 +426,7 @@ glide_va,name,module,basis,file
 0x100343C0,BrVec3Div,geometry,filed,src/core/geometry/br_vec.c
 0x100343F0,BrVec3DivBy,geometry,filed,src/core/geometry/br_vec.c
 0x10034420,BrVec3Direction,geometry,neighbour,src/core/geometry/br_vec.c
+0x100344D0,br_dl_normalise,drawing,filed,src/core/drawing/br_dl.c
 0x10034560,BrVec3Sub,geometry,filed,src/core/geometry/br_vec.c
 0x10034590,BrVec3SubFrom,geometry,filed,src/core/geometry/br_vec.c
 0x100345C0,BrVec3Add,geometry,filed,src/core/geometry/br_vec.c
@@ -633,6 +634,9 @@ glide_va,name,module,basis,file
 0x100546F0,BrObj546F0DeleteDtor,menus,manual,src/core/menus/br_textlist.c
 0x10054710,BrObj54710Dtor,menus,manual,src/core/menus/br_textlist.c
 0x10055090,BrUiSprDrawAt,menus,prefix,src/core/generated/0x10055090.c
+0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
+0x10055ED0,BrFileCountMatching,gamedata,neighbour-1,src/core/generated/0x10055ED0.c
+
 0x10055960,BrSub1005CB40,drawing,neighbour,src/core/drawing/br_namelist.c
 0x100559B0,BrNameListInit,drawing,neighbour,src/core/drawing/br_namelist.c
 0x10055A10,BrVt55A10DeleteDtor,drawing,neighbour,src/core/drawing/br_namelist.c
@@ -897,5 +901,3 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
-0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
-0x10055ED0,BrFileCountMatching,gamedata,neighbour-1,src/core/generated/0x10055ED0.c
