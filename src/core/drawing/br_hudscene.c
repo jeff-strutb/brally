@@ -1403,6 +1403,53 @@ int BrSet_10019270();
 int BrTextFlag358Clear();
 int BrTextSetColors();
 
+/* 0x100154A0 */
+extern int  DAT_100bcbf8;            /* 0x100BCBF8  split-time list enabled   */
+extern int  DAT_100a7514;            /* 0x100A7514  screen width              */
+extern int  DAT_100aa044;            /* 0x100AA044  view count                */
+extern int  DAT_106ec798;            /* 0x106EC798  which layout row applies  */
+extern unsigned char *DAT_106e9d88;  /* 0x106E9D88  the race record           */
+extern char DAT_100a6b80[];          /* 0x100A6B80  "%ww"                     */
+void BrSub_10019290(void);           /* 0x10016850  right-align text          */
 
+/* WHAT IT DOES: draws the list of split times down the HUD, one line per
+ * recorded split, right-aligned 16 pixels in from the screen edge.  The top
+ * of the list comes from a layout table indexed by the current layout row,
+ * shifted 30 pixels lower in single-view mode; each following line is 15
+ * pixels down.  Nothing is drawn while the list is disabled. */
+/* @implements 0x100154A0 glide BrHudDrawSplitTimes */
+void BrHudDrawSplitTimes(const unsigned char *pLayout)
+{
+    int x;
+    int y;
+    int sel;
+    int i;
+
+    if (DAT_100bcbf8 == 0) {
+        return;
+    }
+    x   = DAT_100a7514 - 16;
+    sel = (DAT_100aa044 == 1) ? 30 : 0;
+    y   = *(const int *)(pLayout + DAT_106ec798 * 0x58 + 4) + 20;
+    BrTextFlag358Clear();
+    BrSub_10019290();
+    BrSetGlobal_ABB30(15);
+    i = 0;
+    if (*(int *)(DAT_106e9d88 + 0xfa8) > 0) {
+        /* Both per-line values are written as expressions of i, NOT as
+         * named locals bumped each pass: VC5 strength-reduces them into
+         * induction temps (edi = 0xFB4 + 4i, ebx = sel + y + 37 + 15i), and
+         * a temp is the INDEX register of the addressing form -- the
+         * original's `mov ecx,[ecx+edi]` and `lea ebx,[esi+ebx+0x25]`.  As
+         * named `k`/`y` locals the same values are the BASE, two SIB bytes
+         * off.  The rank is `i + 1` with i bumped after the call. */
+        do {
+            BrHudDrawSplitLine(DAT_100a6b80, i + 1,
+                               ((float *)(DAT_106e9d88 + 0xfb4))[i], x,
+                               sel + y + 37 + i * 15);
+            i++;
+        } while (i < *(int *)(DAT_106e9d88 + 0xfa8));
+    }
+}
 
 #endif /* BR_MATCHING_BUILD */
