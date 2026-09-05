@@ -269,7 +269,9 @@ glide_va,name,module,basis,file
 0x1001FF60,BrDlTriFlatZ,drawing,filed,src/core/drawing/br_dlcmd.c
 0x100203F0,BrDlCmdTri1Flat,drawing,neighbour,src/core/ghidra_batch.c
 0x10020460,BrDlTriFlatNoZ,drawing,filed,src/core/drawing/br_dlcmd.c
+0x10020690,BrDlClipTriFlatNoZ,drawing,filed,src/core/drawing/br_dltrim.c
 0x10020900,BrDlCmdTri1NoZ,drawing,filed,src/core/drawing/br_dlcmd.c
+0x10020A80,BrDlClipTriNoZ,drawing,filed,src/core/drawing/br_dltrim.c
 0x10020CF0,BrDlCmdTri2FlatZ,drawing,neighbour,src/core/ghidra_batch.c
 0x10020D30,BrDlCmdTri2Flat,drawing,neighbour,src/core/ghidra_batch.c
 0x10021020,BrGbiDList,drawing,neighbour,src/core/drawing/br_gbi.c
