@@ -156,3 +156,37 @@ void BrMat4ToMat3Both(BrMat3 *pTransposed, BrMat3 *pStraight,
         }
     }
 }
+
+/* 0x10074B70 */
+/* WHAT IT DOES: builds the matrix that takes a point out of a box's own frame
+ * and into the world: the box's rotation transposed, each column stretched by
+ * that axis's scale, and the translation carried across as the source's
+ * position rotated back through the transpose and negated. Callers hand it
+ * the SAME frame as source and destination -- see include/br_collresp.h --
+ * so the two stores per element are not a redundant pair. */
+/* @implements 0x1006DDD0 glide BrMat4BuildScaledTransposed */
+void BrMat4BuildScaledTransposed(const BrMat4 *pS, BrMat4 *pOut,
+                                 const BrVec3 *pScale)
+{
+    BrVec3 negT;
+    int i, k;
+
+    for (i = 0; i < 3; ++i) {
+        for (k = 0; k < 3; ++k) {
+            /* TWO statements, and the compound `*=` is the second of them.
+             * The plain store must really happen because pScale may alias
+             * pOut, which is why the original reads the scale AFTER the
+             * store; the `*=` then reuses the value it just stored (`fst`,
+             * not `fstp`) instead of reloading it. */
+            pOut->m[i][k] = pS->m[k][i];
+            pOut->m[i][k] *= (&pScale->x)[k];
+        }
+        pOut->m[i][3] = 0.0f;
+    }
+
+    pOut->m[3][3] = 1.0f;
+    negT.x = -pS->m[3][0];
+    negT.y = -pS->m[3][1];
+    negT.z = -pS->m[3][2];
+    BrMat4MulVec3Transposed((BrVec3 *)&pOut->m[3][0], pOut, &negT);
+}
