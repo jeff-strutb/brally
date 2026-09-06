@@ -1,3 +1,43 @@
+/* ‼‼ THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
+ * THE MECHANISM IS KNOWN; THE SOURCE CONSTRUCT IS NOT.  Baseline re-measured
+ * 9,345/9,354 B, 2,325/2,328 insns, 14 masked / 24 raw, msetdiff 23+20.
+ * Full census in docs/VC5-IDIOMS.md ("When VC5 keeps a scaled index in a
+ * register").  What it settled, so nobody re-derives it:
+ *   - The base-less `lea R,[R*4]` feeding `[R + abs32]` occurs at ONE site
+ *     in the whole binary (this one).  No corpus spelling exists.
+ *   - VC5 forms the `ring*4` temp only when a LIVE dword access with the
+ *     same index goes through a REGISTER or LOCAL-ARRAY base in a block
+ *     that dominates the sites (per arm).  Such an access always leaves
+ *     bytes; the original's if-arm has none.  Every algebraic, literal,
+ *     pointer-alias, element-pointer, 2-D/3-D, inline-helper and dead-
+ *     access spelling of the flat arrays FOLDS -- 40+ scratch forms, 25
+ *     giant probes, all byte-identical to this tree or worse.
+ *   - GIANT-ONLY LEVER, real but not the source: a function-scope `ring =
+ *     iWheel + iCar * 4;` assigned ONCE at the top of the wheel-loop body
+ *     (before the cls block), all 32 sites through it (`v_ring_top_fs`):
+ *     the if-arm emits the original's `[edx + sym]` x8, the pDst homes on
+ *     both edges and the reload to form `slot`; the else-arm still folds.
+ *     Multiset 23+20 -> 15+?, bytes -8, insns -2, 23 masked regions.  The
+ *     cost is the allocation: VC5 keeps `ring` in ebx across the cls block
+ *     and the call, homes it at the loop top and evicts iWheel to edi (+11
+ *     B, nine renamed regions 0x1aed-0x1c0c).  The ORIGINAL homes only
+ *     iWheel at the loop top and RECOMPUTES ring in each arm, so this is
+ *     provably not its source.  `register` hints are ignored; ring at the
+ *     top of the if-arm or right before `if (cls)` wrecks the frame.
+ *   - VC5 does NOT rematerialise a spilled variable (measured: it homes
+ *     competing pointers and keeps ring in esi; a clobbered ring is
+ *     RELOADED, never recomputed).  So the original's post-call `lea
+ *     ecx,[ebx+eax*4]` is a per-arm source computation -- and every
+ *     per-arm form (inline, named at function or block scope, redefined
+ *     in one or both arms, `(&sym)[i]`, element pointers) folds.
+ *   - Also dead this pass, byte-identical: the else-arm `slot` spellings
+ *     `if ((slot = head - 1) < 0)`, `slot = head; slot--;`, a block-scoped
+ *     copy (the `dec`/`jns` row is not this site's spelling); the one-
+ *     array `DAT_1035f750[232 + ring]` form re-measured (22 regions);
+ *     local pointer aliases inside the arm (identical).
+ *   WHAT IS LEFT for wall 4 is a per-arm `ring` plus a trigger that forms
+ *   the `ring*4` tuple without leaving bytes; nothing in the census does.
+ */
 /* ‼ TWENTY-EIGHTH PASS (2026-09-05) -- THREE MORE WALL-3/4 LEVERS DEAD
  * (parallel probe sweep, all measured against the 27th-pass baseline
  * 23+20 msetdiff rows / 17 masked / -9 B).  Do NOT re-run:
