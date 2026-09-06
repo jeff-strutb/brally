@@ -366,6 +366,92 @@ int BrCdStop(void)
   }
   return BrCdStopMsg();
 }
+
+int BrFadeRelease(void);     /* 0x10017F10 */
+
+/* The functions_glide.csv row 0x10003030 (233 B) is really THREE 16-byte-
+ * aligned functions -- the same dispatcher/body split as BrCdStop above: a
+ * 32-byte dispatcher that tail-jumps to a message-transport body (0x10003050,
+ * 96 B incl. nops) or an MCI body (0x100030B0, 105 B).  Split 2026-09-06 into
+ * 32 + 96 + 105 and re-extracted.  Each body re-checks g_brCdEnabled because it
+ * is a standalone function reached only by the dispatcher's tail jump. */
+
+/* WHAT IT DOES: end one reference to transport-played music.  Drops the play
+ * count by one and clears the channel (unless the disc is missing, which is a
+ * silent success); when that was the last reference it releases the fade.
+ * Reports whether the clear was accepted. */
+/* @implements 0x10003050 glide BrCdStopReleaseMsg */
+/* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
+ * alignment nops (which the sweep tolerates, as it does for BrCdStop's matched
+ * bodies) the only residue is PUSH PLACEMENT. The original pushes esi (holding
+ * r) unconditionally in the prologue -- scheduled into the load/test gap of the
+ * `enabled==0` guard -- so the early return pops it too; VC5 on this source
+ * sinks the push past the guard, leaving the early return with no pop. The
+ * hoist/sink lever (docs/VC5-IDIOMS: a `return` inside an if-arm hoists) does
+ * not apply -- the guard path needs no callee-saved register, so VC5 sinks.
+ * @t4-pass 0x10003050 1 2026-09-06 probes 3 bytes 96 insns 41 regions 1 rows 1 census no */
+static int BrCdStopReleaseMsg(void)
+{
+  int r;
+
+  if (g_brCdEnabled == 0) {
+    return 1;
+  }
+  g_brCdPlaying = g_brCdPlaying - 1;
+  if (g_brCdMediaOk == 0) {
+    r = 1;
+  } else {
+    r = (*DAT_104b1628)(g_br0940A8, 0) == 0;
+  }
+  if (g_brCdPlaying == 0) {
+    BrFadeRelease();
+  }
+  return r;
+}
+
+/* WHAT IT DOES: end one reference to MCI-played music files.  Drops the play
+ * count by one and sends the STOP command; when that was the last reference it
+ * closes the device.  Reports whether both commands were accepted. */
+/* @implements 0x100030B0 glide BrCdStopReleaseMci */
+/* RESIDUE (2026-09-06): body complete and correct; +4 insns from BOOLEAN
+ * CODEGEN. The original builds `r = (e1==0)` and the `(e2==0)` mask with the
+ * carry-flag borrow trick (`neg; sbb; inc` and `neg; sbb; not`), computing r
+ * early -- right after the first mci call, before the play-count test. Every C
+ * spelling tried emits `xor; test; sete`/`setne` instead: `e1 == 0`, the
+ * ternary `e1 ? 0 : 1`, `!e1`; and `~-(e2 != 0)` for the mask likewise emits
+ * setne. `tools/corpus.py find --at 0x37` on the `neg; sbb; inc` run is a MISS
+ * -- the (x==0)->neg/sbb/inc-into-int form is not proven anywhere in the solved
+ * tree, so there is no spelling to copy; it needs source truth, not a permute.
+ * @t4-pass 0x100030B0 1 2026-09-06 probes 4 bytes 105 insns 43 regions 1 rows 4 census yes */
+static int BrCdStopReleaseMci(void)
+{
+  MCIERROR e1, e2;
+  int r;
+
+  if (g_brCdEnabled == 0) {
+    return 1;
+  }
+  g_brCdPlaying = g_brCdPlaying - 1;
+  e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
+  r = e1 == 0;
+  if (g_brCdPlaying == 0) {
+    e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+    return ~-(e2 != 0) & r;
+  }
+  return r;
+}
+
+/* WHAT IT DOES: end one reference to the music and, when it was the last,
+ * release it.  Dispatches by how the music is playing: the game's own music
+ * files go through MCI, anything else through the message transport. */
+/* @implements 0x10003030 glide BrCdStopRelease */
+int BrCdStopRelease(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdStopReleaseMci();
+  }
+  return BrCdStopReleaseMsg();
+}
 #endif /* BR_MATCHING_BUILD */
 
 /* WHAT IT DOES: play the next CD track, clamping to the last track. */
