@@ -6979,3 +6979,47 @@ produces that without leaving bytes the original does not have.  Do not
 re-run anything above.  Harness: `tools/probe.py` variants under
 `build/match/t3d/probe_*.obj`; the scratch-TU rule experiments were
 `build/match/t3d/exp_*.c` (regenerable from the descriptions here).
+
+---
+
+## Consuming a byte quad: `*src++` reads, not indexed (0x10023CB0)
+
+BrTexRgbaToArgb1555 reads four source bytes per pixel.  The original is
+`mov [ecx]; mov [ecx+1]; inc; add esi,2; inc; shr; mov [ecx]; inc; mov
+[ecx]; inc` -- the first two bytes read by displacement off the base, then
+TWO committed `inc ecx` (the dst++ `add esi,2` sitting between them), then
+the last two bytes read BARE through the advanced pointer.
+
+* `r = *src++; g = *src++;` is what produces `mov [ecx]; mov [ecx+1]` +
+  two `inc` -- VC5 folds the first post-increment's read to a bare load and
+  the second's to `[ecx+1]`, then emits the two increments together.
+* Reading by INDEX instead (`r=src[0]; g=src[1]; b=src[2]; a=src[3];
+  src+=4;`) gives one `add ecx,4` and displacement reads for b,a -- the
+  wrong shape (+1 B, the b read at `[ecx+2]` with a deferred `add ecx,2`).
+* Put the `r>>=3` narrowing BETWEEN the g and b reads, matching where the
+  original schedules `shr dl,3` (after the second inc, before the b load).
+
+## File POSITION as the last register-allocation lever (0x10023CB0)
+
+BrTexRgbaToArgb1555 is byte-exact as a standalone TU, and byte-exact at the
+END of br_tex3d.c, but 43 register-blind-EQUAL diffs anywhere earlier in
+that TU.  The whole divergence is one choice: the `pix` accumulator wants
+ebx (where the `a>>7` seed already sits, `movzx bx,bl`); earlier in the file
+VC5 puts it in edx instead, which swaps the OR destinations (`or ebx,edx` ->
+`or edx,ebx`) and forces `movzx ax,al` for the final `b>>3` where ebx-pix
+uses a free `xor dx,dx; mov dl,al`.
+
+EVERY local lever is inert -- proven, not assumed:
+
+* declaration order (six orders swept in-TU: start/rgba/pix/k in all the
+  obvious permutations, rgba split into four decls) -- all 43;
+* `pix` width (`unsigned int` is WORSE, 108) ;
+* OR operand order (`r | (pix<<5)` etc., first/last/all three) -- VC5
+  canonicalises commutative OR, all 43.
+
+Only moving the whole function later in the TU moved it, and only the very
+end reached 0.  The count is chaotically position-sensitive (headers-only
+in a probe gives a THIRD result, -1 B), so this is whole-TU allocator state,
+not a monotone preceding-symbol count.  When a leaf is byte-exact standalone
+but off by a register-blind-equal margin in its module, sweep FILE POSITION
+before concluding it is a wall.
