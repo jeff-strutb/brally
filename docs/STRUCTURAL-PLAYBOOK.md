@@ -179,6 +179,12 @@ function before hand-filing.
 
 ## Target selection — rank by register-blind gap, NEVER raw diff count
 
+For a byte-exact lane, do not pick by hand at all: `tools/t4lane.py` prints
+the session's targets from the tree (register-only T2 rows by translation
+unit, held rows with the reason and age of their park, and the smallest
+untouched drafts after the mechanical screen). The generic lane spec that
+consumes it is `docs/T4-LANE.md`.
+
 `triage.py` columns: `symbol va origB cmpl% insnD rawgap reggap struct% verdict`.
 
 - `reggap` = instruction-shape mismatches AFTER normalising every GP register
