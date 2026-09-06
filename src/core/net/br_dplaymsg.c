@@ -56,6 +56,7 @@ int FUN_100371f0(int *param_1,int param_2,int param_3)
 #include <windows.h>
 #endif
 int FUN_10036a30(int, int, LPCSTR, LPCVOID *, int);
+int BrComGetAlloc(int pObj, int pParam, LPCVOID *ppvOut);   /* 0x10036810 */
 extern char DAT_10ac4db0[];
 extern int g_brAA288C;
 int BrDPlayRawSend(int, int, int, int, void *, unsigned int);
@@ -120,6 +121,71 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
     GlobalFree(GlobalHandle(pMem));
   }
   return result;
+}
+
+
+/* WHAT IT DOES: builds the "<name>: <text>" line that names a network player
+ * in a log message, returning it in a freshly GlobalAlloc'd, locked buffer.
+ * It asks the DirectPlay object for the player's record, reads that record's
+ * name (or "unknown" when it carries none), and formats it with the caller's
+ * text -- "<name>: <text>\r\n" normally, or "<name><text>\r\n" when the flag
+ * is set. Reports the COM error it hit, and always frees the temporary record
+ * it locked. */
+/* @implements 0x10036A30 glide FUN_10036a30 */
+/* RESIDUE (2026-09-06): +4 B / +1 insn, REGNORM 1+0. Body is complete and
+ * correct -- instruction-for-instruction identical to the original except the
+ * FRAME-POINTER decision. The original omits the frame (`push ecx` for the one
+ * addressed local, ebp used as a general register holding lpFormat), and spills
+ * that format across the length-sum into a DEAD incoming-parameter slot
+ * ([esp+0x24], param_5's home); VC5 on this source instead keeps an ebp frame
+ * (`push ebp; mov ebp,esp; sub esp,8`) and homes the same spill in a dedicated
+ * local ([ebp-8]), which cascades every local's addressing esp->ebp. Five values
+ * (hr, lpFormat, lpName, param_3, the length accumulator) are live across the
+ * three lstrlenA calls against four callee-saved registers, so exactly one spill
+ * is unavoidable on both sides -- only its LOCATION differs (arg-scratch vs frame
+ * local). The matched sibling FUN_100368a0 in this file is frameless with 3
+ * params; this one has 5. PROBED AND DEAD (all hold at +4 B): size summed into a
+ * named `int n` local before GlobalAlloc; local declaration order permuted
+ * (hMem-first vs hr-first). Spill LOCATION is a VC5 allocator choice not seen to
+ * move from C source here.
+ * @t4-pass 0x10036A30 1 2026-09-06 probes 4 bytes 227 insns 86 regions 1 rows 1 census no */
+int FUN_10036a30(int param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
+{
+    HGLOBAL hMem;
+    LPSTR pBuf;
+    LPCSTR lpFormat;
+    LPCSTR lpName;
+    int hr;
+    LPCVOID local_4;
+
+    local_4 = 0;
+    if (param_1 == 0) {
+        return 0;
+    }
+    lpFormat = "%s%s\r\n";
+    if (param_5 == 0) {
+        lpFormat = "%s: %s\r\n";
+    }
+    hr = BrComGetAlloc(param_1, param_2, &local_4);
+    if (hr >= 0) {
+        lpName = *(LPCSTR *)((char *)local_4 + 8);
+        if (lpName == 0) {
+            lpName = "unknown";
+        }
+        hMem = GlobalAlloc(0x42, lstrlenA(param_3) + lstrlenA(lpFormat) + 1 + lstrlenA(lpName));
+        pBuf = GlobalLock(hMem);
+        if (pBuf == 0) {
+            hr = 0x8007000e;
+        } else {
+            wsprintfA(pBuf, lpFormat, lpName, param_3);
+            *param_4 = pBuf;
+        }
+    }
+    if (local_4 != 0) {
+        GlobalUnlock(GlobalHandle(local_4));
+        GlobalFree(GlobalHandle(local_4));
+    }
+    return hr;
 }
 
 
