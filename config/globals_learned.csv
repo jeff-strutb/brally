@@ -129,7 +129,6 @@ BrDpGetSessionDesc,0x10036740,4,1,"named global, no address recorded",0x10036430
 BrSub1003D0B0,0x10036740,6,1,"named global, no address recorded",0x10009BA0 0x1003CF50 0x1003D6F0
 BrFn1003D210_glide,0x100368A0,2,1,"named global, no address recorded",0x100386B0
 BrSub1003D210,0x100368A0,4,1,"named global, no address recorded",0x1003CF50
-FUN_10036a30,0x10036A30,2,1,"named global, no address recorded",0x100368A0
 FUN_10036b20,0x10036B20,2,1,"named global, no address recorded",0x100356B0
 FUN_10037040,0x10037040,8,1,"named global, no address recorded",0x10054390
 FUN_10037130,0x10037130,3,1,"named global, no address recorded",0x10037180
@@ -397,7 +396,7 @@ g_0909E0,0x100789B8,4,1,"named global, no address recorded",0x10036EF0
 ??_C@_0N@MAKJ@?$CFd?3?$CF02d?4?$CF02d?$AA@,0x1007B064,2,1,"named global, no address recorded",0x100023F0
 DAT_1007b074,0x1007B074,4,1,"named global, no address recorded",0x10007F40 0x10019730
 g_0940A4,0x1007B074,10,1,"named global, no address recorded",0x10002760 0x100028E0 0x10002D60 0x10002E20
-g_brCdEnabled,0x1007B074,69,1,"named global, no address recorded",0x100027B0 0x100027E0 0x10002830 0x10002980 0x10002AF0 0x10002B20 0x10002BA0 0x10002C50 0x10002C70 0x10002CB0 0x10002CF0 0x10002D30 0x10002E80 0x10002EB0 0x10002ED0 0x10002F10 0x10002F30 0x10002F70 0x10002F90 0x10002FD0 0x10032530
+g_brCdEnabled,0x1007B074,72,1,"named global, no address recorded",0x100027B0 0x100027E0 0x10002830 0x10002980 0x10002AF0 0x10002B20 0x10002BA0 0x10002C50 0x10002C70 0x10002CB0 0x10002CF0 0x10002D30 0x10002E80 0x10002EB0 0x10002ED0 0x10002F10 0x10002F30 0x10002F70 0x10002F90 0x10002FD0 0x10003030 0x10032530
 g_0940A8,0x1007B078,5,1,"named global, no address recorded",0x10002760 0x10002D60
 g_br0940A8,0x1007B078,11,1,"named global, no address recorded",0x10002B20 0x10002ED0 0x10002F30 0x10002F90
 s_MCI_STATUS_returned__d_1007b07c,0x1007B07C,2,1,file-static stand-in (no 1:1 original global),0x10002980
