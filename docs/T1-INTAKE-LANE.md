@@ -67,8 +67,9 @@ arithmetic, struct field traffic, one or two float compares.
    `build/match/t3d/fn_<VA>_<tag>.c` and `fn.py <VA> --var <tag>`. ~10 s a
    probe. Generate several variants from one Python heredoc and score them in
    one loop. **Budget: six probes.** Past that, write the residue note
-   (what diverges, every dead probe) into the function's comment, commit it
-   as T2, move on.
+   (what diverges, every dead probe) into the function's comment, append its
+   `@t4-pass` line to the file header (six probes: recorded for honesty, it
+   does not count toward Gate B, which needs ten), commit it as T2, move on.
 6. Byte-exact: one-file sweep again, then
    `git commit -m "<VA> <Name> byte-exact: <the source fact>" -- <file>`.
    Never a bare commit; another session commits with pathspecs and takes a

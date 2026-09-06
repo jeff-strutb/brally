@@ -3,6 +3,20 @@
 Read `docs/VC5-IDIOMS.md` before matching any function. Query the tree for
 coverage counts; do not trust a number in prose.
 
+## The standard (2026-09-06): T3 and T4, nothing between
+
+Tiers are T1/T2/T3/T4 only; T3a/T3b are retired (CLAUDE.md rule 12). T4 is
+byte-exact. T3 is functionally DONE but not byte-exact, and is decided only
+by `tools/t3.py --qualify <VA>`: Gate 0 (purpose comment, no unfinished
+markers), Gate A (five mechanical residue checks on the sweep object), Gate B
+(the `@t4-pass` ledger in the file header: >= 3 passes of >= 10 compiles,
+the last two moving nothing, one census-driven). Crossing Gate A is a
+precondition, never the trigger to stop. Certified functions are parked
+until the end-grind and never handed out (`tools/claim_lane.py`,
+`tools/t4lane.py` exclude them). `tools/t4lane.py` picks a byte-exact
+session's targets from the tree. 0x1000EAF0: gates 0 and A pass, one
+zero-movement pass short of T3 (rule 11b).
+
 ## Open leads
 
 ### 0x10019A70 — the race step (last among the big targets)

@@ -6,9 +6,11 @@ approach or guesses at specs each session.
 
 **What this covers:** functions with a real STRUCTURAL gap — wrong or missing
 code relative to the original. **What it does not cover:** pure
-register-allocation/scheduling walls. Those are measured, then CERTIFIED T3 (tools/t3.py --qualify) and parked as
-honest residue — the project has proven (permuter 0/95, refine batch 0/258,
-verdict in commit 5a4a338) that no C spelling flips them. `./grind.sh` runs the
+register-allocation/scheduling walls. Those are measured, logged in the
+file's `@t4-pass` ledger, and certified T3 by `tools/t3.py --qualify` once
+its gates are met (CLAUDE.md rule 12) — the project has proven (permuter
+0/95, refine batch 0/258, verdict in commit 5a4a338) that no C spelling
+flips them. `./grind.sh` runs the
 mutation loops as a free background lottery ticket, but it is NOT a lane and
 closes nothing you can plan on.
 
@@ -197,7 +199,8 @@ it is handed to the session directly, not kept in the repo.
   the original inlined a helper the port factored out. Source-discovery work —
   consult the N64 twin (below) early.
 - Low struct% (`coloring wall - real`): T3 territory. Confirm with the
-  oracle if reachable, record the residue note, PARK, move on. Do not grind.
+  oracle if reachable, record the residue note, append the `@t4-pass` line,
+  run `tools/t3.py --qualify`, move on. Do not grind.
 - **‼ Two screens before you take ANY target, both learned the hard way:**
   1. **Does the C++ workstream already own it?** `ls src/core/cpp/<VA>.cpp`
      and grep `build/match/report_cpp.csv`. Those functions carry no
@@ -270,11 +273,15 @@ ORACLE for structure; useless for register allocation.
 ## Stop conditions (do not thrash)
 
 - Byte-exact → commit, file into module, pick the next.
-- Turns out to be allocation/scheduling residue → run `tools/t3.py --qualify`; verify with the oracle if
-  reachable, leave an honest residue note, park, pick the next.
+- Turns out to be allocation/scheduling residue → leave the residue note,
+  append the `@t4-pass` line with the end-of-pass numbers (a pass counts
+  toward Gate B only if it made ten or more fresh compiles), run
+  `tools/t3.py --qualify`. If gates 0, A and B all pass, paste the tag it
+  emits: certification is mandatory then. Otherwise it stays T2; pick the
+  next.
 - Genuinely stuck on structure after a real attempt → leave an HONEST residue
-  note (what diverges, what you ruled out) and move on. A near-miss is not a
-  match; only the byte-exact count is progress.
+  note (what diverges, what you ruled out), the `@t4-pass` line, and move
+  on. A near-miss is not a match; only the byte-exact count is progress.
 - Timebox ~40 min per function; breadth over depth-holes. Never claim "one
   lever left" — that claim has been wrong every time it was made here.
 - Saw the same defect twice in one class → stop hand-solving, mint the

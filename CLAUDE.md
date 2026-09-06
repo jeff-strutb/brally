@@ -336,9 +336,14 @@ and last. See `docs/VC5-IDIOMS.md` (`and esp,-8`) and `include/br_racestep.h`.
    not tracked.
 3. Run `python3 tools/fileaudit.py` and note where the backlogs stand, so you
    can tell your own damage from what you inherited.
-4. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
-5. Do not trust a coverage number in prose — including in `README.md`.
-   Query the tree.
+4. Run `python3 tools/t3.py`: it must be green, and the functions it lists
+   are T3-certified — not targets unless the user names one (rule 12).
+5. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
+6. Do not trust a coverage number in prose — including in `README.md`.
+   Query the tree. For a byte-exact session, `python3 tools/t4lane.py`
+   picks the targets from the tree; never pick by hand.
+7. Every pass at a near-exact function ends by appending its `@t4-pass`
+   line to the file header (rule 12), whether or not it moved anything.
 
 ## Scope — which shipped binaries are being decompiled
 

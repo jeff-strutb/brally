@@ -123,6 +123,17 @@ as "not started", so T1 climbed every time a C++ match landed. Fixed in
 
 The numbers in this section move daily; regenerate rather than trust them.
 
+**How a byte-exact session picks its targets.** `python3 tools/t4lane.py`
+reads the tree and prints two pools: functions already in the project whose
+instruction multiset equals the original's (registers only), grouped by
+translation unit, with earlier parks shown with their reason and date; and
+the smallest untouched functions after a mechanical screen (exception-frame
+prologue, odd address, C++ lane, x87 juggling, 16-bit lanes). Every pass at
+a near-exact function ends by appending an `@t4-pass` line with its numbers
+to the file header; that ledger is what Gate B reads. The lane spec that
+consumes the tool's output is handed to a session directly rather than kept
+here, because specs in the repo go stale.
+
 The differential oracle (`tools/t3b_verify.py`) runs both the original bytes
 and the recompiled bytes through the same interpreter on identical random
 inputs and compares the return value and memory side effects. It is
@@ -245,7 +256,10 @@ did not have before is rejected.
 
 **The audit is a ratchet, not a wish.** `python3 tools/fileaudit.py` checks all
 three lanes and exits 1 when a number goes UP: undescribed functions (baseline
-0), address batches (58), stranded matched functions (11). It used to fail
+0), address batches (58), stranded matched functions (11). It also counts the
+T3-certified functions and fails on a malformed or stale `@t3` tag (one whose
+function has since become byte-exact, or whose measured numbers moved), by
+running `tools/t3.py`. It used to fail
 unconditionally while any backlog existed — and a check that always fails is a
 check people stop running, which is how the rule went unenforced for months.
 Lower a baseline as you drain it; never raise one.
@@ -284,6 +298,9 @@ original bytes to match.
     src/exe/                  the three Win9x executables (byte-matched)
     include/  tests/
     tools/                    matching pipeline + staged MSVC toolchain
+                              (tools/t3.py: the T3 gates and tag validator;
+                              tools/t4lane.py: the byte-exact target picker;
+                              tools/tiers.py: the four-tier count)
     config/                   function maps, globals; binaries.csv (per-binary
                               compiler + CRT model); fenced.csv / fenced_exe.csv
                               (linker/CRT — reproduced by linking, not decompiled)
