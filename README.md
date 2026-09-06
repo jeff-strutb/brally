@@ -78,18 +78,16 @@ C++ lane owns; **this table is C only**, and the C++ lane has its own below.
 Nothing is counted in both.
 
 The tiers track how close each function's rebuilt code is to the original, from
-not-started to exact. Two boundaries matter: **T1→T2** is a machine-made rough
-draft on the side vs. real code built into the project; and inside "it works,"
-**T3b** behaves like the original but is built differently (so it compiles to
-different instructions), while **T3a** is down to the last cosmetic gap — same
-instructions, only the register choices differ.
+not-started to exact. There are four and nothing between them (the T3a/T3b
+sub-tiers were retired 2026-09-06): **T1→T2** is a machine-made rough draft on
+the side vs. real code built into the project; **T3** is certified complete but
+not byte-exact; **T4** is byte-exact.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 154 | 133,243 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 175 | 118,399 |
-| T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
-| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 51 | 17,532 |
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 153 | 132,366 |
+| T2 | **In progress** — real code is in the project, but it is not done: logic still differs, or the last gap is not yet accounted for | 226 | 127,454 |
+| T3 | **Certified complete, not byte-exact** — every structural element verified against the disassembly and every remaining residue row proven to be a compiler decision (register allocation, x87 order, addressing form, slot layout), by `tools/t3.py --qualify`; parked until the end-grind | 1 | 9,354 |
 | **T4** | **Done** — matches the original exactly, byte for byte | **946** | **103,760** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
@@ -98,9 +96,17 @@ assembly is only the reference each draft is checked against. "Not started"
 (T1) means that draft hasn't been turned into real project code yet, not that
 no C exists.
 
-Only **T1, T3a, and T4 are counted automatically** by the tier tool. T3a is
-strong static evidence (the instructions match), which is not the same as a
-runtime equivalence proof.
+**T3 is decided by a tool, never by judgment** (`CLAUDE.md` rule 12). Gate A
+is five mechanical checks on the sweep object: instruction-count gap within
+max(3, 0.5%); register-blind rows within 2.5%; every residue row either an
+allowed allocation artefact or paired with the other side in the same
+canonical class (one unpaired row fails); no lost-sync; the differential
+oracle not reporting a difference. Gate B is a declared effort floor: two
+consecutive zero-movement passes, one census-driven, the dead-probe list
+recorded. The tag carries the tool's numbers, the validator re-measures every
+tagged function and fails on a stale one, the lane tool never hands a T3
+function out, and T3 is never counted as matched. It is a parking receipt
+with the evidence attached, not a lower bar.
 
 `tiers.py` prints T4 as a combined 1,121 over the full 1,501 target, with the
 C++ lane called out beneath it; the table above subtracts that lane to stay
@@ -112,21 +118,15 @@ C++ lane REMOVES its row from the C report, and the tier tool read that absence
 as "not started", so T1 climbed every time a C++ match landed. Fixed in
 `tiers.py`; T1 fell 459 → 274 the moment it did.
 
-The T3b footnote below still counts inside T2, and the numbers in this section
-move daily; regenerate rather than trust them.
+The numbers in this section move daily; regenerate rather than trust them.
 
-¹ **T3b is measured by a differential oracle** (`tools/t3b_verify.py`): it runs
-both the original bytes and the recompiled bytes through the same interpreter on
-identical random inputs and compares the return value and memory side effects.
-Same output across many inputs ⇒ behaviorally equivalent (T3b). It is
+The differential oracle (`tools/t3b_verify.py`) runs both the original bytes
+and the recompiled bytes through the same interpreter on identical random
+inputs and compares the return value and memory side effects. It is
 conservative — it only judges functions it can fully contain (plain-cdecl
-scalar/pointer args, no globals, no external calls), and reports everything else
-as unclassified rather than guess. Last full sweep of the T2 pile (2026-08-28):
-**15 proven T3b, 0 behavioral differences open, 358 out of reach** (the first
-sweep's 3 real-differ finds have since been fixed). That sweep predates the
-current T2 set, so 15 is a floor, not a live count; T3b grows as the oracle is
-extended to register calling-conventions and global-reading functions. The 15
-still count inside T2 until the tier tool consumes the oracle's manifest.
+scalar/pointer args, no globals, no external calls) and reports everything
+else as unclassified rather than guess. Its EQUIVALENT / DIFF verdict is Gate
+A5 of T3 certification; it no longer names a tier of its own.
 
 **The C++ lane by tier** (vtables + EH frames; `tools/cpp_sweep.py`) — same tiers,
 so the two tables read alike. **This one is C++ only**; add it to the C table
@@ -139,7 +139,7 @@ four.
 |---|---|--:|--:|
 | T1 | **Not started** — screened as C++-only, no source written yet | 20 | 28,997 |
 | T2 | **In progress** — source exists; the three exception tables already match, the code does not | 26 | 24,131 |
-| T3a | **Works, near-identical** — code byte-exact, one table still differs | 0 | 0 |
+| T3 | **Certified complete, not byte-exact** — code certified by `tools/t3.py --qualify`, one table still differs | 0 | 0 |
 | **T4** | **Done** — all four pieces byte-exact | **176** | **80,537** |
 
 Three differences from the C table, all real:
@@ -152,12 +152,12 @@ Three differences from the C table, all real:
   reachable from C and belong to the C lane. T1 falling is therefore progress,
   not scope loss: this lane is being drained faster than the screen finds new
   members.
-- **T3a is empty for a reason.** Every unfinished row here is unfinished in its
-  *code*; the exception tables come out right first. So nothing currently sits in
-  the "instructions right, only registers differ" tier.
+- **T3 is empty for a reason.** Every unfinished row here is unfinished in its
+  *code*; the exception tables come out right first. So nothing currently
+  qualifies as certified-but-not-exact.
 - **T1 is the one figure that is not yet disjoint from the C table.** A function
   screened as C++ but not yet written still has its row in the C report, so those
-  20 also sit in the C table's T1/T2 until they are converted. T2, T3a and T4
+  20 also sit in the C table's T1/T2 until they are converted. T2, T3 and T4
   here are exclusively C++.
 
 `tiers.py`, run against the same tree, sizes the done lane at 175 / 79,799 B

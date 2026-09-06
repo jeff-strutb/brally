@@ -229,58 +229,64 @@ is byte-for-byte identical on 63 of 64 functions tested and WORSE on this
 one. The sweep compiles NOTHING when a file has no `@implements` tag — a
 probe without a fresh compile proves nothing.
 
-## 12. Two grades of done: T4 (byte-exact) and T3 (certified complete). T3 is parked, not abandoned.
+## 12. Two grades of done, T4 and T3, and nothing between them. T3 is decided by a tool, parked, not abandoned.
 
-The project's finished standard is **T4: the bytes diff clean** (rule 2).
-Some functions reach a state where every structural element is verified and
-the only residue is the compiler's own choices, yet the last bytes will not
-fall. Those are **T3-certified**: fully usable by the port, honestly not
-byte-exact, and **not to be re-litigated until everything else is done**.
-Established 2026-09-06, after 0x1000EAF0's thirty-first pass moved nothing.
+The tiers are **T1** (draft only), **T2** (in the tree, not done), **T3**
+(certified complete, not byte-exact) and **T4** (bytes diff clean, rule 2).
+**The old T3a/T3b sub-tiers are retired** (2026-09-06): "same instructions,
+registers differ" and "oracle says equivalent" are now INPUTS to the T3
+gates below, not grades of their own. Where an older dossier says "T3a" read
+"allocation/scheduling residue"; "T3b" read "oracle EQUIVALENT".
 
-**A function earns the T3 tag only when ALL of these hold, and the tag says
-so with numbers:**
+A T3 function is fully usable by the port, honestly not byte-exact, and
+**not re-litigated until every T1 and T2 row is gone** (the end-grind).
+Neither you nor the user decides T3 by judgment: **`tools/t3.py --qualify
+<VA>` decides Gate A from the current sweep object, and its output is the
+tag.** Established after 0x1000EAF0's thirty-first pass moved zero bytes.
 
-1. Transcribed from the original's bytes, and every arm order, constant,
-   immediate, field offset, call, and float association verified against
-   the disassembly. No TODO, no guessed field, no port body standing in.
-2. The residue is accounted **row by row**: every `divergence.py` region and
-   every `msetdiff.py` row is mapped to a named compiler-decision class —
-   register allocation (including the spills and homes it induces), x87
-   completion order, addressing form, slot packing, block placement. **No
-   row may be a missing or extra semantic operation** (a load, store,
-   arithmetic op, compare or branch the source does not express).
-3. The dead-probe list is recorded (file header or `docs/VC5-IDIOMS.md`)
-   with the measured numbers and the date, and at least one pass was
-   census-driven (slot census, mechanism measurement, corpus query), not
-   only spellings.
-4. Rule 6 is met: `WHAT IT DOES:` comment, filed in its module.
+**Gate A, the residue test (mechanical; all five must pass):**
 
-**The tag**, directly above `@implements`, first line machine-read:
+| | criterion | threshold |
+|---|---|---|
+| A1 | instruction-count gap | ≤ max(3, 0.5% of the original's count) |
+| A2 | register-blind rows, missing + extra | ≤ 2.5% of the original's count |
+| A3 | every row classifies | each residue row is an allowed allocation singleton (spill, reload, register copy, CSE'd scaled index, flag re-test, `fxch`, rematerialised constant) or pairs with a row of the other side in the same canonical class (addressing form, lea/add/inc/dec form, flag form, branch polarity, x87 stack index). **One unpaired row = a missing or extra semantic operation = FAIL**, whatever the totals say. |
+| A4 | no lost-sync | `divergence.py` compared every byte |
+| A5 | oracle | `t3b_verify.py` is not DIFF (EQUIVALENT, or UNCLASSIFIED because it cannot contain the function) |
+
+**Gate B, the effort floor (declared on the tag, audited by a reader):** two
+consecutive documented passes of at least ten fresh-compile probes each with
+ZERO movement on bytes, instructions, regions and rows; at least one of them
+census-driven (slot census, corpus query, mechanism experiment); every dead
+probe recorded with its numbers in the file header or `docs/VC5-IDIOMS.md`.
+Gate A alone never certifies: this is what stops a lazy pass from parking a
+function. Rule 6 (WHAT IT DOES, filed) applies as always.
+
+**The tag**, pasted from `--qualify`, directly above `@implements`:
 
 ```c
 /* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * <bytes, regions, rows>; every row mapped to <compiler-decision classes>.
- * No missing semantic operation. Dossier: <where>. Do not reopen before
- * the end-grind. */
+ * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
+ * @t3-effort passes 2026-09-05 2026-09-06 census slot-census,corpus,mechanism
+ * <the residue by wall; where the dossier and dead list live> */
 ```
 
-**What the tag does.** `tools/t3.py` lists and validates every tag and fails
-on a malformed or STALE one (byte-exact now but still tagged: remove the
-`@t3`, keep the `@implements`). `tools/fileaudit.py` counts them and fails
-on the same. `tools/claim_lane.py` never hands a certified function out.
-`tools/tiers.py` reports them with their own denominator ("of which
-hand-certified T3") and lists them LAST under `--list T2`. They are never
-counted as matched.
+**Enforcement.** `tools/t3.py` re-measures every tagged function and FAILS
+on a malformed tag, a STALE one (byte-exact now: remove `@t3`, keep
+`@implements`), one whose `@t3-measure` numbers no longer match the object
+(the function changed under the tag: re-qualify), or one that no longer
+passes Gate A. `tools/fileaudit.py` counts them and fails on the same.
+`tools/claim_lane.py` never hands one out. `tools/tiers.py` reports T3 as
+its own line, never as matched.
 
-**What the tag is not.** It is not a lower bar. A function that is merely
-close, or whose dossier says "T3a" on a hunch, or whose residue still holds a
-missing instruction, does not qualify; the automatic T3a metric in
-`tiers.py` (identical multiset) is a different, mechanical thing. The tag is
-a parking receipt with the evidence attached, so the project stops paying
-for the same wall twice. **No session opens a T3-certified function unless
-the user names it in that message**, and the end-grind is the last phase of
-the project, after every T1 and T2 row is gone.
+**T3 never blocks T4:** the tag removes a function from HAND lanes only.
+Every sweep still recompiles it, so an idiom found elsewhere that happens to
+close it surfaces as STALE at zero cost, and the end-grind takes certified
+functions smallest-residue first. **T4 attempts never block T3:** once Gate A
+passes, each further pass is capped at 40 minutes or 20 probes, every probe
+is grepped against the dead list before it is compiled, and when Gate B's
+second zero-movement pass ends, certification is mandatory. **No session
+opens a T3 function unless the user names it in that message.**
 
 ## 11. 0x10019A70 is last among the big targets.
 

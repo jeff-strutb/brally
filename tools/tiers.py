@@ -12,19 +12,16 @@
     T2  in progress     real code is in the project, but it still differs from
                         the original in real ways (missing/extra/changed
                         instructions) -- the logic is not yet a match.
-    T3  codegen-only    transcribed C that compiled to the SAME instructions as
-        difference      the original -- identical register-blind multiset, same
-                        count -- differing only in register allocation and
-                        scheduling. The strongest STATIC evidence of behavioural
-                        equivalence, but NOT execution-verified.
+    T3  certified       complete and verified, not byte-exact: decided by
+                        tools/t3.py --qualify (CLAUDE.md rule 12), never by hand.
+                        The old automatic T3a/T3b sub-tiers are retired.
     T4  byte-exact      diffs clean against the original bytes.
 
-T3 is NOT a proof of "same inputs -> same outputs": that needs an execution
-oracle (a differential harness running both versions), which does not exist for
-arbitrary functions here. T3 is the static proxy -- an identical instruction
-multiset modulo register naming -- and the threshold is printed so it is
-auditable. Read it as "done but for register colouring", not "behaviourally
-certified".
+T3 is decided by tools/t3.py --qualify (five mechanical gates on the sweep
+object) plus a declared effort floor (CLAUDE.md rule 12).  It is not a proof of
+"same inputs -> same outputs": the differential oracle (tools/t3b_verify.py)
+feeds Gate A5 where it can contain the function.  Nothing in this tool grades a
+function T3 on its own; a diff row is T2 until it carries a validated @t3 tag.
 
     python3 tools/tiers.py            # the four counts + bytes
     python3 tools/tiers.py --list T1  # dump the VAs in a tier
@@ -39,14 +36,9 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'fnmatch'))
 from triage import measure, _objs   # reuse the register-blind metric
 
-# --- T3 threshold (auditable) ---------------------------------------------
-# "codegen-only": the register-blind instruction multiset is IDENTICAL to the
-# original (reg gap 0) and the instruction count matches. What is left can only
-# be register allocation + scheduling. This is deliberately strict -- a single
-# extra/absent instruction shape means real code differs, so it is T2.
-REG_GAP_MAX = 0        # register-blind extra+missing instruction shapes
-REG_FRAC_MAX = 0.0
-COMPLETE_LO, COMPLETE_HI = 100, 100  # instruction count must equal the original
+# The register-blind gap (triage.measure) is still printed per row under
+# --list T2 because reggap-0 rows are the cheapest to run through
+# tools/t3.py --qualify.  It is NOT a tier and grades nothing here.
 
 
 def _glide_map():
@@ -88,14 +80,14 @@ def main():
             if va in target and va not in seen:
                 cpp_done.add(va)
 
-    # Hand-certified T3 (CLAUDE.md rule 12): complete, verified, residue
-    # accounted as compiler decisions, NOT byte-exact.  A separate set from the
-    # automatic T3a metric below (which most of them fail: a spill the
-    # original's allocator induced is an extra instruction shape).  They are
-    # reported with their own denominator and listed LAST under --list T2.
+    # T3 is decided by tools/t3.py --qualify (CLAUDE.md rule 12): certified
+    # complete, not byte-exact.  The old automatic "T3a" split (identical
+    # register-blind multiset) is RETIRED as a tier -- it is now Gate A3's
+    # input.  A diff row is T2 unless it carries a validated @t3 tag.
     try:
         from t3 import certified
-        cert = set(va for va in certified() if not va.startswith('?'))
+        cert = set(va for va, i in certified().items()
+                   if not va.startswith('?') and i['ok'])
     except Exception:
         cert = set()
 
@@ -103,11 +95,9 @@ def main():
     t3, t2 = [], []
     for r in diff:
         m = measure(r['va'].lower(), r['name'], objs)
-        complete = m and m['oi'] and COMPLETE_LO <= 100.0 * m['ri'] / m['oi'] <= COMPLETE_HI
-        near = m and (m['reg'] <= REG_GAP_MAX or (m['oi'] and m['reg'] <= REG_FRAC_MAX * m['oi']))
-        (t3 if (complete and near) else t2).append((r, m))
+        (t3 if r['va'].lower() in cert else t2).append((r, m))
 
-    # manifest of the T3 (codegen-only) VAs so the treemap can recolour them
+    # manifest of the T3 VAs so the treemap can recolour them
     man = os.path.join(ROOT, 'build', 'match', 'tier3.csv')
     with open(man, 'w', newline='') as f:
         w = csv.writer(f); w.writerow(['va', 'bytes'])
@@ -158,26 +148,25 @@ def main():
             return 0
         if pick == 'T3':
             for r, m in sorted(t3, key=lambda x: int(x[0]['orig_size'])):
-                print(r['va'], r['orig_size'], r['name'], 'reggap', m['reg'])
+                print(r['va'], r['orig_size'], r['name'],
+                      ('reggap %d' % m['reg']) if m else 'unmeasured', 'T3 (parked, rule 12)')
         elif pick == 'T2':
-            for r, m in sorted(t2, key=lambda x: (x[0]['va'].lower() in cert,
+            # reggap 0 = "same instructions, registers differ": the cheapest
+            # T2 rows and the first to run through tools/t3.py --qualify.
+            for r, m in sorted(t2, key=lambda x: ((x[1]['reg'] if x[1] else 10**9),
                                                   -int(x[0]['orig_size']))):
                 print(r['va'], r['orig_size'], r['name'],
-                      ('reggap %d' % m['reg']) if m else 'unmeasured',
-                      'T3-CERTIFIED (parked, rule 12)' if r['va'].lower() in cert else '')
+                      ('reggap %d' % m['reg']) if m else 'unmeasured')
         return 0
 
+    n_reg0 = sum(1 for r, m in t2 if m and m['reg'] == 0 and m['oi'] == m['ri'])
     print("=" * 60)
     print(f"  BRGlide.dll hand-C target: {n_target} functions"
           f"   ({sum(target.values())} B of .text)")
     print("  " + "-" * 56)
     print(f"  T1  not started (C draft only)  {n_t1:5d} fns   {b_t1:8d} B")
-    print(f"  T2  in progress (real diffs)    {len(t2):5d} fns   {b_t2:8d} B")
-    print(f"  T3a codegen-only (regs differ)  {len(t3):5d} fns   {b_t3:8d} B")
-    n_cert = sum(1 for r, _ in t2 + t3 if r['va'].lower() in cert)
-    b_cert = sum(int(r['orig_size']) for r, _ in t2 + t3 if r['va'].lower() in cert)
-    print(f"      of which hand-certified T3  {n_cert:5d} fns   {b_cert:8d} B"
-          f"   (@t3 tag, rule 12; inside T2/T3a above)")
+    print(f"  T2  in progress (not done)      {len(t2):5d} fns   {b_t2:8d} B")
+    print(f"  T3  certified, not byte-exact   {len(t3):5d} fns   {b_t3:8d} B   (@t3 tag, rule 12)")
     print(f"  T4  done (byte-exact)           {len(match) + len(cpp_done):5d} fns"
           f"   {b_t4:8d} B")
     if cpp_done:
@@ -185,17 +174,15 @@ def main():
               f"   {sum(target[va] for va in cpp_done):8d} B"
               f"   (not carried in report.csv)")
     print("  " + "-" * 56)
-    print(f"      in the project (T2+T3a+T4)  {n_tr:5d} fns")
-    print(f"      done or done-bar-registers  {len(match)+len(cpp_done)+len(t3):5d} fns"
-          f"   (T3a+T4)")
+    print(f"      in the project (T2+T3+T4)   {n_tr:5d} fns")
+    print(f"      T2 rows with reggap 0        {n_reg0:5d} fns   (identical multiset;"
+          f" candidates for --qualify, NOT a tier)")
     print("=" * 60)
     print("  Every T1 function already has a C draft off to the side; T1 = that")
-    print("  draft is not yet real project code. T3b (works but built")
-    print("  differently) is not auto-split -- it still counts inside T2.")
-    print(f"  T3a rule: size {COMPLETE_LO}-{COMPLETE_HI}% complete AND register-"
-          f"blind gap <= {REG_GAP_MAX} or {REG_FRAC_MAX*100:.0f}% of insns.")
-    print("  fenced (linker/EH-reproduced) sits outside this table; see")
-    print("  config/fenced.csv / tools/coverage.py.")
+    print("  draft is not yet real project code.  T3 is decided ONLY by")
+    print("  tools/t3.py --qualify (Gate A) plus the declared effort floor")
+    print("  (Gate B); T3a/T3b are retired.  fenced (linker/EH-reproduced)")
+    print("  sits outside this table; see config/fenced.csv / tools/coverage.py.")
 
 
 if __name__ == '__main__':

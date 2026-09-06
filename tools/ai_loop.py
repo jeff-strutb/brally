@@ -64,7 +64,7 @@ def regnorm_gap(out):
 
     This is the number the whole project ranks by: how many instruction SHAPES
     differ after normalizing away register choice. gap 0 with diffs > 0 = a pure
-    register-allocation wall (T3a) -- no C spelling flips it, so don't grind it.
+    register-allocation wall (allocation-only residue) -- no C spelling flips it, so don't grind it.
     """
     m = re.search(r'REGNORM (\d+)\+(\d+)', out)
     return (int(m.group(1)), int(m.group(2))) if m else None
@@ -72,7 +72,7 @@ def regnorm_gap(out):
 
 def fn_score(va, detail=False):
     # always compute --detail: the register-blind gap is how we rank progress
-    # and detect T3a walls; the raw DIFFS count alone is register noise.
+    # and detect allocation-only walls; the raw DIFFS count alone is register noise.
     args = [PY, FN, va, '--detail', 'regnorm', '40']
     out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True).stdout
     if 'COMPILE FAILED' in out:
@@ -228,11 +228,11 @@ def work_function(a, va, name, rel, path, base, size):
     best_gap = base.get('gapsum')
     print(f'=== {va} {name} [{rel}]  {size} B  baseline DIFFS={base["diffs"]} '
           f'gap={best_gap} ===')
-    # T3a screen: gap already 0 but not byte-exact => pure register-allocation
+    # allocation-only screen: gap already 0 but not byte-exact => pure register-allocation
     # wall. The project has proven (permuter 0/95, refine 0/258) no C spelling
     # flips these. Don't spend a single iteration; park it.
     if best_gap == 0:
-        print(f'  gap=0 (T3a register-allocation wall) -- no source change wins; skip\n')
+        print(f'  gap=0 (allocation-only wall) -- no source change wins; skip\n')
         return False
     got = False
     history = None
@@ -274,7 +274,7 @@ def work_function(a, va, name, rel, path, base, size):
             if gap == 0:
                 # structure now matches; only register choice remains. Nothing
                 # more the model can do -- stop and revert to clean.
-                print(f'  iter{it}: gap hit 0 (structure matched; residual is T3a). Parking.')
+                print(f'  iter{it}: gap hit 0 (structure matched; residual is allocation-only; run tools/t3.py --qualify). Parking.')
                 break
         else:
             print(f'  iter{it}: gap {gap} >= {best_gap} (DIFFS={sc["diffs"]}), revert')

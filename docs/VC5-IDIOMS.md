@@ -4,6 +4,12 @@ Every entry here was proven by a byte diff against BRGlide.dll, not inferred.
 Add to this file whenever a new construct→codegen mapping is proven; this is
 how per-function cost drops over time. Each idiom is solved ONCE.
 
+Vocabulary note (2026-09-06): the tiers are T1/T2/T3/T4 only (CLAUDE.md
+rule 12; `tools/t3.py --qualify`). Where an older entry below says "T3a" it
+means "the residue is register allocation / scheduling"; "T3b" means "the
+differential oracle said EQUIVALENT". Both are inputs to T3 certification
+now, not tiers of their own.
+
 ## The method: infer the SOURCE from the bytes, never permute spellings
 
 Trial-and-error spelling permutation is the slowest possible approach. When a

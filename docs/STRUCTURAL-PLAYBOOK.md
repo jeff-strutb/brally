@@ -6,7 +6,7 @@ approach or guesses at specs each session.
 
 **What this covers:** functions with a real STRUCTURAL gap — wrong or missing
 code relative to the original. **What it does not cover:** pure
-register-allocation/scheduling walls (T3a). Those are measured, then PARKED as
+register-allocation/scheduling walls. Those are measured, then CERTIFIED T3 (tools/t3.py --qualify) and parked as
 honest residue — the project has proven (permuter 0/95, refine batch 0/258,
 verdict in commit 5a4a338) that no C spelling flips them. `./grind.sh` runs the
 mutation loops as a free background lottery ticket, but it is NOT a lane and
@@ -18,22 +18,20 @@ closes nothing you can plan on.
          project code
     T2   in progress — real in-tree code, but logic still differs (or is
          unconfirmed)
-    T3b  works, built differently — behaviorally equivalent (proven by the
-         differential oracle), but compiles to different instructions
-    T3a  works, near-identical — same instructions, only register choices
-         differ (register-blind gap 0)
+    T3   certified — complete and verified, not byte-exact. Decided ONLY by
+         `tools/t3.py --qualify <VA>` (Gate A: insn gap, register-blind rows,
+         every residue row pairs as a compiler decision, no lost-sync, oracle
+         not DIFF) plus the declared effort floor (Gate B: two zero-movement
+         passes, one census-driven, dead list recorded). Tagged `@t3` with
+         the tool's numbers; parked until the end-grind; never counted as
+         matched; claim_lane never hands one out. (T3a/T3b were retired
+         2026-09-06: "same instructions, registers differ" and "oracle
+         EQUIVALENT" are inputs to the gates, not tiers.)
     T4   done — byte-exact
 
-    T3   CERTIFIED — a hand-certified grade (CLAUDE.md rule 12): structure
-         fully verified, residue accounted row by row as compiler decisions
-         only, dead list recorded, tagged `@t3 <VA> <date>` above
-         @implements. Parked until the end-grind; tools/t3.py validates,
-         claim_lane never hands one out. Not a lower bar than T3a: it needs
-         the evidence written down, and it is never counted as matched.
-
     Your job moves functions UP this ladder: T1→T2 (transcribe into the tree),
-    T2→T3b (make it behave right), T3b→T3a (reshape to the original's
-    instructions), T3a→T4 (usually falls out; else park).
+    T2→T3 (make it behave right, reshape to the original's
+    instructions, certify with tools/t3.py), T3→T4 (usually falls out; else the end-grind).
 
 Hard rules (from CLAUDE.md — do not violate):
 1. Byte-exact against the original is the ONLY definition of done. Never
@@ -81,10 +79,9 @@ fixed). Win the prologue/frame first; the 40-min timebox applies per region,
 not per function. BUT the three giants carry history you MUST read before
 touching them, or you will re-run probes already proven dead:
 
-- **0x1000EAF0** (9,354 B, ~18 regions left): read the file header of
-  `src/core/drawing/br_scenedl.c` and its entries in `docs/VC5-IDIOMS.md`
-  first — 60+ failed probe variants are mapped there. `tools/divergence.py`
-  is its comparator.
+- **0x1000EAF0** (9,354 B): **T3-certified 2026-09-06, do not open it**
+  unless the user names it (rule 12). 31 passes and ~130 dead probes live in
+  the header of `src/core/drawing/br_scenedl.c` and `docs/VC5-IDIOMS.md`.
 - **0x100250D0 BrTex3dExpand** (8,480 B): size wall solved; shape residue
   only. Read its idiom entries before probing. ‼ Read it at `--key 10`: it has
   twelve near-identical channel arms and key 6 resyncs on the wrong copy.
@@ -135,7 +132,7 @@ never re-handed.
 
     # 3aa. When a schedule or an allocation is one notch off and every
     #      expression form in the dossier is dead, sweep the DECLARATION ORDER
-    #      before writing T3a. It is a real VC5 tie-break in two mechanisms:
+    #      before certifying T3. It is a real VC5 tie-break in two mechanisms:
     #      the symbol's absolute INDEX decides an x87 completion order between
     #      comparable float products read through pointer locals, and the
     #      LATER-declared of two named factors becomes the `imul` destination.
@@ -190,7 +187,7 @@ function before hand-filing.
 - `MISSING CODE (N% complete)` rows: the C is smaller than the original because
   the original inlined a helper the port factored out. Source-discovery work —
   consult the N64 twin (below) early.
-- Low struct% (`coloring wall - real`): T3a territory. Confirm with the T3b
+- Low struct% (`coloring wall - real`): T3 territory. Confirm with the
   oracle if reachable, record the residue note, PARK, move on. Do not grind.
 - **‼ Two screens before you take ANY target, both learned the hard way:**
   1. **Does the C++ workstream already own it?** `ls src/core/cpp/<VA>.cpp`
@@ -243,7 +240,7 @@ recomp lacks). Then:
 - **EXTRA/MISSING differ only in operand SOURCE** — e.g. `fld [R]`+`fmul
   [esp+S]` vs the reverse, identical op counts → SCHEDULING/ALLOCATION, not
   structural, even when `struct%` scored it high (stack vs pointer operands
-  normalise to different tokens). **STOP. This is T3a. Record it, park it.**
+  normalise to different tokens). **STOP. This is allocation residue. Run `tools/t3.py --qualify`; if Gate A passes and Gate B is met, certify T3 and park it.**
   Do not burn tokens permuting spellings — proven unreachable from source.
 - **A whole-function register rotation** (every eax↔esi etc.) → a SYMPTOM of
   one earlier source-shape fork, not a wall. Find the earliest divergence and
@@ -264,7 +261,7 @@ ORACLE for structure; useless for register allocation.
 ## Stop conditions (do not thrash)
 
 - Byte-exact → commit, file into module, pick the next.
-- Turns out to be T3a (scheduling/coloring) → verify with the oracle if
+- Turns out to be allocation/scheduling residue → run `tools/t3.py --qualify`; verify with the oracle if
   reachable, leave an honest residue note, park, pick the next.
 - Genuinely stuck on structure after a real attempt → leave an HONEST residue
   note (what diverges, what you ruled out) and move on. A near-miss is not a
