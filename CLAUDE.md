@@ -238,11 +238,20 @@ registers differ" and "oracle says equivalent" are now INPUTS to the T3
 gates below, not grades of their own. Where an older dossier says "T3a" read
 "allocation/scheduling residue"; "T3b" read "oracle EQUIVALENT".
 
-A T3 function is fully usable by the port, honestly not byte-exact, and
-**not re-litigated until every T1 and T2 row is gone** (the end-grind).
-Neither you nor the user decides T3 by judgment: **`tools/t3.py --qualify
-<VA>` decides Gate A from the current sweep object, and its output is the
-tag.** Established after 0x1000EAF0's thirty-first pass moved zero bytes.
+**A T3 function is functionally DONE: nothing missing, nothing not
+understood.** Every arm, constant, field offset, call and float expression
+is present and verified against the disassembly; it is fully usable by the
+port today. What it is not is byte-exact, and it is **not re-litigated
+until every T1 and T2 row is gone** (the end-grind). Neither you nor the
+user decides T3 by judgment: **`tools/t3.py --qualify <VA>` decides all
+three gates and its output is the tag.** Established after 0x1000EAF0's
+thirty-first pass moved zero bytes.
+
+**Gate 0, functionally complete (mechanical):** a `WHAT IT DOES:` comment
+within 40 lines above the tag, and no `TODO`, `FIXME`, `XXX`, `HACK`,
+`STUB`, `???`, "guess", "placeholder", "unknown" or `#if 0` anywhere in the
+function body. A port arm standing in for the original, a guessed field, a
+stubbed callee: T2, whatever Gate A says.
 
 **Gate A, the residue test (mechanical; all five must pass):**
 
@@ -254,20 +263,31 @@ tag.** Established after 0x1000EAF0's thirty-first pass moved zero bytes.
 | A4 | no lost-sync | `divergence.py` compared every byte |
 | A5 | oracle | `t3b_verify.py` is not DIFF (EQUIVALENT, or UNCLASSIFIED because it cannot contain the function) |
 
-**Gate B, the effort floor (declared on the tag, audited by a reader):** two
-consecutive documented passes of at least ten fresh-compile probes each with
-ZERO movement on bytes, instructions, regions and rows; at least one of them
-census-driven (slot census, corpus query, mechanism experiment); every dead
-probe recorded with its numbers in the file header or `docs/VC5-IDIOMS.md`.
-Gate A alone never certifies: this is what stops a lazy pass from parking a
-function. Rule 6 (WHAT IT DOES, filed) applies as always.
+**Gate B, sincere attempts at T4 (mechanical, from a LEDGER in the file):**
+crossing Gate A's thresholds is a precondition, never the trigger to stop.
+Every pass at byte-exactness writes one line in the file header with its
+end-of-pass numbers:
 
-**The tag**, pasted from `--qualify`, directly above `@implements`:
+```c
+ * @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
+```
+
+The tool counts a pass only if it made at least **10 fresh compiles** (a
+thinner one is recorded for honesty and ignored), and requires **at least 3
+counted passes, the last 3 counted records at identical numbers equal to the
+current measurement** (two consecutive passes that moved nothing), and at
+least one counted pass marked `census yes` (slot census, corpus query,
+mechanism experiment). Every dead probe is recorded with its numbers in the
+file header or `docs/VC5-IDIOMS.md`. A function that meets Gate A on its
+first pass still owes two more full passes at T4. Rule 6 applies as always.
+
+**The tag**, pasted from `--qualify` (it refuses to emit one until all
+three gates pass), directly above `@implements`:
 
 ```c
 /* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
- * @t3-effort passes 2026-09-05 2026-09-06 census slot-census,corpus,mechanism
+ * @t3-effort passes 5 zero-movement 30 31
  * <the residue by wall; where the dossier and dead list live> */
 ```
 
@@ -275,7 +295,7 @@ function. Rule 6 (WHAT IT DOES, filed) applies as always.
 on a malformed tag, a STALE one (byte-exact now: remove `@t3`, keep
 `@implements`), one whose `@t3-measure` numbers no longer match the object
 (the function changed under the tag: re-qualify), or one that no longer
-passes Gate A. `tools/fileaudit.py` counts them and fails on the same.
+passes Gate 0, A or B. `tools/fileaudit.py` counts them and fails on the same.
 `tools/claim_lane.py` never hands one out. `tools/tiers.py` reports T3 as
 its own line, never as matched.
 
@@ -284,9 +304,18 @@ Every sweep still recompiles it, so an idiom found elsewhere that happens to
 close it surfaces as STALE at zero cost, and the end-grind takes certified
 functions smallest-residue first. **T4 attempts never block T3:** once Gate A
 passes, each further pass is capped at 40 minutes or 20 probes, every probe
-is grepped against the dead list before it is compiled, and when Gate B's
-second zero-movement pass ends, certification is mandatory. **No session
-opens a T3 function unless the user names it in that message.**
+is grepped against the dead list before it is compiled, and each pass ends
+by writing its `@t4-pass` line; when the ledger meets Gate B, certification
+is mandatory, not optional. **No session opens a T3 function unless the
+user names it in that message.**
+
+## 11b. 0x1000EAF0 is one zero-movement pass short of T3.
+
+Gates 0 and A pass. Its ledger holds one counted zero-movement pass (31);
+Gate B needs two in a row. The next session that touches it runs ONE capped
+pass (≥ 10 fresh compiles, every probe grepped against the dead list first),
+appends the `@t4-pass` line, and if nothing moved pastes the tag the tool
+emits. Then it is parked.
 
 ## 11. 0x10019A70 is last among the big targets.
 

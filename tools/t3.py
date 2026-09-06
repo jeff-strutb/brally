@@ -2,7 +2,7 @@
 """T3-certified functions: complete and verified, not yet byte-exact -- and the
 OBJECTIVE gates that decide it (CLAUDE.md rule 12).
 
-    .venv/bin/python tools/t3.py --qualify 0x1000EAF0 [--passes D1 D2 --census "..."]
+    .venv/bin/python tools/t3.py --qualify 0x1000EAF0   # gates 0, A and B; emits the tag on PASS
     .venv/bin/python tools/t3.py                # list + validate every @t3 tag; exit 1 on a bad one
     .venv/bin/python tools/t3.py --vas          # the certified VAs, one per line
 
@@ -10,6 +10,13 @@ There are two grades of done and nothing between them: T4 (bytes diff clean)
 and T3 (this).  The old T3a/T3b sub-tiers are retired; "T3a" in older dossier
 text means "the residue is allocation/scheduling", "T3b" means "the oracle
 said EQUIVALENT" -- both are now INPUTS to these gates, not tiers.
+
+GATE 0 -- functionally complete, nothing missing (checked by this tool):
+  a WHAT IT DOES: comment within the 40 lines above the tag; no TODO / FIXME /
+  XXX / HACK / STUB / ??? / "guess" / "placeholder" / "unknown" marker anywhere
+  in the function; no `#if 0` inside it.  A T3 function is one whose logic is
+  fully understood and fully present -- only the compiler's choices differ.
+  Anything less is T2, whatever Gate A says.
 
 GATE A -- the residue test, from ONE fresh object (the last sweep's):
   A1 instruction-count gap        <= max(3, 0.5% of the original's count)
@@ -25,17 +32,26 @@ GATE A -- the residue test, from ONE fresh object (the last sweep's):
   A5 oracle                       t3b_verify.py is not DIFF (EQUIVALENT, or
                                   UNCLASSIFIED because it cannot contain the
                                   function -- most of them)
-GATE B -- the effort floor, declared on the tag and audited by a reader:
-  two consecutive documented passes, >= 10 fresh-compile probes each, ZERO
-  movement on bytes/insns/regions/rows, at least one census-driven; every
-  dead probe recorded with its numbers.  `--passes D1 D2 --census WORDS`
-  writes it; the validator requires two dates and a census word.
+GATE B -- sincere attempts at T4, read from a LEDGER in the same file, never
+  from the tag.  Each pass at byte-exactness writes one line (file header):
+
+      @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
+
+  A pass under 10 fresh compiles is not a sincere attempt and is NOT COUNTED
+  (recorded for honesty, ignored by the gate).  The tool requires: at least 3
+  counted passes; the LAST THREE counted records at identical bytes/insns/
+  regions/rows equal to the current measurement -- i.e. the two most recent
+  passes each produced zero movement; and at least one counted pass marked
+  `census yes` (slot census, corpus query or mechanism experiment).  Gate A
+  passing is a PRECONDITION for certification, never the trigger to stop: a
+  function that crosses the thresholds on its first pass still owes two more
+  full passes at T4.
 
 THE TAG, emitted by --qualify with the measured numbers (never typed):
 
     /* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
      * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
-     * @t3-effort passes 2026-09-05 2026-09-06 census slot-census,corpus,mechanism
+     * @t3-effort passes 4 zero-movement 30 31
      * <prose: what the residue is, where the dossier lives> */
     /* @implements ... */
 
@@ -54,7 +70,10 @@ REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 PY = os.path.join(ROOT, '.venv', 'bin', 'python')
 TAG = re.compile(r'@t3\s+(0x[0-9A-Fa-f]{8})\s+(\d{4}-\d{2}-\d{2})\b')
 MEAS = re.compile(r'@t3-measure\s+bytes\s+(\d+)/(\d+)\s+insns\s+(\d+)/(\d+)\s+rows\s+(\d+)\+(\d+)\s+regions\s+(\d+)\s+oracle\s+(\w+)')
-EFF = re.compile(r'@t3-effort\s+passes\s+((?:\d{4}-\d{2}-\d{2}\s*)+)census\s+(\S+)')
+EFF = re.compile(r'@t3-effort\s+passes\s+(\d+)\s+zero-movement\s+(\d+)\s+(\d+)')
+LEDGER = re.compile(r'@t4-pass\s+(0x[0-9A-Fa-f]{8})\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+probes\s+(\d+)\s+bytes\s+(\d+)\s+insns\s+(\d+)\s+regions\s+(\d+)\s+rows\s+(\d+)\s+census\s+(yes|no)')
+MARKERS = re.compile(r'\b(TODO|FIXME|XXX|HACK|STUB)\b|\?\?\?|\bguess\b|\bplaceholder\b|\bunknown\b|#\s*if\s+0\b', re.I)
+MIN_PASSES, MIN_PROBES = 3, 10
 IMPL = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\b')
 
 GAP_ABS, GAP_FRAC, ROWS_FRAC = 3, 0.005, 0.025
@@ -97,8 +116,8 @@ def certified():
                     why = 'no @implements %s in this file' % va
                 elif not mm:
                     why = 'missing/malformed @t3-measure line (run --qualify and paste its tag)'
-                elif not me or len(me.group(1).split()) < 2:
-                    why = 'missing @t3-effort line with two pass dates and a census word'
+                elif not me:
+                    why = 'missing @t3-effort line (run --qualify and paste its tag)'
                 out[va] = dict(date=date, file=rel, line=ln, ok=not why, why=why,
                                measure=(tuple(int(x) for x in mm.groups()[:7]) + (mm.group(8),)) if mm else None,
                                effort=me.groups() if me else None)
@@ -202,6 +221,62 @@ def classify(miss, extra):
     return um, ue, sm + se
 
 
+def ledger(va, path):
+    """The @t4-pass records for va in `path`, oldest first by pass number."""
+    text = open(path, encoding='utf-8', errors='replace').read()
+    rows = []
+    for m in LEDGER.finditer(text):
+        if m.group(1).lower() != va.lower():
+            continue
+        rows.append(dict(n=int(m.group(2)), date=m.group(3), probes=int(m.group(4)),
+                         bytes=int(m.group(5)), insns=int(m.group(6)),
+                         regions=int(m.group(7)), rows=int(m.group(8)), census=m.group(9) == 'yes'))
+    rows.sort(key=lambda r: r['n'])
+    return rows
+
+
+def gate_b(va, path, meas):
+    """(passed, detail, effort-tuple) from the ledger against the measurement."""
+    L = ledger(va, path)
+    C = [r for r in L if r['probes'] >= MIN_PROBES]          # counted passes
+    thin = [r['n'] for r in L if r['probes'] < MIN_PROBES]
+    probs = []
+    if len(C) < MIN_PASSES:
+        probs.append('%d/%d counted passes (>= %d probes each)%s'
+                     % (len(C), MIN_PASSES, MIN_PROBES,
+                        ('; passes %s too thin to count' % thin) if thin else ''))
+    if not any(r['census'] for r in C):
+        probs.append('no counted census-driven pass')
+    key = lambda r: (r['bytes'], r['insns'], r['regions'], r['rows'])
+    now = (meas['rbytes'], meas['ri'], meas['regions'], meas['nmiss'] + meas['nextra'])
+    last3 = C[-3:]
+    still = [r for r in last3 if key(r) == now]
+    if len(last3) < 3 or len(still) < 3:
+        probs.append('need the last 3 counted passes at the current numbers %s '
+                     '(two zero-movement passes in a row); %d of the last %d are'
+                     % (now, len(still), len(last3)))
+    eff = (len(C), C[-2]['n'] if len(C) >= 2 else 0, C[-1]['n'] if C else 0)
+    return (not probs), ('; '.join(probs) if probs else
+                         '%d counted passes, zero-movement passes %d and %d' % eff), eff
+
+
+def completeness(va, path):
+    """Gate 0: WHAT IT DOES present, no unfinished markers in the function body."""
+    lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
+    tag = next((i for i, l in enumerate(lines) if IMPL.search(l) and IMPL.search(l).group(1).lower() == va.lower()), None)
+    if tag is None:
+        return False, 'no @implements'
+    if not any('WHAT IT DOES:' in l for l in lines[max(0, tag - 40):tag + 1]):
+        return False, 'no WHAT IT DOES: within 40 lines above the tag'
+    # body: from the tag to the first line that is exactly '}'
+    end = next((i for i in range(tag, len(lines)) if lines[i] == '}'), len(lines) - 1)
+    hits = [(i + 1, MARKERS.search(lines[i]).group(0)) for i in range(tag, end + 1)
+            if MARKERS.search(lines[i]) and '@t3' not in lines[i]]
+    if hits:
+        return False, 'unfinished markers: ' + ', '.join('%s@%d' % (w, ln) for ln, w in hits[:6])
+    return True, 'WHAT IT DOES present, no unfinished markers in %d lines' % (end - tag + 1)
+
+
 def measure(va):
     """All Gate-A numbers for one VA from the current sweep object."""
     from msetdiff import load
@@ -267,27 +342,19 @@ def gates(m):
     return g
 
 
-def tag_text(m, date, passes, census):
+def tag_text(m, date, eff):
     return ('/* @t3 %s %s -- CERTIFIED COMPLETE, NOT BYTE-EXACT.\n'
             ' * @t3-measure bytes %d/%d insns %d/%d rows %d+%d regions %d oracle %s\n'
-            ' * @t3-effort passes %s census %s\n'
+            ' * @t3-effort passes %d zero-movement %d %d\n'
             ' * <what the residue is, by wall; where the dossier and dead list live;\n'
             ' *  "Do not reopen before the end-grind (CLAUDE.md rule 12)."> */'
             % ('0x%08X' % int(m['va'], 16), date, m['rbytes'], m['obytes'], m['ri'], m['oi'],
-               m['nmiss'], m['nextra'], m['regions'], m['oracle'],
-               ' '.join(passes) if passes else '<D1> <D2>', census or '<census-words>'))
+               m['nmiss'], m['nextra'], m['regions'], m['oracle'], eff[0], eff[1], eff[2]))
 
 
 def qualify(argv):
     import datetime
     va = argv[0]
-    passes, census = [], ''
-    if '--passes' in argv:
-        k = argv.index('--passes'); j = k + 1
-        while j < len(argv) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', argv[j]):
-            passes.append(argv[j]); j += 1
-    if '--census' in argv:
-        census = argv[argv.index('--census') + 1]
     m, why = measure(va)
     if not m:
         print('CANNOT MEASURE: ' + why); return 2
@@ -295,6 +362,10 @@ def qualify(argv):
     if m['status'] == 'match':
         print('byte-exact already: T4. No tag.'); return 0
     ok = True
+    path = os.path.join(ROOT, m['file'])
+    c_ok, c_det = completeness(va, path)
+    ok &= c_ok
+    print('  %-14s %s  %s' % ('0  complete', 'PASS' if c_ok else 'FAIL', c_det))
     for name, passed, detail in gates(m):
         ok &= passed
         print('  %-14s %s  %s' % (name, 'PASS' if passed else 'FAIL', detail))
@@ -303,12 +374,17 @@ def qualify(argv):
         for row, n in m['ue'].most_common(): print('     unpaired EXTRA   %2d  %s' % (n, row))
     print('  singletons     %s' % ', '.join('%s x%d' % (r, n) for r, n in m['singles'].most_common()))
     print('  masked regions %d   bytes %d/%d' % (m['regions'], m['rbytes'], m['obytes']))
-    print('GATE A: %s' % ('PASS' if ok else 'FAIL -- not certifiable; the unpaired rows are real code'))
-    if ok:
-        print('GATE B is yours to assert on the @t3-effort line (two zero-movement passes, a census).')
+    print('GATE 0+A: %s' % ('PASS' if ok else 'FAIL -- not certifiable'))
+    b_ok, b_det, eff = gate_b(va, path, m)
+    print('GATE B (ledger @t4-pass in %s): %s  %s' % (os.path.basename(path), 'PASS' if b_ok else 'FAIL', b_det))
+    if ok and b_ok:
         print('Paste directly above the @implements line:\n')
-        print(tag_text(m, datetime.date.today().isoformat(), passes, census))
-    return 0 if ok else 1
+        print(tag_text(m, datetime.date.today().isoformat(), eff))
+        return 0
+    if ok and not b_ok:
+        print('Gate A is a precondition, not the trigger to stop: record each pass at T4 as an')
+        print('@t4-pass line in the file header and come back when the ledger meets Gate B.')
+    return 1
 
 
 def main(argv):
@@ -342,6 +418,15 @@ def main(argv):
                 g = gates(m)
                 if not all(p for _, p, _ in g):
                     flag = 'FAILS GATE A NOW: ' + ', '.join(n for n, p, _ in g if not p); bad += 1
+                path = os.path.join(ROOT, info['file'])
+                c_ok, c_det = completeness(va, path)
+                if not c_ok:
+                    flag = 'FAILS GATE 0: ' + c_det; bad += 1
+                b_ok, b_det, eff = gate_b(va, path, m)
+                if not b_ok:
+                    flag = 'FAILS GATE B: ' + b_det; bad += 1
+                elif info['effort'] and tuple(int(x) for x in info['effort']) != eff:
+                    flag = 'STALE-EFFORT: tag says %s, ledger says %s -- re-run --qualify' % (info['effort'], eff); bad += 1
             else:
                 flag = 'unmeasured (%s)' % why
         print('%s  %s  %s:%d  %s' % (va, info['date'], info['file'], info['line'], flag))

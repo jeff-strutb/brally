@@ -1,3 +1,13 @@
+/* T4-ATTEMPT LEDGER for tools/t3.py (rule 12).  One line per pass at
+ * byte-exactness, END-OF-PASS numbers, probes = fresh compiles.  Passes
+ * under 10 probes are recorded for honesty and not counted.  Earlier
+ * passes (1-25) predate the ledger and are described below, not scored.
+ * @t4-pass 0x1000EAF0 26 2026-09-04 probes 48 bytes 9340 insns 2324 regions 18 rows 44 census no
+ * @t4-pass 0x1000EAF0 27 2026-09-04 probes 11 bytes 9345 insns 2325 regions 17 rows 43 census no
+ * @t4-pass 0x1000EAF0 28 2026-09-05 probes 3 bytes 9345 insns 2325 regions 17 rows 43 census no
+ * @t4-pass 0x1000EAF0 30 2026-09-05 probes 8 bytes 9345 insns 2325 regions 14 rows 43 census no
+ * @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
+ */
 /* ‼‼ THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
  * THE MECHANISM IS KNOWN; THE SOURCE CONSTRUCT IS NOT.  Baseline re-measured
  * 9,345/9,354 B, 2,325/2,328 insns, 14 masked / 24 raw, msetdiff 23+20.
@@ -1082,19 +1092,13 @@ extern BrTrailSeg DAT_10273690[];
 
 /* WHAT IT DOES: build the frame's scene display list -- global state
  * preamble, every scene object's matrix + DL, then the trail quads. */
-/* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
- * @t3-effort passes 2026-09-05 2026-09-06 census slot-census,corpus,mechanism
- * Gate A passed by tools/t3.py --qualify (2026-09-06): every residue row
- * pairs as a compiler decision -- register allocation and the spills it
- * induces (wall 4's pDst homes), x87 completion order (wall 1), scaled-
- * index addressing form (wall 4), the loop-entry join (wall 5), slot
- * packing (wall 6), drain block placement -- and no row is a missing or
- * extra semantic operation.  Every arm order, constant, field offset,
- * call and float association was verified against the disassembly over
- * passes 1-31.  Dossier: this file's header and docs/VC5-IDIOMS.md
- * (0x1000EAF0 entries, ~130 dead probes).  Do not reopen before the
- * end-grind (CLAUDE.md rule 12). */
+/* NOT YET T3 (CLAUDE.md rule 12).  Gates 0 and A pass (tools/t3.py
+ * --qualify, 2026-09-06: every residue row pairs as a compiler decision,
+ * no missing or extra semantic operation); Gate B does not -- the ledger
+ * at the top of this file has ONE zero-movement pass at the current
+ * numbers and needs two in a row.  One more full pass (>= 10 fresh
+ * compiles, every probe grepped against the dead list first) with zero
+ * movement certifies it; the tool emits the tag. */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
 void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 {

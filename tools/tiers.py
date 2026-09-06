@@ -17,8 +17,9 @@
                         The old automatic T3a/T3b sub-tiers are retired.
     T4  byte-exact      diffs clean against the original bytes.
 
-T3 is decided by tools/t3.py --qualify (five mechanical gates on the sweep
-object) plus a declared effort floor (CLAUDE.md rule 12).  It is not a proof of
+T3 is decided by tools/t3.py --qualify: Gate 0 (functionally complete), Gate A
+(five mechanical checks on the sweep object) and Gate B (a @t4-pass ledger in
+the file: >= 3 passes, the last two moving nothing) -- CLAUDE.md rule 12.  It is not a proof of
 "same inputs -> same outputs": the differential oracle (tools/t3b_verify.py)
 feeds Gate A5 where it can contain the function.  Nothing in this tool grades a
 function T3 on its own; a diff row is T2 until it carries a validated @t3 tag.
@@ -180,8 +181,8 @@ def main():
     print("=" * 60)
     print("  Every T1 function already has a C draft off to the side; T1 = that")
     print("  draft is not yet real project code.  T3 is decided ONLY by")
-    print("  tools/t3.py --qualify (Gate A) plus the declared effort floor")
-    print("  (Gate B); T3a/T3b are retired.  fenced (linker/EH-reproduced)")
+    print("  tools/t3.py --qualify (gates 0, A and the @t4-pass ledger);")
+    print("  T3a/T3b are retired.  fenced (linker/EH-reproduced)")
     print("  sits outside this table; see config/fenced.csv / tools/coverage.py.")
 
 

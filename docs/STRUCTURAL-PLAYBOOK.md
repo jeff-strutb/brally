@@ -18,12 +18,14 @@ closes nothing you can plan on.
          project code
     T2   in progress — real in-tree code, but logic still differs (or is
          unconfirmed)
-    T3   certified — complete and verified, not byte-exact. Decided ONLY by
-         `tools/t3.py --qualify <VA>` (Gate A: insn gap, register-blind rows,
-         every residue row pairs as a compiler decision, no lost-sync, oracle
-         not DIFF) plus the declared effort floor (Gate B: two zero-movement
-         passes, one census-driven, dead list recorded). Tagged `@t3` with
-         the tool's numbers; parked until the end-grind; never counted as
+    T3   certified — functionally DONE (nothing missing, nothing not
+         understood), not byte-exact. Decided ONLY by `tools/t3.py --qualify
+         <VA>`: Gate 0 (purpose comment, no TODO/stub/guess markers), Gate A
+         (insn gap, register-blind rows, every residue row pairs as a
+         compiler decision, no lost-sync, oracle not DIFF) and Gate B (a
+         `@t4-pass` ledger in the file: >= 3 passes of >= 10 compiles, the
+         last two moving nothing, one census-driven). Tagged `@t3` with the
+         tool's numbers; parked until the end-grind; never counted as
          matched; claim_lane never hands one out. (T3a/T3b were retired
          2026-09-06: "same instructions, registers differ" and "oracle
          EQUIVALENT" are inputs to the gates, not tiers.)
@@ -79,9 +81,10 @@ fixed). Win the prologue/frame first; the 40-min timebox applies per region,
 not per function. BUT the three giants carry history you MUST read before
 touching them, or you will re-run probes already proven dead:
 
-- **0x1000EAF0** (9,354 B): **T3-certified 2026-09-06, do not open it**
-  unless the user names it (rule 12). 31 passes and ~130 dead probes live in
-  the header of `src/core/drawing/br_scenedl.c` and `docs/VC5-IDIOMS.md`.
+- **0x1000EAF0** (9,354 B): gates 0 and A pass; **one zero-movement pass
+  short of T3** (rule 11b). 31 passes and ~130 dead probes live in the header
+  of `src/core/drawing/br_scenedl.c` and `docs/VC5-IDIOMS.md`; the next pass
+  is capped and ends by writing its `@t4-pass` line.
 - **0x100250D0 BrTex3dExpand** (8,480 B): size wall solved; shape residue
   only. Read its idiom entries before probing. ‼ Read it at `--key 10`: it has
   twelve near-identical channel arms and key 6 resyncs on the wrong copy.

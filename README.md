@@ -86,8 +86,8 @@ not byte-exact; **T4** is byte-exact.
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
 | T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 153 | 132,366 |
-| T2 | **In progress** — real code is in the project, but it is not done: logic still differs, or the last gap is not yet accounted for | 226 | 127,454 |
-| T3 | **Certified complete, not byte-exact** — every structural element verified against the disassembly and every remaining residue row proven to be a compiler decision (register allocation, x87 order, addressing form, slot layout), by `tools/t3.py --qualify`; parked until the end-grind | 1 | 9,354 |
+| T2 | **In progress** — real code is in the project, but it is not done: logic still differs, the last gap is not yet accounted for, or the attempts at byte-exactness are not yet logged | 227 | 136,808 |
+| T3 | **Certified complete, not byte-exact** — functionally done: every structural element verified against the disassembly, every remaining residue row proven to be a compiler decision, and at least three sincere passes at byte-exactness logged with the last two moving nothing; parked until the end-grind | 0 | 0 |
 | **T4** | **Done** — matches the original exactly, byte for byte | **946** | **103,760** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
@@ -96,15 +96,18 @@ assembly is only the reference each draft is checked against. "Not started"
 (T1) means that draft hasn't been turned into real project code yet, not that
 no C exists.
 
-**T3 is decided by a tool, never by judgment** (`CLAUDE.md` rule 12). Gate A
-is five mechanical checks on the sweep object: instruction-count gap within
-max(3, 0.5%); register-blind rows within 2.5%; every residue row either an
-allowed allocation artefact or paired with the other side in the same
-canonical class (one unpaired row fails); no lost-sync; the differential
-oracle not reporting a difference. Gate B is a declared effort floor: two
-consecutive zero-movement passes, one census-driven, the dead-probe list
-recorded. The tag carries the tool's numbers, the validator re-measures every
-tagged function and fails on a stale one, the lane tool never hands a T3
+**T3 is decided by a tool, never by judgment** (`CLAUDE.md` rule 12), and it
+means functionally DONE: nothing missing, nothing not understood. Gate 0
+checks completeness (a purpose comment, no TODO/stub/guess markers in the
+body). Gate A is five mechanical checks on the sweep object: instruction-count
+gap within max(3, 0.5%); register-blind rows within 2.5%; every residue row
+either an allowed allocation artefact or paired with the other side in the
+same canonical class (one unpaired row fails); no lost-sync; the differential
+oracle not reporting a difference. Gate B reads a per-pass ledger in the file:
+at least three passes of ten or more fresh compiles each, the last two moving
+nothing, one census-driven. Crossing Gate A is a precondition, never the
+trigger to stop. The tag carries the tool's numbers, the validator re-measures
+every tagged function and fails on a stale one, the lane tool never hands a T3
 function out, and T3 is never counted as matched. It is a parking receipt
 with the evidence attached, not a lower bar.
 
