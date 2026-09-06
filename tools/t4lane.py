@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Pick the next byte-exact targets from the tree -- the generic front end of
-docs/T4-LANE.md.  Nothing here is typed by hand; run it at session start.
+"""Pick the next byte-exact targets from the tree.  Nothing here is typed by
+hand; run it at session start.  The lane spec that consumes this output is
+handed to the session directly (specs in the repo go stale).
 
     .venv/bin/python tools/t4lane.py                # both pools, 20 primaries + alternates
     .venv/bin/python tools/t4lane.py --pool A       # register-only T2 rows, by translation unit
