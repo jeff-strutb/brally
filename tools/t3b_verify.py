@@ -2,7 +2,7 @@
 """t3b_verify.py -- differential equivalence oracle: does the rebuilt C behave
 like the original, regardless of instruction shape?
 
-This turns the T3b tier ("works, built differently") from a hand-label into a
+This makes behavioural equivalence a measured input to T3 certification (tools/t3.py --qualify) instead of a
 measured one.  It executes BOTH the original function's bytes and the
 recompiled bytes through the same x86+x87 interpreter (tools/x87emu.py) on
 identical random inputs, and compares the return value.  Same output across
@@ -22,7 +22,7 @@ functions need input scaffolding this v1 deliberately does not fake.
     python3 tools/t3b_verify.py --t2 --seeds 200      # more inputs per function
 
 Return-type (int in eax vs float in st0) is read from the function's C
-prototype in the tree.  Verdicts: EQUIVALENT (T3b or better), DIFF (a real
+prototype in the tree.  Verdicts: EQUIVALENT, DIFF (a real
 logic difference -- genuinely still T2), UNCLASSIFIED (out of this oracle's
 reach).  A byte-exact (T4) function is trivially EQUIVALENT and is a built-in
 sanity check.
@@ -290,11 +290,11 @@ def main():
                 eqv.append((va, name))
             elif verdict == 'DIFF':
                 diff.append((va, name, detail))
-        print('T3b (EQUIVALENT, works-but-different):', tally['EQUIVALENT'])
+        print('EQUIVALENT (oracle; an input to T3 qualification):', tally['EQUIVALENT'])
         print('still-T2 (DIFF, real logic gap):      ', tally['DIFF'])
         print('UNCLASSIFIED (out of oracle reach):   ', tally['UNCLASSIFIED'])
         if eqv:
-            print('\n-- newly-provable T3b --')
+            print('\n-- EQUIVALENT --')
             for va, name in eqv:
                 print('  %s %s' % (va, name))
         if diff:

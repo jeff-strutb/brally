@@ -18,7 +18,7 @@ for tie-breaks, and two different mechanisms were proven byte-for-byte on
     survived the divide-by-255 `imul` or needed a spill slot, 31 -> 28 regions.
 
 So when a schedule or an allocation is one notch off and every expression form
-in the dossier is dead, sweep this axis before writing T3a.  It is cheap: each
+in the dossier is dead, sweep this axis before certifying T3 (tools/t3.py --qualify).  It is cheap: each
 probe is one compile, ~6 s.
 
 `--mode end` moves each declaration to the end of its run, `front` to the
