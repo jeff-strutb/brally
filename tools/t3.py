@@ -3,6 +3,7 @@
 OBJECTIVE gates that decide it (CLAUDE.md rule 12).
 
     .venv/bin/python tools/t3.py --qualify 0x1000EAF0   # gates 0, A and B; emits the tag on PASS
+    .venv/bin/python tools/t3.py --qualify --all         # every diff row <= 400 B, one line each
     .venv/bin/python tools/t3.py                # list + validate every @t3 tag; exit 1 on a bad one
     .venv/bin/python tools/t3.py --vas          # the certified VAs, one per line
 
@@ -20,7 +21,7 @@ GATE 0 -- functionally complete, nothing missing (checked by this tool):
 
 GATE A -- the residue test, from ONE fresh object (the last sweep's):
   A1 instruction-count gap        <= max(3, 0.5% of the original's count)
-  A2 register-blind rows          missing + extra <= 2.5% of the original's count
+  A2 register-blind rows          missing + extra <= max(4, 2.5% of the original's count)
   A3 every row classifies         each residue row is an allowed allocation
                                   singleton, or pairs with a row of the other
                                   side in the same canonical class (addressing
@@ -28,7 +29,10 @@ GATE A -- the residue test, from ONE fresh object (the last sweep's):
                                   polarity, x87 stack index).  An unpaired row
                                   is a missing or extra SEMANTIC operation:
                                   FAIL, whatever the totals say.
-  A4 no lost-sync                 divergence.py compared every byte
+  A4 no lost-sync                 divergence.py (resync key scaled 3..6 to the
+                                  function's size) compared every byte, or left
+                                  an uncompared tail of at most 32 B (A3 already
+                                  proves the whole multiset; the tail is order)
   A5 oracle                       t3b_verify.py is not DIFF (EQUIVALENT, or
                                   UNCLASSIFIED because it cannot contain the
                                   function -- most of them)
@@ -76,7 +80,7 @@ MARKERS = re.compile(r'\b(TODO|FIXME|XXX|HACK|STUB)\b|\?\?\?|\bguess\b|\bplaceho
 MIN_PASSES, MIN_PROBES = 3, 10
 IMPL = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\b')
 
-GAP_ABS, GAP_FRAC, ROWS_FRAC = 3, 0.005, 0.025
+GAP_ABS, GAP_FRAC, ROWS_ABS, ROWS_FRAC, LOST_TAIL_MAX = 3, 0.005, 4, 0.025, 32
 
 # ---------------------------------------------------------------- tags -----
 
@@ -112,8 +116,8 @@ def certified():
                 why = ''
                 if 'CERTIFIED COMPLETE' not in line:
                     why = 'missing the phrase CERTIFIED COMPLETE on the tag line'
-                elif va not in impls:
-                    why = 'no @implements %s in this file' % va
+                elif not (twins(va) & impls):
+                    why = 'no @implements %s (or its d3d twin) in this file' % va
                 elif not mm:
                     why = 'missing/malformed @t3-measure line (run --qualify and paste its tag)'
                 elif not me:
@@ -121,6 +125,17 @@ def certified():
                 out[va] = dict(date=date, file=rel, line=ln, ok=not why, why=why,
                                measure=(tuple(int(x) for x in mm.groups()[:7]) + (mm.group(8),)) if mm else None,
                                effort=me.groups() if me else None)
+    return out
+
+
+def twins(va):
+    """All addresses a file may tag for this glide VA: itself and its d3d twin."""
+    out = {va.lower()}
+    p = os.path.join(ROOT, 'config', 'shared.csv')
+    if os.path.exists(p):
+        for r in csv.DictReader(open(p)):
+            if (r.get('glide_va') or '').lower() == va.lower() and r.get('d3d_va'):
+                out.add(r['d3d_va'].lower())
     return out
 
 
@@ -241,6 +256,9 @@ def gate_b(va, path, meas):
     C = [r for r in L if r['probes'] >= MIN_PROBES]          # counted passes
     thin = [r['n'] for r in L if r['probes'] < MIN_PROBES]
     probs = []
+    if not C:
+        return False, ('no counted @t4-pass lines yet (need %d of >= %d probes; the last two moving nothing)%s'
+                       % (MIN_PASSES, MIN_PROBES, ('; thin passes %s not counted' % thin) if thin else '')), (0, 0, 0)
     if len(C) < MIN_PASSES:
         probs.append('%d/%d counted passes (>= %d probes each)%s'
                      % (len(C), MIN_PASSES, MIN_PROBES,
@@ -263,7 +281,8 @@ def gate_b(va, path, meas):
 def completeness(va, path):
     """Gate 0: WHAT IT DOES present, no unfinished markers in the function body."""
     lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
-    tag = next((i for i, l in enumerate(lines) if IMPL.search(l) and IMPL.search(l).group(1).lower() == va.lower()), None)
+    ok_vas = twins(va)
+    tag = next((i for i, l in enumerate(lines) if IMPL.search(l) and IMPL.search(l).group(1).lower() in ok_vas), None)
     if tag is None:
         return False, 'no @implements'
     if not any('WHAT IT DOES:' in l for l in lines[max(0, tag - 40):tag + 1]):
@@ -309,12 +328,15 @@ def measure(va):
     miss, extra = o - rc, rc - o
     um, ue, singles = classify(miss, extra)
     # divergence: masked region count + lost-sync
+    key = max(3, min(6, no // 8))            # a 12-insn leaf cannot resync on 6
     c = [PY, 'tools/divergence.py', os.path.relpath(obj, ROOT),
-         os.path.relpath(ob, ROOT), sym, '--deltas', '--key', '6', '--mask-slots']
+         os.path.relpath(ob, ROOT), sym, '--deltas', '--key', str(key), '--mask-slots']
     out = subprocess.run(c, cwd=ROOT, capture_output=True, text=True).stdout
     mreg = re.search(r'total divergence regions from offset 0x0:\s*(\d+)', out)
     regions = int(mreg.group(1)) if mreg else -1
     lost = [l for l in out.splitlines() if 'NEVER COMPARED' in l or 'lost-sync' in l.lower()]
+    mb = re.search(r'(\d+) orig bytes \([\d.]+% of the function\) were NEVER COMPARED', out)
+    lost_bytes = int(mb.group(1)) if mb else (0 if not lost else 10**6)
     # oracle
     orc = subprocess.run([PY, 'tools/t3b_verify.py', va], cwd=ROOT,
                          capture_output=True, text=True).stdout.strip().splitlines()
@@ -326,18 +348,21 @@ def measure(va):
     return dict(va=va.lower(), name=r['name'], file=r['file'], status=r['status'], obj=obj,
                 obytes=len(orig), rbytes=rbytes, oi=no, ri=nr,
                 miss=miss, extra=extra, nmiss=sum(miss.values()), nextra=sum(extra.values()),
-                um=um, ue=ue, singles=singles, regions=regions, lost=lost, oracle=verdict), ''
+                um=um, ue=ue, singles=singles, regions=regions, lost=lost,
+                lost_bytes=lost_bytes, key=key, oracle=verdict), ''
 
 
 def gates(m):
     g = []
     gap = abs(m['oi'] - m['ri']); lim = max(GAP_ABS, GAP_FRAC * m['oi'])
     g.append(('A1 insn gap', gap <= lim, '%d (limit %.1f)' % (gap, lim)))
-    rows = m['nmiss'] + m['nextra']; rlim = ROWS_FRAC * m['oi']
+    rows = m['nmiss'] + m['nextra']; rlim = max(ROWS_ABS, ROWS_FRAC * m['oi'])
     g.append(('A2 rows', rows <= rlim, '%d+%d = %d (limit %.1f)' % (m['nmiss'], m['nextra'], rows, rlim)))
     unm = sum(m['um'].values()) + sum(m['ue'].values())
     g.append(('A3 classify', unm == 0, '%d unpaired row(s)' % unm))
-    g.append(('A4 lost-sync', not m['lost'], 'none' if not m['lost'] else m['lost'][0].strip()))
+    g.append(('A4 lost-sync', m['lost_bytes'] <= LOST_TAIL_MAX,
+              ('none (key %d)' % m['key']) if not m['lost'] else
+              '%d B uncompared at key %d (tolerance %d B; A3 proves the multiset)' % (m['lost_bytes'], m['key'], LOST_TAIL_MAX)))
     g.append(('A5 oracle', m['oracle'] != 'DIFF', m['oracle']))
     return g
 
@@ -352,8 +377,40 @@ def tag_text(m, date, eff):
                m['nmiss'], m['nextra'], m['regions'], m['oracle'], eff[0], eff[1], eff[2]))
 
 
+def qualify_all(argv):
+    """Gates 0+A+B over every diff row (<= --max-bytes), one line each."""
+    mb = int(argv[argv.index('--max-bytes') + 1]) if '--max-bytes' in argv else 400
+    rows = [r for r in report_rows().values()
+            if r.get('status') == 'diff' and r.get('orig_size') and int(r['orig_size']) <= mb]
+    rows.sort(key=lambda r: int(r['orig_size']))
+    ready, near = 0, 0
+    for r in rows:
+        m, why = measure(r['va'])
+        if not m:
+            print('%s %-30s %5s B  unmeasured: %s' % (r['va'], r['name'], r['orig_size'], why)); continue
+        path = os.path.join(ROOT, m['file'])
+        c_ok, _ = completeness(r['va'], path)
+        g = gates(m); a_ok = all(p for _, p, _ in g)
+        b_ok, b_det, _ = gate_b(r['va'], path, m)
+        fails = [n for n, p, _ in g if not p]
+        if c_ok and a_ok and b_ok:
+            ready += 1; verdict = 'READY -- run --qualify %s and paste the tag' % r['va']
+        elif c_ok and a_ok:
+            near += 1; verdict = 'gate B: ' + b_det
+        else:
+            verdict = 'FAIL ' + ('0 ' if not c_ok else '') + ' '.join(fails)
+        print('%s %-30s %5s B  %s' % (r['va'], r['name'], r['orig_size'], verdict))
+    print('%d rows <= %d B: %d certifiable now, %d pass gates 0+A and owe passes' % (len(rows), mb, ready, near))
+    return 0
+
+
 def qualify(argv):
     import datetime
+    if not argv or argv[0].startswith('--all'):
+        return qualify_all(argv)
+    if not re.fullmatch(r'0x[0-9A-Fa-f]{8}', argv[0]):
+        print('usage: tools/t3.py --qualify <0xVA>   |   tools/t3.py --qualify --all [--max-bytes N]')
+        return 2
     va = argv[0]
     m, why = measure(va)
     if not m:

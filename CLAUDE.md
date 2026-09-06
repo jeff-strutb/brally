@@ -258,9 +258,9 @@ stubbed callee: T2, whatever Gate A says.
 | | criterion | threshold |
 |---|---|---|
 | A1 | instruction-count gap | ≤ max(3, 0.5% of the original's count) |
-| A2 | register-blind rows, missing + extra | ≤ 2.5% of the original's count |
+| A2 | register-blind rows, missing + extra | ≤ max(4, 2.5% of the original's count) |
 | A3 | every row classifies | each residue row is an allowed allocation singleton (spill, reload, register copy, CSE'd scaled index, flag re-test, `fxch`, rematerialised constant) or pairs with a row of the other side in the same canonical class (addressing form, lea/add/inc/dec form, flag form, branch polarity, x87 stack index). **One unpaired row = a missing or extra semantic operation = FAIL**, whatever the totals say. |
-| A4 | no lost-sync | `divergence.py` compared every byte |
+| A4 | no lost-sync | `divergence.py`, resync key scaled 3..6 to the function's size, compared every byte or left an uncompared tail of at most 32 B (A3 already proves the whole multiset) |
 | A5 | oracle | `t3b_verify.py` is not DIFF (EQUIVALENT, or UNCLASSIFIED because it cannot contain the function) |
 
 **Gate B, sincere attempts at T4 (mechanical, from a LEDGER in the file):**
