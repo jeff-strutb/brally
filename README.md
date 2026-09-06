@@ -100,7 +100,7 @@ no C exists.
 means functionally DONE: nothing missing, nothing not understood. Gate 0
 checks completeness (a purpose comment, no TODO/stub/guess markers in the
 body). Gate A is five mechanical checks on the sweep object: instruction-count
-gap within max(3, 0.5%); register-blind rows within 2.5%; every residue row
+gap within max(3, 0.5%); register-blind rows within max(4, 2.5%); every residue row
 either an allowed allocation artefact or paired with the other side in the
 same canonical class (one unpaired row fails); no lost-sync; the differential
 oracle not reporting a difference. Gate B reads a per-pass ledger in the file:
