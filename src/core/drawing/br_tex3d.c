@@ -1916,4 +1916,45 @@ void BrTexSizeFromShiftAspect(int *pA, int *pB, int shift, int aspect)
     }
 }
 
+/* WHAT IT DOES: convert a scanline buffer from 32-bit RGBA (byte order
+ * r,g,b,a) into 16-bit ARGB1555 (a in bit 15, then r,g,b in 5 bits each),
+ * in place -- callers pass the same pointer for src and dst.  `count` is the
+ * number of SOURCE bytes; it is rounded up to a multiple of four and that
+ * many pixels are written.  Returns the number of destination bytes written.
+ *
+ * PLACEMENT IS LOAD-BEARING: byte-exact only at the END of this TU.  The pix
+ * accumulator wants ebx (where the a>>7 seed lands); earlier in the file VC5
+ * allocates it edx instead (43 register-blind-equal diffs: or-dest swap and
+ * movzx vs xor/mov for b>>3).  No local spelling moves it -- declaration
+ * order, pix width, and OR operand order are all inert; only file position
+ * does.  Standalone the same body is byte-exact regardless. */
+/* @implements 0x10023CB0 glide BrTexRgbaToArgb1555 */
+int BrTexRgbaToArgb1555(unsigned short *dst, unsigned char *src, int count)
+{
+    unsigned short *start;
+    unsigned char r, g, b, a;
+    unsigned short pix;
+    unsigned int k;
+
+    start = dst;
+    if (count > 0) {
+        k = (unsigned int)(count + 3) >> 2;
+        do {
+            r = *src++;
+            g = *src++;
+            r = r >> 3;
+            b = *src++;
+            a = *src++;
+            dst = dst + 1;
+            pix = (unsigned short)(a >> 7);
+            pix = (unsigned short)((pix << 5) | r);
+            pix = (unsigned short)((pix << 5) | (g >> 3));
+            pix = (unsigned short)((pix << 5) | (b >> 3));
+            dst[-1] = pix;
+            k = k - 1;
+        } while (k != 0);
+    }
+    return (int)dst - (int)start;
+}
+
 #endif /* BR_MATCHING_BUILD */
