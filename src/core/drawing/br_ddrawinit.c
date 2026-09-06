@@ -11,7 +11,13 @@
  * reorder it. (2) loop back orig `jl body` falling into `return 1`; recomp
  * `jge success; jmp body` because the fail-sprintf block sits between the
  * loop and the success epilogue. goto-fail after return 1 still laid fail
- * in that hole. Same inversion class as 0x10027A70. */
+ * in that hole. Same inversion class as 0x10027A70.
+ * DEAD (2026-09-06): splitting the fused `h = (p[-1] = call())` into
+ * `h = call(); p[-1] = h;` did NOT move the store earlier; rewriting the
+ * loop as an explicit `do { } while ((int)p < limit)` did NOT flip the back
+ * edge. Both residues are compiler scheduling/layout, not statement form.
+ * REGNORM 2+1, +2 B, still parked.
+ * @t4-pass 0x100583C0 1 2026-09-06 probes 2 bytes 379 insns 118 regions 2 rows 3 census no */
 #ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
