@@ -24,6 +24,13 @@ closes nothing you can plan on.
          differ (register-blind gap 0)
     T4   done — byte-exact
 
+    T3   CERTIFIED — a hand-certified grade (CLAUDE.md rule 12): structure
+         fully verified, residue accounted row by row as compiler decisions
+         only, dead list recorded, tagged `@t3 <VA> <date>` above
+         @implements. Parked until the end-grind; tools/t3.py validates,
+         claim_lane never hands one out. Not a lower bar than T3a: it needs
+         the evidence written down, and it is never counted as matched.
+
     Your job moves functions UP this ladder: T1→T2 (transcribe into the tree),
     T2→T3b (make it behave right), T3b→T3a (reshape to the original's
     instructions), T3a→T4 (usually falls out; else park).

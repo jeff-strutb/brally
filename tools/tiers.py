@@ -88,6 +88,17 @@ def main():
             if va in target and va not in seen:
                 cpp_done.add(va)
 
+    # Hand-certified T3 (CLAUDE.md rule 12): complete, verified, residue
+    # accounted as compiler decisions, NOT byte-exact.  A separate set from the
+    # automatic T3a metric below (which most of them fail: a spill the
+    # original's allocator induced is an extra instruction shape).  They are
+    # reported with their own denominator and listed LAST under --list T2.
+    try:
+        from t3 import certified
+        cert = set(va for va in certified() if not va.startswith('?'))
+    except Exception:
+        cert = set()
+
     objs = _objs()
     t3, t2 = [], []
     for r in diff:
@@ -149,9 +160,11 @@ def main():
             for r, m in sorted(t3, key=lambda x: int(x[0]['orig_size'])):
                 print(r['va'], r['orig_size'], r['name'], 'reggap', m['reg'])
         elif pick == 'T2':
-            for r, m in sorted(t2, key=lambda x: -int(x[0]['orig_size'])):
+            for r, m in sorted(t2, key=lambda x: (x[0]['va'].lower() in cert,
+                                                  -int(x[0]['orig_size']))):
                 print(r['va'], r['orig_size'], r['name'],
-                      ('reggap %d' % m['reg']) if m else 'unmeasured')
+                      ('reggap %d' % m['reg']) if m else 'unmeasured',
+                      'T3-CERTIFIED (parked, rule 12)' if r['va'].lower() in cert else '')
         return 0
 
     print("=" * 60)
@@ -161,6 +174,10 @@ def main():
     print(f"  T1  not started (C draft only)  {n_t1:5d} fns   {b_t1:8d} B")
     print(f"  T2  in progress (real diffs)    {len(t2):5d} fns   {b_t2:8d} B")
     print(f"  T3a codegen-only (regs differ)  {len(t3):5d} fns   {b_t3:8d} B")
+    n_cert = sum(1 for r, _ in t2 + t3 if r['va'].lower() in cert)
+    b_cert = sum(int(r['orig_size']) for r, _ in t2 + t3 if r['va'].lower() in cert)
+    print(f"      of which hand-certified T3  {n_cert:5d} fns   {b_cert:8d} B"
+          f"   (@t3 tag, rule 12; inside T2/T3a above)")
     print(f"  T4  done (byte-exact)           {len(match) + len(cpp_done):5d} fns"
           f"   {b_t4:8d} B")
     if cpp_done:

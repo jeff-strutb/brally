@@ -217,21 +217,70 @@ merges its rows back. The full sweep is bookkeeping, and it takes ~20 minutes.
 Shared headers under `include/` reach dozens of files. Parallel work splits by
 `.c` file only.
 
-## 11a. 0x1000EAF0 is one wall from done. Do not re-derive it.
+## 11a. 0x1000EAF0 is T3-certified (rule 12). Do not reopen it before the end-grind.
 
 `src/core/drawing/br_scenedl.c` holds the second-largest function at
-9,264/9,354 bytes with every structural element verified. Its remaining
-~15-instruction float wall and the 60+ probe variants that FAILED are
-mapped in `docs/VC5-IDIOMS.md` (the 0x1000EAF0 entries). Read the file
-header and those entries before touching it; re-running mapped probes is
-token waste. `tools/divergence.py` is the comparator. Fresh leads only:
-unprobed pragmas. ‼ **THE COMPILER PATCH LEVEL IS RULED OUT (2026-09-03)** —
-VS97 SP3's code generator was staged beside the RTM one and is byte-for-byte
-identical on 63 of the 64 functions tested, including two of the three
-giants; on 0x1000EAF0 it is WORSE. Do not reach for it again. See
-`docs/VC5-IDIOMS.md` and `BR_MSVC=` in `tools/match_sweep.py`. The sweep compiles NOTHING when a
-file has no `@implements` tag — a probe without a fresh compile proves
-nothing (this trap invalidated five conclusions once already).
+9,345/9,354 bytes with every structural element verified and every residue
+row mapped to a compiler decision. Thirty-one passes and ~130 measured-dead
+probes live in the file header and `docs/VC5-IDIOMS.md` (the 0x1000EAF0
+entries, ending with the 2026-09-06 scaled-index CSE census). ‼ **THE
+COMPILER PATCH LEVEL IS RULED OUT (2026-09-03)** — VS97 SP3's code generator
+is byte-for-byte identical on 63 of 64 functions tested and WORSE on this
+one. The sweep compiles NOTHING when a file has no `@implements` tag — a
+probe without a fresh compile proves nothing.
+
+## 12. Two grades of done: T4 (byte-exact) and T3 (certified complete). T3 is parked, not abandoned.
+
+The project's finished standard is **T4: the bytes diff clean** (rule 2).
+Some functions reach a state where every structural element is verified and
+the only residue is the compiler's own choices, yet the last bytes will not
+fall. Those are **T3-certified**: fully usable by the port, honestly not
+byte-exact, and **not to be re-litigated until everything else is done**.
+Established 2026-09-06, after 0x1000EAF0's thirty-first pass moved nothing.
+
+**A function earns the T3 tag only when ALL of these hold, and the tag says
+so with numbers:**
+
+1. Transcribed from the original's bytes, and every arm order, constant,
+   immediate, field offset, call, and float association verified against
+   the disassembly. No TODO, no guessed field, no port body standing in.
+2. The residue is accounted **row by row**: every `divergence.py` region and
+   every `msetdiff.py` row is mapped to a named compiler-decision class —
+   register allocation (including the spills and homes it induces), x87
+   completion order, addressing form, slot packing, block placement. **No
+   row may be a missing or extra semantic operation** (a load, store,
+   arithmetic op, compare or branch the source does not express).
+3. The dead-probe list is recorded (file header or `docs/VC5-IDIOMS.md`)
+   with the measured numbers and the date, and at least one pass was
+   census-driven (slot census, mechanism measurement, corpus query), not
+   only spellings.
+4. Rule 6 is met: `WHAT IT DOES:` comment, filed in its module.
+
+**The tag**, directly above `@implements`, first line machine-read:
+
+```c
+/* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * <bytes, regions, rows>; every row mapped to <compiler-decision classes>.
+ * No missing semantic operation. Dossier: <where>. Do not reopen before
+ * the end-grind. */
+```
+
+**What the tag does.** `tools/t3.py` lists and validates every tag and fails
+on a malformed or STALE one (byte-exact now but still tagged: remove the
+`@t3`, keep the `@implements`). `tools/fileaudit.py` counts them and fails
+on the same. `tools/claim_lane.py` never hands a certified function out.
+`tools/tiers.py` reports them with their own denominator ("of which
+hand-certified T3") and lists them LAST under `--list T2`. They are never
+counted as matched.
+
+**What the tag is not.** It is not a lower bar. A function that is merely
+close, or whose dossier says "T3a" on a hunch, or whose residue still holds a
+missing instruction, does not qualify; the automatic T3a metric in
+`tiers.py` (identical multiset) is a different, mechanical thing. The tag is
+a parking receipt with the evidence attached, so the project stops paying
+for the same wall twice. **No session opens a T3-certified function unless
+the user names it in that message**, and the end-grind is the last phase of
+the project, after every T1 and T2 row is gone.
 
 ## 11. 0x10019A70 is last among the big targets.
 

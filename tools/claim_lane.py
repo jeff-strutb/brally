@@ -18,6 +18,15 @@ def diffs():
         if os.path.exists(p):
             with open(p) as f:
                 done.update((r.get('va') or '').lower() for r in csv.DictReader(f) if r.get('status')=='match')
+    # Hand-certified T3 functions (CLAUDE.md rule 12, tools/t3.py) are parked
+    # until the end-grind: complete and verified, not byte-exact, and NOT a
+    # target.  Never hand one out.
+    try:
+        sys.path.insert(0, os.path.join(ROOT, 'tools'))
+        from t3 import certified
+        done.update(va for va in certified() if not va.startswith('?'))
+    except Exception:
+        pass
     return [r for r in rows if r['va'].lower() not in done]
 def load():
     if not os.path.exists(CLAIMS): return []

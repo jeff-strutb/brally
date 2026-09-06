@@ -1082,6 +1082,18 @@ extern BrTrailSeg DAT_10273690[];
 
 /* WHAT IT DOES: build the frame's scene display list -- global state
  * preamble, every scene object's matrix + DL, then the trail quads. */
+/* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * 9,345/9,354 B, 2,325/2,328 insns, 14 masked regions, 23+20 register-
+ * blind rows; every row is mapped in the header above to a compiler
+ * decision only: register allocation and the spills it induces (wall 4's
+ * pDst homes), x87 completion order (wall 1), scaled-index addressing
+ * form (wall 4), the loop-entry join (wall 5), slot packing (wall 6) and
+ * the drain section's block placement.  No missing or extra semantic
+ * operation remains; every arm order, constant, field offset, call and
+ * float association was verified against the disassembly (passes 1-31).
+ * Dossier: this file's header and docs/VC5-IDIOMS.md (0x1000EAF0
+ * entries, ~130 dead probes).  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
 void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 {

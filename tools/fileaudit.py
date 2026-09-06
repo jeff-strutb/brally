@@ -224,9 +224,23 @@ def main():
             print('   WRONG %s %-26s in %s, recorded %s'
                   % (r['va'], r['name'], here, want))
 
+    # Hand-certified T3 tags (CLAUDE.md rule 12): counted with their own
+    # denominator, and a malformed or STALE tag (function now byte-exact but
+    # still tagged) is a violation -- tools/t3.py does the check.
+    t3_bad = 0
+    try:
+        import t3 as _t3
+        cert = _t3.certified(); st = _t3.report_status()
+        t3_bad = sum(1 for va, i in cert.items()
+                     if not i['ok'] or st.get(va) == 'match')
+        print('T3-certified (parked)      : %d  (bad/stale tags: %d)'
+              % (sum(1 for v in cert if not v.startswith('?')), t3_bad))
+    except Exception as e:
+        print('T3-certified (parked)      : unavailable (%s)' % e)
+
     drift = max(0, len(undocumented) - DESC_BASELINE)
     strand_drift = max(0, len(stranded) - STRANDED_BASELINE)
-    bad = strand_drift + len(unrecorded) + len(wrong) + max(0, grew) + drift
+    bad = strand_drift + len(unrecorded) + len(wrong) + max(0, grew) + drift + t3_bad
     if bad:
         print('\nFAIL: %d violation(s).' % bad)
         if grew > 0:
