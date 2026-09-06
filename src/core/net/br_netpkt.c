@@ -57,4 +57,53 @@ void BrNetPktStamp(void *pPkt)
     BrBitStreamWriteU24(pPkt, tick);
     ReleaseMutex(g_hBrNetMutex);
 }
+
+/* 0x1006B080 */
+/* WHAT IT DOES: appends a nibble-packed table field to an outgoing packet,
+ * but only if nine more bytes still fit in the 256-byte buffer. It writes a
+ * tag byte (the field kind OR'd with 0x20), then walks an eight-entry global
+ * table writing one byte per entry -- each entry's high field in the top
+ * nibble, its low field in the bottom -- and reports success. If the field
+ * would not fit it writes nothing and reports failure, so a half-written
+ * field can never go out. */
+/* @implements 0x1006B080 glide BrNetWriteTag20 */
+/* RESIDUE (2026-09-06): +4 insns / +16 B, REGNORM 4+0. The C body is
+ * complete and correct; the wall is the SAME construct C cannot spell that
+ * parks its family (BrNetWriteTagC0 / BrNetWriteRaceOpts in ghidra_batch.c):
+ * the original pushes each byte argument with its upper three bytes still
+ * dirty (`mov al,[..]; or/build al; push eax`), which MSVC only emits when the
+ * thiscall callee's PARAMETER IS A BYTE TYPE (register-eligible, so it never
+ * homes). Every C wrapper -- 1-byte struct, 4-byte union via .b, padded struct
+ * -- homes the partial write first (`mov [slot],B; mov R,[slot]; push R`).
+ * This function makes TWO such calls (the tag byte and the loop byte), so it
+ * inherits the wall twice: 2x (home+reload). PROBED AND DEAD upstream; routes
+ * to the C++ TU lane, do not grind in C.
+ * @t4-pass 0x1006B080 1 2026-09-06 probes 1 bytes 83 insns 31 regions 2 rows 4 census no */
+/* BrBitStreamWriteU8 (0x1006CFA0) is thiscall with one byte stack argument;
+ * the byte is struct/union-wrapped so __fastcall cannot claim edx for it --
+ * the same wrapper the rest of this cluster uses. BrCountedTotal (0x1006D180)
+ * is thiscall on the stream, taking only `this`. */
+typedef union { unsigned char b; unsigned int u; } BrU8Arg;
+int  __fastcall BrCountedTotal(void *pBs);              /* 0x1006D180 */
+void __fastcall BrBitStreamWriteU8(void *pBs, BrU8Arg v); /* 0x1006CFA0 */
+extern unsigned char DAT_11849e68[];                    /* 0x11849E68 */
+
+int BrNetWriteTag20(void *pThis, unsigned char kind)
+{
+    BrU8Arg b;
+    unsigned char *p;
+
+    if (BrCountedTotal(pThis) + 9 <= 0x100) {
+        b.b = (unsigned char)(kind | 0x20);
+        BrBitStreamWriteU8(pThis, b);
+        p = DAT_11849e68;
+        do {
+            b.b = (unsigned char)((p[4] << 4) | p[0]);
+            BrBitStreamWriteU8(pThis, b);
+            p += 8;
+        } while ((int)p < (int)&DAT_11849e68[0x40]);
+        return 1;
+    }
+    return 0;
+}
 #endif
