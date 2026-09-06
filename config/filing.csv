@@ -43,6 +43,9 @@ glide_va,name,module,basis,file
 0x10002F70,BrCdStop,audio,filed,src/core/audio/br_cd.c
 0x10002F90,BrCdStopMsg,audio,filed,src/core/audio/br_cd.c
 0x10002FD0,BrCdMciStop,audio,filed,src/core/audio/br_cd.c
+0x10003030,BrCdStopRelease,audio,filed,src/core/audio/br_cd.c
+0x10003050,BrCdStopReleaseMsg,audio,filed,src/core/audio/br_cd.c
+0x100030B0,BrCdStopReleaseMci,audio,filed,src/core/audio/br_cd.c
 0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
 0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/gamedata/br_u16cursor.c
@@ -302,6 +305,7 @@ glide_va,name,module,basis,file
 0x10023AA0,FUN_10023aa0,drawing,neighbour,src/core/drawing/br_glidestate.c
 0x10023B10,br_dl_clip_reset,drawing,filed,src/core/drawing/br_dl.c
 0x10023C90,BrGbiRun,drawing,neighbour,src/core/drawing/br_gbi.c
+0x10023CB0,BrTexRgbaToArgb1555,drawing,filed,src/core/drawing/br_tex3d.c
 0x10023D20,BrTex3dRecCopyHead,drawing,filed,src/core/drawing/br_tex3d.c
 0x100242E0,BrTexShiftFromSize,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024DF0,FUN_10024df0,drawing,neighbour,src/core/drawing/br_texfmt.c
