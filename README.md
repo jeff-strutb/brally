@@ -26,8 +26,8 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
 source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-05: **1,208 functions reproduce the original
-bytes exactly (191,358 B).** Every image is then reassembled from those claims and
+original binary. Snapshot of 2026-09-05: **1,227 functions reproduce the original
+bytes exactly (196,890 B).** Every image is then reassembled from those claims and
 diffs to **0 bytes**, with 0 overlapping address claims — all four in-scope
 binaries pass.
 
@@ -39,11 +39,11 @@ cannot move (ten share one state block; one is byte-exact only inside its own
 translation unit). Both halves of rule 6 are gated, and the gates are
 ratchets — see **Keeping it that way** below.
 
-- **Game DLL (`BRGlide.dll`)** — 1,103 functions byte-exact, 178,925 B, **37.21% of
-  its 480,853 B `.text`**. Of those, 929 are C and 174 are C++. Most of what
-  remains is structural, not "coloring": 200 functions still carry real,
-  non-codegen diffs (wrong or missing code — 175 in the C lane, 25 in C++), while
-  only a 46-function tail is down to pure register-allocation/scheduling
+- **Game DLL (`BRGlide.dll`)** — 1,122 functions byte-exact, 184,457 B, **38.36% of
+  its 480,853 B `.text`**. Of those, 946 are C and 176 are C++. Most of what
+  remains is structural, not "coloring": 201 functions still carry real,
+  non-codegen diffs (wrong or missing code — 175 in the C lane, 26 in C++), while
+  only a 51-function tail is down to pure register-allocation/scheduling
   differences with the instructions already correct.
 - **C++ class (vtables, EH frames)** — a separate lane, because these functions
   are unreachable from C at all; screened for before a function is ranked as a
@@ -56,10 +56,10 @@ ratchets — see **Keeping it that way** below.
   is statically-linked MSVC 5.0 CRT (SetVideo 27,888 B, BossRally 20,075 B,
   BRally 495 B), reproduced by linking rather than decompiled — the same call
   as `BRD3D.dll` under rule 0.
-- **Documentation** — **every byte-exact function says what it does**: 1,208 of
-  1,208 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
+- **Documentation** — **every byte-exact function says what it does**: 1,227 of
+  1,227 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
   `tools/fileaudit.py` fails the build if one lands without. The looser sets are
-  covered too — all 1,454 *tagged* functions (byte-exact or still diffing) are
+  covered too — all 1,480 *tagged* functions (byte-exact or still diffing) are
   described. Untagged port-side code is not: ~415 function definitions in files
   with no `@implements` tag remain undescribed, none of them byte-exact.
 - **macOS/Metal port** — the same source boots, renders the front end and retail
@@ -72,8 +72,8 @@ ratchets — see **Keeping it that way** below.
 
 ## Progress Report
 
-**The C lane by tier** (`.venv/bin/python3 tools/tiers.py`) — 1,328 functions,
-373,171 B of `.text`. That is the 1,501-function hand-C target less the 173 the
+**The C lane by tier** (`.venv/bin/python3 tools/tiers.py`) — 1,326 functions,
+372,934 B of `.text`. That is the 1,501-function hand-C target less the 175 the
 C++ lane owns; **this table is C only**, and the C++ lane has its own below.
 Nothing is counted in both.
 
@@ -86,11 +86,11 @@ instructions, only the register choices differ.
 
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 178 | 141,521 |
-| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 175 | 121,762 |
+| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 154 | 133,243 |
+| T2 | **In progress** — real code is in the project, but the logic still differs from the original (or isn't confirmed right yet) | 175 | 118,399 |
 | T3b | **Works, built differently** — behaves like the original, but compiles to different instructions; needs reshaping | 15 proven¹ | (within T2) |
-| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 46 | 11,423 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **929** | **98,465** |
+| T3a | **Works, near-identical** — same instructions as the original, only which registers were used differs | 51 | 17,532 |
+| **T4** | **Done** — matches the original exactly, byte for byte | **946** | **103,760** |
 
 **Every tier — T1 included — already has at least a rough C draft from the
 decompiler.** No one is reading raw assembly from a blank slate; the original
@@ -102,9 +102,9 @@ Only **T1, T3a, and T4 are counted automatically** by the tier tool. T3a is
 strong static evidence (the instructions match), which is not the same as a
 runtime equivalence proof.
 
-`tiers.py` prints T4 as a combined 1,102 over the full 1,501 target, with the
+`tiers.py` prints T4 as a combined 1,121 over the full 1,501 target, with the
 C++ lane called out beneath it; the table above subtracts that lane to stay
-C-only, so its T4 is 1,102 − 173 = 929 and its target 1,501 − 173 = 1,328.
+C-only, so its T4 is 1,121 − 175 = 946 and its target 1,501 − 175 = 1,326.
 
 Earlier snapshots showed a much larger T1 and a much smaller T4, and the
 difference was a **counting bug, not progress**: converting a function to the
@@ -138,16 +138,16 @@ four.
 | Tier | Meaning | Fns | `.text` B |
 |---|---|--:|--:|
 | T1 | **Not started** — screened as C++-only, no source written yet | 20 | 28,997 |
-| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 25 | 23,568 |
+| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 26 | 24,131 |
 | T3a | **Works, near-identical** — code byte-exact, one table still differs | 0 | 0 |
-| **T4** | **Done** — all four pieces byte-exact | **174** | **80,300** |
+| **T4** | **Done** — all four pieces byte-exact | **176** | **80,537** |
 
 Three differences from the C table, all real:
 
 - **T1 here is a lower bound, not a census.** The C table has a fixed target
   derived from the function map; there is no equivalent count of "every C++
   function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised in
-  the *current* unmatched residue — 20 strong of 172 screened. A further 49
+  the *current* unmatched residue — 20 strong of 108 screened. A further 33
   screened weak (fastcall-representable) are deliberately excluded: those are
   reachable from C and belong to the C lane. T1 falling is therefore progress,
   not scope loss: this lane is being drained faster than the screen finds new
@@ -157,11 +157,11 @@ Three differences from the C table, all real:
   the "instructions right, only registers differ" tier.
 - **T1 is the one figure that is not yet disjoint from the C table.** A function
   screened as C++ but not yet written still has its row in the C report, so those
-  22 also sit in the C table's T1/T2 until they are converted. T2, T3a and T4
+  20 also sit in the C table's T1/T2 until they are converted. T2, T3a and T4
   here are exclusively C++.
 
-`tiers.py`, run against the same tree, sizes the done lane at 171 / 75,339 B
-rather than 174 / 80,300 B: it ran moments earlier, and it takes each function's
+`tiers.py`, run against the same tree, sizes the done lane at 175 / 79,799 B
+rather than 176 / 80,537 B: it ran moments earlier, and it takes each function's
 size from the function map instead of the extracted bytes. Both are right at
 their own strictness; don't average them.
 
@@ -183,8 +183,8 @@ its 42 include 3 one-to-nineteen-byte CRT stubs, so the game span itself —
 `0x401000`–`0x402D20` — is 7,228 B of code plus 228 B of inter-function
 alignment, i.e. the whole 7,456-byte range.
 
-**Totals** — 1,136 byte-exact functions / 176,104 B (`python3 tools/total.py`):
-1,031 in `BRGlide.dll` (163,511 B, 34.0% of its `.text`) and 105 across the three
+**Totals** — 1,227 byte-exact functions / 196,890 B (`python3 tools/total.py`):
+1,122 in `BRGlide.dll` (184,457 B, 38.36% of its `.text`) and 105 across the three
 EXEs (12,593 B).
 
 **The image gate** (`python3 tools/image_build.py`) is the deliverable check, and
@@ -195,9 +195,9 @@ wrong size. The gate refuses collisions rather than resolving them, lays every
 claim into one image at the address it claims, uses the original's own bytes for
 everything not yet decompiled, and diffs the result against the retail DLL.
 
-    placed into the image            : 1028 functions, 163,511 bytes (34.00% of .text)
-        C     854 fns    83,211 B  (1,536 B of that filled from the reference, 1.8%)
-        C++   174 fns    80,300 B  (10,636 B of that filled from the reference, 13.2%)
+    placed into the image            : 1122 functions, 184,457 bytes (38.36% of .text)
+        C     946 fns   103,920 B  (2,116 B of that filled from the reference, 2.0%)
+        C++   176 fns    80,537 B  (10,688 B of that filled from the reference, 13.3%)
     overlapping address claims       : 0
     ASSEMBLED IMAGE vs ORIGINAL      : 0 differing bytes
 
@@ -206,7 +206,7 @@ address would be caught; none do. Read the reference-filled column as a
 discount on the evidence, not on the match: those are relocation slots whose
 target has no address in any surveyed map (per-file statics, and the C++ lane's
 mangled symbols), so the reference image's own dword is used. Such a slot cannot
-fail the diff — the C lane is 1.9% reference-filled, the C++ lane 13.2%, and
+fail the diff — the C lane is 2.0% reference-filled, the C++ lane 13.3%, and
 resolving the latter through real addresses is open work.
 
 Port test suite does not currently build — see Status Summary.
