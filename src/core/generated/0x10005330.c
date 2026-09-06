@@ -57,7 +57,10 @@ extern char DAT_10273328[];          /* g_brP277B40, the send target       */
  * the note there saying the original folds is backwards. Source spelling
  * of the flag-byte update is unknown; the corpus has no member emitting
  * and-imm8/or-imm8 on a call result. `>= 27` (not `> 26`) fixed the other
- * two bytes. */
+ * two bytes. 2026-09-06: reversed commutative `|` operand order
+ * (`0x80 | (x & 0xbf)`) also folds -- the fold is decided on the
+ * expression tree before operand scheduling, so operand order is inert.
+ * regnorm 0+0, 60/60 insns: the ONLY residue is the imm8 peephole. */
 /* WHAT IT DOES: one tick of the network "still here" beacon. Under the tick
  * mutex, advance the counter when it is running and, every 27th tick, set
  * the resend flag and wrap it. Then, if the counter is running, a net race
