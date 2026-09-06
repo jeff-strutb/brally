@@ -6895,3 +6895,81 @@ come out of the plain `i < count` / `i >= 0` index loops unchanged.
   format pointer in ebx and the voice in esi, VC5 the reverse, RAW 14+14
   with REGNORM 0+0 and size-exact. Dead: declaration order, store order,
   an allocation temp. Recorded in the file header.
+
+## When VC5 keeps a scaled index in a register: `lea R,[R*4]` + `[R + sym]` -- the census
+*(measured 2026-09-06 on 0x1000EAF0 wall 4, ~60 scratch-TU compiles and 25
+giant probes; every rule below is a fresh compile, none is inferred)*
+
+The original's trail-append if-arm materialises `lea edx,[ecx*4]` once and
+addresses two flat int arrays as `[edx + sym]` at eight sites, while its own
+else-arm folds the same index as `[ecx*4 + sym]`.  A capstone scan of every
+extracted original finds this base-less `lea R,[R*4]` feeding `[R + abs32]`
+at exactly ONE site in the whole binary (this one), so there is no corpus
+spelling.  What VC5 actually does, measured:
+
+**Folds `[idx*4 + sym]` no matter how the index is spelled.**  Inline
+expression, named local, `unsigned`/`long` index, `int`-cast or literal
+address arithmetic (`*(int *)((int)sym + i*4)`, `0x1035faf0 + i*4`),
+`(char *)sym + i*4`, `i << 2`, `i+i+i+i`, `i * four`, pointer-difference
+offsets, element pointers (`&sym[i]`), `*(sym + i)`, `(&scalar)[i]`, 2-D and
+3-D array declarations (`sym[car][wheel]`, `seg[car][wheel][h]`), arrays
+defined in the TU, `__inline` helpers with pointer or index parameters (VC5
+substitutes the constant arguments before optimising), local pointer aliases
+of every kind (`int *p = sym`, chains, `?:` on a foldable condition, `+0`,
+`&sym[0]`, `register`, `const`, block-scoped initialisers), and use counts
+up to 26 sites -- ALL fold.  Use count, block count and loop depth are not
+the rule.
+
+**Materialises `t = idx*4` (then `[t + sym]` at every symbol site of the same
+region) in exactly these cases:**
+1. a LIVE dword-scale access with the SAME index through a REGISTER base
+   (`pq[i]`, a pointer parameter or a loaded global pointer) or a LOCAL
+   ARRAY base (`cur[i]`, i.e. `[esp + t + disp]`) -- load or store -- that
+   DOMINATES the symbol sites.  The trigger is per REGION (an access in one
+   arm of an if/else materialises that arm only; the other arm keeps
+   folding); a nested conditional access does not trigger; a BYTE-array
+   access at scale 1 does not; a DEAD access does not (VC5 deletes dead
+   loads, `x - x`, `x == x`, `+= 0`, `(void)`, `cur[i] = cur[i]`, and
+   unreachable blocks BEFORE the address CSE).  A live local-array store
+   is never deleted, so this trigger always leaves bytes.  Corpus proof:
+   0x1006E130 (`param_3 + i*4` and `param_2 + i*4`: `lea esi,[eax*4]`,
+   `[ecx+esi]`, `[edi+esi]`).
+2. a non-SIB element size (`a*7` inline -> `a*28` via `shl 2`, base-only
+   addressing) -- but a NAMED `r = a*7` folds again.
+3. the index reaches its uses through a JOIN (`if (c) off = X; else off =
+   X;`, or `c ? X : X`): VC5 hoists the identical defs into one `lea` after
+   the call but leaves a vestigial `test` on the condition; `volatile` also
+   materialises but leaves its store/load.
+4. **on the giant only:** a `ring` variable defined in a block that
+   DOMINATES BOTH ARMS (top of the wheel-loop body, or right before `if
+   (cls)`) -- and a def anywhere BEFORE the call inside the arm.  Then the
+   if-arm emits `lea edx,[ebx*4]` + `[edx + sym]` x8 AND the pDst homes on
+   both edges AND the reload to form `slot`, i.e. the whole wall-4 family
+   (multiset MISSING 23 -> 15), while the else-arm still folds -- the
+   original's asymmetry from a plain variable.  The same shape in a small
+   harness folds (ring preserved in esi across the call), so the trigger
+   there is the giant's context, not the construct.
+
+**And the allocation that goes with case 4 is NOT the original's.**  VC5
+keeps that `ring` in ebx across the cls block and the call (homing it at
+the loop top, evicting iWheel to edi and its slot -- the whole cls block
+renames, +11 B), where the original keeps iWheel in ebx, homes nothing but
+iWheel at the loop top, and RECOMPUTES `ring` in EACH arm (`mov eax,[esp+
+0x28]; lea ecx,[ebx+eax*4]` after the call; `mov edx,[esp+0x24]; lea
+ecx,[ebx+edx*4]` in the else-arm).  VC5 does not rematerialise: with five
+long-lived pointers competing it homes the POINTERS and keeps `ring` in
+esi, and a `ring` clobbered mid-arm is RELOADED from its slot, never
+recomputed.  So the original's `ring` is a per-arm computation after the
+call -- and every per-arm form (inline, function-scope or block-scope
+variable, redefinition in one or both arms, element pointers, aliases)
+FOLDS on the giant, byte-identical to the tree.
+
+**Verdict for 0x1000EAF0 wall 4:** the addressing is reproducible (case 4,
+`ring` defined once before the cls block, function scope), but that
+spelling contradicts the bytes at the loop top and the else-arm, so it is
+not the source.  The source's if-arm has a per-arm `ring` AND something
+that made the optimizer form the `ring*4` tuple; nothing in this census
+produces that without leaving bytes the original does not have.  Do not
+re-run anything above.  Harness: `tools/probe.py` variants under
+`build/match/t3d/probe_*.obj`; the scratch-TU rule experiments were
+`build/match/t3d/exp_*.c` (regenerable from the descriptions here).
