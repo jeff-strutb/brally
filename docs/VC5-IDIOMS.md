@@ -7112,3 +7112,32 @@ and spills one extra local (`sub esp,0xc` vs orig `sub esp,8`, 2 callee-saved
 regs vs orig's 3).  Semantics/structure verified identical; the residue is pure
 allocation + strength-reduction scheduling.  Not filed (fresh draft); left for
 the end-grind rather than ground here.
+
+---
+
+## 0x1006AEB0 is another byte-push-wall net-writer -- C++ lane, not C
+
+0x1006AEB0 (a net message serialiser: writes a 6-byte header, a U32, an
+optional 0x18-byte null-padded name, and an optional U24) is a sibling of
+BrNetWriteTag20 (0x1006B080) and inherits the SAME wall.  A faithful C
+transcription off the original asm reaches +13 B / +4 insns
+(build/ghidra_work/0x1006aeb0.transcribed.c), and the residue is exactly two
+things:
+
+ * **The name-byte write homes.**  The original loads one byte and pushes it
+   with the upper three bytes dirty (`mov al,[edi+ebx]; push eax`), which MSVC
+   emits only when the thiscall callee's parameter is a BYTE type -- and C
+   cannot spell a pushed byte thiscall arg (a `__fastcall` byte goes in dl, a
+   struct/union byte homes: `mov dl,[..]; mov [slot],dl; mov eax,[slot]; push
+   eax`).  The SIX raw param writes are fine -- they pass full dwords through
+   the `BrU8Arg` union's `.u` and push cleanly (`mov eax,[param]; push eax`);
+   only the byte LOAD through `.b` homes.  So the union wrapper is correct for
+   int-valued writes and walled only for byte-valued ones.
+ * **`mode` / `done` register allocation.**  The original spills `param_3&0x3f`
+   to the stack and keeps the loop's "seen-null" flag in ebp; our C keeps
+   `mode` in a register and spills the flag instead.
+
+Both are the documented thiscall-byte-argument wall (see the BrNetWriteTag20
+note in br_netpkt.c).  This whole net-writer family routes to the C++ TU lane;
+do not grind it in C.  The wrappers and the verified structure are in the
+transcription file for whoever takes it there.
