@@ -484,6 +484,7 @@ glide_va,name,module,basis,file
 0x10036100,BrSlotsResetIfBZero,gamedata,filed,src/core/gamedata/br_slots.c
 0x100361A0,FUN_100361a0,gamedata,neighbour-1,src/core/generated/0x100361A0.c
 0x10036430,BrSub1003CDA0,net,neighbour-1,src/core/net/br_sessiondesc.c
+0x10035AC0,BrNetSessionStore,net,manual,src/core/net/br_dplaysession.c
 0x10036650,BrSub1003CFC0,net,description,src/core/net/br_dplaysession.c
 0x10036670,BrGlobalFreeAll,net,neighbour-1,src/core/net/br_dplaysession.c
 0x100366C0,BrSub1003D030,net,description,src/core/net/br_dplaysession.c
