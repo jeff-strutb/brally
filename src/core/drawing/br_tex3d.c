@@ -1133,7 +1133,14 @@ int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
   iVar4 = *(int *)(param_3 + 0xc);
   /* RESIDUE (4B): the original's imul copies the DIMENSION into eax
    * (mov eax,ebx / mov eax,ebp); every probed spelling copies the aspect --
-   * commutative-mult canonicalization, structure exact. */
+   * commutative-mult canonicalization, structure exact.  Register-blind
+   * multiset is 0: `mov eax,R`/`imul eax,R` mask to the same bag, so the whole
+   * residue is which register VC5 assigns to eax.  DEAD 2026-09-07: swapping
+   * BOTH written multiply orders (iVar6*iVar3 / iVar5*iVar4) moved nothing --
+   * VC5 canonicalises the integer imul regardless of source order, exactly as
+   * for the commutative FADD.  No N64 twin located (not in build/n64/report.csv),
+   * so the operand-order oracle is unavailable here.
+   * @t4-pass 0x10027E10 1 2026-09-07 probes 1 bytes 227 insns 71 regions 2 rows 4 census no */
   if (iVar5 >= iVar6) {
     *(int *)(param_3 + 0x44) = (iVar3 * iVar6) / iVar4;
   }
