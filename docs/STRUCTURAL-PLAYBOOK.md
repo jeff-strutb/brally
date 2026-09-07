@@ -96,9 +96,15 @@ touching them, or you will re-run probes already proven dead:
 
 Multiple workers coordinate through the claim ledger, not by guessing:
 
-    python3 tools/fnmatch/triage.py            # refresh the lane ranking first
-    python3 tools/claim_lane.py claim 5        # TOKEN + the 5 BEST unclaimed targets
+    python3 tools/t4lane.py --claim            # byte-exact lane: pick from the tree AND lock (TOKEN)
     python3 tools/claim_lane.py release <TOKEN> [wallVA ...]   # park walls, free the rest
+
+‼ Do not lock with `claim_lane.py claim N` for a byte-exact lane. Its
+ranking file is a 2026-08-28 snapshot; with the SHAPE rows gone it hands out
+the giants (this happened 2026-09-07). `t4lane.py --claim` passes its own
+primaries through `claim_lane.py claim --va ...`. A park older than the
+newest screen (2026-09-06) is not a hold: t4lane lists it LIVE, flagged
+`[park <date> predates screens]`, and `--claim` overrides the park.
 
 Lanes are RANKED: triage.py publishes `build/match/triage_rank.csv` and claim
 hands out best-first (SHAPE targets, then mixed, then missing-code; coloring

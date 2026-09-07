@@ -340,8 +340,12 @@ and last. See `docs/VC5-IDIOMS.md` (`and esp,-8`) and `include/br_racestep.h`.
    are T3-certified — not targets unless the user names one (rule 12).
 5. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
 6. Do not trust a coverage number in prose — including in `README.md`.
-   Query the tree. For a byte-exact session, `python3 tools/t4lane.py`
-   picks the targets from the tree; never pick by hand.
+   Query the tree. For a byte-exact session, `python3 tools/t4lane.py --claim`
+   picks the targets from the tree AND locks them; never pick by hand, and
+   **never lock with `claim_lane.py claim N`**: its own ranking is a
+   2026-08-28 snapshot that hands out the giants once its SHAPE rows are
+   gone (2026-09-07: a session was given BrFrameDraw, BrCtlAiBody,
+   BrObjDlBuild and BrTex3dExpand as a "20 small functions" lane).
 7. Every pass at a near-exact function ends by appending its `@t4-pass`
    line to the file header (rule 12), whether or not it moved anything.
 

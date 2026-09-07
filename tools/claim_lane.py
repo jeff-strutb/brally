@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Hand each parallel closer a disjoint lane of still-diff functions.
   claim [N]                    -> print TOKEN then N unclaimed diff functions (va name file)
+  claim --va VA [VA ...]       -> lock exactly these (what tools/t4lane.py --claim runs)
   release <TOKEN> [wallVA ...] -> park the listed walls (never re-handed), release the rest
 Matched functions drop out on their own (they leave status=diff). Stale claims (>90 min) are reclaimed."""
 import csv, os, sys, time, uuid, fcntl
@@ -39,20 +40,42 @@ def save(rows):
 def lock():
     os.makedirs(os.path.dirname(CLAIMS),exist_ok=True)
     lk=open(CLAIMS+'.lock','w'); fcntl.flock(lk,fcntl.LOCK_EX); return lk
-def claim(n,big=False):
+def claim(n,big=False,vas=None):
+    """vas: an explicit VA list (from tools/t4lane.py --claim).  A VA in that
+    list that is parked in this ledger is handed out anyway: t4lane decides
+    whether a park is still a hold (rule: a park older than the newest screen
+    is NOT a hold).  A VA currently claimed by a live token is refused."""
     n=int(n); lk=lock()
     try:
         now=time.time(); dr=diffs(); dvas={r['va'] for r in dr}; keep=[]; held=set()
+        want={v.lower() for v in (vas or [])}
         for c in load():
-            if c['status']=='parked' and c['va'] in dvas: keep.append(c); held.add(c['va'])
-            elif c['status']=='claimed' and (now-float(c['ts']))<STALE and c['va'] in dvas: keep.append(c); held.add(c['va'])
+            if c['status']=='parked' and c['va'] in dvas:
+                if c['va'].lower() in want: continue     # t4lane overrides a stale park
+                keep.append(c); held.add(c['va'])
+            elif c['status']=='claimed' and (now-float(c['ts']))<STALE: keep.append(c); held.add(c['va'])
         pool=[r for r in dr if r['va'] not in held]
+        heldl={h.lower() for h in held}
         # Ranked lanes: tools/fnmatch/triage.py publishes triage_rank.csv
         # (lower score = better target: SHAPE < mixed < missing-code < coloring
         # wall). When present, hand out best-first; the held-set already keeps
         # parallel lanes disjoint. Without it, fall back to rotation.
+        # ‼ triage_rank.csv is a 2026-08-28 snapshot of 231 rows: once its
+        # SHAPE rows are gone it hands out the GIANTS (score 10007+).  A
+        # byte-exact lane must come in through tools/t4lane.py --claim, which
+        # passes `vas` and never consults the rank file.
         rank_csv=os.path.join(ROOT,'build','match','triage_rank.csv')
-        if big:
+        if want:
+            byva={r['va'].lower():r for r in pool}
+            pick=[]
+            for v in vas:
+                vl=v.lower()
+                if vl in byva: pick.append(byva[vl])
+                elif vl in heldl: print('REFUSED %s: claimed by a live token'%v)
+                else:
+                    # Pool B: no report row yet (a T1 draft).  Lock it anyway.
+                    pick.append({'va':v.upper().replace('0X','0x'),'name':'-','file':'-'})
+        elif big:
             # --big: hand out the LARGEST still-diff functions (by original
             # bytes). The giants carry dossiers/ordering rules -- see the
             # "Large functions" section of docs/STRUCTURAL-PLAYBOOK.md.
@@ -83,6 +106,10 @@ def release(tok,walls):
 if __name__=='__main__':
     cmd=sys.argv[1] if len(sys.argv)>1 else 'claim'
     if cmd=='claim':
-        rest=[a for a in sys.argv[2:] if a!='--big']
-        claim(rest[0] if rest else 12, big='--big' in sys.argv)
+        if '--va' in sys.argv:
+            vas=sys.argv[sys.argv.index('--va')+1:]
+            claim(len(vas), vas=vas)
+        else:
+            rest=[a for a in sys.argv[2:] if a!='--big']
+            claim(rest[0] if rest else 12, big='--big' in sys.argv)
     elif cmd=='release': release(sys.argv[2], sys.argv[3:])
