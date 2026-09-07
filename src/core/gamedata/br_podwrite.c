@@ -218,6 +218,7 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
  * end, rewinds to the front to fill in the header with the magic word,
  * member count and directory position, and closes the file. */
 #ifdef BR_MATCHING_BUILD
+/* @t4-pass 0x10008C80 1 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10008C80 glide BrPodWriteClose */
 void __fastcall BrPodWriteClose(void *pThis)
 {
