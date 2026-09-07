@@ -671,6 +671,7 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * size of the image a load is about to read from, and -- if a run was not
  * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
+/* @t4-pass 0x10029420 1 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
