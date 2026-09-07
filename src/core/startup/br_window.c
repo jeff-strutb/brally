@@ -203,6 +203,7 @@ int BrWindowCreate(const BrWindowOps *pOps)
  * and resolves its entry points; if that fails the game shows an error box
  * and quits. A counter makes it run once only -- and it is never
  * decremented, so a second call does nothing at all. */
+/* @t4-pass 0x10017E30 1 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
 #ifdef BR_MATCHING_BUILD
 #include <stdlib.h>
