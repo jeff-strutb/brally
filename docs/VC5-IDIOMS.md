@@ -905,6 +905,23 @@ the caller AND flipped a helper to match for free.
   `neg; sbb; neg; dec` chain (extends the /Od-ternary idiom to /O2 returns);
   the arithmetic spelling emits `xor; test; setne; dec`.  Proven BrCrtAtExit
   0x100745E0.
+- **Materialising `(x == 0)` as a 0/1 int is the SINGLE-constant ternary plus
+  the tail op, NOT `x == 0`/`!x`/`x ? 0 : 1`.** All three of the "obvious"
+  spellings emit `xor; test; sete`/`setne`. The borrow trick the original uses
+  is reached by writing the ternary with a nonzero constant and folding the
+  fixup into an operator VC5 renders as one instruction:
+    - `(x ? -1 : 0) + 1`  -> `neg; sbb; inc`  = `(x == 0)` as 0/1.
+    - `~(x ? -1 : 0)`     -> `neg; sbb; not`  = `-(x == 0)` (all-ones mask).
+  The inner `x ? -1 : 0` is the single-nonzero-constant ternary (`neg; sbb`);
+  the `+ 1` folds to `inc` and the `~` maps straight to `not`. Beware the near
+  spellings that miss: `x ? 0 : 1` peepholes to setcc when STORED to an int
+  (it stays a borrow only when the result is consumed by a bitwise op in the
+  same expression, e.g. inline `& mask`); `~-(x != 0)` and `(x ? 0 : -1)` emit
+  setne and `neg; sbb; neg; dec` respectively. When both a `(x==0)` int and a
+  `-(x==0)` mask feed one `&`, invert the guarding `if` so the plain `return r`
+  is the fall-through arm -- that fixes the `je`/`jne` polarity the borrow
+  reorders. Proven BrCdStopReleaseMci 0x100030B0 (REGNORM 0+0; the only residue
+  left is a 3-insn reload-hoist schedule the compiler owns).
 - **Byte-pair swap: one temp, temp holds HIGH.** `t = p[hi]; p[hi] = p[lo];
   p[lo] = t;` per pair, with the SAME temp variable reused across both pairs
   of a dword swap, reproduces `mov al,[hi]; ...` with transients in AL and

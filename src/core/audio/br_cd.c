@@ -413,16 +413,22 @@ static int BrCdStopReleaseMsg(void)
  * count by one and sends the STOP command; when that was the last reference it
  * closes the device.  Reports whether both commands were accepted. */
 /* @implements 0x100030B0 glide BrCdStopReleaseMci */
-/* RESIDUE (2026-09-06): body complete and correct; +4 insns from BOOLEAN
- * CODEGEN. The original builds `r = (e1==0)` and the `(e2==0)` mask with the
- * carry-flag borrow trick (`neg; sbb; inc` and `neg; sbb; not`), computing r
- * early -- right after the first mci call, before the play-count test. Every C
- * spelling tried emits `xor; test; sete`/`setne` instead: `e1 == 0`, the
- * ternary `e1 ? 0 : 1`, `!e1`; and `~-(e2 != 0)` for the mask likewise emits
- * setne. `tools/corpus.py find --at 0x37` on the `neg; sbb; inc` run is a MISS
- * -- the (x==0)->neg/sbb/inc-into-int form is not proven anywhere in the solved
- * tree, so there is no spelling to copy; it needs source truth, not a permute.
- * @t4-pass 0x100030B0 1 2026-09-06 probes 4 bytes 105 insns 43 regions 1 rows 4 census yes */
+/* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.
+ * The boolean codegen is now byte-for-byte: the borrow trick is the TERNARY's
+ * codegen, and the operator picks the tail op.  `r = (e1 ? -1 : 0) + 1` gives
+ * `neg; sbb; inc` (single-constant ternary + `+1` folds to `inc`); the mask
+ * `~(e2 ? -1 : 0)` gives `neg; sbb; not` (the `~` maps straight to `not`,
+ * where `~-(e2 != 0)` and `(e2 ? 0 : -1)` instead emit setne / `neg; dec`).
+ * The play-count `if` is inverted (`!= 0` returns r, `== 0` falls through to
+ * the second call) so the fall-through arm is `return r` -- that reproduces
+ * the original's `je` polarity.  Sole residue: a 3-instruction SCHEDULE gap --
+ * the original hoists the `mov eax,[playing]` reload into the slot after
+ * `mov esi,eax` (e1 -> r's home) and does the borrow on esi in place, while
+ * VC5 on this source does the borrow in eax, copies to esi, then reloads.
+ * Same instruction multiset, identical ops, three reordered; declaration
+ * order (all 12 perms) and every expression form are inert on the reorder.
+ * @t4-pass 0x100030B0 1 2026-09-06 probes 4 bytes 105 insns 43 regions 1 rows 4 census yes
+ * @t4-pass 0x100030B0 2 2026-09-07 probes 9 bytes 105 insns 43 regions 1 rows 1 census no */
 static int BrCdStopReleaseMci(void)
 {
   MCIERROR e1, e2;
@@ -433,12 +439,12 @@ static int BrCdStopReleaseMci(void)
   }
   g_brCdPlaying = g_brCdPlaying - 1;
   e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
-  r = e1 == 0;
-  if (g_brCdPlaying == 0) {
-    e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
-    return ~-(e2 != 0) & r;
+  r = (e1 ? -1 : 0) + 1;
+  if (g_brCdPlaying != 0) {
+    return r;
   }
-  return r;
+  e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+  return ~(e2 ? -1 : 0) & r;
 }
 
 /* WHAT IT DOES: end one reference to the music and, when it was the last,
