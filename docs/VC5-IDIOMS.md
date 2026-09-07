@@ -7080,3 +7080,35 @@ Two more facts from the same function, both cheap to miss:
  * `ret 0x18` on a `__stdcall` cleans 24 bytes = SIX dword args; Ghidra saw
    only four.  The stack-clean immediate is the arg count -- always read it
    before trusting the decompiler's signature.
+
+---
+
+## Ghidra EXPANDS the divide-by-255 magic into C -- collapse it back to `/ 0xff`
+
+The divide-by-255 magic (`imul 0x80808081`, `>>0x3f`, `>>0x1f`) is well known as
+CODEGEN.  What bites on intake is that Ghidra renders it back into SOURCE:
+
+    pcVar6[i] = ((char)(iVar5 / 0xff) + (char)(iVar5 >> 0x1f))
+              - (char)((longlong)iVar5 * 0x80808081 >> 0x3f);
+
+Compiling that literally makes VC5 emit its OWN div-255 magic FOR the `/0xff`
+sub-term AND the explicit 64-bit `imul` + shifts -- roughly double the code.
+On 0x1005A500 it was the entire +167 B / +54-insn gap.  The original source is
+just the signed divide:
+
+    pcVar6[i] = (char)(iVar5 / 0xff);        /* iVar5 is a signed int */
+
+That one edit took 0x1005A500 from +167 B to +23 B.  Whenever a draft shows the
+`(x/0xff) + (x>>0x1f) - ((__int64)x*0x80808081>>0x3f)` shape, it is one signed
+`/ 255` -- collapse it before doing anything else.  (MSVC5 has no `long long`;
+use `__int64` in any probe that keeps a 64-bit temp.)
+
+STATE 0x1005A500 (livery recolour, 297 B, 8 args, `ret 0x20`): after the
+collapse it is a REGISTER-ALLOCATION near-match at +23 B (multiset 10 missing /
+15 extra), scattered class -- orig hoists the `*4` row stride as a loop
+invariant (`lea edi,[esi*4]` stored once) and forms the pixel address with a
+scaled-index `lea [ecx+edx*4]`, while our C recomputes `shl esi,2; add; sub`
+and spills one extra local (`sub esp,0xc` vs orig `sub esp,8`, 2 callee-saved
+regs vs orig's 3).  Semantics/structure verified identical; the residue is pure
+allocation + strength-reduction scheduling.  Not filed (fresh draft); left for
+the end-grind rather than ground here.
