@@ -7210,3 +7210,25 @@ pointer -- register-blind-equal (7 swaps), same instructions, shorter encodings.
 Forcing VC5's negative-offset induction scheme from source is the open lever;
 the instruction-exact transcription is build/ghidra_work/0x10002460.transcribed.c
 for the end-grind.
+
+---
+
+## Record fields as separate `DAT_` globals change the SCHEDULE: address them from ONE base symbol (samebase)
+
+Ghidra names every field of a global record (or of an array of records) as
+its own `DAT_<addr>` and emits `*(int *)((char *)&DAT_10661914 + iVar1)`.
+The original addressed them from one symbol: `&DAT_10661844 + iVar1 + 0xd0`.
+The bytes are the same `[eax + 0x10661914]` either way -- but the SCHEDULE is
+not.  VC5 will not hoist a load above a store when both are addressed from
+the same base symbol (they may alias), and it hoists freely across DISTINCT
+symbols.  On 0x100283C0 (83 B) the original emits `store, store, load-arg-3`
+and the per-field spelling emitted `load, store, store`: a 4-byte residue that
+a park note had called "pure scheduling, source order dead" after probing three
+statement orders.  Re-spelling every field from the lowest symbol plus a
+constant displacement was byte-exact on the FIRST compile (2026-09-07).
+
+Mechanical: `tools/crank.py` runs this as its first lever (`samebase`) --
+group `(char *)&DAT_X + idx` by index expression; two or more symbols on one
+index are re-spelled from the lowest; both `idx + disp` and `disp + idx`
+orders are tried.  Whenever a residue is a load moved across stores to
+"different" globals, check whether they are one record first.
