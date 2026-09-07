@@ -13,6 +13,42 @@
 
 #include <math.h>
 
+/* WHAT IT DOES: add one vector into another IN PLACE -- pA becomes pA + pB.
+ * The out-of-place twin is BrVec3Add. */
+/* @implements 0x1003AF70 d3d BrVec3AddTo */
+/* @n64 0x802248C8 exact */
+/* SAME FP SCHEDULING WALL as BrVec3Scale below, 6 diffs: the original loads
+ * pB first for ALL THREE components (`fld [ecx+n]; fadd [eax+n]`); we get
+ * that for y and z but the x component comes out reversed, because the
+ * parameter VC5 loads into a register first is the one it puts on the `fld`
+ * side. Writing the first component (or all three) as `pA->x = pB->x + pA->x`
+ * does not move it -- VC5 canonicalises the commutative FADD. */
+/* N64 CONFIRMS THE WALL, AND PROMOTES IT FROM INFERENCE TO PROOF. The above
+ * was reached by probing source forms and finding none that moved the bytes,
+ * which cannot distinguish "our spelling is right" from "we have not found the
+ * right spelling". The N64 twin settles it: IDO does NOT canonicalise
+ * commutative operands (verified directly -- `a->x + b->x` loads a1 then a2,
+ * `b->x + a->x` loads a2 then a1), so its bytes record the original's source
+ * order. This function is byte-exact against the ROM at 0x802248C8 AS WRITTEN,
+ * and the swapped spelling `pA->x = pB->x + pA->x` is NOT exact there.
+ *
+ * So the source below is the original's own spelling, and the PC residue is
+ * purely VC5's choice of which operand to load into a register first. It is a
+ * codegen wall, not a missing source form. DO NOT SPEND MORE PROBES ON
+ * OPERAND ORDER HERE.
+ *
+ * One axis the oracle cannot settle: `pA->x += pB->x` and
+ * `pA->x = pA->x + pB->x` are byte-identical under IDO too, so the compound
+ * form is unproven either way -- it just does not matter to either target.
+ * Method: n64/tools/n64match.py; see the commutative-addition entry in
+ * docs/VC5-IDIOMS.md. */
+void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
+{
+    pA->x += pB->x;
+    pA->y += pB->y;
+    pA->z += pB->z;
+}
+
 /* 0x10035C70  DESTINATION FIRST -- see the header. */
 /* WHAT IT DOES: copies a point or direction from one place to another. Note
  * the destination is the first argument, not the second. */
@@ -86,41 +122,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->z = pA->z - pB->z;
 }
 
-/* WHAT IT DOES: add one vector into another IN PLACE -- pA becomes pA + pB.
- * The out-of-place twin is BrVec3Add. */
-/* @implements 0x1003AF70 d3d BrVec3AddTo */
-/* @n64 0x802248C8 exact */
-/* SAME FP SCHEDULING WALL as BrVec3Scale below, 6 diffs: the original loads
- * pB first for ALL THREE components (`fld [ecx+n]; fadd [eax+n]`); we get
- * that for y and z but the x component comes out reversed, because the
- * parameter VC5 loads into a register first is the one it puts on the `fld`
- * side. Writing the first component (or all three) as `pA->x = pB->x + pA->x`
- * does not move it -- VC5 canonicalises the commutative FADD. */
-/* N64 CONFIRMS THE WALL, AND PROMOTES IT FROM INFERENCE TO PROOF. The above
- * was reached by probing source forms and finding none that moved the bytes,
- * which cannot distinguish "our spelling is right" from "we have not found the
- * right spelling". The N64 twin settles it: IDO does NOT canonicalise
- * commutative operands (verified directly -- `a->x + b->x` loads a1 then a2,
- * `b->x + a->x` loads a2 then a1), so its bytes record the original's source
- * order. This function is byte-exact against the ROM at 0x802248C8 AS WRITTEN,
- * and the swapped spelling `pA->x = pB->x + pA->x` is NOT exact there.
- *
- * So the source below is the original's own spelling, and the PC residue is
- * purely VC5's choice of which operand to load into a register first. It is a
- * codegen wall, not a missing source form. DO NOT SPEND MORE PROBES ON
- * OPERAND ORDER HERE.
- *
- * One axis the oracle cannot settle: `pA->x += pB->x` and
- * `pA->x = pA->x + pB->x` are byte-identical under IDO too, so the compound
- * form is unproven either way -- it just does not matter to either target.
- * Method: n64/tools/n64match.py; see the commutative-addition entry in
- * docs/VC5-IDIOMS.md. */
-void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
-{
-    pA->x += pB->x;
-    pA->y += pB->y;
-    pA->z += pB->z;
-}
+
 
 /* WHAT IT DOES: scale a vector by a number into a separate output, leaving
  * the input alone. */
