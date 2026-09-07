@@ -103,6 +103,7 @@ static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
  * two sheets of big square pictures -- by laying each sheet out as a fixed
  * grid. Everything that later draws a letter or a picture just asks for cell
  * number N and gets the rectangle from here. */
+/* @t4-pass 0x10058540 1 2026-09-07 probes 56 bytes 309 insns 112 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10058540 glide BrSprFontRectInit_1005F800 */
 void BrSprFontRectInit_1005F800(void)
 {
