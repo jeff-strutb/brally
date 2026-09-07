@@ -426,6 +426,7 @@ glide_va,name,module,basis,file
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c
 0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
+0x10031030,FUN_10031030,drawing,filed,src/core/drawing/br_texlevels.c
 0x10031140,BrTrackLoadHandling,startup,neighbour,src/core/generated/0x10031140.c
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/startup/br_track.c
