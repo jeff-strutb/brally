@@ -26,8 +26,10 @@ A PARK IS A HOLD ONLY WHILE IT IS NEWER THAN THE SCREENS.  The declaration-
 order, guard-shape, sibling-asymmetry and file-position screens landed
 2026-09-03..06 (SCREENS_DATE); a row parked before that date was parked
 without them, so it is LIVE and prints `[park <date> predates screens]`.
-Parked on or after that date, or carrying `@t4-pass` ledger lines with the
-last one dated on/after it: HELD, needing a lever the park predates.  Before
+Parked on or after that date: HELD, needing a lever the park predates.  A
+`@t4-pass` ledger line is NOT a hold: Gate B needs three of them, and
+tools/crank.py re-runs a row at near-zero cost (tried candidates are
+remembered), so a ledgered row stays live until it is certified or exact.  Before
 2026-09-07 every park was a hold, which left Pool A with 1 live row of 37.
 A file dead list is never a hold: it is the input to the next pass.
 
@@ -144,8 +146,8 @@ def pool_a(max_bytes):
                    file=r['file'], note=has_note(r['file'], r['va']),
                    mention=has_mention(r['file'], r['va']), passes=npass, flag='')
         pdate = parked.get(va, '')
-        if pdate >= SCREENS_DATE or last >= SCREENS_DATE:
-            rec['why'] = ('lane-parked %s' % pdate) if pdate >= SCREENS_DATE else ('ledger pass %s' % last)
+        if pdate >= SCREENS_DATE:
+            rec['why'] = 'lane-parked %s' % pdate
             held.append(rec)
         else:
             if pdate:
