@@ -319,6 +319,7 @@ glide_va,name,module,basis,file
 0x10027F80,BrGbiTexelsPerWord,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10027FB0,BrTex3dCreateBlank,drawing,filed,src/core/drawing/br_tex3d.c
 0x100281C0,FUN_100281c0,drawing,neighbour,src/core/drawing/br_glidestate.c
+0x100283C0,BrTex3dDownloadAt,drawing,filed,src/core/drawing/br_tex3d.c
 0x10028420,FUN_10028420,drawing,neighbour,src/core/drawing/br_glidestate.c
 0x100285E0,BrTex3dReDownload,drawing,filed,src/core/drawing/br_tex3d.c
 0x100287E0,BrTex3dReconvert,drawing,filed,src/core/drawing/br_tex3d.c
@@ -477,6 +478,7 @@ glide_va,name,module,basis,file
 0x10035870,BrTimerStart,startup,description,src/core/startup/br_timer.c
 0x100358C0,BrTimerStart1003C230,net,neighbour-1,src/core/generated/0x100358C0.c
 0x100358F0,BrSub1003C260,net,description,src/core/net/br_dplayjoin.c
+0x10035AC0,BrNetSessionStore,net,manual,src/core/net/br_dplaysession.c
 0x10035BB0,BrComCreateInstance,net,neighbour-1,src/core/net/br_dplayjoin.c
 0x10035BE0,BrDpShutdown,net,filed,src/core/net/br_dplayjoin.c
 0x10036040,BrSub1003C9B0,menus,manual,src/core/menus/br_uilistwalk.c
@@ -484,7 +486,6 @@ glide_va,name,module,basis,file
 0x10036100,BrSlotsResetIfBZero,gamedata,filed,src/core/gamedata/br_slots.c
 0x100361A0,FUN_100361a0,gamedata,neighbour-1,src/core/generated/0x100361A0.c
 0x10036430,BrSub1003CDA0,net,neighbour-1,src/core/net/br_sessiondesc.c
-0x10035AC0,BrNetSessionStore,net,manual,src/core/net/br_dplaysession.c
 0x10036650,BrSub1003CFC0,net,description,src/core/net/br_dplaysession.c
 0x10036670,BrGlobalFreeAll,net,neighbour-1,src/core/net/br_dplaysession.c
 0x100366C0,BrSub1003D030,net,description,src/core/net/br_dplaysession.c
@@ -576,9 +577,11 @@ glide_va,name,module,basis,file
 0x1003AF60,BrExt_10041A00,menus,neighbour,src/core/generated/0x1003AF60.c
 0x1003B020,BrMenuCopyTrackName,menus,filed,src/core/menus/br_menuact.c
 0x1003B0B0,BrMenuAutoSaveName,menus,neighbour,src/core/menus/br_menucb.c
+0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
 0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
 0x1003B970,BrExt_10042410,menus,neighbour,src/core/generated/0x1003B970.c
 0x1003BA30,BrExt_100424D0,menus,neighbour,src/core/menus/br_uinameedit.c
+0x1003BAC0,BrSaveNameCommitTimeAttack,menus,filed,src/core/menus/br_savename.c
 0x1003BCA0,BrSaveProbeTimeAttack,menus,filed,src/core/menus/br_saveprobe.c
 0x1003BFF0,BrToggleOnce_BFF0,menus,filed,src/core/menus/br_toggle.c
 0x1003C020,BrUiHook85_10042AC0,menus,neighbour,src/core/menus/br_uictlhook.c
@@ -781,7 +784,9 @@ glide_va,name,module,basis,file
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
 0x10066260,BrCollRespBoxClassify,driving,filed,src/core/driving/br_collresp.c
 0x100664F0,BrCrCorner,driving,filed,src/core/driving/br_collresp.c
+0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
 0x10066800,BrCollRespSegBox,driving,filed,src/core/driving/br_collresp.c
+0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10066AD0,BrCollRespBroadPhase,driving,filed,src/core/driving/br_collresp.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
@@ -789,6 +794,7 @@ glide_va,name,module,basis,file
 0x10069530,BrTrackSurfaceSet,startup,filed,src/core/startup/br_track.c
 0x10069930,BrMenuSub100709A0,menus,prefix,src/core/generated/0x10069930.c
 0x10069DC0,BrSub69DC0,racing,neighbour-1,src/core/racing/br_sub69.c
+0x10069DE0,BrGhostSave,settings,filed,src/core/settings/br_ghostsave.c
 0x1006A070,BrSetMode5,racing,filed,src/core/racing/br_replayon.c
 0x1006A310,BrDelta_100713A0,racing,filed,src/core/racing/br_replayon.c
 0x1006A330,FUN_1006a330,net,filed,src/core/net/br_peerreset.c
@@ -948,8 +954,3 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
-0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
-0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
-0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
-0x1003BAC0,BrSaveNameCommitTimeAttack,menus,filed,src/core/menus/br_savename.c
-0x10069DE0,BrGhostSave,settings,filed,src/core/settings/br_ghostsave.c
