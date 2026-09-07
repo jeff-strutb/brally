@@ -7040,3 +7040,43 @@ in a probe gives a THIRD result, -1 B), so this is whole-TU allocator state,
 not a monotone preceding-symbol count.  When a leaf is byte-exact standalone
 but off by a register-blind-equal margin in its module, sweep FILE POSITION
 before concluding it is a wall.
+
+---
+
+## A multi-dword struct assignment forms ONE dest pointer (lea); scalar stores fold the address
+
+0x10035AC0 (BrNetSessionStore) copies a 16-byte GUID into a table slot at a
+register-held base plus a link-time constant: `base = idx*0xE0`, dest =
+`0x10AC3148 + base`.  Writing it as four scalar dword stores through a computed
+pointer --
+
+    int *p = (int *)(DAT_10AC3148 + base);
+    p[0] = ...; p[1] = ...; p[2] = ...; p[3] = ...;
+
+-- does NOT keep `p` in a register.  VC5 folds `base + 0x10AC3148` into the
+addressing mode of every store, emitting four `mov [ebx+0x10AC3148+i], r`
+(disp32 each, 6 bytes) and no lea.  That was the entire +11 B residue: orig
+instead had `lea ecx,[ebx+0x10AC3148]` once, then `mov [ecx]`, `[ecx+4]`,
+`[ecx+8]`, `[ecx+0xc]` (disp8).
+
+The original shape is a **16-byte structure assignment**:
+
+    typedef struct { int a, b, c, d; } Guid16;
+    *(Guid16 *)(DAT_10AC3148 + base) = *(Guid16 *)pSrc;   /* -> lea + 4 stores */
+
+A whole-object copy makes VC5 materialise the destination pointer and store
+through it with small displacements; a sequence of scalar `p[i]=` stores lets
+it re-fold the base address into each store.  So when the original shows
+`lea R,[base+off]` followed by stores at `[R]`, `[R+4]`, ... with small
+displacements, the source copied a STRUCT, not four ints.  (The size is small
+enough -- 4 dwords -- that VC5 unrolls to `mov`s rather than `rep movsd`.)
+
+Two more facts from the same function, both cheap to miss:
+ * `repe cmpsb` with `xor edx,edx` immediately before it is inline
+   `memcmp(a, b, n) == 0`: the `xor` zeroes the (dead) result register the
+   non-equal path would have signed, and the `jne`/`je` reads the flags
+   directly.  A chain of these picks an index by GUID.  Not in the corpus as
+   of 2026-09-07 -- recorded here so the next one is a lookup.
+ * `ret 0x18` on a `__stdcall` cleans 24 bytes = SIX dword args; Ghidra saw
+   only four.  The stack-clean immediate is the arg count -- always read it
+   before trusting the decompiler's signature.
