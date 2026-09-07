@@ -66,7 +66,17 @@ void BrSwapVec3(void *pv)
  * assignments to hi-then-lo, dropping the locals for one direct
  * `(p[0] << 8) | p[1]` expression, and a two-lane union written low lane
  * first (that one costs a stack slot: 42 B, 5+3).  VC5 always fills the
- * HIGH half of the word register first for this compose. */
+ * HIGH half of the word register first for this compose.
+ *
+ * DEAD probes 2026-09-07, all still 4 (register-blind multiset 0+0 -- the two
+ * byte-loads are the SAME bag, only their order flips): char-typed locals
+ * (`unsigned char lo, hi`) emit dh-first identically; moving the whole
+ * function to the END of the TU (after BrHandleLookup) moved nothing.  Corpus
+ * find --from 0x10018A50 --at 0xe --len 8 is a MISS: the low-then-high word
+ * compose (mov dl,[r+1]; mov dh,[r]) is not proven anywhere in the solved
+ * tree, so there is no spelling to copy -- this needs a SOURCE fact, not
+ * another permutation.
+ * @t4-pass 0x10018A50 1 2026-09-07 probes 2 bytes 29 insns 12 regions 1 rows 4 census yes */
 /* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
  * Boss Rally's data files came from the N64 and store their numbers the other
  * way round from a PC, so they have to be turned around after loading. Asking
