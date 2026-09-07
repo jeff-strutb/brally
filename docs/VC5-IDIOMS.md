@@ -7182,3 +7182,31 @@ Also: a callee the tree defines `void` but that leaves a value in eax (e.g. a
 DirectSound apply whose last act is the HRESULT-returning vtable call) is read
 by its caller as int.  Declare it int-returning in the CALLER -- which forces
 the caller into its own TU when the void definition is in the same module.
+
+---
+
+## 0x10002460 -- INSTRUCTION-EXACT near-match; residue is loop induction-variable base selection
+
+A race/menu reset routine: zero a block, copy several fixed-size arrays, and
+build a per-entrant record table in a `do`/`while` walk.  Two intake fixes took
+the Ghidra draft from +8 insns to INSTRUCTION-EXACT (65/65), -9 B:
+
+ * **All four manual copy loops are `memset`/`memcpy`.**  The original emits
+   `rep stosd` (the 0x46-dword zero) and `rep movsd` x3 (a 0xc-dword and two
+   0x53-dword copies); Ghidra rendered each as a `dec`/`jne` loop.  Replace with
+   `memset(dst,0,n)` / `memcpy(dst,src,n)` -- VC5 inlines them to the string ops.
+ * **Merge the two record pointers into one induction variable.**  The draft
+   kept `puVar2 = puVar1 + 0x10; ...; puVar1 = puVar2;` (two registers, a
+   `mov eax,ebp` each iteration); writing the walk as `puVar1 = puVar1 + 0x10;`
+   with the loop test on `puVar1` drops the copy and makes the instruction
+   COUNT exact.
+
+The remaining -9 B is pure strength-reduction: the original advances the record
+pointers (`add eax,0x40`, `add edx,0x2b68`) MID-loop and addresses every field
+by a NEGATIVE offset from the advanced pointer (`mov [eax-0x40],r`,
+`mov r,[edx-0x2a08]` for field 0x58 after `edx += 0x2b68`), plus a scaled
+`lea [r+r*k]`.  Our C addresses the same fields positively from the pre-advance
+pointer -- register-blind-equal (7 swaps), same instructions, shorter encodings.
+Forcing VC5's negative-offset induction scheme from source is the open lever;
+the instruction-exact transcription is build/ghidra_work/0x10002460.transcribed.c
+for the end-grind.
