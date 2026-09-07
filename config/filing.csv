@@ -455,6 +455,7 @@ glide_va,name,module,basis,file
 0x10034560,BrVec3Sub,geometry,filed,src/core/geometry/br_vec.c
 0x10034590,BrVec3SubFrom,geometry,filed,src/core/geometry/br_vec.c
 0x100345C0,BrVec3Add,geometry,filed,src/core/geometry/br_vec.c
+0x100345F0,BrVec3AddTo,geometry,filed,src/core/geometry/br_vec.c
 0x10034620,BrVec3Lerp,geometry,filed,src/core/geometry/br_vec.c
 0x100346D0,BrVec3Midpoint,geometry,filed,src/core/geometry/br_vec.c
 0x10034710,BrVec3Zero,geometry,filed,src/core/geometry/br_vec.c
