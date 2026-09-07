@@ -241,6 +241,7 @@ int FUN_10058380(int, int, int, int *, int);
 typedef struct { short v; } BrGlyphI16;
 typedef struct { float v; } BrGlyphF32;
 typedef struct { int v; }   BrGlyphI32;
+/* @t4-pass 0x10054550 1 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10054550 glide BrSprFontGlyphA_1005B730 */
 int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
     BrGlyphF32 x, BrGlyphF32 y, BrGlyphI32 unused)
