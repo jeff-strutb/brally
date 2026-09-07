@@ -301,6 +301,9 @@ original bytes to match.
     tools/                    matching pipeline + staged MSVC toolchain
                               (tools/t3.py: the T3 gates and tag validator;
                               tools/t4lane.py: the byte-exact target picker;
+                              tools/crank.py: the unattended lever sweep that
+                              closes, files, ledgers and certifies register-only
+                              rows and learns across runs;
                               tools/tiers.py: the four-tier count)
     config/                   function maps, globals; binaries.csv (per-binary
                               compiler + CRT model); fenced.csv / fenced_exe.csv

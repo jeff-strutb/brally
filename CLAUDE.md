@@ -25,7 +25,17 @@ than another permutation.
 
 **The matching cadence (established 2026-08-25):** machine batch → hand-solve
 one representative per failure class → mint a generator → re-batch. Never
-hand-match what a generator could sweep. The wide batch is
+hand-match what a generator could sweep. **For rows already in the tree
+with a register-only residue, the sweep is `tools/crank.py` (2026-09-07):**
+it walks every live Pool A row of `t4lane.py`, tries the proven levers
+(record base symbol, file position, declaration order, commutative and
+statement order, the permuter's sound mutations) in the function's OWN TU,
+scored register-blind; a match is swept, committed and filed, a miss gets
+its `@t4-pass` line and a `--qualify` run, and per-lever statistics plus
+learned record bases carry over to the next run. When it misses, the
+residue is a SOURCE FACT: hand-solve one, add it as a lever, re-run. It
+never commits into an address batch (rule 6): those land in
+`build/match/crank_refile.txt` for the hand move. The wide batch is
 `tools/ghidra_to_match.py --refine --max-diffs 200 --min-size 16` (hours,
 zero tokens, crash-safe); `tools/autofile.py` files, sweep-verifies, and
 commits every MATCH; `--residue` groups the failures by divergence class.
