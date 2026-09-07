@@ -714,6 +714,7 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * the source image into the palette buffer. The number of bytes comes
  * straight from the command and is not checked, here or in the original. */
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
+/* @t4-pass 0x10029480 1 2026-09-07 probes 25 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 #ifdef BR_MATCHING_BUILD
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
