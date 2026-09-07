@@ -34,16 +34,11 @@ extern char s__u__x__d__d_100aa328[];
  * chooser; missing file just runs the chooser on the 2MB default. */
 /* @implements 0x10031030 glide FUN_10031030 */
 void FUN_10031030(char *pszPath)
-{
-  char buf[0x400];
-
-  DAT_10ac0808 = 0;
-  DAT_1186c960 = 0x200000;
-  if (FUN_10003680(pszPath) == 0) {
+{char buf[0x400];  int s30;
+DAT_10ac0808 = 0;DAT_1186c960 = 0x200000;if (FUN_10003680(pszPath) == 0) {
     BrTexChooseLevel();
     return;
-  }
-  {
+  }{
     register int fp;
     int ok;
     int off;
@@ -61,7 +56,7 @@ void FUN_10031030(char *pszPath)
                &DAT_106eef08 + off + 4,
                &DAT_106eef08 + off + 8,
                &DAT_106eef08 + off + 12);
-        DAT_10ac0808 = DAT_10ac0808 + 1;
+        s30 = DAT_10ac0808; DAT_10ac0808 = s30 + 1;
         if (DAT_10ac0808 >= 0x100) {
           break;
         }
@@ -69,8 +64,6 @@ void FUN_10031030(char *pszPath)
       }
     }
     FUN_100035e0(fp);
-  }
-  BrTexChooseLevel();
-}
+  }BrTexChooseLevel();}
 
 #endif /* BR_MATCHING_BUILD */
