@@ -7141,3 +7141,44 @@ Both are the documented thiscall-byte-argument wall (see the BrNetWriteTag20
 note in br_netpkt.c).  This whole net-writer family routes to the C++ TU lane;
 do not grind it in C.  The wrappers and the verified structure are in the
 transcription file for whoever takes it there.
+
+---
+
+## Defeat a diamond store-hoist by ordering the common store AFTER a branch-specific one
+
+When both arms of an if/else begin with the SAME store (`*(int*)(p+0x10) = 400`
+in each), VC5 hoists it ABOVE the branch and emits it ONCE.  If the original
+kept it INSIDE each arm (two stores), reorder so the common store is NOT the
+first statement of each arm -- put a branch-specific store ahead of it:
+
+    if (hi > lo) {
+        *(int*)(p+0x14) = (hi*400)/32;   /* branch-specific, first */
+        *(int*)(p+0x10) = 400;           /* common store, now second -> NOT hoisted */
+        ...
+    } else {
+        *(int*)(p+0x14) = (lo*400)/32;
+        *(int*)(p+0x10) = 400;
+        ...
+    }
+
+On 0x1006B790 this alone moved -6 B (one hoisted store) to +1.  The whole 235 B
+function then fell to exact with three more source-shape levers, all worth
+keeping as a set:
+ * **Shared return tail via `&&` guard chain.** Three `if (g==0) return 1;`
+   guards emitted three separate `mov eax,1; pop; pop; ret` epilogues; folding
+   them to `if (g1 && g2 && g3) { body } return 1;` gives ONE shared tail the
+   originals reach by `je`.
+ * **`goto` a single labelled `return 0`** so an early `if (p==0) return 0;`
+   SHARES the deep applies-fail epilogue instead of inlining its own -- the
+   original reaches both by `je` to the same address.
+ * **Compare operand order is the source's.** `hi > lo` emits `cmp esi,ecx; jle`,
+   `lo < hi` emits `cmp ecx,esi; jge` -- VC5 does not canonicalise `cmp`.
+ * **Two-way split of one dword by `& 0xffff` / `>> 16`:** the LAST-written of
+   the pair lands in the initially-loaded register.  Writing `hi = x>>16;
+   lo = x&0xffff;` (hi first) matched; `lo` first swapped the load register and
+   the and/shr order (register-blind-equal but 4 B off).
+
+Also: a callee the tree defines `void` but that leaves a value in eax (e.g. a
+DirectSound apply whose last act is the HRESULT-returning vtable call) is read
+by its caller as int.  Declare it int-returning in the CALLER -- which forces
+the caller into its own TU when the void definition is in the same module.
