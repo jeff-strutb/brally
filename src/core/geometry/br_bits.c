@@ -81,6 +81,7 @@ void BrSwapVec3(void *pv)
  * Boss Rally's data files came from the N64 and store their numbers the other
  * way round from a PC, so they have to be turned around after loading. Asking
  * for nothing, or for a negative number of them, does nothing. */
+/* @t4-pass 0x10018A50 2 2026-09-07 probes 25 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10018A50 glide BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {
