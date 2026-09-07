@@ -7,16 +7,29 @@ handed to the session directly (specs in the repo go stale).
     .venv/bin/python tools/t4lane.py --pool A       # register-only T2 rows, by translation unit
     .venv/bin/python tools/t4lane.py --pool B       # smallest untouched drafts, screened
     .venv/bin/python tools/t4lane.py --n 30 --max-bytes 400
+    .venv/bin/python tools/t4lane.py --claim         # lock the primaries it printed (TOKEN)
+
+‼ LOCK THROUGH THIS TOOL, never `claim_lane.py claim N`.  claim_lane's own
+picker ranks by build/match/triage_rank.csv, a 2026-08-28 snapshot: once its
+SHAPE rows are gone it hands out the giants (BrFrameDraw, BrCtlAiBody,
+BrObjDlBuild, BrTex3dExpand ...) -- exactly what happened on 2026-09-07.
+`--claim` passes this tool's primaries to `claim_lane.py claim --va ...`.
 
 POOL A -- rows in build/match/report.csv with status=diff whose register-blind
 instruction multiset equals the original's (reggap 0, tools/fnmatch/triage.py):
 the same instructions, only allocation/order/one fact differs.  Grouped by
 translation unit (the cluster rule), files ordered by their smallest masked
 diff, rows inside a file by diff.  Excluded: T3-certified rows (@t3),
-C++-lane rows, rows claimed in the lane ledger.  Rows the lane ledger has
-PARKED, or whose file header carries a park/residue note naming them, are
-listed separately: they need a lever absent from their dead list.  A plain
-residue note is not a hold -- it prints as a flag; read it before the first probe.
+C++-lane rows, rows claimed by a live token.
+
+A PARK IS A HOLD ONLY WHILE IT IS NEWER THAN THE SCREENS.  The declaration-
+order, guard-shape, sibling-asymmetry and file-position screens landed
+2026-09-03..06 (SCREENS_DATE); a row parked before that date was parked
+without them, so it is LIVE and prints `[park <date> predates screens]`.
+Parked on or after that date, or carrying `@t4-pass` ledger lines with the
+last one dated on/after it: HELD, needing a lever the park predates.  Before
+2026-09-07 every park was a hold, which left Pool A with 1 live row of 37.
+A file dead list is never a hold: it is the input to the next pass.
 
 POOL B -- functions with no @implements anywhere (the T1 set from
 tools/tiers.py), smallest first, run through the mechanical screen from
@@ -38,6 +51,9 @@ md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
 W16 = re.compile(r'\b(ax|bx|cx|dx|si|di|bp|ah|bh|ch|dh)\b')
 NOTE = re.compile(r'\bPARKED\b|\bDEAD\b|[Dd]o not re-run|dead list|do NOT re-run')
+# Newest of the mechanical screens (file-position lever, 2026-09-06).  A park
+# older than this was made without them and is not a hold.
+SCREENS_DATE = '2026-09-06'
 
 
 def _csv(path):
@@ -98,12 +114,14 @@ def has_mention(path, va):
     return False
 
 
-def ledger_count(path, va):
+def ledger(path, va):
+    """(count, last date) of @t4-pass lines for va in path."""
     try:
         t = open(os.path.join(ROOT, path), encoding='utf-8', errors='replace').read()
     except OSError:
-        return 0
-    return len(re.findall(r'@t4-pass\s+' + re.escape(va), t, re.I))
+        return 0, ''
+    ds = re.findall(r'@t4-pass\s+' + re.escape(va) + r'\s+\d+\s+(\d{4}-\d{2}-\d{2})', t, re.I)
+    return len(ds), max(ds) if ds else ''
 
 
 def pool_a(max_bytes):
@@ -121,14 +139,21 @@ def pool_a(max_bytes):
         if not m or m['reg'] != 0 or m['oi'] != m['ri']:
             continue
         diff = int(r.get('diffs') or r.get('diff_bytes') or list(r.values())[-1] or 0)
+        npass, last = ledger(r['file'], r['va'])
         rec = dict(va=r['va'], name=r['name'], size=int(r['orig_size']), diff=diff,
                    file=r['file'], note=has_note(r['file'], r['va']),
-                   mention=has_mention(r['file'], r['va']),
-                   passes=ledger_count(r['file'], r['va']))
-        if va in parked or rec['note']:
-            rec['why'] = ('lane-parked %s' % parked[va]) if va in parked else 'file dead-list'
+                   mention=has_mention(r['file'], r['va']), passes=npass, flag='')
+        pdate = parked.get(va, '')
+        if pdate >= SCREENS_DATE or last >= SCREENS_DATE:
+            rec['why'] = ('lane-parked %s' % pdate) if pdate >= SCREENS_DATE else ('ledger pass %s' % last)
             held.append(rec)
         else:
+            if pdate:
+                rec['flag'] = '[park %s predates screens]' % pdate
+            elif rec['note']:
+                rec['flag'] = '[dead list in header: read it first]'
+            elif rec['mention']:
+                rec['flag'] = '[residue note: read it first]'
             live.setdefault(r['file'], []).append(rec)
     for f in live:
         live[f].sort(key=lambda x: (x['diff'], x['size']))
@@ -174,6 +199,7 @@ def main(argv):
     n = int(argv[argv.index('--n') + 1]) if '--n' in argv else 20
     mb = int(argv[argv.index('--max-bytes') + 1]) if '--max-bytes' in argv else 400
     pool = argv[argv.index('--pool') + 1].upper() if '--pool' in argv else 'BOTH'
+    primaries = []
     if pool in ('A', 'BOTH'):
         files, live, held = pool_a(mb)
         total = sum(len(v) for v in live.values())
@@ -184,13 +210,14 @@ def main(argv):
             print('  %s' % f)
             for r in live[f]:
                 k += 1
-                print('     %s %-30s %4d B  diff %3d  ledger %d%s%s'
-                      % (r['va'], r['name'], r['size'], r['diff'], r['passes'],
-                         '  [residue note: read it first]' if r['mention'] else '',
+                if k <= n:
+                    primaries.append(r['va'])
+                print('     %s %-30s %4d B  diff %3d  ledger %d  %s%s'
+                      % (r['va'], r['name'], r['size'], r['diff'], r['passes'], r['flag'],
                          '   <-- primary' if k <= n else ''))
         if held:
-            print('  --- HELD (Pool A second tier: only with a lever the park PREDATES; the')
-            print('      declaration-order, guard-shape and sibling screens are 2026-09-03..05): %d' % len(held))
+            print('  --- HELD (parked or passed on/after %s: only with a lever the park PREDATES): %d'
+                  % (SCREENS_DATE, len(held)))
             for r in held:
                 print('     %s %-30s %4d B  diff %3d  ledger %d  %-22s %s'
                       % (r['va'], r['name'], r['size'], r['diff'], r['passes'], r['why'], r['file']))
@@ -199,10 +226,18 @@ def main(argv):
         print('=== POOL B: smallest untouched drafts (<= %d B), mechanically screened -- %d clean, %d rejected'
               % (mb, len(keep), len(out)))
         for i, r in enumerate(keep):
+            if i < n:
+                primaries.append(r['va'])
             print('     %s %4d B  %s%s' % (r['va'], r['size'], r['draft'], '   <-- primary' if i < n else ''))
         print('  --- rejected by the screen (do not start in this lane):')
         for r in out:
             print('     %s %4d B  %s' % (r['va'], r['size'], r['why']))
+    if '--claim' in argv:
+        if not primaries:
+            print('nothing to claim'); return 1
+        from claim_lane import claim
+        print('=== locking %d primaries in build/match/lane_claims.csv' % len(primaries))
+        claim(len(primaries), vas=primaries)
     return 0
 
 

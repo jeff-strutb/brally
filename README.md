@@ -123,10 +123,11 @@ as "not started", so T1 climbed every time a C++ match landed. Fixed in
 
 The numbers in this section move daily; regenerate rather than trust them.
 
-**How a byte-exact session picks its targets.** `python3 tools/t4lane.py`
-reads the tree and prints two pools: functions already in the project whose
-instruction multiset equals the original's (registers only), grouped by
-translation unit, with earlier parks shown with their reason and date; and
+**How a byte-exact session picks its targets.** `python3 tools/t4lane.py --claim`
+reads the tree, prints two pools and locks the picks: functions already in the
+project whose instruction multiset equals the original's (registers only),
+grouped by translation unit, where a park older than the newest matching
+screen is live again and only a newer park or a logged pass holds a row; and
 the smallest untouched functions after a mechanical screen (exception-frame
 prologue, odd address, C++ lane, x87 juggling, 16-bit lanes). Every pass at
 a near-exact function ends by appending an `@t4-pass` line with its numbers
