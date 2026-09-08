@@ -7214,6 +7214,26 @@ Forcing VC5's negative-offset induction scheme from source is the open lever;
 the instruction-exact transcription is build/ghidra_work/0x10002460.transcribed.c
 for the end-grind.
 
+**2026-09-08 update (src/core/racing/br_racesel.c, 252/252 B, 2 B off):**
+the negative-offset scheme IS reachable from source.  Two facts closed it:
+ * **Index both arrays by one `int i` and no pointer locals.**  `for (i = 0;
+   i < 1; i++) { blk.e[i].f = g_aCar[i].g; ... }` with the struct types
+   declared so the fields sit at the right offsets makes VC5 strength-reduce
+   BOTH accesses to advancing pointers, `add` them mid-loop and address every
+   later field negatively, exactly as the original.  Any pointer local (a
+   `pCar = &g_aCar[i]`, a `pE = &blk.e[i]`, or a stepped `pCar++`) moves the
+   rebase to a different field (+0x160 / +8) or swaps which pointer carries
+   the loop test.  The `i < 1` literal survives: VC5 does not peel a
+   one-trip loop, it emits `cmp reg, end; jl` (signed, from the int).
+ * **The selector byte goes straight into an `int`.**  `sel = pRec[idx]` with
+   `int sel` emits `xor ebx,ebx; mov bl,[...]` and reuses ebx for both the
+   store and the table index.  A `uint8_t` local used twice spills through
+   `[esp+0xc]` and widens with `and ecx,0xff` (+7 B, +1 insn); an `int` copy
+   OF that uint8_t local is folded back to the same spill.
+Residue: the two induction pointers are coloured eax/edx the other way round
+(the original's entry pointer, which carries the loop test, is eax).
+Register-blind 0+0; dead list in the file header.
+
 ---
 
 ## Record fields as separate `DAT_` globals change the SCHEDULE: address them from ONE base symbol (samebase)
