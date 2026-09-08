@@ -784,6 +784,13 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
 /* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029510 3 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10029510 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 93/94 insns 27/27 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue after tools/crank.py: 67 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
 #ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
