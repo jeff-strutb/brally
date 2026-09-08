@@ -1431,6 +1431,7 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * character's advance at the given scale. Used to centre and right-align
  * text without drawing it first. */
 /* @t4-pass 0x10016980 1 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x10016980 2 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
 /* @implements 0x10016980 glide BrFontMeasure */
 #ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;
