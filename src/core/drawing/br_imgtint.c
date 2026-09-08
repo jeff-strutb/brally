@@ -89,6 +89,7 @@ extern const uint8_t *g_apBrImgTintTex[];
  * KEEP the named stride); `rows = h` copied before the test (spills the
  * counter at entry, worse).  Sibling BrImgMulByMask above went byte-exact
  * with the same loop body, so the levers are in the outer loop. */
+/* @t4-pass 0x1005A300 1 2026-09-07 probes 77 bytes 291 insns 98 regions 4 rows 5 census yes  (tools/crank.py) */
 /* @implements 0x1005A300 glide BrImgMulByTexture */
 void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
 {
