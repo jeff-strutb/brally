@@ -965,6 +965,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * render modes in force. It stops at the end-of-list command. */
 /* @implements 0x100290E0 d3d BrGbiTexScanRun */
 /* @t4-pass 0x10028820 1 2026-09-07 probes 36 bytes 818 insns 323 regions 1 rows 225 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028820 2 2026-09-07 probes 36 bytes 818 insns 323 regions 1 rows 225 census yes  (tools/crank.py) */
 /* @implements 0x10028820 glide BrGbiTexScanRun */
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 {
