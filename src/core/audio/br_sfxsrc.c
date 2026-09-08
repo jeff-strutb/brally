@@ -175,6 +175,7 @@ int BrSfxChanSetLevels(int ch, uint32_t packed)
  * channel's own record and the separate note of what the hardware has really
  * been told -- so the per-frame retune can tell whether anything has changed.
  * With sound switched off it reports success without doing anything. */
+/* @t4-pass 0x1006B880 1 2026-09-07 probes 61 bytes 188 insns 70 regions 1 rows 40 census yes  (tools/crank.py) */
 /* @implements 0x1006B880 glide BrSfxChanStart */
 int BrSfxChanStart(int group, int ch, int32_t loop)
 {
