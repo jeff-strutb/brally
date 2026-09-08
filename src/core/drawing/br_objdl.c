@@ -153,6 +153,7 @@ extern float DAT_106e7930[16];   /* the sprite matrix */
  * dropped rather than handed on.  The surface-class bitmask says how many
  * times to repeat the whole thing, one pass per set bit, each pass reading
  * the next slice of the scene block. */
+/* @t4-pass 0x1000CBA0 1 2026-09-07 probes 150 bytes 4164 insns 1144 regions 23 rows 184 census yes  (tools/crank.py) */
 /* @implements 0x1000CBA0 glide BrObjDlBuild */
 void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
 {
