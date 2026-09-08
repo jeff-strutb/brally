@@ -83,6 +83,7 @@ extern int DAT_1177883c;
  * four cells of the collision grid (150 plane records each), the 200-node
  * contact pool, the contact list head and its bump cursor, and the handful
  * of accumulators next to them. */
+/* @t4-pass 0x10063DD0 1 2026-09-07 probes 58 bytes 132 insns 33 regions 1 rows 5 census yes  (tools/crank.py) */
 /* @implements 0x10063DD0 glide BrCollRespReset */
 void BrCollRespReset(void)
 {
