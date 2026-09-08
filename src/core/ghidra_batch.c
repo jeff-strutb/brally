@@ -99,6 +99,7 @@ extern HANDLE DAT_106ed6e0;
 /* WHAT IT DOES: tears down the current session (net, handles, video) and
  * brings the renderer back up at 640x480x16 if the clock pair drifted. */
 /* @t4-pass 0x1002F282 1 2026-09-07 probes 75 bytes 133 insns 35 regions 4 rows 11 census yes  (tools/crank.py) */
+/* @t4-pass 0x1002F282 2 2026-09-07 probes 75 bytes 133 insns 35 regions 4 rows 11 census yes  (tools/crank.py) */
 /* @implements 0x1002F282 glide BrSessionReinitVideo */
 void BrSessionReinitVideo(void)
 {
