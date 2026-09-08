@@ -12,6 +12,7 @@ glide_va,name,module,basis,file
 0x10002310,BrCamFrameInitB,drawing,filed,src/core/drawing/br_camframe.c
 0x100023E0,BrCosF,geometry,description,src/core/geometry/br_cos.c
 0x100023F0,BrTimeFormat,racing,filed,src/core/racing/br_timefmt.c
+0x10002460,BrRaceSelFromMenu,racing,manual,src/core/racing/br_racesel.c
 0x10002560,BrSinF,geometry,description,src/core/geometry/br_sin.c
 0x10002570,BrSqrtF,geometry,description,src/core/geometry/br_sin.c
 0x10002760,BrCdMaybeClose,audio,description,src/core/audio/br_cd.c
