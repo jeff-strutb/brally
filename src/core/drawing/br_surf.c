@@ -182,6 +182,7 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
  * ordinary Windows form and stored in the reduced form the renderer compares
  * against. */
 /* @t4-pass 0x100014A0 1 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x100014A0 2 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
