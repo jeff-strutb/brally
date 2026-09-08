@@ -80,6 +80,7 @@ static void BrPutU32(uint8_t *p, uint32_t v)
  * assignment target and the fseek argument (identical 6).  Store
  * placement inside a call sequence is not source-reachable here. */
 /* @t4-pass 0x10008BA0 1 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10008BA0 2 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10008BA0 glide BrPodWriteOpen */
 int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
 {
