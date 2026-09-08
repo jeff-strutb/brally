@@ -108,4 +108,75 @@ int BrNetWriteTag20(void *pThis, unsigned char kind)
     }
     return 0;
 }
+
+typedef struct { unsigned int v; } BrU32Arg;
+void __fastcall BrBitStreamWriteU32(void *pBs, BrU32Arg v); /* 0x1006D050 */
+extern unsigned int DAT_1184c074;
+
+/* WHAT IT DOES: write one player record onto an outgoing bitstream if it
+ * still fits in 256 bytes: six field bytes, a 32-bit id, a 24-byte name when
+ * the type is 0..2, and a 24-bit extra when the type is 4. Returns 0 if the
+ * record would not fit. */
+/* @t4-pass 0x1006AEB0 1 2026-09-08 probes 1 bytes 304 insns 0 regions 1 rows 0 census no
+ * PARKED T2. Same U8 thiscall wall as BrNetWriteTag20 in this file: MSVC
+ * homes each byte arg; orig pushes eax with dirty high bytes. Do not grind. */
+/* @implements 0x1006AEB0 glide BrNetWritePlayerRec */
+int BrNetWritePlayerRec(void *pBs, unsigned char a, unsigned int flags,
+                        unsigned char b, unsigned char c, unsigned char d,
+                        unsigned char e, char *pszName, unsigned int id)
+{
+    BrU8Arg u8;
+    BrU32Arg u32;
+    BrPktU24Arg u24;
+    int n;
+    int type;
+    int i;
+    int done;
+
+    n = BrCountedTotal(pBs) + 10;
+    type = (int)(flags & 0x3f);
+    if (type <= 2)
+        n += 0x18;
+    if (type == 4)
+        n += 3;
+    if (n > 0x100)
+        return 0;
+
+    u8.b = a;
+    BrBitStreamWriteU8(pBs, u8);
+    u8.b = (unsigned char)flags;
+    BrBitStreamWriteU8(pBs, u8);
+    u8.b = b;
+    BrBitStreamWriteU8(pBs, u8);
+    u8.b = c;
+    BrBitStreamWriteU8(pBs, u8);
+    u8.b = d;
+    BrBitStreamWriteU8(pBs, u8);
+    u8.b = e;
+    BrBitStreamWriteU8(pBs, u8);
+    u32.v = id;
+    BrBitStreamWriteU32(pBs, u32);
+
+    if (type <= 2) {
+        done = 0;
+        i = 0;
+        do {
+            if (done) {
+                u8.b = 0;
+                BrBitStreamWriteU8(pBs, u8);
+            } else {
+                u8.b = (unsigned char)pszName[i];
+                BrBitStreamWriteU8(pBs, u8);
+                if (pszName[i] == 0)
+                    done = 1;
+            }
+            i++;
+        } while (i < 0x18);
+    }
+    if (type == 4) {
+        u24.v = DAT_1184c074;
+        BrBitStreamWriteU24(pBs, u24);
+    }
+    return 1;
+}
 #endif
