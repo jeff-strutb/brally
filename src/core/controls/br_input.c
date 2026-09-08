@@ -805,6 +805,7 @@ extern BrDIPollRec *DAT_10ac61e0;
  * high bit is down, lets 0x10059060 turn those into new-press flags, and
  * returns the index of the first button that flagged.  -1 when none did,
  * and also when there is no device at all. */
+/* @t4-pass 0x100705F0 1 2026-09-07 probes 84 bytes 187 insns 57 regions 2 rows 18 census yes  (tools/crank.py) */
 /* @implements 0x100705F0 glide BrInputPollPressed */
 int BrInputPollPressed(void)
 {
