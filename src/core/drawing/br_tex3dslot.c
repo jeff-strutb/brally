@@ -53,6 +53,7 @@ extern float DAT_1007745c;
  * the TMU's low water-mark and if that would pass 2MB or the TMU's max,
  * the high water-mark. Returns the new slot index, or -1 if the table is
  * full (1024) or the TMU is out of memory. */
+/* @t4-pass 0x10028200 1 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
                  int a6, int a7, int a8, int a9, int a10, int a11,
