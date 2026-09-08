@@ -395,6 +395,7 @@ extern int DAT_106b7aa0;
 
 /* WHAT IT DOES: frees every per-entry graphics pointer in the entity table,
  * then frees the table itself and zeros the counts. */
+/* @t4-pass 0x10029CD0 1 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10029CD0 glide BrEntGfxFreeAll */
 void BrEntGfxFreeAll(void)
 {
