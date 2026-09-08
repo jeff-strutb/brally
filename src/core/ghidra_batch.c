@@ -151,6 +151,7 @@ extern unsigned char DAT_10226a3c;
  * start another. Its sibling below writes the race-options field the same way
  * under a different tag. */
 /* @t4-pass 0x1006AFA0 1 2026-09-07 probes 48 bytes 79 insns 28 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006AFA0 2 2026-09-07 probes 48 bytes 79 insns 28 regions 2 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1006AFA0 glide BrNetWriteTagC0 */
 /* RESIDUE: 2 instructions / 8 bytes, and the cause is a construct C cannot
  * spell. Everything else is exact (RAW and REGNORM 2+0, the two rows below).
