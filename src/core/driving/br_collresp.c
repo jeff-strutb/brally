@@ -763,6 +763,7 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
  * all six declaration orders and with t before/after them; den or num
  * named on top of that; P = s*t order.  The SegBox/PointInTri arms and the
  * window test are exact. */
+/* @t4-pass 0x10066950 1 2026-09-07 probes 132 bytes 335 insns 123 regions 3 rows 14 census yes  (tools/crank.py) */
 /* @implements 0x10066950 glide BrCrExact */
 static int BrCrExact(const float aV[9], const BrVec3 *pN)
 {
