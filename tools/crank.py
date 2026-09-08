@@ -7,6 +7,9 @@ function's REAL translation unit, scored register-blind.  Zero tokens.
     .venv/bin/python tools/crank.py --budget 200 --no-commit --no-ledger
     .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 8
     .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 10 --loop
+    .venv/bin/python tools/crank.py --report [--n 40]
+        # the hand-solve queue: every function's last miss, ranked corpus-twin
+        #   first, then register-only, then smallest raw diff
         # --loop: run forever in rounds -- re-pool, widen the mutation seeds,
         #   raise the budget 1.5x, re-run; only NEW candidates are compiled.
         # --all: EVERY C diff row (not only register-only), register-only first;
@@ -681,7 +684,39 @@ def pool(argv):
     return vas
 
 
+def report(argv):
+    """--report: every function's LAST miss from crank.log, ranked for the
+    hand-solve: corpus twin first, then register-only, then smallest raw."""
+    last, census = {}, {}
+    for l in open(LOG, errors='replace'):
+        m = re.match(r'\S+ --- (0x[0-9A-Fa-f]{8}) (\S+): no byte-exact in (\d+) compiles; best reg (\d+) insn ([-+]\d+) regions (\d+) bytes ([-+]\d+) raw (\d+)', l)
+        if m:
+            last[m.group(1)] = dict(sym=m.group(2), n=int(m.group(3)), reg=int(m.group(4)), di=int(m.group(5)),
+                                    regions=int(m.group(6)), db=int(m.group(7)), raw=int(m.group(8)))
+            cur = m.group(1); continue
+        m = re.match(r'\S+\s+census: corpus at \+0x([0-9a-f]+) .*?: (.*)', l)
+        if m and last:
+            census[cur] = (m.group(1), m.group(2)[:70])
+    st = _json(STATE, {})
+    rows = []
+    for va, d in last.items():
+        r = report_row(va)
+        if not r or r['status'] != 'diff':
+            continue
+        c = census.get(va, ('?', 'no census'))
+        twin = 'MISS' not in c[1]
+        rows.append((0 if twin else 1, d['reg'], d['raw'], va, d, r, c, len(st.get(va, {}).get('tried', []))))
+    rows.sort()
+    print('%d in-progress functions with a recorded crank miss; ranked: corpus twin, register-only, smallest raw' % len(rows))
+    for _, _, _, va, d, r, c, tried in rows[:int(argv[argv.index('--n') + 1]) if '--n' in argv else 40]:
+        print('  %s %-28s %5s B  reg %3d insn %+3d regions %2d raw %3d  tried %4d  @+0x%s %s  %s'
+              % (va, d['sym'][:28], r['orig_size'], d['reg'], d['di'], d['regions'], d['raw'], tried, c[0], c[1], r['file']))
+    return 0
+
+
 def main(argv):
+    if '--report' in argv:
+        return report(argv)
     budget = int(argv[argv.index('--budget') + 1]) if '--budget' in argv else 150
     commit = '--no-commit' not in argv
     ledger = '--no-ledger' not in argv
