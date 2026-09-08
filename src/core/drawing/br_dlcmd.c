@@ -94,6 +94,7 @@ static int32_t br_dlcmd_fistp(double v)
  * array as a GLOBAL at 0x105CE318, and the combined matrix as float[16] at
  * 0x105D1760.  The port body below is deliberately armored (resolver hook,
  * clamps, counters) and is NOT the matching shape. */
+/* @t4-pass 0x10021A20 1 2026-09-07 probes 150 bytes 1085 insns 364 regions 1 rows 314 census yes  (tools/crank.py) */
 /* @implements 0x10021A20 glide BrDlCmdVtx */
 const uint8_t *BrDlCmdVtx(BrDlCmd *pS, const uint8_t *p)
 {
