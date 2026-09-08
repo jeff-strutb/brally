@@ -604,6 +604,7 @@ set_flags:
 /* WHAT IT DOES: draws the solid shell of one car and, for the other racers,
  * adds a little bloom wherever their headlights point roughly at or away from
  * the camera, so oncoming and receding cars glow. */
+/* @t4-pass 0x1000BEB0 1 2026-09-07 probes 108 bytes 1488 insns 399 regions 8 rows 59 census yes  (tools/crank.py) */
 /* @implements 0x1000BEB0 glide BrCarDrawBody */
 void BrCarDrawBody(void *pCar)
 {
