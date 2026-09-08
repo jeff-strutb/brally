@@ -561,6 +561,7 @@ static void br_dl_normalise(BrVec3 *pV)
  * new matrix, a new light, a new light colour -- has cleared the cache. Note
  * it also latches the cache when there are no lights at all, having computed
  * nothing. */
+/* @t4-pass 0x10021C70 1 2026-09-07 probes 150 bytes 500 insns 135 regions 2 rows 202 census yes  (tools/crank.py) */
 /* @implements 0x10021C70 glide br_dl_light_setup */
 static void br_dl_light_setup(BrDl *pDl)
 {
