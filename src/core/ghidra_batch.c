@@ -505,6 +505,7 @@ extern int DAT_105bc72c;
 
 /* WHAT IT DOES: creates a DirectPlay object, queries the wanted interface
  * and hands it back, releasing the original on success or both on failure. */
+/* @t4-pass 0x10036E50 1 2026-09-07 probes 73 bytes 158 insns 58 regions 1 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x10036E50 glide BrDpCreateIface */
 int BrDpCreateIface(BrIUnk **out)
 {
