@@ -126,6 +126,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 
 /* WHAT IT DOES: scale a vector by a number into a separate output, leaving
  * the input alone. */
+/* @t4-pass 0x10034360 1 2026-09-07 probes 39 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 /* @n64 0x802244FC exact */
