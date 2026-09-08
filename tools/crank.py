@@ -5,8 +5,8 @@ function's REAL translation unit, scored register-blind.  Zero tokens.
     .venv/bin/python tools/crank.py                    # every live Pool A row from t4lane.py
     .venv/bin/python tools/crank.py 0x10018A50 ...     # these VAs (must be report.csv rows)
     .venv/bin/python tools/crank.py --budget 200 --no-commit --no-ledger
-    .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 8
-    .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 10 --loop
+    .venv/bin/python tools/crank.py                     # live Pool A, <= 400 B
+    # --all --loop and --all --max-bytes > 400 are refused (not a lane).
     .venv/bin/python tools/crank.py --report [--n 40]
         # the hand-solve queue: every function's last miss, ranked corpus-twin
         #   first, then register-only, then smallest raw diff
@@ -715,6 +715,14 @@ def report(argv):
 
 
 def main(argv):
+    if '--all' in argv and '--loop' in argv and '--worker' not in argv:
+        sys.stderr.write('refused: crank.py --all --loop is not a lane. Pool A only, no --loop.\n')
+        return 2
+    if '--all' in argv and '--max-bytes' in argv:
+        mb = int(argv[argv.index('--max-bytes') + 1])
+        if mb > 400:
+            sys.stderr.write('refused: crank.py --all --max-bytes > 400 (got %d). Giants are not a lottery.\n' % mb)
+            return 2
     if '--report' in argv:
         return report(argv)
     budget = int(argv[argv.index('--budget') + 1]) if '--budget' in argv else 150

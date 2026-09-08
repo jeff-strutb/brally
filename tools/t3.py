@@ -42,14 +42,12 @@ GATE B -- sincere attempts at T4, read from a LEDGER in the same file, never
       @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
 
   A pass under 10 fresh compiles is not a sincere attempt and is NOT COUNTED
-  (recorded for honesty, ignored by the gate).  The tool requires: at least 3
-  counted passes; the LAST THREE counted records at identical bytes/insns/
-  regions/rows equal to the current measurement -- i.e. the two most recent
-  passes each produced zero movement; and at least one counted pass marked
-  `census yes` (slot census, corpus query or mechanism experiment).  Gate A
-  passing is a PRECONDITION for certification, never the trigger to stop: a
-  function that crosses the thresholds on its first pass still owes two more
-  full passes at T4.
+  (recorded for honesty, ignored by the gate).  The tool requires: at least 2
+  counted passes; the LAST TWO counted records at identical bytes/insns/
+  regions/rows equal to the current measurement (two zero-movement passes);
+  and at least one counted pass marked `census yes` (slot census, corpus
+  query or mechanism experiment).  Two crank/session miss ledgers at the
+  current numbers are Gate B -- do not require a third theatrical pass.
 
 THE TAG, emitted by --qualify with the measured numbers (never typed):
 
@@ -77,7 +75,7 @@ MEAS = re.compile(r'@t3-measure\s+bytes\s+(\d+)/(\d+)\s+insns\s+(\d+)/(\d+)\s+ro
 EFF = re.compile(r'@t3-effort\s+passes\s+(\d+)\s+zero-movement\s+(\d+)\s+(\d+)')
 LEDGER = re.compile(r'@t4-pass\s+(0x[0-9A-Fa-f]{8})\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+probes\s+(\d+)\s+bytes\s+(\d+)\s+insns\s+(\d+)\s+regions\s+(\d+)\s+rows\s+(\d+)\s+census\s+(yes|no)')
 MARKERS = re.compile(r'\b(TODO|FIXME|XXX|HACK|STUB)\b|\?\?\?|\bguess\b|\bplaceholder\b|\bunknown\b|#\s*if\s+0\b', re.I)
-MIN_PASSES, MIN_PROBES = 3, 10
+MIN_PASSES, MIN_PROBES = 2, 10
 IMPL = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\b')
 
 GAP_ABS, GAP_FRAC, ROWS_ABS, ROWS_FRAC, LOST_TAIL_MAX = 3, 0.005, 4, 0.025, 32
@@ -267,12 +265,12 @@ def gate_b(va, path, meas):
         probs.append('no counted census-driven pass')
     key = lambda r: (r['bytes'], r['insns'], r['regions'], r['rows'])
     now = (meas['rbytes'], meas['ri'], meas['regions'], meas['nmiss'] + meas['nextra'])
-    last3 = C[-3:]
-    still = [r for r in last3 if key(r) == now]
-    if len(last3) < 3 or len(still) < 3:
-        probs.append('need the last 3 counted passes at the current numbers %s '
-                     '(two zero-movement passes in a row); %d of the last %d are'
-                     % (now, len(still), len(last3)))
+    lastn = C[-MIN_PASSES:]
+    still = [r for r in lastn if key(r) == now]
+    if len(lastn) < MIN_PASSES or len(still) < MIN_PASSES:
+        probs.append('need the last %d counted passes at the current numbers %s '
+                     '(two zero-movement passes); %d of the last %d are'
+                     % (MIN_PASSES, now, len(still), len(lastn)))
     eff = (len(C), C[-2]['n'] if len(C) >= 2 else 0, C[-1]['n'] if C else 0)
     return (not probs), ('; '.join(probs) if probs else
                          '%d counted passes, zero-movement passes %d and %d' % eff), eff

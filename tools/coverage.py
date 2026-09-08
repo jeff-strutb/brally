@@ -56,12 +56,14 @@ def main():
     print("  " + "-" * 54)
     print(f"  HAND-C TARGET                {target:5d} fns   {tb:8d} B")
     print(f"  byte-exact (DLL C)           {n_exact:5d} fns   {b_exact:8d} B"
-          f"   ({100.0*n_exact/target:.1f}% of target)")
-    print(f"  remaining hand-C             {target-n_exact:5d} fns")
+          f"   ({100.0*n_exact/target:.1f}% of fns, {100.0*b_exact/tb:.1f}% of bytes)")
+    print(f"  remaining in C report        {target-n_exact:5d} fns   {tb-b_exact:8d} B")
     print("=" * 58)
     print("  fenced = linker thunks/stubs (reproduced at link) + C++ EH")
     print("  funclets (reproduced by their parent TU). Not outstanding")
     print("  hand-C work. See config/fenced.csv.")
+    print("  C++ T4 lives in report_cpp.csv, not this C count; remaining")
+    print("  fns here still include that lane. Quote bytes, not fn %.")
 
 
 if __name__ == '__main__':

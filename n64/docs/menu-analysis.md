@@ -501,7 +501,7 @@ the embedded `RSP Gfx ucode F3DEX.NoN 1.21`. The texrect counts line up exactly 
 `gSPTextureRectangle`.
 
 **This independently confirms a divergence the PC decomp already documented.**
-`CONVENTIONS.md` records that in the PC build, command `0xE1` is FILL RECTANGLE
+`docs/archive/CONVENTIONS.md` records that in the PC build, command `0xE1` is FILL RECTANGLE
 with plain 12-bit *integer* corners, unlike the N64's `0xF6` with 10.2 fixed
 point. Counting on the N64 side: **`0xF6` appears at 17 sites, `0xE1` at zero.**
 The N64 uses the stock fill rect and never emits `0xE1` at all, so the PC's

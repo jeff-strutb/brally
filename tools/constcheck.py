@@ -2,7 +2,7 @@
 """Check every float constant in port/ that names an original address against
 the bytes actually in the shipped images.
 
-CONVENTIONS.md: "Read float constants out of the binary rather than assuming
+docs/archive/CONVENTIONS.md: "Read float constants out of the binary rather than assuming
 them. This is cheap and has repeatedly been load-bearing."  This is that check,
 run over the whole tree instead of one packet at a time, so the DENOMINATOR is
 reportable and not just the hits.
@@ -15,7 +15,7 @@ annotation convention every packet in this tree already uses, e.g.
     float k = pEnv->dt * 0.3f;             /* 0x1008F5C4 */
     extern float g_BrK08F548;              /* 0x1008F548 == 3C6A0EA1 ... */
 
-VALIDATED BEFORE USE, per CONVENTIONS.md's rule that a detector which has not
+VALIDATED BEFORE USE, per docs/archive/CONVENTIONS.md's rule that a detector which has not
 been checked against a known answer is not evidence.  `--selftest` runs it
 against four addresses whose answers are established independently:
 
@@ -32,7 +32,7 @@ Reporting rules that matter:
 
   - An address is looked up in BOTH images.  Most of this tree is transcribed
     from BRD3D.dll, but the same number names different objects in the two
-    builds (CONVENTIONS.md), so a hit is only counted where the address lands
+    builds (docs/archive/CONVENTIONS.md), so a hit is only counted where the address lands
     in a CONSTANT section (.rdata/.text) of that image.  An address that is
     .data in one image and .rdata in the other is resolved to the .rdata one.
   - An address that resolves in NEITHER image as constant data is reported
@@ -80,7 +80,7 @@ DECL = re.compile(
 # Same declaration, but with NO address in the comment.  The address is then
 # taken from the NAME, because this tree names these constants after their
 # address in at least three styles -- g_BrK08F548, BrK08F0A8, kF300 -- and
-# CONVENTIONS.md's rule is never to encode one naming convention.  The recall
+# docs/archive/CONVENTIONS.md's rule is never to encode one naming convention.  The recall
 # arm of --selftest is what caught this: g_BrK08F548's DEFINITION carries no
 # address in its comment (only the extern in the header does), so the
 # address-in-comment rule alone missed the single most load-bearing constant

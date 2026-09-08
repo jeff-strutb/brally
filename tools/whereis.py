@@ -9,7 +9,7 @@ clipper is the clearest case: four of its seven planes were sitting in
 slice1_03.c under their D3D addresses while a pass hunted the Glide ones. That
 pass threw its own work away, which was right, and expensive.
 
-The rule was written into CONVENTIONS.md ("grep BOTH builds' addresses"). Prose
+The rule was written into docs/archive/CONVENTIONS.md ("grep BOTH builds' addresses"). Prose
 does not get run. This does.
 
 WHAT IT CHECKS, in descending order of confidence:

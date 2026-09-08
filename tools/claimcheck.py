@@ -28,7 +28,7 @@ failed on both counts:
   - 0x1006B6C0 scored 8.0, dead in the middle of the healthy range. Undetectable.
 
 So the ratio ranked a correct forwarder above a proven defect and missed the
-other defect entirely. It was deleted rather than tuned. CONVENTIONS.md: a
+other defect entirely. It was deleted rather than tuned. docs/archive/CONVENTIONS.md: a
 detector you have not validated is not evidence -- and a detector that fails its
 own calibration set is worse than none, because its output looks like a worklist.
 

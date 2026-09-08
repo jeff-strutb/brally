@@ -16,7 +16,7 @@ Each generator yields `(label, mutated_source)` in the `_refine_candidates`
 style. stringops is folded as one combined candidate in
 `_refine_candidates`; charret is orig-gated in `refine_function` next to
 callconv (only-if-better). i64glob / ucharbx stay here until a wider
-add/adc or `8a; 53` batch. Decision logic: docs/gen-fresh-notes.md.
+add/adc or `8a; 53` batch. Decision logic: docs/archive/gen-fresh-notes.md.
 
     python3 tools/gen_fresh.py --dry-run
     python3 tools/gen_fresh.py --dry-run --pool untrans
@@ -248,7 +248,7 @@ def _has_add_adc_pair(b):
 
 # Import the proven strcpy/strcat / `extern char s_*[]` rewrite rather than
 # re-derive it. Wrap's `_strcpy_sub` still misses walker-rewind and strcat
-# (docs/gen-structural-notes.md). We add strlen / memset / memcpy on top.
+# (docs/archive/gen-structural-notes.md). We add strlen / memset / memcpy on top.
 import gen_structural as _gs
 
 # Scan loop. Covers wrap's 0xffffffff form AND the signed `i = -1` form

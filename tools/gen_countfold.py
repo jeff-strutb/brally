@@ -34,7 +34,7 @@ own control edge between the halves.
 Proven on 0x100250D0 BrTex3dExpand (8480 B): 15 of 16 folded sites, taking the
 function from +1152 to +512 bytes over the original and +234 to +81
 instructions, with two IDX4 arms becoming instruction-for-instruction
-identical to the original.  See docs/idioms-A.md.
+identical to the original.  See docs/archive/idioms-A.md.
 
 This is a GENERIC Ghidra artifact, not a quirk of one function: any decompiled
 loop that writes two elements per iteration under a running byte budget comes
