@@ -510,6 +510,7 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
 /* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
  * sign, and never returns less than zero. */
 /* @t4-pass 0x1002A957 1 2026-09-07 probes 149 bytes 115 insns 38 regions 1 rows 55 census yes  (tools/crank.py) */
+/* @t4-pass 0x1002A957 2 2026-09-07 probes 150 bytes 115 insns 38 regions 1 rows 55 census yes  (tools/crank.py) */
 /* @implements 0x1002A957 glide BrFloat12MaxAbs */
 /* @implements 0x100312A7 d3d BrFloat12MaxAbs */
 /* @n64 0x80217420 located */
