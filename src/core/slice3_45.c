@@ -513,6 +513,7 @@ BrInMouse g_brInMouse[2];                 /* 0x118EEE50, stride 0x1C  */
  * (`cmp; jg; cmp; je` at the root; last three cases a linear == chain). A
  * switch compactes the root; a flat else-if chain is a linear ladder. */
 /* @t4-pass 0x10071710 1 2026-09-07 probes 73 bytes 685 insns 183 regions 8 rows 27 census yes  (tools/crank.py) */
+/* @t4-pass 0x10071710 2 2026-09-07 probes 73 bytes 685 insns 183 regions 8 rows 27 census yes  (tools/crank.py) */
 /* @implements 0x10071710 glide BrInputIsDown */
 uint8_t BrInputIsDown(int32_t action)
 {
