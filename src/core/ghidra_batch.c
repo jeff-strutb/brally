@@ -245,6 +245,7 @@ extern int DAT_10ac5a4c;
 /* WHAT IT DOES: maps the current track/car-class menu selection onto the
  * two-byte letter id stored on the player record. */
 /* @t4-pass 0x10038A80 1 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10038A80 2 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10038A80 glide BrMenuSetTrackLetter */
 int BrMenuSetTrackLetter(int param_1)
 {
