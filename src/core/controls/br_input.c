@@ -485,6 +485,7 @@ extern void BrSub10002830(void);
  * sends the game arrives here and is routed: input, focus changes, painting,
  * close. Gives a registered hook first refusal on each message before
  * handling it. */
+/* @t4-pass 0x100194C0 1 2026-09-07 probes 73 bytes 440 insns 174 regions 2 rows 12 census yes  (tools/crank.py) */
 /* @implements 0x100194C0 glide BrWndProc */
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
