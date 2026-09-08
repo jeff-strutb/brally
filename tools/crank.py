@@ -693,7 +693,12 @@ def main(argv):
         base = [a for a in argv if a != '--loop' and not a.lower().startswith('0x')]
         while True:
             env = dict(os.environ, CRANK_SEEDS=str(6 * (r + 1)), CRANK_SEED0=str(6 * r))
-            flags = [a for a in base if a != '--budget' and not a.isdigit()] + ['--budget', str(int(budget * (1.5 ** r)))]
+            flags, skip = [], False
+            for a in base:
+                if skip: skip = False; continue
+                if a == '--budget': skip = True; continue
+                flags.append(a)
+            flags += ['--budget', str(int(budget * (1.5 ** r)))]
             log('crank loop: round %d (seeds %d..%d, budget %d)' % (r, 6 * r, 6 * (r + 1) - 1, int(budget * (1.5 ** r))))
             subprocess.run([PY, 'tools/crank.py'] + flags, cwd=ROOT, env=env)
             r += 1
