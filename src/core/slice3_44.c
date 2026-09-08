@@ -487,6 +487,7 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
  * count is an allocator-internal decision.  /Ox, /O1, /Og/Ot, /O2/Oy- all
  * land farther away. */
 /* @t4-pass 0x1006D6B0 1 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006D6B0 2 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
 /* @implements 0x1006D6B0 glide BrRbBuildMatrix */
 void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 {
