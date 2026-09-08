@@ -1834,6 +1834,13 @@ int FUN_10028BB0(int *);
  * the old index. */
 /* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027A10 3 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10027A10 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue after tools/crank.py: 58 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
 int br_tex3d_append(void)
