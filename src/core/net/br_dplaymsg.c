@@ -132,6 +132,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
  * is set. Reports the COM error it hit, and always frees the temporary record
  * it locked. */
 /* @t4-pass 0x10036A30 2 2026-09-07 probes 76 bytes 231 insns 87 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10036A30 3 2026-09-07 probes 77 bytes 231 insns 87 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10036A30 glide FUN_10036a30 */
 /* RESIDUE (2026-09-06): +4 B / +1 insn, REGNORM 1+0. Body is complete and
  * correct -- instruction-for-instruction identical to the original except the
