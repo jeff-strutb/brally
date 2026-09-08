@@ -451,6 +451,7 @@ extern int DAT_104ab500;
 
 /* WHAT IT DOES: picks the unused sound-bank slot with the lowest use count
  * (skipping the one currently playing) and rotates the last/current pair. */
+/* @t4-pass 0x10013F20 1 2026-09-07 probes 92 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
 void BrSndBankPickSlot(void)
 {
