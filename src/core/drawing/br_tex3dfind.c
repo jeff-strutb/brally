@@ -22,6 +22,7 @@ extern int DAT_106b7aa0;
  * it also demand the eight render-state bytes agree. Returns the index, or
  * -1 if nothing matches (including when the table is empty). */
 /* @t4-pass 0x10027A70 1 2026-09-07 probes 86 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027A70 2 2026-09-07 probes 87 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/crank.py) */
 /* @implements 0x10027A70 glide FUN_10027a70 */
 int FUN_10027a70(int *pReq)
 {
