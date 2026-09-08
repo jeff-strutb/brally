@@ -117,6 +117,7 @@ extern void BrRaceSettingsCommit(void);  /* 0x10058A30 */
  * class's four point columns, converts the packed finishing positions to
  * 1-based, and prints the race number and entrant count into the two
  * labels.  Reports 1. */
+/* @t4-pass 0x1003B6D0 1 2026-09-07 probes 106 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1003B6D0 glide BrSaveBeginRallySeason */
 int BrSaveBeginRallySeason(int pList, int *pIdx)
 {
