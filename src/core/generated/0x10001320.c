@@ -71,6 +71,7 @@ void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
 
 /* WHAT IT DOES: copy a rectangle of pixels from one off-screen picture to
  * another at a given position. The blitter behind the front end's sprites. */
+/* @t4-pass 0x10001320 1 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10001320 glide BrUiSprBlit */
 void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
                  const int *pRect, int flags)
