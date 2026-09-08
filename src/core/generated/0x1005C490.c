@@ -70,6 +70,7 @@ extern int DAT_10af3bb0;
  * 6 the car just copies a global into its +0x29A8 slot; otherwise the car's
  * slot above the entrant count picks the level's index byte, falling back
  * to the lowest bit set in the level's mask (5 if the mask is empty). */
+/* @t4-pass 0x1005C490 1 2026-09-07 probes 148 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @implements 0x1005C490 glide BrRaceCarPickIndex */
 void __fastcall BrRaceCarPickIndex(unsigned char *pCar)
 {
