@@ -73,6 +73,7 @@ extern char DAT_10af6858[];                   /* its mirror                */
  * five standing words (any other mode).  Returns 1 on success; when the file
  * cannot be opened or fails its magic/checksum checks it returns whether the
  * second argument was non-zero. */
+/* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
 /* @implements 0x100695C0 glide BrSeasonLoad */
 char BrSeasonLoad(int mode, int arg)
 {
