@@ -992,6 +992,7 @@ void BrWeatherRandomiseParticles(void)
  * strength wander randomly rather than being set anywhere -- the direction
  * wraps round the compass and the strength is held between half and full -- and
  * the result is turned into the horizontal push the snow is blown by. */
+/* @t4-pass 0x10016AA0 1 2026-09-07 probes 94 bytes 303 insns 69 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @implements 0x10016AA0 glide BrWeatherStepWind */
 /* @implements 0x100194E0 d3d BrWeatherStepWind */
 void BrWeatherStepWind(void)
