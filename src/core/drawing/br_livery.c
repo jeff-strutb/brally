@@ -114,7 +114,6 @@ int BrBmpLoadRgba(char *);
  * damage3.bmp) into the three shared livery slots that FUN_1005a6b0 frees.
  * The dllimport sprintf is hoisted into ebx across the loop. */
 /* @t4-pass 0x1005A490 1 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005A490 2 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
 void BrLiveryLoadDamageBmps(void)
 {
