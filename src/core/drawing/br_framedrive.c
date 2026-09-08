@@ -203,6 +203,7 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
  * finally closes the frame.  Debug colour markers bracket every stage;
  * their callee is a bare `ret`. */
 /* @t4-pass 0x10011FA0 1 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10011FA0 2 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10011FA0 glide BrFrameDraw */
 void BrFrameDraw(int iSlot)
 {
