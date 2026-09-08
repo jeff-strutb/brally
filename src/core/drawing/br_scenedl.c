@@ -1099,6 +1099,7 @@ extern BrTrailSeg DAT_10273690[];
  * numbers and needs two in a row.  One more full pass (>= 10 fresh
  * compiles, every probe grepped against the dead list first) with zero
  * movement certifies it; the tool emits the tag. */
+/* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/crank.py) */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
 void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 {
