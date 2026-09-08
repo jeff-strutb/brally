@@ -382,6 +382,7 @@ int BrFadeRelease(void);     /* 0x10017F10 */
  * Reports whether the clear was accepted. */
 /* @t4-pass 0x10003050 2 2026-09-07 probes 73 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
 /* @t4-pass 0x10003050 3 2026-09-07 probes 58 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 4 2026-09-07 probes 57 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
 /* @implements 0x10003050 glide BrCdStopReleaseMsg */
 /* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
  * alignment nops (which the sweep tolerates, as it does for BrCdStop's matched
