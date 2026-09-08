@@ -1100,6 +1100,7 @@ int BrGbiSizeShift(int n)
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 /* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027F00 3 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027F00 glide BrGbiBlit */
 #ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
