@@ -117,6 +117,7 @@ void FUN_100215c0(int, int, int, int, int);
  * to the rectangle drawer. It consumes 0x18 bytes, not 8, because the
  * texture coordinates follow the command. The whole-pixel twin is
  * BrDlsTileRectE3. */
+/* @t4-pass 0x10021570 1 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10021570 glide BrDlsTileRectE4 */
 unsigned char *BrDlsTileRectE4(unsigned char *p)
 {
