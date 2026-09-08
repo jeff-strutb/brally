@@ -746,6 +746,7 @@ static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
  * texture coordinates are being generated, and whether decal mode is in
  * force. The port reports the original's address rather than installing a
  * function, so the choice stays checkable. */
+/* @t4-pass 0x1001FD70 1 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/crank.py) */
 /* @implements 0x1001FD70 glide BrDlVtxRoutine */
 #ifdef BR_MATCHING_BUILD
 /* The port kept only the tail of this function -- the routine SELECTION --
