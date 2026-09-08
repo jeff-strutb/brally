@@ -723,6 +723,7 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * initialises Glide, and returns without opening a window if no Voodoo
  * hardware is present -- which is how the game discovers it must fall back. */
 /* @t4-pass 0x1001E080 1 2026-09-07 probes 22 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001E080 2 2026-09-07 probes 23 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {
