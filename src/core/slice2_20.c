@@ -687,6 +687,7 @@ extern void BrGlFixupAt(uint8_t *p);
  * spelling. */
 /* WHAT IT DOES: read a track file's header and fill in the pointers to each
  * of its sections. The map of what is where in the file, built once at load. */
+/* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
