@@ -85,6 +85,7 @@ extern int DAT_106ed67c;
  * 0x106ED67C's slice -- each base is stored to two cursors (base and write
  * head).  Strides 80000 / 32000 / 256000 bytes lower as lea chains. */
 /* @t4-pass 0x1000CB20 1 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000CB20 2 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1000CB20 glide BrViewBuffersRebase */
 
 void BrViewBuffersRebase(void)
