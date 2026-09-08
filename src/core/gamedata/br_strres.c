@@ -52,6 +52,7 @@ static int32_t br_strres_measure(const char *pszPath)
  * the table that maps a string number to its text. It clears the table
  * first, and then does nothing at all if the text has already been loaded. */
 /* @t4-pass 0x1006D1A0 1 2026-09-07 probes 76 bytes 231 insns 74 regions 3 rows 31 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006D1A0 2 2026-09-07 probes 75 bytes 231 insns 74 regions 3 rows 31 census yes  (tools/crank.py) */
 /* @implements 0x1006D1A0 glide BrStrResLoad */
 void BrStrResLoad(const BrStrResOps *pOps)
 {
