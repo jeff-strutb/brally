@@ -914,6 +914,7 @@ void BrTrackFixupList78(void *pvHdr)
  * loads each pair's LOW byte first, VC5 here loads the highs first.  Three
  * spellings (or-order, statement split) compile byte-identical, so the load
  * order is scheduler-canonical -- allocator-residue class, do not grind. */
+/* @t4-pass 0x100316D0 1 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100316D0 glide BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {
