@@ -90,6 +90,7 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
  * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
  * an x87 emulation of 0x1006DE70 over random and structured inputs. */
+/* @t4-pass 0x1006DE70 1 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/crank.py) */
 /* @implements 0x1006DE70 glide BrMat3Solve */
 /* FRAME (proven 2026-09-03, do not re-derive).  `sub esp, 0x10` is FOUR float
  * slots -- d0, m2m7, m1m5, m2m4 -- in declaration order at [esp], [esp+4],
