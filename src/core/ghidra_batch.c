@@ -205,6 +205,7 @@ int BrNetWriteTagC0(void *pThis, unsigned char kind, unsigned int a,
  * before a race can start. Like its sibling above it writes nothing and
  * reports failure when the packet has no room for the whole field, so a
  * half-written option block can never go out. */
+/* @t4-pass 0x1006AFF0 1 2026-09-07 probes 43 bytes 118 insns 43 regions 3 rows 13 census yes  (tools/crank.py) */
 /* @implements 0x1006AFF0 glide BrNetWriteRaceOpts */
 int BrNetWriteRaceOpts(void *pThis, unsigned char kind)
 {
