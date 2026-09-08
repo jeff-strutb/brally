@@ -34,6 +34,7 @@ extern unsigned short DAT_105e1828[];   /* the resampler's scratch image */
  * scale the map up to full size, then scale each texel's red, green and blue
  * by the map value over 15, leaving the alpha bit alone. */
 /* @t4-pass 0x10027CD0 1 2026-09-07 probes 135 bytes 304 insns 100 regions 2 rows 13 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027CD0 2 2026-09-07 probes 135 bytes 304 insns 100 regions 2 rows 13 census yes  (tools/crank.py) */
 /* @implements 0x10027CD0 glide BrTex3dMipModulate */
 
 void BrTex3dMipModulate(int param_1, unsigned short *param_2)
