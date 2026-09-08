@@ -195,6 +195,7 @@ const char BrDxMsgCreateSurfaceFailed[] = "Couldn't CreateSurface\r\n";
  * seeing how far it gets. This is what the startup code consults before
  * refusing to run on a machine without DirectX 6. */
 /* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
 /* @implements 0x1001D8A0 glide BrDxDetect */
 #ifdef BR_MATCHING_BUILD
 /* The BrDxHost seam is the port's, and it is the whole shape gap: every one of
