@@ -130,6 +130,7 @@ void    BrFrameDrawView(int32_t iView);     /* 0x10011FA0  the frame driver     
  * arrived and the blend already sits on the newest snapshot (the caller
  * then has nothing to show), or when no snapshot pair exists yet. */
 /* @t4-pass 0x100131E0 1 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
+/* @t4-pass 0x100131E0 2 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
 /* @implements 0x100131E0 glide BrSnapInterpDraw */
 int32_t BrSnapInterpDraw(int32_t force)
 {
