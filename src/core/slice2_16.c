@@ -1376,6 +1376,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * travel. */
 /* @implements 0x1002B340 d3d BrFadeDrawBars */
 /* @t4-pass 0x100183B0 1 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 2 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 #ifdef BR_MATCHING_BUILD
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
