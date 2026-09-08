@@ -337,6 +337,7 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * What the cues are FOR is not established -- nothing transcribed so far
  * reads the starts back -- so all that can honestly be said is that this is
  * where their timings come from. */
+/* @t4-pass 0x10019930 1 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10019930 glide BrRaceCueLayout */
 /* @n64 0x802006C8 located */
 #ifdef BR_MATCHING_BUILD
