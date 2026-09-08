@@ -1384,6 +1384,7 @@ static void wheel_call(unsigned char *car)
  * it is, sets up its colours and lighting, and emits the body and wheels.
  * The top of car rendering, called once per visible car per frame. */
 /* @t4-pass 0x1000A110 1 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000A110 2 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
 /* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
