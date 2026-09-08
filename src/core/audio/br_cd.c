@@ -414,6 +414,7 @@ static int BrCdStopReleaseMsg(void)
  * count by one and sends the STOP command; when that was the last reference it
  * closes the device.  Reports whether both commands were accepted. */
 /* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100030B0 glide BrCdStopReleaseMci */
 /* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.
  * The boolean codegen is now byte-for-byte: the borrow trick is the TERNARY's
