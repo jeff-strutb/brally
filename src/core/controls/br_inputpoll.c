@@ -217,6 +217,7 @@ __declspec(dllimport) short __stdcall GetAsyncKeyState(int vk);
  * lets Escape pause or quit, and, in benchmark mode, prints the frame rate
  * after 441 frames and exits.  The two out-parameters carry the analogue
  * steering and throttle amounts read from whichever axis is bound. */
+/* @t4-pass 0x100706D0 1 2026-09-07 probes 129 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100706D0 glide BrInputPoll */
 uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 {
