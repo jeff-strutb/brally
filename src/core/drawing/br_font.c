@@ -816,6 +816,7 @@ extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
  * characters, looks each glyph's cell up in the font page, and emits the
  * texture and rectangle commands to paint it at the current pen position,
  * colour and scale. The engine's only text output path. */
+/* @t4-pass 0x10015B10 1 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/crank.py) */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
