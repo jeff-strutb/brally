@@ -1780,6 +1780,7 @@ void BrFadeTick(void)
  * as the original does, so swapping it can change how many entries get
  * processed. */
 /* @t4-pass 0x10018D50 1 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10018D50 2 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
 #ifdef BR_MATCHING_BUILD
 void BrRcaSwapMesh(void *pv)
