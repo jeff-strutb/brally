@@ -648,6 +648,7 @@ static void br_dl_light_setup(BrDl *pDl)
  * light; surfaces facing away get plain ambient, and the rest get ambient
  * plus a share of the light's colour, capped at full brightness. Colours
  * here run 0 to 255, not 0 to 1. */
+/* @t4-pass 0x10022AC0 1 2026-09-07 probes 84 bytes 234 insns 69 regions 1 rows 69 census yes  (tools/crank.py) */
 /* @implements 0x10022AC0 glide br_dl_light_vertex */
 /* DOSSIER, read before touching this (transcribed instruction by instruction
  * from 0x10022AC0; -79 bytes / REGNORM 31+45 as it stands).  Everything below
