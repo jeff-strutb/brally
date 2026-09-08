@@ -221,6 +221,7 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
  * the edge. Calling it four times -- once per side -- is how a triangle gets
  * cut down to what actually fits on screen. */
 /* @t4-pass 0x1000DF00 1 2026-09-07 probes 97 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000DF00 2 2026-09-07 probes 92 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
 /* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 {
