@@ -781,6 +781,7 @@ glide_va,name,module,basis,file
 0x10063CA0,BrReplayApplyCar,racing,neighbour-1,src/core/racing/br_replay.c
 0x10063DA0,BrReplayGetBuf2,racing,description,src/core/racing/br_replayon.c
 0x10063DB0,BrReplayCountFromBytes,racing,description,src/core/racing/br_replayon.c
+0x10064120,BrRbSolveAccel,driving,filed,src/core/driving/br_rbaccum.c
 0x10064210,BrRbAccumAll,driving,description,src/core/driving/br_rbaccum.c
 0x10065950,BrCrPlaneDist,driving,filed,src/core/driving/br_collrespsolve.c
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c

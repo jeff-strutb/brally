@@ -731,46 +731,6 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
     }
 }
 
-/* 0x1006B170 */
-/* WHAT IT DOES: turns all the pushes and twists that have been piled onto a
- * physical body this frame into how fast it is about to speed up and how fast
- * it is about to start spinning -- heavier bodies respond less, and the shape
- * of the body decides how readily it turns. The forces on the four bodies
- * attached to it are folded in too, but only sideways and forwards: the
- * up-and-down direction ignores them entirely, which looks like an oversight
- * in the original rather than an intention. */
-/* @implements 0x1006B170 d3d BrRbSolveAccel */
-/* @n64 0x8025980C located */
-void BrRbSolveAccel(BrRbBodyFull *pB)
-{
-    BrVec3 t, u, w;
-
-    BrMat4MulVec3(&t, &pB->m, &pB->accel);
-
-    /* The original stores the rotated force back before summing, in the order
-     * z, x, y.  Kept because a child that aliases pB would see it. */
-    pB->accel.z = t.z;
-    pB->accel.x = t.x;
-    pB->accel.y = t.y;
-
-    /* orig x: fld child[3], fadd [2],[1],[0], fadd t.x.  y: fld child[0],
-     * fadd [1],[2],[3], fadd t.y.  Z never sees the children.  Named child
-     * locals spill six extra stack movs. */
-    t.x = ((((pB->child[3]->accel.x + pB->child[2]->accel.x)
-             + pB->child[1]->accel.x) + pB->child[0]->accel.x) + t.x)
-          / pB->mass;
-    t.y = ((((pB->child[0]->accel.y + pB->child[1]->accel.y)
-             + pB->child[2]->accel.y) + pB->child[3]->accel.y) + t.y)
-          / pB->mass;
-    t.z = t.z / pB->mass;
-
-    BrMat4MulVec3Transposed(&pB->accel, &pB->m, &t);
-
-    BrMat4MulVec3(&u, &pB->m, &pB->angAccel);
-    BrMat3MulVec3(&w, &pB->invInertia, &u);
-    BrMat4MulVec3Transposed(&pB->angAccel, &pB->m, &w);
-}
-
 /* 0x1006B260 BrRbAccumAll now lives in src/core/driving/br_rbaccum.c. */
 
 /* The body of 0x1006B430 and 0x1006B510, which differ only in where the
