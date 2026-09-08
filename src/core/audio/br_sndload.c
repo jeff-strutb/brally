@@ -139,6 +139,7 @@ fail:
  * remaining size.  Reports how many bytes it stored; a 0xE103 (end of
  * file) with nothing stored if the file ran out, or the WINMM error. */
 /* @t4-pass 0x100701B0 1 2026-09-07 probes 122 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100701B0 2 2026-09-07 probes 92 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x100701B0 glide BrWavReadData */
 unsigned int BrWavReadData(HMMIO hmmio, unsigned int n, char *pDst,
                            MMCKINFO *pCk, unsigned int *pnRead)
