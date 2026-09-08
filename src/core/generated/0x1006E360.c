@@ -55,6 +55,7 @@ extern unsigned int DAT_118ee24c;
 /* WHAT IT DOES: sample the clock and update the frame timing -- how long the
  * last frame took and the running total. Called once per frame, and
  * everything time-based reads what it leaves behind. */
+/* @t4-pass 0x1006E360 1 2026-09-07 probes 24 bytes 68 insns 20 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1006E360 glide BrTimeUpdate */
 void BrTimeUpdate(void)
 
