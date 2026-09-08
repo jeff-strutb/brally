@@ -547,6 +547,7 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * 1 if any contact produced a response, else 0, and keeps a per-body "frames
  * with no contact" byte (body+0x200): bumped (saturating at 40) when nothing
  * passed the exact test this pass, reset to 0 otherwise. */
+/* @t4-pass 0x10067710 1 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/crank.py) */
 /* @implements 0x10067710 glide BrCrRespWalk */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the bytes.  The original is
