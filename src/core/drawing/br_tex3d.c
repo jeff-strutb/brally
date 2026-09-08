@@ -1111,6 +1111,7 @@ int FUN_10024490();
  * field (+0x40/+0x44) from the aspect ratio, then per level from the global
  * start LOD copy/convert (0x10024490) and advance both cursors by that
  * level's byte size; returns the source bytes consumed. */
+/* @t4-pass 0x10027E10 2 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027E10 glide BrTex3dMipChainLoad */
 
 int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
