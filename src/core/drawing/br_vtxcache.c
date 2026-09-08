@@ -480,6 +480,7 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
  * two-triangle and segment-pointer instructions; the end instruction (0xb8)
  * stops the walk. A null list does nothing. */
 /* @t4-pass 0x10019040 1 2026-09-07 probes 54 bytes 482 insns 138 regions 5 rows 74 census yes  (tools/crank.py) */
+/* @t4-pass 0x10019040 2 2026-09-07 probes 54 bytes 482 insns 138 regions 5 rows 74 census yes  (tools/crank.py) */
 /* @implements 0x10019040 glide BrF3DListFixup */
 #ifdef BR_MATCHING_BUILD
 /* BrPtrListAdd and the four fixups are the file's own definitions above /
