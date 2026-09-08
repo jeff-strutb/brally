@@ -1556,6 +1556,7 @@ int BrTex3dExpandInto(int param_1,int param_2,int param_3,int param_4,
  * Glide texture (LOD/aspect codes, grTexCalcMemRequired, halving retries when
  * the aspect is unrepresentable); convert and append via 0x10027B60/0x10027710.
  * Returns the record index the 0xDC command will carry. */
+/* @t4-pass 0x10028BB0 1 2026-09-07 probes 150 bytes 1746 insns 528 regions 8 rows 32 census yes  (tools/crank.py) */
 /* @implements 0x10028BB0 glide BrTex3dRegister */
 
 int BrTex3dRegister(void)
