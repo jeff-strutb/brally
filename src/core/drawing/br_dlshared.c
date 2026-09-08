@@ -34,6 +34,7 @@ static int32_t br_dls_sext12(uint32_t v)
  * and height in texture pixels. Sign is kept throughout, so a rectangle
  * given back to front stays back to front rather than becoming enormous. */
 /* @t4-pass 0x1001EC30 1 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
 #ifdef BR_MATCHING_BUILD
 extern int DAT_118ed198;
