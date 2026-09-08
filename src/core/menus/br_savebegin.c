@@ -187,6 +187,7 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
  * Otherwise it copies the loaded track / car / class / options into the
  * race globals (the option block by value), looks the per-index tables up,
  * commits the race settings and reports 1. */
+/* @t4-pass 0x1003BDE0 1 2026-09-07 probes 150 bytes 532 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1003BDE0 glide BrSaveBeginTimeAttack */
 int BrSaveBeginTimeAttack(int pList, int *pIdx)
 {
