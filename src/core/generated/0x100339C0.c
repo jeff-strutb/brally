@@ -79,6 +79,7 @@ extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
 /* WHAT IT DOES: advance two more particle lists by a frame, in the same way
  * BrPfxUpdateB0 handles its own -- ages, moves and fades each particle. The
  * two passes are two separate lists sharing one loop. */
+/* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {
