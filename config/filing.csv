@@ -818,6 +818,7 @@ glide_va,name,module,basis,file
 0x1006AAD0,BrSub10071B60,geometry,filed,src/core/geometry/br_vec.c
 0x1006AAF0,BrNetPeerMsgReset,net,filed,src/core/net/br_peer.c
 0x1006AB60,BrObjResetMsgHdr,gamedata,description,src/core/gamedata/br_bitstream.c
+0x1006AEB0,BrNetWritePlayerRec,net,manual,src/core/net/br_netpkt.c
 0x1006B1E0,BrSndThreadStop,audio,description,src/core/audio/br_sndvoice.c
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/audio/br_sndvoice.c
 0x1006B400,BrSndVoiceApplyPan,audio,description,src/core/audio/br_sndvoice.c
