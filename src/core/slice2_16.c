@@ -563,6 +563,7 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * outside the known set are ignored. The port clamps a light copy to the
  * light array, which the original did not. */
 /* @t4-pass 0x10023810 1 2026-09-07 probes 54 bytes 243 insns 100 regions 5 rows 59 census yes  (tools/crank.py) */
+/* @t4-pass 0x10023810 2 2026-09-07 probes 54 bytes 243 insns 100 regions 5 rows 59 census yes  (tools/crank.py) */
 /* @implements 0x10023810 glide BrGbiMoveMem */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
