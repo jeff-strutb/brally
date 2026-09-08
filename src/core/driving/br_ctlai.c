@@ -280,6 +280,7 @@ void BR_THISCALL1 BrCtlAiRespawn(BrAiCar *pCar);           /* 0x1005C6D0 */
  * ahead nudges the line offset so the car moves to the far side of it, and
  * finally a force at car+0x1E8 is shaped along the path frame and scaled by
  * difficulty or weather before the shared per-car chain and respawn run. */
+/* @t4-pass 0x1005D770 1 2026-09-07 probes 135 bytes 3844 insns 1080 regions 30 rows 34 census yes  (tools/crank.py) */
 /* @implements 0x1005D770 glide BrCtlAiBody */
 void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 {
