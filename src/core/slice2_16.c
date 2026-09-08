@@ -1870,6 +1870,7 @@ uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
  * the pixels live, or through a plain index into that blob. When the copying
  * is switched off it just does the byte order and lets the record go. */
 /* @t4-pass 0x10018B60 1 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10018B60 2 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10018B60 glide BrRcaFixupRecord */
 void BrRcaFixupRecord(void *pRec)
 {
