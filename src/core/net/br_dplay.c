@@ -501,6 +501,7 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
  * thread that will collect incoming traffic. If any step fails it undoes the
  * lot and reports that it ran out of memory. */
 /* @t4-pass 0x10009B00 1 2026-09-07 probes 46 bytes 140 insns 56 regions 4 rows 28 census yes  (tools/crank.py) */
+/* @t4-pass 0x10009B00 2 2026-09-07 probes 46 bytes 140 insns 56 regions 4 rows 28 census yes  (tools/crank.py) */
 /* @implements 0x10009B00 glide BrDPlayStartup */
 int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 {
