@@ -245,6 +245,13 @@ typedef struct { float v; } BrGlyphF32;
 typedef struct { int v; }   BrGlyphI32;
 /* @t4-pass 0x10054550 1 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10054550 2 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10054550 3 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10054550 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 113/112 insns 36/36 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue after tools/crank.py: 42 compiles this pass, levers accepted: mut:reorder_stmts;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10054550 glide BrSprFontGlyphA_1005B730 */
 int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
     BrGlyphF32 x, BrGlyphF32 y, BrGlyphI32 unused)
