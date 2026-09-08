@@ -80,7 +80,6 @@ static void BrPutU32(uint8_t *p, uint32_t v)
  * assignment target and the fseek argument (identical 6).  Store
  * placement inside a call sequence is not source-reachable here. */
 /* @t4-pass 0x10008BA0 1 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10008BA0 2 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10008BA0 glide BrPodWriteOpen */
 int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
 {
@@ -220,14 +219,6 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
  * member count and directory position, and closes the file. */
 #ifdef BR_MATCHING_BUILD
 /* @t4-pass 0x10008C80 1 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10008C80 2 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10008C80 3 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10008C80 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 160/160 insns 48/48 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 101 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10008C80 glide BrPodWriteClose */
 void __fastcall BrPodWriteClose(void *pThis)
 {

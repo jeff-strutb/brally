@@ -674,7 +674,6 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
 /* @t4-pass 0x10029420 1 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029420 2 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
@@ -720,13 +719,6 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
 /* @t4-pass 0x10029480 1 2026-09-07 probes 25 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029480 2 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029480 3 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10029480 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 109/109 insns 34/34 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 62 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 #ifdef BR_MATCHING_BUILD
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
@@ -792,14 +784,6 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * Every instruction is the original's. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
 /* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029510 3 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10029510 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 93/94 insns 27/27 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 67 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
 #ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
@@ -1072,8 +1056,6 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * gets rounded up. Anything above 128 is capped, and anything of 1 or less
  * gives zero. */
 /* @t4-pass 0x10027290 1 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027290 2 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027290 3 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
@@ -1103,8 +1085,6 @@ int BrGbiSizeShift(int n)
  * two and the pixel size. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 /* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027F00 3 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027F00 glide BrGbiBlit */
 #ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
@@ -1688,7 +1668,6 @@ uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
  * move the toggle between the load window and the arithmetic window but
  * never clear both -- allocator-residue class. */
 /* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x100186E0 2 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100186E0 glide BrFadeTick */
 void BrFadeTick(void)
 {
@@ -1803,14 +1782,6 @@ void BrFadeTick(void)
  * as the original does, so swapping it can change how many entries get
  * processed. */
 /* @t4-pass 0x10018D50 1 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10018D50 2 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10018D50 3 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10018D50 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 180/180 insns 71/71 rows 0+0 regions 5 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 58 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
 #ifdef BR_MATCHING_BUILD
 void BrRcaSwapMesh(void *pv)
@@ -1876,7 +1847,6 @@ uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
  * the pixels live, or through a plain index into that blob. When the copying
  * is switched off it just does the byte order and lets the record go. */
 /* @t4-pass 0x10018B60 1 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10018B60 2 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10018B60 glide BrRcaFixupRecord */
 void BrRcaFixupRecord(void *pRec)
 {

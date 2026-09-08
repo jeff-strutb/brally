@@ -547,7 +547,11 @@ def crank(va, budget, commit, ledger):
         log('%s %s: already exact in this TU (stale report row?) -- skipped' % (va, sym)); return None
     # LEARNING (2): candidates already compiled for this exact file text are not re-compiled
     state = _json(STATE, {})
-    fh = hashlib.md5(text0.encode()).hexdigest()
+    # the tried-set key ignores the ledger and @t3 comment blocks: a pass line
+    # written by the previous run must NOT reset the tried set, or every pass
+    # recompiles the same candidates and Gate B is met by repetition (this
+    # happened 2026-09-07 19:2x: 9 tags retracted, 26 duplicate pass lines removed)
+    fh = hashlib.md5(re.sub(r'(?m)^[ \t]*/\*\s*@t4-pass[^\n]*\*/[ \t]*\n|/\* @t3 .*?\*/\n', '', text0, flags=re.S).encode()).hexdigest()
     st = state.get(va, {})
     seen = set(st.get('tried', [])) if st.get('file_hash') == fh else set()
     st = {'file_hash': fh, 'tried': sorted(seen), 'runs': st.get('runs', 0) + 1 if st.get('file_hash') == fh else 1}
@@ -598,7 +602,7 @@ def crank(va, budget, commit, ledger):
     obj = compile_tu(best_t, tag); m_best = measure(obj, sym, va, key) if obj else m0
     with locked('tree'):
         cur = open(fp, encoding='utf-8', errors='surrogateescape').read()
-        if hashlib.md5(cur.encode()).hexdigest() != fh:
+        if cur != text0:
             # another worker or session changed this TU while we were compiling:
             # our candidates were built on stale text.  Never write over it.
             out = os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c')

@@ -164,14 +164,6 @@ extern int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
  * named pBs stream pointer (kept, inert); status word signed (needed for
  * the `jl`).  corpus.py has no witness for the call-load-push run. */
 /* @t4-pass 0x1006B0E0 1 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B0E0 2 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B0E0 3 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x1006B0E0 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 250/250 insns 85/85 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 43 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006B0E0 glide BrNetPeerSendPass */
 int32_t BrNetPeerSendPass(void **ppDp)
 {

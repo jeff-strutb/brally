@@ -1112,7 +1112,6 @@ int FUN_10024490();
  * start LOD copy/convert (0x10024490) and advance both cursors by that
  * level's byte size; returns the source bytes consumed. */
 /* @t4-pass 0x10027E10 2 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027E10 3 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027E10 glide BrTex3dMipChainLoad */
 
 int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
@@ -1835,14 +1834,6 @@ int FUN_10028BB0(int *);
  * BrChkRealloc when full, then post-increment the live count and return
  * the old index. */
 /* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027A10 3 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10027A10 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 58 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
 int br_tex3d_append(void)
