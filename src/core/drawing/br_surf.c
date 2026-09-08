@@ -93,6 +93,7 @@ void BrSurfFree(BrSurf *pSurf)
  * stores bitmaps bottom row first. A zero-width or zero-height picture copies
  * nothing rather than running away. */
 /* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @implements 0x100011C0 glide BrSurfBlt24 */
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                  int32_t cx, int32_t cy, int32_t cbWidthBytes)
