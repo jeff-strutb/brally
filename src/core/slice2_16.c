@@ -318,6 +318,7 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
  * can be restored later. It always finishes by recomputing the single
  * combined matrix the renderer actually uses. */
 /* @t4-pass 0x10021080 1 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
+/* @t4-pass 0x10021080 2 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
 /* @implements 0x10021080 glide BrGbiMatrix */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
