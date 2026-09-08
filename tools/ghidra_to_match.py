@@ -1201,9 +1201,9 @@ def _refine_candidates(src):
     """Yield (label, new_src) single-edit variants of a wrapped source."""
     # Combined folds first (one candidate each, not a search) so they always
     # take a slot in the max_cands budget — (a) retype alone can emit 80+
-    # cands. Decision: docs/gen-structural2-notes.md (retnotemp/ge0;
+    # cands. Decision: docs/archive/gen-structural2-notes.md (retnotemp/ge0;
     # lebound is NOT folded, 3 prey / 184, 0 MATCH) and
-    # docs/gen-fresh-notes.md (stringops; charret is orig-gated in
+    # docs/archive/gen-fresh-notes.md (stringops; charret is orig-gated in
     # refine_function next to callconv).
     import gen_structural2 as _gs2
     # (t) Ghidra-shredded stack struct -> one struct of the frame size.
@@ -1241,7 +1241,7 @@ def _refine_candidates(src):
     #     miss walker-rewind, signed `i = -1`, dest-scan strcat, and
     #     dword-only stosd/movsd. One candidate, not a search. strarr
     #     first so memcpy does not steal scasb copies. Decision:
-    #     docs/gen-fresh-notes.md. Proven MATCH 0x10038490 / 0x10038550 /
+    #     docs/archive/gen-fresh-notes.md. Proven MATCH 0x10038490 / 0x10038550 /
     #     0x100387C0 (strlen:cmp), 0x10023900 / 0x10033C90 (memcpy:imm),
     #     0x100418C0 (memset:imm), 0x10055AF0 (strcpy/strcat + memset
     #     0x104 + char[]). Do not convert a stride-loop inner copy
@@ -1272,7 +1272,7 @@ def _refine_candidates(src):
     #     under a running byte budget comes back folded. Proven 0x100250D0
     #     (12 sites fire unaided: -160 B / -24 insns; 15 sites with the
     #     ping-pong ones hand-finished: +1152 -> +512 B, +234 -> +81 insns).
-    #     Decision: docs/idioms-A.md.
+    #     Decision: docs/archive/idioms-A.md.
     import gen_countfold as _gcf
     _new, _n = _gcf.transform_countfold(src)
     if _n and _new != src:
@@ -2086,7 +2086,7 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
         # `int` (`b8 01 00 00 00 c3`). Orig-gated — an ungated int->char
         # would compile every `return 1` as `mov al,1` and burn the cand
         # budget. Only-if-better, same as callconv. Decision:
-        # docs/gen-fresh-notes.md. Proven MATCH 0x10054390 (already
+        # docs/archive/gen-fresh-notes.md. Proven MATCH 0x10054390 (already
         # tree) and 0x10069930. Skips fnstsw helpers whose AL is a
         # status nibble (0x10006A10; _DEF_SIG already skips ushort).
         try:
@@ -2376,7 +2376,7 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     n_match = sum(1 for r in out.values() if r['result'] == 'MATCH')
     print(f'refine: {n_match} new MATCH of {len(todo)}', flush=True)
     if n_match:
-        print('file them: python3 tools/autofile.py', flush=True)
+        print('file them by hand into the owning module (autofile.py is retired)', flush=True)
 
 
 def print_residue():

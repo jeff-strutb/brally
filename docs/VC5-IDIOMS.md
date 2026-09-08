@@ -1,14 +1,17 @@
-# VC5 codegen idioms — read before matching any function
+# VC5 codegen idioms
 
-Every entry here was proven by a byte diff against BRGlide.dll, not inferred.
-Add to this file whenever a new construct→codegen mapping is proven; this is
-how per-function cost drops over time. Each idiom is solved ONCE.
+Query this book; do not read it cover to cover.
 
-Vocabulary note (2026-09-06): the tiers are T1/T2/T3/T4 only (CLAUDE.md
-rule 12; `tools/t3.py --qualify`). Where an older entry below says "T3a" it
-means "the residue is register allocation / scheduling"; "T3b" means "the
-differential oracle said EQUIVALENT". Both are inputs to T3 certification
-now, not tiers of their own.
+```bash
+.venv/bin/python tools/corpus.py find --from <VA> --at <off> --len 12 --source
+```
+
+Every entry was proven by a byte diff against BRGlide.dll. Add a newly proven
+construct→codegen mapping to the **tail**. Each idiom is solved once. Session
+dumps and finished-lane notes live in `docs/archive/`.
+
+Where an older entry says "T3a" it means allocation/scheduling residue; "T3b"
+means the differential oracle said EQUIVALENT. Both are inputs to T3, not tiers.
 
 ## The method: infer the SOURCE from the bytes, never permute spellings
 
@@ -180,7 +183,7 @@ the caller AND flipped a helper to match for free.
   { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the
   f0C/f68 stores (`89` vs orig `c7`). DECLARE ctor, no dtor (unwind is
-  `??3` only). Six activates matched: docs/cpp-family2-notes.md.
+  `??3` only). Six activates matched: docs/archive/cpp-family2-notes.md.
   Sequential `new`s in one function: maxState = count, every toState=-1,
   every unwind action 11 B `push; call ??3; pop; ret`.
 - **C++ thiscall `PutByte(unsigned char)` not `unsigned`:** a char stack
@@ -1079,7 +1082,7 @@ the caller AND flipped a helper to match for free.
   The lesson generalizes: an early load of a loop bound in scratch that
   a do-while defers is a control-flow-shape fix, not a spill trick — no
   prologue permutation reaches it (the whole merge/DCE/pragma do-not-
-  re-run family stays dead; see docs/idioms-A.md). Next divergence
+  re-run family stays dead; see docs/archive/idioms-A.md). Next divergence
   (+0x11, param_4 spill vs esi-cache) is body-driven register pressure.
   Proven 0x100250D0.
 - **Ghidra FOLDS two consecutive `count += N` into one `count += 2N` and

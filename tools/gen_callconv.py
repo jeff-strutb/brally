@@ -7,7 +7,7 @@ spurious `add esp,N`, promotes float args to double, or drops ecx=this.
 
 This is a STANDALONE refine transform. It does not write ghidra_work,
 does not edit ghidra_to_match.py, and does not commit. Decision logic
-is in docs/gen-callconv-notes.md — fold that into _refine_candidates.
+is in docs/archive/gen-callconv-notes.md — fold that into _refine_candidates.
 
     python3 tools/gen_callconv.py --va 0x1006C6A0
     python3 tools/gen_callconv.py --va 0x1006C6A0 --from-decomp

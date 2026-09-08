@@ -122,7 +122,7 @@ def main():
             # set with no @implements tag at all, so it never reaches
             # report.csv.  It is also the biggest.  Listed largest-first with
             # the machine draft's path, because that draft is where the
-            # T1->T2 step in docs/STRUCTURAL-PLAYBOOK.md starts.
+            # T1->T2 step in docs/MATCHING.md starts.
             # ...and NOT the C++ EH workstream's byte-exact rows.  They carry
             # no @implements tag either, so `tagged` alone leaves them in the
             # list: on 2026-09-03 the T1 work list printed 460 rows while the

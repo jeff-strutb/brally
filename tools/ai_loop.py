@@ -139,7 +139,7 @@ def locate_fn(path, name):
 
 
 IDIOMS = ''     # phrasebook digest, loaded from docs/VC5-IDIOMS.md in main()
-PLAYBOOK = ''   # matching-method digest, loaded from docs/STRUCTURAL-PLAYBOOK.md
+PLAYBOOK = ''   # matching-method digest, loaded from docs/MATCHING.md
 
 
 def propose(model, name, cur, disa, detail, temperature, history=None):
@@ -352,10 +352,10 @@ def main():
     try:
         # the method/tier-ladder spec: teaches the model to reshape toward the
         # target's instructions rather than just guess spellings.
-        PLAYBOOK = open(os.path.join(ROOT, 'docs', 'STRUCTURAL-PLAYBOOK.md')).read()
-        print(f'loaded {len(PLAYBOOK)} chars of the structural playbook into the prompt')
+        PLAYBOOK = open(os.path.join(ROOT, 'docs', 'MATCHING.md')).read()
+        print(f'loaded {len(PLAYBOOK)} chars of docs/MATCHING.md into the prompt')
     except OSError:
-        print('note: docs/STRUCTURAL-PLAYBOOK.md not found; running without the method spec')
+        print('note: docs/MATCHING.md not found; running without the method spec')
     try:
         doc = open(os.path.join(ROOT, 'docs', 'VC5-IDIOMS.md')).read()
         # Idioms are appended over time, so keep the foundational ones (head) AND

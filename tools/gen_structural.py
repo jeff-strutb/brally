@@ -7,7 +7,7 @@ promote to double). Each generator yields `(label, mutated_source)` in the
 `_refine_candidates` style so the hill-climb can fold them one edit at a time.
 
 This does not write ghidra_work, does not edit ghidra_to_match.py, and does
-not commit. Decision logic: docs/gen-structural-notes.md.
+not commit. Decision logic: docs/archive/gen-structural-notes.md.
 
     python3 tools/gen_structural.py --dry-run
     python3 tools/gen_structural.py --validate

@@ -7,13 +7,11 @@ handed to the session directly (specs in the repo go stale).
     .venv/bin/python tools/t4lane.py --pool A       # register-only T2 rows, by translation unit
     .venv/bin/python tools/t4lane.py --pool B       # smallest untouched drafts, screened
     .venv/bin/python tools/t4lane.py --n 30 --max-bytes 400
-    .venv/bin/python tools/t4lane.py --claim         # lock the primaries it printed (TOKEN)
+    .venv/bin/python tools/t4lane.py --claim         # lock Pool B primaries (TOKEN)
 
-‼ LOCK THROUGH THIS TOOL, never `claim_lane.py claim N`.  claim_lane's own
-picker ranks by build/match/triage_rank.csv, a 2026-08-28 snapshot: once its
-SHAPE rows are gone it hands out the giants (BrFrameDraw, BrCtlAiBody,
-BrObjDlBuild, BrTex3dExpand ...) -- exactly what happened on 2026-09-07.
-`--claim` passes this tool's primaries to `claim_lane.py claim --va ...`.
+‼ LOCK THROUGH THIS TOOL, never `claim_lane.py claim N` (hard error).
+`--claim` with both pools locks Pool B only; Pool A is printed as T3
+candidates. `--pool A --claim` still locks Pool A for a qualify batch.
 
 POOL A -- rows in build/match/report.csv with status=diff whose register-blind
 instruction multiset equals the original's (reggap 0, tools/fnmatch/triage.py):
@@ -27,15 +25,13 @@ order, guard-shape, sibling-asymmetry and file-position screens landed
 2026-09-03..06 (SCREENS_DATE); a row parked before that date was parked
 without them, so it is LIVE and prints `[park <date> predates screens]`.
 Parked on or after that date: HELD, needing a lever the park predates.  A
-`@t4-pass` ledger line is NOT a hold: Gate B needs three of them, and
-tools/crank.py re-runs a row at near-zero cost (tried candidates are
-remembered), so a ledgered row stays live until it is certified or exact.  Before
-2026-09-07 every park was a hold, which left Pool A with 1 live row of 37.
+`@t4-pass` ledger line is NOT a hold: Gate B needs two of them at the current
+numbers. Colouring walls (`reggap 0`) are T3 candidates, not a T4 grind.
 A file dead list is never a hold: it is the input to the next pass.
 
 POOL B -- functions with no @implements anywhere (the T1 set from
 tools/tiers.py), smallest first, run through the mechanical screen from
-docs/T1-INTAKE-LANE.md: a `6A FF` prologue (C++ EH frame) is out; an odd
+docs/MATCHING.md: a `6A FF` prologue (C++ EH frame) is out; an odd
 address (split map row) is out; a VA present in report_cpp.csv is the C++
 lane's; any `fxch` (x87 juggling) is out; more than two 16-bit register ops
 (byte/word lanes) is out.  Survivors print with their draft path; rejects
@@ -202,27 +198,31 @@ def main(argv):
     mb = int(argv[argv.index('--max-bytes') + 1]) if '--max-bytes' in argv else 400
     pool = argv[argv.index('--pool') + 1].upper() if '--pool' in argv else 'BOTH'
     primaries = []
+    claim_a = pool == 'A'   # --claim on BOTH locks Pool B only; Pool A is T3
     if pool in ('A', 'BOTH'):
         files, live, held = pool_a(mb)
         total = sum(len(v) for v in live.values())
-        print('=== POOL A: register-only T2 rows (reggap 0, <= %d B), by translation unit -- %d rows in %d files'
+        print('=== POOL A: register-only T2 rows (reggap 0, <= %d B) -- T3 candidates, not a T4 grind -- %d rows in %d files'
               % (mb, total, len(files)))
         k = 0
         for f in files:
             print('  %s' % f)
             for r in live[f]:
                 k += 1
-                if k <= n:
+                mark = ''
+                if claim_a and k <= n:
                     primaries.append(r['va'])
+                    mark = '   <-- primary'
                 print('     %s %-30s %4d B  diff %3d  ledger %d  %s%s'
-                      % (r['va'], r['name'], r['size'], r['diff'], r['passes'], r['flag'],
-                         '   <-- primary' if k <= n else ''))
+                      % (r['va'], r['name'], r['size'], r['diff'], r['passes'], r['flag'], mark))
         if held:
             print('  --- HELD (parked or passed on/after %s: only with a lever the park PREDATES): %d'
                   % (SCREENS_DATE, len(held)))
             for r in held:
                 print('     %s %-30s %4d B  diff %3d  ledger %d  %-22s %s'
                       % (r['va'], r['name'], r['size'], r['diff'], r['passes'], r['why'], r['file']))
+        if pool == 'BOTH':
+            print('  (not claimed; qualify with tools/t3.py --qualify <VA>)')
     if pool in ('B', 'BOTH'):
         keep, out = pool_b(mb)
         print('=== POOL B: smallest untouched drafts (<= %d B), mechanically screened -- %d clean, %d rejected'

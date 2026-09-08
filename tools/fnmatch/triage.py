@@ -17,7 +17,7 @@ every GP register to a single name.
 
 Established 2026-08-28: 0x100250D0 read 1097+863 raw (a wall) but 432+198
 register-blind, and fixing the structural defect took it from +1152 to +512
-bytes.  See docs/idioms-A.md and docs/VC5-IDIOMS.md.
+bytes.  See docs/archive/idioms-A.md and docs/VC5-IDIOMS.md.
 
 Ranks COMPLETE transcriptions first: a recomp far smaller than the original
 is the known missing-code class (a factored helper the original inlined), a
@@ -143,7 +143,7 @@ def _has_eh_frame(va):
 
     `push -1` (6A FF) is the first instruction of MSVC's __try prologue, and
     it is unreachable from C source -- see the EH screen in
-    docs/STRUCTURAL-PLAYBOOK.md and the cxx-eh-frame-wall note.
+    docs/MATCHING.md and the cxx-eh-frame-wall note.
     """
     if va not in _EH_CACHE:
         p = os.path.join(ROOT, 'build', 'match', 'orig', '%s.bin' % va)

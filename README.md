@@ -9,7 +9,8 @@ standard: the C source is the single source of truth and must compile to
 **byte-identical output** under the original compiler (MSVC 5.0), while the same
 source also cross-compiles to modern platforms. One tree, two build targets (the
 SM64 model). Progress is measured only in per-function byte-identical
-equivalence; playability is a consequence, never a reason to reorder work.
+equivalence; playability is a consequence, never a reason to reorder matching.
+Do keep the port buildable.
 
 ## Game background
 
@@ -22,303 +23,72 @@ renderer DLLs over one shared core: **`BRGlide.dll`** (3dfx Glide — the mature
 target and the reference for all matching) and `BRD3D.dll` (Direct3D — statically
 links Microsoft's CRT, so it's reference-only, out of scope).
 
-## Status Summary
+## Status
 
-The matching pipeline is live end-to-end: MSVC 5.0 runs under Wine, and each
-source file is compiled and diffed function-by-function against bytes from the
-original binary. Snapshot of 2026-09-05: **1,227 functions reproduce the original
-bytes exactly (196,890 B).** Every image is then reassembled from those claims and
-diffs to **0 bytes**, with 0 overlapping address claims — all four in-scope
-binaries pass.
+Query the tree. Do not trust a number in this file.
 
-**Every byte-exact function now lives in the module that owns what it does.**
-Until 2026-09-03 two thirds of the matched C code sat in `sliceN_MM.c` address
-batches — 570 functions at the worst, 516 when the clear-out started. It is 11
-now, each one recorded in its file's header with what was tried and why it
-cannot move (ten share one state block; one is byte-exact only inside its own
-translation unit). Both halves of rule 6 are gated, and the gates are
-ratchets — see **Keeping it that way** below.
+```bash
+.venv/bin/python tools/refcheck.py     # corpus must be Glide-keyed
+.venv/bin/python tools/total.py        # byte-exact functions and bytes, all lanes
+.venv/bin/python tools/tiers.py        # T1/T2/T3/T4 of the C target (bytes, not just fns)
+.venv/bin/python tools/image_build.py  # assembled DLL vs original; must be 0 differing bytes
+.venv/bin/python tools/fileaudit.py    # WHAT IT DOES, filing, T3 tags
+```
 
-- **Game DLL (`BRGlide.dll`)** — 1,122 functions byte-exact, 184,457 B, **38.36% of
-  its 480,853 B `.text`**. Of those, 946 are C and 176 are C++. Most of what
-  remains is structural, not "coloring": 201 functions still carry real,
-  non-codegen diffs (wrong or missing code — 175 in the C lane, 26 in C++), while
-  only a 51-function tail is down to pure register-allocation/scheduling
-  differences with the instructions already correct.
-- **C++ class (vtables, EH frames)** — a separate lane, because these functions
-  are unreachable from C at all; screened for before a function is ranked as a
-  C target.
-- **Executables** — **all three in-scope EXEs are now game-code complete**:
-  BRally.exe (launcher), BossRally.exe (intro shim) and, as of 2026-09-03,
-  SetVideo.exe (display wizard) — its last function, a 2,144-byte `WinMain`,
-  had been the one hold-out. 105 functions, 12,593 B; every non-CRT map row in
-  all three is byte-exact and all three images diff to 0. What is left in them
-  is statically-linked MSVC 5.0 CRT (SetVideo 27,888 B, BossRally 20,075 B,
-  BRally 495 B), reproduced by linking rather than decompiled — the same call
-  as `BRD3D.dll` under rule 0.
-- **Documentation** — **every byte-exact function says what it does**: 1,227 of
-  1,227 carry a `WHAT IT DOES:` comment above their `@implements` tag, and
-  `tools/fileaudit.py` fails the build if one lands without. The looser sets are
-  covered too — all 1,480 *tagged* functions (byte-exact or still diffing) are
-  described. Untagged port-side code is not: ~415 function definitions in files
-  with no `@implements` tag remain undescribed, none of them byte-exact.
-- **macOS/Metal port** — the same source boots, renders the front end and retail
-  car geometry, runs physics + collision. **The port build is currently broken**:
-  `src/core/slice2_12.c`'s narrow `BrFixPackS16Q15Neg` return type is only
-  reconciled with the header under `BR_MATCHING_BUILD`, so clang stops there and
-  the suite does not run. A dedicated session was spun up for this on 2026-09-03
-  and ended without fixing it, so treat it as open. Last green run was 136/136 on
-  2026-08-27; that number is historical, not live.
+T1 = draft only; T2 = in the tree, not done; T3 = certified complete, not
+byte-exact (`tools/t3.py --qualify`); T4 = bytes diff clean. Function counts
+overstate progress: remaining functions are several times larger than matched
+ones. Quote bytes of `.text` with the denominator (BRGlide `.text` is 480,853 B).
 
-## Progress Report
+In-scope EXE game code (BRally.exe, BossRally.exe, SetVideo.exe) is complete;
+what remains in those images is statically-linked CRT, reproduced by linking.
+The macOS/Metal port is a separate build (`./build.sh`); if it does not compile,
+see `docs/MEMORY.md`. C++ EH functions are a separate lane (`tools/cpp_sweep.py`).
 
-**The C lane by tier** (`.venv/bin/python3 tools/tiers.py`) — 1,326 functions,
-372,934 B of `.text`. That is the 1,501-function hand-C target less the 175 the
-C++ lane owns; **this table is C only**, and the C++ lane has its own below.
-Nothing is counted in both.
+A byte-exact session picks targets with `python3 tools/t4lane.py --claim`
+(Pool B). Procedure: `docs/MATCHING.md`.
 
-The tiers track how close each function's rebuilt code is to the original, from
-not-started to exact. There are four and nothing between them (the T3a/T3b
-sub-tiers were retired 2026-09-06): **T1→T2** is a machine-made rough draft on
-the side vs. real code built into the project; **T3** is certified complete but
-not byte-exact; **T4** is byte-exact.
-
-| Tier | Meaning | Fns | `.text` B |
-|---|---|--:|--:|
-| T1 | **Not started** — no real code in the project yet (just a machine rough-draft on the side) | 153 | 132,366 |
-| T2 | **In progress** — real code is in the project, but it is not done: logic still differs, the last gap is not yet accounted for, or the attempts at byte-exactness are not yet logged | 227 | 136,808 |
-| T3 | **Certified complete, not byte-exact** — functionally done: every structural element verified against the disassembly, every remaining residue row proven to be a compiler decision, and at least three sincere passes at byte-exactness logged with the last two moving nothing; parked until the end-grind | 0 | 0 |
-| **T4** | **Done** — matches the original exactly, byte for byte | **946** | **103,760** |
-
-**Every tier — T1 included — already has at least a rough C draft from the
-decompiler.** No one is reading raw assembly from a blank slate; the original
-assembly is only the reference each draft is checked against. "Not started"
-(T1) means that draft hasn't been turned into real project code yet, not that
-no C exists.
-
-**T3 is decided by a tool, never by judgment** (`CLAUDE.md` rule 12), and it
-means functionally DONE: nothing missing, nothing not understood. Gate 0
-checks completeness (a purpose comment, no TODO/stub/guess markers in the
-body). Gate A is five mechanical checks on the sweep object: instruction-count
-gap within max(3, 0.5%); register-blind rows within max(4, 2.5%); every residue row
-either an allowed allocation artefact or paired with the other side in the
-same canonical class (one unpaired row fails); no lost-sync; the differential
-oracle not reporting a difference. Gate B reads a per-pass ledger in the file:
-at least three passes of ten or more fresh compiles each, the last two moving
-nothing, one census-driven. Crossing Gate A is a precondition, never the
-trigger to stop. The tag carries the tool's numbers, the validator re-measures
-every tagged function and fails on a stale one, the lane tool never hands a T3
-function out, and T3 is never counted as matched. It is a parking receipt
-with the evidence attached, not a lower bar.
-
-`tiers.py` prints T4 as a combined 1,121 over the full 1,501 target, with the
-C++ lane called out beneath it; the table above subtracts that lane to stay
-C-only, so its T4 is 1,121 − 175 = 946 and its target 1,501 − 175 = 1,326.
-
-Earlier snapshots showed a much larger T1 and a much smaller T4, and the
-difference was a **counting bug, not progress**: converting a function to the
-C++ lane REMOVES its row from the C report, and the tier tool read that absence
-as "not started", so T1 climbed every time a C++ match landed. Fixed in
-`tiers.py`; T1 fell 459 → 274 the moment it did.
-
-The numbers in this section move daily; regenerate rather than trust them.
-
-**How a byte-exact session picks its targets.** `python3 tools/t4lane.py --claim`
-reads the tree, prints two pools and locks the picks: functions already in the
-project whose instruction multiset equals the original's (registers only),
-grouped by translation unit, where a park older than the newest matching
-screen is live again and only a newer park or a logged pass holds a row; and
-the smallest untouched functions after a mechanical screen (exception-frame
-prologue, odd address, C++ lane, x87 juggling, 16-bit lanes). Every pass at
-a near-exact function ends by appending an `@t4-pass` line with its numbers
-to the file header; that ledger is what Gate B reads. The lane spec that
-consumes the tool's output is handed to a session directly rather than kept
-here, because specs in the repo go stale.
-
-The differential oracle (`tools/t3b_verify.py`) runs both the original bytes
-and the recompiled bytes through the same interpreter on identical random
-inputs and compares the return value and memory side effects. It is
-conservative — it only judges functions it can fully contain (plain-cdecl
-scalar/pointer args, no globals, no external calls) and reports everything
-else as unclassified rather than guess. Its EQUIVALENT / DIFF verdict is Gate
-A5 of T3 certification; it no longer names a tier of its own.
-
-**The C++ lane by tier** (vtables + EH frames; `tools/cpp_sweep.py`) — same tiers,
-so the two tables read alike. **This one is C++ only**; add it to the C table
-above for the DLL total. A C++ function is scored on **four pieces**, not one:
-its code, and the three tables the compiler emits alongside it to unwind the
-stack when an exception passes through (unwind, scope, funcinfo). Done means all
-four.
-
-| Tier | Meaning | Fns | `.text` B |
-|---|---|--:|--:|
-| T1 | **Not started** — screened as C++-only, no source written yet | 20 | 28,997 |
-| T2 | **In progress** — source exists; the three exception tables already match, the code does not | 26 | 24,131 |
-| T3 | **Certified complete, not byte-exact** — code certified by `tools/t3.py --qualify`, one table still differs | 0 | 0 |
-| **T4** | **Done** — all four pieces byte-exact | **176** | **80,537** |
-
-Three differences from the C table, all real:
-
-- **T1 here is a lower bound, not a census.** The C table has a fixed target
-  derived from the function map; there is no equivalent count of "every C++
-  function in the DLL". T1 is whatever `tools/cpp_screen.py` has recognised in
-  the *current* unmatched residue — 20 strong of 108 screened. A further 33
-  screened weak (fastcall-representable) are deliberately excluded: those are
-  reachable from C and belong to the C lane. T1 falling is therefore progress,
-  not scope loss: this lane is being drained faster than the screen finds new
-  members.
-- **T3 is empty for a reason.** Every unfinished row here is unfinished in its
-  *code*; the exception tables come out right first. So nothing currently
-  qualifies as certified-but-not-exact.
-- **T1 is the one figure that is not yet disjoint from the C table.** A function
-  screened as C++ but not yet written still has its row in the C report, so those
-  20 also sit in the C table's T1/T2 until they are converted. T2, T3 and T4
-  here are exclusively C++.
-
-`tiers.py`, run against the same tree, sizes the done lane at 175 / 79,799 B
-rather than 176 / 80,537 B: it ran moments earlier, and it takes each function's
-size from the function map instead of the extracted bytes. Both are right at
-their own strictness; don't average them.
-
-Screening for this class *before* ranking a function as a C target is now part of
-triage — 41 rows / 37,677 B that C cannot reach had previously been ranked as
-prime C targets.
-
-**Executables** (game code; static CRT is linked, not decompiled):
-
-| Binary | Game code | Fenced CRT | |
-|---|---|---|---|
-| BRally.exe (launcher) | 28 fns · 2,860 B | 495 B | game code complete |
-| BossRally.exe (intro) | 35 fns · 2,482 B | 20,075 B | game code complete |
-| SetVideo.exe (config) | 42 fns · 7,251 B | 27,888 B | game code complete |
-
-All three have **zero** unmatched non-CRT rows in their function maps, and each
-reassembles to 0 differing bytes. SetVideo was the last to close (2026-09-03):
-its 42 include 3 one-to-nineteen-byte CRT stubs, so the game span itself —
-`0x401000`–`0x402D20` — is 7,228 B of code plus 228 B of inter-function
-alignment, i.e. the whole 7,456-byte range.
-
-**Totals** — 1,227 byte-exact functions / 196,890 B (`python3 tools/total.py`):
-1,122 in `BRGlide.dll` (184,457 B, 38.36% of its `.text`) and 105 across the three
-EXEs (12,593 B).
-
-**The image gate** (`python3 tools/image_build.py`) is the deliverable check, and
-the one a per-function diff cannot perform. Each function is diffed alone, so a
-function whose bytes are right can still be wrong about *where* it goes: two
-functions claiming one address, a claimed range overrunning its neighbour, a
-wrong size. The gate refuses collisions rather than resolving them, lays every
-claim into one image at the address it claims, uses the original's own bytes for
-everything not yet decompiled, and diffs the result against the retail DLL.
-
-    placed into the image            : 1122 functions, 184,457 bytes (38.36% of .text)
-        C     946 fns   103,920 B  (2,116 B of that filled from the reference, 2.0%)
-        C++   176 fns    80,537 B  (10,688 B of that filled from the reference, 13.3%)
-    overlapping address claims       : 0
-    ASSEMBLED IMAGE vs ORIGINAL      : 0 differing bytes
-
-Both lanes are placed together, so a C claim and a C++ claim landing on one
-address would be caught; none do. Read the reference-filled column as a
-discount on the evidence, not on the match: those are relocation slots whose
-target has no address in any surveyed map (per-file statics, and the C++ lane's
-mangled symbols), so the reference image's own dword is used. Such a slot cannot
-fail the diff — the C lane is 2.0% reference-filled, the C++ lane 13.3%, and
-resolving the latter through real addresses is open work.
-
-Port test suite does not currently build — see Status Summary.
+The image gate (`tools/image_build.py`) is the deliverable check a per-function
+diff cannot perform: it lays every claim at the address it claims, refuses
+overlaps, fills unmatched ranges from the original, and diffs the image.
 
 ![decomp progress treemap](docs/progress-map.svg)
 
 Every box is one function, sized by its bytes in `.text` and grouped by module;
-filled means byte-exact.
-
-Regenerate: `python3 tools/match_sweep.py [file.c]` (merges into
-`build/match/report.csv`); `python3 tools/progressmap.py --svg docs/progress-map.svg`.
+filled means byte-exact. Regenerate: `python3 tools/progressmap.py --svg docs/progress-map.svg`.
 
 ## Keeping it that way
 
-Rule 6 says a function is not done until it says what it does and lives in its
-module. Both halves are now gated, and every gate below exists because the
-thing it catches actually happened.
-
-**A new match must be BORN in its module.** `tools/precommit_rule6.py` (the
-pre-commit hook, installed by `tools/install_hooks.py`) refuses a commit that
-
-  * adds an `@implements` with no `WHAT IT DOES:` comment beside it, or
-  * creates a new `sliceN_MM.c`, or
-  * **adds a new `@implements` VA to an existing `sliceN_MM.c`.**
-
-The third is the one that matters and it was missing until 2026-09-04.
-Refusing to let anyone *create* an address batch never stopped anyone dropping
-a new match *into* one — which is exactly what the old `autofile.py` did, by
-address, unattended. That is where all 570 stranded functions came from. It
-compares by VA against the last commit, so re-spelling a function the batch
-already holds (the normal way a wall falls) is untouched; only a VA the file
-did not have before is rejected.
-
-**The audit is a ratchet, not a wish.** `python3 tools/fileaudit.py` checks all
-three lanes and exits 1 when a number goes UP: undescribed functions (baseline
-0), address batches (58), stranded matched functions (11). It also counts the
-T3-certified functions and fails on a malformed or stale `@t3` tag (one whose
-function has since become byte-exact, or whose measured numbers moved), by
-running `tools/t3.py`. It used to fail
-unconditionally while any backlog existed — and a check that always fails is a
-check people stop running, which is how the rule went unenforced for months.
-Lower a baseline as you drain it; never raise one.
-
-**A green sweep is not proof a move is safe.** `match_sweep.py` only ever
-compiles `/DBR_MATCHING_BUILD`, so a `#else` port arm calling something whose
-declaration did not travel with it is an implicit declaration (C89: a warning)
-and an undefined symbol in the object — a link failure with a clean `n/n
-match` either side of it. `python3 tools/portcheck.py --baseline main` compiles
-the other configuration and reads the symbol table. On its first tree-wide run
-it found five real defects the sweep had passed, including a file that would
-not compile at all. Run it after any refile, with `--map <newfile>=<origin>`
-for a file you created and `--ignore snprintf`.
-
-**The sweep compiles NOTHING for a file with no `@implements` tag.** So an
-emptied batch file can stop compiling and no sweep will ever say so. The
-tree-wide `portcheck.py` run is what covers those; that is how the broken one
-above was found.
-
-**Moving byte-exact code can change it.** A function's surroundings decide its
-codegen, not just its text — see the "surrounding TU decides commutative
-operand order" entry in `docs/VC5-IDIOMS.md`. Carry the source file's ENTIRE
-preamble verbatim; do not trim an include because it looks unused. Sweep both
-files after every move and keep the move only if the moved function still
-matches and nothing left behind regressed.
-
+A function is not done until it says what it does and lives in its module.
+`tools/precommit_rule6.py` refuses a commit that adds an `@implements` without
+a `WHAT IT DOES:` comment, creates a `sliceN_MM.c`, or adds a new VA to an
+existing address batch. `tools/fileaudit.py` is a ratchet across all three
+lanes (undescribed 0, batches 58, stranded 11) and fails on a bad `@t3` tag.
+After a refile: `python3 tools/portcheck.py --baseline main` — the sweep only
+compiles `/DBR_MATCHING_BUILD`. Moving byte-exact code can change it; sweep
+both files and keep the move only if nothing regressed.
 
 ## Architecture
 
-**The repo root is the decomp** — the master, byte-matched against the 1999
-binaries. `ports/` is the only thing outside it: derived platform code with no
-original bytes to match.
+The repo root is the decomp. `ports/` is derived platform code, not byte-matched.
 
-    src/core/                 portable game logic (byte-matched, feeds both targets)
-    src/backends/{glide,d3d,win32}   original Win9x platform layer (byte-matched)
-    src/exe/                  the three Win9x executables (byte-matched)
+    src/core/                 portable game logic (byte-matched)
+    src/backends/{glide,d3d,win32}   original Win9x platform layer
+    src/exe/                  the three Win9x executables (game code done)
     include/  tests/
-    tools/                    matching pipeline + staged MSVC toolchain
-                              (tools/t3.py: the T3 gates and tag validator;
-                              tools/t4lane.py: the byte-exact target picker;
-                              tools/crank.py: the unattended lever sweep that
-                              closes, files, ledgers and certifies register-only
-                              rows and learns across runs;
-                              tools/tiers.py: the four-tier count)
-    config/                   function maps, globals; binaries.csv (per-binary
-                              compiler + CRT model); fenced.csv / fenced_exe.csv
-                              (linker/CRT — reproduced by linking, not decompiled)
+    tools/                    matching pipeline + staged MSVC 5.0
+    config/                   function maps, globals, binaries.csv, fenced.csv
     build/match/              extracted reference bytes, per-function report
-    ports/macos/              macOS/Metal port — NEW code, not byte-matched
+    ports/macos/              macOS/Metal port — NEW code, no `@implements`
+    n64/                      Top Gear Rally (IDO/MIPS); writes only build/n64/
 
-`@implements <addr>` is a hard claim: that function compiles to byte-identical
-output under MSVC 5.0 (proven against the extracted bytes). Passing a port test
-is not sufficient. The engine is dispatch-driven — only ~13% is reachable by
-following `call` from the entry point — so functions are taken leaves-first from
-a topological order, not by walking the call graph.
+`@implements <addr>` is a hard claim: MSVC 5.0 emits those original bytes.
+The engine is dispatch-driven — only ~13% is reachable by following `call`
+from the entry point — so functions are taken leaves-first.
 
-Further reading: [ARCHITECTURE.md](ARCHITECTURE.md), [CONVENTIONS.md](CONVENTIONS.md),
-[DECOMP_NOTES.md](DECOMP_NOTES.md), and `ports/README.md`.
+Further reading: [ARCHITECTURE.md](ARCHITECTURE.md), [docs/MATCHING.md](docs/MATCHING.md),
+[docs/VC5-IDIOMS.md](docs/VC5-IDIOMS.md), `ports/README.md`. Retired starting
+docs live in `docs/archive/`.
 
 ## Building & Setup
 

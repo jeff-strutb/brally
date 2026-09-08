@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Hand each parallel closer a disjoint lane of still-diff functions.
-  claim [N]                    -> print TOKEN then N unclaimed diff functions (va name file)
+"""Lock / park ledger. Do not pick targets here.
+
   claim --va VA [VA ...]       -> lock exactly these (what tools/t4lane.py --claim runs)
   release <TOKEN> [wallVA ...] -> park the listed walls (never re-handed), release the rest
-Matched functions drop out on their own (they leave status=diff). Stale claims (>90 min) are reclaimed."""
+
+Bare `claim N` is a hard error: the rank-file picker handed out the giants
+(2026-09-07). Matched functions drop out on their own. Stale claims (>90 min)
+are reclaimed."""
 import csv, os, sys, time, uuid, fcntl
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORT=os.path.join(ROOT,'build','match','report.csv')
@@ -78,7 +81,7 @@ def claim(n,big=False,vas=None):
         elif big:
             # --big: hand out the LARGEST still-diff functions (by original
             # bytes). The giants carry dossiers/ordering rules -- see the
-            # "Large functions" section of docs/STRUCTURAL-PLAYBOOK.md.
+            # "Large functions" section of docs/MATCHING.md.
             pool.sort(key=lambda r:-int(r.get('orig_size') or 0))
             pick=pool[:n]
         elif os.path.exists(rank_csv):
@@ -110,6 +113,13 @@ if __name__=='__main__':
             vas=sys.argv[sys.argv.index('--va')+1:]
             claim(len(vas), vas=vas)
         else:
-            rest=[a for a in sys.argv[2:] if a!='--big']
-            claim(rest[0] if rest else 12, big='--big' in sys.argv)
+            sys.stderr.write(
+                'refused: claim_lane.py claim N is retired (2026-08-28 rank file; '
+                'hands out the giants). Lock with: python3 tools/t4lane.py --claim\n'
+                '  (that calls this tool as claim --va ...). release <TOKEN> still works.\n'
+            )
+            sys.exit(2)
     elif cmd=='release': release(sys.argv[2], sys.argv[3:])
+    else:
+        sys.stderr.write('usage: claim_lane.py claim --va VA [VA ...] | release TOKEN [wallVA ...]\n')
+        sys.exit(2)

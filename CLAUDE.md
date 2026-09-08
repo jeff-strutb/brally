@@ -1,418 +1,104 @@
 # Boss Rally — matching decomp
 
-Read this before touching anything. These are hard rules, not preferences.
-
-**Before matching any function, read `docs/VC5-IDIOMS.md`** — proven
-construct→codegen mappings. Infer the source from the bytes; never permute
-spellings by trial and error. Add every newly proven idiom to that file:
-each idiom is solved once, and this is how per-function cost drops.
-
-**And ASK THE SOLVED CORPUS before inventing a spelling — `tools/corpus.py`.**
-Every byte-exact function is a proof that "this C produced these bytes", spills
-and slot layout included; 1,036 of them are indexed. Hand it a pattern from the
-original bytes at an offset `divergence.py` gave you and it names every solved
-function that emits the same run, then resolves it back to real C through the
-compiler's own `/FAcs` listing:
+Hard rules. Procedure is `docs/MATCHING.md`. Idioms are queried, not reread:
 
 ```bash
-.venv/bin/python tools/corpus.py build                 # after any batch of matches
 .venv/bin/python tools/corpus.py find --from <VA> --at <off> --len 12 --source
 ```
 
-‼ **A MISS IS A RESULT**: it means the construct is not proven anywhere in the
-tree, so there is no spelling to copy and the site needs source truth rather
-than another permutation.
+A corpus miss means the construct is not proven anywhere — source truth, not
+another permutation. Newly proven mappings go on the tail of `docs/VC5-IDIOMS.md`.
 
-**The matching cadence (established 2026-08-25):** machine batch → hand-solve
-one representative per failure class → mint a generator → re-batch. Never
-hand-match what a generator could sweep. **For rows already in the tree
-with a register-only residue, the sweep is `tools/crank.py` (2026-09-07):**
-it walks every live Pool A row of `t4lane.py`, tries the proven levers
-(record base symbol, file position, declaration order, commutative and
-statement order, the permuter's sound mutations) in the function's OWN TU,
-scored register-blind; a match is swept, committed and filed, a miss gets
-its `@t4-pass` line and a `--qualify` run, and per-lever statistics plus
-learned record bases carry over to the next run. When it misses, the
-residue is a SOURCE FACT: hand-solve one, add it as a lever, re-run. It
-never commits into an address batch (rule 6): those land in
-`build/match/crank_refile.txt` for the hand move. The wide batch is
-`tools/ghidra_to_match.py --refine --max-diffs 200 --min-size 16` (hours,
-zero tokens, crash-safe); `tools/autofile.py` files, sweep-verifies, and
-commits every MATCH; `--residue` groups the failures by divergence class.
-When a function is blocked on WHAT THE SOURCE SAYS (short/dense/frame
-classes: unknown structure, suspected inlined helper, recomp ≪ orig,
-ambiguous widths/signedness/arg order), **read its N64 twin first**: Top
-Gear Rally (`reference/tgrally/`) is the same source lineage and IDO MIPS is
-near-transparent — see the `tgr-n64-viability` memory note. The N64 tree is
-**`n64/`** (its own tools, shims and docs; it never touches the PC lanes).
-Pairing is NOT done by shared strings — only 7 are usable, and the old "195
-strings" claim overstates it ~30x. Run `n64/tools/n64match.py --all` once:
-it compiles our own C with IDO, finds each function in the ROM, and leaves
-the twin lookup in `build/n64/report.csv`.
+**Cadence:** hand-solve one of a class, mint a generator, re-batch. Never
+hand-match what a generator could sweep. **Lanes that still pay:** T1 intake
+(Pool B) and structural T2. Colouring walls (`reggap 0`) are T3, not a grind.
+`tools/crank.py` is an overnight lottery on Pool A only — never `--all --loop`,
+never `--max-bytes` above 400. Giants are not a lottery.
 
-**The N64 is the ORACLE FOR COMMUTATIVE OPERAND ORDER.** IDO does not
-canonicalise commutative operands and VC5 does, so where a float sum's
-operand order is the last divergence, the MIPS states the original spelling
-outright — a lookup, not a probe. 43 of the 197 located functions differ
-from our C in exactly this way. See the `commutative FLOAT addition` entry
-in `docs/VC5-IDIOMS.md` for how to read it.
+The N64 tree (`n64/`) is the oracle for commutative operand order (IDO does
+not canonicalise; VC5 does). It does not move register-allocation walls.
+Pairing is not by shared strings (7 usable, not 195). Lookup: `build/n64/report.csv`.
 
-The N64 does NOT move register-allocation walls (scattered class) — don't
-burn time there. It buys SOURCE truth, never CODEGEN truth.
+## 0. Reference is BRGlide.dll. Not BRD3D.dll.
 
-## 0. BRGlide.dll is the reference binary. NOT BRD3D.dll.
+`python3 tools/refcheck.py` must say Glide-keyed. Tools honour `BR_REF` / `BR_MAP`.
 
-`BRGlide.dll` (3dfx Glide) is the mature target and the reference. `BRD3D.dll`
-statically links ~100 KB of CRT that has to be identified and fenced off.
-Pairing one binary's bytes with the other's function map disassembles the wrong
-bytes at a right-looking address, which is worse than failing outright.
+## 1. Bit-exact under MSVC 5.0, same source cross-compiles as the port.
 
-**This error has been made and corrected TWICE** — `d98f480` (2026-08-15)
-repointed the disassembler at Glide and said explicitly it was contrary to the
-project's stated choice; the matching pipeline in `a7eb7cd` (2026-08-19)
-re-made it. As of 2026-08-22 `build/match/orig/` and `build/match/report.csv`
-are still D3D-keyed and need re-keying via `config/shared.csv` (2,697 rows
-mapping `d3d_va` → `glide_va`).
+Do not reorder matching to make something run. Do keep the port buildable.
 
-**Verify, do not assume — tool defaults have been wrong before:**
+## 2. `@implements` means the bytes diff clean. Nothing else.
+
+## 3. Read once, decide once. Query the tree for counts — never a number in prose.
+
+Every count carries its denominator (functions vs bytes of `.text`). Never mix
+strictness (byte-exact, address-verified, independently-verified).
+
+## 4. Be concise. Yes/no first. Numbers with denominators.
+
+## 5. Toolchain lives in the repo (`setup.sh`). Never install to the host.
+
+## 6. A match says what it does and lives in its module.
+
+`WHAT IT DOES:` comment directly above `@implements`, written when matched.
+`sliceN_MM.c` files are address batches: never create one, never add a new VA
+to an existing one. File by hand, one function or connected group; sweep both
+files; keep the move only if nothing regressed. Surroundings decide codegen —
+carry the whole preamble.
 
 ```bash
-python3 tools/refcheck.py        # fails loudly if the corpus is not Glide-keyed
+python3 tools/install_hooks.py    # once per clone
+python3 tools/fileaudit.py        # ratchets: undescribed 0, batches 58, stranded 11
 ```
 
-Tools honour `BR_REF` / `BR_MAP` overrides.
+The pre-commit hook refuses a new `@implements` without `WHAT IT DOES:`, a new
+`sliceN_MM.c`, or a new VA in an existing batch. After a refile:
+`python3 tools/portcheck.py --baseline main`. The sweep compiles nothing for a
+file with no `@implements`.
 
-## 1. The goal is a complete, MAME-standard, bit-exact decomp — by the most efficient path.
+## 7. Commit every verified match immediately. Pathspecs. Never stage behind a revert.
 
-Same source, two build targets: bit-identical under MSVC 5.0 (the original
-compiler), and cross-compiling to macOS/Metal as a port. The SM64 model.
+## 8. No AI attribution. No `Co-Authored-By` trailers, no generator credit.
 
-**Playability is a side effect. It never drives prioritization.** Do not
-reorder work to make something run.
+## 9. Never full-sweep for ordinary work. One file, ~12s. Full sweep is ~20 min bookkeeping.
 
-## 2. `@implements` means the bytes diff clean against the original.
+## 10. Header edits under `include/` are serialized. Parallel work splits by `.c` only.
 
-Not "passes the x87 emulator". Not "the tests are green". Not "it looks right".
-If it does not reproduce the original bytes, it does not carry the tag.
+## 11. Giants are last. Do not open them unless the user names the VA.
 
-## 3. No token thrashing.
+- `0x10019A70` (11,223 B) — last, gated on 131 callee signatures. One C function.
+- `0x1000EAF0` BrSceneDlBuild — do not reopen before the end-grind.
+- `0x100250D0` BrTex3dExpand — `--key 10`, never `--key 6`.
 
-Read once, decide once. No guessing, no re-deliberating settled questions, no
-writing code that gets reverted. **Read the docs before forming a plan** — this
-file, `README.md`, and the memory index (`docs/MEMORY.md`). A session spent on a wrong assumption
-that one file read would have caught is the most expensive failure mode here.
+## 12. T4 is byte-exact. T3 is certified complete, not byte-exact. Nothing between.
 
-## 4. Every number carries its denominator.
+`tools/t3.py --qualify <VA>` decides. Gate 0: purpose comment, no unfinished
+markers. Gate A: residue is allocation/scheduling, every row classified, no
+lost-sync, oracle not DIFF. Gate B: two counted `@t4-pass` lines (≥10 compiles
+each) at the current numbers, one of them `census yes`. Colouring walls that
+pass Gate A get certified and parked — do not grind them. T3 is never counted
+as matched; `t4lane.py` / `claim_lane.py` never hand one out. No session opens
+a T3 function unless the user names it.
 
-"290 matched" and "2% of the code section" are the same fact. Quoting the first
-alone overstates progress by more than an order of magnitude. State what a
-count is *of*: tagged functions, all known functions, or bytes of `.text`.
-Never mix strictness levels — encoding-match, address-verified, and
-independently-verified are three different numbers.
-
-## 4b. Be CONCISE. Always.
-
-Lead with the answer. No preamble, no recap of what was just done, no novel.
-Numbers carry denominators; prose carries nothing else. If the user asks a
-yes/no, the first word is yes or no. This is a hard rule, not a style note.
-
-## 5. The toolchain lives in the repo.
-
-Wine and MSVC 5.0 are staged inside the tree by `setup.sh`. **Never install to
-the host.**
-
-## 6. A function is not done until it says WHAT IT DOES and lives in its module.
-
-Byte-exactness is proved by the sweep. **Purpose is proved by nobody** — it
-exists only in the head of whoever matched the function, and it is gone the
-moment they stop working. Re-deriving it later costs a full re-trace, without
-the context the first pass had. So a match carries two things beyond its bytes:
-
-**a. A `WHAT IT DOES:` comment, directly above the `@implements` tag.** Plain
-English, what the function is *for* — not what the codegen does, not a restated
-signature. It is written when the function is matched, never "later".
-
-```c
-/* WHAT IT DOES: pick which stored lap-time the next time-caption reads:
- * 0, 1 or 2 index a times array; 3 means "use the live time instead".
- * Always reports success.  The four bodies differ only in the value. */
-/* @implements 0x1003A820 glide BrMenuSetAA28D0_0 */
-```
-
-**b. A recorded module, and the code sitting in it.** `sliceN_MM.c` files are
-address batches, not architecture. The module for every matched function is
-recorded once in `config/filing.csv` (`tools/filing.py`). **Move the code by
-hand**, one function or one connected group at a time, and prove each move
-with a single-file sweep of both files before committing it. There was an
-automated mover; it was deleted 2026-09-03 because relocating byte-exact code
-changes what the compiler sees and a script cannot judge the result. Never add
-a new `sliceN_MM.c`. Never a big-bang reorg later.
-
-**This rule is ENFORCED. Two things run, and neither is optional:**
+## Session start
 
 ```bash
-python3 tools/install_hooks.py    # once per clone; setup.sh does it for you
-python3 tools/fileaudit.py        # exit 1 on a stranded, misplaced or undescribed function
+python3 tools/refcheck.py
+python3 tools/install_hooks.py
+python3 tools/t4lane.py --claim          # Pool B. Never `claim_lane.py claim N`.
 ```
 
-1. **A pre-commit hook refuses the commit.** Three things are rejected
-   outright: an `@implements` added without a `WHAT IT DOES:` comment in the
-   same commit; a new `sliceN_MM.c`; and — since 2026-09-04 — **a new
-   `@implements` VA added to an EXISTING `sliceN_MM.c`.** That third one is
-   the hole the whole backlog came through: refusing to let anyone CREATE an
-   address batch never stopped anyone dropping a new match INTO one, which is
-   precisely what `autofile.py` did by address, unattended. **A match is BORN
-   in its module now.** It compares by VA against HEAD, so re-spelling a
-   function the batch already holds — the normal way a wall falls — is
-   untouched. It judges only the diff you are committing, never the backlog,
-   so it cannot block unrelated work. `--no-verify` bypasses it; if you use it
-   on a decompiled function you are choosing to leave the next person a
-   function nobody can explain.
-2. **`fileaudit.py` audits the whole tree** across all three lanes (C, C++,
-   EXE). Description baseline is **0** — every tagged function must carry one,
-   and it fails outright on a new one that does not. Address batches: **58**.
-   Stranded matched functions: **11**. All three are RATCHETS — lower them in
-   that file as you drain them, never raise one. The stranded baseline exists
-   because the check used to fail unconditionally while any backlog remained,
-   and a check that always fails is a check nobody runs; that is how this rule
-   went unenforced for months.
-3. **`portcheck.py` catches what the sweep structurally cannot.**
-   `match_sweep.py` only ever compiles `/DBR_MATCHING_BUILD`, so a `#else`
-   port arm calling something whose declaration did not travel is an implicit
-   declaration and an undefined symbol — a link failure with a clean `n/n
-   match` either side. Run `python3 tools/portcheck.py --baseline main` after
-   any refile (`--map <newfile>=<origin slice>`, `--ignore snprintf`). Its
-   first tree-wide run found five real defects the sweep had passed, one of
-   them a file that would not compile at all — which no sweep could ever
-   report, because **the sweep compiles NOTHING for a file with no
-   `@implements` tag.**
+Read `docs/MEMORY.md`. Procedure: `docs/MATCHING.md`. Counts: `tools/tiers.py`,
+`tools/total.py` — not README.
 
-**The backlog is cleared: 570 -> 11 (2026-09-03/04).** The 11 that remain are
-recorded, not forgotten — ten are stranded on `g_s17` in `slice2_17.c`, one is
-byte-exact only inside `slice2_16.c`'s translation unit, and both files carry a
-header note saying what was tried and what it cost. Read those before
-attempting either again.
+## Scope
 
-‼ **Moving byte-exact code CAN CHANGE IT.** A function's surroundings decide
-its codegen, not only its text — three independent sightings, one of them a
-single byte, are in `docs/VC5-IDIOMS.md` under "the surrounding TU decides
-commutative operand order". Carry the source file's ENTIRE preamble verbatim;
-never trim an include because it looks unused. Sweep both files after every
-move and keep it only if the moved function still matches and nothing left
-behind regressed.
+| in | `.text` | |
+|---|---:|---|
+| `BRGlide.dll` | 480,853 | the game (primary) |
+| `BRally.exe` / `BossRally.exe` / `SetVideo.exe` | ~64 KB | game code **done**; leftover is static CRT, linked not decompiled |
 
-**This rule had no gate until 2026-09-03, and both halves drifted badly**: 570
-of 845 matched C functions were stranded in address batches, and 196 carried no
-description at all. Worse, the first version of the check counted only matched
-C functions and reported "0 undescribed" while **329** were missing — two whole
-lanes were invisible to it. A rule nothing checks is a preference, and a check
-with the wrong denominator is a lie. Do not let a number in that tool go up,
-and do not quote a coverage figure without saying what it is a coverage *of*.
+Out: `BRD3D.dll` (static CRT), `Boot.exe` (static MFC 4.2), `REMOVE.EXE`, 16-bit InstallShield.
 
-## 7. Commit every verified match immediately.
-
-Especially parallel agents. A killed worker must leave its verified matches
-behind, not nothing. Never stage work behind a revert step.
-
-## 8. Never add `Co-Authored-By: Claude` trailers.
-
-## 9. Never full-sweep to do ordinary work.
-
-Making one function bit-exact needs only its own file compiled and diffed
-(~12s). `report.csv` is self-maintaining — every run, single-file included,
-merges its rows back. The full sweep is bookkeeping, and it takes ~20 minutes.
-
-## 10. Header edits are serialized. Never concurrent.
-
-Shared headers under `include/` reach dozens of files. Parallel work splits by
-`.c` file only.
-
-## 11a. 0x1000EAF0 is T3-certified (rule 12). Do not reopen it before the end-grind.
-
-`src/core/drawing/br_scenedl.c` holds the second-largest function at
-9,345/9,354 bytes with every structural element verified and every residue
-row mapped to a compiler decision. Thirty-one passes and ~130 measured-dead
-probes live in the file header and `docs/VC5-IDIOMS.md` (the 0x1000EAF0
-entries, ending with the 2026-09-06 scaled-index CSE census). ‼ **THE
-COMPILER PATCH LEVEL IS RULED OUT (2026-09-03)** — VS97 SP3's code generator
-is byte-for-byte identical on 63 of 64 functions tested and WORSE on this
-one. The sweep compiles NOTHING when a file has no `@implements` tag — a
-probe without a fresh compile proves nothing.
-
-## 12. Two grades of done, T4 and T3, and nothing between them. T3 is decided by a tool, parked, not abandoned.
-
-The tiers are **T1** (draft only), **T2** (in the tree, not done), **T3**
-(certified complete, not byte-exact) and **T4** (bytes diff clean, rule 2).
-**The old T3a/T3b sub-tiers are retired** (2026-09-06): "same instructions,
-registers differ" and "oracle says equivalent" are now INPUTS to the T3
-gates below, not grades of their own. Where an older dossier says "T3a" read
-"allocation/scheduling residue"; "T3b" read "oracle EQUIVALENT".
-
-**A T3 function is functionally DONE: nothing missing, nothing not
-understood.** Every arm, constant, field offset, call and float expression
-is present and verified against the disassembly; it is fully usable by the
-port today. What it is not is byte-exact, and it is **not re-litigated
-until every T1 and T2 row is gone** (the end-grind). Neither you nor the
-user decides T3 by judgment: **`tools/t3.py --qualify <VA>` decides all
-three gates and its output is the tag.** Established after 0x1000EAF0's
-thirty-first pass moved zero bytes.
-
-**Gate 0, functionally complete (mechanical):** a `WHAT IT DOES:` comment
-within 40 lines above the tag, and no `TODO`, `FIXME`, `XXX`, `HACK`,
-`STUB`, `???`, "guess", "placeholder", "unknown" or `#if 0` anywhere in the
-function body. A port arm standing in for the original, a guessed field, a
-stubbed callee: T2, whatever Gate A says.
-
-**Gate A, the residue test (mechanical; all five must pass):**
-
-| | criterion | threshold |
-|---|---|---|
-| A1 | instruction-count gap | ≤ max(3, 0.5% of the original's count) |
-| A2 | register-blind rows, missing + extra | ≤ max(4, 2.5% of the original's count) |
-| A3 | every row classifies | each residue row is an allowed allocation singleton (spill, reload, register copy, CSE'd scaled index, flag re-test, `fxch`, rematerialised constant) or pairs with a row of the other side in the same canonical class (addressing form, lea/add/inc/dec form, flag form, branch polarity, x87 stack index). **One unpaired row = a missing or extra semantic operation = FAIL**, whatever the totals say. |
-| A4 | no lost-sync | `divergence.py`, resync key scaled 3..6 to the function's size, compared every byte or left an uncompared tail of at most 32 B (A3 already proves the whole multiset) |
-| A5 | oracle | `t3b_verify.py` is not DIFF (EQUIVALENT, or UNCLASSIFIED because it cannot contain the function) |
-
-**Gate B, sincere attempts at T4 (mechanical, from a LEDGER in the file):**
-crossing Gate A's thresholds is a precondition, never the trigger to stop.
-Every pass at byte-exactness writes one line in the file header with its
-end-of-pass numbers:
-
-```c
- * @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
-```
-
-The tool counts a pass only if it made at least **10 fresh compiles** (a
-thinner one is recorded for honesty and ignored), and requires **at least 3
-counted passes, the last 3 counted records at identical numbers equal to the
-current measurement** (two consecutive passes that moved nothing), and at
-least one counted pass marked `census yes` (slot census, corpus query,
-mechanism experiment). Every dead probe is recorded with its numbers in the
-file header or `docs/VC5-IDIOMS.md`. A function that meets Gate A on its
-first pass still owes two more full passes at T4. Rule 6 applies as always.
-
-**The tag**, pasted from `--qualify` (it refuses to emit one until all
-three gates pass), directly above `@implements`:
-
-```c
-/* @t3 0x1000EAF0 2026-09-06 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 30 31
- * <the residue by wall; where the dossier and dead list live> */
-```
-
-**Enforcement.** `tools/t3.py` re-measures every tagged function and FAILS
-on a malformed tag, a STALE one (byte-exact now: remove `@t3`, keep
-`@implements`), one whose `@t3-measure` numbers no longer match the object
-(the function changed under the tag: re-qualify), or one that no longer
-passes Gate 0, A or B. `tools/fileaudit.py` counts them and fails on the same.
-`tools/claim_lane.py` never hands one out. `tools/tiers.py` reports T3 as
-its own line, never as matched.
-
-**T3 never blocks T4:** the tag removes a function from HAND lanes only.
-Every sweep still recompiles it, so an idiom found elsewhere that happens to
-close it surfaces as STALE at zero cost, and the end-grind takes certified
-functions smallest-residue first. **T4 attempts never block T3:** once Gate A
-passes, each further pass is capped at 40 minutes or 20 probes, every probe
-is grepped against the dead list before it is compiled, and each pass ends
-by writing its `@t4-pass` line; when the ledger meets Gate B, certification
-is mandatory, not optional. **No session opens a T3 function unless the
-user names it in that message.**
-
-## 11b. 0x1000EAF0 is one zero-movement pass short of T3.
-
-Gates 0 and A pass. Its ledger holds one counted zero-movement pass (31);
-Gate B needs two in a row. The next session that touches it runs ONE capped
-pass (≥ 10 fresh compiles, every probe grepped against the dead list first),
-appends the `@t4-pass` line, and if nothing moved pastes the tag the tool
-emits. Then it is parked.
-
-## 11. 0x10019A70 is last among the big targets.
-
-11,223 bytes — 11,223 / 480,853 of BRGlide.dll `.text` (2.33%). One original
-function, so one C function; the port's Clock/Begin/Frame split is not a
-matching twin. Win `sub esp, 0x34` first (no 8-byte-aligned local; ebp is a
-general register, `xor ebp,ebp`). Grow section by section against the first
-divergence. Gated on 131 callee signatures. Not "never" — prologue-first,
-and last. See `docs/VC5-IDIOMS.md` (`and esp,-8`) and `include/br_racestep.h`.
-
----
-
-## Before you start any session
-
-1. Run `python3 tools/refcheck.py` and believe the result.
-2. Run `python3 tools/install_hooks.py` — one command, idempotent. Without it
-   rule 6's pre-commit hook is not wired up in your clone, because `.git/` is
-   not tracked.
-3. Run `python3 tools/fileaudit.py` and note where the backlogs stand, so you
-   can tell your own damage from what you inherited.
-4. Run `python3 tools/t3.py`: it must be green, and the functions it lists
-   are T3-certified — not targets unless the user names one (rule 12).
-5. Read the memory index (`docs/MEMORY.md`); it carries current state and open leads.
-6. Do not trust a coverage number in prose — including in `README.md`.
-   Query the tree. For a byte-exact session, `python3 tools/t4lane.py --claim`
-   picks the targets from the tree AND locks them; never pick by hand, and
-   **never lock with `claim_lane.py claim N`**: its own ranking is a
-   2026-08-28 snapshot that hands out the giants once its SHAPE rows are
-   gone (2026-09-07: a session was given BrFrameDraw, BrCtlAiBody,
-   BrObjDlBuild and BrTex3dExpand as a "20 small functions" lane).
-7. Every pass at a near-exact function ends by appending its `@t4-pass`
-   line to the file header (rule 12), whether or not it moved anything.
-
-## Scope — which shipped binaries are being decompiled
-
-Established 2026-08-22 by reading each binary's imports, exports and strings,
-not by inference from filenames. Until then nothing recorded this, and the
-matching pipeline had silently covered exactly one file. Silence is not a
-decision; if scope changes, change it *here*.
-
-**IN SCOPE**
-
-| binary | .text | what it is |
-|---|---|---|
-| `BRGlide.dll` | 480,853 | **The game.** Imports 38 entry points from `glide2x.dll`, plus DirectInput, DirectPlay (multiplayer) and WINMM audio. Exports `RallyMain`. This is the primary target. |
-| `BRally.exe` | 3,584 | **The launcher.** Reads the registry, loads `BRGlide.dll` or `BRD3D.dll`, calls `RallyMain`. The code that chooses the renderer. |
-| `SetVideo.exe` | 36,476 | Renderer/display config utility; writes settings into `BossRally.ini`. Shares the game's file-check and list-parsing helpers, so part of it matches for free once the DLL's config layer lands. |
-| `BossRally.exe` | 23,552 | Plays `brally.avi`, then launches `brally.exe`. An intro shim — borderline, but shipped game code. Lowest priority. |
-
-In-scope EXE code is ~64 KB against 481 KB of game DLL: about 12% of the
-target. As of 2026-08-22 **none of the EXEs has been started.**
-`config/functions_boot.csv`, `functions_bossrally.csv` and `functions_brally.csv`
-exist but their name columns are empty — maps were generated, never worked.
-
-**OUT OF SCOPE**
-
-| binary | why |
-|---|---|
-| `BRD3D.dll` | Direct3D twin of the game. Reference/cross-check only — see rule 0. Its `.text` is ~100 KB larger than Glide's *because it statically links the CRT*: it imports no `MSVCRT.dll` at all, while `BRGlide.dll` imports 57 CRT functions dynamically. Matching D3D means matching Microsoft's CRT as a side effect. This is the evidence for rule 0, not just a preference. |
-| `Boot.exe` | CD autorun / installer front-end. Runs `setup.exe`, DirectX Setup, DXMEDIA, `setvideo.exe`. Imports COMCTL32, SHELL32, WINSPOOL, comdlg32 — a Windows dialog app. Its 96 KB is the largest EXE and is **not game code**. **Re-confirmed 2026-09-03, and the reason is stronger than "not game code": it statically links MFC 4.2** (`AfxWnd42s`, `AFX_MODULE_STATE`, `Microsoft Visual C++ Runtime Library` in `.rsrc`; it imports neither `MFC42.dll` nor `MSVCRT.dll`). Decompiling it means decompiling Microsoft's MFC — the same trap as `BRD3D.dll`'s static CRT under rule 0, and MFC is far bigger. Its own logic is small: 1,453 functions in `.text`, and the code that actually launches anything (registry read, `setup.exe`/`brally.exe`/`setvideo.exe`/DirectX spawn) is **3 functions / 745 B** in the first 3 KB. Nothing here is shared with the game. |
-| `REMOVE.EXE` | Uninstaller stub; spawns `IASINST.EXE`. |
-| `SETUP.EXE`, `_ISDEL.EXE`, `_SETUP.DLL` | 16-bit NE binaries, InstallShield. Not PE32, not game code. |
-
-## Layout
-
-**The repo root IS the decomp** (the master, byte-matched against the 1999
-binaries). `ports/` is the only thing outside it — derived platform layers that
-are NOT byte-matched. Don't wrap the decomp in a `decomp/` subfolder: the
-toolchain (32 tools compute ROOT as the parent of `tools/`, plus the staged
-Wine/MSVC and venv) assumes the decomp is at root, which is also the decomp-
-project convention (SM64). See `ports/README.md`.
-
-- `src/core/` — portable game logic (byte-matched)
-- `src/backends/{glide,d3d,win32}` — original **Win9x** platform backends
-  (byte-matched; currently mostly filed into `src/core` modules)
-- `src/exe/` — the three Win9x executables (launcher / config / intro),
-  byte-matched
-- `include/`, `tests/`
-- `config/` — function maps, globals, `shared.csv` (d3d↔glide twins),
-  `binaries.csv` (per-binary compiler + CRT model + base + entry — the build
-  spec), `fenced.csv` / `fenced_exe.csv` (linker/CRT reproduced-by-linking,
-  not a decomp target)
-- `build/match/` — extracted reference bytes, per-function report, objs
-- `tools/` — matching pipeline, auditors, the staged MSVC toolchain
-- `ports/macos/` — the macOS/Metal port: NEW platform code, not byte-matched,
-  no `@implements`, invisible to the match tooling. Built by `build.sh`.
-- `n64/` — the Top Gear Rally (N64, 1997) decomp: a SECOND byte-matched
-  target, different image and different compiler (SGI IDO/MIPS). Its own
-  tools, cross-compile shims and docs; it reads `src/` and writes only
-  `build/n64/`, so it never touches a PC lane. See `n64/README.md`.
+Root is the decomp. `ports/` is not byte-matched. `n64/` is a second target
+(IDO/MIPS); it reads `src/` and writes only `build/n64/`.

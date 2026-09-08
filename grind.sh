@@ -10,8 +10,8 @@
 # What these loops CAN occasionally catch is a small STRUCTURAL near-miss the
 # generators don't cover yet. Free (no API tokens), so running them idle
 # overnight costs nothing -- just don't mistake them for progress machinery.
-# The real levers are the structural playbook (docs/STRUCTURAL-PLAYBOOK.md),
-# generator minting, and the T3b oracle (tools/t3b_verify.py).
+# The real levers are docs/MATCHING.md, generator minting, and
+# tools/t3b_verify.py. Do not launch crank.py --all --loop from here.
 #
 #   ./grind.sh              # start permuter fleet + local-LLM loop, in background
 #   ./grind.sh --status     # show what's running and recent matches
@@ -41,7 +41,7 @@ case "${1:-start}" in
     ;;
   start|"")
     echo "NOTE: lottery-ticket odds -- permuter is 0/95 lifetime on the frontier."
-    echo "Real levers: docs/STRUCTURAL-PLAYBOOK.md + generators + tools/t3b_verify.py"
+    echo "Real levers: docs/MATCHING.md + generators + tools/t3b_verify.py"
     if pgrep -f 'tools/perm_fleet.py' >/dev/null; then
       echo "permuter fleet already running (./grind.sh --stop to restart)"
     else
