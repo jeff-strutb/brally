@@ -255,6 +255,7 @@ extern char s_AutoSave_brf_100acae8[];   /* "AutoSave.brf" */
  * statement.  Dead: two int temps for the pair; an `int *` view of the row;
  * indexed `*(int *)&DAT_10ac5a66[k*4]` loads (recomputes the row, -3
  * insns); `if (fp == NULL) return;` instead of the nested block. */
+/* @t4-pass 0x1003B130 1 2026-09-07 probes 86 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1003B130 glide BrSaveResumeAutoSave */
 void BrSaveResumeAutoSave(void)
 {
