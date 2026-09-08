@@ -661,6 +661,7 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
  * Which occurrence of the twice-read p[u] gets its own `fld` moves with
  * the arm structure, so this is a scheduling residue, not a spelling. */
 /* @t4-pass 0x10066610 1 2026-09-07 probes 150 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
+/* @t4-pass 0x10066610 2 2026-09-07 probes 131 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
 /* @implements 0x10066610 glide BrCollRespPointInTri */
 int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
                          const BrVec3 *pP)
