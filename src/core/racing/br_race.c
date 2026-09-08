@@ -311,6 +311,7 @@ void        BrSfxSrcBeep(void);                        /* 0x10060DF0 */
  * heading for, whether it just passed one, lap and split timing, its
  * position against the others, and the messages that result. The rules of
  * the race, per car per frame. */
+/* @t4-pass 0x1005FF00 1 2026-09-07 probes 99 bytes 2538 insns 720 regions 2 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1005FF00 glide BrRaceGateStep */
 void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
 {
