@@ -217,6 +217,7 @@ extern int BrWaveSeekData(int *, MMCKINFO *, MMCKINFO *);               /* 0x100
  * the voice argument's slot holds the file handle once the voice pointer
  * has been copied out, and the format argument's slot receives the byte
  * count the reader hands back. */
+/* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10070280 glide BrWavLoad */
 int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
                   int32_t *pInfo, uint32_t **ppFormat, BrSndLoadVoice *pVoice)
