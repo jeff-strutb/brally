@@ -5,6 +5,14 @@ function's REAL translation unit, scored register-blind.  Zero tokens.
     .venv/bin/python tools/crank.py                    # every live Pool A row from t4lane.py
     .venv/bin/python tools/crank.py 0x10018A50 ...     # these VAs (must be report.csv rows)
     .venv/bin/python tools/crank.py --budget 200 --no-commit --no-ledger
+    .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 8
+    .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 10 --loop
+        # --loop: run forever in rounds -- re-pool, widen the mutation seeds,
+        #   raise the budget 1.5x, re-run; only NEW candidates are compiled.
+        # --all: EVERY C diff row (not only register-only), register-only first;
+        # --workers N: N processes, disjoint functions, learning files shared under
+        #   flock, the write/sweep/commit section serialised.  One Wine compile
+        #   per process, so throughput scales with cores (14 on this machine).
 
 WHY A THIRD MACHINE.  tools/ghidra_to_match.py closed the drafts a heuristic
 rewrite could close (0 of 296 left on 2026-09-07), and tools/permute.py is a
@@ -66,7 +74,8 @@ from triage import _bag, _strip_pad       # noqa: E402
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32  # noqa: E402
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
-SEEDS = 6
+SEEDS = int(os.environ.get('CRANK_SEEDS', '6'))
+SEED0 = int(os.environ.get('CRANK_SEED0', '0'))
 DECL_RE = re.compile(r'^(\s+)(static\s+)?(const\s+)?(unsigned\s+|signed\s+)?'
                      r'(int|float|double|char|short|long|u?int(8|16|32)_t|BOOL|DWORD|WORD|BYTE|'
                      r'[A-Z][A-Za-z0-9_]*)\b\s*\**\s*[A-Za-z_]\w*(\[[^\]]*\])*(\s*=\s*[^;]+)?;\s*(/\*.*\*/)?\s*$')
@@ -254,7 +263,7 @@ def lever_mut(text, sym):
         return
     seen = set()
     for w, f in P._mutation_table(False):
-        for seed in range(SEEDS):
+        for seed in range(SEED0, SEED0 + SEEDS):
             try:
                 nb, lab = f(parts['body'], random.Random(seed))
             except Exception:
@@ -286,6 +295,23 @@ def _save_json(path, obj):
     json.dump(obj, open(path, 'w'), indent=1, sort_keys=True)
 
 
+import fcntl, contextlib
+
+
+@contextlib.contextmanager
+def locked(name):
+    """Cross-worker lock (flock) on build/match/crank.<name>.lock: the JSON
+    learning files are read-modify-write, and the TREE section (write file,
+    sweep, commit, filing) must never interleave between workers -- the sweep
+    merges report.csv and git shares one index."""
+    fd = open(os.path.join(ROOT, 'build', 'match', 'crank.%s.lock' % name), 'w')
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    try:
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN); fd.close()
+
+
 def learned_records():
     """member DAT_ symbol -> (base symbol, displacement), from every samebase accept so far."""
     out = {}
@@ -296,6 +322,7 @@ def learned_records():
 
 
 def learn_record(base_sym, base, syms, va):
+  with locked('learn'):
     known = learned_records()
     new = [(m, a) for m, a in syms.items() if m not in known]
     if not new:
@@ -307,6 +334,7 @@ def learn_record(base_sym, base, syms, va):
             w.writerow(['base', 'member', 'disp', 'learned_from'])
         for m, a in sorted(new, key=lambda x: x[1]):
             w.writerow([base_sym, m, '0x%x' % (a - base), va])
+    return
 
 
 def lever_samebase(text, sym):
@@ -373,6 +401,7 @@ def lever_order():
 
 
 def bump(label, accepted, exact):
+  with locked('learn'):
     st = _json(STATS, {})
     for k in (label.split(':')[0], ':'.join(label.split(':')[:2]) if label.startswith('mut:') else None):
         if not k:
@@ -563,73 +592,156 @@ def crank(va, budget, commit, ledger):
                 break
         if not improved:
             break
-    st['tried'] = sorted(seen); state[va] = st; _save_json(STATE, state)
+    st['tried'] = sorted(seen)
+    with locked('learn'):
+        state = _json(STATE, {}); state[va] = st; _save_json(STATE, state)
     obj = compile_tu(best_t, tag); m_best = measure(obj, sym, va, key) if obj else m0
-    if best_s[0] == 0:
-        log('*** %s %s BYTE-EXACT after %d compiles: %s' % (va, sym, n, ' > '.join(hist)))
-        out = os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c')
-        if is_slice(path):
+    with locked('tree'):
+        cur = open(fp, encoding='utf-8', errors='surrogateescape').read()
+        if hashlib.md5(cur.encode()).hexdigest() != fh:
+            # another worker or session changed this TU while we were compiling:
+            # our candidates were built on stale text.  Never write over it.
+            out = os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c')
             open(out, 'w').write(best_t)
-            with open(REFILE, 'a') as f:
-                f.write('%s %s %s -> exact spelling in %s; move it into its module BY HAND (rule 6), sweep both files, commit\n'
-                        % (va, sym, path, os.path.relpath(out, ROOT)))
-            log('  %s is an address batch: NOT committed there (rule 6 forbids a machine refile). Spelling saved to %s; listed in build/match/crank_refile.txt'
-                % (path, os.path.relpath(out, ROOT)))
-            return 'refile'
-        if dirty(path):
-            open(out, 'w').write(best_t); log('  %s went dirty during the run; result in %s' % (path, out)); return 'parked'
-        before = file_rows(path)
-        open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(best_t)
-        sweep(path)
-        after = file_rows(path)
-        regress = [v for v, s_ in before.items() if s_ == 'match' and after.get(v) != 'match']
-        if after.get(va) != 'match' or regress:
-            log('  sweep: row=%s regressions=%s -- RESTORED, result in %s' % (after.get(va), regress, out))
-            open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(text0); sweep(path)
-            open(out, 'w').write(best_t)
-            return 'parked'
-        log('  sweep: match, no regressions in %s' % path)
-        if commit:
-            msg = '%s %s: byte-exact (tools/crank.py: %s; %d compiles)' % (va, sym, ' > '.join(hist), n)
-            r = git('commit', '-q', '-m', msg, '--', path)
-            log('  commit: %s' % ('ok' if r.returncode == 0 else (r.stdout + r.stderr)[-500:]))
-            if r.returncode == 0:
-                file_match(va, sym, path)
-        return 'match'
-    log('--- %s %s: no byte-exact in %d compiles; best %s (%s)' % (va, sym, n, fmt(m_best), ' > '.join(hist) or 'base'))
-    if hist:
-        open(os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c'), 'w').write(best_t)
-    if ledger and n >= 10 and not dirty(path):
-        census = corpus_census(va, obj, sym, key) if obj else False
-        t2 = ledger_line(text0, va, n, m_best, census)
-        if t2 != text0:
-            open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(t2)
-            cert = certify(va, path, hist, n)
+            log('--- %s %s: %s changed under this run (%s); result kept in %s; re-run' % (va, sym, path, fmt(m_best), os.path.relpath(out, ROOT)))
+            return 'stale'
+        if best_s[0] == 0:
+            log('*** %s %s BYTE-EXACT after %d compiles: %s' % (va, sym, n, ' > '.join(hist)))
+            out = os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c')
+            if is_slice(path):
+                open(out, 'w').write(best_t)
+                with open(REFILE, 'a') as f:
+                    f.write('%s %s %s -> exact spelling in %s; move it into its module BY HAND (rule 6), sweep both files, commit\n'
+                            % (va, sym, path, os.path.relpath(out, ROOT)))
+                log('  %s is an address batch: NOT committed there (rule 6 forbids a machine refile). Spelling saved to %s; listed in build/match/crank_refile.txt'
+                    % (path, os.path.relpath(out, ROOT)))
+                return 'refile'
+            if dirty(path):
+                open(out, 'w').write(best_t); log('  %s went dirty during the run; result in %s' % (path, out)); return 'parked'
+            before = file_rows(path)
+            open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(best_t)
+            sweep(path)
+            after = file_rows(path)
+            regress = [v for v, s_ in before.items() if s_ == 'match' and after.get(v) != 'match']
+            if after.get(va) != 'match' or regress:
+                log('  sweep: row=%s regressions=%s -- RESTORED, result in %s' % (after.get(va), regress, out))
+                open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(text0); sweep(path)
+                open(out, 'w').write(best_t)
+                return 'parked'
+            log('  sweep: match, no regressions in %s' % path)
             if commit:
-                r = git('commit', '-q', '-m', '%s %s: @t4-pass ledger line%s (tools/crank.py, %d compiles, best %s)'
-                        % (va, sym, ' + @t3 certification' if cert else '', n, fmt(m_best)), '--', path)
-                if r.returncode != 0:
-                    log('  commit failed: ' + (r.stdout + r.stderr)[-500:])
-            return 't3' if cert else 'diff'
-    return 'diff'
+                msg = '%s %s: byte-exact (tools/crank.py: %s; %d compiles)' % (va, sym, ' > '.join(hist), n)
+                r = git('commit', '-q', '-m', msg, '--', path)
+                log('  commit: %s' % ('ok' if r.returncode == 0 else (r.stdout + r.stderr)[-500:]))
+                if r.returncode == 0:
+                    file_match(va, sym, path)
+            return 'match'
+        log('--- %s %s: no byte-exact in %d compiles; best %s (%s)' % (va, sym, n, fmt(m_best), ' > '.join(hist) or 'base'))
+        if hist:
+            open(os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c'), 'w').write(best_t)
+        if ledger and n >= 10 and not dirty(path):
+            census = corpus_census(va, obj, sym, key) if obj else False
+            t2 = ledger_line(text0, va, n, m_best, census)
+            if t2 != text0:
+                open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(t2)
+                cert = certify(va, path, hist, n)
+                if commit:
+                    r = git('commit', '-q', '-m', '%s %s: @t4-pass ledger line%s (tools/crank.py, %d compiles, best %s)'
+                            % (va, sym, ' + @t3 certification' if cert else '', n, fmt(m_best)), '--', path)
+                    if r.returncode != 0:
+                        log('  commit failed: ' + (r.stdout + r.stderr)[-500:])
+                return 't3' if cert else 'diff'
+        return 'diff'
+
+
+def pool(argv):
+    mb = int(argv[argv.index('--max-bytes') + 1]) if '--max-bytes' in argv else 400
+    if '--all' in argv:
+        # every C diff row <= mb, register-only rows first, then by register-blind gap and size
+        from triage import measure, _objs
+        objs = _objs()
+        cpp = {(r.get('va') or '').lower() for r in csv.DictReader(open(os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')))}
+        out = []
+        for r in csv.DictReader(open(os.path.join(ROOT, 'build', 'match', 'report.csv'))):
+            if r['status'] != 'diff' or r['va'].lower() in cpp or int(r['orig_size'] or 0) > mb:
+                continue
+            m = measure(r['va'].lower(), r['name'], objs)
+            out.append((m['reg'] if m else 9999, int(r['orig_size']), r['va']))
+        out.sort()
+        log('crank: --all: %d C diff rows <= %d B (%d register-only)' % (len(out), mb, sum(1 for o in out if o[0] == 0)))
+        return [o[2] for o in out]
+    out = subprocess.run([PY, 'tools/t4lane.py', '--pool', 'A', '--n', '9999', '--max-bytes', str(mb)], cwd=ROOT,
+                         capture_output=True, text=True).stdout
+    vas = [l.split()[0] for l in out.splitlines() if l.strip().startswith('0x') and 'primary' in l]
+    log('crank: %d live Pool A rows from t4lane.py' % len(vas))
+    return vas
 
 
 def main(argv):
     budget = int(argv[argv.index('--budget') + 1]) if '--budget' in argv else 150
     commit = '--no-commit' not in argv
     ledger = '--no-ledger' not in argv
+    workers = int(argv[argv.index('--workers') + 1]) if '--workers' in argv else 1
     vas = [a for a in argv if a.lower().startswith('0x')]
     if not vas:
-        out = subprocess.run([PY, 'tools/t4lane.py', '--pool', 'A', '--n', '9999'], cwd=ROOT,
-                             capture_output=True, text=True).stdout
-        vas = [l.split()[0] for l in out.splitlines() if l.strip().startswith('0x') and 'primary' in l]
-        log('crank: %d live Pool A rows from t4lane.py' % len(vas))
+        vas = pool(argv)
+    if '--loop' in argv and '--worker' not in argv:
+        # FOREVER: round r re-pools (matches drop out, new rows appear), widens
+        # the mutation seeds, raises the budget, and re-runs; tried candidates
+        # are remembered per file text so each round costs only NEW compiles.
+        r = 0
+        base = [a for a in argv if a != '--loop' and not a.lower().startswith('0x')]
+        while True:
+            env = dict(os.environ, CRANK_SEEDS=str(6 * (r + 1)), CRANK_SEED0=str(6 * r))
+            flags = [a for a in base if a != '--budget' and not a.isdigit()] + ['--budget', str(int(budget * (1.5 ** r)))]
+            log('crank loop: round %d (seeds %d..%d, budget %d)' % (r, 6 * r, 6 * (r + 1) - 1, int(budget * (1.5 ** r))))
+            subprocess.run([PY, 'tools/crank.py'] + flags, cwd=ROOT, env=env)
+            r += 1
+            if r >= int(argv[argv.index('--rounds') + 1]) if '--rounds' in argv else 1000000:
+                return 0
+    if workers > 1 and '--worker' not in argv:
+        # PARALLEL: N child processes, disjoint VA lists, shared learning files
+        # under flock, the tree section serialised by the 'tree' lock.  Each
+        # compile is one Wine process, so N workers ~ N x throughput on N cores.
+        flags = [a for a in argv if a in ('--no-commit', '--no-ledger')] + ['--budget', str(budget)]
+        # all functions of one TU go to ONE worker (their file is shared state)
+        byfile, order = {}, []
+        for va in vas:
+            row = report_row(va); f = row['file'] if row else va
+            if f not in byfile:
+                byfile[f] = []; order.append(f)
+            byfile[f].append(va)
+        lanes = [[] for _ in range(workers)]
+        for i, f in enumerate(order):
+            lanes[min(range(workers), key=lambda k: len(lanes[k]))].extend(byfile[f])
+        procs = []
+        for k in range(workers):
+            mine = lanes[k]
+            if not mine:
+                continue
+            procs.append(subprocess.Popen([PY, 'tools/crank.py', '--worker', str(k)] + flags + mine, cwd=ROOT,
+                                          stdout=open(os.path.join(ROOT, 'build', 'match', 'crank_w%d.log' % k), 'w'),
+                                          stderr=subprocess.STDOUT))
+        log('crank: %d workers over %d functions (per-worker logs build/match/crank_w<k>.log)' % (len(procs), len(vas)))
+        for p in procs:
+            p.wait()
+        if commit:
+            subprocess.run([PY, 'tools/corpus.py', 'build'], cwd=ROOT, capture_output=True, text=True)
+        tail = open(LOG).read().splitlines()
+        from collections import Counter
+        c = Counter()
+        for l in tail:
+            if 'BYTE-EXACT after' in l: c['exact'] += 1
+            elif 'no byte-exact in' in l: c['miss'] += 1
+        log('crank parallel done: %d functions -- see build/match/crank.log (this run: %d exact lines, %d miss lines in the whole log)'
+            % (len(vas), c['exact'], c['miss']))
+        return 0
     res = {}
     for va in vas:
         res[va] = crank(va, budget, commit, ledger)
     from collections import Counter
     c = Counter(res.values())
-    if c['match'] and commit:
+    if c['match'] and commit and '--worker' not in argv:
         subprocess.run([PY, 'tools/corpus.py', 'build'], cwd=ROOT, capture_output=True, text=True)   # LEARNING (3)
     log('crank done: %d functions -- T4 match %d, exact-needs-hand-refile %d, T3 certified %d, parked %d, diff %d, skipped %d'
         % (len(res), c['match'], c['refile'], c['t3'], c['parked'], c['diff'], c[None]))
