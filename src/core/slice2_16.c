@@ -852,6 +852,7 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * needs special handling. A handful of specific blend settings, and anything
  * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
+/* @t4-pass 0x10029710 1 2026-09-07 probes 53 bytes 76 insns 22 regions 2 rows 15 census yes  (tools/crank.py) */
 /* @implements 0x10029710 glide BrGbiTexScanOtherModeL */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
