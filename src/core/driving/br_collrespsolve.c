@@ -50,6 +50,7 @@ BrCrPlaneState g_brCrPlane;
  *  - The argmin is the original's exact >= tournament, so ties resolve the way
  *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
  * ------------------------------------------------------------------ */
+/* @t4-pass 0x10067470 1 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
 /* @implements 0x10067470 glide BrCrPlaneResolve */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, retranscribed from the bytes (the port arm below is the
