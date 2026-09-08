@@ -66,6 +66,7 @@ void BrNetPktStamp(void *pPkt)
  * nibble, its low field in the bottom -- and reports success. If the field
  * would not fit it writes nothing and reports failure, so a half-written
  * field can never go out. */
+/* @t4-pass 0x1006B080 2 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @implements 0x1006B080 glide BrNetWriteTag20 */
 /* RESIDUE (2026-09-06): +4 insns / +16 B, REGNORM 4+0. The C body is
  * complete and correct; the wall is the SAME construct C cannot spell that
