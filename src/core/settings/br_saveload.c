@@ -77,6 +77,7 @@ extern char  DAT_100b55ac[];                     /* "Done."                  */
  * loader's result for modes 0/1/4, 1/0 for the config read, and -- when the
  * file will not open -- whether the second argument's low byte was non-zero. */
 /* @t4-pass 0x1006A080 1 2026-09-07 probes 150 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006A080 2 2026-09-07 probes 149 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
 /* @implements 0x1006A080 glide BrSaveLoad */
 char BrSaveLoad(int mode, int arg)
 {
