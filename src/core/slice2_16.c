@@ -1666,6 +1666,7 @@ uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
  * arm (sub eax,esi vs edi and the paired adds/cmp).  Statement-order probes
  * move the toggle between the load window and the arithmetic window but
  * never clear both -- allocator-residue class. */
+/* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100186E0 glide BrFadeTick */
 void BrFadeTick(void)
 {
