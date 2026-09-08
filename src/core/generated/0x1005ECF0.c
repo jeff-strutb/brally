@@ -70,6 +70,7 @@ void BrVec3Lerp(RcVec3 *pOut, const RcVec3 *pA, const RcVec3 *pB, float t);
  * nearest now, walking forward from where it was last frame. This is what
  * keeps track of a car's progress round the lap, and it feeds both the
  * position table and the AI. */
+/* @t4-pass 0x1005ECF0 1 2026-09-07 probes 35 bytes 219 insns 75 regions 2 rows 9 census yes  (tools/crank.py) */
 /* @implements 0x1005ECF0 glide BrRacePathAdvance */
 /* @implements 0x1005ECF0 glide BrRacePathAdvance
  *
