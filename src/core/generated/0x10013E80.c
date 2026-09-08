@@ -74,6 +74,7 @@ extern BrRbCar g_aBrRbCar[5];       /* 0x10396F48 */
  * float accumulators go to 0 and each car's first field is cleared.  Guarded
  * by a done flag so it only ever runs once. */
 /* @t4-pass 0x10013E80 1 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013E80 2 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10013E80 glide BrRaceBeginResetOnce */
 void BrRaceBeginResetOnce(void)
 {
