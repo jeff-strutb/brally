@@ -551,6 +551,7 @@ void BrRaceDriverAnim(BrDriver *pDrv)
  * the car with any lap gates it has just crossed, work out how fast it is
  * actually travelling from how far it moved, and run down a short per-car
  * countdown. Nothing happens at all while the game is paused. */
+/* @t4-pass 0x100623E0 1 2026-09-07 probes 67 bytes 244 insns 77 regions 1 rows 72 census yes  (tools/crank.py) */
 /* @implements 0x100623E0 glide BrRaceDriverPost */
 void BrRaceDriverPost(BrDriver *pDrv)
 {
