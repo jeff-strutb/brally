@@ -540,6 +540,7 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  *       too, so the operand-kind lever that closed 0x1000EAF0's wheel
  *       pointer does not reach a single-use parameter.
  * The next lever has to come from outside the statement spelling. */
+/* @t4-pass 0x1006B440 1 2026-09-07 probes 58 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
 void BrSndVoiceApplyVolume(int param_1)
