@@ -67,6 +67,7 @@ extern char DAT_10273328[];          /* g_brP277B40, the send target       */
  * is up, the deactivate flag is clear and the local frame count has not yet
  * reached the limit, broadcast the local player's slot, colour and name with
  * bit 7 set and bit 6 cleared in the slot's flag byte. */
+/* @t4-pass 0x10005330 1 2026-09-07 probes 43 bytes 194 insns 60 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10005330 glide BrNetBeaconTick */
 void BrNetBeaconTick(void)
 {
