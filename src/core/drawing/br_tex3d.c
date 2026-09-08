@@ -1832,6 +1832,7 @@ int FUN_10028BB0(int *);
  * BrChkRealloc when full, then post-increment the live count and return
  * the old index. */
 /* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
 int br_tex3d_append(void)
