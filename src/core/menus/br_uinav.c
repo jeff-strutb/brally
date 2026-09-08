@@ -1102,6 +1102,7 @@ void    BrGlNavTail(void);          /* 0x10059060 */
 /* WHAT IT DOES: poll the menu's navigation input once per frame -- reads the
  * stick and buttons, moves the highlight, and fires the selected control's
  * action. The front end's input step. */
+/* @t4-pass 0x10059410 1 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10059410 glide BrGlNavPoll */
 /* RESIDUE, measured 2026-09-03: 943 B / 297 insns against 939 / 298, and the
  * register-blind gap is 0+1 -- ONE missing `xor R,R`.  divergence.py (key 8)
