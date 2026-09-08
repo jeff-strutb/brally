@@ -356,6 +356,7 @@ extern int DAT_10b71648;
 
 /* WHAT IT DOES: under the CD-audio mutex, ticks a 100-step counter and
  * refreshes the on-screen time string when the counter is live. */
+/* @t4-pass 0x10005400 1 2026-09-07 probes 61 bytes 155 insns 47 regions 4 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x10005400 glide BrCdAudioTick */
 void BrCdAudioTick(void)
 {
