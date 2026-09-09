@@ -48,9 +48,15 @@ Query the tree. Do not trust a number in this file.
 .venv/bin/python tools/refcheck.py     # corpus must be Glide-keyed
 .venv/bin/python tools/total.py        # byte-exact functions and bytes, all lanes
 .venv/bin/python tools/tiers.py        # T1/T2/T3/T4 of the C target (bytes, not just fns)
-.venv/bin/python tools/image_build.py  # assembled DLL vs original; must be 0 differing bytes
+.venv/bin/python tools/image_build.py  # M2 gate: assembled DLL vs original; must be 0 differing bytes
+.venv/bin/python tools/image_build_t3.py  # M1 gate: T3+T4 all compile & place; only T3 bodies differ
 .venv/bin/python tools/fileaudit.py    # WHAT IT DOES, filing, T3 tags
 ```
+
+`image_build.py` is the Milestone-2 (byte-exact) gate; `image_build_t3.py` is
+the Milestone-1 (contract-valid) one — it compiles every T3-certified function
+as well and proves the whole corpus builds and places, emitting `BRGlide.T3.dll`
+(an inspection image, not a byte-exact drop-in: T3 bodies differ by design).
 
 T1 = draft only; T2 = in the tree, not done; T3 = certified complete, not
 byte-exact (`tools/t3.py --qualify`); T4 = bytes diff clean. Function counts
