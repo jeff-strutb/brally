@@ -94,7 +94,7 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
 /* @t4-pass 0x10003430 2 2026-09-09 probes 12 bytes 140 insns 48 regions 3 rows 0 census yes  (fn.py variants: paren grouping, size/count temps, alternate zero tests, fail-product spellings) */
 /* @t3 0x10003430 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 140/140 insns 48/48 rows 0+0 regions 3 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
+ * @t3-effort passes 4 zero-movement 3 4
  * Residue is register allocation: the original homes `size` in ebx and
  * `count` in edi; this build homes them the other way round, which flips the
  * two pushes and the imul operands (8 masked diffs).  Every instruction is
@@ -118,8 +118,8 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
  * compares; braceless returns; message operand order; uint32 got; buf
  * spelled 1024; char* pDst; every slot in the TU (5).  Corpus MISS on
  * the mov/imul opening.
- * @t4-pass 0x10003430 1 2026-09-09 probes 10 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + corpus)
- * @t4-pass 0x10003430 2 2026-09-09 probes 15 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + position sweep) */
+ * @t4-pass 0x10003430 3 2026-09-09 probes 10 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x10003430 4 2026-09-09 probes 15 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + position sweep) */
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
 #ifdef BR_MATCHING_BUILD
