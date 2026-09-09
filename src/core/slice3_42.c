@@ -461,12 +461,15 @@ void BrReplayAdvance(void)
 
     if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4) {
         /* orig: eax=count[1], ecx=cursor[1], `dec eax; cmp ecx,eax; jge;
-         * mov eax,ecx; inc eax; store`. Reuse the count register as the
-         * store source so the copy is `mov eax,ecx` not `inc` in place. */
+         * mov eax,ecx; inc eax; store`.  The `mov eax,ecx` copy comes from
+         * RE-READING the cursor global in the store: VC5 CSEs the reload
+         * back into ecx and increments a fresh eax (2026-09-09, same lever
+         * as BrOptCycleAA2A00's caption index).  ++b or b+1 on the local
+         * increments in place, 2 B short. */
         int32_t a = g_BrReplayCount[1];
         int32_t b = g_BrReplayCursor[1];
         if (b < --a)
-            g_BrReplayCursor[1] = ++b;
+            g_BrReplayCursor[1] = g_BrReplayCursor[1] + 1;
     }
 }
 
