@@ -33,14 +33,14 @@ transcription of its T3/T4 byte totals, not trusted numbers — see below).
 
 ```
 M1  Contract-valid — compiles & ports (T3 + T4)
-    █████████████████░░░░░░░░░░░░░░░░░░░░░░░  43.4%   208,916 / 480,853 B   1,172 / 1,503 fns
+    █████████████████░░░░░░░░░░░░░░░░░░░░░░░  43.6%   209,756 / 480,853 B   1,174 / 1,503 fns
 M2  Byte-exact (T4)
-    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  40.0%   192,582 / 480,853 B   1,145 / 1,503 fns
+    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  40.2%   193,326 / 480,853 B   1,146 / 1,503 fns
 ```
 
-The bars sit close by design: matching is byte-exact-first, so only 27
-certified-but-not-yet-exact functions (16,334 B) separate M1 from M2. Byte
-percentages trail function percentages (78.0% / 76.2% of functions) because the
+The bars sit close by design: matching is byte-exact-first, so only 28
+certified-but-not-yet-exact functions (16,430 B) separate M1 from M2. Byte
+percentages trail function percentages (78.1% / 76.2% of functions) because the
 functions still open are several times larger than the matched ones.
 
 Query the tree. Do not trust a number in this file.
