@@ -7520,3 +7520,24 @@ THE GLOBAL, no helper, no locals -- `g = g + 1; if (g > max) g = 0;` ... then
 The 211 B sibling 0x1003C6D0 keeps the helper: inlining it there is +1 B and
 7+5 raw (its residue is the documented eax/ecx pairing, separate wall).
 Proven 2026-09-09.
+
+---
+
+## `call; push eax; call; add esp,N` under /Od means the inner callee takes NO arguments
+
+0x1002CB49 BrTexAnimStep (744 B, /Od, src/core/drawing/br_texanim.c). Ghidra
+printed `FUN_100385e0(FUN_1002a840(0, 0, src, dst, size, &ring))`: six pushes,
+a call, `push eax`, a call, one `add esp,0x1c`. Measured in a scratch TU: VC5
+/Od cleans a nested call's arguments IMMEDIATELY after it (`call; add esp,N;
+push eax; call; add esp,4`) whether or not the outer call already has
+arguments pending, and so does every flag mix tried (/Og /Ot /Os /Ob1 /Oy /Oa
+/Ow /Gy /GX /G5 /Gf /Ge /Gs /Zi /Gz /Gr, /O1, /Ox, pragma optimize g/t/s).
+The single cleanup is only possible when the inner call has nothing to
+clean: 0x1002A840 is `void *BrScratchRingAlloc(void)`, and all seven
+pushes are the stub's -- `BrStubTrue(BrScratchRingAlloc(), 0, 0, src, dst,
+size, &ring)`. Byte-exact on that edit. Read the CALLEE's prologue before
+believing the decompiler's argument split at a `push eax` between calls.
+Two more /Od facts from the same function: operand order inside an address
+matters (`DESC + 8 + k*0xc` computes DESC first, `DESC + k*0xc + 8` computes
+the product first -- copy Ghidra's textual order); and `(x != 1) ? 0x200 :
+0x20` IS the `sub 1; neg; sbb; and 0x1e0; add 0x20` sequence under /Od.
