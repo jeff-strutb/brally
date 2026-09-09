@@ -115,6 +115,15 @@ int BrBmpLoadRgba(char *);
  * The dllimport sprintf is hoisted into ebx across the loop. */
 /* @t4-pass 0x1005A490 1 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005A490 2 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x1005A490 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 75/75 insns 27/27 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 2 masked regions;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
 void BrLiveryLoadDamageBmps(void)
 {
