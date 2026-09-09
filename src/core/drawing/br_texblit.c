@@ -99,4 +99,113 @@ int FUN_1002e5b9(int param_1,int param_2,int param_3,int param_4)
   return s.dest;
 }
 
+/* WHAT IT DOES: run-length encode one image, channel by channel, into the
+ * format the block copier above decodes: for each of `stride` interleaved
+ * channels a 4-byte length then a stream of packets, where a negative
+ * count is that many literal bytes and a positive count is a run of the
+ * value that follows. A run must be at least three long; runs and literal
+ * stretches are capped so their counts fit a byte. Returns the output
+ * length, or -1 when the output buffer would overflow. */
+/* @implements 0x1002E376 glide BrRleEncode */
+
+int BrRleEncode(char *dst,int dstMax,char *src,int srcLen,int stride)
+
+{
+  /* /Od homes locals by name hash; single letters in the original's
+   * frame order land in order (docs/VC5-IDIOMS.md). Roles:
+   *   a cur      -4    b c3=stride*3   -8    c c128=stride*128  -0xc
+   *   d out      -0x10 e pos           -0x14 f len              -0x18
+   *   g chan     -0x1c h prev          -0x20 i runStart         -0x24
+   *   j hdr      -0x28 k litStart      -0x2c l c132=stride*132  -0x30 */
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
+  int f;
+  int g;
+  int h;
+  int i;
+  int j;
+  int k;
+  int l;
+
+  b = stride * 3;
+  l = stride * 0x84;
+  c = stride << 7;
+  k = 0;
+  i = 0;
+  e = 0;
+  d = 0;
+  h = 0xffffff00;
+  g = 0;
+  j = 0;
+  f = 0;
+  if (1) goto again;
+scan:
+  a = src[e];
+  if (!((a == h) && (e - i <= l) && (e - k <= c) && (e < srcLen))) {
+    if (e - i >= b) {
+      if (k != i) {
+flush:
+        if (d + (i - k) / stride + 1 > dstMax) {
+          return -1;
+        }
+        dst[d] = (char)(-(i - k) / stride);
+        d = d + 1;
+        while (k < i) {
+          dst[d] = src[k];
+          d = d + 1;
+          k = k + stride;
+        }
+      }
+      if (i != e) {
+        if (d + 2 > dstMax) {
+          return -1;
+        }
+        dst[d] = (char)((e - i - b) / stride);
+        d = d + 1;
+        dst[d] = (char)h;
+        d = d + 1;
+      }
+      k = e;
+      i = e;
+      if (e >= srcLen) {
+        f = d - (j + 4);
+        FUN_100746b4(dst + j,&f,4);
+        g = g + 1;
+        src = src + 1;
+        if (g >= stride) {
+          return d;
+        }
+newchan:
+        if (d + 4 > dstMax) {
+          return -1;
+        }
+        j = d;
+        d = d + 4;
+        e = 0;
+        k = 0;
+        i = 0;
+        h = 0xffffff00;
+      }
+    }
+    else {
+      i = e;
+      if (e >= srcLen) goto flush;
+    }
+  }
+  else {
+    if (e - k > c) {
+      i = e;
+      goto flush;
+    }
+  }
+  h = a;
+  e = e + stride;
+  goto scan;
+again:
+  goto newchan;
+}
+
 #endif /* BR_MATCHING_BUILD */
