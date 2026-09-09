@@ -5,6 +5,7 @@
  * is (re)started.
  *
  * @t4-pass 0x10002460 1 2026-09-08 probes 10 bytes 252 insns 65 regions 1 rows 0 census yes
+ * @t4-pass 0x10002460 2 2026-09-09 probes 14 bytes 252 insns 65 regions 1 rows 0 census yes
  *
  * PARKED T2 after 9 probes: 252/252 B, 65/65 insns, REGNORM 0+0, 2 bytes.
  * Residue: the loop's two induction pointers are coloured eax/edx the other
@@ -83,6 +84,16 @@ void BrSessionReinitVideo(void);
  * setup); the season record is copied into both 0x53-dword option blocks,
  * the entrant count set to one, and the selection lookup run.  Every mode
  * ends with the video reinit. */
+/* @t3 0x10002460 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 252/252 insns 65/65 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation: the loop's two induction pointers are
+ * coloured eax/edx the opposite way (orig eax=entry+loop test, edx=car;
+ * recomp edx=entry, eax=car), a 2-byte swap; everything else is exact.  The
+ * dossier and the dead-probe list are in this file's header block above.
+ * Passes 1-2 (ledger lines in the header) moved nothing at 252/65/1/0;
+ * hoisting the car-sel pointer and a selector temp both went worse, not
+ * better.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10002460 glide BrRaceSelFromMenu */
 void BrRaceSelFromMenu(void)
 {
