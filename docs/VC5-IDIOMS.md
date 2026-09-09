@@ -7442,3 +7442,17 @@ just the ends, and re-read every row of the TU after the move.  The N64 twin
 under VC5 that and `y*y + z*z + x*x` are the same bytes.  Position was
 inert on 0x1006CDA0 (22 slots), 0x1002F640 (3) and 0x100182F0 (13) the same
 day, so it is a lever to sweep, not a rule.  Proven 2026-09-09.
+
+---
+
+## A global written in a CALL-FREE loop is register-cached and written through: do not name a local copy
+
+0x1000DC00 BrPolyClipTri's recycle loop has no calls.  `p->pNext = g_free;
+g_free = p;` on the plain global compiles to a preheader load, `mov [p],edx`,
+`mov edx,eax`, `mov [g_free],edx` -- VC5 keeps the global in edx across the
+iterations and writes it through from that register.  Ghidra renders the
+cached register as a separate local (`puVar3 = DAT; ... *p = puVar3; puVar3
+= p; DAT = p`) and spelling THAT produces `mov [g_free],eax` (the A3 short
+form from the `p` temp): identical instructions, one byte short.  The same
+loop with a call in it (the draw loop of the same function) reloads the global
+every time, from source that is spelled identically.  2026-09-09.
