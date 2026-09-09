@@ -25,6 +25,23 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 ## Status
 
+Two milestones, both measured in bytes of BRGlide `.text` (480,853 B — the
+primary target; in-scope EXE game code is separately complete). Snapshot
+2026-09-09; regenerate the figures with `tools/tiers.py` (the bars are a hand
+transcription of its T3/T4 byte totals, not trusted numbers — see below).
+
+```
+M1  Contract-valid — compiles & ports (T3 + T4)
+    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  40.8%   196,137 / 480,853 B   1,153 / 1,503 fns
+M2  Byte-exact (T4)
+    ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░  39.4%   189,484 / 480,853 B   1,135 / 1,503 fns
+```
+
+The bars sit almost on top of each other by design: matching is byte-exact-first,
+so only 18 certified-but-not-yet-exact functions (6,653 B) separate M1 from M2.
+Byte percentages trail function percentages (76.7% / 75.5% of functions) because
+the functions still open are several times larger than the matched ones.
+
 Query the tree. Do not trust a number in this file.
 
 ```bash
