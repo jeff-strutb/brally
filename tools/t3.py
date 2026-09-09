@@ -192,6 +192,14 @@ def canon(row):
     mn, _, ops = row.partition(' ')
     if mn != 'mov':
         ops = ops.replace('dword ptr [esp+S]', 'R')          # homed operand == register
+    # lea R,[R'+d] against add R,d: the same value (base + d); whether the
+    # base survives in its own register is allocation.  Only the single-
+    # register form -- [R + R + d] would hide a real add.  (2026-09-09,
+    # 0x1001D1B0: `lea esi,[edi+0xc]` vs `add esi,0xc` at the same offset.)
+    if mn == 'lea':
+        d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+)\]', ops)
+        if d and d.group(1) not in ('1', '0x1'):
+            return 'add R, ' + d.group(1)
     # memory operand forms
     def mem(m):
         inner = m.group(1)
