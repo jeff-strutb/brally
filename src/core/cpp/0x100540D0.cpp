@@ -38,7 +38,10 @@
  *   index temp: hoisted `char *psz = sz`, explicit `int j = i`
  *   indirection: inline `char *Text() { return sz; }` accessor,
  *     `char *self = (char *)this; self[i+9]`, `Text540D0 *p = this;
- *     p->sz[i]`, pointer-to-array cast
+ *     p->sz[i]`, pointer-to-array cast, and `char *self = (char *)this`
+ *     kept LIVE for multiple uses (f410 read via `*(float*)(self+0x410)`
+ *     plus both sz reads) to defeat copy-prop -- VC5 value-numbers self
+ *     back to `this` regardless, still base=index
  *   declarations: sz[1]+pad instead of sz[0x407], `signed char sz[]`,
  *     local declaration order permuted
  *   flags: /O2, /Ox, /O2 /Op (71), /O2 /Ob1, /O2 /Gy, /O1 (163), /Od, /O2 /Oy-
