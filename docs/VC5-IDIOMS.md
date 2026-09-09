@@ -7367,3 +7367,33 @@ The four sites left are the scheduler's pick between two ready loads.
   `{ }` right at the use does not. Proven 0x1006F840 BrQuatFromMatrix: last arm
   `q[3] = m[10] - ((m0 + m[5]) - C50)` with `float m0 = m[0];` in its own block
   (the three stores above it are what makes the block necessary).
+
+---
+
+## Register occupancy decides a cross-block global-load CSE: statement order INSIDE a block is a lever the crank never pulls
+
+0x10011FA0 BrFrameDraw (4,500 B, src/core/drawing/br_framedrive.c),
+2026-09-09: 4503 B / 1377 insns / 4+3 register-blind -> 4501 / 1376 / 1+1
+from ONE move -- `hMir = wMir >> 2` placed FIRST in the mirror block, straight
+after the wMir switch, instead of between the camera store and the camera
+read.  Two artefacts fell together:
+
+- with hMir late, ebx is free from the `if` condition to the store, and VC5
+  keeps the car-record global there across the branch (`mov ebx,[g]` /
+  `lea ecx,[ebx+0x27c4]` where the original has `mov ecx,[g]` /
+  `add ecx,0x27c4` and re-reads `[g]` at the store).  With hMir first, the
+  `mov ebx,edi` copy is issued at the statement (thirty bytes ahead of its
+  `sar` in the original -- that split is the tell) and the CSE has no
+  register, so the global is loaded fresh, as the original does.
+- the frame slots shift with it, and the outer loop counter stops being
+  spilled through a top-of-loop reload behind a `jmp`: -1 instruction.
+
+Placement measured: after yMir 10+10 raw, between xMir and yMir 8+8, before
+xMir 6+6 (the residue left is two unrelated sites).  `volatile` on the
+global is NOT the mechanism (+42 B, every read reloads).  The crank's
+`decl`/`stmt`/`filepos` levers permute declaration LINES and whole
+statements at the function level; they never reorder statements inside a
+nested block, which is where this one lived through 103 zero-movement probes.
+When the diff shows `lea r,[R+K]` where the original has `add r,K` with a
+later fresh load of the same global, look for the statement that would take
+the CSE's register earlier.

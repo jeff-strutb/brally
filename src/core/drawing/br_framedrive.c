@@ -81,7 +81,13 @@
  *      emit `add eax,edx` / `push eax` -- the two-address destination of
  *      `aViews->x + aViews->w`, both operands dead after.  DEAD: operand
  *      order (canonicalised); the sum through the `x` local; `aViews->w`
- *      through the `n` local; both.  Same class as 0x1005FF00's residue.
+ *      through the `n` local; both.  The lever that closed 0x1005FF00's
+ *      twin of this (name BOTH operands, later-declared symbol is the
+ *      destination) is INERT here: `(n = aViews->w)` / `(x = aViews->x)
+ *      + n` as statements or inside the expressions, with `n` before `x`
+ *      or after, and with fresh names `wv`/`xv` in both orders -- all
+ *      byte-identical to what is here.  The difference from the race
+ *      site: `w` has a second use (`0x130 - w`) before the add.
  */
 #ifdef BR_MATCHING_BUILD
 
