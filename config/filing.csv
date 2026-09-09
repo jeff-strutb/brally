@@ -702,6 +702,7 @@ glide_va,name,module,basis,file
 0x100592F0,FUN_100592f0,controls,neighbour-1,src/core/generated/0x100592F0.c
 0x100597C0,BrSub10060750,controls,manual,src/core/controls/br_dik.c
 0x100597F0,FUN_100597f0,net,neighbour-1,src/core/generated/0x100597F0.c
+0x10059820,BrCarRecordToState,net,filed,src/core/net/br_carnet.c
 0x10059A50,BrCarNetSendState,net,description,src/core/net/br_carnet.c
 0x10059D30,BrCarPredictRemote,net,description,src/core/net/br_carnet.c
 0x10059DC0,BrUiSelAInc,menus,description,src/core/menus/br_uislider.c
