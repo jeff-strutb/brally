@@ -866,6 +866,84 @@ const uint8_t *BrDlCmdTri1NoZ(const uint8_t *p)
     return p + 8;
 }
 
+/* 0x10020D70 -- G_TRI2 with the depth buffer off: the no-Z body twice, the
+ * first triangle from bytes 0, 1, 2 and the second from bytes 4, 5, 6, each
+ * consumed low byte first and drawn third-first (2, 1, 0 and 6, 5, 4).  The
+ * one asymmetry is in the second triangle's draw arm: its LAST corner (byte
+ * 4) is finished by the out-of-line BrDlVtxFinishTex against its own clip
+ * node instead of inline, so that arm is a third macro. */
+/* The second triangle's first two corners: the same finish, but the
+ * `s * scale` product is NAMED so it is formed before the multiply by 1/w
+ * (the flat three-term product canonicalises the other way round here --
+ * `s * oow * scale` -- where in the first triangle it does not). */
+#define BR_DLCMD_FINISH_VTX_I_N(i, u_)                              \
+    do {                                                            \
+        BrDlVtx *pv_ = &V(i);                                       \
+        uint32_t w_;                                                \
+        float    ts_;                                               \
+        BR_DL_PUN(w_, V(i).oow);                                    \
+        BR_DL_PUN(pv_->tmu1[2], w_);                                \
+        BR_DL_PUN(pv_->tmu0[2], w_);                                \
+        ts_ = V(i).s * g_brDlTexScaleS;                             \
+        (u_) = ts_ * pv_->oow;                                      \
+        BR_DL_PUN(pv_->tmu1[0], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[0], (u_));                              \
+        ts_ = V(i).t * g_brDlTexScaleT;                             \
+        (u_) = ts_ * pv_->oow;                                      \
+        BR_DL_PUN(pv_->tmu1[1], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[1], (u_));                              \
+    } while (0)
+
+#define BR_DLCMD_TRI_I_NOZ_TEX(ia, ib, ic, u_)                          \
+    do {                                                                \
+        if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
+            if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
+                BrDlClipTriNoZ(&V(ia), &V(ib), &V(ic));                  \
+            } else {                                                     \
+                BR_DLCMD_FINISH_VTX_I_N(ia, u_);                         \
+                BR_DLCMD_FINISH_VTX_I_N(ib, u_);                         \
+                BrDlVtxFinishTex(&V(ic), (const BrDlClipSt *)(const void *)&V(ic).f40); \
+                BrDlDrawTri(&V(ia), &V(ib), &V(ic));                     \
+            }                                                            \
+        }                                                                \
+    } while (0)
+
+/* WHAT IT DOES: the G_TRI2 display-list command with the depth buffer off --
+ * two triangles, from the vertex-pool indices in the command's bytes 2, 1, 0
+ * and 6, 5, 4.  Each is dropped if all three corners are off the same screen
+ * edge, handed to the no-Z trimmer if any corner is off screen, and otherwise
+ * finished and sent to the card; the second triangle's last corner is
+ * finished through the clip-node path.  Returns the pointer to the next
+ * 8-byte command. */
+/* PARKED T2 2026-09-09 at 688/685 B, 194/194 insns, register-blind 1+1,
+ * 57 positional diffs all downstream of ONE load: the second triangle's
+ * second corner reads its 1/w for the two oow stores through the lea'd
+ * vertex pointer (`mov ecx,[edi+0x20]`, 3 B) where ours keeps the scaled
+ * index form (`[eax+0x105CE338]`, 6 B).  The first triangle and the second
+ * triangle's first corner use the index form in BOTH.  The named product
+ * above was worth 10 diffs and is kept.
+ * Dead probes (fn.py): `pv_->oow` for that corner's w_ (spills, +13 B,
+ * with or without the named product); `(&V(i))->oow` (inert); separate
+ * ic2/ib2/ia2 locals for the second triangle (worse, FIRSTDIV moves up).
+ * Untested: a source order in which that corner's pointer is taken
+ * before the first triangle's draw. */
+/* @implements 0x10020D70 glide BrDlCmdTri2NoZ */
+const uint8_t *BrDlCmdTri2NoZ(const uint8_t *p)
+{
+    int   ic = p[0];
+    float u;                    /* ONE slot, shared by all six corners */
+    int   ib = p[1];
+    int   ia = p[2];
+
+    BR_DLCMD_TRI_I_NOZ(ia, ib, ic, u);
+
+    ic = p[4];
+    ib = p[5];
+    ia = p[6];
+    BR_DLCMD_TRI_I_NOZ_TEX(ia, ib, ic, u);
+    return p + 8;
+}
+
 #undef V
 #define V(i) (*(i))
 #endif
