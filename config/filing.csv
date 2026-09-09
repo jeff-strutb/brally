@@ -377,6 +377,7 @@ glide_va,name,module,basis,file
 0x1002D534,BrCamMatrixSetup,drawing,description,src/core/drawing/br_cammatrix.c
 0x1002D62F,BrCamMatrixSetupFixed,drawing,neighbour-1,src/core/drawing/br_cammatrix.c
 0x1002D72E,BrCamMatrixSetupOrtho,drawing,description,src/core/drawing/br_cammatrix.c
+0x1002D864,BrDlRecolor,scene,filed,src/core/scene/br_dlrecolor.c
 0x1002DB0B,BrDlOwnerFixup,drawing,prefix,src/core/drawing/br_dlrebase.c
 0x1002DB88,BrEntGfxRebindAll,scene,description,src/core/scene/br_entity.c
 0x1002DD30,BrIdleLoop_1002DD30,racing,description,src/core/racing/br_idleloop.c
