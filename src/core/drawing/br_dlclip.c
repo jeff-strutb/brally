@@ -71,6 +71,28 @@
  *     local perturbs the shared frame enough to un-match two other planes
  *     (6/7 -> 4/7).  The "name the product" lever needs a SUM OF PRODUCTS;
  *     on a plain two-term add it does nothing and here it is destructive.
+ *   - 2026-09-09, all /O2 /Op one-file sweeps (fn.py is /O2-only and its
+ *     numbers on this file are GARBAGE -- its control run of the unmodified
+ *     file scores -4 B; probe this file through match_sweep only):
+ *       `*&` round either operand, and `(float)` cast on either: INERT (2).
+ *       The canonicaliser and the scheduler both see through lvalue
+ *       complexity and value-preserving casts.
+ *       comma-reuse of the destination (`(dPrev = w, dPrev + x)`): 31.
+ *       `(1 ? w : 0.0f) + x`: 31.  paren round the SECOND operand with the
+ *       source order swapped (`x + ((w))`): 31.  So flip and sink are ONE
+ *       mechanism: ANY non-leaf wrap of an operand both picks it as the fld
+ *       AND defers that site's fadd while another value is live on the x87
+ *       stack.  There is no spelling that flips without wrapping, so no
+ *       spelling reaches the original's plain-tree f18 lead at dPrev.
+ *       hoisting `pNext = pCur->pNext;` between the two distance statements:
+ *       INERT (31 with LEAD at both, 2 without -- does not pin the schedule).
+ *       swapping dCur/dPrev in the float declaration: INERT (2).
+ *     corpus: NO member emits `fld [R+0x18]; fadd [R+4]` (or +8) at all --
+ *     the hi-displacement-first pair is unproven tree-wide.
+ *   - t3.py --qualify A3 reports 3 unpaired rows (fstp/fld MISSING, fst
+ *     EXTRA) that the side-by-side shows byte-identical at +0x30..+0x37;
+ *     the only raw diffs are the two operand-pair bytes at +0x29/+0x2c.
+ *     Suspected normaliser artefact (the 2026-09-09 class); not chased.
  *
  * WHAT WOULD MOVE LEFT: something that pins the schedule at the dPrev site,
  * so the paren's flip can be taken there without the `fadd` sinking.  Do not
