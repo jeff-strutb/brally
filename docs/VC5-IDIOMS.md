@@ -7456,3 +7456,28 @@ cached register as a separate local (`puVar3 = DAT; ... *p = puVar3; puVar3
 form from the `p` temp): identical instructions, one byte short.  The same
 loop with a call in it (the draw loop of the same function) reloads the global
 every time, from source that is spelled identically.  2026-09-09.
+
+---
+
+## /Od: local slots follow declaration order only for names that hash in order; a two-hop exit is a label on a goto after the return
+
+0x1002D864 BrDlRecolor (586 B, /Od, src/core/scene/br_dlrecolor.c). Three
+facts, each one sweep:
+- Five int locals declared in the original's frame order under Ghidra's
+  names (iVar1, bVar3, bVar2, local_14, local_18) came out scattered
+  (local_14 at -4, iVar1 at -8, bVar2 at -0xc, local_18 at -0x10, bVar3 at
+  -0x14). The same five as `a b c d e`, declared in the original's top-down
+  order, land exactly. VC5 /Od walks its symbol table, so "declaration
+  order" holds only when the names do not collide in it; single letters in
+  frame order are the spelling that always works.
+- Switch arms lay out in source order under /Od too; read the order off the
+  jump table (here 0xB9, 0xFC, 0xFA, 0xFB, 0xB8 -- the end marker LAST).
+- The end-marker arm exits through a block placed AFTER the function's
+  `return` that jumps back to the shared exit (`jmp X; ... ret-path; X: jmp
+  done`). Under /Od that is exactly `case 0xB8: goto out;` with `out: goto
+  done;` written after `return e;`. A direct `goto done` is one hop, 5 diff
+  bytes. Probed and DEAD for that shape: `break` after the switch, `while
+  (p)` / `for (; p; )` loops, an `out:` label inside the if, a duplicated
+  exit body, a comma-expression return in the arm (all inline or direct).
+- Byte offsets into a table Ghidra prints as `&DAT_x + i * 0x10` need a
+  `char` base: an `unsigned int` base scales the index (`shl 2` + `*4`).
