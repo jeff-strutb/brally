@@ -7267,3 +7267,36 @@ eax,-0x80` (3 B).  The source fact is a named local: `n = ftell(fp);
 fseek(fp, n - 128, SEEK_SET);`.  With the statement boundary the constant
 push cannot sink above the call, and VC5 then folds `n - 128` to the imm8
 add.  Corpus had no proven `add r,-0x80` site before this one (2026-09-09).
+
+---
+
+## Struct-array fields as counter expressions keep program order; a pointer local lets loads hoist
+
+0x10032190 BrGlTrackFixupCmds (368 B, src/core/startup/br_track.c): a loop
+over 12-byte records spelled with `p = base + i*12; p[k]` compiled to the same
+`lea esi,[ebx+0x169]` induction temp as the original, but VC5 could prove the
+byte accesses disjoint and hoisted each swap pair's loads above the previous
+pair's stores, and `pVtx = *(int *)p` above the count store (82 diff bytes,
+size exact). Spelled as `*(char *)(param + 0x164 + i*12 + k)` -- an
+expression of the counter, no pointer local -- every load stays behind the
+stores in program order: 4 diff bytes. Same mechanism as the `samebase`
+lever above, seen from the other side: a named pointer is a distinct symbol
+the compiler can reason about; a counter expression is not.
+
+Three more facts from the same function, each measured:
+- The function-level `nVerts = 0` written AFTER the header compose puts the
+  parameter in ebx and nVerts in ebp with a lazy `push ebp` and `mov ebp,0`
+  (flags kept for the `jle` on the compose). Written first, nVerts takes ebx
+  and the parameter ebp, pushed eagerly, `xor ebx,ebx`.
+- A composed count that is stored and then read back (`RECD(4) = compose;
+  nVerts = RECD(4);`) composes in eax and copies (`mov ebp,eax`); assigning
+  the expression to nVerts directly composes in ebp.
+- Three big-endian dword composes in one function, one spelling each: the
+  header one and the post-call one are the plain Horner chain
+  `(((b1 | b0 << 8) << 8 | b2) << 8) | b3`; the in-arm one (kind 3/6/7, last
+  arm) loads `ah` before `al` only with a HALFWORD intermediate
+  `((unsigned int)(unsigned short)(b1 | b0 << 8) << 8 | b2) << 8 | b3`. Dead
+  at that site: `|` operand order, a temp, a 4-statement accumulator,
+  `+`/`*256`, an explicit `default:` arm.
+- Switch arms are laid out in SOURCE order; Ghidra prints them sorted by
+  case value. Read the original's arm order off the jump-table targets.
