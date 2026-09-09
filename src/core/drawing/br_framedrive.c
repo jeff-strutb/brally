@@ -39,6 +39,49 @@
  *    drawn in the small font with the mark stripped.
  *  - 0x100A6B60 = "%ry" and 0x100A6B64 = "%y1": text-markup colour
  *    escapes, the pause menu's "selected / not selected" prefixes.
+ *
+ * STATE (2026-09-09): 4501/4500 B, 1376/1376 instructions, register-blind
+ * 1+1, RAW 6+6, two masked regions.  The lever that got here from 4503 B /
+ * 4+3 was STATEMENT ORDER in the mirror block: `hMir = wMir >> 2` FIRST,
+ * straight after the wMir switch.  Placed after yMir, VC5 keeps the car
+ * record global (DAT_106e9d88) in ebx from the `if` condition to the store
+ * (`lea ecx,[ebx+0x27c4]` where the original has `add ecx,0x27c4` and a
+ * fresh `mov eax,[g]` later) AND spills the view counter through a
+ * top-of-loop reload behind a `jmp`; with hMir first, ebx is taken from
+ * the switch on and both artefacts disappear.  Register OCCUPANCY decides
+ * a cross-block global-load CSE; the crank's line-level levers never move
+ * a statement inside the block, so this class needs a hand.
+ *
+ * RESIDUE, TWO SITES -- dead lists below, do not re-run them:
+ *
+ *  (1) orig+0x131, the loop top.  The original forms `pV` (`lea
+ *      esi,[ebp+ecx*8]`) and reads the car index through it
+ *      (`mov ecx,[esi+0x10]`) after all six constant pushes; we fold the
+ *      first read into `mov ecx,[ebp+eax*8+0x10]` and form esi after.
+ *      The solved consumers of the same records (0x10014C00,
+ *      0x100140B0, 0x10017F80) all fold the FIRST evaluated read and
+ *      take the rest through the pointer, so in the original the index
+ *      read is not `pV`'s first use, or `pV` is not what we think.  DEAD
+ *      (all byte-identical to what is here): `aViews + i`; the byte-cast
+ *      `(BrHudView *)((uint8_t *)aViews + i * 0x58)`; `pV = aViews;
+ *      pV += i`; `(BrHudView *)(DAT_103c2fd0 + off) + i` (worse, +17 B);
+ *      a macro for aViews (worse, +24 B); the read as
+ *      `*(int32_t *)((uint8_t *)pV + 0x10)`, as a volatile read, as
+ *      `aViews[i].iCar` beside the pointer in either order; the
+ *      assignment embedded `(pV = &aViews[i])->iCar` or comma-joined;
+ *      the three global stores comma-joined into FUN_1006ec30's third
+ *      argument with or without the pointer; a dead `pV = aViews` /
+ *      `pV = 0` before the loop; `const BrHudView *pV`; `pV` declared
+ *      first, last, before pCars; `g_brIView = i` before the read (worse);
+ *      `register int i`; `i` first/last among the ints, `k` first.
+ *      `pV = &aViews[i]` BEFORE the trace call reads through esi but
+ *      schedules the lea ahead of the call (4502 B, 3+2) -- so the
+ *      original's definition sits after the call.
+ *  (2) orig+0xaf, the first block: `add edx,eax` / `push edx` where we
+ *      emit `add eax,edx` / `push eax` -- the two-address destination of
+ *      `aViews->x + aViews->w`, both operands dead after.  DEAD: operand
+ *      order (canonicalised); the sum through the `x` local; `aViews->w`
+ *      through the `n` local; both.  Same class as 0x1005FF00's residue.
  */
 #ifdef BR_MATCHING_BUILD
 
@@ -204,6 +247,7 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
  * their callee is a bare `ret`. */
 /* @t4-pass 0x10011FA0 1 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10011FA0 2 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10011FA0 3 2026-09-09 probes 35 bytes 4501 insns 1376 regions 2 rows 2 census no  (hand: hMir first) */
 /* @implements 0x10011FA0 glide BrFrameDraw */
 void BrFrameDraw(int iSlot)
 {
@@ -330,11 +374,19 @@ void BrFrameDraw(int iSlot)
                 wMir = (pV->w * 5) / 16;
             else
                 wMir = (pV->w * 3) / 8 + 2;
+            /* hMir FIRST.  Its `mov ebx,edi` copy sits thirty bytes ahead
+             * of its `sar` in the original: the statement is here, and ebx
+             * being taken from this point on is what denies the car-record
+             * global a register across the `if` (proven 2026-09-09: after
+             * yMir it is 4503 B / 4+3 rows and VC5 keeps DAT_106e9d88 in
+             * ebx from the condition to the store and spills the loop
+             * counter through a top-of-loop reload; here it is 4501 B /
+             * 1+1 rows and both artefacts are gone). */
+            hMir = wMir >> 2;
             xMir = ((pV->w - wMir) >> 1) + pV->x;
             yMir = pV->h / 16 + pV->y;
             pCamSave = DAT_106ed520;
             CAR_PCAM(DAT_106e9d88) = (BrCamObj *)(DAT_106e9d88 + 0x2890);
-            hMir = wMir >> 2;
             DAT_106ed520 = CAR_PCAM(DAT_106e9d88);
             BrDlRectCmdEmit(xMir, yMir, -wMir, hMir, 1);
             BrNop_1002AB94(xMir, yMir, wMir, hMir);
