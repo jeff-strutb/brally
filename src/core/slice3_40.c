@@ -194,6 +194,24 @@ void BrGfx60E00(void *p0)
 /* WHAT IT DOES: zeroes each block of memory in a list of address-and-size
  * pairs, stopping at the first entry with no address. A block of size zero
  * is stepped over rather than cleared. */
+/* Residue: two `mov R,R` copies of the loop cursor the original keeps live
+ * across the back edge (reads ->p via one register, ->size/next via the
+ * other) -- the VARIABLE-IDENTITY-IS-INERT live-range class.  DEAD
+ * 2026-09-09: guard on the global directly (moves the address materialise
+ * below the test, FIRSTDIV +0x5 -> +0x8, bytes unchanged); do-while; a
+ * lookahead pNext local read before/after ++; a second cursor local q in
+ * four shapes (z7 reaches 28/28 insns but misplaces both copies); a size
+ * local; every slot in the TU (10).  Corpus MISS on the loop tail at +0x2d.
+ * @t4-pass 0x1005C450 1 2026-09-09 probes 11 bytes 58 insns 26 regions 2 rows 2 census yes  (hand, fn.py variants)
+ * @t4-pass 0x1005C450 2 2026-09-09 probes 10 bytes 58 insns 26 regions 2 rows 2 census yes  (position sweep) */
+/* @t3 0x1005C450 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 58/62 insns 26/28 rows 2+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 2+0 classified rows, 2 masked regions, 4 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100633E0 d3d BrZeroRegions */
 #ifdef BR_MATCHING_BUILD
 extern BrZeroRegion DAT_100b2f08[];    /* list head, 0x100B2F08 */
