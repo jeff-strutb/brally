@@ -52,16 +52,27 @@
  * a cross-block global-load CSE; the crank's line-level levers never move
  * a statement inside the block, so this class needs a hand.
  *
- * RESIDUE, TWO SITES -- dead lists below, do not re-run them:
+ * RESIDUE -- 2026-09-09b: site 1 CLOSED, one site left plus its shadow:
  *
- *  (1) orig+0x131, the loop top.  The original forms `pV` (`lea
- *      esi,[ebp+ecx*8]`) and reads the car index through it
- *      (`mov ecx,[esi+0x10]`) after all six constant pushes; we fold the
- *      first read into `mov ecx,[ebp+eax*8+0x10]` and form esi after.
- *      The solved consumers of the same records (0x10014C00,
- *      0x100140B0, 0x10017F80) all fold the FIRST evaluated read and
- *      take the rest through the pointer, so in the original the index
- *      read is not `pV`'s first use, or `pV` is not what we think.  DEAD
+ *  (1) CLOSED (probe X7): `pV = &aViews[i]` moved ABOVE the BrPodNop
+ *      trace call.  The call clobbers the scratch register holding 11*i,
+ *      so the fold is no longer free and VC5 re-derives the read through
+ *      esi exactly as the original: 4501 -> 4500 B (size exact), regnorm
+ *      1+1 -> 0+0.  The dead list below is the record of every spelling
+ *      tried BELOW the call; the lever was the statement's position, not
+ *      its spelling.  Shadow: our lea for pV now schedules above the
+ *      call's five constant pushes where the original has it below --
+ *      2 masked regions, 5+5 raw, register-blind 0+0, +0 B.  DEAD on the
+ *      shadow (2026-09-09b): `g_brIView = i` between (worse, +6 B);
+ *      volatile pV (+70 B); the index via a `k = i` copy; pV in the for
+ *      condition (+3 B); the read spelled `aViews[i].iCar` beside it;
+ *      declaration order `y, x`; the sum through `y`.
+ *
+ *  (1-old) orig+0x131, the loop top, AS IT STOOD.  The original forms
+ *      `pV` (`lea esi,[ebp+ecx*8]`) and reads the car index through it
+ *      (`mov ecx,[esi+0x10]`) after all six constant pushes; we folded
+ *      the first read into `mov ecx,[ebp+eax*8+0x10]` and formed esi
+ *      after.  DEAD
  *      (all byte-identical to what is here): `aViews + i`; the byte-cast
  *      `(BrHudView *)((uint8_t *)aViews + i * 0x58)`; `pV = aViews;
  *      pV += i`; `(BrHudView *)(DAT_103c2fd0 + off) + i` (worse, +17 B);
@@ -254,6 +265,18 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
 /* @t4-pass 0x10011FA0 1 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10011FA0 2 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10011FA0 3 2026-09-09 probes 35 bytes 4501 insns 1376 regions 2 rows 2 census no  (hand: hMir first) */
+/* @t4-pass 0x10011FA0 4 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: corpus MISS at +0x131/+0xaf; site-1 fresh angles -- X7 pV-before-call landed, size exact) */
+/* @t4-pass 0x10011FA0 5 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: shadow-lea and site-2 fresh angles -- zero movement) */
+/* @t3 0x10011FA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 4500/4500 insns 1376/1376 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
+ * Residue, two shapes, both register/schedule: the +0xaf two-operand add
+ * destination (both operands dead after; the width's second use blocks the
+ * named-operands lever that closed 0x1005FF00) and the loop-top lea for
+ * pV scheduling above the trace call's constant pushes where the original
+ * has it below.  Size, count and register-blind multiset exact.  Dossier,
+ * dead lists (~60 probes over three sessions) in this header; ledger
+ * lines above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10011FA0 glide BrFrameDraw */
 void BrFrameDraw(int iSlot)
 {
