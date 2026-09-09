@@ -7300,3 +7300,28 @@ Three more facts from the same function, each measured:
   `+`/`*256`, an explicit `default:` arm.
 - Switch arms are laid out in SOURCE order; Ghidra prints them sorted by
   case value. Read the original's arm order off the jump-table targets.
+
+---
+
+## A two-operand `add` between two CSE'd values: name both, and the later-declared name is the destination
+
+0x1005FF00 BrRaceGateStep (2,538 B, src/core/racing/br_race.c) sat for
+five sessions on ONE pair of bytes: `add ecx,eax / mov [ebp+0x4c],ecx`
+against our `add eax,ecx / mov [ebp+0x4c],eax`, where ecx held the gate
+count (the divisor CSE of `pDrv->f48 % g_brRaceNGate`) and eax the field
+(`pDrv->f4C`, CSE'd from the `< 0` test).  Every spelling of the field
+statement itself was dead (`+=`, either operand order, a temp for one side,
+nested-if vs `&&`), and the N64 twin confirmed the source.
+
+The lever is the imul-destination rule from 0x100250D0, applied to `add`:
+when BOTH operands are NAMED locals, VC5 makes the LATER-DECLARED one the
+two-operand destination.  `(nGates = g_brRaceNGate)` inside the modulus,
+`(gate = pDrv->f4C) < 0` in the conjunction, `pDrv->f4C = gate + nGates`,
+and `gate` declared before `nGates`: byte-exact (2026-09-09, 11 compiles).
+Measured on the same pass: the count's name declared after the field's --
+adjacent, or at the end of the list -- byte-exact; declared BEFORE it, the
+old 2 bytes; naming only the count (direct field, count first, `+=`), the
+old 2 bytes -- one named operand does not engage the rule; both assigned as
+statements before the `if`, 12 diffs (the loads move).  Operand order in the
+expression is inert (canonicalised).  Screen: a lone two-operand-destination
+swap between two CSE'd values is a declaration-order question, not a wall.
