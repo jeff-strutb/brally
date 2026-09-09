@@ -215,6 +215,24 @@ __declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
 /* WHAT IT DOES: fetch a blob whose size is not known in advance -- ask
  * once with no buffer, allocate that much, ask again, hand the block
  * back.  On failure the block is released and the error is reported. */
+/* DEAD 2026-09-09 (all at 142 B RAW 1+1): NULL-compare orders and !pv; a
+ * handle local at the alloc (12+12) or in cleanup (12+12); the GMEM
+ * constant spelled as an OR; empty-statement padding; 0 <= hr; while(0!=0);
+ * break as goto cleanup; pv = 0; a comment line between the declarations;
+ * register hr; (void *)0; every slot in the TU (7 of 15 compile).  Corpus:
+ * the byte-exact BrDPlayPump spells the same alloc with a guarded
+ * assignment and NO jump -- a different control shape, not transplantable
+ * over this function's goto-cleanup arm.
+ * @t4-pass 0x10036810 1 2026-09-09 probes 11 bytes 142 insns 64 regions 2 rows 2 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x10036810 2 2026-09-09 probes 10 bytes 142 insns 64 regions 2 rows 2 census yes  (position sweep + 3 spelling variants) */
+/* @t3 0x10036810 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 142/142 insns 64/64 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 1+1 classified rows, 2 masked regions;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
