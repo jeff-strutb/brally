@@ -7354,3 +7354,16 @@ Dead across 55 compiles, so do not re-spell: every operand order, cast,
 temp, accumulator, halfword and store form of the big-endian compose; loop
 temps swapped, block-scoped, or re-declared; declaration order of anything.
 The four sites left are the scheduler's pick between two ready loads.
+
+- **Named-temp FLD-order lever needs ADJACENCY, and only in a sum that feeds
+  another op.** A commutative `fadd` of two equal-cost memory operands whose
+  result is stored straight out keeps SOURCE order (first operand FLD'd). When
+  the sum instead feeds an `fsub`/`fsubr`, VC5 orders by subtree cost and the
+  tie breaks the OTHER way -- the second operand loads first, and neither
+  swapping operands nor reversing the relation moves it. Naming one operand in
+  a temp forces it to be the FLD operand (as BrVec3Midpoint), BUT the temp must
+  be declared IMMEDIATELY before its single use: a temp at the block top spills
+  to a slot across any intervening stores (45-diff blow-up), a temp in a nested
+  `{ }` right at the use does not. Proven 0x1006F840 BrQuatFromMatrix: last arm
+  `q[3] = m[10] - ((m0 + m[5]) - C50)` with `float m0 = m[0];` in its own block
+  (the three stores above it are what makes the block necessary).
