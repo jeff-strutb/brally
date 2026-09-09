@@ -12,7 +12,6 @@ glide_va,name,module,basis,file
 0x10002310,BrCamFrameInitB,drawing,filed,src/core/drawing/br_camframe.c
 0x100023E0,BrCosF,geometry,description,src/core/geometry/br_cos.c
 0x100023F0,BrTimeFormat,racing,filed,src/core/racing/br_timefmt.c
-0x10002460,BrRaceSelFromMenu,racing,manual,src/core/racing/br_racesel.c
 0x10002560,BrSinF,geometry,description,src/core/geometry/br_sin.c
 0x10002570,BrSqrtF,geometry,description,src/core/geometry/br_sin.c
 0x10002760,BrCdMaybeClose,audio,description,src/core/audio/br_cd.c
@@ -45,8 +44,6 @@ glide_va,name,module,basis,file
 0x10002F90,BrCdStopMsg,audio,filed,src/core/audio/br_cd.c
 0x10002FD0,BrCdMciStop,audio,filed,src/core/audio/br_cd.c
 0x10003030,BrCdStopRelease,audio,filed,src/core/audio/br_cd.c
-0x10003050,BrCdStopReleaseMsg,audio,filed,src/core/audio/br_cd.c
-0x100030B0,BrCdStopReleaseMci,audio,filed,src/core/audio/br_cd.c
 0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
 0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/gamedata/br_u16cursor.c
@@ -153,7 +150,6 @@ glide_va,name,module,basis,file
 0x1000DED0,BrGetFieldFloatSubC,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEE0,BrGetFieldFloat,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEF0,BrGetFieldFloatSub10,drawing,neighbour,src/core/drawing/br_polydist.c
-0x1000E060,BrVertLerp8,drawing,manual,src/core/drawing/br_vertlerp.c
 0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
 0x1000E2F0,BrQsortCmpS2,drawing,neighbour,src/core/drawing/br_sortcmp.c
 0x10010F80,BrRecHdrLatch_10010F80,drawing,filed,src/core/drawing/br_rec.c
@@ -491,7 +487,6 @@ glide_va,name,module,basis,file
 0x10036080,BrSlotMark,net,manual,src/core/net/br_slottable.c
 0x10036100,BrSlotsResetIfBZero,gamedata,filed,src/core/gamedata/br_slots.c
 0x100361A0,FUN_100361a0,gamedata,neighbour-1,src/core/generated/0x100361A0.c
-0x10036220,BrNetEnumSessionCb,net,manual,src/core/net/br_dplayenum.c
 0x10036430,BrSub1003CDA0,net,neighbour-1,src/core/net/br_sessiondesc.c
 0x10036650,BrSub1003CFC0,net,description,src/core/net/br_dplaysession.c
 0x10036670,BrGlobalFreeAll,net,neighbour-1,src/core/net/br_dplaysession.c
@@ -737,6 +732,7 @@ glide_va,name,module,basis,file
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
 0x1005F530,BrDriverAssetsFree,racing,neighbour-1,src/core/racing/br_driver.c
 0x1005F690,BrRankCmpKey,racing,description,src/core/racing/br_rank.c
+0x1005FF00,BrRaceGateStep,racing,filed,src/core/racing/br_race.c
 0x100609B0,BrWrap_10067940,startup,filed,src/core/startup/br_objlife.c
 0x100609D0,BrWrap_10067960,startup,filed,src/core/startup/br_objlife.c
 0x100609F0,BrWrap_10067980,startup,filed,src/core/startup/br_objlife.c
@@ -793,9 +789,7 @@ glide_va,name,module,basis,file
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
 0x10066260,BrCollRespBoxClassify,driving,filed,src/core/driving/br_collresp.c
 0x100664F0,BrCrCorner,driving,filed,src/core/driving/br_collresp.c
-0x10066610,BrCollRespPointInTri,driving,filed,src/core/driving/br_collresp.c
 0x10066800,BrCollRespSegBox,driving,filed,src/core/driving/br_collresp.c
-0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10066AD0,BrCollRespBroadPhase,driving,filed,src/core/driving/br_collresp.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
@@ -822,7 +816,6 @@ glide_va,name,module,basis,file
 0x1006AAD0,BrSub10071B60,geometry,filed,src/core/geometry/br_vec.c
 0x1006AAF0,BrNetPeerMsgReset,net,filed,src/core/net/br_peer.c
 0x1006AB60,BrObjResetMsgHdr,gamedata,description,src/core/gamedata/br_bitstream.c
-0x1006AEB0,BrNetWritePlayerRec,net,manual,src/core/net/br_netpkt.c
 0x1006B1E0,BrSndThreadStop,audio,description,src/core/audio/br_sndvoice.c
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/audio/br_sndvoice.c
 0x1006B400,BrSndVoiceApplyPan,audio,description,src/core/audio/br_sndvoice.c
@@ -926,6 +919,7 @@ glide_va,name,module,basis,file
 0x1006EB00,FUN_1006eb00,racing,description,src/core/racing/br_wrongway.c
 0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
 0x1006F680,BrEntSetPos,scene,description,src/core/scene/br_entpos.c
+0x1006F840,BrQuatFromMatrix,geometry,manual,src/core/geometry/br_quat.c
 0x1006F970,BrEntSetMatrix,driving,neighbour-1,src/core/driving/br_entstate.c
 0x1006FA10,BrEntSetVel,driving,neighbour-1,src/core/driving/br_entstate.c
 0x1006FA90,BrEntSetOrientation,driving,neighbour-1,src/core/driving/br_entstate.c
