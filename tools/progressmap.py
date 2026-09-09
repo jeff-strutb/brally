@@ -41,6 +41,20 @@ def _fenced_exe():
     return out
 
 
+def _fenced_dll():
+    """The DLL's linker-reproduced functions (config/fenced.csv): import
+    thunks, jump stubs, CRT helper intrinsics, CRT startup. Same category as
+    fenced_exe — not decomp targets, must not render as untried game code.
+    Returns {va: class}."""
+    out = {}
+    p = os.path.join(ROOT, "config", "fenced.csv")
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[int(r["va"], 16)] = r.get("class") or "fenced"
+    return out
+
+
 def _diffs(m):
     """The row's diff count, or -1 for "not in the report at all".
 
@@ -84,6 +98,7 @@ def load():
     # matched so the DLL map reflects them, grouped into their own region.
     cpp = _match_set("cpp_matches.csv")
     t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/tiers.py
+    fenced_dll = _fenced_dll()
     funcs = []
     with open(FUNCS) as f:
         for r in csv.DictReader(f):
@@ -98,13 +113,16 @@ def load():
                 status = "codegen"     # T3: same instructions, register/sched only
             elif m:
                 status = "diff"
+            elif va in fenced_dll:
+                status = "fenced"
             else:
                 status = "todo"
             funcs.append({
                 "va": va, "size": size,
                 "name": (m and m["name"]) or r.get("name") or "",
                 "file": ("src/core/cpp/(C++ EH)" if is_cpp
-                         else (m and m["file"]) or ""),
+                         else (m and m["file"])
+                         or ("linker/CRT (fenced)" if status == "fenced" else "")),
                 "status": status,
                 "diffs": 0 if is_cpp else _diffs(m),
             })
