@@ -670,21 +670,43 @@ extern void BrGlFixupAt(uint8_t *p);
  * 0x14-stride rows as real loops, and NINETEEN pointer locals (one per
  * fixup site) handed to the fixup helper at the tail in list order.
  *
- * PARKED at 231 diffs with the SIZE and the instruction multiset both
- * exact (1549/1549, 495/495, zero extra, zero missing) -- everything left
- * is ordering. One pattern, repeated at every big-endian dword load past
- * the first: the original loads the low half of `cx` before the high half
- * (`mov cl,[esi+5]` then `mov ch,[esi+4]`), ours does the reverse. The
- * first block, right after the read call, schedules differently in the
- * original too and matches.
+ * STATE 2026-09-09: 1549/1549 B, 495/495 insns, register-blind 0+0,
+ * 10 masked regions / 126 raw diff bytes (was 13 / 231).  Everything left
+ * is ordering inside a site:
+ *   - EIGHT big-endian dword loads past the first: the original loads the
+ *     low half of the pair before the high half (`mov cl,[esi+5]` then
+ *     `mov ch,[esi+4]`), ours the reverse.  The first site, right after
+ *     the read call, matches with the same spelling -- so it is the
+ *     scheduler's slot filling, not the expression.
+ *   - the TWO swap loops (+0x40 x4, +0x98 x10): the original reads q[0]
+ *     then q[3]; ours reads q[3] first.  Swapping the STORES in source
+ *     gives the original's load order but swaps which temp gets bl/dl
+ *     (RAW 4+4); declaration order does not flip that back.
  *
- * DEAD PROBES (2026-09-03), all leaving 231 unchanged -- VC5 canonicalises
- * the expression before scheduling, so do NOT re-spell it:
- *   - swapping the `|` operands so the shifted byte is on the left;
- *   - dropping the redundant `(uint32_t)` cast;
- *   - the four-statement accumulator form (`v = h[n]; v = (v<<8)|h[n+1];`).
- * A fresh idea is needed for the cl/ch pairing order, not another
- * spelling. */
+ * THE LEVER THAT PAID (2026-09-09, 13 -> 10 regions): the fixup pointer is
+ * assigned AFTER its dword's swap, and the swap reads/writes the bytes
+ * through `h[]`.  With `pXX = h + 0xXX` BEFORE the swap and `*pXX` as the
+ * first byte, VC5 materialises the `lea` first and hoists the far byte's
+ * load above the previous site's stores; the original loads the far byte,
+ * then forms the pointer, then reads through it (a named pointer is a
+ * distinct symbol it schedules around -- see the br_track.c idiom).  The
+ * p78 site had always read its first byte via h[] and matched.
+ *
+ * DEAD (2026-09-03 + 2026-09-09, 29 compiles), all at these numbers unless
+ * said -- VC5 canonicalises the compose before scheduling, do NOT re-spell:
+ *   BE loads: `|` operand order; dropping the `(uint32_t)` cast; the
+ *   four-statement accumulator (high-first AND low-first); a halfword
+ *   intermediate `(uint16_t)(b1 | b0 << 8)` inline and as a local; a flat
+ *   OR of four shifted bytes; the low byte through the byte temp `t`;
+ *   `+`/`*256` (WORSE: +62 B, +24 insns).
+ *   Pointer sites: far byte first with the lea before or between the
+ *   loads (219 / 231); stores swapped (455, RAW 56+56); first byte via
+ *   h[] with the pointer still first (+4 B); pointer after the SECOND pair
+ *   (= 126).
+ *   Loops: far byte first alone (inert, VC5 swaps it back); stores
+ *   swapped (109, RAW 4+4 -- temps' registers exchanged); + declaration
+ *   order `u, t` (same).
+ *   `int` temps instead of `uint8_t`: +236 B, +124 insns. */
 /* WHAT IT DOES: read a track file's header and fill in the pointers to each
  * of its sections. The map of what is where in the file, built once at load. */
 /* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
@@ -706,24 +728,24 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
         (((h[0x05] | (uint32_t)h[0x04] << 8) << 8 | h[0x06]) << 8) | h[0x07];
     *(uint32_t *)(h + 0x08) =
         (((h[0x09] | (uint32_t)h[0x08] << 8) << 8 | h[0x0A]) << 8) | h[0x0B];
+    t = h[0x0C]; u = h[0x0F]; h[0x0F] = t; h[0x0C] = u;
     p0C = h + 0x0C;
-    t = *p0C; u = h[0x0F]; h[0x0F] = t; *p0C = u;
     t = h[0x0D]; u = h[0x0E]; h[0x0E] = t; h[0x0D] = u;
     *(uint32_t *)(h + 0x10) =
         (((h[0x11] | (uint32_t)h[0x10] << 8) << 8 | h[0x12]) << 8) | h[0x13];
+    t = h[0x14]; u = h[0x17]; h[0x17] = t; h[0x14] = u;
     p14 = h + 0x14;
-    t = *p14; u = h[0x17]; h[0x17] = t; *p14 = u;
     t = h[0x15]; u = h[0x16]; h[0x16] = t; h[0x15] = u;
     *(uint32_t *)(h + 0x18) =
         (((h[0x19] | (uint32_t)h[0x18] << 8) << 8 | h[0x1A]) << 8) | h[0x1B];
+    t = h[0x1C]; u = h[0x1F]; h[0x1F] = t; h[0x1C] = u;
     p1C = h + 0x1C;
-    t = *p1C; u = h[0x1F]; h[0x1F] = t; *p1C = u;
     t = h[0x1D]; u = h[0x1E]; h[0x1E] = t; h[0x1D] = u;
+    t = h[0x20]; u = h[0x23]; h[0x23] = t; h[0x20] = u;
     p20 = h + 0x20;
-    t = *p20; u = h[0x23]; h[0x23] = t; *p20 = u;
     t = h[0x21]; u = h[0x22]; h[0x22] = t; h[0x21] = u;
+    t = h[0x24]; u = h[0x27]; h[0x27] = t; h[0x24] = u;
     p24 = h + 0x24;
-    t = *p24; u = h[0x27]; h[0x27] = t; *p24 = u;
     t = h[0x25]; u = h[0x26]; h[0x26] = t; h[0x25] = u;
     t = h[0x28]; u = h[0x2B]; h[0x2B] = t; h[0x28] = u;
     t = h[0x29]; u = h[0x2A]; h[0x2A] = t; h[0x29] = u;
@@ -743,34 +765,34 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
         t = q[1]; u = q[2]; q[2] = t; q[1] = u;
         q += 4;
     }
+    t = h[0x50]; u = h[0x53]; h[0x53] = t; h[0x50] = u;
     p50 = h + 0x50;
-    t = *p50; u = h[0x53]; h[0x53] = t; *p50 = u;
     t = h[0x51]; u = h[0x52]; h[0x52] = t; h[0x51] = u;
+    t = h[0x54]; u = h[0x57]; h[0x57] = t; h[0x54] = u;
     p54 = h + 0x54;
-    t = *p54; u = h[0x57]; h[0x57] = t; *p54 = u;
     t = h[0x55]; u = h[0x56]; h[0x56] = t; h[0x55] = u;
+    t = h[0x58]; u = h[0x5B]; h[0x5B] = t; h[0x58] = u;
     p58 = h + 0x58;
-    t = *p58; u = h[0x5B]; h[0x5B] = t; *p58 = u;
     t = h[0x59]; u = h[0x5A]; h[0x5A] = t; h[0x59] = u;
+    t = h[0x5C]; u = h[0x5F]; h[0x5F] = t; h[0x5C] = u;
     p5C = h + 0x5C;
-    t = *p5C; u = h[0x5F]; h[0x5F] = t; *p5C = u;
     t = h[0x5D]; u = h[0x5E]; h[0x5E] = t; h[0x5D] = u;
+    t = h[0x60]; u = h[0x63]; h[0x63] = t; h[0x60] = u;
     p60 = h + 0x60;
-    t = *p60; u = h[0x63]; h[0x63] = t; *p60 = u;
     t = h[0x61]; u = h[0x62]; h[0x62] = t; h[0x61] = u;
     *(uint32_t *)(h + 0x64) =
         (((h[0x65] | (uint32_t)h[0x64] << 8) << 8 | h[0x66]) << 8) | h[0x67];
+    t = h[0x68]; u = h[0x6B]; h[0x6B] = t; h[0x68] = u;
     p68 = h + 0x68;
-    t = *p68; u = h[0x6B]; h[0x6B] = t; *p68 = u;
     t = h[0x69]; u = h[0x6A]; h[0x6A] = t; h[0x69] = u;
+    t = h[0x6C]; u = h[0x6F]; h[0x6F] = t; h[0x6C] = u;
     p6C = h + 0x6C;
-    t = *p6C; u = h[0x6F]; h[0x6F] = t; *p6C = u;
     t = h[0x6D]; u = h[0x6E]; h[0x6E] = t; h[0x6D] = u;
+    t = h[0x70]; u = h[0x73]; h[0x73] = t; h[0x70] = u;
     p70 = h + 0x70;
-    t = *p70; u = h[0x73]; h[0x73] = t; *p70 = u;
     t = h[0x71]; u = h[0x72]; h[0x72] = t; h[0x71] = u;
+    t = h[0x74]; u = h[0x77]; h[0x77] = t; h[0x74] = u;
     p74 = h + 0x74;
-    t = *p74; u = h[0x77]; h[0x77] = t; *p74 = u;
     t = h[0x75]; u = h[0x76]; h[0x76] = t; h[0x75] = u;
     p78 = h + 0x78;
     t = h[0x78]; u = h[0x7B]; h[0x7B] = t; *p78 = u;
@@ -778,19 +800,19 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     *(uint32_t *)(h + 0x7C) =
         (((h[0x7D] | (uint32_t)h[0x7C] << 8) << 8 | h[0x7E]) << 8) | h[0x7F];
     /* +0x80 untouched -- the one skipped dword. */
+    t = h[0x84]; u = h[0x87]; h[0x87] = t; h[0x84] = u;
     p84 = h + 0x84;
-    t = *p84; u = h[0x87]; h[0x87] = t; *p84 = u;
     t = h[0x85]; u = h[0x86]; h[0x86] = t; h[0x85] = u;
     *(uint32_t *)(h + 0x88) =
         (((h[0x89] | (uint32_t)h[0x88] << 8) << 8 | h[0x8A]) << 8) | h[0x8B];
+    t = h[0x8C]; u = h[0x8F]; h[0x8F] = t; h[0x8C] = u;
     p8C = h + 0x8C;
-    t = *p8C; u = h[0x8F]; h[0x8F] = t; *p8C = u;
     t = h[0x8D]; u = h[0x8E]; h[0x8E] = t; h[0x8D] = u;
+    t = h[0x90]; u = h[0x93]; h[0x93] = t; h[0x90] = u;
     p90 = h + 0x90;
-    t = *p90; u = h[0x93]; h[0x93] = t; *p90 = u;
     t = h[0x91]; u = h[0x92]; h[0x92] = t; h[0x91] = u;
+    t = h[0x94]; u = h[0x97]; h[0x97] = t; h[0x94] = u;
     p94 = h + 0x94;
-    t = *p94; u = h[0x97]; h[0x97] = t; *p94 = u;
     t = h[0x95]; u = h[0x96]; h[0x96] = t; h[0x95] = u;
     q = h + 0x98;
     for (i = 10; i > 0; --i) {
