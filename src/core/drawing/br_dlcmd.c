@@ -528,7 +528,13 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * So the next pass is: copy build/probe/tri2_indexform_KEEP.c to a new
  * src/core/drawing/br_dltri2.c, move this tag to it, and work the four
  * regions.  Do NOT re-try the pointer form and do NOT put it in this file. */
-/* @implements 0x1001FA30 glide BrDlCmdTri2 */
+/* 2026-09-09: the TAG moved to src/core/drawing/br_dltri2.c (index form,
+ * macros duplicated), as this note prescribes.  THE POINTER BODY BELOW IS
+ * KEPT ON PURPOSE, untagged, under its own name: removing or renaming it
+ * takes 0x10020900 BrDlCmdTri1NoZ from byte-exact to 31 diffs and
+ * 0x10020D70 from 57 to 465 (measured 2026-09-09) -- the surrounding TU,
+ * symbol names included, decides those functions' codegen.  Dead code in
+ * every build; the port arm is the #else below. */
 #ifdef BR_MATCHING_BUILD
 const uint8_t *BrDlCmdTri2(const uint8_t *p)
 {
