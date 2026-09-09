@@ -73,6 +73,15 @@ void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
  * another at a given position. The blitter behind the front end's sprites. */
 /* @t4-pass 0x10001320 1 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10001320 2 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10001320 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 206/206 insns 85/85 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10001320 glide BrUiSprBlit */
 void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
                  const int *pRect, int flags)
