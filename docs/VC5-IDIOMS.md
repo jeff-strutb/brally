@@ -7255,3 +7255,15 @@ group `(char *)&DAT_X + idx` by index expression; two or more symbols on one
 index are re-spelled from the lowest; both `idx + disp` and `disp + idx`
 orders are tried.  Whenever a residue is a load moved across stores to
 "different" globals, check whether they are one record first.
+
+---
+
+## A call result used in the next call's argument: name it, or the constant args hoist above the call
+
+`fseek(fp, ftell(fp) - 128, SEEK_SET)` written inline emits `push 0` (the
+SEEK_SET) BEFORE the ftell call and the offset as `sub eax,0x80` (5 B).  The
+original (0x10055D40, C++ lane) has `push 0` AFTER the call and `add
+eax,-0x80` (3 B).  The source fact is a named local: `n = ftell(fp);
+fseek(fp, n - 128, SEEK_SET);`.  With the statement boundary the constant
+push cannot sink above the call, and VC5 then folds `n - 128` to the imm8
+add.  Corpus had no proven `add r,-0x80` site before this one (2026-09-09).
