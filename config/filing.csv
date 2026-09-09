@@ -761,6 +761,7 @@ glide_va,name,module,basis,file
 0x10062830,BrRaceDifficultyApply,racing,filed,src/core/racing/br_racestart.c
 0x10062850,BrRaceEntrantCountSet,racing,filed,src/core/racing/br_racestart.c
 0x10062870,BrEntSlotsReset,racing,filed,src/core/racing/br_racestart.c
+0x100628B0,BrGlRaceStart,racing,filed,src/core/racing/br_racestart.c
 0x10062AC0,BrCtrlCfgBoot,controls,description,src/core/controls/br_ctrlboot.c
 0x10062AD0,BrCtrlCfgInitGlobal,settings,description,src/core/settings/br_ctrlcfg.c
 0x10062AE0,BrAtexit_10069A70,startup,filed,src/core/startup/br_objlife.c
