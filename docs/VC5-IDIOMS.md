@@ -7481,3 +7481,25 @@ facts, each one sweep:
   exit body, a comma-expression return in the arm (all inline or direct).
 - Byte offsets into a table Ghidra prints as `&DAT_x + i * 0x10` need a
   `char` base: an `unsigned int` base scales the index (`shl 2` + `*4`).
+
+---
+
+## /Od trampolines are labels on gotos written after the last statement -- and this is the `if (1) goto` entry of 0x1002E376
+
+0x1002E376 BrRleEncode (579 B, /Od, src/core/drawing/br_texblit.c) is the
+"once more binary-wide" trampoline the BrAnimUpdate note in slice2_19.c lists
+as unreproduced: `mov eax,1 / test / je scan / jmp T` at +0x5C with T at +0x23D
+jumping back into the body. It is two ordinary statements: `if (1) goto
+again;` at the top (the `if (1)` is what emits the `mov eax,1; test; je`) and
+`again: goto newchan;` written AFTER the function's last statement. A direct
+`goto newchan` is one hop and 2 bytes short. Same mechanism as 0x1002D864's
+end-of-list exit above: under /Od a label carrying a bare `goto` compiles to
+a 2-byte `jmp` exactly where it sits in the source, so a trampoline parked
+after the epilogue's `jmp` is a `label: goto X;` after the return. The whole
+function's control flow is nested if/else with the channel-header block
+inline inside `if (pos >= srcLen)` (the `jl` over it), each block end a jump
+to the enclosing block's end (`jmp E587` -> `jmp E59F`), and the scan restart
+a `goto scan;` -- no while loop anywhere. Twelve locals as letters a..l in
+frame order landed on the first try (the same trick as 0x1002D864). The
+BrAnimUpdate `goto wrap_plain` wall (0x1003563A, d3d) should be re-probed
+with `wrap_plain_t: goto wrap_plain;` after its return.
