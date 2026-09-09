@@ -49,6 +49,42 @@ void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
     pA->z += pB->z;
 }
 
+/* WHAT IT DOES: the dot product -- how much two directions agree. Positive
+ * means roughly the same way, zero means at right angles, negative means
+ * opposing. The workhorse behind every angle and projection test in the
+ * game. */
+/* @implements 0x1003AC90 d3d BrVec3Dot */
+/* @n64 0x80224404 located */
+/* PRECISION CAVEAT (Dot only; the four componentwise helpers below are exact --
+ * one operation per store, one rounding, same as the original). Like
+ * BrVec3Length above, the original forms this sum on the x87 stack (53-bit,
+ * PC=2) and rounds once, summing y*y+z*z BEFORE x*x, whereas this body
+ * evaluates left-to-right in float and rounds at every step. A last-bit
+ * difference; recorded here rather than asserted equivalent, and left for an
+ * audited precision pass to settle alongside BrVec3DistSq / BrVec3Dist. */
+float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
+{
+    /* Term order is y, z, x: the original accumulates (y + z) + x, and
+     * writing it that way reproduces the whole x87 body.  The N64 twin
+     * (0x80224404) spells the sum z + (x + y) with the z-term as pB->z *
+     * pA->z; under VC5 every association and operand order of these three
+     * products is one canonical form (12 associations, 8 operand orders,
+     * locals for either side, casts, array indexing -- all probed 2026-09-09,
+     * all inert), so the PC spelling cannot be read back from the bytes.
+     *
+     * The last two bytes were the parameter registers (which pointer takes
+     * eax), and that is decided by FILE POSITION, not by the source: in its
+     * original place (after BrVec3Cross) the function is 37/39 B with the
+     * pointers swapped; placed after BrVec3AddTo, BrVec3DivBy or BrVec3Zero
+     * it is byte-exact (the latter two flip BrVec3Add to diff, so it lives
+     * after BrVec3AddTo).  Position sweep: every slot in the TU, 2026-09-09.
+     *
+     * DEVIATION (port target): float addition is not associative, so the
+     * y,z,x order can differ from x,y,z in the last bit. That sits with the
+     * audited precision pass still owed alongside BrVec3DistSq / BrVec3Dist. */
+    return pA->y * pB->y + pA->z * pB->z + pB->x * pA->x;
+}
+
 /* 0x10035C70  DESTINATION FIRST -- see the header. */
 /* WHAT IT DOES: copies a point or direction from one place to another. Note
  * the destination is the first argument, not the second. */
@@ -74,42 +110,6 @@ void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->x = x; pOut->y = y; pOut->z = z;
 }
 
-/* WHAT IT DOES: the dot product -- how much two directions agree. Positive
- * means roughly the same way, zero means at right angles, negative means
- * opposing. The workhorse behind every angle and projection test in the
- * game. */
-/* @implements 0x1003AC90 d3d BrVec3Dot */
-/* @n64 0x80224404 located */
-/* PRECISION CAVEAT (Dot only; the four componentwise helpers below are exact --
- * one operation per store, one rounding, same as the original). Like
- * BrVec3Length above, the original forms this sum on the x87 stack (53-bit,
- * PC=2) and rounds once, summing y*y+z*z BEFORE x*x, whereas this body
- * evaluates left-to-right in float and rounds at every step. A last-bit
- * difference; recorded here rather than asserted equivalent, and left for an
- * audited precision pass to settle alongside BrVec3DistSq / BrVec3Dist. */
-float BrVec3Dot(const BrVec3 *pA, const BrVec3 *pB)
-{
-    /* Term order is y, z, x deliberately: the original accumulates
-     * (y + z) + x, and writing it that way reproduces the whole x87 body
-     * instruction for instruction and brings the compiled size to the
-     * original's 37 bytes exactly.
-     *
-     * NOT YET MATCHING -- two bytes remain, and they are the parameter
-     * loads, not the arithmetic:
-     *     original   mov eax,[esp+4]   mov ecx,[esp+8]
-     *     ours       mov eax,[esp+8]   mov ecx,[esp+4]
-     * i.e. the compiler assigns the two pointers to the opposite registers.
-     * Since a dot product is symmetric this is pure register allocation, not
-     * a maths difference. Operand order within the products does NOT move it
-     * -- VC5 canonicalises commutative fmul operands, and all-pA-first,
-     * all-pB-first and mixed were each tried. This is the known "register
-     * load order" class, not something source order controls.
-     *
-     * DEVIATION (port target): float addition is not associative, so the
-     * y,z,x order can differ from x,y,z in the last bit. That sits with the
-     * audited precision pass still owed alongside BrVec3DistSq / BrVec3Dist. */
-    return pA->y * pB->y + pA->z * pB->z + pB->x * pA->x;
-}
 
 /* WHAT IT DOES: subtract one vector from another into a third. The usual way
  * to get the direction and distance FROM pB TO pA. */
@@ -121,7 +121,6 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
     pOut->y = pA->y - pB->y;
     pOut->z = pA->z - pB->z;
 }
-
 
 
 /* WHAT IT DOES: scale a vector by a number into a separate output, leaving
@@ -298,6 +297,7 @@ void BrVec3DivBy(BrVec3 *pV, float s)
     pV->z = (r3 = r) * pV->z;
 }
 
+
 /* 0.5f constant lives at 0x1008F638. */
 /* WHAT IT DOES: the point exactly halfway between two points. */
 /* @implements 0x1003B050 d3d BrVec3Midpoint */
@@ -332,6 +332,7 @@ void BrVec3Zero(BrVec3 *pV)
     pV->y = 0.0f;
     pV->x = 0.0f;
 }
+
 
 /* The original spills dx and dy to stack scratch and multiplies them back in,
  * which is just how MSVC scheduled the x87 stack; the arithmetic is a plain
