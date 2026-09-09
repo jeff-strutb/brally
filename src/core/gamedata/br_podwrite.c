@@ -230,6 +230,15 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
 #ifdef BR_MATCHING_BUILD
 /* @t4-pass 0x10008C80 1 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10008C80 2 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10008C80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 160/160 insns 48/48 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10008C80 glide BrPodWriteClose */
 void __fastcall BrPodWriteClose(void *pThis)
 {
