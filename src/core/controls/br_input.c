@@ -460,7 +460,7 @@ extern int32_t g_brEarMsg;         /* 0x104B1620 */
 extern int32_t g_br1021C770;
 extern void   *g_brhWnd;
 extern int32_t BrGet1021C788(void);
-extern void __stdcall BrSub100590D0(int32_t, void *, uint32_t, uint32_t, int32_t);
+extern int32_t __stdcall BrSub100590D0(int32_t, void *, uint32_t, uint32_t, int32_t);
 extern void __stdcall BrSub10035A30(void *, uint32_t, uint32_t, int32_t);
 extern void BrSub10002CF0(void);
 extern void BrSub10002580(void);
@@ -854,6 +854,119 @@ int BrInputPollPressed(void)
             return i;
     }
     return -1;
+}
+
+/* ================================================================== *
+ * 0x100590D0 -- hook A, the first refusal BrWndProc offers every message.
+ * __stdcall, five arguments (`ret 0x14`); the first is never read.
+ * ================================================================== */
+extern int32_t       DAT_10ac5b9c;
+extern unsigned char DAT_10ac66b0;
+extern unsigned char DAT_10ac66b3;
+extern unsigned char DAT_10ac66b5;
+extern unsigned char DAT_10ac66b8;
+extern int32_t g_BrAA33E0;    /* 0x10AC6740 */
+extern int32_t g_brAA33E4;    /* 0x10AC6744 */
+extern int32_t g_pBrAC61E0;   /* 0x10AC61E0 */
+extern void __stdcall BrSub10060750(void *hWnd);   /* 0x100597C0, callee-cleaned */
+
+__declspec(dllimport) int32_t __stdcall IsWindow(void *hWnd);
+__declspec(dllimport) void   *__stdcall GetActiveWindow(void);
+__declspec(dllimport) int32_t __stdcall IsIconic(void *hWnd);
+
+/* WHAT IT DOES: the menu system's look at each window message before the
+ * game's own handler. Keystrokes (WM_CHAR) are recorded as the pending menu
+ * key unless a modifier byte is held or the keyboard is locked out; the one
+ * menu command it knows (0x9C41) becomes key 0x1B; entering a menu or a
+ * size/move loop marks the game as paused; leaving one asks whether the
+ * window is still active and un-minimised and posts WM_USER to itself, and
+ * WM_USER / WM_ACTIVATE / WM_SYSCOMMAND re-run the layout refresh when there
+ * is a live screen. Returns 1 except after WM_SYSCOMMAND, where it returns
+ * what DefWindowProcA said. */
+/* PARKED T2, 123/123 insns, REGNORM 0+0, RAW 8+8 (2026-09-09): scratch
+ * registers only. The original loads 0x10AC61E0 into ecx at all three test
+ * sites (ours: eax, whose short `a1` encoding is the whole 2-byte size gap)
+ * and pushes WM_SYSCOMMAND's lParam/wParam from ecx/edx (ours: edx/eax); in
+ * the WM_CHAR arm it stores wParam through eax before the `mov eax,edi`
+ * return move (ours: ecx, with the move hoisted). Facts that DID land: the
+ * result is one local, 1 at the top, assigned by DefWindowProcA in the
+ * WM_SYSCOMMAND arm and returned ONCE after the switch (per-arm `return r`
+ * lets the front end fold it to `mov eax,1`); the refresh callee 0x100597C0
+ * is __stdcall (no `add esp,4` after any of its three calls).
+ * DEAD (12 compiles): `register` on r; `g = r` for the two 1-stores; uMsg
+ * instead of the 0x112 literal in the DefWindowProcA call; positive
+ * `if (g != 0) call` arms; a named `b = IsWindow()` local; a named local
+ * for the 0x10AC61E0 load at all three sites; the global typed as a pointer;
+ * a hWnd local; per-arm returns with `register` (worse, +29 B); placement at
+ * the top of the TU and at its end. */
+/* @t4-pass 0x100590D0 1 2026-09-09 probes 12 bytes 417 insns 123 regions 0 rows 8 census no  (hand) */
+/* @implements 0x100590D0 glide BrSub100590D0 */
+int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
+                                uint32_t wParam, int32_t lParam)
+{
+    int32_t r;
+    int32_t b;
+
+    r = 1;
+    switch (uMsg) {
+    case 6:
+        g_BrAA33E0 = (wParam == 0);
+        goto user;
+    case 0x102:
+        if (DAT_10ac5b9c != 0)
+            break;
+        if (DAT_10ac66b0 & 0x80)
+            break;
+        if (DAT_10ac66b8 & 0x80)
+            break;
+        if (DAT_10ac66b3 & 0x80)
+            break;
+        if (DAT_10ac66b5 & 0x80)
+            break;
+        g_brAA33E4 = wParam;
+        break;
+    case 0x111:
+        if ((uint16_t)wParam != 0x9C41u)
+            break;
+        g_brAA33E4 = 0x1B;
+        break;
+    case 0x112:
+        r = DefWindowProcA(hWnd, 0x112, wParam, lParam);
+        if (IsWindow(hWnd) == 0)
+            break;
+        if (g_pBrAC61E0 == 0)
+            break;
+        BrSub10060750(hWnd);
+        break;
+    case 0x211:
+    case 0x231:
+        g_BrAA33E0 = 1;
+        if (g_pBrAC61E0 == 0)
+            break;
+        BrSub10060750(hWnd);
+        break;
+    case 0x212:
+    case 0x232:
+        if (GetActiveWindow() == hWnd) {
+            b = IsIconic(hWnd);
+            g_BrAA33E0 = 0;
+            if (b == 0)
+                goto post;
+        }
+        g_BrAA33E0 = 1;
+    post:
+        PostMessageA(hWnd, 0x400, 0, 0);
+        break;
+    case 0x400:
+    user:
+        if (g_pBrAC61E0 == 0)
+            break;
+        BrSub10060750(hWnd);
+        break;
+    default:
+        break;
+    }
+    return r;
 }
 
 #endif /* BR_MATCHING_BUILD */
