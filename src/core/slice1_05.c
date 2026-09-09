@@ -104,6 +104,16 @@ void BrMat4Translate(BrMat4 *pM, float tx, float ty, float tz)
 /* WHAT IT DOES: points both halves of a pair of cursors at the same place,
  * which is how a buffer gets rewound to its start. What the buffer holds is not
  * established here. */
+/* @t4-pass 0x100182F0 1 2026-09-09 probes 12 bytes 15 insns 4 regions 1 rows 1 census yes  (hand, fn.py variants) */
+/* @t4-pass 0x100182F0 2 2026-09-09 probes 23 bytes 15 insns 4 regions 1 rows 1 census yes  (hand, fn.py variants) */
+/* @t3 0x100182F0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 15/18 insns 4/5 rows 1+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 1+0 classified rows, 1 masked region, 3 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1002B280 d3d BrCursorPairSet */
 #ifdef BR_MATCHING_BUILD
 void *g_brCursor575510;   /* 0x10575510 */
@@ -130,7 +140,17 @@ void BrCursorPairSet(void *pv)
      * BACK for the second store (`g2 = g1;`), in both orders -- VC5 forwards
      * the store and folds the load away.  Register-allocation class; the
      * `VARIABLE IDENTITY IS INERT` entry says VC5 splits live ranges itself,
-     * which is the same statement from the other side. */
+     * which is the same statement from the other side.
+     *
+     * DEAD 2026-09-09, all identical 15 B unless noted: returning pv (the
+     * return-value lever that broke 0x1006CDA0); one or both stores through
+     * an __inline helper, a pointer-taking helper, a helper returning pv;
+     * pointer-to-int conversion on either global or chained through one;
+     * an int-typed parameter; const/char-typed parameter; the globals as a
+     * 2-element struct array or one struct; extern-only declarations;
+     * volatile global (compile error); `*(&g)` stores; comma expression;
+     * a static or volatile temp (+2 / +11 B); every slot in the TU (13).
+     * Corpus MISS at +0x4 (len 7 and 12); no N64 twin. */
     g_brCursor575510 = pv;
     g_brCursor575518 = pv;
 }
