@@ -271,9 +271,42 @@ static void *BrPtrAt(const void *pv)
  * writes the module globals directly. */
 extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
 
+/* STATE 2026-09-09: 1647/1641 B (+6), 414/414 insns, register-blind 0+0,
+ * 10 masked regions / 1116 raw.  ONE residue, seen ten times: the original
+ * holds the `pFile + 0x8014` address CSE in ebx (2-byte `[ebx]` reads) and
+ * the inner swap-loop count-down in ebp; ours exchanges them, and every
+ * `[ebp]` read costs one disp8 byte (the whole +6).  The in-swap read
+ * interleave differences are the same allocation seen through the
+ * scheduler.
+ *
+ * DEAD (2026-09-09, 22 hand compiles + 241 crank candidates over two runs):
+ * declaration orders (j,i / p last / p first / ints first / i alone last /
+ * n first); the +0x8014 CSE as a NAMED pointer local pp14 at all its uses;
+ * the table pointer named at the call; the count named before or after the
+ * +0x8014 swap (sound placements; both cost reg 1+1 or nothing); inner and
+ * outer loops as count-downs; shared function-scope swap temps; the swap
+ * macro's store order flipped (worse); pFile as a parameter macro; the
+ * +0x8098/0x809C pair order; a q alias in the DL loop; the +0x8090 swap
+ * after the +0x8094 rebase; the descriptor index widened; crank's full
+ * mut/stmt/decl/comm/samebase list (filepos cannot compile this TU's
+ * dependencies).  ‼ crank's parked endpoint (build/ghidra_work/
+ * 0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND -- it reads the
+ * record count at +0x8010 BEFORE the BR_LD32BE that byte-swaps it, so its
+ * gain is not a transcription; do not land it.  Corpus: MISS at +0x19.
+ * Which of ebx/ebp a CSE and a counter take is not source-reachable here. */
+/* @t4-pass 0x10030770 1 2026-09-09 probes 12 bytes 1647 insns 414 regions 10 rows 0 census yes  (hand: decl orders, named CSE, loop shapes -- zero movement) */
+/* @t4-pass 0x10030770 2 2026-09-09 probes 10 bytes 1647 insns 414 regions 10 rows 0 census yes  (hand: count/table temps, macro forms, statement swaps -- zero movement; crank 241 candidates, sound endpoint unchanged) */
 /* WHAT IT DOES: rewrite every pointer inside a freshly loaded track file so
  * it points into memory rather than at the N64 addresses stored on disc.
  * Nothing in the file is usable until this has walked it. */
+/* @t3 0x10030770 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1647/1641 insns 414/414 rows 0+0 regions 10 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: one register exchange (the +0x8014 address CSE vs the inner
+ * loop counter, ebx/ebp swapped; +6 B of [ebp] disp8 encodings) seen
+ * through ten regions.  Multiset and count exact.  Dossier, dead lists and
+ * the crank-endpoint UNSOUND warning: the STATE block above; ledger lines
+ * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100370D0 d3d BrRcaFixup */
 void BrRcaFixup(void *pvFile)
 {
