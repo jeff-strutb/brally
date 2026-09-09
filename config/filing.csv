@@ -146,6 +146,7 @@ glide_va,name,module,basis,file
 0x10009FC0,BrCarVisibilityUpdate,drawing,filed,src/core/drawing/br_drawcar.c
 0x1000C9C0,BrNodeChainReset_1000F460,drawing,filed,src/core/drawing/br_textmode.c
 0x1000CB80,BrClearTables_1000F620,drawing,filed,src/core/drawing/br_textmode.c
+0x1000DC00,BrPolyClipTri,drawing,filed,src/core/drawing/br_polydist.c
 0x1000DEC0,BrPolyDistX,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DED0,BrGetFieldFloatSubC,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEE0,BrGetFieldFloat,drawing,neighbour,src/core/drawing/br_polydist.c
