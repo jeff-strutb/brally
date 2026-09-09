@@ -370,6 +370,7 @@ glide_va,name,module,basis,file
 0x1002C50E,BrDlBorderEmit,drawing,filed,src/core/drawing/br_dl.c
 0x1002CB3F,BrNop_1002CB3F,startup,prefix,src/core/startup/br_stubs.c
 0x1002CB44,BrNop_1002CB44,startup,prefix,src/core/startup/br_stubs.c
+0x1002CB49,BrTexAnimStep,drawing,filed,src/core/drawing/br_texanim.c
 0x1002CE31,BrPadFrameInit,controls,description,src/core/controls/br_pad.c
 0x1002CE5F,BrPadFrameBegin,controls,description,src/core/controls/br_pad.c
 0x1002CE9A,BrPadTranslateAll,controls,description,src/core/controls/br_pad.c
