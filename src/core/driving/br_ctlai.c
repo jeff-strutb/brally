@@ -40,10 +40,21 @@
  * what the original does.  (regnorm 23+33 -> 20+18, size -28 -> -4.)
  *
  * ------------------------------------------------------------------------
- * RESIDUE MAP  (2026-09-05, /O2, orig 3858 B / recomp 3854 B, -4;
- *               INSNS 1080 vs 1082, +2; RAW 45+43, REGNORM 20+18;
- *               44 divergence regions, NO lost-sync gap -- every byte of
- *               the function is compared.)
+ * RESIDUE MAP  (2026-09-09, /O2, orig 3858 B / recomp 3861 B, +3;
+ *               INSNS 1080 vs 1083, +3; RAW 36+33, REGNORM 18+15.
+ *               2026-09-09 closed two of R4's items: the first vTarget
+ *               copy (field-pointer scalar copy, byte-exact -- see the
+ *               comment at the site) and the ladder's induction shape
+ *               (named pointer for &g_aBrAiScanB[level], head byte-exact;
+ *               the +3 B / +3 insns against the 2026-09-05 state buy
+ *               RAW 45+43 -> 36+33 and are the still-open ladder TAIL:
+ *               ours `jge end`+`jmp top` and a `mov ecx,eax` old-value
+ *               copy where the original re-loads g_brAiScanN early into
+ *               ecx and recovers the old level with inc/store/dec, ending
+ *               `jl top`.  `g_brAiScanN > level++` does NOT flip the
+ *               evaluation order -- the ++ operand is evaluated first
+ *               either way (measured, identical rows).)
+ *               The 2026-09-05 baseline below is kept for the maps.
  *
  * Most of the 44 regions are stack-SLOT numbering, which costs diff bytes
  * but no size (every displacement is disp8 either way).  The scalar map is
@@ -80,15 +91,13 @@
  *      and `fstp st(0)` at the join and schedules `push edi` between them;
  *      we emit both at the end of each arm.  See the dead probes below.
  *
- *  R4  singletons, all operand-source only: the first `vTarget` copy loads
- *      .x through the full `[edx+eax*8+0x4c]` mode and leas afterwards
- *      (we lea first and load through `[eax]`); `offset = add + offset`
- *      before the fF48 store is `fst`/`fcomp`/`fld` in the original and
- *      `fcom`/`fst` in ours; the ladder keeps TWO induction registers
- *      (a byte offset plus a second pointer at &g_aBrAiScanB[level]) where
- *      we keep one and derive the other with `lea ebp,[edi-0xc]` -- same
- *      instruction count, same bytes; the ladder's back edge is `jl top`
- *      in the original and `jge end` + `jmp top` in ours.
+ *  R4  singletons, all operand-source only.  CLOSED 2026-09-09: the first
+ *      `vTarget` copy (field-pointer scalar copy, byte-exact) and the
+ *      ladder's two-induction head (named pB pointer, byte-exact).  STILL
+ *      OPEN: `offset = add + offset` before the fF48 store is
+ *      `fst`/`fcomp`/`fld` in the original and `fcom`/`fst` in ours; the
+ *      ladder's back edge (`jl top` vs our `jge end` + `jmp top`, with the
+ *      old-level copy vs inc/store/dec -- see the 2026-09-09 note above).
  *
  * DEAD PROBES -- DO NOT RE-RUN (all measured, all no-ops or worse):
  *   - `for (iDrv = 0; iDrv < g_brRaceNDriver; iDrv++)` instead of the
@@ -107,10 +116,18 @@
  *     `lat = curve;` once after the join, to force the shared store:
  *     identical output, the temp is folded away.  R3 is not reachable by
  *     naming the value.
- *   - tools/corpus.py find --from 0x1005D770 --at 0x8f --len 12: MISS.
- *     No solved function anywhere in the tree emits a run of 3+ of the
- *     first-copy instructions, so there is no proven spelling to copy and
- *     R4's first item needs source truth, not another permutation.
+ *   - tools/corpus.py find --from 0x1005D770 --at 0x8f --len 12: MISS --
+ *     but the MISS was an artefact of querying a 12-instruction run with
+ *     the interleaved stores in it.  The 2-instruction fold-then-lea shape
+ *     IS proven (0x10030710, 0x100140B0, 0x10017F80) and the field-pointer
+ *     spelling closed the site (2026-09-09).  Query short adjacencies with
+ *     a direct capstone scan before declaring a construct unproven.
+ *   - BR_AI_SIGN3 as zero-init + conditional overwrite (`(s)=0; if...`):
+ *     -15 B, +5 insns, rows 24+19 -- R1 is not that spelling.
+ *   - `} while (g_brAiScanN > level++)`: identical output to the
+ *     `level++ <` form; operand order does not move the N load.
+ *   - a `pB` recomputed from `level` inside the loop body: folds back
+ *     into the shared induction, identical output.
  * ------------------------------------------------------------------------
  */
 #include <stdint.h>
@@ -331,7 +348,18 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
         t = 20.0f - BrVec3Length(&pCar->vel) * -3.0f;
         idx = pCar->iPt;
         node = pCar->pNode;
-        vTarget = node.p->aPt[idx.v].centre;
+        /* THROUGH A FIELD POINTER, scalar by scalar: the C front end folds
+         * the first deref back into the full `[edx+eax*8+0x4c]` load and
+         * keeps the pointer for .y/.z, which is the original's shape (the
+         * BrInputPoll mouse idiom).  As a struct assignment VC5 leas first
+         * and reads all three through the pointer (+2 B); field-by-field
+         * with the full expression re-derives the address (+4 insns). */
+        {
+            const BrVec3 *pC = &node.p->aPt[idx.v].centre;
+            vTarget.x = pC->x;
+            vTarget.y = pC->y;
+            vTarget.z = pC->z;
+        }
         if (t > 80.0f)
             t = 80.0f;
         do {
@@ -474,10 +502,23 @@ ladder:
         /* 8. the throttle ladder */
         scale = 1.0f;
         if (g_brAiScanN > 0) {
+            /* TWO INDUCTIONS, and the second is a NAMED POINTER.  The
+             * original walks a byte offset for the three `level - 1` terms
+             * (strength-reduced from the indexing) AND a separate pointer
+             * register holding &g_aBrAiScanB[level], initialised with a
+             * `mov ebx, base+0xc` immediate.  Spelled as indexing,
+             * `g_aBrAiScanB[level]` folds into the SAME induction as the
+             * `level - 1` terms (one register, +0xc displacement); a
+             * pointer LOCAL keeps its own register -- the br_track.c
+             * "counter expression vs pointer local" rule.  A pB recomputed
+             * from `level` each pass folds away; the incremented form
+             * reproduces the head exactly (head byte-exact 2026-09-09). */
+            const BrVec3 *pB;
             level = 1;
+            pB = &g_aBrAiScanB[1];
             do {
                 BrVec3Sub(&vA, &g_aBrAiScanA[level - 1], &g_aBrAiScanB[level - 1]);
-                BrVec3Sub(&vB, &g_aBrAiScanB[level], &g_aBrAiScanB[level - 1]);
+                BrVec3Sub(&vB, pB, &g_aBrAiScanB[level - 1]);
                 BrVec3Cross(&vN, &vB, &vA);
                 BrVec3NormaliseGuard(&vN);
                 q = BrVec3Dot(&pCar->vel, &vN);
@@ -502,6 +543,7 @@ ladder:
                     scale = 1.3f;
                     break;
                 }
+                pB++;
             } while (level++ < g_brAiScanN);
         }
 
