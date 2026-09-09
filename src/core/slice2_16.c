@@ -1131,9 +1131,25 @@ int BrGbiSizeShift(int n)
  * working out for it the one thing it does not get told -- how many bytes
  * one row of the texture occupies, given the width rounded up to a power of
  * two and the pixel size. */
+/* @t3 0x10027F00 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 124/124 insns 52/52 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 2 masked regions;
+ * every row pairs under t3.py's canonical classes.  Effort: 4 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 /* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
+/* DEAD 2026-09-09 (all at 124 B RAW 6+6 REGNORM 0+0 -- a three-register
+ * role rotation esi/edi/ebx): named locals for a3, a5, the shift or the
+ * texels-per-word result; 8* on the left; pitch declared first; both
+ * declared then assigned; unsigned rounded; &31 on the shift (+3);
+ * dropping the intptr_t cast; every slot in the TU (51 of 64 compile).
+ * @t4-pass 0x10027F00 3 2026-09-09 probes 10 bytes 124 insns 52 regions 2 rows 0 census yes  (hand, fn.py variants)
+ * @t4-pass 0x10027F00 4 2026-09-09 probes 51 bytes 124 insns 52 regions 2 rows 0 census yes  (position sweep) */
 /* @implements 0x10027F00 glide BrGbiBlit */
 #ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
