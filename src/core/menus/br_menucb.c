@@ -1127,6 +1127,16 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
 /* WHAT IT DOES: show how many of something this stage still has left
  * (a count minus what the player has used), never below zero, as a
  * capitalised number. */
+/* @t4-pass 0x1003AB00 1 2026-09-09 probes 10 bytes 198 insns 74 regions 1 rows 3 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x1003AB00 2 2026-09-09 probes 48 bytes 198 insns 74 regions 1 rows 3 census yes  (position sweep) */
+/* @t3 0x1003AB00 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 198/200 insns 74/75 rows 2+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 2+1 classified rows, 1 masked region, 2 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100415A0 d3d BrMenuText15A0 */
 int32_t BrMenuText15A0(BrMenuItem *pItem)
 {
@@ -1164,7 +1174,12 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
      * subtract already set the flags.  Everything either side of it is
      * byte-identical, sizes included.  Tried and did NOT move it: the ternary
      * form `v = (v >= 0) ? v : 0`.  Do not spend a third attempt on this
-     * without a new idea -- it is scheduling, not shape. */
+     * without a new idea -- it is scheduling, not shape.
+     * DEAD 2026-09-09 (10 more, all identical): a tested copy local; an
+     * (int32_t) cast; 0 > v; empty-then else; non-compound sub; negation;
+     * braces; v-v and v^=v zero forms; `v != 0 && v < 0` gets test+jge
+     * but pays an extra je (+2 B) -- the pair is reachable, the guard is
+     * not; every slot in the TU; corpus MISS on sub/test/jge/xor. */
 
     BrItoa(v, sz, 10);
 
