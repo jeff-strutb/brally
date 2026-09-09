@@ -50,7 +50,10 @@ from match_diff import parse_coff_obj
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 BRANCH = re.compile(r'^(j[a-z]+|call|loop[a-z]*)$')
-def norm(i, relocd):
+def norm(i, relocd, tail_reloc=None):
+    """`relocd`: some byte of the instruction is a reloc.  `tail_reloc`: the
+    reloc sits in the LAST FOUR BYTES (the imm32 when the instruction has an
+    immediate operand, else the disp32).  None = unknown, old behaviour."""
     s = i.op_str
     # A rel8/rel32 target is a pure BYTE-OFFSET artefact: any earlier region
     # that changes size rotates every later target and floods the diff.  The
@@ -70,7 +73,16 @@ def norm(i, relocd):
         # prints `push 0` / `[R]` / `[R + 4]` where the linked original
         # prints an absolute 0x10xxxxxx.  Without this the two sides never
         # pair up and every reloc'd instruction shows as MISSING+EXTRA.
-        if 'A' not in s:
+        #
+        # 2026-09-09: `mov dword ptr [ebx + 0xffc], <reloc>` fell through the
+        # `'A' not in s` guard below -- the DISPLACEMENT had already become A,
+        # so the reloc'd immediate stayed `0` and the row paired with nothing
+        # (0x1005FF00: a phantom 1+1 that failed T3 gate A3 on identical
+        # bytes).  When the caller says the reloc is in the tail and the
+        # instruction has an immediate operand, that immediate IS the reloc.
+        if relocd and tail_reloc and re.search(r'(^|, )0$', s):
+            s = re.sub(r'(^|, )0$', r'\1A', s)
+        elif 'A' not in s:
             if re.fullmatch(r'0', s):
                 s = 'A'
             elif re.search(r',\s*0$', s):
@@ -97,7 +109,8 @@ def load(p, sym, lo=0, hi=None):
         if i.address < lo or (hi is not None and i.address >= hi):
             continue
         rd = any(o in rel for o in range(i.address, i.address + i.size))
-        c[norm(i, rd)] += 1
+        tail = rd and i.size >= 4 and (i.address + i.size - 4) in rel
+        c[norm(i, rd, tail)] += 1
         n += 1
     return c, n
 def _range(arg):
