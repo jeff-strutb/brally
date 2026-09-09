@@ -119,6 +119,14 @@ extern void BrRaceSettingsCommit(void);  /* 0x10058A30 */
  * labels.  Reports 1. */
 /* @t4-pass 0x1003B6D0 1 2026-09-07 probes 106 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1003B6D0 2 2026-09-07 probes 107 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x1003B6D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 671/671 insns 216/216 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is scheduling/relocation (11 masked diffs at +0x9f, RAW/REGNORM
+ * 0+0): a fold-order fork of the same shape as BrSaveResumeAutoSave below;
+ * every instruction is the original's.  Passes 1-2 (crank.py, ledger above)
+ * moved nothing at 671/216/1/0.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x1003B6D0 glide BrSaveBeginRallySeason */
 int BrSaveBeginRallySeason(int pList, int *pIdx)
 {
@@ -261,6 +269,17 @@ extern char s_AutoSave_brf_100acae8[];   /* "AutoSave.brf" */
  * insns); `if (fp == NULL) return;` instead of the nested block. */
 /* @t4-pass 0x1003B130 1 2026-09-07 probes 86 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1003B130 2 2026-09-07 probes 87 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x1003B130 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 536/536 insns 162/162 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is scheduling (7 masked diffs at +0x1d7, RAW/REGNORM 0+0): the
+ * original folds an import load before the `inc edx`/first store where this
+ * build stores the first dword before loading the second.  The identical tail
+ * is byte-exact in BrSaveBeginRallySeason above, so it is this function's
+ * context (void body nested under the fopen test), not the statement; the
+ * dead-probe list is in the RESIDUE comment above.  Passes 1-2 (crank.py,
+ * ledger above) moved nothing at 536/162/1/0.  Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003B130 glide BrSaveResumeAutoSave */
 void BrSaveResumeAutoSave(void)
 {
