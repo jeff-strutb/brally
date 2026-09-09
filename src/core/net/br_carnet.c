@@ -191,3 +191,80 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
     }
     return 0;
 }
+
+/* ==================================================================== */
+/* 2. Car record -> BrCarState (the sender's packer)                    */
+/* ==================================================================== */
+
+#ifdef BR_MATCHING_BUILD
+/* 0x10059820 (D3D 0x100607B0, shared body).  The port's BrCarRecordToState
+ * in slice8_83.c is the same function written for the host; this is the
+ * byte-exact one, and BrCarNetSendState above reaches it through the
+ * BrSub100607B0 name that slice3_40.h declares. */
+extern int   BrRacePosCopy(int pDst, int pSrc);   /* 0x10062610 */
+extern float DAT_1007776c;                        /* 1.0f            */
+extern float DAT_10077770;                        /* 0.0f            */
+extern float DAT_10077774;                        /* the lap-time sentinel */
+extern int32_t g_brLapBound;                      /* 0x100BCBE8 lap count  */
+
+/* Thirteen of the words are copied bit-for-bit by the original (`mov`, not
+ * `fld/fstp`): the state slot is written as a raw dword. */
+#define ST_RAW(p, fld)   (*(int32_t *)(void *)&(p)->fld)
+
+/* WHAT IT DOES: pack a car's live state into the forty-float record that
+ * goes on the wire: position and orientation from its matrix, the two
+ * velocities, six raw words copied bit-for-bit, four counters and five
+ * bytes widened to float, a flag bit and a sign test turned into 1.0/0.0,
+ * the lap time (or the sentinel on the final lap), and the eight damage
+ * bytes as floats. */
+/* @implements 0x10059820 glide BrCarRecordToState */
+void BrCarRecordToState(BrCarState *pDst, BrCar *pCar)
+{
+    int fNeg;
+
+    BrRacePosCopy((int)pDst, (int)CAR_AT(pCar, 0x220));
+
+    ST_RAW(pDst, f1C) = CAR_I32(pCar, 0x1E8);
+    ST_RAW(pDst, f20) = CAR_I32(pCar, 0x1EC);
+    ST_RAW(pDst, f24) = CAR_I32(pCar, 0x1F0);
+    ST_RAW(pDst, f28) = CAR_I32(pCar, 0x204);
+    ST_RAW(pDst, f2C) = CAR_I32(pCar, 0x208);
+    ST_RAW(pDst, f30) = CAR_I32(pCar, 0x20C);
+    ST_RAW(pDst, f34) = CAR_I32(pCar, 0x338);
+    ST_RAW(pDst, f38) = CAR_I32(pCar, 0x73C);
+    ST_RAW(pDst, f3C) = CAR_I32(pCar, 0x544);
+    ST_RAW(pDst, f40) = CAR_I32(pCar, 0x95C);
+    ST_RAW(pDst, f44) = CAR_I32(pCar, 0x750);
+    ST_RAW(pDst, f48) = CAR_I32(pCar, 0xB68);
+
+    pDst->f4C = (float)CAR_I32(pCar, 0x524);
+    pDst->f50 = (float)CAR_I32(pCar, 0x93C);
+    pDst->f54 = (float)CAR_I32(pCar, 0x730);
+    pDst->f58 = (float)CAR_I32(pCar, 0xB48);
+
+    pDst->f5C = (float)(int8_t)CAR_U8(pCar, 0x510);
+    pDst->f60 = (float)(int8_t)CAR_U8(pCar, 0x928);
+    pDst->f64 = (float)(int8_t)CAR_U8(pCar, 0x71C);
+    pDst->f68 = (float)(int8_t)CAR_U8(pCar, 0xB34);
+    pDst->f6C = (float)CAR_U8(pCar, 0x36D);
+
+    pDst->f70 = (*(uint32_t *)CAR_PTR(pCar, 0x29C0) & 0xC0000u)
+                    ? DAT_1007776c : DAT_10077770;
+
+    fNeg = CAR_F32(pCar, 0xE68) < DAT_10077770;
+    pDst->f74 = (float)fNeg;
+
+    pDst->f78 = (CAR_I32(pCar, 0xFA8) == g_brLapBound)
+                    ? DAT_10077774 : CAR_F32(pCar, 0xFF4);
+    ST_RAW(pDst, f7C) = CAR_I32(pCar, 0xE24);
+
+    pDst->f80 = (float)CAR_U8(pCar, 0x362);
+    pDst->f84 = (float)CAR_U8(pCar, 0x363);
+    pDst->f88 = (float)CAR_U8(pCar, 0x36C);
+    pDst->f8C = (float)CAR_U8(pCar, 0x366);
+    pDst->f90 = (float)CAR_U8(pCar, 0x367);
+    pDst->f94 = (float)CAR_U8(pCar, 0x368);
+    pDst->f98 = (float)CAR_U8(pCar, 0x369);
+    pDst->f9C = (float)CAR_U8(pCar, 0x36A);
+}
+#endif /* BR_MATCHING_BUILD */
