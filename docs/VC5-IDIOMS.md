@@ -7325,3 +7325,32 @@ old 2 bytes -- one named operand does not engage the rule; both assigned as
 statements before the `if`, 12 diffs (the loads move).  Operand order in the
 expression is inert (canonicalised).  Screen: a lone two-operand-destination
 swap between two CSE'd values is a declaration-order question, not a wall.
+
+---
+
+## Named pointers are symbols the scheduler reasons about; expressions of the parameter are not (three levers, one mechanism)
+
+0x10031B80 BrGlTrackHdrRead (1,549 B, src/core/slice2_20.c) went from 13
+masked regions to 4 on 2026-09-09 with size, count and multiset already
+exact, and every one of the three levers is the br_track.c
+"counter expression, not pointer local" rule seen from a different side:
+
+1. **A fixup pointer assigned BEFORE its swap, and used as the swap's first
+   byte, materialises the `lea` first and lets VC5 hoist the far byte's
+   load above the previous site's stores.**  The original loads the far
+   byte, forms the pointer, then reads through it: assign the pointer AFTER
+   the swap and do the swap through `h[]`.  13 -> 10 regions.
+2. **A byte-swap loop over a stepped pointer (`q[0]`, `q += 4`) reads the
+   pair in the wrong order and hoists across the previous pair's stores;
+   written as counter expressions (`h[0x40 + i * 4]`, `h[0x43 + i * 4]`) the
+   loads stay in program order** -- and VC5 still strength-reduces to the
+   original's induction pointer and count-down.  10 -> 8.
+3. **The `uint8_t *h = (uint8_t *)pvHdr` local itself is a symbol.**  With
+   `h` a macro over the parameter expression, four more big-endian load
+   sites fell into the original's order.  8 -> 4.  (Typing the parameter
+   `uint8_t *h` directly is byte-identical to the macro.)
+
+Dead across 55 compiles, so do not re-spell: every operand order, cast,
+temp, accumulator, halfword and store form of the big-endian compose; loop
+temps swapped, block-scoped, or re-declared; declaration order of anything.
+The four sites left are the scheduler's pick between two ready loads.
