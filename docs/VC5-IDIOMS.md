@@ -7503,3 +7503,20 @@ a `goto scan;` -- no while loop anywhere. Twelve locals as letters a..l in
 frame order landed on the first try (the same trick as 0x1002D864). The
 BrAnimUpdate `goto wrap_plain` wall (0x1003563A, d3d) should be re-probed
 with `wrap_plain_t: goto wrap_plain;` after its return.
+
+## An inline helper RETURNING the updated global costs the accumulator byte -- read the global back instead
+
+Four option cyclers (0x1003C310/0x1003C370/0x1003C3D0/0x1003C1D0, 93-99 B)
+sat one byte long with REGNORM 0+0 for a whole session: through
+`v = helper(&g, max)` (helper returns `*pv`) the counter lands in ecx at the
+tail (`8b 0d` 6-byte load) and `mov eax,1` hoists above the table read; the
+original loads the counter into EAX (`a1` 5-byte moffs form) and materialises
+the return constant AFTER the indexed read.  Naming the result, naming the
+element, `(void)`-calling the helper and re-reading the global, and a
+`return r` local were ALL inert (6 probes).  The corpus answered it
+(`find --at 0x45 --len 5`): four byte-exact twins spell the whole cycle ON
+THE GLOBAL, no helper, no locals -- `g = g + 1; if (g > max) g = 0;` ... then
+`dst = table[g]; return 1;`.  All four fell byte-exact on the next compile.
+The 211 B sibling 0x1003C6D0 keeps the helper: inlining it there is +1 B and
+7+5 raw (its residue is the documented eax/ecx pairing, separate wall).
+Proven 2026-09-09.
