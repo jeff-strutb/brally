@@ -7541,3 +7541,24 @@ Two more /Od facts from the same function: operand order inside an address
 matters (`DESC + 8 + k*0xc` computes DESC first, `DESC + k*0xc + 8` computes
 the product first -- copy Ghidra's textual order); and `(x != 1) ? 0x200 :
 0x20` IS the `sub 1; neg; sbb; and 0x1e0; add 0x20` sequence under /Od.
+
+---
+
+## Loop guards keep the comparison literal; max-scan compares are value-first; a countdown counter that shadows the bound is its own variable
+
+0x100314D0 BrGlTrackFixupAll (398 B, /O2, src/core/startup/br_track.c),
+byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
+
+- `if (1 <= n)` emits `cmp eax,1; jl` -- the source literal survives.
+  `if (0 < n)` emits `test eax,eax; jge` instead, same truth table, different
+  bytes. Same class as BrNetBeaconTick's `>= 27` (not `> 26`): spell the
+  guard with the constant the original compares against.
+- A running-maximum update emitting `cmp val,max; jle` comes from the VALUE
+  on the left: `if (*p > iMax) iMax = *p;`. `if (iMax < *p)` flips the cmp
+  operands (`jge`). The byte-exact sibling BrTrackSetF08FromMax
+  (0x10031660) already spelled it value-first; copy the sibling.
+- An orig `mov edx,eax` copying a loop bound into the register that then
+  counts down (`dec edx; jne`) while the bound also feeds an address
+  (`lea ecx,[ecx+eax*2]`) means the SOURCE has two variables: the bound and
+  a separate counter initialised from it inside the guard. Ghidra folds
+  them into one and drops the mov.
