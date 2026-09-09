@@ -270,6 +270,15 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
 /* @t3 0x10011FA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 4500/4500 insns 1376/1376 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 5 zero-movement 4 5
+ * Two regions, both scheduler/allocator picks between equal operands: the
+ * loop-top lea for pV scheduled above the trace call's constant pushes
+ * (original: below), and the +0xaf two-address add destination
+ * (`add edx,eax` vs `add eax,edx`, both operands dead after).  The full
+ * dead lists live in this header (sites 1, 1-old, 2 and the shadow).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t3 0x10011FA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 4500/4500 insns 1376/1376 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
  * Residue, two shapes, both register/schedule: the +0xaf two-operand add
  * destination (both operands dead after; the width's second use blocks the
  * named-operands lever that closed 0x1005FF00) and the loop-top lea for
