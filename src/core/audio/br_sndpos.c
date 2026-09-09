@@ -311,3 +311,135 @@ void BrSndNearestOfferTrack(int32_t f8C, const BrVec3 *pPos,
     if (f84 != -1)
         BrSndNearestOffer(f8C, f84, f9C, f98, pPos, pListener);
 }
+
+/* =====================================================================
+ * 5.  The per-frame commit: 0x10060F40 (D3D 0x10067ED0, shared body)
+ * ===================================================================== */
+
+#ifdef BR_MATCHING_BUILD
+#define BR_K_00779E4   9.09090886125341e-05f   /* 1/11000, the Hz->ratio scale */
+#define BR_K_00779E8   4294967296.0            /* 2^32, double: the 32.32 shift */
+
+extern int32_t   DAT_100b2f04;                 /* g_brRaceNCar               */
+extern uint8_t  *DAT_10af2108;                 /* the race's owner object    */
+extern int32_t   DAT_10af2180;                 /* car[0]'s "gone" word, stride 0x2B68 */
+extern int32_t   DAT_106e86c8;                 /* view 0's car index         */
+extern int32_t   DAT_106e8720;                 /* view 1's car index         */
+extern int32_t   DAT_100aa044;                 /* g_brCViews                 */
+extern int64_t   DAT_118eef90;                 /* the nearest voice's 32.32 ratio */
+extern int32_t   DAT_118eef98;
+extern uint32_t  DAT_118eef9c;                 /* packed L/R gains, 16.16    */
+/* The set table, 24-byte rows: the original addresses each field from its
+ * OWN symbol (`[eax+0x100B32C0]` etc.), so three externs, not one base. */
+extern int32_t   DAT_100b32b0[];
+extern int32_t   DAT_100b32bc[];
+extern int32_t   DAT_100b32c0[];
+extern int BrSfxSrcPlaySilent(int, int, int, int);   /* 0x1006E560 */
+
+/* WHAT IT DOES: once a frame, act on whoever won the nearest-sound contest.
+ * Nothing happens with no cars, with the race owner flagged, or while a
+ * previous voice is still ramping.  A withdrawn winner clears the voice; a
+ * winner that changed only fades the gains by half; the same winner as last
+ * frame is re-voiced: Doppler against the listener (the sign of the base
+ * frequency picks which pair of positions is compared), pan and volume from
+ * the listener matrix, the set's silent-start the first time round, and --
+ * unless the viewed cars are gone -- the 32.32 pitch ratio and the packed
+ * stereo gains, halved on the first frame.  The commit then rolls the
+ * candidate into the committed slots. */
+/* PARKED T2 2026-09-09 at 687/683 B, 174/174 insns, register-blind 0+0.
+ * The whole residue is ONE colouring choice: the original keeps its zero
+ * in esi and the low gain's truncation in edi, and adds the shifted high
+ * gain INTO its own register (`add eax,edi`, then `mov ecx,[0x118EEF9C]`
+ * is loaded before the shift); ours swaps the two callee-saved registers
+ * and adds into the low gain's (`add esi,eax`).  The extra 4 bytes are the
+ * lost `mov eax,[abs]` short encodings.  Three levers DID land here and
+ * are the reusable part: the pan call is written INSIDE each Doppler arm
+ * with the flag as a literal; the set table is three per-field externs
+ * (DAT_100b32b0/bc/c0) indexed by f84*6, not one base symbol; and the
+ * listener row copy is three scalar assignments.
+ * Dead probes (fn.py, all inert): shifted term left/right of the add;
+ * named lo/hi temps in either order; `* 0x10000` instead of `<< 16` in
+ * either order; the halving as a ternary; the halving as two stores. */
+/* @implements 0x10060F40 glide BrSndNearestCommit */
+void BrSndNearestCommit(void)
+{
+    int32_t vol;
+    float   ratio;
+    float   gainB;
+    float   gainA;
+    int32_t packed;
+
+    if (DAT_100b2f04 == 0)
+        return;
+    if (DAT_10af2108[0x68] & 1)
+        return;
+
+    if (g_BrSndAA3470 != -1) {
+        if (DAT_118eef90 != 0)
+            return;
+        g_BrSndAA3470     = -1;
+        g_BrSndNearest.f90 = -1;
+        g_BrSndNearest.fA0 = 0;
+    }
+
+    if (g_BrSndNearest.f8C == -1) {
+        DAT_118eef9c = 0;
+        DAT_118eef98 = 0;
+        DAT_118eef90 = 0;
+    } else if (g_BrSndNearest.f8C == g_BrSndNearest.f90 &&
+               g_BrSndNearest.pObj == g_BrSndNearest.pObjPrev) {
+        /* `fcomp 0.0f` + `test ah,1`: C0, so a NaN base frequency takes the
+         * negative arm as well. */
+        if (!(g_BrSndNearest.f98 >= 0.0f)) {
+            ratio = -(BrSndDoppler(&g_BrSndNearest.pos, &g_BrSndNearest.pos,
+                                   (const BrVec3 *)(const void *)&g_BrSndNearest.pObj->m[3][0],
+                                   &g_BrSndNearest.objPosPrev)
+                      * g_BrSndNearest.f98);
+            BrSndPan(&g_BrSndNearest.pos, g_BrSndNearest.pObj,
+                     &gainA, &gainB, &vol, 1);
+        } else {
+            ratio = BrSndDoppler(&g_BrSndNearest.pos, &g_BrSndNearest.posPrev,
+                                 (const BrVec3 *)(const void *)&g_BrSndNearest.pObj->m[3][0],
+                                 &g_BrSndNearest.objPosPrev)
+                    * g_BrSndNearest.f98;
+            BrSndPan(&g_BrSndNearest.pos, g_BrSndNearest.pObj,
+                     &gainA, &gainB, &vol, 0);
+        }
+        vol = (vol * g_BrSndNearest.f9C) >> 8;
+
+        if (g_BrSndNearest.fA0 == 0) {
+            g_BrSndNearest.fA0 = 1;
+            BrSfxSrcPlaySilent(3, DAT_100b32b0[g_BrSndNearest.f84 * 6],
+                               DAT_100b32bc[g_BrSndNearest.f84 * 6],
+                               DAT_100b32c0[g_BrSndNearest.f84 * 6]);
+        }
+
+        if (*(int32_t *)((char *)&DAT_10af2180 + DAT_106e86c8 * 0x2B68) == 0 &&
+            (DAT_100aa044 == 1 ||
+             *(int32_t *)((char *)&DAT_10af2180 + DAT_106e8720 * 0x2B68) == 0)) {
+            DAT_118eef90 = (int64_t)(ratio * BR_K_00779E4 * BR_K_00779E8);
+            packed = ((int32_t)(gainA * (float)vol) << 16)
+                   + (int32_t)(gainB * (float)vol);
+            if (DAT_118eef9c == 0)
+                packed = (packed >> 1) & 0x7FFF7FFF;
+            DAT_118eef9c = packed;
+        }
+
+        /* pos -> posPrev is a struct copy (three loads, then three stores);
+         * the listener row is copied SCALAR BY SCALAR (load/store pairs off
+         * `[ecx+0x30]`, `+0x34`, `+0x38` -- a struct copy through a pointer
+         * costs an extra `lea`). */
+        g_BrSndNearest.posPrev      = g_BrSndNearest.pos;
+        g_BrSndNearest.objPosPrev.x = g_BrSndNearest.pObj->m[3][0];
+        g_BrSndNearest.objPosPrev.y = g_BrSndNearest.pObj->m[3][1];
+        g_BrSndNearest.objPosPrev.z = g_BrSndNearest.pObj->m[3][2];
+    } else {
+        g_BrSndNearest.fA0 = 0;
+        DAT_118eef9c = (DAT_118eef9c >> 1) & 0x7FFF7FFFu;
+    }
+
+    g_BrSndNearest.f88      = g_BrSndNearest.f84;
+    g_BrSndNearest.pObjPrev = g_BrSndNearest.pObj;
+    g_BrSndNearest.f90      = g_BrSndNearest.f8C;
+}
+#endif /* BR_MATCHING_BUILD */
