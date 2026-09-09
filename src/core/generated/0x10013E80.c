@@ -75,6 +75,15 @@ extern BrRbCar g_aBrRbCar[5];       /* 0x10396F48 */
  * by a done flag so it only ever runs once. */
 /* @t4-pass 0x10013E80 1 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10013E80 2 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10013E80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 128/128 insns 30/30 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 2 masked regions;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10013E80 glide BrRaceBeginResetOnce */
 void BrRaceBeginResetOnce(void)
 {
