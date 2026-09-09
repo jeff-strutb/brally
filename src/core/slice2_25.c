@@ -739,6 +739,23 @@ int BrOptCycleBD3E0(void)
 /* WHAT IT DOES: steps another settings row on and announces the new choice
  * by name. Note the caption is looked up by the VALUE the row now holds,
  * not by the row's position. Which setting this is was not established. */
+/* DEAD 2026-09-09 (all at 212 B RAW 5+5 REGNORM 0+0, the documented
+ * index-eax/gate-ecx pairing): declaration order; a blank line; index
+ * casts; unsigned v; store order; helper result discarded and re-read;
+ * a gate ternary; a named element; if (pGate); sprintf arg parens;
+ * inlining the cycle body (+1, 7+5 -- keep the helper); every slot in
+ * the TU (39 of 45 compile).
+ * @t4-pass 0x1003C6D0 1 2026-09-09 probes 11 bytes 212 insns 63 regions 2 rows 0 census yes  (hand, fn.py variants incl. helper inline)
+ * @t4-pass 0x1003C6D0 2 2026-09-09 probes 39 bytes 212 insns 63 regions 2 rows 0 census yes  (position sweep) */
+/* @t3 0x1003C6D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 212/211 insns 63/63 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 2 masked regions, -1 B short on encoding;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10043180 d3d BrOptCycleAA2A00 */
 int BrOptCycleAA2A00(void)
 {
