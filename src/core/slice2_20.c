@@ -671,42 +671,50 @@ extern void BrGlFixupAt(uint8_t *p);
  * fixup site) handed to the fixup helper at the tail in list order.
  *
  * STATE 2026-09-09: 1549/1549 B, 495/495 insns, register-blind 0+0,
- * 10 masked regions / 126 raw diff bytes (was 13 / 231).  Everything left
- * is ordering inside a site:
- *   - EIGHT big-endian dword loads past the first: the original loads the
- *     low half of the pair before the high half (`mov cl,[esi+5]` then
- *     `mov ch,[esi+4]`), ours the reverse.  The first site, right after
- *     the read call, matches with the same spelling -- so it is the
- *     scheduler's slot filling, not the expression.
- *   - the TWO swap loops (+0x40 x4, +0x98 x10): the original reads q[0]
- *     then q[3]; ours reads q[3] first.  Swapping the STORES in source
- *     gives the original's load order but swaps which temp gets bl/dl
- *     (RAW 4+4); declaration order does not flip that back.
+ * 4 masked regions / 16 raw diff bytes (was 13 / 231 at the start of the
+ * day).  Everything left is ONE shape at four big-endian dword loads
+ * (+0x64, +0x7C, +0x88, +0x160): the original loads the low half of the
+ * pair before the high half (`mov dl,[esi+0x65]` then `mov dh,[esi+0x64]`),
+ * ours the reverse.  The other five sites match with the SAME spelling,
+ * so it is the scheduler's slot filling, not the expression.
  *
- * THE LEVER THAT PAID (2026-09-09, 13 -> 10 regions): the fixup pointer is
- * assigned AFTER its dword's swap, and the swap reads/writes the bytes
- * through `h[]`.  With `pXX = h + 0xXX` BEFORE the swap and `*pXX` as the
- * first byte, VC5 materialises the `lea` first and hoists the far byte's
- * load above the previous site's stores; the original loads the far byte,
- * then forms the pointer, then reads through it (a named pointer is a
- * distinct symbol it schedules around -- see the br_track.c idiom).  The
- * p78 site had always read its first byte via h[] and matched.
+ * THREE LEVERS PAID (2026-09-09), each a source fact, none a spelling:
+ *   1. 13 -> 10 regions: the fixup pointer is assigned AFTER its dword's
+ *      swap and the swap reads/writes through h[].  With `pXX = h + 0xXX`
+ *      before the swap and `*pXX` as the first byte, VC5 materialises the
+ *      `lea` first and hoists the far byte's load above the previous
+ *      site's stores; the original loads the far byte, forms the pointer,
+ *      reads through it.
+ *   2. 10 -> 8 regions: the two swap loops (+0x40 x4, +0x98 x10) are
+ *      COUNTER EXPRESSIONS, `h[0x40 + i * 4]`, not a stepped `q` pointer
+ *      -- the br_track.c idiom (a named pointer is a distinct symbol the
+ *      scheduler reasons about; a counter expression keeps program order).
+ *      VC5 still strength-reduces to the original's induction pointer and
+ *      count-down.
+ *   3. 8 -> 4 regions: NO `uint8_t *h` local at all -- `h` is a macro
+ *      over the parameter, `((uint8_t *)pvHdr)`.  Same mechanism one level
+ *      up: the pointer local was a symbol; the parameter expression is not.
  *
- * DEAD (2026-09-03 + 2026-09-09, 29 compiles), all at these numbers unless
- * said -- VC5 canonicalises the compose before scheduling, do NOT re-spell:
- *   BE loads: `|` operand order; dropping the `(uint32_t)` cast; the
+ * DEAD (2026-09-03 + 2026-09-09, 55 compiles), all at the numbers of the
+ * day unless said -- VC5 canonicalises the compose before scheduling:
+ *   BE loads: `|` operand order; dropping or doubling the casts; the
  *   four-statement accumulator (high-first AND low-first); a halfword
- *   intermediate `(uint16_t)(b1 | b0 << 8)` inline and as a local; a flat
- *   OR of four shifted bytes; the low byte through the byte temp `t`;
- *   `+`/`*256` (WORSE: +62 B, +24 insns).
+ *   intermediate inline and as a local; a flat OR of four shifted bytes;
+ *   the low byte through `t`; both pair bytes through `t`/`u` in either
+ *   order; the compose into a `uint32_t` local then stored; the store
+ *   through a `uint32_t *` local (186); `*(uint32_t *)&h[X]`;
+ *   `+`/`*256` (WORSE: +62 B, +24 insns); the +0x160 site re-spelled
+ *   like the rest.
  *   Pointer sites: far byte first with the lea before or between the
  *   loads (219 / 231); stores swapped (455, RAW 56+56); first byte via
  *   h[] with the pointer still first (+4 B); pointer after the SECOND pair
- *   (= 126).
+ *   (= 126); the p78 site re-spelled like the other eighteen (inert).
  *   Loops: far byte first alone (inert, VC5 swaps it back); stores
  *   swapped (109, RAW 4+4 -- temps' registers exchanged); + declaration
- *   order `u, t` (same).
- *   `int` temps instead of `uint8_t`: +236 B, +124 insns. */
+ *   order `u, t`, + block-scoped fresh temps (same); count-up with the
+ *   pointer bump (126); far byte via a second pointer (122).
+ *   Declarations: pointer list after `i`; `register` on h; `unsigned` i;
+ *   `q` dropped (all inert).  `int` temps: +236 B, +124 insns. */
 /* WHAT IT DOES: read a track file's header and fill in the pointers to each
  * of its sections. The map of what is where in the file, built once at load. */
 /* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
@@ -714,7 +722,7 @@ extern void BrGlFixupAt(uint8_t *p);
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
-    uint8_t *h = (uint8_t *)pvHdr;
+#define h ((uint8_t *)pvHdr)
     uint8_t *p0C, *p14, *p1C, *p20, *p24, *p50, *p54, *p58, *p5C, *p60, *p68, *p6C, *p70, *p74, *p78, *p84, *p8C, *p90, *p94;
     uint8_t *q;
     uint8_t  t, u;
@@ -759,11 +767,9 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     t = h[0x39]; u = h[0x3A]; h[0x3A] = t; h[0x39] = u;
     t = h[0x3C]; u = h[0x3F]; h[0x3F] = t; h[0x3C] = u;
     t = h[0x3D]; u = h[0x3E]; h[0x3E] = t; h[0x3D] = u;
-    q = h + 0x40;
-    for (i = 4; i > 0; --i) {
-        t = q[0]; u = q[3]; q[3] = t; q[0] = u;
-        t = q[1]; u = q[2]; q[2] = t; q[1] = u;
-        q += 4;
+    for (i = 0; i < 4; ++i) {
+        t = h[0x40 + i * 4]; u = h[0x43 + i * 4]; h[0x43 + i * 4] = t; h[0x40 + i * 4] = u;
+        t = h[0x41 + i * 4]; u = h[0x42 + i * 4]; h[0x42 + i * 4] = t; h[0x41 + i * 4] = u;
     }
     t = h[0x50]; u = h[0x53]; h[0x53] = t; h[0x50] = u;
     p50 = h + 0x50;
@@ -814,19 +820,17 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     t = h[0x94]; u = h[0x97]; h[0x97] = t; h[0x94] = u;
     p94 = h + 0x94;
     t = h[0x95]; u = h[0x96]; h[0x96] = t; h[0x95] = u;
-    q = h + 0x98;
-    for (i = 10; i > 0; --i) {
-        t = q[0x00]; u = q[0x03]; q[0x03] = t; q[0x00] = u;
-        t = q[0x01]; u = q[0x02]; q[0x02] = t; q[0x01] = u;
-        t = q[0x04]; u = q[0x07]; q[0x07] = t; q[0x04] = u;
-        t = q[0x05]; u = q[0x06]; q[0x06] = t; q[0x05] = u;
-        t = q[0x08]; u = q[0x0B]; q[0x0B] = t; q[0x08] = u;
-        t = q[0x09]; u = q[0x0A]; q[0x0A] = t; q[0x09] = u;
-        t = q[0x0C]; u = q[0x0F]; q[0x0F] = t; q[0x0C] = u;
-        t = q[0x0D]; u = q[0x0E]; q[0x0E] = t; q[0x0D] = u;
-        t = q[0x10]; u = q[0x13]; q[0x13] = t; q[0x10] = u;
-        t = q[0x11]; u = q[0x12]; q[0x12] = t; q[0x11] = u;
-        q += 0x14;
+    for (i = 0; i < 10; ++i) {
+        t = h[0x98 + i * 0x14]; u = h[0x9B + i * 0x14]; h[0x9B + i * 0x14] = t; h[0x98 + i * 0x14] = u;
+        t = h[0x99 + i * 0x14]; u = h[0x9A + i * 0x14]; h[0x9A + i * 0x14] = t; h[0x99 + i * 0x14] = u;
+        t = h[0x9C + i * 0x14]; u = h[0x9F + i * 0x14]; h[0x9F + i * 0x14] = t; h[0x9C + i * 0x14] = u;
+        t = h[0x9D + i * 0x14]; u = h[0x9E + i * 0x14]; h[0x9E + i * 0x14] = t; h[0x9D + i * 0x14] = u;
+        t = h[0xA0 + i * 0x14]; u = h[0xA3 + i * 0x14]; h[0xA3 + i * 0x14] = t; h[0xA0 + i * 0x14] = u;
+        t = h[0xA1 + i * 0x14]; u = h[0xA2 + i * 0x14]; h[0xA2 + i * 0x14] = t; h[0xA1 + i * 0x14] = u;
+        t = h[0xA4 + i * 0x14]; u = h[0xA7 + i * 0x14]; h[0xA7 + i * 0x14] = t; h[0xA4 + i * 0x14] = u;
+        t = h[0xA5 + i * 0x14]; u = h[0xA6 + i * 0x14]; h[0xA6 + i * 0x14] = t; h[0xA5 + i * 0x14] = u;
+        t = h[0xA8 + i * 0x14]; u = h[0xAB + i * 0x14]; h[0xAB + i * 0x14] = t; h[0xA8 + i * 0x14] = u;
+        t = h[0xA9 + i * 0x14]; u = h[0xAA + i * 0x14]; h[0xAA + i * 0x14] = t; h[0xA9 + i * 0x14] = u;
     }
     *(uint32_t *)(h + 0x160) =
         ((((uint32_t)h[0x160] << 8 | h[0x161]) << 8 | h[0x162]) << 8) | h[0x163];
@@ -850,6 +854,7 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     BrGlFixupAt(p90);
     BrGlFixupAt(p94);
 }
+#undef h
 #endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
