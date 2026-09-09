@@ -9,9 +9,24 @@
  * INSTRUCTION-FOR-INSTRUCTION exact at 2,538 bytes / 720 instructions,
  * and 2,536 of those bytes are identical to the original.
  *
- * ================= RESIDUE, 2 BYTES -- DO NOT RE-RUN THESE ================
+ * ============ CLOSED 2026-09-09: BYTE-EXACT, 2538/2538, 0 diffs ============
  *
- * The whole remainder is ONE instruction pair at orig+0x197:
+ * The 2-byte residue below fell to the pairwise DECLARATION-ORDER tie-break
+ * (docs/VC5-IDIOMS.md, first seen on 0x100250D0's imul): name BOTH add
+ * operands -- `(nGates = g_brRaceNGate)` inside the modulus and
+ * `(gate = pDrv->f4C) < 0` in the conjunction, then `gate + nGates` -- and
+ * declare `gate` BEFORE `nGates`.  The later-declared symbol is the
+ * two-operand destination.  Measured (11 compiles, one lever): with the
+ * count's temp declared after the field's temp, in the middle or at the
+ * END of the list, or the two existing names swapped: BYTE-EXACT (4 of 4);
+ * the count's temp declared BEFORE the field's: the old 2 bytes; naming
+ * only the count (three spellings incl. `+=`): the old 2 bytes; both
+ * assigned as statements before the `if`: 12 diffs (the loads move).
+ * The dead list below is kept as history; none of it named both operands.
+ *
+ * -------- the residue as it stood 2026-09-07 (history) --------
+ *
+ * The whole remainder was ONE instruction pair at orig+0x197:
  *
  *     orig    add ecx, eax      /  mov dword ptr [ebp+0x4c], ecx
  *     ours    add eax, ecx      /  mov dword ptr [ebp+0x4c], eax
@@ -318,7 +333,11 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
 {
     BrDriverCar *pCar;
     BrDriverCar *pc;
-    int32_t      nGates, gate, q, iCur, iNext, iMode, iBest, i;
+    /* `gate` BEFORE `nGates`: for `gate + nGates` VC5 makes the LATER-
+     * declared symbol the two-operand add's DESTINATION (the pairwise
+     * declaration-order tie-break, docs/VC5-IDIOMS.md), and the original's
+     * destination at 0x10060097 is the gate-count register. */
+    int32_t      gate, nGates, q, iCur, iNext, iMode, iBest, i;
     float        tLap, dGap, vScale, fRatio;
     const char  *pszMsg;
     short        iWeather;
@@ -380,10 +399,13 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
                        && pDrv->f4C < 0);
 
         /* ONE conjunction, which is what the line above prints: the two
-         * `jne`/`jge` go to the same target. */
-        if (iCur == pDrv->f48 % g_brRaceNGate      /* 0x10060089 */
-            && pDrv->f4C < 0) {                    /* 0x10060090 */
-            pDrv->f4C = pDrv->f4C + g_brRaceNGate;
+         * `jne`/`jge` go to the same target.  Both add operands are NAMED
+         * (the count re-read here, as at 0x1005FF8E): unnamed, VC5 keeps
+         * the field's register as the add destination; named, the later-
+         * declared `nGates` is the destination, which is the original. */
+        if (iCur == pDrv->f48 % (nGates = g_brRaceNGate)   /* 0x10060089 */
+            && (gate = pDrv->f4C) < 0) {                   /* 0x10060090 */
+            pDrv->f4C = gate + nGates;                     /* 0x10060097 */
             pDrv->f44 += 1;
             if (g_pBrRaceLapRec != NULL)           /* 0x100600A0 */
                 pDrv->f50 += g_pBrRaceLapRec->fLapLength;
