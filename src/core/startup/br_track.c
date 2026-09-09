@@ -189,6 +189,106 @@ int BrTrackSwapAllVec3(int param_1)
   return;
 }
 
+/* WHAT IT DOES: byte-swap the track header's command directory: the count
+ * at +0x224, then every 12-byte record from +0x164 by its kind byte (+8).
+ * Kinds 0-2 swap both dwords; 3, 6, 7 swap the first only; kind 4 swaps and
+ * rebases the first as a pointer, swaps the second as a vertex count and
+ * byte-swaps that many Vec3s at the pointer; kind 5 does the same with the
+ * LAST kind-4 count (it has none of its own). Anything above 7 is left alone.
+ * The port body is BrTrackFixupCmds in slice2_20.c. */
+/* @implements 0x10032190 glide BrGlTrackFixupCmds */
+
+int BrGlTrackFixupCmds(int param_1)
+
+{
+  char t;
+  char u;
+  int nVerts;
+  int nCmds;
+  int i;
+  int k;
+  int pVtx;
+
+#define REC(k) (*(char *)(param_1 + 0x164 + i * 0xc + (k)))
+#define RECU(k) (*(unsigned char *)(param_1 + 0x164 + i * 0xc + (k)))
+#define RECD(k) (*(int *)(param_1 + 0x164 + i * 0xc + (k)))
+  /* Every record field is an expression of the counter (the REC macros),
+   * not a pointer local: with a `p = base + i*12` local VC5 proves the byte
+   * accesses disjoint and hoists each pair's loads above the previous pair's
+   * stores (and `pVtx = *p` above the count store); as counter expressions
+   * it keeps program order, which is the original's (82 -> 4 diff bytes).
+   * nVerts = 0 is written AFTER the count compose so the parameter takes
+   * ebx and nVerts ebp with a lazy push (`mov ebp,0`, flags kept); the
+   * count is stored then read back (`mov ebp,eax` after the store). */
+  nCmds = (((*(unsigned char *)(param_1 + 0x225)
+             | (unsigned int)*(unsigned char *)(param_1 + 0x224) << 8) << 8
+            | *(unsigned char *)(param_1 + 0x226)) << 8)
+          | *(unsigned char *)(param_1 + 0x227);
+  *(int *)(param_1 + 0x224) = nCmds;
+  nVerts = 0;
+  i = 0;
+  if (0 < nCmds) {
+    do {
+      switch (REC(8)) {
+      case 0:
+      case 1:
+      case 2:
+        t = REC(0); u = REC(3); REC(3) = t; REC(0) = u;
+        t = REC(1); u = REC(2); REC(2) = t; REC(1) = u;
+        t = REC(4); u = REC(7); REC(7) = t; REC(4) = u;
+        t = REC(5); u = REC(6); REC(6) = t; REC(5) = u;
+        break;
+      case 4:
+        t = REC(0); u = REC(3); REC(3) = t; REC(0) = u;
+        t = REC(1); u = REC(2); REC(2) = t; REC(1) = u;
+        BrSegPtrFixup((uint32_t *)&RECD(0));
+        RECD(4) = (((RECU(5) | (unsigned int)RECU(4) << 8) << 8 | RECU(6)) << 8) | RECU(7);
+        nVerts = RECD(4);
+        pVtx = RECD(0);
+        if (0 < nVerts) {
+          k = nVerts;
+          do {
+            BrSwapVec3(pVtx);
+            pVtx = pVtx + 0xc;
+            k = k - 1;
+          } while (k != 0);
+        }
+        break;
+      case 5:
+        t = REC(0); u = REC(3); REC(3) = t; REC(0) = u;
+        t = REC(1); u = REC(2); REC(2) = t; REC(1) = u;
+        BrSegPtrFixup((uint32_t *)&RECD(0));
+        pVtx = RECD(0);
+        if (0 < nVerts) {
+          k = nVerts;
+          do {
+            BrSwapVec3(pVtx);
+            pVtx = pVtx + 0xc;
+            k = k - 1;
+          } while (k != 0);
+        }
+        break;
+      case 3:
+      case 6:
+      case 7:
+        /* The leading pair is a HALFWORD compose here (`mov ah,[0]; mov
+         * al,[1]` in that order); the plain Horner chain used by the other
+         * two composes loads al first at this site (4 diff bytes). Dead at
+         * this site: `|` operand order, a temp, a 4-statement accumulator,
+         * `+`/`*256`, an explicit default arm. */
+        RECD(0) = (((unsigned int)(unsigned short)(RECU(1) | RECU(0) << 8) << 8 | RECU(2)) << 8)
+                  | RECU(3);
+        break;
+      }
+      i = i + 1;
+    } while (i < *(int *)(param_1 + 0x224));
+  }
+#undef REC
+#undef RECU
+#undef RECD
+  return;
+}
+
 extern int DAT_11778808;
 extern int DAT_11778820;
 extern int DAT_11773690;
