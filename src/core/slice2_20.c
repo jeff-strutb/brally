@@ -719,6 +719,21 @@ extern void BrGlFixupAt(uint8_t *p);
  * of its sections. The map of what is where in the file, built once at load. */
 /* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10031B80 2 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10031B80 3 2026-09-09 probes 29 bytes 1549 insns 495 regions 10 rows 0 census yes  (hand: corpus MISS at +0x464/+0x4f0/+0x2e4/+0x319; pointer-site, BE-pair and loop mechanism sweep -- lever 1 landed) */
+/* @t4-pass 0x10031B80 4 2026-09-09 probes 18 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: counter-expression loops + parameter-expression h -- levers 2 and 3 landed) */
+/* @t4-pass 0x10031B80 5 2026-09-09 probes 17 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: the four BE-pair sites, casts/temps/accumulators/store forms/declaration order -- zero movement) */
+/* @t4-pass 0x10031B80 6 2026-09-09 probes 10 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: parameter typing, fresh temps, statement moves around the four sites, k-loop -- zero movement) */
+/* @t3 0x10031B80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1549/1549 insns 495/495 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 6 zero-movement 5 6
+ * Residue: ONE scheduling shape at four of the nine big-endian dword loads
+ * (+0x64, +0x7C, +0x88, +0x160) -- the original loads the pair's low byte
+ * before its high byte, ours the reverse; the other five sites match with
+ * the same spelling, so the expression is not the lever.  Size, count,
+ * multiset and the corpus (no witness for the construct) all agree.
+ * Dossier, three landed levers and the 55-compile dead list: the comment
+ * block above; ledger lines 3-6 above.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {
