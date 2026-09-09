@@ -1088,6 +1088,22 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * gives zero. */
 /* @t4-pass 0x10027290 1 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027290 2 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
+/* DEAD 2026-09-09: branchy-tail respellings (returns adjacent/reversed,
+ * r=8-first, r initialised at declaration, ternary, reversed compare, a
+ * copy local for the whole chain, unsigned param with per-site casts, K&R
+ * declaration) -- the setg lowering (-2 B) or n in ecx (+1 B) every time;
+ * every slot in the TU (51 of 64 compile).
+ * @t4-pass 0x10027290 3 2026-09-09 probes 10 bytes 97 insns 34 regions 1 rows 0 census yes  (hand, fn.py variants)
+ * @t4-pass 0x10027290 4 2026-09-09 probes 51 bytes 97 insns 34 regions 1 rows 0 census yes  (position sweep) */
+/* @t3 0x10027290 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 97/96 insns 34/34 rows 0+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region, -1 B short on encoding;
+ * every row pairs under t3.py's canonical classes.  Effort: 4 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
