@@ -340,6 +340,7 @@ glide_va,name,module,basis,file
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
 0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/scene/br_entity.c
+0x10029FE0,BrMat4Perspective7,,,src/core/slice4_50.c
 0x1002A490,FUN_1002a490,drawing,neighbour-1,src/core/drawing/br_light.c
 0x1002A4D0,BrLightDirsFromLookAt,drawing,description,src/core/drawing/br_light.c
 0x1002A7A0,BrMat4Scale,geometry,filed,src/core/geometry/br_mat.c
@@ -431,6 +432,7 @@ glide_va,name,module,basis,file
 0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
 0x10031030,FUN_10031030,drawing,filed,src/core/drawing/br_texlevels.c
 0x10031140,BrTrackLoadHandling,startup,neighbour,src/core/generated/0x10031140.c
+0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/startup/br_track.c
 0x10031910,BrTrackFixupSegList,startup,filed,src/core/startup/br_track.c
@@ -787,6 +789,7 @@ glide_va,name,module,basis,file
 0x10063A00,BrReplayReset,racing,description,src/core/racing/br_replay.c
 0x10063A40,BrSet_1006AA90,racing,filed,src/core/racing/br_replayon.c
 0x10063A50,BrReplayIsOn,racing,filed,src/core/racing/br_replayon.c
+0x10063AD0,BrReplayAdvance,racing,neighbour,src/core/slice3_42.c
 0x10063B40,BrReplayGetBuf,racing,description,src/core/racing/br_replayon.c
 0x10063B50,BrReplayGetSize,racing,description,src/core/racing/br_replay.c
 0x10063B60,BrReplayRewind,racing,description,src/core/racing/br_replay.c
@@ -969,4 +972,3 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
-0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
