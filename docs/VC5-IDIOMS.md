@@ -7414,3 +7414,31 @@ zero register, ONE `mov dword ptr [A], 0` immediate is a FLOAT zero
 (`_DAT_` in Ghidra, the underscore marking the overlapped type) -- declare it
 `float` and store `0.0f`; the integer zero register is never used for it.
 Byte-exact on the next compile (2026-09-09).
+
+## A `mov eax,ecx` at the top of a thiscall body is the RETURN VALUE, not a colouring choice
+
+0x1006CDA0 BrBitStreamInit (29 B): the original copies `this` to eax first
+and does every store through eax; VC5 kept `this` in ecx and zeroed through
+eax (8 differing rows, RAW 0+0).  Named nBytes, a dummy edx, typedef order
+and casts were all inert.  `return pBs;` -- the function returns `this`, as a
+C++ constructor or an `Init` returning `*this` would -- reproduces the copy
+and every store exactly; the residue drops to the one hoisted stack-argument
+load (4 rows).  Screen: a thiscall/fastcall body whose first instruction is
+`mov eax,ecx` with eax live to `ret` is returning its object.  Proven
+2026-09-09.
+
+## Which of two pointer parameters takes eax in an x87 leaf is FILE POSITION
+
+0x10034310 BrVec3Dot (39 B): every spelling axis was inert -- 12 sum
+associations, 8 per-product operand orders, locals for either side, casts,
+array indexing, a double accumulator, redundant left/right parens -- all one
+canonical form (37/39 B, RAW 2+3) in the function's original slot after
+BrVec3Cross.  Moving the SAME text through the TU: byte-exact after
+BrVec3AddTo, BrVec3DivBy or BrVec3Zero (3 of 23 slots), 37 B elsewhere; the
+two DivBy/Zero slots flip BrVec3Add match->diff, AddTo regresses nothing.
+Companion to the 0x10023CB0 END-of-TU note above: sweep every slot, not
+just the ends, and re-read every row of the TU after the move.  The N64 twin
+(0x80224404) spells the sum `pB->z*pA->z + (pA->x*pB->x + pA->y*pB->y)`;
+under VC5 that and `y*y + z*z + x*x` are the same bytes.  Position was
+inert on 0x1006CDA0 (22 slots), 0x1002F640 (3) and 0x100182F0 (13) the same
+day, so it is a lever to sweep, not a rule.  Proven 2026-09-09.
