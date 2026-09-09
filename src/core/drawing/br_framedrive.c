@@ -290,8 +290,14 @@ void BrFrameDraw(int iSlot)
     }
 
     for (i = 0; i < g_brCViews; i++) {
-        BrPodNop(0, 0, 0, 0, 0xff);
+        /* pV BEFORE the trace call: assigned after it (any spelling, see
+         * the site-1 dead list) VC5 folds the first read into
+         * `[ebp+eax*8+0x10]`; assigned before, the call clobbers the
+         * scratch that held 11*i, the read is re-derived through esi and
+         * matches.  This is what closed site 1 (2026-09-09, probe X7):
+         * 4501 -> 4500 B, regnorm 1+1 -> 0+0. */
         pV = &aViews[i];
+        BrPodNop(0, 0, 0, 0, 0xff);
         DAT_106e9d88 = pCars + pV->iCar * BR_CAR_STRIDE;
         DAT_106ed520 = CAR_PCAM(DAT_106e9d88);
         g_brIView = i;
