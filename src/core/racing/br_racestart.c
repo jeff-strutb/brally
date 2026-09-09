@@ -437,4 +437,108 @@ void BrEntSlotsReset(void)
   } while ((int)a < (int)&DAT_10b1c888);
 }
 
+/* 0x100628B0 -- the state-3 race start, transcribed. Its port body is
+ * BrRaceStart above; this is the original's shape. */
+extern int DAT_100a9360;
+extern int DAT_10226a44;
+extern int DAT_105ccb80;
+extern int DAT_10af2094;
+extern int DAT_100b2f04;
+extern int DAT_100b3858;
+extern int DAT_104abb20;
+extern float DAT_104abb24;
+extern int DAT_105bc8d8;
+extern int DAT_10226e80;
+extern int DAT_1007b320;
+extern int DAT_1007b324;
+extern int DAT_1007b328;
+extern int DAT_1007b32c;
+extern char DAT_10b25798;
+extern char s_sizeof_UltraCarHeader___d_100b3884[];
+extern char s_sizeof_Vehicle___d_100b3870[];
+extern char s_sizeof_Enemy___d_100b385c[];
+extern void FUN_100703a0(void);
+extern void FUN_1002dec3(void);
+extern void BrNop_1002E334(void);
+extern void BrNop_1002E2E3(void);
+extern void BrNop_1002E136(void);
+extern void BrRaceStep_10019A70(void);
+int BrCursorPairSet();
+int FUN_10062850();   /* BrRaceEntrantCountSet, one argument in the original */
+int BrPodNop();
+char BrSaveLoad();
+extern void BrUiVolumeApply(void);
+extern int BrSelLookup(void);
+extern void BrNop_1002E32F(void);
+
+/* WHAT IT DOES: the last thing state 3 does before the race runs. Copies
+ * the two pending race words in, runs the per-race resets, sets the tick
+ * flag for mode 4, blanks three equipment slots for modes 1 and 6, installs
+ * the null step then the real race step, resets the car/entrant counts and
+ * the weather, spins the two save-load phases until each reports done,
+ * applies the volume, picks the selection for mode 0, copies the four
+ * configured car options into the equipment record and reports three
+ * structure sizes to the (empty) trace hook. */
+/* @implements 0x100628B0 glide BrGlRaceStart */
+
+void BrGlRaceStart(void)
+
+{
+  g_brRace6EC760 = g_brRaceB71A68;
+  g_brRace6E9A34 = g_brRaceB71A6C;
+  FUN_100703a0();
+  DAT_10226a44 = (unsigned int)(DAT_100a9360 == 4);
+  g_brRace18EEED8 = 0;
+  DAT_105ccb80 = 0;
+  FUN_1002dec3();
+  BrNop_1002E334();
+  BrNop_1002E2E3();
+  BrEntSlotsReset();
+  BrNop_1002E136();
+  BrCursorPairSet(0);
+  if ((DAT_100a9360 == 1) || (DAT_100a9360 == 6)) {
+    *(unsigned short *)(DAT_10af2094 + 0xf2) = 0xffff;
+    *(unsigned short *)(DAT_10af2094 + 0xf0) = 0xffff;
+    *(unsigned short *)(DAT_10af2094 + 0xf4) = 0xffff;
+  }
+  FUN_10062850(1);
+  BrGameStepSet(BrPodNop);
+  g_brRace6ED6DC = 0;
+  g_brRaceB71288 = 0;
+  DAT_100b2f04 = 2;
+  DAT_100b3858 = 1;
+  g_brCarPhysWeather = 1;
+  DAT_104abb20 = 0;
+  DAT_104abb24 = 0.0f;
+  BrGameStepSet(BrRaceStep_10019A70);
+  DAT_105bc8d8 = 8;
+  BrRaceSub1002F6C0();
+  BrPodNop();
+  while (BrSaveLoad(0,1) == 0) {
+  }
+  BrRaceSub1002F6C0();
+  BrPodNop();
+  while (BrSaveLoad(2,1) == 0) {
+  }
+  BrUiVolumeApply();
+  if (DAT_100a9360 == 0) {
+    BrSelLookup();
+    DAT_100b3858 = 1;
+  }
+  else if (DAT_100a9360 == 2) {
+    DAT_100b3858 = 1;
+  }
+  g_brCarPhysWeather = DAT_10226e80;
+  *(int *)(DAT_10af2094 + 0xf8) = DAT_1007b320;
+  *(int *)(DAT_10af2094 + 0xfc) = DAT_1007b324;
+  *(int *)(DAT_10af2094 + 0x104) = DAT_1007b328;
+  *(int *)(DAT_10af2094 + 0x100) = DAT_1007b32c;
+  BrPodNop(0x80025c00,&DAT_10b25798);
+  BrPodNop(s_sizeof_UltraCarHeader___d_100b3884,0x15f88);
+  BrPodNop(s_sizeof_Vehicle___d_100b3870,0x2b68);
+  BrPodNop(s_sizeof_Enemy___d_100b385c,0x80);
+  BrNop_1002E32F();
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
