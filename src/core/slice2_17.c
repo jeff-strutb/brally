@@ -807,10 +807,6 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
 /* ================================================================== */
 
 /* 0x1002FB20 */
-/* WHAT IT DOES: draws the trackside scenery -- the objects standing around the
- * course. It sets the lighting up from a fixed overhead direction, configures
- * how the objects are shaded and depth-tested, and then walks the list drawing
- * each one. */
 /* RESIDUE (12 masked diffs, T3a, instruction count and body length exact --
  * the +8 the scorer reports is trailing alignment nops). Two sites, one
  * cause: where the reloaded `pList` lives. The original homes it in the
@@ -839,6 +835,10 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
 /* @t4-pass 0x1001D1B0 1 2026-09-09 probes 9 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: item/count/test spellings; thin, not counted) */
 /* @t4-pass 0x1001D1B0 2 2026-09-09 probes 12 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: scope, widths, declaration order -- zero movement) */
 /* @t4-pass 0x1001D1B0 3 2026-09-09 probes 11 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: loop and test shapes, locals -- zero movement) */
+/* WHAT IT DOES: draws the trackside scenery -- the objects standing around the
+ * course. It sets the lighting up from a fixed overhead direction, configures
+ * how the objects are shaded and depth-tested, and then walks the list drawing
+ * each one. */
 /* @t3 0x1001D1B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1768/1768 insns 431/431 rows 1+1 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 2 3
