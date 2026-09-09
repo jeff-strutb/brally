@@ -83,23 +83,45 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * network packets and the game's own files. Note the buffer length is put
  * into the write position, so a freshly initialised stream is set up to be
  * read from the start and appended to at the end. */
+/* @t4-pass 0x1006CDA0 1 2026-09-09 probes 9 bytes 29 insns 10 regions 1 rows 0 census no  (hand, fn.py variants) */
+/* @t4-pass 0x1006CDA0 2 2026-09-09 probes 10 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
+/* @t4-pass 0x1006CDA0 3 2026-09-09 probes 22 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
+/* @t3 0x1006CDA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 29/29 insns 10/10 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 2 3
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
+ * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
 #ifdef BR_MATCHING_BUILD
 /* thiscall, two stack args.  Both extra arguments are structs so neither
- * claims edx.  Size-exact (29) but register-walled: original copies this
- * to eax and zeroes via ecx; VC5 keeps this in ecx and zeroes via eax, and
- * loads pBuf before nBytes.  Two attempts (named nBytes, dummy edx) did
- * not move it. */
+ * claims edx.  The original RETURNS this: `mov eax,ecx` at the top and every
+ * store through eax is the return value being formed, not a register
+ * choice -- `return pBs` reproduces it (2026-09-09; a C++ constructor or an
+ * Init that returns *this).  Size-exact (29); what is left is which stack
+ * argument VC5 hoists into edx at the top: the original loads nBytes
+ * ([esp+8]) first, VC5 loads pBuf ([esp+4]) first, 4 rows, RAW 0+0.
+ * DEAD 2026-09-09 (all at 29/29, the same 4 rows): dummy-edx __fastcall
+ * signature; the two stores in either order; unsigned/long/pointer-typed
+ * length; const/unsigned-char buffer wrapper; wrapper typedefs in either
+ * order; struct/union wrappers; ONE 8-byte struct carrying both arguments;
+ * locals for either or both arguments in either order; a `void *` return;
+ * chained zero stores; every slot in the TU (22 positions).  Corpus MISS at
+ * +0x0 (len 8); no N64 twin. */
 typedef struct { void *p; } BrBitStreamInitBuf;
 typedef struct { int n; }   BrBitStreamInitLen;
-void __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pBuf,
-                                BrBitStreamInitLen nBytes)
+BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pBuf,
+                                         BrBitStreamInitLen nBytes)
 {
     pBs->writeBit  = 0;
     pBs->readBit   = 0;
     pBs->readByte  = 0;
     pBs->writeByte = nBytes.n;
     pBs->pBuf      = (unsigned char *)pBuf.p;
+    return pBs;
 }
 #else
 void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
