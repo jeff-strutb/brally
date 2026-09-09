@@ -81,6 +81,14 @@ extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
  * two passes are two separate lists sharing one loop. */
 /* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100339C0 2 2026-09-07 probes 121 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x100339C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 396/398 insns 96/97 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 1+0 classified rows, 2 masked regions, 2 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {
