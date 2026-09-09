@@ -820,7 +820,35 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
  * `lea esi,[edi+0xC]` and the foot swaps `inc eax` with the count load.
  * DO NOT RE-PROBE: an explicit induction pointer (`it` hoisted out of the
  * inner loop, stepped in the third clause) is far worse -- 746 diffs,
- * REGNORM 14+12, +13 bytes. */
+ * REGNORM 14+12, +13 bytes.
+ *
+ * DEAD 2026-09-09 (32 compiles, three passes, all at 12 diffs unless said):
+ *   `it` as `pList->items + k`, as byte arithmetic from pList, non-const,
+ *   at function scope, declared before `k`; `f`/`bit` at function scope;
+ *   `bit` before `f`; the pass test hoisted to a `want` local (35);
+ *   `k` at function scope, as `int`, `unsigned short` (+12 B), post-
+ *   increment, `count > k` (14); the count without its cast; the two
+ *   `continue` tests merged (either order: -8 B when dl first), swapped
+ *   (-8 B), `!it->dl`, `bit != want` (13), `pass != 1` (+1 B);
+ *   declaration order of the four function locals (all six orders);
+ *   `pass` unsigned (13); `bit` int; `f` int or uint32_t (+2 B); the
+ *   `(unsigned char)` cast dropped (42); the item matrix at function
+ *   scope; the colour read into a local (-16 B); an `items` base local
+ *   (+5 B); the inner loop as `while` (+15 B).  The residue is which
+ *   register holds the reloaded pList at two sites; no spelling reaches it. */
+/* @t4-pass 0x1001D1B0 1 2026-09-09 probes 9 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: item/count/test spellings; thin, not counted) */
+/* @t4-pass 0x1001D1B0 2 2026-09-09 probes 12 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: scope, widths, declaration order -- zero movement) */
+/* @t4-pass 0x1001D1B0 3 2026-09-09 probes 11 bytes 1768 insns 431 regions 2 rows 2 census yes  (hand: loop and test shapes, locals -- zero movement) */
+/* @t3 0x1001D1B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1768/1768 insns 431/431 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 2 3
+ * Residue: which register holds the reloaded `pList` at the inner loop's
+ * head (the original adds 0xC in place in the induction register, ours
+ * keeps the base in edi and forms it with `lea`) and at its foot (edx vs
+ * edi, which also swaps `inc eax` with the count load).  Size, count and
+ * the register-blind multiset are exact; the 1+1 is that lea/add pair.
+ * Dossier and the 32-compile dead list: the RESIDUE block above; ledger
+ * lines above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1002FB20 d3d BrScenePropsDraw */
 void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
 {
