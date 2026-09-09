@@ -262,6 +262,7 @@ glide_va,name,module,basis,file
 0x1001E380,BrGlRectFill,drawing,filed,src/core/drawing/br_dlglide.c
 0x1001E720,br_dl_fillE1,drawing,filed,src/core/drawing/br_dl.c
 0x1001E770,BrDlCmdSetCombine,drawing,filed,src/core/drawing/br_dlcmd.c
+0x1001E7A0,BrGlSetCombine,drawing,filed,src/core/drawing/br_dlglide.c
 0x1001E930,br_dl_env,drawing,filed,src/core/drawing/br_dl.c
 0x1001E9F0,br_dl_fillcolour,drawing,filed,src/core/drawing/br_dl.c
 0x1001EA60,BrDlCmdFogColour,drawing,filed,src/core/drawing/br_dlcmd.c

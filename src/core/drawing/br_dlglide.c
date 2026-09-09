@@ -754,4 +754,73 @@ void BrGlInstall(void)
     return;
 }
 
+/* 0x1001E7A0 -- the G_SETCOMBINE classifier behind 0x1001E770 (br_dlcmd.c).
+ * Renderer slot; the D3D function at the same slot (0x1001C820) is
+ * DIFFERENT CODE.  br_dl.c's BrDlClassifyCombine is the table form of this
+ * same chain for the port; this is the chain as compiled.
+ *
+ * A flat if / else-if chain of exact (w0, w1) tests, one row per recognised
+ * combine, each row ending in its own grColorCombine call.  VC5 tail-merges
+ * every `(3, 8, 1, x, 0)` call onto one `push 3 / call` at 0x1001E8F4, and
+ * threads the shared `w0 == 0xFCFFFFFF` test between the fifth and sixth
+ * rows but NOT between the first and second (the first row's block also
+ * carries the fDecal clear, so it is not a pure compare block).  The decal
+ * row is the only one that sets 0x105CDA04; the tail then swaps dispatch
+ * slot 0x04 (0x100A9A68) between the two lit vertex transforms 0x10021C70
+ * and 0x100221D0, and only ever between those two. */
+void __stdcall grConstantColorValue(int);
+void BrDlLightSetup_10021C70(void);      /* br_dl.c br_dl_light_setup */
+void BrDlLightSetup_100221D0(void);      /* decal variant of the same */
+extern int   BrGlCombineDecal;          /* 0x105CDA04 */
+extern void *BrGlDlSlot04;              /* 0x100A9A68 dispatch-table slot 0x04 */
+extern int   DAT_106ed6ac;
+extern int   DAT_106ed6b4;
+
+/* WHAT IT DOES: recognise which of the game's texture-and-lighting recipes a
+ * display list just asked for, by comparing the two combine words against
+ * every recipe the game ever uses, and program the 3dfx colour combiner to
+ * the matching Glide setting. The decal recipe is remembered, because it
+ * needs a different vertex-lighting routine, which is swapped in here. */
+/* @implements 0x1001E7A0 glide BrGlSetCombine */
+void BrGlSetCombine(unsigned w0, unsigned w1)
+{
+    BrGlCombineDecal = 0;
+    if (w0 == 0xFCFFFFFFu && w1 == 0xFFFCF87Cu) {
+        grColorCombine(3, 8, 1, 1, 0);
+    } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFE793Cu) {
+        grColorCombine(1, 0, 0, 2, 0);
+    } else if (w0 == 0xFC567EACu && w1 == 0xFFFFF3F9u) {
+        grConstantColorValue(0xFF);
+        grColorCombine(3, 8, 1, 2, 0);
+    } else if (w0 == 0xFCFF97FFu && w1 == 0xFF2DFEFFu) {
+        grColorCombine(3, 8, 1, 2, 0);
+    } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFDF2F9u) {
+        grColorCombine(3, 8, 1, 2, 0);
+    } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFF73B9u) {
+        grConstantColorValue(0xFFFFFFFF);
+        grColorCombine(3, 8, 1, 2, 0);
+    } else if (w0 == 0xFC127E08u && w1 == 0xF3FFF2F8u) {
+        if (DAT_106ed6ac != 0 || DAT_106ed6b4 != 0)
+            grColorCombine(7, 4, 1, 1, 0);
+    } else if (w0 == 0xFC317E02u && (w1 == 0x5FFEF3FAu || w1 == 0x51FEF3FAu)) {
+        grColorCombine(3, 1, 0, 1, 0);
+        BrGlCombineDecal = 1;
+    } else if (w0 == 0xFC127FFFu && w1 == 0xFFFFF838u) {
+        grConstantColorValue(0);
+        grColorCombine(3, 8, 1, 2, 0);
+    } else {
+        grColorCombine(3, 1, 0, 1, 0);
+    }
+
+    /* The decal arm is the `if`: the original falls through into it and
+     * jumps (je) to the clear arm. */
+    if (BrGlCombineDecal != 0) {
+        if (BrGlDlSlot04 == (void *)BrDlLightSetup_10021C70)
+            BrGlDlSlot04 = (void *)BrDlLightSetup_100221D0;
+    } else {
+        if (BrGlDlSlot04 == (void *)BrDlLightSetup_100221D0)
+            BrGlDlSlot04 = (void *)BrDlLightSetup_10021C70;
+    }
+}
+
 #endif /* BR_MATCHING_BUILD */
