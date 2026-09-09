@@ -106,12 +106,20 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
 #endif
-/* RESIDUE (8 masked diffs, T3a, REGNORM 0+0): the original homes `size` in
+/* RESIDUE (8 masked diffs, REGNORM 0+0): the original homes `size` in
  * ebx and `count` in edi; this build homes them the other way round, which
  * flips the two `push`es and the `imul` operands. Every instruction is the
  * original's. Writing the product `count * size` instead of `size * count`
  * changes nothing -- VC5 canonicalises the multiply the same way it does a
- * commutative add. */
+ * commutative add.
+ * DEAD 2026-09-09, all identical: named uint32 locals in both orders;
+ * wanted after got; a single (uint32_t) cast on the product; uint32
+ * params; casts at the fread site; a FILE* local; !wanted; reversed
+ * compares; braceless returns; message operand order; uint32 got; buf
+ * spelled 1024; char* pDst; every slot in the TU (5).  Corpus MISS on
+ * the mov/imul opening.
+ * @t4-pass 0x10003430 1 2026-09-09 probes 10 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x10003430 2 2026-09-09 probes 15 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + position sweep) */
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
 #ifdef BR_MATCHING_BUILD
