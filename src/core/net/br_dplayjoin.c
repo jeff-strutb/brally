@@ -250,4 +250,205 @@ int BrDpShutdown(void)
   return 0;
 }
 
+/* 0x10035DD0 (D3D 0x1003C740, shared body) -- join a session.  The record
+ * layouts are DirectPlay 3's: DPSESSIONDESC2 is 0x50 bytes, DPNAME 0x10,
+ * DPCREDENTIALS 0x14; the vtable slots are IDirectPlay3's (+0x18
+ * CreatePlayer, +0x9C SecureOpen).  The vtable pointer is read ONCE into a
+ * local and both calls go through it, which is what the original's `mov
+ * ebp,[ebx]` before SecureOpen and `call [ebp+0x18]` after say.
+ *
+ * PARKED T2 2026-09-09 at 613/615 B, register-blind 0+1: ONE missing
+ * `xor r,r`.  The original materialises the credentials pointer's NULL as
+ * its own `xor edi,edi` (0x10035E27) while the prologue zero (`xor edx,edx`,
+ * a SCRATCH register) serves the description pointer, the object guard and
+ * cred.dwFlags and dies before the first lstrlenA.  Ours folds the two zeros
+ * into one callee-saved register, which rotates esi/edi/ebp for the rest of
+ * the function.  Two levers that DID land here and are worth keeping: the
+ * full-session test is `>= 8` with the error as the `if` arm, and the
+ * CreatePlayer failure is the `if` arm with the success block as the `else`
+ * (it ends in `return 0`, so VC5 places it last).
+ * Dead probes (fn.py, all inert or worse): pDesc as a declaration
+ * initialiser (inert); pCred as a declaration initialiser (+16 B); pCred =
+ * NULL before the guard (+16 B); pCred = NULL after cred.dwFlags (inert);
+ * pCred = NULL before the memset (inert); `pCred = 0` (inert); pCred
+ * declared first (inert); pDesc = NULL after the guard with pCred before
+ * it (REGNORM 9+4).  Next idea, untested: the NULL might be a value VC5
+ * cannot fold, e.g. a pointer returned by an earlier expression. */
+#include <windows.h>
+
+typedef struct BrDpSessDesc {           /* DPSESSIONDESC2 */
+    DWORD dwSize;                       /* +0x00 */
+    DWORD dwFlags;                      /* +0x04 */
+    DWORD guidInstance[4];              /* +0x08 */
+    DWORD guidApplication[4];           /* +0x18 */
+    DWORD dwMaxPlayers;                 /* +0x28 */
+    DWORD dwCurrentPlayers;             /* +0x2C */
+    char *lpszSessionName;              /* +0x30 */
+    char *lpszPassword;                 /* +0x34 */
+    DWORD dwReserved1;                  /* +0x38 */
+    DWORD dwReserved2;                  /* +0x3C */
+    DWORD dwUser1;                      /* +0x40 */
+    DWORD dwUser2;                      /* +0x44 */
+    DWORD dwUser3;                      /* +0x48 */
+    DWORD dwUser4;                      /* +0x4C */
+} BrDpSessDesc;
+
+typedef struct BrDpName {               /* DPNAME */
+    DWORD dwSize;
+    DWORD dwFlags;
+    char *lpszShortName;
+    char *lpszLongName;
+} BrDpName;
+
+typedef struct BrDpCredentials {        /* DPCREDENTIALS */
+    DWORD dwSize;
+    DWORD dwFlags;
+    char *lpszUsername;
+    char *lpszPassword;
+    char *lpszDomain;
+} BrDpCredentials;
+
+/* The session record at 0x10273328 (see BrDpShutdown above): the object,
+ * the receive event, our player id, and two words the join swaps out and
+ * restores on failure. */
+typedef struct BrDpSess {
+    void    *pDp;                       /* +0x00 */
+    void    *hEvent;                    /* +0x04 */
+    DWORD    idPlayer;                  /* +0x08 */
+    int      f0C;                       /* +0x0C */
+    int      f10;                       /* +0x10 */
+} BrDpSess;
+
+/* The login record: three 200-byte strings after a 200-byte header. */
+typedef struct BrDpLogin {
+    char aHead[200];
+    char szUser[200];                   /* +200 */
+    char szPass[200];                   /* +400 */
+    char szDomain[200];                 /* +600 */
+} BrDpLogin;
+
+typedef int (__stdcall *BrDpSecureOpen)(void *pThis, BrDpSessDesc *pDesc,
+                                        DWORD dwFlags, void *pSecurity,
+                                        BrDpCredentials *pCred);
+typedef int (__stdcall *BrDpCreatePlayer)(void *pThis, DWORD *pId,
+                                          BrDpName *pName, void *hEvent,
+                                          void *pData, DWORD cbData,
+                                          DWORD dwFlags);
+
+extern int  FUN_10036740(void *pDp, void **ppDesc);   /* GetSessionDesc, sized */
+extern char DAT_10b71648[];             /* the player's name              */
+extern int  DAT_10226a4c;               /* spectator-style join flag      */
+extern DWORD DAT_100abde8, DAT_10226e80, DAT_10ac5d70, DAT_100abdf8;
+extern DWORD DAT_100b3014, DAT_100bcbe8, DAT_10ac5d58;
+extern DWORD DAT_10ac40a8[20];          /* the session name, 80 bytes     */
+
+/* WHAT IT DOES: join the network game whose instance id is given.  Builds a
+ * session description carrying that id, attaches the player's Windows user
+ * name, password and domain as credentials when any are set, opens the
+ * session, fetches its live description and refuses a full one (eight
+ * players), then creates our player under the configured name -- swapping
+ * the session record's object and flags in first and restoring them if that
+ * fails.  On success the host's four user words and the session name are
+ * copied into the game's globals.  The fetched description is always freed;
+ * returns 0 or the DirectPlay error. */
+/* @implements 0x10035DD0 glide BrDpSessionJoin */
+int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
+                    BrDpSess *pSess)
+{
+    BrDpSessDesc    *pDesc = NULL;
+    BrDpCredentials  cred;
+    BrDpName         name;
+    DWORD            id;
+    BrDpSess         save;
+    BrDpSessDesc     desc;
+    BrDpCredentials *pCred;
+    char            *pVt;
+    int              hr;
+    DWORD            dwFlags;
+    HGLOBAL          h;
+
+    if (pDp == NULL)
+        return (int)0x88770082;         /* DPERR_INVALIDOBJECT */
+
+    memset(&desc, 0, sizeof(desc));
+    desc.dwSize = sizeof(desc);
+    desc.guidInstance[0] = pGuidInstance[0];
+    pCred = NULL;
+    desc.guidInstance[1] = pGuidInstance[1];
+    desc.guidInstance[2] = pGuidInstance[2];
+    desc.guidInstance[3] = pGuidInstance[3];
+
+    memset(&cred, 0, sizeof(cred));
+    cred.dwSize  = sizeof(cred);
+    cred.dwFlags = 0;
+    if (lstrlenA(pLogin->szUser) != 0) {
+        pCred = &cred;
+        cred.lpszUsername = pLogin->szUser;
+    }
+    if (lstrlenA(pLogin->szPass) != 0) {
+        pCred = &cred;
+        cred.lpszPassword = pLogin->szPass;
+    }
+    if (lstrlenA(pLogin->szDomain) != 0) {
+        pCred = &cred;
+        cred.lpszDomain = pLogin->szDomain;
+    }
+
+    pVt = *(char **)pDp;
+    hr = (*(BrDpSecureOpen *)(pVt + 0x9C))(pDp, &desc, 0x81, NULL, pCred);
+    if (hr >= 0) {
+        memset(&name, 0, sizeof(name));
+        name.dwSize        = sizeof(name);
+        name.lpszShortName = DAT_10b71648;
+        name.lpszLongName  = NULL;
+        hr = FUN_10036740(pDp, (void **)&pDesc);
+        if (hr >= 0) {
+            if (pDesc->dwCurrentPlayers >= 8) {
+                hr = (int)0x88770028;   /* DPERR_SESSIONFULL-class refusal */
+            } else {
+                dwFlags = 0;
+                if (DAT_10226a4c != 0)
+                    dwFlags = 0x200;
+                save.pDp = pSess->pDp;
+                save.f0C = pSess->f0C;
+                pSess->pDp = pDp;
+                pSess->f0C = 0;
+                save.f10 = pSess->f10;
+                pSess->f10 = (pDesc->dwFlags >> 8) & 1;
+                hr = (*(BrDpCreatePlayer *)(pVt + 0x18))(pDp, &id, &name,
+                                                         pSess->hEvent,
+                                                         NULL, 0, dwFlags);
+                if (hr < 0) {
+                    pSess->pDp = save.pDp;
+                    pSess->f0C = save.f0C;
+                    pSess->f10 = save.f10;
+                } else {
+                    pSess->idPlayer = id;
+                    DAT_100abde8 = pDesc->dwUser1;
+                    DAT_10226e80 = pDesc->dwUser2;
+                    DAT_10ac5d70 = pDesc->dwUser3;
+                    DAT_100abdf8 = pDesc->dwUser4;
+                    DAT_100b3014 = DAT_100abde8;
+                    DAT_100bcbe8 = DAT_100abdf8;
+                    DAT_10ac5d58 = DAT_10226e80;
+                    memcpy(DAT_10ac40a8, pDesc->lpszSessionName,
+                           sizeof(DAT_10ac40a8));
+                    h = GlobalHandle(pDesc);
+                    GlobalUnlock(h);
+                    h = GlobalHandle(pDesc);
+                    GlobalFree(h);
+                    return 0;
+                }
+            }
+        }
+    }
+    if (pDesc != NULL) {
+        h = GlobalHandle(pDesc);
+        GlobalUnlock(h);
+        h = GlobalHandle(pDesc);
+        GlobalFree(h);
+    }
+    return hr;
+}
+
 #endif /* BR_MATCHING_BUILD */
