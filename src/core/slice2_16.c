@@ -1147,9 +1147,9 @@ int BrGbiSizeShift(int n)
  * role rotation esi/edi/ebx): named locals for a3, a5, the shift or the
  * texels-per-word result; 8* on the left; pitch declared first; both
  * declared then assigned; unsigned rounded; &31 on the shift (+3);
- * dropping the intptr_t cast; every slot in the TU (51 of 64 compile).
+ * dropping the intptr_t cast; every slot in the TU (14 of 64 compile).
  * @t4-pass 0x10027F00 3 2026-09-09 probes 10 bytes 124 insns 52 regions 2 rows 0 census yes  (hand, fn.py variants)
- * @t4-pass 0x10027F00 4 2026-09-09 probes 51 bytes 124 insns 52 regions 2 rows 0 census yes  (position sweep) */
+ * @t4-pass 0x10027F00 4 2026-09-09 probes 14 bytes 124 insns 52 regions 2 rows 0 census yes  (position sweep; 14 of 64 slots compile for this block) */
 /* @implements 0x10027F00 glide BrGbiBlit */
 #ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
