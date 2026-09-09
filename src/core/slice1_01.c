@@ -90,6 +90,18 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
  * that is how the game detects the end of a file -- but a short read, where
  * some but not all of the data arrived, is treated as the file being damaged
  * and kills the game with a message. */
+/* @t4-pass 0x10003430 1 2026-09-09 probes 11 bytes 140 insns 48 regions 3 rows 0 census yes  (fn.py variants: multiply operand order, outer/inner casts, local caching, check reorder) */
+/* @t4-pass 0x10003430 2 2026-09-09 probes 12 bytes 140 insns 48 regions 3 rows 0 census yes  (fn.py variants: paren grouping, size/count temps, alternate zero tests, fail-product spellings) */
+/* @t3 0x10003430 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 140/140 insns 48/48 rows 0+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation: the original homes `size` in ebx and
+ * `count` in edi; this build homes them the other way round, which flips the
+ * two pushes and the imul operands (8 masked diffs).  Every instruction is
+ * the original's; the dossier is the RESIDUE comment below.  Passes 1-2
+ * (ledger above) moved nothing at 140/48/3/0 -- operand order, casts, local
+ * caching and check reorder are all codegen-identical; only `wanted <= 0u`
+ * went worse.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100030E0 d3d BrFChkFRead */
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
