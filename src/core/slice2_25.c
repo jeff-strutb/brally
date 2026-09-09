@@ -450,7 +450,25 @@ int BrOptCycleTrack(void)
 /* @implements 0x10042C80 d3d BrOptCycleAC65C */
 int BrOptCycleAC65C(void)
 {
-    g_br094350 = BrOptCycle(&g_br0AC65C, BR_OPT_AC65C_MAX);
+    /* Spelled on the global directly -- the corpus-proven form (four
+     * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
+     * through the BrOptCycle helper the counter lands in ecx and the
+     * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
+    if (g_brAA33D4 != 0) {
+        g_br0AC65C = g_br0AC65C + 1;
+        if (g_br0AC65C > BR_OPT_AC65C_MAX) {
+            g_br0AC65C = 0;
+        }
+    }
+    else {
+        if (g_brAA33D0 != 0) {
+            g_br0AC65C = g_br0AC65C - 1;
+            if (g_br0AC65C < 0) {
+                g_br0AC65C = BR_OPT_AC65C_MAX;
+            }
+        }
+    }
+    g_br094350 = g_br0AC65C;
     return 1;
 }
 
@@ -480,7 +498,25 @@ int BrOptCycleB4E70C(void)
 /* @implements 0x10042DC0 d3d BrOptCycleAC64C */
 int BrOptCycleAC64C(void)
 {
-    g_br09435C = g_aBrAC4A0[BrOptCycle(&g_br0AC64C, BR_OPT_AC64C_MAX)];
+    /* Spelled on the global directly -- the corpus-proven form (four
+     * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
+     * through the BrOptCycle helper the counter lands in ecx and the
+     * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
+    if (g_brAA33D4 != 0) {
+        g_br0AC64C = g_br0AC64C + 1;
+        if (g_br0AC64C > BR_OPT_AC64C_MAX) {
+            g_br0AC64C = 0;
+        }
+    }
+    else {
+        if (g_brAA33D0 != 0) {
+            g_br0AC64C = g_br0AC64C - 1;
+            if (g_br0AC64C < 0) {
+                g_br0AC64C = BR_OPT_AC64C_MAX;
+            }
+        }
+    }
+    g_br09435C = g_aBrAC4A0[g_br0AC64C];
     return 1;
 }
 
@@ -490,7 +526,25 @@ int BrOptCycleAC64C(void)
 /* @implements 0x10042E20 d3d BrOptCycleAC650 */
 int BrOptCycleAC650(void)
 {
-    g_br094358 = g_aBrAC4B0[BrOptCycle(&g_br0AC650, BR_OPT_AC650_MAX)];
+    /* Spelled on the global directly -- the corpus-proven form (four
+     * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
+     * through the BrOptCycle helper the counter lands in ecx and the
+     * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
+    if (g_brAA33D4 != 0) {
+        g_br0AC650 = g_br0AC650 + 1;
+        if (g_br0AC650 > BR_OPT_AC650_MAX) {
+            g_br0AC650 = 0;
+        }
+    }
+    else {
+        if (g_brAA33D0 != 0) {
+            g_br0AC650 = g_br0AC650 - 1;
+            if (g_br0AC650 < 0) {
+                g_br0AC650 = BR_OPT_AC650_MAX;
+            }
+        }
+    }
+    g_br094358 = g_aBrAC4B0[g_br0AC650];
     return 1;
 }
 
@@ -500,7 +554,25 @@ int BrOptCycleAC650(void)
 /* @implements 0x10042E80 d3d BrOptCycleAA2A08 */
 int BrOptCycleAA2A08(void)
 {
-    g_br094354 = g_aBrAC518[BrOptCycle(&g_brAA2A08, BR_OPT_AA2A08_MAX)];
+    /* Spelled on the global directly -- the corpus-proven form (four
+     * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
+     * through the BrOptCycle helper the counter lands in ecx and the
+     * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
+    if (g_brAA33D4 != 0) {
+        g_brAA2A08 = g_brAA2A08 + 1;
+        if (g_brAA2A08 > BR_OPT_AA2A08_MAX) {
+            g_brAA2A08 = 0;
+        }
+    }
+    else {
+        if (g_brAA33D0 != 0) {
+            g_brAA2A08 = g_brAA2A08 - 1;
+            if (g_brAA2A08 < 0) {
+                g_brAA2A08 = BR_OPT_AA2A08_MAX;
+            }
+        }
+    }
+    g_br094354 = g_aBrAC518[g_brAA2A08];
     return 1;
 }
 
