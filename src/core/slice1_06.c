@@ -144,21 +144,39 @@ BrKeyEnt g_aBrKeyEnts[BR_KEYTABLE_MAX];  /* 0x106EEF0C */
 int32_t  g_brKeyCount;                   /* 0x10AC0808 */
 uint32_t g_brKeyBias;                    /* 0x10AC080C */
 
+/* DEAD 2026-09-09 at 84 B (all identical): a bias local; non-compound add;
+ * i assigned after declaration; i via -=1; unsigned param; pA[0] stores;
+ * for-loop; --i; a cast on the bias; every slot in the TU (12).  Corpus
+ * MISS on the 5-insn opening.
+ * @t4-pass 0x10030FD0 1 2026-09-09 probes 19 bytes 84 insns 29 regions 1 rows 0 census yes  (hand, fn.py variants; k-battery found the -1 B spelling, m-battery zero movement)
+ * @t4-pass 0x10030FD0 2 2026-09-09 probes 12 bytes 84 insns 29 regions 1 rows 0 census yes  (position sweep) */
+/* @t3 0x10030FD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 84/83 insns 29/29 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region, -1 B short on encoding;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10037930 d3d BrKeyTableFind */
 int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 {
-    uint32_t want = key + g_brKeyBias;
+    /* Declaring the count FIRST and biasing the key destructively keeps the
+     * key out of eax (count claims it), which turns the old lea back into
+     * the original's `add` and frees a register-form global load: 85->84 B,
+     * REGNORM 1+1 -> 0+0 (2026-09-09).  RESIDUE (1 B, RAW 2+2): the
+     * original loads the BIAS through eax too (5-byte a1 form, between the
+     * key load and the add); here the count holds eax at that point so the
+     * bias takes the 6-byte ecx form.  One byte, pure assignment. */
     int32_t  i    = g_brKeyCount - 1;
 
-    /* RESIDUE (1+1 regnorm, T3a): the key loads into a different register
-     * from the first instruction (FIRSTDIV +0x1), which turns the bias
-     * `add edx,eax` into a lea; destructive `key +=` spelling identical.
-     * Same first-load coloring class as BrPendListAdd. */
+    key += g_brKeyBias;
 
     /* `dec eax / test eax,eax / jl` -- count == 0 leaves i == -1 and the
      * whole loop is skipped. */
     while (i >= 0) {
-        if (want == g_aBrKeyEnts[i].key) {
+        if (key == g_aBrKeyEnts[i].key) {
             *pA = g_aBrKeyEnts[i].a;
             *pB = g_aBrKeyEnts[i].b;
             return 1;
