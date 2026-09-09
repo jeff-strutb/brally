@@ -1248,6 +1248,91 @@ void BrTex3dReconvert(int param_1)
   return;
 }
 
+extern int DAT_105e1828;
+extern int DAT_10697a60;
+int FUN_10059fe0();
+int BrBmpRect4Get();
+int FUN_1005a500();
+int BrTexRgbaToArgb1555();
+
+/* WHAT IT DOES: fetch a texture slot's pixels for upload. A slot with no
+ * bitmap source just re-runs the plain converter. Otherwise it opens the
+ * source bitmap, asks for its crop rectangle (an all-zero rectangle means
+ * the whole image at twice the slot's stored size), decodes the crop into
+ * the shared RGBA staging buffer, packs it to ARGB1555 in place, and if the
+ * decoded size is not the slot's declared size resamples it into the
+ * second staging buffer and returns that instead. Records the slot's
+ * palette handle in the global and through the out pointer. On a failed
+ * open or decode it returns the crop's x, which is what the caller sees. */
+/* PARKED T2, size-exact 440/440, 143/144 insns, REGNORM 3+2 (2026-09-09).
+ * ONE cause at +0x1a: the original forms the request pointer with
+ * `lea esi,[ecx+eax*4+4]` and tests the bitmap handle straight off the
+ * (table, idx*0xad) pair, `mov eax,[ecx+eax*4+0x26c]`; VC5 here CSEs
+ * table+idx*0x2b4 into a register first (`lea eax,[ecx+eax*4]`, one extra
+ * instruction) and the register roles downstream follow from it. What DID
+ * land: the "no bitmap" arm is the ELSE of `if (handle != 0)` so it lays
+ * out after the success tail; the shared failure exit follows the if/else;
+ * the zero-rectangle block stores in the order y=0, x=w*2, w=0, h=h*2.
+ * DEAD (8 compiles), every spelling canonicalised to the same bytes:
+ * operand order of the sum; a `(char *)` base; `((int *)tab)[i*0xad+0x9b]`
+ * for the test alone and for both addresses; `((int *)(tab+0x26c))[i*0xad]`;
+ * pre-offset bases `(tab+4)+n` / `(tab+0x26c)+n`; forming the pointer inside
+ * both arms after the test (CSEs to the unbiased base instead, +1 insn). */
+/* @t4-pass 0x10028620 1 2026-09-09 probes 8 bytes 440 insns 144 regions 2 rows 3 census no  (hand) */
+/* @implements 0x10028620 glide BrTexSlotFetchPixels */
+
+int * BrTexSlotFetchPixels(int param_1,int *param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  int *puVar3;
+  int iStack_c;
+  int iStack_8;
+  int iStack_4;
+
+  iVar1 = DAT_106b7aa0 + 4 + param_1 * 0x2b4;
+  if (*(int *)(DAT_106b7aa0 + 0x26c + param_1 * 0x2b4) != 0) {
+    puVar3 = &DAT_1186c988;
+    iVar2 = FUN_10059fe0(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),
+                         *(int *)(iVar1 + 0x274));
+    if (iVar2 != 0) {
+      BrBmpRect4Get(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),&iStack_4,&param_1,
+                    &iStack_8,&iStack_c);
+      if ((((iStack_4 == 0) && (param_1 == 0)) && (iStack_8 == 0)) && (iStack_c == 0))
+      {
+        iStack_4 = 0;
+        param_1 = *(int *)(iVar1 + 0x2a0) << 1;
+        iStack_8 = 0;
+        iStack_c = *(int *)(iVar1 + 0x2a4) << 1;
+      }
+      iVar2 = FUN_1005a500(iVar2,iStack_4,param_1,iStack_8,iStack_c,&DAT_1186c988,
+                           *(int *)(iVar1 + 0x2a0) << 1,*(int *)(iVar1 + 0x2a4) << 1);
+      if (iVar2 != 0) {
+        BrTexRgbaToArgb1555(&DAT_1186c988,&DAT_1186c988,
+                            *(int *)(iVar1 + 0x2a4) * *(int *)(iVar1 + 0x2a0) * 0x10);
+        iVar2 = *(int *)(iVar1 + 0x2a0) * 2;
+        if ((iVar2 != *(int *)(iVar1 + 8)) ||
+           (*(int *)(iVar1 + 0x2a4) * 2 != *(int *)(iVar1 + 0xc))) {
+          FUN_10024490(&DAT_105e1828,*(int *)(iVar1 + 8),*(int *)(iVar1 + 0xc),&DAT_1186c988,
+                       iVar2,*(int *)(iVar1 + 0x2a4) << 1,*(int *)(iVar1 + 0x10));
+          puVar3 = &DAT_105e1828;
+        }
+        DAT_10697a60 = *(int *)(iVar1 + 0x29c);
+        *param_2 = DAT_10697a60;
+        return puVar3;
+      }
+    }
+  }
+  else {
+    puVar3 = (int *)FUN_10027b60(iVar1);
+    *param_2 = DAT_10697a60;
+    return puVar3;
+  }
+  *param_2 = DAT_10697a60;
+  return (int *)param_1;
+}
+
 /* WHAT IT DOES: make the Glide texture from a filled BrTexReq272 -- skip
  * dedup when DAT_118ed1b4 is set, else reuse 0x10027A70's hit; BMP-substitute
  * through 0x10023D70; allocate a TMEM slot via 0x10028200 (retry TMU0 if the
