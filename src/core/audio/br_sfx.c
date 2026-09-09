@@ -514,4 +514,90 @@ int BrSfxCarBankInit(int param_1,int param_2)
   return;
 }
 
+/* ── the bank loader ──────────────────────────────────────────────────── */
+
+extern int   DAT_100b55f8[];    /* 0x100B55F8  the voice table, 18 dwords a row */
+extern int   DAT_100b5cb8[];    /* 0x100B5CB8  voice row 24 (engine HIGH)       */
+extern int   DAT_100b5d00[];    /* 0x100B5D00  voice row 25 (engine REV)        */
+extern int   DAT_1184c260;      /* 0x1184C260  the live group count             */
+extern char *DAT_100b8140[];    /* 0x100B8140  race-set name table              */
+extern char *DAT_100b81a8[];    /* 0x100B81A8  menu-set name table              */
+extern char  g_aBrCfgSfxDir[];  /* 0x100B7D40  "sfx/" (BossRally.ini SFXDir=)   */
+int BrSndVoiceLoad();           /* 0x1006BC10, br_sndload.c                     */
+
+/* WHAT IT DOES: loads a whole sound set into the bank.  Picks the name table
+ * and stores the live group count (9 for the menu set, 25 for the race set);
+ * for the race set it also walks the 15 engine channels first, loading each
+ * marked car's engine trio through the per-car loader and zeroing rows 0, 24
+ * and 25 of unmarked channels.  Then for every generic group (rows 1..count-2)
+ * it builds "<SFXDir><name>" and loads a voice into each slot the bank marks,
+ * zeroing the rest.  Returns 1 when everything loaded (or sound is off), 0
+ * when any load failed.
+ *
+ * RESIDUE (size-exact 459/459, insn-exact 138/138): the engine loop's `i`
+ * and its row-24 induction pointer are transposed, esi<->edi, orig i=edi /
+ * IV24=esi vs ours i=esi / IV24=edi; every instruction otherwise identical
+ * (regnorm 2+2 is the normaliser tripping on reloc'd displacements, the rows
+ * sit outside the divergence region).  Whole-loop register transposition,
+ * the BrSelLookup / 0x10060F40 class.
+ * DEAD (probes w1-w6): rows 24/25 as lockstep ++pointers with the zero arm
+ * laid first re-triggers a constant-cache (0 in a reg, 1 in ebx, ppName
+ * spilled, 463 B) -- the load arm MUST be the fall-through (`!= 0` first)
+ * and the engine loop MUST init i before any row pointer (pV24-first
+ * re-triggers the same 463 B shape, w6); i/v declaration order both ways
+ * (w2, w3) and head-of-TU placement (w4) are inert; pointer spelling vs
+ * indexed spelling of rows 24/25 is codegen-identical once the polarity is
+ * right (w5).
+ * @t4-pass 2026-09-09 probes=7 result=diff16/regnorm2+2 census no */
+/* @implements 0x1006C290 glide BrSfxBankLoad */
+
+int BrSfxBankLoad(int iSet)
+{
+    char **ppName;
+    int    ok;
+    int    row;
+    int    cLeft;
+    char   buf[1024];
+    int    i;
+    int    v;
+
+    ok = 1;
+    if ((BrSndG0B5DE8 == 0) || (BrSndPDS == 0) || (BrSndG18290FC == 0)) {
+        return 1;
+    }
+    if (iSet == 0) {
+        DAT_1184c260 = 9;
+        ppName = DAT_100b81a8;
+    } else if (iSet == 1) {
+        ppName = DAT_100b8140;
+        DAT_1184c260 = 0x19;
+        for (i = 0; i < 15; i++) {
+            if (((int *)g_0B6540)[i] != 0) {
+                v = FUN_1006c010(i / 2);
+                if (v == 0)
+                    ok = v;
+            } else {
+                DAT_100b55f8[i] = 0;
+                DAT_100b5cb8[i] = 0;
+                DAT_100b5d00[i] = 0;
+            }
+        }
+    }
+    for (row = 1; row < DAT_1184c260 - 1; row++) {
+        for (cLeft = 0; cLeft < 15; cLeft++) {
+            if (((int *)g_0B6540)[row * 18 + cLeft] != 0) {
+                strcpy(buf, g_aBrCfgSfxDir);
+                strcat(buf, ppName[row]);
+                v = BrSndVoiceLoad(buf);
+                DAT_100b55f8[row * 18 + cLeft] = v;
+                if (v == 0)
+                    ok = v;
+            } else {
+                DAT_100b55f8[row * 18 + cLeft] = 0;
+            }
+        }
+    }
+    return ok;
+}
+
 #endif /* BR_MATCHING_BUILD */
