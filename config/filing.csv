@@ -398,6 +398,7 @@ glide_va,name,module,basis,file
 0x1002E334,BrNop_1002E334,startup,filed,src/core/startup/br_gamestep.c
 0x1002E339,BrHookTakeA,menus,prefix,src/core/menus/br_hooktake.c
 0x1002E359,BrHookTakeB,menus,prefix,src/core/menus/br_hooktake.c
+0x1002E376,BrRleEncode,drawing,filed,src/core/drawing/br_texblit.c
 0x1002E5B9,FUN_1002e5b9,drawing,description,src/core/drawing/br_texblit.c
 0x1002E6F2,BrPairSlotReset,racing,description,src/core/racing/br_pairslot.c
 0x1002E70A,BrRet0_1002E70A,drawing,neighbour-1,src/core/drawing/br_dlrebase.c
