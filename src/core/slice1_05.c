@@ -169,6 +169,25 @@ void BrCursorPairSet(BrCursorPair *pPair, void *pv)
  * zero, zero becomes six -- which has the shape of a mirroring or opposite-
  * direction rule. The second number is looked up fresh so the rotation cannot
  * affect it. What the table describes is not established here. */
+/* Residue: a whole-body eax<->ecx transposition (REGNORM 0+0, one byte net
+ * on the two absolute-load encodings) -- the input pointer takes ecx here,
+ * eax in the original.  DEAD 2026-09-09, all identical: idx operand order
+ * (both sites); idx assigned after declaration or split into *12 then +=;
+ * named uchar locals for the two selector bytes; explicit int casts;
+ * declaring idx before p; folding the a=t copy; uchar a (+25 B); folding
+ * the flag temp; every slot in the TU (9 of 17 compile).  Corpus MISS on
+ * the 6-insn opening.
+ * @t4-pass 0x1001C9D0 1 2026-09-09 probes 10 bytes 95 insns 30 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x1001C9D0 2 2026-09-09 probes 12 bytes 95 insns 30 regions 1 rows 0 census yes  (position sweep + const p, explicit !=0, column-base alias) */
+/* @t3 0x1001C9D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 95/96 insns 30/30 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region, 1 B short on encoding;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1002F460 d3d BrSelLookup */
 #ifdef BR_MATCHING_BUILD
 /* Original: no parameters. The input record comes through a pointer
