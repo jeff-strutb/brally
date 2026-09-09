@@ -7397,3 +7397,20 @@ nested block, which is where this one lived through 103 zero-movement probes.
 When the diff shows `lea r,[R+K]` where the original has `add r,K` with a
 later fresh load of the same global, look for the statement that would take
 the CSE's register earlier.
+
+---
+
+## A spin on a call is `while (f() == 0) {}`; the char-local form compares against the zero register
+
+0x100628B0 BrGlRaceStart (525 B, src/core/racing/br_racestart.c): the original
+peels the first call (`call; test al,al; jne skip; loop: call; test al,al; je
+loop`). Ghidra prints it as `c = f(); while (c == 0) c = f();` and that
+spelling, with `char c`, tests the result against the function's zero
+register (`cmp al,bl`) and costs the mode load its short `a1` encoding (a
+callee-saved register is drafted for the temp: 528 B, 4 rows). The bare
+`while (BrSaveLoad(0, 1) == 0) {}` gives the peeled shape and `test al,al`
+(RAW 1+1). Same function, second fact: among a run of zero stores through the
+zero register, ONE `mov dword ptr [A], 0` immediate is a FLOAT zero
+(`_DAT_` in Ghidra, the underscore marking the overlapped type) -- declare it
+`float` and store `0.0f`; the integer zero register is never used for it.
+Byte-exact on the next compile (2026-09-09).
