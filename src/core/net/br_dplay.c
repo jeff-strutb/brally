@@ -157,6 +157,100 @@ static const char g_szLeft[]    = "%s left the game.\r\n";
 static const char g_szDestroy[] = "Destroy Player message received, ID: %d\n";
 static const char g_szUnknown[] = "unknown";   /* 0x100A648C */
 
+#ifdef BR_MATCHING_BUILD
+/* The three USER32/KERNEL32 imports this function adds; stdcall IAT calls
+ * except wsprintfA, which is the one cdecl varargs export in USER32. */
+__declspec(dllimport) int  __stdcall lstrlenA(const char *psz);
+__declspec(dllimport) int  __cdecl   wsprintfA(char *pszOut, const char *pszFmt, ...);
+__declspec(dllimport) void __stdcall OutputDebugStringA(const char *psz);
+__declspec(dllimport) int  __stdcall PostMessageA(void *hWnd, unsigned uMsg,
+                                                  unsigned wParam, long lParam);
+
+/* WHAT IT DOES: routes one received session message -- to the housekeeping
+ * handler when the context is in session mode, to the app handler otherwise --
+ * and then, when the lobby log is running, turns a player join or leave into
+ * a "<name> joined/left the game" line (GlobalAlloc'd, posted to the log
+ * window as message 0x501, or freed when there is no window).  A leave also
+ * clears the leaver's slot in the player table and prints a debug line; type
+ * 0x104 kicks the shared handler 0x10036510 instead.
+ *
+ * RESIDUE (insn-exact 147/147, regnorm 0+0, 470 vs 469 B): pMsg sits in ebp
+ * where the original has ebx (and the case-5 length temp takes the other),
+ * so `mov eax,[ebp]` carries a disp8 byte the original's `mov eax,[ebx]`
+ * does not -- whole-body ebx<->ebp transposition, the BrSelLookup class.
+ * DEAD: the slot scan MUST be indexed `aSlots[i][0]` (an explicit cursor
+ * pointer gets its first iteration peeled into a direct global load and the
+ * loop rotated, +10 B); the scan compare must put the table element on the
+ * left uncast (a uint32_t cast on it forces load+reg-compare where the
+ * original has cmp [mem],reg); the do/while bound compare needs the (int)
+ * casts for jl, but the for-i form supersedes it.
+ * @t4-pass 2026-09-09 probes=4 result=+1B/regnorm0+0 census no */
+/* @implements 0x100096A0 glide BrDPlaySysMsgLog */
+void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
+                      uint32_t cbData, uint32_t idFrom, uint32_t idTo)
+{
+    char        *pszB;
+    const char  *pszName;
+    int          cch1;
+    int          cch2;
+    int          i;
+    char         szDbg[0x104];
+
+    if (pCtx->f0C != 0)
+        BrDPlaySysMsgDispatch(pCtx, pMsg, cbData, idFrom, idTo);
+    else
+        BrAppMsgDispatch(pCtx, (const BrAppMsg *)pMsg,
+                         (void *)cbData, (void *)idFrom, (void *)idTo);
+
+    if (g_BrDPlay.fLog != 0) {
+        pszB = NULL;
+        switch (pMsg->dwType) {
+        case 3:
+            pszName = (const char *)pMsg->pszName20;
+            if (pszName == NULL)
+                pszName = g_szUnknown;
+            cch1 = lstrlenA(g_szJoined);
+            cch2 = lstrlenA(pszName);
+            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            if (pszB == NULL)
+                return;
+            wsprintfA(pszB, g_szJoined, pszName);
+            break;
+        case 5:
+            pszName = (const char *)pMsg->pszName24;
+            if (pszName == NULL)
+                pszName = g_szUnknown;
+            cch1 = lstrlenA(g_szLeft);
+            cch2 = lstrlenA(pszName);
+            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            if (pszB == NULL)
+                return;
+            wsprintfA(pszB, g_szLeft, pszName);
+            for (i = 0; i < BR_DP_SLOTS; i++) {
+                if (g_BrDPlay.aSlots[i][0] == (int)pMsg->f08) {
+                    g_BrDPlay.aSlots[i][0] = -1;
+                    g_BrDPlay.aSlots[i][1] = 0;
+                    sprintf(szDbg, g_szDestroy, pMsg->f08);
+                    OutputDebugStringA(szDbg);
+                    break;
+                }
+            }
+            break;
+        case 0x104:
+            BrSub1003CE80();
+            break;
+        }
+        if (pszB != NULL) {
+            if (g_BrDPlay.pWnd != NULL) {
+                PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (long)pszB);
+                return;
+            }
+            GlobalUnlock(GlobalHandle(pszB));
+            GlobalFree(GlobalHandle(pszB));
+        }
+    }
+}
+#else
 /* GlobalAlloc(0x42) + GlobalLock + wsprintfA(buf, pszFmt, pszName), sized
  * exactly the way the original sizes it. Returns NULL if the allocation
  * failed, which is the original's only failure path here. */
@@ -230,6 +324,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
     else
         pSt->os.pfnFree(pszB);
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* -- 0x1000C350 ---------------------------------------------------------- */
 
