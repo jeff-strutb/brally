@@ -430,6 +430,26 @@ void BrMenuAutoSaveName(void)
 /* WHAT IT DOES: put the right piece of wording on a stage-dependent
  * caption -- championship vs the backup column, or a fixed options
  * index when that mode is on. */
+/* DEAD 2026-09-09 (adds to the parked list below, all at 98 B RAW 3+3
+ * REGNORM 0+0): a return local defined before the store (with and without
+ * a word temp); a block-scoped word temp; a byte-offset pun store; a
+ * pItem copy; a table-pointer local; the sibling's (int16_t)(uint16_t)
+ * cast; a uint32 temp (+2); explicit __cdecl; register i; every slot in
+ * the TU (47 of 59 compile).  Corpus: the byte-exact sibling
+ * BrMenuCap0990 (+0x5, same file) spells the tail on a GLOBAL index --
+ * the cx pairing needs the index load fused into the tail, unreachable
+ * from a join-carried local.
+ * @t4-pass 0x10039C70 1 2026-09-09 probes 10 bytes 98 insns 24 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
+ * @t4-pass 0x10039C70 2 2026-09-09 probes 47 bytes 98 insns 24 regions 1 rows 0 census yes  (position sweep) */
+/* @t3 0x10039C70 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 98/98 insns 24/24 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
