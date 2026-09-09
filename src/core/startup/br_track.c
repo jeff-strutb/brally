@@ -554,4 +554,93 @@ int BrTrackFixupAllRec54(int param_1)
   return;
 }
 
+int BrSwapVec3Array();
+int BrRcaFixupArray();
+int BrSwapU16Array();
+int BrSwapU16x4Array();
+int BrF3DListFixup();
+int BrFontSetRenderDst();
+extern int DAT_104b15e8;
+extern int (*DAT_118ed1dc)();
+extern int (*DAT_118ed1e4)();
+
+/* WHAT IT DOES: the whole endian fixup pass over a freshly loaded track
+ * blob. Byte-swaps the Vec3 array, the texture records, both u16 index
+ * tables (each 0x1001 entries of header, then as many entries as the u16 at
+ * +0x2000 of its blob says), sizes the lookup tables by scanning for the
+ * largest index actually used, swaps the string table up to its terminating
+ * zero, then runs the display-list fixup, the render-destination switches,
+ * the optional texture-pixel copy (video mode 3 only), the two installed
+ * fixup hooks, and the per-record, segment-list and Vec3 fixups. */
+/* @implements 0x100314D0 glide BrGlTrackFixupAll */
+
+void BrGlTrackFixupAll(int param_1)
+
+{
+  short sVar1;
+  int iVar2;
+  short *psVar3;
+  unsigned short *puVar4;
+  int iMax2;
+  int iMax1;
+  int i;
+
+  BrSwapVec3Array(*(int *)(param_1 + 0x14),*(int *)(param_1 + 0x10));
+  BrRcaFixupArray(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
+  BrSwapU16Array(*(int *)(param_1 + 0x24),0x1001);
+  BrSwapU16Array(*(int *)(param_1 + 0x20),
+                 *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000));
+  iMax1 = 0;
+  iVar2 = *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000) - 1;
+  if (1 <= iVar2) {
+    puVar4 = (unsigned short *)(*(int *)(param_1 + 0x20) + iVar2 * 2);
+    i = iVar2;
+    do {
+      if (*puVar4 > iMax1) {
+        iMax1 = *puVar4;
+      }
+      puVar4 = puVar4 + -1;
+      i = i + -1;
+    } while (i != 0);
+  }
+  BrSwapU16Array(*(int *)(param_1 + 0x90),iMax1 + 1);
+  iMax2 = 0;
+  if (1 <= iMax1) {
+    puVar4 = (unsigned short *)(*(int *)(param_1 + 0x90) + iMax1 * 2);
+    do {
+      if (*puVar4 > iMax2) {
+        iMax2 = *puVar4;
+      }
+      puVar4 = puVar4 + -1;
+      iMax1 = iMax1 - 1;
+    } while (iMax1 != 0);
+  }
+  iVar2 = *(int *)(param_1 + 0x8c);
+  psVar3 = (short *)(iVar2 + iMax2 * 2);
+  sVar1 = *(short *)(iVar2 + iMax2 * 2);
+  while (sVar1 != 0) {
+    psVar3 = psVar3 + 1;
+    iMax2 = iMax2 + 1;
+    sVar1 = *psVar3;
+  }
+  BrSwapU16Array(iVar2,iMax2);
+  BrTrackSetF08FromMax(param_1);
+  BrSwapU16x4Array(*(int *)(param_1 + 0xc),*(int *)(param_1 + 8));
+  BrF3DListFixup(*(int *)(param_1 + 0x50));
+  BrFontSetRenderDst(4);
+  if (DAT_104b15e8 == 3) {
+    BrTexCopyRecords(*(void **)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
+  }
+  (*DAT_118ed1dc)(*(int *)(param_1 + 0x50));
+  BrTrackFixupAllRec54(param_1);
+  BrFontSetRenderDst(1);
+  (*DAT_118ed1e4)(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
+  BrSwapU16Array(*(int *)(param_1 + 0x6c),0x1001);
+  BrSwapU16Array(*(int *)(param_1 + 0x68),
+                 *(unsigned short *)(*(int *)(param_1 + 0x6c) + 0x2000));
+  BrTrackFixupSegList(param_1);
+  BrTrackSwapAllVec3(param_1);
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */
