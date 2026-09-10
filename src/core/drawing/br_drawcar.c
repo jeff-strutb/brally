@@ -1699,8 +1699,9 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         eyeScale = 0.0f;
 
         /* x/y compared ONCE; z picks the arm (orig 0x61c-0x655). */
-        if (pCam[12] == pCarF[12] && pCam[13] == pCarF[13]) {
-            if (pCam[14] == pCarF[14])
+        if (((const float *)BrG_6C6490)[12] == pCarF[12] &&
+            ((const float *)BrG_6C6490)[13] == pCarF[13]) {
+            if (((const float *)BrG_6C6490)[14] == pCarF[14])
                 atOffset = 1.0f;
             else
                 eyeScale = 0.1f;
