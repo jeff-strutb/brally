@@ -724,6 +724,7 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
 /* WHAT IT DOES: bring the 3dfx card up: installs the frame-flip hooks,
  * initialises Glide, and returns without opening a window if no Voodoo
  * hardware is present -- which is how the game discovers it must fall back. */
+/* @t4-pass 0x1001E080 3 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {
