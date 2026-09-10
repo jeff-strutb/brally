@@ -87,10 +87,15 @@ int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
   } else {
     start = *(int *)((char *)&DAT_10661834 + tmu * 8);
     next = start + req;
-    if ((unsigned int)next >= (unsigned int)grTexMaxAddress(tmu)) {
+    /* The high water-mark test is written with the SUCCESS arm first: the
+     * original falls through on `jb` into the store and jumps away to the
+     * failure exit, where the `>= ... goto fail` spelling emits the
+     * opposite polarity. */
+    if ((unsigned int)next < (unsigned int)grTexMaxAddress(tmu)) {
+      *(int *)((char *)&DAT_10661834 + tmu * 8) = next;
+    } else {
       goto fail;
     }
-    *(int *)((char *)&DAT_10661834 + tmu * 8) = next;
   }
   *(int *)((char *)&DAT_10661840 + off) = 0;
   *(int *)((char *)&DAT_10661844 + off) = 1;
