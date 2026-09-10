@@ -1853,7 +1853,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xF0000000u, 0x0703C000u);
     put(0xE7000000u, 0);
 
-    /* 0xAE34 -- specular MOVEMEM (payload from the TODO specular block). */
+    /* 0xAE34 -- specular MOVEMEM (payload from the specMem block above). */
     put(0x03840010u, specMem);
     put(0x03820010u, specMem + 0x10);
 
@@ -1916,7 +1916,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             *(const unsigned char *const *)((const unsigned char *)BrG_6C3308 + 0x8014);
         /* Orig reads the 0x100ABAA0 mode-change flag DIRECTLY (cmp dword
          * [0x100abaa0],ebp); the port routed it through the BrBootGlobal_ABAA0
-         * stub, which cannot inline across TUs at /O2.  g_AC300 is that flag. */
+         * wrapper, which cannot inline across TUs at /O2.  g_AC300 is that flag. */
         if (*(const uint32_t *)(pTexRecs + (uint32_t)iTex * 36 + 4) != 0 &&
             g_AC300 == 0) {
             float fe68 = *(const float *)(car + BR_CAR_OFF_F0E68);
