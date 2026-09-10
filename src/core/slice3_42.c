@@ -396,6 +396,7 @@ static int BrReplayActiveCount(void)
  * allowance of frames -- the recording simply stops rather than wrapping. */
 /* @t4-pass 0x10063A60 1 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x10063A60 2 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
+/* @t4-pass 0x10063A60 3 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {
