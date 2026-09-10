@@ -44,6 +44,16 @@
  * re-materialisation matters); a spare byte local to shift the frame.
  * `corpus.py find --from 0x100250D0 --at 0x1596 --len 12` is a MISS: the
  * pinned-1 run is not proven anywhere in the solved tree.
+ * ‼ Family (B) is fully DIAGNOSED and the obvious source fix is DEAD.  At
+ * 0x6f5 the original does `xor eax,eax; mov [counter],eax; je ...; cmp
+ * ebx,eax` -- it materialises the guard's 0 in a register, stores the
+ * counter FROM that register and compares the loop bound against the SAME
+ * register.  We emit `mov dword ptr [counter],0` and `test ebx,ebx`.  Since
+ * the comma-guards already read `(counter = 0, ..., 0 < n)`, spelling the
+ * bound test as `counter < n` is semantically identical and would name the
+ * register -- but VC5 constant-propagates the just-assigned 0 and folds it
+ * straight back: six guards converted, byte-for-byte inert.  So family (B)
+ * is allocation, not spelling, exactly like family (A).
  * @t4-pass 0x100250D0 1 2026-09-10 probes 12 bytes 8412 insns 2403 regions 43 rows 62 census no
  * @t4-pass 0x100250D0 2 2026-09-10 probes 12 bytes 8412 insns 2403 regions 43 rows 62 census yes
  *
