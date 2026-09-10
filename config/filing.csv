@@ -1,4 +1,5 @@
 glide_va,name,module,basis,file
+0x10001000,BrAdler32,gamedata,filed,src/core/gamedata/br_adler.c
 0x10001130,BrSurfNew,drawing,filed,src/core/drawing/br_surf.c
 0x10001190,BrSurfFree,drawing,filed,src/core/drawing/br_surf.c
 0x10001240,BrSurfFromBitmap,drawing,filed,src/core/drawing/br_surf.c
