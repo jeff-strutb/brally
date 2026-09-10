@@ -35,14 +35,14 @@ _Snapshot 2026-09-09._
 
 ```
 M1  Contract-valid — compiles & ports (T3 + T4)
-    ██████████████████░░░░░░░░░░░░░░░░░░░░░░  44.7%   215,069 / 480,853 B   1,199 / 1,503 fns
+    ███████████████████░░░░░░░░░░░░░░░░░░░░░  46.7%   224,325 / 480,853 B   1,214 / 1,503 fns
 M2  Byte-exact (T4)
-    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  40.7%   195,476 / 480,853 B   1,154 / 1,503 fns
+    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  41.0%   197,052 / 480,853 B   1,155 / 1,503 fns
 ```
 
-The bars sit close by design: matching is byte-exact-first, so only 45
-certified-but-not-yet-exact functions (19,593 B) separate M1 from M2. Byte
-percentages trail function percentages (79.8% / 76.8% of functions) because the
+The bars sit close by design: matching is byte-exact-first, so only 59
+certified-but-not-yet-exact functions (27,273 B) separate M1 from M2. Byte
+percentages trail function percentages (80.8% / 76.8% of functions) because the
 functions still open are several times larger than the matched ones.
 <!-- PROGRESS:END -->
 
