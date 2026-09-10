@@ -230,6 +230,11 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
     BrLerpNode *pOut     = pPrev;
     BrLerpNode *pRecycle = NULL;
     int32_t     n        = pList->cVerts;
+    /* The count's write-back is SHARED by the entering and the wholly-outside
+     * arms: the original loads it, adjusts it and `jmp`s into the other arm's
+     * store.  Writing `pList->cVerts = pList->cVerts +/- 1` in each arm gives
+     * two stores. */
+    int32_t     cv;
 
     if (n > 0) {
         for (;;) {
@@ -256,8 +261,9 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 #ifndef BR_MATCHING_BUILD
                 }
 #endif
-                pList->cVerts = pList->cVerts + 1;
+                cv = pList->cVerts + 1;
                 pOut = pCur;
+                goto BR_STORE_CV;
                 }
             } else if (dPrev >= 0.0f) {
                 /* leaving: drop pCur, splice in the crossing in its place */
@@ -289,7 +295,9 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 
                 pCur->pNext = pRecycle;
                 pRecycle    = pCur;
-                pList->cVerts = pList->cVerts - 1;
+                cv = pList->cVerts - 1;
+BR_STORE_CV:
+                pList->cVerts = cv;
             }
 
             pPrev = pCur;
@@ -309,7 +317,13 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
          * overwrites the node's link. Inlined: a call to BrPolyPoolFree
          * cannot emit the hoisted free-head load. */
         BrLerpNode *p      = pRecycle;
-        BrLerpNode *pNextR = (p != NULL) ? p->pNext : NULL;
+        /* The look-ahead starts AS p, and only steps when p is non-null: the
+         * original reuses the null p as the null look-ahead.  A `: NULL` arm
+         * materialises a fresh zero and costs the extra `xor`/`jmp`. */
+        BrLerpNode *pNextR = p;
+
+        if (p != NULL)
+            pNextR = p->pNext;
 
         while (p != NULL) {
             BrLerpNode *pHead = g_pBrLerpFree;
