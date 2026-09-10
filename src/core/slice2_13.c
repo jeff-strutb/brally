@@ -223,6 +223,13 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
 /* @t4-pass 0x1000DF00 1 2026-09-07 probes 97 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000DF00 2 2026-09-07 probes 92 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000DF00 3 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000DF00 4 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/crank.py) */
+/* @t3 0x1000DF00 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 339/347 insns 127/129 rows 2+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 30 compiles this pass, levers accepted: mut:addr_taken:pCur;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 {
