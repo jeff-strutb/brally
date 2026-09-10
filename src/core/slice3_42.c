@@ -397,6 +397,13 @@ static int BrReplayActiveCount(void)
 /* @t4-pass 0x10063A60 1 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x10063A60 2 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x10063A60 3 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x10063A60 4 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t3 0x10063A60 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 105/103 insns 32/30 rows 0+2 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 48 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {
