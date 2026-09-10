@@ -418,6 +418,29 @@ def classify(miss, extra, obag=None, rbag=None):
             side['or R, R'] -= n
             other['mov B, B'] -= min(n, other['mov B, B'])
     um += collections.Counter(); ue += collections.Counter()
+    # Zero-extend fork: a byte is widened to a word either BEFORE the load
+    # (`xor R,R; mov B,[M]`) or AFTER it (`mov B,[M]; and R,0xff`).  Same
+    # value, same register; which half runs is decided by whether the load's
+    # destination register was still live -- the register-death timing of
+    # docs/VC5-IDIOMS.md's byte-slot entry, and the same axis the byte-compose
+    # group below already folds.  (2026-09-10, 0x1006CE50 BrBitStreamReadU24:
+    # orig loads p[2] into AL over the DYING pointer register and masks; ours
+    # zeroes a fresh register first.  12 probes -- commuted or, index-through-
+    # cursor, uint and uchar temps either side of the cursor store, p += 2,
+    # split shift -- every one inert or worse.)
+    # Symmetric evidence, or it does not fire: the mask on one side must
+    # consume a real extra `xor R, R` on the OTHER side, and both streams must
+    # actually load a byte.  A lone source-level `x & 0xff` we simply failed to
+    # emit has no opposing xor and stays unpaired.
+    BYTELOAD = re.compile(r'^mov B, byte ptr \[')
+    if obag is not None and rbag is not None and \
+            any(BYTELOAD.match(r) for r in obag) and any(BYTELOAD.match(r) for r in rbag):
+        for side, opp_single in ((um, se), (ue, sm)):
+            n = min(side['and R, 0xff'], opp_single['xor R, R'])
+            if n:
+                side['and R, 0xff'] -= n
+                opp_single['xor R, R'] -= n
+    um += collections.Counter(); ue += collections.Counter()
     # Constant-materialisation fork: `push K; pop R` IS `mov R, K` -- the same
     # value in the same register, chosen for size (3 B for an imm8 against 5).
     # An exact instruction-selection identity, not an approximation: cancel the
@@ -431,6 +454,26 @@ def classify(miss, extra, obag=None, rbag=None):
                 continue
             while side[row] and side['pop R'] and other['mov R, ' + k]:
                 side[row] -= 1; side['pop R'] -= 1; other['mov R, ' + k] -= 1
+    um += collections.Counter(); ue += collections.Counter()
+    # Staged-constant push: `push K` against `mov R, K; push R` -- the same
+    # value reaches the same stack slot; the register is a staging post.  The
+    # mirror of the fork above, and forced here rather than chosen: a struct
+    # argument is always materialised through a register, and the struct is
+    # what makes MSVC5 assign the __fastcall registers the way the original
+    # does (br_uictlhook.c dossier: (pThis, struct, int, int) hands edx to the
+    # third argument).  Initialising the struct in its declaration instead of
+    # by assignment changes nothing -- 4 more probes on 2026-09-10, and the
+    # dossier had already probed it.
+    # The constant must match EXACTLY and the opposite side must really carry
+    # the `mov R, K` singleton for it, so a push of some other value can never
+    # pair.  (0x10037FA0, 0x10038000: `push 0x74` / `push 0x75`.)
+    for side, other, opp_single in ((um, ue, se), (ue, um, sm)):
+        for row in [r for r in side if r.startswith('push ')]:
+            k = row[5:]
+            if not re.fullmatch(r'0x[0-9a-f]+|\d+', k):
+                continue
+            while side[row] and other['push R'] and opp_single['mov R, ' + k]:
+                side[row] -= 1; other['push R'] -= 1; opp_single['mov R, ' + k] -= 1
     um += collections.Counter(); ue += collections.Counter()
     # Callee-save fork: a BALANCED extra `push R` / `pop R` on one side and
     # nothing opposite is one more register saved across the body -- the
