@@ -657,26 +657,31 @@ void BrModelSwap(void *pImage)
     /* ---- the record array at +0x08, stride 0x14 ----
      * The count is re-read from the header on every pass, and the compare
      * is unsigned. */
-    pRec = pHdr + 8;
+    /* The cursor is biased +2 into the record, not parked on its first
+     * field: the original's `lea esi,[ebp+0xa]` and its `[esi-2]` reads of
+     * the slot are that bias, and spelling it here is what puts the whole
+     * record's field displacements on the original's numbers (the +4 and
+     * +0xa biases were measured too, and are both worse). */
+    pRec = pHdr + 10;
 
     for (iRec = 0; iRec < (uint32_t)BrLd16(pHdr + 2); iRec++, pRec += 0x14) {
         uint32_t v;
 
-        if (BrLd32(pRec) == 0)
+        if (BrLd32(pRec - 0x02) == 0)
             continue;
 
-        BrRev4(pRec + 0x00);
-        g_BrModelFixup((uint32_t *)(pRec + 0x00));
+        BrRev4(pRec - 0x02);
+        g_BrModelFixup((uint32_t *)(pRec - 0x02));
+        BrRev2(pRec + 0x02);
         BrRev2(pRec + 0x04);
-        BrRev2(pRec + 0x06);
-        BrRev4(pRec + 0x08);
-        BrRev4(pRec + 0x0C);
-        BrRev4(pRec + 0x10);
+        BrRev4(pRec + 0x06);
+        BrRev4(pRec + 0x0A);
+        BrRev4(pRec + 0x0E);
 
-        v = BrLd32(pRec);
+        v = BrLd32(pRec - 0x02);
         BrSub1002BF80(v);
         BrSub10074DC0(8);
-        g_BrGfxSubmitB(BrLd32(pRec));
+        g_BrGfxSubmitB(BrLd32(pRec - 0x02));
     }
 }
 #ifdef BR_MATCHING_BUILD
