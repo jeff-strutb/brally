@@ -57,7 +57,7 @@ REG32 = ('eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi')
 
 
 class Machine:
-    def __init__(self, mem, regs, listing):
+    def __init__(self, mem, regs, listing, idx=None):
         self.mem = mem                      # dict: byte-address -> 0..255
         self.R = dict(regs)
         self.st = []                        # x87 stack, st[0] is TOP
@@ -66,7 +66,11 @@ class Machine:
         self.callstack = []
         self.FTOL = 0x10074560
         self.prog = listing
-        self.idx = {a: i for i, (a, _, _) in enumerate(listing)}
+        # `idx` may be supplied prebuilt.  The equivalence oracle maps the
+        # whole original .text (about 130k instructions) so that calls execute
+        # the real callee; rebuilding that index per Machine -- twice a seed,
+        # sixty-four seeds a function -- is what made it unusably slow.
+        self.idx = idx if idx is not None else {a: i for i, (a, _, _) in enumerate(listing)}
 
     # ---- byte-addressable memory --------------------------------------
     def rd_u8(self, a):
