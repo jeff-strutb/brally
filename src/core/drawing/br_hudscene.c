@@ -683,6 +683,15 @@ void BrHudDrawSplitList(const BrHudView *aViews)
  * zero. */
 extern const char *BrStrGet(int id);   /* slice4_52.c, Glide 0x1006D280 */
 
+/* @t4-pass 0x10015300 1 2026-09-09 probes 10 bytes 402 insns 123 regions 6 rows 4 census no  (hand, fn.py variants: literal/order/operand spellings, all inert) */
+/* @t4-pass 0x10015300 2 2026-09-09 probes 10 bytes 402 insns 123 regions 6 rows 4 census yes  (hand, fn.py variants: decl split, amp/index call args, casts, all inert; corpus MISS at +0x20 len 10) */
+/* @t3 0x10015300 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 402/402 insns 123/123 rows 2+2 regions 6 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling only: size- and insn-exact, rows 2+2
+ * all canon-paired, 6 masked regions; the sub/add and sprintf tail-merge
+ * shapes are already proven in the inline notes.  Dead probes in the two
+ * ledger lines.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10017D90 d3d BrHudDraw */
 void BrHudDraw(BrHudView *aViews, int a2)
 {
