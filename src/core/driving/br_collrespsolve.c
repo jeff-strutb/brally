@@ -559,8 +559,14 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 /* @t3 0x10067710 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1309/1301 insns 376/375 rows 3+4 regions 6 oracle UNCLASSIFIED
  * @t3-effort passes 7 zero-movement 6 7
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * RESIDUE, every row allocation or x87 stack colouring: two materialised
+ * `mov R,1` where the original stores the flag register it already holds
+ * into the sign slot, and one unpaired `fxch`.  The dossier below carries
+ * the levers that closed the rest and the dead list; the dup-vs-reload
+ * fork on pP->nx is a pairing class in tools/t3.py classify(), and the
+ * seven spellings that do not reach it are listed there.
+ * 40 compiles in the last pass, levers accepted: none; every candidate and
+ * score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10067710 glide BrCrRespWalk */
 #ifdef BR_MATCHING_BUILD
@@ -589,11 +595,10 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * minuends aV[3..5] before the first fsub, so region 1 was a pure statement-
  * order artifact) -- register-blind multiset 17+17 -> 12+12.
  *
- * STATE 2026-09-10: 1292/1301 B, 376/375 instructions, msetdiff 4+5 rows,
- * 11 regions.  Gates 0, A1, A2, A3 and A5 all PASS and Gate B has its two
- * counted zero-movement passes; the ONLY thing standing between this row
- * and a T3 certification is A4, whose number is 33 uncompared bytes against a
- * 32-byte tolerance.  Three levers landed this session:
+ * STATE 2026-09-10: CERTIFIED (see the tag above) -- 1309/1301 B, 376/375
+ * instructions, msetdiff 3+4 rows, 6 regions, no lost sync.  Six levers
+ * landed this session; the first three took it to 4+5 rows with 33 bytes
+ * still unanchored, the last three closed the layout and the row count:
  *  - the saved position is a NAMED BrVec3 (`pSv`), which is what makes the
  *    push-out delta come out minuend-first (`fld pos; fsub save`); with the
  *    body offsets open-coded VC5 loads the subtrahends and `fsubr`s all
@@ -612,12 +617,16 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  *    statements, compound `*=`, term and store reorder, d copied to a
  *    second local, a named normal pointer) -- all inert or worse.  This is
  *    now a pairing class in tools/t3.py classify().
- *  - A4: the mode-4 cold arm sits OUT OF LINE after the epilogue in the
- *    orig (three `je` to it, `jmp` back past `mov edi,1`), so its 33 bytes
- *    at orig+0x4f4..0x515 -- the function's tail -- never anchor against
- *    our inline copy.  goto-to-a-trailing-label and goto-to-a-mid-function
- *    label both reproduce neither the layout nor a better row count
- *    (11 rows against 9).
+ *  - the mode-4 cold arm's OUT-OF-LINE placement, CLOSED: the arm has to
+ *    set `flag` itself and `goto` PAST the join's own assignment of it.
+ *    Nothing textual reaches this -- the arm's body written as a trailing
+ *    label, a mid-function label, a negated-then arm and an ||-chain all
+ *    compile to the same inline bytes; and hoisting `flag = 1` above the
+ *    mode-4 test lifts the arm but turns every modeFC/spin store into an
+ *    immediate-to-memory (17 rows).  It is the SKIP that does it.
+ *  - with the arm lifted, sign.x wants the if/else form again and the
+ *    push-out vector wants to be built z,y,x (which is what makes VC5
+ *    re-read pP->nx for dp.x instead of holding the CSE'd copy).
  *  - slots: orig planeD@0x10 cnt@0x14 sgn@0x18 spin@0x1c; ours has
  *    planeD/cnt one slot up.  Declaration order both ways: inert.
  *  - `spin` is HOMED in the orig ([esp+0x1c], written via the edi that
