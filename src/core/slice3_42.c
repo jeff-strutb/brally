@@ -900,6 +900,7 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 /* @t4-pass 0x100643E0 1 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
 /* @t4-pass 0x100643E0 2 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
 /* @t4-pass 0x100643E0 3 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
+/* @t4-pass 0x100643E0 4 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 /* @n64 0x80267410 located */
 #ifdef BR_MATCHING_BUILD
