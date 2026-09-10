@@ -12,6 +12,38 @@
 
 #include <math.h>
 
+/* WHAT IT DOES: the cross product in double precision -- the direction
+ * perpendicular to two others, which is how surface normals and sideways
+ * axes are built. The double-precision twin of BrVec3Cross; note the output
+ * is the LAST argument here, not the first. Each component is stored the
+ * moment it is computed, so pOut may not alias either input. */
+/* @t4-pass 0x1001DD00 1 2026-09-10 probes 10 bytes 65 insns 25 regions 3 rows 4 census no  (hand, fn.py variants: four commutative operand orders, six TU positions -- position IS the lever, top-of-TU took REGNORM 8+8 to 0+0; every other slot is worse) */
+/* @t4-pass 0x1001DD00 2 2026-09-10 probes 10 bytes 65 insns 25 regions 3 rows 4 census yes  (hand, fn.py variants: parens, negated form, element pointers, indexed out, value copies, zyx/yzx store order, cast, sub-temp, struct-then-copy -- all inert or worse; census below) */
+/* @t3 0x1001DD00 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 65/65 insns 25/25 rows 2+2 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * CENSUS (all 25 instruction pairs, 2026-09-10): 23 of 25 are identical up to
+ * ONE register relabel -- pA and pOut swap eax and edx (pB is ecx in both), so
+ * every differing byte is a ModRM base field. The remaining pair is the
+ * commutative fold on the x component's first product: orig `fld b.z / fmul
+ * a.y`, ours `fld a.y / fmul b.z`, the crossed quad t3.py classify already
+ * cancels. No stack slots, no spills, no uncompared code outside the 4 B the
+ * key-3 walk skips. Dead probes: the two ledger lines above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @implements 0x1001DD00 glide BrVec3dCross */
+/* @implements 0x10030670 d3d BrVec3dCross */
+void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
+{
+    /* POSITION IS THE MATCH, not the spelling. At the head of the TU the body
+     * is 65/65 B and 25/25 instructions with REGNORM 0+0; anywhere else below
+     * it the register assignment rotates further and REGNORM goes to 4+4 or
+     * 8+8. Orig fstp's each component as it is computed; named temps add
+     * integer copies and bloat 65 B to 89 B. */
+    pOut->x = pA->y * pB->z - pA->z * pB->y;
+    pOut->y = pA->z * pB->x - pA->x * pB->z;
+    pOut->z = pA->x * pB->y - pA->y * pB->x;
+}
+
 /* WHAT IT DOES: the dot product in double precision -- how much two
  * directions agree. Positive means roughly the same way, zero means at right
  * angles, negative means opposing. The double-precision twin of BrVec3Dot,
@@ -70,15 +102,6 @@ BrVec3d *BrVec3dNormalise(BrVec3d *pV)
 /* WHAT IT DOES: the cross product of two 3D vectors: the direction at right
  * angles to both, which is how the game gets a surface's facing from two of
  * its edges. Note the answer goes into the third argument, not the first. */
-/* @implements 0x10030670 d3d BrVec3dCross */
-void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
-{
-    /* Orig fstp's each component as it is computed; named temps add
-     * integer copies and bloat 65 B to 91 B. */
-    pOut->x = pA->y * pB->z - pA->z * pB->y;
-    pOut->y = pA->z * pB->x - pA->x * pB->z;
-    pOut->z = pA->x * pB->y - pA->y * pB->x;
-}
 
 signed char BrPackNormalByte(double v)
 {
