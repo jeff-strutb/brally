@@ -58,7 +58,34 @@ int BrNetGetA102212D0(int param_1);
  * rotation), function order swap to address order (no movement),
  * cursor-key + indexed-idx (kept: positional DIFFS 22 -> 16).  Gate 0+A
  * PASS; parked for Gate B's counted ledger.
- * @t4-pass 0x1005F580 1 2026-09-09 probes 6 bytes 259 insns 92 regions 1 rows 0 census no */
+ * @t4-pass 0x1005F580 1 2026-09-09 probes 6 bytes 259 insns 92 regions 1 rows 0 census no
+ * @t4-pass 0x1005F580 2 2026-09-10 probes 12 bytes 259 insns 92 regions 1 rows 0 census no
+ * @t4-pass 0x1005F580 3 2026-09-10 probes 11 bytes 259 insns 92 regions 1 rows 0 census yes
+ * Pass 2 attacked the cyclic shift where the 2026-09-09 list had not: the
+ * four locals' DECLARATION order (key cursor first, last, and after the
+ * array), the two cursors' init order, the key as a ternary, the index store
+ * moved below the key store, compound increments, a pre-advanced cursor
+ * written through [-2], the key read hoisted above the flag test, and a
+ * separate named key temp.  Pass 3 permuted the tail loop and the network
+ * loop (hoisted slot pointer, hoisted rank expression, two re-associations
+ * of `n - i - 1`, swapped increments, indexed vs dereferenced cursor, `!= 0`
+ * vs `> 0` on the qsort guard, and the call result stored directly).  Every
+ * one of the 23 compiles left the rotation exactly where it was; the only
+ * movers made it worse (pre-advanced cursor 1+1, hoisted rank 0+2).
+ * `corpus.py find --from 0x1005F580 --at 0x5c --len 12` is a MISS -- loop 1's
+ * construct is not proven anywhere in the solved tree, so there is no
+ * spelling to copy.  That MISS is pass 3's census. */
+/* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 2 3
+ * The residue is loop 1's four-register cyclic shift and nothing else: the
+ * derived key cursor is allocated FIRST in the original and LAST here, which
+ * rotates key-cursor/key/slot/i one place.  Size, instruction count and the
+ * register-blind multiset are all exact (259/259 B, 92/92 insns, 0+0, one
+ * masked region).  The dossier and the full 29-compile dead list are in the
+ * RESIDUE block above; the corpus is a MISS on loop 1's 12-instruction run,
+ * so no proven spelling exists to copy.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005F580 glide BrRankAssign */
 
 void BrRankAssign(void)
