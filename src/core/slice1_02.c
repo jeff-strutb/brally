@@ -225,6 +225,15 @@ void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
  * When the two facings point opposite ways it flips one of them first, so a
  * car does not spin the long way round; and the last field is copied
  * outright rather than blended. */
+/* @t4-pass 0x10007D50 1 2026-09-09 probes 10 bytes 291 insns 100 regions 3 rows 0 census no  (hand, fn.py variants: clamp/negate/loop/copy spellings, decl orders, all inert or worse) */
+/* @t4-pass 0x10007D50 2 2026-09-09 probes 10 bytes 291 insns 100 regions 3 rows 0 census yes  (hand, fn.py variants: loop rewrites while/do, condition swaps, index respellings, all inert or worse; corpus query at +0x20) */
+/* @t3 0x10007D50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 291/291 insns 100/100 rows 0+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring/scheduling only: identical register-blind
+ * multiset (rows 0+0), size- and insn-exact, 3 masked regions.  Dead
+ * probes in the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100079E0 d3d BrCarStateLerp */
 void BrCarStateLerp(BrCarState *pDst, float t,
                     const BrCarState *pA, const BrCarState *pB)
