@@ -548,6 +548,17 @@ typedef int (__stdcall *dsbuf_fn1)(int);
 /* @t4-pass 0x1006B440 6 2026-09-10 probes 59 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 7 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 8 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/crank.py) */
+/* WHAT IT DOES: sets how loud one playing sound is, by handing DirectSound
+ * the voice's own level scaled by the game's master volume -- and jumping
+ * straight to full silence when the master volume is zero. */
+/* @t3 0x1006B440 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 84/79 insns 31/29 rows 1+3 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 8 zero-movement 7 8
+ * Residue and dead list in the dossier above: the -10000 constant reaches the
+ * stack through a register on one side and an immediate on the other, and the
+ * rest is the argument-home allocation.  Eight counted passes, the last two
+ * zero-movement, corpus a MISS at the first divergence.  Do not reopen before
+ * the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
 void BrSndVoiceApplyVolume(int param_1)
