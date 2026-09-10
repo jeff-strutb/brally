@@ -230,80 +230,6 @@ void BrMat4BuildScaledTransposed(const BrMat4 *pA, BrMat4 *pOut,
 /* Rigid-body integrator                                               */
 /* ================================================================== */
 
-/* 0x100742D0 */
-/* WHAT IT DOES: works out how fast a body's orientation is changing, given
- * how fast it is spinning. The result is what the integrator adds to the
- * orientation each step to make the body actually turn. */
-/* @implements 0x100742D0 d3d BrRbQuatDerivative */
-void BrRbQuatDerivative(BrRbState *pS)
-{
-    /* SPILL MAP, traced instruction by instruction against the Glide original
-     * 0x1006D530.  The scale is a float constant (3F000000 == 0.5f), loaded
-     * as `fmul dword`, so the three halved rates are plain `float` locals in
-     * 12 bytes of frame -- `sub esp, 0xc`, homed at [esp], [esp+4], [esp+8].
-     *
-     * An earlier reading took the fst/fstp asymmetry at 1006D54E (hx: stored
-     * AND popped) versus 1006D566 / 1006D574 (hy, hz: stored and KEPT) for a
-     * mixed float/double source, and typed the halves `double` with per-use
-     * casts.  That is a misreading of the register allocator.  Without /Op,
-     * VC5 is free to keep a just-stored value in st and spend it once before
-     * reloading the slot; each of hx, hy and hz is used exactly four times
-     * here (twelve products in total), and the counts come out right with all
-     * three plain floats: hx = four `fld [esp]`, hy = three `fld [esp+4]`
-     * plus the kept register, hz = three `fld [esp+8]` plus the kept one.
-     * The double spelling is what forced the `fmul qword` chain.
-     *
-     * The quaternion components are read straight out of the struct
-     * (both-memory `fmul dword [eax+0x18..0x24]`), not through named locals.
-     * The four results are `fstp dword` at 1006D5EA..1006D5F7, in field
-     * order, so each expression rounds to float exactly once, at the store.
-     *
-     * The halves are ONE AGGREGATE, not three scalars.  With three separate
-     * `float` locals VC5 packs the third into the dead `pS` parameter slot
-     * (`sub esp, 8`, hz at [esp+0xc] -- the idiom at VC5-IDIOMS "PACKS
-     * ORDINARY LOCALS INTO DEAD PARAMETER SLOTS"); an aggregate is allocated
-     * whole and restores `sub esp, 0xc` with the slots in declaration order.
-     * BrVec3 and float[3] compile identically here; BrVec3 reads better.
-     *
-     * ROW 3 SUBTRACTS SECOND, NOT LAST.  `h.z*f04 - h.x*f0C + h.y*f00`, not
-     * `h.z*f04 + h.y*f00 - h.x*f0C`.  Only row 3 takes this form; rows 2 and
-     * 4 keep the plus-then-minus shape, and their own alternatives change
-     * nothing (measured, all give the same score).
-     *
-     * ‼ CORRECTION.  An earlier version of this note claimed 23 bytes of
-     * residue with "instruction stream, count and size exact (RAW and REGNORM
-     * multiset gap 0+0)".  That was never true: measured at that note's own
-     * commit the function was 208 bytes against 206, 74 instructions against
-     * 73, with ONE SURPLUS `fxch` and REGNORM 1+0.  A claim of parity is what
-     * stops the next reader from working a function, so it has to be measured
-     * before it is written.  The subtract-second row above is what actually
-     * removes that `fxch`; the function is only NOW at 206/206, 73/73 and
-     * RAW/REGNORM 0+0, with 21 differing bytes.
-     *
-     * RESIDUE (21 bytes): every remaining differing byte is the ModRM of an
-     * `fxch`/`faddp`/`fsubp` st(i) index -- the x87 stack holds the same
-     * values in a different permutation from 1006D565 on.  Probed and ruled
-     * out, do NOT re-run: the full 4x4x4 sweep of per-row term orders and
-     * associations for rows 2/3/4 (64 builds, nothing beats 21, and the six
-     * that tie differ only in rows 2 and 4); all five non-identity orderings
-     * of the three h assignments RE-RUN against the corrected row 3 (50, 85,
-     * 90, 165 and 170 diffs -- x, y, z still wins); three re-associations of
-     * row 1 (30, 141 and 168); `float[3]` vs `BrVec3` (byte-identical); and
-     * `/O2 /Op` (214 bytes, 134 diffs -- strictly worse, this TU is /O2). */
-    BrVec3 h;
-
-    h.x = pS->angVel.x * 0.5f;
-    h.y = pS->angVel.y * 0.5f;
-    h.z = pS->angVel.z * 0.5f;
-
-    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first.  The leading `fchs`
-     * at 1006D588 is the unary minus on the first product only: the row is
-     * `-hx*x - hy*y - hz*z`, evaluated left to right. */
-    pS->qDot.f00 = -h.x * pS->quat.f04 - h.y * pS->quat.f08 - h.z * pS->quat.f0C;
-    pS->qDot.f04 = h.y * pS->quat.f0C + h.x * pS->quat.f00 - h.z * pS->quat.f08;
-    pS->qDot.f08 = h.z * pS->quat.f04 - h.x * pS->quat.f0C + h.y * pS->quat.f00;
-    pS->qDot.f0C = h.x * pS->quat.f08 + h.z * pS->quat.f00 - h.y * pS->quat.f04;
-}
 
 /* 0x100743A0 */
 /* WHAT IT DOES: adds one time step's worth of acceleration to a body's speed
@@ -468,6 +394,89 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
     pDst->qDot   = pSrc->qDot;
 }
 #endif
+
+/* 0x100742D0 */
+/* WHAT IT DOES: works out how fast a body's orientation is changing, given
+ * how fast it is spinning. The result is what the integrator adds to the
+ * orientation each step to make the body actually turn. */
+/* @implements 0x100742D0 d3d BrRbQuatDerivative */
+void BrRbQuatDerivative(BrRbState *pS)
+{
+    /* SPILL MAP, traced instruction by instruction against the Glide original
+     * 0x1006D530.  The scale is a float constant (3F000000 == 0.5f), loaded
+     * as `fmul dword`, so the three halved rates are plain `float` locals in
+     * 12 bytes of frame -- `sub esp, 0xc`, homed at [esp], [esp+4], [esp+8].
+     *
+     * An earlier reading took the fst/fstp asymmetry at 1006D54E (hx: stored
+     * AND popped) versus 1006D566 / 1006D574 (hy, hz: stored and KEPT) for a
+     * mixed float/double source, and typed the halves `double` with per-use
+     * casts.  That is a misreading of the register allocator.  Without /Op,
+     * VC5 is free to keep a just-stored value in st and spend it once before
+     * reloading the slot; each of hx, hy and hz is used exactly four times
+     * here (twelve products in total), and the counts come out right with all
+     * three plain floats: hx = four `fld [esp]`, hy = three `fld [esp+4]`
+     * plus the kept register, hz = three `fld [esp+8]` plus the kept one.
+     * The double spelling is what forced the `fmul qword` chain.
+     *
+     * The quaternion components are read straight out of the struct
+     * (both-memory `fmul dword [eax+0x18..0x24]`), not through named locals.
+     * The four results are `fstp dword` at 1006D5EA..1006D5F7, in field
+     * order, so each expression rounds to float exactly once, at the store.
+     *
+     * The halves are ONE AGGREGATE, not three scalars.  With three separate
+     * `float` locals VC5 packs the third into the dead `pS` parameter slot
+     * (`sub esp, 8`, hz at [esp+0xc] -- the idiom at VC5-IDIOMS "PACKS
+     * ORDINARY LOCALS INTO DEAD PARAMETER SLOTS"); an aggregate is allocated
+     * whole and restores `sub esp, 0xc` with the slots in declaration order.
+     * BrVec3 and float[3] compile identically here; BrVec3 reads better.
+     *
+     * ROW 3 SUBTRACTS SECOND, NOT LAST.  `h.z*f04 - h.x*f0C + h.y*f00`, not
+     * `h.z*f04 + h.y*f00 - h.x*f0C`.  Only row 3 takes this form; rows 2 and
+     * 4 keep the plus-then-minus shape, and their own alternatives change
+     * nothing (measured, all give the same score).
+     *
+     * ‼ CORRECTION.  An earlier version of this note claimed 23 bytes of
+     * residue with "instruction stream, count and size exact (RAW and REGNORM
+     * multiset gap 0+0)".  That was never true: measured at that note's own
+     * commit the function was 208 bytes against 206, 74 instructions against
+     * 73, with ONE SURPLUS `fxch` and REGNORM 1+0.  A claim of parity is what
+     * stops the next reader from working a function, so it has to be measured
+     * before it is written.  The subtract-second row above is what actually
+     * removes that `fxch`; the function is only NOW at 206/206, 73/73 and
+     * RAW/REGNORM 0+0, with 21 differing bytes.
+     *
+     * ‼ POSITION IN THE TU IS LOAD-BEARING, and it had silently rotted. This
+     * function must sit immediately ahead of BrRbBuildMatrix; anywhere earlier
+     * in slice3_44.c the allocator rotates and the residue is 163 differing
+     * bytes at REGNORM 27+24, not 21 at 0+0. Restored 2026-09-10 after a
+     * neighbour edit moved it -- nothing about this function changed, so a
+     * re-measure is the only thing that catches it (position sweep over every
+     * slot in the TU: only the two tail slots score 21).
+     *
+     * RESIDUE (21 bytes): every remaining differing byte is the ModRM of an
+     * `fxch`/`faddp`/`fsubp` st(i) index -- the x87 stack holds the same
+     * values in a different permutation from 1006D565 on.  Probed and ruled
+     * out, do NOT re-run: the full 4x4x4 sweep of per-row term orders and
+     * associations for rows 2/3/4 (64 builds, nothing beats 21, and the six
+     * that tie differ only in rows 2 and 4); all five non-identity orderings
+     * of the three h assignments RE-RUN against the corrected row 3 (50, 85,
+     * 90, 165 and 170 diffs -- x, y, z still wins); three re-associations of
+     * row 1 (30, 141 and 168); `float[3]` vs `BrVec3` (byte-identical); and
+     * `/O2 /Op` (214 bytes, 134 diffs -- strictly worse, this TU is /O2). */
+    BrVec3 h;
+
+    h.x = pS->angVel.x * 0.5f;
+    h.y = pS->angVel.y * 0.5f;
+    h.z = pS->angVel.z * 0.5f;
+
+    /* qDot = 0.5 * (0, wx, wy, wz) (x) q, scalar first.  The leading `fchs`
+     * at 1006D588 is the unary minus on the first product only: the row is
+     * `-hx*x - hy*y - hz*z`, evaluated left to right. */
+    pS->qDot.f00 = -h.x * pS->quat.f04 - h.y * pS->quat.f08 - h.z * pS->quat.f0C;
+    pS->qDot.f04 = h.y * pS->quat.f0C + h.x * pS->quat.f00 - h.z * pS->quat.f08;
+    pS->qDot.f08 = h.z * pS->quat.f04 - h.x * pS->quat.f0C + h.y * pS->quat.f00;
+    pS->qDot.f0C = h.x * pS->quat.f08 + h.z * pS->quat.f00 - h.y * pS->quat.f04;
+}
 
 /* 0x1006D6B0 */
 /* WHAT IT DOES: builds the transform matrix that places a body in the world,
