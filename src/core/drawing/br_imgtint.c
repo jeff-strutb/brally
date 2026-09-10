@@ -113,13 +113,18 @@ void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
                 xAcc = 0;
                 p = pPix;
                 do {
+                    /* THE CURSOR IS BUMPED FIRST and the three channels are
+                     * read back through negative displacements: the original
+                     * walks at -4/-3/-2, where the bump-last spelling anchors
+                     * ours three bytes earlier (-6/-5) and costs an extra
+                     * `add R,2` (register-blind 2+2 -> 0+1). */
                     tx = xAcc / w;
                     xAcc += 64;
                     t = pTex[(ty + tx) * 4];
-                    p[0] = (uint8_t)((t * p[0]) / 255);
-                    p[1] = (uint8_t)((t * p[1]) / 255);
-                    p[2] = (uint8_t)((t * p[2]) / 255);
                     p += 4;
+                    p[-4] = (uint8_t)((t * p[-4]) / 255);
+                    p[-3] = (uint8_t)((t * p[-3]) / 255);
+                    p[-2] = (uint8_t)((t * p[-2]) / 255);
                 } while (--n != 0);
             }
             pPix += stride;
