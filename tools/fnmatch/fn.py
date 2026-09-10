@@ -78,7 +78,8 @@ def norm(t, m, relocd=False):
     keep the two in step.
     """
     if BRANCH.match(t.split(' ', 1)[0]) and re.fullmatch(
-            r'0x[0-9a-f]+', t.split(' ', 1)[1] if ' ' in t else ''):
+            r'(0x[0-9a-f]+|\d+)', t.split(' ', 1)[1] if ' ' in t else ''):
+        # bare decimal: capstone's form for small intra-obj targets (`call 8`)
         return t.split(' ', 1)[0] + ' T'
     t = re.sub(r'esp [+-] 0x[0-9a-f]+', 'esp+S', t)
     t = re.sub(r'\*(1|2|4|8)\b', '*K', t)

@@ -58,7 +58,9 @@ def norm(i, relocd, tail_reloc=None):
     # A rel8/rel32 target is a pure BYTE-OFFSET artefact: any earlier region
     # that changes size rotates every later target and floods the diff.  The
     # aligned comparator (divergence.py) is what judges control flow.
-    if BRANCH.match(i.mnemonic) and re.fullmatch(r'0x[0-9a-f]+', s):
+    # capstone prints small targets as bare decimal (`call 8`); accept both
+    # forms or an intra-obj call to a file-static pairs with nothing.
+    if BRANCH.match(i.mnemonic) and re.fullmatch(r'(0x[0-9a-f]+|\d+)', s):
         return i.mnemonic + ' T'
     s = re.sub(r'esp \+ 0x[0-9a-f]+', 'esp+S', s)
     s = re.sub(r'\*(1|2|4|8)\b', '*K', s)
