@@ -223,6 +223,17 @@ extern int BrWaveSeekData(int *, MMCKINFO *, MMCKINFO *);               /* 0x100
 /* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10070280 2 2026-09-07 probes 100 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10070280 3 2026-09-07 probes 84 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10070280 4 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census no  (hand, fn.py variants: copy-init order/statement forms, decl orders, literal spellings, all inert or worse) */
+/* @t4-pass 0x10070280 5 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census yes  (hand, fn.py variants: TU position sweep -- both other slots inert -- plus name-swap allocation-hint and cast respellings, all inert) */
+/* @t3 0x10070280 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 229/229 insns 86/86 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
+ * residue is register colouring only: the whole-body ebx/esi transposition
+ * of the two argument copies (RAW 14+14, REGNORM 0+0, size-exact); the
+ * dead list is in the RESIDUE block below plus the position/name-swap
+ * sweep in pass 5.  Three crank census passes at the pre-fix numbers and
+ * two hand passes at the current ones.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10070280 glide BrWavLoad */
 int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
                   int32_t *pInfo, uint32_t **ppFormat, BrSndLoadVoice *pVoice)
