@@ -25,7 +25,7 @@ extern void *DAT_102e16b4;
 /* @t4-pass 0x1000E060 3 2026-09-09 probes 10 bytes 231 insns 79 regions 1 rows 0 census yes  (hand, fn.py variants: declaration orders, reload placement, difference temp, all inert; corpus MISS at +0xc8 len 12 -- the pop/fstp epilogue interleave is proven nowhere) */
 /* @t3 0x1000E060 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 231/231 insns 79/79 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
+ * @t3-effort passes 2 zero-movement 2 3
  * residue is epilogue scheduling only: orig interleaves the callee-saved
  * pops with the last channel's fstp, ours pops after (identical multiset,
  * REGNORM 0+0, size-exact); see the PARKED T2 note in the file header.
