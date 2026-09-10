@@ -452,7 +452,7 @@ int32_t   g_BrAA3398[7];              /* 0x10AA3398 */
 /* WHAT IT DOES: centres a line of text horizontally between the box's two
  * edges, storing the resulting left position and also handing it back. */
 /* @implements 0x1005B200 d3d BrTextBoxCentreX */
-float BrTextBoxCentreX(BrTextBox *pBox)
+float BR_THISCALL1 BrTextBoxCentreX(BrTextBox *pBox)
 {
     float fLeft  = (float)pBox->left;
     float fWidth = (float)(int32_t)pBox->width;          /* movsx from +0x40A */
@@ -460,7 +460,17 @@ float BrTextBoxCentreX(BrTextBox *pBox)
     float v;
 
     /* 0x1008F678 == 0.5f */
-    v = fLeft + 0.5f * (fSpan - fWidth);
+    /* THREE STEPS, EACH ITS OWN STATEMENT, and that is the whole match: the
+     * original keeps the span-minus-width difference as a value of its own,
+     * scales it, and only then adds `left` (`fsubp`, two dead `fxch`, `fmul
+     * 0.5`, `fxch`, `faddp`).  Folded into one expression VC5 schedules the
+     * x87 stack differently and drops those two shuffles -- 76 bytes against
+     * the original's 80.  The dead fxch pair is not noise to be optimised
+     * away; it is what the original's own source shape produced. */
+    float t = fSpan - fWidth;
+
+    v = t * 0.5f;
+    v = v + fLeft;
 
     pBox->x = v;
     return v;
