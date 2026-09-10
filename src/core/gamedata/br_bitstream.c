@@ -197,6 +197,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 /* 0x10073C10  big-endian u24, zero-extended. */
 /* WHAT IT DOES: reads the next three bytes as a single number, most
  * significant byte first. */
+/* @t4-pass 0x1006CE50 1 2026-09-09 probes 10 bytes 43 insns 18 regions 1 rows 3 census no  (hand, fn.py variants: index-through-cursor lever from ReadU16 and 9 tail spellings, all inert or worse) */
 /* @implements 0x10073C10 d3d BrBitStreamReadU24 */
 unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 {
