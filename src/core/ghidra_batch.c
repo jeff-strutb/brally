@@ -479,7 +479,19 @@ extern int DAT_104ab4ec;
 extern int DAT_104ab500;
 
 /* WHAT IT DOES: picks the unused sound-bank slot with the lowest use count
- * (skipping the one currently playing) and rotates the last/current pair. */
+ * (skipping the one currently playing) and rotates the last/current pair.
+ *
+ * Both branch residues were spellings, not codegen.  `*cost <= best` compiles
+ * the compare with cost on the left and skips on `ja`; the original compares
+ * the other way round and skips on `jb`, which is `best >= *cost` -- the same
+ * condition with the operands swapped.  And the original falls through to the
+ * indexed load and jumps away on `jl`, so its guard is `cur >= 0` with the
+ * zero in the else arm, not `cur < 0` with the zero first.  Twelve probes;
+ * only the two swaps together move it (register-blind rows 2 -> 0).
+ *
+ * RESIDUE: register-blind rows 0+0 at 157/157 B -- an eax/ebx transposition
+ * plus one scheduling window in the tail, where the original sinks the
+ * chosen*0x2E0F0 lea chain below the DAT_104AB500 store and VC5 hoists it. */
 /* @t4-pass 0x10013F20 1 2026-09-07 probes 92 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x10013F20 2 2026-09-07 probes 94 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
@@ -500,7 +512,7 @@ void BrSndBankPickSlot(void)
     flag = &DAT_10396f10;
     cur = DAT_104ab4e8;
     do {
-        if (*flag == 0 && i != cur && *cost <= best) {
+        if (*flag == 0 && i != cur && best >= *cost) {
             chosen = i;
             best = *cost;
         }
@@ -508,10 +520,10 @@ void BrSndBankPickSlot(void)
         i++;
         cost += 0xb83c;
     } while ((int)flag < 0x10396f24);
-    if (cur < 0) {
-        prev = 0;
-    } else {
+    if (cur >= 0) {
         prev = *(int *)((char *)&DAT_10396f48 + cur * 0x2e0f0);
+    } else {
+        prev = 0;
     }
     DAT_104ab500 = DAT_104ab4ec;
     DAT_104ab4ec = cur;
