@@ -610,23 +610,19 @@ set_flags:
 void BrCarDrawBody(void *pCar)
 {
     unsigned char       *car = (unsigned char *)pCar;
-    const unsigned char *model;
-    int32_t              iCar;
-    uint32_t             slotL;
 
     /* 0x1000BEB0 -- nothing draws unless one of the two mode flags is set. */
     if (BrG_6C661C == 0 && BrG_6C6624 == 0) {
         return;
     }
     /* 0x1000BED0 -- only cars the visibility pass marked for the opaque pass. */
-    iCar = *(const int32_t *)(car + BR_CAR_OFF_ICAR);
-    if (g_BrCarVisOpaque[iCar] == 0) {
+    if (g_BrCarVisOpaque[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] == 0) {
         return;
     }
     /* 0x1000BEE3 -- the player's own car, when its active camera object is the
      * record's own +0x27C4 slot, is left to the other passes. */
     if ((void *)car == BrG_6C2CF8 &&
-        BrG_6C6490 == (void *)(car + BR_CAR_OFF_CAMSLOT)) {
+        BrG_6C6490 == (void *)((unsigned char *)BrG_6C2CF8 + BR_CAR_OFF_CAMSLOT)) {
         return;
     }
     /* 0x1000BEFF -- class 2 is the translucent pass, not this one. */
@@ -637,24 +633,23 @@ void BrCarDrawBody(void *pCar)
     /* 0x1000BF0C -- publish the model to the scratch global the tail (and
      * 0x1000A110) read, then work from it. */
     BrG_6C3308 = *(void *const *)(car + BR_CAR_OFF_MODEL);
-    model      = (const unsigned char *)BrG_6C3308;
 
     /* 0x1000BF18 -- the two matrices: the car's pooled model matrix pushed as
      * the modelview, the shared projection slot loaded after it. */
-    put(0x01060040u, g_BrCarMtxSlot[iCar]);
+    put(0x01060040u, g_BrCarMtxSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)]);
     put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
 
     /* 0x1000BF5F -- the four 16-byte blocks of the car's lighting matrix
      * (0x9E/0x98/0x9A/0x9C at +0/+0x10/+0x20/+0x30 of one pooled slot). */
-    slotL = g_BrCarLightSlot[iCar];
-    put(0x039E0010u, slotL);
-    put(0x03980010u, slotL ? slotL + 0x10u : 0);
-    put(0x039A0010u, slotL ? slotL + 0x20u : 0);
-    put(0x039C0010u, slotL ? slotL + 0x30u : 0);
+    put(0x039E0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)]);
+    put(0x03980010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x10u);
+    put(0x039A0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x20u);
+    put(0x039C0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30u);
 
     /* 0x1000C004 -- the canned setup list, then the model's texture command. */
-    put(0x06000000u, (uint32_t)(uintptr_t)BrG_0AA838);
-    BrGfxEmitTexCmd(5, *(const void *const *)(model + BR_MODEL_OFF_TEXRECS));
+    put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA838);
+    BrGfxEmitTexCmd(5, *(const void *const *)((const unsigned char *)BrG_6C3308 +
+                                               BR_MODEL_OFF_TEXRECS));
 
     /* 0x1000C035 -- pipe sync, two-cycle, and the move-word run that primes
      * the primitive colour (0x200A/0x240A carry 0xFFFFFF00). */
@@ -678,8 +673,10 @@ void BrCarDrawBody(void *pCar)
     put(0xBA000602u, 0x00000080u);
 
     /* 0x1000C147 -- the body geometry, only if the model carries one. */
-    if (*(const uint32_t *)(model + BR_MODEL_OFF_BODYDL) != 0) {
-        put(0x06000000u, *(const uint32_t *)(model + BR_MODEL_OFF_BODYDL));
+    if (*(const uint32_t *)((const unsigned char *)BrG_6C3308 +
+                            BR_MODEL_OFF_BODYDL) != 0) {
+        put(0x06000000u, *(const uint32_t *)((const unsigned char *)BrG_6C3308 +
+                                             BR_MODEL_OFF_BODYDL));
     }
     put(0xE7000000u, 0);
     put(0xBA000602u, BrG_6C0688);
@@ -687,42 +684,39 @@ void BrCarDrawBody(void *pCar)
     /* 0x1000C1B5 -- headlight glare, non-player cars only. */
     if ((void *)car != BrG_6C2CF8) {
         const BrVec3 *pRow0     = (const BrVec3 *)(car + BR_CAR_OFF_MTX);
-        const BrVec3 *pRow2     = (const BrVec3 *)(car + BR_CAR_OFF_ROW2);
         const BrVec3 *pPos      = (const BrVec3 *)(car + BR_CAR_OFF_POS);
-        const BrVec3 *pCamBasis = (const BrVec3 *)BrG_6C6490;
-        const BrVec3 *pCamPos   =
-            (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30);
         BrVec3 dir, basis;
-        float  len, dot2, dot1, val;
+        float  len, dot1, val;
 
         /* dir = camPos - (pos + row0); its length is the car-to-camera
          * distance measured from a point one basis unit ahead. */
         BrVec3Add(&dir, pPos, pRow0);
-        BrVec3Sub(&dir, pCamPos, &dir);
+        BrVec3Sub(&dir, (const BrVec3 *)((const unsigned char *)BrG_6C6490 + 0x30), &dir);
         len = BrVec3Length(&dir);
 
         if (len != 0.0f) {                       /* g_0771A8 == 0.0 */
             BrVec3DivBy(&dir, len);              /* dir -> unit direction */
-            dot2 = BrVec3Dot(&dir, pCamBasis);
 
             /* 0x1000C243 -- FRONT glare: the view opposes the camera basis. */
-            if (dot2 < 0.0f) {
+            if (BrVec3Dot(&dir, (const BrVec3 *)BrG_6C6490) < 0.0f) {
                 BrVec3Scale(&basis, pRow0, 1.0f);
-                BrVec3MulAddTo(&basis, pRow2, 0.0f);   /* basis = row0 */
+                BrVec3MulAddTo(&basis,
+                    (const BrVec3 *)((const unsigned char *)pRow0 + 0x20), 0.0f);
                 dot1 = BrVec3Dot(&dir, &basis);
-                val  = -(dot2 * dot1);
+                val  = -(BrVec3Dot(&dir, (const BrVec3 *)BrG_6C6490) * dot1);
                 if (val > 0.95f) {               /* g_0771CC == 0.95 */
-                    g_4B16AC += ((val - 0.95f) * 750.0f) / (len * len);
+                    len = len * len;
+                    g_4B16AC += ((val - 0.95f) * 750.0f) / len;
                 }
             }
 
             /* 0x1000C2FA -- BACK glare: the view runs with the camera basis. */
-            dot2 = BrVec3Dot(&dir, pCamBasis);
-            if (dot2 > 0.95f) {
+            if (BrVec3Dot(&dir, (const BrVec3 *)BrG_6C6490) > 0.95f) {
                 BrVec3Scale(&basis, pRow0, 1.0f);
-                BrVec3MulAddTo(&basis, pRow2, 0.0f);
+                BrVec3MulAddTo(&basis,
+                    (const BrVec3 *)((const unsigned char *)pRow0 + 0x20), 0.0f);
                 dot1 = BrVec3Dot(&dir, &basis);
-                val  = dot2 * dot1;
+                val  = BrVec3Dot(&dir, (const BrVec3 *)BrG_6C6490) * dot1;
                 if (val > 0.95f) {
                     g_4B16A0 += ((val - 0.95f) * 750.0f) / (len * len);
                 }
@@ -737,8 +731,8 @@ void BrCarDrawBody(void *pCar)
     put(0xBD000000u, 0);
     put(0xB6000000u, 0x00040000u);
     put(0xBC000002u, 0x80000040u);
-    put(0x03860010u, (uint32_t)(uintptr_t)BrG_0AA868);
-    put(0x03880010u, (uint32_t)(uintptr_t)BrG_0AA860);
+    put(0x03860010u, (uint32_t)(uintptr_t)&BrG_0AA868);
+    put(0x03880010u, (uint32_t)(uintptr_t)&BrG_0AA860);
     put(0xBA000C02u, BrG_6C0258);
     put(0xBA000E02u, 0);
 
