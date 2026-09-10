@@ -700,16 +700,18 @@ stepped:
                 k = (velFwd - 3.0f) * 0.015625f;
                 if (k < 0.0f)
                     k = k * -0.25f;
-                /* THE 0.4 CEILING IS STILL OPEN.  We home k to its slot and
-                 * write the ceiling back as an immediate store (`mov dword
-                 * ptr [esp+S], 0x3ecccccd`); the original keeps k on the x87
-                 * stack across the test (`fstp st(0); fld <0.4>`).  Dead
-                 * 2026-09-10: reusing t/q/tq/fl/mag for k (all inert), the
-                 * !(k <= 0.4f) form, the `offset * k` hand, and the ternary
-                 * `f = ((k > 0.4f) ? 0.4f : k) * offset` -- the ternary is
-                 * -8 B and takes A2 to 27/27, but it splits the compare into
-                 * a jl/jge pair and takes A3 from 10 unpaired rows to 13. */
-                if (k > 0.4f)
+                /* THE CEILING TEST IS CONSTANT-FIRST.  `k > 0.4f` makes VC5
+                 * load k, compare-and-pop against the constant and write the
+                 * ceiling back as an immediate store; `0.4f < k` puts the
+                 * constant in st and leaves k where the original has it, so
+                 * the `fld <0.4>` and the ceiling's `fstp`/`fld` pair up.
+                 * Dead 2026-09-10 (all inert at 3863/1084): a dedicated kf
+                 * local, reusing t/q/tq/fl/mag, the !(k <= 0.4f) form, the
+                 * `offset * k` hand, `-0.25f * k`, `0.015625f * (velFwd-3)`,
+                 * `/ 64.0f`, and splitting the product into two statements.
+                 * The ternary `f = ((k > 0.4f) ? 0.4f : k) * offset` is -8 B
+                 * but splits the compare into a jl/jge pair (A3 10 -> 13). */
+                if (0.4f < k)
                     k = 0.4f;
                 f = k * offset;
                 t1 = BrVec3Dot(&pCar->f1E8, &pCar->tangent);
