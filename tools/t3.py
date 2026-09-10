@@ -351,6 +351,39 @@ def classify(miss, extra, obag=None, rbag=None):
                         break
                 if again:
                     break
+    # Dup-vs-reload fork on a shared multiplicand.  A value already on the x87
+    # stack times a memory operand is either `fld st; fmul M` -- duplicate the
+    # value, multiply the copy by memory -- or `fld M; fmul st(N)` -- load the
+    # memory operand, multiply it by the copy N deep.  Same product for a
+    # commutative op, same two instructions; which one is chosen says only
+    # whether the scheduler still had the memory operand from an earlier use,
+    # and that is allocation.  The keep-vs-reload fold below is the store/load
+    # half of this same axis.  Cancel the crossed QUAD only.  (2026-09-10,
+    # 0x10067710 `dp = d * pP->n`: the original re-reads pP->nx, ours holds the
+    # copy CSE'd out of the dot product above it -- seven source spellings of
+    # the two statements, including re-navigating the node and the global,
+    # move it or make it worse, none reproduce it.)
+    for op in ('fmul', 'fadd'):
+        again = True
+        while again:
+            again = False
+            for side, other in ((um, ue), (ue, um)):
+                for m2 in [r for r in side if r.startswith(op + ' ')]:
+                    x = m2[len(op) + 1:]
+                    if x == 'st' or x.startswith('st('):
+                        continue
+                    for e2 in [r for r in other
+                               if r == op + ' st' or r.startswith(op + ' st(')]:
+                        if side['fld st'] and side[m2] and other['fld ' + x] and other[e2]:
+                            side['fld st'] -= 1; side[m2] -= 1
+                            other['fld ' + x] -= 1; other[e2] -= 1
+                            um += collections.Counter(); ue += collections.Counter()
+                            again = True
+                            break
+                    if again:
+                        break
+                if again:
+                    break
     # Either-or layout fork: `jCC A; jmp B` against `j!CC B` (fallthrough A)
     # is the SAME control flow laid out the other way round -- the class the
     # 0x10036810 / 0x10036B20 dossiers name, proven not source-reachable
