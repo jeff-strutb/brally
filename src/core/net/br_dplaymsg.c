@@ -127,7 +127,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
 /* WHAT IT DOES: builds the "<name>: <text>" line that names a network player
  * in a log message, returning it in a freshly GlobalAlloc'd, locked buffer.
  * It asks the DirectPlay object for the player's record, reads that record's
- * name (or "unknown" when it carries none), and formats it with the caller's
+ * name (or a fallback when it carries none), and formats it with the caller's
  * text -- "<name>: <text>\r\n" normally, or "<name><text>\r\n" when the flag
  * is set. Reports the COM error it hit, and always frees the temporary record
  * it locked. */
