@@ -67,6 +67,92 @@ void FUN_10023aa0(void)
   return;
 }
 
+extern int DAT_105d17a8;   /* shadow of the alpha-blend RGB source factor */
+extern int DAT_105d1758;   /* shadow of the alpha-blend RGB dest factor   */
+extern int DAT_105ccfd4;   /* shadow of the alpha-blend A source factor   */
+extern int DAT_105ccfe4;   /* shadow of the alpha-blend A dest factor     */
+extern int DAT_105ccfe8;   /* DL nesting depth, reset to 0 each frame     */
+extern int DAT_105d17dc;   /* previous frame's millisecond timestamp      */
+extern int DAT_105d17e0;   /* most recent frame delta (ms)                */
+extern int g_BrFpsCountB;  /* 0x100B4C28  ring length                      */
+extern int g_BrFpsGateB;   /* 0x100B4C2C  ring write index (< 0 == empty) */
+extern int g_BrFpsSamplesB;/* 0x10B73348  base of the inline sample ring  */
+extern char DAT_118ee590;  /* the status/watermark text drawn each frame  */
+
+typedef void (*BrFlipHook)(void);
+extern BrFlipHook DAT_106b7ab8;      /* 0x106B7AB8  buffer-flip callback   */
+extern BrGfxWords *DAT_106e7710;     /* DL write cursor                    */
+
+void __stdcall grAlphaCombine(int, int, int, int, int);
+void __stdcall grAlphaBlendFunction(int, int, int, int);
+void __stdcall grDepthMask(int);
+int  BrTexQueuePop(void);            /* 0x1006E220 */
+void BrGbiRun(BrGfxWords *pCmd);     /* 0x10023C90 */
+int  BrSetGlobal_ABB30(int v);       /* 0x100168B0  (text size)            */
+int  BrTextDraw(const char *psz, int x, int y);   /* 0x100168C0 */
+int  BrSub10075020(void);            /* 0x1006E280  millisecond clock      */
+
+/* WHAT IT DOES: shows one finished frame. It resets the card to the frame's
+ * standard alpha/blend/depth state, runs the display list it was handed,
+ * lays a line of status text over the top, flips the finished image to the
+ * screen, and then folds this frame's duration into the running table of
+ * frame times the FPS readout averages. */
+/* @implements 0x10023B70 glide BrFramePresent */
+void BrFramePresent(BrGfxWords *pCmd)
+{
+    BrGfxWords aList[0x1000];
+    int now, delta, count, gate;
+
+    grAlphaCombine(3, 8, 1, 1, 0);
+    DAT_105d17a8 = 4;
+    DAT_105d1758 = 0;
+    DAT_105ccfd4 = 4;
+    DAT_105ccfe4 = 0;
+    grAlphaBlendFunction(4, 0, 4, 0);
+    grDepthMask(1);
+    DAT_105ccfe8 = 0;
+    BrTexQueuePop();
+    BrGbiRun(pCmd);
+
+    /* Build a one-item list in place: the text draw appends its commands
+     * through the shared cursor, then we cap it with the end marker and run
+     * the local list. */
+    DAT_106e7710 = aList;
+    BrSetGlobal_ABB30(0x14);
+    BrTextDraw(&DAT_118ee590, 0, 0x3c);
+    {
+        BrGfxWords *p = DAT_106e7710++;
+        p->w0 = 0xB8000000u;
+        p->w1 = 0;
+    }
+    BrGbiRun(aList);
+
+    (*DAT_106b7ab8)();
+
+    now = BrSub10075020();
+    delta = now - DAT_105d17dc;
+    DAT_105d17dc = now;
+    DAT_105d17e0 = delta;
+    count = g_BrFpsCountB;
+    gate = g_BrFpsGateB;
+    if (gate < 0) {
+        gate = 0;
+        if (count > 0) {
+            /* First frame: seed every slot with this delta. */
+            int i;
+            for (i = 0; i < count; ++i)
+                (&g_BrFpsSamplesB)[i] = delta;
+            gate = count;
+        }
+    }
+    ++gate;
+    g_BrFpsGateB = gate;
+    if (gate >= count) {
+        g_BrFpsGateB = gate = 0;
+    }
+    (&g_BrFpsSamplesB)[gate] = delta;
+}
+
 extern int DAT_105ccbd0;
 extern int g_BrFpsScreenH;
 extern int g_BrFpsScreenW;
