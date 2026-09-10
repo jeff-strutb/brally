@@ -196,7 +196,11 @@ def canon(row):
     # register form -- [R + R + d] would hide a real add.  (2026-09-09,
     # 0x1001D1B0: `lea esi,[edi+0xc]` vs `add esi,0xc` at the same offset.)
     if mn == 'lea':
-        d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+)\]', ops)
+        # `A` extends the same class to a reloc'd base: lea R,[R'+A] folds
+        # the absolute base-add into the lea where the original computes in
+        # place with `add R, A` (2026-09-09, 0x1000CB20: the 32000-product
+        # chain lands in edx and lea-folds; orig keeps ecx and adds).
+        d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+|A)\]', ops)
         if d and d.group(1) not in ('1', '0x1'):
             return 'add R, ' + d.group(1)
         # lea R,[R*K] against shl R,2: the same scaled value; whether the
