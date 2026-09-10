@@ -184,7 +184,17 @@ __declspec(dllimport) int  __stdcall PostMessageA(void *hWnd, unsigned uMsg,
  * left uncast (a uint32_t cast on it forces load+reg-compare where the
  * original has cmp [mem],reg); the do/while bound compare needs the (int)
  * casts for jl, but the for-i form supersedes it.
- * @t4-pass 2026-09-09 probes=4 result=+1B/regnorm0+0 census no */
+ * (thin pre-ledger pass, 4 probes, not counted: the DEAD list above) */
+/* @t4-pass 0x100096A0 1 2026-09-09 probes 10 bytes 470 insns 147 regions 8 rows 0 census no  (hand, fn.py variants: decl orders, name/buffer renames, literal spellings, all inert) */
+/* @t4-pass 0x100096A0 2 2026-09-09 probes 10 bytes 470 insns 147 regions 8 rows 0 census yes  (hand, fn.py variants: cast/amp/comparison forms across the switch, all inert; corpus hit at +0x30 confirms the dispatch guard shape) */
+/* @t3 0x100096A0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 470/469 insns 147/147 rows 0+0 regions 8 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the whole-body ebx/ebp transposition of pMsg and the case-5
+ * length temp (+1 B of disp8, the BrSelLookup class); insn-exact,
+ * identical register-blind multiset.  Dead list in the RESIDUE block
+ * above plus the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100096A0 glide BrDPlaySysMsgLog */
 void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                       uint32_t cbData, uint32_t idFrom, uint32_t idTo)
