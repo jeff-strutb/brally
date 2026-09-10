@@ -383,6 +383,19 @@ def classify(miss, extra, obag=None, rbag=None):
     if obag is not None and rbag is not None and 'ret ' in obag and 'ret ' in rbag:
         for side in (um, ue):
             side['ret '] = 0
+        # A duplicated epilogue restores the callee-saved registers too, so the
+        # extra exit carries extra `pop R` rows with no extra `push R`.  Only
+        # when BOTH streams save the same number of registers: equal push
+        # counts mean the same registers are saved and one side merely restores
+        # them at two exits.  Unequal counts are a real allocation difference
+        # and go to the balanced-pair rule below instead.  (2026-09-10,
+        # 0x10003050 BrCdStopReleaseMsg: the original pushes esi in the
+        # prologue and pops it on the early-return path; ours sinks the save
+        # past that exit -- shrink-wrapping, the fork screen_shrinkwrap.py
+        # already screens for.)
+        if obag['push R'] == rbag['push R']:
+            for side in (um, ue):
+                side['pop R'] = 0
         um += collections.Counter(); ue += collections.Counter()
     # Masked-or constant fold: VC5 folds `(x & M) | O` to `(x & (M & ~O)) | O`
     # for every spelling (0x10005330 dossier: `and al,0xbf; or al,0x80`
