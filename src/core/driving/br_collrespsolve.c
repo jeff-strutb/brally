@@ -618,7 +618,7 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
     const BrCollPlane *pP;
     float  aV[9];
     BrVec3 e1, e2, nrm, sign, dp;
-    float  planeD, pz, d;
+    float  planeD, d;
     /* The saved position is a NAMED BrVec3 in the original, not three
      * body-offset floats: with the pointer spelled out the push-out delta
      * comes out minuend-first (`fld pos; fsub save`), and with the offsets
@@ -664,17 +664,25 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
         flag = 1;
         BrExt_10008D60("Cube Edge to Triangle Face\n");
 
-        pz = planeD * nrm.z;
+        /* All three products are NAMED and computed up front: the original
+         * reloads planeD from its slot three times in a row and homes each
+         * product, which a per-arm `planeD * nrm.c` subexpression does not
+         * reproduce.  They go in the DEAD e2 -- e2 is finished the moment
+         * nrm is built -- because three fresh locals cost a fourth stack
+         * slot and take the frame to 0x7c against the original's 0x78. */
+        e2.x = planeD * nrm.x;
+        e2.y = planeD * nrm.y;
+        e2.z = planeD * nrm.z;
         sgn = 1;
-        if (planeD * nrm.x < BrCrK_Zero)
+        if (e2.x < BrCrK_Zero)
             sgn = -1;
         sign.x = (float)sgn * BrCrK_Half;
         sgn = -1;
-        if (!(planeD * nrm.y < BrCrK_Zero))
+        if (!(e2.y < BrCrK_Zero))
             sgn = 1;
         sign.y = (float)sgn * BrCrK_Half;
         sgn = -1;
-        if (!(pz < BrCrK_Zero))
+        if (!(e2.z < BrCrK_Zero))
             sgn = 1;
         sign.z = (float)sgn * BrCrK_Half;
 
