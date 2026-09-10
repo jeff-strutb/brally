@@ -90,6 +90,13 @@ int BrNetGetA102212D0(int param_1);
  * RESIDUE block above; the corpus is a MISS on loop 1's 12-instruction run,
  * so no proven spelling exists to copy.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 3 4
+ * residue after tools/crank.py: 250 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005F580 glide BrRankAssign */
 
 void BrRankAssign(void)
