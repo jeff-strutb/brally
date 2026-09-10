@@ -178,7 +178,6 @@ SINGLETON = [
     r'^mov dword ptr \[esp\+S\], R$',       # spill / home
     r'^mov R, dword ptr \[esp\+S\]$',       # reload
     r'^mov R, R$',                          # register copy
-    r'^lea R, \[R\*K\]$',                   # CSE'd scaled index
     r'^test R, R$',                         # flag re-test after a copy/reload
     r'^fxch st\(\d\)$',                     # x87 stack permutation, no value effect
     r'^mov R, (0x[0-9a-f]{1,4}|\d{1,5})$',  # rematerialised small constant at a join
@@ -200,6 +199,15 @@ def canon(row):
         d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+)\]', ops)
         if d and d.group(1) not in ('1', '0x1'):
             return 'add R, ' + d.group(1)
+        # lea R,[R*K] against shl R,2: the same scaled value; whether the
+        # index survives in its own register is allocation.  A spilled web
+        # reloads and shifts where a register web lea-scales (2026-09-09,
+        # 0x10015B10: `lea eax,[esi*4]` vs `mov ecx,[esp+S]; shl ecx,2`).
+        # msetdiff has already collapsed the lea's scale to K, so only the
+        # *4/shl-2 case is admitted -- a *2 or *8 lea against a shl 2 would
+        # false-pair, and 2 is the only scale proven at a real site.
+        if ops == 'R, [R*K]':
+            return 'shl R, 2'
     # add R,-X against sub R,X: MSVC5 canonicalises straight-line constant
     # subtraction to add-negative (0x1006FD50 dossier: every spelling and
     # flag probed, VC4.2 cross-check); the value is identical, the fork is
@@ -353,11 +361,40 @@ def measure(va):
         ob = os.path.join(ROOT, 'build', 'match', 'orig', '0x%08X.bin' % int(va, 16))
     if not os.path.exists(ob):
         return None, 'no original bytes'
-    o, no = load(ob, None)
-    rc, nr = load(obj, sym)
     orig = open(ob, 'rb').read()
+    # Jump tables live INSIDE the function span (dword entries + byte case
+    # maps after the last instruction).  Decoded as instructions they are
+    # garbage on both sides -- and DIFFERENT garbage, because the recomp's
+    # entries are reloc zeros while the original's are linked addresses.
+    # The cut is read from the ORIGINAL's own dispatches: `jmp dword ptr
+    # [R*4 + VA]` names the table VA directly.  Instruction gates run on
+    # [0, cut); the table zone is compared as BYTES with the reloc'd dwords
+    # masked (gate A6).  No dispatch -> cut None -> the old path, so rows
+    # without tables measure exactly as before (2026-09-09, 0x10015B10:
+    # two dispatches, tables at +0xbec, code insn-identical).
+    base = int(va, 16)
+    cut = None
+    for i in md.disasm(orig, 0):
+        mt = re.search(r'\*4 \+ (0x[0-9a-f]+)\]', i.op_str) if i.mnemonic == 'jmp' else None
+        if mt:
+            toff = int(mt.group(1), 16) - base
+            if 0 < toff < len(orig):
+                cut = toff if cut is None else min(cut, toff)
+    o, no = (load(ob, None, 0, cut) if cut else load(ob, None))
+    rc, nr = (load(obj, sym, 0, cut) if cut else load(obj, sym))
     from match_diff import parse_coff_obj
-    code = parse_coff_obj(obj)[sym][0]
+    code, robj_rel = parse_coff_obj(obj)[sym]
+    tables_ok, tab_note = True, ''
+    if cut is not None:
+        oz = bytearray(orig[cut:])
+        rz = bytearray(code[cut:len(orig)])
+        for k in range(min(len(oz), len(rz))):
+            if (cut + k) in robj_rel:
+                oz[k] = rz[k] = 0
+        ndif = sum(1 for a, b in zip(oz, rz) if a != b) + abs(len(oz) - len(rz))
+        tables_ok = ndif == 0
+        tab_note = 'tables at +0x%x, %d B, %s' % (
+            cut, len(oz), 'byte-equal (relocs masked)' if tables_ok else '%d BYTE DIFF(S)' % ndif)
     ins = list(md.disasm(code, 0))
     while ins and ins[-1].mnemonic in ('nop', 'int3'):
         ins.pop()
@@ -386,7 +423,8 @@ def measure(va):
                 obytes=len(orig), rbytes=rbytes, oi=no, ri=nr,
                 miss=miss, extra=extra, nmiss=sum(miss.values()), nextra=sum(extra.values()),
                 um=um, ue=ue, singles=singles, regions=regions, lost=lost,
-                lost_bytes=lost_bytes, key=key, oracle=verdict), ''
+                lost_bytes=lost_bytes, key=key, oracle=verdict,
+                tables_ok=tables_ok, tab_note=tab_note), ''
 
 
 def gates(m):
@@ -401,6 +439,8 @@ def gates(m):
               ('none (key %d)' % m['key']) if not m['lost'] else
               '%d B uncompared at key %d (tolerance %d B; A3 proves the multiset)' % (m['lost_bytes'], m['key'], LOST_TAIL_MAX)))
     g.append(('A5 oracle', m['oracle'] != 'DIFF', m['oracle']))
+    if m.get('tab_note'):
+        g.append(('A6 tables', m['tables_ok'], m['tab_note']))
     return g
 
 
