@@ -7647,3 +7647,43 @@ tools/t3.py classify().
   The same body spelled `do {...} while (i<0x80)` gets ROTATED: first
   button load peeled into dl, backedge on the condition test (+4 B,
   +3 insns). goto-vs-inline found block made no difference.
+
+2026-09-10 T3 lane on the largest rows:
+
+- **A subtraction whose subtrahend is spelled as a pointer field comes out
+  minuend-first; open-coded base offsets come out reversed.**
+  0x10067710 BrCrRespWalk: `pos.c - pSv->c` with
+  `const BrVec3 *pSv = (const BrVec3 *)(pBody + 0x114)` gives the
+  original's `fld pos; fsub save` for all three components, where
+  `pos.c - *(float *)(pBody + 0x114)` loads the subtrahends and reverses
+  every one (`fld save; fsubr pos`).  Register-blind 7+7 -> 4+5 on one
+  edit.  The operand hand is not reachable by reordering the terms (that
+  changes the value); it is decided by how the operand is NAMED.
+- **A loop cursor carries the original's BIAS, and the bias is visible in
+  the field displacements.**  0x100302A0 BrModelSwap: the record walk is
+  `pRec = pHdr + 0xa` with the slot read as `pRec[-2]`, not
+  `pRec = pHdr + 8` -- the original's `lea esi,[ebp+0xa]` and `[esi-2]`.
+  Register-blind 8+11 -> 3+4.  Read the bias off the ORIGINAL's `add
+  R,K` in the loop tail and off the sign of its displacements; +4 and
+  +0xa were both measured and are both worse.
+- **Three products of one shared factor are NAMED and homed, not a
+  subexpression per arm.** 0x10067710: `px = planeD*nrm.x; py = ...;
+  pz = ...;` before the sign tournament reproduces the original's three
+  consecutive `fld [planeD-slot]` and its three homed products; the
+  per-arm `planeD * nrm.c` spelling keeps them on the x87 stack.  Put
+  them in a DEAD existing local (there `e2`, finished once `nrm` is
+  built) -- three fresh locals cost a fourth stack slot and take the
+  frame from 0x78 to 0x7c.
+- **Naming a compare's operand only works on the side the original
+  actually loads.** 0x100183B0 BrFadeDrawBars: `v = pos2; if (v != 0)`
+  buys the original's `cmp reg,reg`; the same treatment of the other two
+  tests in the same function is inert (VC5 folds them back to `cmp
+  [g],reg`), and naming both operands of the `<` changes nothing.
+
+Same lane, walls PROVEN (do not respell): the dup-vs-reload fork on a
+shared x87 multiplicand (`fld st; fmul M` against `fld M; fmul st(N)`,
+0x10067710's `dp = d * pP->n` against the dot product above it -- seven
+spellings including re-navigating the node and the global move it or make
+it worse; now a pairing class in tools/t3.py classify()); the mode-4 cold
+arm that the original lays out AFTER the epilogue (goto-to-a-trailing-
+label reaches neither the layout nor a better row count).
