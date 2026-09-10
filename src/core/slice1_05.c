@@ -359,16 +359,12 @@ int BrPeerFind(uint32_t id)
         uint32_t st;
 
         WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
-        /* Dword load, byte-width AND (`and bl,0x3f`), then the neg/sbb/inc
-         * boolean OVERWRITES st in the same register (dword sbb), crossing
-         * the Release call; the byte cast in the if gives the original's
-         * `test bl,bl`.
-         * RESIDUE (1+0 regnorm, +1 insn): the original births the load in
-         * ebx and computes in place; ours computes in eax and copies to
-         * ebx before the call.  Probed and failed: uint8_t st (byte load),
-         * split byte local (extra byte move), separate int bFree (same). */
+        /* The AND is DWORD-width in source; the byte-cast-then-mask spelling
+         * made VC5 compute in eax and copy to ebx (+1 insn) -- the dword
+         * mask births the load in ebx and computes in place (cracked
+         * 2026-09-09).  The byte cast in the `if` still gives `test bl,bl`. */
         st = p->f2C;
-        st = (uint32_t)(((uint8_t)st & BR_PEER_STATE_MASK) == 0u);
+        st = (uint32_t)((st & (uint32_t)BR_PEER_STATE_MASK) == 0u);
         ReleaseMutex((void *)(uintptr_t)p->hMutex);
 
         if ((uint8_t)st)
