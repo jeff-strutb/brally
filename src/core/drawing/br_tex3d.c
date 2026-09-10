@@ -1292,7 +1292,11 @@ int * BrTexSlotFetchPixels(int param_1,int *param_2)
   int iStack_4;
 
   iVar1 = DAT_106b7aa0 + 4 + param_1 * 0x2b4;
-  if (*(int *)(DAT_106b7aa0 + 0x26c + param_1 * 0x2b4) != 0) {
+  /* The bitmap-handle test is read off iVar1, NOT off a second
+   * table+index expression: with the base+index written twice VC5 CSEs it
+   * into a register of its own (`lea eax,[ecx+eax*4]`, one instruction the
+   * original does not have) and every register role downstream follows. */
+  if (*(int *)(iVar1 + 0x268) != 0) {
     puVar3 = &DAT_1186c988;
     iVar2 = FUN_10059fe0(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),
                          *(int *)(iVar1 + 0x274));
