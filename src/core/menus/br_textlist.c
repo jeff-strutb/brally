@@ -4,9 +4,10 @@
  * that sits between them in the original.
  *
  * Filed out of slice3_39.c, whose preamble it keeps verbatim below so the
- * compiler's view of these bodies is unchanged.  BrTextListInit (0x10054610)
- * and BrTextListSetBlob (0x10055020) are not byte-exact yet and stayed
- * behind in the slice.
+ * compiler's view of these bodies is unchanged.  BrTextListSetBlob
+ * (0x10055020) went byte-exact on 2026-09-10 once it was declared thiscall
+ * and came over then; BrTextListInit (0x10054610) is not byte-exact yet and
+ * stayed behind in the slice.
  *
  * The original banner follows.
  *
@@ -99,3 +100,48 @@ int __stdcall BrRet0Std3_10054600(int _pad_0,int _pad_1,int _pad_2)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+/* =====================================================================
+ * 0x1005C200 -- store an opaque blob against an item slot
+ * ===================================================================== */
+
+/* WHAT IT DOES: attaches a lump of arbitrary data to one row of a list --
+ * whatever the menu wants to remember alongside the visible text. Passing -1
+ * means the row just added. Beware a real bug that is kept: the memory is
+ * only allocated the first time a slot is used, so storing a bigger lump
+ * into a slot that already has a smaller one writes past the end of it.
+ *
+ * THISCALL, and that was the whole residue: `mov ebp,ecx` at +0x0B takes
+ * pList out of ecx and the function ends `ret 0xc`, three dwords cleaned by
+ * the callee.  Spelled cdecl it read pList off the stack like the other
+ * three, which cost the register the original keeps the list in and left a
+ * `lea` where the original re-indexes.  Wrapping every argument after `this`
+ * (br_match.h: __fastcall SKIPS a struct when handing out registers, so a
+ * bare second argument would take edx and the epilogue would clean 8) makes
+ * it byte-exact. */
+/* @implements 0x1005C200 d3d BrTextListSetBlob */
+int32_t BR_THISCALL1 BrTextListSetBlob(BrTextList *pList, BrBlobSrcArg pSrc,
+                                       BrBlobSizeArg size, BrBlobIndexArg index)
+{
+    BrTextBlob *pSlot;
+    int32_t     i = index.v;
+
+    if (i == -1) {
+        i = (int32_t)(uint16_t)pList->count - 1;
+        if (i < 0) {
+            i = 0;
+        }
+    }
+
+    pSlot = &pList->aBlobs[i];
+
+    if (pSlot->p == NULL) {
+        pSlot->p = BrOperatorNew(size.v);
+    }
+    /* GOTCHA: no realloc on a size increase -- the original copies `size`
+     * bytes into whatever the first call allocated. */
+    memcpy(pSlot->p, pSrc.v, size.v);
+    pSlot->size = size.v;
+
+    return 1;
+}
