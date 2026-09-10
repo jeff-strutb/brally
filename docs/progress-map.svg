@@ -2233,7 +2233,7 @@
 <rect x="1239.6" y="849.2" width="11.5" height="6.6" fill="#3fb950"><title>BrFadeIsClosing  0x10018310  37B  [core/drawing/br_fade]</title></rect>
 <rect x="1239.6" y="856.3" width="11.5" height="6.6" fill="#3fb950"><title>BrFadeIsSettled  0x10018340  37B  [core/drawing/br_fade]</title></rect>
 <rect x="1213.4" y="866.5" width="15.8" height="31.4" fill="#d29922"><title>BrMat4Mul  0x10029D70  224B  24 diff bytes  [core/slice1_05]</title></rect>
-<rect x="1229.8" y="866.5" width="21.3" height="19.2" fill="#d29922"><title>BrPeerFind  0x1002F6D0  185B  54 diff bytes  [core/slice1_05]</title></rect>
+<rect x="1229.8" y="866.5" width="21.3" height="19.2" fill="#3fb950"><title>BrPeerFind  0x1002F6D0  185B  [core/slice1_05]</title></rect>
 <rect x="1229.8" y="886.3" width="17.8" height="11.6" fill="#58a6ff"><title>BrSelLookup  0x1001C9D0  96B  [core/slice1_05]</title></rect>
 <rect x="1248.2" y="886.3" width="2.9" height="11.6" fill="#58a6ff"><title>BrCursorPairSet  0x100182F0  18B  [core/slice1_05]</title></rect>
 <rect x="1254.7" y="514.4" width="24.6" height="31.8" fill="#3fb950"><title>BrRbInitInertia  0x1006DAD0  349B  [core/driving/br_carphys]</title></rect>
@@ -2782,4 +2782,4 @@
 <rect x="1593.1" y="894.6" width="0.4" height="3.3" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1596.7" y="894.6" width="1.2" height="0.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1596.7" y="898.6" width="1.2" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1258 &#183; T3 codegen-only 45 &#183; 208,258/521,216 bytes exact (40.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1259 &#183; T3 codegen-only 45 &#183; 208,443/521,216 bytes exact (40.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
