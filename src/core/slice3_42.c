@@ -901,6 +901,26 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 /* @t4-pass 0x100643E0 2 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
 /* @t4-pass 0x100643E0 3 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
 /* @t4-pass 0x100643E0 4 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
+/* @t4-pass 0x100643E0 5 2026-09-10 probes 11 bytes 218 insns 68 regions 0 rows 0 census yes
+ * BYTE CENSUS, not a mutation sweep: with the attachment point copied
+ * field-wise the whole function is byte-identical except ONE byte -- the
+ * displacement of the rounding spill at +0xb4, `fst [esp+0x14]` in the
+ * original against `fst [esp+0x24]` here.  Both frames are `sub esp,0x18`
+ * and both spill the same value (cy, rounded before the add, per this
+ * file's float-precision rule); the original puts it in the frame, VC5
+ * puts it in the dead incoming-argument slot.  Eleven probes, none moved
+ * it: six declaration orders (floats first / between / last, p before r,
+ * one declarator per line), the sum statements reversed and written
+ * destination-first, a spare float local for frame pressure, and a
+ * volatile int to hold a slot.  Slot assignment only. */
+/* @t3 0x100643E0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 218/218 insns 68/68 rows 0+0 regions 0 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
+ * Residue: ONE byte, the stack slot of the rounding spill at +0xb4 --
+ * `fst [esp+0x14]` in the original against `fst [esp+0x24]` here, VC5
+ * placing cy in the dead incoming-argument slot instead of the frame.
+ * Dead list and the byte census are in the @t4-pass 5 line above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 /* @n64 0x80267410 located */
 #ifdef BR_MATCHING_BUILD
