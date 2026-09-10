@@ -1495,7 +1495,15 @@ void BrFadeDrawBars(void)
      * slot is modelled with `volatile` -- a codegen device, not a claim about
      * the original's source. */
     volatile int32_t dead;
-    int32_t v;
+    int32_t v, n, ps;
+    /* `top` is the bar's top edge, and it carries the ZERO the second arm
+     * shifts.  Spelled as a literal 0 (or a 0u, or a cast, or a local
+     * initialised in that arm) VC5 folds the whole `((0 << shift) & 0xFFF)
+     * << 12` away to a `mov [eax+4],0`; carried in from an earlier BLOCK it
+     * does not fold, and the original's four instructions -- xor / shl cl /
+     * and 0xfff / shl 0xc, four instructions to produce a zero it already
+     * has -- come back. */
+    int32_t top = 0;
 
     /* ONE fcomp: the original is `fcomp 1.0f / fnstsw / test ah,0x40 / jne`,
      * which is exactly what VC5 emits for a plain `==` on floats -- C3 set,
@@ -1553,23 +1561,32 @@ void BrFadeDrawBars(void)
 
         p = BR16_ALLOC();
         p->w1 = 0;
-        p->w0 = BR16_BAR_W0(DAT_104b16b0, DAT_106e9a2c, DAT_106ed674);
+        /* pos2 comes from the local, not a re-read: the original keeps it
+         * in a callee-saved register across BrFadeIsShut. */
+        p->w0 = BR16_BAR_W0(v, DAT_106e9a2c, DAT_106ed674);
     }
 
-    if (DAT_104b16a8 < DAT_106e7714) {
-        if (DAT_100a7510 != 0) {
+    /* Both counters are read ONCE and the decrement writes the local back:
+     * the original loads bars into a register, tests it against the zero it
+     * keeps in a callee-saved register, and decrements the copy.  `bars -= 1`
+     * on the global re-reads it and compares against memory instead. */
+    ps = DAT_104b16a8;
+    if (ps < DAT_106e7714) {
+        n = DAT_100a7510;
+        if (n != 0) {
             p = BR16_ALLOC();
-            DAT_100a7510 -= 1;
+            DAT_100a7510 = n - 1;
             p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
-            p->w1 = (uint32_t)(((uint32_t)DAT_104b16a8 << DAT_106ed674)
-                               & 0xFFFu) << 12;
+            top = ps;
+            p->w1 = (uint32_t)(((uint32_t)top << DAT_106ed674) & 0xFFFu) << 12;
         }
-    } else if (DAT_104b16c0 == 0.0f && DAT_100a7510 != 0) {
+    } else if (DAT_104b16c0 == 0.0f && (n = DAT_100a7510) != 0) {
         p = BR16_ALLOC();
-        DAT_100a7510 -= 1;
+        DAT_100a7510 = n - 1;
         p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
-        /* The original shifts a zero and masks it: always 0. */
-        p->w1 = 0;
+        /* top is still 0 here: the same expression, and the same four
+         * instructions the original spends on it. */
+        p->w1 = (uint32_t)(((uint32_t)top << DAT_106ed674) & 0xFFFu) << 12;
     }
 
     p = BR16_ALLOC(); p->w1 = 0; p->w0 = 0xE7000000u;
