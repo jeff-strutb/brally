@@ -70,12 +70,13 @@ void BrModelSlotApply(uint8_t *pCar, void *pDrv);
  * two groups copy lap, gate and pose from attached cars onto the driver
  * record (the "saving lap/gate" trace) and write them back onto empty slots
  * of the same group (the "restoring lap/gate" trace). */
-/* RESIDUE: frame is sub esp,0xd8 and this lives in ebp. Size 2100/2104 B,
- * insn gap 5. Unpaired rows are wrap-arm dist (shared call + duplicated
- * pushes vs two calls), jg/jl polarity on the driver-count and entrant
- * tests, pair-swap slot +0x50 vs +0x54, saved-car lea +0x20 vs +0x1c, and
- * operand-swapped cmp on +0x64/+0x140. fxch st(2) x4 is x87 scheduling. */
-/* @t4-pass 0x1005F6C0 1 2026-09-09 probes 20 bytes 2101 insns 557 regions 19 rows 47 census yes */
+/* RESIDUE: frame is sub esp,0xd8 and this lives in ebp. Size 2101/2104 B,
+ * insn gap 5, rows 26+21, 18 regions. Unpaired: wrap-arm dist (two calls
+ * vs orig's shared call), jg/jl polarity on driver-count and entrant tests,
+ * saved-car lea +0x20 vs +0x1c, operand-swapped cmp on +0x64/+0x140.
+ * fxch st(2) x4 is x87 scheduling. Gate 0+A4+A5+B pass; A1/A2/A3 fail. */
+/* @t4-pass 0x1005F6C0 1 2026-09-09 probes 20 bytes 2101 insns 557 regions 18 rows 47 census yes */
+/* @t4-pass 0x1005F6C0 2 2026-09-09 probes 20 bytes 2101 insns 557 regions 18 rows 47 census yes */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore */
 void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
 {
