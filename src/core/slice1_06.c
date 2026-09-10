@@ -432,6 +432,16 @@ int32_t BrOptAvailA(const BrOptCaps *pCaps, uint32_t n)
  * into the low range, some declare everything below sixteen always available,
  * and one number is remapped to a different one entirely. Its sibling above
  * answers the same question for the other family of options. */
+/* @t4-pass 0x10038860 1 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census no  (hand, fn.py variants: fixup spellings minus/hex/neg-add/unsigned, guard forms, remap and mask spellings, all inert or worse) */
+/* @t4-pass 0x10038860 2 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census yes  (hand, fn.py variants: keep-sub mechanism experiment -- pointer difference, loop-carried, split constant, nested ifs, named subtrahend -- all still emit add-negative) */
+/* @t3 0x10038860 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 284/285 insns 99/99 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the sub/add-negative instruction-selection fork on the first
+ * `idx -= 16` (paired by t3.py canon, a326268) plus its 1-byte encoding
+ * shadow; same fork proven on 0x1006FD50 with the keep-sub mechanisms all
+ * inert.  Dossier in the block below; dead probes in the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003F320 d3d BrOptAvailB */
 #ifdef BR_MATCHING_BUILD
 /* One argument; every input is a loose global (fAlt and maskPair are each
