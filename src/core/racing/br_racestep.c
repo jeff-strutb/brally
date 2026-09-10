@@ -809,15 +809,29 @@ void BrRaceStepLights(void)
  * each.  br_racebegin.h carries the derivation, including the eight-byte
  * replay header whose writer and reader are both inside that arm.
  *
+ * and, SINCE THIS NOTE WAS WRITTEN, BrRaceStepEffects below:
+ *
+ *     BrRaceStepEffects 0x1001B261..0x1001B364   the frame's screen-wide
+ *                                                effects and the fly-past
+ *                                                arming scan            260 B
+ *
  * What STILL does not exist:
  *
- *     0x1001B261..0x1001C646   the replay camera, the HUD, the rear-view
+ *     0x1001B365..0x1001C646   the replay camera, the HUD, the rear-view
  *                              mirror, the per-car render marshalling, the
  *                              pause and camera input, the race exit and the
- *                              frame limiter -- 5,094 B, counted as
+ *                              frame limiter -- 4,834 B, counted as
  *                              BR_RS_HOLE_HUD
  *
- * so 6,129 of 11,223 bytes (54.6%) are transcribed and 45.4% are not.  The
+ * so 6,389 of 11,223 bytes (56.9%) are transcribed and 43.1% are not.
+ *
+ * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
+ * remaining block already have symbols in this tree -- 115 of its 116 call
+ * sites land on a report.csv row and the last (0x100325B0) is the C++ lane's
+ * WM_DESTROY teardown.  What blocks this address now is transcription volume
+ * (1,348 instructions), not unknown callees, and the frame cannot be won
+ * from a fragment: `sub esp,0x34` is set by the WHOLE function's locals, so
+ * it only becomes measurable once the last block is in.  The
  * claim still cannot be made, and putting one here would put the same defect
  * back.  0x1005F310 (538 B, the driver-record constructor and the grid
  * placement) is still the counter increment below.
@@ -939,6 +953,129 @@ void BrRaceStepInstall(void)
 {
     BrGameStepRegister(BrRaceStepFrame, BR_GAMESTEP_RACE);
     BrGameStepSet(BrRaceStepFrame);
+}
+
+/* ==========================================================================
+ * 0x1001B261..0x1001B364 -- the first block out of BR_RS_HOLE_HUD
+ *
+ * The hole this module recorded ran 0x1001B261..0x1001C646 (5,094 B).  This
+ * is its opening 260 bytes, transcribed 2026-09-10.  Addresses are on every
+ * branch, as everywhere else in this file.
+ *
+ * READ THIS BEFORE TRANSCRIBING MORE OF THE HOLE: ebp is the function's
+ * PINNED ZERO for the whole of 0x10019A70 (`xor ebp,ebp` at 0x10019A8E, and
+ * again at 0x1001B30C / 0x1001B363 after the scan below borrows it).  So in
+ * the listing `cmp X, ebp` reads `X == 0` and `push ebp` reads `push 0` --
+ * neither is a variable.  Mis-reading those as a live value is the easiest
+ * way to invent a defect here.
+ *
+ * The 64 distinct callees of the hole were resolved on 2026-09-10 and ALL of
+ * them already have symbols in this tree (115 of the 116 call sites land on a
+ * report.csv row; the last, 0x100325B0, is the C++ lane's WM_DESTROY
+ * teardown).  The old "gated on 131 callee signatures" note is therefore
+ * spent -- what blocks the address now is transcription volume, not unknown
+ * callees.
+ * ========================================================================== */
+
+/* br_racebegin.h owns these four; declared here rather than pulling the whole
+ * header in, as this file already does for its other cross-module globals. */
+extern int32_t g_brRaceBeginAirplane;   /* 0x105BC7C0 */
+extern int32_t g_brRaceBeginAirTrigger; /* 0x105BC7C4 */
+extern int32_t g_brRaceBeginCamMinus1;  /* 0x105BC7C8 */
+extern int32_t g_brRaceBeginAirArmed;   /* 0x105BC7CC */
+
+extern int32_t g_brRaceTrack;        /* 0x100B3014, the track/mode selector */
+extern int32_t g_brRaceAirSuppressA; /* 0x106ED6AC */
+extern int32_t g_brRaceAirSuppressB; /* 0x106ED6B0 */
+extern int32_t g_brRaceAirSuppressC; /* 0x106ED6B4 */
+
+/* 0x10008D60 and 0x10033BB0 take their state in globals in the original and
+ * no stack argument; br_racebegin.c already spells the first one this way. */
+void BrExt_10008D60(int a, int b, int c, int d, int e);
+void BrExt_10033BB0(void);           /* 0x10033BB0, the particle tick */
+void BrWeatherStepParticles(void);   /* 0x10016C90, slice2_15.h owns it */
+
+/* The entrant records: 0x10AF3B54 walks by 0x2B68, its collision-object id
+ * sits 0x19A4 below the cursor and its id list is the uint16 array 0x40
+ * below it (0x10AF3B14 indexed in ELEMENTS, stride 0x15B4 == 0x2B68/2 --
+ * the same array seen as words, which is why the listing's index arithmetic
+ * looks like a second table and is not). */
+#define BR_RS_ENTRANT0   0x10AF3B54
+#define BR_RS_ENTRANT_SZ 0x2B68
+
+/* WHAT IT DOES: the screen-wide effects for one frame of an actually-running
+ * race, and the test that arms the fly-past.  Two colour submissions with the
+ * particle tick between them and the weather step after; then, when the
+ * fly-past is enabled and not already armed, a scan of every entrant's
+ * collision-id list for the one id that triggers it -- finding it arms the
+ * fly-past for the block that follows.  A paused race and a replay both skip
+ * the whole thing.  Returns non-zero when the caller should go on to the
+ * special-object arm, which is what the original's fall-through does. */
+int BrRaceStepEffects(void)
+{
+    int32_t nEnt;
+    int32_t iEnt;
+    int32_t scan;
+
+    if (g_brRacePaused != 0)                          /* 0x1001B261 */
+        return 0;
+    if (g_brRaceReplay == 2)                          /* 0x1001B26D */
+        return 0;
+
+    BrExt_10008D60(0, 0x80, 0x80, 0, 0xFF);           /* 0x1001B27A */
+    BrExt_10033BB0();                                 /* 0x1001B293 */
+    BrExt_10008D60(0, 0, 0xFF, 0xFF, 0xFF);           /* 0x1001B298 */
+    BrWeatherStepParticles();                         /* 0x1001B2B1 */
+
+    /* 0x1001B2BB / 0x1001B2C8: the fly-past has to be enabled and not yet
+     * armed.  `mov eax,[0x100B3014]` at 0x1001B2BD is hoisted ABOVE both
+     * tests in the original and only used on the path that needs it. */
+    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B2BB */
+        return 1;
+    if (g_brRaceBeginAirArmed != 0)                   /* 0x1001B2C8 */
+        return 1;
+
+    /* 0x1001B2D4..0x1001B2F4.  The track test is NOT unconditional: with all
+     * three suppressors clear the scan runs whatever the track is, and only
+     * when one of them is set do tracks 2 and 8 suppress it. */
+    scan = 1;
+    if (g_brRaceAirSuppressC != 0 ||                  /* 0x1001B2D4 */
+        g_brRaceAirSuppressB != 0 ||                  /* 0x1001B2DC */
+        g_brRaceAirSuppressA != 0) {                  /* 0x1001B2E4 */
+        if (g_brRaceTrack == 2 || g_brRaceTrack == 8) /* 0x1001B2EC, 0x1001B2F1 */
+            scan = 0;
+    }
+    if (!scan)
+        return 1;
+
+    nEnt = g_brRaceNEntrant;                          /* 0x1001B2F6 */
+    if (nEnt <= 0)                                    /* 0x1001B2FD */
+        return 1;
+
+    /* 0x1001B2FF..0x1001B361.  One pass per entrant; the collision-object id
+     * is loop-invariant per entrant (`mov edi,[esi-0x19A4]` at 0x1001B316 is
+     * ABOVE the loop head at 0x1001B31C), so the inner loop only walks the
+     * id list.  The first match arms the fly-past and stops that entrant. */
+    for (iEnt = 0; iEnt < nEnt; ++iEnt) {
+        const uint8_t  *pEnt = (const uint8_t *)BR_RS_ENTRANT0
+                             + (size_t)iEnt * BR_RS_ENTRANT_SZ;
+        int32_t         cId  = *(const int32_t *)pEnt;             /* +0     */
+        const uint16_t *pId  = (const uint16_t *)(pEnt - 0x40);    /* -0x40  */
+        int32_t         i;
+
+        if (cId <= 0)                                 /* 0x1001B314 */
+            continue;
+        if (*(const int32_t *)(pEnt - 0x19A4) != g_brRaceBeginCamMinus1)
+            continue;                                 /* 0x1001B31C, invariant */
+
+        for (i = 0; i < cId; ++i) {                   /* 0x1001B33B */
+            if (pId[i] == (uint16_t)g_brRaceBeginAirTrigger) {
+                g_brRaceBeginAirArmed = 1;            /* 0x1001B342 */
+                break;
+            }
+        }
+    }
+    return 1;
 }
 
 /* ── Ghidra-matched functions ─────────────────────────── */
