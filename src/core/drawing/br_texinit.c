@@ -254,6 +254,7 @@ void     BrTexCreateMutex(void);      /* 0x10074F20 */
  * 0+0.  Dossier and the 25-compile dead list are in this file's header; the
  * corpus is a MISS on the 12-instruction run, so no proven spelling exists to
  * copy.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x10029B50 3 2026-09-10 probes 250 bytes 285 insns 55 regions 1 rows 26 census yes  (tools/crank.py) */
 /* @implements 0x1002A640 d3d BrTexInit */
 void FUN_10023d20(void);
 void FUN_10024e60(void);
