@@ -210,4 +210,60 @@ void FUN_100281c0(void)
   return;
 }
 
+extern int DAT_105e1808;
+extern int DAT_105e1820;
+extern int DAT_106b7aa0;
+extern int _DAT_118ed198;
+extern int _DAT_1186c950;
+extern int _DAT_1186c954;
+extern int _DAT_118ec988;
+extern float _DAT_118ed1a4;
+extern float _DAT_118ed1a8;
+
+/* WHAT IT DOES: make texture record `idx` the card's current texture, unless
+ * it already is. Binds the slot to the card (0x10028420), switches the
+ * combine units if the record's mode changed (a `switch` on the mode: VC5
+ * lowers the lone `case 1` to `dec/jne`, where an `if (x==1)` spells
+ * `cmp,1`), then copies the record's UV scale pair and its active tile's
+ * four cached fields into the globals the triangle emitters read. */
+/* @implements 0x100284E0 glide BrTex3dMakeCurrent */
+
+void BrTex3dMakeCurrent(int param_1)
+
+{
+  int iVar1;
+
+  if (param_1 != DAT_105e1808) {
+    FUN_10028420(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4));
+    iVar1 = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+    if (DAT_105e1820 != iVar1) {
+      switch (iVar1) {
+      case 1:
+        grTexCombine(1,1,0,1,0,0,0);
+        grTexCombine(0,3,8,3,8,0,0);
+        break;
+      default:
+        grTexCombine(0,1,0,1,0,0,0);
+      }
+      DAT_105e1820 = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+    }
+    _DAT_118ed1a4 = *(float *)(DAT_106b7aa0 + 0x2ac + param_1 * 0x2b4);
+    _DAT_118ed1a8 = *(float *)(DAT_106b7aa0 + 0x2b0 + param_1 * 0x2b4);
+    _DAT_118ed198 =
+         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x94 +
+                  param_1 * 0x2b4);
+    _DAT_1186c950 =
+         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x98 +
+                  param_1 * 0x2b4);
+    _DAT_1186c954 =
+         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x9c +
+                  param_1 * 0x2b4);
+    _DAT_118ec988 =
+         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0xa0 +
+                  param_1 * 0x2b4);
+    DAT_105e1808 = param_1;
+  }
+  return;
+}
+
 #endif /* BR_MATCHING_BUILD */

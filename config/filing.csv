@@ -322,6 +322,7 @@ glide_va,name,module,basis,file
 0x100281C0,FUN_100281c0,drawing,neighbour,src/core/drawing/br_glidestate.c
 0x100283C0,BrTex3dDownloadAt,drawing,filed,src/core/drawing/br_tex3d.c
 0x10028420,FUN_10028420,drawing,neighbour,src/core/drawing/br_glidestate.c
+0x100284E0,BrTex3dMakeCurrent,drawing,filed,src/core/drawing/br_glidestate.c
 0x100285E0,BrTex3dReDownload,drawing,filed,src/core/drawing/br_tex3d.c
 0x100287E0,BrTex3dReconvert,drawing,filed,src/core/drawing/br_tex3d.c
 0x10028B50,br_tex3d_seam,drawing,filed,src/core/drawing/br_tex3d.c
