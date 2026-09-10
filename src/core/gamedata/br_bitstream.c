@@ -172,36 +172,23 @@ unsigned char BR_THISCALL1 BrBitStreamReadU8(BrBitStream *pBs)
     return pBs->pBuf[pBs->readByte++];
 }
 
-/* 0x10073BE0  big-endian u16; DH gets byte 0, DL byte 1, EDX pre-zeroed. */
+/* 0x10073BE0  big-endian u16; DH gets byte 0, DL byte 1, EDX pre-zeroed.
+ * The DH-before-DL load order comes from spelling the loads THROUGH THE
+ * CURSOR INDEX (pBs->pBuf[i] / pBs->pBuf[i + 1]), not through a bound
+ * pointer: a named `p = pBs->pBuf + i` made VC5 emit the low byte first
+ * from every spelling probed (2026-09-09, cracked the 4 B residue). */
 /* WHAT IT DOES: reads the next two bytes as a single number, most
  * significant byte first. Boss Rally's data came from the N64 and is stored
  * that way round throughout. */
 /* @implements 0x10073BE0 d3d BrBitStreamReadU16 */
 unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 {
-    const unsigned char *p;
     int i;
     BrBitStreamAlignRead(pBs);
     i = pBs->readByte;
-    p = pBs->pBuf + i;
     {
-        /* RESIDUE (4 B): orig loads DH (p[0]) before DL (p[1]); VC5 emits
-         * the low byte first from every probed spelling. Value-before-cursor-
-         * store via this block temp is what the original does prove.
-         *
-         * PROBED AND DEAD, do not re-run. Earlier: |-order, +, byte temps,
-         * |=-accumulate, u16 temp. Added after WriteU16/WriteU32 fell to a
-         * named-local lever (see their notes) -- it does NOT carry over here,
-         * because this function already names both halves:
-         *   inert (33 B / 14 insns / 4 diffs, unchanged): seeding the
-         *     accumulate from the LOW byte instead of the high; casting
-         *     outside the `|` instead of on each operand; splitting the
-         *     shift-or into its own statement after a plain `v = p[0]`;
-         *     spelling the loads `*p` / `*(p+1)` rather than p[0] / p[1].
-         *   worse: `p[0] * 256u + p[1]` (+7 B, +4 insns -- the multiply is
-         *     NOT folded to a shift here); a `unsigned short` value temp
-         *     (+5 B, the narrowing costs a movzx). */
-        unsigned int v = ((unsigned int)p[0] << 8) | (unsigned int)p[1];
+        unsigned int v = ((unsigned int)pBs->pBuf[i] << 8)
+                         | (unsigned int)pBs->pBuf[i + 1];
         pBs->readByte = i + 2;
         return v;
     }
