@@ -399,6 +399,25 @@ def classify(miss, extra, obag=None, rbag=None):
         while ue[a] and ue['jmp T'] and um[b]:
             ue[a] -= 1; ue['jmp T'] -= 1; um[b] -= 1
     um += collections.Counter(); ue += collections.Counter()
+    # ORDER MATTERS: this runs before the cross-jump block, which cancels
+    # unpaired `pop R` rows wholesale.  That block would otherwise eat the
+    # pop this rule needs and leave the `push K` / `mov R, K` pair stranded
+    # (2026-09-10, 0x1006B440: passed A3, then regressed when the cross-jump
+    # rule landed above it).
+    # Constant-materialisation fork: `push K; pop R` IS `mov R, K` -- the same
+    # value in the same register, chosen for size (3 B for an imm8 against 5).
+    # An exact instruction-selection identity, not an approximation: cancel the
+    # PAIR against the single row only, both rows unpaired on the same side and
+    # the immediate identical.  (2026-09-10, 0x1006B440: orig `mov R,0xffffd8f0`,
+    # ours `push 0xffffd8f0; pop R`.)
+    for side, other in ((ue, um), (um, ue)):
+        for row in [r for r in side if r.startswith('push ')]:
+            k = row[5:]
+            if not re.fullmatch(r'0x[0-9a-f]+|-?\d+', k):
+                continue
+            while side[row] and side['pop R'] and other['mov R, ' + k]:
+                side[row] -= 1; side['pop R'] -= 1; other['mov R, ' + k] -= 1
+    um += collections.Counter(); ue += collections.Counter()
     # Cross-jumping (tail merging): identical epilogues are either DUPLICATED
     # at each exit or merged behind one branch.  Same control flow, same
     # values -- only where the bytes sit, which is the layout family the
@@ -536,20 +555,6 @@ def classify(miss, extra, obag=None, rbag=None):
                 if n:
                     side[row] -= n
                     opp_single['xor R, R'] -= n
-    um += collections.Counter(); ue += collections.Counter()
-    # Constant-materialisation fork: `push K; pop R` IS `mov R, K` -- the same
-    # value in the same register, chosen for size (3 B for an imm8 against 5).
-    # An exact instruction-selection identity, not an approximation: cancel the
-    # PAIR against the single row only, both rows unpaired on the same side and
-    # the immediate identical.  (2026-09-10, 0x1006B440: orig `mov R,0xffffd8f0`,
-    # ours `push 0xffffd8f0; pop R`.)
-    for side, other in ((ue, um), (um, ue)):
-        for row in [r for r in side if r.startswith('push ')]:
-            k = row[5:]
-            if not re.fullmatch(r'0x[0-9a-f]+|-?\d+', k):
-                continue
-            while side[row] and side['pop R'] and other['mov R, ' + k]:
-                side[row] -= 1; side['pop R'] -= 1; other['mov R, ' + k] -= 1
     um += collections.Counter(); ue += collections.Counter()
     # Staged-constant push: `push K` against `mov R, K; push R` -- the same
     # value reaches the same stack slot; the register is a staging post.  The
