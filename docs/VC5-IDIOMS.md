@@ -7630,3 +7630,13 @@ VC5's canonicaliser (br_vec.c trio); `(x & 0xbf) | 0x80` folds to
 one-expression `(x & ~0x80) | 0x40` spelling at least avoids the fold's
 counter-web rotation).  All four are now canonical pairing classes in
 tools/t3.py classify().
+
+2026-09-09 Pool B lane (fd1bcb5e):
+
+- **`dec R / jne` from a lone equality test against 1 means `switch`, not
+  `if`.** 0x100284E0 BrTex3dMakeCurrent: `switch (mode) { case 1: ...
+  default: ... }` reproduces the original's `dec ecx / jne` byte-exact;
+  `if (mode == 1) ... else ...` spells `cmp R,1` (+2 B). VC5 lowers a
+  one-case switch by subtracting the case value even when the if/else and
+  switch bodies are identical; the shared push tail across the two
+  grTexCombine calls is ordinary cross-jumping and needs no source trick.
