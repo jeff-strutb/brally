@@ -141,6 +141,17 @@ fail:
 /* @t4-pass 0x100701B0 1 2026-09-07 probes 122 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100701B0 2 2026-09-07 probes 92 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100701B0 3 2026-09-07 probes 93 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100701B0 4 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census no  (hand, fn.py variants: copy/loop/guard/decl spellings, all inert or worse) */
+/* @t4-pass 0x100701B0 5 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census yes  (hand, fn.py variants: operand orders, casts, index forms, all inert; corpus query at +0xb0) */
+/* @t3 0x100701B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 213/205 insns 86/84 rows 1+3 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
+ * residue is the EOF-block layout fork: the original lays the end-of-file
+ * exit last and closes the loop with a bottom jb into mmioSetInfo; VC5
+ * places it after the loop, turning the exit into jae/jmp (cancelled as
+ * the either-or layout triple) and rematerialising the success zero
+ * (xor singleton).  Dead list in the RESIDUE block below.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100701B0 glide BrWavReadData */
 unsigned int BrWavReadData(HMMIO hmmio, unsigned int n, char *pDst,
                            MMCKINFO *pCk, unsigned int *pnRead)
