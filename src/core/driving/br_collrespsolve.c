@@ -556,18 +556,6 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 /* @t4-pass 0x10067710 5 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/crank.py) */
 /* @t4-pass 0x10067710 6 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10067710 7 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
-/* @t3 0x10067710 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1309/1301 insns 376/375 rows 3+4 regions 6 oracle UNCLASSIFIED
- * @t3-effort passes 7 zero-movement 6 7
- * RESIDUE, every row allocation or x87 stack colouring: two materialised
- * `mov R,1` where the original stores the flag register it already holds
- * into the sign slot, and one unpaired `fxch`.  The dossier below carries
- * the levers that closed the rest and the dead list; the dup-vs-reload
- * fork on pP->nx is a pairing class in tools/t3.py classify(), and the
- * seven spellings that do not reach it are listed there.
- * 40 compiles in the last pass, levers accepted: none; every candidate and
- * score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10067710 glide BrCrRespWalk */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the bytes.  The original is
@@ -595,7 +583,7 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * minuends aV[3..5] before the first fsub, so region 1 was a pure statement-
  * order artifact) -- register-blind multiset 17+17 -> 12+12.
  *
- * STATE 2026-09-10: CERTIFIED (see the tag above) -- 1309/1301 B, 376/375
+ * STATE 2026-09-10: PARKED at Gate A3 -- 1309/1301 B, 376/375
  * instructions, msetdiff 3+4 rows, 6 regions, no lost sync.  Six levers
  * landed this session; the first three took it to 4+5 rows with 33 bytes
  * still unanchored, the last three closed the layout and the row count:
@@ -611,12 +599,22 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  *    fourth stack slot and take the frame to 0x7c against the orig's 0x78.
  * Residue, every row allocation or layout:
  *  - four `fxch` and one register copy (x87 drain and slot colouring);
- *  - the dup-vs-reload fork on `pP->nx` between the dot product and the
- *    push-out vector: the orig re-reads it, ours holds the CSE'd copy.
- *    Seven spellings measured (node re-navigation, the global, split
- *    statements, compound `*=`, term and store reorder, d copied to a
- *    second local, a named normal pointer) -- all inert or worse.  This is
- *    now a pairing class in tools/t3.py classify().
+ *  - ‼ THE ONLY THING BLOCKING CERTIFICATION: a 4-row x87 operand-hand
+ *    fork on `pP->nx` between the dot product and the push-out vector.
+ *    The original duplicates d and multiplies the copy by memory
+ *    (`fld st; fmul [nx]`); ours loads nx and multiplies it by the copy
+ *    two deep (`fld [nx]; fmul st(2)`).  Same product, same two
+ *    instructions, same operands -- it is the stack-dup case of the
+ *    commutative fold t3.py already applies to two memory operands, and
+ *    t3.py does NOT extend that rule to a stack operand, so A3 counts all
+ *    four rows unpaired.  THIRTEEN spellings measured and all inert or
+ *    worse: node re-navigation, the global, split statements, compound
+ *    `*=`, all six component orders, flipped multiply operands, d copied
+ *    to a second local, a named normal pointer.  Everything else in this
+ *    function passes: A1 gap 1, A2 3+4 rows against a limit of 9.4, A4 no
+ *    lost sync, A5 clean, and Gate B has its two counted zero-movement
+ *    passes.  Do not re-grind the spellings; the decision is whether that
+ *    fold belongs in t3.py, and that is the user's call.
  *  - the mode-4 cold arm's OUT-OF-LINE placement, CLOSED: the arm has to
  *    set `flag` itself and `goto` PAST the join's own assignment of it.
  *    Nothing textual reaches this -- the arm's body written as a trailing
