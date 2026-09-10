@@ -74,8 +74,7 @@ void BrModelSlotApply(uint8_t *pCar, void *pDrv);
  * dist call. Size 2080/2104 B, insn gap 14, rows 30+16, 18 regions.
  * Unpaired: wrap-arm push/add vs lea (VC5), cmp [f140] vs cmp edx,eax,
  * 1e9 store CSE, pair-swap +0x50 vs +0x54, fa8/40 reloads. fxch st(2) x4. */
-/* @t4-pass 0x1005F6C0 1 2026-09-09 probes 20 bytes 2101 insns 557 regions 18 rows 47 census yes */
-/* @t4-pass 0x1005F6C0 2 2026-09-09 probes 20 bytes 2101 insns 557 regions 18 rows 47 census yes */
+/* @t4-pass 0x1005F6C0 1 2026-09-10 probes 20 bytes 2080 insns 548 regions 18 rows 46 census yes */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore */
 void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
 {
