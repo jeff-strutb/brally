@@ -7687,3 +7687,56 @@ spellings including re-navigating the node and the global move it or make
 it worse; now a pairing class in tools/t3.py classify()); the mode-4 cold
 arm that the original lays out AFTER the epilogue (goto-to-a-trailing-
 label reaches neither the layout nor a better row count).
+
+2026-09-10, second T3 lane (slice3_42 / drawing):
+
+- **A run of adjacent zero stores through one base is `memset`, not fields.**
+  0x10062D00 BrCtrlCfgInit: `memset(pThis->f7C8, 0, sizeof pThis->f7C8)`
+  emits the original's `lea ecx,[this+0x7c8]` plus four `mov [ecx+n],eax`;
+  written out as `pThis->f7C8[0..3] = 0` VC5 folds every store to
+  `[this+disp]` and lets a nearby `mov eax,9` steal the register (+7 B,
+  -1 insn).  BYTE-EXACT on the one edit.
+- **The hand of a float subtract is decided by how the SUBTRAHEND is named,
+  and the cast must be written out AT EACH USE.**  0x10063B80
+  BrReplayApply: `state.f10 - ((const BrVec3 *)((char *)pCar + POS))->x`
+  gives the original's `fld [esp+S]; fsub [car+0x1dc]`; the BR_CAR_F32
+  base-offset macro reverses every one (`fld [car]; fsubr [esp+S]`).  A
+  cached `const BrVec3 *pPos` local gets the hand right but CSEs the base
+  and drops 6 instructions -- the original re-derives per component.
+  BYTE-EXACT; this retires that function's "not source-selectable" note.
+- **A struct copy builds an address; field-wise copy does not.**
+  0x100643E0 BrRbVelAtBodyPoint: `p = pAt->f78` emits `add R,0x78` and
+  reads [M]/[M+4]/[M+8]; `p.x = pAt->f78.x; ...` reads
+  [pAt+0x78/0x7c/0x80] as the original does.  Rows 5+4 -> 0+0.
+- **A self-doubling gets `add R,R`; doubling a DIFFERENT variable gets
+  `shl R,1`.**  0x10016980 BrFontMeasure: `s = scale; if (g) s <<= 1;`
+  gives `add`, `if (g) scale = scale << 1; s = scale;` gives the
+  original's `shl` (scale is dead there either way).
+- **Cache the character when the original keeps it in a byte register.**
+  Same function: with `const char c = *psz;` at the top of the loop body
+  the percent test becomes `cmp cl,al` (register against register, not
+  against 0x25) and the glyph index `movsx eax,al` instead of a re-read
+  of [esi] -- three rows at once.  The old note that caching
+  strength-reduces psz[1]/psz[2] into walking pointers only applies when
+  the neighbours are named too.
+- **Bump the pixel cursor FIRST and index back.**  0x1005A300
+  BrImgMulByTexture: `p += 4; p[-4] = ...; p[-3]; p[-2]` is the
+  original's walk; bump-last anchors three bytes earlier (-6/-5) and
+  spends an extra `add R,2`.  Rows 2+2 -> 0+1.
+- **The mode store comes before the step, and the tail re-reads the
+  global.**  0x10063CC0 BrReplaySeek: with `step` assigned first VC5
+  materialises 10 before 3; carrying the mode in a local loses the reload
+  the original spends at the transport test.  Rows 6+6 -> 2+2, size and
+  instruction count exact.
+
+Same lane, PROVEN INERT (do not respell): the head fork of 0x10039D20
+BrMenuCap07E0 (the original loads and tests the selector byte before the
+movsx; duplicating the *3 into both arms costs +2 insns, a condition temp
+and a one-expression *3 are byte-identical -- 8 probes); the loop-tail
+schedule of 0x10058540 BrSprFontRectInit (identical instructions, `inc`
+and `cmp` interleaved differently between the four stores -- volatile
+removal, increment position, temps for the right/bottom values and an
+`i++` folded into the while condition are all inert); the per-arm global
+load of 0x1003C950 BrOptCycleAA2A0C (VC5 hoists it above the first branch
+from every spelling, including re-reading after the store and an
+`else if` chain).
