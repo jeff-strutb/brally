@@ -133,6 +133,15 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
  * it locked. */
 /* @t4-pass 0x10036A30 2 2026-09-07 probes 76 bytes 231 insns 87 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10036A30 3 2026-09-07 probes 77 bytes 231 insns 87 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10036A30 4 2026-09-09 probes 10 bytes 231 insns 87 regions 1 rows 1 census yes  (hand, fn.py variants: null/format/length-sum/decl; corpus MISS at +0x1a -- frame-pointer fork) */
+/* @t4-pass 0x10036A30 5 2026-09-09 probes 10 bytes 231 insns 87 regions 1 rows 1 census yes  (hand, fn.py variants: decl order, format polarity, string concat; decl-order -2 B but not current) */
+/* @t3 0x10036A30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 231/227 insns 87/86 rows 0+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 4 5
+ * residue is the frame-pointer decision: orig is frameless (ebp holds
+ * lpFormat, one spill into a dead incoming-arg slot); VC5 emits an ebp
+ * frame and a dedicated local.  One xor-zero remat.  Dossier in the
+ * RESIDUE block below.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10036A30 glide FUN_10036a30 */
 /* RESIDUE (2026-09-06): +4 B / +1 insn, REGNORM 1+0. Body is complete and
  * correct -- instruction-for-instruction identical to the original except the
