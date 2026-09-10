@@ -1735,6 +1735,13 @@ uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
  * never clear both -- allocator-residue class. */
 /* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100186E0 2 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x100186E0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 685/685 insns 165/165 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one esi/edi role toggle in the backward-wipe arm (see the
+ * NOT MATCHING note above); identical multiset, size-exact; two crank
+ * census passes at these numbers.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100186E0 glide BrFadeTick */
 void BrFadeTick(void)
 {
@@ -1925,6 +1932,13 @@ uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
  * is switched off it just does the byte order and lets the record go. */
 /* @t4-pass 0x10018B60 1 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018B60 2 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10018B60 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 492/493 insns 165/165 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring only: identical register-blind multiset
+ * (rows 0+0), 1 byte of encoding shadow, 2 masked regions; two crank
+ * census passes at these numbers.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10018B60 glide BrRcaFixupRecord */
 void BrRcaFixupRecord(void *pRec)
 {

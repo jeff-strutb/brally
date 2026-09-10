@@ -993,6 +993,13 @@ void BrTrackFixupList78(void *pvHdr)
  * order is scheduler-canonical -- allocator-residue class, do not grind. */
 /* @t4-pass 0x100316D0 1 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100316D0 2 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x100316D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 563/563 insns 192/192 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is scheduler-canonical u16 pair load order (see the NOT MATCHING
+ * note above: three spellings compile byte-identical); identical multiset,
+ * size-exact; two crank census passes at these numbers.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100316D0 glide BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {
