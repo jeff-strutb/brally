@@ -53,6 +53,17 @@
 /* WHAT IT DOES: records which of two banks of sixteen an object belongs to.
  * Anything numbered sixteen or above is stored as the second bank with its
  * number reduced by sixteen; anything below it is the first bank. */
+/* @t4-pass 0x1006FD50 1 2026-09-09 probes 10 bytes 50 insns 10 regions 1 rows 2 census no  (hand, fn.py variants: the dossier dead list rerun -- minus/hex/inline/member/unsigned/neg-add spellings, store orders, guard flips, all inert or worse) */
+/* @t4-pass 0x1006FD50 2 2026-09-09 probes 10 bytes 50 insns 10 regions 1 rows 2 census yes  (hand, fn.py variants: mechanism experiment on the three known keep-sub constructs -- pointer difference, loop-carried, narrow-typed -- all still emit add-negative; plus cond-expr/volatile/two-store forms, worse) */
+/* @t3 0x1006FD50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 50/50 insns 10/10 rows 1+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one instruction-selection fork: original `sub eax,0x10`, VC5
+ * `add eax,-0x10` -- MSVC5 canonicalises straight-line constant subtraction
+ * to add-negative (paired by t3.py canon, a326268).  The dossier below has
+ * the full dead list including VC4.2 cross-evidence; the two ledger lines
+ * add the keep-sub mechanism experiments (none fire here).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
 #ifdef BR_MATCHING_BUILD
 /* thiscall, one stack arg.  Size-exact (50) but encoding-walled:
