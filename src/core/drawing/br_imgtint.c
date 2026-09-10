@@ -91,6 +91,7 @@ extern const uint8_t *g_apBrImgTintTex[];
  * with the same loop body, so the levers are in the outer loop. */
 /* @t4-pass 0x1005A300 1 2026-09-07 probes 77 bytes 291 insns 98 regions 4 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005A300 2 2026-09-07 probes 71 bytes 291 insns 98 regions 4 rows 5 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005A300 3 2026-09-10 probes 40 bytes 282 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x1005A300 glide BrImgMulByTexture */
 void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
 {
