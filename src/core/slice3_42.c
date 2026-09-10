@@ -912,8 +912,16 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
                         const BrRbBodyFull *pAt)
 {
     BrVec3 r;
-    BrVec3 p = pAt->f78;
+    BrVec3 p;
     float cx, cy, cz;
+
+    /* FIELD-WISE, not a struct copy: the original reads [pAt+0x78/0x7c/0x80]
+     * directly, where `p = pAt->f78` makes VC5 build the address first
+     * (`add R,0x78`) and copy from [M]/[M+4]/[M+8].  Same spelling as
+     * BrRbVelAtBodyPointXY below. */
+    p.x = pAt->f78.x;
+    p.y = pAt->f78.y;
+    p.z = pAt->f78.z;
 
     BrMat4MulVec3Transposed(&r, &pB->m, &p);
 
