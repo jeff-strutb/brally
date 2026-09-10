@@ -81,7 +81,7 @@ def norm(t, m, relocd=False):
             r'(0x[0-9a-f]+|\d+)', t.split(' ', 1)[1] if ' ' in t else ''):
         # bare decimal: capstone's form for small intra-obj targets (`call 8`)
         return t.split(' ', 1)[0] + ' T'
-    t = re.sub(r'esp [+-] 0x[0-9a-f]+', 'esp+S', t)
+    t = re.sub(r'esp [+-] (0x[0-9a-f]+|\d+)', 'esp+S', t)  # capstone prints small disps in decimal
     t = re.sub(r'\*(1|2|4|8)\b', '*K', t)
     if m != 'raw':
         t = re.sub(R32, 'R', t); t = re.sub(R16, 'W', t); t = re.sub(R8, 'B', t)

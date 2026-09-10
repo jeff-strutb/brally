@@ -62,7 +62,7 @@ def norm(i, relocd, tail_reloc=None):
     # forms or an intra-obj call to a file-static pairs with nothing.
     if BRANCH.match(i.mnemonic) and re.fullmatch(r'(0x[0-9a-f]+|\d+)', s):
         return i.mnemonic + ' T'
-    s = re.sub(r'esp \+ 0x[0-9a-f]+', 'esp+S', s)
+    s = re.sub(r'esp [+-] (0x[0-9a-f]+|\d+)', 'esp+S', s)  # capstone prints small disps in decimal
     s = re.sub(r'\*(1|2|4|8)\b', '*K', s)
     s = re.sub(r'\b(eax|ebx|ecx|edx|esi|edi|ebp)\b', 'R', s)
     s = re.sub(r'\b(ax|bx|cx|dx|si|di|bp)\b', 'W', s)
