@@ -7784,6 +7784,21 @@ from every spelling, including re-reading after the store and an
   `jb`; `if (!ok) goto fail; store;` inverts the branch and unanchors the
   whole tail.
 
+- **A float compare against a computed bound wants the bound NAMED.**
+  0x1005D770: `if (v < a - -1.0f)` is canonicalised to `fld <bound>; fcomp v`
+  with the C0|C3 polarity; assigning the bound to a (dead) local first gives
+  the original's `fld <bound>; fld v; fcompp` plus `test ah,1` -- five rows.
+  Operand-hand swaps, the `!(v >= ...)` form and both `1.0f +` orders are
+  inert, so the lever is the SLOT, not the spelling.
+- **A float ceiling test puts the CONSTANT first.**  0x1005D770's
+  `if (k > 0.4f) k = 0.4f;` loads k, compares-and-pops against the constant
+  and writes the ceiling back as an immediate store (`mov dword ptr
+  [esp+S], 0x3ecccccd`); `if (0.4f < k)` leaves the constant in st and pairs
+  the ceiling's `fld`/`fstp` (rows 28 -> 26, size unchanged).  A dedicated
+  local for k, reusing five other floats, the `!(k <= 0.4f)` form, both
+  product hands and three spellings of the scale are all inert -- VC5 homes
+  any named float here, so only the compare's operand order moves.
+
 Same lane, walls PROVEN (do not respell): the folded byte OR (0x100311C0's
 `pb[1] |= 0x20` against the original's single `or byte ptr [b+i+0x4d],0x20`
 -- fourteen spellings, pointer- and index-typed, RMW written out, direct
