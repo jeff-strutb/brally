@@ -71,7 +71,8 @@ extern float _DAT_10077528;
  * SIB bytes, and the flag OR left as a 3-insn RMW (orig folds it and keeps a
  * dead lea of pb at +0x4c). Not allocation-only: two insn shapes differ, so
  * not a t3 candidate yet.
- * @t4-pass 0x100311C0 1 2026-09-09 probes 6 bytes 775 insns 221 regions 1 rows 20 census no  (fn.py variants: int[3]/struct-float vector, dword-OR widening, pb[1] spellings, arg3 operand swap, int-punned stores) */
+ * @t4-pass 0x100311C0 1 2026-09-09 probes 6 bytes 775 insns 221 regions 1 rows 20 census no  (fn.py variants: int[3]/struct-float vector, dword-OR widening, pb[1] spellings, arg3 operand swap, int-punned stores)
+ * @t4-pass 0x100311C0 2 2026-09-09 probes 5 bytes 775 insns 221 regions 2 rows 12 census no  (thin, recorded for honesty: initializer-declaration vector (block-scoped, both wirings), z/y/x store order, iVar8-destructive arg3, record-pointer promotion of all field sites -- the last is -27 B/FIRSTDIV +0x7: orig has NO rec pointer, fields are base+index SIBs, only arg3 is the destructive add) */
 /* @implements 0x100311C0 glide BrTrackLoad */
 void BrTrackLoad(int param_1)
 
