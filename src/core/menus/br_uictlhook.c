@@ -372,6 +372,13 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
  * depending on which of the two volume rows the player last touched -- the
  * highlight that shows which row the cursor is on. */
 /* @t4-pass 0x10037F70 1 2026-09-10 probes 35 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10037F70 2 2026-09-10 probes 134 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10037F70 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 44/43 insns 10/10 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue after tools/crank.py: 134 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 /* @n64 0x802649C0 located */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
