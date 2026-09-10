@@ -7640,3 +7640,10 @@ tools/t3.py classify().
   one-case switch by subtracting the case value even when the if/else and
   switch bodies are identical; the shared push tail across the two
   grTexCombine calls is ordinary cross-jumping and needs no source trick.
+- **A scan loop that exits from inside must be a `for`, not a source
+  do-while.** 0x100704E0 BrJoyScanAny: `for (i=0;i<0x80;i++) if (b[i]&0x80)
+  {...return i;}` gives the original's unrotated do-while -- head test
+  `test [esp+eax+0x30],cl` with 0x80 shared between mask and bound in ecx.
+  The same body spelled `do {...} while (i<0x80)` gets ROTATED: first
+  button load peeled into dl, backedge on the condition test (+4 B,
+  +3 insns). goto-vs-inline found block made no difference.
