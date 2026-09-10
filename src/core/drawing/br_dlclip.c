@@ -243,6 +243,15 @@ void NAME(BrClipList *pList)                                                  \
 BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W, BRCLIP_W)
 
 /* WHAT IT DOES: cuts a polygon against the left edge of the screen. */
+/* @t4-pass 0x1001F2B0 1 2026-09-09 probes 10 bytes 307 insns 119 regions 1 rows 3 census yes  (hand, fn.py variants: LEAD/plain DIST pairing, wrong-plane DIST; corpus HIT 5 at +0x30) */
+/* @t4-pass 0x1001F2B0 2 2026-09-09 probes 10 bytes 307 insns 119 regions 1 rows 3 census yes  (hand, fn.py variants: lead/plain macro parens and operand swap; zero movement on the current numbers) */
+/* @t3 0x1001F2B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 307/311 insns 119/120 rows 2+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the dPrev-site commutative fadd operand order (fld w; fadd x
+ * vs fld x; fadd w) plus fst vs fstp+fld keep-reload; the LEAD paren that
+ * flips dCur also sinks dPrev, so no spelling reaches both.  Dossier in the
+ * file header.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1001F2B0 glide BrClipPlaneWPlusF04 */
 BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X_LEAD, BRCLIP_W_PLUS_X)
 
