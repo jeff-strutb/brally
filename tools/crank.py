@@ -560,6 +560,15 @@ def certify(va, path, hist, n, sym):
                  % (n, ' > '.join(hist) or 'none'), m.group(1), flags=re.S)
     fp = os.path.join(ROOT, path)
     t = open(fp, encoding='utf-8', errors='surrogateescape').read()
+    # Already certified: a later pass re-runs --qualify, which happily emits the
+    # tag again, and pasting it appends a SECOND @t3 block.  t3.py's validator
+    # cannot see the duplicate -- certified() keys tags by VA, so the later
+    # block silently overwrites the earlier one in its dict and the stale one
+    # sits in the source unchecked, with the wrong effort line and the wrong
+    # lever note.  (2026-09-10, 0x100608F0: passes 2 and 3 each certified.)
+    if re.search(r'@t3\s+' + re.escape(va) + r'\b', t, re.I):
+        log('  t3: already certified, ledger line only (no second tag)')
+        return False
     at = implements_at(t, va, sym)
     if not at:
         return False
@@ -695,6 +704,19 @@ def crank(va, budget, commit, ledger):
             if t2 != text0:
                 open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(t2)
                 cert = certify(va, path, hist, n, sym)
+                # `git commit -- <file>` commits the WHOLE working-tree file, so a
+                # concurrent edit by another session rides along under our
+                # message.  That happened on 2026-09-10: a peer's BrVarLoad fix
+                # landed inside a BrVarSave ledger commit.  Nothing is lost, but
+                # the log misattributes it -- so check that what is on disk is
+                # still only what we wrote, and leave the commit to its owner if
+                # it is not.
+                now = open(fp, encoding='utf-8', errors='surrogateescape').read()
+                expect = t2 if not cert else None
+                if expect is not None and now != expect:
+                    log('  %s changed under this run after the ledger write -- '
+                        'ledger line left uncommitted for its owner' % path)
+                    commit = False
                 if commit:
                     r = git('commit', '-q', '-m', '%s %s: @t4-pass ledger line%s (tools/crank.py, %d compiles, best %s)'
                             % (va, sym, ' + @t3 certification' if cert else '', n, fmt(m_best)), '--', path)
