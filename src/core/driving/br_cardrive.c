@@ -48,11 +48,12 @@ float BrSinF(float a);
  * angVel through the body matrix, then eases the visual roll toward the
  * retained side force. Not an engine: there is no throttle or gearbox.
  *
- * Residue is allocation/scheduling: vx/vz square operand order (fld [body+0x84]
- * vs [body+0x8c]), fcom vs fcomp, fmul st-index, one extra fstp st. Frame is
- * sub esp, 0x8c. Insn gap 1. */
-/* @t4-pass 0x100645A0 1 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 73 census yes */
-/* @t4-pass 0x100645A0 2 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 73 census yes */
+ * Residue: sideForce/ran are an adjacent float+int aggregate (orig [esp+0x58]/
+ * [esp+0x5c]); remaining unpaired is x87 scheduling (fcom vs fcomp, fsub st(2)
+ * vs fsubr, extra fld st / fstp st on the roll abs). Frame sub esp, 0x8c.
+ * Insn gap 1. */
+/* @t4-pass 0x100645A0 1 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
+/* @t4-pass 0x100645A0 2 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
 /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
 void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
                          float *param_4, char *param_5, char *param_6)
@@ -74,8 +75,6 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
   int local_x;
   float local_80;
   int local_6c;
-  int local_40;
-  float local_44;
   float hold;
   float local_3c;
   float local_38;
@@ -88,20 +87,24 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
   float tmpB[3];
   float lat[3];
   float svB[3];
+  struct {
+    float sideForce;
+    int ran;
+  } g;
 
-  local_44 = 0.0f;
-  local_40 = 0;
-  if (*(int *)(*(int *)(param_1 + 4) + 0x19c) == local_40) {
-    *(int *)(*(int *)(param_1 + 4) + 0x1b4) = local_40;
+  g.sideForce = 0.0f;
+  g.ran = 0;
+  if (*(int *)(*(int *)(param_1 + 4) + 0x19c) == g.ran) {
+    *(int *)(*(int *)(param_1 + 4) + 0x1b4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 8) + 0x19c) == local_40) {
-    *(int *)(*(int *)(param_1 + 8) + 0x1b4) = local_40;
+  if (*(int *)(*(int *)(param_1 + 8) + 0x19c) == g.ran) {
+    *(int *)(*(int *)(param_1 + 8) + 0x1b4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 0xc) + 0x19c) == local_40) {
-    *(int *)(*(int *)(param_1 + 0xc) + 0x1b4) = local_40;
+  if (*(int *)(*(int *)(param_1 + 0xc) + 0x19c) == g.ran) {
+    *(int *)(*(int *)(param_1 + 0xc) + 0x1b4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 0x10) + 0x19c) == local_40) {
-    *(int *)(*(int *)(param_1 + 0x10) + 0x1b4) = local_40;
+  if (*(int *)(*(int *)(param_1 + 0x10) + 0x19c) == g.ran) {
+    *(int *)(*(int *)(param_1 + 0x10) + 0x1b4) = g.ran;
   }
   iVar5 = *(int *)(param_1 + 0xc);
   if (*(float *)(iVar5 + 0x1d0) < _DAT_10077a78) {
@@ -201,7 +204,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
     } else {
       fVar7 = *param_3;
     }
-    local_40 = 1;
+    g.ran = 1;
     *(int *)&hold = 0x45FA0000;
     if (local_88 < _DAT_10077a78) {
       fVar2 = -local_88;
@@ -226,7 +229,8 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
       local_84 = (fVar2 > _DAT_10077a98);
       fVar2 = (float)local_84 * _DAT_10077aa0;
     }
-    fVar2 = ((*(float *)(param_1 + 0x2c) * fVar1) / param_2 + fVar7) - fVar2;
+    fVar8 = (*(float *)(param_1 + 0x2c) * fVar1) / param_2 + fVar7;
+    fVar2 = fVar8 - fVar2;
     if (*param_5 != '\0') {
       hold = _DAT_10077aa8;
     }
@@ -277,10 +281,10 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
       fVar1 = vA[1] * local_80;
       vA[1] = vA[1] - fVar1;
       *param_5 = '\x01';
-      local_44 = local_80 * vA[1];
+      g.sideForce = local_80 * vA[1];
     }
     else {
-      local_44 = 0.0f;
+      g.sideForce = 0.0f;
       vA[1] = _DAT_10077a78;
     }
     if (vA[0] < _DAT_10077a78) {
@@ -344,7 +348,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
       (*(int *)(*(int *)(param_1 + 0x10) + 0x1b4) != 0)) &&
      ((*(int *)(*(int *)(param_1 + 4) + 0x1b4) != 0 ||
       (*(int *)(*(int *)(param_1 + 8) + 0x1b4) != 0)))) {
-    local_40 = 1;
+    g.ran = 1;
     pt[0] = BrCosF(*(float *)(*(int *)(param_1 + 0xc) + 0x1c0));
     lat[2] = vB[2];
     pt[1] = BrSinF(*(float *)(*(int *)(param_1 + 0xc) + 0x1c0));
@@ -372,8 +376,8 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
       local_88 = -local_88;
     }
     local_88 = (float)(int)(local_88 > _DAT_10077a98);
-    fVar1 = (fVar11 * *(float *)(param_1 + 0x2c)) / param_2 + local_8c -
-            local_88 * _DAT_10077aa0;
+    fVar1 = (fVar11 * *(float *)(param_1 + 0x2c)) / param_2 + local_8c;
+    fVar1 = fVar1 - local_88 * _DAT_10077aa0;
     fVar7 = _DAT_10077a90;
     if (*param_6 != '\0') {
       fVar7 = _DAT_10077ac4;
@@ -427,7 +431,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
       *param_6 = '\x01';
     }
   }
-  if (local_40 != 0) {
+  if (g.ran != 0) {
     svB[0] = (vA[0] + vB[0]) * _DAT_10077ac8;
     svB[2] = (vA[1] - vB[1]) /
              (*(float *)(*(int *)(param_1 + 4) + 0x78) -
@@ -441,28 +445,26 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
     wld[1] = svB[1];
     BrMat4MulVec3Transposed((void *)(param_1 + 0x84), iVar5, wld);
   }
-  fVar1 = local_44;
-  if (local_44 < _DAT_10077a78) {
-    fVar1 = -local_44;
-  } else {
-    fVar1 = local_44;
+  fVar1 = g.sideForce;
+  if (g.sideForce < _DAT_10077a78) {
+    fVar1 = -g.sideForce;
   }
   if (fVar1 > _DAT_10077ac8) {
-    if (local_44 == _DAT_10077a78) {
+    if (g.sideForce == _DAT_10077a78) {
       fVar1 = _DAT_10077a78;
-    } else if (local_44 > _DAT_10077a78) {
+    } else if (g.sideForce > _DAT_10077a78) {
       fVar1 = _DAT_10077a7c;
     } else {
       fVar1 = _DAT_10077a80;
     }
-    local_44 = fVar1 * _DAT_10077ac8;
+    g.sideForce = fVar1 * _DAT_10077ac8;
   }
-  fVar1 = (local_44 + local_44) * _DAT_10077ad0;
+  fVar1 = (g.sideForce + g.sideForce) * _DAT_10077ad0;
   fVar7 = *(float *)(param_1 + 0x1d4) - fVar1;
   if (fVar7 < _DAT_10077a78) {
     fVar7 = -fVar7;
   }
-  if (!(_DAT_10077ad4 > fVar7)) {
+  if (!(fVar7 < _DAT_10077ad4)) {
     if (*(float *)(param_1 + 0x1d4) < fVar1) {
       *(float *)(param_1 + 0x1d4) = *(float *)(param_1 + 0x1d4) - _DAT_10077ad8;
       return;
