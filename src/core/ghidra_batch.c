@@ -406,6 +406,15 @@ extern int DAT_106b7aa0;
  * then frees the table itself and zeros the counts. */
 /* @t4-pass 0x10029CD0 1 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029CD0 2 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029CD0 3 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census no  (hand, fn.py variants: dead-init removal, loop shape rewrites, pre/post increments, cast and order spellings, all inert) */
+/* @t4-pass 0x10029CD0 4 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census yes  (hand, fn.py variants: inline slot load, goto-loop, unsigned off, store/free respellings, all inert or worse; corpus query at +0x0) */
+/* @t3 0x10029CD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 153/153 insns 50/50 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring only: identical register-blind multiset
+ * (rows 0+0), 4 masked regions, 6 B uncompared at key 6 within tolerance.
+ * Two crank census passes (86 probes each) plus two hand passes at the
+ * current numbers.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029CD0 glide BrEntGfxFreeAll */
 void BrEntGfxFreeAll(void)
 {
