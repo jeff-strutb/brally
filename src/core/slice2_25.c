@@ -688,32 +688,37 @@ int BrOptCycleBD3E0(void)
      * wrap stores into the single `mov [g_0BD3E0],eax` the original has at
      * 0x1003C643.
      *
-     * RESIDUE (1 regnorm, +1 byte, T3a): with the load common to BOTH arms
-     * our cl hoists it above the first `je`, so eax is already busy and the
-     * down flag has to go to ecx -- `8b 0d` where the original has the
-     * one-byte-shorter `a1`. The original keeps two separate loads. The
-     * `else if` spelling DOES un-hoist it, but then the two wrap stores stop
-     * merging and the function is 5 bytes and one instruction over instead
-     * of one byte; probed both ways, this is the better of the two. Also
-     * probed dead: `v = g - 1` for the decrement (emits lea/test/jge for the
+     * BYTE-EXACT 2026-09-10, and it took BOTH halves of that trade at once.
+     * The two wrap stores are merged by a `goto` into the down arm's store
+     * -- the single `mov [g_0BD3E0],eax` the original has at 0x1003C643 --
+     * and the do-nothing exit is split off as its own `else if (down == 0)`
+     * arm so the value load is NOT common to both paths.  With one shared
+     * load VC5 hoists it above the first `je`, eax is busy, and the down
+     * flag has to go to ecx (`8b 0d` where the original has the one-byte
+     * shorter `a1`); with the exit split out the original's two separate
+     * loads come back and the flag keeps eax.  Either half alone is worse
+     * than the plain shape: `else if` on its own un-merges the wrap stores,
+     * the shared wrap on its own leaves the hoisted load.  Also probed
+     * dead: `v = g - 1` for the decrement (emits lea/test/jge for the
      * original's dec/jns). */
     if (g_brAA33D4 != 0) {
         v = g_br0BD3E0 + 1;
         g_br0BD3E0 = v;
         if (v > BR_OPT_BD3E0_MAX) {
             v = BR_OPT_BD3E0_MIN;        /* wraps to 1, NOT to 0 */
-            g_br0BD3E0 = v;
+            goto BR_WRAP;
         }
+    } else if (g_brAA33D0 == 0) {
+        v = g_br0BD3E0;
     } else {
         v = g_br0BD3E0;
-        if (g_brAA33D0 != 0) {
-            /* load / --v / store, NOT `v = g - 1`: see BrOptCycle above. */
-            --v;
+        /* load / --v / store, NOT `v = g - 1`: see BrOptCycle above. */
+        --v;
+        g_br0BD3E0 = v;
+        if (v < BR_OPT_BD3E0_MIN) {
+            v = BR_OPT_BD3E0_MAX;
+BR_WRAP:
             g_br0BD3E0 = v;
-            if (v < BR_OPT_BD3E0_MIN) {
-                v = BR_OPT_BD3E0_MAX;
-                g_br0BD3E0 = v;
-            }
         }
     }
 
