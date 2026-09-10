@@ -85,14 +85,25 @@ def norm(i, relocd, tail_reloc=None):
         if relocd and tail_reloc and re.search(r'(^|, )0$', s):
             s = re.sub(r'(^|, )0$', r'\1A', s)
         elif 'A' not in s:
-            if re.fullmatch(r'0', s):
+            def _abs(m):
+                inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', m.group(1))
+                return '[' + inner + ' + A]'
+            # 2026-09-09 (second): the mirror of the tail case above.  In
+            # `mov dword ptr [R + <reloc disp32>], 0` the reloc sits in the
+            # DISPLACEMENT (not the last four bytes), the addend is 0 so
+            # capstone prints a bare `[R]`, and the old imm-first order
+            # rewrote the true immediate 0 to A instead -- the row then
+            # paired with nothing and failed gate A3 on identical bytes
+            # (0x1006C290, unpaired `mov [M], A` vs `mov [A], 0`).  When
+            # the caller SAYS the reloc is not in the tail, the memory
+            # operand is the reloc'd field.
+            if tail_reloc is False and '[' in s:
+                s = re.sub(r'\[([^]]*)\]', _abs, s, count=1)
+            elif re.fullmatch(r'0', s):
                 s = 'A'
             elif re.search(r',\s*0$', s):
                 s = re.sub(r',\s*0$', ', A', s)
             elif '[' in s:
-                def _abs(m):
-                    inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', m.group(1))
-                    return '[' + inner + ' + A]'
                 s = re.sub(r'\[([^]]*)\]', _abs, s, count=1)
     return i.mnemonic + ' ' + s
 def load(p, sym, lo=0, hi=None):
