@@ -365,6 +365,16 @@ extern int DAT_10b71648;
  * refreshes the on-screen time string when the counter is live. */
 /* @t4-pass 0x10005400 1 2026-09-07 probes 61 bytes 155 insns 47 regions 4 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x10005400 2 2026-09-07 probes 74 bytes 155 insns 47 regions 4 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x10005400 3 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census no  (hand, fn.py variants at the ~0x80 spelling: counter temps, wrap/guard/mask forms, decl orders, all inert) */
+/* @t4-pass 0x10005400 4 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census yes  (hand, fn.py variants: register hint, call temp, operand orders, dead-store shapes, all inert; corpus MISS at +0x60 len 10) */
+/* @t3 0x10005400 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 154/153 insns 46/47 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is one allocation copy: the original computes the counter web in
+ * eax and copies to esi once (`mov esi,eax`, the singleton); every probed
+ * shape births the web in esi directly (-1 insn, +1 B of esi encodings).
+ * The old and-0x3f fold residue was removed at source (a689ef2).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10005400 glide BrCdAudioTick */
 void BrCdAudioTick(void)
 {
