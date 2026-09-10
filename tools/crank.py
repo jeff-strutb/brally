@@ -510,11 +510,30 @@ def implements_at(text, va, sym):
                      + re.escape(sym) + r'\b[^\n]*\*/', text)
 
 
+def gate_rows(va, fallback):
+    """The row count GATE B READS, which is t3.py's, not crank's.
+
+    crank scores with triage._bag('regnorm'); t3.py counts msetdiff rows with
+    relocs masked.  The two agree on most functions and disagree on some
+    (0x1001E080: crank 7, t3 3).  Writing crank's number into the ledger meant
+    Gate B compared it against t3's and could never match, so crank could
+    never close those functions however many passes it ran.  Ask t3 for it."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, 'tools'))
+        import t3
+        meas, _ = t3.measure(va)
+        if meas:
+            return meas['nmiss'] + meas['nextra']
+    except Exception:
+        pass
+    return fallback
+
+
 def ledger_line(text, va, n, m, census, sym):
     k = len(re.findall(r'@t4-pass\s+' + re.escape(va), text, re.I)) + 1
     line = ('/* @t4-pass %s %d %s probes %d bytes %d insns %d regions %d rows %d census %s  (tools/crank.py) */\n'
             % (va, k, datetime.date.today().isoformat(), n, m['ob'] + m['db'], m['oi'] + m['di'],
-               m['regions'], m['reg'], 'yes' if census else 'no'))
+               m['regions'], gate_rows(va, m['reg']), 'yes' if census else 'no'))
     tag = implements_at(text, va, sym)
     return text[:tag.start()] + line + text[tag.start():] if tag else text
 
