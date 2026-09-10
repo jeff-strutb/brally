@@ -458,6 +458,7 @@ glide_va,name,module,basis,file
 0x10033CE0,BrSpanExtend,audio,description,src/core/audio/br_span.c
 0x10033F90,BrSpanContains,audio,description,src/core/audio/br_span.c
 0x10033FD0,BrSpanTestPoint,scene,description,src/core/scene/br_spangrid.c
+0x100342B0,BrVec3Cross,geometry,filed,src/core/geometry/br_vec.c
 0x10034310,BrVec3Dot,geometry,filed,src/core/geometry/br_vec.c
 0x10034340,BrVec3Negate,geometry,filed,src/core/geometry/br_vec.c
 0x100343C0,BrVec3Div,geometry,filed,src/core/geometry/br_vec.c
@@ -681,13 +682,14 @@ glide_va,name,module,basis,file
 0x10053EE0,BrVtInit53EE0,menus,neighbour-1,src/core/menus/br_textbox.c
 0x10053EF0,BrTextBoxMeasureA,menus,description,src/core/menus/br_textbox.c
 0x10053F80,BrTextBoxMeasureB,menus,manual,src/core/menus/br_textbox.c
+0x10054020,BrTextBoxCentreX,menus,filed,src/core/menus/br_textbox.c
 0x10054360,BrCharMapLookup,controls,description,src/core/controls/br_dik.c
 0x10054390,FUN_10054390,controls,neighbour-1,src/core/generated/0x10054390.c
 0x100545C0,BrSprFontGlyphB_1005B7A0,drawing,filed,src/core/drawing/br_sprfont.c
 0x10054600,BrRet0Std3_10054600,menus,manual,src/core/menus/br_textlist.c
 0x100546F0,BrObj546F0DeleteDtor,menus,manual,src/core/menus/br_textlist.c
 0x10054710,BrObj54710Dtor,menus,manual,src/core/menus/br_textlist.c
-0x10055020,BrTextListSetBlob,menus,manual,src/core/slice3_39.c
+0x10055020,BrTextListSetBlob,menus,manual,src/core/menus/br_textlist.c
 0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
 0x10055960,BrSub1005CB40,drawing,neighbour,src/core/drawing/br_namelist.c
 0x100559B0,BrNameListInit,drawing,neighbour,src/core/drawing/br_namelist.c
