@@ -100,13 +100,22 @@ void BrVec3Copy(BrVec3 *pDst, const BrVec3 *pSrc)
 /* WHAT IT DOES: the cross product -- the direction perpendicular to two
  * others, which is how surface normals and sideways axes are built. Uses
  * temporaries so the output may safely be one of the inputs. */
+/* @implements 0x100342B0 glide BrVec3Cross */
 /* @implements 0x1003AC30 d3d BrVec3Cross */
 /* @n64 0x8022439C located */
 void BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
-    float x = pA->y * pB->z - pA->z * pB->y;
-    float y = pA->z * pB->x - pA->x * pB->z;
+    /* DECLARATION ORDER IS THE MATCH.  The original computes z's two products
+     * first, then y's, then x's, and completes x last -- with that order the
+     * three results arrive on the x87 stack as y, z, x, exactly the order the
+     * closing `fstp [eax+4] / [eax+8] / [eax]` wants.  Written x, y, z the
+     * body is the same 33 instructions plus one `fxch st(1)` to get y on top
+     * before the stores, and the two pointers land in the opposite registers.
+     * The store statements below stay in x, y, z order; only the temporaries
+     * move. */
     float z = pA->x * pB->y - pA->y * pB->x;
+    float y = pA->z * pB->x - pA->x * pB->z;
+    float x = pA->y * pB->z - pA->z * pB->y;
     pOut->x = x; pOut->y = y; pOut->z = z;
 }
 
