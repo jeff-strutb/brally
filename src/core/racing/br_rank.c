@@ -79,17 +79,6 @@ int BrNetGetA102212D0(int param_1);
  * cursor-key + indexed-idx (kept: positional DIFFS 22 -> 16).  Gate 0+A
  * PASS; parked for Gate B's counted ledger.
  * PASS; the counted ledger and its dead list are in this file's header. */
-/* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 2 3
- * The residue is loop 1's four-register cyclic shift and nothing else: the
- * derived key cursor is allocated FIRST in the original and LAST here, which
- * rotates key-cursor/key/slot/i one place.  Size, instruction count and the
- * register-blind multiset are all exact (259/259 B, 92/92 insns, 0+0, one
- * masked region).  The dossier and the full 29-compile dead list are in the
- * RESIDUE block above; the corpus is a MISS on loop 1's 12-instruction run,
- * so no proven spelling exists to copy.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle UNCLASSIFIED

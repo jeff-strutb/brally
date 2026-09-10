@@ -726,12 +726,6 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * hardware is present -- which is how the game discovers it must fall back. */
 /* @t4-pass 0x1001E080 3 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001E080 4 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t3 0x1001E080 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 176/173 insns 40/41 rows 2+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 23 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x1001E080 5 2026-09-10 probes 43 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t3 0x1001E080 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 176/173 insns 40/41 rows 2+1 regions 1 oracle UNCLASSIFIED

@@ -123,12 +123,6 @@ void BrVtxSwap(void *pVerts, int count)
  * buffer the batch started. */
 /* @t4-pass 0x10018EF0 1 2026-09-10 probes 60 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018EF0 2 2026-09-10 probes 60 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10018EF0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 203/203 insns 55/55 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/crank.py: 60 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x10018EF0 3 2026-09-10 probes 228 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x10018EF0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 203/203 insns 55/55 rows 0+0 regions 1 oracle UNCLASSIFIED
