@@ -857,6 +857,7 @@ int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
  * merely being held down. For each key it records whether it is down now and
  * flags it only if it was up on the previous frame -- so a held key
  * registers once, not every frame. */
+/* @t4-pass 0x10058FD0 1 2026-09-10 probes 57 bytes 66 insns 17 regions 1 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1005FF60 d3d BrMenuSub1005FF60 */
 void BrMenuSub1005FF60(void)
 {
