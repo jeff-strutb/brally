@@ -83,11 +83,19 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 {
     uint8_t *pOut = (uint8_t *)pDst;
     int32_t  cbUsed;
+    int      i;
 
-    while (pTable->pData != NULL) {
-        memcpy(pOut, pTable->pData, (size_t)pTable->cb);
-        pOut += pTable->cb;
-        pTable++;
+    /* INDEXED, not a walked pointer.  The original keeps the entry's own
+     * address live and re-reads the size through it at the bottom of the loop
+     * (`mov ebx,edx` ... `mov edi,[ebx+4]`); a `pTable++` cursor makes VC5
+     * advance first and read back through a negative displacement
+     * (`add eax,8` ... `mov edi,[eax-4]`).  Spelling the accesses indexed and
+     * letting strength reduction build the cursor is what reproduces it --
+     * six loop shapes probed, this is the only one that lands
+     * (register-blind residue 4+1 -> 0+1). */
+    for (i = 0; pTable[i].pData != NULL; i++) {
+        memcpy(pOut, pTable[i].pData, (size_t)pTable[i].cb);
+        pOut += pTable[i].cb;
     }
 
     cbUsed = (int32_t)(pOut - (uint8_t *)pDst);
