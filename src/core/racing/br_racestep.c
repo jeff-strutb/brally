@@ -817,21 +817,18 @@ void BrRaceStepLights(void)
  *     BrRaceStepSpecials 0x1001B365..0x1001B402  the special-object loop,
  *                        0x1001B870..0x1001B886  its three rotation arms
  *                                                and its tail            181 B
+ *     BrRaceStepFlyPast  0x1001B403..0x1001B86F  the fly-past camera:
+ *                                                the spline walk and the
+ *                                                basis it builds       1,133 B
  *
  * What STILL does not exist:
  *
- *     0x1001B403..0x1001B86F   the fly-past camera: its timer, the spline
- *                              walk over 0x105BC7E0's 12-byte nodes and the
- *                              two BrVec3 calls that end it -- 1,133 B.  It
- *                              is the specials loop's fourth behaviour, so
- *                              it is holed INSIDE BrRaceStepSpecials.
  *     0x1001B887..0x1001C646   the HUD, the rear-view mirror, the per-car
  *                              render marshalling, the pause and camera
  *                              input, the race exit and the frame limiter
- *                              -- 3,520 B
+ *                              -- 3,520 B, counted as BR_RS_HOLE_HUD
  *
- * both counted as BR_RS_HOLE_HUD, so 6,570 of 11,223 bytes (58.5%) are
- * transcribed and 41.5% are not.
+ * so 7,703 of 11,223 bytes (68.6%) are transcribed and 31.4% are not.
  *
  * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
@@ -1110,6 +1107,161 @@ extern BrMat4        g_brRaceSpecialM;   /* 0x106E7970, the scratch matrix    */
 void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z);
 void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut);
 
+/* The fly-past spline.  0x105BC7DC and 0x105BC7E0 are two parallel arrays of
+ * BrVec3 -- the rail the camera flies and the rail it looks at -- walked by
+ * one cursor.  0x105BC7C0 is BOTH the enable flag and the camera object's
+ * index into the 0x54-byte records, which is why zero means "off". */
+extern BrVec3  *g_pBrRaceFlyPos;    /* 0x105BC7DC */
+extern BrVec3  *g_pBrRaceFlyAim;    /* 0x105BC7E0 */
+extern int32_t  g_brRaceFlyNode;    /* 0x105BC7D0, the cursor  */
+extern int32_t  g_brRaceFlyNodeN;   /* 0x105BC7D4, the count   */
+extern float    g_brRaceFlyScale;   /* 0x105BC7D8 */
+extern float    g_brRaceFlyRemain;  /* 0x105BC7E4, distance left in this leg */
+extern float    g_brRaceFlySegLen;  /* 0x105BC7E8, this leg's length         */
+extern BrVec3   g_brRaceFlyDirPrev; /* 0x105BC7EC */
+extern BrVec3   g_brRaceFlyDirCur;  /* 0x105BC7F8 */
+extern BrVec3   g_brRaceFlyDirNext; /* 0x105BC804 */
+extern float    g_brRaceFlySpeedA;  /* 0x100773C4 */
+extern float    g_brRaceFlySpeedB;  /* 0x100773C8 */
+extern float    g_brRaceFlyBlendA;  /* 0x100773CC */
+extern float    g_brRaceFlyBlendB;  /* 0x100773D0 */
+extern float    g_brRaceFlyStep;    /* 0x106E9D8C, this frame's distance     */
+
+void  BrVec3Midpoint(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB);
+float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB);
+void  BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB);
+void  BrVec3Cross(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB);
+void  BrVec3Lerp(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float t);
+void  BrVec3ScaleBy(BrVec3 *pV, float k);
+void  br_dl_normalise(BrVec3 *pV);
+
+/* The direction across a node: the midpoint of the leg after it minus the
+ * midpoint of the leg before it, normalised.  0x1001B48B..0x1001B512 for the
+ * current node, and the same shape again at 0x1001B549 and 0x1001B5CA for the
+ * one before and the one after.  T1 is the frame's [esp+0x2C] BrVec3 and T2
+ * its [esp+0x20]; the first call also leaves the leg's LENGTH behind in
+ * 0x105BC7E8, which is the only reason it is not a plain helper. */
+static void BrRaceFlyDirAt(BrVec3 *pOut, int32_t iNode, int wantLen)
+{
+    BrVec3 mPrev;                                     /* [esp+0x2C] */
+    BrVec3 mCur;                                      /* [esp+0x20] */
+
+    BrVec3Midpoint(&mPrev, &g_pBrRaceFlyPos[iNode - 1],
+                           &g_pBrRaceFlyAim[iNode - 1]);   /* 0x1001B4AC */
+    BrVec3Midpoint(&mCur,  &g_pBrRaceFlyPos[iNode],
+                           &g_pBrRaceFlyAim[iNode]);       /* 0x1001B4D6 */
+    if (wantLen)
+        g_brRaceFlySegLen = BrVec3Dist(&mPrev, &mCur); /* 0x1001B4E8/0x1001B4ED */
+    BrVec3Sub(pOut, &mCur, &mPrev);                   /* 0x1001B505 */
+    br_dl_normalise(pOut);                            /* 0x1001B512 */
+}
+
+/* WHAT IT DOES: flies the fly-past camera one frame further along its rail.
+ * It spends this frame's distance out of the leg it is on; each time a leg
+ * runs out it steps to the next node -- rebuilding the direction across the
+ * node before, at and after the cursor -- and when the rail runs out the
+ * fly-past switches itself off.  Then it places the camera: position lerped
+ * along the leg, look-at lerped the same way, and an orientation built by
+ * blending the two node directions, crossing it twice into an orthonormal
+ * basis and scaling all three rows.  Distances, not times, so the camera
+ * moves at a constant speed whatever the frame rate. */
+static void BrRaceStepFlyPast(void)
+{
+    /* The two lerp outputs, named off the frame the listing actually uses:
+     * the POSITION lerp writes [esp+0x2C] (0x1001B670 is +0x38 with three
+     * pushes in flight) and the AIM lerp writes [esp+0x20] (0x1001B68F is
+     * +0x24 with one).  Getting these the wrong way round silently swaps the
+     * operands of the subtraction at 0x1001B774. */
+    BrVec3  vPos;                                     /* [esp+0x2C] */
+    BrVec3  vAim;                                     /* [esp+0x20] */
+    BrMat4 *pCam;
+    float   t;
+
+    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B403 */
+        return;
+    if (g_brRaceBeginAirArmed == 0)                   /* 0x1001B40F */
+        return;
+
+    /* 0x1001B41B: `dec eax; je` then `sub eax,6; je` -- tracks 1 and 7 fly at
+     * the second speed, every other track at the first. */
+    if (g_brRaceTrack == 1 || g_brRaceTrack == 7)     /* 0x1001B420, 0x1001B423 */
+        g_brRaceFlyRemain -= g_brRaceFlyStep * g_brRaceFlySpeedB;  /* 0x1001B436 */
+    else
+        g_brRaceFlyRemain -= g_brRaceFlyStep * g_brRaceFlySpeedA;  /* 0x1001B428 */
+
+    /* 0x1001B44E: `fcomp` + `test ah,0x41` -- while the leg is used up, step
+     * a node.  A NaN remainder leaves the loop, which is the original's
+     * behaviour and not a guard to add. */
+    while (g_brRaceFlyRemain > g_brRaceFlySegLen) {    /* 0x1001B45F/0x1001B61F */
+        g_brRaceFlyRemain -= g_brRaceFlySegLen;       /* 0x1001B465 */
+
+        ++g_brRaceFlyNode;                            /* 0x1001B476 */
+        if (g_brRaceFlyNode >= g_brRaceFlyNodeN) {    /* 0x1001B485 */
+            g_brRaceBeginAirplane = 0;                /* 0x1001B632, the rail ends */
+            break;
+        }
+
+        /* 0x1001B48B: the current node, which also refreshes the leg length. */
+        BrRaceFlyDirAt(&g_brRaceFlyDirCur, g_brRaceFlyNode, 1);
+
+        /* 0x1001B520: node 0 and node 1 have no node before them, so the
+         * previous direction is just a copy of the current one. */
+        if (g_brRaceFlyNode < 2)                      /* 0x1001B523 */
+            g_brRaceFlyDirPrev = g_brRaceFlyDirCur;   /* 0x1001B525..0x1001B547 */
+        else
+            BrRaceFlyDirAt(&g_brRaceFlyDirPrev, g_brRaceFlyNode - 1, 0);
+
+        /* 0x1001B59B: and the last node has none after it. */
+        if (g_brRaceFlyNode + 1 == g_brRaceFlyNodeN)  /* 0x1001B5A6 */
+            g_brRaceFlyDirNext = g_brRaceFlyDirCur;   /* 0x1001B5A8..0x1001B5C8 */
+        else
+            BrRaceFlyDirAt(&g_brRaceFlyDirNext, g_brRaceFlyNode + 1, 0);
+    }
+
+    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B63E */
+        return;
+
+    /* 0x1001B64A: how far along this leg the camera sits, 0..1. */
+    t = g_brRaceFlyRemain / g_brRaceFlySegLen;
+
+    pCam = (BrMat4 *)(g_pBrRaceObjRec + (size_t)g_brRaceBeginAirplane * 0x54);
+
+    BrVec3Lerp(&vPos, &g_pBrRaceFlyPos[g_brRaceFlyNode],
+                      &g_pBrRaceFlyPos[g_brRaceFlyNode - 1], t);   /* 0x1001B675 */
+    BrVec3Lerp(&vAim, &g_pBrRaceFlyAim[g_brRaceFlyNode],
+                      &g_pBrRaceFlyAim[g_brRaceFlyNode - 1], t);   /* 0x1001B699 */
+
+    /* 0x1001B6C1: the camera's own position is the midpoint of the two. */
+    BrVec3Midpoint((BrVec3 *)((uint8_t *)pCam + 0x30), &vPos, &vAim);
+
+    /* 0x1001B6CA: the blend between the node directions is piecewise -- past
+     * the first threshold it runs current->next, before it prev->current. */
+    if (t > g_brRaceFlyBlendA)                        /* 0x1001B6DC */
+        BrVec3Lerp((BrVec3 *)pCam, &g_brRaceFlyDirNext, &g_brRaceFlyDirCur,
+                   t - g_brRaceFlyBlendA);            /* 0x1001B6E4..0x1001B731 */
+    else
+        BrVec3Lerp((BrVec3 *)pCam, &g_brRaceFlyDirCur, &g_brRaceFlyDirPrev,
+                   t - g_brRaceFlyBlendB);            /* 0x1001B70E..0x1001B731 */
+    br_dl_normalise((BrVec3 *)pCam);                  /* 0x1001B74D */
+
+    /* 0x1001B755..0x1001B7F8: an orthonormal basis out of the forward row and
+     * the two lerped points -- up = aim - pos, right = fwd x up, up = right x
+     * fwd, both normalised. */
+    BrVec3Sub((BrVec3 *)((uint8_t *)pCam + 0x20), &vPos, &vAim);  /* 0x1001B774 */
+    BrVec3Cross((BrVec3 *)((uint8_t *)pCam + 0x10), (BrVec3 *)pCam,
+                (BrVec3 *)((uint8_t *)pCam + 0x20));  /* 0x1001B799 */
+    br_dl_normalise((BrVec3 *)((uint8_t *)pCam + 0x10));
+    BrVec3Cross((BrVec3 *)((uint8_t *)pCam + 0x20),
+                (BrVec3 *)((uint8_t *)pCam + 0x10), (BrVec3 *)pCam); /* 0x1001B7DB */
+    br_dl_normalise((BrVec3 *)((uint8_t *)pCam + 0x20));
+
+    /* 0x1001B81B / 0x1001B845 / 0x1001B868: all three rows scaled, the middle
+     * one NEGATED (`fchs` at 0x1001B83B) -- the handedness flip. */
+    BrVec3ScaleBy((BrVec3 *)pCam, g_brRaceFlyScale);
+    BrVec3ScaleBy((BrVec3 *)((uint8_t *)pCam + 0x20), -g_brRaceFlyScale);
+    BrVec3ScaleBy((BrVec3 *)((uint8_t *)pCam + 0x10), g_brRaceFlyScale);
+}
+
 /* WHAT IT DOES: animates the track's special objects for one frame.  Each
  * entry names an object, an angle and one of four behaviours: spin it about
  * z, about x, or about y -- building the rotation in a scratch matrix,
@@ -1131,12 +1283,8 @@ void BrRaceStepSpecials(void)
             continue;                                 /* -> 0x1001B876 */
 
         if (pS->axis == 3) {
-            /* 0x1001B403..0x1001B86D: the fly-past camera -- its timer, the
-             * spline walk over 0x105BC7E0's 12-byte nodes, and the two
-             * BrVec3 calls at the end.  Not transcribed; it also writes the
-             * node cursor 0x105BC7D0 that 0x1001B870 reloads. */
-            ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-            continue;
+            BrRaceStepFlyPast();                      /* 0x1001B403 */
+            continue;                                 /* -> 0x1001B870 */
         }
 
         /* 0x1001B393 / 0x1001B3A0 / 0x1001B3AD: the three arms differ only in
