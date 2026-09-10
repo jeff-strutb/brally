@@ -830,6 +830,25 @@ void BrRaceStepLights(void)
  *
  * so 7,703 of 11,223 bytes (68.6%) are transcribed and 31.4% are not.
  *
+ * READ BEFORE STARTING 0x1001B887 -- three facts already off the bytes, and
+ * one hazard:
+ *   - 0x1001B887..0x1001B8AC is the per-car engine step: BrSndCarStep
+ *     (thiscall) over 0x10AF1208 by 0x2B68, with the bound RE-READ from
+ *     0x100B2F04 at the bottom of every pass.  Then BrSndNearestInvalidate.
+ *   - 0x1001B8B3..0x1001B971 is the per-view sound pass over 0x106E86C8 by
+ *     0x58.  Its index decode (`shl 3; sub; lea *5; shl 4; sub; lea *3` then
+ *     scale 8) is x1389 then x8 == 0x2B68 -- it is a CAR RECORD stride, not a
+ *     table of its own, so the value it loads is the field at +0x2734 of
+ *     car[*pView] (0x10AF393C - 0x10AF1208 == 0x2734).  Offers go out through
+ *     BrSndNearestOfferTrack when the fly-past is armed and through
+ *     BrSndNearestOfferDefault for each entry of 0x105BC778 (count
+ *     0x105BCAE8), then BrSndNearestCommit, BrRaceHudFrame, BrSndBankPickSlot.
+ *   - ‼ HAZARD: 0x10008D60 is called with FIVE arguments at 0x1001B27A and
+ *     0x1001B298 and with ONE at 0x1001B955 (`push edi; call; add esp,4`).
+ *     It is BrPodNop, so both are harmless at runtime, but a single C
+ *     prototype cannot spell both -- the matching arm needs two, and picking
+ *     the wrong arity silently changes the caller's stack adjustment. */
+ *
  * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
  * sites land on a report.csv row and the last (0x100325B0) is the C++ lane's
