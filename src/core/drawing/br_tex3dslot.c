@@ -55,6 +55,7 @@ extern float DAT_1007745c;
  * full (1024) or the TMU is out of memory. */
 /* @t4-pass 0x10028200 1 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10028200 2 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028200 3 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
                  int a6, int a7, int a8, int a9, int a10, int a11,
