@@ -809,21 +809,29 @@ void BrRaceStepLights(void)
  * each.  br_racebegin.h carries the derivation, including the eight-byte
  * replay header whose writer and reader are both inside that arm.
  *
- * and, SINCE THIS NOTE WAS WRITTEN, BrRaceStepEffects below:
+ * and, SINCE THIS NOTE WAS WRITTEN, two more below:
  *
- *     BrRaceStepEffects 0x1001B261..0x1001B364   the frame's screen-wide
+ *     BrRaceStepEffects  0x1001B261..0x1001B364  the frame's screen-wide
  *                                                effects and the fly-past
  *                                                arming scan            260 B
+ *     BrRaceStepSpecials 0x1001B365..0x1001B402  the special-object loop,
+ *                        0x1001B870..0x1001B886  its three rotation arms
+ *                                                and its tail            181 B
  *
  * What STILL does not exist:
  *
- *     0x1001B365..0x1001C646   the replay camera, the HUD, the rear-view
- *                              mirror, the per-car render marshalling, the
- *                              pause and camera input, the race exit and the
- *                              frame limiter -- 4,834 B, counted as
- *                              BR_RS_HOLE_HUD
+ *     0x1001B403..0x1001B86F   the fly-past camera: its timer, the spline
+ *                              walk over 0x105BC7E0's 12-byte nodes and the
+ *                              two BrVec3 calls that end it -- 1,133 B.  It
+ *                              is the specials loop's fourth behaviour, so
+ *                              it is holed INSIDE BrRaceStepSpecials.
+ *     0x1001B887..0x1001C646   the HUD, the rear-view mirror, the per-car
+ *                              render marshalling, the pause and camera
+ *                              input, the race exit and the frame limiter
+ *                              -- 3,520 B
  *
- * so 6,389 of 11,223 bytes (56.9%) are transcribed and 43.1% are not.
+ * both counted as BR_RS_HOLE_HUD, so 6,570 of 11,223 bytes (58.5%) are
+ * transcribed and 41.5% are not.
  *
  * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
@@ -1076,6 +1084,85 @@ int BrRaceStepEffects(void)
         }
     }
     return 1;
+}
+
+/* ==========================================================================
+ * 0x1001B365..0x1001B402 and 0x1001B870..0x1001B886 -- the specials loop
+ * ========================================================================== */
+
+/* One entry of the special-object table at 0x106EEE3C, stride 0xC.  The axis
+ * byte at +8 is the switch selector; 0..2 are the three axis rotations and 3
+ * is the fly-past camera (0x1001B403, still a hole). */
+typedef struct BrRaceSpecial {
+    int32_t iObj;                        /* +0, indexes the 0x54-byte records */
+    float   angle;                       /* +4, degrees                       */
+    int8_t  axis;                        /* +8                                */
+    int8_t  pad9[3];
+} BrRaceSpecial;                         /* 0xC */
+
+extern BrRaceSpecial g_aBrRaceSpecial[]; /* 0x106EEE3C */
+extern int32_t       g_brRaceSpecialN;   /* 0x106EEEFC */
+extern uint8_t      *g_pBrRaceObjRec;    /* 0x106EED38, 0x54-byte records     */
+extern BrMat4        g_brRaceSpecialM;   /* 0x106E7970, the scratch matrix    */
+
+/* slice2_17.h and slice1_05.h own these; declared here rather than pulling
+ * both headers in, as this file already does for its other externs. */
+void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z);
+void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut);
+
+/* WHAT IT DOES: animates the track's special objects for one frame.  Each
+ * entry names an object, an angle and one of four behaviours: spin it about
+ * z, about x, or about y -- building the rotation in a scratch matrix,
+ * multiplying it into the object's own and clearing the object's "hidden"
+ * bit -- or, for the fourth, drive the fly-past camera along its spline.
+ * An entry whose behaviour byte is out of range is skipped. */
+void BrRaceStepSpecials(void)
+{
+    int32_t i;
+
+    /* 0x1001B36E: nothing to do with no specials.  The count is re-read from
+     * the global at the BOTTOM of every pass (0x1001B876), not cached. */
+    for (i = 0; i < g_brRaceSpecialN; ++i) {
+        BrRaceSpecial *pS = &g_aBrRaceSpecial[i];
+        BrMat4        *pM;
+        uint16_t      *pFlags;
+
+        if ((uint32_t)(int32_t)pS->axis > 3u)         /* 0x1001B383 `ja` */
+            continue;                                 /* -> 0x1001B876 */
+
+        if (pS->axis == 3) {
+            /* 0x1001B403..0x1001B86D: the fly-past camera -- its timer, the
+             * spline walk over 0x105BC7E0's 12-byte nodes, and the two
+             * BrVec3 calls at the end.  Not transcribed; it also writes the
+             * node cursor 0x105BC7D0 that 0x1001B870 reloads. */
+            ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
+            continue;
+        }
+
+        /* 0x1001B393 / 0x1001B3A0 / 0x1001B3AD: the three arms differ only in
+         * which axis carries the 1.0f.  All three fall into 0x1001B3B8. */
+        switch (pS->axis) {
+        case 0:                                       /* 0x1001B393 */
+            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 0.0f, 0.0f, 1.0f);
+            break;
+        case 1:                                       /* 0x1001B3A0 */
+            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 1.0f, 0.0f, 0.0f);
+            break;
+        default:                                      /* 0x1001B3AD, axis 2 */
+            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 0.0f, 1.0f, 0.0f);
+            break;
+        }
+
+        /* 0x1001B3CD: the `lea` pair is x5 then x1+x4 == x21, scaled by 4 --
+         * a 0x54-byte record, not a shift. */
+        pM = (BrMat4 *)(g_pBrRaceObjRec + (size_t)pS->iObj * 0x54);
+        BrMat4Mul(&g_brRaceSpecialM, pM, pM);         /* 0x1001B3DD */
+
+        /* 0x1001B3F3: clear bit 0x2000 in the WORD at +0x4C.  The `lea` that
+         * follows leaves that address live for 0x1001B870's tail. */
+        pFlags = (uint16_t *)(g_pBrRaceObjRec + (size_t)pS->iObj * 0x54 + 0x4C);
+        *pFlags &= (uint16_t)0xDFFF;
+    }
 }
 
 /* ── Ghidra-matched functions ─────────────────────────── */
