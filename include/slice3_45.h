@@ -339,7 +339,7 @@ typedef struct BrDiPropRange BrDiPropRange;
 
 /* The EnumDevices callback shape. Returns 0 (DIENUM_STOP) in every path the
  * original takes. */
-typedef int32_t (*BrDiEnumDevicesCb)(const void *pDevInst, void *pvRef);
+typedef int32_t (BR_STDCALL *BrDiEnumDevicesCb)(const void *pDevInst, void *pvRef);
 
 /* IDirectInputA -- the object at 0x118ABD70. */
 typedef struct BrDiRootVtbl {
@@ -736,7 +736,7 @@ void BrFfbSetSpringCoeff(int32_t coeff);
  *
  * GOTCHA: when QueryInterface fails the original prints and returns WITHOUT
  * NULLing g_brFfb.pDevice. Only the two later failures clean up. */
-int32_t BrFfbEnumDevice(const void *pDevInst, void *pvRef);
+int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef);
 
 /* 0x10079390  __cdecl. Fill in both DIEFFECT descriptors and create both
  * effects. Called only by BrFfbInit, with (1000, 8000).
