@@ -1495,6 +1495,7 @@ void BrFadeDrawBars(void)
      * slot is modelled with `volatile` -- a codegen device, not a claim about
      * the original's source. */
     volatile int32_t dead;
+    int32_t v;
 
     /* ONE fcomp: the original is `fcomp 1.0f / fnstsw / test ah,0x40 / jne`,
      * which is exactly what VC5 emits for a plain `==` on floats -- C3 set,
@@ -1529,7 +1530,12 @@ void BrFadeDrawBars(void)
 
     p = BR16_ALLOC(); p->w0 = 0xFA00FFFFu; p->w1 = 0;
 
-    if (DAT_104b16b0 != 0) {
+    /* The compare's left operand is NAMED: the original loads pos2 into a
+     * register and compares register to register, where the memory operand
+     * spelling gives `cmp [g],reg`.  Naming the other two tests' operands is
+     * inert -- VC5 folds them straight back to memory. */
+    v = DAT_104b16b0;
+    if (v != 0) {
         /* Dead store in the original: the aPos2 entry for the INVERTED parity
          * goes to a stack local nothing ever reads. */
         dead = DAT_104b1698[DAT_106ed67c ^ 1];
