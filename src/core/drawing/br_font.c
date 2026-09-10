@@ -818,6 +818,24 @@ extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
  * colour and scale. The engine's only text output path. */
 /* @t4-pass 0x10015B10 1 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/crank.py) */
 /* @t4-pass 0x10015B10 2 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/crank.py) */
+/* @t4-pass 0x10015B10 3 2026-09-09 probes 11 bytes 3306 insns 752 regions 13 rows 12 census yes
+ *   (table-aware gates: insn gap 0, tables byte-equal at +0xbec.  Named/split
+ *    window-address temps, stride typing and declaration slot, cls/w typing,
+ *    drawW placement, cr/cb order, adv respelling: 9 byte-identical, 2
+ *    regressions.  Census: code-zone mnemonic histograms equal except the
+ *    classified lea~shl fork; call 2/2, imul 5/5, idiv 2/2, jmp 37/37.) */
+/* @t4-pass 0x10015B10 4 2026-09-09 probes 10 bytes 3306 insns 752 regions 13 rows 12 census yes
+ *   (hPage-mask hoist, guard-sum commutes, E3 first-word operand swap, named
+ *    pen-advance, p/q increment order, cell<<2, w*0x4000, drawW parens,
+ *    clamp-mask spelling: 8 byte-identical, 2 regressions, 0 improvements.) */
+/* @t3 0x10015B10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3306/3306 insns 752/752 rows 6+6 regions 13 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * Size- and insn-exact, tables byte-equal.  The residue is the slot pair
+ * (scale/b transposed at +0x10/+0x14) and the stride-vs-vaBlock promotion in
+ * the glyph window, whose downstream echo is the one classified lea~shl fork
+ * in the clamp arm -- see RESIDUE and DEAD PROBES in this header.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
