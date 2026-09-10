@@ -980,3 +980,8 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
+0x10017110,BrEnvEmit,drawing,filed,src/core/drawing/br_envenit.c
+0x1005AFF0,BrCtlInputApply,driving,filed,src/core/driving/br_ctlinput.c
+0x1005F6C0,BrLapSaveRestore,racing,filed,src/core/racing/br_lapsave.c
+0x10061470,BrSndCarStep,audio,filed,src/core/audio/br_sndcar.c
+0x100645A0,BrCarPhysDriveMatch,driving,filed,src/core/driving/br_cardrive.c
