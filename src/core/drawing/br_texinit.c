@@ -246,15 +246,15 @@ void     BrTexCreateMutex(void);      /* 0x10074F20 */
  * detail level. */
 /* @t3 0x10029B50 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 285/285 insns 55/55 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
+ * @t3-effort passes 3 zero-movement 2 3
  * The residue is one colouring wall and nothing else: the original spells the
  * shared zero in esi and the first span call's result in edi at 0x89, we take
  * the same two webs the other way round.  Every other byte is positionally
  * identical -- same size, same instruction count, register-blind multiset
- * 0+0.  Dossier and the 25-compile dead list are in this file's header; the
- * corpus is a MISS on the 12-instruction run, so no proven spelling exists to
- * copy.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
-/* @t4-pass 0x10029B50 3 2026-09-10 probes 250 bytes 285 insns 55 regions 1 rows 26 census yes  (tools/crank.py) */
+ * 0+0.  Dossier and the 25-compile dead list are in this file's header, and a third
+ * crank pass of 250 compiles on 2026-09-10 moved nothing; the corpus is a MISS
+ * on the 12-instruction run, so no proven spelling exists to copy.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x10029B50 3 2026-09-10 probes 250 bytes 285 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1002A640 d3d BrTexInit */
 void FUN_10023d20(void);
 void FUN_10024e60(void);
