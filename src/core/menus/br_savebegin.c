@@ -200,6 +200,16 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
 /* @t4-pass 0x1003BDE0 1 2026-09-07 probes 150 bytes 532 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1003BDE0 2 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1003BDE0 3 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1003BDE0 4 2026-09-09 probes 10 bytes 532 insns 148 regions 1 rows 0 census no  (hand, fn.py variants: literal/order/decl/index spellings, all inert or worse) */
+/* @t4-pass 0x1003BDE0 5 2026-09-09 probes 10 bytes 532 insns 148 regions 1 rows 0 census yes  (hand, fn.py variants: amp/nested/expression forms, store-order swaps, all inert; corpus query at +0x10) */
+/* @t3 0x1003BDE0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 532/528 insns 148/148 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 5 zero-movement 4 5
+ * residue is register colouring/encoding only: identical register-blind
+ * multiset (rows 0+0), insn-exact, +4 B of encoding shadow, 1 masked
+ * region.  Three crank census passes (150 probes each) at the prior
+ * numbers plus two hand passes at the current ones.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003BDE0 glide BrSaveBeginTimeAttack */
 int BrSaveBeginTimeAttack(int pList, int *pIdx)
 {
