@@ -7,6 +7,15 @@
  * @t4-pass 0x1000EAF0 28 2026-09-05 probes 3 bytes 9345 insns 2325 regions 17 rows 43 census no
  * @t4-pass 0x1000EAF0 30 2026-09-05 probes 8 bytes 9345 insns 2325 regions 14 rows 43 census no
  * @t4-pass 0x1000EAF0 31 2026-09-06 probes 85 bytes 9345 insns 2325 regions 14 rows 43 census yes
+ * @t4-pass 0x1000EAF0 32 2026-09-09 probes 37 bytes 9345 insns 2325 regions 14 rows 43 census yes
+ */
+/* THIRTY-SECOND PASS (2026-09-09) -- declaration-order census, zero movement.
+ * tools/declsweep.py --mode end, 36 locals in 6 runs + ref.  Eight DIFFERS,
+ * all worse (more regions or fewer bytes): cHead/nTotal to end of the
+ * function-scope list; pView/pPos/pTw to end of the row-pointer run (the
+ * twenty-sixth-pass field-order lever, already at the good bucket);
+ * ex1/ex2/ey2 of the trail-delta group.  Three wheel-pointer moves do not
+ * compile (C89: iw/wb used before the moved declaration).  Do not re-run.
  */
 /* ‼‼ THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
  * THE MECHANISM IS KNOWN; THE SOURCE CONSTRUCT IS NOT.  Baseline re-measured
@@ -1092,13 +1101,14 @@ extern BrTrailSeg DAT_10273690[];
 
 /* WHAT IT DOES: build the frame's scene display list -- global state
  * preamble, every scene object's matrix + DL, then the trail quads. */
-/* NOT YET T3 (CLAUDE.md rule 12).  Gates 0 and A pass (tools/t3.py
- * --qualify, 2026-09-06: every residue row pairs as a compiler decision,
- * no missing or extra semantic operation); Gate B does not -- the ledger
- * at the top of this file has ONE zero-movement pass at the current
- * numbers and needs two in a row.  One more full pass (>= 10 fresh
- * compiles, every probe grepped against the dead list first) with zero
- * movement certifies it; the tool emits the tag. */
+/* @t3 0x1000EAF0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
+ * @t3-effort passes 6 zero-movement 31 32
+ * Residue is allocation/scheduling only: wall 4 CSE `lea edx,[ecx*4]`
+ * (folded into SIB here), wall 3 `lea [pW+0x70]` vs `[wb+pCar+0x70]`,
+ * wall 1 x87 one-notch, wall 2 5|7 vs 8|4 preload, wall 5 join, wall 6
+ * slots. Dossier and dead list: this file's header. Do not reopen before
+ * the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000EAF0 7 2026-09-07 probes 150 bytes 9354 insns 2328 regions 25 rows 32 census yes  (tools/crank.py) */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */

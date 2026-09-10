@@ -383,6 +383,50 @@ def classify(miss, extra, obag=None, rbag=None):
             dest['fst R'] += n
             bag['fst R'] = 0
     um += collections.Counter(); ue += collections.Counter()
+    # CSE scaled-index leftover.  `lea R,[R*K]` was a singleton (the index
+    # folded into SIB addressing) until 2026-09-09, when canon mapped it to
+    # `shl R, 2` so it could pair with a spilled `shl` (0x10015B10).  That
+    # pairing stays; a leftover shl backed by a raw lea and not a raw shl
+    # is the original singleton.  Proven 0x1000EAF0 wall 4: orig
+    # `lea edx,[ecx*4]` with `[edx+sym]` uses, ours `[ecx*4+sym]` -- 40+
+    # spellings fold or rebuild the loop (pass 31 census).
+    for raw_side, side, dest in ((miss, um, sm), (extra, ue, se)):
+        n = min(side['shl R, 2'], raw_side['lea R, [R*K]']) - raw_side['shl R, 2']
+        if n > 0:
+            side['shl R, 2'] -= n
+            dest['lea R, [R*K]'] += n
+    um += collections.Counter(); ue += collections.Counter()
+    # Two-register lea with displacement vs single-register lea of the same
+    # displacement: orig `lea eax,[edi+0x70]` (pW already summed) against
+    # ours `lea eax,[eax+ecx+0x70]` (the same two-term sum).  canon maps
+    # the first to `add R, d` (the 0x1001D1B0 lea/add class, single-
+    # register only -- `[R+R+d]` would hide a real add) and the second to
+    # `lea R, [M+d]`, so they stop pairing.  Cancel only when the add is
+    # backed by a RAW lea, not a raw add.  Proven 0x1000EAF0 wall 3:
+    # every spelling that unifies the forms rewrites the prologue
+    # (twelfth-pass e/f).
+    add_disp = re.compile(r'^add R, (0x[0-9a-f]+|\d+)$')
+    lea_r = re.compile(r'^lea R, \[R \+ (0x[0-9a-f]+|\d+)\]$')
+    def _lea_disp(bag):
+        out = collections.Counter()
+        for row, n in bag.items():
+            mo = lea_r.fullmatch(row)
+            if mo:
+                out[mo.group(1)] += n
+        return out
+    for raw_side, side, other in ((miss, um, ue), (extra, ue, um)):
+        backed = _lea_disp(raw_side)
+        for row in list(side):
+            a = add_disp.fullmatch(row)
+            if not a:
+                continue
+            d = a.group(1)
+            opp = 'lea R, [M+%s]' % d
+            while side[row] and other[opp] and backed[d]:
+                side[row] -= 1
+                other[opp] -= 1
+                backed[d] -= 1
+    um += collections.Counter(); ue += collections.Counter()
     return um, ue, sm + se
 
 

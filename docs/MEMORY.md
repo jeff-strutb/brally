@@ -24,7 +24,10 @@ C function. Gated on 131 callee signatures. Win `sub esp, 0x34` first (ebp is
 a general register, `xor ebp,ebp`; no 8-byte-aligned local). Do not tag until
 the bytes diff clean. Details: `include/br_racestep.h`.
 
-### 0x1000EAF0 BrSceneDlBuild / 0x100250D0 BrTex3dExpand
+### 0x1000EAF0 BrSceneDlBuild — T3 2026-09-09, do not reopen
 
-Do not open unless named. Tex3dExpand: `divergence.py --key 10`, never 6
+### 0x100250D0 BrTex3dExpand
+
+Do not open unless named. `divergence.py --key 10`, never 6
 (twelve near-identical channel arms; key 6 resyncs on the wrong copy).
+A2 70 rows (limit 60), A3 34 unpaired, A4 243 B uncompared at key 6.
