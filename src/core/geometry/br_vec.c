@@ -128,6 +128,15 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 /* @t4-pass 0x10034360 1 2026-09-07 probes 39 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10034360 2 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10034360 3 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10034360 4 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: s-first/temps/elem-ptr/mul-eq; zyx worse; corpus MISS at +0x8) */
+/* @t4-pass 0x10034360 5 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: statement order, out-temp, splits, parens; out-temp and y-first worse) */
+/* @t3 0x10034360 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 37/37 insns 12/12 rows 2+2 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 5 zero-movement 4 5
+ * residue is the commutative-fold fork on the x component only: orig
+ * fld s / fmul pV->x, ours fld pV->x / fmul s; y and z already match.
+ * VC5 canonicalises a lone fmul.  Dead list in the dossier below plus
+ * ledger lines 4 and 5.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 /* @n64 0x802244FC exact */
