@@ -847,7 +847,7 @@ void BrRaceStepLights(void)
  *     0x1001B298 and with ONE at 0x1001B955 (`push edi; call; add esp,4`).
  *     It is BrPodNop, so both are harmless at runtime, but a single C
  *     prototype cannot spell both -- the matching arm needs two, and picking
- *     the wrong arity silently changes the caller's stack adjustment. */
+ *     the wrong arity silently changes the caller's stack adjustment.
  *
  * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
