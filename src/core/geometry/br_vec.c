@@ -149,9 +149,9 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
  * `pV->x * s` and `s * pV->x` produce those same bytes under IDO, because the
  * scalar arrives already in a register and only the vector component is
  * loaded. So unlike BrVec3AddTo and BrVec3MulAddTo below, the oracle is blind
- * to the operand order here and the original spelling stays unknown. That does
- * not weaken the note above: the VC5 residue is still a codegen wall, it is
- * just not independently confirmed for this function. */
+ * to the operand order here and the original spelling is not recovered. That
+ * does not weaken the note above: the VC5 residue is still a codegen wall, it
+ * is just not independently confirmed for this function. */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
     pOut->x = pV->x * s;
