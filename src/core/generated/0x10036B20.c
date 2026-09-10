@@ -67,6 +67,14 @@ extern void *DAT_10ac3068;             /* the IDirectPlayLobby interface */
  * through a materialized unsigned temp; single count variable incremented in
  * place; one result variable across both vtable calls.
  * @t4-pass 0x10036B20 1 2026-09-09 probes 6 bytes 805 insns 231 regions 1 rows 5 census no  (fn.py variants: null spellings, goto tail, duplicated arms, memcmp temp, inverted pMem arms, member-wise GUID copy) */
+/* @t4-pass 0x10036B20 2 2026-09-09 probes 10 bytes 805 insns 231 regions 3 rows 3 census no  (statement orders, commutes, ++, nested calls, pMem goto: 8 identical, 2 regressions) */
+/* @t4-pass 0x10036B20 3 2026-09-09 probes 10 bytes 805 insns 231 regions 3 rows 3 census yes  (polarity, arm swap, &aElem[0], decl/init orders: 9 identical, 1 regression; histograms equal except the layout triple jge 1/0, jl 1/2, jmp 4/3) */
+/* @t3 0x10036B20 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 805/805 insns 231/232 rows 2+1 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 2 3
+ * Residue: the tail's either-or layout fork and the branch-3 cmpsb hoist --
+ * both in the certified layout class; dead lists in the T2 RESIDUE note
+ * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10036B20 glide BrDpAddressBuild */
 int BrDpAddressBuild(int *param_1, unsigned int *param_2)
 
