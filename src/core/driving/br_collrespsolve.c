@@ -579,22 +579,43 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * an if/else (`< 0` arm first), the other two `sgn=-1; if (!(x<0)) sgn=1`.
  * Landed 2026-09-05: e1 is computed BEFORE e2 (the orig loads all of e1's
  * minuends aV[3..5] before the first fsub, so region 1 was a pure statement-
- * order artifact) -- register-blind multiset 17+17 -> 12+12.  What is left
- * is the d/dp block (lines ~682-696): the orig loads pos.z,pos.y first and
- * `fsub` the BF slots (pos-BF, natural minuend-first) while ours loads all
- * three BF and `fsubr`s; plus the sum's faddp association and one
- * fld-st-dup vs fmul-mem.  All FPU-stack scheduling of one expression, not
- * source-permutable (blind term reordering forbidden); T3a.
- * Remaining, all in one cause-group (register/slot allocation, 4 regions):
+ * order artifact) -- register-blind multiset 17+17 -> 12+12.
+ *
+ * STATE 2026-09-10: 1292/1301 B, 376/375 instructions, msetdiff 4+5 rows,
+ * 11 regions.  Gates 0, A1, A2, A3 and A5 all PASS and Gate B has its two
+ * counted zero-movement passes; the ONLY thing standing between this row
+ * and a @t3 tag is A4, and A4's number is 33 uncompared bytes against a
+ * 32-byte tolerance.  Three levers landed this session:
+ *  - the saved position is a NAMED BrVec3 (`pSv`), which is what makes the
+ *    push-out delta come out minuend-first (`fld pos; fsub save`); with the
+ *    body offsets open-coded VC5 loads the subtrahends and `fsubr`s all
+ *    three.  7+7 -> 4+5 register-blind.
+ *  - sign.x's default arm is `+1` (`sgn = 1; if (p < 0) sgn = -1;`), not an
+ *    if/else; the if/else form pays an extra constant copy.
+ *  - the three `planeD * nrm.c` products are NAMED and computed up front --
+ *    the orig reloads planeD three times running and homes each product --
+ *    and they live in the DEAD `e2` because three fresh locals cost a
+ *    fourth stack slot and take the frame to 0x7c against the orig's 0x78.
+ * Residue, every row allocation or layout:
+ *  - four `fxch` and one register copy (x87 drain and slot colouring);
+ *  - the dup-vs-reload fork on `pP->nx` between the dot product and the
+ *    push-out vector: the orig re-reads it, ours holds the CSE'd copy.
+ *    Seven spellings measured (node re-navigation, the global, split
+ *    statements, compound `*=`, term and store reorder, d copied to a
+ *    second local, a named normal pointer) -- all inert or worse.  This is
+ *    now a pairing class in tools/t3.py classify().
+ *  - A4: the mode-4 cold arm sits OUT OF LINE after the epilogue in the
+ *    orig (three `je` to it, `jmp` back past `mov edi,1`), so its 33 bytes
+ *    at orig+0x4f4..0x515 -- the function's tail -- never anchor against
+ *    our inline copy.  goto-to-a-trailing-label and goto-to-a-mid-function
+ *    label both reproduce neither the layout nor a better row count
+ *    (11 rows against 9).
  *  - slots: orig planeD@0x10 cnt@0x14 sgn@0x18 spin@0x1c; ours has
- *    planeD/cnt one slot up.  Declaration order both ways: inert (7+7).
+ *    planeD/cnt one slot up.  Declaration order both ways: inert.
  *  - `spin` is HOMED in the orig ([esp+0x1c], written via the edi that
  *    also carries the constant 0/1); ours keeps spin in a register.  The
  *    orig's `mov edi,0` (not xor) then `mov [modeFC],edi` says modeFC=0
  *    and spin=0 share one constant register.
- *  - the mode-4 else block sits OUT OF LINE after the epilogue in the orig
- *    (three `je` to it, `jmp` back past `mov edi,1`); ours is inline with a
- *    `jmp` from the then-arm.  goto-to-a-trailing-label form: worse (9+8).
  * Dead: BF-offset spelling of next.pos in the delta (fsubp shape, 11+7);
  * `pos -= dp` (fsubr x3); goto LAB_common out of the then-arm (extra jmp). */
 extern int   g_br0AA010;        /* 0x100A9360 -- the debug/game mode; 4 arms the kick path */
