@@ -97,6 +97,7 @@ int  BrSub10075020(void);            /* 0x1006E280  millisecond clock      */
  * lays a line of status text over the top, flips the finished image to the
  * screen, and then folds this frame's duration into the running table of
  * frame times the FPS readout averages. */
+/* @t4-pass 0x10023B70 1 2026-09-10 probes 40 bytes 273 insns 78 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10023B70 glide BrFramePresent */
 void BrFramePresent(BrGfxWords *pCmd)
 {
