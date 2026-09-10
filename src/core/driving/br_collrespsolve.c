@@ -682,9 +682,23 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
                 g_brCrPlane.modeFC = 1;
                 BrExt_10008D60("Wank CT1 case\n");
                 spin = 1;
+                /* The cold arm sets the flag ITSELF and jumps PAST the join's
+                 * assignment of it -- the original's `mov edi,1` inside the
+                 * block and its `jmp` to one instruction after the join's own
+                 * `mov edi,1`.  That skip is what lets VC5 lift the whole arm
+                 * out of line, past the epilogue, where the original has it:
+                 * with the join's assignment on the fall-through path the arm
+                 * has to stay inline, and the last 33 bytes of the original
+                 * (this block) then have nothing to anchor against.  Moving
+                 * `flag = 1` above the mode-4 test lifts the arm too, but
+                 * costs the shared constant register -- every modeFC and spin
+                 * store becomes an immediate-to-memory. */
+                flag = 1;
+                goto LAB_join;
             }
         }
         flag = 1;
+LAB_join:
         BrExt_10008D60("Cube Edge to Triangle Face\n");
 
         /* All three products are NAMED and computed up front: the original
@@ -696,9 +710,13 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
         e2.x = planeD * nrm.x;
         e2.y = planeD * nrm.y;
         e2.z = planeD * nrm.z;
-        sgn = 1;
+        /* The FIRST sign is an if/else -- with the cold arm lifted, the
+         * `sgn = 1;` default form pays a materialised constant on both
+         * paths into the join instead of storing the flag register. */
         if (e2.x < BrCrK_Zero)
             sgn = -1;
+        else
+            sgn = 1;
         sign.x = (float)sgn * BrCrK_Half;
         sgn = -1;
         if (!(e2.y < BrCrK_Zero))
@@ -731,9 +749,12 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
            + (BR_CR_NEXT->pos.y - pSv->y) * pP->ny
            + (BR_CR_NEXT->pos.z - pSv->z) * pP->nz) * BrCrK_Pushout;
         ret = 1;
-        dp.x = d * pP->nx;
-        dp.y = d * pP->ny;
+        /* z, y, x: the push-out vector is built from the top down.  In this
+         * order VC5 re-reads pP->nx for dp.x the way the original does,
+         * instead of holding the copy CSE'd out of the dot product above. */
         dp.z = d * pP->nz;
+        dp.y = d * pP->ny;
+        dp.x = d * pP->nx;
         BR_CR_NEXT->pos.x = BR_CR_NEXT->pos.x - dp.x;
         BR_CR_NEXT->pos.y = BR_CR_NEXT->pos.y - dp.y;
         BR_CR_NEXT->pos.z = BR_CR_NEXT->pos.z - dp.z;
