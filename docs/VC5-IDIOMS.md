@@ -7593,3 +7593,40 @@ byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
   operand off the GLOBAL (`(uchar *)G + K`), reusing the register the first
   compare loaded and destroying it with `add R,K`.  A `lea` from the local
   is the tell that the source used the local.
+
+---
+
+## Four levers from the 2026-09-09 T3/T4 lane (three of them to byte-exact)
+
+- **Index through the cursor, never a bound pointer, when the original
+  orders paired byte loads high-first.** 0x1006CE20 BrBitStreamReadU16:
+  `pBs->pBuf[i] / pBs->pBuf[i+1]` reproduced the original's DH-before-DL
+  order and went byte-exact; a named `p = pBs->pBuf + i` made VC5 emit the
+  low byte first from every spelling probed.  It does NOT transfer to the
+  U24/S32 siblings, whose wall is widening-over-a-dying-register, not
+  load order.
+- **An enclosing `if (hr >= 0) { ... }` success block flips the first
+  branch's sense; the original is an early `if (hr < 0) goto fail;`.**
+  0x10036E50 BrDpCreateIface: the early-out (or its `else`-block twin)
+  went byte-exact; `0 <= hr`, `!(hr < 0)` and `hr > -1` all stay jl.
+- **Mask at DWORD width, not through a byte cast, when the original
+  computes a flag verdict in place over the loaded register.**
+  0x1002F6D0 BrPeerFind: `(st & (uint32_t)MASK) == 0` byte-exact; the
+  `(uint8_t)st & MASK` spelling forced an eax-to-ebx copy (+1 insn).
+- **The cursor bump's POSITION decides whether a spelled-out reload
+  survives CSE.** 0x10019930 BrRaceCueLayout: `read; ...; store; p += 4;
+  reload via p[-4]` keeps the original's second load (size- and
+  insn-exact); bump-at-the-end lets VC5 CSE the two `p[0]` reads however
+  they are spelled, bump-right-after-the-first-read moves the reload to
+  `[esi]`.  Complements the peeled-first-iteration lever from the same
+  day's Pool B session.
+
+Same lane, walls PROVEN (do not respell): `add R,-X` is MSVC5's canonical
+form of every straight-line constant subtraction (keep-sub mechanisms --
+loop-carried, narrow-typed, pointer-difference -- all inert on 0x1006FD50
+and 0x10038860); a lone commutative fmul's operand order is decided by
+VC5's canonicaliser (br_vec.c trio); `(x & 0xbf) | 0x80` folds to
+`(x & 0x3f) | 0x80` on the expression tree (0x10005330; on 0x10005400 the
+one-expression `(x & ~0x80) | 0x40` spelling at least avoids the fold's
+counter-web rotation).  All four are now canonical pairing classes in
+tools/t3.py classify().
