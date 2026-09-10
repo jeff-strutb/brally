@@ -161,6 +161,17 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 
 /* WHAT IT DOES: scale a vector by a number IN PLACE. The in-place twin of
  * BrVec3Scale. */
+/* @t4-pass 0x10034390 1 2026-09-09 probes 10 bytes 43 insns 16 regions 2 rows 4 census no  (hand, fn.py variants: *=/explicit/reversed/temps/named scalar/element ptr/zyx order, all inert) */
+/* @t4-pass 0x10034390 2 2026-09-09 probes 10 bytes 43 insns 16 regions 2 rows 4 census yes  (hand, fn.py variants: ptr walks/vec local/const arg/mid temps, all inert or worse; corpus MISS at +0x0 len 12) */
+/* @t3 0x10034390 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 43/43 insns 16/16 rows 2+2 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the commutative-fold fork only: VC5 canonicalises the fmul
+ * operand order per component (fld [M+8]/fmul [M] vs fld [M]/fmul [M+8]),
+ * cancelled as the crossed quad by t3.py classify (7dd2eb1); the N64 twin
+ * at 0x80224528 is blind to the order (see BrVec3Scale note above).  The
+ * dead-probe list is in the BrVec3Scale dossier and the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003AD10 d3d BrVec3ScaleBy */
 /* @n64 0x80224528 located */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
