@@ -1,0 +1,10 @@
+# CSV files are stored LF in the repo, always.
+#
+# The matching tools write these with Python's csv module, whose writer emits
+# CRLF line terminators (RFC 4180) regardless of platform. Left alone, one
+# machine commits a CRLF copy and another an LF copy of the same generated
+# table (filing.csv, report.csv, the config maps), and git -- unable to align a
+# single line -- reports the WHOLE file as conflicting on every merge between
+# them. Normalising to LF in the index makes those diffs line up again, so a
+# concurrent-session merge touches only the rows that actually changed.
+*.csv text eol=lf
