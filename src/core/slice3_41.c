@@ -86,6 +86,7 @@ void BrRankAssign(BrDriver *pSlots, int32_t n)
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:i;
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x100608F0 4 2026-09-10 probes 12 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10067880 d3d BrVarSave */
 /* @n64 0x8022ADCC located */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
