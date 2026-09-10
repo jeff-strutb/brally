@@ -244,13 +244,11 @@ void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
     pThis->f7BC = 0x1E0;
     pThis->f7C0 = 0x10;
     pThis->f7C4 = 0;
-    /* orig lea ecx,[this+0x7c8] then four `mov [ecx+n],eax` (the stosd zero),
-     * with the 0x7b8 immediates filling the lea delay slot. Field stores
-     * fold to [this+disp] and let `mov eax,9` steal eax. */
-    pThis->f7C8[0] = 0;
-    pThis->f7C8[1] = 0;
-    pThis->f7C8[2] = 0;
-    pThis->f7C8[3] = 0;
+    /* memset, not four field stores: the original builds the address once
+     * (`lea ecx,[this+0x7c8]`) and stores through it at 0/4/8/0xc, which is
+     * what the intrinsic emits.  Written out as four fields VC5 folds each
+     * store to [this+disp] and lets `mov eax,9` steal the register. */
+    memset(pThis->f7C8, 0, sizeof pThis->f7C8);
 
     pThis->f7D8 = 9;
     pThis->f7DC = 9;
