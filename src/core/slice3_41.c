@@ -85,6 +85,13 @@ void BrRankAssign(BrDriver *pSlots, int32_t n)
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:cbUsed;
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x100608F0 3 2026-09-10 probes 40 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x100608F0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 114/118 insns 48/49 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:i;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10067880 d3d BrVarSave */
 /* @n64 0x8022ADCC located */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
@@ -128,11 +135,18 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 void BrVarLoad(const BrVarBlock *pTable, const void *pSrc)
 {
     const uint8_t *pIn = (const uint8_t *)pSrc;
+    int i;
 
-    while (pTable->pData != NULL) {
-        memcpy(pTable->pData, pIn, (size_t)pTable->cb);
-        pIn += pTable->cb;
-        pTable++;
+    /* INDEXED, not a walked pointer -- the same lever as BrVarSave above: a
+     * `pTable++` cursor makes VC5 advance first and read the size back through
+     * a negative displacement (`mov R,[M-4]`), where the original keeps the
+     * entry's own address live and reads it forward (`mov R,[M+4]`).  Spelling
+     * the accesses indexed and letting strength reduction build the cursor
+     * reproduces it: register-blind residue 5+1 -> 0+0, size and instruction
+     * count exact. */
+    for (i = 0; pTable[i].pData != NULL; i++) {
+        memcpy(pTable[i].pData, pIn, (size_t)pTable[i].cb);
+        pIn += pTable[i].cb;
     }
 }
 
