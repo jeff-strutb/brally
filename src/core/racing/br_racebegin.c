@@ -358,10 +358,15 @@ void BrRaceCueLayout(void)
         three = (len * 3) / 4;
         t += three;
         p[-1] = t;
-        len   = p[0];
-        three = (len * 3) / 4;
-        t += (len - three) + p[1];
+        /* The cursor bump sits BETWEEN the start store and the reload:
+         * that is what keeps the original's second `mov ecx,[esi-0x10]`
+         * (a bump-at-the-end spelling lets VC5 CSE the two p[0] reads
+         * and drop it; bump-first moves the reload to [esi]).  Found
+         * 2026-09-09; size- and insn-exact after it. */
         p += 4;
+        len   = p[-4];
+        three = (len * 3) / 4;
+        t += (len - three) + p[-3];
     } while (p[2] != 0);
 }
 #else
