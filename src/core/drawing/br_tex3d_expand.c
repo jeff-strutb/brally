@@ -1,5 +1,52 @@
 /* 0x100250D0 BrTex3dExpand — matching transcription from Ghidra decomp.
  *
+ * ‼‼ 2026-09-10: A LEVER LANDED, THE FIRST MOVEMENT SINCE 2026-09-03.
+ * Register-blind rows 70 -> 62 (A2's limit is 60.2), key-6 masked regions
+ * 47 -> 43, instruction gap unchanged at 4.  THE FACT: the nine `param_8`
+ * mirror blocks each compute the width doubling TWICE -- once to step the
+ * source pointer back, once as the copy count -- and the ORIGINAL
+ * RE-MATERIALISES `2*w` at both uses (`lea R,[R+R]` in pairs, 18 of them in
+ * nine pairs).  Three of our blocks already spelled it as a repeated ternary
+ * and matched; the other six spelled it as an if-assign
+ * (`x = w * 2; if (param_7 == 0) x = w;`), which lets VC5 compute the
+ * doubling once and COPY it (`mov eax,ecx`) -- 12 leas against orig's 18,
+ * i.e. the six `add R, R` MISSING rows.  Converting all twelve statements to
+ * `(param_7 != 0) ? w * 2 : w` closes that family (6 missing -> 1 extra).
+ * ‼ Bytes move the WRONG way on this lever (8,443 -> 8,412 against 8,480) --
+ * rank by the multiset and the masked map, exactly as this file's 2026-09-05
+ * note already says.  Inverting the ternary's polarity to
+ * `(param_7 == 0) ? w : w * 2` gives the gain straight back (70, and 82 on
+ * the iVar17 sites), which is the corroboration that it is the ternary and
+ * not the edit.
+ * REMAINING at 62 rows, two families and nothing else:
+ *   (A) the byte-vs-dword nibble merge in blend body 3, ~12 rows.  Unchanged
+ *       diagnosis: the byte's ONLY use is `uVar19 = (unsigned int)bI4inten`,
+ *       so VC5 folds the merge into dword form, where the original merges in
+ *       byte registers, homes the byte and reloads it as a dword + `and
+ *       0xff` (`mov [esp+0x48],dl; mov ebx,[esp+0x48]; and ebx,0xff` at
+ *       0x10025834 -- the byte-slot widening idiom).
+ *   (B) constants the original pins in registers and we spell as immediates:
+ *       `cmp R,R` against a pinned 1 (orig 0x15a4 `cmp eax,ebx` with ebx=1
+ *       set far upstream and REUSED by the following `shl ebx,cl`; ours is
+ *       `cmp eax,1` then `mov ebx,1`), plus three counter inits the original
+ *       zeroes into a register and we store to a slot.
+ * DEAD 2026-09-10, do not re-run (24 compiles, both passes below): giving
+ * body 3's byte a SECOND use so it cannot fold -- at alpha, where the
+ * original's intensity dies (74 rows), and at red (86) -- both cost more
+ * than the fold; commuting the merge's `|`; splitting the merge into two
+ * byte statements (both halves); `uVar19 = bI4inten` without the cast;
+ * bI4inten and uVar19 swapped in declaration order (uVar19 first is
+ * catastrophic, 104); the two mask shifts swapped (69) and parenthesised;
+ * the counter inits moved to the front of their comma-guards; the copy loop
+ * as a `while`; `-iVar16` vs `- iVar16`; `iVar16 * -2` vs `-2 * iVar16`;
+ * `--iVar16`; `+=` on both byte counters; `w + w` instead of `w * 2` in the
+ * ternary (inert, so the doubling's SPELLING is free -- only its
+ * re-materialisation matters); a spare byte local to shift the frame.
+ * `corpus.py find --from 0x100250D0 --at 0x1596 --len 12` is a MISS: the
+ * pinned-1 run is not proven anywhere in the solved tree.
+ * @t4-pass 0x100250D0 1 2026-09-10 probes 12 bytes 8412 insns 2403 regions 43 rows 62 census no
+ * @t4-pass 0x100250D0 2 2026-09-10 probes 12 bytes 8412 insns 2403 regions 43 rows 62 census yes
+ *
  * ‼‼ 2026-09-05 (session 17): TWO COUPLED DECLARATION LEVERS LANDED --
  * key-10 masked regions 31 -> 28 (same single 1,093-byte gap), register-
  * blind 40+41 -> 37+33, and the FRAME'S FIRST DIVERGENCE +0x14 -> +0x24:
