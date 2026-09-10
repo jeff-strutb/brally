@@ -546,6 +546,7 @@ typedef int (__stdcall *dsbuf_fn1)(int);
 /* @t4-pass 0x1006B440 4 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 5 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 6 2026-09-10 probes 59 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006B440 7 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
 void BrSndVoiceApplyVolume(int param_1)
