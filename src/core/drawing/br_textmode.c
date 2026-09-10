@@ -86,11 +86,11 @@ extern int DAT_106ed67c;
  * head).  Strides 80000 / 32000 / 256000 bytes lower as lea chains. */
 /* @t4-pass 0x1000CB20 1 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000CB20 2 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000CB20 1 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census no  (hand, fn.py variants: addend order, constant spellings, product/sum locals, store order, all inert or worse) */
-/* @t4-pass 0x1000CB20 2 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census yes  (hand, fn.py variants: pair temps, typed/paren/minus forms, shl decompositions, all inert or worse; corpus MISS at +0x33 len 12) */
+/* @t4-pass 0x1000CB20 3 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census no  (hand, fn.py variants: addend order, constant spellings, product/sum locals, store order, all inert or worse) */
+/* @t4-pass 0x1000CB20 4 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census yes  (hand, fn.py variants: pair temps, typed/paren/minus forms, shl decompositions, all inert or worse; corpus MISS at +0x33 len 12) */
 /* @t3 0x1000CB20 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 96/96 insns 24/24 rows 1+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
+ * @t3-effort passes 4 zero-movement 3 4
  * residue is one coalescing fork: the 32000-product chain lands in edx and
  * folds the absolute base into `lea ecx,[edx+A]` where the original keeps
  * ecx and `add ecx,A` (paired by t3.py canon's reloc'd-base lea/add class,
