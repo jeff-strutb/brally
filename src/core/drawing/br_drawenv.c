@@ -82,6 +82,7 @@ static void env_trace(void) { }
  *      and emit a single 8-byte DL command.  [TODO: x87emu]
  *   7. Tail: pipe sync + othermode restore.
  * ==================================================================== */
+#ifndef BR_MATCHING_BUILD
 void BrEnvEmit(void)
 {
     int32_t i;
@@ -258,3 +259,4 @@ void BrEnvEmit(void)
     env_put(0xE7000000u, 0);
     env_put(0xBA001301u, 0x00080000u);
 }
+#endif /* !BR_MATCHING_BUILD */
