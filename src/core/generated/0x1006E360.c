@@ -57,6 +57,16 @@ extern unsigned int DAT_118ee24c;
  * everything time-based reads what it leaves behind. */
 /* @t4-pass 0x1006E360 1 2026-09-07 probes 24 bytes 68 insns 20 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006E360 2 2026-09-07 probes 24 bytes 68 insns 20 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x1006E360 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 68/68 insns 20/20 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is scheduling and register colouring only: the original orders the
+ * div/`\/33` before the `*3` and holds 100 in esi, the recompile the reverse
+ * with 100 in ecx; identical register-blind multiset (rows 0+0 after the
+ * bare-decimal branch-target normaliser fix, 2d5a93d), 1 masked region.
+ * Dossier and dead-probe list in the block above (T3a note); two counted
+ * zero-movement @t4-pass lines from the crank ledger.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006E360 glide BrTimeUpdate */
 void BrTimeUpdate(void)
 
