@@ -584,7 +584,7 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * STATE 2026-09-10: 1292/1301 B, 376/375 instructions, msetdiff 4+5 rows,
  * 11 regions.  Gates 0, A1, A2, A3 and A5 all PASS and Gate B has its two
  * counted zero-movement passes; the ONLY thing standing between this row
- * and a @t3 tag is A4, and A4's number is 33 uncompared bytes against a
+ * and a T3 certification is A4, whose number is 33 uncompared bytes against a
  * 32-byte tolerance.  Three levers landed this session:
  *  - the saved position is a NAMED BrVec3 (`pSv`), which is what makes the
  *    push-out delta come out minuend-first (`fld pos; fsub save`); with the
