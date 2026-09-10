@@ -493,16 +493,33 @@ def corpus_census(va, obj, sym, key):
     return True
 
 
-def ledger_line(text, va, n, m, census):
+def implements_at(text, va, sym):
+    """The @implements line for this function.
+
+    report.csv keys every row by its BRGlide VA, but a function first solved
+    against BRD3D.dll carries the d3d VA in its tag -- `/* @implements
+    0x1003E950 d3d BrUiHook85_1003E950 */` is report.csv row 0x10037F70.
+    Keying only on the VA silently found nothing there, so crank ran its
+    compiles and wrote no ledger line at all: the whole d3d-tagged population
+    could never reach Gate B.  Fall back to the symbol, which is what
+    report.csv and the object agree on."""
+    m = re.search(r'(?m)^[ \t]*/\*\s*@implements\s+' + re.escape(va), text, re.I)
+    if m:
+        return m
+    return re.search(r'(?m)^[ \t]*/\*\s*@implements\s+0x[0-9A-Fa-f]{8}\b[^\n]*\b'
+                     + re.escape(sym) + r'\b[^\n]*\*/', text)
+
+
+def ledger_line(text, va, n, m, census, sym):
     k = len(re.findall(r'@t4-pass\s+' + re.escape(va), text, re.I)) + 1
     line = ('/* @t4-pass %s %d %s probes %d bytes %d insns %d regions %d rows %d census %s  (tools/crank.py) */\n'
             % (va, k, datetime.date.today().isoformat(), n, m['ob'] + m['db'], m['oi'] + m['di'],
                m['regions'], m['reg'], 'yes' if census else 'no'))
-    tag = re.search(r'(?m)^[ \t]*/\*\s*@implements\s+' + re.escape(va), text, re.I)
+    tag = implements_at(text, va, sym)
     return text[:tag.start()] + line + text[tag.start():] if tag else text
 
 
-def certify(va, path, hist, n):
+def certify(va, path, hist, n, sym):
     """Rule 12: the tool decides T3.  Run --qualify; if it emits a tag, fill its
     prose line with what this run measured and paste it above @implements."""
     out = subprocess.run([PY, 'tools/t3.py', '--qualify', va], cwd=ROOT, capture_output=True, text=True).stdout
@@ -517,7 +534,7 @@ def certify(va, path, hist, n):
                  % (n, ' > '.join(hist) or 'none'), m.group(1), flags=re.S)
     fp = os.path.join(ROOT, path)
     t = open(fp, encoding='utf-8', errors='surrogateescape').read()
-    at = re.search(r'(?m)^[ \t]*/\*\s*@implements\s+' + re.escape(va), t, re.I)
+    at = implements_at(t, va, sym)
     if not at:
         return False
     open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(t[:at.start()] + tag + '\n' + t[at.start():])
@@ -648,10 +665,10 @@ def crank(va, budget, commit, ledger):
             open(os.path.join(ROOT, 'build', 'ghidra_work', va + '.crank.c'), 'w').write(best_t)
         if ledger and n >= 10 and not dirty(path):
             census = corpus_census(va, obj, sym, key) if obj else False
-            t2 = ledger_line(text0, va, n, m_best, census)
+            t2 = ledger_line(text0, va, n, m_best, census, sym)
             if t2 != text0:
                 open(fp, 'w', encoding='utf-8', errors='surrogateescape').write(t2)
-                cert = certify(va, path, hist, n)
+                cert = certify(va, path, hist, n, sym)
                 if commit:
                     r = git('commit', '-q', '-m', '%s %s: @t4-pass ledger line%s (tools/crank.py, %d compiles, best %s)'
                             % (va, sym, ' + @t3 certification' if cert else '', n, fmt(m_best)), '--', path)
