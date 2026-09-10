@@ -555,6 +555,13 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 /* @t4-pass 0x10067710 4 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/crank.py) */
 /* @t4-pass 0x10067710 5 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/crank.py) */
 /* @t4-pass 0x10067710 6 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10067710 7 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
+/* @t3 0x10067710 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1309/1301 insns 376/375 rows 3+4 regions 6 oracle UNCLASSIFIED
+ * @t3-effort passes 7 zero-movement 6 7
+ * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10067710 glide BrCrRespWalk */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the bytes.  The original is
