@@ -179,6 +179,19 @@ void BrMat4Identity(BrMat4 *pM)
  * the viewing box -- what the player can see and how far into the distance.
  * A degenerate box, where two opposite edges are equal, leaves the matrix
  * untouched and reports failure rather than producing nonsense. */
+/* @t4-pass 0x10029EC0 1 2026-09-10 probes 12 bytes 288 insns 91 regions 2 rows 0 census no  (hand, fn.py variants: difference-temp order, no temps, guard operand order, -1.0f store position, an (n+n) temp, a BrMat4 * local, a zero local, float * and float (*)[4] element pointers, a goto-chained guard; all inert or worse) */
+/* @t4-pass 0x10029EC0 2 2026-09-10 probes 11 bytes 288 insns 91 regions 2 rows 0 census yes  (hand, position sweep over every slot in br_mat.c plus end-of-TU -- position is completely inert here, unlike BrVec3dCross; census below) */
+/* @t3 0x10029EC0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 288/288 insns 91/91 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * CENSUS (all 91 instruction pairs, 2026-09-10): 71 are byte-identical, 18
+ * differ only by the eax/ecx relabel -- the original holds the matrix pointer
+ * in eax and its zero in ecx, we hold them the other way round, so every
+ * differing byte is a ModRM register field -- and the last 2 are the
+ * reloc-masked printf string and import slot. Nothing unexplained. The
+ * instruction stream is positionally identical register-blind, all 91 rows.
+ * Dead probes: the two ledger lines above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10030810 d3d BrMat4Frustum */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f)
@@ -200,24 +213,35 @@ int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
     dy = t - b;
     dz = f - n;
 
+    /* COLUMN BY COLUMN, and the zero stores are what prove it: the original
+     * writes +0x10, +0x30, +0x04, +0x34, +0x08, +0x18, +0x0c, +0x1c, then the
+     * -1.0 at +0x2c, then +0x3c -- which is m[1][0], m[3][0], m[0][1],
+     * m[3][1], m[0][2], m[1][2], m[0][3], m[1][3], m[2][3], m[3][3], i.e. the
+     * four columns in order.  Written row by row the same 91 instructions come
+     * out in a different order and two bytes short. */
     pM->m[0][0] = (n + n) / dx;
-    pM->m[0][1] = 0.0f;
-    pM->m[0][2] = 0.0f;
-    pM->m[0][3] = 0.0f;
-
     pM->m[1][0] = 0.0f;
-    pM->m[1][1] = (n + n) / dy;
-    pM->m[1][2] = 0.0f;
-    pM->m[1][3] = 0.0f;
-
     pM->m[2][0] = (r + l) / dx;
-    pM->m[2][1] = (t + b) / dy;
-    pM->m[2][2] = -(f + n) / dz;
-    pM->m[2][3] = -1.0f;
-
     pM->m[3][0] = 0.0f;
+
+    pM->m[0][1] = 0.0f;
+    pM->m[1][1] = (n + n) / dy;
+    pM->m[2][1] = (t + b) / dy;
     pM->m[3][1] = 0.0f;
-    pM->m[3][2] = -((f + f) * n) / dz;
+
+    pM->m[0][2] = 0.0f;
+    pM->m[1][2] = 0.0f;
+    pM->m[2][2] = -(f + n) / dz;
+    /* `f * n + f * n`, not `(f + f) * n`: the original forms the PRODUCT
+     * first (`fmul [esp+0x18]` on the first `f`) and doubles it with a later
+     * `fadd st,st`.  Bit-identical either way -- doubling is exact, so both
+     * spellings are 2*fl(f*n) -- but only this one puts the multiply ahead of
+     * the double, which is what the x87 stream says happened. */
+    pM->m[3][2] = -(f * n + f * n) / dz;
+
+    pM->m[0][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][3] = -1.0f;
     pM->m[3][3] = 0.0f;
     return 0;
 }
