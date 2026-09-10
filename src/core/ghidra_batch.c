@@ -384,9 +384,11 @@ void BrCdAudioTick(void)
     }
     ReleaseMutex(DAT_1021c90c);
     if (n != 0) {
-        flags = FUN_10004d80(DAT_1007b264);
-        flags &= 0x7f;
-        flags |= 0x40;
+        /* `& ~0x80`, one expression: the two-statement &=0x7f / |=0x40
+         * spelling emitted the folded and-0x3f pair plus a wider counter
+         * rotation; this form leaves only the orig's eax->esi copy
+         * (2026-09-09). Value-identical: bit 7 cleared, bit 6 set. */
+        flags = (FUN_10004d80(DAT_1007b264) & ~0x80) | 0x40;
         FUN_10004ad0(&DAT_10273328, DAT_1007b264, DAT_10226e7c,
                      DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
                      DAT_10273330, &DAT_10b71648, flags, 0);
