@@ -502,6 +502,7 @@ glide_va,name,module,basis,file
 0x10036740,FUN_10036740,net,neighbour-1,src/core/generated/0x10036740.c
 0x100367C0,FUN_100367c0,net,description,src/core/net/br_dplaymsg.c
 0x100368A0,FUN_100368a0,net,description,src/core/net/br_dplaymsg.c
+0x10036E50,BrDpCreateIface,net,neighbour,src/core/ghidra_batch.c
 0x10036EF0,BrSub1003D850,net,description,src/core/net/br_dplaylobby.c
 0x10036F40,FUN_10036f40,net,neighbour-1,src/core/generated/0x10036F40.c
 0x10036FF0,BrSub1003D950,net,neighbour-1,src/core/br_netmsg.c
@@ -862,6 +863,7 @@ glide_va,name,module,basis,file
 0x1006BF90,BrSndVoiceBufIsPlaying,audio,filed,src/core/audio/br_sfx.c
 0x1006BFD0,BrSndBankClear,audio,filed,src/core/audio/br_sfx.c
 0x1006BFF0,BrSndBankSetCar,audio,filed,src/core/audio/br_sfx.c
+0x1006C010,BrSfxCarBankLoad,audio,filed,src/core/audio/br_sfx.c
 0x1006C460,BrSndBankFree,audio,neighbour,src/core/audio/br_sndvoice.c
 0x1006C4D0,BrSndDevOpen,audio,filed,src/core/audio/br_snddev.c
 0x1006C6A0,FUN_1006c6a0,drawing,neighbour-1,src/core/generated/0x1006C6A0.c
@@ -879,6 +881,7 @@ glide_va,name,module,basis,file
 0x1006CDD0,BrPairReset_10073B90,drawing,filed,src/core/drawing/br_textmode.c
 0x1006CDE0,BrBitStreamSkipBytes,gamedata,description,src/core/gamedata/br_bitstream.c
 0x1006CE00,BrBitStreamReadU8,gamedata,description,src/core/gamedata/br_bitstream.c
+0x1006CE20,BrBitStreamReadU16,gamedata,filed,src/core/gamedata/br_bitstream.c
 0x1006CF60,BrBitStreamAlignRead,gamedata,description,src/core/gamedata/br_bitstream.c
 0x1006CF80,BrBitStreamAtEnd,gamedata,neighbour-1,src/core/gamedata/br_bitstream.c
 0x1006CFA0,BrBitStreamWriteU8,gamedata,description,src/core/gamedata/br_bitstream.c
