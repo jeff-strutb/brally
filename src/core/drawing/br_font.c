@@ -1452,6 +1452,13 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 /* @t4-pass 0x10016980 1 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10016980 2 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10016980 3 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10016980 4 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10016980 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 199/198 insns 79/79 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10016980 glide BrFontMeasure */
 #ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;
