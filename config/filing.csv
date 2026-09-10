@@ -607,6 +607,7 @@ glide_va,name,module,basis,file
 0x1003C370,BrOptCycleAC650,menus,neighbour,src/core/slice2_25.c
 0x1003C3D0,BrOptCycleAA2A08,menus,neighbour,src/core/slice2_25.c
 0x1003C430,FUN_1003c430,menus,neighbour,src/core/generated/0x1003C430.c
+0x1003C600,BrOptCycleBD3E0,menus,neighbour,src/core/slice2_25.c
 0x1003CAE0,FUN_1003cae0,menus,neighbour,src/core/menus/br_uictlhook.c
 0x1003CB40,FUN_1003cb40,menus,neighbour,src/core/menus/br_uictlhook.c
 0x1003CBA0,FUN_1003cba0,menus,neighbour,src/core/menus/br_uictlhook.c
