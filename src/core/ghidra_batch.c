@@ -529,17 +529,20 @@ int BrDpCreateIface(BrIUnk **out)
     a = 0;
     b = 0;
     hr = FUN_10072960(0, &a, 0, 0, 0);
-    if (hr >= 0) {
-        hr = a->vt->QueryInterface(a, &DAT_100788e8, (void **)&b);
-        if (hr < 0) {
-            goto fail;
-        }
-        a->vt->Release(a);
-        a = 0;
-        FUN_10036f40(DAT_105bc72c, b);
-        *out = b;
-        return 0;
+    /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
+     * the first branch to jl where the original has jge (cracked 2026-09-09,
+     * the only residue row). */
+    if (hr < 0)
+        goto fail;
+    hr = a->vt->QueryInterface(a, &DAT_100788e8, (void **)&b);
+    if (hr < 0) {
+        goto fail;
     }
+    a->vt->Release(a);
+    a = 0;
+    FUN_10036f40(DAT_105bc72c, b);
+    *out = b;
+    return 0;
 fail:
     if (a != 0) {
         a->vt->Release(a);
