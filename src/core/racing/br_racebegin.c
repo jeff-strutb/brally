@@ -339,6 +339,16 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * where their timings come from. */
 /* @t4-pass 0x10019930 1 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x10019930 2 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10019930 3 2026-09-09 probes 10 bytes 78 insns 32 regions 2 rows 2 census no  (hand, fn.py variants at the mid-bump shape: star/index spellings, orders, decl split, all inert) */
+/* @t4-pass 0x10019930 4 2026-09-09 probes 10 bytes 78 insns 32 regions 2 rows 2 census yes  (hand, fn.py variants: casts, guard/store/while forms, all inert; corpus hit at +0x11 -- the do/while-next walk shape confirmed) */
+/* @t3 0x10019930 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 78/78 insns 32/32 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring plus the cursor-init addend artefact
+ * (recomp `mov esi, <g_aBrRaceCue+4>` prints its addend bare, absorbed as
+ * the two singletons); identical multiset otherwise after the mid-bump
+ * lever (788b247), size- and insn-exact.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10019930 glide BrRaceCueLayout */
 /* @n64 0x802006C8 located */
 #ifdef BR_MATCHING_BUILD
