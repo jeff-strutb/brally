@@ -618,6 +618,13 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
     float  aV[9];
     BrVec3 e1, e2, nrm, sign, dp;
     float  planeD, pz, d;
+    /* The saved position is a NAMED BrVec3 in the original, not three
+     * body-offset floats: with the pointer spelled out the push-out delta
+     * comes out minuend-first (`fld pos; fsub save`), and with the offsets
+     * open-coded VC5 loads the subtrahends and reverses (`fld save; fsubr
+     * pos`) for all three components.  Same value either way; this is the
+     * spelling that reproduces the original's operand hand. */
+    const BrVec3 *pSv = (const BrVec3 *)(pBody + 0x114);
     int    ret = 0;
     short  cnt = 0;
     int    flag, spin, sgn, r;
@@ -657,10 +664,9 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
         BrExt_10008D60("Cube Edge to Triangle Face\n");
 
         pz = planeD * nrm.z;
+        sgn = 1;
         if (planeD * nrm.x < BrCrK_Zero)
             sgn = -1;
-        else
-            sgn = 1;
         sign.x = (float)sgn * BrCrK_Half;
         sgn = -1;
         if (!(planeD * nrm.y < BrCrK_Zero))
@@ -689,9 +695,9 @@ int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
         if (r == 0)
             continue;
 
-        d = ((BR_CR_NEXT->pos.x - BR_CR_BF(0x114)) * pP->nx
-           + (BR_CR_NEXT->pos.y - BR_CR_BF(0x118)) * pP->ny
-           + (BR_CR_NEXT->pos.z - BR_CR_BF(0x11c)) * pP->nz) * BrCrK_Pushout;
+        d = ((BR_CR_NEXT->pos.x - pSv->x) * pP->nx
+           + (BR_CR_NEXT->pos.y - pSv->y) * pP->ny
+           + (BR_CR_NEXT->pos.z - pSv->z) * pP->nz) * BrCrK_Pushout;
         ret = 1;
         dp.x = d * pP->nx;
         dp.y = d * pP->ny;
