@@ -121,6 +121,7 @@ void BrVtxSwap(void *pVerts, int count)
  * floating-point positions, texture coordinates and normals the PC renderer
  * works with, appending them to a running buffer. It hands back where in that
  * buffer the batch started. */
+/* @t4-pass 0x10018EF0 1 2026-09-10 probes 60 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1002BE30 d3d BrVtxExpand */
 #ifdef BR_MATCHING_BUILD
 /* Original: 2 args, state in globals. Each conversion is a direct
