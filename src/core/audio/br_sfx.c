@@ -499,7 +499,7 @@ void BrSndBankSetCar(int, int);
 extern int DAT_100b32b0;
 extern int DAT_100b32bc;
 extern int DAT_100b32c0;
-int FUN_1006c010();
+int BrSfxCarBankLoad();
 
 /* WHAT IT DOES: initialize the engine-sound bank for a car: set the bank, init the source, play silent. */
 /* @implements 0x100612D0 glide BrSfxCarBankInit */
@@ -509,7 +509,7 @@ int BrSfxCarBankInit(int param_1,int param_2)
 
 {
   BrSndBankSetCar(param_1,param_2);
-  FUN_1006c010(param_1);
+  BrSfxCarBankLoad(param_1);
   BrSfxSrcPlaySilent(param_1 * 2,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
   return;
 }
@@ -573,7 +573,7 @@ int BrSfxBankLoad(int iSet)
         DAT_1184c260 = 0x19;
         for (i = 0; i < 15; i++) {
             if (((int *)g_0B6540)[i] != 0) {
-                v = FUN_1006c010(i / 2);
+                v = BrSfxCarBankLoad(i / 2);
                 if (v == 0)
                     ok = v;
             } else {
@@ -596,6 +596,60 @@ int BrSfxBankLoad(int iSet)
                 DAT_100b55f8[row * 18 + cLeft] = 0;
             }
         }
+    }
+    return ok;
+}
+
+extern char DAT_100b64a8[];     /* 0x100B64A8 ".wav"  */
+extern char DAT_100b64a0[];     /* 0x100B64A0 "h.wav" */
+extern char DAT_100b6498[];     /* 0x100B6498 "r.wav" */
+
+/* WHAT IT DOES: loads (or clears) one car's engine-sound trio.  When sound
+ * is off or the bank marks the car's slot empty, it zeroes the car's voice
+ * in rows 0, 24 and 25.  Otherwise it builds "<SFXDir><cc>.wav",
+ * "<SFXDir><cc>h.wav" and "<SFXDir><cc>r.wav" from the car codes the three
+ * bank rows store (code 0 is "no car", so the stored value is car+1 indexing
+ * BrSfxCarCode), loads each into its row's voice slot, and returns 0 if any
+ * of the three failed, else 1. */
+/* @implements 0x1006C010 glide BrSfxCarBankLoad */
+
+int BrSfxCarBankLoad(int iCar)
+{
+    int  ok;
+    char buf[1024];
+    int  i2;
+    int  code;
+    int  v;
+
+    i2 = iCar * 2;
+    ok = 1;
+    if ((BrSndG0B5DE8 == 0) || (BrSndPDS == 0) || (BrSndG18290FC == 0)
+        || (code = ((int *)g_0B6540)[i2]) == 0) {
+        DAT_100b55f8[i2] = 0;
+        DAT_100b5cb8[i2] = 0;
+        DAT_100b5d00[i2] = 0;
+    } else {
+        strcpy(buf, g_aBrCfgSfxDir);
+        strcat(buf, BrSfxCarCode[code]);
+        strcat(buf, DAT_100b64a8);
+        v = BrSndVoiceLoad(buf);
+        DAT_100b55f8[i2] = v;
+        if (v == 0)
+            ok = 0;
+        strcpy(buf, g_aBrCfgSfxDir);
+        strcat(buf, BrSfxCarCode[((int *)g_0B6C00)[i2]]);
+        strcat(buf, DAT_100b64a0);
+        v = BrSndVoiceLoad(buf);
+        DAT_100b5cb8[i2] = v;
+        if (v == 0)
+            ok = 0;
+        strcpy(buf, g_aBrCfgSfxDir);
+        strcat(buf, BrSfxCarCode[((int *)g_0B6C48)[i2]]);
+        strcat(buf, DAT_100b6498);
+        v = BrSndVoiceLoad(buf);
+        DAT_100b5d00[i2] = v;
+        if (v == 0)
+            ok = 0;
     }
     return ok;
 }
