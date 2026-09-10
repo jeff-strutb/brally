@@ -203,7 +203,7 @@ void BrTextBoxMeasureB(BrTextBox *pBox);
  *
  * Stores v in `x` AND returns it (the original leaves it on the x87 stack).
  * `width` is read as a SIGNED 16-bit value. */
-float BrTextBoxCentreX(BrTextBox *pBox);
+float BR_THISCALL1 BrTextBoxCentreX(BrTextBox *pBox);
 
 /* =====================================================================
  * 3. The character map (0x100ACE58)
