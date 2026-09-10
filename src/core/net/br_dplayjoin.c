@@ -451,4 +451,134 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     return hr;
 }
 
+/* ── the lobby launch path ─────────────────────────────────────────────── */
+
+/* CLSID_DirectPlayLobby (0x10078918), IID_IDirectPlayLobby3A (0x10078908),
+ * and the IID ConnectEx asks for (0x10078848). */
+extern int DAT_10078918;
+extern int DAT_10078908;
+extern int DAT_10078848;
+
+/* The IDirectPlayLobby3A slots this function calls, all stdcall COM. */
+typedef int (__stdcall *BrLobGetConn)(void *pThis, DWORD dwAppId,
+                                      void *pData, DWORD *pcb);      /* +0x20 */
+typedef int (__stdcall *BrLobSetConn)(void *pThis, DWORD dwFlags,
+                                      DWORD dwAppId, void *pConn);   /* +0x30 */
+typedef int (__stdcall *BrLobConnectEx)(void *pThis, DWORD dwFlags,
+                                        void *riid, void **ppv,
+                                        void *pUnk);                 /* +0x3C */
+typedef int (__stdcall *BrDpOpenX)(void *pThis, DWORD *pOut, void *pDesc,
+                                   int a, DWORD b, DWORD c,
+                                   DWORD dwFlags);                   /* +0x18 */
+typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
+
+/* WHAT IT DOES: connects a lobby-launched game.  Creates the DirectPlay
+ * lobby object, sizes and fetches the connection settings the lobby staged
+ * (a too-small probe first, then a GlobalAlloc'd fetch), stamps the session
+ * description with the game's flag word (0x44) and eight players, writes
+ * the settings back and connects.  The obtained DirectPlay interface is
+ * opened on the session description with 0x100 or'd in when the lobby said
+ * host; on success the record gets the interface, the open result and the
+ * host bit, and the lobby's player short name and session name are copied
+ * into the game's globals.  Whatever was created but not handed over is
+ * released and freed on every path; returns the failing HRESULT.
+ *
+ * RESIDUE (RAW 0+1, 455 vs 461 B, one instruction): the original computes
+ * the host bit as `mov esi,[pMem+4]; AND ESI,0xFF; shr esi,1; and esi,1`
+ * and no tested spelling seats the 6-byte and-0xff -- VC5 folds the low-byte
+ * mask into the bit extract every time.  Everything else in the function is
+ * byte-exact, including the neg/sbb/and-0x100 ternary at the Open call and
+ * the whole cleanup ladder.
+ * DEAD: `(uVar4 & 0xff) >> 1 & 1` (folds); `& 0xff` as its own named
+ * assignment, as compound `&=` statements, and as `% 256` (all fold);
+ * `(unsigned char)` cast of the dword local (folds to shr/and-1 via eax);
+ * a direct `*(unsigned char *)` read and an int-from-byte widening
+ * assignment (both emit a BYTE load, not dword+and -- the byte-slot
+ * dword+and widening needs a stack slot and a register death, absent here);
+ * an 8-bit bitfield member (extraction folds too); the same expression
+ * through the C++ front end (also folds, and C++ costs elsewhere).  The
+ * ternary must be spelled `flag != 0 ? 0x100 : 0` (the literal
+ * `-(uint)(flag != 0) & 0x100` compiles to setne).
+ * @t4-pass 2026-09-09 probes=9 result=-6B/raw0+1 census no */
+/* @implements 0x10032320 glide BrDpLobbyConnect */
+int BrDpLobbyConnect(int *param_1)
+{
+    int          *local_10;
+    int          *local_c;
+    unsigned int  local_8;
+    DWORD         uStack_4;
+    LPVOID        pMem;
+    HGLOBAL       pvVar3;
+    int           iVar2;
+    unsigned int  uVar4;
+    int           flag;
+    char         *pcVar6;
+
+    local_10 = (int *)0x0;
+    local_c = (int *)0x0;
+    pMem = (LPVOID)0x0;
+    iVar2 = CoCreateInstance((IID *)&DAT_10078918, (LPUNKNOWN)0x0, 1,
+                             (IID *)&DAT_10078908, (LPVOID *)&local_c);
+    if (iVar2 >= 0) {
+        iVar2 = (*(BrLobGetConn *)(*local_c + 0x20))(local_c, 0, 0, &local_8);
+        if (iVar2 == (int)0x8877001e) {
+            pvVar3 = GlobalAlloc(0x42, local_8);
+            pMem = GlobalLock(pvVar3);
+            if (pMem == (LPVOID)0x0) {
+                iVar2 = (int)0x8007000e;
+            } else {
+                iVar2 = (*(BrLobGetConn *)(*local_c + 0x20))(local_c, 0, pMem,
+                                                             &local_8);
+                if (iVar2 >= 0) {
+                    uVar4 = *(unsigned int *)((int)pMem + 4);
+                    flag = (uVar4 & 0xff) >> 1 & 1;
+                    *(int *)(*(int *)((int)pMem + 8) + 4) = 0x44;
+                    *(int *)(*(int *)((int)pMem + 8) + 0x28) = 8;
+                    iVar2 = (*(BrLobSetConn *)(*local_c + 0x30))(local_c, 0, 0,
+                                                                 pMem);
+                    if (iVar2 >= 0) {
+                        iVar2 = (*(BrLobConnectEx *)(*local_c + 0x3c))(
+                            local_c, 0, &DAT_10078848, (void **)&local_10, 0);
+                        if (iVar2 >= 0) {
+                            iVar2 = (*(BrDpOpenX *)(*local_10 + 0x18))(
+                                local_10, &uStack_4, *(void **)((int)pMem + 0xc),
+                                param_1[1], 0, 0,
+                                flag != 0 ? 0x100 : 0);
+                            if (iVar2 >= 0) {
+                                *param_1 = (int)local_10;
+                                param_1[2] = uStack_4;
+                                if ((*(unsigned char *)((int)pMem + 4) & 2) != 0) {
+                                    param_1[3] = 1;
+                                } else {
+                                    param_1[3] = 0;
+                                }
+                                strcpy(DAT_10b71648,
+                                       *(char **)(*(int *)((int)pMem + 0xc) + 8));
+                                pcVar6 = *(char **)(*(int *)((int)pMem + 8) + 0x30);
+                                if (pcVar6 != (char *)0x0) {
+                                    strcpy((char *)DAT_10ac40a8, pcVar6);
+                                }
+                                local_10 = (int *)0x0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (local_10 != (int *)0x0) {
+        (*(BrComRel *)(*local_10 + 8))(local_10);
+    }
+    if (local_c != (int *)0x0) {
+        (*(BrComRel *)(*local_c + 8))(local_c);
+    }
+    if (pMem != (LPVOID)0x0) {
+        pvVar3 = GlobalHandle(pMem);
+        GlobalUnlock(pvVar3);
+        pvVar3 = GlobalHandle(pMem);
+        GlobalFree(pvVar3);
+    }
+    return iVar2;
+}
+
 #endif /* BR_MATCHING_BUILD */
