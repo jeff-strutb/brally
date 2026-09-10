@@ -470,14 +470,26 @@ def classify(miss, extra, obag=None, rbag=None):
     # consume a real extra `xor R, R` on the OTHER side, and both streams must
     # actually load a byte.  A lone source-level `x & 0xff` we simply failed to
     # emit has no opposing xor and stays unpaired.
+    # The mask is not always 0xff: when the value is SHIFTED between the load
+    # and the mask, what has to be cleared is whatever the shift left behind,
+    # so the constant is a low-bit mask of some width (0x10058FD0
+    # BrMenuSub1005FF60: `mov cl,[..]; shr ecx,7; and ecx,1` against our
+    # `xor eax,eax; mov al,[..]; shr eax,7`).  Admit any 2^k-1 mask -- every
+    # one of them clears upper bits the pre-zeroing already cleared -- and let
+    # the symmetric-evidence guard below do the discriminating.
     BYTELOAD = re.compile(r'^mov B, byte ptr \[')
+    LOWMASK = re.compile(r'^and R, (0x[0-9a-f]+|\d+)$')
     if obag is not None and rbag is not None and \
             any(BYTELOAD.match(r) for r in obag) and any(BYTELOAD.match(r) for r in rbag):
         for side, opp_single in ((um, se), (ue, sm)):
-            n = min(side['and R, 0xff'], opp_single['xor R, R'])
-            if n:
-                side['and R, 0xff'] -= n
-                opp_single['xor R, R'] -= n
+            for row in [r for r in side if LOWMASK.match(r)]:
+                k = int(LOWMASK.match(row).group(1), 0)
+                if k <= 0 or (k & (k + 1)) or k > 0xff:
+                    continue                     # not 2^n-1, or wider than a byte
+                n = min(side[row], opp_single['xor R, R'])
+                if n:
+                    side[row] -= n
+                    opp_single['xor R, R'] -= n
     um += collections.Counter(); ue += collections.Counter()
     # Constant-materialisation fork: `push K; pop R` IS `mov R, K` -- the same
     # value in the same register, chosen for size (3 B for an imm8 against 5).
