@@ -1465,9 +1465,12 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
     int *pOff;
 
     total = 0;
-    s = scale;
+    /* The doubling is spelled on `scale` before `s` takes its value: VC5 gives
+     * a self-doubling `s <<= 1` an `add R,R`, where the original has `shl R,1`.
+     * `scale` is dead here either way -- both arms below overwrite it. */
     if (DAT_106ed674 != 0)
-        s <<= 1;
+        scale = scale << 1;
+    s = scale;
     if (s < BR_FONT_LARGE_MIN) {
         scale = BR_FONT_SMALL_CELL;
         pOff = DAT_100a5a58;
@@ -1476,14 +1479,22 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
         pOff = DAT_100a5978;
     }
 
-    /* Re-deref *psz.  Caching the char in a local lets VC5 strength-reduce
-     * psz[1]/psz[2] into walking pointers (lea +1/+2, +18 B). */
+    /* THE CHARACTER IS CACHED IN A LOCAL and every test reads the local.  The
+     * original keeps *psz in al across the whole body: psz[1] goes to cl, the
+     * percent test is `cmp cl,al` (register against register, not against
+     * 0x25) and the glyph index is `movsx eax,al`, not a re-read of [esi].
+     * Re-dereferencing costs all three (register-blind 2+2 with the shift
+     * fixed; 0+0 with this).  The earlier note here said caching made VC5
+     * strength-reduce psz[1]/psz[2] into walking pointers -- it does not when
+     * only the character itself is named. */
     while (*psz != '\0') {
-        if (*psz < (char)BR_FONT_CLASS_LO ||
-            *psz > (char)BR_FONT_CLASS_HI) {
+        const char c = *psz;
+
+        if (c < (char)BR_FONT_CLASS_LO ||
+            c > (char)BR_FONT_CLASS_HI) {
             total += (14 * s) / 40;
-        } else if (*psz == '%' && psz[1] != '\0') {
-            if (psz[1] == *psz) {
+        } else if (c == '%' && psz[1] != '\0') {
+            if (psz[1] == c) {
                 psz++;
                 goto glyph;
             }
@@ -1496,8 +1507,8 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
             }
         } else {
         glyph:
-            total += ((pOff[DAT_100a58f7[*psz] + 1] -
-                       pOff[DAT_100a58f7[*psz]]) * s) / scale;
+            total += ((pOff[DAT_100a58f7[c] + 1] -
+                       pOff[DAT_100a58f7[c]]) * s) / scale;
         }
         psz++;
     }
