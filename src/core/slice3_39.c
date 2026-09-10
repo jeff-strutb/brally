@@ -863,11 +863,17 @@ void BrMenuSub1005FF60(void)
     int i;
 
     for (i = 0; i < BR_DIK_COUNT; ++i) {
-        int32_t notPrev = (g_BrDikPrev[i] == 0) ? 1 : 0;
-        int32_t down    = (int32_t)((g_BrDikState[i] >> 7) & 1u);
+        /* The edge slot IS the notPrev temporary: the original stores the
+         * zero-test into g_BrDikEdge[i] and reloads it to AND the down bit in
+         * -- a store, a reload and a second store where a local would have
+         * kept the value in a register.  Spelling it with a local came out
+         * two instructions short (15 against 17); this is the shape. */
+        int32_t down;
 
+        g_BrDikEdge[i] = (g_BrDikPrev[i] == 0) ? 1 : 0;
+        down = (int32_t)((g_BrDikState[i] >> 7) & 1u);
         g_BrDikPrev[i] = down;
-        g_BrDikEdge[i] = notPrev & down;
+        g_BrDikEdge[i] &= down;
     }
 }
 
