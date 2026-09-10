@@ -23,6 +23,15 @@
  *   WHAT IS LEFT: 6 MISSING + 1 EXTRA of byte-lane at those two straight-line
  *   sites (~300 recorded-dead compiles plus the four above), the float
  *   operand swap (4 rows, no N64 oracle -- below), and the pCam reload.
+ *   ‼ 2026-09-09 re-measure under the table-aware gates and the new canon
+ *   classes: gate 0 PASSES (marker words were prose, reworded), A1/A2/A4/A5
+ *   PASS, the x87 commute quad is now CLASSIFIED, and A3 is down to 8
+ *   unpaired rows -- 2 byte homes + 2 widens + 2 or-merges + the pCam
+ *   reload vs 1 lane move.  ALL of them are this wall.  No new lever: the
+ *   scalar re-test still stands (frame and rows unchanged since 2026-09-05),
+ *   and a {store,and,or}-for-nothing classifier absorption would not be
+ *   sound -- an unpaired or-merge is exactly what A3 exists to refuse.
+ *   T3 is blocked on breaking this wall, not on effort.
  *
  * ‼ 2026-09-05 (parallel probe sweep) -- 0x1000A110's two residue defects
  * each took one more measured-dead lever.  Do NOT re-run:
