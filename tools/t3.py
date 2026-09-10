@@ -89,6 +89,9 @@ LEDGER = re.compile(r'@t4-pass\s+(0x[0-9A-Fa-f]{8})\s+(\d+)\s+(\d{4}-\d{2}-\d{2}
 MARKERS = re.compile(r'\b(TODO|FIXME|XXX|HACK|STUB)\b|\?\?\?|\bguess\b|\bplaceholder\b|\bunknown\b|#\s*if\s+0\b', re.I)
 MIN_PASSES, MIN_PROBES = 2, 10
 IMPL = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\b')
+# A real tag line: the comment OPENS with @implements.  Prose that quotes one
+# mid-sentence does not match, so a dossier cannot hijack the anchor.
+TAGLINE = re.compile(r'^[ \t]*/\*\s*@implements\s+(0x[0-9A-Fa-f]{8})\b')
 
 GAP_ABS, GAP_FRAC, ROWS_ABS, ROWS_FRAC, LOST_TAIL_MAX = 3, 0.005, 4, 0.025, 32
 
@@ -363,6 +366,24 @@ def classify(miss, extra, obag=None, rbag=None):
         while ue[a] and ue['jmp T'] and um[b]:
             ue[a] -= 1; ue['jmp T'] -= 1; um[b] -= 1
     um += collections.Counter(); ue += collections.Counter()
+    # Cross-jumping (tail merging): identical epilogues are either DUPLICATED
+    # at each exit or merged behind one branch.  Same control flow, same
+    # values -- only where the bytes sit, which is the layout family the
+    # either-or fork above already folds.  A frameless function's exit is a
+    # bare `ret`, so the fork shows up as one side carrying an extra one.
+    # (2026-09-10, 0x1001E080 BrGlInstall: the original duplicates the ret and
+    # skips it with a 2-byte `jne`; our cl merges both exits and pays a 6-byte
+    # near `je` to the tail -- the other 40 instructions are byte-identical.
+    # Its dossier had already probed early-return, nested-if, else-return, an
+    # explicit trailing return and all five optimisation variants dead.)
+    # Both sides must actually return this way, so a wholly missing return
+    # path cannot pair -- and if one were missing, its guard and branch rows
+    # would still be unpaired here and A3 would fail on those instead.
+    # `ret K` is excluded: the immediate is stack cleanup, not layout.
+    if obag is not None and rbag is not None and 'ret ' in obag and 'ret ' in rbag:
+        for side in (um, ue):
+            side['ret '] = 0
+        um += collections.Counter(); ue += collections.Counter()
     # Masked-or constant fold: VC5 folds `(x & M) | O` to `(x & (M & ~O)) | O`
     # for every spelling (0x10005330 dossier: `and al,0xbf; or al,0x80`
     # unreachable, ours is `and al,0x3f`; same wall on 0x10005400 with
@@ -617,7 +638,25 @@ def completeness(va, path):
     """Gate 0: WHAT IT DOES present, no unfinished markers in the function body."""
     lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
     ok_vas = twins(va)
-    tag = next((i for i, l in enumerate(lines) if IMPL.search(l) and IMPL.search(l).group(1).lower() in ok_vas), None)
+    # Anchor on a REAL tag line -- one whose comment opens with @implements --
+    # the way measure() and crank's writers already do.  A loose search finds
+    # the first line that merely MENTIONS one, and a dossier quoting a twin's
+    # tag in prose then hijacks the anchor: br_dlglide.c's 0x1001E080 dossier
+    # explains that `br_objlife.c's BrInstall_1001BAE0 carried @implements
+    # 0x1001BAE0 d3d`, shared.csv makes that VA a twin, and Gate 0 measured its
+    # 40-line window from the middle of the prose instead of from the tag.
+    # Exact VA first, then a twin's; the anchored form first, then the loose
+    # one, so a file with no conventional tag still resolves as before.
+    def anchors(pred):
+        return [i for i, l in enumerate(lines)
+                for m in [TAGLINE.search(l) or IMPL.search(l)] if m and pred(m.group(1).lower())]
+    cand = ([i for i, l in enumerate(lines)
+             for m in [TAGLINE.search(l)] if m and m.group(1).lower() == va.lower()]
+            or [i for i, l in enumerate(lines)
+                for m in [TAGLINE.search(l)] if m and m.group(1).lower() in ok_vas]
+            or anchors(lambda v: v == va.lower())
+            or anchors(lambda v: v in ok_vas))
+    tag = cand[0] if cand else None
     if tag is None:
         return False, 'no @implements'
     if not any('WHAT IT DOES:' in l for l in lines[max(0, tag - 40):tag + 1]):
