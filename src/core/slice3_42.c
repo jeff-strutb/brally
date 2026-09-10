@@ -565,25 +565,34 @@ void BrReplaySeek(void)
     int32_t        state;
     int            i;
 
+    /* THE MODE STORE COMES FIRST IN EACH ARM, and the tail RE-READS the mode
+     * out of the global rather than carrying it in a local.  Both are visible
+     * in the codegen: storing `step` first makes VC5 materialise 10 before 3
+     * (`mov R,0xa` where the original has `mov R,3`), and a carried local
+     * loses the reload the original spends before the transport test.  With
+     * both, size and instruction count are exact (215 B, 61 insns) and the
+     * register-blind residue falls 6+6 -> 2+2.  Re-reading is the same value
+     * on every path: each arm writes the local and the global together. */
     if (bits & 0x00200000u) {
-        state = 3; step = 1;  g_BrX06909E0 = 3;
+        g_BrX06909E0 = 3; state = 3; step = 1;
     } else if (bits & 0x00400000u) {
-        state = 3; step = -1; g_BrX06909E0 = 3;
+        g_BrX06909E0 = 3; state = 3; step = -1;
     } else {
         state = g_BrX06909E0;
     }
 
     /* The second pair is tested unconditionally and overrides the first. */
     if (bits & 0x00800000u) {
-        state = 3; step = 10;  g_BrX06909E0 = 3;
+        g_BrX06909E0 = 3; state = 3; step = 10;
     } else if (bits & 0x01000000u) {
-        state = 3; step = -10; g_BrX06909E0 = 3;
+        g_BrX06909E0 = 3; state = 3; step = -10;
     }
 
     if (bits & 0x00100000u) {
-        state = 1; g_BrX06909E0 = 1;
+        g_BrX06909E0 = 1; state = 1;
     }
 
+    state = g_BrX06909E0;
     if (state == 1) {
         step = 1;                   /* `mov esi,eax` with eax == 1 */
     } else if (state == 3 && step == 0) {
