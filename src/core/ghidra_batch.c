@@ -519,60 +519,6 @@ void BrSndBankPickSlot(void)
     *(int *)((char *)&DAT_10396f48 + chosen * 0x2e0f0) = prev + 1;
 }
 
-/* ------------------------------------------------------------------ */
-/* 0x10036E50                                                         */
-/* ------------------------------------------------------------------ */
-
-typedef struct BrIUnk BrIUnk;
-struct BrIUnk {
-    struct {
-        int (__stdcall *QueryInterface)(BrIUnk *, void *, void **);
-        int (__stdcall *AddRef)(BrIUnk *);
-        int (__stdcall *Release)(BrIUnk *);
-    } *vt;
-};
-int __stdcall FUN_10072960(int, BrIUnk **, int, int, int);
-void FUN_10036f40(int, BrIUnk *);
-extern int DAT_100788e8;
-extern int DAT_105bc72c;
-
-/* WHAT IT DOES: creates a DirectPlay object, queries the wanted interface
- * and hands it back, releasing the original on success or both on failure. */
-/* @t4-pass 0x10036E50 1 2026-09-07 probes 73 bytes 158 insns 58 regions 1 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x10036E50 2 2026-09-07 probes 73 bytes 158 insns 58 regions 1 rows 2 census yes  (tools/crank.py) */
-/* @implements 0x10036E50 glide BrDpCreateIface */
-int BrDpCreateIface(BrIUnk **out)
-{
-    BrIUnk *a;
-    BrIUnk *b;
-    int hr;
-
-    a = 0;
-    b = 0;
-    hr = FUN_10072960(0, &a, 0, 0, 0);
-    /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
-     * the first branch to jl where the original has jge (cracked 2026-09-09,
-     * the only residue row). */
-    if (hr < 0)
-        goto fail;
-    hr = a->vt->QueryInterface(a, &DAT_100788e8, (void **)&b);
-    if (hr < 0) {
-        goto fail;
-    }
-    a->vt->Release(a);
-    a = 0;
-    FUN_10036f40(DAT_105bc72c, b);
-    *out = b;
-    return 0;
-fail:
-    if (a != 0) {
-        a->vt->Release(a);
-    }
-    if (b != 0) {
-        b->vt->Release(b);
-    }
-    return hr;
-}
 
 /* ------------------------------------------------------------------ */
 /* 0x1003FBE0                                                         */
