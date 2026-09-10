@@ -144,6 +144,7 @@ glide_va,name,module,basis,file
 0x10009C00,BrDesktopSetup,drawing,neighbour-1,src/core/ghidra_batch.c
 0x10009C10,BrCarDrawWheels,drawing,filed,src/core/drawing/br_drawcar.c
 0x10009FC0,BrCarVisibilityUpdate,drawing,filed,src/core/drawing/br_drawcar.c
+0x1000BEB0,BrCarDrawBody,drawing,filed,src/core/drawing/br_drawcar.c
 0x1000C9C0,BrNodeChainReset_1000F460,drawing,filed,src/core/drawing/br_textmode.c
 0x1000CB80,BrClearTables_1000F620,drawing,filed,src/core/drawing/br_textmode.c
 0x1000DC00,BrPolyClipTri,drawing,filed,src/core/drawing/br_polydist.c
@@ -425,6 +426,7 @@ glide_va,name,module,basis,file
 0x1002F660,BrBitEdgeSplit,controls,manual,src/core/controls/br_bitedge.c
 0x1002F680,BrEntInit,scene,description,src/core/scene/br_entity.c
 0x1002F6C0,BrRaceSub1002F6C0,racing,filed,src/core/racing/br_racestart.c
+0x1002F6D0,BrPeerFind,,,src/core/slice1_05.c
 0x10030270,BrModelLoad,drawing,description,src/core/drawing/br_model.c
 0x10030710,BrDevRecMatch,controls,manual,src/core/controls/br_devrec.c
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
