@@ -89,6 +89,26 @@ extern void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt);  /* 0x1001FCF0 
 
 /* The second triangle: its LAST corner is finished by the out-of-line
  * BrDlVtxFinishTex against its own clip node. */
+/* The ib corner of the textured pair: w_ through the POINTER (the no-Z
+ * twin's residue site, probed per-TU here). */
+#define BR_DLCMD_FINISH_VTX_I_N2(i, u_)                             \
+    do {                                                            \
+        BrDlVtx *pv_ = &V(i);                                       \
+        uint32_t w_;                                                \
+        float    ts_;                                               \
+        BR_DL_PUN(w_, pv_->oow);                                    \
+        BR_DL_PUN(pv_->tmu1[2], w_);                                \
+        BR_DL_PUN(pv_->tmu0[2], w_);                                \
+        ts_ = V(i).s * g_brDlTexScaleS;                             \
+        (u_) = ts_ * pv_->oow;                                      \
+        BR_DL_PUN(pv_->tmu1[0], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[0], (u_));                              \
+        ts_ = V(i).t * g_brDlTexScaleT;                             \
+        (u_) = ts_ * pv_->oow;                                      \
+        BR_DL_PUN(pv_->tmu1[1], (u_));                              \
+        BR_DL_PUN(pv_->tmu0[1], (u_));                              \
+    } while (0)
+
 #define BR_DLCMD_TRI_I_TEX(ia, ib, ic, u_)                              \
     do {                                                                \
         if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
@@ -96,7 +116,7 @@ extern void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt);  /* 0x1001FCF0 
                 BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
             } else {                                                     \
                 BR_DLCMD_FINISH_VTX_I_N(ia, u_);                         \
-                BR_DLCMD_FINISH_VTX_I_N(ib, u_);                         \
+                BR_DLCMD_FINISH_VTX_I_N2(ib, u_);                        \
                 BrDlVtxFinishTex(&V(ic), (const BrDlClipSt *)(const void *)&V(ic).f40); \
                 BrDlDrawTri(&V(ia), &V(ib), &V(ic));                     \
             }                                                            \
@@ -125,6 +145,18 @@ extern void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt);  /* 0x1001FCF0 
  * product is needed on ALL six corners in this TU (in br_dlcmd.c's TU the
  * first triangle canonicalised the other way).
  * Dead probes (fn.py): u second / third / last. */
+/* @t4-pass 0x1001FA30 1 2026-09-09 probes 10 bytes 698 insns 200 regions 5 rows 1 census no  (decl merges/splits, *(p+n) forms, statement spacing, cast/+0 spellings, operand commute, guard commute: 10 byte-identical) */
+/* @t4-pass 0x1001FA30 2 2026-09-09 probes 10 bytes 698 insns 200 regions 5 rows 1 census yes  (register hints, macro paren/array forms, struct decl split, comment width, p[4+n], w_/ts_ decl order: 10 byte-identical; full-length mnemonic histograms equal except mov 68/69 -- the one prologue copy) */
+/* @t3 0x1001FA30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 698/696 insns 200/199 rows 0+1 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: one extra prologue register copy (mov R,R singleton) from the
+ * byte-read schedule -- the original reads p[1] between the pushes, ours
+ * reads all three above them; every read-order, decl and spelling probe in
+ * the two passes is byte-identical.  The ib corner's pointer-form 1/w load
+ * (the no-Z twin's residue) LANDED here (q1, -3 B, rows 1+2 -> 0+1) -- the
+ * twin's dead list does not transfer between TUs.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1001FA30 glide BrDlCmdTri2 */
 const uint8_t *BrDlCmdTri2(const uint8_t *p)
 {
