@@ -35,6 +35,16 @@ static int32_t br_dls_sext12(uint32_t v)
  * given back to front stays back to front rather than becoming enormous. */
 /* @t4-pass 0x1001EC30 1 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001EC30 3 2026-09-09 probes 10 bytes 178 insns 45 regions 4 rows 0 census no  (hand, fn.py variants: decl orders, mask/shift/guard spellings, q local, register hint, all inert or worse) */
+/* @t4-pass 0x1001EC30 4 2026-09-09 probes 11 bytes 178 insns 45 regions 4 rows 0 census yes  (hand, fn.py variants: word temp, param copy, return/diff spellings, all inert; corpus MISS at +0x1 len 12 -- the between-pushes parameter load is proven nowhere) */
+/* @t3 0x1001EC30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 178/178 insns 45/45 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is one register-colouring fork: esi<->edi for `p` vs `ult`, the
+ * parameter load scheduled between the two pushes in the original and
+ * after them here (identical multiset after the decimal-esp normaliser
+ * fix, 8f86659).  Dead list in the RESIDUE block below.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
 #ifdef BR_MATCHING_BUILD
 extern int DAT_118ed198;
