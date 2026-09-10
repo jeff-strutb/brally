@@ -371,6 +371,7 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: picks which of two pictures a control is drawn with,
  * depending on which of the two volume rows the player last touched -- the
  * highlight that shows which row the cursor is on. */
+/* @t4-pass 0x10037F70 1 2026-09-10 probes 35 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 /* @n64 0x802649C0 located */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
