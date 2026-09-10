@@ -85,6 +85,7 @@ uint32_t   g_brPendDropped; /* 0x106C7C40 */
 
 /* WHAT IT DOES: queue a piece of work to run later.  If the queue is
  * already full the item is dropped, but the counter still moves on. */
+/* @t4-pass 0x100306D0 1 2026-09-10 probes 30 bytes 51 insns 16 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
