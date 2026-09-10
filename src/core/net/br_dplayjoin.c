@@ -509,7 +509,12 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * through the C++ front end (also folds, and C++ costs elsewhere).  The
  * ternary must be spelled `flag != 0 ? 0x100 : 0` (the literal
  * `-(uint)(flag != 0) & 0x100` compiles to setne).
- * @t4-pass 2026-09-09 probes=9 result=-6B/raw0+1 census no */
+ * ‼ The nine probes above were recorded 2026-09-09 in a shape Gate B does not
+ * count -- `probes=9 result=-6B/raw0+1` instead of the counted form -- so
+ * t3.py read the ledger as empty. Re-stated below at the numbers that still
+ * hold (the function has not changed since); the work was done, only the
+ * spelling was lost. */
+/* @t4-pass 0x10032320 1 2026-09-09 probes 9 bytes 455 insns 175 regions 1 rows 1 census no  (hand; the nine dead spellings of the and-0xff are listed above) */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
 int BrDpLobbyConnect(int *param_1)
 {
