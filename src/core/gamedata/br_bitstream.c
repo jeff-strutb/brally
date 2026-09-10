@@ -198,6 +198,20 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 /* WHAT IT DOES: reads the next three bytes as a single number, most
  * significant byte first. */
 /* @t4-pass 0x1006CE50 1 2026-09-09 probes 10 bytes 43 insns 18 regions 1 rows 3 census no  (hand, fn.py variants: index-through-cursor lever from ReadU16 and 9 tail spellings, all inert or worse) */
+/* @t4-pass 0x1006CE50 2 2026-09-10 probes 40 bytes 43 insns 18 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t3 0x1006CE50 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 43/44 insns 18/17 rows 1+2 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * The residue is the zero-extend fork on the third byte and nothing else: the
+ * original loads p[2] into AL over the DYING pointer register and widens with
+ * `and eax,0xff`, where we zero a fresh register first and so need no mask.
+ * Register-death timing, i.e. allocation.  Two counted passes at these
+ * numbers: 12 hand probes on 2026-09-10 (commuted or, index-through-cursor,
+ * uint and uchar temps either side of the cursor store, p += 2, split shift --
+ * every one inert or worse) and 40 crank compiles accepting no lever; every
+ * candidate and score is in build/match/crank.log.  The corpus is a MISS on
+ * the 7-instruction run at the divergence, so no proven spelling exists to
+ * copy.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10073C10 d3d BrBitStreamReadU24 */
 unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 {
