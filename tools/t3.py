@@ -364,6 +364,25 @@ def classify(miss, extra, obag=None, rbag=None):
             side['or R, R'] -= n
             other['mov B, B'] -= min(n, other['mov B, B'])
     um += collections.Counter(); ue += collections.Counter()
+    # Keep-vs-reload x87 fork: `fstp R; fld R` against `fst R` (store, keep
+    # the value on the stack). Same value; whether the compiler pops and
+    # reloads is allocation. Triple cancel only. Proven 0x1001F2B0 LEFT
+    # plane (br_dlclip.c dossier).
+    while um['fstp R'] and um['fld R'] and ue['fst R']:
+        um['fstp R'] -= 1; um['fld R'] -= 1; ue['fst R'] -= 1
+    while ue['fstp R'] and ue['fld R'] and um['fst R']:
+        ue['fstp R'] -= 1; ue['fld R'] -= 1; um['fst R'] -= 1
+    um += collections.Counter(); ue += collections.Counter()
+    # Leftover spill-fst after the triple: store-keep with no matching
+    # pop-reload.  0x10024680: orig fst-keeps one lerp result then
+    # fstp-overwrites the same slot; ours only fstp.  After the triple so
+    # 0x1001F2B0's fst still pairs with fstp+fld.
+    for bag, dest in ((um, sm), (ue, se)):
+        n = bag['fst R']
+        if n:
+            dest['fst R'] += n
+            bag['fst R'] = 0
+    um += collections.Counter(); ue += collections.Counter()
     return um, ue, sm + se
 
 
@@ -420,8 +439,10 @@ def completeness(va, path):
         return False, 'no WHAT IT DOES: within 40 lines above the tag'
     # body: from the tag to the first line that is exactly '}'
     end = next((i for i in range(tag, len(lines)) if lines[i] == '}'), len(lines) - 1)
-    hits = [(i + 1, MARKERS.search(lines[i]).group(0)) for i in range(tag, end + 1)
-            if MARKERS.search(lines[i]) and '@t3' not in lines[i]]
+    def code_only(line):
+        return re.sub(r'"([^"\\]|\\.)*"', '""', line)
+    hits = [(i + 1, MARKERS.search(code_only(lines[i])).group(0)) for i in range(tag, end + 1)
+            if MARKERS.search(code_only(lines[i])) and '@t3' not in lines[i]]
     if hits:
         return False, 'unfinished markers: ' + ', '.join('%s@%d' % (w, ln) for ln, w in hits[:6])
     return True, 'WHAT IT DOES present, no unfinished markers in %d lines' % (end - tag + 1)
