@@ -837,7 +837,13 @@ int BrOptOpen2998(BrGameObj *pUnused)
  * skip jumps INTO the down-arm's store (cross-block goto).
  * RESIDUE (parked, REGNORM 1+2, 4 B short): VC5 hoists the g_brAA2A0C
  * load above the first branch (orig loads it per arm; volatile on either
- * side does not pin it). */
+ * side does not pin it).  FIVE MORE DEAD 2026-09-10, do not re-run: the
+ * down-arm's read pushed inside the g_brAA33D0 test with a matching else
+ * (three syntactic reads -- 195 B, +4 insns, strictly worse), the up-arm
+ * spelled `g_brAA2A0C = g_brAA2A0C + 1; v = g_brAA2A0C;`, the same with
+ * `++`, and the whole global read through a volatile-lvalue macro.  All
+ * three of those are byte-identical to the baseline: VC5 forwards the
+ * store and re-CSEs the read whatever the spelling. */
 int BrOptCycleAA2A0C(void)
 {
     int32_t v;
