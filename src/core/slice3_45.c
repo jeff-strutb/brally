@@ -252,6 +252,16 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
  * compass direction, keeping it upright -- it can only turn about the
  * vertical, not tip or roll. It writes the new facing into every copy of the
  * object's state the physics keeps, so nothing is left pointing the old way. */
+/* @t4-pass 0x1006F720 1 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census no  (hand, fn.py variants: decl/store orders, dword-pun zeros, chain forms, h placement, all inert or worse) */
+/* @t4-pass 0x1006F720 2 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census yes  (hand, fn.py variants: store-order swaps, temps, mul order, q-decl forms, all inert or worse; corpus MISS at +0x30 len 12 -- the stores-before-fstp schedule is proven nowhere) */
+/* @t3 0x1006F720 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 279/279 insns 74/74 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one scheduling fork: the original emits the c/s/0 stores
+ * before popping the pending sin result, every spelling here pops at the
+ * call return (identical multiset, 0+0).  Dead list in the RESIDUE block
+ * above plus the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100764C0 d3d BrEntSetHeading */
 #ifdef BR_MATCHING_BUILD
 /* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
