@@ -258,8 +258,19 @@ extern int DAT_10ac5a4c;
 
 /* WHAT IT DOES: maps the current track/car-class menu selection onto the
  * two-byte letter id stored on the player record. */
-/* @t4-pass 0x10038A80 1 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x10038A80 2 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10038A80 1 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py -- at 159/41/1/3, superseded by pass 3) */
+/* @t4-pass 0x10038A80 2 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py -- at 159/41/1/3, superseded by pass 3) */
+/* RESIDUE (1 unpaired row, 2 B): the original keeps the "no letter" value as a
+ * FULL-WIDTH -1 (`or edx, 0xffffffff`, 3 B) and stores its `dx`; every C
+ * spelling gives us `mov edx, 0xffff` (5 B), because both uses are 16-bit
+ * stores and VC5 narrows the constant to the width that is actually needed.
+ * DEAD 2026-09-10, do not re-run: `~0`, the literal `(int)0xffffffffu`, an
+ * `unsigned int` local with an `unsigned short` cast at the use, a `short`
+ * local, an unsigned-short cast in place of the short one, the store with no
+ * cast at all, and a dummy 32-bit comparison on the local to keep it live
+ * (folded away as dead). The instruction stream is otherwise exact: 42/42, A1
+ * 0, A2 1+1, A4 positional. */
+/* @t4-pass 0x10038A80 3 2026-09-10 probes 11 bytes 158 insns 42 regions 1 rows 2 census no  (hand; the switch's `- 1` fixed the missing `sub eax,0` and took A1 to 0 and A4 to PASS, then seven spellings of the -1 above) */
 /* @implements 0x10038A80 glide BrMenuSetTrackLetter */
 int BrMenuSetTrackLetter(int param_1)
 {
@@ -287,14 +298,18 @@ int BrMenuSetTrackLetter(int param_1)
         }
     }
     if (DAT_10ac5a48 == 0) {
-        switch (DAT_10ac5a4c & 0xff) {
-        case 1:
+        /* THE `- 1` IS IN THE ORIGINAL, not a simplification to undo: it
+         * emits `dec eax` for the subtraction and then a `sub eax, 0` to open
+         * the case chain at zero, which is the instruction our `case 1:`
+         * spelling was missing.  Same behaviour either way. */
+        switch ((DAT_10ac5a4c & 0xff) - 1) {
+        case 0:
             *slot = 0x48;
             break;
-        case 2:
+        case 1:
             *slot = 0x4a;
             return 1;
-        case 3:
+        case 2:
             *slot = 0x4c;
             return 1;
         default:
