@@ -1389,6 +1389,18 @@ static void wheel_call(unsigned char *car)
  * The top of car rendering, called once per visible car per frame. */
 /* @t4-pass 0x1000A110 1 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000A110 2 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000A110 3 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census no  (guard polarity, float/spec/index commutes, statement orders, join or-commute: 9 byte-identical, 1 regression) */
+/* @t4-pass 0x1000A110 4 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census yes  (compare/negate-guard swaps, decl splits/orders, mode-flag commute, cast removal: 9 byte-identical, 1 region-count wobble at identical bytes.  Census: full-length mnemonic histograms equal except and 24/22, or 28/26 -- exactly the classified byte-compose group; call 48/48, fdiv/fmul/fild/imul/shl/ret all equal) */
+/* @t3 0x1000A110 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 7560/7577 insns 1839/1843 rows 8+4 regions 29 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue: the byte-compose fork (2 homes + 2 widens + 2 or-merges vs one
+ * lane move -- the classified group; four sessions' dead lists in this
+ * header, the mechanism proven on 0x1001E380) and its coupled slot cascade
+ * (regions 6-24, change 0).  The pCam re-read landed 2026-09-09 (66f0f31);
+ * the float commute quad and the x87 schedule classify.  Everything else in
+ * 29 masked regions is allocation echo at delta 0.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
