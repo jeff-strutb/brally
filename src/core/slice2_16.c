@@ -1436,8 +1436,14 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
 /* @t3 0x100183B0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 800/803 insns 220/222 rows 2+0 regions 6 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 30 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * RESIDUE: two register copies, nothing else -- the whole multiset pairs
+ * and the instruction gap is 2.  The three levers that closed the rest are
+ * in the body: the bar's top edge is a local carried in from an earlier
+ * block (a literal 0 folds the original's four-instruction zero shift
+ * away), bars is read into a local whose decrement writes back, and pos2
+ * reaches the bar command from the local the test already loaded.
+ * 30 compiles in the last pass, levers accepted: none; every candidate and
+ * score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 #ifdef BR_MATCHING_BUILD

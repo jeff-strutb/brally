@@ -60,8 +60,14 @@ extern float DAT_1007745c;
 /* @t3 0x10028200 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 430/441 insns 105/108 rows 3+0 regions 3 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 30 compiles this pass, levers accepted: mut:addr_taken:next > mut:reorder_stmts;
- * every candidate and score is in build/match/crank.log.
+ * RESIDUE: three allocation singletons -- two spills of the water-mark
+ * pair to stack slots the original keeps in registers, and one reload.
+ * Every other row pairs.  The lever that closed the tail is below: the
+ * high water-mark test is written success-arm-first, which is the
+ * original's fall-through-on-jb layout; the `>= ... goto fail` spelling
+ * inverts the branch and unanchors 115 B.
+ * 30 compiles in the last pass, levers accepted: none that survived the
+ * cluster rule; every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,

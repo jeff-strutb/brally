@@ -227,8 +227,14 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
 /* @t3 0x1000DF00 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 339/347 insns 127/129 rows 2+0 regions 3 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 30 compiles this pass, levers accepted: mut:addr_taken:pCur;
- * every candidate and score is in build/match/crank.log.
+ * RESIDUE: two homed stack slots the original keeps in registers -- the
+ * recycle walk's look-ahead and its head -- and nothing else; the whole
+ * multiset pairs and the two extra rows are allocation singletons.  What
+ * closed the rest is in the two comments below: the count's write-back is
+ * shared by both arms through a goto, and the look-ahead starts AS p so
+ * the null case reuses p instead of materialising a zero.
+ * 30 compiles in the last pass, levers accepted: none that survived the
+ * cluster rule; every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
