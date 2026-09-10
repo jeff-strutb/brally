@@ -75,6 +75,7 @@ void BrModelSlotApply(uint8_t *pCar, void *pDrv);
  * pushes vs two calls), jg/jl polarity on the driver-count and entrant
  * tests, pair-swap slot +0x50 vs +0x54, saved-car lea +0x20 vs +0x1c, and
  * operand-swapped cmp on +0x64/+0x140. fxch st(2) x4 is x87 scheduling. */
+/* @t4-pass 0x1005F6C0 1 2026-09-09 probes 20 bytes 2101 insns 557 regions 19 rows 47 census yes */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore */
 void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
 {
@@ -129,15 +130,14 @@ void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
             local_cc = *(int *)(iVar10 + 0xfac) - *(int *)(pCar + 0xfac);
             local_d8 = (*(float *)(pCar + 0xff4) - *(float *)(iVar10 + 0xff4)) +
                        (float)local_cc * fVar20;
-            if (local_d8 <= fVar20 * 0.5f) {
+            if (!(local_d8 <= fVar20 * 0.5f)) {
+              local_d8 = local_d8 - fVar20;
+              iVar10 = iVar10 + 0x30;
+              *pfVar12 = local_d8 * local_d8 + BrVec3Dist(pCar + 0x30, (int *)iVar10);
+            } else {
               if (local_d8 < fVar20 * -0.5f) {
                 local_d8 = fVar20 + local_d8;
               }
-              iVar10 = iVar10 + 0x30;
-              *pfVar12 = local_d8 * local_d8 + BrVec3Dist(pCar + 0x30, (int *)iVar10);
-            }
-            else {
-              local_d8 = local_d8 - fVar20;
               iVar10 = iVar10 + 0x30;
               *pfVar12 = local_d8 * local_d8 + BrVec3Dist(pCar + 0x30, (int *)iVar10);
             }
@@ -155,13 +155,11 @@ void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
         local_cc = piVar14[-8] - *(int *)(pCar + 0xfac);
         local_d8 = (*(float *)(pCar + 0xff4) - *(float *)&piVar14[-5]) +
                    (float)local_cc * fVar20;
-        if (local_d8 <= fVar20 * 0.5f) {
-          if (local_d8 < fVar20 * -0.5f) {
-            local_d8 = fVar20 + local_d8;
-          }
-        }
-        else {
+        if (!(local_d8 <= fVar20 * 0.5f)) {
           local_d8 = local_d8 - fVar20;
+        }
+        else if (local_d8 < fVar20 * -0.5f) {
+          local_d8 = fVar20 + local_d8;
         }
         piVar9 = piVar14 + -0x19;
         *pfVar12 = local_d8 * local_d8 + BrVec3Dist(pCar + 0x30, piVar9);
