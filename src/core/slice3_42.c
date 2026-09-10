@@ -524,27 +524,35 @@ void BrReplayApply(void *pCar, int32_t iPlayer)
     /* orig reloads both cursor and count from [iPlayer*4+disp], then
      * `add ebx,0x18` for the next slot rather than rebuilding the index.
      *
-     * RESIDUE (2026-09-04): 34 diff bytes, size- and instruction-exact,
-     * register-blind 6+6, ONE region at +0xbd: the original `fld`s the
-     * three state fields and subtracts the car fields from MEMORY
-     * (`fld [esp+S]; fsub [esi+0x1dc]`); VC5 gives us the reverse
-     * (`fld [esi+0x1dc]; fsubr [esp+S]`).  DEAD, all byte-identical: a
-     * paren round the state operand, named dx/dy/dz temps, a `BrCarState
-     * *ps = &state` pointer, `float *pf = &state.f10` with pf[0..2],
-     * copying the three fields to float locals first, `-car + state`.
-     * A past-the-end pointer over the car's position (`pc[-3..-1]`)
-     * flips the pair to 0+6 but drops 12 B and 6 instructions; a
-     * `pPos[0..2]` pointer the same.  Which side of a float SUBTRACT
-     * gets the fld is not source-selectable here. */
+     * THE SUBTRAHEND IS SPELLED AS A POINTER FIELD, AT EVERY USE.  The
+     * original `fld`s the three state fields and subtracts the car fields
+     * from memory (`fld [esp+S]; fsub [esi+0x1dc]`); the BR_CAR_F32
+     * base-offset spelling gives the reverse (`fld [esi+0x1dc];
+     * fsubr [esp+S]`) -- the operand hand is decided by how the operand is
+     * NAMED, not by the term order, which would change the value.  A cached
+     * `const BrVec3 *pPos` local gets the hand right but CSEs the base and
+     * drops 6 instructions; the cast written out at each use keeps the
+     * original's per-component re-derivation.  Byte-exact 2026-09-10.
+     * Earlier dead list, all byte-identical to the macro form: a paren round
+     * the state operand, named dx/dy/dz temps, a `BrCarState *ps = &state`
+     * pointer, `float *pf = &state.f10` with pf[0..2], copying the three
+     * fields to float locals first, `-car + state`, and a past-the-end
+     * `pc[-3..-1]` pointer. */
     if (g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 2) {
         BrCarStateUnpack(&state, &pSlot[1].rec);
 
         BR_CAR_F32(pCar, BR_S42_CAR_OFF_VEL + 0) =
-            (state.f10 - BR_CAR_F32(pCar, BR_S42_CAR_OFF_POS + 0)) * BR_K_0008FAA8;
+            (state.f10
+             - ((const BrVec3 *)((char *)pCar + BR_S42_CAR_OFF_POS))->x)
+            * BR_K_0008FAA8;
         BR_CAR_F32(pCar, BR_S42_CAR_OFF_VEL + 4) =
-            (state.f14 - BR_CAR_F32(pCar, BR_S42_CAR_OFF_POS + 4)) * BR_K_0008FAA8;
+            (state.f14
+             - ((const BrVec3 *)((char *)pCar + BR_S42_CAR_OFF_POS))->y)
+            * BR_K_0008FAA8;
         BR_CAR_F32(pCar, BR_S42_CAR_OFF_VEL + 8) =
-            (state.f18 - BR_CAR_F32(pCar, BR_S42_CAR_OFF_POS + 8)) * BR_K_0008FAA8;
+            (state.f18
+             - ((const BrVec3 *)((char *)pCar + BR_S42_CAR_OFF_POS))->z)
+            * BR_K_0008FAA8;
     }
 }
 
