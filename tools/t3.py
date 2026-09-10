@@ -33,6 +33,18 @@ GATE A -- the residue test, from ONE fresh object (the last sweep's):
                                   function's size) compared every byte, or left
                                   an uncompared tail of at most 32 B (A3 already
                                   proves the whole multiset; the tail is order)
+                                  -- OR, when it lost sync, the two normalised
+                                  instruction SEQUENCES are positionally
+                                  identical: same length, and every index the
+                                  same canonical row.  divergence.py resyncs on
+                                  raw bytes, so a pure register transposition
+                                  (0x10037F70: eax/ecx swapped throughout, order
+                                  identical) leaves it no anchor and it reports
+                                  100% never-compared -- exactly the colouring
+                                  class rule 12 certifies.  The positional check
+                                  is what A4 wanted and strictly more than the
+                                  32 B tolerance gives: it proves ORDER, which
+                                  A3's multiset cannot.
   A5 oracle                       t3b_verify.py is not DIFF (EQUIVALENT, or
                                   UNCLASSIFIED because it cannot contain the
                                   function -- most of them)
@@ -253,6 +265,48 @@ def canon(row):
     return mn + ' ' + ops
 
 
+def norm_seq(p, sym, lo=0, hi=None):
+    """msetdiff.load's rows in PROGRAM ORDER instead of as a multiset.
+
+    Same decode, same trailing-pad trim, same normalisation -- only the
+    container differs.  A4's positional fallback needs the order that the
+    Counter throws away."""
+    from msetdiff import md, norm
+    from match_diff import parse_coff_obj
+    if p.endswith('.bin'):
+        d, rel = open(p, 'rb').read(), set()
+    else:
+        d, rel = parse_coff_obj(p)[sym]
+        rel = set(rel)
+    ins = list(md.disasm(d, 0))
+    while ins and ins[-1].mnemonic in ('nop', 'int3'):
+        ins.pop()
+    out = []
+    for i in ins:
+        if i.address < lo or (hi is not None and i.address >= hi):
+            continue
+        rd = any(o in rel for o in range(i.address, i.address + i.size))
+        tail = rd and i.size >= 4 and (i.address + i.size - 4) in rel
+        out.append(norm(i, rd, tail))
+    return out
+
+
+def positional(oseq, rseq):
+    """(ok, detail) -- are the two normalised sequences the same row at every
+    index, under the SAME canonical classes A3 pairs by?
+
+    This is A4's fallback, not a weakening of it: identical length plus
+    identical canonical row at every index proves ORDER, which the multiset
+    gates cannot see at all.  It is only consulted when divergence.py lost
+    sync, which for a register transposition it always does."""
+    if len(oseq) != len(rseq):
+        return False, 'lengths differ (%d orig, %d recomp)' % (len(oseq), len(rseq))
+    for k, (a, b) in enumerate(zip(oseq, rseq)):
+        if canon(a) != canon(b):
+            return False, 'index %d: orig `%s` vs recomp `%s`' % (k, a, b)
+    return True, 'positionally identical, %d rows (register-blind)' % len(oseq)
+
+
 def classify(miss, extra, obag=None, rbag=None):
     """Return (unmatched_missing, unmatched_extra, singles) after canonical pairing.
 
@@ -363,6 +417,33 @@ def classify(miss, extra, obag=None, rbag=None):
             side['and R, 0xff'] -= n
             side['or R, R'] -= n
             other['mov B, B'] -= min(n, other['mov B, B'])
+    um += collections.Counter(); ue += collections.Counter()
+    # Constant-materialisation fork: `push K; pop R` IS `mov R, K` -- the same
+    # value in the same register, chosen for size (3 B for an imm8 against 5).
+    # An exact instruction-selection identity, not an approximation: cancel the
+    # PAIR against the single row only, both rows unpaired on the same side and
+    # the immediate identical.  (2026-09-10, 0x1006B440: orig `mov R,0xffffd8f0`,
+    # ours `push 0xffffd8f0; pop R`.)
+    for side, other in ((ue, um), (um, ue)):
+        for row in [r for r in side if r.startswith('push ')]:
+            k = row[5:]
+            if not re.fullmatch(r'0x[0-9a-f]+|-?\d+', k):
+                continue
+            while side[row] and side['pop R'] and other['mov R, ' + k]:
+                side[row] -= 1; side['pop R'] -= 1; other['mov R, ' + k] -= 1
+    um += collections.Counter(); ue += collections.Counter()
+    # Callee-save fork: a BALANCED extra `push R` / `pop R` on one side and
+    # nothing opposite is one more register saved across the body -- the
+    # definition of an allocation difference, and the prologue/epilogue half of
+    # the spill/reload singletons above.  Balance is the discriminator that
+    # keeps an ARGUMENT push out: an argument is pushed and released by the
+    # call's `add esp, N`, never popped back, so it cannot present as an equal
+    # push/pop pair.  (2026-09-10, 0x10063A60: one extra saved register, every
+    # other row paired.)
+    for side in (um, ue):
+        n = min(side['push R'], side['pop R'])
+        if n:
+            side['push R'] -= n; side['pop R'] -= n
     um += collections.Counter(); ue += collections.Counter()
     # Keep-vs-reload x87 fork: `fstp R; fld R` against `fst R` (store, keep
     # the value on the stack). Same value; whether the compiler pops and
@@ -533,6 +614,8 @@ def measure(va):
                 cut = toff if cut is None else min(cut, toff)
     o, no = (load(ob, None, 0, cut) if cut else load(ob, None))
     rc, nr = (load(obj, sym, 0, cut) if cut else load(obj, sym))
+    oseq = norm_seq(ob, None, 0, cut) if cut else norm_seq(ob, None)
+    rseq = norm_seq(obj, sym, 0, cut) if cut else norm_seq(obj, sym)
     from match_diff import parse_coff_obj
     code, robj_rel = parse_coff_obj(obj)[sym]
     tables_ok, tab_note = True, ''
@@ -574,7 +657,7 @@ def measure(va):
                 obytes=len(orig), rbytes=rbytes, oi=no, ri=nr,
                 miss=miss, extra=extra, nmiss=sum(miss.values()), nextra=sum(extra.values()),
                 um=um, ue=ue, singles=singles, regions=regions, lost=lost,
-                lost_bytes=lost_bytes, key=key, oracle=verdict,
+                lost_bytes=lost_bytes, key=key, oracle=verdict, pos=positional(oseq, rseq),
                 tables_ok=tables_ok, tab_note=tab_note), ''
 
 
@@ -586,9 +669,13 @@ def gates(m):
     g.append(('A2 rows', rows <= rlim, '%d+%d = %d (limit %.1f)' % (m['nmiss'], m['nextra'], rows, rlim)))
     unm = sum(m['um'].values()) + sum(m['ue'].values())
     g.append(('A3 classify', unm == 0, '%d unpaired row(s)' % unm))
-    g.append(('A4 lost-sync', m['lost_bytes'] <= LOST_TAIL_MAX,
+    p_ok, p_det = m['pos']
+    g.append(('A4 lost-sync', m['lost_bytes'] <= LOST_TAIL_MAX or p_ok,
               ('none (key %d)' % m['key']) if not m['lost'] else
-              '%d B uncompared at key %d (tolerance %d B; A3 proves the multiset)' % (m['lost_bytes'], m['key'], LOST_TAIL_MAX)))
+              ('%d B uncompared at key %d, order proven instead: %s'
+               % (m['lost_bytes'], m['key'], p_det)) if p_ok else
+              '%d B uncompared at key %d (tolerance %d B; A3 proves the multiset); not positional either: %s'
+              % (m['lost_bytes'], m['key'], LOST_TAIL_MAX, p_det)))
     g.append(('A5 oracle', m['oracle'] != 'DIFF', m['oracle']))
     if m.get('tab_note'):
         g.append(('A6 tables', m['tables_ok'], m['tab_note']))
