@@ -822,29 +822,39 @@ int32_t BrTextListAddRow(BrTextList *pList, const void *pText, int32_t a2,
  * whatever the menu wants to remember alongside the visible text. Passing -1
  * means the row just added. Beware a real bug that is kept: the memory is
  * only allocated the first time a slot is used, so storing a bigger lump
- * into a slot that already has a smaller one writes past the end of it. */
+ * into a slot that already has a smaller one writes past the end of it.
+ *
+ * THISCALL, and that was the whole residue: `mov ebp,ecx` at +0x0B takes
+ * pList out of ecx and the function ends `ret 0xc`, three dwords cleaned by
+ * the callee.  Spelled cdecl it read pList off the stack like the other
+ * three, which cost the register the original keeps the list in and left a
+ * `lea` where the original re-indexes.  Wrapping every argument after `this`
+ * (br_match.h: __fastcall SKIPS a struct when handing out registers, so a
+ * bare second argument would take edx and the epilogue would clean 8) makes
+ * it byte-exact. */
 /* @implements 0x1005C200 d3d BrTextListSetBlob */
-int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
-                          uint32_t size, int32_t index)
+int32_t BR_THISCALL1 BrTextListSetBlob(BrTextList *pList, BrBlobSrcArg pSrc,
+                                       BrBlobSizeArg size, BrBlobIndexArg index)
 {
     BrTextBlob *pSlot;
+    int32_t     i = index.v;
 
-    if (index == -1) {
-        index = (int32_t)(uint16_t)pList->count - 1;
-        if (index < 0) {
-            index = 0;
+    if (i == -1) {
+        i = (int32_t)(uint16_t)pList->count - 1;
+        if (i < 0) {
+            i = 0;
         }
     }
 
-    pSlot = &pList->aBlobs[index];
+    pSlot = &pList->aBlobs[i];
 
     if (pSlot->p == NULL) {
-        pSlot->p = BrOperatorNew(size);
+        pSlot->p = BrOperatorNew(size.v);
     }
     /* GOTCHA: no realloc on a size increase -- the original copies `size`
      * bytes into whatever the first call allocated. */
-    memcpy(pSlot->p, pSrc, size);
-    pSlot->size = size;
+    memcpy(pSlot->p, pSrc.v, size.v);
+    pSlot->size = size.v;
 
     return 1;
 }
