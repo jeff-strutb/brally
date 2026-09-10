@@ -779,7 +779,7 @@ def measure(va):
                          capture_output=True, text=True).stdout.strip().splitlines()
     verdict = 'UNCLASSIFIED'
     for l in orc:
-        m = re.search(r'\b(EQUIVALENT|DIFF|UNCLASSIFIED)\b', l)
+        m = re.search(r'\b(EQUIV-MODULO-FP|EQUIVALENT|DIFF|UNCLASSIFIED)\b', l)
         if m:
             verdict = m.group(1)
     return dict(va=va.lower(), name=r['name'], file=r['file'], status=r['status'], obj=obj,
