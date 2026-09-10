@@ -687,10 +687,28 @@ stepped:
 
         /* The force at car+0x1E8, shaped along the path frame. */
         if (velFwd > 3.0f) {
-            if (pCar->fF48 < halfWidth - -1.0f) {
+            /* The bound is NAMED, and it goes in the dead `limit` slot
+             * (limit's last read is rule 4's `mag`, far above).  Spelled as
+             * the inline expression VC5 canonicalises the test to
+             * `fld <bound>; fcomp fF48` with the C0|C3 polarity; with the
+             * bound in a slot it comes out as the original's
+             * `fld <bound>; fld fF48; fcompp` + `test ah,1`.  Operand-hand
+             * swaps, the !(>=) form, the subtract-and-compare-zero form and
+             * both `1.0f +` orders are all inert (measured 2026-09-10). */
+            limit = halfWidth - -1.0f;
+            if (pCar->fF48 < limit) {
                 k = (velFwd - 3.0f) * 0.015625f;
                 if (k < 0.0f)
                     k = k * -0.25f;
+                /* THE 0.4 CEILING IS STILL OPEN.  We home k to its slot and
+                 * write the ceiling back as an immediate store (`mov dword
+                 * ptr [esp+S], 0x3ecccccd`); the original keeps k on the x87
+                 * stack across the test (`fstp st(0); fld <0.4>`).  Dead
+                 * 2026-09-10: reusing t/q/tq/fl/mag for k (all inert), the
+                 * !(k <= 0.4f) form, the `offset * k` hand, and the ternary
+                 * `f = ((k > 0.4f) ? 0.4f : k) * offset` -- the ternary is
+                 * -8 B and takes A2 to 27/27, but it splits the compare into
+                 * a jl/jge pair and takes A3 from 10 unpaired rows to 13. */
                 if (k > 0.4f)
                     k = 0.4f;
                 f = k * offset;
