@@ -338,6 +338,32 @@ def classify(miss, extra, obag=None, rbag=None):
                     while um[m1] and ue[e1]:
                         um[m1] -= 1; ue[e1] -= 1
         um += collections.Counter(); ue += collections.Counter()
+    # Byte-compose fork: when a uint8_t local's register DIES between fill
+    # and pack site, VC5 homes it and rebuilds the word through memory --
+    #   mov byte ptr [esp+S], B   (home; canon [M])
+    #   mov R, dword ptr [esp+S]  (widened reload -- already a singleton)
+    #   and R, 0xff               (mask the lane)
+    #   or R, R                   (merge into the word)
+    # -- and when it survives, the same compose is one lane move (mov B, B)
+    # or nothing.  Same values, same word; the fork is register-death
+    # timing, which is allocation.  Proven no-spelling axis: 0x1001E380
+    # byte-exact from plain scalars (corpus), the 0x1000A110 dossier
+    # (~300 dead probes: scalars, second array, join lever, use-count
+    # diagnostic -- the home needs a use count no faithful spelling adds).
+    # Cancel the COMPLETE GROUP only -- n of ALL THREE rows unpaired on the
+    # same side -- and require the store to be an esp-slot home in the RAW
+    # bag (a byte store through a pointer never enters the group), consuming
+    # up to n lane moves opposite.  A lone real and/or/store never fires it.
+    for raw_side, side, other in ((miss, um, ue), (extra, ue, um)):
+        n = min(raw_side['mov byte ptr [esp+S], B'],
+                side['mov byte ptr [M], B'],
+                side['and R, 0xff'], side['or R, R'])
+        if n:
+            side['mov byte ptr [M], B'] -= n
+            side['and R, 0xff'] -= n
+            side['or R, R'] -= n
+            other['mov B, B'] -= min(n, other['mov B, B'])
+    um += collections.Counter(); ue += collections.Counter()
     return um, ue, sm + se
 
 
