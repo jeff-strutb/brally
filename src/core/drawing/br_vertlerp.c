@@ -21,6 +21,15 @@ extern void *DAT_102e16b4;
  * fill it with the 8-float blend of two source vertices (position, tex, and
  * extra channels) at fraction t. The free-list pop is skipped when the list
  * is empty; the writes still go through that pointer. */
+/* @t4-pass 0x1000E060 2 2026-09-09 probes 10 bytes 231 insns 79 regions 1 rows 0 census no  (hand, fn.py variants: channel shapes, load orders, sum orders, head-store forms, all inert) */
+/* @t4-pass 0x1000E060 3 2026-09-09 probes 10 bytes 231 insns 79 regions 1 rows 0 census yes  (hand, fn.py variants: declaration orders, reload placement, difference temp, all inert; corpus MISS at +0xc8 len 12 -- the pop/fstp epilogue interleave is proven nowhere) */
+/* @t3 0x1000E060 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 231/231 insns 79/79 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue is epilogue scheduling only: orig interleaves the callee-saved
+ * pops with the last channel's fstp, ours pops after (identical multiset,
+ * REGNORM 0+0, size-exact); see the PARKED T2 note in the file header.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1000E060 glide BrVertLerp8 */
 void BrVertLerp8(void *pA, void *pB, float t)
 {
