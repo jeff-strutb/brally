@@ -56,6 +56,13 @@ extern float DAT_1007745c;
 /* @t4-pass 0x10028200 1 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10028200 2 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10028200 3 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028200 4 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/crank.py) */
+/* @t3 0x10028200 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 430/441 insns 105/108 rows 3+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 30 compiles this pass, levers accepted: mut:addr_taken:next > mut:reorder_stmts;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
                  int a6, int a7, int a8, int a9, int a10, int a11,
