@@ -75,6 +75,7 @@ void BrModelSlotApply(uint8_t *pCar, void *pDrv);
  * Unpaired: wrap-arm push/add vs lea (VC5), cmp [f140] vs cmp edx,eax,
  * 1e9 store CSE, pair-swap +0x50 vs +0x54, fa8/40 reloads. fxch st(2) x4. */
 /* @t4-pass 0x1005F6C0 1 2026-09-10 probes 20 bytes 2080 insns 548 regions 18 rows 46 census yes */
+/* @t4-pass 0x1005F6C0 2 2026-09-10 probes 11 bytes 2080 insns 548 regions 18 rows 46 census yes */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore */
 void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
 {
