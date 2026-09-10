@@ -7562,3 +7562,34 @@ byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
   (`lea ecx,[ecx+eax*2]`) means the SOURCE has two variables: the bound and
   a separate counter initialised from it inside the guard. Ghidra folds
   them into one and drops the mov.
+
+---
+
+## The port's null-guard is the wall; the original re-reads the global at every use, re-calls the pure function in guard AND value, and takes &blob where a pointer extern lies
+
+0x1000BEB0 BrCarDrawBody (1,576 B, /O2, src/core/drawing/br_drawcar.c),
+62 msetdiff rows to BYTE-EXACT in 6 probes, five independent facts:
+
+- `slotL ? slotL + 0x10 : 0` was a PORT SAFETY ADDITION.  The original has
+  no test at all: four puts each re-read `[car+0x140]`, re-index the slot
+  table, and add 0x10/0x20/0x30 unconditionally.  EXTRA `cmp/je/jmp/xor`
+  triples in a put run = look for an invented ternary, not a codegen lever.
+- MISSING `mov R,[A]` rows against a cached local (`model`, `iCar`,
+  `pCamBasis`) mean the local DOES NOT EXIST in the source: spell the
+  global/field deref at every use.  Killing the `model` local here also
+  fixed the dot1 spill slot ([esp+8]) and an extra push/pop -- one cache
+  can own three row classes.
+- Orig calling a pure 2-arg helper in the GUARD and AGAIN in the VALUE
+  (`if (Dot(&dir,g) < 0) ... val = -(Dot(&dir,g) * dot1)`) shows as
+  MISSING `push/call/add esp,8` pairs.  There was no `dot2` temp.
+- `fstp [slot]; fdiv [slot]` where we emit `fdivp st(1)` is a DESTRUCTIVE
+  statement in one arm only: `len = len * len;` then `/ len` -- legal
+  because the two glare arms are runtime-exclusive (dot<0 vs dot>0.95).
+- `mov [eax+4], imm32-reloc` against our load-then-store: the extern is
+  declared `void *BrG_0AAxxx` but the original stores the SYMBOL ADDRESS;
+  spell `&BrG_0AAxxx`.  The old value-read would have emitted the blob's
+  first WORD -- a latent port bug, not just a codegen miss.
+- Inside `a == G && X == (void *)(a + K)`: the original spells the second
+  operand off the GLOBAL (`(uchar *)G + K`), reusing the register the first
+  compare loaded and destroying it with `add R,K`.  A `lea` from the local
+  is the tell that the source used the local.
