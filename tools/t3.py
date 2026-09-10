@@ -200,6 +200,14 @@ def canon(row):
         d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+)\]', ops)
         if d and d.group(1) not in ('1', '0x1'):
             return 'add R, ' + d.group(1)
+    # add R,-X against sub R,X: MSVC5 canonicalises straight-line constant
+    # subtraction to add-negative (0x1006FD50 dossier: every spelling and
+    # flag probed, VC4.2 cross-check); the value is identical, the fork is
+    # instruction selection.  Register+immediate form only.
+    if mn == 'add':
+        d = re.fullmatch(r'R, -(0x[0-9a-f]+|\d+)', ops)
+        if d:
+            return 'sub R, ' + d.group(1)
     # memory operand forms
     def mem(m):
         inner = m.group(1)
