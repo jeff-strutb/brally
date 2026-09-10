@@ -352,11 +352,11 @@ extern DWORD DAT_10ac40a8[20];          /* the session name, 80 bytes     */
  * copied into the game's globals.  The fetched description is always freed;
  * returns 0 or the DirectPlay error. */
 /* @t4-pass 0x10035DD0 1 2026-09-09 probes 25 bytes 613 insns 186 regions 4 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10035DD0 1 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census no  (hand, fn.py variants: literal/order/amp/cast spellings, all inert) */
-/* @t4-pass 0x10035DD0 2 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census yes  (hand, fn.py variants: decl orders, memset/vtable forms, all inert; corpus MISS at +0x50 len 10) */
+/* @t4-pass 0x10035DD0 2 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census no  (hand, fn.py variants: literal/order/amp/cast spellings, all inert) */
+/* @t4-pass 0x10035DD0 3 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census yes  (hand, fn.py variants: decl orders, memset/vtable forms, all inert; corpus MISS at +0x50 len 10) */
 /* @t3 0x10035DD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 613/615 insns 186/187 rows 1+0 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
+ * @t3-effort passes 3 zero-movement 2 3
  * residue is one rematerialised zero (the xor singleton; the original
  * reuses a live zero register, -1 insn) plus colouring; identical
  * multiset otherwise, 4 masked regions.  Dead probes in the two ledger
