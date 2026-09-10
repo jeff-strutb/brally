@@ -1400,6 +1400,13 @@ static void wheel_call(unsigned char *car)
  * (regions 6-24, change 0).  The pCam re-read landed 2026-09-09 (66f0f31);
  * the float commute quad and the x87 schedule classify.  Everything else in
  * 29 masked regions is allocation echo at delta 0.
+ * ‼ 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
+ * the CURRENT gates -- four inert-read spellings (|x&0, idempotent |x|x,
+ * post-statement re-reads; at arm 1, the join, and both) are ALL
+ * byte-identical to head: VC5 value-numbers a foldable read away before it
+ * creates a use, and an unfoldable read adds real instructions.  The
+ * use-count catch-22 is closed formally; T4 waits on a corpus hit for a
+ * straight-line homed byte-compose, or the end-grind.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
