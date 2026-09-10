@@ -7740,3 +7740,54 @@ removal, increment position, temps for the right/bottom values and an
 load of 0x1003C950 BrOptCycleAA2A0C (VC5 hoists it above the first branch
 from every spelling, including re-reading after the store and an
 `else if` chain).
+
+2026-09-10 T3 lane, second half -- the LAYOUT and LOAD-ONCE classes:
+
+- **A cold arm goes OUT OF LINE, past the epilogue, only when it sets the
+  join's value ITSELF and jumps PAST the join's assignment of it.**
+  0x10067710 BrCrRespWalk: the mode-4 arm's `flag = 1; goto LAB_join;` with
+  `flag = 1; LAB_join:` above the shared call is what lifts the arm to the
+  end of the function, where the original has it, and it is the difference
+  between 33 unanchored bytes and none.  Textual placement reaches NONE of
+  this: the arm's body written as a trailing label, a mid-function label, a
+  negated-then arm and an ||-chain all compile to the same inline bytes,
+  and hoisting `flag = 1` above the test lifts the arm but turns every
+  constant store into an immediate-to-memory.  It is the SKIP that does it.
+- **Two arms that both write one global share ONE store when the first arm
+  `goto`s into the second's.**  Same shape twice: 0x1000DF00
+  BrPolyClipPlane's vertex count and 0x1003C600 BrOptCycleBD3E0's wrap.
+  `g = g +/- 1` per arm emits two stores.
+- **A zero that must NOT fold is a local carried in from an earlier block.**
+  0x100183B0 BrFadeDrawBars: `((0 << shift) & 0xFFF) << 12` written with a
+  literal (or 0u, or a cast, or a local initialised in that arm) folds to a
+  plain `mov [x],0`; the same expression over a local set to 0 in an
+  earlier block keeps the original's four instructions.
+- **Read a counter ONCE and write the local back.**  `n = g; if (n) { g = n
+  - 1; }` gives the original's `cmp reg,reg` against a kept zero register;
+  `if (g) { g -= 1; }` gives `cmp [g],reg` plus a reload (0x100183B0, twice).
+- **The look-ahead of a walk starts AS the cursor.**  0x1000DF00: `pNext =
+  p; if (p) pNext = p->pNext;` reuses the null p; a `(p) ? p->pNext : NULL`
+  ternary materialises a fresh zero and pays an `xor` and a `jmp`.
+- **Split the do-nothing exit into its OWN arm to stop a shared load being
+  hoisted.**  0x1003C600 (byte-exact): with `else { v = g; if (down) ... }`
+  VC5 hoists the load above the first `je`, eax is busy, and the flag load
+  pays the longer `8b 0d` form; `else if (down == 0) { v = g; } else { v =
+  g; ... }` restores the original's two separate loads and the `a1` moffs.
+- **A guard test reads off the record pointer, not a second base+index
+  expression.**  0x10028620 BrTexSlotFetchPixels: the base+index written
+  twice is CSE'd into a register of its own (one instruction the original
+  does not have) and every register role downstream follows; reading the
+  test as `p[k]` off the pointer gives the original's two-instruction head
+  and takes the row count from 2+3 to 0+0.
+- **Write the SUCCESS arm first when the original falls through into it.**
+  0x10028200: `if (ok) { store; } else { goto fail; }` gives the original's
+  `jb`; `if (!ok) goto fail; store;` inverts the branch and unanchors the
+  whole tail.
+
+Same lane, walls PROVEN (do not respell): the folded byte OR (0x100311C0's
+`pb[1] |= 0x20` against the original's single `or byte ptr [b+i+0x4d],0x20`
+-- fourteen spellings, pointer- and index-typed, RMW written out, direct
+memory, dword width, statement order); the base+index CSE at 0x100302A0's
+leaf cursor; and the thiscall struct-wrapper's constant argument
+(0x10037FA0, `mov R,N`/`push R` where a real thiscall pushes an imm8 --
+route to the C++ lane, do not probe C).
