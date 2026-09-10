@@ -77,6 +77,7 @@ void BrRankAssign(BrDriver *pSlots, int32_t n)
  * contiguous block of memory -- the snapshot the replay and save-state code
  * works from. If the block turns out not to have been big enough it stops the
  * game with an error, but only after the overrun has already happened. */
+/* @t4-pass 0x100608F0 1 2026-09-10 probes 40 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10067880 d3d BrVarSave */
 /* @n64 0x8022ADCC located */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
