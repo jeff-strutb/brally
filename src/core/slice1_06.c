@@ -86,6 +86,13 @@ uint32_t   g_brPendDropped; /* 0x106C7C40 */
 /* WHAT IT DOES: queue a piece of work to run later.  If the queue is
  * already full the item is dropped, but the counter still moves on. */
 /* @t4-pass 0x100306D0 1 2026-09-10 probes 30 bytes 51 insns 16 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100306D0 2 2026-09-10 probes 30 bytes 51 insns 16 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x100306D0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 51/51 insns 16/16 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue after tools/crank.py: 30 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
