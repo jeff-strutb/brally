@@ -184,6 +184,66 @@ void BrWrap_10067940(void *p)
     BrExt_10067880(&g_0B39B0, (char *)p + 0x7080, 0x15F88);
 }
 
+extern int  g_brFlag6909E0;   /* 0x105CCB88  suppresses the save while set   */
+extern int  g_br0AA010;       /* 0x100A9360  race mode (2 and 4 skip)        */
+extern int  g_brRaceNEntrant; /* 0x100B3858  number of entrants              */
+extern int  g_br100BCBE8;     /* 0x100BCBE8  lap count / gate                */
+extern int  DAT_10af3bc8;     /* 0x10AF3BC8  base of the per-entrant records */
+extern char DAT_102066c8;     /* 0x102066C8  base of the entrant save area   */
+extern char s_SAVING_LAST_LAP_INFO_100b382c[];  /* 0x100B382C */
+int BrReplayIsOn(void);       /* 0x10063A50 */
+int BrSet_1006AA90(void);     /* 0x10063A40 */
+
+/* WHAT IT DOES: at the end of a lap, snapshot every entrant's last-lap
+ * record into the save area -- but only during an ordinary recorded race
+ * (not a replay, not the two excluded modes, and only once the leader is on
+ * the final counted lap). For each entrant it clears the record's running
+ * fields, stamps the fixed frame budget (0x3840), points the record at its
+ * slot in the save area, and hands the finished area to the writer. */
+/* T2 (EQUIVALENT, not byte-exact): insn-exact (80/80), oracle EQUIVALENT,
+ * gates 0/A1/A2/A4/A5 pass.  Residue is two unpaired rows in the record loop:
+ * the original materialises the save-area base 0x102066C8 into a register
+ * (`mov ebp,imm`) and accumulates `-idx*0x15F88 + off` onto it (`add ebp,off`),
+ * while VC5 folds the base as an immediate addend (`add r,imm`).  The literal-
+ * pooling wall -- the base is used only twice, too few for VC5 to pool it.
+ * Reassociating and sequencing the pointer arithmetic (probes v1..v3) do not
+ * move it. */
+/* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
+void __fastcall BrRaceSaveLastLapInfo(int param_1)
+{
+    int n;
+    int *pRec;
+    int off;
+
+    if (g_brFlag6909E0 != 0 || g_br0AA010 == 2 || g_br0AA010 == 4)
+        return;
+    if (*(int *)(param_1 + 0x140) >= g_brRaceNEntrant)
+        return;
+    if (*(int *)(param_1 + 0xfa8) != g_br100BCBE8 - 1 && g_br100BCBE8 > 1)
+        return;
+    if (BrReplayIsOn() != 0)
+        return;
+
+    BrPodNop(s_SAVING_LAST_LAP_INFO_100b382c);
+    BrSet_1006AA90();
+
+    n = 0;
+    if (g_brRaceNEntrant > 0) {
+        off = 0;
+        pRec = &DAT_10af3bc8;
+        do {
+            *(int *)(*pRec + 0x34 + *(int *)(param_1 + 0x140) * 4) = 0;
+            pRec += 0xada;
+            *(int *)(pRec[-0xada] + 0x3c + *(int *)(param_1 + 0x140) * 4) = 0x3840;
+            ++n;
+            *(char **)(pRec[-0xada] + 0x2c + *(int *)(param_1 + 0x140) * 4) =
+                &DAT_102066c8 + off + *(int *)(param_1 + 0x140) * -0x15f88;
+            off += 0x3840;
+        } while (n < g_brRaceNEntrant);
+    }
+    BrWrap_10067940(&DAT_102066c8 + *(int *)(param_1 + 0x140) * -0x15f88);
+}
+
 /* WHAT IT DOES: destroy the array of 16 C++ objects that 0x100715E0
  * constructed. */
 /* @implements 0x10071610 d3d BrWrap_10071610 */
