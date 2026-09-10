@@ -1104,6 +1104,16 @@ void    BrGlNavTail(void);          /* 0x10059060 */
  * action. The front end's input step. */
 /* @t4-pass 0x10059410 1 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10059410 2 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x10059410 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 943/939 insns 297/298 rows 1+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: regions 1-2 are a whole-body eax<->ecx/al<->cl transposition; the
+ * lone row is the original rematerialising a fresh zero (xor eax,eax) for the
+ * Edge672x store run while ours reuses the live edi zero -- chained
+ * assignment, a named zero and both chain orders are value-numbered to the
+ * same code (probed 2026-09-09, 3 variants, byte-identical), the same
+ * mechanism as br_tex3d's specMem note.  Crank passes 1-2 are the ledger.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10059410 glide BrGlNavPoll */
 /* RESIDUE, measured 2026-09-03: 943 B / 297 insns against 939 / 298, and the
  * register-blind gap is 0+1 -- ONE missing `xor R,R`.  divergence.py (key 8)

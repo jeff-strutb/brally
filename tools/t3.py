@@ -181,6 +181,13 @@ SINGLETON = [
     r'^test R, R$',                         # flag re-test after a copy/reload
     r'^fxch st\(\d\)$',                     # x87 stack permutation, no value effect
     r'^mov R, (0x[0-9a-f]{1,4}|\d{1,5})$',  # rematerialised small constant at a join
+    r'^xor R, R$',                          # rematerialised ZERO -- the 2-byte form of the
+                                            # line above.  Safe alone: if the zero fed a real
+                                            # `x = 0` the other side lacks, that store row is
+                                            # still unpaired and A3 fails on it (2026-09-09,
+                                            # 0x10059410: orig xors a fresh zero for a chained
+                                            # store run while ours reuses the live edi zero;
+                                            # every store and compare pairs).
     r'^mov R, A$',                          # rematerialised address constant
 ]
 SINGLETON = [re.compile(p) for p in SINGLETON]
