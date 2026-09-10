@@ -746,6 +746,7 @@ glide_va,name,module,basis,file
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
 0x1005F530,BrDriverAssetsFree,racing,neighbour-1,src/core/racing/br_driver.c
+0x1005F580,BrRankAssign,racing,filed,src/core/racing/br_rank.c
 0x1005F690,BrRankCmpKey,racing,description,src/core/racing/br_rank.c
 0x1005FF00,BrRaceGateStep,racing,filed,src/core/racing/br_race.c
 0x100609B0,BrWrap_10067940,startup,filed,src/core/startup/br_objlife.c
