@@ -92,6 +92,13 @@ extern const uint8_t *g_apBrImgTintTex[];
 /* @t4-pass 0x1005A300 1 2026-09-07 probes 77 bytes 291 insns 98 regions 4 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005A300 2 2026-09-07 probes 71 bytes 291 insns 98 regions 4 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005A300 3 2026-09-10 probes 40 bytes 282 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005A300 4 2026-09-10 probes 40 bytes 282 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x1005A300 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 282/286 insns 96/97 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:stride > mut:reorder_stmts;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005A300 glide BrImgMulByTexture */
 void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
 {
