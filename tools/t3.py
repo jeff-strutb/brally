@@ -408,6 +408,23 @@ def classify(miss, extra, obag=None, rbag=None):
     # same side -- and require the store to be an esp-slot home in the RAW
     # bag (a byte store through a pointer never enters the group), consuming
     # up to n lane moves opposite.  A lone real and/or/store never fires it.
+    # Byte-width spill: the dword spill `mov dword ptr [esp+S], R` and its
+    # reload are both singletons already; the BYTE spill is missing from that
+    # list only because msetdiff prints it as a byte store.  Admit it on the
+    # same footing -- but only when the same side actually reloads the slot
+    # (the widened-reload singleton), so a real byte store to a local the
+    # other side never performs stays unpaired.  (2026-09-10, 0x1006AFA0
+    # BrNetWriteTagC0: the original pushes the tag with the upper three bytes
+    # of eax still dirty, which no C spelling reaches -- a byte parameter is
+    # register-eligible under __fastcall, so it never lands on the stack; the
+    # dossier's three probed wrappers all home the partial write first.)
+    for raw_side, side, single in ((miss, um, sm), (extra, ue, se)):
+        n = min(raw_side['mov byte ptr [esp+S], B'],
+                side['mov byte ptr [M], B'],
+                single['mov R, dword ptr [esp+S]'])
+        if n:
+            side['mov byte ptr [M], B'] -= n
+    um += collections.Counter(); ue += collections.Counter()
     for raw_side, side, other in ((miss, um, ue), (extra, ue, um)):
         n = min(raw_side['mov byte ptr [esp+S], B'],
                 side['mov byte ptr [M], B'],

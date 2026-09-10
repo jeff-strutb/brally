@@ -153,6 +153,18 @@ extern unsigned char DAT_10226a3c;
  * under a different tag. */
 /* @t4-pass 0x1006AFA0 1 2026-09-07 probes 48 bytes 79 insns 28 regions 2 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006AFA0 2 2026-09-07 probes 48 bytes 79 insns 28 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t3 0x1006AFA0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 79/71 insns 28/26 rows 0+2 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * The whole residue is the byte-argument wall in the dossier below: the
+ * original pushes the tag with the upper three bytes of eax still holding the
+ * size check, which MSVC only does when the callee's parameter is a byte type
+ * -- and a byte parameter is register-eligible under __fastcall, so no C
+ * spelling puts it on the stack.  Ours homes the byte and reloads the slot as
+ * a dword: a byte-width spill and its reload, allocation, same value pushed.
+ * Three wrappers already probed dead (1-byte struct, 4-byte union through its
+ * char member, 4-byte struct with explicit pad).  Two counted @t4-pass passes,
+ * both zero-movement.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006AFA0 glide BrNetWriteTagC0 */
 /* RESIDUE: 2 instructions / 8 bytes, and the cause is a construct C cannot
  * spell. Everything else is exact (RAW and REGNORM 2+0, the two rows below).
