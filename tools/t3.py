@@ -253,8 +253,13 @@ def canon(row):
     return mn + ' ' + ops
 
 
-def classify(miss, extra):
-    """Return (unmatched_missing, unmatched_extra, singles) after canonical pairing."""
+def classify(miss, extra, obag=None, rbag=None):
+    """Return (unmatched_missing, unmatched_extra, singles) after canonical pairing.
+
+    obag/rbag: the FULL normalised multisets of each side (not the
+    differences) -- context for rules that need a row both sides share,
+    like the masked-or fold.  Optional; rules needing them are skipped
+    when absent."""
     def split(c):
         single, rest = collections.Counter(), collections.Counter()
         for row, n in c.items():
@@ -289,6 +294,50 @@ def classify(miss, extra):
                         break
                 if again:
                     break
+    # Either-or layout fork: `jCC A; jmp B` against `j!CC B` (fallthrough A)
+    # is the SAME control flow laid out the other way round -- the class the
+    # 0x10036810 / 0x10036B20 dossiers name, proven not source-reachable
+    # (goto-shaped and arm-swapped restructures compile to identical bytes).
+    # Cancel the TRIPLE only: the jmp and the inverse-polarity pair must all
+    # be unpaired at once, on matching sides.  canon already folds the eq
+    # polarities (je/jne -> jeq), so only the ordered pairs appear here.
+    INV = (('jl T', 'jge T'), ('ja T', 'jbe T'), ('jae T', 'jb T'),
+           ('jg T', 'jle T'))
+    for a, b in INV + tuple((y, x) for x, y in INV):
+        while um[a] and um['jmp T'] and ue[b]:
+            um[a] -= 1; um['jmp T'] -= 1; ue[b] -= 1
+        while ue[a] and ue['jmp T'] and um[b]:
+            ue[a] -= 1; ue['jmp T'] -= 1; um[b] -= 1
+    um += collections.Counter(); ue += collections.Counter()
+    # Masked-or constant fold: VC5 folds `(x & M) | O` to `(x & (M & ~O)) | O`
+    # for every spelling (0x10005330 dossier: `and al,0xbf; or al,0x80`
+    # unreachable, ours is `and al,0x3f`; same wall on 0x10005400 with
+    # 0x7f/0x40).  Cancel an and/and mask pair whose differing bits are
+    # entirely covered by an `or` mask that BOTH streams carry (obag/rbag are
+    # the full multisets, not the differences).  Byte-or-dword width crossing
+    # is admitted only for sub-0x100 masks -- the same dead-upper-bits axis
+    # as the byte-slot width fork.
+    if obag is not None and rbag is not None:
+        AND = re.compile(r'and ([BRW]), (0x[0-9a-f]+|\d+)$')
+        ors = [(mo.group(1), int(mo.group(2), 0))
+               for row in obag if row in rbag
+               for mo in [re.fullmatch(r'or ([BRW]), (0x[0-9a-f]+|\d+)', row)] if mo]
+        for m1 in list(um):
+            a1 = AND.fullmatch(m1)
+            if not a1:
+                continue
+            for e1 in list(ue):
+                a2 = AND.fullmatch(e1)
+                if not a2:
+                    continue
+                x, y = int(a1.group(2), 0), int(a2.group(2), 0)
+                if a1.group(1) != a2.group(1) and not (x < 0x100 and y < 0x100):
+                    continue
+                diff = x ^ y
+                if diff and any((diff & oz) == diff for _, oz in ors):
+                    while um[m1] and ue[e1]:
+                        um[m1] -= 1; ue[e1] -= 1
+        um += collections.Counter(); ue += collections.Counter()
     return um, ue, sm + se
 
 
@@ -411,7 +460,7 @@ def measure(va):
         ins.pop()
     rbytes = (ins[-1].address + ins[-1].size) if ins else 0
     miss, extra = o - rc, rc - o
-    um, ue, singles = classify(miss, extra)
+    um, ue, singles = classify(miss, extra, o, rc)
     # divergence: masked region count + lost-sync
     key = max(3, min(6, no // 8))            # a 12-insn leaf cannot resync on 6
     c = [PY, 'tools/divergence.py', os.path.relpath(obj, ROOT),
