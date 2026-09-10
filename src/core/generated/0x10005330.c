@@ -69,6 +69,15 @@ extern char DAT_10273328[];          /* g_brP277B40, the send target       */
  * bit 7 set and bit 6 cleared in the slot's flag byte. */
 /* @t4-pass 0x10005330 1 2026-09-07 probes 43 bytes 194 insns 60 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10005330 2 2026-09-07 probes 43 bytes 194 insns 60 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10005330 1 2026-09-09 probes 10 bytes 194 insns 60 regions 1 rows 2 census no  (hand, fn.py variants: or/and orders, +0x80, temps, guard/wrap spellings, all inert or worse) */
+/* @t4-pass 0x10005330 2 2026-09-09 probes 10 bytes 194 insns 60 regions 1 rows 2 census yes  (hand, fn.py variants: ~0x40, volatile fold-blocker, decimal/double/xor mask forms, all inert or worse; corpus MISS at +0x8a len 8) */
+/* @t3 0x10005330 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 194/194 insns 60/60 rows 1+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is ONE BYTE: VC5 folds (x & 0xbf) | 0x80 to (x & 0x3f) | 0x80
+ * for every spelling probed (dossier above); cancelled by t3.py classify's
+ * masked-or fold class (61eaf81) -- the two forms are value-identical.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10005330 glide BrNetBeaconTick */
 void BrNetBeaconTick(void)
 {
