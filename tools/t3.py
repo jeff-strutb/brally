@@ -239,6 +239,29 @@ def classify(miss, extra):
     sm, rm = split(miss)
     se, rx = split(extra)
     um, ue = rm - rx, rx - rm
+    # Commutative-fold fork: VC5 canonicalises commutative x87 operands, so
+    # `fld X; fmul Y` against `fld Y; fmul X` is a codegen axis no spelling
+    # reaches (br_vec.c dossiers, N64-confirmed on 0x1003B020).  Cancel the
+    # crossed QUAD only -- both rows of both sides, operands exactly swapped
+    # -- and only for the exactly-commutative ops (fmul/fadd, one rounding).
+    for op in ('fmul', 'fadd'):
+        again = True
+        while again:
+            again = False
+            for m1 in [r for r in um if r.startswith('fld ')]:
+                x = m1[4:]
+                for m2 in [r for r in um if r.startswith(op + ' ')]:
+                    y = m2[len(op) + 1:]
+                    if x == y:
+                        continue
+                    e1, e2 = 'fld ' + y, op + ' ' + x
+                    if um[m1] and um[m2] and ue[e1] and ue[e2]:
+                        um[m1] -= 1; um[m2] -= 1; ue[e1] -= 1; ue[e2] -= 1
+                        um += collections.Counter(); ue += collections.Counter()
+                        again = True
+                        break
+                if again:
+                    break
     return um, ue, sm + se
 
 
