@@ -548,7 +548,16 @@ int BrSndVoiceLoad();           /* 0x1006BC10, br_sndload.c                     
  * (w2, w3) and head-of-TU placement (w4) are inert; pointer spelling vs
  * indexed spelling of rows 24/25 is codegen-identical once the polarity is
  * right (w5).
- * @t4-pass 2026-09-09 probes=7 result=diff16/regnorm2+2 census no */
+ * (thin pre-ledger pass, 7 probes, not counted: w1-w6 above) */
+/* @t4-pass 0x1006C290 1 2026-09-09 probes 10 bytes 459 insns 138 regions 2 rows 0 census no  (hand, fn.py variants: literal/guard/index spellings, div-vs-shift, all inert or worse) */
+/* @t4-pass 0x1006C290 2 2026-09-09 probes 10 bytes 459 insns 138 regions 2 rows 0 census yes  (hand, fn.py variants: name/decl swaps, store fusion, loop-bound forms, all inert; corpus query at +0x40) */
+/* @t3 0x1006C290 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 459/459 insns 138/138 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the engine loop's i/IV24 esi-edi transposition only (the
+ * BrSelLookup class); size- and insn-exact, identical register-blind
+ * multiset.  Dead list w1-w6 in the RESIDUE block above plus the two
+ * ledger lines.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006C290 glide BrSfxBankLoad */
 
 int BrSfxBankLoad(int iSet)
