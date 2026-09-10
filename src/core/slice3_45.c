@@ -920,7 +920,7 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
  * one that works. Every way it can fail writes a message to the debugger and
  * gives the device back. */
 /* @implements 0x100790E0 d3d BrFfbEnumDevice */
-int32_t BrFfbEnumDevice(const void *pDevInst, void *pvRef)
+int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
 {
     unsigned char guid[16];
     BrDiObj *pTmp = NULL;
