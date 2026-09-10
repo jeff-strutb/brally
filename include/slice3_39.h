@@ -555,8 +555,18 @@ BrTextList *BrTextListDeleteDtor(BrTextList *pList, uint32_t flags);
  * GOTCHA (a real bug, reproduced): the allocation happens only when the slot
  * pointer is NULL.  A second call on the same slot with a LARGER size copies
  * the larger size into the original, smaller allocation. */
-int32_t BrTextListSetBlob(BrTextList *pList, const void *pSrc,
-                          uint32_t size, int32_t index);
+/* THISCALL: `mov ebp,ecx` at +0x0B takes pList out of ecx, the other three
+ * arguments are read from the stack, and the function ends `ret 0xc` -- three
+ * dwords cleaned by the callee.  Per br_match.h, EVERY argument after `this`
+ * has to be wrapped: __fastcall skips a struct when it hands out registers, it
+ * does not stop at the first one, so a bare second argument would take edx and
+ * the epilogue would clean 8. */
+typedef struct { const void *v; } BrBlobSrcArg;
+typedef struct { uint32_t    v; } BrBlobSizeArg;
+typedef struct { int32_t     v; } BrBlobIndexArg;
+
+int32_t BR_THISCALL1 BrTextListSetBlob(BrTextList *pList, BrBlobSrcArg pSrc,
+                                       BrBlobSizeArg size, BrBlobIndexArg index);
 
 /* ---------------------------------------------------------------------
  * The two data tables 0x1005B910 needs.
