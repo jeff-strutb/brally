@@ -900,6 +900,15 @@ __declspec(dllimport) int32_t __stdcall IsIconic(void *hWnd);
  * a hWnd local; per-arm returns with `register` (worse, +29 B); placement at
  * the top of the TU and at its end. */
 /* @t4-pass 0x100590D0 1 2026-09-09 probes 12 bytes 417 insns 123 regions 0 rows 8 census no  (hand) */
+/* @t4-pass 0x100590D0 2 2026-09-09 probes 10 bytes 417 insns 123 regions 5 rows 0 census no  (hand, fn.py variants: literal/comparison/cast spellings across the case arms, all inert or worse) */
+/* @t4-pass 0x100590D0 3 2026-09-09 probes 10 bytes 417 insns 123 regions 5 rows 0 census yes  (hand, fn.py variants: switch/decl/guard forms, all inert; corpus MISS at +0x8 len 10) */
+/* @t3 0x100590D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 417/419 insns 123/123 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * residue is register colouring/encoding only: identical register-blind
+ * multiset (rows 0+0), insn-exact, -2 B of encoding shadow across the
+ * window-proc switch, 5 masked regions.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100590D0 glide BrSub100590D0 */
 int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
                                 uint32_t wParam, int32_t lParam)
