@@ -211,3 +211,71 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
     }
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+extern int *DAT_118eeeec;
+extern int DAT_10b71530;
+extern int *DAT_10b71534;
+extern int DAT_10b713e0;
+int FUN_100724c0(void);
+int BrDiAcquire(void);
+typedef int (__stdcall *CC_std_1)(int);
+typedef int (__stdcall *CC_std_3)(int, int, int);
+
+/* WHAT IT DOES: the joystick "press anything" scan for the control-binding
+ * UI. Creates the joystick device on first use (marking the binding table
+ * as the joystick page at 0x10B4E080 and calling the DirectInput init);
+ * then polls it, reads a full DIJOYSTATE2, re-acquires on DIERR_NOTACQUIRED,
+ * and reports the first pressed control: button i as *pOut=0x100 returning
+ * i, or an axis pushed past +/-50 as *pOut=0x8000+0x100*dir returning 0.
+ * Returns -1 when nothing is pressed, 1 when no device exists. */
+/* @implements 0x100704E0 glide BrJoyScanAny */
+
+int BrJoyScanAny(int *param_1)
+
+{
+  int iVar1;
+  unsigned char auStack_110 [272];
+
+  if (DAT_118eeeec == (int *)0x0) {
+    DAT_10b71530 = 2;
+    DAT_10b71534 = &DAT_10b713e0;
+    FUN_100724c0();
+    if (DAT_118eeeec == (int *)0x0) {
+      return 1;
+    }
+  }
+  (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 100))((int)DAT_118eeeec);
+  iVar1 = (*(CC_std_3 *)(*(int *)(DAT_118eeeec) + 36))((int)DAT_118eeeec,0x110,(int)auStack_110);
+  if ((iVar1 != 0) && (iVar1 == -0x7ff8ffe2)) {
+    BrDiAcquire();
+  }
+  /* A `for` here, not do-while: VC5 converts the known-true `for` into the
+   * original's unrotated do-while with `test [esp+eax+0x30],cl` (the 0x80
+   * shared between mask and bound in ecx); a source-spelled do-while gets
+   * rotated with a peeled first-button load into dl (+4 B). */
+  for (iVar1 = 0; iVar1 < 0x80; iVar1 = iVar1 + 1) {
+    if ((auStack_110[iVar1 + 0x30] & 0x80) != 0) {
+      *param_1 = 0x100;
+      return iVar1;
+    }
+  }
+  if (*(int *)auStack_110 < -0x32) {
+    *param_1 = 0x8000;
+    return 0;
+  }
+  if (0x32 < *(int *)auStack_110) {
+    *param_1 = 0x8100;
+    return 0;
+  }
+  if (*(int *)(auStack_110 + 4) < -0x32) {
+    *param_1 = 0x8200;
+    return 0;
+  }
+  if (0x32 < *(int *)(auStack_110 + 4)) {
+    *param_1 = 0x8300;
+    return 0;
+  }
+  return -1;
+}
+#endif

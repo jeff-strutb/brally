@@ -954,6 +954,7 @@ glide_va,name,module,basis,file
 0x100703A0,BrSub100770C0,controls,neighbour-1,src/core/controls/br_dik.c
 0x100703D0,FUN_100703d0,controls,neighbour-1,src/core/generated/0x100703D0.c
 0x10070490,BrDikGetDeviceState,controls,description,src/core/controls/br_dik.c
+0x100704E0,BrJoyScanAny,controls,filed,src/core/controls/br_dik.c
 0x100706B0,BrDiAcquire,controls,neighbour-1,src/core/generated/0x100706B0.c
 0x10071EB0,BrDiKeyboardShutdown,racing,neighbour-1,src/core/generated/0x10071EB0.c
 0x10071F00,BrTickAdd_10078C10,racing,filed,src/core/racing/br_replayon.c
