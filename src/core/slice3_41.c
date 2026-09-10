@@ -130,6 +130,7 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 /* WHAT IT DOES: puts a previously gathered snapshot back where it came from,
  * restoring every variable in the list. It trusts the buffer completely --
  * there is no length given and no check made. */
+/* @t4-pass 0x10060970 1 2026-09-10 probes 40 bytes 60 insns 30 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10067900 d3d BrVarLoad */
 /* @n64 0x8022AE70 located */
 void BrVarLoad(const BrVarBlock *pTable, const void *pSrc)
