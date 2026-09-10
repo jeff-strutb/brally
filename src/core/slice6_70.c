@@ -345,6 +345,16 @@ void BrExt_1003C150(void)
  * registers. DO NOT RE-PROBE the term order -- all six permutations of
  * `w + nudge + x + 3` compile byte-identically; VC5 reassociates integer
  * sums freely, so the pairing is the allocator's, not the source's. */
+/* @t4-pass 0x10014960 1 2026-09-09 probes 10 bytes 664 insns 202 regions 2 rows 0 census no  (hand, fn.py variants: literal/order/amp spellings, all inert or worse) */
+/* @t4-pass 0x10014960 2 2026-09-09 probes 10 bytes 664 insns 202 regions 2 rows 0 census yes  (hand, fn.py variants: decl orders, comparison flips, format-arg forms, all inert; corpus MISS at +0x220 len 10 -- the association site is proven nowhere) */
+/* @t3 0x10014960 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 664/664 insns 202/202 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the three-term-sum association fork at the two BrTextDraw
+ * x-argument sites (proven source-unreachable in the RESIDUE block above:
+ * VC5 reassociates the chain unconditionally); size- and insn-exact,
+ * identical register-blind multiset.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
 #ifdef BR_MATCHING_BUILD
 /* Orig reads cViews / iView / the race object / the suppress flag as
