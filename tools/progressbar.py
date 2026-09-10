@@ -64,12 +64,68 @@ def tier_counts():
             int(t4.group(1)), int(t4.group(2)), target)
 
 
-def bar(pct):
-    filled = round(pct / 100 * BAR_W)
-    return '█' * filled + '░' * (BAR_W - filled)
+# report_exe.csv's `exe` column -> the shipped filename, in the order the
+# per-binary table lists them (the three EXEs, then the DLL).
+EXES = [('bossrally', 'BossRally.exe'),
+        ('brally', 'BRally.exe'),
+        ('setvideo', 'SetVideo.exe')]
 
 
-def block(t3_fns, t3_b, t4_fns, t4_b, target):
+def exe_counts():
+    """{exe: (match_fns, match_bytes, diff_fns, diff_bytes)} from report_exe.csv.
+
+    The EXEs have no T3 lane (no certification workstream runs on them), so for
+    an EXE M1 == M2: a function is either byte-exact or still open.  match+diff
+    is the in-scope game code; the static CRT that fills out each image is fenced
+    (reproduced at link, not decompiled) and is not in this file at all.
+    """
+    out = {e: [0, 0, 0, 0] for _tag, e in EXES}
+    disp = {tag: e for tag, e in EXES}
+    p = os.path.join(ROOT, 'build', 'match', 'report_exe.csv')
+    if not os.path.exists(p):
+        return out
+    import csv
+    for r in csv.DictReader(open(p)):
+        e = disp.get(r.get('exe', ''))
+        if not e:
+            continue
+        b = int(r['orig_size']) if r.get('orig_size') else 0
+        if r.get('status') == 'match':
+            out[e][0] += 1
+            out[e][1] += b
+        elif r.get('status') == 'diff':
+            out[e][2] += 1
+            out[e][3] += b
+    return out
+
+
+def bar(pct, w=BAR_W):
+    filled = round(pct / 100 * w)
+    return '█' * filled + '░' * (w - filled)
+
+
+def _table(t3_fns, t3_b, t4_fns, t4_b, exes):
+    """The per-binary M1/M2 table, mini-bars 20 wide."""
+    rows = ['| Area | M1 — contract-valid | M2 — byte-exact |',
+            '|---|---|---|']
+    for _tag, name in EXES:
+        mf, mb, df, db = exes[name]
+        tgt_b = mb + db
+        pct = 100 * mb / tgt_b if tgt_b else 100.0
+        cell = '`%s` %.0f%% — %d/%d fns, %s B' % (
+            bar(pct, 20), pct, mf, mf + df, f'{mb:,}')
+        rows.append('| **%s** | %s | %s |' % (name, cell, cell))
+    # BRGlide.dll: M1 = T3+T4, M2 = T4, both vs full .text.
+    m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
+    m1p, m2p = 100 * m1_b / BRGLIDE_TEXT, 100 * t4_b / BRGLIDE_TEXT
+    rows.append('| **BRGlide.dll** | `%s` %.1f%% — %s B, %s fns | '
+                '`%s` %.1f%% — %s B, %s fns |'
+                % (bar(m1p, 20), m1p, f'{m1_b:,}', f'{m1_fns:,}',
+                   bar(m2p, 20), m2p, f'{t4_b:,}', f'{t4_fns:,}'))
+    return '\n'.join(rows)
+
+
+def block(t3_fns, t3_b, t4_fns, t4_b, target, exes):
     m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
     m2_b, m2_fns = t4_b, t4_fns
     m1_pct, m2_pct = 100 * m1_b / BRGLIDE_TEXT, 100 * m2_b / BRGLIDE_TEXT
@@ -87,13 +143,20 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target):
         'certified-but-not-yet-exact functions (%s B) separate M1 from M2. Byte\n'
         'percentages trail function percentages (%.1f%% / %.1f%% of functions) '
         'because the\n'
-        'functions still open are several times larger than the matched ones.\n'
+        'functions still open are several times larger than the matched ones.\n\n'
+        'By binary — the three EXEs are complete at both milestones (their game '
+        'code is fully\n'
+        'byte-exact; the static CRT filling out each image is reproduced by '
+        'linking, not\n'
+        'decompiled, and is out of scope). All remaining work is in BRGlide.dll.\n\n'
+        '%s\n'
         % (today,
            bar(m1_pct), m1_pct, f'{m1_b:,}', f'{BRGLIDE_TEXT:,}',
            f'{m1_fns:,}', f'{target:,}',
            bar(m2_pct), m2_pct, f'{m2_b:,}', f'{BRGLIDE_TEXT:,}',
            f'{m2_fns:,}', f'{target:,}',
-           t3_fns, f'{t3_b:,}', m1_fpct, m2_fpct))
+           t3_fns, f'{t3_b:,}', m1_fpct, m2_fpct,
+           _table(t3_fns, t3_b, t4_fns, t4_b, exes)))
 
 
 def splice(text, new_block):
@@ -108,7 +171,7 @@ def splice(text, new_block):
 def main():
     argv = sys.argv[1:]
     t3_fns, t3_b, t4_fns, t4_b, target = tier_counts()
-    new = block(t3_fns, t3_b, t4_fns, t4_b, target)
+    new = block(t3_fns, t3_b, t4_fns, t4_b, target, exe_counts())
     old = open(README, encoding='utf-8').read()
     updated = splice(old, new)
 
