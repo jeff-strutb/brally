@@ -1432,6 +1432,13 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
 /* @t4-pass 0x100183B0 1 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
 /* @t4-pass 0x100183B0 2 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
 /* @t4-pass 0x100183B0 3 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 4 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
+/* @t3 0x100183B0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 800/803 insns 220/222 rows 2+0 regions 6 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 30 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 #ifdef BR_MATCHING_BUILD
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
