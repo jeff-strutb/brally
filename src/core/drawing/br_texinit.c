@@ -1,4 +1,21 @@
-/* br_texinit.c -- see br_texinit.h. D3D 0x1002A640 / Glide 0x10029B50. */
+/* br_texinit.c -- see br_texinit.h. D3D 0x1002A640 / Glide 0x10029B50.
+ *
+ * BrTexInit's residue is ONE colouring choice and nothing else: at 0x89 the
+ * original spells the shared zero in esi and the first span call's result in
+ * edi (`xor esi,esi; push esi; call; push esi; mov edi,eax`), we take the
+ * same two webs the other way round.  Sizes, instruction counts and the
+ * register-blind multiset are all identical (285/285 B, 55/55 insns, 0+0).
+ * `corpus.py find --from 0x10029B50 --at 0x89 --len 12` is a MISS -- no run
+ * of 3+ of these instructions is proven anywhere in the solved tree, so
+ * there is no spelling to copy.
+ * @t4-pass 0x10029B50 1 2026-09-10 probes 14 bytes 285 insns 55 regions 1 rows 0 census yes
+ * @t4-pass 0x10029B50 2 2026-09-10 probes 11 bytes 285 insns 55 regions 1 rows 0 census no
+ * Pass 1 permuted the zero/result webs at the call pair (literal vs named
+ * zero, hi/lo temps in both orders, const and unsigned zero, one-expression
+ * and split forms); pass 2 permuted the lifetimes around them (the TMU-count
+ * block, the free() block's store order, span's type and the tail's store
+ * order).  All 25 compiles left the esi/edi assignment exactly where it was.
+ */
 
 #ifdef BR_MATCHING_BUILD
 /* Header prototypes take a host / a texmem argument.  Both originals read
@@ -227,6 +244,16 @@ void     BrTexCreateMutex(void);      /* 0x10074F20 */
 /* WHAT IT DOES: set the texture system up -- install the thirteen
  * routines the rest of the engine calls, measure the card, pick a
  * detail level. */
+/* @t3 0x10029B50 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 285/285 insns 55/55 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * The residue is one colouring wall and nothing else: the original spells the
+ * shared zero in esi and the first span call's result in edi at 0x89, we take
+ * the same two webs the other way round.  Every other byte is positionally
+ * identical -- same size, same instruction count, register-blind multiset
+ * 0+0.  Dossier and the 25-compile dead list are in this file's header; the
+ * corpus is a MISS on the 12-instruction run, so no proven spelling exists to
+ * copy.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1002A640 d3d BrTexInit */
 void FUN_10023d20(void);
 void FUN_10024e60(void);
