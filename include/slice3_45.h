@@ -345,38 +345,38 @@ typedef int32_t (BR_STDCALL *BrDiEnumDevicesCb)(const void *pDevInst, void *pvRe
 typedef struct BrDiRootVtbl {
     void *pfnSlot0;                                             /* +0x00 */
     void *pfnSlot1;                                             /* +0x04 */
-    long (*pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
-    long (*pfnCreateDevice)(BrDiObj *pThis, const void *rguid,
+    long (BR_STDCALL *pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
+    long (BR_STDCALL *pfnCreateDevice)(BrDiObj *pThis, const void *rguid,
                             BrDiObj **ppDev, void *pUnkOuter);  /* +0x0C */
-    long (*pfnEnumDevices)(BrDiObj *pThis, uint32_t devType,
+    long (BR_STDCALL *pfnEnumDevices)(BrDiObj *pThis, uint32_t devType,
                            BrDiEnumDevicesCb cb, void *pvRef,
                            uint32_t flags);                     /* +0x10 */
 } BrDiRootVtbl;
 
 /* IDirectInputDevice2A. Slot 18 (+0x48, CreateEffect) is what pins the "2". */
 typedef struct BrDiDevVtbl {
-    long (*pfnQueryInterface)(BrDiObj *pThis, const void *iid,
+    long (BR_STDCALL *pfnQueryInterface)(BrDiObj *pThis, const void *iid,
                               void **ppOut);                    /* +0x00 */
     void *pfnSlot1;                                             /* +0x04 */
-    long (*pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
+    long (BR_STDCALL *pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
     void *pfnSlot3;                                             /* +0x0C */
     void *pfnSlot4;                                             /* +0x10 */
     void *pfnSlot5;                                             /* +0x14 */
-    long (*pfnSetProperty)(BrDiObj *pThis, uint32_t prop,
+    long (BR_STDCALL *pfnSetProperty)(BrDiObj *pThis, uint32_t prop,
                            const void *pdiph);                  /* +0x18 */
-    long (*pfnAcquire)(BrDiObj *pThis);                         /* +0x1C */
-    long (*pfnUnacquire)(BrDiObj *pThis);                       /* +0x20 */
+    long (BR_STDCALL *pfnAcquire)(BrDiObj *pThis);                         /* +0x1C */
+    long (BR_STDCALL *pfnUnacquire)(BrDiObj *pThis);                       /* +0x20 */
     void *pfnSlot9;                                             /* +0x24 */
     void *pfnSlot10;                                            /* +0x28 */
-    long (*pfnSetDataFormat)(BrDiObj *pThis, const void *pdf);  /* +0x2C */
+    long (BR_STDCALL *pfnSetDataFormat)(BrDiObj *pThis, const void *pdf);  /* +0x2C */
     void *pfnSlot12;                                            /* +0x30 */
-    long (*pfnSetCooperativeLevel)(BrDiObj *pThis, void *hwnd,
+    long (BR_STDCALL *pfnSetCooperativeLevel)(BrDiObj *pThis, void *hwnd,
                                    uint32_t flags);             /* +0x34 */
     void *pfnSlot14;                                            /* +0x38 */
     void *pfnSlot15;                                            /* +0x3C */
     void *pfnSlot16;                                            /* +0x40 */
     void *pfnSlot17;                                            /* +0x44 */
-    long (*pfnCreateEffect)(BrDiObj *pThis, const void *rguid,
+    long (BR_STDCALL *pfnCreateEffect)(BrDiObj *pThis, const void *rguid,
                             const BrDiEffect *pEff, BrDiObj **ppEff,
                             void *pUnkOuter);                   /* +0x48 */
 } BrDiDevVtbl;
@@ -385,15 +385,15 @@ typedef struct BrDiDevVtbl {
 typedef struct BrDiEffVtbl {
     void *pfnSlot0;                                             /* +0x00 */
     void *pfnSlot1;                                             /* +0x04 */
-    long (*pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
+    long (BR_STDCALL *pfnRelease)(BrDiObj *pThis);                         /* +0x08 */
     void *pfnSlot3;                                             /* +0x0C */
     void *pfnSlot4;                                             /* +0x10 */
     void *pfnSlot5;                                             /* +0x14 */
-    long (*pfnSetParameters)(BrDiObj *pThis, const BrDiEffect *pEff,
+    long (BR_STDCALL *pfnSetParameters)(BrDiObj *pThis, const BrDiEffect *pEff,
                              uint32_t flags);                   /* +0x18 */
-    long (*pfnStart)(BrDiObj *pThis, uint32_t iterations,
+    long (BR_STDCALL *pfnStart)(BrDiObj *pThis, uint32_t iterations,
                      uint32_t flags);                           /* +0x1C */
-    long (*pfnStop)(BrDiObj *pThis);                            /* +0x20 */
+    long (BR_STDCALL *pfnStop)(BrDiObj *pThis);                            /* +0x20 */
 } BrDiEffVtbl;
 
 /* DIPROPDWORD / DIPROPRANGE, flattened (the DIPROPHEADER is inlined -- the

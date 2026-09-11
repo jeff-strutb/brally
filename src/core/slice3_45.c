@@ -216,15 +216,15 @@ static int32_t BrAddWrap(int32_t a, int32_t b)
 /* Cast helpers for the three COM interfaces. slice1_10.h's BrDiObj carries a
  * `const BrDiVtbl *`; these reinterpret it as the wider vtables declared in
  * slice3_45.h. See the note there -- BrDiVtbl is deliberately not redefined. */
-static const BrDiRootVtbl *BrDiRoot(BrDiObj *p)
+static __inline const BrDiRootVtbl *BrDiRoot(BrDiObj *p)
 {
     return (const BrDiRootVtbl *)(const void *)p->pVtbl;
 }
-static const BrDiDevVtbl *BrDiDev(BrDiObj *p)
+static __inline const BrDiDevVtbl *BrDiDev(BrDiObj *p)
 {
     return (const BrDiDevVtbl *)(const void *)p->pVtbl;
 }
-static const BrDiEffVtbl *BrDiEff(BrDiObj *p)
+static __inline const BrDiEffVtbl *BrDiEff(BrDiObj *p)
 {
     return (const BrDiEffVtbl *)(const void *)p->pVtbl;
 }
@@ -833,24 +833,54 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
     }
 }
 
-/* DEVIATION: in the original both DIEFFECTs' rgdwAxes point at a two-dword
- * STACK local of 0x10079390, which dangles the moment it returns -- and
+/* In the original both DIEFFECTs' rgdwAxes point at a two-dword STACK local of
+ * 0x10079390 -- the `sub esp,8` frame and the two `lea` writes into the axis
+ * pointers are that buffer.  It dangles the moment the function returns, and
  * BrFfbSetSpringCoeff / BrFfbCommitDuration hand those descriptors back to
- * SetParameters afterwards. Reproducing that would be undefined behaviour in
- * this port, so the buffer is file-scope. Its contents (0, 4) and the fact
- * that BOTH descriptors share ONE buffer are preserved. */
+ * SetParameters afterwards, so reproducing it in a build that actually RUNS
+ * would be undefined behaviour.  The matching build spells it as the original
+ * does; the port build gives the buffer static storage so it stays valid. */
+#ifndef BR_MATCHING_BUILD
 static uint32_t g_brFfbAxes[2];
+#endif
 
 /* 0x10079390 */
 /* WHAT IT DOES: builds the two force-feedback effects the game uses -- the
  * constant centring pull that gives the steering its weight, and the shake
  * used for bumps and impacts -- and hands both to the wheel ready to be
  * started. The centring effect is created but deliberately left stopped. */
+/*
+ * SIZE-EXACT (80/80 insns, 440/440 B), REGNORM 6+6, from four source facts:
+ *   1. the axis buffer is a STACK local, not a file-scope global -- that is
+ *      the `sub esp,8` frame and the two `lea` writes (matching arm only;
+ *      the port keeps it static because it dangles after return);
+ *   2. g_brFfb.pDevice is re-read at each CreateEffect site, not hoisted into
+ *      a local -- hoisting pins it in a callee-saved reg and costs a push ebp;
+ *   3. BrDiRoot/BrDiDev/BrDiEff must be __inline or VC5 emits an out-of-line
+ *      call for each vtable cast (an extra call + `add esp,4` per use);
+ *   4. the COM vtable pointers are BR_STDCALL -- callee-cleaned, so no
+ *      `add esp,0x14` after each CreateEffect.
+ * The residue is SIX unmapped d3d globals: fn.py cannot substitute their
+ * addresses, so it reads the reloc slots as immediates.  Every slot is a real
+ * relocation (coff_relocs.py), so this is byte-exact once the globals carry
+ * their d3d addresses -- g_brDiSpringDir 0x118EEF08, g_brDiSpringCond
+ * 0x118EEE20, g_brDiSquarePeriod 0x118EEBD8, kBrGuidSpring 0x100787A8,
+ * kBrGuidSquare 0x10078758 (g_br0BD430 0x100BCC38 already mapped).  They
+ * cannot be learned from this function (reloc_learn only trusts a
+ * masked-match, which needs them mapped) -- seed them from a matched sibling
+ * or hand-map, then this row and the other three BrFfb diffs close together. */
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
-    BrDiObj *pDev = g_brFfb.pDevice;
     long hr;
+#ifdef BR_MATCHING_BUILD
+    uint32_t rgAxes[2];            /* original: the axis buffer is a stack local */
+#else
+#define rgAxes g_brFfbAxes
+#endif
+
+    rgAxes[0] = 0u;   /* lX */
+    rgAxes[1] = 4u;   /* lY */
 
     g_brDiSpringCond[1].lPositiveCoefficient = springCoeff2;
     g_brDiSpringCond[1].lNegativeCoefficient = springCoeff2;
@@ -874,16 +904,13 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
     g_brDiEffSpring.dwTriggerButton        = 0xFFFFFFFFu;  /* DIEB_NOTRIGGER */
     g_brDiEffSpring.dwTriggerRepeatInterval = 0u;
     g_brDiEffSpring.cAxes                  = 2u;
-    g_brDiEffSpring.rgdwAxes               = g_brFfbAxes;
+    g_brDiEffSpring.rgdwAxes               = rgAxes;
     g_brDiEffSpring.rglDirection           = g_brDiSpringDir;
     g_brDiEffSpring.lpEnvelope             = NULL;
     g_brDiEffSpring.cbTypeSpecificParams   = 0x30u;   /* two DICONDITIONs */
     g_brDiEffSpring.lpvTypeSpecificParams  = g_brDiSpringCond;
 
-    g_brFfbAxes[0] = 0u;   /* lX */
-    g_brFfbAxes[1] = 4u;   /* lY */
-
-    hr = BrDiDev(pDev)->pfnCreateEffect(pDev, kBrGuidSpring, &g_brDiEffSpring,
+    hr = BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSpring, &g_brDiEffSpring,
                                         &g_brFfb.pEffectSpring, NULL);
     if (hr == 0) {
         g_br18ABD78 = springCoeff;
@@ -903,15 +930,18 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
     g_brDiEffSquare.dwTriggerButton         = 0xFFFFFFFFu;
     g_brDiEffSquare.dwTriggerRepeatInterval = 0u;
     g_brDiEffSquare.cAxes                   = 2u;
-    g_brDiEffSquare.rgdwAxes                = g_brFfbAxes;
+    g_brDiEffSquare.rgdwAxes                = rgAxes;
     g_brDiEffSquare.rglDirection            = g_br0BD430;
     g_brDiEffSquare.lpEnvelope              = NULL;
     g_brDiEffSquare.cbTypeSpecificParams    = 0x10u;  /* one DIPERIODIC */
     g_brDiEffSquare.lpvTypeSpecificParams   = &g_brDiSquarePeriod;
 
-    (void)BrDiDev(pDev)->pfnCreateEffect(pDev, kBrGuidSquare, &g_brDiEffSquare,
+    (void)BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSquare, &g_brDiEffSquare,
                                          &g_brFfb.pEffectSquare, NULL);
 }
+#ifndef BR_MATCHING_BUILD
+#undef rgAxes
+#endif
 
 /* 0x100790E0 */
 /* WHAT IT DOES: called by Windows once for each controller it finds; this is
