@@ -1634,11 +1634,11 @@
 <text x="1416.6" y="147.4" font-size="10" fill="#8b949e">slice3_45</text>
 <rect x="1415.1" y="152.4" width="48.9" height="55.8" fill="#d29922"><title>BrInputJustPressed  0x100719D0  1246B  771 diff bytes  [core/slice3_45]</title></rect>
 <rect x="1415.1" y="208.8" width="48.9" height="30.8" fill="#d29922"><title>BrInputIsDown  0x10071710  695B  496 diff bytes  [core/slice3_45]</title></rect>
-<rect x="1464.6" y="152.4" width="22.3" height="42.5" fill="#d29922"><title>BrFfbSetup  0x10072680  440B  187 diff bytes  [core/slice3_45]</title></rect>
-<rect x="1487.6" y="152.4" width="22.0" height="42.5" fill="#d29922"><title>BrFfbInit  0x100724C0  434B  279 diff bytes  [core/slice3_45]</title></rect>
-<rect x="1464.6" y="195.5" width="32.9" height="25.5" fill="#d29922"><title>BrFfbUpdateSpring  0x10072210  391B  209 diff bytes  [core/slice3_45]</title></rect>
+<rect x="1464.6" y="152.4" width="22.3" height="42.5" fill="#d29922"><title>BrFfbSetup  0x10072680  440B  151 diff bytes  [core/slice3_45]</title></rect>
+<rect x="1487.6" y="152.4" width="22.0" height="42.5" fill="#d29922"><title>BrFfbInit  0x100724C0  434B  269 diff bytes  [core/slice3_45]</title></rect>
+<rect x="1464.6" y="195.5" width="32.9" height="25.5" fill="#d29922"><title>BrFfbUpdateSpring  0x10072210  391B  207 diff bytes  [core/slice3_45]</title></rect>
 <rect x="1464.6" y="221.6" width="32.9" height="18.0" fill="#58a6ff"><title>BrEntSetHeading  0x1006F720  279B  [core/slice3_45]</title></rect>
-<rect x="1498.2" y="195.5" width="11.4" height="44.2" fill="#d29922"><title>BrFfbEnumDevice  0x100723D0  239B  166 diff bytes  [core/slice3_45]</title></rect>
+<rect x="1498.2" y="195.5" width="11.4" height="44.2" fill="#d29922"><title>BrFfbEnumDevice  0x100723D0  239B  158 diff bytes  [core/slice3_45]</title></rect>
 <text x="1514.7" y="147.4" font-size="10" fill="#8b949e">EXE: brally.exe</text>
 <rect x="1513.2" y="152.4" width="33.7" height="38.5" fill="#3fb950"><title>WinMain  0x00401810  600B  [EXE: brally.exe]</title></rect>
 <rect x="1547.5" y="152.4" width="26.1" height="38.5" fill="#3fb950"><title>ReadList  0x004012C0  467B  [EXE: brally.exe]</title></rect>
