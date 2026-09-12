@@ -243,3 +243,182 @@ void BrSub_1003289F(int param_1,int param_2,int param_3,int param_4)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+/* ==========================================================================
+ * 0x1002CEE9 -- closing the frame.  The counterpart of the openers above, in
+ * the same /Od range (br_framedrive.c names it BrFrameEnd).
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+/* The per-frame task record: 0x40 bytes, two of them, selected by the frame
+ * parity at 0x106ED67C. */
+typedef struct {
+    int   f00;
+    int   f04;
+    int   f08;
+    int   f0C;
+    int  *f10;
+    int   f14;
+    int  *f18;
+    int   f1C;
+    int  *f20;
+    int   f24;
+    int   f28;
+    int   f2C;
+    int   f30;
+    int   f34;
+    int   pad38[2];
+} BrFrameTask;
+
+extern BrFrameTask   DAT_106e8618[];    /* the two task records              */
+extern int  DAT_118ee268[];
+extern int  DAT_118ee278[];
+extern int  DAT_100a9eb8;
+extern int  DAT_100a9ebc;
+extern int  DAT_106ed6f8;
+extern int  DAT_106e9d90[];             /* the 16-byte-aligned scratch block */
+extern int  DAT_106ed6f0;               /* high-water marks                  */
+extern int  DAT_106ed6e8;
+extern int  DAT_106ed6ec;
+extern int *DAT_1035f7d8;
+extern int *DAT_102e16b0;
+extern int  DAT_1035faec;
+extern int  DAT_1035fba4;
+extern int  DAT_106e8200;               /* this frame's list length          */
+extern int  DAT_106ed6f4;               /* frames drawn                      */
+extern void (*DAT_106e8a1c)(void);      /* one-shot callback                 */
+extern int  DAT_106e8698;
+extern int  DAT_106e729c;               /* frame timing                      */
+extern int  DAT_106e7298;
+extern int  DAT_106e86b0;
+extern int  DAT_106ed678;
+extern int  DAT_100ad7c8;
+extern int  DAT_106ed684;
+extern int  DAT_106ed688;
+extern int  DAT_106ec774;
+extern int  DAT_106ed628;
+extern void (*DAT_10b73530)(int);       /* the list submit hook              */
+extern int  DAT_106ea430[];
+extern int  DAT_106ea410[];
+extern char DAT_10ac7380[], DAT_10ac6ac0[], DAT_10ac70b0[], DAT_10ac67f0[];
+extern char s_HUGE_GLIST_ERROR_100aa2d4[];
+void FUN_100385e0(int *, int, int);
+void FUN_1002f26b(char *);
+void FUN_100192d0(void);
+int  FUN_10059f00(void);
+
+/* WHAT IT DOES: closes the frame's display list.  It appends the two
+ * terminating commands, fills in this frame's task record (buffers, sizes,
+ * the list's start and rounded length), keeps the high-water marks of the
+ * three command pools and aborts on an oversized list.  On every frame but
+ * the first it then runs the frame-end work: the two debug overlays, the
+ * one-shot callback, the frame timer, the mode-switch countdown with its
+ * screen selection, the input step, and the timing bookkeeping.  Finally it
+ * hands the list to the submit hook and flips the frame parity. */
+/* @implements 0x1002CEE9 glide BrFrameEnd */
+void BrFrameEnd(void)
+{
+    /* /Od slot order is the locals' NAME-HASH order, not declaration order:
+     * these four names land rec at [ebp-4], len at [ebp-8], q1 at [ebp-0xc]
+     * and q2 at [ebp-0x10]; (t, n, p, q) / (task, count, cmd, cmd2) /
+     * (rec, len, p1, p2) all permute them (16 sets measured). */
+    BrFrameTask  *rec;
+    int           len;
+    BrDlCmd      *q1;
+    BrDlCmd      *q2;
+
+    q1 = DAT_106e7710;
+    DAT_106e7710 = DAT_106e7710 + 1;
+    q1->op = 0xE9000000;
+    q1->arg = 0;
+    q2 = DAT_106e7710;
+    DAT_106e7710 = DAT_106e7710 + 1;
+    q2->op = 0xB8000000;
+    q2->arg = 0;
+
+    rec = &DAT_106e8618[DAT_106ed67c];
+    rec->f00 = 1;
+    rec->f10 = DAT_118ee268;
+    rec->f18 = DAT_118ee278;
+    rec->f04 = 2;
+    rec->f04 |= 4;
+    rec->f28 = DAT_100a9eb8;
+    rec->f2C = DAT_100a9ebc - DAT_106ed6f8 * 8;
+    rec->f14 = 0x1000;
+    rec->f1C = 0x800;
+    rec->f20 = (int *)(((int)DAT_106e9d90 + 15) & ~15);
+    rec->f24 = 0x400;
+    rec->f30 = DAT_106e79d4 + DAT_106ed67c * 0x17700 + 0x200;
+    rec->f34 = (((int)DAT_106e7710 - (DAT_106e79d4 + DAT_106ed67c * 0x17700 + 0x200)) >> 3) << 3;
+
+    len = ((int)DAT_106e7710 - (DAT_106e79d4 + DAT_106ed67c * 0x17700 + 0x200)) >> 3;
+    if (len > DAT_106ed6f0)
+        DAT_106ed6f0 = len;
+    len = (DAT_1035f7d8 - DAT_102e16b0) >> 1;
+    if (len > DAT_106ed6e8)
+        DAT_106ed6e8 = len;
+    len = (DAT_1035faec - DAT_1035fba4) >> 5;
+    if (len > DAT_106ed6ec)
+        DAT_106ed6ec = len;
+
+    DAT_106e8200 = ((int)DAT_106e7710 - (DAT_106e79d4 + DAT_106ed67c * 0x17700 + 0x200)) >> 3;
+    if (DAT_106e8200 > 12000)
+        FUN_1002f26b(s_HUGE_GLIST_ERROR_100aa2d4);
+    FUN_10008d60();
+
+    if (DAT_106ed6f4 != 0) {
+        FUN_10008d60(0, 0, 0, 0, 0xFF);
+        FUN_100385e0(DAT_106ea430, 0, 1);
+        FUN_10008d60(0, 0xFF, 0xFF, 0, 0xFF);
+        if (DAT_106e8a1c != 0) {
+            DAT_106e8a1c();
+            DAT_106e8a1c = 0;
+        }
+        FUN_10008d60(0, 0, 0, 0, 0xFF);
+        FUN_100385e0(DAT_106ea410, 0, 1);
+        if (DAT_106e8698 != 0) {
+            DAT_106e8a1c();
+            DAT_106e8a1c = 0;
+        }
+        FUN_10008d60();
+        DAT_106e729c = FUN_10059f00();
+        DAT_106e86b0 = DAT_106e729c - DAT_106e7298;
+        if (DAT_106ed670 != 0) {
+            DAT_106ed670 = DAT_106ed670 - 1;
+            if (DAT_106ed670 == 0) {
+                if (DAT_106ed674 != 0) {
+                    if (DAT_100ad7c8 == 2)
+                        FUN_10008d60(DAT_10ac7380);
+                    else
+                        FUN_10008d60(DAT_10ac6ac0);
+                } else {
+                    if (DAT_100ad7c8 == 2)
+                        FUN_10008d60(DAT_10ac70b0);
+                    else
+                        FUN_10008d60(DAT_10ac67f0);
+                }
+                FUN_10008d60(1);
+                DAT_106ed678 = DAT_106ed674;
+            }
+        }
+        FUN_10008d60(1, 0x20, 0x20, 0x20, 0xFF);
+        FUN_10008d60(2, 0x20, 0x20, 0x20, 0xFF);
+        FUN_10008d60(0, 0x20, 0x20, 0x20, 0xFF);
+        if (DAT_106ed684 == 0 && DAT_106ed688 == 0)
+            FUN_10008d60(0);
+        if (DAT_106ed688 != 0)
+            DAT_106ed688 = DAT_106ed688 - 1;
+        FUN_100192d0();
+        DAT_106e7298 = FUN_10059f00();
+        DAT_106e729c = FUN_10059f00() - DAT_106e729c;
+    } else {
+        DAT_106ed6f4 = DAT_106ed6f4 + 1;
+    }
+
+    FUN_10008d60(0, 200, 0, 200, 0xFF);
+    DAT_106ec774 = DAT_106ed628;
+    FUN_10008d60(2, 200, 0, 0, 0xFF);
+    FUN_10008d60(1, 200, 100, 0, 0xFF);
+    DAT_10b73530(rec->f30);
+    DAT_106ed67c = DAT_106ed67c ^ 1;
+}
+#endif /* BR_MATCHING_BUILD */
