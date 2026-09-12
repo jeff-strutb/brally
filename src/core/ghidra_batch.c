@@ -165,7 +165,7 @@ extern unsigned char DAT_10226a3c;
  * Three wrappers already probed dead (1-byte struct, 4-byte union through its
  * char member, 4-byte struct with explicit pad).  Two counted @t4-pass passes,
  * both zero-movement.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
-/* @implements 0x1006AFA0 glide BrNetWriteTagC0 */
+/* port-only body; Glide match is src/core/cpp/0x1006AFA0.cpp */
 /* RESIDUE: 2 instructions / 8 bytes, and the cause is a construct C cannot
  * spell. Everything else is exact (RAW and REGNORM 2+0, the two rows below).
  *
@@ -221,7 +221,7 @@ int BrNetWriteTagC0(void *pThis, unsigned char kind, unsigned int a,
  * half-written option block can never go out. */
 /* @t4-pass 0x1006AFF0 1 2026-09-07 probes 43 bytes 118 insns 43 regions 3 rows 13 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006AFF0 2 2026-09-07 probes 43 bytes 118 insns 43 regions 3 rows 13 census yes  (tools/crank.py) */
-/* @implements 0x1006AFF0 glide BrNetWriteRaceOpts */
+/* port-only body; Glide match is src/core/cpp/0x1006AFF0.cpp */
 int BrNetWriteRaceOpts(void *pThis, unsigned char kind)
 {
     BrU8Arg b;
