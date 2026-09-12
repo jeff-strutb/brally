@@ -365,6 +365,62 @@ void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown)
 /* 0x10068600 -- the shock absorber                                      */
 /* ==================================================================== */
 
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: the shock absorber -- resists each wheel's upward motion
+ * with a force proportional to how fast the wheel is moving up. A wheel
+ * moving down, or one that has left the ground, gets no damping at all. */
+/* @implements 0x10068600 glide BrCarPhysDamper */
+void BrCarPhysDamper(BrRbBodyFull *pBody)
+{
+    BrRbForce *pNode;
+    int        i;
+
+    pNode = pBody->pForces;
+    for (i = 0; i < 4; ++i) {
+        BrRbBodyFull *pWheel;
+        BrVec3        v;
+        float         f;
+
+        pNode->f.y = 0.0f;
+        pNode->f.x = 0.0f;
+
+        /* The velocity call and the wheel pointer are IN each switch arm --
+         * the original re-reads child[k] after the call rather than keeping
+         * it across it. */
+        switch (i) {
+        case 0:
+            BrRbVelAtBodyPointXY(&v, pBody, pBody->child[0]);
+            pWheel = pBody->child[0];
+            break;
+        case 1:
+            BrRbVelAtBodyPointXY(&v, pBody, pBody->child[1]);
+            pWheel = pBody->child[1];
+            break;
+        case 2:
+            BrRbVelAtBodyPointXY(&v, pBody, pBody->child[2]);
+            pWheel = pBody->child[2];
+            break;
+        default:
+            BrRbVelAtBodyPointXY(&v, pBody, pBody->child[3]);
+            pWheel = pBody->child[3];
+            break;
+        }
+
+        if (*(int32_t *)&pWheel->f1B4 == 0) {
+            f = 0.0f;
+        } else if (!(v.z >= 0.0f)) {
+            /* `fcomp` + `test ah,1` + `je` jumps to the multiply, so the
+             * ZERO arm is LESS OR UNORDERED. */
+            f = 0.0f;
+        } else {
+            f = pBody->f1BC * v.z;
+        }
+
+        pNode->f.z = f;
+        pNode = pNode->pNext;
+    }
+}
+#else
 void BrCarPhysDamper(BrRbBodyFull *pBody)
 {
     BrRbForce *pNode = pBody->pForces;
@@ -404,6 +460,7 @@ void BrCarPhysDamper(BrRbBodyFull *pBody)
         pNode = pNode->pNext;
     }
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 0x10067F30 -- aerodynamic drag                                        */
