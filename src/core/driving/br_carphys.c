@@ -190,6 +190,95 @@ float BrCarPhysSign(float v)
     return BR_CP_SIGN_NEG;
 }
 
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: pushes each wheel up with its suspension spring -- the
+ * further the wheel is compressed past its rest point, the harder the push,
+ * growing with the square of the compression. A wheel that has left the
+ * ground contributes nothing, and the first frame a wheel touches back down
+ * sets the car's touchdown flag so other systems can react. */
+/* @implements 0x100684F0 glide BrCarPhysSpring */
+void BrCarPhysSpring(BrRbBodyFull *pBody)
+{
+    BrRbForce *pNode;
+    int        i;
+
+    pNode = pBody->pForces;
+    for (i = 0; i < 4; ++i) {
+        BrRbBodyFull  *pWheel;
+        float          v;
+        float          s;
+        int32_t        contact;
+        unsigned short wasLo;
+
+        pNode->f.y = 0.0f;
+        pNode->f.x = 0.0f;
+
+        switch (i) {
+        case 0:  pWheel = pBody->child[0]; break;
+        case 1:  pWheel = pBody->child[1]; break;
+        case 2:  pWheel = pBody->child[2]; break;
+        default: pWheel = pBody->child[3]; break;
+        }
+
+        /* f1B4 is an int32 here (`mov eax` / `inc` / integer store) and its
+         * low WORD is snapshotted before the increment for the touchdown
+         * edge below. */
+        contact = *(int32_t *)&pWheel->f1B4;
+        wasLo   = *(unsigned short *)&pWheel->f1B4;
+        v       = pWheel->f1D8;
+
+        if (contact < BR_CP_CONTACT_MAX) {
+            *(int32_t *)&pWheel->f1B4 = contact + 1;
+        }
+
+        /* `fcom qword` -- the compare happens in double. Runs for
+         * less-equal-or-unordered. */
+        if (!((double)v > BR_CP_CONTACT_MIN)) {
+            v                        = BR_CP_SUSP_REST;
+            *(int32_t *)&pWheel->f1B4 = 0;
+        }
+        if (v > BR_CP_SIGN_ZERO) {
+            v = BR_CP_SIGN_ZERO;
+        }
+        v = v - BR_CP_SUSP_REST;
+        if (!(v >= BR_CP_SIGN_ZERO)) {
+            v = BR_CP_SIGN_ZERO;
+        }
+
+        /* The sign triple, inline: `test ah,0x40` for the equal arm (VC5
+         * float == reads C3 alone, so NaN lands there too), then
+         * `test ah,0x41` for strictly-greater. */
+        if (v == BR_CP_SIGN_ZERO) {
+            s = BR_CP_SIGN_ZERO;
+        } else if (v > BR_CP_SIGN_ZERO) {
+            s = BR_CP_SIGN_POS;
+        } else {
+            s = BR_CP_SIGN_NEG;
+        }
+
+        /* PARKED at 1 region / 5 msetdiff rows: the square. Orig duplicates
+         * v and `fmulp st(2)` DESTRUCTIVELY into v's slot (then fxch to
+         * bring it up); ours keeps v alive (`fmul st(2)`) and drops both v
+         * and s at the end. One x87 pop-discipline decision; corpus MISS on
+         * the 12-insn window at +0xcf. Dead (all 53 diffs, same region):
+         * s*(v*v)*k, v*v*s*k (60, drops the dup entirely), s*v*v*k (60),
+         * named `float vv = v*v` (identical -- folded), `v = v*v;` own
+         * statement (identical -- single use, copy-propagated back).
+         * Everything before +0xcf and after +0xdf is byte-exact. */
+        pNode->f.z = s * (v * v) * pBody->f1B8;
+
+        /* Touchdown edge: f1B4 is RE-READ (a wheel just reset above does not
+         * trip it), the node advances between the read and the test, and the
+         * flag byte lands at body+0x208 -- pCar->b208, the body being at
+         * car+0x164. */
+        contact = *(int32_t *)&pWheel->f1B4;
+        pNode   = pNode->pNext;
+        if (contact != 0 && wasLo == 0) {
+            ((unsigned char *)pBody)[0x208] = (unsigned char)BR_CP_TOUCHDOWN;
+        }
+    }
+}
+#else
 void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown)
 {
     BrRbForce *pNode = pBody->pForces;
@@ -270,6 +359,7 @@ void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown)
         pNode = pNode->pNext;
     }
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 0x10068600 -- the shock absorber                                      */
@@ -1261,7 +1351,11 @@ void BrCarPhysStep(BrCarPhys *pCar)
     }
 
     /* --- step 2: 0x100684F0 --------------------------------------------- */
+#ifdef BR_MATCHING_BUILD
+    BrCarPhysSpring(pBody);       /* the touchdown byte IS body+0x208 */
+#else
     BrCarPhysSpring(pBody, &pCar->b208);
+#endif
 
     /* --- step 3: 0x100651A0 x4, gated on car+0xE84 -----------------------
      * The four call sites at 0x1005A8DE / 0x1005A901 / 0x1005A91E /
