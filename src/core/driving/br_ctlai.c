@@ -715,7 +715,12 @@ stepped:
                  * is -6 B, multiset unchanged, and STILL splits the compare
                  * (A3 10 -> 14, swept 2026-09-12) -- both ternary polarities
                  * are dead; the orig's fstp st/fld [pool] clamp is not
-                 * reachable from a ternary here. */
+                 * reachable from a ternary here.
+                 * ‼ CORPUS MISS 2026-09-12 (--at 0xa9f --len 12): the in-st
+                 * conditional fmul + fstp st/fld [pool] clamp run is proven
+                 * NOWHERE in the solved tree (only the leading 4-insn float
+                 * compare matches).  Unproven construct -- park, do not
+                 * permute further (docs/MATCHING.md corpus rule). */
                 if (0.4f < k)
                     k = 0.4f;
                 f = k * offset;
