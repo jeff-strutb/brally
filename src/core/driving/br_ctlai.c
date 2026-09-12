@@ -710,7 +710,12 @@ stepped:
                  * `offset * k` hand, `-0.25f * k`, `0.015625f * (velFwd-3)`,
                  * `/ 64.0f`, and splitting the product into two statements.
                  * The ternary `f = ((k > 0.4f) ? 0.4f : k) * offset` is -8 B
-                 * but splits the compare into a jl/jge pair (A3 10 -> 13). */
+                 * but splits the compare into a jl/jge pair (A3 10 -> 13).
+                 * The constant-first ternary `((0.4f < k) ? 0.4f : k) * offset`
+                 * is -6 B, multiset unchanged, and STILL splits the compare
+                 * (A3 10 -> 14, swept 2026-09-12) -- both ternary polarities
+                 * are dead; the orig's fstp st/fld [pool] clamp is not
+                 * reachable from a ternary here. */
                 if (0.4f < k)
                     k = 0.4f;
                 f = k * offset;
