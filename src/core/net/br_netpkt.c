@@ -120,7 +120,7 @@ extern unsigned int DAT_1184c074;
 /* @t4-pass 0x1006AEB0 1 2026-09-08 probes 1 bytes 304 insns 0 regions 1 rows 0 census no
  * PARKED T2. Same U8 thiscall wall as BrNetWriteTag20 in this file: MSVC
  * homes each byte arg; orig pushes eax with dirty high bytes. Do not grind. */
-/* @implements 0x1006AEB0 glide BrNetWritePlayerRec */
+/* port-only body; Glide match is src/core/cpp/0x1006AEB0.cpp */
 int BrNetWritePlayerRec(void *pBs, unsigned char a, unsigned int flags,
                         unsigned char b, unsigned char c, unsigned char d,
                         unsigned char e, char *pszName, unsigned int id)
