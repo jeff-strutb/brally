@@ -785,3 +785,81 @@ fail:
     return hr;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* 0x10036510 -- pull the session's settings into the globals          */
+/* ------------------------------------------------------------------ */
+
+extern void *g_brP277B40;            /* the DirectPlay object, 0x10273328 */
+extern int   DAT_100abde8;           /* race options, from desc+0x40      */
+extern int   DAT_100b3014;
+extern int   DAT_10ac5d58;           /* from desc+0x44                    */
+extern int   DAT_10226e80;
+extern int   DAT_10ac5d70;           /* from desc+0x48                    */
+extern int   DAT_100bcbe8;           /* from desc+0x4c                    */
+extern int   DAT_100abdf8;
+extern int   DAT_100abdf4;           /* the current option slot           */
+extern char  DAT_10ac40a8[];         /* the session name                  */
+int  FUN_10036740(void *pIface, void **ppDesc);
+void BrSub10044540(void);            /* 0x1003DA90 */
+int  BrOptAvailB(int n);             /* 0x10038860 */
+
+/* WHAT IT DOES: after joining a game, copies the host's choices out of the
+ * received session description into this machine's own settings -- the race
+ * options, the four setting words, and the session's name. Then, if the
+ * currently selected option slot is not available in this session, walks
+ * forward (wrapping at 32) until one is. The description buffer DirectPlay
+ * lent us is unlocked and freed on every path out. */
+/* @implements 0x10036510 glide BrNetSessionApply */
+int BrNetSessionApply(void)
+{
+    void *pDesc;
+    int   desc[20];
+    int   r;
+    int   start;
+    char *pszName;
+
+    pDesc = 0;
+    if (g_brP277B40 == 0) {
+        return (int)0x88770082;
+    }
+    memset(desc, 0, 0x50);
+    r = FUN_10036740(g_brP277B40, &pDesc);
+    if (r < 0) {
+        if (pDesc != 0) {
+            GlobalUnlock(GlobalHandle(pDesc));
+            GlobalFree(GlobalHandle(pDesc));
+        }
+        return r;
+    }
+    DAT_100abde8 = *(int *)((char *)pDesc + 0x40);
+    DAT_100b3014 = DAT_100abde8;
+    DAT_10ac5d58 = *(int *)((char *)pDesc + 0x44);
+    DAT_10226e80 = DAT_10ac5d58;
+    DAT_10ac5d70 = *(int *)((char *)pDesc + 0x48);
+    DAT_100bcbe8 = *(int *)((char *)pDesc + 0x4c);
+    DAT_100abdf8 = DAT_100bcbe8;
+    BrSub10044540();
+    start = DAT_100abdf4;
+    if (BrOptAvailB(DAT_100abdf4) == 0) {
+        for (;;) {
+            DAT_100abdf4 = DAT_100abdf4 + 1;
+            if (DAT_100abdf4 > 0x1f) {
+                DAT_100abdf4 = 0;
+            }
+            if (DAT_100abdf4 == start) {
+                break;
+            }
+            if (BrOptAvailB(DAT_100abdf4) != 0) {
+                break;
+            }
+        }
+    }
+    pszName = *(char **)((char *)pDesc + 0x30);
+    if (pszName != 0) {
+        strcpy(DAT_10ac40a8, pszName);
+    }
+    GlobalUnlock(GlobalHandle(pDesc));
+    GlobalFree(GlobalHandle(pDesc));
+    return 0;
+}
