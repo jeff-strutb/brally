@@ -7806,3 +7806,28 @@ memory, dword width, statement order); the base+index CSE at 0x100302A0's
 leaf cursor; and the thiscall struct-wrapper's constant argument
 (0x10037FA0, `mov R,N`/`push R` where a real thiscall pushes an imm8 --
 route to the C++ lane, do not probe C).
+
+- **A loop-invariant deadline written IN the loop lands the add in the
+  PREHEADER.**  0x10004E00 (byte-exact): the original's `add esi,0x7d0`
+  sits between the inner while's rotated entry test and the loop head --
+  that placement is LICM, so the source spells the bound `t0 + 2000` inside
+  the loop's own condition, never as a `t0 += 2000;` statement before it
+  (that spelling puts the add ABOVE the entry test and turns the direct
+  `cmp [g],R` into a load + `cmp R,R`, one A3 row).
+- **A `while` whose exit duplicates the epilogue is the ENTRY test of that
+  while, shrink-wrapped.**  0x10004E00: `jne <tail>` right after the
+  prologue's first pushes, where <tail> reloads the uninitialised result
+  slot and pops WITHOUT esi/edi, is `while (g == -1) {...} return result;`
+  -- the entry test fires before edi/esi are pushed, so its exit needs its
+  own epilogue.  An `if (...) return` + `for(;;)` spelling inlines the
+  return under an inverted branch instead.  A mid-loop `if (g != -1)
+  break;` before an inner wait-loop is NOT a separate statement: it is the
+  inner while's rotated entry test, jump-threaded to the epilogue --
+  writing it explicitly duplicates the guard (+5 insns, one extra call).
+- **A dead float store into an untouched three-slot frame block is a
+  `volatile BrVec3` written through an assignment-EXPRESSION.**
+  0x10067F30: `f.z = (t.z = expr) + f.z;` with `volatile BrVec3 t`
+  reproduces both the `sub esp,0xc` trio (members x and y never touched)
+  and the lone non-popping `fst [esp+0x18]`; a plain aggregate or named
+  temp is deleted, and a volatile write without using the assignment's
+  value would re-read the slot the original never reads.
