@@ -660,7 +660,11 @@ void BrCarPhysPlace(BrCarPhys *pCar, const BrVec3 *pPos, float yaw);
  * for LESS-OR-EQUAL-OR-UNORDERED, so a NaN f1D8 lands on the no-contact arm
  * and a NaN v survives the two clamps and produces a NaN force.  Writing them
  * the tidy way inverts all three. */
+#ifdef BR_MATCHING_BUILD
+void BrCarPhysSpring(BrRbBodyFull *pBody);   /* touchdown byte = body+0x208 */
+#else
 void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown);
+#endif
 
 /* 0x10068600, 200 B.  The shock absorber, into the chassis's current list:
  *
