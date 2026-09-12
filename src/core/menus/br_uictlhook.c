@@ -344,7 +344,7 @@ int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
 }
 
 /* WHAT IT DOES: draws the music volume bar. */
-/* @implements 0x1003E9E0 d3d BrUiHook85_1003E9E0 */
+/* port-only body; Glide match is src/core/cpp/0x10038000.cpp */
 int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 {
     /* Plain casts, not BrFtolTrunc: the original leaves the value on the x87
