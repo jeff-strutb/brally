@@ -752,37 +752,30 @@ BR_WRAP:
  * the TU (39 of 45 compile).
  * @t4-pass 0x1003C6D0 1 2026-09-09 probes 11 bytes 212 insns 63 regions 2 rows 0 census yes  (hand, fn.py variants incl. helper inline)
  * @t4-pass 0x1003C6D0 2 2026-09-09 probes 39 bytes 212 insns 63 regions 2 rows 0 census yes  (position sweep) */
-/* @t3 0x1003C6D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 212/211 insns 63/63 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 2 masked regions, -1 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* Was @t3-certified 2026-09-09 at 212/211 B on the eax/ecx pairing of the
+ * index and gate loads; BYTE-EXACT 2026-09-12 with the three spellings that
+ * matched BrOptCycleAA2A18 below: the arms step the GLOBAL directly (no
+ * BrOptCycle helper, no `v` -- the helper's returned value is what paired
+ * the index with ecx), the table index RE-READS the global, and the gate
+ * is tested inline with no local.  Only the three together land it; the
+ * gate-inline spelling alone was measured worse on the helper form. */
 /* @implements 0x10043180 d3d BrOptCycleAA2A00 */
 int BrOptCycleAA2A00(void)
 {
-    /* The gate pointer is read into a local BEFORE the store, which is what
-     * hoists `mov <gate>; test` above the table lookup the way the original
-     * has it (0x1003C6DB..0x1003C724). Written inline, the test lands after
-     * the lookup instead.
-     * RESIDUE (2 regnorm, +1 byte, T3a): the original pairs the INDEX with
-     * eax -- so the index load is the one-byte-shorter `a1` moffs form and
-     * the table load writes its own base register -- and the gate with ecx.
-     * This build pairs them the other way round. Every instruction is in the
-     * original's order; only the two register names differ. Probed and dead:
-     * declaring the gate first (hoists its load to the top, worse), the
-     * gate tested inline with no local, and re-reading g_br22B350 for the
-     * string index instead of keeping the value. */
-    BrDPlay *pGate;
-    int32_t  v;
-
-    v = BrOptCycle(&g_brAA2A00, BR_OPT_AA2A00_MAX);
-    pGate = g_brP277B40;
-    g_br22B350 = g_aBrAC4C0[v];
-    if (pGate != NULL) {
+    if (g_brAA33D4 != 0) {
+        g_brAA2A00 = g_brAA2A00 + 1;
+        if (g_brAA2A00 > BR_OPT_AA2A00_MAX)
+            g_brAA2A00 = 0;
+    }
+    else {
+        if (g_brAA33D0 != 0) {
+            g_brAA2A00 = g_brAA2A00 - 1;
+            if (g_brAA2A00 < 0)
+                g_brAA2A00 = BR_OPT_AA2A00_MAX;
+        }
+    }
+    g_br22B350 = g_aBrAC4C0[g_brAA2A00];
+    if (g_brP277B40 != NULL) {
         /* Indexed by the table VALUE, and re-read from the global rather
          * than kept in a local: VC5 CSEs the reload back into eax, which is
          * what puts the `a1` moffs form on the index load and hoists the
@@ -1431,29 +1424,29 @@ int BrOpt44C0(BrGameObj *pGame)
 /* @implements 0x10044600 d3d BrOptCycleAA2A18 */
 int BrOptCycleAA2A18(void)
 {
-    int32_t v;
-    int     fEdited = 0;
-
+    /* Byte-exact 2026-09-12.  Three spellings, all in the original: the
+     * apply call sits INSIDE each arm (VC5 cross-jumps the two into one
+     * `call` that the no-input path jumps past -- an `fEdited` flag costs
+     * `xor eax,eax` at the top and a `test`); both arms step the GLOBAL
+     * directly, the corpus-proven form of the plain cyclers above (a `v`
+     * temp turns the down-arm's `dec` into `lea eax,[ecx-1]; test`); and
+     * sprintf through the /MD import, as 0x10042A70. */
     if (g_brAA33D4 != 0) {
-        v = g_brAA2A18 + 1;
-        g_brAA2A18 = v;
-        if (v >= BR_OPT_AA2A18_MAX + 1)
+        g_brAA2A18 = g_brAA2A18 + 1;
+        if (g_brAA2A18 >= BR_OPT_AA2A18_MAX + 1)
             g_brAA2A18 = 0;
-        fEdited = 1;
-    } else if (g_brAA33D0 != 0) {
-        v = g_brAA2A18 - 1;
-        g_brAA2A18 = v;
-        if (v < 0)
+        BrSub10044540();
+    }
+    else if (g_brAA33D0 != 0) {
+        g_brAA2A18 = g_brAA2A18 - 1;
+        if (g_brAA2A18 < 0)
             g_brAA2A18 = BR_OPT_AA2A18_MAX;
-        fEdited = 1;
+        BrSub10044540();
     }
 
-    if (fEdited)
-        BrSub10044540();
-
     if (g_brP277B40 != NULL) {
-        BrSprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A18),
-                  BrStrGet((int)g_aBrAC3C8[g_brAA2A18]));
+        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A18),
+                BrStrGet((int)g_aBrAC3C8[g_brAA2A18]));
         BrOptFlushMessage();
     }
     return 1;
