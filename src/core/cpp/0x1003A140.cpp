@@ -20,6 +20,16 @@
  * `je` near (+4 bytes) and rotates the index computation's registers
  * (orig keeps the selector in eax and scales into ecx; ours does the
  * reverse and needs edx).
+ * 2026-09-12, six more dead: `!(t > K)` for the inner test (identical
+ * layout), the sentinel as the outer then-arm with the inner nested in the
+ * else (jne over an inline sentinel, format after the tail), `mode == 0 ||
+ * !((t = ..) > K)` and `!(mode != 0 && (t = ..) > K)` (both lay format
+ * first and the sentinel after the tail), and an explicit goto layout
+ * (sentinel written before the format block, jumped to from both tests --
+ * VC5 still moves the jump-only block to the end).  The original's layout
+ * [tests][sentinel; jmp tail][format][tail] has not been produced by any
+ * if/else or goto shape; only the register roles fell out (the outer
+ * sentinel-then variant gets the index computation's registers right).
  * DO NOT RE-PROBE -- arm orders all measured: inner sentinel-then /
  * format-else with outer format-first is this 237; inner format-then is
  * 254 (outer je goes near too); outer sentinel-then duplicates the
