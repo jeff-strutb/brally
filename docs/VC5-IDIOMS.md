@@ -7946,3 +7946,39 @@ fy orders, 34 compiler options, corpus MISS at +0x477): certified @t3,
 dossier and dead list in 0x1004AEE0.cpp.  `t3.py` now measures C++ rows
 (report_cpp.csv overrides the stale C twin; the EH frame's `fs:[0]` reloc
 form pairs with the literal).
+
+## The settings-cycler family: step the GLOBAL, call inside each arm, re-read the global for the index (0x1003DB50, 0x1003C6D0, 0x1003C950)
+
+Three parked cyclers in slice2_25.c went byte-exact in one session from the
+same three spellings, and two of them had hand dead-lists that only tried
+the spellings one at a time:
+- **`g = g + 1; if (g > MAX) g = 0;` on the global, no `v` temp** -- the
+  down arm's `mov eax,[g]; dec eax; mov [g],eax; jns` needs it (a `v`
+  temp gives `lea eax,[ecx-1]; test eax,eax`), and on the skip-one cycler
+  it is what stops VC5 hoisting the global's load above the first branch
+  (a `v = g` at the head of the else arm is the PRE trigger).  The helper
+  form `v = BrOptCycle(&g, MAX)` pairs the index with ecx and costs the
+  `a1` moffs load.
+- **A call reached from both arms is written INSIDE both arms**, never
+  behind an `fEdited` flag (the flag costs `xor eax,eax` at the top and a
+  `test`); VC5 cross-jumps the two calls into one that the no-input path
+  jumps past.
+- **The table index re-reads the global** (`tbl[g]`, not `tbl[v]`) and the
+  gate global is tested inline -- with the two spellings above that gives
+  the original's eax pairing; alone ("gate inline, no local") it measured
+  worse, which is why the dossier had it dead.
+`sprintf` goes through the /MD import (`call dword ptr [sprintf]`), as the
+file's other matched cyclers already say.
+
+## A pointer-walk with `volatile` stores pins store ORDER but frees the scheduler to interleave `inc`/`cmp` with the stores: write the loop in INDEX form (0x10058540)
+
+Four grid-fill loops sat at size- and multiset-exact with `inc edi; cmp
+ecx,limit` slid between the last two stores.  Without the volatile the
+stores reorder by register chain; with it the scheduler treats them as slow
+and fills around them.  `tab[i][0..3] = ...` in index form gives BOTH: VC5
+strength-reduces to the original's biased cursor (`add ecx,0x10` at the
+top, `[ecx-0x14..-8]`, `cmp ecx,limit` on the pointer) AND keeps the
+`inc; cmp; jl` after the stores.  Two details: compute the DIV result
+(`top`) before the MOD result (`left`) so the div takes esi; and a loop that
+continues a neighbouring table is bounded the original's way (`i + 15 <
+24`: `lea edx,[edi+0xf]; cmp edx,0x18`), which also lands the `inc`.
