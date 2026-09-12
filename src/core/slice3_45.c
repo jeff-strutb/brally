@@ -744,6 +744,7 @@ void BrDiKeyboardShutdown(void)
  * declares all four for the callers that remain (BrFfbUpdateSpring below
  * calls BrFfbSetSpringCoeff). */
 
+/* @t4-pass 0x10072210 1 2026-09-12 probes 10 bytes 391 insns 127 regions 5 rows 0 census no  (hand, fn.py variants: named k local for the g_br0BD424 web -- fixes the whole esi/ecx rotation AND the [esp+0x14] schedule but breaks the up-arm bound into an imul-from-memory fold, size -2; own-statement / rate-temp / scaled-temp loads of g_br0BD428 all add a mov r,r; operand swap, direct expression and plain signed spelling inert; cur-first declaration order inert; end-of-TU position inert; before-loads-first collapses the *1000 lea chain the original keeps. Residue = one named-local-vs-CSE-web priority swap: orig cur->esi / g_br0BD424-web->ecx, ours reversed. Byte-exact additionally gated on the 5 unmapped d3d-global reloc regions, same bootstrap as 0x10079390.) */
 /* 0x10078F20 */
 /* WHAT IT DOES: eases the weight of the steering up or down a step at a time
  * rather than jumping to it, so the wheel's resistance changes smoothly as
