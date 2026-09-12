@@ -543,7 +543,16 @@ float BrFloat12MaxAbs(const float *pv)
      * (as below) moved three slots and is what put `zero` on -0x10. That is
      * the only knob found so far and it is worth one more session -- the
      * remaining question is what puts a FLOAT on -4 ahead of the two pointers,
-     * which no arrangement tried so far does. */
+     * which no arrangement tried so far does.
+     * 2026-09-12: the knob is the NAMES.  28 name sets measured (/Od /Op,
+     * slots decoded from the init stores): renaming hi/lo/p/end permutes the
+     * slots, renaming zero/v never does; `pp` for p puts end on -4 and p on
+     * -0xC, `stop`/`pend` for end puts lo on -8, `h` for hi puts hi on -0x10.
+     * No set tried gives the original's order, and the order is NOT a simple
+     * hash of the name (sum/first/last/length/polynomial over 2..127 buckets
+     * with either tie-break all fail the 28 observations).  The same knob
+     * landed 0x1002CEE9 (16 sets) and 0x1002AF17 (38 sets) in br_framebegin.c
+     * -- brute force works when the function has 4-5 locals. */
     float hi;
     float lo;
     float zero;
