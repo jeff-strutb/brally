@@ -152,11 +152,27 @@ def twins(va):
     return out
 
 
+CPP_REPORT = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+
+
 def report_rows():
+    """report.csv rows keyed by VA, with report_cpp.csv rows OVERRIDING them.
+
+    A VA filed under src/core/cpp/ is owned by that TU (the C twin, if one is
+    still lying in a slice batch, is the stale side); the C++ sweep's row is
+    the one the gates must measure.  Such rows carry cpp=True so the object
+    and oracle lookups below can follow the C++ sweep's naming.
+    """
     rows = {}
     if os.path.exists(REPORT):
         for r in csv.DictReader(open(REPORT)):
             if r.get('va'):
+                rows[r['va'].lower()] = r
+    if os.path.exists(CPP_REPORT):
+        for r in csv.DictReader(open(CPP_REPORT)):
+            if r.get('va') and r.get('status') not in ('', 'compile_error'):
+                r = dict(r)
+                r['cpp'] = True
                 rows[r['va'].lower()] = r
     return rows
 
@@ -167,8 +183,22 @@ def report_status():
 # ------------------------------------------------------------- measure -----
 
 def _find_obj(row):
-    variant = row.get('variant') or 'O2'
     base = os.path.splitext(os.path.basename(row['file']))[0]
+    if row.get('cpp'):
+        # cpp_sweep.py writes obj_cpp/<base>_sweep_<VA8>_<i>.obj, one per
+        # cpp_score.DEFAULT_OPTS entry; the row's opt tag names the winner.
+        import cpp_score, cpp_sweep
+        tags = [cpp_sweep._opt_tag(o) for o in cpp_score.DEFAULT_OPTS]
+        order = ([tags.index(row.get('opt'))] if row.get('opt') in tags else []) \
+            + list(range(len(tags)))
+        va8 = '%08X' % int(row['va'], 16)
+        for i in order:
+            p = os.path.join(ROOT, 'build', 'match', 'obj_cpp',
+                             '%s_sweep_%s_%d.obj' % (base, va8, i))
+            if os.path.exists(p):
+                return p
+        return None
+    variant = row.get('variant') or 'O2'
     for d in ('obj_' + variant, 'obj_O2', 'obj_O2y', 'obj_Od'):
         p = os.path.join(ROOT, 'build', 'match', d, base + '.obj')
         if os.path.exists(p):
@@ -253,6 +283,10 @@ def canon(row):
         d = re.search(r'^(0x[0-9a-f]+|\d+)$', inner)
         return '[M+%s]' % d.group(1) if d else '[M]'         # [d], [R], [R + R]
     ops = re.sub(r'\[([^\]]+)\]', mem, ops)
+    # The C++ EH frame's `fs:[0]` triple: the original encodes the literal
+    # absolute 0, the assembler emits a DIR32 reloc for it (msetdiff shows
+    # A).  Same address, same instruction -- not a residue row.
+    ops = ops.replace('fs:[A]', 'fs:[M+0]')
     if mn == 'lea':
         if ops == 'R, [M]':      return 'add R, R'           # lea R,[R+R]  ~ add R,R
         if ops == 'R, [M+1]':    return 'inc R'              # lea R,[R+1]  ~ inc R
@@ -799,7 +833,11 @@ def measure(va):
     mb = re.search(r'(\d+) orig bytes \([\d.]+% of the function\) were NEVER COMPARED', out)
     lost_bytes = int(mb.group(1)) if mb else (0 if not lost else 10**6)
     # oracle
-    orc = subprocess.run([PY, 'tools/t3b_verify.py', va], cwd=ROOT,
+    # A C++ row's plain name also names the STALE C twin's symbol in obj_O2;
+    # hand the oracle the mangled symbol so it measures this object or
+    # reports UNCLASSIFIED, never the twin.
+    orc_cmd = [PY, 'tools/t3b_verify.py', va] + (['--name', sym] if r.get('cpp') else [])
+    orc = subprocess.run(orc_cmd, cwd=ROOT,
                          capture_output=True, text=True).stdout.strip().splitlines()
     verdict = 'UNCLASSIFIED'
     for l in orc:
