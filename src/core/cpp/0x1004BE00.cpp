@@ -2,6 +2,13 @@
  * control on it in turn, and reports failure if any of them could not be
  * made. One of a family of page builders, each laying out its own screen,
  * and it saves the current selection first so the page can be returned to. */
+/* @t3 0x1004BE00 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3475/3475 insns 1016/1016 rows 3+3 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
+ * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier
+ * below; dead list and schedule census in 0x1004AEE0.cpp.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1004be00 glide FUN_1004be00
  * @cpp_kind free
  * @cpp_symbol ?FUN_1004be00@@YAHPAVGameUi@@@Z
@@ -14,15 +21,17 @@
  * solved byte-exact on 0x1004ABE0 -- see the "photo control block" entry in
  * docs/VC5-IDIOMS.md for why the rect is stored +0x54 first.
  *
- * PARKED at 34 diffs, and they are ALL in photo1's ten-instruction tail:
- * the original computes both derived ints (`lea ebx+0x7f`, `add edx,0x21`)
- * before its three stores and sinks the `fstp` past `f2968`, while ours
- * interleaves and sinks the `+0x58` store instead. Identical instruction
- * multiset. This is the SAME residue, instruction for instruction, as
- * 0x1004AEE0 -- which is the evidence that the source here is right and the
- * wall is VC5's scheduler, not a spelling. Photos 2 and 3 and every other
- * byte of the function are exact. Do not re-probe the arm spellings; the
- * dead list is in 0x1004AEE0.cpp's header.
+ * Residue: 34 diffs, ALL in photo1's ten-instruction tail -- the original
+ * issues [fld fy][yi reload + xi copy][fsub][lea + add][f50 + f58][f5C +
+ * f2968][fstp][w2A42 + inc]; ours issues the fsub right after the fld
+ * (the xi copy lands at its first use, so the fy statement is IR-first)
+ * and the lea waits a cycle after the copy (AGI), so f5C overtakes f58.
+ * Identical instruction multiset, byte-identical to 0x1004AEE0's residue,
+ * whose header carries the full dead list and the pairing-schedule census
+ * (2026-09-12). Photos 2 and 3 and every other byte are exact.
+ *
+ * @t4-pass 0x1004BE00 1 2026-09-12 probes 240 bytes 3475 insns 1016 regions 1 rows 6 census no  (generated: all 240 orders of {xi, fy, f50, f58, f5C, f2968}; best 32 = f50 before fy, none 0)
+ * @t4-pass 0x1004BE00 2 2026-09-12 probes 27 bytes 3475 insns 1016 regions 1 rows 6 census yes  (27 compiler options incl. /Gi /Op /G5 /Ow /Ob2, all 34 or worse; corpus query MISS at +0x5fc len 8; residue byte-identical to 0x1004AEE0's certified census)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
