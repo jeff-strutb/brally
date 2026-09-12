@@ -310,6 +310,7 @@ glide_va,name,module,basis,file
 0x10023C90,BrGbiRun,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10023CB0,BrTexRgbaToArgb1555,drawing,filed,src/core/drawing/br_tex3d.c
 0x10023D20,BrTex3dRecCopyHead,drawing,filed,src/core/drawing/br_tex3d.c
+0x10023D70,FUN_10023d70,drawing,manual,src/core/drawing/br_texhalf.c
 0x100242E0,BrTexShiftFromSize,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024DF0,FUN_10024df0,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024E30,BrTex3dRecSet278,drawing,filed,src/core/drawing/br_tex3d.c
@@ -746,6 +747,7 @@ glide_va,name,module,basis,file
 0x1005A780,BrNodeRunMarkPass,drawing,neighbour-1,src/core/drawing/br_nodepass.c
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
 0x1005AFF0,BrCtlInputApply,driving,filed,src/core/driving/br_ctlinput.c
+0x1005BCC0,BrSub10062C50,driving,manual,src/core/driving/br_carctor.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
 0x1005D050,BrCtlHuman,driving,manual,src/core/driving/br_ctlstep.c
 0x1005E690,BrCtlAi,driving,manual,src/core/driving/br_ctlstep.c

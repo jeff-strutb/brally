@@ -85,7 +85,6 @@ BrGbiCall10020FA0,0x10021270,2,1,"named global, no address recorded",0x10021250
 FUN_100215c0,0x100215C0,2,1,"named global, no address recorded",0x100219D0
 BrDlLightSetup_10021C70,0x10021C70,4,1,"named global, no address recorded",0x1001E7A0
 BrDlLightSetup_100221D0,0x100221D0,4,1,"named global, no address recorded",0x1001E7A0
-FUN_10023d70,0x10023D70,2,1,"named global, no address recorded",0x10027710
 FUN_100242e0,0x100242E0,8,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0 0x100298C0
 FUN_100250d0,0x100250D0,2,1,"named global, no address recorded",0x10024E60
 FUN_10027220,0x10027220,4,1,"named global, no address recorded",0x10024E60 0x100272F0
@@ -216,7 +215,6 @@ FUN_10059f70,0x10059F70,2,1,"named global, no address recorded",0x10059F10
 FUN_1005a280,0x1005A280,2,1,"named global, no address recorded",0x1005A080
 FUN_1005a300,0x1005A300,2,1,"named global, no address recorded",0x1005A080
 @BrSub1005ACE0@4,0x1005ACE0,3,1,"named global, no address recorded",0x100623A0
-@BrSub10062C50@4,0x1005BCC0,3,1,"named global, no address recorded",0x1006FC70
 @FUN_1005c560@4,0x1005C560,3,1,"named global, no address recorded",0x10062870
 @BrCtlHumanBody@4,0x1005C8B0,2,1,"named global, no address recorded",0x1005D050
 @FUN_1005f530@4,0x1005F530,3,1,"named global, no address recorded",0x10019A10
