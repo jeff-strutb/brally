@@ -62,80 +62,8 @@ BrSndFreeFn BrSndFreeHook = BrSndFreeDefault;
 /* 0x100722D0  create the buffer and upload the sample                 */
 /* ------------------------------------------------------------------ */
 
-int32_t BrSndVoiceCreate(BrSndVoice *pVoice)
-{
-    BrDSBufferDesc desc;
-    BrDSBCaps      caps;
-    void          *pLock1 = NULL;
-    void          *pLock2 = NULL;
-    uint32_t       nLock1 = 0;
-    uint32_t       nLock2 = 0;      /* the original aims this at its own arg1
-                                     * stack slot; a local is equivalent. */
-    BrDSBuffer    *pBuf;
-    int32_t        hr;
-
-    desc.dwSize        = 0x14u;     /* sizeof(DSBUFFERDESC) */
-    desc.dwFlags       = (pVoice->f28 == 0) ? BR_SND_DESC_FLAGS
-                                            : BR_SND_DESC_FLAGS_ALT;
-    desc.dwBufferBytes = pVoice->nDataBytes;
-    desc.dwReserved    = 0;
-    desc.lpwfxFormat   = pVoice->pFormat;
-
-    /* Note: pVoice->pBuf is NOT pre-cleared by the original -- it relies on
-     * CreateSoundBuffer to write it. */
-    hr = BrSndPDS->pVtbl->CreateSoundBuffer(BrSndPDS, &desc, &pVoice->pBuf,
-                                            NULL);
-    if (hr == 0) {
-        pBuf = pVoice->pBuf;
-        hr = pBuf->pVtbl->Lock(pBuf, 0, pVoice->nDataBytes,
-                               &pLock1, &nLock1, &pLock2, &nLock2, 0);
-        if (hr == 0) {
-            /* DEVIATION: the original is a `rep movsd` + `rep movsb` pair,
-             * i.e. a plain forward byte copy of nDataBytes bytes. It does not
-             * consult nLock1, so an undersized lock would overrun; memcpy is
-             * the same copy without that being any safer, but at least the
-             * intent is explicit. */
-            memcpy(pLock1, pVoice->pData, pVoice->nDataBytes);
-
-            /* GOTCHA: the byte count passed to Unlock is nDataBytes, not the
-             * nLock1 that Lock reported. */
-            hr = pBuf->pVtbl->Unlock(pBuf, pLock1, pVoice->nDataBytes,
-                                     NULL, 0);
-            if (hr == 0) {
-                pLock1 = NULL;
-                hr = pBuf->pVtbl->SetVolume(pBuf, 0);
-                if (hr == 0) {
-                    hr = pBuf->pVtbl->SetPan(pBuf, 0);
-                    if (hr == 0) {
-                        caps.dwSize = 0x14u;   /* sizeof(DSBCAPS) */
-                        hr = pBuf->pVtbl->GetCaps(pBuf, &caps);
-                        if (hr == 0) {
-                            pVoice->f24 =
-                                ((caps.dwFlags & BR_DSBCAPS_LOCHARDWARE) != 0)
-                                ? 1 : 0;
-                            return hr;     /* success; buffer kept */
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (pLock1 != NULL) {
-        pBuf = pVoice->pBuf;
-        /* GOTCHA (faithful): this assignment clobbers the failure code that
-         * brought us here, so a create that failed at Unlock reports whatever
-         * the retry Unlock returns -- possibly 0. */
-        hr = pBuf->pVtbl->Unlock(pBuf, pLock1, pVoice->nDataBytes, NULL, 0);
-        pLock1 = NULL;
-    }
-    if (pVoice->pBuf != NULL) {
-        pVoice->pBuf->pVtbl->Release(pVoice->pBuf);
-        pVoice->pBuf = NULL;
-    }
-    (void)pLock1;
-    return hr;
-}
+/* 0x1006B240 BrSndVoiceCreate moved to src/core/audio/br_sndbuf.c (its
+ * module).  The declaration callers need is in slice1_08.h. */
 
 /* ------------------------------------------------------------------ */
 /* 0x10072450  append to the tail of a chain                           */

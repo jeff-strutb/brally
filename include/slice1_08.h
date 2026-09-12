@@ -73,6 +73,8 @@ typedef struct BrCollPlane {
 /* DirectSound interface models                                        */
 /* ------------------------------------------------------------------ */
 
+#include "br_match.h"   /* BR_STDCALL */
+
 typedef struct BrDSBuffer BrDSBuffer;
 typedef struct BrDSound   BrDSound;
 
@@ -104,26 +106,26 @@ typedef struct BrDSBCaps {
 typedef struct BrDSBufferVtbl {
     void   *QueryInterface;                                     /* +0x00 */
     void   *AddRef;                                             /* +0x04 */
-    int32_t (*Release)(BrDSBuffer *);                           /* +0x08 */
-    int32_t (*GetCaps)(BrDSBuffer *, BrDSBCaps *);              /* +0x0C */
+    int32_t (BR_STDCALL *Release)(BrDSBuffer *);                           /* +0x08 */
+    int32_t (BR_STDCALL *GetCaps)(BrDSBuffer *, BrDSBCaps *);              /* +0x0C */
     void   *GetCurrentPosition;                                 /* +0x10 */
     void   *GetFormat;                                          /* +0x14 */
     void   *GetVolume;                                          /* +0x18 */
     void   *GetPan;                                             /* +0x1C */
     void   *GetFrequency;                                       /* +0x20 */
-    int32_t (*GetStatus)(BrDSBuffer *, uint32_t *);             /* +0x24 */
+    int32_t (BR_STDCALL *GetStatus)(BrDSBuffer *, uint32_t *);             /* +0x24 */
     void   *Initialize;                                         /* +0x28 */
-    int32_t (*Lock)(BrDSBuffer *, uint32_t, uint32_t,
+    int32_t (BR_STDCALL *Lock)(BrDSBuffer *, uint32_t, uint32_t,
                     void **, uint32_t *, void **, uint32_t *,
                     uint32_t);                                  /* +0x2C */
-    int32_t (*Play)(BrDSBuffer *, uint32_t, uint32_t, uint32_t);/* +0x30 */
-    int32_t (*SetCurrentPosition)(BrDSBuffer *, uint32_t);      /* +0x34 */
+    int32_t (BR_STDCALL *Play)(BrDSBuffer *, uint32_t, uint32_t, uint32_t);/* +0x30 */
+    int32_t (BR_STDCALL *SetCurrentPosition)(BrDSBuffer *, uint32_t);      /* +0x34 */
     void   *SetFormat;                                          /* +0x38 */
-    int32_t (*SetVolume)(BrDSBuffer *, int32_t);                /* +0x3C */
-    int32_t (*SetPan)(BrDSBuffer *, int32_t);                   /* +0x40 */
-    int32_t (*SetFrequency)(BrDSBuffer *, uint32_t);            /* +0x44 */
-    int32_t (*Stop)(BrDSBuffer *);                              /* +0x48 */
-    int32_t (*Unlock)(BrDSBuffer *, void *, uint32_t,
+    int32_t (BR_STDCALL *SetVolume)(BrDSBuffer *, int32_t);                /* +0x3C */
+    int32_t (BR_STDCALL *SetPan)(BrDSBuffer *, int32_t);                   /* +0x40 */
+    int32_t (BR_STDCALL *SetFrequency)(BrDSBuffer *, uint32_t);            /* +0x44 */
+    int32_t (BR_STDCALL *Stop)(BrDSBuffer *);                              /* +0x48 */
+    int32_t (BR_STDCALL *Unlock)(BrDSBuffer *, void *, uint32_t,
                       void *, uint32_t);                        /* +0x4C */
     void   *Restore;                                            /* +0x50 */
 } BrDSBufferVtbl;
@@ -134,7 +136,7 @@ typedef struct BrDSoundVtbl {
     void   *QueryInterface;                                     /* +0x00 */
     void   *AddRef;                                             /* +0x04 */
     void   *Release;                                            /* +0x08 */
-    int32_t (*CreateSoundBuffer)(BrDSound *, const BrDSBufferDesc *,
+    int32_t (BR_STDCALL *CreateSoundBuffer)(BrDSound *, const BrDSBufferDesc *,
                                  BrDSBuffer **, void *);        /* +0x0C */
 } BrDSoundVtbl;
 
@@ -163,9 +165,12 @@ struct BrSndVoice {
     int32_t     f14;          /* +0x14  volume, 400 = unity */
     int32_t     f18;          /* +0x18  non-zero -> DSBPLAY_LOOPING */
     int32_t     f1C;          /* +0x1C  1 while started */
+    int32_t     f20;          /* +0x20 */
     int32_t     f24;          /* +0x24  set from DSBCAPS_LOCHARDWARE */
     int32_t     f28;          /* +0x28  selects the alternate desc flags */
+    unsigned char pad2C[0x9C - 0x2C];
     BrDSBuffer *pBuf;         /* +0x9C */
+    unsigned char padA0[0x1A8 - 0xA0];
     BrSndVoice *pNext;        /* +0x1A8 singly-linked chain */
 };
 
