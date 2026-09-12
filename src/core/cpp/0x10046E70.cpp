@@ -34,16 +34,18 @@
  *    original compares it as an int), not the unsigned `jb` a plain
  *    pointer comparison gives.
  *
- * PARKED at 1177 diffs. The first 675 bytes -- the page prologue, three
- * entries, the clamp and the configure vcall -- are byte-exact; from
- * there it is ONE constant-register fork carried forward. The original
- * pushes the -1 arguments as immediates (`6a ff`) and keeps the
- * selector's vptr in edi across the configure call and the add-item slot
- * read; ours promotes -1 into edi instead, so the vptr has to go to edx
- * and then spill to a stack slot, and every later entry inherits the
- * rotation. Same class as the pinned-zero register in 0x10054E20 -- a
- * constant VC5 chose to keep in a register where the original did not.
- * DO NOT RE-PROBE the clamp or the arm order; those are settled above.
+ * BYTE-EXACT 2026-09-12. What was parked as "a -1 constant-register
+ * fork" was two source shapes, neither of them the constant:
+ *  - The selector's vtable is a NAMED LOCAL (`vt`) read once, the
+ *    configure call goes through it as a pointer-to-member, and the
+ *    add-item slot is read into `add` BEFORE the pfn04 store and the
+ *    walker init. With a plain virtual call VC5 hoists the slot read
+ *    below `pp = names`, so the vptr temp overlaps the walker and cannot
+ *    share edi -- it goes to edx and spills. Dropping the configure -1 to
+ *    0 (a diagnostic) changed nothing, which is how the -1 theory died.
+ *  - The third arm's product is explicitly grouped
+ *    `((hi - lo) * n) * k`; flat `(hi - lo) * n * k` is reassociated by
+ *    VC5 into `(hi - lo) * k` first (two fxch), the paren pins the tree.
  */
 class GameUi;
 class BrCtl;
@@ -64,6 +66,8 @@ public:
 };
 
 typedef char chk_sel3838[sizeof(Sel3838) == 0x18 ? 1 : -1];
+typedef void (Sel3838::*CfgPmf)(int, void *, int, int, int);
+typedef void (Sel3838::*AddPmf)(char *, int, int, void *, int);
 
 
 class Page46E70 {
@@ -180,6 +184,8 @@ int BrExt_1004DFC0(GameUi *parent)
     Page46E70 *cont;
     BrCtl     *p;
     char       bad;
+    char      *vt;
+    AddPmf     add;
 
     parent->w12 = 0;
     parent->a6C[parent->w10] = 1;
@@ -239,14 +245,16 @@ int BrExt_1004DFC0(GameUi *parent)
             k = 0;
         }
 
-        p->m3838.s5(0x40001, &DAT_100aace8, 4, k, -1);
+        vt = *(char **)&p->m3838;
+        (p->m3838.**(CfgPmf *)(vt + 0x14))(0x40001, &DAT_100aace8, 4, k, -1);
+        add = *(AddPmf *)(vt + 0x10);
     }
     p->m3838.pfn04 = (int (*)(void))FUN_100476C0;
     {
         char **pp = g_aBrNames0B81D0;
 
         do {
-            p->m3838.s4(*pp, 0, 1, &DAT_100aac78, 1);
+            (p->m3838.*add)(*pp, 0, 1, &DAT_100aac78, 1);
             pp++;
         } while ((int)pp < (int)&g_aBrNames0B81D0[12]);
     }
@@ -256,7 +264,7 @@ int BrExt_1004DFC0(GameUi *parent)
         p->f1E1E8 = p->f1E204;
     else
         p->f1E1E8 = p->f1E200
-                  - (p->f1E204 - p->f1E200) * g_brSel5D8C * DAT_1007766c;
+                  - ((p->f1E204 - p->f1E200) * g_brSel5D8C) * DAT_1007766c;
     p->f1E1C8 = (int)p->f1E1E8;
     p->f1E1D0 = p->f1E1C8 + 0x10;
     cont->w14 += 1;
