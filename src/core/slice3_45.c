@@ -767,6 +767,17 @@ void BrDiKeyboardShutdown(void)
  * calls BrFfbSetSpringCoeff). */
 
 /* @t4-pass 0x10072210 1 2026-09-12 probes 10 bytes 391 insns 127 regions 5 rows 0 census no  (hand, fn.py variants: named k local for the g_br0BD424 web -- fixes the whole esi/ecx rotation AND the [esp+0x14] schedule but breaks the up-arm bound into an imul-from-memory fold, size -2; own-statement / rate-temp / scaled-temp loads of g_br0BD428 all add a mov r,r; operand swap, direct expression and plain signed spelling inert; cur-first declaration order inert; end-of-TU position inert; before-loads-first collapses the *1000 lea chain the original keeps. Residue = one named-local-vs-CSE-web priority swap: orig cur->esi / g_br0BD424-web->ecx, ours reversed. Byte-exact additionally gated on the 5 unmapped d3d-global reloc regions, same bootstrap as 0x10079390.) */
+/* @t4-pass 0x10072210 2 2026-09-12 probes 10 bytes 391 insns 127 regions 5 rows 0 census yes  (hand, fn.py variants: guard OR-chain, arm swap, chained scaled/cur/clamp stores, block-scope pEff, mul operand swap, split scaled statements, reversed compares, up copied to a local -- all inert or worse; slotcensus orig vs recomp identical slot-for-slot, 3 arg reads, no locals slots) */
+/* @t3 0x10072210 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 391/391 insns 127/127 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one allocation fork: the original gives cur the callee-saved
+ * esi and the g_br0BD424 CSE web ecx, ours the reverse, dragging the
+ * [esp+0x14] enable read two slots later (identical multiset, 0+0). A named
+ * k local flips both but breaks the up-arm bound into an imul-from-memory
+ * fold -- full dead list in the two ledger lines. Byte-exact additionally
+ * gated on the unmapped d3d-global reloc regions.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* 0x10078F20 */
 /* WHAT IT DOES: eases the weight of the steering up or down a step at a time
  * rather than jumping to it, so the wheel's resistance changes smoothly as
