@@ -36,7 +36,7 @@ typedef struct { int a, b, c, d; } BrSessionGuid;
  * timeout) it tells the lobby list widget about the game, copies the 16-byte
  * session id, and hands that id to the join helper. Returns 1 to keep
  * enumerating, 0 if there is no lobby object or DirectPlay timed out. */
-/* @implements 0x10036220 glide BrNetEnumSessionCb */
+/* port-only body; Glide match is src/core/cpp/0x10036220.cpp */
 int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
                                  void *pCtx)
 {
