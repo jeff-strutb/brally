@@ -51,7 +51,17 @@ float BrSinF(float a);
  * Residue: sideForce/ran are an adjacent float+int aggregate (orig [esp+0x58]/
  * [esp+0x5c]); remaining unpaired is x87 scheduling (fcom vs fcomp, fsub st(2)
  * vs fsubr, extra fld st / fstp st on the roll abs). Frame sub esp, 0x8c.
- * Insn gap 1. */
+ * Insn gap 1.
+ *
+ * The `hold` compare (orig +0x416..0x4fe): the original SELECTS at the read
+ * (`cmp byte [param_5]; je; fld K; jmp; fld hold-slot`) and carries the value
+ * in st across the whole table block to a `fcomp st(1)`; ours stores on the
+ * *param_5 arm and compares memory.  DEAD 2026-09-12, do not re-run: the
+ * select spelled as a ternary into a REUSED local (fVar11) and into a FRESH
+ * single-use local both HOME the result to a slot (+3 insns, regnorm 23+22 ->
+ * 26+22 both).  The st-carry is not reachable from a named local; whatever
+ * spelling the original had keeps both fVar2 and the selected bound on the
+ * fp stack -- same axis as the BrCrRespWalk stack-dup fork.  Park. */
 /* @t4-pass 0x100645A0 1 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
 /* @t4-pass 0x100645A0 2 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
 /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
