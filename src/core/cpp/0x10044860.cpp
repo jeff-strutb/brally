@@ -27,19 +27,21 @@
  * float argument is `fy + cont->f33C`. A second `DAT_100abaa4` block later
  * wraps exactly two controls.
  *
- * PARKED at 1952 diffs, but the structure is exact: slot-blind, the ONLY
- * instruction-level differences in 2439 bytes are four `fld`/`fadd` operand
- * orders. The original loads the LOCAL and adds the member
- * (`fld [esp+0x10]; fadd [esi+0x33c]`); VC5 gives us the reverse for every
- * spelling. DEAD PROBES, all leaving 1952 and the same operand order --
- * VC5 canonicalises commutative float addition, so do NOT re-spell it:
- *   - `fy + cont->f33C` and `cont->f33C + fy` (byte-identical output);
- *   - a named `ay = fy + cont->f33C;` temp passed to the call;
- *   - declaring `fy` first among the locals.
- * The knock-on is one stack-slot swap: the original keeps `fy` in the
- * dedicated `push ecx` local and spills the operator-new temp into the dead
- * parameter slot; ours does the opposite, and that 4-byte store-form
- * difference is what cascades into the raw diff count.
+ * BYTE-EXACT 2026-09-12 (4/4 pieces), two findings, neither a spelling:
+ *  - `fy = 0.0f` is the FIRST statement, before `parent->w12 = 0`. Written
+ *    second, the zero is emitted after ebx is pinned to 0 and becomes
+ *    `mov [slot], ebx`, and fy is then homed in the dead parameter slot
+ *    with the operator-new temp in the `push ecx` local. Written first it
+ *    is an immediate `mov [esp+0x14], 0` into the real local and the temp
+ *    takes the parameter slot, exactly as the original (1952 -> 36).
+ *  - The four `fld [esp+0x10]; fadd [esi+0x33c]` sites are the compiler
+ *    OPTION /Gi (incremental compilation), not source: under /O2 /GX /MD
+ *    VC5 loads the member first for every spelling of a float
+ *    `local + member` (24 declaration orders, temps, references, pointers,
+ *    casts, volatile, inline helper, `(fy + 0.0f)` -- all member-first or
+ *    worse), and under /O2 /Gi /GX /MD the same source is 0 diffs. /Gi is
+ *    per-TU: 0x10004AD0 is exact only WITHOUT it (it flips an `or cl,al`).
+ *    cpp_score.DEFAULT_OPTS now carries the /Gi shape; the sweep picks it.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -233,8 +235,8 @@ int BrPhaseEnterPlaceholder_1004B430(GameUi *parent)
     BrCtl     *p;
     char       bad;
 
-    parent->w12 = 0;
     fy = 0.0f;
+    parent->w12 = 0;
     parent->a6C[parent->w10] = 1;
     cont = new Page044860;
     parent->a14[parent->w10] = cont;
