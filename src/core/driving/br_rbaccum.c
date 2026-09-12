@@ -50,6 +50,55 @@ void BrRbAccumAll(BrRbBodyFull *pB)
     BrRbSolveAccel(pB);
 }
 
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: adds up everything pushing on the body itself -- each force
+ * on its list lands in the body's acceleration, rotated into the body's own
+ * frame when the node says so, and (unless the body is in no-torque mode)
+ * its lever arm crossed with it lands in the spin. GOTCHA, kept: a node
+ * whose kind is neither 0 nor 1 reuses whatever the PREVIOUS node left in
+ * the force slot -- uninitialised stack on the first node. */
+/* @implements 0x10063E60 glide BrRbAccumOwnForces */
+void BrRbAccumOwnForces(BrRbBodyFull *pB)
+{
+    const BrRbForce *pN;
+    BrVec3 v;                        /* deliberately NOT initialised */
+
+    for (pN = pB->pForces; pN != NULL; pN = pN->pNext) {
+        switch (pN->kind) {
+        case 0:
+            /* Three scalar copies, not an aggregate assign -- the assign
+             * materialises &pN->f in a register. */
+            v.x = pN->f.x;
+            v.y = pN->f.y;
+            v.z = pN->f.z;
+            break;
+        case 1:
+            BrMat4MulVec3Transposed(&v, &pB->m, &pN->f);
+            break;
+        }
+
+        pB->accel.x += v.x;
+        pB->accel.y += v.y;
+        pB->accel.z += v.z;
+
+        if (pB->mode != 2) {
+            BrVec3 r;
+            BrMat4MulVec3Transposed(&r, &pB->m, &pN->r);
+            {
+                /* The z, y, x temporary order is the cross-product match
+                 * (see BrVec3Cross); the adds then run x, y, z. */
+                float z = r.x * v.y - r.y * v.x;
+                float y = r.z * v.x - r.x * v.z;
+                float x = r.y * v.z - r.z * v.y;
+                pB->angAccel.x += x;
+                pB->angAccel.y += y;
+                pB->angAccel.z += z;
+            }
+        }
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* 0x1006B170 */
 /* WHAT IT DOES: turns all the pushes and twists that have been piled onto a
  * physical body this frame into how fast it is about to speed up and how fast

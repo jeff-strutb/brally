@@ -694,7 +694,10 @@ static BrVec3 BrS42Cross(const BrVec3 *pA, const BrVec3 *pB)
     return r;
 }
 
-/* 0x1006AEB0 */
+/* 0x1006AEB0.  In the matching build the definition lives in
+ * br_rbaccum.c (glide 0x10063E60), where the stale-slot GOTCHA is kept
+ * rather than zeroed. */
+#ifndef BR_MATCHING_BUILD
 void BrRbAccumOwnForces(BrRbBodyFull *pB)
 {
     const BrRbForce *pN;
@@ -727,6 +730,7 @@ void BrRbAccumOwnForces(BrRbBodyFull *pB)
         }
     }
 }
+#endif /* !BR_MATCHING_BUILD */
 
 /* 0x1006AFF0 */
 void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
