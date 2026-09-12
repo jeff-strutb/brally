@@ -128,6 +128,16 @@ void FUN_100215c0(int, int, int, int, int);
  * to the rectangle drawer. It consumes 0x18 bytes, not 8, because the
  * texture coordinates follow the command. The whole-pixel twin is
  * BrDlsTileRectE3. */
+/* RESIDUE (75/79 B, 29/32 insns, register-blind 4+1): the original keeps
+ * FIVE argument values live at once and copies the loaded words before
+ * masking (`mov ecx,eax; and eax,0xfff; mov ebx,eax` on the first word,
+ * `mov edx,eax; mov edi,eax` on the second, the low field masked IN PLACE
+ * last), where ours masks the shifted field in place and the low field from
+ * a copy.  DEAD 2026-09-12 (fn.py, do not re-run): lrx before lry; all
+ * five fields as named locals in the original's evaluation order; `>> 24 &
+ * 7` unparenthesised; two named words (v0/v1) with lrx inline in the call,
+ * with both first-word fields inline, and with both named -- the split
+ * word forms are 26 insns, strictly worse. */
 /* @t4-pass 0x10021570 1 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10021570 2 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10021570 glide BrDlsTileRectE4 */

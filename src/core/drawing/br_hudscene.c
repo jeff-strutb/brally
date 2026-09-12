@@ -1037,7 +1037,16 @@ void BrWeatherStepWind(void)
      * DEAD 2026-09-05: named `c`/`s` locals for the two trig results
      * (byte-identical), a named `c` alone (24), reusing `a` for the cosine
      * after the sine is taken (24), and a plain `a = windAngle` copy in
-     * place of the int pun (44, loses the integer copy). */
+     * place of the int pun (44, loses the integer copy).
+     * DEAD 2026-09-12 (fn.py, do not re-run): the trig results as
+     * assignment EXPRESSIONS `(t = (float)cos(..)) * gain * dt` with a
+     * fresh `t`, with `r`, with `a` itself, and sine-first with `a` -- all
+     * reassociate to a `gain * dt` product (71 insns but 6+6); dropping
+     * the sine's cast (66 insns: that `fst` IS its rounding store); a
+     * doubled `(float)(float)` cast on the cosine (0+3); swapping which
+     * trig call takes the slot copy (0+4, neither rounds); and the sine
+     * argument as `*(float *)&ia` (0+3).  The cosine's rounding store is
+     * not reachable from any cast spelling tried. */
     {
         int ia = *(int *)&g_weather.windAngle;
         g_weather.windZ = 0.0f;
