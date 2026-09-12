@@ -109,79 +109,58 @@ static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
 void BrSprFontRectInit_1005F800(void)
 {
 #ifdef BR_MATCHING_BUILD
-    /* Four inlined pointer-walk loops.  Cursor/limit are distinct symbols
-     * so VC5 emits `mov ecx, offset` / `cmp ecx, offset` relocs (same-array
-     * CSE collapsed those to BSS-relative immediates).  ebx holds the
-     * integer divisor (5, then 3). */
+    /* Byte-exact 2026-09-12 in INDEX FORM: VC5 strength-reduces each
+     * `tab[i][k]` walk into the biased cursor the original has (`add ecx,
+     * 0x10` at the top, stores at [ecx-0x14..-8], `cmp ecx, limit` on the
+     * three pointer-bound loops) and keeps `inc edi; cmp; jl` AFTER the
+     * last two stores.  The pointer-walk spelling this replaced (a
+     * `volatile int *p` stepped first, `i++` as the last statement) was
+     * size- and multiset-exact but let the scheduler interleave the `inc`
+     * and the `cmp` with the last two stores -- and without the volatile
+     * the stores reorder by register chain.  Two details carry: `top` is
+     * computed BEFORE `left` (the div's result takes esi, the mod's eax),
+     * and the fourth loop's bound is `i + 15 < 24` -- the original's test
+     * (`lea edx,[edi+0xf]; cmp edx,0x18`), i.e. the D sheet is the tail of
+     * the C sheet's 24-record table indexed from 15 with a rebased counter;
+     * `i < 9` lands the `inc` before the last two stores.
+     * Dead: `while (++i, p < limit)` on the pointer walk; index form with
+     * left before top (+14 insns, the `% 8` CSEs differently). */
     {
-        extern char DAT_10ac420c[];   /* A[0][1] */
-        extern char DAT_10ac464c[];   /* A limit */
-        extern char DAT_10ac46c4[];   /* B[0][1] */
-        extern char DAT_10ac4804[];   /* B limit */
-        extern char DAT_10ac4adc[];   /* C[0][1] */
-        extern char DAT_10ac4bcc[];   /* C limit == D[0][1] */
         int i;
-        volatile int *p;
         int left, top;
-        int cols;
 
-        i = 0;
-        p = (int *)DAT_10ac420c;
-        do {
-            p += 4;
+        for (i = 0; i < BR_SPRFONT_RECT_A; i++) {
             top  = (i / 8) * 16;
             left = (i % 8) * 16;
-            p[-5] = left;
-            p[-4] = top;
-            p[-3] = left + 16;
-            p[-2] = top + 16;
-            i++;
-        } while ((int)p < (int)DAT_10ac464c);
-
-        i = 0;
-        p = (int *)DAT_10ac46c4;
-        cols = 5;
-        do {
-            p += 4;
-            /* div first so esi holds top while idiv needs cols in ebx. */
-            top  = (i / cols) * 44;
-            left = (i % cols) * 39;
-            p[-5] = left;
-            p[-4] = top;
-            p[-3] = left + 39;
-            p[-2] = top + 44;
-            i++;
-        } while ((int)p < (int)DAT_10ac4804);
-
-        i = 0;
-        p = (int *)DAT_10ac4adc;
-        cols = 5;
-        do {
-            p += 4;
-            top  = (i / cols) * 128;
-            left = (i % cols) * 128;
-            p[-5] = left;
-            p[-4] = top;
-            p[-3] = left + 128;
-            p[-2] = top + 128;
-            i++;
-        } while ((int)p < (int)DAT_10ac4bcc);
-
-        i = 0;
-        p = (int *)DAT_10ac4bcc;
-        cols = 3;
-        do {
-            p += 4;
-            top  = (i / cols) * 128;
-            left = (i % cols) * 128;
-            p[-5] = left;
-            p[-4] = top;
-            left += 128;
-            top  += 128;
-            i++;
-            p[-3] = left;
-            p[-2] = top;
-        } while (i + 15 < 24);
+            g_aBrSprRectA[i][0] = left;
+            g_aBrSprRectA[i][1] = top;
+            g_aBrSprRectA[i][2] = left + 16;
+            g_aBrSprRectA[i][3] = top + 16;
+        }
+        for (i = 0; i < BR_SPRFONT_RECT_B; i++) {
+            top  = (i / 5) * 44;
+            left = (i % 5) * 39;
+            g_aBrSprRectB[i][0] = left;
+            g_aBrSprRectB[i][1] = top;
+            g_aBrSprRectB[i][2] = left + 39;
+            g_aBrSprRectB[i][3] = top + 44;
+        }
+        for (i = 0; i < BR_SPRFONT_RECT_C; i++) {
+            top  = (i / 5) * 128;
+            left = (i % 5) * 128;
+            g_aBrSprRectC[i][0] = left;
+            g_aBrSprRectC[i][1] = top;
+            g_aBrSprRectC[i][2] = left + 128;
+            g_aBrSprRectC[i][3] = top + 128;
+        }
+        for (i = 0; i + 15 < 24; i++) {
+            top  = (i / 3) * 128;
+            left = (i % 3) * 128;
+            g_aBrSprRectD[i][0] = left;
+            g_aBrSprRectD[i][1] = top;
+            g_aBrSprRectD[i][2] = left + 128;
+            g_aBrSprRectD[i][3] = top + 128;
+        }
     }
 #else
     BrSprGrid(g_aBrSprRectA, BR_SPRFONT_RECT_A, 8,  16,  16);
