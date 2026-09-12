@@ -677,6 +677,39 @@ def classify(miss, extra, obag=None, rbag=None):
                 other[opp] -= 1
                 backed[d] -= 1
     um += collections.Counter(); ue += collections.Counter()
+    # Pointer-vs-index dword load: `mov R, [R+A]` (scaled index + reloc'd
+    # array base) IS `mov R, [R+disp]` (lea'd pointer + field).  Same
+    # address, same value; whether the base is folded into the displacement
+    # is allocation.  RAW only -- canon has already collapsed `[R+A]` to
+    # `[A]` and `[R+disp]` to `[M+disp]`, which would otherwise pair a
+    # global load with a struct field.  Proven 0x10020D70: orig
+    # `mov ecx,[edi+0x20]` (3 B) vs ours `mov ecx,[eax+g_pool+0x20]` (6 B)
+    # for vertex.oow; every named-pointer spelling that lands the 3-byte
+    # form spills a slot (+9 B, ib4/ib5).
+    mov_idx = re.compile(r'^mov R, dword ptr \[R \+ A\]$')
+    mov_ptr = re.compile(r'^mov R, dword ptr \[R \+ (0x[0-9a-f]+|\d+)\]$')
+    def _count(bag, pat):
+        return sum(bag[r] for r in bag if pat.fullmatch(r))
+    n = min(_count(extra, mov_idx), _count(miss, mov_ptr))
+    n += min(_count(extra, mov_ptr), _count(miss, mov_idx))
+    if n:
+        # consume n from EACH canon'd side -- index form became [A],
+        # pointer form became [M+disp]
+        left = n
+        for row in list(ue):
+            if left and (row == 'mov R, dword ptr [A]' or
+                         re.fullmatch(r'mov R, dword ptr \[M\+(0x[0-9a-f]+|\d+)\]', row)):
+                take = min(ue[row], left)
+                ue[row] -= take
+                left -= take
+        left = n
+        for row in list(um):
+            if left and (row == 'mov R, dword ptr [A]' or
+                         re.fullmatch(r'mov R, dword ptr \[M\+(0x[0-9a-f]+|\d+)\]', row)):
+                take = min(um[row], left)
+                um[row] -= take
+                left -= take
+    um += collections.Counter(); ue += collections.Counter()
     return um, ue, sm + se
 
 

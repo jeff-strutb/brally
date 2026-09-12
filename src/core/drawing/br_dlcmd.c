@@ -921,18 +921,25 @@ const uint8_t *BrDlCmdTri1NoZ(const uint8_t *p)
  * finished and sent to the card; the second triangle's last corner is
  * finished through the clip-node path.  Returns the pointer to the next
  * 8-byte command. */
-/* PARKED T2 2026-09-09 at 688/685 B, 194/194 insns, register-blind 1+1,
- * 57 positional diffs all downstream of ONE load: the second triangle's
- * second corner reads its 1/w for the two oow stores through the lea'd
+/* Residue: the second triangle's second corner reads oow through the lea'd
  * vertex pointer (`mov ecx,[edi+0x20]`, 3 B) where ours keeps the scaled
- * index form (`[eax+0x105CE338]`, 6 B).  The first triangle and the second
- * triangle's first corner use the index form in BOTH.  The named product
- * above was worth 10 diffs and is kept.
- * Dead probes (fn.py): `pv_->oow` for that corner's w_ (spills, +13 B,
- * with or without the named product); `(&V(i))->oow` (inert); separate
- * ic2/ib2/ia2 locals for the second triangle (worse, FIRSTDIV moves up).
- * Untested: a source order in which that corner's pointer is taken
- * before the first triangle's draw. */
+ * index form (`[eax+0x105CE338]`, 6 B).  Same address.  Named-pointer
+ * spellings that land the 3-byte form spill a slot (ib4/ib5 +9 B, extra
+ * `push ecx`).  A3 pairs the two movs as pointer-vs-index.
+ * Dead probes (fn.py): `pv_->oow` for that corner's w_ (spills, +13 B);
+ * `(&V(i))->oow` (inert); separate ic2/ib2/ia2 locals (FIRSTDIV moves up);
+ * pIb taken before the first triangle (+13 B, REGNORM 6+0); pIb taken
+ * after the first triangle, function-scope or `register` (+9 B). */
+/* @t4-pass 0x10020D70 1 2026-09-12 probes 12 bytes 688 insns 194 regions 1 rows 2 census yes */
+/* @t4-pass 0x10020D70 2 2026-09-12 probes 10 bytes 688 insns 194 regions 1 rows 2 census yes */
+/* @t3 0x10020D70 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 688/685 insns 194/194 rows 1+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one pointer-vs-index load of vertex.oow on the second
+ * triangle's second corner (mov [edi+0x20] vs [eax+g_pool+0x20]);
+ * identical insn count; named-pointer spellings spill a slot. Dead list
+ * in the PARKED note above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10020D70 glide BrDlCmdTri2NoZ */
 const uint8_t *BrDlCmdTri2NoZ(const uint8_t *p)
 {
