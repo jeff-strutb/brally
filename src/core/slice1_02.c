@@ -87,7 +87,7 @@ static uint32_t BrCarStateDeltaMerge(uint32_t prev, uint32_t bits,
  * offset by 35 degrees and wrapped), and a stack of on/off flags. Four
  * fields are deliberately left alone and one is zeroed without any bits
  * being read, so the caller must not assume the whole record was written. */
-/* @implements 0x10006EC0 d3d BrCarStateDecode */
+/* port-only body; Glide match is src/core/cpp/0x10007230.cpp */
 void BrCarStateDecode(BrCarState *pDst, BrBitReader *pReader)
 {
     float angle, wrapped;
