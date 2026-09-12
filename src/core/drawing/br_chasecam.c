@@ -167,4 +167,72 @@ void __fastcall FUN_100018f0(int param_1, int _edx_unused, int param_2, float pa
   *(float *)(param_2 + 0x38) = *(float *)(param_2 + 0x38) - _DAT_10077020;
 }
 
+/* ------------------------------------------------------------------ */
+/* 0x10001A80 -- ease the chase camera's zoom-out toward its target    */
+/* ------------------------------------------------------------------ */
+
+extern void  BrSub10034660(void *pDst, void *pA, void *pB, float s);
+extern float BrSub100347F0(void *p);
+extern int   DAT_100a9360;
+extern float _DAT_10077004;   /* -0.1f: the upward step, subtracted   */
+extern float _DAT_10077024;   /* -0.66f                               */
+extern float _DAT_10077028;   /*  3.5f                                */
+extern float _DAT_1007702c;   /*  2.0f                                */
+extern float _DAT_10077030;   /*  7.0f                                */
+extern float _DAT_10077034;   /*  4/7                                 */
+extern float _DAT_10077038;   /*  4.0f                                */
+extern float _DAT_1007703c;   /*  0.1f: the downward step             */
+
+/* WHAT IT DOES: eases the chase camera's pull-back toward where it wants
+ * to be. In the special mode it just blends the stored point toward the
+ * car. Otherwise it seeds the target point from the car (dropped by a
+ * constant), measures how far away the tracked point is, turns that
+ * distance into a wanted zoom (close: 2, far: 0, a ramp between), and
+ * walks the current zoom a tenth per frame toward it, clamping at the
+ * target. Camera mode 5 skips all of it. */
+/* @implements 0x10001A80 glide BrCamChaseZoomStep */
+void __fastcall BrCamChaseZoomStep(char *pCam)
+{
+    float d;
+    float t;
+    float v;
+
+    if (*(int *)(pCam + 0xf7c) != 0) {
+        BrSub10034660(pCam + 0x28e0, pCam + 0x30, pCam + 0x20, 1.1f);
+        return;
+    }
+
+    *(float *)(pCam + 0x28e8) = *(float *)(pCam + 0x38) - _DAT_10077024;
+    *(int *)(pCam + 0x28e0)   = *(int *)(pCam + 0x30);
+    *(int *)(pCam + 0x28e4)   = *(int *)(pCam + 0x34);
+
+    d = BrSub100347F0(pCam + 0x204);
+    if (DAT_100a9360 == 5) {
+        return;
+    }
+
+    t = _DAT_10077000;
+    if (d < _DAT_10077028) {
+        t = _DAT_1007702c;
+    } else if (d < _DAT_10077030) {
+        t = _DAT_10077038 - d * _DAT_10077034;
+    }
+
+    if (t > *(float *)(pCam + 0x28dc)) {
+        v = *(float *)(pCam + 0x28dc) - _DAT_10077004;
+        *(float *)(pCam + 0x28dc) = v;
+        if (v > t) {
+            *(float *)(pCam + 0x28dc) = t;
+        }
+    } else if (t < *(float *)(pCam + 0x28dc)) {
+        v = *(float *)(pCam + 0x28dc) - _DAT_1007703c;
+        *(float *)(pCam + 0x28dc) = v;
+        if (v < t) {
+            *(float *)(pCam + 0x28dc) = t;
+        }
+    }
+
+    BrVec3MulAddTo(pCam + 0x28e0, pCam, *(float *)(pCam + 0x28dc));
+}
+
 #endif /* BR_MATCHING_BUILD */
