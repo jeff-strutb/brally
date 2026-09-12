@@ -198,17 +198,17 @@ static uint32_t BrLoad32(const unsigned char *p)
  * the sign bit). Reproduced as a plain division: for every int32_t input the
  * two agree, because the original truncates toward zero exactly as C99 does.
  * The MULTIPLY that feeds it is done in uint32_t so its wrap matches. */
-static int32_t BrDiv10000(int32_t v)
+static __inline int32_t BrDiv10000(int32_t v)
 {
     return v / 10000;
 }
 
-static int32_t BrMulWrap(int32_t a, int32_t b)
+static __inline int32_t BrMulWrap(int32_t a, int32_t b)
 {
     return (int32_t)((uint32_t)a * (uint32_t)b);
 }
 
-static int32_t BrAddWrap(int32_t a, int32_t b)
+static __inline int32_t BrAddWrap(int32_t a, int32_t b)
 {
     return (int32_t)((uint32_t)a + (uint32_t)b);
 }
