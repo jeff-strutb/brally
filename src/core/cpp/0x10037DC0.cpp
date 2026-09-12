@@ -9,12 +9,16 @@
  * vcalls — VC5 CSEs the virtual function pointer into a spill slot and
  * strength-reduces `x + i*16` to a running register in the loop. No EH.
  *
- * PARKED 16-diff T3a residue: shape is instruction-identical and
- * frameless (unsigned loop count is REQUIRED — signed emits jle AND an
- * ebp frame), but y/n sit in swapped registers (ebp/ebx) with swapped
- * spill slots, and orig spells y's -12 as `add ebp,-0xc` where every
- * probed source (- 12, + -12, -3-9, split -=, pointer -3, decl orders)
- * canonicalizes to `sub`. Register-blind gap 0.
+ * BYTE-EXACT 2026-09-12 (was parked 16 diffs: y/n in swapped registers
+ * ebp/ebx with swapped spill slots, and `add ebp,-0xc` for the -12).  All
+ * three were ONE spelling: the baseline is `y = (int)f - 12` written into
+ * each call.  Instead `y` is the bare truncation and `y - 12` is spelled in
+ * ALL THREE call arguments -- VC5 CSEs the expression into a temp, folds
+ * the temp into y's dying register as `add ebp,-0xc` (a CSE'd `v - K`
+ * is emitted as an add of the negative immediate, never `sub`), and the
+ * temp's web is created after n's, which is what gives n ebx / slot 0x10
+ * and y ebp, with x's spill at slot 0x14.  The unsigned loop count is still
+ * required (signed emits jle AND an ebp frame).
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -47,11 +51,11 @@ int BrUiHook85_1003E7A0(Ui3E7A0 *pGame)
     unsigned int i;
 
     x = (int)pGame->f2F6C - 3;
-    y = (int)pGame->f2F70 - 12;
+    y = (int)pGame->f2F70;
     n = pGame->w2F66 / 16 + 1;
-    pGame->s5(0x3D, x - 8, y);
+    pGame->s5(0x3D, x - 8, y - 12);
     for (i = 0; i < n; i++)
-        pGame->s5(0x3B, x + i * 16, y);
-    pGame->s5(0x3C, x + i * 16, y);
+        pGame->s5(0x3B, x + i * 16, y - 12);
+    pGame->s5(0x3C, x + i * 16, y - 12);
     return 1;
 }
