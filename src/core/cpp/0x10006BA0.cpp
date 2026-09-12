@@ -44,8 +44,29 @@
  * compare idiom for the six tail bit-writes.  Do NOT re-grind VC5 spellings;
  * the wall is the compiler, proven twice.
  *
+ * STATE 2026-09-12b -- THE LAST FOUR INSTRUCTIONS, measured to a bound.
+ * Best state (this file, cl 10.20.6166 /O2): 298/302 insns, 913/925 B,
+ * 6 regions.  The whole residue is now TWO canonicalisations:
+ *   (1) the bool diamond at the five non-final tail writes -- orig
+ *       `jne; mov eax,1; jmp; xor`, ours the folded set-then-clear
+ *       `mov eax,1; je; xor` (one jmp short x5).  DEAD, do not re-run:
+ *       `!=` in-arg, ternary both polarities, if/else-assign both arm
+ *       orders, named assignment, the sibling's two-return inline helper
+ *       (also loses site 6's duplication, 292), C++ arg contexts; and the
+ *       flags /Op (adds `wait` x6, 304) and /O2y (builds an ebp frame the
+ *       orig lacks) and /Ox (301/928) and /O1 (279, wrong family).
+ *   (2) the step=0x80 guard -- orig `lea edx,[ebx+0x80]; cmp edx,ecx`,
+ *       ours `mov; sub; cmp -0x80` (one insn long).  The 0x1000-step
+ *       instantiations of the SAME inlined guard match; only the imm8-
+ *       foldable step diverges.  Named `next` sum: inert.
+ * Both are peepholes cl 10.20 provably applies and the original's compiler
+ * did not.  NEXT: a 4.x point release below 4.2 (cl 10.00/10.10, VC4.0/4.1)
+ * -- a toolchain acquisition, the user's call (CLAUDE.md rule 5).  The
+ * named-assignment form is what places `push 1` after the bool (in-arg
+ * forms push it early); keep it.
+ *
  * STATE 2026-09-12 (this file now carries the VC4.2-optimal spellings):
- * static-const-float zero (BR_FZERO) for the six tail writes, pure-expression
+ * extern pool-zero (BR_FZERO, 0x100770C8) for the six tail writes, pure-expression
  * args at the four Q15 sites and both Q7 sites, a named `next` sum in the
  * delta-code guard, code-first `|` at the f78 site, and the LAST tail write
  * as a statement if/else (VC4.2 tail-duplicates its call+epilogue exactly as
@@ -68,9 +89,20 @@ public:
     void WriteBits(int value, int nBits);   /* 0x1006D0B0, declared only */
 };
 
-/* VC4.2 folds `!= 0.0f` to test [mem],0x7fffffff; a static const float
- * forces the original's x87 fld/fcomp/fnstsw form (vc42 idiom #2). */
-static const float BR_FZERO = 0.0f;
+/* VC4.2 folds `!= 0.0f` to test [mem],0x7fffffff; a compare against a float
+ * it cannot constant-fold forces the original's x87 fld/fcomp/fnstsw form
+ * (vc42 idiom #2).  The original compares the pool zero at 0x100770C8. */
+extern "C" float BR_FZERO;         /* 0x100770C8, the pool 0.0f */
+
+/* the sibling's helper (0x10006510.cpp BrIsNonZero): a bool built from two
+ * RETURN paths, which is what materialises the original's branch diamond
+ * (`jne; mov eax,1; jmp; xor`) instead of the folded set-then-clear. */
+static __inline int BrIsNonZero(float v)
+{
+    if (v != BR_FZERO)
+        return 1;
+    return 0;
+}
 
 extern "C" {
 short BrFixPackS16Q15Neg(float);   /* 0x10006950 */
@@ -161,11 +193,31 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
     /* Open-coded in the original (`fld; fcomp; fnstsw; test ah,0x40; jne`).
      * VC5 gives 0 for a NaN here, which is what the original does; a strict
      * IEEE compiler would give 1, so this is a byte-fidelity choice. */
-    pBs->WriteBits((pCur->f88 != BR_FZERO) ? 1 : 0, 1);
-    pBs->WriteBits((pCur->f8C != BR_FZERO) ? 1 : 0, 1);
-    pBs->WriteBits((pCur->f90 != BR_FZERO) ? 1 : 0, 1);
-    pBs->WriteBits((pCur->f94 != BR_FZERO) ? 1 : 0, 1);
-    pBs->WriteBits((pCur->f98 != BR_FZERO) ? 1 : 0, 1);
+    if (pCur->f88 != BR_FZERO)
+        cur = 1;
+    else
+        cur = 0;
+    pBs->WriteBits(cur, 1);
+    if (pCur->f8C != BR_FZERO)
+        cur = 1;
+    else
+        cur = 0;
+    pBs->WriteBits(cur, 1);
+    if (pCur->f90 != BR_FZERO)
+        cur = 1;
+    else
+        cur = 0;
+    pBs->WriteBits(cur, 1);
+    if (pCur->f94 != BR_FZERO)
+        cur = 1;
+    else
+        cur = 0;
+    pBs->WriteBits(cur, 1);
+    if (pCur->f98 != BR_FZERO)
+        cur = 1;
+    else
+        cur = 0;
+    pBs->WriteBits(cur, 1);
     if (pCur->f9C != BR_FZERO)
         pBs->WriteBits(1, 1);
     else
