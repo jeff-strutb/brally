@@ -422,3 +422,141 @@ void BrFrameEnd(void)
     DAT_106ed67c = DAT_106ed67c ^ 1;
 }
 #endif /* BR_MATCHING_BUILD */
+
+/* ==========================================================================
+ * 0x1002AF17 -- the fog for this frame, emitted into the list.
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+typedef struct { char pad[0x30]; float f30; float f34; } BrFogSrc;
+typedef struct { char pad[0x38]; float f38; } BrFogCam;
+
+extern int  DAT_106ed6ac, DAT_106ed6b0, DAT_106ed6b4, DAT_106ed6a8;  /* the four modes */
+extern unsigned char DAT_106e72f0, DAT_106e86a4, DAT_106e7290;       /* fog colour r/g/b */
+extern unsigned char DAT_106b7c78;                                    /* fog alpha        */
+extern int  DAT_106ea428;                                             /* fog near         */
+extern int  DAT_106ed568;                                             /* fog far          */
+extern int  DAT_100b3858;                                             /* entrant count    */
+extern int  DAT_100a718c;
+extern BrFogSrc *DAT_106ed520;
+extern BrFogCam *DAT_106e9d88;
+extern float DAT_104abb60[];
+extern float DAT_106eed10, DAT_106eed14;
+extern unsigned char DAT_106eed58, DAT_106eed59, DAT_106eed5a;        /* the track's fog colour */
+extern int  DAT_100b3014;
+extern int  DAT_106e9d84, DAT_106e86a8;                               /* fog multiplier / offset */
+extern float DAT_100774b0, DAT_100774b4, DAT_100774b8, DAT_100774bc, DAT_100774c0,
+             DAT_100774c4, DAT_100774c8, DAT_100774cc, DAT_100774d0;
+float FUN_10034720(float *, float *);
+
+/* WHAT IT DOES: picks this frame's fog -- colour, alpha and the near/far
+ * range -- from which of four viewing modes is active, blending the colour
+ * towards a computed tint in two of them (one from a distance ratio, one
+ * from the track's own fog colour scaled by height above a threshold), and
+ * writes the fog multiplier/offset pair and the fog colour into the display
+ * list. */
+/* @implements 0x1002AF17 glide BrFrameFogEmit */
+void BrFrameFogEmit(void)
+{
+    /* Two /Od facts: the converted byte is the LEFT operand of the blend
+     * (`(float)c * (K - f)`), so its `fild`/`fstp` temp is evaluated before
+     * `fld K; fsub f`; and the five locals' slots follow the name-hash
+     * order, which these names satisfy (f -4, i -8, z -0xc, q1 -0x10,
+     * q2 -0x14; 38 name sets measured).  Matches under /Od /Op. */
+    float    f;
+    int      i;
+    float    z;
+    BrDlCmd *q1;
+    BrDlCmd *q2;
+
+    if (DAT_106ed6ac != 0) {
+        DAT_106e72f0 = DAT_106e86a4 = DAT_106e7290 = 0;
+        DAT_106b7c78 = 0x40;
+        if (DAT_100b3858 == 2) {
+            DAT_106ea428 = 0x3E0;
+            DAT_106ed568 = 0x3FC;
+        } else {
+            DAT_106ea428 = 0x3C8;
+            DAT_106ed568 = 0x3FC;
+        }
+    } else if (DAT_106ed6b0 != 0) {
+        DAT_106e72f0 = 0xB8;
+        DAT_106e86a4 = 0xB8;
+        DAT_106e7290 = 0xD8;
+        DAT_106b7c78 = 0x40;
+        if (DAT_100b3858 == 2) {
+            DAT_106ea428 = 0x3B6;
+            DAT_106ed568 = 0x3E8;
+        } else {
+            DAT_106ea428 = 0x320;
+            DAT_106ed568 = 0x41A;
+        }
+    } else if (DAT_106ed6b4 != 0) {
+        DAT_106e72f0 = 0x60;
+        DAT_106e86a4 = 0x68;
+        DAT_106e7290 = 0x70;
+        DAT_106b7c78 = 0x40;
+        if (DAT_100a718c > 0 && (DAT_100a718c & 1) != 0) {
+            f = DAT_100774b0 / (FUN_10034720(&DAT_106ed520->f30, DAT_104abb60) + DAT_100774b0);
+            DAT_106e72f0 = (unsigned char)(int)((float)DAT_106e72f0 * (DAT_100774b4 - f) + DAT_100774b8 * f);
+            DAT_106e86a4 = (unsigned char)(int)((float)DAT_106e86a4 * (DAT_100774b4 - f) + DAT_100774bc * f);
+            DAT_106e7290 = (unsigned char)(int)((float)DAT_106e7290 * (DAT_100774b4 - f) + DAT_100774c0 * f);
+        }
+        if (DAT_100b3858 == 2) {
+            DAT_106ea428 = 0x3A2;
+            DAT_106ed568 = 0x3E8;
+        } else {
+            DAT_106ea428 = 0x352;
+            DAT_106ed568 = 0x401;
+        }
+    } else if (DAT_106ed6a8 != 0) {
+        i = (int)((DAT_106e9d88->f38 - DAT_106eed10) / (DAT_106eed14 - DAT_106eed10) * DAT_100774c0);
+        if (i < 0)
+            i = 0;
+        else if (i > 0xFF)
+            i = 0xFF;
+        if (DAT_100b3014 == 0) {
+            if (DAT_106ed520->f34 > DAT_100774c4)
+                z = DAT_106ed520->f30 * DAT_100774c8 * ((DAT_106ed520->f34 - DAT_100774c4) * DAT_100774cc);
+            else
+                z = 0;
+            DAT_106e72f0 = (unsigned char)(int)((float)DAT_106eed58 * (DAT_100774b4 - z) + DAT_100774d0 * z);
+            DAT_106e86a4 = (unsigned char)(int)((float)DAT_106eed59 * (DAT_100774b4 - z) + DAT_100774d0 * z);
+            DAT_106e7290 = (unsigned char)(int)((float)DAT_106eed5a * (DAT_100774b4 - z) + DAT_100774d0 * z);
+        } else {
+            DAT_106e72f0 = DAT_106eed58;
+            DAT_106e86a4 = DAT_106eed59;
+            DAT_106e7290 = DAT_106eed5a;
+        }
+        DAT_106b7c78 = (unsigned char)i;
+        if (DAT_100b3858 == 2) {
+            DAT_106ea428 = 0x3E3;
+            DAT_106ed568 = 0x3E8;
+        } else {
+            DAT_106ea428 = 0x3D4;
+            DAT_106ed568 = 0x3E8;
+        }
+    } else {
+        DAT_106e72f0 = 0;
+        DAT_106e86a4 = 0;
+        DAT_106e7290 = 0;
+        DAT_106b7c78 = 0xFF;
+        DAT_106ea428 = 0;
+        DAT_106ed568 = 0x3E8;
+    }
+
+    DAT_106e9d84 = 0x1F400 / (DAT_106ed568 - DAT_106ea428);
+    DAT_106e86a8 = ((500 - DAT_106ea428) * 0x100) / (DAT_106ed568 - DAT_106ea428);
+
+    q1 = DAT_106e7710;
+    DAT_106e7710 = DAT_106e7710 + 1;
+    q1->op  = 0xBC000008;
+    q1->arg = ((0x1F400 / (DAT_106ed568 - DAT_106ea428)) & 0xFFFF) << 16
+            | ((((500 - DAT_106ea428) * 0x100) / (DAT_106ed568 - DAT_106ea428)) & 0xFFFF);
+
+    q2 = DAT_106e7710;
+    DAT_106e7710 = DAT_106e7710 + 1;
+    q2->op  = 0xF8000000;
+    q2->arg = ((DAT_106e72f0 & 0xFF) << 24) | ((DAT_106e86a4 & 0xFF) << 16)
+            | ((DAT_106e7290 & 0xFF) << 8) | 0xFF;
+}
+#endif /* BR_MATCHING_BUILD */
