@@ -7831,3 +7831,31 @@ route to the C++ lane, do not probe C).
   and the lone non-popping `fst [esp+0x18]`; a plain aggregate or named
   temp is deleted, and a volatile write without using the assignment's
   value would re-read the slot the original never reads.
+
+## A byte pushed to a thiscall with its upper bytes dirty is a BYTE-typed method parameter -- C++ TU, class method declared-not-defined (the net-writer family)
+
+`mov al,[esp+N]; or al,0x20; push eax` / `mov cl,[g]; push ecx` /
+`mov al,[edi+ebx]; push eax` before `mov ecx,<this>; call <writer>` is a
+thiscall callee whose parameter is `unsigned char`.  No C wrapper spells it
+(a __fastcall byte rides dl; a 1-byte struct, a union `.b` and a padded
+struct all home the partial write and reload).  As a C++ TU it is one
+declaration: `class BrBitStream { void WriteU8(unsigned char v); ... };`
+and `pBs->WriteU8(expr)` -- 0x1006B080, 0x1006AFA0, 0x1006AFF0 byte-exact
+on the FIRST compile (2026-09-12), 0x1006AEB0 with the two levers below.
+A narrow parameter forwarded to a narrow parameter loads the WHOLE slot
+(`mov eax,[esp+0x18]; push eax`); a 16-bit global to a `unsigned short`
+parameter is `mov cx,[g]; push ecx`.  Use `unsigned short` for the 16-bit
+parameter and callee alike.
+
+- **A value computed once, stored at once into a SPENT argument slot and
+  reloaded after a loop is a CSE temp, not a named local.**  0x1006AEB0:
+  `(int)(flags & 0x3f)` spelled at each of its four uses gives the
+  original's `mov ebx,edi; and ebx,0x3f; cmp ebx,2; mov [esp+0x14],ebx`
+  (the pBs slot, esi already holds it) and the post-loop reload, and leaves
+  ebp free for the loop's seen-null flag.  A named `int type` keeps ebp for
+  itself and homes the FLAG instead; declaration order, block scope,
+  `unsigned`, a `char`/`bool` flag and a `for` shape are all inert.
+- **The failure exit at the function tail is a POSITIVE guard**:
+  `if (n <= 0x100) { ...; return 1; } return 0;` (0x1006AEB0, 0x1006AFA0).
+  `if (n > 0x100) return 0;` inlines `xor eax,eax` + pops under an
+  inverted branch and tail-merges the success return the other way round.

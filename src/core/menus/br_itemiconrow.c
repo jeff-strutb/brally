@@ -73,7 +73,7 @@ typedef struct {
  * free to change it.  Always reports success. */
 /* @t4-pass 0x10037FA0 1 2026-09-07 probes 61 bytes 98 insns 42 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10037FA0 2 2026-09-07 probes 61 bytes 98 insns 42 regions 3 rows 6 census yes  (tools/crank.py) */
-/* @implements 0x10037FA0 glide BrItemDrawIconRow */
+/* port-only body; Glide match is src/core/cpp/0x10037FA0.cpp */
 int BrItemDrawIconRow(BrIconItem *pItem)
 {
     BrItemDrawFn fn;
