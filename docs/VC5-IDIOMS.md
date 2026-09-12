@@ -7982,3 +7982,25 @@ top, `[ecx-0x14..-8]`, `cmp ecx,limit` on the pointer) AND keeps the
 (`top`) before the MOD result (`left`) so the div takes esi; and a loop that
 continues a neighbouring table is bounded the original's way (`i + 15 <
 24`: `lea edx,[edi+0xf]; cmp edx,0x18`), which also lands the `inc`.
+
+## /Od stack slots follow the locals' NAMES, not their declaration order (0x1002CEE9, 0x1002AF17, 0x1002A957)
+
+Under /Od every named local gets a frame slot, and the ORDER of those slots
+is a property of the names: renaming one local permutes the slots of the
+others (measured 16, 38 and 28 name sets on three functions in one session).
+Declaration order is inert; scope is not (a local moved into a block moves
+its slot).  Practical recipe: decode the slots from the init stores (`mov
+[ebp-X],...`), then brute-force 8-16 short name sets per batch with a direct
+`/Od` (or `/Od /Op`) compile -- four- and five-local functions land in one or
+two batches (BrFrameEnd: rec/len/q1/q2; BrFrameFogEmit: f/i/z/q1/q2).  The
+rule is not a simple hash of the name: sum, first/last char, length and the
+usual polynomial hashes over 2..127 buckets with either tie-break all fail the
+28 observations on BrFloat12MaxAbs, whose six locals are still permuted.
+
+Other /Od facts from the same intake: `unsigned __int64` arithmetic is the
+`__allmul`/`__aulldiv` calls plus add/adc; u64 -> float is C2520, so widen a
+u32 by parts through a LARGE_INTEGER-style union (immediate-zero high dword)
+and convert the signed quad; `x * 5 / 8` is `imul; cdq; and edx,7; add; sar 3`
+(a division -- `>> 3` is a bare `sar`); the converted byte is the LEFT
+operand of a blend so its `fild`/`fstp` temp is evaluated before `fld K;
+fsub f`; a `for` loop with `i = i + 1` is the /Od loop shape.
