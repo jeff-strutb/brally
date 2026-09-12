@@ -52,7 +52,13 @@ CPP_WORK = os.path.join(ROOT, 'build', 'cpp_work')
 OBJ_DIR = os.path.join(ROOT, 'build', 'match', 'obj_cpp')
 # Same three opt shapes the C sweep uses, plus /GX (C++ EH) and /MD (the
 # binary is /MD; CRT EH helpers dllimport). /GX is the VC5 flag; /EHs is VC6+.
-DEFAULT_OPTS = ['/O2 /GX /MD', '/Od /GX /MD', '/O2 /Oy- /GX /MD']
+# /Gi (incremental compilation) is a fourth shape: it changes the front end's
+# commutative-operand canonicalisation (float `local + member` loads the
+# local first; int `a | b` flips), and 0x10044860 is byte-exact ONLY under
+# it while 0x10004AD0 is exact only without it -- so it is a per-TU truth
+# of the original project, and the sweep tries both like the C sweep tries /Op.
+DEFAULT_OPTS = ['/O2 /GX /MD', '/O2 /Gi /GX /MD', '/Od /GX /MD',
+                '/O2 /Oy- /GX /MD']
 
 FUNCINFO_MAGIC = 0x19930520
 
