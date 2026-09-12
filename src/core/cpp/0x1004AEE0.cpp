@@ -3,6 +3,13 @@
  * made. One of a family of page builders, each laying out its own screen,
  * positioning its controls from computed coordinates rather than a fixed
  * table. */
+/* @t3 0x1004AEE0 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3862/3862 insns 1139/1139 rows 3+3 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
+ * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier,
+ * dead list and the three ledger lines are in the block below.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1004AEE0 glide BrExt_10052030
  * @cpp_kind method
  * @cpp_symbol ?BrExt_10052030@@YAHPAVGameUi@@@Z
@@ -14,13 +21,32 @@
  * down by DAT_10077664 in pages 1-2 only. Later pages use the
  * w1E20C=5/0x34 text forms s34(&DAT_10396f08, 1, 3|4, &buf).
  *
- * PARKED 2026-09-01 at 34 diffs (T3a scheduling): photo1's tail alone
- * diverges — orig emits [movs, fsub, lea, add, f50, f58, f5C, f2968,
- * fstp, w2A42]; every source permutation tried (14: fy-update in all 5
- * positions, compound/temp/inline spellings, x2/y2 temps, f58/f5C
- * swaps, /Op) canonicalizes to the same fsub-adjacent, f5C-early,
- * fstp-early schedule. Multiset is identical; photos 2-3 and all other
- * 3828 B match. Do not re-probe these spellings.
+ * Residue (34 diffs, 3828 of 3862 B exact): photo1's ten-instruction tail
+ * is one Pentium-pairing SCHEDULE of an identical instruction multiset.
+ * The original issues [fld fy][yi reload + xi copy][fsub][lea + add]
+ * [f50 + f58][f5C + f2968][fstp][w2A42 + inc]; every spelling we can
+ * write issues the fsub right after the fld (the copy `mov ebx,eax` lands
+ * at xi's FIRST USE, so the fy statement is IR-first and wins the slot)
+ * or, when a store of xi precedes the fy statement, issues that store
+ * before the fsub too. The lea is delayed one cycle after the copy (AGI),
+ * which is why the add/f5C overtake it in ours and not in the original.
+ *
+ * DEAD (do not re-run): all 240 orders of {xi, fy, f50, f58, f5C, f2968}
+ * (best 32: f50 before fy = the R shape); x2/y2 temps in every position
+ * (VC5 folds them -- byte-identical to inline); `p->f50 = xi = (int)fx`
+ * and `p->f58 = (xi = (int)fx) + 0x7f` chains; fy -= K, K-first, unsigned
+ * yi, register, fresh block locals, y1/y2 per page, `(int)fx`/`(int)fy`
+ * CSE spellings with no int locals (moves the ftol CALL to the first
+ * occurrence, R shape or worse); an inline PhotoRect helper in nine
+ * shapes (params, by-value fy, by-ref fy, returned fy, step by value --
+ * the ONLY shape that orders yi/xi before the fsub, and it pays an extra
+ * `fld [step]`); volatile fy (2334); 34 compiler options incl. /Gi, /Op,
+ * /G5, /Ow, /Gf, /Gy, /Ob2 (all inert or worse). Corpus MISS at +0x477
+ * len 8. 0x1004BE00 and 0x1004DA00 carry the byte-identical residue.
+ *
+ * @t4-pass 0x1004AEE0 1 2026-09-01 probes 14 bytes 3862 insns 1139 regions 1 rows 6 census no  (hand: fy-update positions, compound/temp/inline, x2/y2, f58/f5C swaps, /Op)
+ * @t4-pass 0x1004AEE0 2 2026-09-12 probes 582 bytes 3862 insns 1139 regions 1 rows 6 census no  (generated: 240 statement orders, 96 chained/temp orders, 246 temp-before-fy orders; best 32, none 0)
+ * @t4-pass 0x1004AEE0 3 2026-09-12 probes 130 bytes 3862 insns 1139 regions 1 rows 6 census yes  (hand: CSE/helper/volatile/reference shapes, 34-option sweep, corpus query MISS, pairing/AGI schedule census above)
  */
 class GameUi;
 class BrCtl;
