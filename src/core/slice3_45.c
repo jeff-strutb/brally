@@ -139,6 +139,19 @@ static void BrDbgPrint(const char *pMsg)
     }
 }
 
+/* BrFfbInit's original caches &KERNEL32!OutputDebugStringA in a register and
+ * calls through it (`mov edi,[__imp__]; call edi`, stdcall). The matching arm
+ * spells that pointer; the port routes the same local through the safe sink
+ * above. */
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) void __stdcall OutputDebugStringA(const char *pMsg);
+typedef void (__stdcall *BrDbgSink)(const char *pMsg);
+#define BR_DBG_SINK OutputDebugStringA
+#else
+typedef void (*BrDbgSink)(const char *pMsg);
+#define BR_DBG_SINK BrDbgPrint
+#endif
+
 /* ====================================================================== */
 /* Globals this translation unit owns                                      */
 /* ====================================================================== */
@@ -1001,92 +1014,108 @@ int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
  * builds the effects; failing that it settles for any controller at all. Then
  * it sets both axes to the range the game expects with no dead zone. It only
  * does the work once no matter how many times it is called. */
+/* @t4-pass 0x100791D0 1 2026-09-12 probes 10 bytes 434 insns 147 regions 5 rows 0 census no  (hand: nested-guard restructure with shared return-ret tail and per-kind inline teardown blocks; stdcall OutputDebugStringA pointer cached in a local; hr local dropped for direct call compares; ret local with end-of-body reassignment. fn.py variants on the last residue: pVtbl hoist wins the store sink, pHdr hoist folds away, SETPROP macro / call-embedded assignment / decl orders all inert. Residue = ecx/edx creation-order swap on the SetProperty vtable/&d temps, 3 instructions, plus the unmapped d3d-global reloc regions.) */
 /* @implements 0x100791D0 d3d BrFfbInit */
 int32_t BrFfbInit(void)
 {
     BrDiObj *pDev;
-    long hr;
+    BrDbgSink pfnDbg;
+    int32_t ret;
 
-    if (g_brB4E1D0 == 0) {
-        return 0;
-    }
+    ret = g_brB4E1D0;
+    if (ret != 0) {
+        g_brFfb.initCount += 1;
+        if (g_brFfb.initCount == 1) {
+            pfnDbg = BR_DBG_SINK;
 
-    g_brFfb.initCount += 1;
-    if (g_brFfb.initCount != 1) {
-        return g_brB4E1D0;     /* NOT 0 -- see the header */
-    }
+            if (g_brB4E1E0 != 0 &&
+                BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                    BrFfbEnumDevice, (void *)(uintptr_t)5u, 0x101u) == 0 &&
+                g_brFfb.pDevice != NULL) {
 
-    if (g_brB4E1E0 != 0 &&
-        BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
-            BrFfbEnumDevice, (void *)(uintptr_t)5u, 0x101u) == 0 &&
-        g_brFfb.pDevice != NULL) {
+                /* pvRef 5 = DISCL_EXCLUSIVE|DISCL_FOREGROUND,
+                 * flags 0x101 = DIEDFL_ATTACHEDONLY|DIEDFL_FORCEFEEDBACK. */
+                BrDiPropDword d;
+                const BrDiDevVtbl *pVtbl;
 
-        /* pvRef 5 = DISCL_EXCLUSIVE|DISCL_FOREGROUND,
-         * flags 0x101 = DIEDFL_ATTACHEDONLY|DIEDFL_FORCEFEEDBACK. */
-        BrDiPropDword d;
+                /* The vtable pointer is a NAMED local loaded before the
+                 * struct fill -- that hoist is what makes VC5 push the three
+                 * arguments first and sink every store past them, as the
+                 * original does. Residue: the original creates the &d temp
+                 * before this load (ecx/edx swapped on three instructions);
+                 * pHdr hoists, call-embedded assignment, decl order all
+                 * probed dead 2026-09-12. */
+                pDev = g_brFfb.pDevice;
+                pVtbl = BrDiDev(pDev);
 
-        g_br18ABDBC = 1;
+                g_br18ABDBC = 1;
 
-        d.dwSize       = 0x14u;
-        d.dwHeaderSize = 0x10u;
-        d.dwObj        = 0u;
-        d.dwHow        = 0u;    /* DIPH_DEVICE */
-        d.dwData       = 0u;    /* autocentre OFF */
+                d.dwSize       = 0x14u;
+                d.dwHeaderSize = 0x10u;
+                d.dwObj        = 0u;
+                d.dwHow        = 0u;    /* DIPH_DEVICE */
+                d.dwData       = 0u;    /* autocentre OFF */
 
-        pDev = g_brFfb.pDevice;
-        /* property 9 = DIPROP_AUTOCENTER */
-        if (BrDiDev(pDev)->pfnSetProperty(pDev, 9u, &d) < 0) {
-            BrDbgPrint(kBrErrProperty);
-        }
-        (void)BrDiAcquire();
-        BrFfbSetup(0x3E8, 0x1F40);
-    } else {
-        /* pvRef 6 = DISCL_NONEXCLUSIVE|DISCL_FOREGROUND, flags 1. */
-        (void)BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
-                 BrFfbEnumDevice, (void *)(uintptr_t)6u, 1u);
-        (void)BrDiAcquire();
-        g_br18ABDBC = 0;
-    }
+                /* property 9 = DIPROP_AUTOCENTER */
+                if (pVtbl->pfnSetProperty(pDev, 9u, &d) < 0) {
+                    pfnDbg(kBrErrProperty);
+                }
+                (void)BrDiAcquire();
+                BrFfbSetup(0x3E8, 0x1F40);
+            } else {
+                /* pvRef 6 = DISCL_NONEXCLUSIVE|DISCL_FOREGROUND, flags 1. */
+                (void)BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                         BrFfbEnumDevice, (void *)(uintptr_t)6u, 1u);
+                (void)BrDiAcquire();
+                g_br18ABDBC = 0;
+            }
 
-    pDev = g_brFfb.pDevice;
-    if (pDev == NULL) {
-        return 0;
-    }
+            pDev = g_brFfb.pDevice;
+            if (pDev == NULL) {
+                return 0;
+            }
 
-    /* Axis 0 (lX): range +-0x80, no dead zone. Then axis 4 (lY), the same.
-     * dwHow 1 = DIPH_BYOFFSET; prop 4 = DIPROP_RANGE, 5 = DIPROP_DEADZONE. */
-    hr = BrDiSetPropRange(pDev, 4u, 0u, 1u, -0x80, 0x80);
-    if (hr < 0) {
-        goto failRange;
-    }
-    pDev = g_brFfb.pDevice;
-    hr = BrDiSetPropDword(pDev, 5u, 0u, 1u, 0u);
-    if (hr < 0) {
-        goto failDword;
-    }
-    pDev = g_brFfb.pDevice;
-    hr = BrDiSetPropRange(pDev, 4u, 4u, 1u, -0x80, 0x80);
-    if (hr < 0) {
-        goto failRange;
-    }
-    pDev = g_brFfb.pDevice;
-    hr = BrDiSetPropDword(pDev, 5u, 4u, 1u, 0u);
-    if (hr < 0) {
-        goto failDword;
-    }
-    return g_brB4E1D0;
-
+            /* Axis 0 (lX): range +-0x80, no dead zone. Then axis 4 (lY), the
+             * same. dwHow 1 = DIPH_BYOFFSET; prop 4 = DIPROP_RANGE,
+             * 5 = DIPROP_DEADZONE.
+             *
+             * The failure blocks sit INLINE after the third and fourth calls
+             * (each ends in its own return, which is why the original carries
+             * TWO copies of the teardown); the first two calls goto INTO
+             * them. That is the original's layout -- do not re-share. */
+            if (BrDiSetPropRange(pDev, 4u, 0u, 1u, -0x80, 0x80) < 0) {
+                goto failRange;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropDword(pDev, 5u, 0u, 1u, 0u) < 0) {
+                goto failDword;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropRange(pDev, 4u, 4u, 1u, -0x80, 0x80) < 0) {
 failRange:
-    BrDbgPrint(kBrErrPropRange);
-    goto teardown;
+                pfnDbg(kBrErrPropRange);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnUnacquire(pDev);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnRelease(pDev);
+                g_brFfb.pDevice = NULL;
+                /* NOTE: initCount stays raised. See slice1_10.h. */
+                return 0;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropDword(pDev, 5u, 4u, 1u, 0u) < 0) {
 failDword:
-    BrDbgPrint(kBrErrPropWord);
-teardown:
-    pDev = g_brFfb.pDevice;
-    BrDiDev(pDev)->pfnUnacquire(pDev);
-    pDev = g_brFfb.pDevice;
-    BrDiDev(pDev)->pfnRelease(pDev);
-    g_brFfb.pDevice = NULL;
-    /* NOTE: initCount stays raised. See slice1_10.h. */
-    return 0;
+                pfnDbg(kBrErrPropWord);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnUnacquire(pDev);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnRelease(pDev);
+                g_brFfb.pDevice = NULL;
+                /* NOTE: initCount stays raised. See slice1_10.h. */
+                return 0;
+            }
+            ret = g_brB4E1D0;
+        }
+    }
+    return ret;
 }
