@@ -351,6 +351,30 @@ def classify(miss, extra, obag=None, rbag=None):
                         break
                 if again:
                     break
+    # Stack-dup fork of the same commutativity: `fld st; <op> [mem]` (dup the
+    # stack value, multiply the copy by memory) against `fld [mem]; <op> st(k)`
+    # (load the memory, multiply it by the copy now k deep).  Same product,
+    # same two instructions, one rounding each -- the exact identity the
+    # memory-memory fold above already accepts, with one operand on the fp
+    # stack instead (0x10067710 dossier: thirteen spellings dead, A5 clean).
+    # Cancel the crossed QUAD only -- all four rows unpaired at once, the
+    # memory operand identical between the <op> and the fld, the op exactly
+    # commutative -- in either direction.
+    for op in ('fmul', 'fadd'):
+        for a, b in ((um, ue), (ue, um)):
+            again = True
+            while again:
+                again = False
+                for m2 in [r for r in a if r.startswith(op + ' ') and 'ptr' in r]:
+                    x = m2[len(op) + 1:]
+                    e2s = [r for r in b
+                           if re.fullmatch(re.escape(op) + r' st\(\d\)', r) and b[r]]
+                    if a['fld st'] and a[m2] and b['fld ' + x] and e2s:
+                        a['fld st'] -= 1; a[m2] -= 1
+                        b['fld ' + x] -= 1; b[e2s[0]] -= 1
+                        again = True
+                        break
+    um += collections.Counter(); ue += collections.Counter()
     # Either-or layout fork: `jCC A; jmp B` against `j!CC B` (fallthrough A)
     # is the SAME control flow laid out the other way round -- the class the
     # 0x10036810 / 0x10036B20 dossiers name, proven not source-reachable
