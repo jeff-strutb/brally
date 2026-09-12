@@ -826,48 +826,33 @@ int BrOptOpen2998(BrGameObj *pUnused)
  * layouts is the active one. */
 /* @implements 0x10043400 d3d BrOptCycleAA2A0C */
 #ifdef BR_MATCHING_BUILD
-/* Per-arm switch tail (record addresses as immediates); the up-arm's
- * skip jumps INTO the down-arm's store (cross-block goto).
- * RESIDUE (parked, REGNORM 1+2, 4 B short): VC5 hoists the g_brAA2A0C
- * load above the first branch (orig loads it per arm; volatile on either
- * side does not pin it).  FIVE MORE DEAD 2026-09-10, do not re-run: the
- * down-arm's read pushed inside the g_brAA33D0 test with a matching else
- * (three syntactic reads -- 195 B, +4 insns, strictly worse), the up-arm
- * spelled `g_brAA2A0C = g_brAA2A0C + 1; v = g_brAA2A0C;`, the same with
- * `++`, and the whole global read through a volatile-lvalue macro.  All
- * three of those are byte-identical to the baseline: VC5 forwards the
- * store and re-CSEs the read whatever the spelling. */
+/* Per-arm switch tail (record addresses as immediates).
+ * BYTE-EXACT 2026-09-12 (was parked at 176/178 B on a hoisted load): every
+ * step and test is spelled ON THE GLOBAL, no `v` until the tail, and the
+ * down arm is a plain `else if` -- VC5 then forwards each store into the
+ * next test, loads the global per arm (the `v = g_brAA2A0C` temp at the
+ * head of the else arm was what let it hoist the load above the first
+ * branch), cross-jumps the two skip stores by itself, and hoists the
+ * inner else's read above its own `je` exactly as the original has it.
+ * Same lever as BrOptCycleAA2A00 / BrOptCycleAA2A18 in this file. */
 int BrOptCycleAA2A0C(void)
 {
     int32_t v;
 
     if (g_brAA33D4 != 0) {
-        v = g_brAA2A0C + 1;
-        g_brAA2A0C = v;
-        if (v >= BR_OPT_AA2A0C_MAX + 1) {
-            v = 0;
-            g_brAA2A0C = v;
-        }
-        if (v == 1) {
-            v = 2;
-            goto storev;
-        }
-    } else {
-        v = g_brAA2A0C;
-        if (g_brAA33D0 != 0) {
-            v = v - 1;
-            g_brAA2A0C = v;
-            if (v < 0) {
-                v = BR_OPT_AA2A0C_MAX;
-                g_brAA2A0C = v;
-            }
-            if (v == 1) {
-                v = 0;
-storev:
-                g_brAA2A0C = v;
-            }
-        }
+        g_brAA2A0C = g_brAA2A0C + 1;
+        if (g_brAA2A0C >= BR_OPT_AA2A0C_MAX + 1)
+            g_brAA2A0C = 0;
+        if (g_brAA2A0C == 1)            /* stepping up skips 1 -> 2 */
+            g_brAA2A0C = 2;
+    } else if (g_brAA33D0 != 0) {
+        g_brAA2A0C = g_brAA2A0C - 1;
+        if (g_brAA2A0C < 0)
+            g_brAA2A0C = BR_OPT_AA2A0C_MAX;
+        if (g_brAA2A0C == 1)            /* stepping down skips 1 -> 0 */
+            g_brAA2A0C = 0;
     }
+    v = g_brAA2A0C;
 
     g_brB4E728 = v;
     v = g_aBrAC520[v];
