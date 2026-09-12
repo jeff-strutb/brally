@@ -7859,3 +7859,18 @@ parameter and callee alike.
   `if (n <= 0x100) { ...; return 1; } return 0;` (0x1006AEB0, 0x1006AFA0).
   `if (n > 0x100) return 0;` inlines `xor eax,eax` + pops under an
   inverted branch and tail-merges the success return the other way round.
+
+## `add R,-K` in place is a CSE'd `v - K` spelled at every use, never a `v -= K` statement (0x10037DC0)
+
+The original's `mov ebp,eax; ...; add ebp,-0xc` on a truncated float, where
+every `y = (int)f - 12` / `+ -12` / `-= 12` spelling gives `sub ebx,0xc` AND
+swaps y/n between ebp and ebx with their spill slots: the source keeps `y`
+as the bare `(int)f` and writes `y - 12` in all three vcall arguments.  VC5
+CSEs the expression into a temp, emits the temp as an add of the negative
+immediate into y's dying register, and creates the temp's web AFTER n's --
+which is what gives n ebx / the lower slot and the CSE temp ebp.  Took
+BrUiHook85_1003E7A0 (0x10037DC0.cpp) from 16 diffs to byte-exact in one
+probe.  Companion of the `x + i * K` strength-reduction colouring lever on
+0x10037FA0 / 0x10038000 (same session): in both, the register a value gets
+is the ORDER its web is created, and an expression spelled at the use site
+creates its web later than a named local does.
