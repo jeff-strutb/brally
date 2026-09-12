@@ -1844,7 +1844,9 @@ int BrTex3dRegister(void)
   r.f260 = DAT_118ed1a0;
   r.cb29c = r.cbTotal;
   if ((r.f260 & 2) && (r.f5c == 2)) {
-    r.f260 = DAT_118ed1a0 | 0x80;
+    /* |= not a re-read of the global: single-use lets the register die,
+     * so the & 2 test above compiles as the orig's test byte [f260],2 */
+    r.f260 |= 0x80;
   }
   sMask = FUN_10027b60(&r);
   id = FUN_10027710(&r,sMask);
@@ -1867,12 +1869,16 @@ int BrTex3dRegister(void)
       ((unsigned short *)r.p2)[1] = 0xffff;
       sMask = FUN_10027b60(&r);
       (*DAT_118ed1d0)(id,sMask);
-      hCur = FUN_10001000(FUN_10001000(0,0,0),sMask,r.cbTotal);
+      /* the seed crc is its own statement: the orig makes the inner call
+       * BEFORE loading sMask/cbTotal for the outer one (both sites) */
+      wCur = FUN_10001000(0,0,0);
+      hCur = FUN_10001000(wCur,sMask,r.cbTotal);
       *(unsigned short *)r.p2 = a;
       ((unsigned short *)r.p2)[1] = b;
       sMask = FUN_10027b60(&r);
       (*DAT_118ed1d0)(id,sMask);
-      if (FUN_10001000(FUN_10001000(0,0,0),sMask,r.cbTotal) != hCur) {
+      wCur = FUN_10001000(0,0,0);
+      if (FUN_10001000(wCur,sMask,r.cbTotal) != hCur) {
         FUN_100306d0(id);
       }
     }
