@@ -80,4 +80,92 @@ int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
   FUN_100361a0(pMem, (void *)0x10036130, pCtx, 0);
   return 1;
 }
+
+/* ------------------------------------------------------------------ */
+/* 0x10036300 -- the EnumSessions initiator                            */
+/* ------------------------------------------------------------------ */
+
+#include <string.h>
+
+extern int   DAT_10077500;    /* the application GUID, four dwords */
+extern int   DAT_10077504;
+extern int   DAT_10077508;
+extern int   DAT_1007750c;
+extern int   DAT_10ac5bcc;    /* "enumeration in progress" flag    */
+extern int   DAT_10ac5d30;    /* the lobby dialog object           */
+extern int   DAT_10ac5d2c;    /* the session table                 */
+extern int   DAT_10ac5bd8;    /* our row in the session table      */
+extern void *g_brP680584;     /* the lobby window                  */
+void BrSub1003D070(void);     /* 0x10036700 -- resets the list     */
+int __stdcall FUN_10036130(int, int, int, int, int);
+
+typedef int (__stdcall *BrDpEnumSessionsFn)(void *, void *, int, void *,
+                                            void *, int);
+
+/* WHAT IT DOES: kicks off the search for advertised games -- resets the
+ * session list, builds a fresh session description carrying our
+ * application id, and asks DirectPlay to enumerate matching sessions
+ * (each hit arrives in the callback above). Afterwards it greys the
+ * lobby's join button in or out: joining stays possible only while a
+ * session table row exists, it has players, and our own row is not
+ * already marked joined. */
+/* @t4-pass 0x10036300 1 2026-09-12 probes 10 bytes 290 insns 83 regions 3 rows 1 census no  (hand: desc store orders x3, memset spellings x2, decl orders x2, err-constant cast, word !=0, RMW written out -- all inert) */
+/* @t4-pass 0x10036300 2 2026-09-12 probes 10 bytes 290 insns 83 regions 3 rows 1 census yes  (hand: vtable two-step, nested-if tail, int-typed param/volatile view, mul operand order, char-typed flag store, guid byte-lea, typed vcall arg, memset 20*4, swap 6/9, swap 7/8 -- all inert; census push 12 jcc 6 call 3 repstosd 1 store32 9 store8 2 IDENTICAL both streams) */
+/* @t3 0x10036300 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 290/289 insns 83/82 rows 0+1 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is placement only: (1) `push edi` sits above the NULL test where
+ * the original shrink-wraps it below (+1 insn, the early return pops it);
+ * (2) the three GUID-dword stores pair registers to slots in a rotated
+ * order (shapes identical, relocs masked); (3) the tail A `pop edi` sits
+ * at the block end, the original lifts it two insns. The one msetdiff row
+ * is the missing sunk-else `jmp` twin of (1). Instruction census is
+ * identical class-for-class. Do not reopen before the end-grind. */
+/* @implements 0x10036300 glide BrNetEnumSessionsStart */
+int BrNetEnumSessionsStart(void *pIface)
+{
+    void *p = pIface;                /* the working copy; the else arm below
+                                      * reads the PARAMETER, which is why the
+                                      * original reloads [esp+arg] there */
+    int   desc[20];
+    int   r;
+
+    if (p == NULL) {
+        return (int)0x88770082;
+    }
+    BrSub1003D070();
+    memset(desc, 0, 0x50);
+    desc[6] = DAT_10077500;
+    desc[9] = DAT_1007750c;
+    desc[0] = 0x50;
+    desc[7] = DAT_10077504;
+    desc[8] = DAT_10077508;
+    DAT_10ac5bcc = 1;
+    if (DAT_10ac5bf0 != 0) {
+        r = (*(BrDpEnumSessionsFn *)(*(int *)p + 0x34))
+                (p, desc, 0, (void *)BrNetEnumSessionCb,
+                 g_brP680584, 0x91);
+    } else {
+        /* The bytes prove a real reload of the argument slot here; a plain
+         * read is value-numbered back to the register copy (as VC5 always
+         * does -- see 0x100540D0's park note), so the load is pinned the
+         * same way the dead-store class is: through a volatile view. */
+        r = (int)*(void *volatile *)&pIface;
+    }
+    /* The join helper gets the enumerated session id -- desc+8. */
+    FUN_100361a0(&desc[2], (void *)FUN_10036130, g_brP680584, 0);
+    DAT_10ac5bcc = 0;
+
+    if (DAT_10ac5d30 != 0
+        && *(unsigned short *)(DAT_10ac5d2c + 0x1e164) > 0u
+        && (*(unsigned char *)(DAT_10ac5d2c + DAT_10ac5bd8 * 0x438
+                               + 0x3868) & 0x10) == 0) {
+        *(unsigned int *)(DAT_10ac5d30 + 0x1c) &= 0xffffffef;
+        *(unsigned char *)(DAT_10ac5d30 + 0x2b64) = 1;
+        return r;
+    }
+    *(unsigned int *)(DAT_10ac5d30 + 0x1c) |= 0x10;
+    *(unsigned char *)(DAT_10ac5d30 + 0x2b64) = 0;
+    return r;
+}
 #endif /* BR_MATCHING_BUILD */
