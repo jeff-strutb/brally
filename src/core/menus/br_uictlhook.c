@@ -284,7 +284,7 @@ static int32_t Br85ItemApply(BrUiCtl_ *pCtl, int16_t index)
  * then a right end piece. A box whose width comes out negative would draw
  * middle pieces essentially for ever, because the count is treated as
  * unsigned; that is the original's behaviour and is preserved. */
-/* @implements 0x1003E7A0 d3d BrUiHook85_1003E7A0 */
+/* port-only body; Glide match is src/core/cpp/0x10037DC0.cpp */
 int32_t BrUiHook85_1003E7A0(BrUiCtl_ *pCtl)
 {
     const BrTextBox *pBox = &pCtl->aText[0];
