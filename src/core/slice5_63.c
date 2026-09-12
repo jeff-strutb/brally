@@ -522,7 +522,12 @@ void BrExt_1005FBC0(int32_t a)
      * uses a general register or the reverse).  The visible symptom is at the
      * very top: the original stores the byte third (`al` load, block-base
      * load, byte store) where we hoist a third dword load ahead of the store.
-     * T3a -- do not grind. */
+     * T3a -- do not grind.
+     * DEAD 2026-09-12 (fn.py, do not re-run): the seven head assignments in
+     * five other statement orders (the block-base store second, first,
+     * last, the byte store second, the block-base store fifth) -- every one
+     * 288 B at register-blind 1+1; VC5 reschedules the seven stores to the
+     * same 1,6,4,5,2,3,7 order whatever the source order. */
     v = g_brAA27F8;
     switch (v) {
     case 1:
