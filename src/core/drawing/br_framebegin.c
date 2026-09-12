@@ -560,3 +560,112 @@ void BrFrameFogEmit(void)
             | ((DAT_106e7290 & 0xFF) << 8) | 0xFF;
 }
 #endif /* BR_MATCHING_BUILD */
+
+/* ==========================================================================
+ * 0x1002B480 -- the frame's tint bytes: sky, ground and the four-step ramp.
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+extern float DAT_106e7700, DAT_106e7704, DAT_106e7708;   /* a BrVec3 handed to 0x100344D0 */
+void FUN_100344d0(float *);
+extern unsigned char DAT_106e8610, DAT_106ea3ec, DAT_106e79f8;   /* tint A r/g/b */
+extern unsigned char DAT_106b7c80, DAT_106e79f0, DAT_106ed64c;   /* tint B r/g/b */
+extern unsigned char DAT_106b8088[4], DAT_106ed524[4], DAT_106ea3e8[4];   /* the ramp, r/g/b */
+extern unsigned int  DAT_106e9a78, DAT_106ecb40;                 /* packed tints    */
+extern unsigned int  DAT_106e79e0[4];                            /* packed ramp     */
+
+/* WHAT IT DOES: sets this frame's two tint colours and the four-step colour
+ * ramp from the viewing mode.  Two modes take fixed colours, one derives
+ * both tints from the fog colour by simple shifts, and the default mode
+ * blends fixed colours with the fog colour by the fog alpha; the ramp is
+ * either fixed or quarter/half/three-quarter/full steps of the first tint.
+ * All of it is then packed into the three RGB words the renderer reads. */
+/* @implements 0x1002B480 glide BrFrameTintSetup */
+void BrFrameTintSetup(void)
+{
+    int i;
+
+    if (DAT_106ed6ac == 0) {
+        DAT_106e7700 = 15.0f;
+        DAT_106e7704 = 10.0f;
+        DAT_106e7708 = 20.0f;
+        FUN_100344d0(&DAT_106e7700);
+    }
+    if (DAT_106ed6b0 != 0 || DAT_106ed6b4 != 0) {
+        DAT_106e8610 = (unsigned char)((DAT_106e72f0 + 0x2FD) >> 2);
+        DAT_106ea3ec = (unsigned char)((DAT_106e86a4 + 0x2FD) >> 2);
+        DAT_106e79f8 = (unsigned char)((DAT_106e7290 + 0x264) >> 2);
+        DAT_106b7c80 = (unsigned char)((DAT_106e72f0 * 5) / 8);
+        DAT_106e79f0 = (unsigned char)((DAT_106e86a4 * 5) / 8);
+        DAT_106ed64c = (unsigned char)((DAT_106e7290 * 5) / 8);
+    } else if (DAT_106ed6ac != 0) {
+        DAT_106e8610 = 0xDD;
+        DAT_106ea3ec = 0xEE;
+        DAT_106e79f8 = 0xFF;
+        DAT_106b7c80 = 0x3C;
+        DAT_106e79f0 = 0x39;
+        DAT_106ed64c = 0x36;
+    } else if (DAT_106ed6a8 != 0) {
+        DAT_106e8610 = (unsigned char)((((DAT_106e72f0 + 0xFF) >> 1) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0xFF) / 0xFF);
+        DAT_106ea3ec = (unsigned char)((((DAT_106e86a4 + 0xFF) >> 1) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0xFF) / 0xFF);
+        DAT_106e79f8 = (unsigned char)((((DAT_106e7290 + 0xCC) >> 1) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0xCC) / 0xFF);
+        DAT_106b7c80 = (unsigned char)((((DAT_106e72f0 << 2) / 5) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0x66) / 0xFF);
+        DAT_106e79f0 = (unsigned char)((((DAT_106e86a4 << 2) / 5) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0x66) / 0xFF);
+        DAT_106ed64c = (unsigned char)((((DAT_106e7290 << 2) / 5) * DAT_106b7c78 + (0xFF - DAT_106b7c78) * 0x77) / 0xFF);
+    } else {
+        DAT_106e8610 = 0xFF;
+        DAT_106ea3ec = 0xFF;
+        DAT_106e79f8 = 0xCC;
+        DAT_106b7c80 = 0x66;
+        DAT_106e79f0 = 0x66;
+        DAT_106ed64c = 0x77;
+    }
+
+    if (DAT_106ed6ac != 0) {
+        DAT_106b8088[0] = 0x22;
+        DAT_106ed524[0] = 0x22;
+        DAT_106ea3e8[0] = 0x22;
+        DAT_106b8088[1] = 0x44;
+        DAT_106ed524[1] = 0x44;
+        DAT_106ea3e8[1] = 0x44;
+        DAT_106b8088[2] = 0x66;
+        DAT_106ed524[2] = 0x66;
+        DAT_106ea3e8[2] = 0x66;
+        DAT_106b8088[3] = 0xFF;
+        DAT_106ed524[3] = 0xFF;
+        DAT_106ea3e8[3] = 0xFF;
+    } else if (DAT_106ed6b0 != 0) {
+        DAT_106b8088[0] = 0xD0;
+        DAT_106ed524[0] = 0xD0;
+        DAT_106ea3e8[0] = 0xF0;
+        DAT_106b8088[1] = 0xE0;
+        DAT_106ed524[1] = 0xE0;
+        DAT_106ea3e8[1] = 0xFF;
+        DAT_106b8088[2] = 0xF0;
+        DAT_106ed524[2] = 0xF0;
+        DAT_106ea3e8[2] = 0xFF;
+        DAT_106b8088[3] = 0xFF;
+        DAT_106ed524[3] = 0xFF;
+        DAT_106ea3e8[3] = 0xFF;
+    } else {
+        DAT_106b8088[0] = (unsigned char)(DAT_106e8610 >> 2);
+        DAT_106ed524[0] = (unsigned char)(DAT_106ea3ec >> 2);
+        DAT_106ea3e8[0] = (unsigned char)(DAT_106e79f8 >> 2);
+        DAT_106b8088[1] = (unsigned char)(DAT_106e8610 >> 1);
+        DAT_106ed524[1] = (unsigned char)(DAT_106ea3ec >> 1);
+        DAT_106ea3e8[1] = (unsigned char)(DAT_106e79f8 >> 1);
+        DAT_106b8088[2] = (unsigned char)((DAT_106e8610 >> 1) + (DAT_106e8610 >> 2));
+        DAT_106ed524[2] = (unsigned char)((DAT_106ea3ec >> 1) + (DAT_106ea3ec >> 2));
+        DAT_106ea3e8[2] = (unsigned char)((DAT_106e79f8 >> 1) + (DAT_106e79f8 >> 2));
+        DAT_106b8088[3] = DAT_106e8610;
+        DAT_106ed524[3] = DAT_106ea3ec;
+        DAT_106ea3e8[3] = DAT_106e79f8;
+    }
+
+    DAT_106e9a78 = (unsigned int)DAT_106b7c80 << 24 | (unsigned int)DAT_106e79f0 << 16 | (unsigned int)DAT_106ed64c << 8;
+    DAT_106ecb40 = (unsigned int)DAT_106e8610 << 24 | (unsigned int)DAT_106ea3ec << 16 | (unsigned int)DAT_106e79f8 << 8;
+    for (i = 0; i < 4; i = i + 1) {
+        DAT_106e79e0[i] = (unsigned int)DAT_106b8088[i] << 24 | (unsigned int)DAT_106ed524[i] << 16
+                        | (unsigned int)DAT_106ea3e8[i] << 8;
+    }
+}
+#endif /* BR_MATCHING_BUILD */
