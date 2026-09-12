@@ -152,6 +152,15 @@ typedef void (*BrDbgSink)(const char *pMsg);
 #define BR_DBG_SINK BrDbgPrint
 #endif
 
+/* BrFfbEnumDevice's original calls the import DIRECTLY per site
+ * (`call dword ptr [__imp__OutputDebugStringA]`), unlike BrFfbInit's cached
+ * register. The port routes the same sites through the safe sink. */
+#ifdef BR_MATCHING_BUILD
+#define BR_DBG_OUT(msg) OutputDebugStringA(msg)
+#else
+#define BR_DBG_OUT(msg) BrDbgPrint(msg)
+#endif
+
 /* ====================================================================== */
 /* Globals this translation unit owns                                      */
 /* ====================================================================== */
@@ -963,47 +972,58 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
  * describes what sort of data it wants back, stopping the search on the first
  * one that works. Every way it can fail writes a message to the debugger and
  * gives the device back. */
+/* @t4-pass 0x100790E0 1 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census no  (hand: CreateDevice out pointer through the spent pDevInst arg slot, no pTmp local, frame 0x10; direct per-site OutputDebugStringA import calls; create-failure as the ELSE of nesting the rest in the success arm, landing at the tail -- a goto spelling gets pulled inline. fn.py variants on the last residue: dataformat pVtbl local, hr temp, decl order, arg cast, EOF position, void-cast release all inert. Residue = one vtable temp ecx-vs-edx at SetDataFormat, 2 instructions / 4 B, plus the unmapped d3d-global reloc regions.) */
 /* @implements 0x100790E0 d3d BrFfbEnumDevice */
-int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
+int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
 {
     unsigned char guid[16];
-    BrDiObj *pTmp = NULL;
     BrDiObj *pDev;
     long hr;
 
     memcpy(guid, (const unsigned char *)pDevInst + 4, sizeof guid);
 
+    /* The original has NO local for the created device: CreateDevice's out
+     * pointer is written into the spent pDevInst ARGUMENT SLOT (the lea
+     * points at [esp+arg0]), and the parameter is read back as the device.
+     * That is why the frame is 0x10 -- the guid alone -- and why there is no
+     * NULL initialisation anywhere. */
+    /* The create-failure message is the ELSE of nesting everything in the
+     * success arm -- that is what lands it at the function's tail (jl to the
+     * end), where its return-0 shares the epilogue the SetDataFormat success
+     * jumps to. A goto spelling gets pulled back inline. */
     if (BrDiRoot(g_pBr18ABD70)->pfnCreateDevice(g_pBr18ABD70, guid,
-                                                &pTmp, NULL) < 0) {
-        BrDbgPrint(kBrErrCreateDevice);
-        return 0;
-    }
+                                                (BrDiObj **)&pDevInst,
+                                                NULL) >= 0) {
 
-    hr = BrDiDev(pTmp)->pfnQueryInterface(pTmp, kBrIidDevice2A,
-                                          (void **)(void *)&g_brFfb.pDevice);
-    BrDiDev(pTmp)->pfnRelease(pTmp);
-    if (hr < 0) {
-        /* Note: g_brFfb.pDevice is NOT cleared on this path. */
-        BrDbgPrint(kBrErrInterface);
-        return 0;
-    }
-
-    pDev = g_brFfb.pDevice;
-    /* pvRef is an integer cooperative level, not a pointer. */
-    if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, g_brP680584,
-            (uint32_t)(uintptr_t)pvRef) < 0) {
-        BrDbgPrint(kBrErrCoopLevel);
-    } else {
-        pDev = g_brFfb.pDevice;
-        if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) >= 0) {
-            return 0;                       /* success -- DIENUM_STOP */
+        hr = BrDiDev(pDevInst)->pfnQueryInterface(pDevInst, kBrIidDevice2A,
+                                                  (void **)(void *)&g_brFfb.pDevice);
+        BrDiDev(pDevInst)->pfnRelease(pDevInst);
+        if (hr < 0) {
+            /* Note: g_brFfb.pDevice is NOT cleared on this path. */
+            BR_DBG_OUT(kBrErrInterface);
+            return 0;
         }
-        BrDbgPrint(kBrErrDataFormat);
+
+        pDev = g_brFfb.pDevice;
+        /* pvRef is an integer cooperative level, not a pointer. */
+        if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, g_brP680584,
+                (uint32_t)(uintptr_t)pvRef) < 0) {
+            BR_DBG_OUT(kBrErrCoopLevel);
+        } else {
+            pDev = g_brFfb.pDevice;
+            if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) >= 0) {
+                return 0;                   /* success -- DIENUM_STOP */
+            }
+            BR_DBG_OUT(kBrErrDataFormat);
+        }
+
+        pDev = g_brFfb.pDevice;
+        BrDiDev(pDev)->pfnRelease(pDev);
+        g_brFfb.pDevice = NULL;
+        return 0;
     }
 
-    pDev = g_brFfb.pDevice;
-    BrDiDev(pDev)->pfnRelease(pDev);
-    g_brFfb.pDevice = NULL;
+    BR_DBG_OUT(kBrErrCreateDevice);
     return 0;
 }
 
