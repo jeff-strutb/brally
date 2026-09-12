@@ -151,4 +151,71 @@ void BrNop_1002E334(void)
   return;
 }
 
+
+/* 0x1002E186 -- the frame clock.  /Od like the rest of this range: every
+ * cast and 64-bit step is spelled out (`__allmul` / `__aulldiv` for the
+ * 64-bit multiply and divide, add/adc for the accumulate, `fild qword`
+ * for the conversion).  The tick counter is one unsigned 64-bit global
+ * (0x106EC740/44); the timer frequency another (0x100AD7C0/C4). */
+extern int              DAT_106ed6d8;   /* g_brRaceBeginDrawn: frame is synthetic  */
+extern unsigned __int64 DAT_106ec740;   /* accumulated ticks                       */
+extern int              DAT_106e7294;   /* last raw tick                           */
+extern unsigned __int64 DAT_100ad7c0;   /* ticks per second                        */
+extern unsigned int     DAT_106ec768;   /* milliseconds now                        */
+extern unsigned int     DAT_106ed588;   /* milliseconds at the previous frame      */
+extern float            DAT_100774f0;   /* 1000.0f: ms -> s                        */
+extern float            DAT_106e9d8c;   /* the frame delta in seconds              */
+extern unsigned int     DAT_106b7ac0;   /* the frame delta in milliseconds         */
+int  FUN_10059f00(void);                /* raw tick read                           */
+typedef union {
+    struct { unsigned int lo; int hi; } u;
+    __int64 q;
+} BrFrameClockTicks;
+void BrPadTranslateAll(void);           /* 0x1002CE9A                              */
+void FUN_10008d60(void);                /* the folded empty function, called twice */
+
+/* WHAT IT DOES: advances the game clock by one frame.  While the race is
+ * being drawn synthetically it adds a fixed thirtieth of a second's worth
+ * of ticks; otherwise it adds the real ticks elapsed since the last read,
+ * starting the count on the first call.  From the tick total it derives the
+ * time in milliseconds, remembers the previous frame's value, translates
+ * the pads, and publishes the frame delta both in seconds (as a float) and
+ * in whole milliseconds. */
+/* @implements 0x1002E186 glide BrFrameClockStep */
+void BrFrameClockStep(void)
+{
+    int now;
+
+    if (DAT_106ed6d8 != 0) {
+        DAT_106ec740 += DAT_100ad7c0 * 0x1FCA055 / 1000000000;
+        DAT_106e7294 = FUN_10059f00();
+    } else if (DAT_106ec740 != 0) {
+        now = FUN_10059f00();
+        DAT_106ec740 += (unsigned int)(now - DAT_106e7294);
+        DAT_106e7294 = now;
+    } else {
+        DAT_106e7294 = FUN_10059f00();
+        DAT_106ec740 = (unsigned int)DAT_106e7294;
+    }
+    DAT_106ed588 = DAT_106ec768;
+    DAT_106ec768 = (unsigned int)(DAT_106ec740 * 1000000 / DAT_100ad7c0) / 1000;
+    BrPadTranslateAll();
+    FUN_10008d60();
+    FUN_10008d60();
+    /* The delta is widened by PARTS -- low dword stored, high dword an
+     * immediate zero (`mov dword ptr [ebp-8], 0`) -- the LARGE_INTEGER
+     * spelling, and the conversion is a SIGNED 64-bit `fild qword` (VC5 has
+     * no unsigned-64 -> float: C2520).  A `(__int64)(unsigned)` cast widens
+     * through a zeroed REGISTER instead (`xor eax,eax; mov [ebp-8],eax`).
+     * The `(float)` rounding through [ebp-0x10] is the /Od /Op idiom
+     * (match_sweep's Odp shape). */
+    {
+        BrFrameClockTicks t;
+        t.u.lo = DAT_106ec768 - DAT_106ed588;
+        t.u.hi = 0;
+        DAT_106e9d8c = (float)t.q / DAT_100774f0;
+    }
+    DAT_106b7ac0 = DAT_106ec768 - DAT_106ed588;
+}
+
 #endif /* BR_MATCHING_BUILD */
