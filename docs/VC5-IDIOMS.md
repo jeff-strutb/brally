@@ -7874,3 +7874,75 @@ probe.  Companion of the `x + i * K` strength-reduction colouring lever on
 0x10037FA0 / 0x10038000 (same session): in both, the register a value gets
 is the ORDER its web is created, and an expression spelled at the use site
 creates its web later than a named local does.
+
+## /Gi (incremental compilation) is a per-TU codegen truth: it flips commutative canonicalisation
+*(2026-09-12, 0x10044860 BrPhaseEnterPlaceholder_1004B430, 2439 B, byte-exact 4/4)*
+
+For a float `local + member` VC5 /O2 ALWAYS emits `fld <member>; fadd
+<local>` (measured in a micro-TU across 40 shapes: parameters, references,
+pointers to both, unions, arrays, struct-member locals, inline helpers,
+double promotion, volatile, `(y + 0.0f)`, 24 declaration orders, includes).
+The original's `fld [esp+0x10]; fadd [esi+0x33c]` at four sites is the
+OPTION `/Gi`: same source, `/O2 /Gi /GX /MD`, 0 diffs.  /Gi also flips the
+int case -- 0x10004AD0 (`or cl,al` vs `or dl,cl`) is exact ONLY without it --
+so it is per translation unit in the original project, not global.
+`cpp_score.DEFAULT_OPTS` now carries `/O2 /Gi /GX /MD` as a fourth shape
+and `report_cpp.csv` records `O2 Gi`.  Before grinding a lone commutative
+operand order in a C++ TU, score it under /Gi.  (The C sweep has no /Gi
+variant yet: on twelve large C diff rows it moved raw diffs by -29..+61,
+no match.)
+
+## `fy = 0.0f` FIRST, before the pinned-zero store, decides the slot layout
+*(same function)*
+
+Written after `parent->w12 = 0`, the float zero is emitted as `mov [slot],
+ebx` (ebx already pinned to 0) and the variable is homed in the DEAD
+PARAMETER slot, with the operator-new temp in the `push ecx` local.  Written
+as the very first statement it is an immediate `mov [esp+0x14], 0` into the
+real local and the new-temp takes the parameter slot -- the original's
+layout, 1952 -> 36 diffs in one move.  Slot assignment follows first-def
+order in the IR, and a zero that precedes the pinning is not register-fed.
+
+## A cached vtable pointer across a vcall is a NAMED LOCAL + pointer-to-member, and the slot read goes ABOVE the walker init
+*(2026-09-12, 0x10046E70 BrExt_1004DFC0, 2114 B, byte-exact 4/4 -- parked 12 days as a "-1 constant-register fork")*
+
+The original keeps the selector's vptr in edi across the configure vcall
+and reads the add-item slot from it right after the call, BEFORE the
+`pfn04` store and the name-walker's `mov edi, names`.  A plain virtual
+call CSEs the vptr too, but VC5 hoists the loop-invariant slot read below
+the walker init, so the vptr temp overlaps the walker, cannot share edi,
+goes to edx and spills -- and every later `new` inherits the rotation
+(1177 diffs).  The -1 in edi was a symptom: dropping that argument to 0 as
+a diagnostic changed nothing.  The shape:
+
+    typedef void (Sel::*CfgPmf)(int, void *, int, int, int);
+    typedef void (Sel::*AddPmf)(char *, int, int, void *, int);
+    vt = *(char **)&p->m3838;
+    (p->m3838.**(CfgPmf *)(vt + 0x14))(0x40001, &name, 4, k, -1);
+    add = *(AddPmf *)(vt + 0x10);          /* before p->m3838.pfn04 = ... */
+    ...
+    (p->m3838.*add)(*pp, 0, 1, &str, 1);   /* in the walker loop */
+
+Same function: `lo - (hi - lo) * n * k` is reassociated by VC5 to
+`(hi - lo) * k` first (two fxch); the explicit `((hi - lo) * n) * k` pins
+the original's `fmulp; fmul k` order.  Flat products reassociate; a paren
+around the first product does not fold away.
+
+## The menu-builder photo tail is a Pentium-pairing schedule, not a spelling (three functions, T3)
+*(2026-09-12, 0x1004AEE0 / 0x1004BE00 / 0x1004DA00, 34 diffs each, identical multiset, all other bytes exact)*
+
+The original issues `fld fy | yi-reload + xi-copy | fsub | lea + add | f50
++ f58 | f5C + f2968 | fstp | w2A42 + inc`.  Ours issues the fsub right after
+the fld because the copy `mov ebx,eax` is placed at xi's FIRST USE, so the
+fy statement is IR-first and takes the slot; the lea then waits one cycle
+after the copy (address-generation interlock) and the add/f5C overtake it.
+Any statement that uses xi before the fy update either carries a store
+(issued before the fsub too -- the "R shape", 32) or is folded (temps,
+chains, CSE spellings, an inline helper in nine shapes).  The only shape
+that put the reload and copy ahead of the fsub was a helper with the step
+passed BY VALUE, which pays an extra `fld [step]`.  726 probes on
+0x1004AEE0 (240 statement orders, 96 chained/temp orders, 246 temp-before-
+fy orders, 34 compiler options, corpus MISS at +0x477): certified @t3,
+dossier and dead list in 0x1004AEE0.cpp.  `t3.py` now measures C++ rows
+(report_cpp.csv overrides the stale C twin; the EH frame's `fs:[0]` reloc
+form pairs with the literal).
