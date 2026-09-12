@@ -1277,7 +1277,11 @@ int BrTexRgbaToArgb1555();
  * operand order of the sum; a `(char *)` base; `((int *)tab)[i*0xad+0x9b]`
  * for the test alone and for both addresses; `((int *)(tab+0x26c))[i*0xad]`;
  * pre-offset bases `(tab+4)+n` / `(tab+0x26c)+n`; forming the pointer inside
- * both arms after the test (CSEs to the unbiased base instead, +1 insn). */
+ * both arms after the test (CSEs to the unbiased base instead, +1 insn).
+ * DEAD 2026-09-12: the zero-rectangle block with both doubled sizes as named
+ * locals before the four stores (441 B, 1+1) and with the two products
+ * stored before the two zeros (439 B, register-blind 0+0 but the scheduler
+ * stores x*2 before loading h where the original loads both first). */
 /* @t4-pass 0x10028620 1 2026-09-09 probes 8 bytes 440 insns 144 regions 2 rows 3 census no  (hand) */
 /* @implements 0x10028620 glide BrTexSlotFetchPixels */
 
