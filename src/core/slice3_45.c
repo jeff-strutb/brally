@@ -983,7 +983,16 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
  * describes what sort of data it wants back, stopping the search on the first
  * one that works. Every way it can fail writes a message to the debugger and
  * gives the device back. */
-/* @t4-pass 0x100790E0 1 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census no  (hand: CreateDevice out pointer through the spent pDevInst arg slot, no pTmp local, frame 0x10; direct per-site OutputDebugStringA import calls; create-failure as the ELSE of nesting the rest in the success arm, landing at the tail -- a goto spelling gets pulled inline. fn.py variants on the last residue: dataformat pVtbl local, hr temp, decl order, arg cast, EOF position, void-cast release all inert. Residue = one vtable temp ecx-vs-edx at SetDataFormat, 2 instructions / 4 B, plus the unmapped d3d-global reloc regions.) */
+/* @t4-pass 0x100723D0 1 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census no  (hand: CreateDevice out pointer through the spent pDevInst arg slot, no pTmp local, frame 0x10; direct per-site OutputDebugStringA import calls; create-failure as the ELSE of nesting the rest in the success arm, landing at the tail -- a goto spelling gets pulled inline. fn.py variants on the last residue: dataformat pVtbl local, hr temp, decl order, arg cast, EOF position, void-cast release all inert. Residue = one vtable temp ecx-vs-edx at SetDataFormat, 2 instructions / 4 B, plus the unmapped d3d-global reloc regions.) */
+/* @t4-pass 0x100723D0 2 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census yes  (hand, fn.py variants: cast spellings, decl orders, !(hr>=0), pDev re-read drop, coop pVtbl local, else-arm inversion, EOF position, void-cast release, hr for CreateDevice, IID via local -- all inert or worse; slotcensus orig vs recomp byte-identical including the reused arg slot's 0-write/2-read shape) */
+/* @t3 0x100723D0 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 239/239 insns 78/78 rows 0+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one vtable-temp register at the SetDataFormat call (ours ecx,
+ * original edx; 2 instructions, 4 bytes) -- the same creation-order class as
+ * BrFfbInit's. Dead lists in the two ledger lines. Byte-exact additionally
+ * gated on the unmapped d3d-global reloc regions.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100790E0 d3d BrFfbEnumDevice */
 int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
 {
@@ -1045,7 +1054,18 @@ int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
  * builds the effects; failing that it settles for any controller at all. Then
  * it sets both axes to the range the game expects with no dead zone. It only
  * does the work once no matter how many times it is called. */
-/* @t4-pass 0x100791D0 1 2026-09-12 probes 10 bytes 434 insns 147 regions 5 rows 0 census no  (hand: nested-guard restructure with shared return-ret tail and per-kind inline teardown blocks; stdcall OutputDebugStringA pointer cached in a local; hr local dropped for direct call compares; ret local with end-of-body reassignment. fn.py variants on the last residue: pVtbl hoist wins the store sink, pHdr hoist folds away, SETPROP macro / call-embedded assignment / decl orders all inert. Residue = ecx/edx creation-order swap on the SetProperty vtable/&d temps, 3 instructions, plus the unmapped d3d-global reloc regions.) */
+/* @t4-pass 0x100724C0 1 2026-09-12 probes 10 bytes 434 insns 147 regions 5 rows 0 census no  (hand: nested-guard restructure with shared return-ret tail and per-kind inline teardown blocks; stdcall OutputDebugStringA pointer cached in a local; hr local dropped for direct call compares; ret local with end-of-body reassignment. fn.py variants on the last residue: pVtbl hoist wins the store sink, pHdr hoist folds away, SETPROP macro / call-embedded assignment / decl orders all inert. Residue = ecx/edx creation-order swap on the SetProperty vtable/&d temps, 3 instructions, plus the unmapped d3d-global reloc regions.) */
+/* @t4-pass 0x100724C0 2 2026-09-12 probes 10 bytes 434 insns 147 regions 5 rows 0 census yes  (hand, fn.py variants: ++count and fused RMW-compare, pfnDbg hoist, d store orders, void-cast drop, !pDev, teardown re-read drop, decl orders, EOF position, pRoot local -- all inert or worse; slotcensus orig vs recomp identical, sole delta the known lea register) */
+/* @t3 0x100724C0 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 434/434 insns 147/147 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one temp-creation-order fork at the SetProperty call: the
+ * original creates the &d lea before the vtable load (ecx/edx swapped on
+ * three instructions). pVtbl hoist wins the store sink but not the pair;
+ * pHdr folds away; macro and call-embedded spellings lose the sink. Dead
+ * lists in the two ledger lines. Byte-exact additionally gated on the
+ * unmapped d3d-global reloc regions.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100791D0 d3d BrFfbInit */
 int32_t BrFfbInit(void)
 {
