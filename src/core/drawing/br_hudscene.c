@@ -198,7 +198,10 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
      * because it reloads y into edx; ours frees eax and skips the copy --
      * one whole-register rotation, 5 bytes short.  Probed and failed:
      * h-first OR order, Ghidra-literal `w*0x4000-0x2000` w-term (both
-     * canonicalize back). */
+     * canonicalize back); 2026-09-12: the w-term FIRST in the tile word,
+     * and as `(w << 14) - 0x2000` -- both drop an instruction (56/57) and
+     * keep h in esi; the original loads h into ecx only after the second
+     * allocation, and no order of the two terms delays that load. */
     p = BrGfxAlloc();
     p->w0 = (uint32_t)((int32_t)(((uint32_t)((x + w) * 4) & 0x3FFCu)
                                  | 0x38C000u) >> 2) << 12
