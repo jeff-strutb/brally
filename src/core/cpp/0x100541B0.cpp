@@ -3,6 +3,11 @@
  * plain draw, but the pen x and the row y come in as arguments instead of
  * the stored members. A flag can still override the pen with the centred
  * position from the vtable. */
+/* @t3 0x100541B0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 196/196 insns 74/74 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the SIB base/index order of the loop char read (`8a 44 38 09` vs `8a 44 07 09`, same registers); the emitter wall recorded in 0x100540D0.cpp and docs/VC5-IDIOMS.md "SIB base/index order". Dead list there plus the two ledger passes here (23 cpp probes).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100541B0 glide BrSprFontDrawAt_100541B0
  * @cpp_kind method
  * @cpp_symbol ?DrawAt@Text541B0@@QAEXMH@Z
@@ -19,6 +24,9 @@
  * `mov ecx,[esp+0x14]; mov [esp+0x14],ecx` self-copy. The advance temp
  * is homed in the DEAD y-argument slot once y is hoisted to ebp.
  * Same short-push / movsx-subscript idioms as the two siblings.
+ *
+ * @t4-pass 0x100541B0 1 2026-09-13 probes 11 bytes 196 insns 74 regions 1 rows 0 census no  (cpp harness: char read/pen: *(sz+i), sz[++i], no cast, for-form, pen +=, pen -=, metric pointer, decl order, ternary pen, this-relative read, early return)
+ * @t4-pass 0x100541B0 2 2026-09-13 probes 12 bytes 196 insns 74 regions 1 rows 0 census yes  (cpp harness: slot census (pen slot 3W/4R, y slot): /Op /Oy- /Os /Ot, int i, pointer walk, unsigned c, unsigned g range, int g, pen init, sp >= 0, init order)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
