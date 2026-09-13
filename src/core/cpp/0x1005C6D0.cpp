@@ -17,17 +17,14 @@
  * without an edx write), plus one cdecl atan2 whose x87 result is fstp'd
  * straight into the heading setter's argument slot.
  *
- * PARKED at 12 positional diffs on 468 real bytes (the 480 recomp is 12
- * trailing nops).  Everything is byte-exact except ONE six-instruction
- * window: the three tail copies +0x27B0..B8 -> +0x28EC..F4.  The original
- * emits them as per-statement load/store PAIRS rotating edx/eax/ecx; ours
- * batches the three loads then the three stores (same registers, same
- * roles).  DEAD: int fields, float fields, array-element spelling, and
- * *(int*)((char*)this+off) casts all batch (VC5 disambiguates same-base
- * constant offsets regardless of spelling); a 12-byte struct assignment
- * changes the copy shape entirely (-4 B); /Op adds a spill slot at the
- * prologue; /GX on/off identical; fF78=1 hoisted above the copies is
- * worse (29).  The load arm of the mode test MUST be spelled as two
+ * BYTE-EXACT 2026-09-13 (13 cpp probes on top of the 10 of 09-09).  The
+ * three tail copies +0x27B0..B8 -> +0x28EC..F4 go through two POINTER
+ * locals (`d = f28EC; s = f27B0; d[0] = s[0]; ...`): with the arrays
+ * addressed through pointers VC5 emits per-statement load/store PAIRS
+ * rotating edx/eax/ecx, which is the original's window; addressed as
+ * members (int or float fields, array elements, casts, a temp per copy,
+ * reversed order) it batches the three loads then the three stores
+ * (12 diffs).  The load arm of the mode test MUST be spelled as two
  * whole SetPos calls (if/else around the call, not around locals): VC5
  * hoists the common z argument above the branch and cross-jumps the tail,
  * which is where 322 of the original 398 diffs went.
@@ -117,6 +114,9 @@ float BrAtan2_10034E30(float x, float y);   /* 0x10034E30, cdecl         */
 
 void Car5C6D0::Respawn()
 {
+    float *d;
+    float *s;
+
     if ((f35C < 0) || (f38 < DAT_106eed10 - DAT_10077898)) {
         Sub5E6A0();
         Sub5BCC0();
@@ -152,9 +152,11 @@ void Car5C6D0::Respawn()
         b29AF = 2;
         f29B0 = 0x3dcccccd;
         Chase(f2780, 1.0f);
-        f28EC[0] = f27B0[0];
-        f28EC[1] = f27B0[1];
-        f28EC[2] = f27B0[2];
+        d = f28EC;
+        s = f27B0;
+        d[0] = s[0];
+        d[1] = s[1];
+        d[2] = s[2];
         fF78 = 1;
     }
 }
