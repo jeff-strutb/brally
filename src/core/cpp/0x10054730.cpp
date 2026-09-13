@@ -36,7 +36,13 @@
  * sum, the extent register frees early, the second `_ftol` result is
  * stored before the adds, and both adds come out reversed.
  *
- * PARKED at 31 diffs / instruction parity (recomp is 618 B of body plus
+ * BYTE-EXACT 2026-09-13 under `/O2 /Gi /GX /MD` (the fourth C++ sweep
+ * shape added 2026-09-12; this row had not been re-swept since).  /Gi
+ * flips both residue sites below -- the SIB base/index choice at +0x109
+ * and the else-arm's load placement / add operand order -- so the
+ * "allocator" wall was a per-TU option.  No source change.
+ *
+ * History -- was PARKED at 31 diffs / instruction parity (recomp is 618 B of body plus
  * six alignment nops). Two sites, both allocator, register-blind gap 2:
  *   +0x109  `lea edx,[edi+eax]` vs `[eax+edi]` -- 1 byte, the SIB
  *           base/index choice for i1a984.
