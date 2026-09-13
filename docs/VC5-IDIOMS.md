@@ -8004,3 +8004,46 @@ and convert the signed quad; `x * 5 / 8` is `imul; cdq; and edx,7; add; sar 3`
 (a division -- `>> 3` is a bare `sar`); the converted byte is the LEFT
 operand of a blend so its `fild`/`fstp` temp is evaluated before `fld K;
 fsub f`; a `for` loop with `i = i + 1` is the /Od loop shape.
+
+## A zeroed FLOAT global is `= 0.0f`, not `= 0`: the int zero joins a zero web, the float zero stays an immediate
+*(2026-09-13, 0x10069A80 BrGhostLoad, 828 B, @t3)*
+
+Two option globals cleared on the fail path. As `DAT = 0` (int) the two
+stores plus the return's byte load form a zero web (`xor ecx,ecx; mov
+[g],ecx; mov [g],ecx; mov cl,[arg]`) and the FILE handle's colouring flips
+ebx/ebp. As `*(float *)&DAT = 0.0f` each is `mov [g], 0` and the return
+reads `mov al,[arg]; test al,al; setne al` -- the original. The sister of
+the `fy = 0.0f`-first entry above: an int zero is a register candidate, a
+float zero is not.
+
+## Nine `goto closefail` sites versus nine inline `fclose(fp); goto fail;`: only the inline form lets VC5 cross-jump AND hoist the push
+*(same function)*
+
+With one shared `closefail:` label the branches go straight to it; with
+the close inlined at every site VC5 cross-jumps the nine copies into one
+tail and, where the fall-through's next instruction is also `push ebx`
+(the following fread's FILE argument), hoists that push above the branch
+and jumps one byte INTO the tail (`push ebx; jne fclose_call`). The
+corpus shows the same shape in two byte-exact functions (BrHudDrawViewMessage
++0x8, BrPfxTick +0x6). It fired at the strncmp site and not at the
+`len != 0` site (short-circuit `||`, split ifs, `else if` all inert) --
+the residue the function is certified on.
+
+## Re-read a struct field at each use when the original reloads it
+*(2026-09-13, 0x10023D70, T2 progress 38+35 -> 32+29 raw rows)*
+
+`cb = pReq[0x28c / 4]; malloc(cb); memcpy(.., cb)` cached the count in a
+register; the original reads `[ebx+0x28c]` again for each use. Spelling
+the field at every use (no local) matched three reload rows. Same family
+as the per-statement comms-record reloads on BrRaceCarReset.
+
+## t3.py measures C++ rows now
+*(2026-09-13)*
+
+report_cpp.csv overrides report.csv (the C++ TU owns the VA; the C twin is
+the stale side), objects come from obj_cpp/<base>_sweep_<VA8>_<i>.obj by
+the row's opt tag, the symbol is the file's @cpp_symbol (mangled methods
+need not contain the row name; a C-linkage `_Name` is tried bare too), the
+oracle is handed the mangled name so it never runs the twin, and the EH
+frame's `fs:[0]` reloc form pairs with the literal. Six C++ rows certified
+through it on 2026-09-12/13.
