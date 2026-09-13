@@ -209,11 +209,14 @@ def _find_obj(row):
 def _sym(obj, name):
     from match_diff import parse_coff_obj
     d = parse_coff_obj(obj)
-    for k in (name, '_' + name):
+    # parse_coff_obj undecorates C names (`_BrX` -> `BrX`); a C++ file's
+    # @cpp_symbol may still carry the underscore, so try the bare form too.
+    bare = name.lstrip('_')
+    for k in (name, '_' + name, bare):
         if k in d:
             return k
     for k in d:
-        if name in k:
+        if bare in k:
             return k
     return None
 
@@ -805,7 +808,16 @@ def measure(va):
     obj = _find_obj(r)
     if not obj:
         return None, 'no sweep object for %s (run the one-file sweep)' % r['file']
-    sym = _sym(obj, r['name'])
+    name = r['name']
+    if r.get('cpp'):
+        # A C++ method's mangled name need not contain the row name; the
+        # file's @cpp_symbol is what cpp_sweep matched on.
+        import cpp_score
+        _n, cpp_symbol, _k = cpp_score.parse_implements_name(
+            os.path.join(ROOT, r['file']), int(va, 16))
+        if cpp_symbol:
+            name = cpp_symbol
+    sym = _sym(obj, name)
     if not sym:
         return None, 'symbol %s not in %s' % (r['name'], obj)
     ob = os.path.join(ROOT, 'build', 'match', 'orig', va.upper().replace('0X', '0x') + '.bin')
