@@ -73,56 +73,8 @@ int BrSndVoiceSetPan(int param_1,int param_2)
 /* ==================================================================== */
 
 
-/* ------------------------------------------------------------------ */
-/* 0x1002F282                                                         */
-/* ------------------------------------------------------------------ */
-
-typedef struct { void *p; } BrPtrArg;
-void __fastcall FUN_100634b0(void *, BrPtrArg);
-void FUN_1006c460(void);
-void FUN_10072840(void);
-void FUN_1006a320(void);
-void FUN_10005cd0(void);
-void FUN_1001cd50(void);
-void FUN_10063970(int, int, int, int, int);
-void FUN_1005a420(void);
-
-extern int DAT_106ec760;
-extern volatile int DAT_10b71a68;
-extern int DAT_106e9a34;
-extern volatile int DAT_10b71a6c;
-extern int DAT_10b72f48;
-extern int DAT_10b71290;
-extern volatile int DAT_10226a48;
-extern HANDLE DAT_106ed6e0;
-
-/* WHAT IT DOES: tears down the current session (net, handles, video) and
- * brings the renderer back up at 640x480x16 if the clock pair drifted. */
-/* @t4-pass 0x1002F282 1 2026-09-07 probes 75 bytes 133 insns 35 regions 4 rows 11 census yes  (tools/crank.py) */
-/* @t4-pass 0x1002F282 2 2026-09-07 probes 75 bytes 133 insns 35 regions 4 rows 11 census yes  (tools/crank.py) */
-/* @implements 0x1002F282 glide BrSessionReinitVideo */
-void BrSessionReinitVideo(void)
-{
-    BrPtrArg a;
-
-    if ((DAT_106ec760 != DAT_10b71a68) || (DAT_106e9a34 != DAT_10b71a6c)) {
-        a.p = &DAT_10b72f48;
-        FUN_100634b0(&DAT_10b71290, a);
-    }
-    FUN_1006c460();
-    FUN_10072840();
-    if (DAT_10226a48 != 0) {
-        if (DAT_10226a48 > 1) {
-            FUN_1006a320();
-        }
-        FUN_10005cd0();
-    }
-    FUN_1001cd50();
-    CloseHandle(DAT_106ed6e0);
-    DAT_106ed6e0 = 0;
-    FUN_10063970(3, 0x280, 0x1e0, 0x10, 0);
-    FUN_1005a420();
-}
+/* 0x1002F282 BrSessionReinitVideo is filed in src/core/startup/br_sessionreinit.c
+ * (its own TU: the original is frame-pointer /Oy- code). */
 
 /* ------------------------------------------------------------------ */
 /* 0x1006AFF0                                                         */
