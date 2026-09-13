@@ -73,6 +73,11 @@ extern float _DAT_10077528;
  * not a t3 candidate yet.
  * @t4-pass 0x100311C0 1 2026-09-09 probes 6 bytes 775 insns 221 regions 1 rows 20 census no  (fn.py variants: int[3]/struct-float vector, dword-OR widening, pb[1] spellings, arg3 operand swap, int-punned stores)
  * @t4-pass 0x100311C0 2 2026-09-09 probes 5 bytes 775 insns 221 regions 2 rows 12 census no  (thin, recorded for honesty: initializer-declaration vector (block-scoped, both wirings), z/y/x store order, iVar8-destructive arg3, record-pointer promotion of all field sites -- the last is -27 B/FIRSTDIV +0x7: orig has NO rec pointer, fields are base+index SIBs, only arg3 is the destructive add) */
+ * 2026-09-13: A3 is down to the ONE flag-OR site (6 rows: orig `or byte
+ * [ecx+esi+0x4d],0x20` + dead `lea [..+0x4c]`; ours lea/load/or/store).
+ * DEAD: dropping pb and writing the byte directly (+0x4d and [0x4d] index
+ * forms), with and without the pb assignment kept -- all four byte-identical
+ * to the tree (200). VC5 will not RMW through a global-base SIB here.
 /* @implements 0x100311C0 glide BrTrackLoad */
 void BrTrackLoad(int param_1)
 

@@ -455,6 +455,13 @@ static float BrPadClamp(float v)
 
 /* `swap byte n with byte n+3, byte n+1 with byte n+2` -- what the original
  * spells out for every 32-bit slot it is about to hand to the fixup. */
+/* 2026-09-13, BrModelSwap (6 unpaired rows): the original composes each
+ * halfword LOW byte first (`mov al,[+3]; mov ah,[+2]`, and in the leaf loop
+ * `xor ecx,ecx; mov cl,[+1]; mov ch,[+0]`); ours loads the shifted byte
+ * first. DEAD: `p[1] | (p[0] << 8)` (byte-identical), a `+` sum (961),
+ * `uint16_t v = p[1]; v |= ...` (710), a byte temp for the low byte (710),
+ * an `unsigned int` accumulator for the zero-extension (796), and BrRev4
+ * with two temps storing p[3] first (923). */
 static void BrRev4(void *pv)
 {
     unsigned char *p = (unsigned char *)pv;

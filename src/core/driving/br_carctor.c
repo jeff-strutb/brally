@@ -32,6 +32,13 @@ int  BrPodNop();
 #define FL(p, o) (*(float *)((uint8_t *)(p) + (o)))
 #define BY(p, o) (*(uint8_t *)((uint8_t *)(p) + (o)))
 
+/* 2026-09-13: the 1.0f web. The original holds 0x3f800000 in ebp for the
+ * +0x1f4 and +0x400 stores only, then gives ebp to pRF (= p + 0x800) and
+ * writes +0x818 / +0x60c / +0xa24 and the four BrX100746E0 pushes as
+ * immediates; ours keeps the constant in edi for the whole function and pRF
+ * never gets a callee-saved register. DEAD: typing the late stores (or all
+ * seven) as `FL(p, o) = 1.0f`, and `pRF[6] = 1.0f` -- VC5 folds a float
+ * constant store into the live int register web every time (1235 each). */
 /* WHAT IT DOES: initialise one car's physics bodies, wheel states and the
  * two contact-point chains.  Four rigid bodies (chassis plus three more
  * wheel/axle slots) get their inertia filled and a pose matrix built from
