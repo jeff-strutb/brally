@@ -23,15 +23,13 @@
  * out `jl`/`jge` where the original has `jb`/`jae` (2 of the 9 first-draft
  * diffs).
  *
- * PARKED at 7 diffs, all inside the variable-length memset expansion and
- * all the SAME permutation as 0x1006FCE0's constant-size one:
- *     orig    mov ecx,0x40 / lea edi,[esi+ebx] / sub ecx,esi / xor eax,eax
- *     recomp  mov ecx,0x40 / xor eax,eax / sub ecx,esi / lea edi,[esi+ebx]
- * The original materialises the DESTINATION before the fill value; our cl
- * does the reverse. Same direction in both expansion shapes, so it is the
- * expansion, not the call site: see docs/VC5-IDIOMS.md.
- * DO NOT RE-PROBE -- `dst + i`, `&dst[i]`, and a hoisted `char *p` all
- * leave it unchanged.
+ * BYTE-EXACT 2026-09-13 (23 cpp probes).  The tail zero-fill is a plain
+ * `for (; i < 64; i++) dst[i] = 0;` -- VC5 expands the loop as the same
+ * variable-length memset (shr-2 / and-3 stosd+stosb) but materialises the
+ * destination lea BEFORE the fill value, which is the original's order;
+ * every memset(...) spelling (`dst + i`, `&dst[i]`, hoisted `char *p`, a
+ * named length) emits the lea last (7 diffs).  Same lever as 0x1006FCE0's
+ * constant-size fill: see docs/VC5-IDIOMS.md "rep stosd order".
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -73,6 +71,6 @@ void Name87D0::CleanupName(char *src, char *dst)
         dst[i] = (char)toupper(c);
     }
 
-    if (i < 64)
-        memset(&dst[i], 0, 64 - i);
+    for (; i < 64; i++)
+        dst[i] = 0;
 }
