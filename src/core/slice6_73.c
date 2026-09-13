@@ -541,7 +541,7 @@ void BrExt_1004D640(BrPhase_ *pSelf)
  * including the list of car names and a bar whose fill is worked out from
  * which of the twelve cars the cursor is on, so the display slides smoothly
  * as the player scrolls. */
-/* @implements 0x1004DFC0 d3d BrExt_1004DFC0 */
+/* port-only body; Glide match is src/core/cpp/0x10046E70.cpp */
 void BrExt_1004DFC0(BrPhase_ *pSelf)
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
