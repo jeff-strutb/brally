@@ -2,6 +2,13 @@
  * over the network -- each float narrowed to the fewest bits that still
  * describe it, and a bitmask saying which of them are non-zero so the
  * receiver knows what was sent. */
+/* @t3 0x10006510 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1018/1018 insns 350/350 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * Residue: the push-early/narrow-shift argument schedule at ~30 write sites
+ * (identical multiset, no rows). Dossier, the three-front-end map and the
+ * ledger are in the block below. Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10006510 glide BrCarStateEncode
  * @cpp_symbol _BrCarStateEncode
  *
@@ -45,6 +52,16 @@
  * that called it was C++.  This file is that TU's shape: the writer is a
  * declared-not-defined class method (native thiscall), the quantisers stay
  * extern "C" cdecl, and the body is the slice2_12.c transcription verbatim.
+ *
+ * Gate A (t3.py, 2026-09-13): insn gap 0, rows 0+0, four masked regions,
+ * no lost-sync -- the whole residue is the push-early/narrow-shift schedule
+ * and its register colouring, nothing missing. The three passes below are
+ * the sessions documented above plus a 2026-09-13 option pass (/Gi, /G5,
+ * /Op, /Ob0, /Oa, /Ow, /Gf, /Gy, /GF, /Zp1: all 151 except /Ob0, worse).
+ *
+ * @t4-pass 0x10006510 1 2026-08-29 probes 15 bytes 1018 insns 350 regions 4 rows 0 census yes  (build/match/sched.cpp: six controlled push/narrow experiments, 15+ spellings)
+ * @t4-pass 0x10006510 2 2026-08-30 probes 54 bytes 1018 insns 350 regions 4 rows 0 census yes  (18 spellings x 3 front ends: VC5 RTM, VS97 SP3, VC6 RTM; struct returns; D3D twin check)
+ * @t4-pass 0x10006510 3 2026-09-13 probes 11 bytes 1018 insns 350 regions 4 rows 0 census no  (option sweep incl. /Gi -- the flag that flips commutative canonicalisation elsewhere is inert here)
  */
 class BrBitStream {
 public:
