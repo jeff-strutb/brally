@@ -1,5 +1,10 @@
 /* WHAT IT DOES: build the caption for the pick item -- a fixed string on the
  * root page, otherwise a name assembled from the current mode and selection. */
+/* @t3 0x10038F40 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 567/567 insns 172/172 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the eax/ecx/edx rotation of the three index-lookup arms (rows 0+0 after regnorm). Dossier in this header; dead list = the two ledger passes (23 cpp probes).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10038F40 glide BrItemSetPickLabel_10038F40
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetPickLabel_10038F40@@YAHPAVObj38F40@@@Z
@@ -45,6 +50,9 @@
  * each other either, so this is the allocator.
  * DO NOT RE-PROBE -- unchanged by swapping the addition's operand order in
  * either arm, and swapping the two arms costs one more diff.
+ *
+ * @t4-pass 0x10038F40 1 2026-09-13 probes 11 bytes 567 insns 172 regions 1 rows 0 census no  (cpp harness: k at function scope (before/after buffer), index term order, map deref, descriptor local, save split, arm swaps, string local, ret local, table pointer)
+ * @t4-pass 0x10038F40 2 2026-09-13 probes 12 bytes 567 insns 172 regions 1 rows 0 census yes  (cpp harness: slot census (save slot + two arg reads): /Op /Oy- /Os /Ot, shifted stride, unsigned k, signed map, guard swap, inline relayout helper, save at function scope, src local, int cast)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
