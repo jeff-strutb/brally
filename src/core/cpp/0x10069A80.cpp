@@ -93,9 +93,36 @@ extern char  DAT_10af6858[];                 /* its mirror                 */
  * file), mirrors the name and returns true.  On any failure it resets the
  * option and header globals to their empty state and returns whether the
  * second argument's low byte was non-zero. */
+/* @t3 0x10069A80 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 842/828 insns 278/277 rows 1+2 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: at the `len != 0` site the original hoists the next fread's
+ * `push ebx` above the branch and lands on the shared fclose tail one
+ * byte in; ours branches first. Same push-hoist shape as the corpus hits
+ * (BrHudDrawViewMessage +0x8, BrPfxTick +0x6), reached at the strncmp site
+ * but not here. Dossier below. Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10069A80 glide BrGhostLoad
  * @cpp_kind free
- * @cpp_symbol ?BrGhostLoad@@YA_NPADH@Z */
+ * @cpp_symbol ?BrGhostLoad@@YA_NPADH@Z
+ *
+ * 2026-09-13, 405 -> 389 diffs, Gate A PASS. Two source shapes were real:
+ *  - the fail path zeroes the two option globals as FLOAT stores
+ *    (`*(float *)&g = 0.0f`): as int zeros they join a zero web with the
+ *    return-value byte load (`xor ecx,ecx; ... mov cl,[arg]`), the original
+ *    stores immediates and tests `al` directly; also fixed the ebx/ebp
+ *    colouring of the FILE handle.
+ *  - every failure closes the file INLINE (`fclose(fp); goto fail;`) --
+ *    VC5 cross-jumps the nine copies into one tail and, at the strncmp
+ *    site, hoists the following fread's `push ebx` above the branch.
+ * DEAD: the split `if (len != 0) ... if (fread...)`, the `else if (len == 0
+ * && ...)` form, and `goto closefail` at the len site (all 389 or worse,
+ * one +96 B); `(arg & 0xff) != 0` for the return (390); 12 compiler options
+ * incl. /Gi, /G5, /Op, /Ob0, /Oa, /Ow, /Gf, /Gy, /GF, /Zp1 (389-401).
+ *
+ * @t4-pass 0x10069A80 1 2026-09-13 probes 10 bytes 842 insns 278 regions 4 rows 3 census no  (hand: float-zero stores x3, inline fclose, split/merged short-circuit x5, return byte test)
+ * @t4-pass 0x10069A80 2 2026-09-13 probes 12 bytes 842 insns 278 regions 4 rows 3 census yes  (12 compiler options; corpus query at +0x8b: 3-of-6 run explained by two byte-exact push-hoist sites, the `push; lea; push 1` continuation unexplained)
+ */
 bool BrGhostLoad(char *path, int arg)
 {
     FILE        *fp;
@@ -107,34 +134,34 @@ bool BrGhostLoad(char *path, int arg)
         goto fail;
 
     if (fread(DAT_117a6188, 1, 4, fp) != 4)
-        goto closefail;
+        { fclose(fp); goto fail; }
     if (strncmp(DAT_117a6188, DAT_100b55a4, 4) != 0)
-        goto closefail;
+        { fclose(fp); goto fail; }
     if (fread(&len, 4, 1, fp) != 1)
-        goto closefail;
+        { fclose(fp); goto fail; }
 
     if (len >= 0xc) {
         path = (char *)len;
     } else {
         if (len != 0 || fread(&path, 1, 4, fp) != 4)
-            goto closefail;
+            { fclose(fp); goto fail; }
     }
     path -= 4;
     if (fread(&checksum, 1, 4, fp) != 4)
-        goto closefail;
+        { fclose(fp); goto fail; }
     if (len < 0xc) {
         path -= 4;
         if (fread(&DAT_10ac5c24, 1, 4, fp) != 4)
-            goto closefail;
+            { fclose(fp); goto fail; }
         path -= 4;
         if (fread(&DAT_10ac5c20, 1, 4, fp) != 4)
-            goto closefail;
+            { fclose(fp); goto fail; }
     }
     path -= 0x10;
     if (fread(DAT_105bc8e0, 1, 0x10, fp) != 0x10)
-        goto closefail;
+        { fclose(fp); goto fail; }
     if (fread(BrReplayGetBuf2(), 1, (size_t)path, fp) != (size_t)path)
-        goto closefail;
+        { fclose(fp); goto fail; }
     {
         unsigned int sum = FUN_10001000(0, 0, 0);
         if (len < 0xc) {
@@ -146,12 +173,10 @@ bool BrGhostLoad(char *path, int arg)
         if (checksum == sum)
             goto install;
     }
-closefail:
-    fclose(fp);
 fail:
-    DAT_10ac5c20 = 0;
+    *(float *)&DAT_10ac5c20 = 0.0f;
     *(int *)DAT_105bc8e0 = -1;
-    DAT_10ac5c24 = 0;
+    *(float *)&DAT_10ac5c24 = 0.0f;
     DAT_105bc8e4 = -1;
     DAT_105bc8e8 = -1;
     DAT_105bc8ec = -1;
