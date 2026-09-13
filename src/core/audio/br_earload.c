@@ -101,8 +101,14 @@ extern char s__EAR_DLL_UpdateEar_0_100a71b0[];
  * tests it sixth.  Dead: the resident term at positions 10..16, a
  * right-associated chain, `== 0` / `!x` / `== NULL` terms, pairwise
  * grouping, a module-handle local (drops 29 insns), swapped arm order. */
-/* @t4-pass 0x10017910 1 2026-09-13 probes 10 bytes 1306 insns 406 regions 1 rows 0 census no  (hand, fn.py variants: resident-term positions 10/11/12/14/16, right-assoc chain, == 0 / !x / == NULL terms, pairwise groups) */
-/* @t4-pass 0x10017910 2 2026-09-13 probes 14 bytes 1306 insns 406 regions 1 rows 0 census yes  (slot census: szName is the only frame object, usePds read once; fn.py variants: guard spellings, szName sizing, assignment-in-condition forms, arm order, return forms, chain indentation) */
+/* @t4-pass 0x10017910 1 2026-09-13 probes 10 bytes 1306 insns 406 regions 3 rows 0 census no  (hand, fn.py variants: resident-term positions 10/11/12/14/16, right-assoc chain, == 0 / !x / == NULL terms, pairwise groups) */
+/* @t4-pass 0x10017910 2 2026-09-13 probes 14 bytes 1306 insns 406 regions 3 rows 0 census yes  (slot census: szName is the only frame object, usePds read once; fn.py variants: guard spellings, szName sizing, assignment-in-condition forms, arm order, return forms, chain indentation) */
+/* @t3 0x10017910 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1306/1306 insns 406/406 rows 0+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is register colouring in the null-test chain (register-blind
+ * multiset identical, 8+8 raw rows); dossier and dead list in the comment
+ * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10017910 glide BrEarLoad */
 int BrEarLoad(int usePds)
 {
