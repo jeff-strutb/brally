@@ -265,6 +265,9 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
          * named `float vv = v*v` (identical -- folded), `v = v*v;` own
          * statement (identical -- single use, copy-propagated back).
          * Everything before +0xcf and after +0xdf is byte-exact. */
+        /* DEAD 2026-09-13: `v *= v` and `v = v * v` before the product,
+         * with s first or v first, and the pair scoped in an inner block
+         * with the store outside -- all byte-identical (v stays live). */
         pNode->f.z = s * (v * v) * pBody->f1B8;
 
         /* Touchdown edge: f1B4 is RE-READ (a wheel just reset above does not

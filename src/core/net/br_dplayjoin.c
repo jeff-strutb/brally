@@ -515,6 +515,12 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * hold (the function has not changed since); the work was done, only the
  * spelling was lost. */
 /* @t4-pass 0x10032320 1 2026-09-09 probes 9 bytes 455 insns 175 regions 1 rows 1 census no  (hand; the nine dead spellings of the and-0xff are listed above) */
+/* 2026-09-13 (fn.py, 7 probes): an `unsigned char b = (unsigned char)uVar4;
+ * flag = (b >> 1) & 1;` pair is INSN-EXACT (176/176) with the shr/and done
+ * in eax and copied to esi (`mov esi,eax` where the original has the
+ * `and esi,0xff`); folding the byte through `b >>= 1; b &= 1` or a byte
+ * read of the field spills it (461 B, 5+4).  The and-0xff still does not
+ * appear from any spelling; the tree keeps the 455 B form. */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
 int BrDpLobbyConnect(int *param_1)
 {

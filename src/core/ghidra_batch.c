@@ -505,6 +505,9 @@ extern int DAT_104ab500;
  * chosen*0x2E0F0 lea chain below the DAT_104AB500 store and VC5 hoists it. */
 /* @t4-pass 0x10013F20 1 2026-09-07 probes 92 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x10013F20 2 2026-09-07 probes 94 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
+/* DEAD 2026-09-13 (fn.py, 3 probes): the head assignments in the orders
+ * chosen/best/i/flag/cost/cur, cur first, and the declarations reordered to
+ * match -- the eax/ebx transposition is unchanged (157/157, 30+30 raw). */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
 void BrSndBankPickSlot(void)
 {

@@ -208,6 +208,11 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * pooling wall -- the base is used only twice, too few for VC5 to pool it.
  * Reassociating and sequencing the pointer arithmetic (probes v1..v3) do not
  * move it. */
+/* DEAD 2026-09-13 (fn.py, 6 probes): an `(int)&DAT - idx*K + off` integer
+ * form, `&DAT - idx*K + off`, the pointer term parenthesised first, the
+ * offset as `(n-1)*0x3840` in either position -- VC5 folds the base into
+ * the final `add ebp, imm` from every one; the original's `mov ebp, imm`
+ * at the loop top is not reachable from the sum's association. */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
 void __fastcall BrRaceSaveLastLapInfo(int param_1)
 {

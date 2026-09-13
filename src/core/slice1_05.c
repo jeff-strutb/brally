@@ -78,6 +78,9 @@ void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
             /* 0x10030753 evaluates ((a3*b3 + a1*b1) + a0*b0) + a2*b2 */
+            /* DEAD 2026-09-13: `a2b2 + (a1b1 + a3b3 + a0b0)` and
+             * `(a0b0 + (a1b1 + a3b3)) + a2b2` (both value-identical) --
+             * 24 and 33 diffs, the aliased nest keeps its row-3 anchor. */
             tmp.m[i][j] = (pA->m[i][1] * pB->m[1][j]
                            + pA->m[i][3] * pB->m[3][j]
                            + pA->m[i][0] * pB->m[0][j])

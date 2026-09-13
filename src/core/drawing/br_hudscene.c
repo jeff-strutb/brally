@@ -202,6 +202,8 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
      * and as `(w << 14) - 0x2000` -- both drop an instruction (56/57) and
      * keep h in esi; the original loads h into ecx only after the second
      * allocation, and no order of the two terms delays that load. */
+    /* DEAD 2026-09-13: the rect word's OR order swapped, the point word's
+     * OR order swapped, both together -- 212 B / 56 insns every time. */
     p = BrGfxAlloc();
     p->w0 = (uint32_t)((int32_t)(((uint32_t)((x + w) * 4) & 0x3FFCu)
                                  | 0x38C000u) >> 2) << 12
