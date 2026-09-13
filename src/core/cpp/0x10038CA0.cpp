@@ -63,6 +63,13 @@ char *BrStrByIndex(int idx);                    /* 0x1006D280 */
 void  BrItemApply_10038380(void *pObj, int a);  /* 0x10038380 */
 }
 
+/* DEAD 2026-09-13 (11 cpp probes): the table value carried in `k` itself,
+ * an `idx` local declared before or after `s`, `k` at function scope, the
+ * wrap as a ternary (inline, in a local, in the index), and a single
+ * `idx` feeding one shared call.  The single-call form puts the table
+ * load in eax as the original does but turns `push 0x14` into
+ * `mov eax,0x14` (5 diffs); every two-call form keeps `push 0x14` and
+ * loads the table into ecx (2 diffs).  The original has both. */
 int BrUiText1003F760(Obj38CA0 *pObj)
 {
     char *s;
