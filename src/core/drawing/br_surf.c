@@ -94,34 +94,51 @@ void BrSurfFree(BrSurf *pSurf)
  * nothing rather than running away. */
 /* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x100011C0 3 2026-09-13 probes 14 bytes 117 insns 48 regions 3 rows 0 census no  (hand, fn.py variants: acc-first OR, 32-bit acc, single-expression acc, rows after the guard, rows before the guard, guard on rows, named hi term, declaration order, masked reads, x/loop spellings; all 117/48/0+0) */
+/* @t4-pass 0x100011C0 4 2026-09-13 probes 10 bytes 117 insns 48 regions 3 rows 0 census yes  (slot census: one written slot, cy's spent slot holding the row counter; fn.py variants around it: int rows, rows-- statement, != 0 test, stride-first product, explicit pBits sums, !cy / x guards, *pDst++ store, indexed first read; all 117/48/0+0) */
+/* @t3 0x100011C0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 117/117 insns 48/48 rows 0+0 regions 3 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring: the 565 accumulator lands in the red term's
+ * register (`or ebx,edx` for the original's `or edx,ebx`) and the row-counter
+ * copy is stored in the prologue instead of after the pushes; the multiset
+ * is identical.  Ledger lines above, dead list in the loop comment.  Do not
+ * reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100011C0 glide BrSurfBlt24 */
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                  int32_t cx, int32_t cy, int32_t cbWidthBytes)
 {
-    const uint8_t *pRow = pBits + (cy - 1) * cbWidthBytes;
+    int32_t rows = cy;
 
+    pBits += (cy - 1) * cbWidthBytes;
     if (cy == 0) return;
 
     do {
-        const uint8_t *pSrc = pRow;
+        const uint8_t *pSrc = pBits;
         int32_t        x = cx;
 
         if (x != 0) {
             do {
-                /* Byte loads, byte masks, 16-bit movzx, three `inc`s on the
-                 * source, dest post-inc as `add esi,2` / `mov [esi-2]`. */
+                /* Byte loads, byte masks, 16-bit movzx.  The THREE `inc`s on
+                 * the source come from three post-increment reads
+                 * (`*pSrc++`): with the increments as separate statements
+                 * VC5 merges two into `add eax,2` and hoists the red load.
+                 * The row pointer is the pBits PARAMETER advanced in place
+                 * (`pBits += (cy-1)*stride`: pBits is the accumulator of the
+                 * imul, ebp) and the row counter is a fresh local homed in
+                 * cy's spent slot.  2026-09-13: 117/117 B, 48/48 insns,
+                 * register-blind 0+0; residue is the accumulator's register
+                 * (`or edx,ebx` vs ours `or ebx,edx`) and where the counter
+                 * copy is stored (after the pushes vs in the prologue). */
                 unsigned char  b, g, r;
                 unsigned short acc, rs;
 
-                b = *pSrc;
-                g = pSrc[1];
-                pSrc++;
+                b = *pSrc++;
+                g = *pSrc++;
                 g &= 0xFCu;
-                pSrc++;
                 pDst++;
                 acc = (unsigned short)g;
-                r = *pSrc;
-                pSrc++;
+                r = *pSrc++;
                 r &= 0xF8u;
                 rs = (unsigned short)r;
                 acc |= (unsigned short)(rs << 5);
@@ -130,8 +147,8 @@ void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                 pDst[-1] = acc;
             } while (--x);
         }
-        pRow -= cbWidthBytes;
-    } while (--cy);
+        pBits -= cbWidthBytes;
+    } while (--rows);
 }
 
 /* ----------------------------------------------------------------------
