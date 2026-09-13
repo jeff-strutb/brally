@@ -25,7 +25,12 @@
  * the loop back-edge past -0x80 and turned the `jne` near (+4 B): those
  * six bytes were the whole 83-diff first draft.
  *
- * PARKED at 1 diff, +0xAA -- the loop's char read. Orig encodes it
+ * BYTE-EXACT 2026-09-13 under `/O2 /Gi /GX /MD` (the fourth C++ sweep
+ * shape added 2026-09-12; this row had not been re-swept since).  /Gi
+ * flips the emitter's SIB base/index choice on the char read, which was
+ * the one residue below.  No source change.
+ *
+ * History -- was PARKED at 1 diff, +0xAA -- the loop's char read. Orig encodes it
  * `8a 44 07 09` (SIB base=edi/this, index=eax/i); recomp emits
  * `8a 44 38 09`, the same effective address with base and index swapped.
  * Registers and instruction are identical; only the SIB operand order
