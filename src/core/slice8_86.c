@@ -61,7 +61,7 @@ void BrPhaseEnterPlaceholder_1004A580(void *pSelf)
 }
 
 /* WHAT IT DOES: the same glue for a second menu screen. */
-/* @implements 0x1004B430 d3d BrPhaseEnterPlaceholder_1004B430 */
+/* port-only body; Glide match is src/core/cpp/0x10044860.cpp */
 void BrPhaseEnterPlaceholder_1004B430(void *pSelf)
 {
     if (g_pBrUiBuildCtx86 == NULL)
