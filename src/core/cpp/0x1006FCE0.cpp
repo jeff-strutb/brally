@@ -14,22 +14,13 @@
  * which VC5 spells `xor r,r; mov r8,[m]` rather than movzx -- all three
  * zeroing instructions hoist above the loads.
  *
- * PARKED at 12 diffs, all from ONE permutation inside the inline memset
- * expansion. Same three instructions, different order:
- *     orig    lea edi,[esi+0x2a90] / mov ecx,8 / xor eax,eax
- *     recomp  mov ecx,8 / xor eax,eax / lea edi,[esi+0x2a90]
- * Everything before and after (including the deferred `add esp,4` sitting
- * between the setup and the `rep stosd`) is byte-identical. The order is
- * fixed inside the expansion, not by the call site.
- * DO NOT RE-PROBE -- unchanged by: dest spelling (array name, &a[0],
- * hoisted `char *p`, hoisted `int *pz` declared at the top of the
- * function), dest type (int[8], unsigned char[32], nested struct +
- * sizeof), and flags /O2, /Ox, /O2 /Oi, /O2 /Ot, /O2 /Op, /O2 /Og /Oi
- * /Ot /Oy /Ob1 (all 12), /O2 /Os (78), /Od (85), /O2 /Oy- (85).
- *
- * This is the second emitter-level residue found in one session that no
- * source form reaches -- see the SIB entry in docs/VC5-IDIOMS.md. Both
- * point at the open compiler patch-level lead rather than at the source.
+ * BYTE-EXACT 2026-09-13 (13 cpp probes).  The eight-dword zero at +0x2A90
+ * is an INDEXED for loop (`for (i = 0; i < 8; i++) a2A90[i] = 0;`), not a
+ * memset: VC5 turns the loop into the same `rep stosd` but materialises
+ * the destination BEFORE the fill value (`lea edi / mov ecx,8 / xor eax`),
+ * where every memset spelling emits `mov ecx / xor eax / lea edi`.  The
+ * memset forms and every flag set were dead (12 diffs, one permutation);
+ * the loop is the source fact.  See docs/VC5-IDIOMS.md "rep stosd order".
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -63,9 +54,12 @@ void BrSub10074E20(void *pRec);                 /* 0x1006E080 */
 
 void Car6FCE0::SlotSetup(int slot, int a)
 {
+    int i;
+
     BrImgTintSetScale(b29AC, b29AD, b29AE);
     BrCarSlotLoad(slot, a, 0);
     BrSub10074E20(&f2A70);
-    memset(a2A90, 0, sizeof(a2A90));
+    for (i = 0; i < 8; i++)
+        a2A90[i] = 0;
     Bind(slot);
 }
