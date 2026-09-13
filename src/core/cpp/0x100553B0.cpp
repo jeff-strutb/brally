@@ -131,6 +131,13 @@ void  BrFn1006BA60(int a, int b);
 #define BR_SLOT 0x438
 #define BR_REC(n) ((char *)this + (n) * BR_SLOT)
 
+/* 2026-09-13 (t3.py, C++ rows now measurable): insn gap 0, rows 9+9, 9
+ * unpaired -- the early `return 0/1` exits are tail-DUPLICATED by VC5 where
+ * the original shares two epilogues (`jne 0x5a1` / `jl 0x59e`), plus one
+ * `fld a; fsub b` vs `fld b; fsubr a` and one immediate-vs-register store.
+ * DEAD: nesting the first guard, `goto exit0`, a result variable with a
+ * single `return r`, and rewriting ALL eleven returns as `r = N; goto done`
+ * (1242 -> 1276): every shape still duplicates the exit. */
 int Ctl553B0::Step(int *pArg)
 {
     int            bWrapped;
