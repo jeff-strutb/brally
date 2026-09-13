@@ -454,7 +454,9 @@ size_t BrTex3dScan(BrTex3d *pTex, uint8_t *pList, size_t cbMax)
  * taking the two bytes the N64's way round, it rotates the value by one bit,
  * which moves the transparency bit from the bottom of the N64's layout to
  * the top of the layout the rest of this code uses. */
-/* @implements 0x100271F0 glide br_tex3d_texel */
+/* The standalone 0x100271F0 body is scored from src/core/drawing/br_texel.c
+ * (BrTex3dTexel); this static copy is what VC5 inlines into the callers
+ * below, exactly as the original does. */
 static uint16_t br_tex3d_texel(const uint8_t *p)
 {
     uint32_t v = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
