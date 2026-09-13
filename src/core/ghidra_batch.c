@@ -247,28 +247,23 @@ extern int DAT_10ac5a4c;
 
 /* WHAT IT DOES: maps the current track/car-class menu selection onto the
  * two-byte letter id stored on the player record. */
-/* @t4-pass 0x10038A80 1 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py -- at 159/41/1/3, superseded by pass 3) */
-/* @t4-pass 0x10038A80 2 2026-09-07 probes 85 bytes 159 insns 41 regions 1 rows 3 census yes  (tools/crank.py -- at 159/41/1/3, superseded by pass 3) */
-/* RESIDUE (1 unpaired row, 2 B): the original keeps the "no letter" value as a
- * FULL-WIDTH -1 (`or edx, 0xffffffff`, 3 B) and stores its `dx`; every C
- * spelling gives us `mov edx, 0xffff` (5 B), because both uses are 16-bit
- * stores and VC5 narrows the constant to the width that is actually needed.
- * DEAD 2026-09-10, do not re-run: `~0`, the literal `(int)0xffffffffu`, an
- * `unsigned int` local with an `unsigned short` cast at the use, a `short`
- * local, an unsigned-short cast in place of the short one, the store with no
- * cast at all, and a dummy 32-bit comparison on the local to keep it live
- * (folded away as dead). The instruction stream is otherwise exact: 42/42, A1
- * 0, A2 1+1, A4 positional. */
-/* @t4-pass 0x10038A80 3 2026-09-10 probes 11 bytes 158 insns 42 regions 1 rows 2 census no  (hand; the switch's `- 1` fixed the missing `sub eax,0` and took A1 to 0 and A4 to PASS, then seven spellings of the -1 above) */
+/* THE SLOT IS A SIGNED `short *`.  The "no letter" value is an int -1 stored
+ * through it twice; with a SIGNED 16-bit destination VC5 keeps the CSE'd
+ * constant full-width (`or edx, -1`, 3 B, hoisted above the first test) and
+ * stores `dx`.  Through an `unsigned short *` the same store folds the
+ * constant to 0xffff first and the register is `mov edx, 0xffff` (5 B) --
+ * seven spellings of the -1 itself could not move it (2026-09-10); the
+ * destination's signedness decides the constant's representation.
+ * Byte-exact 2026-09-13. */
 /* @implements 0x10038A80 glide BrMenuSetTrackLetter */
 int BrMenuSetTrackLetter(int param_1)
 {
     int sel;
     int none;
-    unsigned short *slot;
+    short *slot;
 
     sel = DAT_10ac5a48;
-    slot = (unsigned short *)(param_1 + 0x1e20c);
+    slot = (short *)(param_1 + 0x1e20c);
     none = -1;
     if (sel > 0) {
         switch (sel) {
@@ -282,7 +277,7 @@ int BrMenuSetTrackLetter(int param_1)
             *slot = 0x6c;
             break;
         default:
-            *slot = (short)none;
+            *slot = none;
             break;
         }
     }
@@ -302,7 +297,7 @@ int BrMenuSetTrackLetter(int param_1)
             *slot = 0x4c;
             return 1;
         default:
-            *slot = (short)none;
+            *slot = none;
             return 1;
         }
     }
