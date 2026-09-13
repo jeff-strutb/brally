@@ -1,10 +1,5 @@
 /* WHAT IT DOES: the same sprite-font string drawing for the SECOND typeface,
  * which has its own glyph table. */
-/* @t3 0x10054280 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 219/219 insns 76/76 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: the SIB base/index order of the loop char read, the same emitter wall as 0x100540D0 / 0x100541B0 (see docs/VC5-IDIOMS.md "SIB base/index order"). Dead list in 0x100540D0.cpp plus the two ledger passes here (23 cpp probes).
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10054280 glide BrSprFontDrawB_10054280
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text54280@@QAEXXZ
@@ -22,16 +17,13 @@
  * The `advance - 6` is 4 bytes the font-A walk does not have, which is
  * why this one's loop back-edge is a NEAR jne where 0x100540D0's is short.
  *
- * PARKED at 1 diff, the SAME residue as 0x100540D0: the loop's char read
- * encodes as `8a 44 38 09` (SIB base=i, index=this) where the original
- * has `8a 44 07 09` (base=this, index=i) -- identical effective address,
- * identical registers, opposite SIB operand order. Read the
- * do-not-re-probe list in 0x100540D0.cpp before touching this; 21 source
- * spellings across four orthogonal axes and eight flag sets leave it
- * unchanged. Both functions convert the moment that encoding is cracked.
- *
- * @t4-pass 0x10054280 1 2026-09-13 probes 11 bytes 219 insns 76 regions 1 rows 0 census no  (cpp harness: char read/pen: *(sz+i), sz[++i], no cast, for-form, pen +=, pen -=, metric pointer, decl order, ternary pen, this-relative read, early return)
- * @t4-pass 0x10054280 2 2026-09-13 probes 12 bytes 219 insns 76 regions 1 rows 0 census yes  (cpp harness: slot census (pen slot 3W/3R, advance slot): /Op /Oy- /Os /Ot, int i, pointer walk, unsigned c, unsigned g range, int g, pen init, sp >= 0, init order)
+ * BYTE-EXACT 2026-09-13 under `/O2 /Gi /GX /MD` (the fourth C++ sweep
+ * shape).  Under plain /O2 the one residue was the loop's char read
+ * encoded `8a 44 38 09` (SIB base=i, index=this) where the original has
+ * `8a 44 07 09`; /Gi flips the emitter's base/index choice and the bytes
+ * diff clean.  No source change; the 23-probe /O2 ledger run that
+ * preceded the re-sweep moved nothing.  Same resolution as 0x100540D0 and
+ * 0x100541B0 (docs/VC5-IDIOMS.md, /Gi entry).
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
