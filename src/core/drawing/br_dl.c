@@ -266,7 +266,7 @@ typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
  * majority of the 256 slots land here. */
 /* @implements 0x10021240 glide br_dl_skip */
 #ifdef BR_MATCHING_BUILD
-static const uint8_t *br_dl_skip(const uint8_t *p)
+const uint8_t *br_dl_skip(const uint8_t *p)
 {
     return p + 8;
 }
