@@ -8047,3 +8047,55 @@ need not contain the row name; a C-linkage `_Name` is tried bare too), the
 oracle is handed the mangled name so it never runs the twin, and the EH
 frame's `fs:[0]` reloc form pairs with the literal. Six C++ rows certified
 through it on 2026-09-12/13.
+
+## `rep stos` fills: the destination lea comes FIRST only for a `for` loop, never for memset
+*(proven 2026-09-13 on 0x1006FCE0 BrCarSlotSetup and 0x100087D0 BrCleanupName, both C++ lane, both now byte-exact)*
+
+Two rows sat for days on "the same permutation inside the memset
+expansion": the original emits `lea edi,[dst] / mov ecx,N / xor eax,eax /
+rep stosd`, every `memset(...)` spelling emits `mov ecx,N / xor eax,eax /
+lea edi,[dst]`, and no flag set or destination spelling moved it. The
+source fact is that the ORIGINAL IS NOT A MEMSET. A plain indexed loop
+
+    for (i = 0; i < 8; i++) a2A90[i] = 0;          /* constant count  */
+    for (; i < 64; i++)     dst[i] = 0;            /* variable count  */
+
+is turned into the identical `rep stosd` (constant) or the shr-2 / and-3
+`rep stosd` + `rep stosb` pair (variable), but the loop path materialises
+the destination before the fill value. Same expansion, opposite setup
+order — so when a fill's three setup instructions are permuted and the
+call site is inert, spell it as a loop. (The 2026-09-05 note "rep-stosd
+needs an INDEXED for" was the same lever seen from the other side.)
+
+## Per-statement load/store copy pairs need POINTER locals, not member subscripts
+*(proven 2026-09-13 on 0x1005C6D0 BrCarRespawn, C++ lane, now byte-exact)*
+
+Three same-base member copies (`f28EC[k] = f27B0[k]`, int or float
+fields, array elements, or `*(int*)((char*)this+off)` casts) all batch
+as three loads then three stores. The original's per-statement
+`load / store` pairs rotating edx/eax/ecx come from addressing both arrays
+through pointer locals:
+
+    float *d = f28EC; float *s = f27B0;
+    d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
+
+VC5 disambiguates `this`+const offsets and schedules freely; through two
+pointers it cannot prove `d` and `s` disjoint, so every store is a
+barrier and the pairs stay in statement order. A 12-byte struct
+assignment or memcpy changes the copy shape entirely.
+
+## /Gi resolves the SIB base/index wall — re-sweep every parked C++ row when a shape is added
+*(2026-09-13: 0x100540D0, 0x100541B0, 0x10054280, 0x10054730 byte-exact with NO source change)*
+
+The "SIB base/index order on `member_array[index]` — NOT source-reachable"
+entry above is correct about the source: nothing spells it. It is a
+per-TU option. Under `/O2 /Gi /GX /MD` (the fourth C++ sweep shape,
+added 2026-09-12) the emitter picks base=`this`, index=counter, and the
+four rows that were parked on that byte diff clean; 0x10054730's second
+"allocator" site (else-arm load placement and `add` operand order) flips
+with it too. The rows had simply not been re-swept since the shape was
+added — `report_cpp.csv` keeps the old verdict until the file is swept
+again. When a sweep shape is added, re-sweep every non-matching C++ row
+before probing any of them; a stale report row looks exactly like a wall.
+(A 23-probe /O2 ledger run on the two font walks moved nothing and was
+retired the same hour.)
