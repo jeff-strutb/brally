@@ -68,7 +68,7 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
 
     wPow = pReq[0x2a0 / 4];
     hPow = pReq[0x2a4 / 4];
-    if (wPow == pReq[8 / 4] && hPow == pReq[0xc / 4] && DAT_100b8498 < 1) {
+    if (wPow == pReq[8 / 4] && hPow == pReq[0xc / 4] && DAT_100b8498 <= 0) {
         if (FUN_1005a500(hBmp, x0, y0, x1, x2, &DAT_1186c988,
                          wPow * 2, hPow * 2) == 0)
             return 1;
@@ -105,10 +105,9 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
                         pReq[0x28c / 4] =
                             pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 8;
                     }
-                    cb = (uint32_t)pReq[0x28c / 4];
-                    pBuf = malloc(cb);
+                    pBuf = malloc((uint32_t)pReq[0x28c / 4]);
                     *pSlot = (int)pBuf;
-                    memcpy(pBuf, &DAT_1186c988, cb);
+                    memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
                 }
                 i = i - 1;
                 pSlot = pSlot - 1;
@@ -122,10 +121,9 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
             pSlot = pSlot - 1;
             i = i - 1;
         } while (i != 0);
-        cb = (uint32_t)pReq[0x28c / 4];
     } else {
         if (FUN_1005a500(hBmp, x0, y0, x1, x2, &DAT_105e1828,
-                         wPow * 2, pReq[0x2a4 / 4] << 1) == 0)
+                         wPow << 1, pReq[0x2a4 / 4] << 1) == 0)
             return 1;
         pReq[0x268 / 4] = 1;
         pReq[0x26c / 4] = DAT_10ac67a4;
@@ -155,10 +153,9 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
                                      &DAT_105e1828, pReq[0x2a0 / 4] << 1,
                                      pReq[0x2a4 / 4] << 1, pReq[0x10 / 4]);
                     }
-                    cb = (uint32_t)pReq[0x28c / 4];
-                    pBuf = malloc(cb);
+                    pBuf = malloc((uint32_t)pReq[0x28c / 4]);
                     *pSlot = (int)pBuf;
-                    memcpy(pBuf, &DAT_1186c988, cb);
+                    memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
                 }
                 i = i - 1;
                 pSlot = pSlot - 1;
@@ -172,10 +169,9 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
             pSlot = pSlot - 1;
             i = i - 1;
         } while (i != 0);
-        cb = (uint32_t)pReq[0x28c / 4];
     }
 
-    pBuf = malloc(cb);
+    pBuf = malloc((uint32_t)pReq[0x28c / 4]);
     pReq[0x27c / 4] = (int)pBuf;
     memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
     return 1;
