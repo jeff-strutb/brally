@@ -10,10 +10,12 @@
  * vcall on self with (word global, arg a, arg b, char member) — the word
  * global pushed via the `mov dx,[g]; push edx` short-push idiom. No EH.
  *
- * PARKED 4-diff T3a residue: the delta computation's scratch pair is
- * rotated (orig loads g_5DB0/g_5DAC through ecx with delta in edx;
- * recomp the reverse). Add-operand order, split delta statement, and an
- * explicit old-value temp all leave the rotation. Register-blind gap 0.
+ * THE ACCUMULATOR IS A COMPOUND `+=` ON THE GLOBAL, and the threshold test
+ * RE-READS the global (VC5 CSEs the value it just stored).  That is what
+ * loads g_5DAC into the register that old g_5DB0 died in and makes it the
+ * add's destination; a named `acc = g_5DAC + delta` local rotated the
+ * scratch pair the other way through every add-operand / split-delta /
+ * old-temp spelling.  Byte-exact 2026-09-13.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -46,17 +48,11 @@ int FnE280(void);
 void Ui54070::Tick(int a, int b)
 {
     int now;
-    int old;
-    int delta;
-    int acc;
 
     now = FnE280();
-    old = g_5DB0;
-    delta = now - old;
-    acc = g_5DAC + delta;
+    g_5DAC += now - g_5DB0;
     g_5DB0 = now;
-    g_5DAC = acc;
-    if (acc >= 0x78) {
+    if (g_5DAC >= 0x78) {
         g_5DAC = 0;
         s6(g_C17C, a, b, f08);
     }
