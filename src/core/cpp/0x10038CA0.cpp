@@ -1,6 +1,11 @@
 /* WHAT IT DOES: choose this item's caption -- a fixed string on the root
  * page, otherwise one looked up from a table by the current selection, with
  * a wrap at 16 entries. */
+/* @t3 0x10038CA0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 136/136 insns 48/48 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: one register choice -- the catalogue-table load feeds `push` through ecx where the original uses eax (rows 0+0 after regnorm). Dossier and dead list in this header (23 cpp probes across two passes).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10038CA0 glide BrUiText1003F760
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003F760@@YAHPAVObj38CA0@@@Z
@@ -16,6 +21,9 @@
  * The port body in slice2_23.c reaches its globals through a BrUiGlobals*
  * second parameter; the original is cdecl with ONE argument and direct
  * global addresses. Same split as the 0x10038650 sibling.
+ *
+ * @t4-pass 0x10038CA0 1 2026-09-13 probes 12 bytes 136 insns 48 regions 1 rows 0 census no  (cpp harness: table load/push register: index deref, table pointer, unsigned/long/register k, wrap compare, const s, per-arm strcpy, dst/item locals, negated guard, sized table)
+ * @t4-pass 0x10038CA0 2 2026-09-13 probes 12 bytes 136 insns 48 regions 1 rows 0 census yes  (cpp harness: slot census (one arg read): /Op /Oy- /Os /Ot, !flag, arm swap, ret local, object local, s = 0, &szName[0], decimal index)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
