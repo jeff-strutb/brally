@@ -826,7 +826,7 @@ glide_va,name,module,basis,file
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10066AD0,BrCollRespBroadPhase,driving,filed,src/core/driving/br_collresp.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
-0x10068600,FUN_10068600,driving,description,src/core/driving/br_wheelvel.c
+0x10068600,BrCarPhysDamper,driving,filed,src/core/driving/br_carphys.c
 0x10069530,BrTrackSurfaceSet,startup,filed,src/core/startup/br_track.c
 0x10069930,BrMenuSub100709A0,menus,prefix,src/core/generated/0x10069930.c
 0x10069DC0,BrSub69DC0,racing,neighbour-1,src/core/racing/br_sub69.c
@@ -995,3 +995,9 @@ glide_va,name,module,basis,file
 0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
+0x10001A80,BrCamChaseZoomStep,drawing,filed,src/core/drawing/br_chasecam.c
+0x10027B60,FUN_10027b60,drawing,filed,src/core/drawing/br_tex3dselect.c
+0x10063E60,BrRbAccumOwnForces,driving,filed,src/core/driving/br_rbaccum.c
+0x1005C560,BrRaceCarReset,racing,assigned,src/core/generated/0x1005C560.c
+0x10036510,BrNetSessionApply,net,filed,src/core/net/br_dplay.c
+0x10004E00,BrNetOpenAnnounce,net,filed,src/core/net/br_netopen.c
