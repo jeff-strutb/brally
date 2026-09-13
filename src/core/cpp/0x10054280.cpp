@@ -1,5 +1,10 @@
 /* WHAT IT DOES: the same sprite-font string drawing for the SECOND typeface,
  * which has its own glyph table. */
+/* @t3 0x10054280 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 219/219 insns 76/76 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the SIB base/index order of the loop char read, the same emitter wall as 0x100540D0 / 0x100541B0 (see docs/VC5-IDIOMS.md "SIB base/index order"). Dead list in 0x100540D0.cpp plus the two ledger passes here (23 cpp probes).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10054280 glide BrSprFontDrawB_10054280
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text54280@@QAEXXZ
@@ -24,6 +29,9 @@
  * do-not-re-probe list in 0x100540D0.cpp before touching this; 21 source
  * spellings across four orthogonal axes and eight flag sets leave it
  * unchanged. Both functions convert the moment that encoding is cracked.
+ *
+ * @t4-pass 0x10054280 1 2026-09-13 probes 11 bytes 219 insns 76 regions 1 rows 0 census no  (cpp harness: char read/pen: *(sz+i), sz[++i], no cast, for-form, pen +=, pen -=, metric pointer, decl order, ternary pen, this-relative read, early return)
+ * @t4-pass 0x10054280 2 2026-09-13 probes 12 bytes 219 insns 76 regions 1 rows 0 census yes  (cpp harness: slot census (pen slot 3W/3R, advance slot): /Op /Oy- /Os /Ot, int i, pointer walk, unsigned c, unsigned g range, int g, pen init, sp >= 0, init order)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
