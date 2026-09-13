@@ -1,6 +1,11 @@
 /* WHAT IT DOES: work out the total for the selected entry and put it in this
  * item's label; shows a fixed placeholder string when the mode has no total
  * to show. */
+/* @t3 0x1003AA10 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 238/238 insns 92/92 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * Residue: register plan -- `mov ecx,4` scheduled after the table lea and the buffer lea/push pair in eax/ecx instead of ecx/edx (rows 0+0 after regnorm, 4 masked regions). Dead list = the three ledger passes (31 cpp probes: loop shape, declaration order, slot-census spellings).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003AA10 glide BrItemSetTotal_1003AA10
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetTotal_1003AA10@@YAHPAVObj3AA10@@@Z
@@ -19,6 +24,10 @@
  * byte-slot widening idiom for an unsigned short read; the accumulator\'s
  * zero hoists all the way above the register saves next to the memset
  * constants.
+ *
+ * @t4-pass 0x1003AA10 1 2026-09-13 probes 10 bytes 238 insns 92 regions 4 rows 0 census no  (cpp harness: sum/pointer walk: *p++, sum after memset, src local, pLabel init, table cast, i > 0, literal 32, buffer after sum, p at function scope, &w[0])
+ * @t4-pass 0x1003AA10 2 2026-09-13 probes 11 bytes 238 insns 92 regions 4 rows 0 census yes  (cpp harness: slot census (buffer lea x5): /Op /Oy- /Os /Ot, !strlen, strupr split, field null test, arm swap, unsigned sum, ret local, int selector)
+ * @t4-pass 0x1003AA10 3 2026-09-13 probes 10 bytes 238 insns 92 regions 4 rows 0 census no  (cpp harness: loop shape + declaration order: i before p, index form, row struct, do-while, --n, count-up pointer, both at function scope (two orders), init order, end-pointer while)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
