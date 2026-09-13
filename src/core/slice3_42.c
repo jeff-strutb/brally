@@ -563,7 +563,6 @@ void BrReplayApply(void *pCar, int32_t iPlayer)
  * the two ends of the recording. Holding a jump beats holding a single step,
  * and asking for play beats both. Letting go of everything while scrubbing
  * leaves the replay paused. */
-/* @t4-pass 0x10063CC0 1 2026-09-10 probes 10 bytes 215 insns 61 regions 1 rows 4 census no  (hand, fn.py variants: named lo local const/non-const, lo shared with the step==0 test, v<=-1, !(v>=0), if/else-if over lo and hi, swapped add operands; all score 5) */
 /* @implements 0x1006AD10 d3d BrReplaySeek */
 void BrReplaySeek(void)
 {
@@ -606,29 +605,20 @@ void BrReplaySeek(void)
         g_BrX06909E0 = 2;
     }
 
-    /* RESIDUE (5 bytes, one unpaired row): 215/215 B and 61/61 instructions;
-     * the whole gap is the low clamp's test.  The original spends an explicit
-     * `cmp ecx, edi` against the zero it already materialised for the
-     * `step == 0` test above, then `jge`; VC5 gives us `jns` off the `add`'s
-     * own sign flag, which is the same branch one byte shorter and two rows
-     * apart register-blind.  PROBED AND DEAD 2026-09-10, do not re-run: a
-     * named `lo` local (const and non-const) used for the compare AND the
-     * stored value; the same `lo` shared with the `step == 0` test so both
-     * read one variable; `v <= -1`; `!(v >= 0)`; the clamp as an if/else-if
-     * over named lo/hi; and `step + cursor` operand order.  All ten builds
-     * score 5.  VC5 folds a comparison against zero into the flags of the
-     * preceding add from every spelling reachable in C. */
+    /* THE CURSOR IS A COMPOUND ASSIGNMENT ON THE GLOBAL, AND THE CLAMP
+     * RE-READS THE GLOBAL.  `g[i] += step; if (g[i] < 0)` loads the cursor
+     * into the register first and adds the step (`mov ecx,[..]; add ecx,esi`),
+     * and the re-read compare is a separate expression from the add, so VC5
+     * spends `cmp ecx, edi` against the zero web instead of folding the test
+     * into the add's sign flag (`jns`).  A named `v = g[i] + step` local gave
+     * the fold from every clamp spelling (ten probes, 2026-09-10).
+     * Byte-exact 2026-09-13. */
     for (i = 0; i < BR_REPLAY_PLAYERS; ++i) {
-        int32_t v = g_BrReplayCursor[i] + step;
-
-        /* Store first, clamp after -- exactly as the original does. */
-        g_BrReplayCursor[i] = v;
-        if (v < 0) {
+        g_BrReplayCursor[i] += step;
+        if (g_BrReplayCursor[i] < 0) {
             g_BrReplayCursor[i] = 0;
-        } else {
-            const int32_t hi = g_BrReplayCount[i] - 1;
-            if (v > hi)
-                g_BrReplayCursor[i] = hi;
+        } else if (g_BrReplayCursor[i] > g_BrReplayCount[i] - 1) {
+            g_BrReplayCursor[i] = g_BrReplayCount[i] - 1;
         }
     }
 }
