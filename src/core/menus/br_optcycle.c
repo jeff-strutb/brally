@@ -1,4 +1,11 @@
-/* slice2_25.c -- another module's packet, 0x10042880-0x100446D0 (46 functions).
+/* br_optcycle.c -- menus: the options rows' cyclers and openers, the packet
+ * at 0x10042880-0x100446D0 (46 functions).
+ *
+ * The whole of the former slice2_25.c, moved rather than split (the
+ * br_menucb.c precedent): every function here is an options-screen row
+ * callback and they share one static module state and the inline message
+ * helpers, so taking the file apart would duplicate that state -- and eight
+ * of the cyclers are byte-exact only inside this translation unit.
  *
  * See slice2_25.h for what the module is and how the three repeated shapes
  * work. Everything here is a transcription; the DEVIATION list is at the
