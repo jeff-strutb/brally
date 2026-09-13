@@ -3,6 +3,13 @@
  * made. One of a family of page builders, each laying out its own screen,
  * positioning its controls from computed coordinates rather than a fixed
  * table. */
+/* @t3 0x1004DA00 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3394/3394 insns 1002/1002 rows 3+3 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
+ * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier
+ * below; dead list and schedule census in 0x1004AEE0.cpp.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1004da00 glide BrExt_10054B50
  * @cpp_kind free
  * @cpp_symbol ?BrExt_10054B50@@YAHPAVGameUi@@@Z
@@ -13,13 +20,17 @@
  * 0x100425E0 / 0x10048160 (char bool after the slot store, raw
  * float pushes for simple lvalues, w14-then-w344 tails).
  *
- * PARKED at 34 diffs, ALL of them in photo1's ten-instruction tail. This is
- * the THIRD function with byte-identical residue there (0x1004AEE0,
- * 0x1004BE00, this one) -- 10,731 bytes of otherwise-exact code gated on one
- * VC5 schedule. The original computes both derived ints (`lea ebx+0x7f`,
- * `add edx,0x21`) before its three stores and sinks the `fstp` past
- * `f2968`; ours interleaves and sinks the `+0x58` store instead. Identical
- * instruction multiset.
+ * Residue: 34 diffs, ALL in photo1's ten-instruction tail -- the third
+ * function with byte-identical residue there (0x1004AEE0, 0x1004BE00,
+ * this one). The original issues [fld fy][yi reload + xi copy][fsub][lea +
+ * add][f50 + f58][f5C + f2968][fstp][w2A42 + inc]; ours issues the fsub
+ * right after the fld (the xi copy lands at its first use, so the fy
+ * statement is IR-first) and the lea waits a cycle after the copy (AGI),
+ * so f5C overtakes f58. Identical instruction multiset. The full dead list
+ * and the pairing-schedule census (2026-09-12) are in 0x1004AEE0.cpp.
+ *
+ * @t4-pass 0x1004DA00 1 2026-09-12 probes 240 bytes 3394 insns 1002 regions 1 rows 6 census no  (generated: all 240 orders of {xi, fy, f50, f58, f5C, f2968}; best 32 = f50 before fy, none 0)
+ * @t4-pass 0x1004DA00 2 2026-09-12 probes 27 bytes 3394 insns 1002 regions 1 rows 6 census yes  (27 compiler options incl. /Gi /Op /G5 /Ow /Ob2, all 34 or worse; corpus query MISS at +0x3d0 len 8; residue byte-identical to 0x1004AEE0's certified census)
  *
  * DEAD PROBE (2026-09-03, this file): moving `fy -= K` to sit between
  * `f2968` and `w2A42` -- the one slot the 0x1004AEE0 dead list left
