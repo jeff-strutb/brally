@@ -814,12 +814,9 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
     d.z = c.y * pWheel->hit.nx - c.x * pWheel->hit.ny;
     cs = BrCosF(pWheel->f1C0);
     sn = BrSinF(pWheel->f1C0);
-    c.x = cs * c.x;
-    c.y = cs * c.y;
-    c.z = cs * c.z;
-    c.x = sn * d.x + c.x;
-    c.y = sn * d.y + c.y;
-    c.z = sn * d.z + c.z;
+    c.x = sn * d.x + cs * c.x;
+    c.y = sn * d.y + cs * c.y;
+    c.z = sn * d.z + cs * c.z;
     if (pBody->child[0]->f1B4 != 0 && pBody->child[2]->f1B4 != 0
      && pBody->child[1]->f1B4 != 0 && pBody->child[3]->f1B4 != 0) {
         BrRbVelAtBodyPoint(&v, (const BrRbBodyFull *)pBody, (BrRbBodyFull *)pWheel);
