@@ -33,6 +33,8 @@
  *   - the reset loop is a pointer walk with a counted `do { } while (--n)`,
  *     not `for (i < 8)` (VC5 turns that into three rep stosd);
  *   - `nName = i` is stored BEFORE the NUL at szName[0x18].
+ *   - the 0x60 arms are laid out in SOURCE order: 0/1, 5, 4, 6, 7, 8 (case 5,
+ *     the mutex + inner switch, precedes case 4 in the original).
  * Open walls, all allocation:
  *   - the original never hoists anything out of the packet loop (`t`,
  *     nMode, the import addresses are re-read from memory in every case);
@@ -413,26 +415,6 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     FUN_100038a0(szName);
                     goto done;
 
-                case 0x60000004:
-                    pHdr = pkt.GetHdr();
-                    if (pHdr->f04 == FUN_10006060(DAT_1007b264)) {
-                        FUN_100099d0();
-                        DAT_10ac5bec = 1;
-                        if (DAT_100b2f04 > 0) {
-                            pPeer = DAT_10af134c;
-                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
-                                if (nMode == FUN_10006060(pPeer->id)) {
-                                    psz = FUN_100061e0(pPeer->id);
-                                    strcpy(szName, psz);
-                                    strcat(szName, s_booted_you_from_the_game__1007b2e8);
-                                    FUN_100038a0(szName);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    goto done;
-
                 case 0x60000005:
                     pHdr = pkt.GetHdr();
                     WaitForSingleObject(DAT_10226a54, 0xffffffff);
@@ -454,6 +436,26 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     default:
                         ReleaseMutex(DAT_10226a54);
                         break;
+                    }
+                    goto done;
+
+                case 0x60000004:
+                    pHdr = pkt.GetHdr();
+                    if (pHdr->f04 == FUN_10006060(DAT_1007b264)) {
+                        FUN_100099d0();
+                        DAT_10ac5bec = 1;
+                        if (DAT_100b2f04 > 0) {
+                            pPeer = DAT_10af134c;
+                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                                if (nMode == FUN_10006060(pPeer->id)) {
+                                    psz = FUN_100061e0(pPeer->id);
+                                    strcpy(szName, psz);
+                                    strcat(szName, s_booted_you_from_the_game__1007b2e8);
+                                    FUN_100038a0(szName);
+                                    break;
+                                }
+                            }
+                        }
                     }
                     goto done;
 
