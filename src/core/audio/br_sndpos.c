@@ -360,6 +360,7 @@ extern int BrSfxSrcPlaySilent(int, int, int, int);   /* 0x1006E560 */
  * Dead probes (fn.py, all inert): shifted term left/right of the add;
  * named lo/hi temps in either order; `* 0x10000` instead of `<< 16` in
  * either order; the halving as a ternary; the halving as two stores. */
+/* @t4-pass 0x10060F40 1 2026-09-13 probes 89 bytes 687 insns 174 regions 6 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10060F40 glide BrSndNearestCommit */
 void BrSndNearestCommit(void)
 {
