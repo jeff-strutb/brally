@@ -535,7 +535,14 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
          * base-select ternary (112 B, drops the arms), the arms swapped
          * under `== 0` (jne for je), a pre-scaled index local, a row
          * pointer -- the selector load never precedes the movsx.
-         * End-of-TU placement inert. */
+         * End-of-TU placement inert.
+         * DEAD 2026-09-13 (fn.py, 2 more): a byte `cond` temp read before
+         * e3 with a fresh `k = e3*3` (byte-identical -- VC5 sinks the
+         * load to the test), and the full expression inline per arm
+         * hoping PRE hoists into the test..je window (+3 B, +2 insns,
+         * regnorm 2+0).  The condition-vs-selector LOAD ORDER is
+         * scheduler-internal; regnorm is 0+0 so this is rotation plus
+         * one order swap, correctly parked. */
         int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
         e3 = e3 + e3 * 2;
         if (g_menu.gAA28A8 != 0) {
