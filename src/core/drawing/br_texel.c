@@ -23,6 +23,7 @@
  * Corpus: no proven spelling to copy. */
 /* @t4-pass 0x100271F0 1 2026-09-13 probes 20 bytes 39 insns 14 regions 1 rows 1 census no  (hand, fn.py variants of the byte swap) */
 /* @t4-pass 0x100271F0 2 2026-09-13 probes 38 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100271F0 3 2026-09-13 probes 54 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x100271F0 glide BrTex3dTexel */
 uint16_t BrTex3dTexel(int v)
 {
