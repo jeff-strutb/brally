@@ -350,6 +350,7 @@ int BrOptToggle2F7C_C(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
  * rejected the selection still ends up moved by one rather than back where
  * the player left it, because the search compares against the already-
  * stepped value. */
+/* @t4-pass 0x1003C080 1 2026-09-13 probes 91 bytes 340 insns 111 regions 6 rows 18 census yes  (tools/crank.py) */
 /* @implements 0x10042B30 d3d BrOptCycleTrack */
 int BrOptCycleTrack(void)
 {
