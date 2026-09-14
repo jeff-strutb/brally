@@ -67,21 +67,6 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
  * 2. 4x4 matrices
  * -------------------------------------------------------------------------- */
 
-/* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE
- * declaration (a bare `const float *` matrix) so the two link. */
-/* WHAT IT DOES: puts a point through a transform -- moving, rotating and
- * scaling it in one step -- and keeps the fourth component, which is what the
- * perspective divide later needs. */
-/* @implements 0x1003B2A0 d3d BrMat4TransformPoint4 */
-void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
-{
-    /* Orig is four unrolled columns, not a j<4 loop (66 B vs 157 B). */
-    pOut[0] = pM[0] * pV->x + pM[4] * pV->y + pM[8]  * pV->z + pM[12];
-    pOut[1] = pM[1] * pV->x + pM[5] * pV->y + pM[9]  * pV->z + pM[13];
-    pOut[2] = pM[2] * pV->x + pM[6] * pV->y + pM[10] * pV->z + pM[14];
-    pOut[3] = pM[3] * pV->x + pM[7] * pV->y + pM[11] * pV->z + pM[15];
-}
-
 /* 0x1003B4F0 */
 /* WHAT IT DOES: works out the transform that undoes a given one -- how to get
  * from world space back into an object's own space, for instance. A transform
