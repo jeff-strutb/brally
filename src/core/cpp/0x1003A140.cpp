@@ -1,6 +1,16 @@
 /* WHAT IT DOES: format a stored split time into this item's label, showing
  * dashes instead when no time has been set yet. */
+/* @t3 0x1003A140 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 367/360 insns 120/120 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: block placement (the format block laid after the common tail,
+ * which lengthens one je to near) and the register rotation it drags into
+ * the index computation.  The dossier, the dead arm-order list and the two
+ * ledger passes are in this header.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x1003A140 glide BrItemSetSplitTime_1003A140
+ * @t4-pass 0x1003A140 1 2026-09-13 probes 12 bytes 367 insns 120 regions 4 rows 0 census yes  (hand, cpp_score variants: product operand order, c/d statement order, void-cast sprintf, memset literal, !strlen, _strupr as its own statement, index re-association, fc inlined, (float)d, declaration order, pLabel truthiness, !(t > K) -- 237 diffs every time, 236 with the split _strupr)
+ * @t4-pass 0x1003A140 2 2026-09-13 probes 11 bytes 367 insns 120 regions 4 rows 0 census yes  (hand, cpp_score variants: bare mode test, fa/fb as cast chains, s4 as an early-return tail, pLabel bound before the strlen gate, named index k, c inlined into sprintf, else without braces, hex buffer size, fc operand order, an item pointer local -- 237, 235 for the early pLabel, nothing moves the shape)
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetSplitTime_1003A140@@YAHPAVObj3A140@@@Z
  *
