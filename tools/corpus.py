@@ -63,6 +63,15 @@ INDEX = os.path.join(ROOT, 'build', 'match', 'corpus_index.json')
 CRT_INDEX = os.path.join(ROOT, 'build', 'match', 'corpus_crt_index.json')
 CRT_CSV = os.path.join(ROOT, 'build', 'match', 'corpus_crt.csv')
 CRT_SHIP = os.path.join(ROOT, 'build', 'match', 'crt', 'ship')
+# --corpus ext: an external same-compiler matched project, staged locally
+# under build/external/ (never committed) and scored by
+# build/external/extcorpus.py against its own original binary.  Same
+# opt-in discipline as crt: rule 0 keys the main corpus to BRGlide.dll,
+# and an ext hit proves the compiler CAN emit a shape from given source
+# in SOME project -- not that our TU does.
+EXT_INDEX = os.path.join(ROOT, 'build', 'match', 'corpus_ext_index.json')
+EXT_CSV = os.path.join(ROOT, 'build', 'match', 'corpus_ext.csv')
+EXT_RECIPE = os.path.join(ROOT, 'build', 'match', 'ext', 'recipe.json')
 WINE = os.path.join(ROOT, 'tools', 'wine.sh')
 MSVC_DIR = os.environ.get('BR_MSVC', os.path.join(ROOT, 'tools', 'msvc5'))
 if not os.path.isabs(MSVC_DIR):
@@ -219,14 +228,75 @@ def build_crt_index(verbose=True):
     return out
 
 
+def _ext_pe_reader():
+    """VA -> raw bytes for the external corpus' original binary."""
+    import struct
+    with open(EXT_RECIPE) as f:
+        recipe = json.load(f)
+    data = open(os.path.join(ROOT, recipe['exe']), 'rb').read()
+    pe, = struct.unpack_from('<I', data, 0x3c)
+    nsec, = struct.unpack_from('<H', data, pe + 6)
+    opt_sz, = struct.unpack_from('<H', data, pe + 20)
+    base, = struct.unpack_from('<I', data, pe + 24 + 28)
+    secs = []
+    off = pe + 24 + opt_sz
+    for _ in range(nsec):
+        vsize, vaddr, rawsz, rawoff = struct.unpack_from('<IIII', data, off + 8)
+        secs.append((vaddr, vsize, rawoff, rawsz))
+        off += 40
+
+    def read(va, n):
+        rva = va - base
+        for vaddr, vsize, rawoff, rawsz in secs:
+            if vaddr <= rva < vaddr + max(vsize, rawsz):
+                return data[rawoff + (rva - vaddr):rawoff + (rva - vaddr) + n]
+        return b''
+    return read, recipe
+
+
+def build_ext_index(verbose=True):
+    """Index every MATCH row of corpus_ext.csv over the ORIGINAL binary's
+    bytes at the function's address.  Byte-exactness (relocation fields
+    aside) makes the original's offsets ours, so `show` can map a hit back
+    to the external source through a fresh /FAcs listing."""
+    if not os.path.exists(EXT_CSV) or not os.path.exists(EXT_RECIPE):
+        sys.exit('no %s -- run: .venv/bin/python build/external/extcorpus.py'
+                 % os.path.relpath(EXT_CSV, ROOT))
+    read, _recipe = _ext_pe_reader()
+    out, skipped = [], 0
+    with open(EXT_CSV, newline='') as f:
+        for r in csv.DictReader(f):
+            if r['status'] != 'match':
+                continue
+            va, n = int(r['va'], 16), int(r['bytes'])
+            toks, offs = tokenise(read(va, n))
+            if not toks:
+                skipped += 1
+                continue
+            out.append({'va': r['va'], 'name': r['function'],
+                        'file': r['source'], 'flags': r['flags'],
+                        'toks': toks, 'offs': offs})
+    os.makedirs(os.path.dirname(EXT_INDEX), exist_ok=True)
+    with open(EXT_INDEX, 'w') as f:
+        json.dump({'fns': out}, f)
+    if verbose:
+        ni = sum(len(e['toks']) for e in out)
+        print('ext corpus: %d byte-exact functions, %d instructions indexed'
+              % (len(out), ni))
+        if skipped:
+            print('        %d skipped (no bytes at address)' % skipped)
+        print('written: %s' % os.path.relpath(EXT_INDEX, ROOT))
+    return out
+
+
 FN_NAME = {}
 
 
 def load_index(corpus='game'):
-    path = CRT_INDEX if corpus == 'crt' else INDEX
+    path = {'crt': CRT_INDEX, 'ext': EXT_INDEX}.get(corpus, INDEX)
     if not os.path.exists(path):
         sys.exit('no index -- run: .venv/bin/python tools/corpus.py build'
-                 + (' --corpus crt' if corpus == 'crt' else ''))
+                 + (' --corpus ' + corpus if corpus != 'game' else ''))
     with open(path) as f:
         fns = json.load(f)['fns']
     FN_NAME.update({e['va'].lower(): e['name'] for e in fns})
@@ -398,9 +468,43 @@ def crt_cod_lines(entry, at, length):
 
 
 # ------------------------------------------------------------------ main ---
+def ext_cod_lines(entry, at, length):
+    """External-corpus variant of cod_lines: recompile the external TU under
+    the recipe's flag set and scan the PROC block of the hit function."""
+    import shutil
+    import tempfile
+    _read, recipe = _ext_pe_reader()
+    ext_root = os.path.join(ROOT, recipe['ext_root'])
+    tmp = tempfile.mkdtemp(prefix='corpus_cod_')
+    try:
+        rel_tmp = os.path.relpath(tmp, ROOT)
+        args = recipe['flags'].split()
+        for d, extra in recipe['dir_defs'].items():
+            if entry['file'].startswith(d):
+                args += extra
+        incs = []
+        for inc in recipe['includes']:
+            incs += ['-I', os.path.relpath(os.path.join(ext_root, inc), ROOT)]
+        incs += ['-I', os.path.join(os.path.relpath(MSVC_DIR, ROOT),
+                                    'include')]
+        cmd = (['sh', WINE, os.path.join(MSVC_DIR, 'bin', 'cl.exe'),
+                '-c', '-nologo'] + args + incs +
+               ['/FAcs', '/Fa' + rel_tmp + os.sep, '/Fo' + rel_tmp + os.sep,
+                os.path.relpath(os.path.join(ext_root, entry['file']), ROOT)])
+        try:
+            subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=240)
+        except Exception as exc:
+            return ['(listing failed: %s)' % exc]
+        return _scan_listing(tmp, entry['name'], at, length)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def cmd_build(a):
     if a.corpus == 'crt':
         build_crt_index()
+    elif a.corpus == 'ext':
+        build_ext_index()
     else:
         build_index()
 
@@ -449,8 +553,9 @@ def cmd_find(a):
         for e, k in hits[:a.source]:
             print('--- %s %s  (+0x%x)  %s'
                   % (e['va'], e['name'], e['offs'][k], e['file']))
-            src_fn = crt_cod_lines if a.corpus == 'crt' else \
-                (lambda ee, at, ln: cod_lines(ee['file'], ee['va'], at, ln))
+            src_fn = {'crt': crt_cod_lines, 'ext': ext_cod_lines}.get(
+                a.corpus,
+                lambda ee, at, ln: cod_lines(ee['file'], ee['va'], at, ln))
             for ln in src_fn(e, e['offs'][k], len(used)):
                 print('    ' + ln)
             print()
@@ -465,8 +570,9 @@ def cmd_show(a):
     e = hit[0]
     at = int(a.at, 0)
     print('%s %s  %s' % (e['va'], e['name'], e['file']))
-    lines = crt_cod_lines(e, at, a.len) if a.corpus == 'crt' else \
-        cod_lines(e['file'], e['va'], at, a.len)
+    lines = {'crt': crt_cod_lines, 'ext': ext_cod_lines}.get(
+        a.corpus, lambda ee, att, ln: cod_lines(ee['file'], ee['va'], att, ln)
+    )(e, at, a.len)
     for ln in lines:
         print('    ' + ln)
 
@@ -476,10 +582,14 @@ def main():
     sub = ap.add_subparsers(dest='cmd', required=True)
 
     def add_corpus(p):
-        p.add_argument('--corpus', choices=('game', 'crt'), default='game',
+        p.add_argument('--corpus', choices=('game', 'crt', 'ext'),
+                       default='game',
                        help='game (default): our byte-exact matches; '
                             'crt: VC5 CRT source proven against LIBC.LIB '
-                            '(tools/crtcorpus.py)')
+                            '(tools/crtcorpus.py); '
+                            'ext: an external same-compiler matched project '
+                            'staged under build/external/ '
+                            '(build/external/extcorpus.py)')
 
     b = sub.add_parser('build', help='(re)build the index from report*.csv')
     add_corpus(b)
