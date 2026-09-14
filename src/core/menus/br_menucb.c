@@ -511,6 +511,7 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
 /* WHAT IT DOES: the same kind of caption as 0x10040730, but from the
  * other byte of the stage word, and it sits idle (returns "leave this
  * row alone") while the menus are not being used. */
+/* @t4-pass 0x10039D20 1 2026-09-13 probes 57 bytes 129 insns 33 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
