@@ -553,6 +553,7 @@ void BrRaceDriverAnim(BrDriver *pDrv)
  * countdown. Nothing happens at all while the game is paused. */
 /* @t4-pass 0x100623E0 1 2026-09-07 probes 67 bytes 244 insns 77 regions 1 rows 72 census yes  (tools/crank.py) */
 /* @t4-pass 0x100623E0 2 2026-09-07 probes 67 bytes 244 insns 77 regions 1 rows 72 census yes  (tools/crank.py) */
+/* @t4-pass 0x100623E0 3 2026-09-13 probes 67 bytes 242 insns 75 regions 1 rows 78 census yes  (tools/crank.py) */
 /* @implements 0x100623E0 glide BrRaceDriverPost */
 void BrRaceDriverPost(BrDriver *pDrv)
 {
