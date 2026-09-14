@@ -54,6 +54,15 @@ import msetdiff  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 INDEX = os.path.join(ROOT, 'build', 'match', 'corpus_index.json')
+# --corpus crt: Microsoft's CRT source compiled by our cl.exe and proven
+# byte-exact against the shipped LIBC.LIB objects (tools/crtcorpus.py).
+# A SEPARATE opt-in index -- rule 0 keys the main corpus to BRGlide.dll,
+# and CRT evidence must never be mistaken for game evidence: a CRT hit
+# proves the compiler CAN emit a shape from given source, not that the
+# game's TU does.
+CRT_INDEX = os.path.join(ROOT, 'build', 'match', 'corpus_crt_index.json')
+CRT_CSV = os.path.join(ROOT, 'build', 'match', 'corpus_crt.csv')
+CRT_SHIP = os.path.join(ROOT, 'build', 'match', 'crt', 'ship')
 WINE = os.path.join(ROOT, 'tools', 'wine.sh')
 MSVC_DIR = os.environ.get('BR_MSVC', os.path.join(ROOT, 'tools', 'msvc5'))
 if not os.path.isabs(MSVC_DIR):
@@ -102,21 +111,31 @@ def orig_path(va):
     return None
 
 
-def tokenise(data):
+def tokenise(data, relocs=None):
     """Normalised token stream for a blob of ORIGINAL (linked) bytes.
 
     Returns (tokens, offsets) so a hit can be reported at a byte offset the
     other tools agree with.  Trailing alignment padding is dropped, exactly
     as msetdiff does -- otherwise every function ends with the same `int3`
-    run and short patterns match everywhere."""
+    run and short patterns match everywhere.
+
+    `relocs`: byte offsets the linker would patch, for UNLINKED (.obj)
+    bytes -- the CRT corpus.  There the reloc'd field holds the addend, so
+    without the set an absolute address tokenises as `0` and never pairs
+    with a linked original's `A`."""
     ins = list(md.disasm(bytes(data), 0))
     while ins and ins[-1].mnemonic in ('nop', 'int3'):
         ins.pop()
     toks, offs = [], []
     for i in ins:
-        # Original bytes are already linked, so there is no relocation list;
-        # norm's own absolute-address heuristic is what applies here.
-        toks.append(msetdiff.norm(i, False))
+        if relocs is None:
+            # Original bytes are already linked, so there is no relocation
+            # list; norm's own absolute-address heuristic is what applies.
+            toks.append(msetdiff.norm(i, False))
+        else:
+            hit = [r for r in relocs if i.address <= r < i.address + i.size]
+            tail = bool(hit) and min(hit) >= i.address + i.size - 4
+            toks.append(msetdiff.norm(i, bool(hit), tail))
         offs.append(i.address)
     return toks, offs
 
@@ -149,13 +168,66 @@ def build_index(verbose=True):
     return out
 
 
+def build_crt_index(verbose=True):
+    """Index every MATCH row of corpus_crt.csv over the SHIPPED bytes.
+
+    Same discipline as the game index: only proven functions, only the
+    compiler's own output.  The shipped object IS the proof side here, and
+    byte-exactness makes its offsets ours, so `show` can map a hit back to
+    CRT source through a fresh /FAcs listing."""
+    from match_diff import parse_coff_obj
+    if not os.path.exists(CRT_CSV):
+        sys.exit('no %s -- run: .venv/bin/python tools/crtcorpus.py'
+                 % os.path.relpath(CRT_CSV, ROOT))
+    matched = {}   # (source, function) -> [flags...]
+    with open(CRT_CSV, newline='') as f:
+        for r in csv.DictReader(f):
+            if r['status'] == 'match':
+                matched.setdefault((r['source'], r['function']),
+                                   []).append(r['flags'])
+    by_obj = collections.defaultdict(list)
+    for (src, fn), flags in matched.items():
+        base = os.path.splitext(os.path.basename(src))[0].lower()
+        by_obj[base].append((src, fn, '+'.join(sorted(flags))))
+    out, skipped = [], 0
+    for base, rows in sorted(by_obj.items()):
+        p = os.path.join(CRT_SHIP, base + '.obj')
+        if not os.path.exists(p):
+            skipped += len(rows)
+            continue
+        fns = parse_coff_obj(p)
+        for src, fn, flags in rows:
+            if fn not in fns:
+                skipped += 1
+                continue
+            data, relocs = fns[fn]
+            toks, offs = tokenise(data, relocs)
+            if toks:
+                out.append({'va': fn, 'name': fn, 'file': src,
+                            'flags': flags, 'toks': toks, 'offs': offs})
+    os.makedirs(os.path.dirname(CRT_INDEX), exist_ok=True)
+    with open(CRT_INDEX, 'w') as f:
+        json.dump({'fns': out}, f)
+    if verbose:
+        ni = sum(len(e['toks']) for e in out)
+        print('crt corpus: %d byte-exact CRT functions, %d instructions '
+              'indexed' % (len(out), ni))
+        if skipped:
+            print('        %d skipped (shipped obj or symbol missing)'
+                  % skipped)
+        print('written: %s' % os.path.relpath(CRT_INDEX, ROOT))
+    return out
+
+
 FN_NAME = {}
 
 
-def load_index():
-    if not os.path.exists(INDEX):
-        sys.exit('no index -- run: .venv/bin/python tools/corpus.py build')
-    with open(INDEX) as f:
+def load_index(corpus='game'):
+    path = CRT_INDEX if corpus == 'crt' else INDEX
+    if not os.path.exists(path):
+        sys.exit('no index -- run: .venv/bin/python tools/corpus.py build'
+                 + (' --corpus crt' if corpus == 'crt' else ''))
+    with open(path) as f:
         fns = json.load(f)['fns']
     FN_NAME.update({e['va'].lower(): e['name'] for e in fns})
     return fns
@@ -247,6 +319,10 @@ def _cod_lines(tmp, src, va, at, length):
         subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
     except Exception as exc:
         return ['(listing failed: %s)' % exc]
+    return _scan_listing(tmp, FN_NAME.get(va.lower(), ''), at, length)
+
+
+def _scan_listing(tmp, nm, at, length):
     cod = None
     for fn in os.listdir(tmp):
         if fn.lower().endswith('.cod'):
@@ -260,7 +336,6 @@ def _cod_lines(tmp, src, va, at, length):
     # that, every hit in a multi-function file resolves against whichever
     # function happens to sit at that offset -- which reads as plausible
     # source and is pure fiction.
-    nm = FN_NAME.get(va.lower(), '')
     if nm:
         pat = re.compile(r'^[_@]?%s(@\d+)?\s+PROC' % re.escape(nm))
         end = re.compile(r'^[_@]?%s(@\d+)?\s+ENDP' % re.escape(nm))
@@ -291,9 +366,40 @@ def _cod_lines(tmp, src, va, at, length):
            ['(no source line covers that offset in the listing)']
 
 
+def crt_cod_lines(entry, at, length):
+    """CRT-corpus variant of cod_lines: recompile the CRT source under the
+    flag set the match was proven at (crtcorpus.FLAGSETS) and scan the
+    PROC block of the hit function."""
+    import shutil
+    import tempfile
+    import crtcorpus
+    tag = entry['flags'].split('+')[0]
+    flags = crtcorpus.FLAGSETS[tag]
+    tmp = tempfile.mkdtemp(prefix='corpus_cod_')
+    try:
+        rel_tmp = os.path.relpath(tmp, ROOT)
+        cmd = ['sh', WINE, os.path.join(MSVC_DIR, 'bin', 'cl.exe'),
+               '-c', '-nologo'] + flags.split() + [
+               '-I', os.path.relpath(crtcorpus.SRC, ROOT),
+               '-I', os.path.join(os.path.relpath(MSVC_DIR, ROOT),
+                                  'include'),
+               '/FAcs', '/Fa' + rel_tmp + os.sep, '/Fo' + rel_tmp + os.sep,
+               entry['file']]
+        try:
+            subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
+        except Exception as exc:
+            return ['(listing failed: %s)' % exc]
+        return _scan_listing(tmp, entry['name'], at, length)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ------------------------------------------------------------------ main ---
 def cmd_build(a):
-    build_index()
+    if a.corpus == 'crt':
+        build_crt_index()
+    else:
+        build_index()
 
 
 def _resolve_pattern(a):
@@ -306,7 +412,7 @@ def _resolve_pattern(a):
 
 
 def cmd_find(a):
-    index = load_index()
+    index = load_index(a.corpus)
     pat = _resolve_pattern(a)
     print('pattern (%d instructions):' % len(pat))
     for t in pat:
@@ -332,28 +438,33 @@ def cmd_find(a):
         print()
     print('%d hit(s) in byte-exact functions:' % len(hits))
     for e, k in hits:
-        print('  %-12s %-28s +0x%-5x  %s'
-              % (e['va'], e['name'][:28], e['offs'][k], e['file']))
+        print('  %-12s %-28s +0x%-5x  %s%s'
+              % (e['va'], e['name'][:28], e['offs'][k], e['file'],
+                 '  [' + e['flags'] + ']' if 'flags' in e else ''))
     if a.source:
         print()
         for e, k in hits[:a.source]:
             print('--- %s %s  (+0x%x)  %s'
                   % (e['va'], e['name'], e['offs'][k], e['file']))
-            for ln in cod_lines(e['file'], e['va'], e['offs'][k], len(used)):
+            src_fn = crt_cod_lines if a.corpus == 'crt' else \
+                (lambda ee, at, ln: cod_lines(ee['file'], ee['va'], at, ln))
+            for ln in src_fn(e, e['offs'][k], len(used)):
                 print('    ' + ln)
             print()
 
 
 def cmd_show(a):
     """Print the C that produced a given offset of a byte-exact function."""
-    index = load_index()
+    index = load_index(a.corpus)
     hit = [e for e in index if e['va'].lower() == a.va.lower()]
     if not hit:
         sys.exit('%s is not a byte-exact corpus member' % a.va)
     e = hit[0]
     at = int(a.at, 0)
     print('%s %s  %s' % (e['va'], e['name'], e['file']))
-    for ln in cod_lines(e['file'], e['va'], at, a.len):
+    lines = crt_cod_lines(e, at, a.len) if a.corpus == 'crt' else \
+        cod_lines(e['file'], e['va'], at, a.len)
+    for ln in lines:
         print('    ' + ln)
 
 
@@ -361,9 +472,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
 
-    sub.add_parser('build', help='(re)build the index from report*.csv')
+    def add_corpus(p):
+        p.add_argument('--corpus', choices=('game', 'crt'), default='game',
+                       help='game (default): our byte-exact matches; '
+                            'crt: VC5 CRT source proven against LIBC.LIB '
+                            '(tools/crtcorpus.py)')
+
+    b = sub.add_parser('build', help='(re)build the index from report*.csv')
+    add_corpus(b)
 
     f = sub.add_parser('find', help='who else emits this instruction pattern')
+    add_corpus(f)
     f.add_argument('--pattern', help='"tok; tok; tok" in msetdiff normal form')
     f.add_argument('--from', dest='frm', metavar='VA',
                    help='take the pattern from this function\'s ORIGINAL bytes')
@@ -377,6 +496,7 @@ def main():
                    metavar='N', help='also print the C for the first N hits')
 
     s = sub.add_parser('show', help='print the C behind an offset')
+    add_corpus(s)
     s.add_argument('--va', required=True)
     s.add_argument('--at', required=True)
     s.add_argument('--len', type=int, default=8)
