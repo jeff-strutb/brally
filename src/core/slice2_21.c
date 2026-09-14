@@ -82,18 +82,6 @@ void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
     pOut[3] = pM[3] * pV->x + pM[7] * pV->y + pM[11] * pV->z + pM[15];
 }
 
-/* 0x1003B3F0 */
-/* WHAT IT DOES: puts a direction through a transform. Unlike a point, a
- * direction is only rotated and scaled and never moved, so the transform's
- * position part is deliberately left out. */
-/* @implements 0x1003B3F0 d3d BrMtxXfmDir3 */
-void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
-{
-    pOut->x = pM->m[0][0] * pV->x + pM->m[1][0] * pV->y + pM->m[2][0] * pV->z;
-    pOut->y = pM->m[0][1] * pV->x + pM->m[1][1] * pV->y + pM->m[2][1] * pV->z;
-    pOut->z = pM->m[0][2] * pV->x + pM->m[1][2] * pV->y + pM->m[2][2] * pV->z;
-}
-
 /* 0x1003B4F0 */
 /* WHAT IT DOES: works out the transform that undoes a given one -- how to get
  * from world space back into an object's own space, for instance. A transform
