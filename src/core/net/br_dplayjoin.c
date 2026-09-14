@@ -522,6 +522,7 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * read of the field spills it (461 B, 5+4).  The and-0xff still does not
  * appear from any spelling; the tree keeps the 455 B form. */
 /* @t4-pass 0x10032320 2 2026-09-13 probes 106 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10032320 3 2026-09-13 probes 220 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
 int BrDpLobbyConnect(int *param_1)
 {
