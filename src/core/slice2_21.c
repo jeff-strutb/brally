@@ -167,25 +167,6 @@ int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
  * 3. 2D segment predicates
  * -------------------------------------------------------------------------- */
 
-/* The straddle core shared by 0x1003BC90 and the two halves of 0x1003BA70.
- * Returns 1 when c and d are strictly on the same side of a->b (a rejection),
- * and hands back the two cross products. */
-static int BrSeg2Cross(const BrVec2 *pA, const BrVec2 *pB,
-                       const BrVec2 *pC, const BrVec2 *pD,
-                       float *pD1, float *pD2)
-{
-    float dx = pB->x - pA->x;
-    float dy = pB->y - pA->y;
-    float d1 = (pC->x - pA->x) * dy - (pC->y - pA->y) * dx;
-    float d2 = (pD->x - pA->x) * dy - (pD->y - pA->y) * dx;
-
-    *pD1 = d1;
-    *pD2 = d2;
-    if (d1 != K_0 && d2 != K_0 && d1 * d2 > K_0)
-        return 1;
-    return 0;
-}
-
 /* 0x1003BC90 */
 /* WHAT IT DOES: asks which side of a line two points fall on: nothing if they
  * are both on the same side, and otherwise whether they straddle it normally or
