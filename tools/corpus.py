@@ -337,8 +337,11 @@ def _scan_listing(tmp, nm, at, length):
     # function happens to sit at that offset -- which reads as plausible
     # source and is pure fiction.
     if nm:
-        pat = re.compile(r'^[_@]?%s(@\d+)?\s+PROC' % re.escape(nm))
-        end = re.compile(r'^[_@]?%s(@\d+)?\s+ENDP' % re.escape(nm))
+        # undecorate() strips EVERY leading underscore, so a C function
+        # named _mbbtype indexes as 'mbbtype' while the listing spells the
+        # cdecl symbol __mbbtype -- allow any run of sigils, not one.
+        pat = re.compile(r'^[_@]*%s(@\d+)?\s+PROC' % re.escape(nm))
+        end = re.compile(r'^[_@]*%s(@\d+)?\s+ENDP' % re.escape(nm))
         lo = hi = None
         for k, ln in enumerate(lines):
             if lo is None and pat.match(ln):
