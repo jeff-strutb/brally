@@ -171,6 +171,7 @@ static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
  * points the hardware at the picture, tells it how much of it to use, and then
  * asks for the rectangle. */
 /* @t4-pass 0x10013FD0 1 2026-09-13 probes 128 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013FD0 2 2026-09-13 probes 284 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10016A60 d3d BrGfxDrawTexRect */
 void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 {
