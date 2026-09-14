@@ -1316,7 +1316,7 @@ int BrOptOpen294C(BrGameObj *pUnused)
  * screen for it. It refuses to go ahead when the player has not typed a
  * long enough name in one of the modes, and falls back to setting the
  * connection up first if there is nothing to join yet. */
-/* @implements 0x10044280 d3d BrOptOpen2950A */
+/* port-only body; Glide match lane is src/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
 int BrOptOpen2950A(BrGameObj *pUnused)
 {
     int fOpen;
