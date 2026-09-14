@@ -152,7 +152,6 @@ int BrCdTrackGetEar(void)
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-int FUN_10002580();
 extern int DAT_1021c778;
 int BrSub10075020();
 int BrWindowEarStartup();
@@ -760,6 +759,109 @@ int BrGetGlobal_1C788(void)
 
 {
   return DAT_1021c788;
+}
+
+/* 0x10002580 -- the EAR-DLL CD channel state block at 0x1021C778, one
+ * global per field (the file's convention; a struct changes nothing below).
+ *
+ * T2 2026-09-13 (fresh transcription, 14 fn.py probes): 468/471 B, 93/95
+ * insns, register-blind residue 0+2.  RESIDUE: the original keeps THREE zero
+ * registers -- esi (the head compares and most stores), a fresh `xor edx,edx`
+ * for the +0x58/+0x5C/+0x60/+0x64 quartet and a fresh `xor ecx,ecx` for the
+ * +0x6C/+0x70/+0x74 trio -- where VC5 folds every zero here into esi.  The
+ * store multiset, the constant webs for 1 (ebx), 4 (eax, dword and word),
+ * 10000 (edi, shared with the RegisterChannel argument) and the early
+ * `push 0x10000020 / push eax` are all reproduced.  DEAD (do not re-run):
+ * typing the two groups unsigned, long, unsigned long, void *, float
+ * (stores an immediate), double and __int64 (immediate / folds), `0u` and
+ * `0L` literals, chained assignments in both directions, two zero locals,
+ * two static __inline reset helpers, int arrays, anonymous structs -- every
+ * one 468 B at 0+2.  VC5 reorders these independent global stores itself
+ * (a chain lands non-contiguous), so the emitted order is not the source
+ * order.  Corpus MISS at +0x5D len 5: the construct is proven nowhere. */
+extern int (__stdcall *DAT_104b1648)(int, int, int, int);   /* 0x104B1648 EAR_DLL_RegisterChannel */
+extern int (__stdcall *DAT_104b1678)(int);                  /* 0x104B1678 */
+extern uint16_t DAT_1021c780, DAT_1021c782;
+extern int      DAT_1021c784;
+extern uint16_t DAT_1021c78c, DAT_1021c78e, DAT_1021c790, DAT_1021c792;
+extern int      DAT_1021c794, DAT_1021c798, DAT_1021c79c, DAT_1021c7a0, DAT_1021c7a4;
+extern uint16_t DAT_1021c7a8, DAT_1021c7aa;
+extern int      DAT_1021c7ac, DAT_1021c7b0, DAT_1021c7b4, DAT_1021c7b8;
+extern uint16_t DAT_1021c7bc, DAT_1021c7be, DAT_1021c7c0, DAT_1021c7c2, DAT_1021c7c4, DAT_1021c7c6;
+extern int      DAT_1021c7c8;
+extern uint16_t DAT_1021c7cc, DAT_1021c7ce;
+extern int      DAT_1021c7d0, DAT_1021c7d4, DAT_1021c7d8, DAT_1021c7dc;
+extern int      DAT_1021c7e0;
+extern int      DAT_1021c7e4, DAT_1021c7e8, DAT_1021c7ec;
+extern uint16_t DAT_1021c7f0, DAT_1021c7f2, DAT_1021c7f4, DAT_1021c7f6, DAT_1021c7f8, DAT_1021c7fa, DAT_1021c7fc;
+
+/* WHAT IT DOES: opens the CD-audio channel through the EAR sound DLL the
+ * first time the game wants CD music and the disc has not been checked yet.
+ * It registers the channel, resets the whole channel-state block to its
+ * starting values (volumes at full, the five fade steps, a 30-tick timer),
+ * asks the DLL for the first and last track numbers, and marks the disc as
+ * usable.  If registering fails the disc is marked unusable instead.  It
+ * always reports success to its caller. */
+/* @t4-pass 0x10002580 1 2026-09-13 probes 14 bytes 468 insns 93 regions 1 rows 2 census no  (hand, fn.py variants of the zero-web typing) */
+/* @implements 0x10002580 glide BrCdEarChannelOpen */
+int BrCdEarChannelOpen(void)
+{
+    if (g_brCdEnabled != 0 && g_brCdPlaying != 0 && g_brCdMediaOk == 0) {
+        if ((*DAT_104b1648)(g_br0940A8, 6, 10000, 5) != 0) {
+            if (DAT_1021c778 == 0)
+                (*DAT_104b1678)(1);
+            DAT_1021c7d0 = 0;
+            DAT_1021c7e0 = 4;
+            DAT_1021c7e4 = 0;
+            DAT_1021c7d4 = 0;
+            DAT_1021c7a8 = 4;
+            DAT_1021c7e8 = 0;
+            DAT_1021c7d8 = 0;
+            DAT_1021c778 = 1;
+            DAT_1021c780 = 0x80;
+            DAT_1021c784 = 0;
+            DAT_1021c788 = 0;
+            DAT_1021c790 = 0;
+            DAT_1021c792 = 10000;
+            DAT_1021c794 = 10000;
+            DAT_1021c798 = 0;
+            DAT_1021c79c = 0;
+            DAT_1021c7a0 = 0;
+            DAT_1021c7a4 = 0;
+            DAT_1021c7aa = 0;
+            DAT_1021c7ac = 0;
+            DAT_1021c7b0 = 0;
+            DAT_1021c7be = 10000;
+            DAT_1021c7c0 = 10000;
+            DAT_1021c7c2 = 0;
+            DAT_1021c7c4 = 0;
+            DAT_1021c7c6 = 0;
+            DAT_1021c7c8 = 0;
+            DAT_1021c7bc = 0;
+            DAT_1021c7b4 = 0;
+            DAT_1021c7b8 = 1;
+            DAT_1021c7cc = 0;
+            DAT_1021c7ce = 0;
+            DAT_1021c7ec = 0;
+            DAT_1021c7f0 = 0;
+            DAT_1021c7f2 = 1000;
+            DAT_1021c7f4 = 2500;
+            DAT_1021c7f6 = 5000;
+            DAT_1021c7f8 = 7500;
+            DAT_1021c7fa = 9000;
+            DAT_1021c7fc = 10000;
+            DAT_1021c7dc = 0;
+            DAT_1021c782 = 30;
+            DAT_1021c78e = 1;
+            DAT_1021c78c = (uint16_t)g_br0940A8;
+            g_brCdTrackFirst = (*DAT_104b162c)(g_br0940A8, 0x10000020);
+            g_brCdTrackLast = (*DAT_104b162c)(g_br0940A8, 0x10000040);
+            g_brCdMediaOk = 1;
+            return 1;
+        }
+        g_brCdMediaOk = 0;
+    }
+    return 1;
 }
 
 #endif /* BR_MATCHING_BUILD */
