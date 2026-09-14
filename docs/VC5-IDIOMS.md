@@ -8208,3 +8208,50 @@ this corpus).
   (INTEL/*.asm, part of the 378 no-source LIBC functions), so a call-site
   `rep movsd` always means an inlined literal copy or struct copy, never
   the library routine's body.
+
+## External same-compiler corpus answers on the parked x87 and byte shapes (2026-09-13, --corpus ext: 1588/3956 annotated functions byte-exact under our cl.exe)
+A second MSVC5-era commercial binary with community-recovered source, staged
+locally under build/external/ (never committed, no names in-tree), scored by
+build/external/extcorpus.py with its own matching flags (`/O2 /Ob2 /G5 /W3
+/GX /ML /Gr`) and indexed over the ORIGINAL binary's bytes as `--corpus ext`.
+Same standing as the CRT corpus: an ext hit proves the compiler CAN emit a
+shape from given source; it does not prove our TU does.
+- **x87 3-term accumulate tail `fxch st(2); faddp st(1); fxch st(1)`:
+  PROVEN, 6 sites (ext:0x004e5ce0 +0x6e..+0x1df, ext:0x004a9550 +0x6d).**
+  Every site is a flat three-product dot/length macro expanded in ONE
+  expression -- `(p->v[0]*q->v[0] + p->v[1]*q->v[1] + p->v[2]*q->v[2])`
+  through pointer element reads.  Confirms the flat-MAC spelling our matrix
+  rows already use; adds no new lever for them.
+- **The matrix-multiply LEAD-IN interleaves (`fld/fmul` over two row
+  pointers, our 0x1006DD20/0x10029D70/0x1006D530/0x1002A050 runs): MISS at
+  every window tried (len 4-12).**  The external tree's own 3x4 multiply
+  and apply family sit UNMATCHED on the same class with full known source:
+  its 34Mul is 20/404 B off starting at the parameter-homing order (`mov
+  ecx,[esp+8]` before `mov eax,[esp+0xc]` in the original, reversed in the
+  recompile, then `fld [ecx+8]` vs `fld [eax+0x18]` -- the B/C operand roles
+  swapped), its ApplyP is 10/116 B off with PAIR-SWAPPED `fld` order
+  (`fld [eax+0xc]; fld [eax+0x18]` vs ours `fld [eax+0x18]; fld [eax+0xc]`
+  and the last load `[eax]` vs `[ecx]`), and its TApplyFV matches 106/107 B
+  (the 1 byte is the `ret` form, a calling-convention artifact, with EVERY
+  x87 byte identical).  Independent confirmation that the operand-role /
+  load-order wall is a scheduling decision, not a source spelling: true
+  source reproduces everything but the roles.  ‼ ApplyP (116 B, full source
+  in the ext staging, residue isolated to four fld operands) is the
+  designated micro-TU laboratory for this wall -- sweep levers THERE, not
+  on our 400-2000 B carriers.
+- **Byte widen from a STACK slot (`mov B,byte ptr [esp+S]; and R,0xff`):
+  PROVEN, 2 sites** -- ext:0x004b4ed0 +0x33 (`green = (g[i] >> 8) & 0xFF;
+  blue = g[i] & 0xFF;` on int locals) and ext:0x00538060 +0x3e (a switch on
+  a byte-typed match parameter).  Both carry the 8-bit anchor use the CRT
+  corpus already proved is the widen's gate.  The GLOBAL-operand variant
+  (`mov dl,[A]; and edx,0xff`, our 0x1006CE50/0x1006CE80/0x10062B80
+  carriers): 0 hits in ext's 1588, matching CRT 0/690 on the anchorless
+  form.  The wall stands unchanged.
+- **`and R,0xff` before `mov dh,al` (0x100271F0): MISS, 0/1588** -- now
+  unproven in the game tree, the CRT (0/690) and ext.  Parked stays parked.
+- **Fresh `xor r,r` beside a live zero: 29 back-to-back `xor R,R; xor R,R`
+  sites; every one inspected is two independent `= 0` inits feeding a loop
+  (ext:0x00528090 `for (i = 0...`, ext:0x00515910 `len = strlen(...); for
+  (i = 0...`).**  Same loop-carried mechanism the game and CRT entries
+  above already prove; VC5 re-materialises every zero, never copies a live
+  zero register.  No new spelling.
