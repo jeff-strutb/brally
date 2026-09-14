@@ -198,7 +198,7 @@ static void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
  * pre-filled as "Driver 1", "Driver 2" and so on from a pattern in the
  * game's text table. It leaves the "what to do when this menu opens" slot
  * untouched, so it holds rubbish until whoever created the menu fills it in. */
-/* @implements 0x10048710 d3d BrOptObjCtor */
+/* port-only body; Glide match is src/core/cpp/0x10041B60.cpp */
 BrPhase_ *BrOptObjCtor(BrPhase_ *pThis)
 {
     BrNameList *pList;
