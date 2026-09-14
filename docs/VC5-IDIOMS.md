@@ -8290,3 +8290,42 @@ with the target's flags, diff one function against original bytes
   in-tree form stays the position/filing sweep.  (3) Residue of this class
   is allocation/scheduling BY MEASUREMENT, which is what T3 Gate A asks a
   row to prove.
+
+## 2026-09-14 -- levers proven on the two T1 intakes (0x10024490, 0x10067C30)
+
+- **Down-counting inner loop = `for (i = N; i > 0; i--)`, not if+do-while,
+  when the counter INIT is sunk below the guard.**  The tell: the guard's
+  `test/jle` reads the bound register but the counter's store to its slot
+  appears AFTER the branch.  An `if (N > 0) { i = N; do ... }` spelling
+  stores the counter BEFORE the test.  Proven byte-exact on 0x10024490's
+  inner loop (the outer, whose init happens to sit after the jle anyway,
+  compiles the same from either spelling).
+- **A clamp pair can be split by an unrelated statement:** 0x10024490's
+  inner body is `hix = ix + 1; lox = ((ix <= 0) - 1) & ix;
+  if (hix >= sw - 1) hix = sw - 1;` -- the min-clamp's compare lands AFTER
+  the mask's `and` only when the `if` is a separate later statement, and
+  the `and` lands IN PLACE (index register) only when the hix lea has
+  already consumed ix.  Also: `(x <= 0)` spells `test/setle`;
+  `(x < 1)` spells `cmp R,1/setl`.
+- **The branchless low clamp is source text:** `((i <= 0) - 1) & i`
+  compiles to `xor/test/setle/dec/and` exactly; `if (i < 1) i = 0;`
+  compiles to a branch.  (0x10024490, both loops.)
+- **One fcomp serving two arms = the comparison READ DIRECTLY in both
+  arms, not a bool local.**  VC5 PREs the identical float compare to one
+  `fcomp` above the join and DEFERS the `fnstsw` past an intervening
+  integer `cmp` (whose own flags feed the outer branch); each arm then
+  `test ah,1`.  An `int upright = (a >= b);` local materialises
+  `mov eax,1/xor eax,eax` instead.  Proven on 0x10067C30's stuck-timer
+  fork.  Arm order: the not-upright arm is the THEN of `if (!(a >= b))`.
+- **`K/x` loads the numerator first under EVERY spelling we can reach**
+  (extern read, pooled literal `1.0f / x` -- 0x1006DAD0 proves the literal
+  form byte-exact).  An original that loads x first and uses `fdivr [K]`
+  is the x87 operand-role TU-state class, not a spelling; same for
+  `fld [field]; fsubr [slot]` vs our `fld [slot]; fsub [field]`.
+  (0x10067C30, three divide sites + the matBox z drop.)
+- **VC5 cross-jumping can fake a "-1 then -2" store pair:** 0x10067C30's
+  AI arm compiles `if (t < 0) t = -1; t--;` into store -1 +
+  load/dec/store on one path while the OTHER path's `t--` cross-jumps
+  into the else-arm's shared RMW `dec dword ptr`.  Spelling it as an
+  if/else with `t = -2` folds; the clamp-then-unconditional-decrement is
+  the source shape.
