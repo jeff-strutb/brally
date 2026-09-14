@@ -1,8 +1,8 @@
-/* br_mat4.c -- geometry: 4x4 transforms applied to points.
+/* br_mat4.c -- geometry: 4x4 transforms applied to points and directions.
  *
  * Responsibility: positions, orientations and the arithmetic that moves them.
  * br_mat.c and br_mat3.c build and combine matrices; this module applies one
- * to a point.
+ * to a point or a direction.
  *
  * Moved out of src/core/slice1_09.c (an address batch) unchanged. The
  * preamble below is carried over verbatim from that file, including the
@@ -40,9 +40,10 @@
 #include <stddef.h>
 
 /* 0x1003B3F0. Moved from src/core/slice2_21.c (an address batch) unchanged.
- * POSITION IN THE TU IS LOAD-BEARING: placed anywhere else in this file
- * (e.g. after BrMat4TransformPoint) the allocator drops one fxch and the
- * residue grows from 8 bytes to 77. */
+ * POSITION IN THE TU IS LOAD-BEARING: it must sit FIRST in this file, ahead
+ * of both BrMat4TransformPoint4 and BrMat4TransformPoint -- anywhere else
+ * the allocator drops a fxch (this residue) or costs one of the other two
+ * its byte-exact match. */
 /* WHAT IT DOES: puts a direction through a transform. Unlike a point, a
  * direction is only rotated and scaled and never moved, so the transform's
  * position part is deliberately left out.
@@ -70,6 +71,26 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
     pOut->x = pM->m[0][0] * x + pM->m[1][0] * y + pM->m[2][0] * z;
     pOut->y = pM->m[0][1] * x + pM->m[1][1] * y + pM->m[2][1] * z;
     pOut->z = pM->m[0][2] * x + pM->m[1][2] * y + pM->m[2][2] * z;
+}
+
+/* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE
+ * declaration (a bare `const float *` matrix) so the two link. Moved from
+ * src/core/slice2_21.c (an address batch) unchanged. */
+/* WHAT IT DOES: puts a point through a transform -- moving, rotating and
+ * scaling it in one step -- and keeps the fourth component, which is what the
+ * perspective divide later needs. */
+/* @implements 0x1003B2A0 d3d BrMat4TransformPoint4 */
+/* @implements 0x10034920 glide BrMat4TransformPoint4 */
+void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
+{
+    /* Orig is four unrolled columns, not a j<4 loop (66 B vs 157 B). x/y/z
+     * cached in locals: the original keeps each live across its four uses
+     * instead of reloading pV->x/y/z from memory each time. */
+    float x = pV->x, y = pV->y, z = pV->z;
+    pOut[0] = pM[0] * x + pM[4] * y + pM[8]  * z + pM[12];
+    pOut[1] = pM[1] * x + pM[5] * y + pM[9]  * z + pM[13];
+    pOut[2] = pM[2] * x + pM[6] * y + pM[10] * z + pM[14];
+    pOut[3] = pM[3] * x + pM[7] * y + pM[11] * z + pM[15];
 }
 
 /* 0x100747C0.
