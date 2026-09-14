@@ -78,6 +78,7 @@ extern char  DAT_100b55ac[];                     /* "Done."                  */
  * file will not open -- whether the second argument's low byte was non-zero. */
 /* @t4-pass 0x1006A080 1 2026-09-07 probes 150 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006A080 2 2026-09-07 probes 149 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006A080 3 2026-09-13 probes 131 bytes 606 insns 206 regions 14 rows 18 census yes  (tools/crank.py) */
 /* @implements 0x1006A080 glide BrSaveLoad */
 char BrSaveLoad(int mode, int arg)
 {
