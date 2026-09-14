@@ -75,6 +75,7 @@ extern char DAT_10af6858[];                   /* its mirror                */
  * second argument was non-zero. */
 /* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x100695C0 2 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
+/* @t4-pass 0x100695C0 3 2026-09-13 probes 61 bytes 879 insns 280 regions 2 rows 13 census yes  (tools/crank.py) */
 /* @implements 0x100695C0 glide BrSeasonLoad */
 char BrSeasonLoad(int mode, int arg)
 {
