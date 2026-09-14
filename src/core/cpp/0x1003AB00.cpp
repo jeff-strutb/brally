@@ -1,5 +1,14 @@
 /* WHAT IT DOES: show how many are left -- the entry's allowance minus what
  * has been used -- in this item's label. */
+/* @t3 0x1003AB00 2026-09-14 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 198/200 insns 74/75 rows 2+1 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is ONE flag-test row: the original's unfused
+ * `sub eax,[used]; test eax,eax; jge` where our cl fuses to `sub; jns` --
+ * unproven in all three source corpora and under VC4.2 (see the passes
+ * above); everything after is byte-identical shifted 2.  Dossier and
+ * dead list live in this header.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003AB00 glide BrItemSetRemaining_1003AB00
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetRemaining_1003AB00@@YAHPAVObj3AB00@@@Z
@@ -33,6 +42,20 @@
  * result local, the ternary form, `!(v >= 0)`, the CSE form
  * `if (v - x < 0) v = 0; else v = v - x;`, an empty else, and making v
  * unsigned with an `(int)` cast in the comparison. All 130.
+ *
+ * 2026-09-13 certification passes.  The sub/test/jge triple is UNPROVEN in
+ * all three source corpora (--corpus ext 1588, ext2 1515, crt 690 -- zero
+ * hits on the 3-insn window) and VC4.2 (vc42_probe) does not produce it
+ * either; with the 943-function byte-exact scan already in this header,
+ * the unfused form is outside every compiler configuration this project
+ * can drive.  In pass 1, `if (v <= -1)` scored 128/130 -- that is a longer
+ * `cmp eax,-1; jg` encoding shifting the positional count, NOT the
+ * original `test eax,eax; jge` shape; rejected as a wrong-shape patch.
+ * The slot census is IDENTICAL slot-for-slot on both sides (three lea
+ * anchors, one arg reload; producers match), so the residue is exactly
+ * the one flag-test row.
+ * @t4-pass 0x1003AB00 1 2026-09-13 probes 10 bytes 198 insns 74 regions 1 rows 3 census no  (cpp_score: v=v-x, fused-assign-in-if, dup-subtract CSE, !(>=0), arm ternary, (int) cast, block-scoped result local, v<=-1 (wrong-shape 128, rejected), branchless &~(v>>31) (131), 0>v -- residue unmoved)
+ * @t4-pass 0x1003AB00 2 2026-09-13 probes 10 bytes 198 insns 74 regions 1 rows 3 census yes  (cpp_score: ternary in the _itoa arg, dup-subtract ternary, compare-before-subtract v>=x?v-x:0 (133), empty-else both polarities, += -x, long temp, mask-compare (133), v-=v, v=v-v -- zero movement; slot census identical both sides)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
