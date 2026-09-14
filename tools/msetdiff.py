@@ -82,12 +82,20 @@ def norm(i, relocd, tail_reloc=None):
         # (0x1005FF00: a phantom 1+1 that failed T3 gate A3 on identical
         # bytes).  When the caller says the reloc is in the tail and the
         # instruction has an immediate operand, that immediate IS the reloc.
+        def _abs(m):
+            inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', m.group(1))
+            return '[' + inner + ' + A]'
         if relocd and tail_reloc and re.search(r'(^|, )0$', s):
             s = re.sub(r'(^|, )0$', r'\1A', s)
+        elif (relocd and tail_reloc is False and '[' in s
+              and not re.search(r'\[[^\]]*\bA\b[^\]]*\]', s)):
+            # The reloc is the displacement and the memory operand does not
+            # yet say so -- an imm8 like 0xff has already become `A`, which
+            # used to satisfy the `'A' not in s` guard below and leave
+            # `[R*K]` unmarked (2026-09-13, 0x1000E320: the 0xff sentinel
+            # stores `mov byte ptr [R*K + A], 0xff` paired with nothing).
+            s = re.sub(r'\[([^]]*)\]', _abs, s, count=1)
         elif 'A' not in s:
-            def _abs(m):
-                inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', m.group(1))
-                return '[' + inner + ' + A]'
             # 2026-09-09 (second): the mirror of the tail case above.  In
             # `mov dword ptr [R + <reloc disp32>], 0` the reloc sits in the
             # DISPLACEMENT (not the last four bytes), the addend is 0 so
@@ -122,7 +130,14 @@ def load(p, sym, lo=0, hi=None):
         if i.address < lo or (hi is not None and i.address >= hi):
             continue
         rd = any(o in rel for o in range(i.address, i.address + i.size))
-        tail = rd and i.size >= 4 and (i.address + i.size - 4) in rel
+        # `rel` holds every byte a reloc covers, so "the reloc is the tail"
+        # means all four trailing bytes are reloc'd -- not merely the byte
+        # four from the end.  A disp32 reloc followed by an imm8
+        # (`mov byte ptr [R+A], 0`, `cmp dword ptr [R+A], 1`: 7 bytes,
+        # reloc at +2..+5) used to test true here, and the imm8 `0` was
+        # rewritten to A instead of the memory operand (2026-09-13,
+        # 0x1000E320: six phantom unpaired rows on bytes that link equal).
+        tail = rd and i.size >= 4 and all((i.address + i.size - k) in rel for k in (1, 2, 3, 4))
         c[norm(i, rd, tail)] += 1
         n += 1
     return c, n
