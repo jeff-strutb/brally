@@ -269,6 +269,7 @@ static void s17_stf(unsigned char *p, float v)
  * produces the matrix that turns world positions into positions relative to
  * that camera. This is what a view through the windscreen or from the trackside
  * is set up with. */
+/* @t4-pass 0x1002A050 1 2026-09-13 probes 83 bytes 427 insns 140 regions 3 rows 20 census yes  (tools/crank.py) */
 /* @implements 0x100309A0 d3d BrMat4LookAt */
 void BrMat4LookAt(BrMat4 *pM,
                   float xEye, float yEye, float zEye,
