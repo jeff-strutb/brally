@@ -42,9 +42,12 @@ def compile_file(src, tag):
     obj = os.path.join(objdir, os.path.splitext(os.path.basename(src))[0] + '.obj')
     if os.path.exists(obj):
         os.unlink(obj)
+    # FN_OPTS overrides the optimisation flags (default /O2); e.g.
+    # FN_OPTS='/O2 /Op' for a TU the sweep scores best under O2p.
+    opts = os.environ.get('FN_OPTS', '/O2').split()
     cmd = ['sh', os.path.join(ROOT, 'tools', 'wine.sh'),
-           os.path.join(ROOT, 'tools', 'msvc5', 'bin', 'cl.exe'), '/nologo',
-           '/O2', '/W3', '/I', 'include', '/I', 'tools/msvc5-compat',
+           os.path.join(ROOT, 'tools', 'msvc5', 'bin', 'cl.exe'), '/nologo'] + opts + [
+           '/W3', '/I', 'include', '/I', 'tools/msvc5-compat',
            '/I', 'tools/msvc5/include', '/DBR_MATCHING_BUILD', '/c',
            os.path.relpath(src, ROOT),
            '/Fo' + os.path.relpath(obj, ROOT).replace('/', '\\')]
