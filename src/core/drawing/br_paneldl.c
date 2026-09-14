@@ -45,6 +45,7 @@ static __inline unsigned int *BrPanelDlAlloc(void)
  * pointer, explicit-deref tests, init order, and a single panel index with
  * every counter derived from it (856 B). */
 /* @t4-pass 0x10010FB0 1 2026-09-13 probes 14 bytes 839 insns 210 regions 1 rows 14 census no  (hand, fn.py variants: alloc idiom, +5 temp, declaration/init/store orders, const pointer, deref tests, single-index loop) */
+/* @t4-pass 0x10010FB0 2 2026-09-13 probes 88 bytes 839 insns 210 regions 5 rows 28 census yes  (tools/crank.py) */
 /* @implements 0x10010FB0 glide BrPanelDlBuild */
 void BrPanelDlBuild(short *param_1)
 {
