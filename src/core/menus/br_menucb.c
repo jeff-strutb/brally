@@ -529,7 +529,13 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
          * BEFORE the movsx, we movsx first into eax).  Probed and dead:
          * per-arm duplicated e3 (+2 insns, arms allocate differently),
          * shared movsx with per-arm *3 (+4B), a selector byte temp.
-         * Pure allocation; parked. */
+         * Pure allocation; parked.
+         * DEAD 2026-09-13 (fn.py, 7 probes, thin): e3 as one `* 3`
+         * statement, a byte selector local, per-arm `e3 * 12`, a
+         * base-select ternary (112 B, drops the arms), the arms swapped
+         * under `== 0` (jne for je), a pre-scaled index local, a row
+         * pointer -- the selector load never precedes the movsx.
+         * End-of-TU placement inert. */
         int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
         e3 = e3 + e3 * 2;
         if (g_menu.gAA28A8 != 0) {

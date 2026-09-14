@@ -212,7 +212,12 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * form, `&DAT - idx*K + off`, the pointer term parenthesised first, the
  * offset as `(n-1)*0x3840` in either position -- VC5 folds the base into
  * the final `add ebp, imm` from every one; the original's `mov ebp, imm`
- * at the loop top is not reachable from the sum's association. */
+ * at the loop top is not reachable from the sum's association.
+ * DEAD 2026-09-13 (fn.py, 6 more): `off + (&DAT - idx*K)`, a `char *pB`
+ * local for `&DAT - idx*K`, `&DAT - (idx*K - off)`, `&DAT + (off - idx*K)`,
+ * an explicit (char *) cast, `(unsigned)off` -- every one 287 B at 2+2,
+ * the base folded into the trailing `add ebp, imm`.  End-of-TU placement
+ * inert. */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
 void __fastcall BrRaceSaveLastLapInfo(int param_1)
 {

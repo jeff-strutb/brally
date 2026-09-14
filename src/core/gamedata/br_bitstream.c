@@ -255,7 +255,14 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
      * binds p with a late lea, and widens p[1..3] in dirty regs
      * (mov dl / and 0xff); VC5 binds p first and zero-widens (xor + mov)
      * from every probed spelling -- the register-byte analogue of the
-     * byte-slot wall. The signed-char Horner seed IS proven right. */
+     * byte-slot wall. The signed-char Horner seed IS proven right.
+     * DEAD 2026-09-13 (fn.py, 12 probes): uchar locals b1/b2/b3 loaded
+     * in the original's order (VC5 hoists b3 to the top and homes it in
+     * a byte slot, 75 B), the same with the second shift split, a
+     * signed `const char *p` with (unsigned char) casts at every use, and
+     * a `static __inline unsigned char` reader for the three bytes --
+     * all fold back to xor+mov zero-widening (61 B).  End-of-TU
+     * placement inert. */
     v = pBs->pBuf[i + 1];
     p = pBs->pBuf + i;
     v |= (int)*(const signed char *)p << 8;
