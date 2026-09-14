@@ -8099,3 +8099,50 @@ again. When a sweep shape is added, re-sweep every non-matching C++ row
 before probing any of them; a stale report row looks exactly like a wall.
 (A 23-probe /O2 ledger run on the two font walks moved nothing and was
 retired the same hour.)
+
+## C++ EH constructors and `new` sites land on the first pass (proven 2026-09-13: 0x10004FD0, 0x100051C0, 0x10040B10, 0x10054610, 0x10041B60 -- five byte-exact, none past three probes)
+*(cpp lane, `tools/cpp_score.py`; every one of these was a T1 draft or a C row the C lane could never reach)*
+
+- **A thiscall constructor's stores before the vector-constructor call are
+  member initialisers**, in declaration (= offset) order; the stores between
+  two member-object constructors are the initialisers declared between them;
+  the vptr store lands AFTER the last member initialiser and before the
+  body.  Anything stored after the vptr is body code.  A member array of a
+  class with a destructor is `__ehvec_ctor` (0x10074800: ptr, size, count,
+  ctor, dtor) and raises the unwind state to 0 for the rest of the ctor; a
+  member with only a constructor (the text list) adds no state.
+- **`rep stosd` fills with `mov ecx,N` first are `memset` intrinsics** (zero
+  fills share one `xor eax,eax`; 0xFF fills re-emit `or eax,-1` each time);
+  a 50-byte fill is `rep stosd` + `stosw`.  Contrast the permuted `lea edi`
+  -first setup, which is a for loop (entry above).
+- **`new T` is `push sizeof; call operator new; spill; test; state N; call
+  ctor / xor eax,eax; test; state -1`** -- one unwind state per new-expression,
+  numbered in source order (0x10041B60 has states 0 and 1 for its two lists).
+  `if (p == 0) return 0;` after the store re-uses eax, no fresh zero.
+- **History-slot advance `mov r,[idx]; inc r; mov r2,r; mov [idx],r; cmp r2,8`
+  is `if (++pSlot->idx >= 8) pSlot->idx = 0;`** -- a named `n = idx + 1`
+  costs a copy and 189 diffs.
+- **A result tested against -1 where the -1 is also the EH-state store
+  (`or ecx,-1; cmp eax,ecx; mov [state],ecx`) is `if (r == -1) return 0;
+  return 1;`** -- the zero arm laid first; `!= -1` with the one arm first
+  swaps the jne/je (12 diffs).
+- **Bind the slot pointer BEFORE reading the handles** when the index lea
+  chain precedes the mutex load: `pSlot = &tab[id]; h[0] = g; h[1] =
+  pSlot->hMutex;`.  Reading `tab[id].hMutex` inline puts the global load
+  first (227 diffs).
+- Not reached the same day: 0x1003D7D0 (a free function with one `new`):
+  every instruction present, FuncInfo matches, but VC5 duplicates the
+  `mov eax,1` epilogue at the else-arm exit and tail-copies the join into
+  the lobby-object else, where the original funnels all four early exits
+  through one `jmp done` and keeps the arm inline (400/340 B, nine layout
+  shapes and /O1 /Os /Og- dead).
+
+## T3 certification-only rows are a lane of their own (2026-09-13: 0x1006D0B0, 0x1003A140, 0x10002580, 0x1001CA30)
+`t3.py --qualify --all` prints "pass gates 0+A and owe passes" rows; for a
+>400 B row run `--qualify <VA>` on every uncertified T2.  Each owes two
+counted ledger passes (>= 10 real, orthogonal variants, zero movement at the
+current (bytes, insns, regions, rows) tuple, one pass `census yes`).  A
+substitution driver over the tree file (C: `fn.py --var`, C++: `cpp_score.py
+--src`) gets a pass in ~3 minutes; the pass numbers must be unique and the
+line must sit in the same file as the tag.  Run C++ variants SEQUENTIALLY:
+parallel cl /Gi runs collide on `vc50.idb`.
