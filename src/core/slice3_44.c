@@ -78,7 +78,7 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
              * indexing are worse (60-75 diffs).  The original's anchor on
              * row/column 2 is also what BOTH nests of BrMat4Mul get, so it
              * is a property of VC5's strength reduction, not of the
-             * source.  Do not probe the expression again. */
+             * source.  Do not probe the expression again.
              * DEAD 2026-09-13: value-identical re-associations `a1b1 +
              * (a2b2 + a0b0)`, `a1b1 + (a0b0 + a2b2)` and a 2-D
              * `(*)[3]` view of both operands -- all 19 diffs, anchor

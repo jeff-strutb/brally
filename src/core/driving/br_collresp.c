@@ -365,7 +365,7 @@ int BrCollRespTipKick(BrTipView *pBody)
     if (best > DAT_10077b78)
         return 0;
     BrRbVelAtPoint(&w, (const BrRbBodyFull *)pBody, &p);
-    vn = pW->hit.nx * w.x + pW->hit.ny * w.y + pW->hit.nz * w.z;
+    vn = (pW->hit.nx * w.x + pW->hit.ny * w.y) + pW->hit.nz * w.z;
     BrPodNop(DAT_100b51fc, (double)vn);
     if (BR_TIP_ABS(vn) > DAT_10077af4)
         return 0;
