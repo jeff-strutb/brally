@@ -49,7 +49,10 @@ work/
 *.rca
 *.img
 *.xm
-tools/msvc5/
+tools/msvc5/*
+!tools/msvc5/crt
+tools/msvc5/crt/*
+!tools/msvc5/crt/src
 tools/msvc42/
 tools/wine/
 reference/msvc/_extract/
