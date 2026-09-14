@@ -57,6 +57,7 @@ extern BrDmgBit   DAT_100b3028[];
  * six-term first in the shift count, declaration order.  Corpus MISS at
  * +0x14E len 6 and +0x151 len 4 -- the construct is not proven anywhere. */
 /* @t4-pass 0x1001CA30 1 2026-09-13 probes 27 bytes 446 insns 141 regions 1 rows 2 census no  (hand, fn.py variants: loop init/increment orders, flag-byte OR spellings, bit-test placement, tail index spellings) */
+/* @t4-pass 0x1001CA30 2 2026-09-13 probes 92 bytes 446 insns 141 regions 3 rows 2 census yes  (tools/crank.py) */
 /* @implements 0x1001CA30 glide BrCarDamageTick */
 void BrCarDamageTick(void)
 {
