@@ -494,6 +494,8 @@ glide_va,name,module,basis,file
 0x10034AF0,BrMtxMul,geometry,description,src/core/geometry/br_mat.c
 0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c
 0x10034FC0,BrTriContainsPoint,geometry,manual,src/core/geometry/br_tri.c
+0x100350F0,BrSeg2Intersect,,,src/core/slice2_21.c
+0x10035310,BrSeg2SideTest,,,src/core/slice2_21.c
 0x100353C0,BrStore_1003BD40,racing,filed,src/core/racing/br_replayon.c
 0x100353D0,BrRandom,startup,description,src/core/startup/br_random.c
 0x10035400,FUN_10035400,startup,neighbour-1,src/core/generated/0x10035400.c
