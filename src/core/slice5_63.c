@@ -485,6 +485,7 @@ void BrExt_1003E510(void)
  * (both counted from one rather than from zero). Its argument only controls
  * whether it also totals up four numbers from a settings table at the end;
  * everything else happens either way. */
+/* @t4-pass 0x10058900 1 2026-09-13 probes 75 bytes 288 insns 71 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x1005FBC0 d3d BrExt_1005FBC0 */
 extern uint8_t  DAT_10ac5a4c, DAT_10ac5a4d;   /* 0x10AA26F4[0], [1] */
 extern uint16_t DAT_10ac5b3a;                /* high half of 0x10AA27E0 */
