@@ -194,8 +194,12 @@ static int BrSeg2Cross(const BrVec2 *pA, const BrVec2 *pB,
 int BrSeg2SideTest(const BrVec2 *pA, const BrVec2 *pB,
                    const BrVec2 *pC, const BrVec2 *pD)
 {
-    float d1, d2;
-    if (BrSeg2Cross(pA, pB, pC, pD, &d1, &d2))
+    float dx = pB->x - pA->x;
+    float dy = pB->y - pA->y;
+    float d1 = (pC->x - pA->x) * dy - (pC->y - pA->y) * dx;
+    float d2 = (pD->x - pA->x) * dy - (pD->y - pA->y) * dx;
+
+    if (d1 != K_0 && d2 != K_0 && d1 * d2 > K_0)
         return 0;
     return (d1 - d2 == K_0) ? 2 : 1;
 }
