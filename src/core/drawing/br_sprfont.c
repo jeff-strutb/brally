@@ -411,7 +411,7 @@ static int BrSprGlyphClassify(char c)
  *     and sprite at +4 -- while slice3_39.h's BrGlyphMetric is eight bytes at
  *     0x100AC6E4.  A third table, or a wider one; it needs its own type
  *     before this body can be written. */
-/* @implements 0x1005B2B0 d3d BrSprFontPenStart_1005B2B0 */
+/* port-only body; Glide match is src/core/cpp/0x100540D0.cpp */
 float BrSprFontPenStart_1005B2B0(BrTextBox *pBox)
 {
     if (pBox == NULL) {
