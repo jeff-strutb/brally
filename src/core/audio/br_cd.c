@@ -802,7 +802,16 @@ extern uint16_t DAT_1021c7f0, DAT_1021c7f2, DAT_1021c7f4, DAT_1021c7f6, DAT_1021
  * asks the DLL for the first and last track numbers, and marks the disc as
  * usable.  If registering fails the disc is marked unusable instead.  It
  * always reports success to its caller. */
-/* @t4-pass 0x10002580 1 2026-09-13 probes 14 bytes 468 insns 93 regions 1 rows 2 census no  (hand, fn.py variants of the zero-web typing) */
+/* @t4-pass 0x10002580 1 2026-09-13 probes 14 bytes 468 insns 93 regions 3 rows 2 census yes  (hand, fn.py variants of the zero-web typing; corpus query at +0x5D MISS) */
+/* @t4-pass 0x10002580 2 2026-09-13 probes 11 bytes 468 insns 93 regions 3 rows 2 census no  (hand, fn.py variants: truthiness guard, named call result, if/else tail, masked hwnd narrowing, constants grouped first, flag+1 argument, hwnd local for the two track calls, three tail stores reversed, summed fade constants, three early returns, two 10000 stores swapped -- 468/93/0+2 or worse every time) */
+/* @t3 0x10002580 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 468/471 insns 93/95 rows 2+0 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the original's two extra zero registers (a fresh xor edx,edx and
+ * xor ecx,ecx for two groups of the state-block stores) where VC5 folds
+ * every zero into esi.  The dossier, the dead typing list and the two
+ * ledger passes are in the comment block above.  Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10002580 glide BrCdEarChannelOpen */
 int BrCdEarChannelOpen(void)
 {
