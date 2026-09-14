@@ -66,6 +66,7 @@ int BrSub1006AFA0(void *pStream, int iPeer, int v, short w);   /* 0x1006AFA0 */
  * byte, and every spelling that widens it costs the ReleaseMutex caching.
  * Both classes are allocation-coupled; do not grind spellings past this
  * ledger without new family evidence. */
+/* @t4-pass 0x1006AB80 2 2026-09-13 probes 116 bytes 802 insns 248 regions 8 rows 34 census yes  (tools/crank.py) */
 /* @implements 0x1006AB80 glide BrNetPeerPump */
 void BrNetPeerPump(void)
 {
