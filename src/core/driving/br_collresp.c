@@ -241,6 +241,44 @@ int BrPodNop();                           /* 0x10008D60, the trace stub     */
 #define BR_TIP_SIGN(x) ((x) == DAT_10077a78 ? DAT_10077a78 \
                         : ((x) > DAT_10077a78 ? DAT_10077a7c : DAT_10077a80))
 
+/* Matching transcription 2026-09-13 (replaces the loop-form port in the
+ * matching build): 1782/1782 B, 512/512 insns, register-blind multiset 0+0,
+ * 63 positional diffs in four masked regions.  Levers that landed: the wheel
+ * pointer is ONE variable assigned INSIDE the arm from a re-read of
+ * `child[k]` (the test reads through the field; the original's block-1 skip
+ * path reloads the uninitialised pointer from the slot `best` shares -- do
+ * not initialise it); `count` is folded to `= 1` in block 1 by VC5 itself;
+ * block 1 compares `t` against the GLOBAL ceiling DAT_10077b70, blocks 2-4
+ * against `best` (`best >= t`); the z term needs `(double)f1E8 - f1E4 * K`
+ * (fld f1E8 first, then the product, fsubp) -- the plain float form is
+ * canonicalised to `fsubr [f1E8]`; the absolute value of `vn` is the
+ * two-read conditional BR_TIP_ABS inside the compare (a store-form abs CSEs
+ * the load); the +-0.1 kick is float stores, zeros are float stores (int
+ * zeros form a zero web); the angular-velocity updates go through the body,
+ * `pState` only feeds the last call.  The wheel dot `vn` MUST be grouped
+ * `(nx*wx + ny*wy) + nz*wz`: the flat sum is re-associated to (t1+t3)+t2 and
+ * emitted sequentially around the `add esp`/`sub esp` pair (-4 insns, the
+ * four `fxch` of the preload shape); `x + (y + z)` restores the shape, the
+ * explicit left group also restores the term order.
+ * RESIDUE (allocation only): the `count` reload web is ecx in the original,
+ * eax here (3 rows); `p` and `w` sit swapped in the frame (0x24/0x18 vs
+ * 0x18/0x24); in the chassis dot `s` the original loads the normal first in
+ * the two esi-based products (`fld ny; fmul m01`), ours loads the matrix
+ * element first -- same association (ny*m01 + nz*m02) + nx*m00, same count.
+ * DEAD for `s` (byte-identical or worse): every term permutation and
+ * parenthesisation, operand swaps inside the products, a running sum, the
+ * normal as plain members / a float[3] / a BrGroundHit / a BrGroundHit
+ * pointer / a BrVec3 pointer / `(&hit.nx)[k]` / `((float *)&hit.nx)[k]`, the
+ * matrix as BrMat4 via the body / via pM (un-folds to [ebp+k], -6 B) / a
+ * named-scalar view cast from `&pBody->m` / `(&m.m[0][0])[k]`, a dead early
+ * read of m01/m02; corpus MISS on both dot shapes.  DEAD for the colouring:
+ * `count` as unsigned/long, `++count`, `+= 1`, `= count + 1`, declared first
+ * or last; `w`/`p` declaration order, one declaration either order, an
+ * early reference to `w` (+8 B), `best` declared last.
+ * @t4-pass 0x10066D70 1 2026-09-13 probes 23 bytes 1782 insns 512 regions 4 rows 8 census no  (vn shape: 11 spellings, 12 groupings)
+ * @t4-pass 0x10066D70 2 2026-09-13 probes 17 bytes 1782 insns 512 regions 4 rows 8 census yes  (s operand order: corpus MISS, symbol/offset/shape mechanism probes)
+ * @t4-pass 0x10066D70 3 2026-09-13 probes 12 bytes 1782 insns 512 regions 4 rows 8 census no  (count web, p/w slot order)
+ */
 /* WHAT IT DOES: after rebuilding the body matrix from the saved state, walks
  * the four wheels: for every wheel with a ground contact it places the box
  * corner on that wheel's side (half extents, signed by the wheel's world
@@ -253,30 +291,14 @@ int BrPodNop();                           /* 0x10008D60, the trace stub     */
  * twice a small pitch vector (sign from the chassis plane's alignment with
  * the car's own axis), then refreshes the quaternion derivative.  Returns 1
  * when the kick was applied. */
-/* T2 2026-09-13 (first matching transcription, replaces the loop-form port
- * in the matching build): 1774/1782 B, 508/512 insns, register-blind
- * multiset 0+4 -- the four missing `fxch` are ONE expression, the chassis
- * dot `s`.  Gate A fails on the insn gap alone (4 vs 3.0); rows 8+4 pass.
- * Levers that landed: the wheel pointer is ONE variable assigned INSIDE the
- * arm from a re-read of `child[k]` (the test reads through the field; the
- * original's block-1 skip path reloads the uninitialised pointer from the
- * slot `best` shares -- do not initialise it); `count` is folded to `= 1`
- * in block 1 by VC5 itself; block 1 compares `t` against the GLOBAL ceiling
- * DAT_10077b70, blocks 2-4 against `best` (`best >= t`); the z term needs
- * `(double)f1E8 - f1E4 * K` (fld f1E8 first, then the product, fsubp) --
- * the plain float form is canonicalised to `fsubr [f1E8]`; the absolute
- * value of `vn` is the two-read conditional BR_TIP_ABS inside the compare
- * (a store-form abs CSEs the load); the ±0.1 kick is float stores, zeros
- * are float stores (int zeros form a zero web); the angular-velocity
- * updates go through the body, `pState` only feeds the last call.
- * DEAD for the `s` order (all byte-identical): every term permutation and
- * parenthesisation, operand swaps inside the products, a running sum, the
- * normal as plain members / a float[3] / a BrGroundHit, the matrix as
- * BrMat4 / flat floats / `((float *)pM)[k]` (that one un-folds to [ebp+k]),
- * a dead early read of m01/m02.  The original loads n first in every
- * product and evaluates (ny*m01 + nz*m02) + nx*m00; ours loads m first for
- * the two esi-based products.  Also open: `p` and `w` sit swapped in the
- * frame (0x24/0x18 vs 0x18/0x24); declaration order is inert. */
+/* @t3 0x10066D70 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1782/1782 insns 512/512 rows 4+4 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 3 zero-movement 2 3
+ * Residue is allocation only: the `count` reload web coloured eax for ecx
+ * (3 rows), the p/w frame slot pair swapped, and the operand order inside
+ * the two esi-based products of the chassis dot `s`.  Dossier and dead
+ * list are the comment block above this one.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10066D70 glide BrCollRespTipKick */
 int BrCollRespTipKick(BrTipView *pBody)
 {
