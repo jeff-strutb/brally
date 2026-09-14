@@ -778,7 +778,17 @@ int BrGetGlobal_1C788(void)
  * two static __inline reset helpers, int arrays, anonymous structs -- every
  * one 468 B at 0+2.  VC5 reorders these independent global stores itself
  * (a chain lands non-contiguous), so the emitted order is not the source
- * order.  Corpus MISS at +0x5D len 5: the construct is proven nowhere. */
+ * order.  Corpus MISS at +0x5D len 5: the construct is proven nowhere.
+ * MECHANISM SEARCH 2026-09-13 (all 1,200 matched originals scanned for two
+ * zero registers feeding stores): the only proven source of a second zero
+ * register is a LOOP-CARRIED local (br_dl_clip_reset `c = 0; ... c = a`,
+ * BrCarInitTables loop counters).  Tested here and dead: zero locals
+ * reassigned by the two track calls (VC5 propagates the zero and keeps
+ * the call result in esi instead), the same with the stores right after
+ * each call (folds back), and zero locals re-assigned inside the
+ * conditional call block (VC5 propagates through the merge).  This
+ * function has no loop, so the second and third zero webs are not
+ * reachable from any source-level zero; the wall is characterised. */
 extern int (__stdcall *DAT_104b1648)(int, int, int, int);   /* 0x104B1648 EAR_DLL_RegisterChannel */
 extern int (__stdcall *DAT_104b1678)(int);                  /* 0x104B1678 */
 extern uint16_t DAT_1021c780, DAT_1021c782;

@@ -8146,3 +8146,20 @@ substitution driver over the tree file (C: `fn.py --var`, C++: `cpp_score.py
 --src`) gets a pass in ~3 minutes; the pass numbers must be unique and the
 line must sit in the same file as the tag.  Run C++ variants SEQUENTIALLY:
 parallel cl /Gi runs collide on `vc50.idb`.
+
+## A second zero register is a LOOP-CARRIED local; nothing else survives VC5's constant propagation (mechanism search 2026-09-13)
+Scanned every matched original for two zero registers both feeding stores:
+36 hits, all either byte-widening `xor` pairs or a zero-initialised local that
+is REASSIGNED in a loop (`c = 0; do { *a = c; c = a; ... }` in
+br_dl_clip_reset; loop counters in BrCarInitTables).  Measured dead on
+0x10002580: typed zeros (unsigned, long, pointer, float, double, __int64),
+`0u`/`0L` literals, chained assignments, zero locals, zero locals reassigned
+by a later call, zero locals re-assigned on one arm of an if (VC5 propagates
+through the merge), inline helpers, arrays, structs.  So: a straight-line
+function whose original spends a fresh `xor r,r` beside a live zero register
+is a wall, not a spelling -- stop after the corpus query.
+
+## The dirty-register byte widen (`mov dl,[m]; and edx,0xff`) appears in NO matched function (scan 2026-09-13)
+Only three originals in the whole DLL carry it (0x1006CE50, 0x1006CE80,
+0x10062B80), all unmatched.  There is no proven spelling to copy; do not
+spend probes on the bit-stream readers until a different mechanism is found.
