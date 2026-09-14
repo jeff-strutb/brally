@@ -245,10 +245,22 @@ int BrSeg2Intersect(const BrVec2 *pA, const BrVec2 *pB,
             return 0;
     }
 
-    if (BrSeg2Cross(pA, pB, pC, pD, &d1, &d2))
-        return 0;
-    if (BrSeg2Cross(pC, pD, pA, pB, &dummy1, &dummy2))
-        return 0;
+    {
+        float dy = pB->y - pA->y;
+        float dx = pB->x - pA->x;
+        d1 = (pC->x - pA->x) * dy - (pC->y - pA->y) * dx;
+        d2 = (pD->x - pA->x) * dy - (pD->y - pA->y) * dx;
+        if (d1 != K_0 && d2 != K_0 && d1 * d2 > K_0)
+            return 0;
+    }
+    {
+        float dy = pD->y - pC->y;
+        float dx = pD->x - pC->x;
+        dummy1 = (pA->x - pC->x) * dy - (pA->y - pC->y) * dx;
+        dummy2 = (pB->x - pC->x) * dy - (pB->y - pC->y) * dx;
+        if (dummy1 != K_0 && dummy2 != K_0 && dummy1 * dummy2 > K_0)
+            return 0;
+    }
 
     /* Only the FIRST test's cross products decide 1 vs 2 -- see the header. */
     return (d1 - d2 == K_0) ? 2 : 1;
