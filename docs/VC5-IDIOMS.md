@@ -8255,3 +8255,38 @@ shape from given source; it does not prove our TU does.
   (i = 0...`).**  Same loop-carried mechanism the game and CRT entries
   above already prove; VC5 re-materialises every zero, never copies a live
   zero register.  No new spelling.
+
+## ‼ THE x87 OPERAND-ROLE WALL IS TU-STATE SCHEDULING, MEASURED AND PARTIALLY DIALED (2026-09-13, micro-TU lab at build/external/lab/lab.py)
+The micro-TU sweep the frontier map called for.  Lab: compile one small .c
+with the target's flags, diff one function against original bytes
+(`lab.py <src> <fn> <va|orig.bin> [--game] [flags]`, ~3 s/probe).
+- **The fld-side/memory-side choice in straight-line FP code is decided by
+  compilation state carried from PRECEDING FUNCTION DEFINITIONS, not by the
+  function's own source.**  On the external corpus' 116 B ApplyP shape
+  (10/116 off in its own TU, 6/116 in isolation): dummy `int f(int)`
+  predecessors flip WHICH statements diverge, and at 8 or 12 predecessors
+  the function is BYTE-EXACT -- with fat-body and float-body pad variants
+  byte-identical, so there the state is the COUNT of definitions alone.
+  Prototypes and file-scope globals advance nothing; only function
+  definitions do.
+- **The state is not one scalar counter.**  On our 0x1006D530 (BrRbQuat-
+  Derivative, straight-line, residue 21 B of st(i) indexes): straight-line
+  int pads, float-constant pads and x87-product-count pads all sample only
+  TWO output states (212/216 B) whatever their count or size; a pad
+  containing a LOOP samples by parity; three or more BRANCHES in one pad
+  shift it saturating.  40+ pad states never reach the 206 B the real TU
+  emits -- the real predecessors (loops, big frames) reach state values
+  synthetic pads cannot.  0x1006DD20 (BrMat3Mul, ROLLED loop): fully
+  ordinal-INSENSITIVE, 19-diff at every predecessor count -- the loop
+  strength-reduction anchor is a different decision and this lever does not
+  touch it.
+- **Practice.**  (1) A stuck straight-line x87 row gets the ~15-compile
+  micro-at-states diagnostic FIRST: if any predecessor state zeroes it, the
+  source is CORRECT and the row is a TU-composition/position problem --
+  stop respelling it (this is the mechanism behind "position in the TU is
+  load-bearing" on 0x1006D530 and the committed-match-went-diff incident).
+  (2) In a real TU the only reachable states come from reordering or
+  refiling REAL functions -- pads are not committable -- so the lever's
+  in-tree form stays the position/filing sweep.  (3) Residue of this class
+  is allocation/scheduling BY MEASUREMENT, which is what T3 Gate A asks a
+  row to prove.
