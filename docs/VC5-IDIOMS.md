@@ -8163,3 +8163,48 @@ is a wall, not a spelling -- stop after the corpus query.
 Only three originals in the whole DLL carry it (0x1006CE50, 0x1006CE80,
 0x10062B80), all unmatched.  There is no proven spelling to copy; do not
 spend probes on the bit-stream readers until a different mechanism is found.
+
+## CRT corpus answers on the four unproven byte/string shapes (2026-09-13, --corpus crt: 690/734 C-source functions byte-exact per flag set, crt and o2 sets identical)
+Queried against Microsoft's own CRT source compiled by our cl.exe and proven
+byte-exact against LIBC.LIB (tools/crtcorpus.py; the 'crt' retail flags
+`-Zelp8 -W3 -WX -GFy -GB -Gi- -O2` and plain `/O2 /W3` produce the identical
+690-function match set, so none of the extra retail flags moves codegen on
+this corpus).
+- **Dirty-register byte widen (`mov dl,[m]; ...; and edx,0xff`): PROVEN, 9
+  functions, but every site carries an 8-bit anchor use.** All nine are
+  `mov r8,[m]; test r8,r8; je; and r32,0xff` from the MBCS walkers --
+  mbsrev (MBSREV.C:54-56 `while (*string) { if (_ISLEADBYTE(*string++))`),
+  ismbslead, ismbstrail, mbsnbcnt, mbsnccnt, mbstok (x2), mbstowcs, woutput;
+  flags crt+o2.  The byte is loaded once, TESTED as a char (the 8-bit use
+  that homes it in a byte register), then widened in the dirty container by
+  `and r32,0xff` for a table index.  x_ismbbtype (ISMBBYTE.C:150
+  `tst = (unsigned int)(unsigned char)tst;` on a uint parameter) proves the
+  bare `and r32,0xff` is VC5's spelling of an unfoldable (unsigned char)
+  narrowing of a 32-bit value.  The game's three carriers (0x1006CE50,
+  0x1006CE80, 0x10062B80) have NO test between load and widen and reuse the
+  BASE register for the load (`mov al,[eax+2]`, `mov cl,[ecx+3]`) -- a form
+  in none of the 690.  A signed-char read masked at use (`const char *p;
+  ... p[2] & 0xff`) canonicalises straight back to xor+mov zero-widening
+  (fn.py crtmask on 0x1006CE80, 2026-09-13, multiset 3 xor for 3 and) --
+  the mask route is dead alongside the cast route.  The wall stands, now
+  with a proven mechanism boundary: VC5 emits the dirty widen only when an
+  8-bit use anchors the byte first.
+- **`and eax,0xff` surviving before `mov dh,al` (0x100271F0): MISS, 0/690.**
+  Not proven anywhere in the CRT either.  Parked stays parked.
+- **Fresh `xor r,r` beside a live zero register: PROVEN -- openfile
+  (_OPEN.C:65-67 `int commodeset = 0; int scanset = 0;`), `xor edx,edx; xor
+  ebp,ebp` back-to-back, flags crt+o2.**  Both locals are REASSIGNED inside
+  the mode-parsing while loop -- the same loop-carried mechanism the game
+  tree already proved (entry above).  0x10002580's zero webs sit in a
+  straight-line store region with no loop to carry them; the CRT confirms
+  the wall's mechanism and adds no spelling.  41 CRT functions carry close
+  xor pairs; every one inspected is loop-carried or a byte-widen pair.
+- **strlen/strcpy intrinsics, `rep movsd` with a trailing `stosw`: MISS on
+  the stosw tail (zero stosw tokens in 45,954 indexed instructions), but
+  `rep movsd; movsw` is PROVEN 3x** -- assert (ASSERT.C:152) and NMSG_WRITE
+  (CRT0MSG.C:246, x2), both `strcpy(progname, "<program name unknown>")`:
+  a strcpy of a string LITERAL inlines as `rep movsd` + movsw/movsb tail
+  sized by the literal.  The CRT's own strcpy/strcat/memcpy are hand-asm
+  (INTEL/*.asm, part of the 378 no-source LIBC functions), so a call-site
+  `rep movsd` always means an inlined literal copy or struct copy, never
+  the library routine's body.
