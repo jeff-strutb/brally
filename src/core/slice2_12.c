@@ -196,7 +196,7 @@ static const float BrK08F118 =  1.0f;                    /* 0x1008F118 */
  * on/off flags -- into a compact bit stream to be sent to the other players.
  * Each field is quantised to just enough bits, giving 187 bits in all; eight
  * fields of the car state are deliberately never sent. */
-/* port-only body; the Glide function is certified @t3 in src/core/cpp/0x10006510.cpp */
+/* port-only body; the Glide function is T3-certified in src/core/cpp/0x10006510.cpp */
 void BrCarStateEncode(BrBitStream *pBs, const BrCarState *pSrc)
 {
     short       s;
