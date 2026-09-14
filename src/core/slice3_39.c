@@ -454,7 +454,7 @@ int32_t   g_BrAA3398[7];              /* 0x10AA3398 */
  * clears the scroll bookkeeping, plants three placeholder characters that
  * get their real values later, and clears the hundred slots that can hold an
  * arbitrary lump of data alongside each row. */
-/* @implements 0x1005B7F0 d3d BrTextListInit */
+/* port-only body; Glide match is src/core/cpp/0x10054610.cpp */
 BrTextList *BrTextListInit(BrTextList *pList)
 {
     int i;
