@@ -262,7 +262,13 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
      * signed `const char *p` with (unsigned char) casts at every use, and
      * a `static __inline unsigned char` reader for the three bytes --
      * all fold back to xor+mov zero-widening (61 B).  End-of-TU
-     * placement inert. */
+     * placement inert.  Also DEAD 2026-09-13 (fn.py crtmask): signed
+     * `const char *p` masked at use (`p[2] & 0xff`) after the CRT corpus
+     * proved `and r32,0xff` spells an unfoldable uchar narrowing
+     * (ISMBBYTE.C) -- VC5 canonicalises the mask back to xor+mov.  All 9
+     * CRT dirty-widen sites anchor the byte with an 8-bit test first
+     * (docs/VC5-IDIOMS.md tail); no anchor-free form exists in 690
+     * proven CRT functions. */
     v = pBs->pBuf[i + 1];
     p = pBs->pBuf + i;
     v |= (int)*(const signed char *)p << 8;
