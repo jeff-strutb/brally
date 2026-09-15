@@ -33,6 +33,11 @@ extern float _DAT_10077a78;                          /* 0.0f */
  * on the first test and the `and eax,ecx` at the return), the |m0| arm
  * polarity, the |t| and cross-term abs forms, the fifteen test order.
  * @t4-pass 0x10068900 w3 2026-09-13 probes 6 bytes 18 insns -1 regions 27 rows 98+99 census no
+ * T3 verdict (2026-09-15): far.  A2 215 rows (108+107) vs limit 16.1, A3 25
+ * unpaired, A4 86 B uncompared (lengths 642/641).  (report.csv recomp_size
+ * read 2000 vs t3.py's fresh 1653 -- trust the fresh object; re-sweep if it
+ * recurs.)  Deep T2; transcription and schedule residue both, not a
+ * certification candidate.
  */
 /* @implements 0x10068900 glide BrObbOverlap */
 int BrObbOverlap(const float *m, const float *t, const float *a, const float *b)
