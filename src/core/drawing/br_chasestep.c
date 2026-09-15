@@ -150,11 +150,16 @@ void __fastcall FUN_10001510(BrCamCar *car, BrPtrArg cam, BrPtrArg prev);/* 0x10
  * branch polarity, pAxZ/pUp/pLook pointer locals, the first height store
  * through a pointer (keeps the dead 0.02 store the original has).
  * @t4-pass 0x10001CF0 r7 2026-09-13 probes 35 bytes 11 insns 5 regions 7 rows 15+10 census no
- * T3 verdict (2026-09-15): NOT close.  A1 FAILS (insn gap 5 > 3), A3 FAILS
- * (15 unpaired), A4 FAILS (357 B uncompared, lengths differ 403/408).  The
- * insn gap + lost-sync mean real missing/extra semantic code, not scheduling,
- * so the next lever is transcription (close the A1 gap), not co-filing or an
- * exact-identity fold.  A2 also far (43 vs 10.1).  Stays T2.
+ * T3 verdict (2026-09-15, CORRECTED): x87 SCHEDULING wall, NOT missing code.
+ * Recorded variant is O2 (frame-correct here).  The A4 "357 B never compared"
+ * is a RESYNC ARTIFACT, not an absent block: the whole-function register-blind
+ * msetdiff is only 19+24 = 43 rows and the function is +6 insns total, so
+ * nothing is missing -- dense fxch/fsubp permutation just defeats the 8-insn
+ * resync key.  The 43 rows are entirely x87: fxch st(1/2/4/5/6), fcom vs
+ * fcomp, fst vs fstp (stack-depth), fsubp with varying stack indices, and the
+ * a*b+c*d fld-side commutation (region #6).  Same class as carcol/cartrail:
+ * respelling-dead, co-filing NULL. Parks as T2 (A2 43 vs 10.1). NOT a
+ * transcription target -- the earlier "missing code" reading was wrong.
  */
 /* @implements 0x10001CF0 glide BrCamChaseStep */
 void __fastcall BrCamChaseStep(BrCamCar *car)

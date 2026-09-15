@@ -154,6 +154,19 @@ extern float DAT_106e7930[16];   /* the sprite matrix */
  * times to repeat the whole thing, one pass per set bit, each pass reading
  * the next slice of the scene block. */
 /* @t4-pass 0x1000CBA0 1 2026-09-07 probes 150 bytes 4164 insns 1144 regions 23 rows 184 census yes  (tools/crank.py) */
+/* T3 verdict (2026-09-15): the ONE real transcription target of the five-
+ * largest group -- but the recorded variant is the DEAD-END O2y (/Oy-,
+ * ebp-frame), which can never byte-match this FRAMELESS original (`sub esp`).
+ * Measured against the frame-correct O2 variant: 176 rows (112+64), insn gap
+ * 44 -- and unlike carcol/cartrail/chasestep/obb, the residue is NOT purely
+ * x87 scheduling.  It has genuine SEMANTIC divergence: orig `shr R,8` x12 vs
+ * our `shr R,0x10` x6, orig `and R,0x1f` x9 absent here, stack offset 0x58 vs
+ * our 0x50, and 10 EXTRA `add byte [R+A],B` (indexed byte RMW) we emit that
+ * the orig does not.  Per retranscribe-don't-patch (>2 artifact classes) this
+ * wants a full re-transcription against the original disassembly, measured on
+ * O2 (not the recorded O2y).  NOT attempted this session (large; variant must
+ * be pinned to O2 first for progress to register).  See resume-state
+ * 2026-09-15b variant-selection note. */
 /* @t4-pass 0x1000CBA0 2 2026-09-07 probes 150 bytes 4164 insns 1144 regions 24 rows 182 census yes  (tools/crank.py) */
 /* @implements 0x1000CBA0 glide BrObjDlBuild */
 void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
