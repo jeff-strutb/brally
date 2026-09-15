@@ -97,6 +97,14 @@ void  FUN_10065c80(void *pBody, BrVec3 *pAt, BrVec3 *pDir, int flag, float k);  
  * probably an inlined vector helper), the tone as one conversion, the
  * distance sum associated ((dz*dz + dy*dy) + dx*dx).
  * @t4-pass 0x10068F80 e3 2026-09-13 probes 12 bytes 0 insns 0 regions 7 rows 36+36 census no
+ * T3 verdict (2026-09-15): A3 PASSES, 0 unpaired -- the whole 39+39 residue
+ * classifies (x87 scheduling, all folded by the existing classifier).  The
+ * SOLE blocker is A2 raw distance: 78 rows vs limit 9.9.  So this is a
+ * fully-explained residue that only the distance cap rejects; not byte-exact,
+ * not certifiable, and A2 relief was declined (feedback-do-not-lower-t3-
+ * standard).  Respelling dead (above); co-filing NULL (obb 0x10068900 is
+ * VA-adjacent but a different best variant, so not the same original TU).
+ * Parks as T2.
  */
 /* @implements 0x10068F80 glide BrCarCarCollide */
 void BrCarCarCollide(void)

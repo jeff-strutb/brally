@@ -109,6 +109,10 @@ typedef struct BrTrailCar {
  * widened at the fild, idx = kk + j as the one index expression of the
  * record loop.
  * @t4-pass 0x10032E40 v17 2026-09-13 probes 20 bytes -6 insns -16 regions 9 rows 20+36 census no
+ * T3 verdict (2026-09-15): A1 FAILS badly (insn gap 16 > 3) -- 16 insns short,
+ * so real missing semantic code.  A2 70 (43+27) vs 11.4, A3 20 unpaired, A4
+ * PASS.  Next lever is transcription to close the -16 insn gap, not a
+ * scheduling/exact-identity lever.  Stays T2.
  */
 /* @implements 0x10032E40 glide BrCarTrailStep */
 void BrCarTrailStep(void)
