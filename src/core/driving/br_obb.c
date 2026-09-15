@@ -33,11 +33,13 @@ extern float _DAT_10077a78;                          /* 0.0f */
  * on the first test and the `and eax,ecx` at the return), the |m0| arm
  * polarity, the |t| and cross-term abs forms, the fifteen test order.
  * @t4-pass 0x10068900 w3 2026-09-13 probes 6 bytes 18 insns -1 regions 27 rows 98+99 census no
- * T3 verdict (2026-09-15): far.  A2 215 rows (108+107) vs limit 16.1, A3 25
- * unpaired, A4 86 B uncompared (lengths 642/641).  (report.csv recomp_size
- * read 2000 vs t3.py's fresh 1653 -- trust the fresh object; re-sweep if it
- * recurs.)  Deep T2; transcription and schedule residue both, not a
- * certification candidate.
+ * T3 verdict (2026-09-15): the recorded variant is WRONG.  report.csv picked
+ * O2p (raw-byte-min, recomp 2000 B, 148+210 = 358 reg-blind rows).  The right
+ * variant is plain O2 (frameless like the original, 1680 B, 215 rows, insn gap
+ * 8) -- see the variant-selection note in resume-state 2026-09-15b.  Under O2
+ * the residue is x87 scheduling (like carcol/chasestep); A2 215 vs 16.1 is a
+ * distance wall, not missing code.  The A4 86 B uncompared is a resync
+ * artifact.  Parks as T2; not a transcription target.
  */
 /* @implements 0x10068900 glide BrObbOverlap */
 int BrObbOverlap(const float *m, const float *t, const float *a, const float *b)
