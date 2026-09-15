@@ -191,6 +191,23 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * the whole frame follows from it), the pop loop stores the span before it
  * clears the pending byte.
  * @t4-pass 0x1000E320 63 2026-09-13 probes 60 bytes 0 insns 0 regions 2 rows 10+10 census no
+ * T3 verdict (2026-09-15): NOT certifiable, and it is A2 (raw distance), not
+ * A3, that blocks it.  Region 2 (the view-rect edge sums x+w and y+h) is a
+ * PROVEN commutative 16-bit-integer-add exact identity: `mov D,[a]; add D,[b]`
+ * == `mov D,[b]; add D,[a]` -- same value, same flags (add carry/overflow are
+ * symmetric), same two reads, no rounding.  A guarded quad-cancel fold of it
+ * (integer analog of the x87 memory-memory fold) takes A3 16 unpaired -> 0 and
+ * revalidates all 125 certified tags UNCHANGED (zero demotions), but promotes
+ * nothing else <=400 B, so it was not landed (session plan: do not edit
+ * t3.py).  A2 still fails 10+10 = 20 vs limit 13.6: the 20 raw rows are real
+ * byte diffs and A2 caps distance regardless of classification.  To pass A2
+ * would need ~7 fewer raw rows, i.e. region 2 byte-exact (impossible: source-
+ * inert canonicalisation) and/or region 1's address-taken pt.x/pt.y schedule
+ * (dossier-dead).  Not the x87 schedule-state class, so co-filing does not
+ * apply (region 2 is front-end integer canonicalisation; region 1 is the
+ * address-taken store/load order).  Parks as T2.  Next lever, if ever: land
+ * the integer-commutative-add exact-identity fold in a deliberate t3.py
+ * migration AND find an un-spill of region 1 -- both are needed together.
  */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
