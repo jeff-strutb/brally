@@ -155,6 +155,11 @@ PROFILES = {
     0x10019A70: Profile(_bracestep_bss),
     0x1002F790: Profile(_f2f_bss, zero_stack=False, seeds=48,
                         arg=_f2f_arg, buf=_f2f_buf),
+    # 0x100038F0 is the base (non-remote) dispatcher; identical table/packet
+    # layout, so the same seeding applies.  Its arg 3 is nMode (not idFrom); the
+    # arg hook pins it to 1, the mode the main command arms all run under.
+    0x100038F0: Profile(_f2f_bss, zero_stack=False, seeds=48,
+                        arg=_f2f_arg, buf=_f2f_buf),
 }
 
 
