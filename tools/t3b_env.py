@@ -618,7 +618,7 @@ def resolve_bytes(obj_path, name, va, size):
     try:
         d, secs, syms, relocs = reloc_fill.parse(obj_path)
         fn = next((s for s in syms
-                   if reloc_fill._undecorate(s['name']) == reloc_fill._undecorate(name)
+                   if reloc_fill.func_symbol_matches(s['name'], name)
                    and secs.get(s['sec'], {}).get('name', '').startswith('.text')), None)
         if fn is not None:
             for rva, si, rt in relocs.get(fn['sec'], []):
@@ -678,12 +678,14 @@ def resolve_bytes(obj_path, name, va, size):
                         extra[(va, off)] = (img_addr + addend) & 0xFFFFFFFF
     except Exception:
         extra = {}
+    why = []
     try:
-        code = reloc_fill.fill_function(obj_path, name, va, fnmap, glmap, size, extra)
+        code = reloc_fill.fill_function(obj_path, name, va, fnmap, glmap, size,
+                                        extra, reason=why)
     except Exception as e:
         return None, 'reloc fill raised %s' % type(e).__name__
     if code is None:
-        return None, 'a relocation names a symbol with no known address'
+        return None, why[0] if why else 'reloc fill failed'
     return code, None
 
 
@@ -715,7 +717,7 @@ def unresolved_symbols(obj_path, name, size):
             continue
         if not secs[sy['sec']]['name'].startswith('.text'):
             continue
-        if reloc_fill._undecorate(sy['name']) != name:
+        if not reloc_fill.func_symbol_matches(sy['name'], name):
             continue
         for rva, si, rt in relocs[sy['sec']]:
             off = rva - sy['val']
