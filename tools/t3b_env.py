@@ -402,6 +402,14 @@ def address_in_name(sym):
     return a
 
 
+# CRT helpers linked INTO the image, not imported through a DLL, so they have
+# no IAT slot to resolve against -- only a fixed VA.  `_ftol` (long<-double
+# truncation) is emitted by every float->int conversion; the x87 interpreter
+# already models it at this same address (x87emu FTOL).  Keyed by the
+# underscore-stripped symbol name (`__ftol` -> `ftol`).
+_CRT_HELPER_VA = {'ftol': 0x10074560}
+
+
 def augment_maps(obj_path, name, size):
     """(fnmap, glmap) with address-bearing symbol names of THIS object added.
 
@@ -432,6 +440,8 @@ def augment_maps(obj_path, name, size):
             a = imports.get(n.split('@', 1)[0])          # __imp__Foo@8 -> __imp__Foo
         if a is None and base == 'except_list':
             a = 0                                        # fs:[0] SEH-chain head
+        if a is None and base in _CRT_HELPER_VA:
+            a = _CRT_HELPER_VA[base]                     # static CRT helper (no IAT slot)
         if a is None:
             a = _declared_va().get(base) or _declared_va().get(u)  # `Name(...); /* 0x<VA> */`
         if a is None:
