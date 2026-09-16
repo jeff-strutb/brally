@@ -338,8 +338,37 @@ def _obj_index():
                     continue
                 for n, rec in parsed.items():
                     code = rec[0] if isinstance(rec, tuple) else rec
-                    _OBJ_INDEX.setdefault(n, []).append((os.path.join(p, f), len(code)))
+                    ent = (os.path.join(p, f), len(code))
+                    _OBJ_INDEX.setdefault(n, []).append(ent)
+                    # A method compiles under its mangled name (?Apply@Rip0C4E0
+                    # @@...), but the caller names it as the source spelling
+                    # (Rip0C4E0::Apply) so parse_signature can grep the .cpp.
+                    # Index it under the demangled name too, so one --name
+                    # Class::Method resolves both the obj and the signature.
+                    dm = _demangle_method(n)
+                    if dm:
+                        _OBJ_INDEX.setdefault(dm, []).append(ent)
     return _OBJ_INDEX
+
+
+def _demangle_method(mangled):
+    """'?Apply@Rip0C4E0@@QAEHPBMH@Z' -> 'Rip0C4E0::Apply', or None.
+
+    A deliberately minimal MSVC demangler: only the plain member-function form
+    `?method@scope...@@`, which is all the thiscall members the oracle keys need.
+    Operators/ctors/dtors (`??...`), templates and compressed back-references
+    (which introduce digits/`?` into the scope tokens) are left to fail rather
+    than be mis-decoded."""
+    if not mangled.startswith('?') or mangled.startswith('??'):
+        return None
+    end = mangled.find('@@', 1)
+    if end < 0:
+        return None
+    parts = mangled[1:end].split('@')
+    if len(parts) < 2 or not all(re.match(r'^[A-Za-z_]\w*$', p) for p in parts):
+        return None                       # need method + >=1 scope, all plain
+    method, scopes = parts[0], parts[1:]
+    return '::'.join(reversed(scopes)) + '::' + method
 
 
 def _setup_img(seed, sig):
