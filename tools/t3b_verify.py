@@ -258,10 +258,57 @@ def verify(va, name, orig_bytes, recomp_bytes, seeds, sig):
 
 
 _OBJ_INDEX = None
+_VA_OWNER = None
+
+
+def _va_owner(va_hex):
+    """How to select the obj that OWNS this VA -> (kind, key), or None.
+
+    Disambiguates a name shared across TUs so the oracle tests the transcription
+    that actually @implements the VA, not a same-named symbol in an unrelated TU
+    (which a size heuristic can wrongly pick when its compiled size is closer).
+
+    - C-lane: ('base', '<file>.obj').  A source file compiles to its basename +
+      .obj (generated/0x1006E360.c -> 0x1006E360.obj; slice1_09.c ->
+      slice1_09.obj), so the owning obj is matched by basename.
+    - cpp-lane: ('cppdir', None).  report_cpp.csv rows are the live
+      implementation when a cpp-lane file has taken over a VA (0x10007750 ->
+      src/core/cpp/0x10007750.cpp); their compiled objs carry sweep/probe
+      suffixes (0x10007750_sweep_*.obj) but all live under build/match/obj_cpp,
+      so they are matched by directory.  report_cpp OVERRIDES report.csv: the
+      superseded C-lane twin (slice1_02.c still listing 0x10007750) must not win.
+    """
+    global _VA_OWNER
+    if _VA_OWNER is None:
+        _VA_OWNER = {}
+        rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
+        try:
+            for r in csv.DictReader(open(rep)):
+                f = r.get('file') or ''
+                if f:
+                    base = os.path.splitext(os.path.basename(f))[0] + '.obj'
+                    _VA_OWNER[r['va'].lower()] = ('base', base)
+        except Exception:
+            pass
+        repc = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+        try:
+            for r in csv.DictReader(open(repc)):
+                if r.get('file'):
+                    _VA_OWNER[r['va'].lower()] = ('cppdir', None)   # overrides
+        except Exception:
+            pass
+    return _VA_OWNER.get(va_hex.lower())
 
 
 def _obj_index():
-    """name -> (obj path, size of the compiled function). Built once."""
+    """name -> LIST of (obj path, size of the compiled function). Built once.
+
+    A LIST, not one entry: a Glide function can share its exported name with a
+    D3D twin at a different VA/size (e.g. BrCarStateDecodeDelta, Glide 0x10007750
+    845 B vs D3D 0x100073E0 720 B).  Keying by name alone and keeping the first
+    obj scanned tested the WRONG transcription at the WRONG size.  The caller
+    disambiguates by VA ownership (`_va_owner`), falling back to the size
+    closest to the original only when the owning file is unknown."""
     global _OBJ_INDEX
     if _OBJ_INDEX is None:
         _OBJ_INDEX = {}
@@ -278,7 +325,7 @@ def _obj_index():
                     continue
                 for n, rec in parsed.items():
                     code = rec[0] if isinstance(rec, tuple) else rec
-                    _OBJ_INDEX.setdefault(n, (os.path.join(p, f), len(code)))
+                    _OBJ_INDEX.setdefault(n, []).append((os.path.join(p, f), len(code)))
     return _OBJ_INDEX
 
 
@@ -601,10 +648,22 @@ def one(va, name, seeds, isolated=False):
         if recomp is None:
             return 'UNCLASSIFIED', why
         return verify(va_int, name, orig, recomp, seeds, sig)
-    ent = _obj_index().get(name)
-    if ent is None:
+    cands = _obj_index().get(name)
+    if not cands:
         return 'UNCLASSIFIED', 'no recompiled object found'
-    obj, size = ent
+    # Pick the transcription that actually @implements THIS VA.  Authoritative:
+    # the file owning the VA (report.csv / report_cpp.csv) -- disambiguates a
+    # Glide function from a same-named symbol in an unrelated TU, a D3D twin, or
+    # a superseded C-lane twin.  Size-closest is only a fallback when the owner
+    # is unknown or its objs are absent.
+    owner = _va_owner(va_hex)
+    owned = []
+    if owner and owner[0] == 'cppdir':
+        owned = [c for c in cands
+                 if os.path.basename(os.path.dirname(c[0])) == 'obj_cpp']
+    elif owner and owner[0] == 'base':
+        owned = [c for c in cands if os.path.basename(c[0]) == owner[1]]
+    obj, size = min(owned or cands, key=lambda e: abs(e[1] - len(orig)))
     buried = ENV.shadows_a_neighbour(va_int, size)
     if buried:
         return 'UNCLASSIFIED', 'substituted bytes bury %s' % ', '.join(buried[:2])
