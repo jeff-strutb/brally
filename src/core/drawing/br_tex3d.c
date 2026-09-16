@@ -1949,7 +1949,7 @@ int FUN_10028BB0(int *);
 /* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x10027A10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region, 2 B short on encoding;

@@ -205,7 +205,7 @@ void BrGfx60E00(void *p0)
  * @t4-pass 0x1005C450 1 2026-09-09 probes 11 bytes 58 insns 26 regions 2 rows 2 census yes  (hand, fn.py variants)
  * @t4-pass 0x1005C450 2 2026-09-09 probes 10 bytes 58 insns 26 regions 2 rows 2 census yes  (position sweep) */
 /* @t3 0x1005C450 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 58/62 insns 26/28 rows 2+0 regions 2 oracle UNCLASSIFIED
+ * @t3-measure bytes 58/62 insns 26/28 rows 2+0 regions 2 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is allocation/scheduling: 2+0 classified rows, 2 masked regions, 4 B short;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted

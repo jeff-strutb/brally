@@ -87,7 +87,7 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
 /* @t4-pass 0x1006CDA0 2 2026-09-09 probes 10 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t4-pass 0x1006CDA0 3 2026-09-09 probes 22 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t3 0x1006CDA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 29/29 insns 10/10 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 29/29 insns 10/10 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 2 3
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region;
@@ -200,7 +200,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 /* @t4-pass 0x1006CE50 1 2026-09-09 probes 10 bytes 43 insns 18 regions 1 rows 3 census no  (hand, fn.py variants: index-through-cursor lever from ReadU16 and 9 tail spellings, all inert or worse) */
 /* @t4-pass 0x1006CE50 2 2026-09-10 probes 40 bytes 43 insns 18 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t3 0x1006CE50 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 43/44 insns 18/17 rows 1+2 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 43/44 insns 18/17 rows 1+2 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * The residue is the zero-extend fork on the third byte and nothing else: the
  * original loads p[2] into AL over the DYING pointer register and widens with

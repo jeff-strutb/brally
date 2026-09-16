@@ -183,7 +183,7 @@ void BrCursorPairSet(BrCursorPair *pPair, void *pv)
  * @t4-pass 0x1001C9D0 1 2026-09-09 probes 10 bytes 95 insns 30 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
  * @t4-pass 0x1001C9D0 2 2026-09-09 probes 12 bytes 95 insns 30 regions 1 rows 0 census yes  (position sweep + const p, explicit !=0, column-base alias) */
 /* @t3 0x1001C9D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 95/96 insns 30/30 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 95/96 insns 30/30 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region, 1 B short on encoding;

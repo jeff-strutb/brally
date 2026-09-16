@@ -31,7 +31,7 @@
 
 class BrBitReader {
 public:
-    uint32_t ReadBits(unsigned nBits);   /* thiscall, declared only */
+    uint32_t m_1006CED0(unsigned nBits);   /* ReadBits */   /* thiscall, declared only */
 };
 
 extern "C" {
@@ -92,26 +92,25 @@ static __inline uint32_t BrCarStateDeltaMerge(uint32_t prev, uint32_t bits,
 }
 
 extern "C"
-void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
-                           BrBitReader *pReader)
+void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef, BrBitReader *pReader)
 {
     uint32_t prev, bits;
 
-    pDst->f00 = BrFixUnpackS16Q15Neg((int32_t)((pReader->ReadBits(8) & 0xFFu) << 8));
-    pDst->f04 = BrFixUnpackS16Q15Neg((int32_t)((pReader->ReadBits(8) & 0xFFu) << 8));
-    pDst->f08 = BrFixUnpackS16Q15Neg((int32_t)((pReader->ReadBits(8) & 0xFFu) << 8));
-    pDst->f0C = BrFixUnpackS16Q15Neg((int32_t)((pReader->ReadBits(8) & 0xFFu) << 8));
+    pDst->f00 = BrFixUnpackS16Q15Neg((int32_t)((pReader->m_1006CED0(8) & 0xFFu) << 8));
+    pDst->f04 = BrFixUnpackS16Q15Neg((int32_t)((pReader->m_1006CED0(8) & 0xFFu) << 8));
+    pDst->f08 = BrFixUnpackS16Q15Neg((int32_t)((pReader->m_1006CED0(8) & 0xFFu) << 8));
+    pDst->f0C = BrFixUnpackS16Q15Neg((int32_t)((pReader->m_1006CED0(8) & 0xFFu) << 8));
 
     /* f10/f14: re-quantise the reference to unsigned Q13-in-24, drop the low 7
      * bits (`shr esi,7`, a LOGICAL shift) to get a 17-bit value, then merge
      * 12 transmitted low bits under a 2-bit page code. */
     prev = (uint32_t)BrFixPackU24Q13(pRef->f10) >> 7;
-    bits = pReader->ReadBits(14);
+    bits = pReader->m_1006CED0(14);
     prev = BrCarStateDeltaMerge(prev, bits, 0x3000u, 0x1000u, 0x1F000u, 0xFFFu);
     pDst->f10 = BrFixUnpackU32Q13(prev << 7);
 
     prev = (uint32_t)BrFixPackU24Q13(pRef->f14) >> 7;
-    bits = pReader->ReadBits(14);
+    bits = pReader->m_1006CED0(14);
     prev = BrCarStateDeltaMerge(prev, bits, 0x3000u, 0x1000u, 0x1F000u, 0xFFFu);
     pDst->f14 = BrFixUnpackU32Q13(prev << 7);
 
@@ -121,7 +120,7 @@ void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
         short q;
         q = BrFixPackS16Q7(pRef->f18) >> 1;   /* sar ax,1: short lvalue */
         prev = (uint32_t)(int32_t)q;          /* movsx */
-        bits = pReader->ReadBits(11);
+        bits = pReader->m_1006CED0(11);
         /* `lea eax,[esi+esi]`: the double is passed RAW -- the `movsx ax`
          * inside the unpack is what narrows it, so no mask here (the C tree
          * masks defensively; this TU matches the original's spelling). */
@@ -131,18 +130,18 @@ void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
 
     /* f78: signed Q1-in-24, kept whole; 7 transmitted low bits. */
     prev = (uint32_t)BrFixPackS24Q1(pRef->f78);
-    bits = pReader->ReadBits(9);
+    bits = pReader->m_1006CED0(9);
     prev = BrCarStateDeltaMerge(prev, bits, 0x180u, 0x80u, 0xFFFF80u, 0x7Fu);
     pDst->f78 = BrFixUnpackS24Q1(prev);
 
-    pDst->f7C = BrFixUnpackU8Range((int32_t)pReader->ReadBits(6));
-    pDst->f80 = BrFixUnpackLevel((int32_t)pReader->ReadBits(2));
-    pDst->f84 = BrFixUnpackLevel((int32_t)pReader->ReadBits(2));
+    pDst->f7C = BrFixUnpackU8Range((int32_t)pReader->m_1006CED0(6));
+    pDst->f80 = BrFixUnpackLevel((int32_t)pReader->m_1006CED0(2));
+    pDst->f84 = BrFixUnpackLevel((int32_t)pReader->m_1006CED0(2));
 
-    pDst->f88 = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
-    pDst->f8C = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
-    pDst->f90 = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
-    pDst->f94 = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
-    pDst->f98 = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
-    pDst->f9C = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
+    pDst->f88 = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
+    pDst->f8C = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
+    pDst->f90 = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
+    pDst->f94 = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
+    pDst->f98 = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
+    pDst->f9C = pReader->m_1006CED0(1) ? BR_ONE_128 : 0.0f;
 }

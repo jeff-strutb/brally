@@ -10,7 +10,7 @@
 /* @t4-pass 0x1002F640 1 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t4-pass 0x1002F640 2 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t3 0x1002F640 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 31/31 insns 15/15 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 31/31 insns 15/15 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region;
@@ -106,7 +106,7 @@ void BrSwapVec3(void *pv)
 /* @t4-pass 0x10018A50 2 2026-09-07 probes 25 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018A50 3 2026-09-07 probes 39 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x10018A50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 29/29 insns 12/12 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 29/29 insns 12/12 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 2 3
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region;

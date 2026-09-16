@@ -234,7 +234,7 @@ __declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
  * @t4-pass 0x10036810 1 2026-09-09 probes 11 bytes 142 insns 64 regions 2 rows 2 census yes  (hand, fn.py variants + corpus)
  * @t4-pass 0x10036810 2 2026-09-09 probes 10 bytes 142 insns 64 regions 2 rows 2 census yes  (position sweep + 3 spelling variants) */
 /* @t3 0x10036810 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 142/142 insns 64/64 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-measure bytes 142/142 insns 64/64 rows 1+1 regions 2 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is allocation/scheduling: 1+1 classified rows, 2 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted

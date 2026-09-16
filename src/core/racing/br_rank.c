@@ -81,7 +81,7 @@ int BrNetGetA102212D0(int param_1);
  * PASS; the counted ledger and its dead list are in this file's header. */
 /* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 3 zero-movement 3 4
  * residue after tools/crank.py: 250 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
