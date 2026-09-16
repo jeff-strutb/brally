@@ -385,16 +385,32 @@ class Machine:
                 if re.fullmatch(r'(?:0x)?[0-9a-fA-F]+', t):
                     target = int(t, 16)
                 else:
-                    # indirect: call dword ptr [slot] -- slot holds either a
-                    # game function pointer (into mapped .text) or a DLL import.
                     mem = re.sub(r'\b(?:dword|qword|word|byte) ptr ', '', t).strip()
-                    slot = self.mem_addr(mem)
-                    if slot in self.imports:
-                        if self.trace_calls is not None:
-                            self.trace_calls.append(('imp', slot))
-                        self.imports[slot](self)     # modeled import, esp net-zero
-                        pc += 1; continue
-                    target = self.rd_i(slot)         # deref the function pointer
+                    if mem in self.R or mem in REG8 or mem in REG16:
+                        # call <reg>: the register HOLDS the callee address (a
+                        # cached import pointer or a game function pointer).  Not
+                        # a memory dereference -- take the value directly.
+                        target = self.rd_reg(mem)
+                    else:
+                        # indirect: call dword ptr [slot] -- slot holds either a
+                        # game function pointer (into mapped .text) or a DLL import.
+                        slot = self.mem_addr(mem)
+                        if slot in self.imports:
+                            if self.trace_calls is not None:
+                                self.trace_calls.append(('imp', slot))
+                            self.imports[slot](self)     # modeled import, esp net-zero
+                            pc += 1; continue
+                        target = self.rd_i(slot)         # deref the function pointer
+                # A cached import called through a register: the IAT slots are
+                # seeded to their own address, so `mov reg,[slot]; call reg` lands
+                # here with target == the slot.  Model it -- crucially cleaning the
+                # stdcall args, which a bare unresolved-icall would leak (that leak
+                # drifted esp and corrupted a stack object 8 bytes downstream).
+                if target in self.imports:
+                    if self.trace_calls is not None:
+                        self.trace_calls.append(('imp', target))
+                    self.imports[target](self)
+                    pc += 1; continue
                 if self.trace_calls is not None:
                     self.trace_calls.append((hex(target), 'i' if slot is not None else 'd',
                                              hex(self.R['eax'])))

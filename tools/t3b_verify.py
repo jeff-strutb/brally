@@ -296,6 +296,12 @@ def _setup_img(seed, sig):
     while a + 4 <= WIN_HI:
         mem.put_dword(a, _sfloat_bits(rnd))
         a += 4
+    # Seed each modelled import's IAT slot to its own address, so a function
+    # that caches the import (`mov reg,[slot]; call reg`) gets the slot value
+    # in the register and the call handler can route it to the model.  Harmless
+    # for the direct `call [slot]` path, which matches the slot before any read.
+    for slot in x87emu.MSVCRT_IMPORTS:
+        mem.put_dword(slot, slot)
     regs = {r: (rnd() % 4000) - 2000 & 0xFFFFFFFF
             for r in ('eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp')}
     regs['esp'] = STACK_BASE
