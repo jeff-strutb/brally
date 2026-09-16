@@ -151,9 +151,14 @@ def parse_signature(name):
         if not m:
             continue
         rettype, cls, params = m.group(1), m.group(2), m.group(3).strip()
+        # A method definition -- `Class::Method(...)`, whether the `Class::` was
+        # matched here or already carried in `name` -- is a native thiscall: its
+        # `this` arrives in ecx and is NOT in the parameter list (unlike a
+        # BR_THISCALL1 free function, which spells `this` as an explicit param).
+        is_method = bool(cls) or '::' in name
         conv = 'cdecl'
-        if cls or re.search(r'__fastcall|BR_THISCALL1|BR_FASTCALL', rettype):
-            conv = 'fastcall'    # native thiscall member: `this` arrives in ecx
+        if is_method or re.search(r'__fastcall|BR_THISCALL1|BR_FASTCALL', rettype):
+            conv = 'fastcall'
         elif re.search(r'__thiscall', rettype):
             return None            # not expressible in C here; the C++ lane owns it
         rettype = re.sub(r'__fastcall|__stdcall|BR_THISCALL1?|BR_FASTCALL', ' ', rettype)
@@ -163,7 +168,7 @@ def parse_signature(name):
             ret = 'float'
         else:
             ret = 'int'
-        kinds = []
+        kinds = ['ptr'] if is_method else []           # implicit `this` in ecx
         if params and params != 'void':
             for p in params.split(','):
                 p = p.strip()
