@@ -231,7 +231,7 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
 /* @t4-pass 0x10008C80 1 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10008C80 2 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x10008C80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 160/160 insns 48/48 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 160/160 insns 48/48 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region;

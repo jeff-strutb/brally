@@ -265,7 +265,7 @@ extern int DAT_10b71648;
 /* @t4-pass 0x10005400 3 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census no  (hand, fn.py variants at the ~0x80 spelling: counter temps, wrap/guard/mask forms, decl orders, all inert) */
 /* @t4-pass 0x10005400 4 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census yes  (hand, fn.py variants: register hint, call temp, operand orders, dead-store shapes, all inert; corpus MISS at +0x60 len 10) */
 /* @t3 0x10005400 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 154/153 insns 46/47 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-measure bytes 154/153 insns 46/47 rows 1+0 regions 2 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
  * residue is one allocation copy: the original computes the counter web in
  * eax and copies to esi once (`mov esi,eax`, the singleton); every probed

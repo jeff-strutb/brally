@@ -387,7 +387,7 @@ int BrFadeRelease(void);     /* 0x10017F10 */
 /* @t4-pass 0x10003050 7 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10003050 8 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t3 0x10003050 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 84/96 insns 29/30 rows 1+0 regions 3 oracle UNCLASSIFIED
+ * @t3-measure bytes 84/96 insns 29/30 rows 1+0 regions 3 oracle EQUIVALENT
  * @t3-effort passes 7 zero-movement 7 8
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
  * every candidate and score is in build/match/crank.log.
@@ -427,7 +427,7 @@ static int BrCdStopReleaseMsg(void)
 /* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x100030B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 105/105 insns 43/43 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 105/105 insns 43/43 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 3 4
  * residue is register colouring only: identical register-blind instruction
  * multiset (rows 0+0), 1 masked region;

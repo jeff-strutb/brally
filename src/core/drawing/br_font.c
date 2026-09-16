@@ -1455,7 +1455,7 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
 /* @t4-pass 0x10016980 4 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10016980 5 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @t3 0x10016980 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 199/198 insns 79/79 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-measure bytes 199/198 insns 79/79 rows 0+0 regions 5 oracle EQUIVALENT
  * @t3-effort passes 5 zero-movement 4 5
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
