@@ -72,9 +72,31 @@ def _model_memmove(m):
     m.R['eax'] = dst
 
 
+def _model_wait_single(m):
+    """WaitForSingleObject(handle, ms) __stdcall -> WAIT_OBJECT_0 (0).  Under the
+    oracle the mutex-guarded peer/car tables are single-threaded, so the wait
+    always succeeds instantly; no compared state depends on the handle value.
+    The real callee's `ret 8` clears both args, so esp += 8 (no return address
+    is pushed for a modeled import, so the two arg dwords sit at [esp..esp+4])."""
+    m.R['eax'] = 0
+    m.R['esp'] = u32(m.R['esp'] + 8)
+
+
+def _model_release_mutex(m):
+    """ReleaseMutex(handle) __stdcall -> TRUE (1).  `ret 4` clears the one arg,
+    so esp += 4.  Every caller in this image discards the BOOL result."""
+    m.R['eax'] = 1
+    m.R['esp'] = u32(m.R['esp'] + 4)
+
+
 # DLL imports whose code is in a module the oracle does not map, keyed by the
-# reference image's IAT slot address.  BRGlide.dll: memmove.
-MSVCRT_IMPORTS = {0x118F04FC: _model_memmove}
+# reference image's IAT slot address.  memmove is MSVCRT; the two mutex calls
+# are KERNEL32, reached by the SEH-framed net dispatchers (0x1002F790 etc.).
+MSVCRT_IMPORTS = {
+    0x118F04FC: _model_memmove,
+    0x118F044C: _model_wait_single,     # KERNEL32 WaitForSingleObject@8
+    0x118F04BC: _model_release_mutex,   # KERNEL32 ReleaseMutex@4
+}
 
 
 def _model_allmul(m):
@@ -132,6 +154,8 @@ class Machine:
         self.st = []                        # x87 stack, st[0] is TOP
         self.ZF = self.SF = self.CF = self.OF = 0
         self.C0 = 0                         # last fcom below/unordered
+        self.seg_fs = {}                    # fs:[disp] SEH-chain slots (frame state)
+        self.trace_calls = None             # opt-in list: resolved call targets, for diagnosis
         self.callstack = []
         self.FTOL = 0x10074560
         self.prog = listing
@@ -256,9 +280,22 @@ class Machine:
         else:
             raise KeyError(name)
 
+    def _seg_off(self, x):
+        """`fs:[disp]` / `gs:[disp]` -> the disp, or None if not segment-relative.
+
+        The only segment access these functions make is the C++/SEH prologue's
+        `fs:[0]` -- the thread's exception-registration head.  It is thread/frame
+        state the oracle never compares (both runs touch it identically), so a
+        small per-machine dict models it soundly without a real TIB."""
+        m = re.match(r'(?:fs|gs):\s*(\[.*\])$', x)
+        return self.mem_addr(m.group(1)) if m else None
+
     def _rd(self, x, byte=False):
         """Read an operand that may be a register OR a memory reference."""
         x = x.strip()
+        so = self._seg_off(x)
+        if so is not None:
+            return self.seg_fs.get(so, 0) & (0xFF if byte else 0xFFFFFFFF)
         if x.startswith('['):
             a = self.mem_addr(x)
             return self.rd_u8(a) if byte else self.rd_i(a)
@@ -267,6 +304,10 @@ class Machine:
     def _wr(self, x, v, byte=False):
         """Write an operand that may be a register OR a memory reference."""
         x = x.strip()
+        so = self._seg_off(x)
+        if so is not None:
+            self.seg_fs[so] = v & (0xFF if byte else 0xFFFFFFFF)
+            return
         if x.startswith('['):
             a = self.mem_addr(x)
             (self.wr_u8 if byte else self.wr_i)(a, v)
@@ -279,6 +320,9 @@ class Machine:
             return self.rd_reg(x)
         if re.fullmatch(r'-?0x[0-9a-fA-F]+|-?\d+', x):
             return int(x, 0) & 0xFFFFFFFF
+        so = self._seg_off(x)
+        if so is not None:
+            return self.seg_fs.get(so, 0) & (0xFF if byte else 0xFFFFFFFF)
         if x.startswith('['):
             return self.rd_u8(self.mem_addr(x)) if byte else self.rd_i(self.mem_addr(x))
         raise ValueError('val? %r' % x)
@@ -346,9 +390,14 @@ class Machine:
                     mem = re.sub(r'\b(?:dword|qword|word|byte) ptr ', '', t).strip()
                     slot = self.mem_addr(mem)
                     if slot in self.imports:
+                        if self.trace_calls is not None:
+                            self.trace_calls.append(('imp', slot))
                         self.imports[slot](self)     # modeled import, esp net-zero
                         pc += 1; continue
                     target = self.rd_i(slot)         # deref the function pointer
+                if self.trace_calls is not None:
+                    self.trace_calls.append((hex(target), 'i' if slot is not None else 'd',
+                                             hex(self.R['eax'])))
                 if target == self.FTOL:
                     # _ftol is cdecl-with-no-args: on hardware the call pushes a
                     # return address and the callee's ret pops it, net esp change
@@ -389,7 +438,13 @@ class Machine:
                 raise ValueError('call to unmapped %08X' % target)
             if mn == 'ret':
                 if self.callstack:
-                    self.R['esp'] = u32(self.R['esp'] + 4)   # pop the return addr
+                    # Pop the return address, plus any callee-cleaned argument
+                    # bytes named by `ret <imm>` (stdcall/thiscall: e.g. a ctor
+                    # `ret 8`).  Ignoring the immediate left esp low by that many
+                    # bytes, mis-aligning every stack local the caller touched
+                    # afterwards -- a packet object read 8 bytes off its ctor.
+                    imm = int(ops.strip(), 0) if ops.strip() else 0
+                    self.R['esp'] = u32(self.R['esp'] + 4 + imm)
                     pc = self.callstack.pop(); continue
                 return
             nxt = self.step(addr, mn, ops)
@@ -426,10 +481,7 @@ class Machine:
             d, s = o
             bsize = (d in REG8) or (s in REG8)
             v = self._val(s, byte=bsize)
-            if d.startswith('['):
-                (self.wr_u8 if bsize else self.wr_i)(self.mem_addr(d), v)
-            else:
-                self.wr_reg(d, v)
+            self._wr(d, v, byte=bsize)
         elif mn in ('movzx',):
             d, s = o
             self.wr_reg(d, self._val(s, byte=True) & 0xFF)

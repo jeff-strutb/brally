@@ -27,7 +27,7 @@
  * local dispatcher 0x100038F0. */
 /* @implements 0x1002F790 glide FUN_1002f790
  * @cpp_kind free
- * @cpp_symbol ?FUN_1002f790@@YAXPAX0HHH@Z
+ * @cpp_symbol _FUN_1002f790
  *
  * C++ (confirmed): the EH record carries magic 0x19930520 (__CxxFrameHandler,
  * not C's __except_handler3), maxState 1 -- one destructible stack local, the
@@ -58,19 +58,22 @@ struct BrCarState {
     char raw[0xA0];
 };
 
-/* The packet reader, identical to the sibling's BrNetPacket. */
-class BrNetPacket {
+/* The packet reader.  Methods and the ctor/dtor are named by their VA so the
+ * A5 oracle's reloc resolver can map each thiscall to its address (the
+ * `?m_<HEX>@` / ctor+dtor `<CTORVA>_<DTORVA>` conventions); this is only the
+ * symbol string -- the call bytes (relocations) are identical either way. */
+class BrNetPacket_1006CDA0_10008D60 {
 public:
-    BrNetPacket(void *pBuf, int nBytes);    /* 0x1006CDA0 */
-    ~BrNetPacket();                         /* 0x10008D60 (nop) */
-    void          Reset();                  /* 0x1006CDD0 */
-    void          SkipBytes(int n);         /* 0x1006CDE0 */
-    unsigned char ReadU8();                 /* 0x1006CE00 */
-    int           ReadU24();                /* 0x1006CE50 */
-    int           ReadS32();                /* 0x1006CE80 */
-    int           AtEnd();                  /* 0x1006CF80 */
-    int           CountedTotal();           /* 0x1006D180 */
-    BrNetHdr     *GetHdr();                 /* 0x1006D190 */
+    BrNetPacket_1006CDA0_10008D60(void *pBuf, int nBytes);  /* ctor 0x1006CDA0 */
+    ~BrNetPacket_1006CDA0_10008D60();                       /* dtor 0x10008D60 (nop) */
+    void          m_1006CDD0();             /* Reset */
+    void          m_1006CDE0(int n);        /* SkipBytes */
+    unsigned char m_1006CE00();             /* ReadU8 */
+    int           m_1006CE50();             /* ReadU24 */
+    int           m_1006CE80();             /* ReadS32 */
+    int           m_1006CF80();             /* AtEnd */
+    int           m_1006D180();             /* CountedTotal */
+    BrNetHdr     *m_1006D190();             /* GetHdr */
 
     int            readBit;                 /* +0x00 */
     int            readByte;                /* +0x04 */
@@ -79,6 +82,7 @@ public:
     unsigned char *pBuf;                    /* +0x10 */
     unsigned char  payload[0x200];          /* +0x14 */
 };
+typedef BrNetPacket_1006CDA0_10008D60 BrNetPacket;
 
 typedef char chk_pkt[sizeof(BrNetPacket) == 0x214 ? 1 : -1];
 
@@ -118,12 +122,12 @@ extern char       DAT_117b37b4;          /* +0x55C  name            */
 extern int        DAT_117b3250;          /* standalone join gate    */
 extern float      DAT_1007751c;          /* freshness threshold     */
 
-void  BrCarStateDecode(BrCarState *, BrNetPacket *);                    /* 0x10007230 */
-void  BrCarStateDecodeDelta(BrCarState *, BrCarState *, BrNetPacket *); /* 0x10007750 */
-void  BrCarStateLerp(BrCarState *, float, BrCarState *, BrCarState *);  /* 0x10007D50 */
-unsigned FUN_1006a310(void);                                           /* clock */
-int   FUN_1002f6d0(int id);                                            /* BrPeerFind */
-void  FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
+void  sub_10007230(BrCarState *, BrNetPacket *);                    /* BrCarStateDecode */
+void  sub_10007750(BrCarState *, BrCarState *, BrNetPacket *);      /* BrCarStateDecodeDelta */
+void  sub_10007D50(BrCarState *, float, BrCarState *, BrCarState *);/* BrCarStateLerp */
+unsigned sub_1006A310(void);                                        /* clock */
+int   sub_1002F6D0(int id);                                         /* BrPeerFind */
+void  sub_100038F0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
 }
 
 /* index*0x96C addressing on a per-field global, as the sibling proved.  The
@@ -134,7 +138,7 @@ void  FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
 #define RF(sym, T) (*(T *)((char *)&sym + roff))
 #define RA(sym, T) ((T *)((char *)&sym + roff))
 
-void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
+extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
 {
     BrNetPacket pkt(pBuf, nBytes);
     int      bStart = 0;      /* latched cmd-0 0x40 flag */
@@ -150,32 +154,32 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
     BrCarState scratch;       /* cmd 0x40 stale decode */
     BrCarState scratch2;      /* cmd 0x80 stale decode */
 
-    pkt.Reset();
-    ts = pkt.ReadU24();
-    while (!pkt.AtEnd()) {
-        cmd  = pkt.ReadU8();
+    pkt.m_1006CDD0();
+    ts = pkt.m_1006CE50();
+    while (!pkt.m_1006CF80()) {
+        cmd  = pkt.m_1006CE00();
         b10  = cmd & 0x10;
         slot = cmd & 0xf;
         soff = slot * 0x96c;
         switch (cmd & 0xe0) {
         case 0x00: {
-            unsigned      b0    = pkt.ReadU8() & 0xff;
-            unsigned char flags = pkt.ReadU8();
-            unsigned      nib   = pkt.ReadU8() & 0xff;
-            char          ca    = pkt.ReadU8();
-            char          cb    = pkt.ReadU8();
-            char          cc    = pkt.ReadU8();
-            int           id    = pkt.ReadS32();
+            unsigned      b0    = pkt.m_1006CE00() & 0xff;
+            unsigned char flags = pkt.m_1006CE00();
+            unsigned      nib   = pkt.m_1006CE00() & 0xff;
+            char          ca    = pkt.m_1006CE00();
+            char          cb    = pkt.m_1006CE00();
+            char          cc    = pkt.m_1006CE00();
+            int           id    = pkt.m_1006CE80();
             int           hasName = 0;
 
             if ((flags & 0x3f) < 3) {
                 for (i = 0; i < 0x18; i++)
-                    name[i] = pkt.ReadU8();
+                    name[i] = pkt.m_1006CE00();
                 hasName = i;
                 name[0x18] = 0;
             }
             if ((flags & 0x3f) == 4)
-                pkt.ReadU24();
+                pkt.m_1006CE50();
 
             WaitForSingleObject(PF(DAT_117a9b88, void *), 0xffffffff);
             if ((PF(DAT_117a9bb4, int) & 0x3f) == 0)
@@ -233,7 +237,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
                 goto c4_rel;
             cur = PF(DAT_117aa0e0, int);
             if (ts <= PA(DAT_117a9b94, unsigned)[cur]) {
-                BrCarStateDecode(&scratch, &pkt);
+                sub_10007230(&scratch, &pkt);
                 ReleaseMutex(PF(DAT_117a9b88, void *));
                 break;
             }
@@ -248,13 +252,13 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
             PF(DAT_117aa0e0, int) = best;
             PA(DAT_117a9b94, unsigned)[best] = ts;
             PA(DAT_117a9bc0, int)[PF(DAT_117aa0e0, int)] = 0x40;
-            BrCarStateDecode(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)], &pkt);
+            sub_10007230(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)], &pkt);
             if (PF(DAT_117aa4f0, int) != 0)
                 goto c4_rel;
             if (*(float *)((char *)&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)] + 0x78)
                     < DAT_1007751c)
                 goto c4_rel;
-            PF(DAT_117aa4f0, int) = FUN_1006a310();
+            PF(DAT_117aa4f0, int) = sub_1006A310();
         c4_rel:
             ReleaseMutex(PF(DAT_117a9b88, void *));
             break;
@@ -263,9 +267,9 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
         case 0x60: {
             int n;
 
-            pkt.Reset();
-            n = pkt.CountedTotal();
-            pkt.SkipBytes(n);
+            pkt.m_1006CDD0();
+            n = pkt.m_1006D180();
+            pkt.m_1006CDE0(n);
             break;
         }
 
@@ -281,7 +285,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
                 goto c8_rel;
             cur = PF(DAT_117aa0e0, int);
             if (ts <= PA(DAT_117a9b94, unsigned)[cur]) {
-                BrCarStateDecodeDelta(&scratch2, &scratch2, &pkt);
+                sub_10007750(&scratch2, &scratch2, &pkt);
                 goto c8_rel;
             }
             best  = 0;
@@ -317,10 +321,10 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
             PF(DAT_117aa0e0, int) = best;
             PA(DAT_117a9b94, unsigned)[best] = ts;
             PA(DAT_117a9bc0, int)[PF(DAT_117aa0e0, int)] = 0x80;
-            BrCarStateLerp(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)], frac,
+            sub_10007D50(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)], frac,
                            &PA(DAT_117a9be0, BrCarState)[iPrev],
                            &PA(DAT_117a9be0, BrCarState)[iNew]);
-            BrCarStateDecodeDelta(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)],
+            sub_10007750(&PA(DAT_117a9be0, BrCarState)[PF(DAT_117aa0e0, int)],
                                   &PA(DAT_117a9be0, BrCarState)[iNew], &pkt);
         c8_rel:
             ReleaseMutex(PF(DAT_117a9b88, void *));
@@ -328,8 +332,8 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
         }
 
         case 0xc0: {
-            int b   = pkt.ReadU24();
-            int now = FUN_1006a310();
+            int b   = pkt.m_1006CE50();
+            int now = sub_1006A310();
 
             WaitForSingleObject(PF(DAT_117a9b88, void *), 0xffffffff);
             if ((PF(DAT_117a9bb4, int) & 0x3f) != 0 && idFrom == PF(DAT_117a9b8c, int)
@@ -342,14 +346,14 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
         }
 
         case 0xe0: {
-            unsigned b0  = pkt.ReadU8() & 0xff;
-            unsigned nib = pkt.ReadU8() & 0xff;
-            char     ca  = pkt.ReadU8();
-            char     cb  = pkt.ReadU8();
-            char     cc  = pkt.ReadU8();
+            unsigned b0  = pkt.m_1006CE00() & 0xff;
+            unsigned nib = pkt.m_1006CE00() & 0xff;
+            char     ca  = pkt.m_1006CE00();
+            char     cb  = pkt.m_1006CE00();
+            char     cc  = pkt.m_1006CE00();
 
             for (i = 0; i < 0x18; i++)
-                name[i] = pkt.ReadU8();
+                name[i] = pkt.m_1006CE00();
             name[0x18] = 0;
 
             if (b10 == 0) {
@@ -359,7 +363,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
 
                 if (DAT_117b3250 != 0)
                     break;
-                j = FUN_1002f6d0(idFrom);
+                j = sub_1002F6D0(idFrom);
                 if (j == -1)
                     break;
                 soff = j * 0x96c;
@@ -378,7 +382,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
                 } while (k != 0);
                 PF(DAT_117a9bb4, int) = 1;
                 PF(DAT_117aa0e0, int) = 0;
-                PF(DAT_117aa4e4, int) = FUN_1006a310();
+                PF(DAT_117aa4e4, int) = sub_1006A310();
                 roff = j * 0x10 * 0x96c;
                 m = 0x10;
                 do {
@@ -441,9 +445,9 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
     }
 
     if (idFrom != 1) {
-        unsigned char lead = ((unsigned char *)pkt.GetHdr())[3] & 0xe0;
+        unsigned char lead = ((unsigned char *)pkt.m_1006D190())[3] & 0xe0;
         if (lead == 0x40 || lead == 0x80 || lead == 0x60)
-            FUN_100038f0(pNet, pBuf, nBytes, idFrom, a5);
+            sub_100038F0(pNet, pBuf, nBytes, idFrom, a5);
     }
 done:
     ;

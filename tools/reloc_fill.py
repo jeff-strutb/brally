@@ -161,9 +161,19 @@ def _load_overrides():
     return _OVERRIDES
 
 
-def fill_function(obj_path, func_name, va, fnmap, glmap, size):
-    """Resolve relocations for one function and return its bytes, or None."""
-    overrides = _load_overrides()
+def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None):
+    """Resolve relocations for one function and return its bytes, or None.
+
+    `extra` is an optional {(va, off): value} map merged over the on-disk
+    override table.  The A5 oracle uses it to resolve the C++ EH-handler push
+    ($L label in .text$x): that address only ever reaches the SEH chain on the
+    frame, which the oracle does not compare, so any deterministic value is
+    sound there -- but the shared byte-patch pipeline must still refuse `$`
+    labels, so this stays a per-call argument, never the CSV or a global rule.
+    """
+    overrides = dict(_load_overrides())
+    if extra:
+        overrides.update(extra)
     try:
         d, secs, syms, relocs = parse(obj_path)
     except Exception:
