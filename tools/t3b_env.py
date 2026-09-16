@@ -431,9 +431,46 @@ def augment_maps(obj_path, name, size):
             a = imports.get(n.split('@', 1)[0])          # __imp__Foo@8 -> __imp__Foo
         if a is None and base == 'except_list':
             a = 0                                        # fs:[0] SEH-chain head
+        if a is None:
+            a = _declared_va().get(base)                 # `Name(...); /* 0x<VA> */`
         if a is not None:
             gl[base] = a
     return fnmap, gl
+
+
+_DECL_VA = None
+_DECL_RE = re.compile(r'\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*;[^\n]*?\b0x([0-9A-Fa-f]{8})\b')
+
+
+def _declared_va():
+    """{callee name -> VA} read from `Type Name(args);  /* 0x<VA> ... */`
+    prototypes across src/.  The tree declares each hand-named callee with its
+    address in a trailing comment; a name the maps never recorded (an
+    unimplemented helper, or one implemented under a different symbol) resolves
+    from that.  Accepted only when the VA lands in the image's .text -- a wrong
+    address would be a guess, and the oracle refuses those.  Cached once."""
+    global _DECL_VA
+    if _DECL_VA is not None:
+        return _DECL_VA
+    _DECL_VA = {}
+    img = image()
+    src = os.path.join(ROOT, 'src')
+    for dp, _, fs in os.walk(src):
+        for fn in fs:
+            if not fn.endswith(('.c', '.cpp', '.h')):
+                continue
+            try:
+                text = open(os.path.join(dp, fn), 'r', errors='ignore').read()
+            except Exception:
+                continue
+            for m in _DECL_RE.finditer(text):
+                nm, hexva = m.group(1), m.group(2)
+                if nm in _DECL_VA:
+                    continue
+                a = int(hexva, 16)
+                if img.text_lo <= a < img.text_hi:
+                    _DECL_VA[nm] = a
+    return _DECL_VA
 
 
 _CSTR_ESC = {'?4': '.', '?2': '\\', '?5': ' ', '?3': ':', '?1': '/', '?0': '@'}
