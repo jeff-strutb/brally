@@ -7,6 +7,18 @@
  * records for the new stage are wiped and 1 is returned; otherwise the race
  * mode is set to the season-over value, the end-of-season handler runs, the
  * front end is told to leave, and 0 comes back. */
+/* @t3 0x10058680 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 630/629 insns 167/167 rows 1+1 regions 5 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Insn gap 0: every instruction is present, and divergence (key 8) reports 0
+ * unpaired rows -- every diff pairs as a register rename. Residue is which
+ * global lands in which register in the head (the two byte temps swap dl/cl,
+ * the +0x1E word loads into dx not cx), the `mov edx,5` placement, the tail
+ * vcall's vtable pointer in eax not edx, and the "leave alone" return folded to
+ * `mov eax,1` instead of held in edi. That is register allocation, undirectable
+ * from C; see the @t4-pass ledger below. Certified on byte-shape (insn gap 0,
+ * colouring only); the A5 oracle currently reads UNCLASSIFIED under the updated
+ * emulator, not DIFF. Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10058680 glide BrSeasonApply
  * @cpp_kind free
  * @cpp_symbol _BrSeasonApply
@@ -36,6 +48,9 @@
  * edi from the first test (`mov edi,1` between `cmp ch,bl` and its jne).
  * Dead: ret assigned at the top, `hi`/`next` temps, byte compares via
  * shifts/masks (sar/test or test ch,0xff), separate car locals.
+ *
+ * @t4-pass 0x10058680 1 2026-09-13 probes 13 bytes 630 insns 167 regions 5 rows 2 census no  (first transcription, 13 cpp probes: entrant block as one object vs separate globals; Ghidra-literal car arithmetic vs unsigned char* base; score sum as a once-stored local; named zero z driving the byte/stage compares; unsigned > entrant tests. Every instruction present; residue is register colouring.)
+ * @t4-pass 0x10058680 2 2026-09-16 probes 12 bytes 630 insns 167 regions 5 rows 2 census yes  (confirming sweep -- #pragma intrinsic, #pragma optimize speed, declaration/rename levers -- none moves the 5 regions / 2 rows; divergence at key 8 shows 0 unpaired rows: every diff pairs as a register rename (dl/cl swap, the +0x1E word into dx not cx, the vtable pointer in eax not edx, the folded mov eax,1), so the residue is which-global-into-which-register allocation, not missing or wrong code. Numbers unmoved.)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
