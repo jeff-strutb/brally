@@ -26,13 +26,18 @@ def _b(val, a, base):
 
 
 class Profile(object):
-    __slots__ = ('bss', 'zero_stack', 'seeds', 'arg', 'buf', 'exact_regions')
+    __slots__ = ('bss', 'zero_stack', 'seeds', 'arg', 'buf', 'exact_regions',
+                 'buf_sizes')
 
     def __init__(self, bss, zero_stack=True, seeds=64, arg=None, buf=None,
-                 exact_regions=None):
+                 exact_regions=None, buf_sizes=None):
         self.bss = bss                 # fn(seed, addr) -> byte
         self.zero_stack = zero_stack    # stack window / arg buffers seeded to 0
         self.seeds = seeds
+        # {argidx: bytes}: enlarge a pointer-argument buffer past the default so
+        # a large object (a ~0x2a00 car passed as `this`) fits and the buf hook
+        # can seed its pointer fields to point at further scratch sub-objects.
+        self.buf_sizes = buf_sizes
         # [(lo, hi), ...] ranges of INTEGER output (e.g. a display-list command
         # buffer) where a differing dword is a real divergence, never x87
         # rounding noise -- the oracle would otherwise mask a 1-integer command
@@ -370,7 +375,121 @@ _ODL_EXACT = ((_ODL_CUR, _ODL_CUR + 0x10000), (_ODL_PDL, _ODL_PDL + 0x20000),
               (0x106E772C, 0x106E7730), (0x106E7734, 0x106E7738),
               (0x106E86A0, 0x106E86A4))
 
+# ---- BrCtlAiBody 0x1005D770 (per-car AI throttle/steer body, __thiscall) ----
+# `this` is a 0x2b68 BrAiCar (struct in br_ctlai.c).  Enlarge its buffer so every
+# field is a real slot, then POPULATE it with a realistic, per-seed-varied driving
+# state so the steering/throttle rules actually compute (a null car takes every
+# degenerate branch and hides bugs).  Seed:
+#   - the frame rows (fwd/right/up) + varied pos/vel/aim vectors;
+#   - pProfile (+0xF00) -> scratch profile with f68 bit0 CLEAR (controller on);
+#   - pCtl (+0x29C0) -> scratch control record;
+#   - pNode (+0xF8C) -> scratch path node whose aPt[].arc knots DECREASE
+#     monotonically, so the budget walk (t -= arc[i]-arc[i+1]) crosses real
+#     segments and exits naturally -- not the instant exit a single huge knot
+#     forced, which masked the budget logic.
+# g_0B2F00 (live-driver count) bounds the outer driver loop over g_AF0858.
+_AI_NODE = 0x10E00000            # scratch path node (car+0xF8C)
+_AI_PROF = 0x10E10000            # scratch profile (car+0xF00)
+_AI_CTL = 0x10E20000             # scratch control record (car+0x29C0)
+_AI_NPT = 8                      # knots in the path node
+
+
+def _u32b(val, off, base):
+    return (val >> (8 * (off - base))) & 0xFF
+
+
+def _aif(seed, tag):
+    """A finite, per-seed-varied float in ~[-16, 16] for car kinematic state."""
+    s = (seed * 2654435761 + tag * 40503) & 0xFFFFFFFF
+    return ((s % 3200) - 1600) / 100.0
+
+
+def _ai_vec(seed, base_off, off, tag, scale=1.0):
+    import struct
+    comp = (off - base_off) >> 2                  # 0/1/2 = x/y/z
+    return struct.pack('<f', _aif(seed, tag + comp) * scale)[off & 3]
+
+
+def _ctlai_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x100B2F00:                        # live-driver count -> 0..3
+        return _b(seed % 4, a, 0x100B2F00)
+    # ---- path node ----
+    if base == _AI_NODE + 0x00:                    # pNext -> self (single-node ring)
+        return _b(_AI_NODE, a, _AI_NODE + 0x00)
+    # pSib stays NULL (default 0): the corridor scan's sibling loop
+    # `while (pChild != NULL) pChild = pChild->pSib` must terminate, and the
+    # main body only follows pSib when flags&1 (which is clear here).
+    if base == _AI_NODE + 0x14:                    # count (u16) then flags (u16)=0
+        return _b(_AI_NPT, a, _AI_NODE + 0x14)
+    if _AI_NODE + 0x40 <= base < _AI_NODE + 0x40 + _AI_NPT * 0x28:
+        rel = base - (_AI_NODE + 0x40)
+        i, foff = rel // 0x28, rel % 0x28
+        if foff == 0x24:                          # aPt[i].arc: decreasing knots
+            return struct.pack('<f', float((_AI_NPT - i) * 7))[a - base]
+        # A real corridor: left = centre + offset, right = centre - offset, so
+        # the half-width dot(lateral, left-centre) lands in a realistic range and
+        # the corridor-width thresholds (limit's 5.0f) are exercised.
+        comp = (foff % 0x0C) >> 2                  # 0/1/2 within the BrVec3
+        c = _aif(seed, 700 + i * 8 + comp)         # centre component ~[-16,16]
+        o = _aif(seed, 900 + i * 8 + comp) * 0.45  # lateral offset ~[-7.2,7.2]
+        v = c + o if foff < 0x0C else (c if foff < 0x18 else c - o)
+        return struct.pack('<f', v)[a - base]
+    # ---- profile ----
+    if base == _AI_PROF + 0x68:                    # f68 bit0 = controller disabled -> 0
+        return 0
+    if base == _AI_PROF + 0x74:                    # difficulty-table row -> small
+        return _b(seed % 3, a, _AI_PROF + 0x74)
+    return 0                                       # everything else null-safe / cleared
+
+
+def _ctlai_buf(seed, argidx, off):
+    if argidx != 0:                               # only `this` (the car)
+        return None
+    if 0x00 <= off < 0x0c:                          # fwd = frame row 0, ~unit
+        return _ai_vec(seed, 0x00, off, 100, 1.0 / 16.0)
+    if 0x10 <= off < 0x1c:                          # right = frame row 1, ~unit
+        return _ai_vec(seed, 0x10, off, 130, 1.0 / 16.0)
+    if 0x20 <= off < 0x2c:                          # up = frame row 2, ~unit
+        return _ai_vec(seed, 0x20, off, 160, 1.0 / 16.0)
+    if 0x30 <= off < 0x3c:                          # pos, varied
+        return _ai_vec(seed, 0x30, off, 10)
+    if 0xf0c <= off < 0xf18:                        # aim, varied
+        return _ai_vec(seed, 0xf0c, off, 40)
+    if 0x1024 <= off < 0x1030:                      # vel, varied
+        return _ai_vec(seed, 0x1024, off, 70)
+    if 0xf00 <= off < 0xf04:                        # pProfile
+        return _u32b(_AI_PROF, off, 0xf00)
+    if 0xf8c <= off < 0xf90:                        # pNode
+        return _u32b(_AI_NODE, off, 0xf8c)
+    if 0xf90 <= off < 0xf94:                        # iPt (start index) -> 0
+        return 0
+    if 0x29c0 <= off < 0x29c4:                      # pCtl
+        return _u32b(_AI_CTL, off, 0x29c0)
+    return None                                    # rest of the car stays zeroed
+
+
+# Integer AI outputs (bias/scan state globals + the car's counter/flag/gate
+# fields + the control record's flags) are exact-compared: their small values
+# (0/1/2/3) alias tiny denormal floats, so the default value-tolerant compare
+# would mask a wrong integer decision as float rounding.  Float outputs (aim,
+# steer, the shaped force) stay tolerant.
+_AI_EXACT = (
+    (0x10AC680C, 0x10AC6810),   # g_brAiScanN
+    (0x10B1C888, 0x10B1C88C),   # g_brAiScanBestPt
+    (0x10B1CA18, 0x10B1CA20),   # g_brAiScanFlag18, g_brAiScanDepth
+    (0x10B1CBE8, 0x10B1CBEC),   # g_brAiBiasPos
+    (0x10B1CF04, 0x10B1CF10),   # g_brAiBiasNeg, g_brAiScanF08, g_brAiScanF0C
+    (0x00300524, 0x00300528),   # car f524 gate
+    (0x00300EA0, 0x00300EB0),   # car cHoldFwd/cHoldRev/cRevRun/cFwdRun
+    (0x00300F78, 0x00300F7C),   # car fF78
+    (0x10E20000, 0x10E20004),   # pCtl->flags
+)
+
 PROFILES = {
+    0x1005D770: Profile(_ctlai_bss, seeds=160, arg=None, buf=_ctlai_buf,
+                        buf_sizes={0: 0x2b68}, exact_regions=_AI_EXACT),
     0x1000CBA0: Profile(_odl_bss, zero_stack=False, seeds=16, arg=_odl_arg,
                         exact_regions=_ODL_EXACT),
     0x1000EAF0: Profile(_scenedl_bss, zero_stack=False, seeds=32),

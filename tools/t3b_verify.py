@@ -71,6 +71,11 @@ IMG_STEPS = 2000000        # budget for a run that now enters real callees
 # real divergence, never x87-rounding noise (see _classify_diff).  Set for the
 # duration of a profiled run by verify_img.
 _EXACT_REGIONS = ()
+# {argidx: bytes}: enlarge a pointer-argument buffer past the default BUF_SIZE so
+# a large object (e.g. a ~0x2a00 car struct passed as `this`) fits and its
+# pointer fields can be seeded (via the buf hook) to point at further scratch
+# sub-objects.  Set for the duration of a profiled run by verify_img.
+_BUF_SIZES = {}
 _ARG_HOOK = None
 # Set by a profile's `buf` hook: fills a pointer-argument buffer's CONTENT with
 # a well-formed sequence (e.g. a valid command packet).  None = default fill.
@@ -403,22 +408,27 @@ def _setup_img(seed, sig):
     # source order above the return address, exactly as cdecl does.
     freeregs = ['ecx', 'edx'] if conv == 'fastcall' else []
     stackpos = 0
+    bufaddr = HEAP_BASE
     for argidx, kind in enumerate(kinds):
         pinned = _ARG_HOOK(seed, argidx) if _ARG_HOOK is not None else None
         if kind == 'ptr':
-            buf = HEAP_BASE + bufidx * BUF_STRIDE
+            bsize = _BUF_SIZES.get(argidx, BUF_SIZE)
+            buf = bufaddr
             b = buf
-            while b + 4 <= buf + BUF_SIZE:
+            while b + 4 <= buf + bsize:
                 mem.put_dword(b, _sfloat_bits(rnd))
                 b += 4
             if _BUF_HOOK is not None:
-                for off in range(BUF_SIZE):
+                for off in range(bsize):
                     byte = _BUF_HOOK(seed, argidx, off)
                     if byte is not None:
                         mem.put(buf + off, byte)
             bufidx += 1
-            regions.append((buf, buf + BUF_SIZE))
-            buffers.append((buf, buf + BUF_SIZE))
+            # advance past this buffer (aligned) so the next arg buffer never
+            # overlaps an enlarged one
+            bufaddr += ((max(BUF_STRIDE, bsize) + 0xF) & ~0xF)
+            regions.append((buf, buf + bsize))
+            buffers.append((buf, buf + bsize))
             val = buf
         elif kind == 'float':
             val = _sfloat_bits(rnd)
@@ -523,20 +533,21 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     # A profiled function needs a valid input world, not random bytes: seed BSS
     # from the profile (null-safe pointers + varied gating flags) and zero the
     # stack window.  Swap the module seeding hooks for the run, then restore.
-    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK, _EXACT_REGIONS
+    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK, _EXACT_REGIONS, _BUF_SIZES
     old_bss, old_sf, old_arg, old_buf = ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK
-    old_exact = _EXACT_REGIONS
+    old_exact, old_bufsz = _EXACT_REGIONS, _BUF_SIZES
     ENV.bss_byte = prof.bss
     _ARG_HOOK = prof.arg
     _BUF_HOOK = prof.buf
     _EXACT_REGIONS = getattr(prof, 'exact_regions', ()) or ()
+    _BUF_SIZES = getattr(prof, 'buf_sizes', None) or {}
     if prof.zero_stack:
         _sfloat_bits = lambda rnd: 0
     try:
         return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig)
     finally:
         ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK = old_bss, old_sf, old_arg, old_buf
-        _EXACT_REGIONS = old_exact
+        _EXACT_REGIONS, _BUF_SIZES = old_exact, old_bufsz
 
 
 def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):

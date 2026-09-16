@@ -482,8 +482,24 @@ tail:
  * ahead nudges the line offset so the car moves to the far side of it, and
  * finally a force at car+0x1E8 is shaped along the path frame and scaled by
  * difficulty or weather before the shared per-car chain and respawn run. */
-/* @t4-pass 0x1005D770 1 2026-09-07 probes 135 bytes 3844 insns 1080 regions 30 rows 34 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005D770 2 2026-09-07 probes 135 bytes 3844 insns 1080 regions 30 rows 34 census yes  (tools/crank.py) */
+/* Behaviourally CERTIFIED T3 (A5 oracle): EQUIVALENT across 160 valid-state
+ * seeds that populate the car object graph -- frame rows, pos/vel/aim, a
+ * controller-enabled profile, a control record, and a path node whose knot arcs
+ * decrease and whose left/right form a real corridor.  Negative controls
+ * (budget const, aim lerp, lateral->steer, correction-law entry, the bias
+ * globals, the heading thresholds, the corridor-width limit) all surface as
+ * DIFF, so the profile has teeth.  Residue is register colouring (reggap ~24);
+ * two hand-probe zero-movement passes below at the current numbers. */
+/* @t4-pass 0x1005D770 1 2026-09-16 probes 10 bytes 3863 insns 1084 regions 25 rows 26 census no */
+/* @t4-pass 0x1005D770 2 2026-09-16 probes 10 bytes 3863 insns 1084 regions 25 rows 26 census yes */
+/* @t3 0x1005D770 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3863/3858 insns 1084/1080 rows 11+15 regions 25 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Behaviourally EQUIVALENT across 160 valid-state seeds (the A5 oracle runs the
+ * populated car object graph); negative controls across the steering/throttle
+ * rules all DIFF, so the profile has teeth.  Residue is register colouring
+ * (reggap ~24), two zero-movement probe passes above.  Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005D770 glide BrCtlAiBody */
 void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 {

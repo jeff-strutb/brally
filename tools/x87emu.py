@@ -35,6 +35,23 @@ def u32(x):
     return x & 0xFFFFFFFF
 
 
+def _x87_to_i32(v):
+    """x87 st(0) -> 32-bit int, truncating toward zero.  A NaN, an infinity, or a
+    value outside int32 range yields the x86 'integer indefinite' 0x80000000 --
+    what the hardware stores when the (masked) invalid-operation exception fires
+    -- instead of raising, so a run over zeroed/garbage FP state stays modelled
+    identically on both sides rather than escaping the oracle."""
+    try:
+        if v != v or v in (float('inf'), float('-inf')):
+            return 0x80000000
+        t = math.trunc(v)
+        if t < -0x80000000 or t > 0x7FFFFFFF:
+            return 0x80000000
+        return t & 0xFFFFFFFF
+    except (ValueError, OverflowError):
+        return 0x80000000
+
+
 def s32(x):
     x &= 0xFFFFFFFF
     return x - 0x100000000 if x >= 0x80000000 else x
@@ -426,7 +443,7 @@ class Machine:
                     # return address and the callee's ret pops it, net esp change
                     # zero -- which is what leaving esp alone here models.
                     v = self.st.pop(0)
-                    self.R['eax'] = int(math.trunc(v)) & 0xFFFFFFFF
+                    self.R['eax'] = _x87_to_i32(v)
                     pc += 1; continue
                 if target in DIRECT_BUILTINS:
                     DIRECT_BUILTINS[target](self)
@@ -686,6 +703,29 @@ class Machine:
             self.st[0] = abs(self.st[0])
         elif mn == 'fsqrt':
             self.st[0] = math.sqrt(self.st[0]) if self.st[0] >= 0.0 else float('nan')
+        elif mn in ('fsin', 'fcos'):
+            v = self.st[0]
+            if v != v or v in (float('inf'), float('-inf')):
+                self.st[0] = float('nan')
+            else:
+                self.st[0] = math.sin(v) if mn == 'fsin' else math.cos(v)
+        elif mn == 'fsincos':                     # st0 -> sin; push cos: st0=cos, st1=sin
+            v = self.st[0]
+            bad = (v != v or v in (float('inf'), float('-inf')))
+            self.st[0] = float('nan') if bad else math.sin(v)
+            self.st.insert(0, float('nan') if bad else math.cos(v))
+        elif mn == 'fptan':                       # st0 -> tan; push 1.0
+            v = self.st[0]
+            self.st[0] = float('nan') if (v != v or v in (float('inf'), float('-inf'))) else math.tan(v)
+            self.st.insert(0, 1.0)
+        elif mn == 'fpatan':                      # st1 = atan2(st1, st0); pop
+            a = self.st[0]; b = self.st[1] if len(self.st) > 1 else 0.0
+            try:
+                r = math.atan2(b, a)
+            except (ValueError, OverflowError):
+                r = float('nan')
+            self.st.pop(0)
+            self.st[0] = r
         elif mn == 'fxch':
             i = int(re.search(r'\d', o[0]).group()) if o else 1
             self.st[0], self.st[i] = self.st[i], self.st[0]
