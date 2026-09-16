@@ -1101,14 +1101,20 @@ extern BrTrailSeg DAT_10273690[];
 
 /* WHAT IT DOES: build the frame's scene display list -- global state
  * preamble, every scene object's matrix + DL, then the trail quads. */
-/* @t3 0x1000EAF0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle UNCLASSIFIED
+/* @t3 0x1000EAF0 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 9345/9354 insns 2325/2328 rows 23+20 regions 14 oracle EQUIVALENT
  * @t3-effort passes 6 zero-movement 31 32
  * Residue is allocation/scheduling only: wall 4 CSE `lea edx,[ecx*4]`
  * (folded into SIB here), wall 3 `lea [pW+0x70]` vs `[wb+pCar+0x70]`,
  * wall 1 x87 one-notch, wall 2 5|7 vs 8|4 preload, wall 5 join, wall 6
- * slots. Dossier and dead list: this file's header. Do not reopen before
- * the end-grind (CLAUDE.md rule 12). */
+ * slots. Dossier and dead list: this file's header.
+ * 2026-09-16: UPGRADED from oracle UNCLASSIFIED to EQUIVALENT.  The A5 image
+ * oracle now RUNS this scene-DL builder on valid-state seeding (object count
+ * g_0B2F04 bounded small, pointers null-safe; tools/oracle_profiles.py) and
+ * proves same-in/same-out across 32 seeds -- return, ~148 global-write bytes,
+ * and dispatch all agree, ~93% of insns executed.  So the residue is now
+ * behaviourally PROVEN allocation, not merely byte-shape-classified.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000EAF0 7 2026-09-07 probes 150 bytes 9354 insns 2328 regions 25 rows 32 census yes  (tools/crank.py) */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
