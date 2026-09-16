@@ -143,6 +143,39 @@ def _undecorate(sname):
     return name
 
 
+def _demangle_method(mangled):
+    """'?Apply@Rip0C4E0@@QAEHPBMH@Z' -> 'Rip0C4E0::Apply', or None.
+
+    A deliberately minimal MSVC demangler: only the plain member-function form
+    `?method@scope...@@`.  Operators/ctors/dtors (`??...`), templates and
+    compressed back-references (which introduce digits/`?` into the scope
+    tokens) are left to fail rather than be mis-decoded."""
+    if not mangled.startswith('?') or mangled.startswith('??'):
+        return None
+    end = mangled.find('@@', 1)
+    if end < 0:
+        return None
+    parts = mangled[1:end].split('@')
+    if len(parts) < 2 or not all(p.isidentifier() for p in parts):
+        return None                       # need method + >=1 scope, all plain
+    method, scopes = parts[0], parts[1:]
+    return '::'.join(reversed(scopes)) + '::' + method
+
+
+def func_symbol_matches(sym_name, func_name):
+    """Does the COFF symbol `sym_name` name the function `func_name`?
+
+    Accepts the raw name, the stdcall/fastcall undecorated form, and the
+    demangled C++ Class::Method form -- so a method obj that a caller names by
+    its source spelling (Rip0C4E0::Apply) is located even though its symbol is
+    mangled (?Apply@Rip0C4E0@@...).  Without the demangled arm, matching a
+    method by source name silently found NO function symbol, and the resolver
+    returned None as if a relocation were unresolvable."""
+    return (sym_name == func_name
+            or _undecorate(sym_name) == func_name
+            or _demangle_method(sym_name) == func_name)
+
+
 _OVERRIDES = None
 
 
@@ -161,7 +194,8 @@ def _load_overrides():
     return _OVERRIDES
 
 
-def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None):
+def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None,
+                  reason=None):
     """Resolve relocations for one function and return its bytes, or None.
 
     `extra` is an optional {(va, off): value} map merged over the on-disk
@@ -170,25 +204,37 @@ def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None):
     frame, which the oracle does not compare, so any deterministic value is
     sound there -- but the shared byte-patch pipeline must still refuse `$`
     labels, so this stays a per-call argument, never the CSV or a global rule.
+
+    `reason` is an optional list a caller passes to learn WHY None came back:
+    the function symbol not being found, a substituted-bytes size overrun, an
+    unresolvable symbol, or an unhandled relocation type are all None but are
+    NOT the same failure -- reporting them all as 'symbol with no known address'
+    misattributes the first three.  A message is appended when None is returned.
     """
+    def _why(msg):
+        if reason is not None:
+            reason.append(msg)
     overrides = dict(_load_overrides())
     if extra:
         overrides.update(extra)
     try:
         d, secs, syms, relocs = parse(obj_path)
-    except Exception:
+    except Exception as e:
+        _why('object parse failed: %s' % type(e).__name__)
         return None
     for sy in syms:
         if sy['sec'] <= 0 or sy['sec'] not in secs:
             continue
         if not secs[sy['sec']]['name'].startswith('.text'):
             continue
-        if _undecorate(sy['name']) != func_name:
+        if not func_symbol_matches(sy['name'], func_name):
             continue
         sec = secs[sy['sec']]
         start = sec['praw'] + sy['val']
         code = bytearray(d[start:start + size])
         if len(code) != size:
+            _why('substituted bytes exceed the object (%d of %d)'
+                 % (len(code), size))
             return None
         for rva, si, rt in relocs[sy['sec']]:
             off = rva - sy['val']
@@ -208,6 +254,8 @@ def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None):
             else:
                 target = resolve(tsym['name'], fnmap, glmap) if tsym else None
             if target is None:
+                _why('a relocation names a symbol with no known address: %s'
+                     % (tsym['name'] if tsym else '?'))
                 return None
             addend = struct.unpack_from('<i', code, off)[0]
             if rt == REL_DIR32:
@@ -215,10 +263,14 @@ def fill_function(obj_path, func_name, va, fnmap, glmap, size, extra=None):
             elif rt == REL_REL32:
                 val = target + addend - (va + off + 4)
             else:
+                _why('unhandled relocation type %d at +%#x (%s)'
+                     % (rt, off, tsym['name'] if tsym else '?'))
                 return None
             struct.pack_into('<i', code, off, val & 0xFFFFFFFF
                              if val >= 0 else val)
         return bytes(code)
+    _why('function symbol %r not found in %s'
+         % (func_name, os.path.basename(obj_path)))
     return None
 
 
