@@ -577,11 +577,24 @@ class Machine:
         elif mn == 'imul':
             if len(o) == 3:
                 a = self._val(o[1]); b = self._val(o[2]); dst = o[0]
-            else:
+                sa = a - 0x100000000 if a & 0x80000000 else a
+                sb = b - 0x100000000 if b & 0x80000000 else b
+                self.wr_reg(dst, (sa * sb) & 0xFFFFFFFF)
+            elif len(o) == 2:
                 a = self.rd_reg(o[0]); b = self._val(o[1]); dst = o[0]
-            sa = a - 0x100000000 if a & 0x80000000 else a
-            sb = b - 0x100000000 if b & 0x80000000 else b
-            self.wr_reg(dst, (sa * sb) & 0xFFFFFFFF)
+                sa = a - 0x100000000 if a & 0x80000000 else a
+                sb = b - 0x100000000 if b & 0x80000000 else b
+                self.wr_reg(dst, (sa * sb) & 0xFFFFFFFF)
+            else:                                   # one-operand: edx:eax = eax * r/m (signed)
+                a = self.R['eax']; b = self._val(o[0])
+                sa = a - 0x100000000 if a & 0x80000000 else a
+                sb = b - 0x100000000 if b & 0x80000000 else b
+                p = (sa * sb) & 0xFFFFFFFFFFFFFFFF
+                self.R['eax'] = p & 0xFFFFFFFF; self.R['edx'] = (p >> 32) & 0xFFFFFFFF
+        elif mn == 'mul':                           # one-operand: edx:eax = eax * r/m (unsigned)
+            b = self._val(o[0])
+            p = (self.R['eax'] * b) & 0xFFFFFFFFFFFFFFFF
+            self.R['eax'] = p & 0xFFFFFFFF; self.R['edx'] = (p >> 32) & 0xFFFFFFFF
         elif mn == 'not':
             bs = o[0] in REG8
             self._wr(o[0], (~self._rd(o[0], bs)) & (0xFF if bs else 0xFFFFFFFF), bs)
