@@ -8,9 +8,21 @@
  * 0x60 (lobby return, kick, phase changes, leave, finish -- each formatting
  * a chat line from the peer's name), a timing pair, and the host's session
  * header; an unknown command is reported on stderr and ends the packet. */
+/* @t3 0x100038F0 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 4240/3799 insns 1341/1047 rows 30+324 regions 22 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation in the command loop (the original re-reads
+ * `t`/nMode/the WaitForSingleObject import from memory in every case; ours
+ * hoists `t` into ebp and the import into esi at the loop head) plus the switch
+ * jump tables MSVC lays inside our .text after the ret (cpp_score/divergence
+ * count them; the original's sit past its 3799 extent). The A5 oracle runs the
+ * dispatcher on 48 valid-state seeds and returns EQUIVALENT -- return + every
+ * in-image global write + side effects agree -- so nothing is missing or wrong.
+ * Byte-exactness is walled on that allocation, not on logic; see the @t4-pass
+ * ledger below. Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100038F0 glide FUN_100038f0
  * @cpp_kind free
- * @cpp_symbol ?FUN_100038f0@@YAXPAX0HH@Z
+ * @cpp_symbol _FUN_100038f0
  *
  * 3799 B cdecl EH-frame packet dispatcher. The reader is a 0x214-byte
  * packet object (bit-stream header + 0x200 payload) constructed on the
@@ -51,6 +63,9 @@
  *   - slot order of the thirteen scalar locals is NOT name-keyed at /O2
  *     (a full rename gives identical bytes) and not declaration-keyed
  *     (declaring them in the original's frame order changes nothing).
+ *
+ * @t4-pass 0x100038F0 1 2026-09-13 probes 13 bytes 4240 insns 1341 regions 22 rows 354 census no  (first-transcription byte grind: t as a union / byte-array-behind-int-cast / volatile t / volatile nMode; /Oi off (0x2f..0x337 goes byte-exact but the original's strcpy/strcat ARE inline) then #pragma intrinsic restore; full local rename; declaration in the original's frame order; frame 0x790-vs-0x794 temp. All allocation; numbers unmoved.)
+ * @t4-pass 0x100038F0 2 2026-09-16 probes 20 bytes 4240 insns 1341 regions 22 rows 354 census yes  (five more source levers -- volatile nMode (2654, worse), #pragma intrinsic, register loop vars, decl reorder, tb scalar -- none beats 2647; the A5 oracle runs the packet dispatcher on 48 valid-state seeds and returns EQUIVALENT: return + every in-image global write + side effects agree, so the residue is case-0 register allocation, not missing/wrong code. Numbers unmoved.)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -64,17 +79,20 @@ struct BrNetHdr {
     int f08;
 };
 
-class BrNetPacket {
+/* VA-encoded class name (ctor_dtor) + m_<VA> methods, so the T3 oracle's
+ * reloc resolver maps every thiscall to its real address.  Byte-neutral: the
+ * calls are relocations, only the symbol strings differ. */
+class BrNetPacket_1006CDA0_10008D60 {
 public:
-    BrNetPacket(void *pBuf, int nBytes);    /* 0x1006CDA0 */
-    ~BrNetPacket();                         /* 0x10008D60 (nop) */
-    void          Reset();                  /* 0x1006CDD0 */
-    unsigned char ReadU8();                 /* 0x1006CE00 */
-    unsigned short ReadU16();               /* 0x1006CE20 */
-    int           ReadU24();                /* 0x1006CE50 */
-    int           ReadS32();                /* 0x1006CE80 */
-    int           AtEnd();                  /* 0x1006CF80 */
-    BrNetHdr     *GetHdr();                 /* 0x1006D190 */
+    BrNetPacket_1006CDA0_10008D60(void *pBuf, int nBytes);  /* ctor 0x1006CDA0 */
+    ~BrNetPacket_1006CDA0_10008D60();                       /* dtor 0x10008D60 (nop) */
+    void           m_1006CDD0();            /* Reset */
+    unsigned char  m_1006CE00();            /* ReadU8 */
+    unsigned short m_1006CE20();            /* ReadU16 */
+    int            m_1006CE50();            /* ReadU24 */
+    int            m_1006CE80();            /* ReadS32 */
+    int            m_1006CF80();            /* AtEnd */
+    BrNetHdr      *m_1006D190();            /* GetHdr */
 
     int            readBit;                 /* +0x00 */
     int            readByte;                /* +0x04 */
@@ -83,6 +101,7 @@ public:
     unsigned char *pBuf;                    /* +0x10 */
     unsigned char  payload[0x200];          /* +0x14 */
 };
+typedef BrNetPacket_1006CDA0_10008D60 BrNetPacket;
 
 typedef char chk_pkt[sizeof(BrNetPacket) == 0x214 ? 1 : -1];
 
@@ -191,8 +210,8 @@ extern char       DAT_1007b304[];
 
 int   FUN_100037d0(void);
 void  FUN_10004ad0(void *, unsigned, unsigned, char, char, char, int, char *, unsigned, int);
-void  BrCarStateDecode(BrCarState *, BrNetPacket *);            /* 0x10007230 */
-void  BrCarStateDecodeDelta(BrCarState *, BrCarState *, BrNetPacket *); /* 0x10007750 */
+void  sub_10007230(BrCarState *, BrNetPacket *);            /* 0x10007230 */
+void  sub_10007750(BrCarState *, BrCarState *, BrNetPacket *); /* 0x10007750 */
 void  BrCarStateLerp(BrCarState *, float, BrCarState *, BrCarState *);  /* 0x10007D50 */
 int   FUN_10006060(int);
 char *FUN_100061e0(int);
@@ -210,7 +229,7 @@ void  FUN_10004900(void *, unsigned, char, char, char, char *, int);
 #define SLOTF(sym, T) (*(T *)((char *)&sym + slot * 0x978))
 #define SLOTA(sym, T) ((T *)((char *)sym + slot * 0x978))
 
-void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
+extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 {
     BrNetPacket pkt(pBuf, nBytes);
     int        bGo;
@@ -244,34 +263,34 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
     bGo = DAT_1021c900;
     ReleaseMutex(DAT_1021ce4c);
     if (bGo) {
-        pkt.Reset();
-        (*(int *)tb) = pkt.ReadU24();
+        pkt.m_1006CDD0();
+        (*(int *)tb) = pkt.m_1006CE50();
         WaitForSingleObject(DAT_10226a64, 0xffffffff);
         DAT_1021ce40 = FUN_100037d0();
         ReleaseMutex(DAT_10226a64);
-        while (!pkt.AtEnd()) {
-            cmd = pkt.ReadU8();
+        while (!pkt.m_1006CF80()) {
+            cmd = pkt.m_1006CE00();
             slot = cmd & 0xf;
             switch (cmd & 0xe0) {
             case 0x00:
                 if (nMode != 1)
                     goto done;
-                b0 = pkt.ReadU8();
-                b1 = pkt.ReadU8();
-                c2 = pkt.ReadU8();
-                c3 = pkt.ReadU8();
-                c4 = pkt.ReadU8();
-                id = pkt.ReadS32();
+                b0 = pkt.m_1006CE00();
+                b1 = pkt.m_1006CE00();
+                c2 = pkt.m_1006CE00();
+                c3 = pkt.m_1006CE00();
+                c4 = pkt.m_1006CE00();
+                id = pkt.m_1006CE80();
                 nName = 0;
                 kind = b0 & 0x3f;
                 if (kind <= 2) {
                     for (i = 0; i < 0x18; i++)
-                        szName[i] = pkt.ReadU8();
+                        szName[i] = pkt.m_1006CE00();
                     nName = i;
                     szName[0x18] = 0;
                 }
                 if (kind == 4)
-                    DAT_10226a2c = pkt.ReadU24();
+                    DAT_10226a2c = pkt.m_1006CE50();
                 WaitForSingleObject(SLOTF(DAT_1021ce58, void *), 0xffffffff);
                 if (slot != (unsigned)DAT_1007b264) {
                     if (SLOTF(DAT_1021ce84, int) != (int)b0 && kind == 2) {
@@ -356,7 +375,7 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
                 WaitForSingleObject(DAT_10226a58, 0xffffffff);
                 for (p = DAT_1021ce00; (int)p < (int)&DAT_1021ce00[16]; p += 2) {
-                    nib = pkt.ReadU8();
+                    nib = pkt.m_1006CE00();
                     p[1] = nib >> 4;
                     p[0] = nib & 0xf;
                 }
@@ -383,12 +402,12 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     SLOTF(DAT_1021d3b0, int) += 1;
                     SLOTA(DAT_1021ce64, unsigned)[best] = (*(int *)tb);
                     SLOTA(DAT_1021ce90, int)[SLOTF(DAT_1021d3b4, int)] = 0x40;
-                    BrCarStateDecode(&SLOTA(DAT_1021ceb0, BrCarState)[SLOTF(DAT_1021d3b4, int)], &pkt);
+                    sub_10007230(&SLOTA(DAT_1021ceb0, BrCarState)[SLOTF(DAT_1021d3b4, int)], &pkt);
                     d = (DAT_1021ce40 - (*(int *)tb)) * 2;
                     SLOTF(DAT_1021d7cc, int) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(SLOTF(DAT_1021ce58, void *));
                 } else {
-                    BrCarStateDecode(&scratch, &pkt);
+                    sub_10007230(&scratch, &pkt);
                     ReleaseMutex(SLOTF(DAT_1021ce58, void *));
                 }
                 break;
@@ -410,13 +429,13 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                             }
                         }
                     }
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     strcat(szName, (char *)&pHdr->f04);
                     FUN_100038a0(szName);
                     goto done;
 
                 case 0x60000005:
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     WaitForSingleObject(DAT_10226a54, 0xffffffff);
                     switch (pHdr->f04) {
                     case 4:
@@ -440,7 +459,7 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
 
                 case 0x60000004:
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     if (pHdr->f04 == FUN_10006060(DAT_1007b264)) {
                         FUN_100099d0();
                         DAT_10ac5bec = 1;
@@ -460,7 +479,7 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
 
                 case 0x60000006:
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     if (pHdr->f04 == nMode) {
                         if (DAT_100b2f04 > 0) {
                             pPeer = DAT_10af134c;
@@ -485,7 +504,7 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
 
                 case 0x60000007:
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     if (pHdr->f04 == nMode) {
                         if (DAT_100b2f04 > 0) {
                             pPeer = DAT_10af134c;
@@ -503,7 +522,7 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
 
                 case 0x60000008:
-                    pHdr = pkt.GetHdr();
+                    pHdr = pkt.m_1006D190();
                     if (nMode == 1) {
                         if (DAT_100b2f04 > 0) {
                             pPeer = DAT_10af134c;
@@ -569,12 +588,12 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     SLOTA(DAT_1021ce90, int)[SLOTF(DAT_1021d3b4, int)] = 0x80;
                     BrCarStateLerp(&SLOTA(DAT_1021ceb0, BrCarState)[SLOTF(DAT_1021d3b4, int)], frac,
                                    &SLOTA(DAT_1021ceb0, BrCarState)[iPrev], &SLOTA(DAT_1021ceb0, BrCarState)[iNew]);
-                    BrCarStateDecodeDelta(&SLOTA(DAT_1021ceb0, BrCarState)[SLOTF(DAT_1021d3b4, int)], &SLOTA(DAT_1021ceb0, BrCarState)[iNew], &pkt);
+                    sub_10007750(&SLOTA(DAT_1021ceb0, BrCarState)[SLOTF(DAT_1021d3b4, int)], &SLOTA(DAT_1021ceb0, BrCarState)[iNew], &pkt);
                     d = (DAT_1021ce40 - (*(int *)tb)) * 2;
                     SLOTF(DAT_1021d7cc, int) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(SLOTF(DAT_1021ce58, void *));
                 } else {
-                    BrCarStateDecodeDelta(&scratch2, &scratch2, &pkt);
+                    sub_10007750(&scratch2, &scratch2, &pkt);
                     ReleaseMutex(SLOTF(DAT_1021ce58, void *));
                 }
                 break;
@@ -587,8 +606,8 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 if (nMode != 1)
                     goto done;
                 a = FUN_1006e280();
-                b = pkt.ReadU24();
-                c = pkt.ReadU16();
+                b = pkt.m_1006CE50();
+                c = pkt.m_1006CE20();
                 WaitForSingleObject(SLOTF(DAT_1021ce58, void *), 0xffffffff);
                 SLOTF(DAT_1021d7c8, int) = b;
                 SLOTF(DAT_1021d7cc, int) = c;
@@ -605,13 +624,13 @@ void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     goto done;
                 DAT_1007b264 = slot;
                 FUN_10004d30();
-                DAT_1021cdf8 = pkt.ReadU8();
-                DAT_100b3014 = pkt.ReadU8();
-                DAT_10226e80 = pkt.ReadU8();
-                DAT_1021ce50 = pkt.ReadU16();
-                DAT_1021cdb0 = pkt.ReadU8();
-                DAT_10226a40 = pkt.ReadU8();
-                DAT_10226a3c = pkt.ReadU8();
+                DAT_1021cdf8 = pkt.m_1006CE00();
+                DAT_100b3014 = pkt.m_1006CE00();
+                DAT_10226e80 = pkt.m_1006CE00();
+                DAT_1021ce50 = pkt.m_1006CE20();
+                DAT_1021cdb0 = pkt.m_1006CE00();
+                DAT_10226a40 = pkt.m_1006CE00();
+                DAT_10226a3c = pkt.m_1006CE00();
                 FUN_10004900(pNet, slot, DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6, &DAT_10b71648, 0x10);
                 FUN_10004dc0(slot, 2);
                 break;
