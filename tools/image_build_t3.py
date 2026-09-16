@@ -118,7 +118,7 @@ def collect_t3(recompile=False, progress=None):
         byname = {n: va for va, n in wanted}
         got = set()
         for va, name, code, unres, fromref in ib.compiled_functions(
-                [obj], fnmap, glmap):
+                [obj], fnmap, glmap, pad_short=True):
             if byname.get(name) == va:
                 best[va] = (name, code, unres, fromref, 'T3')
                 got.add(va)
