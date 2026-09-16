@@ -26,12 +26,18 @@ def _b(val, a, base):
 
 
 class Profile(object):
-    __slots__ = ('bss', 'zero_stack', 'seeds', 'arg', 'buf')
+    __slots__ = ('bss', 'zero_stack', 'seeds', 'arg', 'buf', 'exact_regions')
 
-    def __init__(self, bss, zero_stack=True, seeds=64, arg=None, buf=None):
+    def __init__(self, bss, zero_stack=True, seeds=64, arg=None, buf=None,
+                 exact_regions=None):
         self.bss = bss                 # fn(seed, addr) -> byte
         self.zero_stack = zero_stack    # stack window / arg buffers seeded to 0
         self.seeds = seeds
+        # [(lo, hi), ...] ranges of INTEGER output (e.g. a display-list command
+        # buffer) where a differing dword is a real divergence, never x87
+        # rounding noise -- the oracle would otherwise mask a 1-integer command
+        # difference as a 1-ULP float difference (t3b_verify._classify_diff).
+        self.exact_regions = tuple(exact_regions or ())
         # arg(seed, idx) -> value or None: pin a scalar argument to a valid,
         # bounded value (None = default random).  An orchestrator that takes a
         # buffer+length needs the length bounded, or a random one walks a
@@ -229,7 +235,144 @@ def _scenedl_bss(seed, a):
     return 0                                      # null-safe pointers / cleared flags
 
 
+# ---- BrObjDlBuild 0x1000CBA0 (one scene object -> display-list commands) ----
+# Two paths off the top guard: the CHEAP path (3 commands + counter bumps) when
+# cls==0 or a gate is clear, and the EXPANDED path (walk the object's command
+# list, transform every vertex through the object matrix, clip triangles) when
+# all gates are set. Both need the pointer-globals (DL write cursor, the pDL/pVtx
+# expansion arenas, the object table) pointing at scratch, and the object record
+# + command stream + scene block seeded. Vertex/matrix floats are seeded small so
+# the x87 transform math does not overflow. The command stream is a short, well
+# formed G_VTX(0x04) + G_TRI1(0xbf) + G_ENDDL(0xb8) walk. `seed & 1` picks the
+# cheap vs expanded path via the g_B71538 gate; swclip (g_10396EB0) is on so the
+# software clipper (FUN_1000dc00) runs.
+#
+# ‼ PARTIAL TEETH -- NOT A FULL T3 CERT.  This profile verifies the INTEGER
+# display-list output exactly (via exact_regions: DL cursor + batch arenas +
+# counters); a wrong command word, a wrong counter, or a gross transform error is
+# caught.  It does NOT reliably catch a subtle vertex-transform coefficient swap
+# or a clip-flag/corner-index bug: those effects flow through the sprite-matrix
+# pipeline and the FUN_1000dc00 clipper subsystem, whose float output cannot be
+# driven into bug-sensitive clip configurations from the input seeds (the
+# transform is opaque, so the transformed coords cannot be placed astride the
+# 0/1024 clip thresholds on demand).  Do NOT read EQUIVALENT here as a T3 cert
+# for the geometry/clip logic -- that half wants the T4 byte-grind (see the
+# br_objdl.c header) or a much deeper clipper-output profile.
+_ODL_CUR = 0x10E00000            # DL write cursor (g_6E7710)
+_ODL_PDL = 0x10E40000            # expanded-batch arena (g_35F7D8 / base g_2E16B0)
+_ODL_PVTX = 0x10E60000           # expanded-vertex arena (g_35FAEC / base g_35FBA4)
+_ODL_OBJTAB = 0x10E10000         # object table base (g_6EED38), 0x54 stride
+_ODL_CMD = 0x10E50000            # the object's stored command list (rec+0x44)
+_ODL_SCENE = 0x10E80000          # pScene arg
+_ODL_RECTS = 0x10EA0000          # pRects arg
+_ODL_VSRC = 0x10E30000           # G_VTX source vertex block (cmd word 2)
+_ODL_TEX = 0x10EC0000            # texture record (pObj+0x294 -> here)
+
+# The object matrix and the two source vertices are made non-degenerate AND
+# varied per seed: 16 different geometric configurations, each with distinct,
+# well-separated coefficients and mixed-sign vertices that straddle the 0 / 1024
+# clip thresholds.  A degenerate or fixed world lets a wrong matrix element or a
+# clip-flag bug collapse to sub-tolerance rounding on every seed; varying the
+# geometry gives each subtle transform/clip bug a configuration that exposes it.
+def _odl_mtx(seed, k):
+    sign = -1.0 if ((seed * 3 + k) & 1) else 1.0
+    mant = 1.0 + ((seed * 7 + k * 13) % 17)
+    scale = 10.0 ** (((seed + k) % 4) - 1)          # 0.1 .. 100
+    return sign * mant * scale
+
+
+def _odl_vtx(seed, vi, comp):
+    s = seed * 131 + vi * 41 + comp * 7
+    sign = -1.0 if ((s >> 2) & 1) else 1.0
+    return sign * float((s % 173) + 1) * (10.0 ** ((s >> 4) % 3))   # 1 .. ~1.7e4
+
+
+def _f32b(x, a, base):
+    import struct
+    return struct.unpack('<4B', struct.pack('<f', x))[a - base]
+
+
+def _f32at(x, a):
+    import struct
+    return struct.unpack('<4B', struct.pack('<f', x))[a & 3]
+
+
+def _odl_bss(seed, a):
+    base = a & ~3
+    # pointer-valued globals -> scratch arenas
+    ptrs = {0x106E7710: _ODL_CUR, 0x1035F7D8: _ODL_PDL, 0x1035FAEC: _ODL_PVTX,
+            0x102E16B0: _ODL_PDL, 0x1035FBA4: _ODL_PVTX, 0x106EED38: _ODL_OBJTAB}
+    if base in ptrs:
+        return _b(ptrs[base], a, base)
+    if base == 0x10396EB0:                        # software-clip enable -> exercise CLIPTRI
+        return _b(1, a, 0x10396EB0)
+    if base == 0x10B71538:                        # gate: nonzero on odd seeds -> expanded
+        return _b(1 if (seed & 1) else 0, a, base)
+    # object record (idx 0) at the table base: object matrix (0..0x40),
+    # command-list ptr (0x44), counters (0x4e/0x50/0x52)
+    if _ODL_OBJTAB <= base < _ODL_OBJTAB + 0x40:  # 4x4 object matrix (memcpy'd to OUTM)
+        return _f32at(_odl_mtx(seed, (base - _ODL_OBJTAB) >> 2), a)
+    if base == _ODL_OBJTAB + 0x44:                # pCmd = *(rec+0x44)
+        return _b(_ODL_CMD, a, _ODL_OBJTAB + 0x44)
+    if base == _ODL_OBJTAB + 0x4c:                # 0x4d flag byte (bit1=0) + 0x4e=3
+        return _b(0x00030000, a, _ODL_OBJTAB + 0x4c)
+    if base == _ODL_OBJTAB + 0x50:                # 0x50=2, 0x52=4 (u16 counters)
+        return _b(0x00040002, a, _ODL_OBJTAB + 0x50)
+    # the object's stored command list, walked on the expanded path:
+    #   G_VTX(0x04) n=2 from _ODL_VSRC, then G_TRI1(0xbf) corners 0/1/0,
+    #   then G_ENDDL(0xb8).  Exercises the vertex transform and the clip arm.
+    #   G_VTX(0x04) n=3 from _ODL_VSRC, then G_TRI1(0xbf) with corners 0/1/2
+    #   (three distinct vertices, so a clip-flag bug flips the drop decision),
+    #   then G_ENDDL(0xb8).
+    cmd = {_ODL_CMD + 0x00: 0x04000C00, _ODL_CMD + 0x04: _ODL_VSRC,
+           _ODL_CMD + 0x08: 0xBF000000, _ODL_CMD + 0x0C: 0x00020100,
+           _ODL_CMD + 0x10: 0xB8000000}
+    if base in cmd:
+        return _b(cmd[base], a, base)
+    # G_VTX source: three 0x20-byte vertices, x/y/z at word 0/1/2, seed-varied
+    if _ODL_VSRC <= a < _ODL_VSRC + 0x60:
+        vi = (a - _ODL_VSRC) // 0x20
+        off = (a - _ODL_VSRC) % 0x20
+        if off in (0, 4, 8):
+            return _f32at(_odl_vtx(seed, vi, off >> 2), a)
+        return 0
+    # sprite direction (pObjBase = pScene): dir=(3,4,*), aux vec at +0x10
+    if base == _ODL_SCENE + 0x00: return _f32at(3.0, a)
+    if base == _ODL_SCENE + 0x04: return _f32at(4.0, a)
+    if base == _ODL_SCENE + 0x10: return _f32at(1.0, a)   # aux length vector
+    # pTex pointer at pObj+0x294 (= pScene+0x29c4) and its two scale fields
+    if base == _ODL_SCENE + 0x29c4:
+        return _b(_ODL_TEX, a, _ODL_SCENE + 0x29c4)
+    if base == _ODL_TEX + 0x80e0 or base == _ODL_TEX + 0x80e4:
+        return _f32at(1.0, a)
+    return 0                                       # everything else null-safe / 0
+
+
+def _odl_arg(seed, idx):
+    if idx == 0:                                   # pRects
+        return _ODL_RECTS
+    if idx == 1:                                   # idx -> record 0
+        return 0
+    if idx == 2:                                   # cls: one surface-class bit
+        return 1
+    if idx == 3:                                   # bLit
+        return (seed >> 1) & 1
+    if idx == 4:                                   # pScene
+        return _ODL_SCENE
+    return None
+
+
+# The DL command arenas and the three geometry counters are INTEGER output
+# (command words / counts); a differing dword there is a real divergence, not
+# x87 rounding.  The vertex arena (_ODL_PVTX) and the matrix globals are FLOAT
+# output and are deliberately left tolerant.
+_ODL_EXACT = ((_ODL_CUR, _ODL_CUR + 0x10000), (_ODL_PDL, _ODL_PDL + 0x20000),
+              (0x106E772C, 0x106E7730), (0x106E7734, 0x106E7738),
+              (0x106E86A0, 0x106E86A4))
+
 PROFILES = {
+    0x1000CBA0: Profile(_odl_bss, zero_stack=False, seeds=16, arg=_odl_arg,
+                        exact_regions=_ODL_EXACT),
     0x1000EAF0: Profile(_scenedl_bss, zero_stack=False, seeds=32),
     0x100250D0: Profile(_tex_bss, zero_stack=False, seeds=64, arg=_tex_arg),
     0x10019A70: Profile(_bracestep_bss),
