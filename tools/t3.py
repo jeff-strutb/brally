@@ -88,6 +88,13 @@ EFF = re.compile(r'@t3-effort\s+passes\s+(\d+)\s+zero-movement\s+(\d+)\s+(\d+)')
 LEDGER = re.compile(r'@t4-pass\s+(0x[0-9A-Fa-f]{8})\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+probes\s+(\d+)\s+bytes\s+(\d+)\s+insns\s+(\d+)\s+regions\s+(\d+)\s+rows\s+(\d+)\s+census\s+(yes|no)')
 MARKERS = re.compile(r'\b(TODO|FIXME|XXX|HACK|STUB)\b|\?\?\?|\bguess\b|\bplaceholder\b|\bunknown\b|#\s*if\s+0\b', re.I)
 MIN_PASSES, MIN_PROBES = 2, 10
+# Per-function divergence resync key.  The default (below) caps at 6, but a body
+# that repeats a short instruction sequence -- a byte-by-byte save-block copy,
+# say -- makes key 6 re-anchor globally on every repeated k-gram and blow up:
+# BrSeasonApply 0x10058680 never terminates at key 6, is instant at key 8.  A
+# longer key is strictly safer on repeated arms (divergence.py's own advice);
+# an override here only sets THIS VA's key, never any other function's numbers.
+KEY_OVERRIDE = {0x10058680: 8}
 IMPL = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\b')
 # A real tag line: the comment OPENS with @implements.  Prose that quotes one
 # mid-sentence does not match, so a dossier cannot hijack the anchor.
@@ -868,7 +875,7 @@ def measure(va):
     miss, extra = o - rc, rc - o
     um, ue, singles = classify(miss, extra, o, rc)
     # divergence: masked region count + lost-sync
-    key = max(3, min(6, no // 8))            # a 12-insn leaf cannot resync on 6
+    key = KEY_OVERRIDE.get(int(va, 16), max(3, min(6, no // 8)))  # 12-insn leaf cannot resync on 6
     c = [PY, 'tools/divergence.py', os.path.relpath(obj, ROOT),
          os.path.relpath(ob, ROOT), sym, '--deltas', '--key', str(key), '--mask-slots']
     out = subprocess.run(c, cwd=ROOT, capture_output=True, text=True).stdout
