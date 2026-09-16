@@ -151,7 +151,87 @@ def _f2f_buf(seed, argidx, off):
     return pkt[off] if off < len(pkt) else 0
 
 
+# ---- BrTex3dExpand 0x100250D0 (N64 texture-format expander) ----------------
+# Inputs are an object graph: two pointer args get real buffers (dst=arg0,
+# src=arg3), but the palette (arg4) and the tile-record base (arg10) are typed
+# `int` in the prototype though used as pointers, so pin them to scratch regions
+# and seed the tile-record fields here.  The record shift fields (+0x20 cols,
+# +0x24 rows, and +0x60/+0x64 for the CI4 tile-1 arm) become `1 << n` loop
+# counts, so they MUST be small or a run never terminates; the source-offset
+# (+0x0c) and row-stride (+0x08,+0x48) fields stay 0 so the source cursor stays
+# inside its seeded buffer (reads past it return 0 identically on both sides).
+# The output byte budget (arg1 cbMax) is bounded so the writes stay inside the
+# 0x100-byte dst buffer.  The mode/format/sub/flag/mirror/interleave selectors
+# are varied per seed to exercise every expansion arm.
+_TEX_RECS = 0x10E00000          # scratch tile-record base (arg10)
+_TEX_PAL = 0x10E20000           # scratch palette base (arg4)
+
+
+def _tex_bss(seed, a):
+    base = a & ~3
+    for k in range(8):                          # tile records, 0x40 stride
+        rc = _TEX_RECS + k * 0x40
+        if base == rc + 0x20:                   # cols shift -> 1<<(n-1) or 1<<n
+            return _b(2, a, rc + 0x20)
+        if base == rc + 0x24:                   # rows shift
+            return _b(2, a, rc + 0x24)
+    if base == _TEX_RECS + 0x60:                # CI4 tile-1 cols shift
+        return _b(2, a, _TEX_RECS + 0x60)
+    if base == _TEX_RECS + 0x64:                # CI4 tile-1 rows shift
+        return _b(2, a, _TEX_RECS + 0x64)
+    if _TEX_PAL <= a < _TEX_PAL + 0x200:        # palette: distinct entry per index
+        return ((a - _TEX_PAL) * 7 + 0x13) & 0xFF   # so a wrong CLUT index diverges
+    return 0                                     # source offsets / strides -> 0
+
+
+def _tex_arg(seed, idx):
+    mode = seed % 3                              # param_3: 0 expand / 1 alt / 2 raw
+    if idx == 1:                                 # param_2 cbMax: bound to the dst buffer
+        return 0x80
+    if idx == 2:                                 # param_3 mode
+        return mode
+    if idx == 4:                                 # param_5 palette base (scratch)
+        return _TEX_PAL
+    if idx == 5:                                 # param_6 format
+        if mode == 2:
+            return 0                             # mode 2 only acts on fmt 0
+        return (2, 3, 4)[(seed // 3) % 3]
+    if idx == 6:                                 # param_7 mirror H
+        return (seed // 4) & 1
+    if idx == 7:                                 # param_8 mirror V
+        return (seed // 8) & 1
+    if idx == 8:                                 # param_9 tile0
+        return 0
+    if idx == 9:                                 # param_10 tile1 (two tiles -> idx 1 exists)
+        return 2
+    if idx == 10:                               # param_11 tile-record base (scratch)
+        return _TEX_RECS
+    if idx == 11:                               # param_12 flags (bit 2 = CI4 tile-1 arm)
+        return 2 if ((seed // 2) & 1) else 0
+    if idx == 12:                               # param_13 sub-format (blend vs direct)
+        return (seed // 9) & 1
+    if idx == 21:                               # param_22 row-interleave mask
+        return 1 if (seed & 1) else 0
+    return None                                  # blend endpoints (13..20): random low byte is fine
+
+
+# ---- BrSceneDlBuild 0x1000EAF0 (per-frame scene display-list builder) -------
+# Orchestrator: loops over the live scene objects/drivers (count in g_0B2F04)
+# building each one's matrix + DL, then the trail quads.  g_0B2F04 must be small
+# or the object loop runs for millions of iterations on a garbage count; the
+# per-object pointer arrays stay null-safe (0) so the derefs land on zeroed
+# scratch, and any gating flag reads 0.  Built incrementally against the runaway
+# blockers.
+def _scenedl_bss(seed, a):
+    base = a & ~3
+    if base == 0x100B2F04:                       # live object / driver count
+        return _b(seed % 3 + 1, a, 0x100B2F04)   # 1..3
+    return 0                                      # null-safe pointers / cleared flags
+
+
 PROFILES = {
+    0x1000EAF0: Profile(_scenedl_bss, zero_stack=False, seeds=32),
+    0x100250D0: Profile(_tex_bss, zero_stack=False, seeds=64, arg=_tex_arg),
     0x10019A70: Profile(_bracestep_bss),
     0x1002F790: Profile(_f2f_bss, zero_stack=False, seeds=48,
                         arg=_f2f_arg, buf=_f2f_buf),

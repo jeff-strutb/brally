@@ -792,7 +792,7 @@
 <rect x="730.4" y="247.9" width="19.0" height="37.2" fill="#c8ccd2"><title>(unnamed)  0x1000C9E0  308B  [unfiled 0x1000xxxx]</title></rect>
 <rect x="730.4" y="285.8" width="19.0" height="34.7" fill="#c8ccd2"><title>(unnamed)  0x1000E150  287B  [unfiled 0x1000xxxx]</title></rect>
 <text x="599.9" y="333.0" font-size="10" fill="#8b949e">br_tex3d_expand</text>
-<rect x="598.4" y="338.0" width="151.0" height="133.8" fill="#d29922"><title>BrTex3dExpand  0x100250D0  8480B  6349 diff bytes  [core/drawing/br_tex3d_expand]</title></rect>
+<rect x="598.4" y="338.0" width="151.0" height="133.8" fill="#58a6ff"><title>BrTex3dExpand  0x100250D0  8480B  [core/drawing/br_tex3d_expand]</title></rect>
 <text x="599.9" y="484.5" font-size="10" fill="#8b949e">unfiled 0x1006xxxx</text>
 <rect x="598.4" y="489.5" width="47.0" height="66.5" fill="#c8ccd2"><title>(unnamed)  0x1006EC30  1331B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="598.4" y="556.6" width="47.0" height="64.7" fill="#c8ccd2"><title>(unnamed)  0x1006F170  1295B  [unfiled 0x1006xxxx]</title></rect>
@@ -2792,4 +2792,4 @@
 <rect x="1594.5" y="893.2" width="3.4" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.5" y="896.7" width="0.5" height="1.2" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1318 &#183; T3 codegen-only 115 &#183; 232,481/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1318 &#183; T3 codegen-only 116 &#183; 232,481/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
