@@ -67,6 +67,10 @@ IMG_STEPS = 2000000        # budget for a run that now enters real callees
 # Set by a profile's `arg` hook for the duration of a profiled run (see
 # oracle_profiles.Profile): pins specific scalar arguments to valid, bounded
 # values.  None restores the default random argument seeding.
+# Memory ranges a profile marks as integer-exact: a differing dword here is a
+# real divergence, never x87-rounding noise (see _classify_diff).  Set for the
+# duration of a profiled run by verify_img.
+_EXACT_REGIONS = ()
 _ARG_HOOK = None
 # Set by a profile's `buf` hook: fills a pointer-argument buffer's CONTENT with
 # a well-formed sequence (e.g. a valid command packet).  None = default fill.
@@ -139,13 +143,17 @@ def parse_signature(name):
         ln = re.sub(r'^extern\s+"C(?:\+\+)?"\s*', '', ln)   # C++ lane linkage spec
         if ln.endswith(';') or ln.startswith(('/', '*', '#')):
             continue                                   # declaration or comment
-        m = re.match(r'^([A-Za-z_][\w \t]*?)\b%s\s*\(([^)]*)\)' % re.escape(name), ln)
+        # An optional `Class::` qualifier before the name matches a C++ method
+        # DEFINITION (rettype Class::Method(params)); the `::` can't sit inside
+        # the return-type run, so without this the whole prototype missed.
+        m = re.match(r'^([A-Za-z_][\w \t\*]*?)\b(?:(\w+)\s*::\s*)?%s\s*\(([^)]*)\)'
+                     % re.escape(name), ln)
         if not m:
             continue
-        rettype, params = m.group(1), m.group(2).strip()
+        rettype, cls, params = m.group(1), m.group(2), m.group(3).strip()
         conv = 'cdecl'
-        if re.search(r'__fastcall|BR_THISCALL1|BR_FASTCALL', rettype):
-            conv = 'fastcall'
+        if cls or re.search(r'__fastcall|BR_THISCALL1|BR_FASTCALL', rettype):
+            conv = 'fastcall'    # native thiscall member: `this` arrives in ecx
         elif re.search(r'__thiscall', rettype):
             return None            # not expressible in C here; the C++ lane owns it
         rettype = re.sub(r'__fastcall|__stdcall|BR_THISCALL1?|BR_FASTCALL', ' ', rettype)
@@ -426,13 +434,20 @@ def _is_rounding_f(x, y):
 
 def _classify_diff(mo, mr, addrs):
     """'rounding' if every differing dword is the same float to within x87
-    noise, else 'real'."""
+    noise, else 'real'.  A dword that lands in a profile-declared EXACT region
+    (integer output such as a display-list command buffer, where a 1-ULP float
+    difference is really a 1-integer command difference and must not be waved
+    through as rounding) is always 'real' when it differs."""
     if not addrs:
         return 'rounding'
     for base in sorted({a & ~3 for a in addrs}):
         x = sum(mo.peek(base + k) << (8 * k) for k in range(4))
         y = sum(mr.peek(base + k) << (8 * k) for k in range(4))
-        if x != y and not _is_rounding(x, y):
+        if x == y:
+            continue
+        if any(lo <= base < hi for (lo, hi) in _EXACT_REGIONS):
+            return 'real'
+        if not _is_rounding(x, y):
             return 'real'
     return 'rounding'
 
@@ -474,17 +489,20 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     # A profiled function needs a valid input world, not random bytes: seed BSS
     # from the profile (null-safe pointers + varied gating flags) and zero the
     # stack window.  Swap the module seeding hooks for the run, then restore.
-    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK
+    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK, _EXACT_REGIONS
     old_bss, old_sf, old_arg, old_buf = ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK
+    old_exact = _EXACT_REGIONS
     ENV.bss_byte = prof.bss
     _ARG_HOOK = prof.arg
     _BUF_HOOK = prof.buf
+    _EXACT_REGIONS = getattr(prof, 'exact_regions', ()) or ()
     if prof.zero_stack:
         _sfloat_bits = lambda rnd: 0
     try:
         return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig)
     finally:
         ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK = old_bss, old_sf, old_arg, old_buf
+        _EXACT_REGIONS = old_exact
 
 
 def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
