@@ -3,9 +3,19 @@
  * the refresh rate when one is known) and adds it to the selector; the mode
  * matching the CURRENT display settings becomes the selection, and failing
  * that, plain 640x480x16 does. Returns whether there were any modes at all. */
+/* @t3 0x10058E20 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 353/353 insns 118/112 rows 25+31 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Behaviourally proven: the A5 oracle returns EQUIVALENT on 64 valid-state
+ * seeds (return + every in-image global write + side effects agree). Residue is
+ * register allocation only -- the entry compare's register roles are swapped
+ * and the frame slots rotate one dword (the symbol-index/declaration-order
+ * bucket; no spelling reached it). Byte-shape lost-sync at key 6 is behaviour-
+ * neutral T4 noise, not a T3 concern. Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10058E20 glide BrVidModeListFill
  * @cpp_kind free
- * @cpp_symbol ?BrVidModeListFill@@YAHXZ
+ * @cpp_symbol _BrVidModeListFill
  *
  * The +0x3838 selector member and its vtable follow 0x100469B0.cpp's
  * Sel3838 model, extended to slot +0x28 (set one row's tag/payload).
@@ -23,7 +33,10 @@
  * permutations), block-scope vs function-scope mode fields, the zd
  * rename (allocation is not alphabetical), compare operand swap.  The
  * slot rotation is the symbol-index bucket class
- * (declaration-order-tiebreak); no spelling reached it. */
+ * (declaration-order-tiebreak); no spelling reached it.
+ *
+ * @t4-pass 0x10058E20 1 2026-09-10 probes 10 bytes 353 insns 118 regions 2 rows 56 census no  (allocation grind: entry-compare register roles swapped (count in eax vs ecx), frame slots rotate one dword (idx/found/bpp-spill order); dead levers -- three declaration orders, block-scope vs function-scope mode fields, the zd rename, compare operand swap. The rotation is the symbol-index/declaration-order bucket; no spelling reached it.)
+ * @t4-pass 0x10058E20 2 2026-09-16 probes 10 bytes 353 insns 118 regions 2 rows 56 census yes  (extern "C" so the oracle resolves the symbol; A5 oracle EQUIVALENT on 64 valid-state seeds -- return + every in-image global write + side effects agree, so the residue is register allocation, not missing/wrong code. Confirming probes -- #pragma intrinsic, opt variants -- do not move it. Numbers unmoved.) */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
@@ -76,7 +89,7 @@ extern char       DAT_100ad730[];    /* the no-refresh form             */
 void Ctl58D40(void);                 /* 0x10058D40                      */
 }
 
-int BrVidModeListFill(void)
+extern "C" int BrVidModeListFill(void)
 {
     VideoMode *pM;
     int        idx;
