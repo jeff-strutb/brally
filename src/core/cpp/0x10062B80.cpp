@@ -3,6 +3,15 @@
  * action's slot, then refills the two neighbouring slots from the profile's
  * default table, clearing each refilled slot again if the same key is
  * already bound to another action in that profile. */
+/* @t3 0x10062B80 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 166/169 insns 60/59 rows 2+3 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Behaviourally proven: the A5 oracle returns EQUIVALENT on 64 valid-state
+ * seeds (return + every in-image global write + side effects agree). Residue is
+ * one register plan (base/delta/counter in edi/ebx/ebp vs the original's
+ * ebp/edi/ebx; mod/key loaded through cl/eax vs dl/ecx) -- register allocation,
+ * not missing/wrong code; see the @t4-pass ledger. Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10062B80 glide BrCtrlCfgAssign
  * @cpp_kind method
  * @cpp_symbol ?Assign@CtrlCfg62B80@@QAEXHHHH@Z
@@ -30,7 +39,9 @@
  * for key and mod in every combination, the mix as one expression, as
  * `mod ^= key`, through an int or uchar temp, mix-before-p and after,
  * `key` copied to a local first, counter as `profile` or a fresh local.
- */
+ *
+ * @t4-pass 0x10062B80 1 2026-09-13 probes 22 bytes 166 insns 60 regions 2 rows 5 census no  (fresh transcription, 22 cpp probes; every instruction shape present. RESIDUE is one register plan: original homes base/delta/counter in ebp/edi/ebx and loads mod->dl key->ecx; ours in edi/ebx/ebp with mod->cl key->eax widening through a zeroed dx. Dead: int/ushort/uchar key+mod in every combination, mix as one expression / mod^=key / int-or-uchar temp / mix-before-p / key-to-local / counter as profile or fresh local.)
+ * @t4-pass 0x10062B80 2 2026-09-16 probes 10 bytes 166 insns 60 regions 2 rows 5 census yes  (the t3.py demangled-name fix let the A5 oracle run this thiscall method; it returns EQUIVALENT on 64 valid-state seeds -- return + every in-image global write + side effects agree, so the residue is register allocation, not missing/wrong code. Confirming probes (char/int mod, intrinsic, opt variants) do not move the 61-diff residue. Numbers unmoved.) */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
