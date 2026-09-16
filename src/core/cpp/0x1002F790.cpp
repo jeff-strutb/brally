@@ -25,6 +25,19 @@
  * live slot, and if the packet did not come from the host (idFrom != 1) and
  * its lead command is a car update, the whole packet is forwarded to the
  * local dispatcher 0x100038F0. */
+/* @t3 0x1002F790 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2653/2517 insns 864/678 rows 103+289 regions 11 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation/scheduling, behaviour-neutral: the A5 oracle
+ * proves same-in/same-out on 48 seeds (peer/record tables, ownership, flag
+ * latch, name copy, timing).  The byte gap is the allocation of the two mutex
+ * imports and the slot base, plus the switch table counted as code.  Getting
+ * the oracle to run this SEH C++ packet-dispatcher class needed real fixes
+ * (ret-<imm> esp cleanup, fs: SEH slots, ctor/dtor + EH-handler resolution,
+ * call-through-a-cached-import register, valid packet seeding); the last of
+ * those was what made the apparent record-path divergence vanish -- it was the
+ * emulator leaking a stdcall arg on `call reg`, not this transcription.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1002F790 glide FUN_1002f790
  * @cpp_kind free
  * @cpp_symbol _FUN_1002f790
@@ -42,6 +55,9 @@
  * control flow (the jump-table default->return edge, the shared per-case mutex
  * release blocks reached by goto, the guard branch order) and the read/store
  * order are taken from the disassembly, not from a decompiler draft.
+ *
+ * @t4-pass 0x1002F790 1 2026-09-16 probes 24 bytes 2653 insns 864 regions 11 rows 392 census no  (byte-exactness grind: name scratch sized to 0x400 to match the frame, index*0x96c hoisted once into soff/roff, imports routed through pointer locals -- MSVC folds them back to call [mem]; register allocation of the two mutex imports and the slot base is the residue, unmoved.)
+ * @t4-pass 0x1002F790 2 2026-09-16 probes 11 bytes 2653 insns 864 regions 11 rows 392 census yes  (ordered global-write census: every write to the peer/record tables is identical in address and value to the original, only two record-field stores reordered -- the residue is register allocation/scheduling, not missing or wrong code; the A5 oracle proves same-in/same-out on 48 seeds.  Numbers unmoved from pass 1.)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
