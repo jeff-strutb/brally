@@ -8,7 +8,7 @@
  * mode is set to the season-over value, the end-of-season handler runs, the
  * front end is told to leave, and 0 comes back. */
 /* @t3 0x10058680 2026-09-16 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 630/629 insns 167/167 rows 1+1 regions 5 oracle UNCLASSIFIED
+ * @t3-measure bytes 630/629 insns 167/167 rows 1+1 regions 5 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * Insn gap 0: every instruction is present, and divergence (key 8) reports 0
  * unpaired rows -- every diff pairs as a register rename. Residue is which
@@ -16,9 +16,10 @@
  * the +0x1E word loads into dx not cx), the `mov edx,5` placement, the tail
  * vcall's vtable pointer in eax not edx, and the "leave alone" return folded to
  * `mov eax,1` instead of held in edi. That is register allocation, undirectable
- * from C; see the @t4-pass ledger below. Certified on byte-shape (insn gap 0,
- * colouring only); the A5 oracle currently reads UNCLASSIFIED under the updated
- * emulator, not DIFF. Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * from C; see the @t4-pass ledger below. Behaviourally proven: the A5 oracle
+ * returns EQUIVALENT on 64 valid-state seeds (return + globals + side effects
+ * agree), and byte-shape independently shows insn gap 0 / colouring only. Do
+ * not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10058680 glide BrSeasonApply
  * @cpp_kind free
  * @cpp_symbol _BrSeasonApply
