@@ -189,7 +189,14 @@ def fill_function(obj_path, func_name, va, fnmap, glmap, size):
                 struct.pack_into('<I', code, off, override)
                 continue
             tsym = next((s for s in syms if s['idx'] == si), None)
-            target = resolve(tsym['name'], fnmap, glmap) if tsym else None
+            if tsym and tsym['sec'] == sy['sec']:
+                # A reference into THIS function's own .text -- a jump-table `$L`
+                # label or a local branch target.  Its address is deterministic:
+                # the function is placed at `va`, so a symbol at section offset
+                # tsym['val'] lands at va + (tsym['val'] - sy['val']).
+                target = va + (tsym['val'] - sy['val'])
+            else:
+                target = resolve(tsym['name'], fnmap, glmap) if tsym else None
             if target is None:
                 return None
             addend = struct.unpack_from('<i', code, off)[0]

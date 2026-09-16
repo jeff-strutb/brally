@@ -51,13 +51,82 @@ def _ieee_div(n, d):
 
 
 # 8-bit register views onto their 32-bit parent.
+REG16 = {'ax': 'eax', 'bx': 'ebx', 'cx': 'ecx', 'dx': 'edx',
+         'si': 'esi', 'di': 'edi', 'bp': 'ebp', 'sp': 'esp'}
 REG8 = {'al': ('eax', 0), 'ah': ('eax', 8), 'bl': ('ebx', 0), 'bh': ('ebx', 8),
         'cl': ('ecx', 0), 'ch': ('ecx', 8), 'dl': ('edx', 0), 'dh': ('edx', 8)}
 REG32 = ('eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi')
 
 
+def _model_memmove(m):
+    """cdecl memmove(dst, src, n) -> dst in eax.  Args sit at [esp..esp+8] (no
+    return address has been pushed for a modeled import).  Overlap-safe via a
+    read-all-then-write.  n is bounded so a garbage seed cannot hang the run;
+    the bound is identical on both sides, so it never manufactures a divergence."""
+    esp = m.R['esp']
+    dst = m.rd_i(esp); src = m.rd_i(esp + 4); n = m.rd_i(esp + 8) & 0xFFFFFFFF
+    n = min(n, 1 << 16)     # same bound as the inline rep movs the original uses
+    buf = [m.rd_u8(src + k) for k in range(n)]
+    for k in range(n):
+        m.wr_u8(dst + k, buf[k])
+    m.R['eax'] = dst
+
+
+# DLL imports whose code is in a module the oracle does not map, keyed by the
+# reference image's IAT slot address.  BRGlide.dll: memmove.
+MSVCRT_IMPORTS = {0x118F04FC: _model_memmove}
+
+
+def _model_allmul(m):
+    """__allmul: 64-bit integer multiply, __stdcall(a:i64, b:i64) -> edx:eax.
+    No return address is pushed in this model, so the four arg dwords sit at
+    [esp..esp+12]; the real helper's `ret 0x10` clears them, so esp += 16."""
+    esp = m.R['esp']
+    a = m.rd_i(esp) | (m.rd_i(esp + 4) << 32)
+    b = m.rd_i(esp + 8) | (m.rd_i(esp + 12) << 32)
+    p = (a * b) & 0xFFFFFFFFFFFFFFFF
+    m.R['eax'] = p & 0xFFFFFFFF
+    m.R['edx'] = (p >> 32) & 0xFFFFFFFF
+    m.R['esp'] = u32(esp + 16)
+
+
+def _s64(x):
+    return x - (1 << 64) if x & (1 << 63) else x
+
+
+def _div_helper(m, signed, want_rem):
+    """Shared body for __alldiv/__allrem/__aulldiv/__aullrem: two i64 args at
+    [esp..esp+12], quotient-or-remainder in edx:eax, esp += 16 (`ret 0x10`)."""
+    esp = m.R['esp']
+    a = m.rd_i(esp) | (m.rd_i(esp + 4) << 32)
+    b = m.rd_i(esp + 8) | (m.rd_i(esp + 12) << 32)
+    if signed:
+        a, b = _s64(a), _s64(b)
+    if b == 0:
+        q = r = 0                         # a real divide would fault; both sides alike
+    else:
+        q = abs(a) // abs(b)
+        if signed and (a < 0) != (b < 0):
+            q = -q
+        r = a - q * b if signed else a - (a // b) * b
+    v = (r if want_rem else q) & 0xFFFFFFFFFFFFFFFF
+    m.R['eax'] = v & 0xFFFFFFFF
+    m.R['edx'] = (v >> 32) & 0xFFFFFFFF
+    m.R['esp'] = u32(esp + 16)
+
+
+# Compiler helpers reached by DIRECT call into .text that the interpreter models
+# rather than execute (64-bit ops the byte interpreter does not implement).
+# Keyed by their function address in the reference image.
+DIRECT_BUILTINS = {
+    0x10074680: _model_allmul,
+    0x100748B0: lambda m: _div_helper(m, signed=True, want_rem=False),    # __alldiv
+    0x10074610: lambda m: _div_helper(m, signed=False, want_rem=False),   # __aulldiv
+}
+
+
 class Machine:
-    def __init__(self, mem, regs, listing, idx=None):
+    def __init__(self, mem, regs, listing, idx=None, imports=None, code_provider=None):
         self.mem = mem                      # dict: byte-address -> 0..255
         self.R = dict(regs)
         self.st = []                        # x87 stack, st[0] is TOP
@@ -66,6 +135,40 @@ class Machine:
         self.callstack = []
         self.FTOL = 0x10074560
         self.prog = listing
+        # Indirect calls `call dword ptr [slot]` reach two kinds of target: a
+        # function pointer stored in a game global (points back into the mapped
+        # .text -- executed normally once read), or a true DLL import whose code
+        # is in a module this oracle never maps (MSVCRT).  The latter are modeled
+        # here, keyed by their IAT slot address, so both sides run the identical
+        # operation.  BRGlide's only such import reached from these functions is
+        # memmove @ 0x118F04FC; extend this map as more surface.
+        self.imports = imports if imports is not None else dict(MSVCRT_IMPORTS)
+        # When set, an indirect call to a pointer that is not mapped code is
+        # recorded (see run()) instead of raising -- lets orchestrator functions
+        # that dispatch through init-only function-pointer tables be compared.
+        self.model_unresolved_icalls = False
+        self.icalls = []
+        # Optional callback addr -> [(addr, mn, ops), ...].  The shared .text
+        # index is a LINEAR sweep, so a function entry that sits after embedded
+        # data (a jump table, alignment) can be missing.  When a call lands on
+        # such an address, disassemble it on demand and splice it in.
+        self.code_provider = code_provider
+        # `idx` may be supplied prebuilt (the oracle shares one 130k-entry .text
+        # index across every run rather than rebuild it per Machine).
+        self.idx = idx if idx is not None else {a: i for i, (a, _, _) in enumerate(listing)}
+
+    def _load_code(self, target):
+        if self.code_provider is None:
+            return False
+        insns = self.code_provider(target)
+        if not insns:
+            return False
+        own = self.idx.own if hasattr(self.idx, 'own') else self.idx
+        for ins in insns:
+            if ins[0] not in self.idx:
+                own[ins[0]] = len(self.prog)
+                self.prog.append(ins)
+        return target in self.idx
         # `idx` may be supplied prebuilt.  The equivalence oracle maps the
         # whole original .text (about 130k instructions) so that calls execute
         # the real callee; rebuilding that index per Machine -- twice a seed,
@@ -136,6 +239,8 @@ class Machine:
         if name in REG8:
             parent, sh = REG8[name]
             return (self.R[parent] >> sh) & 0xFF
+        if name in REG16:
+            return self.R[REG16[name]] & 0xFFFF
         raise KeyError(name)
 
     def wr_reg(self, name, v):
@@ -145,12 +250,32 @@ class Machine:
             parent, sh = REG8[name]
             mask = 0xFF << sh
             self.R[parent] = (self.R[parent] & ~mask) | ((v & 0xFF) << sh)
+        elif name in REG16:
+            parent = REG16[name]
+            self.R[parent] = (self.R[parent] & 0xFFFF0000) | (v & 0xFFFF)
         else:
             raise KeyError(name)
 
+    def _rd(self, x, byte=False):
+        """Read an operand that may be a register OR a memory reference."""
+        x = x.strip()
+        if x.startswith('['):
+            a = self.mem_addr(x)
+            return self.rd_u8(a) if byte else self.rd_i(a)
+        return self.rd_reg(x)
+
+    def _wr(self, x, v, byte=False):
+        """Write an operand that may be a register OR a memory reference."""
+        x = x.strip()
+        if x.startswith('['):
+            a = self.mem_addr(x)
+            (self.wr_u8 if byte else self.wr_i)(a, v)
+        else:
+            self.wr_reg(x, v)
+
     def _val(self, x, byte=False):
         x = x.strip()
-        if x in self.R or x in REG8:
+        if x in self.R or x in REG8 or x in REG16:
             return self.rd_reg(x)
         if re.fullmatch(r'-?0x[0-9a-fA-F]+|-?\d+', x):
             return int(x, 0) & 0xFFFFFFFF
@@ -209,8 +334,21 @@ class Machine:
             if steps > maxsteps:
                 raise RuntimeError('runaway @%08X' % self.prog[pc][0])
             addr, mn, ops = self.prog[pc]
+            self.pc_addr = addr
             if mn == 'call':
-                target = int(ops.strip(), 16)
+                t = ops.strip()
+                slot = None
+                if re.fullmatch(r'(?:0x)?[0-9a-fA-F]+', t):
+                    target = int(t, 16)
+                else:
+                    # indirect: call dword ptr [slot] -- slot holds either a
+                    # game function pointer (into mapped .text) or a DLL import.
+                    mem = re.sub(r'\b(?:dword|qword|word|byte) ptr ', '', t).strip()
+                    slot = self.mem_addr(mem)
+                    if slot in self.imports:
+                        self.imports[slot](self)     # modeled import, esp net-zero
+                        pc += 1; continue
+                    target = self.rd_i(slot)         # deref the function pointer
                 if target == self.FTOL:
                     # _ftol is cdecl-with-no-args: on hardware the call pushes a
                     # return address and the callee's ret pops it, net esp change
@@ -218,6 +356,11 @@ class Machine:
                     v = self.st.pop(0)
                     self.R['eax'] = int(math.trunc(v)) & 0xFFFFFFFF
                     pc += 1; continue
+                if target in DIRECT_BUILTINS:
+                    DIRECT_BUILTINS[target](self)
+                    pc += 1; continue
+                if target not in self.idx:
+                    self._load_code(target)   # on-demand: entry missed by linear sweep
                 if target in self.idx:
                     # Model the real return-address push: decrement esp and store
                     # the return VA.  WITHOUT THIS a nested cdecl callee reads its
@@ -229,6 +372,20 @@ class Machine:
                     self.R['esp'] = u32(self.R['esp'] - 4)
                     self.wr_i(self.R['esp'], self.prog[pc + 1][0])
                     self.callstack.append(pc + 1); pc = self.idx[target]; continue
+                if slot is not None and self.model_unresolved_icalls:
+                    # An indirect call whose pointer is not mapped code: a game
+                    # callback whose slot holds no valid target in a seeded image
+                    # (the real value is installed by init we do not run).  Record
+                    # it as an observable event -- WHICH slot, and the argument
+                    # window on the stack -- then black-box it identically on both
+                    # sides (eax<-0, esp unchanged).  Calling a different slot or
+                    # pushing different args shows as an event-sequence mismatch;
+                    # the callee's own effects are skipped on both sides alike.
+                    esp = self.R['esp']
+                    args = tuple(self.rd_i(esp + 4 * k) for k in range(8))
+                    self.icalls.append((slot, args))
+                    self.R['eax'] = 0
+                    pc += 1; continue
                 raise ValueError('call to unmapped %08X' % target)
             if mn == 'ret':
                 if self.callstack:
@@ -236,7 +393,21 @@ class Machine:
                     pc = self.callstack.pop(); continue
                 return
             nxt = self.step(addr, mn, ops)
-            pc = self.idx[nxt] if nxt is not None else pc + 1
+            if nxt is None:
+                pc += 1
+            else:
+                if nxt not in self.idx:
+                    self._load_code(nxt)          # entry missed by the linear sweep
+                if nxt not in self.idx:
+                    # jump target is not mapped code -- an indirect jmp through an
+                    # import slot (tail-call into a module we don't map) or garbage.
+                    # Model it as a return: the tail-called callee's ret would go
+                    # to THIS function's caller.  Identical on both sides.
+                    if self.callstack:
+                        self.R['esp'] = u32(self.R['esp'] + 4)
+                        pc = self.callstack.pop(); continue
+                    return
+                pc = self.idx[nxt]
 
     def step(self, addr, mn, ops):
         st = self.R
@@ -271,16 +442,24 @@ class Machine:
             self.wr_reg(d, self.mem_addr(s))
         elif mn == 'add':
             d, s = o
-            r = self._flags_add(self.rd_reg(d), self._val(s))
-            self.wr_reg(d, r)
+            bs = (d in REG8) or (s in REG8)
+            r = self._flags_add(self._rd(d, bs), self._val(s, byte=bs), width=8 if bs else 32)
+            self._wr(d, r, bs)
         elif mn == 'sub':
             d, s = o
-            r = self._flags_sub(self.rd_reg(d), self._val(s))
-            self.wr_reg(d, r)
+            bs = (d in REG8) or (s in REG8)
+            r = self._flags_sub(self._rd(d, bs), self._val(s, byte=bs), width=8 if bs else 32)
+            self._wr(d, r, bs)
         elif mn == 'inc':
-            cf = self.CF; self.wr_reg(o[0], self._flags_add(self.rd_reg(o[0]), 1)); self.CF = cf
+            bs = o[0] in REG8
+            cf = self.CF
+            self._wr(o[0], self._flags_add(self._rd(o[0], bs), 1, width=8 if bs else 32), bs)
+            self.CF = cf
         elif mn == 'dec':
-            cf = self.CF; self.wr_reg(o[0], self._flags_sub(self.rd_reg(o[0]), 1)); self.CF = cf
+            bs = o[0] in REG8
+            cf = self.CF
+            self._wr(o[0], self._flags_sub(self._rd(o[0], bs), 1, width=8 if bs else 32), bs)
+            self.CF = cf
         elif mn == 'cmp':
             bsize = (o[0] in REG8) or (o[1] in REG8)
             self._flags_sub(self._val(o[0], byte=bsize), self._val(o[1], byte=bsize),
@@ -336,7 +515,8 @@ class Machine:
             sb = b - 0x100000000 if b & 0x80000000 else b
             self.wr_reg(dst, (sa * sb) & 0xFFFFFFFF)
         elif mn == 'not':
-            self.wr_reg(o[0], (~self.rd_reg(o[0])) & 0xFFFFFFFF)
+            bs = o[0] in REG8
+            self._wr(o[0], (~self._rd(o[0], bs)) & (0xFF if bs else 0xFFFFFFFF), bs)
         elif mn in ('shl', 'sal', 'shr', 'sar'):
             d, s = o
             cnt = self._val(s) & 0x1F
@@ -351,26 +531,40 @@ class Machine:
             self.wr_reg(d, r); self._flags_logic(r)
         elif mn == 'xor':
             d, s = o
+            bs = (d in REG8) or (s in REG8)
             if d == s:
-                self.wr_reg(d, 0); self._flags_logic(0)
+                self._wr(d, 0, bs); self._flags_logic(0, width=8 if bs else 32)
             else:
-                r = self.rd_reg(d) ^ self._val(s); self.wr_reg(d, r); self._flags_logic(r)
+                r = self._rd(d, bs) ^ self._val(s, byte=bs)
+                self._wr(d, r, bs); self._flags_logic(r, width=8 if bs else 32)
         elif mn == 'or':
             d, s = o
-            r = self.rd_reg(d) | self._val(s); self.wr_reg(d, r); self._flags_logic(r)
+            bs = (d in REG8) or (s in REG8)
+            r = self._rd(d, bs) | self._val(s, byte=bs)
+            self._wr(d, r, bs); self._flags_logic(r, width=8 if bs else 32)
         elif mn == 'and':
             d, s = o
-            r = self.rd_reg(d) & self._val(s); self.wr_reg(d, r); self._flags_logic(r)
+            bs = (d in REG8) or (s in REG8)
+            r = self._rd(d, bs) & self._val(s, byte=bs)
+            self._wr(d, r, bs); self._flags_logic(r, width=8 if bs else 32)
         elif mn == 'push':
             st['esp'] = u32(st['esp'] - 4); self.wr_i(st['esp'], self._val(o[0]))
         elif mn == 'pop':
             self.wr_reg(o[0], self.rd_i(st['esp'])); st['esp'] = u32(st['esp'] + 4)
         elif mn == 'jmp':
-            return int(o[0], 16)
+            t = o[0]
+            if t.startswith('['):
+                return self.rd_i(self.mem_addr(t))     # indirect: jump table / import tail-call
+            if t in self.R or t in REG16 or t in REG8:
+                return self.rd_reg(t)                  # computed (register) jump
+            return int(t, 16)
         elif mn.startswith('j'):
             return int(o[0], 16) if self._cond(mn) else None
         elif mn == 'nop':
             pass
+        elif mn.startswith('set'):
+            # setCC dest8 -- store the flag condition (1/0) into a byte operand
+            self._wr(o[0], 1 if self._cond('j' + mn[3:]) else 0, byte=True)
         # ---- x87 ----
         elif mn == 'fld':
             if o[0].startswith('st'):
@@ -432,6 +626,43 @@ class Machine:
             self.st.insert(0, 0.0)
         elif mn == 'fld1':
             self.st.insert(0, 1.0)
+        elif ('stosd' in mn or 'stosb' in mn or 'movsd' in mn or 'movsb' in mn
+              or 'scasb' in mn):
+            # x86 string ops (DF assumed 0 -- these functions never set it).
+            # ecx is bounded so a garbage-seeded count cannot run away; the bound
+            # is identical on both sides, so it never manufactures a divergence.
+            rep = mn.startswith('rep')
+            CAP = 1 << 16
+            n = min(self.R['ecx'], CAP) if rep else 1
+            if 'stosd' in mn:
+                for _ in range(n):
+                    self.wr_i(self.R['edi'], self.R['eax']); self.R['edi'] = u32(self.R['edi'] + 4)
+                if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
+            elif 'stosb' in mn:
+                al = self.R['eax'] & 0xFF
+                for _ in range(n):
+                    self.wr_u8(self.R['edi'], al); self.R['edi'] = u32(self.R['edi'] + 1)
+                if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
+            elif 'movsd' in mn:
+                for _ in range(n):
+                    self.wr_i(self.R['edi'], self.rd_i(self.R['esi']))
+                    self.R['esi'] = u32(self.R['esi'] + 4); self.R['edi'] = u32(self.R['edi'] + 4)
+                if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
+            elif 'movsb' in mn:
+                for _ in range(n):
+                    self.wr_u8(self.R['edi'], self.rd_u8(self.R['esi']))
+                    self.R['esi'] = u32(self.R['esi'] + 1); self.R['edi'] = u32(self.R['edi'] + 1)
+                if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
+            elif 'scasb' in mn:
+                al = self.R['eax'] & 0xFF; cnt = 0
+                while (self.R['ecx'] if rep else 1) and cnt < CAP:
+                    b = self.rd_u8(self.R['edi']); self.R['edi'] = u32(self.R['edi'] + 1)
+                    if rep: self.R['ecx'] = u32(self.R['ecx'] - 1)
+                    cnt += 1
+                    self.ZF = 1 if al == b else 0
+                    if 'repne' in mn and al == b: break
+                    if ('repe' in mn or mn == 'rep scasb') and al != b: break
+                    if not rep: break
         else:
             raise ValueError('unhandled %s %s @%08X' % (mn, ops, addr))
         return None
