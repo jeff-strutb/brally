@@ -110,7 +110,7 @@ EXE_FILES = {
 
 
 def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
-                       learned=True):
+                       learned=True, pad_short=False):
     """Yield (va, name, filled_bytes, n_unresolved, n_fromref) per function.
 
     `only` is a {raw COFF symbol name -> va} map. When given, symbols are
@@ -161,6 +161,21 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
             body_orig = orig[plen:]
             start = sec['praw'] + sy['val']
             code = bytearray(d[start:start + body_n])
+            if len(code) < body_n:
+                # The compiled bytes do not span the original's slot. For the
+                # byte-exact (C/T4) lanes that is a real deficiency -> skip, as
+                # before. For a T3 (pad_short) a shorter recompilation is allowed
+                # -- same behaviour, more compact codegen -- so place the
+                # function's own bytes (its section's code size is the true
+                # length) and fill the rest of the slot with the reference bytes.
+                # That tail is past the function's extent, so no relocation lands
+                # there; it is unreached filler that keeps the next function at
+                # its address.
+                if not pad_short:
+                    continue
+                fn_len = min(sec.get('size', len(code)) - sy['val'], len(code))
+                code = (bytearray(d[start:start + fn_len])
+                        + bytearray(body_orig[fn_len:body_n]))
             if len(code) != body_n:
                 continue
             unres = 0
