@@ -120,11 +120,13 @@ int   FUN_1002f6d0(int id);                                            /* BrPeer
 void  FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
 }
 
-/* index*0x96C addressing on a per-field global, as the sibling proved. */
-#define PF(sym, T) (*(T *)((char *)&sym + slot * 0x96c))
-#define PA(sym, T) ((T *)((char *)&sym + slot * 0x96c))
-#define RF(sym, T) (*(T *)((char *)&sym + ridx * 0x96c))
-#define RA(sym, T) ((T *)((char *)&sym + ridx * 0x96c))
+/* index*0x96C addressing on a per-field global, as the sibling proved.  The
+ * byte offset is computed once into a local (soff/roff) so the compiler keeps
+ * the product in one register across the case, as the original does in esi. */
+#define PF(sym, T) (*(T *)((char *)&sym + soff))
+#define PA(sym, T) ((T *)((char *)&sym + soff))
+#define RF(sym, T) (*(T *)((char *)&sym + roff))
+#define RA(sym, T) ((T *)((char *)&sym + roff))
 
 void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
 {
@@ -135,8 +137,10 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
     unsigned     cmd;
     unsigned     b10;            /* command's 0x10 bit */
     unsigned     slot;           /* command's low nibble */
+    int          soff;           /* slot * 0x96c, held across the case */
+    int          roff;           /* record index * 0x96c */
     int          i;
-    char         name[0x18 + 1];
+    char         name[0x400];
     BrCarState   scratch;
     BrCarState   scratch2;
 
@@ -146,6 +150,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
         cmd  = pkt.ReadU8();
         b10  = cmd & 0x10;
         slot = cmd & 0xf;
+        soff = slot * 0x96c;
         switch (cmd & 0xe0) {
         case 0x00: {
             unsigned      b0    = pkt.ReadU8() & 0xff;
@@ -169,7 +174,7 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
             WaitForSingleObject(PF(DAT_117a9b88, void *), 0xffffffff);
             if ((PF(DAT_117a9bb4, int) & 0x3f) != 0 && idFrom == PF(DAT_117a9b8c, int)) {
                 if (b10 != 0) {
-                    int ridx = slot * 0x10 + b0;
+                    roff = (slot * 0x10 + b0) * 0x96c;
 
                     WaitForSingleObject(RF(DAT_117b3258, void *), 0xffffffff);
                     if (RF(DAT_117b3260, unsigned) <= ts) {
@@ -346,11 +351,11 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
                 if (j == -1)
                     break;
                 {
-                    int   slot = j;          /* shadow for PF/PA at the joined slot */
                     int  *pRing;
                     BrCarState *pCar;
                     int   k;
 
+                    soff = j * 0x96c;            /* PF/PA now point at slot j */
                     WaitForSingleObject(PF(DAT_117a9b88, void *), 0xffffffff);
                     PF(DAT_117a9b8c, int) = idFrom;
                     pRing = PA(DAT_117a9bc0, int);
@@ -368,14 +373,14 @@ void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
                     PF(DAT_117aa0e0, int) = 0;
                     PF(DAT_117aa4e4, int) = FUN_1006a310();
                     {
-                        int         ridx = slot * 0x10;
-                        int         m = 0x10;
+                        int m = 0x10;
+                        roff = j * 0x10 * 0x96c;
                         do {
                             WaitForSingleObject(RF(DAT_117b3258, void *), 0xffffffff);
                             RF(DAT_117b3260, unsigned) = 0;
                             RF(DAT_117b3284, int)      = 0;
                             ReleaseMutex(RF(DAT_117b3258, void *));
-                            ridx++;
+                            roff += 0x96c;
                             m--;
                         } while (m != 0);
                     }
