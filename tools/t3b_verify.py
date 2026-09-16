@@ -64,6 +64,14 @@ BUF_STRIDE = 0x400
 BUF_SIZE = 0x100
 IMG_STEPS = 2000000        # budget for a run that now enters real callees
 
+# Set by a profile's `arg` hook for the duration of a profiled run (see
+# oracle_profiles.Profile): pins specific scalar arguments to valid, bounded
+# values.  None restores the default random argument seeding.
+_ARG_HOOK = None
+# Set by a profile's `buf` hook: fills a pointer-argument buffer's CONTENT with
+# a well-formed sequence (e.g. a valid command packet).  None = default fill.
+_BUF_HOOK = None
+
 
 class RecMem(dict):
     """A byte memory that records every address touched, so an access outside
@@ -300,14 +308,20 @@ def _setup_img(seed, sig):
     # source order above the return address, exactly as cdecl does.
     freeregs = ['ecx', 'edx'] if conv == 'fastcall' else []
     stackpos = 0
-    for kind in kinds:
+    for argidx, kind in enumerate(kinds):
+        pinned = _ARG_HOOK(seed, argidx) if _ARG_HOOK is not None else None
         if kind == 'ptr':
             buf = HEAP_BASE + bufidx * BUF_STRIDE
-            bufidx += 1
             b = buf
             while b + 4 <= buf + BUF_SIZE:
                 mem.put_dword(b, _sfloat_bits(rnd))
                 b += 4
+            if _BUF_HOOK is not None:
+                for off in range(BUF_SIZE):
+                    byte = _BUF_HOOK(seed, argidx, off)
+                    if byte is not None:
+                        mem.put(buf + off, byte)
+            bufidx += 1
             regions.append((buf, buf + BUF_SIZE))
             buffers.append((buf, buf + BUF_SIZE))
             val = buf
@@ -315,6 +329,8 @@ def _setup_img(seed, sig):
             val = _sfloat_bits(rnd)
         else:
             val = (rnd() % 4000) - 2000 & 0xFFFFFFFF
+        if pinned is not None and kind != 'ptr':
+            val = pinned & 0xFFFFFFFF
         if freeregs and kind in ('int', 'ptr'):
             regs[freeregs.pop(0)] = val
         else:
@@ -405,15 +421,17 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     # A profiled function needs a valid input world, not random bytes: seed BSS
     # from the profile (null-safe pointers + varied gating flags) and zero the
     # stack window.  Swap the module seeding hooks for the run, then restore.
-    global _sfloat_bits
-    old_bss, old_sf = ENV.bss_byte, _sfloat_bits
+    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK
+    old_bss, old_sf, old_arg, old_buf = ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK
     ENV.bss_byte = prof.bss
+    _ARG_HOOK = prof.arg
+    _BUF_HOOK = prof.buf
     if prof.zero_stack:
         _sfloat_bits = lambda rnd: 0
     try:
         return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig)
     finally:
-        ENV.bss_byte, _sfloat_bits = old_bss, old_sf
+        ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK = old_bss, old_sf, old_arg, old_buf
 
 
 def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
@@ -424,9 +442,20 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     for s in range(1, seeds + 1):
         try:
             mo, ro, rego, bo, nstack = _setup_img(s, sig)
+            # Overlay each side's OWN function bytes at `va` in its memory, so a
+            # jump/byte TABLE the compiler placed inside the function's .text is
+            # read (as data) from that side's own bytes.  Instructions are fetched
+            # from the disassembled program, but an in-.text switch table is a
+            # DATA read through mem; without this, the recompiled function (a
+            # different length) would read the ORIGINAL's table at the same VA and
+            # dispatch to the wrong case.
+            for i, b in enumerate(orig_bytes):
+                mo.put(va + i, b)
             Mo = x87emu.Machine(mo, ro, prog_o, idx_o, code_provider=ENV.code_at)
             Mo.model_unresolved_icalls = True; Mo.run(va, maxsteps=IMG_STEPS)
             mr, rr, _regr, br, _ns = _setup_img(s, sig)
+            for i, b in enumerate(recomp_bytes):
+                mr.put(va + i, b)
             Mr = x87emu.Machine(mr, rr, prog_r, idx_r, code_provider=ENV.code_at)
             Mr.model_unresolved_icalls = True; Mr.run(va, maxsteps=IMG_STEPS)
         except Exception as e:
@@ -450,8 +479,16 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
         # up bytes beyond the real args and manufacture a false divergence.
         # A real arg divergence still surfaces through the global side effects
         # the dispatched code (or its setup) writes.
-        so = [c[0] for c in Mo.icalls]
-        sr = [c[0] for c in Mr.icalls]
+        # Only slots at a REAL mapped address are a dispatch decision: an
+        # init-only function-pointer table lives in mapped .data/BSS.  A slot
+        # that is null or unmapped is a `call [0]` -- a garbage dereference of a
+        # function pointer this seeded world never installed, exactly the wild
+        # touch the garbage-pointer tolerance ignores; on hardware it faults, so
+        # its count is not observable behaviour.  Compare only mapped-slot
+        # dispatches; a real divergence to a different mapped slot still shows.
+        _img = ENV.image()
+        so = [c[0] for c in Mo.icalls if _img.mapped(c[0])]
+        sr = [c[0] for c in Mr.icalls if _img.mapped(c[0])]
         if so != sr:
             j = next((k for k in range(min(len(so), len(sr))) if so[k] != sr[k]),
                      min(len(so), len(sr)))

@@ -353,6 +353,12 @@ _ADDR_SUFFIX = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*?_?(1[0-9A-Fa-f]{7})$')
 # 0x<HEX>.  C++ output mangles them as `?g_<HEX>@@3..` / `?m_<HEX>@Obj@@..`.
 _CONV_GLOBAL = re.compile(r'^\??g_([0-9A-Fa-f]{5,8})(?:@@|$)')
 _CONV_CALLEE = re.compile(r'^\??(?:sub_|m_)([0-9A-Fa-f]{7,8})(?:@|$)')
+# A C++ EH object's ctor/dtor cannot spell a VA the way a `?m_<HEX>@` method
+# can (their mangled names are `??0<Class>@@` / `??1<Class>@@`).  When the CLASS
+# name ends `_<CTORVA>_<DTORVA>`, read the ctor's address from the first group
+# and the dtor's from the second -- one class carries both.
+_CONV_CTOR = re.compile(r'^\?\?0\w*?_([0-9A-Fa-f]{7,8})_([0-9A-Fa-f]{7,8})@@')
+_CONV_DTOR = re.compile(r'^\?\?1\w*?_([0-9A-Fa-f]{7,8})_([0-9A-Fa-f]{7,8})@@')
 
 
 def _convention_addr(s):
@@ -362,6 +368,12 @@ def _convention_addr(s):
     m = _CONV_CALLEE.match(s)
     if m:
         return int(m.group(1), 16)
+    m = _CONV_CTOR.match(s)
+    if m:
+        return int(m.group(1), 16)
+    m = _CONV_DTOR.match(s)
+    if m:
+        return int(m.group(2), 16)
     return None
 
 
@@ -415,6 +427,10 @@ def augment_maps(obj_path, name, size):
             a = img.find_bytes(_decode_cstr(n))          # string constant -> orig's copy
         if a is None and n in imports:
             a = imports[n]                                # CRT import -> its IAT slot
+        if a is None and '@' in n:                       # decorated stdcall import
+            a = imports.get(n.split('@', 1)[0])          # __imp__Foo@8 -> __imp__Foo
+        if a is None and base == 'except_list':
+            a = 0                                        # fs:[0] SEH-chain head
         if a is not None:
             gl[base] = a
     return fnmap, gl
@@ -442,8 +458,37 @@ def resolve_bytes(obj_path, name, va, size):
     would be meaningless.
     """
     fnmap, glmap = augment_maps(obj_path, name, size)
+    # The C++ EH-handler push (`push OFFSET $Lnnn`) names a `$` label in a
+    # separate .text$x funclet section: unnameable globally, but its only effect
+    # is the address it puts on the SEH chain -- frame state the oracle never
+    # compares.  Resolve it to the function's own (mapped) address so the run
+    # proceeds; a same-section `$L` (jump table) is resolved normally and is not
+    # overridden here.
+    extra = {}
     try:
-        code = reloc_fill.fill_function(obj_path, name, va, fnmap, glmap, size)
+        d, secs, syms, relocs = reloc_fill.parse(obj_path)
+        fn = next((s for s in syms if s['name'].lstrip('_') ==
+                   reloc_fill._undecorate(name) or s['name'] == name), None)
+        if fn is not None:
+            for rva, si, rt in relocs.get(fn['sec'], []):
+                off = rva - fn['val']
+                if not (0 <= off < size - 3):
+                    continue
+                ts = next((s for s in syms if s['idx'] == si), None)
+                # ONLY the C++ EH-handler funclet ($L… in a .text$x section):
+                # that address only reaches the SEH chain, never runs on the
+                # normal path, so a dummy is sound.  Do NOT touch $T EH-state
+                # labels or anything else -- blanket-resolving them to a dummy
+                # corrupts functions that read them and manufactures false DIFFs
+                # (measured on BrCarStateLerp), so leave those UNCLASSIFIED.
+                if (ts and ts['name'].lstrip('_').startswith('$L')
+                        and ts['sec'] != fn['sec']
+                        and secs.get(ts['sec'], {}).get('name', '').startswith('.text')):
+                    extra[(va, off)] = va
+    except Exception:
+        extra = {}
+    try:
+        code = reloc_fill.fill_function(obj_path, name, va, fnmap, glmap, size, extra)
     except Exception as e:
         return None, 'reloc fill raised %s' % type(e).__name__
     if code is None:
