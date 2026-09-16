@@ -112,6 +112,57 @@ class Image(object):
         s = self.section('.text')
         return self.data[s[3]:s[3] + s[4]]
 
+    def _off_to_va(self, off):
+        for name, lo, hi, rawoff, rawsize in self.sections:
+            if rawoff <= off < rawoff + rawsize:
+                return lo + (off - rawoff)
+        return None
+
+    def find_bytes(self, needle):
+        """VA of the first occurrence of `needle` in the image, or None.
+        Used to resolve a compiler string constant to the original's own copy."""
+        off = self.data.find(needle)
+        return self._off_to_va(off) if off >= 0 else None
+
+    def imports(self):
+        """{'__imp__<name>': IAT-slot VA} parsed from the PE import table, so an
+        indirect CRT import call `[__imp__memmove]` resolves to its real slot."""
+        if getattr(self, '_imports', None) is None:
+            self._imports = {}
+            d = self.data
+            try:
+                pe = struct.unpack_from('<I', d, 0x3c)[0]
+                opt = pe + 24
+                imp_rva = struct.unpack_from('<I', d, opt + 96 + 8)[0]
+                def r2o(rva):
+                    for name, lo, hi, ro, rs in self.sections:
+                        v = lo - self.base
+                        if v <= rva < v + (hi - lo):
+                            return ro + (rva - v)
+                    return None
+                off = r2o(imp_rva)
+                while off is not None:
+                    oft, ts, fw, name_rva, first = struct.unpack_from('<IIIII', d, off)
+                    if name_rva == 0:
+                        break
+                    thunk = first
+                    toff = r2o(thunk)
+                    while toff is not None:
+                        ent = struct.unpack_from('<I', d, toff)[0]
+                        if ent == 0:
+                            break
+                        if not (ent & 0x80000000):
+                            noff = r2o(ent & 0x7fffffff)
+                            if noff is not None:
+                                nm = d[noff + 2:d.index(b'\0', noff + 2)].decode('latin1')
+                                self._imports['__imp__' + nm] = self.base + thunk
+                        thunk += 4
+                        toff = r2o(thunk)
+                    off += 20
+            except Exception:
+                pass
+        return self._imports
+
 
 _IMAGE = None
 
@@ -209,6 +260,17 @@ def disasm(code, base):
     return [(i.address, i.mnemonic, i.op_str) for i in _md.disasm(code, base)]
 
 
+def code_at(addr, window=8192):
+    """Disassemble one function's worth of bytes starting at `addr` from the
+    image, for on-demand splicing when the shared linear sweep missed an entry
+    (a target after embedded data).  Linear from addr; the caller stops at ret."""
+    img = image()
+    if not (img.text_lo <= addr < img.text_hi):
+        return []
+    off = addr - img.text_lo
+    return disasm(img.text_bytes()[off:off + window], addr)
+
+
 _TEXT_PROG = None
 
 
@@ -286,6 +348,21 @@ def maps():
 
 _ADDR_IN_NAME = re.compile(r'^(?:DAT|FUN|PTR|UNK|LAB|SUB|s|u)_?([0-9A-Fa-f]{8})$')
 _ADDR_SUFFIX = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*?_?(1[0-9A-Fa-f]{7})$')
+# Project naming conventions (docs/): a `g_<HEX>` global lives at 0x10000000+HEX
+# (the low bytes are the name); a `sub_<HEX>` / `m_<HEX>` callee is at the full
+# 0x<HEX>.  C++ output mangles them as `?g_<HEX>@@3..` / `?m_<HEX>@Obj@@..`.
+_CONV_GLOBAL = re.compile(r'^\??g_([0-9A-Fa-f]{5,8})(?:@@|$)')
+_CONV_CALLEE = re.compile(r'^\??(?:sub_|m_)([0-9A-Fa-f]{7,8})(?:@|$)')
+
+
+def _convention_addr(s):
+    m = _CONV_GLOBAL.match(s)
+    if m:
+        return 0x10000000 + int(m.group(1), 16)
+    m = _CONV_CALLEE.match(s)
+    if m:
+        return int(m.group(1), 16)
+    return None
 
 
 def address_in_name(sym):
@@ -299,12 +376,14 @@ def address_in_name(sym):
     number is not a mapped address resolves to nothing, exactly as before.
     """
     s = sym.lstrip('_')
-    m = _ADDR_IN_NAME.match(s) or _ADDR_SUFFIX.match(s)
-    if not m:
-        return None
-    a = int(m.group(1), 16)
+    a = _convention_addr(s)
+    if a is None:
+        m = _ADDR_IN_NAME.match(s) or _ADDR_SUFFIX.match(s)
+        if not m:
+            return None
+        a = int(m.group(1), 16)
     img = image()
-    if not img.mapped(a):
+    if not (img.mapped(a) or img.is_bss(a)):   # BSS globals are addressable too
         return None
     if s[:3].upper() in ('FUN', 'SUB') and not (img.text_lo <= a < img.text_hi):
         return None
@@ -324,15 +403,33 @@ def augment_maps(obj_path, name, size):
         d, secs, syms, relocs = reloc_fill.parse(obj_path)
     except Exception:
         return fnmap, gl
+    img = image()
+    imports = img.imports()
     for sy in syms:
         n = sy['name']
         base = n.lstrip('_')
         if base in fnmap or base in gl:
             continue
         a = address_in_name(n)
+        if a is None and n.startswith('??_C'):
+            a = img.find_bytes(_decode_cstr(n))          # string constant -> orig's copy
+        if a is None and n in imports:
+            a = imports[n]                                # CRT import -> its IAT slot
         if a is not None:
             gl[base] = a
     return fnmap, gl
+
+
+_CSTR_ESC = {'?4': '.', '?2': '\\', '?5': ' ', '?3': ':', '?1': '/', '?0': '@'}
+
+
+def _decode_cstr(name):
+    """MSVC string-literal symbol -> its bytes: ??_C@_0LEN@HASH@<encoded>@ ."""
+    body = name.split('@')[3] if name.count('@') >= 4 else ''
+    for k, v in _CSTR_ESC.items():
+        body = body.replace(k, v)
+    body = body.replace('?$AA', '').rstrip('@')
+    return body.encode('latin1') + b'\0'
 
 
 def resolve_bytes(obj_path, name, va, size):

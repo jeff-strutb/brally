@@ -75,11 +75,15 @@ def main():
     if os.path.exists(cpp):
         seen = set(r['va'].upper() for r in match + diff)
         for r in csv.DictReader(open(cpp)):
-            if r.get('status') != 'match':
-                continue
             va = (r.get('va') or '').upper()
-            if va in target and va not in seen:
-                cpp_done.add(va)
+            if va not in target or va in seen:
+                continue
+            if r.get('status') == 'match':
+                cpp_done.add(va)                 # byte-exact in the C++ lane -> T4
+            else:
+                diff.append(r); seen.add(va)     # C++-lane, not yet byte-exact:
+                #  a transcribed diff row -- T2, or T3 if it carries an @t3 tag.
+                #  Without this it was counted nowhere and reappeared as T1.
 
     # T3 is decided by tools/t3.py --qualify (CLAUDE.md rule 12): certified
     # complete, not byte-exact.  The old automatic "T3a" split (identical

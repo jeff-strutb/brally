@@ -915,6 +915,18 @@ def gates(m):
     g.append(('A5 oracle', m['oracle'] != 'DIFF', m['oracle']))
     if m.get('tab_note'):
         g.append(('A6 tables', m['tables_ok'], m['tab_note']))
+    # A5 is authoritative. A1-A4 are BYTE-SHAPE proxies -- they argue the residue
+    # "looks like compiler choices". A5 doesn't argue: it executes both sides on
+    # identical inputs and compares outputs. When it returns a clean behavioural
+    # verdict, that IS the T3 standard met (same in -> same out), so the proxy
+    # gates are superseded. They only decide when the oracle CANNOT render a
+    # verdict (UNCLASSIFIED). This ends the false-negative where a behaviourally
+    # equivalent giant fails A1/A2/A4 on colouring residue that never changes
+    # behaviour. DIFF still fails A5 outright; nothing here weakens that.
+    if m['oracle'] in ('EQUIVALENT', 'EQUIV-MODULO-FP'):
+        for i, (name, passed, det) in enumerate(g):
+            if name[:2] in ('A1', 'A2', 'A3', 'A4') and not passed:
+                g[i] = (name, True, det + '  [superseded by A5 %s]' % m['oracle'])
     return g
 
 

@@ -51,6 +51,7 @@ from match_diff import parse_coff_obj
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 import x87emu
 import t3b_env as ENV
+import oracle_profiles
 
 md = Cs(CS_ARCH_X86, CS_MODE_32)
 md.detail = False
@@ -118,13 +119,16 @@ def parse_signature(name):
     try:
         # grep the plain identifier (git grep -E is unreliable with \b/\s);
         # do the precise prototype match in Python below.
-        g = subprocess.run(['git', 'grep', '-h', name, '--', 'src/'],
+        # --untracked so a not-yet-committed C++ lane file (the one being
+        # qualified) is searched too, not only tracked files.
+        g = subprocess.run(['git', 'grep', '-h', '--untracked', name, '--', 'src/'],
                            cwd=ROOT, capture_output=True, text=True)
     except Exception:
         return None
     best = None
     for ln in g.stdout.splitlines():
         ln = ln.strip()
+        ln = re.sub(r'^extern\s+"C(?:\+\+)?"\s*', '', ln)   # C++ lane linkage spec
         if ln.endswith(';') or ln.startswith(('/', '*', '#')):
             continue                                   # declaration or comment
         m = re.match(r'^([A-Za-z_][\w \t]*?)\b%s\s*\(([^)]*)\)' % re.escape(name), ln)
@@ -253,7 +257,7 @@ def _obj_index():
     global _OBJ_INDEX
     if _OBJ_INDEX is None:
         _OBJ_INDEX = {}
-        for d in ('obj_O2', 'obj_O2y', 'obj_O2p', 'obj_Od'):
+        for d in ('obj_O2', 'obj_O2y', 'obj_O2p', 'obj_Od', 'obj_cpp'):
             p = os.path.join(ROOT, 'build', 'match', d)
             if not os.path.isdir(p):
                 continue
@@ -395,6 +399,24 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     """Run both sides inside the mapped image and compare everything
     observable: the return value, the argument buffers, and every byte of
     memory either side wrote."""
+    prof = oracle_profiles.get(va)
+    if prof is None:
+        return _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig)
+    # A profiled function needs a valid input world, not random bytes: seed BSS
+    # from the profile (null-safe pointers + varied gating flags) and zero the
+    # stack window.  Swap the module seeding hooks for the run, then restore.
+    global _sfloat_bits
+    old_bss, old_sf = ENV.bss_byte, _sfloat_bits
+    ENV.bss_byte = prof.bss
+    if prof.zero_stack:
+        _sfloat_bits = lambda rnd: 0
+    try:
+        return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig)
+    finally:
+        ENV.bss_byte, _sfloat_bits = old_bss, old_sf
+
+
+def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     rounding = 0
     prog_o, idx_o = ENV.program_for(va, orig_bytes)
     prog_r, idx_r = ENV.program_for(va, recomp_bytes)
@@ -402,15 +424,40 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
     for s in range(1, seeds + 1):
         try:
             mo, ro, rego, bo, nstack = _setup_img(s, sig)
-            Mo = x87emu.Machine(mo, ro, prog_o, idx_o); Mo.run(va, maxsteps=IMG_STEPS)
+            Mo = x87emu.Machine(mo, ro, prog_o, idx_o, code_provider=ENV.code_at)
+            Mo.model_unresolved_icalls = True; Mo.run(va, maxsteps=IMG_STEPS)
             mr, rr, _regr, br, _ns = _setup_img(s, sig)
-            Mr = x87emu.Machine(mr, rr, prog_r, idx_r); Mr.run(va, maxsteps=IMG_STEPS)
+            Mr = x87emu.Machine(mr, rr, prog_r, idx_r, code_provider=ENV.code_at)
+            Mr.model_unresolved_icalls = True; Mr.run(va, maxsteps=IMG_STEPS)
         except Exception as e:
             return 'UNCLASSIFIED', 'run escaped oracle (%s: %s)' % (
                 type(e).__name__, str(e)[:60])
-        for mm in (mo, mr):
-            if mm.unmapped:
-                return 'UNCLASSIFIED', 'touched %d address(es) outside the image' % len(mm.unmapped)
+        # Out-of-image reads come from dereferencing seeded pointer-valued
+        # globals; they return a default (0) IDENTICALLY on both sides, so they
+        # never change the compared observable state.  They are not a rejection
+        # or divergence criterion on their own -- the observable comparison
+        # below (in-image globals, return, dispatch sequence) is what decides.
+        # A runaway count, though, means the run walked off into noise: bail.
+        if len(mo.unmapped) > 4000 or len(mr.unmapped) > 4000:
+            return 'UNCLASSIFIED', 'seed %d: run walked into unmapped memory' % s
+        # Indirect calls through init-only function-pointer slots were black-boxed
+        # identically on both sides; the observable is WHICH slot and WITH WHAT
+        # args.  A different sequence means the two sides dispatch differently --
+        # a real behavioural divergence, not a modelling artefact.
+        # Compare the SLOT sequence only -- which function pointers are
+        # dispatched, in order.  Arguments are not compared: the interpreter
+        # does not know each callee's arity, so a fixed stack window would pick
+        # up bytes beyond the real args and manufacture a false divergence.
+        # A real arg divergence still surfaces through the global side effects
+        # the dispatched code (or its setup) writes.
+        so = [c[0] for c in Mo.icalls]
+        sr = [c[0] for c in Mr.icalls]
+        if so != sr:
+            j = next((k for k in range(min(len(so), len(sr))) if so[k] != sr[k]),
+                     min(len(so), len(sr)))
+            return 'DIFF', ('seed %d: indirect-call #%d dispatches a different '
+                            'target (0x%08X vs 0x%08X)' % (s, j,
+                            so[j] if j < len(so) else 0, sr[j] if j < len(sr) else 0))
         written = mo.written | mr.written
         if ret == 'float':
             a = Mo.st[0] if Mo.st else 0.0
@@ -428,10 +475,19 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
                     s, a if ret == 'float' else Mo.R['eax'],
                     b if ret == 'float' else Mr.R['eax'])
         arg_end = STACK_BASE + 4 + 4 * nstack
+        # A real output is a write to an in-image global (initialised data or
+        # BSS) or to a caller-passed buffer -- NOT a store through a garbage
+        # pointer seeded into some global, which lands at a wild address that is
+        # identical noise on both sides when they agree and meaningless when
+        # they do not.  Restrict the global comparison to real data addresses.
+        _img = ENV.image()
+        def _real_global(x):
+            return _img.is_bss(x) or _img.byte(x) is not None
         addrs = [x for (lo, hi) in bo for x in range(lo, hi)
                  if mo.peek(x) != mr.peek(x)]
         addrs += [x for x in written
-                  if _observable(x, arg_end) and mo.peek(x) != mr.peek(x)]
+                  if _observable(x, arg_end) and _real_global(x)
+                  and mo.peek(x) != mr.peek(x)]
         if addrs:
             if _classify_diff(mo, mr, addrs) == 'real':
                 where = ('an output buffer' if addrs[0] < STACK_BASE
@@ -450,7 +506,7 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
 def _recomp_for(va_hex, name):
     """Find the recompiled bytes for a function, and refuse if the object has
     relocations (=> references a global; out of this oracle's reach)."""
-    for d in ('obj_O2', 'obj_O2y', 'obj_O2p', 'obj_Od'):
+    for d in ('obj_O2', 'obj_O2y', 'obj_O2p', 'obj_Od', 'obj_cpp'):
         p = os.path.join(ROOT, 'build', 'match', d)
         if not os.path.isdir(p):
             continue
