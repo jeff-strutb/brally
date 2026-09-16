@@ -79,7 +79,7 @@ typedef char chk_70[(unsigned)&((Rip0C4E0 *)0)->a2a70 == 0x2A70 ? 1 : -1];
 typedef char chk_90[(unsigned)&((Rip0C4E0 *)0)->a2a90 == 0x2A90 ? 1 : -1];
 
 extern "C" {
-short g_brABE44;                        /* 0x100ABE44 -- the per-octant cap */
+short g_ABE44;                        /* 0x100ABE44 -- the per-octant cap */
 float BrAtan2_10034E30(float y, float x);
 void  BrFn1005A4E0(int a, int b, int c);
 void  BrFn1006E0A0(int oct, int *pA, int *pB);
@@ -126,7 +126,7 @@ int Rip0C4E0::Apply(const float *pDir, int mag)
     BrFn1005A4E0(b29ac, b29ad, b29ae);
     BrFn1006E0A0(oct, a2a70, a2a90);
 
-    if (w29c8[oct] >= g_brABE44)
+    if (w29c8[oct] >= g_ABE44)
         return 1;
 
     w29c8[oct] = (short)(mag + w29c8[oct]);

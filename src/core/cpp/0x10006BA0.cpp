@@ -86,7 +86,7 @@
 
 class BrBitStream {
 public:
-    void WriteBits(int value, int nBits);   /* 0x1006D0B0, declared only */
+    void m_1006D0B0(int value, int nBits);   /* WriteBits */   /* 0x1006D0B0, declared only */
 };
 
 /* VC4.2 folds `!= 0.0f` to test [mem],0x7fffffff; a compare against a float
@@ -156,39 +156,38 @@ static __inline int32_t BrCarStateDeltaCode(uint32_t cur, uint32_t ref,
 }
 
 extern "C"
-void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
-                           const BrCarState *pRef)
+void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur, const BrCarState *pRef)
 {
     int32_t cur, ref;
     int16_t q;
 
-    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f00) >> 8, 8);
-    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f04) >> 8, 8);
-    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f08) >> 8, 8);
-    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f0C) >> 8, 8);
+    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f00) >> 8, 8);
+    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f04) >> 8, 8);
+    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f08) >> 8, 8);
+    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f0C) >> 8, 8);
 
     /* f10: 17-bit quantity, 12 bits sent plus a 2-bit code on 0x1F000. */
     ref = (int32_t)((uint32_t)BrFixPackU24Q13(pRef->f10) >> 7);
     cur = (int32_t)((uint32_t)BrFixPackU24Q13(pCur->f10) >> 7);
-    pBs->WriteBits(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
+    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
 
     ref = (int32_t)((uint32_t)BrFixPackU24Q13(pRef->f14) >> 7);
     cur = (int32_t)((uint32_t)BrFixPackU24Q13(pCur->f14) >> 7);
-    pBs->WriteBits(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
+    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
 
     /* f18: 15-bit SIGNED quantity, 9 bits sent plus a code on 0x7E00. */
     ref = BrFixPackS16Q7(pRef->f18) >> 1;
     cur = BrFixPackS16Q7(pCur->f18) >> 1;
-    pBs->WriteBits((cur & 0x1FF) | BrCarStateDeltaCode(cur, ref, 0x7E00, 0x200), 11);
+    pBs->m_1006D0B0((cur & 0x1FF) | BrCarStateDeltaCode(cur, ref, 0x7E00, 0x200), 11);
 
     /* f78: 24-bit signed quantity, 7 bits sent plus a code on 0xFFFF80. */
     ref = BrFixPackS24Q1(pRef->f78);
     cur = BrFixPackS24Q1(pCur->f78);
-    pBs->WriteBits(BrCarStateDeltaCode(cur, ref, 0xFFFF80, 0x80) | (cur & 0x7F), 9);
+    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0xFFFF80, 0x80) | (cur & 0x7F), 9);
 
-    pBs->WriteBits((int32_t)((uint32_t)BrFixPackU8Range(pCur->f7C) & 0xFFu), 6);
-    pBs->WriteBits((int32_t)((uint32_t)BrFixPackLevel(pCur->f80) & 0xFFu), 2);
-    pBs->WriteBits((int32_t)((uint32_t)BrFixPackLevel(pCur->f84) & 0xFFu), 2);
+    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackU8Range(pCur->f7C) & 0xFFu), 6);
+    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackLevel(pCur->f80) & 0xFFu), 2);
+    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackLevel(pCur->f84) & 0xFFu), 2);
 
     /* Open-coded in the original (`fld; fcomp; fnstsw; test ah,0x40; jne`).
      * VC5 gives 0 for a NaN here, which is what the original does; a strict
@@ -197,29 +196,29 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
         cur = 1;
     else
         cur = 0;
-    pBs->WriteBits(cur, 1);
+    pBs->m_1006D0B0(cur, 1);
     if (pCur->f8C != BR_FZERO)
         cur = 1;
     else
         cur = 0;
-    pBs->WriteBits(cur, 1);
+    pBs->m_1006D0B0(cur, 1);
     if (pCur->f90 != BR_FZERO)
         cur = 1;
     else
         cur = 0;
-    pBs->WriteBits(cur, 1);
+    pBs->m_1006D0B0(cur, 1);
     if (pCur->f94 != BR_FZERO)
         cur = 1;
     else
         cur = 0;
-    pBs->WriteBits(cur, 1);
+    pBs->m_1006D0B0(cur, 1);
     if (pCur->f98 != BR_FZERO)
         cur = 1;
     else
         cur = 0;
-    pBs->WriteBits(cur, 1);
+    pBs->m_1006D0B0(cur, 1);
     if (pCur->f9C != BR_FZERO)
-        pBs->WriteBits(1, 1);
+        pBs->m_1006D0B0(1, 1);
     else
-        pBs->WriteBits(0, 1);
+        pBs->m_1006D0B0(0, 1);
 }
