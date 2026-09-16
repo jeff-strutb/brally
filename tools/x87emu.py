@@ -389,8 +389,15 @@ class Machine:
                     if mem in self.R or mem in REG8 or mem in REG16:
                         # call <reg>: the register HOLDS the callee address (a
                         # cached import pointer or a game function pointer).  Not
-                        # a memory dereference -- take the value directly.
+                        # a memory dereference -- take the value directly.  Mark
+                        # slot non-None (the register value) so that if the value
+                        # is neither an import nor mapped code -- a garbage/uninit
+                        # function pointer in the seeded world -- it BLACK-BOXES
+                        # via model_unresolved_icalls below instead of raising
+                        # "call to unmapped" (which would leave the function
+                        # UNCLASSIFIED, the pre-fix behaviour was to black-box).
                         target = self.rd_reg(mem)
+                        slot = target
                     else:
                         # indirect: call dword ptr [slot] -- slot holds either a
                         # game function pointer (into mapped .text) or a DLL import.
