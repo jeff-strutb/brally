@@ -76,6 +76,7 @@ the @implements), or if a tag is malformed.  claim_lane.py never hands a
 certified function out; tiers.py reports them with their own denominator.
 """
 import collections, csv, os, re, subprocess, sys
+import reloc_fill
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
@@ -885,10 +886,15 @@ def measure(va):
     mb = re.search(r'(\d+) orig bytes \([\d.]+% of the function\) were NEVER COMPARED', out)
     lost_bytes = int(mb.group(1)) if mb else (0 if not lost else 10**6)
     # oracle
-    # A C++ row's plain name also names the STALE C twin's symbol in obj_O2;
-    # hand the oracle the mangled symbol so it measures this object or
-    # reports UNCLASSIFIED, never the twin.
-    orc_cmd = [PY, 'tools/t3b_verify.py', va] + (['--name', sym] if r.get('cpp') else [])
+    # A C++ row's plain name also names the STALE C twin's symbol in obj_O2, so
+    # the oracle must not be handed the plain name. It used to get the mangled
+    # sym, but the oracle's parse_signature greps SOURCE, where a method is
+    # spelled Class::Method, not mangled -> A5 came back UNCLASSIFIED for every
+    # method. Hand it the DEMANGLED Class::Method (obj-ownership selection now
+    # filters the twin, and func_symbol_matches accepts the demangled form);
+    # fall back to the raw sym for free functions / unmanglable names.
+    oname = reloc_fill._demangle_method(sym) or sym
+    orc_cmd = [PY, 'tools/t3b_verify.py', va] + (['--name', oname] if r.get('cpp') else [])
     orc = subprocess.run(orc_cmd, cwd=ROOT,
                          capture_output=True, text=True).stdout.strip().splitlines()
     verdict = 'UNCLASSIFIED'
