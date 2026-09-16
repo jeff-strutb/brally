@@ -420,7 +420,8 @@ def augment_maps(obj_path, name, size):
     for sy in syms:
         n = sy['name']
         base = n.lstrip('_')
-        if base in fnmap or base in gl:
+        u = reloc_fill._undecorate(n)                 # @Name@N -> Name (fastcall/stdcall)
+        if base in fnmap or base in gl or u in fnmap or u in gl:
             continue
         a = address_in_name(n)
         if a is None and n.startswith('??_C'):
@@ -432,14 +433,18 @@ def augment_maps(obj_path, name, size):
         if a is None and base == 'except_list':
             a = 0                                        # fs:[0] SEH-chain head
         if a is None:
-            a = _declared_va().get(base)                 # `Name(...); /* 0x<VA> */`
+            a = _declared_va().get(base) or _declared_va().get(u)  # `Name(...); /* 0x<VA> */`
+        if a is None:
+            a = _declared_data_va().get(base) or _declared_data_va().get(u)  # `extern T Name; /* 0x<VA> */`
         if a is not None:
             gl[base] = a
+            gl[u] = a                                    # so resolve() finds the undecorated form
     return fnmap, gl
 
 
 _DECL_VA = None
 _DECL_RE = re.compile(r'\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*;[^\n]*?\b0x([0-9A-Fa-f]{8})\b')
+_DECL_TAG_RE = re.compile(r'\b0x([0-9A-Fa-f]{8})\s+glide\s+([A-Za-z_]\w*)')
 
 
 def _declared_va():
@@ -470,7 +475,104 @@ def _declared_va():
                 a = int(hexva, 16)
                 if img.text_lo <= a < img.text_hi:
                     _DECL_VA[nm] = a
+            # Also the transcription-marker form `0x<VA> glide <Name>` / the
+            # `@implements 0x<VA> glide <Name>` tag: a hand-named function the
+            # address map holds only by VA (nameless CSV row) resolves from it,
+            # so a call to a transcribed-but-not-byte-exact callee (e.g. the
+            # recursive BrAiScanCorridor) reaches the original's own bytes.
+            for m in _DECL_TAG_RE.finditer(text):
+                hexva, nm = m.group(1), m.group(2)
+                a = int(hexva, 16)
+                if nm not in _DECL_VA and img.text_lo <= a < img.text_hi:
+                    _DECL_VA[nm] = a
     return _DECL_VA
+
+
+_DECL_DATA_VA = None
+_DECL_DATA_RE = re.compile(
+    r'\bextern\b[^;{}=()]*?\b([A-Za-z_]\w*)\s*(?:\[[^\]]*\])?\s*;[^\n]*?\b0x([0-9A-Fa-f]{8})\b')
+
+
+def _declared_data_va():
+    """{global name -> VA} read from `extern Type Name;  /* 0x<VA> */` data
+    declarations across src/.  The tree annotates each hand-named global with its
+    address in a trailing comment (g_brAiBiasPos /* 0x10B1CBE8 */); a data symbol
+    the maps never recorded resolves from that, so a function that reads/writes a
+    named AI global runs in the image where the original's global really lives.
+    Accepted only when the VA is MAPPED and OUTSIDE .text (a data address); the
+    annotation is the tree's ground truth, verified during matching, and the
+    read/write it enables is compared like any other global."""
+    global _DECL_DATA_VA
+    if _DECL_DATA_VA is not None:
+        return _DECL_DATA_VA
+    _DECL_DATA_VA = {}
+    img = image()
+    src = os.path.join(ROOT, 'src')
+    for dp, _, fs in os.walk(src):
+        for fn in fs:
+            if not fn.endswith(('.c', '.cpp', '.h')):
+                continue
+            try:
+                text = open(os.path.join(dp, fn), 'r', errors='ignore').read()
+            except Exception:
+                continue
+            for m in _DECL_DATA_RE.finditer(text):
+                nm, hexva = m.group(1), m.group(2)
+                if nm in _DECL_DATA_VA:
+                    continue
+                a = int(hexva, 16)
+                if (img.text_lo <= a < img.text_hi) or not img.mapped(a):
+                    continue
+                # Reject a STALE annotation: the g_<HEX> convention name derived
+                # from this VA has a DIFFERENT learned address.  A friendly alias
+                # (g_brCdPlaying /* 0x10220CD0 */) whose real global lives
+                # elsewhere (g_220CD0 -> 0x1021C800 in globals_learned.csv) would
+                # otherwise send our writes to the wrong object -> a false DIFF.
+                learned_a = _learned_conv_addr(a)
+                if learned_a is not None and learned_a != a:
+                    continue
+                _DECL_DATA_VA[nm] = a
+    return _DECL_DATA_VA
+
+
+_LEARNED_MAP = None
+
+
+def _learned_conv_addr(a):
+    """Learned address of the `g_<HEX>` convention name derived from VA `a`
+    (HEX = low 24 bits), or None.  Used to detect a stale friendly-alias
+    annotation whose real global lives at a different address."""
+    global _LEARNED_MAP
+    if _LEARNED_MAP is None:
+        try:
+            _LEARNED_MAP = reloc_fill.load_learned()
+        except Exception:
+            _LEARNED_MAP = {}
+    return _LEARNED_MAP.get('g_%06X' % (a & 0xFFFFFF))
+
+
+_ZERO_VA = None
+
+
+def _mapped_zero_va(img):
+    """A MAPPED image VA holding at least 8 zero bytes (for a 0.0f/0.0 constant).
+    find_bytes alone lands in the unmapped PE header; skip each zero run whose
+    file offset does not map to a section VA.  Cached."""
+    global _ZERO_VA
+    if _ZERO_VA is not None:
+        return _ZERO_VA
+    data = img.data
+    off = data.find(b'\0' * 8)
+    while off >= 0:
+        va = img._off_to_va(off)
+        if va is not None and img.mapped(va):
+            _ZERO_VA = va
+            return va
+        nz = off
+        while nz < len(data) and data[nz] == 0:
+            nz += 1
+        off = data.find(b'\0' * 8, nz)
+    return None
 
 
 _CSTR_ESC = {'?4': '.', '?2': '\\', '?5': ' ', '?3': ':', '?1': '/', '?0': '@'}
@@ -495,6 +597,7 @@ def resolve_bytes(obj_path, name, va, size):
     would be meaningless.
     """
     fnmap, glmap = augment_maps(obj_path, name, size)
+    img = image()
     # The C++ EH-handler push (`push OFFSET $Lnnn`) names a `$` label in a
     # separate .text$x funclet section: unnameable globally, but its only effect
     # is the address it puts on the SEH chain -- frame state the oracle never
@@ -504,8 +607,9 @@ def resolve_bytes(obj_path, name, va, size):
     extra = {}
     try:
         d, secs, syms, relocs = reloc_fill.parse(obj_path)
-        fn = next((s for s in syms if s['name'].lstrip('_') ==
-                   reloc_fill._undecorate(name) or s['name'] == name), None)
+        fn = next((s for s in syms
+                   if reloc_fill._undecorate(s['name']) == reloc_fill._undecorate(name)
+                   and secs.get(s['sec'], {}).get('name', '').startswith('.text')), None)
         if fn is not None:
             for rva, si, rt in relocs.get(fn['sec'], []):
                 off = rva - fn['val']
@@ -522,6 +626,46 @@ def resolve_bytes(obj_path, name, va, size):
                         and ts['sec'] != fn['sec']
                         and secs.get(ts['sec'], {}).get('name', '').startswith('.text')):
                     extra[(va, off)] = va
+                    continue
+                # A `$T` float/double literal in .rdata/.data: MSVC names each
+                # constant $T<n>.  The function READS it, so a dummy would corrupt
+                # behaviour -- instead resolve it to the ORIGINAL's identical copy
+                # by finding this object's own constant bytes in the image.  Sound:
+                # a wrong transcribed constant is either absent (-> unresolved,
+                # UNCLASSIFIED) or reads a different value than the original's
+                # (-> DIFF); it can never manufacture a false EQUIVALENT.
+                if (ts and ts['name'].lstrip('_').startswith('$T')
+                        and secs.get(ts['sec'], {}).get('name', '')
+                            .startswith(('.rdata', '.data'))):
+                    sec2 = secs[ts['sec']]
+                    nexts = [s['val'] for s in syms
+                             if s['sec'] == ts['sec'] and s['val'] > ts['val']]
+                    end = min(nexts) if nexts else sec2['size']
+                    gap = end - ts['val']
+                    length = 8 if gap >= 8 else 4
+                    cstart = sec2['praw'] + ts['val']
+                    # Find this obj's own constant bytes in the image (the
+                    # original's identical copy).  Try the slot length, then fall
+                    # back to a 4-byte float: a wrong-length match reads a wrong
+                    # value and surfaces as DIFF, never a false EQUIVALENT.
+                    img_addr = None
+                    for ln in (length, 4):
+                        const = d[cstart:cstart + ln]
+                        if len(const) != ln:
+                            continue
+                        if const == b'\0' * ln:
+                            # 0.0f/0.0: find_bytes would land in the PE header
+                            # (unmapped); resolve to a mapped zeroed address so
+                            # both sides read 0 identically.
+                            img_addr = _mapped_zero_va(img)
+                        else:
+                            img_addr = img.find_bytes(const)
+                        if img_addr is not None:
+                            break
+                    if img_addr is not None:
+                        praw = secs[fn['sec']]['praw']
+                        addend = struct.unpack_from('<i', d, praw + off)[0]
+                        extra[(va, off)] = (img_addr + addend) & 0xFFFFFFFF
     except Exception:
         extra = {}
     try:
