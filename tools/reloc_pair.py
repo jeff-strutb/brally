@@ -66,7 +66,11 @@ def _skeleton(ins, field_kind):
                                     'i' if op.mem.index else ''))
         else:
             ops.append('r%d' % op.size)
-    return (ins.mnemonic, field_kind, tuple(ops))
+    # A transfer is a transfer: our compile spells `call f; ret` where the
+    # original tail-calls `jmp f` -- same relocation, different mnemonic, and
+    # keying them apart breaks conservation on exactly those functions.
+    mnem = 'xfer' if field_kind == 'rel' else ins.mnemonic
+    return (mnem, field_kind, tuple(ops))
 
 
 def _address_fields(body, va, lo, hi, text_lo, text_hi):
@@ -77,7 +81,10 @@ def _address_fields(body, va, lo, hi, text_lo, text_hi):
     out = []
     for ins in _md.disasm(bytes(body), va):
         ioff = ins.address - va
-        is_branch = ins.mnemonic in ('call', 'jmp')
+        # ANY control-flow immediate is a code displacement, not a relocation:
+        # a long jcc's target lands in .text and would pollute the DIR32 pool
+        # (measured: je/jne/jl fields broke conservation on BrRcaFixup).
+        is_branch = ins.mnemonic == 'call' or ins.mnemonic.startswith('j')
         # DIR32: immediate operands and memory displacements
         for op in ins.operands:
             if op.type == X86_OP_IMM and ins.imm_size == 4 and not is_branch:
@@ -90,14 +97,34 @@ def _address_fields(body, va, lo, hi, text_lo, text_hi):
                 if lo <= val < hi and ins.disp_size == 4:
                     out.append((ioff + ins.disp_offset,
                                 _skeleton(ins, 'mem'), REL_DIR32, val))
-        # REL32: e8/e9 (and jcc rel32); value stored is the displacement
+        # REL32: e8/e9; value stored is the displacement.  A jmp landing back
+        # inside this body is control flow, not a tail-call relocation.
         if ins.mnemonic in ('call', 'jmp') and len(ins.operands) == 1 \
                 and ins.operands[0].type == X86_OP_IMM:
             tgt = ins.operands[0].imm & 0xFFFFFFFF
-            if text_lo <= tgt < text_hi and ins.imm_size == 4:
+            inside = va <= tgt < va + len(body)
+            if text_lo <= tgt < text_hi and ins.imm_size == 4 \
+                    and (ins.mnemonic == 'call' or not inside):
                 out.append((ioff + ins.imm_offset,
                             _skeleton(ins, 'rel'), REL_REL32, tgt))
     return out
+
+
+def _jmp_hop(img, a):
+    """The address `a`'s one-hop jmp-thunk target in the original image, or
+    None.  `e9 rel32` only: the link-stage thunks that alias a function's
+    entry (the original calls the thunk, the maps name the implementation)."""
+    try:
+        if img.byte(a) != 0xE9:
+            return None
+        d = 0
+        for i in range(4):
+            d |= img.byte(a + 1 + i) << (8 * i)
+        if d >= 0x80000000:
+            d -= 0x100000000
+        return (a + 5 + d) & 0xFFFFFFFF
+    except Exception:
+        return None
 
 
 def _our_sites(obj_path, fname, size):
@@ -148,6 +175,53 @@ def _our_sites(obj_path, fname, size):
     return sites, body
 
 
+def _solve_group(group, cands):
+    """{sym: addr} when EXACTLY ONE assignment of bases to the group's symbols
+    reproduces the candidate fields, else None.
+
+    A key group may hold several symbols (two statics accessed with the same
+    instruction shape).  Their member-offset addends are a fingerprint: symbol
+    S with addends {0,4,8} and symbol T with {0} match fields {X,X+4,X+8,Y}
+    only as S=X, T=Y.  Every symbol's base candidates are enumerated from the
+    fields through its own addends; a combination is a solution when the
+    multiset of implied field values equals the multiset of candidate values.
+    Zero solutions or two+ distinct solutions -> None (refused).  REL32 sites
+    ignore addends (the field already carries the absolute target)."""
+    import itertools
+    syms = sorted({s[1] for s in group})
+    fvals = sorted(f[3] for f in cands)
+    per_sym = []
+    for sym in syms:
+        ssites = [s for s in group if s[1] == sym]
+        rt = ssites[0][2]
+        bases = set()
+        for f in cands:
+            for s in ssites:
+                b = f[3] if rt == REL_REL32 else (f[3] - s[3]) & 0xFFFFFFFF
+                bases.add(b)
+        per_sym.append((sym, rt, ssites, sorted(bases)))
+    total = 1
+    for _sym, _rt, _ss, bases in per_sym:
+        total *= len(bases)
+        if total > 20000:
+            return None
+    solutions = set()
+    for combo in itertools.product(*(b for _s, _r, _ss, b in per_sym)):
+        implied = []
+        for (sym, rt, ssites, _b), base in zip(per_sym, combo):
+            for s in ssites:
+                implied.append(base if rt == REL_REL32
+                               else (base + s[3]) & 0xFFFFFFFF)
+        if sorted(implied) == fvals:
+            solutions.add(combo)
+            if len(solutions) > 1:
+                return None
+    if len(solutions) != 1:
+        return None
+    combo = next(iter(solutions))
+    return {p[0]: b for p, b in zip(per_sym, combo)}
+
+
 def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
                   plen=0):
     """({(va, off): value}, refused: [(sym, why)], assigned: {sym: addr})
@@ -180,7 +254,12 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
         for i, (foff, fkey, frt, fval) in enumerate(fields):
             if i in consumed or frt != rt:
                 continue
-            if fval == want and (key is None or fkey == key):
+            # A REL32 field may call a jmp-thunk ALIAS of the known target
+            # (the original prefers the thunk, the maps the implementation);
+            # unconsumed alias fields broke conservation on BrRcaFixup.
+            hit = (fval == want or
+                   (rt == REL_REL32 and _jmp_hop(img, fval) == want))
+            if hit and (key is None or fkey == key):
                 consumed.add(i)
                 break
     # group the unknowns and the leftover fields by key
@@ -192,21 +271,20 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
     for i, f in enumerate(fields):
         if i not in consumed:
             leftover.setdefault(f[1], []).append(f)
-    # CONSERVATION: every unknown site and every leftover field must be
-    # accounted for, key for key.  A surplus on either side means an
-    # instruction changed SHAPE between the compiles (or a constant is
-    # masquerading as an address), so some same-key candidate may belong to a
-    # drifted site -- measured on the self-test, that is exactly where forced
-    # 1:1 pairs go wrong.  Refuse the whole function rather than pair into a
-    # polluted pool.
-    n_unknown = len(unknown)
-    n_left = sum(len(v) for v in leftover.values())
-    keys_ok = (n_unknown == n_left and
-               all(len(leftover.get(k, [])) == len(g)
-                   for k, g in bykey.items()))
+    # CONSERVATION, per key: every bucket that holds an unknown site must
+    # hold EXACTLY as many candidate fields.  A surplus in such a bucket
+    # means a drifted or masquerading field could be the forced "candidate"
+    # -- measured on the self-test, that is exactly where 1:1 pairs go wrong
+    # -- so the bucket is refused.  A stray field in a bucket with NO unknown
+    # sites is a KNOWN anchor whose original instruction changed shape; it
+    # cannot reach any unknown's pool, so it blocks nothing.
+    keys_ok = all(len(leftover.get(k, [])) == len(g)
+                  for k, g in bykey.items())
     if not keys_ok:
-        return {}, [(s[1], 'conservation failed (%d sites vs %d fields)'
-                     % (n_unknown, n_left)) for s in unknown], {}
+        return {}, [(s[1], 'conservation failed (key %s: %d sites vs %d '
+                     'fields)' % (s[4], len(bykey[s[4]]),
+                                  len(leftover.get(s[4], []))))
+                    for s in unknown], {}
     assigned = {}                       # sym -> address, cross-site agreement
     for key, group in bykey.items():
         cands = leftover.get(key, [])
@@ -215,26 +293,13 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
                 refused.append((s[1], 'no forced candidate (key group %d vs %d)'
                                 % (len(group), len(cands))))
             continue
-        syms = {s[1] for s in group}
-        addrs = set()
-        for s, f in zip(sorted(group), sorted(cands, key=lambda x: x[0])):
-            off, sym, rt, addend, _k = s
-            foff, _fk, frt, fval = f
-            if rt == REL_DIR32:
-                addrs.add((sym, (fval - addend) & 0xFFFFFFFF))
-            else:
-                addrs.add((sym, fval))
-        by_sym = {}
-        for sym, a in addrs:
-            by_sym.setdefault(sym, set()).add(a)
-        if any(len(v) > 1 for v in by_sym.values()) or \
-                (len(group) > 1 and len(syms) > 1):
+        by_sym = _solve_group(group, cands)
+        if by_sym is None:
             for s in group:
                 refused.append((s[1], 'ambiguous within key group'))
             continue
         ok = True
-        for sym, aset in by_sym.items():
-            a = next(iter(aset))
+        for sym, a in by_sym.items():
             rt = next(s[2] for s in group if s[1] == sym)
             if rt == REL_REL32 and not (img.text_lo <= a < img.text_hi):
                 ok = False
@@ -255,7 +320,7 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
             continue
         for s in group:
             off, sym, rt, addend, _k = s
-            a = next(iter(by_sym[sym]))
+            a = by_sym[sym]
             assigned[sym] = a
             if rt == REL_DIR32:
                 out[(va, off)] = (a + addend) & 0xFFFFFFFF
@@ -265,6 +330,43 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
                 out[(va, off)] = (a + addend
                                   - (va + plen + off + 4)) & 0xFFFFFFFF
     return out, refused, assigned
+
+
+def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
+                   plen=0):
+    """({(va, off): corrected_value}, [(sym, paired_addr, map_addr)]).
+
+    Hold out each RESOLVABLE symbol in turn and re-derive it by pairing
+    alone.  Where the pairing forces a value that DISAGREES with the map's,
+    the original image's own dword wins: hand-coined names (BrSubXXXXXXXX
+    suffixes, g_<HEX> rows) have proven to carry stale D3D-space addresses,
+    and a placed function must reference what the original references, not
+    what a name remembers.  Every override is returned for reporting; a
+    symbol the pairing cannot force is left on its map value unchanged.
+    """
+    sites, _b = _our_sites(obj_path, fname, size)
+    if sites is None:
+        return {}, []
+    corrections, reports = {}, []
+    resolvable = sorted({s[1] for s in sites
+                         if resolve_fn(s[1]) is not None})
+    for hold in resolvable:
+        out, _r, asg = pair_function(
+            obj_path, fname, va, size, orig_body, img,
+            lambda s, hold=hold: None if s == hold else resolve_fn(s),
+            plen=plen)
+        t = resolve_fn(hold)
+        for off, sym, rt, addend, _k in sites:
+            if sym != hold or (va, off) not in out:
+                continue
+            if rt == REL_DIR32:
+                want = (t + addend) & 0xFFFFFFFF
+            else:
+                want = (t + addend - (va + plen + off + 4)) & 0xFFFFFFFF
+            if out[(va, off)] != want:
+                corrections[(va, off)] = out[(va, off)]
+                reports.append((sym, asg.get(sym), t))
+    return corrections, sorted(set(reports))
 
 
 def _selftest():
@@ -340,3 +442,39 @@ if __name__ == '__main__':
     if '--selftest' in sys.argv:
         sys.exit(_selftest())
     print(__doc__)
+
+
+def jump_table_slots(obj_path, fname, va, size, plen=0):
+    """{(va, off): value} for DIR32 slots naming a SAME-SECTION `$L` label.
+
+    Those are switch jump-table entries: the case target's address is this
+    function's own placement address plus the label's section offset -- known
+    EXACTLY from the object's symbol table, no maps and no pairing involved.
+    (A `$L` in another section is the C++ EH funclet; that one is
+    oracle-only and never resolved here.)
+    """
+    out = {}
+    try:
+        d, secs, syms, relocs = reloc_fill.parse(obj_path)
+    except Exception:
+        return out
+    fn = next((s for s in syms
+               if reloc_fill.func_symbol_matches(s['name'], fname)
+               and secs.get(s['sec'], {}).get('name', '').startswith('.text')),
+              None)
+    if fn is None:
+        return out
+    sec = secs[fn['sec']]
+    byidx = {s['idx']: s for s in syms}
+    for rva, si, rt in relocs.get(fn['sec'], []):
+        off = rva - fn['val']
+        if rt != REL_DIR32 or not (0 <= off <= size - 4):
+            continue
+        t = byidx.get(si)
+        if not t or not t['name'].lstrip('_').startswith('$L') \
+                or t['sec'] != fn['sec']:
+            continue
+        addend = struct.unpack_from('<i', d, sec['praw'] + rva)[0]
+        out[(va, off)] = (va + plen + (t['val'] - fn['val'])
+                         + addend) & 0xFFFFFFFF
+    return out
