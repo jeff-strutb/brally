@@ -118,11 +118,17 @@ class Image(object):
                 return lo + (off - rawoff)
         return None
 
-    def find_bytes(self, needle):
-        """VA of the first occurrence of `needle` in the image, or None.
-        Used to resolve a compiler string constant to the original's own copy."""
+    def find_bytes(self, needle, min_va=0):
+        """VA of the first occurrence of `needle` at or above `min_va`, or
+        None.  Used to resolve a compiler string constant to the original's
+        own copy; `min_va` lets a caller skip coincidences in .text."""
         off = self.data.find(needle)
-        return self._off_to_va(off) if off >= 0 else None
+        while off >= 0:
+            va = self._off_to_va(off)
+            if va is not None and va >= min_va:
+                return va
+            off = self.data.find(needle, off + 1)
+        return None
 
     def imports(self):
         """{'__imp__<name>': IAT-slot VA} parsed from the PE import table, so an
@@ -433,7 +439,7 @@ def augment_maps(obj_path, name, size):
             continue
         a = address_in_name(n)
         if a is None and n.startswith('??_C'):
-            a = img.find_bytes(_decode_cstr(n))          # string constant -> orig's copy
+            a = _find_cstr(img, n)                       # string constant -> orig's copy
         if a is None and n in imports:
             a = imports[n]                                # CRT import -> its IAT slot
         if a is None and '@' in n:                       # decorated stdcall import
@@ -585,16 +591,64 @@ def _mapped_zero_va(img):
     return None
 
 
-_CSTR_ESC = {'?4': '.', '?2': '\\', '?5': ' ', '?3': ':', '?1': '/', '?0': '@'}
+# MSVC name-mangling escapes for string-literal symbols: `?N` indexes this
+# table; `?$XY` is a hex-encoded byte with X,Y in A..P (A=0).
+_CSTR_PUNCT = ",/\\:. \n\t'-"
 
 
 def _decode_cstr(name):
-    """MSVC string-literal symbol -> its bytes: ??_C@_0LEN@HASH@<encoded>@ ."""
-    body = name.split('@')[3] if name.count('@') >= 4 else ''
-    for k, v in _CSTR_ESC.items():
-        body = body.replace(k, v)
-    body = body.replace('?$AA', '').rstrip('@')
-    return body.encode('latin1') + b'\0'
+    """MSVC string-literal symbol -> its bytes: ??_C@_0LEN@HASH@<encoded>@ .
+
+    Returns (bytes, complete): `complete` is False when the symbol is MSVC's
+    truncated form (long literals keep only a prefix in the name), in which
+    case the bytes are a prefix to search for WITHOUT a terminator."""
+    # The encoded text is the LAST field before the closing '@': a short
+    # literal packs its length digit and hash into one token ('_01FLCE'),
+    # a long one separates them ('_0DP@BDCJ@...'), so a fixed index misparses
+    # one or the other.
+    parts = name.split('@')
+    body = parts[-2] if len(parts) >= 3 and parts[-1] == '' else ''
+    out = bytearray()
+    i = 0
+    while i < len(body):
+        c = body[i]
+        if c == '?':
+            if i + 1 < len(body) and body[i + 1] == '$' and i + 3 < len(body):
+                hi, lo = body[i + 2], body[i + 3]
+                if 'A' <= hi <= 'P' and 'A' <= lo <= 'P':
+                    out.append((ord(hi) - 65) * 16 + (ord(lo) - 65))
+                    i += 4
+                    continue
+            if i + 1 < len(body) and body[i + 1].isdigit():
+                out.append(ord(_CSTR_PUNCT[int(body[i + 1])]))
+                i += 2
+                continue
+            i += 1
+            continue
+        out.append(ord(c))
+        i += 1
+    complete = out.endswith(b'\0')
+    return bytes(out), complete
+
+
+def _find_cstr(img, name):
+    """The original's copy of a mangled string literal, or None.
+
+    A complete literal is searched WITH its terminator; a truncated symbol
+    only carries a prefix, searched as such.  Both are anchored on the NUL
+    that precedes a literal in .rdata: a bare 2-byte needle like 'L\\0' would
+    otherwise match the first coincidence in the image."""
+    needle, complete = _decode_cstr(name)
+    if not needle.rstrip(b'\0'):
+        return None
+    # A literal lives in .rdata/.data, never in code: a short needle like
+    # 'L\0' happily matches a coincidence inside .text, so the search starts
+    # past it.
+    for probe in (b'\0' + needle, needle):
+        a = img.find_bytes(probe, min_va=img.text_hi)
+        if a is not None:
+            return a + 1 if probe[:1] == b'\0' else a
+    return None
 
 
 def const_slot_values(obj_path, name, va, size):

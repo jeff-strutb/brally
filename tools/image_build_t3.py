@@ -101,7 +101,8 @@ def collect_t3(recompile=False, progress=None):
     from t3b_env import address_in_name, augment_maps, const_slot_values
     from t3b_env import image as ref_image
     from reloc_fill import resolve as rf_resolve
-    from reloc_pair import pair_function, _our_sites
+    from reloc_pair import (pair_function, audit_function, jump_table_slots,
+                            _our_sites)
 
     def _site_symbols(obj, name, va, size):
         st, _ = _our_sites(obj, name, size)
@@ -141,8 +142,10 @@ def collect_t3(recompile=False, progress=None):
         afn, agl = augment_maps(obj, wanted[0][1], 0)
         sites = {}
         for va, name in wanted:
-            sites.update(const_slot_values(obj, name, va,
-                                           int(rows[va]['orig_size'])))
+            size = int(rows[va]['orig_size'])
+            sites.update(const_slot_values(obj, name, va, size))
+            pre = ib.PREAMBLES.get('0x%08x' % va, b'')
+            sites.update(jump_table_slots(obj, name, va, size, plen=len(pre)))
 
         # Site pairing: a hand-named static or global no map can address is
         # recovered from the ORIGINAL body's own dwords by instruction-shape
@@ -165,6 +168,20 @@ def collect_t3(recompile=False, progress=None):
             paired, _refused, assigned = pair_function(
                 obj, name, va, int(rows[va]['orig_size']), orig_body, img,
                 _known, plen=len(pre))
+
+            # Audit every map-resolved slot against the original's own bytes:
+            # hand-coined names (BrSubXXXXXXXX, g_<HEX>) have carried stale
+            # D3D-space addresses, and the certified image must reference
+            # what the ORIGINAL references.  A forced disagreement overrides
+            # the map value and is reported.
+            fixes, rep = audit_function(
+                obj, name, va, int(rows[va]['orig_size']), orig_body, img,
+                _known, plen=len(pre))
+            for osym, oimg, omap in rep:
+                print('  MAP OVERRIDE %s %s: image says %s, map said %s'
+                      % (name, osym,
+                         hex(oimg) if oimg is not None else '?', hex(omap)))
+            sites.update(fixes)
             drop = set()
             for sym, addr in assigned.items():
                 if sym.lstrip('_').startswith(('$',)):
