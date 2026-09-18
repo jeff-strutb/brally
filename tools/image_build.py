@@ -111,7 +111,7 @@ EXE_FILES = {
 
 def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                        learned=True, pad_short=False, ref_fill=True,
-                       extra_resolve=None):
+                       extra_resolve=None, extra_sites=None):
     """Yield (va, name, filled_bytes, n_unresolved, n_fromref) per function.
 
     `only` is a {raw COFF symbol name -> va} map. When given, symbols are
@@ -139,6 +139,11 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
     `extra_resolve` is an optional name->address fallback consulted after the
     maps miss.  The T3 lane passes the oracle's address-in-name reader
     (DAT_/FUN_/BrSubXXXXXXXX carry their own address, section-validated).
+
+    `extra_sites` is an optional {(va, body_off): value} map of pre-resolved
+    slots, consulted before symbol resolution.  The T3 lane feeds it the
+    oracle's `$T` constant resolution (the constant's own bytes located in the
+    original image), the same values its equivalence proof ran under.
     """
     for path in objs:
         try:
@@ -200,6 +205,10 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                 if not (0 <= off <= body_n - 4):
                     continue
                 t = byidx.get(si)
+                if extra_sites is not None and (va, off) in extra_sites:
+                    struct.pack_into('<I', code, off,
+                                     extra_sites[(va, off)] & 0xFFFFFFFF)
+                    continue
                 tgt = (resolve(t['name'], fnmap, glmap, learned=learned)
                        if t else None)
                 if tgt is None and t is not None and extra_resolve is not None:
