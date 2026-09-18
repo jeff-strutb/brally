@@ -101,8 +101,10 @@ def collect_t3(recompile=False, progress=None):
     from t3b_env import address_in_name, augment_maps, const_slot_values
     from t3b_env import image as ref_image
     from reloc_fill import resolve as rf_resolve
+    from reloc_fill import _undecorate as rf_undecorate
     from reloc_pair import (pair_function, audit_function, jump_table_slots,
-                            content_anchor_syms, _our_sites)
+                            content_anchor_syms, import_thunk_syms,
+                            _our_sites)
 
     def _site_symbols(obj, name, va, size):
         st, _ = _our_sites(obj, name, size)
@@ -140,6 +142,7 @@ def collect_t3(recompile=False, progress=None):
         byname = {n: va for va, n in wanted}
         got = set()
         afn, agl = augment_maps(obj, wanted[0][1], 0)
+        afn = dict(afn)          # per-object additions never touch the shared map
         sites = {}
         img = ref_image()
         for va, name in wanted:
@@ -154,6 +157,12 @@ def collect_t3(recompile=False, progress=None):
             for csym, caddr in content_anchor_syms(obj, name, size,
                                                    img).items():
                 agl.setdefault(csym.lstrip('_'), caddr)
+            # A named Glide/DirectX import call resolves through the import
+            # table to the original's own jmp-thunk -- exact, no pairing.
+            for isym, iaddr in import_thunk_syms(obj, name, size,
+                                                 img).items():
+                afn.setdefault(isym.lstrip('_'), iaddr)
+                afn.setdefault(rf_undecorate(isym), iaddr)
 
         # Site pairing: a hand-named static or global no map can address is
         # recovered from the ORIGINAL body's own dwords by instruction-shape
@@ -163,6 +172,7 @@ def collect_t3(recompile=False, progress=None):
         # global name recovered in two functions must agree or both stay
         # blocked; per-TU `$` names never leave this object's scope.
         img = ref_image()
+        pending = []
         for va, name in wanted:
             ob = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
             if not os.path.exists(ob):
@@ -190,19 +200,27 @@ def collect_t3(recompile=False, progress=None):
                       % (name, osym,
                          hex(oimg) if oimg is not None else '?', hex(omap)))
             sites.update(fixes)
-            drop = set()
+            pending.append((va, name, paired, assigned))
+
+        # Cross-function agreement, applied AFTER every function paired so a
+        # conflict retracts BOTH sides: a `$` counter name is one static
+        # within its object (two objects sharing the spelling name two
+        # different statics), a plain name is one global everywhere.
+        conflicted = set()
+        for va, name, paired, assigned in pending:
             for sym, addr in assigned.items():
-                if sym.lstrip('_').startswith(('$',)):
-                    continue                     # per-TU name: object-local
-                prev = recovered.setdefault(sym, (addr, name))
+                rkey = (obj, sym) if '$' in sym else sym
+                prev = recovered.setdefault(rkey, (addr, name))
                 if prev[0] != addr:
-                    drop.add(sym)
+                    conflicted.add(rkey)
                     print('  PAIR CONFLICT %s: %#x (%s) vs %#x (%s) -- both '
                           'refused' % (sym, prev[0], prev[1], addr, name))
+        for va, name, paired, assigned in pending:
+            drop = {sym for sym in assigned
+                    if ((obj, sym) if '$' in sym else sym) in conflicted}
             if drop:
-                site_syms = {(pva, off): s
-                             for (pva, off), s in _site_symbols(obj, name, va,
-                                                int(rows[va]['orig_size']))}
+                site_syms = dict(_site_symbols(obj, name, va,
+                                               int(rows[va]['orig_size'])))
                 paired = {k: v for k, v in paired.items()
                           if site_syms.get(k) not in drop}
             for (pva, off), val in paired.items():
