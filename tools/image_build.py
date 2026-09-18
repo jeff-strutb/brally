@@ -110,7 +110,8 @@ EXE_FILES = {
 
 
 def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
-                       learned=True, pad_short=False):
+                       learned=True, pad_short=False, ref_fill=True,
+                       extra_resolve=None):
     """Yield (va, name, filled_bytes, n_unresolved, n_fromref) per function.
 
     `only` is a {raw COFF symbol name -> va} map. When given, symbols are
@@ -124,6 +125,20 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
     EXE's relocation resolve through it would write a DLL address into an EXE
     on nothing but a shared symbol name.  The EXE lanes pass False and take
     their unresolvable slots from their own reference image instead.
+
+    `ref_fill=False` refuses the reference-bytes fallback for unresolvable
+    slots and counts them as unresolved instead.  Taking the reference dword
+    AT THE SAME OFFSET is only sound when the recompilation is byte-identical
+    to the original outside its relocation slots -- the masked-match property.
+    A T3 function's certified residue is precisely a reschedule, so its slots
+    sit at DIFFERENT offsets and the copied dword is arbitrary instruction
+    bytes: BrTimeUpdate 0x1006E360 shipped `mov [0x11], ecx` this way and
+    page-faulted on the first frame of a real Win98 run.  The T3 lane passes
+    False; a slot it cannot name blocks the function, honestly.
+
+    `extra_resolve` is an optional name->address fallback consulted after the
+    maps miss.  The T3 lane passes the oracle's address-in-name reader
+    (DAT_/FUN_/BrSubXXXXXXXX carry their own address, section-validated).
     """
     for path in objs:
         try:
@@ -187,6 +202,8 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                 t = byidx.get(si)
                 tgt = (resolve(t['name'], fnmap, glmap, learned=learned)
                        if t else None)
+                if tgt is None and t is not None and extra_resolve is not None:
+                    tgt = extra_resolve(t['name'])
                 if tgt is None:
                     # No name-level address (typically a per-file STATIC, whose
                     # name is not unique across objects). The function is a
@@ -195,6 +212,11 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                     # arrangement the rest of the image build stands on.
                     # Counted separately: these slots are taken from the
                     # reference, not derived from a surveyed name.
+                    # With ref_fill=False that arrangement does not hold (see
+                    # docstring) and the slot blocks the function instead.
+                    if not ref_fill:
+                        unres += 1
+                        continue
                     code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
                     continue
@@ -206,6 +228,9 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                     # site resolves against its post-preamble address.
                     val = tgt + addend - (va + plen + off + 4)
                 else:
+                    if not ref_fill:
+                        unres += 1
+                        continue
                     code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
                     continue
