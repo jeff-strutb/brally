@@ -202,10 +202,14 @@ def _solve_group(group, cands):
     fields through its own addends; a combination is a solution when the
     multiset of implied field values equals the multiset of candidate values.
     Zero solutions or two+ distinct solutions -> None (refused).  REL32 sites
-    ignore addends (the field already carries the absolute target)."""
+    ignore addends (the field already carries the absolute target).  Up to
+    two SURPLUS fields are tolerated (a known anchor's drifted twin): the
+    implied multiset must then be CONTAINED in the fields, and uniqueness of
+    the symbol->base mapping is still demanded over every combination."""
     import itertools
+    from collections import Counter
     syms = sorted({s[1] for s in group})
-    fvals = sorted(f[3] for f in cands)
+    fvals = Counter(f[3] for f in cands)
     per_sym = []
     for sym in syms:
         ssites = [s for s in group if s[1] == sym]
@@ -228,7 +232,7 @@ def _solve_group(group, cands):
             for s in ssites:
                 implied.append(base if rt == REL_REL32
                                else (base + s[3]) & 0xFFFFFFFF)
-        if sorted(implied) == fvals:
+        if not (Counter(implied) - fvals):
             solutions.add(combo)
             if len(solutions) > 1:
                 return None
@@ -297,7 +301,8 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
     # clean and a dirty bucket is refused entirely: its clean-bucket
     # assignment would rest on a pool its dirty sites should also be in.
     dirty_keys = {k for k, g in bykey.items()
-                  if len(leftover.get(k, [])) != len(g)}
+                  if not (len(g) <= len(leftover.get(k, []))
+                          <= len(g) + 2)}
     dirty_syms = {s[1] for k in dirty_keys for s in bykey[k]}
     for k in list(bykey):
         if k in dirty_keys:
@@ -316,7 +321,7 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
 
     def accept(group, cands):
         """'ok' after emitting the group's slots, or the refusal reason."""
-        if len(cands) != len(group):
+        if not (len(group) <= len(cands) <= len(group) + 2):
             return 'no forced candidate (key group %d vs %d)' \
                 % (len(group), len(cands))
         by_sym = _solve_group(group, cands)
@@ -605,3 +610,67 @@ def content_anchor_syms(obj_path, fname, size, img):
             continue                       # not unique -> not identity
         out[t['name']] = a
     return out
+
+
+def import_thunk_syms(obj_path, fname, size, img):
+    """{raw symbol name: thunk VA} for calls to named imports.
+
+    The original never `call [__imp__grGlideInit]`s from these sites -- it
+    calls a local `jmp [IAT]` thunk in .text.  The import TABLE names every
+    IAT slot, and each thunk names its slot in its own bytes, so the chain
+    symbol -> IAT slot -> thunk is exact: no pairing, no ambiguity.
+    """
+    out = {}
+    try:
+        d, secs, syms, relocs = reloc_fill.parse(obj_path)
+    except Exception:
+        return out
+    fn = next((s for s in syms
+               if reloc_fill.func_symbol_matches(s['name'], fname)
+               and secs.get(s['sec'], {}).get('name', '').startswith('.text')),
+              None)
+    if fn is None:
+        return out
+    imports = img.imports()
+    thunks = _thunk_map(img)
+    byidx = {s['idx']: s for s in syms}
+    for rva, si, rt in relocs.get(fn['sec'], []):
+        if rt != REL_REL32:
+            continue
+        t = byidx.get(si)
+        if t is None or t['name'] in out or t['sec'] > 0:
+            continue
+        u = reloc_fill._undecorate(t['name'])
+        iat = (imports.get('__imp__' + t['name'])      # __imp___grGlideInit@0
+               or imports.get('__imp_' + t['name'])
+               or imports.get('__imp__' + u)
+               or imports.get('__imp_' + u)
+               or imports.get('__imp__' + t['name'].lstrip('_')))
+        if iat is not None and iat in thunks:
+            out[t['name']] = thunks[iat]
+    return out
+
+
+_THUNKS = None
+
+
+def _thunk_map(img):
+    """{IAT slot VA: thunk VA} for every `jmp dword ptr [slot]` in .text."""
+    global _THUNKS
+    if _THUNKS is not None:
+        return _THUNKS
+    _THUNKS = {}
+    a = img.text_lo
+    while a < img.text_hi - 6:
+        try:
+            if img.byte(a) == 0xFF and img.byte(a + 1) == 0x25:
+                slot = 0
+                for i in range(4):
+                    slot |= img.byte(a + 2 + i) << (8 * i)
+                _THUNKS.setdefault(slot, a)
+                a += 6
+                continue
+        except Exception:
+            pass
+        a += 1
+    return _THUNKS
