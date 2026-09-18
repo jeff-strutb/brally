@@ -597,6 +597,71 @@ def _decode_cstr(name):
     return body.encode('latin1') + b'\0'
 
 
+def const_slot_values(obj_path, name, va, size):
+    """{(va, off): value} for the function's `$T` constant slots, resolved to
+    the ORIGINAL's identical copy in the image.
+
+    A `$T` float/double literal in .rdata/.data: MSVC names each constant
+    $T<n>.  The function READS it, so a dummy would corrupt behaviour --
+    instead find this object's own constant bytes in the image.  Sound for the
+    oracle AND for image placement: a wrong transcribed constant is either
+    absent (-> unresolved) or reads a different value than the original's
+    (-> DIFF); it can never manufacture a false EQUIVALENT.  `$T` EH-state
+    labels are NOT in .rdata/.data and are never touched here --
+    blanket-resolving them corrupts functions that read them and manufactures
+    false DIFFs (measured on BrCarStateLerp).
+    """
+    extra = {}
+    img = image()
+    try:
+        d, secs, syms, relocs = reloc_fill.parse(obj_path)
+        fn = next((s for s in syms
+                   if reloc_fill.func_symbol_matches(s['name'], name)
+                   and secs.get(s['sec'], {}).get('name', '').startswith('.text')), None)
+        if fn is None:
+            return extra
+        for rva, si, rt in relocs.get(fn['sec'], []):
+            off = rva - fn['val']
+            if not (0 <= off < size - 3):
+                continue
+            ts = next((s for s in syms if s['idx'] == si), None)
+            if (ts and ts['name'].lstrip('_').startswith('$T')
+                    and secs.get(ts['sec'], {}).get('name', '')
+                        .startswith(('.rdata', '.data'))):
+                sec2 = secs[ts['sec']]
+                nexts = [s['val'] for s in syms
+                         if s['sec'] == ts['sec'] and s['val'] > ts['val']]
+                end = min(nexts) if nexts else sec2['size']
+                gap = end - ts['val']
+                length = 8 if gap >= 8 else 4
+                cstart = sec2['praw'] + ts['val']
+                # Find this obj's own constant bytes in the image (the
+                # original's identical copy).  Try the slot length, then fall
+                # back to a 4-byte float: a wrong-length match reads a wrong
+                # value and surfaces as DIFF, never a false EQUIVALENT.
+                img_addr = None
+                for ln in (length, 4):
+                    const = d[cstart:cstart + ln]
+                    if len(const) != ln:
+                        continue
+                    if const == b'\0' * ln:
+                        # 0.0f/0.0: find_bytes would land in the PE header
+                        # (unmapped); resolve to a mapped zeroed address so
+                        # both sides read 0 identically.
+                        img_addr = _mapped_zero_va(img)
+                    else:
+                        img_addr = img.find_bytes(const)
+                    if img_addr is not None:
+                        break
+                if img_addr is not None:
+                    praw = secs[fn['sec']]['praw']
+                    addend = struct.unpack_from('<i', d, praw + off)[0]
+                    extra[(va, off)] = (img_addr + addend) & 0xFFFFFFFF
+    except Exception:
+        return {}
+    return extra
+
+
 def resolve_bytes(obj_path, name, va, size):
     """Our recompiled bytes with every relocation resolved to the original's
     own addresses, or (None, why).
@@ -607,14 +672,14 @@ def resolve_bytes(obj_path, name, va, size):
     would be meaningless.
     """
     fnmap, glmap = augment_maps(obj_path, name, size)
-    img = image()
     # The C++ EH-handler push (`push OFFSET $Lnnn`) names a `$` label in a
     # separate .text$x funclet section: unnameable globally, but its only effect
     # is the address it puts on the SEH chain -- frame state the oracle never
     # compares.  Resolve it to the function's own (mapped) address so the run
     # proceeds; a same-section `$L` (jump table) is resolved normally and is not
-    # overridden here.
-    extra = {}
+    # overridden here.  ORACLE-ONLY: a dummy SEH handler must never reach a
+    # placed image, which is why this stays out of const_slot_values.
+    extra = const_slot_values(obj_path, name, va, size)
     try:
         d, secs, syms, relocs = reloc_fill.parse(obj_path)
         fn = next((s for s in syms
@@ -626,58 +691,12 @@ def resolve_bytes(obj_path, name, va, size):
                 if not (0 <= off < size - 3):
                     continue
                 ts = next((s for s in syms if s['idx'] == si), None)
-                # ONLY the C++ EH-handler funclet ($L… in a .text$x section):
-                # that address only reaches the SEH chain, never runs on the
-                # normal path, so a dummy is sound.  Do NOT touch $T EH-state
-                # labels or anything else -- blanket-resolving them to a dummy
-                # corrupts functions that read them and manufactures false DIFFs
-                # (measured on BrCarStateLerp), so leave those UNCLASSIFIED.
                 if (ts and ts['name'].lstrip('_').startswith('$L')
                         and ts['sec'] != fn['sec']
                         and secs.get(ts['sec'], {}).get('name', '').startswith('.text')):
                     extra[(va, off)] = va
-                    continue
-                # A `$T` float/double literal in .rdata/.data: MSVC names each
-                # constant $T<n>.  The function READS it, so a dummy would corrupt
-                # behaviour -- instead resolve it to the ORIGINAL's identical copy
-                # by finding this object's own constant bytes in the image.  Sound:
-                # a wrong transcribed constant is either absent (-> unresolved,
-                # UNCLASSIFIED) or reads a different value than the original's
-                # (-> DIFF); it can never manufacture a false EQUIVALENT.
-                if (ts and ts['name'].lstrip('_').startswith('$T')
-                        and secs.get(ts['sec'], {}).get('name', '')
-                            .startswith(('.rdata', '.data'))):
-                    sec2 = secs[ts['sec']]
-                    nexts = [s['val'] for s in syms
-                             if s['sec'] == ts['sec'] and s['val'] > ts['val']]
-                    end = min(nexts) if nexts else sec2['size']
-                    gap = end - ts['val']
-                    length = 8 if gap >= 8 else 4
-                    cstart = sec2['praw'] + ts['val']
-                    # Find this obj's own constant bytes in the image (the
-                    # original's identical copy).  Try the slot length, then fall
-                    # back to a 4-byte float: a wrong-length match reads a wrong
-                    # value and surfaces as DIFF, never a false EQUIVALENT.
-                    img_addr = None
-                    for ln in (length, 4):
-                        const = d[cstart:cstart + ln]
-                        if len(const) != ln:
-                            continue
-                        if const == b'\0' * ln:
-                            # 0.0f/0.0: find_bytes would land in the PE header
-                            # (unmapped); resolve to a mapped zeroed address so
-                            # both sides read 0 identically.
-                            img_addr = _mapped_zero_va(img)
-                        else:
-                            img_addr = img.find_bytes(const)
-                        if img_addr is not None:
-                            break
-                    if img_addr is not None:
-                        praw = secs[fn['sec']]['praw']
-                        addend = struct.unpack_from('<i', d, praw + off)[0]
-                        extra[(va, off)] = (img_addr + addend) & 0xFFFFFFFF
     except Exception:
-        extra = {}
+        pass
     why = []
     try:
         code = reloc_fill.fill_function(obj_path, name, va, fnmap, glmap, size,

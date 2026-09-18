@@ -93,9 +93,21 @@ def collect_t3(recompile=False, progress=None):
     # copying the reference dword at the same offset writes garbage addresses
     # (BrTimeUpdate 0x1006E360 shipped `mov [0x11], ecx` and page-faulted on
     # real hardware).  ref_fill=False makes an unnameable slot BLOCK the
-    # function; address_in_name (the same section-validated reader the A5
-    # oracle certifies with) recovers the DAT_/FUN_/BrSubXXXXXXXX majority.
-    from t3b_env import address_in_name
+    # function; the addresses come from augment_maps -- the SAME per-object
+    # resolution the A5 oracle certified each function under (address-bearing
+    # names, `/* 0x<VA> */` declaration comments, string constants, imports),
+    # so a function places with exactly the addresses its equivalence proof
+    # used, or it does not place.
+    from t3b_env import address_in_name, augment_maps, const_slot_values
+    from t3b_env import image as ref_image
+    from reloc_fill import resolve as rf_resolve
+    from reloc_pair import pair_function, _our_sites
+
+    def _site_symbols(obj, name, va, size):
+        st, _ = _our_sites(obj, name, size)
+        return [((va, s[0]), s[1]) for s in (st or [])]
+
+    recovered = {}          # global-name pairing results, cross-function
 
     rows = {}
     for r in csv.DictReader(open(REPORT)):
@@ -126,9 +138,53 @@ def collect_t3(recompile=False, progress=None):
             continue
         byname = {n: va for va, n in wanted}
         got = set()
+        afn, agl = augment_maps(obj, wanted[0][1], 0)
+        sites = {}
+        for va, name in wanted:
+            sites.update(const_slot_values(obj, name, va,
+                                           int(rows[va]['orig_size'])))
+
+        # Site pairing: a hand-named static or global no map can address is
+        # recovered from the ORIGINAL body's own dwords by instruction-shape
+        # pairing (tools/reloc_pair.py; forced assignments only, conservation-
+        # gated, 329/329 on the leave-one-out self-test -- the five apparent
+        # misses were the pairing exposing stale D3D-space map rows).  A
+        # global name recovered in two functions must agree or both stay
+        # blocked; per-TU `$` names never leave this object's scope.
+        img = ref_image()
+        for va, name in wanted:
+            ob = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
+            if not os.path.exists(ob):
+                continue
+            pre = ib.PREAMBLES.get('0x%08x' % va, b'')
+            orig_body = open(ob, 'rb').read()[len(pre):]
+
+            def _known(sym):
+                v = rf_resolve(sym, afn, agl)
+                return v if v is not None else address_in_name(sym)
+            paired, _refused, assigned = pair_function(
+                obj, name, va, int(rows[va]['orig_size']), orig_body, img,
+                _known, plen=len(pre))
+            drop = set()
+            for sym, addr in assigned.items():
+                if sym.lstrip('_').startswith(('$',)):
+                    continue                     # per-TU name: object-local
+                prev = recovered.setdefault(sym, (addr, name))
+                if prev[0] != addr:
+                    drop.add(sym)
+                    print('  PAIR CONFLICT %s: %#x (%s) vs %#x (%s) -- both '
+                          'refused' % (sym, prev[0], prev[1], addr, name))
+            if drop:
+                site_syms = {(pva, off): s
+                             for (pva, off), s in _site_symbols(obj, name, va,
+                                                int(rows[va]['orig_size']))}
+                paired = {k: v for k, v in paired.items()
+                          if site_syms.get(k) not in drop}
+            for (pva, off), val in paired.items():
+                sites.setdefault((pva, off), val)
         for va, name, code, unres, fromref in ib.compiled_functions(
-                [obj], fnmap, glmap, pad_short=True, ref_fill=False,
-                extra_resolve=address_in_name):
+                [obj], afn, agl, pad_short=True, ref_fill=False,
+                extra_resolve=address_in_name, extra_sites=sites):
             if byname.get(name) == va:
                 best[va] = (name, code, unres, fromref, 'T3')
                 got.add(va)
