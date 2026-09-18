@@ -88,6 +88,15 @@ def collect_t3(recompile=False, progress=None):
     cert = {va for va, i in certified().items()
             if not va.startswith('?') and i['ok']}
 
+    # A T3 body is NOT byte-identical to the original outside its reloc slots
+    # -- its certified residue is a reschedule -- so image_build's fallback of
+    # copying the reference dword at the same offset writes garbage addresses
+    # (BrTimeUpdate 0x1006E360 shipped `mov [0x11], ecx` and page-faulted on
+    # real hardware).  ref_fill=False makes an unnameable slot BLOCK the
+    # function; address_in_name (the same section-validated reader the A5
+    # oracle certifies with) recovers the DAT_/FUN_/BrSubXXXXXXXX majority.
+    from t3b_env import address_in_name
+
     rows = {}
     for r in csv.DictReader(open(REPORT)):
         if r.get('status') == 'diff' and r.get('va') \
@@ -118,7 +127,8 @@ def collect_t3(recompile=False, progress=None):
         byname = {n: va for va, n in wanted}
         got = set()
         for va, name, code, unres, fromref in ib.compiled_functions(
-                [obj], fnmap, glmap, pad_short=True):
+                [obj], fnmap, glmap, pad_short=True, ref_fill=False,
+                extra_resolve=address_in_name):
             if byname.get(name) == va:
                 best[va] = (name, code, unres, fromref, 'T3')
                 got.add(va)
