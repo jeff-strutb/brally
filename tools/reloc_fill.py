@@ -56,8 +56,10 @@ def parse(path):
         praw = struct.unpack_from('<I', d, o + 20)[0]
         size = struct.unpack_from('<I', d, o + 16)[0]
         roff = struct.unpack_from('<I', d, o + 24)[0]
+        flags = struct.unpack_from('<I', d, o + 36)[0]
         nrel = struct.unpack_from('<H', d, o + 32)[0]
-        secs[i + 1] = {'name': name, 'praw': praw, 'size': size}
+        secs[i + 1] = {'name': name, 'praw': praw, 'size': size,
+                       'flags': flags}
         rl = []
         for r in range(nrel):
             e = roff + r * 10

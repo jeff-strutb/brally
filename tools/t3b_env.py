@@ -438,6 +438,8 @@ def augment_maps(obj_path, name, size):
         if base in fnmap or base in gl or u in fnmap or u in gl:
             continue
         a = address_in_name(n)
+        if a is None and u != n.lstrip('_'):
+            a = address_in_name(u)      # stdcall-decorated FUN_xxxxxxxx@4
         if a is None and n.startswith('??_C'):
             a = _find_cstr(img, n)                       # string constant -> orig's copy
         if a is None and n in imports:

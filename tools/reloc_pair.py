@@ -110,6 +110,22 @@ def _address_fields(body, va, lo, hi, text_lo, text_hi):
     return out
 
 
+def _ctx_spans(body):
+    """[(start, end, mnemonic)] per instruction, body-relative."""
+    return [(ins.address, ins.address + ins.size, ins.mnemonic)
+            for ins in _md.disasm(bytes(body), 0)]
+
+
+def _ctx_at(spans, off):
+    """(previous mnemonic, next mnemonic) around the instruction covering
+    `off` -- '^' / '$' at the body's edges, ('?', '?') off any instruction."""
+    for i, (a, b, _m) in enumerate(spans):
+        if a <= off < b:
+            return (spans[i - 1][2] if i > 0 else '^',
+                    spans[i + 1][2] if i + 1 < len(spans) else '$')
+    return ('?', '?')
+
+
 def _jmp_hop(img, a):
     """The address `a`'s one-hop jmp-thunk target in the original image, or
     None.  `e9 rel32` only: the link-stage thunks that alias a function's
@@ -271,53 +287,56 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
     for i, f in enumerate(fields):
         if i not in consumed:
             leftover.setdefault(f[1], []).append(f)
-    # CONSERVATION, per key: every bucket that holds an unknown site must
-    # hold EXACTLY as many candidate fields.  A surplus in such a bucket
-    # means a drifted or masquerading field could be the forced "candidate"
-    # -- measured on the self-test, that is exactly where 1:1 pairs go wrong
-    # -- so the bucket is refused.  A stray field in a bucket with NO unknown
-    # sites is a KNOWN anchor whose original instruction changed shape; it
-    # cannot reach any unknown's pool, so it blocks nothing.
-    keys_ok = all(len(leftover.get(k, [])) == len(g)
-                  for k, g in bykey.items())
-    if not keys_ok:
-        return {}, [(s[1], 'conservation failed (key %s: %d sites vs %d '
-                     'fields)' % (s[4], len(bykey[s[4]]),
-                                  len(leftover.get(s[4], []))))
-                    for s in unknown], {}
-    assigned = {}                       # sym -> address, cross-site agreement
-    for key, group in bykey.items():
-        cands = leftover.get(key, [])
-        if key is None or len(cands) != len(group):
-            for s in group:
-                refused.append((s[1], 'no forced candidate (key group %d vs %d)'
-                                % (len(group), len(cands))))
+    # CONSERVATION, per key: a bucket that holds unknown sites is usable only
+    # when it holds EXACTLY as many candidate fields -- a surplus means a
+    # drifted or masquerading field could be the forced "candidate", which is
+    # measurably where 1:1 pairs go wrong.  Buckets are INDEPENDENT: fields
+    # never cross keys, so a dirty bucket is refused alone and the clean
+    # buckets still pair (a whole-function refusal was throwing away 29/29
+    # buckets over one unrelated 9/152 one).  A symbol with sites in BOTH a
+    # clean and a dirty bucket is refused entirely: its clean-bucket
+    # assignment would rest on a pool its dirty sites should also be in.
+    dirty_keys = {k for k, g in bykey.items()
+                  if len(leftover.get(k, [])) != len(g)}
+    dirty_syms = {s[1] for k in dirty_keys for s in bykey[k]}
+    for k in list(bykey):
+        if k in dirty_keys:
+            for s in bykey[k]:
+                refused.append((s[1], 'conservation failed (key %s: %d sites '
+                                'vs %d fields)'
+                                % (k, len(bykey[k]),
+                                   len(leftover.get(k, [])))))
+            del bykey[k]
             continue
+        if any(s[1] in dirty_syms for s in bykey[k]):
+            for s in bykey[k]:
+                refused.append((s[1], 'symbol also in a dirty bucket'))
+            del bykey[k]
+    assigned = {}                       # sym -> address, cross-site agreement
+
+    def accept(group, cands):
+        """'ok' after emitting the group's slots, or the refusal reason."""
+        if len(cands) != len(group):
+            return 'no forced candidate (key group %d vs %d)' \
+                % (len(group), len(cands))
         by_sym = _solve_group(group, cands)
         if by_sym is None:
-            for s in group:
-                refused.append((s[1], 'ambiguous within key group'))
-            continue
-        ok = True
+            return 'ambiguous within key group'
         for sym, a in by_sym.items():
             rt = next(s[2] for s in group if s[1] == sym)
             if rt == REL_REL32 and not (img.text_lo <= a < img.text_hi):
-                ok = False
+                return 'validation failed'
             if rt == REL_DIR32 and not (img.mapped(a) or img.is_bss(a)):
-                ok = False
+                return 'validation failed'
             if sym in assigned and assigned[sym] != a:
-                ok = False
+                return 'validation failed'
             # DECOY GUARD.  Every self-test miss paired an unknown onto an
             # address a KNOWN symbol of this function already owns -- a
             # same-key field of the known symbol left unconsumed by a shape
             # drift.  An unknown symbol recovering to a known symbol's own
             # address is that decoy, not a discovery.
             if a in known_addrs:
-                ok = False
-        if not ok:
-            for s in group:
-                refused.append((s[1], 'validation failed'))
-            continue
+                return 'validation failed'
         for s in group:
             off, sym, rt, addend, _k = s
             a = by_sym[sym]
@@ -329,6 +348,42 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
                 # dword = target + addend - (site_va + 4)
                 out[(va, off)] = (a + addend
                                   - (va + plen + off + 4)) & 0xFFFFFFFF
+        return 'ok'
+
+    # Pass 1: base keys.  Pass 2 refines an AMBIGUOUS bucket by instruction
+    # CONTEXT -- the neighbouring mnemonics on each side.  Two stores of the
+    # same shape are split by what computed them (`fstp` before one, `cmp`
+    # before the other); scheduling can move neighbours, so a refined
+    # sub-bucket still passes the same conservation, uniqueness and
+    # validation gates, and the leave-one-out self-test measures the result
+    # exactly like every other rule here.
+    ctx_site = _ctx_spans(_body)
+    ctx_field = _ctx_spans(orig_body)
+    for key, group in sorted(bykey.items(), key=lambda kv: str(kv[0])):
+        cands = leftover.get(key, [])
+        if key is None:
+            for s in group:
+                refused.append((s[1], 'no covering instruction'))
+            continue
+        why = accept(group, cands)
+        if why == 'ok':
+            continue
+        if why == 'ambiguous within key group':
+            sub_s, sub_f = {}, {}
+            for s in group:
+                sub_s.setdefault(_ctx_at(ctx_site, s[0]), []).append(s)
+            for f in cands:
+                sub_f.setdefault(_ctx_at(ctx_field, f[0]), []).append(f)
+            if set(sub_s) == set(sub_f) and \
+                    all(len(sub_f[k]) == len(g) for k, g in sub_s.items()):
+                whys = {k: accept(g, sub_f[k]) for k, g in sub_s.items()}
+                if all(w == 'ok' for w in whys.values()):
+                    continue
+                # roll back nothing: accept() only emitted 'ok' subgroups,
+                # whose assignments are forced regardless of the others
+                why = 'ambiguous after context refinement'
+        for s in group:
+            refused.append((s[1], why))
     return out, refused, assigned
 
 
@@ -477,4 +532,76 @@ def jump_table_slots(obj_path, fname, va, size, plen=0):
         addend = struct.unpack_from('<i', d, sec['praw'] + rva)[0]
         out[(va, off)] = (va + plen + (t['val'] - fn['val'])
                          + addend) & 0xFFFFFFFF
+    return out
+
+
+IMAGE_SCN_MEM_WRITE = 0x80000000
+
+
+def content_anchor_syms(obj_path, fname, size, img):
+    """{raw symbol name: address} for data symbols resolvable by CONTENT.
+
+    A static the maps cannot name often carries its INITIALIZER in our own
+    object: an error string, a const float, a DirectInput data-format table.
+    Those bytes exist verbatim in the original image, so the address is
+    recovered by content identity, exactly like the `$T` constants:
+
+      * a symbol in a READ-ONLY section resolves to ANY value-identical copy
+        outside .text -- the data cannot be written, so a copy is
+        behaviourally the cell (the oracle's own value-const argument);
+      * a symbol in a WRITABLE section resolves only when its initializer
+        bytes occur EXACTLY ONCE outside .text -- writes must reach the one
+        true cell, and a unique blob is that cell by identity.
+
+    Uninitialised (BSS) statics carry no content and are never touched.
+    """
+    out = {}
+    try:
+        d, secs, syms, relocs = reloc_fill.parse(obj_path)
+    except Exception:
+        return out
+    fn = next((s for s in syms
+               if reloc_fill.func_symbol_matches(s['name'], fname)
+               and secs.get(s['sec'], {}).get('name', '').startswith('.text')),
+              None)
+    if fn is None:
+        return out
+    byidx = {s['idx']: s for s in syms}
+    for rva, si, rt in relocs.get(fn['sec'], []):
+        off = rva - fn['val']
+        if not (0 <= off <= size - 4):
+            continue
+        t = byidx.get(si)
+        if t is None or t['name'] in out or t['sec'] <= 0:
+            continue
+        sec = secs.get(t['sec'])
+        if not sec or sec['name'].startswith('.text') or not sec['praw']:
+            continue
+        nexts = [s['val'] for s in syms
+                 if s['sec'] == t['sec'] and s['val'] > t['val']]
+        end = min(nexts) if nexts else sec['size']
+        blob = d[sec['praw'] + t['val']:sec['praw'] + min(end, t['val'] + 128)]
+        if len(blob) < 4 or blob == b'\0' * len(blob):
+            continue
+        # The region runs to the NEXT symbol, so it may carry alignment
+        # padding the original laid out differently; a trimmed probe (string
+        # + its terminator, then the bare payload) recovers those.
+        probes = [blob]
+        trimmed = blob.rstrip(b'\0')
+        if trimmed != blob:
+            probes += [trimmed + b'\0', trimmed]
+        a = None
+        for probe in probes:
+            if len(probe) < 4:
+                continue
+            a = img.find_bytes(probe, min_va=img.text_hi)
+            if a is not None:
+                blob = probe
+                break
+        if a is None:
+            continue
+        writable = bool(sec.get('flags', 0) & IMAGE_SCN_MEM_WRITE)
+        if writable and img.find_bytes(blob, min_va=a + 1) is not None:
+            continue                       # not unique -> not identity
+        out[t['name']] = a
     return out

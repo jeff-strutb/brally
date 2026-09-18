@@ -102,7 +102,7 @@ def collect_t3(recompile=False, progress=None):
     from t3b_env import image as ref_image
     from reloc_fill import resolve as rf_resolve
     from reloc_pair import (pair_function, audit_function, jump_table_slots,
-                            _our_sites)
+                            content_anchor_syms, _our_sites)
 
     def _site_symbols(obj, name, va, size):
         st, _ = _our_sites(obj, name, size)
@@ -141,11 +141,19 @@ def collect_t3(recompile=False, progress=None):
         got = set()
         afn, agl = augment_maps(obj, wanted[0][1], 0)
         sites = {}
+        img = ref_image()
         for va, name in wanted:
             size = int(rows[va]['orig_size'])
             sites.update(const_slot_values(obj, name, va, size))
             pre = ib.PREAMBLES.get('0x%08x' % va, b'')
             sites.update(jump_table_slots(obj, name, va, size, plen=len(pre)))
+            # Initialised statics resolve by CONTENT identity (the error
+            # string, const float or data-format table our object carries is
+            # found verbatim in the original); each one becomes an anchor for
+            # the pairing below.
+            for csym, caddr in content_anchor_syms(obj, name, size,
+                                                   img).items():
+                agl.setdefault(csym.lstrip('_'), caddr)
 
         # Site pairing: a hand-named static or global no map can address is
         # recovered from the ORIGINAL body's own dwords by instruction-shape
