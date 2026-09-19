@@ -158,15 +158,18 @@ uint32_t g_brKeyBias;                    /* 0x10AC080C */
  * MISS on the 5-insn opening.
  * @t4-pass 0x10030FD0 1 2026-09-09 probes 19 bytes 84 insns 29 regions 1 rows 0 census yes  (hand, fn.py variants; k-battery found the -1 B spelling, m-battery zero movement)
  * @t4-pass 0x10030FD0 2 2026-09-09 probes 12 bytes 84 insns 29 regions 1 rows 0 census yes  (position sweep) */
-/* @t3 0x10030FD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 84/83 insns 29/29 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region, -1 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t3 0x10030FD0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 81/83 insns 28/29 rows 2+1 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * 2026-09-19 respell (81 B, FITS the 83 B image slot): the volatile count
+ * read keeps the original's bias-then-count order so both globals share
+ * eax's 5-byte form; the dec's flags then feed js directly, eliding the
+ * original's test+jl (the one `test R,R` singleton and the 28/29 insn gap).
+ * A5 oracle EQUIVALENT on 64 seeds under the 0x10030FD0 profile in
+ * tools/oracle_profiles.py (count pinned 0..3 -- a random count is a 2^31
+ * runaway -- hit and miss paths both driven).  Dossier and dead list: the
+ * comment blocks above.  Do not reopen before the end-grind (CLAUDE.md
+ * rule 12). */
 /* @t4-pass 0x10030FD0 3 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x10030FD0 4 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10037930 d3d BrKeyTableFind */
