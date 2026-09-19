@@ -936,9 +936,20 @@ def gates(m):
     # verdict (UNCLASSIFIED). This ends the false-negative where a behaviourally
     # equivalent giant fails A1/A2/A4 on colouring residue that never changes
     # behaviour. DIFF still fails A5 outright; nothing here weakens that.
+    #
+    # A6 (jump-table bytes) is the same kind of proxy: it compares the ORIGINAL's
+    # table zone against the SAME offset in our obj, which is only the table when
+    # the two layouts nearly coincide. On a behaviourally-equivalent but
+    # differently-sized function our table sits at a different offset, so A6
+    # measures orig-table-vs-our-non-table -- a pure size/layout artefact, not a
+    # dispatch defect. A5 verifies dispatch directly: the oracle runs each side
+    # off ITS OWN in-.text table (each side's bytes are overlaid at va), so a
+    # wrong case label or target diverges and A5 returns DIFF (negative-controlled
+    # on 0x1000CBA0: a case-0x04->0x05 mislabel is caught). So A6 is superseded by
+    # a clean A5 exactly as A1-A4 are.
     if m['oracle'] in ('EQUIVALENT', 'EQUIV-MODULO-FP'):
         for i, (name, passed, det) in enumerate(g):
-            if name[:2] in ('A1', 'A2', 'A3', 'A4') and not passed:
+            if name[:2] in ('A1', 'A2', 'A3', 'A4', 'A6') and not passed:
                 g[i] = (name, True, det + '  [superseded by A5 %s]' % m['oracle'])
     return g
 
