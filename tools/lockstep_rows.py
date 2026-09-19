@@ -183,10 +183,27 @@ def main():
                         ' addend %#x' % addend if addend else ''))
     print('\n'.join(lines) if lines else '# nothing to emit')
     if '--write' in sys.argv and lines:
-        with open(os.path.join(ROOT, 'config', 'reloc_overrides.csv'),
-                  'a') as f:
-            f.write('\n'.join(lines) + '\n')
-        print('# wrote %d rows' % len(lines))
+        # never overwrite an existing row: a hand-derived row for the same
+        # slot is stronger evidence than positional lockstep (BrFadeTick's
+        # role-swapped slots), and _load_overrides is last-wins per key.
+        csvp = os.path.join(ROOT, 'config', 'reloc_overrides.csv')
+        have = set()
+        for l in open(csvp):
+            p = l.split(',')
+            if len(p) > 2 and p[0].startswith('0x'):
+                try:
+                    have.add((int(p[0], 16), int(p[1], 0)))
+                except ValueError:
+                    pass
+        fresh = [l for l in lines
+                 if (int(l.split(',')[0], 16),
+                     int(l.split(',')[1], 0)) not in have]
+        skipped = len(lines) - len(fresh)
+        with open(csvp, 'a') as f:
+            if fresh:
+                f.write('\n'.join(fresh) + '\n')
+        print('# wrote %d rows%s' % (len(fresh),
+              ', kept %d existing' % skipped if skipped else ''))
     return 0
 
 
