@@ -129,6 +129,23 @@ def _model_allmul(m):
     m.R['esp'] = u32(esp + 16)
 
 
+def _model_cipow(m):
+    """_CIpow: the MSVC x87 `pow` intrinsic.  Base in st(1), exponent in st(0);
+    result base**exp replaces both (stack shrinks by one), nothing on the
+    integer stack.  A domain error (negative base, fractional exp) or overflow
+    yields NaN/Inf deterministically -- both sides compute the same, which is
+    all equivalence needs."""
+    y = m.st.pop(0) if m.st else 0.0        # exponent (top)
+    x = m.st.pop(0) if m.st else 0.0        # base
+    try:
+        r = math.pow(x, y)
+    except ValueError:
+        r = float('nan')
+    except OverflowError:
+        r = float('inf')
+    m.st.insert(0, r)
+
+
 def _s64(x):
     return x - (1 << 64) if x & (1 << 63) else x
 
@@ -161,6 +178,7 @@ DIRECT_BUILTINS = {
     0x10074680: _model_allmul,
     0x100748B0: lambda m: _div_helper(m, signed=True, want_rem=False),    # __alldiv
     0x10074610: lambda m: _div_helper(m, signed=False, want_rem=False),   # __aulldiv
+    0x100748A0: _model_cipow,                                             # _CIpow (x87 pow)
 }
 
 
