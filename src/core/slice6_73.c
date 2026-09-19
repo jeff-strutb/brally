@@ -953,6 +953,10 @@ extern int32_t DAT_100aabc8, DAT_100aabcc;
 #define g73_n0AB42C     (g_br73.n0AB42C)
 #endif
 
+/* WHAT IT DOES: lays out the largest of the menu screens -- twenty controls,
+ * three of them drawn boxes that share a left edge because only the first
+ * works one out (the original's doing; the fuller description is with the
+ * dossier at the head of this section). */
 /* @implements 0x10054B50 d3d BrExt_10054B50 */
 #ifdef BR_MATCHING_BUILD
 int32_t BrExt_10054B50(BrPhase_ *pSelf)
