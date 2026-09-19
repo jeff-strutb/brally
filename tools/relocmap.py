@@ -74,15 +74,22 @@ def load_learned():
 
 
 def load_learned_full():
-    """symbol -> (VA, {source function VAs it was read out of})."""
+    """symbol -> (VA, {source function VAs it was read out of}).
+
+    globals_learned.csv is MACHINE-REGENERATED (reloc_learn.py) and hand rows
+    appended to it get wiped on the next regeneration -- that dropped the
+    KeyTableFind and SnapInterp rows mid-session.  Hand rows live in
+    globals_hand.csv, which no tool rewrites; it loads second and wins."""
     lr = {}
-    p = os.path.join(ROOT, 'config', 'globals_learned.csv')
-    if os.path.exists(p):
-        for r in csv.DictReader(open(p)):
-            s = (r.get('symbol') or '').strip()
-            if s:
-                src = {int(v, 16) for v in (r.get('sources') or '').split()}
-                lr[s] = (int(r['addr'], 16), src)
+    for fname in ('globals_learned.csv', 'globals_hand.csv'):
+        p = os.path.join(ROOT, 'config', fname)
+        if os.path.exists(p):
+            for r in csv.DictReader(open(p)):
+                s = (r.get('symbol') or '').strip()
+                if s:
+                    src = {int(v, 16)
+                           for v in (r.get('sources') or '').split()}
+                    lr[s] = (int(r['addr'], 16), src)
     return lr
 
 

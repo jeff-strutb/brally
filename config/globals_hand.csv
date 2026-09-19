@@ -1,0 +1,15 @@
+symbol,addr,refs,corroborated,class,sources
+g_aBrKeyEnts,0x106EEF0C,1,1,"transcription header: BrKeyEnt table (src/core/slice1_06.c)",0x10030FD0
+g_brKeyCount,0x10AC0808,1,1,"transcription header: key-table count (src/core/slice1_06.c)",0x10030FD0
+g_brKeyBias,0x10AC080C,1,1,"transcription header: key bias (src/core/slice1_06.c)",0x10030FD0
+g_brSnapCur,0x104AB4EC,1,1,"transcription header: newest complete snap slot (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapPrev,0x104AB500,1,1,"transcription header: previous snap slot (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapTo,0x10396F44,1,1,"transcription header: blend target snap slot (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapFrom,0x104AB4FC,1,1,"transcription header: blend source snap slot (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_aBrSnap,0x10396F48,1,1,"transcription header: snap slot array (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_aBrSnapLocked,0x10396F10,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapOrigin,0x10396F24,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapT0,0x104AB4F4,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapFrames,0x104AB4F0,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brCfgInterpolate,0x100A5EAC,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
+BrFrameDrawView,0x10011FA0,1,1,"transcription header: the frame driver (src/core/drawing/br_snapinterp.c)",0x100131E0
