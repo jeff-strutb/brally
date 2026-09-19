@@ -544,8 +544,11 @@ def jump_table_slots(obj_path, fname, va, size, plen=0):
         if rt != REL_DIR32 or not (0 <= off <= size - 4):
             continue
         t = byidx.get(si)
-        if not t or not t['name'].lstrip('_').startswith('$L') \
-                or t['sec'] != fn['sec']:
+        # `$L<n>` is the compiler's switch label; a named `goto` target
+        # spells `$name$<n>` (BrObjDlBuild's $walkDone$371).  Either way a
+        # SAME-SECTION `$` label is this function's own code and its address
+        # is placement-relative -- exact from the symbol table.
+        if not t or '$' not in t['name'] or t['sec'] != fn['sec']:
             continue
         addend = struct.unpack_from('<i', d, sec['praw'] + rva)[0]
         out[(va, off)] = (va + plen + (t['val'] - fn['val'])

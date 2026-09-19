@@ -128,24 +128,60 @@ def collect_t3(recompile=False, progress=None):
             _SLOT_OK.append(vas)
         return _SLOT_OK[0]
 
+    # FORCE-BLOCKED rows: a certified function whose PLACED span the in-image
+    # A5 run rejected (a real behavioural divergence, not a modelling gap)
+    # must not ship, whatever the contract gates say.  One row per VA in
+    # config/t3_blocked.csv with the evidence; delete the row when the lane
+    # that caused it is fixed and the placed-image run agrees.
+    blocked = {}
+    bp = os.path.join(ROOT, 'config', 't3_blocked.csv')
+    if os.path.exists(bp):
+        for row2 in csv.DictReader(open(bp)):
+            try:
+                blocked[int(row2['va'], 16)] = row2.get('evidence', '')
+            except (ValueError, KeyError):
+                pass
+
     rows = {}
     for r in csv.DictReader(open(REPORT)):
         if r.get('status') == 'diff' and r.get('va') \
                 and r['va'].lower() in cert:
-            rows[int(r['va'], 16)] = r
+            va2 = int(r['va'], 16)
+            if va2 in blocked:
+                print('  FORCE-BLOCKED 0x%08X %s: %s'
+                      % (va2, r['name'], blocked[va2]))
+                continue
+            rows[va2] = r
 
     # Same basename-collision guard the byte gate uses: two source files sharing
     # a basename cannot share the sweep's object cache, so build those ourselves.
     ambiguous = ib._ambiguous_basenames(rows)
 
     best, unplaced, unbuildable = {}, [], []
+    # Per-function opt override (config/t3_variant.csv): the sweep records
+    # the raw-byte-min variant, which for a handful of functions is LONGER
+    # than the slot while another variant fits.  The override changes which
+    # compile places -- lockstep rows must be regenerated against it.
+    variant = {}
+    vp = os.path.join(ROOT, 'config', 't3_variant.csv')
+    if os.path.exists(vp):
+        for vr in csv.DictReader(open(vp)):
+            try:
+                variant[int(vr['va'], 16)] = vr['opt']
+            except (ValueError, KeyError):
+                pass
     want = {}
     for va, r in rows.items():
-        if not r.get('opt'):
+        opt = variant.get(va) or r.get('opt')
+        if not opt:
             unbuildable.append((va, r['name'],
                                 '%s: diff row carries no opt' % r['file']))
             continue
-        want.setdefault((r['file'], r['opt']), []).append((va, r['name']))
+        if va in variant:
+            r = dict(r)
+            r['opt'] = opt
+            rows[va] = r
+        want.setdefault((r['file'], opt), []).append((va, r['name']))
 
     # ---------------------------------------------------- provenance -----
     # A resolution is EVIDENCE when its address derives from this binary
@@ -192,8 +228,12 @@ def collect_t3(recompile=False, progress=None):
         # jmp-thunk, which is the anchors' job above -- resolving the plain
         # name to the slot put an IAT address in a rel32 (caught by the
         # audit on FUN_10028200).
-        if sym.lstrip('_').startswith('imp_') and sym in imports:
-            return imports[sym]
+        if sym.lstrip('_').startswith('imp_'):
+            if sym in imports:
+                return imports[sym]
+            base_sym = sym.split('@')[0]     # __imp__mmioGetInfo@12 -> table key
+            if base_sym in imports:
+                return imports[base_sym]
         return None
 
     def _hearsay(sym):
@@ -409,6 +449,135 @@ def collect_t3(recompile=False, progress=None):
         for va, name in wanted:
             if va not in got:
                 unplaced.append((va, name, rel_src + ': symbol not in obj'))
+    # ------------------------------------------------ C++ lane T3 rows ---
+    # Fifteen certified functions live only in report_cpp.csv (their
+    # transcriptions are src/core/cpp/<VA>.cpp).  Same placement rules, the
+    # lane's own pre-built sweep objects and mangled symbols.
+    import cpp_score
+    from relocmap import REL_REL32
+    tags_cpp = [ib._opt_tag(o) for o in cpp_score.DEFAULT_OPTS]
+    repcpp = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    cpp_rows = []
+    if os.path.exists(repcpp):
+        for r in csv.DictReader(open(repcpp)):
+            v = (r.get('va') or '').lower()
+            if r.get('status') == 'diff' and v in cert \
+                    and int(v, 16) not in rows:
+                cpp_rows.append(r)
+    for r in cpp_rows:
+        va = int(r['va'], 16)
+        size = int(r['orig_size'])
+        base = os.path.splitext(os.path.basename(r['file']))[0]
+        try:
+            ti = tags_cpp.index(r['opt'])
+        except ValueError:
+            unbuildable.append((va, r['name'],
+                                'cpp opt %r unknown' % r.get('opt')))
+            continue
+        obj = os.path.join(cpp_score.OBJ_DIR,
+                           '%s_sweep_%08X_%d.obj' % (base, va, ti))
+        if not os.path.exists(obj):
+            unbuildable.append((va, r['name'], 'cpp sweep obj missing'))
+            continue
+        _impl, symtag, kind = cpp_score.parse_implements_name(
+            os.path.join(ROOT, r['file']), va)
+        raw = ib._raw_symbol(obj, symtag, kind)
+        if raw is None:
+            unplaced.append((va, r['name'], 'cpp raw symbol not found'))
+            continue
+        pre = ib.PREAMBLES.get('0x%08x' % va, b'')
+        ob = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
+        orig_body = open(ob, 'rb').read()[len(pre):]
+        anchors = {}
+        anchors.update(content_anchor_syms(obj, raw, size, img))
+        anchors.update(import_thunk_syms(obj, raw, size, img))
+        sites = dict(const_slot_values(obj, raw, va, size))
+        sites.update(jump_table_slots(obj, raw, va, size, plen=len(pre)))
+
+        def _knownc(sym, anchors=anchors):
+            v = _trusted(sym, anchors)
+            return v if v is not None else _hearsay(sym)
+        paired, _refc, assigned = pair_function(
+            obj, raw, va, size, orig_body, img, _knownc, plen=len(pre))
+        fixes, repc, confirmed = audit_function(
+            obj, raw, va, size, orig_body, img, _knownc, plen=len(pre))
+        for osym, oimg2, omap in repc:
+            print('  MAP OVERRIDE %s %s: image says %s, map said %s'
+                  % (r['name'], osym,
+                     hex(oimg2) if oimg2 is not None else '?', hex(omap)))
+        st, _b = _our_sites(obj, raw, size)
+        for off, sym, rt2, addend, _k in (st or []):
+            k = (va, off)
+            if k in sites:
+                continue
+            a = _trusted(sym, anchors)
+            if a is None:
+                # The cpp lane's ?g_<HEX>@@ / sub_<HEX> names are coined
+                # FROM THE GLIDE BINARY (the transcriptions live in
+                # src/core/cpp/<glide-VA>.cpp), so the embedded address is
+                # evidence here, not the C lane's D3D-era hearsay --
+                # ?g_0A9360 lands exactly on the pairing-proven cell where
+                # the C lane's stale name missed by 0xCB0.
+                a = address_in_name(sym)
+            if a is None:
+                ck = (obj, sym) if '$' in sym else sym
+                a = g_corr.get(ck)
+                if a is None and _hearsay(sym) is not None \
+                        and g_conf.get(ck) == _hearsay(sym):
+                    a = _hearsay(sym)
+                if a is None and sym in confirmed:
+                    a = confirmed[sym]
+            if a is None:
+                continue
+            if rt2 == REL_REL32:
+                sites[k] = (a + addend - (va + len(pre) + off + 4)) \
+                    & 0xFFFFFFFF
+            else:
+                sites[k] = (a + addend) & 0xFFFFFFFF
+        for k, v in paired.items():
+            sites[k] = v
+        sites.update(fixes)
+        for (ova, ooff), oval in _load_overrides().items():
+            if ova == va:
+                sites[(va, ooff)] = oval
+        # truncation guard, cpp flavour
+        try:
+            od2, osecs2, osyms2, orl2 = rf_parse(obj)
+            fnsym2 = next((s2 for s2 in osyms2
+                           if func_symbol_matches(s2['name'], raw)
+                           and osecs2.get(s2['sec'], {}).get('name', '')
+                                   .startswith('.text')), None)
+        except Exception:
+            fnsym2 = None
+        if fnsym2 is not None:
+            sec3 = osecs2[fnsym2['sec']]
+            nx2 = [s2['val'] for s2 in osyms2
+                   if s2['sec'] == fnsym2['sec']
+                   and s2['val'] > fnsym2['val']]
+            end3 = min(nx2) if nx2 else sec3['size']
+            bod2 = od2[sec3['praw'] + fnsym2['val']:sec3['praw'] + end3]
+            clen = len(bod2)
+            while clen and bod2[clen - 1] in (0x90, 0xCC):
+                clen -= 1
+            slot2 = size - len(pre)
+            if clen > slot2 and va not in _slot_ok():
+                over2 = bod2[slot2:clen]
+                keep2 = bytes(img.byte(va + len(pre) + slot2 + i) or 0
+                              for i in range(len(over2)))
+                if over2 != keep2:
+                    print('  TRUNCATED %s (cpp): %dB past the slot differ '
+                          '-- BLOCKED' % (r['name'], len(over2)))
+                    unplaced.append((va, r['name'], 'cpp overhang'))
+                    continue
+        got_it = False
+        for va2, name2, code, unres2, fromref2 in ib.compiled_functions(
+                [obj], fnmap, {}, only={raw: va}, pad_short=True,
+                ref_fill=False, extra_sites=sites):
+            if va2 == va:
+                best[va] = (r['name'], code, unres2, fromref2, 'T3')
+                got_it = True
+        if not got_it:
+            unplaced.append((va, r['name'], 'cpp symbol not placed'))
     return best, unplaced, unbuildable
 
 

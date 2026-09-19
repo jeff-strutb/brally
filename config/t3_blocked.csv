@@ -1,0 +1,2 @@
+va,evidence
+0x10015300,placed-image A5 DIFF 2026-09-19: diverging write to the DL cursor 0x106E7710 (recolor routing suspect) -- do not ship until the routing lane lands and the placed-image run agrees
