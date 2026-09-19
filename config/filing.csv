@@ -705,6 +705,7 @@ glide_va,name,module,basis,file
 0x10054020,BrTextBoxCentreX,menus,filed,src/core/menus/br_textbox.c
 0x10054360,BrCharMapLookup,controls,description,src/core/controls/br_dik.c
 0x10054390,FUN_10054390,controls,neighbour-1,src/core/generated/0x10054390.c
+0x10054550,BrSprFontGlyphA_1005B730,drawing,filed,src/core/drawing/br_sprfont.c
 0x100545C0,BrSprFontGlyphB_1005B7A0,drawing,filed,src/core/drawing/br_sprfont.c
 0x10054600,BrRet0Std3_10054600,menus,manual,src/core/menus/br_textlist.c
 0x100546F0,BrObj546F0DeleteDtor,menus,manual,src/core/menus/br_textlist.c
