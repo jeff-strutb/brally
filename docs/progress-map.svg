@@ -1724,9 +1724,9 @@
 <rect x="940.4" y="498.6" width="3.7" height="4.9" fill="#3fb950"><title>BrMenuSetAA28A8  0x10037ED0  11B  [core/menus/br_menucb]</title></rect>
 <rect x="944.7" y="498.6" width="3.7" height="4.9" fill="#3fb950"><title>BrMenuSetAA28D0_1  0x1003A830  11B  [core/menus/br_menucb]</title></rect>
 <text x="860.7" y="516.1" font-size="10" fill="#8b949e">br_cardrive</text>
-<rect x="859.2" y="521.1" width="89.3" height="73.6" fill="#d29922"><title>BrCarPhysDriveMatch  0x100645A0  3070B  2282 diff bytes  [core/driving/br_cardrive]</title></rect>
+<rect x="859.2" y="521.1" width="89.3" height="73.6" fill="#58a6ff"><title>BrCarPhysDriveMatch  0x100645A0  3070B  [core/driving/br_cardrive]</title></rect>
 <text x="860.7" y="607.3" font-size="10" fill="#8b949e">br_sndcar</text>
-<rect x="859.2" y="612.3" width="89.3" height="64.3" fill="#d29922"><title>BrSndCarStep  0x10061470  2757B  2127 diff bytes  [core/audio/br_sndcar]</title></rect>
+<rect x="859.2" y="612.3" width="89.3" height="64.3" fill="#58a6ff"><title>BrSndCarStep  0x10061470  2757B  [core/audio/br_sndcar]</title></rect>
 <text x="860.7" y="689.3" font-size="10" fill="#8b949e">br_race</text>
 <rect x="859.2" y="694.3" width="89.3" height="57.8" fill="#3fb950"><title>BrRaceGateStep  0x1005FF00  2538B  [core/racing/br_race]</title></rect>
 <text x="860.7" y="764.7" font-size="10" fill="#8b949e">br_cd</text>
@@ -2792,4 +2792,4 @@
 <rect x="1594.5" y="893.2" width="3.4" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.5" y="896.7" width="0.5" height="1.2" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 120 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 122 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
