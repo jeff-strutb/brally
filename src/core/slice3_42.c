@@ -327,10 +327,24 @@ BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
 void BrCtrlCfgAssign(BrCtrlCfg *pThis, int32_t profile, int32_t action,
                      int32_t hi, int32_t lo)
 {
-    const int            k    = BrCtrlProfileIndex(profile);
-    BrCtrlProfile       *pP   = &pThis->profile[k];
-    const BrCtrlProfile *pDef = &g_BrCtrlDefaults[k];
+    BrCtrlProfile       *pP;
+    const BrCtrlProfile *pDef;
     int slot;
+
+    /* The 1/2/3-else dispatch, open-coded: the original has NO call here --
+     * it selects the profile/default PAIR with the `dec eax; je` chain
+     * (glide 0x10062b80: ebp=this+k*0x?A8, edi=defaults+same), and the image
+     * build cannot place a call to a helper the original never emitted.
+     * BrCtrlProfileIndex stays for the callers whose originals differ. */
+    if (profile == 1) {
+        pP = &pThis->profile[1]; pDef = &g_BrCtrlDefaults[1];
+    } else if (profile == 2) {
+        pP = &pThis->profile[2]; pDef = &g_BrCtrlDefaults[2];
+    } else if (profile == 3) {
+        pP = &pThis->profile[3]; pDef = &g_BrCtrlDefaults[3];
+    } else {
+        pP = &pThis->profile[0]; pDef = &g_BrCtrlDefaults[0];
+    }
 
     /* The original spells this ((lo ^ hi) & 0xFF) ^ hi, truncated to 16 bits;
      * that keeps hi's byte 1 and lo's byte 0 and drops everything else. */

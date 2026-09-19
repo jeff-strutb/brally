@@ -582,7 +582,11 @@ void BrExt_1003CDA0(void);
  */
 void BrOptFn10056A10(BrPhase_ *pPhase);
 void BrOptFn10057C10(BrPhase_ *pPhase);
+#ifdef BR_MATCHING_BUILD
+int32_t BrExt_10052030(BrPhase_ *pPhase);  /* original returns 1 */
+#else
 void BrExt_10052030(BrPhase_ *pPhase);
+#endif
 void BrExt_10059760(BrPhase_ *pPhase);
 void BrExt_1005A6E0(BrPhase_ *pPhase);
 void BrExt_1004E830(BrPhase_ *pPhase);

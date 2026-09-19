@@ -260,10 +260,21 @@ void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt);
 /* XSLICE 0x1004F700 */ extern void BrExt_1004F700(BrPhase *pSelf);
 /* XSLICE 0x100509F0 */ extern void BrExt_100509F0(BrPhase *pSelf);
 /* XSLICE 0x10050060 */ extern void BrExt_10050060(BrPhase *pSelf);
-/* XSLICE 0x10052030 */ extern void BrExt_10052030(BrPhase *pSelf);
+/* XSLICE 0x10052030 -- the original RETURNS 1 (mov eax,1 before ret); the
+ * port spells it void and no caller reads eax.  The matching build carries
+ * the original's signature. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t BrExt_10052030(BrPhase *pSelf);
+#else
+extern void BrExt_10052030(BrPhase *pSelf);
+#endif
 /* XSLICE 0x10052F50 */ extern void BrExt_10052F50(BrPhase *pSelf);
 /* XSLICE 0x10053CF0 */ extern void BrExt_10053CF0(BrPhase *pSelf);
-/* XSLICE 0x10054B50 */ extern void BrExt_10054B50(BrPhase *pSelf);
+#ifdef BR_MATCHING_BUILD
+extern int32_t BrExt_10054B50(BrPhase *pSelf);   /* same: original returns 1 */
+#else
+extern void BrExt_10054B50(BrPhase *pSelf);
+#endif
 
 /* --- plain callees --------------------------------------------------------- */
 

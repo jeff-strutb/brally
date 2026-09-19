@@ -519,7 +519,11 @@ void BrExt_1004F2B0(BrPhase_ *pSelf);
  * __ftol of the row cursor -- BUT only the FIRST of the three calls __ftol
  * on the x; the other two reuse the ebx it left behind, so all three share a
  * left edge even though only the first computed one. */
+#ifdef BR_MATCHING_BUILD
+int32_t BrExt_10054B50(BrPhase_ *pSelf);   /* original returns 1 */
+#else
 void BrExt_10054B50(BrPhase_ *pSelf);
+#endif
 
 /* 0x100558A0 (2877 bytes)  17 controls; sets 0x100AA010 to 6 first. */
 void BrOptFn100558A0(BrPhase_ *pSelf);

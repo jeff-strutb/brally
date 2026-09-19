@@ -946,6 +946,73 @@ static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
 
 /* WHAT IT DOES: put a lap time from one stored table onto this row, or
  * "--:--" if times are not available yet. */
+#ifdef BR_MATCHING_BUILD
+/* The GLIDE original (0x1003A140) INLINES every helper this callback's
+ * portable spelling factored out -- the stage-byte lookup, the "--:--"
+ * copy, the whole lap formatter and the store tail -- so the placed body
+ * must spell them inline too: the image build cannot emit a call to a
+ * function the original never linked.  Behaviour is the portable body's,
+ * statement for statement; the cells are named by address (Ghidra
+ * spelling), which the placement resolver treats as evidence.
+ *   0x10AC5BF4 times-available flag   0x10AC5C10 stage index (int8)
+ *   0x10AC5C04 stage-table bias       0x100B3028 stage byte table
+ *   0x10AC5B54 the time table this callback reads (float[])            */
+extern int32_t       DAT_10ac5bf4;   /* 0x10AC5BF4 */
+extern int8_t        DAT_10ac5c10;   /* 0x10AC5C10 */
+extern int32_t       DAT_10ac5c04;   /* 0x10AC5C04 */
+extern unsigned char DAT_100b3028;   /* 0x100B3028 */
+extern float         DAT_10ac5b54;   /* 0x10AC5B54 */
+
+/* @implements 0x10040C00 d3d BrMenuTime0C00 */
+int32_t BrMenuTime0C00(BrMenuItem *pItem)
+{
+    char sz[32];                       /* the original's local is 0x20, zeroed */
+
+    memset(sz, 0, sizeof sz);
+    if (DAT_10ac5bf4 != 0) {
+        /* the stage-byte lookup, inline: table[(bias + 12*stage) * 2] */
+        uint32_t i = (&DAT_100b3028)[
+            (DAT_10ac5c04 + 12 * (int32_t)DAT_10ac5c10) * 2];
+        float    t = (&DAT_10ac5b54)[i];
+
+        if (t > 0.0f) {
+            /* the lap formatter, inline -- the same spelling as
+             * BrMenuFormatLapTime, sprintf as the original imports it */
+            int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
+            float   fSecStored;
+
+            nCenti     = (int32_t)(t * 100.0f);
+            nSec       = (int32_t)((float)nCenti * 0.01f);
+            fSecStored = (float)nSec;
+            nHund      = (int32_t)((float)nCenti - (float)nSec * 100.0f);
+            nMin       = (int32_t)(fSecStored * 0.016666667f);
+            nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
+            sprintf(sz, "%d:%02d.%02d",
+                    (int)nMin, (int)nSecOfMin, (int)nHund);
+        } else {
+            strcpy(sz, "--:--");
+        }
+    } else {
+        strcpy(sz, "--:--");
+    }
+
+    if (strlen(sz) == 0)
+        return 0;
+    /* the store tail, inline: upcase, copy into the row's text object and
+     * poke its two caption vtable slots.  The original tests the DEST
+     * pointer (an always-true lea) between the two calls; kept. */
+    {
+        BrMenuText *pText = &pItem->text;
+        char       *pDst  = pText->sz;
+
+        strcpy(pDst, _strupr(sz));
+        pText->pVtbl->pfn04(pText);
+        if (pDst != NULL)
+            pText->pVtbl->pfn10(pText);
+    }
+    return 1;
+}
+#else
 /* @implements 0x10040C00 d3d BrMenuTime0C00 */
 int32_t BrMenuTime0C00(BrMenuItem *pItem)
 {
@@ -960,6 +1027,7 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
                             BrMenuStageTime(pSt, pSt->pTimes27FC));
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
  * stored table. */
