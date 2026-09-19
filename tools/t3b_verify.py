@@ -173,6 +173,14 @@ def parse_signature(name):
             ret = 'void'                               # no return value: compare side effects only
         elif ('float' in rettype or 'double' in rettype) and '*' not in rettype:
             ret = 'float'
+        elif rettype.split() and rettype.split()[-1] in (
+                'bool', 'char', 'int8_t', 'uint8_t') and '*' not in rettype:
+            # MSVC returns these in AL; the upper bytes of eax are
+            # unspecified and the ORIGINAL itself ships schedule garbage
+            # there (BrGhostLoad's failure path returns 0xFFFFFF01: setne al
+            # over the `or eax,-1` seed).  Comparing full eax on a bool
+            # return manufactures a false DIFF.
+            ret = 'byte'
         else:
             ret = 'int'
         kinds = ['ptr'] if is_method else []           # implicit `this` in ecx
@@ -269,6 +277,8 @@ def verify(va, name, orig_bytes, recomp_bytes, seeds, sig):
             same = (a == b) or (a != a and b != b)
         elif ret == 'void':
             same = True                 # no return value; eax is scratch
+        elif ret == 'byte':
+            same = ((Mo.R['eax'] ^ Mr.R['eax']) & 0xFF) == 0
         else:
             same = (Mo.R['eax'] == Mr.R['eax'])
         same = same and (_snapshot(mo, bo) == _snapshot(mr, br))   # side effects
@@ -634,6 +644,8 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None
             same = (a == b) or (a != a and b != b)
         elif ret == 'void':
             same = True
+        elif ret == 'byte':
+            same = ((Mo.R['eax'] ^ Mr.R['eax']) & 0xFF) == 0
         else:
             same = (Mo.R['eax'] == Mr.R['eax'])
         if not same:
