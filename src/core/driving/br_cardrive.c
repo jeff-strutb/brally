@@ -64,9 +64,19 @@ float BrSinF(float a);
  * fp stack -- same axis as the BrCrRespWalk stack-dup fork.  Park. */
 /* @t4-pass 0x100645A0 1 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
 /* @t4-pass 0x100645A0 2 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
+/* @t3 0x100645A0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3093/3070 insns 863/862 rows 27+28 regions 17 oracle EQUIV-MODULO-FP
+ * @t3-effort passes 2 zero-movement 1 2
+ * A5 EQUIV-MODULO-FP (insn gap 1; residue is x87 scheduling -- fcom/fcomp,
+ * fsub st vs fsubr, the sideForce/ran float+int aggregate -- see the header
+ * above; byte-exact is that colouring wall).  Behaviourally verified with a
+ * seeded car object graph (param_1 -> car with 4 axle records, valid geometry
+ * so the axle-difference divisions are finite, param_2 nonzero divisor);
+ * negative-controlled: an integer flag write and a velocity-solve term (svB[0])
+ * both DIFF, correct code stays equivalent.  Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
-void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3,
-                         float *param_4, char *param_5, char *param_6)
+void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *param_4, char *param_5, char *param_6)
 {
   float fVar1;
   float fVar2;
