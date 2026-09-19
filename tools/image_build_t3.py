@@ -131,6 +131,78 @@ def collect_t3(recompile=False, progress=None):
             continue
         want.setdefault((r['file'], r['opt']), []).append((va, r['name']))
 
+    # ---------------------------------------------------- provenance -----
+    # A resolution is EVIDENCE when its address derives from this binary
+    # itself: a matched function's VA, the validated learned map, a Ghidra
+    # DAT_/FUN_ name (coined from this image), the import table, a string /
+    # constant / thunk / jump-table identity, or a pairing against the
+    # original body.  It is HEARSAY when it derives from a hand-coined name
+    # or a hand row (g_<HEX>, BrSubXXXXXXXX suffixes, globals CSV rows,
+    # `/* 0x<VA> */` comments): those have carried stale D3D-space addresses
+    # that pairing keeps exposing, and one shipped a mapped-but-wrong WRITE
+    # into a placed frame-loop function.  Hearsay places only where the
+    # pairing has CONFIRMED or CORRECTED it -- in this function or any other
+    # -- and a function left with unconfirmed hearsay BLOCKS.
+    from t3b_env import (_ADDR_IN_NAME, _find_cstr, _declared_va,
+                         _declared_data_va)
+    from relocmap import load_learned, normalize, REL_DIR32
+    img = ref_image()
+    learned = load_learned()
+    imports = img.imports()
+
+    def _trusted(sym, anchors):
+        s = sym.lstrip('_')
+        u = rf_undecorate(sym)
+        for c in (s, u):
+            if c in fnmap:
+                return fnmap[c]
+            if c in learned:
+                return learned[c]
+        m = _ADDR_IN_NAME.match(s) or _ADDR_IN_NAME.match(u)
+        if m:
+            a = int(m.group(1), 16)
+            if img.mapped(a) or img.is_bss(a):
+                if s[:3].upper() in ('FUN', 'SUB') \
+                        and not (img.text_lo <= a < img.text_hi):
+                    return None
+                return a
+        if sym.startswith('??_C'):
+            return _find_cstr(img, sym)
+        a = anchors.get(sym)
+        if a is not None:
+            return a
+        # An IAT slot address answers only the INDIRECT form (`call
+        # [__imp__x]`); a direct call to the plain name goes through the
+        # jmp-thunk, which is the anchors' job above -- resolving the plain
+        # name to the slot put an IAT address in a rel32 (caught by the
+        # audit on FUN_10028200).
+        if sym.lstrip('_').startswith('imp_') and sym in imports:
+            return imports[sym]
+        return None
+
+    def _hearsay(sym):
+        s = sym.lstrip('_')
+        u = rf_undecorate(sym)
+        for c in (s, u, normalize(s)):
+            if c in glmap:
+                return glmap[c]
+        a = address_in_name(sym) or address_in_name(u)
+        if a is not None:
+            return a                       # suffix / g_<HEX> convention form
+        for c in (s, u):
+            if c in _declared_va():
+                return _declared_va()[c]
+            if c in _declared_data_va():
+                return _declared_data_va()[c]
+        return None
+
+    # -------------------------------------------------- phase A: derive --
+    # Compile every object, gather identity anchors, run the pairing and the
+    # audit, and pool the evidence: which hearsay symbols the original's own
+    # bytes CONFIRM, and which they CORRECT (globally, so one function's
+    # proof serves every function naming the same global).
+    records = []
+    g_conf, g_corr, g_bad = {}, {}, set()
     for i, ((rel_src, tag), wanted) in enumerate(sorted(want.items())):
         if progress:
             progress(i + 1, len(want), rel_src)
@@ -139,95 +211,102 @@ def collect_t3(recompile=False, progress=None):
             for va, name in wanted:
                 unbuildable.append((va, name, '%s: %s' % (rel_src, err)))
             continue
-        byname = {n: va for va, n in wanted}
-        got = set()
-        afn, agl = augment_maps(obj, wanted[0][1], 0)
-        afn = dict(afn)          # per-object additions never touch the shared map
-        sites = {}
-        img = ref_image()
+        anchors = {}
+        idsites = {}
         for va, name in wanted:
             size = int(rows[va]['orig_size'])
-            sites.update(const_slot_values(obj, name, va, size))
             pre = ib.PREAMBLES.get('0x%08x' % va, b'')
-            sites.update(jump_table_slots(obj, name, va, size, plen=len(pre)))
-            # Initialised statics resolve by CONTENT identity (the error
-            # string, const float or data-format table our object carries is
-            # found verbatim in the original); each one becomes an anchor for
-            # the pairing below.
-            for csym, caddr in content_anchor_syms(obj, name, size,
-                                                   img).items():
-                agl.setdefault(csym.lstrip('_'), caddr)
-            # A named Glide/DirectX import call resolves through the import
-            # table to the original's own jmp-thunk -- exact, no pairing.
-            for isym, iaddr in import_thunk_syms(obj, name, size,
-                                                 img).items():
-                afn.setdefault(isym.lstrip('_'), iaddr)
-                afn.setdefault(rf_undecorate(isym), iaddr)
+            idsites.update(const_slot_values(obj, name, va, size))
+            idsites.update(jump_table_slots(obj, name, va, size,
+                                            plen=len(pre)))
+            anchors.update(content_anchor_syms(obj, name, size, img))
+            anchors.update(import_thunk_syms(obj, name, size, img))
 
-        # Site pairing: a hand-named static or global no map can address is
-        # recovered from the ORIGINAL body's own dwords by instruction-shape
-        # pairing (tools/reloc_pair.py; forced assignments only, conservation-
-        # gated, 329/329 on the leave-one-out self-test -- the five apparent
-        # misses were the pairing exposing stale D3D-space map rows).  A
-        # global name recovered in two functions must agree or both stay
-        # blocked; per-TU `$` names never leave this object's scope.
-        img = ref_image()
-        pending = []
+        def _known(sym, anchors=anchors):
+            v = _trusted(sym, anchors)
+            return v if v is not None else _hearsay(sym)
+
+        fns = []
         for va, name in wanted:
             ob = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
             if not os.path.exists(ob):
                 continue
+            size = int(rows[va]['orig_size'])
             pre = ib.PREAMBLES.get('0x%08x' % va, b'')
             orig_body = open(ob, 'rb').read()[len(pre):]
-
-            def _known(sym):
-                v = rf_resolve(sym, afn, agl)
-                return v if v is not None else address_in_name(sym)
-            paired, _refused, assigned = pair_function(
-                obj, name, va, int(rows[va]['orig_size']), orig_body, img,
-                _known, plen=len(pre))
-
-            # Audit every map-resolved slot against the original's own bytes:
-            # hand-coined names (BrSubXXXXXXXX, g_<HEX>) have carried stale
-            # D3D-space addresses, and the certified image must reference
-            # what the ORIGINAL references.  A forced disagreement overrides
-            # the map value and is reported.
-            fixes, rep = audit_function(
-                obj, name, va, int(rows[va]['orig_size']), orig_body, img,
-                _known, plen=len(pre))
+            paired, _ref, assigned = pair_function(
+                obj, name, va, size, orig_body, img, _known, plen=len(pre))
+            fixes, rep, confirmed = audit_function(
+                obj, name, va, size, orig_body, img, _known, plen=len(pre))
             for osym, oimg, omap in rep:
                 print('  MAP OVERRIDE %s %s: image says %s, map said %s'
                       % (name, osym,
                          hex(oimg) if oimg is not None else '?', hex(omap)))
-            sites.update(fixes)
-            pending.append((va, name, paired, assigned))
-
-        # Cross-function agreement, applied AFTER every function paired so a
-        # conflict retracts BOTH sides: a `$` counter name is one static
-        # within its object (two objects sharing the spelling name two
-        # different statics), a plain name is one global everywhere.
-        conflicted = set()
-        for va, name, paired, assigned in pending:
+            fns.append((va, name, size, len(pre), paired, assigned,
+                        fixes, rep, confirmed))
             for sym, addr in assigned.items():
                 rkey = (obj, sym) if '$' in sym else sym
                 prev = recovered.setdefault(rkey, (addr, name))
                 if prev[0] != addr:
-                    conflicted.add(rkey)
-                    print('  PAIR CONFLICT %s: %#x (%s) vs %#x (%s) -- both '
-                          'refused' % (sym, prev[0], prev[1], addr, name))
-        for va, name, paired, assigned in pending:
-            drop = {sym for sym in assigned
-                    if ((obj, sym) if '$' in sym else sym) in conflicted}
-            if drop:
-                site_syms = dict(_site_symbols(obj, name, va,
-                                               int(rows[va]['orig_size'])))
-                paired = {k: v for k, v in paired.items()
-                          if site_syms.get(k) not in drop}
-            for (pva, off), val in paired.items():
-                sites.setdefault((pva, off), val)
+                    if prev[0] is not None:
+                        print('  PAIR CONFLICT %s: %#x (%s) vs %#x (%s) -- '
+                              'both refused'
+                              % (sym, prev[0], prev[1], addr, name))
+                    recovered[rkey] = (None, name)
+            for sym, addr in confirmed.items():
+                ckey = (obj, sym) if '$' in sym else sym
+                g_conf.setdefault(ckey, addr)
+            for osym, oimg, _omap in rep:
+                if oimg is None:
+                    continue
+                ckey = (obj, osym) if '$' in osym else osym
+                prev = g_corr.setdefault(ckey, oimg)
+                if prev != oimg:
+                    g_bad.add(ckey)
+                    print('  CORRECTION CONFLICT %s: %#x vs %#x -- refused'
+                          % (osym, prev, oimg))
+        records.append((obj, rel_src, wanted, anchors, idsites, fns))
+
+    # -------------------------------------------------- phase B: place ---
+    for obj, rel_src, wanted, anchors, idsites, fns in records:
+        byname = {n: va for va, n in wanted}
+        got = set()
+        sites = dict(idsites)
+        for va, name, size, plen, paired, assigned, fixes, rep, conf in fns:
+            site_syms = dict(_site_symbols(obj, name, va, size))
+            st, _b = _our_sites(obj, name, size)
+            for off, sym, rt, addend, _key in (st or []):
+                k = (va, off)
+                if k in sites:
+                    continue                     # identity slot
+                ckey = (obj, sym) if '$' in sym else sym
+                a = _trusted(sym, anchors)
+                if a is None:
+                    if ckey in g_bad:
+                        continue                 # conflicted -> block
+                    a = g_corr.get(ckey)
+                    if a is None and _hearsay(sym) is not None \
+                            and g_conf.get(ckey) == _hearsay(sym):
+                        a = _hearsay(sym)
+                if a is None:
+                    continue                     # pairing below, or block
+                if rt == REL_DIR32:
+                    sites[k] = (a + addend) & 0xFFFFFFFF
+                else:
+                    sites[k] = (a + addend
+                                - (va + plen + off + 4)) & 0xFFFFFFFF
+            # forced per-site evidence beats every name-derived value
+            for k, v in paired.items():
+                if site_syms.get(k) is not None:
+                    rkey = ((obj, site_syms[k]) if '$' in site_syms[k]
+                            else site_syms[k])
+                    if recovered.get(rkey, (0,))[0] is None:
+                        continue                 # conflicted pairing
+                sites[k] = v
+            sites.update(fixes)
         for va, name, code, unres, fromref in ib.compiled_functions(
-                [obj], afn, agl, pad_short=True, ref_fill=False,
-                extra_resolve=address_in_name, extra_sites=sites):
+                [obj], fnmap, {}, pad_short=True, ref_fill=False,
+                extra_sites=sites):
             if byname.get(name) == va:
                 best[va] = (name, code, unres, fromref, 'T3')
                 got.add(va)
