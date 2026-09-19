@@ -105,8 +105,18 @@ def collect_t3(recompile=False, progress=None):
     is a separate image concern and carries no report.csv row here.
     """
     fnmap, glmap = load_maps()
-    cert = {va for va, i in certified().items()
+    certinfo = certified()
+    cert = {va for va, i in certinfo.items()
             if not va.startswith('?') and i['ok']}
+
+    def _a5_proven(va):
+        """True when this cert's @t3-measure records an A5 EQUIVALENT (or
+        EQUIV-MODULO-FP) verdict -- the proof RAN, with augment_maps'
+        addresses, so placing through the same reader is placing with
+        exactly the addresses the equivalence proof used."""
+        i = certinfo.get('0x%08x' % va)
+        m = i.get('measure') if i else None
+        return bool(m) and str(m[-1]).upper().startswith('EQUIV')
 
     # A T3 body is NOT byte-identical to the original outside its reloc slots
     # -- its certified residue is a reschedule -- so image_build's fallback of
@@ -360,6 +370,8 @@ def collect_t3(recompile=False, progress=None):
     annex_cursor = [annex_base_va]
     annex = []                    # (annex_va, va, name, body_bytes)
 
+    _amaps = {}
+
     def _annex_fill(obj, symname, disp_name, va, plen, sites, anchors,
                     trust_name_addr=False):
         """Build the full body for the annex; returns (annex_va, bytes) or
@@ -431,6 +443,22 @@ def collect_t3(recompile=False, progress=None):
                     if a2 is None and _hearsay(sym) is not None \
                             and g_conf.get(ck2) == _hearsay(sym):
                         a2 = _hearsay(sym)
+                if a2 is None and _a5_proven(va):
+                    # the certification's OWN resolution: augment_maps reads
+                    # the transcription's declared `/* 0x... */` VAs and
+                    # address-bearing names -- the addresses the A5 proof
+                    # ran under.  Consulted only for A5-proven certs; a
+                    # byte-shape-only cert still blocks here, and the
+                    # placed-image sweep remains the final arbiter.
+                    if _amaps.get('key') != (obj, symname):
+                        try:
+                            af2, ag2 = augment_maps(obj, symname, full)
+                        except Exception:
+                            af2, ag2 = {}, {}
+                        _amaps.update(key=(obj, symname), fn=af2, gl=ag2)
+                    a2 = rf_resolve(sym, _amaps['fn'], _amaps['gl'])
+                    if a2 is None:
+                        a2 = address_in_name(sym)
                 if a2 is not None:
                     if rt == _REL32:
                         val = (a2 + addend - (a_va + off + 4)) & 0xFFFFFFFF
