@@ -1105,6 +1105,7 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
