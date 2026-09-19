@@ -240,13 +240,7 @@ typedef struct { int v; }   BrGlyphI32;
 /* @implements 0x10054550 glide BrSprFontGlyphA_1005B730 */
 int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
     BrGlyphF32 x, BrGlyphF32 y, BrGlyphI32 unused)
-{
-    short sheet;
-    unsigned char k;
-
-    k = pBox->f08;
-    sheet = 0;
-    if (k == 0) {
+{short sheet;unsigned char k;sheet = 0;k = pBox->f08;if (k == 0) {
         sheet = 2;
     } else if (k == 1) {
         sheet = 3;
@@ -254,11 +248,8 @@ int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
         sheet = 4;
     } else if (k == 4) {
         sheet = 0x34;
-    }
-    FUN_10058380((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
-                 g_aBrUiSprite[sheet].fBlit);
-    return 1;
-}
+    }FUN_10058380((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
+                 g_aBrUiSprite[sheet].fBlit);return 1;}
 
 /* WHAT IT DOES: draw one character of the SECOND sprite font at the given
  * screen position, looking its rectangle up in that font's table. The A/B
