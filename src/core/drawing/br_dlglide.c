@@ -733,6 +733,7 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * residue after tools/crank.py: 43 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x1001E080 6 2026-09-19 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {
