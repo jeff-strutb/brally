@@ -503,6 +503,71 @@ _AI_EXACT = (
     (0x10E20000, 0x10E20004),   # pCtl->flags
 )
 
+# ---- BrCarPhysDriveMatch 0x100645A0 (axle-velocity constraint solver) -------
+# param_1 is declared `int` but is a CAR pointer: it holds four axle-record
+# pointers at +4/+8/+0xc/+0x10 and its own float/flag fields; each axle record
+# has contact/state ints (+0x19c, +0x1b4) and force floats (+0x1c0..+0x1d0).
+# param_3/param_4 are float velocity vectors, param_5/param_6 char output flags.
+# Random-int param_1 dereferences garbage (a false EQUIVALENT -- a flipped
+# physics compare went uncaught), so pin param_1 to a scratch car and seed a
+# valid graph with contact ON (+0x19c/+0x1b4 nonzero) so the main solver runs.
+_CD_CAR = 0x10E80000
+_CD_AX = (0x10E81000, 0x10E82000, 0x10E83000, 0x10E84000)
+
+
+def _cdf(seed, tag):
+    s = (seed * 2654435761 + tag * 40503) & 0xFFFFFFFF
+    return ((s % 2400) - 1200) / 100.0            # ~[-12, 12], bounded for x87
+
+
+def _cd_arg(seed, idx):
+    import struct
+    if idx == 0:
+        return _CD_CAR                            # param_1 = car pointer
+    if idx == 1:                                  # param_2 is a DIVISOR -> nonzero
+        return struct.unpack('<I', struct.pack('<f', 3.0 + (seed % 17)))[0]
+    return None
+
+
+def _cd_bss(seed, a):
+    base = a & ~3
+    for k, off in enumerate((4, 8, 0xc, 0x10)):
+        if base == _CD_CAR + off:
+            return _b(_CD_AX[k], a, _CD_CAR + off)
+    if base == _CD_CAR + 0x2c:                    # a denominator scale -> clearly nonzero
+        return _f32at(5.0 + (seed % 11), a)
+    if base in (_CD_CAR + 0x84, _CD_CAR + 0x88, _CD_CAR + 0x8c, _CD_CAR + 0xbc):
+        return _f32at(_cdf(seed, base & 0xffff), a)
+    for k, ax in enumerate(_CD_AX):
+        if ax <= base < ax + 0x1e0:
+            off = base - ax
+            if off == 0x19c:
+                return _b(1, a, ax + 0x19c)        # contact live (nonzero)
+            if off == 0x1b4:
+                return _b(1 + (seed + k) % 2, a, ax + 0x1b4)   # contact flag nonzero
+            # Every other axle field is a FLOAT (geometry/velocity/force); seed
+            # it varied and DISTINCT per axle+offset so differences never vanish
+            # (a shared geometry field at +0x78 gave 0/0 -> inf -> inf*0 -> NaN,
+            # which then compares NaN==NaN and hides every bug).
+            return _f32at(_cdf(seed, 700 + k * 61 + off), a)
+    return 0
+
+
+def _cd_buf(seed, argidx, off):
+    import struct
+    if argidx in (2, 3) and off < 0x0c:            # param_3/param_4 float[3]
+        return struct.pack('<f', _cdf(seed, argidx * 131 + (off >> 2)))[off & 3]
+    return None
+
+
+# The car's flag bytes (+0x1fd, +0x209) and the axle contact-state ints (+0x1b4)
+# are INTEGER output -- compared exactly, never float-masked, so a wrong flag or
+# a wrong contact write is a real DIFF (else a 0-vs-N byte diff hides as denormal
+# rounding).  The velocity/roll floats stay tolerant.
+_CD_EXACT = ((_CD_CAR + 0x1fc, _CD_CAR + 0x200), (_CD_CAR + 0x208, _CD_CAR + 0x20c),
+             ) + tuple((ax + 0x1b4, ax + 0x1b8) for ax in _CD_AX)
+
+
 # ---- BrCtlInputApply 0x1005AFF0 (apply player input to one car, __thiscall) -
 # `this` is a car (>0x2b68).  A too-small buffer reads every deep field as 0, so
 # the stick value, gear and steering state collapse and the deadzone / response
@@ -641,6 +706,8 @@ def _ktf_arg(seed, idx):
 
 
 PROFILES = {
+    0x100645A0: Profile(_cd_bss, zero_stack=False, seeds=48, arg=_cd_arg, buf=_cd_buf,
+                        exact_regions=_CD_EXACT),
     0x1005AFF0: Profile(_ci_bss, zero_stack=False, seeds=48, buf=_ci_buf,
                         buf_sizes={0: 0x2b68}),
     0x10030FD0: Profile(_ktf_bss, arg=_ktf_arg),
