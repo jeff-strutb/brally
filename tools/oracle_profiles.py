@@ -503,6 +503,56 @@ _AI_EXACT = (
     (0x10E20000, 0x10E20004),   # pCtl->flags
 )
 
+# ---- BrCtlInputApply 0x1005AFF0 (apply player input to one car, __thiscall) -
+# `this` is a car (>0x2b68).  A too-small buffer reads every deep field as 0, so
+# the stick value, gear and steering state collapse and the deadzone / response
+# curves never move.  Enlarge the buffer and seed: the raw stick through the
+# pointer at car+0x29c0 (deref +0x20), varied across zero; the gear selector at
+# car+0xe98 over the switch's 0..7; the body matrix (car+0x220) and aim vector
+# (car+0x1e8); the steering-rate state (car+0xe20) and speed slot (car+0x1030).
+# DAT_100b2e6c (speed-clamp enable) -> on; the input-latch pointer globals stay
+# NULL (deref -> 0, top gate open, main path).
+_CI_STICK = 0x10E70000            # scratch the car+0x29c0 pointer targets
+
+
+def _cif(seed, tag, lo, hi):
+    s = (seed * 2654435761 + tag * 40503) & 0xFFFFFFFF
+    return lo + (s % 1000) / 1000.0 * (hi - lo)
+
+
+def _ci_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == _CI_STICK + 0x20:
+        return struct.pack('<f', ((seed % 13) - 6) * 0.4)[a - base]
+    if base == 0x100B2E6C:
+        return _b(1, a, 0x100B2E6C)
+    return 0
+
+
+def _ci_buf(seed, argidx, off):
+    import struct
+    if argidx != 0:
+        return None
+    if 0x29c0 <= off < 0x29c4:
+        return _b(_CI_STICK, off, 0x29c0)
+    if 0xe98 <= off < 0xe9c:
+        return _b(seed % 8, off, 0xe98)
+    if off == 0xe81:
+        return ((seed % 3) - 1) & 0xFF
+    if 0x220 <= off < 0x260:
+        k = (off - 0x220) >> 2
+        return struct.pack('<f', (1.0 if k in (0, 5, 10, 15) else 0.0)
+                           + _cif(seed, 200 + k, -0.3, 0.3))[off & 3]
+    if 0x1e8 <= off < 0x1f4:
+        return struct.pack('<f', _cif(seed, 300 + ((off - 0x1e8) >> 2), -4.0, 4.0))[off & 3]
+    if 0xe20 <= off < 0xe24:
+        return struct.pack('<f', ((seed % 7) - 3) * 0.5)[off & 3]
+    if 0x1030 <= off < 0x1034:
+        return struct.pack('<f', (seed % 50) * 2.0)[off & 3]
+    return None
+
+
 # ---- BrSnapInterpDraw 0x100131E0 (render-side snapshot interpolator) -------
 # Blends the two newest of a six-slot snapshot ring into the sixth slot and
 # hands that slot to the frame driver.  Inputs are an object graph in
@@ -591,6 +641,8 @@ def _ktf_arg(seed, idx):
 
 
 PROFILES = {
+    0x1005AFF0: Profile(_ci_bss, zero_stack=False, seeds=48, buf=_ci_buf,
+                        buf_sizes={0: 0x2b68}),
     0x10030FD0: Profile(_ktf_bss, arg=_ktf_arg),
     0x100131E0: Profile(_snap_bss, zero_stack=False, seeds=24, arg=_snap_arg,
                         stub_calls=(0x1006E280, 0x10011FA0), exact_regions=_SNAP_EXACT),

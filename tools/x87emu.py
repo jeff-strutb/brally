@@ -188,7 +188,9 @@ class Machine:
         self.R = dict(regs)
         self.st = []                        # x87 stack, st[0] is TOP
         self.ZF = self.SF = self.CF = self.OF = 0
-        self.C0 = 0                         # last fcom below/unordered
+        self.C0 = 0                         # last fcom: below (SW bit 8 / ah 0x01)
+        self.C2 = 0                         # last fcom: unordered (SW bit 10 / ah 0x04)
+        self.C3 = 0                         # last fcom: equal (SW bit 14 / ah 0x40)
         self.seg_fs = {}                    # fs:[disp] SEH-chain slots (frame state)
         self.trace_calls = None             # opt-in list: resolved call targets, for diagnosis
         self.stub_targets = frozenset()     # direct-call VAs to black-box (profile-driven)
@@ -787,17 +789,36 @@ class Machine:
             elif mn == 'fdivp':  self.st[i] = _ieee_div(a, b)
             elif mn == 'fdivrp': self.st[i] = _ieee_div(b, a)
             self.st.pop(0)
-        elif mn in ('fcom', 'fcomp', 'fcompp'):
-            other = (rdf(self.mem_addr(o[0])) if (o and o[0].startswith('['))
-                     else self.st[int(re.search(r'\d', o[0]).group())] if o else self.st[1])
+        elif mn in ('fcom', 'fcomp', 'fcompp', 'fucom', 'fucomp', 'fucompp'):
+            # Operand: none -> st(1); `st(i)` -> that register; else a memory
+            # operand (capstone spells it `dword ptr [..]`, NOT starting with
+            # `[`, so detect the register form and treat everything else as
+            # memory -- as the fmul/fadd group does).
+            if not o:
+                other = self.st[1]
+            elif o[0].startswith('st'):
+                other = self.st[int(re.search(r'\d', o[0]).group())]
+            else:
+                other = rdf(self.mem_addr(o[0]))
             a = self.st[0]
-            self.C0 = 1 if (math.isnan(a) or math.isnan(other) or a < other) else 0
-            if mn == 'fcomp':
+            # Set the full condition-code trio the way the FPU does, so a later
+            # `fnstsw; test ah,MASK` reading C3 (equal, 0x40) or the unordered
+            # bits behaves correctly -- not just C0 (below, 0x01).
+            if math.isnan(a) or math.isnan(other):
+                self.C0, self.C2, self.C3 = 1, 1, 1
+            elif a < other:
+                self.C0, self.C2, self.C3 = 1, 0, 0
+            elif a > other:
+                self.C0, self.C2, self.C3 = 0, 0, 0
+            else:
+                self.C0, self.C2, self.C3 = 0, 0, 1
+            if mn in ('fcomp', 'fucomp'):
                 self.st.pop(0)
-            elif mn == 'fcompp':
+            elif mn in ('fcompp', 'fucompp'):
                 self.st.pop(0); self.st.pop(0)
         elif mn == 'fnstsw':
-            st['eax'] = (st['eax'] & 0xFFFF00FF) | ((self.C0 & 1) << 8)
+            st['eax'] = ((st['eax'] & 0xFFFF00FF) | ((self.C0 & 1) << 8)
+                         | ((self.C2 & 1) << 10) | ((self.C3 & 1) << 14))
         elif mn == 'fldz':
             self.st.insert(0, 0.0)
         elif mn == 'fld1':
