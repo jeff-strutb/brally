@@ -6,3 +6,48 @@ func_va,offset,value,comment
 0x10054360,7,0x100AC5F8,BrCharMapLookup _g_BrCharMap+0
 0x10054360,20,0x100ADE78,BrCharMapLookup _g_BrCharMap+904
 0x10054360,32,0x100AC5FC,BrCharMapLookup _g_BrCharMap+4
+0x10030FD0,4,0x10AC0808,BrKeyTableFind g_brKeyCount: original loop bound `mov eax|[10ac0808]; dec` at 0x10030fdb
+0x10030FD0,13,0x10AC080C,BrKeyTableFind g_brKeyBias: original adds [10ac080c] to the key at 0x10030fd4
+0x10029420,0x26,0x105E1804,BrGbiTexScanSetImg g_brTexScanTimgSiz: orig 0x29445 stores (w0>>19)&3 to [105e1804]
+0x10029420,0x2F,0x105E180C,BrGbiTexScanSetImg g_brTexScanTimgAddr: orig 0x2944e stores w1 ([eax+4]) to [105e180c]
+0x10029420,0x35,0x106B7A98,BrGbiTexScanSetImg g_brTexScanSrcSeen: orig 0x29454 zeroes [106b7a98]
+0x10029420,0x3D,0x10697A64,BrGbiTexScanSetImg g_brTexScanRunStart: orig 0x2945c stores the cmd ptr (eax) to [10697a64]
+0x10029420,0x43,0x106B7A9C,BrGbiTexScanSetImg g_brTexScanRunEnd: orig 0x29461 zeroes [106b7a9c]
+0x100316D0,0x20A,0xFFFE7762,BrTrackFixupRec54 BrDlRegister: orig 0x318d9 `call 0x10019040`
+0x100316D0,0x213,0xFFFFC224,BrTrackFixupRec54 BrSub1003445A is STALE-named: orig 0x318e2 `call 0x1002db0b`
+0x100316D0,0x229,0x118ED1DC,BrTrackFixupRec54 g_pfn18AA0C4: orig 0x318f7 `call [0x118ed1dc]`
+0x10014960,0x20,0x100BCBF0,BrSub_100173F0 g_br0BD3E8 (stale-named -0x7F8): orig 0x1497f reads [100bcbf0]
+0x10014960,0xF2,0x100BCC00,BrSub_100173F0 g_br0BD3F8 (stale-named -0x7F8): orig 0x14a51 reads [100bcc00]
+0x100096A0,0x64,0x100ABAA0,BrDPlaySysMsgLog S710+4c: orig 0x9703 reads [100abaa0] (fused struct - config obj base 100aba54)
+0x100096A0,0xA3,0x100A5C4C,BrDPlaySysMsgLog g_szUnknown: orig 0x9741 mov edi 100a5c4c
+0x100096A0,0xAE,0x100A5C38,BrDPlaySysMsgLog g_szLeft: orig 0x974c push 100a5c38
+0x100096A0,0xD9,0x100A5C38,BrDPlaySysMsgLog g_szLeft: orig 0x9777 push 100a5c38
+0x100096A0,0xED,0x10AC5890,BrDPlaySysMsgLog S710+50: orig 0x978b mov eax 10ac5890 (fused struct - msg ring)
+0x100096A0,0xFA,0x10AC58F0,BrDPlaySysMsgLog S710+b0: orig 0x9798 cmp eax 10ac58f0 (ring end)
+0x100096A0,0x111,0x10AC5890,BrDPlaySysMsgLog S710+50: orig 0x97ae store -1 [eax+10ac5890]
+0x100096A0,0x11B,0x10AC5894,BrDPlaySysMsgLog S710+54: orig 0x97b8 store 0 [eax+10ac5894]
+0x100096A0,0x128,0x100A5C0C,BrDPlaySysMsgLog g_szDestroy: orig 0x97c6 push 100a5c0c
+0x100096A0,0x14B,0x100A5C4C,BrDPlaySysMsgLog g_szUnknown: orig 0x97e9 mov edi 100a5c4c
+0x100096A0,0x156,0x100A5BF4,BrDPlaySysMsgLog g_szJoined: orig 0x97f4 push 100a5bf4
+0x100096A0,0x17D,0x100A5BF4,BrDPlaySysMsgLog g_szJoined: orig 0x981b push 100a5bf4
+0x100096A0,0x190,0x105BC72C,BrDPlaySysMsgLog S710+48: orig 0x982e reads [105bc72c] (fused struct - handler cell)
+0x10002460,0x5D,0x10AF2094,BrRaceSelFromMenu g_aBrRaceCarSel: orig 0x24c1 mov edx 10af2094; edx indexes [+11c]/[+0]/+2b68 both sides
+0x100339C0,0x5,0x100775D4,BrPfxUpdateB4AC kPfx0_7: orig 0x339c9 fmul [100775d4]
+0x100339C0,0x84,0x100775D8,BrPfxUpdateB4AC kPfx19_62: orig 0x33a4a fmul [100775d8]
+0x100339C0,0x90,0x100775DC,BrPfxUpdateB4AC kPfx102: orig 0x33a50 fld [100775dc]
+0x10030770,0x15,0xFFFE8287,BrRcaFixup BrSegSetBasesG: orig call, callee stores base pair to 104b16e0/e4
+0x10030770,0x170,0xFFFE825C,BrRcaFixup BrSwapRec24Array: orig call, callee loops records via 0x10018b60
+0x10030770,0x1F5,0xFFFE8697,BrRcaFixup BrDlIsRegistered: orig call, callee is the null->1 predicate
+0x10030770,0x204,0xFFFE86C8,BrRcaFixup BrDlRegister: orig call, callee does the registration work
+0x10030770,0x3EE,0xFFFE849E,BrRcaFixup BrDlIsRegistered second branch
+0x10030770,0x3FD,0xFFFE84CF,BrRcaFixup BrDlRegister second branch
+0x10014960,0x289,0x00001C23,BrSub_100173F0 BrSub_10019250 stale-named: orig 0x14be8 `call 0x10016810` (tail cleanup call)
+0x10039C70,0x1,0x100A9360,BrMenuCap0730 S445+c: orig 0x39c70 mov eax [100a9360]
+0x10039C70,0xA,0x10AC5C00,BrMenuCap0730 S445+50: orig 0x39c79 mov al [10ac5c00]
+0x10039C70,0x13,0x10AC5C10,BrMenuCap0730 S445+58: orig 0x39c80 movsx [10ac5c10]
+0x10039C70,0x1E,0x10AC5C04,BrMenuCap0730 S445+54: orig 0x39c8c mov ecx [10ac5c04]
+0x10039C70,0x32,0x10AC5BFC,BrMenuCap0730 S445+4c: orig 0x39ca0 mov ecx [10ac5bfc]
+0x10039C70,0x45,0x100ABDE8,BrMenuCap0730 S445+10: orig 0x39cb4 mov eax [100abde8]
+0x1003AB00,0x15,0x10AC5BF4,BrMenuText15A0 S445+44: orig 0x3ab14 mov eax [10ac5bf4]
+0x1003AB00,0x27,0x10AC5C10,BrMenuText15A0 S445+58: orig 0x3ab24 movsx [10ac5c10]
+0x1003AB00,0x37,0x10AC5C1C,BrMenuText15A0 S445+5c: orig 0x3ab35 sub eax [10ac5c1c]

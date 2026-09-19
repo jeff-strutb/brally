@@ -190,7 +190,7 @@ def _load_overrides():
     if os.path.exists(p):
         for row in csv.DictReader(open(p)):
             fva = int(row['func_va'], 16)
-            off = int(row['offset'])
+            off = int(row['offset'], 0)      # decimal or 0x-hex
             val = int(row['value'], 16)
             _OVERRIDES[(fva, off)] = val
     return _OVERRIDES
