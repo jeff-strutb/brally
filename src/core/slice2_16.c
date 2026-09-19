@@ -1096,7 +1096,7 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * @t4-pass 0x10027290 3 2026-09-09 probes 10 bytes 97 insns 34 regions 1 rows 0 census yes  (hand, fn.py variants)
  * @t4-pass 0x10027290 4 2026-09-09 probes 51 bytes 97 insns 34 regions 1 rows 0 census yes  (position sweep) */
 /* @t3 0x10027290 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 94/96 insns 35/34 rows 7 regions 1 oracle EQUIVALENT
+ * @t3-measure bytes 94/96 insns 35/34 rows 3+4 regions 1 oracle EQUIVALENT
  * @t3-effort passes 6 zero-movement 5 6
  * 2026-09-19 respell (94 B, FITS the 96 B image slot): reassigning the
  * PARAMETER for the final pair keeps operand and result in eax (the old

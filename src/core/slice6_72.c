@@ -1101,6 +1101,10 @@ extern int32_t DAT_100aabc8, DAT_100aabcc;
 #define pE_nAB42C     (pE->nAB42C)
 #endif
 
+/* WHAT IT DOES: builds the season-progress screen the player sees between
+ * championship rounds (the full description is with the dossier at the head
+ * of this section: heading, Reset Round, Continue/Back, standings readouts,
+ * and the three right-hand picture buttons with their pressed states). */
 /* @implements 0x10052030 d3d BrExt_10052030 */
 #ifdef BR_MATCHING_BUILD
 int32_t BrExt_10052030(BrPhase_ *pPhase)
