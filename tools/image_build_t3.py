@@ -351,15 +351,27 @@ def collect_t3(recompile=False, progress=None):
                 else:
                     sites[k] = (a + addend
                                 - (va + plen + off + 4)) & 0xFFFFFFFF
-            # forced per-site evidence beats every name-derived value
+            # forced per-site evidence beats every name-derived value --
+            # but NEVER an identity slot (a jump-table / const slot is exact
+            # from the object's own symbol table, while pairing and the
+            # audit compare against the ORIGINAL's operands, whose layout
+            # differs: BrObjDlBuild's switch tables shipped the original's
+            # table addresses, +0x194 into OUR body, and the placed image
+            # dispatched through garbage while the obj oracle said
+            # EQUIVALENT).
             for k, v in paired.items():
+                if k in idsites:
+                    continue                     # exact; pairing is blind
                 if site_syms.get(k) is not None:
                     rkey = ((obj, site_syms[k]) if '$' in site_syms[k]
                             else site_syms[k])
                     if recovered.get(rkey, (0,))[0] is None:
                         continue                 # conflicted pairing
                 sites[k] = v
-            sites.update(fixes)
+            for k, v in fixes.items():
+                if k in idsites:
+                    continue                     # exact; audit is blind
+                sites[k] = v
             # config/reloc_overrides.csv LAST and WINNING: the sanctioned
             # per-site hand channel.  The pairing and the audit are
             # register-blind -- BrFadeTick's role-swapped slots were paired
@@ -534,9 +546,19 @@ def collect_t3(recompile=False, progress=None):
                     & 0xFFFFFFFF
             else:
                 sites[k] = (a + addend) & 0xFFFFFFFF
+        # identity slots (const / jump-table) are exact from the object's
+        # symbol table; pairing and the audit compare against the ORIGINAL's
+        # layout and must not clobber them (same guard as the base lane).
+        idkeys = set(const_slot_values(obj, raw, va, size))
+        idkeys.update(jump_table_slots(obj, raw, va, size, plen=len(pre)))
         for k, v in paired.items():
+            if k in idkeys:
+                continue
             sites[k] = v
-        sites.update(fixes)
+        for k, v in fixes.items():
+            if k in idkeys:
+                continue
+            sites[k] = v
         for (ova, ooff), oval in _load_overrides().items():
             if ova == va:
                 sites[(va, ooff)] = oval
