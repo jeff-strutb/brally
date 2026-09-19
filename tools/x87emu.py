@@ -173,6 +173,8 @@ class Machine:
         self.C0 = 0                         # last fcom below/unordered
         self.seg_fs = {}                    # fs:[disp] SEH-chain slots (frame state)
         self.trace_calls = None             # opt-in list: resolved call targets, for diagnosis
+        self.stub_targets = frozenset()     # direct-call VAs to black-box (profile-driven)
+        self.dcalls = []                    # (target, args) of black-boxed direct calls, an observable
         self.callstack = []
         self.FTOL = 0x10074560
         self.prog = listing
@@ -448,6 +450,17 @@ class Machine:
                 if target in DIRECT_BUILTINS:
                     DIRECT_BUILTINS[target](self)
                     pc += 1; continue
+                if target in self.stub_targets:
+                    # Black-box a heavy subsystem this function only hands a
+                    # seeded slot to (profile stub_calls).  Record target + arg
+                    # window as an observable, then skip the body: eax<-0, esp
+                    # unchanged (cdecl -- the caller cleans; the skipped ret
+                    # would have popped only the return address).
+                    esp = self.R['esp']
+                    self.dcalls.append((target,
+                                        tuple(self.rd_i(esp + 4 * k) for k in range(4))))
+                    self.R['eax'] = 0
+                    pc += 1; continue
                 if target not in self.idx:
                     self._load_code(target)   # on-demand: entry missed by linear sweep
                 if target in self.idx:
@@ -678,6 +691,23 @@ class Machine:
                 self.st.insert(0, rdf(self.mem_addr(o[0])))
         elif mn == 'fild':
             self.st.insert(0, float(s32(self.rd_i(self.mem_addr(o[0])))))
+        elif mn in ('fiadd', 'fisub', 'fisubr', 'fimul', 'fidiv', 'fidivr'):
+            # x87 op with an INTEGER memory operand: read the int, widen to
+            # float, apply to st(0).  `word ptr` is a signed 16-bit source;
+            # otherwise a signed 32-bit dword (as `fild` reads).
+            addr = self.mem_addr(o[0])
+            if 'word ptr' in o[0] and 'dword ptr' not in o[0]:
+                raw = self.mem.get(addr, 0) | self.mem.get(addr + 1, 0) << 8
+                other = float(raw - 0x10000 if raw & 0x8000 else raw)
+            else:
+                other = float(s32(self.rd_i(addr)))
+            a = self.st[0]
+            if   mn == 'fimul':  self.st[0] = a * other
+            elif mn == 'fiadd':  self.st[0] = a + other
+            elif mn == 'fisub':  self.st[0] = a - other
+            elif mn == 'fisubr': self.st[0] = other - a
+            elif mn == 'fidiv':  self.st[0] = _ieee_div(a, other)
+            elif mn == 'fidivr': self.st[0] = _ieee_div(other, a)
         elif mn == 'fst':
             wrf(self.mem_addr(o[0]), self.st[0])
         elif mn == 'fstp':
@@ -754,8 +784,8 @@ class Machine:
             self.st.insert(0, 0.0)
         elif mn == 'fld1':
             self.st.insert(0, 1.0)
-        elif ('stosd' in mn or 'stosb' in mn or 'movsd' in mn or 'movsb' in mn
-              or 'scasb' in mn):
+        elif ('stosd' in mn or 'stosb' in mn or 'stosw' in mn
+              or 'movsd' in mn or 'movsb' in mn or 'scasb' in mn):
             # x86 string ops (DF assumed 0 -- these functions never set it).
             # ecx is bounded so a garbage-seeded count cannot run away; the bound
             # is identical on both sides, so it never manufactures a divergence.
@@ -770,6 +800,13 @@ class Machine:
                 al = self.R['eax'] & 0xFF
                 for _ in range(n):
                     self.wr_u8(self.R['edi'], al); self.R['edi'] = u32(self.R['edi'] + 1)
+                if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
+            elif 'stosw' in mn:
+                ax = self.R['eax'] & 0xFFFF
+                for _ in range(n):
+                    self.wr_u8(self.R['edi'], ax & 0xFF)
+                    self.wr_u8(u32(self.R['edi'] + 1), (ax >> 8) & 0xFF)
+                    self.R['edi'] = u32(self.R['edi'] + 2)
                 if rep: self.R['ecx'] = u32(self.R['ecx'] - n)
             elif 'movsd' in mn:
                 for _ in range(n):

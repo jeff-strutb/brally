@@ -72,6 +72,7 @@ IMG_STEPS = 2000000        # budget for a run that now enters real callees
 # real divergence, never x87-rounding noise (see _classify_diff).  Set for the
 # duration of a profiled run by verify_img.
 _EXACT_REGIONS = ()
+_STUB_CALLS = frozenset()   # direct-call VAs to black-box, set per profiled run
 # {argidx: bytes}: enlarge a pointer-argument buffer past the default BUF_SIZE so
 # a large object (e.g. a ~0x2a00 car struct passed as `this`) fits and its
 # pointer fields can be seeded (via the buf hook) to point at further scratch
@@ -504,34 +505,35 @@ def _img_snapshot(mem, buffers, written, arg_end):
     return buf, glob
 
 
-def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
+def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None):
     """Run both sides inside the mapped image and compare everything
     observable: the return value, the argument buffers, and every byte of
     memory either side wrote."""
     prof = oracle_profiles.get(va)
     if prof is None:
-        return _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig)
+        return _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap)
     # A profiled function needs a valid input world, not random bytes: seed BSS
     # from the profile (null-safe pointers + varied gating flags) and zero the
     # stack window.  Swap the module seeding hooks for the run, then restore.
-    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK, _EXACT_REGIONS, _BUF_SIZES
+    global _sfloat_bits, _ARG_HOOK, _BUF_HOOK, _EXACT_REGIONS, _BUF_SIZES, _STUB_CALLS
     old_bss, old_sf, old_arg, old_buf = ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK
-    old_exact, old_bufsz = _EXACT_REGIONS, _BUF_SIZES
+    old_exact, old_bufsz, old_stub = _EXACT_REGIONS, _BUF_SIZES, _STUB_CALLS
     ENV.bss_byte = prof.bss
     _ARG_HOOK = prof.arg
     _BUF_HOOK = prof.buf
     _EXACT_REGIONS = getattr(prof, 'exact_regions', ()) or ()
     _BUF_SIZES = getattr(prof, 'buf_sizes', None) or {}
+    _STUB_CALLS = getattr(prof, 'stub_calls', None) or frozenset()
     if prof.zero_stack:
         _sfloat_bits = lambda rnd: 0
     try:
-        return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig)
+        return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig, overlay_cap)
     finally:
         ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK = old_bss, old_sf, old_arg, old_buf
-        _EXACT_REGIONS, _BUF_SIZES = old_exact, old_bufsz
+        _EXACT_REGIONS, _BUF_SIZES, _STUB_CALLS = old_exact, old_bufsz, old_stub
 
 
-def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
+def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None):
     rounding = 0
     prog_o, idx_o = ENV.program_for(va, orig_bytes)
     prog_r, idx_r = ENV.program_for(va, recomp_bytes)
@@ -549,12 +551,16 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
             for i, b in enumerate(orig_bytes):
                 mo.put(va + i, b)
             Mo = x87emu.Machine(mo, ro, prog_o, idx_o, code_provider=ENV.code_at)
-            Mo.model_unresolved_icalls = True; Mo.run(va, maxsteps=IMG_STEPS)
+            Mo.model_unresolved_icalls = True; Mo.stub_targets = _STUB_CALLS
+            Mo.run(va, maxsteps=IMG_STEPS)
             mr, rr, _regr, br, _ns = _setup_img(s, sig)
             for i, b in enumerate(recomp_bytes):
+                if overlay_cap is not None and va + i >= overlay_cap:
+                    break   # do not bury the next function's entry
                 mr.put(va + i, b)
             Mr = x87emu.Machine(mr, rr, prog_r, idx_r, code_provider=ENV.code_at)
-            Mr.model_unresolved_icalls = True; Mr.run(va, maxsteps=IMG_STEPS)
+            Mr.model_unresolved_icalls = True; Mr.stub_targets = _STUB_CALLS
+            Mr.run(va, maxsteps=IMG_STEPS)
         except Exception as e:
             return 'UNCLASSIFIED', 'run escaped oracle (%s: %s)' % (
                 type(e).__name__, str(e)[:60])
@@ -592,6 +598,18 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig):
             return 'DIFF', ('seed %d: indirect-call #%d dispatches a different '
                             'target (0x%08X vs 0x%08X)' % (s, j,
                             so[j] if j < len(so) else 0, sr[j] if j < len(sr) else 0))
+        # Black-boxed direct calls (profile stub_calls): compare the TARGET
+        # sequence only, not the args -- the interpreter does not know each
+        # stubbed callee's arity, so a fixed stack window would pick up bytes
+        # beyond the real args and manufacture a false divergence (as the
+        # indirect-call comparison above notes).  A different target or count
+        # still surfaces; a real arg divergence shows through the observable
+        # globals this function itself writes.
+        to = [t for (t, _a) in Mo.dcalls]
+        tr = [t for (t, _a) in Mr.dcalls]
+        if to != tr:
+            return 'DIFF', ('seed %d: stubbed direct-call sequence differs (%r vs %r)'
+                            % (s, [hex(x) for x in to[:4]], [hex(x) for x in tr[:4]]))
         written = mo.written | mr.written
         if ret == 'float':
             a = Mo.st[0] if Mo.st else 0.0
@@ -708,14 +726,20 @@ def one(va, name, seeds, isolated=False):
     elif owner and owner[0] == 'base':
         owned = [c for c in cands if os.path.basename(c[0]) == owner[1]]
     obj, size = min(owned or cands, key=lambda e: abs(e[1] - len(orig)))
-    buried = ENV.shadows_a_neighbour(va_int, size)
-    if buried:
-        return 'UNCLASSIFIED', 'substituted bytes bury %s' % ', '.join(buried[:2])
+    # A recompile a few bytes longer than the original would, overlaid at `va`,
+    # bury the next function's entry.  Rather than refuse, CAP the recomp
+    # overlay at that neighbour: the overlay only serves in-.text data reads
+    # (jump tables), which live inside the function's own span before the
+    # boundary.  A table in the recomp's extra tail that is capped away can only
+    # misdispatch into a DIFF or a crash, never a false EQUIVALENT.
+    overlay_cap = None
+    if ENV.shadows_a_neighbour(va_int, size):
+        overlay_cap = ENV.neighbour_after(va_int)
     code, why = ENV.resolve_bytes(obj, name, va_int, size)
     if code is None:
         blocked = ENV.unresolved_symbols(obj, name, size)
         return 'UNCLASSIFIED', '%s: %s' % (why, ', '.join(blocked[:3]) or '?')
-    return verify_img(va_int, name, orig, code, seeds, sig)
+    return verify_img(va_int, name, orig, code, seeds, sig, overlay_cap=overlay_cap)
 
 
 def t2_rows():
