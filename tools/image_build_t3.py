@@ -102,6 +102,7 @@ def collect_t3(recompile=False, progress=None):
     from t3b_env import image as ref_image
     from reloc_fill import resolve as rf_resolve
     from reloc_fill import _undecorate as rf_undecorate
+    from reloc_fill import _load_overrides
     from reloc_pair import (pair_function, audit_function, jump_table_slots,
                             content_anchor_syms, import_thunk_syms,
                             _our_sites)
@@ -295,6 +296,13 @@ def collect_t3(recompile=False, progress=None):
                 else:
                     sites[k] = (a + addend
                                 - (va + plen + off + 4)) & 0xFFFFFFFF
+            # Hand-verified per-site rows (config/reloc_overrides.csv): the
+            # sanctioned channel for a lane that derived an address from the
+            # original disasm by hand -- per-site and reviewable, never a
+            # name row the provenance gate would rightly distrust.
+            for (ova, ooff), oval in _load_overrides().items():
+                if ova == va:
+                    sites[(va, ooff)] = oval
             # forced per-site evidence beats every name-derived value
             for k, v in paired.items():
                 if site_syms.get(k) is not None:
@@ -303,7 +311,16 @@ def collect_t3(recompile=False, progress=None):
                     if recovered.get(rkey, (0,))[0] is None:
                         continue                 # conflicted pairing
                 sites[k] = v
-            sites.update(fixes)
+            for k, v in fixes.items():
+                if k in sites and sites[k] != v:
+                    print('  NOTE %s: pairing (%#x) overrides the hand row '
+                          '(%#x) at off %d -- review the CSV'
+                          % (name, v, sites[k], k[1]))
+                sites[k] = v
+        if os.environ.get('BR_DUMP_SITES'):
+            with open(os.environ['BR_DUMP_SITES'], 'a') as f:
+                for (sva, soff), sval in sorted(sites.items()):
+                    f.write('0x%08X,0x%X,0x%08X\n' % (sva, soff, sval))
         for va, name, code, unres, fromref in ib.compiled_functions(
                 [obj], fnmap, {}, pad_short=True, ref_fill=False,
                 extra_sites=sites):
