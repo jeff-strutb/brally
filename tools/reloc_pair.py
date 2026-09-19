@@ -394,7 +394,14 @@ def pair_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
 
 def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
                    plen=0):
-    """({(va, off): corrected_value}, [(sym, paired_addr, map_addr)]).
+    """({(va, off): corrected_value}, [(sym, paired_addr, map_addr)],
+    confirmed: {sym: addr}).
+
+    `confirmed` holds every held-out symbol whose pairing-forced value AGREED
+    with the map at every recovered site: the map row is independently
+    reproduced from the original's own bytes.  That standing is what lets a
+    hearsay-grade resolution (a hex-coined name, a hand row) be used in a
+    function where pairing cannot force it.
 
     Hold out each RESOLVABLE symbol in turn and re-derive it by pairing
     alone.  Where the pairing forces a value that DISAGREES with the map's,
@@ -406,8 +413,8 @@ def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
     """
     sites, _b = _our_sites(obj_path, fname, size)
     if sites is None:
-        return {}, []
-    corrections, reports = {}, []
+        return {}, [], {}
+    corrections, reports, confirmed = {}, [], {}
     resolvable = sorted({s[1] for s in sites
                          if resolve_fn(s[1]) is not None})
     for hold in resolvable:
@@ -416,6 +423,7 @@ def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
             lambda s, hold=hold: None if s == hold else resolve_fn(s),
             plen=plen)
         t = resolve_fn(hold)
+        agreed = disagreed = 0
         for off, sym, rt, addend, _k in sites:
             if sym != hold or (va, off) not in out:
                 continue
@@ -426,7 +434,12 @@ def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
             if out[(va, off)] != want:
                 corrections[(va, off)] = out[(va, off)]
                 reports.append((sym, asg.get(sym), t))
-    return corrections, sorted(set(reports))
+                disagreed += 1
+            else:
+                agreed += 1
+        if agreed and not disagreed:
+            confirmed[hold] = t
+    return corrections, sorted(set(reports)), confirmed
 
 
 def _selftest():
