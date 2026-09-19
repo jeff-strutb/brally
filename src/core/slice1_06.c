@@ -168,6 +168,7 @@ uint32_t g_brKeyBias;                    /* 0x10AC080C */
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x10030FD0 3 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10030FD0 4 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10037930 d3d BrKeyTableFind */
 int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 {
