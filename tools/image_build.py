@@ -225,6 +225,10 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                     # docstring) and the slot blocks the function instead.
                     if not ref_fill:
                         unres += 1
+                        if os.environ.get('BR_UNRES'):
+                            print('    unres %s %#x off %#x %s'
+                                  % (name, va, off,
+                                     t['name'] if t else '?'))
                         continue
                     code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
