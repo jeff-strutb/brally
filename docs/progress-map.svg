@@ -1595,7 +1595,7 @@
 <rect x="820.2" y="637.3" width="35.3" height="41.5" fill="#d29922"><title>BrCrPlaneResolve  0x10067470  668B  427 diff bytes  [core/driving/br_collrespsolve]</title></rect>
 <rect x="820.2" y="679.4" width="35.3" height="2.0" fill="#3fb950"><title>BrCrPlaneDist  0x10065950  41B  [core/driving/br_collrespsolve]</title></rect>
 <text x="754.5" y="694.0" font-size="10" fill="#8b949e">br_objdl</text>
-<rect x="753.0" y="699.0" width="102.5" height="91.1" fill="#d29922"><title>BrObjDlBuild  0x1000CBA0  4180B  2820 diff bytes  [core/drawing/br_objdl]</title></rect>
+<rect x="753.0" y="699.0" width="102.5" height="91.1" fill="#58a6ff"><title>BrObjDlBuild  0x1000CBA0  4180B  [core/drawing/br_objdl]</title></rect>
 <text x="754.5" y="802.7" font-size="10" fill="#8b949e">br_inputpoll</text>
 <rect x="753.0" y="807.7" width="102.5" height="90.2" fill="#58a6ff"><title>BrInputPoll  0x100706D0  4145B  [core/controls/br_inputpoll]</title></rect>
 <text x="860.7" y="137.5" font-size="10" fill="#8b949e">br_font</text>
@@ -1684,9 +1684,9 @@
 <rect x="1584.3" y="211.3" width="8.7" height="7.9" fill="#3fb950"><title>BrDlCmdSetCombine  0x1001E770  36B  [core/drawing/br_dlcmd]</title></rect>
 <rect x="1593.6" y="211.3" width="4.3" height="7.9" fill="#3fb950"><title>BrDlCmdFogColour  0x1001EA60  19B  [core/drawing/br_dlcmd]</title></rect>
 <text x="860.7" y="231.8" font-size="10" fill="#8b949e">br_snapinterp</text>
-<rect x="859.2" y="236.8" width="89.3" height="78.0" fill="#d29922"><title>BrSnapInterpDraw  0x100131E0  3217B  1810 diff bytes  [core/drawing/br_snapinterp]</title></rect>
+<rect x="859.2" y="236.8" width="89.3" height="78.0" fill="#58a6ff"><title>BrSnapInterpDraw  0x100131E0  3217B  [core/drawing/br_snapinterp]</title></rect>
 <text x="860.7" y="327.4" font-size="10" fill="#8b949e">br_ctlinput</text>
-<rect x="859.2" y="332.4" width="89.3" height="77.8" fill="#d29922"><title>BrCtlInputApply  0x1005AFF0  3210B  2343 diff bytes  [core/driving/br_ctlinput]</title></rect>
+<rect x="859.2" y="332.4" width="89.3" height="77.8" fill="#58a6ff"><title>BrCtlInputApply  0x1005AFF0  3210B  [core/driving/br_ctlinput]</title></rect>
 <text x="860.7" y="422.8" font-size="10" fill="#8b949e">br_menucb</text>
 <rect x="859.2" y="427.8" width="25.8" height="29.2" fill="#58a6ff"><title>BrMenuTime0C00  0x1003A140  360B  [core/menus/br_menucb]</title></rect>
 <rect x="859.2" y="457.7" width="25.8" height="29.2" fill="#d29922"><title>BrMenuTime0D70  0x1003A2B0  360B  71 diff bytes  [core/menus/br_menucb]</title></rect>
@@ -1893,7 +1893,7 @@
 <rect x="1416.1" y="326.9" width="31.4" height="17.3" fill="#d29922"><title>BrRbVelAtBodyPointXY  0x100642F0  228B  146 diff bytes  [core/slice3_42]</title></rect>
 <rect x="1416.1" y="344.8" width="31.4" height="16.5" fill="#58a6ff"><title>BrRbVelAtBodyPoint  0x100643E0  218B  [core/slice3_42]</title></rect>
 <rect x="1448.1" y="326.9" width="26.9" height="18.9" fill="#d29922"><title>BrRbVelAtPoint  0x100644C0  214B  149 diff bytes  [core/slice3_42]</title></rect>
-<rect x="1448.1" y="346.4" width="26.9" height="14.8" fill="#d29922"><title>BrCtrlCfgAssign  0x10062B80  169B  113 diff bytes  [core/slice3_42]</title></rect>
+<rect x="1448.1" y="346.4" width="26.9" height="14.8" fill="#58a6ff"><title>BrCtrlCfgAssign  0x10062B80  169B  [core/slice3_42]</title></rect>
 <rect x="1478.6" y="297.7" width="35.4" height="22.5" fill="#d29922"><title>BrOptCycleTrack  0x1003C080  331B  199 diff bytes  [core/menus/br_optcycle]</title></rect>
 <rect x="1514.7" y="297.7" width="22.4" height="22.5" fill="#3fb950"><title>BrOptCycleAA2A00  0x1003C6D0  211B  [core/menus/br_optcycle]</title></rect>
 <rect x="1478.6" y="320.7" width="24.5" height="20.2" fill="#3fb950"><title>BrOptCycleBD3E0  0x1003C600  208B  [core/menus/br_optcycle]</title></rect>
@@ -2285,7 +2285,7 @@
 <rect x="1255.7" y="579.1" width="4.2" height="2.8" fill="#3fb950"><title>BrVtInit53EE0  0x10053EE0  7B  [core/menus/br_textbox]</title></rect>
 <rect x="1260.5" y="579.1" width="1.5" height="2.8" fill="#3fb950"><title>BrStubFalse  0x10053E60  3B  [core/menus/br_textbox]</title></rect>
 <rect x="1228.7" y="585.5" width="21.1" height="32.4" fill="#3fb950"><title>BrSprFontRectInit_1005F800  0x10058540  309B  [core/drawing/br_sprfont]</title></rect>
-<rect x="1250.5" y="585.5" width="11.4" height="21.0" fill="#58a6ff"><title>BrSprFontGlyphA_1005B730  0x10054550  112B  [core/drawing/br_sprfont]</title></rect>
+<rect x="1250.5" y="585.5" width="11.4" height="21.0" fill="#3fb950"><title>BrSprFontGlyphA_1005B730  0x10054550  112B  [core/drawing/br_sprfont]</title></rect>
 <rect x="1250.5" y="607.1" width="11.4" height="10.8" fill="#3fb950"><title>BrSprFontGlyphB_1005B7A0  0x100545C0  59B  [core/drawing/br_sprfont]</title></rect>
 <rect x="1228.7" y="621.5" width="13.6" height="18.5" fill="#58a6ff"><title>BrSurfBlt24  0x100011C0  117B  [core/drawing/br_surf]</title></rect>
 <rect x="1228.7" y="640.6" width="13.6" height="13.3" fill="#3fb950"><title>BrVec3Predict  0x10001C90  85B  [core/drawing/br_surf]</title></rect>
@@ -2792,4 +2792,4 @@
 <rect x="1594.5" y="893.2" width="3.4" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.5" y="896.7" width="0.5" height="1.2" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1318 &#183; T3 codegen-only 117 &#183; 232,481/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 120 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
