@@ -5,3 +5,4 @@ va,opt,reason
 0x100583C0,O2y,fits 376/379 (O2 381: 2B over)
 0x100701B0,O2y,fits 189/205 (O2 213: 8B over)
 0x10030FD0,O2,frameless respell fits 81/83 (sweep's O2y raw-min pick keeps the frame: over)
+0x1005AFF0,O2y,placed-variant alignment: O2 obj is A5 DIFF vs original (seed 1, 0x00300E22); O2y obj capped at the 3210B slot is A5 EQUIVALENT 48 seeds
