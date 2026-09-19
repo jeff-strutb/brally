@@ -4,3 +4,4 @@ va,opt,reason
 0x10036A30,O2y,fits 222/227 (O2 231: 4B over)
 0x100583C0,O2y,fits 376/379 (O2 381: 2B over)
 0x100701B0,O2y,fits 189/205 (O2 213: 8B over)
+0x10030FD0,O2,frameless respell fits 81/83 (sweep's O2y raw-min pick keeps the frame: over)

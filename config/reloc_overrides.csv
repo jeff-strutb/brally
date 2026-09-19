@@ -1326,8 +1326,6 @@ func_va,offset,value,comment
 0x10030770,0x204,0xFFFE86C8,BrRcaFixup BrDlRegister: orig call, callee does the registration work
 0x10030770,0x3EE,0xFFFE849E,BrRcaFixup BrDlIsRegistered second branch
 0x10030770,0x3FD,0xFFFE84CF,BrRcaFixup BrDlRegister second branch
-0x10030FD0,4,0x10AC0808,BrKeyTableFind g_brKeyCount: original loop bound `mov eax|[10ac0808]; dec` at 0x10030fdb
-0x10030FD0,13,0x10AC080C,BrKeyTableFind g_brKeyBias: original adds [10ac080c] to the key at 0x10030fd4
 0x100316D0,0x20A,0xFFFE7762,BrTrackFixupRec54 BrDlRegister: orig 0x318d9 `call 0x10019040`
 0x100316D0,0x213,0xFFFFC224,BrTrackFixupRec54 BrSub1003445A is STALE-named: orig 0x318e2 `call 0x1002db0b`
 0x100316D0,0x229,0x118ED1DC,BrTrackFixupRec54 g_pfn18AA0C4: orig 0x318f7 `call [0x118ed1dc]`
