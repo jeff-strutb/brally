@@ -1107,8 +1107,6 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
 /* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
-    int r;
-
     if (n <= 1)    return 0;
     if (n <= 2)    return 1;
     if (n <= 4)    return 2;
@@ -1116,14 +1114,17 @@ int BrGbiSizeShift(int n)
     if (n <= 0x10) return 4;
     if (n <= 0x20) return 5;
     if (n <= 0x40) return 6;
-    /* Last pair is one ret: cmp 0x80; mov 7; jle; mov 8.
-     * Adjacent `return 7; return 8` lowers to setg+add (n in eax).
-     * A named r gives the branchy form but n sits in ecx (eax-specific
-     * `cmp eax,imm32` is 1 byte shorter). */
-    r = 7;
+    /* Last pair is one ret: cmp 0x80; mov 7; jle; mov 8.  Adjacent
+     * `return 7; return 8` lowers to setg+add; a named r gives the branchy
+     * form but claims eax, pushing n into ecx -- and the eax-specific
+     * `cmp eax,imm32` is 1 byte shorter, which is exactly the byte that
+     * decides whether the body FITS its slot.  Reassigning the PARAMETER
+     * keeps result and operand in one register. */
     if (n > 0x80)
-        r = 8;
-    return r;
+        n = 8;
+    else
+        n = 7;
+    return n;
 }
 
 /* 0x10028BF0 */
