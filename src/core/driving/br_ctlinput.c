@@ -92,10 +92,22 @@ extern float DAT_10077888;
  */
 /* @t4-pass 0x1005AFF0 1 2026-09-09 probes 12 bytes 3444 insns 857 regions 14 rows 328 census yes */
 /* @t4-pass 0x1005AFF0 2 2026-09-09 probes 12 bytes 3444 insns 857 regions 14 rows 328 census yes */
+/* @t4-pass 0x1005AFF0 3 2026-09-19 probes 11 bytes 3444 insns 857 regions 14 rows 326 census no  (the A5 oracle found a REAL transcription bug the byte-grind had buried: the steering-recenter test was inverted -- `if (local[0] == local[4]) local[5] = 0` should be `!=` (the original zeros the target only when the sign of the current steering and the sign of the target DIFFER). Fixing it flipped rows 328->326. The residue is register-allocation/commutative-operand-order scheduling: +234 B of extra spills, no behavioural effect.) */
+/* @t4-pass 0x1005AFF0 4 2026-09-19 probes 10 bytes 3444 insns 857 regions 14 rows 326 census yes  (write-slot census + variant sweep confirm the remaining residue is allocation/scheduling, not missing/wrong code; the A5 oracle proves same-in/same-out across the deadzone, the per-gear response curves incl. pow(), the steering slew and gear/throttle step; numbers unmoved.) */
 /* WHAT IT DOES: apply this frame's player input to one car. Deadzones the
  * stick, picks handling coefficients for the controller mode, slews steering
  * toward the stick (or a speed-shaped curve when a digital button is held),
  * then steps gear, engine force and the throttle slew. */
+/* @t3 0x1005AFF0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3444/3210 insns 857/783 rows 126+200 regions 14 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * A5 EQUIVALENT with teeth (negative-controlled: the inverted-compare bug, a
+ * wrong rate constant, and other perturbations all DIFF).  Residue is
+ * register-allocation + commutative-operand-order scheduling (+234 B of spills,
+ * no behavioural effect); byte-exact is that colouring wall.  Certification
+ * required an oracle fix too -- the x87 compare handler was not setting C3
+ * (equal); see tools/x87emu.py.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x1005AFF0 glide BrCtlInputApply */
 void BR_THISCALL1 BrCtlInputApply(unsigned char *pCar)
 {
@@ -260,7 +272,7 @@ LAB_keep_stick:
       if ((local[5] != DAT_10077780) && (local[4] = DAT_10077788, DAT_10077780 < local[5])) {
         local[4] = DAT_10077784;
       }
-      if (local[0] == local[4]) {
+      if (local[0] != local[4]) {
         local[5] = DAT_10077780;
       }
     }
