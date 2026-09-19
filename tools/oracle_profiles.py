@@ -334,11 +334,16 @@ def _odl_bss(seed, a):
            _ODL_CMD + 0x10: 0xB8000000}
     if base in cmd:
         return _b(cmd[base], a, base)
-    # G_VTX source: three 0x20-byte vertices, x/y/z at word 0/1/2, seed-varied
+    # G_VTX source: three 0x20-byte vertices, x/y/z at word 0/1/2, seed-varied.
+    # Gate on the WORD (off < 0xc), not the exact first byte: _f32at already
+    # picks the right byte via a&3, so every byte of words 0/1/2 must be served.
+    # (Serving only off in {0,4,8} zeroed bytes 1-3 of each float, collapsing
+    # every vertex to ~0 -- which multiplied all transform coefficients by zero
+    # and left the geometry/clip half with NO teeth: a false EQUIVALENT.)
     if _ODL_VSRC <= a < _ODL_VSRC + 0x60:
         vi = (a - _ODL_VSRC) // 0x20
         off = (a - _ODL_VSRC) % 0x20
-        if off in (0, 4, 8):
+        if off < 0x0c:
             return _f32at(_odl_vtx(seed, vi, off >> 2), a)
         return 0
     # sprite direction (pObjBase = pScene): dir=(3,4,*), aux vec at +0x10
