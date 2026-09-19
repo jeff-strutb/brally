@@ -411,8 +411,13 @@ def collect_t3(recompile=False, progress=None):
             if fnsym is None:
                 continue
             sec2 = osecs[fnsym['sec']]
+            # bound by the next FUNCTION symbol only: a `$L` case label or
+            # `$T` constant is INSIDE this function, and counting it made
+            # the guard measure BrCtlInputApply at 231 of its 3300 bytes --
+            # a truly over-slot body shipped silently truncated.
             nx = [s2['val'] for s2 in osyms
-                  if s2['sec'] == fnsym['sec'] and s2['val'] > fnsym['val']]
+                  if s2['sec'] == fnsym['sec'] and s2['val'] > fnsym['val']
+                  and '$' not in s2['name']]
             end2 = min(nx) if nx else sec2['size']
             bod = od[sec2['praw'] + fnsym['val']:sec2['praw'] + end2]
             code_len = len(bod)
@@ -575,7 +580,8 @@ def collect_t3(recompile=False, progress=None):
             sec3 = osecs2[fnsym2['sec']]
             nx2 = [s2['val'] for s2 in osyms2
                    if s2['sec'] == fnsym2['sec']
-                   and s2['val'] > fnsym2['val']]
+                   and s2['val'] > fnsym2['val']
+                   and '$' not in s2['name']]   # $-labels live INSIDE the fn
             end3 = min(nx2) if nx2 else sec3['size']
             bod2 = od2[sec3['praw'] + fnsym2['val']:sec3['praw'] + end3]
             clen = len(bod2)
