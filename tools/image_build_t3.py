@@ -113,6 +113,21 @@ def collect_t3(recompile=False, progress=None):
 
     recovered = {}          # global-name pairing results, cross-function
 
+    _SLOT_OK = []
+
+    def _slot_ok():
+        if not _SLOT_OK:
+            p = os.path.join(ROOT, 'config', 't3_slot_ok.csv')
+            vas = set()
+            if os.path.exists(p):
+                for row2 in csv.DictReader(open(p)):
+                    try:
+                        vas.add(int(row2['va'], 16))
+                    except (ValueError, KeyError):
+                        pass
+            _SLOT_OK.append(vas)
+        return _SLOT_OK[0]
+
     rows = {}
     for r in csv.DictReader(open(REPORT)):
         if r.get('status') == 'diff' and r.get('va') \
@@ -296,13 +311,6 @@ def collect_t3(recompile=False, progress=None):
                 else:
                     sites[k] = (a + addend
                                 - (va + plen + off + 4)) & 0xFFFFFFFF
-            # Hand-verified per-site rows (config/reloc_overrides.csv): the
-            # sanctioned channel for a lane that derived an address from the
-            # original disasm by hand -- per-site and reviewable, never a
-            # name row the provenance gate would rightly distrust.
-            for (ova, ooff), oval in _load_overrides().items():
-                if ova == va:
-                    sites[(va, ooff)] = oval
             # forced per-site evidence beats every name-derived value
             for k, v in paired.items():
                 if site_syms.get(k) is not None:
@@ -311,12 +319,83 @@ def collect_t3(recompile=False, progress=None):
                     if recovered.get(rkey, (0,))[0] is None:
                         continue                 # conflicted pairing
                 sites[k] = v
-            for k, v in fixes.items():
-                if k in sites and sites[k] != v:
-                    print('  NOTE %s: pairing (%#x) overrides the hand row '
-                          '(%#x) at off %d -- review the CSV'
-                          % (name, v, sites[k], k[1]))
-                sites[k] = v
+            sites.update(fixes)
+            # config/reloc_overrides.csv LAST and WINNING: the sanctioned
+            # per-site hand channel.  The pairing and the audit are
+            # register-blind -- BrFadeTick's role-swapped slots were paired
+            # positionally WRONG and silently overrode the dataflow-derived
+            # hand rows, shipping three crossed cells while the oracle path
+            # (fill_function, where the CSV wins) said EQUIVALENT.  One
+            # precedence order for both consumers: the CSV outranks machine
+            # evidence, and every disagreement is printed for review.
+            for (ova, ooff), oval in _load_overrides().items():
+                if ova != va:
+                    continue
+                k = (va, ooff)
+                if k in sites and sites[k] != oval:
+                    print('  NOTE %s off %#x: CSV row %#x overrides '
+                          'machine value %#x -- if the CSV row is machine-'
+                          'generated, regenerate it'
+                          % (name, ooff, oval, sites[k]))
+                sites[k] = oval
+        # TRUNCATION GUARD.  compiled_functions slices the original-size
+        # window out of a longer recompilation, cutting its tail --
+        # BrGbiSizeShift lost its final `ret` and fell into the next
+        # function.  The splice is sound ONLY when the cut bytes equal what
+        # the image already holds at those addresses (shared epilogues often
+        # do); anything else blocks the function.
+        from reloc_fill import parse as rf_parse, func_symbol_matches
+        try:
+            od, osecs, osyms, orl = rf_parse(obj)
+        except Exception:
+            od = None
+        for va, name in wanted:
+            if od is None:
+                break
+            fnsym = next((s2 for s2 in osyms
+                          if func_symbol_matches(s2['name'], name)
+                          and osecs.get(s2['sec'], {}).get('name', '')
+                                  .startswith('.text')), None)
+            if fnsym is None:
+                continue
+            sec2 = osecs[fnsym['sec']]
+            nx = [s2['val'] for s2 in osyms
+                  if s2['sec'] == fnsym['sec'] and s2['val'] > fnsym['val']]
+            end2 = min(nx) if nx else sec2['size']
+            bod = od[sec2['praw'] + fnsym['val']:sec2['praw'] + end2]
+            code_len = len(bod)
+            while code_len and bod[code_len - 1] in (0x90, 0xCC):
+                code_len -= 1
+            size = int(rows[va]['orig_size'])
+            pre = ib.PREAMBLES.get('0x%08x' % va, b'')
+            slot = size - len(pre)
+            if code_len <= slot:
+                continue
+            over = bod[slot:code_len]
+            keep = bytes(img.byte(va + len(pre) + slot + i) or 0
+                         for i in range(len(over)))
+            # the overhang carries relocation slots whose values would have
+            # been filled; a byte-compare on raw obj bytes is only sound
+            # when no reloc lands in the overhang
+            reloc_in_over = any(slot <= (rva2 - fnsym['val']) < code_len
+                                for rva2, _si2, _rt2 in orl.get(fnsym['sec'],
+                                                                []))
+            if over == keep and not reloc_in_over:
+                print('  TRUNCATION OK %s: %dB overhang is byte-identical '
+                      'to the image tail' % (name, len(over)))
+                continue
+            if va in _slot_ok():
+                # the A5 oracle ran the PLACED span -- spliced tail and all
+                # -- and returned EQUIVALENT; per the certification standard
+                # the behavioural verdict outranks byte conservatism.  The
+                # evidence row lives in config/t3_slot_ok.csv.
+                print('  TRUNCATION ADMITTED %s: %dB overhang, placed-image '
+                      'A5 EQUIVALENT on record' % (name, len(over)))
+                continue
+            print('  TRUNCATED %s: %dB of code past the slot differ from '
+                  'the image -- BLOCKED (no placed-image A5 verdict)'
+                  % (name, len(over)))
+            byname.pop(name, None)       # never accept its placement
         if os.environ.get('BR_DUMP_SITES'):
             with open(os.environ['BR_DUMP_SITES'], 'a') as f:
                 for (sva, soff), sval in sorted(sites.items()):
