@@ -505,13 +505,15 @@ def _img_snapshot(mem, buffers, written, arg_end):
     return buf, glob
 
 
-def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None):
+def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None,
+               extra_code=None):
     """Run both sides inside the mapped image and compare everything
     observable: the return value, the argument buffers, and every byte of
     memory either side wrote."""
     prof = oracle_profiles.get(va)
     if prof is None:
-        return _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap)
+        return _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig,
+                           overlay_cap, extra_code)
     # A profiled function needs a valid input world, not random bytes: seed BSS
     # from the profile (null-safe pointers + varied gating flags) and zero the
     # stack window.  Swap the module seeding hooks for the run, then restore.
@@ -527,16 +529,28 @@ def verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None)
     if prof.zero_stack:
         _sfloat_bits = lambda rnd: 0
     try:
-        return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds, sig, overlay_cap)
+        return _verify_img(va, name, orig_bytes, recomp_bytes, prof.seeds,
+                           sig, overlay_cap, extra_code)
     finally:
         ENV.bss_byte, _sfloat_bits, _ARG_HOOK, _BUF_HOOK = old_bss, old_sf, old_arg, old_buf
         _EXACT_REGIONS, _BUF_SIZES, _STUB_CALLS = old_exact, old_bufsz, old_stub
 
 
-def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None):
+def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None,
+                extra_code=None):
     rounding = 0
     prog_o, idx_o = ENV.program_for(va, orig_bytes)
     prog_r, idx_r = ENV.program_for(va, recomp_bytes)
+    if extra_code:
+        # An annexed body: the span at `va` is a thunk and the real code
+        # lives at another address in the built image.  Decode it into the
+        # recomp side's program and overlay its bytes so table reads land.
+        ea, eb = extra_code
+        ext = ENV.disasm(bytes(eb), ea)
+        own = idx_r.own if hasattr(idx_r, 'own') else idx_r
+        for j, ins in enumerate(ext):
+            own[ins[0]] = len(prog_r) + j
+        prog_r = prog_r + ext
     ret = sig[0]
     for s in range(1, seeds + 1):
         try:
@@ -558,6 +572,9 @@ def _verify_img(va, name, orig_bytes, recomp_bytes, seeds, sig, overlay_cap=None
                 if overlay_cap is not None and va + i >= overlay_cap:
                     break   # do not bury the next function's entry
                 mr.put(va + i, b)
+            if extra_code:
+                for i, b in enumerate(extra_code[1]):
+                    mr.put(extra_code[0] + i, b)
             Mr = x87emu.Machine(mr, rr, prog_r, idx_r, code_provider=ENV.code_at)
             Mr.model_unresolved_icalls = True; Mr.stub_targets = _STUB_CALLS
             Mr.run(va, maxsteps=IMG_STEPS)
