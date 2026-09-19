@@ -1095,15 +1095,16 @@ void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * every slot in the TU (51 of 64 compile).
  * @t4-pass 0x10027290 3 2026-09-09 probes 10 bytes 97 insns 34 regions 1 rows 0 census yes  (hand, fn.py variants)
  * @t4-pass 0x10027290 4 2026-09-09 probes 51 bytes 97 insns 34 regions 1 rows 0 census yes  (position sweep) */
-/* @t3 0x10027290 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 97/96 insns 34/34 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region, -1 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 4 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t3 0x10027290 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 94/96 insns 35/34 rows 7 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 6 zero-movement 5 6
+ * 2026-09-19 respell (94 B, FITS the 96 B image slot): reassigning the
+ * PARAMETER for the final pair keeps operand and result in eax (the old
+ * named-r/volatile spellings cost the byte), at the price of the setg
+ * lowering in the tail (the 7 rows / +1 insn vs the original's branchy
+ * cmp/mov/jle).  A5 oracle EQUIVALENT on 64 inputs; behavioural verdict
+ * outranks the byte residue.  Dead probes: the comment block above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
