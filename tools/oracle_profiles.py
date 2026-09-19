@@ -503,6 +503,90 @@ _AI_EXACT = (
     (0x10E20000, 0x10E20004),   # pCtl->flags
 )
 
+# ---- BrSndCarStep 0x10061470 (one frame of one car's engine+one-shot sound) --
+# `this`=pCar (BR_THISCALL1).  Main path needs the race NOT paused
+# (g_105CCB5C==0, default) and the car present (pCar+0xf00 != 0).  Engine retune
+# reads RPM/hertz floats (+0xf68..+0xf80); the seven one-shots each fire on a
+# per-car gate byte (+0x362..+0x36d) that is then CLEARED (a direct output);
+# the listener object at pCar+0x2734 supplies Doppler position.  A too-small or
+# zero car takes the early-out and hides the whole body.
+_SC_LSNR = 0x10E90000
+
+
+def _scf(seed, tag):
+    s = (seed * 2654435761 + tag * 40503) & 0xFFFFFFFF
+    return ((s % 2000) - 1000) / 50.0             # ~[-20, 20]
+
+
+# The engine layer's outputs are FIXED-POINT integers stored via `(__int64)`
+# casts into these globals (the 32.32 hertz ratio at eef48/eef60, the packed
+# stereo pair at eef54/eef6c, the cockpit-siren flag at 1184c454).  A diff in
+# them is a whole-integer difference, never x87 rounding, so they must be exact
+# regions -- else a clamp/scale bug that zeroes the ratio hides as FP noise
+# (the masking class of [[objdl-a5-limit]]; negative-controlled below).
+_SC_EXACT = ((0x118EEF48, 0x118EEF70), (0x1184C454, 0x1184C458))
+
+
+def _sc_bss(seed, a):
+    import struct
+    base = a & ~3
+    if _SC_LSNR <= a < _SC_LSNR + 0x100:          # camera/listener transform for Doppler+Pan
+        return _f32at(_scf(seed, 900 + (a - _SC_LSNR)), a)
+    # cockpit path (DAT_100aa044==1): iVar8 = *(&DAT_10af393c + local_4), the
+    # active camera.  Unseeded it is NULL, so Doppler/Pan read the listener
+    # position from address 0x30 -> 0/0 -> NaN outputs that mask every diff
+    # (a false EQUIVALENT).  Point it at the scratch transform above; keep
+    # DAT_10af2180 and DAT_106e86c8 at 0 so local_4==0 and local_24==0 (the
+    # engine-hertz ratio is written, not skipped).
+    if base == 0x10AF393C:
+        return _b(_SC_LSNR, a, base)
+    # g_BrAnimDt (seconds/frame) -- the GLIDE build's copy is 0x106E9D8C (the
+    # slice-header 0x106C2CFC is the D3D address).  BrSndDoppler divides both
+    # dot products by it; unseeded -> 0 -> inf -> NaN return, which then
+    # poisons fVar10 (car+0xf74 multiply), so `(__int64)NaN` writes 0 to every
+    # engine-hertz slot -- a fully masked false EQUIVALENT.
+    if base == 0x106E9D8C:
+        return _f32at(1.0, a)
+    # BrSndPlayEx's three "audio live" gates stay 0 so the mixer early-outs.
+    # Seeding them 1 drives BrSndPlayEx's real mixer path, which fires stdcall
+    # voice callbacks through NULL-voice+offset slots; the emulator black-boxes
+    # an unresolved icall with esp UNCHANGED (cdecl), leaking each callee's
+    # stdcall arg bytes -- 4 leaks summed to a 0x20 esp drift that only bit the
+    # ORIGINAL (esp-relative locals), spuriously moving its Doppler-copyback
+    # target out of the compared car buffer while the recompile (ebp-relative)
+    # stayed correct.  Certifying BrSndCarStep does NOT certify the mixer; the
+    # one-shot GATE decisions/clears (car+0x362..) are still exercised because
+    # the gate bytes fire (seeded in _sc_buf) before the early-out.
+    return 0                                       # g_105CCB5C etc. default 0 (not paused)
+
+
+def _sc_buf(seed, argidx, off):
+    import struct
+    if argidx != 0:
+        return None
+    if off == 0xf00 or off == 0xf01 or off == 0xf02 or off == 0xf03:
+        return _b(1, off, 0xf00)                   # car present (nonzero)
+    if 0x140 <= off < 0x144:
+        return 0                                   # car index 0
+    if off == 0x2734 or (0x2734 < off < 0x2738):   # listener pointer
+        return _b(_SC_LSNR, off, 0x2734)
+    if 0x362 <= off <= 0x36d:                       # one-shot gate bytes -> fire
+        return (1 + (seed + off) % 3) & 0xFF
+    if 0xf78 <= off < 0xf7c:                          # remote-listener flag -> 0 (local path)
+        return 0
+    if 0xf68 <= off < 0xf84:                          # engine RPM/hertz floats
+        return struct.pack('<f', _scf(seed, 300 + (off >> 2)))[off & 3]
+    if 0x30 <= off < 0x48:                            # car velocity/position (Doppler input)
+        return struct.pack('<f', _scf(seed, 600 + (off >> 2)))[off & 3]
+    if 0xf80 <= off < 0xf8c:                           # Doppler position param
+        return struct.pack('<f', _scf(seed, 650 + (off >> 2)))[off & 3]
+    if off == 0xe24 or (0xe24 < off < 0xe28):          # RPM -> bounded positive (unclamped hertz)
+        return struct.pack('<f', 20.0 + (seed % 40))[off & 3]
+    if 0x160 <= off < 0x164:
+        return struct.pack('<f', _scf(seed, 500 + (off >> 2)))[off & 3]
+    return None
+
+
 # ---- BrCarPhysDriveMatch 0x100645A0 (axle-velocity constraint solver) -------
 # param_1 is declared `int` but is a CAR pointer: it holds four axle-record
 # pointers at +4/+8/+0xc/+0x10 and its own float/flag fields; each axle record
@@ -706,6 +790,8 @@ def _ktf_arg(seed, idx):
 
 
 PROFILES = {
+    0x10061470: Profile(_sc_bss, zero_stack=False, seeds=48, buf=_sc_buf,
+                        buf_sizes={0: 0x2b68}, exact_regions=_SC_EXACT),
     0x100645A0: Profile(_cd_bss, zero_stack=False, seeds=48, arg=_cd_arg, buf=_cd_buf,
                         exact_regions=_CD_EXACT),
     0x1005AFF0: Profile(_ci_bss, zero_stack=False, seeds=48, buf=_ci_buf,

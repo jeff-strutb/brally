@@ -29,7 +29,7 @@
 
 float BrSndDoppler(void *, void *, void *, void *);
 void BrSndPan(void *, void *, float *, float *, int *, int);
-int BrSndPlaySimple(int, int);
+int BrSndPlaySimple(int, int);  /* 0x1006BA60 */
 int BrFfbSetDurationShort(void);
 int BrFfbCommitDuration(void);
 int BrSfxSrcPlaySilent(int, int, int, int);
@@ -99,6 +99,27 @@ extern char DAT_100b3844[];
  * the live zero and car*2 (lea vs shl). Do not reopen for permutation.
  * @t4-pass 0x10061470 1 2026-09-09 probes 11 bytes 2796 insns 765 regions 23 rows 101 census yes  (decl order, corpus at pack)
  * @t4-pass 0x10061470 2 2026-09-09 probes 11 bytes 2796 insns 765 regions 23 rows 101 census yes  (locals + comment probes) */
+/* @t3 0x10061470 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2796/2757 insns 765/742 rows 35+58 regions 23 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * A5 EQUIVALENT on 48 seeds (return + globals + side effects); byte residue is
+ * the +4 frame and x87 packed-pair scheduling colouring in the header above.
+ * Behaviourally verified with a seeded valid world: the cockpit-camera table
+ * (DAT_10af393c -> a scratch transform) so BrSndDoppler reads a real listener
+ * position, and g_BrAnimDt (glide copy 0x106e9d8c) nonzero so its per-frame
+ * velocity divide is finite -- both unseeded gave a NaN Doppler that poisoned
+ * fVar10 and zeroed every engine-hertz write (a masked false EQUIVALENT).  The
+ * fixed-point outputs (eef48/54/60/6c, 1184c454) are exact regions so a scale
+ * bug is not waved through as rounding.  BrSndPlayEx's mixer stays gated OFF:
+ * seeding its voice gates on drives its real path, whose stdcall voice
+ * callbacks fire through NULL-voice slots that the emulator black-boxes with
+ * esp UNCHANGED, leaking arg bytes into a 0x20 esp drift that moved only the
+ * ORIGINAL's esp-relative Doppler-copyback target out of the compared buffer
+ * (the recompile's ebp-relative locals were immune) -- a pure emulator/seeding
+ * artifact, not a code diff.  Negative-controlled: a copyback-offset mutation
+ * (0xf5c->0xf58) and an engine-scale mutation (110/7 -> the 100000 clamp) both
+ * DIFF; correct code stays EQUIVALENT.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10061470 glide BrSndCarStep */
 
 void BR_THISCALL1 BrSndCarStep(uint8_t *pCar)
