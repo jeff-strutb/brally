@@ -570,7 +570,28 @@ _SNAP_EXACT = (
 )
 
 
+# ---- BrKeyTableFind 0x10030FD0 (backward key-table scan) --------------------
+# The count at 0x10AC0808 gates the scan loop: a random dword there walks the
+# table for up to 2^31 iterations (runaway).  Pin it to 0..3; the bias at
+# 0x10AC080C varies per seed; unnamed BSS (the table entries' keys) reads 0, so
+# pinning even seeds' key argument to -bias makes the biased key hit entry key
+# 0 (both stores + return 1), while odd seeds take the miss path.
+def _ktf_bss(seed, a):
+    if 0x10AC0808 <= a < 0x10AC080C:
+        return _b(seed % 4, a, 0x10AC0808)            # count 0..3
+    if 0x10AC080C <= a < 0x10AC0810:
+        return _b((seed * 0x101) & 0xFFFF, a, 0x10AC080C)
+    return 0
+
+
+def _ktf_arg(seed, idx):
+    if idx == 0 and (seed & 1) == 0:
+        return (-((seed * 0x101) & 0xFFFF)) & 0xFFFFFFFF   # hit key 0
+    return None
+
+
 PROFILES = {
+    0x10030FD0: Profile(_ktf_bss, arg=_ktf_arg),
     0x100131E0: Profile(_snap_bss, zero_stack=False, seeds=24, arg=_snap_arg,
                         stub_calls=(0x1006E280, 0x10011FA0), exact_regions=_SNAP_EXACT),
     0x1005D770: Profile(_ctlai_bss, seeds=160, arg=None, buf=_ctlai_buf,

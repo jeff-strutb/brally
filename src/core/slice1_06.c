@@ -177,9 +177,10 @@ int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
      * original loads the BIAS through eax too (5-byte a1 form, between the
      * key load and the add); here the count holds eax at that point so the
      * bias takes the 6-byte ecx form.  One byte, pure assignment. */
-    int32_t  i    = g_brKeyCount - 1;
+    int32_t  i;
 
     key += g_brKeyBias;
+    i = *(volatile int32_t *)&g_brKeyCount - 1;
 
     /* `dec eax / test eax,eax / jl` -- count == 0 leaves i == -1 and the
      * whole loop is skipped. */
