@@ -38,19 +38,52 @@ def lockstep_rows(va):
     """(rows, disagreements) or (None, why)."""
     img = image()
     row = None
+    name = None
+    obj = None
     for r in csv.DictReader(open(os.path.join(ROOT, 'build/match/report.csv'))):
         if r.get('va') and r['va'].lower() == '0x%08x' % va:
             row = r
-    if row is None:
-        return None, 'no report row'
+    if row is not None:
+        name = row['name']
+        opt = row['opt']
+        vp = os.path.join(ROOT, 'config', 't3_variant.csv')
+        if os.path.exists(vp):
+            for vr in csv.DictReader(open(vp)):
+                if vr.get('va') and int(vr['va'], 16) == va:
+                    opt = vr['opt']       # rows must match the PLACED variant
+        obj, err, _ = ib._compile_dll_obj(row['file'], opt, False, {})
+        if obj is None:
+            return None, 'compile: %s' % err
+    else:
+        # C++ lane: the row lives in report_cpp.csv, the object is the cpp
+        # sweep's cached build, and the symbol is the raw mangled name.
+        import cpp_score
+        tags = [ib._opt_tag(o) for o in cpp_score.DEFAULT_OPTS]
+        for r in csv.DictReader(open(os.path.join(
+                ROOT, 'build/match/report_cpp.csv'))):
+            if r.get('va') and r['va'].lower() == '0x%08x' % va:
+                row = r
+        if row is None:
+            return None, 'no report row (either lane)'
+        base = os.path.splitext(os.path.basename(row['file']))[0]
+        try:
+            ti = tags.index(row['opt'])
+        except ValueError:
+            return None, 'cpp opt %r unknown' % row.get('opt')
+        obj = os.path.join(cpp_score.OBJ_DIR,
+                           '%s_sweep_%08X_%d.obj' % (base, va, ti))
+        if not os.path.exists(obj):
+            return None, 'cpp sweep obj missing'
+        _impl, symtag, kind = cpp_score.parse_implements_name(
+            os.path.join(ROOT, row['file']), va)
+        name = ib._raw_symbol(obj, symtag, kind)
+        if name is None:
+            return None, 'cpp raw symbol not found'
     size = int(row['orig_size'])
     pre = ib.PREAMBLES.get('0x%08x' % va, b'')
     orig = open(os.path.join(ROOT, 'build/match/orig/0x%08X.bin' % va),
                 'rb').read()[len(pre):]
-    obj, err, _ = ib._compile_dll_obj(row['file'], row['opt'], False, {})
-    if obj is None:
-        return None, 'compile: %s' % err
-    sites, body = rp._our_sites(obj, row['name'], size)
+    sites, body = rp._our_sites(obj, name, size)
     if sites is None:
         return None, 'symbol not in object'
 
@@ -101,7 +134,7 @@ def lockstep_rows(va):
             for j in range(lo_skip, n - hi_skip):
                 pairs[ours[a0 + j].address] = theirs[b0 + j]
 
-    afn, agl = augment_maps(obj, row['name'], size)
+    afn, agl = augment_maps(obj, name, size)
 
     def known(sym):
         v = resolve(sym, afn, agl)
@@ -145,7 +178,10 @@ def lockstep_rows(va):
             continue
         val = field_value(their, rt, our_ins, off - our_ins.address)
         if val is None:
-            return None, 'slot %#x: no counterpart operand (%s)' % (off, sym)
+            skipped += 1
+            print('# NO-COUNTERPART slot %#x %s (aligned insn carries no '
+                  'matching operand)' % (off, sym))
+            continue
         if rt == REL_REL32:
             slot = (val - (va + len(pre) + off + 4)) & 0xFFFFFFFF
             implied = val
