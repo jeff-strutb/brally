@@ -63,9 +63,21 @@ def main():
     a = ap.parse_args()
 
     img = Pe(a.image)
+    # annexed functions: the span at the VA is a `jmp` thunk and the body
+    # lives in the appended .t3x section; the manifest maps one to the other
+    annexed = {}
+    man = os.path.join(os.path.dirname(a.image), 't3_annex.csv')
+    if os.path.exists(man):
+        for r in csv.DictReader(open(man)):
+            try:
+                annexed[int(r['va'], 16)] = (int(r['annex_va'], 16),
+                                             int(r['length']))
+            except (ValueError, KeyError):
+                pass
     cert = {v for v, i in certified().items()
             if not v.startswith('?') and i['ok']}
     rows = []
+    seen_vas = set()
     rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
     for r in csv.DictReader(open(rep)):
         if r.get('status') == 'diff' and r.get('va') \
@@ -73,6 +85,16 @@ def main():
             if a.va and int(r['va'], 16) != int(a.va, 16):
                 continue
             rows.append(r)
+            seen_vas.add(int(r['va'], 16))
+    repc = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
+    if os.path.exists(repc):
+        for r in csv.DictReader(open(repc)):
+            if r.get('status') == 'diff' and r.get('va') \
+                    and r['va'].lower() in cert \
+                    and int(r['va'], 16) not in seen_vas:
+                if a.va and int(r['va'], 16) != int(a.va, 16):
+                    continue
+                rows.append(r)
 
     tally = {}
     for r in sorted(rows, key=lambda x: x['va']):
@@ -101,8 +123,20 @@ def main():
         buried = V.ENV.shadows_a_neighbour(va, len(orig))
         # placed spans are exactly orig-length by construction, so a
         # neighbour can only be shadowed if the map disagrees with itself
+        extra = None
+        if va in annexed:
+            a_va, alen = annexed[va]
+            abody = img.read(a_va, alen)
+            if abody is None:
+                print('%s %-24s ANNEX-MISSING (manifest names 0x%08X but '
+                      'the image has no bytes there)' % (r['va'], name, a_va))
+                tally['ANNEX-MISSING'] = tally.get('ANNEX-MISSING', 0) + 1
+                continue
+            extra = (a_va, abody)
         verdict, why = V.verify_img(va, name, orig, placed,
-                                    a.seeds, sig)
+                                    a.seeds, sig, extra_code=extra)
+        if extra is not None:
+            why = 'annexed body at 0x%08X; %s' % (extra[0], why)
         print('%s %-24s %s (%s)' % (r['va'], name, verdict, why))
         tally[verdict] = tally.get(verdict, 0) + 1
     print('\n== placed-image verdicts ==')

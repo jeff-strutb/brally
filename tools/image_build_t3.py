@@ -71,6 +71,26 @@ from reloc_fill import load_maps                                # noqa: E402
 from t3 import certified                                        # noqa: E402
 
 REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
+ANNEX_MANIFEST = os.path.join(ib.OUT_DIR, 't3_annex.csv')
+
+
+def _annex_rva(orig_path):
+    """RVA where the annex section starts: first section-aligned address past
+    every existing section.  Computed identically by the collector (to assign
+    body addresses) and the assembler (to write the section header)."""
+    import struct as _s
+    d = open(orig_path, 'rb').read()
+    pe = _s.unpack_from('<I', d, 0x3c)[0]
+    nsec = _s.unpack_from('<H', d, pe + 6)[0]
+    optsz = _s.unpack_from('<H', d, pe + 20)[0]
+    salign = _s.unpack_from('<I', d, pe + 24 + 32)[0]
+    end = 0
+    o = pe + 24 + optsz
+    for _ in range(nsec):
+        vsz, va = _s.unpack_from('<II', d, o + 8)
+        end = max(end, va + vsz)
+        o += 40
+    return (end + salign - 1) // salign * salign
 
 
 def collect_t3(recompile=False, progress=None):
@@ -103,6 +123,7 @@ def collect_t3(recompile=False, progress=None):
     from reloc_fill import resolve as rf_resolve
     from reloc_fill import _undecorate as rf_undecorate
     from reloc_fill import _load_overrides
+    from reloc_fill import parse as rf_parse, func_symbol_matches
     from reloc_pair import (pair_function, audit_function, jump_table_slots,
                             content_anchor_syms, import_thunk_syms,
                             _our_sites)
@@ -323,6 +344,117 @@ def collect_t3(recompile=False, progress=None):
                           % (osym, prev, oimg))
         records.append((obj, rel_src, wanted, anchors, idsites, fns))
 
+    # ------------------------------------------------ annex placement ----
+    # A certified body that compiles LONGER than the original's byte-slot
+    # cannot be laid at its own VA without truncating real code (the crash
+    # class the placed-image sweep exposed).  Certification is not the
+    # question -- the slot is.  So the WHOLE body is placed in a fresh
+    # executable section appended to the image (the "annex") and the
+    # original VA gets a 5-byte `jmp annex` thunk; callers and function
+    # pointers keep targeting the original VA.  Every site value is
+    # computed for the annex address, and the placed-image oracle then
+    # verifies the shipped thunk+body like any other span.
+    import struct as _st
+    from relocmap import REL_REL32 as _REL32
+    annex_base_va = 0x10000000 + _annex_rva(ib.ORIG_DLL)
+    annex_cursor = [annex_base_va]
+    annex = []                    # (annex_va, va, name, body_bytes)
+
+    def _annex_fill(obj, symname, disp_name, va, plen, sites, anchors,
+                    trust_name_addr=False):
+        """Build the full body for the annex; returns (annex_va, bytes) or
+        (None, why).  Values: identity slots recomputed at the annex base;
+        phase-B values rebased by relocation type (a REL32 displacement
+        shifts by the placement delta, an absolute DIR32 does not); anything
+        still unnamed resolves through the same trusted/confirmed channels,
+        else the function blocks -- honestly, never truncated."""
+        try:
+            d2, secs2, syms2, rel2 = rf_parse(obj)
+        except Exception as e:
+            return None, 'parse: %s' % e
+        fs = next((s2 for s2 in syms2
+                   if func_symbol_matches(s2['name'], symname)
+                   and secs2.get(s2['sec'], {}).get('name', '')
+                           .startswith('.text')), None)
+        if fs is None:
+            return None, 'symbol not in obj'
+        sec2 = secs2[fs['sec']]
+        nx = [s2['val'] for s2 in syms2
+              if s2['sec'] == fs['sec'] and s2['val'] > fs['val']
+              and '$' not in s2['name']]
+        end2 = min(nx) if nx else sec2['size']
+        full = end2 - fs['val']
+        body = bytearray(d2[sec2['praw'] + fs['val']:sec2['praw'] + end2])
+        a_va = (annex_cursor[0] + 15) & ~15
+        ident = dict(const_slot_values(obj, symname, va, full))
+        jt = jump_table_slots(obj, symname, a_va, full, plen=0)
+        jt_off = {off2 for (_v2, off2) in jt}
+        jt_val = {off2: v2 for (_v2, off2), v2 in jt.items()}
+        st2, _b2 = _our_sites(obj, symname, full)
+        blocked2 = []
+        for off, sym, rt, addend, _k2 in (st2 or []):
+            val = None
+            if off in jt_off:
+                val = jt_val[off]
+            elif (va, off) in ident:
+                # a $T constant located by content in the reference image:
+                # absolute, position-independent
+                val = ident[(va, off)]
+            elif '$' in sym and rt == REL_DIR32:
+                # a $-label DIR32 the jump-table reader did NOT claim: a
+                # cross-section label (an EH handler/funclet).  Its phase-B
+                # value is an ABSOLUTE address into the image -- the same
+                # dword the in-slot placement shipped -- and rebasing does
+                # not apply to an absolute reference, so carry it.  Only a
+                # slot with no phase-B value at all blocks.
+                if (va, off) in sites:
+                    val = sites[(va, off)]
+                else:
+                    blocked2.append((off, sym))
+                    continue
+            elif (va, off) in sites:
+                v2 = sites[(va, off)]
+                if rt == _REL32:
+                    val = (v2 + (va + plen) - a_va) & 0xFFFFFFFF
+                else:
+                    val = v2
+            else:
+                a2 = _trusted(sym, anchors)
+                if a2 is None and trust_name_addr:
+                    # cpp-lane convention names carry the GLIDE address
+                    # (the transcriptions live in src/core/cpp/<VA>.cpp),
+                    # same evidence rule as the in-slot cpp placement
+                    a2 = address_in_name(sym)
+                if a2 is None:
+                    ck2 = (obj, sym) if '$' in sym else sym
+                    a2 = g_corr.get(ck2)
+                    if a2 is None and _hearsay(sym) is not None \
+                            and g_conf.get(ck2) == _hearsay(sym):
+                        a2 = _hearsay(sym)
+                if a2 is not None:
+                    if rt == _REL32:
+                        val = (a2 + addend - (a_va + off + 4)) & 0xFFFFFFFF
+                    else:
+                        val = (a2 + addend) & 0xFFFFFFFF
+            if val is None:
+                blocked2.append((off, sym))
+                continue
+            _st.pack_into('<I', body, off, val & 0xFFFFFFFF)
+        if blocked2:
+            return None, 'annex slots unresolved: %s' % ', '.join(
+                '%#x %s' % (o2, s2) for o2, s2 in blocked2[:3])
+        annex_cursor[0] = a_va + len(body)
+        annex.append((a_va, va, disp_name, bytes(body)))
+        return a_va, None
+
+    def _thunk_span(va, a_va, size):
+        """The slot content at the original VA: `jmp annex` then the
+        ORIGINAL's remaining bytes (unreached filler, keeps neighbours)."""
+        ob2 = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
+        orig2 = open(ob2, 'rb').read()
+        rel = (a_va - (va + 5)) & 0xFFFFFFFF
+        return b'\xe9' + _st.pack('<I', rel) + orig2[5:size]
+
     # -------------------------------------------------- phase B: place ---
     for obj, rel_src, wanted, anchors, idsites, fns in records:
         byname = {n: va for va, n in wanted}
@@ -449,10 +581,18 @@ def collect_t3(recompile=False, progress=None):
                 print('  TRUNCATION ADMITTED %s: %dB overhang, placed-image '
                       'A5 EQUIVALENT on record' % (name, len(over)))
                 continue
-            print('  TRUNCATED %s: %dB of code past the slot differ from '
-                  'the image -- BLOCKED (no placed-image A5 verdict)'
-                  % (name, len(over)))
-            byname.pop(name, None)       # never accept its placement
+            byname.pop(name, None)       # never accept a truncated placement
+            a_va, why2 = _annex_fill(obj, name, name, va, len(pre),
+                                     sites, anchors)
+            if a_va is None:
+                print('  TRUNCATED %s: %dB over the slot and the annex '
+                      'could not resolve it -- BLOCKED (%s)'
+                      % (name, len(over), why2))
+                continue
+            best[va] = (name, _thunk_span(va, a_va, size), 0, 0, 'T3')
+            got.add(va)
+            print('  ANNEXED %s: %dB body at 0x%08X, thunk at 0x%08X'
+                  % (name, code_len, a_va, va))
         if os.environ.get('BR_DUMP_SITES'):
             with open(os.environ['BR_DUMP_SITES'], 'a') as f:
                 for (sva, soff), sval in sorted(sites.items()):
@@ -593,9 +733,19 @@ def collect_t3(recompile=False, progress=None):
                 keep2 = bytes(img.byte(va + len(pre) + slot2 + i) or 0
                               for i in range(len(over2)))
                 if over2 != keep2:
-                    print('  TRUNCATED %s (cpp): %dB past the slot differ '
-                          '-- BLOCKED' % (r['name'], len(over2)))
-                    unplaced.append((va, r['name'], 'cpp overhang'))
+                    a_va2, why3 = _annex_fill(obj, raw, r['name'], va,
+                                              len(pre), sites, anchors,
+                                              trust_name_addr=True)
+                    if a_va2 is None:
+                        print('  TRUNCATED %s (cpp): %dB over the slot and '
+                              'the annex could not resolve it -- BLOCKED '
+                              '(%s)' % (r['name'], len(over2), why3))
+                        unplaced.append((va, r['name'], 'cpp overhang'))
+                    else:
+                        best[va] = (r['name'], _thunk_span(va, a_va2, size),
+                                    0, 0, 'T3')
+                        print('  ANNEXED %s (cpp): body at 0x%08X, thunk '
+                              'at 0x%08X' % (r['name'], a_va2, va))
                     continue
         got_it = False
         for va2, name2, code, unres2, fromref2 in ib.compiled_functions(
@@ -604,13 +754,13 @@ def collect_t3(recompile=False, progress=None):
             if va2 == va:
                 best[va] = (r['name'], code, unres2, fromref2, 'T3')
                 got_it = True
-        if not got_it:
+        if not got_it and va not in best:
             unplaced.append((va, r['name'], 'cpp symbol not placed'))
-    return best, unplaced, unbuildable
+    return best, unplaced, unbuildable, annex
 
 
 def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
-                      unbuildable):
+                      unbuildable, annex=()):
     """Lay the T4 backbone and the T3 additions into the original image; report;
     return (image_bytes, verdict).
 
@@ -682,6 +832,50 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
         img[fo:fo + len(code)] = code
         placed += 1
         bytes_placed += len(code)
+
+    # ---- annex: whole over-slot bodies in an appended executable section
+    annex_bytes = 0
+    if annex:
+        import struct as _s
+        pe = _s.unpack_from('<I', img, 0x3c)[0]
+        nsec = _s.unpack_from('<H', img, pe + 6)[0]
+        optsz = _s.unpack_from('<H', img, pe + 20)[0]
+        opt = pe + 24
+        salign = _s.unpack_from('<I', img, opt + 32)[0]
+        falign = _s.unpack_from('<I', img, opt + 36)[0]
+        hdrs = _s.unpack_from('<I', img, opt + 60)[0]
+        shdr = opt + optsz + nsec * 40
+        arva = _annex_rva(orig_path)
+        if shdr + 40 > hdrs or any(img[shdr:shdr + 40]):
+            print('\n  ANNEX FAILED: no room for a section header')
+            unplaced = list(unplaced) + [(v, n, 'annex: no header room')
+                                         for _a, v, n, _b in annex]
+        else:
+            total = max(av + len(b) for av, _v, _n, b in annex) \
+                - (base + arva)
+            raw = (len(img) + falign - 1) // falign * falign
+            rawsz = (total + falign - 1) // falign * falign
+            img += b'\0' * (raw + rawsz - len(img))
+            for av, _v, _n, b in annex:
+                o = raw + (av - base - arva)
+                img[o:o + len(b)] = b
+                annex_bytes += len(b)
+            _s.pack_into('<8sIIIIIIHHI', img, shdr, b'.t3x', total, arva,
+                         rawsz, raw, 0, 0, 0, 0, 0x60000020)
+            _s.pack_into('<H', img, pe + 6, nsec + 1)
+            newsz = (arva + total + salign - 1) // salign * salign
+            _s.pack_into('<I', img, opt + 56, newsz)
+            os.makedirs(os.path.dirname(ANNEX_MANIFEST), exist_ok=True)
+            with open(ANNEX_MANIFEST, 'w') as f:
+                f.write('va,annex_va,length,name\n')
+                for av, v, n, b in sorted(annex, key=lambda e: e[1]):
+                    f.write('0x%08X,0x%08X,%d,%s\n' % (v, av, len(b), n))
+            print(f"\nannex (.t3x, over-slot bodies)   : {len(annex)} "
+                  f"functions, {annex_bytes:,} bytes at RVA {arva:#x}")
+            for av, v, n, b in sorted(annex, key=lambda e: e[1]):
+                print(f"    {v:#x} {n}: {len(b)}B body at {av:#x}")
+    elif os.path.exists(ANNEX_MANIFEST):
+        os.remove(ANNEX_MANIFEST)
 
     n_t3_placed = sum(1 for va in usable if va in t3_vas)
     print(f"\nplaced into the image            : {placed} functions, "
@@ -756,7 +950,7 @@ def main():
         sys.stderr.write('\r  T3 functions %d/%d %-40s'
                          % (n, total, os.path.basename(f)))
         sys.stderr.flush()
-    t3_best, t3_unplaced, t3_unbuildable = collect_t3(recompile, tprog)
+    t3_best, t3_unplaced, t3_unbuildable, annex = collect_t3(recompile, tprog)
     sys.stderr.write('\r' + ' ' * 70 + '\r')
 
     for va, (name, *_rest) in t3_best.items():
@@ -764,7 +958,8 @@ def main():
 
     img, verdict = assemble_contract(
         ib.ORIG_DLL, t4_best, t3_best, names_at,
-        t4_unplaced + t3_unplaced, t4_unbuildable + t3_unbuildable)
+        t4_unplaced + t3_unplaced, t4_unbuildable + t3_unbuildable,
+        annex=annex)
 
     dest = os.path.join(out_dir, 'BRGlide.T3.dll')
     ib.emit(img, verdict == 'ok', dest, no_write)
