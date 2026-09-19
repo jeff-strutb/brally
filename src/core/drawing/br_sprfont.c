@@ -214,7 +214,11 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
  * rectangle and the sheet's transparency setting to whatever does the actual
  * drawing. */
 #ifdef BR_MATCHING_BUILD
-int FUN_10058380(int, int, int, int *, int);
+/* arg3 declared short: the original's caller pushes the sheet's home
+ * register raw (upper bits unspecified), which VC5 only emits for a
+ * prototyped short -- an int arg forces a movsx that pins eax and pushes
+ * the glyph-rect add into the 6-byte non-eax encoding (113B > 112B slot). */
+int FUN_10058380(int, int, short, int *, int);
 
 /* thiscall + 4 stack args (`ret 0x10`).  Struct-typed extras so edx stays
  * free for the kind chain (dummy-edx fastcall stole it and `add ecx,imm`
