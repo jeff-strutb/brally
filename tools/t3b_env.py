@@ -779,6 +779,20 @@ def shadows_a_neighbour(va, size):
     return sorted(hit)
 
 
+def neighbour_after(va):
+    """Address of the nearest function entry strictly after `va`, or None.
+
+    Used to CAP the recomp overlay: substituting a longer recompile at `va`
+    would otherwise bury this neighbour's entry.  The overlay only exists so a
+    side reads its OWN in-.text jump table (which lives inside the function's
+    own span, before this boundary), so capping the overlay here is sound --
+    the worst a capped-away in-tail table can do is misdispatch into a DIFF or
+    a crash, never a false EQUIVALENT."""
+    fnmap, _ = maps()
+    after = [a for a in fnmap.values() if a > va]
+    return min(after) if after else None
+
+
 def unresolved_symbols(obj_path, name, size):
     """Which symbols blocked `resolve_bytes` -- for reporting, not for use."""
     fnmap, glmap = augment_maps(obj_path, name, size)

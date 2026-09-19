@@ -27,10 +27,10 @@ def _b(val, a, base):
 
 class Profile(object):
     __slots__ = ('bss', 'zero_stack', 'seeds', 'arg', 'buf', 'exact_regions',
-                 'buf_sizes')
+                 'buf_sizes', 'stub_calls')
 
     def __init__(self, bss, zero_stack=True, seeds=64, arg=None, buf=None,
-                 exact_regions=None, buf_sizes=None):
+                 exact_regions=None, buf_sizes=None, stub_calls=None):
         self.bss = bss                 # fn(seed, addr) -> byte
         self.zero_stack = zero_stack    # stack window / arg buffers seeded to 0
         self.seeds = seeds
@@ -55,6 +55,17 @@ class Profile(object):
         # rewind the reader and never terminate -- so a packet dispatcher needs
         # a WELL-FORMED command sequence built here, not noise.
         self.buf = buf
+        # {callee VA, ...}: direct calls to BLACK-BOX (skip the body, eax<-0,
+        # esp net-zero as a cdecl call is), recording the target+arg window as
+        # an observable event compared between the two sides.  For an
+        # orchestrator that hands a whole seeded slot to a heavy subsystem the
+        # transcription is not certifying (a renderer, a logger): running the
+        # subsystem on the seeded world would loop or walk into noise, and both
+        # sides call it identically, so its internal effects are not this
+        # function's contract.  A different target/arg sequence still surfaces;
+        # the blend/output this function itself computes is compared as usual,
+        # so stubbing cannot manufacture a false EQUIVALENT of THIS function.
+        self.stub_calls = frozenset(stub_calls or ())
 
 
 # ---- BrRaceStep 0x10019A70 -------------------------------------------------
@@ -492,7 +503,76 @@ _AI_EXACT = (
     (0x10E20000, 0x10E20004),   # pCtl->flags
 )
 
+# ---- BrSnapInterpDraw 0x100131E0 (render-side snapshot interpolator) -------
+# Blends the two newest of a six-slot snapshot ring into the sixth slot and
+# hands that slot to the frame driver.  Inputs are an object graph in
+# g_aBrSnap[6] plus the slot-index globals.  Seed: valid, distinct slot indices
+# (Cur/Prev/To/From in 0..4), Interpolate on, small car/driver counts, and
+# VARIED float car matrices in every slot so the per-field blend has teeth (a
+# zero world would blend 0->0 and hide a wrong-field/wrong-slot LERP).  The car
+# matrix-record pointers are left NULL so the pointer-retarget arms are
+# deterministic.  The wall-clock timer (0x1006E280) and the frame driver
+# (0x10011FA0, a 4500-byte renderer this function only hands the blend slot to)
+# are STUBBED: both sides call them identically, and this function's own
+# contract -- the blended slot and the return value -- is compared directly.
+_SNAP_G      = 0x10396F48        # g_aBrSnap base
+_SNAP_SLOT   = 0x2E0F0           # per-slot stride
+_SNAP_CAROFF = 0xA08             # car[] offset within a slot
+_SNAP_CARSZ  = 0x2B68            # per-car stride
+
+
+def _snap_f(slot, ci, off):
+    s = slot * 61 + ci * 29 + (off >> 2) * 7
+    sign = -1.0 if (s & 1) else 1.0
+    return sign * float((s % 23) + 1) * (10.0 ** ((s // 23) % 3))   # 1 .. ~2.2e3
+
+
+def _snap_bss(seed, a):
+    base = a & ~3
+    idx = {0x104AB4EC: 0, 0x104AB500: 1, 0x10396F44: 2, 0x104AB4FC: 3,
+           0x100A5EAC: 1, 0x100B2F00: 2, 0x100B2F04: 2, 0x104AB4F4: 0}
+    if base in idx:
+        return _b(idx[base], a, base)
+    if base == 0x10396F24:                    # g_brSnapOrigin (float t at last reset)
+        return _f32at(0.0, a)
+    if _SNAP_G <= a < _SNAP_G + 6 * _SNAP_SLOT:
+        off = a - _SNAP_G
+        slot = off // _SNAP_SLOT
+        os_ = off % _SNAP_SLOT
+        if os_ >= _SNAP_CAROFF:
+            oc = os_ - _SNAP_CAROFF
+            if oc < 16 * _SNAP_CARSZ:
+                ci = oc // _SNAP_CARSZ
+                ocar = oc % _SNAP_CARSZ
+                if 0x2734 <= ocar < 0x273c:   # pMatA / pMatB -> NULL
+                    return 0
+                if ocar < 0x2734 or ocar >= 0x273c:   # a float field
+                    return _f32at(_snap_f(slot, ci, ocar), a)
+        return 0
+    return 0
+
+
+def _snap_arg(seed, idx):
+    if idx == 0:                              # force
+        return (seed >> 1) & 1
+    return None
+
+
+# INTEGER state outputs -- compared exactly, never float-masked (a lock flag or
+# a counter differing by 1 reads as a denormal-float rounding diff otherwise and
+# a wrong-write bug hides).  g_brSnapOrigin (0x10396F24) is the float t and is
+# deliberately NOT here; the blended car matrices are float and stay tolerant.
+_SNAP_EXACT = (
+    (0x10396F10, 0x10396F24),   # g_aBrSnapLocked[5]
+    (0x10396F44, 0x10396F48),   # g_brSnapTo
+    (0x104AB4F0, 0x104AB4F8),   # g_brSnapFrames, g_brSnapT0
+    (0x104AB4FC, 0x104AB500),   # g_brSnapFrom
+)
+
+
 PROFILES = {
+    0x100131E0: Profile(_snap_bss, zero_stack=False, seeds=24, arg=_snap_arg,
+                        stub_calls=(0x1006E280, 0x10011FA0), exact_regions=_SNAP_EXACT),
     0x1005D770: Profile(_ctlai_bss, seeds=160, arg=None, buf=_ctlai_buf,
                         buf_sizes={0: 0x2b68}, exact_regions=_AI_EXACT),
     0x1000CBA0: Profile(_odl_bss, zero_stack=False, seeds=16, arg=_odl_arg,

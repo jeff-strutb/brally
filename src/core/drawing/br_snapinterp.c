@@ -131,6 +131,21 @@ void    BrFrameDrawView(int32_t iView);     /* 0x10011FA0  the frame driver     
  * then has nothing to show), or when no snapshot pair exists yet. */
 /* @t4-pass 0x100131E0 1 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
 /* @t4-pass 0x100131E0 2 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
+/* @t4-pass 0x100131E0 3 2026-09-19 probes 11 bytes 3501 insns 817 regions 13 rows 457 census no  (x87/addressing grind: the orig keeps the blend fraction t RESIDENT in an x87 register (fmul st(1)) across every LERP and reaches car fields through hoisted base pointers (lea once, then [reg+imm]); our compile reloads t per component (fmul [t]) and addresses each field by absolute global ([reg+abs]) -- the +bytes. Pointer-macro and row-batch variants shift the shape but VC5 will not reproduce the t-in-register retention from C. Numbers held.) */
+/* @t4-pass 0x100131E0 4 2026-09-19 probes 10 bytes 3501 insns 817 regions 13 rows 457 census yes  (write-slot census (tools/slotcensus.py) + variant sweep confirm the residue is x87 register retention / pointer-vs-index addressing, not missing/wrong code; the A5 oracle proves same-in/same-out across the blend math, the wheels, the integer lock/counter state (exact_regions) and the return, with the timer and frame driver black-boxed identically; numbers unmoved.) */
+/* @t3 0x100131E0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3501/3217 insns 817/856 rows 248+209 regions 13 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is x87/register scheduling: the orig keeps the blend fraction t in an
+ * x87 register (fmul st(1)) across every per-component LERP and reaches the
+ * snapshot car fields through hoisted base pointers (lea once, [reg+imm]); our
+ * compile reloads t each component and addresses fields by absolute global
+ * ([reg+abs]).  VC5 will not reproduce the t-in-register retention from C
+ * (crank tried 102x).  A5 EQUIVALENT with teeth: negative-controlled on the
+ * blend math, the wheels, the integer lock/counter state and the return.  The
+ * timer (0x1006E280) and frame driver (0x10011FA0) are black-boxed by the
+ * oracle -- both sides call them identically.  Colouring/scheduling wall; do
+ * not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100131E0 glide BrSnapInterpDraw */
 int32_t BrSnapInterpDraw(int32_t force)
 {
