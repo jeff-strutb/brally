@@ -223,6 +223,7 @@ void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
  * itself is one of sixteen pictures chosen the same way. In split screen the
  * face is skipped and only the needle is drawn, and even then the artwork is
  * taken from the first player's record rather than the current one. */
+/* @implements 0x100140B0 glide BrHudDrawDial */
 /* @implements 0x10016B40 d3d BrHudDrawDial */
 void BrHudDrawDial(BrHudView *aViews)
 {
