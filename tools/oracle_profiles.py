@@ -789,6 +789,115 @@ def _ktf_arg(seed, idx):
     return None
 
 
+# ---- FUN_1006ec30 0x1006EC30 (vertical raycast into collision grid) ---------
+# Orchestrator: casts a vertical ray through the collision-plane grid.  The
+# loop count comes from DAT_11778800[cell]; with random BSS that overflows the
+# step limit.  BrCollGridCellAcquire is stubbed so cell=0; plane count, plane
+# fields, and the three pointer globals (tri-index, chain-data, chain-index)
+# are seeded to a small, valid world.  Vec math callees are leaf functions the
+# oracle can execute.
+_CR_SCRATCH_TRI  = 0x10E20000   # g_pBrCollTriIdx target (face records)
+_CR_SCRATCH_CD   = 0x10E21000   # DAT_106eed64 target (chain data, NUL-terminated)
+_CR_SCRATCH_CI   = 0x10E22000   # DAT_106eed68 target (chain index)
+_CR_SCRATCH_VERT = 0x10E23000   # scratch BrVec3 for pV0/pV1/pV2
+
+_CR_PLANE_BASE   = 0x11773698   # DAT_11773698[0][0]
+_CR_PLANE_SIZE   = 32           # sizeof(BrCollPlane)
+_CR_MAX_PLANES   = 3
+
+
+def _collray_bss(seed, a):
+    # DAT_11778800[0] at 0x11778800: plane count, 1..3 varied by seed
+    if 0x11778800 <= a < 0x11778802:
+        count = (seed % _CR_MAX_PLANES) + 1
+        return _b(count, a, 0x11778800)
+    # DAT_11778800[1..3]: zero (unused since cell=0 from stubbed acquire)
+    if 0x11778802 <= a < 0x11778808:
+        return 0
+
+    # Collision planes at 0x11773698: seed up to _CR_MAX_PLANES entries
+    if _CR_PLANE_BASE <= a < _CR_PLANE_BASE + _CR_MAX_PLANES * _CR_PLANE_SIZE:
+        off = a - _CR_PLANE_BASE
+        pidx = off // _CR_PLANE_SIZE        # which plane
+        foff = off % _CR_PLANE_SIZE         # offset within plane
+        base = _CR_PLANE_BASE + pidx * _CR_PLANE_SIZE
+        if 0x00 <= foff < 0x04:             # nx = 0.0
+            return 0
+        if 0x04 <= foff < 0x08:             # ny = 0.0
+            return 0
+        if 0x08 <= foff < 0x0C:             # nz = 1.0 (positive, passes the guard)
+            return _b(0x3F800000, a, base + 0x08)
+        if 0x0C <= foff < 0x10:             # d = small float varied by seed+pidx
+            return _f32b(((seed * 101 + pidx * 37) % 200 - 100) / 10.0,
+                         a, base + 0x0C)
+        if 0x10 <= foff < 0x14:             # pV0 -> scratch vert
+            return _b(_CR_SCRATCH_VERT + pidx * 36, a, base + 0x10)
+        if 0x14 <= foff < 0x18:             # pV1 -> scratch vert + 12
+            return _b(_CR_SCRATCH_VERT + pidx * 36 + 12, a, base + 0x14)
+        if 0x18 <= foff < 0x1C:             # pV2 -> scratch vert + 24
+            return _b(_CR_SCRATCH_VERT + pidx * 36 + 24, a, base + 0x18)
+        if 0x1C <= foff < 0x1E:             # tri = pidx (small index)
+            return _b(pidx, a, base + 0x1C)
+        return 0                            # flags, pad
+
+    # g_pBrCollTriIdx pointer at 0x106EECE4
+    if 0x106EECE4 <= a < 0x106EECE8:
+        return _b(_CR_SCRATCH_TRI, a, 0x106EECE4)
+    # DAT_106eed64 (chain data pointer) at 0x106EED64
+    if 0x106EED64 <= a < 0x106EED68:
+        return _b(_CR_SCRATCH_CD, a, 0x106EED64)
+    # DAT_106eed68 (chain index pointer) at 0x106EED68
+    if 0x106EED68 <= a < 0x106EED6C:
+        return _b(_CR_SCRATCH_CI, a, 0x106EED68)
+
+    # Tri-index table at _CR_SCRATCH_TRI: 4 uint16 per face [v0, v1, v2, faceID]
+    # Each face's [3] (the faceID) is a small non-zero value.
+    if _CR_SCRATCH_TRI <= a < _CR_SCRATCH_TRI + 64:
+        off = a - _CR_SCRATCH_TRI
+        face = off // 8      # 4 uint16 = 8 bytes per face
+        slot = (off % 8) // 2
+        if slot == 3:         # faceID
+            return _b(face + 1, a, _CR_SCRATCH_TRI + face * 8 + 6)
+        return 0
+
+    # Chain data at _CR_SCRATCH_CD: three NUL-terminated lists
+    # list 0: [1, 0]  list 1: [2, 0]  list 2: [3, 0]
+    if _CR_SCRATCH_CD <= a < _CR_SCRATCH_CD + 32:
+        off = a - _CR_SCRATCH_CD
+        idx = off // 2
+        if idx < 6:  # 3 lists of 2 entries each
+            listno = idx // 2
+            slot = idx % 2
+            if slot == 0:
+                return _b(listno + 1, a, _CR_SCRATCH_CD + idx * 2)
+            else:
+                return 0  # NUL terminator
+        return 0
+
+    # Chain index at _CR_SCRATCH_CI: maps tri -> offset in chain data
+    # tri 0 -> 0, tri 1 -> 2, tri 2 -> 4
+    if _CR_SCRATCH_CI <= a < _CR_SCRATCH_CI + 16:
+        off = a - _CR_SCRATCH_CI
+        idx = off // 2
+        if idx < _CR_MAX_PLANES:
+            return _b(idx * 2, a, _CR_SCRATCH_CI + idx * 2)
+        return 0
+
+    # Scratch vertices at _CR_SCRATCH_VERT: varied small floats
+    if _CR_SCRATCH_VERT <= a < _CR_SCRATCH_VERT + _CR_MAX_PLANES * 36:
+        base = a & ~3
+        off = (base - _CR_SCRATCH_VERT) // 4
+        return _f32b(((seed * 7 + off * 13) % 200 - 100) / 10.0, a, base)
+
+    # Time globals: small non-zero to give a valid disc
+    if 0x106EED14 <= a < 0x106EED18:   # DAT_106eed14 time now
+        return _f32b((seed % 100 + 1) / 60.0, a, 0x106EED14)
+    if 0x106EED10 <= a < 0x106EED14:   # DAT_106eed10 time prev
+        return 0
+
+    return 0
+
+
 PROFILES = {
     0x10061470: Profile(_sc_bss, zero_stack=False, seeds=48, buf=_sc_buf,
                         buf_sizes={0: 0x2b68}, exact_regions=_SC_EXACT),
@@ -806,6 +915,8 @@ PROFILES = {
     0x1000EAF0: Profile(_scenedl_bss, zero_stack=False, seeds=32),
     0x100250D0: Profile(_tex_bss, zero_stack=False, seeds=64, arg=_tex_arg),
     0x10019A70: Profile(_bracestep_bss),
+    0x1006EC30: Profile(_collray_bss, zero_stack=True, seeds=48,
+                        stub_calls=(0x100686D0,)),
     0x1002F790: Profile(_f2f_bss, zero_stack=False, seeds=48,
                         arg=_f2f_arg, buf=_f2f_buf),
     # 0x100038F0 is the base (non-remote) dispatcher; identical table/packet
