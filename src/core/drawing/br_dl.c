@@ -795,7 +795,11 @@ void __stdcall BrGlSetDepthFn(int32_t m);    /* 0x100729C6 */
 extern void BrDlVtxLitDecal(void);   /* 0x100221D0 */
 extern void BrDlVtxLit(void);        /* 0x10021C70 */
 extern void BrDlVtxPlain(void);      /* 0x10021A20 */
+#ifdef BR_MATCHING_BUILD
+const uint8_t *BrDlVtxGenLin(const uint8_t *p);
+#else
 extern void BrDlVtxGenLin(void);     /* 0x10022BF0 */
+#endif
 extern void BrDlVtxGen(void);        /* 0x10022600 */
 extern void BrDlVtxNoZLit(void);     /* 0x10023360 */
 extern void BrDlVtxNoZ(void);        /* 0x10023110 */
