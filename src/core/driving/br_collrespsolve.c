@@ -297,6 +297,18 @@ static uint8_t br_cr_ftol_byte(float x)
  * ------------------------------------------------------------------ */
 /* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
 /* @t4-pass 0x10065C80 2 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
+/* @t3 0x10065C80 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1137/1448 insns 347/422 rows 140+65 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is scheduling and layout only, proven by the A5 oracle (500/500
+ * seeds EQUIVALENT on return + globals + body side effects).  The original is
+ * ~311 B larger because it keeps the body and vector pointers live in
+ * registers and folds the vec3 traffic through long x87 fxch chains with
+ * memory-indexed fmul/fadd (`fmul [reg+off]`), where this arm names its
+ * intermediates and lets the vec helpers own the round-trips; the two ftol
+ * effect stores and every matrix/vec callee line up.  No behavioural gap
+ * remains to close -- the delta is pure register colouring and x87 drain,
+ * a T3 wall (CLAUDE.md rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x10065C80 glide BrCrImpulseSolve */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the 0x10065C80 bytes.  The original is NOT the
