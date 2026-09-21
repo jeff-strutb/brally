@@ -1358,7 +1358,94 @@ def _gs_buf(seed, argidx, off):
 _GS_STUBS = (0x1005E690, 0x1005ECF0, 0x10034560, 0x10034390, 0x1005FF00)
 
 
+# ---- BrCarPathEval 0x1005D3C0 (car track-path frame evaluator) -------------
+# thiscall(pCar): builds the smooth path frame for the car's current segment.
+# Seed the car's path pointer (+0xf8c) at a scratch path with several segments
+# of varied control-point vectors, a small current-segment index (+0xf90), and
+# the car's 2D position (+0x30/+0x34).  The segment count (+0x14) is large so
+# the wrap/loop-walk arm stays off.  All the callees are pure BrVec3 leaf math
+# (sub/dot/dist/cross/lerp/scale/normalise) and RUN, so the whole computed frame
+# (car+0xF18..+0xF58) is the observable and is verified directly.
+_PE_PATH = 0x10E40000      # car[0xf8c] -> path (segments, 0x28 stride)
+
+
+def _pe_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x100778d8:               # zero threshold
+        return 0
+    if base == 0x100778cc:               # segment-span scale
+        return _f32at(0.25, a)
+    if base == 0x100778f8:               # blend base weight (1.0)
+        return _f32at(1.0, a)
+    if base in (0x100778f4, 0x1007789c): # cubic coefficients
+        return _f32at(2.0, a)
+    if base == _PE_PATH + 0x14:          # segment count (ushort at +0x14): large
+        return _b(0x20, a, _PE_PATH + 0x14)
+    if base == _PE_PATH or base == _PE_PATH + 4:   # loop pointers -> self (walk gate off)
+        return _b(_PE_PATH, a, base)
+    if _PE_PATH <= base < _PE_PATH + 0x600:        # segment control-point floats:
+        # a smooth monotonic layout (well past the divide's singularity) so the
+        # path parameter is well conditioned; the word index sets a gentle ramp
+        k = (base - _PE_PATH) >> 2
+        return struct.pack('<f', 4.0 + k * 0.5 + (seed % 3))[a & 3]
+    return 0
+
+
+def _pe_buf(seed, argidx, off):
+    import struct
+    if argidx != 0:
+        return None
+    if 0xf8c <= off < 0xf90:             # path pointer
+        return _b(_PE_PATH, off, 0xf8c)
+    if 0xf90 <= off < 0xf94:             # current segment index (1..4)
+        return _b(1 + seed % 4, off, 0xf90)
+    if 0x30 <= off < 0x38:               # car 2D position: near the path, small offset
+        return struct.pack('<f', 6.0 + ((off >> 2) & 1) * 3.0 + (seed % 4) * 0.5)[off & 3]
+    return None
+
+
+# ---- BrTex3dRegister 0x10028BB0 (texture registrar / dedup) ----------------
+# void(): builds a texture descriptor from the tile globals, dedups it against
+# the object's record table, and appends when new.  Default random world runs
+# away in the dedup walk (0x10027A70 loops over the record count at 0x10697A58).
+# Seed the count to 0 so the walk is skipped and the descriptor-building body
+# (where the residue lives) runs and appends record 0; point the object base
+# (0x106B7AA0) at a zeroed scratch big enough for that record; keep the base/max
+# LOD indices small and the mip-mode (0x100B8498) at 1 so the p1 rescale arm is
+# off; pin the two path/source pointer globals null.  The one external,
+# grTexCalcMemRequired, is modelled in x87emu (deterministic in its args).  All
+# other globals (the tile array, the header source fields copied into the
+# descriptor) fall through to tame non-zero values so the build is not
+# degenerate.
+_TR_OBJ = 0x10E00000       # scratch BrTex3d object (record table at +0x50)
+
+
+def _tr_bss(seed, a):
+    base = a & ~3
+    if base == 0x10697A58:  return 0                       # record count -> 0 (dedup finds nothing)
+    if base == 0x106B7AA0:  return _b(_TR_OBJ, a, base)    # object base -> scratch
+    if base == 0x106B7AB0:  return _b(seed % 4, a, base)   # base LOD tile 0..3
+    if base == 0x106B7A94:  return _b(seed % 4 + 1, a, base)  # max LOD tile
+    if base == 0x100B8498:  return _b(1, a, base)          # mip mode 1 (p1 rescale arm off)
+    if base in (0x105D17F0, 0x106B7A98):  return 0         # p1/p2 pointer globals -> null
+    # tile array (BrTexTile40, 0x40 stride): bound mask/size fields so the
+    # dimensions (1 << maskS) and the mip walk stay small -- tame values here
+    # give a 2^31 texture and the sizing callee runs away.
+    if 0x10697840 <= base < 0x10697840 + 0x400:
+        off = (base - 0x10697840) % 0x40
+        if off in (0x20, 0x24):  return _b(seed % 5, a, base)     # maskS/maskT 0..4 -> w,h <= 16
+        if off in (0x38, 0x3c):  return _b(0x40, a, base)         # lrs/lrt (tile size bounded)
+        if off in (0x30, 0x34):  return 0                         # uls/ult 0
+        return _b(seed % 3, a, base)                              # fmt/siz/mirror/clamp/...
+    # everything else (header source fields copied into the descriptor): tame
+    return (_sv_tame((seed * 0x1000193) ^ base) >> (8 * (a - base))) & 0xff
+
+
 PROFILES = {
+    0x10028BB0: Profile(_tr_bss, zero_stack=True, seeds=48),
+    0x1005D3C0: Profile(_pe_bss, zero_stack=True, seeds=48, buf=_pe_buf,
+                        buf_sizes={0: 0x1000}),
     0x10061F60: Profile(_gs_bss, zero_stack=True, seeds=48, buf=_gs_buf,
                         buf_sizes={0: 0x100}, stub_calls=_GS_STUBS,
                         exact_regions=((_GS_CAR, _GS_CAR + 0x3000), (_GS_FLAGS, _GS_FLAGS + 0x100))),
