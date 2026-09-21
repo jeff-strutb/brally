@@ -869,7 +869,14 @@ extern unsigned char DAT_10ac66b8;
 extern int32_t g_BrAA33E0;    /* 0x10AC6740 */
 extern int32_t g_brAA33E4;    /* 0x10AC6744 */
 extern int32_t g_pBrAC61E0;   /* 0x10AC61E0 */
-extern void __stdcall BrSub10060750(void *hWnd);   /* 0x100597C0, callee-cleaned */
+/* 0x100597C0 is a 2-arg thiscall: `this` in ecx is the device pointer held
+ * at 0x10AC61E0, plus one unread stack dword (`ret 4`).  BR_THISCALL1
+ * (= __fastcall) would pass that dword in edx; a struct is never
+ * register-eligible, so it is forced back onto the stack -- same arm as the
+ * definition in br_dik.c. */
+#include "br_match.h"
+typedef struct { void *v; } BrSub10060750Arg;
+extern void BR_THISCALL1 BrSub10060750(int32_t pDev, BrSub10060750Arg unused);
 
 __declspec(dllimport) int32_t __stdcall IsWindow(void *hWnd);
 __declspec(dllimport) void   *__stdcall GetActiveWindow(void);
@@ -893,7 +900,11 @@ __declspec(dllimport) int32_t __stdcall IsIconic(void *hWnd);
  * result is one local, 1 at the top, assigned by DefWindowProcA in the
  * WM_SYSCOMMAND arm and returned ONCE after the switch (per-arm `return r`
  * lets the front end fold it to `mov eax,1`); the refresh callee 0x100597C0
- * is __stdcall (no `add esp,4` after any of its three calls).
+ * is a 2-arg thiscall (`this` in ecx = the 0x10AC61E0 pointer, one unread
+ * stack dword, `ret 4` so no `add esp,4` at the call sites).  The original's
+ * ecx load at all three test sites is the argument, not colouring: an eax
+ * load there leaves ecx dead at the call and the callee faults on a null
+ * `this` (2026-09-21, invalid page fault at 0x100597C0 on Win98 hardware).
  * DEAD (12 compiles): `register` on r; `g = r` for the two 1-stores; uMsg
  * instead of the 0x112 literal in the DefWindowProcA call; positive
  * `if (g != 0) call` arms; a named `b = IsWindow()` local; a named local
@@ -904,11 +915,13 @@ __declspec(dllimport) int32_t __stdcall IsIconic(void *hWnd);
 /* @t4-pass 0x100590D0 2 2026-09-09 probes 10 bytes 417 insns 123 regions 5 rows 0 census no  (hand, fn.py variants: literal/comparison/cast spellings across the case arms, all inert or worse) */
 /* @t4-pass 0x100590D0 3 2026-09-09 probes 10 bytes 417 insns 123 regions 5 rows 0 census yes  (hand, fn.py variants: switch/decl/guard forms, all inert; corpus MISS at +0x8 len 10) */
 /* @t3 0x100590D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 417/419 insns 123/123 rows 0+0 regions 5 oracle UNCLASSIFIED
+ * @t3-measure bytes 420/419 insns 123/123 rows 0+0 regions 5 oracle UNCLASSIFIED
  * @t3-effort passes 3 zero-movement 2 3
- * residue is register colouring/encoding only: identical register-blind
- * multiset (rows 0+0), insn-exact, -2 B of encoding shadow across the
- * window-proc switch, 5 masked regions.
+ * RE-OPENED 2026-09-21: the 2026-09-09 cert mis-read the 0x100597C0 callee as
+ * __stdcall and its ecx call-site loads as colouring; that "residue" was a
+ * live ABI argument and crashed on hardware.  Fixed (thiscall via
+ * BR_THISCALL1, `this` = g_pBrAC61E0).  Residue now: two swapped scratch
+ * registers at the [esp+0x10] reloads (rows 0+0 register-blind), +1 B.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100590D0 glide BrSub100590D0 */
 int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
@@ -946,14 +959,14 @@ int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
             break;
         if (g_pBrAC61E0 == 0)
             break;
-        BrSub10060750(hWnd);
+        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
         break;
     case 0x211:
     case 0x231:
         g_BrAA33E0 = 1;
         if (g_pBrAC61E0 == 0)
             break;
-        BrSub10060750(hWnd);
+        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
         break;
     case 0x212:
     case 0x232:
@@ -971,7 +984,7 @@ int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
     user:
         if (g_pBrAC61E0 == 0)
             break;
-        BrSub10060750(hWnd);
+        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
         break;
     default:
         break;

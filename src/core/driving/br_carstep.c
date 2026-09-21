@@ -25,7 +25,9 @@ void  BR_THISCALL1 BrCamChaseStep(unsigned char *pCar);
 void  BrVec3Scale(float *pOut, void *pV, float s);
 void  BrVec3AddTo(void *pDst, float *pSrc);
 void  BrVec3Cross(void *pOut, void *pA, void *pB);
-void  BrBitLatchTake(int mask);
+/* 0x1002F640 -- thiscall (`this` in ecx = the latch at *(pCar+0x29C0), edx
+ * unread, one stack arg, `ret 4`); same arm as br_ctlinput.c:21. */
+void  __fastcall BrBitLatchTake(void *pThis, void *_edx, unsigned mask);
 float BrSqrtF(float x);
 
 extern float DAT_106e9d8c;
@@ -71,9 +73,14 @@ extern void  BrCtlHuman(void);   /* 0x1005D050 -- compared as a function pointer
 /* @t4-pass 0x1006F170 1 2026-09-20 probes 11 bytes 1289 insns 319 regions 10 rows 30 census no  (fn.py: loop-bound spelling, compare operand order (e68/e6c), puVar1 decl split, bool test, zero-cast args, O2/O2y/O2p/O1/Ox.  Best -6 bytes/-4 insns at O2; none reached 0.  Residue is the zero-register mode compare + x87 reassociation + peeled tail with duplicated epilogue.) */
 /* @t4-pass 0x1006F170 2 2026-09-20 probes 11 bytes 1289 insns 319 regions 10 rows 30 census yes  (census of unpaired multiset: MISSING sub R,R / dec R (mode-byte compare reusing the ebp zero) pair with EXTRA cmp R,R / cmp R,1; MISSING fld [M+0x1f0] + EXTRA fld [M+0x1e8] = commutative x87 operand order in the speed sum; MISSING add esp,0x14 + jl vs EXTRA jle = the duplicated tail epilogue and loop-bound polarity.  Every divergent row is register allocation, x87 reassociation or branch/epilogue shape of identical logic.  A5 oracle EQUIVALENT on 64 seeds.) */
 /* @t3 0x1006F170 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1289/1295 insns 319/323 rows 17+13 regions 10 oracle EQUIVALENT
+ * @t3-measure bytes 1294/1295 insns 320/323 rows 11+14 regions 10 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- */
+ * RE-OPENED 2026-09-21: the cert missed BrBitLatchTake's ABI -- 0x1002F640
+ * is thiscall (`this` = *(pCar+0x29C0) in ecx, `ret 4`), and the cdecl
+ * 1-arg call here dropped the ecx load AND double-popped the stack
+ * (add esp,4 after the callee's ret 4).  The 2026-09-20 EQUIVALENT was
+ * silent because no seed set the &0x10 mode bit, so the arm never ran.
+ * Fixed with br_ctlinput.c:21's proven __fastcall arm. */
 /* @implements 0x1006F170 glide BrCarStep */
 void BR_THISCALL1 BrCarStep(unsigned char *pCar)
 {
@@ -103,7 +110,7 @@ void BR_THISCALL1 BrCarStep(unsigned char *pCar)
       puVar1[2] = 0x3f800000;
       BrVec3Cross(pCar + 0x10, puVar1, pCar);
       BrVec3Cross(puVar1, pCar, pCar + 0x10);
-      BrBitLatchTake(0x10);
+      BrBitLatchTake(*(void **)(pCar + 0x29c0), 0, 0x10);
     }
   } else {
     *(int *)(pCar + 0x1020) =
