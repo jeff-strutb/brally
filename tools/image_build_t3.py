@@ -625,9 +625,22 @@ def collect_t3(recompile=False, progress=None):
             with open(os.environ['BR_DUMP_SITES'], 'a') as f:
                 for (sva, soff), sval in sorted(sites.items()):
                     f.write('0x%08X,0x%X,0x%08X\n' % (sva, soff, sval))
+        # Resolve the placement with the certification's OWN address data --
+        # the same augment_maps the annex path (over-slot bodies) already
+        # trusts, plus the address-in-name reader compiled_functions documents
+        # this lane as passing.  A certified T3 body's residue is a reschedule,
+        # so its relocation slots sit at offsets the image-pairing (`sites`)
+        # cannot recover; augment_maps supplies the real target from the src
+        # `/* 0x<VA> */` declaration, a self-encoding DAT_/Br..._<hex> name, or
+        # the CRT import slot -- exactly the addresses the A5 oracle certified
+        # each body EQUIVALENT under.  ref_fill stays False: a slot with no
+        # known address still blocks the function, never a copied reference
+        # dword (the 0x1006E360 page-fault class).
+        _taf, _tag = augment_maps(obj, wanted[0][1],
+                                  int(rows[wanted[0][0]]['orig_size']))
         for va, name, code, unres, fromref in ib.compiled_functions(
-                [obj], fnmap, {}, pad_short=True, ref_fill=False,
-                extra_sites=sites):
+                [obj], _taf, _tag, pad_short=True, ref_fill=False,
+                extra_resolve=address_in_name, extra_sites=sites):
             if byname.get(name) == va:
                 best[va] = (name, code, unres, fromref, 'T3')
                 got.add(va)
