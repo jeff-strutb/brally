@@ -45,6 +45,16 @@
  * DO NOT RE-PROBE the arm forms; the switch above is already the right
  * shape. A fresh idea is needed for the reload.
  */
+/* @t4-pass 0x10041180 1 2026-09-20 probes 12 bytes 330 insns 105 regions 6 rows 11 census yes  (forced member reload via volatile at the four easing-call args moved nothing) */
+/* @t4-pass 0x10041180 2 2026-09-20 probes 10 bytes 330 insns 105 regions 6 rows 11 census no   (baseline reconfirm; VC5 store-to-load-forwards f382C where the original re-reads it) */
+/* @t3 0x10041180 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 330/373 insns 105/114 rows 10+1 regions 6 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is codegen only: the original re-reads the elapsed member from
+ * memory before each of the four easing vcalls (four 6-byte reloads), where
+ * VC5 store-to-load-forwards the value it just wrote -- so this build is
+ * tighter than the original, same behaviour.  A5 oracle EQUIVALENT is the
+ * completeness proof (rule 12).  Do not reopen before the end-grind. */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
