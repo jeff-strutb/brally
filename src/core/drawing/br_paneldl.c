@@ -46,6 +46,17 @@ static __inline unsigned int *BrPanelDlAlloc(void)
  * every counter derived from it (856 B). */
 /* @t4-pass 0x10010FB0 1 2026-09-13 probes 14 bytes 839 insns 210 regions 1 rows 14 census no  (hand, fn.py variants: alloc idiom, +5 temp, declaration/init/store orders, const pointer, deref tests, single-index loop) */
 /* @t4-pass 0x10010FB0 2 2026-09-13 probes 88 bytes 839 insns 210 regions 5 rows 28 census yes  (tools/crank.py) */
+/* @t4-pass 0x10010FB0 3 2026-09-20 probes 12 bytes 839 insns 210 regions 5 rows 28 census yes  (regrouping (uVar5+5)&0xff to defeat the +5 induction variable moved nothing) */
+/* @t4-pass 0x10010FB0 4 2026-09-20 probes 10 bytes 839 insns 210 regions 5 rows 28 census no   (baseline reconfirm; the panel-loop IV plan + one-fewer frame slot are allocation, per header) */
+/* @t3 0x10010FB0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 839/843 insns 210/212 rows 15+13 regions 5 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is register allocation only: the original keeps the panel offset and
+ * strip word in registers and reloads the pointer/counter from frame slots,
+ * while VC5 rebases the offset family onto offset+5 as an induction variable
+ * and spills the counter into the spent parameter slot (one fewer frame slot,
+ * 0x14 vs 0x18); respelling dead over 14+88+ probes.  A5 oracle EQUIVALENT is
+ * the completeness proof (rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x10010FB0 glide BrPanelDlBuild */
 void BrPanelDlBuild(short *param_1)
 {
