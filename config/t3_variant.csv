@@ -6,3 +6,4 @@ va,opt,reason
 0x100701B0,O2y,fits 189/205 (O2 213: 8B over)
 0x10030FD0,O2,frameless respell fits 81/83 (sweep's O2y raw-min pick keeps the frame: over)
 0x1005AFF0,O2y,O2 obj is A5 DIFF vs original (seed 1); NOTE both variants are OVER the 3210B slot once measured past the $-labels -- stays truncation-blocked pending a shrink lane
+0x100553B0,O2,"frameless original; O2y keeps a frame pointer and desyncs at +0 (sweep picks O2y on raw diff count only)"

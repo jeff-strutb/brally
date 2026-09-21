@@ -19,3 +19,9 @@ g_brCrPlane,0x117787F0,1,1,"transcription header: shared contact-normal bank (0x
 ?SetPos@BrCar@@QAEXMMM@Z,0x1006F680,1,1,"cpp-lane member callee: BrEntSetPos (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
 ?SetVel@BrCar@@QAEXMMM@Z,0x1006FA10,1,1,"cpp-lane member callee: BrEntSetVel (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
 ?SetMatrix@BrCar@@QAEXPAX@Z,0x1006F970,1,1,"cpp-lane member callee: BrEntSetMatrix (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
+g_brAC5DB4,0x10AC5DB4,1,1,"transcription header: slot-scroll repeat-timer accumulator, wraps at 60 (src/core/cpp/0x100553B0.cpp)",0x100553B0
+g_brAC5DB8,0x10AC5DB8,1,1,"transcription header: slot-scroll last-tick timestamp (src/core/cpp/0x100553B0.cpp)",0x100553B0
+g_brAC5BAC,0x10AC5BAC,1,1,"transcription header: slot-scroll input-consumed flag (src/core/cpp/0x100553B0.cpp)",0x100553B0
+g_pBrAC5DD8,0x10AC5DD8,1,1,"transcription header: slot-scroll timing/anchor struct pointer (src/core/cpp/0x100553B0.cpp)",0x100553B0
+g_brAC5DBC,0x10AC5DBC,1,1,"transcription header: slot-scroll horizontal anchor origin (src/core/cpp/0x100553B0.cpp)",0x100553B0
+g_brAC5DC0,0x10AC5DC0,1,1,"transcription header: slot-scroll vertical anchor origin (src/core/cpp/0x100553B0.cpp)",0x100553B0
