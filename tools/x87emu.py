@@ -106,6 +106,19 @@ def _model_release_mutex(m):
     m.R['esp'] = u32(m.R['esp'] + 4)
 
 
+def _model_grtexcalcmem(m):
+    """grTexCalcMemRequired(smallLod, largeLod, aspect, format) __stdcall -> FxU32
+    (TMEM bytes needed) in eax.  Four dword args at [esp..esp+12] (no return
+    address is pushed for a modelled import); the real callee's `ret 0x10`
+    clears them, so esp += 16.  The oracle only needs a value that is a
+    DETERMINISTIC function of the args and identical on both sides; it is chosen
+    to span the caller's 0x80000 clamp as the seeded lod/aspect vary."""
+    esp = m.R['esp']
+    a0 = m.rd_i(esp); a1 = m.rd_i(esp + 4); a2 = m.rd_i(esp + 8)
+    m.R['eax'] = ((((a0 * 7 + a1 * 5 + a2 * 3) & 0xff) + 1) << 12) & 0xFFFFFFFF
+    m.R['esp'] = u32(esp + 16)
+
+
 def _model_floor(m):
     """floor(double) cdecl -> double in st(0).  The one double arg sits at
     [esp..esp+7] (no return address is pushed for a modeled import); the result
@@ -144,6 +157,7 @@ MSVCRT_IMPORTS = {
     0x118F04BC: _model_release_mutex,   # KERNEL32 ReleaseMutex@4
     0x118F059C: _model_floor,           # MSVCRT floor
     0x118F0504: _model_asin,            # MSVCRT asin
+    0x118F069C: _model_grtexcalcmem,    # glide2x grTexCalcMemRequired@16
 }
 
 
