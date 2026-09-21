@@ -550,7 +550,13 @@ class Machine:
                     # the callee's own effects are skipped on both sides alike.
                     esp = self.R['esp']
                     args = tuple(self.rd_i(esp + 4 * k) for k in range(8))
-                    self.icalls.append((slot, args))
+                    # Record the dispatch TARGET (the dereferenced pointer for
+                    # `call [slot]`, the register value for `call reg`), not the
+                    # slot address: the same logical indirect call compiles as
+                    # either form, and recording the slot address for one but the
+                    # pointer value for the other manufactured a false DIFF
+                    # (0x118ED1DC vs 0 for a null callback that both sides skip).
+                    self.icalls.append((target, args))
                     self.R['eax'] = 0
                     pc += 1; continue
                 raise ValueError('call to unmapped %08X' % target)
@@ -643,23 +649,27 @@ class Machine:
             self.wr_reg(o[0], self._flags_sub(0, v))
         elif mn == 'sbb':
             d, s = o
-            a = self.rd_reg(d); b = self._val(s); c = self.CF
+            bs = (d in REG8) or (s in REG8)
+            w = 8 if bs else 32; mask = (1 << w) - 1; sign = 1 << (w - 1)
+            a = self._rd(d, bs) & mask; b = self._val(s, byte=bs) & mask; c = self.CF
             total = b + c
-            r = (a - total) & 0xFFFFFFFF
+            r = (a - total) & mask
             self.ZF = 1 if r == 0 else 0
-            self.SF = 1 if r & 0x80000000 else 0
+            self.SF = 1 if r & sign else 0
             self.CF = 1 if a < total else 0
-            self.OF = 1 if ((a ^ b) & (a ^ r) & 0x80000000) else 0
-            self.wr_reg(d, r)
+            self.OF = 1 if ((a ^ b) & (a ^ r) & sign) else 0
+            self._wr(d, r, bs)
         elif mn == 'adc':
             d, s = o
-            a = self.rd_reg(d); b = self._val(s); c = self.CF
-            r = (a + b + c) & 0xFFFFFFFF
+            bs = (d in REG8) or (s in REG8)
+            w = 8 if bs else 32; mask = (1 << w) - 1; sign = 1 << (w - 1)
+            a = self._rd(d, bs) & mask; b = self._val(s, byte=bs) & mask; c = self.CF
+            r = (a + b + c) & mask
             self.ZF = 1 if r == 0 else 0
-            self.SF = 1 if r & 0x80000000 else 0
-            self.CF = 1 if (a + b + c) > 0xFFFFFFFF else 0
-            self.OF = 1 if (~(a ^ b) & (a ^ r) & 0x80000000) else 0
-            self.wr_reg(d, r)
+            self.SF = 1 if r & sign else 0
+            self.CF = 1 if (a + b + c) > mask else 0
+            self.OF = 1 if (~(a ^ b) & (a ^ r) & sign) else 0
+            self._wr(d, r, bs)
         elif mn == 'cdq':
             self.R['edx'] = 0xFFFFFFFF if (self.R['eax'] & 0x80000000) else 0
         elif mn in ('idiv', 'div'):
