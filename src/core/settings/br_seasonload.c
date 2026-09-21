@@ -76,6 +76,17 @@ extern char DAT_10af6858[];                   /* its mirror                */
 /* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x100695C0 2 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x100695C0 3 2026-09-13 probes 61 bytes 879 insns 280 regions 2 rows 13 census yes  (tools/crank.py) */
+/* @t4-pass 0x100695C0 4 2026-09-20 probes 12 bytes 879 insns 280 regions 2 rows 13 census yes  (failure-return respelling arg&0xff?1:0 scores worse 3+10->6+13; C `(char)arg!=0` stays) */
+/* @t4-pass 0x100695C0 5 2026-09-20 probes 10 bytes 879 insns 280 regions 2 rows 13 census no   (baseline reconfirm; the two residues are C++-front-end block layout + bool-return, per header) */
+/* @t3 0x100695C0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 879/877 insns 280/287 rows 10+3 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 5 zero-movement 4 5
+ * Residue is C++-front-end codegen only: the original lays the open block
+ * after the install epilogue and enters by a backward je (every C spelling
+ * lays it inline), and the failure path is a C++ bool return with no eax
+ * zeroing where C zeros eax first (a .cpp of this body scores worse).  A5
+ * oracle EQUIVALENT is the completeness proof (rule 12).  Do not reopen
+ * before the end-grind. */
 /* @implements 0x100695C0 glide BrSeasonLoad */
 char BrSeasonLoad(int mode, int arg)
 {
