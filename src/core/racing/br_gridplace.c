@@ -41,6 +41,18 @@ void FUN_1005edc0(void *);
  * by walking the path to a mode-dependent arc, copy the start pose, and
  * pick a car-data row.  Live slots are wired to their car record at
  * 0x10AF1208 + i*0x2B68. */
+/* RESIDUE (2026-09-20): 541/538 B, 171/170 insns, 8 regions, regnorm 8+7.
+ * All codegen: the mode dispatch (original chains destructive `sub eax,N; je`,
+ * this build emits one `add eax,-5; test; je` -- inline compound `-=` moved
+ * nothing), an int->float fild placement, and a shl-vs-lea index scaling.
+ * A5 oracle EQUIVALENT. */
+/* @t4-pass 0x1005F310 1 2026-09-20 probes 12 bytes 541 insns 171 regions 8 rows 15 census yes  (inline compound mode -= N dispatch: no move; codegen sub-vs-cmp/test) */
+/* @t4-pass 0x1005F310 2 2026-09-20 probes 10 bytes 541 insns 171 regions 8 rows 15 census no   (baseline reconfirm; fild placement + shl-vs-lea index scaling unmoved) */
+/* @t3 0x1005F310 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 541/538 insns 171/170 rows 7+8 regions 8 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is codegen only (see RESIDUE above).  A5 oracle EQUIVALENT is the
+ * completeness proof (rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x1005F310 glide BrRaceGridPlace */
 void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
 {
