@@ -242,6 +242,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 /* WHAT IT DOES: reads the next four bytes as a single signed number, most
  * significant byte first. */
 /* @t4-pass 0x1006CE80 1 2026-09-13 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006ce80 2 2026-09-20 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
 /* @implements 0x10073C40 d3d BrBitStreamReadS32 */
 int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {
