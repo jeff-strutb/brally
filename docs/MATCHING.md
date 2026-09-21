@@ -24,7 +24,7 @@ Release at the end: `python3 tools/claim_lane.py release <TOKEN> [wallVA ...]`
 | **B** | smallest screened T1 drafts, ≤400 B then 800 B | transcribe, sweep, commit T4 or park T2 after 6 probes |
 | structural T2 | real missing/wrong code, start ≤400 B | first divergence, then next; class → generator |
 | **A** (`reggap 0`) | same instructions, registers differ | `t3.py --qualify`; do not permute |
-| giants | SceneDlBuild, Tex3dExpand, race step, … | closed unless the user names the VA |
+| giants | `0x10056260`, `0x10051600`, … (the old giants are T3) | closed unless the user names the VA |
 
 Screen before accepting any T1/T2 row:
 

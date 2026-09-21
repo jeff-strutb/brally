@@ -193,7 +193,7 @@ va,size,owner,depth,ncallers,is_leaf,tier
 0x1000C9E0,308,-,-1,1,0,indirect
 0x1000CB20,96,-,-1,1,1,indirect
 0x1000CB80,29,-,-1,1,1,indirect
-0x1000CBA0,3971,-,-1,1,0,indirect
+0x1000CBA0,4180,-,-1,1,0,indirect
 0x1000DC00,702,-,-1,1,0,indirect
 0x1000DEC0,8,-,-1,0,1,indirect
 0x1000DED0,14,-,-1,0,1,indirect
@@ -237,7 +237,7 @@ va,size,owner,depth,ncallers,is_leaf,tier
 0x10015550,145,-,-1,1,0,indirect
 0x100155F0,54,-,-1,1,1,indirect
 0x10015630,1239,-,-1,1,0,indirect
-0x10015B10,3050,wndproc,8,1,0,direct
+0x10015B10,3306,wndproc,8,1,0,direct
 0x10016800,8,-,-1,1,1,indirect
 0x10016810,8,-,-1,1,1,indirect
 0x10016820,8,wndproc,7,7,1,direct

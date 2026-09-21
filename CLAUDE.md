@@ -66,9 +66,10 @@ file with no `@implements`.
 
 ## 11. Giants are last. Do not open them unless the user names the VA.
 
-- `0x10019A70` (11,223 B) — last, gated on 131 callee signatures. One C function.
-- `0x1000EAF0` BrSceneDlBuild — do not reopen before the end-grind.
-- `0x100250D0` BrTex3dExpand — `--key 10`, never `--key 6`.
+The three historical giants are all certified T3 (do not reopen):
+`0x10019A70` BrRaceStep, `0x1000EAF0` BrSceneDlBuild, `0x100250D0`
+BrTex3dExpand. The largest still-open bodies are `0x10056260` (8,349 B,
+`br_uiimg.c`) and `0x10051600` (4,109 B, C++ lane) — same rule: named-only.
 
 ## 12. T4 is byte-exact. T3 is certified complete, not byte-exact. Nothing between.
 
