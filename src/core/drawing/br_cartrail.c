@@ -74,18 +74,6 @@ typedef struct BrTrailCar {
     BrMat4        mat;            /* +0x26D4 */
 } BrTrailCar;
 
-/* WHAT IT DOES: steps every entrant's four trail ribbons for one frame.
- * Skipped while paused or in replay mode.  Per car: the ribbon origin is
- * pulled toward the car position by a fixed-point step, a translate-by-
- * origin matrix scaled by 1/127 is rebuilt, then for each ribbon whose flag
- * is set the head record is recoloured by its kind (0: dull grey; 3: bright
- * at night only; 4: track-kind colours, dimmed or night-inverted; anything
- * else copies the next record and retires the kind to -1) and copied one
- * slot down.  Every record then shifts back one slot (only the last slot
- * when the ribbon is idle), gets its width pair and u coordinate from its
- * slot number, and drifts: the head slots by the frame displacement, the
- * rest by their per-record fixed-point offsets, sinking the z offset while
- * the record stays above the head. */
 /* T2 residue (2026-09-13): 1875/1881 B, 438/454 insns, frame 0x88 exact,
  * regnorm 20+36.  What is left is all inside the ribbon loop:
  *  - the four colour triples (night / dim, two vertices each): the original
@@ -121,6 +109,27 @@ typedef struct BrTrailCar {
  * min-raw-byte variant, so it recorded O2y; the frameless O2 is the right one
  * to reason about here (see resume-state 2026-09-15b variant-selection note).
  */
+/* WHAT IT DOES: steps every entrant's four trail ribbons for one frame.
+ * Skipped while paused or in replay mode.  Per car: the ribbon origin is
+ * pulled toward the car position by a fixed-point step, a translate-by-
+ * origin matrix scaled by 1/127 is rebuilt, then for each ribbon whose flag
+ * is set the head record is recoloured by its kind (0: dull grey; 3: bright
+ * at night only; 4: track-kind colours, dimmed or night-inverted; anything
+ * else copies the next record and retires the kind to -1) and copied one
+ * slot down.  Every record then shifts back one slot (only the last slot
+ * when the ribbon is idle), gets its width pair and u coordinate from its
+ * slot number, and drifts: the head slots by the frame displacement, the
+ * rest by their per-record fixed-point offsets, sinking the z offset while
+ * the record stays above the head. */
+/* @t4-pass 0x10032E40 1 2026-09-20 probes 12 bytes 1875 insns 438 regions 10 rows 70 census yes  (colour-triple intermediate temps rx/ry/rz: shape shifts, never the pipelined orig; x87 scheduling) */
+/* @t4-pass 0x10032E40 2 2026-09-20 probes 10 bytes 1875 insns 438 regions 10 rows 70 census no   (baseline reconfirm; second-vertex own-induction + iScale reg/mem form unmoved -- canonicalised) */
+/* @t3 0x10032E40 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1875/1881 insns 438/454 rows 43+27 regions 10 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is x87 pipelined SCHEDULING only (colour-triple load/mul/sub/store
+ * order + fxch chains, per the dossier above; v17 + this pass, all dead).
+ * A5 oracle EQUIVALENT is the completeness proof (rule 12).
+ * Do not reopen before the end-grind. */
 /* @implements 0x10032E40 glide BrCarTrailStep */
 void BrCarTrailStep(void)
 {
