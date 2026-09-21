@@ -394,6 +394,7 @@ extern int DAT_104ab500;
 /* DEAD 2026-09-13 (fn.py, 3 probes): the head assignments in the orders
  * chosen/best/i/flag/cost/cur, cur first, and the declarations reordered to
  * match -- the eax/ebx transposition is unchanged (157/157, 30+30 raw). */
+/* @t4-pass 0x10013F20 3 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
 void BrSndBankPickSlot(void)
 {
