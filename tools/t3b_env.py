@@ -446,6 +446,8 @@ def augment_maps(obj_path, name, size):
             a = imports[n]                                # CRT import -> its IAT slot
         if a is None and '@' in n:                       # decorated stdcall import
             a = imports.get(n.split('@', 1)[0])          # __imp__Foo@8 -> __imp__Foo
+        if a is None:                                    # directly-called stdcall import
+            a = imports.get('__imp__' + n)               # _grTexCalcMemRequired@16 -> its IAT slot
         if a is None and base == 'except_list':
             a = 0                                        # fs:[0] SEH-chain head
         if a is None and base in _CRT_HELPER_VA:
