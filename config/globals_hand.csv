@@ -14,14 +14,14 @@ g_brSnapFrames,0x104AB4F0,1,1,"transcription header (src/core/drawing/br_snapint
 g_brCfgInterpolate,0x100A5EAC,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
 BrFrameDrawView,0x10011FA0,1,1,"transcription header: the frame driver (src/core/drawing/br_snapinterp.c)",0x100131E0
 g_brCrPlane,0x117787F0,1,1,"transcription header: shared contact-normal bank (0x117787F0/F4/F8), src/core/driving/br_collrespsolve.c",0x10065C80
-?Sub10062C50@BrCar@@QAEXXZ,0x1005BCC0,1,1,"cpp-lane member callee: BrSub10062C50 (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
-?InitTables@BrCar@@QAEXXZ,0x1005E6A0,1,1,"cpp-lane member callee: BrCarInitTables (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
-?SetPos@BrCar@@QAEXMMM@Z,0x1006F680,1,1,"cpp-lane member callee: BrEntSetPos (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
-?SetVel@BrCar@@QAEXMMM@Z,0x1006FA10,1,1,"cpp-lane member callee: BrEntSetVel (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
-?SetMatrix@BrCar@@QAEXPAX@Z,0x1006F970,1,1,"cpp-lane member callee: BrEntSetMatrix (src/core/cpp/0x1005F6C0.cpp)",0x1005F6C0
-g_brAC5DB4,0x10AC5DB4,1,1,"transcription header: slot-scroll repeat-timer accumulator, wraps at 60 (src/core/cpp/0x100553B0.cpp)",0x100553B0
-g_brAC5DB8,0x10AC5DB8,1,1,"transcription header: slot-scroll last-tick timestamp (src/core/cpp/0x100553B0.cpp)",0x100553B0
-g_brAC5BAC,0x10AC5BAC,1,1,"transcription header: slot-scroll input-consumed flag (src/core/cpp/0x100553B0.cpp)",0x100553B0
-g_pBrAC5DD8,0x10AC5DD8,1,1,"transcription header: slot-scroll timing/anchor struct pointer (src/core/cpp/0x100553B0.cpp)",0x100553B0
-g_brAC5DBC,0x10AC5DBC,1,1,"transcription header: slot-scroll horizontal anchor origin (src/core/cpp/0x100553B0.cpp)",0x100553B0
-g_brAC5DC0,0x10AC5DC0,1,1,"transcription header: slot-scroll vertical anchor origin (src/core/cpp/0x100553B0.cpp)",0x100553B0
+?Sub10062C50@BrCar@@QAEXXZ,0x1005BCC0,1,1,"cpp-lane member callee: BrSub10062C50 (src/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?InitTables@BrCar@@QAEXXZ,0x1005E6A0,1,1,"cpp-lane member callee: BrCarInitTables (src/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetPos@BrCar@@QAEXMMM@Z,0x1006F680,1,1,"cpp-lane member callee: BrEntSetPos (src/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetVel@BrCar@@QAEXMMM@Z,0x1006FA10,1,1,"cpp-lane member callee: BrEntSetVel (src/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetMatrix@BrCar@@QAEXPAX@Z,0x1006F970,1,1,"cpp-lane member callee: BrEntSetMatrix (src/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+g_brAC5DB4,0x10AC5DB4,1,1,"transcription header: slot-scroll repeat-timer accumulator, wraps at 60 (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DB8,0x10AC5DB8,1,1,"transcription header: slot-scroll last-tick timestamp (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5BAC,0x10AC5BAC,1,1,"transcription header: slot-scroll input-consumed flag (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_pBrAC5DD8,0x10AC5DD8,1,1,"transcription header: slot-scroll timing/anchor struct pointer (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DBC,0x10AC5DBC,1,1,"transcription header: slot-scroll horizontal anchor origin (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DC0,0x10AC5DC0,1,1,"transcription header: slot-scroll vertical anchor origin (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0

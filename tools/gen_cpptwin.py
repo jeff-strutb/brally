@@ -38,7 +38,10 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from twinfind import relocs_in_text  # noqa: E402
 
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
-CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
+# Generator output is a transient DRAFT, not sorted source: it lands in a
+# gitignored scratch area, and is filed into its module (with a real name)
+# once matched.  src/core has no cpp folder -- see tools/filing.py.
+CPP_DIR = os.path.join(ROOT, 'build', 'cpp_drafts')
 GLIDE = os.environ.get('BR_REF',
                        os.path.join(ROOT, 'orig', 'BRGlide.dll'))
 IMAGE_BASE = 0x10000000
@@ -155,6 +158,7 @@ def main():
             src = re.sub(r'(\*/\n)', r'\1' + note, src, count=1)
             hits.append((va_hex, new_name, tva, tname))
             if not dry:
+                os.makedirs(os.path.dirname(out), exist_ok=True)
                 with open(out, 'w') as f:
                     f.write(src)
                 wrote.append(out)

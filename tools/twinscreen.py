@@ -71,9 +71,17 @@ for path in (REPORT, REPORT_CPP):
             if row[3] == 'match':
                 matched[va] = (row[2], row[0])
 
-# a function the C++ lane has a TU for is that lane's, matched or not
-for f in glob.glob(os.path.join(ROOT, 'src', 'core', 'cpp', '0x*.cpp')):
-    tagged.add(int(os.path.basename(f)[:10], 16))
+# a function the C++ lane has a TU for is that lane's, matched or not.  The
+# .cpp TUs live throughout src/core (in their module folders), not only under
+# cpp/, and are named for their symbol -- so read the VA from @implements, not
+# the filename.
+_CPP_IMPL = re.compile(r'@implements\s+0x([0-9A-Fa-f]{8})\s')
+for f in glob.glob(os.path.join(ROOT, 'src', 'core', '**', '*.cpp'),
+                   recursive=True):
+    with open(f, errors='replace') as fh:
+        m = _CPP_IMPL.search(fh.read())
+    if m:
+        tagged.add(int(m.group(1), 16))
 
 # every extracted original, keyed by exact size
 bysize = {}

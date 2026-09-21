@@ -20,7 +20,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
-CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
+# Generator output is a transient DRAFT, not sorted source: it lands in a
+# gitignored scratch area, and is filed into its module (with a real name)
+# once matched.  src/core has no cpp folder -- see tools/filing.py.
+CPP_DIR = os.path.join(ROOT, 'build', 'cpp_drafts')
 REF_VA = '0x10038D30'
 # parameter bytes: idx-global imm, table-base imm, getter rel32, apply rel32
 MASKED = {1, 2, 3, 0xB, 0xC, 0x11, 0x12, 0x13, 0x14, 0x54, 0x55, 0x56, 0x57}
@@ -105,6 +108,7 @@ def main():
                 else 'BrUiText%05X' % (va & 0xFFFFF))
         tu = TEMPLATE.format(va=va, name=name)
         if not dry:
+            os.makedirs(os.path.dirname(out), exist_ok=True)
             with open(out, 'w') as f:
                 f.write(tu)
         print('WROTE  %s  %s' % (va_hex, name))
