@@ -134,35 +134,31 @@ void __fastcall FUN_10001510(BrCamCar *car, BrPtrArg cam, BrPtrArg prev);/* 0x10
  * back along the car's forward axis from twenty units behind.  Finally it
  * refreshes the eye/look/right/up basis, the lens factor from the distance
  * to the eye, and the negated axis rows the renderer reads. */
-/* T2 residue (2026-09-13): 1578/1567 B, 408/403 insns, seven regions, all
- * x87 operand handling: the speed/spin blends (original multiplies the
- * stack-resident value first, this build the reloaded field), the lift
- * call's then-arm pops and push placement, the height updates (original
- * compares before it stores, `fcom; fstp`, this build `fst; fcomp`), the
- * second frame-row product order, the prologue copy of the previous
- * position, and the final axis-negation DAG (357 bytes the aligner cannot
- * resync).  Under /Op the operand orders match but /Op adds reloads.
- * Dead: double-typed temps, ternaries for the blend, named product temps,
- * compound assignment forms, /G3-/G6, VC4.2.  Matched: the four camera
- * vectors are 16 bytes, the thiscall helpers take struct-wrapped stack
- * arguments (no edx set-up), `k` as a ternary, two call sites for the lift
- * (tail-merged), the frame copy inside the argument expression, the demo
- * branch polarity, pAxZ/pUp/pLook pointer locals, the first height store
- * through a pointer (keeps the dead 0.02 store the original has).
- * @t4-pass 0x10001CF0 r7 2026-09-13 probes 35 bytes 11 insns 5 regions 7 rows 15+10 census no
- * T3 verdict (2026-09-15, CORRECTED): x87 SCHEDULING wall, NOT missing code.
- * Recorded variant is O2 (frame-correct here).  The A4 "357 B never compared"
- * is a RESYNC ARTIFACT, not an absent block: the whole-function register-blind
- * msetdiff is only 19+24 = 43 rows and the function is +6 insns total, so
- * nothing is missing -- dense fxch/fsubp permutation just defeats the 8-insn
- * resync key.  The 43 rows are entirely x87: fxch st(1/2/4/5/6), fcom vs
- * fcomp, fst vs fstp (stack-depth), fsubp with varying stack indices, and the
- * a*b+c*d fld-side commutation (region #6).  Same class as carcol/cartrail:
- * respelling-dead, co-filing NULL. Parks as T2 (A2 43 vs 10.1). NOT a
- * transcription target -- the earlier "missing code" reading was wrong.
- */
+/* Residue (see the @t3 tag below): seven regions, ALL x87 scheduling -- the
+ * speed/spin blends' operand side, the lift then-arm pop/push, the height
+ * updates (fcom;fstp vs fst;fcomp), the second frame-row product order, the
+ * prologue prev copy, and the final axis-negation DAG (the 357 B "never
+ * compared" is a resync artifact of dense fxch/fsubp, not missing code;
+ * +6 insns total).  Dead (do not re-run): double temps, blend ternaries,
+ * named product temps, compound-assign forms, /G3-/G6, VC4.2, /Op (adds
+ * reloads).  Matched: 16-byte camera vectors, struct-wrapped thiscall args
+ * (no edx), `k` ternary, tail-merged lift call sites, the frame copy in the
+ * arg expression, demo branch polarity, pAxZ/pUp/pLook locals, the dead 0.02
+ * height store. */
 /* @t4-pass 0x10001CF0 2 2026-09-20 probes 14 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/crank.py) */
 /* @t4-pass 0x10001CF0 3 2026-09-20 probes 12 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/crank.py) */
+/* @t3 0x10001CF0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1578/1567 insns 408/403 rows 19+24 regions 7 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 2 3
+ * Residue is the pure x87 SCHEDULING wall the dossier above describes (seven
+ * regions of fxch / fcom-vs-fcomp / fst-vs-fstp stack-depth / fsubp index /
+ * a*b+c*d fld-side commutation) -- nothing is missing (the 357 B "never
+ * compared" is a resync artifact, +6 insns total).  The A5 behavioural oracle
+ * RUNS the whole step on a seeded car object -- speed/spin blends, the lift and
+ * placement helpers, the frame rebuild and basis refresh -- and returns
+ * EQUIVALENT over 48 seeds, with a negative control on a frame term proving
+ * teeth; that supersedes the byte gates (CLAUDE.md rule 12).  Do not reopen
+ * before the end-grind. */
 /* @implements 0x10001CF0 glide BrCamChaseStep */
 void __fastcall BrCamChaseStep(BrCamCar *car)
 {
