@@ -516,6 +516,7 @@ static uint16_t BrLd16(const void *pv)
  * corrected to where the data now sits -- header, geometry, animation frames
  * and all. Each finished piece is then handed to the renderer. */
 /* @t4-pass 0x100302A0 1 2026-09-10 probes 60 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
+/* @t4-pass 0x100302A0 2 2026-09-20 probes 14 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
 /* @implements 0x10036C00 d3d BrModelSwap */
 #ifdef BR_MATCHING_BUILD
 /* RESIDUE 1062 vs 1053 bytes, 371 vs 368 instructions, register-blind 8+11
