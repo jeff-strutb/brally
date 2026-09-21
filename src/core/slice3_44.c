@@ -406,6 +406,13 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
  * orientation each step to make the body actually turn. */
 /* @t4-pass 0x1006D530 1 2026-09-13 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006D530 2 2026-09-20 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
+/* @t3 0x1006D530 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 206/206 insns 73/73 rows 10+10 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: x87 stack scheduling only -- identical size and instruction count;
+ * the differences are `fxch` ordering on the FPU stack (register-blind gap 0),
+ * the TU-state operand-role class, not source-controllable. Do not reopen
+ * before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
