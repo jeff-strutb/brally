@@ -45,6 +45,17 @@ int  BrPodNop();
  * a default state; the car-data record at +0x29C4 supplies the wheel
  * positions.  Two linked lists of contact nodes are wired up, four debug
  * prints dump the wheel points, and a couple of mode bytes are cleared. */
+/* @t4-pass 0x1005BCC0 1 2026-09-20 probes 12 bytes 1871 insns 466 regions 17 rows 31 census yes  (1.0f web: k1 int-const naming folds like the imm; DEAD with the 09-13 float-typing attempts) */
+/* @t4-pass 0x1005BCC0 2 2026-09-20 probes 10 bytes 1871 insns 466 regions 17 rows 31 census no   (pRF[] indexing of the +0x800 block does not pin pRF callee-saved; wheel-body re-lea residue unmoved) */
+/* @t3 0x1005BCC0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1871/1909 insns 466/471 rows 18+13 regions 17 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation only: the 1.0f web (orig parks 0x3f800000 in
+ * ebp then recycles it as pRF, ours keeps it live and re-materialises the late
+ * stores as immediates) and the five wheel-body pointer re-leas at +0x168
+ * (orig re-computes p+0x370.. after the calls clobber caller-saved eax; ours
+ * keeps them callee-saved).  A5 oracle EQUIVALENT is the completeness proof
+ * (rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x1005BCC0 glide BrSub10062C50 */
 void BR_THISCALL1 BrSub10062C50(void *pCar)
 {
