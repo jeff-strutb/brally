@@ -981,7 +981,133 @@ _ENV_STUBS = (0x10008D60, 0x1001CF90, 0x10034B70, 0x10034AF0,
               0x100349C0, 0x100344D0, 0x100597F0)
 
 
+# ---- BrCarStep 0x1006F170 (per-car frame step) -----------------------------
+# thiscall(pCar): casts the wheel collision ray + applies input (live path,
+# pCar->f7c == 0) or replays the recorded transform (f7c != 0), then writes the
+# four wheels' suspension/slip fields, runs the net/steer sub-steps, recomputes
+# the scalar speed and advances the chase camera.  The four wheel-record
+# pointers (pCar+0x168/16c/170/174), the two flag/aux record pointers (+0x29c0,
+# +0x29c4) and the entity arg buffer are seeded to distinct scratch sub-objects;
+# the body slip (+0xe68) and spin (+0xe6c) and the wheel-mode byte (+0xd9) are
+# varied so the four-wheel distribution and the sign/threshold arms all fire.
+# Every sub-call both sides invoke identically (collision ray, input apply, the
+# a7a0 sub-step, wheel-steer, net-send, the four BrEntSet* setters, the three
+# BrVec3 helpers, the bit latch, the chase-cam) is black-boxed; this function's
+# own contract -- the wheel fields it writes, pCar->1020/1030/e24, and the call
+# sequence -- is compared directly.  The wheel fields are integer/float output;
+# a wrong distribution surfaces as a differing dword.
+_CS_WHEEL = 0x10E00000     # four wheel records, 0x400 apart
+_CS_FLAGS = 0x10E10000     # pCar->29c0 -> flags record
+_CS_AUX   = 0x10E11000     # pCar->29c4 -> record holding the +0xd9 mode byte
+
+
+def _cs_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x105ccb88:                       # net-replay gate off -> steer runs
+        return 0
+    if base == 0x100a9360:                       # race state 0..5
+        return _b(seed % 6, a, 0x100a9360)
+    if base == 0x10226a44 or base == 0x10226a48: # net gates off
+        return 0
+    if base == 0x100aa044:                       # chase-cam table length
+        return _b(2, a, 0x100aa044)
+    # the chase-cam id table g_6E86C8[n], stride 0x58 (0x16 ints): entry 0's id
+    # matches car->140 (seeded 0) so the chase arm is reached on some seeds.
+    if base == 0x106e86c8:
+        return _b(seed & 1, a, 0x106e86c8)
+    # scale / threshold constants: small, non-degenerate
+    if base == 0x106e9d8c:
+        return _f32at(1.0, a)
+    if base == 0x10077c38:                       # slip threshold -> 0
+        return 0
+    if base in (0x10077c60, 0x10077c64):
+        return _f32at(0.5, a)
+    if base in (0x10077c68, 0x10077c6c, 0x10077c70):
+        return _f32at(0.75, a)
+    if base == 0x10077c74:                       # spin clamp -> large so both arms reachable
+        return _f32at(100.0, a)
+    if base == 0x10077c78:                       # speed scale
+        return _f32at(0.1, a)
+    # flag record (pCar->29c0): bit 0x10 = replay cross arm, bit 0x20000 = slip
+    # sign flip; the +0x44 gate.  Vary by seed so those arms get teeth.
+    if base == _CS_FLAGS:
+        return _b((0x10 if ((seed >> 1) & 1) else 0) | (0x20000 if ((seed >> 2) & 1) else 0),
+                  a, _CS_FLAGS)
+    if base == _CS_FLAGS + 0x44:
+        return _b(seed & 1, a, _CS_FLAGS + 0x44)
+    # aux record (pCar->29c4): the wheel-mode byte at +0xd9 -> 0/1/2 selector
+    if a == _CS_AUX + 0xd9:
+        return ((seed >> 1) % 3) & 0xFF
+    return 0
+
+
+def _cs_arg(seed, idx):
+    if idx == 0:
+        return None                              # pCar buffer (buf hook fills it)
+    return None
+
+
+def _cs_buf(seed, argidx, off):
+    import struct
+    if argidx != 0:
+        return None
+    # path selector: mostly the live path, replay on one seed in three (so
+    # replay seeds overlap the odd-seed flag bit 0x10 that arms the cross step)
+    if 0xf7c <= off < 0xf80:
+        return _b(1 if (seed & 1) else 0, off, 0xf7c)
+    # four wheel-record pointers -> distinct scratch sub-objects
+    if 0x168 <= off < 0x178:
+        k = (off - 0x168) >> 2
+        return _b(_CS_WHEEL + k * 0x400, off, 0x168 + k * 4)
+    if 0x29c0 <= off < 0x29c4:
+        return _b(_CS_FLAGS, off, 0x29c0)
+    if 0x29c4 <= off < 0x29c8:
+        return _b(_CS_AUX, off, 0x29c4)
+    # body slip / spin: straddle the (zero) threshold so every arm runs
+    if 0xe68 <= off < 0xe6c:
+        return struct.pack('<f', ((seed % 5) - 2) * 3.0)[off & 3]
+    if 0xe6c <= off < 0xe70:
+        return struct.pack('<f', ((seed % 7) - 3) * 2.0)[off & 3]
+    if 0xe20 <= off < 0xe24:
+        return struct.pack('<f', (seed % 9) * 0.5)[off & 3]
+    # replay transform source
+    if 0x2720 <= off < 0x2730:
+        return struct.pack('<f', _cif(seed, 400 + ((off - 0x2720) >> 2), -2.0, 2.0))[off & 3]
+    # position + orientation scratch vectors
+    if 0x10 <= off < 0x40:
+        return struct.pack('<f', _cif(seed, 500 + ((off - 0x10) >> 2), -1.0, 1.0))[off & 3]
+    # velocity for the speed magnitude
+    if 0x1e8 <= off < 0x1f4:
+        return struct.pack('<f', _cif(seed, 600 + ((off - 0x1e8) >> 2), -4.0, 4.0))[off & 3]
+    # entry id (chase-cam / net gates); small so it can match the table
+    if 0x140 <= off < 0x144:
+        return _b(seed & 1, off, 0x140)
+    # active flag: non-zero so the speed magnitude + chase arm run
+    if 0x730 <= off < 0x734:
+        return _b(0x5b + (seed % 4), off, 0x730)
+    # a control-mode function pointer compared against BrCtlHuman (0x1005d050)
+    if 0xf08 <= off < 0xf0c:
+        return _b(0x1005d050 if (seed & 1) else 0, off, 0xf08)
+    return None
+
+
+# the flag record (pCar->29c0): bit 0x10 (replay cross arm), bit 0x20000 (slip
+# sign flip) and the +0x44 gate, varied by seed.
+def _cs_ptrfill(seed):
+    return None
+
+
+_CS_EXACT = ((_CS_WHEEL, _CS_WHEEL + 0x1000),)
+_CS_STUBS = (0x1006EC30, 0x1005AFF0, 0x1005A7A0, 0x1005ACE0, 0x10059A50,
+             0x1006F680, 0x1006FA10, 0x1006FC10, 0x1006FA90,
+             0x10034360, 0x100345F0, 0x100342B0, 0x1002F640, 0x10001CF0)
+
+
 PROFILES = {
+    0x1006F170: Profile(_cs_bss, zero_stack=True, seeds=64, arg=_cs_arg,
+                        buf=_cs_buf, buf_sizes={0: 0x2b68},
+                        exact_regions=_CS_EXACT, stub_calls=_CS_STUBS),
     0x10017110: Profile(_env_bss, zero_stack=True, seeds=48,
                         exact_regions=_ENV_EXACT, stub_calls=_ENV_STUBS),
     0x10061470: Profile(_sc_bss, zero_stack=False, seeds=48, buf=_sc_buf,
