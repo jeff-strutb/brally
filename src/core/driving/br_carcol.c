@@ -72,17 +72,6 @@ void  BrVec3Normalise(BrVec3 *pV);                                      /* 0x100
 void  BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV); /* 0x1006D980 */
 void  FUN_10065c80(void *pBody, BrVec3 *pAt, BrVec3 *pDir, int flag, float k);   /* 0x10065C80 */
 
-/* WHAT IT DOES: resolves collisions between every pair of cars still in the
- * race.  Each live car ages its hit counter, then is checked against every
- * later car: when the two are close enough, both cars' orientation matrices
- * and the offset between them go through the oriented-box overlap test (a
- * fixed 2.5 x 1 x 1 box each).  On overlap the offset is normalised, an
- * impulse along it is sized from the closing speed and clamped, a tone for
- * the crash sound is set on both cars when the hit is fresh, and each car in
- * turn has the impulse taken off its velocity, the rigid-body solver run at
- * the contact, and the impulse put back plus accumulated into the saved
- * velocity and the output velocity.  The first failed box test ends the whole
- * pass. */
 /* T2 residue (2026-09-13): 1444/1444 B, 396/396 insns, frame exact, seven
  * regions, every one x87 scheduling: the six-term closing-speed dot
  * product (the original loads the offset components first, this build the
@@ -106,6 +95,31 @@ void  FUN_10065c80(void *pBody, BrVec3 *pAt, BrVec3 *pDir, int flag, float k);  
  * VA-adjacent but a different best variant, so not the same original TU).
  * Parks as T2.
  */
+/* 2026-09-20: the 09-15 "not certifiable" verdict was A2-only -- A5 oracle now
+ * runs this and returns EQUIVALENT, which supersedes the A2 distance cap
+ * (upgrade-byteshape-t3-to-a5-proven).  The residue is unchanged x87 scheduling
+ * (A3 = 0 unpaired). */
+/* @t4-pass 0x10068F80 1 2026-09-20 probes 12 bytes 1444 insns 396 regions 7 rows 78 census yes  (dot-product operand flip vel*d <-> d*vel: canonicalised, no move; x87 schedule) */
+/* @t4-pass 0x10068F80 2 2026-09-20 probes 10 bytes 1444 insns 396 regions 7 rows 78 census no   (baseline reconfirm; matches the e3 dead list -- ptr/array offset+vel forms, flat sum, a->st.vel) */
+/* @t3 0x10068F80 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1444/1444 insns 396/396 rows 39+39 regions 7 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Byte-size exact; residue is x87 scheduling only (which operand of each
+ * closing-speed dot term and vel+=imp triple is loaded vs used from memory,
+ * plus the impulse-reload and esi/edi restore order; A3 = 0 unpaired).  A5
+ * oracle EQUIVALENT is the completeness proof (rule 12).  Do not reopen before
+ * the end-grind. */
+/* WHAT IT DOES: resolves collisions between every pair of cars still in the
+ * race.  Each live car ages its hit counter, then is checked against every
+ * later car: when the two are close enough, both cars' orientation matrices
+ * and the offset between them go through the oriented-box overlap test (a
+ * fixed 2.5 x 1 x 1 box each).  On overlap the offset is normalised, an
+ * impulse along it is sized from the closing speed and clamped, a tone for
+ * the crash sound is set on both cars when the hit is fresh, and each car in
+ * turn has the impulse taken off its velocity, the rigid-body solver run at
+ * the contact, and the impulse put back plus accumulated into the saved
+ * velocity and the output velocity.  The first failed box test ends the whole
+ * pass. */
 /* @implements 0x10068F80 glide BrCarCarCollide */
 void BrCarCarCollide(void)
 {
