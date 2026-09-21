@@ -1690,6 +1690,17 @@ int BrTex3dExpandInto(int param_1,int param_2,int param_3,int param_4,
  * seed-9 block was an oracle thunk-import modelling gap, now fixed (see above).
  * Residue is byte-shape codegen incl. the thunk-vs-direct import call form.
  * Do not reopen before the end-grind. */
+/* @t3 0x10028BB0 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1751/1755 insns 529/532 rows 18+15 regions 7 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is a whole-function register-allocation rotation seeded by the base-LOD
+ * index living in a scratch register (re-read) in the original vs a callee-saved
+ * one here; it cascades into the != 0 clamp idiom (test vs cmp-zeroreg) and the
+ * field-load schedule. The A5 oracle RUNS the full descriptor build + append and
+ * returns EQUIVALENT across 48 seeds with teeth (a corrupted descriptor field
+ * flips it to DIFF); the once-seen seed-9 split was an oracle thunk-import
+ * modelling gap (now fixed), not this function. Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10028BB0 glide BrTex3dRegister */
 
 int BrTex3dRegister(void)
