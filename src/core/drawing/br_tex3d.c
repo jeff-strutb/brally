@@ -1287,6 +1287,12 @@ int BrTexRgbaToArgb1555();
 /* @t4-pass 0x10028620 1 2026-09-09 probes 8 bytes 440 insns 144 regions 2 rows 3 census no  (hand) */
 /* @t4-pass 0x10028620 2 2026-09-13 probes 99 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10028620 3 2026-09-20 probes 63 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10028620 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 439/440 insns 143/143 rows 0+0 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 2 3
+ * RESIDUE: none structural -- 0 divergence rows, identical instruction count,
+ * one trailing byte differs positionally; A5 EQUIVALENT (crank census yes).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10028620 glide BrTexSlotFetchPixels */
 
 int * BrTexSlotFetchPixels(int param_1,int *param_2)
