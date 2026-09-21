@@ -49,6 +49,16 @@ typedef struct BrTriRec {
  * (constant-folds the web), if/else arms with fall-through return (same).
  * Plus the P-load SIB pair `[eax+edi]` vs `[edi+eax]` -- the 0x100540D0
  * emitter-byte class.  A1 4 / A2 8 / A3 8; everything else PASSES. */
+/* @t4-pass 0x100656F0 1 2026-09-20 probes 12 bytes 591 insns 196 regions 3 rows 8 census yes  (u+v paren grouping at both sites: canonicalised, no move; matches the dead list) */
+/* @t4-pass 0x100656F0 2 2026-09-20 probes 10 bytes 591 insns 196 regions 3 rows 8 census no   (baseline reconfirm; u+v x87 CSE + [eax+edi]/[edi+eax] SIB byte-order class) */
+/* @t3 0x100656F0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 591/599 insns 196/200 rows 6+2 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is x87 scheduling + an SIB emitter-byte choice: the original spells
+ * u+v as `fld [u]; fadd st(1)` (v kept as the register operand) where this
+ * build folds `fadd [u]` into v, at two sites, plus the [eax+edi] vs [edi+eax]
+ * index-order byte.  Respelling dead (per header).  A5 oracle EQUIVALENT is
+ * the completeness proof (rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x100656F0 glide BrTriContainsPoint */
 int16_t BrTriContainsPoint(BrTriRec *pT, float *pP)
 {
