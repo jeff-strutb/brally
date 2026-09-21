@@ -190,14 +190,37 @@ def report_status():
 
 # ------------------------------------------------------------- measure -----
 
+_VARIANT_PIN = None
+
+
+def _variant_pin(va):
+    """config/t3_variant.csv: VA -> opt tag (e.g. O2, O2y).  Pins the sweep
+    variant a function is measured under, overriding the diff-count winner."""
+    global _VARIANT_PIN
+    if _VARIANT_PIN is None:
+        _VARIANT_PIN = {}
+        p = os.path.join(ROOT, 'config', 't3_variant.csv')
+        if os.path.exists(p):
+            for r in csv.DictReader(open(p)):
+                if r.get('va') and r.get('opt'):
+                    _VARIANT_PIN[r['va'].lower()] = r['opt'].strip()
+    return _VARIANT_PIN.get(va.lower())
+
+
 def _find_obj(row):
     base = os.path.splitext(os.path.basename(row['file']))[0]
     if row.get('cpp'):
         # cpp_sweep.py writes obj_cpp/<base>_sweep_<VA8>_<i>.obj, one per
         # cpp_score.DEFAULT_OPTS entry; the row's opt tag names the winner.
+        # BUT the sweep picks the winner by raw byte-diff count, which chooses
+        # a dead-end frame-pointer /O2 /Oy- over the frameless /O2 for a
+        # function the original compiled frameless (sweep-variant-selection
+        # artifact): the O2y build desyncs at the prologue and inflates the
+        # residue. config/t3_variant.csv pins the correct opt per VA and wins.
         import cpp_score, cpp_sweep
         tags = [cpp_sweep._opt_tag(o) for o in cpp_score.DEFAULT_OPTS]
-        order = ([tags.index(row.get('opt'))] if row.get('opt') in tags else []) \
+        opt = _variant_pin(row['va']) or row.get('opt')
+        order = ([tags.index(opt)] if opt in tags else []) \
             + list(range(len(tags)))
         va8 = '%08X' % int(row['va'], 16)
         for i in order:
