@@ -13,6 +13,7 @@ only when all four are 0.
 from __future__ import print_function
 
 import argparse
+import concurrent.futures
 import csv
 import io
 import os
@@ -277,6 +278,10 @@ def main():
     ap.add_argument('paths', nargs='*', help='.cpp files or a directory')
     ap.add_argument('--summary', action='store_true',
                     help='reprint last report_cpp.csv without compiling')
+    ap.add_argument('-j', '--jobs', type=int, default=min(8, (os.cpu_count() or 4)),
+                    help='parallel compile workers (default: min(8, cpus); '
+                         '1 = serial). Each TU writes uniquely-named objs, so '
+                         'workers never collide.')
     args = ap.parse_args()
     if args.summary:
         summarise(load_report())
@@ -289,15 +294,33 @@ def main():
         summarise([])
         return 0
 
-    print('cpp_sweep  %d file%s' % (len(srcs), '' if len(srcs) == 1 else 's'),
-          flush=True)
+    jobs = max(1, args.jobs)
+    print('cpp_sweep  %d file%s  (%d worker%s)'
+          % (len(srcs), '' if len(srcs) == 1 else 's',
+             jobs, '' if jobs == 1 else 's'), flush=True)
+    swept = set(os.path.relpath(s, ROOT) for s in srcs)
     new_rows = []
-    swept = set()
-    for src in srcs:
-        rel = os.path.relpath(src, ROOT)
-        print(rel, flush=True)
-        swept.add(rel)
-        new_rows.extend(sweep_file(src))
+    if jobs == 1:
+        for src in srcs:
+            print(os.path.relpath(src, ROOT), flush=True)
+            new_rows.extend(sweep_file(src))
+    else:
+        # sweep_file is a pure per-TU function -- it only reads its source and
+        # writes uniquely-named objs -- so the files fan out across a process
+        # pool with no shared state.  cl.exe runs under one wineserver, which
+        # multiplexes concurrent clients (some lock contention, not a serial
+        # bottleneck).  Results are gathered as they finish; merge_report sorts.
+        done = 0
+        with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as ex:
+            futs = {ex.submit(sweep_file, src): src for src in srcs}
+            for fut in concurrent.futures.as_completed(futs):
+                rows_f = fut.result()
+                new_rows.extend(rows_f)
+                done += 1
+                rel = os.path.relpath(futs[fut], ROOT)
+                nmatch = sum(1 for r in rows_f if r['status'] == 'match')
+                print('  [%d/%d] %s  %d/%d match'
+                      % (done, len(srcs), rel, nmatch, len(rows_f)), flush=True)
     rows = merge_report(new_rows, swept)
     summarise(rows)
     n_fail = sum(1 for r in new_rows if r['status'] != 'match')
