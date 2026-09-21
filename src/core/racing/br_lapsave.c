@@ -71,11 +71,28 @@ void BrModelSlotApply(uint8_t *pCar, void *pDrv);
  * record (the "saving lap/gate" trace) and write them back onto empty slots
  * of the same group (the "restoring lap/gate" trace). */
 /* RESIDUE: frame sub esp,0xd8, this in ebp, count test is jle, one shared
- * dist call. Size 2080/2104 B, insn gap 14, rows 30+16, 18 regions.
- * Unpaired: wrap-arm push/add vs lea (VC5), cmp [f140] vs cmp edx,eax,
- * 1e9 store CSE, pair-swap +0x50 vs +0x54, fa8/40 reloads. fxch st(2) x4. */
+ * dist call. Size 2076/2104 B, insn gap 15, rows 31+16, 18 regions.
+ * Three non-respellable walls, each read out of the disassembly:
+ *   1. x87 stack scheduling in the along-track score -- the original hoists
+ *      fild (float)local_cc ahead of the fsub, yielding fxch st(2) x4; every
+ *      commuted spelling of the (a-b)+cc*d expression rebuilds ours with
+ *      fxch st(1) x3 (probe w3).  TU-state driven; respelling is dead.
+ *   2. cmp-fold allocation: orig `mov r,[DAT_100b3858]; cmp r,r`, ours folds
+ *      to `cmp r,[DAT_100b3858]`.  Hoisting the read to one loop-top local
+ *      (probe w2) is CSE'd straight back -- pure register-pressure choice.
+ *   3. shared BrVec3Dist tail: orig push/add arm vs our lea arm (VC5).
+ * A5 oracle: EQUIVALENT.  Dead store `local_cc = 0` removed this pass (it was
+ * overwritten before every read; slot reused as the save-group array base). */
 /* @t4-pass 0x1005F6C0 1 2026-09-10 probes 20 bytes 2080 insns 548 regions 18 rows 46 census yes */
 /* @t4-pass 0x1005F6C0 2 2026-09-10 probes 11 bytes 2080 insns 548 regions 18 rows 46 census yes */
+/* @t4-pass 0x1005F6C0 3 2026-09-20 probes 14 bytes 2076 insns 547 regions 18 rows 47 census yes */
+/* @t4-pass 0x1005F6C0 4 2026-09-20 probes 11 bytes 2076 insns 547 regions 18 rows 47 census no */
+/* @t3 0x1005F6C0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2076/2104 insns 547/562 rows 31+16 regions 18 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is x87 scheduling + register allocation only (walls 1-3 above);
+ * A5 oracle EQUIVALENT is the completeness proof (CLAUDE.md rule 12).
+ * Do not reopen before the end-grind. */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore */
 void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
 {
@@ -110,7 +127,6 @@ void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
   local_d4.f = *(float *)(DAT_106eed48 + 100);
   local_bc = pCar;
   local_d0 = 0;
-  local_cc = 0;
   if (DAT_100b2f00 <= 0) {
   } else {
     pfVar12 = local_a0;
