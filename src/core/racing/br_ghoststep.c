@@ -12,7 +12,9 @@ void  BrRacePathAdvance(int keyA, int keyB, float t, float w);
 float BrVec3Length(void *pV);
 void  BrVec3Sub(void *pOut, void *pA, void *pB);
 void  BrVec3ScaleBy(void *pV, float s);
-void  BrRaceGateStep(void);
+/* 0x1005FF00 -- thiscall (`this` in ecx is the playback record; the original
+ * emits `mov ecx,esi; call` here). */
+void  BR_THISCALL1 BrRaceGateStep(unsigned int *pDrv);
 extern void BrCtlAi(void);   /* 0x1005E690 -- compared as a function pointer */
 
 extern int   DAT_10226a48;
@@ -62,9 +64,13 @@ extern int DAT_118eef94, DAT_118eef9c, DAT_118eefa8, DAT_118eefac, DAT_118eefb4;
 /* @t4-pass 0x10061F60 1 2026-09-20 probes 12 bytes 1087 insns 307 regions 5 rows 31 census no  (fn.py: &-mask forms, bool pointer test, add/and/or commutes, keyframe-index reassoc, O2/O2y/O2p/Ox.  Best +14 bytes/+1 insn at O2; none reached 0.  Residue is guard polarity + large-stride index lea/shl + fdivp-vs-fdivr.) */
 /* @t4-pass 0x10061F60 2 2026-09-20 probes 12 bytes 1087 insns 307 regions 5 rows 31 census yes  (census of unpaired multiset: EXTRA jne + MISSING je = guard polarity on the flags branches; EXTRA lea [R+R*K]/[R*K] + sub R,R vs MISSING shl R,3 = the *0x28/*0xada/*0x2b68 stride multiplies as lea chains vs shifts; EXTRA fdivp vs MISSING fdivr = x87 divide operand order.  Every divergent row is branch shape, an index-multiply idiom, or x87 operand order of identical logic.  A5 oracle EQUIVALENT on 48 seeds.) */
 /* @t3 0x10061F60 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1087/1073 insns 307/306 rows 15+16 regions 5 oracle EQUIVALENT
+ * @t3-measure bytes 1089/1073 insns 308/306 rows 14+12 regions 5 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- */
+ * RE-OPENED 2026-09-21: BrRaceGateStep (0x1005FF00) is a thiscall taking
+ * the playback record in ecx (`mov ecx,esi; call` in the original); the
+ * void(void) decl here left ecx dead at the call.  The 48-seed EQUIVALENT
+ * did not see it because the gate helper was black-boxed.  Caught by the
+ * image gate's ABI screen (tools/t3abi.py), fixed with BR_THISCALL1. */
 /* @implements 0x10061F60 glide BrGhostPlaybackStep */
 void BR_THISCALL1 BrGhostPlaybackStep(unsigned int *param_1)
 {
@@ -150,7 +156,7 @@ void BR_THISCALL1 BrGhostPlaybackStep(unsigned int *param_1)
         param_1[2] = DAT_10b1cea0;
         BrVec3Sub(param_1 + 6, param_1, param_1 + 3);
         BrVec3ScaleBy(param_1 + 6, DAT_100778f8 / DAT_106e9d8c);
-        BrRaceGateStep();
+        BrRaceGateStep(param_1);
       } else if (iVar1 != 0) {
         if ((DAT_100a9360 != 0) || ((int)param_1[0x19] < DAT_100b3858)) {
           **(unsigned int **)(iVar1 + 0x29c0) = 0xc0000;

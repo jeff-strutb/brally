@@ -954,11 +954,31 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
     for va, name, nd, sz in sorted(regressions, key=lambda x: -x[2])[:10]:
         print(f"    {va:#x} {name}: {nd}/{sz} bytes  <-- a match no longer holds")
 
+    # ---- ABI screens over the PLACED bytes (tools/t3abi.py) -------------
+    # A convention error at a T3 call site survives every byte metric and
+    # every per-function oracle run whose seeds miss the arm (0x100597C0 and
+    # BrCarStep->0x1002F640, 2026-09-21): screen the final image against the
+    # reference's own behaviour -- argument-register liveness, double pops,
+    # and the body's own ret-K -- and fail the gate on any flag.
+    from t3abi import abi_screen
+    refb = open(orig_path, 'rb').read()
+    ref_text = refb[traw:traw + tvsize]
+    img_text = bytes(img[traw:traw + tvsize])
+    t3_spans = [(va, len(usable[va][1]), usable[va][0])
+                for va in sorted(usable) if va in t3_vas]
+    annex_by_va = {v: (av, bytes(b)) for av, v, _n, b in annex} if annex else {}
+    abi_flags = abi_screen(ref_text, base + trva, img_text, base + trva,
+                           t3_spans, annex_by_va)
+    print(f"\nABI screens on placed T3 bodies      : {len(abi_flags)} flag(s)"
+          f"  (register-arg liveness / double pop / callee ret-K)")
+    for fl in abi_flags:
+        print(f"    {fl}")
+
     # A wrong claim is a decomp defect; a tree that will not compile says nothing
     # about the claims.  Both exit non-zero, but they call for opposite actions,
     # so name which.  T3 residue is in NEITHER bucket.
     claims_bad = bool(regressions or overlaps or conflicting or outside
-                      or unplaced or blocked)
+                      or unplaced or blocked or abi_flags)
     if claims_bad:
         verdict = 'claims'
         print("\n  -> FAILED: the contract-valid claims do not hold at image "
