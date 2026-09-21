@@ -16,6 +16,10 @@ reference at the ABI level and run as part of the image gate:
      that target does the same (batched cleanup for other cdecl args).
   C  callee cleanup -- the placed body's own `ret` immediates must equal the
      reference function's at the same VA; byte-exact callers depend on them.
+  D  span termination -- the last real instruction of a placed under-slot
+     body must be control-terminal (ret/jmp) when the reference's is: a body
+     truncated mid-tail falls through its padding into the NEXT function
+     (BrGlNavPoll -> 0x100597C0, the 2026-09-21 credits-screen page fault).
 
 The acceptance rule is always the reference's own behaviour, never a list of
 known sites.  Screens run over the exact function bounds; an annexed
@@ -139,6 +143,60 @@ def _ref_callers_add_esp(ref, ref_va0):
     return sites
 
 
+def _fall_off(blob, va0, va, size, max_steps=20000):
+    """None when every reachable path in [va, va+size) ends in ret or a jmp
+    out of the span; otherwise a description of the first path that runs
+    past the span end or into undecodable bytes."""
+    end = va + size
+    insn_cache = {}
+
+    def _at(addr):
+        if addr not in insn_cache:
+            got = list(_MD.disasm(blob[addr - va0:addr - va0 + 16], addr, 1))
+            insn_cache[addr] = got[0] if got else None
+        return insn_cache[addr]
+
+    seen = set()
+    work = [va]
+    steps = 0
+    while work and steps < max_steps:
+        addr = work.pop()
+        while va <= addr < end and steps < max_steps:
+            steps += 1
+            if addr in seen:
+                break
+            seen.add(addr)
+            insn = _at(addr)
+            if insn is None:
+                return 'reaches undecodable bytes @0x%08x' % addr
+            if insn.address + insn.size > end:
+                return ('decodes an instruction crossing the span end '
+                        '@0x%08x' % addr)
+            m = insn.mnemonic
+            if m == 'ret':
+                break
+            if m == 'jmp':
+                if insn.op_str.startswith('0x'):
+                    t = int(insn.op_str, 16)
+                    if va <= t < end:
+                        addr = t
+                        continue
+                    break               # tail jump out of the span
+                break                   # indirect: jump-table dispatch
+            if m.startswith('j') and insn.op_str.startswith('0x'):
+                t = int(insn.op_str, 16)
+                if va <= t < end:
+                    work.append(t)
+                else:
+                    return ('branches out of the span to 0x%08x @0x%08x'
+                            % (t, addr))
+            addr = insn.address + insn.size
+        else:
+            if va <= addr and addr >= end:
+                return 'falls past the span end after 0x%08x' % (end - 1)
+    return None
+
+
 def abi_screen(ref, ref_va0, img, img_va0, t3_spans, annex_map=None):
     """Screen the placed T3 bodies; returns a list of human-readable flags
     (empty == clean).
@@ -227,5 +285,20 @@ def abi_screen(ref, ref_va0, img, img_va0, t3_spans, annex_map=None):
         if r_rets and p_rets and r_rets != p_rets:
             flags.append('C %s 0x%08x: reference ret %s vs placed ret %s'
                          % (name, va, sorted(r_rets), sorted(p_rets)))
+
+        # ---- D: span fall-off (reachability) ------------------------
+        # Walk the placed body's control flow from its entry: a path that
+        # decodes past the span end executes the NEXT function's bytes
+        # (the truncated-tail class: BrGlNavPoll's third arm lost its
+        # `ret 4` and slid into 0x100597C0).  Data tails after the final
+        # ret -- jump tables, constant pools, padding -- are never reached
+        # and never flag.  An indirect jmp (jump table dispatch) ends its
+        # path unfollowed: table arms are certified by the byte pairing.
+        if va not in annex_map:
+            off = _fall_off(img, img_va0, va, size)
+            if off is not None:
+                flags.append('D %s 0x%08x: a reachable path %s -- '
+                             'execution falls off the span into the next '
+                             'function' % (name, va, off))
 
     return flags
