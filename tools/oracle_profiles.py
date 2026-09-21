@@ -898,7 +898,92 @@ def _collray_bss(seed, a):
     return 0
 
 
+# ---- BrEnvEmit 0x10017110 (per-frame track-surface display-list emitter) ----
+# A void, globals-driven display-list builder.  The default random world runs
+# away in the per-segment projection loop (its trip count DAT_104add38 is a raw
+# .data dword) and in the early surface-flag scan (count DAT_106e8a18).  The
+# profile bounds both counts, points the DL write cursor (g_6E7710) and the
+# surface table (g_6EED38) at scratch, seeds the view matrix g_6E78F0 to identity
+# and the clip thresholds so segments actually project into range (giving the
+# tile-pack + DL-write teeth), and black-boxes the seven sub-calls both sides
+# invoke identically (matrix build, the visibility rasteriser, the F3D helpers).
+# The integer DL command words the function itself writes are the contract and
+# are verified exactly.
+_ENV_CUR = 0x10E00000        # DL write cursor (g_6E7710)
+_ENV_OBJTAB = 0x10E10000     # surface table base (g_6EED38), 0x54 stride
+
+
+def _env_bss(seed, a):
+    base = a & ~3
+    # pointer-valued globals -> scratch arenas
+    if base == 0x106E7710:
+        return _b(_ENV_CUR, a, 0x106E7710)
+    if base == 0x106EED38:
+        return _b(_ENV_OBJTAB, a, 0x106EED38)
+    # bounded loop counts
+    if base == 0x106E8A18:                       # early surface-flag scan count
+        return _b(2, a, 0x106E8A18)
+    if base == 0x104ADD38:                       # per-segment projection count
+        return _b(3, a, 0x104ADD38)
+    # control flags: both non-zero so the function does its full work; the
+    # weather flag varies the dc/dd combiner arm and the colour constant.
+    if base == 0x106ED6B0:
+        return _b(1, a, 0x106ED6B0)
+    if base == 0x106ED6B4:
+        return _b(seed & 1, a, 0x106ED6B4)
+    if base == 0x106EC798:                       # section index -> 0 (min offsets)
+        return 0
+    if base == 0x106EA3F4 or base == 0x106E8204: # viewW sign xor -> no flip
+        return 0
+    if base == 0x100A7514 or base == 0x100A7518: # view half-dims
+        return _b(64, a, base)
+    # view/projection matrix g_6E78F0 (4x4, row-major): small non-zero, varied
+    # coefficients so every segment gets a non-zero projective w (avoiding the
+    # 1/w = inf that pushes the projected coords out of every screen bound and
+    # skips the tile emit) and lands in range, giving the transform + tile-pack
+    # path real teeth.  The translation row (m[3][*]) that the body zeroes is
+    # left to the body; m[3][3] is a solid positive so w never collapses to 0.
+    if 0x106E78F0 <= base < 0x106E7930:
+        idx = (base - 0x106E78F0) >> 2
+        if idx == 15:                             # m[3][3]
+            return _f32at(1.0, a)
+        return _f32at(0.05 + 0.01 * idx, a)
+    # projection thresholds / scales
+    if base == 0x10077364:                       # near-plane w -> very negative (accept any w)
+        return _f32at(-1.0e30, a)
+    if base == 0x10077314:                       # perspective numerator
+        return _f32at(1.0, a)
+    if base == 0x10077368:                       # screen min -> very negative
+        return _f32at(-1.0e30, a)
+    if base == 0x10077304:                       # screen max -> very positive
+        return _f32at(1.0e30, a)
+    if base == 0x10077348:                       # first-loop bias
+        return 0
+    if base in (0x10077344, 0x1007734C, 0x10077350, 0x10077354):
+        return _f32at(0.1, a)
+    # per-segment source vertices (psVar16 walks &DAT_104add54, reading the
+    # shorts at [-2]/[-1]/[0] each step): give each of the three segments
+    # distinct, seed-varied coordinates so a wrong vertex index or a transform
+    # coefficient swap changes at least one segment's projected tile command,
+    # instead of every segment collapsing to the same point.
+    if 0x104ADD50 <= a < 0x104ADD68:
+        h = a & ~1
+        val = (((h - 0x104ADD50) >> 1) * 13 + 7 + (seed & 7)) & 0x7fff
+        return (val >> (8 * (a - h))) & 0xFF
+    return 0                                      # everything else null-safe / 0
+
+
+# The DL command words this function writes are INTEGER output; a differing dword
+# there is a real divergence, not x87 rounding.  The view matrix and float
+# scratch are left tolerant.
+_ENV_EXACT = ((_ENV_CUR, _ENV_CUR + 0x400),)
+_ENV_STUBS = (0x10008D60, 0x1001CF90, 0x10034B70, 0x10034AF0,
+              0x100349C0, 0x100344D0, 0x100597F0)
+
+
 PROFILES = {
+    0x10017110: Profile(_env_bss, zero_stack=True, seeds=48,
+                        exact_regions=_ENV_EXACT, stub_calls=_ENV_STUBS),
     0x10061470: Profile(_sc_bss, zero_stack=False, seeds=48, buf=_sc_buf,
                         buf_sizes={0: 0x2b68}, exact_regions=_SC_EXACT),
     0x100645A0: Profile(_cd_bss, zero_stack=False, seeds=48, arg=_cd_arg, buf=_cd_buf,
