@@ -387,8 +387,13 @@ typedef struct BrCarFxEnv {
  *
  * Returns early (doing nothing) when mode6620 is set and sel0B380C is neither
  * 2 nor 8. */
+#ifdef BR_MATCHING_BUILD
+/* Glide 0x10032880 is __fastcall(pCar); pEnv/pSeed are globals in that build. */
+void __fastcall BrCarWheelFx(struct BrCar *pCar);
+#else
 void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv,
                   uint32_t *pSeed);
+#endif
 
 /* 0x10039F20  spawn pool particles from the four wheels (thiscall).
  *
