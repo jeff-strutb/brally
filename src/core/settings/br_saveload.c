@@ -79,6 +79,18 @@ extern char  DAT_100b55ac[];                     /* "Done."                  */
 /* @t4-pass 0x1006A080 1 2026-09-07 probes 150 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006A080 2 2026-09-07 probes 149 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006A080 3 2026-09-13 probes 131 bytes 606 insns 206 regions 14 rows 18 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006A080 4 2026-09-20 probes 12 bytes 606 insns 206 regions 14 rows 18 census yes  (default-arm path=/count= assignment-order swap: inert, matches the dead list) */
+/* @t4-pass 0x1006A080 5 2026-09-20 probes 10 bytes 606 insns 206 regions 14 rows 18 census no   (baseline reconfirm; the CSE-vs-rematerialise arg cascade has no source handle) */
+/* @t3 0x1006A080 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 606/641 insns 206/220 rows 16+2 regions 14 oracle EQUIVALENT
+ * @t3-effort passes 5 zero-movement 4 5
+ * Residue is one allocation cascade with a single root (per header): the
+ * original rematerialises the second argument (two [arg] loads) so its four
+ * contended values fill the callee-saved registers, while VC5 CSEs the loads,
+ * making arg a fifth value that spills `mode` and lets it cross-jump the three
+ * tail returns.  Rematerialise-vs-copy has no source handle.  A5 oracle
+ * EQUIVALENT is the completeness proof (rule 12).  Do not reopen before the
+ * end-grind. */
 /* @implements 0x1006A080 glide BrSaveLoad */
 char BrSaveLoad(int mode, int arg)
 {
