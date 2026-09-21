@@ -41,6 +41,17 @@ extern float _DAT_10077a78;                          /* 0.0f */
  * distance wall, not missing code.  The A4 86 B uncompared is a resync
  * artifact.  Parks as T2; not a transcription target.
  */
+/* @t4-pass 0x10068900 1 2026-09-20 probes 12 bytes 1671 insns 641 regions 27 rows 215 census yes  (SAT-sum product operand flip mem*local->local*mem: canonicalised, no move; x87 schedule) */
+/* @t4-pass 0x10068900 2 2026-09-20 probes 10 bytes 1671 insns 641 regions 27 rows 215 census no   (baseline reconfirm; matches the w3 dead list -- ptr copies, |m| array, abs forms, dup vs reload) */
+/* @t3 0x10068900 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1671/1653 insns 641/642 rows 108+107 regions 27 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is x87 scheduling only: in each of the fifteen projected-extent sums
+ * the original multiplies the parameter element straight from memory and keeps
+ * |m6..m8| on the x87 stack (fld st(4)) where this build loads-then-multiplies
+ * and reloads (per the dossier above; sibling of carcol/chasestep).  A5 oracle
+ * EQUIVALENT is the completeness proof (rule 12).  Do not reopen before the
+ * end-grind. */
 /* @implements 0x10068900 glide BrObbOverlap */
 int BrObbOverlap(const float *m, const float *t, const float *a, const float *b)
 {
