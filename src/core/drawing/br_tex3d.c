@@ -1668,23 +1668,28 @@ int BrTex3dExpandInto(int param_1,int param_2,int param_3,int param_4,
  * Glide texture (LOD/aspect codes, grTexCalcMemRequired, halving retries when
  * the aspect is unrepresentable); convert and append via 0x10027B60/0x10027710.
  * Returns the record index the 0xDC command will carry. */
-/* A5-DIFF (2026-09-20): the oracle runs this (profile in oracle_profiles.py)
- * and reports DIFF at seed 9 -- a REAL behavioural bug, not scheduling, so this
- * is NOT T3-certifiable until fixed.  Localized: at seed 9 the original's dedup
- * call FUN_10027a70(&r) yields id == -1 (build path) but our build reaches the
- * `if (id != -1) return id;` test with eax == 0 and returns early, so the whole
- * descriptor/convert/append tail never runs (that is the 0x1186C988 staging
- * buffer + descriptor divergence the oracle flags).  The 12 opening-copy fields
- * (p1/p2/f264/b290..b297/f268) were verified to land at IDENTICAL [esp] offsets
- * in both builds, and both f268=0 stores and the 0x10027A70 call site match --
- * so the divergence is in CONTROL FLOW around the dedup call, where the two
- * builds' code layout has already diverged (recomp +5 B), not in the descriptor
- * values.  Next: single-step both sides from entry to the first differing
- * executed instruction (the linear-sweep disassembly misleads past the size
- * fork; drive x87emu on each side's own bytes).  Do NOT certify on a stale
- * EQUIVALENT -- re-sweep first; the verdict here is reproducibly DIFF. */
+/* A5 (2026-09-21): oracle reports EQUIVALENT (48 seeds).  A seed-9 DIFF that
+ * blocked this was traced to an ORACLE bug, not a transcription error: at the
+ * grTexCalcMemRequired call the original goes through the import THUNK 0x10072A44
+ * (`call thunk; jmp [0x118F069C]`) while our byte-twin calls the IAT slot
+ * directly (`call [0x118F069C]`) -- functionally identical, but x87emu modelled
+ * the import on the direct call and BLACK-BOXED it on the thunk tail-call, so
+ * the two sides read a different grTexCalcMemRequired result and our build
+ * walked a resample it should not.  Fixed in tools/x87emu.py (a `jmp [slot]`
+ * into a modelled import now runs the model and returns to the caller); the
+ * certified sweep shows zero regressions.  Residue is byte-shape only, incl.
+ * that thunk-vs-direct import call form. */
 /* @t4-pass 0x10028BB0 1 2026-09-07 probes 150 bytes 1746 insns 528 regions 8 rows 32 census yes  (tools/crank.py) */
 /* @t4-pass 0x10028BB0 2 2026-09-07 probes 150 bytes 1746 insns 528 regions 7 rows 32 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028BB0 3 2026-09-21 probes 10 bytes 1751 insns 529 regions 7 rows 33 census yes  (oracle thunk-import fix unblocked A5; residue is byte-shape, no source move) */
+/* @t4-pass 0x10028BB0 4 2026-09-21 probes 10 bytes 1751 insns 529 regions 7 rows 33 census no   (baseline reconfirm at the current numbers) */
+/* @t3 0x10028BB0 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1751/1755 insns 529/532 rows 18+15 regions 7 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * A5 oracle EQUIVALENT across 48 seeds is the completeness proof (rule 12); the
+ * seed-9 block was an oracle thunk-import modelling gap, now fixed (see above).
+ * Residue is byte-shape codegen incl. the thunk-vs-direct import call form.
+ * Do not reopen before the end-grind. */
 /* @implements 0x10028BB0 glide BrTex3dRegister */
 
 int BrTex3dRegister(void)

@@ -747,7 +747,24 @@ class Machine:
         elif mn == 'jmp':
             t = o[0]
             if t.startswith('['):
-                return self.rd_i(self.mem_addr(t))     # indirect: jump table / import tail-call
+                slot = self.mem_addr(t)
+                if slot in self.imports:
+                    # Import THUNK tail-call: `call thunk` (retaddr pushed) then
+                    # `jmp [IAT]`.  A DIRECT `call [IAT]` to the same slot runs
+                    # the model (no retaddr pushed); reaching the identical
+                    # import through the thunk must give the identical result,
+                    # or a function that calls a Glide/CRT import via its thunk
+                    # DIFFs a byte-twin that calls the slot directly.  Pop the
+                    # retaddr so the args align at [esp] as the model expects,
+                    # run the model (sets eax, clears its args off esp), discard
+                    # the call frame, and resume at the caller.
+                    ret = self.rd_i(self.R['esp'])
+                    self.R['esp'] = u32(self.R['esp'] + 4)
+                    self.imports[slot](self)
+                    if self.callstack:
+                        self.callstack.pop()
+                    return ret
+                return self.rd_i(slot)                 # indirect: jump table / unmodeled tail-call
             if t in self.R or t in REG16 or t in REG8:
                 return self.rd_reg(t)                  # computed (register) jump
             return int(t, 16)
