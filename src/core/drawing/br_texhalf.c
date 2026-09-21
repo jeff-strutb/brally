@@ -38,6 +38,23 @@ int  FUN_10024490(void *, int, int, void *, int, int, int);
  * request+0x27C..+0x288 are filled the same way when a cache slot is free.
  * Returns 1 on success (including a missing BMP, which just leaves the
  * request unmarked), 0 if the backend is not the BMP path. */
+/* RESIDUE (2026-09-20): 1345/1377 B, 411/415 insns, 12 regions, regnorm 7+11.
+ * Routing the two early return-0 guards through a shared `goto fail` (the
+ * original shares one epilogue rather than inlining each early exit) cut the
+ * gap from 13+10 to 7+11.  What is left is codegen only: the zero constant
+ * lives in ebp in the original and esi here (cascades to the cmp-against-0 and
+ * store forms), the shared fail block is placed at the function tail in the
+ * original and near entry here (je-vs-jne guard polarity), and the request
+ * doublings are `shl` in the original vs `add r,r` here (`*2` and `<<1` both
+ * fold to add, unmoved).  A5 oracle EQUIVALENT. */
+/* @t4-pass 0x10023D70 1 2026-09-20 probes 14 bytes 1345 insns 411 regions 12 rows 18 census yes  (goto-fail shared exit landed 13+10->7+11; then *2-vs-<<1 doubling moved nothing) */
+/* @t4-pass 0x10023D70 2 2026-09-20 probes 10 bytes 1345 insns 411 regions 12 rows 18 census no   (baseline reconfirm; zero-register ebp/esi + fail-block placement are codegen, not source-driven) */
+/* @t3 0x10023D70 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1345/1377 insns 411/415 rows 11+7 regions 12 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is register allocation + block placement only (see RESIDUE above).
+ * A5 oracle EQUIVALENT is the completeness proof (rule 12).  Do not reopen
+ * before the end-grind. */
 /* @implements 0x10023D70 glide FUN_10023d70 */
 int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
 {
@@ -51,12 +68,12 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
 
     pReq[0x268 / 4] = 0;
     if (DAT_118ed1a0 != 2)
-        return 0;
+        goto fail;
 
     DAT_10ac67c0 = DAT_10ac67c0 + 1;
     hBmp = FUN_10059fe0(DAT_10ac67a4, DAT_10ac67c0, 0);
     if (hBmp == 0)
-        return 0;
+        goto fail;
 
     FUN_1005a020(DAT_10ac67a4, DAT_10ac67c0, &x0, &y0, &x1, &x2);
     if (x0 == 0 && y0 == 0 && x1 == 0 && x2 == 0) {
@@ -175,6 +192,8 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
     pReq[0x27c / 4] = (int)pBuf;
     memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
     return 1;
+fail:
+    return 0;
 }
 
 #endif /* BR_MATCHING_BUILD */
