@@ -1,5 +1,16 @@
 /* WHAT IT DOES: scroll a slot list by one step, wrapping at the ends and
  * reporting both whether it wrapped and whether anything moved. */
+/* @t3 0x100553B0 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1447/1453 insns 408/408 rows 4+4 regions 5 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is three VC5 emitter choices, none of them missing or wrong code:
+ * the two ratio arms' identical `fdiv [1a9d0]` tail-merged into one divide;
+ * the first clamp's width comes out `fsub` where the original picked `fsubr`
+ * (its own other arm uses `fsub` for the same construct); and `i1a9b4 = 1`
+ * reuses the return register. The A5 oracle proves same-in/same-out. Dossier,
+ * the wall-break (final-if-sense flip), and the dead list are in the header
+ * comment below and the @t4-pass ledger. Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x100553B0 glide BrSlotScrollStep_100553B0
  * @cpp_kind method
  * @cpp_symbol ?Step@Ctl553B0@@QAEHPAH@Z
@@ -28,20 +39,46 @@
  *  - the two row-rejects in the scan loop are ONE `||`; writing them as
  *    two `if`s emits the `p[0] = 1` block twice.
  *
- * PARKED at +3 bytes with an 8-instruction register-blind gap. Five of
- * those eight are the known cross-jumping wall (docs/VC5-IDIOMS.md,
- * "our cl merges identical error tails"): the original keeps three
- * separate `xor eax,eax` return-0 epilogues and one separate return-1,
- * ours tail-merges them, which flips two `je` to `jne`, one `jl` to
- * `jge`, and turns two `xor eax,eax` into `mov eax,1`. The other three:
- * the `/f1a9d0` is factored out of the ratio's two arms (the original
- * divides in both), the first clamp's subtraction comes out `fsub` where
- * the original has `fld`+`fsubr` -- and the original's OTHER arm uses the
- * plain `fsub` for the same construct, so that one is an emitter choice,
- * not a spelling -- and `i1a9b4 = 1` reuses the return-value register.
- * DO NOT RE-PROBE: negating the subtraction (+32 bytes), a ternary for
- * the ratio, moving the i1a9b4 store, and flags /O2 /Ob0, /O2 /Gy, /Ox
- * (all identical) and /O2 /Op (+192) change nothing.
+ * A fifth shape breaks what was logged as a "cross-jumping wall": the
+ * final tail is `if (bAny == 0) { clear bits; return 0; } return 1;`,
+ * NOT `if (bAny) return 1; ...; return 0;`. The original's last physical
+ * block is the shared return-1 at 0x1005594e (the `<60` timer path and
+ * the end-of-scan path both jump forward to it); the return-0 sites stay
+ * inline. Writing `return 0` last made VC5 pick return-0 as the shared
+ * tail and duplicate the return-1s -- the mirror image. Flipping the
+ * sense so `return 1` is physically last flips every one of those
+ * merge/duplicate decisions to match: the prologue and all three early
+ * return sites then go byte-exact (first diff was +0x0, now +0x82), and
+ * the register-blind instruction gap drops to 0.
+ *
+ * CERTIFIED T3 (rule 12): the A5 oracle proves same-in/same-out and
+ * gates 0+A pass. The residue is three VC5 emitter choices, not missing
+ * or wrong code, all confirmed a floor under 12 spelling probes and 12
+ * flag probes:
+ *  - the two ratio arms both end in `fdiv [esi+1a9d0]`; VC5 tail-merges
+ *    them into one divide after the reconverge and slides the i1a9b8 load
+ *    into the gap, where the original divides in each arm. A per-arm
+ *    `float dv = f1a9d0;` local does force two divides (raw bytes
+ *    1072->683) BUT trades the merge for an `fld dv; fdivr 1.0` operand
+ *    role in the reciprocal arm, pushing the register-blind rows to 11
+ *    (> the Gate-A limit) -- worse for certification, so not taken;
+ *  - the first clamp's width `(f1a9ac - f1a9c0)` comes out `fld ac;
+ *    fsub c0` where the original has `fld c0; fsubr ac`. The original's
+ *    OTHER arm uses the plain `fsub` for the same construct, so this is
+ *    an emitter choice, not a spelling (mul-first, a temp, and a negated
+ *    reverse all leave it or make it worse);
+ *  - `i1a9b4 = 1` reuses the return-value register (`mov eax,1; mov
+ *    [..],eax`) where the original stores the immediate then loads eax=1.
+ *    Storing before the pfn10 call would cut it but reorders the store
+ *    across the callback -- the original stores AFTER the call, so the
+ *    faithful order keeps the reuse.
+ * DEAD (unmoved): a ternary for the ratio, mul-first / temp / negated
+ * spellings of the width, a result-var for the store, and flags /O2 /Ob0,
+ * /Ox, /O2 /Gy, /O2 /Ot, /Ob1, /Og /Oy (all identical or worse); /O2 /Op
+ * is +192, /O1 /Os /Oxs shrink and diverge.
+ *
+ * @t4-pass 0x100553B0 1 2026-09-21 probes 12 bytes 1447 insns 408 regions 5 rows 8 census no  (spelling sweep on the three residue causes: fdiv-merge via compound-assign / per-arm-divisor-local / numerator-hoist, fsubr via mul-first / temp / negated-reverse, and the i1a9b4=1 store via a result-var. The per-arm-divisor-local cut raw bytes 1072->683 but broke Gate A2, and store-before-call reorders across the pfn10 callback; neither is a faithful floor. The faithful residue is unmoved.)
+ * @t4-pass 0x100553B0 2 2026-09-21 probes 12 bytes 1447 insns 408 regions 5 rows 8 census yes  (flag mechanism sweep: /O2 /Ob0, /Ox, /O2 /Op, /Og /Oy, /O1, /O2 /Os, /O2 /Ot, /Oxs, /O2 /Gy, /O2 /Ob1, /O2 /Oy /Ob2, /Oy /Ot /Og /Oi -- every one leaves the register-blind residue at 408 insns / 5 regions / 8 rows or diverges further. The A5 oracle proves same-in/same-out; the residue is register allocation plus the two x87 operand-role picks above. Numbers unmoved from pass 1.)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -131,13 +168,13 @@ void  BrFn1006BA60(int a, int b);
 #define BR_SLOT 0x438
 #define BR_REC(n) ((char *)this + (n) * BR_SLOT)
 
-/* 2026-09-13 (t3.py, C++ rows now measurable): insn gap 0, rows 9+9, 9
- * unpaired -- the early `return 0/1` exits are tail-DUPLICATED by VC5 where
- * the original shares two epilogues (`jne 0x5a1` / `jl 0x59e`), plus one
- * `fld a; fsub b` vs `fld b; fsubr a` and one immediate-vs-register store.
- * DEAD: nesting the first guard, `goto exit0`, a result variable with a
- * single `return r`, and rewriting ALL eleven returns as `r = N; goto done`
- * (1242 -> 1276): every shape still duplicates the exit. */
+/* 2026-09-21: insn gap 0, rows 4+4, oracle EQUIVALENT. The 2026-09-13
+ * "cross-jumping wall" was a layout artefact of writing `return 0` last:
+ * the final `if (bAny == 0) { ...; return 0; } return 1;` below puts the
+ * shared return-1 physically last, matching the original, and every early
+ * return then goes byte-exact (prologue through +0x82). What remains is
+ * register allocation plus the fdiv tail-merge, the fsub/fsubr operand
+ * role, and the i1a9b4=1 register reuse -- see the file-header ledger. */
 int Ctl553B0::Step(int *pArg)
 {
     int            bWrapped;
@@ -320,9 +357,9 @@ int Ctl553B0::Step(int *pArg)
             pfn04(this, pArg);
     }
 
-    if (bAny != 0)
-        return 1;
-
-    i18 = i18 & 0xFFFFFFDD;
-    return 0;
+    if (bAny == 0) {
+        i18 = i18 & 0xFFFFFFDD;
+        return 0;
+    }
+    return 1;
 }
