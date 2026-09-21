@@ -1494,7 +1494,45 @@ def _ms_buf(seed, argidx, off):
     return None
 
 
+# ---- BrCamChaseStep 0x10001CF0 (per-frame chase-camera step) ---------------
+# __fastcall(BrCamCar *car): the car object is one big struct passed in ecx.
+# The default random world walks into unmapped memory because car->pView
+# (+0x29C4) is a garbage pointer that the frame rebuild dereferences.  Point
+# pView at a zone LATER IN THE SAME arg buffer (car+0x3000) -- with
+# zero_stack=False the whole buffer is tame-float-filled, so the view's f80B0/
+# f80B8 read as valid finite scalars for free -- and point the two target
+# pointers (+0x2734/+0x2738) at the in-struct cam block (car+0x2780) so the
+# `pTarget == cam` branch is reachable and no callee derefs a null.  Vary the
+# replay/demo/hold gate globals.  All the callees are BrVec3 leaf math and RUN;
+# the residue is a pure x87 scheduling wall (file dossier), so A5 decides it.
+_CC_BASE = 0x00300000       # arg0 (car) buffer base (HEAP_BASE)
+
+
+def _cc_bss(seed, a):
+    base = a & ~3
+    if base == 0x105CCB88:  return _b(seed & 1, a, base)   # g_brRaceReplay 0/1
+    if base == 0x10B1CF14:  return _b(5, a, base)          # g_BrCamHold (small, decremented)
+    if base == 0x10B1CF10:  return _b(3, a, base)          # g_BrCamHold2
+    return 0                                               # null-safe / cleared
+
+
+def _cc_buf(seed, argidx, off):
+    if argidx != 0:
+        return None
+    if 0x29C4 <= off < 0x29C8:                             # car->pView -> in-buffer view
+        return _b(_CC_BASE + 0x3000, off, 0x29C4)
+    if 0x2734 <= off < 0x2738:                             # car->pTarget -> cam block
+        return _b(_CC_BASE + 0x2780, off, 0x2734)
+    if 0x2738 <= off < 0x273C:                             # car->pTargetPrev -> cam block
+        return _b(_CC_BASE + 0x2780, off, 0x2738)
+    if 0xF7C <= off < 0xF80:                               # car->locked: vary 0/1
+        return _b(seed & 1, off, 0xF7C)
+    return None                                            # else: tame-float default fill
+
+
 PROFILES = {
+    0x10001CF0: Profile(_cc_bss, zero_stack=False, seeds=48, buf=_cc_buf,
+                        buf_sizes={0: 0xB200}),
     0x100302A0: Profile(_ms_bss, zero_stack=True, seeds=48, buf=_ms_buf,
                         buf_sizes={0: 0x200}),
     0x10028BB0: Profile(_tr_bss, zero_stack=True, seeds=48),
