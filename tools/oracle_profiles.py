@@ -1243,11 +1243,22 @@ def _sv_car_byte(seed, c, r):
 
 
 def _sv_buf(seed, argidx, off):
-    if argidx == 0:                                       # pView: small varied rect [0]
-        if off < 4:   return _b(((seed % 21) - 10) & 0xffffffff, off, 0)   # x
-        if off < 8:   return _b(((seed % 17) - 8) & 0xffffffff, off, 4)    # y
-        if off < 12:  return _b(40 + seed % 40, off, 8)                    # w
-        if off < 16:  return _b(30 + seed % 40, off, 12)                   # h
+    if argidx == 0:                                       # pView: rect [0]
+        # Two regimes so BOTH divergent regions are observable: even seeds get a
+        # WIDE view so FUN_1000c9e0's pt-dependent box survives the clamp (region
+        # 1: the pt.x/pt.y schedule feeds the box), odd seeds a NARROW one so the
+        # edge-sum clamps fire and write pView-derived bounds (region 2: the
+        # w+x / y+h sums).
+        if seed & 1:                                       # narrow: clamps fire
+            if off < 4:   return _b(((seed % 20) - 10) & 0xffffffff, off, 0)   # x
+            if off < 8:   return _b(((seed % 14) - 7) & 0xffffffff, off, 4)    # y
+            if off < 12:  return _b(4 + seed % 6, off, 8)                      # w
+            if off < 16:  return _b(3 + seed % 6, off, 12)                     # h
+        else:                                              # wide: no clamp
+            if off < 4:   return _b((-20000) & 0xffffffff, off, 0)             # x
+            if off < 8:   return _b((-20000) & 0xffffffff, off, 4)             # y
+            if off < 12:  return _b(40000, off, 8)                            # w
+            if off < 16:  return _b(40000, off, 12)                           # h
         return None
     if argidx == 1:                                       # pRace: driver table
         if 0x60 <= off < 0x64:  return _b(_SV_RACE + _SV_DRV[0], off, 0x60)
@@ -1266,9 +1277,87 @@ def _sv_buf(seed, argidx, off):
     return None
 
 
+# ---- BrGhostPlaybackStep 0x10061F60 (ghost/replay playback advance) --------
+# thiscall(pCtl): advances one ghost playback controller -- fades the ghost car,
+# copies its position, runs its update callback, and (path-active) steps the
+# keyframe cursor.  The controller's car pointer (+0x60) and path base (+0x28)
+# are seeded to scratch sub-objects; the flags word (+0x68) and race state are
+# varied so all three top branches fire.  The car's update vtable slot is set to
+# BrCtlAi so the ==BrCtlAi arm runs, and BrCtlAi plus the path-advance / vec-sub
+# / vec-scale / gate-step calls are black-boxed; BrVec3Length (x87 return) runs.
+_GS_CAR   = 0x10E30000     # controller[0x18] -> ghost car
+_GS_FLAGS = 0x10E31000     # car[0x29c0] -> flags record
+_GS_PATH  = 0x10E32000     # controller[10]  -> keyframe table
+
+
+def _gs_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x10226a48:               # playback gate: 0 so the body runs
+        return 0
+    if base == 0x100a9360:               # race state 0..5
+        return _b(seed % 6, a, 0x100a9360)
+    if base == 0x105ccb5c:               # scratch-clear gate: mostly off
+        return _b(1 if (seed % 5) == 0 else 0, a, 0x105ccb5c)
+    if base == 0x100b3858:
+        return 0
+    if base == 0x106e9d8c:               # frame dt
+        return _f32at(1.0 / 30.0, a)
+    if base in (0x10077a0c, 0x10077a10, 0x10077a14, 0x100778f8, 0x100778d8):
+        return _f32at(0.5, a)
+    if base == 0x106eed48:               # timing struct pointer -> scratch (+0x64 float)
+        return _b(_GS_PATH, a, 0x106eed48)
+    if base == 0x10af2108:               # per-slot "has recorded run" byte
+        return _b(seed & 1, a, 0x10af2108)
+    if base in (0x10b1cbec, 0x10af07f0, 0x10b1ce98, 0x10b1ce9c, 0x10b1cea0):
+        return _b((seed * 7) & 0x7f, a, base)
+    if base == _GS_CAR + 0x29c0:         # flags-record pointer
+        return _b(_GS_FLAGS, a, _GS_CAR + 0x29c0)
+    if base == _GS_CAR + 0xf08:          # update vtable slot -> BrCtlAi
+        return _b(0x1005e690, a, _GS_CAR + 0xf08)
+    if a == _GS_CAR + 0x29af:            # fade phase byte 0/1/2
+        return (seed % 3) & 0xFF
+    if base == _GS_CAR + 0x29b0:         # fade scalar
+        return _f32at(((seed % 5) - 2) * 0.4, a)
+    if _GS_CAR + 0x30 <= base < _GS_CAR + 0x3c:   # car position (copied to +0xf80)
+        return struct.pack('<f', (((base >> 2) * 5 + seed) % 13) - 6.0)[a & 3]
+    if _GS_CAR + 0x1030 <= base < _GS_CAR + 0x1038:  # speed accum inputs
+        return struct.pack('<f', (((base >> 2) * 3 + seed) % 11) - 5.0)[a & 3]
+    if base == _GS_PATH + 0x64 or base == _GS_PATH + 0x8c or base == _GS_PATH + 100:
+        return _f32at(1.0 + ((base >> 2) % 5), a)
+    if 0x10af222c <= base < 0x10af222c + 0x40:      # vec for BrVec3Length
+        return struct.pack('<f', (((base >> 2) * 11 + seed) % 17) - 8.0)[a & 3]
+    return 0
+
+
+def _gs_buf(seed, argidx, off):
+    if argidx != 0:
+        return None
+    if 0x60 <= off < 0x64:               # [0x18] car pointer
+        return _b(_GS_CAR, off, 0x60)
+    if 0x28 <= off < 0x2c:               # [10] keyframe base pointer
+        return _b(_GS_PATH, off, 0x28)
+    if 0x68 <= off < 0x6c:               # [0x1a] flags: vary bits 1/2
+        return _b(seed % 4, off, 0x68)
+    if 0x64 <= off < 0x68:               # [0x19] frame index
+        return _b(seed % 4, off, 0x64)
+    if 0x74 <= off < 0x78:               # [0x1d] slot -> 0
+        return 0
+    if 0x44 <= off < 0x48:               # [0x11] frame counter
+        return _b(seed % 8, off, 0x44)
+    return None
+
+
+_GS_STUBS = (0x1005E690, 0x1005ECF0, 0x10034560, 0x10034390, 0x1005FF00)
+
+
 PROFILES = {
-    0x1000E320: Profile(_sv_bss, zero_stack=True, seeds=48, buf=_sv_buf,
-                        buf_sizes={0: 0x100, 1: 0x8000, 2: 0x6000}),
+    0x10061F60: Profile(_gs_bss, zero_stack=True, seeds=48, buf=_gs_buf,
+                        buf_sizes={0: 0x100}, stub_calls=_GS_STUBS,
+                        exact_regions=((_GS_CAR, _GS_CAR + 0x3000), (_GS_FLAGS, _GS_FLAGS + 0x100))),
+    0x1000E320: Profile(_sv_bss, zero_stack=True, seeds=12, buf=_sv_buf,
+                        buf_sizes={0: 0x100, 1: 0x8000, 2: 0x6000},
+                        stub_calls=(0x100031D0, 0x10003280)),
     0x10005810: Profile(_gp_bss, zero_stack=True, seeds=48, arg=_gp_arg,
                         buf_sizes={0: 0x100}, stub_calls=_GP_STUBS),
     0x1006F170: Profile(_cs_bss, zero_stack=True, seeds=64, arg=_cs_arg,
