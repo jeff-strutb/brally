@@ -172,6 +172,12 @@ static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
  * asks for the rectangle. */
 /* @t4-pass 0x10013FD0 1 2026-09-13 probes 128 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10013FD0 2 2026-09-13 probes 284 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x10013FD0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 212/217 insns 56/57 rows 1+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: register colouring only -- one surplus `mov R, R`; A4 leaves 164 B
+ * uncompared at key 6 but A3/A5 prove the multiset and EQUIVALENT (crank census
+ * yes x2). Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10016A60 d3d BrGfxDrawTexRect */
 void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 {
