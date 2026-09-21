@@ -144,21 +144,6 @@ def collect_t3(recompile=False, progress=None):
 
     recovered = {}          # global-name pairing results, cross-function
 
-    _SLOT_OK = []
-
-    def _slot_ok():
-        if not _SLOT_OK:
-            p = os.path.join(ROOT, 'config', 't3_slot_ok.csv')
-            vas = set()
-            if os.path.exists(p):
-                for row2 in csv.DictReader(open(p)):
-                    try:
-                        vas.add(int(row2['va'], 16))
-                    except (ValueError, KeyError):
-                        pass
-            _SLOT_OK.append(vas)
-        return _SLOT_OK[0]
-
     # FORCE-BLOCKED rows: a certified function whose PLACED span the in-image
     # A5 run rejected (a real behavioural divergence, not a modelling gap)
     # must not ship, whatever the contract gates say.  One row per VA in
@@ -613,14 +598,12 @@ def collect_t3(recompile=False, progress=None):
                 print('  TRUNCATION OK %s: %dB overhang is byte-identical '
                       'to the image tail' % (name, len(over)))
                 continue
-            if va in _slot_ok():
-                # the A5 oracle ran the PLACED span -- spliced tail and all
-                # -- and returned EQUIVALENT; per the certification standard
-                # the behavioural verdict outranks byte conservatism.  The
-                # evidence row lives in config/t3_slot_ok.csv.
-                print('  TRUNCATION ADMITTED %s: %dB overhang, placed-image '
-                      'A5 EQUIVALENT on record' % (name, len(over)))
-                continue
+            # NO truncation admission.  The old config/t3_slot_ok.csv escape
+            # ("placed-image A5 EQUIVALENT") shipped BrGlNavPoll with its
+            # final `add esp,0x10; ret 4` cut mid-instruction: the seeds
+            # never reached that arm, and on hardware it corrupted esp and
+            # FELL THROUGH into 0x100597C0 (the 2026-09-21 credits-screen
+            # page fault).  An over-slot body is annexed or it blocks.
             byname.pop(name, None)       # never accept a truncated placement
             a_va, why2 = _annex_fill(obj, name, name, va, len(pre),
                                      sites, anchors)
@@ -781,7 +764,7 @@ def collect_t3(recompile=False, progress=None):
             while clen and bod2[clen - 1] in (0x90, 0xCC):
                 clen -= 1
             slot2 = size - len(pre)
-            if clen > slot2 and va not in _slot_ok():
+            if clen > slot2:
                 over2 = bod2[slot2:clen]
                 keep2 = bytes(img.byte(va + len(pre) + slot2 + i) or 0
                               for i in range(len(over2)))
