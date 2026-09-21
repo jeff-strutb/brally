@@ -187,6 +187,16 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * (CLAUDE.md rule 12).
  */
 /* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
+/* @t3 0x1000E320 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1992/1992 insns 543/543 rows 10+10 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is the two value-preserving VC5 orderings described above: region 1
+ * schedules the two independent driver-loop loads (hoist vs just-in-time, same
+ * values, no aliasing); region 2 reads a commutative 16-bit integer add in the
+ * other operand order (same value, same flags, same two reads).  The A5
+ * behavioural oracle RUNS the whole pass and returns EQUIVALENT over 48 seeds
+ * with per-region negative controls, superseding the byte-distance gates
+ * (CLAUDE.md rule 12).  Do not reopen before the end-grind. */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
 {
