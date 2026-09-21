@@ -161,6 +161,7 @@ void __fastcall FUN_10001510(BrCamCar *car, BrPtrArg cam, BrPtrArg prev);/* 0x10
  * respelling-dead, co-filing NULL. Parks as T2 (A2 43 vs 10.1). NOT a
  * transcription target -- the earlier "missing code" reading was wrong.
  */
+/* @t4-pass 0x10001CF0 2 2026-09-20 probes 14 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/crank.py) */
 /* @implements 0x10001CF0 glide BrCamChaseStep */
 void __fastcall BrCamChaseStep(BrCamCar *car)
 {
