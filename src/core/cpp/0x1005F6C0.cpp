@@ -1,19 +1,57 @@
-/* br_lapsave.c -- recycle parked cars onto empty driver slots.
- *
- * Glide 0x1005F6C0 (2104 B). Called from the race step over every car
- * when mode==0. Neighbours: BrRankAssign / BrRankCmpKey, BrRaceGateStep.
- */
-#ifdef BR_MATCHING_BUILD
-/* The original is /MD: CRT calls go through the import table (FF 15). */
+/* WHAT IT DOES: for this car, score every driver slot by wrapped along-track
+ * delta plus world distance, sort the others by that score, then for each of
+ * two groups copy lap, gate and pose from attached cars onto the driver
+ * record (the "saving lap/gate" trace) and write them back onto empty slots
+ * of the same group (the "restoring lap/gate" trace). */
+/* RESIDUE: 1 byte of 2104.  At +0x252 the original spills the group counter
+ * from its own register (`xor edx,edx; mov [esp+0x28],edx`, 89 54); ours
+ * constant-propagates the zero and stores the zero register (89 5c).  Every
+ * other byte, reloc-masked, is identical.
+ * Source facts that closed the rest (2026-09-21, from 2076 B / 47 rows):
+ *   - C++ member: BrEntSetMatrix is a two-argument thiscall; the C fastcall
+ *     shim cost a dummy `xor edx,edx`.
+ *   - score loop is positive && chains with one 1e9 store per arm and one
+ *     BrVec3Dist call per arm (the compiler cross-jumps the calls).
+ *   - the lap delta is written inline, `(float)(carLap - myLap)`; a named int
+ *     temp is what produced the "x87 scheduling wall" (fxch st(2) x4).
+ *   - the rank / saved-car / slot walks are INDEXED; the pointer walks and
+ *     `sub r,4` are the compiler's own strength reduction.
+ *   - restore loop is `while (n != 0) { if (i >= count) break; ... }`.
+ *   - trace-call arguments are read back from the records, not held in temps.
+ *   - tint bytes pass through three int temps (xor/mov al x3), read b,g,r.
+ *   - the facing copy is an inlined V3Copy(dst, src) -- strict load/store
+ *     interleave because the inlined pointers may alias.
+ *   - zero-velocity arm first; qsort swap writes key before clearing index.
+ * Dead for the last byte (13 probes): for-loop forms, store at loop top,
+ * chained assignment, goto entry, unsigned either side, volatile slot,
+ * address-taken slot, single compiler-spilled variable (rotates everything),
+ * slot-first init. */
+/* @t4-pass 0x1005F6C0 5 2026-09-21 probes 58 bytes 2104 insns 562 regions 1 rows 0 census yes */
+/* @t4-pass 0x1005F6C0 6 2026-09-21 probes 13 bytes 2104 insns 562 regions 1 rows 0 census no */
+/* @t3 0x1005F6C0 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2104/2104 insns 562/562 rows 0+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 5 6
+ * Residue is one register choice in one store (see RESIDUE above); A5 oracle
+ * EQUIVALENT on the C++ object.  Passes 1-4 are in the git history of
+ * src/core/racing/br_lapsave.c (C lane, 2076 B). */
+/* @implements 0x1005F6C0 glide BrLapSaveRestore
+ * @cpp_symbol ?LapSaveRestore@BrCar@@QAEXXZ */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifdef BR_MATCHING_BUILD
+class BrCar {
+public:
+    void LapSaveRestore();
+    void Sub10062C50();
+    void InitTables();
+    void SetPos(float x, float y, float z);
+    void SetVel(float x, float y, float z);
+    void SetMatrix(void *pSrc);
+};
+#define pCar ((uint8_t *)this)
 
-#include "br_match.h"
-
+extern "C" {
 extern int DAT_106eed48;
 extern int DAT_100b2f00;
 extern int DAT_100a9360;
@@ -58,30 +96,14 @@ void BrVec3Direction(void *pOut, void *pA, void *pB);
 void BrVec3Midpoint(void *pOut, void *pA, void *pB);
 void BrVec3Cross(void *pOut, void *pA, void *pB);
 void BrVec3NormaliseGuard(void *pV);
-void BR_THISCALL1 BrSub10062C50(uint8_t *pCar);
-void BR_THISCALL1 BrCarInitTables(uint8_t *pCar);
-void __fastcall BrEntSetPos(uint8_t *pCar, float x, float y, float z);
-void __fastcall BrEntSetVel(uint8_t *pCar, float x, float y, float z);
-void __fastcall BrEntSetMatrix(uint8_t *pCar, int unused, void *pSrc);
-void BrModelSlotApply(uint8_t *pCar, void *pDrv);
-
-static __inline void V3Copy(float *d, float *s)
-{
-  d[0] = s[0];
-  d[1] = s[1];
-  d[2] = s[2];
+struct BrV3 { float x, y, z; };
+}
+inline void V3Copy(float *d, float *s) { d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; }
+extern "C" {
+void BrModelSlotApply(uint8_t *pCar_, void *pDrv);
 }
 
-/* WHAT IT DOES: for this car, score every driver slot by wrapped along-track
- * delta plus world distance, sort the others by that score, then for each of
- * two groups copy lap, gate and pose from attached cars onto the driver
- * record (the "saving lap/gate" trace) and write them back onto empty slots
- * of the same group (the "restoring lap/gate" trace). */
-/* C-lane twin of src/core/cpp/0x1005F6C0.cpp, kept in step with it.  Not
- * tagged: the original is a C++ member (BrEntSetMatrix is a two-argument
- * thiscall), and the __fastcall shim here costs a dummy `xor edx,edx` the
- * original does not have, so this body cannot go byte-exact from C. */
-void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
+void BrCar::LapSaveRestore()
 {
   float *pfVar1;
   unsigned int uTintB;
@@ -102,13 +124,11 @@ void BR_THISCALL1 BrLapSaveRestore(uint8_t *pCar)
   int local_d0;
   int local_cc;
   int local_c0;
-  uint8_t *local_bc;
   char local_b8[12];
   char local_ac[12];
   float local_a0[40];
 
   local_d4.f = *(float *)(DAT_106eed48 + 100);
-  local_bc = pCar;
   local_d0 = 0;
   if (DAT_100b2f00 <= 0) {
   } else {
@@ -273,12 +293,12 @@ LAB_save:
           pfVar7[0x29af] = 0;
           *(float *)(pfVar7 + 0x29b0) = 1.0f;
           *(int *)(pfVar7 + 0xf78) = 1;
-          BrSub10062C50(pfVar7);
-          BrCarInitTables(pfVar7);
+          ((BrCar *)pfVar7)->Sub10062C50();
+          ((BrCar *)pfVar7)->InitTables();
           *(int *)(pfVar7 + 0xf80) = puVar16[3];
           *(int *)(pfVar7 + 0xf84) = puVar16[4];
           *(int *)(pfVar7 + 0xf88) = puVar16[5];
-          BrEntSetPos(pfVar7,
+          ((BrCar *)pfVar7)->SetPos(
                       *(float *)puVar16,
                       *(float *)(puVar16 + 1),
                       *(float *)(puVar16 + 2) - -0.1f);
@@ -304,12 +324,12 @@ LAB_save:
           BrVec3Cross(pfVar1, (float *)(pfVar7 + 0x20), pfVar7);
           BrVec3NormaliseGuard(pfVar1);
           V3Copy((float *)(pfVar7 + 0xf94), (float *)pfVar7);
-          BrEntSetMatrix(pfVar7, 0, pfVar7);
+          ((BrCar *)pfVar7)->SetMatrix(pfVar7);
           if ((*(unsigned char *)(*(int *)(pfVar7 + 0xf00) + 0x68) & 1) != 0) {
-            BrEntSetVel(pfVar7, 0.0f, 0.0f, 0.0f);
+            ((BrCar *)pfVar7)->SetVel( 0.0f, 0.0f, 0.0f);
           }
           else {
-            BrEntSetVel(pfVar7,
+            ((BrCar *)pfVar7)->SetVel(
                         *(float *)pfVar7 * 50.0f,
                         *(float *)(pfVar7 + 4) * 50.0f,
                         *(float *)(pfVar7 + 8) * 50.0f);
@@ -334,7 +354,7 @@ LAB_save:
           *(int *)(pfVar7 + 0xe20) = 0;
           iVar10 = local_c0;
         }
-        *(int *)(local_bc + 0xeb0 + local_d0 * 4) = (int)(&DAT_10af07f8 + *(int *)(local_a0 + local_d0 * 2 + 1) * 0x20);
+        *(int *)(pCar + 0xeb0 + local_d0 * 4) = (int)(&DAT_10af07f8 + *(int *)(local_a0 + local_d0 * 2 + 1) * 0x20);
         local_d0 = local_d0 + 1;
       }
     }
@@ -343,4 +363,3 @@ LAB_save:
   } while (iVar10 < 2);
 }
 
-#endif /* BR_MATCHING_BUILD */
