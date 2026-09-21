@@ -167,26 +167,8 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * velocity), normalises it, and pushes its byte-packed direction into a
  * four-deep history; finally clamps every driver's projected box to the
  * current view rectangle. */
-/* Residue: 1992/1992 B, 543/543 insns byte-for-byte in instruction SELECTION;
- * 63 differing bytes in two regions, both pure compiler ordering, not source-
- * reachable:
- *  - region 1 (the driver loop's pt.x/pt.y loads): the original hoists both
- *    loads above the pt.h store and sinks the two stores below the arg pushes;
- *    here each load follows the previous store (pt is address-taken, so VC5
- *    keeps the order).  Same instructions, different schedule.
- *  - region 2 (the four right/bottom edge sums): a commutative 16-bit-integer
- *    add read in the other operand order (`mov ax,[a]; add ax,[b]` vs the
- *    swap) -- same value, same flags, same two reads, no rounding.
- * Both are proven exact identities that no source spelling reaches (dossier +
- * dead list in git history, 2026-09-13/15).  The 2026-09-15 T2 park was a
- * dated byte-gate verdict; the A5 behavioural oracle now RUNS the whole pass
- * (floor/asin modelled in x87emu; orchestrator seed profile in
- * oracle_profiles.py, driver table in the pRace buffer so both regions execute
- * and are compared -- negative controls on each region flip it to DIFF) and
- * returns EQUIVALENT over 48 seeds, which supersedes the byte-distance gates
- * (CLAUDE.md rule 12).
- */
 /* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000e320 2 2026-09-20 probes 20 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
 /* @t3 0x1000E320 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1992/1992 insns 543/543 rows 10+10 regions 2 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
