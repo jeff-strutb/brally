@@ -34,8 +34,27 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRAFTS = os.path.join(ROOT, 'build', 'ghidra_work')
-CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
-REFERENCE = os.path.join(CPP_DIR, '0x10048F10.cpp')      # widest class block
+# Generator output is a transient DRAFT, not sorted source: it lands in a
+# gitignored scratch area, and is filed into its module (with a real name)
+# once matched.  src/core has no cpp folder -- see tools/filing.py.
+CPP_DIR = os.path.join(ROOT, 'build', 'cpp_drafts')
+
+
+def _filed_source(va):
+    """The filed .cpp implementing this VA, found by @implements (the file is
+    named for its symbol and lives in its module folder, not by VA)."""
+    tag = ('@implements 0x%08X' % va).lower()
+    for dirpath, _dirs, files in os.walk(os.path.join(ROOT, 'src', 'core')):
+        for fn in files:
+            if fn.endswith('.cpp'):
+                p = os.path.join(dirpath, fn)
+                with open(p, errors='replace') as f:
+                    if tag in f.read().lower():
+                        return p
+    raise SystemExit('reference source for 0x%08X not found' % va)
+
+
+REFERENCE = _filed_source(0x10048F10)                    # widest class block
 
 
 def f32(hexlit):
@@ -522,6 +541,7 @@ def main():
         sys.stdout.write(src)
         return
     out = os.path.join(CPP_DIR, '0x%s.cpp' % va[2:].upper())
+    os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, 'w').write(src)
     print('wrote %s -- now score it with tools/cpp_score.py'
           % os.path.relpath(out, ROOT))

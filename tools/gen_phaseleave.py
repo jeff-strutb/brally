@@ -35,7 +35,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
-CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
+# Generator output is a transient DRAFT, not sorted source: it lands in a
+# gitignored scratch area, and is filed into its module (with a real name)
+# once matched.  src/core has no cpp folder -- see tools/filing.py.
+CPP_DIR = os.path.join(ROOT, 'build', 'cpp_drafts')
 G_CUR = 0x10AC5C5C
 
 PREFIX = bytes.fromhex('8b4424048b88e82a00008b11ff521c8b0d'
@@ -196,6 +199,7 @@ def main():
             skipped.append((va_hex, info))
             continue
         if not dry:
+            os.makedirs(os.path.dirname(out), exist_ok=True)
             with open(out, 'w') as f:
                 f.write(tu)
         wrote.append((va_hex, info))

@@ -27,6 +27,11 @@ import match_diff  # noqa: E402
 import match_sweep  # noqa: E402
 
 CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
+# .cpp translation units live throughout src/core (in their module folders,
+# alongside the C lane), not only under src/core/cpp.  Discovery walks the
+# whole core tree; the C sweep ignores .cpp by extension, and this one ignores
+# .c the same way.
+SRC_CORE = os.path.join(ROOT, 'src', 'core')
 REPORT = os.path.join(ROOT, 'build', 'match', 'report_cpp.csv')
 FIELDS = list(match_sweep.FIELDS) + ['pieces']
 
@@ -56,23 +61,26 @@ def sources(paths=None):
         for p in paths:
             p = os.path.abspath(p)
             if os.path.isdir(p):
-                for fn in sorted(os.listdir(p)):
-                    if fn.endswith('.cpp'):
-                        out.append(os.path.join(p, fn))
+                for dirpath, _dirs, files in os.walk(p):
+                    for fn in sorted(files):
+                        if fn.endswith('.cpp'):
+                            out.append(os.path.join(dirpath, fn))
             elif p.endswith('.cpp') and os.path.exists(p):
                 out.append(p)
-        return out
-    if not os.path.isdir(CPP_DIR):
+        return sorted(out)
+    root = SRC_CORE if os.path.isdir(SRC_CORE) else CPP_DIR
+    if not os.path.isdir(root):
         return []
     out = []
-    for fn in sorted(os.listdir(CPP_DIR)):
-        if not fn.endswith('.cpp'):
-            continue
-        p = os.path.join(CPP_DIR, fn)
-        with open(p, errors='replace') as f:
-            if '@implements' in f.read():
-                out.append(p)
-    return out
+    for dirpath, _dirs, files in os.walk(root):
+        for fn in sorted(files):
+            if not fn.endswith('.cpp'):
+                continue
+            p = os.path.join(dirpath, fn)
+            with open(p, errors='replace') as f:
+                if '@implements' in f.read():
+                    out.append(p)
+    return sorted(out)
 
 
 def _pick_funcinfo(oi, fis):

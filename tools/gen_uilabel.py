@@ -34,7 +34,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIG = os.path.join(ROOT, 'build', 'match', 'orig')
-CPP_DIR = os.path.join(ROOT, 'src', 'core', 'cpp')
+# Generator output is a transient DRAFT, not sorted source: it lands in a
+# gitignored scratch area, and is filed into its module (with a real name)
+# once matched.  src/core has no cpp folder -- see tools/filing.py.
+CPP_DIR = os.path.join(ROOT, 'build', 'cpp_drafts')
 
 SEEDS = ['0x10039270', '0x10039350', '0x10039510']
 
@@ -239,6 +242,7 @@ def main():
             tbl='g_brTbl%s' % ('%08X' % tbl)[-5:],
             sel_c='0x%08X' % sel, tbl_c='0x%08X' % tbl)
         out = os.path.join(CPP_DIR, '0x%s.cpp' % va[2:].upper())
+        os.makedirs(os.path.dirname(out), exist_ok=True)
         open(out, 'w').write(src)
         print('wrote %s' % os.path.relpath(out, ROOT))
 

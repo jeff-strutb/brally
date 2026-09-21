@@ -81,6 +81,31 @@ def load_report():
                 if r.get('status') == 'match' and r.get('va')]
 
 
+_IMPL = re.compile(r'@implements\s+0x([0-9A-Fa-f]{8})\s+(?:glide|d3d)\s+(\S+)')
+
+
+def load_cpp():
+    """The C++ lane as filing candidates, so it earns the same evidence-based
+    module assignment as the C lane instead of sitting untriaged under cpp/.
+    A .cpp TU is one function; its VA and name come from the @implements tag.
+    These are candidates only -- a .cpp in cpp/ is never a `filed` anchor
+    (cpp is NOT_A_MODULE), so it cannot vote on another function's module; once
+    moved into a module folder it becomes ground truth like any C file."""
+    out = []
+    for dirpath, _dirs, files in os.walk(CORE):
+        for fn in files:
+            if not fn.endswith('.cpp'):
+                continue
+            p = os.path.join(dirpath, fn)
+            rel = os.path.relpath(p, ROOT).replace(os.sep, '/')
+            with open(p, errors='replace') as f:
+                m = _IMPL.search(f.read())
+            if m:
+                out.append({'va': '0x' + m.group(1), 'name': m.group(2),
+                            'file': rel, 'status': 'match', 'orig_size': ''})
+    return out
+
+
 def existing():
     """Rows already recorded, so a hand decision is never overwritten."""
     out = {}
@@ -92,7 +117,7 @@ def existing():
 
 
 def build():
-    rows = load_report()
+    rows = load_report() + load_cpp()
     prev = existing()
 
     filed = {}          # va -> module, ground truth
