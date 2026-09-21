@@ -182,6 +182,18 @@ def collect_t3(recompile=False, progress=None):
                 print('  FORCE-BLOCKED 0x%08X %s: %s'
                       % (va2, r['name'], blocked[va2]))
                 continue
+            # The cert names the transcription that was qualified; a report
+            # row from a DIFFERENT file is a twin graded at this VA by the
+            # d3d<->glide alias (e.g. 0x10062B80: the C twin is a cdecl free
+            # function, the certified body a `ret 0x10` thiscall -- placing
+            # the twin unbalances the stack at every reference call site).
+            # Skipping it here lets the cpp-lane pass below place the
+            # certified body.
+            cfile = certinfo[r['va'].lower()].get('file')
+            if cfile and cfile != r['file']:
+                print('  TWIN-DEFERRED 0x%08X %s: report row is %s, cert '
+                      'lives in %s' % (va2, r['name'], r['file'], cfile))
+                continue
             rows[va2] = r
 
     # Same basename-collision guard the byte gate uses: two source files sharing
@@ -789,9 +801,14 @@ def collect_t3(recompile=False, progress=None):
                               'at 0x%08X' % (r['name'], a_va2, va))
                     continue
         got_it = False
+        # Same resolution the under-slot C lane gained in f21ec9f5: the
+        # augmented maps (address-bearing names, `/* 0x<VA> */` declarations,
+        # imports) plus address_in_name.  ref_fill stays False.
+        _taf2, _tag2 = augment_maps(obj, raw, size)
         for va2, name2, code, unres2, fromref2 in ib.compiled_functions(
-                [obj], fnmap, {}, only={raw: va}, pad_short=True,
-                ref_fill=False, extra_sites=sites):
+                [obj], _taf2, _tag2, only={raw: va}, pad_short=True,
+                ref_fill=False, extra_resolve=address_in_name,
+                extra_sites=sites):
             if va2 == va:
                 best[va] = (r['name'], code, unres2, fromref2, 'T3')
                 got_it = True
@@ -834,6 +851,9 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
     print(f"functions compiled and addressed : {len(best)}  ({breakdown})")
     print(f"  every relocation resolved      : {len(usable)}")
     print(f"  blocked on an unknown address  : {blocked}")
+    for va, (n, _c, _u, _f, _l) in sorted(best.items()):
+        if _u:
+            print(f"    {va:#010x} {n}: {_u} unresolved slot(s)")
     print(f"  claimed but the TREE WON'T BUILD: {len(unbuildable)}")
     for va, name, why in list(unbuildable)[:10]:
         print(f"    {va:#010x} {name}: {why}")

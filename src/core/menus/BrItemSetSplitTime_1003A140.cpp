@@ -97,18 +97,22 @@ public:
 typedef char chk_itemI[(unsigned)&((Obj3A140 *)0)->m2B5C == 0x2B5C ? 1 : -1];
 
 extern "C" {
-int           g_brMode5BF4;     /* 0x10AC5BF4 */
-int           g_brIdx5C04;      /* 0x10AC5C04 */
-char          g_brSel5C10;      /* 0x10AC5C10 */
-unsigned char g_brMap3028[];    /* 0x100B3028 */
-float         g_brFTbl5B54[];   /* 0x10AC5B54 */
-float g_f077624;                /* 0x10077624 */
-float g_f077630;                /* 0x10077630 */
-float g_f077634;                /* 0x10077634 */
-float g_f077638;                /* 0x10077638 */
-float g_f07763C;                /* 0x1007763C */
-char  g_szBrDashes[];           /* 0x100ACAE0 -- "--:--" */
-char  g_szBrFmtTime[];          /* 0x1007B064 */
+/* In C++ a bare object declaration inside `extern "C" {}` is a DEFINITION:
+ * this TU grew its own .bss copies and the image build could not bind the
+ * five floats to the real cells.  `extern` makes them declarations of the
+ * image's globals; the addressing bytes are identical. */
+extern int           g_brMode5BF4;     /* 0x10AC5BF4 */
+extern int           g_brIdx5C04;      /* 0x10AC5C04 */
+extern char          g_brSel5C10;      /* 0x10AC5C10 */
+extern unsigned char g_brMap3028[];    /* 0x100B3028 */
+extern float         g_brFTbl5B54[];   /* 0x10AC5B54 */
+extern float g_f077624;                /* 0x10077624 */
+extern float g_f077630;                /* 0x10077630 */
+extern float g_f077634;                /* 0x10077634 */
+extern float g_f077638;                /* 0x10077638 */
+extern float g_f07763C;                /* 0x1007763C */
+extern char  g_szBrDashes[];           /* 0x100ACAE0 -- "--:--" */
+extern char  g_szBrFmtTime[];          /* 0x1007B064 */
 _CRTIMP char *_strupr(char *s);
 }
 
