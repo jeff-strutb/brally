@@ -1530,7 +1530,81 @@ def _cc_buf(seed, argidx, off):
     return None                                            # else: tame-float default fill
 
 
+# ---- BrCarTrackLocate 0x1006E5C0 (find the track cell/segment under a car) --
+# thiscall(pCar), pinned to a scratch car (int arg -> seeded via bss).  One
+# scratch track cell (table g_106EED50[0], count g_106EED54=1) whose bbox spans
+# the car grid; segment vertices seeded small so the along-track dot stays well
+# conditioned.  The BrSeg2/BrVec3 leaf helpers all run.
+_CL_CAR  = 0x10E60000
+_CL_CELL = 0x10E61000
+_CL_TAB  = 0x10E62000
+_CL_BASE = 0x10E63000
+
+
+def _cl_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x100b3014:
+        return _b(1, a, 0x100b3014)
+    if base == 0x100b3858:
+        return _b(0x40, a, 0x100b3858)
+    if base == 0x100a9360:
+        return _b(seed % 4, a, 0x100a9360)
+    if base in (0x10077c30, 0x10077c34):
+        return _f32at(1.0e6, a)
+    if base == 0x10077c38 or base == 0x10077c3c:
+        return _f32at(-1.0e6, a)
+    if base == 0x106eed00:
+        return 0
+    if base == 0x106eed04:
+        return _f32at(50.0, a)
+    if base == 0x106eed54:
+        return _b(1, a, 0x106eed54)
+    if base == 0x106eed50:
+        return _b(_CL_TAB, a, 0x106eed50)
+    if base == 0x106eed48:
+        return _b(_CL_BASE, a, 0x106eed48)
+    if base == _CL_TAB:
+        return _b(_CL_CELL, a, _CL_TAB)
+    if base == _CL_BASE + 100:
+        return _f32at(1.0, a)
+    if a == _CL_CELL + 0x10 or a == _CL_CELL + 0x11:
+        return 0
+    if a == _CL_CELL + 0x12 or a == _CL_CELL + 0x13:
+        return 0xff
+    if a == _CL_CELL + 0x16:
+        return 0
+    if base == _CL_CELL + 0x14:
+        return _b(4, a, _CL_CELL + 0x14)
+    if _CL_CELL + 0x40 <= base < _CL_CELL + 0x200:
+        return struct.pack('<f', ((((base >> 2) * 7 + seed) % 11) - 5) * 0.1)[a & 3]
+    if _CL_CAR + 0x30 <= base < _CL_CAR + 0x3c:
+        return struct.pack('<f', ((((base >> 2) * 5 + seed) % 9) - 4) * 0.1)[a & 3]
+    if a == _CL_CAR + 0x29bc:
+        return (0x39 + (seed % 5) - 2) & 0xFF
+    if a == _CL_CAR + 0x29bd:
+        return (0x19 + (seed % 5) - 2) & 0xFF
+    if base == _CL_CAR + 0xf8c:
+        return _b(_CL_CELL, a, _CL_CAR + 0xf8c)
+    if base == _CL_CAR + 0xf90:
+        return 0
+    if base == _CL_CAR + 0xfac:
+        return _b(seed % 4, a, _CL_CAR + 0xfac)
+    if base == _CL_CAR + 0xff4:
+        return _f32at((seed % 5) * 0.1, a)
+    if base == _CL_CAR + 0x140:
+        return _b(seed % 8, a, _CL_CAR + 0x140)
+    return 0
+
+
+def _cl_arg(seed, idx):
+    if idx == 0:
+        return _CL_CAR
+    return None
+
+
 PROFILES = {
+    0x1006E5C0: Profile(_cl_bss, zero_stack=True, seeds=24, arg=_cl_arg),
     0x10001CF0: Profile(_cc_bss, zero_stack=False, seeds=48, buf=_cc_buf,
                         buf_sizes={0: 0xB200}),
     0x100302A0: Profile(_ms_bss, zero_stack=True, seeds=48, buf=_ms_buf,
