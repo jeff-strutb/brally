@@ -243,6 +243,12 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
  * significant byte first. */
 /* @t4-pass 0x1006CE80 1 2026-09-13 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006ce80 2 2026-09-20 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
+/* @t3 0x1006CE80 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 61/73 insns 26/25 rows 5+6 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: register colouring / instruction-encoding only -- every divergence
+ * row pairs (0 unpaired), recompile is a few bytes shorter, A5 EQUIVALENT
+ * (crank census yes). Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10073C40 d3d BrBitStreamReadS32 */
 int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {
