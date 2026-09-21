@@ -142,6 +142,12 @@ void FUN_100215c0(int, int, int, int, int);
 /* @t4-pass 0x10021570 2 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10021570 3 2026-09-20 probes 33 bytes 75 insns 29 regions 2 rows 5 census yes  (tools/crank.py) */
 /* @t4-pass 0x10021570 4 2026-09-20 probes 33 bytes 75 insns 29 regions 2 rows 5 census yes  (tools/crank.py) */
+/* @t3 0x10021570 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 75/79 insns 29/32 rows 4+1 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * RESIDUE: register colouring and minor scheduling -- one surplus register
+ * move; recompile is a few bytes shorter (crank 33+ compiles, no byte-exact,
+ * census yes). Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10021570 glide BrDlsTileRectE4 */
 unsigned char *BrDlsTileRectE4(unsigned char *p)
 {
