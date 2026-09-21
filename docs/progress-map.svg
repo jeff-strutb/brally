@@ -754,7 +754,7 @@
 <rect x="593.9" y="296.8" width="0.9" height="1.1" fill="#3fb950"><title>CRT_empty  0x00401B70  1B  [EXE: bossrally.exe]</title></rect>
 <rect x="593.9" y="298.5" width="0.9" height="1.1" fill="#6e5494"><title>CRT_sub_00406082  0x00406082  1B  [EXE: bossrally.exe]</title></rect>
 <text x="393.5" y="312.2" font-size="10" fill="#8b949e">unfiled 0x1005xxxx</text>
-<rect x="392.0" y="317.2" width="68.6" height="73.3" fill="#c8ccd2"><title>(unnamed)  0x1005F6C0  2104B  [unfiled 0x1005xxxx]</title></rect>
+<rect x="392.0" y="317.2" width="68.6" height="73.3" fill="#58a6ff"><title>(unnamed)  0x1005F6C0  2104B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="392.0" y="391.0" width="68.6" height="67.9" fill="#58a6ff"><title>(unnamed)  0x1005C8B0  1951B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="461.3" y="317.2" width="72.7" height="47.6" fill="#c8ccd2"><title>(unnamed)  0x100553B0  1453B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="534.6" y="317.2" width="60.2" height="47.6" fill="#c8ccd2"><title>(unnamed)  0x1005A7A0  1206B  [unfiled 0x1005xxxx]</title></rect>
@@ -1968,7 +1968,7 @@
 <rect x="1079.1" y="362.8" width="13.8" height="10.6" fill="#3fb950"><title>BrVec3Length  0x100347F0  65B  [core/geometry/br_vec]</title></rect>
 <rect x="1093.5" y="362.8" width="13.4" height="10.6" fill="#3fb950"><title>BrVec3DistSq  0x100347B0  63B  [core/geometry/br_vec]</title></rect>
 <rect x="1107.5" y="362.8" width="12.1" height="10.6" fill="#3fb950"><title>BrVec3Lerp  0x10034620  57B  [core/geometry/br_vec]</title></rect>
-<rect x="1079.1" y="374.0" width="10.4" height="11.8" fill="#3fb950"><title>BrVec3Midpoint  0x100346D0  55B  [core/geometry/br_vec]</title></rect>
+<rect x="1079.1" y="374.0" width="10.4" height="11.8" fill="#d29922"><title>BrVec3Midpoint  0x100346D0  55B  6 diff bytes  [core/geometry/br_vec]</title></rect>
 <rect x="1090.1" y="374.0" width="10.4" height="11.8" fill="#3fb950"><title>BrVec3DistXY  0x10034720  55B  [core/geometry/br_vec]</title></rect>
 <rect x="1101.1" y="374.0" width="9.2" height="11.8" fill="#58a6ff"><title>BrVec3MulAdd  0x10034660  49B  [core/geometry/br_vec]</title></rect>
 <rect x="1111.0" y="374.0" width="8.6" height="11.8" fill="#3fb950"><title>BrVec3LenXY  0x10034840  46B  [core/geometry/br_vec]</title></rect>
@@ -1977,10 +1977,10 @@
 <rect x="1079.1" y="407.2" width="10.1" height="9.3" fill="#58a6ff"><title>BrVec3ScaleBy  0x10034390  43B  [core/geometry/br_vec]</title></rect>
 <rect x="1089.8" y="386.4" width="10.2" height="9.3" fill="#3fb950"><title>BrVec3Div  0x100343C0  43B  [core/geometry/br_vec]</title></rect>
 <rect x="1100.6" y="386.4" width="9.2" height="9.3" fill="#3fb950"><title>BrVec3Copy  0x1002F310  39B  [core/geometry/br_vec]</title></rect>
-<rect x="1110.4" y="386.4" width="9.2" height="9.3" fill="#3fb950"><title>BrVec3Dot  0x10034310  39B  [core/geometry/br_vec]</title></rect>
+<rect x="1110.4" y="386.4" width="9.2" height="9.3" fill="#d29922"><title>BrVec3Dot  0x10034310  39B  29 diff bytes  [core/geometry/br_vec]</title></rect>
 <rect x="1089.8" y="396.3" width="8.2" height="9.8" fill="#58a6ff"><title>BrVec3Scale  0x10034360  37B  [core/geometry/br_vec]</title></rect>
 <rect x="1089.8" y="406.7" width="8.2" height="9.8" fill="#3fb950"><title>BrVec3Sub  0x10034560  37B  [core/geometry/br_vec]</title></rect>
-<rect x="1098.6" y="396.3" width="8.0" height="10.1" fill="#3fb950"><title>BrVec3Add  0x100345C0  37B  [core/geometry/br_vec]</title></rect>
+<rect x="1098.6" y="396.3" width="8.0" height="10.1" fill="#d29922"><title>BrVec3Add  0x100345C0  37B  4 diff bytes  [core/geometry/br_vec]</title></rect>
 <rect x="1098.6" y="407.0" width="8.0" height="9.5" fill="#3fb950"><title>BrVec3SubFrom  0x10034590  35B  [core/geometry/br_vec]</title></rect>
 <rect x="1107.2" y="396.3" width="6.1" height="11.6" fill="#3fb950"><title>BrVec3AddTo  0x100345F0  33B  [core/geometry/br_vec]</title></rect>
 <rect x="1113.9" y="396.3" width="5.7" height="11.6" fill="#3fb950"><title>BrVec3Negate  0x10034340  31B  [core/geometry/br_vec]</title></rect>
@@ -2783,4 +2783,4 @@
 <rect x="1593.2" y="894.5" width="0.4" height="3.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1596.7" y="894.5" width="1.2" height="0.5" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1596.7" y="898.6" width="1.2" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 173 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1316 &#183; T3 codegen-only 174 &#183; 232,462/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
