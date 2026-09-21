@@ -395,6 +395,13 @@ extern int DAT_104ab500;
  * chosen/best/i/flag/cost/cur, cur first, and the declarations reordered to
  * match -- the eax/ebx transposition is unchanged (157/157, 30+30 raw). */
 /* @t4-pass 0x10013F20 3 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013F20 4 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x10013F20 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 157/157 insns 56/56 rows 0+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue after tools/crank.py: 84 compiles this pass, levers accepted: mut:reorder_stmts;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
 void BrSndBankPickSlot(void)
 {
