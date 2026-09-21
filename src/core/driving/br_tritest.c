@@ -59,8 +59,8 @@ typedef struct BrTriRec {
  * build folds `fadd [u]` into v, at two sites, plus the [eax+edi] vs [edi+eax]
  * index-order byte.  Respelling dead (per header).  A5 oracle EQUIVALENT is
  * the completeness proof (rule 12).  Do not reopen before the end-grind. */
-/* @implements 0x100656F0 glide BrTriContainsPoint */
-int16_t BrTriContainsPoint(BrTriRec *pT, float *pP)
+/* @implements 0x100656F0 glide FUN_100656F0 */
+int16_t FUN_100656F0(BrTriRec *pT, float *pP)
 {
     float a0, a1;
     int   c, i1, i2;
