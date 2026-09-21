@@ -1442,7 +1442,61 @@ def _tr_bss(seed, a):
     return (_sv_tame((seed * 0x1000193) ^ base) >> (8 * (a - base))) & 0xff
 
 
+# ---- BrModelSwap 0x100302A0 (serialized-model byte-swap + pointer fixup) ----
+# void(pImage): byte-swaps a big-endian serialized model in place and relocates
+# its offset "pointers" to real addresses via BrSegPtrFixup (0x100189E0), which
+# computes *p = BASE + (offset - LO) from two globals (BASE=0x104B16E0,
+# LO=0x104B16E4).  The default random world runs away in the nested block/item/
+# leaf walk (garbage counts + garbage fixed-up pointers).  Seed LO=0 and
+# BASE=the arg-buffer base, then lay a minimal WELL-FORMED graph in the pImage
+# buffer: header -> one block (n=1) -> one item (m=0, k=0) -> no leaves.  All
+# counts are stored big-endian (BrRdBe32 converts them in place); all pointer
+# fields are big-endian offsets that BrRev4+BrSegPtrFixup turn into BASE+offset.
+# This runs the full walk -- header swaps, three fixups, the vertex resolve --
+# and terminates.
+_MS_BASE = 0x00300000       # arg0 (pImage) buffer base (HEAP_BASE)
+
+
+def _ms_be(off, val):       # {byte offset: big-endian byte} for a dword field
+    return {off + k: (val >> (8 * (3 - k))) & 0xFF for k in range(4)}
+
+
+_MS_FIELDS = {}
+for _d in (_ms_be(0x04, 0x40),   # header +4: block pointer -> offset 0x40
+           _ms_be(0x40, 1),      # block->n = 1
+           _ms_be(0x44, 0x80),   # slot[0] -> item at offset 0x80
+           _ms_be(0x80, 0),      # item->m = 0 (vertex/leaf inner loops empty)
+           _ms_be(0x84, 0xC0),   # item+0x04 pointer -> zeroed scratch at 0xC0
+           _ms_be(0x88, 0xC0),   # item+0x08 pointer -> zeroed scratch at 0xC0
+           _ms_be(0x8C, 0)):     # item->k = 0 (no leaves)
+    _MS_FIELDS.update(_d)
+
+
+def _ms_bss(seed, a):
+    base = a & ~3
+    if base == 0x104B16E0:  return _b(_MS_BASE, a, base)   # fixup BASE
+    if base == 0x104B16E4:  return 0                        # fixup LO = 0
+    return 0                                                # null-safe / cleared
+
+
+def _ms_buf(seed, argidx, off):
+    if argidx != 0:
+        return None
+    v = _MS_FIELDS.get(off)
+    if v is not None:
+        return v
+    # Non-zero, per-seed data in the BYTE-SWAPPED scalar fields so the swaps are
+    # actually observable (a swap of zero is invisible): the header halfwords
+    # (+0x00/+0x02) and the item's in-place-reversed words (+0x10..+0x1F, at
+    # buffer 0x90..0x9F).
+    if off < 4 or (0x90 <= off < 0xA0):
+        return (off * 37 + seed * 101) & 0xFF
+    return None
+
+
 PROFILES = {
+    0x100302A0: Profile(_ms_bss, zero_stack=True, seeds=48, buf=_ms_buf,
+                        buf_sizes={0: 0x200}),
     0x10028BB0: Profile(_tr_bss, zero_stack=True, seeds=48),
     0x1005D3C0: Profile(_pe_bss, zero_stack=True, seeds=48, buf=_pe_buf,
                         buf_sizes={0: 0x1000}),
