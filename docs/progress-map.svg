@@ -2033,7 +2033,7 @@
 <rect x="1104.1" y="733.0" width="10.2" height="14.0" fill="#3fb950"><title>FUN_100281c0  0x100281C0  64B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1059.6" y="750.6" width="54.7" height="47.2" fill="#58a6ff"><title>BrGhostPlaybackStep  0x10061F60  1073B  [core/racing/br_ghoststep]</title></rect>
 <rect x="1059.6" y="801.4" width="54.7" height="47.1" fill="#58a6ff"><title>BrGhostPickBlend  0x10005810  1070B  [core/net/br_ghostpick]</title></rect>
-<rect x="1059.6" y="852.1" width="54.7" height="45.8" fill="#d29922"><title>BrCarTrackLocate  0x1006E5C0  1044B  713 diff bytes  [core/racing/br_cartracklocate]</title></rect>
+<rect x="1059.6" y="852.1" width="54.7" height="45.8" fill="#58a6ff"><title>BrCarTrackLocate  0x1006E5C0  1044B  [core/racing/br_cartracklocate]</title></rect>
 <rect x="1117.9" y="360.7" width="54.1" height="45.8" fill="#d29922"><title>BrGbiCall10021560  0x100215C0  1032B  129 diff bytes  [core/slice4_51]</title></rect>
 <rect x="1175.6" y="360.7" width="28.7" height="45.8" fill="#3fb950"><title>BrSaveNameCommitRallySeason  0x1003B350  554B  [core/menus/br_savename]</title></rect>
 <rect x="1205.0" y="360.7" width="24.2" height="45.8" fill="#3fb950"><title>BrSaveNameCommitTimeAttack  0x1003BAC0  469B  [core/menus/br_savename]</title></rect>
@@ -2793,4 +2793,4 @@
 <rect x="1593.2" y="894.5" width="0.4" height="3.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1596.7" y="894.5" width="1.2" height="0.5" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1596.7" y="898.6" width="1.2" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 171 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 172 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
