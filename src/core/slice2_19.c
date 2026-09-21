@@ -575,8 +575,13 @@ static uint16_t BrLd16(const void *pv)
 #define BrLd16(pv) (*(const uint16_t *)(const void *)(pv))
 /* DIRECT calls, not indirect: the original has nine `call rel32` and one
  * `call [mem]`; the two fixup/deref hooks are ordinary functions here. */
-void  BrModelFixupDirect(uint32_t *pSlot);
+void  BrModelFixupDirect(uint32_t *pSlot);            /* 0x100189E0 */
 void *BrModelDerefDirect(uint32_t slot);
+/* A5-oracle symbol->VA hints (matched by t3b_env's declared-VA regexes; the
+ * real declarations are elsewhere).  BrModelFixupDirect == BrSegPtrFixup,
+ * BrModelVtxResolve == BrVtxCacheResolve, g_BrGfxSubmitB is a fn-ptr global:
+ *   BrModelVtxResolve(uint32_t *pSlot, int n);  0x10018E10
+ *   extern void g_BrGfxSubmitB;                  0x118ED1DC  */
 #define g_BrModelFixup BrModelFixupDirect
 #define g_BrModelDeref BrModelDerefDirect
 #endif
