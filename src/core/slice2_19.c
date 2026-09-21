@@ -517,6 +517,18 @@ static uint16_t BrLd16(const void *pv)
  * and all. Each finished piece is then handed to the renderer. */
 /* @t4-pass 0x100302A0 1 2026-09-10 probes 60 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
 /* @t4-pass 0x100302A0 2 2026-09-20 probes 14 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
+/* @t3 0x100302A0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1056/1062 insns 370/371 rows 8+7 regions 10 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is the byte-reversal COMPOSE spelling: the original materialises a few
+ * of the swapped words with shl/or composes in a different byte/register order
+ * than this build emits, a lowering/allocation choice with no source handle (see
+ * the dossier and dead list above).  The A5 behavioural oracle RUNS the full
+ * serialized-model walk -- header swaps, block/item pointer fixups through
+ * BrSegPtrFixup, the vertex resolve -- on a seeded well-formed model and returns
+ * EQUIVALENT over 48 seeds, with a negative control on the reversed fields
+ * proving teeth; that supersedes the byte gates (CLAUDE.md rule 12).  Do not
+ * reopen before the end-grind. */
 /* @implements 0x10036C00 d3d BrModelSwap */
 #ifdef BR_MATCHING_BUILD
 /* RESIDUE 1062 vs 1053 bytes, 371 vs 368 instructions, register-blind 8+11
