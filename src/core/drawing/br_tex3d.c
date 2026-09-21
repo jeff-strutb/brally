@@ -1286,6 +1286,7 @@ int BrTexRgbaToArgb1555();
  * stores x*2 before loading h where the original loads both first). */
 /* @t4-pass 0x10028620 1 2026-09-09 probes 8 bytes 440 insns 144 regions 2 rows 3 census no  (hand) */
 /* @t4-pass 0x10028620 2 2026-09-13 probes 99 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028620 3 2026-09-20 probes 63 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @implements 0x10028620 glide BrTexSlotFetchPixels */
 
 int * BrTexSlotFetchPixels(int param_1,int *param_2)
