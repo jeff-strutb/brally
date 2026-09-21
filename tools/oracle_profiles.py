@@ -898,6 +898,60 @@ def _collray_bss(seed, a):
     return 0
 
 
+# ---- BrGhostPickBlend 0x10005810 (network snapshot pick + interpolate) ------
+# cdecl(pCarState, slot): under the net mutex, scans the slot's 8-snapshot ring
+# for the two freshest, interpolates the car state and folds the along-track
+# delta.  Pin slot 0 (its base is g_1021ce58); seed the ring so the count gate
+# passes and the snapshots carry distinct times + set flags (real teeth for the
+# two-best scan), plus a varied per-snapshot payload.  The two KERNEL32 mutex
+# imports are seeded to their own IAT slots so the calls black-box like any
+# unresolved import (the harness does this for MSVCRT imports but not KERNEL32);
+# the state lerp, the vec-length and the angle/quat post-passes are stubbed.  The
+# pick indices, the ring-state counters and the copy are the contract.
+def _gp_bss(seed, a):
+    import struct
+    base = a & ~3
+    if base == 0x118f0458 or base == 0x118f04bc:     # WaitForMultipleObjects / ReleaseMutex IAT
+        return _b(base, a, base)
+    if base == 0x1007b264:               # slot-exclude id: never 0
+        return _b(0x7f, a, 0x1007b264)
+    if base == 0x100770b0:               # quat-sum sentinel
+        return 0
+    if 0x1021ce64 <= base < 0x1021ce64 + 8 * 4:      # ring times, distinct (clear freshest)
+        i = (base - 0x1021ce64) >> 2
+        return _b(100 + ((seed + i) % 8) * 7, a, base)
+    if 0x1021ce90 <= base < 0x1021ce90 + 8 * 4:      # ring valid flags, most set
+        i = (base - 0x1021ce90) >> 2
+        return _b(1 if (((seed >> i) & 1) or i < 3) else 0, a, base)
+    if base == 0x1021d3b0:               # snapshot count >= 2 (main path)
+        return _b(5, a, 0x1021d3b0)
+    if base == 0x1021d3b8:               # last-picked slot (0..7), varied
+        return _b(seed % 8, a, 0x1021d3b8)
+    if base == 0x1021d3bc:
+        return _b(seed % 4, a, 0x1021d3bc)
+    if base == 0x1021d3c0 or base == 0x1021d3c4:
+        return _b(seed % 3, a, base)
+    if 0x1021ce58 + 0x16 * 4 <= base < 0x1021ce58 + 0x156 * 4:   # snapshot payload
+        return struct.pack('<f', (((base >> 2) * 13 + seed) % 41) - 20.0)[a & 3]
+    return 0
+
+
+def _gp_arg(seed, idx):
+    if idx == 1:
+        return 0                          # slot 0 (base g_1021ce58 is seeded)
+    return None
+
+
+# Note: BrVec3Length_100682C0 (0x100682C0) returns its result on the x87 stack,
+# so it must RUN, not be stubbed -- a stub would leave the stack empty and the
+# caller's fstp of the return value would underflow.  BrCarStateLerp (0x10007D50)
+# is left to RUN too, so the chosen snapshot shows up in the output (a wrong pick
+# then changes the interpolated car state -- teeth for the selection); it is a
+# pure lerp of the two seeded snapshots.  Both are called identically on the two
+# sides.  The timer, quat-normalise and angle-wrap post-passes are stubbed.
+_GP_STUBS = (0x1006D410, 0x10005C40, 0x10005C70, 0x10005CA0)
+
+
 # ---- BrEnvEmit 0x10017110 (per-frame track-surface display-list emitter) ----
 # A void, globals-driven display-list builder.  The default random world runs
 # away in the per-segment projection loop (its trip count DAT_104add38 is a raw
@@ -1104,7 +1158,119 @@ _CS_STUBS = (0x1006EC30, 0x1005AFF0, 0x1005A7A0, 0x1005ACE0, 0x10059A50,
              0x10034360, 0x100345F0, 0x100342B0, 0x1002F640, 0x10001CF0)
 
 
+# ---- BrSceneVisPrepare 0x1000E320 (per-frame visibility pre-pass) -----------
+# Orchestrator over the whole frame's scene state.  The default random world
+# runs away: the row/col window and the car/driver/env-flag COUNTS are BSS
+# globals, so a random one is a multi-billion trip count.  Pin every count to a
+# small valid value, null the pointer-valued globals (a deref then reads 0
+# identically on both sides), and -- so the two byte-divergent regions in the
+# driver-clamp loop actually EXECUTE and get compared -- build a real driver
+# table in the pRace arg buffer: g_brRaceNDriver drivers whose slot pointers
+# (pRace+0x60+i*0x80) point at driver structs laid out later in the same buffer,
+# with varied box/point fields so the view-rect clamp compares split both ways
+# across seeds.  The car table (pCars) gets its gate field (+0xF08) and per-car
+# opaque flag set so the ranking runs; its span count is bounded so the mark
+# loop cannot run away.  floor/asin in the light path are modelled in x87emu.
+_SV_RACE = 0x300400          # arg1 (pRace) buffer base: HEAP_BASE + arg0 stride
+_SV_CARS = 0x308400          # arg2 (pCars) buffer base
+_SV_DRV = (0x2000, 0x5000)   # driver-struct offsets within the pRace buffer
+_SV_CARVISOPAQUE = 0x10273648
+_SV_ENVIDX = 0x106ED528
+
+
+def _sv_tame(key):
+    """A tame float's dword bits (roughly +/-100), keyed like the default BSS
+    filler so an int/float read is never inf/NaN or a huge magnitude."""
+    import struct
+    h = (key * 0x01000193) & 0xffffffff
+    h ^= (h >> 15)
+    x = ((h % 2000001) - 1000000) / 10000.0
+    return struct.unpack('<I', struct.pack('<f', x))[0]
+
+
+def _sv_bss(seed, a):
+    base = a & ~3
+    # ---- loop-bound counts: small and valid ----
+    if base == 0x10AC2C5C:   return _b(0, a, base)        # g_BrVisRowLo
+    if base == 0x10AC2C54:   return _b(1, a, base)        # g_BrVisRowHi (rows 0,1)
+    if 0x10AC2C60 <= base < 0x10AC2C60 + 64 * 4:          # g_BrVisColLo[64]
+        return _b(0, a, base)
+    if 0x10AC2D60 <= base < 0x10AC2D60 + 64 * 4:          # g_BrVisColHi[64]
+        return _b(1, a, base)
+    if base == 0x100B2F04:   return _b(2, a, base)        # g_BrCarCount
+    if base == 0x100B2F00:   return _b(2, a, base)        # g_brRaceNDriver
+    if base == 0x106E8A18:   return _b(2, a, base)        # g_BrEnvFlagCount
+    if base == 0x106EED3C:   return _b(64, a, base)       # g_BrSpanCount
+    # ---- env-flag indices: small, in range of the (null) track-flag base ----
+    if _SV_ENVIDX <= base < _SV_ENVIDX + 2 * 4:
+        return _b((base - _SV_ENVIDX) >> 2, a, base)
+    # ---- per-car opaque flags: nonzero so the ranking runs ----
+    if _SV_CARVISOPAQUE <= base < _SV_CARVISOPAQUE + 2 * 4:
+        return _b(1, a, base)
+    # ---- gate flags ----
+    if base == 0x105CCB88:   return _b(seed & 1, a, base) # g_brRaceReplay (thr ternary)
+    if base == 0x105BC7C0:   return _b(0, a, base)        # g_brRaceBeginAirplane: off
+    if base == 0x106ED6AC:   return _b(0, a, base)        # g_BrVisLightFromCar: default
+    if base == 0x106EC798:   return _b(0, a, base)        # g_brIView
+    if base == 0x1035FB70:   return _b(seed & 3, a, base) # g_BrVisLightHistIdx
+    # ---- pointer-valued globals: null (deref reads 0 both sides) ----
+    if base in (0x106ED520, 0x106E9D88, 0x106EED38):      # Camera, PlayerCar, TrackFlags
+        return 0
+    return 0                                              # null-safe / cleared
+
+
+def _sv_drv_byte(seed, di, r):
+    k = seed * 4 + di + 1
+    if 0x30 <= r < 0x34:  return _b(((k * 5) % 25 - 12) & 0xffffffff, r, 0x30)   # pt.x int
+    if 0x34 <= r < 0x38:  return _b(((k * 3) % 25 - 12) & 0xffffffff, r, 0x34)   # pt.y int
+    if 0x38 <= r < 0x3c:  return (_sv_tame(k) >> (8 * (r - 0x38))) & 0xff        # pt.h a
+    if 0x2994 <= r < 0x2998: return (_sv_tame(k + 9) >> (8 * (r - 0x2994))) & 0xff  # pt.h b
+    for so in (0x299c, 0x299e, 0x29a0, 0x29a2):           # box shorts, varied small
+        if so <= r < so + 2:
+            return _b(((k + so) % 121 - 60) & 0xffff, r, so)
+    return 0
+
+
+def _sv_car_byte(seed, c, r):
+    if 0x30 <= r < 0x3c:                                  # BrVec3 pos, tame
+        return (_sv_tame(seed * 4 + c + 3) >> (8 * (r & 3))) & 0xff
+    if 0xF08 <= r < 0xF0C:  return _b(1, r, 0xF08)        # gate field != 0
+    if 0x2990 <= r < 0x2994: return _b(2, r, 0x2990)      # span count, bounded
+    if 0x2950 <= r < 0x2954:                              # span idx u16 [0,1]
+        idx = (r - 0x2950) >> 1
+        return _b(idx, r, 0x2950 + idx * 2)
+    return 0
+
+
+def _sv_buf(seed, argidx, off):
+    if argidx == 0:                                       # pView: small varied rect [0]
+        if off < 4:   return _b(((seed % 21) - 10) & 0xffffffff, off, 0)   # x
+        if off < 8:   return _b(((seed % 17) - 8) & 0xffffffff, off, 4)    # y
+        if off < 12:  return _b(40 + seed % 40, off, 8)                    # w
+        if off < 16:  return _b(30 + seed % 40, off, 12)                   # h
+        return None
+    if argidx == 1:                                       # pRace: driver table
+        if 0x60 <= off < 0x64:  return _b(_SV_RACE + _SV_DRV[0], off, 0x60)
+        if 0xE0 <= off < 0xE4:  return _b(_SV_RACE + _SV_DRV[1], off, 0xE0)
+        for di, dbase in enumerate(_SV_DRV):
+            r = off - dbase
+            if 0 <= r < 0x29a4:
+                return _sv_drv_byte(seed, di, r)
+        return None
+    if argidx == 2:                                       # pCars: two cars
+        for c in range(2):
+            r = off - c * 0x2b68
+            if 0 <= r < 0x2b68:
+                return _sv_car_byte(seed, c, r)
+        return None
+    return None
+
+
 PROFILES = {
+    0x1000E320: Profile(_sv_bss, zero_stack=True, seeds=48, buf=_sv_buf,
+                        buf_sizes={0: 0x100, 1: 0x8000, 2: 0x6000}),
+    0x10005810: Profile(_gp_bss, zero_stack=True, seeds=48, arg=_gp_arg,
+                        buf_sizes={0: 0x100}, stub_calls=_GP_STUBS),
     0x1006F170: Profile(_cs_bss, zero_stack=True, seeds=64, arg=_cs_arg,
                         buf=_cs_buf, buf_sizes={0: 0x2b68},
                         exact_regions=_CS_EXACT, stub_calls=_CS_STUBS),
