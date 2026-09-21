@@ -186,6 +186,7 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * returns EQUIVALENT over 48 seeds, which supersedes the byte-distance gates
  * (CLAUDE.md rule 12).
  */
+/* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
 {
