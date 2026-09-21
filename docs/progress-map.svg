@@ -1793,7 +1793,7 @@
 <text x="1395.0" y="233.3" font-size="10" fill="#8b949e">br_cfgfile</text>
 <rect x="1393.5" y="238.3" width="36.5" height="61.2" fill="#d29922"><title>BrCtrlCfgReadFile  0x10063060  1104B  797 diff bytes  [core/settings/br_cfgfile]</title></rect>
 <rect x="1430.5" y="238.3" width="30.6" height="61.2" fill="#3fb950"><title>BrGlCfgSave  0x100634B0  930B  [core/settings/br_cfgfile]</title></rect>
-<rect x="1464.8" y="224.3" width="66.2" height="75.2" fill="#d29922"><title>BrSceneVisPrepare  0x1000E320  1992B  63 diff bytes  [core/scene/br_scenevis]</title></rect>
+<rect x="1464.8" y="224.3" width="66.2" height="75.2" fill="#58a6ff"><title>BrSceneVisPrepare  0x1000E320  1992B  [core/scene/br_scenevis]</title></rect>
 <rect x="1534.6" y="224.3" width="63.3" height="75.2" fill="#58a6ff"><title>BrSub10062C50  0x1005BCC0  1909B  [core/driving/br_carctor]</title></rect>
 <text x="933.9" y="312.1" font-size="10" fill="#8b949e">br_cartrail</text>
 <rect x="932.4" y="317.1" width="67.8" height="55.1" fill="#58a6ff"><title>BrCarTrailStep  0x10032E40  1881B  [core/drawing/br_cartrail]</title></rect>
@@ -2793,4 +2793,4 @@
 <rect x="1594.6" y="893.1" width="3.3" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 163 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 164 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
