@@ -13,3 +13,4 @@ g_brSnapT0,0x104AB4F4,1,1,"transcription header (src/core/drawing/br_snapinterp.
 g_brSnapFrames,0x104AB4F0,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
 g_brCfgInterpolate,0x100A5EAC,1,1,"transcription header (src/core/drawing/br_snapinterp.c)",0x100131E0
 BrFrameDrawView,0x10011FA0,1,1,"transcription header: the frame driver (src/core/drawing/br_snapinterp.c)",0x100131E0
+g_brCrPlane,0x117787F0,1,1,"transcription header: shared contact-normal bank (0x117787F0/F4/F8), src/core/driving/br_collrespsolve.c",0x10065C80

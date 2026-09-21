@@ -296,10 +296,111 @@ static uint8_t br_cr_ftol_byte(float x)
  * ~1.6e-3 confined to near-singular K.  Golden vectors below pin it.
  * ------------------------------------------------------------------ */
 /* @implements 0x10065C80 glide BrCrImpulseSolve */
-int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrient,
-                     BrVec3 *pVel, BrVec3 *pAngVel,
-                     const BrVec3 *pNormal, const BrVec3 *pRelDir,
-                     int flag, float restOffset, BrCrEffect *pEffect)
+#ifdef BR_MATCHING_BUILD
+/* Matching arm, transcribed from the 0x10065C80 bytes.  The original is NOT the
+ * flat ten-argument port below: it takes the BODY block and reads every operand
+ * off it, exactly as the already-certified caller BrCrRespWalk documents its
+ * cast (`(body, pNormal, pPlane, flag, restOffset)`).  Body offsets, read off
+ * the disassembly and cross-checked against br_collrespsolve.h:
+ *     +0x2C   mass          (invMass = 1/mass)
+ *     +0x54   invInertia    (BrMat3)
+ *     +0xBC   orientation   (BrMat4, 3x3 used)
+ *     +0x164  next.vel      (BrVec3, READ and WRITTEN)
+ *     +0x180  next.angVel   (BrVec3, READ and WRITTEN)
+ *     +0x1EC  effect.color[3]   +0x1FC intensity  +0x1FF peak  +0x200 threshold
+ * The impact colour is the shared normal bank g_brCrPlane.normal read straight
+ * from its global (the original does three dword loads off 0x117787F0), NOT the
+ * pNormal pointer -- they are the same object in the shipped call but distinct
+ * to the oracle, so the global read is the one that is behaviourally exact.
+ * The arithmetic content is the port's, validated to the original's opcode
+ * stream over >14000 cases; only the operand SOURCES change here. */
+int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int flag, float restOffset)
+{
+    const float   mass        = *(const float *)(pBody + 0x2C);
+    const BrMat3 *pInvInertia  = (const BrMat3 *)(pBody + 0x54);
+    const BrMat4 *pOrient      = (const BrMat4 *)(pBody + 0xBC);
+    BrVec3       *pVel         = (BrVec3 *)      (pBody + 0x164);
+    BrVec3       *pAngVel      = (BrVec3 *)      (pBody + 0x180);
+    const BrVec3 *pRelDir      = (const BrVec3 *) pPlane;
+
+    BrMat3 Rt, R, skew, Wworld, tmp, WSS, D, K;
+    BrVec3 nb, vc, cross, rhs, J, dw;
+    float  invMass = 1.0f / mass;
+    float  dd, add, inten, tang, mult;
+    int    i;
+
+    (void)pNormal;   /* colour comes from the global bank, not this pointer */
+
+    /* nb = orientationT . normal */
+    BrMat4ToMat3Both(&Rt, &R, pOrient);
+    BrMat3MulVec3(&nb, &Rt, &g_brCrPlane.normal);
+
+    /* vc = vel + angVel x nb */
+    cross.x = pAngVel->y * nb.z - pAngVel->z * nb.y;
+    cross.y = pAngVel->z * nb.x - pAngVel->x * nb.z;
+    cross.z = pAngVel->x * nb.y - pAngVel->y * nb.x;
+    vc.x = pVel->x + cross.x;
+    vc.y = pVel->y + cross.y;
+    vc.z = pVel->z + cross.z;
+
+    /* gate: separating (or NaN handled as the original) -> no response */
+    dd = vc.x * pRelDir->x + vc.y * pRelDir->y + vc.z * pRelDir->z;
+    if (!(dd < 0.0f))
+        return 0;
+
+    /* effect record: intensity = trunc(min(|dd|, 27)) (|dd| = -dd, dd < 0),
+     * colour = the shared normal bank's dwords, into body+0x1EC. */
+    add   = -dd;
+    inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
+    *(uint8_t *)(pBody + 0x1FC) = (uint8_t)(int32_t)inten;
+    memcpy(pBody + 0x1EC, &g_brCrPlane.normal, 3 * sizeof(uint32_t));
+
+    /* hard-hit path: saturating peak byte + damp the contact velocity that
+     * drives the solve.  threshold at +0x200; restOffset < 1e-4 for the caller. */
+    if (*(uint8_t *)(pBody + 0x200) > 10u && restOffset < BR_CR_EPS) {
+        uint8_t v = (uint8_t)(int32_t)(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
+        if (v > *(uint8_t *)(pBody + 0x1FF))
+            *(uint8_t *)(pBody + 0x1FF) = v;
+        vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
+        dd   *= BR_CR_DAMP;
+    }
+
+    /* K = (1/mass) I - [nb]x . Wworld . [nb]x */
+    BrMat3Skew(&skew, &nb);
+    BrMat3Mul(&tmp, pInvInertia, &R);
+    BrMat3Mul(&Wworld, &Rt, &tmp);
+    BrMat3Mul(&tmp, &Wworld, &skew);
+    BrMat3Mul(&WSS, &skew, &tmp);
+    for (i = 0; i < 9; ++i)
+        D.m[i] = (i == 0 || i == 4 || i == 8) ? invMass : 0.0f;
+    BrMat3Sub(K.m, D.m, WSS.m);
+
+    /* rhs = dd*relDir + tang*(vc - dd*relDir) */
+    tang = flag ? BR_CR_TANGENT : 0.0f;
+    rhs.x = dd * pRelDir->x + tang * (vc.x - dd * pRelDir->x);
+    rhs.y = dd * pRelDir->y + tang * (vc.y - dd * pRelDir->y);
+    rhs.z = dd * pRelDir->z + tang * (vc.z - dd * pRelDir->z);
+
+    /* J = solve(K, rhs); apply to vel and angVel. */
+    BrMat3Solve(&J, &K, &rhs);
+    mult = restOffset - BR_CR_RESTITUTION;   /* restOffset + 1.05 */
+
+    pVel->x -= mult * J.x * invMass;
+    pVel->y -= mult * J.y * invMass;
+    pVel->z -= mult * J.z * invMass;
+
+    cross.x = nb.y * J.z - nb.z * J.y;       /* nb x J */
+    cross.y = nb.z * J.x - nb.x * J.z;
+    cross.z = nb.x * J.y - nb.y * J.x;
+    BrMat3MulVec3(&dw, &Wworld, &cross);
+    pAngVel->x -= mult * dw.x;
+    pAngVel->y -= mult * dw.y;
+    pAngVel->z -= mult * dw.z;
+
+    return 1;
+}
+#else
+int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrient, BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal, const BrVec3 *pRelDir, int flag, float restOffset, BrCrEffect *pEffect)
 {
     BrMat3 Rt, R;             /* orientation 3x3, transposed and straight */
     BrMat3 skew, Wworld, tmp, WSS, D, K;
@@ -326,17 +427,21 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
         return 0;
 
     /* effect record, always written when the contact answers:
-     * intensity = trunc(min(|dd|, 27)); colour = the normal's dwords verbatim. */
-    add   = fabsf(dd);
+     * intensity = trunc(min(|dd|, 27)); colour = the normal's dwords verbatim.
+     * dd < 0 is guaranteed by the gate above, so |dd| is a plain negate: the
+     * original spells it `fchs`, not a fabsf call. */
+    add   = -dd;
     inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
-    pEffect->intensity = br_cr_ftol_byte(inten);
+    /* trunc-to-byte inline: the original emits `call __ftol` here, not a
+     * wrapper call -- (int) of a float is __ftol under MSVC 5.0. */
+    pEffect->intensity = (uint8_t)(int32_t)inten;
     memcpy(pEffect->color, pNormal, sizeof pEffect->color);
 
     /* hard-hit path: raise the saturating peak byte and damp the contact
      * velocity used to drive the solve.  restOffset < 1e-4 is always true for
      * the shipped caller (it passes 0). */
     if (pEffect->threshold > 10u && restOffset < BR_CR_EPS) {
-        uint8_t v = br_cr_ftol_byte(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
+        uint8_t v = (uint8_t)(int32_t)(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
         if (v > pEffect->peak)
             pEffect->peak = v;
         vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
@@ -379,6 +484,7 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 
     return 1;
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ------------------------------------------------------------------ *
  * 0x10065950 -- signed distance of a point from a contact plane.
