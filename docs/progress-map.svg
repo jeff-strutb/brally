@@ -754,24 +754,24 @@
 <rect x="591.9" y="299.0" width="0.5" height="1.8" fill="#3fb950"><title>CRT_empty  0x00401B70  1B  [EXE: bossrally.exe]</title></rect>
 <rect x="591.9" y="301.4" width="0.5" height="1.8" fill="#6e5494"><title>CRT_sub_00406082  0x00406082  1B  [EXE: bossrally.exe]</title></rect>
 <text x="393.5" y="315.8" font-size="10" fill="#8b949e">unfiled 0x1004xxxx</text>
-<rect x="392.0" y="320.8" width="69.1" height="138.2" fill="#c8ccd2"><title>(unnamed)  0x100498A0  3993B  [unfiled 0x1004xxxx]</title></rect>
-<rect x="461.7" y="320.8" width="130.6" height="67.2" fill="#c8ccd2"><title>(unnamed)  0x1004CBA0  3671B  [unfiled 0x1004xxxx]</title></rect>
-<rect x="461.7" y="388.6" width="117.9" height="70.4" fill="#c8ccd2"><title>(unnamed)  0x1004BE00  3475B  [unfiled 0x1004xxxx]</title></rect>
+<rect x="392.0" y="320.8" width="69.1" height="138.2" fill="#58a6ff"><title>(unnamed)  0x100498A0  3993B  [unfiled 0x1004xxxx]</title></rect>
+<rect x="461.7" y="320.8" width="130.6" height="67.2" fill="#58a6ff"><title>(unnamed)  0x1004CBA0  3671B  [unfiled 0x1004xxxx]</title></rect>
+<rect x="461.7" y="388.6" width="117.9" height="70.4" fill="#58a6ff"><title>(unnamed)  0x1004BE00  3475B  [unfiled 0x1004xxxx]</title></rect>
 <rect x="580.3" y="388.6" width="12.1" height="70.4" fill="#c8ccd2"><title>(unnamed)  0x10041180  373B  [unfiled 0x1004xxxx]</title></rect>
 <text x="393.5" y="471.6" font-size="10" fill="#8b949e">unfiled 0x1001xxxx</text>
-<rect x="392.0" y="476.6" width="200.3" height="134.3" fill="#c8ccd2"><title>(unnamed)  0x10019A70  11223B  [unfiled 0x1001xxxx]</title></rect>
+<rect x="392.0" y="476.6" width="200.3" height="134.3" fill="#58a6ff"><title>(unnamed)  0x10019A70  11223B  [unfiled 0x1001xxxx]</title></rect>
 <text x="393.5" y="623.5" font-size="10" fill="#8b949e">unfiled 0x1005xxxx</text>
-<rect x="392.0" y="628.5" width="63.1" height="73.0" fill="#c8ccd2"><title>(unnamed)  0x1005C8B0  1951B  [unfiled 0x1005xxxx]</title></rect>
+<rect x="392.0" y="628.5" width="63.1" height="73.0" fill="#58a6ff"><title>(unnamed)  0x1005C8B0  1951B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="392.0" y="702.1" width="63.1" height="54.2" fill="#c8ccd2"><title>(unnamed)  0x100553B0  1453B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="455.7" y="628.5" width="42.7" height="66.3" fill="#c8ccd2"><title>(unnamed)  0x1005A7A0  1206B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="455.7" y="695.4" width="42.7" height="61.0" fill="#c8ccd2"><title>(unnamed)  0x1005EDC0  1110B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="499.0" y="628.5" width="47.4" height="48.4" fill="#c8ccd2"><title>(unnamed)  0x1005E7B0  979B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="547.0" y="628.5" width="45.4" height="48.4" fill="#c8ccd2"><title>(unnamed)  0x1005D3C0  937B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="499.0" y="677.5" width="44.3" height="45.2" fill="#c8ccd2"><title>(unnamed)  0x1005D060  856B  [unfiled 0x1005xxxx]</title></rect>
-<rect x="499.0" y="723.3" width="44.3" height="33.1" fill="#c8ccd2"><title>(unnamed)  0x10058680  629B  [unfiled 0x1005xxxx]</title></rect>
+<rect x="499.0" y="723.3" width="44.3" height="33.1" fill="#58a6ff"><title>(unnamed)  0x10058680  629B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="543.9" y="677.5" width="48.5" height="27.8" fill="#c8ccd2"><title>(unnamed)  0x100550E0  581B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="543.9" y="705.9" width="48.5" height="24.3" fill="#c8ccd2"><title>(unnamed)  0x10054E20  510B  [unfiled 0x1005xxxx]</title></rect>
-<rect x="543.9" y="730.8" width="31.9" height="25.5" fill="#c8ccd2"><title>(unnamed)  0x10058E20  353B  [unfiled 0x1005xxxx]</title></rect>
+<rect x="543.9" y="730.8" width="31.9" height="25.5" fill="#58a6ff"><title>(unnamed)  0x10058E20  353B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="576.3" y="730.8" width="16.0" height="25.5" fill="#c8ccd2"><title>(unnamed)  0x10059350  181B  [unfiled 0x1005xxxx]</title></rect>
 <text x="393.5" y="768.9" font-size="10" fill="#8b949e">br_drawcar</text>
 <rect x="392.0" y="773.9" width="145.0" height="124.0" fill="#58a6ff"><title>BrCarDrawVehicle  0x1000A110  7577B  [core/drawing/br_drawcar]</title></rect>
@@ -1432,9 +1432,9 @@
 <rect x="732.7" y="495.5" width="1.2" height="0.7" fill="#6e5494"><title>(unnamed)  0x100737D4  1B  [linker/CRT (fenced)]</title></rect>
 <rect x="732.7" y="496.8" width="1.2" height="0.7" fill="#6e5494"><title>(unnamed)  0x100737D9  1B  [linker/CRT (fenced)]</title></rect>
 <text x="597.5" y="510.1" font-size="10" fill="#8b949e">unfiled 0x1000xxxx</text>
-<rect x="596.0" y="515.1" width="68.3" height="131.3" fill="#c8ccd2"><title>(unnamed)  0x100038F0  3799B  [unfiled 0x1000xxxx]</title></rect>
+<rect x="596.0" y="515.1" width="68.3" height="131.3" fill="#58a6ff"><title>(unnamed)  0x100038F0  3799B  [unfiled 0x1000xxxx]</title></rect>
 <rect x="664.9" y="515.1" width="69.0" height="42.2" fill="#c8ccd2"><title>(unnamed)  0x1000C4E0  1246B  [unfiled 0x1000xxxx]</title></rect>
-<rect x="664.9" y="557.9" width="69.0" height="34.4" fill="#c8ccd2"><title>(unnamed)  0x10006510  1018B  [unfiled 0x1000xxxx]</title></rect>
+<rect x="664.9" y="557.9" width="69.0" height="34.4" fill="#58a6ff"><title>(unnamed)  0x10006510  1018B  [unfiled 0x1000xxxx]</title></rect>
 <rect x="664.9" y="592.9" width="42.7" height="53.4" fill="#c8ccd2"><title>(unnamed)  0x10001510  977B  [unfiled 0x1000xxxx]</title></rect>
 <rect x="708.2" y="592.9" width="25.8" height="27.4" fill="#c8ccd2"><title>(unnamed)  0x1000C9E0  308B  [unfiled 0x1000xxxx]</title></rect>
 <rect x="708.2" y="620.9" width="25.8" height="25.5" fill="#c8ccd2"><title>(unnamed)  0x1000E150  287B  [unfiled 0x1000xxxx]</title></rect>
@@ -1461,7 +1461,7 @@
 <rect x="722.8" y="763.5" width="6.8" height="9.8" fill="#3fb950"><title>BrTexTileUnpack  0x100293F0  33B  [core/drawing/br_tex3d]</title></rect>
 <rect x="730.3" y="763.5" width="3.7" height="9.8" fill="#3fb950"><title>br_tex3d_end  0x100293D0  19B  [core/drawing/br_tex3d]</title></rect>
 <text x="597.5" y="785.9" font-size="10" fill="#8b949e">unfiled 0x1002xxxx</text>
-<rect x="596.0" y="790.9" width="54.0" height="107.0" fill="#c8ccd2"><title>(unnamed)  0x1002F790  2517B  [unfiled 0x1002xxxx]</title></rect>
+<rect x="596.0" y="790.9" width="54.0" height="107.0" fill="#58a6ff"><title>(unnamed)  0x1002F790  2517B  [unfiled 0x1002xxxx]</title></rect>
 <rect x="650.6" y="790.9" width="44.2" height="62.5" fill="#c8ccd2"><title>(unnamed)  0x10022600  1212B  [unfiled 0x1002xxxx]</title></rect>
 <rect x="695.4" y="790.9" width="38.6" height="62.5" fill="#c8ccd2"><title>(unnamed)  0x100221D0  1059B  [unfiled 0x1002xxxx]</title></rect>
 <rect x="650.6" y="854.0" width="52.8" height="43.9" fill="#c8ccd2"><title>(unnamed)  0x10023360  1019B  [unfiled 0x1002xxxx]</title></rect>
@@ -1542,12 +1542,12 @@
 <text x="1387.8" y="10.5" font-size="10" fill="#8b949e">unfiled 0x1006xxxx</text>
 <rect x="1386.3" y="15.5" width="45.4" height="51.6" fill="#c8ccd2"><title>(unnamed)  0x1006E5C0  1044B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="1386.3" y="67.7" width="45.4" height="49.1" fill="#c8ccd2"><title>(unnamed)  0x1006C990  994B  [unfiled 0x1006xxxx]</title></rect>
-<rect x="1432.4" y="15.5" width="58.9" height="31.4" fill="#c8ccd2"><title>(unnamed)  0x10069A80  828B  [unfiled 0x1006xxxx]</title></rect>
+<rect x="1432.4" y="15.5" width="58.9" height="31.4" fill="#58a6ff"><title>(unnamed)  0x10069A80  828B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="1432.4" y="47.5" width="35.1" height="36.8" fill="#c8ccd2"><title>(unnamed)  0x10068070  581B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="1468.0" y="47.5" width="23.2" height="36.8" fill="#c8ccd2"><title>(unnamed)  0x100682C0  387B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="1432.4" y="85.0" width="26.6" height="31.7" fill="#c8ccd2"><title>(unnamed)  0x10063FA0  382B  [unfiled 0x1006xxxx]</title></rect>
 <rect x="1459.5" y="85.0" width="31.7" height="20.1" fill="#c8ccd2"><title>(unnamed)  0x1006D2E0  290B  [unfiled 0x1006xxxx]</title></rect>
-<rect x="1459.5" y="105.6" width="31.7" height="11.1" fill="#c8ccd2"><title>(unnamed)  0x1006D0B0  164B  [unfiled 0x1006xxxx]</title></rect>
+<rect x="1459.5" y="105.6" width="31.7" height="11.1" fill="#58a6ff"><title>(unnamed)  0x1006D0B0  164B  [unfiled 0x1006xxxx]</title></rect>
 <text x="1496.3" y="10.5" font-size="10" fill="#8b949e">br_collresp</text>
 <rect x="1494.8" y="15.5" width="54.7" height="73.4" fill="#58a6ff"><title>BrCollRespTipKick  0x10066D70  1782B  [core/driving/br_collresp]</title></rect>
 <rect x="1494.8" y="89.5" width="54.7" height="27.2" fill="#3fb950"><title>BrCollRespBroadPhase  0x10066AD0  669B  [core/driving/br_collresp]</title></rect>
@@ -1771,13 +1771,13 @@
 <rect x="986.4" y="260.7" width="24.4" height="24.6" fill="#3fb950"><title>BrClipPlaneW  0x1001F0D0  303B  [core/drawing/br_dlclip]</title></rect>
 <rect x="986.4" y="285.9" width="24.4" height="13.6" fill="#3fb950"><title>BrClipLerpVert  0x1001F200  170B  [core/drawing/br_dlclip]</title></rect>
 <text x="1015.9" y="233.3" font-size="10" fill="#8b949e">unfiled 0x1003xxxx</text>
-<rect x="1014.4" y="238.3" width="36.8" height="31.0" fill="#c8ccd2"><title>(unnamed)  0x10038F40  567B  [unfiled 0x1003xxxx]</title></rect>
+<rect x="1014.4" y="238.3" width="36.8" height="31.0" fill="#58a6ff"><title>(unnamed)  0x10038F40  567B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1014.4" y="270.0" width="36.8" height="29.5" fill="#c8ccd2"><title>(unnamed)  0x10039990  540B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1051.8" y="238.3" width="20.3" height="33.4" fill="#c8ccd2"><title>(unnamed)  0x1003D7D0  340B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1072.7" y="238.3" width="19.7" height="33.4" fill="#c8ccd2"><title>(unnamed)  0x100393C0  330B  [unfiled 0x1003xxxx]</title></rect>
-<rect x="1051.8" y="272.3" width="17.3" height="27.2" fill="#c8ccd2"><title>(unnamed)  0x1003AA10  238B  [unfiled 0x1003xxxx]</title></rect>
+<rect x="1051.8" y="272.3" width="17.3" height="27.2" fill="#58a6ff"><title>(unnamed)  0x1003AA10  238B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1069.6" y="272.3" width="22.7" height="15.0" fill="#c8ccd2"><title>(unnamed)  0x10035533  174B  [unfiled 0x1003xxxx]</title></rect>
-<rect x="1069.6" y="287.9" width="22.7" height="11.6" fill="#c8ccd2"><title>(unnamed)  0x10038CA0  136B  [unfiled 0x1003xxxx]</title></rect>
+<rect x="1069.6" y="287.9" width="22.7" height="11.6" fill="#58a6ff"><title>(unnamed)  0x10038CA0  136B  [unfiled 0x1003xxxx]</title></rect>
 <text x="1097.4" y="233.3" font-size="10" fill="#8b949e">br_dlglide</text>
 <rect x="1095.9" y="238.3" width="30.2" height="61.2" fill="#3fb950"><title>BrGlRectFill  0x1001E380  914B  [core/drawing/br_dlglide]</title></rect>
 <rect x="1126.7" y="238.3" width="45.3" height="34.1" fill="#3fb950"><title>BrGlGbiCall  0x10021270  766B  [core/drawing/br_dlglide]</title></rect>
@@ -1904,7 +1904,7 @@
 <rect x="1456.7" y="337.3" width="14.4" height="9.4" fill="#3fb950"><title>BrNetSlotSetF02C  0x10004DC0  60B  [core/net/br_netstate]</title></rect>
 <rect x="1456.7" y="347.3" width="14.4" height="8.1" fill="#3fb950"><title>BrNetLockSetIfZero22AAF4  0x10004F50  52B  [core/net/br_netstate]</title></rect>
 <rect x="1456.7" y="356.0" width="14.4" height="6.6" fill="#3fb950"><title>BrNetLockSet22AAA8  0x10004F20  43B  [core/net/br_netstate]</title></rect>
-<rect x="1474.8" y="303.1" width="18.7" height="19.8" fill="#d29922"><title>BrSndBankPickSlot  0x10013F20  157B  84 diff bytes  [core/ghidra_batch]</title></rect>
+<rect x="1474.8" y="303.1" width="18.7" height="19.8" fill="#58a6ff"><title>BrSndBankPickSlot  0x10013F20  157B  [core/ghidra_batch]</title></rect>
 <rect x="1474.8" y="323.5" width="18.7" height="19.2" fill="#58a6ff"><title>BrCdAudioTick  0x10005400  153B  [core/ghidra_batch]</title></rect>
 <rect x="1474.8" y="343.3" width="18.7" height="19.2" fill="#58a6ff"><title>BrEntGfxFreeAll  0x10029CD0  153B  [core/ghidra_batch]</title></rect>
 <rect x="1494.1" y="303.1" width="21.1" height="15.1" fill="#3fb950"><title>BrCountedNetSend  0x10004A40  136B  [core/ghidra_batch]</title></rect>
@@ -2034,7 +2034,7 @@
 <rect x="1419.3" y="393.5" width="15.2" height="27.9" fill="#3fb950"><title>FUN_10028420  0x10028420  183B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1435.1" y="393.5" width="13.8" height="17.0" fill="#3fb950"><title>FUN_10023aa0  0x10023AA0  103B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1435.1" y="411.1" width="13.8" height="10.3" fill="#3fb950"><title>FUN_100281c0  0x100281C0  64B  [core/drawing/br_glidestate]</title></rect>
-<rect x="1452.6" y="366.1" width="46.7" height="55.3" fill="#d29922"><title>BrGhostPlaybackStep  0x10061F60  1073B  729 diff bytes  [core/racing/br_ghoststep]</title></rect>
+<rect x="1452.6" y="366.1" width="46.7" height="55.3" fill="#58a6ff"><title>BrGhostPlaybackStep  0x10061F60  1073B  [core/racing/br_ghoststep]</title></rect>
 <rect x="1502.9" y="366.1" width="46.6" height="55.3" fill="#58a6ff"><title>BrGhostPickBlend  0x10005810  1070B  [core/net/br_ghostpick]</title></rect>
 <rect x="1553.1" y="366.1" width="44.8" height="55.3" fill="#d29922"><title>BrGbiCall10021560  0x100215C0  1032B  129 diff bytes  [core/slice4_51]</title></rect>
 <rect x="1066.3" y="425.0" width="45.5" height="28.9" fill="#3fb950"><title>BrSaveNameCommitRallySeason  0x1003B350  554B  [core/menus/br_savename]</title></rect>
@@ -2793,4 +2793,4 @@
 <rect x="1594.6" y="893.1" width="3.3" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.6" y="896.7" width="0.4" height="1.2" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 146 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1319 &#183; T3 codegen-only 163 &#183; 232,593/521,681 bytes exact (44.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>

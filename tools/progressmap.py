@@ -10,7 +10,7 @@ cells sized by original byte size, colored by status.
 
 Usage:  python3 tools/progressmap.py [-o build/match/map.html]
 """
-import argparse, csv, html, os, sys
+import argparse, csv, html, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FUNCS = os.environ.get("BR_MAP", os.path.join(ROOT, "config", "functions_glide.csv"))
@@ -81,7 +81,26 @@ def _match_set(path):
     return out
 
 
+def _refresh_t3():
+    """Regenerate build/match/tier3.csv from source @t3 tags before rendering.
+
+    tier3.csv is an untracked build artifact; nothing commits it, so a map
+    rendered against a stale copy paints already-certified T3 functions grey.
+    tools/tiers.py derives the T3 set from the source tags (one row per
+    distinct @t3 VA) and is cheap, so refresh it here rather than trust
+    whatever copy happens to be on disk. Best-effort: a map is still useful if
+    this fails, so never let it abort the render.
+    """
+    try:
+        subprocess.run([sys.executable, os.path.join(ROOT, "tools", "tiers.py")],
+                       cwd=ROOT, stdout=subprocess.DEVNULL, check=True)
+    except Exception as e:
+        print("progressmap: could not refresh tier3.csv (%s); "
+              "T3 layer may be stale" % e, file=sys.stderr)
+
+
 def load():
+    _refresh_t3()
     rep = {}
     with open(REPORT) as f:
         for r in csv.DictReader(f):
@@ -109,8 +128,12 @@ def load():
             is_cpp = va in cpp
             if is_cpp or (m and m["status"] == "match"):
                 status = "match"
-            elif m and va in t3:
-                status = "codegen"     # T3: same instructions, register/sched only
+            elif va in t3:
+                # T3: certified same-behaviour (register/sched-only residue).
+                # Independent of the sweep report — a function filed into its
+                # own module (src/core/cpp/<VA>.cpp) carries an @t3 tag but no
+                # report.csv row, and must not fall through to grey/todo.
+                status = "codegen"
             elif m:
                 status = "diff"
             elif va in fenced_dll:
