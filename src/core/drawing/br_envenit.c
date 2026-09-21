@@ -68,18 +68,35 @@ extern short DAT_104add54;
 extern int DAT_100a7514;
 extern int DAT_100a7518;
 
-/* Residue: insn gap 22, mset 71+49, 46 unpaired.  Frame is sub esp,0x2c.
- * Scale matrix is c705 immediates.  Inner x87 is stack-index/fxch plus
- * fcomp-mem vs fcomp-st (test ah,1 vs 0x41).  Tile pack folds to
- * shl/and/or.  ScaleA/B live on the x87 stack (fld/fstp) instead of
- * mov-imm to [esp].  n64 BrEnvEmit MISS.  21 probes, none moved
- * REGNORM 32+54.
- */
+/* RESIDUE (2026-09-20): bytes 2038/2039, insn gap 7, 15 regions.  The old
+ * transcription wrote each display-list command THROUGH the global cursor
+ * (`*DAT_106e7710 = cmd; DAT_106e7710 = puVar6;`), which cost a spare pointer
+ * and a lea per command and left it -89 bytes / 22 insns short.  The original
+ * advances the cursor off the already-loaded value and writes through the saved
+ * pointer (`puVar7 = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *puVar7 =
+ * cmd;`).  Respelling that idiom closed the structural gap to a single byte.
+ * What is left is pure colouring, read out of the diff:
+ *   - the constant 8 (the per-command cursor bump) is cached in a spare
+ *     register (ebx frees after the two enter-flag loads), so we emit `add
+ *     ecx,ebx` where the original keeps DAT_106ed6b4 live in ebx and uses the
+ *     immediate `add ecx,8` -- 15 add R,R vs 15 add R,8.
+ *   - x87 stack scheduling in the per-segment projection: fst/fld/fxch order
+ *     and fcomp-mem vs fcomp-st (test ah,1 vs ah,0x41), and the tile pack
+ *     folded as shl 0xc vs shl 0xa + and 0xfff000.
+ * A5 oracle EQUIVALENT on 48 seeds (oracle_profiles _env_bss): the display-list
+ * command stream, the per-segment transform coefficients, the scale constants
+ * and the tile-pack are all verified exactly (negative controls on each fire
+ * DIFF).  No source lever moved the byte count off 2038 across 10+ spellings
+ * and 5 opt levels. */
 /* WHAT IT DOES: emit the per-frame track-surface display list -- pipe/combiner
  * preamble, texture bind, prim colour, a 64x64 projected visibility bitmap
  * stamped along the section light, and one tile command per track segment. */
-/* @t4-pass 0x10017110 1 2026-09-09 probes 11 bytes 1950 insns 476 regions 13 rows 120 census yes  (fn.py: commute, scale-int pun, recast, decl reverse; corpus +0xb MISS) */
-/* @t4-pass 0x10017110 2 2026-09-09 probes 10 bytes 1950 insns 476 regions 13 rows 120 census yes  (fn.py: xor/!=, combiner zeros, index, fchs, pack parens, stamp bounds) */
+/* @t4-pass 0x10017110 3 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census no  (fn.py: cursor-advance spellings (+=, &x[2], char+8), flag hoist, extra decl, write-then-advance, O2/O2y/O2p/Od/O1.  Best -1 byte/+7 insns at O2; none reached 0.  Residue is the constant-8 register cache + x87 scheduling.) */
+/* @t4-pass 0x10017110 4 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census yes  (census of unpaired multiset: 15 add R,R (EXTRA) pair with 15 add R,8 (MISSING) = the cursor-bump constant cached in ebx vs immediate, a register-allocation choice; fst/fld/fstp/fxch/fcomp-st (EXTRA) vs fst-mem/fcomp-mem (MISSING) = x87 stack scheduling of the projection; shl 0xa+and 0xfff000+or (EXTRA) vs shl 0xc (MISSING) = same tile-pack value, different encoding.  Every divergent row is register allocation or instruction scheduling of identical logic.  A5 oracle EQUIVALENT on 48 seeds.) */
+/* @t3 0x10017110 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2038/2039 insns 505/498 rows 51+58 regions 15 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ */
 /* @implements 0x10017110 glide BrEnvEmit */
 void BrEnvEmit(void)
 {
@@ -119,69 +136,57 @@ void BrEnvEmit(void)
       FUN_10008d60();
     }
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xe7000000;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xe7000000;
     puVar7[1] = iVar15;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xba001402;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xba001402;
     puVar7[1] = iVar15;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xbb000001;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xbb000001;
     puVar7[1] = 0xffffffff;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xba000c02;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xba000c02;
     puVar7[1] = DAT_106e72e8;
     puVar7 = DAT_106e7710;
     DAT_106e7710 = DAT_106e7710 + 2;
     FUN_1001cf90(puVar7, 0, 0, 0, 0x3eb, 0, 0, 0, 0x3e9, 0, 0, 0, 0x3eb, 0, 0, 0, 0x3e9);
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xb900031d;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xb900031d;
     puVar7[1] = 0x504240;
     puVar7 = DAT_106e7710;
     if (DAT_106ed6b4 == 0) {
-      puVar6 = DAT_106e7710 + 2;
-      *DAT_106e7710 = DAT_1184c478 & 0xffffff | 0xdc000000;
-      DAT_106e7710 = puVar6;
+      DAT_106e7710 = DAT_106e7710 + 2;
+      *puVar7 = DAT_1184c478 & 0xffffff | 0xdc000000;
     } else {
-      puVar6 = DAT_106e7710 + 2;
-      *DAT_106e7710 = *(unsigned int *)((char *)&DAT_1184c460 + DAT_106ec798 * 4) & 0xffffff | 0xdd000000;
-      DAT_106e7710 = puVar6;
+      DAT_106e7710 = DAT_106e7710 + 2;
+      *puVar7 = *(unsigned int *)((char *)&DAT_1184c460 + DAT_106ec798 * 4) & 0xffffff | 0xdd000000;
       puVar7[1] = (unsigned int)(&DAT_104af5c8 + DAT_106ec798 * 0x1000);
       puVar7 = DAT_106e7710;
-      puVar6 = DAT_106e7710 + 2;
-      *DAT_106e7710 = *(unsigned int *)((char *)&DAT_1184c460 + DAT_106ec798 * 4) & 0xffffff | 0xdc000000;
-      DAT_106e7710 = puVar6;
+      DAT_106e7710 = DAT_106e7710 + 2;
+      *puVar7 = *(unsigned int *)((char *)&DAT_1184c460 + DAT_106ec798 * 4) & 0xffffff | 0xdc000000;
     }
     puVar7[1] = 1;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xf2002002;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xf2002002;
     puVar7[1] = 0xfe0fe;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xb6000000;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xb6000000;
     puVar7[1] = 0x3000;
     puVar7 = DAT_106e7710;
     if (DAT_106ed6b0 == 0) {
-      puVar6 = DAT_106e7710 + 2;
-      *DAT_106e7710 = 0xfa00ffff;
-      DAT_106e7710 = puVar6;
+      DAT_106e7710 = DAT_106e7710 + 2;
+      *puVar7 = 0xfa00ffff;
       puVar7[1] = 0x788088ff;
     } else {
-      puVar6 = DAT_106e7710 + 2;
-      *DAT_106e7710 = 0xfa00ffff;
-      DAT_106e7710 = puVar6;
+      DAT_106e7710 = DAT_106e7710 + 2;
+      *puVar7 = 0xfa00ffff;
       puVar7[1] = 0xe0e0ffff;
     }
     FUN_10034b70(&DAT_106e78f0, DAT_106ed520);
@@ -297,11 +302,10 @@ void BrEnvEmit(void)
                   iVar9 = (int)(fVar5 * viewH);
                   iVar9 = iVar9 + (DAT_100a7518 / 2) * 4;
                   puVar7 = DAT_106e7710;
-                  puVar6 = DAT_106e7710 + 2;
+                  DAT_106e7710 = DAT_106e7710 + 2;
                   iVar10 = (iVar8 + iVar11) & 0x3ffc | 0x38c000;
-                  *DAT_106e7710 =
+                  *puVar7 =
                       ((int)iVar10 >> 2) << 0xc | (iVar12 + iVar9 >> 2) & 0xfff;
-                  DAT_106e7710 = puVar6;
                   puVar7[1] = (iVar8 >> 2 & 0xfff) << 0xc | iVar9 >> 2 & 0xfff;
                 }
               }
@@ -313,14 +317,12 @@ void BrEnvEmit(void)
       } while (iVar15 < DAT_104add38);
     }
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xe7000000;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xe7000000;
     puVar7[1] = 0;
     puVar7 = DAT_106e7710;
-    puVar6 = DAT_106e7710 + 2;
-    *DAT_106e7710 = 0xba001301;
-    DAT_106e7710 = puVar6;
+    DAT_106e7710 = DAT_106e7710 + 2;
+    *puVar7 = 0xba001301;
     puVar7[1] = 0x80000;
   }
   return;
