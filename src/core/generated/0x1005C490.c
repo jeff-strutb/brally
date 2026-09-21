@@ -72,6 +72,12 @@ extern int DAT_10af3bb0;
  * to the lowest bit set in the level's mask (5 if the mask is empty). */
 /* @t4-pass 0x1005C490 1 2026-09-07 probes 148 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005C490 2 2026-09-07 probes 101 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t3 0x1005C490 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 204/201 insns 78/78 rows 3+3 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: one addressing-mode fold across three table-index sites (the
+ * `lea;sub` vs `shl;sub;[base+idx]` layout wall in the dossier above), not
+ * source-permutable. Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1005C490 glide BrRaceCarPickIndex */
 void __fastcall BrRaceCarPickIndex(unsigned char *pCar)
 {
