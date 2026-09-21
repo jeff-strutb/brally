@@ -94,6 +94,12 @@ extern int          g_brKeyRingPos;     /* 0x10AC5DA0 */
 /* @t4-pass 0x10040A90 2 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10040A90 3 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10040A90 4 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/crank.py) */
+/* @t3 0x10040A90 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 91/91 insns 37/38 rows 4+3 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * RESIDUE: register colouring only -- same size; a few register-move choices
+ * differ across four small regions (crank 50+ compiles, no byte-exact, census
+ * yes). Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10040A90 glide BrCheatCodeScan */
 void BrCheatCodeScan(void)
 {
