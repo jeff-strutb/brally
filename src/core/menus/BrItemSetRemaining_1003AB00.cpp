@@ -96,10 +96,13 @@ typedef char chk_itemD[(unsigned)&((Obj3AB00 *)0)->m2B5C == 0x2B5C ? 1 : -1];
 extern "C" {
 struct BrRec24 { int f00; char pad04[20]; };
 
-int      g_brMode5BF4;          /* 0x10AC5BF4 */
-BrRec24  g_brTbl0B3020[];       /* 0x100B3020 */
-char     g_brSel5C10;           /* 0x10AC5C10 */
-int      g_brUsed5C1C;          /* 0x10AC5C1C */
+/* `extern` is load-bearing: a bare object declaration inside a C++
+ * `extern "C" {}` block is a DEFINITION (this TU's own .bss), and the image
+ * build then cannot bind the symbol to the real cell. */
+extern int      g_brMode5BF4;          /* 0x10AC5BF4 */
+extern BrRec24  g_brTbl0B3020[];       /* 0x100B3020 */
+extern char     g_brSel5C10;           /* 0x10AC5C10 */
+extern int      g_brUsed5C1C;          /* 0x10AC5C1C */
 _CRTIMP char *_strupr(char *s);
 }
 
