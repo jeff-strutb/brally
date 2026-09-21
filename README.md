@@ -50,6 +50,49 @@ cap on how strong the game's ripple effect can get — but exactly how that look
 screen isn't recoverable from the binary alone, so treat its description as a best
 guess pending someone actually typing it in-game.
 
+## Split screen
+
+The N64 game *Top Gear Rally* has a two-player split-screen mode. The PC version
+appears to ship with **no way to select it** — yet the decompilation shows the
+split-screen renderer is fully present, complete, and wired up. It was built, and
+then left one step short of playable.
+
+What's actually in the binary:
+
+- **A complete two-way split renderer.** The frame setup switches on the view
+  count with exactly two arms — one full-screen view, or **two stacked
+  half-height views** (top and bottom, each clipped to its own half). There is no
+  three- or four-way path; it's strictly a two-player top/bottom split.
+  (`BrFrameBeginDl`, `src/core/drawing/br_framebegin.c`)
+- **A per-view frame loop.** The frame drawer iterates `for (i = 0; i < views; i++)`,
+  building each view's own camera and scene, and the camera code halves its height
+  "which is what a split screen needs." Every downstream system — HUD, lap-time
+  layout, on-screen captions, the "wait for player" prompts — already carries live
+  `views == 2` branches. (`BrFrameDraw`, `src/core/drawing/br_framedrive.c`;
+  `src/core/scene/br_camera.c`)
+- **Generic multi-car control.** Cars are driven by a per-car function pointer;
+  AI cars point at the AI controller, and the engine already runs any number of
+  independently-controlled cars per frame. The physics don't care whether a given
+  car is steered by a human or the AI. (`BrRaceDriverStep`,
+  `src/core/racing/br_racestep.c`)
+
+So the screen, the cameras, the HUD, the second car, and the physics are all ready.
+The one missing piece is **input for a second local player**:
+
+- Input is a singleton. There is one keyboard buffer and one mouse buffer (the
+  `[2]` you see is current/previous-frame double-buffering, not two players), and
+  one control layout. (`src/core/controls/br_inputpoll.c`, `br_ctrlquery.c`)
+- The routine that applies a player's controls to a car, `BrCtlInputApply`, takes
+  a car pointer but reads its input from a **single global** with no device or
+  player index — hand it any car and it feeds that car the same one human's input.
+  (`src/core/driving/br_ctlinput.c`)
+
+To turn this into a working mode you would need to add a second device binding /
+control layout, give the input applier a per-player selector so entrant 0 and
+entrant 1 read different devices, assign the second entrant a human controller
+instead of the AI one, and expose the mode in a menu. Everything below that — the
+hard part, the rendering — is already done.
+
 ## Status
 
 Two milestones, both measured in bytes of BRGlide `.text` (480,853 B — the
@@ -62,14 +105,14 @@ _Snapshot 2026-09-20._
 
 ```
 M1  Contract-valid — compiles & ports (T3 + T4)
-    ███████████████████████████████░░░░░░░░░  77.0%   370,479 / 480,853 B   1,364 / 1,502 fns
+    ███████████████████████████████░░░░░░░░░  78.1%   375,557 / 480,853 B   1,374 / 1,502 fns
 M2  Byte-exact (T4)
     ██████████████████░░░░░░░░░░░░░░░░░░░░░░  45.6%   219,102 / 480,853 B   1,213 / 1,502 fns
 ```
 
-The bars sit close by design: matching is byte-exact-first, so only 151
-certified-but-not-yet-exact functions (151,377 B) separate M1 from M2. Byte
-percentages trail function percentages (90.8% / 80.8% of functions) because the
+The bars sit close by design: matching is byte-exact-first, so only 161
+certified-but-not-yet-exact functions (156,455 B) separate M1 from M2. Byte
+percentages trail function percentages (91.5% / 80.8% of functions) because the
 functions still open are several times larger than the matched ones.
 
 By binary — the three EXEs are complete at both milestones (their game code is fully
@@ -81,7 +124,7 @@ decompiled, and is out of scope). All remaining work is in BRGlide.dll.
 | **BossRally.exe** | `████████████████████` 100% — 35/35 fns, 2,482 B | `████████████████████` 100% — 35/35 fns, 2,482 B |
 | **BRally.exe** | `████████████████████` 100% — 28/28 fns, 2,860 B | `████████████████████` 100% — 28/28 fns, 2,860 B |
 | **SetVideo.exe** | `████████████████████` 100% — 42/42 fns, 7,251 B | `████████████████████` 100% — 42/42 fns, 7,251 B |
-| **BRGlide.dll** | `███████████████░░░░░` 77.0% — 370,479 B, 1,364 fns | `█████████░░░░░░░░░░░` 45.6% — 219,102 B, 1,213 fns |
+| **BRGlide.dll** | `████████████████░░░░` 78.1% — 375,557 B, 1,374 fns | `█████████░░░░░░░░░░░` 45.6% — 219,102 B, 1,213 fns |
 <!-- PROGRESS:END -->
 
 Query the tree. Do not trust a number in this file.
