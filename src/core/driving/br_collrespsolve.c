@@ -297,6 +297,9 @@ static uint8_t br_cr_ftol_byte(float x)
  * ------------------------------------------------------------------ */
 /* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
 /* @t4-pass 0x10065C80 2 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
+/* WHAT IT DOES: resolves one contact into a collision impulse and applies it
+ * to the body's next linear and angular velocity -- the solve that stops a car
+ * falling through the world (full dossier above). */
 /* @t3 0x10065C80 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1137/1448 insns 347/422 rows 140+65 regions 4 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
