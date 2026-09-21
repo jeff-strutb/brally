@@ -405,6 +405,7 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
  * how fast it is spinning. The result is what the integrator adds to the
  * orientation each step to make the body actually turn. */
 /* @t4-pass 0x1006D530 1 2026-09-13 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006D530 2 2026-09-20 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
 /* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
