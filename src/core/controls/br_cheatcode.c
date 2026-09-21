@@ -92,6 +92,7 @@ extern int          g_brKeyRingPos;     /* 0x10AC5DA0 */
  * the whole table, so more than one word can trigger in a single call. */
 /* @t4-pass 0x10040A90 1 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10040A90 2 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10040A90 3 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10040A90 glide BrCheatCodeScan */
 void BrCheatCodeScan(void)
 {
