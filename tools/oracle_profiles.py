@@ -1216,14 +1216,21 @@ def _sv_bss(seed, a):
     # ---- pointer-valued globals: null (deref reads 0 both sides) ----
     if base in (0x106ED520, 0x106E9D88, 0x106EED38):      # Camera, PlayerCar, TrackFlags
         return 0
-    return 0                                              # null-safe / cleared
+    # ---- everything else: a tame float (roughly +/-100), NOT zero, so DATA
+    # globals like the view matrix g_BrDrawView (0x106E9A38) are non-degenerate
+    # and FUN_1000c9e0's projection actually runs (a zero matrix collapses the
+    # transform and the projection body -- where region 1 lives -- is skipped). --
+    return (_sv_tame((seed * 0x1000193) ^ base) >> (8 * (a - base))) & 0xff
 
 
 def _sv_drv_byte(seed, di, r):
+    # pt.x/pt.y are copied bit-for-bit as ints but consumed as FLOATS by
+    # FUN_1000c9e0's BrMat4TransformPoint4, so they must be tame float bits (a
+    # small int reads as a ~0 denormal and collapses the transform).
     k = seed * 4 + di + 1
-    if 0x30 <= r < 0x34:  return _b(((k * 5) % 25 - 12) & 0xffffffff, r, 0x30)   # pt.x int
-    if 0x34 <= r < 0x38:  return _b(((k * 3) % 25 - 12) & 0xffffffff, r, 0x34)   # pt.y int
-    if 0x38 <= r < 0x3c:  return (_sv_tame(k) >> (8 * (r - 0x38))) & 0xff        # pt.h a
+    if 0x30 <= r < 0x34:  return (_sv_tame(k + 3) >> (8 * (r - 0x30))) & 0xff     # pt.x float
+    if 0x34 <= r < 0x38:  return (_sv_tame(k + 6) >> (8 * (r - 0x34))) & 0xff     # pt.y float
+    if 0x38 <= r < 0x3c:  return (_sv_tame(k) >> (8 * (r - 0x38))) & 0xff         # pt.h a
     if 0x2994 <= r < 0x2998: return (_sv_tame(k + 9) >> (8 * (r - 0x2994))) & 0xff  # pt.h b
     for so in (0x299c, 0x299e, 0x29a0, 0x29a2):           # box shorts, varied small
         if so <= r < so + 2:
@@ -1355,7 +1362,7 @@ PROFILES = {
     0x10061F60: Profile(_gs_bss, zero_stack=True, seeds=48, buf=_gs_buf,
                         buf_sizes={0: 0x100}, stub_calls=_GS_STUBS,
                         exact_regions=((_GS_CAR, _GS_CAR + 0x3000), (_GS_FLAGS, _GS_FLAGS + 0x100))),
-    0x1000E320: Profile(_sv_bss, zero_stack=True, seeds=12, buf=_sv_buf,
+    0x1000E320: Profile(_sv_bss, zero_stack=True, seeds=48, buf=_sv_buf,
                         buf_sizes={0: 0x100, 1: 0x8000, 2: 0x6000},
                         stub_calls=(0x100031D0, 0x10003280)),
     0x10005810: Profile(_gp_bss, zero_stack=True, seeds=48, arg=_gp_arg,

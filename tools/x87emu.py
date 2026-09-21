@@ -106,13 +106,44 @@ def _model_release_mutex(m):
     m.R['esp'] = u32(m.R['esp'] + 4)
 
 
+def _model_floor(m):
+    """floor(double) cdecl -> double in st(0).  The one double arg sits at
+    [esp..esp+7] (no return address is pushed for a modeled import); the result
+    is pushed onto the x87 stack and esp is left unchanged (the caller's
+    `add esp,8` clears the pushed argument).  Without this, the returned double
+    never reaches st(0) and the caller's following fstp / _ftol underflows.
+    floor(nan)=nan and floor(+-inf)=+-inf, matching C."""
+    a = m.rd_f8(m.R['esp'])
+    try:
+        r = float(math.floor(a))
+    except (ValueError, OverflowError):
+        r = a
+    m.st.insert(0, r)
+
+
+def _model_asin(m):
+    """asin(double) cdecl -> double in st(0).  Same ABI as _model_floor; a domain
+    error (|arg| > 1) yields NaN deterministically -- both sides compute it the
+    same, which is all equivalence needs."""
+    a = m.rd_f8(m.R['esp'])
+    try:
+        r = math.asin(a)
+    except ValueError:
+        r = float('nan')
+    m.st.insert(0, r)
+
+
 # DLL imports whose code is in a module the oracle does not map, keyed by the
 # reference image's IAT slot address.  memmove is MSVCRT; the two mutex calls
 # are KERNEL32, reached by the SEH-framed net dispatchers (0x1002F790 etc.).
+# floor/asin are MSVCRT math functions that return a double in st(0) (cdecl,
+# caller-cleaned), reached e.g. through BrLightDirsFromLookAt's angle packing.
 MSVCRT_IMPORTS = {
     0x118F04FC: _model_memmove,
     0x118F044C: _model_wait_single,     # KERNEL32 WaitForSingleObject@8
     0x118F04BC: _model_release_mutex,   # KERNEL32 ReleaseMutex@4
+    0x118F059C: _model_floor,           # MSVCRT floor
+    0x118F0504: _model_asin,            # MSVCRT asin
 }
 
 

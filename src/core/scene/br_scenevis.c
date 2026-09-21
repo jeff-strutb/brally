@@ -167,47 +167,24 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * velocity), normalises it, and pushes its byte-packed direction into a
  * four-deep history; finally clamps every driver's projected box to the
  * current view rectangle. */
-/* T2 residue (2026-09-13): 1992/1992 B, 543/543 insns, 63 differing bytes in
- * two regions, both compiler decisions the idiom dictionary lists as not
- * source-reachable:
- *  - the driver loop's pt.x/pt.y loads: the original hoists both above the
- *    pt.h store and sinks the two stores below the pushes; here each load
- *    follows the previous store (pt is address-taken, so VC5 keeps the
- *    order).  Dead: x/y/h temps in every order (the temps re-colour
- *    pMax/pMin and break the compares), an 8-byte struct copy, an int[3]
- *    or float[3] pt, a typed driver record, a const source pointer.
- *  - the four right/bottom edge sums: the original accumulates into the x
- *    and h fields, this build into w and y (`mov ax,[ecx]; add ax,[ecx+8]`
- *    vs `mov ax,[ecx+8]; add ax,[ecx]` and the same for the 32-bit compare
- *    operand).  Same-struct integer adds canonicalise absolutely: operand
- *    order, pointer local, int-array view, union view, unsigned fields,
- *    `- -`, 16-bit casts, a named accumulator all give the same bytes.
- * Everything else was a source shape: the cell walk is a do-while over a
- * short pointer to the distance word (the +2 induction base; an index or a
- * struct pointer bases at +1), the car walk is an explicit pointer in the
- * for-increment (IV update order), the flagged-car index is read from the
- * array at both uses (the ×7 lea), the airplane record's position is a
- * BrVec3 pointer (the CSE'd +0x30 lea), thr is a ternary (the slot order of
- * the whole frame follows from it), the pop loop stores the span before it
- * clears the pending byte.
- * @t4-pass 0x1000E320 63 2026-09-13 probes 60 bytes 0 insns 0 regions 2 rows 10+10 census no
- * T3 verdict (2026-09-15): NOT certifiable, and it is A2 (raw distance), not
- * A3, that blocks it.  Region 2 (the view-rect edge sums x+w and y+h) is a
- * PROVEN commutative 16-bit-integer-add exact identity: `mov D,[a]; add D,[b]`
- * == `mov D,[b]; add D,[a]` -- same value, same flags (add carry/overflow are
- * symmetric), same two reads, no rounding.  A guarded quad-cancel fold of it
- * (integer analog of the x87 memory-memory fold) takes A3 16 unpaired -> 0 and
- * revalidates all 125 certified tags UNCHANGED (zero demotions), but promotes
- * nothing else <=400 B, so it was not landed (session plan: do not edit
- * t3.py).  A2 still fails 10+10 = 20 vs limit 13.6: the 20 raw rows are real
- * byte diffs and A2 caps distance regardless of classification.  To pass A2
- * would need ~7 fewer raw rows, i.e. region 2 byte-exact (impossible: source-
- * inert canonicalisation) and/or region 1's address-taken pt.x/pt.y schedule
- * (dossier-dead).  Not the x87 schedule-state class, so co-filing does not
- * apply (region 2 is front-end integer canonicalisation; region 1 is the
- * address-taken store/load order).  Parks as T2.  Next lever, if ever: land
- * the integer-commutative-add exact-identity fold in a deliberate t3.py
- * migration AND find an un-spill of region 1 -- both are needed together.
+/* Residue: 1992/1992 B, 543/543 insns byte-for-byte in instruction SELECTION;
+ * 63 differing bytes in two regions, both pure compiler ordering, not source-
+ * reachable:
+ *  - region 1 (the driver loop's pt.x/pt.y loads): the original hoists both
+ *    loads above the pt.h store and sinks the two stores below the arg pushes;
+ *    here each load follows the previous store (pt is address-taken, so VC5
+ *    keeps the order).  Same instructions, different schedule.
+ *  - region 2 (the four right/bottom edge sums): a commutative 16-bit-integer
+ *    add read in the other operand order (`mov ax,[a]; add ax,[b]` vs the
+ *    swap) -- same value, same flags, same two reads, no rounding.
+ * Both are proven exact identities that no source spelling reaches (dossier +
+ * dead list in git history, 2026-09-13/15).  The 2026-09-15 T2 park was a
+ * dated byte-gate verdict; the A5 behavioural oracle now RUNS the whole pass
+ * (floor/asin modelled in x87emu; orchestrator seed profile in
+ * oracle_profiles.py, driver table in the pRace buffer so both regions execute
+ * and are compared -- negative controls on each region flip it to DIFF) and
+ * returns EQUIVALENT over 48 seeds, which supersedes the byte-distance gates
+ * (CLAUDE.md rule 12).
  */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
