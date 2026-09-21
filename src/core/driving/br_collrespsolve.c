@@ -295,6 +295,7 @@ static uint8_t br_cr_ftol_byte(float x)
  * (both paths, effect bytes, and the restOffset gate), worst relative error
  * ~1.6e-3 confined to near-singular K.  Golden vectors below pin it.
  * ------------------------------------------------------------------ */
+/* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
 /* @implements 0x10065C80 glide BrCrImpulseSolve */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the 0x10065C80 bytes.  The original is NOT the
