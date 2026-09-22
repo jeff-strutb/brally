@@ -173,6 +173,11 @@ void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
  * 4.  Nearest-source tracker
  * ===================================================================== */
 
+/* A5-oracle address annotation: the glide image places this struct at
+ * 0x10B1CE60 (verified from BrSndNearestCommit's field stores, e.g. fA0 -> +0xA0
+ * at 0x10B1CF00).  The d3d twin's copy is at 0x10AF9B00, which is what the
+ * struct field comments in slice3_41.h cite. */
+extern BrSndNearest g_BrSndNearest;  /* 0x10B1CE60 */
 BrSndNearest g_BrSndNearest;
 int32_t      g_BrSndAA3470 = -1;
 
@@ -361,6 +366,18 @@ extern int BrSfxSrcPlaySilent(int, int, int, int);   /* 0x1006E560 */
  * named lo/hi temps in either order; `* 0x10000` instead of `<< 16` in
  * either order; the halving as a ternary; the halving as two stores. */
 /* @t4-pass 0x10060F40 1 2026-09-13 probes 89 bytes 687 insns 174 regions 6 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10060F40 2 2026-09-21 probes 12 bytes 687 insns 174 regions 6 rows 0 census yes  (packing/halving source levers: hi<<16+=low, low-first temp, low+hi, *0x10000, named lo/hi both orders, vol-cast-once, shift-by-mul, uint-pack, explicit parens, halve ternary, halve two-store -- all inert, register rotation invariant) */
+/* @t3 0x10060F40 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 687/683 insns 174/174 rows 0+0 regions 6 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is a whole-function callee-saved register rotation: the original keeps
+ * its zero in esi and the low gain's truncation in edi, and computes `packed`
+ * into caller-saved eax; ours swaps the two callee-saved registers and lands
+ * `packed` in esi.  reggap 0 -- the instruction multiset is identical, a pure
+ * colouring choice no source lever reaches (the PARKED dossier's dead-probe list
+ * plus the two @t4-pass batches above).  A5 oracle EQUIVALENT: 64 inputs agree
+ * (return, globals, side effects), which supersedes the A4 byte-shape lost-sync
+ * the rotation causes.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10060F40 glide BrSndNearestCommit */
 void BrSndNearestCommit(void)
 {
