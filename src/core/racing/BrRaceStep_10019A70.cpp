@@ -661,8 +661,8 @@ extern "C" void BrRaceStep(void)
                 }
                 PB(s, 0x1aa7) = 0;              /* 0x1001a612 */
             Lwire_after:                        /* 0x1001a619 */
-                if (*(int*)(s - 0x80) != 0)
-                    ((Obj*)(s - 0xf08))->m_1006FCE0(*(int*)(s + 0x1aa0), i);
+                if (*(int*)(s - 0x80) == 0)
+                    ((Obj*)(s - 0xf08))->m_1006FCE0(i, *(int*)(s + 0x1aa0));
                 ((Obj*)(s - 0xf08))->m_1005E7B0();
                 *(int*)(s + 0x74)  = 0;
                 *(int*)(s + 0xf4)  = 0;
