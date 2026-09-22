@@ -724,7 +724,7 @@ void BrModelSwap(void *pImage)
         BrRev4(pRec + 0x0E);
 
         v = BrLd32(pRec - 0x02);
-        BrSub1002BF80(v);
+        BrF3DListFixup(v);
         BrSub10074DC0(8);
         g_BrGfxSubmitB(BrLd32(pRec - 0x02));
     }
