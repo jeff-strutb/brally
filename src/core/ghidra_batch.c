@@ -403,7 +403,7 @@ extern int DAT_104ab500;
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10013F20 glide BrSndBankPickSlot */
-void BrSndBankPickSlot(void)
+int BrSndBankPickSlot(void)
 {
     int chosen;
     unsigned int best;
@@ -437,6 +437,7 @@ void BrSndBankPickSlot(void)
     DAT_104ab4ec = cur;
     DAT_104ab4e8 = chosen;
     *(int *)((char *)&DAT_10396f48 + chosen * 0x2e0f0) = prev + 1;
+    return chosen;   /* original returns the picked slot in eax; callers (BrRaceStep) use it */
 }
 
 
