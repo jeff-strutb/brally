@@ -739,8 +739,8 @@ extern void *BrSub100088B0(void *pThis, void *a, void *b);
  * global in the original. Renamed so the declarations cannot collide. */
 extern void BrModelVtxResolve(uint32_t *pSlot, int count);
 
-/* XSLICE 0x1002BF80, 0x10074DC0 -- not identified. */
-extern void BrSub1002BF80(uint32_t v);
+/* 0x1003068e calls BrF3DListFixup (0x10019040); 0x10074DC0 -- not identified. */
+extern void BrF3DListFixup(uint32_t v);
 extern void BrSub10074DC0(int n);
 
 #endif /* SLICE2_19_H */
