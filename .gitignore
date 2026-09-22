@@ -68,3 +68,5 @@ vc50.idb
 vc50.pdb
 *.idb
 *.pdb
+tools/msvc40/
+tools/msvc41/

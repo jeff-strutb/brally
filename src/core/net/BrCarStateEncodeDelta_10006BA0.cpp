@@ -81,6 +81,27 @@
  * irrelevant -- the VC5 form is proven impossible, this file's target
  * compiler is VC4.2.  Attribution is NOT yet proven to the byte-exact
  * standard; it rests on the idiom pair plus this 298/302 convergence.
+ *
+ * STATE 2026-09-21 -- THE VERSION HYPOTHESIS IS REFUTED.  The user supplied
+ * the actual 4.x media, so all of them were tested directly (staged under
+ * tools/msvc40, tools/msvc41 beside tools/msvc42):
+ *   VC4.0 Pro   cl 10.00.5270   /O2 -> 913 B, prologue push ebx,esi,edi,ebp
+ *   VC4.0 Std   cl 10.00.6002   /O2 -> 1091 B, builds an ebp frame (worse)
+ *   VC4.1       cl 10.10.6038   /O2 -> 913 B, IDENTICAL to 4.0 Pro
+ *   VC4.2       cl 10.20.6166   /O2 -> 913 B, IDENTICAL to 4.0 Pro
+ * The three professional optimisers emit the SAME bytes; none reproduces the
+ * original's prologue.  Tried across /O2 /Ox /O1 /O2y /Oxs /Oz /Og/Os and the
+ * /G-series (/Gy /Gs /Gd /Gz /Gf /Gr /Ob0 /Ob1 /G3 /G4 /Gi) -- none yields the
+ * original's push order.  So the 12-byte residue is NOT a compiler-version
+ * gap: the original saves ebx,ebp,esi,edi EAGERLY in register-number order at
+ * entry, while every available 4.x saves them lazily (push esi; mov esi,arg;
+ * ...; push ebp) -- an eager-vs-lazy callee-save SCHEDULING choice that drives
+ * a whole-function ebx<->ebp rotation (register-rotation-is-a-symptom).  This
+ * is a register-colouring wall present identically in every 4.x we have, not a
+ * "get an older cl" problem.  Do NOT chase further 4.x point releases for THIS
+ * residue.  The reachable disposition is T3 via the A5 oracle (functionally
+ * exact; the rotation is behaviour-neutral), unless a source lever is found
+ * that flips the eager/lazy save decision (declaration order is DEAD).
  */
 #include <stdint.h>
 
