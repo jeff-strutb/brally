@@ -569,7 +569,7 @@ extern "C" void BrRaceStep(void)
                 }
                 if (sel != 0) {
                     float m[3];
-                    int  *row = (int*)((char*)&g_6EED38 + (sel + sel * 20) * 4);
+                    int  *row = (int*)((char*)g_6EED38 + (sel + sel * 20) * 4);
                     m[0] = 1.0f; m[1] = 0.0f; m[2] = 0.0f;
                     sub_10034870(&m[1], &m[0], row);
                     g_5BC7D8 = sub_100347F0(&m[0]);
@@ -1105,9 +1105,9 @@ Lb365:  /* 0x1001b365 */
                     sub_1002A590(&g_6E7970, PI(e, 4), 0, 0x3f800000, 0);
                 Lb_emit: /* 0x1001b3b8 */
                     {
-                        int  *m = (int*)((char*)&g_6EED38 + PI(e, 0) * 84);
+                        int  *m = (int*)((char*)g_6EED38 + PI(e, 0) * 84);
                         sub_10029D70(&g_6E7970, m, m);
-                        m = (int*)((char*)&g_6EED38 + PI(e, 0) * 84);
+                        m = (int*)((char*)g_6EED38 + PI(e, 0) * 84);
                         *(unsigned short*)((char*)m + 0x4c) &= 0xdfff;
                     }
                     break;
@@ -1155,7 +1155,7 @@ Lb365:  /* 0x1001b365 */
                         }
                         if (g_5BC7C0 != 0) {                /* 0x1001b64a transform+emit */
                             float lerpT = g_5BC7E4 / g_5BC7E8;
-                            char *row   = (char*)&g_6EED38 + g_5BC7C0 * 84;
+                            char *row   = (char*)g_6EED38 + g_5BC7C0 * 84;
                             sub_10034620(v38, (char*)g_5BC7DC + g_5BC7D0 * 12,
                                               (char*)g_5BC7DC + g_5BC7D0 * 12 - 0xc, lerpT);
                             sub_10034620(v20, (char*)g_5BC7E0 + g_5BC7D0 * 12,
@@ -1197,14 +1197,14 @@ Lb887:  /* 0x1001b887 */
             int   drv    = *(int*)&g_6E86C8;
             int   active = *(int*)((char*)&g_AF393C + drv * 0x2b68);
             if (g_5BC7C0 != 0 && g_5BC7CC != 0) {
-                int *m = (int*)((char*)&g_6EED38 + g_5BC7C0 * 84 + 0x30);
+                int *m = (int*)((char*)g_6EED38 + g_5BC7C0 * 84 + 0x30);
                 sub_100611F0(g_5BC7C0, m, active);
             }
             if (active != 0) {                    /* 0x1001b918 */
                 char *s = (char*)&g_5BC778;
                 int   j = 0;
                 while (j < g_5BCAE8) {
-                    int *m = (int*)((char*)&g_6EED38 + *(int*)s * 84 + 0x30);
+                    int *m = (int*)((char*)g_6EED38 + *(int*)s * 84 + 0x30);
                     sub_10061280(g_5BC7C0, m, active);
                     j++;
                     s += 4;
