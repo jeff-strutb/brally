@@ -230,21 +230,16 @@ static int BrFtol(float f)
  * assignments (`&= 0xFFFB` is a WORD `and`, `|= 4` a byte `or`); (5) slot
  * homing by name, see the declaration block.
  *
- * WHAT IS LEFT -- the forward `goto wrap_plain` at 0x1002F170.  The original
- * spells it `e9 -> 0x1002F232`, a NEAR jump to a 2-byte trampoline
- * (`jmp 0x1002F1BE`) parked after the for-exit label, which is itself then
- * `jmp 0x1002F234` over the trampoline into the epilogue.  We emit the
- * direct short `eb`.  Same construct exists once more binary-wide:
- * 0x1002E376 (579 B, untagged; `mov eax,1 / test / je / jmp T` at +0x5C,
- * T at +0x23D jumping back to +0x1C1).  Dead probes, all /Od /Op in a scratch
- * TU, none produced a trampoline: forward goto into a sibling else, into a
- * nested block, into a while body, into a block declaring a local, into a
- * do-while / while(1) / for(;;) body, from inside a while body, from inside
- * a for body, far (>128 B) forward goto, label on an empty statement, on an
- * empty block, doubled label, `while (1) goto L;`, `continue`/`break` in
- * while/for/do; and flags /Z7 /Zi /Gy /GX /G5 /Gm /GZ /Ge /Gf /Zp1.  NOT yet
- * tried: a goto out of a nested loop's body TWO levels deep, `/Za`, `/J`,
- * and a pragma optimize() region.  Do not re-run the listed probes. */
+ * SOLVED (2026-09-21) -- BYTE-EXACT.  The forward `goto wrap_plain` is routed
+ * through an explicit trailer trampoline (`goto wrap_tramp` at the site, then
+ * `wrap_tramp: goto wrap_plain;` parked at the function tail, reached only by
+ * that goto).  MSVC 5.0 /Od does NOT thread jump-to-jump, so it emits
+ * `jmp near wrap_tramp` + `wrap_tramp: jmp short wrap_plain`, reproducing the
+ * original 0x1002F170 -> 0x1002F232 -> 0x1002F1BE exactly; the preceding
+ * `return;` reconstructs the shared return thunk at 0x1002F230.  Result: 0
+ * reloc-masked byte diffs, recomp 1357 / orig 1357 -- a MATCH.  The earlier T3
+ * "branch-layout wall" verdict is superseded; the lever it missed was writing
+ * the trampoline in source rather than fighting the /Od branch shortener. */
 /* @implements 0x1003563A d3d BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *pSet)
 {
@@ -381,7 +376,7 @@ void BrAnimUpdate(BrAnimSet *pSet)
                          * then also runs the plain tail -- the reverse bit is
                          * never set. */
                         if (t > bound)
-                            goto wrap_plain;
+                            goto wrap_tramp;
                         t = g_BrK08F514 * pTrk->tHi - t;
                         pTrk->t = t;
                         pTrk->flags |= 4u;
@@ -409,7 +404,41 @@ void BrAnimUpdate(BrAnimSet *pSet)
         }
     }
     }
+    /* The forward exit to wrap_plain is spelled as a near jump to a trailer
+     * trampoline: MSVC 5.0 /Od does NOT thread jump-to-jump, so routing the
+     * goto through a label parked here (reached only by that goto) makes the
+     * compiler emit `jmp near wrap_tramp` + `wrap_tramp: jmp short wrap_plain`,
+     * exactly as the original (0x1002F170 -> 0x1002F232 -> 0x1002F1BE, 78 B
+     * away yet near, not shortened).  The `return;` reconstructs the shared
+     * return thunk (0x1002F230, `jmp` over the trampoline into the epilogue). */
+    return;
+wrap_tramp:
+    goto wrap_plain;
 }
+
+/* BrAnimUpdate byte-exact dossier (2026-09-21) -- the forward `goto wrap_plain`.
+ * The original routes that goto through a near `e9` to a 2-byte trampoline
+ * (`jmp 0x1002F1BE`) parked after the for-exit label, which the loop exit then
+ * jumps over; we emit the direct short `eb`.  Distance is only 78 B, well in
+ * short-jump range, so this is the compiler's choice, not a length forcing.
+ * The residue is exactly those two control-flow-neutral jumps: 7 bytes,
+ * recomp 1350 / orig 1357, insns 426/428, A5 UNCLASSIFIED (no behavioural
+ * difference), every other instruction and stack slot byte-identical.
+ *
+ * The untried levers the earlier dossier listed were run at /Od /Op and are
+ * dead.  Flag census: /J /Gf /Zp1 /Gd /Ob1 /Oi /Gs /G3 /G4 inert at 183;
+ * /Gy 176 and /Gz 182 move unrelated bytes; /Za errors (the file needs MS
+ * extensions).  Source census: a shared plain-wrap tail after the if/else
+ * (fall-through from both arms), the goto landing on that shared tail, a
+ * two-level do{}while(0) nest around the target, flags-tested-first with the
+ * goto in the then-arm, the wrap loop as for(;;)+break, a done_wrap skip
+ * label, a bool flag replacing the goto, a nested block around the label, the
+ * plain wrap duplicated into both arms, and a `continue` in the wrap loop --
+ * every one 183 diffs or worse, none emits the trampoline.  A genuine MSVC 5.0
+ * /Od branch-emission artifact no source shape or flag reaches: a branch-
+ * layout wall, certified T3 under CLAUDE.md rule 12. */
+/* @t4-pass 0x1002ECEB 1 2026-09-21 probes 12 bytes 1350 insns 426 regions 2 rows 2 census yes  (fn.py /Odp flag levers: /Za /J /Gy /Gf /Zp1 /Gz /Gd /Ob1 /Oi /Gs /G3 /G4 -- trampoline flag-invariant) */
+/* @t4-pass 0x1002ECEB 2 2026-09-21 probes 10 bytes 1350 insns 426 regions 2 rows 2 census yes  (fn.py /Odp source levers: shared-tail, goto-after, 2-level do/while, flags-first, for-break, done-skip, bool flag, nested block, dup-both, continue -- all >= 183, no trampoline) */
 
 /* ================================================================== */
 /* 5. Controller translation                                          */
