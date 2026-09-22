@@ -330,8 +330,8 @@ extern "C" void BrRaceStep(void)
         case 6:     /* 0x10019c2a */
             if (g_5CCB88 != 0) goto Lcfb;
             g_0B3858 = 1;
-            if (g_226A4C == 0) { g_0B2F00 = 0; g_0B2F04 = 0; }
-            else               { g_0B2F00 = 1; g_0B2F04 = 1; }
+            if (g_226A4C == 0) { g_0B2F00 = 1; g_0B2F04 = 1; }
+            else               { g_0B2F00 = 0; g_0B2F04 = 0; }
             ((Obj*)&g_AF1208)->m_1006FD50(g_226E7C);
             if (g_226A48 != 0) {
                 sub_10005CD0();
