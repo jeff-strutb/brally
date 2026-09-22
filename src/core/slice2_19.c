@@ -416,29 +416,19 @@ wrap_tramp:
     goto wrap_plain;
 }
 
-/* BrAnimUpdate byte-exact dossier (2026-09-21) -- the forward `goto wrap_plain`.
- * The original routes that goto through a near `e9` to a 2-byte trampoline
- * (`jmp 0x1002F1BE`) parked after the for-exit label, which the loop exit then
- * jumps over; we emit the direct short `eb`.  Distance is only 78 B, well in
- * short-jump range, so this is the compiler's choice, not a length forcing.
- * The residue is exactly those two control-flow-neutral jumps: 7 bytes,
- * recomp 1350 / orig 1357, insns 426/428, A5 UNCLASSIFIED (no behavioural
- * difference), every other instruction and stack slot byte-identical.
- *
- * The untried levers the earlier dossier listed were run at /Od /Op and are
- * dead.  Flag census: /J /Gf /Zp1 /Gd /Ob1 /Oi /Gs /G3 /G4 inert at 183;
- * /Gy 176 and /Gz 182 move unrelated bytes; /Za errors (the file needs MS
- * extensions).  Source census: a shared plain-wrap tail after the if/else
- * (fall-through from both arms), the goto landing on that shared tail, a
- * two-level do{}while(0) nest around the target, flags-tested-first with the
- * goto in the then-arm, the wrap loop as for(;;)+break, a done_wrap skip
- * label, a bool flag replacing the goto, a nested block around the label, the
- * plain wrap duplicated into both arms, and a `continue` in the wrap loop --
- * every one 183 diffs or worse, none emits the trampoline.  A genuine MSVC 5.0
- * /Od branch-emission artifact no source shape or flag reaches: a branch-
- * layout wall, certified T3 under CLAUDE.md rule 12. */
-/* @t4-pass 0x1002ECEB 1 2026-09-21 probes 12 bytes 1350 insns 426 regions 2 rows 2 census yes  (fn.py /Odp flag levers: /Za /J /Gy /Gf /Zp1 /Gz /Gd /Ob1 /Oi /Gs /G3 /G4 -- trampoline flag-invariant) */
-/* @t4-pass 0x1002ECEB 2 2026-09-21 probes 10 bytes 1350 insns 426 regions 2 rows 2 census yes  (fn.py /Odp source levers: shared-tail, goto-after, 2-level do/while, flags-first, for-break, done-skip, bool flag, nested block, dup-both, continue -- all >= 183, no trampoline) */
+/* BrAnimUpdate lever note (2026-09-21) -- how the `goto wrap_plain` wall fell.
+ * The sole residue was one construct: the original routes that forward goto
+ * through a near `e9` to a 2-byte trailer trampoline (`jmp short wrap_plain`)
+ * that the loop exit jumps over; naive source emits a direct short `eb`, 3
+ * bytes shorter, cascading displacements through the tail.  A large probe
+ * census -- flags /J /Gf /Zp1 /Gd /Ob1 /Oi /Gs /G3 /G4 /Gy /Gz /Za, and source
+ * shapes (shared-tail, two-level do/while, flags-first, for(;;)+break, done-skip
+ * label, bool flag, nested block, dup-both-arms, continue) -- all failed,
+ * because they tried to stop the compiler shortening a direct jump.  The lever
+ * that works is the opposite: MSVC 5.0 /Od does not thread jump-to-jump, so
+ * WRITE the trampoline in source (`goto wrap_tramp; wrap_tramp: goto wrap_plain;`
+ * parked at the function tail).  See the head-of-function note; byte-exact,
+ * 1357/1357.  Reusable for any function whose only residue is this pattern. */
 
 /* ================================================================== */
 /* 5. Controller translation                                          */
