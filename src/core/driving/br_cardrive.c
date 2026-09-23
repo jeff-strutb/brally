@@ -64,8 +64,8 @@ float BrSinF(float a);
  * fp stack -- same axis as the BrCrRespWalk stack-dup fork.  Park. */
 /* @t4-pass 0x100645A0 1 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
 /* @t4-pass 0x100645A0 2 2026-09-09 probes 10 bytes 3093 insns 863 regions 17 rows 55 census yes */
-/* @t3 0x100645A0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 3093/3070 insns 863/862 rows 27+28 regions 17 oracle EQUIV-MODULO-FP
+/* @t3 0x100645A0 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 3105/3070 insns 864/862 rows 30+32 regions 20 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * A5 EQUIV-MODULO-FP (insn gap 1; residue is x87 scheduling -- fcom/fcomp,
  * fsub st vs fsubr, the sideForce/ran float+int aggregate -- see the header
@@ -80,6 +80,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
 {
   float fVar1;
   float fVar2;
+  float speed;
   unsigned char bVar3;
   unsigned char bVar4;
   int iVar5;
@@ -264,6 +265,12 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
                           iVar9) * 4);
     local_84 = *(int *)(&DAT_100b5178 + iVar10);
     fVar7 = *(float *)(DAT_11778820 + iVar10);
+    /* ‼ `speed` (fVar8 - fVar2 above) survives the clamp: the original keeps
+     * it on the x87 stack (`fld st(2)` at +0x484 clamps a COPY) and tests
+     * THAT against `hold` at +0x4FE.  Reusing one variable for the clamped
+     * value and the ratio made the hold test compare the ratio (~0.3)
+     * against 8000 -- the grip branch never ran.  Live oracle, frame 352. */
+    speed = fVar2;
     if (fVar2 > fVar7) {
       fVar2 = fVar7;
     }
@@ -283,7 +290,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
     if (fVar7 > _DAT_10077a7c) {
       local_80 = 1.0f;
     }
-    if (!(fVar2 < hold)) {
+    if (!(speed < hold)) {
       /* orig: mov y-bits, mov x-bits, fld z — integer copies of x/y so the
        * squares go through stack slots, not fld [body+0x84]. */
       local_84 = *(int *)(param_1 + 0x88);
