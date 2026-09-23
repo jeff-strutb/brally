@@ -108,6 +108,8 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
   float tmpB[3];
   float lat[3];
   float svB[3];
+  double q;
+  int dotBits;
   struct {
     float sideForce;
     int ran;
@@ -381,9 +383,21 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
     pt[1] = BrSinF(*(float *)(*(int *)(param_1 + 0xc) + 0x1c0));
     svB[2] = vB[2];
     svB[0] = vB[0];
-    fVar1 = vB[1] * pt[1] + vB[0] * pt[0];
-    fVar7 = fVar1 * pt[0];
-    fVar1 = fVar1 * pt[1];
+    /* The original `fst`s the dot product to a float slot and reloads it:
+     * the cos term is taken from the UNROUNDED register copy, the sin term
+     * from the rounded reload.  The double is the register; the int image
+     * forces the float rounding VC5 would otherwise forward away.  Live
+     * oracle, 1-ulp difference in vB[1]. */
+    q = (double)vB[1] * pt[1] + (double)vB[0] * pt[0];
+    fVar7 = (float)(q * pt[0]);
+    fVar1 = (float)q;
+    dotBits = *(int *)&fVar1;
+    fVar1 = *(float *)&dotBits * pt[1];
+    /* lat[] below subtracts the STORED vB[0]/vB[1] (rounded floats). */
+    dotBits = *(int *)&fVar7;
+    fVar7 = *(float *)&dotBits;
+    dotBits = *(int *)&fVar1;
+    fVar1 = *(float *)&dotBits;
     svB[1] = vB[1];
     vB[2] = 0.0f;
     lat[0] = vB[0] - fVar7;
@@ -460,10 +474,15 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
   }
   if (g.ran != 0) {
     svB[0] = (vA[0] + vB[0]) * _DAT_10077ac8;
-    svB[2] = (vA[1] - vB[1]) /
-             (*(float *)(*(int *)(param_1 + 4) + 0x78) -
-              *(float *)(*(int *)(param_1 + 0xc) + 0x78));
-    svB[1] = vA[1] - svB[2] * *(float *)(*(int *)(param_1 + 4) + 0x78);
+    /* The original `fst`s the yaw-rate quotient and goes on from the x87
+     * register: the lateral term below uses the UNROUNDED quotient, not the
+     * float just stored.  The double models that register.  Live oracle,
+     * 1-ulp difference in the lateral velocity handed back to the body. */
+    q = ((double)vA[1] - (double)vB[1]) /
+        ((double)*(float *)(*(int *)(param_1 + 4) + 0x78) -
+         (double)*(float *)(*(int *)(param_1 + 0xc) + 0x78));
+    svB[2] = (float)q;
+    svB[1] = (float)((double)vA[1] - q * (double)*(float *)(*(int *)(param_1 + 4) + 0x78));
     BrMat4MulVec3(wld, iVar5, param_1 + 0xa0);
     wld[2] = svB[2];
     BrMat4MulVec3Transposed((void *)(param_1 + 0xa0), iVar5, wld);
