@@ -128,10 +128,39 @@ void BR_THISCALL1 BrCarPathEval(unsigned char *pCar)
   fVar12 = BrVec3Dot(lc, a54);
   fVar13 = BrVec3Dist(l30, l24);
   iVar9 = param_1 + 0xf18;
-  fVar2 = ((fVar11 * fVar13) / (-fVar12 + fVar11)) / fVar13;
-  fVar3 = fVar2 * fVar2;
-  fVar7 = fVar3 * fVar2;
-  fVar8 = fVar7 * DAT_1007789c;
+  /* The original's rounding points (live oracle, championship): t is
+   * computed in the FPU and fst'd; t^2 = t(unrounded) * t(stored) and
+   * t^3 = t^2(unrounded) * t(stored), each fst'd on the way; the leading
+   * cubic term is stored before use.  The doubles are the x87 registers,
+   * the int images force the float stores VC5 would forward away. */
+  {
+    double t, t2, t3;
+    int bits;
+
+    /* the two dots and the segment length arrive as stored floats */
+    bits = *(int *)&fVar11;
+    fVar11 = *(float *)&bits;
+    fVar12 = -fVar12;
+    bits = *(int *)&fVar12;
+    fVar12 = *(float *)&bits;                        /* -dot, as stored */
+    bits = *(int *)&fVar13;
+    fVar13 = *(float *)&bits;
+    t = (((double)fVar11 * fVar13) / ((double)fVar12 + fVar11)) / fVar13;
+    fVar2 = (float)t;
+    bits = *(int *)&fVar2;
+    fVar2 = *(float *)&bits;                         /* t  as stored */
+    t2 = t * fVar2;
+    fVar3 = (float)t2;
+    bits = *(int *)&fVar3;
+    fVar3 = *(float *)&bits;                         /* t^2 as stored */
+    t3 = t2 * fVar2;
+    fVar7 = (float)t3;
+    bits = *(int *)&fVar7;
+    fVar7 = *(float *)&bits;                         /* t^3 as stored */
+    fVar8 = (float)(t3 * DAT_1007789c);
+    bits = *(int *)&fVar8;
+    fVar8 = *(float *)&bits;                         /* 2t^3 term as stored */
+  }
   BrVec3Scale((float *)iVar9, l30, DAT_100778f8 - (fVar8 - fVar3 * DAT_100778f4));
   BrVec3MulAddTo((float *)iVar9, l24, fVar8 - fVar3 * DAT_100778f4);
   BrVec3MulAddTo((float *)iVar9, a48, (fVar7 - (fVar3 + fVar3)) + fVar2);
