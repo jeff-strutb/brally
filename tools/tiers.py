@@ -19,10 +19,13 @@
 
 T3 is decided by tools/t3.py --qualify: Gate 0 (functionally complete), Gate A
 (five mechanical checks on the sweep object) and Gate B (a @t4-pass ledger in
-the file: >= 3 passes, the last two moving nothing) -- CLAUDE.md rule 12.  It is not a proof of
-"same inputs -> same outputs": the differential oracle (tools/t3b_verify.py)
-feeds Gate A5 where it can contain the function.  Nothing in this tool grades a
-function T3 on its own; a diff row is T2 until it carries a validated @t3 tag.
+the file: >= 3 passes, the last two moving nothing) -- CLAUDE.md rule 12.  Gate A5
+is the LIVE oracle (tools/t3live.py): the original game runs headless
+(tools/brbox.py), each T3 body is run against the original from the identical
+state at every captured real call, and config/t3_live.csv records the verdict.
+A tagged function whose ledger verdict is not EQUIVALENT is counted apart as
+"T3 unverified" -- it is not done.  Nothing in this tool grades a function T3
+on its own; a diff row is T2 until it carries a validated @t3 tag.
 
     python3 tools/tiers.py            # the four counts + bytes
     python3 tools/tiers.py --list T1  # dump the VAs in a tier
@@ -171,7 +174,14 @@ def main():
     print("  " + "-" * 56)
     print(f"  T1  not started (C draft only)  {n_t1:5d} fns   {b_t1:8d} B")
     print(f"  T2  in progress (not done)      {len(t2):5d} fns   {b_t2:8d} B")
+    import t3ledger
+    led = t3ledger.load()
+    t3v = [r for r, _ in t3 if led.get(r['va'].lower(), {}).get('verdict') == 'EQUIVALENT']
+    b_t3v = sum(int(r['orig_size']) for r in t3v)
     print(f"  T3  certified, not byte-exact   {len(t3):5d} fns   {b_t3:8d} B   (@t3 tag, rule 12)")
+    print(f"      live oracle EQUIVALENT      {len(t3v):5d} fns   {b_t3v:8d} B   (config/t3_live.csv)")
+    print(f"      NOT live-verified           {len(t3) - len(t3v):5d} fns   {b_t3 - b_t3v:8d} B"
+          f"   (tools/t3ledger.py)")
     print(f"  T4  done (byte-exact)           {len(match) + len(cpp_done):5d} fns"
           f"   {b_t4:8d} B")
     if cpp_done:

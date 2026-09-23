@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""The reference image as an execution environment for the T3 equivalence
-oracle (tools/t3b_verify.py).
+"""The reference image as an address resolver: a compiled transcription's
+relocations resolved to the ORIGINAL's own addresses.  Used by the placed-image
+builder (image_build_t3.py), lockstep_rows.py, reloc_pair.py and the live
+oracle's object mode (t3live.py).  It was written for the retired
+synthetic-seed oracle (t3b_verify.py); the seeded-memory classes below
+(ImgMem, bss_byte) are that oracle's and are no longer a certification path.
 
 WHY THIS EXISTS.  The oracle's first version refused any function whose object
 carried a relocation -- that is, any function that reads a global, uses a

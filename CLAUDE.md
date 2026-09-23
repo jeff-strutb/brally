@@ -75,7 +75,10 @@ BrTex3dExpand. The largest still-open bodies are `0x10056260` (8,349 B,
 
 `tools/t3.py --qualify <VA>` decides. Gate 0: purpose comment, no unfinished
 markers. Gate A: residue is allocation/scheduling, every row classified, no
-lost-sync, oracle not DIFF. Gate B: two counted `@t4-pass` lines (≥10 compiles
+lost-sync, and A5 — the LIVE oracle (`tools/t3live.py`, original game run
+headless by `tools/brbox.py`) — says EQUIVALENT in `config/t3_live.csv`.
+UNCOVERED/UNVERIFIED/DIVERGENT fail; an unreached function is never passed.
+The synthetic-seed oracle is retired. Gate B: two counted `@t4-pass` lines (≥10 compiles
 each) at the current numbers, one of them `census yes`. Colouring walls that
 pass Gate A get certified and parked — do not grind them. T3 is never counted
 as matched; `t4lane.py` / `claim_lane.py` never hand one out. No session opens
