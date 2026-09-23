@@ -326,7 +326,7 @@ LAB_keep_stick:
       }
     }
     *(float *)(pCar + 0xe20) =
-         (float)((pow((double)local[1], DAT_10077810) - (double)DAT_10077784) *
+         (float)((pow(DAT_10077810, (double)local[1]) - (double)DAT_10077784) *
                  (double)local[2] * (double)DAT_10077818 *
                  (double)local[0] * (double)DAT_1007781c);
     break;
@@ -340,7 +340,7 @@ LAB_keep_stick:
         local[2] = -1.0f;
       }
     }
-    local[4] = (float)((pow((double)local[1], DAT_10077810) - (double)DAT_10077784) *
+    local[4] = (float)((pow(DAT_10077810, (double)local[1]) - (double)DAT_10077784) *
                     (double)local[2] * (double)DAT_10077818);
     goto LAB_1005b6f3;
   case 2:
@@ -353,7 +353,7 @@ LAB_keep_stick:
         local[2] = -1.0f;
       }
     }
-    local[4] = (float)((pow((double)local[1], DAT_10077828) - (double)DAT_10077784) *
+    local[4] = (float)((pow(DAT_10077828, (double)local[1]) - (double)DAT_10077784) *
                     (double)local[2]);
 LAB_1005b6f3:
     *(float *)(pCar + 0xe20) = local[4] * local[0] * DAT_10077820;
@@ -369,7 +369,7 @@ LAB_1005b6f3:
       }
     }
     *(float *)(pCar + 0xe20) =
-         (float)((pow((double)local[1], DAT_10077828) - (double)DAT_10077784) *
+         (float)((pow(DAT_10077828, (double)local[1]) - (double)DAT_10077784) *
                  (double)local[2] * (double)local[0] * (double)DAT_10077830);
     break;
   case 4:
