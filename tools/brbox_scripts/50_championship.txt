@@ -1,0 +1,45 @@
+# Championship: new season, round 1 info, round 1 raced to the flag with
+# the keyboard autopilot (3 laps), the post-race standings pages.
+sleep 240
+mark main_menu
+mouse 250 132
+click
+sleep 30
+mouse 250 157
+click
+sleep 40
+mark pre_race
+mouse 252 233
+click
+sleep 40
+mark season_progress
+mouse 252 233
+click
+sleep 40
+mark ch_car_setup
+mouse 252 233
+click
+wait 0x106E79F4 == 0x10019A70 2000
+sleep 300
+mark grid
+press SPACE
+sleep 150
+autopilot on
+waittext INSTANT 25000
+autopilot off
+mark replay
+sleep 200
+press ESCAPE
+sleep 300
+mark race_over
+shot ch_race_over
+mouse 252 233
+click
+sleep 60
+mark results_continue
+shot ch_after
+mouse 252 233
+click
+sleep 60
+shot ch_after2
+end

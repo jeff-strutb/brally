@@ -629,7 +629,7 @@ class Box(object):
         between emu_start calls (run_from -> _do_switch)."""
         if self.subrun:
             raise GuestFault('thread switch inside a live-oracle sub-run')
-        if block:
+        if block and self.cur.state != 'done':     # a finished thread stays finished
             self.cur.state = 'blocked'
         self.switch_req = True
         self.uc.emu_stop()

@@ -1,0 +1,53 @@
+# Multiplayer front end: player name, the connection list DirectPlay
+# enumerates (IPX, TCP/IP, modem), picking one, backing out.
+sleep 240
+mark main_menu
+mouse 250 151
+click
+sleep 40
+mark player_name
+mouse 250 233
+click
+sleep 60
+mark connections
+mouse 250 138
+click
+sleep 60
+shot mp_ipx
+mouse 250 157
+click
+sleep 60
+shot mp_tcp
+mouse 250 233
+click
+sleep 90
+shot mp_host
+mouse 250 233
+click
+sleep 120
+shot mp_lobby
+mouse 250 233
+click
+sleep 150
+shot mp_created
+text
+# START RACE: a lone host is refused (dwCurrentPlayers must exceed 1)
+mouse 250 233
+click
+sleep 60
+shot mp_start
+mouse 250 252
+click
+sleep 60
+mouse 250 252
+click
+sleep 40
+mouse 250 252
+click
+sleep 40
+mouse 250 252
+click
+sleep 40
+shot mp_back
+mark back
+end

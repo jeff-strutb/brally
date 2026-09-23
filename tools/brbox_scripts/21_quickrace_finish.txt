@@ -1,0 +1,33 @@
+# Quick Race, one lap, driven to the flag by the keyboard autopilot: grid,
+# lights, a full lap with the AI field, the finish sequence (light states
+# 5/6/7), the instant replay, ESC back to the main menu.
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mouse 250 176
+click
+sleep 20
+click
+sleep 20
+mark one_lap
+mouse 252 233
+click
+sleep 40
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark racing
+autopilot on
+waittext INSTANT 12000
+autopilot off
+mark replay
+sleep 300
+press ESCAPE
+sleep 200
+mark main_menu_again
+end

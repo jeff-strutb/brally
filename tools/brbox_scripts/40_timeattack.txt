@@ -1,0 +1,46 @@
+# Time Attack: new race (setup, car setup), one lap to the flag, the
+# replay, back out; then LOAD RACE.
+sleep 240
+mark main_menu
+mouse 250 170
+click
+sleep 30
+mark ta_menu
+mouse 250 138
+click
+sleep 40
+mouse 250 176
+click
+sleep 20
+click
+sleep 20
+mouse 252 233
+click
+sleep 40
+mark ta_car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+autopilot on
+wait 0x106E79F4 != 0x10019A70 20000
+autopilot off
+mark race_over
+shot ta_race_over
+sleep 300
+sleep 200
+mark back
+text
+shot ta_after
+mouse 250 170
+click
+sleep 30
+mouse 250 157
+click
+sleep 60
+mark load_race
+shot ta_load
+sleep 60
+end

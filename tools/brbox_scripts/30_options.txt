@@ -1,0 +1,138 @@
+# Options: every sub-page.  Rebind two keys and restore the defaults, step
+# the audio controls, flip every game option, race briefly with the options
+# flipped (skid marks / specular / shadow off take other render paths), then
+# change the display mode last.
+sleep 240
+mark main_menu
+mouse 250 208
+click
+sleep 30
+mark options
+mouse 250 138
+click
+sleep 30
+mark input_options
+# INPUT DEVICE cycles keyboard -> mouse -> joystick whatever is attached;
+# with no joystick the original dereferences a NULL device on the first race
+# frame, so stop at MOUSE (the mouse-steering path is raced below).
+mouse 250 138
+click
+sleep 20
+mouse 250 157
+click
+sleep 30
+mark key_config
+mouse 250 138
+click
+sleep 10
+mouse 250 233
+click
+sleep 20
+press A
+sleep 20
+mouse 250 157
+click
+sleep 10
+mouse 250 233
+click
+sleep 20
+press D
+sleep 20
+shot key_config
+mouse 250 252
+click
+sleep 30
+mouse 250 176
+click
+sleep 30
+mark restored_defaults
+mouse 250 252
+click
+sleep 30
+mouse 250 176
+click
+sleep 30
+mark audio_options
+mouse 250 157
+click
+sleep 30
+mouse 250 214
+click
+sleep 10
+press RIGHT
+sleep 10
+press LEFT
+sleep 10
+mouse 250 233
+click
+sleep 10
+press LEFT
+sleep 10
+press RIGHT
+sleep 10
+shot audio
+mouse 250 252
+click
+sleep 30
+mouse 250 195
+click
+sleep 30
+mark game_options
+mouse 250 138
+click
+sleep 15
+mouse 250 157
+click
+sleep 15
+mouse 250 176
+click
+sleep 15
+mouse 250 195
+click
+sleep 15
+shot game_options
+mouse 250 252
+click
+sleep 30
+mouse 250 252
+click
+sleep 40
+mark back_main
+mouse 250 190
+click
+sleep 40
+mouse 252 233
+click
+sleep 40
+mouse 252 233
+click
+sleep 300
+press SPACE
+sleep 150
+mark options_race
+autopilot on
+sleep 600
+autopilot off
+press ESCAPE
+sleep 120
+shot after_race
+mark main_again
+mouse 250 208
+click
+sleep 30
+mouse 250 157
+click
+sleep 30
+mouse 250 138
+click
+sleep 30
+mouse 250 141
+click
+sleep 10
+mouse 250 233
+click
+sleep 90
+mark mode_set
+shot mode_set
+sleep 60
+end
