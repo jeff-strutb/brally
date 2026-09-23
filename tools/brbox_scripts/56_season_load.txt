@@ -1,0 +1,41 @@
+# Championship menu with the season 55_season_save wrote on disc.
+files season_saved
+sleep 240
+mark main_menu
+mouse 250 132
+click
+sleep 40
+shot sl_menu
+mouse 250 138
+click
+sleep 60
+mark load_page
+shot sl_page
+mouse 250 138
+click
+sleep 30
+shot sl_slot
+mouse 250 233
+click
+sleep 60
+shot sl_next
+mouse 252 233
+click
+sleep 60
+shot sl_next2
+mouse 252 233
+click
+sleep 40
+mark ch_car_setup
+mouse 252 233
+click
+wait 0x106E79F4 == 0x10019A70 2000
+sleep 300
+mark grid
+press SPACE
+sleep 150
+autopilot on
+sleep 900
+autopilot off
+shot sl_racing
+end

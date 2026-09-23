@@ -548,8 +548,8 @@ class Oracle(object):
             diffs.append('memory: %d byte(s) differ, first %08X orig %02X t3 %02X%s' % (
                 len(mdiff), a, vo, vr, _span(mdiff)))
         # import calls
-        io_ = [_norm_call(c, lo_ex, esp0) for c in o['icalls']]
-        ir_ = [_norm_call(c, lo_ex, esp0) for c in r['icalls']]
+        io_ = [_norm_call(c, lo_ex, esp0) for c in o['icalls'] if not _intrinsic(c[0])]
+        ir_ = [_norm_call(c, lo_ex, esp0) for c in r['icalls'] if not _intrinsic(c[0])]
         if io_ != ir_:
             k = next((i for i in range(min(len(io_), len(ir_))) if io_[i] != ir_[i]),
                      min(len(io_), len(ir_)))
@@ -763,6 +763,21 @@ def _span(md):
     first = md[0][0]
     last = md[-1][0]
     return ' (span %08X..%08X)' % (first, last) if last != first else ''
+
+
+# CRT functions MSVC 5.0 may expand inline (/Oi and #pragma intrinsic).
+# Whether a body calls one through the import table or inlines it is
+# codegen, not behaviour: its whole effect is memory (compared byte for
+# byte above) and a return value (compared via the registers / the memory
+# it flows into).  Everything else -- file, window, COM, heap, clock -- stays
+# in the call-sequence comparison.
+INTRINSICS = frozenset('''memcpy memset memcmp strcpy strcat strcmp strlen
+    abs labs fabs sin cos tan atan atan2 asin acos exp log log10 pow sqrt
+    fmod _rotl _rotr _lrotl _lrotr _strset _inp _outp _inpw _outpw'''.split())
+
+
+def _intrinsic(name):
+    return name.split('!')[-1] in INTRINSICS
 
 
 def _norm_call(c, lo_ex, esp0):
