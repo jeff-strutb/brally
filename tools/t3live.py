@@ -57,7 +57,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE, UC_PROT_ALL, UcError  # noqa: E402
 from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX,  # noqa: E402
                                UC_X86_REG_ESI, UC_X86_REG_EDI, UC_X86_REG_EBP,
-                               UC_X86_REG_ESP, UC_X86_REG_EIP)
+                               UC_X86_REG_ESP, UC_X86_REG_EIP, UC_X86_REG_ECX)
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32  # noqa: E402
 from capstone import x86_const as X  # noqa: E402
 
@@ -307,9 +307,10 @@ class Oracle(object):
             uc.emu_stop()
 
     # ---------------------------------------------------------- one side --
-    def run_side(self, start, ret, esp0, budget_s, trace=None, body=None):
+    def run_side(self, start, ret, esp0, budget_s, trace=None, body=None, perturb=False):
         box, uc = self.box, self.box.uc
         wlog = []
+        pend_calls = []      # perturb: (return address, esp at the call, saved regs)
         hcall = None
         calls = []
         hprobe = []
@@ -323,13 +324,17 @@ class Oracle(object):
                 top = box.fpu_top()
                 box.log_probe.append((a, [round(box.st(k), 9) for k in range(4)],
                                       {n: uc_.reg_read(r) for n, r in (('eax', UC_X86_REG_EAX),
+                                                                       ('ebx', UC_X86_REG_EBX),
+                                                                       ('ecx', UC_X86_REG_ECX),
+                                                                       ('esi', UC_X86_REG_ESI),
+                                                                       ('edi', UC_X86_REG_EDI),
                                                                        ('ebp', UC_X86_REG_EBP),
                                                                        ('esp', UC_X86_REG_ESP))}))
             hprobe.append(uc.hook_add(UC_HOOK_CODE, on_probe, begin=pa, end=pa))
             uc.ctl_remove_cache(pa, pa + 1)
         if body is not None:
             box.log_probe = []
-            # explain only: every `call` the function's OWN code executes,
+            # every `call` the function's OWN code executes,
             # with its resolved target, in order
             md = Cs(CS_ARCH_X86, CS_MODE_32)
             cache = {}
@@ -342,7 +347,22 @@ class Oracle(object):
                     except StopIteration:
                         ins = False
                     cache[a] = ins
-                if ins and ins.mnemonic == 'call':
+                if perturb and pend_calls and a == pend_calls[-1][0] and \
+                        uc_.reg_read(UC_X86_REG_ESP) >= pend_calls[-1][1]:
+                    for k, v in pend_calls.pop()[2]:
+                        uc_.reg_write(k, v)
+                if ins and ins.mnemonic == 'call' and perturb:
+                    # the callee-saved registers are the caller's private
+                    # values; VC5 code never takes them as inputs, only saves
+                    # and restores them -- so a callee's result can depend on
+                    # them only through an uninitialised read of a slot a
+                    # prologue pushed them into.  Perturb them for the call,
+                    # restore them at the return.
+                    saved = [(k, uc_.reg_read(k)) for k in PERTURB_REGS]
+                    for k, v in saved:
+                        uc_.reg_write(k, v ^ 0x5AC3A55C)
+                    pend_calls.append((a + ins.size, uc_.reg_read(UC_X86_REG_ESP), saved))
+                if ins and ins.mnemonic == 'call' and not perturb:
                     op = ins.op_str
                     if op.startswith('0x'):
                         tgt = int(op, 16)
@@ -351,7 +371,7 @@ class Oracle(object):
                     else:
                         tgt = op
                     esp = uc_.reg_read(UC_X86_REG_ESP)
-                    words = struct.unpack('<4I', bytes(uc_.mem_read(esp, 16)))
+                    words = struct.unpack('<16I', bytes(uc_.mem_read(esp, 64)))
                     blobs = []
                     for w in words[:3]:
                         try:
@@ -359,6 +379,12 @@ class Oracle(object):
                         except UcError:
                             blobs.append(None)
                     calls.append((a, tgt, words, len(trace) if trace is not None else 0, blobs))
+                    if os.environ.get('T3LIVE_SCRUB'):
+                        # diagnostic: zero the dead stack below the call so
+                        # callees that read uninitialised stack see the same
+                        # thing on both sides
+                        n = int(os.environ['T3LIVE_SCRUB'], 0)
+                        uc_.mem_write(esp - n, bytes(n))
             hcall = [uc.hook_add(UC_HOOK_CODE, on_body, begin=lo, end=hi - 1) for lo, hi in body]
             for lo, hi in body:
                 uc.ctl_remove_cache(lo, hi)
@@ -495,6 +521,20 @@ class Oracle(object):
         box.hs.restore(hs_o)
         box.pending[:] = pend_o
         cap = self.compare(t, o, r, esp0, ret, regs0, top0)
+        if cap['result'] == 'DIFF' and cap.get('mdiff') and r['status'] == 'ok' \
+                and getattr(t, 'placed', None) is not None:
+            # Shadow runs: which output bytes are UNDEFINED -- derived from
+            # uninitialised reads of the caller's saved registers?  Rerun
+            # both sides with those registers perturbed at every call the
+            # body makes; bytes that move are masked, the rest must agree.
+            undef = self._undefined(t, ret, esp0, ctx0, hs0, pend0, o, r, ctx_o, hs_o, pend_o)
+            if undef:
+                cap2 = self.compare(t, o, r, esp0, ret, regs0, top0, mask=undef)
+                cap2['masked'] = len(undef)
+                if cap2['result'] == 'SAME':
+                    cap2['detail'] = '%d undefined byte(s) masked (uninitialised reads)' % len(undef)
+                cap = cap2
+        cap.pop('mdiff', None)
         if exp:
             self.explained = self.explain_writes(t, o, r, to, tr, esp0, ret)
             self.explained['calls'] = (o['calls'], r['calls'])
@@ -510,8 +550,46 @@ class Oracle(object):
             t.done = True
         return uc.reg_read(UC_X86_REG_EIP)
 
+    def _undefined(self, t, ret, esp0, ctx0, hs0, pend0, o, r, ctx_o, hs_o, pend_o):
+        box, uc = self.box, self.box.uc
+        ob = [(t.va, t.va + len(t.placed[0]))]
+        rb = [(t.va, t.va + len(t.placed[1])), (0x1190D000, 0x11940000)]
+        # back to the entry state
+        self.undo(o['wlog'])
+        uc.context_restore(ctx0)
+        box.hs.restore(hs0)
+        box.pending[:] = pend0
+        os_ = self.run_side(t.va, ret, esp0, budget_s=max(5.0, 20 * o['time']), body=ob, perturb=True)
+        self.undo(os_['wlog'])
+        uc.context_restore(ctx0)
+        box.hs.restore(hs0)
+        box.pending[:] = pend0
+        self._swap(t, 1)
+        try:
+            self._cur_side_t3 = True
+            rs_ = self.run_side(t.alt, ret, esp0, budget_s=max(5.0, 20 * o['time']), body=rb, perturb=True)
+        finally:
+            self._swap(t, 0)
+        self.undo(rs_['wlog'])
+        # the original's end state again
+        for a, v in o['final'].items():
+            uc.mem_write(a, bytes([v]))
+        uc.context_restore(ctx_o)
+        box.hs.restore(hs_o)
+        box.pending[:] = pend_o
+        undef = set()
+        for x, y in ((o, os_), (r, rs_)):
+            if y['status'] != 'ok':
+                return set()          # a perturbed run that fails proves nothing
+            pre = dict(y['pre'])
+            pre.update(x['pre'])
+            for a in pre:
+                if x['final'].get(a, pre[a]) != y['final'].get(a, pre[a]):
+                    undef.add(a)
+        return undef
+
     # ----------------------------------------------------------- compare --
-    def compare(self, t, o, r, esp0, ret, regs0, top0):
+    def compare(self, t, o, r, esp0, ret, regs0, top0, mask=None):
         if r['status'] != 'ok':
             return {'result': 'DIFF', 'detail': 'T3 side %s: %s' % (r['status'], r['why'])}
         diffs = []
@@ -537,12 +615,20 @@ class Oracle(object):
         pre.update(o['pre'])
         mdiff = []
         for a in sorted(pre):
-            if lo_ex <= a < hi_ex:
+            if lo_ex <= a < hi_ex or (mask and a in mask):
                 continue
             vo = o['final'].get(a, pre[a])
             vr = r['final'].get(a, pre[a])
             if vo != vr:
                 mdiff.append((a, vo, vr))
+        if mdiff and os.environ.get('T3LIVE_MDIFF'):
+            runs = []
+            for a, vo, vr in mdiff:
+                if runs and a - runs[-1][1] <= 8:
+                    runs[-1][1] = a
+                else:
+                    runs.append([a, a])
+            print('  mdiff runs: ' + ' '.join('%08X..%08X' % (x, y) for x, y in runs[:60]))
         if mdiff:
             a, vo, vr = mdiff[0]
             diffs.append('memory: %d byte(s) differ, first %08X orig %02X t3 %02X%s' % (
@@ -556,7 +642,8 @@ class Oracle(object):
             diffs.append('import call #%d: %s vs %s (%d vs %d calls)' % (
                 k, _fmt_call(io_[k]) if k < len(io_) else '(none)',
                 _fmt_call(ir_[k]) if k < len(ir_) else '(none)', len(io_), len(ir_)))
-        cap = {'result': 'DIFF' if diffs else 'SAME', 'detail': '; '.join(diffs)}
+        cap = {'result': 'DIFF' if diffs else 'SAME', 'detail': '; '.join(diffs),
+               'mdiff': bool(mdiff)}
         # eax / edx: only if the caller reads them (decided by the live probe)
         regdiff = [k for k in ('eax', 'edx') if o['regs'][k] != r['regs'][k]]
         if regdiff:
@@ -792,6 +879,9 @@ def _fmt_call(c):
         x if isinstance(x, str) else '%X' % x for x in args))
 
 
+PERTURB_REGS = (UC_X86_REG_EBX, UC_X86_REG_ESI, UC_X86_REG_EDI, UC_X86_REG_EBP)
+
+
 # ================================================================ runs =====
 
 DEFAULT_IMAGE = os.path.join(ROOT, 'build', 'brbox', 'image', 'BRGlide.T3.dll')
@@ -977,7 +1067,7 @@ def explain_cli(a):
         print('            t3:   %s' % fmt(r, False))
     for side, pl in zip(('orig', 't3'), ex.get('probe', ([], []))):
         for a_, st_, rg in pl[:80]:
-            print('  probe %-4s %08X st=%s ebp=%08X' % (side, a_, st_, rg['ebp']))
+            print('  probe %-4s %08X st=%s %s' % (side, a_, st_, ' '.join('%s=%08X' % kv for kv in rg.items())))
     co, cr = ex.get('calls', ([], []))
     for side, lst, cl in zip(('orig', 't3'), ex.get('watch', ([], [])), (co, cr)):
         for i, (eip, wa, sz, v) in lst[:20]:
@@ -996,6 +1086,11 @@ def explain_cli(a):
                 parts = []
                 for j in range(3):
                     b = c[4][j]
+                    if os.environ.get('T3LIVE_CALLS') == 'raw':
+                        parts.append('%X' % c[2][j] + ('' if b is None else ' {%s}' % b[:16].hex()))
+                        if j == 2:
+                            parts.append(' '.join('%X' % w for w in c[2][3:]))
+                        continue
                     if b is None or not (brbox.STACK_LO <= c[2][j] < brbox.STACK_HI or c[2][j] >= 0x10000000):
                         parts.append('%X' % c[2][j])
                     else:

@@ -732,7 +732,7 @@ extern "C" void BrRaceStep(void)
                     char *dst;
                     int   sz;
                     PI(loc10, 0x40) = g_18ED1C4((int)(d3 * e3 + s + 0x500), (int)b,
-                                                a3, c3, a3, 1, d3, 0, 0, 1, 2,
+                                                a3, c3, a3, 1, 2, 0, 0, 1, 1,
                                                 0, 0, 1, 0);
                     /* 0x1001a847: memmove of the emitted span */
                     sz  = ((signed char)PB(s, 0xd8) + 2)

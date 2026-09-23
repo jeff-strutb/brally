@@ -2854,5 +2854,5 @@ func_va,offset,value,comment
 0x10065C80,0x2D2,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
 0x10065C80,0x2E5,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
 0x10065C80,0x2FE,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
-0x10019A70,0xDE2,0x118F04FC,lockstep imp__memmove (orig operand 0x118f04fc)
-0x10019A70,0xFBF,0x100B5580,lockstep ??_C@_0BG@FHBH@misc?2modelLights?4blob?$AA@ (orig operand 0x100b5580)
+0x10019A70,0xDE3,0x118F04FC,lockstep imp__memmove (orig operand 0x118f04fc)
+0x10019A70,0xFC0,0x100B5580,lockstep ??_C@_0BG@FHBH@misc?2modelLights?4blob?$AA@ (orig operand 0x100b5580)
