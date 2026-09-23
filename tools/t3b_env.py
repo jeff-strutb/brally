@@ -659,6 +659,25 @@ def _find_cstr(img, name):
     return None
 
 
+def _operand_width(d, fn_raw, off, size):
+    """8 or 4 for the `qword ptr` / `dword ptr` memory operand whose
+    relocation field is at function offset `off`, else None."""
+    try:
+        code = d[fn_raw:fn_raw + size]
+        for ins in _md.disasm(code, 0):
+            if ins.address <= off < ins.address + ins.size:
+                if 'qword ptr' in ins.op_str:
+                    return 8
+                if 'dword ptr' in ins.op_str and ins.mnemonic.startswith('f'):
+                    return 4
+                return None
+            if ins.address > off:
+                return None
+    except Exception:
+        return None
+    return None
+
+
 def const_slot_values(obj_path, name, va, size):
     """{(va, off): value} for the function's `$T` constant slots, resolved to
     the ORIGINAL's identical copy in the image.
@@ -697,12 +716,16 @@ def const_slot_values(obj_path, name, va, size):
                 gap = end - ts['val']
                 length = 8 if gap >= 8 else 4
                 cstart = sec2['praw'] + ts['val']
-                # Find this obj's own constant bytes in the image (the
-                # original's identical copy).  Try the slot length, then fall
-                # back to a 4-byte float: a wrong-length match reads a wrong
-                # value and surfaces as DIFF, never a false EQUIVALENT.
+                # The operand width at the SITE decides the constant's size:
+                # a `qword ptr` operand reads 8 bytes, and a 4-byte match for
+                # it places the instruction on unrelated data (BrCrImpulseSolve
+                # 2026-09-23: `ddrx *= 0.9f` as a double constant absent from
+                # the image resolved onto a stray 0xC0000000 and multiplied by
+                # garbage).  Only when the width is unknown does the old
+                # slot-length-then-float order apply.
+                width = _operand_width(d, secs[fn['sec']]['praw'] + fn['val'], off, size)
                 img_addr = None
-                for ln in (length, 4):
+                for ln in ((width,) if width else (length, 4)):
                     const = d[cstart:cstart + ln]
                     if len(const) != ln:
                         continue
