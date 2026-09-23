@@ -73,8 +73,8 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  * @t4-pass 0x10022BF0 1 2026-09-19 probes 13 bytes 1144 insns 344 regions 7 rows 179 census no  (5 compiler variants O2/Od/O2y/O2p/Odp + 8 expression-order variations: MVP x,y,z; texgen n0,n1,n2; dotX/dotY regroup; sphere-map step-by-step; light-dir regroup; colour cast unsigned; divide order.  Best O2y 799 diffs, texgen reorder 798, sphere steps 797.  All within 2 diffs of each other.  Residue is register allocation + x87 scheduling: 14 fstp-reg vs memory, 10 fmul-reg vs memory, 10 fld-reg vs memory, plus direct-vs-indirect call instruction class from separate-file callees.  No source lever.)
  * @t4-pass 0x10022BF0 2 2026-09-19 probes 13 bytes 1144 insns 344 regions 7 rows 179 census yes  (census of unpaired multiset: MISSING class is fld/fmul/fstp R (register operand) where recomp uses dword-ptr memory operand = TU-context register pressure; EXTRA class is fild-qword, fmul-st(N), cmp-R-R = different instruction encoding of same operations.  6 direct calls in orig vs 6 reloc calls in recomp = separate-file callee linkage, not a code difference.  Every divergent instruction is register-allocation or instruction-scheduling class.  A5 oracle: EQUIVALENT on 64 seeds, same return + globals + side effects.)
  */
-/* @t3 0x10022BF0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1144/1307 insns 344/391 rows 113+66 regions 7 oracle EQUIVALENT
+/* @t3 0x10022BF0 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1160/1307 insns 348/391 rows 108+65 regions 8 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * Residue is register allocation + x87 scheduling from separate-file
  * compilation (no TU neighbours).  All unpaired rows are instruction-
@@ -131,6 +131,8 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 float lx0, lx1, lx2, ly0, ly1, ly2;
                 float dotX, dotY, dotX_128, dotY_128;
                 float asin_val;
+                float lat;
+                int32_t latBits;  /* the quotient's 32-bit image: rounds it through memory */
                 float texDimA, texOffB, texDimC, texOffD;
                 int32_t oc;
 
@@ -172,9 +174,20 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 texOffB = (float)DAT_118ed198;
                 pV->s = (dotY_128 * texDimA - DAT_10077424 - texOffB * DAT_1007742c) / DAT_118ed1a4;
 
+                /* The latitude is its own FLOAT: the original rounds
+                 * asin/pi through [esp+0x2c] (0x10023062 fstp / 0x10023066
+                 * fld) before scaling by texDimC.  Folded into the product
+                 * it stays at register precision and t comes out one ULP
+                 * off -- the live oracle's first capture showed exactly that.
+                 * VC5 forwards a float scalar in st(n) whatever the spelling
+                 * (plain, cast, volatile, a local array, even under /Op);
+                 * reading it back through its 32-bit image is the
+                 * store-and-reload the original performs. */
+                lat = asin_val / DAT_10077428;
+                latBits = *(int32_t *)&lat;
                 texDimC = (float)DAT_118ed1ac;
                 texOffD = (float)DAT_1186c950;
-                pV->t = (asin_val / DAT_10077428 * texDimC - DAT_10077424 - texOffD * DAT_1007742c) / DAT_118ed1a8;
+                pV->t = (*(float *)&latBits * texDimC - DAT_10077424 - texOffD * DAT_1007742c) / DAT_118ed1a8;
 
                 FUN_10022AC0(pSrc, &pV->f40);
 
