@@ -1,0 +1,24 @@
+# Quick Race with the defaults (Coastline, sunny, 3 laps, 4WD ES): the race
+# setup and car setup pages, the grid, the start lights after SPACE, then
+# full throttle -- car physics, collisions, the AI field, the race renderer.
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+hold UP
+sleep 900
+mark driving
+end

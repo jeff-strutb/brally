@@ -1,0 +1,5 @@
+# Boot to the main menu and idle there: DllMain, DirectX probe, window,
+# EAR sound engine, DirectPlay startup, splash, loading screen, main menu.
+sleep 300
+mark main_menu
+end
