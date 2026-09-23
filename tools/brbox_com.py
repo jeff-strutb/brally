@@ -296,8 +296,12 @@ def _getstate(box, a):
                 buf[dik] = 0x80
         box.wr(a[2], bytes(buf))
         return S_OK
-    # mouse: DIMOUSESTATE -- no motion, no buttons
-    box.wr(a[2], b'\0' * n)
+    # mouse: DIMOUSESTATE -- relative motion since the last read, buttons
+    hs = box.hs
+    st_ = struct.pack('<iii', hs.mouse[0], hs.mouse[1], 0) + bytes(
+        0x80 if b in hs.mouse_btn else 0 for b in range(4))
+    hs.mouse[0] = hs.mouse[1] = 0
+    box.wr(a[2], (st_ + b'\0' * n)[:n])
     return S_OK
 
 
@@ -343,6 +347,15 @@ def cocreate(box, clsid_va, iid_va, ppv):
 @method('IDirectPlayLobby3A', 'GetConnectionSettings')
 def _getconn(box, a):
     return DPERR_NOTLOBBIED
+
+
+DPERR_INVALIDPLAYER = 0x88770096
+
+
+@method('IDirectPlay4A', 'GetPlayerName')
+def _getplayername(box, a):
+    # no session is open, so no player id is valid
+    return DPERR_INVALIDPLAYER
 
 
 @method('IDirectPlay4A', 'EnumConnections')

@@ -12,6 +12,15 @@ is one entry to BrAppFrame 0x1001CF80, the main loop's per-frame call):
                           block until the dword at that address satisfies the
                           test; fail the run after N frames (default 1800)
     waitb ADDR == V       same, byte-sized
+    mouse X Y             move the pointer to (X, Y): slam it into the top-left
+                          corner, then move by (X, Y) the next frame
+    click [N]             mouse button 0 down for N frames (default 2), then up
+    autopilot on|off      steer the player's car along the racing line with the
+                          arrow keys (reads the car's own waypoint cursor; only
+                          keyboard input is ever injected)
+    waittext TEXT [N]     block until a string drawn this frame contains TEXT
+                          (case-insensitive; underscores match spaces)
+    text                  log every string the last frame drew, with its pen
     shot NAME             write the framebuffer to <shots>/NAME.png
     mark NAME             coverage checkpoint: record frame + state
     end                   stop the run successfully
@@ -32,6 +41,8 @@ import brbox
 from brbox import Box, GuestFault, Stop
 
 APP_FRAME = 0x1001CF80          # BrAppFrame: one call per main-loop frame
+TEXT_EMIT = 0x10015B10          # BrTextEmitString(psz): the engine's only text path
+FONT_X, FONT_Y = 0x104ABB28, 0x104ABB2C
 FRAME_MS = 1000.0 / 30
 
 # name -> (VK, DIK scan code)
@@ -54,7 +65,11 @@ for _i, _c in enumerate('1234567890'):
 
 # Game-state words sampled every frame for coverage.  Named from the tree.
 STATE_VARS = {
-    'app_state': 0x105BC750,     # g_brAppState -- replaced by driver.discover()
+    'step_fn': 0x106E79F4,       # g_pfnStep: the current activity (br_gamestep.c)
+    'game_mode': 0x100A9360,     # g_brCfgGameMode
+    'race_lights': 0x105BC8F8,   # g_brRaceLights: the start-light state machine
+    'race_script': 0x105BC750,   # g_brRaceScript: index into the light script
+    'race_paused': 0x105CCB5C,   # g_brRacePaused
 }
 
 
@@ -73,6 +88,15 @@ class Driver(object):
         self.done = False
         self.fb = bytearray(640 * 480 * 3)
         self.lfb = []
+        self.text_now = []          # (x, y, string) drawn during this frame
+        self.text_last = []         # ... during the previous frame
+        self.seen_text = {}         # string -> first frame it was drawn
+        self.mouse_phase = 0
+        self.raster = None
+        self.autopilot = False
+        self.ap_log = []
+        self.ap_stuck = 0
+        self.ap_reverse = 0
 
     # -------------------------------------------------------------- input --
     def key(self, box, name, down):
@@ -89,16 +113,29 @@ class Driver(object):
             I.post(box, hs.focus, I.WM_KEYUP, vk, 1 | (dik << 16) | 0xC0000000)
 
     # --------------------------------------------------------- per frame --
+    def on_text(self, box, psz):
+        t = box.cstr(psz, 256) or ''
+        self.text_now.append((box.rd32(FONT_X), box.rd32(FONT_Y), t))
+        self.seen_text.setdefault(t, box.hs.frame)
+
+    def screen_text(self):
+        return [t for _x, _y, t in self.text_last]
+
     def on_frame(self, box):
         f = box.hs.frame
         for rel in [r for r in self.releases if r[0] <= f]:
-            self.key(box, rel[1], False)
+            if rel[1] == '@mouse0':
+                box.hs.mouse_btn.discard(0)
+            else:
+                self.key(box, rel[1], False)
             self.releases.remove(rel)
         for name, va in STATE_VARS.items():
             v = box.rd32(va)
             self.states.setdefault(name, {}).setdefault(v, f)
         if self.max_frames and f >= self.max_frames:
             raise Stop('frame budget %d reached' % self.max_frames)
+        if self.autopilot:
+            self.steer(box)
         while self.pc < len(self.steps) and f >= self.sleep_until:
             op, args, line = self.steps[self.pc]
             if op == 'sleep':
@@ -108,6 +145,27 @@ class Driver(object):
                 self.key(box, args[0].upper(), True)
                 self.releases.append((f + n, args[0].upper()))
                 self.sleep_until = f + n + 1
+            elif op == 'mouse':
+                if self.mouse_phase == 0:
+                    box.hs.mouse[0] -= 100000
+                    box.hs.mouse[1] -= 100000
+                    self.mouse_phase = 1
+                    return
+                box.hs.mouse[0] += int(args[0])
+                box.hs.mouse[1] += int(args[1])
+                self.mouse_phase = 0
+                self.sleep_until = f + 2
+            elif op == 'click':
+                n = int(args[0]) if args else 2
+                box.hs.mouse_btn.add(0)
+                self.releases.append((f + n, '@mouse0'))
+                self.sleep_until = f + n + 1
+            elif op == 'autopilot':
+                self.autopilot = args[0].lower() == 'on'
+                if not self.autopilot:
+                    for k in ('UP', 'LEFT', 'RIGHT', 'DOWN'):
+                        if KEYS[k][1] in box.hs.dikeys:
+                            self.key(box, k, False)
             elif op == 'hold':
                 self.key(box, args[0].upper(), True)
             elif op == 'release':
@@ -121,6 +179,20 @@ class Driver(object):
                         raise GuestFault('script line %d timed out: %s' % (line, ' '.join(args)))
                     return
                 self.wait_since = None
+            elif op == 'waittext':
+                want = args[0].replace('_', ' ').lower()
+                if not any(want in t.lower() for t in self.screen_text()):
+                    if self.wait_since is None:
+                        self.wait_since = f
+                    lim = int(args[1]) if len(args) > 1 else 1800
+                    if f - self.wait_since > lim:
+                        raise GuestFault('script line %d: text %r never drawn; last frame drew %r'
+                                         % (line, args[0], self.screen_text()[:40]))
+                    return
+                self.wait_since = None
+            elif op == 'text':
+                self.log('frame %d text: %s' % (f, ' | '.join(
+                    '%s@%d,%d' % (t, x, y) for x, y, t in self.text_last)))
             elif op == 'shot':
                 self.shot(box, args[0])
             elif op == 'mark':
@@ -130,6 +202,75 @@ class Driver(object):
                 self.done = True
                 raise Stop('script end')
             self.pc += 1
+
+    # ------------------------------------------------------------ autopilot --
+    ENTRANTS = 0x10AF0858            # driver slots, 0x80 bytes, car pointer first
+
+    def steer(self, box):
+        """Hold UP, and LEFT/RIGHT toward a waypoint ~lookahead metres down
+        the car's own racing-line cursor (car+0xF8C node, +0xF90 point) --
+        the walk BrCtlAiBody does for the computer cars."""
+        import math
+        car = box.rd32(self.ENTRANTS)
+        want = {'UP'}
+        if car:
+            node, i = box.rd32(car + 0xF8C), box.rd32(car + 0xF90)
+            f = lambda o: struct.unpack('<f', box.rd(car + o, 4))[0]
+            pos = (f(0x30), f(0x34))
+            right = (f(0x10), f(0x14))
+            vel = (f(0x1024), f(0x1028))
+            speed = math.hypot(*vel)
+            if node:
+                t = 12.0 + speed * 0.6
+                n, k = node, i
+                for _ in range(400):
+                    cnt = box.rd16(n + 0x14)
+                    a0 = struct.unpack('<f', box.rd(n + 0x40 + 0x28 * k + 0x24, 4))[0]
+                    a1 = struct.unpack('<f', box.rd(n + 0x40 + 0x28 * (k + 1) + 0x24, 4))[0]
+                    t -= a0 - a1
+                    k += 1
+                    if k >= cnt:
+                        n = box.rd32(n)
+                        guard = 0
+                        while box.rd16(n + 0x16) & 1 and guard < 16:
+                            n = box.rd32(n + 4)
+                            guard += 1
+                        k = 0
+                    if t < 0:
+                        break
+                c = n + 0x40 + 0x28 * k + 0x0C
+                tx, ty = struct.unpack('<ff', box.rd(c, 8))
+                dx, dy = tx - pos[0], ty - pos[1]
+                d = math.hypot(dx, dy) or 1.0
+                lat = (right[0] * dx + right[1] * dy) / d
+                if lat > 0.08:
+                    want.add(self.ap_right)
+                elif lat < -0.08:
+                    want.add(self.ap_left)
+                if abs(lat) > 0.6 and speed > 25:
+                    want.discard('UP')
+                # stuck against something: back off with the wheel reversed
+                if speed < 2.0:
+                    self.ap_stuck += 1
+                else:
+                    self.ap_stuck = 0
+                if self.ap_stuck > 45 or self.ap_reverse > 0:
+                    if self.ap_reverse == 0:
+                        self.ap_reverse = 40
+                    self.ap_reverse -= 1
+                    self.ap_stuck = 0
+                    flip = {self.ap_left: self.ap_right, self.ap_right: self.ap_left}
+                    want = {'DOWN'} | {flip[k] for k in want if k in flip}
+                self.ap_log.append((box.hs.frame, round(pos[0], 1), round(pos[1], 1),
+                                    round(speed, 1), round(lat, 2)))
+        for k in ('UP', 'DOWN', 'LEFT', 'RIGHT'):
+            down = KEYS[k][1] in box.hs.dikeys
+            if (k in want) != down:
+                self.key(box, k, k in want)
+
+    # car+0x10 (frame row 1) points to the car's LEFT: a target on its
+    # positive side is steered toward with the LEFT arrow
+    ap_right, ap_left = 'LEFT', 'RIGHT'
 
     def _test(self, box, op, args):
         a = int(args[0], 0)
@@ -185,7 +326,10 @@ class Driver(object):
         os.makedirs(self.shots, exist_ok=True)
         path = os.path.join(self.shots, name + '.png')
         self._compose()
-        write_png(path, 640, 480, bytes(self.fb))
+        img = bytes(self.fb)
+        if self.raster is not None and self.raster.last:
+            img = bytes(self.raster.render(img))
+        write_png(path, 640, 480, img)
         self.log('shot %s (frame %d)' % (path, box.hs.frame))
 
 
@@ -223,8 +367,29 @@ def attach(box, driver):
     from unicorn import UC_HOOK_CODE
     box.driver = driver
     box.on_lfb = driver.on_lfb
+    if driver.shots:
+        import brbox_glraster
+        driver.raster = brbox_glraster.Recorder()
+
+    def on_glide(b, name, a):
+        # a presented frame is one buffer swap: the text it drew is complete
+        if name == '_grBufferSwap@4' and not b.subrun:
+            driver.text_last, driver.text_now = driver.text_now, []
+        if driver.raster is not None:
+            driver.raster.on_glide(b, name, a)
+    box.on_glide = on_glide
 
     def frame_hook(uc, addr, size, _ud):
+        if box.subrun:
+            # A frame boundary inside a live-oracle sub-run: the captured
+            # function wraps a whole frame loop (a loader with a progress
+            # screen).  Frames, virtual time and script input are driven here,
+            # so a sub-run spanning one could not replay identically on both
+            # sides -- and would shift the drive for everything after it.
+            # The oracle rolls the capture back and lets the call run for real.
+            box.fault = GuestFault('frame boundary inside a sub-run')
+            uc.emu_stop()
+            return
         box.hs.frame += 1
         # A machine that presents exactly 30 frames a second: each frame costs
         # 1/30 s of virtual time on top of whatever the game's own clock
@@ -238,6 +403,11 @@ def attach(box, driver):
             box.fault = e
             uc.emu_stop()
     box.uc.hook_add(UC_HOOK_CODE, frame_hook, begin=APP_FRAME, end=APP_FRAME)
+
+    def text_hook(uc, addr, size, _ud):
+        if not box.subrun:
+            driver.on_text(box, box.rd32(uc.reg_read(brbox.UC_X86_REG_ESP) + 4))
+    box.uc.hook_add(UC_HOOK_CODE, text_hook, begin=TEXT_EMIT, end=TEXT_EMIT)
 
 
 def run_cli(a):

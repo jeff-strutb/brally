@@ -71,7 +71,7 @@ def heap_alloc(box, n, zero=False):
         hs.heap_next = a + n
     hs.heap_blocks[a] = n
     if zero:
-        box.uc.mem_write(a, b'\0' * n)
+        box.wr(a, b'\0' * n)
     return a
 
 
@@ -172,15 +172,26 @@ def c_format(box, fmt, argp, wide=False):
             if 'h' in size:
                 v &= 0xFFFF
             out.append((spec + conv) % v)
-        elif conv == 'c':
-            v = box.rd32(ap) & 0xFF
+        elif conv in 'cC':
+            # %C is the wide-char form: its int argument prints as one char
+            v = box.rd32(ap) & (0xFF if conv == 'c' else 0xFFFF)
             ap += 4
-            out.append((spec + 's') % chr(v))
+            out.append((spec + 's') % chr(v & 0xFF))
         elif conv == 's':
             p = box.rd32(ap)
             ap += 4
             s = '(null)' if p == 0 else box.cstr(p, 1 << 16)
             out.append((spec + 's') % s)
+        elif conv == 'S':
+            p = box.rd32(ap)
+            ap += 4
+            ws = bytearray()
+            while p and len(ws) < 1 << 16:
+                ch = box.rd16(p + len(ws))
+                if ch == 0:
+                    break
+                ws += struct.pack('<H', ch)
+            out.append((spec + 's') % ('(null)' if not p else ws.decode('utf-16-le')))
         elif conv in 'eEfgG':
             v = struct.unpack('<d', box.rd(ap, 8))[0]
             ap += 8
@@ -457,7 +468,7 @@ def _closeh(box, a):
 
 @std(K, 'InitializeCriticalSection', 4)
 def _ics(box, a):
-    box.uc.mem_write(a[0], b'\0' * 24)
+    box.wr(a[0], b'\0' * 24)
     return None
 
 
@@ -516,7 +527,7 @@ def _qpc(box, a):
 @std(K, 'Sleep', 4)
 def _sleep(box, a):
     box.advance(a[0])
-    if len(box.threads) > 1 and not box.subrun:
+    if not box.subrun and box.others_runnable():
         box.want_yield = True
     return None
 
@@ -945,7 +956,7 @@ def _peek(box, a):
             del q[i]
         return 1
     box.idle_peek()
-    if len(box.threads) > 1 and not box.subrun:
+    if not box.subrun and box.others_runnable():
         box.want_yield = True
     return 0
 
@@ -1423,16 +1434,6 @@ def _fp_result(box, v, pops):
     (the FPU register file is the guest's; the host never pokes it)."""
     box.wr(box.fpres, struct.pack('<d', v))
     return ('jump', box.fp_snippet[pops])
-
-
-@crt('floor', 2)
-def _floor(box, a):
-    v = a.f64(0)
-    try:
-        r = float(math.floor(v))
-    except (ValueError, OverflowError):
-        r = v
-    yield _fp_result(box, r, 0)
 
 
 @crt('asin', 2)
@@ -2070,6 +2071,14 @@ def _asm_fp_snippets(box):
         snippets[pops] = base + off
         off += 0x20
     box.fp_snippet = snippets
+    # floor(double): pure guest code -- the game calls it ~2,500 times a race
+    # frame, so a host round trip each time would dominate the run.  frndint
+    # under round-down IS floor for every finite value, and passes NaN and
+    # the infinities through, as MSVCRT's does.
+    box.floor_va = base + 0xC0
+    box.wr(box.floor_va, bytes.fromhex(
+        '83EC04' 'D93C24' '668B0424' '80E4F3' '80CC04' '6689442402' 'D96C2402'
+        'DD442408' 'D9FC' 'D92C24' '83C404' 'C3'))
     ftol = base + 0x80
     box.wr(ftol, bytes.fromhex(
         '55' '8BEC' '83C4F4' '9B' 'D97DFE' '9B' '668B45FE' '80CC0C' '668945FC'
@@ -2096,6 +2105,9 @@ def install(box):
             continue
         if full == 'MSVCRT.dll!_ftol':
             box.wr32(slot, ftol)
+            continue
+        if full == 'MSVCRT.dll!floor':
+            box.wr32(slot, box.floor_va)
             continue
         ent = MODELS.get(full)
         if ent is None:

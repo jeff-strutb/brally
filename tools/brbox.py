@@ -147,6 +147,8 @@ class HostState(object):
         self.quit = False
         self.keys = set()              # VK codes currently down (scripted)
         self.dikeys = set()            # DIK scan codes currently down
+        self.mouse = [0, 0]            # pending relative mouse motion (DirectInput mickeys)
+        self.mouse_btn = set()         # mouse buttons currently down
         self.frame = 0
         self.errno = 0
         self.cwd = 'C:\\BOSSRALLY\\'
@@ -250,20 +252,32 @@ class Box(object):
     def rd32(self, a):
         return struct.unpack('<I', bytes(self.uc.mem_read(a, 4)))[0]
 
+    # Every host-side write goes through _w.  While the live oracle runs a
+    # sub-run, `wlog` is a list and each write first records the bytes it
+    # overwrites -- the guest's own writes are logged by a Unicorn hook, and
+    # an import model's writes (fread, sprintf, GetDeviceState...) would
+    # otherwise escape both the undo and the comparison.
+    wlog = None
+
+    def _w(self, a, b):
+        if self.wlog is not None and b:
+            self.wlog.append((a, bytes(self.uc.mem_read(a, len(b)))))
+        self.uc.mem_write(a, b)
+
     def wr32(self, a, v):
-        self.uc.mem_write(a, struct.pack('<I', v & 0xFFFFFFFF))
+        self._w(a, struct.pack('<I', v & 0xFFFFFFFF))
 
     def rd16(self, a):
         return struct.unpack('<H', bytes(self.uc.mem_read(a, 2)))[0]
 
     def wr16(self, a, v):
-        self.uc.mem_write(a, struct.pack('<H', v & 0xFFFF))
+        self._w(a, struct.pack('<H', v & 0xFFFF))
 
     def rd8(self, a):
         return self.uc.mem_read(a, 1)[0]
 
     def wr8(self, a, v):
-        self.uc.mem_write(a, bytes([v & 0xFF]))
+        self._w(a, bytes([v & 0xFF]))
 
     def rdf32(self, a):
         return struct.unpack('<f', bytes(self.uc.mem_read(a, 4)))[0]
@@ -272,7 +286,7 @@ class Box(object):
         return bytes(self.uc.mem_read(a, n))
 
     def wr(self, a, b):
-        self.uc.mem_write(a, bytes(b))
+        self._w(a, bytes(b))
 
     def cstr(self, a, limit=4096):
         if not a:
@@ -291,7 +305,7 @@ class Box(object):
         b = s.encode('latin1') if isinstance(s, str) else bytes(s)
         if cap is not None:
             b = b[:max(cap - 1, 0)]
-        self.uc.mem_write(a, b + b'\0')
+        self._w(a, b + b'\0')
         return len(b)
 
     def reg(self, name):
@@ -349,8 +363,16 @@ class Box(object):
         self.thunk_names[name] = va
         return va
 
+    sub_stop = None          # (return address, entry esp) while a sub-run executes
+    sub_done = False
+
     def _on_trap(self, uc, addr, size, _ud):
         try:
+            if self.sub_stop is not None and addr == self.sub_stop[0] and \
+                    uc.reg_read(UC_X86_REG_ESP) > self.sub_stop[1]:
+                self.sub_done = True
+                uc.emu_stop()
+                return
             if addr == self.STOP:
                 self.stop_reason = self.stop_reason or 'return'
                 uc.emu_stop()
@@ -613,6 +635,10 @@ class Box(object):
         self.uc.emu_stop()
 
     switch_req = False
+
+    def others_runnable(self):
+        return any(t is not self.cur and (t.state == 'ready' or (
+            t.state == 'blocked' and self.imports.wait_ready(self, t))) for t in self.threads)
 
     def _do_switch(self):
         self.switch_req = False
