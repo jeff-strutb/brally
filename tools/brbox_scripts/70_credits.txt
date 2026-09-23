@@ -1,0 +1,12 @@
+# Credits: the outro controller's scene (game mode 6) runs for a while,
+# then ESC.
+sleep 240
+mark main_menu
+mouse 250 227
+click
+sleep 1500
+mark credits_running
+press ESCAPE
+sleep 200
+mark back
+end

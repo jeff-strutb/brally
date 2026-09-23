@@ -294,6 +294,12 @@ class Oracle(object):
         n = len(t.captures)
         if n >= self.per_fn or self.probe is not None:
             return                   # (a liveness probe owns the next instructions)
+        if self.explain_frame is not None:
+            if box.hs.frame < self.explain_frame:
+                return
+            box.intermission = lambda b, _t=t: self.capture(_t)
+            uc.emu_stop()
+            return
         ret = box.rd32(uc.reg_read(UC_X86_REG_ESP))
         # the first call, the first call from each new site, then a spread
         if n == 0 or ret not in t.sites or t.calls in (2, 4, 8, 16, 64, 256, 1024, 4096):
@@ -301,9 +307,61 @@ class Oracle(object):
             uc.emu_stop()
 
     # ---------------------------------------------------------- one side --
-    def run_side(self, start, ret, esp0, budget_s, trace=None):
+    def run_side(self, start, ret, esp0, budget_s, trace=None, body=None):
         box, uc = self.box, self.box.uc
         wlog = []
+        hcall = None
+        calls = []
+        hprobe = []
+        side_env = 'T3LIVE_PROBE_O' if (body and body[0][1] - body[0][0] == len(self._cur_t.placed[0])
+                                         and start == self._cur_t.va and not self._cur_side_t3) \
+            else 'T3LIVE_PROBE_T'
+        probes = [int(x, 16) for x in os.environ.get(side_env, '').split(',') if x] \
+            if body is not None else []
+        for pa in probes:
+            def on_probe(uc_, a, sz, ud):
+                top = box.fpu_top()
+                box.log_probe.append((a, [round(box.st(k), 9) for k in range(4)],
+                                      {n: uc_.reg_read(r) for n, r in (('eax', UC_X86_REG_EAX),
+                                                                       ('ebp', UC_X86_REG_EBP),
+                                                                       ('esp', UC_X86_REG_ESP))}))
+            hprobe.append(uc.hook_add(UC_HOOK_CODE, on_probe, begin=pa, end=pa))
+            uc.ctl_remove_cache(pa, pa + 1)
+        if body is not None:
+            box.log_probe = []
+            # explain only: every `call` the function's OWN code executes,
+            # with its resolved target, in order
+            md = Cs(CS_ARCH_X86, CS_MODE_32)
+            cache = {}
+
+            def on_body(uc_, a, sz, ud):
+                ins = cache.get(a)
+                if ins is None:
+                    try:
+                        ins = next(md.disasm(bytes(uc_.mem_read(a, 16)), a))
+                    except StopIteration:
+                        ins = False
+                    cache[a] = ins
+                if ins and ins.mnemonic == 'call':
+                    op = ins.op_str
+                    if op.startswith('0x'):
+                        tgt = int(op, 16)
+                    elif 'ptr [' in op and '+' not in op and '*' not in op:
+                        tgt = struct.unpack('<I', bytes(uc_.mem_read(int(op.split('[')[1][:-1], 16), 4)))[0]
+                    else:
+                        tgt = op
+                    esp = uc_.reg_read(UC_X86_REG_ESP)
+                    words = struct.unpack('<4I', bytes(uc_.mem_read(esp, 16)))
+                    blobs = []
+                    for w in words[:3]:
+                        try:
+                            blobs.append(bytes(uc_.mem_read(w, 36)))
+                        except UcError:
+                            blobs.append(None)
+                    calls.append((a, tgt, words, len(trace) if trace is not None else 0, blobs))
+            hcall = [uc.hook_add(UC_HOOK_CODE, on_body, begin=lo, end=hi - 1) for lo, hi in body]
+            for lo, hi in body:
+                uc.ctl_remove_cache(lo, hi)
 
         if trace is None:
             def on_write(uc_, access, a, sz, v, ud):
@@ -341,6 +399,8 @@ class Oracle(object):
         except UcError as e:
             status, why = 'crash', '%s at %08X' % (e, uc.reg_read(UC_X86_REG_EIP))
         dt = time.time() - t0
+        for hc in (hcall or []) + hprobe:
+            uc.hook_del(hc)
         uc.hook_del(h)
         if hr is not None:
             uc.hook_del(hr)
@@ -351,7 +411,8 @@ class Oracle(object):
         box.icall_log = None
         box.fault = None
         del box.pending[pend:]
-        r = {'status': status, 'why': why, 'time': dt, 'wlog': wlog, 'icalls': icalls}
+        r = {'status': status, 'why': why, 'time': dt, 'wlog': wlog, 'icalls': icalls,
+             'calls': calls, 'probe': list(getattr(box, 'log_probe', []))}
         if status == 'ok':
             r['regs'] = {n: uc.reg_read(k) for n, k in (
                 ('eax', UC_X86_REG_EAX), ('edx', UC_X86_REG_EDX), ('ebx', UC_X86_REG_EBX),
@@ -386,7 +447,9 @@ class Oracle(object):
         exp = self.explain is not None and self.explain[0] == t.va and \
             len(t.captures) == self.explain[1]
         to, tr = ([], []) if exp else (None, None)
-        o = self.run_side(t.va, ret, esp0, budget_s=30.0, trace=to)
+        ob = [(t.va, t.va + len(t.placed[0]))] if (exp and t.placed) else None
+        self._cur_t, self._cur_side_t3 = t, False
+        o = self.run_side(t.va, ret, esp0, budget_s=30.0 if not exp else 600.0, trace=to, body=ob)
         if o['status'] != 'ok':
             # the ORIGINAL cannot be contained (it never returns in budget,
             # or needs a thread switch): stop watching this function and let
@@ -416,7 +479,11 @@ class Oracle(object):
         if getattr(t, 'placed', None) is not None:
             self._swap(t, 1)
         try:
-            r = self.run_side(t.alt, ret, esp0, budget_s=max(5.0, 20 * o['time']), trace=tr)
+            rb = None
+            self._cur_side_t3 = True
+            if exp and t.placed:
+                rb = [(t.va, t.va + len(t.placed[1])), (0x1190D000, 0x11940000)]
+            r = self.run_side(t.alt, ret, esp0, budget_s=max(5.0, 20 * o['time']), trace=tr, body=rb)
         finally:
             if getattr(t, 'placed', None) is not None:
                 self._swap(t, 0)
@@ -430,6 +497,8 @@ class Oracle(object):
         cap = self.compare(t, o, r, esp0, ret, regs0, top0)
         if exp:
             self.explained = self.explain_writes(t, o, r, to, tr, esp0, ret)
+            self.explained['calls'] = (o['calls'], r['calls'])
+            self.explained['probe'] = (o['probe'], r['probe'])
         cap.update({'frame': box.hs.frame, 'site': ret, 't_orig': round(o['time'], 4),
                     't_t3': round(r['time'], 4)})
         t.captures.append(cap)
@@ -497,6 +566,7 @@ class Oracle(object):
     explain = None
     explained = None
     skip_once = None
+    explain_frame = None
 
     def explain_writes(self, t, o, r, to, tr, esp0, ret):
         """For each observable address whose final byte differs, the last
@@ -533,7 +603,10 @@ class Oracle(object):
         fo = [(a, sz, v) for eip, a, sz, v in to if not (lo_ex <= a < hi_ex)]
         fr = [(a, sz, v) for eip, a, sz, v in tr if not (lo_ex <= a < hi_ex)]
         k = next((i for i in range(min(len(fo), len(fr))) if fo[i] != fr[i]), None)
-        return {'final': out, 'order_first': k, 'n_orig': len(fo), 'n_t3': len(fr),
+        watch = [int(x, 16) for x in os.environ.get('T3LIVE_WATCH', '').split(',') if x]
+        wo = [(i, e) for i, e in enumerate(to) if any(e[1] <= w < e[1] + e[2] for w in watch)]
+        wr = [(i, e) for i, e in enumerate(tr) if any(e[1] <= w < e[1] + e[2] for w in watch)]
+        return {'watch': (wo, wr), 'final': out, 'order_first': k, 'n_orig': len(fo), 'n_t3': len(fr),
                 'order_orig': [e for e in to if not (lo_ex <= e[1] < hi_ex)][k:k + 6] if k is not None else [],
                 'order_t3': [e for e in tr if not (lo_ex <= e[1] < hi_ex)][k:k + 6] if k is not None else []}
 
@@ -841,7 +914,9 @@ def explain_cli(a):
     import brbox_drive
     va = int(a.va, 16)
     cap_idx = a.capture
-    if cap_idx is None:
+    if a.frame is not None:
+        cap_idx = 0
+    elif cap_idx is None:
         name = os.path.splitext(os.path.basename(a.script))[0] + '.json'
         d = json.load(open(os.path.join(OUT_DIR, name)))
         caps = d['results']['0x%08x' % va]['captures']
@@ -852,6 +927,7 @@ def explain_cli(a):
     targets = t3_targets({'0x%08x' % va})
     orc = Oracle(box, targets, per_fn=cap_idx + 1, log=print, image=a.image)
     orc.explain = (va, cap_idx)
+    orc.explain_frame = a.frame
     try:
         box.boot()
         box.rally_main()
@@ -884,6 +960,74 @@ def explain_cli(a):
             return '%d@%08X=%X%s by %s' % (sz, wa, v, fv, _dis(box, eip, orig=orig))
         print('  %08X  orig: %s' % (row['addr'], fmt(o, True)))
         print('            t3:   %s' % fmt(r, False))
+    for side, pl in zip(('orig', 't3'), ex.get('probe', ([], []))):
+        for a_, st_, rg in pl[:80]:
+            print('  probe %-4s %08X st=%s ebp=%08X' % (side, a_, st_, rg['ebp']))
+    co, cr = ex.get('calls', ([], []))
+    for side, lst, cl in zip(('orig', 't3'), ex.get('watch', ([], [])), (co, cr)):
+        for i, (eip, wa, sz, v) in lst[:20]:
+            ci = max((j for j, c in enumerate(cl) if c[3] <= i), default=None)
+            where = ('inside body call #%d (%08X->%s)' % (ci, cl[ci][0], cl[ci][1] if isinstance(cl[ci][1], str)
+                                                         else '%08X' % cl[ci][1])) if ci is not None else ''
+            print('  watch %-4s write#%-8d %08X <- %X  %s  %s' % (side, i, wa, v,
+                                                              _dis(box, eip, orig=(side == 'orig')), where))
+    k = next((i for i in range(min(len(co), len(cr))) if co[i][1] != cr[i][1]), None)
+    print('body calls: %d vs %d; first differing target at #%s' % (len(co), len(cr), k))
+    if os.environ.get('T3LIVE_CALLS'):
+        for side, cl in (('orig', co), ('t3', cr)):
+            print('  --- %s calls' % side)
+            for i, c in enumerate(cl):
+                tg = c[1] if isinstance(c[1], str) else '%08X' % c[1]
+                parts = []
+                for j in range(3):
+                    b = c[4][j]
+                    if b is None or not (brbox.STACK_LO <= c[2][j] < brbox.STACK_HI or c[2][j] >= 0x10000000):
+                        parts.append('%X' % c[2][j])
+                    else:
+                        parts.append('[%s]' % ' '.join('%.9g' % x for x in struct.unpack('<9f', b)))
+                print('  #%d %s %s' % (i, tg, ' | '.join(parts)))
+    if os.environ.get('T3LIVE_ARGDATA'):
+        for i in range(min(len(co), len(cr))):
+            bo, br = co[i][4], cr[i][4]
+            for j in range(3):
+                if bo[j] is not None and br[j] is not None and bo[j] != br[j] and \
+                        (brbox.STACK_LO <= co[i][2][j] < brbox.STACK_HI):
+                    fo = struct.unpack('<9f', bo[j]); fr = struct.unpack('<9f', br[j])
+                    print('  argdata call #%d ->%08X arg%d differs:' % (i, co[i][1] if isinstance(co[i][1], int) else 0, j))
+                    print('     orig %s' % ' '.join('%.9g' % x for x in fo))
+                    print('     t3   %s' % ' '.join('%.9g' % x for x in fr))
+    stk = lambda v: 'stk' if brbox.STACK_LO <= v < brbox.STACK_HI else '%X' % v
+    md2 = Cs(CS_ARCH_X86, CS_MODE_32)
+
+    def arity(site, tgt, orig_side):
+        # the caller's `add esp,N` right after the call, else the callee's `ret N`
+        try:
+            code = box.pe.read(site, 24) if orig_side else box.rd(site, 24)
+            ins = list(md2.disasm(code, site))[:2]
+            if len(ins) == 2 and ins[1].mnemonic == 'add' and ins[1].op_str.startswith('esp, '):
+                return int(ins[1].op_str.split(', ')[1], 0) // 4
+        except Exception:
+            pass
+        if isinstance(tgt, int):
+            for i in md2.disasm(box.pe.read(tgt, 0x800) or b'', tgt):
+                if i.mnemonic == 'ret':
+                    return int(i.op_str, 0) // 4 if i.op_str else 0
+        return 0
+    na = 0
+    for i in range(min(len(co), len(cr))):
+        n = max(arity(co[i][0], co[i][1], True), arity(cr[i][0], cr[i][1], False))
+        n = min(n, 3)
+        ao = [stk(x) for x in co[i][2][1:1 + n]]
+        ar = [stk(x) for x in cr[i][2][1:1 + n]]
+        if ao != ar and na < 12:
+            na += 1
+            tg = co[i][1] if isinstance(co[i][1], str) else '%08X' % co[i][1]
+            print('  args #%d ->%s  orig %s  t3 %s' % (i, tg, ao, ar))
+    if k is not None:
+        for i in range(max(0, k - 3), min(k + 6, max(len(co), len(cr)))):
+            fo = ('%08X->%s' % (co[i][0], co[i][1] if isinstance(co[i][1], str) else '%08X' % co[i][1])) if i < len(co) else '-'
+            fr = ('%08X->%s' % (cr[i][0], cr[i][1] if isinstance(cr[i][1], str) else '%08X' % cr[i][1])) if i < len(cr) else '-'
+            print('  #%d orig %-26s t3 %s' % (i, fo, fr))
     print('write order: %d vs %d observable writes; first differing write #%s' % (
         ex['n_orig'], ex['n_t3'], ex['order_first']))
     for side, lst in (('orig', ex['order_orig']), ('t3', ex['order_t3'])):
@@ -915,6 +1059,8 @@ def main():
     e.add_argument('va')
     e.add_argument('--capture', type=int, default=None,
                    help='capture index (default: the first DIFF in the last run)')
+    e.add_argument('--frame', type=int, default=None,
+                   help='explain the first call at or after this game frame')
     e.add_argument('--image', default=DEFAULT_IMAGE)
     sub.add_parser('report')
     a = ap.parse_args()

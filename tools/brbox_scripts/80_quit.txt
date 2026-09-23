@@ -1,0 +1,11 @@
+# Quit: YES QUIT -- the whole shutdown path runs and RallyMain returns.
+sleep 240
+mark main_menu
+mouse 250 246
+click
+sleep 40
+mark quit_page
+mouse 250 138
+click
+sleep 600
+end

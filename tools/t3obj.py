@@ -91,3 +91,31 @@ def pick(va_hex, name, orig_len):
     elif owner and owner[0] == 'base':
         owned = [c for c in cands if os.path.basename(c[0]) == owner[1]]
     return min(owned or cands, key=lambda e: abs(e[1] - orig_len))
+
+
+def nparams(src_file, name):
+    """Stack-argument dword count of `name` from its C/C++ definition in
+    `src_file`, or None.  Used only to bound the incoming-argument slots the
+    live oracle leaves out of its comparison (the callee owns them); a
+    __fastcall/BR_THISCALL1 definition's first register-eligible arguments are
+    not on the stack and are not counted."""
+    import re
+    try:
+        text = open(os.path.join(ROOT, src_file), errors='replace').read()
+    except OSError:
+        return None
+    short = name.split('::')[-1]
+    for m in re.finditer(r'^[A-Za-z_][\w \t\*]*?\b(?:\w+\s*::\s*)?%s\s*\(([^)]*)\)\s*\{'
+                         % re.escape(short), text, re.M):
+        head = text[m.start():m.end()]
+        params = [p for p in m.group(1).split(',') if p.strip() and p.strip() != 'void']
+        n = 0
+        for p in params:
+            if re.search(r'\bdouble\b', p) and '*' not in p:
+                n += 2
+            else:
+                n += 1
+        if re.search(r'__fastcall|BR_THISCALL1|BR_FASTCALL', head):
+            n = max(0, n - 2)
+        return n
+    return None

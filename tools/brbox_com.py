@@ -13,6 +13,7 @@ declared with fn=None is UNMODELLED and stops the run naming itself.
 Object state (reference counts, device formats) lives in HostState.com so the
 live oracle's capture/restore covers it.
 """
+import os
 import struct
 
 from brbox import GuestFault
@@ -109,6 +110,9 @@ IID = {
     '0B2B8630-AD35-11D0-8EA600609797EA5B': 'IDirectDrawSurface4',
     '5944E680-C92E-11CF-BFC7444553540000': 'IDirectInputDeviceA',
     '5944E682-C92E-11CF-BFC7444553540000': 'IDirectInputDevice2A',
+    '26C66A70-B367-11CF-A02400AA006157AC': 'IDirectPlayLobbyA',
+    '1BB4AF80-A303-11D0-9C4F00A0C905425E': 'IDirectPlayLobby2A',
+    '2DB72491-652C-11D1-A7A80000F803ABFC': 'IDirectPlayLobby3A',
 }
 
 GUID_SYSKEYBOARD = '6F1D2B61-D5A0-11CF-BFC7444553540000'
@@ -128,6 +132,8 @@ def new_object(box, iface, **state):
         vt = box.host_alloc(4 * len(meths), 4)
         for i, (name, nargs) in enumerate(meths):
             fn = METHODS.get((iface, name)) or METHODS.get(('*', name)) or _unmodelled(iface, name)
+            if _TRACE and iface.startswith(_TRACE):
+                fn = _traced(iface, name, fn, nargs)
             box.wr32(vt + 4 * i, box.trap('%s::%s' % (iface, name), 4 * nargs, fn, nargs))
         box.vtables[iface] = vt
     obj = box.host_alloc(16, 4)
@@ -136,6 +142,23 @@ def new_object(box, iface, **state):
     st.update(state)
     box.hs.com[obj] = st
     return obj
+
+
+_TRACE = os.environ.get('BRBOX_COMTRACE')
+
+
+def _traced(iface, name, fn, nargs):
+    import inspect
+
+    def wrap(box, a):
+        args = [a[k] for k in range(nargs)]
+        r = fn(box, a)
+        if inspect.isgenerator(r):
+            r = yield from r
+        print('com %s::%s(%s) -> %08X' % (iface, name, ' '.join('%08X' % x for x in args),
+                                          (r or 0) & 0xFFFFFFFF))
+        return r
+    return wrap
 
 
 def _unmodelled(iface, name):
@@ -180,6 +203,8 @@ QI_MAP = {
     'IDirectDraw2': ('IDirectDraw',),
     'IDirectDrawSurface': ('IDirectDrawSurface3', 'IDirectDrawSurface4'),
     'IDirectInputDeviceA': ('IDirectInputDevice2A',),
+    # every lobby interface is a prefix of IDirectPlayLobby3A's vtable
+    'IDirectPlayLobby3A': ('IDirectPlayLobbyA', 'IDirectPlayLobby2A'),
 }
 
 
@@ -192,7 +217,9 @@ def _qi(box, a):
         box.wr32(a[2], a[0])
         return S_OK
     if want in QI_MAP.get(st['iface'], ()):
-        real = 'IDirectInputDeviceA' if want == 'IDirectInputDevice2A' else want
+        real = {'IDirectInputDevice2A': 'IDirectInputDeviceA',
+                'IDirectPlayLobbyA': 'IDirectPlayLobby3A',
+                'IDirectPlayLobby2A': 'IDirectPlayLobby3A'}.get(want, want)
         o = new_object(box, real, parent=a[0], **{k: v for k, v in st.items()
                                                     if k not in ('iface', 'ref')})
         box.wr32(a[2], o)
@@ -344,18 +371,184 @@ def cocreate(box, clsid_va, iid_va, ppv):
     return S_OK
 
 
+DPERR_BUFFERTOOSMALL = 0x8877001E
+
+
+@method('IDirectPlayLobby3A', 'CreateCompoundAddress')
+def _createcompound(box, a):
+    # (this, lpElements, dwElementCount, lpAddress, lpdwAddressSize).  A
+    # DPCOMPOUNDADDRESSELEMENT is {GUID guidDataType; DWORD dwDataSize;
+    # LPVOID lpData}; the address is each as a DPADDRESS chunk
+    # {GUID; DWORD size} followed by its data, in order.
+    out = b''
+    for k in range(a[2]):
+        e = a[1] + 24 * k
+        guid, size, data = box.rd(e, 16), box.rd32(e + 16), box.rd32(e + 20)
+        out += guid + struct.pack('<I', size) + (box.rd(data, size) if size else b'')
+    have = box.rd32(a[4])
+    box.wr32(a[4], len(out))
+    if not a[3] or have < len(out):
+        return DPERR_BUFFERTOOSMALL
+    box.wr(a[3], out)
+    return S_OK
+
+
 @method('IDirectPlayLobby3A', 'GetConnectionSettings')
 def _getconn(box, a):
     return DPERR_NOTLOBBIED
 
 
 DPERR_INVALIDPLAYER = 0x88770096
+DPERR_NOMESSAGES = 0x887700BE
+DPERR_NOSESSIONS = 0x887700D2
+DPERR_NOCONNECTION = 0x887700AA
+DPERR_BUFFERTOOSMALL_DP = 0x8877001E
+DPOPEN_CREATE = 0x2
+DPPLAYER_SERVERPLAYER = 0x100    # also DPENUMPLAYERS_SERVERPLAYER
+DPID_SERVERPLAYER = 1
+DPESC_TIMEDOUT = 0x1
+
+# A DirectPlay that works but finds nobody: no session exists until the game
+# creates one, the only players are the ones it creates, and no message ever
+# arrives.  Session/player state lives in the object's COM state (HostState).
 
 
-@method('IDirectPlay4A', 'GetPlayerName')
-def _getplayername(box, a):
-    # no session is open, so no player id is valid
+def _dp(box, a):
+    st = _st(box, a[0])
+    st.setdefault('players', [])
+    return st
+
+
+def _dp_player_query(box, a):
+    # nothing is ever asked of a player we created, so every id is foreign
     return DPERR_INVALIDPLAYER
+
+
+for _m in ('GetPlayerName', 'GetPlayerAddress', 'GetPlayerData', 'GetPlayerCaps',
+           'GetPlayerAccount', 'GetPlayerFlags'):
+    METHODS[('IDirectPlay4A', _m)] = _dp_player_query
+
+
+@method('IDirectPlay4A', 'InitializeConnection')
+def _dpinitconn(box, a):
+    _dp(box, a)['connection'] = True
+    return S_OK
+
+
+@method('IDirectPlay4A', 'EnumSessions')
+def _dpenumsessions(box, a):
+    # (this, lpsd, dwTimeout, lpEnumSessionsCallback2, lpContext, dwFlags):
+    # nobody out there -- the callback hears only the time-out
+    to = box.host_alloc(4, 4)
+    box.wr32(to, a[2])
+    yield ('call', a[3], [0, to, DPESC_TIMEDOUT, a[4]])
+    return S_OK
+
+
+@method('IDirectPlay4A', 'Open')
+def _dpopen(box, a):
+    st = _dp(box, a)
+    if a[2] & DPOPEN_CREATE:
+        st['session'] = box.rd(a[1], 0x50)
+        return S_OK
+    return DPERR_NOSESSIONS
+
+
+@method('IDirectPlay4A', 'SecureOpen')
+def _dpsecureopen(box, a):
+    return _dpopen(box, a)
+
+
+@method('IDirectPlay4A', 'CreatePlayer')
+def _dpcreateplayer(box, a):
+    # (this, lpidPlayer, lpPlayerName, hEvent, lpData, dwDataSize, dwFlags)
+    st = _dp(box, a)
+    if a[6] & DPPLAYER_SERVERPLAYER:
+        pid = DPID_SERVERPLAYER
+    else:
+        pid = 0x100 + len(st['players'])
+    st['players'].append(pid)
+    box.wr32(a[1], pid)
+    return S_OK
+
+
+@method('IDirectPlay4A', 'EnumPlayers')
+def _dpenumplayers(box, a):
+    # (this, lpguidInstance, lpEnumPlayersCallback2, lpContext, dwFlags)
+    st = _dp(box, a)
+    if 'session' not in st:
+        return DPERR_NOSESSIONS
+    for pid in list(st['players']):
+        if pid == DPID_SERVERPLAYER and not a[4] & DPPLAYER_SERVERPLAYER:
+            continue
+        name = box.host_alloc(16, 4)
+        box.wr(name, bytes(16))
+        box.wr32(name, 16)
+        r = yield ('call', a[2], [pid, 1, name, 0, a[3]])
+        if not r:
+            break
+    return S_OK
+
+
+@method('IDirectPlay4A', 'GetSessionDesc')
+def _dpgetsessiondesc(box, a):
+    # (this, lpData, lpdwDataSize)
+    st = _dp(box, a)
+    if 'session' not in st:
+        return DPERR_NOCONNECTION
+    desc = bytearray(st['session'])
+    desc[0x2C:0x30] = struct.pack('<I', len(st['players']))    # dwCurrentPlayers
+    desc = bytes(desc)
+    have = box.rd32(a[2])
+    box.wr32(a[2], len(desc))
+    if a[1] == 0 or have < len(desc):
+        return DPERR_BUFFERTOOSMALL_DP
+    box.wr(a[1], desc)
+    return S_OK
+
+
+@method('IDirectPlay4A', 'SetSessionDesc')
+def _dpsetsessiondesc(box, a):
+    # (this, lpSessDesc, dwFlags) -- only the host of an open session may
+    st = _dp(box, a)
+    if 'session' not in st:
+        return DPERR_NOCONNECTION
+    st['session'] = box.rd(a[1], 0x50)
+    return S_OK
+
+
+@method('IDirectPlay4A', 'DestroyPlayer')
+def _dpdestroyplayer(box, a):
+    st = _dp(box, a)
+    if a[1] in st['players']:
+        st['players'].remove(a[1])
+    return S_OK
+
+
+@method('IDirectPlay4A', 'Receive')
+def _dpreceive(box, a):
+    return DPERR_NOMESSAGES
+
+
+@method('IDirectPlay4A', 'GetMessageCount')
+def _dpmsgcount(box, a):
+    box.wr32(a[2], 0)
+    return S_OK
+
+
+@method('IDirectPlay4A', 'Send')
+def _dpsend(box, a):
+    return S_OK
+
+
+@method('IDirectPlay4A', 'SendEx')
+def _dpsendex(box, a):
+    return S_OK
+
+
+@method('IDirectPlay4A', 'Close')
+def _dpclose(box, a):
+    return S_OK            # no session is open: closing nothing succeeds
 
 
 @method('IDirectPlay4A', 'EnumConnections')
@@ -576,6 +769,12 @@ def _dsb_restore(box, a):
     return S_OK
 
 
+def dplobby_create(box, a):
+    # DirectPlayLobbyCreateA(lpGUIDDSP, lplpDPL, lpUnk, lpData, dwDataSize)
+    box.wr32(a[1], new_object(box, 'IDirectPlayLobby3A'))
+    return S_OK
+
+
 def install(box):
     # Every vtable is built up front: built lazily, one first reached inside
     # a live-oracle sub-run would be allocated from host state that the
@@ -588,3 +787,4 @@ def install(box):
     I.DYNAMIC['ddraw.dll']['DirectDrawCreate'] = (12, directdraw_create)
     I.DYNAMIC['dinput.dll']['DirectInputCreateA'] = (16, directinput_create)
     I.MODELS['DINPUT.dll!DirectInputCreateA'] = (16, directinput_create, 4)
+    I.MODELS['DPLAYX.dll!#4'] = (20, dplobby_create, 5)
