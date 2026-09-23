@@ -45,9 +45,16 @@ GATE A -- the residue test, from ONE fresh object (the last sweep's):
                                   is what A4 wanted and strictly more than the
                                   32 B tolerance gives: it proves ORDER, which
                                   A3's multiset cannot.
-  A5 oracle                       t3b_verify.py is not DIFF (EQUIVALENT, or
-                                  UNCLASSIFIED because it cannot contain the
-                                  function -- most of them)
+  A5 oracle                       the LIVE oracle (tools/t3live.py) says
+                                  EQUIVALENT in config/t3_live.csv: every
+                                  real call the driven game made agreed with
+                                  the original from the identical captured
+                                  state.  UNCOVERED / UNVERIFIED / UNRUNNABLE
+                                  / DIVERGENT all FAIL -- an unreached
+                                  function is never silently passed.  (The
+                                  synthetic-seed oracle that used to feed A5
+                                  is retired: random seeds passed BrRaceStep
+                                  with swapped call arguments.)
 GATE B -- sincere attempts at T4, read from a LEDGER in the same file, never
   from the tag.  Each pass at byte-exactness writes one line (file header):
 
@@ -908,23 +915,9 @@ def measure(va):
     lost = [l for l in out.splitlines() if 'NEVER COMPARED' in l or 'lost-sync' in l.lower()]
     mb = re.search(r'(\d+) orig bytes \([\d.]+% of the function\) were NEVER COMPARED', out)
     lost_bytes = int(mb.group(1)) if mb else (0 if not lost else 10**6)
-    # oracle
-    # A C++ row's plain name also names the STALE C twin's symbol in obj_O2, so
-    # the oracle must not be handed the plain name. It used to get the mangled
-    # sym, but the oracle's parse_signature greps SOURCE, where a method is
-    # spelled Class::Method, not mangled -> A5 came back UNCLASSIFIED for every
-    # method. Hand it the DEMANGLED Class::Method (obj-ownership selection now
-    # filters the twin, and func_symbol_matches accepts the demangled form);
-    # fall back to the raw sym for free functions / unmanglable names.
-    oname = reloc_fill._demangle_method(sym) or sym
-    orc_cmd = [PY, 'tools/t3b_verify.py', va] + (['--name', oname] if r.get('cpp') else [])
-    orc = subprocess.run(orc_cmd, cwd=ROOT,
-                         capture_output=True, text=True).stdout.strip().splitlines()
-    verdict = 'UNCLASSIFIED'
-    for l in orc:
-        m = re.search(r'\b(EQUIV-MODULO-FP|EQUIVALENT|DIFF|UNCLASSIFIED)\b', l)
-        if m:
-            verdict = m.group(1)
+    # oracle: the live oracle's ledger verdict (tools/t3live.py writes it)
+    import t3ledger
+    verdict = t3ledger.verdict(va)
     return dict(va=va.lower(), name=r['name'], file=r['file'], status=r['status'], obj=obj,
                 obytes=len(orig), rbytes=rbytes, oi=no, ri=nr,
                 miss=miss, extra=extra, nmiss=sum(miss.values()), nextra=sum(extra.values()),
@@ -948,17 +941,17 @@ def gates(m):
                % (m['lost_bytes'], m['key'], p_det)) if p_ok else
               '%d B uncompared at key %d (tolerance %d B; A3 proves the multiset); not positional either: %s'
               % (m['lost_bytes'], m['key'], LOST_TAIL_MAX, p_det)))
-    g.append(('A5 oracle', m['oracle'] != 'DIFF', m['oracle']))
+    g.append(('A5 oracle', m['oracle'] == 'EQUIVALENT',
+              m['oracle'] + ('' if m['oracle'] == 'EQUIVALENT'
+                             else '  (tools/t3live.py must see every reached call agree)')))
     if m.get('tab_note'):
         g.append(('A6 tables', m['tables_ok'], m['tab_note']))
     # A5 is authoritative. A1-A4 are BYTE-SHAPE proxies -- they argue the residue
-    # "looks like compiler choices". A5 doesn't argue: it executes both sides on
-    # identical inputs and compares outputs. When it returns a clean behavioural
-    # verdict, that IS the T3 standard met (same in -> same out), so the proxy
-    # gates are superseded. They only decide when the oracle CANNOT render a
-    # verdict (UNCLASSIFIED). This ends the false-negative where a behaviourally
-    # equivalent giant fails A1/A2/A4 on colouring residue that never changes
-    # behaviour. DIFF still fails A5 outright; nothing here weakens that.
+    # "looks like compiler choices". A5 doesn't argue: it runs both bodies from
+    # the identical state the driven game really produced and compares every
+    # output. When every reached call agrees, that IS the T3 standard met (same
+    # in -> same out), so the proxy gates are superseded. Anything short of
+    # EQUIVALENT fails A5 outright; nothing here weakens that.
     #
     # A6 (jump-table bytes) is the same kind of proxy: it compares the ORIGINAL's
     # table zone against the SAME offset in our obj, which is only the table when
@@ -970,7 +963,7 @@ def gates(m):
     # wrong case label or target diverges and A5 returns DIFF (negative-controlled
     # on 0x1000CBA0: a case-0x04->0x05 mislabel is caught). So A6 is superseded by
     # a clean A5 exactly as A1-A4 are.
-    if m['oracle'] in ('EQUIVALENT', 'EQUIV-MODULO-FP'):
+    if m['oracle'] == 'EQUIVALENT':
         for i, (name, passed, det) in enumerate(g):
             if name[:2] in ('A1', 'A2', 'A3', 'A4', 'A6') and not passed:
                 g[i] = (name, True, det + '  [superseded by A5 %s]' % m['oracle'])
