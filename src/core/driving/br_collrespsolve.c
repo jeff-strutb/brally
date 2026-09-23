@@ -329,9 +329,9 @@ static uint8_t br_cr_ftol_byte(float x)
  *     +0x180  next.angVel   (BrVec3, READ and WRITTEN)
  *     +0x1EC  effect.color[3]   +0x1FC intensity  +0x1FF peak  +0x200 threshold
  * The impact colour is the shared normal bank g_brCrPlane.normal read straight
- * from its global (the original does three dword loads off 0x117787F0), NOT the
- * pNormal pointer -- they are the same object in the shipped call but distinct
- * to the oracle, so the global read is the one that is behaviourally exact.
+ * from its global (the original does three dword loads off 0x117787F0); the
+ * contact normal the solve uses is the caller's pNormal, copied on entry.  The
+ * two differ at the 0x100692D5 call site.
  * The arithmetic content is the port's, validated to the original's opcode
  * stream over >14000 cases; only the operand SOURCES change here. */
 extern float DAT_100b5170;        /* 0x100B5170, a .data float, 1.0 at load */
@@ -340,6 +340,7 @@ extern float DAT_100b5170;        /* 0x100B5170, a .data float, 1.0 at load */
  * constant the reference image does not contain. */
 extern const float DAT_10077b38;   /* 0.9f */
 extern const float DAT_10077b40;   /* 0.2f */
+extern const float DAT_10077b44;   /* -1.05f, BR_CR_RESTITUTION as the image holds it */
 int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int flag, float restOffset)
 {
     const float   mass        = *(const float *)(pBody + 0x2C);
@@ -350,7 +351,7 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     const BrVec3 *pRelDir      = (const BrVec3 *) pPlane;
 
     BrMat3 Rt, R, skew, Wworld, tmp, WSS, D, K;
-    BrVec3 nb, vc, cross, rhs, J, dw;
+    BrVec3 nb, nrm, vc, cross, rhs, J, dw;
     BrVec3 Jm;           /* J / mass, stored before the angular call */
     int32_t ddBits;      /* dd's 32-bit image: the original's rounded copy */
     int32_t vcxBits, vcBits[3];       /* vc read back through its stored floats */
@@ -358,14 +359,19 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     double ddrx, ttx, tty, ttz;
     BrVec3 ddr;          /* dd * relDir, as the original stores it (+0x24c/+0x254) */
     float  invMass = 1.0f / mass;
-    float  dd, add, inten, tang, mult;
+    float  dd, add, inten, tang;
+    double mult;         /* register-resident in the original: never stored */
     int    i;
 
-    (void)pNormal;   /* colour comes from the global bank, not this pointer */
-
-    /* nb = orientationT . normal */
+    /* nb = orientationT . normal.  The normal is the CALLER's pointer,
+     * copied to a local at +0x6..+0x2B before anything else; only the
+     * impact colour below reads the global bank.  The two are the same
+     * object at the plane-contact call site but not at 0x100692D5 (live
+     * oracle, championship: T3 read a zero global and solved against
+     * (1/mass) I). */
+    nrm = *pNormal;
     BrMat4ToMat3Both(&Rt, &R, pOrient);
-    BrMat3MulVec3(&nb, &Rt, &g_brCrPlane.normal);
+    BrMat3MulVec3(&nb, &Rt, &nrm);
 
     /* vc = vel + angVel x nb.  +0x5F..+0xED: the cross product is never
      * rounded -- each component goes straight into the add with vel -- and
@@ -457,7 +463,9 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
 
     /* J = solve(K, rhs); apply to vel and angVel. */
     BrMat3Solve(&J, &K, &rhs);
-    mult = restOffset - BR_CR_RESTITUTION;   /* restOffset + 1.05 */
+    /* restOffset + 1.05, loaded after the angular call and kept on the FPU
+     * stack for all six updates -- unrounded (live oracle, championship). */
+    mult = (double)restOffset - DAT_10077b44;
 
     /* +0x44F..+0x4F5: the impulse is scaled by 1/mass -- recomputed, at
      * register precision, not the float invMass above -- and STORED as
@@ -472,12 +480,12 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     cross.y = nb.z * J.x - nb.x * J.z;
     cross.z = nb.x * J.y - nb.y * J.x;
     BrMat3MulVec3(&dw, &Wworld, &cross);
-    pVel->x -= mult * Jm.x;
-    pVel->y -= mult * Jm.y;
-    pVel->z -= mult * Jm.z;
-    pAngVel->x -= mult * dw.x;
-    pAngVel->y -= mult * dw.y;
-    pAngVel->z -= mult * dw.z;
+    pVel->x = (float)(pVel->x - Jm.x * mult);
+    pVel->y = (float)(pVel->y - Jm.y * mult);
+    pVel->z = (float)(pVel->z - Jm.z * mult);
+    pAngVel->x = (float)(pAngVel->x - dw.x * mult);
+    pAngVel->y = (float)(pAngVel->y - dw.y * mult);
+    pAngVel->z = (float)(pAngVel->z - dw.z * mult);
 
     return 1;
 }
