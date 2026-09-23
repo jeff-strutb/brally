@@ -23,6 +23,12 @@ is one entry to BrAppFrame 0x1001CF80, the main loop's per-frame call):
     text                  log every string the last frame drew, with its pen
     shot NAME             write the framebuffer to <shots>/NAME.png
     mark NAME             coverage checkpoint: record frame + state
+    files NAME            (anywhere in the script; applied before boot) start
+                          with the saved files in tools/brbox_saves/NAME/ --
+                          the disc tree plus what an earlier script saved
+    savefiles NAME        write every file the game has written so far to
+                          build/brbox/saves/NAME/ (promote it to
+                          tools/brbox_saves/ to make it a fixture)
     end                   stop the run successfully
 
 Every run logs which game states it reached (STATE_VARS below sampled every
@@ -195,6 +201,11 @@ class Driver(object):
                     '%s@%d,%d' % (t, x, y) for x, y, t in self.text_last)))
             elif op == 'shot':
                 self.shot(box, args[0])
+            elif op == 'files':
+                pass                                    # applied in attach()
+            elif op == 'savefiles':
+                save_files(box, os.path.join(brbox.ROOT, 'build', 'brbox', 'saves', args[0]))
+                self.log('saved %d file(s) as %s' % (len(box.hs.written), args[0]))
             elif op == 'mark':
                 self.marks.append((args[0], f, int(box.hs.ms)))
                 self.log('mark %s at frame %d' % (args[0], f))
@@ -363,9 +374,37 @@ def make_box(log=print, trace_imports=False, dll=None):
     return box
 
 
+SAVES = os.path.join(brbox.ROOT, 'tools', 'brbox_saves')
+
+
+def save_files(box, out):
+    """Dump the run's written files, one host file per canonical guest path
+    (c:\\bossrally\\x.brf -> <out>/c/bossrally/x.brf)."""
+    for k, data in box.hs.written.items():
+        rel = k.replace(':', '').replace('\\', '/')
+        dst = os.path.join(out, *rel.split('/'))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, 'wb') as fh:
+            fh.write(bytes(data))
+
+
+def load_files(box, name):
+    base = os.path.join(SAVES, name)
+    if not os.path.isdir(base):
+        raise GuestFault('no save fixture %s' % base)
+    for dp, _dn, fn in os.walk(base):
+        for f in sorted(fn):
+            rel = os.path.relpath(os.path.join(dp, f), base).split(os.sep)
+            key = rel[0] + ':\\' + '\\'.join(rel[1:])
+            box.hs.written[key.lower()] = bytearray(open(os.path.join(dp, f), 'rb').read())
+
+
 def attach(box, driver):
     from unicorn import UC_HOOK_CODE
     box.driver = driver
+    for op, args, _line in driver.steps:
+        if op == 'files':
+            load_files(box, args[0])
     box.on_lfb = driver.on_lfb
     if driver.shots:
         import brbox_glraster

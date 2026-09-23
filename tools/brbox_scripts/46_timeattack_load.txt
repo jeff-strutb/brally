@@ -1,0 +1,33 @@
+# Time Attack LOAD RACE from the slot 45_timeattack_save wrote: pick slot 0,
+# race against the loaded ghost for a while.
+files ta_saved
+sleep 240
+mark main_menu
+mouse 250 170
+click
+sleep 30
+mouse 250 157
+click
+sleep 60
+mark load_page
+shot tal_page
+mouse 250 138
+click
+sleep 30
+shot tal_slot
+mouse 250 233
+click
+sleep 60
+shot tal_next
+mouse 252 233
+click
+wait 0x106E79F4 == 0x10019A70 2000
+sleep 300
+mark grid
+press SPACE
+sleep 150
+autopilot on
+sleep 900
+shot tal_racing
+autopilot off
+end
