@@ -571,7 +571,7 @@ extern "C" void BrRaceStep(void)
                     float m[3];
                     int  *row = (int*)((char*)g_6EED38 + (sel + sel * 20) * 4);
                     m[0] = 1.0f; m[1] = 0.0f; m[2] = 0.0f;
-                    sub_10034870(&m[1], &m[0], row);
+                    sub_10034870(&m[0], &m[0], row);   /* in place: both leas are [esp+0x2c] */
                     g_5BC7D8 = sub_100347F0(&m[0]);
                 }
             }
