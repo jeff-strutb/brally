@@ -44,6 +44,16 @@ def lockstep_rows(va):
         if r.get('va') and r['va'].lower() == '0x%08x' % va:
             row = r
     if row is not None:
+        # The same twin rule image_build_t3 places by: a report.csv row from
+        # a DIFFERENT file than the certified transcription is a twin graded
+        # at this VA; the certified body (the C++ lane) is what gets placed,
+        # so rows must be derived from ITS object (BrExt_10054B50: rows cut
+        # from the C twin's offsets landed a data address in a call).
+        from t3 import certified
+        cfile = certified().get('0x%08x' % va, {}).get('file')
+        if cfile and cfile != row['file']:
+            row = None
+    if row is not None:
         name = row['name']
         opt = row['opt']
         vp = os.path.join(ROOT, 'config', 't3_variant.csv')
@@ -160,9 +170,39 @@ def lockstep_rows(va):
                 return fval
         return vals[0][1] if len(vals) == 1 else None
 
+    # Jump-table dispatch displacements and const slots that name this
+    # function's own `$` labels are EXACT from the object symbol table
+    # (image_build resolves them via jump_table_slots).  Their ORIGINAL
+    # operand points at the ORIGINAL table, so a lockstep row here would
+    # dispatch a byte-different T3 body mid-instruction (BrRaceStep's
+    # in-game switches).  Never emit a row for them.
+    jt_offsets = {o for (_v, o) in
+                  rp.jump_table_slots(obj, name, va, size, plen=len(pre))}
+
     rows_out, disagreements = [], []
     skipped = 0
     for off, sym, rt, addend, _key in sites:
+        if off in jt_offsets:
+            skipped += 1
+            print('# JUMP-TABLE slot %#x %s (exact from symbol table -- '
+                  'resolved by jump_table_slots, no row)' % (off, sym))
+            continue
+        # A self-encoding cpp name (?g_<HEX>, sub_<HEX>) carries its own
+        # address, so image_build resolves the slot EXACTLY as
+        # address_in_name(sym) + OUR object's addend.  A lockstep row copies
+        # the ORIGINAL instruction's operand instead, which already folded in
+        # the ORIGINAL's addend -- wrong whenever the two compilers picked a
+        # different base offset (BrRaceStep's tyre loop: our object built
+        # `mov eax, &g_AF2094 + 8` and read the pointer at [eax-8], but the
+        # original used base+0, so the copied operand dropped the +8 and the
+        # placed image dereferenced null in Quick Race).  Never emit a row
+        # for an address-bearing symbol; the machine resolution is addend-
+        # aware and correct.
+        if address_in_name(sym) is not None:
+            skipped += 1
+            print('# ADDRESS-BEARING slot %#x %s (address_in_name is exact '
+                  'and addend-aware, no row)' % (off, sym))
+            continue
         our_ins = None
         for a in ours:
             if a.address <= off < a.address + a.size:
@@ -195,6 +235,19 @@ def lockstep_rows(va):
                      (rt == REL_REL32 and rp._jmp_hop(img, val) == k))
             if not agree:
                 disagreements.append((off, sym, k, implied))
+                if rt == REL_REL32 and img.text_lo <= k < img.text_hi:
+                    # A call/jump whose callee resolves to a real function
+                    # the source NAMES: the source calls that function (a
+                    # wrapper where the original inlined its body, e.g.
+                    # BrFtolTrunc 0x10018990 `fld [esp+4]; jmp _ftol` vs the
+                    # original's bare `call _ftol`).  Retargeting it to the
+                    # original's callee would skip the wrapper's argument
+                    # handling -- BrExt_10052030 crashed under the live
+                    # oracle on exactly such a row.  The name wins.
+                    skipped += 1
+                    print('# CALLEE KEPT slot %#x %s -> %#x (original calls %#x)'
+                          % (off, sym, k, implied))
+                    continue
             # A hearsay resolution that AGREES still gets a row: the
             # agreement is the evidence, and the placement gate does not
             # trust an unconfirmed name row on its own.
