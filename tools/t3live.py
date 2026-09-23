@@ -894,6 +894,9 @@ def _one_pass(script, only, per_fn, shots, log, image):
     brbox_drive.attach(box, drv)
     targets = t3_targets(only)
     orc = Oracle(box, targets, per_fn=per_fn, log=log, image=image)
+    # a multiplayer script names a peer game on a virtual network; the oracle
+    # watches this box only, the peer runs the original plainly
+    peer = brbox_drive.start_peer_if_any(box, drv, script)
     end = 'ok'
     try:
         box.boot()
@@ -903,6 +906,11 @@ def _one_pass(script, only, per_fn, shots, log, image):
         end = str(e)
     except GuestFault as e:
         end = 'FAULT ' + str(e)
+    finally:
+        if peer is not None:
+            peer[2].stop()
+            peer[0].join(60)
+            end += ' (peer: %s)' % peer[3].get('end', 'running')
     return orc.results(), end, box.hs.frame, drv.marks, orc
 
 

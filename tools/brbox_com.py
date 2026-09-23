@@ -155,7 +155,7 @@ def _traced(iface, name, fn, nargs):
         r = fn(box, a)
         if inspect.isgenerator(r):
             r = yield from r
-        print('com %s::%s(%s) -> %08X' % (iface, name, ' '.join('%08X' % x for x in args),
+        print('com%d f%d %s::%s(%s) -> %08X' % (getattr(box, 'net_index', 0), box.hs.frame, iface, name, ' '.join('%08X' % x for x in args),
                                           (r or 0) & 0xFFFFFFFF))
         return r
     return wrap
@@ -403,53 +403,150 @@ DPERR_NOMESSAGES = 0x887700BE
 DPERR_NOSESSIONS = 0x887700D2
 DPERR_NOCONNECTION = 0x887700AA
 DPERR_BUFFERTOOSMALL_DP = 0x8877001E
+DPOPEN_JOIN = 0x1
 DPOPEN_CREATE = 0x2
 DPPLAYER_SERVERPLAYER = 0x100    # also DPENUMPLAYERS_SERVERPLAYER
+DPENUMPLAYERS_LOCAL, DPENUMPLAYERS_REMOTE, DPENUMPLAYERS_SESSION = 0x8, 0x10, 0x80
 DPID_SERVERPLAYER = 1
 DPESC_TIMEDOUT = 0x1
+DPRECEIVE_TOPLAYER, DPRECEIVE_FROMPLAYER, DPRECEIVE_PEEK = 0x2, 0x4, 0x8
+DPPLAYERTYPE_PLAYER = 1
 
-# A DirectPlay that works but finds nobody: no session exists until the game
-# creates one, the only players are the ones it creates, and no message ever
-# arrives.  Session/player state lives in the object's COM state (HostState).
+# DirectPlay over brbox_net: each box's view of the session lives in its
+# HostState (brbox_net.dp_state).  Without a peer box it is a DirectPlay that
+# works but finds nobody -- no sessions to join, the only players are the ones
+# the game creates, and no message ever arrives.  With a peer, what one box
+# sends in frame N is in the other's queue at frame N+1, and each side learns
+# of the other's players through DPSYS_CREATEPLAYERORGROUP, as on a real LAN.
 
 
-def _dp(box, a):
-    st = _st(box, a[0])
-    st.setdefault('players', [])
-    return st
+def _dp(box, a=None):
+    import brbox_net
+    d = brbox_net.dp_state(box)
+    if box.net is not None:
+        # A DirectPlay call takes time like a clock query does: a loop that
+        # polls the session waiting for the peer (the race start handshake)
+        # must let virtual time -- and with it the peer -- move on.
+        box.tick()                   # publishes, takes in what is due
+    return d
+
+
+def _dp_send(box, kind, payload):
+    import brbox_net
+    brbox_net.send(box, kind, payload)
+
+
+def _dp_players(d):
+    import brbox_net
+    ps = dict(brbox_net.remote_players(d))
+    ps.update(d['local'])
+    return ps
+
+
+def _dp_cstr(s):
+    return (s or b'') + b'\0'
+
+
+def _dp_name_blob(p, base):
+    """DPNAME {dwSize, dwFlags, lpszShortNameA, lpszLongNameA} + strings,
+    laid out for a guest buffer at `base`."""
+    sn, ln = _dp_cstr(p.get('short')), _dp_cstr(p.get('long'))
+    return struct.pack('<IIII', 16, 0, base + 16, base + 16 + len(sn)) + sn + ln
+
+
+@method('IDirectPlay4A', 'GetPlayerName')
+def _dpgetplayername(box, a):
+    # (this, idPlayer, lpData, lpdwDataSize)
+    p = _dp_players(_dp(box)).get(a[1])
+    if p is None:
+        return DPERR_INVALIDPLAYER
+    blob = _dp_name_blob(p, a[2])
+    have = box.rd32(a[3])
+    box.wr32(a[3], len(blob))
+    if not a[2] or have < len(blob):
+        return DPERR_BUFFERTOOSMALL_DP
+    box.wr(a[2], blob)
+    return S_OK
+
+
+@method('IDirectPlay4A', 'GetPlayerData')
+def _dpgetplayerdata(box, a):
+    # (this, idPlayer, lpData, lpdwDataSize, dwFlags): nobody sets player data
+    if a[1] not in _dp_players(_dp(box)):
+        return DPERR_INVALIDPLAYER
+    box.wr32(a[3], 0)
+    return S_OK
 
 
 def _dp_player_query(box, a):
-    # nothing is ever asked of a player we created, so every id is foreign
-    return DPERR_INVALIDPLAYER
+    return DPERR_INVALIDPLAYER if a[1] not in _dp_players(_dp(box)) else S_OK
 
 
-for _m in ('GetPlayerName', 'GetPlayerAddress', 'GetPlayerData', 'GetPlayerCaps',
-           'GetPlayerAccount', 'GetPlayerFlags'):
+for _m in ('GetPlayerAddress', 'GetPlayerCaps', 'GetPlayerAccount', 'GetPlayerFlags'):
     METHODS[('IDirectPlay4A', _m)] = _dp_player_query
 
 
 @method('IDirectPlay4A', 'InitializeConnection')
 def _dpinitconn(box, a):
-    _dp(box, a)['connection'] = True
+    _dp(box)['connection'] = True
     return S_OK
+
+
+def _dp_desc_in_guest(box, desc, name):
+    sd = box.host_alloc(len(desc), 4)
+    d = bytearray(desc)
+    nm = box.host_str(name.decode('latin1')) if name else 0
+    d[0x30:0x34] = struct.pack('<I', nm)
+    d[0x34:0x38] = b'\0\0\0\0'
+    box.wr(sd, bytes(d))
+    return sd
 
 
 @method('IDirectPlay4A', 'EnumSessions')
 def _dpenumsessions(box, a):
     # (this, lpsd, dwTimeout, lpEnumSessionsCallback2, lpContext, dwFlags):
-    # nobody out there -- the callback hears only the time-out
+    # every session another box hosts, then the time-out
+    d = _dp(box)
     to = box.host_alloc(4, 4)
+    for _g, (desc, name) in sorted(d['sessions'].items()):
+        box.wr32(to, a[2])
+        r = yield ('call', a[3], [_dp_desc_in_guest(box, desc, name), to, 0, a[4]])
+        if not r:
+            return S_OK
     box.wr32(to, a[2])
     yield ('call', a[3], [0, to, DPESC_TIMEDOUT, a[4]])
     return S_OK
 
 
+def _dp_read_name(box, va):
+    if not va:
+        return b''
+    out = bytearray()
+    while len(out) < 256:
+        c = box.rd(va + len(out), 1)
+        if c == b'\0':
+            break
+        out += c
+    return bytes(out)
+
+
 @method('IDirectPlay4A', 'Open')
 def _dpopen(box, a):
-    st = _dp(box, a)
+    # (this, lpsd, dwFlags)
+    d = _dp(box)
     if a[2] & DPOPEN_CREATE:
-        st['session'] = box.rd(a[1], 0x50)
+        desc = bytearray(box.rd(a[1], 0x50))
+        # guidInstance: DirectPlay makes one up; per box, so peers differ
+        desc[8:24] = struct.pack('<IIII', 0x5E55100 + getattr(box, 'net_index', 0), 0, 0, 1)
+        d['session'] = bytes(desc)
+        d['name'] = _dp_read_name(box, struct.unpack_from('<I', desc, 0x30)[0])
+        d['host'] = True
+        _dp_send(box, 'session', (d['session'][8:24], d['session'], d['name']))
+        return S_OK
+    want = box.rd(a[1] + 8, 16)
+    if want in d['sessions']:
+        d['session'], d['name'] = d['sessions'][want]
+        d['host'] = False
         return S_OK
     return DPERR_NOSESSIONS
 
@@ -462,12 +559,22 @@ def _dpsecureopen(box, a):
 @method('IDirectPlay4A', 'CreatePlayer')
 def _dpcreateplayer(box, a):
     # (this, lpidPlayer, lpPlayerName, hEvent, lpData, dwDataSize, dwFlags)
-    st = _dp(box, a)
+    d = _dp(box)
     if a[6] & DPPLAYER_SERVERPLAYER:
         pid = DPID_SERVERPLAYER
     else:
-        pid = 0x100 + len(st['players'])
-    st['players'].append(pid)
+        # unique across boxes without shared state: the box index is the
+        # high part, a per-box counter the low
+        pid = 0x100 * (getattr(box, 'net_index', 0) + 1) + 0x10 + d['next_pid']
+        d['next_pid'] += 1
+    sn = ln = b''
+    if a[2]:
+        sn = _dp_read_name(box, box.rd32(a[2] + 8))
+        ln = _dp_read_name(box, box.rd32(a[2] + 12))
+    d['local'][pid] = {'short': sn, 'long': ln, 'flags': a[6], 'event': a[3]}
+    if d['session'] is not None:
+        _dp_send(box, 'player+', (pid, {'short': sn, 'long': ln, 'flags': a[6],
+                                        'guid': d['session'][8:24]}))
     box.wr32(a[1], pid)
     return S_OK
 
@@ -475,16 +582,18 @@ def _dpcreateplayer(box, a):
 @method('IDirectPlay4A', 'EnumPlayers')
 def _dpenumplayers(box, a):
     # (this, lpguidInstance, lpEnumPlayersCallback2, lpContext, dwFlags)
-    st = _dp(box, a)
-    if 'session' not in st:
+    d = _dp(box)
+    if d['session'] is None:
         return DPERR_NOSESSIONS
-    for pid in list(st['players']):
+    for pid, p in sorted(_dp_players(d).items()):
         if pid == DPID_SERVERPLAYER and not a[4] & DPPLAYER_SERVERPLAYER:
             continue
-        name = box.host_alloc(16, 4)
-        box.wr(name, bytes(16))
-        box.wr32(name, 16)
-        r = yield ('call', a[2], [pid, 1, name, 0, a[3]])
+        blob = _dp_name_blob(p, 0)
+        name = box.host_alloc(len(blob), 4)
+        box.wr(name, _dp_name_blob(p, name))
+        fl = (DPENUMPLAYERS_LOCAL if pid in d['local'] else DPENUMPLAYERS_REMOTE) | \
+            (DPPLAYER_SERVERPLAYER if pid == DPID_SERVERPLAYER else 0)
+        r = yield ('call', a[2], [pid, DPPLAYERTYPE_PLAYER, name, fl, a[3]])
         if not r:
             break
     return S_OK
@@ -493,62 +602,136 @@ def _dpenumplayers(box, a):
 @method('IDirectPlay4A', 'GetSessionDesc')
 def _dpgetsessiondesc(box, a):
     # (this, lpData, lpdwDataSize)
-    st = _dp(box, a)
-    if 'session' not in st:
+    d = _dp(box)
+    if d['session'] is None:
         return DPERR_NOCONNECTION
-    desc = bytearray(st['session'])
-    desc[0x2C:0x30] = struct.pack('<I', len(st['players']))    # dwCurrentPlayers
-    desc = bytes(desc)
+    desc = bytearray(d['session'])
+    desc[0x2C:0x30] = struct.pack('<I', len(_dp_players(d)))    # dwCurrentPlayers
+    nm = _dp_cstr(d['name'])
+    size = len(desc) + len(nm)
     have = box.rd32(a[2])
-    box.wr32(a[2], len(desc))
-    if a[1] == 0 or have < len(desc):
+    box.wr32(a[2], size)
+    if a[1] == 0 or have < size:
         return DPERR_BUFFERTOOSMALL_DP
-    box.wr(a[1], desc)
+    desc[0x30:0x34] = struct.pack('<I', a[1] + len(desc))
+    desc[0x34:0x38] = b'\0\0\0\0'
+    box.wr(a[1], bytes(desc) + nm)
     return S_OK
 
 
 @method('IDirectPlay4A', 'SetSessionDesc')
 def _dpsetsessiondesc(box, a):
     # (this, lpSessDesc, dwFlags) -- only the host of an open session may
-    st = _dp(box, a)
-    if 'session' not in st:
+    d = _dp(box)
+    if d['session'] is None:
         return DPERR_NOCONNECTION
-    st['session'] = box.rd(a[1], 0x50)
+    desc = bytearray(box.rd(a[1], 0x50))
+    desc[8:24] = d['session'][8:24]
+    d['session'] = bytes(desc)
+    d['name'] = _dp_read_name(box, struct.unpack_from('<I', desc, 0x30)[0]) or d['name']
+    if d['host']:
+        _dp_send(box, 'session', (d['session'][8:24], d['session'], d['name']))
     return S_OK
 
 
 @method('IDirectPlay4A', 'DestroyPlayer')
 def _dpdestroyplayer(box, a):
-    st = _dp(box, a)
-    if a[1] in st['players']:
-        st['players'].remove(a[1])
+    d = _dp(box)
+    if d['local'].pop(a[1], None) is not None:
+        _dp_send(box, 'player-', a[1])
     return S_OK
+
+
+def _dp_sysmsg(kind, pid, p, ncur, base):
+    """The DPMSG_CREATE/DESTROYPLAYERORGROUP bytes for a guest buffer at base."""
+    if kind == 0x0003:
+        head = 4 * 6 + 16 + 8
+        nm = _dp_name_blob(p, base + head)
+        dpname, strs = nm[:16], nm[16:]
+        return struct.pack('<IIIIII', kind, DPPLAYERTYPE_PLAYER, pid, ncur, 0, 0) + dpname + \
+            struct.pack('<II', 0, 0) + strs
+    head = 4 * 7 + 16 + 8
+    nm = _dp_name_blob(p, base + head)
+    dpname, strs = nm[:16], nm[16:]
+    return struct.pack('<IIIIIII', kind, DPPLAYERTYPE_PLAYER, pid, 0, 0, 0, 0) + dpname + \
+        struct.pack('<II', 0, 0) + strs
 
 
 @method('IDirectPlay4A', 'Receive')
 def _dpreceive(box, a):
+    # (this, lpidFrom, lpidTo, dwFlags, lpData, lpdwDataSize)
+    d = _dp(box)
+    flags = a[3]
+    want_to = box.rd32(a[2]) if flags & DPRECEIVE_TOPLAYER else None
+    want_from = box.rd32(a[1]) if flags & DPRECEIVE_FROMPLAYER else None
+    for k, (frm, to, data) in enumerate(d['inbox']):
+        if want_to is not None and to != want_to and frm != 0:
+            continue
+        if want_from is not None and frm != want_from:
+            continue
+        if isinstance(data, tuple):
+            _t, kind, pid, p = data
+            body = _dp_sysmsg(kind, pid, p, len(_dp_players(d)), a[4])
+        else:
+            body = data
+        have = box.rd32(a[5])
+        box.wr32(a[5], len(body))
+        if not a[4] or have < len(body):
+            return DPERR_BUFFERTOOSMALL_DP
+        box.wr(a[4], body)
+        box.wr32(a[1], frm)
+        box.wr32(a[2], to)
+        if not flags & DPRECEIVE_PEEK:
+            del d['inbox'][k]
+        return S_OK
     return DPERR_NOMESSAGES
 
 
 @method('IDirectPlay4A', 'GetMessageCount')
 def _dpmsgcount(box, a):
-    box.wr32(a[2], 0)
+    # (this, idPlayer, lpdwCount)
+    d = _dp(box)
+    box.wr32(a[2], sum(1 for frm, to, _ in d['inbox'] if to == a[1] or frm == 0))
     return S_OK
 
 
 @method('IDirectPlay4A', 'Send')
 def _dpsend(box, a):
+    # (this, idFrom, idTo, dwFlags, lpData, dwDataSize)
+    d = _dp(box)
+    if d['session'] is not None:
+        _dp_send(box, 'msg', (d['session'][8:24], a[1], a[2], box.rd(a[4], a[5]) if a[5] else b''))
+        if _TRACE:
+            print('dp send box%d frame %d ret %08X %X->%X %s' % (getattr(box, 'net_index', 0), box.hs.frame, box.recent[-1][1],
+                                                    a[1], a[2], d['outbox'][-1][2][3].hex()))
     return S_OK
 
 
 @method('IDirectPlay4A', 'SendEx')
 def _dpsendex(box, a):
+    # (this, idFrom, idTo, dwFlags, lpData, dwDataSize, dwPriority, dwTimeout,
+    #  lpContext, lpdwMsgID)
+    d = _dp(box)
+    if d['session'] is not None:
+        _dp_send(box, 'msg', (d['session'][8:24], a[1], a[2], box.rd(a[4], a[5]) if a[5] else b''))
+    if a[9]:
+        box.wr32(a[9], 0)
     return S_OK
 
 
 @method('IDirectPlay4A', 'Close')
 def _dpclose(box, a):
-    return S_OK            # no session is open: closing nothing succeeds
+    d = _dp(box)
+    for pid in sorted(d['local']):
+        if d['session'] is not None:
+            _dp_send(box, 'player-', pid)
+    if d['host'] and d['session'] is not None:
+        _dp_send(box, 'session', (d['session'][8:24], None, None))
+    d['session'] = None
+    d['host'] = False
+    d['local'] = {}
+    d['inbox'] = []
+    return S_OK
 
 
 @method('IDirectPlay4A', 'EnumConnections')

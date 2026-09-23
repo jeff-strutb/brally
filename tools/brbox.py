@@ -193,6 +193,8 @@ class Box(object):
         self.import_counts = collections.Counter()
         self.recent = collections.deque(maxlen=64)
         self.on_frame = None           # callback(box) each BrAppFrame entry
+        self.net = None                # brbox_net.Net when a peer game is linked
+        self.slice_start = 0.0         # virtual time the running thread's slice began
         self.stop_reason = None
         self._map_image()
         self._map_host()
@@ -647,7 +649,7 @@ class Box(object):
         cur.pending = self.pending
         n = len(self.threads)
         i0 = self.threads.index(cur)
-        for _attempt in range(2):
+        for _attempt in range(2 if self.net is None else 1 << 30):
             for k in range(1, n + 1):
                 t = self.threads[(i0 + k) % n]
                 if t.state == 'ready' or (t.state == 'blocked' and self.imports.wait_ready(self, t)):
@@ -659,6 +661,11 @@ class Box(object):
             # nobody runnable now: jump the clock to the earliest wait deadline
             dl = [t.wait[2] for t in self.threads
                   if t.state == 'blocked' and t.wait is not None and t.wait[2] is not None]
+            if self.net is not None:
+                # on a network the next thing may be a message from the peer
+                if not self.net.idle(self, min(dl) if dl else None):
+                    break
+                continue
             if not dl:
                 break
             self.hs.ms = max(self.hs.ms, min(dl))
@@ -671,8 +678,20 @@ class Box(object):
     # and a busy-wait on timeGetTime terminates in a bounded number of polls.
     TICK_MS = 0.25
 
+    SLICE_MS = 10.0
+
     def tick(self):
         self.hs.ms += self.TICK_MS
+        if self.net is not None:
+            self.net.poll(self)
+        # Preemption: Windows would not let one thread spin forever while
+        # another is ready (the host's race-start loop polls the session
+        # while its receive thread holds the peer's messages).  After a
+        # time slice of virtual time, the next import return yields.
+        if not self.subrun and self.hs.ms - self.slice_start >= self.SLICE_MS:
+            self.slice_start = self.hs.ms
+            if self.others_runnable():
+                self.want_yield = True
 
     def advance(self, ms):
         self.hs.ms += ms

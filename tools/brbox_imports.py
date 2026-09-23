@@ -526,10 +526,24 @@ def _qpc(box, a):
 
 @std(K, 'Sleep', 4)
 def _sleep(box, a):
-    box.advance(a[0])
-    if not box.subrun and box.others_runnable():
-        box.want_yield = True
-    return None
+    # Sleep blocks the CALLING thread; the others run on meanwhile.  Only
+    # when no other thread could run does the sleep move the clock itself.
+    # (Advancing the shared clock by every sleep let the network thread's
+    # once-a-second Sleep(960) race virtual time 16x ahead of the frames,
+    # and every WM_TIMER then fired each frame.)
+    t = box.cur
+    if t.wait is not None:                  # re-entered after the block
+        if box.hs.ms >= t.wait[2]:
+            t.wait = None
+            return None
+        return BLOCK
+    if box.subrun or a[0] == 0 or not box.others_runnable():
+        box.advance(a[0])
+        if not box.subrun and a[0] == 0 and box.others_runnable():
+            box.want_yield = True
+        return None
+    t.wait = ([], False, box.hs.ms + a[0])
+    return BLOCK
 
 
 @std(K, 'GetDriveTypeA', 4)

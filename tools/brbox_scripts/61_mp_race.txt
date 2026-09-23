@@ -1,0 +1,44 @@
+# Multiplayer race, host side: a second game (62_mp_client.txt) on the
+# virtual network joins; the host creates the game, waits for the player,
+# starts the race and drives it.
+peer 62_mp_client.txt
+sleep 240
+mark main_menu
+mouse 250 151
+click
+sleep 40
+mouse 250 233
+click
+sleep 60
+mouse 250 138
+click
+sleep 60
+mouse 250 157
+click
+sleep 60
+mouse 250 233
+click
+sleep 90
+mouse 250 233
+click
+sleep 120
+mouse 250 233
+click
+sleep 150
+mark hosting
+shot mph_lobby
+sleep 300
+shot mph_lobby2
+mouse 250 233
+click
+wait 0x106E79F4 == 0x10019A70 3000
+mark host_race
+sleep 400
+shot mph_grid
+press SPACE
+sleep 150
+autopilot on
+sleep 1800
+shot mph_racing
+autopilot off
+end
