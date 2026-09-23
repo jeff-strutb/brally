@@ -2675,9 +2675,6 @@ func_va,offset,value,comment
 0x1005D770,0x6FE,0x10B1CF04,BrCtlAiBody g_brAiBiasNeg: cell recovered at 12+ sibling sites; drift-window instance (O2y)
 0x100096A0,0x4E,0x100ABAA0,BrDPlaySysMsgLog S710+4c (O2y): the fused config object's cell, per the verified O2 hand lane (member map is variant-invariant)
 0x100096A0,0x17D,0x105BC72C,BrDPlaySysMsgLog S710+48 (O2y): the fused handler cell, per the verified O2 hand lane
-0x10065C80,0x2D2,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
-0x10065C80,0x2E5,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
-0x10065C80,0x2FE,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
 0x10019A70,0xDE3,0x118F04FC,lockstep imp__memmove (orig operand 0x118f04fc)
 0x10019A70,0xFC0,0x100B5580,lockstep ??_C@_0BG@FHBH@misc?2modelLights?4blob?$AA@ (orig operand 0x100b5580)
 0x1004DA00,0x3,0x10075F87,lockstep $L845 (orig operand 0x10075f87)
@@ -2819,3 +2816,21 @@ func_va,offset,value,comment
 0x1004AEE0,0xE79,0xFFFF4DB3,lockstep ??0BrCtl@@QAE@XZ (orig operand 0x10040b10)
 0x1004AEE0,0xEEA,0x1003A070,lockstep BrMenuText0B30 (orig operand 0x1003a070)
 0x1004AEE0,0xF0D,0x00000000,lockstep except_list (orig operand 0x0)
+0x10065C80,0x69,0x00007F83,lockstep BrMat4ToMat3Both (orig operand 0x1006dc70)
+0x10065C80,0x80,0x00007D8C,lockstep BrMat3MulVec3 (orig operand 0x1006da90)
+0x10065C80,0x11B,0x10077A78,lockstep $T1343 (orig operand 0x10077a78)
+0x10065C80,0x13B,0x00007E71,lockstep BrMat3Skew (orig operand 0x1006dc30)
+0x10065C80,0x152,0x00007F4A,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x16F,0x00007F2D,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x18C,0x00007F10,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x1A9,0x00007EF3,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x2BC,0x10077B3C,lockstep $T1345 (orig operand 0x10077b3c)
+0x10065C80,0x30F,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
+0x10065C80,0x34C,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
+0x10065C80,0x359,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
+0x10065C80,0x385,0x10077B40,lockstep $T1349 (orig operand 0x10077b40)
+0x10065C80,0x38D,0x10077B40,lockstep $T1349 (orig operand 0x10077b40)
+0x10065C80,0x3F3,0x00007DF9,lockstep BrMat3Solve (orig operand 0x1006de70)
+0x10065C80,0x2EE,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x301,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x31A,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
