@@ -300,18 +300,21 @@ static uint8_t br_cr_ftol_byte(float x)
 /* WHAT IT DOES: resolves one contact into a collision impulse and applies it
  * to the body's next linear and angular velocity -- the solve that stops a car
  * falling through the world (full dossier above). */
-/* @t3 0x10065C80 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1137/1448 insns 347/422 rows 140+65 regions 4 oracle EQUIVALENT
+/* @t3 0x10065C80 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1406/1448 insns 419/422 rows 106+103 regions 5 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- * Residue is scheduling and layout only, proven by the A5 oracle (500/500
- * seeds EQUIVALENT on return + globals + body side effects).  The original is
- * ~311 B larger because it keeps the body and vector pointers live in
- * registers and folds the vec3 traffic through long x87 fxch chains with
- * memory-indexed fmul/fadd (`fmul [reg+off]`), where this arm names its
- * intermediates and lets the vec helpers own the round-trips; the two ftol
- * effect stores and every matrix/vec callee line up.  No behavioural gap
- * remains to close -- the delta is pure register colouring and x87 drain,
- * a T3 wall (CLAUDE.md rule 12).  Do not reopen before the end-grind. */
+ * ‼ 2026-09-23: the earlier "scheduling and layout only" verdict came from
+ * the retired seed oracle, which tolerated float differences.  On real race
+ * contacts the live oracle (tools/t3live.py) showed the results differing
+ * by several ULP: the original rounds at different points -- the cross
+ * product never rounded, vc stored as floats, dd computed TWICE (a register
+ * gate before the matrices, a float after them from the stored vc), the
+ * normal component formed from the float dd and damped, next.vel scaled by
+ * the .data float at 0x100B5170, a literal +0 tangential term without the
+ * flag, J/mass stored before the angular product.  All of that is now
+ * spelled out (the `double` locals are the original's register-resident
+ * values) and every captured call agrees bit for bit.  Remaining residue is
+ * register colouring and x87 scheduling. */
 /* @implements 0x10065C80 glide BrCrImpulseSolve */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, transcribed from the 0x10065C80 bytes.  The original is NOT the
@@ -331,6 +334,12 @@ static uint8_t br_cr_ftol_byte(float x)
  * to the oracle, so the global read is the one that is behaviourally exact.
  * The arithmetic content is the port's, validated to the original's opcode
  * stream over >14000 cases; only the operand SOURCES change here. */
+extern float DAT_100b5170;        /* 0x100B5170, a .data float, 1.0 at load */
+/* The damping and tangential factors as the ORIGINAL's own float constants:
+ * in a double (register-resident) expression a literal becomes a qword
+ * constant the reference image does not contain. */
+extern const float DAT_10077b38;   /* 0.9f */
+extern const float DAT_10077b40;   /* 0.2f */
 int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int flag, float restOffset)
 {
     const float   mass        = *(const float *)(pBody + 0x2C);
@@ -342,6 +351,12 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
 
     BrMat3 Rt, R, skew, Wworld, tmp, WSS, D, K;
     BrVec3 nb, vc, cross, rhs, J, dw;
+    BrVec3 Jm;           /* J / mass, stored before the angular call */
+    int32_t ddBits;      /* dd's 32-bit image: the original's rounded copy */
+    int32_t vcxBits, vcBits[3];       /* vc read back through its stored floats */
+    double cx, cy, cz, vcx, vcy, vcz; /* register-resident in the original */
+    double ddrx, ttx, tty, ttz;
+    BrVec3 ddr;          /* dd * relDir, as the original stores it (+0x24c/+0x254) */
     float  invMass = 1.0f / mass;
     float  dd, add, inten, tang, mult;
     int    i;
@@ -352,37 +367,31 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     BrMat4ToMat3Both(&Rt, &R, pOrient);
     BrMat3MulVec3(&nb, &Rt, &g_brCrPlane.normal);
 
-    /* vc = vel + angVel x nb */
-    cross.x = pAngVel->y * nb.z - pAngVel->z * nb.y;
-    cross.y = pAngVel->z * nb.x - pAngVel->x * nb.z;
-    cross.z = pAngVel->x * nb.y - pAngVel->y * nb.x;
-    vc.x = pVel->x + cross.x;
-    vc.y = pVel->y + cross.y;
-    vc.z = pVel->z + cross.z;
+    /* vc = vel + angVel x nb.  +0x5F..+0xED: the cross product is never
+     * rounded -- each component goes straight into the add with vel -- and
+     * the three sums are STORED as floats (+0xCD, +0xD3, +0xED).  The
+     * `double` locals in this function are values the original keeps in x87
+     * registers: under 24- or 53-bit precision control a register result
+     * is exactly representable as a double, so a double temp computes what
+     * the register computed. */
+    cx = (double)pAngVel->y * nb.z - (double)pAngVel->z * nb.y;
+    cy = (double)pAngVel->z * nb.x - (double)pAngVel->x * nb.z;
+    cz = (double)pAngVel->x * nb.y - (double)pAngVel->y * nb.x;
+    vcy = cy + pVel->y;
+    vcz = cz + pVel->z;
+    vcx = cx + pVel->x;
+    vc.x = (float)vcx;
+    vc.y = (float)vcy;
+    vc.z = (float)vcz;
 
-    /* gate: separating (or NaN handled as the original) -> no response */
-    dd = vc.x * pRelDir->x + vc.y * pRelDir->y + vc.z * pRelDir->z;
-    if (!(dd < 0.0f))
+    /* gate, +0xE1..+0x108: (y*ry + z*rz) + rx*x, with y and z still in
+     * registers and x read back from its float slot (+0xF3 fmul [esp+8]).
+     * Separating (or NaN, as the original's `test ah,1`) -> no response. */
+    vcxBits = *(int32_t *)&vc.x;
+    if (!(((vcy * pRelDir->y + vcz * pRelDir->z) + pRelDir->x * (double)*(float *)&vcxBits) < 0.0))
         return 0;
 
-    /* effect record: intensity = trunc(min(|dd|, 27)) (|dd| = -dd, dd < 0),
-     * colour = the shared normal bank's dwords, into body+0x1EC. */
-    add   = -dd;
-    inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
-    *(uint8_t *)(pBody + 0x1FC) = (uint8_t)(int32_t)inten;
-    memcpy(pBody + 0x1EC, &g_brCrPlane.normal, 3 * sizeof(uint32_t));
-
-    /* hard-hit path: saturating peak byte + damp the contact velocity that
-     * drives the solve.  threshold at +0x200; restOffset < 1e-4 for the caller. */
-    if (*(uint8_t *)(pBody + 0x200) > 10u && restOffset < BR_CR_EPS) {
-        uint8_t v = (uint8_t)(int32_t)(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
-        if (v > *(uint8_t *)(pBody + 0x1FF))
-            *(uint8_t *)(pBody + 0x1FF) = v;
-        vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
-        dd   *= BR_CR_DAMP;
-    }
-
-    /* K = (1/mass) I - [nb]x . Wworld . [nb]x */
+    /* K = (1/mass) I - [nb]x . Wworld . [nb]x  (+0x114..+0x1F9) */
     BrMat3Skew(&skew, &nb);
     BrMat3Mul(&tmp, pInvInertia, &R);
     BrMat3Mul(&Wworld, &Rt, &tmp);
@@ -392,24 +401,80 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
         D.m[i] = (i == 0 || i == 4 || i == 8) ? invMass : 0.0f;
     BrMat3Sub(K.m, D.m, WSS.m);
 
+    /* dd again, AFTER the matrices, from the STORED floats (+0x1FE..+0x226:
+     * (y*ry + z*rz) + rx*x), kept as a float (+0x228 fst [esp+0x10]).  The
+     * normal component dd*relDir is formed from that float copy before any
+     * damping: y and z stored (+0x24C/+0x254), x left in st(0). */
+    vcBits[0] = *(int32_t *)&vc.x;
+    vcBits[1] = *(int32_t *)&vc.y;
+    vcBits[2] = *(int32_t *)&vc.z;
+    dd = (float)(((double)*(float *)&vcBits[1] * pRelDir->y +
+                  (double)*(float *)&vcBits[2] * pRelDir->z) +
+                 pRelDir->x * (double)*(float *)&vcBits[0]);
+    ddBits = *(int32_t *)&dd;
+    ddrx  = (double)*(float *)&ddBits * pRelDir->x;
+    ddr.y = *(float *)&ddBits * pRelDir->y;
+    ddr.z = *(float *)&ddBits * pRelDir->z;
+
+    /* effect record (+0x25D..+0x2B4): intensity = trunc(min(|dd|, 27)),
+     * colour = the shared normal bank's dwords, into body+0x1EC. */
+    add   = -dd;
+    inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
+    *(uint8_t *)(pBody + 0x1FC) = (uint8_t)(int32_t)inten;
+    memcpy(pBody + 0x1EC, &g_brCrPlane.normal, 3 * sizeof(uint32_t));
+
+    /* hard-hit path (+0x2BA): saturating peak byte; next.vel scaled in place
+     * by the .data float at 0x100B5170 (1.0 as shipped); the stored contact
+     * velocity and the normal component damped by 0.9. */
+    if (*(uint8_t *)(pBody + 0x200) > 10u && restOffset < BR_CR_EPS) {
+        uint8_t v = (uint8_t)(int32_t)(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
+        if (v > *(uint8_t *)(pBody + 0x1FF))
+            *(uint8_t *)(pBody + 0x1FF) = v;
+        pVel->x = DAT_100b5170 * pVel->x;
+        pVel->y = DAT_100b5170 * pVel->y;
+        pVel->z = DAT_100b5170 * pVel->z;
+        vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
+        ddrx *= DAT_10077b38; ddr.y *= BR_CR_DAMP; ddr.z *= BR_CR_DAMP;
+    }
+
     /* rhs = dd*relDir + tang*(vc - dd*relDir) */
-    tang = flag ? BR_CR_TANGENT : 0.0f;
-    rhs.x = dd * pRelDir->x + tang * (vc.x - dd * pRelDir->x);
-    rhs.y = dd * pRelDir->y + tang * (vc.y - dd * pRelDir->y);
-    rhs.z = dd * pRelDir->z + tang * (vc.z - dd * pRelDir->z);
+    /* +0x3C7: with the flag the tangential slice is (vc - ddr) * 0.2; without
+     * it the original loads three literal +0.0 (+0x3F6..+0x402) -- NOT
+     * 0 * (vc - ddr), which is -0 for a negative difference and leaves
+     * rhs = -0 + -0 = -0 where the original has +0. */
+    if (flag) {
+        ttx  = (vc.x - ddrx) * DAT_10077b40;
+        tty  = (vc.y - ddr.y) * BR_CR_TANGENT;
+        ttz  = (vc.z - ddr.z) * BR_CR_TANGENT;
+    } else {
+        ttx  = 0.0;
+        tty  = 0.0;
+        ttz  = 0.0;
+    }
+    rhs.x = (float)(ttx + ddrx);
+    rhs.y = (float)(tty + ddr.y);
+    rhs.z = (float)(ttz + ddr.z);
 
     /* J = solve(K, rhs); apply to vel and angVel. */
     BrMat3Solve(&J, &K, &rhs);
     mult = restOffset - BR_CR_RESTITUTION;   /* restOffset + 1.05 */
 
-    pVel->x -= mult * J.x * invMass;
-    pVel->y -= mult * J.y * invMass;
-    pVel->z -= mult * J.z * invMass;
+    /* +0x44F..+0x4F5: the impulse is scaled by 1/mass -- recomputed, at
+     * register precision, not the float invMass above -- and STORED as
+     * floats before the angular product's call; +0x4FE..: each velocity then
+     * loses mult * that stored value.  mult * J * invMass associates and
+     * rounds differently (the live oracle's hard-hit captures). */
+    Jm.x = J.x * (1.0f / mass);
+    Jm.y = J.y * (1.0f / mass);
+    Jm.z = J.z * (1.0f / mass);
 
     cross.x = nb.y * J.z - nb.z * J.y;       /* nb x J */
     cross.y = nb.z * J.x - nb.x * J.z;
     cross.z = nb.x * J.y - nb.y * J.x;
     BrMat3MulVec3(&dw, &Wworld, &cross);
+    pVel->x -= mult * Jm.x;
+    pVel->y -= mult * Jm.y;
+    pVel->z -= mult * Jm.z;
     pAngVel->x -= mult * dw.x;
     pAngVel->y -= mult * dw.y;
     pAngVel->z -= mult * dw.z;

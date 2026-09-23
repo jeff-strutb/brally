@@ -3365,3 +3365,6 @@ func_va,offset,value,comment
 0x1005D770,0x6FE,0x10B1CF04,BrCtlAiBody g_brAiBiasNeg: cell recovered at 12+ sibling sites; drift-window instance (O2y)
 0x100096A0,0x4E,0x100ABAA0,BrDPlaySysMsgLog S710+4c (O2y): the fused config object's cell, per the verified O2 hand lane (member map is variant-invariant)
 0x100096A0,0x17D,0x105BC72C,BrDPlaySysMsgLog S710+48 (O2y): the fused handler cell, per the verified O2 hand lane
+0x10065C80,0x2D2,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x2E5,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x2FE,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
