@@ -5,8 +5,8 @@
  * and the replay-advance timer. One C++ TU (member-call heavy, no EH frame).
  *
  * The largest single function in BRGlide (11,223 B, 131 calls). */
-/* @t3 0x10019A70 2026-09-15 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 10944/11223 insns 2913/2939 rows 354+328 regions 65 oracle EQUIV-MODULO-FP
+/* @t3 0x10019A70 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 10952/11223 insns 2920/2939 rows 341+322 regions 69 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * Residue is register colouring/scheduling, behaviour-neutral: A5 proves
  * same-in/same-out (EQUIV-MODULO-FP over valid-state seeding -- every race
@@ -891,7 +891,7 @@ extern "C" void BrRaceStep(void)
                     }
                     PI(c, 0x1000) = 0x3f800000;     /* 0x1001ad56 */
                     if (g_5BC8F8 == 0) {            /* 0x1001adac */
-                        g_5CCB58 = 1;
+                        g_5CCB58 = -1;                /* ebx = -1 (0x10019ae9 `or ebx,-1`), NOT 1 */
                         g_5CCB74 = 0;
                     } else if (g_5BC8F8 == 2) {     /* 0x1001ad6e */
                         int k = g_5CCB74;
@@ -935,9 +935,12 @@ extern "C" void BrRaceStep(void)
                 if (g_AF21F4 > g_0773BC) goto Lae_a1;
             }
         Lae89:  /* 0x1001ae89 */
-            if (g_0A9360 == 5) {
-                if (g_AF21F4 <= g_0773C0) goto Laee2;
-            }
+            /* 0x1001ae8c `jne 0x1001aee2`: every mode but 5 skips the check
+             * below entirely -- it is NOT a fall-through into Lae_a1.  Mode 5
+             * reaches it only on an ordered greater-than (`test ah,0x41 /
+             * jne` at 0x1001ae9f: less, equal and unordered all skip). */
+            if (g_0A9360 != 5) goto Laee2;
+            if (!(g_AF21F4 > g_0773C0)) goto Laee2;
         Lae_a1: /* 0x1001aea1 */
             if (sub_10018310() == 0) {
                 sub_100181A0(0, 0x3e4ccccd);
