@@ -297,6 +297,13 @@ class Oracle(object):
         if self.explain_frame is not None:
             if box.hs.frame < self.explain_frame:
                 return
+            # T3LIVE_SKIP=n: explain the (n+1)th call at/after that frame
+            # (several cars call the same function each frame)
+            skip = int(os.environ.get('T3LIVE_SKIP', '0'))
+            self._skipped = getattr(self, '_skipped', 0)
+            if self._skipped < skip:
+                self._skipped += 1
+                return
             box.intermission = lambda b, _t=t: self.capture(_t)
             uc.emu_stop()
             return
@@ -322,7 +329,7 @@ class Oracle(object):
         for pa in probes:
             def on_probe(uc_, a, sz, ud):
                 top = box.fpu_top()
-                box.log_probe.append((a, [round(box.st(k), 9) for k in range(4)],
+                box.log_probe.append((a, [float.hex(box.st(k)) if os.environ.get("T3LIVE_HEX") else round(box.st(k), 9) for k in range(4)],
                                       {n: uc_.reg_read(r) for n, r in (('eax', UC_X86_REG_EAX),
                                                                        ('ebx', UC_X86_REG_EBX),
                                                                        ('ecx', UC_X86_REG_ECX),
