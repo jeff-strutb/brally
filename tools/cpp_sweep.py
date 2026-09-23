@@ -135,6 +135,11 @@ def _score_handler(handler, ri):
     return ok
 
 
+def _ebp_frame(code):
+    """True when the body opens with `push ebp; mov ebp, esp`."""
+    return bytes(code[:3]) in (b'\x55\x8b\xec', b'\x55\x89\xe5')
+
+
 def score_one(src_path, va, impl_name):
     """Compile + 4-piece score. Returns a report row dict."""
     rel = os.path.relpath(src_path, ROOT)
@@ -173,8 +178,14 @@ def score_one(src_path, va, impl_name):
             continue
         rb, relocs = funcs[found]
         ok, nd, rlen = match_sweep.score(orig, rb, relocs)
-        rec = (0 if ok else 1, nd, abs(rlen - len(orig)), opt, obj, rb)
-        if best is None or rec[:3] < best[:3]:
+        # Frame shape before byte score: a variant with an ebp frame where
+        # the original has none (or vice versa) is not the original's
+        # compile, and its different stack depth is behaviour -- callees
+        # that read uninitialised stack see different leftovers (BrRaceStep
+        # 0x10019A70, live oracle, credits run).
+        rec = (0 if ok else 1, 0 if _ebp_frame(rb) == _ebp_frame(orig) else 1,
+               nd, abs(rlen - len(orig)), opt, obj, rb)
+        if best is None or rec[:4] < best[:4]:
             best = rec
         if ok:
             break
@@ -184,7 +195,7 @@ def score_one(src_path, va, impl_name):
         row['diffs'] = '; '.join(last_err) if last_err else 'unknown'
         return row
 
-    _okrank, nd, _ds, opt, obj, rb = best
+    _okrank, _frame, nd, _ds, opt, obj, rb = best
     row['opt'] = _opt_tag(opt)
     row['recomp_size'] = len(rb)
     row['diffs'] = nd
