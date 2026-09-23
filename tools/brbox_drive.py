@@ -23,6 +23,10 @@ is one entry to BrAppFrame 0x1001CF80, the main loop's per-frame call):
     text                  log every string the last frame drew, with its pen
     shot NAME             write the framebuffer to <shots>/NAME.png
     mark NAME             coverage checkpoint: record frame + state
+    peer SCRIPT           (applied before boot) run a second game on a virtual
+                          network with this one, driven by SCRIPT (a path
+                          relative to this script); the two meet every frame
+                          (tools/brbox_net.py)
     files NAME            (anywhere in the script; applied before boot) start
                           with the saved files in tools/brbox_saves/NAME/ --
                           the disc tree plus what an earlier script saved
@@ -201,8 +205,8 @@ class Driver(object):
                     '%s@%d,%d' % (t, x, y) for x, y, t in self.text_last)))
             elif op == 'shot':
                 self.shot(box, args[0])
-            elif op == 'files':
-                pass                                    # applied in attach()
+            elif op in ('files', 'peer'):
+                pass                                    # applied before boot
             elif op == 'savefiles':
                 save_files(box, os.path.join(brbox.ROOT, 'build', 'brbox', 'saves', args[0]))
                 self.log('saved %d file(s) as %s' % (len(box.hs.written), args[0]))
@@ -449,6 +453,16 @@ def attach(box, driver):
     box.uc.hook_add(UC_HOOK_CODE, text_hook, begin=TEXT_EMIT, end=TEXT_EMIT)
 
 
+def start_peer_if_any(box, driver, script, log=lambda m: None):
+    """(thread, peer box, net, result) when the script names a peer."""
+    import brbox_net
+    ps = brbox_net.peer_script(driver.steps)
+    if ps is None:
+        return None
+    path = ps if os.path.isabs(ps) else os.path.join(os.path.dirname(os.path.abspath(script)), ps)
+    return brbox_net.start_peer(box, path, log=lambda m: log('[peer] ' + m), shots=driver.shots)
+
+
 def run_cli(a):
     t0 = time.time()
     logf = open(os.path.join(brbox.ROOT, 'build', 'brbox', 'run.log'), 'w')
@@ -463,6 +477,7 @@ def run_cli(a):
         print('unmodelled imports: %s' % ', '.join(box.unmodelled))
     drv = Driver(parse_script(a.script), shots=a.shots, frames=a.frames, log=log)
     attach(box, drv)
+    net = start_peer_if_any(box, drv, a.script, log)
     rc = 0
     try:
         box.boot()
@@ -474,6 +489,10 @@ def run_cli(a):
     except GuestFault as e:
         log(str(e))
         rc = 1
+    if net is not None:
+        net[2].stop()
+        net[0].join(30)
+        log('peer: frames %d, %s' % (net[1].hs.frame, net[3].get('end', 'running')))
     dt = time.time() - t0
     log('frames %d, virtual %.1fs, wall %.1fs' % (box.hs.frame, box.hs.ms / 1000.0, dt))
     if box.hs.messageboxes:
