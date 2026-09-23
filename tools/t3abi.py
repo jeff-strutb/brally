@@ -197,6 +197,46 @@ def _fall_off(blob, va0, va, size, max_steps=20000):
     return None
 
 
+def _reachable_rets(blob, va0, va, size, max_steps=20000):
+    """The `ret` immediates on the reachable paths of [va, va+size) -- the
+    same walk as _fall_off.  A body shorter than its slot leaves dead bytes
+    after its last ret; a LINEAR decode of those can surface a `ret N` that
+    no path executes (BrCrImpulseSolve 2026-09-23: a phantom `ret 2`)."""
+    end = va + size
+    rets = set()
+    seen = set()
+    work = [va]
+    steps = 0
+    while work and steps < max_steps:
+        addr = work.pop()
+        while va <= addr < end and steps < max_steps:
+            steps += 1
+            if addr in seen:
+                break
+            seen.add(addr)
+            got = list(_MD.disasm(blob[addr - va0:addr - va0 + 16], addr, 1))
+            if not got:
+                break
+            insn = got[0]
+            m = insn.mnemonic
+            if m == 'ret':
+                rets.add(int(insn.op_str, 0) if insn.op_str else 0)
+                break
+            if m == 'jmp':
+                if insn.op_str.startswith('0x'):
+                    t = int(insn.op_str, 16)
+                    if va <= t < end:
+                        addr = t
+                        continue
+                break
+            if m.startswith('j') and insn.op_str.startswith('0x'):
+                t = int(insn.op_str, 16)
+                if va <= t < end:
+                    work.append(t)
+            addr = insn.address + insn.size
+    return rets
+
+
 def abi_screen(ref, ref_va0, img, img_va0, t3_spans, annex_map=None):
     """Screen the placed T3 bodies; returns a list of human-readable flags
     (empty == clean).
@@ -281,7 +321,9 @@ def abi_screen(ref, ref_va0, img, img_va0, t3_spans, annex_map=None):
                                 nxt.mnemonic, nxt.op_str))
 
         # ---- C: callee cleanup --------------------------------------
-        r_rets, p_rets = _ret_set(ref_insns), _ret_set(insns)
+        r_rets = _ret_set(ref_insns)
+        p_rets = (_reachable_rets(img, img_va0, va, size)
+                  if va not in (annex_map or {}) else _ret_set(insns))
         if r_rets and p_rets and r_rets != p_rets:
             flags.append('C %s 0x%08x: reference ret %s vs placed ret %s'
                          % (name, va, sorted(r_rets), sorted(p_rets)))
