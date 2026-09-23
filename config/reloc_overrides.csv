@@ -63,9 +63,9 @@ func_va,offset,value,comment
 0x1000A110,0x3BD,0x106E79F8,BrCarDrawVehicle scramble-else: X1 -> low byte of UPPER word; orig upper = 8610|a3ec|79f8
 0x1000A110,0x3C2,0x106E8610,BrCarDrawVehicle scramble-else: X2 -> bits24 of UPPER word
 0x1000A110,0x3C8,0x106EA3EC,BrCarDrawVehicle scramble-else: X3 -> bits16 of UPPER word
-0x1000A110,0x3DC,0x106ED64C,BrCarDrawVehicle scramble-else: X4 -> bits16 of LOWER word; orig lower = 7c80|79f0|64c
+0x1000A110,0x3DC,0x106E79F0,BrCarDrawVehicle scramble-else: X4 -> bits16 of LOWER word; orig lower = 7c80|79f0|64c (bits16 = [106e79f0]; was swapped with X6 -- live oracle 2026-09-23)
 0x1000A110,0x3EF,0x106B7C80,BrCarDrawVehicle scramble-else: X5 -> bits24 of LOWER word
-0x1000A110,0x3FC,0x106E79F0,BrCarDrawVehicle scramble-else: X6 -> bits8 of LOWER word
+0x1000A110,0x3FC,0x106ED64C,BrCarDrawVehicle scramble-else: X6 -> bits8 of LOWER word (bits8 = [106ed64c])
 0x1000A110,0x42C,0x106E7710,lockstep BrG_6C0680 (orig operand 0x106e7710)
 0x1000A110,0x43B,0x106E7710,lockstep BrG_6C0680 (orig operand 0x106e7710)
 0x1000A110,0x44E,0x102735B0,lockstep g_BrCarMtxSlot (orig operand 0x102735b0)
@@ -2611,7 +2611,7 @@ func_va,offset,value,comment
 0x1002F790,0x93E,0xFFFD8C8E,lockstep ??1BrNetPacket_1006CDA0_10008D60@@QAE@XZ (orig operand 0x10008d60)
 0x1002F790,0x94F,0x00000000,lockstep except_list (orig operand 0x0)
 0x10019A70,0xA,0x00054802,lockstep sub_1006E280 (orig operand 0x1006e280)
-0x10019A70,0x22,0x100A9358,lockstep ?g_0A935C@@3HA (orig operand 0x100a9358)
+0x10019A70,0x22,0x100A935C,?g_0A935C@@3HA -- the idx load (T3 +0x20); the lockstep pairing took the original's count load at +0x22 (0x100a9358) -- live oracle 2026-09-23
 0x10019A70,0x3A,0x105BC900,lockstep ?g_5BC900@@3PAHA (orig operand 0x105bc900)
 0x10019A70,0x43,0x105BCAE4,lockstep ?g_5BCAE4@@3HA (orig operand 0x105bcae4)
 0x10019A70,0x62,0x100A935C,lockstep ?g_0A935C@@3HA (orig operand 0x100a935c)
@@ -3053,7 +3053,7 @@ func_va,offset,value,comment
 0x10019A70,0x2132,0x105BC8DC,lockstep ?g_5BC8DC@@3HA (orig operand 0x105bc8dc)
 0x10019A70,0x2179,0x10226A48,lockstep ?g_226A48@@3HA (orig operand 0x10226a48)
 0x10019A70,0x2181,0x10226A44,lockstep ?g_226A44@@3HA (orig operand 0x10226a44)
-0x10019A70,0x2188,0xFFFE9394,lockstep sub_10004F90 (orig operand 0x10004f90)
+0x10019A70,0x2188,0x10226A44,?g_226A44@@3HA -- cmp [g_brRaceTick]; the stale lockstep row put a call displacement (sub_10004F90) in this address slot
 0x10019A70,0x2199,0xFFFFC623,lockstep sub_10018230 (orig operand 0x10018230)
 0x10019A70,0x21AB,0xFFFFC671,lockstep sub_10018290 (orig operand 0x10018290)
 0x10019A70,0x21B4,0x105CCB64,lockstep ?g_5CCB64@@3HA (orig operand 0x105ccb64)

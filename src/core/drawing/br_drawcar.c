@@ -852,9 +852,10 @@ static void wheel_call(unsigned char *car)
  *   The second specular MOVEMEM pair (0xBC3F) was spelled `specMem` like
  * the first (0xAE34).  It is not: the original's three pool results go to
  * three different slots and are read at four places --
- *     [esp+0x2c]  0x10062550 (16B)  -> read at 0x1772          = pSkyAng
+ *     [esp+0x2c]  0x10062550 (16B)  -> read at 0x6fa AND 0x1772  = pSkyAng
  *     [esp+0x30]  1st 0x100625A0    -> read at 0x690 AND 0x1b1c = pLights
- *     [esp+0x28]  2nd 0x100625A0    -> read at 0xc78 only       = specMem
+ *     [esp+0x28]  2nd 0x100625A0    -> read at 0x6ff AND 0xc78  = specMem
+ * (0x6ff is the angles call's light-pair argument -- see the call site.)
  * so the SECOND pair points at pLights, the block the light calls also use.
  * Emitting specMem there put the wrong pointer in the DL -- a behaviour bug,
  * not a codegen one -- and it also made VC5 CSE the now-shared
@@ -1391,8 +1392,8 @@ static void wheel_call(unsigned char *car)
 /* @t4-pass 0x1000A110 2 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000A110 3 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census no  (guard polarity, float/spec/index commutes, statement orders, join or-commute: 9 byte-identical, 1 regression) */
 /* @t4-pass 0x1000A110 4 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census yes  (compare/negate-guard swaps, decl splits/orders, mode-flag commute, cast removal: 9 byte-identical, 1 region-count wobble at identical bytes.  Census: full-length mnemonic histograms equal except and 24/22, or 28/26 -- exactly the classified byte-compose group; call 48/48, fdiv/fmul/fild/imul/shl/ret all equal) */
-/* @t3 0x1000A110 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 7560/7577 insns 1839/1843 rows 8+4 regions 29 oracle UNCLASSIFIED
+/* @t3 0x1000A110 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 7560/7577 insns 1839/1843 rows 8+4 regions 29 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
  * Residue: the byte-compose fork (2 homes + 2 widens + 2 or-merges vs one
  * lane move -- the classified group; four sessions' dead lists in this
@@ -1736,7 +1737,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f);
 
+        /* ‼ The angles call writes its direction pair into the SECOND pool
+         * block, not pLights: the original pushes [esp+0x28] (0x1000A7FF,
+         * `mov edx,[esp+0x68]` after 16 pushes) where the look-at call above
+         * pushed [esp+0x30].  Passing pLights here made the angles call
+         * overwrite the look-at pair and left the second block unwritten --
+         * found by the live oracle (tools/t3live.py) on a real race frame. */
+#ifdef BR_MATCHING_BUILD
+        BrLightDirsAndAngles(&g_BrDrawCombined, (BrLightPair *)specMem, pSkyAng,
+#else
         BrLightDirsAndAngles(&g_BrDrawCombined, pLights, pSkyAng,
+#endif
             pCam[12], pCam[13], pCam[14],
             pCarF[12] + eyeScale, pCarF[13],
             pCarF[14] + atOffset,
