@@ -273,24 +273,31 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
      * value and the ratio made the hold test compare the ratio (~0.3)
      * against 8000 -- the grip branch never ran.  Live oracle, frame 352. */
     speed = fVar2;
-    if (fVar2 > fVar7) {
-      fVar2 = fVar7;
-    }
-    if (!(fVar2 >= *(float *)&local_84)) {
-      fVar2 = *(float *)&local_84;
-    }
-    fVar2 = *(float *)&local_84 / fVar2;
-    local_80 = fVar2 * local_3c * _DAT_10077aac;
-    if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
-      local_80 = local_80 * _DAT_10077ab0;
-    }
-    if (local_80 < _DAT_10077a78) {
-      fVar7 = -local_80;
-    } else {
-      fVar7 = local_80;
-    }
-    if (fVar7 > _DAT_10077a7c) {
-      local_80 = 1.0f;
+    /* The grip factor stays on the FPU: limit / clamped speed, times the
+     * surface grip and the scale, is fst'd to local_80 and carried on
+     * unrounded -- into the x1.5 (a DOUBLE constant) and into the |.| > 1
+     * test.  Live oracle: 2-ulp local_80 differences (AI car, quick race). */
+    {
+      double r = speed;
+      int bits;
+      if (r > fVar7) {
+        r = fVar7;
+      }
+      if (!(r >= *(float *)&local_84)) {
+        r = *(float *)&local_84;
+      }
+      r = *(float *)&local_84 / r;
+      r = r * local_3c * _DAT_10077aac;
+      local_80 = (float)r;
+      if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
+        r = r * _DAT_10077ab0;
+        local_80 = (float)r;
+      }
+      bits = *(int *)&local_80;
+      local_80 = *(float *)&bits;
+      if ((r < _DAT_10077a78 ? -r : r) > _DAT_10077a7c) {
+        local_80 = 1.0f;
+      }
     }
     if (!(speed < hold)) {
       /* orig: mov y-bits, mov x-bits, fld z — integer copies of x/y so the
@@ -435,24 +442,30 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
                             (int)(short)local_6c) * 4);
       local_84 = *(int *)(&DAT_100b5178 + iVar10);
       local_80 = *(float *)(DAT_11778820 + iVar10);
-      if (fVar1 > local_80) {
-        fVar1 = local_80;
-      }
-      if (!(fVar1 >= *(float *)&local_84)) {
-        fVar1 = *(float *)&local_84;
-      }
-      fVar1 = *(float *)&local_84 / fVar1;
-      local_80 = fVar1 * local_38 * _DAT_10077aac;
-      if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
-        local_80 = local_80 * _DAT_10077ab0;
-      }
-      if (local_80 < _DAT_10077a78) {
-        fVar1 = -local_80;
-      } else {
-        fVar1 = local_80;
-      }
-      if (fVar1 > _DAT_10077a7c) {
-        local_80 = 1.0f;
+      /* as the front axle: the grip factor chain stays unrounded */
+      {
+        double r;
+        int bits;
+        bits = *(int *)&fVar1;
+        r = *(float *)&bits;                       /* the stored speed */
+        if (r > local_80) {
+          r = local_80;
+        }
+        if (!(r >= *(float *)&local_84)) {
+          r = *(float *)&local_84;
+        }
+        r = *(float *)&local_84 / r;
+        r = r * local_38 * _DAT_10077aac;
+        local_80 = (float)r;
+        if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
+          r = r * _DAT_10077ab0;
+          local_80 = (float)r;
+        }
+        bits = *(int *)&local_80;
+        local_80 = *(float *)&bits;
+        if ((r < _DAT_10077a78 ? -r : r) > _DAT_10077a7c) {
+          local_80 = 1.0f;
+        }
       }
       local_84 = *(int *)(param_1 + 0x88);
       local_x = *(int *)(param_1 + 0x84);
