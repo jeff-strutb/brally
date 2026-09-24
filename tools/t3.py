@@ -220,6 +220,23 @@ def _variant_pin(va):
     return _VARIANT_PIN.get(va.lower())
 
 
+_C_VARIANT_PIN = None
+
+
+def _c_variant_pin(va):
+    """config/t3_variant_c.csv: VA -> sweep variant tag (O2, O2y, O2p, Od,
+    Odp) a C row is measured under.  See _find_obj."""
+    global _C_VARIANT_PIN
+    if _C_VARIANT_PIN is None:
+        _C_VARIANT_PIN = {}
+        p = os.path.join(ROOT, 'config', 't3_variant_c.csv')
+        if os.path.exists(p):
+            for r in csv.DictReader(open(p)):
+                if r.get('va') and r.get('opt'):
+                    _C_VARIANT_PIN[r['va'].lower()] = r['opt'].strip()
+    return _C_VARIANT_PIN.get(va.lower())
+
+
 def _find_obj(row):
     base = os.path.splitext(os.path.basename(row['file']))[0]
     if row.get('cpp'):
@@ -242,7 +259,14 @@ def _find_obj(row):
             if os.path.exists(p):
                 return p
         return None
-    variant = row.get('variant') or 'O2'
+    # C rows are graded under /O2 by default (every existing @t4-pass ledger
+    # was recorded against obj_O2).  A TU the original built with other
+    # options -- /Op for tu_022, say -- can never be graded against the right
+    # object that way, so config/t3_variant_c.csv (va,opt,reason) pins a C
+    # row's sweep variant explicitly.  It is a separate file on purpose:
+    # config/t3_variant.csv's rows were written for the C++ lane and for image
+    # fitting, and applying them here would silently re-grade certified tags.
+    variant = _c_variant_pin(row['va']) or row.get('variant') or 'O2'
     for d in ('obj_' + variant, 'obj_O2', 'obj_O2y', 'obj_Od'):
         p = os.path.join(ROOT, 'build', 'match', d, base + '.obj')
         if os.path.exists(p):
