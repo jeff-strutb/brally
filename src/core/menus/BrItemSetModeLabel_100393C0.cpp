@@ -26,7 +26,7 @@
  *
  * The special-case arm and everything up to the index selection is
  * byte-exact; the arm ORDER matters and is settled: testing
- * `g_brFlag0A9360 == 0` with the odd-one-out arm as the ELSE is what puts
+ * `DAT_100a9360 == 0` with the odd-one-out arm as the ELSE is what puts
  * that block last, the way the original does (writing it as the first
  * `if` arm costs 26 diffs).
  *
@@ -86,19 +86,19 @@ public:
 typedef char chk_itemK[(unsigned)&((Obj393C0 *)0)->m2B5C == 0x2B5C ? 1 : -1];
 
 extern "C" {
-int           g_brPhase5C5C;    /* 0x10AC5C5C */
-int           g_brRoot5CBC;     /* 0x10AC5CBC */
-int           g_brFlag5C40;     /* 0x10AC5C40 */
-int           g_brFlag0A9360;   /* 0x100A9360 */
-char          g_brFlag5C00;     /* 0x10AC5C00 */
-char          g_brSel5C10;      /* 0x10AC5C10 */
-int           g_brIdx5C04;      /* 0x10AC5C04 */
-int           g_brIdx5BFC;      /* 0x10AC5BFC */
-int           g_brSel5D58;      /* 0x10AC5D58 */
-unsigned char g_brMap3029[];    /* 0x100B3029 */
-int           g_brTblABB50[];   /* 0x100ABB50 */
-float         g_f077628;        /* 0x10077628 */
-float         g_f07762C;        /* 0x1007762C */
+extern int           DAT_10ac5c5c;    /* 0x10AC5C5C */
+extern int           DAT_10ac5cbc;     /* 0x10AC5CBC */
+extern int           DAT_10ac5c40;     /* 0x10AC5C40 */
+extern int           DAT_100a9360;   /* 0x100A9360 */
+extern char          DAT_10ac5c00;     /* 0x10AC5C00 */
+extern char          DAT_10ac5c10;      /* 0x10AC5C10 */
+extern int           DAT_10ac5c04;      /* 0x10AC5C04 */
+extern int           DAT_10ac5bfc;      /* 0x10AC5BFC */
+extern int           DAT_10ac5d58;      /* 0x10AC5D58 */
+extern unsigned char DAT_100b3029[];    /* 0x100B3029 */
+extern int           DAT_100abb50[];   /* 0x100ABB50 */
+extern float         DAT_10077628;        /* 0x10077628 */
+extern float         DAT_1007762c;        /* 0x1007762C */
 
 char *BrStrByIndex(int idx);                    /* 0x1006D280 */
 void  BrItemApply_10038380(void *pObj, int a);  /* 0x10038380 */
@@ -108,15 +108,15 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
 {
     char *s;
 
-    if (g_brPhase5C5C == g_brRoot5CBC && g_brFlag5C40 == 0) {
-        pObj->m2B5C.f414 = pObj->m2B5C.f414 - g_f077628;
+    if (DAT_10ac5c5c == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
+        pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_10077628;
 
         strcpy(pObj->m2B5C.szName, BrStrByIndex(0x1C));
 
         pObj->m2B5C.s1();
         BrItemApply_10038380(pObj, 0);
 
-        pObj->m2B5C.f414 = pObj->m2B5C.f414 - g_f07762C;
+        pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_1007762c;
         return 1;
     }
 
@@ -125,17 +125,17 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
      * RESIDUE 2 bytes: k lands in eax where the original has ecx. */
     {
         int k;
-        if (g_brFlag0A9360 == 0) {
-            if (g_brFlag5C00 != 0) {
-                s = BrStrByIndex(g_brTblABB50[
-                        g_brMap3029[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]]);
+        if (DAT_100a9360 == 0) {
+            if (DAT_10ac5c00 != 0) {
+                s = BrStrByIndex(DAT_100abb50[
+                        DAT_100b3029[(DAT_10ac5c04 + DAT_10ac5c10 * 12) * 2]]);
                 goto have;
             }
-            k = g_brMap3029[(g_brIdx5BFC + g_brSel5C10 * 12) * 2];
+            k = DAT_100b3029[(DAT_10ac5bfc + DAT_10ac5c10 * 12) * 2];
         } else {
-            k = g_brSel5D58;
+            k = DAT_10ac5d58;
         }
-        s = BrStrByIndex(g_brTblABB50[k]);
+        s = BrStrByIndex(DAT_100abb50[k]);
     }
 have:
     strcpy(pObj->m2B5C.szName, s);
