@@ -1001,44 +1001,31 @@ static unsigned char *s17_car(int i)
 extern int32_t DAT_100b2f04;           /* nEntB */
 extern int32_t DAT_100b2f00;           /* nEntA */
 extern unsigned char DAT_10af1208[];   /* car0 base */
+/* Glide arm, hand-transcribed from 0x1001C6A0.  Every field is addressed as
+ * `&cars[count].field` straight off the counter, so the record base folds into
+ * each displacement (`lea ecx,[eax+0x10af3bb6]`); a `car` pointer local keeps
+ * the base in a register instead.  0x1006FD50 is __thiscall with one stack
+ * argument: a __fastcall whose second parameter is a one-int struct passes
+ * ecx = car and leaves edx alone, exactly as BrEntitySetIndex is defined. */
+typedef struct BrS17CarRec { unsigned char b[BR_CAR_STRIDE]; } BrS17CarRec;
+typedef struct { int n; } BrS17EntArg;
+typedef void (__fastcall *BrS17EntSetFn)(void *pThis, BrS17EntArg a0);
+#define BR_S17_CARS ((BrS17CarRec *)DAT_10af1208)
 void BrCarTableAdd(void *pOwner)
 {
-    int n;
-    unsigned char *car;
-    int r;
+    BrS17EntArg a;
 
-    n = DAT_100b2f04;
-    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
-    r = BrX10005DE0(pOwner,
-                    car + BR_CAR_OFF_RGB + 0,
-                    car + BR_CAR_OFF_RGB + 1,
-                    car + BR_CAR_OFF_RGB + 2);
-
-    n = DAT_100b2f04;
-    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
-    /* Orig is thiscall: ecx = car, one stack arg. */
-#if defined(_MSC_VER)
-    {
-        typedef void (__fastcall *Fn76)(void *, int);
-        ((Fn76)BrX10076AE0)(car, r);
-    }
-#else
-    BrX10076AE0(car, r);
-#endif
-
-    n = DAT_100b2f04;
-    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
-    strcpy((char *)(car + BR_CAR_OFF_NAME), BrX10005E70(pOwner));
-
-    n = DAT_100b2f04;
-    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
-    BrX10068260(n, *(uint32_t *)(car + BR_CAR_OFF_TAG));
-
-    n = DAT_100b2f04;
-    car = DAT_10af1208 + n * (int)BR_CAR_STRIDE;
-    DAT_100b2f04 = n + 1;
-    *(uint32_t *)(car + BR_CAR_OFF_OWNER) = (uint32_t)pOwner;
-    DAT_100b2f00 = DAT_100b2f00 + 1;
+    a.n = BrX10005DE0(pOwner,
+                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 0],
+                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 1],
+                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 2]);
+    ((BrS17EntSetFn)BrX10076AE0)(&BR_S17_CARS[DAT_100b2f04], a);
+    strcpy((char *)&BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_NAME],
+           BrX10005E70(pOwner));
+    BrX10068260(DAT_100b2f04,
+                *(uint32_t *)&BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_TAG]);
+    *(void **)&BR_S17_CARS[DAT_100b2f04++].b[BR_CAR_OFF_OWNER] = pOwner;
+    DAT_100b2f00++;
 }
 #else
 void BrCarTableAdd(void *pOwner)
