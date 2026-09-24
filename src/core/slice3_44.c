@@ -404,15 +404,10 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
 /* WHAT IT DOES: works out how fast a body's orientation is changing, given
  * how fast it is spinning. The result is what the integrator adds to the
  * orientation each step to make the body actually turn. */
-/* @t4-pass 0x1006D530 1 2026-09-13 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006D530 2 2026-09-20 probes 66 bytes 206 insns 73 regions 4 rows 20 census yes  (tools/crank.py) */
-/* @t3 0x1006D530 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 206/206 insns 73/73 rows 10+10 regions 4 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * RESIDUE: x87 stack scheduling only -- identical size and instruction count;
- * the differences are `fxch` ordering on the FPU stack (register-blind gap 0),
- * the TU-state operand-role class, not source-controllable. Do not reopen
- * before the end-grind (CLAUDE.md rule 12). */
+/* BYTE-EXACT 2026-09-24 (206/206, 73/73, 0 differing).  The 21-byte
+ * "x87 scheduling" residue this function carried as T3 was a WRONG row 3:
+ * the subtract-second spelling changed the sum.  The original's DAG,
+ * (hz*q1 + hy*q0) - hx*q3, is also its exact bytes. */
 /* @implements 0x100742D0 d3d BrRbQuatDerivative */
 void BrRbQuatDerivative(BrRbState *pS)
 {
@@ -444,39 +439,14 @@ void BrRbQuatDerivative(BrRbState *pS)
      * whole and restores `sub esp, 0xc` with the slots in declaration order.
      * BrVec3 and float[3] compile identically here; BrVec3 reads better.
      *
-     * ‼ WITHDRAWN 2026-09-23: "ROW 3 SUBTRACTS SECOND" (`h.z*f04 - h.x*f0C +
-     * h.y*f00`) removed one `fxch` but computes a different sum -- the
-     * original's x87 DAG is (hz*q1 + hy*q0) - hx*q3.  Float addition does
-     * not reassociate; a spelling that changes the DAG is never a lever.
+     * ROW 3 is plus-then-minus like rows 2 and 4: the original's DAG is
+     * (hz*q1 + hy*q0) - hx*q3.  A subtract-second spelling once removed an
+     * fxch and passed as 'scheduling residue' -- it computed a different sum
+     * (the whole-image run caught it) and the correct row is byte-exact.
      *
-     * ‼ CORRECTION.  An earlier version of this note claimed 23 bytes of
-     * residue with "instruction stream, count and size exact (RAW and REGNORM
-     * multiset gap 0+0)".  That was never true: measured at that note's own
-     * commit the function was 208 bytes against 206, 74 instructions against
-     * 73, with ONE SURPLUS `fxch` and REGNORM 1+0.  A claim of parity is what
-     * stops the next reader from working a function, so it has to be measured
-     * before it is written.  The subtract-second row above is what actually
-     * removes that `fxch`; the function is only NOW at 206/206, 73/73 and
-     * RAW/REGNORM 0+0, with 21 differing bytes.
-     *
-     * ‼ POSITION IN THE TU IS LOAD-BEARING, and it had silently rotted. This
-     * function must sit immediately ahead of BrRbBuildMatrix; anywhere earlier
-     * in slice3_44.c the allocator rotates and the residue is 163 differing
-     * bytes at REGNORM 27+24, not 21 at 0+0. Restored 2026-09-10 after a
-     * neighbour edit moved it -- nothing about this function changed, so a
-     * re-measure is the only thing that catches it (position sweep over every
-     * slot in the TU: only the two tail slots score 21).
-     *
-     * RESIDUE (21 bytes): every remaining differing byte is the ModRM of an
-     * `fxch`/`faddp`/`fsubp` st(i) index -- the x87 stack holds the same
-     * values in a different permutation from 1006D565 on.  Probed and ruled
-     * out, do NOT re-run: the full 4x4x4 sweep of per-row term orders and
-     * associations for rows 2/3/4 (64 builds, nothing beats 21, and the six
-     * that tie differ only in rows 2 and 4); all five non-identity orderings
-     * of the three h assignments RE-RUN against the corrected row 3 (50, 85,
-     * 90, 165 and 170 diffs -- x, y, z still wins); three re-associations of
-     * row 1 (30, 141 and 168); `float[3]` vs `BrVec3` (byte-identical); and
-     * `/O2 /Op` (214 bytes, 134 diffs -- strictly worse, this TU is /O2). */
+     * POSITION IN THE TU IS LOAD-BEARING: this function sits immediately
+     * ahead of BrRbBuildMatrix; elsewhere in slice3_44.c the allocator
+     * rotates. */
     BrVec3 h;
 
     h.x = pS->angVel.x * 0.5f;
