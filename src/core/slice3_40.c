@@ -19,12 +19,14 @@
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
+#define BrPathWalk      BrPathWalk_port_hdr   /* defined on the raw node */
 #endif
 #include "slice3_40.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
+#undef BrPathWalk
 void BrZeroRegions(void);
 #endif
 
@@ -297,6 +299,72 @@ static void BrPathCountCrossing(const BrVec3 *pA, const BrVec3 *pB)
  * first one. A distance of nonsense stops the walk where it is rather than
  * running off the end. */
 /* @implements 0x10065B20 d3d BrPathWalk */
+#ifdef BR_MATCHING_BUILD
+/* Glide arm, hand-transcribed from 0x1005EB90.  Same node layout and loop
+ * shape as BrRacePathAdvance (0x1005ECF0): the node loop's null test is the
+ * skip walk's own guard.  The segment-crossing count is written out at both
+ * sites (the original has no helper), the partial segment's lerp runs first. */
+typedef struct PwPoint { BrVec3 left, centre, right; float arc; } PwPoint;
+typedef struct PwNode {
+    struct PwNode *pNext;
+    struct PwNode *pSib;
+    char           pad08[0x0C];
+    unsigned short count;
+    unsigned short flags;
+    char           pad18[0x28];
+    PwPoint        pts[1];
+} PwNode;
+typedef struct PwSeg { BrVec2 a, b; int f10; } PwSeg;
+extern int     DAT_10b1ca20, DAT_10b1cea4, DAT_106eee38, DAT_10af07f0;
+extern PwSeg   DAT_106eed70[];
+extern BrVec3  DAT_10b1ce98;
+extern PwNode *DAT_10b1cbec;
+void BrPathWalk(PwNode *pNode, float dist)
+{
+    int i, k;
+
+    DAT_10b1ca20 = 0;
+    DAT_10b1cea4 = 0;
+    for (;;) {
+        while (pNode != 0 && (pNode->flags & 1) != 0)
+            pNode = pNode->pSib;
+        if (pNode == 0)
+            return;
+        for (i = 0; i < pNode->count; i++) {
+            float seg = pNode->pts[i].arc - pNode->pts[i + 1].arc;
+            if (!(dist > seg)) {
+                BrVec3Lerp(&DAT_10b1ce98, &pNode->pts[i + 1].centre,
+                           &pNode->pts[i].centre, dist / seg);
+                if (DAT_106eee38 != 0) {
+                    k = (DAT_10b1ca20 + 1) % DAT_106eee38;
+                    if (BrSeg2Intersect(&DAT_106eed70[k].b, &DAT_106eed70[k].a,
+                                        (const BrVec2 *)&pNode->pts[i].centre,
+                                        (const BrVec2 *)&DAT_10b1ce98) != 0) {
+                        DAT_10b1ca20++;
+                        if (k == 0)
+                            DAT_10b1cea4++;
+                    }
+                }
+                DAT_10b1cbec = pNode;
+                DAT_10af07f0 = i;
+                return;
+            }
+            dist -= seg;
+            if (DAT_106eee38 != 0) {
+                k = (DAT_10b1ca20 + 1) % DAT_106eee38;
+                if (BrSeg2Intersect(&DAT_106eed70[k].b, &DAT_106eed70[k].a,
+                                    (const BrVec2 *)&pNode->pts[i].centre,
+                                    (const BrVec2 *)&pNode->pts[i + 1].centre) != 0) {
+                    DAT_10b1ca20++;
+                    if (k == 0)
+                        DAT_10b1cea4++;
+                }
+            }
+        }
+        pNode = pNode->pNext;
+    }
+}
+#else
 void BrPathWalk(BrNode *pNode, float t)
 {
     BrPathCrossCount = 0;
@@ -344,6 +412,7 @@ void BrPathWalk(BrNode *pNode, float t)
         pNode = pNode->f00;
     }
 }
+#endif
 
 /* 0x10065C80 */
 void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
