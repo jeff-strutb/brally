@@ -1192,6 +1192,8 @@ def main():
     r.add_argument('--per-fn', type=int, default=6, help='captures per function')
     r.add_argument('--shots')
     r.add_argument('--no-ledger', action='store_true')
+    r.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 2),
+                   help='scripts run in parallel, one process each (default: cores - 2)')
     r.add_argument('--image', default=DEFAULT_IMAGE,
                    help='built T3 image whose placed spans are the T3 side '
                         '(tools/image_build_t3.py --out-dir build/brbox/image, BR_TRACE unset)')
@@ -1217,9 +1219,41 @@ def main():
             a.no_ledger = True
             global OUT_DIR
             OUT_DIR = os.path.join(ROOT, 'build', 'brbox', 'live_selftest')
-        for s in a.scripts:
-            run_script(s, only=only, per_fn=a.per_fn, shots=a.shots,
-                       image=None if a.objects else a.image)
+        jobs = min(a.jobs, len(a.scripts))
+        if jobs > 1 and not a.selftest:
+            # One process per script (the emulator is single-threaded); the
+            # children never write the ledger -- this process folds their
+            # per-script JSON once every script has finished.
+            import subprocess
+            from concurrent.futures import ThreadPoolExecutor
+            logdir = os.path.join(OUT_DIR, 'logs')
+            os.makedirs(logdir, exist_ok=True)
+            base = [sys.executable, os.path.abspath(__file__), 'run', '--jobs', '1',
+                    '--no-ledger', '--per-fn', str(a.per_fn), '--image', a.image]
+            if a.only:
+                base += ['--only'] + list(a.only)
+            if a.shots:
+                base += ['--shots', a.shots]
+            if a.objects:
+                base += ['--objects']
+
+            def one(s):
+                logp = os.path.join(logdir, os.path.splitext(os.path.basename(s))[0] + '.log')
+                with open(logp, 'w') as f:
+                    rc = subprocess.call(base + [s], stdout=f, stderr=subprocess.STDOUT)
+                lines = [l for l in open(logp).read().splitlines() if ' pass ' in l]
+                return rc, lines, logp
+
+            with ThreadPoolExecutor(max_workers=jobs) as ex:
+                for rc, lines, logp in ex.map(one, a.scripts):
+                    for l in lines:
+                        print(l)
+                    if rc:
+                        print('  (exit %d, log %s)' % (rc, logp))
+        else:
+            for s in a.scripts:
+                run_script(s, only=only, per_fn=a.per_fn, shots=a.shots,
+                           image=None if a.objects else a.image)
         agg = aggregate(write=not a.no_ledger and not only)
         c = collections.Counter(v['verdict'] for v in agg.values())
         print('aggregate over %s: %s' % (OUT_DIR, ', '.join('%s %d' % kv for kv in sorted(c.items()))))
