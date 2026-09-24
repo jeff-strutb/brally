@@ -1093,50 +1093,43 @@ void BrWeatherStepWind(void)
 {
     float r, a;
 
-    /* orig: fild; fmul kF350; fsub 1; fmul dt; fadd angle; fst; fcomp 2pi.
-     * All memory operands are float -- double casts emit fld+fmulp. */
-    r = (float)(BrRandom() & 0xFFFF) * kF350 - kF354;
+    /* The constants are literals: Glide pools them per function in .rdata
+     * (0x10077300..), and the literal spelling is what gives the original's
+     * fld/fmul operand roles. */
+    r = (float)(BrRandom() & 0xFFFF) * 3.051804378628731e-05f - 1.0f;
     g_weather.windAngle = r * g_weather.dt + g_weather.windAngle;
-    if (g_weather.windAngle >= kF358)
-        g_weather.windAngle -= kF358;
-    else if (g_weather.windAngle < kF35C)
-        g_weather.windAngle -= kF360;   /* -(-2pi) = +2pi */
+    if (g_weather.windAngle >= 6.2831854820251465f)
+        g_weather.windAngle -= 6.2831854820251465f;
+    else if (g_weather.windAngle < 0.0f)
+        g_weather.windAngle -= -6.2831854820251465f;   /* -(-2pi) = +2pi */
 
-    r = (float)(BrRandom() & 0xFFFF) * kF350 - kF354;
+    r = (float)(BrRandom() & 0xFFFF) * 3.051804378628731e-05f - 1.0f;
     g_weather.windGain = r * g_weather.dt + g_weather.windGain;
     /* Then-arms are integer stores of 1.0f / 0.5f (mov imm32), not x87. */
-    if (g_weather.windGain > kF354)
+    if (g_weather.windGain > 1.0f)
         g_weather.windGain = 1.0f;
-    else if (g_weather.windGain < kF364)
+    else if (g_weather.windGain < 0.5f)
         g_weather.windGain = 0.5f;
 
     /* Integer-home of the angle (mov eax; mov [esp], eax; fld [esp]),
      * windZ zeroed between the copy and the two flds, fcos of the global
      * and fsin of the slot copy, then scale both by gain then dt.
      *
-     * WALL: orig then `fxch; fst [esp]; fxch; fst [esp]; fxch` (round BOTH
-     * fcos/fsin results through the one slot) before the interleaved
-     * gain/dt scale-out.  /O2 emits only the sin fst; /Op on the function
-     * also rounds the fild path (`fstp; fld`) which orig does not.
-     * DEAD 2026-09-05: named `c`/`s` locals for the two trig results
-     * (byte-identical), a named `c` alone (24), reusing `a` for the cosine
-     * after the sine is taken (24), and a plain `a = windAngle` copy in
-     * place of the int pun (44, loses the integer copy).
-     * DEAD 2026-09-12 (fn.py, do not re-run): the trig results as
-     * assignment EXPRESSIONS `(t = (float)cos(..)) * gain * dt` with a
-     * fresh `t`, with `r`, with `a` itself, and sine-first with `a` -- all
-     * reassociate to a `gain * dt` product (71 insns but 6+6); dropping
-     * the sine's cast (66 insns: that `fst` IS its rounding store); a
-     * doubled `(float)(float)` cast on the cosine (0+3); swapping which
-     * trig call takes the slot copy (0+4, neither rounds); and the sine
-     * argument as `*(float *)&ia` (0+3).  The cosine's rounding store is
-     * not reachable from any cast spelling tried. */
+     * Both trig results round through the one frame slot (`fst [esp]`
+     * twice): each is a block-scoped volatile float, which VC5 homes in
+     * the slot `a` has finished with. */
     {
         int ia = *(int *)&g_weather.windAngle;
         g_weather.windZ = 0.0f;
         *(int *)&a = ia;
-        g_weather.windX = (float)cos(g_weather.windAngle) * g_weather.windGain * g_weather.dt;
-        g_weather.windY = (float)sin(a) * g_weather.windGain * g_weather.dt;
+        {
+            volatile float c = (float)cos(g_weather.windAngle);
+            g_weather.windX = c * g_weather.windGain * g_weather.dt;
+        }
+        {
+            volatile float s = (float)sin(a);
+            g_weather.windY = s * g_weather.windGain * g_weather.dt;
+        }
     }
 }
 
